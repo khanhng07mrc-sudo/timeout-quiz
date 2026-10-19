@@ -1484,6 +1484,7 @@ export default function AdminRoomPage() {
                   onJudgeSolve={(accepted) => emit("admin:magic_wheel:judge_solve", { isCorrect: accepted })}
                   onRevealAll={() => emit("admin:magic_wheel:reveal_all")}
                   onQuickRevealLetter={() => emit("admin:magic_wheel:quick_reveal_letter")}
+                  onLuckyPick={(index) => emit("magic_wheel:lucky_pick", { index })}
                 />
               </div>
             </div>

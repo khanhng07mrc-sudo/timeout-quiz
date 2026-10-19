@@ -4331,7 +4331,14 @@ export default function AdminSandboxPage() {
       }
 
       if (e.data?.type === "MAGIC_WHEEL_SPIN") {
-        const { power } = e.data;
+        const { power, teamId } = e.data;
+        if (
+          teamId &&
+          roomStateRef.current?.magicWheelState?.currentTurnTeamId &&
+          teamId !== roomStateRef.current.magicWheelState.currentTurnTeamId
+        ) {
+          return;
+        }
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState || prev.magicWheelState.isSpinning) return prev;
           const cur = { ...prev.magicWheelState };
@@ -5982,6 +5989,20 @@ export default function AdminSandboxPage() {
     window.addEventListener("message", handlePlayerAction);
     return () => window.removeEventListener("message", handlePlayerAction);
   }, [isOfflineSandbox, currentQuestion, addLog, syncToIframes, activeTeamIndex, roomState?.teams, roomState?.config.answerSubmissionMode, selectedMode, processOfflineWager]);
+
+  useEffect(() => {
+    const forwardUnlock = () => {
+      try {
+        displayIframeRef.current?.contentWindow?.postMessage({ type: "UNLOCK_AUDIO" }, "*");
+      } catch {}
+    };
+    window.addEventListener("pointerdown", forwardUnlock);
+    window.addEventListener("keydown", forwardUnlock);
+    return () => {
+      window.removeEventListener("pointerdown", forwardUnlock);
+      window.removeEventListener("keydown", forwardUnlock);
+    };
+  }, []);
 
   // ── Helper lấy vị trí Logo 2D ở góc trên bên trái của thẻ Mode ────────────
   const getModeIconRect = (targetMode: GameMode) => {
@@ -10692,14 +10713,7 @@ export default function AdminSandboxPage() {
                         <span className="font-bold text-[10px] truncate text-white">{t.name}</span>
                       </div>
                       <span className="font-mono font-bold text-cyan-300 text-[10px] shrink-0">
-                        {t.score}đ
-                        {roomState?.mode === "MAGIC_WHEEL" &&
-                        roomState?.magicWheelState?.phase !== "ROUND_RECAP" &&
-                        (roomState?.magicWheelState?.roundScores?.[t.id] || 0) > 0 ? (
-                          <span className="text-amber-300 font-extrabold ml-0.5">
-                            (+{roomState?.magicWheelState?.roundScores?.[t.id]}đ)
-                          </span>
-                        ) : null}
+                        {((t.score || 0) + (roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[t.id] || 0) : 0)).toLocaleString()}đ
                         {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === t.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
                           <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
                         ) : null}
@@ -10722,15 +10736,7 @@ export default function AdminSandboxPage() {
                   </span>
                   <div className="relative inline-flex items-center">
                     <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
-                      {currentTeam?.score ?? 0}đ
-                      {roomState?.mode === "MAGIC_WHEEL" &&
-                      currentTeam?.id &&
-                      roomState?.magicWheelState?.phase !== "ROUND_RECAP" &&
-                      (roomState?.magicWheelState?.roundScores?.[currentTeam.id] || 0) > 0 ? (
-                        <span className="text-amber-300 font-extrabold ml-0.5">
-                          (+{roomState?.magicWheelState?.roundScores?.[currentTeam.id]}đ)
-                        </span>
-                      ) : null}
+                      {(((currentTeam?.score ?? 0)) + (roomState?.mode === "MAGIC_WHEEL" && currentTeam?.id && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[currentTeam.id] || 0) : 0)).toLocaleString()}đ
                       {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === currentTeam?.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
                         <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
                       ) : null}
@@ -11705,14 +11711,7 @@ export default function AdminSandboxPage() {
                         )}
                       </button>
                       <span className="font-mono font-black text-cyan-300 text-xs shrink-0 mr-1">
-                        {t.score}đ
-                        {roomState?.mode === "MAGIC_WHEEL" &&
-                        roomState?.magicWheelState?.phase !== "ROUND_RECAP" &&
-                        (roomState?.magicWheelState?.roundScores?.[t.id] || 0) > 0 ? (
-                          <span className="text-amber-300 font-extrabold ml-0.5">
-                            (+{roomState?.magicWheelState?.roundScores?.[t.id]}đ)
-                          </span>
-                        ) : null}
+                        {((t.score || 0) + (roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[t.id] || 0) : 0)).toLocaleString()}đ
                         {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === t.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
                           <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
                         ) : null}

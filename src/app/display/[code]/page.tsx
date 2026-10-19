@@ -253,6 +253,10 @@ export default function DisplayPage() {
     soundManager.setVolume(0.8);
 
     const handlePostMessage = (e: MessageEvent) => {
+      if (e.data?.type === "UNLOCK_AUDIO") {
+        handleUnlockAudio();
+        return;
+      }
       if (e.data?.type === "TOGGLE_MAGIC_WHEEL_INTRO") {
         soundManager.toggleMagicWheelIntro();
         return;
@@ -1130,7 +1134,18 @@ export default function DisplayPage() {
           </div>
         ) : isMagicWheel ? (
           <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col justify-start md:justify-center overflow-y-auto animate-slide-up">
-            <MagicWheelBoard wheelState={roomState.magicWheelState!} isDisplay={true} teams={roomState.teams} />
+            <MagicWheelBoard
+              wheelState={roomState.magicWheelState!}
+              isDisplay={true}
+              teams={roomState.teams}
+              onLuckyPick={(index) => {
+                if (isSandbox) {
+                  window.parent.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index }, "*");
+                } else {
+                  socketRef.current?.emit("magic_wheel:lucky_pick", { index });
+                }
+              }}
+            />
           </div>
         ) : (
           /* Grand Leaderboard Intermission for BUZZ, CLASSIC, OLYMPIA, ELIMINATION, etc. */
@@ -2330,6 +2345,13 @@ export default function DisplayPage() {
                   wheelState={roomState.magicWheelState}
                   isDisplay={true}
                   teams={roomState.teams}
+                  onLuckyPick={(index) => {
+                    if (isSandbox) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index }, "*");
+                    } else {
+                      socketRef.current?.emit("magic_wheel:lucky_pick", { index });
+                    }
+                  }}
                 />
               </div>
             ) : (
@@ -2387,12 +2409,7 @@ export default function DisplayPage() {
                   <p className="font-semibold truncate">{entry.name}</p>
                 </div>
                 <span className="font-bold font-mono text-cyan-400 shrink-0">
-                  {entry.score.toLocaleString()}đ
-                  {mwRoundScore > 0 && (
-                    <span className="text-amber-300 font-extrabold text-[11px] ml-1">
-                      (+{mwRoundScore.toLocaleString()}đ)
-                    </span>
-                  )}
+                  {((entry.score || 0) + (mwRoundScore || 0)).toLocaleString()}đ
                 </span>
               </div>
             );

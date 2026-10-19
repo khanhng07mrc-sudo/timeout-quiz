@@ -1119,6 +1119,8 @@ export default function MagicWheelBoard({
     specialAttemptLog = [],
     roundEliminatedTeamIds = [],
     lastSolveFeedback,
+    specialFinalTeamId,
+    specialFinalTeamName,
   } = activeState;
 
   const [solveModalOpen, setSolveModalOpen] = useState<boolean>(false);
@@ -1180,10 +1182,9 @@ export default function MagicWheelBoard({
     (window.self !== window.top ||
       window.location.search.includes("sandbox=1") ||
       window.location.pathname.includes("/sandbox"));
-  // Audio rule: Contestants never play audio.
-  // In sandbox: strictly Display preview plays audio (prevents duplicate audio on the same machine).
-  // In live room: Host or Display plays audio.
-  const canPlayBoardAudio = isInsideSandbox ? Boolean(isDisplay) : Boolean(isDisplay || isHost);
+  // Audio rule: In sandbox: strictly Display preview plays audio (prevents duplicate audio on the same machine).
+  // In live room: All participants (Host, Display, Players) can hear audio.
+  const canPlayBoardAudio = isInsideSandbox ? Boolean(isDisplay) : true;
 
   const isSolveMountedRef = useRef<boolean>(false);
   useEffect(() => {
@@ -1213,6 +1214,24 @@ export default function MagicWheelBoard({
       return () => clearTimeout(timer);
     }
   }, [lastSolveFeedback, canPlayBoardAudio]);
+
+  const prevTurnTeamIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!currentTurnTeamId) {
+      prevTurnTeamIdRef.current = null;
+      return;
+    }
+    if (prevTurnTeamIdRef.current === null) {
+      prevTurnTeamIdRef.current = currentTurnTeamId;
+      return;
+    }
+    if (prevTurnTeamIdRef.current !== currentTurnTeamId) {
+      prevTurnTeamIdRef.current = currentTurnTeamId;
+      if (canPlayBoardAudio && phase !== "ROUND_RECAP") {
+        soundManager.playMagicWheelTurnChange();
+      }
+    }
+  }, [currentTurnTeamId, canPlayBoardAudio, phase]);
 
   const effectiveIsMyTurn =
     isMyTurn !== undefined
@@ -2460,12 +2479,12 @@ export default function MagicWheelBoard({
             </div>
           )}
 
-          {/* Ô May Mắn MC Guide Banner (Player/Host only) */}
-          {!isDisplay && phase === "LUCKY_PICK" && (
+          {/* Ô May Mắn MC Guide Banner (Hiển thị trên cả Host, Display và Player) */}
+          {phase === "LUCKY_PICK" && (
             <div className="mb-2 px-3 py-1.5 rounded-xl bg-emerald-950/90 border border-emerald-400/50 text-emerald-200 text-[11px] sm:text-xs font-bold flex items-center gap-2 animate-pulse shadow-lg">
               <span className="text-base">🍀</span>
               <span>
-                <strong>Ô MAY MẮN:</strong> Click lần 1 vào ô chưa mở để chọn (highlight xanh), click lần 2 vào chính ô đó để mở chữ!
+                <strong>Ô MAY MẮN:</strong> Chạm/Click vào ô muốn mở (ô sẽ sáng xanh), chạm lại lần nữa để lật mở chữ!
               </span>
             </div>
           )}
@@ -2517,11 +2536,13 @@ export default function MagicWheelBoard({
                           effectiveBoardStage === "BLANK_PHRASE" &&
                           cell.seqIndex === cutRevealedCount - 1;
 
+                        const canPickLucky = phase === "LUCKY_PICK" && !cell.isRevealed && (canInteract || isDisplay || isHost);
+
                         return (
                           <div
                             key={cIdx}
                             onClick={() => {
-                              if (phase === "LUCKY_PICK" && canInteract && !cell.isRevealed) {
+                              if (canPickLucky) {
                                 if (luckyGreenSelectedIdx !== cell.originalIndex) {
                                   setLuckyGreenSelectedIdx(cell.originalIndex);
                                   if (canPlayBoardAudio) soundManager.playMagicWheelMark();
@@ -3159,26 +3180,36 @@ export default function MagicWheelBoard({
                     </div>
                   )}
 
-                  {phase === "SPECIAL_SPIN_WAITING" && (
-                    <div className="space-y-2">
-                      <p className="text-xs text-amber-200 font-semibold">
-                        Hãy bấm quay chiếc nón để xác định Phong Bì Giải Thưởng Đặc Biệt (+2.000đ đến +10.000đ):
-                      </p>
-                      <button
-                        type="button"
-                        disabled={effectiveIsSpinning}
-                        onClick={() => {
-                          if (effectiveIsSpinning) return;
-                          if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
-                          setLocalIsSpinning(true);
-                          onSpin?.(oscillatingPower);
-                        }}
-                        className="w-full py-3 rounded-xl font-black text-xs sm:text-sm text-slate-950 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 hover:brightness-110 cursor-pointer shadow-lg"
-                      >
-                        ✦ QUAY PHONG BÌ ĐẶC BIỆT ({oscillatingPower}%) ✦
-                      </button>
-                    </div>
-                  )}
+                  {phase === "SPECIAL_SPIN_WAITING" && (() => {
+                    const isMySpecialTurn = isHost || (myTeamId ? myTeamId === specialFinalTeamId : effectiveIsMyTurn);
+                    if (!isMySpecialTurn) {
+                      return (
+                        <div className="text-center py-2.5 px-3 rounded-xl bg-black/40 border border-white/10 text-xs font-bold text-amber-300/80 italic">
+                          ⏳ Đang chờ Đội {specialFinalTeamName || "chiến thắng"} quay nón xác định Phong Bì Đặc Biệt...
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="space-y-2">
+                        <p className="text-xs text-amber-200 font-semibold">
+                          Hãy bấm quay chiếc nón để xác định Phong Bì Giải Thưởng Đặc Biệt (+2.000đ đến +10.000đ):
+                        </p>
+                        <button
+                          type="button"
+                          disabled={effectiveIsSpinning}
+                          onClick={() => {
+                            if (effectiveIsSpinning) return;
+                            if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
+                            setLocalIsSpinning(true);
+                            onSpin?.(oscillatingPower);
+                          }}
+                          className="w-full py-3 rounded-xl font-black text-xs sm:text-sm text-slate-950 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 hover:brightness-110 cursor-pointer shadow-lg"
+                        >
+                          ✦ QUAY PHONG BÌ ĐẶC BIỆT ({oscillatingPower}%) ✦
+                        </button>
+                      </div>
+                    );
+                  })()}
 
                   {phase === "SPECIAL_PICK_LETTERS" && (
                     <div className="space-y-2.5">
@@ -3287,53 +3318,59 @@ export default function MagicWheelBoard({
                         />
                       </div>
 
-                      {canInteract ? (
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (effectiveIsSpinning || isCurrentTeamEliminated) return;
-                              if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
-                              setLocalIsSpinning(true);
-                              onSpin?.(oscillatingPower);
-                            }}
-                            disabled={effectiveIsSpinning || isCurrentTeamEliminated}
-                            className={`flex-1 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm text-white transition shadow-[0_0_20px_rgba(236,72,153,0.4)] ${
-                              isCurrentTeamEliminated
-                                ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
-                                : "bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:brightness-110 active:scale-98 cursor-pointer"
-                            }`}
-                          >
-                            {isCurrentTeamEliminated
-                              ? "⛔ ĐÃ HẾT LƯỢT VÒNG NÀY (ĐOÁN SAI Ô CHỮ)"
-                              : `✦ CHỐT LỰC & QUAY NÓN (${oscillatingPower}%) ✦`}
-                          </button>
-                          {subMode === "WORD_PUZZLE" && (
-                            <button
-                              type="button"
-                              onClick={() => setSolveModalOpen(true)}
-                              disabled={isSpinning || isSolveForbiddenInRound3 || isCurrentTeamEliminated}
-                              className={`px-3.5 py-2.5 rounded-xl font-black text-xs whitespace-nowrap transition shadow ${
-                                isCurrentTeamEliminated
-                                  ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
-                                  : isSolveForbiddenInRound3
-                                  ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
-                                  : "text-black bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 active:scale-98 cursor-pointer"
-                              }`}
-                            >
-                              {isCurrentTeamEliminated
-                                ? "⛔ ĐÃ HẾT QUYỀN"
-                                : isSolveForbiddenInRound3
-                                ? "🔒 CẦN MỞ HẾT"
-                                : "🎯 GIẢI Ô CHỮ"}
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-center py-1.5 text-xs text-slate-400 italic">
-                          Đang chờ Đội {currentTurnTeamName} quay nón hoặc giải ô chữ...
-                        </div>
-                      )}
+                      {(() => {
+                        const isMyTurnToSpin = isHost || (myTeamId ? myTeamId === currentTurnTeamId : effectiveIsMyTurn);
+                        if (canInteract && isMyTurnToSpin) {
+                          return (
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated) return;
+                                  if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
+                                  setLocalIsSpinning(true);
+                                  onSpin?.(oscillatingPower);
+                                }}
+                                disabled={!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated}
+                                className={`flex-1 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm text-white transition shadow-[0_0_20px_rgba(236,72,153,0.4)] ${
+                                  isCurrentTeamEliminated
+                                    ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                                    : "bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:brightness-110 active:scale-98 cursor-pointer"
+                                }`}
+                              >
+                                {isCurrentTeamEliminated
+                                  ? "⛔ ĐÃ HẾT LƯỢT VÒNG NÀY (ĐOÁN SAI Ô CHỮ)"
+                                  : `✦ CHỐT LỰC & QUAY NÓN (${oscillatingPower}%) ✦`}
+                              </button>
+                              {subMode === "WORD_PUZZLE" && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSolveModalOpen(true)}
+                                  disabled={isSpinning || isSolveForbiddenInRound3 || isCurrentTeamEliminated}
+                                  className={`px-3.5 py-2.5 rounded-xl font-black text-xs whitespace-nowrap transition shadow ${
+                                    isCurrentTeamEliminated
+                                      ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                                      : isSolveForbiddenInRound3
+                                      ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                                      : "text-black bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 active:scale-98 cursor-pointer"
+                                  }`}
+                                >
+                                  {isCurrentTeamEliminated
+                                    ? "⛔ ĐÃ HẾT QUYỀN"
+                                    : isSolveForbiddenInRound3
+                                    ? "🔒 CẦN MỞ HẾT"
+                                    : "🎯 GIẢI Ô CHỮ"}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="text-center py-2.5 px-3 rounded-xl bg-black/40 border border-white/10 text-xs font-bold text-amber-300/80 italic">
+                            ⏳ Đang chờ Đội {currentTurnTeamName} thực hiện lượt quay hoặc giải ô chữ...
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 
@@ -3655,7 +3692,7 @@ export default function MagicWheelBoard({
             <div className="p-3 rounded-2xl bg-black/40 border border-white/10 space-y-2">
               <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-400">
                 <span>🏆 BẢNG ĐIỂM ({stageBadgeLabel})</span>
-                <span className="text-amber-300">Điểm vòng / Tổng điểm chung cuộc</span>
+                <span className="text-amber-300">Tổng điểm hiện tại</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 {teams.map((t) => {
@@ -3693,9 +3730,8 @@ export default function MagicWheelBoard({
                           <span className="text-xs font-bold text-white truncate">{t.name}</span>
                         </div>
                         <div className="text-right shrink-0">
-                          <span className="text-xs font-mono font-black text-amber-300">+{rScore.toLocaleString()}đ</span>
-                          <span className="text-[10px] font-mono font-bold text-cyan-300 ml-1.5" title="Điểm thi đấu chính thức (dùng để xét vào Vòng Đặc Biệt)">
-                            ({(t.score || 0).toLocaleString()}đ)
+                          <span className="text-xs font-mono font-black text-amber-300">
+                            {((t.score || 0) + rScore).toLocaleString()}đ
                           </span>
                           {activeState.prizeCash?.[t.id] ? (
                             <div className="text-[9px] font-mono text-emerald-400 font-bold" title="Tiền thưởng vĩnh viễn (không tính vào điểm xét Vòng Đặc Biệt)">

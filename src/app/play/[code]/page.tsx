@@ -2411,7 +2411,7 @@ export default function PlayPage() {
                   myTeamId={effectiveTeamId}
                   isMyTurn={
                     (roomState.magicWheelState.tossUpBuzzedTeamId ||
-                      roomState.magicWheelState.currentTurnTeamId) === effectiveTeamId || isSandbox
+                      roomState.magicWheelState.currentTurnTeamId) === effectiveTeamId
                   }
                   onSpin={(power) => {
                     if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {

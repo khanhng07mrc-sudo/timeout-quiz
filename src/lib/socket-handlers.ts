@@ -7880,7 +7880,8 @@ export function registerSocketHandlers(io: IO) {
           if (room?.mode === "MAGIC_WHEEL") roomCode = room.code;
         }
       }
-      return { roomId, roomCode, teamId, isSandboxSocket, isAdmin };
+      const isDisplay = displaySockets.has(socket.id);
+      return { roomId, roomCode, teamId, isSandboxSocket, isAdmin, isDisplay };
     };
 
     const advanceMagicWheelTurnHelper = (wheelState: MagicWheelState, teams: any[]): void => {
@@ -8461,15 +8462,16 @@ export function registerSocketHandlers(io: IO) {
       }, spinDurationMs + 250);
     };
 
-    socket.on("magic_wheel:spin", async (payload: { power: number }) => {
+    socket.on("magic_wheel:spin", async (payload: { power: number; teamId?: string }) => {
       const power = payload?.power;
-      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId: resolvedTeamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
       if ((wheelState.roundEliminatedTeamIds || []).includes(wheelState.currentTurnTeamId)) return;
-      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
-      if (!teamId && !isSandboxSocket && !isAdmin) return;
+      const effectiveSpinTeamId = resolvedTeamId || payload?.teamId;
+      if (!isAdmin && effectiveSpinTeamId && effectiveSpinTeamId !== wheelState.currentTurnTeamId) return;
+      if (!isAdmin && !effectiveSpinTeamId && !isSandboxSocket) return;
       await executeMagicWheelSpin(roomId, roomCode, power);
     });
 
@@ -9199,13 +9201,14 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
 
-    socket.on("magic_wheel:lucky_pick", async ({ index }) => {
-      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
+    const handleLuckyPickInternal = async (index: number) => {
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin, isDisplay } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.phase !== "LUCKY_PICK" || !wheelState.currentPuzzle) return;
-      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
-      if (!teamId && !isSandboxSocket && !isAdmin) return;
+      if (!isAdmin && !isDisplay && !isSandboxSocket) {
+        if (!teamId || teamId !== wheelState.currentTurnTeamId) return;
+      }
 
       const p = wheelState.currentPuzzle;
       if (index >= 0 && index < p.secretPhrase.length && !p.revealedIndices.includes(index)) {
@@ -9233,6 +9236,14 @@ export function registerSocketHandlers(io: IO) {
           io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
         }
       }
+    };
+
+    socket.on("magic_wheel:lucky_pick", async ({ index }) => {
+      await handleLuckyPickInternal(index);
+    });
+
+    socket.on("admin:magic_wheel:lucky_pick" as any, async ({ index }: any) => {
+      await handleLuckyPickInternal(index);
     });
 
     socket.on("magic_wheel:reward_select", async (payload: {

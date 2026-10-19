@@ -83,12 +83,7 @@ export default function ScoreDisplay({ roomState, playerId, teamId, overridePlay
       <div className="text-right pl-2 border-l border-border/50 shrink-0">
         <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase whitespace-nowrap">{myTeam ? "Điểm đội" : "Điểm"}</p>
         <p className="font-black text-sm sm:text-base text-cyan-400 font-mono whitespace-nowrap">
-          {scoreVal.toLocaleString()}
-          {magicWheelRoundScore > 0 && (
-            <span className="text-amber-300 font-extrabold text-xs ml-1">
-              (+{magicWheelRoundScore.toLocaleString()})
-            </span>
-          )}
+          {(scoreVal + (roomState.mode === "MAGIC_WHEEL" ? (magicWheelRoundScore || 0) : 0)).toLocaleString()}
           {roomState.mode === "MYSTERY_QUEST" &&
             Boolean(roomState.mysteryQuestState) &&
             roomState.mysteryQuestState!.currentTurnTeamId === myTeam?.id &&

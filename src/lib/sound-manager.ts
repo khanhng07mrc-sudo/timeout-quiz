@@ -1281,6 +1281,37 @@ class SoundManager {
     } catch {}
   }
 
+  /**
+   * Âm thanh hiệu ứng khi chuyển người quay (đổi lượt cho đội kế tiếp)
+   */
+  public playMagicWheelTurnChange() {
+    if (this.isMuted) return;
+    this.playSFX("mw_mark", 0.95);
+    const ctx = this.getWheelAudioCtx();
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const chord = [698.46, 880.0, 1046.5];
+      chord.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+        const peak = Math.max(0.03, this.volume * 0.28);
+        gain.gain.setValueAtTime(0.001, now + idx * 0.04);
+        gain.gain.linearRampToValueAtTime(peak, now + idx * 0.04 + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.04);
+        osc.stop(now + idx * 0.04 + 0.38);
+      });
+    } catch {}
+  }
+
   // ── Chiếc Nón Kỳ Diệu VTV3 (2013 - 2016) Official Sound Suite ──────────
 
   /**

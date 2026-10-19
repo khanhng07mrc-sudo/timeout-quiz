@@ -588,9 +588,15 @@ function SmartPuzzlePhraseInput({
           type="text"
           value={rawLineInput}
           onChange={(e) => handleFullLineChange(e.target.value)}
+          onCompositionStart={() => {
+            isComposingRef.current = true;
+          }}
+          onCompositionEnd={() => {
+            isComposingRef.current = false;
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
-              if (e.nativeEvent.isComposing || e.keyCode === 229) {
+              if (e.nativeEvent.isComposing || e.keyCode === 229 || isComposingRef.current) {
                 return;
               }
               e.preventDefault();
@@ -2373,6 +2379,17 @@ export default function MagicWheelBoard({
             </button>
           )}
 
+          {isHost && onJudgeSolve && phase !== "ROUND_RECAP" && (
+            <button
+              type="button"
+              onClick={() => onJudgeSolve(false)}
+              className="px-3 py-1.5 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-500 text-white border border-rose-400/60 shadow-[0_0_15px_rgba(244,63,94,0.4)] hover:brightness-110 active:scale-95 transition cursor-pointer flex items-center gap-1.5 shrink-0"
+              title="Phạt SAI ngay lập tức, phát âm thanh sai và tiếp tục chơi (hoặc chuyển lượt)"
+            >
+              <span>✕</span> Phạt SAI
+            </button>
+          )}
+
           {isHost && (onNextRound || onAdvanceRound) && (
             <button
               type="button"
@@ -3073,11 +3090,6 @@ export default function MagicWheelBoard({
                           <span className="text-xs font-black text-amber-300">
                             🔔 Đội {tossUpBuzzedTeamName || currentTurnTeamName} đang trả lời:
                           </span>
-                          {tossUpRemainingSec > 0 && (
-                            <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono font-black text-xs animate-pulse">
-                              ⏳ Còn {tossUpRemainingSec}s
-                            </span>
-                          )}
                         </div>
                         {isHost && onJudgeSolve && (
                           <div className="flex items-center gap-1.5">

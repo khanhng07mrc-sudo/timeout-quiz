@@ -8288,19 +8288,13 @@ export function registerSocketHandlers(io: IO) {
       wheelState.tossUpBuzzedTeamName = buzzTeam.name;
       wheelState.currentTurnTeamId = buzzTeam.id;
       wheelState.currentTurnTeamName = buzzTeam.name;
-      wheelState.tossUpAnswerEndsAt = Date.now() + 25000; // 25s for typing full accented Vietnamese phrase
+      wheelState.tossUpAnswerEndsAt = undefined; // Removed fixed 25s limit — MC controls judging across all rounds
       wheelState.lastActionMessage = generateFlexibleMCCommentary("TOSS_UP_BUZZ", { teamName: buzzTeam.name });
 
-      // 5. Authoritative 25s server auto-timeout
+      // Clear any pending answer timer (no fixed auto-timeout)
       const existingTimer = roomTossUpAnswerTimers.get(roomId);
       if (existingTimer) clearTimeout(existingTimer);
-      const answerTimer = setTimeout(async () => {
-        const cur = roomMagicWheels.get(roomId);
-        if (cur && cur.phase === "TOSS_UP_BUZZED" && cur.tossUpBuzzedTeamId === buzzTeam.id) {
-          await executeMagicWheelSolvePuzzle(roomId, roomCode, "(Hết 25 giây trả lời)", false, buzzTeam.id);
-        }
-      }, 25500);
-      roomTossUpAnswerTimers.set(roomId, answerTimer);
+      roomTossUpAnswerTimers.delete(roomId);
 
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
@@ -8857,46 +8851,95 @@ export function registerSocketHandlers(io: IO) {
         );
         await completeMagicWheelRoundHelper(roomId, roomCode, tId);
       } else {
-        if (!wheelState.roundEliminatedTeamIds) wheelState.roundEliminatedTeamIds = [];
-        if (!wheelState.roundEliminatedTeamIds.includes(tId)) {
-          wheelState.roundEliminatedTeamIds.push(tId);
-        }
-        if (!wheelState.disqualifiedTeamIdsInRound) wheelState.disqualifiedTeamIdsInRound = [];
-        if (!wheelState.disqualifiedTeamIdsInRound.includes(tId)) {
-          wheelState.disqualifiedTeamIdsInRound.push(tId);
-        }
+        wheelState.isSpinning = false;
+        wheelState.pendingSpecialAction = "NONE";
 
-        // Mark 3 strikes on the team's card to visually indicate elimination from this round
-        wheelState.consecutiveWrongGuesses[tId] = 3;
-        wheelState.wrongGuessesCount[tId] = 3;
-        wheelState.roundScores[tId] = 0;
+        if (forcedVerdict === false) {
+          // MC pressed "✕ Phạt SAI" on the control bar or inside modal:
+          // Incur 1 strike, emit wrong sound feedback, and advance turn immediately so game continues playing!
+          const strikes = (wheelState.consecutiveWrongGuesses[tId] || 0) + 1;
+          wheelState.consecutiveWrongGuesses[tId] = strikes;
+          wheelState.wrongGuessesCount[tId] = strikes;
 
-        advanceMagicWheelTurnHelper(wheelState, room.teams);
-        const allEliminated = (wheelState.phase as string) === "ROUND_RECAP";
+          if (strikes >= 3) {
+            if (!wheelState.disqualifiedTeamIdsInRound) wheelState.disqualifiedTeamIdsInRound = [];
+            if (!wheelState.disqualifiedTeamIdsInRound.includes(tId)) {
+              wheelState.disqualifiedTeamIdsInRound.push(tId);
+            }
+            wheelState.roundScores[tId] = 0;
+          }
 
-        wheelState.lastSolveFeedback = {
-          teamId: tId,
-          teamName,
-          guess: answer,
-          isCorrect: false,
-          eliminatedFromRound: true,
-          allTeamsEliminated: allEliminated,
-          correctPhrase: allEliminated ? wheelState.currentPuzzle.secretPhrase : undefined,
-          timestamp: Date.now(),
-        };
+          advanceMagicWheelTurnHelper(wheelState, room.teams);
+          const allEliminated = (wheelState.phase as string) === "ROUND_RECAP";
 
-        io.to(`room:${roomCode}`).emit("game:magic_wheel:puzzle_solved", {
-          teamId: tId,
-          teamName,
-          isCorrect: false,
-          secretPhrase: allEliminated ? wheelState.currentPuzzle.secretPhrase : "",
-          roundWonPoints: 0,
-        });
+          wheelState.lastSolveFeedback = {
+            teamId: tId,
+            teamName,
+            guess: answer || "(MC Phạt SAI)",
+            isCorrect: false,
+            eliminatedFromRound: strikes >= 3,
+            allTeamsEliminated: allEliminated,
+            correctPhrase: allEliminated ? wheelState.currentPuzzle.secretPhrase : undefined,
+            timestamp: Date.now(),
+          };
 
-        if (allEliminated) {
-          wheelState.lastActionMessage = `❌ Đáp án "${answer}" của Đội ${teamName} chưa chính xác! Cả ${room.teams.length} đội đều đã hết lượt Giải Ô Chữ trong vòng này. Đáp án đúng là: "${wheelState.currentPuzzle.secretPhrase}"!`;
+          io.to(`room:${roomCode}`).emit("game:magic_wheel:puzzle_solved", {
+            teamId: tId,
+            teamName,
+            isCorrect: false,
+            secretPhrase: allEliminated ? wheelState.currentPuzzle.secretPhrase : "",
+            roundWonPoints: 0,
+          });
+
+          if (allEliminated) {
+            wheelState.lastActionMessage = `❌ Cả ${room.teams.length} đội đều đã hết quyền thi đấu trong vòng này! Đáp án là: "${wheelState.currentPuzzle.secretPhrase}"!`;
+          } else if (strikes >= 3) {
+            wheelState.lastActionMessage = `❌ Đội ${teamName} đã phạm quy/đoán sai 3 lần liên tiếp và bị loại khỏi vòng này! Chuyển lượt sang ${wheelState.currentTurnTeamName}.`;
+          } else {
+            wheelState.lastActionMessage = `❌ MC phạt SAI Đội ${teamName} (${strikes}/3 lỗi). Chuyển lượt sang Đội ${wheelState.currentTurnTeamName}!`;
+          }
         } else {
-          wheelState.lastActionMessage = `❌ Đáp án "${answer}" chưa chính xác! Đội ${teamName} đã hết quyền thi đấu trong vòng này (mỗi đội chỉ có 1 lượt Giải Ô Chữ). Chuyển lượt sang Đội ${wheelState.currentTurnTeamName}!`;
+          if (!wheelState.roundEliminatedTeamIds) wheelState.roundEliminatedTeamIds = [];
+          if (!wheelState.roundEliminatedTeamIds.includes(tId)) {
+            wheelState.roundEliminatedTeamIds.push(tId);
+          }
+          if (!wheelState.disqualifiedTeamIdsInRound) wheelState.disqualifiedTeamIdsInRound = [];
+          if (!wheelState.disqualifiedTeamIdsInRound.includes(tId)) {
+            wheelState.disqualifiedTeamIdsInRound.push(tId);
+          }
+
+          // Mark 3 strikes on the team's card to visually indicate elimination from this round
+          wheelState.consecutiveWrongGuesses[tId] = 3;
+          wheelState.wrongGuessesCount[tId] = 3;
+          wheelState.roundScores[tId] = 0;
+
+          advanceMagicWheelTurnHelper(wheelState, room.teams);
+          const allEliminated = (wheelState.phase as string) === "ROUND_RECAP";
+
+          wheelState.lastSolveFeedback = {
+            teamId: tId,
+            teamName,
+            guess: answer,
+            isCorrect: false,
+            eliminatedFromRound: true,
+            allTeamsEliminated: allEliminated,
+            correctPhrase: allEliminated ? wheelState.currentPuzzle.secretPhrase : undefined,
+            timestamp: Date.now(),
+          };
+
+          io.to(`room:${roomCode}`).emit("game:magic_wheel:puzzle_solved", {
+            teamId: tId,
+            teamName,
+            isCorrect: false,
+            secretPhrase: allEliminated ? wheelState.currentPuzzle.secretPhrase : "",
+            roundWonPoints: 0,
+          });
+
+          if (allEliminated) {
+            wheelState.lastActionMessage = `❌ Đáp án "${answer}" của Đội ${teamName} chưa chính xác! Cả ${room.teams.length} đội đều đã hết lượt Giải Ô Chữ trong vòng này. Đáp án đúng là: "${wheelState.currentPuzzle.secretPhrase}"!`;
+          } else {
+            wheelState.lastActionMessage = `❌ Đáp án "${answer}" chưa chính xác! Đội ${teamName} đã hết quyền thi đấu trong vòng này (mỗi đội chỉ có 1 lượt Giải Ô Chữ). Chuyển lượt sang Đội ${wheelState.currentTurnTeamName}!`;
+          }
         }
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       }
@@ -8921,7 +8964,6 @@ export function registerSocketHandlers(io: IO) {
       const stage = wheelState.roundStage || "MAIN";
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
         if (wheelState.phase !== "TOSS_UP_BUZZED") return;
-        if (wheelState.tossUpAnswerEndsAt && Date.now() > wheelState.tossUpAnswerEndsAt + 1500) return;
       } else if (stage === "SPECIAL_FINAL") {
         if (wheelState.phase !== "SPECIAL_SOLVING" && wheelState.phase !== "SPECIAL_THINKING") return;
         if (wheelState.specialSolveEndsAt && Date.now() > wheelState.specialSolveEndsAt + 1500) return;

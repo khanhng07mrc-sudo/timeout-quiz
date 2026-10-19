@@ -15418,17 +15418,11 @@ function registerSocketHandlers(io2) {
       wheelState.tossUpBuzzedTeamName = buzzTeam.name;
       wheelState.currentTurnTeamId = buzzTeam.id;
       wheelState.currentTurnTeamName = buzzTeam.name;
-      wheelState.tossUpAnswerEndsAt = Date.now() + 25e3;
+      wheelState.tossUpAnswerEndsAt = void 0;
       wheelState.lastActionMessage = generateFlexibleMCCommentary("TOSS_UP_BUZZ", { teamName: buzzTeam.name });
       const existingTimer = roomTossUpAnswerTimers.get(roomId);
       if (existingTimer) clearTimeout(existingTimer);
-      const answerTimer = setTimeout(async () => {
-        const cur = roomMagicWheels.get(roomId);
-        if (cur && cur.phase === "TOSS_UP_BUZZED" && cur.tossUpBuzzedTeamId === buzzTeam.id) {
-          await executeMagicWheelSolvePuzzle(roomId, roomCode, "(H\u1EBFt 25 gi\xE2y tr\u1EA3 l\u1EDDi)", false, buzzTeam.id);
-        }
-      }, 25500);
-      roomTossUpAnswerTimers.set(roomId, answerTimer);
+      roomTossUpAnswerTimers.delete(roomId);
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
     const executeMagicWheelSpin = async (roomId, roomCode, power) => {
@@ -15913,40 +15907,81 @@ function registerSocketHandlers(io2) {
         );
         await completeMagicWheelRoundHelper(roomId, roomCode, tId);
       } else {
-        if (!wheelState.roundEliminatedTeamIds) wheelState.roundEliminatedTeamIds = [];
-        if (!wheelState.roundEliminatedTeamIds.includes(tId)) {
-          wheelState.roundEliminatedTeamIds.push(tId);
-        }
-        if (!wheelState.disqualifiedTeamIdsInRound) wheelState.disqualifiedTeamIdsInRound = [];
-        if (!wheelState.disqualifiedTeamIdsInRound.includes(tId)) {
-          wheelState.disqualifiedTeamIdsInRound.push(tId);
-        }
-        wheelState.consecutiveWrongGuesses[tId] = 3;
-        wheelState.wrongGuessesCount[tId] = 3;
-        wheelState.roundScores[tId] = 0;
-        advanceMagicWheelTurnHelper(wheelState, room.teams);
-        const allEliminated = wheelState.phase === "ROUND_RECAP";
-        wheelState.lastSolveFeedback = {
-          teamId: tId,
-          teamName,
-          guess: answer,
-          isCorrect: false,
-          eliminatedFromRound: true,
-          allTeamsEliminated: allEliminated,
-          correctPhrase: allEliminated ? wheelState.currentPuzzle.secretPhrase : void 0,
-          timestamp: Date.now()
-        };
-        io2.to(`room:${roomCode}`).emit("game:magic_wheel:puzzle_solved", {
-          teamId: tId,
-          teamName,
-          isCorrect: false,
-          secretPhrase: allEliminated ? wheelState.currentPuzzle.secretPhrase : "",
-          roundWonPoints: 0
-        });
-        if (allEliminated) {
-          wheelState.lastActionMessage = `\u274C \u0110\xE1p \xE1n "${answer}" c\u1EE7a \u0110\u1ED9i ${teamName} ch\u01B0a ch\xEDnh x\xE1c! C\u1EA3 ${room.teams.length} \u0111\u1ED9i \u0111\u1EC1u \u0111\xE3 h\u1EBFt l\u01B0\u1EE3t Gi\u1EA3i \xD4 Ch\u1EEF trong v\xF2ng n\xE0y. \u0110\xE1p \xE1n \u0111\xFAng l\xE0: "${wheelState.currentPuzzle.secretPhrase}"!`;
+        wheelState.isSpinning = false;
+        wheelState.pendingSpecialAction = "NONE";
+        if (forcedVerdict === false) {
+          const strikes = (wheelState.consecutiveWrongGuesses[tId] || 0) + 1;
+          wheelState.consecutiveWrongGuesses[tId] = strikes;
+          wheelState.wrongGuessesCount[tId] = strikes;
+          if (strikes >= 3) {
+            if (!wheelState.disqualifiedTeamIdsInRound) wheelState.disqualifiedTeamIdsInRound = [];
+            if (!wheelState.disqualifiedTeamIdsInRound.includes(tId)) {
+              wheelState.disqualifiedTeamIdsInRound.push(tId);
+            }
+            wheelState.roundScores[tId] = 0;
+          }
+          advanceMagicWheelTurnHelper(wheelState, room.teams);
+          const allEliminated = wheelState.phase === "ROUND_RECAP";
+          wheelState.lastSolveFeedback = {
+            teamId: tId,
+            teamName,
+            guess: answer || "(MC Ph\u1EA1t SAI)",
+            isCorrect: false,
+            eliminatedFromRound: strikes >= 3,
+            allTeamsEliminated: allEliminated,
+            correctPhrase: allEliminated ? wheelState.currentPuzzle.secretPhrase : void 0,
+            timestamp: Date.now()
+          };
+          io2.to(`room:${roomCode}`).emit("game:magic_wheel:puzzle_solved", {
+            teamId: tId,
+            teamName,
+            isCorrect: false,
+            secretPhrase: allEliminated ? wheelState.currentPuzzle.secretPhrase : "",
+            roundWonPoints: 0
+          });
+          if (allEliminated) {
+            wheelState.lastActionMessage = `\u274C C\u1EA3 ${room.teams.length} \u0111\u1ED9i \u0111\u1EC1u \u0111\xE3 h\u1EBFt quy\u1EC1n thi \u0111\u1EA5u trong v\xF2ng n\xE0y! \u0110\xE1p \xE1n l\xE0: "${wheelState.currentPuzzle.secretPhrase}"!`;
+          } else if (strikes >= 3) {
+            wheelState.lastActionMessage = `\u274C \u0110\u1ED9i ${teamName} \u0111\xE3 ph\u1EA1m quy/\u0111o\xE1n sai 3 l\u1EA7n li\xEAn ti\u1EBFp v\xE0 b\u1ECB lo\u1EA1i kh\u1ECFi v\xF2ng n\xE0y! Chuy\u1EC3n l\u01B0\u1EE3t sang ${wheelState.currentTurnTeamName}.`;
+          } else {
+            wheelState.lastActionMessage = `\u274C MC ph\u1EA1t SAI \u0110\u1ED9i ${teamName} (${strikes}/3 l\u1ED7i). Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}!`;
+          }
         } else {
-          wheelState.lastActionMessage = `\u274C \u0110\xE1p \xE1n "${answer}" ch\u01B0a ch\xEDnh x\xE1c! \u0110\u1ED9i ${teamName} \u0111\xE3 h\u1EBFt quy\u1EC1n thi \u0111\u1EA5u trong v\xF2ng n\xE0y (m\u1ED7i \u0111\u1ED9i ch\u1EC9 c\xF3 1 l\u01B0\u1EE3t Gi\u1EA3i \xD4 Ch\u1EEF). Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}!`;
+          if (!wheelState.roundEliminatedTeamIds) wheelState.roundEliminatedTeamIds = [];
+          if (!wheelState.roundEliminatedTeamIds.includes(tId)) {
+            wheelState.roundEliminatedTeamIds.push(tId);
+          }
+          if (!wheelState.disqualifiedTeamIdsInRound) wheelState.disqualifiedTeamIdsInRound = [];
+          if (!wheelState.disqualifiedTeamIdsInRound.includes(tId)) {
+            wheelState.disqualifiedTeamIdsInRound.push(tId);
+          }
+          wheelState.consecutiveWrongGuesses[tId] = 3;
+          wheelState.wrongGuessesCount[tId] = 3;
+          wheelState.roundScores[tId] = 0;
+          advanceMagicWheelTurnHelper(wheelState, room.teams);
+          const allEliminated = wheelState.phase === "ROUND_RECAP";
+          wheelState.lastSolveFeedback = {
+            teamId: tId,
+            teamName,
+            guess: answer,
+            isCorrect: false,
+            eliminatedFromRound: true,
+            allTeamsEliminated: allEliminated,
+            correctPhrase: allEliminated ? wheelState.currentPuzzle.secretPhrase : void 0,
+            timestamp: Date.now()
+          };
+          io2.to(`room:${roomCode}`).emit("game:magic_wheel:puzzle_solved", {
+            teamId: tId,
+            teamName,
+            isCorrect: false,
+            secretPhrase: allEliminated ? wheelState.currentPuzzle.secretPhrase : "",
+            roundWonPoints: 0
+          });
+          if (allEliminated) {
+            wheelState.lastActionMessage = `\u274C \u0110\xE1p \xE1n "${answer}" c\u1EE7a \u0110\u1ED9i ${teamName} ch\u01B0a ch\xEDnh x\xE1c! C\u1EA3 ${room.teams.length} \u0111\u1ED9i \u0111\u1EC1u \u0111\xE3 h\u1EBFt l\u01B0\u1EE3t Gi\u1EA3i \xD4 Ch\u1EEF trong v\xF2ng n\xE0y. \u0110\xE1p \xE1n \u0111\xFAng l\xE0: "${wheelState.currentPuzzle.secretPhrase}"!`;
+          } else {
+            wheelState.lastActionMessage = `\u274C \u0110\xE1p \xE1n "${answer}" ch\u01B0a ch\xEDnh x\xE1c! \u0110\u1ED9i ${teamName} \u0111\xE3 h\u1EBFt quy\u1EC1n thi \u0111\u1EA5u trong v\xF2ng n\xE0y (m\u1ED7i \u0111\u1ED9i ch\u1EC9 c\xF3 1 l\u01B0\u1EE3t Gi\u1EA3i \xD4 Ch\u1EEF). Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}!`;
+          }
         }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       }
@@ -15963,7 +15998,6 @@ function registerSocketHandlers(io2) {
       const stage = wheelState.roundStage || "MAIN";
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
         if (wheelState.phase !== "TOSS_UP_BUZZED") return;
-        if (wheelState.tossUpAnswerEndsAt && Date.now() > wheelState.tossUpAnswerEndsAt + 1500) return;
       } else if (stage === "SPECIAL_FINAL") {
         if (wheelState.phase !== "SPECIAL_SOLVING" && wheelState.phase !== "SPECIAL_THINKING") return;
         if (wheelState.specialSolveEndsAt && Date.now() > wheelState.specialSolveEndsAt + 1500) return;

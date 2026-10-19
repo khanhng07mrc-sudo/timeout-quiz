@@ -72,14 +72,19 @@ export default function CreateRoomPage() {
 
   const isWordPuzzleBank = useCallback((bank: any) => {
     if (!bank) return false;
+    if (bank.isMixed === true) return false;
     if (bank.id?.startsWith("bank_mw_preset")) return true;
-    if (bank.isWordPuzzle === true) return true;
+    if (bank.isPureWordPuzzle === true) return true;
+    if (bank.isWordPuzzle === true && !bank.isMixed) return true;
     return /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(bank.title || "");
   }, []);
 
   const compatibleBanks = useMemo(() => {
     const isMw = mode === "MAGIC_WHEEL";
-    return quizBanks.filter((b: any) => (isMw ? isWordPuzzleBank(b) : !isWordPuzzleBank(b)));
+    return quizBanks.filter((b: any) => {
+      if (b.isMixed) return false; // Mixed question banks are strictly prohibited
+      return isMw ? isWordPuzzleBank(b) : !isWordPuzzleBank(b);
+    });
   }, [quizBanks, mode, isWordPuzzleBank]);
 
   useEffect(() => {

@@ -360,21 +360,28 @@ function generateMagicWheelSectors(mainRoundOrStage, stage) {
       };
     }
   } else if (mainRoundOrStage === 5) {
-    [13, 16].forEach((targetId) => {
-      const idx = sectors.findIndex((s) => s.id === targetId);
-      if (idx !== -1) {
-        sectors[idx] = {
-          id: targetId,
-          label: "\u2694\uFE0F \u0110\u1ED0I \u0110\u1EA6U",
-          type: "STEAL_SWAP",
-          value: 500,
-          color: "#dc2626",
-          textColor: "#fef08a",
-          isOverlay: true,
-          overlayType: "STEAL_SWAP"
-        };
-      }
-    });
+    const idx13 = sectors.findIndex((s) => s.id === 13);
+    if (idx13 !== -1) {
+      sectors[idx13] = {
+        id: 13,
+        label: "\u2B50 2000",
+        type: "POINTS",
+        value: 2e3,
+        color: "#10b981",
+        textColor: "#ffffff"
+      };
+    }
+    const idx16 = sectors.findIndex((s) => s.id === 16);
+    if (idx16 !== -1) {
+      sectors[idx16] = {
+        id: 16,
+        label: "\u{1F31F} 3000",
+        type: "POINTS",
+        value: 3e3,
+        color: "#f59e0b",
+        textColor: "#ffffff"
+      };
+    }
   } else if (mainRoundOrStage >= 6) {
     sectors.forEach((s, i) => {
       if (s.type === "POINTS" && s.value) {
@@ -392,6 +399,7 @@ function generateMagicWheelSectors(mainRoundOrStage, stage) {
         id: 17,
         label: "\u{1F525} NH\xC2N BA",
         type: "TRIPLE",
+        value: 3e3,
         color: "#f97316",
         textColor: "#ffffff",
         isOverlay: true,
@@ -400,6 +408,10 @@ function generateMagicWheelSectors(mainRoundOrStage, stage) {
     }
   }
   return sectors;
+}
+function isVietnameseAlphabetLetter(char) {
+  if (!char || char.length !== 1) return false;
+  return /^[A-ZÀ-Ỹa-zà-ỹ]$/.test(char);
 }
 function normalizeVietnameseBaseLetter(char) {
   const upper = char.toUpperCase();
@@ -15131,22 +15143,45 @@ function registerSocketHandlers(io2) {
         });
       } else if (stage === "SPECIAL_FINAL") {
         const sortedByScore = [...teams].sort((a, b) => (b.score || 0) - (a.score || 0));
-        const finalist = sortedByScore[0] || teams[0];
-        wheelState.specialFinalTeamId = finalist?.id || "";
-        wheelState.specialFinalTeamName = finalist?.name || "";
-        wheelState.currentTurnTeamId = finalist?.id || "";
-        wheelState.currentTurnTeamName = finalist?.name || "";
-        wheelState.sectors = generateMagicWheelSectors(99, "SPECIAL_FINAL");
-        wheelState.specialAllowedLettersCount = calculateSpecialRoundAllowedLetters(puzzle?.secretPhrase || "");
-        wheelState.specialPickedLetters = [];
-        wheelState.specialBonusCompleted = false;
-        wheelState.specialPuzzleCompleted = false;
-        wheelState.specialBonusPoints = void 0;
-        wheelState.specialAttemptLog = [];
-        wheelState.phase = "SPECIAL_ORDER_CHOICE";
-        wheelState.lastActionMessage = generateFlexibleMCCommentary("SPECIAL_INTRO", {
-          teamName: finalist?.name || "Qu\xE1n qu\xE2n"
-        });
+        const topScore = sortedByScore[0]?.score || 0;
+        const tiedTopTeams = sortedByScore.filter((t) => (t.score || 0) === topScore && topScore > 0);
+        if (tiedTopTeams.length > 1 && !wheelState.specialFinalTeamId) {
+          wheelState.tieBreakerPending = true;
+          wheelState.tiedTeamIds = tiedTopTeams.map((t) => t.id);
+          const tiedNames = tiedTopTeams.map((t) => t.name).join(", ");
+          wheelState.roundStage = "TOSS_UP_1";
+          wheelState.phase = "TOSS_UP_READY";
+          wheelState.currentPuzzle = {
+            id: "mw-tie-breaker-aux",
+            roundNumber: nextRound1Based,
+            stage: "TOSS_UP_1",
+            category: "\xD4 CH\u1EEE PH\u1EE4: PH\xC2N \u0110\u1ECANH V\xC0O V\xD2NG \u0110\u1EB6C BI\u1EC6T",
+            secretPhrase: "NG\xD4I SAO CHI\u1EBEN TH\u1EAENG",
+            clue: "\xD4 ch\u1EEF ph\u1EE5 ph\xE2n \u0111\u1ECBnh t\u1EA5m v\xE9 duy nh\u1EA5t b\u01B0\u1EDBc v\xE0o V\xF2ng \u0110\u1EB7c Bi\u1EC7t!",
+            revealedIndices: []
+          };
+          wheelState.sectors = generateMagicWheelSectors(1, "TOSS_UP_1");
+          wheelState.lastActionMessage = `\u26A1 K\u1ECACH T\xCDNH! C\xF3 ${tiedTopTeams.length} \u0111\u1ED9i b\u1EB1ng \u0111i\u1EC3m cao nh\u1EA5t (${topScore.toLocaleString("vi-VN")}\u0111): ${tiedNames}! B\u1EAFt \u0111\u1EA7u \xD4 CH\u1EEE PH\u1EE4 \u0111\u1EC3 ph\xE2n \u0111\u1ECBnh \u0111\u1EA1i di\u1EC7n duy nh\u1EA5t v\xE0o V\xD2NG \u0110\u1EB6C BI\u1EC6T!`;
+        } else {
+          wheelState.tieBreakerPending = false;
+          wheelState.tiedTeamIds = void 0;
+          const finalist = (wheelState.specialFinalTeamId ? teams.find((t) => t.id === wheelState.specialFinalTeamId) : null) || sortedByScore[0] || teams[0];
+          wheelState.specialFinalTeamId = finalist?.id || "";
+          wheelState.specialFinalTeamName = finalist?.name || "";
+          wheelState.currentTurnTeamId = finalist?.id || "";
+          wheelState.currentTurnTeamName = finalist?.name || "";
+          wheelState.sectors = generateMagicWheelSectors(99, "SPECIAL_FINAL");
+          wheelState.specialAllowedLettersCount = calculateSpecialRoundAllowedLetters(puzzle?.secretPhrase || "");
+          wheelState.specialPickedLetters = [];
+          wheelState.specialBonusCompleted = false;
+          wheelState.specialPuzzleCompleted = false;
+          wheelState.specialBonusPoints = void 0;
+          wheelState.specialAttemptLog = [];
+          wheelState.phase = "SPECIAL_ORDER_CHOICE";
+          wheelState.lastActionMessage = generateFlexibleMCCommentary("SPECIAL_INTRO", {
+            teamName: finalist?.name || "Qu\xE1n qu\xE2n"
+          });
+        }
       } else {
         const r1Idx = Math.max(
           0,
@@ -15201,7 +15236,12 @@ function registerSocketHandlers(io2) {
         correctPhrase: wheelState.currentPuzzle?.secretPhrase || "",
         timestamp: Date.now()
       };
-      if (stage === "TOSS_UP_1") {
+      if (wheelState.tieBreakerPending) {
+        wheelState.tieBreakerPending = false;
+        wheelState.specialFinalTeamId = winnerTeamId;
+        wheelState.specialFinalTeamName = winnerName;
+        wheelState.lastActionMessage = `\u{1F3C6} \u0110\u1ED8I ${winnerName} \u0110\xC3 GI\u1EA2I \u0110\xDANG \xD4 CH\u1EEE PH\u1EE4 V\xC0 GI\xC0NH T\u1EA4M V\xC9 DUY NH\u1EA4T B\u01AF\u1EDAC V\xC0O V\xD2NG \u0110\u1EB6C BI\u1EC6T!`;
+      } else if (stage === "TOSS_UP_1") {
         wheelState.lastActionMessage = `\u26A1 CH\xCDNH X\xC1C! \u0110\u1ED9i ${winnerName} gi\u1EA3i \u0111\xFAng V\xF2ng \u0110o\xE1n Nhanh 1 ("${wheelState.currentPuzzle?.secretPhrase}") v\xE0 nh\u1EADn +500 \u0111i\u1EC3m!`;
       } else if (stage === "TOSS_UP_2") {
         wheelState.lastActionMessage = `\u26A1 CH\xCDNH X\xC1C! \u0110\u1ED9i ${winnerName} chi\u1EBFn th\u1EAFng V\xF2ng \u0110o\xE1n Nhanh 2 ("${wheelState.currentPuzzle?.secretPhrase}", +1.000 \u0111i\u1EC3m) v\xE0 gi\xE0nh quy\u1EC1n \u0111i \u0111\u1EA7u \u1EDF V\xF2ng Ch\xEDnh 1!`;
@@ -15295,11 +15335,11 @@ function registerSocketHandlers(io2) {
         const p = wheelState.currentPuzzle;
         const allIndices = [];
         for (let i = 0; i < p.secretPhrase.length; i++) {
-          if (/[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(p.secretPhrase[i]) && !p.revealedIndices.includes(i)) {
+          if (isVietnameseAlphabetLetter(p.secretPhrase[i]) && !p.revealedIndices.includes(i)) {
             allIndices.push(i);
           }
         }
-        const firstLetterIdx = allIndices.find((idx) => /[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(p.secretPhrase[idx])) ?? allIndices[0];
+        const firstLetterIdx = allIndices.find((idx) => isVietnameseAlphabetLetter(p.secretPhrase[idx])) ?? allIndices[0];
         const restIndices = allIndices.filter((idx) => idx !== firstLetterIdx);
         for (let i = restIndices.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -16093,12 +16133,11 @@ function registerSocketHandlers(io2) {
           }
         }
         if (is3M) {
-          wheelState.permanentScores[tId] = (wheelState.permanentScores[tId] || 0) + 3e3;
-          const pRes = await applyScoreDeltaToTeam(tId, 3e3);
-          io2.to(`room:${roomCode}`).emit("game:score:update", [{ teamId: tId, score: pRes.newScore, delta: 3e3 }]);
+          if (!wheelState.prizeCash) wheelState.prizeCash = {};
+          wheelState.prizeCash[tId] = (wheelState.prizeCash[tId] || 0) + 3e3;
           wheelState.phase = "ACTION_INPUT";
           wheelState.pendingSpecialAction = "POINTS";
-          wheelState.lastActionMessage = `\u{1F389} CH\xDAC M\u1EEANG! M\u1EB7t sau \xF4 B\xED M\u1EADt l\xE0 3.000.000 \u0110\u1ED2NG (+3.000\u0111 v\u0129nh vi\u1EC5n)! M\u1EDDi \u0110\u1ED9i ${teamName} g\u1ECDi ch\u1EEF c\xE1i!`;
+          wheelState.lastActionMessage = `\u{1F389} CH\xDAC M\u1EEANG! M\u1EB7t sau \xF4 B\xED M\u1EADt l\xE0 3.000.000 VN\u0110 ti\u1EC1n th\u01B0\u1EDFng v\u0129nh vi\u1EC5n! (Kh\xF4ng t\xEDnh v\xE0o k\u1EBFt qu\u1EA3 x\xE9t \u0111\u1ED9i v\xE0o V\xF2ng \u0110\u1EB7c Bi\u1EC7t). M\u1EDDi \u0110\u1ED9i ${teamName} g\u1ECDi ch\u1EEF c\xE1i!`;
           io2.to(`room:${roomCode}`).emit("game:magic_wheel:mystery_result", {
             teamId: tId,
             outcome: "PRIZE_CASH",
@@ -16108,7 +16147,7 @@ function registerSocketHandlers(io2) {
           wheelState.roundScores[tId] = 0;
           advanceMagicWheelTurnHelper(wheelState, room.teams);
           wheelState.phase = "SPIN_WAITING";
-          wheelState.lastActionMessage = `\u{1F4A5} \xD4I KH\xD4NG! M\u1EB7t sau \xF4 B\xED M\u1EADt l\xE0 M\u1EA4T \u0110I\u1EC2M! \u0110\u1ED9i ${teamName} m\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m v\xF2ng! Chuy\u1EC3n l\u01B0\u1EE3t sang ${wheelState.currentTurnTeamName}.`;
+          wheelState.lastActionMessage = `\u{1F4A5} \xD4I KH\xD4NG! M\u1EB7t sau \xF4 B\xED M\u1EADt l\xE0 M\u1EA4T \u0110I\u1EC2M! \u0110\u1ED9i ${teamName} m\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m v\xF2ng 2! Chuy\u1EC3n l\u01B0\u1EE3t sang ${wheelState.currentTurnTeamName}.`;
           io2.to(`room:${roomCode}`).emit("game:magic_wheel:mystery_result", {
             teamId: tId,
             outcome: "BANKRUPT",
@@ -16116,14 +16155,16 @@ function registerSocketHandlers(io2) {
           });
         }
       } else {
-        wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + basePts;
+        if (currentSector) {
+          currentSector.value = 1e3;
+        }
         wheelState.phase = "ACTION_INPUT";
         wheelState.pendingSpecialAction = "POINTS";
-        wheelState.lastActionMessage = `\u0110\u1ED9i ${teamName} ch\u1ECDn KH\xD4NG L\u1EACT \xF4 b\xED m\u1EADt! Nh\u1EADn an to\xE0n ${basePts} \u0111i\u1EC3m v\xE0 ti\u1EBFp t\u1EE5c g\u1ECDi ch\u1EEF c\xE1i.`;
+        wheelState.lastActionMessage = `\u0110\u1ED9i ${teamName} ch\u1ECDn AN TO\xC0N! Nh\u1EADn 1.000\u0111 x s\u1ED1 ch\u1EEF c\xE1i \u0111o\xE1n \u0111\xFAng. M\u1EDDi g\u1ECDi ch\u1EEF c\xE1i!`;
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:mystery_result", {
           teamId: tId,
           outcome: "SAFE_POINTS",
-          points: basePts
+          points: 1e3
         });
       }
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
@@ -16239,25 +16280,23 @@ function registerSocketHandlers(io2) {
         if (!wheelState.disqualifiedTeamIdsInRound.includes(tId)) {
           wheelState.disqualifiedTeamIdsInRound.push(tId);
         }
+        if (!wheelState.prizeCash) wheelState.prizeCash = {};
+        if (!wheelState.physicalPrizes) wheelState.physicalPrizes = {};
         const bIdx = boxIndex !== void 0 ? boxIndex : Math.floor(Math.random() * 4);
         let prizeText = "";
-        let points = 3e3;
         if (bIdx === 0) {
-          points = 5e3;
-          prizeText = "H\u1ED9p Qu\xE0 #1: +5.000 \u0111i\u1EC3m v\u0129nh vi\u1EC5n";
+          wheelState.prizeCash[tId] = (wheelState.prizeCash[tId] || 0) + 5e3;
+          prizeText = "H\u1ED9p Qu\xE0 #1: 5.000.000 VN\u0110 ti\u1EC1n m\u1EB7t (Kh\xF4ng t\xEDnh v\xE0o k\u1EBFt qu\u1EA3 x\xE9t \u0111\u1ED9i v\xE0o V\xF2ng \u0110\u1EB7c Bi\u1EC7t)";
         } else if (bIdx === 1) {
-          points = 3e3;
-          prizeText = "H\u1ED9p Qu\xE0 #2: +3.000 \u0111i\u1EC3m v\u0129nh vi\u1EC5n";
+          wheelState.prizeCash[tId] = (wheelState.prizeCash[tId] || 0) + 3e3;
+          prizeText = "H\u1ED9p Qu\xE0 #2: 3.000.000 VN\u0110 ti\u1EC1n m\u1EB7t (Kh\xF4ng t\xEDnh v\xE0o k\u1EBFt qu\u1EA3 x\xE9t \u0111\u1ED9i v\xE0o V\xF2ng \u0110\u1EB7c Bi\u1EC7t)";
         } else if (bIdx === 2) {
-          points = 4e3;
-          prizeText = "H\u1ED9p Qu\xE0 #3: K\u1EF7 Ni\u1EC7m Ch\u01B0\u01A1ng & +4.000 \u0111i\u1EC3m v\u0129nh vi\u1EC5n";
+          wheelState.physicalPrizes[tId] = [...wheelState.physicalPrizes[tId] || [], "N\u1ED3i chi\xEAn kh\xF4ng d\u1EA7u cao c\u1EA5p (tr\u1ECB gi\xE1 2.500.000\u0111)"];
+          prizeText = "H\u1ED9p Qu\xE0 #3: N\u1ED3i chi\xEAn kh\xF4ng d\u1EA7u cao c\u1EA5p (tr\u1ECB gi\xE1 2.500.000 VN\u0110)";
         } else {
-          points = 2e3;
-          prizeText = "H\u1ED9p Qu\xE0 #4: +2.000 \u0111i\u1EC3m v\u0129nh vi\u1EC5n";
+          wheelState.physicalPrizes[tId] = [...wheelState.physicalPrizes[tId] || [], "B\u1ED9 n\u1ED3i Inox 5 \u0111\xE1y & M\xE1y xay sinh t\u1ED1 \u0111a n\u0103ng (tr\u1ECB gi\xE1 2.000.000\u0111)"];
+          prizeText = "H\u1ED9p Qu\xE0 #4: B\u1ED9 n\u1ED3i Inox 5 \u0111\xE1y & M\xE1y xay sinh t\u1ED1 \u0111a n\u0103ng (tr\u1ECB gi\xE1 2.000.000 VN\u0110)";
         }
-        wheelState.permanentScores[tId] = (wheelState.permanentScores[tId] || 0) + points;
-        const pRes = await applyScoreDeltaToTeam(tId, points);
-        io2.to(`room:${roomCode}`).emit("game:score:update", [{ teamId: tId, score: pRes.newScore, delta: points }]);
         advanceMagicWheelTurnHelper(wheelState, room.teams);
         const updatedRoomState = await buildRoomState(roomId);
         io2.to(`room:${roomCode}`).emit("room:state", updatedRoomState);
@@ -16271,7 +16310,7 @@ function registerSocketHandlers(io2) {
             teamName,
             guess: phrase,
             isCorrect: true,
-            pointsAwarded: points,
+            pointsAwarded: 0,
             correctPhrase: phrase,
             allTeamsEliminated: true,
             timestamp: Date.now()
@@ -16282,7 +16321,7 @@ function registerSocketHandlers(io2) {
             teamName,
             isCorrect: true,
             secretPhrase: phrase,
-            roundWonPoints: points
+            roundWonPoints: 0
           });
           if (wheelState.operationMode !== "HOST_ASSISTED") {
             const solvedRoundNum = wheelState.currentRound;
@@ -16423,6 +16462,9 @@ function registerSocketHandlers(io2) {
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       persistGameStateSnapshot(roomId).catch(() => {
       });
+      const secretPhrase = wheelState.currentPuzzle?.secretPhrase || "";
+      const nonSpaceCharsCount = secretPhrase.replace(/\s+/g, "").length;
+      const cutDurationMs = Math.max(1600, nonSpaceCharsCount * 125 + 600);
       setTimeout(() => {
         const cur = roomMagicWheels.get(roomId);
         if (cur && cur.boardStage === "BLANK_PHRASE") {
@@ -16432,7 +16474,7 @@ function registerSocketHandlers(io2) {
           persistGameStateSnapshot(roomId).catch(() => {
           });
         }
-      }, 1400);
+      }, cutDurationMs);
     };
     socket.on("admin:magic_wheel:open_board", async () => {
       const room = await getAdminRoom(socket);

@@ -879,6 +879,10 @@ export interface MagicWheelState {
   lastSolveAttemptText?: string;
   activeQuestionId?: string; // Dùng trong thể thức WHEEL_QUIZ
   permanentScores?: Record<string, number>; // Điểm vĩnh viễn bảo toàn mang về chung cuộc
+  prizeCash?: Record<string, number>; // Tiền thưởng vĩnh viễn (V2 3M, V3 quà tiền) - không tính vào kết quả xét đội vào vòng đặc biệt
+  physicalPrizes?: Record<string, string[]>; // Quà tặng vật chất (Vòng 3: Nồi chiên không dầu, Bộ nồi Inox 5 đáy & Máy xay)
+  tieBreakerPending?: boolean; // Cờ chờ Ô Chữ Phụ khi có hòa điểm xét vào Vòng Đặc Biệt
+  tiedTeamIds?: string[]; // Danh sách các đội hòa điểm cao nhất cần đấu Ô Chữ Phụ
   teamShields?: Record<string, boolean>; // Khiên bảo hộ chống mất lượt / mất điểm
   round3TradedTeams?: string[]; // V3: Các đội đã chọn Đổi (dừng vòng 3 lấy quà)
   round3ForbiddenSolveTeams?: string[]; // V3: Các đội bị cấm đoán cả ô chữ (phải lật từng chữ đến cuối)

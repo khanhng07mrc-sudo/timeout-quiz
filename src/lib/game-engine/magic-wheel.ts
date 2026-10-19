@@ -124,6 +124,10 @@ export interface MagicWheelState {
   lastAwardedPoints?: number;
   activeQuestionId?: string;
   permanentScores?: Record<string, number>;
+  prizeCash?: Record<string, number>; // Tiền thưởng vĩnh viễn (V2 3M, V3 quà tiền) - không tính vào kết quả xét đội vào vòng đặc biệt
+  physicalPrizes?: Record<string, string[]>; // Quà tặng vật chất (Vòng 3: Nồi chiên không dầu, Bộ nồi Inox 5 đáy & Máy xay)
+  tieBreakerPending?: boolean; // Cờ chờ Ô Chữ Phụ khi có hòa điểm xét vào Vòng Đặc Biệt
+  tiedTeamIds?: string[]; // Danh sách các đội hòa điểm cao nhất cần đấu Ô Chữ Phụ
   teamShields?: Record<string, boolean>;
   round3TradedTeams?: string[];
   round3ForbiddenSolveTeams?: string[];
@@ -306,22 +310,31 @@ export function generateMagicWheelSectors(
       };
     }
   } else if (mainRoundOrStage === 5) {
-    // Vòng 5: 2 Ô Chuyển Nhượng ⚔️ (Cướp 50% điểm vòng hoặc Hoán đổi điểm vòng) tại id 13 và id 16
-    [13, 16].forEach((targetId) => {
-      const idx = sectors.findIndex((s) => s.id === targetId);
-      if (idx !== -1) {
-        sectors[idx] = {
-          id: targetId,
-          label: "⚔️ ĐỐI ĐẦU",
-          type: "STEAL_SWAP",
-          value: 500,
-          color: "#dc2626",
-          textColor: "#fef08a",
-          isOverlay: true,
-          overlayType: "STEAL_SWAP",
-        };
-      }
-    });
+    // Vòng 5: Sửa lại theo yêu cầu người dùng:
+    // "Vòng 5: sửa lại vì phá vỡ cơ chế gốc chiếc nón kỳ diệu, là không được phép lấy điểm của người khác về phía mình"
+    // Thay thế ô STEAL_SWAP bằng ô Điểm Siêu Cao cá nhân (2000đ, 3000đ)
+    const idx13 = sectors.findIndex((s) => s.id === 13);
+    if (idx13 !== -1) {
+      sectors[idx13] = {
+        id: 13,
+        label: "⭐ 2000",
+        type: "POINTS",
+        value: 2000,
+        color: "#10b981",
+        textColor: "#ffffff",
+      };
+    }
+    const idx16 = sectors.findIndex((s) => s.id === 16);
+    if (idx16 !== -1) {
+      sectors[idx16] = {
+        id: 16,
+        label: "🌟 3000",
+        type: "POINTS",
+        value: 3000,
+        color: "#f59e0b",
+        textColor: "#ffffff",
+      };
+    }
   } else if (mainRoundOrStage >= 6) {
     // Vòng 6+: Nhân đôi toàn bộ điểm cơ bản + Ô Nhân Ba 🔥 (id 17)
     sectors.forEach((s, i) => {
@@ -340,6 +353,7 @@ export function generateMagicWheelSectors(
         id: 17,
         label: "🔥 NHÂN BA",
         type: "TRIPLE",
+        value: 3000,
         color: "#f97316",
         textColor: "#ffffff",
         isOverlay: true,
@@ -398,6 +412,15 @@ const VOWEL_TONE_TABLE: Record<string, Record<VietnameseToneKey, string>> = {
 export function isVietnameseVowel(char: string): boolean {
   const base = normalizeVietnameseBaseLetter(char);
   return VIETNAMESE_BASE_VOWELS.includes(base);
+}
+
+/**
+ * Kiểm tra xem một ký tự có phải là chữ cái tiếng Việt / Latinh hay không (A-Z, Ă, Â, Đ, Ê, Ô, Ơ, Ư...)
+ * Không tính các chữ số (0-9), dấu câu, ký tự đặc biệt hay khoảng trắng.
+ */
+export function isVietnameseAlphabetLetter(char: string): boolean {
+  if (!char || char.length !== 1) return false;
+  return /^[A-ZÀ-Ỹa-zà-ỹ]$/.test(char);
 }
 
 /**

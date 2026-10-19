@@ -5,6 +5,7 @@ import { MagicWheelState, MagicWheelOperationMode, TeamState } from "@/types";
 import {
   VIETNAMESE_ALPHABET,
   normalizeVietnameseBaseLetter,
+  isVietnameseAlphabetLetter,
   isVietnameseVowel,
   applyToneToVietnameseVowel,
   extractToneFromVietnameseChar,
@@ -235,13 +236,13 @@ function SmartPuzzlePhraseInput({
   const slots = useMemo(() => {
     return Array.from(upperPhrase).map((ch, idx) => {
       const isSpace = ch === " ";
-      const isLetter = /[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(ch);
-      const isSymbol = !isSpace && !isLetter;
-      const isRevealed = isSymbol || revealedIndices.has(idx);
-      const baseChar = isSymbol ? ch : normalizeVietnameseBaseLetter(ch);
+      const isLetter = isVietnameseAlphabetLetter(ch);
+      const isSymbolOrDigit = !isSpace && !isLetter;
+      const isRevealed = isSymbolOrDigit || revealedIndices.has(idx);
+      const baseChar = isSymbolOrDigit ? ch : normalizeVietnameseBaseLetter(ch);
       const isVowel = isLetter && isVietnameseVowel(baseChar);
-      // Consonants that are already revealed or non-letter symbols (like '-') are 100% fixed!
-      const isLockedConsonant = isSymbol || (!isSpace && isRevealed && !isVowel);
+      // Consonants that are already revealed, or numbers (0-9) and non-letter symbols (like '-') are 100% fixed/locked!
+      const isLockedConsonant = isSymbolOrDigit || (!isSpace && isRevealed && !isVowel);
       // Vowels that are already revealed have their base vowel fixed, only needing tone mark!
       const isRevealedVowel = !isSpace && isRevealed && isVowel;
       return {
@@ -1239,10 +1240,13 @@ export default function MagicWheelBoard({
     if (canPlayBoardAudio) soundManager.playMagicWheelBoardOpen();
     setBoardStage("BLANK_PHRASE");
     onOpenBoard?.();
+    const secretPhrase = currentPuzzle?.secretPhrase || "";
+    const nonSpaceCharsCount = secretPhrase.replace(/\s+/g, "").length;
+    const cutDurationMs = Math.max(1600, nonSpaceCharsCount * 125 + 600);
     setTimeout(() => {
       setBoardStage("READY_CLUE");
-    }, 1400);
-  }, [canPlayBoardAudio, onOpenBoard]);
+    }, cutDurationMs);
+  }, [canPlayBoardAudio, currentPuzzle?.secretPhrase, onOpenBoard]);
 
   // ── Ô May Mắn 2-Step Interaction State ──────────────────────────────────
   const [luckyGreenSelectedIdx, setLuckyGreenSelectedIdx] = useState<number | null>(null);
@@ -1677,7 +1681,7 @@ export default function MagicWheelBoard({
       const animRev = animRevealedIndicesRef.current;
       const list: number[] = [];
       for (let i = 0; i < ph.length; i++) {
-        if (/[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(ph[i]) && !currentRev.includes(i) && !animRev.has(i)) {
+        if (isVietnameseAlphabetLetter(ph[i]) && !currentRev.includes(i) && !animRev.has(i)) {
           list.push(i);
         }
       }
@@ -1709,8 +1713,9 @@ export default function MagicWheelBoard({
       tossUpFirstTileDoneRef.current = true;
       const unrevealed = getUnrevealedLetterIndices();
       if (unrevealed.length > 0) {
-        // Deterministic first tile: ALWAYS the first valid alphanumeric letter of the secret phrase!
-        const phraseFirstIdx = unrevealed.find((idx) => /[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(phrase[idx]));
+        // Deterministic first tile: ALWAYS the first valid Vietnamese/Latin alphabet letter of the secret phrase!
+        // Numbers (0-9) and special characters are pre-revealed and ignored here!
+        const phraseFirstIdx = unrevealed.find((idx) => isVietnameseAlphabetLetter(phrase[idx]));
         const order = tossUpRevealOrder || [];
         const firstIdx = (order.length > 0 && unrevealed.includes(order[0]))
           ? order[0]
@@ -1972,6 +1977,7 @@ export default function MagicWheelBoard({
         isRevealed: boolean;
         isHighlighted: boolean;
         originalIndex: number;
+        seqIndex?: number;
       } | null>
     > = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 
@@ -1981,13 +1987,14 @@ export default function MagicWheelBoard({
 
     Object.entries(cellPositionsMap).forEach(([origIdxStr, pos]) => {
       const origIdx = Number(origIdxStr);
-      const isLetter = /[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(pos.char);
-      // Non-letter characters (like '-') are revealed immediately without requiring players to guess!
-      const isAutoRevealedSymbol = !isLetter;
-      const isRev = isAutoRevealedSymbol || animRevealedIndices.has(origIdx);
+      const isLetter = isVietnameseAlphabetLetter(pos.char);
+      // Digits (0-9) and special characters (like '-') are revealed immediately when opening the board without requiring players to guess!
+      const isAutoRevealed = !isLetter;
+      const isRev = isAutoRevealed || animRevealedIndices.has(origIdx);
       const isHl = highlightedIndices.has(origIdx);
       // CRITICAL REQUIREMENT: Show ONLY base letter without tone marks during play!
       // Full accented phrase is only shown on ROUND_RECAP after solving with exact tones.
+      // Non-letters (digits 0-9 and symbols) always show pos.char directly.
       const displayChar =
         phase === "ROUND_RECAP"
           ? pos.char
@@ -1998,15 +2005,66 @@ export default function MagicWheelBoard({
       matrix[pos.row][pos.col] = {
         char: pos.char,
         displayChar,
-        isLetter: true,
+        isLetter,
         isRevealed: isRev,
         isHighlighted: isHl,
         originalIndex: origIdx,
+        seqIndex: 0,
       };
     });
 
+    // Assign sequential index (0..N-1) in reading order across the 4x14 grid
+    let activeTileSeq = 0;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (matrix[r][c]) {
+          matrix[r][c]!.seqIndex = activeTileSeq++;
+        }
+      }
+    }
+
     return matrix;
   }, [currentPuzzle, cellPositionsMap, animRevealedIndices, highlightedIndices, phase]);
+
+  const totalActiveTiles = useMemo(() => {
+    let count = 0;
+    gridMatrix.forEach((row) => {
+      row.forEach((cell) => {
+        if (cell) count++;
+      });
+    });
+    return count;
+  }, [gridMatrix]);
+
+  // ── Sequential Cut Animation for Board Opening (0.125s per tile) ───────────
+  const [cutRevealedCount, setCutRevealedCount] = useState<number>(() => {
+    return (activeState.boardStage || boardStage) === "READY_CLUE" ? 9999 : 0;
+  });
+
+  useEffect(() => {
+    if (effectiveBoardStage === "EMPTY_56") {
+      setCutRevealedCount(0);
+      return;
+    }
+    if (effectiveBoardStage === "READY_CLUE") {
+      setCutRevealedCount(9999);
+      return;
+    }
+    if (effectiveBoardStage === "BLANK_PHRASE") {
+      setCutRevealedCount(0);
+      const timers: NodeJS.Timeout[] = [];
+      const totalTiles = totalActiveTiles;
+      for (let k = 0; k < totalTiles; k++) {
+        const t = setTimeout(() => {
+          setCutRevealedCount(k + 1);
+        }, k * 125);
+        timers.push(t);
+      }
+      return () => {
+        timers.forEach((t) => clearTimeout(t));
+      };
+    }
+  }, [effectiveBoardStage, totalActiveTiles]);
 
   // Stage Title Badge
   const stageBadgeLabel = useMemo(() => {
@@ -2352,11 +2410,15 @@ export default function MagicWheelBoard({
                       className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1 sm:gap-1.5 md:gap-2 w-full items-center justify-items-center"
                     >
                       {row.map((cell, cIdx) => {
-                        if (!cell || effectiveBoardStage === "EMPTY_56") {
+                        const isCutOpen =
+                          effectiveBoardStage === "READY_CLUE" ||
+                          (effectiveBoardStage === "BLANK_PHRASE" && (cell?.seqIndex ?? 0) < cutRevealedCount);
+
+                        if (!cell || effectiveBoardStage === "EMPTY_56" || !isCutOpen) {
                           return (
                             <div
                               key={cIdx}
-                              className="w-full aspect-[3/4] min-h-[36px] sm:min-h-[48px] md:min-h-[60px] lg:min-h-[72px] rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80"
+                              className="w-full aspect-[3/4] min-h-[36px] sm:min-h-[48px] md:min-h-[60px] lg:min-h-[72px] rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none"
                             >
                               <svg
                                 viewBox="0 0 24 24"
@@ -2371,6 +2433,9 @@ export default function MagicWheelBoard({
                         const isLuckyGreen =
                           phase === "LUCKY_PICK" && luckyGreenSelectedIdx === cell.originalIndex;
                         const isPopping = justPoppedIndices.has(cell.originalIndex);
+                        const isJustCut =
+                          effectiveBoardStage === "BLANK_PHRASE" &&
+                          cell.seqIndex === cutRevealedCount - 1;
 
                         return (
                           <div
@@ -2387,7 +2452,9 @@ export default function MagicWheelBoard({
                                 }
                               }
                             }}
-                            className={`w-full aspect-[3/4] min-h-[36px] sm:min-h-[48px] md:min-h-[60px] lg:min-h-[72px] rounded font-black flex items-center justify-center transition-all duration-300 select-none ${
+                            className={`w-full aspect-[3/4] min-h-[36px] sm:min-h-[48px] md:min-h-[60px] lg:min-h-[72px] rounded font-black flex items-center justify-center select-none ${
+                              isJustCut ? "animate-vtv3-tile-cut" : ""
+                            } ${
                               isPopping
                                 ? "bg-white text-[#0f172a] border-2 border-yellow-300 shadow-[0_0_35px_#f59e0b] animate-vtv3-tile-pop z-30"
                                 : isLuckyGreen
@@ -3356,7 +3423,7 @@ export default function MagicWheelBoard({
                           <div className="flex items-center gap-1.5">
                             <span className="text-xl">🔮</span>
                             <h4 className="font-black text-xs text-purple-200">
-                              QUYẾT ĐỊNH Ô BÍ MẬT (3.000đ vĩnh viễn hoặc MẤT ĐIỂM)
+                              QUYẾT ĐỊNH Ô BÍ MẬT (3.000.000đ tiền thưởng vĩnh viễn hoặc MẤT ĐIỂM)
                             </h4>
                           </div>
                           {canInteract ? (
@@ -3364,16 +3431,16 @@ export default function MagicWheelBoard({
                               <button
                                 type="button"
                                 onClick={() => onMysteryDecide?.(false)}
-                                className="py-2 px-3 rounded-lg font-black text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow cursor-pointer transition"
+                                className="py-2 px-3 rounded-lg font-black text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow cursor-pointer transition text-center"
                               >
-                                🛡️ KHÔNG LẬT (Nhận {baseVal}đ)
+                                🛡️ AN TOÀN (1.000đ x số chữ đoán đúng)
                               </button>
                               <button
                                 type="button"
                                 onClick={() => onMysteryDecide?.(true)}
-                                className="py-2 px-3 rounded-lg font-black text-xs bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:brightness-110 shadow cursor-pointer transition"
+                                className="py-2 px-3 rounded-lg font-black text-xs bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:brightness-110 shadow cursor-pointer transition text-center"
                               >
-                                🎲 LẬT Ô BÍ MẬT ➔
+                                🎲 LẬT BÍ MẬT (3 Triệu hoặc Mất Điểm)
                               </button>
                             </div>
                           ) : (
@@ -3390,19 +3457,27 @@ export default function MagicWheelBoard({
                     <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-500/40 shadow space-y-2">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xl">🎁</span>
-                        <h4 className="font-black text-xs text-rose-200">ĐỔI HAY KHÔNG ĐỔI? (VÒNG 3)</h4>
+                        <h4 className="font-black text-xs text-rose-200">
+                          ĐỔI HAY KHÔNG ĐỔI? (VÒNG 3) — 2 Hộp tiền thưởng &amp; 2 Hộp quà hiện vật
+                        </h4>
                       </div>
                       {canInteract ? (
                         <div className="space-y-2">
-                          <div className="grid grid-cols-4 gap-1.5">
-                            {[0, 1, 2, 3].map((idx) => (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                            {[
+                              { label: "🎁 Hộp #1", desc: "Tiền mặt 5.000.000đ" },
+                              { label: "🎁 Hộp #2", desc: "Tiền mặt 3.000.000đ" },
+                              { label: "🎁 Hộp #3", desc: "Nồi chiên không dầu" },
+                              { label: "🎁 Hộp #4", desc: "Bộ nồi Inox & Máy xay" },
+                            ].map((box, idx) => (
                               <button
                                 key={idx}
                                 type="button"
                                 onClick={() => onTradeDecide?.(true, idx)}
-                                className="p-2 rounded-lg border border-rose-400/40 bg-rose-500/20 text-rose-200 text-xs font-black cursor-pointer hover:bg-rose-500/30 transition text-center"
+                                className="p-2 rounded-lg border border-rose-400/40 bg-rose-500/20 text-rose-200 text-xs font-black cursor-pointer hover:bg-rose-500/30 transition text-center flex flex-col items-center justify-center gap-0.5"
                               >
-                                🎁 Hộp #{idx + 1}
+                                <span>{box.label}</span>
+                                <span className="text-[10px] text-rose-300 font-normal opacity-90">{box.desc}</span>
                               </button>
                             ))}
                           </div>
@@ -3530,9 +3605,19 @@ export default function MagicWheelBoard({
                         </div>
                         <div className="text-right shrink-0">
                           <span className="text-xs font-mono font-black text-amber-300">+{rScore.toLocaleString()}đ</span>
-                          <span className="text-[10px] font-mono font-bold text-cyan-300 ml-1.5">
+                          <span className="text-[10px] font-mono font-bold text-cyan-300 ml-1.5" title="Điểm thi đấu chính thức (dùng để xét vào Vòng Đặc Biệt)">
                             ({(t.score || 0).toLocaleString()}đ)
                           </span>
+                          {activeState.prizeCash?.[t.id] ? (
+                            <div className="text-[9px] font-mono text-emerald-400 font-bold" title="Tiền thưởng vĩnh viễn (không tính vào điểm xét Vòng Đặc Biệt)">
+                              💰 {(activeState.prizeCash[t.id] * 1000).toLocaleString("vi-VN")}đ tiền mặt
+                            </div>
+                          ) : null}
+                          {activeState.physicalPrizes?.[t.id]?.map((pName, pIdx) => (
+                            <div key={pIdx} className="text-[9px] text-amber-300 font-semibold truncate max-w-[140px]" title={pName}>
+                              🎁 {pName}
+                            </div>
+                          ))}
                         </div>
                       </div>
                       <div className="flex items-center justify-between text-[10px] pt-0.5 border-t border-white/5">

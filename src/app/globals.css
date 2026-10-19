@@ -1043,3 +1043,53 @@ button:not(:disabled):active,
   transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ═════════════════════════════════════════════════════════════════════════
+   VTV3 CHIẾC NÓN KỲ DIỆU BOARD & TILE ANIMATIONS
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Instant mechanical cut / split-flap flip for board opening sequence (0.125s per tile) */
+@keyframes vtv3TileCut {
+  0% {
+    transform: scaleY(0.06);
+    opacity: 0.85;
+    filter: brightness(1.25);
+  }
+  50% {
+    transform: scaleY(0.55);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+
+.animate-vtv3-tile-cut {
+  animation: vtv3TileCut 0.12s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+/* Pop zoom effect when letter is revealed by hostess / player guess */
+@keyframes vtv3TilePop {
+  0% {
+    transform: scale(0.9);
+    filter: brightness(1.4);
+  }
+  50% {
+    transform: scale(1.15);
+    filter: brightness(1.2);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+.animate-vtv3-tile-pop {
+  animation: vtv3TilePop 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: center;
+  will-change: transform;
+}
+

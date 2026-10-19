@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
         },
     include: {
       _count: { select: { questions: true } },
-      questions: { select: { type: true }, take: 1 },
+      questions: { select: { type: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -168,20 +168,32 @@ export async function GET(req: NextRequest) {
     createdAt: p.createdAt || new Date().toISOString(),
     isBuiltIn: true,
     isWordPuzzle: true,
+    isPureWordPuzzle: true,
+    isPureStandard: false,
+    isMixed: false,
     _count: { questions: p.questions?.length || 11 },
   }));
 
   const finalBanks = [
     ...missingPresets,
     ...banks.map((b) => {
-      const isWordPuzzle =
+      const allQTypes = (b as any).questions?.map((q: any) => q.type) || [];
+      const hasWordPuzzle = allQTypes.some((t: string) => t === "WORD_PUZZLE");
+      const hasStandard = allQTypes.some((t: string) => t !== "WORD_PUZZLE");
+      const isMixed = hasWordPuzzle && hasStandard;
+      const isPureWordPuzzle =
         b.id.startsWith("bank_mw_preset") ||
-        (b as any).questions?.some((q: any) => q.type === "WORD_PUZZLE") ||
-        /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(b.title);
+        (hasWordPuzzle && !hasStandard) ||
+        (allQTypes.length === 0 && /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(b.title));
+      const isPureStandard = allQTypes.length > 0 && !hasWordPuzzle;
+      const isWordPuzzle = isPureWordPuzzle;
       return {
         ...b,
         isBuiltIn: b.id.startsWith("bank_mw_preset") || b.ownerId === "demo-host-id",
         isWordPuzzle: Boolean(isWordPuzzle),
+        isPureWordPuzzle: Boolean(isPureWordPuzzle),
+        isPureStandard: Boolean(isPureStandard),
+        isMixed: Boolean(isMixed),
       };
     }),
   ];

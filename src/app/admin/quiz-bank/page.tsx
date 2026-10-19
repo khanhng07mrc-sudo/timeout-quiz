@@ -17,6 +17,7 @@ import {
 import QuizorraQuestionStudioModal from "@/components/admin/QuizorraQuestionStudioModal";
 import { downloadMagicWheelExcelTemplate, downloadMagicWheelJsonTemplate } from "@/lib/quiz-template-generator";
 import { MAGIC_WHEEL_PRESET_BANKS } from "@/lib/offline-storage";
+import { isVietnameseAlphabetLetter } from "@/lib/game-engine/magic-wheel";
 
 function buildPuzzle4x14Preview(phrase: string): { rows: string[][]; isOverflow: boolean; oversizedWord?: string } {
   const clean = (phrase || "").trim().toUpperCase();
@@ -86,6 +87,10 @@ interface QuizBank {
   createdAt: string;
   isBuiltIn?: boolean;
   isPublic?: boolean;
+  isWordPuzzle?: boolean;
+  isPureWordPuzzle?: boolean;
+  isPureStandard?: boolean;
+  isMixed?: boolean;
   _count?: { questions: number };
 }
 
@@ -102,6 +107,7 @@ export default function QuizBankPage() {
   const [showNewBankModal, setShowNewBankModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [newBankCategory, setNewBankCategory] = useState<"STANDARD" | "WORD_PUZZLE">("STANDARD");
   const [newBankInitMode, setNewBankInitMode] = useState<"MANUAL" | "AI_STUDIO" | "IMPORT_FILE" | "EMPTY">("MANUAL");
   const [isCreatingBank, setIsCreatingBank] = useState(false);
 
@@ -397,7 +403,20 @@ export default function QuizBankPage() {
         const data = await res.json();
         if (data.banks) {
           const localOnly = offlineStorage.getLocalBanks().filter((b: OfflineQuizBank) => b.isLocalOnly);
-          const combined = [...localOnly, ...data.banks];
+          const combined = [...localOnly, ...data.banks].map((b: any) => {
+            const isPureWP = b.isPureWordPuzzle ?? (
+              b.id?.startsWith("bank_mw_preset") ||
+              (b.questions && b.questions.length > 0 && b.questions.every((q: any) => q.type === "WORD_PUZZLE")) ||
+              /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(b.title || "")
+            );
+            const isPureStd = b.isPureStandard ?? (
+              b.questions && b.questions.length > 0 && b.questions.every((q: any) => q.type !== "WORD_PUZZLE")
+            );
+            const isMixed = b.isMixed ?? (
+              b.questions && b.questions.length > 0 && !isPureWP && !isPureStd
+            );
+            return { ...b, isPureWordPuzzle: isPureWP, isPureStandard: isPureStd, isMixed };
+          });
           setBanks(combined);
           if (combined.length > 0 && !selectedBank) {
             selectBank(combined[0]);
@@ -408,7 +427,20 @@ export default function QuizBankPage() {
       throw new Error("Offline or server unreachable");
     } catch {
       console.warn("[QuizBank] Loading offline banks from local storage");
-      const local = offlineStorage.getLocalBanks();
+      const local = offlineStorage.getLocalBanks().map((b: any) => {
+        const isPureWP = b.isPureWordPuzzle ?? (
+          b.id?.startsWith("bank_mw_preset") ||
+          (b.questions && b.questions.length > 0 && b.questions.every((q: any) => q.type === "WORD_PUZZLE")) ||
+          /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(b.title || "")
+        );
+        const isPureStd = b.isPureStandard ?? (
+          b.questions && b.questions.length > 0 && b.questions.every((q: any) => q.type !== "WORD_PUZZLE")
+        );
+        const isMixed = b.isMixed ?? (
+          b.questions && b.questions.length > 0 && !isPureWP && !isPureStd
+        );
+        return { ...b, isPureWordPuzzle: isPureWP, isPureStandard: isPureStd, isMixed };
+      });
       setBanks(local);
       if (local.length > 0 && !selectedBank) {
         selectBank(local[0]);
@@ -488,6 +520,34 @@ export default function QuizBankPage() {
     }
   };
 
+  const isCurrentBankWordPuzzle = Boolean(
+    selectedBank?.isPureWordPuzzle ||
+    selectedBank?.isWordPuzzle ||
+    selectedBank?.id?.startsWith("bank_mw_preset") ||
+    questions.some((q) => q.type === "WORD_PUZZLE") ||
+    /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(selectedBank?.title || "")
+  );
+
+  const isCurrentBankStandard = Boolean(
+    selectedBank?.isPureStandard ||
+    questions.some((q) => q.type !== "WORD_PUZZLE")
+  );
+
+  const openNewQuestionModal = () => {
+    if (isCurrentBankWordPuzzle) {
+      setQType("WORD_PUZZLE");
+      setQRound(questions.length + 1);
+      setQHint("");
+      setQAnswer("");
+      setQContent("");
+    } else {
+      if (qType === "WORD_PUZZLE") setQType("MC_SINGLE");
+      setQContent("");
+      setQAnswer("");
+    }
+    setShowNewQModal(true);
+  };
+
   useEffect(() => {
     fetchBanks();
   }, []);
@@ -497,13 +557,19 @@ export default function QuizBankPage() {
     if (!newTitle.trim() || isCreatingBank) return;
 
     setIsCreatingBank(true);
+    const isCategoryWordPuzzle = newBankCategory === "WORD_PUZZLE";
+    const finalTitle = isCategoryWordPuzzle && !/ô chữ|chiếc nón|magic wheel/i.test(newTitle)
+      ? `[Ô Chữ VTV3] ${newTitle.trim()}`
+      : newTitle.trim();
+    const finalDesc = newDesc.trim() || (isCategoryWordPuzzle ? "Bộ đề chuyên biệt Ô chữ Chiếc nón kỳ diệu (VTV3)" : undefined);
+
     try {
       const res = await fetch("/api/quiz-bank", {
         method: "POST",
         headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
-          title: newTitle.trim(),
-          description: newDesc.trim() || undefined,
+          title: finalTitle,
+          description: finalDesc,
           ownerId: "demo-host-id",
         }),
       });
@@ -512,9 +578,12 @@ export default function QuizBankPage() {
         const data = await res.json();
         const createdBank: QuizBank = data.bank || {
           id: `local-${Date.now()}`,
-          title: newTitle.trim(),
-          description: newDesc.trim() || undefined,
+          title: finalTitle,
+          description: finalDesc,
           createdAt: new Date().toISOString(),
+          isWordPuzzle: isCategoryWordPuzzle,
+          isPureWordPuzzle: isCategoryWordPuzzle,
+          isPureStandard: !isCategoryWordPuzzle,
           _count: { questions: 0 },
         };
 
@@ -542,6 +611,12 @@ export default function QuizBankPage() {
 
         // Seamlessly open the corresponding creation tool without extra clicks
         if (chosenMode === "MANUAL") {
+          if (isCategoryWordPuzzle) {
+            setQType("WORD_PUZZLE");
+            setQRound(1);
+          } else {
+            setQType("MC_SINGLE");
+          }
           setShowNewQModal(true);
         } else if (chosenMode === "AI_STUDIO") {
           setPreviewTargetMode("current");
@@ -564,6 +639,15 @@ export default function QuizBankPage() {
   const handleCreateQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBank || !qContent.trim()) return;
+
+    if (isCurrentBankWordPuzzle && qType !== "WORD_PUZZLE") {
+      alert("Bộ đề này là 'Ô Chữ Chiếc Nón Kỳ Diệu'. Không thể thêm câu hỏi trắc nghiệm thường!");
+      return;
+    }
+    if (isCurrentBankStandard && qType === "WORD_PUZZLE") {
+      alert("Bộ đề này là 'Trắc Nghiệm Tiêu Chuẩn'. Không thể thêm câu hỏi Ô chữ Chiếc nón kỳ diệu!");
+      return;
+    }
 
     const rawPoints = Math.max(10, Math.round((Number(qPoints) || 10) / 10) * 10);
     const payload: any = {
@@ -794,6 +878,16 @@ export default function QuizBankPage() {
   const handleUpdateQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBank || !editingQuestionId || !editQContent.trim()) return;
+
+    if (isCurrentBankWordPuzzle && editQType !== "WORD_PUZZLE") {
+      alert("Bộ đề này là 'Ô Chữ Chiếc Nón Kỳ Diệu'. Không thể chuyển sang câu hỏi trắc nghiệm thường!");
+      return;
+    }
+    if (isCurrentBankStandard && editQType === "WORD_PUZZLE") {
+      alert("Bộ đề này là 'Trắc Nghiệm Tiêu Chuẩn'. Không thể chuyển sang câu hỏi Ô chữ!");
+      return;
+    }
+
     setSavingQuestion(true);
 
     const rawPoints = Math.max(10, Math.round((Number(editQPoints) || 10) / 10) * 10);
@@ -1025,6 +1119,20 @@ export default function QuizBankPage() {
         setFileError("Không phát hiện câu hỏi nào trong văn bản. Hãy đảm bảo cú pháp có 'Câu 1:' hoặc 'A. B. C. D.'");
         return;
       }
+      const wpCount = parsed.filter((q) => q.type === "WORD_PUZZLE").length;
+      const stdCount = parsed.length - wpCount;
+      if (wpCount > 0 && stdCount > 0) {
+        setFileError("Bộ đề không hợp lệ: Văn bản chứa cả câu hỏi trắc nghiệm thường và ô chữ Chiếc Nón Kỳ Diệu. Hệ thống yêu cầu bộ đề phải 100% thuần Ô Chữ hoặc 100% thuần Trắc Nghiệm!");
+        return;
+      }
+      if (selectedBank && isCurrentBankWordPuzzle && stdCount > 0) {
+        setFileError("Bộ đề đang chọn là 'Ô Chữ Chiếc Nón Kỳ Diệu'. Nội dung nhập chứa câu hỏi trắc nghiệm thường không tương thích!");
+        return;
+      }
+      if (selectedBank && isCurrentBankStandard && wpCount > 0) {
+        setFileError("Bộ đề đang chọn là 'Trắc Nghiệm Tiêu Chuẩn'. Nội dung nhập chứa câu hỏi Ô chữ Chiếc Nón Kỳ Diệu không tương thích!");
+        return;
+      }
       setShowFileModal(false);
       setRawTextContent("");
       setPreviewQuestions(parsed);
@@ -1072,6 +1180,18 @@ export default function QuizBankPage() {
 
       if (parsed.length === 0) {
         throw new Error("Không phát hiện câu hỏi hợp lệ nào trong tệp!");
+      }
+
+      const wpCount = parsed.filter((q) => q.type === "WORD_PUZZLE").length;
+      const stdCount = parsed.length - wpCount;
+      if (wpCount > 0 && stdCount > 0) {
+        throw new Error("Bộ đề không hợp lệ: Tệp chứa cả câu hỏi trắc nghiệm thường và ô chữ Chiếc Nón Kỳ Diệu. Hệ thống yêu cầu bộ đề phải 100% thuần Ô Chữ hoặc 100% thuần Trắc Nghiệm!");
+      }
+      if (selectedBank && isCurrentBankWordPuzzle && stdCount > 0) {
+        throw new Error("Bộ đề đang chọn là 'Ô Chữ Chiếc Nón Kỳ Diệu'. Tệp tải lên chứa câu hỏi trắc nghiệm thường không tương thích!");
+      }
+      if (selectedBank && isCurrentBankStandard && wpCount > 0) {
+        throw new Error("Bộ đề đang chọn là 'Trắc Nghiệm Tiêu Chuẩn'. Tệp tải lên chứa câu hỏi Ô chữ Chiếc Nón Kỳ Diệu không tương thích!");
       }
 
       setShowFileModal(false);
@@ -1125,14 +1245,33 @@ export default function QuizBankPage() {
   // Save all preview questions to Quiz Bank
   const handleSavePreview = async () => {
     if (previewQuestions.length === 0) return;
+
+    // Strict purity check before saving
+    const wpCount = previewQuestions.filter((q) => q.type === "WORD_PUZZLE").length;
+    const stdCount = previewQuestions.length - wpCount;
+    if (wpCount > 0 && stdCount > 0) {
+      alert("Bộ đề không hợp lệ: Không thể kết hợp câu hỏi trắc nghiệm thường và ô chữ Chiếc Nón Kỳ Diệu trong cùng một bộ đề. Vui lòng tách thành 2 file/bộ đề riêng biệt!");
+      return;
+    }
+    if (previewTargetMode === "current" && selectedBank) {
+      if (isCurrentBankWordPuzzle && stdCount > 0) {
+        alert("Bộ đề hiện tại là 'Ô Chữ Chiếc Nón Kỳ Diệu'. Không thể thêm câu hỏi trắc nghiệm thường vào bộ đề này!");
+        return;
+      }
+      if (isCurrentBankStandard && wpCount > 0) {
+        alert("Bộ đề hiện tại là 'Trắc Nghiệm Tiêu Chuẩn'. Không thể thêm câu hỏi Ô chữ Chiếc Nón Kỳ Diệu vào bộ đề này!");
+        return;
+      }
+    }
+
     setIsSavingPreview(true);
 
     try {
       let targetBankId = selectedBank?.id;
 
       if (previewTargetMode === "new" || !targetBankId) {
-        const title = previewNewBankTitle.trim() || "Bộ đề thi mới";
-        const desc = previewNewBankDesc.trim() || undefined;
+        const title = previewNewBankTitle.trim() || (wpCount > 0 ? "[Ô Chữ VTV3] Bộ đề ô chữ mới" : "Bộ đề thi mới");
+        const desc = previewNewBankDesc.trim() || (wpCount > 0 ? "Bộ đề chuyên biệt Ô chữ Chiếc nón kỳ diệu (VTV3)" : undefined);
 
         const createRes = await fetch("/api/quiz-bank", {
           method: "POST",
@@ -1349,6 +1488,21 @@ export default function QuizBankPage() {
                         {(b.isBuiltIn || b.id.startsWith("bank_mw_preset")) && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/25 text-amber-300 border border-amber-500/40 whitespace-nowrap shadow-sm">
                             ⭐ Đề Mẫu VTV3
+                          </span>
+                        )}
+                        {b.isPureWordPuzzle && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 whitespace-nowrap shadow-sm">
+                            🎡 Ô Chữ (VTV3)
+                          </span>
+                        )}
+                        {b.isPureStandard && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 whitespace-nowrap shadow-sm">
+                            🎯 Trắc Nghiệm
+                          </span>
+                        )}
+                        {b.isMixed && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 whitespace-nowrap shadow-sm">
+                            ⚠️ Hỗn hợp (Cần tách)
                           </span>
                         )}
                       </div>
@@ -1766,6 +1920,50 @@ export default function QuizBankPage() {
             </div>
 
             <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                Phân loại thể thức Bộ đề *
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewBankCategory("STANDARD")}
+                  className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 cursor-pointer ${
+                    newBankCategory === "STANDARD"
+                      ? "border-cyan-500 bg-cyan-500/20 shadow-md shadow-cyan-500/20"
+                      : "border-slate-800 bg-slate-900/50 hover:border-slate-700"
+                  }`}
+                >
+                  <span className="text-xl">🎯</span>
+                  <div>
+                    <p className="text-xs font-bold text-white">Trắc nghiệm Tiêu chuẩn</p>
+                    <p className="text-[11px] text-slate-400">Dành cho 8 game show trắc nghiệm</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNewBankCategory("WORD_PUZZLE")}
+                  className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 cursor-pointer ${
+                    newBankCategory === "WORD_PUZZLE"
+                      ? "border-amber-500 bg-amber-500/25 shadow-md shadow-amber-500/20"
+                      : "border-slate-800 bg-slate-900/50 hover:border-slate-700"
+                  }`}
+                >
+                  <span className="text-xl">🎡</span>
+                  <div>
+                    <p className="text-xs font-bold text-amber-200">Ô Chữ Chiếc Nón (VTV3)</p>
+                    <p className="text-[11px] text-amber-400/80">Chuyên biệt bàn ô chữ 4x14</p>
+                  </div>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                {newBankCategory === "WORD_PUZZLE"
+                  ? "💡 Bộ đề này chỉ chứa câu hỏi Ô chữ VTV3, không cho phép kết hợp câu hỏi trắc nghiệm."
+                  : "💡 Bộ đề trắc nghiệm chuẩn không thể kết hợp câu hỏi ô chữ Chiếc Nón Kỳ Diệu."}
+              </p>
+            </div>
+
+            <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
                 Bạn muốn bắt đầu như thế nào?
               </label>
@@ -1890,16 +2088,22 @@ export default function QuizBankPage() {
                 <select
                   value={qType}
                   onChange={(e) => setQType(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
+                  disabled={isCurrentBankWordPuzzle}
+                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm disabled:opacity-75"
                 >
-                  <option value="MC_SINGLE">Trắc nghiệm 1 đáp án (2-10 lựa chọn)</option>
-                  <option value="MC_MULTI">Trắc nghiệm nhiều đáp án (2-10 lựa chọn)</option>
-                  <option value="TRUE_FALSE">Đúng / Sai</option>
-                  <option value="FILL_BLANK">Điền từ / Tự luận ngắn</option>
-                  <option value="MATCHING">Nối cặp tương ứng A - B (2-8 cặp)</option>
-                  <option value="DRAG_DROP">Sắp xếp thứ tự các bước (2-8 bước)</option>
-                  <option value="CLOZE_DROPDOWN">Đoạn văn đục lỗ menu thả xuống</option>
-                  <option value="WORD_PUZZLE">Ô chữ Chiếc nón kỳ diệu (4 hàng x 14 ô)</option>
+                  {isCurrentBankWordPuzzle ? (
+                    <option value="WORD_PUZZLE">🎡 Ô chữ Chiếc nón kỳ diệu (4 hàng x 14 ô)</option>
+                  ) : (
+                    <>
+                      <option value="MC_SINGLE">Trắc nghiệm 1 đáp án (2-10 lựa chọn)</option>
+                      <option value="MC_MULTI">Trắc nghiệm nhiều đáp án (2-10 lựa chọn)</option>
+                      <option value="TRUE_FALSE">Đúng / Sai</option>
+                      <option value="FILL_BLANK">Điền từ / Tự luận ngắn</option>
+                      <option value="MATCHING">Nối cặp tương ứng A - B (2-8 cặp)</option>
+                      <option value="DRAG_DROP">Sắp xếp thứ tự các bước (2-8 bước)</option>
+                      <option value="CLOZE_DROPDOWN">Đoạn văn đục lỗ menu thả xuống</option>
+                    </>
+                  )}
                 </select>
               </div>
               <div>
@@ -2406,6 +2610,20 @@ export default function QuizBankPage() {
                       placeholder="VD: NGUYỄN TRÃI, VỊNH HẠ LONG..."
                       className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 font-bold text-sm tracking-wider uppercase focus:border-amber-400"
                     />
+                    {(() => {
+                      const trimmed = qAnswer.trim();
+                      if (trimmed.length > 0 && !isVietnameseAlphabetLetter(trimmed[0])) {
+                        return (
+                          <div className="mt-2 p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                            <span className="text-base shrink-0">⚠️</span>
+                            <div className="leading-relaxed">
+                              <strong className="font-bold text-amber-200">Khuyến cáo:</strong> Từ khoá nên bắt đầu bằng chữ cái tiếng Việt. Ký tự đặc biệt hoặc số ở đầu (&quot;{trimmed[0]}&quot;) sẽ được hệ thống tự động hiển thị ngay khi mở bảng và không được tính vào lượt lật chữ đoán nhanh.
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 </div>
 
@@ -2721,16 +2939,22 @@ export default function QuizBankPage() {
                 <select
                   value={editQType}
                   onChange={(e) => setEditQType(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
+                  disabled={isCurrentBankWordPuzzle}
+                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm disabled:opacity-75"
                 >
-                  <option value="MC_SINGLE">Trắc nghiệm 1 đáp án (2-10 lựa chọn)</option>
-                  <option value="MC_MULTI">Trắc nghiệm nhiều đáp án (2-10 lựa chọn)</option>
-                  <option value="TRUE_FALSE">Đúng / Sai</option>
-                  <option value="FILL_BLANK">Điền từ / Tự luận ngắn</option>
-                  <option value="MATCHING">Nối cặp tương ứng A - B (2-8 cặp)</option>
-                  <option value="DRAG_DROP">Sắp xếp thứ tự các bước (2-8 bước)</option>
-                  <option value="CLOZE_DROPDOWN">Đoạn văn đục lỗ menu thả xuống</option>
-                  <option value="WORD_PUZZLE">Ô chữ Chiếc nón kỳ diệu (4 hàng x 14 ô)</option>
+                  {isCurrentBankWordPuzzle ? (
+                    <option value="WORD_PUZZLE">🎡 Ô chữ Chiếc nón kỳ diệu (4 hàng x 14 ô)</option>
+                  ) : (
+                    <>
+                      <option value="MC_SINGLE">Trắc nghiệm 1 đáp án (2-10 lựa chọn)</option>
+                      <option value="MC_MULTI">Trắc nghiệm nhiều đáp án (2-10 lựa chọn)</option>
+                      <option value="TRUE_FALSE">Đúng / Sai</option>
+                      <option value="FILL_BLANK">Điền từ / Tự luận ngắn</option>
+                      <option value="MATCHING">Nối cặp tương ứng A - B (2-8 cặp)</option>
+                      <option value="DRAG_DROP">Sắp xếp thứ tự các bước (2-8 bước)</option>
+                      <option value="CLOZE_DROPDOWN">Đoạn văn đục lỗ menu thả xuống</option>
+                    </>
+                  )}
                 </select>
               </div>
               <div>
@@ -3237,6 +3461,20 @@ export default function QuizBankPage() {
                       placeholder="VD: NGUYỄN TRÃI, VỊNH HẠ LONG..."
                       className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 font-bold text-sm tracking-wider uppercase focus:border-amber-400"
                     />
+                    {(() => {
+                      const trimmed = editQAnswer.trim();
+                      if (trimmed.length > 0 && !isVietnameseAlphabetLetter(trimmed[0])) {
+                        return (
+                          <div className="mt-2 p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                            <span className="text-base shrink-0">⚠️</span>
+                            <div className="leading-relaxed">
+                              <strong className="font-bold text-amber-200">Khuyến cáo:</strong> Từ khoá nên bắt đầu bằng chữ cái tiếng Việt. Ký tự đặc biệt hoặc số ở đầu (&quot;{trimmed[0]}&quot;) sẽ được hệ thống tự động hiển thị ngay khi mở bảng và không được tính vào lượt lật chữ đoán nhanh.
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 </div>
 

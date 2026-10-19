@@ -40,6 +40,7 @@ import {
   generateMagicWheelSectors,
   calculateSpinDestination,
   normalizeVietnameseBaseLetter,
+  isVietnameseAlphabetLetter,
   checkLetterInSecretPhrase,
   isPuzzleFullyRevealed,
   matchWholeSecretPhrase,
@@ -7964,22 +7965,47 @@ export function registerSocketHandlers(io: IO) {
         });
       } else if (stage === "SPECIAL_FINAL") {
         const sortedByScore = [...teams].sort((a, b) => (b.score || 0) - (a.score || 0));
-        const finalist = sortedByScore[0] || teams[0];
-        wheelState.specialFinalTeamId = finalist?.id || "";
-        wheelState.specialFinalTeamName = finalist?.name || "";
-        wheelState.currentTurnTeamId = finalist?.id || "";
-        wheelState.currentTurnTeamName = finalist?.name || "";
-        wheelState.sectors = generateMagicWheelSectors(99, "SPECIAL_FINAL");
-        wheelState.specialAllowedLettersCount = calculateSpecialRoundAllowedLetters(puzzle?.secretPhrase || "");
-        wheelState.specialPickedLetters = [];
-        wheelState.specialBonusCompleted = false;
-        wheelState.specialPuzzleCompleted = false;
-        wheelState.specialBonusPoints = undefined;
-        wheelState.specialAttemptLog = [];
-        wheelState.phase = "SPECIAL_ORDER_CHOICE";
-        wheelState.lastActionMessage = generateFlexibleMCCommentary("SPECIAL_INTRO", {
-          teamName: finalist?.name || "Quán quân",
-        });
+        const topScore = sortedByScore[0]?.score || 0;
+        const tiedTopTeams = sortedByScore.filter((t) => (t.score || 0) === topScore && topScore > 0);
+
+        if (tiedTopTeams.length > 1 && !wheelState.specialFinalTeamId) {
+          // Có từ 2 hoặc 3 đội bằng điểm cao nhất -> Kích hoạt Ô Chữ Phụ (Tie-Breaker Toss-Up)
+          wheelState.tieBreakerPending = true;
+          wheelState.tiedTeamIds = tiedTopTeams.map((t) => t.id);
+          const tiedNames = tiedTopTeams.map((t) => t.name).join(", ");
+          wheelState.roundStage = "TOSS_UP_1";
+          wheelState.phase = "TOSS_UP_READY";
+          wheelState.currentPuzzle = {
+            id: "mw-tie-breaker-aux",
+            roundNumber: nextRound1Based,
+            stage: "TOSS_UP_1",
+            category: "Ô CHỮ PHỤ: PHÂN ĐỊNH VÀO VÒNG ĐẶC BIỆT",
+            secretPhrase: "NGÔI SAO CHIẾN THẮNG",
+            clue: "Ô chữ phụ phân định tấm vé duy nhất bước vào Vòng Đặc Biệt!",
+            revealedIndices: [],
+          };
+          wheelState.sectors = generateMagicWheelSectors(1, "TOSS_UP_1");
+          wheelState.lastActionMessage = `⚡ KỊCH TÍNH! Có ${tiedTopTeams.length} đội bằng điểm cao nhất (${topScore.toLocaleString("vi-VN")}đ): ${tiedNames}! Bắt đầu Ô CHỮ PHỤ để phân định đại diện duy nhất vào VÒNG ĐẶC BIỆT!`;
+        } else {
+          wheelState.tieBreakerPending = false;
+          wheelState.tiedTeamIds = undefined;
+          const finalist = (wheelState.specialFinalTeamId ? teams.find((t) => t.id === wheelState.specialFinalTeamId) : null) || sortedByScore[0] || teams[0];
+          wheelState.specialFinalTeamId = finalist?.id || "";
+          wheelState.specialFinalTeamName = finalist?.name || "";
+          wheelState.currentTurnTeamId = finalist?.id || "";
+          wheelState.currentTurnTeamName = finalist?.name || "";
+          wheelState.sectors = generateMagicWheelSectors(99, "SPECIAL_FINAL");
+          wheelState.specialAllowedLettersCount = calculateSpecialRoundAllowedLetters(puzzle?.secretPhrase || "");
+          wheelState.specialPickedLetters = [];
+          wheelState.specialBonusCompleted = false;
+          wheelState.specialPuzzleCompleted = false;
+          wheelState.specialBonusPoints = undefined;
+          wheelState.specialAttemptLog = [];
+          wheelState.phase = "SPECIAL_ORDER_CHOICE";
+          wheelState.lastActionMessage = generateFlexibleMCCommentary("SPECIAL_INTRO", {
+            teamName: finalist?.name || "Quán quân",
+          });
+        }
       } else {
         // MAIN round 1..N: rotate starter team based on round1StarterTeamId
         const r1Idx = Math.max(
@@ -8043,7 +8069,12 @@ export function registerSocketHandlers(io: IO) {
         timestamp: Date.now(),
       };
 
-      if (stage === "TOSS_UP_1") {
+      if (wheelState.tieBreakerPending) {
+        wheelState.tieBreakerPending = false;
+        wheelState.specialFinalTeamId = winnerTeamId;
+        wheelState.specialFinalTeamName = winnerName;
+        wheelState.lastActionMessage = `🏆 ĐỘI ${winnerName} ĐÃ GIẢI ĐÚNG Ô CHỮ PHỤ VÀ GIÀNH TẤM VÉ DUY NHẤT BƯỚC VÀO VÒNG ĐẶC BIỆT!`;
+      } else if (stage === "TOSS_UP_1") {
         wheelState.lastActionMessage = `⚡ CHÍNH XÁC! Đội ${winnerName} giải đúng Vòng Đoán Nhanh 1 ("${wheelState.currentPuzzle?.secretPhrase}") và nhận +500 điểm!`;
       } else if (stage === "TOSS_UP_2") {
         wheelState.lastActionMessage = `⚡ CHÍNH XÁC! Đội ${winnerName} chiến thắng Vòng Đoán Nhanh 2 ("${wheelState.currentPuzzle?.secretPhrase}", +1.000 điểm) và giành quyền đi đầu ở Vòng Chính 1!`;
@@ -8150,12 +8181,13 @@ export function registerSocketHandlers(io: IO) {
         const p = wheelState.currentPuzzle;
         const allIndices: number[] = [];
         for (let i = 0; i < p.secretPhrase.length; i++) {
-          if (/[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(p.secretPhrase[i]) && !p.revealedIndices.includes(i)) {
+          if (isVietnameseAlphabetLetter(p.secretPhrase[i]) && !p.revealedIndices.includes(i)) {
             allIndices.push(i);
           }
         }
-        // First valid alphanumeric letter MUST ALWAYS be firstIdx!
-        const firstLetterIdx = allIndices.find((idx) => /[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(p.secretPhrase[idx])) ?? allIndices[0];
+        // First valid Vietnamese/Latin alphabet letter MUST ALWAYS be firstIdx!
+        // Numbers (0-9) and special characters are pre-revealed and ignored here!
+        const firstLetterIdx = allIndices.find((idx) => isVietnameseAlphabetLetter(p.secretPhrase[idx])) ?? allIndices[0];
         const restIndices = allIndices.filter((idx) => idx !== firstLetterIdx);
         for (let i = restIndices.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -9088,12 +9120,11 @@ export function registerSocketHandlers(io: IO) {
         }
 
         if (is3M) {
-          wheelState.permanentScores[tId] = (wheelState.permanentScores[tId] || 0) + 3000;
-          const pRes = await applyScoreDeltaToTeam(tId, 3000);
-          io.to(`room:${roomCode}`).emit("game:score:update", [{ teamId: tId, score: pRes.newScore, delta: 3000 }]);
+          if (!wheelState.prizeCash) wheelState.prizeCash = {};
+          wheelState.prizeCash[tId] = (wheelState.prizeCash[tId] || 0) + 3000;
           wheelState.phase = "ACTION_INPUT";
           wheelState.pendingSpecialAction = "POINTS";
-          wheelState.lastActionMessage = `🎉 CHÚC MỪNG! Mặt sau ô Bí Mật là 3.000.000 ĐỒNG (+3.000đ vĩnh viễn)! Mời Đội ${teamName} gọi chữ cái!`;
+          wheelState.lastActionMessage = `🎉 CHÚC MỪNG! Mặt sau ô Bí Mật là 3.000.000 VNĐ tiền thưởng vĩnh viễn! (Không tính vào kết quả xét đội vào Vòng Đặc Biệt). Mời Đội ${teamName} gọi chữ cái!`;
           io.to(`room:${roomCode}`).emit("game:magic_wheel:mystery_result", {
             teamId: tId,
             outcome: "PRIZE_CASH",
@@ -9103,7 +9134,7 @@ export function registerSocketHandlers(io: IO) {
           wheelState.roundScores[tId] = 0;
           advanceMagicWheelTurnHelper(wheelState, room.teams);
           wheelState.phase = "SPIN_WAITING";
-          wheelState.lastActionMessage = `💥 ÔI KHÔNG! Mặt sau ô Bí Mật là MẤT ĐIỂM! Đội ${teamName} mất toàn bộ điểm vòng! Chuyển lượt sang ${wheelState.currentTurnTeamName}.`;
+          wheelState.lastActionMessage = `💥 ÔI KHÔNG! Mặt sau ô Bí Mật là MẤT ĐIỂM! Đội ${teamName} mất toàn bộ điểm vòng 2! Chuyển lượt sang ${wheelState.currentTurnTeamName}.`;
           io.to(`room:${roomCode}`).emit("game:magic_wheel:mystery_result", {
             teamId: tId,
             outcome: "BANKRUPT",
@@ -9111,14 +9142,16 @@ export function registerSocketHandlers(io: IO) {
           });
         }
       } else {
-        wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + basePts;
+        if (currentSector) {
+          currentSector.value = 1000;
+        }
         wheelState.phase = "ACTION_INPUT";
         wheelState.pendingSpecialAction = "POINTS";
-        wheelState.lastActionMessage = `Đội ${teamName} chọn KHÔNG LẬT ô bí mật! Nhận an toàn ${basePts} điểm và tiếp tục gọi chữ cái.`;
+        wheelState.lastActionMessage = `Đội ${teamName} chọn AN TOÀN! Nhận 1.000đ x số chữ cái đoán đúng. Mời gọi chữ cái!`;
         io.to(`room:${roomCode}`).emit("game:magic_wheel:mystery_result", {
           teamId: tId,
           outcome: "SAFE_POINTS",
-          points: basePts,
+          points: 1000,
         });
       }
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
@@ -9253,17 +9286,24 @@ export function registerSocketHandlers(io: IO) {
           wheelState.disqualifiedTeamIdsInRound.push(tId);
         }
 
+        if (!wheelState.prizeCash) wheelState.prizeCash = {};
+        if (!wheelState.physicalPrizes) wheelState.physicalPrizes = {};
+
         const bIdx = boxIndex !== undefined ? boxIndex : Math.floor(Math.random() * 4);
         let prizeText = "";
-        let points = 3000;
-        if (bIdx === 0) { points = 5000; prizeText = "Hộp Quà #1: +5.000 điểm vĩnh viễn"; }
-        else if (bIdx === 1) { points = 3000; prizeText = "Hộp Quà #2: +3.000 điểm vĩnh viễn"; }
-        else if (bIdx === 2) { points = 4000; prizeText = "Hộp Quà #3: Kỷ Niệm Chương & +4.000 điểm vĩnh viễn"; }
-        else { points = 2000; prizeText = "Hộp Quà #4: +2.000 điểm vĩnh viễn"; }
-
-        wheelState.permanentScores[tId] = (wheelState.permanentScores[tId] || 0) + points;
-        const pRes = await applyScoreDeltaToTeam(tId, points);
-        io.to(`room:${roomCode}`).emit("game:score:update", [{ teamId: tId, score: pRes.newScore, delta: points }]);
+        if (bIdx === 0) {
+          wheelState.prizeCash[tId] = (wheelState.prizeCash[tId] || 0) + 5000;
+          prizeText = "Hộp Quà #1: 5.000.000 VNĐ tiền mặt (Không tính vào kết quả xét đội vào Vòng Đặc Biệt)";
+        } else if (bIdx === 1) {
+          wheelState.prizeCash[tId] = (wheelState.prizeCash[tId] || 0) + 3000;
+          prizeText = "Hộp Quà #2: 3.000.000 VNĐ tiền mặt (Không tính vào kết quả xét đội vào Vòng Đặc Biệt)";
+        } else if (bIdx === 2) {
+          wheelState.physicalPrizes[tId] = [...(wheelState.physicalPrizes[tId] || []), "Nồi chiên không dầu cao cấp (trị giá 2.500.000đ)"];
+          prizeText = "Hộp Quà #3: Nồi chiên không dầu cao cấp (trị giá 2.500.000 VNĐ)";
+        } else {
+          wheelState.physicalPrizes[tId] = [...(wheelState.physicalPrizes[tId] || []), "Bộ nồi Inox 5 đáy & Máy xay sinh tố đa năng (trị giá 2.000.000đ)"];
+          prizeText = "Hộp Quà #4: Bộ nồi Inox 5 đáy & Máy xay sinh tố đa năng (trị giá 2.000.000 VNĐ)";
+        }
 
         advanceMagicWheelTurnHelper(wheelState, room.teams);
         const updatedRoomState = await buildRoomState(roomId);
@@ -9279,7 +9319,7 @@ export function registerSocketHandlers(io: IO) {
             teamName,
             guess: phrase,
             isCorrect: true,
-            pointsAwarded: points,
+            pointsAwarded: 0,
             correctPhrase: phrase,
             allTeamsEliminated: true,
             timestamp: Date.now(),
@@ -9290,7 +9330,7 @@ export function registerSocketHandlers(io: IO) {
             teamName,
             isCorrect: true,
             secretPhrase: phrase,
-            roundWonPoints: points,
+            roundWonPoints: 0,
           });
           if (wheelState.operationMode !== "HOST_ASSISTED") {
             const solvedRoundNum = wheelState.currentRound;
@@ -9443,6 +9483,11 @@ export function registerSocketHandlers(io: IO) {
       wheelState.lastActionMessage = "⭐ Quản trò mở ô chữ & chủ đề! Bảng ô chữ đang lật mở...";
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       persistGameStateSnapshot(roomId).catch(() => {});
+
+      const secretPhrase = wheelState.currentPuzzle?.secretPhrase || "";
+      const nonSpaceCharsCount = secretPhrase.replace(/\s+/g, "").length;
+      const cutDurationMs = Math.max(1600, nonSpaceCharsCount * 125 + 600);
+
       setTimeout(() => {
         const cur = roomMagicWheels.get(roomId);
         if (cur && cur.boardStage === "BLANK_PHRASE") {
@@ -9451,7 +9496,7 @@ export function registerSocketHandlers(io: IO) {
           io.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
           persistGameStateSnapshot(roomId).catch(() => {});
         }
-      }, 1400);
+      }, cutDurationMs);
     };
 
     socket.on("admin:magic_wheel:open_board", async () => {

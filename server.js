@@ -460,6 +460,52 @@ function isPuzzleFullyRevealed(phrase, revealedIndices) {
   }
   return true;
 }
+function hasRemainingConsonants(phrase, revealedIndices) {
+  if (!phrase) return false;
+  const vowels = ["A", "E", "I", "O", "U"];
+  const upper = phrase.toUpperCase();
+  for (let i = 0; i < upper.length; i++) {
+    const ch = upper[i];
+    if (/[A-Z]/.test(ch) && !revealedIndices.includes(i)) {
+      if (!vowels.includes(ch)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+function hasRemainingVowels(phrase, revealedIndices) {
+  if (!phrase) return false;
+  const vowels = ["A", "E", "I", "O", "U"];
+  const upper = phrase.toUpperCase();
+  for (let i = 0; i < upper.length; i++) {
+    const ch = upper[i];
+    if (vowels.includes(ch) && !revealedIndices.includes(i)) {
+      return true;
+    }
+  }
+  return false;
+}
+function checkNoMoreConsonants(phrase, revealedIndices, edition = "VIETNAMESE") {
+  if (edition !== "ENGLISH") return false;
+  return !hasRemainingConsonants(phrase, revealedIndices) && hasRemainingVowels(phrase, revealedIndices);
+}
+var ENGLISH_BONUS_ROUND_GIVEN_LETTERS = ["R", "S", "T", "L", "N", "E"];
+var ENGLISH_BONUS_ROUND_PICKABLE_VOWELS = ["A", "I", "O", "U"];
+function applyBonusRoundGivenLetters(secretPhrase, alreadyRevealedIndices) {
+  const given = ["R", "S", "T", "L", "N", "E"];
+  const upper = secretPhrase.toUpperCase();
+  const newlyFound = [];
+  for (let i = 0; i < upper.length; i++) {
+    if (given.includes(upper[i]) && !alreadyRevealedIndices.includes(i)) {
+      newlyFound.push(i);
+    }
+  }
+  return {
+    revealedIndices: [...alreadyRevealedIndices, ...newlyFound],
+    count: newlyFound.length
+  };
+}
 function matchWholeSecretPhrase(phrase, guess) {
   const cleanPhrase = phrase.trim().toUpperCase().normalize("NFC").replace(/[^A-ZÀ-Ỹ0-9\s]/g, " ").replace(/\s+/g, " ").trim();
   const cleanGuess = guess.trim().toUpperCase().normalize("NFC").replace(/[^A-ZÀ-Ỹ0-9\s]/g, " ").replace(/\s+/g, " ").trim();
@@ -15583,6 +15629,7 @@ function registerSocketHandlers(io2) {
       wheelState.roundStage = stage;
       wheelState.mainRoundNumber = stage === "MAIN" ? mainIdx : 0;
       wheelState.guessedLetters = [];
+      wheelState.noMoreConsonants = false;
       wheelState.wrongGuessesCount = {};
       wheelState.roundScores = {};
       wheelState.freeSpinCount = {};
@@ -15907,6 +15954,10 @@ function registerSocketHandlers(io2) {
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.isSpinning) return;
       if (wheelState.phase !== "SPIN_WAITING" && wheelState.phase !== "SPECIAL_SPIN_WAITING") return;
+      if (wheelState.edition === "ENGLISH" && wheelState.noMoreConsonants) {
+        socket.emit("error", "Kh\xF4ng th\u1EC3 quay n\xF3n! \u0110\xE3 h\u1EBFt ph\u1EE5 \xE2m tr\xEAn b\u1EA3ng (No more consonants). B\u1EA1n ch\u1EC9 c\xF3 th\u1EC3 Mua nguy\xEAn \xE2m (250\u0111) ho\u1EB7c \u0110o\xE1n \xF4 ch\u1EEF!");
+        return;
+      }
       const room = await prisma.room.findUnique({
         where: { id: roomId },
         include: { teams: { orderBy: { createdAt: "asc" } } }
@@ -15951,7 +16002,14 @@ function registerSocketHandlers(io2) {
             return;
           } else {
             cur.phase = "SPECIAL_PICK_LETTERS";
-            cur.lastActionMessage = `\u{1F381} \u0110\xE3 x\xE1c \u0111\u1ECBnh Phong B\xEC Gi\u1EA3i Th\u01B0\u1EDFng \u0110\u1EB7c Bi\u1EC7t! B\xE2y gi\u1EDD m\u1EDDi ${teamName} ch\u1ECDn ${cur.specialAllowedLettersCount || 3} ch\u1EEF c\xE1i tr\u1EE3 gi\xFAp tr\xEAn b\u1EA3ng!`;
+            if (cur.edition === "ENGLISH" && cur.currentPuzzle) {
+              const res = applyBonusRoundGivenLetters(cur.currentPuzzle.secretPhrase, cur.currentPuzzle.revealedIndices || []);
+              cur.currentPuzzle.revealedIndices = res.revealedIndices;
+              cur.guessedLetters = Array.from(/* @__PURE__ */ new Set([...cur.guessedLetters || [], ...ENGLISH_BONUS_ROUND_GIVEN_LETTERS]));
+              cur.lastActionMessage = `\u{1F381} \u0110\xE3 x\xE1c \u0111\u1ECBnh Phong B\xEC \u0110\u1EB7c Bi\u1EC7t! \u2B50 WHEEL OF FORTUNE BONUS ROUND: \u0110\xE3 m\u1EDF s\u1EB5n ${res.count} ch\u1EEF c\xE1i t\u1EEB R, S, T, L, N, E! M\u1EDDi Qu\xE1n qu\xE2n ${teamName} ch\u1ECDn 3 PH\u1EE4 \xC2M + 1 NGUY\xCAN \xC2M!`;
+            } else {
+              cur.lastActionMessage = `\u{1F381} \u0110\xE3 x\xE1c \u0111\u1ECBnh Phong B\xEC Gi\u1EA3i Th\u01B0\u1EDFng \u0110\u1EB7c Bi\u1EC7t! B\xE2y gi\u1EDD m\u1EDDi ${teamName} ch\u1ECDn ${cur.specialAllowedLettersCount || 3} ch\u1EEF c\xE1i tr\u1EE3 gi\xFAp tr\xEAn b\u1EA3ng!`;
+            }
             io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
             return;
           }
@@ -16193,12 +16251,28 @@ function registerSocketHandlers(io2) {
           wheelState.lastActionMessage = wheelState.expressModeActive ? `\u26A1 T\xE0u T\u1ED1c \u0110\u1ED9: C\xF3 ${check.count} ch\u1EEF "${normLetter}" (+${earned}\u0111)! M\u1EDDi \u0110\u1ED9i ${teamName} g\u1ECDi ti\u1EBFp ch\u1EEF c\xE1i (1.000\u0111/ch\u1EEF) ho\u1EB7c Gi\u1EA3i \xD4 Ch\u1EEF!` : `\u{1F514} Chu\xF4ng T\u0103ng T\u1ED1c: C\xF3 ${check.count} ch\u1EEF "${normLetter}" (+${earned}\u0111)! M\u1EDDi \u0110\u1ED9i ${teamName} g\u1ECDi ti\u1EBFp ho\u1EB7c Gi\u1EA3i \xD4 Ch\u1EEF ngay!`;
         } else {
           wheelState.phase = "SPIN_WAITING";
-          wheelState.lastActionMessage = generateFlexibleMCCommentary("LETTER_HIT", {
-            teamName,
-            letter: normLetter,
-            count: check.count,
-            points: earned
-          });
+          if (wheelState.edition === "ENGLISH") {
+            const noMore = checkNoMoreConsonants(puzzle.secretPhrase, puzzle.revealedIndices, "ENGLISH");
+            wheelState.noMoreConsonants = noMore;
+            if (noMore) {
+              wheelState.lastActionMessage = `\u{1F514} NO MORE CONSONANTS! (Kh\xF4ng c\xF2n ph\u1EE5 \xE2m n\xE0o tr\xEAn b\u1EA3ng). \u0110\u1ED9i ${teamName} bu\u1ED9c ph\u1EA3i ch\u1ECDn: Mua nguy\xEAn \xE2m (250\u0111) ho\u1EB7c \u0110o\xE1n \xF4 ch\u1EEF!`;
+              io2.to(`room:${roomCode}`).emit("game:magic_wheel:no_more_consonants", { teamId: tId, teamName });
+            } else {
+              wheelState.lastActionMessage = generateFlexibleMCCommentary("LETTER_HIT", {
+                teamName,
+                letter: normLetter,
+                count: check.count,
+                points: earned
+              });
+            }
+          } else {
+            wheelState.lastActionMessage = generateFlexibleMCCommentary("LETTER_HIT", {
+              teamName,
+              letter: normLetter,
+              count: check.count,
+              points: earned
+            });
+          }
         }
         wheelState.pendingSpecialAction = "NONE";
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
@@ -16297,7 +16371,13 @@ function registerSocketHandlers(io2) {
           return;
         }
         wheelState.phase = "SPIN_WAITING";
-        wheelState.lastActionMessage = `\u{1F6D2} Mua nguy\xEAn \xE2m th\xE0nh c\xF4ng! C\xF3 ${check.count} ch\u1EEF "${normVowel}" (-250\u0111). M\u1EDDi \u0110\u1ED9i ${teamName} ti\u1EBFp t\u1EE5c quay n\xF3n, mua ti\u1EBFp nguy\xEAn \xE2m ho\u1EB7c Gi\u1EA3i \xF4 ch\u1EEF!`;
+        const noMore = checkNoMoreConsonants(puzzle.secretPhrase, puzzle.revealedIndices, "ENGLISH");
+        wheelState.noMoreConsonants = noMore;
+        if (noMore) {
+          wheelState.lastActionMessage = `\u{1F6D2} Mua nguy\xEAn \xE2m th\xE0nh c\xF4ng! C\xF3 ${check.count} ch\u1EEF "${normVowel}" (-250\u0111). (\u{1F514} NO MORE CONSONANTS: B\u1EA1n ch\u1EC9 c\xF3 th\u1EC3 Mua ti\u1EBFp nguy\xEAn \xE2m ho\u1EB7c \u0110o\xE1n \xF4 ch\u1EEF!)`;
+        } else {
+          wheelState.lastActionMessage = `\u{1F6D2} Mua nguy\xEAn \xE2m th\xE0nh c\xF4ng! C\xF3 ${check.count} ch\u1EEF "${normVowel}" (-250\u0111). M\u1EDDi \u0110\u1ED9i ${teamName} ti\u1EBFp t\u1EE5c quay n\xF3n, mua ti\u1EBFp nguy\xEAn \xE2m ho\u1EB7c Gi\u1EA3i \xF4 ch\u1EEF!`;
+        }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       } else {
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
@@ -16310,7 +16390,11 @@ function registerSocketHandlers(io2) {
         });
         advanceMagicWheelTurnHelper(wheelState, room.teams);
         wheelState.phase = "SPIN_WAITING";
-        wheelState.lastActionMessage = `\u{1F6D2} Kh\xF4ng c\xF3 nguy\xEAn \xE2m "${normVowel}" (-250\u0111)! Quy\u1EC1n ch\u01A1i chuy\u1EC3n sang ${wheelState.currentTurnTeamName}.`;
+        if (wheelState.edition === "ENGLISH" && wheelState.noMoreConsonants) {
+          wheelState.lastActionMessage = `\u{1F6D2} Kh\xF4ng c\xF3 nguy\xEAn \xE2m "${normVowel}" (-250\u0111)! Quy\u1EC1n ch\u01A1i chuy\u1EC3n sang ${wheelState.currentTurnTeamName}. (\u{1F514} NO MORE CONSONANTS: B\u1EA1n ch\u1EC9 c\xF3 th\u1EC3 Mua nguy\xEAn \xE2m ho\u1EB7c \u0110o\xE1n \xF4 ch\u1EEF!)`;
+        } else {
+          wheelState.lastActionMessage = `\u{1F6D2} Kh\xF4ng c\xF3 nguy\xEAn \xE2m "${normVowel}" (-250\u0111)! Quy\u1EC1n ch\u01A1i chuy\u1EC3n sang ${wheelState.currentTurnTeamName}.`;
+        }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       }
     };
@@ -16408,10 +16492,18 @@ function registerSocketHandlers(io2) {
         return;
       }
       if (stage === "MAIN" && wheelState.mainRoundNumber === 3 && (wheelState.round3ForbiddenSolveTeams || []).includes(tId)) {
-        const isAllOpen = isPuzzleFullyRevealed(wheelState.currentPuzzle.secretPhrase, wheelState.currentPuzzle.revealedIndices);
-        if (!isAllOpen && forcedVerdict === void 0) {
-          socket.emit("error", "Theo lu\u1EADt V\xF2ng 3 VTV3: B\u1EA1n ph\u1EA3i l\u1EADt m\u1EDF t\u1EEBng ch\u1EEF c\xE1i cho \u0111\u1EBFn \xF4 cu\u1ED1i c\xF9ng, kh\xF4ng \u0111\u01B0\u1EE3c \u0111o\xE1n t\u1EAFt c\u1EA3 \xF4 ch\u1EEF.");
-          return;
+        if (wheelState.edition === "ENGLISH") {
+          const hasConsonants = hasRemainingConsonants(wheelState.currentPuzzle.secretPhrase, wheelState.currentPuzzle.revealedIndices);
+          if (hasConsonants && forcedVerdict === void 0) {
+            socket.emit("error", "Theo lu\u1EADt Wheel of Fortune V\xF2ng 3: B\u1EA1n ph\u1EA3i l\u1EADt m\u1EDF h\u1EBFt t\u1EA5t c\u1EA3 c\xE1c ph\u1EE5 \xE2m (No more consonants) tr\u01B0\u1EDBc khi \u0111\u01B0\u1EE3c quy\u1EC1n Gi\u1EA3i \xD4 Ch\u1EEF!");
+            return;
+          }
+        } else {
+          const isAllOpen = isPuzzleFullyRevealed(wheelState.currentPuzzle.secretPhrase, wheelState.currentPuzzle.revealedIndices);
+          if (!isAllOpen && forcedVerdict === void 0) {
+            socket.emit("error", "Theo lu\u1EADt V\xF2ng 3 VTV3: B\u1EA1n ph\u1EA3i l\u1EADt m\u1EDF t\u1EEBng ch\u1EEF c\xE1i cho \u0111\u1EBFn \xF4 cu\u1ED1i c\xF9ng, kh\xF4ng \u0111\u01B0\u1EE3c \u0111o\xE1n t\u1EAFt c\u1EA3 \xF4 ch\u1EEF.");
+            return;
+          }
         }
       }
       const isCorrect = typeof forcedVerdict === "boolean" ? forcedVerdict : matchWholeSecretPhrase(wheelState.currentPuzzle.secretPhrase, answer);
@@ -16695,7 +16787,14 @@ function registerSocketHandlers(io2) {
         wheelState.lastActionMessage = `Qu\xE1n qu\xE2n ${wheelState.currentTurnTeamName} ch\u1ECDn QUAY PH\u1EA6N TH\u01AF\u1EDENG TR\u01AF\u1EDAC! M\u1EDDi b\u1EA5m quay chi\u1EBFc n\xF3n Phong B\xEC \u0110\u1EB7c Bi\u1EC7t!`;
       } else {
         wheelState.phase = "SPECIAL_PICK_LETTERS";
-        wheelState.lastActionMessage = `Qu\xE1n qu\xE2n ${wheelState.currentTurnTeamName} ch\u1ECDn GI\u1EA2I \xD4 CH\u1EEE TR\u01AF\u1EDAC! H\xE3y ch\u1ECDn ${wheelState.specialAllowedLettersCount || 3} ch\u1EEF c\xE1i tr\u1EE3 gi\xFAp!`;
+        if (wheelState.edition === "ENGLISH" && wheelState.currentPuzzle) {
+          const res = applyBonusRoundGivenLetters(wheelState.currentPuzzle.secretPhrase, wheelState.currentPuzzle.revealedIndices || []);
+          wheelState.currentPuzzle.revealedIndices = res.revealedIndices;
+          wheelState.guessedLetters = Array.from(/* @__PURE__ */ new Set([...wheelState.guessedLetters || [], ...ENGLISH_BONUS_ROUND_GIVEN_LETTERS]));
+          wheelState.lastActionMessage = `Qu\xE1n qu\xE2n ${wheelState.currentTurnTeamName} ch\u1ECDn GI\u1EA2I \xD4 CH\u1EEE TR\u01AF\u1EDAC! \u2B50 WHEEL OF FORTUNE BONUS ROUND: \u0110\xE3 m\u1EDF s\u1EB5n ${res.count} ch\u1EEF c\xE1i t\u1EEB R, S, T, L, N, E! M\u1EDDi b\u1EA1n ch\u1ECDn 3 PH\u1EE4 \xC2M + 1 NGUY\xCAN \xC2M!`;
+        } else {
+          wheelState.lastActionMessage = `Qu\xE1n qu\xE2n ${wheelState.currentTurnTeamName} ch\u1ECDn GI\u1EA2I \xD4 CH\u1EEE TR\u01AF\u1EDAC! H\xE3y ch\u1ECDn ${wheelState.specialAllowedLettersCount || 3} ch\u1EEF c\xE1i tr\u1EE3 gi\xFAp!`;
+        }
       }
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
@@ -16707,13 +16806,23 @@ function registerSocketHandlers(io2) {
       if (!wheelState || wheelState.phase !== "SPECIAL_PICK_LETTERS" || !wheelState.currentPuzzle) return;
       if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
       if (!teamId && !isSandboxSocket && !isAdmin) return;
-      const maxK = wheelState.specialAllowedLettersCount || 3;
-      const cleanLetters = Array.from(
-        new Set(letters.map((l) => normalizeVietnameseBaseLetter(l)).filter(Boolean))
-      ).slice(0, maxK);
+      let cleanLetters = [];
+      if (wheelState.edition === "ENGLISH") {
+        const given = ENGLISH_BONUS_ROUND_GIVEN_LETTERS;
+        const vowels = ENGLISH_BONUS_ROUND_PICKABLE_VOWELS;
+        const upperLetters = letters.map((l) => l.trim().toUpperCase()).filter(Boolean);
+        const cons = upperLetters.filter((l) => !given.includes(l) && !vowels.includes(l) && /[A-Z]/.test(l));
+        const vow = upperLetters.filter((l) => vowels.includes(l));
+        cleanLetters = [...Array.from(new Set(cons)).slice(0, 3), ...Array.from(new Set(vow)).slice(0, 1)];
+      } else {
+        const maxK = wheelState.specialAllowedLettersCount || 3;
+        cleanLetters = Array.from(
+          new Set(letters.map((l) => normalizeVietnameseBaseLetter(l)).filter(Boolean))
+        ).slice(0, maxK);
+      }
       if (cleanLetters.length === 0) return;
       wheelState.specialPickedLetters = cleanLetters;
-      wheelState.guessedLetters = [...cleanLetters];
+      wheelState.guessedLetters = Array.from(/* @__PURE__ */ new Set([...wheelState.guessedLetters || [], ...cleanLetters]));
       let curRevealed = [...wheelState.currentPuzzle.revealedIndices || []];
       let totalFound = 0;
       for (const ch of cleanLetters) {

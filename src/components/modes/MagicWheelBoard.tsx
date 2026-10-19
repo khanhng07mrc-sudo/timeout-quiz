@@ -14,6 +14,11 @@ import {
   applyToneToVietnameseVowel,
   extractToneFromVietnameseChar,
   VietnameseToneMark,
+  hasRemainingConsonants,
+  checkNoMoreConsonants,
+  ENGLISH_BONUS_ROUND_GIVEN_LETTERS,
+  ENGLISH_BONUS_ROUND_PICKABLE_CONSONANTS,
+  ENGLISH_BONUS_ROUND_PICKABLE_VOWELS,
 } from "@/lib/game-engine/magic-wheel";
 import { formatCategoryByEdition } from "@/lib/game-engine/magic-wheel-categories";
 import { soundManager } from "@/lib/sound-manager";
@@ -1891,7 +1896,21 @@ export default function MagicWheelBoard({
 
   const activeTeam = teams.find((t) => t.id === (tossUpBuzzedTeamId || currentTurnTeamId));
 
-  // Rule Vòng 3 check: Cấm đoán cả ô chữ khi chưa mở hết chữ
+  // Kiểm tra trạng thái HẾT PHỤ ÂM (CHỈ ÁP DỤNG VỚI LUẬT ANH, TUYỆT ĐỐI KHÔNG CHỒNG CHÉO VỚI BẢN VIỆT)
+  const isNoMoreConsonants =
+    edition === "ENGLISH" &&
+    Boolean(
+      activeState.noMoreConsonants ||
+      checkNoMoreConsonants(currentPuzzle?.secretPhrase || "", currentPuzzle?.revealedIndices || [], "ENGLISH")
+    );
+
+  const hasUnrevealedConsonants =
+    edition === "ENGLISH" &&
+    hasRemainingConsonants(currentPuzzle?.secretPhrase || "", currentPuzzle?.revealedIndices || []);
+
+  // Rule Vòng 3 check:
+  // - Bản Việt: Bắt buộc mở hết toàn bộ chữ cái (kể cả nguyên âm) cho đến ô cuối cùng mới được đoán
+  // - Bản Anh: Cho phép đoán ô chữ sau khi TẤT CẢ PHỤ ÂM đã lật mở (No more consonants)!
   const secretLettersOnly = (currentPuzzle?.secretPhrase || "").replace(/[^a-zA-Zà-ỹÀ-Ỹ]/g, "");
   const remainingHiddenLetters = Math.max(
     0,
@@ -1901,7 +1920,7 @@ export default function MagicWheelBoard({
     roundStage === "MAIN" &&
     mainRoundNumber === 3 &&
     (activeState.round3ForbiddenSolveTeams || []).includes(currentTurnTeamId) &&
-    remainingHiddenLetters > 0 &&
+    (edition === "ENGLISH" ? hasUnrevealedConsonants : remainingHiddenLetters > 0) &&
     !mustSolveWithTones;
 
   // ── Format 4-Row VTV3 Grid (14 columns per row) ───────────────────────────
@@ -3084,7 +3103,9 @@ export default function MagicWheelBoard({
                       👑 VÒNG ĐẶC BIỆT — Quán quân: {formatTeamLabel(currentTurnTeamName)}
                     </span>
                     <span className="text-[11px] font-bold text-amber-200">
-                      Được chọn {specialAllowedLettersCount} chữ cái · 30s suy nghĩ + 10s trả lời
+                      {edition === "ENGLISH"
+                        ? "Đã mở sẵn R, S, T, L, N, E · Chọn 3 Phụ âm + 1 Nguyên âm · 40s giải"
+                        : `Được chọn ${specialAllowedLettersCount} chữ cái · 30s suy nghĩ + 10s trả lời`}
                     </span>
                   </div>
 
@@ -3139,49 +3160,166 @@ export default function MagicWheelBoard({
                   })()}
 
                   {phase === "SPECIAL_PICK_LETTERS" && (
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-amber-200">
-                          Chọn đủ {specialAllowedLettersCount} chữ cái trợ giúp ({specialPickedSet.length}/{specialAllowedLettersCount}):
-                        </span>
-                        <button
-                          type="button"
-                          disabled={specialPickedSet.length !== specialAllowedLettersCount}
-                          onClick={() => onSpecialPickLetters?.(specialPickedSet)}
-                          className={`px-4 py-1.5 rounded-xl font-black text-xs transition ${
-                            specialPickedSet.length === specialAllowedLettersCount
-                              ? "bg-emerald-400 text-slate-950 shadow-lg cursor-pointer hover:brightness-110"
-                              : "bg-white/10 text-slate-500 cursor-not-allowed"
-                          }`}
-                        >
-                          MỞ {specialAllowedLettersCount} CHỮ CÁI & BẮT ĐẦU 40 GIÂY ➔
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-7 sm:grid-cols-10 gap-1">
-                        {VIETNAMESE_ALPHABET.map((letter) => {
-                          const picked = specialPickedSet.includes(letter);
-                          return (
+                    <div className="space-y-3">
+                      {edition === "ENGLISH" ? (
+                        /* ── LUẬT ANH: Mở sẵn R, S, T, L, N, E và chọn 3 Phụ âm + 1 Nguyên âm ── */
+                        <div className="space-y-2.5">
+                          {/* Banner 6 chữ cái mở sẵn */}
+                          <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-200">
+                            <span className="font-black text-xs text-amber-300">⭐ ĐÃ MỞ SẴN TRÊN BẢNG:</span>
+                            {ENGLISH_BONUS_ROUND_GIVEN_LETTERS.map((ch) => (
+                              <span
+                                key={ch}
+                                className="px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 font-black text-xs shadow-md border border-white/40"
+                              >
+                                {ch}
+                              </span>
+                            ))}
+                            <span className="text-[11px] text-amber-100/90 ml-auto font-medium hidden sm:inline">
+                              (R, S, T, L, N, E đã được hệ thống lật mở trước)
+                            </span>
+                          </div>
+
+                          {(() => {
+                            const selectedCons = specialPickedSet.filter((c) => !["A", "I", "O", "U"].includes(c));
+                            const selectedVows = specialPickedSet.filter((c) => ["A", "I", "O", "U"].includes(c));
+                            const isReady = selectedCons.length === 3 && selectedVows.length === 1;
+
+                            return (
+                              <div className="space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold text-amber-200">
+                                    Chọn 3 Phụ âm ({selectedCons.length}/3) &amp; 1 Nguyên âm ({selectedVows.length}/1):
+                                  </span>
+                                  <button
+                                    type="button"
+                                    disabled={!isReady}
+                                    onClick={() => onSpecialPickLetters?.(specialPickedSet)}
+                                    className={`px-4 py-1.5 rounded-xl font-black text-xs transition ${
+                                      isReady
+                                        ? "bg-emerald-400 text-slate-950 shadow-lg cursor-pointer hover:brightness-110"
+                                        : "bg-white/10 text-slate-500 cursor-not-allowed"
+                                    }`}
+                                  >
+                                    MỞ 4 CHỮ CÁI &amp; BẮT ĐẦU 40 GIÂY ➔
+                                  </button>
+                                </div>
+
+                                {/* Nhóm 1: 3 Phụ âm */}
+                                <div className="p-2.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
+                                  <span className="text-[11px] font-black uppercase text-cyan-300 block">
+                                    1. Phụ âm ({selectedCons.length}/3) — Chọn 3 chữ:
+                                  </span>
+                                  <div className="grid grid-cols-8 sm:grid-cols-11 gap-1">
+                                    {ENGLISH_BONUS_ROUND_PICKABLE_CONSONANTS.map((letter) => {
+                                      const picked = selectedCons.includes(letter);
+                                      return (
+                                        <button
+                                          key={letter}
+                                          type="button"
+                                          onClick={() => {
+                                            setSpecialPickedSet((prev) => {
+                                              if (prev.includes(letter)) return prev.filter((x) => x !== letter);
+                                              const currentCons = prev.filter((c) => !["A", "I", "O", "U"].includes(c));
+                                              if (currentCons.length >= 3) return prev;
+                                              return [...prev, letter];
+                                            });
+                                          }}
+                                          className={`p-1.5 sm:p-2 rounded-lg font-black text-xs transition cursor-pointer ${
+                                            picked
+                                              ? "bg-cyan-400 text-slate-950 border-2 border-white scale-105 shadow"
+                                              : "bg-white/10 text-slate-200 hover:bg-white/20 border border-white/15"
+                                          }`}
+                                        >
+                                          {letter}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
+                                {/* Nhóm 2: 1 Nguyên âm */}
+                                <div className="p-2.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
+                                  <span className="text-[11px] font-black uppercase text-amber-300 block">
+                                    2. Nguyên âm ({selectedVows.length}/1) — Chọn 1 chữ:
+                                  </span>
+                                  <div className="flex gap-2">
+                                    {ENGLISH_BONUS_ROUND_PICKABLE_VOWELS.map((letter) => {
+                                      const picked = selectedVows.includes(letter);
+                                      return (
+                                        <button
+                                          key={letter}
+                                          type="button"
+                                          onClick={() => {
+                                            setSpecialPickedSet((prev) => {
+                                              if (prev.includes(letter)) return prev.filter((x) => x !== letter);
+                                              const withoutVows = prev.filter((c) => !["A", "I", "O", "U"].includes(c));
+                                              return [...withoutVows, letter];
+                                            });
+                                          }}
+                                          className={`px-4 py-2 rounded-lg font-black text-xs transition cursor-pointer ${
+                                            picked
+                                              ? "bg-amber-400 text-slate-950 border-2 border-white scale-105 shadow"
+                                              : "bg-white/10 text-slate-200 hover:bg-white/20 border border-white/15"
+                                          }`}
+                                        >
+                                          {letter}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        /* ── LUẬT VIỆT: Giữ nguyên 100% cơ chế cũ (chọn K chữ cái tự do từ bảng tiếng Việt) ── */
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-amber-200">
+                              Chọn đủ {specialAllowedLettersCount} chữ cái trợ giúp ({specialPickedSet.length}/{specialAllowedLettersCount}):
+                            </span>
                             <button
-                              key={letter}
                               type="button"
-                              onClick={() => {
-                                setSpecialPickedSet((prev) => {
-                                  if (prev.includes(letter)) return prev.filter((x) => x !== letter);
-                                  if (prev.length >= specialAllowedLettersCount) return prev;
-                                  return [...prev, letter];
-                                });
-                              }}
-                              className={`p-1.5 sm:p-2 rounded-lg font-black text-xs transition cursor-pointer ${
-                                picked
-                                  ? "bg-amber-400 text-slate-950 border-2 border-white scale-105 shadow"
-                                  : "bg-white/10 text-slate-200 hover:bg-white/20 border border-white/15"
+                              disabled={specialPickedSet.length !== specialAllowedLettersCount}
+                              onClick={() => onSpecialPickLetters?.(specialPickedSet)}
+                              className={`px-4 py-1.5 rounded-xl font-black text-xs transition ${
+                                specialPickedSet.length === specialAllowedLettersCount
+                                  ? "bg-emerald-400 text-slate-950 shadow-lg cursor-pointer hover:brightness-110"
+                                  : "bg-white/10 text-slate-500 cursor-not-allowed"
                               }`}
                             >
-                              {letter}
+                              MỞ {specialAllowedLettersCount} CHỮ CÁI &amp; BẮT ĐẦU 40 GIÂY ➔
                             </button>
-                          );
-                        })}
-                      </div>
+                          </div>
+                          <div className="grid grid-cols-7 sm:grid-cols-10 gap-1">
+                            {VIETNAMESE_ALPHABET.map((letter) => {
+                              const picked = specialPickedSet.includes(letter);
+                              return (
+                                <button
+                                  key={letter}
+                                  type="button"
+                                  onClick={() => {
+                                    setSpecialPickedSet((prev) => {
+                                      if (prev.includes(letter)) return prev.filter((x) => x !== letter);
+                                      if (prev.length >= specialAllowedLettersCount) return prev;
+                                      return [...prev, letter];
+                                    });
+                                  }}
+                                  className={`p-1.5 sm:p-2 rounded-lg font-black text-xs transition cursor-pointer ${
+                                    picked
+                                      ? "bg-amber-400 text-slate-950 border-2 border-white scale-105 shadow"
+                                      : "bg-white/10 text-slate-200 hover:bg-white/20 border border-white/15"
+                                  }`}
+                                >
+                                  {letter}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -3244,6 +3382,14 @@ export default function MagicWheelBoard({
                         />
                       </div>
 
+                      {edition === "ENGLISH" && isNoMoreConsonants && (
+                        <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/30 to-amber-500/20 border-2 border-amber-400 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.4)] animate-pulse text-center">
+                          <span className="text-lg">🔔</span>
+                          <span className="font-black text-xs sm:text-sm tracking-wide text-amber-300">NO MORE CONSONANTS!</span>
+                          <span className="text-[11px] text-amber-100 font-semibold hidden sm:inline">— Hết phụ âm trên bảng! Bạn chỉ có thể Mua Nguyên Âm (250đ) hoặc Đoán Ô Chữ.</span>
+                        </div>
+                      )}
+
                       {(() => {
                         const isMyTurnToSpin = isHost || (myTeamId ? myTeamId === currentTurnTeamId : effectiveIsMyTurn);
                         if (canInteract && isMyTurnToSpin) {
@@ -3252,20 +3398,25 @@ export default function MagicWheelBoard({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated) return;
+                                  if (!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated || isNoMoreConsonants) return;
                                   if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
                                   setLocalIsSpinning(true);
                                   onSpin?.(oscillatingPower);
                                 }}
-                                disabled={!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated}
+                                disabled={!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated || isNoMoreConsonants}
                                 className={`flex-1 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm text-white transition shadow-[0_0_20px_rgba(236,72,153,0.4)] ${
                                   isCurrentTeamEliminated
                                     ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                                    : isNoMoreConsonants
+                                    ? "bg-slate-850 text-amber-400/80 border border-amber-500/40 cursor-not-allowed opacity-75"
                                     : "bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:brightness-110 active:scale-98 cursor-pointer"
                                 }`}
+                                title={isNoMoreConsonants ? "Không còn phụ âm nào trên bảng (No more consonants). Bạn chỉ có thể Mua nguyên âm hoặc Đoán ô chữ!" : undefined}
                               >
                                 {isCurrentTeamEliminated
                                   ? "⛔ ĐÃ HẾT LƯỢT VÒNG NÀY (ĐOÁN SAI Ô CHỮ)"
+                                  : isNoMoreConsonants
+                                  ? "🚫 HẾT PHỤ ÂM (NO MORE CONSONANTS)"
                                   : `✦ CHỐT LỰC & QUAY NÓN (${oscillatingPower}%) ✦`}
                               </button>
                               {edition === "ENGLISH" && subMode === "WORD_PUZZLE" && (
@@ -3280,7 +3431,7 @@ export default function MagicWheelBoard({
                                   className={`px-3 py-2.5 rounded-xl font-black text-xs whitespace-nowrap transition shadow ${
                                     isCurrentTeamEliminated || (roundScores?.[currentTurnTeamId] || 0) < 250
                                       ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
-                                      : "text-amber-100 bg-gradient-to-r from-amber-600 to-orange-700 hover:brightness-110 active:scale-98 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                                      : "text-amber-100 bg-gradient-to-r from-amber-600 to-orange-700 hover:brightness-110 active:scale-98 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.3)] animate-pulse"
                                   }`}
                                   title="Mua nguyên âm (A, E, I, O, U) với 250đ từ điểm vòng của đội"
                                 >
@@ -3299,12 +3450,29 @@ export default function MagicWheelBoard({
                                       ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
                                       : "text-black bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 active:scale-98 cursor-pointer"
                                   }`}
+                                  title={
+                                    isSolveForbiddenInRound3
+                                      ? edition === "ENGLISH"
+                                        ? "Theo luật Vòng 3: Cần mở hết phụ âm trước khi đoán ô chữ"
+                                        : "Theo luật Vòng 3: Cần mở hết từng chữ cái trước khi đoán ô chữ"
+                                      : undefined
+                                  }
                                 >
                                   {isCurrentTeamEliminated
                                     ? "⛔ ĐÃ HẾT QUYỀN"
                                     : isSolveForbiddenInRound3
                                     ? "🔒 CẦN MỞ HẾT"
                                     : "🎯 GIẢI Ô CHỮ"}
+                                </button>
+                              )}
+                              {edition === "ENGLISH" && isNoMoreConsonants && onPassTurn && (
+                                <button
+                                  type="button"
+                                  onClick={() => onPassTurn()}
+                                  className="px-3 py-2.5 rounded-xl font-bold text-xs text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-600 transition cursor-pointer whitespace-nowrap"
+                                  title="Chuyển lượt cho đội kế tiếp nếu bạn không đủ 250đ mua nguyên âm và chưa chắc chắn đáp án"
+                                >
+                                  ⏭️ BỎ LƯỢT
                                 </button>
                               )}
                             </div>

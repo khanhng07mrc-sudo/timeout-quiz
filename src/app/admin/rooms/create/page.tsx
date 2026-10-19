@@ -14,6 +14,7 @@ import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 import { allocateQuestionsForMatch } from "@/lib/game-engine/question-allocator";
 import { downloadMagicWheelExcelTemplate, downloadMagicWheelJsonTemplate } from "@/lib/quiz-template-generator";
 import { MAGIC_WHEEL_PRESET_BANKS, offlineStorage } from "@/lib/offline-storage";
+import { BilingualCategoryPicker } from "@/components/modes/BilingualCategoryPicker";
 
 const GAME_MODES = [
   { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng làm bài, chấm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮", badge: "Toàn năng", badgeColor: "text-purple-300 bg-purple-500/20 border-purple-500/30" },
@@ -1403,18 +1404,16 @@ export default function CreateRoomPage() {
                           <span className="text-[11px] text-muted-foreground">Tối đa 14 ký tự/hàng</span>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            placeholder="Chủ đề (ví dụ: DANH NHÂN LỊCH SỬ)"
-                            value={p.category}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setMagicWheelPuzzles((prev) =>
-                                prev.map((item, i) => (i === idx ? { ...item, category: val } : item))
-                              );
-                            }}
-                            className="px-2.5 py-1.5 rounded bg-input border border-border text-xs uppercase"
-                          />
+                          <div className="w-full">
+                            <BilingualCategoryPicker
+                              value={p.category}
+                              onChange={(cat) => {
+                                setMagicWheelPuzzles((prev) =>
+                                  prev.map((item, i) => (i === idx ? { ...item, category: cat } : item))
+                                );
+                              }}
+                            />
+                          </div>
                           <input
                             type="text"
                             placeholder="Ô chữ bí mật (ví dụ: NGUYEN HUE)"

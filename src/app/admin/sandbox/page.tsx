@@ -44,6 +44,8 @@ import {
   VIETNAMESE_ALPHABET,
   BASE_24_SECTORS,
   isVietnameseAlphabetLetter,
+  hasRemainingConsonants,
+  checkNoMoreConsonants,
 } from "@/lib/game-engine/magic-wheel";
 import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
 import type { MagicWheelState, MagicWheelPuzzle } from "@/types";
@@ -4692,13 +4694,29 @@ export default function AdminSandboxPage() {
             } else {
               cur.phase = "SPIN_WAITING";
               cur.pendingSpecialAction = "NONE";
-              cur.lastActionMessage = generateFlexibleMCCommentary({
-                event: "LETTER_HIT",
-                teamName,
-                letter: normLetter,
-                count: check.count,
-                earnedPoints: earned,
-              });
+              if (cur.edition === "ENGLISH") {
+                const noMore = checkNoMoreConsonants(p.secretPhrase, p.revealedIndices, "ENGLISH");
+                cur.noMoreConsonants = noMore;
+                if (noMore) {
+                  cur.lastActionMessage = `🔔 NO MORE CONSONANTS! (Không còn phụ âm nào trên bảng). Đội ${teamName} buộc phải chọn: Mua nguyên âm (250đ) hoặc Đoán ô chữ!`;
+                } else {
+                  cur.lastActionMessage = generateFlexibleMCCommentary({
+                    event: "LETTER_HIT",
+                    teamName,
+                    letter: normLetter,
+                    count: check.count,
+                    earnedPoints: earned,
+                  });
+                }
+              } else {
+                cur.lastActionMessage = generateFlexibleMCCommentary({
+                  event: "LETTER_HIT",
+                  teamName,
+                  letter: normLetter,
+                  count: check.count,
+                  earnedPoints: earned,
+                });
+              }
             }
           } else {
             if (cur.expressTrainActive) {
@@ -4792,7 +4810,13 @@ export default function AdminSandboxPage() {
               cur.permanentScores[tId] = (cur.permanentScores[tId] || 0) + (cur.roundScores[tId] || 0);
             } else {
               cur.phase = "SPIN_WAITING";
-              cur.lastActionMessage = `🛒 Mua nguyên âm thành công! Có ${check.count} chữ "${normVowel}" (-250đ). Mời Đội ${teamName} tiếp tục quay nón, mua tiếp nguyên âm hoặc Giải ô chữ!`;
+              const noMore = checkNoMoreConsonants(p.secretPhrase, p.revealedIndices, "ENGLISH");
+              cur.noMoreConsonants = noMore;
+              if (noMore) {
+                cur.lastActionMessage = `🛒 Mua nguyên âm thành công! Có ${check.count} chữ "${normVowel}" (-250đ). (🔔 NO MORE CONSONANTS: Bạn chỉ có thể Mua tiếp nguyên âm hoặc Đoán ô chữ!)`;
+              } else {
+                cur.lastActionMessage = `🛒 Mua nguyên âm thành công! Có ${check.count} chữ "${normVowel}" (-250đ). Mời Đội ${teamName} tiếp tục quay nón, mua tiếp nguyên âm hoặc Giải ô chữ!`;
+              }
             }
           } else {
             const eligibleTeams = prev.teams.filter(
@@ -4805,7 +4829,11 @@ export default function AdminSandboxPage() {
             cur.currentTurnTeamId = eligibleTeams[nextIdx]?.id || "";
             cur.currentTurnTeamName = eligibleTeams[nextIdx]?.name || "";
             cur.phase = "SPIN_WAITING";
-            cur.lastActionMessage = `🛒 Không có nguyên âm "${normVowel}" (-250đ)! Quyền chơi chuyển sang ${cur.currentTurnTeamName}.`;
+            if (cur.edition === "ENGLISH" && cur.noMoreConsonants) {
+              cur.lastActionMessage = `🛒 Không có nguyên âm "${normVowel}" (-250đ)! Quyền chơi chuyển sang ${cur.currentTurnTeamName}. (🔔 NO MORE CONSONANTS: Bạn chỉ có thể Mua nguyên âm hoặc Đoán ô chữ!)`;
+            } else {
+              cur.lastActionMessage = `🛒 Không có nguyên âm "${normVowel}" (-250đ)! Quyền chơi chuyển sang ${cur.currentTurnTeamName}.`;
+            }
           }
           const nextRoom = { ...prev, magicWheelState: cur };
           roomStateRef.current = nextRoom;

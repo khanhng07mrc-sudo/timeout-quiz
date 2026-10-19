@@ -936,6 +936,7 @@ export interface MagicWheelState {
   edition?: "VIETNAMESE" | "ENGLISH"; // Phiên bản Việt (VTV3) hoặc Anh (Wheel of Fortune)
   englishPreset?: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3"; // 3 bộ đề tiếng Anh hoặc trộn ngẫu nhiên
   blackoutGuessedLetters?: boolean;   // Admin setting: Có bôi đen/làm mờ chữ cái đã đoán hay không (mặc định: true)
+  noMoreConsonants?: boolean;         // Bản Anh: Đã lật hết toàn bộ phụ âm, các ô chữ còn lại đều là nguyên âm (A, E, I, O, U)
 }
 
 // ─── Grid Caro Mode ──────────────────────────────────────────────────────────
@@ -1862,6 +1863,7 @@ export interface ServerToClientEvents {
   "game:magic_wheel:puzzle_solved": (payload: { teamId: string; teamName: string; isCorrect: boolean; secretPhrase: string; roundWonPoints: number }) => void;
   "game:magic_wheel:mystery_result": (payload: { teamId: string; outcome: "PRIZE_CASH" | "BANKRUPT" | "SAFE_POINTS"; points: number }) => void;
   "game:magic_wheel:lucky_picked": (payload: { teamId: string; index: number; letter: string }) => void;
+  "game:magic_wheel:no_more_consonants": (payload: { teamId?: string; teamName?: string }) => void;
 }
 
 export interface ClientToServerEvents {

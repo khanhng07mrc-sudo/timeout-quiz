@@ -530,6 +530,92 @@ export function isPuzzleFullyRevealed(phrase: string, revealedIndices: number[])
 }
 
 /**
+ * Kiểm tra xem ô chữ còn phụ âm nào chưa lật hay không (dành cho Bản Anh & Luật Vòng 3)
+ */
+export function hasRemainingConsonants(phrase: string, revealedIndices: number[]): boolean {
+  if (!phrase) return false;
+  const vowels = ["A", "E", "I", "O", "U"];
+  const upper = phrase.toUpperCase();
+  for (let i = 0; i < upper.length; i++) {
+    const ch = upper[i];
+    if (/[A-Z]/.test(ch) && !revealedIndices.includes(i)) {
+      if (!vowels.includes(ch)) {
+        return true; // Vẫn còn ít nhất 1 phụ âm chưa đoán!
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Kiểm tra xem ô chữ còn nguyên âm nào chưa lật hay không (dành cho Bản Anh)
+ */
+export function hasRemainingVowels(phrase: string, revealedIndices: number[]): boolean {
+  if (!phrase) return false;
+  const vowels = ["A", "E", "I", "O", "U"];
+  const upper = phrase.toUpperCase();
+  for (let i = 0; i < upper.length; i++) {
+    const ch = upper[i];
+    if (vowels.includes(ch) && !revealedIndices.includes(i)) {
+      return true; // Vẫn còn ít nhất 1 nguyên âm chưa lật!
+    }
+  }
+  return false;
+}
+
+/**
+ * Kiểm tra trạng thái "NO MORE CONSONANTS" (Hết phụ âm, tất cả ô còn lại đều là nguyên âm)
+ */
+export function checkNoMoreConsonants(
+  phrase: string,
+  revealedIndices: number[],
+  edition: "VIETNAMESE" | "ENGLISH" = "VIETNAMESE"
+): boolean {
+  if (edition !== "ENGLISH") return false;
+  // Đã hết phụ âm, và vẫn còn nguyên âm chưa lật
+  return !hasRemainingConsonants(phrase, revealedIndices) && hasRemainingVowels(phrase, revealedIndices);
+}
+
+/**
+ * Các chữ cái mặc định luôn được mở sẵn ở Vòng Đặc Biệt (Bonus Round) phiên bản Anh (Wheel of Fortune):
+ * R, S, T, L, N, E
+ */
+export const ENGLISH_BONUS_ROUND_GIVEN_LETTERS = ["R", "S", "T", "L", "N", "E"] as const;
+
+/**
+ * Danh sách phụ âm người chơi được phép chọn ở Vòng Đặc Biệt phiên bản Anh (loại trừ R, S, T, L, N):
+ */
+export const ENGLISH_BONUS_ROUND_PICKABLE_CONSONANTS = [
+  "B", "C", "D", "F", "G", "H", "J", "K", "M", "P", "Q", "V", "W", "X", "Y", "Z"
+] as const;
+
+/**
+ * Danh sách nguyên âm người chơi được phép chọn ở Vòng Đặc Biệt phiên bản Anh (loại trừ E):
+ */
+export const ENGLISH_BONUS_ROUND_PICKABLE_VOWELS = ["A", "I", "O", "U"] as const;
+
+/**
+ * Mở tất cả các vị trí xuất hiện của 6 chữ cái R, S, T, L, N, E trong ô chữ ở Vòng Đặc Biệt Bản Anh
+ */
+export function applyBonusRoundGivenLetters(
+  secretPhrase: string,
+  alreadyRevealedIndices: number[]
+): { revealedIndices: number[]; count: number } {
+  const given = ["R", "S", "T", "L", "N", "E"];
+  const upper = secretPhrase.toUpperCase();
+  const newlyFound: number[] = [];
+  for (let i = 0; i < upper.length; i++) {
+    if (given.includes(upper[i]) && !alreadyRevealedIndices.includes(i)) {
+      newlyFound.push(i);
+    }
+  }
+  return {
+    revealedIndices: [...alreadyRevealedIndices, ...newlyFound],
+    count: newlyFound.length,
+  };
+}
+
+/**
  * Đếm tỷ lệ chữ cái đã mở trên bảng (phục vụ Chuông Tăng Tốc ở Vòng 6+)
  */
 export function getPuzzleRevealedRatio(phrase: string, revealedIndices: number[]): number {

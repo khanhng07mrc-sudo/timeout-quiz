@@ -50,6 +50,12 @@ import {
   calculateSpecialRoundAllowedLetters,
   generateFlexibleMCCommentary,
   MagicWheelOperationMode,
+  hasRemainingConsonants,
+  checkNoMoreConsonants,
+  ENGLISH_BONUS_ROUND_GIVEN_LETTERS,
+  ENGLISH_BONUS_ROUND_PICKABLE_CONSONANTS,
+  ENGLISH_BONUS_ROUND_PICKABLE_VOWELS,
+  applyBonusRoundGivenLetters,
 } from "./game-engine/magic-wheel";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels, calculateItemIRTMetrics } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
@@ -7856,6 +7862,7 @@ export function registerSocketHandlers(io: IO) {
       wheelState.roundStage = stage;
       wheelState.mainRoundNumber = stage === "MAIN" ? mainIdx : 0;
       wheelState.guessedLetters = [];
+      wheelState.noMoreConsonants = false;
       wheelState.wrongGuessesCount = {};
       wheelState.roundScores = {};
       wheelState.freeSpinCount = {};
@@ -8232,6 +8239,10 @@ export function registerSocketHandlers(io: IO) {
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.isSpinning) return;
       if (wheelState.phase !== "SPIN_WAITING" && wheelState.phase !== "SPECIAL_SPIN_WAITING") return;
+      if (wheelState.edition === "ENGLISH" && wheelState.noMoreConsonants) {
+        socket.emit("error", "Không thể quay nón! Đã hết phụ âm trên bảng (No more consonants). Bạn chỉ có thể Mua nguyên âm (250đ) hoặc Đoán ô chữ!");
+        return;
+      }
 
       const room = await prisma.room.findUnique({
         where: { id: roomId },
@@ -8283,7 +8294,14 @@ export function registerSocketHandlers(io: IO) {
             return;
           } else {
             cur.phase = "SPECIAL_PICK_LETTERS";
-            cur.lastActionMessage = `🎁 Đã xác định Phong Bì Giải Thưởng Đặc Biệt! Bây giờ mời ${teamName} chọn ${cur.specialAllowedLettersCount || 3} chữ cái trợ giúp trên bảng!`;
+            if (cur.edition === "ENGLISH" && cur.currentPuzzle) {
+              const res = applyBonusRoundGivenLetters(cur.currentPuzzle.secretPhrase, cur.currentPuzzle.revealedIndices || []);
+              cur.currentPuzzle.revealedIndices = res.revealedIndices;
+              cur.guessedLetters = Array.from(new Set([...(cur.guessedLetters || []), ...ENGLISH_BONUS_ROUND_GIVEN_LETTERS]));
+              cur.lastActionMessage = `🎁 Đã xác định Phong Bì Đặc Biệt! ⭐ WHEEL OF FORTUNE BONUS ROUND: Đã mở sẵn ${res.count} chữ cái từ R, S, T, L, N, E! Mời Quán quân ${teamName} chọn 3 PHỤ ÂM + 1 NGUYÊN ÂM!`;
+            } else {
+              cur.lastActionMessage = `🎁 Đã xác định Phong Bì Giải Thưởng Đặc Biệt! Bây giờ mời ${teamName} chọn ${cur.specialAllowedLettersCount || 3} chữ cái trợ giúp trên bảng!`;
+            }
             io.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
             return;
           }
@@ -8555,12 +8573,28 @@ export function registerSocketHandlers(io: IO) {
             : `🔔 Chuông Tăng Tốc: Có ${check.count} chữ "${normLetter}" (+${earned}đ)! Mời Đội ${teamName} gọi tiếp hoặc Giải Ô Chữ ngay!`;
         } else {
           wheelState.phase = "SPIN_WAITING";
-          wheelState.lastActionMessage = generateFlexibleMCCommentary("LETTER_HIT", {
-            teamName,
-            letter: normLetter,
-            count: check.count,
-            points: earned,
-          });
+          if (wheelState.edition === "ENGLISH") {
+            const noMore = checkNoMoreConsonants(puzzle.secretPhrase, puzzle.revealedIndices, "ENGLISH");
+            wheelState.noMoreConsonants = noMore;
+            if (noMore) {
+              wheelState.lastActionMessage = `🔔 NO MORE CONSONANTS! (Không còn phụ âm nào trên bảng). Đội ${teamName} buộc phải chọn: Mua nguyên âm (250đ) hoặc Đoán ô chữ!`;
+              io.to(`room:${roomCode}`).emit("game:magic_wheel:no_more_consonants", { teamId: tId, teamName });
+            } else {
+              wheelState.lastActionMessage = generateFlexibleMCCommentary("LETTER_HIT", {
+                teamName,
+                letter: normLetter,
+                count: check.count,
+                points: earned,
+              });
+            }
+          } else {
+            wheelState.lastActionMessage = generateFlexibleMCCommentary("LETTER_HIT", {
+              teamName,
+              letter: normLetter,
+              count: check.count,
+              points: earned,
+            });
+          }
         }
         wheelState.pendingSpecialAction = "NONE";
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
@@ -8677,7 +8711,13 @@ export function registerSocketHandlers(io: IO) {
         }
 
         wheelState.phase = "SPIN_WAITING";
-        wheelState.lastActionMessage = `🛒 Mua nguyên âm thành công! Có ${check.count} chữ "${normVowel}" (-250đ). Mời Đội ${teamName} tiếp tục quay nón, mua tiếp nguyên âm hoặc Giải ô chữ!`;
+        const noMore = checkNoMoreConsonants(puzzle.secretPhrase, puzzle.revealedIndices, "ENGLISH");
+        wheelState.noMoreConsonants = noMore;
+        if (noMore) {
+          wheelState.lastActionMessage = `🛒 Mua nguyên âm thành công! Có ${check.count} chữ "${normVowel}" (-250đ). (🔔 NO MORE CONSONANTS: Bạn chỉ có thể Mua tiếp nguyên âm hoặc Đoán ô chữ!)`;
+        } else {
+          wheelState.lastActionMessage = `🛒 Mua nguyên âm thành công! Có ${check.count} chữ "${normVowel}" (-250đ). Mời Đội ${teamName} tiếp tục quay nón, mua tiếp nguyên âm hoặc Giải ô chữ!`;
+        }
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       } else {
         // Miss vowel -> Turn passes!
@@ -8691,7 +8731,11 @@ export function registerSocketHandlers(io: IO) {
         });
         advanceMagicWheelTurnHelper(wheelState, room.teams);
         wheelState.phase = "SPIN_WAITING";
-        wheelState.lastActionMessage = `🛒 Không có nguyên âm "${normVowel}" (-250đ)! Quyền chơi chuyển sang ${wheelState.currentTurnTeamName}.`;
+        if (wheelState.edition === "ENGLISH" && wheelState.noMoreConsonants) {
+          wheelState.lastActionMessage = `🛒 Không có nguyên âm "${normVowel}" (-250đ)! Quyền chơi chuyển sang ${wheelState.currentTurnTeamName}. (🔔 NO MORE CONSONANTS: Bạn chỉ có thể Mua nguyên âm hoặc Đoán ô chữ!)`;
+        } else {
+          wheelState.lastActionMessage = `🛒 Không có nguyên âm "${normVowel}" (-250đ)! Quyền chơi chuyển sang ${wheelState.currentTurnTeamName}.`;
+        }
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       }
     };
@@ -8804,10 +8848,20 @@ export function registerSocketHandlers(io: IO) {
 
       // Vòng 3 rule check
       if (stage === "MAIN" && wheelState.mainRoundNumber === 3 && (wheelState.round3ForbiddenSolveTeams || []).includes(tId)) {
-        const isAllOpen = isPuzzleFullyRevealed(wheelState.currentPuzzle.secretPhrase, wheelState.currentPuzzle.revealedIndices);
-        if (!isAllOpen && forcedVerdict === undefined) {
-          socket.emit("error", "Theo luật Vòng 3 VTV3: Bạn phải lật mở từng chữ cái cho đến ô cuối cùng, không được đoán tắt cả ô chữ.");
-          return;
+        if (wheelState.edition === "ENGLISH") {
+          // Luật Anh: Cho phép đoán ô chữ sau khi TẤT CẢ PHỤ ÂM đã lật mở (No more consonants)!
+          const hasConsonants = hasRemainingConsonants(wheelState.currentPuzzle.secretPhrase, wheelState.currentPuzzle.revealedIndices);
+          if (hasConsonants && forcedVerdict === undefined) {
+            socket.emit("error", "Theo luật Wheel of Fortune Vòng 3: Bạn phải lật mở hết tất cả các phụ âm (No more consonants) trước khi được quyền Giải Ô Chữ!");
+            return;
+          }
+        } else {
+          // Luật Việt: Bắt buộc lật mở tất cả các chữ cái (kể cả nguyên âm) cho đến ô cuối cùng
+          const isAllOpen = isPuzzleFullyRevealed(wheelState.currentPuzzle.secretPhrase, wheelState.currentPuzzle.revealedIndices);
+          if (!isAllOpen && forcedVerdict === undefined) {
+            socket.emit("error", "Theo luật Vòng 3 VTV3: Bạn phải lật mở từng chữ cái cho đến ô cuối cùng, không được đoán tắt cả ô chữ.");
+            return;
+          }
         }
       }
 
@@ -9146,7 +9200,14 @@ export function registerSocketHandlers(io: IO) {
         wheelState.lastActionMessage = `Quán quân ${wheelState.currentTurnTeamName} chọn QUAY PHẦN THƯỞNG TRƯỚC! Mời bấm quay chiếc nón Phong Bì Đặc Biệt!`;
       } else {
         wheelState.phase = "SPECIAL_PICK_LETTERS";
-        wheelState.lastActionMessage = `Quán quân ${wheelState.currentTurnTeamName} chọn GIẢI Ô CHỮ TRƯỚC! Hãy chọn ${wheelState.specialAllowedLettersCount || 3} chữ cái trợ giúp!`;
+        if (wheelState.edition === "ENGLISH" && wheelState.currentPuzzle) {
+          const res = applyBonusRoundGivenLetters(wheelState.currentPuzzle.secretPhrase, wheelState.currentPuzzle.revealedIndices || []);
+          wheelState.currentPuzzle.revealedIndices = res.revealedIndices;
+          wheelState.guessedLetters = Array.from(new Set([...(wheelState.guessedLetters || []), ...ENGLISH_BONUS_ROUND_GIVEN_LETTERS]));
+          wheelState.lastActionMessage = `Quán quân ${wheelState.currentTurnTeamName} chọn GIẢI Ô CHỮ TRƯỚC! ⭐ WHEEL OF FORTUNE BONUS ROUND: Đã mở sẵn ${res.count} chữ cái từ R, S, T, L, N, E! Mời bạn chọn 3 PHỤ ÂM + 1 NGUYÊN ÂM!`;
+        } else {
+          wheelState.lastActionMessage = `Quán quân ${wheelState.currentTurnTeamName} chọn GIẢI Ô CHỮ TRƯỚC! Hãy chọn ${wheelState.specialAllowedLettersCount || 3} chữ cái trợ giúp!`;
+        }
       }
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
@@ -9160,14 +9221,26 @@ export function registerSocketHandlers(io: IO) {
       if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
       if (!teamId && !isSandboxSocket && !isAdmin) return;
 
-      const maxK = wheelState.specialAllowedLettersCount || 3;
-      const cleanLetters: string[] = Array.from(
-        new Set(letters.map((l: string) => normalizeVietnameseBaseLetter(l)).filter(Boolean))
-      ).slice(0, maxK);
+      let cleanLetters: string[] = [];
+      if (wheelState.edition === "ENGLISH") {
+        // Luật Anh: 3 phụ âm + 1 nguyên âm bên cạnh R, S, T, L, N, E (tổng cộng 4 chữ cái)
+        const given: readonly string[] = ENGLISH_BONUS_ROUND_GIVEN_LETTERS;
+        const vowels: readonly string[] = ENGLISH_BONUS_ROUND_PICKABLE_VOWELS;
+        const upperLetters = letters.map((l: string) => l.trim().toUpperCase()).filter(Boolean);
+        const cons = upperLetters.filter((l) => !given.includes(l as any) && !vowels.includes(l as any) && /[A-Z]/.test(l));
+        const vow = upperLetters.filter((l) => vowels.includes(l as any));
+        cleanLetters = [...Array.from(new Set(cons)).slice(0, 3), ...Array.from(new Set(vow)).slice(0, 1)];
+      } else {
+        // Luật Việt: Giữ nguyên cơ chế cũ — chọn K chữ cái bất kỳ từ bảng chữ cái
+        const maxK = wheelState.specialAllowedLettersCount || 3;
+        cleanLetters = Array.from(
+          new Set(letters.map((l: string) => normalizeVietnameseBaseLetter(l)).filter(Boolean))
+        ).slice(0, maxK);
+      }
       if (cleanLetters.length === 0) return;
 
       wheelState.specialPickedLetters = cleanLetters;
-      wheelState.guessedLetters = [...cleanLetters];
+      wheelState.guessedLetters = Array.from(new Set([...(wheelState.guessedLetters || []), ...cleanLetters]));
 
       let curRevealed = [...(wheelState.currentPuzzle.revealedIndices || [])];
       let totalFound = 0;

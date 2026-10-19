@@ -189,6 +189,8 @@ const roomTournaments = new Map<string, TournamentState>();
 const roomMagicWheels = new Map<string, MagicWheelState>();
 const roomTossUpBuzzLocks = new Map<string, { teamId: string; timestamp: number }>();
 const roomTossUpAnswerTimers = new Map<string, NodeJS.Timeout>();
+const roomTossUpTickTimers = new Map<string, NodeJS.Timeout>();
+const roomTossUpFirstTimers = new Map<string, NodeJS.Timeout>();
 const roomGridCaros = new Map<string, GridCaroState>();
 const roomDiceRaces = new Map<string, DiceRaceState>();
 const roomWagers = new Map<string, WagerState>();
@@ -7946,6 +7948,12 @@ export function registerSocketHandlers(io: IO) {
         const oldTimer = roomTossUpAnswerTimers.get(roomId);
         if (oldTimer) clearTimeout(oldTimer);
         roomTossUpAnswerTimers.delete(roomId);
+        const oldTick = roomTossUpTickTimers.get(roomId);
+        if (oldTick) clearInterval(oldTick);
+        roomTossUpTickTimers.delete(roomId);
+        const oldFirst = roomTossUpFirstTimers.get(roomId);
+        if (oldFirst) clearTimeout(oldFirst);
+        roomTossUpFirstTimers.delete(roomId);
       }
 
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
@@ -8077,6 +8085,40 @@ export function registerSocketHandlers(io: IO) {
       }
     };
 
+    // Helper to run authoritative 750ms driver interval on server (immune to network lag)
+    const startServerTossUpInterval = (rId: string, rCode: string) => {
+      const oldTick = roomTossUpTickTimers.get(rId);
+      if (oldTick) clearInterval(oldTick);
+      roomTossUpTickTimers.delete(rId);
+
+      const tickInterval = setInterval(() => {
+        const cur = roomMagicWheels.get(rId);
+        if (!cur || (cur.phase !== "TOSS_UP_RUNNING" && cur.phase !== "TOSS_UP_REVEALING") || !cur.currentPuzzle) {
+          clearInterval(tickInterval);
+          roomTossUpTickTimers.delete(rId);
+          return;
+        }
+        const p = cur.currentPuzzle;
+        const order = cur.tossUpRevealOrder || [];
+        const nextIdx = order.find((idx: number) => !p.revealedIndices.includes(idx));
+        if (nextIdx === undefined) {
+          clearInterval(tickInterval);
+          roomTossUpTickTimers.delete(rId);
+          cur.mustSolveWithTones = true;
+          cur.lastActionMessage = "⚡ Tất cả chữ cái gốc đã lộ diện! Đội nào bấm chuông và gõ đúng dấu thanh nhanh nhất sẽ chiến thắng!";
+          io.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
+          return;
+        }
+        p.revealedIndices.push(nextIdx);
+        if (isPuzzleFullyRevealed(p.secretPhrase, p.revealedIndices)) {
+          cur.mustSolveWithTones = true;
+          cur.lastActionMessage = "⚡ Tất cả chữ cái gốc đã lộ diện! Đội nào bấm chuông và gõ đúng dấu thanh nhanh nhất sẽ chiến thắng!";
+        }
+        io.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
+      }, 750);
+      roomTossUpTickTimers.set(rId, tickInterval);
+    };
+
     // ── Toss-Up Round Handlers ───────────────────────────────────────────────
     socket.on("magic_wheel:toss_up_start", async () => {
       const { roomId, roomCode, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
@@ -8091,13 +8133,20 @@ export function registerSocketHandlers(io: IO) {
       if (oldTimer) clearTimeout(oldTimer);
       roomTossUpAnswerTimers.delete(roomId);
 
+      const oldTick = roomTossUpTickTimers.get(roomId);
+      if (oldTick) clearInterval(oldTick);
+      roomTossUpTickTimers.delete(roomId);
+      const oldFirst = roomTossUpFirstTimers.get(roomId);
+      if (oldFirst) clearTimeout(oldFirst);
+      roomTossUpFirstTimers.delete(roomId);
+
       wheelState.phase = "TOSS_UP_RUNNING";
       wheelState.tossUpBuzzedTeamId = undefined;
       wheelState.tossUpBuzzedTeamName = undefined;
       wheelState.tossUpAnswerEndsAt = undefined;
       wheelState.tossUpWrongTeamIds = [];
       wheelState.tossUpStartTime = Date.now();
-      if (wheelState.currentPuzzle && (!wheelState.tossUpRevealOrder || wheelState.tossUpRevealOrder.length === 0)) {
+      if (wheelState.currentPuzzle) {
         const p = wheelState.currentPuzzle;
         const allIndices: number[] = [];
         for (let i = 0; i < p.secretPhrase.length; i++) {
@@ -8105,14 +8154,34 @@ export function registerSocketHandlers(io: IO) {
             allIndices.push(i);
           }
         }
-        for (let i = allIndices.length - 1; i > 0; i--) {
+        // First valid alphanumeric letter MUST ALWAYS be firstIdx!
+        const firstLetterIdx = allIndices.find((idx) => /[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(p.secretPhrase[idx])) ?? allIndices[0];
+        const restIndices = allIndices.filter((idx) => idx !== firstLetterIdx);
+        for (let i = restIndices.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
-          [allIndices[i], allIndices[j]] = [allIndices[j], allIndices[i]];
+          [restIndices[i], restIndices[j]] = [restIndices[j], restIndices[i]];
         }
-        wheelState.tossUpRevealOrder = allIndices;
+        wheelState.tossUpRevealOrder = firstLetterIdx !== undefined ? [firstLetterIdx, ...restIndices] : restIndices;
       }
       wheelState.lastActionMessage = "Các chữ cái đang lần lượt xuất hiện (0.75s/chữ)! Hãy bấm chuông ngay khi đoán ra đáp án!";
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+
+      // 1. Authoritative 1000ms delay for Tile 1 (Cyan Neon highlight + sound)
+      const firstTimer = setTimeout(() => {
+        const cur = roomMagicWheels.get(roomId);
+        if (!cur || (cur.phase !== "TOSS_UP_RUNNING" && cur.phase !== "TOSS_UP_REVEALING") || !cur.currentPuzzle) return;
+        const p = cur.currentPuzzle;
+        const order = cur.tossUpRevealOrder || [];
+        const firstIdx = order[0];
+        if (firstIdx !== undefined && !p.revealedIndices.includes(firstIdx)) {
+          p.revealedIndices.push(firstIdx);
+        }
+        io.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
+
+        // 2. Authoritative 750ms driver interval for all subsequent letters
+        startServerTossUpInterval(roomId, roomCode);
+      }, 1000);
+      roomTossUpFirstTimers.set(roomId, firstTimer);
     });
 
     const handleTossUpTick = async (payload: any = {}) => {
@@ -8175,6 +8244,13 @@ export function registerSocketHandlers(io: IO) {
 
       // 4. Synchronously claim first-buzz lock immediately in 0ms
       roomTossUpBuzzLocks.set(roomId, { teamId: buzzTeam.id, timestamp: Date.now() });
+      const oldTick = roomTossUpTickTimers.get(roomId);
+      if (oldTick) clearInterval(oldTick);
+      roomTossUpTickTimers.delete(roomId);
+      const oldFirst = roomTossUpFirstTimers.get(roomId);
+      if (oldFirst) clearTimeout(oldFirst);
+      roomTossUpFirstTimers.delete(roomId);
+
       wheelState.phase = "TOSS_UP_BUZZED";
       wheelState.tossUpBuzzedTeamId = buzzTeam.id;
       wheelState.tossUpBuzzedTeamName = buzzTeam.name;
@@ -8673,6 +8749,13 @@ export function registerSocketHandlers(io: IO) {
         roomTossUpAnswerTimers.delete(roomId);
 
         if (isCorrect) {
+          const oldTick = roomTossUpTickTimers.get(roomId);
+          if (oldTick) clearInterval(oldTick);
+          roomTossUpTickTimers.delete(roomId);
+          const oldFirst = roomTossUpFirstTimers.get(roomId);
+          if (oldFirst) clearTimeout(oldFirst);
+          roomTossUpFirstTimers.delete(roomId);
+
           wheelState.currentPuzzle.revealedIndices = Array.from(
             { length: wheelState.currentPuzzle.secretPhrase.length },
             (_, i) => i
@@ -8701,6 +8784,13 @@ export function registerSocketHandlers(io: IO) {
 
           const allTeamsFailed = wheelState.tossUpWrongTeamIds.length >= room.teams.length;
           if (allTeamsFailed) {
+            const oldTick = roomTossUpTickTimers.get(roomId);
+            if (oldTick) clearInterval(oldTick);
+            roomTossUpTickTimers.delete(roomId);
+            const oldFirst = roomTossUpFirstTimers.get(roomId);
+            if (oldFirst) clearTimeout(oldFirst);
+            roomTossUpFirstTimers.delete(roomId);
+
             wheelState.currentPuzzle.revealedIndices = Array.from(
               { length: wheelState.currentPuzzle.secretPhrase.length },
               (_, i) => i
@@ -8716,6 +8806,8 @@ export function registerSocketHandlers(io: IO) {
             wheelState.tossUpBuzzedTeamName = undefined;
             wheelState.tossUpAnswerEndsAt = undefined;
             wheelState.lastActionMessage = `❌ Đáp án "${answer}" của Đội ${teamName} chưa chính xác! Các chữ cái tiếp tục mở và các đội còn lại có quyền bấm chuông!`;
+            // Resume authoritative 750ms interval directly on server!
+            startServerTossUpInterval(roomId, roomCode);
           }
           io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
         }

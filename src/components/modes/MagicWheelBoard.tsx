@@ -757,9 +757,32 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
   const rowReachAngles = [-46, -26, -6, 16];
   const armReachAngle = isTouching ? (rowReachAngles[activeRow] ?? -16) : isGesture ? -20 : 0;
   const torsoPitch = isTouching ? (activeRow === 0 ? -8 : activeRow === 1 ? -4 : 4) : 0;
-  const baseRotateY = isRightSide ? -16 : 16;
-  const dynamicRotateY = isTouching ? (isRightSide ? -32 : 32) : isGesture ? (isRightSide ? -22 : 22) : baseRotateY;
-  const dynamicLeanZ = isTouching ? (isRightSide ? 5 : -5) : 0;
+  const baseRotateY = isRightSide ? -12 : 12;
+  const dynamicRotateY = isTouching ? (isRightSide ? -24 : 24) : isGesture ? (isRightSide ? -18 : 18) : baseRotateY;
+  const dynamicLeanZ = isTouching ? (isRightSide ? 3.5 : -3.5) : 0;
+
+  // Dynamic Head Turn & Tilt Choreography:
+  // When touching tile: first 400ms head tilts inward toward the tile (-14deg),
+  // then gracefully turns outward toward audience (+22deg) with a warm smile!
+  const [headPhase, setHeadPhase] = useState<"INWARD" | "OUTWARD">("OUTWARD");
+  useEffect(() => {
+    if (isTouching) {
+      setHeadPhase("INWARD");
+      const timer = setTimeout(() => {
+        setHeadPhase("OUTWARD");
+      }, 400);
+      return () => clearTimeout(timer);
+    } else {
+      setHeadPhase("OUTWARD");
+    }
+  }, [isTouching, activeRow]);
+
+  const headInwardAngle = isRightSide ? 14 : -14;
+  const headOutwardAngle = isRightSide ? -22 : 22;
+  const headRot = isTouching
+    ? (headPhase === "INWARD" ? headInwardAngle : headOutwardAngle)
+    : 0;
+  const headPitchY = isTouching && headPhase === "INWARD" ? -2.5 : 0;
 
   return (
     <div
@@ -771,6 +794,15 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
         perspective: "850px",
       }}
     >
+      <style>{`
+        @keyframes hostessCatwalk {
+          0% { transform: translateY(0px) rotate(0deg); }
+          25% { transform: translateY(-2.5px) rotate(1.5deg); }
+          50% { transform: translateY(0px) rotate(0deg); }
+          75% { transform: translateY(-2.5px) rotate(-1.5deg); }
+          100% { transform: translateY(0px) rotate(0deg); }
+        }
+      `}</style>
       <div
         className="relative flex flex-col items-center"
         style={{
@@ -791,8 +823,11 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
           />
         )}
 
-        {/* Refined MC Television Model Vector */}
-        <div className={`relative w-20 sm:w-24 md:w-28 lg:w-32 h-44 sm:h-52 md:h-60 lg:h-68 drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] ${isWalking ? "animate-bounce" : ""}`}>
+        {/* Refined MC Television Model Vector - Symmetrical Gala Evening Gown & Vietnamese Silhouette */}
+        <div
+          className="relative w-20 sm:w-24 md:w-28 lg:w-32 h-44 sm:h-52 md:h-60 lg:h-68 drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)]"
+          style={isWalking ? { animation: "hostessCatwalk 650ms infinite ease-in-out" } : {}}
+        >
           <svg viewBox="0 0 100 215" className="w-full h-full overflow-visible">
             <defs>
               <linearGradient id="hostessGownGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -823,8 +858,8 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
               </linearGradient>
             </defs>
 
-            {/* 3D Catwalk Contact Floor Shadow */}
-            <ellipse cx="50" cy="204" rx="24" ry="4.5" fill="rgba(0,0,0,0.6)" filter="blur(2.5px)" />
+            {/* 3D Catwalk Contact Floor Shadow - Perfectly centered at X=50 */}
+            <ellipse cx="50" cy="204" rx="25" ry="4.5" fill="rgba(0,0,0,0.6)" filter="blur(2.5px)" />
 
             {/* Back Hair Strands */}
             <path
@@ -832,103 +867,118 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
               fill="url(#hostessHairGrad)"
             />
 
-            {/* ── Slender Legs & Stiletto Heels ── */}
+            {/* ── Slender Legs & Stiletto Heels (Centered Natural Stance) ── */}
             <g id="hostessLegs">
-              {/* Back / Supporting Right Leg */}
+              {/* Supporting Right Leg */}
               <path
-                d="M52 115 C53 135 54 158 53 178 C52 187 51 195 50 200"
+                d="M47 115 C47 138 48 165 47 198"
                 stroke="url(#hostessSkinGrad)"
-                strokeWidth="6"
+                strokeWidth="5.5"
                 strokeLinecap="round"
                 fill="none"
               />
               {/* Right Gold Stiletto Pump */}
               <path
-                d="M47 198 L52 201 L56 201 C57 200 54 197 51 197 Z"
+                d="M44 196 L49 200 L53 200 C54 199 51 196 48 196 Z"
                 fill="url(#hostessGoldMetal)"
               />
-              <line x1="48" y1="198" x2="48" y2="204" stroke="url(#hostessGoldMetal)" strokeWidth="1.8" strokeLinecap="round" />
+              <line x1="45" y1="196" x2="45" y2="204" stroke="url(#hostessGoldMetal)" strokeWidth="1.8" strokeLinecap="round" />
 
-              {/* Front Left Slender Leg (revealed via slit) */}
+              {/* Front Left Slender Leg */}
               <path
-                d="M44 112 C42 132 44 154 46 174 C47 183 46 191 44 198"
+                d="M53 115 C54 138 53 165 52 198"
                 stroke="url(#hostessSkinGrad)"
-                strokeWidth="6.5"
+                strokeWidth="5.5"
                 strokeLinecap="round"
                 fill="none"
               />
               {/* Left Gold Stiletto Pump */}
               <path
-                d="M40 196 L45 200 L50 200 C51 199 48 196 44 196 Z"
+                d="M49 196 L54 200 L58 200 C59 199 56 196 53 196 Z"
                 fill="url(#hostessGoldMetal)"
               />
-              <circle cx="44" cy="197" r="1" fill="#ffffff" />
-              <line x1="41" y1="196" x2="41" y2="204" stroke="url(#hostessGoldMetal)" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="53" cy="197" r="0.9" fill="#ffffff" />
+              <line x1="50" y1="196" x2="50" y2="204" stroke="url(#hostessGoldMetal)" strokeWidth="1.8" strokeLinecap="round" />
             </g>
 
-            {/* Evening Gown Flowing Mermaid Skirt with High Side Slit */}
+            {/* ── Symmetrical Gala Evening Gown (Centered on X=50, no awkward side lean!) ── */}
+            {/* Main Skirt Body: Left border from (42,72) to (26,196); Right border from (58,72) to (74,196) */}
             <path
-              d="M37 72 C32 98 26 132 20 162 C34 165 48 162 52 154 C48 132 46 96 63 72 Z"
+              d="M42 72 C37 88 33 125 29 160 C26 182 25 196 26 196 C36 198 64 198 74 196 C75 196 74 182 71 160 C67 125 63 88 58 72 Z"
               fill="url(#hostessGownGrad)"
               stroke="url(#hostessGoldMetal)"
               strokeWidth="0.8"
             />
-            {/* Silk Drape Folds */}
-            <path d="M42 74 C36 102 30 134 25 158" stroke="#1e3a8a" strokeWidth="1.5" strokeOpacity="0.8" fill="none" />
-            <path d="M48 72 C44 100 40 128 36 156" stroke="#3b82f6" strokeWidth="1.2" strokeOpacity="0.6" fill="none" />
-            <path d="M58 74 C60 98 61 124 62 144" stroke="#0f172a" strokeWidth="1.4" strokeOpacity="0.7" fill="none" />
 
-            {/* Golden Embroidery Trim on Skirt Slit */}
-            <path d="M20 162 Q36 166 52 154" stroke="url(#hostessGoldMetal)" strokeWidth="2" fill="none" />
-            <circle cx="51" cy="155" r="1.6" fill="#fef08a" />
+            {/* Balanced Silk Drape Folds (Left & Right Harmonious Shading) */}
+            <path d="M44 74 C39 105 34 148 31 194" stroke="#1e3a8a" strokeWidth="1.6" strokeOpacity="0.8" fill="none" />
+            <path d="M47 74 C44 105 41 148 38 194" stroke="#3b82f6" strokeWidth="1.2" strokeOpacity="0.6" fill="none" />
+            <path d="M53 74 C56 105 59 148 62 194" stroke="#3b82f6" strokeWidth="1.2" strokeOpacity="0.6" fill="none" />
+            <path d="M56 74 C61 105 66 148 69 194" stroke="#0f172a" strokeWidth="1.6" strokeOpacity="0.8" fill="none" />
 
-            {/* Hourglass Bodice / Torso (with 3D lean and pitch) */}
+            {/* Elegant Center-Right Subtle Slit Contour with Gold Trim */}
+            <path d="M53 145 C55 162 57 182 58 196" stroke="url(#hostessGoldMetal)" strokeWidth="1.5" fill="none" />
+            <circle cx="53" cy="146" r="1.4" fill="#fef08a" />
+
+            {/* Golden Embroidery Hemline Trim */}
+            <path d="M26 196 Q50 199 74 196" stroke="url(#hostessGoldMetal)" strokeWidth="1.6" fill="none" />
+
+            {/* ── Hourglass Bodice / Torso (with 3D lean and pitch) ── */}
             <g style={{ transform: `rotate(${torsoPitch}deg)`, transformOrigin: "50px 70px", transition: "transform 400ms" }}>
               <path
-                d="M37 48 C37 41 43 39 50 39 C57 39 63 41 63 48 C63 58 59 70 57 72 C53 74 47 74 43 72 C41 70 37 58 37 48 Z"
+                d="M38 48 C38 41 43 39 50 39 C57 39 62 41 62 48 C62 58 59 70 58 72 C54 74 46 74 42 72 C41 70 38 58 38 48 Z"
                 fill="url(#hostessGownGrad)"
                 stroke="url(#hostessGoldMetal)"
                 strokeWidth="0.8"
               />
               {/* Sweetheart Neckline Trim */}
-              <path d="M40 46 Q50 51 60 46" stroke="url(#hostessGoldMetal)" strokeWidth="1.6" fill="none" />
+              <path d="M41 46 Q50 50 59 46" stroke="url(#hostessGoldMetal)" strokeWidth="1.6" fill="none" />
 
-              {/* Golden Cinched Waist Belt */}
+              {/* Golden Cinched Waist Belt - Symmetrical Center */}
               <rect x="42" y="68" width="16" height="4.5" rx="1.5" fill="url(#hostessGoldMetal)" />
               <rect x="48" y="67" width="4" height="6.5" rx="1" fill="#fff" opacity="0.9" />
 
-              {/* Slender Graceful Neck */}
+              {/* Slender Graceful Vietnamese Neck */}
               <rect x="47" y="30" width="6" height="10" rx="2.5" fill="url(#hostessSkinGrad)" />
-              {/* Subtle Diamond Necklace */}
+              {/* Subtle Diamond / Pearl Necklace */}
               <path d="M46 36 Q50 39 54 36" stroke="url(#hostessGoldMetal)" strokeWidth="1.2" fill="none" />
               <circle cx="50" cy="38" r="1" fill="#ffffff" />
 
-              {/* Head / Face - Refined Fashion MC Proportions */}
-              <ellipse cx="50" cy="22" rx="7.5" ry="9.5" fill="url(#hostessSkinGrad)" />
+              {/* ── Head, Hairstyle & Expressive Face with Dynamic Inward/Outward Turn ── */}
+              <g
+                style={{
+                  transformOrigin: "50px 30px",
+                  transform: `rotate(${headRot}deg) translateY(${headPitchY}px)`,
+                  transition: "transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+                }}
+              >
+                {/* Refined Vietnamese Fashion Oval Face */}
+                <ellipse cx="50" cy="22" rx="7.5" ry="9.5" fill="url(#hostessSkinGrad)" />
 
-              {/* Sophisticated Updo Chignon Hairstyle */}
-              <path
-                d="M43 14 C43 7 57 7 57 14 C60 18 58 23 56 25 C52 27 48 27 44 25 C42 23 41 18 43 14 Z"
-                fill="url(#hostessHairGrad)"
-              />
-              {/* Subtle Gold Hairpin */}
-              <line x1="53" y1="12" x2="57" y2="10" stroke="url(#hostessGoldMetal)" strokeWidth="1.5" strokeLinecap="round" />
-              <circle cx="57" cy="10" r="1.2" fill="#ffffff" />
+                {/* Sophisticated Updo Chignon Hairstyle */}
+                <path
+                  d="M43 14 C43 7 57 7 57 14 C60 18 58 23 56 25 C52 27 48 27 44 25 C42 23 41 18 43 14 Z"
+                  fill="url(#hostessHairGrad)"
+                />
+                {/* Traditional Vietnamese Golden Hairpin (Trâm cài tóc) */}
+                <line x1="53" y1="12" x2="57" y2="10" stroke="url(#hostessGoldMetal)" strokeWidth="1.6" strokeLinecap="round" />
+                <circle cx="57" cy="10" r="1.3" fill="#ffffff" />
 
-              {/* Minimalist Television Fashion Face (clean gaze & smile, no cartoon blush) */}
-              <path d="M46 20.5 Q47.5 19.5 49 20.5" stroke="#18181b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
-              <path d="M51 20.5 Q52.5 19.5 54 20.5" stroke="#18181b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
-              <path d="M48 26 Q50 28 52 26" stroke="#e11d48" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+                {/* Eyes & Warm Gracious Smile */}
+                <path d="M46 20.5 Q47.5 19.5 49 20.5" stroke="#18181b" strokeWidth="0.85" fill="none" strokeLinecap="round" />
+                <path d="M51 20.5 Q52.5 19.5 54 20.5" stroke="#18181b" strokeWidth="0.85" fill="none" strokeLinecap="round" />
+                <path d="M48 26 Q50 28 52 26" stroke="#e11d48" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+              </g>
 
               {/* Left Rest Arm */}
               <path
-                d="M37 45 C31 54 32 64 36 72"
+                d="M38 45 C32 54 33 64 37 72"
                 stroke="url(#hostessSkinGrad)"
                 strokeWidth="4.2"
                 fill="none"
                 strokeLinecap="round"
               />
-              <circle cx="36" cy="72" r="2.2" fill="url(#hostessSkinGrad)" />
+              <circle cx="37" cy="72" r="2.2" fill="url(#hostessSkinGrad)" />
 
               {/* Right Dynamic Arm Reaching to Target Tile Row */}
               {isTouching ? (
@@ -970,13 +1020,13 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
               ) : (
                 <g>
                   <path
-                    d="M63 46 C69 56 67 66 64 74"
+                    d="M62 46 C68 56 66 66 63 74"
                     stroke="url(#hostessSkinGrad)"
                     strokeWidth="4.2"
                     fill="none"
                     strokeLinecap="round"
                   />
-                  <circle cx="64" cy="74" r="2.2" fill="url(#hostessSkinGrad)" />
+                  <circle cx="63" cy="74" r="2.2" fill="url(#hostessSkinGrad)" />
                 </g>
               )}
             </g>
@@ -1551,13 +1601,42 @@ export default function MagicWheelBoard({
   // "MC đặt tay lên một ô chữ bất kỳ gần họ, nó sẽ highlight, rồi một lúc ngay sau đó hiện chữ cái ở đó,
   // rồi các chữ cái khác tiếp tục hiện sau mỗi 0.5s (không qua highlight nữa). phát đúng âm thanh nữa nhé"
   const tossUpFirstTileDoneRef = useRef<boolean>(false);
+  const tossUpIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const tossUpFirstTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (roundStage !== "TOSS_UP_1" && roundStage !== "TOSS_UP_2") {
       tossUpFirstTileDoneRef.current = false;
+      if (tossUpIntervalRef.current) {
+        clearInterval(tossUpIntervalRef.current);
+        tossUpIntervalRef.current = null;
+      }
+      if (tossUpFirstTimerRef.current) {
+        clearTimeout(tossUpFirstTimerRef.current);
+        tossUpFirstTimerRef.current = null;
+      }
       return;
     }
     if (phase === "TOSS_UP_READY") {
       tossUpFirstTileDoneRef.current = false;
+      if (tossUpIntervalRef.current) {
+        clearInterval(tossUpIntervalRef.current);
+        tossUpIntervalRef.current = null;
+      }
+      if (tossUpFirstTimerRef.current) {
+        clearTimeout(tossUpFirstTimerRef.current);
+        tossUpFirstTimerRef.current = null;
+      }
+    }
+    if (phase === "TOSS_UP_BUZZED" || phase === "ROUND_RECAP") {
+      if (tossUpIntervalRef.current) {
+        clearInterval(tossUpIntervalRef.current);
+        tossUpIntervalRef.current = null;
+      }
+      if (tossUpFirstTimerRef.current) {
+        clearTimeout(tossUpFirstTimerRef.current);
+        tossUpFirstTimerRef.current = null;
+      }
     }
   }, [roundStage, phase, currentRound]);
 
@@ -1568,7 +1647,17 @@ export default function MagicWheelBoard({
   currentPuzzleRef.current = currentPuzzle;
 
   useEffect(() => {
-    if (phase !== "TOSS_UP_RUNNING" && phase !== "TOSS_UP_REVEALING") return;
+    if (phase !== "TOSS_UP_RUNNING" && phase !== "TOSS_UP_REVEALING") {
+      if (tossUpIntervalRef.current) {
+        clearInterval(tossUpIntervalRef.current);
+        tossUpIntervalRef.current = null;
+      }
+      if (tossUpFirstTimerRef.current) {
+        clearTimeout(tossUpFirstTimerRef.current);
+        tossUpFirstTimerRef.current = null;
+      }
+      return;
+    }
     if (effectiveBoardStage === "EMPTY_56") {
       handleOpenBoard();
     }
@@ -1580,9 +1669,6 @@ export default function MagicWheelBoard({
     // In sandbox: only Host drives (display iframe has no onTossUpRevealTick or is inside iframe)
     // In live room: Host drives, or standalone Display fallback
     const isTickDriver = typeof onTossUpRevealTick === "function" && (isHost || (isDisplay && !isInsideSandbox));
-
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-    let firstOpenTimer: ReturnType<typeof setTimeout> | null = null;
 
     const getUnrevealedLetterIndices = () => {
       const p = currentPuzzleRef.current;
@@ -1600,11 +1686,14 @@ export default function MagicWheelBoard({
 
     const startRandomInterval = () => {
       if (!isTickDriver) return;
-      if (intervalId) clearInterval(intervalId);
-      intervalId = setInterval(() => {
+      if (tossUpIntervalRef.current) clearInterval(tossUpIntervalRef.current);
+      tossUpIntervalRef.current = setInterval(() => {
         const unrevealed = getUnrevealedLetterIndices();
         if (unrevealed.length === 0) {
-          if (intervalId) clearInterval(intervalId);
+          if (tossUpIntervalRef.current) {
+            clearInterval(tossUpIntervalRef.current);
+            tossUpIntervalRef.current = null;
+          }
           return;
         }
         const order = tossUpRevealOrder || [];
@@ -1620,18 +1709,14 @@ export default function MagicWheelBoard({
       tossUpFirstTileDoneRef.current = true;
       const unrevealed = getUnrevealedLetterIndices();
       if (unrevealed.length > 0) {
-        // Deterministic first tile near hostess side across ALL screens (MC, Display, Contestant)
-        const side = hostessSideRef.current || "LEFT";
-        const sortedByNearSide = [...unrevealed].sort((a, b) => {
-          const colA = cellPositionsMap[a]?.col ?? 7;
-          const colB = cellPositionsMap[b]?.col ?? 7;
-          return side === "LEFT" ? colA - colB : colB - colA;
-        });
+        // Deterministic first tile: ALWAYS the first valid alphanumeric letter of the secret phrase!
+        const phraseFirstIdx = unrevealed.find((idx) => /[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(phrase[idx]));
         const order = tossUpRevealOrder || [];
         const firstIdx = (order.length > 0 && unrevealed.includes(order[0]))
           ? order[0]
-          : sortedByNearSide[0];
+          : (phraseFirstIdx !== undefined ? phraseFirstIdx : unrevealed[0]);
         const firstPos = cellPositionsMap[firstIdx] || { col: 2, row: 1 };
+        const side = hostessSideRef.current || "LEFT";
 
         // 1. ALL screens: MC/Hostess touches tile -> tile highlights in Cyan Neon + highlight.mp3 for 1.0s
         setHostessFacing(side === "LEFT" ? "RIGHT" : "LEFT");
@@ -1642,7 +1727,8 @@ export default function MagicWheelBoard({
         soundManager.playMagicWheelMark(); // Plays highlight.mp3
 
         // 2. Exactly after 1.0s (1000ms), letter appears + pop zoom + letter_open.mp3, then 0.75s driver interval begins
-        firstOpenTimer = setTimeout(() => {
+        if (tossUpFirstTimerRef.current) clearTimeout(tossUpFirstTimerRef.current);
+        tossUpFirstTimerRef.current = setTimeout(() => {
           setHighlightedIndices(new Set());
           setAnimRevealedIndices((prev) => new Set([...prev, firstIdx]));
           triggerTilePop(firstIdx);
@@ -1655,15 +1741,10 @@ export default function MagicWheelBoard({
           startRandomInterval();
         }, 1000);
       }
-    } else {
+    } else if (!tossUpIntervalRef.current) {
       // Resuming after a wrong buzz: continue 0.75s random letter reveal directly
       startRandomInterval();
     }
-
-    return () => {
-      if (firstOpenTimer) clearTimeout(firstOpenTimer);
-      if (intervalId) clearInterval(intervalId);
-    };
   }, [
     phase,
     effectiveBoardStage,

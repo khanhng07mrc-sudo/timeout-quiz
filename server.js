@@ -8636,6 +8636,8 @@ var roomTournaments = /* @__PURE__ */ new Map();
 var roomMagicWheels = /* @__PURE__ */ new Map();
 var roomTossUpBuzzLocks = /* @__PURE__ */ new Map();
 var roomTossUpAnswerTimers = /* @__PURE__ */ new Map();
+var roomTossUpTickTimers = /* @__PURE__ */ new Map();
+var roomTossUpFirstTimers = /* @__PURE__ */ new Map();
 var roomGridCaros = /* @__PURE__ */ new Map();
 var roomDiceRaces = /* @__PURE__ */ new Map();
 var roomWagers = /* @__PURE__ */ new Map();
@@ -15114,6 +15116,12 @@ function registerSocketHandlers(io2) {
         const oldTimer = roomTossUpAnswerTimers.get(roomId);
         if (oldTimer) clearTimeout(oldTimer);
         roomTossUpAnswerTimers.delete(roomId);
+        const oldTick = roomTossUpTickTimers.get(roomId);
+        if (oldTick) clearInterval(oldTick);
+        roomTossUpTickTimers.delete(roomId);
+        const oldFirst = roomTossUpFirstTimers.get(roomId);
+        if (oldFirst) clearTimeout(oldFirst);
+        roomTossUpFirstTimers.delete(roomId);
       }
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
         wheelState.sectors = generateMagicWheelSectors(1, stage);
@@ -15230,6 +15238,37 @@ function registerSocketHandlers(io2) {
         }, 8500);
       }
     };
+    const startServerTossUpInterval = (rId, rCode) => {
+      const oldTick = roomTossUpTickTimers.get(rId);
+      if (oldTick) clearInterval(oldTick);
+      roomTossUpTickTimers.delete(rId);
+      const tickInterval = setInterval(() => {
+        const cur = roomMagicWheels.get(rId);
+        if (!cur || cur.phase !== "TOSS_UP_RUNNING" && cur.phase !== "TOSS_UP_REVEALING" || !cur.currentPuzzle) {
+          clearInterval(tickInterval);
+          roomTossUpTickTimers.delete(rId);
+          return;
+        }
+        const p = cur.currentPuzzle;
+        const order = cur.tossUpRevealOrder || [];
+        const nextIdx = order.find((idx) => !p.revealedIndices.includes(idx));
+        if (nextIdx === void 0) {
+          clearInterval(tickInterval);
+          roomTossUpTickTimers.delete(rId);
+          cur.mustSolveWithTones = true;
+          cur.lastActionMessage = "\u26A1 T\u1EA5t c\u1EA3 ch\u1EEF c\xE1i g\u1ED1c \u0111\xE3 l\u1ED9 di\u1EC7n! \u0110\u1ED9i n\xE0o b\u1EA5m chu\xF4ng v\xE0 g\xF5 \u0111\xFAng d\u1EA5u thanh nhanh nh\u1EA5t s\u1EBD chi\u1EBFn th\u1EAFng!";
+          io2.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
+          return;
+        }
+        p.revealedIndices.push(nextIdx);
+        if (isPuzzleFullyRevealed(p.secretPhrase, p.revealedIndices)) {
+          cur.mustSolveWithTones = true;
+          cur.lastActionMessage = "\u26A1 T\u1EA5t c\u1EA3 ch\u1EEF c\xE1i g\u1ED1c \u0111\xE3 l\u1ED9 di\u1EC7n! \u0110\u1ED9i n\xE0o b\u1EA5m chu\xF4ng v\xE0 g\xF5 \u0111\xFAng d\u1EA5u thanh nhanh nh\u1EA5t s\u1EBD chi\u1EBFn th\u1EAFng!";
+        }
+        io2.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
+      }, 750);
+      roomTossUpTickTimers.set(rId, tickInterval);
+    };
     socket.on("magic_wheel:toss_up_start", async () => {
       const { roomId, roomCode, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
@@ -15240,13 +15279,19 @@ function registerSocketHandlers(io2) {
       const oldTimer = roomTossUpAnswerTimers.get(roomId);
       if (oldTimer) clearTimeout(oldTimer);
       roomTossUpAnswerTimers.delete(roomId);
+      const oldTick = roomTossUpTickTimers.get(roomId);
+      if (oldTick) clearInterval(oldTick);
+      roomTossUpTickTimers.delete(roomId);
+      const oldFirst = roomTossUpFirstTimers.get(roomId);
+      if (oldFirst) clearTimeout(oldFirst);
+      roomTossUpFirstTimers.delete(roomId);
       wheelState.phase = "TOSS_UP_RUNNING";
       wheelState.tossUpBuzzedTeamId = void 0;
       wheelState.tossUpBuzzedTeamName = void 0;
       wheelState.tossUpAnswerEndsAt = void 0;
       wheelState.tossUpWrongTeamIds = [];
       wheelState.tossUpStartTime = Date.now();
-      if (wheelState.currentPuzzle && (!wheelState.tossUpRevealOrder || wheelState.tossUpRevealOrder.length === 0)) {
+      if (wheelState.currentPuzzle) {
         const p = wheelState.currentPuzzle;
         const allIndices = [];
         for (let i = 0; i < p.secretPhrase.length; i++) {
@@ -15254,14 +15299,29 @@ function registerSocketHandlers(io2) {
             allIndices.push(i);
           }
         }
-        for (let i = allIndices.length - 1; i > 0; i--) {
+        const firstLetterIdx = allIndices.find((idx) => /[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(p.secretPhrase[idx])) ?? allIndices[0];
+        const restIndices = allIndices.filter((idx) => idx !== firstLetterIdx);
+        for (let i = restIndices.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
-          [allIndices[i], allIndices[j]] = [allIndices[j], allIndices[i]];
+          [restIndices[i], restIndices[j]] = [restIndices[j], restIndices[i]];
         }
-        wheelState.tossUpRevealOrder = allIndices;
+        wheelState.tossUpRevealOrder = firstLetterIdx !== void 0 ? [firstLetterIdx, ...restIndices] : restIndices;
       }
       wheelState.lastActionMessage = "C\xE1c ch\u1EEF c\xE1i \u0111ang l\u1EA7n l\u01B0\u1EE3t xu\u1EA5t hi\u1EC7n (0.75s/ch\u1EEF)! H\xE3y b\u1EA5m chu\xF4ng ngay khi \u0111o\xE1n ra \u0111\xE1p \xE1n!";
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      const firstTimer = setTimeout(() => {
+        const cur = roomMagicWheels.get(roomId);
+        if (!cur || cur.phase !== "TOSS_UP_RUNNING" && cur.phase !== "TOSS_UP_REVEALING" || !cur.currentPuzzle) return;
+        const p = cur.currentPuzzle;
+        const order = cur.tossUpRevealOrder || [];
+        const firstIdx = order[0];
+        if (firstIdx !== void 0 && !p.revealedIndices.includes(firstIdx)) {
+          p.revealedIndices.push(firstIdx);
+        }
+        io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
+        startServerTossUpInterval(roomId, roomCode);
+      }, 1e3);
+      roomTossUpFirstTimers.set(roomId, firstTimer);
     });
     const handleTossUpTick = async (payload = {}) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
@@ -15307,6 +15367,12 @@ function registerSocketHandlers(io2) {
       const buzzTeam = room.teams.find((t) => t.id === buzzTeamId);
       if (!buzzTeam) return;
       roomTossUpBuzzLocks.set(roomId, { teamId: buzzTeam.id, timestamp: Date.now() });
+      const oldTick = roomTossUpTickTimers.get(roomId);
+      if (oldTick) clearInterval(oldTick);
+      roomTossUpTickTimers.delete(roomId);
+      const oldFirst = roomTossUpFirstTimers.get(roomId);
+      if (oldFirst) clearTimeout(oldFirst);
+      roomTossUpFirstTimers.delete(roomId);
       wheelState.phase = "TOSS_UP_BUZZED";
       wheelState.tossUpBuzzedTeamId = buzzTeam.id;
       wheelState.tossUpBuzzedTeamName = buzzTeam.name;
@@ -15738,6 +15804,12 @@ function registerSocketHandlers(io2) {
         if (ansTimer) clearTimeout(ansTimer);
         roomTossUpAnswerTimers.delete(roomId);
         if (isCorrect) {
+          const oldTick = roomTossUpTickTimers.get(roomId);
+          if (oldTick) clearInterval(oldTick);
+          roomTossUpTickTimers.delete(roomId);
+          const oldFirst = roomTossUpFirstTimers.get(roomId);
+          if (oldFirst) clearTimeout(oldFirst);
+          roomTossUpFirstTimers.delete(roomId);
           wheelState.currentPuzzle.revealedIndices = Array.from(
             { length: wheelState.currentPuzzle.secretPhrase.length },
             (_, i) => i
@@ -15764,6 +15836,12 @@ function registerSocketHandlers(io2) {
           });
           const allTeamsFailed = wheelState.tossUpWrongTeamIds.length >= room.teams.length;
           if (allTeamsFailed) {
+            const oldTick = roomTossUpTickTimers.get(roomId);
+            if (oldTick) clearInterval(oldTick);
+            roomTossUpTickTimers.delete(roomId);
+            const oldFirst = roomTossUpFirstTimers.get(roomId);
+            if (oldFirst) clearTimeout(oldFirst);
+            roomTossUpFirstTimers.delete(roomId);
             wheelState.currentPuzzle.revealedIndices = Array.from(
               { length: wheelState.currentPuzzle.secretPhrase.length },
               (_, i) => i
@@ -15779,6 +15857,7 @@ function registerSocketHandlers(io2) {
             wheelState.tossUpBuzzedTeamName = void 0;
             wheelState.tossUpAnswerEndsAt = void 0;
             wheelState.lastActionMessage = `\u274C \u0110\xE1p \xE1n "${answer}" c\u1EE7a \u0110\u1ED9i ${teamName} ch\u01B0a ch\xEDnh x\xE1c! C\xE1c ch\u1EEF c\xE1i ti\u1EBFp t\u1EE5c m\u1EDF v\xE0 c\xE1c \u0111\u1ED9i c\xF2n l\u1EA1i c\xF3 quy\u1EC1n b\u1EA5m chu\xF4ng!`;
+            startServerTossUpInterval(roomId, roomCode);
           }
           io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
         }

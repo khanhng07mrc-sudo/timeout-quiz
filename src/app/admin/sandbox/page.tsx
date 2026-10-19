@@ -294,6 +294,8 @@ export default function AdminSandboxPage() {
   const offlineUsedQuestionIdsRef = useRef<Set<string>>(new Set());
   const offlineFinalizedActorsRef = useRef<Set<string>>(new Set());
   const offlineSharedPowerupUsedThisQuestionRef = useRef<boolean>(false);
+  const magicWheelTossUpIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const magicWheelTossUpFirstTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Active Team Switcher in Mobile Device Viewport
   const [activeTeamIndex, setActiveTeamIndex] = useState<number>(0);
@@ -4657,6 +4659,14 @@ export default function AdminSandboxPage() {
           // Vòng Đoán Nhanh 1 & 2
           if (cur.roundStage === "TOSS_UP_1" || cur.roundStage === "TOSS_UP_2") {
             if (isCorrect) {
+              if (magicWheelTossUpIntervalRef.current) {
+                clearInterval(magicWheelTossUpIntervalRef.current);
+                magicWheelTossUpIntervalRef.current = null;
+              }
+              if (magicWheelTossUpFirstTimerRef.current) {
+                clearTimeout(magicWheelTossUpFirstTimerRef.current);
+                magicWheelTossUpFirstTimerRef.current = null;
+              }
               soundManager.playMagicWheelSolveWin();
               p.revealedIndices = Array.from({ length: p.secretPhrase.length }, (_, i) => i);
               const bonusPts = cur.roundStage === "TOSS_UP_1" ? 500 : 1000;
@@ -4712,12 +4722,57 @@ export default function AdminSandboxPage() {
 
               const allFailed = cur.tossUpWrongTeamIds.length >= prev.teams.length;
               if (allFailed) {
+                if (magicWheelTossUpIntervalRef.current) {
+                  clearInterval(magicWheelTossUpIntervalRef.current);
+                  magicWheelTossUpIntervalRef.current = null;
+                }
+                if (magicWheelTossUpFirstTimerRef.current) {
+                  clearTimeout(magicWheelTossUpFirstTimerRef.current);
+                  magicWheelTossUpFirstTimerRef.current = null;
+                }
                 p.revealedIndices = Array.from({ length: p.secretPhrase.length }, (_, i) => i);
                 cur.phase = "ROUND_RECAP";
                 cur.lastActionMessage = `❌ Tất cả các đội đều đã trả lời sai trong Vòng Đoán Nhanh! Đáp án chính xác là: "${p.secretPhrase}"!`;
               } else {
                 cur.phase = "TOSS_UP_REVEALING";
                 cur.lastActionMessage = `❌ Đáp án "${answer}" của ${teamName} chưa chính xác! Các chữ cái tiếp tục mở (0,75s/ô) — Mời các đội còn lại bấm chuông!`;
+                // Resume authoritative 750ms interval directly
+                if (magicWheelTossUpIntervalRef.current) clearInterval(magicWheelTossUpIntervalRef.current);
+                magicWheelTossUpIntervalRef.current = setInterval(() => {
+                  setRoomState((rPrev) => {
+                    if (!rPrev || !rPrev.magicWheelState?.currentPuzzle) {
+                      if (magicWheelTossUpIntervalRef.current) clearInterval(magicWheelTossUpIntervalRef.current);
+                      return rPrev;
+                    }
+                    if (rPrev.magicWheelState.phase !== "TOSS_UP_REVEALING" && rPrev.magicWheelState.phase !== "TOSS_UP_RUNNING") {
+                      if (magicWheelTossUpIntervalRef.current) clearInterval(magicWheelTossUpIntervalRef.current);
+                      return rPrev;
+                    }
+                    const rCur = { ...rPrev.magicWheelState };
+                    const rP = { ...rCur.currentPuzzle! };
+                    rCur.currentPuzzle = rP;
+                    const rOrder = rCur.tossUpRevealOrder || [];
+                    const rNextIdx = rOrder.find((idx) => !rP.revealedIndices.includes(idx));
+                    if (rNextIdx === undefined) {
+                      if (magicWheelTossUpIntervalRef.current) clearInterval(magicWheelTossUpIntervalRef.current);
+                      rCur.mustSolveWithTones = true;
+                      rCur.lastActionMessage = `⚡ Tất cả chữ cái gốc đã lộ diện! Đội nào bấm chuông và gõ đúng dấu thanh nhanh nhất sẽ chiến thắng!`;
+                      const rNextRoom = { ...rPrev, magicWheelState: rCur };
+                      roomStateRef.current = rNextRoom;
+                      syncToIframes({ roomState: rNextRoom });
+                      return rNextRoom;
+                    }
+                    rP.revealedIndices = [...rP.revealedIndices, rNextIdx];
+                    if (isPuzzleFullyRevealed(rP.secretPhrase, rP.revealedIndices)) {
+                      rCur.mustSolveWithTones = true;
+                      rCur.lastActionMessage = `⚡ Tất cả chữ cái gốc đã lộ diện! Đội nào bấm chuông và gõ đúng dấu thanh nhanh nhất sẽ chiến thắng!`;
+                    }
+                    const rNextRoom = { ...rPrev, magicWheelState: rCur };
+                    roomStateRef.current = rNextRoom;
+                    syncToIframes({ roomState: rNextRoom });
+                    return rNextRoom;
+                  });
+                }, 750);
               }
               const nextRoom = { ...prev, magicWheelState: cur };
               roomStateRef.current = nextRoom;
@@ -5154,6 +5209,17 @@ export default function AdminSandboxPage() {
           return nextRoom;
         });
       } else if (e.data?.type === "MAGIC_WHEEL_TOSS_UP_START") {
+        if (magicWheelTossUpIntervalRef.current) {
+          clearInterval(magicWheelTossUpIntervalRef.current);
+          magicWheelTossUpIntervalRef.current = null;
+        }
+        if (magicWheelTossUpFirstTimerRef.current) {
+          clearTimeout(magicWheelTossUpFirstTimerRef.current);
+          magicWheelTossUpFirstTimerRef.current = null;
+        }
+
+        let firstLetterIdxToReveal: number | undefined = undefined;
+
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState?.currentPuzzle) return prev;
           const cur = { ...prev.magicWheelState };
@@ -5167,12 +5233,16 @@ export default function AdminSandboxPage() {
               allIndices.push(i);
             }
           }
-          // Shuffle order with a tile near left/right edge first for hostess touch
-          for (let i = allIndices.length - 1; i > 0; i--) {
+          // The FIRST valid alphanumeric letter of secretPhrase MUST ALWAYS be firstIdx!
+          const firstLetterIdx = allIndices.find((idx) => /[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(p.secretPhrase[idx])) ?? allIndices[0];
+          firstLetterIdxToReveal = firstLetterIdx;
+          const restIndices = allIndices.filter((idx) => idx !== firstLetterIdx);
+          for (let i = restIndices.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [allIndices[i], allIndices[j]] = [allIndices[j], allIndices[i]];
+            [restIndices[i], restIndices[j]] = [restIndices[j], restIndices[i]];
           }
-          cur.tossUpRevealOrder = allIndices;
+          const finalRevealOrder = firstLetterIdx !== undefined ? [firstLetterIdx, ...restIndices] : restIndices;
+          cur.tossUpRevealOrder = finalRevealOrder;
           cur.tossUpStartTime = Date.now();
           cur.tossUpBuzzedTeamId = undefined;
           cur.tossUpBuzzedTeamName = undefined;
@@ -5183,6 +5253,64 @@ export default function AdminSandboxPage() {
           syncToIframes({ roomState: nextRoom });
           return nextRoom;
         });
+
+        // 1. Authoritative 1000ms delay for Tile 1 (Hostess touches tile + Cyan Neon highlight + highlight.mp3)
+        magicWheelTossUpFirstTimerRef.current = setTimeout(() => {
+          setRoomState((prev) => {
+            if (!prev || !prev.magicWheelState?.currentPuzzle) return prev;
+            if (prev.magicWheelState.phase !== "TOSS_UP_REVEALING" && prev.magicWheelState.phase !== "TOSS_UP_RUNNING") return prev;
+            const cur = { ...prev.magicWheelState };
+            const p = { ...cur.currentPuzzle! };
+            cur.currentPuzzle = p;
+            const order = cur.tossUpRevealOrder || [];
+            const targetFirst = firstLetterIdxToReveal !== undefined ? firstLetterIdxToReveal : order[0];
+            if (targetFirst !== undefined && !p.revealedIndices.includes(targetFirst)) {
+              p.revealedIndices = [...p.revealedIndices, targetFirst];
+            }
+            const nextRoom = { ...prev, magicWheelState: cur };
+            roomStateRef.current = nextRoom;
+            syncToIframes({ roomState: nextRoom });
+            return nextRoom;
+          });
+
+          // 2. Authoritative 750ms driver interval for all subsequent letters (immune to React re-renders)
+          magicWheelTossUpIntervalRef.current = setInterval(() => {
+            setRoomState((prev) => {
+              if (!prev || !prev.magicWheelState?.currentPuzzle) {
+                if (magicWheelTossUpIntervalRef.current) clearInterval(magicWheelTossUpIntervalRef.current);
+                return prev;
+              }
+              if (prev.magicWheelState.phase !== "TOSS_UP_REVEALING" && prev.magicWheelState.phase !== "TOSS_UP_RUNNING") {
+                if (magicWheelTossUpIntervalRef.current) clearInterval(magicWheelTossUpIntervalRef.current);
+                return prev;
+              }
+              const cur = { ...prev.magicWheelState };
+              const p = { ...cur.currentPuzzle! };
+              cur.currentPuzzle = p;
+              const order = cur.tossUpRevealOrder || [];
+              const nextIdx = order.find((idx) => !p.revealedIndices.includes(idx));
+              if (nextIdx === undefined) {
+                if (magicWheelTossUpIntervalRef.current) clearInterval(magicWheelTossUpIntervalRef.current);
+                cur.mustSolveWithTones = true;
+                cur.lastActionMessage = `⚡ Tất cả chữ cái gốc đã lộ diện! Đội nào bấm chuông và gõ đúng dấu thanh nhanh nhất sẽ chiến thắng!`;
+                const nextRoom = { ...prev, magicWheelState: cur };
+                roomStateRef.current = nextRoom;
+                syncToIframes({ roomState: nextRoom });
+                return nextRoom;
+              }
+
+              p.revealedIndices = [...p.revealedIndices, nextIdx];
+              if (isPuzzleFullyRevealed(p.secretPhrase, p.revealedIndices)) {
+                cur.mustSolveWithTones = true;
+                cur.lastActionMessage = `⚡ Tất cả chữ cái gốc đã lộ diện! Đội nào bấm chuông và gõ đúng dấu thanh nhanh nhất sẽ chiến thắng!`;
+              }
+              const nextRoom = { ...prev, magicWheelState: cur };
+              roomStateRef.current = nextRoom;
+              syncToIframes({ roomState: nextRoom });
+              return nextRoom;
+            });
+          }, 750);
+        }, 1000);
       } else if (e.data?.type === "MAGIC_WHEEL_TOSS_UP_TICK" || e.data?.type === "MAGIC_WHEEL_TOSS_UP_REVEAL_TICK") {
         const tickIdx = e.data.index;
         setRoomState((prev) => {
@@ -5211,6 +5339,14 @@ export default function AdminSandboxPage() {
           return nextRoom;
         });
       } else if (e.data?.type === "MAGIC_WHEEL_TOSS_UP_BUZZ") {
+        if (magicWheelTossUpIntervalRef.current) {
+          clearInterval(magicWheelTossUpIntervalRef.current);
+          magicWheelTossUpIntervalRef.current = null;
+        }
+        if (magicWheelTossUpFirstTimerRef.current) {
+          clearTimeout(magicWheelTossUpFirstTimerRef.current);
+          magicWheelTossUpFirstTimerRef.current = null;
+        }
         const { teamId } = e.data;
         if (roomStateRef.current?.magicWheelState?.phase === "TOSS_UP_BUZZED" || roomStateRef.current?.magicWheelState?.tossUpBuzzedTeamId) {
           return;
@@ -5504,6 +5640,14 @@ export default function AdminSandboxPage() {
           return nextRoom;
         });
       } else if (e.data?.type === "MAGIC_WHEEL_ADVANCE_ROUND" || e.data?.type === "MAGIC_WHEEL_NEXT_ROUND") {
+        if (magicWheelTossUpIntervalRef.current) {
+          clearInterval(magicWheelTossUpIntervalRef.current);
+          magicWheelTossUpIntervalRef.current = null;
+        }
+        if (magicWheelTossUpFirstTimerRef.current) {
+          clearTimeout(magicWheelTossUpFirstTimerRef.current);
+          magicWheelTossUpFirstTimerRef.current = null;
+        }
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState) return prev;
           const cur = { ...prev.magicWheelState };

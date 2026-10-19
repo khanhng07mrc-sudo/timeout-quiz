@@ -15330,6 +15330,21 @@ function registerSocketHandlers(io2) {
       wheelState.phase = "TOSS_UP_RUNNING";
       wheelState.tossUpBuzzedTeamId = void 0;
       wheelState.tossUpBuzzedTeamName = void 0;
+      wheelState.tossUpStartTime = Date.now();
+      if (wheelState.currentPuzzle && (!wheelState.tossUpRevealOrder || wheelState.tossUpRevealOrder.length === 0)) {
+        const p = wheelState.currentPuzzle;
+        const allIndices = [];
+        for (let i = 0; i < p.secretPhrase.length; i++) {
+          if (/[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(p.secretPhrase[i]) && !p.revealedIndices.includes(i)) {
+            allIndices.push(i);
+          }
+        }
+        for (let i = allIndices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allIndices[i], allIndices[j]] = [allIndices[j], allIndices[i]];
+        }
+        wheelState.tossUpRevealOrder = allIndices;
+      }
       wheelState.lastActionMessage = "C\xE1c ch\u1EEF c\xE1i \u0111ang l\u1EA7n l\u01B0\u1EE3t xu\u1EA5t hi\u1EC7n (0.75s/ch\u1EEF)! H\xE3y b\u1EA5m chu\xF4ng ngay khi \u0111o\xE1n ra \u0111\xE1p \xE1n!";
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });

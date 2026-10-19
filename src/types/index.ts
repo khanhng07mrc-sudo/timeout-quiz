@@ -885,6 +885,7 @@ export interface MagicWheelState {
   mustSolveWithTones?: boolean; // Đã lộ hết chữ cái gốc trên bảng, bắt buộc Giải Ô Chữ đúng dấu thanh
   // Toss-up state
   tossUpRevealOrder?: number[];
+  tossUpStartTime?: number;
   tossUpWrongTeamIds?: string[];
   tossUpBuzzedTeamId?: string;
   tossUpBuzzedTeamName?: string;

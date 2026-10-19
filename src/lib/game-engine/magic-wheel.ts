@@ -144,6 +144,8 @@ export interface MagicWheelState {
   // Cơ chế mở hết chữ cái gốc (không dấu thanh) -> bắt buộc Giải Ô Chữ đúng dấu thanh
   mustSolveWithTones?: boolean;
   // Trạng thái Vòng Đoán Nhanh (Toss-Up 1 & 2)
+  tossUpRevealOrder?: number[];
+  tossUpStartTime?: number;
   tossUpBuzzedTeamId?: string;
   tossUpBuzzedTeamName?: string;
   tossUpAnswerEndsAt?: number;

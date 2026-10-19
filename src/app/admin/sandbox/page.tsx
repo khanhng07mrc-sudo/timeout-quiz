@@ -5160,6 +5160,7 @@ export default function AdminSandboxPage() {
             [allIndices[i], allIndices[j]] = [allIndices[j], allIndices[i]];
           }
           cur.tossUpRevealOrder = allIndices;
+          cur.tossUpStartTime = Date.now();
           cur.tossUpBuzzedTeamId = undefined;
           cur.tossUpBuzzedTeamName = undefined;
           cur.phase = "TOSS_UP_REVEALING";
@@ -11107,25 +11108,22 @@ export default function AdminSandboxPage() {
                         }
                       }}
                       onTossUpStart={() => {
+                        window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START" }, "*");
                         if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:toss_up_start" as any);
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START" }, "*");
                         }
                       }}
                       onTossUpBuzz={(targetTeamId) => {
                         const tId = targetTeamId || currentTeam?.id || roomState.teams[0]?.id;
+                        window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
                         if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:toss_up_buzz" as any, { teamId: tId });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
                         }
                       }}
                       onTossUpRevealTick={(targetIndex?: number) => {
+                        window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_TICK", index: targetIndex }, "*");
                         if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:toss_up_tick" as any, { targetIndex });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_TICK", index: targetIndex }, "*");
                         }
                       }}
                       onExpressDecide={(boardTrain) => {

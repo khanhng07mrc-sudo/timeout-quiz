@@ -267,7 +267,19 @@ function SmartPuzzlePhraseInput({
   );
   const [focusedSlotIdx, setFocusedSlotIdx] = useState<number | null>(null);
   const [rawLineInput, setRawLineInput] = useState<string>("");
-  const [imeMethod, setImeMethod] = useState<VietnameseInputMethod>("AUTO");
+  const [imeMethod, setImeMethod] = useState<VietnameseInputMethod>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("magic_wheel_ime_method");
+      if (saved === "AUTO" || saved === "TELEX" || saved === "VNI" || saved === "OFF") return saved;
+    }
+    return "AUTO";
+  });
+  const updateImeMethod = (m: VietnameseInputMethod) => {
+    setImeMethod(m);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("magic_wheel_ime_method", m);
+    }
+  };
   const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const fullLineInputRef = useRef<HTMLInputElement | null>(null);
   const isComposingRef = useRef<boolean>(false);
@@ -360,13 +372,20 @@ function SmartPuzzlePhraseInput({
       focusNextEditable(slotIdx);
       return;
     }
-    if (e.key === "ArrowLeft") {
+
+    // CRITICAL: DO NOT intercept ArrowLeft with focusPrevEditable!
+    // When external IME (EVKey/UniKey) sends VK_LEFT internally to position caret before applying tone,
+    // intercepting ArrowLeft caused focus to jump to the previous cell, pushing the accented letter into the previous cell!
+    // Navigation to previous slot can be done via Shift+Tab or direct click.
+    if (e.key === "ArrowLeft" && (e.altKey || e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       focusPrevEditable(slotIdx);
       return;
     }
 
     if (e.key === "Backspace") {
+      // Clear current cell only. NEVER jump focus backwards on Backspace!
+      // This allows EVKey/UniKey to send synthetic backspace and insert the composed accented letter in the SAME cell.
       setCharValues((prev) => {
         const next = [...prev];
         next[slotIdx] = slot.isRevealedVowel ? slot.baseChar : "";
@@ -389,19 +408,62 @@ function SmartPuzzlePhraseInput({
       return;
     }
 
-    const lastChar = rawVal.slice(-1).toUpperCase();
+    // 1. Detect if EVKey / UniKey / native IME sent an accented Vietnamese character
+    const accentedMatch = rawVal.match(/[ÁÀẢÃẠẮẰẲẴẶẤẦẨẪẬÉÈẺẼẸẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌỐỒỔỖỘỚỜỞỠỢÚÙỦŨỤỨỪỬỮỰÝỲỶỸỴĐáàảãạắằẳẵặấầẩẫẬéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵđ]/gi);
+    let resolvedChar = "";
+
+    if (accentedMatch && accentedMatch.length > 0) {
+      resolvedChar = accentedMatch[accentedMatch.length - 1].toUpperCase();
+    } else if (rawVal.length > 1) {
+      // 2. Multi-character buffer: user typed sequence (e.g. "AS", "EE", "A1", etc.)
+      const curChar = charValues[slotIdx] || slot.baseChar || "";
+      const lastKey = rawVal.slice(-1);
+      const { modifiedChar, isModified } = applyTelexOrVniModifier(curChar, lastKey);
+      if (isModified) {
+        resolvedChar = modifiedChar.toUpperCase();
+      } else {
+        const formatted = formatVietnameseText(rawVal, imeMethod !== "OFF" ? imeMethod : "AUTO");
+        resolvedChar = formatted.slice(-1).toUpperCase();
+      }
+    } else {
+      // 3. Single keypress
+      const lastKey = rawVal.toUpperCase();
+      // If user typed tone/modifier key on a revealed vowel (e.g. 'S', 'F', '1', '2' on 'A')
+      if (slot.isRevealedVowel) {
+        const curChar = charValues[slotIdx] || slot.baseChar;
+        const { modifiedChar, isModified } = applyTelexOrVniModifier(curChar, lastKey);
+        if (isModified) {
+          resolvedChar = modifiedChar.toUpperCase();
+        } else {
+          resolvedChar = lastKey;
+        }
+      } else {
+        resolvedChar = lastKey;
+      }
+    }
+
+    // 4. Validate against slot rules
     if (slot.isRevealedVowel) {
-      if (normalizeVietnameseBaseLetter(lastChar) === slot.baseChar) {
+      // If it's a tone reset key (Z or 0)
+      if (rawVal.slice(-1).toUpperCase() === "Z" || rawVal.slice(-1) === "0") {
         setCharValues((prev) => {
           const next = [...prev];
-          next[slotIdx] = lastChar;
+          next[slotIdx] = slot.baseChar;
+          return next;
+        });
+        return;
+      }
+      if (normalizeVietnameseBaseLetter(resolvedChar) === slot.baseChar) {
+        setCharValues((prev) => {
+          const next = [...prev];
+          next[slotIdx] = resolvedChar;
           return next;
         });
       }
     } else {
       setCharValues((prev) => {
         const next = [...prev];
-        next[slotIdx] = lastChar;
+        next[slotIdx] = resolvedChar;
         return next;
       });
     }
@@ -498,7 +560,7 @@ function SmartPuzzlePhraseInput({
               <button
                 key={m}
                 type="button"
-                onClick={() => setImeMethod(m)}
+                onClick={() => updateImeMethod(m)}
                 className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
                   imeMethod === m
                     ? "bg-amber-400 text-slate-950 shadow-sm"
@@ -508,11 +570,11 @@ function SmartPuzzlePhraseInput({
                   m === "AUTO"
                     ? "Tự động nhận diện Telex / VNI / VIQR (Khuyên dùng)"
                     : m === "OFF"
-                    ? "Tắt bộ gõ web (Dùng Unikey / EVKey trên máy)"
+                    ? "Tương thích EVKey / UniKey ngoài máy (Chống nhảy ô)"
                     : `Bộ gõ ${m}`
                 }
               >
-                {m === "AUTO" ? "⚡ Tự động" : m === "OFF" ? "⚙️ EVKey/Unikey" : m}
+                {m === "AUTO" ? "⚡ Tự động (Telex/VNI)" : m === "OFF" ? "⚙️ EVKey/UniKey" : m}
               </button>
             ))}
           </div>
@@ -579,6 +641,10 @@ function SmartPuzzlePhraseInput({
                   }}
                   type="text"
                   value={val}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
                   onFocus={() => setFocusedSlotIdx(slot.index)}
                   onCompositionStart={() => {
                     isComposingRef.current = true;
@@ -1004,6 +1070,8 @@ export default function MagicWheelBoard({
     mustSolveWithTones = false,
     tossUpBuzzedTeamId,
     tossUpBuzzedTeamName,
+    tossUpRevealOrder,
+    tossUpStartTime,
     jackpotPool,
     expressModeActive = false,
     speedUpBellActive = false,
@@ -1018,7 +1086,28 @@ export default function MagicWheelBoard({
   const [specialPickedSet, setSpecialPickedSet] = useState<string[]>([]);
   const [specialRemainingSec, setSpecialRemainingSec] = useState<number>(40);
   const [isBoardShaking, setIsBoardShaking] = useState<boolean>(false);
+  const [isLocallyBuzzed, setIsLocallyBuzzed] = useState<boolean>(false);
+  const hasBuzzedRef = useRef<boolean>(false);
   const prevSolveFeedbackRef = useRef<typeof lastSolveFeedback>(undefined);
+
+  useEffect(() => {
+    if (phase !== "TOSS_UP_BUZZED") {
+      hasBuzzedRef.current = false;
+      setIsLocallyBuzzed(false);
+    }
+  }, [phase]);
+
+  const handleTriggerTossUpBuzz = useCallback(
+    (targetTeamId?: string) => {
+      if (hasBuzzedRef.current || phase === "TOSS_UP_BUZZED") return;
+      hasBuzzedRef.current = true;
+      setIsLocallyBuzzed(true);
+      soundManager.playMagicWheelBuzzSolve();
+      const buzzId = targetTeamId || myTeamId || currentTurnTeamId || teams[0]?.id;
+      onTossUpBuzz?.(buzzId);
+    },
+    [phase, myTeamId, currentTurnTeamId, teams, onTossUpBuzz]
+  );
 
   const isCurrentTeamEliminated = roundEliminatedTeamIds.includes(currentTurnTeamId);
   const isTossUpRound = roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2";
@@ -1523,11 +1612,12 @@ export default function MagicWheelBoard({
           if (intervalId) clearInterval(intervalId);
           return;
         }
-        const randIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
-        setAnimRevealedIndices((prev) => new Set([...prev, randIdx]));
-        triggerTilePop(randIdx);
+        const order = tossUpRevealOrder || [];
+        const nextIdx = order.find((idx) => unrevealed.includes(idx)) ?? unrevealed[Math.floor(Math.random() * unrevealed.length)];
+        setAnimRevealedIndices((prev) => new Set([...prev, nextIdx]));
+        triggerTilePop(nextIdx);
         soundManager.playMagicWheelLetterReveal(); // Plays letter_open.mp3 directly without highlight
-        onTossUpRevealTick?.(randIdx);
+        onTossUpRevealTick?.(nextIdx);
       }, 750);
     };
 
@@ -2700,17 +2790,28 @@ export default function MagicWheelBoard({
                     )}
                   </div>
 
-                  {(phase === "TOSS_UP_RUNNING" || phase === "TOSS_UP_REVEALING") && (
+                  {(phase === "TOSS_UP_RUNNING" || phase === "TOSS_UP_REVEALING" || phase === "TOSS_UP_READY") && (
                     <div className="space-y-2">
                       <button
                         type="button"
-                        onPointerDown={() => {
-                          soundManager.playMagicWheelBuzzSolve();
-                          onTossUpBuzz?.(myTeamId || currentTurnTeamId || teams[0]?.id);
+                        disabled={isLocallyBuzzed}
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          handleTriggerTossUpBuzz();
                         }}
-                        className="w-full py-4 rounded-2xl font-black text-sm sm:text-base text-slate-950 bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 hover:brightness-110 active:scale-95 shadow-[0_0_25px_rgba(251,191,36,0.6)] cursor-pointer transition select-none touch-manipulation ring-2 ring-yellow-200"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleTriggerTossUpBuzz();
+                        }}
+                        className={`w-full py-4 rounded-2xl font-black text-sm sm:text-base transition select-none touch-manipulation cursor-pointer ${
+                          isLocallyBuzzed
+                            ? "bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-500 text-slate-950 shadow-[0_0_35px_rgba(52,211,153,0.9)] animate-pulse scale-98 ring-4 ring-emerald-200"
+                            : "bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 text-slate-950 hover:brightness-110 active:scale-95 shadow-[0_0_25px_rgba(251,191,36,0.6)] ring-2 ring-yellow-200"
+                        }`}
                       >
-                        🔔 BẤM CHUÔNG GIÀNH QUYỀN GIẢI Ô CHỮ NGAY!
+                        {isLocallyBuzzed
+                          ? "🔔 ĐÃ GHI NHẬN TIẾNG CHUÔNG! ĐANG KHÓA QUYỀN TRẢ LỜI..."
+                          : "🔔 BẤM CHUÔNG GIÀNH QUYỀN GIẢI Ô CHỮ NGAY!"}
                       </button>
                       {isHost && teams.length > 1 && (
                         <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -2719,9 +2820,13 @@ export default function MagicWheelBoard({
                             <button
                               key={t.id}
                               type="button"
-                              onPointerDown={() => {
-                                soundManager.playMagicWheelBuzzSolve();
-                                onTossUpBuzz?.(t.id);
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                handleTriggerTossUpBuzz(t.id);
+                              }}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleTriggerTossUpBuzz(t.id);
                               }}
                               className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white/10 hover:bg-amber-400 hover:text-slate-950 border border-white/20 transition cursor-pointer select-none touch-manipulation"
                             >

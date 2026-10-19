@@ -2459,18 +2459,20 @@ export default function PlayPage() {
                     }
                   }}
                   onTossUpStart={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START", teamId: effectiveTeamId }, "*");
+                    }
                     if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("magic_wheel:toss_up_start");
-                    } else if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START", teamId: effectiveTeamId }, "*");
                     }
                   }}
                   onTossUpBuzz={(targetTeamId) => {
                     const tId = targetTeamId || effectiveTeamId;
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
+                    }
                     if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("magic_wheel:toss_up_buzz", { teamId: tId });
-                    } else if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
                     }
                   }}
                   onExpressDecide={(boardTrain) => {

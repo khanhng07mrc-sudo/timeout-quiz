@@ -8244,6 +8244,21 @@ export function registerSocketHandlers(io: IO) {
       wheelState.phase = "TOSS_UP_RUNNING";
       wheelState.tossUpBuzzedTeamId = undefined;
       wheelState.tossUpBuzzedTeamName = undefined;
+      wheelState.tossUpStartTime = Date.now();
+      if (wheelState.currentPuzzle && (!wheelState.tossUpRevealOrder || wheelState.tossUpRevealOrder.length === 0)) {
+        const p = wheelState.currentPuzzle;
+        const allIndices: number[] = [];
+        for (let i = 0; i < p.secretPhrase.length; i++) {
+          if (/[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(p.secretPhrase[i]) && !p.revealedIndices.includes(i)) {
+            allIndices.push(i);
+          }
+        }
+        for (let i = allIndices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allIndices[i], allIndices[j]] = [allIndices[j], allIndices[i]];
+        }
+        wheelState.tossUpRevealOrder = allIndices;
+      }
       wheelState.lastActionMessage = "Các chữ cái đang lần lượt xuất hiện (0.75s/chữ)! Hãy bấm chuông ngay khi đoán ra đáp án!";
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });

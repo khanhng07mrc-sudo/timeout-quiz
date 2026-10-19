@@ -4281,7 +4281,53 @@ export default function AdminSandboxPage() {
       }
 
       if (typeof e.data?.type === "string" && e.data.type.startsWith("MAGIC_WHEEL_") && !isOfflineSandbox && adminSocketRef.current?.connected) {
-        return;
+        const msg = e.data;
+        if (msg.type === "MAGIC_WHEEL_TOSS_UP_BUZZ") {
+          adminSocketRef.current.emit("magic_wheel:toss_up_buzz" as any, { teamId: msg.teamId });
+        } else if (msg.type === "MAGIC_WHEEL_TOSS_UP_START") {
+          adminSocketRef.current.emit("magic_wheel:toss_up_start" as any);
+        } else if (msg.type === "MAGIC_WHEEL_TOSS_UP_TICK" || msg.type === "MAGIC_WHEEL_TOSS_UP_REVEAL_TICK") {
+          adminSocketRef.current.emit("magic_wheel:toss_up_reveal_tick" as any, { index: msg.index });
+        } else if (msg.type === "MAGIC_WHEEL_SPIN") {
+          adminSocketRef.current.emit("magic_wheel:spin" as any, { power: msg.power });
+        } else if (msg.type === "MAGIC_WHEEL_GUESS_LETTER") {
+          adminSocketRef.current.emit("magic_wheel:guess_letter" as any, { letter: msg.letter });
+        } else if (msg.type === "MAGIC_WHEEL_SOLVE_PUZZLE") {
+          const tId = msg.teamId || roomStateRef.current?.magicWheelState?.tossUpBuzzedTeamId || roomStateRef.current?.magicWheelState?.currentTurnTeamId;
+          adminSocketRef.current.emit("magic_wheel:solve_puzzle" as any, { answer: msg.answer, teamId: tId });
+        } else if (msg.type === "MAGIC_WHEEL_OPEN_BOARD") {
+          adminSocketRef.current.emit("admin:magic_wheel:open_board" as any);
+        } else if (msg.type === "MAGIC_WHEEL_PASS_TURN") {
+          adminSocketRef.current.emit("admin:magic_wheel:pass_turn" as any);
+        } else if (msg.type === "MAGIC_WHEEL_QUICK_REVEAL") {
+          adminSocketRef.current.emit("admin:magic_wheel:quick_reveal_letter" as any);
+        } else if (msg.type === "MAGIC_WHEEL_REVEAL_ALL") {
+          adminSocketRef.current.emit("admin:magic_wheel:reveal_all" as any);
+        } else if (msg.type === "MAGIC_WHEEL_ADVANCE_ROUND" || msg.type === "MAGIC_WHEEL_NEXT_ROUND") {
+          adminSocketRef.current.emit("admin:magic_wheel:advance_round" as any);
+        } else if (msg.type === "MAGIC_WHEEL_JUDGE_SOLVE") {
+          adminSocketRef.current.emit("admin:magic_wheel:judge_solve" as any, { isCorrect: msg.correct });
+        } else if (msg.type === "MAGIC_WHEEL_OVERRIDE_TURN") {
+          adminSocketRef.current.emit("admin:magic_wheel:override_turn" as any, { teamId: msg.teamId });
+        } else if (msg.type === "MAGIC_WHEEL_LUCKY_PICK") {
+          adminSocketRef.current.emit("magic_wheel:lucky_pick" as any, { index: msg.index });
+        } else if (msg.type === "MAGIC_WHEEL_REWARD_SELECT") {
+          adminSocketRef.current.emit("magic_wheel:reward_select" as any, msg);
+        } else if (msg.type === "MAGIC_WHEEL_MYSTERY_DECIDE") {
+          adminSocketRef.current.emit("magic_wheel:mystery_decide" as any, { openMystery: msg.openMystery });
+        } else if (msg.type === "MAGIC_WHEEL_TRADE_DECIDE") {
+          adminSocketRef.current.emit("magic_wheel:trade_decide" as any, { trade: msg.trade, boxIndex: msg.boxIndex });
+        } else if (msg.type === "MAGIC_WHEEL_EXPRESS_DECIDE") {
+          adminSocketRef.current.emit("magic_wheel:express_decide" as any, { rideExpress: msg.boardTrain });
+        } else if (msg.type === "MAGIC_WHEEL_STEAL_SWAP_DECIDE") {
+          adminSocketRef.current.emit("magic_wheel:steal_swap_decide" as any, { action: msg.action || (msg.mode === "STEAL_50" ? "STEAL_50" : "SWAP_LEADER"), targetTeamId: msg.targetTeamId });
+        } else if (msg.type === "MAGIC_WHEEL_SPECIAL_ORDER") {
+          adminSocketRef.current.emit("magic_wheel:special_choose_order" as any, { order: msg.order });
+        } else if (msg.type === "MAGIC_WHEEL_SPECIAL_PICK_LETTERS") {
+          adminSocketRef.current.emit("magic_wheel:special_pick_letters" as any, { letters: msg.letters });
+        } else if (msg.type === "MAGIC_WHEEL_SET_MODE") {
+          adminSocketRef.current.emit("magic_wheel:set_operation_mode" as any, { mode: msg.mode });
+        }
       }
 
       if (e.data?.type === "MAGIC_WHEEL_SPIN") {
@@ -11245,6 +11291,9 @@ export default function AdminSandboxPage() {
                       }}
                       onTossUpBuzz={(targetTeamId) => {
                         const tId = targetTeamId || currentTeam?.id || roomState.teams[0]?.id;
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
+                          adminSocketRef.current.emit("magic_wheel:toss_up_buzz" as any, { teamId: tId });
+                        }
                         window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
                       }}
                       onTossUpRevealTick={(targetIndex?: number) => {

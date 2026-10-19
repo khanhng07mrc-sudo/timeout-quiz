@@ -1145,6 +1145,16 @@ export default function MagicWheelBoard({
     }
   }, [phase]);
 
+  useEffect(() => {
+    if (isLocallyBuzzed && phase !== "TOSS_UP_BUZZED") {
+      const fallbackTimer = setTimeout(() => {
+        setIsLocallyBuzzed(false);
+        hasBuzzedRef.current = false;
+      }, 3500);
+      return () => clearTimeout(fallbackTimer);
+    }
+  }, [isLocallyBuzzed, phase]);
+
   const handleTriggerTossUpBuzz = useCallback(
     (targetTeamId?: string) => {
       if (hasBuzzedRef.current || phase === "TOSS_UP_BUZZED") return;

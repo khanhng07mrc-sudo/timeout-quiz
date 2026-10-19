@@ -80,7 +80,7 @@ export default function ScoreDisplay({ roomState, playerId, teamId, overridePlay
       </div>
 
       {/* Team Score */}
-      <div className="text-right pl-2 border-l border-border/50 shrink-0">
+      <div className="text-right pl-2 border-l border-border/50 shrink-0 flex flex-col items-end">
         <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase whitespace-nowrap">{myTeam ? "Điểm đội" : "Điểm"}</p>
         <p className="font-black text-sm sm:text-base text-cyan-400 font-mono whitespace-nowrap">
           {(scoreVal + (roomState.mode === "MAGIC_WHEEL" ? (magicWheelRoundScore || 0) : 0)).toLocaleString()}
@@ -92,6 +92,11 @@ export default function ScoreDisplay({ roomState, playerId, teamId, overridePlay
             <span className="text-yellow-400 font-extrabold text-xs ml-1">(+{roomState.mysteryQuestState!.potPoints})</span>
           )}
         </p>
+        {roomState.mode === "MAGIC_WHEEL" && (
+          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold mt-0.5 whitespace-nowrap">
+            Vòng này: {(magicWheelRoundScore || 0).toLocaleString()}đ
+          </span>
+        )}
       </div>
     </div>
   );

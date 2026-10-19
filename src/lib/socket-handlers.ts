@@ -192,6 +192,7 @@ const roomTossUpBuzzLocks = new Map<string, { teamId: string; timestamp: number 
 const roomTossUpAnswerTimers = new Map<string, NodeJS.Timeout>();
 const roomTossUpTickTimers = new Map<string, NodeJS.Timeout>();
 const roomTossUpFirstTimers = new Map<string, NodeJS.Timeout>();
+const roomLastAdvanceTimestamps = new Map<string, number>();
 const roomGridCaros = new Map<string, GridCaroState>();
 const roomDiceRaces = new Map<string, DiceRaceState>();
 const roomWagers = new Map<string, WagerState>();
@@ -8008,7 +8009,7 @@ export function registerSocketHandlers(io: IO) {
           });
         }
       } else {
-        // MAIN round 1..N: rotate starter team based on round1StarterTeamId
+        // MAIN round 1..N: rotate starter team based on round1StarterTeamId (winner of Toss-Up 2 starts Main Round 1, subsequent rounds rotate clockwise)
         const r1Idx = Math.max(
           0,
           teams.findIndex((t) => t.id === wheelState.round1StarterTeamId)
@@ -8017,6 +8018,8 @@ export function registerSocketHandlers(io: IO) {
           teams.length > 0 ? teams[(r1Idx + (mainIdx - 1)) % teams.length] : undefined;
         wheelState.currentTurnTeamId = starterTeam?.id || teams[0]?.id || "";
         wheelState.currentTurnTeamName = starterTeam?.name || teams[0]?.name || "";
+        if (!wheelState.mainRoundStarterTeamIds) wheelState.mainRoundStarterTeamIds = {};
+        wheelState.mainRoundStarterTeamIds[mainIdx] = starterTeam?.id || teams[0]?.id || "";
         wheelState.sectors = generateMagicWheelSectors(mainIdx, "MAIN");
         wheelState.jackpotPool = mainIdx === 4 ? 1000 : undefined;
         wheelState.phase = "SPIN_WAITING";
@@ -8265,9 +8268,6 @@ export function registerSocketHandlers(io: IO) {
         : (isAdmin ? (payload?.teamId || teamId) : teamId);
 
       if (!buzzTeamId) return;
-
-      // 3. Reject if this team already answered incorrectly in this toss-up round
-      if ((wheelState.tossUpWrongTeamIds || []).includes(buzzTeamId)) return;
 
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
       if (!room) return;
@@ -8790,11 +8790,6 @@ export function registerSocketHandlers(io: IO) {
           );
           await completeMagicWheelRoundHelper(roomId, roomCode, tId);
         } else {
-          if (!wheelState.tossUpWrongTeamIds) wheelState.tossUpWrongTeamIds = [];
-          if (!wheelState.tossUpWrongTeamIds.includes(tId)) {
-            wheelState.tossUpWrongTeamIds.push(tId);
-          }
-
           wheelState.lastSolveFeedback = {
             teamId: tId,
             teamName,
@@ -8810,33 +8805,13 @@ export function registerSocketHandlers(io: IO) {
             roundWonPoints: 0,
           });
 
-          const allTeamsFailed = wheelState.tossUpWrongTeamIds.length >= room.teams.length;
-          if (allTeamsFailed) {
-            const oldTick = roomTossUpTickTimers.get(roomId);
-            if (oldTick) clearInterval(oldTick);
-            roomTossUpTickTimers.delete(roomId);
-            const oldFirst = roomTossUpFirstTimers.get(roomId);
-            if (oldFirst) clearTimeout(oldFirst);
-            roomTossUpFirstTimers.delete(roomId);
-
-            wheelState.currentPuzzle.revealedIndices = Array.from(
-              { length: wheelState.currentPuzzle.secretPhrase.length },
-              (_, i) => i
-            );
-            wheelState.phase = "ROUND_RECAP";
-            wheelState.tossUpBuzzedTeamId = undefined;
-            wheelState.tossUpBuzzedTeamName = undefined;
-            wheelState.tossUpAnswerEndsAt = undefined;
-            wheelState.lastActionMessage = `❌ Tất cả ${room.teams.length} đội đều đã trả lời sai trong Vòng Đoán Nhanh! Đáp án chính xác là: "${wheelState.currentPuzzle.secretPhrase}"!`;
-          } else {
-            wheelState.phase = "TOSS_UP_RUNNING";
-            wheelState.tossUpBuzzedTeamId = undefined;
-            wheelState.tossUpBuzzedTeamName = undefined;
-            wheelState.tossUpAnswerEndsAt = undefined;
-            wheelState.lastActionMessage = `❌ Đáp án "${answer}" của Đội ${teamName} chưa chính xác! Các chữ cái tiếp tục mở và các đội còn lại có quyền bấm chuông!`;
-            // Resume authoritative 750ms interval directly on server!
-            startServerTossUpInterval(roomId, roomCode);
-          }
+          wheelState.phase = "TOSS_UP_RUNNING";
+          wheelState.tossUpBuzzedTeamId = undefined;
+          wheelState.tossUpBuzzedTeamName = undefined;
+          wheelState.tossUpAnswerEndsAt = undefined;
+          wheelState.lastActionMessage = `❌ Đáp án "${answer}" của Đội ${teamName} chưa chính xác! Các chữ cái tiếp tục mở và tất cả các đội đều có thể bấm chuông tiếp!`;
+          // Resume authoritative 750ms interval directly on server!
+          startServerTossUpInterval(roomId, roomCode);
           io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
         }
         return;
@@ -9494,12 +9469,19 @@ export function registerSocketHandlers(io: IO) {
     });
 
     const handleAdvanceMagicWheelRound = async (roomId: string, roomCode: string) => {
+      const now = Date.now();
+      const lastAdvance = roomLastAdvanceTimestamps.get(roomId) || 0;
+      if (now - lastAdvance < 800) {
+        return;
+      }
+      roomLastAdvanceTimestamps.set(roomId, now);
+
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
       const fullRoom = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
       const teams = fullRoom?.teams || [];
       if (wheelState.currentRound < wheelState.maxRounds) {
-        setupMagicWheelRoundStage(wheelState, wheelState.currentRound + 1, teams);
+        setupMagicWheelRoundStage(wheelState, wheelState.currentRound + 1, teams, roomId);
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
         persistGameStateSnapshot(roomId).catch(() => {});
       }

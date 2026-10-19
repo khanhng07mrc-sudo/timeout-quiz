@@ -1177,14 +1177,15 @@ export default function MagicWheelBoard({
   const isCurrentTeamEliminated = roundEliminatedTeamIds.includes(currentTurnTeamId);
   const isTossUpRound = roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2";
 
+  const isIframe = typeof window !== "undefined" && window.self !== window.top;
   const isInsideSandbox =
     typeof window !== "undefined" &&
-    (window.self !== window.top ||
+    (isIframe ||
       window.location.search.includes("sandbox=1") ||
       window.location.pathname.includes("/sandbox"));
-  // Audio rule: In sandbox: strictly Display preview plays audio (prevents duplicate audio on the same machine).
+  // Audio rule: In sandbox, the top dashboard window plays audio directly with user gestures. Child iframes inside sandbox don't duplicate audio.
   // In live room: All participants (Host, Display, Players) can hear audio.
-  const canPlayBoardAudio = isInsideSandbox ? Boolean(isDisplay) : true;
+  const canPlayBoardAudio = isInsideSandbox ? !isIframe : true;
 
   const isSolveMountedRef = useRef<boolean>(false);
   useEffect(() => {
@@ -1762,27 +1763,6 @@ export default function MagicWheelBoard({
       return list;
     };
 
-    const startRandomInterval = () => {
-      if (!isTickDriver) return;
-      if (tossUpIntervalRef.current) clearInterval(tossUpIntervalRef.current);
-      tossUpIntervalRef.current = setInterval(() => {
-        const unrevealed = getUnrevealedLetterIndices();
-        if (unrevealed.length === 0) {
-          if (tossUpIntervalRef.current) {
-            clearInterval(tossUpIntervalRef.current);
-            tossUpIntervalRef.current = null;
-          }
-          return;
-        }
-        const order = tossUpRevealOrder || [];
-        const nextIdx = order.find((idx) => unrevealed.includes(idx)) ?? unrevealed[Math.floor(Math.random() * unrevealed.length)];
-        setAnimRevealedIndices((prev) => new Set([...prev, nextIdx]));
-        triggerTilePop(nextIdx);
-        if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal(); // Plays letter_open.mp3 directly without highlight
-        onTossUpRevealTick?.(nextIdx);
-      }, 750);
-    };
-
     if (!tossUpFirstTileDoneRef.current && (currentPuzzleRef.current?.revealedIndices?.length || 0) === 0) {
       tossUpFirstTileDoneRef.current = true;
       const unrevealed = getUnrevealedLetterIndices();
@@ -1803,27 +1783,25 @@ export default function MagicWheelBoard({
         setHostessActiveRow(firstPos.row);
         setHostessXPercent(((firstPos.col + 0.5) / COLS) * 100);
         setHighlightedIndices(new Set([firstIdx]));
-        if (canPlayBoardAudio) soundManager.playMagicWheelMark(); // Plays highlight.mp3
+        if (canPlayBoardAudio) soundManager.playMagicWheelMark();
 
-        // 2. Exactly after 1.0s (1000ms), letter appears + pop zoom + letter_open.mp3, then 0.75s driver interval begins
+        // 2. Exactly after 1.0s (1000ms), letter appears + pop zoom + letter_open.mp3
         if (tossUpFirstTimerRef.current) clearTimeout(tossUpFirstTimerRef.current);
         tossUpFirstTimerRef.current = setTimeout(() => {
           setHighlightedIndices(new Set());
           setAnimRevealedIndices((prev) => new Set([...prev, firstIdx]));
           triggerTilePop(firstIdx);
-          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal(); // Plays letter_open.mp3
-          if (isTickDriver) {
-            onTossUpRevealTick?.(firstIdx);
-          }
+          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
           setHostessPose("IDLE");
           setHostessXPercent(side === "LEFT" ? 3.5 : 96.5);
-          startRandomInterval();
         }, 1000);
       }
-    } else if (!tossUpIntervalRef.current) {
-      // Resuming after a wrong buzz: continue 0.75s random letter reveal directly
-      startRandomInterval();
     }
+
+    return () => {
+      if (tossUpFirstTimerRef.current) clearTimeout(tossUpFirstTimerRef.current);
+      if (tossUpIntervalRef.current) clearInterval(tossUpIntervalRef.current);
+    };
   }, [
     phase,
     effectiveBoardStage,
@@ -1834,7 +1812,6 @@ export default function MagicWheelBoard({
     isInsideSandbox,
     tossUpRevealOrder,
     triggerTilePop,
-    onTossUpRevealTick,
   ]);
 
   // ── Audio Engine Hooks ───────────────────────────────────────────────────
@@ -2352,7 +2329,7 @@ export default function MagicWheelBoard({
                 return (
                   <div
                     key={t.id}
-                    className={`px-3 py-1.5 rounded-xl flex items-center gap-2 border text-xs font-bold transition shadow-sm ${
+                    className={`px-3 py-1.5 rounded-xl flex flex-col justify-center border text-xs font-bold transition shadow-sm ${
                       isTurn
                         ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_14px_rgba(245,158,11,0.35)]"
                         : isEliminated
@@ -2360,16 +2337,25 @@ export default function MagicWheelBoard({
                         : "bg-black/50 border-white/10 text-slate-200"
                     }`}
                   >
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color || "#6366f1" }} />
-                    <span className="truncate max-w-[110px]">{t.name}</span>
-                    <span className="font-mono text-amber-300">+{rScore.toLocaleString()}đ</span>
-                    {isEliminatedBySolve ? (
-                      <span className="text-rose-400 text-[10px] font-bold">⛔</span>
-                    ) : strikes > 0 ? (
-                      <span className="text-rose-400 font-mono text-[10px] tracking-tighter">
-                        {"✕".repeat(Math.min(3, strikes))}
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color || "#6366f1" }} />
+                      <span className="truncate max-w-[110px]">{t.name}</span>
+                      <span className="font-mono font-black text-amber-300 ml-auto">
+                        {((t.score || 0) + rScore).toLocaleString()}đ
                       </span>
-                    ) : null}
+                      {isEliminatedBySolve ? (
+                        <span className="text-rose-400 text-[10px] font-bold">⛔</span>
+                      ) : strikes > 0 ? (
+                        <span className="text-rose-400 font-mono text-[10px] tracking-tighter">
+                          {"✕".repeat(Math.min(3, strikes))}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center justify-end pt-0.5">
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                        Vòng này: {rScore.toLocaleString()}đ
+                      </span>
+                    </div>
                   </div>
                 );
               })}
@@ -3011,6 +2997,16 @@ export default function MagicWheelBoard({
                 <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 animate-pulse">
                   {operationMode === "HOST_ASSISTED" ? "CHẾ ĐỘ MC HỖ TRỢ" : "TỰ ĐỘNG"}
                 </span>
+                {isHost && onJudgeSolve && phase !== "ROUND_RECAP" && (
+                  <button
+                    type="button"
+                    onClick={() => onJudgeSolve(false)}
+                    className="ml-auto px-2 py-0.5 rounded-lg text-[10px] font-black bg-rose-500/80 hover:bg-rose-600 text-white border border-rose-400/50 shadow transition cursor-pointer active:scale-95 shrink-0"
+                    title="MC bấm phạt SAI thí sinh hiện tại và chuyển lượt/tiếp tục chơi ngay lập tức"
+                  >
+                    ✕ MC Phạt SAI
+                  </button>
+                )}
               </div>
               <p className="text-xs sm:text-sm font-bold text-white leading-snug">
                 &ldquo;{mcReaction.text}&rdquo;
@@ -3061,10 +3057,6 @@ export default function MagicWheelBoard({
                       <button
                         type="button"
                         disabled={isLocallyBuzzed || Boolean(tossUpBuzzedTeamId)}
-                        onPointerDown={(e) => {
-                          e.preventDefault();
-                          handleTriggerTossUpBuzz();
-                        }}
                         onClick={(e) => {
                           e.preventDefault();
                           handleTriggerTossUpBuzz();
@@ -3086,10 +3078,6 @@ export default function MagicWheelBoard({
                             <button
                               key={t.id}
                               type="button"
-                              onPointerDown={(e) => {
-                                e.preventDefault();
-                                handleTriggerTossUpBuzz(t.id);
-                              }}
                               onClick={(e) => {
                                 e.preventDefault();
                                 handleTriggerTossUpBuzz(t.id);
@@ -3729,17 +3717,20 @@ export default function MagicWheelBoard({
                           />
                           <span className="text-xs font-bold text-white truncate">{t.name}</span>
                         </div>
-                        <div className="text-right shrink-0">
+                        <div className="text-right shrink-0 flex flex-col items-end">
                           <span className="text-xs font-mono font-black text-amber-300">
                             {((t.score || 0) + rScore).toLocaleString()}đ
                           </span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold mt-0.5">
+                            Vòng này: {rScore.toLocaleString()}đ
+                          </span>
                           {activeState.prizeCash?.[t.id] ? (
-                            <div className="text-[9px] font-mono text-emerald-400 font-bold" title="Tiền thưởng vĩnh viễn (không tính vào điểm xét Vòng Đặc Biệt)">
+                            <div className="text-[9px] font-mono text-emerald-400 font-bold mt-0.5" title="Tiền thưởng vĩnh viễn (không tính vào điểm xét Vòng Đặc Biệt)">
                               💰 {(activeState.prizeCash[t.id] * 1000).toLocaleString("vi-VN")}đ tiền mặt
                             </div>
                           ) : null}
                           {activeState.physicalPrizes?.[t.id]?.map((pName, pIdx) => (
-                            <div key={pIdx} className="text-[9px] text-amber-300 font-semibold truncate max-w-[140px]" title={pName}>
+                            <div key={pIdx} className="text-[9px] text-amber-300 font-semibold truncate max-w-[140px] mt-0.5" title={pName}>
                               🎁 {pName}
                             </div>
                           ))}

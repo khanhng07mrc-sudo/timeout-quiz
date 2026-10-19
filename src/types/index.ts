@@ -823,6 +823,7 @@ export interface MagicWheelState {
   totalMainRounds?: number;   // Tổng số vòng chính (max(3, số đội))
   round1StarterTeamId?: string; // Đội chiến thắng Đoán Nhanh 2 đi đầu ở Vòng Chính 1
   mainRound1StarterTeamId?: string;
+  mainRoundStarterTeamIds?: Record<number, string>; // Lịch sử các đội mở màn từng Vòng Chính 1..N
   puzzles: MagicWheelPuzzle[];
   currentPuzzle?: MagicWheelPuzzle;
   isSpinning: boolean;

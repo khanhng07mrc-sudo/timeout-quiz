@@ -8650,6 +8650,7 @@ var roomTossUpBuzzLocks = /* @__PURE__ */ new Map();
 var roomTossUpAnswerTimers = /* @__PURE__ */ new Map();
 var roomTossUpTickTimers = /* @__PURE__ */ new Map();
 var roomTossUpFirstTimers = /* @__PURE__ */ new Map();
+var roomLastAdvanceTimestamps = /* @__PURE__ */ new Map();
 var roomGridCaros = /* @__PURE__ */ new Map();
 var roomDiceRaces = /* @__PURE__ */ new Map();
 var roomWagers = /* @__PURE__ */ new Map();
@@ -15191,6 +15192,8 @@ function registerSocketHandlers(io2) {
         const starterTeam = teams.length > 0 ? teams[(r1Idx + (mainIdx - 1)) % teams.length] : void 0;
         wheelState.currentTurnTeamId = starterTeam?.id || teams[0]?.id || "";
         wheelState.currentTurnTeamName = starterTeam?.name || teams[0]?.name || "";
+        if (!wheelState.mainRoundStarterTeamIds) wheelState.mainRoundStarterTeamIds = {};
+        wheelState.mainRoundStarterTeamIds[mainIdx] = starterTeam?.id || teams[0]?.id || "";
         wheelState.sectors = generateMagicWheelSectors(mainIdx, "MAIN");
         wheelState.jackpotPool = mainIdx === 4 ? 1e3 : void 0;
         wheelState.phase = "SPIN_WAITING";
@@ -15402,7 +15405,6 @@ function registerSocketHandlers(io2) {
       }
       const buzzTeamId = isSandboxSocket ? payload?.teamId || roomSandboxActiveTeam.get(roomId) || teamId : isAdmin ? payload?.teamId || teamId : teamId;
       if (!buzzTeamId) return;
-      if ((wheelState.tossUpWrongTeamIds || []).includes(buzzTeamId)) return;
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
       if (!room) return;
       const buzzTeam = room.teams.find((t) => t.id === buzzTeamId);
@@ -15852,10 +15854,6 @@ function registerSocketHandlers(io2) {
           );
           await completeMagicWheelRoundHelper(roomId, roomCode, tId);
         } else {
-          if (!wheelState.tossUpWrongTeamIds) wheelState.tossUpWrongTeamIds = [];
-          if (!wheelState.tossUpWrongTeamIds.includes(tId)) {
-            wheelState.tossUpWrongTeamIds.push(tId);
-          }
           wheelState.lastSolveFeedback = {
             teamId: tId,
             teamName,
@@ -15870,31 +15868,12 @@ function registerSocketHandlers(io2) {
             secretPhrase: "",
             roundWonPoints: 0
           });
-          const allTeamsFailed = wheelState.tossUpWrongTeamIds.length >= room.teams.length;
-          if (allTeamsFailed) {
-            const oldTick = roomTossUpTickTimers.get(roomId);
-            if (oldTick) clearInterval(oldTick);
-            roomTossUpTickTimers.delete(roomId);
-            const oldFirst = roomTossUpFirstTimers.get(roomId);
-            if (oldFirst) clearTimeout(oldFirst);
-            roomTossUpFirstTimers.delete(roomId);
-            wheelState.currentPuzzle.revealedIndices = Array.from(
-              { length: wheelState.currentPuzzle.secretPhrase.length },
-              (_, i) => i
-            );
-            wheelState.phase = "ROUND_RECAP";
-            wheelState.tossUpBuzzedTeamId = void 0;
-            wheelState.tossUpBuzzedTeamName = void 0;
-            wheelState.tossUpAnswerEndsAt = void 0;
-            wheelState.lastActionMessage = `\u274C T\u1EA5t c\u1EA3 ${room.teams.length} \u0111\u1ED9i \u0111\u1EC1u \u0111\xE3 tr\u1EA3 l\u1EDDi sai trong V\xF2ng \u0110o\xE1n Nhanh! \u0110\xE1p \xE1n ch\xEDnh x\xE1c l\xE0: "${wheelState.currentPuzzle.secretPhrase}"!`;
-          } else {
-            wheelState.phase = "TOSS_UP_RUNNING";
-            wheelState.tossUpBuzzedTeamId = void 0;
-            wheelState.tossUpBuzzedTeamName = void 0;
-            wheelState.tossUpAnswerEndsAt = void 0;
-            wheelState.lastActionMessage = `\u274C \u0110\xE1p \xE1n "${answer}" c\u1EE7a \u0110\u1ED9i ${teamName} ch\u01B0a ch\xEDnh x\xE1c! C\xE1c ch\u1EEF c\xE1i ti\u1EBFp t\u1EE5c m\u1EDF v\xE0 c\xE1c \u0111\u1ED9i c\xF2n l\u1EA1i c\xF3 quy\u1EC1n b\u1EA5m chu\xF4ng!`;
-            startServerTossUpInterval(roomId, roomCode);
-          }
+          wheelState.phase = "TOSS_UP_RUNNING";
+          wheelState.tossUpBuzzedTeamId = void 0;
+          wheelState.tossUpBuzzedTeamName = void 0;
+          wheelState.tossUpAnswerEndsAt = void 0;
+          wheelState.lastActionMessage = `\u274C \u0110\xE1p \xE1n "${answer}" c\u1EE7a \u0110\u1ED9i ${teamName} ch\u01B0a ch\xEDnh x\xE1c! C\xE1c ch\u1EEF c\xE1i ti\u1EBFp t\u1EE5c m\u1EDF v\xE0 t\u1EA5t c\u1EA3 c\xE1c \u0111\u1ED9i \u0111\u1EC1u c\xF3 th\u1EC3 b\u1EA5m chu\xF4ng ti\u1EBFp!`;
+          startServerTossUpInterval(roomId, roomCode);
           io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
         }
         return;
@@ -16466,12 +16445,18 @@ function registerSocketHandlers(io2) {
       await handleRevealAllMagicWheelPuzzle(roomId, roomCode);
     });
     const handleAdvanceMagicWheelRound = async (roomId, roomCode) => {
+      const now = Date.now();
+      const lastAdvance = roomLastAdvanceTimestamps.get(roomId) || 0;
+      if (now - lastAdvance < 800) {
+        return;
+      }
+      roomLastAdvanceTimestamps.set(roomId, now);
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
       const fullRoom = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
       const teams = fullRoom?.teams || [];
       if (wheelState.currentRound < wheelState.maxRounds) {
-        setupMagicWheelRoundStage(wheelState, wheelState.currentRound + 1, teams);
+        setupMagicWheelRoundStage(wheelState, wheelState.currentRound + 1, teams, roomId);
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
         persistGameStateSnapshot(roomId).catch(() => {
         });

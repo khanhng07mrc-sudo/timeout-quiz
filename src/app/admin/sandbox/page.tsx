@@ -371,8 +371,8 @@ export default function AdminSandboxPage() {
   const currentTeam = stableTeams[activeTeamIndex] || stableTeams[0];
 
   useEffect(() => {
-    // Trong sandbox: Chỉ kích hoạt âm thanh cho màn hình hiển thị (Display preview iframe), host page tắt âm để không bị vọng âm
-    soundManager.setMuted(true);
+    // Trong sandbox: Bật âm thanh để người kiểm thử nhận phản hồi âm thanh trực tiếp
+    soundManager.setMuted(false);
   }, []);
 
   useEffect(() => {
@@ -5399,7 +5399,6 @@ export default function AdminSandboxPage() {
           if (cur.tossUpBuzzedTeamId) return prev;
           const buzzTeam = prev.teams.find((t) => t.id === teamId) || prev.teams[0];
           if (!buzzTeam) return prev;
-          if ((cur.tossUpWrongTeamIds || []).includes(buzzTeam.id)) return prev;
           cur.tossUpBuzzedTeamId = buzzTeam.id;
           cur.tossUpBuzzedTeamName = buzzTeam.name;
           cur.phase = "TOSS_UP_BUZZED";
@@ -5575,10 +5574,6 @@ export default function AdminSandboxPage() {
           } else {
             // Case 1: Toss-Up Rounds (TOSS_UP_1, TOSS_UP_2)
             if (cur.roundStage === "TOSS_UP_1" || cur.roundStage === "TOSS_UP_2") {
-              if (!cur.tossUpWrongTeamIds) cur.tossUpWrongTeamIds = [];
-              if (!cur.tossUpWrongTeamIds.includes(tId)) {
-                cur.tossUpWrongTeamIds.push(tId);
-              }
               cur.tossUpBuzzedTeamId = undefined;
               cur.tossUpBuzzedTeamName = undefined;
               cur.tossUpAnswerEndsAt = undefined;
@@ -5590,24 +5585,10 @@ export default function AdminSandboxPage() {
                 timestamp: Date.now(),
               };
 
-              const allFailed = cur.tossUpWrongTeamIds.length >= prev.teams.length;
-              if (allFailed) {
-                if (magicWheelTossUpIntervalRef.current) {
-                  clearInterval(magicWheelTossUpIntervalRef.current);
-                  magicWheelTossUpIntervalRef.current = null;
-                }
-                if (magicWheelTossUpFirstTimerRef.current) {
-                  clearTimeout(magicWheelTossUpFirstTimerRef.current);
-                  magicWheelTossUpFirstTimerRef.current = null;
-                }
-                p.revealedIndices = Array.from({ length: p.secretPhrase.length }, (_, i) => i);
-                cur.phase = "ROUND_RECAP";
-                cur.lastActionMessage = `❌ Tất cả các đội đều đã trả lời sai trong Vòng Đoán Nhanh! Đáp án chính xác là: "${p.secretPhrase}"!`;
-              } else {
-                cur.phase = "TOSS_UP_REVEALING";
-                cur.lastActionMessage = `❌ MC chấm SAI Đội ${teamName}! Các chữ cái tiếp tục mở (0,75s/ô) — Mời các đội còn lại bấm chuông!`;
-                if (magicWheelTossUpIntervalRef.current) clearInterval(magicWheelTossUpIntervalRef.current);
-                if (isOfflineSandbox) {
+              cur.phase = "TOSS_UP_REVEALING";
+              cur.lastActionMessage = `❌ MC chấm SAI Đội ${teamName}! Các chữ cái tiếp tục mở (0,75s/ô) — Tất cả các đội đều có thể bấm chuông tiếp!`;
+              if (magicWheelTossUpIntervalRef.current) clearInterval(magicWheelTossUpIntervalRef.current);
+              if (isOfflineSandbox) {
                   magicWheelTossUpIntervalRef.current = setInterval(() => {
                     setRoomState((rPrev) => {
                       if (!rPrev || !rPrev.magicWheelState?.currentPuzzle) {
@@ -5644,7 +5625,6 @@ export default function AdminSandboxPage() {
                     });
                   }, 750);
                 }
-              }
               const nextRoom = { ...prev, magicWheelState: cur };
               roomStateRef.current = nextRoom;
               syncToIframes({ roomState: nextRoom });
@@ -7648,11 +7628,17 @@ export default function AdminSandboxPage() {
     addLog(`💡 [Quản trò] Mở toàn bộ ô chữ bí mật`);
   };
 
+  const lastAdvanceTimestampRef = useRef<number>(0);
   const handleMagicWheelNextRound = () => {
+    const now = Date.now();
+    if (now - lastAdvanceTimestampRef.current < 800) return;
+    lastAdvanceTimestampRef.current = now;
+
     if (adminSocketRef.current?.connected) {
       adminSocketRef.current.emit("admin:magic_wheel:advance_round" as any);
+    } else {
+      window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
     }
-    window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
     addLog(`⏩ [Quản trò] Tiến sang vòng kế tiếp`);
   };
 
@@ -10712,8 +10698,13 @@ export default function AdminSandboxPage() {
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
                         <span className="font-bold text-[10px] truncate text-white">{t.name}</span>
                       </div>
-                      <span className="font-mono font-bold text-cyan-300 text-[10px] shrink-0">
-                        {((t.score || 0) + (roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[t.id] || 0) : 0)).toLocaleString()}đ
+                      <span className="font-mono font-bold text-cyan-300 text-[10px] shrink-0 flex items-center gap-1">
+                        <span>{((t.score || 0) + (roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[t.id] || 0) : 0)).toLocaleString()}đ</span>
+                        {roomState?.mode === "MAGIC_WHEEL" && (roomState?.magicWheelState?.roundScores?.[t.id] || 0) > 0 ? (
+                          <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                            Vòng: {(roomState.magicWheelState?.roundScores?.[t.id] || 0).toLocaleString()}đ
+                          </span>
+                        ) : null}
                         {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === t.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
                           <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
                         ) : null}
@@ -10735,8 +10726,13 @@ export default function AdminSandboxPage() {
                     {activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
                   </span>
                   <div className="relative inline-flex items-center">
-                    <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
-                      {(((currentTeam?.score ?? 0)) + (roomState?.mode === "MAGIC_WHEEL" && currentTeam?.id && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[currentTeam.id] || 0) : 0)).toLocaleString()}đ
+                    <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0 flex items-center gap-1">
+                      <span>{(((currentTeam?.score ?? 0)) + (roomState?.mode === "MAGIC_WHEEL" && currentTeam?.id && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[currentTeam.id] || 0) : 0)).toLocaleString()}đ</span>
+                      {roomState?.mode === "MAGIC_WHEEL" && currentTeam?.id && (roomState?.magicWheelState?.roundScores?.[currentTeam.id] || 0) > 0 ? (
+                        <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                          Vòng: {(roomState.magicWheelState?.roundScores?.[currentTeam.id] || 0).toLocaleString()}đ
+                        </span>
+                      ) : null}
                       {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === currentTeam?.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
                         <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
                       ) : null}
@@ -11384,9 +11380,7 @@ export default function AdminSandboxPage() {
                       <span className="font-bold text-amber-300">🎡 Magic Wheel (Admin Sandbox Control)</span>
                       <button
                         type="button"
-                        onClick={() => {
-                          window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
-                        }}
+                        onClick={handleMagicWheelNextRound}
                         className="px-2.5 py-1 rounded bg-amber-500 text-black font-bold text-xs cursor-pointer"
                       >
                         ⏩ Sang Vòng Tiếp Theo
@@ -11466,12 +11460,8 @@ export default function AdminSandboxPage() {
                       onOverrideTurn={(targetTeamId) => {
                         window.postMessage({ type: "MAGIC_WHEEL_OVERRIDE_TURN", teamId: targetTeamId }, "*");
                       }}
-                      onAdvanceRound={() => {
-                        window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
-                      }}
-                      onNextRound={() => {
-                        window.postMessage({ type: "MAGIC_WHEEL_NEXT_ROUND" }, "*");
-                      }}
+                      onAdvanceRound={handleMagicWheelNextRound}
+                      onNextRound={handleMagicWheelNextRound}
                     />
                   </div>
                 )}

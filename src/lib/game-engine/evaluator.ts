@@ -1,7 +1,7 @@
 /**
  * Timeout Quiz Unified Evaluator Engine
  * Chấm điểm đáp án chuẩn xác và đồng bộ 100% giữa Server (Socket handlers) và Sandbox (Offline/Online).
- * Hỗ trợ tất cả các dạng câu hỏi: MC_SINGLE, MC_MULTI, TRUE_FALSE, FILL_BLANK, MATCHING, DRAG_DROP, CLOZE_DROPDOWN, WORD_PUZZLE, ESSAY.
+ * Hỗ trợ tất cả các dạng câu hỏi: MC_SINGLE, MC_MULTI, TRUE_FALSE, FILL_BLANK, ORDERING, MATCHING, DRAG_DROP, CLOZE_DROPDOWN, WORD_PUZZLE, ESSAY.
  */
 
 export function normalizeTextForComparison(text: any): string {
@@ -24,19 +24,26 @@ export function matchFillBlankText(expectedAnswer: string, submittedAnswer: stri
   if (normExpected === normSubmitted) return true;
 
   // Split multiple acceptable answers by /, ;, or |
-  const variants = expectedAnswer
-    .split(/[/;|]/)
-    .flatMap((part) => {
-      // Split comma only if it is not a decimal number like 3,14
-      if (part.includes(",") && !/\d,\d/.test(part)) {
-        return part.split(",");
-      }
-      return [part];
-    })
-    .map((v) => normalizeTextForComparison(v))
-    .filter(Boolean);
+  const extractVariants = (raw: string) =>
+    raw
+      .split(/[/;|]/)
+      .flatMap((part) => {
+        // Split comma only if it is not a decimal number like 3,14
+        if (part.includes(",") && !/\d,\d/.test(part)) {
+          return part.split(",");
+        }
+        return [part];
+      })
+      .map((v) => normalizeTextForComparison(v))
+      .filter(Boolean);
 
-  if (variants.includes(normSubmitted)) return true;
+  const expVariants = extractVariants(expectedAnswer);
+  const subVariants = extractVariants(submittedAnswer);
+
+  if (expVariants.includes(normSubmitted) || subVariants.includes(normExpected)) return true;
+  for (const sv of subVariants) {
+    if (expVariants.includes(sv)) return true;
+  }
 
   // Numerical comparison (support decimal comma like 3,14 vs 3.14)
   const cleanExpNum = Number(normExpected.replace(",", "."));
@@ -54,7 +61,7 @@ export function matchTrueFalseText(expectedTextOrId: string, submittedTextOrId: 
 
   if (normExp === normSub) return true;
 
-  const trueTokens = ["true", "đúng", "dung", "t", "d", "1", "yes", "có", "co", "y"];
+  const trueTokens = ["true", "đúng", "dung", "t", "d", "đ", "1", "yes", "có", "co", "y"];
   const falseTokens = ["false", "sai", "f", "s", "0", "no", "không", "khong", "n"];
 
   const isExpTrue = trueTokens.includes(normExp);
@@ -72,9 +79,9 @@ export function matchTrueFalseText(expectedTextOrId: string, submittedTextOrId: 
 export function evaluateAnswerCorrectness(
   question: any,
   submittedAnswer: any
-): { isAutoCorrect: boolean | undefined; answerText: string } {
+): { isAutoCorrect: boolean | undefined; isCorrect: boolean | undefined; answerText: string } {
   if (!question) {
-    return { isAutoCorrect: false, answerText: "(Không có câu hỏi)" };
+    return { isAutoCorrect: false, isCorrect: false, answerText: "(Không có câu hỏi)" };
   }
   const options = (question.options as any[]) || [];
   const ansArray = Array.isArray(submittedAnswer)
@@ -84,7 +91,7 @@ export function evaluateAnswerCorrectness(
     : [];
 
   if (ansArray.length === 0) {
-    return { isAutoCorrect: false, answerText: "(Chưa chọn đáp án / Hết giờ)" };
+    return { isAutoCorrect: false, isCorrect: false, answerText: "(Chưa chọn đáp án / Hết giờ)" };
   }
 
   // Selected option text for display summary
@@ -100,28 +107,29 @@ export function evaluateAnswerCorrectness(
     : ansArray.join(", ");
 
   if (question.type === "ESSAY") {
-    return { isAutoCorrect: undefined, answerText };
+    return { isAutoCorrect: undefined, isCorrect: undefined, answerText };
   }
 
   let isAutoCorrect = false;
 
   if (question.type === "MC_SINGLE") {
-    const correctOption = options.find((o: any) => o.isCorrect);
-    if (correctOption) {
-      const normCorrectId = normalizeTextForComparison(correctOption.id);
-      const normCorrectText = normalizeTextForComparison(correctOption.text || "");
+    const correctOption = options.find((o: any) => o.isCorrect) || (question.answer ? options.find((o: any) => o.id === question.answer) : null);
+    const correctId = correctOption?.id || question.answer;
+    const correctText = correctOption?.text;
 
-      isAutoCorrect = ansArray.some((ans) => {
-        const normAns = normalizeTextForComparison(ans);
-        return (
-          normAns === normCorrectId ||
-          normAns === normCorrectText ||
-          ans === correctOption.id
-        );
-      });
-    }
+    const normCorrectId = correctId ? normalizeTextForComparison(correctId) : "";
+    const normCorrectText = correctText ? normalizeTextForComparison(correctText) : "";
+
+    isAutoCorrect = ansArray.some((ans) => {
+      const normAns = normalizeTextForComparison(ans);
+      return (
+        (normCorrectId && normAns === normCorrectId) ||
+        (normCorrectText && normAns === normCorrectText) ||
+        ans === correctId
+      );
+    });
   } else if (question.type === "TRUE_FALSE") {
-    const correctOption = options.find((o: any) => o.isCorrect);
+    const correctOption = options.find((o: any) => o.isCorrect) || (question.answer ? options.find((o: any) => o.id === question.answer) : null);
     if (correctOption) {
       const normCorrectId = normalizeTextForComparison(correctOption.id);
       const normCorrectText = normalizeTextForComparison(correctOption.text || "");
@@ -139,7 +147,12 @@ export function evaluateAnswerCorrectness(
       isAutoCorrect = ansArray.some((ans) => matchTrueFalseText(question.answer, ans));
     }
   } else if (question.type === "MC_MULTI") {
-    const correctOptions = options.filter((o: any) => o.isCorrect);
+    let correctOptions = options.filter((o: any) => o.isCorrect);
+    if (correctOptions.length === 0 && question.answer) {
+      const expIds = question.answer.split(",").map((s: string) => s.trim());
+      correctOptions = options.filter((o: any) => expIds.includes(o.id));
+    }
+
     const correctIds = new Set(correctOptions.map((o: any) => normalizeTextForComparison(o.id)));
     const correctTexts = new Set(correctOptions.map((o: any) => normalizeTextForComparison(o.text || "")));
 
@@ -162,47 +175,14 @@ export function evaluateAnswerCorrectness(
     const expected = question.answer || question.secretPhrase || "";
     const submitted = ansArray[0] || "";
     isAutoCorrect = normalizeTextForComparison(expected) === normalizeTextForComparison(submitted);
-  } else if (question.type === "MATCHING") {
-    const rawPairs = (question.pairs as any[]) || [];
-    if (rawPairs.length > 0) {
-      let subObj: Record<string, string> = {};
-      if (typeof submittedAnswer === "object" && !Array.isArray(submittedAnswer) && submittedAnswer !== null) {
-        subObj = submittedAnswer as any;
-      } else if (typeof ansArray[0] === "object" && ansArray[0] !== null && !Array.isArray(ansArray[0])) {
-        subObj = ansArray[0] as any;
-      } else if (typeof ansArray[0] === "string") {
-        try {
-          const parsed = JSON.parse(ansArray[0]);
-          if (typeof parsed === "object" && !Array.isArray(parsed) && parsed !== null) {
-            subObj = parsed;
-          }
-        } catch {}
-      } else if (typeof (question as any).rawSubmission === "object") {
-        subObj = (question as any).rawSubmission;
-      }
-
-      let allMatched = Object.keys(subObj).length >= rawPairs.length;
-      for (let i = 0; i < rawPairs.length; i++) {
-        const pair = rawPairs[i];
-        const pairId = pair.id || `p${i + 1}`;
-        const expectedRight = String.fromCharCode(65 + i);
-        const userVal = subObj[pairId] || subObj[`L_${i}`] || subObj[String(i)] || subObj[pair.left];
-        const isMatch =
-          userVal === pairId ||
-          userVal === expectedRight ||
-          userVal === pair.right ||
-          normalizeTextForComparison(userVal) === normalizeTextForComparison(pair.right);
-        if (!isMatch) {
-          allMatched = false;
-          break;
-        }
-      }
-      isAutoCorrect = allMatched;
-    } else {
-      isAutoCorrect = false;
+  } else if (question.type === "ORDERING" || question.type === "DRAG_DROP") {
+    let expectedOrder: string[] = [];
+    if (question.answer) {
+      expectedOrder = question.answer.split(/[,>|]/).map((s: string) => s.trim());
+    } else if (options.length > 0) {
+      expectedOrder = options.map((o: any) => o.id);
     }
-  } else if (question.type === "DRAG_DROP") {
-    const correctOrder = options.map((o: any) => o.id);
+
     let submittedOrder: string[] = [];
     if (Array.isArray(submittedAnswer)) {
       submittedOrder = submittedAnswer;
@@ -215,13 +195,72 @@ export function evaluateAnswerCorrectness(
       } catch {
         submittedOrder = ansArray;
       }
+    } else if (typeof ansArray[0] === "string" && ansArray[0].includes(",")) {
+      submittedOrder = ansArray[0].split(",").map((s: string) => s.trim());
     } else {
       submittedOrder = ansArray;
     }
-    const cleanSubmitted = submittedOrder.map((x: any) => (typeof x === "string" ? x : String(x?.id || x)));
+
+    const cleanExpected = expectedOrder.map((x) => normalizeTextForComparison(x));
+    const cleanSubmitted = submittedOrder.map((x: any) =>
+      normalizeTextForComparison(typeof x === "string" ? x : String(x?.id || x))
+    );
+
     isAutoCorrect =
-      correctOrder.length === cleanSubmitted.length &&
-      correctOrder.every((id: string, idx: number) => id === cleanSubmitted[idx]);
+      cleanExpected.length > 0 &&
+      cleanExpected.length === cleanSubmitted.length &&
+      cleanExpected.every((val, idx) => val === cleanSubmitted[idx]);
+  } else if (question.type === "MATCHING") {
+    const rawPairs = (question.pairs as any[]) || [];
+    let expectedPairs: { left: string; right: string }[] = [];
+    if (rawPairs.length > 0) {
+      expectedPairs = rawPairs.map((p, i) => ({
+        left: p.id || `p${i + 1}`,
+        right: p.right || String.fromCharCode(65 + i),
+      }));
+    } else if (question.answer) {
+      expectedPairs = question.answer.split(",").map((part: string) => {
+        const [l, r] = part.split(/[:=-]/).map((s: string) => s.trim());
+        return { left: l, right: r };
+      });
+    }
+
+    if (expectedPairs.length > 0) {
+      let subPairs: { left: string; right: string }[] = [];
+      if (Array.isArray(submittedAnswer) && submittedAnswer.every((x) => typeof x === "string" && /[:=-]/.test(x))) {
+        subPairs = submittedAnswer.map((part: string) => {
+          const [l, r] = part.split(/[:=-]/).map((s: string) => s.trim());
+          return { left: l, right: r };
+        });
+      } else if (typeof submittedAnswer === "object" && submittedAnswer !== null && !Array.isArray(submittedAnswer)) {
+        subPairs = Object.entries(submittedAnswer).map(([l, r]) => ({ left: l, right: String(r) }));
+      } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("{")) {
+        try {
+          const obj = JSON.parse(ansArray[0]);
+          subPairs = Object.entries(obj).map(([l, r]) => ({ left: l, right: String(r) }));
+        } catch {}
+      }
+
+      if (subPairs.length >= expectedPairs.length) {
+        let allMatched = true;
+        for (const exp of expectedPairs) {
+          const found = subPairs.find(
+            (sp) =>
+              normalizeTextForComparison(sp.left) === normalizeTextForComparison(exp.left) &&
+              normalizeTextForComparison(sp.right) === normalizeTextForComparison(exp.right)
+          );
+          if (!found) {
+            allMatched = false;
+            break;
+          }
+        }
+        isAutoCorrect = allMatched;
+      } else {
+        isAutoCorrect = false;
+      }
+    } else {
+      isAutoCorrect = false;
+    }
   } else if (question.type === "CLOZE_DROPDOWN") {
     const blanks = ((question as any).clozeBlanks || options || []) as any[];
     if (blanks.length > 0) {
@@ -256,5 +295,5 @@ export function evaluateAnswerCorrectness(
     }
   }
 
-  return { isAutoCorrect, answerText };
+  return { isAutoCorrect, isCorrect: isAutoCorrect, answerText };
 }

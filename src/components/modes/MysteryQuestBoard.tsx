@@ -455,7 +455,10 @@ export default function MysteryQuestBoard({
     }
 
     // Tiếng gõ chốt khởi động nhẹ nhàng
-    soundManager.playWheelPegTick(0.05);
+    const shouldPlaySound = !isSandbox || isDisplay;
+    if (shouldPlaySound) {
+      soundManager.playWheelPegTick(0.05);
+    }
 
     // 2. Dynamic Camera Zoom Rig (Phóng to 1.65x cận cảnh chuẩn 12h kịch tính):
     // Phóng dần từ giây thứ 3 đến giây thứ 10
@@ -490,7 +493,9 @@ export default function MysteryQuestBoard({
       if (currentPegIndex > lastPegIndex) {
         lastPegIndex = currentPegIndex;
         lastSnapTimeRef.current = now;
-        soundManager.playWheelPegTick(rawProgress);
+        if (shouldPlaySound) {
+          soundManager.playWheelPegTick(rawProgress);
+        }
       }
 
       // ── Vật lý Kim Flipper chân thật chuẩn cơ khí "Chiếc nón kỳ diệu" ──
@@ -546,7 +551,9 @@ export default function MysteryQuestBoard({
 
         if (!finishedChimePlayed) {
           finishedChimePlayed = true;
-          soundManager.playWheelStopChime();
+          if (shouldPlaySound) {
+            soundManager.playWheelStopChime();
+          }
         }
 
         // ── DỪNG 0.8S TẠI Ô TRÚNG: Giữ nguyên cận cảnh 12h để mọi người nhìn rõ kim đang chỉ vào ô nào ──

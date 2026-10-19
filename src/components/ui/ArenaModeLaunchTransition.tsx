@@ -495,11 +495,20 @@ export default function ArenaModeLaunchTransition({
     }, 25);
 
     // Phát âm thanh chuyển cảnh: Với Magic Wheel chơi nhạc hình hiệu VTV3 (2012-2016)
-    const modeStr = String(mode || "").toUpperCase();
-    if (modeStr.includes("MAGIC") || modeStr.includes("WHEEL")) {
-      soundManager.playMagicWheelIntro();
-    } else {
-      transitionSoundEngine.playTransitionSfx(modeStr);
+    // Trong Sandbox, chỉ màn hình Display mới được phát âm thanh
+    const isInsideSandbox =
+      typeof window !== "undefined" &&
+      (window.location.pathname.includes("/sandbox") ||
+        window.location.search.includes("sandbox=1") ||
+        window.self !== window.top);
+
+    if (!isInsideSandbox) {
+      const modeStr = String(mode || "").toUpperCase();
+      if (modeStr.includes("MAGIC") || modeStr.includes("WHEEL")) {
+        soundManager.playMagicWheelIntro();
+      } else {
+        transitionSoundEngine.playTransitionSfx(modeStr);
+      }
     }
 
     // Thời gian transition mượt mà (1.25s)

@@ -2878,10 +2878,8 @@ export default function AdminSandboxPage() {
         syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
         if (updatedState.turnFinishedReason === "PAIR_MATCHED" || updatedState.turnFinishedReason === "SURVIVAL_ESCAPE") {
           addLog(`🎉 [${activeTeam.name}] ${updatedState.turnFinishedReason === "SURVIVAL_ESCAPE" ? "THOÁT HIỂM THÀNH CÔNG" : "GHÉP CẶP THÀNH CÔNG"}: ${updatedState.storyResult?.rewardText || ""} (+${finalScoreDelta || 0}đ)`);
-          soundManager.playCorrect();
         } else if (isBomb || updatedState.turnFinishedReason === "SURVIVAL_FAILED") {
           addLog(`💥 [${activeTeam.name}] ${updatedState.turnFinishedReason === "SURVIVAL_FAILED" ? "SINH TỬ THẤT BẠI" : "dẫm phải BOM"} ở ô #${tileId}! ${updatedState.bombExploded?.penaltyText || updatedState.storyResult?.rewardText || ""}`);
-          soundManager.playWrong();
         } else {
           addLog(`💎 [${activeTeam.name}] lật mở thành công ô #${tileId}! Hũ điểm: ${updatedState.potPoints}đ`);
         }
@@ -2944,7 +2942,6 @@ export default function AdminSandboxPage() {
           );
           const remainingHearts = updatedState.teamHearts?.[activeTeam.id] ?? activeTeam.hearts ?? 0;
           addLog(`💰 [${activeTeam.name}] dừng lại an toàn nhận +${finalScoreDelta}đ từ câu hỏi (Tiêu hao 1 ❤️, còn ${remainingHearts} ❤️)!`);
-          soundManager.playCorrect();
         } else if (e.data.choice === "PLAY_ROUND_2") {
           addLog(`🔥 [${activeTeam.name}] quyết định chơi tiếp Vòng 2 (4 lượt mới né bom)! Đã randomize lại vị trí toàn bộ bài!`);
         }

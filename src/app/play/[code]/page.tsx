@@ -458,10 +458,12 @@ export default function PlayPage() {
               const myAns = p.revealPayload.answers?.find(
                 (a: any) => a.playerId === playerIdRef.current || (myTeamIdRef.current && a.teamId === myTeamIdRef.current)
               );
-              if (myAns?.isCorrect) {
-                soundManager.playCorrect();
-              } else {
-                soundManager.playWrong();
+              if (myAns) {
+                if (myAns.isCorrect) {
+                  soundManager.playCorrect();
+                } else {
+                  soundManager.playWrong();
+                }
               }
             }
           } else if (!p.revealPayload) {
@@ -1021,10 +1023,12 @@ export default function PlayPage() {
           const myAns = payload.answers.find(
             (a) => a.playerId === playerIdRef.current || (myTeamIdRef.current && a.teamId === myTeamIdRef.current)
           );
-          if (myAns?.isCorrect) {
-            soundManager.playCorrect();
-          } else {
-            soundManager.playWrong();
+          if (myAns) {
+            if (myAns.isCorrect) {
+              soundManager.playCorrect();
+            } else {
+              soundManager.playWrong();
+            }
           }
         }
       }

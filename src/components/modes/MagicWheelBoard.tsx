@@ -1169,14 +1169,23 @@ export default function MagicWheelBoard({
   // In live room: Host or Display plays audio.
   const canPlayBoardAudio = isInsideSandbox ? Boolean(isDisplay) : Boolean(isDisplay || isHost);
 
+  const isSolveMountedRef = useRef<boolean>(false);
   useEffect(() => {
     if (!lastSolveFeedback) {
       prevSolveFeedbackKeyRef.current = null;
       return;
     }
     const feedbackKey = `${lastSolveFeedback.timestamp || ""}_${lastSolveFeedback.guess || ""}_${Boolean(lastSolveFeedback.isCorrect ?? lastSolveFeedback.success)}`;
+    if (!isSolveMountedRef.current) {
+      isSolveMountedRef.current = true;
+      prevSolveFeedbackKeyRef.current = feedbackKey;
+      return;
+    }
     if (prevSolveFeedbackKeyRef.current === feedbackKey) return;
     prevSolveFeedbackKeyRef.current = feedbackKey;
+
+    const isStale = lastSolveFeedback.timestamp ? Date.now() - lastSolveFeedback.timestamp > 5000 : false;
+    if (isStale) return;
 
     const isCorrect = Boolean(lastSolveFeedback.isCorrect ?? lastSolveFeedback.success);
     if (isCorrect) {
@@ -1795,8 +1804,6 @@ export default function MagicWheelBoard({
 
   // ── Audio Engine Hooks ───────────────────────────────────────────────────
   const prevIsSpinning = useRef<boolean>(false);
-  const prevWrongCount = useRef<number>(0);
-  const prevPhase = useRef<string>(phase || "SPIN_WAITING");
 
   useEffect(() => {
     if (isSpinning && !prevIsSpinning.current) {
@@ -1834,14 +1841,30 @@ export default function MagicWheelBoard({
   }, [isSpinning, selectedSector, canPlayBoardAudio]);
 
   const totalWrongGuesses = Object.values(activeState.wrongGuessesCount || {}).reduce((a, b) => a + b, 0);
+  const prevWrongCount = useRef<number>(totalWrongGuesses);
+  const isWrongCountMountedRef = useRef<boolean>(false);
   useEffect(() => {
+    if (!isWrongCountMountedRef.current) {
+      isWrongCountMountedRef.current = true;
+      prevWrongCount.current = totalWrongGuesses;
+      return;
+    }
     if (totalWrongGuesses > prevWrongCount.current) {
       if (canPlayBoardAudio) soundManager.playMagicWheelWrong();
     }
     prevWrongCount.current = totalWrongGuesses;
   }, [totalWrongGuesses, canPlayBoardAudio]);
 
+  const prevPhase = useRef<string>(phase || "SPIN_WAITING");
+  const isPhaseMountedRef = useRef<boolean>(false);
   useEffect(() => {
+    if (!isPhaseMountedRef.current) {
+      isPhaseMountedRef.current = true;
+      prevPhase.current = phase;
+      return;
+    }
+    if (prevPhase.current === phase) return;
+
     if (prevPhase.current === "ACTION_INPUT" && (phase as string) !== "ACTION_INPUT") {
       if (canPlayBoardAudio) soundManager.stopMagicWheelThinking();
     }

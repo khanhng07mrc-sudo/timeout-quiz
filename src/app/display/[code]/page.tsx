@@ -372,8 +372,10 @@ export default function DisplayPage() {
         }
         if (p.revivalNotice !== undefined) {
           setRevivalNotice(p.revivalNotice);
-          soundManager.playCorrect();
-          setTimeout(() => setRevivalNotice(null), 7000);
+          if (p.revivalNotice) {
+            soundManager.playCorrect();
+            setTimeout(() => setRevivalNotice(null), 7000);
+          }
         }
         if (p.gameEnd !== undefined) {
           setGameEnd(p.gameEnd);

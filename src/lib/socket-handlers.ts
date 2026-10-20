@@ -7901,7 +7901,7 @@ export function registerSocketHandlers(io: IO) {
       }
 
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
-        wheelState.sectors = generateMagicWheelSectors(1, stage);
+        wheelState.sectors = generateMagicWheelSectors(1, stage, wheelState.edition);
         wheelState.phase = "TOSS_UP_READY";
         wheelState.lastActionMessage = generateFlexibleMCCommentary("TOSS_UP_START", {
           round: stage === "TOSS_UP_1" ? 1 : 2,
@@ -7927,7 +7927,7 @@ export function registerSocketHandlers(io: IO) {
             clue: "Ô chữ phụ phân định tấm vé duy nhất bước vào Vòng Đặc Biệt!",
             revealedIndices: [],
           };
-          wheelState.sectors = generateMagicWheelSectors(1, "TOSS_UP_1");
+          wheelState.sectors = generateMagicWheelSectors(1, "TOSS_UP_1", wheelState.edition);
           wheelState.lastActionMessage = `⚡ KỊCH TÍNH! Có ${tiedTopTeams.length} đội bằng điểm cao nhất (${topScore.toLocaleString("vi-VN")}đ): ${tiedNames}! Bắt đầu Ô CHỮ PHỤ để phân định đại diện duy nhất vào VÒNG ĐẶC BIỆT!`;
         } else {
           wheelState.tieBreakerPending = false;
@@ -7937,13 +7937,19 @@ export function registerSocketHandlers(io: IO) {
           wheelState.specialFinalTeamName = finalist?.name || "";
           wheelState.currentTurnTeamId = finalist?.id || "";
           wheelState.currentTurnTeamName = finalist?.name || "";
-          wheelState.sectors = generateMagicWheelSectors(99, "SPECIAL_FINAL");
-          wheelState.specialAllowedLettersCount = calculateSpecialRoundAllowedLetters(puzzle?.secretPhrase || "");
+          wheelState.sectors = generateMagicWheelSectors(99, "SPECIAL_FINAL", wheelState.edition);
+          if (wheelState.edition === "ENGLISH") {
+            const hasWildCard = (wheelState.wildCardsCount?.[finalist?.id || ""] || 0) > 0;
+            wheelState.specialAllowedLettersCount = hasWildCard ? 5 : 4; // 4 consonants + 1 vowel with Wild Card, else 3 consonants + 1 vowel
+          } else {
+            wheelState.specialAllowedLettersCount = calculateSpecialRoundAllowedLetters(puzzle?.secretPhrase || "");
+          }
           wheelState.specialPickedLetters = [];
           wheelState.specialBonusCompleted = false;
           wheelState.specialPuzzleCompleted = false;
           wheelState.specialBonusPoints = undefined;
           wheelState.specialAttemptLog = [];
+          wheelState.freeSpinCount = {}; // Hủy bỏ toàn bộ Thẻ Thêm Lượt / Free Spin khi vào Vòng Đặc Biệt
           wheelState.phase = "SPECIAL_ORDER_CHOICE";
           wheelState.lastActionMessage = generateFlexibleMCCommentary("SPECIAL_INTRO", {
             teamName: finalist?.name || "Quán quân",
@@ -7961,7 +7967,7 @@ export function registerSocketHandlers(io: IO) {
         wheelState.currentTurnTeamName = starterTeam?.name || teams[0]?.name || "";
         if (!wheelState.mainRoundStarterTeamIds) wheelState.mainRoundStarterTeamIds = {};
         wheelState.mainRoundStarterTeamIds[mainIdx] = starterTeam?.id || teams[0]?.id || "";
-        wheelState.sectors = generateMagicWheelSectors(mainIdx, "MAIN");
+        wheelState.sectors = generateMagicWheelSectors(mainIdx, "MAIN", wheelState.edition);
         wheelState.jackpotPool = mainIdx === 4 ? 1000 : undefined;
         wheelState.phase = "SPIN_WAITING";
         wheelState.lastActionMessage = `Bắt đầu Vòng Chính ${mainIdx}! Đội ${wheelState.currentTurnTeamName} được quyền mở màn vòng này!`;
@@ -8265,6 +8271,7 @@ export function registerSocketHandlers(io: IO) {
       );
 
       wheelState.isSpinning = true;
+      wheelState.mustSpinOnly = false;
       wheelState.spinPower = effPower;
       wheelState.targetRotationDegrees = targetDegrees;
       wheelState.selectedSectorIndex = landingSectorIndex;
@@ -8326,15 +8333,30 @@ export function registerSocketHandlers(io: IO) {
             cur.phase = "SPIN_WAITING";
             cur.lastActionMessage = `Đội ${teamName} quay vào MẤT LƯỢT nhưng vì là đội duy nhất còn lại trong vòng nên được miễn phạt và tiếp tục quay!`;
           } else if ((cur.freeSpinCount[tId] || 0) > 0) {
-            cur.freeSpinCount[tId]--;
-            cur.phase = "SPIN_WAITING";
-            cur.lastActionMessage = `Đội ${teamName} quay vào MẤT LƯỢT nhưng đã dùng 1 Thẻ Thêm Lượt để giữ quyền chơi!`;
+            if (cur.edition === "ENGLISH") {
+              cur.phase = "FREE_SPIN_CHOICE";
+              cur.lastActionMessage = `Đội ${teamName} quay vào ô MẤT LƯỢT! Bạn đang có ${cur.freeSpinCount[tId]} Thẻ Free Spin. Bạn có muốn dùng 1 thẻ để quay tiếp không? (Bắt buộc phải quay nón ở lượt được thêm!)`;
+            } else {
+              cur.freeSpinCount[tId]--;
+              cur.phase = "SPIN_WAITING";
+              cur.mustSpinOnly = false;
+              cur.lastActionMessage = `Đội ${teamName} quay vào MẤT LƯỢT nhưng đã dùng 1 Lượt Thêm để giữ quyền chơi! Bạn có thể tiếp tục Quay nón HOẶC Đoán ô chữ!`;
+            }
           } else {
             advanceMagicWheelTurnHelper(cur, room.teams);
+            if (cur.mainRoundNumber === 3) {
+              if (!cur.round3FirstTurnAttempted) cur.round3FirstTurnAttempted = {};
+              cur.round3FirstTurnAttempted[tId] = true;
+            }
             cur.lastActionMessage = generateFlexibleMCCommentary("LOSE_TURN", { teamName });
           }
         } else if (sector.type === "BANKRUPT") {
           cur.pendingSpecialAction = "NONE";
+          if (cur.mainRoundNumber === 3) {
+            if (!cur.round3FirstTurnAttempted) cur.round3FirstTurnAttempted = {};
+            cur.round3FirstTurnAttempted[tId] = true;
+          }
+          if (cur.wildCardsCount) cur.wildCardsCount[tId] = 0;
           if (cur.teamShields?.[tId]) {
             cur.teamShields[tId] = false;
             cur.phase = "SPIN_WAITING";
@@ -8345,9 +8367,15 @@ export function registerSocketHandlers(io: IO) {
               cur.phase = "SPIN_WAITING";
               cur.lastActionMessage = `Đội ${teamName} quay vào ô MẤT ĐIỂM (về 0đ)! Vì là đội duy nhất còn lại trong vòng nên vẫn được quay tiếp.`;
             } else if ((cur.freeSpinCount[tId] || 0) > 0) {
-              cur.freeSpinCount[tId]--;
-              cur.phase = "SPIN_WAITING";
-              cur.lastActionMessage = `Đội ${teamName} quay vào ô MẤT ĐIỂM (về 0đ)! Đã dùng Thẻ Thêm Lượt để quay tiếp.`;
+              if (cur.edition === "ENGLISH") {
+                cur.phase = "FREE_SPIN_CHOICE";
+                cur.lastActionMessage = `Đội ${teamName} quay vào ô BANKRUPT (Mất điểm)! Bạn đang có ${cur.freeSpinCount[tId]} Thẻ Free Spin. Bạn có muốn dùng 1 thẻ để quay tiếp không? (Bắt buộc phải quay nón ở lượt được thêm!)`;
+              } else {
+                cur.freeSpinCount[tId]--;
+                cur.phase = "SPIN_WAITING";
+                cur.mustSpinOnly = false;
+                cur.lastActionMessage = `Đội ${teamName} quay vào ô MẤT ĐIỂM (về 0đ) nhưng đã dùng 1 Lượt Thêm để giữ quyền chơi! Bạn có thể tiếp tục Quay nón HOẶC Đoán ô chữ!`;
+              }
             } else {
               advanceMagicWheelTurnHelper(cur, room.teams);
               cur.lastActionMessage = generateFlexibleMCCommentary("BANKRUPT", { teamName });
@@ -8374,6 +8402,15 @@ export function registerSocketHandlers(io: IO) {
           cur.pendingSpecialAction = "EXTRA_TURN";
           cur.phase = "ACTION_INPUT";
           cur.lastActionMessage = `Đội ${teamName} quay vào ô THÊM LƯỢT 🎟️! Hãy đoán đúng 1 chữ cái để chính thức nhận thẻ!`;
+        } else if (sector.type === "FREE_PLAY") {
+          cur.pendingSpecialAction = "FREE_PLAY";
+          cur.isFreePlayActive = true;
+          cur.phase = "ACTION_INPUT";
+          cur.lastActionMessage = `Đội ${teamName} quay vào ô FREE PLAY! Mời đoán bất kỳ chữ cái nào (kể cả nguyên âm) miễn phí 0đ, nếu đoán sai KHÔNG BỊ MẤT LƯỢT!`;
+        } else if (sector.type === "WILD_CARD") {
+          cur.pendingSpecialAction = "POINTS";
+          cur.phase = "ACTION_INPUT";
+          cur.lastActionMessage = `Đội ${teamName} quay vào ô WILD CARD! Mời đoán 1 phụ âm ($500/chữ). Nếu đoán đúng sẽ nhận thêm 1 Thẻ Wild Card quyền năng!`;
         } else if (sector.type === "LUCKY") {
           cur.pendingSpecialAction = "LUCKY";
           cur.phase = "LUCKY_PICK";
@@ -8498,10 +8535,23 @@ export function registerSocketHandlers(io: IO) {
             wheelState.freeSpinCount[tId] = (wheelState.freeSpinCount[tId] || 0) + 1;
           }
           earned = 0;
+        } else if (wheelState.isFreePlayActive || wheelState.pendingSpecialAction === "FREE_PLAY") {
+          earned = 0;
+          wheelState.isFreePlayActive = false;
         } else {
           const baseVal = wheelState.selectedSector?.value || 300;
           earned = baseVal * check.count;
           wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + earned;
+          if (wheelState.selectedSector?.type === "WILD_CARD") {
+            if (!wheelState.wildCardsCount) wheelState.wildCardsCount = {};
+            wheelState.wildCardsCount[tId] = (wheelState.wildCardsCount[tId] || 0) + 1;
+          }
+          if (wheelState.selectedSector?.overlayType === "FREE_SPIN") {
+            if (!wheelState.freeSpinCount) wheelState.freeSpinCount = {};
+            wheelState.freeSpinCount[tId] = (wheelState.freeSpinCount[tId] || 0) + 1;
+            wheelState.freeSpinTokenClaimed = true;
+            wheelState.sectors = wheelState.sectors.map((s) => (s.id === 5 ? { ...s, overlayType: undefined } : s));
+          }
         }
 
         io.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
@@ -8563,13 +8613,18 @@ export function registerSocketHandlers(io: IO) {
         }
 
         // VÒNG 3: Đổi hay Không Đổi
-        const hasTraded = (wheelState.round3TradedTeams || []).includes(tId);
-        const hasForbidden = (wheelState.round3ForbiddenSolveTeams || []).includes(tId);
-        if (wheelState.mainRoundNumber === 3 && !hasTraded && !hasForbidden) {
-          wheelState.phase = "TRADE_CHOICE";
-          wheelState.lastActionMessage = `Đội ${teamName} đoán đúng chữ cái ở lượt đầu Vòng 3! Bạn có muốn ĐỔI HAY KHÔNG ĐỔI?`;
-          io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
-          return;
+        if (wheelState.mainRoundNumber === 3) {
+          if (!wheelState.round3FirstTurnAttempted) wheelState.round3FirstTurnAttempted = {};
+          const isFirstValid = !wheelState.round3FirstTurnAttempted[tId];
+          wheelState.round3FirstTurnAttempted[tId] = true;
+          const hasTraded = (wheelState.round3TradedTeams || []).includes(tId);
+          const hasForbidden = (wheelState.round3ForbiddenSolveTeams || []).includes(tId);
+          if (isFirstValid && !hasTraded && !hasForbidden) {
+            wheelState.phase = "TRADE_CHOICE";
+            wheelState.lastActionMessage = `Đội ${teamName} đoán đúng chữ cái ở lượt đầu hợp lệ Vòng 3! Bạn có muốn ĐỔI HAY KHÔNG ĐỔI?`;
+            io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+            return;
+          }
         }
 
         if (wheelState.expressModeActive || wheelState.speedUpBellActive) {
@@ -8606,7 +8661,26 @@ export function registerSocketHandlers(io: IO) {
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       } else {
         // Wrong letter guess
+        if (wheelState.isFreePlayActive || wheelState.pendingSpecialAction === "FREE_PLAY") {
+          wheelState.isFreePlayActive = false;
+          wheelState.pendingSpecialAction = "NONE";
+          wheelState.phase = "SPIN_WAITING";
+          wheelState.lastActionMessage = `Không có chữ "${normLetter}"! Nhờ ô FREE PLAY, Đội ${teamName} KHÔNG BỊ MẤT LƯỢT và được quay nón tiếp!`;
+          io.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
+            letter: normLetter,
+            found: false,
+            count: 0,
+            teamId: tId,
+            teamName,
+            pointsAwarded: 0,
+          });
+          io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+          return;
+        }
+
         if (wheelState.mainRoundNumber === 3) {
+          if (!wheelState.round3FirstTurnAttempted) wheelState.round3FirstTurnAttempted = {};
+          wheelState.round3FirstTurnAttempted[tId] = true;
           if (!wheelState.round3ForbiddenSolveTeams) wheelState.round3ForbiddenSolveTeams = [];
           if (!wheelState.round3ForbiddenSolveTeams.includes(tId)) {
             wheelState.round3ForbiddenSolveTeams.push(tId);
@@ -8641,10 +8715,21 @@ export function registerSocketHandlers(io: IO) {
           advanceMagicWheelTurnHelper(wheelState, room.teams);
           wheelState.lastActionMessage = `❌ Đội ${teamName} đã đoán sai 3 LẦN LIÊN TIẾP và bị loại khỏi vòng này! Chuyển lượt sang ${wheelState.currentTurnTeamName}.`;
         } else if ((wheelState.freeSpinCount[tId] || 0) > 0 && !wheelState.speedUpBellActive) {
-          wheelState.freeSpinCount[tId]--;
-          wheelState.phase = "SPIN_WAITING";
-          wheelState.pendingSpecialAction = "NONE";
-          wheelState.lastActionMessage = `Không có chữ ${normLetter}! Đội ${teamName} đã dùng 1 Thẻ Thêm Lượt để giữ quyền quay tiếp${wheelState.edition === "ENGLISH" ? "" : ` (Lỗi liên tiếp: ${strikeCount}/3)`}.`;
+          if (wheelState.edition === "ENGLISH") {
+            // Bản Anh: Hệ thống hỏi người chơi có muốn dùng Thẻ Free Spin không
+            wheelState.phase = "FREE_SPIN_CHOICE";
+            wheelState.pendingSpecialAction = "NONE";
+            wheelState.lastActionMessage = `❌ Không có chữ "${normLetter}"! Đội ${teamName} đang sở hữu ${wheelState.freeSpinCount[tId]} Thẻ Free Spin. Bạn có muốn dùng 1 thẻ để quay tiếp không? (Bắt buộc phải quay nón ở lượt được thêm!)`;
+            io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+            return;
+          } else {
+            // Bản Việt: Ô Thêm Lượt, dùng 1 lượt thêm, vẫn được đoán ô chữ hoặc quay tiếp ở lượt thêm
+            wheelState.freeSpinCount[tId]--;
+            wheelState.phase = "SPIN_WAITING";
+            wheelState.mustSpinOnly = false;
+            wheelState.pendingSpecialAction = "NONE";
+            wheelState.lastActionMessage = `Không có chữ "${normLetter}"! Đội ${teamName} đã dùng 1 Lượt Thêm để giữ quyền chơi (Lỗi liên tiếp: ${strikeCount}/3). Bạn có thể tiếp tục QUAY TIẾP hoặc ĐOÁN Ô CHỮ ngay!`;
+          }
         } else {
           advanceMagicWheelTurnHelper(wheelState, room.teams);
           wheelState.lastActionMessage =
@@ -8679,6 +8764,10 @@ export function registerSocketHandlers(io: IO) {
       if (!wheelState) return;
       if (wheelState.phase !== "SPIN_WAITING" && wheelState.phase !== "VOWEL_BUY") return;
       if (wheelState.isSpinning) return;
+      if (wheelState.edition === "ENGLISH" && wheelState.mustSpinOnly) {
+        socket.emit("error", "Bắt buộc phải quay nón trước!");
+        return;
+      }
       const tId = wheelState.currentTurnTeamId;
       const teamName = wheelState.currentTurnTeamName;
       const currentScore = wheelState.roundScores[tId] || 0;
@@ -8766,7 +8855,13 @@ export function registerSocketHandlers(io: IO) {
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
+      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
+      if (isLocked) {
+        socket.emit("error", "Chỉ được đổi ngôn ngữ và thể lệ trước khi bắt đầu đếm 5s khởi động!");
+        return;
+      }
       wheelState.edition = payload.edition;
+      wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
       if (room && wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, undefined, payload.edition, wheelState.englishPreset || "RANDOM_MIX");
@@ -8781,7 +8876,13 @@ export function registerSocketHandlers(io: IO) {
       if (!room || room.mode !== "MAGIC_WHEEL") return;
       const wheelState = roomMagicWheels.get(room.id);
       if (!wheelState) return;
+      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
+      if (isLocked) {
+        socket.emit("error", "Chỉ được đổi ngôn ngữ và thể lệ trước khi bắt đầu đếm 5s khởi động!");
+        return;
+      }
       wheelState.edition = payload.edition;
+      wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
       if (wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, undefined, payload.edition, wheelState.englishPreset || "RANDOM_MIX");
         wheelState.puzzles = newPuzzles;
@@ -8795,6 +8896,11 @@ export function registerSocketHandlers(io: IO) {
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
+      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
+      if (isLocked) {
+        socket.emit("error", "Chỉ được đổi gói đề trước khi bắt đầu đếm 5s khởi động!");
+        return;
+      }
       wheelState.englishPreset = payload.preset;
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
       if (room && wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
@@ -8810,6 +8916,11 @@ export function registerSocketHandlers(io: IO) {
       if (!room || room.mode !== "MAGIC_WHEEL") return;
       const wheelState = roomMagicWheels.get(room.id);
       if (!wheelState) return;
+      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
+      if (isLocked) {
+        socket.emit("error", "Chỉ được đổi gói đề trước khi bắt đầu đếm 5s khởi động!");
+        return;
+      }
       wheelState.englishPreset = payload.preset;
       if (wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, undefined, wheelState.edition || "ENGLISH", payload.preset);
@@ -8852,6 +8963,12 @@ export function registerSocketHandlers(io: IO) {
       // In Main Rounds, each team only has 1 solve attempt per round
       if (stage === "MAIN" && (wheelState.roundEliminatedTeamIds || []).includes(tId)) {
         socket.emit("error", `Đội ${teamName} đã sử dụng hết lượt Giải Ô Chữ trong vòng này!`);
+        return;
+      }
+
+      // Bản Anh: Free Spin requires spinning first before solving!
+      if (wheelState.edition === "ENGLISH" && wheelState.mustSpinOnly) {
+        socket.emit("error", "Theo luật Free Spin: Bạn bắt buộc phải quay nón ở lượt được thêm, chưa được đoán ô chữ ngay!");
         return;
       }
 
@@ -9147,6 +9264,11 @@ export function registerSocketHandlers(io: IO) {
       if (!room || room.mode !== "MAGIC_WHEEL") return;
       const wheelState = roomMagicWheels.get(room.id);
       if (!wheelState) return;
+      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
+      if (isLocked) {
+        socket.emit("error", "Chỉ được đổi chế độ chơi trước khi bắt đầu đếm 5s khởi động!");
+        return;
+      }
       wheelState.operationMode = mode;
       wheelState.lastActionMessage =
         mode === "HOST_ASSISTED"
@@ -9580,6 +9702,67 @@ export function registerSocketHandlers(io: IO) {
         wheelState.lastActionMessage = `Đội ${teamName} chọn KHÔNG ĐỔI! Tiếp tục quay và lật mở từng chữ cho đến ô cuối cùng (không được đoán tắt cả ô chữ).`;
       }
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+    });
+
+    socket.on("magic_wheel:use_free_spin", async ({ use }: { use: boolean }) => {
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode) return;
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState || wheelState.phase !== "FREE_SPIN_CHOICE") return;
+      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
+      if (!teamId && !isSandboxSocket && !isAdmin) return;
+
+      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
+      if (!room) return;
+
+      const tId = wheelState.currentTurnTeamId;
+      const teamName = wheelState.currentTurnTeamName;
+
+      if (use && (wheelState.freeSpinCount[tId] || 0) > 0) {
+        wheelState.freeSpinCount[tId]--;
+        wheelState.phase = "SPIN_WAITING";
+        if (wheelState.edition === "ENGLISH") {
+          wheelState.mustSpinOnly = true;
+          wheelState.lastActionMessage = `🎟️ Đội ${teamName} đã dùng 1 Thẻ Free Spin! Ở bản Anh, bạn BẮT BUỘC PHẢI QUAY NÓN ở lượt được thêm này (chưa được đoán ô chữ ngay)!`;
+        } else {
+          wheelState.mustSpinOnly = false;
+          wheelState.lastActionMessage = `🎟️ Đội ${teamName} đã dùng 1 Lượt Thêm! Bạn được giữ quyền chơi và có thể tiếp tục Quay nón HOẶC Đoán ô chữ!`;
+        }
+      } else {
+        wheelState.mustSpinOnly = false;
+        advanceMagicWheelTurnHelper(wheelState, room.teams);
+        wheelState.phase = "SPIN_WAITING";
+        wheelState.lastActionMessage = `Đội ${teamName} quyết định giữ lại Thẻ Free Spin. Quyền chơi chuyển sang Đội ${wheelState.currentTurnTeamName}.`;
+      }
+      io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+    });
+
+    socket.on("admin:magic_wheel:use_free_spin", async ({ use }: { use: boolean }) => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      const wheelState = roomMagicWheels.get(room.id);
+      if (!wheelState || wheelState.phase !== "FREE_SPIN_CHOICE") return;
+
+      const tId = wheelState.currentTurnTeamId;
+      const teamName = wheelState.currentTurnTeamName;
+
+      if (use && (wheelState.freeSpinCount[tId] || 0) > 0) {
+        wheelState.freeSpinCount[tId]--;
+        wheelState.phase = "SPIN_WAITING";
+        if (wheelState.edition === "ENGLISH") {
+          wheelState.mustSpinOnly = true;
+          wheelState.lastActionMessage = `🎟️ Đội ${teamName} đã dùng 1 Thẻ Free Spin! Ở bản Anh, bạn BẮT BUỘC PHẢI QUAY NÓN ở lượt được thêm này (chưa được đoán ô chữ ngay)!`;
+        } else {
+          wheelState.mustSpinOnly = false;
+          wheelState.lastActionMessage = `🎟️ Đội ${teamName} đã dùng 1 Lượt Thêm! Bạn được giữ quyền chơi và có thể tiếp tục Quay nón HOẶC Đoán ô chữ!`;
+        }
+      } else {
+        wheelState.mustSpinOnly = false;
+        advanceMagicWheelTurnHelper(wheelState, room.teams);
+        wheelState.phase = "SPIN_WAITING";
+        wheelState.lastActionMessage = `Đội ${teamName} quyết định giữ lại Thẻ Free Spin. Quyền chơi chuyển sang Đội ${wheelState.currentTurnTeamName}.`;
+      }
+      io.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
     });
 
     socket.on("admin:magic_wheel:pass_turn", async () => {

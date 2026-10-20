@@ -768,6 +768,8 @@ export type MagicWheelSectorType =
   | "HALF"
   | "EXTRA_TURN"
   | "LUCKY"
+  | "FREE_PLAY"
+  | "WILD_CARD"
   | "PRIZE"
   | "MYSTERY"
   | "EXPRESS"
@@ -795,6 +797,8 @@ export interface MagicWheelSector {
     | "JACKPOT"
     | "STEAL_SWAP"
     | "TRIPLE"
+    | "WILD_CARD"
+    | "FREE_SPIN"
     | "SPECIAL_ENVELOPE";
   basePoints?: number;
   mysteryContent?: "PRIZE_3M" | "BANKRUPT";
@@ -849,6 +853,7 @@ export interface MagicWheelState {
     | "HALF"
     | "POINTS"
     | "LUCKY"
+    | "FREE_PLAY"
     | "MYSTERY"
     | "PRIZE"
     | "EXPRESS"
@@ -863,6 +868,7 @@ export interface MagicWheelState {
     | "MYSTERY_CHOICE"    // Chờ quyết định lật ô Bí Mật hay lấy 3000đ vĩnh viễn
     | "REWARD_CHOICE"     // V1: Chờ chọn 1 trong 20 lá thăm bí mật
     | "TRADE_CHOICE"      // V3: Chờ quyết định Đổi hay Không Đổi (VTV3 2012)
+    | "FREE_SPIN_CHOICE"  // Bản Anh: Chờ quyết định dùng Thẻ Free Spin sau khi đoán sai / mất lượt
     | "LUCKY_PICK"        // Chờ người chơi chọn ô lật miễn phí
     | "EXPRESS_CHOICE"    // V4: Chờ chọn Lên Tàu Tốc Độ hay dừng lại
     | "STEAL_SWAP_CHOICE" // V5: Chờ chọn Cướp 50% hay Hoán Đổi Điểm Vòng
@@ -891,6 +897,11 @@ export interface MagicWheelState {
   teamShields?: Record<string, boolean>; // Khiên bảo hộ chống mất lượt / mất điểm
   round3TradedTeams?: string[]; // V3: Các đội đã chọn Đổi (dừng vòng 3 lấy quà)
   round3ForbiddenSolveTeams?: string[]; // V3: Các đội bị cấm đoán cả ô chữ (phải lật từng chữ đến cuối)
+  round3FirstTurnAttempted?: Record<string, boolean>; // V3: Theo dõi đội đã thực hiện lượt quay hợp lệ đầu tiên chưa
+  isFreePlayActive?: boolean; // Bản Anh: Đang ở lượt quay Free Play (được gọi nguyên âm miễn phí, 0đ, đoán sai không mất lượt)
+  wildCardsCount?: Record<string, number>; // Bản Anh: Số thẻ Wild Card đội đang nắm giữ (đoán thêm phụ âm cùng giá hoặc thêm phụ âm ở Bonus Round)
+  mustSpinOnly?: boolean; // Bản Anh: Khi dùng Thẻ Free Spin, bắt buộc phải quay nón ở lượt được thêm, chưa được giải ô chữ ngay
+  freeSpinTokenClaimed?: boolean; // Bản Anh: Thẻ Free Spin trên ô $500 đã có người nhặt chưa
   mustSolveWithTones?: boolean; // Đã lộ hết chữ cái gốc trên bảng, bắt buộc Giải Ô Chữ đúng dấu thanh
   // Toss-up state
   tossUpRevealOrder?: number[];
@@ -1931,6 +1942,7 @@ export interface ClientToServerEvents {
     cardType?: "POINTS_1500" | "FREE_SPIN" | "SHIELD";
   }) => void;
   "magic_wheel:trade_decide": (payload: { trade: boolean; boxIndex?: number }) => void;
+  "magic_wheel:use_free_spin": (payload: { use: boolean; teamId?: string }) => void;
   "magic_wheel:express_decide": (payload: { rideExpress: boolean }) => void;
   "magic_wheel:steal_swap_decide": (payload: { action: "STEAL_50" | "SWAP_LEADER"; targetTeamId?: string }) => void;
   "magic_wheel:toss_up_start": () => void;
@@ -1962,6 +1974,7 @@ export interface ClientToServerEvents {
   "admin:magic_wheel:spin": (payload?: { power?: number }) => void;
   "admin:magic_wheel:guess_letter": (payload: { letter: string }) => void;
   "admin:magic_wheel:solve_puzzle": (payload: { answer: string }) => void;
+  "admin:magic_wheel:use_free_spin": (payload: { use: boolean }) => void;
   "admin:magic_wheel:judge_solve": (payload: { isCorrect: boolean }) => void;
   "admin:magic_wheel:set_mode": (payload: { mode: MagicWheelOperationMode }) => void;
   "admin:magic_wheel:override_turn": (payload: { teamId: string }) => void;

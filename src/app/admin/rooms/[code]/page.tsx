@@ -1434,22 +1434,38 @@ export default function AdminRoomPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const curEd = roomState.magicWheelState?.edition || "VIETNAMESE";
-                      const nextEd = curEd === "ENGLISH" ? "VIETNAMESE" : "ENGLISH";
-                      emit("admin:magic_wheel:set_edition" as any, { edition: nextEd });
-                    }}
-                    className={`px-2.5 py-1.5 rounded-lg border text-xs font-black transition cursor-pointer shadow ${
-                      roomState.magicWheelState?.edition === "ENGLISH"
-                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 border-cyan-400 text-white"
-                        : "bg-gradient-to-r from-red-600 to-amber-600 border-amber-400 text-white"
-                    }`}
-                    title="Nhấn để đổi giữa Luật Việt (VTV3) và Luật Anh (Wheel of Fortune)"
-                  >
-                    <span>{roomState.magicWheelState?.edition === "ENGLISH" ? "🇺🇸 Bản Anh (WOF)" : "🇻🇳 Bản Việt (VTV3)"}</span>
-                  </button>
+                  {(() => {
+                    const isMagicWheelLocked =
+                      roomState.magicWheelState?.roundStage !== "TOSS_UP_1" ||
+                      roomState.magicWheelState?.phase !== "TOSS_UP_READY" ||
+                      Boolean(roomState.magicWheelState?.tossUpStartTime);
+                    return (
+                      <button
+                        type="button"
+                        disabled={isMagicWheelLocked}
+                        onClick={() => {
+                          if (isMagicWheelLocked) return;
+                          const curEd = roomState.magicWheelState?.edition || "VIETNAMESE";
+                          const nextEd = curEd === "ENGLISH" ? "VIETNAMESE" : "ENGLISH";
+                          emit("admin:magic_wheel:set_edition" as any, { edition: nextEd });
+                        }}
+                        className={`px-2.5 py-1.5 rounded-lg border text-xs font-black transition shadow ${
+                          isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
+                        } ${
+                          roomState.magicWheelState?.edition === "ENGLISH"
+                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 border-cyan-400 text-white"
+                            : "bg-gradient-to-r from-red-600 to-amber-600 border-amber-400 text-white"
+                        }`}
+                        title={
+                          isMagicWheelLocked
+                            ? "🔒 Đã khóa: Chỉ được đổi luật/ngôn ngữ trước khi bấm đếm 5s khởi động!"
+                            : "Nhấn để đổi giữa Luật Việt (VTV3) và Luật Anh (Wheel of Fortune)"
+                        }
+                      >
+                        <span>{roomState.magicWheelState?.edition === "ENGLISH" ? "🇺🇸 Bản Anh (WOF)" : "🇻🇳 Bản Việt (VTV3)"}</span>
+                      </button>
+                    );
+                  })()}
                   <select
                     value={roomState.magicWheelState.currentTurnTeamId}
                     onChange={(e) => emit("admin:magic_wheel:override_turn", { teamId: e.target.value })}
@@ -1489,6 +1505,7 @@ export default function AdminRoomPage() {
                     emit("magic_wheel:reward_select", data);
                   }}
                   onTradeDecide={(trade, boxIndex) => emit("magic_wheel:trade_decide", { trade, boxIndex })}
+                  onUseFreeSpin={(use) => emit("admin:magic_wheel:use_free_spin", { use })}
                   onTossUpStart={() => emit("magic_wheel:toss_up_start")}
                   onTossUpBuzz={(teamId) => emit("magic_wheel:toss_up_buzz", { teamId })}
                   onTossUpRevealTick={(targetIndex) => emit("magic_wheel:toss_up_reveal_tick", { index: targetIndex })}

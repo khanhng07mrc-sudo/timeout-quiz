@@ -268,21 +268,95 @@ var BASE_24_SECTORS = [
   { id: 22, label: "1000", type: "POINTS", value: 1e3, color: "#e11d48", textColor: "#ffffff" },
   { id: 23, label: "2000", type: "POINTS", value: 2e3, color: "#ffd700", textColor: "#000000" }
 ];
-function generateMagicWheelSectors(mainRoundOrStage, stage) {
+var US_BASE_24_SECTORS = [
+  { id: 0, label: "$500", type: "POINTS", value: 500, color: "#e11d48", textColor: "#ffffff" },
+  { id: 1, label: "$600", type: "POINTS", value: 600, color: "#2563eb", textColor: "#ffffff" },
+  { id: 2, label: "LOSE A TURN", type: "LOSE_TURN", color: "#475569", textColor: "#f8fafc" },
+  { id: 3, label: "$700", type: "POINTS", value: 700, color: "#d97706", textColor: "#ffffff" },
+  { id: 4, label: "$500", type: "POINTS", value: 500, color: "#059669", textColor: "#ffffff" },
+  { id: 5, label: "$500", type: "POINTS", value: 500, color: "#0284c7", textColor: "#ffffff", overlayType: "FREE_SPIN" },
+  { id: 6, label: "$650", type: "POINTS", value: 650, color: "#7c3aed", textColor: "#ffffff" },
+  { id: 7, label: "$900", type: "POINTS", value: 900, color: "#ea580c", textColor: "#ffffff" },
+  { id: 8, label: "BANKRUPT", type: "BANKRUPT", color: "#000000", textColor: "#ef4444" },
+  { id: 9, label: "$500", type: "POINTS", value: 500, color: "#0d9488", textColor: "#ffffff" },
+  { id: 10, label: "$1,000", type: "POINTS", value: 1e3, color: "#f59e0b", textColor: "#000000" },
+  { id: 11, label: "BANKRUPT", type: "BANKRUPT", color: "#000000", textColor: "#ef4444" },
+  { id: 12, label: "$600", type: "POINTS", value: 600, color: "#4f46e5", textColor: "#ffffff" },
+  { id: 13, label: "$500", type: "POINTS", value: 500, color: "#16a34a", textColor: "#ffffff" },
+  { id: 14, label: "FREE PLAY", type: "FREE_PLAY", color: "#10b981", textColor: "#ffffff" },
+  { id: 15, label: "$800", type: "POINTS", value: 800, color: "#c026d3", textColor: "#ffffff" },
+  { id: 16, label: "$650", type: "POINTS", value: 650, color: "#0891b2", textColor: "#ffffff" },
+  { id: 17, label: "WILD CARD", type: "WILD_CARD", color: "#06b6d4", textColor: "#ffffff" },
+  { id: 18, label: "$500", type: "POINTS", value: 500, color: "#3b82f6", textColor: "#ffffff" },
+  { id: 19, label: "$700", type: "POINTS", value: 700, color: "#eab308", textColor: "#000000" },
+  { id: 20, label: "$600", type: "POINTS", value: 600, color: "#9333ea", textColor: "#ffffff" },
+  { id: 21, label: "$900", type: "POINTS", value: 900, color: "#f97316", textColor: "#ffffff" },
+  { id: 22, label: "$1,000", type: "POINTS", value: 1e3, color: "#e11d48", textColor: "#ffffff" },
+  { id: 23, label: "$2,500", type: "POINTS", value: 2500, color: "#ffd700", textColor: "#000000" }
+];
+function localizeSectorsForEdition(sectors, edition = "VIETNAMESE") {
+  if (edition !== "ENGLISH") return sectors;
+  return sectors.map((s) => {
+    let label = s.label;
+    let type = s.type;
+    let color = s.color;
+    if (type === "LOSE_TURN") {
+      label = "LOSE A TURN";
+    } else if (type === "BANKRUPT") {
+      label = "BANKRUPT";
+    } else if (type === "EXTRA_TURN") {
+      label = "FREE SPIN";
+    } else if (type === "HALF") {
+      label = "HALF";
+    } else if (type === "DOUBLE") {
+      label = "DOUBLE";
+    } else if (type === "LUCKY" || type === "FREE_PLAY") {
+      label = "FREE PLAY";
+      type = "FREE_PLAY";
+      color = "#10b981";
+    } else if (s.isOverlay && s.overlayType === "PRIZE") {
+      label = "\u{1F381} PRIZE";
+    } else if (s.isOverlay && s.overlayType === "MYSTERY") {
+      label = "\u{1F52E} MYSTERY";
+    } else if (s.isOverlay && s.overlayType === "EXPRESS") {
+      label = "\u26A1 EXPRESS";
+    } else if (s.isOverlay && s.overlayType === "JACKPOT") {
+      label = "\u{1F48E} JACKPOT";
+    } else if (s.isOverlay && s.overlayType === "TRIPLE") {
+      label = "\u{1F525} TRIPLE";
+    } else if (type === "POINTS" && s.value) {
+      if (label.includes("\u2B50")) {
+        label = `\u2B50 $${s.value}`;
+      } else if (label.includes("\u{1F31F}")) {
+        label = `\u{1F31F} $${s.value}`;
+      } else {
+        label = `$${s.value}`;
+      }
+    }
+    return {
+      ...s,
+      label,
+      type,
+      color
+    };
+  });
+}
+function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMESE") {
   if (stage === "SPECIAL_FINAL" || mainRoundOrStage === 99) {
     const specialPalette = [
-      { pts: 2e3, label: "PHONG B\xCC 2000", color: "#2563eb", textColor: "#ffffff" },
-      { pts: 3e3, label: "PHONG B\xCC 3000", color: "#7c3aed", textColor: "#ffffff" },
-      { pts: 4e3, label: "PHONG B\xCC 4000", color: "#059669", textColor: "#ffffff" },
-      { pts: 5e3, label: "PHONG B\xCC 5000", color: "#e11d48", textColor: "#ffffff" },
-      { pts: 8e3, label: "PHONG B\xCC 8000", color: "#ea580c", textColor: "#ffffff" },
-      { pts: 1e4, label: "\u0110\u1EB6C BI\u1EC6T 10000", color: "#ffd700", textColor: "#78350f" }
+      { pts: 2e3, labelVi: "PHONG B\xCC 2000", labelEn: "ENVELOPE $2,000", color: "#2563eb", textColor: "#ffffff" },
+      { pts: 3e3, labelVi: "PHONG B\xCC 3000", labelEn: "ENVELOPE $3,000", color: "#7c3aed", textColor: "#ffffff" },
+      { pts: 4e3, labelVi: "PHONG B\xCC 4000", labelEn: "ENVELOPE $4,000", color: "#059669", textColor: "#ffffff" },
+      { pts: 5e3, labelVi: "PHONG B\xCC 5000", labelEn: "ENVELOPE $5,000", color: "#e11d48", textColor: "#ffffff" },
+      { pts: 8e3, labelVi: "PHONG B\xCC 8000", labelEn: "ENVELOPE $8,000", color: "#ea580c", textColor: "#ffffff" },
+      { pts: 1e4, labelVi: "\u0110\u1EB6C BI\u1EC6T 10000", labelEn: "\u{1F451} $10,000", color: "#ffd700", textColor: "#78350f" }
     ];
     return Array.from({ length: 24 }, (_, idx) => {
       const item = specialPalette[idx % specialPalette.length];
+      const isEn = edition === "ENGLISH";
       return {
         id: idx,
-        label: item.pts === 1e4 ? "\u{1F451} 10000" : `\u2709\uFE0F ${item.pts}`,
+        label: isEn ? item.pts === 1e4 ? "\u{1F451} $10,000" : `\u2709\uFE0F $${item.pts.toLocaleString("en-US")}` : item.pts === 1e4 ? "\u{1F451} 10000" : `\u2709\uFE0F ${item.pts}`,
         type: "SPECIAL_ENVELOPE",
         value: item.pts,
         color: item.color,
@@ -290,9 +364,84 @@ function generateMagicWheelSectors(mainRoundOrStage, stage) {
         isOverlay: true,
         overlayType: "SPECIAL_ENVELOPE",
         envelopePrizePoints: item.pts,
-        envelopeTitle: item.label
+        envelopeTitle: isEn ? item.labelEn : item.labelVi
       };
     });
+  }
+  if (edition === "ENGLISH") {
+    const sectors2 = US_BASE_24_SECTORS.map((s) => ({ ...s }));
+    const topVal = mainRoundOrStage === 1 ? 2500 : mainRoundOrStage <= 3 ? 3500 : 5e3;
+    sectors2[23] = {
+      id: 23,
+      label: `$${topVal.toLocaleString("en-US")}`,
+      type: "POINTS",
+      value: topVal,
+      color: "#ffd700",
+      textColor: "#000000"
+    };
+    if (mainRoundOrStage === 1) {
+      const targetIdx = sectors2.findIndex((s) => s.id === 13);
+      if (targetIdx !== -1) {
+        sectors2[targetIdx] = {
+          id: 13,
+          label: "\u{1F381} PRIZE",
+          type: "PRIZE",
+          value: 1e3,
+          color: "#fbbf24",
+          textColor: "#78350f",
+          isOverlay: true,
+          overlayType: "PRIZE"
+        };
+      }
+    } else if (mainRoundOrStage === 2) {
+      const isFirst3M = Math.random() >= 0.5;
+      const contents = isFirst3M ? ["PRIZE_3M", "BANKRUPT"] : ["BANKRUPT", "PRIZE_3M"];
+      [13, 4].forEach((targetId, i) => {
+        const idx = sectors2.findIndex((s) => s.id === targetId);
+        if (idx !== -1) {
+          sectors2[idx] = {
+            id: targetId,
+            label: "\u{1F52E} MYSTERY",
+            type: "MYSTERY",
+            color: "#8b5cf6",
+            textColor: "#ffffff",
+            isOverlay: true,
+            overlayType: "MYSTERY",
+            basePoints: 1e3,
+            mysteryContent: contents[i]
+          };
+        }
+      });
+    } else if (mainRoundOrStage === 3) {
+      const expIdx = sectors2.findIndex((s) => s.id === 13);
+      if (expIdx !== -1) {
+        sectors2[expIdx] = {
+          id: 13,
+          label: "\u26A1 EXPRESS",
+          type: "EXPRESS",
+          value: 1e3,
+          color: "#06b6d4",
+          textColor: "#ffffff",
+          isOverlay: true,
+          overlayType: "EXPRESS"
+        };
+      }
+    } else if (mainRoundOrStage === 4) {
+      const jpIdx = sectors2.findIndex((s) => s.id === 4);
+      if (jpIdx !== -1) {
+        sectors2[jpIdx] = {
+          id: 4,
+          label: "\u{1F48E} JACKPOT",
+          type: "JACKPOT",
+          value: 1500,
+          color: "#ec4899",
+          textColor: "#ffffff",
+          isOverlay: true,
+          overlayType: "JACKPOT"
+        };
+      }
+    }
+    return sectors2;
   }
   const sectors = BASE_24_SECTORS.map((s) => ({ ...s }));
   if (mainRoundOrStage === 1) {
@@ -407,7 +556,7 @@ function generateMagicWheelSectors(mainRoundOrStage, stage) {
       };
     }
   }
-  return sectors;
+  return localizeSectorsForEdition(sectors, edition);
 }
 function isVietnameseAlphabetLetter(char) {
   if (!char || char.length !== 1) return false;
@@ -15666,7 +15815,7 @@ function registerSocketHandlers(io2) {
         roomTossUpFirstTimers.delete(roomId);
       }
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
-        wheelState.sectors = generateMagicWheelSectors(1, stage);
+        wheelState.sectors = generateMagicWheelSectors(1, stage, wheelState.edition);
         wheelState.phase = "TOSS_UP_READY";
         wheelState.lastActionMessage = generateFlexibleMCCommentary("TOSS_UP_START", {
           round: stage === "TOSS_UP_1" ? 1 : 2
@@ -15690,7 +15839,7 @@ function registerSocketHandlers(io2) {
             clue: "\xD4 ch\u1EEF ph\u1EE5 ph\xE2n \u0111\u1ECBnh t\u1EA5m v\xE9 duy nh\u1EA5t b\u01B0\u1EDBc v\xE0o V\xF2ng \u0110\u1EB7c Bi\u1EC7t!",
             revealedIndices: []
           };
-          wheelState.sectors = generateMagicWheelSectors(1, "TOSS_UP_1");
+          wheelState.sectors = generateMagicWheelSectors(1, "TOSS_UP_1", wheelState.edition);
           wheelState.lastActionMessage = `\u26A1 K\u1ECACH T\xCDNH! C\xF3 ${tiedTopTeams.length} \u0111\u1ED9i b\u1EB1ng \u0111i\u1EC3m cao nh\u1EA5t (${topScore.toLocaleString("vi-VN")}\u0111): ${tiedNames}! B\u1EAFt \u0111\u1EA7u \xD4 CH\u1EEE PH\u1EE4 \u0111\u1EC3 ph\xE2n \u0111\u1ECBnh \u0111\u1EA1i di\u1EC7n duy nh\u1EA5t v\xE0o V\xD2NG \u0110\u1EB6C BI\u1EC6T!`;
         } else {
           wheelState.tieBreakerPending = false;
@@ -15700,13 +15849,19 @@ function registerSocketHandlers(io2) {
           wheelState.specialFinalTeamName = finalist?.name || "";
           wheelState.currentTurnTeamId = finalist?.id || "";
           wheelState.currentTurnTeamName = finalist?.name || "";
-          wheelState.sectors = generateMagicWheelSectors(99, "SPECIAL_FINAL");
-          wheelState.specialAllowedLettersCount = calculateSpecialRoundAllowedLetters(puzzle?.secretPhrase || "");
+          wheelState.sectors = generateMagicWheelSectors(99, "SPECIAL_FINAL", wheelState.edition);
+          if (wheelState.edition === "ENGLISH") {
+            const hasWildCard = (wheelState.wildCardsCount?.[finalist?.id || ""] || 0) > 0;
+            wheelState.specialAllowedLettersCount = hasWildCard ? 5 : 4;
+          } else {
+            wheelState.specialAllowedLettersCount = calculateSpecialRoundAllowedLetters(puzzle?.secretPhrase || "");
+          }
           wheelState.specialPickedLetters = [];
           wheelState.specialBonusCompleted = false;
           wheelState.specialPuzzleCompleted = false;
           wheelState.specialBonusPoints = void 0;
           wheelState.specialAttemptLog = [];
+          wheelState.freeSpinCount = {};
           wheelState.phase = "SPECIAL_ORDER_CHOICE";
           wheelState.lastActionMessage = generateFlexibleMCCommentary("SPECIAL_INTRO", {
             teamName: finalist?.name || "Qu\xE1n qu\xE2n"
@@ -15722,7 +15877,7 @@ function registerSocketHandlers(io2) {
         wheelState.currentTurnTeamName = starterTeam?.name || teams[0]?.name || "";
         if (!wheelState.mainRoundStarterTeamIds) wheelState.mainRoundStarterTeamIds = {};
         wheelState.mainRoundStarterTeamIds[mainIdx] = starterTeam?.id || teams[0]?.id || "";
-        wheelState.sectors = generateMagicWheelSectors(mainIdx, "MAIN");
+        wheelState.sectors = generateMagicWheelSectors(mainIdx, "MAIN", wheelState.edition);
         wheelState.jackpotPool = mainIdx === 4 ? 1e3 : void 0;
         wheelState.phase = "SPIN_WAITING";
         wheelState.lastActionMessage = `B\u1EAFt \u0111\u1EA7u V\xF2ng Ch\xEDnh ${mainIdx}! \u0110\u1ED9i ${wheelState.currentTurnTeamName} \u0111\u01B0\u1EE3c quy\u1EC1n m\u1EDF m\xE0n v\xF2ng n\xE0y!`;
@@ -15977,6 +16132,7 @@ function registerSocketHandlers(io2) {
         wheelState.sectors.length
       );
       wheelState.isSpinning = true;
+      wheelState.mustSpinOnly = false;
       wheelState.spinPower = effPower;
       wheelState.targetRotationDegrees = targetDegrees;
       wheelState.selectedSectorIndex = landingSectorIndex;
@@ -16032,15 +16188,30 @@ function registerSocketHandlers(io2) {
             cur.phase = "SPIN_WAITING";
             cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o M\u1EA4T L\u01AF\u1EE2T nh\u01B0ng v\xEC l\xE0 \u0111\u1ED9i duy nh\u1EA5t c\xF2n l\u1EA1i trong v\xF2ng n\xEAn \u0111\u01B0\u1EE3c mi\u1EC5n ph\u1EA1t v\xE0 ti\u1EBFp t\u1EE5c quay!`;
           } else if ((cur.freeSpinCount[tId] || 0) > 0) {
-            cur.freeSpinCount[tId]--;
-            cur.phase = "SPIN_WAITING";
-            cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o M\u1EA4T L\u01AF\u1EE2T nh\u01B0ng \u0111\xE3 d\xF9ng 1 Th\u1EBB Th\xEAm L\u01B0\u1EE3t \u0111\u1EC3 gi\u1EEF quy\u1EC1n ch\u01A1i!`;
+            if (cur.edition === "ENGLISH") {
+              cur.phase = "FREE_SPIN_CHOICE";
+              cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 M\u1EA4T L\u01AF\u1EE2T! B\u1EA1n \u0111ang c\xF3 ${cur.freeSpinCount[tId]} Th\u1EBB Free Spin. B\u1EA1n c\xF3 mu\u1ED1n d\xF9ng 1 th\u1EBB \u0111\u1EC3 quay ti\u1EBFp kh\xF4ng? (B\u1EAFt bu\u1ED9c ph\u1EA3i quay n\xF3n \u1EDF l\u01B0\u1EE3t \u0111\u01B0\u1EE3c th\xEAm!)`;
+            } else {
+              cur.freeSpinCount[tId]--;
+              cur.phase = "SPIN_WAITING";
+              cur.mustSpinOnly = false;
+              cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o M\u1EA4T L\u01AF\u1EE2T nh\u01B0ng \u0111\xE3 d\xF9ng 1 L\u01B0\u1EE3t Th\xEAm \u0111\u1EC3 gi\u1EEF quy\u1EC1n ch\u01A1i! B\u1EA1n c\xF3 th\u1EC3 ti\u1EBFp t\u1EE5c Quay n\xF3n HO\u1EB6C \u0110o\xE1n \xF4 ch\u1EEF!`;
+            }
           } else {
             advanceMagicWheelTurnHelper(cur, room.teams);
+            if (cur.mainRoundNumber === 3) {
+              if (!cur.round3FirstTurnAttempted) cur.round3FirstTurnAttempted = {};
+              cur.round3FirstTurnAttempted[tId] = true;
+            }
             cur.lastActionMessage = generateFlexibleMCCommentary("LOSE_TURN", { teamName });
           }
         } else if (sector.type === "BANKRUPT") {
           cur.pendingSpecialAction = "NONE";
+          if (cur.mainRoundNumber === 3) {
+            if (!cur.round3FirstTurnAttempted) cur.round3FirstTurnAttempted = {};
+            cur.round3FirstTurnAttempted[tId] = true;
+          }
+          if (cur.wildCardsCount) cur.wildCardsCount[tId] = 0;
           if (cur.teamShields?.[tId]) {
             cur.teamShields[tId] = false;
             cur.phase = "SPIN_WAITING";
@@ -16051,9 +16222,15 @@ function registerSocketHandlers(io2) {
               cur.phase = "SPIN_WAITING";
               cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 M\u1EA4T \u0110I\u1EC2M (v\u1EC1 0\u0111)! V\xEC l\xE0 \u0111\u1ED9i duy nh\u1EA5t c\xF2n l\u1EA1i trong v\xF2ng n\xEAn v\u1EABn \u0111\u01B0\u1EE3c quay ti\u1EBFp.`;
             } else if ((cur.freeSpinCount[tId] || 0) > 0) {
-              cur.freeSpinCount[tId]--;
-              cur.phase = "SPIN_WAITING";
-              cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 M\u1EA4T \u0110I\u1EC2M (v\u1EC1 0\u0111)! \u0110\xE3 d\xF9ng Th\u1EBB Th\xEAm L\u01B0\u1EE3t \u0111\u1EC3 quay ti\u1EBFp.`;
+              if (cur.edition === "ENGLISH") {
+                cur.phase = "FREE_SPIN_CHOICE";
+                cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 BANKRUPT (M\u1EA5t \u0111i\u1EC3m)! B\u1EA1n \u0111ang c\xF3 ${cur.freeSpinCount[tId]} Th\u1EBB Free Spin. B\u1EA1n c\xF3 mu\u1ED1n d\xF9ng 1 th\u1EBB \u0111\u1EC3 quay ti\u1EBFp kh\xF4ng? (B\u1EAFt bu\u1ED9c ph\u1EA3i quay n\xF3n \u1EDF l\u01B0\u1EE3t \u0111\u01B0\u1EE3c th\xEAm!)`;
+              } else {
+                cur.freeSpinCount[tId]--;
+                cur.phase = "SPIN_WAITING";
+                cur.mustSpinOnly = false;
+                cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 M\u1EA4T \u0110I\u1EC2M (v\u1EC1 0\u0111) nh\u01B0ng \u0111\xE3 d\xF9ng 1 L\u01B0\u1EE3t Th\xEAm \u0111\u1EC3 gi\u1EEF quy\u1EC1n ch\u01A1i! B\u1EA1n c\xF3 th\u1EC3 ti\u1EBFp t\u1EE5c Quay n\xF3n HO\u1EB6C \u0110o\xE1n \xF4 ch\u1EEF!`;
+              }
             } else {
               advanceMagicWheelTurnHelper(cur, room.teams);
               cur.lastActionMessage = generateFlexibleMCCommentary("BANKRUPT", { teamName });
@@ -16078,6 +16255,15 @@ function registerSocketHandlers(io2) {
           cur.pendingSpecialAction = "EXTRA_TURN";
           cur.phase = "ACTION_INPUT";
           cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 TH\xCAM L\u01AF\u1EE2T \u{1F39F}\uFE0F! H\xE3y \u0111o\xE1n \u0111\xFAng 1 ch\u1EEF c\xE1i \u0111\u1EC3 ch\xEDnh th\u1EE9c nh\u1EADn th\u1EBB!`;
+        } else if (sector.type === "FREE_PLAY") {
+          cur.pendingSpecialAction = "FREE_PLAY";
+          cur.isFreePlayActive = true;
+          cur.phase = "ACTION_INPUT";
+          cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 FREE PLAY! M\u1EDDi \u0111o\xE1n b\u1EA5t k\u1EF3 ch\u1EEF c\xE1i n\xE0o (k\u1EC3 c\u1EA3 nguy\xEAn \xE2m) mi\u1EC5n ph\xED 0\u0111, n\u1EBFu \u0111o\xE1n sai KH\xD4NG B\u1ECA M\u1EA4T L\u01AF\u1EE2T!`;
+        } else if (sector.type === "WILD_CARD") {
+          cur.pendingSpecialAction = "POINTS";
+          cur.phase = "ACTION_INPUT";
+          cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 WILD CARD! M\u1EDDi \u0111o\xE1n 1 ph\u1EE5 \xE2m ($500/ch\u1EEF). N\u1EBFu \u0111o\xE1n \u0111\xFAng s\u1EBD nh\u1EADn th\xEAm 1 Th\u1EBB Wild Card quy\u1EC1n n\u0103ng!`;
         } else if (sector.type === "LUCKY") {
           cur.pendingSpecialAction = "LUCKY";
           cur.phase = "LUCKY_PICK";
@@ -16189,10 +16375,23 @@ function registerSocketHandlers(io2) {
             wheelState.freeSpinCount[tId] = (wheelState.freeSpinCount[tId] || 0) + 1;
           }
           earned = 0;
+        } else if (wheelState.isFreePlayActive || wheelState.pendingSpecialAction === "FREE_PLAY") {
+          earned = 0;
+          wheelState.isFreePlayActive = false;
         } else {
           const baseVal = wheelState.selectedSector?.value || 300;
           earned = baseVal * check.count;
           wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + earned;
+          if (wheelState.selectedSector?.type === "WILD_CARD") {
+            if (!wheelState.wildCardsCount) wheelState.wildCardsCount = {};
+            wheelState.wildCardsCount[tId] = (wheelState.wildCardsCount[tId] || 0) + 1;
+          }
+          if (wheelState.selectedSector?.overlayType === "FREE_SPIN") {
+            if (!wheelState.freeSpinCount) wheelState.freeSpinCount = {};
+            wheelState.freeSpinCount[tId] = (wheelState.freeSpinCount[tId] || 0) + 1;
+            wheelState.freeSpinTokenClaimed = true;
+            wheelState.sectors = wheelState.sectors.map((s) => s.id === 5 ? { ...s, overlayType: void 0 } : s);
+          }
         }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
           letter: normLetter,
@@ -16244,13 +16443,18 @@ function registerSocketHandlers(io2) {
           io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
           return;
         }
-        const hasTraded = (wheelState.round3TradedTeams || []).includes(tId);
-        const hasForbidden = (wheelState.round3ForbiddenSolveTeams || []).includes(tId);
-        if (wheelState.mainRoundNumber === 3 && !hasTraded && !hasForbidden) {
-          wheelState.phase = "TRADE_CHOICE";
-          wheelState.lastActionMessage = `\u0110\u1ED9i ${teamName} \u0111o\xE1n \u0111\xFAng ch\u1EEF c\xE1i \u1EDF l\u01B0\u1EE3t \u0111\u1EA7u V\xF2ng 3! B\u1EA1n c\xF3 mu\u1ED1n \u0110\u1ED4I HAY KH\xD4NG \u0110\u1ED4I?`;
-          io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
-          return;
+        if (wheelState.mainRoundNumber === 3) {
+          if (!wheelState.round3FirstTurnAttempted) wheelState.round3FirstTurnAttempted = {};
+          const isFirstValid = !wheelState.round3FirstTurnAttempted[tId];
+          wheelState.round3FirstTurnAttempted[tId] = true;
+          const hasTraded = (wheelState.round3TradedTeams || []).includes(tId);
+          const hasForbidden = (wheelState.round3ForbiddenSolveTeams || []).includes(tId);
+          if (isFirstValid && !hasTraded && !hasForbidden) {
+            wheelState.phase = "TRADE_CHOICE";
+            wheelState.lastActionMessage = `\u0110\u1ED9i ${teamName} \u0111o\xE1n \u0111\xFAng ch\u1EEF c\xE1i \u1EDF l\u01B0\u1EE3t \u0111\u1EA7u h\u1EE3p l\u1EC7 V\xF2ng 3! B\u1EA1n c\xF3 mu\u1ED1n \u0110\u1ED4I HAY KH\xD4NG \u0110\u1ED4I?`;
+            io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+            return;
+          }
         }
         if (wheelState.expressModeActive || wheelState.speedUpBellActive) {
           wheelState.phase = "ACTION_INPUT";
@@ -16283,7 +16487,25 @@ function registerSocketHandlers(io2) {
         wheelState.pendingSpecialAction = "NONE";
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       } else {
+        if (wheelState.isFreePlayActive || wheelState.pendingSpecialAction === "FREE_PLAY") {
+          wheelState.isFreePlayActive = false;
+          wheelState.pendingSpecialAction = "NONE";
+          wheelState.phase = "SPIN_WAITING";
+          wheelState.lastActionMessage = `Kh\xF4ng c\xF3 ch\u1EEF "${normLetter}"! Nh\u1EDD \xF4 FREE PLAY, \u0110\u1ED9i ${teamName} KH\xD4NG B\u1ECA M\u1EA4T L\u01AF\u1EE2T v\xE0 \u0111\u01B0\u1EE3c quay n\xF3n ti\u1EBFp!`;
+          io2.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
+            letter: normLetter,
+            found: false,
+            count: 0,
+            teamId: tId,
+            teamName,
+            pointsAwarded: 0
+          });
+          io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+          return;
+        }
         if (wheelState.mainRoundNumber === 3) {
+          if (!wheelState.round3FirstTurnAttempted) wheelState.round3FirstTurnAttempted = {};
+          wheelState.round3FirstTurnAttempted[tId] = true;
           if (!wheelState.round3ForbiddenSolveTeams) wheelState.round3ForbiddenSolveTeams = [];
           if (!wheelState.round3ForbiddenSolveTeams.includes(tId)) {
             wheelState.round3ForbiddenSolveTeams.push(tId);
@@ -16314,10 +16536,19 @@ function registerSocketHandlers(io2) {
           advanceMagicWheelTurnHelper(wheelState, room.teams);
           wheelState.lastActionMessage = `\u274C \u0110\u1ED9i ${teamName} \u0111\xE3 \u0111o\xE1n sai 3 L\u1EA6N LI\xCAN TI\u1EBEP v\xE0 b\u1ECB lo\u1EA1i kh\u1ECFi v\xF2ng n\xE0y! Chuy\u1EC3n l\u01B0\u1EE3t sang ${wheelState.currentTurnTeamName}.`;
         } else if ((wheelState.freeSpinCount[tId] || 0) > 0 && !wheelState.speedUpBellActive) {
-          wheelState.freeSpinCount[tId]--;
-          wheelState.phase = "SPIN_WAITING";
-          wheelState.pendingSpecialAction = "NONE";
-          wheelState.lastActionMessage = `Kh\xF4ng c\xF3 ch\u1EEF ${normLetter}! \u0110\u1ED9i ${teamName} \u0111\xE3 d\xF9ng 1 Th\u1EBB Th\xEAm L\u01B0\u1EE3t \u0111\u1EC3 gi\u1EEF quy\u1EC1n quay ti\u1EBFp${wheelState.edition === "ENGLISH" ? "" : ` (L\u1ED7i li\xEAn ti\u1EBFp: ${strikeCount}/3)`}.`;
+          if (wheelState.edition === "ENGLISH") {
+            wheelState.phase = "FREE_SPIN_CHOICE";
+            wheelState.pendingSpecialAction = "NONE";
+            wheelState.lastActionMessage = `\u274C Kh\xF4ng c\xF3 ch\u1EEF "${normLetter}"! \u0110\u1ED9i ${teamName} \u0111ang s\u1EDF h\u1EEFu ${wheelState.freeSpinCount[tId]} Th\u1EBB Free Spin. B\u1EA1n c\xF3 mu\u1ED1n d\xF9ng 1 th\u1EBB \u0111\u1EC3 quay ti\u1EBFp kh\xF4ng? (B\u1EAFt bu\u1ED9c ph\u1EA3i quay n\xF3n \u1EDF l\u01B0\u1EE3t \u0111\u01B0\u1EE3c th\xEAm!)`;
+            io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+            return;
+          } else {
+            wheelState.freeSpinCount[tId]--;
+            wheelState.phase = "SPIN_WAITING";
+            wheelState.mustSpinOnly = false;
+            wheelState.pendingSpecialAction = "NONE";
+            wheelState.lastActionMessage = `Kh\xF4ng c\xF3 ch\u1EEF "${normLetter}"! \u0110\u1ED9i ${teamName} \u0111\xE3 d\xF9ng 1 L\u01B0\u1EE3t Th\xEAm \u0111\u1EC3 gi\u1EEF quy\u1EC1n ch\u01A1i (L\u1ED7i li\xEAn ti\u1EBFp: ${strikeCount}/3). B\u1EA1n c\xF3 th\u1EC3 ti\u1EBFp t\u1EE5c QUAY TI\u1EBEP ho\u1EB7c \u0110O\xC1N \xD4 CH\u1EEE ngay!`;
+          }
         } else {
           advanceMagicWheelTurnHelper(wheelState, room.teams);
           wheelState.lastActionMessage = wheelState.edition === "ENGLISH" ? `Kh\xF4ng c\xF3 ch\u1EEF "${normLetter}"! \u0110\u1ED9i ${teamName} b\u1ECB m\u1EA5t l\u01B0\u1EE3t. Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}.` : generateFlexibleMCCommentary("LETTER_MISS", { teamName, letter: normLetter }) + ` Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}.`;
@@ -16345,6 +16576,10 @@ function registerSocketHandlers(io2) {
       if (!wheelState) return;
       if (wheelState.phase !== "SPIN_WAITING" && wheelState.phase !== "VOWEL_BUY") return;
       if (wheelState.isSpinning) return;
+      if (wheelState.edition === "ENGLISH" && wheelState.mustSpinOnly) {
+        socket.emit("error", "B\u1EAFt bu\u1ED9c ph\u1EA3i quay n\xF3n tr\u01B0\u1EDBc!");
+        return;
+      }
       const tId = wheelState.currentTurnTeamId;
       const teamName = wheelState.currentTurnTeamName;
       const currentScore = wheelState.roundScores[tId] || 0;
@@ -16419,7 +16654,13 @@ function registerSocketHandlers(io2) {
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
+      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
+      if (isLocked) {
+        socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i ng\xF4n ng\u1EEF v\xE0 th\u1EC3 l\u1EC7 tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u \u0111\u1EBFm 5s kh\u1EDFi \u0111\u1ED9ng!");
+        return;
+      }
       wheelState.edition = payload.edition;
+      wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
       if (room && wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, void 0, payload.edition, wheelState.englishPreset || "RANDOM_MIX");
@@ -16433,7 +16674,13 @@ function registerSocketHandlers(io2) {
       if (!room || room.mode !== "MAGIC_WHEEL") return;
       const wheelState = roomMagicWheels.get(room.id);
       if (!wheelState) return;
+      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
+      if (isLocked) {
+        socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i ng\xF4n ng\u1EEF v\xE0 th\u1EC3 l\u1EC7 tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u \u0111\u1EBFm 5s kh\u1EDFi \u0111\u1ED9ng!");
+        return;
+      }
       wheelState.edition = payload.edition;
+      wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
       if (wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, void 0, payload.edition, wheelState.englishPreset || "RANDOM_MIX");
         wheelState.puzzles = newPuzzles;
@@ -16446,6 +16693,11 @@ function registerSocketHandlers(io2) {
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
+      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
+      if (isLocked) {
+        socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i g\xF3i \u0111\u1EC1 tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u \u0111\u1EBFm 5s kh\u1EDFi \u0111\u1ED9ng!");
+        return;
+      }
       wheelState.englishPreset = payload.preset;
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
       if (room && wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
@@ -16460,6 +16712,11 @@ function registerSocketHandlers(io2) {
       if (!room || room.mode !== "MAGIC_WHEEL") return;
       const wheelState = roomMagicWheels.get(room.id);
       if (!wheelState) return;
+      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
+      if (isLocked) {
+        socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i g\xF3i \u0111\u1EC1 tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u \u0111\u1EBFm 5s kh\u1EDFi \u0111\u1ED9ng!");
+        return;
+      }
       wheelState.englishPreset = payload.preset;
       if (wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, void 0, wheelState.edition || "ENGLISH", payload.preset);
@@ -16495,6 +16752,10 @@ function registerSocketHandlers(io2) {
       const teamName = resolvedTeam?.name || wheelState.tossUpBuzzedTeamName || wheelState.currentTurnTeamName;
       if (stage === "MAIN" && (wheelState.roundEliminatedTeamIds || []).includes(tId)) {
         socket.emit("error", `\u0110\u1ED9i ${teamName} \u0111\xE3 s\u1EED d\u1EE5ng h\u1EBFt l\u01B0\u1EE3t Gi\u1EA3i \xD4 Ch\u1EEF trong v\xF2ng n\xE0y!`);
+        return;
+      }
+      if (wheelState.edition === "ENGLISH" && wheelState.mustSpinOnly) {
+        socket.emit("error", "Theo lu\u1EADt Free Spin: B\u1EA1n b\u1EAFt bu\u1ED9c ph\u1EA3i quay n\xF3n \u1EDF l\u01B0\u1EE3t \u0111\u01B0\u1EE3c th\xEAm, ch\u01B0a \u0111\u01B0\u1EE3c \u0111o\xE1n \xF4 ch\u1EEF ngay!");
         return;
       }
       if (stage === "MAIN" && wheelState.mainRoundNumber === 3 && (wheelState.round3ForbiddenSolveTeams || []).includes(tId)) {
@@ -16739,6 +17000,11 @@ function registerSocketHandlers(io2) {
       if (!room || room.mode !== "MAGIC_WHEEL") return;
       const wheelState = roomMagicWheels.get(room.id);
       if (!wheelState) return;
+      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
+      if (isLocked) {
+        socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i ch\u1EBF \u0111\u1ED9 ch\u01A1i tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u \u0111\u1EBFm 5s kh\u1EDFi \u0111\u1ED9ng!");
+        return;
+      }
       wheelState.operationMode = mode;
       wheelState.lastActionMessage = mode === "HOST_ASSISTED" ? "\u{1F399}\uFE0F \u0110\xE3 chuy\u1EC3n sang Mode MC/Admin \u0111i\u1EC1u khi\u1EC3n h\u1ED7 tr\u1EE3 th\xED sinh!" : "\u{1F4BB} \u0110\xE3 chuy\u1EC3n sang Mode T\u1EF1 thao t\xE1c tr\xEAn m\xE1y t\xEDnh!";
       io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
@@ -17121,6 +17387,60 @@ function registerSocketHandlers(io2) {
         wheelState.lastActionMessage = `\u0110\u1ED9i ${teamName} ch\u1ECDn KH\xD4NG \u0110\u1ED4I! Ti\u1EBFp t\u1EE5c quay v\xE0 l\u1EADt m\u1EDF t\u1EEBng ch\u1EEF cho \u0111\u1EBFn \xF4 cu\u1ED1i c\xF9ng (kh\xF4ng \u0111\u01B0\u1EE3c \u0111o\xE1n t\u1EAFt c\u1EA3 \xF4 ch\u1EEF).`;
       }
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+    });
+    socket.on("magic_wheel:use_free_spin", async ({ use }) => {
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode) return;
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState || wheelState.phase !== "FREE_SPIN_CHOICE") return;
+      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
+      if (!teamId && !isSandboxSocket && !isAdmin) return;
+      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
+      if (!room) return;
+      const tId = wheelState.currentTurnTeamId;
+      const teamName = wheelState.currentTurnTeamName;
+      if (use && (wheelState.freeSpinCount[tId] || 0) > 0) {
+        wheelState.freeSpinCount[tId]--;
+        wheelState.phase = "SPIN_WAITING";
+        if (wheelState.edition === "ENGLISH") {
+          wheelState.mustSpinOnly = true;
+          wheelState.lastActionMessage = `\u{1F39F}\uFE0F \u0110\u1ED9i ${teamName} \u0111\xE3 d\xF9ng 1 Th\u1EBB Free Spin! \u1EDE b\u1EA3n Anh, b\u1EA1n B\u1EAET BU\u1ED8C PH\u1EA2I QUAY N\xD3N \u1EDF l\u01B0\u1EE3t \u0111\u01B0\u1EE3c th\xEAm n\xE0y (ch\u01B0a \u0111\u01B0\u1EE3c \u0111o\xE1n \xF4 ch\u1EEF ngay)!`;
+        } else {
+          wheelState.mustSpinOnly = false;
+          wheelState.lastActionMessage = `\u{1F39F}\uFE0F \u0110\u1ED9i ${teamName} \u0111\xE3 d\xF9ng 1 L\u01B0\u1EE3t Th\xEAm! B\u1EA1n \u0111\u01B0\u1EE3c gi\u1EEF quy\u1EC1n ch\u01A1i v\xE0 c\xF3 th\u1EC3 ti\u1EBFp t\u1EE5c Quay n\xF3n HO\u1EB6C \u0110o\xE1n \xF4 ch\u1EEF!`;
+        }
+      } else {
+        wheelState.mustSpinOnly = false;
+        advanceMagicWheelTurnHelper(wheelState, room.teams);
+        wheelState.phase = "SPIN_WAITING";
+        wheelState.lastActionMessage = `\u0110\u1ED9i ${teamName} quy\u1EBFt \u0111\u1ECBnh gi\u1EEF l\u1EA1i Th\u1EBB Free Spin. Quy\u1EC1n ch\u01A1i chuy\u1EC3n sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}.`;
+      }
+      io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+    });
+    socket.on("admin:magic_wheel:use_free_spin", async ({ use }) => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      const wheelState = roomMagicWheels.get(room.id);
+      if (!wheelState || wheelState.phase !== "FREE_SPIN_CHOICE") return;
+      const tId = wheelState.currentTurnTeamId;
+      const teamName = wheelState.currentTurnTeamName;
+      if (use && (wheelState.freeSpinCount[tId] || 0) > 0) {
+        wheelState.freeSpinCount[tId]--;
+        wheelState.phase = "SPIN_WAITING";
+        if (wheelState.edition === "ENGLISH") {
+          wheelState.mustSpinOnly = true;
+          wheelState.lastActionMessage = `\u{1F39F}\uFE0F \u0110\u1ED9i ${teamName} \u0111\xE3 d\xF9ng 1 Th\u1EBB Free Spin! \u1EDE b\u1EA3n Anh, b\u1EA1n B\u1EAET BU\u1ED8C PH\u1EA2I QUAY N\xD3N \u1EDF l\u01B0\u1EE3t \u0111\u01B0\u1EE3c th\xEAm n\xE0y (ch\u01B0a \u0111\u01B0\u1EE3c \u0111o\xE1n \xF4 ch\u1EEF ngay)!`;
+        } else {
+          wheelState.mustSpinOnly = false;
+          wheelState.lastActionMessage = `\u{1F39F}\uFE0F \u0110\u1ED9i ${teamName} \u0111\xE3 d\xF9ng 1 L\u01B0\u1EE3t Th\xEAm! B\u1EA1n \u0111\u01B0\u1EE3c gi\u1EEF quy\u1EC1n ch\u01A1i v\xE0 c\xF3 th\u1EC3 ti\u1EBFp t\u1EE5c Quay n\xF3n HO\u1EB6C \u0110o\xE1n \xF4 ch\u1EEF!`;
+        }
+      } else {
+        wheelState.mustSpinOnly = false;
+        advanceMagicWheelTurnHelper(wheelState, room.teams);
+        wheelState.phase = "SPIN_WAITING";
+        wheelState.lastActionMessage = `\u0110\u1ED9i ${teamName} quy\u1EBFt \u0111\u1ECBnh gi\u1EEF l\u1EA1i Th\u1EBB Free Spin. Quy\u1EC1n ch\u01A1i chuy\u1EC3n sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}.`;
+      }
+      io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
     });
     socket.on("admin:magic_wheel:pass_turn", async () => {
       const room = await getAdminRoom(socket);

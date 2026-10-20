@@ -24,6 +24,8 @@ export type MagicWheelSectorType =
   | "HALF"
   | "EXTRA_TURN"
   | "LUCKY"
+  | "FREE_PLAY"
+  | "WILD_CARD"
   | "PRIZE"
   | "MYSTERY"
   | "EXPRESS"
@@ -45,7 +47,7 @@ export interface MagicWheelSector {
   color: string;
   textColor: string;
   isOverlay?: boolean;
-  overlayType?: "PRIZE" | "MYSTERY" | "EXPRESS" | "JACKPOT" | "STEAL_SWAP" | "TRIPLE" | "SPECIAL_ENVELOPE";
+  overlayType?: "PRIZE" | "MYSTERY" | "EXPRESS" | "JACKPOT" | "STEAL_SWAP" | "TRIPLE" | "WILD_CARD" | "FREE_SPIN" | "SPECIAL_ENVELOPE";
   basePoints?: number;
   mysteryContent?: "PRIZE_3M" | "BANKRUPT";
   envelopePrizePoints?: number;
@@ -97,6 +99,7 @@ export interface MagicWheelState {
     | "HALF"
     | "POINTS"
     | "LUCKY"
+    | "FREE_PLAY"
     | "MYSTERY"
     | "PRIZE"
     | "EXPRESS"
@@ -132,6 +135,8 @@ export interface MagicWheelState {
   teamShields?: Record<string, boolean>;
   round3TradedTeams?: string[];
   round3ForbiddenSolveTeams?: string[];
+  round3FirstTurnAttempted?: Record<string, boolean>; // V3: Đội đã thử lượt quay đầu tiên hợp lệ hay chưa
+  isFreePlayActive?: boolean; // Bản Anh: Đang ở lượt quay Free Play (gọi nguyên âm 0đ, sai không mất lượt)
   // Các đội đã Giải Ô Chữ SAI trong vòng chơi chính hiện tại -> bị loại khỏi phần còn lại của vòng đó
   roundEliminatedTeamIds?: string[];
   // Phản hồi trực quan khi có người chốt đáp án giải ô chữ (Đúng / Sai)
@@ -203,33 +208,131 @@ export const BASE_24_SECTORS: MagicWheelSector[] = [
 ];
 
 /**
+ * Bảng 24 ô chuẩn Mỹ (US Wheel of Fortune):
+ * - Hoàn toàn không có ô Nhân đôi và Chia đôi!
+ * - 2 ô BANKRUPT (Hazard 1 ở #8, Hazard 2 ở #11 thay thế cho Chia đôi).
+ * - 1 ô LOSE A TURN ở #2.
+ * - 1 ô FREE PLAY ở #14 (thay thế cho May Mắn).
+ * - 1 ô WILD CARD ở #17 (thay thế cho Nhân đôi).
+ * - 1 ô TOP DOLLAR ở #23 ($2,500 V1, $3,500 V2-3, $5,000 V4+).
+ * - Các ô tiền mặt: $500, $600, $650, $700, $800, $900, $1,000.
+ */
+export const US_BASE_24_SECTORS: MagicWheelSector[] = [
+  { id: 0, label: "$500", type: "POINTS", value: 500, color: "#e11d48", textColor: "#ffffff" },
+  { id: 1, label: "$600", type: "POINTS", value: 600, color: "#2563eb", textColor: "#ffffff" },
+  { id: 2, label: "LOSE A TURN", type: "LOSE_TURN", color: "#475569", textColor: "#f8fafc" },
+  { id: 3, label: "$700", type: "POINTS", value: 700, color: "#d97706", textColor: "#ffffff" },
+  { id: 4, label: "$500", type: "POINTS", value: 500, color: "#059669", textColor: "#ffffff" },
+  { id: 5, label: "$500", type: "POINTS", value: 500, color: "#0284c7", textColor: "#ffffff", overlayType: "FREE_SPIN" },
+  { id: 6, label: "$650", type: "POINTS", value: 650, color: "#7c3aed", textColor: "#ffffff" },
+  { id: 7, label: "$900", type: "POINTS", value: 900, color: "#ea580c", textColor: "#ffffff" },
+  { id: 8, label: "BANKRUPT", type: "BANKRUPT", color: "#000000", textColor: "#ef4444" },
+  { id: 9, label: "$500", type: "POINTS", value: 500, color: "#0d9488", textColor: "#ffffff" },
+  { id: 10, label: "$1,000", type: "POINTS", value: 1000, color: "#f59e0b", textColor: "#000000" },
+  { id: 11, label: "BANKRUPT", type: "BANKRUPT", color: "#000000", textColor: "#ef4444" },
+  { id: 12, label: "$600", type: "POINTS", value: 600, color: "#4f46e5", textColor: "#ffffff" },
+  { id: 13, label: "$500", type: "POINTS", value: 500, color: "#16a34a", textColor: "#ffffff" },
+  { id: 14, label: "FREE PLAY", type: "FREE_PLAY", color: "#10b981", textColor: "#ffffff" },
+  { id: 15, label: "$800", type: "POINTS", value: 800, color: "#c026d3", textColor: "#ffffff" },
+  { id: 16, label: "$650", type: "POINTS", value: 650, color: "#0891b2", textColor: "#ffffff" },
+  { id: 17, label: "WILD CARD", type: "WILD_CARD", color: "#06b6d4", textColor: "#ffffff" },
+  { id: 18, label: "$500", type: "POINTS", value: 500, color: "#3b82f6", textColor: "#ffffff" },
+  { id: 19, label: "$700", type: "POINTS", value: 700, color: "#eab308", textColor: "#000000" },
+  { id: 20, label: "$600", type: "POINTS", value: 600, color: "#9333ea", textColor: "#ffffff" },
+  { id: 21, label: "$900", type: "POINTS", value: 900, color: "#f97316", textColor: "#ffffff" },
+  { id: 22, label: "$1,000", type: "POINTS", value: 1000, color: "#e11d48", textColor: "#ffffff" },
+  { id: 23, label: "$2,500", type: "POINTS", value: 2500, color: "#ffd700", textColor: "#000000" },
+];
+
+/**
+ * Chuyển đổi nhãn và loại ô theo phiên bản Việt Nam (VTV3) hoặc Mỹ (Wheel of Fortune)
+ */
+export function localizeSectorsForEdition(
+  sectors: MagicWheelSector[],
+  edition: "VIETNAMESE" | "ENGLISH" = "VIETNAMESE"
+): MagicWheelSector[] {
+  if (edition !== "ENGLISH") return sectors;
+
+  return sectors.map((s) => {
+    let label = s.label;
+    let type = s.type;
+    let color = s.color;
+
+    if (type === "LOSE_TURN") {
+      label = "LOSE A TURN";
+    } else if (type === "BANKRUPT") {
+      label = "BANKRUPT";
+    } else if (type === "EXTRA_TURN") {
+      label = "FREE SPIN";
+    } else if (type === "HALF") {
+      label = "HALF";
+    } else if (type === "DOUBLE") {
+      label = "DOUBLE";
+    } else if (type === "LUCKY" || type === "FREE_PLAY") {
+      label = "FREE PLAY";
+      type = "FREE_PLAY";
+      color = "#10b981"; // Emerald green cho Free Play
+    } else if (s.isOverlay && s.overlayType === "PRIZE") {
+      label = "🎁 PRIZE";
+    } else if (s.isOverlay && s.overlayType === "MYSTERY") {
+      label = "🔮 MYSTERY";
+    } else if (s.isOverlay && s.overlayType === "EXPRESS") {
+      label = "⚡ EXPRESS";
+    } else if (s.isOverlay && s.overlayType === "JACKPOT") {
+      label = "💎 JACKPOT";
+    } else if (s.isOverlay && s.overlayType === "TRIPLE") {
+      label = "🔥 TRIPLE";
+    } else if (type === "POINTS" && s.value) {
+      if (label.includes("⭐")) {
+        label = `⭐ $${s.value}`;
+      } else if (label.includes("🌟")) {
+        label = `🌟 $${s.value}`;
+      } else {
+        label = `$${s.value}`;
+      }
+    }
+
+    return {
+      ...s,
+      label,
+      type,
+      color,
+    };
+  });
+}
+
+/**
  * Sinh cấu hình 24 ô theo từng vòng chơi:
- * - Vòng Chính 1: Ô Phần Thưởng (20 lá thăm)
- * - Vòng Chính 2: 2 Ô Bí Mật
+ * - Vòng Chính 1: Ô Phần Thưởng (20 lá thăm) / Prize
+ * - Vòng Chính 2: 2 Ô Bí Mật / Mystery
  * - Vòng Chính 3: Vòng Đổi hay Không Đổi (bàn xoay chuẩn 24 ô)
  * - Vòng Chính 4: Ô Tốc Độ ⚡ (Express 1000đ/chữ) + Ô Kim Cương 💎 (Jackpot tích lũy)
- * - Vòng Chính 5: 2 Ô Chuyển Nhượng ⚔️ (Cướp 50% điểm vòng hoặc Hoán đổi điểm vòng)
- * - Vòng Chính 6+: Nhân đôi điểm cơ bản + Ô Nhân Ba 🔥 (x3)
+ * - Vòng Chính 5: Ô Siêu Điểm Thưởng cá nhân (2000, 3000)
+ * - Vòng Chính 6+: Nhân đôi điểm cơ bản + Ô Nhân Ba 🔥 (x3 / Triple)
  * - Vòng Đặc Biệt (round = 99 / stage = SPECIAL_FINAL): 24 Phong bì Giải thưởng Đặc Biệt
  */
 export function generateMagicWheelSectors(
   mainRoundOrStage: number,
-  stage?: MagicWheelRoundStage
+  stage?: MagicWheelRoundStage,
+  edition: "VIETNAMESE" | "ENGLISH" = "VIETNAMESE"
 ): MagicWheelSector[] {
   if (stage === "SPECIAL_FINAL" || mainRoundOrStage === 99) {
     const specialPalette = [
-      { pts: 2000, label: "PHONG BÌ 2000", color: "#2563eb", textColor: "#ffffff" },
-      { pts: 3000, label: "PHONG BÌ 3000", color: "#7c3aed", textColor: "#ffffff" },
-      { pts: 4000, label: "PHONG BÌ 4000", color: "#059669", textColor: "#ffffff" },
-      { pts: 5000, label: "PHONG BÌ 5000", color: "#e11d48", textColor: "#ffffff" },
-      { pts: 8000, label: "PHONG BÌ 8000", color: "#ea580c", textColor: "#ffffff" },
-      { pts: 10000, label: "ĐẶC BIỆT 10000", color: "#ffd700", textColor: "#78350f" },
+      { pts: 2000, labelVi: "PHONG BÌ 2000", labelEn: "ENVELOPE $2,000", color: "#2563eb", textColor: "#ffffff" },
+      { pts: 3000, labelVi: "PHONG BÌ 3000", labelEn: "ENVELOPE $3,000", color: "#7c3aed", textColor: "#ffffff" },
+      { pts: 4000, labelVi: "PHONG BÌ 4000", labelEn: "ENVELOPE $4,000", color: "#059669", textColor: "#ffffff" },
+      { pts: 5000, labelVi: "PHONG BÌ 5000", labelEn: "ENVELOPE $5,000", color: "#e11d48", textColor: "#ffffff" },
+      { pts: 8000, labelVi: "PHONG BÌ 8000", labelEn: "ENVELOPE $8,000", color: "#ea580c", textColor: "#ffffff" },
+      { pts: 10000, labelVi: "ĐẶC BIỆT 10000", labelEn: "👑 $10,000", color: "#ffd700", textColor: "#78350f" },
     ];
     return Array.from({ length: 24 }, (_, idx) => {
       const item = specialPalette[idx % specialPalette.length];
+      const isEn = edition === "ENGLISH";
       return {
         id: idx,
-        label: item.pts === 10000 ? "👑 10000" : `✉️ ${item.pts}`,
+        label: isEn
+          ? (item.pts === 10000 ? "👑 $10,000" : `✉️ $${item.pts.toLocaleString("en-US")}`)
+          : (item.pts === 10000 ? "👑 10000" : `✉️ ${item.pts}`),
         type: "SPECIAL_ENVELOPE" as const,
         value: item.pts,
         color: item.color,
@@ -237,9 +340,95 @@ export function generateMagicWheelSectors(
         isOverlay: true,
         overlayType: "SPECIAL_ENVELOPE" as const,
         envelopePrizePoints: item.pts,
-        envelopeTitle: item.label,
+        envelopeTitle: isEn ? item.labelEn : item.labelVi,
       };
     });
+  }
+
+  if (edition === "ENGLISH") {
+    const sectors = US_BASE_24_SECTORS.map((s) => ({ ...s }));
+
+    // Top Dollar Wedge on Sector #23 (Chuẩn US Wheel of Fortune)
+    const topVal = mainRoundOrStage === 1 ? 2500 : (mainRoundOrStage <= 3 ? 3500 : 5000);
+    sectors[23] = {
+      id: 23,
+      label: `$${topVal.toLocaleString("en-US")}`,
+      type: "POINTS",
+      value: topVal,
+      color: "#ffd700",
+      textColor: "#000000",
+    };
+
+    if (mainRoundOrStage === 1) {
+      // Vòng 1: Gift Tag / Prize wedge ($1,000) trên Sector #13
+      const targetIdx = sectors.findIndex((s) => s.id === 13);
+      if (targetIdx !== -1) {
+        sectors[targetIdx] = {
+          id: 13,
+          label: "🎁 PRIZE",
+          type: "PRIZE",
+          value: 1000,
+          color: "#fbbf24",
+          textColor: "#78350f",
+          isOverlay: true,
+          overlayType: "PRIZE",
+        };
+      }
+    } else if (mainRoundOrStage === 2) {
+      // Vòng 2: Hai ô Mystery Wedges ($1,000) trên #13 và #4
+      const isFirst3M = Math.random() >= 0.5;
+      const contents: ("PRIZE_3M" | "BANKRUPT")[] = isFirst3M
+        ? ["PRIZE_3M", "BANKRUPT"]
+        : ["BANKRUPT", "PRIZE_3M"];
+      [13, 4].forEach((targetId, i) => {
+        const idx = sectors.findIndex((s) => s.id === targetId);
+        if (idx !== -1) {
+          sectors[idx] = {
+            id: targetId,
+            label: "🔮 MYSTERY",
+            type: "MYSTERY",
+            color: "#8b5cf6",
+            textColor: "#ffffff",
+            isOverlay: true,
+            overlayType: "MYSTERY",
+            basePoints: 1000,
+            mysteryContent: contents[i],
+          };
+        }
+      });
+    } else if (mainRoundOrStage === 3) {
+      // Vòng 3: Express Wedge ($1,000) trên Sector #13
+      const expIdx = sectors.findIndex((s) => s.id === 13);
+      if (expIdx !== -1) {
+        sectors[expIdx] = {
+          id: 13,
+          label: "⚡ EXPRESS",
+          type: "EXPRESS",
+          value: 1000,
+          color: "#06b6d4",
+          textColor: "#ffffff",
+          isOverlay: true,
+          overlayType: "EXPRESS",
+        };
+      }
+    } else if (mainRoundOrStage === 4) {
+      // Vòng 4: Diamond Jackpot ($1,500) trên Sector #4
+      const jpIdx = sectors.findIndex((s) => s.id === 4);
+      if (jpIdx !== -1) {
+        sectors[jpIdx] = {
+          id: 4,
+          label: "💎 JACKPOT",
+          type: "JACKPOT",
+          value: 1500,
+          color: "#ec4899",
+          textColor: "#ffffff",
+          isOverlay: true,
+          overlayType: "JACKPOT",
+        };
+      }
+    }
+
+    return sectors;
   }
 
   const sectors = BASE_24_SECTORS.map((s) => ({ ...s }));
@@ -313,9 +502,6 @@ export function generateMagicWheelSectors(
       };
     }
   } else if (mainRoundOrStage === 5) {
-    // Vòng 5: Sửa lại theo yêu cầu người dùng:
-    // "Vòng 5: sửa lại vì phá vỡ cơ chế gốc chiếc nón kỳ diệu, là không được phép lấy điểm của người khác về phía mình"
-    // Thay thế ô STEAL_SWAP bằng ô Điểm Siêu Cao cá nhân (2000đ, 3000đ)
     const idx13 = sectors.findIndex((s) => s.id === 13);
     if (idx13 !== -1) {
       sectors[idx13] = {
@@ -365,11 +551,11 @@ export function generateMagicWheelSectors(
     }
   }
 
-  return sectors;
+  return localizeSectorsForEdition(sectors, edition);
 }
 
-export function generateSpecialRoundWheelSectors(): MagicWheelSector[] {
-  return generateMagicWheelSectors(99, "SPECIAL_FINAL");
+export function generateSpecialRoundWheelSectors(edition: "VIETNAMESE" | "ENGLISH" = "VIETNAMESE"): MagicWheelSector[] {
+  return generateMagicWheelSectors(99, "SPECIAL_FINAL", edition);
 }
 
 // ── Bảng chữ cái tiếng Việt dùng cho Bàn phím lật chữ ────────────────────────

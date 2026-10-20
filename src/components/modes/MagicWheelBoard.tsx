@@ -84,6 +84,7 @@ export interface MagicWheelBoardProps {
   onMysteryDecide?: (openMystery: boolean) => void;
   onSelectRewardCard?: (reward: any) => void;
   onTradeDecide?: (trade: boolean, boxIndex?: number) => void;
+  onUseFreeSpin?: (use: boolean) => void;
   onLuckyPick?: (index: number) => void;
   onAdvanceRound?: () => void;
   onOverrideTurn?: (teamId: string) => void;
@@ -891,6 +892,7 @@ export default function MagicWheelBoard({
   onMysteryDecide,
   onSelectRewardCard,
   onTradeDecide,
+  onUseFreeSpin,
   onLuckyPick,
   onAdvanceRound,
   onOverrideTurn,
@@ -938,6 +940,7 @@ export default function MagicWheelBoard({
     subMode,
     lastActionMessage,
     freeSpinCount,
+    mustSpinOnly = false,
     mustSolveWithTones = false,
     tossUpBuzzedTeamId,
     tossUpBuzzedTeamName,
@@ -2289,8 +2292,15 @@ export default function MagicWheelBoard({
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color || "#6366f1" }} />
                       <span className="truncate max-w-[110px]">{t.name}</span>
+                      {(activeState.wildCardsCount?.[t.id] || 0) > 0 ? (
+                        <span className="text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-1 rounded font-bold" title="Đang nắm giữ 1 Thẻ Wild Card">
+                          🃏 Wild
+                        </span>
+                      ) : null}
                       <span className="font-mono font-black text-amber-300 ml-auto">
-                        {((t.score || 0) + rScore).toLocaleString()}đ
+                        {edition === "ENGLISH"
+                          ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}`
+                          : `${((t.score || 0) + rScore).toLocaleString()}đ`}
                       </span>
                       {isEliminatedBySolve ? (
                         <span className="text-rose-400 text-[10px] font-bold">⛔</span>
@@ -2302,7 +2312,7 @@ export default function MagicWheelBoard({
                     </div>
                     <div className="flex items-center justify-end pt-0.5">
                       <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                        Vòng này: {rScore.toLocaleString()}đ
+                        {edition === "ENGLISH" ? `Round: $${rScore.toLocaleString("en-US")}` : `Vòng này: ${rScore.toLocaleString()}đ`}
                       </span>
                     </div>
                   </div>
@@ -3394,87 +3404,108 @@ export default function MagicWheelBoard({
                         const isMyTurnToSpin = isHost || (myTeamId ? myTeamId === currentTurnTeamId : effectiveIsMyTurn);
                         if (canInteract && isMyTurnToSpin) {
                           return (
-                            <div className="flex flex-col sm:flex-row gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated || isNoMoreConsonants) return;
-                                  if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
-                                  setLocalIsSpinning(true);
-                                  onSpin?.(oscillatingPower);
-                                }}
-                                disabled={!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated || isNoMoreConsonants}
-                                className={`flex-1 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm text-white transition shadow-[0_0_20px_rgba(236,72,153,0.4)] ${
-                                  isCurrentTeamEliminated
-                                    ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
-                                    : isNoMoreConsonants
-                                    ? "bg-slate-850 text-amber-400/80 border border-amber-500/40 cursor-not-allowed opacity-75"
-                                    : "bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:brightness-110 active:scale-98 cursor-pointer"
-                                }`}
-                                title={isNoMoreConsonants ? "Không còn phụ âm nào trên bảng (No more consonants). Bạn chỉ có thể Mua nguyên âm hoặc Đoán ô chữ!" : undefined}
-                              >
-                                {isCurrentTeamEliminated
-                                  ? "⛔ ĐÃ HẾT LƯỢT VÒNG NÀY (ĐOÁN SAI Ô CHỮ)"
-                                  : isNoMoreConsonants
-                                  ? "🚫 HẾT PHỤ ÂM (NO MORE CONSONANTS)"
-                                  : `✦ CHỐT LỰC & QUAY NÓN (${oscillatingPower}%) ✦`}
-                              </button>
-                              {edition === "ENGLISH" && subMode === "WORD_PUZZLE" && (
-                                <button
-                                  type="button"
-                                  onClick={() => setBuyVowelModalOpen(true)}
-                                  disabled={
-                                    isSpinning ||
-                                    isCurrentTeamEliminated ||
-                                    ((roundScores?.[currentTurnTeamId] || 0) < 250)
-                                  }
-                                  className={`px-3 py-2.5 rounded-xl font-black text-xs whitespace-nowrap transition shadow ${
-                                    isCurrentTeamEliminated || (roundScores?.[currentTurnTeamId] || 0) < 250
-                                      ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
-                                      : "text-amber-100 bg-gradient-to-r from-amber-600 to-orange-700 hover:brightness-110 active:scale-98 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.3)] animate-pulse"
-                                  }`}
-                                  title="Mua nguyên âm (A, E, I, O, U) với 250đ từ điểm vòng của đội"
-                                >
-                                  🛒 MUA NGUYÊN ÂM (250đ)
-                                </button>
+                            <div className="space-y-2">
+                              {edition === "ENGLISH" && mustSpinOnly && (
+                                <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-xs font-bold text-center animate-pulse">
+                                  <span>🎟️</span>
+                                  <span>LƯỢT THÊM FREE SPIN: BẮT BUỘC PHẢI QUAY NÓN (CHƯA ĐƯỢC ĐOÁN Ô CHỮ NGAY)</span>
+                                </div>
                               )}
-                              {subMode === "WORD_PUZZLE" && (
+                              <div className="flex flex-col sm:flex-row gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => setSolveModalOpen(true)}
-                                  disabled={isSpinning || isSolveForbiddenInRound3 || isCurrentTeamEliminated}
-                                  className={`px-3.5 py-2.5 rounded-xl font-black text-xs whitespace-nowrap transition shadow ${
+                                  onClick={() => {
+                                    if (!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated || isNoMoreConsonants) return;
+                                    if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
+                                    setLocalIsSpinning(true);
+                                    onSpin?.(oscillatingPower);
+                                  }}
+                                  disabled={!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated || isNoMoreConsonants}
+                                  className={`flex-1 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm text-white transition shadow-[0_0_20px_rgba(236,72,153,0.4)] ${
                                     isCurrentTeamEliminated
                                       ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
-                                      : isSolveForbiddenInRound3
-                                      ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
-                                      : "text-black bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 active:scale-98 cursor-pointer"
+                                      : isNoMoreConsonants
+                                      ? "bg-slate-850 text-amber-400/80 border border-amber-500/40 cursor-not-allowed opacity-75"
+                                      : edition === "ENGLISH" && mustSpinOnly
+                                      ? "bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:brightness-110 active:scale-98 cursor-pointer ring-2 ring-emerald-400 animate-pulse"
+                                      : "bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:brightness-110 active:scale-98 cursor-pointer"
                                   }`}
-                                  title={
-                                    isSolveForbiddenInRound3
-                                      ? edition === "ENGLISH"
-                                        ? "Theo luật Vòng 3: Cần mở hết phụ âm trước khi đoán ô chữ"
-                                        : "Theo luật Vòng 3: Cần mở hết từng chữ cái trước khi đoán ô chữ"
-                                      : undefined
-                                  }
+                                  title={isNoMoreConsonants ? "Không còn phụ âm nào trên bảng (No more consonants). Bạn chỉ có thể Mua nguyên âm hoặc Đoán ô chữ!" : undefined}
                                 >
                                   {isCurrentTeamEliminated
-                                    ? "⛔ ĐÃ HẾT QUYỀN"
-                                    : isSolveForbiddenInRound3
-                                    ? "🔒 CẦN MỞ HẾT"
-                                    : "🎯 GIẢI Ô CHỮ"}
+                                    ? "⛔ ĐÃ HẾT LƯỢT VÒNG NÀY (ĐOÁN SAI Ô CHỮ)"
+                                    : isNoMoreConsonants
+                                    ? "🚫 HẾT PHỤ ÂM (NO MORE CONSONANTS)"
+                                    : edition === "ENGLISH" && mustSpinOnly
+                                    ? `🎟️ QUAY LƯỢT FREE SPIN (${oscillatingPower}%) ➔`
+                                    : `✦ CHỐT LỰC & QUAY NÓN (${oscillatingPower}%) ✦`}
                                 </button>
-                              )}
-                              {edition === "ENGLISH" && isNoMoreConsonants && onPassTurn && (
-                                <button
-                                  type="button"
-                                  onClick={() => onPassTurn()}
-                                  className="px-3 py-2.5 rounded-xl font-bold text-xs text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-600 transition cursor-pointer whitespace-nowrap"
-                                  title="Chuyển lượt cho đội kế tiếp nếu bạn không đủ 250đ mua nguyên âm và chưa chắc chắn đáp án"
-                                >
-                                  ⏭️ BỎ LƯỢT
-                                </button>
-                              )}
+                                {edition === "ENGLISH" && subMode === "WORD_PUZZLE" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setBuyVowelModalOpen(true)}
+                                    disabled={
+                                      isSpinning ||
+                                      isCurrentTeamEliminated ||
+                                      (edition === "ENGLISH" && mustSpinOnly) ||
+                                      ((roundScores?.[currentTurnTeamId] || 0) < 250)
+                                    }
+                                    className={`px-3 py-2.5 rounded-xl font-black text-xs whitespace-nowrap transition shadow ${
+                                      isCurrentTeamEliminated || (edition === "ENGLISH" && mustSpinOnly) || (roundScores?.[currentTurnTeamId] || 0) < 250
+                                        ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                                        : "text-amber-100 bg-gradient-to-r from-amber-600 to-orange-700 hover:brightness-110 active:scale-98 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.3)] animate-pulse"
+                                    }`}
+                                    title={
+                                      edition === "ENGLISH" && mustSpinOnly
+                                        ? "Bắt buộc phải quay nón trước!"
+                                        : "Mua nguyên âm (A, E, I, O, U) với 250đ từ điểm vòng của đội"
+                                    }
+                                  >
+                                    🛒 MUA NGUYÊN ÂM (250đ)
+                                  </button>
+                                )}
+                                {subMode === "WORD_PUZZLE" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSolveModalOpen(true)}
+                                    disabled={isSpinning || isSolveForbiddenInRound3 || isCurrentTeamEliminated || (edition === "ENGLISH" && mustSpinOnly)}
+                                    className={`px-3.5 py-2.5 rounded-xl font-black text-xs whitespace-nowrap transition shadow ${
+                                      isCurrentTeamEliminated || (edition === "ENGLISH" && mustSpinOnly)
+                                        ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                                        : isSolveForbiddenInRound3
+                                        ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                                        : "text-black bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 active:scale-98 cursor-pointer"
+                                    }`}
+                                    title={
+                                      edition === "ENGLISH" && mustSpinOnly
+                                        ? "Theo luật Free Spin: Bạn bắt buộc phải quay nón ở lượt được thêm, chưa được đoán ô chữ ngay!"
+                                        : isSolveForbiddenInRound3
+                                        ? edition === "ENGLISH"
+                                          ? "Theo luật Vòng 3: Cần mở hết phụ âm trước khi đoán ô chữ"
+                                          : "Theo luật Vòng 3: Cần mở hết từng chữ cái trước khi đoán ô chữ"
+                                        : undefined
+                                    }
+                                  >
+                                    {isCurrentTeamEliminated
+                                      ? "⛔ ĐÃ HẾT QUYỀN"
+                                      : edition === "ENGLISH" && mustSpinOnly
+                                      ? "🔒 BẮT BUỘC QUAY"
+                                      : isSolveForbiddenInRound3
+                                      ? "🔒 CẦN MỞ HẾT"
+                                      : "🎯 GIẢI Ô CHỮ"}
+                                  </button>
+                                )}
+                                {edition === "ENGLISH" && isNoMoreConsonants && onPassTurn && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onPassTurn()}
+                                    className="px-3 py-2.5 rounded-xl font-bold text-xs text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-600 transition cursor-pointer whitespace-nowrap"
+                                    title="Chuyển lượt cho đội kế tiếp nếu bạn không đủ 250đ mua nguyên âm và chưa chắc chắn đáp án"
+                                  >
+                                    ⏭️ BỎ LƯỢT
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           );
                         }
@@ -3510,10 +3541,11 @@ export default function MagicWheelBoard({
                                 onClick={() => setBuyVowelModalOpen(true)}
                                 disabled={
                                   isCurrentTeamEliminated ||
+                                  (edition === "ENGLISH" && mustSpinOnly) ||
                                   ((roundScores?.[currentTurnTeamId] || 0) < 250)
                                 }
                                 className={`px-2.5 py-1 rounded-lg text-xs font-black shadow transition ${
-                                  isCurrentTeamEliminated || (roundScores?.[currentTurnTeamId] || 0) < 250
+                                  isCurrentTeamEliminated || (edition === "ENGLISH" && mustSpinOnly) || (roundScores?.[currentTurnTeamId] || 0) < 250
                                     ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50"
                                     : "bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 hover:brightness-110 cursor-pointer shadow"
                                 }`}
@@ -3524,7 +3556,7 @@ export default function MagicWheelBoard({
                             <button
                               type="button"
                               onClick={() => setSolveModalOpen(true)}
-                              disabled={isSolveForbiddenInRound3 || isCurrentTeamEliminated}
+                              disabled={isSolveForbiddenInRound3 || isCurrentTeamEliminated || (edition === "ENGLISH" && mustSpinOnly)}
                               className={`px-3 py-1 rounded-lg text-xs font-black shadow transition ${
                                 isCurrentTeamEliminated
                                   ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50"
@@ -3798,6 +3830,51 @@ export default function MagicWheelBoard({
                     </div>
                   )}
 
+                  {/* 5.5. Bản Anh: Quyết định sử dụng Thẻ Free Spin (FREE_SPIN_CHOICE) */}
+                  {phase === "FREE_SPIN_CHOICE" && (
+                    <div className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-950/80 via-teal-950/80 to-slate-900 border-2 border-emerald-400/50 shadow-xl space-y-2 animate-in fade-in zoom-in-95 duration-200">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl animate-bounce">🎟️</span>
+                        <div>
+                          <h4 className="font-black text-xs sm:text-sm text-emerald-200 uppercase tracking-wide">
+                            {edition === "ENGLISH"
+                              ? "USE FREE SPIN TOKEN?"
+                              : "SỬ DỤNG THẺ THÊM LƯỢT?"}
+                          </h4>
+                          <p className="text-[11px] text-emerald-300/90 font-medium leading-relaxed">
+                            {edition === "ENGLISH"
+                              ? `You have ${freeSpinCount?.[currentTurnTeamId] || 1} Free Spin token(s). Use 1 token to keep control and spin again? (Notice: You must SPIN the wheel; you cannot solve the puzzle immediately).`
+                              : `Đội bạn có ${freeSpinCount?.[currentTurnTeamId] || 1} Thẻ Thêm Lượt. Bạn có muốn sử dụng 1 thẻ để quay tiếp không?`}
+                          </p>
+                        </div>
+                      </div>
+                      {canInteract ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => onUseFreeSpin?.(true)}
+                            className="py-2.5 px-3 rounded-lg font-black text-xs bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow cursor-pointer transition flex items-center justify-center gap-1.5 active:scale-95"
+                          >
+                            <span>🎟️</span>
+                            <span>{edition === "ENGLISH" ? "USE FREE SPIN (SPIN AGAIN)" : "DÙNG THẺ (QUAY TIẾP)"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onUseFreeSpin?.(false)}
+                            className="py-2.5 px-3 rounded-lg font-black text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/10 shadow cursor-pointer transition flex items-center justify-center gap-1.5 active:scale-95"
+                          >
+                            <span>⏭️</span>
+                            <span>{edition === "ENGLISH" ? "PASS TURN (KEEP TOKEN)" : "GIỮ THẺ (CHUYỂN LƯỢT)"}</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-center text-xs text-slate-400 italic">
+                          Đang đợi {formatTeamLabel(currentTurnTeamName)} quyết định...
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* 6. Vòng 4: Chuyến Tàu Tốc Độ (EXPRESS_CHOICE) */}
                   {phase === "EXPRESS_CHOICE" && (
                     <div className="p-3 rounded-xl bg-amber-950/60 border border-amber-400/50 shadow space-y-2">
@@ -3903,13 +3980,20 @@ export default function MagicWheelBoard({
                             style={{ background: t.color || "#6366f1" }}
                           />
                           <span className="text-xs font-bold text-white truncate">{t.name}</span>
+                          {(activeState.wildCardsCount?.[t.id] || 0) > 0 ? (
+                            <span className="text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-1 rounded font-bold" title="Đang giữ 1 Thẻ Wild Card">
+                              🃏 Wild
+                            </span>
+                          ) : null}
                         </div>
                         <div className="text-right shrink-0 flex flex-col items-end">
                           <span className="text-xs font-mono font-black text-amber-300">
-                            {((t.score || 0) + rScore).toLocaleString()}đ
+                            {edition === "ENGLISH"
+                              ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}`
+                              : `${((t.score || 0) + rScore).toLocaleString()}đ`}
                           </span>
                           <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold mt-0.5">
-                            Vòng này: {rScore.toLocaleString()}đ
+                            {edition === "ENGLISH" ? `Round: $${rScore.toLocaleString("en-US")}` : `Vòng này: ${rScore.toLocaleString()}đ`}
                           </span>
                           {activeState.prizeCash?.[t.id] ? (
                             <div className="text-[9px] font-mono text-emerald-400 font-bold mt-0.5" title="Tiền thưởng vĩnh viễn (không tính vào điểm xét Vòng Đặc Biệt)">

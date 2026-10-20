@@ -4557,8 +4557,9 @@ export default function AdminSandboxPage() {
               if (!latest || !latest.magicWheelState) return latest;
               const nextWheel = { ...latest.magicWheelState };
               nextWheel.isSpinning = false;
-              const sector = nextWheel.sectors[landingSectorIndex];
+              const sector = nextWheel.sectors[landingSectorIndex] || nextWheel.sectors[0];
               nextWheel.selectedSector = sector;
+              nextWheel.selectedSectorIndex = landingSectorIndex;
               const tId = nextWheel.currentTurnTeamId;
               const teamName = nextWheel.currentTurnTeamName;
               const eligibleTeams = latest.teams.filter(
@@ -4623,7 +4624,7 @@ export default function AdminSandboxPage() {
                   nextWheel.currentTurnTeamId = eligibleTeams[nextIdx]?.id || "";
                   nextWheel.currentTurnTeamName = eligibleTeams[nextIdx]?.name || "";
                   nextWheel.phase = "SPIN_WAITING";
-                  nextWheel.selectedSector = undefined;
+                  nextWheel.selectedSector = sector;
                   nextWheel.lastActionMessage = generateFlexibleMCCommentary({
                     event: "LOSE_TURN",
                     teamName,
@@ -4646,7 +4647,7 @@ export default function AdminSandboxPage() {
                   nextWheel.currentTurnTeamId = eligibleTeams[nextIdx]?.id || "";
                   nextWheel.currentTurnTeamName = eligibleTeams[nextIdx]?.name || "";
                   nextWheel.phase = "SPIN_WAITING";
-                  nextWheel.selectedSector = undefined;
+                  nextWheel.selectedSector = sector;
                   nextWheel.lastActionMessage = generateFlexibleMCCommentary({
                     event: "BANKRUPT",
                     teamName,

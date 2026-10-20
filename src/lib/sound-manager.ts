@@ -1253,11 +1253,9 @@ class SoundManager {
    */
   public playMagicWheelExtraTurn() {
     if (this.isMuted) return;
+    this.playSFX("mw_lucky", 1.0);
     const ctx = this.getWheelAudioCtx();
-    if (!ctx) {
-      this.playSFX("powerup", 0.9);
-      return;
-    }
+    if (!ctx) return;
     try {
       const now = ctx.currentTime;
       // Hợp âm vui tươi: C5 -> E5 -> G5 -> C6

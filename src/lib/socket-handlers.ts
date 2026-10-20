@@ -8404,8 +8404,9 @@ export function registerSocketHandlers(io: IO) {
         const cur = roomMagicWheels.get(roomId);
         if (!cur) return;
         cur.isSpinning = false;
-        const sector = cur.sectors[landingSectorIndex];
+        const sector = cur.sectors[landingSectorIndex] || cur.sectors[0];
         cur.selectedSector = sector;
+        cur.selectedSectorIndex = landingSectorIndex;
 
         const teamName = cur.currentTurnTeamName;
         const tId = cur.currentTurnTeamId;

@@ -1977,42 +1977,116 @@ export default function MagicWheelBoard({
 
   // ── Audio Engine Hooks ───────────────────────────────────────────────────
   const prevIsSpinning = useRef<boolean>(false);
+  const hasPlayedLandingAudioRef = useRef<boolean>(false);
+
+  const playSectorLandingAudio = useCallback((sector?: MagicWheelSector) => {
+    if (!canPlayBoardAudio) return;
+    soundManager.stopMagicWheelSpin();
+
+    let targetSec =
+      sector ||
+      selectedSector ||
+      (activeState.selectedSectorIndex !== undefined ? sectors[activeState.selectedSectorIndex] : undefined);
+
+    if (!targetSec && sectors && sectors.length > 0) {
+      const segAngle = 360 / sectors.length;
+      const normalizedTarget = ((targetAngleRef.current % 360) + 360) % 360;
+      const calcIdx = Math.floor(((360 - (normalizedTarget % 360)) % 360) / segAngle);
+      targetSec = sectors[calcIdx] || sectors[0];
+    }
+
+    if (!targetSec) {
+      soundManager.playWheelStopChime();
+      return;
+    }
+
+    const sType = targetSec.type;
+    const oType = targetSec.overlayType;
+    const isEnglish = edition === "ENGLISH";
+
+    // Bản Anh: Các ô đặc biệt như FREE_PLAY, WILD_CARD không có file audio VTV3 tiếng Việt
+    if (isEnglish && (sType === "FREE_PLAY" || sType === "WILD_CARD" || oType === "WILD_CARD")) {
+      soundManager.playWheelStopChime();
+      return;
+    }
+
+    // 1. Ô MẤT ĐIỂM (Bankrupt)
+    if (sType === "BANKRUPT") {
+      soundManager.playMagicWheelBankrupt();
+      return;
+    }
+
+    // 2. Ô MẤT LƯỢT (Lose Turn)
+    if (sType === "LOSE_TURN") {
+      soundManager.playMagicWheelLoseTurn();
+      return;
+    }
+
+    // 3. Ô CHIA ĐÔI (Halve points)
+    if (sType === "HALF") {
+      soundManager.playMagicWheelHalve();
+      return;
+    }
+
+    // 4. Ô NHÂN ĐÔI / NHÂN BA (Double / Triple)
+    if (sType === "DOUBLE" || sType === "TRIPLE" || oType === "TRIPLE") {
+      soundManager.playMagicWheelDouble();
+      return;
+    }
+
+    // 5. Ô MAY MẮN / THÊM LƯỢT / EXPRESS / JACKPOT / FREE SPIN TOKEN
+    if (
+      sType === "LUCKY" ||
+      sType === "EXTRA_TURN" ||
+      sType === "EXPRESS" ||
+      sType === "JACKPOT" ||
+      oType === "FREE_SPIN" ||
+      oType === "EXPRESS" ||
+      oType === "JACKPOT"
+    ) {
+      soundManager.playMagicWheelLucky();
+      return;
+    }
+
+    // 6. Ô PHẦN THƯỞNG / THẺ QUÀ / PHONG BÌ
+    if (
+      sType === "PRIZE" ||
+      sType === "BONUS_ENVELOPE" ||
+      sType === "SPECIAL_ENVELOPE" ||
+      oType === "PRIZE" ||
+      oType === "SPECIAL_ENVELOPE"
+    ) {
+      soundManager.playMagicWheelReward();
+      return;
+    }
+
+    // 7. Ô BÍ MẬT / ĐỐI ĐẦU / HOÁN ĐỔI (Mystery / Steal Swap)
+    if (
+      sType === "MYSTERY" ||
+      sType === "STEAL_SWAP" ||
+      oType === "MYSTERY" ||
+      oType === "STEAL_SWAP"
+    ) {
+      soundManager.playMagicWheelMystery();
+      return;
+    }
+
+    // 8. Ô điểm số thông thường (100, 200, 300, 500, 1000, 2000, v.v.)
+    soundManager.playWheelStopChime();
+  }, [canPlayBoardAudio, selectedSector, activeState.selectedSectorIndex, sectors, edition]);
 
   useEffect(() => {
     if (isSpinning && !prevIsSpinning.current) {
+      hasPlayedLandingAudioRef.current = false;
       if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
     } else if (!isSpinning && prevIsSpinning.current) {
-      if (canPlayBoardAudio) {
-        soundManager.stopMagicWheelSpin();
-        const effSector = selectedSector || (activeState.selectedSectorIndex !== undefined ? sectors[activeState.selectedSectorIndex] : undefined);
-        if (effSector) {
-          if (effSector.type === "DOUBLE" || effSector.type === "TRIPLE") {
-            soundManager.playMagicWheelDouble();
-          } else if (effSector.type === "HALF") {
-            soundManager.playMagicWheelHalve();
-          } else if (effSector.type === "BANKRUPT") {
-            soundManager.playMagicWheelBankrupt();
-          } else if (effSector.type === "LOSE_TURN") {
-            soundManager.playMagicWheelLoseTurn();
-          } else if (
-            effSector.type === "LUCKY" ||
-            effSector.type === "EXTRA_TURN" ||
-            effSector.type === "EXPRESS" ||
-            effSector.type === "JACKPOT"
-          ) {
-            soundManager.playMagicWheelLucky();
-          } else if (effSector.type === "PRIZE" || effSector.type === "BONUS_ENVELOPE") {
-            soundManager.playMagicWheelReward();
-          } else if (effSector.type === "MYSTERY" || effSector.type === "STEAL_SWAP") {
-            soundManager.playMagicWheelMystery();
-          } else {
-            soundManager.playWheelStopChime();
-          }
-        }
+      if (canPlayBoardAudio && !hasPlayedLandingAudioRef.current) {
+        hasPlayedLandingAudioRef.current = true;
+        playSectorLandingAudio();
       }
     }
     prevIsSpinning.current = Boolean(isSpinning);
-  }, [isSpinning, selectedSector, canPlayBoardAudio]);
+  }, [isSpinning, canPlayBoardAudio, playSectorLandingAudio]);
 
   const totalWrongGuesses = Object.values(activeState.wrongGuessesCount || {}).reduce((a, b) => a + b, 0);
   const prevWrongCount = useRef<number>(totalWrongGuesses);
@@ -2097,6 +2171,7 @@ export default function MagicWheelBoard({
     }
 
     isSpinningRafRunningRef.current = true;
+    hasPlayedLandingAudioRef.current = false;
     const startAngle = wheelPrevAngleRef.current;
     targetAngleRef.current = target;
 
@@ -2185,6 +2260,10 @@ export default function MagicWheelBoard({
         if (needleRef.current) {
           needleRef.current.style.transform = `translateX(-50%) rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
         }
+        if (canPlayBoardAudio && !hasPlayedLandingAudioRef.current) {
+          hasPlayedLandingAudioRef.current = true;
+          playSectorLandingAudio();
+        }
       }
     };
 
@@ -2197,7 +2276,7 @@ export default function MagicWheelBoard({
         if (zoomStartTimer) clearTimeout(zoomStartTimer);
       }
     };
-  }, [effectiveIsSpinning, targetRotationDegrees, activeState.spinPower, sectors.length, canPlayBoardAudio, isPlayer]);
+  }, [effectiveIsSpinning, targetRotationDegrees, activeState.spinPower, sectors.length, canPlayBoardAudio, isPlayer, playSectorLandingAudio]);
 
   const activeTeam = teams.find((t) => t.id === (tossUpBuzzedTeamId || currentTurnTeamId));
 
@@ -3069,6 +3148,7 @@ export default function MagicWheelBoard({
                 onClick={() => {
                   if (effectiveIsSpinning) return;
                   if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
+                  hasPlayedLandingAudioRef.current = false;
                   setLocalIsSpinning(true);
                   onSpin?.(oscillatingPower);
                 }}
@@ -3133,6 +3213,7 @@ export default function MagicWheelBoard({
                           onClick={() => {
                             if (!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated || isNoMoreConsonants) return;
                             if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
+                            hasPlayedLandingAudioRef.current = false;
                             setLocalIsSpinning(true);
                             onSpin?.(oscillatingPower);
                           }}
@@ -4814,6 +4895,7 @@ export default function MagicWheelBoard({
                           onClick={() => {
                             if (effectiveIsSpinning) return;
                             if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
+                            hasPlayedLandingAudioRef.current = false;
                             setLocalIsSpinning(true);
                             onSpin?.(oscillatingPower);
                           }}
@@ -5074,6 +5156,7 @@ export default function MagicWheelBoard({
                                   onClick={() => {
                                     if (!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated || isNoMoreConsonants) return;
                                     if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
+                                    hasPlayedLandingAudioRef.current = false;
                                     setLocalIsSpinning(true);
                                     onSpin?.(oscillatingPower);
                                   }}

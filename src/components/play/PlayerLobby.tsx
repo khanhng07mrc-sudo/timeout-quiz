@@ -50,7 +50,11 @@ export default function PlayerLobby({ roomState, playerId, selectedTeamId, onSel
 
       {/* Game Rules Inline Summary */}
       <div className="w-full mb-5">
-        <GameModeRulesCard mode={roomState.mode} onOpenModal={() => setShowRulesModal(true)} />
+        <GameModeRulesCard
+          mode={roomState.mode}
+          magicWheelEdition={roomState.magicWheelState?.edition || "VIETNAMESE"}
+          onOpenModal={() => setShowRulesModal(true)}
+        />
       </div>
 
       {isTeamMode ? (

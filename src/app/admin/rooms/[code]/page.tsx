@@ -1434,6 +1434,22 @@ export default function AdminRoomPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const curEd = roomState.magicWheelState?.edition || "VIETNAMESE";
+                      const nextEd = curEd === "ENGLISH" ? "VIETNAMESE" : "ENGLISH";
+                      emit("admin:magic_wheel:set_edition" as any, { edition: nextEd });
+                    }}
+                    className={`px-2.5 py-1.5 rounded-lg border text-xs font-black transition cursor-pointer shadow ${
+                      roomState.magicWheelState?.edition === "ENGLISH"
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 border-cyan-400 text-white"
+                        : "bg-gradient-to-r from-red-600 to-amber-600 border-amber-400 text-white"
+                    }`}
+                    title="Nhấn để đổi giữa Luật Việt (VTV3) và Luật Anh (Wheel of Fortune)"
+                  >
+                    <span>{roomState.magicWheelState?.edition === "ENGLISH" ? "🇺🇸 Bản Anh (WOF)" : "🇻🇳 Bản Việt (VTV3)"}</span>
+                  </button>
                   <select
                     value={roomState.magicWheelState.currentTurnTeamId}
                     onChange={(e) => emit("admin:magic_wheel:override_turn", { teamId: e.target.value })}

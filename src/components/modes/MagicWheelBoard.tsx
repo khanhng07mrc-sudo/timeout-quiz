@@ -2294,7 +2294,7 @@ export default function MagicWheelBoard({
                       </span>
                       {isEliminatedBySolve ? (
                         <span className="text-rose-400 text-[10px] font-bold">⛔</span>
-                      ) : strikes > 0 ? (
+                      ) : edition !== "ENGLISH" && strikes > 0 ? (
                         <span className="text-rose-400 font-mono text-[10px] tracking-tighter">
                           {"✕".repeat(Math.min(3, strikes))}
                         </span>
@@ -3929,7 +3929,9 @@ export default function MagicWheelBoard({
                         ) : (
                           <span className="text-[9px] text-slate-500">0 thẻ</span>
                         )}
-                        {isEliminatedBySolve ? (
+                        {edition === "ENGLISH" ? (
+                          <span className="text-[9px] text-cyan-400/80 font-mono">Luật US (Không loại)</span>
+                        ) : isEliminatedBySolve ? (
                           <span className="text-rose-400 font-bold uppercase text-[9px] flex items-center gap-1" title="Đã dùng hết 1 lượt đoán ô chữ vòng này và đoán sai">
                             <span>⛔ Hết quyền giải (Đoán sai)</span>
                             <span className="text-rose-500 font-black">✕✕✕</span>

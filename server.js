@@ -12464,13 +12464,19 @@ function registerSocketHandlers(io2) {
           });
         } else if (room.mode === "MAGIC_WHEEL") {
           const subMode = config2?.magicWheelSubMode || "WORD_PUZZLE";
+          const edition = config2?.magicWheelEdition || "VIETNAMESE";
+          const englishPreset = config2?.magicWheelEnglishPreset || "RANDOM_MIX";
+          const blackoutGuessedLetters = config2?.magicWheelBlackoutGuessedLetters !== false;
           const operationMode = config2?.magicWheelOperationMode === "HOST_ASSISTED" || config2?.answerMethod === "MC" ? "HOST_ASSISTED" : "SELF_SERVICE";
           const totalMainRounds = Math.max(3, teams.length);
-          const puzzles = buildMagicWheelMatchPuzzles(teams.length, config2?.magicWheelPuzzles);
+          const puzzles = buildMagicWheelMatchPuzzles(teams.length, config2?.magicWheelPuzzles, edition, englishPreset);
           const firstPuzzle = puzzles[0];
           const firstStage = firstPuzzle?.stage || "TOSS_UP_1";
           const wheelState = {
             subMode,
+            edition,
+            englishPreset,
+            blackoutGuessedLetters,
             operationMode,
             boardStage: "EMPTY_56",
             sectors: generateMagicWheelSectors(1, firstStage),
@@ -16299,7 +16305,7 @@ function registerSocketHandlers(io2) {
           wheelState.roundScores[tId] = 0;
           advanceMagicWheelTurnHelper(wheelState, room.teams);
           wheelState.lastActionMessage = `\u{1F4A5} T\xC0U T\u1ED0C \u0110\u1ED8 TR\u1EACT B\xC1NH! Kh\xF4ng c\xF3 ch\u1EEF "${normLetter}" \u2014 \u0110\u1ED9i ${teamName} m\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m v\xF2ng! Chuy\u1EC3n l\u01B0\u1EE3t sang ${wheelState.currentTurnTeamName}.`;
-        } else if (strikeCount >= 3) {
+        } else if (wheelState.edition !== "ENGLISH" && strikeCount >= 3) {
           if (!wheelState.disqualifiedTeamIdsInRound) wheelState.disqualifiedTeamIdsInRound = [];
           if (!wheelState.disqualifiedTeamIdsInRound.includes(tId)) {
             wheelState.disqualifiedTeamIdsInRound.push(tId);
@@ -16311,10 +16317,10 @@ function registerSocketHandlers(io2) {
           wheelState.freeSpinCount[tId]--;
           wheelState.phase = "SPIN_WAITING";
           wheelState.pendingSpecialAction = "NONE";
-          wheelState.lastActionMessage = `Kh\xF4ng c\xF3 ch\u1EEF ${normLetter}! \u0110\u1ED9i ${teamName} \u0111\xE3 d\xF9ng 1 Th\u1EBB Th\xEAm L\u01B0\u1EE3t \u0111\u1EC3 gi\u1EEF quy\u1EC1n quay ti\u1EBFp (L\u1ED7i li\xEAn ti\u1EBFp: ${strikeCount}/3).`;
+          wheelState.lastActionMessage = `Kh\xF4ng c\xF3 ch\u1EEF ${normLetter}! \u0110\u1ED9i ${teamName} \u0111\xE3 d\xF9ng 1 Th\u1EBB Th\xEAm L\u01B0\u1EE3t \u0111\u1EC3 gi\u1EEF quy\u1EC1n quay ti\u1EBFp${wheelState.edition === "ENGLISH" ? "" : ` (L\u1ED7i li\xEAn ti\u1EBFp: ${strikeCount}/3)`}.`;
         } else {
           advanceMagicWheelTurnHelper(wheelState, room.teams);
-          wheelState.lastActionMessage = generateFlexibleMCCommentary("LETTER_MISS", { teamName, letter: normLetter }) + ` Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}.`;
+          wheelState.lastActionMessage = wheelState.edition === "ENGLISH" ? `Kh\xF4ng c\xF3 ch\u1EEF "${normLetter}"! \u0110\u1ED9i ${teamName} b\u1ECB m\u1EA5t l\u01B0\u1EE3t. Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}.` : generateFlexibleMCCommentary("LETTER_MISS", { teamName, letter: normLetter }) + ` Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}.`;
         }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       }
@@ -16600,7 +16606,26 @@ function registerSocketHandlers(io2) {
       } else {
         wheelState.isSpinning = false;
         wheelState.pendingSpecialAction = "NONE";
-        if (forcedVerdict === false) {
+        if (wheelState.edition === "ENGLISH") {
+          advanceMagicWheelTurnHelper(wheelState, room.teams);
+          wheelState.lastSolveFeedback = {
+            teamId: tId,
+            teamName,
+            guess: answer || "(Gi\u1EA3i sai)",
+            isCorrect: false,
+            eliminatedFromRound: false,
+            allTeamsEliminated: false,
+            timestamp: Date.now()
+          };
+          io2.to(`room:${roomCode}`).emit("game:magic_wheel:puzzle_solved", {
+            teamId: tId,
+            teamName,
+            isCorrect: false,
+            secretPhrase: "",
+            roundWonPoints: 0
+          });
+          wheelState.lastActionMessage = `\u274C \u0110\xE1p \xE1n "${answer || "\u0111o\xE1n sai"}" ch\u01B0a ch\xEDnh x\xE1c! Theo lu\u1EADt Anh, \u0110\u1ED9i ${teamName} ch\u1EC9 b\u1ECB m\u1EA5t l\u01B0\u1EE3t (kh\xF4ng b\u1ECB lo\u1EA1i v\xE0 gi\u1EEF nguy\xEAn \u0111i\u1EC3m v\xF2ng). Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}!`;
+        } else if (forcedVerdict === false) {
           const strikes = (wheelState.consecutiveWrongGuesses[tId] || 0) + 1;
           wheelState.consecutiveWrongGuesses[tId] = strikes;
           wheelState.wrongGuessesCount[tId] = strikes;

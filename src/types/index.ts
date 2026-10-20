@@ -623,6 +623,9 @@ export interface GameConfig {
   tournamentQuestionsPerMatch?: number;
   // Magic Wheel config
   magicWheelSubMode?: "WHEEL_QUIZ" | "WORD_PUZZLE";
+  magicWheelEdition?: "VIETNAMESE" | "ENGLISH";
+  magicWheelEnglishPreset?: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3";
+  magicWheelBlackoutGuessedLetters?: boolean;
   magicWheelPuzzles?: { roundNumber: number; category: string; secretPhrase: string; clue?: string }[];
   magicWheelRoundsCount?: number;
   // Grid Caro config

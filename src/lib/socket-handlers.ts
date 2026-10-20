@@ -4043,17 +4043,23 @@ export function registerSocketHandlers(io: IO) {
           });
         } else if (room.mode === "MAGIC_WHEEL") {
           const subMode = config?.magicWheelSubMode || "WORD_PUZZLE";
+          const edition = config?.magicWheelEdition || "VIETNAMESE";
+          const englishPreset = config?.magicWheelEnglishPreset || "RANDOM_MIX";
+          const blackoutGuessedLetters = config?.magicWheelBlackoutGuessedLetters !== false;
           const operationMode: MagicWheelOperationMode =
             config?.magicWheelOperationMode === "HOST_ASSISTED" || config?.answerMethod === "MC"
               ? "HOST_ASSISTED"
               : "SELF_SERVICE";
           const totalMainRounds = Math.max(3, teams.length);
-          const puzzles = buildMagicWheelMatchPuzzles(teams.length, config?.magicWheelPuzzles);
+          const puzzles = buildMagicWheelMatchPuzzles(teams.length, config?.magicWheelPuzzles, edition, englishPreset);
           const firstPuzzle = puzzles[0];
           const firstStage = firstPuzzle?.stage || "TOSS_UP_1";
 
           const wheelState: MagicWheelState = {
             subMode,
+            edition,
+            englishPreset,
+            blackoutGuessedLetters,
             operationMode,
             boardStage: "EMPTY_56",
             sectors: generateMagicWheelSectors(1, firstStage),
@@ -8625,7 +8631,8 @@ export function registerSocketHandlers(io: IO) {
           wheelState.roundScores[tId] = 0;
           advanceMagicWheelTurnHelper(wheelState, room.teams);
           wheelState.lastActionMessage = `💥 TÀU TỐC ĐỘ TRẬT BÁNH! Không có chữ "${normLetter}" — Đội ${teamName} mất toàn bộ điểm vòng! Chuyển lượt sang ${wheelState.currentTurnTeamName}.`;
-        } else if (strikeCount >= 3) {
+        } else if (wheelState.edition !== "ENGLISH" && strikeCount >= 3) {
+          // Luật Việt: Đoán sai 3 lần liên tiếp bị loại khỏi vòng chơi
           if (!wheelState.disqualifiedTeamIdsInRound) wheelState.disqualifiedTeamIdsInRound = [];
           if (!wheelState.disqualifiedTeamIdsInRound.includes(tId)) {
             wheelState.disqualifiedTeamIdsInRound.push(tId);
@@ -8637,12 +8644,14 @@ export function registerSocketHandlers(io: IO) {
           wheelState.freeSpinCount[tId]--;
           wheelState.phase = "SPIN_WAITING";
           wheelState.pendingSpecialAction = "NONE";
-          wheelState.lastActionMessage = `Không có chữ ${normLetter}! Đội ${teamName} đã dùng 1 Thẻ Thêm Lượt để giữ quyền quay tiếp (Lỗi liên tiếp: ${strikeCount}/3).`;
+          wheelState.lastActionMessage = `Không có chữ ${normLetter}! Đội ${teamName} đã dùng 1 Thẻ Thêm Lượt để giữ quyền quay tiếp${wheelState.edition === "ENGLISH" ? "" : ` (Lỗi liên tiếp: ${strikeCount}/3)`}.`;
         } else {
           advanceMagicWheelTurnHelper(wheelState, room.teams);
           wheelState.lastActionMessage =
-            generateFlexibleMCCommentary("LETTER_MISS", { teamName, letter: normLetter }) +
-            ` Chuyển lượt sang Đội ${wheelState.currentTurnTeamName}.`;
+            wheelState.edition === "ENGLISH"
+              ? `Không có chữ "${normLetter}"! Đội ${teamName} bị mất lượt. Chuyển lượt sang Đội ${wheelState.currentTurnTeamName}.`
+              : generateFlexibleMCCommentary("LETTER_MISS", { teamName, letter: normLetter }) +
+                ` Chuyển lượt sang Đội ${wheelState.currentTurnTeamName}.`;
         }
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       }
@@ -8975,8 +8984,31 @@ export function registerSocketHandlers(io: IO) {
         wheelState.isSpinning = false;
         wheelState.pendingSpecialAction = "NONE";
 
-        if (forcedVerdict === false) {
-          // MC pressed "✕ Phạt SAI" on the control bar or inside modal:
+        if (wheelState.edition === "ENGLISH") {
+          // ── LUẬT ANH (US WHEEL OF FORTUNE): ĐOÁN/GIẢI SAI CHỈ MẤT LƯỢT, KHÔNG BỊ LOẠI, GIỮ NGUYÊN ĐIỂM VÒNG ──
+          advanceMagicWheelTurnHelper(wheelState, room.teams);
+
+          wheelState.lastSolveFeedback = {
+            teamId: tId,
+            teamName,
+            guess: answer || "(Giải sai)",
+            isCorrect: false,
+            eliminatedFromRound: false,
+            allTeamsEliminated: false,
+            timestamp: Date.now(),
+          };
+
+          io.to(`room:${roomCode}`).emit("game:magic_wheel:puzzle_solved", {
+            teamId: tId,
+            teamName,
+            isCorrect: false,
+            secretPhrase: "",
+            roundWonPoints: 0,
+          });
+
+          wheelState.lastActionMessage = `❌ Đáp án "${answer || "đoán sai"}" chưa chính xác! Theo luật Anh, Đội ${teamName} chỉ bị mất lượt (không bị loại và giữ nguyên điểm vòng). Chuyển lượt sang Đội ${wheelState.currentTurnTeamName}!`;
+        } else if (forcedVerdict === false) {
+          // MC pressed "✕ Phạt SAI" on the control bar or inside modal (Luật Việt):
           // Incur 1 strike, emit wrong sound feedback, and advance turn immediately so game continues playing!
           const strikes = (wheelState.consecutiveWrongGuesses[tId] || 0) + 1;
           wheelState.consecutiveWrongGuesses[tId] = strikes;
@@ -9020,6 +9052,7 @@ export function registerSocketHandlers(io: IO) {
             wheelState.lastActionMessage = `❌ MC phạt SAI Đội ${teamName} (${strikes}/3 lỗi). Chuyển lượt sang Đội ${wheelState.currentTurnTeamName}!`;
           }
         } else {
+          // Luật Việt: Giải ô chữ sai bị loại khỏi vòng chơi ngay lập tức
           if (!wheelState.roundEliminatedTeamIds) wheelState.roundEliminatedTeamIds = [];
           if (!wheelState.roundEliminatedTeamIds.includes(tId)) {
             wheelState.roundEliminatedTeamIds.push(tId);

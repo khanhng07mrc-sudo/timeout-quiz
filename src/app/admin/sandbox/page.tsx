@@ -1714,6 +1714,9 @@ export default function AdminSandboxPage() {
 
       magicWheelState = {
         subMode: "WORD_PUZZLE",
+        edition: "VIETNAMESE",
+        englishPreset: "RANDOM_MIX",
+        blackoutGuessedLetters: true,
         operationMode: "SELF_SERVICE",
         roundStage: "TOSS_UP_1",
         totalMainRounds,
@@ -4405,6 +4408,10 @@ export default function AdminSandboxPage() {
           adminSocketRef.current.emit("magic_wheel:set_edition" as any, { edition: msg.edition });
         } else if (msg.type === "MAGIC_WHEEL_SET_BLACKOUT_GUESSED") {
           adminSocketRef.current.emit("magic_wheel:set_blackout_guessed" as any, { enabled: msg.enabled });
+          adminSocketRef.current.emit("admin:magic_wheel:set_blackout_guessed" as any, { enabled: msg.enabled });
+        } else if (msg.type === "MAGIC_WHEEL_SET_ENGLISH_PRESET") {
+          adminSocketRef.current.emit("magic_wheel:set_english_preset" as any, { preset: msg.preset });
+          adminSocketRef.current.emit("admin:magic_wheel:set_english_preset" as any, { preset: msg.preset });
         }
       }
 
@@ -4735,7 +4742,8 @@ export default function AdminSandboxPage() {
               cur.consecutiveWrongGuesses = { ...cur.consecutiveWrongGuesses, [tId]: strikes };
               cur.wrongGuessesCount = { ...cur.wrongGuessesCount, [tId]: strikes };
 
-              if (strikes >= 3) {
+              if (cur.edition !== "ENGLISH" && strikes >= 3) {
+                // Luật Việt: Phạm 3 lỗi liên tiếp bị dừng quyền chơi vòng này
                 cur.disqualifiedTeamIdsInRound = [...(cur.disqualifiedTeamIdsInRound || []), tId];
                 cur.roundScores = { ...cur.roundScores, [tId]: 0 };
                 const remaining = prev.teams.filter(
@@ -4756,7 +4764,7 @@ export default function AdminSandboxPage() {
                 cur.freeSpinCount = { ...cur.freeSpinCount, [tId]: cur.freeSpinCount[tId] - 1 };
                 cur.phase = "SPIN_WAITING";
                 cur.pendingSpecialAction = "NONE";
-                cur.lastActionMessage = `Không có chữ ${normLetter}! Đội ${teamName} đã dùng 1 Thẻ Thêm Lượt để quay tiếp (Lỗi liên tiếp: ${strikes}/3).`;
+                cur.lastActionMessage = `Không có chữ ${normLetter}! Đội ${teamName} đã dùng 1 Thẻ Thêm Lượt để quay tiếp${cur.edition === "ENGLISH" ? "" : ` (Lỗi liên tiếp: ${strikes}/3)`}.`;
               } else {
                 const activeIdx = eligibleTeams.findIndex((t) => t.id === cur.currentTurnTeamId);
                 const nextIdx = (activeIdx + 1) % Math.max(1, eligibleTeams.length);
@@ -4765,13 +4773,16 @@ export default function AdminSandboxPage() {
                 cur.phase = "SPIN_WAITING";
                 cur.selectedSector = undefined;
                 cur.pendingSpecialAction = "NONE";
-                cur.lastActionMessage = generateFlexibleMCCommentary({
-                  event: "LETTER_MISS",
-                  teamName,
-                  letter: normLetter,
-                  nextTeamName: cur.currentTurnTeamName,
-                  strikes,
-                });
+                cur.lastActionMessage =
+                  cur.edition === "ENGLISH"
+                    ? `Không có chữ "${normLetter}"! Đội ${teamName} bị mất lượt. Chuyển lượt sang ${cur.currentTurnTeamName}.`
+                    : generateFlexibleMCCommentary({
+                        event: "LETTER_MISS",
+                        teamName,
+                        letter: normLetter,
+                        nextTeamName: cur.currentTurnTeamName,
+                        strikes,
+                      });
               }
             }
           }
@@ -4841,10 +4852,30 @@ export default function AdminSandboxPage() {
           return nextRoom;
         });
       } else if (e.data?.type === "MAGIC_WHEEL_SET_EDITION") {
-        const { edition } = e.data;
+        const edition = (e.data.edition === "ENGLISH" ? "ENGLISH" : "VIETNAMESE") as "VIETNAMESE" | "ENGLISH";
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState) return prev;
           const cur = { ...prev.magicWheelState, edition };
+          if (cur.roundStage === "TOSS_UP_1" && cur.phase === "TOSS_UP_READY") {
+            const activePuzzles = buildMagicWheelMatchPuzzles(prev.teams.length, undefined, edition, cur.englishPreset || "RANDOM_MIX");
+            cur.puzzles = activePuzzles;
+            cur.currentPuzzle = { ...activePuzzles[0], revealedIndices: [] };
+          }
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_SET_ENGLISH_PRESET") {
+        const preset = e.data.preset as any;
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const cur = { ...prev.magicWheelState, englishPreset: preset, edition: "ENGLISH" as const };
+          if (cur.roundStage === "TOSS_UP_1" && cur.phase === "TOSS_UP_READY") {
+            const activePuzzles = buildMagicWheelMatchPuzzles(prev.teams.length, undefined, "ENGLISH", preset);
+            cur.puzzles = activePuzzles;
+            cur.currentPuzzle = { ...activePuzzles[0], revealedIndices: [] };
+          }
           const nextRoom = { ...prev, magicWheelState: cur };
           roomStateRef.current = nextRoom;
           syncToIframes({ roomState: nextRoom });
@@ -5110,7 +5141,30 @@ export default function AdminSandboxPage() {
             roomStateRef.current = nextRoom;
             syncToIframes({ roomState: nextRoom });
             return nextRoom;
+          } else if (cur.edition === "ENGLISH") {
+            // Luật Anh: Đoán giải ô chữ sai chỉ bị mất lượt, KHÔNG bị loại, GIỮ NGUYÊN điểm vòng!
+            cur.expressTrainActive = false;
+            const activeIdx = prev.teams.findIndex((t) => t.id === cur.currentTurnTeamId);
+            const nextIdx = (activeIdx + 1) % prev.teams.length;
+            cur.currentTurnTeamId = prev.teams[nextIdx]?.id || "";
+            cur.currentTurnTeamName = prev.teams[nextIdx]?.name || "";
+            cur.phase = "SPIN_WAITING";
+            cur.lastActionMessage = `❌ Đáp án "${answer}" chưa chính xác! Theo luật Anh, Đội ${teamName} chỉ bị mất lượt (không bị loại và giữ nguyên điểm vòng). Chuyển lượt sang Đội ${cur.currentTurnTeamName}!`;
+            cur.lastSolveFeedback = {
+              teamId: tId,
+              teamName,
+              guess: answer,
+              isCorrect: false,
+              eliminatedFromRound: false,
+              allTeamsEliminated: false,
+              timestamp: Date.now(),
+            };
+            const nextRoom = { ...prev, magicWheelState: cur };
+            roomStateRef.current = nextRoom;
+            syncToIframes({ roomState: nextRoom });
+            return nextRoom;
           } else {
+            // Luật Việt: Bị loại khỏi vòng chơi ngay lập tức
             cur.expressTrainActive = false;
             const elimList = Array.from(new Set([...(cur.roundEliminatedTeamIds || []), tId]));
             const disqList = Array.from(new Set([...(cur.disqualifiedTeamIdsInRound || []), tId]));
@@ -9906,6 +9960,33 @@ export default function AdminSandboxPage() {
                   <span>{sandboxTieBreaker ? "Đang Test Đột Tử" : "Test Tie-Breaker"}</span>
                 </button>
 
+                {/* 4b3. Magic Wheel Edition Switcher (1-Click trên Top Bar Sandbox) */}
+                {roomState?.mode === "MAGIC_WHEEL" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const curEd = roomState.magicWheelState?.edition || "VIETNAMESE";
+                      const nextEd = curEd === "ENGLISH" ? "VIETNAMESE" : "ENGLISH";
+                      if (adminSocketRef.current?.connected) {
+                        adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: nextEd });
+                        adminSocketRef.current.emit("magic_wheel:set_edition" as any, { edition: nextEd });
+                      }
+                      window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition: nextEd }, "*");
+                      addLog(`⚙️ Đã chuyển sang: ${nextEd === "ENGLISH" ? "Luật Anh (Wheel of Fortune)" : "Luật Việt (Chiếc Nón Kỳ Diệu)"}`);
+                    }}
+                    className={`px-3 py-1 rounded-lg border text-xs font-black transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer shadow-md ${
+                      roomState.magicWheelState?.edition === "ENGLISH"
+                        ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 border-cyan-400 text-white shadow-cyan-500/30"
+                        : "bg-gradient-to-r from-red-600 via-amber-600 to-yellow-600 border-amber-400 text-white shadow-amber-500/30"
+                    }`}
+                    title="Nhấn để đổi ngay giữa Luật Việt (VTV3) và Luật Anh (US Wheel of Fortune)"
+                  >
+                    <span className="text-sm">{roomState.magicWheelState?.edition === "ENGLISH" ? "🇺🇸" : "🇻🇳"}</span>
+                    <span>{roomState.magicWheelState?.edition === "ENGLISH" ? "Bản Anh (WOF)" : "Bản Việt (VTV3)"}</span>
+                    <span className="text-[10px] opacity-80 bg-white/20 px-1 rounded">⇄ Đổi luật</span>
+                  </button>
+                )}
+
                 {/* 4c. MC Direct Answer Submission Trigger */}
                 {currentQuestion && !revealPayload && currentQuestion.question.options && (
                   <button
@@ -10353,6 +10434,148 @@ export default function AdminSandboxPage() {
                         <span className="font-black text-white text-[11px]">⚙️ Cài đặt — {roomState.mode}</span>
                         <button type="button" onClick={() => setShowSettingsDropdown(false)} className="text-muted-foreground hover:text-white text-[11px] cursor-pointer">✕</button>
                       </div>
+
+                      {/* 🎡 Magic Wheel Edition & Rules Configuration */}
+                      {roomState.mode === "MAGIC_WHEEL" && (
+                        <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-2 mb-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-amber-300 text-[11px] flex items-center gap-1">
+                              <span>🎡</span>
+                              <span>PHIÊN BẢN LUẬT CHƠI</span>
+                            </span>
+                            <span className="text-[10px] text-purple-300 font-bold">
+                              {roomState.magicWheelState?.edition === "ENGLISH" ? "US Wheel of Fortune" : "VTV3 Chiếc Nón Kỳ Diệu"}
+                            </span>
+                          </div>
+
+                          {/* Edition Segmented Switch */}
+                          <div className="grid grid-cols-2 gap-1.5 p-1 rounded-lg bg-black/50 border border-white/10">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (adminSocketRef.current?.connected) {
+                                  adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: "VIETNAMESE" });
+                                  adminSocketRef.current.emit("magic_wheel:set_edition" as any, { edition: "VIETNAMESE" });
+                                }
+                                window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition: "VIETNAMESE" }, "*");
+                                addLog("⚙️ Đã chuyển sang Luật Việt (VTV3 Chiếc Nón Kỳ Diệu)");
+                              }}
+                              className={`py-1.5 px-2 rounded-md font-black text-[11px] flex items-center justify-center gap-1 transition cursor-pointer ${
+                                (roomState.magicWheelState?.edition || "VIETNAMESE") === "VIETNAMESE"
+                                  ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md border border-amber-400"
+                                  : "text-slate-400 hover:text-white"
+                              }`}
+                            >
+                              <span>🇻🇳</span>
+                              <span>Luật Việt (VTV3)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (adminSocketRef.current?.connected) {
+                                  adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: "ENGLISH" });
+                                  adminSocketRef.current.emit("magic_wheel:set_edition" as any, { edition: "ENGLISH" });
+                                }
+                                window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition: "ENGLISH" }, "*");
+                                addLog("⚙️ Đã chuyển sang Luật Anh (US Wheel of Fortune)");
+                              }}
+                              className={`py-1.5 px-2 rounded-md font-black text-[11px] flex items-center justify-center gap-1 transition cursor-pointer ${
+                                roomState.magicWheelState?.edition === "ENGLISH"
+                                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-cyan-400"
+                                  : "text-slate-400 hover:text-white"
+                              }`}
+                            >
+                              <span>🇺🇸</span>
+                              <span>Luật Anh (WOF)</span>
+                            </button>
+                          </div>
+
+                          {/* Rule differences description */}
+                          <div className="text-[10px] text-slate-300 leading-relaxed bg-black/30 p-2 rounded-lg border border-white/5 space-y-1">
+                            {(roomState.magicWheelState?.edition || "VIETNAMESE") === "VIETNAMESE" ? (
+                              <>
+                                <p className="text-amber-200 font-bold">• Luật Việt (Chiếc Nón Kỳ Diệu):</p>
+                                <p className="text-slate-300">29 chữ cái, quay được cả nguyên âm & phụ âm. Đoán sai 3 lần hoặc giải sai từ khóa bị <strong className="text-rose-400">LOẠI KHỎI VÒNG</strong>. Vòng 3 bắt buộc mở hết tất cả chữ cái. Giải ô chữ chuẩn dấu tiếng Việt.</p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-cyan-200 font-bold">• Luật Anh (Wheel of Fortune):</p>
+                                <p className="text-slate-300">26 chữ cái (A-Z), quay chỉ đoán phụ âm, mua nguyên âm 250đ. Báo No more consonants khi hết phụ âm. Đoán/giải sai <strong className="text-emerald-400">CHỈ MẤT LƯỢT</strong> (không bị loại, giữ điểm vòng). Vòng ĐB mở sẵn R,S,T,L,N,E.</p>
+                              </>
+                            )}
+                          </div>
+
+                          {/* English Preset Selection (When English is selected) */}
+                          {roomState.magicWheelState?.edition === "ENGLISH" && (
+                            <div className="space-y-1 pt-1 border-t border-white/10">
+                              <span className="text-cyan-300 text-[10px] font-bold block">Gói đề mẫu tiếng Anh (Thematic Preset):</span>
+                              <div className="grid grid-cols-2 gap-1 text-[10px]">
+                                {[
+                                  { id: "SET_1", label: "🇻🇳 Vietnam Heritage" },
+                                  { id: "SET_2", label: "🗽 Global Wonders" },
+                                  { id: "SET_3", label: "🥠 Classic Idioms" },
+                                  { id: "RANDOM_MIX", label: "🎲 Trộn ngẫu nhiên" },
+                                ].map((p) => {
+                                  const isCur = (roomState.magicWheelState?.englishPreset || "RANDOM_MIX") === p.id;
+                                  return (
+                                    <button
+                                      key={p.id}
+                                      type="button"
+                                      onClick={() => {
+                                        if (adminSocketRef.current?.connected) {
+                                          adminSocketRef.current.emit("admin:magic_wheel:set_english_preset" as any, { preset: p.id });
+                                          adminSocketRef.current.emit("magic_wheel:set_english_preset" as any, { preset: p.id });
+                                        }
+                                        window.postMessage({ type: "MAGIC_WHEEL_SET_ENGLISH_PRESET", preset: p.id }, "*");
+                                        addLog(`⚙️ Đã chọn gói đề tiếng Anh: ${p.label}`);
+                                      }}
+                                      className={`py-1 px-1.5 rounded text-left truncate font-bold border transition cursor-pointer ${
+                                        isCur
+                                          ? "bg-cyan-600/40 border-cyan-400 text-cyan-200"
+                                          : "glass border-white/10 text-slate-400 hover:text-white"
+                                      }`}
+                                    >
+                                      {p.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Blackout Guessed Letters Toggle */}
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                            <div>
+                              <span className="text-slate-300 block text-[11px]">Bôi đen chữ cái đã đoán</span>
+                              <span className="text-[9px] text-slate-400">
+                                {roomState.magicWheelState?.blackoutGuessedLetters === false
+                                  ? "Giữ sáng phím, cảnh báo khi click lại"
+                                  : "Gạch mờ phím chữ đã đoán"}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const curVal = roomState.magicWheelState?.blackoutGuessedLetters !== false;
+                                const nextVal = !curVal;
+                                if (adminSocketRef.current?.connected) {
+                                  adminSocketRef.current.emit("admin:magic_wheel:set_blackout_guessed" as any, { enabled: nextVal });
+                                  adminSocketRef.current.emit("magic_wheel:set_blackout_guessed" as any, { enabled: nextVal });
+                                }
+                                window.postMessage({ type: "MAGIC_WHEEL_SET_BLACKOUT_GUESSED", enabled: nextVal }, "*");
+                                addLog(`⚙️ Bôi đen chữ đã đoán: ${nextVal ? "BẬT" : "TẮT"}`);
+                              }}
+                              className={`px-2 py-0.5 rounded font-bold text-[10px] border transition cursor-pointer ${
+                                roomState.magicWheelState?.blackoutGuessedLetters === false
+                                  ? "bg-slate-700 border-slate-500 text-slate-300"
+                                  : "bg-emerald-600 border-emerald-400 text-white"
+                              }`}
+                            >
+                              {roomState.magicWheelState?.blackoutGuessedLetters === false ? "TẮT" : "BẬT"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Penalty for wrong */}
                       <label className="flex items-center justify-between cursor-pointer gap-2">

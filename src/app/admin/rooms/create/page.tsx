@@ -15,6 +15,12 @@ import { allocateQuestionsForMatch } from "@/lib/game-engine/question-allocator"
 import { downloadMagicWheelExcelTemplate, downloadMagicWheelJsonTemplate } from "@/lib/quiz-template-generator";
 import { MAGIC_WHEEL_PRESET_BANKS, offlineStorage } from "@/lib/offline-storage";
 import { BilingualCategoryPicker } from "@/components/modes/BilingualCategoryPicker";
+import {
+  DEFAULT_MAGIC_WHEEL_PUZZLES,
+  ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE,
+  ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS,
+  ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS,
+} from "@/lib/game-engine/magic-wheel";
 
 const GAME_MODES = [
   { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng làm bài, chấm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮", badge: "Toàn năng", badgeColor: "text-purple-300 bg-purple-500/20 border-purple-500/30" },
@@ -129,6 +135,9 @@ export default function CreateRoomPage() {
   const [tournamentQuestionsPerMatch, setTournamentQuestionsPerMatch] = useState(3);
   // Magic Wheel config
   const [magicWheelSubMode, setMagicWheelSubMode] = useState<"WORD_PUZZLE" | "WHEEL_QUIZ">("WORD_PUZZLE");
+  const [magicWheelEdition, setMagicWheelEdition] = useState<"VIETNAMESE" | "ENGLISH">("VIETNAMESE");
+  const [magicWheelEnglishPreset, setMagicWheelEnglishPreset] = useState<"RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3">("SET_1");
+  const [magicWheelBlackoutGuessedLetters, setMagicWheelBlackoutGuessedLetters] = useState(true);
   const [magicWheelRoundsCount, setMagicWheelRoundsCount] = useState(11);
   const [magicWheelPuzzles, setMagicWheelPuzzles] = useState<Array<{ roundNumber: number; category: string; secretPhrase: string; clue: string }>>([
     { roundNumber: 1, category: "ĐOÁN NHANH 1: ĐỊA DANH", secretPhrase: "HỒ HOÀN KIẾM", clue: "Trái tim lịch sử gắn với truyền thuyết rùa vàng trả gươm giữa lòng Thủ đô Hà Nội." },
@@ -325,6 +334,9 @@ export default function CreateRoomPage() {
             tournamentQuestionsPerMatch: mode === "TOURNAMENT" ? tournamentQuestionsPerMatch : 3,
             // Magic Wheel config
             magicWheelSubMode: mode === "MAGIC_WHEEL" ? magicWheelSubMode : "WORD_PUZZLE",
+            magicWheelEdition: mode === "MAGIC_WHEEL" ? magicWheelEdition : "VIETNAMESE",
+            magicWheelEnglishPreset: mode === "MAGIC_WHEEL" && magicWheelEdition === "ENGLISH" ? magicWheelEnglishPreset : undefined,
+            magicWheelBlackoutGuessedLetters: mode === "MAGIC_WHEEL" ? magicWheelBlackoutGuessedLetters : true,
             magicWheelRoundsCount: mode === "MAGIC_WHEEL" ? magicWheelRoundsCount : 4,
             magicWheelPuzzles: mode === "MAGIC_WHEEL" ? magicWheelPuzzles : undefined,
             // Grid Caro config
@@ -1329,6 +1341,121 @@ export default function CreateRoomPage() {
 
               {magicWheelSubMode === "WORD_PUZZLE" && (
                 <div className="space-y-3 pt-2 border-t border-amber-500/20">
+                  {/* Chọn Phiên bản Luật Chơi (VN vs EN) */}
+                  <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                        <span>🎡</span>
+                        <span>PHIÊN BẢN LUẬT CHƠI & BỘ ĐỀ:</span>
+                      </span>
+                      <span className="text-[11px] text-purple-300 font-bold">
+                        {magicWheelEdition === "ENGLISH" ? "🇺🇸 US Wheel of Fortune" : "🇻🇳 VTV3 Chiếc Nón Kỳ Diệu"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMagicWheelEdition("VIETNAMESE");
+                          const defaultVnPuzzles = DEFAULT_MAGIC_WHEEL_PUZZLES.map((p, idx) => ({
+                            roundNumber: idx + 1,
+                            category: p.category,
+                            secretPhrase: p.secretPhrase,
+                            clue: p.clue || "",
+                          }));
+                          setMagicWheelPuzzles(defaultVnPuzzles);
+                          setMagicWheelRoundsCount(defaultVnPuzzles.length);
+                        }}
+                        className={`py-2 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border ${
+                          magicWheelEdition === "VIETNAMESE"
+                            ? "bg-gradient-to-r from-red-600 to-amber-600 text-white border-amber-400 shadow-md shadow-amber-500/20 scale-[1.01]"
+                            : "glass border-white/10 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <span className="text-base">🇻🇳</span>
+                        <span>Luật Việt (Chiếc Nón Kỳ Diệu)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMagicWheelEdition("ENGLISH");
+                          setMagicWheelEnglishPreset("SET_1");
+                          const enPuzzles = ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE.map((p, idx) => ({
+                            roundNumber: idx + 1,
+                            category: p.category,
+                            secretPhrase: p.secretPhrase,
+                            clue: p.clue || "",
+                          }));
+                          setMagicWheelPuzzles(enPuzzles);
+                          setMagicWheelRoundsCount(enPuzzles.length);
+                        }}
+                        className={`py-2 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border ${
+                          magicWheelEdition === "ENGLISH"
+                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-cyan-400 shadow-md shadow-cyan-500/20 scale-[1.01]"
+                            : "glass border-white/10 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <span className="text-base">🇺🇸</span>
+                        <span>Luật Anh (Wheel of Fortune)</span>
+                      </button>
+                    </div>
+
+                    <div className="text-[11px] text-slate-300 bg-black/40 p-2.5 rounded-lg border border-white/5 space-y-1">
+                      {magicWheelEdition === "VIETNAMESE" ? (
+                        <>
+                          <p className="text-amber-200 font-bold">• Luật Việt Nam (VTV3):</p>
+                          <p>29 chữ cái, quay tự do cả nguyên âm & phụ âm. Đoán sai 3 lần hoặc đoán sai cả ô chữ bị <strong className="text-rose-400">LOẠI KHỎI VÒNG</strong>. Vòng 3 mở hết từng chữ. Giải ô chữ bắt buộc gõ chuẩn dấu thanh tiếng Việt.</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-cyan-200 font-bold">• Luật Mỹ / Quốc Tế (US Wheel of Fortune):</p>
+                          <p>26 chữ cái (A-Z), quay nón chỉ đoán phụ âm, mua nguyên âm 250đ. Hết phụ âm báo No More Consonants. Đoán sai hoặc giải sai <strong className="text-emerald-400">CHỈ MẤT LƯỢT</strong> (không bị loại, giữ điểm vòng). Vòng Đặc Biệt cấp sẵn R, S, T, L, N, E và chọn thêm 3 phụ âm + 1 nguyên âm.</p>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Lựa chọn Bộ Đề Tiếng Anh khi chọn Bản Anh */}
+                    {magicWheelEdition === "ENGLISH" && (
+                      <div className="space-y-1.5 pt-1.5 border-t border-white/10">
+                        <span className="text-xs font-bold text-cyan-300 block">Chọn gói câu đố mẫu tiếng Anh (9 vòng):</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                          {[
+                            { id: "SET_1", label: "🇻🇳 Vietnam Heritage", pool: ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE },
+                            { id: "SET_2", label: "🗽 Global Wonders", pool: ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS },
+                            { id: "SET_3", label: "🥠 Classic Idioms", pool: ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS },
+                          ].map((set) => {
+                            const isCur = magicWheelEnglishPreset === set.id;
+                            return (
+                              <button
+                                key={set.id}
+                                type="button"
+                                onClick={() => {
+                                  setMagicWheelEnglishPreset(set.id as any);
+                                  const pList = set.pool.map((p, idx) => ({
+                                    roundNumber: idx + 1,
+                                    category: p.category,
+                                    secretPhrase: p.secretPhrase,
+                                    clue: p.clue || "",
+                                  }));
+                                  setMagicWheelPuzzles(pList);
+                                  setMagicWheelRoundsCount(pList.length);
+                                }}
+                                className={`py-1.5 px-2.5 rounded-lg text-xs font-bold border transition cursor-pointer text-left ${
+                                  isCur
+                                    ? "bg-cyan-600/40 border-cyan-400 text-cyan-200 shadow"
+                                    : "glass border-white/10 text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                {set.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-2.5">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">⚡</span>

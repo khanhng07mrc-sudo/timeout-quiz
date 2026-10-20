@@ -1320,7 +1320,11 @@ export default function DisplayPage() {
         {/* Detailed Game Rules Card */}
         {roomState && (
           <div className="w-full max-w-4xl mb-6">
-            <GameModeRulesCard mode={roomState.mode} onOpenModal={() => setShowRulesModal(true)} />
+            <GameModeRulesCard
+              mode={roomState.mode}
+              magicWheelEdition={roomState.magicWheelState?.edition || "VIETNAMESE"}
+              onOpenModal={() => setShowRulesModal(true)}
+            />
           </div>
         )}
 

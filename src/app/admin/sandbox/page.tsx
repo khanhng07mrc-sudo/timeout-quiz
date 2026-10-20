@@ -1939,33 +1939,34 @@ export default function AdminSandboxPage() {
     const isMcMode = roomStateRef.current?.config?.answerMethod === "MC";
     if (isMcMode) return;
 
+    const effectiveMode = roomStateRef.current?.mode || selectedMode;
     let neededTeamIds: string[] = [];
-    if (selectedMode === "BOUNCEBACK") {
+    if (effectiveMode === "BOUNCEBACK") {
       if (curQ.stealBuzzedTeamId) {
         neededTeamIds = [curQ.stealBuzzedTeamId];
       } else if (curQ.primaryTeamId) {
         neededTeamIds = [curQ.primaryTeamId];
       }
-    } else if (selectedMode === "GRID_CARO") {
+    } else if (effectiveMode === "GRID_CARO") {
       const curTurnId = roomStateRef.current?.gridCaroState?.currentTurnTeamId;
       if (curTurnId) neededTeamIds = [curTurnId];
-    } else if (selectedMode === "DICE_RACE") {
+    } else if (effectiveMode === "DICE_RACE") {
       const curTurnId = roomStateRef.current?.diceRaceState?.currentTurnTeamId;
       if (curTurnId) neededTeamIds = [curTurnId];
-    } else if (selectedMode === "MYSTERY_QUEST") {
+    } else if (effectiveMode === "MYSTERY_QUEST") {
       const curTurnId = roomStateRef.current?.mysteryQuestState?.currentTurnTeamId;
       if (curTurnId) neededTeamIds = [curTurnId];
-    } else if (selectedMode === "TOURNAMENT") {
+    } else if (effectiveMode === "TOURNAMENT") {
       if (curQ.tournamentTeam1Id && curQ.tournamentTeam2Id) {
         neededTeamIds = [curQ.tournamentTeam1Id, curQ.tournamentTeam2Id];
       }
-    } else if (selectedMode === "BUZZ") {
+    } else if (effectiveMode === "BUZZ") {
       if (curQ.buzzedTeamId) {
         neededTeamIds = [curQ.buzzedTeamId];
       } else {
         return;
       }
-    } else if (selectedMode === "ELIMINATION") {
+    } else if (effectiveMode === "ELIMINATION") {
       neededTeamIds = teams.map((t) => t.id);
     } else {
       neededTeamIds = teams.filter((t) => !t.isEliminated).map((t) => t.id);
@@ -2676,12 +2677,51 @@ export default function AdminSandboxPage() {
             hearts: updatedMystery?.teamHearts?.[t.id] ?? updatedMystery?.initialHeartsPerTeam ?? 0,
           }));
         }
+        let updatedWheel = prev.magicWheelState;
+        if (prev.mode === "MAGIC_WHEEL" && rawQuestions.length > 0) {
+          const bankWordPuzzles = rawQuestions.filter((q: any) => q.type === "WORD_PUZZLE");
+          const candidateQuestions = bankWordPuzzles.length > 0 ? bankWordPuzzles : rawQuestions;
+          const customPuzzles: MagicWheelPuzzle[] = candidateQuestions.map((q: any, i: number) => {
+            const roundOpt = q.options?.find((o: any) => o.id === "round");
+            const rawAns = q.answer || q.options?.find((o: any) => o.isCorrect)?.text || "";
+            return {
+              id: `puzzle-assigned-${i + 1}`,
+              roundNumber: roundOpt ? Number(roundOpt.text) || (i + 1) : (i + 1),
+              category: q.hint || q.category || "TỔNG HỢP",
+              secretPhrase: (rawAns || "").toUpperCase().trim(),
+              clue: q.content || "",
+              revealedIndices: [],
+            };
+          }).filter((p: any) => p.secretPhrase.length > 0);
+
+          const bankTitle = (bank as any)?.title || "Bộ đề mới";
+          const detectedEd = detectQuizBankLanguage(bank || { title: bankTitle });
+          const newPuzzles = buildMagicWheelMatchPuzzles(
+            prev.teams?.length || 4,
+            customPuzzles,
+            detectedEd,
+            prev.magicWheelState?.englishPreset || "RANDOM_MIX"
+          );
+          if (newPuzzles.length > 0) {
+            updatedWheel = {
+              ...(prev.magicWheelState || {}),
+              subMode: "WORD_PUZZLE",
+              edition: detectedEd,
+              puzzles: newPuzzles,
+              currentPuzzle: newPuzzles[0],
+              currentRound: 1,
+              guessedLetters: [],
+              lastActionMessage: `Đã nạp ${newPuzzles.length} ô chữ từ bộ đề [${bankTitle}]`,
+            } as any;
+          }
+        }
         const nextState = {
           ...prev,
           teams: nextTeams,
           totalQuestions: allocResult.allocatedQuestions.length,
           config: updatedConfig,
           mysteryQuestState: updatedMystery,
+          magicWheelState: updatedWheel,
         };
         setTimeout(() => syncToIframes({ roomState: nextState }), 50);
         return nextState;
@@ -3888,37 +3928,38 @@ export default function AdminSandboxPage() {
       const isOfflineTeamAllowedToAnswer = (checkTeamId: string): boolean => {
         if (!currentQuestion) return false;
         const curState = roomStateRef.current || roomState;
-        if (selectedMode === "ELIMINATION") {
+        const activeMode = curState?.mode || selectedMode;
+        if (activeMode === "ELIMINATION") {
           const tObj = curState?.teams.find((t) => t.id === checkTeamId);
           if (tObj?.isEliminated) return false;
         }
-        if (selectedMode === "BOUNCEBACK") {
+        if (activeMode === "BOUNCEBACK") {
           if (currentQuestion.bouncebackSelectPhase || currentQuestion.isStealPhase) return false;
           if (currentQuestion.stealBuzzedTeamId) {
             return Boolean(currentQuestion.stealAnsweringActive && currentQuestion.stealBuzzedTeamId === checkTeamId);
           }
           return currentQuestion.primaryTeamId === checkTeamId;
         }
-        if (selectedMode === "BUZZ") {
+        if (activeMode === "BUZZ") {
           return Boolean(
             currentQuestion.buzzAnsweringActive &&
             currentQuestion.buzzedTeamId &&
             currentQuestion.buzzedTeamId === checkTeamId
           );
         }
-        if (selectedMode === "GRID_CARO") {
+        if (activeMode === "GRID_CARO") {
           const turnTeamId = currentQuestion.primaryTeamId || curState?.gridCaroState?.currentTurnTeamId;
           return Boolean(turnTeamId && turnTeamId === checkTeamId);
         }
-        if (selectedMode === "DICE_RACE") {
+        if (activeMode === "DICE_RACE") {
           const turnTeamId = currentQuestion.primaryTeamId || curState?.diceRaceState?.currentTurnTeamId;
           return Boolean(turnTeamId && turnTeamId === checkTeamId);
         }
-        if (selectedMode === "MYSTERY_QUEST") {
+        if (activeMode === "MYSTERY_QUEST") {
           const turnTeamId = currentQuestion.primaryTeamId || curState?.mysteryQuestState?.currentTurnTeamId;
           return Boolean(turnTeamId && turnTeamId === checkTeamId);
         }
-        if (selectedMode === "TOURNAMENT") {
+        if (activeMode === "TOURNAMENT") {
           const activeMatch =
             curState?.tournamentState?.matches.find(
               (m) => m.id === curState?.tournamentState?.currentMatchId || m.status === "IN_PROGRESS"

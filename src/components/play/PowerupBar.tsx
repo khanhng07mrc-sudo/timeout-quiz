@@ -247,8 +247,8 @@ export default function PowerupBar({
         </div>
       )}
 
-      {/* Cards List (Max 3 on hand) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Cards List (Compact 3-column Grid on both Mobile and Desktop to save screen space) */}
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
         {availableCards.map((card) => {
           const meta = CARD_METADATA[card.type];
           const isGlobalCard = meta.scope === "GLOBAL";
@@ -263,15 +263,15 @@ export default function PowerupBar({
           const isCardDisabled = Boolean(disabled || isMutexDisabled || isSharedLockedCard);
           const badgeText =
             isSharedLockedCard
-              ? "🔒 Đã có đội bật câu này!"
+              ? "🔒 Khóa"
               : card.type === "SHIELD" && activeCardTypes?.some((t) => t === "SCORE_X2" || t === "DOUBLE")
-              ? "Cấm dùng cùng x2"
+              ? "Cấm x2"
               : (card.type === "SCORE_X2" || card.type === "DOUBLE") && activeCardTypes?.some((t) => t === "SHIELD")
-              ? "Cấm dùng cùng Khiên"
+              ? "Cấm Khiên"
               : roomState.mode === "BUZZ" && card.type === "FIFTY_FIFTY"
-              ? "Không khả dụng"
+              ? "Cấm"
               : roomState.mode === "WAGER" && (card.type === "STEAL" || card.type === "FREEZE")
-              ? "Bị cấm"
+              ? "Cấm"
               : null;
 
           return (
@@ -279,35 +279,24 @@ export default function PowerupBar({
               key={card.id}
               disabled={isCardDisabled}
               onClick={() => handleCardClick(card)}
-              className={`flex items-center sm:flex-col sm:items-start p-3 rounded-xl border transition-all text-left relative overflow-hidden bg-card/40 ${
+              className={`flex flex-col items-center sm:items-start p-1.5 sm:p-3 rounded-xl border transition-all text-center sm:text-left relative overflow-hidden bg-card/40 ${
                 isCardDisabled
                   ? "border-border/40 opacity-40 cursor-not-allowed"
                   : "border-border/70 hover:border-purple-500 hover:bg-purple-500/10 active:scale-[0.98] group hover:shadow-md cursor-pointer"
               }`}
             >
-              <div className="flex items-center gap-2.5 sm:mb-2 w-full">
-                <div className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 group-hover:scale-110 transition-transform">
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2.5 sm:mb-1 w-full">
+                <div className="w-8 h-8 sm:w-11 sm:h-11 shrink-0 group-hover:scale-110 transition-transform">
                   <PowerupIcon type={card.type} className="w-full h-full drop-shadow" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-sm text-foreground truncate">{meta.nameVi}</span>
-                  </div>
-                  <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                <div className="flex-1 min-w-0 w-full">
+                  <span className="font-bold text-xs sm:text-sm text-foreground truncate block">{meta.nameVi}</span>
+                  <div className="flex items-center justify-center sm:justify-start gap-1 mt-0.5 flex-wrap">
                     <span
-                      className="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider"
+                      className="inline-block px-1 sm:px-1.5 py-0.2 rounded text-[8px] sm:text-[10px] font-bold uppercase tracking-wider truncate max-w-full"
                       style={{ background: badgeText ? "#ef444425" : `${meta.color}25`, color: badgeText ? "#f87171" : meta.color }}
                     >
                       {badgeText || meta.tag}
-                    </span>
-                    <span
-                      className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold tracking-wider ${
-                        isGlobalCard
-                          ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
-                          : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                      }`}
-                    >
-                      {isGlobalCard ? "🌐 Dùng chung" : "👤 Riêng"}
                     </span>
                   </div>
                 </div>
@@ -316,10 +305,6 @@ export default function PowerupBar({
               {/* Summary line */}
               <div className="hidden sm:block text-xs text-muted-foreground group-hover:text-foreground/90 transition-colors mt-0.5 line-clamp-1 w-full">
                 {badgeText ? `Không thể dùng: ${badgeText}` : meta.summaryVi}
-              </div>
-
-              <div className="ml-auto sm:hidden shrink-0 text-xs font-bold text-purple-400">
-                {isCardDisabled ? "Khóa" : "Dùng ›"}
               </div>
             </button>
           );

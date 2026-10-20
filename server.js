@@ -13941,18 +13941,22 @@ function registerSocketHandlers(io2) {
         clearTimeout(roomIntermissionTimers.get(room.id));
       }
       const autoTimer = setTimeout(async () => {
-        if (!roomIntermissions.has(room.id)) return;
-        roomIntermissions.delete(room.id);
-        roomIntermissionTimers.delete(room.id);
-        io2.to(`room:${room.code}`).emit("game:intermission", null);
-        room.currentQuestion = nextIndex;
-        room.status = "PLAYING";
-        roomCache.set(room.id, room);
-        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
-        if (nextIndex > 0 && nextIndex % 3 === 0) {
-          replenishTeamPowerups(room.id, io2).catch(console.error);
+        try {
+          if (!roomIntermissions.has(room.id)) return;
+          roomIntermissions.delete(room.id);
+          roomIntermissionTimers.delete(room.id);
+          io2.to(`room:${room.code}`).emit("game:intermission", null);
+          room.currentQuestion = nextIndex;
+          room.status = "PLAYING";
+          roomCache.set(room.id, room);
+          await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
+          if (nextIndex > 0 && nextIndex % 3 === 0) {
+            replenishTeamPowerups(room.id, io2).catch(console.error);
+          }
+          await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
+        } catch (err) {
+          console.error(`[admin:next autoTimer] Error launching next question for room ${room.id}:`, err);
         }
-        await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
       }, 3e3);
       roomIntermissionTimers.set(room.id, autoTimer);
     });
@@ -18085,11 +18089,6 @@ function registerSocketHandlers(io2) {
         socket.emit("error", "Kh\xF4ng t\xECm th\u1EA5y b\u1ED9 \u0111\u1EC1 trong c\u01A1 s\u1EDF d\u1EEF li\u1EC7u!");
         return;
       }
-      await prisma.room.update({
-        where: { id: room.id },
-        data: { quizBankId: bank.id }
-      });
-      roomQuestionsCache.delete(room.id);
       if (room.mode === "MAGIC_WHEEL") {
         const hasWp = bank.questions.some((q) => q.type === "WORD_PUZZLE");
         if (!hasWp) {
@@ -18103,6 +18102,11 @@ function registerSocketHandlers(io2) {
           return;
         }
       }
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { quizBankId: bank.id }
+      });
+      roomQuestionsCache.delete(room.id);
       if (bank.questions && bank.questions.length > 0) {
         roomQuestionsCache.set(room.id, bank.questions);
       }
@@ -18145,8 +18149,9 @@ function registerSocketHandlers(io2) {
           if (newMatchPuzzles[curIdx]) {
             wheelState.currentPuzzle = {
               ...newMatchPuzzles[curIdx],
-              revealedIndices: wheelState.currentPuzzle?.revealedIndices || []
+              revealedIndices: []
             };
+            wheelState.guessedLetters = [];
           }
           wheelState.lastActionMessage = `\u0110\xE3 \u0111\u1ED5i sang b\u1ED9 \u0111\u1EC1: [${bank.title}] (${bank.questions.length} c\xE2u)`;
           io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
@@ -20638,10 +20643,18 @@ async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId, overrideIsC
     roomQuestionProcessed.add(qKey);
     roomBuzzUnlocked.set(qKey, false);
     if (points > 0) {
-      const tRes = await applyScoreDeltaToTeam(effTeamId, points);
-      io2.to(`room:${roomCode}`).emit("game:score:update", [
-        { teamId: effTeamId, score: tRes.newScore, delta: tRes.effectiveDelta }
-      ]);
+      const pPlayer = await prisma.player.findUnique({ where: { id: effTeamId } }).catch(() => null);
+      if (pPlayer) {
+        const pRes = await applyScoreDeltaToPlayer(effTeamId, points);
+        io2.to(`room:${roomCode}`).emit("game:score:update", [
+          { playerId: effTeamId, score: pRes.newScore, delta: pRes.effectiveDelta }
+        ]);
+      } else {
+        const tRes = await applyScoreDeltaToTeam(effTeamId, points);
+        io2.to(`room:${roomCode}`).emit("game:score:update", [
+          { teamId: effTeamId, score: tRes.newScore, delta: tRes.effectiveDelta }
+        ]);
+      }
     }
     await revealCurrentAnswer(io2, roomId, roomCode, questionId);
   } else {

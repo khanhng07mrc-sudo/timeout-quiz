@@ -4451,21 +4451,25 @@ export function registerSocketHandlers(io: IO) {
         clearTimeout(roomIntermissionTimers.get(room.id)!);
       }
       const autoTimer = setTimeout(async () => {
-        if (!roomIntermissions.has(room.id)) return;
-        roomIntermissions.delete(room.id);
-        roomIntermissionTimers.delete(room.id);
-        io.to(`room:${room.code}`).emit("game:intermission", null);
+        try {
+          if (!roomIntermissions.has(room.id)) return;
+          roomIntermissions.delete(room.id);
+          roomIntermissionTimers.delete(room.id);
+          io.to(`room:${room.code}`).emit("game:intermission", null);
 
-        room.currentQuestion = nextIndex;
-        room.status = "PLAYING";
-        roomCache.set(room.id, room);
-        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
+          room.currentQuestion = nextIndex;
+          room.status = "PLAYING";
+          roomCache.set(room.id, room);
+          await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
 
-        if (nextIndex > 0 && nextIndex % 3 === 0) {
-          replenishTeamPowerups(room.id, io).catch(console.error);
+          if (nextIndex > 0 && nextIndex % 3 === 0) {
+            replenishTeamPowerups(room.id, io).catch(console.error);
+          }
+
+          await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
+        } catch (err) {
+          console.error(`[admin:next autoTimer] Error launching next question for room ${room.id}:`, err);
         }
-
-        await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
       }, 3000);
       roomIntermissionTimers.set(room.id, autoTimer);
     });
@@ -9384,12 +9388,7 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
-      await prisma.room.update({
-        where: { id: room.id },
-        data: { quizBankId: bank.id },
-      });
-
-      roomQuestionsCache.delete(room.id);
+      // Validate bank compatibility BEFORE updating room in database
       if (room.mode === "MAGIC_WHEEL") {
         const hasWp = bank.questions.some((q: any) => q.type === "WORD_PUZZLE");
         if (!hasWp) {
@@ -9403,6 +9402,13 @@ export function registerSocketHandlers(io: IO) {
           return;
         }
       }
+
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { quizBankId: bank.id },
+      });
+
+      roomQuestionsCache.delete(room.id);
 
       if (bank.questions && bank.questions.length > 0) {
         roomQuestionsCache.set(room.id, bank.questions);
@@ -9452,8 +9458,9 @@ export function registerSocketHandlers(io: IO) {
           if (newMatchPuzzles[curIdx]) {
             wheelState.currentPuzzle = {
               ...newMatchPuzzles[curIdx],
-              revealedIndices: wheelState.currentPuzzle?.revealedIndices || [],
+              revealedIndices: [],
             };
+            wheelState.guessedLetters = [];
           }
           wheelState.lastActionMessage = `Đã đổi sang bộ đề: [${bank.title}] (${bank.questions.length} câu)`;
           io.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
@@ -12392,10 +12399,19 @@ async function finalizeBuzzAnswer(
     roomBuzzUnlocked.set(qKey, false);
 
     if (points > 0) {
-      const tRes = await applyScoreDeltaToTeam(effTeamId, points);
-      io.to(`room:${roomCode}`).emit("game:score:update", [
-        { teamId: effTeamId, score: tRes.newScore, delta: tRes.effectiveDelta },
-      ]);
+      // BUG-G1-01 FIX: Hỗ trợ cả cá nhân (Player) và Đội (Team) khi trả lời đúng ở mode BUZZ
+      const pPlayer = await prisma.player.findUnique({ where: { id: effTeamId } }).catch(() => null);
+      if (pPlayer) {
+        const pRes = await applyScoreDeltaToPlayer(effTeamId, points);
+        io.to(`room:${roomCode}`).emit("game:score:update", [
+          { playerId: effTeamId, score: pRes.newScore, delta: pRes.effectiveDelta },
+        ]);
+      } else {
+        const tRes = await applyScoreDeltaToTeam(effTeamId, points);
+        io.to(`room:${roomCode}`).emit("game:score:update", [
+          { teamId: effTeamId, score: tRes.newScore, delta: tRes.effectiveDelta },
+        ]);
+      }
     }
 
     await revealCurrentAnswer(io, roomId, roomCode, questionId);

@@ -704,7 +704,7 @@ export default function GameQuestion({
                     Đội bạn đang là đội trả lời chính. Đề bài và đồng hồ sẽ được mở ra ngay sau khi chọn:
                   </p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-md">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full max-w-md">
                   {([10, 20, 30] as const).map((pts) => {
                     const secs = pts === 10 ? 15 : pts === 20 ? 20 : 30;
                     return (
@@ -712,10 +712,10 @@ export default function GameQuestion({
                         key={pts}
                         type="button"
                         onClick={() => onSelectPoints?.(pts)}
-                        className="py-3.5 px-3 rounded-xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-xl active:scale-95 transition-all cursor-pointer border-2 border-indigo-300/40 hover:border-indigo-300 flex flex-col items-center justify-center gap-1 group"
+                        className="py-2.5 sm:py-3.5 px-1.5 sm:px-3 rounded-xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-xl active:scale-95 transition-all cursor-pointer border-2 border-indigo-300/40 hover:border-indigo-300 flex flex-col items-center justify-center gap-0.5 sm:gap-1 group"
                       >
-                        <span className="font-mono text-2xl group-hover:scale-110 transition">{pts} ĐIỂM</span>
-                        <span className="text-xs font-semibold text-indigo-200">⏱️ {secs} giây</span>
+                        <span className="font-mono text-base sm:text-2xl group-hover:scale-110 transition">{pts}Đ</span>
+                        <span className="text-[10px] sm:text-xs font-semibold text-indigo-200">⏱️ {secs}s</span>
                       </button>
                     );
                   })}
@@ -764,19 +764,19 @@ export default function GameQuestion({
                   }}
                   disabled={isBuzzedLocally}
                   style={{ touchAction: "manipulation", userSelect: "none", WebkitUserSelect: "none" }}
-                  className={`w-48 h-48 sm:w-60 sm:h-60 rounded-full border-4 sm:border-8 border-yellow-300 shadow-[0_0_60px_rgba(245,158,11,0.85)] active:scale-90 transition-transform flex flex-col items-center justify-center gap-2 select-none cursor-pointer my-2 ${
+                  className={`w-36 h-36 sm:w-48 sm:h-48 md:w-56 md:h-56 rounded-full border-4 sm:border-8 border-yellow-300 shadow-[0_0_50px_rgba(245,158,11,0.85)] active:scale-90 transition-transform flex flex-col items-center justify-center gap-1 sm:gap-2 select-none cursor-pointer my-1 sm:my-2 ${
                     isBuzzedLocally
                       ? "bg-gradient-to-br from-green-500 to-emerald-700 opacity-90 scale-95"
                       : "bg-gradient-to-br from-amber-500 via-orange-500 to-red-600 hover:scale-105 animate-pulse"
                   }`}
                 >
-                  <span className="text-5xl sm:text-7xl drop-shadow-md">
+                  <span className="text-4xl sm:text-6xl drop-shadow-md">
                     {isBuzzedLocally ? "⚡" : "🔔"}
                   </span>
-                  <span className="text-white font-black text-xl sm:text-2xl tracking-wider uppercase drop-shadow-lg px-2">
+                  <span className="text-white font-black text-sm sm:text-xl tracking-wider uppercase drop-shadow-lg px-2 text-center">
                     {isBuzzedLocally ? "ĐÃ BẤM CHUÔNG!" : "BẤM CƯỚP ĐIỂM!"}
                   </span>
-                  <span className="text-yellow-200 text-xs sm:text-sm font-semibold">
+                  <span className="text-yellow-200 text-[10px] sm:text-xs font-semibold">
                     {isBuzzedLocally ? "Đang chờ phán quyết..." : "Chạm nhanh để giành quyền!"}
                   </span>
                 </button>
@@ -921,7 +921,7 @@ export default function GameQuestion({
                 }}
                 disabled={!question.buzzUnlocked || isBuzzedLocally || isDisqualifiedFromBuzz}
                 style={{ touchAction: "manipulation", userSelect: "none", WebkitUserSelect: "none" }}
-                className={`w-48 h-48 sm:w-56 sm:h-56 rounded-full border-4 sm:border-8 select-none cursor-pointer flex flex-col items-center justify-center gap-2 transition-transform active:scale-90 shadow-2xl my-2 ${
+                className={`w-36 h-36 sm:w-48 sm:h-48 md:w-56 md:h-56 rounded-full border-4 sm:border-8 select-none cursor-pointer flex flex-col items-center justify-center gap-1 sm:gap-2 transition-transform active:scale-90 shadow-2xl my-1 sm:my-2 ${
                   isDisqualifiedFromBuzz
                     ? "bg-rose-950/70 text-rose-400 border-rose-500/40 cursor-not-allowed opacity-60"
                     : isBuzzedLocally
@@ -931,7 +931,7 @@ export default function GameQuestion({
                     : "bg-white/10 text-slate-500 border-white/20 cursor-not-allowed opacity-60"
                 }`}
               >
-                <span className="text-5xl sm:text-6xl drop-shadow-md">
+                <span className="text-4xl sm:text-5xl md:text-6xl drop-shadow-md">
                   {isDisqualifiedFromBuzz
                     ? "❌"
                     : isBuzzedLocally
@@ -940,13 +940,13 @@ export default function GameQuestion({
                     ? "🔔"
                     : "🔒"}
                 </span>
-                <span className="font-black text-sm sm:text-base tracking-wider uppercase text-center px-2 drop-shadow">
+                <span className="font-black text-xs sm:text-sm md:text-base tracking-wider uppercase text-center px-2 drop-shadow">
                   {isDisqualifiedFromBuzz
                     ? "Đã trả lời sai"
                     : isBuzzedLocally
                     ? "ĐÃ BẤM CHUÔNG!"
                     : question.buzzUnlocked
-                    ? `BẤM CHUÔNG (Lượt ${question.buzzAttemptNumber || 1}/${question.buzzMaxAttempts || 3})`
+                    ? `BẤM CHUÔNG (${question.buzzAttemptNumber || 1}/${question.buzzMaxAttempts || 3})`
                     : "CHUÔNG KHÓA"}
                 </span>
               </button>
@@ -1088,16 +1088,16 @@ export default function GameQuestion({
 
       {/* Single-Team Mode Turn Status Notice */}
       {isSingleTeamTurnMode && !revealPayload && !question.timerPending && !isSpectator && !question.bouncebackSelectPhase && (
-        <div className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between gap-2 transition-all ${
+        <div className={`p-2 sm:p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between gap-1.5 sm:gap-2 transition-all ${
           canAnswerThisQuestion()
             ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-200 shadow-sm"
             : (roomMode === "BUZZ" || (roomMode === "BOUNCEBACK" && effStealTeam))
             ? "bg-gradient-to-r from-red-950/80 to-blue-950/80 border-rose-500/50 text-rose-200 shadow"
             : "bg-slate-900/80 border-slate-700/60 text-slate-400"
         }`}>
-          <div className="flex items-center gap-2">
-            <span>{canAnswerThisQuestion() ? "✨" : (roomMode === "BUZZ" || (roomMode === "BOUNCEBACK" && effStealTeam)) ? "🚨" : "🔒"}</span>
-            <span>
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+            <span className="shrink-0">{canAnswerThisQuestion() ? "✨" : (roomMode === "BUZZ" || (roomMode === "BOUNCEBACK" && effStealTeam)) ? "🚨" : "🔒"}</span>
+            <span className="truncate">
               {canAnswerThisQuestion()
                 ? "LƯỢT CỦA BẠN: Hãy chọn đáp án để ghi điểm!"
                 : `Quyền bấm đang khóa: Đang là lượt của ${
@@ -1109,7 +1109,7 @@ export default function GameQuestion({
                   }`}
             </span>
           </div>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-mono ${
+          <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-mono shrink-0 ${
             canAnswerThisQuestion() ? "bg-emerald-500/30 text-emerald-300" : (roomMode === "BUZZ" || (roomMode === "BOUNCEBACK" && effStealTeam)) ? "bg-rose-500/30 text-rose-300" : "bg-white/10 text-slate-400"
           }`}>
             {canAnswerThisQuestion() ? "Đã mở khóa" : "Đang khóa"}

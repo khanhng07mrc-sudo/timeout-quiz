@@ -1096,7 +1096,7 @@ export default function MysteryQuestBoard({
 
               {/* Admin / MC override prompt for Survival Dilemma */}
               {(isAdmin || isSandbox) && (
-                <div className="p-2 rounded-xl bg-black/60 border border-white/10 flex items-center justify-between gap-2 text-[11px] text-slate-300">
+                <div className="p-2 rounded-xl bg-black/60 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-2 text-[11px] text-slate-300">
                   <span className="font-bold flex items-center gap-1 truncate">
                     <span>👑</span> Quyền Admin / MC:
                   </span>

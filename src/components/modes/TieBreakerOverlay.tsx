@@ -376,10 +376,15 @@ export default function TieBreakerOverlay({
               ) : (
                 <button
                   type="button"
-                  onClick={() => {
+                  onPointerDown={(e) => {
+                    e.preventDefault();
                     onBuzz?.();
                   }}
-                  className="w-full py-4 sm:py-5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-base sm:text-xl uppercase tracking-wider shadow-2xl border-2 border-white/30 cursor-pointer active:scale-95 transition-all transform hover:scale-102 animate-pulse"
+                  onClick={(e) => {
+                    e.preventDefault();
+                  }}
+                  style={{ touchAction: "manipulation", userSelect: "none", WebkitUserSelect: "none" }}
+                  className="w-full py-3.5 sm:py-5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-sm sm:text-xl uppercase tracking-wider shadow-2xl border-2 border-white/30 cursor-pointer active:scale-95 transition-all transform hover:scale-102 animate-pulse select-none"
                 >
                   🚨 BẤM CHUÔNG GIÀNH QUYỀN 🚨
                 </button>

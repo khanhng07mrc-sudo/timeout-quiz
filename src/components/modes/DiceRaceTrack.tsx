@@ -822,7 +822,7 @@ export default function DiceRaceTrack({
         </div>
 
         {/* Dice Controller, Extra Roll Status & Recall Tray */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Dice Recall / Dismiss Tray Widget */}
           {hasLandedDice && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-black/80 border border-amber-400/50 shadow-md">

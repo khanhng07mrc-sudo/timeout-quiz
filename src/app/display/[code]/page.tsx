@@ -1644,7 +1644,7 @@ export default function DisplayPage() {
         {/* Buzz notification */}
         {buzzed && (
           <div className="bg-gradient-to-r from-red-600 via-rose-600 to-blue-600 text-white border-4 border-white/80 rounded-2xl p-4 text-center font-black text-2xl animate-bounce-in shadow-2xl">
-            🚨 ĐỘI BẤM CHUÔNG: {buzzed.playerName.toUpperCase()} {currentQuestion?.buzzAnsweringActive ? "ĐANG TRẢ LỜI!" : "ĐÃ BẤM CHUÔNG (ĐANG CHUẨN BỊ)"}
+            🚨 {roomState?.teamMode === "INDIVIDUAL" ? "NGƯỜI CHƠI BẤM CHUÔNG" : "ĐỘI BẤM CHUÔNG"}: {buzzed.playerName.toUpperCase()} {currentQuestion?.buzzAnsweringActive ? "ĐANG TRẢ LỜI!" : "ĐÃ BẤM CHUÔNG (ĐANG CHUẨN BỊ)"}
             {currentQuestion?.buzzAttemptNumber ? ` (LƯỢT ${currentQuestion.buzzAttemptNumber}/${currentQuestion.buzzMaxAttempts || 3})` : ""}
           </div>
         )}
@@ -1949,10 +1949,12 @@ export default function DisplayPage() {
                 )}
 
                 {roomState.mode === "BUZZ" && (buzzed || currentQuestion.buzzedTeamName) && (
-                  <div className="w-full p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-red-950/90 via-slate-900/90 to-red-950/90 border-2 border-red-500/40 shadow-xl flex items-center justify-between gap-2.5 animate-slide-up">
-                    <div className="inline-flex items-center gap-2 text-sm sm:text-base font-bold text-white">
+                  <div className="w-full p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-red-950/90 via-slate-900/90 to-red-950/90 border-2 border-red-500/40 shadow-xl flex flex-wrap items-center justify-between gap-2.5 animate-slide-up">
+                    <div className="inline-flex items-center gap-2 text-sm sm:text-base font-bold text-white flex-wrap">
                       <span className="text-red-400 text-lg">🚨</span>
-                      <span className="uppercase text-xs tracking-wider text-red-300 font-extrabold">Đội bấm chuông:</span>
+                      <span className="uppercase text-xs tracking-wider text-red-300 font-extrabold">
+                        {roomState.teamMode === "INDIVIDUAL" ? "Người chơi bấm chuông:" : "Đội bấm chuông:"}
+                      </span>
                       <span className="font-black px-3 py-1 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-blue-600 text-white shadow-md">
                         {currentQuestion.buzzedTeamName || buzzed?.playerName}
                       </span>

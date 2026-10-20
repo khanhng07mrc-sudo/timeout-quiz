@@ -198,7 +198,7 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
       "Quay nón 24 ô: Đội đến lượt điều chỉnh thanh lực (0-100%) và chốt quay nón nhận điểm hoặc hiệu ứng.",
       "2 Thể thức tùy chọn: Thể thức 'Ô chữ bí mật' (đoán chữ cái trong cụm từ ẩn) hoặc Thể thức 'Quiz Vòng Quay' (trả lời câu hỏi ngân hàng đề).",
       "Quy tắc giữ lượt: Đoán đúng chữ cái hoặc trả lời đúng câu hỏi sẽ tiếp tục giữ lượt quay tiếp; đoán sai hoặc quay vào Mất lượt/Mất điểm sẽ chuyển lượt cho đội kế tiếp.",
-      "Ô chữ đa hàng lật số: Hiển thị bảng ô chữ 4 hàng chuẩn trường quay VTV3 với hiệu ứng lật mở 3D chân thực.",
+      "Ô chữ đa hàng lật số: Hiển thị bảng ô chữ 4 hàng tiêu chuẩn trường quay với hiệu ứng lật mở 3D chân thực.",
       "Ô đặc biệt & Ô đè: Ô Phần thưởng (Vòng 1), Ô Bí mật (Vòng 2 - 50% trúng thưởng nóng 3000đ, 50% Mất điểm), May mắn (tự chọn lật 1 ô chữ bất kỳ).",
       "Bàn phím theo dõi chữ cái: Trực quan hóa toàn bộ 29 chữ cái tiếng Việt đã gọi hoặc còn lại.",
     ],
@@ -867,7 +867,7 @@ export interface MagicWheelState {
     | "VOWEL_BUY"         // Bản Anh: Chờ chọn 1 trong 5 nguyên âm (A, E, I, O, U) với 250đ
     | "MYSTERY_CHOICE"    // Chờ quyết định lật ô Bí Mật hay lấy 3000đ vĩnh viễn
     | "REWARD_CHOICE"     // V1: Chờ chọn 1 trong 20 lá thăm bí mật
-    | "TRADE_CHOICE"      // V3: Chờ quyết định Đổi hay Không Đổi (VTV3 2012)
+    | "TRADE_CHOICE"      // V3: Chờ quyết định Đổi hay Không Đổi (Luật Tiếng Việt)
     | "FREE_SPIN_CHOICE"  // Bản Anh: Chờ quyết định dùng Thẻ Free Spin sau khi đoán sai / mất lượt
     | "LUCKY_PICK"        // Chờ người chơi chọn ô lật miễn phí
     | "EXPRESS_CHOICE"    // V4: Chờ chọn Lên Tàu Tốc Độ hay dừng lại
@@ -947,7 +947,7 @@ export interface MagicWheelState {
     allTeamsEliminated?: boolean;
     timestamp: number;
   } | null;
-  edition?: "VIETNAMESE" | "ENGLISH"; // Phiên bản Việt (VTV3) hoặc Anh (Wheel of Fortune)
+  edition?: "VIETNAMESE" | "ENGLISH"; // Phiên bản Tiếng Việt hoặc Tiếng Anh (Wheel of Fortune)
   englishPreset?: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3"; // 3 bộ đề tiếng Anh hoặc trộn ngẫu nhiên
   blackoutGuessedLetters?: boolean;   // Admin setting: Có bôi đen/làm mờ chữ cái đã đoán hay không (mặc định: true)
   noMoreConsonants?: boolean;         // Bản Anh: Đã lật hết toàn bộ phụ âm, các ô chữ còn lại đều là nguyên âm (A, E, I, O, U)
@@ -1978,6 +1978,7 @@ export interface ClientToServerEvents {
   "admin:magic_wheel:judge_solve": (payload: { isCorrect: boolean }) => void;
   "admin:magic_wheel:set_mode": (payload: { mode: MagicWheelOperationMode }) => void;
   "admin:magic_wheel:emergency_change_bank": (payload: { quizBankId: string }) => void;
+  "admin:room:change_quiz_bank": (payload: { quizBankId: string }) => void;
   "admin:magic_wheel:override_turn": (payload: { teamId: string }) => void;
   "admin:magic_wheel:pass_turn": () => void;
   "admin:magic_wheel:quick_reveal_letter": () => void;

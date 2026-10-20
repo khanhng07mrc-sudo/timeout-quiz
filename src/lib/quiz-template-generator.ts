@@ -192,7 +192,7 @@ export function downloadMagicWheelJsonTemplate(): void {
   if (typeof window === "undefined") return;
 
   const templateObj = {
-    title: "Bộ Đề Mẫu Ô Chữ 11 Vòng - Chiếc Nón Kỳ Diệu (VTV3)",
+    title: "Bộ Đề Mẫu Ô Chữ 11 Vòng - Chiếc Nón Kỳ Diệu (Bản Tiếng Việt)",
     description: "Bộ đề mẫu chuẩn (2 Vòng Đoán Nhanh + 8 Vòng Chính tối đa + 1 Vòng Đặc Biệt) định dạng JSON",
     mode: "MAGIC_WHEEL",
     createdAt: new Date().toISOString(),

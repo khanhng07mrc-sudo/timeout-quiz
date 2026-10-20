@@ -785,6 +785,7 @@ export default function AdminRoomPage() {
         body: JSON.stringify({ quizBankId: bankId || null }),
       });
       if (res.ok) {
+        emit("admin:room:change_quiz_bank" as any, { quizBankId: bankId || null });
         if (roomState?.mode === "MAGIC_WHEEL" && bankId) {
           emit("admin:magic_wheel:emergency_change_bank" as any, { quizBankId: bankId });
         }
@@ -1031,11 +1032,26 @@ export default function AdminRoomPage() {
                 className="px-3 py-2 rounded-xl bg-[#151728] border border-border text-sm font-medium focus:ring-2 focus:ring-ring text-white"
               >
                 <option value="" className="bg-[#151728] text-white">— Chọn bộ đề câu hỏi —</option>
-                {quizBanks.map((b) => (
-                  <option key={b.id} value={b.id} className="bg-[#151728] text-white">
-                    {b.title} {b._count ? `(${b._count.questions} câu)` : ""}
-                  </option>
-                ))}
+                {quizBanks.map((b) => {
+                  const isWp = Boolean(
+                    (b as any).isPureWordPuzzle ||
+                    (b as any).isWordPuzzle ||
+                    b.id?.startsWith("bank_mw_preset") ||
+                    /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(b.title || "")
+                  );
+                  const cleanTitle = (b.title || "")
+                    .replace(/^\[(Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)\]\s*/gi, "")
+                    .replace(/\(VTV3\)/gi, "(Tiếng Việt)")
+                    .replace(/VTV3 Huyền Thoại/gi, "Văn Hóa & Lịch Sử")
+                    .replace(/VTV3/gi, "")
+                    .trim();
+                  return (
+                    <option key={b.id} value={b.id} className="bg-[#151728] text-white">
+                      {isWp ? "🔤 " : "🎯 "}
+                      {cleanTitle} {b._count ? `(${b._count.questions} ${isWp ? "vòng" : "câu"})` : ""}
+                    </option>
+                  );
+                })}
               </select>
               <Link
                 href="/admin/quiz-bank"
@@ -1460,10 +1476,10 @@ export default function AdminRoomPage() {
                         title={
                           isMagicWheelLocked
                             ? "🔒 Đã khóa: Chỉ được đổi luật/ngôn ngữ trước khi bấm đếm 5s khởi động!"
-                            : "Nhấn để đổi giữa Luật Việt (VTV3) và Luật Anh (Wheel of Fortune)"
+                            : "Nhấn để đổi giữa Tiếng Việt và English"
                         }
                       >
-                        <span>{(roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition) === "ENGLISH" ? "🇺🇸 Bản Anh (WOF)" : "🇻🇳 Bản Việt (VTV3)"}</span>
+                        <span>{(roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition) === "ENGLISH" ? "🇺🇸 English" : "🇻🇳 Tiếng Việt"}</span>
                       </button>
                     );
                   })()}

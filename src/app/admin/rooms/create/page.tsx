@@ -27,7 +27,7 @@ const GAME_MODES = [
   { value: "BUZZ", label: "Fast Buzz", desc: "Bấm chuông siêu tốc tranh quyền trả lời độc quyền", emoji: "⚡", badge: "Tốc độ", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
   { value: "BOUNCEBACK", label: "Bounceback", desc: "Đội chính trả lời sai, mở chuông 5s cho đối thủ cướp lượt", emoji: "🔄", badge: "Cướp điểm", badgeColor: "text-cyan-300 bg-cyan-500/20 border-cyan-500/30" },
   { value: "ELIMINATION", label: "Survival", desc: "Loại trực tiếp đội điểm thấp nhất sau mỗi chặng", emoji: "❌", badge: "Sinh tồn", badgeColor: "text-rose-300 bg-rose-500/20 border-rose-500/30" },
-  { value: "MAGIC_WHEEL", label: "Magic Wheel", desc: "Chiếc Nón Kỳ Diệu: 2 Vòng Đoán Nhanh, Vòng Quay Điểm Thưởng & Ô Chữ Đặc Biệt 40s", emoji: "🎡", badge: "Gameshow VTV3", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
+  { value: "MAGIC_WHEEL", label: "Magic Wheel", desc: "Chiếc Nón Kỳ Diệu: 2 Vòng Đoán Nhanh, Vòng Quay Điểm Thưởng & Ô Chữ Đặc Biệt 40s", emoji: "🎡", badge: "Gameshow Truyền Hình", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
   { value: "GRID_CARO", label: "Grid Caro", desc: "Chiếm ô ma trận 4x4, nối chuỗi Caro K ô ăn thưởng lớn", emoji: "🎯", badge: "Chiến thuật", badgeColor: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
   { value: "DICE_RACE", label: "Dice Race", desc: "Đường đua marathon 3D, gieo 2 xí ngầu và vượt cạm bẫy", emoji: "🎲", badge: "Board Game", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
   { value: "WAGER", label: "Secret Wager", desc: "Bí mật cược điểm trước khi công bố nội dung câu hỏi", emoji: "💰", badge: "Tâm lý", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },
@@ -493,7 +493,7 @@ export default function CreateRoomPage() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-semibold text-slate-300">
-                {mode === "MAGIC_WHEEL" ? "Bộ đề Ô Chữ VTV3 (Word Puzzle)" : "Bộ đề câu hỏi trắc nghiệm"}
+                {mode === "MAGIC_WHEEL" ? "Bộ đề Ô Chữ (Word Puzzle)" : "Bộ đề câu hỏi trắc nghiệm"}
                 <span className="text-muted-foreground font-normal ml-1">(chỉ hiển thị đề tương thích)</span>
               </label>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -501,7 +501,7 @@ export default function CreateRoomPage() {
                   ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                   : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
               }`}>
-                {mode === "MAGIC_WHEEL" ? "🎡 Chuyên biệt Ô Chữ VTV3" : "🎯 Trắc Nghiệm Đa Năng"}
+                {mode === "MAGIC_WHEEL" ? "🎡 Chuyên biệt Ô Chữ" : "🎯 Trắc Nghiệm Đa Năng"}
               </span>
             </div>
 
@@ -511,23 +511,32 @@ export default function CreateRoomPage() {
               className="w-full px-4 py-3.5 rounded-2xl bg-[#0e1022]/80 backdrop-blur-md border border-purple-500/30 text-white text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 transition-all shadow-inner"
             >
               <option value="" className="bg-[#151728] text-white">
-                {mode === "MAGIC_WHEEL" ? "— Sử dụng 11 vòng Ô Chữ VTV3 Mặc Định —" : "— Chưa chọn bộ đề —"}
+                {mode === "MAGIC_WHEEL" ? "— Đề Mẫu Ô Chữ Tiếng Việt (11 vòng) —" : "— Chọn bộ đề câu hỏi —"}
               </option>
-              {compatibleBanks.map((bank: any) => (
-                <option key={bank.id} value={bank.id} className="bg-[#151728] text-white">
-                  {mode === "MAGIC_WHEEL" ? "🔤 [Ô Chữ VTV3] " : "🎯 [Trắc Nghiệm] "}
-                  {bank.title}{bank._count ? ` (${bank._count.questions} ${mode === "MAGIC_WHEEL" ? "vòng" : "câu"})` : ""}
-                </option>
-              ))}
+              {compatibleBanks.map((bank: any) => {
+                const isWp = isWordPuzzleBank(bank);
+                const cleanTitle = (bank.title || "")
+                  .replace(/^\[(Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)\]\s*/gi, "")
+                  .replace(/\(VTV3\)/gi, "(Tiếng Việt)")
+                  .replace(/VTV3 Huyền Thoại/gi, "Văn Hóa & Lịch Sử")
+                  .replace(/VTV3/gi, "")
+                  .trim();
+                return (
+                  <option key={bank.id} value={bank.id} className="bg-[#151728] text-white">
+                    {isWp ? "🔤 " : "🎯 "}
+                    {cleanTitle}{bank._count ? ` (${bank._count.questions} ${isWp ? "vòng" : "câu"})` : ""}
+                  </option>
+                );
+              })}
             </select>
 
             {mode === "MAGIC_WHEEL" ? (
               <p className="text-[11px] text-amber-300/90 mt-2 flex items-center gap-1.5 font-medium">
-                <span>💡 Hệ thống đã tự động lọc: chỉ hiển thị các bộ đề Ô Chữ VTV3 (Word Puzzle) để tránh admin chọn nhầm đề trắc nghiệm A/B/C/D.</span>
+                <span>💡 Ưu tiên hiển thị các bộ đề Ô Chữ (🔤) tương thích cho Magic Wheel.</span>
               </p>
             ) : (
               <p className="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5 font-medium">
-                <span>💡 Hệ thống đã ẩn các bộ đề Ô chữ VTV3 và chỉ giữ lại ngân hàng câu hỏi trắc nghiệm tương thích với 8 chế độ thi đấu.</span>
+                <span>💡 Hiển thị ngân hàng câu hỏi trắc nghiệm (🎯) tương thích với chế độ thi đấu.</span>
               </p>
             )}
 
@@ -1304,7 +1313,7 @@ export default function CreateRoomPage() {
                 <div>
                   <label className="block text-xs font-medium mb-1">Thể thức thi đấu</label>
                   <div className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/40 text-amber-200 text-sm font-bold flex items-center justify-between">
-                    <span>🎯 Giải Ô Chữ Bí Mật (Chuẩn VTV3)</span>
+                    <span>🎯 Giải Ô Chữ Bí Mật (Tiêu Chuẩn)</span>
                     <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">Chuyên biệt</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-1">
@@ -1329,7 +1338,7 @@ export default function CreateRoomPage() {
                             roundNumber: idx,
                             category: "CHỦ ĐỀ MỚI",
                             secretPhrase: "CHIẾC NÓN KỲ DIỆU",
-                            clue: "Gameshow kinh điển của Đài Truyền hình Việt Nam",
+                            clue: "Gameshow truyền hình kinh điển",
                           });
                         }
                         return next.slice(0, count);
@@ -1353,7 +1362,7 @@ export default function CreateRoomPage() {
                         <span>PHIÊN BẢN LUẬT CHƠI & BỘ ĐỀ:</span>
                       </span>
                       <span className="text-[11px] text-purple-300 font-bold">
-                        {magicWheelEdition === "ENGLISH" ? "🇺🇸 US Wheel of Fortune" : "🇻🇳 VTV3 Chiếc Nón Kỳ Diệu"}
+                        {magicWheelEdition === "ENGLISH" ? "🇺🇸 English" : "🇻🇳 Tiếng Việt"}
                       </span>
                     </div>
 
@@ -1378,7 +1387,7 @@ export default function CreateRoomPage() {
                         }`}
                       >
                         <span className="text-base">🇻🇳</span>
-                        <span>Luật Việt (Chiếc Nón Kỳ Diệu)</span>
+                        <span>Tiếng Việt</span>
                       </button>
 
                       <button
@@ -1402,14 +1411,14 @@ export default function CreateRoomPage() {
                         }`}
                       >
                         <span className="text-base">🇺🇸</span>
-                        <span>Luật Anh (Wheel of Fortune)</span>
+                        <span>English</span>
                       </button>
                     </div>
 
                     <div className="text-[11px] text-slate-300 bg-black/40 p-2.5 rounded-lg border border-white/5 space-y-1">
                       {magicWheelEdition === "VIETNAMESE" ? (
                         <>
-                          <p className="text-amber-200 font-bold">• Luật Việt Nam (VTV3):</p>
+                          <p className="text-amber-200 font-bold">• Luật Tiếng Việt:</p>
                           <p>29 chữ cái, quay tự do cả nguyên âm & phụ âm. Đoán sai 3 lần hoặc đoán sai cả ô chữ bị <strong className="text-rose-400">LOẠI KHỎI VÒNG</strong>. Vòng 3 mở hết từng chữ. Giải ô chữ bắt buộc gõ chuẩn dấu thanh tiếng Việt.</p>
                         </>
                       ) : (

@@ -1254,30 +1254,34 @@ export default function DisplayPage() {
   // ── Lobby ──────────────────────────────────────────────────────────────────
   if (!currentQuestion && (!roomState || roomState.status === "LOBBY")) {
     const isTeamMode = roomState?.teamMode === "TEAM";
+    const { mainTitle, badgeText } = formatRoomTitle(roomState?.name, roomState?.mode);
+
     return (
-      <div className="min-h-screen flex flex-col p-4 sm:p-6 max-w-6xl mx-auto w-full relative" onClick={handleUnlockAudio}>
-        {/* Top Navigation & Status Bar - Guarantees NO overlapping */}
-        <div className="w-full flex flex-wrap items-center justify-between gap-3 mb-6 z-20 pb-3 border-b border-white/10">
+      <div className="h-screen max-h-screen overflow-hidden flex flex-col p-3 sm:p-5 max-w-7xl mx-auto w-full relative" onClick={handleUnlockAudio}>
+        {/* Top Navigation & Status Bar - Sleek & Compact */}
+        <div className="w-full flex items-center justify-between gap-3 mb-3 z-20 pb-2.5 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
-              {isTeamMode ? "Đấu Đội (Team Mode)" : "Cá Nhân (Individual)"}
+            <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
+              {isTeamMode ? "Đấu Đội" : "Cá Nhân"}
             </span>
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 whitespace-nowrap">
               [{roomState?.mode}]
             </span>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setShowRulesModal(true); }}
+              className="px-3 py-1 rounded-full glass border border-white/20 text-xs font-bold flex items-center gap-1.5 text-cyan-300 hover:text-white hover:bg-white/10 transition whitespace-nowrap cursor-pointer shadow-sm"
+            >
+              <span>📖</span>
+              <span>Thể lệ vắn tắt</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={(e) => { e.stopPropagation(); setShowRulesModal(true); }}
-              className="px-3.5 py-1.5 rounded-xl glass border border-white/20 text-xs sm:text-sm font-bold flex items-center gap-1.5 text-cyan-300 hover:text-white hover:bg-white/10 transition whitespace-nowrap"
-            >
-              <span>📖</span>
-              <span>Thể lệ luật chơi</span>
-            </button>
-            <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); toggleSound(); }}
-              className="px-3.5 py-1.5 rounded-xl glass border border-white/20 text-xs sm:text-sm font-bold flex items-center gap-1.5 hover:bg-white/10 transition whitespace-nowrap"
+              className="px-3 py-1 rounded-full glass border border-white/20 text-xs font-bold flex items-center gap-1.5 hover:bg-white/10 transition whitespace-nowrap cursor-pointer"
             >
               {soundMuted ? "🔇 Đã tắt âm" : "🔊 Nhạc nền: BẬT"}
             </button>
@@ -1287,117 +1291,148 @@ export default function DisplayPage() {
         {!audioUnlocked && !isSandbox && (
           <div
             onClick={handleUnlockAudio}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs sm:text-sm font-bold shadow-xl border border-white/30 cursor-pointer flex items-center gap-2 animate-bounce text-center max-w-[90vw]"
+            className="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-5 py-2 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs font-bold shadow-xl border border-white/30 cursor-pointer flex items-center gap-2 animate-bounce text-center max-w-[90vw]"
           >
             <span>🔊</span>
             <span>Nhấp chuột bất kỳ đâu để bật nhạc nền và âm thanh hội trường</span>
           </div>
         )}
 
-        <div className="text-center mb-6">
-          {(() => {
-            const { mainTitle, badgeText } = formatRoomTitle(roomState?.name, roomState?.mode);
-            return (
-              <div className="flex flex-col items-center gap-2 mb-2">
-                <span className="px-3.5 py-1 rounded-full text-xs font-mono font-bold tracking-wider bg-purple-500/20 text-cyan-300 border border-cyan-400/30 shadow-[0_0_12px_rgba(6,182,212,0.3)]">
-                  {badgeText}
-                </span>
-                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black bg-gradient-to-r from-purple-300 via-pink-300 to-cyan-300 bg-clip-text text-transparent tracking-tight">
-                  {mainTitle}
-                </h1>
+        {/* Zero-Scroll Two-Column Main Body */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 flex-1 min-h-0 items-stretch">
+          {/* Left Column: Room identity, Large PIN, Link & Rules Trigger */}
+          <div className="lg:col-span-5 flex flex-col justify-between glass rounded-3xl p-5 sm:p-6 border border-white/10 shadow-2xl overflow-hidden bg-gradient-to-b from-[#15172b]/95 to-[#0e1022]/95">
+            {/* Header info */}
+            <div>
+              <div className="inline-block px-3 py-0.5 rounded-full text-[11px] font-mono font-bold tracking-wider bg-purple-500/20 text-cyan-300 border border-cyan-400/30 mb-2 shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                {badgeText}
               </div>
-            );
-          })()}
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">Mã phòng tham gia</p>
-          <div className="inline-block mt-2 px-6 sm:px-8 py-2.5 sm:py-3 rounded-2xl glass border-2 border-purple-500/40 glow-purple">
-            <p className="text-5xl sm:text-7xl font-black font-mono tracking-widest text-cyan-300">{code}</p>
-          </div>
-          <p className="text-muted-foreground mt-3 text-sm sm:text-base">
-            Truy cập <span className="text-white font-bold font-mono">/play/{code}</span> để tham gia
-          </p>
-        </div>
-
-        {/* Detailed Game Rules Card */}
-        {roomState && (
-          <div className="w-full max-w-4xl mb-6">
-            <GameModeRulesCard
-              mode={roomState.mode}
-              magicWheelEdition={roomState.magicWheelState?.edition || "VIETNAMESE"}
-              onOpenModal={() => setShowRulesModal(true)}
-            />
-          </div>
-        )}
-
-        {isTeamMode ? (
-          <div className="w-full space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {roomState.teams.map((t) => {
-                const members = roomState.players.filter((pl) => pl.teamId === t.id);
-                return (
-                  <div
-                    key={t.id}
-                    className="glass rounded-2xl p-5 border-2 flex flex-col justify-between"
-                    style={{ borderColor: t.color }}
-                  >
-                    <div>
-                      <div className="flex items-center gap-3 mb-3">
-                        <div
-                          className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-black text-white shadow"
-                          style={{ background: t.color }}
-                        >
-                          {t.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-lg truncate">{t.name}</p>
-                          <p className="text-xs text-muted-foreground">{members.length} thành viên</p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5 min-h-[36px]">
-                        {members.length > 0 ? (
-                          members.map((m) => (
-                            <span
-                              key={m.id}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-muted/80 text-foreground border border-border/60"
-                            >
-                              {m.name}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic">Chờ thí sinh tham gia...</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              <h1 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-purple-300 via-pink-300 to-cyan-300 bg-clip-text text-transparent tracking-tight leading-tight">
+                {mainTitle}
+              </h1>
             </div>
 
-            {(() => {
-              const unassigned = roomState.players.filter((pl) => !pl.teamId);
+            {/* Giant PIN Box */}
+            <div className="my-auto py-3 text-center">
+              <p className="text-xs sm:text-sm text-slate-400 font-semibold uppercase tracking-wider mb-2">Mã phòng tham gia</p>
+              <div className="inline-block px-6 sm:px-8 py-3 rounded-2xl glass border-2 border-purple-500/50 glow-purple shadow-2xl bg-black/40">
+                <p className="text-5xl sm:text-6xl font-black font-mono tracking-widest text-cyan-300">{code}</p>
+              </div>
+              <p className="text-slate-300 mt-3 text-xs sm:text-sm">
+                Truy cập <span className="text-white font-bold font-mono bg-white/10 px-2 py-0.5 rounded">/play/{code}</span> để vào phòng
+              </p>
+            </div>
+
+            {/* Quick Rules Footer Callout */}
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5 truncate">
+                  <span>⚡</span>
+                  <span>{roomState?.mode === "MAGIC_WHEEL" ? "Chiếc Nón Kỳ Diệu" : "Đấu Trường Quiz"}</span>
+                </p>
+                <p className="text-[11px] text-slate-400 truncate">
+                  {roomState?.mode === "MAGIC_WHEEL"
+                    ? (roomState.magicWheelState?.edition === "ENGLISH" ? "🇺🇸 English Edition" : "🇻🇳 Bản Tiếng Việt")
+                    : "Sẵn sàng khởi tranh theo thời gian thực"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRulesModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-xs font-bold whitespace-nowrap transition cursor-pointer"
+              >
+                Xem thể lệ →
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: Teams / Participants (adaptive, internal scroll if > 6 teams) */}
+          <div className="lg:col-span-7 flex flex-col glass rounded-3xl p-5 sm:p-6 border border-white/10 shadow-2xl min-h-0 bg-[#121324]/90">
+            {/* Right Column Header */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-base sm:text-lg text-white flex items-center gap-2">
+                  <span>🛡️</span>
+                  <span>{isTeamMode ? `Danh Sách Đội (${roomState?.teams?.length || 0})` : `Thí Sinh (${roomState?.players?.length || 0})`}</span>
+                </h3>
+              </div>
+              <span className="text-xs text-slate-400 font-medium">Chờ chủ phòng bắt đầu...</span>
+            </div>
+
+            {/* Internal Scrollable Content */}
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-thin">
+              {isTeamMode ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(roomState?.teams || []).map((t) => {
+                    const members = (roomState?.players || []).filter((pl) => pl.teamId === t.id);
+                    return (
+                      <div
+                        key={t.id}
+                        className="glass rounded-2xl p-4 border-2 flex flex-col justify-between transition-all hover:scale-[1.01]"
+                        style={{ borderColor: t.color }}
+                      >
+                        <div>
+                          <div className="flex items-center gap-3 mb-2.5">
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-black text-white shadow shrink-0"
+                              style={{ background: t.color }}
+                            >
+                              {t.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-base truncate text-white">{t.name}</p>
+                              <p className="text-[11px] text-muted-foreground">{members.length} thành viên</p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5 min-h-[30px]">
+                            {members.length > 0 ? (
+                              members.map((m) => (
+                                <span
+                                  key={m.id}
+                                  className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/10 text-slate-200 border border-white/10 truncate max-w-[140px]"
+                                >
+                                  {m.name}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[11px] text-slate-400 italic">Chờ thành viên vào đội...</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {(roomState?.players ?? []).map((p) => (
+                    <div key={p.id} className="glass rounded-xl p-3 text-center border border-white/10">
+                      <div
+                        className="w-10 h-10 rounded-full mx-auto mb-1.5 flex items-center justify-center text-base font-bold text-white shadow"
+                        style={{ background: "#6366f1" }}
+                      >
+                        {p.name.charAt(0).toUpperCase()}
+                      </div>
+                      <p className="text-xs font-semibold truncate text-white">{p.name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Unassigned warning strip if any */}
+            {isTeamMode && (() => {
+              const unassigned = (roomState?.players || []).filter((pl) => !pl.teamId);
               if (unassigned.length === 0) return null;
               return (
-                <div className="glass rounded-xl p-3 text-center text-sm text-yellow-300 border border-yellow-500/30">
+                <div className="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center text-xs text-amber-300 shrink-0">
                   ⚠️ <strong>Chưa chọn đội ({unassigned.length}):</strong> {unassigned.map((pl) => pl.name).join(", ")}
                 </div>
               );
             })()}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 max-w-4xl w-full">
-            {(roomState?.players ?? []).slice(0, 20).map((p) => (
-              <div key={p.id} className="glass rounded-xl p-4 text-center">
-                <div
-                  className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-xl font-bold text-white shadow"
-                  style={{ background: "#6366f1" }}
-                >
-                  {p.name.charAt(0).toUpperCase()}
-                </div>
-                <p className="text-sm font-medium truncate">{p.name}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        </div>
       </div>
     );
   }

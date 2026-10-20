@@ -9,6 +9,7 @@ import {
 } from "@/lib/security";
 import { getDefaultAllowedPowerupsForMode, distributeCategorizedCardsToTeams } from "@/lib/game-engine/powerups";
 import { calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
+import { ensureQuizBankExists } from "@/lib/quiz-bank-seeder";
 
 const DEFAULT_CONFIG = {
   powerupEnabled: true,
@@ -63,7 +64,8 @@ export async function POST(req: NextRequest) {
   try {
     const user = getCurrentUserFromRequest(req);
     const body = await req.json();
-    const { name, quizBankId, mode, teamMode, config, teams } = body;
+    const { name, quizBankId: rawQuizBankId, mode, teamMode, config, teams } = body;
+    const quizBankId = rawQuizBankId ? (await ensureQuizBankExists(rawQuizBankId)) : null;
     const effectiveHostId = user?.userId || body.hostId || "demo-host-id";
 
     if (!name) {

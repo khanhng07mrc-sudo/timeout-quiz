@@ -6,6 +6,7 @@ import { GameMode } from "@/types";
 import { getDefaultAllowedPowerupsForMode, distributeCategorizedCardsToTeams } from "@/lib/game-engine/powerups";
 import { calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
+import { ensureQuizBankExists } from "@/lib/quiz-bank-seeder";
 
 const DEFAULT_SANDBOX_CONFIG = {
   powerupEnabled: true,
@@ -99,7 +100,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // If quiz bank specified, find it; otherwise find any available bank
+    // If quiz bank specified, ensure it exists (auto-seeding preset if necessary)
+    if (quizBankId) {
+      quizBankId = (await ensureQuizBankExists(quizBankId)) || quizBankId;
+    }
+
     let quizBank = quizBankId
       ? await prisma.quizBank.findUnique({
           where: { id: quizBankId },

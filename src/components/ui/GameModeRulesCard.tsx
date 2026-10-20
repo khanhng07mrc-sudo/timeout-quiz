@@ -46,8 +46,8 @@ export default function GameModeRulesCard({ mode, magicWheelEdition, onOpenModal
               }`}>
                 {modeKey === "MAGIC_WHEEL"
                   ? magicWheelEdition === "ENGLISH"
-                    ? "🇺🇸 LUẬT ANH (WOF)"
-                    : "🇻🇳 LUẬT VIỆT (VTV3)"
+                    ? "🇺🇸 ENGLISH"
+                    : "🇻🇳 TIẾNG VIỆT"
                   : "LUẬT ĐẤU"}
               </span>
             </div>

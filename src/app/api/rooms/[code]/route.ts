@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyHostOrAdmin, verifyAdminRequest } from "@/lib/security";
+import { ensureQuizBankExists } from "@/lib/quiz-bank-seeder";
 
 export async function GET(
   req: NextRequest,
@@ -59,12 +60,23 @@ export async function PATCH(
   // Prevent overriding critical immutable fields
   const { id: _id, code: _c, hostKey: _hk, hostId: _hid, ...safeUpdates } = body;
 
-  const updatedRoom = await prisma.room.update({
-    where: { code },
-    data: safeUpdates,
-  });
+  if (safeUpdates.quizBankId) {
+    safeUpdates.quizBankId = await ensureQuizBankExists(safeUpdates.quizBankId);
+  }
 
-  return NextResponse.json({ room: updatedRoom });
+  try {
+    const updatedRoom = await prisma.room.update({
+      where: { code },
+      data: safeUpdates,
+    });
+    return NextResponse.json({ room: updatedRoom });
+  } catch (dbErr: any) {
+    console.error("[PATCH /api/rooms/[code]] Error updating room:", dbErr);
+    return NextResponse.json(
+      { error: "Lỗi khi cập nhật bộ đề hoặc phòng: " + (dbErr?.message || "Lỗi không xác định") },
+      { status: 500 }
+    );
+  }
 }
 
 export const PUT = PATCH;

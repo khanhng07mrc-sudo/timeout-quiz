@@ -59,6 +59,828 @@ var prisma = globalForPrisma.prisma ?? new import_client.PrismaClient({
 });
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
+// src/lib/offline-storage.ts
+var MAGIC_WHEEL_PRESET_BANKS = [
+  {
+    id: "bank_mw_preset_vtv3",
+    title: "Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u - V\u0103n H\xF3a & L\u1ECBch S\u1EED (B\u1EA3n Ti\u1EBFng Vi\u1EC7t)",
+    description: "B\u1ED9 \u0111\u1EC1 chu\u1EA9n 11 v\xF2ng (2 \u0110o\xE1n Nhanh + 8 V\xF2ng Ch\xEDnh t\u1ED1i \u0111a + 1 V\xF2ng \u0110\u1EB7c Bi\u1EC7t): L\u1ECBch s\u1EED, Danh nh\xE2n, Ca dao & V\u0103n h\u1ECDc Vi\u1EC7t Nam",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    isLocalOnly: true,
+    _count: { questions: 11 },
+    questions: [
+      {
+        id: "mw_vtv3_1",
+        type: "WORD_PUZZLE",
+        content: "Qu\u1EA7n th\u1EC3 di t\xEDch l\u1ECBch s\u1EED c\u1ED1 \u0111\xF4 ng\xE0n n\u0103m v\u0103n hi\u1EBFn \u0111\u01B0\u1EE3c UNESCO vinh danh l\xE0 Di s\u1EA3n Th\u1EBF gi\u1EDBi.",
+        answer: "HO\xC0NG TH\xC0NH TH\u0102NG LONG",
+        hint: "\u0110O\xC1N NHANH 1: DI S\u1EA2N L\u1ECACH S\u1EEC",
+        points: 10,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "1", isCorrect: true },
+          { id: "category", text: "\u0110O\xC1N NHANH 1: DI S\u1EA2N L\u1ECACH S\u1EEC", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_vtv3_2",
+        type: "WORD_PUZZLE",
+        content: "Hai th\u1EE9c b\xE1nh t\u01B0\u1EE3ng tr\u01B0ng tr\u1EDDi tr\xF2n \u0111\u1EA5t vu\xF4ng g\u1EAFn v\u1EDBi truy\u1EC1n thuy\u1EBFt ho\xE0ng t\u1EED Lang Li\xEAu \u0111\u1EDDi vua H\xF9ng.",
+        answer: "B\xC1NH CH\u01AFNG - B\xC1NH GI\u1EA6Y",
+        hint: "\u0110O\xC1N NHANH 2: V\u0102N H\xD3A \u1EA8M TH\u1EF0C",
+        points: 15,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "2", isCorrect: true },
+          { id: "category", text: "\u0110O\xC1N NHANH 2: V\u0102N H\xD3A \u1EA8M TH\u1EF0C", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_vtv3_3",
+        type: "WORD_PUZZLE",
+        content: "Nh\xE0 qu\xE2n s\u1EF1, danh nh\xE2n v\u0103n h\xF3a l\u1ED7i l\u1EA1c th\u1EBF gi\u1EDBi c\u1EE7a Vi\u1EC7t Nam th\u1EDDi H\u1EADu L\xEA.",
+        answer: "NGUY\u1EC4N TR\xC3I",
+        hint: "V\xD2NG 1: DANH NH\xC2N L\u1ECACH S\u1EEC",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "3", isCorrect: true },
+          { id: "category", text: "V\xD2NG 1: DANH NH\xC2N L\u1ECACH S\u1EEC", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_vtv3_4",
+        type: "WORD_PUZZLE",
+        content: "Qu\u1EA7n th\u1EC3 di t\xEDch kinh th\xE0nh tri\u1EC1u Nguy\u1EC5n b\xEAn d\xF2ng s\xF4ng H\u01B0\u01A1ng th\u01A1 m\u1ED9ng.",
+        answer: "C\u1ED0 \u0110\xD4 HU\u1EBE",
+        hint: "V\xD2NG 2: \u0110\u1ECAA DANH L\u1ECACH S\u1EEC",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "4", isCorrect: true },
+          { id: "category", text: "V\xD2NG 2: \u0110\u1ECAA DANH L\u1ECACH S\u1EEC", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_vtv3_5",
+        type: "WORD_PUZZLE",
+        content: "Truy\u1EC1n th\u1ED1ng \u0111\u1EA1o l\xFD tri \xE2n s\xE2u s\u1EAFc c\xE1c th\u1EBF h\u1EC7 \u0111i tr\u01B0\u1EDBc c\u1EE7a d\xE2n t\u1ED9c ta.",
+        answer: "U\u1ED0NG N\u01AF\u1EDAC NH\u1EDA NGU\u1ED2N",
+        hint: "V\xD2NG 3: TH\xC0NH NG\u1EEE T\u1EE4C NG\u1EEE",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "5", isCorrect: true },
+          { id: "category", text: "V\xD2NG 3: TH\xC0NH NG\u1EEE T\u1EE4C NG\u1EEE", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_vtv3_6",
+        type: "WORD_PUZZLE",
+        content: "T\xE1c ph\u1EA9m v\u0103n h\u1ECDc thi\u1EBFu nhi kinh \u0111i\u1EC3n n\u1ED5i ti\u1EBFng nh\u1EA5t c\u1EE7a nh\xE0 v\u0103n T\xF4 Ho\xE0i.",
+        answer: "D\u1EBE M\xC8N PHI\xCAU L\u01AFU K\xDD",
+        hint: "V\xD2NG 4: V\u0102N H\u1ECCC VI\u1EC6T NAM",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "6", isCorrect: true },
+          { id: "category", text: "V\xD2NG 4: V\u0102N H\u1ECCC VI\u1EC6T NAM", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_vtv3_7",
+        type: "WORD_PUZZLE",
+        content: "L\xE0ng ngh\u1EC1 l\xE0m g\u1ED1m l\xE2u \u0111\u1EDDi n\u1EB1m b\xEAn b\u1EDD s\xF4ng H\u1ED3ng thu\u1ED9c huy\u1EC7n Gia L\xE2m, H\xE0 N\u1ED9i.",
+        answer: "G\u1ED0M S\u1EE8 B\xC1T TR\xC0NG",
+        hint: "V\xD2NG 5: L\xC0NG NGH\u1EC0 TRUY\u1EC0N TH\u1ED0NG",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "7", isCorrect: true },
+          { id: "category", text: "V\xD2NG 5: L\xC0NG NGH\u1EC0 TRUY\u1EC0N TH\u1ED0NG", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_vtv3_8",
+        type: "WORD_PUZZLE",
+        content: "Lo\u1EA1i h\xECnh \xE2m nh\u1EA1c b\xE1c h\u1ECDc \u0111\u1EA7u ti\xEAn c\u1EE7a Vi\u1EC7t Nam \u0111\u01B0\u1EE3c UNESCO vinh danh.",
+        answer: "NH\xC3 NH\u1EA0C CUNG \u0110\xCCNH HU\u1EBE",
+        hint: "V\xD2NG 6: \xC2M NH\u1EA0C D\xC2N T\u1ED8C",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "8", isCorrect: true },
+          { id: "category", text: "V\xD2NG 6: \xC2M NH\u1EA0C D\xC2N T\u1ED8C", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_vtv3_9",
+        type: "WORD_PUZZLE",
+        content: "V\u1ECB anh h\xF9ng \xE1o v\u1EA3i c\u1EDD \u0111\xE0o l\u1EADp n\xEAn chi\u1EBFn th\u1EAFng Ng\u1ECDc H\u1ED3i - \u0110\u1ED1ng \u0110a l\u1EABy l\u1EEBng.",
+        answer: "QUANG TRUNG NGUY\u1EC4N HU\u1EC6",
+        hint: "V\xD2NG 7: ANH H\xD9NG D\xC2N T\u1ED8C",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "9", isCorrect: true },
+          { id: "category", text: "V\xD2NG 7: ANH H\xD9NG D\xC2N T\u1ED8C", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_vtv3_10",
+        type: "WORD_PUZZLE",
+        content: "Tr\u01B0\u1EDDng \u0111\u1EA1i h\u1ECDc \u0111\u1EA7u ti\xEAn c\u1EE7a Vi\u1EC7t Nam \u0111\u01B0\u1EE3c x\xE2y d\u1EF1ng d\u01B0\u1EDBi tri\u1EC1u \u0111\u1EA1i nh\xE0 L\xFD.",
+        answer: "V\u0102N MI\u1EBEU QU\u1ED0C T\u1EEC GI\xC1M",
+        hint: "V\xD2NG 8: DI T\xCDCH V\u0102N H\xD3A",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "10", isCorrect: true },
+          { id: "category", text: "V\xD2NG 8: DI T\xCDCH V\u0102N H\xD3A", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_vtv3_11",
+        type: "WORD_PUZZLE",
+        content: "Ki\u1EC7t t\xE1c b\u1EA5t h\u1EE7 g\u1ED3m 3254 c\xE2u th\u01A1 l\u1EE5c b\xE1t \u0111\u1EC9nh cao c\u1EE7a v\u0103n h\u1ECDc trung \u0111\u1EA1i Vi\u1EC7t Nam.",
+        answer: "TRUY\u1EC6N KI\u1EC0U NGUY\u1EC4N DU",
+        hint: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: KI\u1EC6T T\xC1C TH\u01A0 CA",
+        points: 40,
+        timeLimit: 40,
+        options: [
+          { id: "round", text: "11", isCorrect: true },
+          { id: "category", text: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: KI\u1EC6T T\xC1C TH\u01A0 CA", isCorrect: true }
+        ]
+      }
+    ]
+  },
+  {
+    id: "bank_mw_preset_nature",
+    title: "Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u - Non N\u01B0\u1EDBc Vi\u1EC7t Nam (Du L\u1ECBch & Th\u1EAFng C\u1EA3nh)",
+    description: "B\u1ED9 \u0111\u1EC1 chu\u1EA9n 11 v\xF2ng (2 \u0110o\xE1n Nhanh + 8 V\xF2ng Ch\xEDnh t\u1ED1i \u0111a + 1 V\xF2ng \u0110\u1EB7c Bi\u1EC7t): Danh lam th\u1EAFng c\u1EA3nh, \u1EA8m th\u1EF1c & Di s\u1EA3n thi\xEAn nhi\xEAn",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    isLocalOnly: true,
+    _count: { questions: 11 },
+    questions: [
+      {
+        id: "mw_nature_1",
+        type: "WORD_PUZZLE",
+        content: "C\xE2y c\u1EA7u g\u1ED7 m\xE0u son u\u1ED1n cong d\u1EABn v\xE0o \u0111\u1EC1n Ng\u1ECDc S\u01A1n gi\u1EEFa H\u1ED3 G\u01B0\u01A1m.",
+        answer: "C\u1EA6U TH\xCA H\xDAC",
+        hint: "\u0110O\xC1N NHANH 1: BI\u1EC2U T\u01AF\u1EE2NG DU L\u1ECACH",
+        points: 10,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "1", isCorrect: true },
+          { id: "category", text: "\u0110O\xC1N NHANH 1: BI\u1EC2U T\u01AF\u1EE2NG DU L\u1ECACH", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_nature_2",
+        type: "WORD_PUZZLE",
+        content: "M\xF3n \u0103n qu\u1ED1c h\u1ED3n qu\u1ED1c t\xFAy tr\u1EE9 danh tr\xEAn b\u1EA3n \u0111\u1ED3 \u1EA9m th\u1EF1c qu\u1ED1c t\u1EBF c\u1EE7a th\u1EE7 \u0111\xF4.",
+        answer: "PH\u1EDE B\xD2 H\xC0 N\u1ED8I",
+        hint: "\u0110O\xC1N NHANH 2: \u1EA8M TH\u1EF0C TRUY\u1EC0N TH\u1ED0NG",
+        points: 15,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "2", isCorrect: true },
+          { id: "category", text: "\u0110O\xC1N NHANH 2: \u1EA8M TH\u1EF0C TRUY\u1EC0N TH\u1ED0NG", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_nature_3",
+        type: "WORD_PUZZLE",
+        content: "Di s\u1EA3n thi\xEAn nhi\xEAn th\u1EBF gi\u1EDBi k\u1EF3 v\u0129 \u0111\u01B0\u1EE3c UNESCO c\xF4ng nh\u1EADn t\u1EA1i t\u1EC9nh Qu\u1EA3ng Ninh.",
+        answer: "V\u1ECANH H\u1EA0 LONG",
+        hint: "V\xD2NG 1: K\u1EF2 QUAN THI\xCAN NHI\xCAN",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "3", isCorrect: true },
+          { id: "category", text: "V\xD2NG 1: K\u1EF2 QUAN THI\xCAN NHI\xCAN", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_nature_4",
+        type: "WORD_PUZZLE",
+        content: "V\u01B0\u01A1ng qu\u1ED1c hang \u0111\u1ED9ng k\u1EF3 v\u0129 tr\xE1ng l\u1EC7 b\u1EADc nh\u1EA5t th\u1EBF gi\u1EDBi t\u1EA1i t\u1EC9nh Qu\u1EA3ng B\xECnh.",
+        answer: "PHONG NHA K\u1EBA B\xC0NG",
+        hint: "V\xD2NG 2: DI S\u1EA2N TH\u1EBE GI\u1EDAI",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "4", isCorrect: true },
+          { id: "category", text: "V\xD2NG 2: DI S\u1EA2N TH\u1EBE GI\u1EDAI", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_nature_5",
+        type: "WORD_PUZZLE",
+        content: "Th\u01B0\u01A1ng c\u1EA3ng c\u1ED5 k\xEDnh b\xEAn d\xF2ng s\xF4ng Ho\xE0i n\u1ED5i ti\u1EBFng v\u1EDBi nh\u1EEFng chi\u1EBFc \u0111\xE8n l\u1ED3ng r\u1EF1c r\u1EE1.",
+        answer: "PH\u1ED0 C\u1ED4 H\u1ED8I AN",
+        hint: "V\xD2NG 3: DI S\u1EA2N V\u0102N H\xD3A",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "5", isCorrect: true },
+          { id: "category", text: "V\xD2NG 3: DI S\u1EA2N V\u0102N H\xD3A", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_nature_6",
+        type: "WORD_PUZZLE",
+        content: "\u0110\u1EC9nh n\xFAi cao nh\u1EA5t \u0110\xF4ng D\u01B0\u01A1ng \u0111\u01B0\u1EE3c m\u1EC7nh danh l\xE0 N\xF3c nh\xE0 \u0110\xF4ng D\u01B0\u01A1ng t\u1EA1i L\xE0o Cai.",
+        answer: "\u0110\u1EC8NH PHAN XI P\u0102NG",
+        hint: "V\xD2NG 4: \u0110\u1ECAA L\xDD VI\u1EC6T NAM",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "6", isCorrect: true },
+          { id: "category", text: "V\xD2NG 4: \u0110\u1ECAA L\xDD VI\u1EC6T NAM", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_nature_7",
+        type: "WORD_PUZZLE",
+        content: "Th\xE1c n\u01B0\u1EDBc h\xF9ng v\u0129 b\u1EADc nh\u1EA5t n\u1EB1m tr\xEAn bi\xEAn gi\u1EDBi Vi\u1EC7t - Trung thu\u1ED9c t\u1EC9nh Cao B\u1EB1ng.",
+        answer: "TH\xC1C B\u1EA2N GI\u1ED0C",
+        hint: "V\xD2NG 5: TH\u1EAENG C\u1EA2NH BI\xCAN C\u01AF\u01A0NG",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "7", isCorrect: true },
+          { id: "category", text: "V\xD2NG 5: TH\u1EAENG C\u1EA2NH BI\xCAN C\u01AF\u01A0NG", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_nature_8",
+        type: "WORD_PUZZLE",
+        content: "N\xE9t v\u0103n h\xF3a giao th\u01B0\u01A1ng \u0111\u1ED9c \u0111\xE1o tr\xEAn s\xF4ng n\u01B0\u1EDBc mi\u1EC1n T\xE2y Nam B\u1ED9 t\u1EA1i C\u1EA7n Th\u01A1.",
+        answer: "CH\u1EE2 N\u1ED4I C\xC1I R\u0102NG",
+        hint: "V\xD2NG 6: V\u0102N H\xD3A MI\u1EC0N T\xC2Y",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "8", isCorrect: true },
+          { id: "category", text: "V\xD2NG 6: V\u0102N H\xD3A MI\u1EC0N T\xC2Y", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_nature_9",
+        type: "WORD_PUZZLE",
+        content: "Danh th\u1EAFng ru\u1ED9ng b\u1EADc thang tr\xF9ng \u0111i\u1EC7p v\xE0ng \xF3ng m\xF9a l\xFAa ch\xEDn t\u1EA1i t\u1EC9nh Y\xEAn B\xE1i.",
+        answer: "M\xD9 CANG CH\u1EA2I",
+        hint: "V\xD2NG 7: T\xC2Y B\u1EAEC M\xD9A V\xC0NG",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "9", isCorrect: true },
+          { id: "category", text: "V\xD2NG 7: T\xC2Y B\u1EAEC M\xD9A V\xC0NG", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_nature_10",
+        type: "WORD_PUZZLE",
+        content: "Qu\u1EA7n th\u1EC3 danh th\u1EAFng di s\u1EA3n k\xE9p th\u1EBF gi\u1EDBi v\u1EC1 v\u0103n h\xF3a v\xE0 thi\xEAn nhi\xEAn t\u1EA1i Ninh B\xECnh.",
+        answer: "DANH TH\u1EAENG TR\xC0NG AN",
+        hint: "V\xD2NG 8: DI S\u1EA2N K\xC9P TH\u1EBE GI\u1EDAI",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "10", isCorrect: true },
+          { id: "category", text: "V\xD2NG 8: DI S\u1EA2N K\xC9P TH\u1EBE GI\u1EDAI", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_nature_11",
+        type: "WORD_PUZZLE",
+        content: "H\xF2n \u0111\u1EA3o du l\u1ECBch l\u1EDBn nh\u1EA5t Vi\u1EC7t Nam v\u1EDBi nh\u1EEFng b\xE3i bi\u1EC3n tuy\u1EC7t \u0111\u1EB9p t\u1EA1i v\xF9ng bi\u1EC3n T\xE2y Nam.",
+        answer: "\u0110\u1EA2O NG\u1ECCC PH\xDA QU\u1ED0C",
+        hint: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: THI\xCAN \u0110\u01AF\u1EDCNG BI\u1EC2N \u0110\u1EA2O",
+        points: 40,
+        timeLimit: 40,
+        options: [
+          { id: "round", text: "11", isCorrect: true },
+          { id: "category", text: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: THI\xCAN \u0110\u01AF\u1EDCNG BI\u1EC2N \u0110\u1EA2O", isCorrect: true }
+        ]
+      }
+    ]
+  },
+  {
+    id: "bank_mw_preset_science",
+    title: "Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u - Khoa H\u1ECDc & \u0110\u1EDDi S\u1ED1ng (T\u1EF1 Nhi\xEAn & C\xF4ng Ngh\u1EC7)",
+    description: "B\u1ED9 \u0111\u1EC1 chu\u1EA9n 11 v\xF2ng (2 \u0110o\xE1n Nhanh + 8 V\xF2ng Ch\xEDnh t\u1ED1i \u0111a + 1 V\xF2ng \u0110\u1EB7c Bi\u1EC7t): Thi\xEAn v\u0103n, V\u1EADt l\xFD, Sinh h\u1ECDc & C\xF4ng ngh\u1EC7 hi\u1EC7n \u0111\u1EA1i",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    isLocalOnly: true,
+    _count: { questions: 11 },
+    questions: [
+      {
+        id: "mw_sci_1",
+        type: "WORD_PUZZLE",
+        content: "H\u1EC7 h\xE0nh tinh g\u1ED3m ng\xF4i sao trung t\xE2m v\xE0 8 h\xE0nh tinh quay quanh trong d\u1EA3i Ng\xE2n H\xE0.",
+        answer: "H\u1EC6 M\u1EB6T TR\u1EDCI",
+        hint: "\u0110O\xC1N NHANH 1: THI\xCAN V\u0102N H\u1ECCC",
+        points: 10,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "1", isCorrect: true },
+          { id: "category", text: "\u0110O\xC1N NHANH 1: THI\xCAN V\u0102N H\u1ECCC", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_sci_2",
+        type: "WORD_PUZZLE",
+        content: "L\u1EF1c h\xFAt v\xF4 h\xECnh gi\u1EEFa c\xE1c v\u1EADt c\xF3 kh\u1ED1i l\u01B0\u1EE3ng gi\xFAp gi\u1EEF c\xE1c h\xE0nh tinh trong qu\u1EF9 \u0111\u1EA1o.",
+        answer: "L\u1EF0C H\u1EA4P D\u1EAAN",
+        hint: "\u0110O\xC1N NHANH 2: V\u1EACT L\xDD C\u01A0 B\u1EA2N",
+        points: 15,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "2", isCorrect: true },
+          { id: "category", text: "\u0110O\xC1N NHANH 2: V\u1EACT L\xDD C\u01A0 B\u1EA2N", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_sci_3",
+        type: "WORD_PUZZLE",
+        content: "H\u1ECDc thuy\u1EBFt v\u1EADt l\xFD v\u0129 \u0111\u1EA1i c\u1EE7a Albert Einstein l\xE0m thay \u0111\u1ED5i nh\u1EADn th\u1EE9c v\u1EC1 kh\xF4ng th\u1EDDi gian.",
+        answer: "THUY\u1EBET T\u01AF\u01A0NG \u0110\u1ED0I",
+        hint: "V\xD2NG 1: V\u1EACT L\xDD H\u1ECCC",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "3", isCorrect: true },
+          { id: "category", text: "V\xD2NG 1: V\u1EACT L\xDD H\u1ECCC", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_sci_4",
+        type: "WORD_PUZZLE",
+        content: "Hi\u1EC7n t\u01B0\u1EE3ng c\xE1c ch\u1EA5t kh\xED trong kh\xED quy\u1EC3n gi\u1EEF nhi\u1EC7t khi\u1EBFn b\u1EC1 m\u1EB7t Tr\xE1i \u0110\u1EA5t \u1EA5m d\u1EA7n l\xEAn.",
+        answer: "HI\u1EC6U \u1EE8NG NH\xC0 K\xCDNH",
+        hint: "V\xD2NG 2: M\xD4I TR\u01AF\u1EDCNG SINH TH\xC1I",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "4", isCorrect: true },
+          { id: "category", text: "V\xD2NG 2: M\xD4I TR\u01AF\u1EDCNG SINH TH\xC1I", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_sci_5",
+        type: "WORD_PUZZLE",
+        content: "Qu\xE1 tr\xECnh c\xE2y xanh s\u1EED d\u1EE5ng \xE1nh s\xE1ng m\u1EB7t tr\u1EDDi \u0111\u1EC3 t\u1ED5ng h\u1EE3p ch\u1EA5t h\u1EEFu c\u01A1 v\xE0 gi\u1EA3i ph\xF3ng oxy.",
+        answer: "QUANG H\u1EE2P \xC1NH S\xC1NG",
+        hint: "V\xD2NG 3: SINH H\u1ECCC TH\u1EF0C V\u1EACT",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "5", isCorrect: true },
+          { id: "category", text: "V\xD2NG 3: SINH H\u1ECCC TH\u1EF0C V\u1EACT", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_sci_6",
+        type: "WORD_PUZZLE",
+        content: "B\u1EA3ng h\u1EC7 th\u1ED1ng s\u1EAFp x\u1EBFp c\xE1c nguy\xEAn t\u1ED1 h\xF3a h\u1ECDc c\u1EE7a nh\xE0 b\xE1c h\u1ECDc Nga Mendeleev.",
+        answer: "B\u1EA2NG TU\u1EA6N HO\xC0N H\xD3A H\u1ECCC",
+        hint: "V\xD2NG 4: H\xD3A H\u1ECCC \u0110\u1EA0I C\u01AF\u01A0NG",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "6", isCorrect: true },
+          { id: "category", text: "V\xD2NG 4: H\xD3A H\u1ECCC \u0110\u1EA0I C\u01AF\u01A0NG", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_sci_7",
+        type: "WORD_PUZZLE",
+        content: "Ngu\u1ED3n n\u0103ng l\u01B0\u1EE3ng s\u1EA1ch khai th\xE1c t\u1EEB gi\xF3, \xE1nh s\xE1ng m\u1EB7t tr\u1EDDi v\xE0 d\xF2ng ch\u1EA3y t\u1EF1 nhi\xEAn.",
+        answer: "N\u0102NG L\u01AF\u1EE2NG T\xC1I T\u1EA0O",
+        hint: "V\xD2NG 5: C\xD4NG NGH\u1EC6 XANH",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "7", isCorrect: true },
+          { id: "category", text: "V\xD2NG 5: C\xD4NG NGH\u1EC6 XANH", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_sci_8",
+        type: "WORD_PUZZLE",
+        content: "L\u0129nh v\u1EF1c c\xF4ng ngh\u1EC7 \u0111\u1ED9t ph\xE1 m\xF4 ph\u1ECFng t\u01B0 duy v\xE0 kh\u1EA3 n\u0103ng h\u1ECDc h\u1ECFi c\u1EE7a con ng\u01B0\u1EDDi.",
+        answer: "TR\xCD TU\u1EC6 NH\xC2N T\u1EA0O",
+        hint: "V\xD2NG 6: KHOA H\u1ECCC M\xC1Y T\xCDNH",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "8", isCorrect: true },
+          { id: "category", text: "V\xD2NG 6: KHOA H\u1ECCC M\xC1Y T\xCDNH", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_sci_9",
+        type: "WORD_PUZZLE",
+        content: "T\u1EA7ng kh\xED quy\u1EC3n b\u1EA3o v\u1EC7 s\u1EF1 s\u1ED1ng tr\xEAn Tr\xE1i \u0110\u1EA5t kh\u1ECFi tia c\u1EF1c t\xEDm c\xF3 h\u1EA1i t\u1EEB M\u1EB7t Tr\u1EDDi.",
+        answer: "L\xC1 CH\u1EAEN T\u1EA6NG \xD4 D\xD4N",
+        hint: "V\xD2NG 7: KHOA H\u1ECCC TR\xC1I \u0110\u1EA4T",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "9", isCorrect: true },
+          { id: "category", text: "V\xD2NG 7: KHOA H\u1ECCC TR\xC1I \u0110\u1EA4T", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_sci_10",
+        type: "WORD_PUZZLE",
+        content: "M\u1EA1ng l\u01B0\u1EDBi k\u1EBFt n\u1ED1i h\xE0ng t\u1EF7 thi\u1EBFt b\u1ECB th\xF4ng minh trao \u0111\u1ED5i d\u1EEF li\u1EC7u tr\xEAn to\xE0n c\u1EA7u.",
+        answer: "INTERNET V\u1EA0N V\u1EACT",
+        hint: "V\xD2NG 8: K\u1EF6 NGUY\xCAN S\u1ED0",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "10", isCorrect: true },
+          { id: "category", text: "V\xD2NG 8: K\u1EF6 NGUY\xCAN S\u1ED0", isCorrect: true }
+        ]
+      },
+      {
+        id: "mw_sci_11",
+        type: "WORD_PUZZLE",
+        content: "Ph\xE2n t\u1EED mang th\xF4ng tin di truy\u1EC1n c\u01A1 b\u1EA3n quy \u0111\u1ECBnh s\u1EF1 ph\xE1t tri\u1EC3n c\u1EE7a m\u1ECDi sinh v\u1EADt s\u1ED1ng.",
+        answer: "M\xC3 DI TRUY\u1EC0N ADN",
+        hint: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: SINH H\u1ECCC PH\xC2N T\u1EEC",
+        points: 40,
+        timeLimit: 40,
+        options: [
+          { id: "round", text: "11", isCorrect: true },
+          { id: "category", text: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: SINH H\u1ECCC PH\xC2N T\u1EEC", isCorrect: true }
+        ]
+      }
+    ]
+  },
+  {
+    id: "bank_mw_preset_en_1",
+    title: "Wheel of Fortune - Set 1: Vietnam Heritage & Flavors (B\u1EA3n Ti\u1EBFng Anh)",
+    description: "B\u1ED9 \u0111\u1EC1 Ti\u1EBFng Anh 9 v\xF2ng: V\u0103n h\xF3a Vi\u1EC7t Nam, Di s\u1EA3n & \u1EA8m th\u1EF1c (Pho, Ha Long Bay, Ao Dai, Golden Bridge, Banh Mi...)",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    isLocalOnly: true,
+    _count: { questions: 9 },
+    questions: [
+      {
+        id: "mw_en1_1",
+        type: "WORD_PUZZLE",
+        content: "A fragrant noodle broth simmered for hours with beef or chicken and aromatic spices.",
+        answer: "PHO NOODLE SOUP",
+        hint: "FOOD & DRINK",
+        points: 10,
+        timeLimit: 30,
+        options: [{ id: "round", text: "1", isCorrect: true }, { id: "category", text: "FOOD & DRINK", isCorrect: true }]
+      },
+      {
+        id: "mw_en1_2",
+        type: "WORD_PUZZLE",
+        content: "UNESCO World Heritage wonderland featuring thousands of towering limestone karsts.",
+        answer: "HA LONG BAY",
+        hint: "LANDMARK(S)",
+        points: 15,
+        timeLimit: 30,
+        options: [{ id: "round", text: "2", isCorrect: true }, { id: "category", text: "LANDMARK(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en1_3",
+        type: "WORD_PUZZLE",
+        content: "Elegant Vietnamese national garment featuring a graceful tunic worn over silk trousers.",
+        answer: "AO DAI TRADITIONAL DRESS",
+        hint: "WHAT ARE YOU WEARING?",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "3", isCorrect: true }, { id: "category", text: "WHAT ARE YOU WEARING?", isCorrect: true }]
+      },
+      {
+        id: "mw_en1_4",
+        type: "WORD_PUZZLE",
+        content: "Spectacular pedestrian walkway held aloft by two gigantic weathered stone hands.",
+        answer: "GOLDEN BRIDGE DA NANG",
+        hint: "LANDMARK(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "4", isCorrect: true }, { id: "category", text: "LANDMARK(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en1_5",
+        type: "WORD_PUZZLE",
+        content: "Centuries-old folk art performed on a waist-deep pool in the Red River Delta.",
+        answer: "WATER PUPPET THEATRE",
+        hint: "SHOW BIZ",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "5", isCorrect: true }, { id: "category", text: "SHOW BIZ", isCorrect: true }]
+      },
+      {
+        id: "mw_en1_6",
+        type: "WORD_PUZZLE",
+        content: "World-famous fusion baguette stuffed with savory fillings, pate, cilantro, and pickled veggies.",
+        answer: "CRISPY BANH MI SANDWICH",
+        hint: "FOOD & DRINK",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "6", isCorrect: true }, { id: "category", text: "FOOD & DRINK", isCorrect: true }]
+      },
+      {
+        id: "mw_en1_7",
+        type: "WORD_PUZZLE",
+        content: "Charming historic trading port renowned for glowing silk lanterns and timber architecture.",
+        answer: "ANCIENT TOWN OF HOI AN",
+        hint: "PLACE(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "7", isCorrect: true }, { id: "category", text: "PLACE(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en1_8",
+        type: "WORD_PUZZLE",
+        content: "Sacred national flower of Vietnam symbolizing serenity, purity, and spiritual grace.",
+        answer: "PINK LOTUS BLOSSOM",
+        hint: "LIVING THING(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "8", isCorrect: true }, { id: "category", text: "LIVING THING(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en1_9",
+        type: "WORD_PUZZLE",
+        content: "The largest natural cave in the world nestled in the karst heart of Phong Nha.",
+        answer: "SON DOONG CAVE",
+        hint: "LANDMARK(S)",
+        points: 40,
+        timeLimit: 40,
+        options: [{ id: "round", text: "9", isCorrect: true }, { id: "category", text: "LANDMARK(S)", isCorrect: true }]
+      }
+    ]
+  },
+  {
+    id: "bank_mw_preset_en_2",
+    title: "Wheel of Fortune - Set 2: Global Wonders & Pop Culture (B\u1EA3n Ti\u1EBFng Anh)",
+    description: "B\u1ED9 \u0111\u1EC1 Ti\u1EBFng Anh 9 v\xF2ng: K\u1EF3 quan th\u1EBF gi\u1EDBi, \u0110i\u1EC7n \u1EA3nh & \xC2m nh\u1EA1c (Broadway, Statue of Liberty, Eiffel Tower, Lion King...)",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    isLocalOnly: true,
+    _count: { questions: 9 },
+    questions: [
+      {
+        id: "mw_en2_1",
+        type: "WORD_PUZZLE",
+        content: "The pinnacle of American theatrical stagecraft and spectacular showtunes in NYC.",
+        answer: "BROADWAY MUSICAL",
+        hint: "SHOW BIZ",
+        points: 10,
+        timeLimit: 30,
+        options: [{ id: "round", text: "1", isCorrect: true }, { id: "category", text: "SHOW BIZ", isCorrect: true }]
+      },
+      {
+        id: "mw_en2_2",
+        type: "WORD_PUZZLE",
+        content: "Colossal copper neoclassical monument welcoming voyagers to New York Harbor.",
+        answer: "STATUE OF LIBERTY",
+        hint: "LANDMARK(S)",
+        points: 15,
+        timeLimit: 30,
+        options: [{ id: "round", text: "2", isCorrect: true }, { id: "category", text: "LANDMARK(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en2_3",
+        type: "WORD_PUZZLE",
+        content: "Prestigious golden statuette honoring outstanding artistic and technical merit in cinema.",
+        answer: "ACADEMY AWARD WINNER",
+        hint: "SHOW BIZ",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "3", isCorrect: true }, { id: "category", text: "SHOW BIZ", isCorrect: true }]
+      },
+      {
+        id: "mw_en2_4",
+        type: "WORD_PUZZLE",
+        content: "Gustave Eiffel's wrought-iron lattice masterpiece overlooking the Champ de Mars.",
+        answer: "EIFFEL TOWER PARIS",
+        hint: "LANDMARK(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "4", isCorrect: true }, { id: "category", text: "LANDMARK(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en2_5",
+        type: "WORD_PUZZLE",
+        content: "Soulful syncopated brass improvisation originating in New Orleans.",
+        answer: "JAZZ AND BLUES FESTIVAL",
+        hint: "ON MY PLAYLIST",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "5", isCorrect: true }, { id: "category", text: "ON MY PLAYLIST", isCorrect: true }]
+      },
+      {
+        id: "mw_en2_6",
+        type: "WORD_PUZZLE",
+        content: "Architectural wonder in Sydney Harbour renowned for sweeping precast concrete shells.",
+        answer: "SYDNEY OPERA HOUSE",
+        hint: "LANDMARK(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "6", isCorrect: true }, { id: "category", text: "LANDMARK(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en2_7",
+        type: "WORD_PUZZLE",
+        content: "Beloved animated classic celebrating the circle of life on the African savanna.",
+        answer: "THE LION KING",
+        hint: "TITLE(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "7", isCorrect: true }, { id: "category", text: "TITLE(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en2_8",
+        type: "WORD_PUZZLE",
+        content: "Ivory-white marble mausoleum on the Yamuna river bank built by Shah Jahan.",
+        answer: "TAJ MAHAL PALACE",
+        hint: "LANDMARK(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "8", isCorrect: true }, { id: "category", text: "LANDMARK(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en2_9",
+        type: "WORD_PUZZLE",
+        content: "Ancient monumental fortification snaking thousands of miles across northern frontiers.",
+        answer: "GREAT WALL OF CHINA",
+        hint: "LANDMARK(S)",
+        points: 40,
+        timeLimit: 40,
+        options: [{ id: "round", text: "9", isCorrect: true }, { id: "category", text: "LANDMARK(S)", isCorrect: true }]
+      }
+    ]
+  },
+  {
+    id: "bank_mw_preset_en_3",
+    title: "Wheel of Fortune - Set 3: Classic Idioms & Phrases (B\u1EA3n Ti\u1EBFng Anh)",
+    description: "B\u1ED9 \u0111\u1EC1 Ti\u1EBFng Anh 9 v\xF2ng: Th\xE0nh ng\u1EEF kinh \u0111i\u1EC3n, Ca dao & C\u1EE5m t\u1EEB tr\xF2 ch\u01A1i WOF (Piece of cake, Break the ice, On cloud nine...)",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    isLocalOnly: true,
+    _count: { questions: 9 },
+    questions: [
+      {
+        id: "mw_en3_1",
+        type: "WORD_PUZZLE",
+        content: "An informal expression describing a task that is exceptionally easy to accomplish.",
+        answer: "PIECE OF CAKE",
+        hint: "PHRASE(S)",
+        points: 10,
+        timeLimit: 30,
+        options: [{ id: "round", text: "1", isCorrect: true }, { id: "category", text: "PHRASE(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en3_2",
+        type: "WORD_PUZZLE",
+        content: "Starting a conversation to ease social tension and make people feel comfortable.",
+        answer: "BREAKING THE ICE",
+        hint: "WHAT ARE YOU DOING?",
+        points: 15,
+        timeLimit: 30,
+        options: [{ id: "round", text: "2", isCorrect: true }, { id: "category", text: "WHAT ARE YOU DOING?", isCorrect: true }]
+      },
+      {
+        id: "mw_en3_3",
+        type: "WORD_PUZZLE",
+        content: "Timeless wisdom that doing something overdue is still preferable to not doing it at all.",
+        answer: "BETTER LATE THAN NEVER",
+        hint: "PHRASE(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "3", isCorrect: true }, { id: "category", text: "PHRASE(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en3_4",
+        type: "WORD_PUZZLE",
+        content: "A whimsical state of euphoria, sheer elation, and supreme contentment.",
+        answer: "ON CLOUD NINE",
+        hint: "PHRASE(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "4", isCorrect: true }, { id: "category", text: "PHRASE(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en3_5",
+        type: "WORD_PUZZLE",
+        content: "Hilarious mashup between America's favorite game show and a crispy dessert with a lucky slip.",
+        answer: "WHEEL OF FORTUNE COOKIE",
+        hint: "BEFORE & AFTER",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "5", isCorrect: true }, { id: "category", text: "BEFORE & AFTER", isCorrect: true }]
+      },
+      {
+        id: "mw_en3_6",
+        type: "WORD_PUZZLE",
+        content: "An astronomical metaphor for an occurrence that takes place very rarely.",
+        answer: "ONCE IN A BLUE MOON",
+        hint: "PHRASE(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "6", isCorrect: true }, { id: "category", text: "PHRASE(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en3_7",
+        type: "WORD_PUZZLE",
+        content: "Two mechanical devices sharing the exact same concluding noun.",
+        answer: "SEWING AND SLOT MACHINE",
+        hint: "SAME NAME",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "7", isCorrect: true }, { id: "category", text: "SAME NAME", isCorrect: true }]
+      },
+      {
+        id: "mw_en3_8",
+        type: "WORD_PUZZLE",
+        content: "To entertain someone lavishly with fine vintage and sumptuous fare.",
+        answer: "WINE AND DINE",
+        hint: "RHYME TIME",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "8", isCorrect: true }, { id: "category", text: "RHYME TIME", isCorrect: true }]
+      },
+      {
+        id: "mw_en3_9",
+        type: "WORD_PUZZLE",
+        content: "An unexpected stroke of good fortune disguised initially as misfortune.",
+        answer: "A BLESSING IN DISGUISE",
+        hint: "PHRASE(S)",
+        points: 40,
+        timeLimit: 40,
+        options: [{ id: "round", text: "9", isCorrect: true }, { id: "category", text: "PHRASE(S)", isCorrect: true }]
+      }
+    ]
+  }
+];
+
+// src/lib/quiz-bank-seeder.ts
+async function ensureQuizBankExists(bankId) {
+  if (!bankId || typeof bankId !== "string") return null;
+  const cleanId = bankId.trim();
+  if (!cleanId) return null;
+  try {
+    const existing = await prisma.quizBank.findUnique({
+      where: { id: cleanId },
+      select: { id: true }
+    });
+    if (existing) return existing.id;
+    const preset = MAGIC_WHEEL_PRESET_BANKS.find((p) => p.id === cleanId);
+    if (preset) {
+      let owner = await prisma.user.findFirst({
+        where: { role: "ADMIN" },
+        select: { id: true }
+      });
+      if (!owner) {
+        owner = await prisma.user.findFirst({ select: { id: true } });
+      }
+      const cleanTitle = preset.title.replace(/vtv3 huyền thoại/gi, "V\u0103n H\xF3a & L\u1ECBch S\u1EED").replace(/vtv3/gi, "").replace(/\s{2,}/g, " ").trim();
+      const cleanDesc = (preset.description || "").replace(/vtv3/gi, "").replace(/\s{2,}/g, " ").trim();
+      await prisma.quizBank.upsert({
+        where: { id: preset.id },
+        update: {
+          title: cleanTitle,
+          description: cleanDesc,
+          isPublic: true
+        },
+        create: {
+          id: preset.id,
+          title: cleanTitle,
+          description: cleanDesc,
+          isPublic: true,
+          ownerId: owner?.id || "demo-host-id",
+          questions: {
+            create: (preset.questions || []).map((q, idx) => ({
+              id: `${preset.id}_q${idx + 1}`,
+              type: q.type || "WORD_PUZZLE",
+              content: q.content || "",
+              answer: q.answer || "",
+              hint: q.hint || void 0,
+              points: q.points || 10,
+              timeLimit: q.timeLimit || 30,
+              order: idx + 1,
+              options: q.options || []
+            }))
+          }
+        }
+      });
+      return preset.id;
+    }
+    return cleanId;
+  } catch (err) {
+    console.warn(`[ensureQuizBankExists] Non-fatal seeding warning for bank ${cleanId}:`, err);
+    return cleanId;
+  }
+}
+
 // src/types/index.ts
 var CARD_METADATA = {
   FIFTY_FIFTY: {
@@ -16934,6 +17756,93 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("room:state", fullRoomState);
       }
     });
+    socket.on("admin:room:change_quiz_bank", async (payload) => {
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+      if (!payload.quizBankId) {
+        await prisma.room.update({
+          where: { id: room.id },
+          data: { quizBankId: null }
+        });
+        roomQuestionsCache.delete(room.id);
+        const cached2 = roomCache.get(room.id);
+        if (cached2) cached2.quizBankId = null;
+        const fullRoomState2 = await buildRoomState(room.id);
+        if (fullRoomState2) io2.to(`room:${room.code}`).emit("room:state", fullRoomState2);
+        return;
+      }
+      const validBankId = await ensureQuizBankExists(payload.quizBankId);
+      if (!validBankId) {
+        socket.emit("error", "Kh\xF4ng t\xECm th\u1EA5y b\u1ED9 \u0111\u1EC1 y\xEAu c\u1EA7u!");
+        return;
+      }
+      const bank = await prisma.quizBank.findUnique({
+        where: { id: validBankId },
+        include: { questions: { orderBy: { order: "asc" } } }
+      });
+      if (!bank) {
+        socket.emit("error", "Kh\xF4ng t\xECm th\u1EA5y b\u1ED9 \u0111\u1EC1 trong c\u01A1 s\u1EDF d\u1EEF li\u1EC7u!");
+        return;
+      }
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { quizBankId: bank.id }
+      });
+      roomQuestionsCache.delete(room.id);
+      if (bank.questions && bank.questions.length > 0) {
+        roomQuestionsCache.set(room.id, bank.questions);
+      }
+      const cached = roomCache.get(room.id);
+      if (cached) {
+        cached.quizBankId = bank.id;
+      }
+      if (room.mode === "MAGIC_WHEEL") {
+        const wordQuestions = bank.questions.filter((q) => q.type === "WORD_PUZZLE");
+        const candidateQuestions = wordQuestions.length > 0 ? wordQuestions : bank.questions;
+        const customPuzzles = candidateQuestions.map((q, idx) => {
+          const roundOpt = Array.isArray(q.options) ? q.options.find((o) => o?.id === "round") : void 0;
+          const rawAns = q.answer || (Array.isArray(q.options) ? q.options.find((o) => o?.isCorrect)?.text : "") || "";
+          return {
+            id: `puzzle-${validBankId}-${idx + 1}`,
+            roundNumber: roundOpt ? Number(roundOpt.text) || idx + 1 : idx + 1,
+            category: q.hint || "T\u1ED4NG H\u1EE2P",
+            secretPhrase: (rawAns || "").toUpperCase().trim(),
+            clue: q.content || "",
+            revealedIndices: []
+          };
+        }).filter((p) => p.secretPhrase.length > 0);
+        const currentConfig = typeof room.config === "object" && room.config !== null ? room.config : {};
+        const newConfig = { ...currentConfig, magicWheelPuzzles: customPuzzles };
+        await prisma.room.update({
+          where: { id: room.id },
+          data: { config: newConfig }
+        });
+        if (cached) cached.config = newConfig;
+        const wheelState = roomMagicWheels.get(room.id);
+        if (wheelState) {
+          const newMatchPuzzles = buildMagicWheelMatchPuzzles(
+            room.teams.length,
+            customPuzzles,
+            wheelState.edition || "VIETNAMESE",
+            wheelState.englishPreset || "RANDOM_MIX"
+          );
+          wheelState.puzzles = newMatchPuzzles;
+          const curIdx = Math.max(0, wheelState.currentRound - 1);
+          if (newMatchPuzzles[curIdx]) {
+            wheelState.currentPuzzle = {
+              ...newMatchPuzzles[curIdx],
+              revealedIndices: wheelState.currentPuzzle?.revealedIndices || []
+            };
+          }
+          wheelState.lastActionMessage = `\u0110\xE3 \u0111\u1ED5i sang b\u1ED9 \u0111\u1EC1: [${bank.title}] (${bank.questions.length} c\xE2u)`;
+          io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
+        }
+      }
+      const fullRoomState = await buildRoomState(room.id);
+      if (fullRoomState) {
+        io2.to(`room:${room.code}`).emit("room:state", fullRoomState);
+      }
+    });
     socket.on("magic_wheel:set_blackout_guessed", async (payload) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
@@ -16977,7 +17886,7 @@ function registerSocketHandlers(io2) {
         } else {
           const isAllOpen = isPuzzleFullyRevealed(wheelState.currentPuzzle.secretPhrase, wheelState.currentPuzzle.revealedIndices);
           if (!isAllOpen && forcedVerdict === void 0) {
-            socket.emit("error", "Theo lu\u1EADt V\xF2ng 3 VTV3: B\u1EA1n ph\u1EA3i l\u1EADt m\u1EDF t\u1EEBng ch\u1EEF c\xE1i cho \u0111\u1EBFn \xF4 cu\u1ED1i c\xF9ng, kh\xF4ng \u0111\u01B0\u1EE3c \u0111o\xE1n t\u1EAFt c\u1EA3 \xF4 ch\u1EEF.");
+            socket.emit("error", "Theo lu\u1EADt V\xF2ng 3 (B\u1EA3n Ti\u1EBFng Vi\u1EC7t): B\u1EA1n ph\u1EA3i l\u1EADt m\u1EDF t\u1EEBng ch\u1EEF c\xE1i cho \u0111\u1EBFn \xF4 cu\u1ED1i c\xF9ng, kh\xF4ng \u0111\u01B0\u1EE3c \u0111o\xE1n t\u1EAFt c\u1EA3 \xF4 ch\u1EEF.");
             return;
           }
         }
@@ -20559,37 +21468,45 @@ async function buildRoomState(roomId) {
   const effectiveCurrentQuestion = cachedRoom?.currentQuestion ?? room.currentQuestion;
   if (effectiveStatus === "PLAYING") {
     restoreGameStateSnapshot(room);
-    if (room.mode === "MAGIC_WHEEL" && !roomMagicWheels.has(room.id)) {
-      const totalRounds = Math.min(8, Math.max(3, teams.length || 3));
-      const puzzles = buildMagicWheelMatchPuzzles(teams.length);
-      const firstTeam = teams[0];
-      const initialWheelState = {
-        subMode: "WORD_PUZZLE",
-        operationMode: "HOST_ASSISTED",
-        roundStage: "TOSS_UP_1",
-        mainRoundNumber: 1,
-        totalMainRounds: totalRounds,
-        sectors: generateMagicWheelSectors(1, "TOSS_UP_1"),
-        currentTurnTeamId: firstTeam?.id || "",
-        currentTurnTeamName: firstTeam?.name || "\u0110\u1ED9i 1",
-        currentRound: 1,
-        maxRounds: puzzles.length,
-        puzzles,
-        currentPuzzle: puzzles[0],
-        isSpinning: false,
-        spinPower: 0,
-        targetRotationDegrees: 0,
-        boardStage: "EMPTY_56",
-        guessedLetters: [],
-        wrongGuessesCount: {},
-        freeSpinCount: {},
-        roundScores: {},
-        disqualifiedTeamIdsInRound: [],
-        consecutiveWrongGuesses: {},
-        phase: "TOSS_UP_READY",
-        lastActionMessage: "Ch\xE0o m\u1EEBng \u0111\u1EBFn v\u1EDBi Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u! H\xE3y m\u1EDF \xF4 ch\u1EEF v\xE0 ch\u1EE7 \u0111\u1EC1."
-      };
-      roomMagicWheels.set(room.id, initialWheelState);
+  }
+  if (room.mode === "MAGIC_WHEEL" && !roomMagicWheels.has(room.id)) {
+    const edition = config?.magicWheelEdition || "VIETNAMESE";
+    const englishPreset = config?.magicWheelEnglishPreset || "RANDOM_MIX";
+    const totalRounds = Math.min(8, Math.max(3, teams.length || 3));
+    const puzzles = buildMagicWheelMatchPuzzles(teams.length, config?.magicWheelPuzzles, edition, englishPreset);
+    const firstTeam = teams[0];
+    const initialWheelState = {
+      subMode: config?.magicWheelSubMode || "WORD_PUZZLE",
+      edition,
+      englishPreset,
+      blackoutGuessedLetters: config?.magicWheelBlackoutGuessedLetters !== false,
+      operationMode: config?.magicWheelOperationMode === "HOST_ASSISTED" ? "HOST_ASSISTED" : "SELF_SERVICE",
+      roundStage: "TOSS_UP_1",
+      mainRoundNumber: 0,
+      totalMainRounds: totalRounds,
+      sectors: generateMagicWheelSectors(1, "TOSS_UP_1", edition),
+      currentTurnTeamId: firstTeam?.id || "",
+      currentTurnTeamName: firstTeam?.name || "\u0110\u1ED9i 1",
+      currentRound: 1,
+      maxRounds: puzzles.length,
+      puzzles,
+      currentPuzzle: puzzles[0],
+      isSpinning: false,
+      spinPower: 50,
+      targetRotationDegrees: 0,
+      boardStage: "EMPTY_56",
+      guessedLetters: [],
+      wrongGuessesCount: {},
+      freeSpinCount: {},
+      roundScores: {},
+      disqualifiedTeamIdsInRound: [],
+      consecutiveWrongGuesses: {},
+      pendingSpecialAction: "NONE",
+      phase: "TOSS_UP_READY",
+      lastActionMessage: edition === "ENGLISH" ? "Welcome to Wheel of Fortune! Ready for Toss-Up 1." : "Ch\xE0o m\u1EEBng b\u1EA1n \u0111\u1EBFn v\u1EDBi V\xF2ng Quay Tri Th\u1EE9c! H\xE3y chu\u1EA9n b\u1ECB cho V\xF2ng \u0110o\xE1n Nhanh 1."
+    };
+    roomMagicWheels.set(room.id, initialWheelState);
+    if (effectiveStatus === "PLAYING") {
       persistGameStateSnapshot(room.id).catch(() => {
       });
     }

@@ -1,6 +1,7 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { AsyncLocalStorage } from "async_hooks";
 import { prisma } from "./prisma";
+import { ensureQuizBankExists } from "./quiz-bank-seeder";
 import {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -9159,6 +9160,106 @@ export function registerSocketHandlers(io: IO) {
       }
     });
 
+    socket.on("admin:room:change_quiz_bank", async (payload: { quizBankId: string | null }) => {
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+
+      if (!payload.quizBankId) {
+        await prisma.room.update({
+          where: { id: room.id },
+          data: { quizBankId: null },
+        });
+        roomQuestionsCache.delete(room.id);
+        const cached = roomCache.get(room.id);
+        if (cached) cached.quizBankId = null;
+        const fullRoomState = await buildRoomState(room.id);
+        if (fullRoomState) io.to(`room:${room.code}`).emit("room:state", fullRoomState);
+        return;
+      }
+
+      const validBankId = await ensureQuizBankExists(payload.quizBankId);
+      if (!validBankId) {
+        socket.emit("error", "Không tìm thấy bộ đề yêu cầu!");
+        return;
+      }
+
+      const bank = await prisma.quizBank.findUnique({
+        where: { id: validBankId },
+        include: { questions: { orderBy: { order: "asc" } } },
+      });
+      if (!bank) {
+        socket.emit("error", "Không tìm thấy bộ đề trong cơ sở dữ liệu!");
+        return;
+      }
+
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { quizBankId: bank.id },
+      });
+
+      roomQuestionsCache.delete(room.id);
+      if (bank.questions && bank.questions.length > 0) {
+        roomQuestionsCache.set(room.id, bank.questions);
+      }
+
+      const cached = roomCache.get(room.id);
+      if (cached) {
+        cached.quizBankId = bank.id;
+      }
+
+      if (room.mode === "MAGIC_WHEEL") {
+        const wordQuestions = bank.questions.filter((q) => q.type === "WORD_PUZZLE");
+        const candidateQuestions = wordQuestions.length > 0 ? wordQuestions : bank.questions;
+        const customPuzzles: MagicWheelPuzzle[] = candidateQuestions.map((q, idx) => {
+          const roundOpt = Array.isArray(q.options)
+            ? (q.options as any[]).find((o) => o?.id === "round")
+            : undefined;
+          const rawAns = q.answer || (Array.isArray(q.options) ? (q.options as any[]).find((o) => o?.isCorrect)?.text : "") || "";
+          return {
+            id: `puzzle-${validBankId}-${idx + 1}`,
+            roundNumber: roundOpt ? Number(roundOpt.text) || idx + 1 : idx + 1,
+            category: q.hint || "TỔNG HỢP",
+            secretPhrase: (rawAns || "").toUpperCase().trim(),
+            clue: q.content || "",
+            revealedIndices: [],
+          };
+        }).filter((p) => p.secretPhrase.length > 0);
+
+        const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+        const newConfig = { ...currentConfig, magicWheelPuzzles: customPuzzles };
+        await prisma.room.update({
+          where: { id: room.id },
+          data: { config: newConfig },
+        });
+        if (cached) cached.config = newConfig;
+
+        const wheelState = roomMagicWheels.get(room.id);
+        if (wheelState) {
+          const newMatchPuzzles = buildMagicWheelMatchPuzzles(
+            room.teams.length,
+            customPuzzles,
+            wheelState.edition || "VIETNAMESE",
+            wheelState.englishPreset || "RANDOM_MIX"
+          );
+          wheelState.puzzles = newMatchPuzzles;
+          const curIdx = Math.max(0, wheelState.currentRound - 1);
+          if (newMatchPuzzles[curIdx]) {
+            wheelState.currentPuzzle = {
+              ...newMatchPuzzles[curIdx],
+              revealedIndices: wheelState.currentPuzzle?.revealedIndices || [],
+            };
+          }
+          wheelState.lastActionMessage = `Đã đổi sang bộ đề: [${bank.title}] (${bank.questions.length} câu)`;
+          io.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
+        }
+      }
+
+      const fullRoomState = await buildRoomState(room.id);
+      if (fullRoomState) {
+        io.to(`room:${room.code}`).emit("room:state", fullRoomState);
+      }
+    });
+
     socket.on("magic_wheel:set_blackout_guessed", async (payload: { enabled: boolean }) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
@@ -9214,7 +9315,7 @@ export function registerSocketHandlers(io: IO) {
           // Luật Việt: Bắt buộc lật mở tất cả các chữ cái (kể cả nguyên âm) cho đến ô cuối cùng
           const isAllOpen = isPuzzleFullyRevealed(wheelState.currentPuzzle.secretPhrase, wheelState.currentPuzzle.revealedIndices);
           if (!isAllOpen && forcedVerdict === undefined) {
-            socket.emit("error", "Theo luật Vòng 3 VTV3: Bạn phải lật mở từng chữ cái cho đến ô cuối cùng, không được đoán tắt cả ô chữ.");
+            socket.emit("error", "Theo luật Vòng 3 (Bản Tiếng Việt): Bạn phải lật mở từng chữ cái cho đến ô cuối cùng, không được đoán tắt cả ô chữ.");
             return;
           }
         }
@@ -13490,40 +13591,52 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
   const effectiveStatus = (cachedRoom?.status ?? room.status) as any;
   const effectiveCurrentQuestion = cachedRoom?.currentQuestion ?? room.currentQuestion;
 
-  // Auto-restore snapshots or initialize game state if server restarted while room was PLAYING
+  // Auto-restore snapshots if server restarted while room was PLAYING
   if (effectiveStatus === "PLAYING") {
     restoreGameStateSnapshot(room);
-    if (room.mode === "MAGIC_WHEEL" && !roomMagicWheels.has(room.id)) {
-      const totalRounds = Math.min(8, Math.max(3, teams.length || 3));
-      const puzzles = buildMagicWheelMatchPuzzles(teams.length);
-      const firstTeam = teams[0];
-      const initialWheelState: MagicWheelState = {
-        subMode: "WORD_PUZZLE",
-        operationMode: "HOST_ASSISTED",
-        roundStage: "TOSS_UP_1",
-        mainRoundNumber: 1,
-        totalMainRounds: totalRounds,
-        sectors: generateMagicWheelSectors(1, "TOSS_UP_1"),
-        currentTurnTeamId: firstTeam?.id || "",
-        currentTurnTeamName: firstTeam?.name || "Đội 1",
-        currentRound: 1,
-        maxRounds: puzzles.length,
-        puzzles,
-        currentPuzzle: puzzles[0],
-        isSpinning: false,
-        spinPower: 0,
-        targetRotationDegrees: 0,
-        boardStage: "EMPTY_56",
-        guessedLetters: [],
-        wrongGuessesCount: {},
-        freeSpinCount: {},
-        roundScores: {},
-        disqualifiedTeamIdsInRound: [],
-        consecutiveWrongGuesses: {},
-        phase: "TOSS_UP_READY",
-        lastActionMessage: "Chào mừng đến với Chiếc Nón Kỳ Diệu! Hãy mở ô chữ và chủ đề.",
-      };
-      roomMagicWheels.set(room.id, initialWheelState);
+  }
+
+  // Đảm bảo Magic Wheel luôn có state đầy đủ, đọc đúng edition (kể cả LOBBY hoặc PLAYING)
+  if (room.mode === "MAGIC_WHEEL" && !roomMagicWheels.has(room.id)) {
+    const edition = config?.magicWheelEdition || "VIETNAMESE";
+    const englishPreset = config?.magicWheelEnglishPreset || "RANDOM_MIX";
+    const totalRounds = Math.min(8, Math.max(3, teams.length || 3));
+    const puzzles = buildMagicWheelMatchPuzzles(teams.length, config?.magicWheelPuzzles, edition, englishPreset);
+    const firstTeam = teams[0];
+    const initialWheelState: MagicWheelState = {
+      subMode: config?.magicWheelSubMode || "WORD_PUZZLE",
+      edition,
+      englishPreset,
+      blackoutGuessedLetters: config?.magicWheelBlackoutGuessedLetters !== false,
+      operationMode: config?.magicWheelOperationMode === "HOST_ASSISTED" ? "HOST_ASSISTED" : "SELF_SERVICE",
+      roundStage: "TOSS_UP_1",
+      mainRoundNumber: 0,
+      totalMainRounds: totalRounds,
+      sectors: generateMagicWheelSectors(1, "TOSS_UP_1", edition),
+      currentTurnTeamId: firstTeam?.id || "",
+      currentTurnTeamName: firstTeam?.name || "Đội 1",
+      currentRound: 1,
+      maxRounds: puzzles.length,
+      puzzles,
+      currentPuzzle: puzzles[0],
+      isSpinning: false,
+      spinPower: 50,
+      targetRotationDegrees: 0,
+      boardStage: "EMPTY_56",
+      guessedLetters: [],
+      wrongGuessesCount: {},
+      freeSpinCount: {},
+      roundScores: {},
+      disqualifiedTeamIdsInRound: [],
+      consecutiveWrongGuesses: {},
+      pendingSpecialAction: "NONE",
+      phase: "TOSS_UP_READY",
+      lastActionMessage: edition === "ENGLISH"
+        ? "Welcome to Wheel of Fortune! Ready for Toss-Up 1."
+        : "Chào mừng bạn đến với Vòng Quay Tri Thức! Hãy chuẩn bị cho Vòng Đoán Nhanh 1.",
+    };
+    roomMagicWheels.set(room.id, initialWheelState);
+    if (effectiveStatus === "PLAYING") {
       persistGameStateSnapshot(room.id).catch(() => {});
     }
   }

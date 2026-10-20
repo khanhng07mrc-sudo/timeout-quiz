@@ -1298,10 +1298,10 @@ export default function DisplayPage() {
           </div>
         )}
 
-        {/* Zero-Scroll Two-Column Main Body */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 flex-1 min-h-0 items-stretch">
+        {/* Responsive Two-Column Main Body */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 flex-1 min-h-0 items-stretch overflow-y-auto md:overflow-hidden">
           {/* Left Column: Room identity, Large PIN, Link & Rules Trigger */}
-          <div className="lg:col-span-5 flex flex-col justify-between glass rounded-3xl p-5 sm:p-6 border border-white/10 shadow-2xl overflow-hidden bg-gradient-to-b from-[#15172b]/95 to-[#0e1022]/95">
+          <div className="md:col-span-5 flex flex-col justify-between glass rounded-3xl p-4 sm:p-5 border border-white/10 shadow-2xl overflow-hidden bg-gradient-to-b from-[#15172b]/95 to-[#0e1022]/95 min-h-0">
             {/* Header info */}
             <div>
               <div className="inline-block px-3 py-0.5 rounded-full text-[11px] font-mono font-bold tracking-wider bg-purple-500/20 text-cyan-300 border border-cyan-400/30 mb-2 shadow-[0_0_10px_rgba(6,182,212,0.3)]">
@@ -1347,7 +1347,7 @@ export default function DisplayPage() {
           </div>
 
           {/* Right Column: Teams / Participants (adaptive, internal scroll if > 6 teams) */}
-          <div className="lg:col-span-7 flex flex-col glass rounded-3xl p-5 sm:p-6 border border-white/10 shadow-2xl min-h-0 bg-[#121324]/90">
+          <div className="md:col-span-7 flex flex-col glass rounded-3xl p-4 sm:p-5 border border-white/10 shadow-2xl min-h-0 bg-[#121324]/90 overflow-hidden">
             {/* Right Column Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3 shrink-0">
               <div className="flex items-center gap-2">
@@ -1368,7 +1368,7 @@ export default function DisplayPage() {
                     return (
                       <div
                         key={t.id}
-                        className="glass rounded-2xl p-4 border-2 flex flex-col justify-between transition-all hover:scale-[1.01]"
+                        className="glass rounded-2xl p-3 sm:p-4 border-2 flex flex-col justify-between transition-all hover:scale-[1.01] min-w-0"
                         style={{ borderColor: t.color }}
                       >
                         <div>
@@ -1433,6 +1433,13 @@ export default function DisplayPage() {
             })()}
           </div>
         </div>
+
+        {/* Rules Modal in Lobby */}
+        <GameModeRulesModal
+          mode={roomState?.mode}
+          isOpen={showRulesModal}
+          onClose={() => setShowRulesModal(false)}
+        />
       </div>
     );
   }

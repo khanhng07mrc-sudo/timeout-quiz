@@ -7897,6 +7897,8 @@ export function registerSocketHandlers(io: IO) {
       wheelState.tossUpAnswerEndsAt = undefined;
       wheelState.tossUpWrongTeamIds = [];
       wheelState.boardStage = "EMPTY_56";
+      wheelState.temporaryDisplayText = undefined;
+      wheelState.temporaryDisplayActive = false;
 
       if (roomId) {
         roomTossUpBuzzLocks.delete(roomId);
@@ -8061,21 +8063,6 @@ export function registerSocketHandlers(io: IO) {
 
       const updatedRoomState = await buildRoomState(roomId);
       io.to(`room:${roomCode}`).emit("room:state", updatedRoomState);
-
-      // In SELF_SERVICE mode, auto-advance to next stage after 8.5s if user hasn't clicked "Sang vòng tiếp theo" yet
-      if (wheelState.operationMode !== "HOST_ASSISTED") {
-        const solvedRoundNumber = wheelState.currentRound;
-        setTimeout(async () => {
-          const cur = roomMagicWheels.get(roomId);
-          if (!cur || cur.phase !== "ROUND_RECAP" || cur.currentRound !== solvedRoundNumber) return;
-          if (cur.currentRound < cur.maxRounds) {
-            const latestRoom = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
-            if (!latestRoom) return;
-            setupMagicWheelRoundStage(cur, cur.currentRound + 1, latestRoom.teams);
-            io.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
-          }
-        }, 8500);
-      }
     };
 
     // Helper to skip / abandon a Toss-Up puzzle when time expires or no one solves correctly
@@ -8140,24 +8127,6 @@ export function registerSocketHandlers(io: IO) {
         roundWonPoints: 0,
       });
       io.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
-
-      // Auto-advance in self-service mode after 6.5s
-      if (cur.operationMode !== "HOST_ASSISTED") {
-        const abandonedRound = cur.currentRound;
-        setTimeout(async () => {
-          const latest = roomMagicWheels.get(rId);
-          if (!latest || latest.phase !== "ROUND_RECAP" || latest.currentRound !== abandonedRound) return;
-          if (latest.currentRound < latest.maxRounds) {
-            const latestRoom = await prisma.room.findUnique({
-              where: { id: rId },
-              include: { teams: { orderBy: { createdAt: "asc" } } },
-            });
-            if (!latestRoom) return;
-            setupMagicWheelRoundStage(latest, latest.currentRound + 1, latestRoom.teams);
-            io.to(`room:${rCode}`).emit("game:magic_wheel:update", latest);
-          }
-        }, 6500);
-      }
     };
 
     // Helper to run authoritative driver interval on server (750ms for VN, 1000ms for EN, immune to network lag)
@@ -10140,19 +10109,6 @@ export function registerSocketHandlers(io: IO) {
             secretPhrase: phrase,
             roundWonPoints: 0,
           });
-          if (wheelState.operationMode !== "HOST_ASSISTED") {
-            const solvedRoundNum = wheelState.currentRound;
-            setTimeout(async () => {
-              const cur = roomMagicWheels.get(roomId);
-              if (!cur || cur.phase !== "ROUND_RECAP" || cur.currentRound !== solvedRoundNum) return;
-              if (cur.currentRound < cur.maxRounds) {
-                const latestRoom = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
-                if (!latestRoom) return;
-                setupMagicWheelRoundStage(cur, cur.currentRound + 1, latestRoom.teams);
-                io.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
-              }
-            }, 8500);
-          }
         } else {
           wheelState.lastActionMessage = `🎁 Đội ${teamName} đã chọn ĐỔI (${prizeText}) và dừng Vòng 3! Lượt quay chuyển sang ${wheelState.currentTurnTeamName}.`;
         }
@@ -10322,6 +10278,8 @@ export function registerSocketHandlers(io: IO) {
       const fullRoom = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
       const teams = fullRoom?.teams || [];
       if (wheelState.currentRound < wheelState.maxRounds) {
+        wheelState.temporaryDisplayText = undefined;
+        wheelState.temporaryDisplayActive = false;
         setupMagicWheelRoundStage(wheelState, wheelState.currentRound + 1, teams, roomId);
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
         persistGameStateSnapshot(roomId).catch(() => {});
@@ -10355,6 +10313,8 @@ export function registerSocketHandlers(io: IO) {
     const handleOpenMagicWheelBoard = async (roomId: string, roomCode: string) => {
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
+      wheelState.temporaryDisplayText = undefined;
+      wheelState.temporaryDisplayActive = false;
       wheelState.boardStage = "BLANK_PHRASE";
       wheelState.lastActionMessage = "⭐ Quản trò mở ô chữ & chủ đề! Bảng ô chữ đang lật mở...";
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
@@ -10374,6 +10334,56 @@ export function registerSocketHandlers(io: IO) {
         }
       }, cutDurationMs);
     };
+
+    const handleSetTemporaryText = async (roomId: string, roomCode: string, text: string) => {
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState) return;
+      // Cho phép thực hiện giữa 2 thời điểm: sau khi giải xong vòng hiện tại (ROUND_RECAP) và trước khi mở ô chữ vòng kế tiếp (boardStage === EMPTY_56)
+      const isAllowed = wheelState.phase === "ROUND_RECAP" || wheelState.boardStage === "EMPTY_56";
+      if (!isAllowed) return;
+
+      const trimmed = (text || "").trim().slice(0, 56);
+      if (!trimmed) return;
+
+      wheelState.temporaryDisplayText = trimmed;
+      wheelState.temporaryDisplayActive = true;
+      wheelState.lastActionMessage = `📢 Bảng ô chữ đang hiển thị: "${trimmed}"`;
+      io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      persistGameStateSnapshot(roomId).catch(() => {});
+    };
+
+    const handleClearTemporaryText = async (roomId: string, roomCode: string) => {
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState) return;
+      wheelState.temporaryDisplayText = undefined;
+      wheelState.temporaryDisplayActive = false;
+      io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      persistGameStateSnapshot(roomId).catch(() => {});
+    };
+
+    socket.on("admin:magic_wheel:set_temporary_text", async ({ text }: { text: string }) => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      await handleSetTemporaryText(room.id, room.code, text);
+    });
+
+    socket.on("admin:magic_wheel:clear_temporary_text", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      await handleClearTemporaryText(room.id, room.code);
+    });
+
+    socket.on("magic_wheel:set_temporary_text", async ({ text }: { text: string }) => {
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || (!isAdmin && !isSandboxSocket)) return;
+      await handleSetTemporaryText(roomId, roomCode, text);
+    });
+
+    socket.on("magic_wheel:clear_temporary_text", async () => {
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || (!isAdmin && !isSandboxSocket)) return;
+      await handleClearTemporaryText(roomId, roomCode);
+    });
 
     socket.on("admin:magic_wheel:open_board", async () => {
       const room = await getAdminRoom(socket);

@@ -140,9 +140,7 @@ function processTelexWord(rawWord: string): string {
     .replace(/Ow/g, "Ơ")
     .replace(/uw/g, "ư")
     .replace(/UW/g, "Ư")
-    .replace(/Uw/g, "Ư")
-    .replace(/w/g, "ư")
-    .replace(/W/g, "Ư");
+    .replace(/Uw/g, "Ư");
 
   // 2. Extract tone key at the end (or anywhere in word)
   // s: sắc, f: huyền, r: hỏi, x: ngã, j: nặng, z: xóa dấu

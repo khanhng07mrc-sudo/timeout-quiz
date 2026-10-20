@@ -4472,6 +4472,10 @@ export default function AdminSandboxPage() {
           adminSocketRef.current.emit("magic_wheel:solve_puzzle" as any, { answer: msg.answer, teamId: tId });
         } else if (msg.type === "MAGIC_WHEEL_OPEN_BOARD") {
           adminSocketRef.current.emit("admin:magic_wheel:open_board" as any);
+        } else if (msg.type === "MAGIC_WHEEL_SET_TEMPORARY_TEXT") {
+          adminSocketRef.current.emit("admin:magic_wheel:set_temporary_text" as any, { text: msg.text });
+        } else if (msg.type === "MAGIC_WHEEL_CLEAR_TEMPORARY_TEXT") {
+          adminSocketRef.current.emit("admin:magic_wheel:clear_temporary_text" as any);
         } else if (msg.type === "MAGIC_WHEEL_PASS_TURN") {
           adminSocketRef.current.emit("admin:magic_wheel:pass_turn" as any);
         } else if (msg.type === "MAGIC_WHEEL_QUICK_REVEAL") {
@@ -5734,10 +5738,44 @@ export default function AdminSandboxPage() {
           syncToIframes({ roomState: nextRoom });
           return nextRoom;
         });
+      } else if (e.data?.type === "MAGIC_WHEEL_SET_TEMPORARY_TEXT") {
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const text = (e.data.text || "").trim().slice(0, 56);
+          if (!text) return prev;
+          const cur = {
+            ...prev.magicWheelState,
+            temporaryDisplayText: text,
+            temporaryDisplayActive: true,
+            lastActionMessage: `📢 Bảng ô chữ đang hiển thị: "${text}"`,
+          };
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_CLEAR_TEMPORARY_TEXT") {
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const cur = {
+            ...prev.magicWheelState,
+            temporaryDisplayText: undefined,
+            temporaryDisplayActive: false,
+          };
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
       } else if (e.data?.type === "MAGIC_WHEEL_OPEN_BOARD") {
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState) return prev;
-          const cur = { ...prev.magicWheelState, boardStage: "BLANK_PHRASE" as const };
+          const cur = {
+            ...prev.magicWheelState,
+            boardStage: "BLANK_PHRASE" as const,
+            temporaryDisplayText: undefined,
+            temporaryDisplayActive: false,
+          };
           cur.lastActionMessage = "⭐ Quản trò mở ô chữ & chủ đề! Bảng ô chữ đang lật mở...";
           const nextRoom = { ...prev, magicWheelState: cur };
           roomStateRef.current = nextRoom;
@@ -6321,6 +6359,8 @@ export default function AdminSandboxPage() {
           cur.lastSolveFeedback = undefined;
           cur.roundEliminatedTeamIds = [];
           cur.boardStage = "EMPTY_56";
+          cur.temporaryDisplayText = undefined;
+          cur.temporaryDisplayActive = false;
 
           // 1. Từ TOSS_UP_1 -> TOSS_UP_2
           if (cur.roundStage === "TOSS_UP_1") {
@@ -8325,6 +8365,29 @@ export default function AdminSandboxPage() {
     addLog(`⭐ [Quản trò] Mở bảng ô chữ & công bố chủ đề!`);
   };
 
+  const [showSandboxTempTextModal, setShowSandboxTempTextModal] = useState(false);
+  const [sandboxTempTextInput, setSandboxTempTextInput] = useState("");
+
+  const handleMagicWheelSetTempText = (text: string) => {
+    const trimmed = text.trim().slice(0, 56);
+    if (!trimmed) return;
+    if (adminSocketRef.current?.connected) {
+      adminSocketRef.current.emit("admin:magic_wheel:set_temporary_text" as any, { text: trimmed });
+    } else {
+      window.postMessage({ type: "MAGIC_WHEEL_SET_TEMPORARY_TEXT", text: trimmed }, "*");
+    }
+    addLog(`✍️ [Quản trò] Cài đặt chữ hiển thị tạm thời: "${trimmed}"`);
+  };
+
+  const handleMagicWheelClearTempText = () => {
+    if (adminSocketRef.current?.connected) {
+      adminSocketRef.current.emit("admin:magic_wheel:clear_temporary_text" as any);
+    } else {
+      window.postMessage({ type: "MAGIC_WHEEL_CLEAR_TEMPORARY_TEXT" }, "*");
+    }
+    addLog(`🗑️ [Quản trò] Đã xóa chữ hiển thị tạm thời`);
+  };
+
   const handleMagicWheelStartTossUp = () => {
     if (adminSocketRef.current?.connected) {
       adminSocketRef.current.emit("magic_wheel:toss_up_start" as any);
@@ -9899,29 +9962,73 @@ export default function AdminSandboxPage() {
 
                         if (mw?.boardStage === "EMPTY_56") {
                           return (
-                            <button
-                              type="button"
-                              onClick={handleMagicWheelOpenBoard}
-                              className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95 ring-2 ring-amber-300"
-                              title="Mở các ô chữ và công bố chủ đề cho tất cả các màn hình"
-                            >
-                              <span>⭐</span>
-                              <span>Mở ô chữ</span>
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={handleMagicWheelOpenBoard}
+                                className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95 ring-2 ring-amber-300"
+                                title="Mở các ô chữ và công bố chủ đề cho tất cả các màn hình"
+                              >
+                                <span>⭐</span>
+                                <span>Mở ô chữ</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowSandboxTempTextModal(true)}
+                                className="px-2.5 py-1.5 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/50 text-purple-200 font-bold text-xs shadow-md transition flex items-center gap-1 cursor-pointer active:scale-95"
+                                title="Cài đặt chữ hiển thị tạm thời trên bảng ô chữ"
+                              >
+                                <span>✍️</span>
+                                <span>Chữ tạm thời</span>
+                              </button>
+                              {mw?.temporaryDisplayActive && (
+                                <button
+                                  type="button"
+                                  onClick={handleMagicWheelClearTempText}
+                                  className="px-2 py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/50 border border-rose-400/50 text-rose-200 font-bold text-xs shadow-md transition flex items-center gap-1 cursor-pointer active:scale-95"
+                                  title="Xóa chữ hiển thị tạm thời"
+                                >
+                                  <span>🗑️</span>
+                                  <span>Xóa chữ</span>
+                                </button>
+                              )}
+                            </div>
                           );
                         }
 
                         if (isRoundComplete) {
                           return (
-                            <button
-                              type="button"
-                              onClick={handleMagicWheelNextRound}
-                              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95 animate-pulse ring-2 ring-emerald-400"
-                              title="Chuyển sang vòng tiếp theo"
-                            >
-                              <span>⏩</span>
-                              <span>Sang vòng tiếp theo</span>
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={handleMagicWheelNextRound}
+                                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95 animate-pulse ring-2 ring-emerald-400"
+                                title="Đóng ô chữ và chuyển sang vòng tiếp theo"
+                              >
+                                <span>➡️</span>
+                                <span>Đóng ô chữ & Sang vòng tiếp theo</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowSandboxTempTextModal(true)}
+                                className="px-2.5 py-1.5 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/50 text-purple-200 font-bold text-xs shadow-md transition flex items-center gap-1 cursor-pointer active:scale-95"
+                                title="Cài đặt chữ hiển thị tạm thời trên bảng ô chữ"
+                              >
+                                <span>✍️</span>
+                                <span>Chữ tạm thời</span>
+                              </button>
+                              {mw?.temporaryDisplayActive && (
+                                <button
+                                  type="button"
+                                  onClick={handleMagicWheelClearTempText}
+                                  className="px-2 py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/50 border border-rose-400/50 text-rose-200 font-bold text-xs shadow-md transition flex items-center gap-1 cursor-pointer active:scale-95"
+                                  title="Xóa chữ hiển thị tạm thời"
+                                >
+                                  <span>🗑️</span>
+                                  <span>Xóa chữ</span>
+                                </button>
+                              )}
+                            </div>
                           );
                         }
 
@@ -10052,13 +10159,39 @@ export default function AdminSandboxPage() {
                             <button
                               type="button"
                               onClick={() => {
+                                setShowSandboxTempTextModal(true);
+                                setShowMagicWheelMCDropdown(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-purple-300 transition cursor-pointer text-left"
+                            >
+                              <span>✍️</span>
+                              <span>Cài đặt chữ tạm thời</span>
+                            </button>
+
+                            {roomState?.magicWheelState?.temporaryDisplayActive && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleMagicWheelClearTempText();
+                                  setShowMagicWheelMCDropdown(false);
+                                }}
+                                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-rose-500/20 text-rose-300 transition cursor-pointer text-left"
+                              >
+                                <span>🗑️</span>
+                                <span>Xóa chữ tạm thời</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => {
                                 handleMagicWheelNextRound();
                                 setShowMagicWheelMCDropdown(false);
                               }}
                               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-yellow-300 transition cursor-pointer text-left"
                             >
                               <span>⏩</span>
-                              <span>Chuyển vòng tiếp theo</span>
+                              <span>Đóng ô chữ & Sang vòng tiếp theo</span>
                             </button>
 
                             <button
@@ -12760,6 +12893,8 @@ export default function AdminSandboxPage() {
                       }}
                       onAdvanceRound={handleMagicWheelNextRound}
                       onNextRound={handleMagicWheelNextRound}
+                      onSetTemporaryText={handleMagicWheelSetTempText}
+                      onClearTemporaryText={handleMagicWheelClearTempText}
                     />
                   </div>
                 )}
@@ -13807,6 +13942,122 @@ export default function AdminSandboxPage() {
             }
           }}
         />
+      )}
+
+      {/* ── Modal: Cài đặt chữ hiển thị tạm thời trên bảng ô chữ Chiếc Nón Kỳ Diệu ── */}
+      {showSandboxTempTextModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg p-5 rounded-2xl bg-[#121829] border-2 border-purple-400/60 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">✍️</span>
+                <div>
+                  <h4 className="font-black text-base text-purple-300">
+                    CÀI ĐẶT CHỮ HIỂN THỊ TẠM THỜI (SANDBOX)
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    Chỉ có hiệu lực giữa 2 thời điểm: sau khi giải xong ô chữ vòng hiện tại và trước khi mở ô chữ vòng kế tiếp
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSandboxTempTextModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Nội dung hiển thị (tối đa 56 ký tự):
+                </label>
+                <textarea
+                  value={sandboxTempTextInput}
+                  onChange={(e) => setSandboxTempTextInput(e.target.value.toUpperCase().slice(0, 56))}
+                  rows={2}
+                  placeholder="Nhập nội dung cần hiển thị trên bảng ô chữ..."
+                  className="w-full p-3 rounded-xl bg-slate-900 border border-purple-500/40 text-purple-200 font-black tracking-wider text-sm focus:outline-none focus:border-purple-400 resize-none uppercase"
+                />
+                <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1">
+                  <span>
+                    Độ dài: <strong className="text-purple-300">{sandboxTempTextInput.length}/56</strong> ký tự
+                  </span>
+                  <span>
+                    Tự động căn đều trên khung 14 cột × 4 hàng
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1.5">
+                  Mẫu thông điệp có sẵn:
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    "CHÚC MỪNG CHIẾN THẮNG",
+                    "VÒNG TIẾP THEO SẮP BẮT ĐẦU",
+                    "GIẢI LAO NGHỈ TAY",
+                    "XIN CẢM ƠN NHÀ TÀI TRỢ",
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setSandboxTempTextInput(preset)}
+                      className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-purple-900/40 border border-white/10 hover:border-purple-400/50 text-slate-200 hover:text-purple-200 text-xs font-semibold text-left transition truncate cursor-pointer"
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-white/10 pt-3">
+              <div>
+                {roomState?.magicWheelState?.temporaryDisplayActive && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleMagicWheelClearTempText();
+                      setShowSandboxTempTextModal(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 border border-rose-400/50 text-rose-200 text-xs font-bold transition cursor-pointer"
+                  >
+                    🗑️ Xóa chữ trên bảng
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSandboxTempTextModal(false)}
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold transition cursor-pointer"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  disabled={!sandboxTempTextInput.trim()}
+                  onClick={() => {
+                    if (!sandboxTempTextInput.trim()) return;
+                    handleMagicWheelSetTempText(sandboxTempTextInput.trim());
+                    setShowSandboxTempTextModal(false);
+                  }}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black shadow-lg transition cursor-pointer ${
+                    sandboxTempTextInput.trim()
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:brightness-110 active:scale-95"
+                      : "bg-slate-700 text-slate-400 opacity-50 cursor-not-allowed"
+                  }`}
+                >
+                  ✨ Hiển thị lên bảng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Game Mode Rules Modal ─────────────────────────────────────────── */}

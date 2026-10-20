@@ -16633,6 +16633,8 @@ function registerSocketHandlers(io2) {
       wheelState.tossUpAnswerEndsAt = void 0;
       wheelState.tossUpWrongTeamIds = [];
       wheelState.boardStage = "EMPTY_56";
+      wheelState.temporaryDisplayText = void 0;
+      wheelState.temporaryDisplayActive = false;
       if (roomId) {
         roomTossUpBuzzLocks.delete(roomId);
         const oldTimer = roomTossUpAnswerTimers.get(roomId);
@@ -16782,19 +16784,6 @@ function registerSocketHandlers(io2) {
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       const updatedRoomState = await buildRoomState(roomId);
       io2.to(`room:${roomCode}`).emit("room:state", updatedRoomState);
-      if (wheelState.operationMode !== "HOST_ASSISTED") {
-        const solvedRoundNumber = wheelState.currentRound;
-        setTimeout(async () => {
-          const cur = roomMagicWheels.get(roomId);
-          if (!cur || cur.phase !== "ROUND_RECAP" || cur.currentRound !== solvedRoundNumber) return;
-          if (cur.currentRound < cur.maxRounds) {
-            const latestRoom = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
-            if (!latestRoom) return;
-            setupMagicWheelRoundStage(cur, cur.currentRound + 1, latestRoom.teams);
-            io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
-          }
-        }, 8500);
-      }
     };
     const abandonTossUpPuzzle = async (rId, rCode) => {
       const cur = roomMagicWheels.get(rId);
@@ -16842,22 +16831,6 @@ function registerSocketHandlers(io2) {
         roundWonPoints: 0
       });
       io2.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
-      if (cur.operationMode !== "HOST_ASSISTED") {
-        const abandonedRound = cur.currentRound;
-        setTimeout(async () => {
-          const latest = roomMagicWheels.get(rId);
-          if (!latest || latest.phase !== "ROUND_RECAP" || latest.currentRound !== abandonedRound) return;
-          if (latest.currentRound < latest.maxRounds) {
-            const latestRoom = await prisma.room.findUnique({
-              where: { id: rId },
-              include: { teams: { orderBy: { createdAt: "asc" } } }
-            });
-            if (!latestRoom) return;
-            setupMagicWheelRoundStage(latest, latest.currentRound + 1, latestRoom.teams);
-            io2.to(`room:${rCode}`).emit("game:magic_wheel:update", latest);
-          }
-        }, 6500);
-      }
     };
     const startServerTossUpInterval = (rId, rCode) => {
       const oldTick = roomTossUpTickTimers.get(rId);
@@ -18583,19 +18556,6 @@ function registerSocketHandlers(io2) {
             secretPhrase: phrase,
             roundWonPoints: 0
           });
-          if (wheelState.operationMode !== "HOST_ASSISTED") {
-            const solvedRoundNum = wheelState.currentRound;
-            setTimeout(async () => {
-              const cur = roomMagicWheels.get(roomId);
-              if (!cur || cur.phase !== "ROUND_RECAP" || cur.currentRound !== solvedRoundNum) return;
-              if (cur.currentRound < cur.maxRounds) {
-                const latestRoom = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
-                if (!latestRoom) return;
-                setupMagicWheelRoundStage(cur, cur.currentRound + 1, latestRoom.teams);
-                io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
-              }
-            }, 8500);
-          }
         } else {
           wheelState.lastActionMessage = `\u{1F381} \u0110\u1ED9i ${teamName} \u0111\xE3 ch\u1ECDn \u0110\u1ED4I (${prizeText}) v\xE0 d\u1EEBng V\xF2ng 3! L\u01B0\u1EE3t quay chuy\u1EC3n sang ${wheelState.currentTurnTeamName}.`;
         }
@@ -18748,6 +18708,8 @@ function registerSocketHandlers(io2) {
       const fullRoom = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
       const teams = fullRoom?.teams || [];
       if (wheelState.currentRound < wheelState.maxRounds) {
+        wheelState.temporaryDisplayText = void 0;
+        wheelState.temporaryDisplayActive = false;
         setupMagicWheelRoundStage(wheelState, wheelState.currentRound + 1, teams, roomId);
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
         persistGameStateSnapshot(roomId).catch(() => {
@@ -18777,6 +18739,8 @@ function registerSocketHandlers(io2) {
     const handleOpenMagicWheelBoard = async (roomId, roomCode) => {
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
+      wheelState.temporaryDisplayText = void 0;
+      wheelState.temporaryDisplayActive = false;
       wheelState.boardStage = "BLANK_PHRASE";
       wheelState.lastActionMessage = "\u2B50 Qu\u1EA3n tr\xF2 m\u1EDF \xF4 ch\u1EEF & ch\u1EE7 \u0111\u1EC1! B\u1EA3ng \xF4 ch\u1EEF \u0111ang l\u1EADt m\u1EDF...";
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
@@ -18796,6 +18760,49 @@ function registerSocketHandlers(io2) {
         }
       }, cutDurationMs);
     };
+    const handleSetTemporaryText = async (roomId, roomCode, text) => {
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState) return;
+      const isAllowed = wheelState.phase === "ROUND_RECAP" || wheelState.boardStage === "EMPTY_56";
+      if (!isAllowed) return;
+      const trimmed = (text || "").trim().slice(0, 56);
+      if (!trimmed) return;
+      wheelState.temporaryDisplayText = trimmed;
+      wheelState.temporaryDisplayActive = true;
+      wheelState.lastActionMessage = `\u{1F4E2} B\u1EA3ng \xF4 ch\u1EEF \u0111ang hi\u1EC3n th\u1ECB: "${trimmed}"`;
+      io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      persistGameStateSnapshot(roomId).catch(() => {
+      });
+    };
+    const handleClearTemporaryText = async (roomId, roomCode) => {
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState) return;
+      wheelState.temporaryDisplayText = void 0;
+      wheelState.temporaryDisplayActive = false;
+      io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      persistGameStateSnapshot(roomId).catch(() => {
+      });
+    };
+    socket.on("admin:magic_wheel:set_temporary_text", async ({ text }) => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      await handleSetTemporaryText(room.id, room.code, text);
+    });
+    socket.on("admin:magic_wheel:clear_temporary_text", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      await handleClearTemporaryText(room.id, room.code);
+    });
+    socket.on("magic_wheel:set_temporary_text", async ({ text }) => {
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || !isAdmin && !isSandboxSocket) return;
+      await handleSetTemporaryText(roomId, roomCode, text);
+    });
+    socket.on("magic_wheel:clear_temporary_text", async () => {
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || !isAdmin && !isSandboxSocket) return;
+      await handleClearTemporaryText(roomId, roomCode);
+    });
     socket.on("admin:magic_wheel:open_board", async () => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "MAGIC_WHEEL") return;

@@ -84,6 +84,8 @@ export default function AdminRoomPage() {
   const [intermission, setIntermission] = useState<GameIntermissionPayload | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [showRoomTempTextModal, setShowRoomTempTextModal] = useState(false);
+  const [roomTempTextInput, setRoomTempTextInput] = useState("");
   const soundEnabledRef = useRef(false);
   const [isNextLoading, setIsNextLoading] = useState(false);
   const lastNextClickRef = useRef<number>(0);
@@ -1497,10 +1499,30 @@ export default function AdminRoomPage() {
                   </select>
                   <button
                     onClick={() => emit("admin:magic_wheel:advance_round")}
-                    className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow transition-all active:scale-95"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+                    title="Đóng ô chữ và chuyển sang vòng tiếp theo"
                   >
-                    ⏩ Sang Vòng Tiếp Theo
+                    <span>➡️</span>
+                    <span>Đóng ô chữ & Sang vòng tiếp theo</span>
                   </button>
+                  <button
+                    onClick={() => setShowRoomTempTextModal(true)}
+                    className="px-2.5 py-1.5 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/50 text-purple-200 font-bold text-xs shadow transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+                    title="Cài đặt chữ hiển thị thủ công tạm thời trên bảng ô chữ"
+                  >
+                    <span>✍️</span>
+                    <span>Chữ tạm thời</span>
+                  </button>
+                  {roomState.magicWheelState?.temporaryDisplayActive && (
+                    <button
+                      onClick={() => emit("admin:magic_wheel:clear_temporary_text")}
+                      className="px-2 py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/50 border border-rose-400/50 text-rose-200 font-bold text-xs shadow transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+                      title="Xóa chữ hiển thị tạm thời trên bảng"
+                    >
+                      <span>🗑️</span>
+                      <span>Xóa chữ</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1540,6 +1562,8 @@ export default function AdminRoomPage() {
                   onBuyVowel={(vowel) => emit("magic_wheel:buy_vowel", { vowel })}
                   onSetEdition={(edition) => emit("magic_wheel:set_edition", { edition })}
                   onSetBlackoutGuessed={(enabled) => emit("magic_wheel:set_blackout_guessed", { enabled })}
+                  onSetTemporaryText={(text) => emit("admin:magic_wheel:set_temporary_text", { text })}
+                  onClearTemporaryText={() => emit("admin:magic_wheel:clear_temporary_text")}
                 />
               </div>
             </div>
@@ -2757,6 +2781,122 @@ export default function AdminRoomPage() {
           </button>
         ) : null}
       </div>
+
+      {/* ── Modal: Cài đặt chữ hiển thị tạm thời trên bảng ô chữ Chiếc Nón Kỳ Diệu ── */}
+      {showRoomTempTextModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg p-5 rounded-2xl bg-[#121829] border-2 border-purple-400/60 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">✍️</span>
+                <div>
+                  <h4 className="font-black text-base text-purple-300">
+                    CÀI ĐẶT CHỮ HIỂN THỊ TẠM THỜI
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    Chỉ có hiệu lực giữa 2 thời điểm: sau khi giải xong ô chữ vòng hiện tại và trước khi mở ô chữ vòng kế tiếp
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRoomTempTextModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Nội dung hiển thị (tối đa 56 ký tự):
+                </label>
+                <textarea
+                  value={roomTempTextInput}
+                  onChange={(e) => setRoomTempTextInput(e.target.value.toUpperCase().slice(0, 56))}
+                  rows={2}
+                  placeholder="Nhập nội dung cần hiển thị trên bảng ô chữ..."
+                  className="w-full p-3 rounded-xl bg-slate-900 border border-purple-500/40 text-purple-200 font-black tracking-wider text-sm focus:outline-none focus:border-purple-400 resize-none uppercase"
+                />
+                <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1">
+                  <span>
+                    Độ dài: <strong className="text-purple-300">{roomTempTextInput.length}/56</strong> ký tự
+                  </span>
+                  <span>
+                    Tự động căn đều trên khung 14 cột × 4 hàng
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1.5">
+                  Mẫu thông điệp có sẵn:
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    "CHÚC MỪNG CHIẾN THẮNG",
+                    "VÒNG TIẾP THEO SẮP BẮT ĐẦU",
+                    "GIẢI LAO NGHỈ TAY",
+                    "XIN CẢM ƠN NHÀ TÀI TRỢ",
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setRoomTempTextInput(preset)}
+                      className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-purple-900/40 border border-white/10 hover:border-purple-400/50 text-slate-200 hover:text-purple-200 text-xs font-semibold text-left transition truncate cursor-pointer"
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-white/10 pt-3">
+              <div>
+                {roomState?.magicWheelState?.temporaryDisplayActive && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      emit("admin:magic_wheel:clear_temporary_text");
+                      setShowRoomTempTextModal(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 border border-rose-400/50 text-rose-200 text-xs font-bold transition cursor-pointer"
+                  >
+                    🗑️ Xóa chữ trên bảng
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRoomTempTextModal(false)}
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold transition cursor-pointer"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  disabled={!roomTempTextInput.trim()}
+                  onClick={() => {
+                    if (!roomTempTextInput.trim()) return;
+                    emit("admin:magic_wheel:set_temporary_text", { text: roomTempTextInput.trim() });
+                    setShowRoomTempTextModal(false);
+                  }}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black shadow-lg transition cursor-pointer ${
+                    roomTempTextInput.trim()
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:brightness-110 active:scale-95"
+                      : "bg-slate-700 text-slate-400 opacity-50 cursor-not-allowed"
+                  }`}
+                >
+                  ✨ Hiển thị lên bảng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

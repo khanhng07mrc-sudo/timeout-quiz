@@ -951,6 +951,8 @@ export interface MagicWheelState {
   englishPreset?: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3"; // 3 bộ đề tiếng Anh hoặc trộn ngẫu nhiên
   blackoutGuessedLetters?: boolean;   // Admin setting: Có bôi đen/làm mờ chữ cái đã đoán hay không (mặc định: true)
   noMoreConsonants?: boolean;         // Bản Anh: Đã lật hết toàn bộ phụ âm, các ô chữ còn lại đều là nguyên âm (A, E, I, O, U)
+  temporaryDisplayText?: string;      // Admin: Chữ hiển thị thủ công tạm thời trên bảng ô chữ giữa 2 vòng
+  temporaryDisplayActive?: boolean;   // Admin: Có đang hiển thị chữ tạm thời hay không
 }
 
 // ─── Grid Caro Mode ──────────────────────────────────────────────────────────
@@ -1966,6 +1968,8 @@ export interface ClientToServerEvents {
   "magic_wheel:pass_turn": () => void;
   "magic_wheel:quick_reveal": () => void;
   "magic_wheel:override_turn": (payload: { teamId: string }) => void;
+  "magic_wheel:set_temporary_text": (payload: { text: string }) => void;
+  "magic_wheel:clear_temporary_text": () => void;
   "admin:magic_wheel:set_edition": (payload: { edition: "VIETNAMESE" | "ENGLISH" }) => void;
   "admin:magic_wheel:set_english_preset": (payload: { preset: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3" }) => void;
   "admin:magic_wheel:set_blackout_guessed": (payload: { enabled: boolean }) => void;
@@ -1986,6 +1990,8 @@ export interface ClientToServerEvents {
   "admin:magic_wheel:quick_reveal_letter": () => void;
   "admin:magic_wheel:reveal_all": () => void;
   "admin:magic_wheel:toss_up_skip": () => void;
+  "admin:magic_wheel:set_temporary_text": (payload: { text: string }) => void;
+  "admin:magic_wheel:clear_temporary_text": () => void;
   "admin:wager:skip_timer": () => void;
   "admin:wager:launch_question": () => void;
   "admin:wager:grant_bailout": (payload: { teamId: string }) => void;

@@ -19,6 +19,7 @@ import {
   ENGLISH_BONUS_ROUND_GIVEN_LETTERS,
   ENGLISH_BONUS_ROUND_PICKABLE_CONSONANTS,
   ENGLISH_BONUS_ROUND_PICKABLE_VOWELS,
+  isPuzzleFullyRevealed,
 } from "@/lib/game-engine/magic-wheel";
 import { formatCategoryByEdition } from "@/lib/game-engine/magic-wheel-categories";
 import { soundManager } from "@/lib/sound-manager";
@@ -106,6 +107,8 @@ export interface MagicWheelBoardProps {
   onJudgeSolve?: (isCorrect: boolean) => void;
   onNextRound?: () => void;
   onOpenBoard?: () => void;
+  onSetTemporaryText?: (text: string) => void;
+  onClearTemporaryText?: () => void;
 }
 
 interface RewardCardItem {
@@ -246,6 +249,7 @@ function SmartPuzzlePhraseInput({
   submitLabel = "CHỐT ĐÁP ÁN ➔",
   continuousMode = false,
   attemptLog = [],
+  edition = "VIETNAMESE",
 }: {
   secretPhrase: string;
   revealedIndices: Set<number>;
@@ -254,6 +258,7 @@ function SmartPuzzlePhraseInput({
   submitLabel?: string;
   continuousMode?: boolean;
   attemptLog?: string[];
+  edition?: "VIETNAMESE" | "ENGLISH";
 }) {
   const upperPhrase = (secretPhrase || "").toUpperCase();
 
@@ -424,6 +429,8 @@ function SmartPuzzlePhraseInput({
     }
   };
 
+  const effectiveImeMethod = edition === "ENGLISH" ? "OFF" : imeMethod;
+
   const handleSlotChange = (slotIdx: number, rawVal: string) => {
     const slot = slots[slotIdx];
     if (!slot || slot.isSpace || slot.isLockedConsonant) return;
@@ -432,6 +439,16 @@ function SmartPuzzlePhraseInput({
       setCharValues((prev) => {
         const next = [...prev];
         next[slotIdx] = slot.isRevealedVowel ? slot.baseChar : "";
+        return next;
+      });
+      return;
+    }
+
+    if (edition === "ENGLISH" || effectiveImeMethod === "OFF") {
+      const lastKey = rawVal.slice(-1).toUpperCase();
+      setCharValues((prev) => {
+        const next = [...prev];
+        next[slotIdx] = lastKey;
         return next;
       });
       return;
@@ -451,7 +468,7 @@ function SmartPuzzlePhraseInput({
       if (isModified) {
         resolvedChar = modifiedChar.toUpperCase();
       } else {
-        const formatted = formatVietnameseText(rawVal, imeMethod !== "OFF" ? imeMethod : "AUTO");
+        const formatted = formatVietnameseText(rawVal, imeMethod);
         resolvedChar = formatted.slice(-1).toUpperCase();
       }
     } else {
@@ -499,7 +516,7 @@ function SmartPuzzlePhraseInput({
   };
 
   const handleFullLineChange = (text: string) => {
-    const formatted = imeMethod !== "OFF" ? formatVietnameseText(text, imeMethod) : text;
+    const formatted = edition === "ENGLISH" || effectiveImeMethod === "OFF" ? text : formatVietnameseText(text, effectiveImeMethod);
     setRawLineInput(formatted);
     const upper = formatted.toUpperCase();
     setCharValues(() => {
@@ -778,18 +795,20 @@ function SmartPuzzlePhraseInput({
   );
 }
 
-interface HostessCatwalkWingProps {
+interface HostessTVStageProps {
   pose: "IDLE" | "GESTURE" | "WALKING" | "TOUCHING";
+  facing?: "LEFT" | "RIGHT";
   activeRow?: number;
   className?: string;
 }
 
-function HostessCatwalkWing({ pose, activeRow = 1, className = "" }: HostessCatwalkWingProps) {
+function HostessTVStage({ pose, facing = "RIGHT", activeRow = 1, className = "" }: HostessTVStageProps) {
   const isTouching = pose === "TOUCHING";
   const isGesture = pose === "GESTURE";
+  const isWalking = pose === "WALKING";
 
   // Reach/lift elevation when gesturing towards active row
-  const touchRowLift = [10, 5, 0, -3][activeRow] ?? 0;
+  const touchRowLift = [12, 6, 0, -4][activeRow] ?? 0;
 
   return (
     <div className={`relative flex flex-col items-center justify-end select-none pointer-events-none ${className}`}>
@@ -798,29 +817,29 @@ function HostessCatwalkWing({ pose, activeRow = 1, className = "" }: HostessCatw
           0%, 100% { transform: scale(1) translateY(0); }
           50% { transform: scale(1.008) translateY(-1.5px); }
         }
+        @keyframes hostessCatwalkWalk {
+          0%, 100% { transform: translateY(0); }
+          25% { transform: translateY(-4px) rotate(0.6deg); }
+          50% { transform: translateY(0); }
+          75% { transform: translateY(-4px) rotate(-0.6deg); }
+        }
         @keyframes hostessHaloPulse {
           0%, 100% { transform: scale(1); opacity: 0.8; }
           50% { transform: scale(1.35); opacity: 1; }
         }
       `}</style>
 
-      {/* Overhead Conical Studio Spotlight Beam onto Catwalk */}
-      <div
-        className="absolute -top-16 inset-x-0 h-44 pointer-events-none opacity-40 z-0"
-        style={{
-          background: "radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.5) 0%, rgba(217,119,6,0.18) 50%, transparent 80%)",
-        }}
-      />
-
-      {/* Hostess Standing Character Container (Facing towards the board on the right) */}
+      {/* Hostess Standing Character Container */}
       <div
         className="relative z-10 flex flex-col items-center"
         style={{
           transform: isTouching
-            ? `scale(1.04) translateY(-${5 + touchRowLift}px)`
+            ? `scale(1.04) translateY(-${6 + touchRowLift}px) scaleX(${facing === "LEFT" ? -1 : 1})`
             : isGesture
-            ? "scale(1.02) translateY(-3px)"
-            : "scale(1) translateY(0px)",
+            ? `scale(1.02) translateY(-3px) scaleX(${facing === "LEFT" ? -1 : 1})`
+            : isWalking
+            ? `scale(1.01) scaleX(${facing === "LEFT" ? -1 : 1})`
+            : `scale(1) translateY(0px) scaleX(${facing === "LEFT" ? -1 : 1})`,
           transition: "transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1)",
         }}
       >
@@ -838,9 +857,11 @@ function HostessCatwalkWing({ pose, activeRow = 1, className = "" }: HostessCatw
 
         {/* Model Photographic Cutout (Full-Body Vietnamese Gameshow Hostess) */}
         <div
-          className="relative w-24 sm:w-28 md:w-34 lg:w-40 h-52 sm:h-64 md:h-76 lg:h-88 drop-shadow-[0_15px_30px_rgba(0,0,0,0.95)]"
+          className="relative w-22 sm:w-26 md:w-30 lg:w-36 h-48 sm:h-58 md:h-68 lg:h-80 drop-shadow-[0_15px_30px_rgba(0,0,0,0.95)]"
           style={{
-            animation: "hostessBreathe 4s infinite ease-in-out",
+            animation: isWalking
+              ? "hostessCatwalkWalk 0.7s infinite ease-in-out"
+              : "hostessBreathe 4s infinite ease-in-out",
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -854,15 +875,15 @@ function HostessCatwalkWing({ pose, activeRow = 1, className = "" }: HostessCatw
 
         {/* Studio Hardwood Floor Contact Shadow under Heels */}
         <div
-          className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-24 sm:w-28 md:w-32 h-4 rounded-full blur-[2px] pointer-events-none"
+          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-22 sm:w-26 md:w-30 h-3.5 rounded-full blur-[2px] pointer-events-none"
           style={{
             background: "radial-gradient(ellipse at center, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 60%, transparent 80%)",
           }}
         />
 
-        {/* Gleaming Acrylic/Wood Mirror Floor Reflection under High Heels */}
+        {/* Gleaming Wood Mirror Floor Reflection under High Heels */}
         <div
-          className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-24 sm:w-28 md:w-34 h-16 overflow-hidden pointer-events-none opacity-25 select-none"
+          className="absolute -bottom-7 left-1/2 -translate-x-1/2 w-22 sm:w-26 md:w-30 h-14 overflow-hidden pointer-events-none opacity-25 select-none"
           style={{
             transform: "scaleY(-0.35)",
             filter: "blur(1.5px)",
@@ -878,13 +899,6 @@ function HostessCatwalkWing({ pose, activeRow = 1, className = "" }: HostessCatw
             draggable={false}
           />
         </div>
-      </div>
-
-      {/* Catwalk Stage Platform Base (Bục Catwalk Sân Khấu Riêng) */}
-      <div className="relative z-0 w-28 sm:w-32 md:w-36 lg:w-42 h-6 sm:h-7 rounded-2xl border-t-2 border-amber-400/80 bg-gradient-to-b from-[#2b180d] via-[#1a0d06] to-[#0a0502] shadow-[0_8px_20px_rgba(0,0,0,0.9)] flex items-center justify-around px-2 -mt-2">
-        <div className="w-1.5 h-1.5 rounded-full bg-yellow-300 shadow-[0_0_8px_#fde047]" />
-        <div className="w-1.5 h-1.5 rounded-full bg-yellow-300 shadow-[0_0_8px_#fde047]" />
-        <div className="w-1.5 h-1.5 rounded-full bg-yellow-300 shadow-[0_0_8px_#fde047]" />
       </div>
     </div>
   );
@@ -927,6 +941,8 @@ export default function MagicWheelBoard({
   onRevealAll,
   onQuickRevealLetter,
   onOpenBoard,
+  onSetTemporaryText,
+  onClearTemporaryText,
 }: MagicWheelBoardProps) {
   const activeState = magicWheelState || wheelState;
   if (!activeState) return null;
@@ -971,10 +987,16 @@ export default function MagicWheelBoard({
     lastSolveFeedback,
     specialFinalTeamId,
     specialFinalTeamName,
+    temporaryDisplayText,
+    temporaryDisplayActive,
   } = activeState;
+
+  const isTempActive = Boolean(temporaryDisplayActive && temporaryDisplayText);
 
   const [solveModalOpen, setSolveModalOpen] = useState<boolean>(false);
   const [buyVowelModalOpen, setBuyVowelModalOpen] = useState<boolean>(false);
+  const [tempTextModalOpen, setTempTextModalOpen] = useState<boolean>(false);
+  const [tempTextInput, setTempTextInput] = useState<string>("");
   const [guessedLetterWarning, setGuessedLetterWarning] = useState<string | null>(null);
   const [specialPickedSet, setSpecialPickedSet] = useState<string[]>([]);
   const [specialRemainingSec, setSpecialRemainingSec] = useState<number>(40);
@@ -1157,7 +1179,7 @@ export default function MagicWheelBoard({
   // ── TV Board Staged Appearance Sequence ───────────────────────────────────
   const [boardStage, setBoardStage] = useState<"EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE">("EMPTY_56");
   const effectiveBoardStage: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE" =
-    activeState.boardStage || boardStage;
+    isTempActive ? "READY_CLUE" : (activeState.boardStage || boardStage);
 
   const prevBoardStageRef = useRef<string>(activeState.boardStage || "EMPTY_56");
   useEffect(() => {
@@ -1207,7 +1229,7 @@ export default function MagicWheelBoard({
 
   const cellPositionsMap = useMemo(() => {
     const map: Record<number, { col: number; row: number; char: string }> = {};
-    const phrase = (currentPuzzle?.secretPhrase || "").toUpperCase();
+    const phrase = (isTempActive ? temporaryDisplayText || "" : currentPuzzle?.secretPhrase || "").toUpperCase();
     if (!phrase) return map;
 
     // Split into tokens: keep track of global character index
@@ -1304,7 +1326,7 @@ export default function MagicWheelBoard({
     });
 
     return map;
-  }, [currentPuzzle?.secretPhrase]);
+  }, [currentPuzzle?.secretPhrase, isTempActive, temporaryDisplayText]);
 
   // ── Show / Hide Hostess ("Người Mẫu") State (persisted to localStorage) ───
   const [showHostess, setShowHostess] = useState<boolean>(() => {
@@ -1325,13 +1347,14 @@ export default function MagicWheelBoard({
     });
   }, []);
 
-  // ── Virtual Hostess ("Người Mẫu") Intelligent 1-Way Movement & Reveal ─────
+  // ── Virtual Hostess ("Người Mẫu") Sân Khấu Liền Mạch & Di Chuyển Thong Thả ─────
   const [hostessSide, setHostessSide] = useState<"LEFT" | "RIGHT">("LEFT");
   const hostessSideRef = useRef<"LEFT" | "RIGHT">("LEFT");
-  const [hostessXPercent, setHostessXPercent] = useState<number>(3.5); // 3.5% (left edge beside board) to 96.5% (right edge beside board)
+  const [hostessXPercent, setHostessXPercent] = useState<number>(0); // 0% = Vị trí chờ bên ngoài Cột 0 (Stage Left)
   const [hostessFacing, setHostessFacing] = useState<"LEFT" | "RIGHT">("RIGHT");
   const [hostessPose, setHostessPose] = useState<"IDLE" | "GESTURE" | "WALKING" | "TOUCHING">("IDLE");
   const [hostessActiveRow, setHostessActiveRow] = useState<number>(1);
+  const [hostessWalkDurationMs, setHostessWalkDurationMs] = useState<number>(1400);
 
   const [highlightedIndices, setHighlightedIndices] = useState<Set<number>>(new Set());
   const [justPoppedIndices, setJustPoppedIndices] = useState<Set<number>>(new Set());
@@ -1374,6 +1397,14 @@ export default function MagicWheelBoard({
 
   // Sequential Highlight (highlight.mp3) -> Hostess Intelligent Reveal (letter_open.mp3)
   useEffect(() => {
+    if (isTempActive) {
+      clearChoreographyTimers();
+      setHighlightedIndices(new Set());
+      setHostessPose("IDLE");
+      setHostessXPercent(0);
+      return;
+    }
+
     const serverRevealed = currentPuzzle?.revealedIndices || [];
     const newLetters = serverRevealed.filter((idx) => !prevServerRevealedRef.current.includes(idx));
     prevServerRevealedRef.current = [...serverRevealed];
@@ -1477,17 +1508,19 @@ export default function MagicWheelBoard({
       });
 
       let elapsedWalkMs = totalHighlightTime;
-      let prevCol = startSide === "LEFT" ? -1 : 14;
+      let prevCol = 0;
 
       orderedForWalk.forEach((tileIdx) => {
         const pos = cellPositionsMap[tileIdx] || { col: 7, row: 1 };
         const colDist = Math.abs(pos.col - prevCol);
-        const travelMs = Math.max(240, colDist * 130);
+        // Tốc độ bước đi thực tế theo khoảng cách: 1.2s - 1.8s thong thả thanh lịch
+        const travelMs = Math.max(1200, Math.min(1800, 1000 + colDist * 70));
 
         // Move hostess to column
         const moveTimer = setTimeout(() => {
-          setHostessFacing(walkDirection === "LEFT_TO_RIGHT" ? "RIGHT" : "LEFT");
+          setHostessFacing(pos.col >= prevCol ? "RIGHT" : "LEFT");
           setHostessPose("WALKING");
+          setHostessWalkDurationMs(travelMs);
           setHostessActiveRow(pos.row);
           const colPercent = ((pos.col + 0.5) / COLS) * 100;
           setHostessXPercent(colPercent);
@@ -1496,7 +1529,7 @@ export default function MagicWheelBoard({
 
         elapsedWalkMs += travelMs;
 
-        // Touch & open tile
+        // Touch & open tile (dừng lại 0.8s tạo dáng giơ tay)
         const touchTimer = setTimeout(() => {
           setHostessPose("TOUCHING");
           setHostessActiveRow(pos.row);
@@ -1511,23 +1544,26 @@ export default function MagicWheelBoard({
         }, elapsedWalkMs);
         activeTimersRef.current.push(touchTimer);
 
-        elapsedWalkMs += 360;
+        elapsedWalkMs += 800; // Dừng lại 0.8s tạo dáng chỉ tay
         prevCol = pos.col;
       });
 
-      // Continue walking in the SAME direction to park at the opposite side of the board
+      // Lùi thong thả về vị trí chờ bên Cánh trái (Stage Left Idle, bên ngoài Cột 0)
+      const returnTravelMs = 1400;
       const finishWalkTimer = setTimeout(() => {
+        setHostessFacing("LEFT");
         setHostessPose("WALKING");
-        setHostessXPercent(targetEndSide === "RIGHT" ? 96.5 : 3.5);
+        setHostessWalkDurationMs(returnTravelMs);
+        setHostessXPercent(0);
       }, elapsedWalkMs);
       activeTimersRef.current.push(finishWalkTimer);
 
       const parkTimer = setTimeout(() => {
-        setHostessSide(targetEndSide);
-        hostessSideRef.current = targetEndSide;
-        setHostessFacing(targetEndSide === "LEFT" ? "RIGHT" : "LEFT");
+        setHostessSide("LEFT");
+        hostessSideRef.current = "LEFT";
+        setHostessFacing("RIGHT");
         setHostessPose("IDLE");
-      }, elapsedWalkMs + 550);
+      }, elapsedWalkMs + returnTravelMs + 100);
       activeTimersRef.current.push(parkTimer);
     }
   }, [currentPuzzle?.revealedIndices, phase, roundStage, cellPositionsMap, clearChoreographyTimers, triggerTilePop]);
@@ -1813,6 +1849,17 @@ export default function MagicWheelBoard({
     (edition === "ENGLISH" ? hasUnrevealedConsonants : remainingHiddenLetters > 0) &&
     !mustSolveWithTones;
 
+  const isRoundSolvedOrEnded =
+    phase === "ROUND_RECAP" ||
+    Boolean(
+      currentPuzzle?.secretPhrase &&
+      currentPuzzle?.revealedIndices &&
+      isPuzzleFullyRevealed(currentPuzzle.secretPhrase, currentPuzzle.revealedIndices) &&
+      phase !== "TOSS_UP_BUZZED" &&
+      phase !== "ACTION_INPUT"
+    );
+  const isBetweenRounds = isRoundSolvedOrEnded || effectiveBoardStage === "EMPTY_56";
+
   // ── Format 4-Row VTV3 Grid (14 columns per row) ───────────────────────────
   const gridMatrix = useMemo(() => {
     const matrix: Array<
@@ -1826,6 +1873,22 @@ export default function MagicWheelBoard({
         seqIndex?: number;
       } | null>
     > = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+
+    if (isTempActive) {
+      Object.entries(cellPositionsMap).forEach(([origIdxStr, pos]) => {
+        const origIdx = Number(origIdxStr);
+        matrix[pos.row][pos.col] = {
+          char: pos.char,
+          displayChar: pos.char,
+          isLetter: true,
+          isRevealed: true,
+          isHighlighted: false,
+          originalIndex: origIdx,
+          seqIndex: 0,
+        };
+      });
+      return matrix;
+    }
 
     if (!currentPuzzle || !currentPuzzle.secretPhrase) {
       return matrix;
@@ -1870,7 +1933,7 @@ export default function MagicWheelBoard({
     }
 
     return matrix;
-  }, [currentPuzzle, cellPositionsMap, animRevealedIndices, highlightedIndices, phase]);
+  }, [currentPuzzle, cellPositionsMap, animRevealedIndices, highlightedIndices, phase, isTempActive]);
 
   const totalActiveTiles = useMemo(() => {
     let count = 0;
@@ -2132,6 +2195,39 @@ export default function MagicWheelBoard({
             💃 Người mẫu: {showHostess ? "BẬT" : "TẮT"}
           </button>
 
+          {/* Host Temporary Display Text Controls */}
+          {isHost && (onSetTemporaryText || onClearTemporaryText) && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setTempTextModalOpen(true)}
+                disabled={!isBetweenRounds}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                  isBetweenRounds
+                    ? "bg-purple-600/30 text-purple-200 border-purple-400/50 hover:bg-purple-600/50 shadow-[0_0_12px_rgba(168,85,247,0.3)]"
+                    : "bg-slate-800 text-slate-500 border-slate-700 opacity-50 cursor-not-allowed"
+                }`}
+                title={
+                  isBetweenRounds
+                    ? "Cài đặt chữ hiển thị thủ công tạm thời trên bảng ô chữ"
+                    : "Chỉ được cài đặt chữ tạm thời giữa 2 thời điểm: sau khi công bố đáp án vòng hiện tại, trước khi mở ô chữ vòng kế tiếp"
+                }
+              >
+                ✍️ Chữ tạm thời
+              </button>
+              {temporaryDisplayActive && onClearTemporaryText && (
+                <button
+                  type="button"
+                  onClick={() => onClearTemporaryText()}
+                  className="px-2 py-1 rounded-xl text-xs font-bold bg-rose-600/30 hover:bg-rose-600/50 border border-rose-400/50 text-rose-200 transition cursor-pointer shadow"
+                  title="Xóa chữ hiển thị tạm thời trên bảng"
+                >
+                  🗑️ Xóa chữ
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-cyan-500/15 border border-white/15 shadow">
             <span
               className="w-3.5 h-3.5 rounded-full shadow-md animate-pulse shrink-0"
@@ -2298,7 +2394,7 @@ export default function MagicWheelBoard({
       {subMode === "WORD_PUZZLE" && (
         <div className="w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] p-2.5 sm:p-4 rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-hidden">
           {/* Header Action: Category Banner OR Waiting Badge (Hidden on Display to avoid duplicate with lower-third) */}
-          {!isDisplay && (
+          {!isDisplay && !isTempActive && (
             <div className="mb-2 px-3.5 py-1 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow transition-all duration-500 animate-scale-up">
               {effectiveBoardStage === "EMPTY_56" ? (
                 isHost ? (
@@ -2344,20 +2440,8 @@ export default function MagicWheelBoard({
               <div className="w-48 h-36 bg-gradient-to-b from-amber-400/40 via-yellow-400/15 to-transparent blur-2xl transform rotate-15" />
             </div>
 
-            {/* Stage Split: [Cánh Gà Catwalk Người Mẫu] + [Bảng Ô Chữ 3D Trung Tâm] */}
-            <div className="w-full flex items-end justify-center gap-2 sm:gap-3 md:gap-5 relative z-10">
-              {/* STAGE LEFT WING: Bục Catwalk Người Mẫu Độc Lập (Hoàn toàn không che ô chữ) */}
-              {showHostess && (
-                <div className="hidden md:flex flex-col items-center justify-end shrink-0 self-stretch pb-2">
-                  <HostessCatwalkWing
-                    pose={hostessPose}
-                    activeRow={hostessActiveRow}
-                  />
-                </div>
-              )}
-
-              {/* STAGE CENTER: Khung Màn Hình LED Ô Chữ 3D (14 Cột x 4 Hàng Hoàn Toàn Thoáng) */}
-              <div className="flex-1 min-w-0 max-w-5xl flex flex-col items-center relative">
+            {/* SÂN KHẤU LIỀN MẠCH: Bảng Video Wall 3D + Sàn Runway Người Mẫu Đồng Nhất */}
+            <div className="w-full max-w-5xl flex flex-col items-center relative z-10">
                 {/* 3D Luxury Metallic Beveled Gold Video Wall Casing */}
                 <div className="w-full p-2.5 sm:p-3.5 md:p-4 rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40">
                   <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5 md:gap-2">
@@ -2368,10 +2452,11 @@ export default function MagicWheelBoard({
                       >
                         {row.map((cell, cIdx) => {
                           const isCutOpen =
+                            isTempActive ||
                             effectiveBoardStage === "READY_CLUE" ||
                             (effectiveBoardStage === "BLANK_PHRASE" && (cell?.seqIndex ?? 0) < cutRevealedCount);
 
-                          if (!cell || effectiveBoardStage === "EMPTY_56" || !isCutOpen) {
+                          if (!cell || (!isTempActive && effectiveBoardStage === "EMPTY_56") || !isCutOpen) {
                             return (
                               <div
                                 key={cIdx}
@@ -2446,7 +2531,7 @@ export default function MagicWheelBoard({
                   </div>
                 </div>
 
-                {/* Sàn Sân Khấu Gỗ Bóng Mahogany & Dải Đèn Chân Vàng Sang Trọng */}
+                {/* Sàn Sân Khấu Gỗ Bóng Mahogany & Dải Đèn Chân Vàng Sang Trọng (Liền Mạch) */}
                 <div className="relative w-full h-8 sm:h-11 md:h-14 -mt-2 sm:-mt-2.5 z-10 flex flex-col justify-end">
                   {/* Sàn gỗ bóng phản chiếu ánh đèn vàng */}
                   <div
@@ -2471,36 +2556,59 @@ export default function MagicWheelBoard({
                     <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
                     <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
                     <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
                   </div>
+
+                  {/* Người Mẫu Di Chuyển Trực Tiếp Trên Sàn Runway Liền Mạch */}
+                  {showHostess && (
+                    <div
+                      className="absolute bottom-1 sm:bottom-1.5 z-30 select-none pointer-events-none transition-all hidden md:block"
+                      style={{
+                        left: `${hostessXPercent}%`,
+                        transform: "translateX(-50%)",
+                        transition: hostessPose === "WALKING"
+                          ? `left ${hostessWalkDurationMs}ms cubic-bezier(0.4, 0, 0.2, 1)`
+                          : "left 400ms ease-out",
+                      }}
+                    >
+                      <HostessTVStage
+                        pose={hostessPose}
+                        facing={hostessFacing}
+                        activeRow={hostessActiveRow}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
 
             {/* ── VTV3 Broadcast Lower-Third Chyron (Dải băng truyền hình VTV3 2 tầng chuẩn) ── */}
-            <div className="w-full mt-3 z-20 flex flex-col items-start drop-shadow-2xl">
-              {/* Tier 1: Category Badge / Chủ Đề (Gọn gàng, góc trên bên trái) */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-t-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-md border-t border-x border-amber-300">
-                <span className="text-amber-900">⭐</span>
-                <span>
-                  {edition === "ENGLISH"
-                    ? `CATEGORY: ${formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
-                    : `CHỦ ĐỀ: ${effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", "VIETNAMESE")}`}
-                </span>
-              </div>
-              {/* Tier 2: Clue Chyron Body Full-Width (Không bị co hẹp ngang) */}
-              <div className="w-full px-4 py-2.5 sm:py-3 rounded-b-2xl rounded-tr-2xl bg-black/90 border border-amber-400/40 backdrop-blur-md flex items-center justify-between gap-4 text-slate-100 font-bold text-xs sm:text-sm md:text-base shadow-2xl">
-                <p className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] leading-relaxed flex-1">
-                  {effectiveBoardStage === "READY_CLUE"
-                    ? currentPuzzle?.clue || "Lắng nghe gợi ý từ MC và đoán các chữ cái!"
-                    : "Bảng ô chữ đang chuẩn bị..."}
-                </p>
-                {currentPuzzle?.secretPhrase && effectiveBoardStage !== "EMPTY_56" && (
-                  <span className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-400/15 text-amber-300 font-mono font-black text-xs sm:text-sm border border-amber-400/30 whitespace-nowrap shadow-inner">
-                    {currentPuzzle.secretPhrase.replace(/\s+/g, "").length} {edition === "ENGLISH" ? "LETTERS" : "KÝ TỰ"}
+            {!isTempActive && (
+              <div className="w-full mt-3 z-20 flex flex-col items-start drop-shadow-2xl">
+                {/* Tier 1: Category Badge / Chủ Đề (Gọn gàng, góc trên bên trái) */}
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-t-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-md border-t border-x border-amber-300">
+                  <span className="text-amber-900">⭐</span>
+                  <span>
+                    {edition === "ENGLISH"
+                      ? `CATEGORY: ${formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
+                      : `CHỦ ĐỀ: ${effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", "VIETNAMESE")}`}
                   </span>
-                )}
+                </div>
+                {/* Tier 2: Clue Chyron Body Full-Width (Không bị co hẹp ngang) */}
+                <div className="w-full px-4 py-2.5 sm:py-3 rounded-b-2xl rounded-tr-2xl bg-black/90 border border-amber-400/40 backdrop-blur-md flex items-center justify-between gap-4 text-slate-100 font-bold text-xs sm:text-sm md:text-base shadow-2xl">
+                  <p className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] leading-relaxed flex-1">
+                    {effectiveBoardStage === "READY_CLUE"
+                      ? currentPuzzle?.clue || "Lắng nghe gợi ý từ MC và đoán các chữ cái!"
+                      : "Bảng ô chữ đang chuẩn bị..."}
+                  </p>
+                  {currentPuzzle?.secretPhrase && effectiveBoardStage !== "EMPTY_56" && (
+                    <span className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-400/15 text-amber-300 font-mono font-black text-xs sm:text-sm border border-amber-400/30 whitespace-nowrap shadow-inner">
+                      {currentPuzzle.secretPhrase.replace(/\s+/g, "").length} {edition === "ENGLISH" ? "LETTERS" : "KÝ TỰ"}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Round Victory & Full Reveal Celebration Banner */}
@@ -3083,6 +3191,7 @@ export default function MagicWheelBoard({
                           revealedIndices={animRevealedIndices}
                           onSubmit={(ans) => onSolvePuzzle?.(ans)}
                           submitLabel="CHỐT ĐÁP ÁN ĐOÁN NHANH ➔"
+                          edition={edition}
                         />
                       )}
                     </div>
@@ -3346,6 +3455,7 @@ export default function MagicWheelBoard({
                         submitLabel="GỬI PHƯƠNG ÁN GIẢI Ô CHỮ ➔"
                         continuousMode={true}
                         attemptLog={specialAttemptLog}
+                        edition={edition}
                       />
                     </div>
                   )}
@@ -4086,6 +4196,7 @@ export default function MagicWheelBoard({
                 onSolvePuzzle?.(finalAnswer);
                 setSolveModalOpen(false);
               }}
+              edition={edition}
             />
           </div>
         </div>
@@ -4153,6 +4264,122 @@ export default function MagicWheelBoard({
               <strong className="text-emerald-400">
                 {(roundScores?.[currentTurnTeamId] || 0).toLocaleString()}đ
               </strong>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: CÀI ĐẶT CHỮ HIỂN THỊ TẠM THỜI (ADMIN / HOST) ─────────────── */}
+      {tempTextModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg p-5 rounded-2xl bg-[#121829] border-2 border-purple-400/60 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">✍️</span>
+                <div>
+                  <h4 className="font-black text-base text-purple-300">
+                    CÀI ĐẶT CHỮ HIỂN THỊ TẠM THỜI
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    Hiển thị thông điệp tùy chọn trực tiếp lên 56 ô chữ (14 cột × 4 hàng)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTempTextModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Nội dung hiển thị (tối đa 56 ký tự):
+                </label>
+                <textarea
+                  value={tempTextInput}
+                  onChange={(e) => setTempTextInput(e.target.value.toUpperCase().slice(0, 56))}
+                  rows={2}
+                  placeholder="Nhập nội dung cần hiển thị trên bảng ô chữ..."
+                  className="w-full p-3 rounded-xl bg-slate-900 border border-purple-500/40 text-purple-200 font-black tracking-wider text-sm focus:outline-none focus:border-purple-400 resize-none uppercase"
+                />
+                <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1">
+                  <span>
+                    Độ dài: <strong className="text-purple-300">{tempTextInput.length}/56</strong> ký tự
+                  </span>
+                  <span>
+                    Tự động căn đều trên khung 14 cột × 4 hàng
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1.5">
+                  Mẫu thông điệp có sẵn:
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    "CHÚC MỪNG CHIẾN THẮNG",
+                    "VÒNG TIẾP THEO SẮP BẮT ĐẦU",
+                    "GIẢI LAO NGHỈ TAY",
+                    "XIN CẢM ƠN NHÀ TÀI TRỢ",
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setTempTextInput(preset)}
+                      className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-purple-900/40 border border-white/10 hover:border-purple-400/50 text-slate-200 hover:text-purple-200 text-xs font-semibold text-left transition truncate cursor-pointer"
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-white/10 pt-3">
+              <div>
+                {temporaryDisplayActive && onClearTemporaryText && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClearTemporaryText();
+                      setTempTextModalOpen(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 border border-rose-400/50 text-rose-200 text-xs font-bold transition cursor-pointer"
+                  >
+                    🗑️ Xóa chữ trên bảng
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTempTextModalOpen(false)}
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold transition cursor-pointer"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  disabled={!tempTextInput.trim()}
+                  onClick={() => {
+                    if (!tempTextInput.trim()) return;
+                    onSetTemporaryText?.(tempTextInput.trim());
+                    setTempTextModalOpen(false);
+                  }}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black shadow-lg transition cursor-pointer ${
+                    tempTextInput.trim()
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:brightness-110 active:scale-95"
+                      : "bg-slate-700 text-slate-400 opacity-50 cursor-not-allowed"
+                  }`}
+                >
+                  ✨ Hiển thị lên bảng
+                </button>
+              </div>
             </div>
           </div>
         </div>

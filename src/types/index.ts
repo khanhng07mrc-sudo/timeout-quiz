@@ -1001,6 +1001,7 @@ export interface GridCaroState {
   streakTargetK: number;
   caroAchievedTeams: string[];
   caroBonusPoints: number;
+  lastActionMessage?: string;
 }
 
 // ─── Dice Race Mode ──────────────────────────────────────────────────────────

@@ -14265,8 +14265,17 @@ function registerSocketHandlers(io2) {
         usedSet = /* @__PURE__ */ new Set();
         roomUsedQuestions.set(room.id, usedSet);
       }
-      const rawQuestions = room.quizBank?.questions ?? [];
-      let targetQ = rawQuestions.find((q) => !usedSet.has(q.id) && normalizeToThreeLevels(q.points) === cell.points);
+      const rawQuestions = roomQuestionsCache.get(room.id) || room.quizBank?.questions || [];
+      const getEffPoints = (q, idx) => {
+        if (q.points && [10, 20, 30].includes(q.points)) return q.points;
+        const diff = String(q.difficulty || "").toUpperCase();
+        const bloom = String(q.bloomLevel || "").toUpperCase();
+        if (diff === "EASY" || bloom === "REMEMBER" || bloom === "UNDERSTAND") return 10;
+        if (diff === "MEDIUM" || bloom === "APPLY" || bloom === "ANALYZE") return 20;
+        if (diff === "HARD" || bloom === "EVALUATE" || bloom === "CREATE") return 30;
+        return (idx % 3 + 1) * 10;
+      };
+      let targetQ = rawQuestions.find((q, idx) => !usedSet.has(q.id) && getEffPoints(q, idx) === cell.points);
       if (!targetQ) {
         targetQ = rawQuestions.find((q) => !usedSet.has(q.id));
       }
@@ -14519,7 +14528,7 @@ function registerSocketHandlers(io2) {
       const gridState = roomGridCaros.get(room.id);
       if (!gridState || !gridState.selectedCellId) return;
       const cell = gridState.cells.find((c) => c.id === gridState.selectedCellId);
-      const rawQuestions = room.quizBank?.questions ?? [];
+      const rawQuestions = roomQuestionsCache.get(room.id) || room.quizBank?.questions || [];
       const q = (cell?.questionId ? rawQuestions.find((item) => item.id === cell.questionId) : null) || rawQuestions[room.currentQuestion];
       if (!q) return;
       const qKey = `${room.id}:${q.id}`;
@@ -17836,6 +17845,12 @@ function registerSocketHandlers(io2) {
           }
           wheelState.lastActionMessage = `\u0110\xE3 \u0111\u1ED5i sang b\u1ED9 \u0111\u1EC1: [${bank.title}] (${bank.questions.length} c\xE2u)`;
           io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
+        }
+      } else if (room.mode === "GRID_CARO") {
+        const gridState = roomGridCaros.get(room.id);
+        if (gridState) {
+          gridState.lastActionMessage = `\u0110\xE3 \u0111\u1ED5i sang b\u1ED9 \u0111\u1EC1: [${bank.title}] (${bank.questions.length} c\xE2u - t\u1EF1 \u0111\u1ED9ng c\xE2n b\u1EB1ng 10\u0111/20\u0111/30\u0111)`;
+          io2.to(`room:${room.code}`).emit("game:grid:update", gridState);
         }
       }
       const fullRoomState = await buildRoomState(room.id);

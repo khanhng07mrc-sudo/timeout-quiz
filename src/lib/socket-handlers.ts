@@ -5012,9 +5012,19 @@ export function registerSocketHandlers(io: IO) {
         roomUsedQuestions.set(room.id, usedSet);
       }
 
-      const rawQuestions = room.quizBank?.questions ?? [];
-      // Ưu tiên câu hỏi chưa dùng có điểm chuẩn hoá khớp với điểm của ô
-      let targetQ = rawQuestions.find((q: any) => !usedSet!.has(q.id) && normalizeToThreeLevels(q.points) === cell.points);
+      const rawQuestions = ((roomQuestionsCache.get(room.id) || room.quizBank?.questions || []) as any[]);
+      const getEffPoints = (q: any, idx: number): number => {
+        if (q.points && [10, 20, 30].includes(q.points)) return q.points;
+        const diff = String(q.difficulty || "").toUpperCase();
+        const bloom = String(q.bloomLevel || "").toUpperCase();
+        if (diff === "EASY" || bloom === "REMEMBER" || bloom === "UNDERSTAND") return 10;
+        if (diff === "MEDIUM" || bloom === "APPLY" || bloom === "ANALYZE") return 20;
+        if (diff === "HARD" || bloom === "EVALUATE" || bloom === "CREATE") return 30;
+        return ((idx % 3) + 1) * 10;
+      };
+
+      // Ưu tiên câu hỏi chưa dùng có điểm chuẩn hoá hoặc độ khó Bloom khớp với điểm của ô
+      let targetQ = rawQuestions.find((q: any, idx: number) => !usedSet!.has(q.id) && getEffPoints(q, idx) === cell.points);
       if (!targetQ) {
         targetQ = rawQuestions.find((q: any) => !usedSet!.has(q.id));
       }
@@ -5340,7 +5350,7 @@ export function registerSocketHandlers(io: IO) {
       if (!gridState || !gridState.selectedCellId) return;
 
       const cell = gridState.cells.find((c) => c.id === gridState.selectedCellId);
-      const rawQuestions = room.quizBank?.questions ?? [];
+      const rawQuestions = ((roomQuestionsCache.get(room.id) || room.quizBank?.questions || []) as any[]);
       const q = (cell?.questionId ? rawQuestions.find((item: any) => item.id === cell.questionId) : null) || rawQuestions[room.currentQuestion];
       if (!q) return;
 
@@ -9251,6 +9261,12 @@ export function registerSocketHandlers(io: IO) {
           }
           wheelState.lastActionMessage = `Đã đổi sang bộ đề: [${bank.title}] (${bank.questions.length} câu)`;
           io.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
+        }
+      } else if (room.mode === "GRID_CARO") {
+        const gridState = roomGridCaros.get(room.id);
+        if (gridState) {
+          gridState.lastActionMessage = `Đã đổi sang bộ đề: [${bank.title}] (${bank.questions.length} câu - tự động cân bằng 10đ/20đ/30đ)`;
+          io.to(`room:${room.code}`).emit("game:grid:update", gridState);
         }
       }
 

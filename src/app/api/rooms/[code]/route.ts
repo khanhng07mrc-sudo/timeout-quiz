@@ -41,6 +41,8 @@ export async function PATCH(
   }
 
   const isSandboxRoom =
+    req.headers.get("x-sandbox") === "1" ||
+    req.nextUrl.searchParams.get("sandbox") === "1" ||
     room.name?.startsWith("[Sandbox]") ||
     Boolean((room.config as any)?.isSandbox) ||
     room.code?.startsWith("sb_") ||
@@ -79,9 +81,12 @@ export async function DELETE(
   }
 
   const isSandboxRoom =
+    req.headers.get("x-sandbox") === "1" ||
+    req.nextUrl.searchParams.get("sandbox") === "1" ||
     room.name?.startsWith("[Sandbox]") ||
     Boolean((room.config as any)?.isSandbox) ||
-    room.code?.startsWith("sb_");
+    room.code?.startsWith("sb_") ||
+    code.startsWith("sb_");
 
   if (!isSandboxRoom && !verifyHostOrAdmin(req, room.hostKey)) {
     return NextResponse.json(

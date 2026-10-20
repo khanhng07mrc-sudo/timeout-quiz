@@ -1977,6 +1977,7 @@ export interface ClientToServerEvents {
   "admin:magic_wheel:use_free_spin": (payload: { use: boolean }) => void;
   "admin:magic_wheel:judge_solve": (payload: { isCorrect: boolean }) => void;
   "admin:magic_wheel:set_mode": (payload: { mode: MagicWheelOperationMode }) => void;
+  "admin:magic_wheel:emergency_change_bank": (payload: { quizBankId: string }) => void;
   "admin:magic_wheel:override_turn": (payload: { teamId: string }) => void;
   "admin:magic_wheel:pass_turn": () => void;
   "admin:magic_wheel:quick_reveal_letter": () => void;

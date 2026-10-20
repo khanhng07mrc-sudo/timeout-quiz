@@ -785,6 +785,9 @@ export default function AdminRoomPage() {
         body: JSON.stringify({ quizBankId: bankId || null }),
       });
       if (res.ok) {
+        if (roomState?.mode === "MAGIC_WHEEL" && bankId) {
+          emit("admin:magic_wheel:emergency_change_bank" as any, { quizBankId: bankId });
+        }
         await fetchRoomAndBanks();
       } else {
         alert("Lỗi khi cập nhật bộ đề!");
@@ -1442,14 +1445,15 @@ export default function AdminRoomPage() {
                         disabled={isMagicWheelLocked}
                         onClick={() => {
                           if (isMagicWheelLocked) return;
-                          const curEd = roomState.magicWheelState?.edition || "VIETNAMESE";
+                          const curEd = roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition || "VIETNAMESE";
                           const nextEd = curEd === "ENGLISH" ? "VIETNAMESE" : "ENGLISH";
                           emit("admin:magic_wheel:set_edition" as any, { edition: nextEd });
+                          emit("magic_wheel:set_edition" as any, { edition: nextEd });
                         }}
                         className={`px-2.5 py-1.5 rounded-lg border text-xs font-black transition shadow ${
                           isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
                         } ${
-                          roomState.magicWheelState?.edition === "ENGLISH"
+                          (roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition) === "ENGLISH"
                             ? "bg-gradient-to-r from-blue-600 to-indigo-600 border-cyan-400 text-white"
                             : "bg-gradient-to-r from-red-600 to-amber-600 border-amber-400 text-white"
                         }`}
@@ -1459,7 +1463,7 @@ export default function AdminRoomPage() {
                             : "Nhấn để đổi giữa Luật Việt (VTV3) và Luật Anh (Wheel of Fortune)"
                         }
                       >
-                        <span>{roomState.magicWheelState?.edition === "ENGLISH" ? "🇺🇸 Bản Anh (WOF)" : "🇻🇳 Bản Việt (VTV3)"}</span>
+                        <span>{(roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition) === "ENGLISH" ? "🇺🇸 Bản Anh (WOF)" : "🇻🇳 Bản Việt (VTV3)"}</span>
                       </button>
                     );
                   })()}

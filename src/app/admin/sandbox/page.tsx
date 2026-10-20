@@ -2656,11 +2656,11 @@ export default function AdminSandboxPage() {
     try {
       const token = typeof window !== "undefined" ? (localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token")) : null;
       const storedHostKey = typeof window !== "undefined" ? (localStorage.getItem(`host_key_${code}`) || new URLSearchParams(window.location.search).get("key") || "") : "";
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const headers: Record<string, string> = { "Content-Type": "application/json", "x-sandbox": "1" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
       if (storedHostKey) headers["x-host-key"] = storedHostKey;
 
-      const res = await fetch(`/api/rooms/${code}`, {
+      const res = await fetch(`/api/rooms/${code}?sandbox=1`, {
         method: "PATCH",
         headers,
         body: JSON.stringify({ quizBankId: bankId || null }),
@@ -2678,18 +2678,21 @@ export default function AdminSandboxPage() {
               const bData = await bRes.json();
               const bankQuestions = bData?.bank?.questions || [];
               const bankWordPuzzles = bankQuestions.filter((q: any) => q.type === "WORD_PUZZLE");
-              if (bankWordPuzzles.length > 0) {
-                const customPuzzles: MagicWheelPuzzle[] = bankWordPuzzles.map((q: any, i: number) => {
+              const candidateQuestions = bankWordPuzzles.length > 0 ? bankWordPuzzles : bankQuestions;
+              if (candidateQuestions.length > 0) {
+                const customPuzzles: MagicWheelPuzzle[] = candidateQuestions.map((q: any, i: number) => {
                   const roundOpt = q.options?.find((o: any) => o.id === "round");
+                  const rawAns = q.answer || q.options?.find((o: any) => o.isCorrect)?.text || "";
                   return {
                     id: `puzzle-assigned-${i + 1}`,
                     roundNumber: roundOpt ? Number(roundOpt.text) || (i + 1) : (i + 1),
-                    category: q.hint || "TỔNG HỢP",
-                    secretPhrase: (q.answer || "").toUpperCase(),
+                    category: q.hint || q.category || "TỔNG HỢP",
+                    secretPhrase: (rawAns || "").toUpperCase().trim(),
                     clue: q.content || "",
                     revealedIndices: [],
                   };
-                });
+                }).filter((p: any) => p.secretPhrase.length > 0);
+
                 const curWheel = roomState.magicWheelState;
                 const newPuzzles = buildMagicWheelMatchPuzzles(
                   roomState.teams?.length || 4,
@@ -2705,12 +2708,17 @@ export default function AdminSandboxPage() {
                 };
                 setRoomState((prev) => {
                   if (!prev) return prev;
-                  const nextR = { ...prev, magicWheelState: updatedWheel };
+                  const nextR = {
+                    ...prev,
+                    config: { ...(prev.config as any), magicWheelPuzzles: customPuzzles },
+                    magicWheelState: updatedWheel,
+                  };
                   roomStateRef.current = nextR;
                   syncToIframes({ roomState: nextR, magicWheelState: updatedWheel });
                   return nextR;
                 });
                 if (adminSocketRef.current?.connected) {
+                  adminSocketRef.current.emit("admin:magic_wheel:emergency_change_bank" as any, { quizBankId: bankId });
                   adminSocketRef.current.emit("game:magic_wheel:update" as any, updatedWheel);
                 }
               }
@@ -4927,31 +4935,112 @@ export default function AdminSandboxPage() {
       } else if (e.data?.type === "MAGIC_WHEEL_SET_EDITION") {
         const edition = (e.data.edition === "ENGLISH" ? "ENGLISH" : "VIETNAMESE") as "VIETNAMESE" | "ENGLISH";
         setRoomState((prev) => {
-          if (!prev || !prev.magicWheelState) return prev;
-          const cur = { ...prev.magicWheelState, edition };
-          if (cur.roundStage === "TOSS_UP_1" && cur.phase === "TOSS_UP_READY") {
-            const activePuzzles = buildMagicWheelMatchPuzzles(prev.teams.length, undefined, edition, cur.englishPreset || "RANDOM_MIX");
-            cur.puzzles = activePuzzles;
-            cur.currentPuzzle = { ...activePuzzles[0], revealedIndices: [] };
-          }
-          const nextRoom = { ...prev, magicWheelState: cur };
+          if (!prev) return prev;
+          const teamsCount = Math.max(3, prev.teams?.length || 3);
+          const curWheel: any = prev.magicWheelState || {
+            subMode: (prev.config as any)?.magicWheelSubMode || "WORD_PUZZLE",
+            edition,
+            englishPreset: (prev.config as any)?.magicWheelEnglishPreset || "RANDOM_MIX",
+            blackoutGuessedLetters: (prev.config as any)?.magicWheelBlackoutGuessedLetters !== false,
+            operationMode: (prev.config as any)?.magicWheelOperationMode === "HOST_ASSISTED" ? "HOST_ASSISTED" : "SELF_SERVICE",
+            boardStage: "EMPTY_56",
+            sectors: generateMagicWheelSectors(1, "TOSS_UP_1", edition),
+            currentTurnTeamId: prev.teams[0]?.id || "",
+            currentTurnTeamName: prev.teams[0]?.name || "",
+            currentRound: 1,
+            maxRounds: 8,
+            roundStage: "TOSS_UP_1",
+            mainRoundNumber: 0,
+            totalMainRounds: teamsCount,
+            round1StarterTeamId: prev.teams[0]?.id || "",
+            puzzles: [],
+            currentPuzzle: undefined,
+            isSpinning: false,
+            spinPower: 50,
+            targetRotationDegrees: 0,
+            guessedLetters: [],
+            wrongGuessesCount: {},
+            freeSpinCount: {},
+            roundScores: {},
+            disqualifiedTeamIdsInRound: [],
+            consecutiveWrongGuesses: {},
+            pendingSpecialAction: "NONE",
+            phase: "TOSS_UP_READY",
+            lastActionMessage: edition === "ENGLISH" ? "Welcome to Wheel of Fortune!" : "Chào mừng đến với Chiếc Nón Kỳ Diệu!",
+          };
+          const hasCustomPuzzles = Boolean((prev.config as any)?.magicWheelPuzzles?.length);
+          const activePuzzles = hasCustomPuzzles
+            ? (curWheel.puzzles?.length ? curWheel.puzzles : buildMagicWheelMatchPuzzles(teamsCount, (prev.config as any)?.magicWheelPuzzles, edition, curWheel.englishPreset || "RANDOM_MIX"))
+            : buildMagicWheelMatchPuzzles(teamsCount, undefined, edition, curWheel.englishPreset || "RANDOM_MIX");
+
+          const updatedWheel: any = {
+            ...curWheel,
+            edition,
+            sectors: generateMagicWheelSectors(1, curWheel.roundStage || "TOSS_UP_1", edition),
+            puzzles: activePuzzles,
+            currentPuzzle: curWheel.currentPuzzle || activePuzzles[0],
+            maxRounds: activePuzzles.length,
+          };
+          const updatedConfig = { ...(prev.config as any), magicWheelEdition: edition };
+          const nextRoom = { ...prev, config: updatedConfig, magicWheelState: updatedWheel };
           roomStateRef.current = nextRoom;
-          syncToIframes({ roomState: nextRoom });
+          syncToIframes({ roomState: nextRoom, magicWheelState: updatedWheel });
           return nextRoom;
         });
       } else if (e.data?.type === "MAGIC_WHEEL_SET_ENGLISH_PRESET") {
         const preset = e.data.preset as any;
         setRoomState((prev) => {
-          if (!prev || !prev.magicWheelState) return prev;
-          const cur = { ...prev.magicWheelState, englishPreset: preset, edition: "ENGLISH" as const };
-          if (cur.roundStage === "TOSS_UP_1" && cur.phase === "TOSS_UP_READY") {
-            const activePuzzles = buildMagicWheelMatchPuzzles(prev.teams.length, undefined, "ENGLISH", preset);
-            cur.puzzles = activePuzzles;
-            cur.currentPuzzle = { ...activePuzzles[0], revealedIndices: [] };
-          }
-          const nextRoom = { ...prev, magicWheelState: cur };
+          if (!prev) return prev;
+          const teamsCount = Math.max(3, prev.teams?.length || 3);
+          const curWheel: any = prev.magicWheelState || {
+            subMode: (prev.config as any)?.magicWheelSubMode || "WORD_PUZZLE",
+            edition: "ENGLISH",
+            englishPreset: preset,
+            blackoutGuessedLetters: (prev.config as any)?.magicWheelBlackoutGuessedLetters !== false,
+            operationMode: (prev.config as any)?.magicWheelOperationMode === "HOST_ASSISTED" ? "HOST_ASSISTED" : "SELF_SERVICE",
+            boardStage: "EMPTY_56",
+            sectors: generateMagicWheelSectors(1, "TOSS_UP_1", "ENGLISH"),
+            currentTurnTeamId: prev.teams[0]?.id || "",
+            currentTurnTeamName: prev.teams[0]?.name || "",
+            currentRound: 1,
+            maxRounds: 8,
+            roundStage: "TOSS_UP_1",
+            mainRoundNumber: 0,
+            totalMainRounds: teamsCount,
+            round1StarterTeamId: prev.teams[0]?.id || "",
+            puzzles: [],
+            currentPuzzle: undefined,
+            isSpinning: false,
+            spinPower: 50,
+            targetRotationDegrees: 0,
+            guessedLetters: [],
+            wrongGuessesCount: {},
+            freeSpinCount: {},
+            roundScores: {},
+            disqualifiedTeamIdsInRound: [],
+            consecutiveWrongGuesses: {},
+            pendingSpecialAction: "NONE",
+            phase: "TOSS_UP_READY",
+            lastActionMessage: "Welcome to Wheel of Fortune!",
+          };
+          const hasCustomPuzzles = Boolean((prev.config as any)?.magicWheelPuzzles?.length);
+          const activePuzzles = hasCustomPuzzles
+            ? (curWheel.puzzles?.length ? curWheel.puzzles : buildMagicWheelMatchPuzzles(teamsCount, (prev.config as any)?.magicWheelPuzzles, "ENGLISH", preset))
+            : buildMagicWheelMatchPuzzles(teamsCount, undefined, "ENGLISH", preset);
+
+          const updatedWheel: any = {
+            ...curWheel,
+            edition: "ENGLISH",
+            englishPreset: preset,
+            sectors: generateMagicWheelSectors(1, curWheel.roundStage || "TOSS_UP_1", "ENGLISH"),
+            puzzles: activePuzzles,
+            currentPuzzle: curWheel.currentPuzzle || activePuzzles[0],
+            maxRounds: activePuzzles.length,
+          };
+          const updatedConfig = { ...(prev.config as any), magicWheelEdition: "ENGLISH", magicWheelEnglishPreset: preset };
+          const nextRoom = { ...prev, config: updatedConfig, magicWheelState: updatedWheel };
           roomStateRef.current = nextRoom;
-          syncToIframes({ roomState: nextRoom });
+          syncToIframes({ roomState: nextRoom, magicWheelState: updatedWheel });
           return nextRoom;
         });
       } else if (e.data?.type === "MAGIC_WHEEL_SET_BLACKOUT_GUESSED") {
@@ -10127,7 +10216,7 @@ export default function AdminSandboxPage() {
                         disabled={isMagicWheelLocked}
                         onClick={() => {
                           if (isMagicWheelLocked) return;
-                          const curEd = roomState.magicWheelState?.edition || "VIETNAMESE";
+                          const curEd = roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition || "VIETNAMESE";
                           const nextEd = curEd === "ENGLISH" ? "VIETNAMESE" : "ENGLISH";
                           if (adminSocketRef.current?.connected) {
                             adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: nextEd });
@@ -10139,7 +10228,7 @@ export default function AdminSandboxPage() {
                         className={`px-3 py-1 rounded-lg border text-xs font-black transition flex items-center gap-1.5 whitespace-nowrap shadow-md ${
                           isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
                         } ${
-                          roomState.magicWheelState?.edition === "ENGLISH"
+                          (roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition) === "ENGLISH"
                             ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 border-cyan-400 text-white shadow-cyan-500/30"
                             : "bg-gradient-to-r from-red-600 via-amber-600 to-yellow-600 border-amber-400 text-white shadow-amber-500/30"
                         }`}
@@ -10149,8 +10238,8 @@ export default function AdminSandboxPage() {
                             : "Nhấn để đổi ngay giữa Luật Việt (VTV3) và Luật Anh (US Wheel of Fortune)"
                         }
                       >
-                        <span className="text-sm">{roomState.magicWheelState?.edition === "ENGLISH" ? "🇺🇸" : "🇻🇳"}</span>
-                        <span>{roomState.magicWheelState?.edition === "ENGLISH" ? "Bản Anh (WOF)" : "Bản Việt (VTV3)"}</span>
+                        <span className="text-sm">{(roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition) === "ENGLISH" ? "🇺🇸" : "🇻🇳"}</span>
+                        <span>{(roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition) === "ENGLISH" ? "Bản Anh (WOF)" : "Bản Việt (VTV3)"}</span>
                         <span className="text-[10px] opacity-80 bg-white/20 px-1 rounded">{isMagicWheelLocked ? "🔒 Đã khóa" : "⇄ Đổi luật"}</span>
                       </button>
                     );
@@ -10643,7 +10732,7 @@ export default function AdminSandboxPage() {
                                 className={`py-1.5 px-2 rounded-md font-black text-[11px] flex items-center justify-center gap-1 transition ${
                                   isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
                                 } ${
-                                  (roomState.magicWheelState?.edition || "VIETNAMESE") === "VIETNAMESE"
+                                  (roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition || "VIETNAMESE") === "VIETNAMESE"
                                     ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md border border-amber-400"
                                     : "text-slate-400 hover:text-white"
                                 }`}
@@ -10666,7 +10755,7 @@ export default function AdminSandboxPage() {
                                 className={`py-1.5 px-2 rounded-md font-black text-[11px] flex items-center justify-center gap-1 transition ${
                                   isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
                                 } ${
-                                  roomState.magicWheelState?.edition === "ENGLISH"
+                                  (roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition) === "ENGLISH"
                                     ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-cyan-400"
                                     : "text-slate-400 hover:text-white"
                                 }`}
@@ -12425,28 +12514,32 @@ export default function AdminSandboxPage() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         {(() => {
                           const isMagicWheelLocked = roomState.status !== "LOBBY" || Boolean(matchStarting);
+                          const curEd = roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition || "VIETNAMESE";
+                          const isEnglish = curEd === "ENGLISH";
                           return (
                             <button
                               type="button"
                               disabled={isMagicWheelLocked}
                               onClick={() => {
                                 if (isMagicWheelLocked) return;
-                                const curEd = roomState.magicWheelState?.edition || "VIETNAMESE";
-                                const nextEd = curEd === "ENGLISH" ? "VIETNAMESE" : "ENGLISH";
+                                const nextEd = isEnglish ? "VIETNAMESE" : "ENGLISH";
                                 if (adminSocketRef.current?.connected) {
                                   adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: nextEd });
-                                } else {
-                                  window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition: nextEd }, "*");
+                                  adminSocketRef.current.emit("magic_wheel:set_edition" as any, { edition: nextEd });
                                 }
+                                window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition: nextEd }, "*");
+                                addLog(`⚙️ Đã chuyển sang: ${nextEd === "ENGLISH" ? "Luật Anh (Wheel of Fortune)" : "Luật Việt (Chiếc Nón Kỳ Diệu)"}`);
                               }}
                               className={`px-2.5 py-1 rounded font-bold text-xs shadow transition ${
                                 isMagicWheelLocked
                                   ? "bg-indigo-900/40 text-slate-400 cursor-not-allowed opacity-50"
+                                  : isEnglish
+                                  ? "bg-cyan-600 hover:bg-cyan-500 text-white cursor-pointer"
                                   : "bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer"
                               }`}
                               title={isMagicWheelLocked ? "🔒 Đã khóa đổi luật sau khi trận đấu bắt đầu!" : "Đổi bản Việt / Anh"}
                             >
-                              {roomState.magicWheelState?.edition === "ENGLISH" ? "🇺🇸 Bản Anh (Wheel of Fortune)" : "🇻🇳 Bản Việt (VTV3)"}
+                              {isEnglish ? "🇺🇸 Bản Anh (WOF)" : "🇻🇳 Bản Việt (VTV3)"}
                             </button>
                           );
                         })()}
@@ -12457,9 +12550,8 @@ export default function AdminSandboxPage() {
                             const nextBlackout = !curBlackout;
                             if (adminSocketRef.current?.connected) {
                               adminSocketRef.current.emit("admin:magic_wheel:set_blackout_guessed" as any, { enabled: nextBlackout });
-                            } else {
-                              window.postMessage({ type: "MAGIC_WHEEL_SET_BLACKOUT_GUESSED", enabled: nextBlackout }, "*");
                             }
+                            window.postMessage({ type: "MAGIC_WHEEL_SET_BLACKOUT_GUESSED", enabled: nextBlackout }, "*");
                           }}
                           className={`px-2.5 py-1 rounded font-bold text-xs cursor-pointer shadow transition ${
                             roomState.magicWheelState?.blackoutGuessedLetters === false
@@ -12475,6 +12567,24 @@ export default function AdminSandboxPage() {
                           className="px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs cursor-pointer shadow transition"
                         >
                           ⏩ Sang Vòng Tiếp Theo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newBankId = window.prompt(
+                              "🚨 ĐỔI BỘ ĐỀ KHẨN CẤP CHO MC\nNhập Bank ID của bộ đề mới muốn chuyển sang:\n\n" +
+                              quizBanks.slice(0, 8).map((b) => `• ${b.title}: ${b.id}`).join("\n") +
+                              (quizBanks.length > 8 ? `\n... và ${quizBanks.length - 8} bộ đề khác` : "") +
+                              "\n\nNhập Bank ID:"
+                            );
+                            if (newBankId && newBankId.trim()) {
+                              handleAssignQuizBank(newBankId.trim());
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs cursor-pointer shadow transition flex items-center gap-1"
+                          title="Đổi bộ đề khẩn cấp giữa trận nếu câu đố gặp sự cố"
+                        >
+                          <span>🚨 Đổi Đề Khẩn Cấp</span>
                         </button>
                       </div>
                     </div>

@@ -1,10 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { MAGIC_WHEEL_PRESET_BANKS } from "@/lib/offline-storage";
+import { MAGIC_WHEEL_PRESET_BANKS, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
 
 /**
  * Đảm bảo bộ đề tồn tại hợp lệ trong cơ sở dữ liệu Prisma trước khi liên kết với Room.
  * Nếu bankId là một bộ đề mẫu (Preset), tự động seed/upsert bản ghi QuizBank và Question
- * để tránh hoàn toàn lỗi Foreign Key Constraint Violation (403/500).
+ * với System User đảm bảo để tránh hoàn toàn lỗi Foreign Key Constraint Violation (Room_quizBankId_fkey).
+ * 
+ * Nếu bankId không tồn tại trong DB và không phải Preset, hàm trả về null một cách an toàn
+ * để caller không bao giờ ghi ID rác vào trường quizBankId của Room.
  */
 export async function ensureQuizBankExists(bankId: string | null | undefined): Promise<string | null> {
   if (!bankId || typeof bankId !== "string") return null;
@@ -18,9 +21,11 @@ export async function ensureQuizBankExists(bankId: string | null | undefined): P
     });
     if (existing) return existing.id;
 
-    // Tra cứu trong danh mục bộ đề mẫu cài sẵn
-    const preset = MAGIC_WHEEL_PRESET_BANKS.find((p) => p.id === cleanId);
+    // Danh sách toàn bộ các bộ đề mẫu cài sẵn hệ thống (Magic Wheel + Đề Đa Chế Độ)
+    const allPresets = [DEFAULT_OFFLINE_BANK, ...MAGIC_WHEEL_PRESET_BANKS];
+    const preset = allPresets.find((p) => p.id === cleanId);
     if (preset) {
+      // Tìm hoặc tạo User System để làm chủ sở hữu bộ đề preset (tránh vi phạm FK QuizBank_ownerId_fkey)
       let owner = await prisma.user.findFirst({
         where: { role: "ADMIN" },
         select: { id: true },
@@ -28,9 +33,22 @@ export async function ensureQuizBankExists(bankId: string | null | undefined): P
       if (!owner) {
         owner = await prisma.user.findFirst({ select: { id: true } });
       }
+      if (!owner) {
+        owner = await prisma.user.upsert({
+          where: { email: "system@quizorra.com" },
+          update: {},
+          create: {
+            id: "system-preset-owner",
+            email: "system@quizorra.com",
+            name: "Hệ Thống (System Admin)",
+            role: "ADMIN",
+          },
+          select: { id: true },
+        });
+      }
 
-      // Làm sạch tiêu đề và mô tả: loại bỏ các từ cụ thể thương hiệu/đài truyền hình
-      const cleanTitle = preset.title
+      // Làm sạch tiêu đề và mô tả
+      const cleanTitle = (preset.title || cleanId)
         .replace(/vtv3 huyền thoại/gi, "Văn Hóa & Lịch Sử")
         .replace(/vtv3/gi, "")
         .replace(/\s{2,}/g, " ")
@@ -40,6 +58,7 @@ export async function ensureQuizBankExists(bankId: string | null | undefined): P
         .replace(/\s{2,}/g, " ")
         .trim();
 
+      // Upsert bản ghi QuizBank với ID cố định (Zero-bloat, không bao giờ trùng lặp)
       await prisma.quizBank.upsert({
         where: { id: preset.id },
         update: {
@@ -52,28 +71,45 @@ export async function ensureQuizBankExists(bankId: string | null | undefined): P
           title: cleanTitle,
           description: cleanDesc,
           isPublic: true,
-          ownerId: owner?.id || "demo-host-id",
-          questions: {
-            create: (preset.questions || []).map((q: any, idx: number) => ({
-              id: `${preset.id}_q${idx + 1}`,
-              type: q.type || "WORD_PUZZLE",
-              content: q.content || "",
-              answer: q.answer || "",
-              hint: q.hint || undefined,
-              points: q.points || 10,
-              timeLimit: q.timeLimit || 30,
-              order: idx + 1,
-              options: q.options || [],
-            })),
-          },
+          ownerId: owner.id,
         },
       });
-      return preset.id;
+
+      // Kiểm tra câu hỏi của bộ đề mẫu
+      const questionCount = await prisma.question.count({
+        where: { quizBankId: preset.id },
+      });
+
+      if (questionCount === 0 && preset.questions && preset.questions.length > 0) {
+        await prisma.question.createMany({
+          data: preset.questions.map((q: any, idx: number) => ({
+            id: `${preset.id}_q${idx + 1}`,
+            quizBankId: preset.id,
+            type: q.type || (preset.id.includes("_mw_") ? "WORD_PUZZLE" : "MC_SINGLE"),
+            content: q.content || "",
+            answer: q.answer || "",
+            hint: q.hint || null,
+            points: q.points || 10,
+            timeLimit: q.timeLimit || 30,
+            order: idx + 1,
+            options: q.options || [],
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      // Xác thực lại bản ghi đã tồn tại trong DB trước khi trả về
+      const verified = await prisma.quizBank.findUnique({
+        where: { id: preset.id },
+        select: { id: true },
+      });
+      return verified ? verified.id : null;
     }
 
-    return cleanId;
+    // Không phải preset và không tìm thấy trong DB -> trả về null an toàn
+    return null;
   } catch (err) {
-    console.warn(`[ensureQuizBankExists] Non-fatal seeding warning for bank ${cleanId}:`, err);
-    return cleanId;
+    console.error(`[ensureQuizBankExists] Error seeding preset bank ${cleanId}:`, err);
+    return null;
   }
 }

@@ -60,8 +60,28 @@ export async function PATCH(
   // Prevent overriding critical immutable fields
   const { id: _id, code: _c, hostKey: _hk, hostId: _hid, ...safeUpdates } = body;
 
-  if (safeUpdates.quizBankId) {
-    safeUpdates.quizBankId = await ensureQuizBankExists(safeUpdates.quizBankId);
+  if (safeUpdates.quizBankId !== undefined) {
+    if (safeUpdates.quizBankId) {
+      const verifiedBankId = await ensureQuizBankExists(safeUpdates.quizBankId);
+      if (verifiedBankId) {
+        safeUpdates.quizBankId = verifiedBankId;
+      } else {
+        // Bộ đề không tồn tại trong DB (ví dụ đề Local chỉ lưu ở Client)
+        // Đặt quizBankId = null để không vi phạm ràng buộc Foreign Key Room_quizBankId_fkey
+        safeUpdates.quizBankId = null;
+        if (body.localBank) {
+          const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+          safeUpdates.config = {
+            ...currentConfig,
+            customQuestions: body.localBank.questions,
+            customBankTitle: body.localBank.title,
+            ...(body.config || {}),
+          };
+        }
+      }
+    } else {
+      safeUpdates.quizBankId = null;
+    }
   }
 
   try {
@@ -72,6 +92,20 @@ export async function PATCH(
     return NextResponse.json({ room: updatedRoom });
   } catch (dbErr: any) {
     console.error("[PATCH /api/rooms/[code]] Error updating room:", dbErr);
+    // Phòng thủ kép (Defensive retry): Nếu vẫn gặp lỗi P2003 (Foreign key constraint violation)
+    // tự động fallback về quizBankId = null để phòng thi luôn hoạt động trơn tru
+    if (dbErr?.code === "P2003" && safeUpdates.quizBankId) {
+      try {
+        console.warn(`[PATCH /api/rooms/[code]] Retrying update with quizBankId: null after P2003`);
+        const fallbackRoom = await prisma.room.update({
+          where: { code },
+          data: { ...safeUpdates, quizBankId: null },
+        });
+        return NextResponse.json({ room: fallbackRoom });
+      } catch (retryErr) {
+        console.error("[PATCH /api/rooms/[code]] Fallback retry failed:", retryErr);
+      }
+    }
     return NextResponse.json(
       { error: "Lỗi khi cập nhật bộ đề hoặc phòng: " + (dbErr?.message || "Lỗi không xác định") },
       { status: 500 }

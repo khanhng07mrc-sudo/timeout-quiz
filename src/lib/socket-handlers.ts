@@ -9356,7 +9356,7 @@ export function registerSocketHandlers(io: IO) {
       }
     });
 
-    socket.on("admin:room:change_quiz_bank", async (payload: { quizBankId: string | null }) => {
+    socket.on("admin:room:change_quiz_bank", async (payload: { quizBankId: string | null; localBank?: any }) => {
       const room = await getAdminRoom(socket);
       if (!room) return;
 
@@ -9375,6 +9375,30 @@ export function registerSocketHandlers(io: IO) {
 
       const validBankId = await ensureQuizBankExists(payload.quizBankId);
       if (!validBankId) {
+        // Nếu là bộ đề Local tự tạo trên trình duyệt (Zero-bloat):
+        // Nhúng trực tiếp câu hỏi vào room.config và để quizBankId = null
+        if (payload.localBank?.questions?.length) {
+          const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+          const newConfig = {
+            ...currentConfig,
+            customQuestions: payload.localBank.questions,
+            customBankTitle: payload.localBank.title,
+          };
+          await prisma.room.update({
+            where: { id: room.id },
+            data: { quizBankId: null, config: newConfig },
+          });
+          roomQuestionsCache.set(room.id, payload.localBank.questions);
+          const cached = roomCache.get(room.id);
+          if (cached) {
+            cached.quizBankId = null;
+            cached.config = newConfig;
+          }
+          const fullRoomState = await buildRoomState(room.id);
+          if (fullRoomState) io.to(`room:${room.code}`).emit("room:state", fullRoomState);
+          return;
+        }
+
         socket.emit("error", "Không tìm thấy bộ đề yêu cầu!");
         return;
       }
@@ -13411,7 +13435,13 @@ async function getRoomQuestions(roomId: string) {
     where: { id: roomId },
     include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
   });
-  const questions = room?.quizBank?.questions ?? [];
+  let questions = room?.quizBank?.questions ?? [];
+  if (questions.length === 0 && room?.config) {
+    const cfg = room.config as any;
+    if (cfg?.customQuestions && Array.isArray(cfg.customQuestions)) {
+      questions = cfg.customQuestions;
+    }
+  }
   if (questions.length > 0) {
     roomQuestionsCache.set(roomId, questions);
   }

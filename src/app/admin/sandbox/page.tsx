@@ -2754,68 +2754,89 @@ export default function AdminSandboxPage() {
       const res = await fetch(`/api/rooms/${code}?sandbox=1`, {
         method: "PATCH",
         headers,
-        body: JSON.stringify({ quizBankId: bankId || null }),
+        body: JSON.stringify({ 
+          quizBankId: bankId || null,
+          localBank: selectedBank || undefined,
+        }),
       });
       if (res.ok) {
         setSelectedBankId(bankId);
-        const bTitle = quizBanks.find((b) => b.id === bankId)?.title || bankId;
+        const bTitle = quizBanks.find((b) => b.id === bankId)?.title || selectedBank?.title || bankId;
         addLog(`Admin: Đã đổi bộ đề gán cho phòng: [${bTitle}]`);
         if (adminSocketRef.current?.connected) {
-          adminSocketRef.current.emit("admin:room:change_quiz_bank" as any, { quizBankId: bankId || null });
+          adminSocketRef.current.emit("admin:room:change_quiz_bank" as any, { 
+            quizBankId: bankId || null,
+            localBank: selectedBank || undefined,
+          });
         }
 
         // If Magic Wheel, dynamically reload word puzzles from newly assigned bank
         if (roomState?.mode === "MAGIC_WHEEL" && bankId) {
           try {
-            const bRes = await fetch(`/api/quiz-bank/${bankId}`);
-            if (bRes.ok) {
-              const bData = await bRes.json();
-              const bankQuestions = bData?.bank?.questions || [];
-              const bankWordPuzzles = bankQuestions.filter((q: any) => q.type === "WORD_PUZZLE");
-              const candidateQuestions = bankWordPuzzles.length > 0 ? bankWordPuzzles : bankQuestions;
-              if (candidateQuestions.length > 0) {
-                const customPuzzles: MagicWheelPuzzle[] = candidateQuestions.map((q: any, i: number) => {
-                  const roundOpt = q.options?.find((o: any) => o.id === "round");
-                  const rawAns = q.answer || q.options?.find((o: any) => o.isCorrect)?.text || "";
-                  return {
-                    id: `puzzle-assigned-${i + 1}`,
-                    roundNumber: roundOpt ? Number(roundOpt.text) || (i + 1) : (i + 1),
-                    category: q.hint || q.category || "TỔNG HỢP",
-                    secretPhrase: (rawAns || "").toUpperCase().trim(),
-                    clue: q.content || "",
-                    revealedIndices: [],
-                  };
-                }).filter((p: any) => p.secretPhrase.length > 0);
+            let candidateQuestions: any[] = [];
+            let bDataBank: any = null;
+            try {
+              const bRes = await fetch(`/api/quiz-bank/${bankId}`);
+              if (bRes.ok) {
+                const bData = await bRes.json();
+                bDataBank = bData?.bank;
+                const bankQuestions = bDataBank?.questions || [];
+                const bankWordPuzzles = bankQuestions.filter((q: any) => q.type === "WORD_PUZZLE");
+                candidateQuestions = bankWordPuzzles.length > 0 ? bankWordPuzzles : bankQuestions;
+              }
+            } catch {}
 
-                const detectedEd = detectQuizBankLanguage(bData?.bank || selectedBank || { title: bTitle });
-                const curWheel = roomState.magicWheelState;
-                const newPuzzles = buildMagicWheelMatchPuzzles(
-                  roomState.teams?.length || 4,
-                  customPuzzles,
-                  detectedEd,
-                  curWheel?.englishPreset || "RANDOM_MIX"
-                );
-                const updatedWheel: any = {
-                  ...(curWheel || {}),
-                  subMode: curWheel?.subMode || "WORD_PUZZLE",
-                  puzzles: newPuzzles,
-                  currentPuzzle: newPuzzles[0] || curWheel?.currentPuzzle,
+            // Fallback nếu API /api/quiz-bank chưa có bản ghi (ví dụ đề Preset/Local)
+            const selQuestions: any[] = (selectedBank as any)?.questions || [];
+            if (candidateQuestions.length === 0 && selQuestions.length > 0) {
+              const bankWordPuzzles = selQuestions.filter((q: any) => q.type === "WORD_PUZZLE");
+              candidateQuestions = bankWordPuzzles.length > 0 ? bankWordPuzzles : selQuestions;
+            }
+
+            if (candidateQuestions.length > 0) {
+              const customPuzzles: MagicWheelPuzzle[] = candidateQuestions.map((q: any, i: number) => {
+                const roundOpt = q.options?.find((o: any) => o.id === "round");
+                const rawAns = q.answer || q.options?.find((o: any) => o.isCorrect)?.text || "";
+                return {
+                  id: `puzzle-assigned-${i + 1}`,
+                  roundNumber: roundOpt ? Number(roundOpt.text) || (i + 1) : (i + 1),
+                  category: q.hint || q.category || "TỔNG HỢP",
+                  secretPhrase: (rawAns || "").toUpperCase().trim(),
+                  clue: q.content || "",
+                  revealedIndices: [],
                 };
-                setRoomState((prev) => {
-                  if (!prev) return prev;
-                  const nextR = {
-                    ...prev,
-                    config: { ...(prev.config as any), magicWheelPuzzles: customPuzzles, magicWheelEdition: detectedEd },
-                    magicWheelState: { ...updatedWheel, edition: detectedEd },
-                  };
-                  roomStateRef.current = nextR;
-                  syncToIframes({ roomState: nextR, magicWheelState: updatedWheel });
-                  return nextR;
-                });
-                if (adminSocketRef.current?.connected) {
-                  adminSocketRef.current.emit("admin:magic_wheel:emergency_change_bank" as any, { quizBankId: bankId });
-                  adminSocketRef.current.emit("game:magic_wheel:update" as any, updatedWheel);
-                }
+              }).filter((p: any) => p.secretPhrase.length > 0);
+
+              const detectedEd = detectQuizBankLanguage(bDataBank || selectedBank || { title: bTitle });
+              const curWheel = roomState.magicWheelState;
+              const newPuzzles = buildMagicWheelMatchPuzzles(
+                roomState.teams?.length || 4,
+                customPuzzles,
+                detectedEd,
+                curWheel?.englishPreset || "RANDOM_MIX"
+              );
+              const updatedWheel: any = {
+                ...(curWheel || {}),
+                subMode: curWheel?.subMode || "WORD_PUZZLE",
+                puzzles: newPuzzles,
+                currentPuzzle: newPuzzles[0] || curWheel?.currentPuzzle,
+                currentRound: 1,
+                guessedLetters: [],
+              };
+              setRoomState((prev) => {
+                if (!prev) return prev;
+                const nextR = {
+                  ...prev,
+                  config: { ...(prev.config as any), magicWheelPuzzles: customPuzzles, magicWheelEdition: detectedEd },
+                  magicWheelState: { ...updatedWheel, edition: detectedEd },
+                };
+                roomStateRef.current = nextR;
+                syncToIframes({ roomState: nextR, magicWheelState: updatedWheel });
+                return nextR;
+              });
+              if (adminSocketRef.current?.connected) {
+                adminSocketRef.current.emit("admin:magic_wheel:emergency_change_bank" as any, { quizBankId: bankId });
+                adminSocketRef.current.emit("game:magic_wheel:update" as any, updatedWheel);
               }
             }
           } catch (loadErr) {

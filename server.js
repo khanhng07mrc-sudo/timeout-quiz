@@ -60,6 +60,1361 @@ var prisma = globalForPrisma.prisma ?? new import_client.PrismaClient({
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
 // src/lib/offline-storage.ts
+var DEFAULT_OFFLINE_BANK = {
+  "id": "bank_offline_preset_default",
+  "title": "B\u1ED9 \u0110\u1EC1 M\u1EABu \u0110a Ch\u1EBF \u0110\u1ED9 (Offline Preset - 45 C\xE2u Chu\u1EA9n H\xF3a)",
+  "description": "45 c\xE2u h\u1ECFi to\xE0n di\u1EC7n \u0111\u1EA7y \u0111\u1EE7 7 d\u1EA1ng th\u1EE9c v\xE0 ph\xE2n b\u1ED5 \u0111i\u1EC3m chu\u1EA9n m\u1EF1c (22% c\xE2u 10\u0111, 36% c\xE2u 20\u0111, 29% c\xE2u 30\u0111, 13% c\xE2u 40\u0111) ch\u1EA1y si\xEAu m\u01B0\u1EE3t kh\xF4ng c\u1EA7n m\u1EA1ng",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "isLocalOnly": true,
+  "_count": {
+    "questions": 45
+  },
+  "questions": [
+    {
+      "id": "q_off_1",
+      "type": "MC_SINGLE",
+      "content": "Trong quy tr\xECnh l\u1EADp k\u1EBF ho\u1EA1ch kinh doanh ti\xEAu chu\u1EA9n, b\u01B0\u1EDBc \u0111\u1EA7u ti\xEAn mang t\xEDnh n\u1EC1n t\u1EA3ng quy\u1EBFt \u0111\u1ECBnh h\u01B0\u1EDBng \u0111i l\xE0 g\xEC?",
+      "points": 10,
+      "timeLimit": 15,
+      "options": [
+        {
+          "id": "A",
+          "text": "Ph\xE2n b\u1ED5 ng\xE2n s\xE1ch t\xE0i ch\xEDnh",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "Nh\u1EADn th\u1EE9c c\u01A1 h\u1ED9i v\xE0 \u0111\xE1nh gi\xE1 hi\u1EC7n tr\u1EA1ng",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "L\u1EF1a ch\u1ECDn ph\u01B0\u01A1ng \xE1n t\u1ED1i \u01B0u",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "X\xE2y d\u1EF1ng c\xE1c k\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p",
+          "isCorrect": false
+        }
+      ],
+      "hint": "C\u1EA7n th\u1EA5u hi\u1EC3u b\u1ED1i c\u1EA3nh th\u1ECB tr\u01B0\u1EDDng, \u0111i\u1EC3m m\u1EA1nh/y\u1EBFu tr\u01B0\u1EDBc khi \u0111\u1ECBnh h\xECnh m\u1EE5c ti\xEAu.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_2",
+      "type": "MC_SINGLE",
+      "content": "Theo ti\xEAu ch\xED SMART, ch\u1EEF 'M' trong m\u1ED9t m\u1EE5c ti\xEAu k\u1EBF ho\u1EA1ch hi\u1EC7u qu\u1EA3 \u0111\u1EA1i di\u1EC7n cho \u0111\u1EB7c t\xEDnh n\xE0o?",
+      "points": 10,
+      "timeLimit": 15,
+      "options": [
+        {
+          "id": "A",
+          "text": "Motivated (C\xF3 t\xEDnh th\xFAc \u0111\u1EA9y)",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "Measurable (\u0110o l\u01B0\u1EDDng \u0111\u01B0\u1EE3c)",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "Manageable (Qu\u1EA3n l\xFD \u0111\u01B0\u1EE3c)",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Meaningful (C\xF3 \xFD ngh\u0129a s\xE2u s\u1EAFc)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "M\u1EE5c ti\xEAu ph\u1EA3i g\u1EAFn li\u1EC1n v\u1EDBi ch\u1EC9 s\u1ED1 \u0111\u1ECBnh l\u01B0\u1EE3ng c\u1EE5 th\u1EC3 \u0111\u1EC3 ki\u1EC3m tra k\u1EBFt qu\u1EA3.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_3",
+      "type": "MC_MULTI",
+      "content": "Ph\u01B0\u01A1ng ph\xE1p d\u1EF1 b\xE1o \u0111\u1ECBnh t\xEDnh n\xE0o d\u01B0\u1EDBi \u0111\xE2y thu th\u1EADp \xFD ki\u1EBFn chuy\xEAn gia qua nhi\u1EC1u v\xF2ng \u1EA9n danh v\xE0 ph\u1EA3n h\u1ED3i t\u1ED5ng h\u1EE3p nh\u1EB1m \u0111\u1EA1t \u0111\u01B0\u1EE3c s\u1EF1 \u0111\u1ED3ng thu\u1EADn cao?",
+      "points": 10,
+      "timeLimit": 15,
+      "options": [
+        {
+          "id": "A",
+          "text": "K\u1EF9 thu\u1EADt Delphi",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "Ph\u01B0\u01A1ng ph\xE1p \u0111i\u1EC1u tra kh\u1EA3o s\xE1t chuy\xEAn gia \u0111\u1ED9c l\u1EADp",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "Ph\xE2n t\xEDch h\u1ED3i quy chu\u1ED7i th\u1EDDi gian",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Ph\u01B0\u01A1ng ph\xE1p san b\u1EB1ng s\u1ED1 m\u0169 (Exponential smoothing)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "Hai ph\u01B0\u01A1ng \xE1n \u0111\u1ECBnh t\xEDnh d\u1EF1a tr\xEAn tr\xED tu\u1EC7 t\u1EADp th\u1EC3 chuy\xEAn gia m\xE0 kh\xF4ng c\u1EA7n h\u1ECDp m\u1EB7t tr\u1EF1c ti\u1EBFp.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_4",
+      "type": "MC_SINGLE",
+      "content": "Ph\u01B0\u01A1ng ph\xE1p l\u1EADp ng\xE2n s\xE1ch n\xE0o y\xEAu c\u1EA7u m\u1ECDi kho\u1EA3n chi ph\xED \u0111\u1EC1u ph\u1EA3i \u0111\u01B0\u1EE3c gi\u1EA3i tr\xECnh v\xE0 ch\u1EE9ng minh l\u1EA1i t\u1EEB \u0111\u1EA7u cho m\u1ED7i k\u1EF3 k\u1EBF ho\u1EA1ch m\u1EDBi, b\u1EA5t k\u1EC3 ng\xE2n s\xE1ch k\u1EF3 tr\u01B0\u1EDBc l\xE0 bao nhi\xEAu?",
+      "points": 10,
+      "timeLimit": 15,
+      "options": [
+        {
+          "id": "A",
+          "text": "Ng\xE2n s\xE1ch gia t\u0103ng (Incremental Budgeting)",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "Ng\xE2n s\xE1ch g\u1ED1c 0 (Zero-based Budgeting - ZBB)",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "Ng\xE2n s\xE1ch c\u1ED1 \u0111\u1ECBnh (Static Budgeting)",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Ng\xE2n s\xE1ch linh ho\u1EA1t (Flexible Budgeting)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "B\u1EAFt \u0111\u1EA7u m\u1ED7i chu k\u1EF3 t\u1EEB con s\u1ED1 0 \u0111\u1EC3 lo\u1EA1i tr\u1EEB c\xE1c kho\u1EA3n l\xE3ng ph\xED t\u1ED3n d\u01B0 c\u1EE7a qu\xE1 kh\u1EE9.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_5",
+      "type": "TRUE_FALSE",
+      "content": "K\u1EBF ho\u1EA1ch chi\u1EBFn l\u01B0\u1EE3c th\u01B0\u1EDDng c\xF3 t\u1EA7m nh\xECn d\xE0i h\u1EA1n (t\u1EEB 3 \u0111\u1EBFn 5 n\u0103m tr\u1EDF l\xEAn), do nh\xE0 qu\u1EA3n tr\u1ECB c\u1EA5p cao ph\xEA duy\u1EC7t v\xE0 t\u1EADp trung v\xE0o c\xE1c m\u1EE5c ti\xEAu t\u1ED5ng th\u1EC3 c\u1EE7a to\xE0n t\u1ED5 ch\u1EE9c.",
+      "points": 20,
+      "timeLimit": 20,
+      "options": [
+        {
+          "id": "true",
+          "text": "\u0110\xFAng (True)",
+          "isCorrect": true
+        },
+        {
+          "id": "false",
+          "text": "Sai (False)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "Ph\xE2n bi\u1EC7t k\u1EBF ho\u1EA1ch chi\u1EBFn l\u01B0\u1EE3c d\xE0i h\u1EA1n v\u1EDBi k\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p ng\u1EAFn h\u1EA1n ph\u1EE5c v\u1EE5 c\xF4ng vi\u1EC7c h\xE0ng ng\xE0y.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_6",
+      "type": "FILL_BLANK",
+      "content": "Ph\u01B0\u01A1ng ph\xE1p qu\u1EA3n l\xFD theo m\u1EE5c ti\xEAu ph\u1ED5 bi\u1EBFn trong l\u1EADp k\u1EBF ho\u1EA1ch, n\u01A1i c\u1EA5p tr\xEAn v\xE0 c\u1EA5p d\u01B0\u1EDBi c\xF9ng th\u1ED1ng nh\u1EA5t x\xE1c \u0111\u1ECBnh m\u1EE5c ti\xEAu v\xE0 ti\xEAu chu\u1EA9n \u0111\xE1nh gi\xE1, vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+      "answer": "MBO",
+      "points": 20,
+      "timeLimit": 20,
+      "hint": "Vi\u1EBFt t\u1EAFt c\u1EE7a 3 ch\u1EEF c\xE1i ti\u1EBFng Anh: Management by Objectives.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_7",
+      "type": "MC_SINGLE",
+      "content": "Trong ma tr\u1EADn SWOT, vi\u1EC7c k\u1EBFt h\u1EE3p gi\u1EEFa '\u0110i\u1EC3m m\u1EA1nh b\xEAn trong' (Strengths) v\xE0 'C\u01A1 h\u1ED9i b\xEAn ngo\xE0i' (Opportunities) s\u1EBD h\xECnh th\xE0nh n\xEAn chi\u1EBFn l\u01B0\u1EE3c n\xE0o?",
+      "points": 20,
+      "timeLimit": 20,
+      "options": [
+        {
+          "id": "A",
+          "text": "Chi\u1EBFn l\u01B0\u1EE3c SO (T\u1EA5n c\xF4ng / T\u1EADn d\u1EE5ng t\u1ED1i \u0111a)",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "Chi\u1EBFn l\u01B0\u1EE3c WO (Kh\u1EAFc ph\u1EE5c \u0111i\u1EC3m y\u1EBFu \u0111\xF3n c\u01A1 h\u1ED9i)",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "Chi\u1EBFn l\u01B0\u1EE3c ST (Ph\xF2ng th\u1EE7 tr\u01B0\u1EDBc nguy c\u01A1)",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Chi\u1EBFn l\u01B0\u1EE3c WT (C\u1EAFt gi\u1EA3m thi\u1EC7t h\u1EA1i / R\xFAt lui)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "S\u1EED d\u1EE5ng \u01B0u th\u1EBF n\u1ED9i l\u1EF1c \u0111\u1EC3 n\u1EAFm b\u1EAFt th\u1EDDi c\u01A1 v\xE0ng t\u1EEB th\u1ECB tr\u01B0\u1EDDng.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_8",
+      "type": "TRUE_FALSE",
+      "content": "K\u1EBF ho\u1EA1ch d\u1EF1 ph\xF2ng (Contingency plan) l\xE0 b\u1EA3n k\u1EBF ho\u1EA1ch ch\u1EC9 \u0111\u01B0\u1EE3c k\xEDch ho\u1EA1t khi c\xE1c s\u1EF1 c\u1ED1 ho\u1EB7c k\u1ECBch b\u1EA3n r\u1EE7i ro b\u1EA5t kh\u1EA3 kh\xE1ng \u0111\xE3 \u0111\u01B0\u1EE3c d\u1EF1 b\xE1o tr\u01B0\u1EDBc x\u1EA3y ra.",
+      "points": 20,
+      "timeLimit": 20,
+      "options": [
+        {
+          "id": "true",
+          "text": "\u0110\xFAng (True)",
+          "isCorrect": true
+        },
+        {
+          "id": "false",
+          "text": "Sai (False)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "K\u1EBF ho\u1EA1ch Ph\u01B0\u01A1ng \xE1n B (Plan B) ph\xF2ng khi ho\xE0n c\u1EA3nh m\xF4i tr\u01B0\u1EDDng bi\u1EBFn \u0111\u1ED9ng l\u1EDBn.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_9",
+      "type": "MC_SINGLE",
+      "content": "Trong ma tr\u1EADn BCG, \u0111\u01A1n v\u1ECB kinh doanh chi\u1EBFn l\u01B0\u1EE3c (SBU) c\xF3 th\u1ECB ph\u1EA7n t\u01B0\u01A1ng \u0111\u1ED1i cao nh\u01B0ng ho\u1EA1t \u0111\u1ED9ng trong ng\xE0nh c\xF3 t\u1ED1c \u0111\u1ED9 t\u0103ng tr\u01B0\u1EDFng th\u1EA5p \u0111\u01B0\u1EE3c x\u1EBFp v\xE0o \xF4 n\xE0o?",
+      "points": 20,
+      "timeLimit": 20,
+      "options": [
+        {
+          "id": "A",
+          "text": "Ng\xF4i sao (Stars)",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "B\xF2 s\u1EEFa (Cash Cows)",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "D\u1EA5u h\u1ECFi (Question Marks)",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Ch\xF3 m\u1EF1c (Dogs)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "T\u1EA1o ra d\xF2ng ti\u1EC1n d\u1ED3i d\xE0o \u0111\u1EC3 nu\xF4i d\u01B0\u1EE1ng c\xE1c m\u1EA3ng kinh doanh kh\xE1c m\xE0 kh\xF4ng c\u1EA7n t\xE1i \u0111\u1EA7u t\u01B0 l\u1EDBn.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_10",
+      "type": "MC_SINGLE",
+      "content": "T\xECnh hu\u1ED1ng: M\u1ED9t doanh nghi\u1EC7p b\xE1n l\u1EBB x\xE2y d\u1EF1ng b\u1EA3n k\u1EBF ho\u1EA1ch m\u1EDF r\u1ED9ng chu\u1ED7i c\u1EEDa h\xE0ng chi ti\u1EBFt trong 2 n\u0103m. Tuy nhi\xEAn sau 6 th\xE1ng th\u1EF1c hi\u1EC7n, doanh s\u1ED1 s\u1EE5t gi\u1EA3m m\u1EA1nh do xu\u1EA5t hi\u1EC7n xu h\u01B0\u1EDBng mua s\u1EAFm tr\u1EF1c tuy\u1EBFn t\u0103ng v\u1ECDt b\u1EA5t ng\u1EDD v\xE0 chi ph\xED m\u1EB7t b\u1EB1ng t\u0103ng cao. Y\u1EBFu t\u1ED1 c\u1ED1t l\xF5i n\xE0o khi\u1EBFn b\u1EA3n k\u1EBF ho\u1EA1ch tr\xEAn th\u1EA5t b\u1EA1i?",
+      "points": 20,
+      "timeLimit": 20,
+      "options": [
+        {
+          "id": "A",
+          "text": "Doanh nghi\u1EC7p l\u1EADp k\u1EBF ho\u1EA1ch qu\xE1 c\u1EE9ng nh\u1EAFc, thi\u1EBFu t\xEDnh th\xEDch \u1EE9ng \u0111\u1ED9ng v\xE0 kh\xF4ng x\xE2y d\u1EF1ng c\xE1c k\u1ECBch b\u1EA3n d\u1EF1 ph\xF2ng v\u1EDBi bi\u1EBFn \u0111\u1ED9ng m\xF4i tr\u01B0\u1EDDng",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "Doanh nghi\u1EC7p chi qu\xE1 nhi\u1EC1u kinh ph\xED cho vi\u1EC7c nghi\xEAn c\u1EE9u th\u1ECB tr\u01B0\u1EDDng ban \u0111\u1EA7u theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "Doanh nghi\u1EC7p ph\xE2n b\u1ED5 sai th\u1EA9m quy\u1EC1n gi\u1EEFa ban gi\xE1m \u0111\u1ED1c v\xE0 c\xE1c c\u1EEDa h\xE0ng tr\u01B0\u1EDFng theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Doanh nghi\u1EC7p \xE1p d\u1EE5ng sai c\u1EA5u tr\xFAc ma tr\u1EADn SWOT khi \u0111\xE1nh gi\xE1 n\u0103ng l\u1EF1c n\u1ED9i b\u1ED9 theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        }
+      ],
+      "hint": "T\xEDnh linh ho\u1EA1t v\xE0 kh\u1EA3 n\u0103ng th\xEDch \u1EE9ng v\u1EDBi bi\u1EBFn \u0111\u1ED9ng m\xF4i tr\u01B0\u1EDDng l\xE0 y\u1EBFu t\u1ED1 s\u1ED1ng c\xF2n c\u1EE7a l\u1EADp k\u1EBF ho\u1EA1ch.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_11",
+      "type": "MC_SINGLE",
+      "content": "Trong ma tr\u1EADn ph\xE2n t\xEDch SWOT, chi\u1EBFn l\u01B0\u1EE3c WO (Weaknesses - Opportunities) h\u01B0\u1EDBng \u0111\u1EBFn m\u1EE5c ti\xEAu h\xE0nh \u0111\u1ED9ng n\xE0o?",
+      "points": 20,
+      "timeLimit": 20,
+      "options": [
+        {
+          "id": "A",
+          "text": "S\u1EED d\u1EE5ng \u0111i\u1EC3m m\u1EA1nh n\u1ED9i b\u1ED9 \u0111\u1EC3 n\u1EAFm b\u1EAFt c\u01A1 h\u1ED9i b\xEAn ngo\xE0i theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "T\u1EADn d\u1EE5ng c\xE1c c\u01A1 h\u1ED9i t\u1EEB m\xF4i tr\u01B0\u1EDDng b\xEAn ngo\xE0i \u0111\u1EC3 kh\u1EAFc ph\u1EE5c v\xE0 h\xF3a gi\u1EA3i c\xE1c \u0111i\u1EC3m y\u1EBFu n\u1ED9i b\u1ED9",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "T\u1ED1i thi\u1EC3u h\xF3a \u0111i\u1EC3m y\u1EBFu \u0111\u1EC3 tr\xE1nh n\xE9 c\xE1c nguy c\u01A1 \u0111e d\u1ECDa",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "S\u1EED d\u1EE5ng \u0111i\u1EC3m m\u1EA1nh \u0111\u1EC3 ph\xF2ng th\u1EE7 tr\u01B0\u1EDBc c\xE1c nguy c\u01A1 c\u1EA1nh tranh",
+          "isCorrect": false
+        }
+      ],
+      "hint": "WO l\xE0 chi\u1EBFn l\u01B0\u1EE3c c\u1EA3i thi\u1EC7n \u0111i\u1EC3m y\u1EBFu b\u1EB1ng c\xE1ch \u0111\xF3n \u0111\u1EA7u c\u01A1 h\u1ED9i m\u1EDF ra tr\xEAn th\u1ECB tr\u01B0\u1EDDng.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_12",
+      "type": "MC_SINGLE",
+      "content": "Trong ma tr\u1EADn danh m\u1EE5c \u0111\u1EA7u t\u01B0 BCG c\u1EE7a Boston Consulting Group, \u0111\u01A1n v\u1ECB kinh doanh chi\u1EBFn l\u01B0\u1EE3c (SBU) c\xF3 th\u1ECB ph\u1EA7n t\u01B0\u01A1ng \u0111\u1ED1i cao trong m\u1ED9t ng\xE0nh c\xF3 t\u1ED1c \u0111\u1ED9 t\u0103ng tr\u01B0\u1EDFng th\u1EA5p \u0111\u01B0\u1EE3c x\u1EBFp v\xE0o \xF4 n\xE0o?",
+      "points": 20,
+      "timeLimit": 20,
+      "options": [
+        {
+          "id": "A",
+          "text": "Ng\xF4i sao (Star)",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "B\xF2 s\u1EEFa ti\u1EC1n m\u1EB7t (Cash Cow)",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "D\u1EA5u h\u1ECFi (Question Mark)",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Ch\xF3 m\u1EF1c (Dog)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "B\xF2 s\u1EEFa sinh ra d\xF2ng ti\u1EC1n m\u1EB7t d\u1ED3i d\xE0o m\xE0 kh\xF4ng \u0111\xF2i h\u1ECFi t\xE1i \u0111\u1EA7u t\u01B0 v\u1ED1n qu\xE1 nhi\u1EC1u.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_13",
+      "type": "TRUE_FALSE",
+      "content": "K\u1EBF ho\u1EA1ch d\u1EF1 ph\xF2ng (Contingency Planning) l\xE0 vi\u1EC7c x\xE1c \u0111\u1ECBnh tr\u01B0\u1EDBc c\xE1c ph\u01B0\u01A1ng \xE1n h\xE0nh \u0111\u1ED9ng thay th\u1EBF kh\u1EA3 d\u0129 khi x\u1EA3y ra nh\u1EEFng bi\u1EBFn c\u1ED1 b\u1EA5t ng\u1EDD l\xE0m gi\xE1n \u0111o\u1EA1n k\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p ban \u0111\u1EA7u.",
+      "points": 30,
+      "timeLimit": 30,
+      "options": [
+        {
+          "id": "true",
+          "text": "\u0110\xFAng (True)",
+          "isCorrect": true
+        },
+        {
+          "id": "false",
+          "text": "Sai (False)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "K\u1EBF ho\u1EA1ch B/C gi\xFAp doanh nghi\u1EC7p ch\u1EE7 \u0111\u1ED9ng \u1EE9ng ph\xF3 r\u1EE7i ro \u0111\u1EE9t g\xE3y ho\u1EA1t \u0111\u1ED9ng.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_14",
+      "type": "MC_SINGLE",
+      "content": "Trong ph\u01B0\u01A1ng ph\xE1p d\u1EF1 b\xE1o san b\u1EB1ng m\u0169 (Exponential Smoothing), tr\u1ECDng s\u1ED1 l\u1EDBn nh\u1EA5t \u0111\u01B0\u1EE3c g\xE1n cho \u0111\u1EA1i l\u01B0\u1EE3ng n\xE0o?",
+      "points": 30,
+      "timeLimit": 30,
+      "options": [
+        {
+          "id": "A",
+          "text": "S\u1ED1 li\u1EC7u th\u1EF1c t\u1EBF c\u1EE7a k\u1EF3 xa nh\u1EA5t trong l\u1ECBch s\u1EED",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "S\u1ED1 li\u1EC7u th\u1EF1c t\u1EBF c\u1EE7a k\u1EF3 g\u1EA7n nh\u1EA5t v\u1EEBa di\u1EC5n ra",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "Trung b\xECnh c\u1ED9ng c\u1EE7a to\xE0n b\u1ED9 s\u1ED1 li\u1EC7u 10 n\u0103m tr\u01B0\u1EDBc",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "S\u1ED1 li\u1EC7u d\u1EF1 b\xE1o trung b\xECnh ng\xE0nh",
+          "isCorrect": false
+        }
+      ],
+      "hint": "C\xE1c quan s\xE1t c\xE0ng m\u1EDBi c\xE0ng ch\u1EE9a nhi\u1EC1u th\xF4ng tin c\u1EADp nh\u1EADt n\xEAn nh\u1EADn tr\u1ECDng s\u1ED1 m\u0169 cao nh\u1EA5t.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_15",
+      "type": "MC_SINGLE",
+      "content": "Trong ma tr\u1EADn 9 \xF4 GE-McKinsey d\xF9ng \u0111\u1EC3 l\u1EADp k\u1EBF ho\u1EA1ch danh m\u1EE5c kinh doanh, hai tr\u1EE5c \u0111\xE1nh gi\xE1 bao g\u1ED3m nh\u1EEFng y\u1EBFu t\u1ED1 n\xE0o?",
+      "points": 30,
+      "timeLimit": 30,
+      "options": [
+        {
+          "id": "A",
+          "text": "Th\u1ECB ph\u1EA7n t\u01B0\u01A1ng \u0111\u1ED1i v\xE0 T\u1ED1c \u0111\u1ED9 t\u0103ng tr\u01B0\u1EDFng th\u1ECB tr\u01B0\u1EDDng",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "S\u1EE9c h\u1EA5p d\u1EABn c\u1EE7a ng\xE0nh v\xE0 S\u1EE9c m\u1EA1nh c\u1EA1nh tranh c\u1EE7a \u0111\u01A1n v\u1ECB kinh doanh",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "Doanh thu thu\u1EA7n v\xE0 Chi ph\xED v\u1EADn h\xE0nh theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Ch\u1EC9 s\u1ED1 P/E v\xE0 V\u1ED1n h\xF3a th\u1ECB tr\u01B0\u1EDDng theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        }
+      ],
+      "hint": "GE-McKinsey l\xE0 b\u01B0\u1EDBc ph\xE1t tri\u1EC3n \u0111a chi\u1EC1u to\xE0n di\u1EC7n h\u01A1n so v\u1EDBi ma tr\u1EADn 4 \xF4 c\u1EE7a BCG.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_16",
+      "type": "MC_MULTI",
+      "content": "Theo m\xF4 h\xECnh 5 \xE1p l\u1EF1c c\u1EA1nh tranh c\u1EE7a Michael Porter (Five Forces), nh\u1EEFng y\u1EBFu t\u1ED1 n\xE0o quy\u1EBFt \u0111\u1ECBnh m\u1EE9c \u0111\u1ED9 h\u1EA5p d\u1EABn v\xE0 t\u1EF7 su\u1EA5t sinh l\u1EDDi c\u1EE7a ng\xE0nh?",
+      "points": 30,
+      "timeLimit": 30,
+      "options": [
+        {
+          "id": "A",
+          "text": "C\u01B0\u1EDDng \u0111\u1ED9 c\u1EA1nh tranh gi\u1EEFa c\xE1c \u0111\u1ED1i th\u1EE7 hi\u1EC7n t\u1EA1i trong ng\xE0nh",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "Nguy c\u01A1 \u0111e d\u1ECDa x\xE2m nh\u1EADp t\u1EEB c\xE1c \u0111\u1ED1i th\u1EE7 ti\u1EC1m n\u0103ng m\u1EDBi",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "Quy\u1EC1n l\u1EF1c th\u01B0\u01A1ng l\u01B0\u1EE3ng \u0111\xE0m ph\xE1n c\u1EE7a nh\xE0 cung c\u1EA5p v\xE0 kh\xE1ch h\xE0ng",
+          "isCorrect": true
+        },
+        {
+          "id": "D",
+          "text": "M\u1ED1i \u0111e d\u1ECDa t\u1EEB c\xE1c s\u1EA3n ph\u1EA9m v\xE0 d\u1ECBch v\u1EE5 thay th\u1EBF",
+          "isCorrect": true
+        }
+      ],
+      "hint": "C\u1EA3 5 l\u1EF1c l\u01B0\u1EE3ng n\xE0y t\u1EA1o n\xEAn c\u1EA5u tr\xFAc c\u1EA1nh tranh to\xE0n di\u1EC7n c\u1EE7a m\u1ED9t ng\xE0nh kinh doanh.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_17",
+      "type": "MC_SINGLE",
+      "content": "Chi\u1EBFn l\u01B0\u1EE3c 'T\xEDch h\u1EE3p ng\u01B0\u1EE3c v\u1EC1 ph\xEDa sau' (Backward Vertical Integration) trong ho\u1EA1ch \u0111\u1ECBnh chi\u1EBFn l\u01B0\u1EE3c kinh doanh c\xF3 ngh\u0129a l\xE0 g\xEC?",
+      "points": 30,
+      "timeLimit": 30,
+      "options": [
+        {
+          "id": "A",
+          "text": "Mua l\u1EA1i c\xE1c k\xEAnh ph\xE2n ph\u1ED1i b\xE1n l\u1EBB \u0111\u01B0a s\u1EA3n ph\u1EA9m t\u1EDBi tay ng\u01B0\u1EDDi d\xF9ng cu\u1ED1i",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "\u0110\u1EA7u t\u01B0 ki\u1EC3m so\xE1t ho\u1EB7c s\xE1p nh\u1EADp c\xE1c nh\xE0 cung \u1EE9ng nguy\xEAn v\u1EADt li\u1EC7u \u0111\u1EA7u v\xE0o c\u1EE7a ch\xEDnh m\xECnh",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "Thu h\u1EB9p quy m\xF4 s\u1EA3n xu\u1EA5t \u0111\u1EC3 b\xE1n b\u1EDBt nh\xE0 m\xE1y theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "\u0110a d\u1EA1ng h\xF3a sang l\u0129nh v\u1EF1c ho\xE0n to\xE0n kh\xF4ng li\xEAn quan theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        }
+      ],
+      "hint": "\u0110i ng\u01B0\u1EE3c v\u1EC1 ngu\u1ED3n cung \u1EE9ng \u0111\u1EC3 ch\u1EE7 \u0111\u1ED9ng gi\xE1 th\xE0nh v\xE0 chu\u1ED7i cung \u1EE9ng v\u1EADt t\u01B0.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_18",
+      "type": "TRUE_FALSE",
+      "content": "Ph\u01B0\u01A1ng ph\xE1p Qu\u1EA3n tr\u1ECB theo m\u1EE5c ti\xEAu (MBO - Management by Objectives) l\xE0 qu\xE1 tr\xECnh trong \u0111\xF3 m\u1EE5c ti\xEAu do T\u1ED5ng gi\xE1m \u0111\u1ED1c \u0111\u01A1n ph\u01B0\u01A1ng \u1EA5n \u0111\u1ECBnh v\xE0 \xE1p \u0111\u1EB7t ho\xE0n to\xE0n t\u1EEB tr\xEAn xu\u1ED1ng m\xE0 kh\xF4ng c\u1EA7n th\u1EA3o lu\u1EADn v\u1EDBi c\u1EA5p d\u01B0\u1EDBi.",
+      "points": 30,
+      "timeLimit": 30,
+      "options": [
+        {
+          "id": "true",
+          "text": "\u0110\xFAng (True)",
+          "isCorrect": false
+        },
+        {
+          "id": "false",
+          "text": "Sai (False)",
+          "isCorrect": true
+        }
+      ],
+      "hint": "B\u1EA3n ch\u1EA5t c\u1ED1t l\xF5i c\u1EE7a MBO l\xE0 s\u1EF1 tham gia hi\u1EC7p th\u01B0\u01A1ng c\xF9ng x\xE1c l\u1EADp m\u1EE5c ti\xEAu gi\u1EEFa c\u1EA5p tr\xEAn v\xE0 c\u1EA5p d\u01B0\u1EDBi.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_19",
+      "type": "MC_SINGLE",
+      "content": "Ph\u01B0\u01A1ng ph\xE1p l\u1EADp k\u1EBF ho\u1EA1ch theo k\u1ECBch b\u1EA3n (Scenario Planning) ph\xE1t huy gi\xE1 tr\u1ECB cao nh\u1EA5t trong \u0111i\u1EC1u ki\u1EC7n m\xF4i tr\u01B0\u1EDDng n\xE0o?",
+      "points": 30,
+      "timeLimit": 30,
+      "options": [
+        {
+          "id": "A",
+          "text": "M\xF4i tr\u01B0\u1EDDng \u1ED5n \u0111\u1ECBnh ho\xE0n to\xE0n c\xF3 th\u1EC3 d\u1EF1 b\xE1o ch\xEDnh x\xE1c b\u1EB1ng m\u1ED9t con s\u1ED1 duy nh\u1EA5t",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "M\xF4i tr\u01B0\u1EDDng c\xF3 \u0111\u1ED9 ph\u1EE9c t\u1EA1p v\xE0 b\u1EA5t \u0111\u1ECBnh cao, xu\u1EA5t hi\u1EC7n nhi\u1EC1u bi\u1EBFn s\u1ED1 kh\xF3 l\u01B0\u1EDDng",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "Khi c\xF4ng ty chu\u1EA9n b\u1ECB gi\u1EA3i th\u1EC3 theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Khi c\xF4ng ty \u0111\u1ED9c quy\u1EC1n tuy\u1EC7t \u0111\u1ED1i theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        }
+      ],
+      "hint": "K\u1ECBch b\u1EA3n gi\xFAp chu\u1EA9n b\u1ECB cho nhi\u1EC1u t\u01B0\u01A1ng lai kh\u1EA3 d\u0129 kh\xE1c nhau (k\u1ECBch b\u1EA3n l\u1EA1c quan, c\u01A1 s\u1EDF, bi quan).",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_20",
+      "type": "MC_SINGLE",
+      "content": "M\u1ED9t t\u1EADp \u0111o\xE0n b\xE1n l\u1EBB \u0111i\u1EC7n m\xE1y l\u1EADp k\u1EBF ho\u1EA1ch m\u1EDF th\xEAm 30 si\xEAu th\u1ECB m\u1EDBi trong n\u0103m t\xE0i ch\xEDnh. Khi ph\xE2n t\xEDch ng\xE2n s\xE1ch d\u1EF1 \xE1n v\u1ED1n \u0111\u1EA7u t\u01B0 (CapEx), ch\u1EC9 s\u1ED1 t\xE0i ch\xEDnh n\xE0o cho bi\u1EBFt t\u1EF7 su\u1EA5t sinh l\u1EDDi th\u1EF1c t\u1EBF l\xE0m cho Gi\xE1 tr\u1ECB hi\u1EC7n gi\xE1 thu\u1EA7n (NPV) c\u1EE7a d\u1EF1 \xE1n b\u1EB1ng \u0111\xFAng 0?",
+      "points": 30,
+      "timeLimit": 30,
+      "options": [
+        {
+          "id": "A",
+          "text": "Th\u1EDDi gian ho\xE0n v\u1ED1n gi\u1EA3n \u0111\u01A1n (Payback Period)",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "T\u1EF7 su\u1EA5t ho\xE0n v\u1ED1n n\u1ED9i b\u1ED9 (Internal Rate of Return - IRR)",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "H\u1EC7 s\u1ED1 thanh to\xE1n hi\u1EC7n h\xE0nh (Current Ratio)",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Ch\u1EC9 s\u1ED1 bi\xEAn l\u1EE3i nhu\u1EADn r\xF2ng (Net Profit Margin)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "IRR l\xE0 t\u1EF7 l\u1EC7 chi\u1EBFt kh\u1EA5u m\xE0 t\u1EA1i \u0111\xF3 NPV = 0; n\u1EBFu IRR > chi ph\xED s\u1EED d\u1EE5ng v\u1ED1n WACC th\xEC d\u1EF1 \xE1n \u0111\xE1ng gi\xE1 \u0111\u1EC3 \u0111\u1EA7u t\u01B0.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_21",
+      "type": "MC_SINGLE",
+      "content": "M\u1ED9t doanh nghi\u1EC7p d\u1EF1 b\xE1o nhu c\u1EA7u s\u1EA3n ph\u1EA9m cho th\xE1ng 4 b\u1EB1ng ph\u01B0\u01A1ng ph\xE1p San b\u1EB1ng m\u0169 gi\u1EA3n \u0111\u01A1n v\u1EDBi h\u1EC7 s\u1ED1 san b\u1EB1ng alpha = 0.3. Nhu c\u1EA7u th\u1EF1c t\u1EBF th\xE1ng 3 l\xE0 1.200 s\u1EA3n ph\u1EA9m, d\u1EF1 b\xE1o th\xE1ng 3 tr\u01B0\u1EDBc \u0111\xF3 l\xE0 1.100 s\u1EA3n ph\u1EA9m. D\u1EF1 b\xE1o nhu c\u1EA7u b\xE1n h\xE0ng cho th\xE1ng 4 l\xE0 bao nhi\xEAu s\u1EA3n ph\u1EA9m?",
+      "points": 40,
+      "timeLimit": 60,
+      "options": [
+        {
+          "id": "A",
+          "text": "1.130 s\u1EA3n ph\u1EA9m",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "1.150 s\u1EA3n ph\u1EA9m",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "1.170 s\u1EA3n ph\u1EA9m",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "1.100 s\u1EA3n ph\u1EA9m",
+          "isCorrect": false
+        }
+      ],
+      "hint": "F4 = F3 + alpha * (A3 - F3) = 1.100 + 0.3 * (1.200 - 1.100) = 1.100 + 30 = 1.130 s\u1EA3n ph\u1EA9m.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_22",
+      "type": "MC_SINGLE",
+      "content": "D\u1EF1 \xE1n \u0111\u1EA7u t\u01B0 m\u1EDF r\u1ED9ng c\u1EE7a c\xF4ng ty c\xF3 v\u1ED1n \u0111\u1EA7u t\u01B0 ban \u0111\u1EA7u 1.000 tri\u1EC7u \u0111\u1ED3ng t\u1EA1i n\u0103m 0. D\xF2ng ti\u1EC1n thu\u1EA7n h\xE0ng n\u0103m thu v\u1EC1 trong 3 n\u0103m l\u1EA7n l\u01B0\u1EE3t l\xE0 400 tri\u1EC7u (n\u0103m 1), 500 tri\u1EC7u (n\u0103m 2), v\xE0 600 tri\u1EC7u (n\u0103m 3). T\u1EF7 l\u1EC7 chi\u1EBFt kh\u1EA5u chi ph\xED v\u1ED1n r = 10%. Gi\xE1 tr\u1ECB hi\u1EC7n gi\xE1 thu\u1EA7n (NPV) c\u1EE7a d\u1EF1 \xE1n n\xE0y x\u1EA5p x\u1EC9 b\u1EB1ng bao nhi\xEAu?",
+      "points": 40,
+      "timeLimit": 60,
+      "options": [
+        {
+          "id": "A",
+          "text": "+227,6 tri\u1EC7u \u0111\u1ED3ng",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "+185,4 tri\u1EC7u \u0111\u1ED3ng",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "+310,2 tri\u1EC7u \u0111\u1ED3ng",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "-50,0 tri\u1EC7u \u0111\u1ED3ng",
+          "isCorrect": false
+        }
+      ],
+      "hint": "PV = 400/1.1 + 500/(1.1^2) + 600/(1.1^3) = 363.64 + 413.22 + 450.79 = 1.227.65 tri\u1EC7u. NPV = 1.227.65 - 1.000 = +227.65 tri\u1EC7u \u0111\u1ED3ng.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_23",
+      "type": "MATCHING",
+      "content": "H\xE3y gh\xE9p \u0111\xFAng 4 \xF4 trong Ma tr\u1EADn ph\xE2n t\xEDch danh m\u1EE5c \u0111\u1EA7u t\u01B0 BCG v\u1EDBi \u0111\u1ECBnh h\u01B0\u1EDBng chi\u1EBFn l\u01B0\u1EE3c t\u01B0\u01A1ng \u1EE9ng:",
+      "points": 40,
+      "timeLimit": 60,
+      "pairs": [
+        {
+          "id": "p1",
+          "left": "\xD4 Ng\xF4i Sao (Stars)",
+          "right": "T\u0103ng tr\u01B0\u1EDFng cao, th\u1ECB ph\u1EA7n cao: \u0110\u1EA7u t\u01B0 duy tr\xEC v\u1ECB th\u1EBF d\u1EABn \u0111\u1EA7u"
+        },
+        {
+          "id": "p2",
+          "left": "\xD4 B\xF2 S\u1EEFa (Cash Cows)",
+          "right": "T\u0103ng tr\u01B0\u1EDFng th\u1EA5p, th\u1ECB ph\u1EA7n cao: Thu ho\u1EA1ch d\xF2ng ti\u1EC1n t\u1ED1i \u0111a"
+        },
+        {
+          "id": "p3",
+          "left": "\xD4 D\u1EA5u H\u1ECFi (Question Marks)",
+          "right": "T\u0103ng tr\u01B0\u1EDFng cao, th\u1ECB ph\u1EA7n th\u1EA5p: \u0110\xE1nh gi\xE1 ch\u1ECDn l\u1ECDc \u0111\u1EC3 t\xE1i \u0111\u1EA7u t\u01B0 ho\u1EB7c r\xFAt lui"
+        },
+        {
+          "id": "p4",
+          "left": "\xD4 Ch\xF3 M\u1EF1c (Dogs)",
+          "right": "T\u0103ng tr\u01B0\u1EDFng th\u1EA5p, th\u1ECB ph\u1EA7n th\u1EA5p: C\xE2n nh\u1EAFc gi\u1EA3i th\u1EC3 ho\u1EB7c tho\xE1i v\u1ED1n"
+        }
+      ],
+      "options": [
+        {
+          "id": "A",
+          "text": "1-A, 2-B, 3-C, 4-D",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "1-B, 2-A, 3-D, 4-C",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "1-C, 2-D, 3-A, 4-B",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "1-D, 2-C, 3-B, 4-A",
+          "isCorrect": false
+        }
+      ],
+      "hint": "Ma tr\u1EADn BCG c\u1ED5 \u0111i\u1EC3n c\u1EE7a Boston Consulting Group.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_24",
+      "type": "DRAG_DROP",
+      "content": "H\xE3y s\u1EAFp x\u1EBFp \u0111\xFAng th\u1EE9 t\u1EF1 c\xE1c b\u01B0\u1EDBc trong quy tr\xECnh l\u1EADp k\u1EBF ho\u1EA1ch kinh doanh chi\u1EBFn l\u01B0\u1EE3c to\xE0n di\u1EC7n:",
+      "points": 40,
+      "timeLimit": 60,
+      "options": [
+        {
+          "id": "STEP_1",
+          "text": "X\xE1c \u0111\u1ECBnh S\u1EE9 m\u1EC7nh, T\u1EA7m nh\xECn v\xE0 M\u1EE5c ti\xEAu chi\u1EBFn l\u01B0\u1EE3c",
+          "isCorrect": true
+        },
+        {
+          "id": "STEP_2",
+          "text": "Ph\xE2n t\xEDch m\xF4i tr\u01B0\u1EDDng v\u0129 m\xF4 v\xE0 vi m\xF4 (PESTLE & SWOT)",
+          "isCorrect": true
+        },
+        {
+          "id": "STEP_3",
+          "text": "H\xECnh th\xE0nh v\xE0 l\u1EF1a ch\u1ECDn c\xE1c ph\u01B0\u01A1ng \xE1n chi\u1EBFn l\u01B0\u1EE3c kh\u1EA3 thi",
+          "isCorrect": true
+        },
+        {
+          "id": "STEP_4",
+          "text": "X\xE2y d\u1EF1ng k\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p v\xE0 ph\xE2n b\u1ED5 ngu\u1ED3n l\u1EF1c ng\xE2n s\xE1ch",
+          "isCorrect": true
+        },
+        {
+          "id": "STEP_5",
+          "text": "Tri\u1EC3n khai th\u1EF1c hi\u1EC7n, theo d\xF5i \u0111o l\u01B0\u1EDDng v\xE0 \u0111i\u1EC1u ch\u1EC9nh k\u1EBF ho\u1EA1ch",
+          "isCorrect": true
+        }
+      ],
+      "hint": "S\u1EE9 m\u1EC7nh -> Ph\xE2n t\xEDch m\xF4i tr\u01B0\u1EDDng -> L\u1EF1a ch\u1ECDn chi\u1EBFn l\u01B0\u1EE3c -> K\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p -> \u0110o l\u01B0\u1EDDng ki\u1EC3m so\xE1t.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_25",
+      "type": "MC_SINGLE",
+      "content": "[C\xC2U H\u1ECEI PH\u1EE4 - L\u1EACP K\u1EBE HO\u1EA0CH] Ch\u1EEF 'R' trong nguy\xEAn t\u1EAFc thi\u1EBFt l\u1EADp m\u1EE5c ti\xEAu SMART \u0111\u1EA1i di\u1EC7n cho ti\xEAu ch\xED n\xE0o?",
+      "points": 20,
+      "timeLimit": 20,
+      "isTieBreaker": true,
+      "options": [
+        {
+          "id": "A",
+          "text": "Rapid (Nhanh ch\xF3ng) theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "Relevant / Realistic (Ph\xF9 h\u1EE3p / Th\u1EF1c t\u1EBF)",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "Resilient (B\u1EC1n b\u1EC9) theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Routine (Th\u01B0\u1EDDng nh\u1EADt) theo c\xE1c quy \u0111\u1ECBnh th\xF4ng th\u01B0\u1EDDng",
+          "isCorrect": false
+        }
+      ],
+      "hint": "M\u1EE5c ti\xEAu ph\u1EA3i g\u1EAFn li\u1EC1n v\u1EDBi t\u1EA7m nh\xECn chi\u1EBFn l\u01B0\u1EE3c v\xE0 c\xF3 t\xEDnh kh\u1EA3 thi th\u1EF1c t\u1EBF."
+    },
+    {
+      "id": "q_off_26",
+      "type": "MC_SINGLE",
+      "content": "[C\xC2U H\u1ECEI PH\u1EE4 - L\u1EACP K\u1EBE HO\u1EA0CH] Trong ma tr\u1EADn BCG, \u0111\u01A1n v\u1ECB kinh doanh chi\u1EBFn l\u01B0\u1EE3c (SBU) c\xF3 th\u1ECB ph\u1EA7n cao trong m\u1ED9t ng\xE0nh t\u0103ng tr\u01B0\u1EDFng ch\u1EADm \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 g\xEC?",
+      "points": 20,
+      "timeLimit": 20,
+      "isTieBreaker": true,
+      "options": [
+        {
+          "id": "A",
+          "text": "Ng\xF4i sao (Star)",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "B\xF2 s\u1EEFa (Cash Cow)",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "D\u1EA5u h\u1ECFi (Question Mark)",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Con ch\xF3 (Dog)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "\u0110\u01A1n v\u1ECB mang l\u1EA1i d\xF2ng ti\u1EC1n d\u1ED3i d\xE0o \u0111\u1EC3 t\xE0i tr\u1EE3 cho c\xE1c \u0111\u01A1n v\u1ECB kinh doanh kh\xE1c."
+    },
+    {
+      "id": "q_off_27",
+      "type": "MC_SINGLE",
+      "content": "[C\xC2U H\u1ECEI PH\u1EE4 - L\u1EACP K\u1EBE HO\u1EA0CH] Trong ph\xE2n t\xEDch PESTEL, y\u1EBFu t\u1ED1 n\xE0o kh\u1EA3o s\xE1t v\u1EC1 bi\u1EBFn \u0111\u1ED9ng t\u1EF7 gi\xE1, l\xE3i su\u1EA5t v\xE0 l\u1EA1m ph\xE1t?",
+      "points": 30,
+      "timeLimit": 30,
+      "isTieBreaker": true,
+      "options": [
+        {
+          "id": "A",
+          "text": "Political (Ch\xEDnh tr\u1ECB)",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "Economic (Kinh t\u1EBF)",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "Social (X\xE3 h\u1ED9i)",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Legal (Ph\xE1p l\xFD)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "Ch\u1EEF E \u0111\u1EA7u ti\xEAn trong t\u1EEB vi\u1EBFt t\u1EAFt PESTEL."
+    },
+    {
+      "id": "q_off_28",
+      "type": "MC_SINGLE",
+      "content": "Trong m\xF4 h\xECnh l\u1EADp k\u1EBF ho\u1EA1ch kinh doanh 5W1H, ch\u1EEF 'W' \u0111\u1EA1i di\u1EC7n cho c\xE2u h\u1ECFi 'T\u1EA1i sao ph\u1EA3i th\u1EF1c hi\u1EC7n m\u1EE5c ti\xEAu n\xE0y?' l\xE0 t\u1EEB n\xE0o?",
+      "points": 10,
+      "timeLimit": 15,
+      "options": [
+        {
+          "id": "A",
+          "text": "Where (\u1EDE \u0111\xE2u)",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "Why (T\u1EA1i sao)",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "When (Khi n\xE0o)",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Who (Ai l\xE0m)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "Why x\xE1c \u0111\u1ECBnh l\xFD do, m\u1EE5c \u0111\xEDch c\u1ED1t l\xF5i v\xE0 \xFD ngh\u0129a c\u1EE7a k\u1EBF ho\u1EA1ch.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_29",
+      "type": "TRUE_FALSE",
+      "content": "K\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p (Operational Planning) th\u01B0\u1EDDng c\xF3 t\u1EA7m nh\xECn d\xE0i h\u1EA1n t\u1EEB 5 \u0111\u1EBFn 10 n\u0103m v\xE0 do H\u1ED9i \u0111\u1ED3ng Qu\u1EA3n tr\u1ECB ban h\xE0nh.",
+      "points": 10,
+      "timeLimit": 15,
+      "options": [
+        {
+          "id": "A",
+          "text": "\u0110\xFAng",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "Sai",
+          "isCorrect": true
+        }
+      ],
+      "hint": "K\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p mang t\xEDnh ng\u1EAFn h\u1EA1n (d\u01B0\u1EDBi 1 n\u0103m), g\u1EAFn v\u1EDBi ho\u1EA1t \u0111\u1ED9ng h\xE0ng ng\xE0y c\u1EE7a c\u1EA5p c\u01A1 s\u1EDF.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_30",
+      "type": "FILL_BLANK",
+      "content": "M\xF4 h\xECnh qu\u1EA3n tr\u1ECB m\u1EE5c ti\xEAu hi\u1EC7n \u0111\u1EA1i \u0111\u01B0\u1EE3c Google v\xE0 Intel \xE1p d\u1EE5ng ph\u1ED5 bi\u1EBFn, bao g\u1ED3m M\u1EE5c ti\xEAu (Objectives) v\xE0 C\xE1c k\u1EBFt qu\u1EA3 then ch\u1ED1t, vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+      "answer": "OKR",
+      "points": 10,
+      "timeLimit": 15,
+      "hint": "Vi\u1EBFt t\u1EAFt c\u1EE7a 3 ch\u1EEF c\xE1i ti\u1EBFng Anh: Objectives and Key Results.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_31",
+      "type": "MC_SINGLE",
+      "content": "Trong chu tr\xECnh c\u1EA3i ti\u1EBFn li\xEAn t\u1EE5c PDCA c\u1EE7a Deming, ch\u1EEF 'C' \u0111\u1EA1i di\u1EC7n cho h\xE0nh \u0111\u1ED9ng n\xE0o?",
+      "points": 10,
+      "timeLimit": 15,
+      "options": [
+        {
+          "id": "A",
+          "text": "Control (Ki\u1EC3m so\xE1t n\u1ED9i b\u1ED9)",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "Check (Ki\u1EC3m tra, \u0111o l\u01B0\u1EDDng k\u1EBFt qu\u1EA3)",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "Create (S\xE1ng t\u1EA1o ph\u01B0\u01A1ng \xE1n m\u1EDBi)",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Cancel (H\u1EE7y b\u1ECF d\u1EF1 \xE1n th\u1EA5t b\u1EA1i)",
+          "isCorrect": false
+        }
+      ],
+      "hint": "PDCA = Plan - Do - Check - Act.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_32",
+      "type": "MC_SINGLE",
+      "content": "Lo\u1EA1i k\u1EBF ho\u1EA1ch n\xE0o d\u01B0\u1EDBi \u0111\xE2y quy \u0111\u1ECBnh chu\u1ED7i c\xE1c h\xE0nh \u0111\u1ED9ng b\u1EAFt bu\u1ED9c ph\u1EA3i th\u1EF1c hi\u1EC7n theo tr\xECnh t\u1EF1 th\u1EDDi gian c\u1EE5 th\u1EC3 \u0111\u1EC3 ho\xE0n th\xE0nh m\u1ED9t c\xF4ng vi\u1EC7c?",
+      "points": 10,
+      "timeLimit": 15,
+      "options": [
+        {
+          "id": "A",
+          "text": "Quy tr\xECnh (Procedures)",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "Ch\xEDnh s\xE1ch (Policies)",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "Chi\u1EBFn l\u01B0\u1EE3c (Strategies)",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Quy ch\u1EBF v\u0103n h\xF3a c\xF4ng ty",
+          "isCorrect": false
+        }
+      ],
+      "hint": "Quy tr\xECnh \u0111\u1ECBnh r\xF5 t\u1EEBng b\u01B0\u1EDBc 1, 2, 3... theo tr\xECnh t\u1EF1 tr\u01B0\u1EDBc sau.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_33",
+      "type": "TRUE_FALSE",
+      "content": "Trong ma tr\u1EADn SWOT, C\u01A1 h\u1ED9i (Opportunities) v\xE0 Th\xE1ch th\u1EE9c (Threats) ph\u1EA3n \xE1nh c\xE1c nh\xE2n t\u1ED1 thu\u1ED9c m\xF4i tr\u01B0\u1EDDng b\xEAn ngo\xE0i c\u1EE7a t\u1ED5 ch\u1EE9c.",
+      "points": 10,
+      "timeLimit": 15,
+      "options": [
+        {
+          "id": "A",
+          "text": "\u0110\xFAng",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "Sai",
+          "isCorrect": false
+        }
+      ],
+      "hint": "\u0110i\u1EC3m m\u1EA1nh/y\u1EBFu thu\u1ED9c n\u1ED9i b\u1ED9, c\u01A1 h\u1ED9i/th\xE1ch th\u1EE9c \u0111\u1EBFn t\u1EEB m\xF4i tr\u01B0\u1EDDng b\xEAn ngo\xE0i.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_34",
+      "type": "MC_MULTI",
+      "content": "Trong c\xE1c ph\xE1t bi\u1EC3u d\u01B0\u1EDBi \u0111\xE2y v\u1EC1 Ma tr\u1EADn m\u1EDF r\u1ED9ng s\u1EA3n ph\u1EA9m / th\u1ECB tr\u01B0\u1EDDng c\u1EE7a Ansoff, nh\u1EEFng ph\xE1t bi\u1EC3u n\xE0o l\xE0 \u0110\xDANG?",
+      "points": 20,
+      "timeLimit": 20,
+      "options": [
+        {
+          "id": "A",
+          "text": "Th\xE2m nh\u1EADp th\u1ECB tr\u01B0\u1EDDng l\xE0 b\xE1n s\u1EA3n ph\u1EA9m hi\u1EC7n c\xF3 v\xE0o th\u1ECB tr\u01B0\u1EDDng hi\u1EC7n c\xF3",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "Ph\xE1t tri\u1EC3n s\u1EA3n ph\u1EA9m l\xE0 \u0111\u01B0a s\u1EA3n ph\u1EA9m m\u1EDBi v\xE0o th\u1ECB tr\u01B0\u1EDDng hi\u1EC7n c\xF3",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "\u0110a d\u1EA1ng h\xF3a l\xE0 \u0111\u01B0a s\u1EA3n ph\u1EA9m m\u1EDBi v\xE0o th\u1ECB tr\u01B0\u1EDDng ho\xE0n to\xE0n m\u1EDBi",
+          "isCorrect": true
+        },
+        {
+          "id": "D",
+          "text": "Ph\xE1t tri\u1EC3n th\u1ECB tr\u01B0\u1EDDng l\xE0 b\xE1n s\u1EA3n ph\u1EA9m m\u1EDBi v\xE0o th\u1ECB tr\u01B0\u1EDDng hi\u1EC7n c\xF3",
+          "isCorrect": false
+        }
+      ],
+      "hint": "Ph\xE1t tri\u1EC3n th\u1ECB tr\u01B0\u1EDDng l\xE0 b\xE1n s\u1EA3n ph\u1EA9m hi\u1EC7n c\xF3 v\xE0o c\xE1c th\u1ECB tr\u01B0\u1EDDng ho\u1EB7c ph\xE2n kh\xFAc kh\xE1ch h\xE0ng m\u1EDBi.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_35",
+      "type": "FILL_BLANK",
+      "content": "Ph\u01B0\u01A1ng ph\xE1p l\u1EADp ng\xE2n s\xE1ch y\xEAu c\u1EA7u ng\u01B0\u1EDDi qu\u1EA3n l\xFD ph\u1EA3i gi\u1EA3i tr\xECnh v\xE0 ch\u1EE9ng minh l\u1EA1i to\xE0n b\u1ED9 c\xE1c kho\u1EA3n chi ti\xEAu t\u1EEB con s\u1ED1 0 cho m\u1ED7i k\u1EF3 l\u1EADp k\u1EBF ho\u1EA1ch m\u1EDBi \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 ng\xE2n s\xE1ch g\xEC? (Ghi t\xEAn ti\u1EBFng Anh 3 ch\u1EEF c\xE1i)",
+      "answer": "ZBB",
+      "points": 20,
+      "timeLimit": 20,
+      "hint": "Vi\u1EBFt t\u1EAFt c\u1EE7a Zero-Based Budgeting (Ng\xE2n s\xE1ch d\u1EF1a tr\xEAn s\u1ED1 kh\xF4ng).",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_36",
+      "type": "MC_SINGLE",
+      "content": "S\u1EF1 kh\xE1c bi\u1EC7t c\u1ED1t l\xF5i gi\u1EEFa K\u1EBF ho\u1EA1ch chi\u1EBFn l\u01B0\u1EE3c (Strategic Plan) v\xE0 K\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p (Operational Plan) \u0111\u01B0\u1EE3c th\u1EC3 hi\u1EC7n ch\xEDnh x\xE1c \u1EDF ph\xE1t bi\u1EC3u n\xE0o?",
+      "points": 20,
+      "timeLimit": 20,
+      "options": [
+        {
+          "id": "A",
+          "text": "K\u1EBF ho\u1EA1ch chi\u1EBFn l\u01B0\u1EE3c mang t\u1EA7m nh\xECn d\xE0i h\u1EA1n (3-5+ n\u0103m) do l\xE3nh \u0111\u1EA1o c\u1EA5p cao ph\xEA duy\u1EC7t; K\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p mang t\xEDnh ng\u1EAFn h\u1EA1n (tu\u1EA7n/th\xE1ng/d\u01B0\u1EDBi 1 n\u0103m) do c\u1EA5p c\u01A1 s\u1EDF tri\u1EC3n khai c\u1EE5 th\u1EC3",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "K\u1EBF ho\u1EA1ch chi\u1EBFn l\u01B0\u1EE3c do nh\xE2n vi\xEAn th\u1EF1c t\u1EADp l\u1EADp; K\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p do H\u1ED9i \u0111\u1ED3ng qu\u1EA3n tr\u1ECB x\xE2y d\u1EF1ng",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "K\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p kh\xF4ng c\xF3 b\u1EA5t k\u1EF3 ch\u1EC9 ti\xEAu s\u1ED1 l\u01B0\u1EE3ng hay th\u1EDDi h\u1EA1n c\u1EE5 th\u1EC3 n\xE0o",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "K\u1EBF ho\u1EA1ch chi\u1EBFn l\u01B0\u1EE3c ch\u1EC9 c\xF3 gi\xE1 tr\u1ECB th\u1EF1c thi trong v\xF2ng 24 gi\u1EDD sau khi k\xFD ban h\xE0nh",
+          "isCorrect": false
+        }
+      ],
+      "hint": "Chi\u1EBFn l\u01B0\u1EE3c: D\xE0i h\u1EA1n, to\xE0n di\u1EC7n, c\u1EA5p cao. T\xE1c nghi\u1EC7p: Ng\u1EAFn h\u1EA1n, c\u1EE5 th\u1EC3, c\u1EA5p c\u01A1 s\u1EDF.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_37",
+      "type": "MC_SINGLE",
+      "content": "M\u1ED9t doanh nghi\u1EC7p c\xF3 chi ph\xED c\u1ED1 \u0111\u1ECBnh (FC) = 200 tri\u1EC7u \u0111\u1ED3ng/th\xE1ng. Gi\xE1 b\xE1n m\u1ED9t s\u1EA3n ph\u1EA9m P = 50.000 \u0111\u1ED3ng, chi ph\xED bi\u1EBFn \u0111\u1ED5i tr\xEAn m\u1ED7i s\u1EA3n ph\u1EA9m VC = 30.000 \u0111\u1ED3ng. S\u1EA3n l\u01B0\u1EE3ng h\xF2a v\u1ED1n (BEP) c\u1EE7a doanh nghi\u1EC7p l\xE0 bao nhi\xEAu?",
+      "points": 20,
+      "timeLimit": 20,
+      "options": [
+        {
+          "id": "A",
+          "text": "10.000 s\u1EA3n ph\u1EA9m",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "6.667 s\u1EA3n ph\u1EA9m",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "4.000 s\u1EA3n ph\u1EA9m",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "15.000 s\u1EA3n ph\u1EA9m",
+          "isCorrect": false
+        }
+      ],
+      "hint": "Q_h\xF2a v\u1ED1n = FC / (P - VC) = 200.000.000 / (50.000 - 30.000) = 10.000 s\u1EA3n ph\u1EA9m.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_38",
+      "type": "TRUE_FALSE",
+      "content": "Ph\u01B0\u01A1ng ph\xE1p chuy\xEAn gia Delphi trong d\u1EF1 b\xE1o l\u1EADp k\u1EBF ho\u1EA1ch cho ph\xE9p c\xE1c chuy\xEAn gia tranh lu\u1EADn tr\u1EF1c ti\u1EBFp m\u1EB7t \u0111\u1ED1i m\u1EB7t \u0111\u1EC3 \u0111\u1EA1t \u0111\u01B0\u1EE3c \u0111\u1ED3ng thu\u1EADn nhanh nh\u1EA5t.",
+      "points": 20,
+      "timeLimit": 20,
+      "options": [
+        {
+          "id": "A",
+          "text": "\u0110\xFAng",
+          "isCorrect": false
+        },
+        {
+          "id": "B",
+          "text": "Sai",
+          "isCorrect": true
+        }
+      ],
+      "hint": "Ph\u01B0\u01A1ng ph\xE1p Delphi gi\u1EEF \u1EA9n danh ho\xE0n to\xE0n gi\u1EEFa c\xE1c chuy\xEAn gia qua c\xE1c v\xF2ng g\u1EEDi phi\u1EBFu kh\u1EA3o s\xE1t \u0111\u1EC3 tr\xE1nh hi\u1EC7u \u1EE9ng t\xE2m l\xFD b\u1EA7y \u0111\xE0n.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_39",
+      "type": "MC_SINGLE",
+      "content": "Theo m\xF4 h\xECnh 5 l\u1EF1c l\u01B0\u1EE3ng c\u1EA1nh tranh c\u1EE7a Michael Porter, r\xE0o c\u1EA3n gia nh\u1EADp ng\xE0nh CAO s\u1EBD d\u1EABn \u0111\u1EBFn h\u1EC7 qu\u1EA3 n\xE0o \u0111\u1ED1i v\u1EDBi c\xE1c doanh nghi\u1EC7p hi\u1EC7n t\u1EA1i trong ng\xE0nh?",
+      "points": 20,
+      "timeLimit": 20,
+      "options": [
+        {
+          "id": "A",
+          "text": "Gi\u1EA3m \xE1p l\u1EF1c c\u1EA1nh tranh t\u1EEB c\xE1c \u0111\u1ED1i th\u1EE7 ti\u1EC1m n\u0103ng m\u1EDBi",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "T\u0103ng quy\u1EC1n l\u1EF1c th\u01B0\u01A1ng l\u01B0\u1EE3ng c\u1EE7a kh\xE1ch h\xE0ng",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "L\xE0m t\u0103ng nguy c\u01A1 xu\u1EA5t hi\u1EC7n s\u1EA3n ph\u1EA9m thay th\u1EBF",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "L\xE0m gi\u1EA3m t\u1EF7 su\u1EA5t l\u1EE3i nhu\u1EADn trung b\xECnh to\xE0n ng\xE0nh",
+          "isCorrect": false
+        }
+      ],
+      "hint": "R\xE0o c\u1EA3n cao ng\u0103n c\xE1c \u0111\u1ED1i th\u1EE7 ti\u1EC1m t\xE0ng m\u1EDBi b\u01B0\u1EDBc v\xE0o th\u1ECB tr\u01B0\u1EDDng, b\u1EA3o v\u1EC7 th\u1ECB ph\u1EA7n doanh nghi\u1EC7p hi\u1EC7n t\u1EA1i.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_40",
+      "type": "MC_MULTI",
+      "content": "Trong c\xE1c ph\xE1t bi\u1EC3u d\u01B0\u1EDBi \u0111\xE2y v\u1EC1 k\u1EF9 thu\u1EADt ph\xE2n t\xEDch ma tr\u1EADn SWOT k\u1EBFt h\u1EE3p, nh\u1EEFng c\u1EB7p chi\u1EBFn l\u01B0\u1EE3c n\xE0o \u0111\u01B0\u1EE3c x\xE1c \u0111\u1ECBnh CH\xCDNH X\xC1C?",
+      "points": 30,
+      "timeLimit": 30,
+      "options": [
+        {
+          "id": "A",
+          "text": "Chi\u1EBFn l\u01B0\u1EE3c S-O: T\u1EADn d\u1EE5ng th\u1EBF m\u1EA1nh n\u1ED9i b\u1ED9 \u0111\u1EC3 n\u1EAFm b\u1EAFt c\u01A1 h\u1ED9i b\xEAn ngo\xE0i",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "Chi\u1EBFn l\u01B0\u1EE3c W-O: Kh\u1EAFc ph\u1EE5c \u0111i\u1EC3m y\u1EBFu n\u1ED9i b\u1ED9 b\u1EB1ng c\xE1ch t\u1EADn d\u1EE5ng c\u01A1 h\u1ED9i b\xEAn ngo\xE0i",
+          "isCorrect": true
+        },
+        {
+          "id": "C",
+          "text": "Chi\u1EBFn l\u01B0\u1EE3c S-T: S\u1EED d\u1EE5ng th\u1EBF m\u1EA1nh n\u1ED9i b\u1ED9 \u0111\u1EC3 ph\xF2ng ng\u1EEBa v\xE0 h\u1EA1n ch\u1EBF c\xE1c m\u1ED1i \u0111e d\u1ECDa b\xEAn ngo\xE0i",
+          "isCorrect": true
+        },
+        {
+          "id": "D",
+          "text": "Chi\u1EBFn l\u01B0\u1EE3c W-T: T\u1ED1i \u0111a h\xF3a chi ph\xED \u0111\u1EA7u t\u01B0 \u0111\u1EC3 bi\u1EBFn \u0111i\u1EC3m y\u1EBFu th\xE0nh c\u01A1 h\u1ED9i \u0111\u1ED9t ph\xE1",
+          "isCorrect": false
+        }
+      ],
+      "hint": "Chi\u1EBFn l\u01B0\u1EE3c W-T l\xE0 chi\u1EBFn l\u01B0\u1EE3c ph\xF2ng th\u1EE7 t\u1ED1i thi\u1EC3u h\xF3a \u0111i\u1EC3m y\u1EBFu v\xE0 n\xE9 tr\xE1nh nguy c\u01A1 de d\u1ECDa.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_41",
+      "type": "MC_SINGLE",
+      "content": "L\xFD do quan tr\u1ECDng nh\u1EA5t khi\u1EBFn K\u1EBF ho\u1EA1ch cu\u1ED1n chi\u1EBFu (Rolling Plan / Rolling Forecast) \u01B0u vi\u1EC7t h\u01A1n K\u1EBF ho\u1EA1ch c\u1ED1 \u0111\u1ECBnh h\xE0ng n\u0103m trong m\xF4i tr\u01B0\u1EDDng VUCA l\xE0 g\xEC?",
+      "points": 30,
+      "timeLimit": 25,
+      "options": [
+        {
+          "id": "A",
+          "text": "Li\xEAn t\u1EE5c c\u1EADp nh\u1EADt khung th\u1EDDi gian d\u1EF1 b\xE1o t\u01B0\u01A1ng lai (v\xED d\u1EE5 12-18 th\xE1ng t\u1EDBi) theo t\u1EEBng k\u1EF3, gi\xFAp doanh nghi\u1EC7p linh ho\u1EA1t \u0111i\u1EC1u ch\u1EC9nh gi\u1EA3 \u0111\u1ECBnh v\xE0 ngu\u1ED3n l\u1EF1c theo bi\u1EBFn \u0111\u1ED9ng th\u1EF1c t\u1EBF thay v\xEC b\xE1m v\xE0o ch\u1EC9 ti\xEAu c\u1EE9ng nh\u1EAFc \u0111\xE3 l\u1ED7i th\u1EDDi",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "Gi\xFAp doanh nghi\u1EC7p kh\xF4ng c\u1EA7n theo d\xF5i b\u1EA5t k\u1EF3 s\u1ED1 li\u1EC7u doanh thu hay chi ph\xED th\u1EF1c t\u1EBF n\xE0o",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "T\u1EF1 \u0111\u1ED9ng kh\xF3a c\u1EE9ng ng\xE2n s\xE1ch chi ti\xEAu kh\xF4ng cho ph\xE9p b\u1EA5t k\u1EF3 ph\xF2ng ban n\xE0o thay \u0111\u1ED5i",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "Lo\u1EA1i b\u1ECF ho\xE0n to\xE0n vai tr\xF2 c\u1EE7a ban gi\xE1m \u0111\u1ED1c trong c\xF4ng t\xE1c qu\u1EA3n tr\u1ECB doanh nghi\u1EC7p",
+          "isCorrect": false
+        }
+      ],
+      "hint": "Rolling plan li\xEAn t\u1EE5c m\u1EDF r\u1ED9ng t\u1EA7m nh\xECn v\u1EC1 ph\xEDa tr\u01B0\u1EDBc, t\u0103ng t\xEDnh linh ho\u1EA1t v\xE0 kh\u1EA3 n\u0103ng \u1EE9ng bi\u1EBFn.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_42",
+      "type": "MATCHING",
+      "content": "H\xE3y gh\xE9p \u0111\xFAng t\u1EEBng c\xF4ng c\u1EE5 ho\u1EA1ch \u0111\u1ECBnh chi\u1EBFn l\u01B0\u1EE3c v\u1EDBi m\u1EE5c \u0111\xEDch \u1EE9ng d\u1EE5ng ch\u1EE7 \u0111\u1EA1o c\u1EE7a n\xF3:",
+      "points": 30,
+      "timeLimit": 40,
+      "pairs": [
+        {
+          "id": "p1",
+          "left": "Ma tr\u1EADn Ansoff",
+          "right": "X\xE1c \u0111\u1ECBnh 4 h\u01B0\u1EDBng t\u0103ng tr\u01B0\u1EDFng d\u1EF1a tr\xEAn S\u1EA3n ph\u1EA9m & Th\u1ECB tr\u01B0\u1EDDng"
+        },
+        {
+          "id": "p2",
+          "left": "Ma tr\u1EADn GE / McKinsey",
+          "right": "\u0110\xE1nh gi\xE1 9 \xF4 v\u1ECB th\u1EBF c\u1EA1nh tranh kinh doanh v\xE0 S\u1EE9c h\u1EA5p d\u1EABn ng\xE0nh"
+        },
+        {
+          "id": "p3",
+          "left": "M\xF4 h\xECnh Chu\u1ED7i gi\xE1 tr\u1ECB (Value Chain)",
+          "right": "Ph\xE2n t\xEDch c\xE1c ho\u1EA1t \u0111\u1ED9ng ch\xEDnh v\xE0 ho\u1EA1t \u0111\u1ED9ng b\u1ED5 tr\u1EE3 t\u1EA1o ra gi\xE1 tr\u1ECB"
+        },
+        {
+          "id": "p4",
+          "left": "Th\u1EBB \u0111i\u1EC3m c\xE2n b\u1EB1ng (BSC)",
+          "right": "C\u1EE5 th\u1EC3 h\xF3a chi\u1EBFn l\u01B0\u1EE3c th\xE0nh 4 kh\xEDa c\u1EA1nh \u0111o l\u01B0\u1EDDng \u0111\u1ECBnh l\u01B0\u1EE3ng"
+        }
+      ],
+      "options": [
+        {
+          "id": "A",
+          "text": "1-A, 2-B, 3-C, 4-D",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "1-B, 2-A, 3-D, 4-C",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "1-C, 2-D, 3-A, 4-B",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "1-D, 2-C, 3-B, 4-A",
+          "isCorrect": false
+        }
+      ],
+      "hint": "M\u1ED7i ma tr\u1EADn v\xE0 khung l\xFD thuy\u1EBFt ph\u1EE5c v\u1EE5 m\u1ED9t g\xF3c nh\xECn ph\xE2n t\xEDch chi\u1EBFn l\u01B0\u1EE3c ri\xEAng bi\u1EC7t.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_43",
+      "type": "DRAG_DROP",
+      "content": "H\xE3y s\u1EAFp x\u1EBFp \u0111\xFAng tr\xECnh t\u1EF1 c\xE1c b\u01B0\u1EDBc th\u1EF1c hi\u1EC7n k\u1EF9 thu\u1EADt D\u1EF1 b\xE1o theo ph\u01B0\u01A1ng ph\xE1p San b\u1EB1ng h\xE0m m\u0169 b\u1EADc nh\u1EA5t:",
+      "points": 30,
+      "timeLimit": 35,
+      "options": [
+        {
+          "id": "STEP_1",
+          "text": "Thu th\u1EADp chu\u1ED7i s\u1ED1 li\u1EC7u th\u1EF1c t\u1EBF c\u1EE7a c\xE1c k\u1EF3 qu\xE1 kh\u1EE9",
+          "isCorrect": true
+        },
+        {
+          "id": "STEP_2",
+          "text": "L\u1EF1a ch\u1ECDn gi\xE1 tr\u1ECB d\u1EF1 b\xE1o kh\u1EDFi \u0111\u1EA7u (F1) cho k\u1EF3 ph\xE2n t\xEDch \u0111\u1EA7u ti\xEAn",
+          "isCorrect": true
+        },
+        {
+          "id": "STEP_3",
+          "text": "X\xE1c \u0111\u1ECBnh h\u1EC7 s\u1ED1 san b\u1EB1ng alpha t\u1ED1i \u01B0u trong kho\u1EA3ng (0, 1)",
+          "isCorrect": true
+        },
+        {
+          "id": "STEP_4",
+          "text": "\xC1p d\u1EE5ng c\xF4ng th\u1EE9c F(t+1) = F(t) + alpha * [A(t) - F(t)]",
+          "isCorrect": true
+        },
+        {
+          "id": "STEP_5",
+          "text": "\u0110o l\u01B0\u1EDDng sai s\u1ED1 d\u1EF1 b\xE1o (MAD, MSE) v\xE0 hi\u1EC7u ch\u1EC9nh tham s\u1ED1",
+          "isCorrect": true
+        }
+      ],
+      "hint": "S\u1ED1 li\u1EC7u l\u1ECBch s\u1EED -> Gi\xE1 tr\u1ECB ban \u0111\u1EA7u -> Ch\u1ECDn alpha -> T\xEDnh d\u1EF1 b\xE1o -> \u0110o sai s\u1ED1.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_44",
+      "type": "MATCHING",
+      "content": "H\xE3y gh\xE9p \u0111\xFAng c\xE1c ch\u1EC9 s\u1ED1 th\u1EA9m \u0111\u1ECBnh hi\u1EC7u qu\u1EA3 t\xE0i ch\xEDnh c\u1EE7a d\u1EF1 \xE1n \u0111\u1EA7u t\u01B0 trong k\u1EBF ho\u1EA1ch d\xE0i h\u1EA1n v\u1EDBi ti\xEAu chu\u1EA9n ch\u1EA5p thu\u1EADn t\u01B0\u01A1ng \u1EE9ng:",
+      "points": 40,
+      "timeLimit": 60,
+      "pairs": [
+        {
+          "id": "p1",
+          "left": "Gi\xE1 tr\u1ECB hi\u1EC7n gi\xE1 thu\u1EA7n (NPV)",
+          "right": "Ch\u1EA5p thu\u1EADn khi NPV > 0 (t\u0103ng th\xEAm gi\xE1 tr\u1ECB cho ch\u1EE7 s\u1EDF h\u1EEFu)"
+        },
+        {
+          "id": "p2",
+          "left": "T\u1EF7 su\u1EA5t sinh l\u1EDDi n\u1ED9i b\u1ED9 (IRR)",
+          "right": "Ch\u1EA5p thu\u1EADn khi IRR > Chi ph\xED v\u1ED1n s\u1EED d\u1EE5ng (WACC / r)"
+        },
+        {
+          "id": "p3",
+          "left": "Ch\u1EC9 s\u1ED1 kh\u1EA3 n\u0103ng sinh l\u1EDDi (PI)",
+          "right": "Ch\u1EA5p thu\u1EADn khi PI = T\u1ED5ng PV d\xF2ng thu / V\u1ED1n \u0111\u1EA7u t\u01B0 > 1"
+        },
+        {
+          "id": "p4",
+          "left": "Th\u1EDDi gian ho\xE0n v\u1ED1n c\xF3 chi\u1EBFt kh\u1EA5u (DPP)",
+          "right": "Ch\u1EA5p thu\u1EADn khi DPP nh\u1ECF h\u01A1n th\u1EDDi h\u1EA1n ho\xE0n v\u1ED1n y\xEAu c\u1EA7u"
+        }
+      ],
+      "options": [
+        {
+          "id": "A",
+          "text": "1-A, 2-B, 3-C, 4-D",
+          "isCorrect": true
+        },
+        {
+          "id": "B",
+          "text": "1-C, 2-D, 3-A, 4-B",
+          "isCorrect": false
+        },
+        {
+          "id": "C",
+          "text": "1-B, 2-A, 3-D, 4-C",
+          "isCorrect": false
+        },
+        {
+          "id": "D",
+          "text": "1-D, 2-C, 3-B, 4-A",
+          "isCorrect": false
+        }
+      ],
+      "hint": "NPV > 0, IRR > r, PI > 1 l\xE0 b\u1ED9 3 quy t\u1EAFc quy\u1EBFt \u0111\u1ECBnh \u0111\u1EA7u t\u01B0 kinh \u0111i\u1EC3n.",
+      "isTieBreaker": false
+    },
+    {
+      "id": "q_off_45",
+      "type": "DRAG_DROP",
+      "content": "H\xE3y s\u1EAFp x\u1EBFp \u0111\xFAng th\u1EE9 t\u1EF1 c\xE1c giai \u0111o\u1EA1n c\u1EE7a quy tr\xECnh Qu\u1EA3n tr\u1ECB R\u1EE7i ro trong l\u1EADp k\u1EBF ho\u1EA1ch chi\u1EBFn l\u01B0\u1EE3c theo chu\u1EA9n ISO 31000:",
+      "points": 40,
+      "timeLimit": 60,
+      "options": [
+        {
+          "id": "STEP_1",
+          "text": "Thi\u1EBFt l\u1EADp b\u1ED1i c\u1EA3nh n\u1ED9i b\u1ED9 v\xE0 b\xEAn ngo\xE0i c\u1EE7a t\u1ED5 ch\u1EE9c",
+          "isCorrect": true
+        },
+        {
+          "id": "STEP_2",
+          "text": "Nh\u1EADn di\u1EC7n c\xE1c nguy c\u01A1 v\xE0 r\u1EE7i ro ti\u1EC1m t\xE0ng (Risk Identification)",
+          "isCorrect": true
+        },
+        {
+          "id": "STEP_3",
+          "text": "Ph\xE2n t\xEDch x\xE1c su\u1EA5t v\xE0 m\u1EE9c \u0111\u1ED9 t\xE1c \u0111\u1ED9ng c\u1EE7a r\u1EE7i ro (Risk Analysis)",
+          "isCorrect": true
+        },
+        {
+          "id": "STEP_4",
+          "text": "\u0110\xE1nh gi\xE1 v\xE0 x\u1EBFp h\u1EA1ng \u01B0u ti\xEAn c\xE1c r\u1EE7i ro (Risk Evaluation)",
+          "isCorrect": true
+        },
+        {
+          "id": "STEP_5",
+          "text": "L\u1EADp k\u1EBF ho\u1EA1ch \u1EE9ng ph\xF3: N\xE9 tr\xE1nh, Gi\u1EA3m thi\u1EC3u, Chuy\u1EC3n giao ho\u1EB7c Ch\u1EA5p nh\u1EADn",
+          "isCorrect": true
+        }
+      ],
+      "hint": "B\u1ED1i c\u1EA3nh -> Nh\u1EADn di\u1EC7n -> Ph\xE2n t\xEDch -> \u0110\xE1nh gi\xE1 x\u1EBFp h\u1EA1ng -> K\u1EBF ho\u1EA1ch \u1EE9ng ph\xF3.",
+      "isTieBreaker": false
+    }
+  ]
+};
 var MAGIC_WHEEL_PRESET_BANKS = [
   {
     id: "bank_mw_preset_vtv3",
@@ -893,7 +2248,8 @@ async function ensureQuizBankExists(bankId) {
       select: { id: true }
     });
     if (existing) return existing.id;
-    const preset = MAGIC_WHEEL_PRESET_BANKS.find((p) => p.id === cleanId);
+    const allPresets = [DEFAULT_OFFLINE_BANK, ...MAGIC_WHEEL_PRESET_BANKS];
+    const preset = allPresets.find((p) => p.id === cleanId);
     if (preset) {
       let owner = await prisma.user.findFirst({
         where: { role: "ADMIN" },
@@ -902,7 +2258,20 @@ async function ensureQuizBankExists(bankId) {
       if (!owner) {
         owner = await prisma.user.findFirst({ select: { id: true } });
       }
-      const cleanTitle = preset.title.replace(/vtv3 huyền thoại/gi, "V\u0103n H\xF3a & L\u1ECBch S\u1EED").replace(/vtv3/gi, "").replace(/\s{2,}/g, " ").trim();
+      if (!owner) {
+        owner = await prisma.user.upsert({
+          where: { email: "system@quizorra.com" },
+          update: {},
+          create: {
+            id: "system-preset-owner",
+            email: "system@quizorra.com",
+            name: "H\u1EC7 Th\u1ED1ng (System Admin)",
+            role: "ADMIN"
+          },
+          select: { id: true }
+        });
+      }
+      const cleanTitle = (preset.title || cleanId).replace(/vtv3 huyền thoại/gi, "V\u0103n H\xF3a & L\u1ECBch S\u1EED").replace(/vtv3/gi, "").replace(/\s{2,}/g, " ").trim();
       const cleanDesc = (preset.description || "").replace(/vtv3/gi, "").replace(/\s{2,}/g, " ").trim();
       await prisma.quizBank.upsert({
         where: { id: preset.id },
@@ -916,28 +2285,39 @@ async function ensureQuizBankExists(bankId) {
           title: cleanTitle,
           description: cleanDesc,
           isPublic: true,
-          ownerId: owner?.id || "demo-host-id",
-          questions: {
-            create: (preset.questions || []).map((q, idx) => ({
-              id: `${preset.id}_q${idx + 1}`,
-              type: q.type || "WORD_PUZZLE",
-              content: q.content || "",
-              answer: q.answer || "",
-              hint: q.hint || void 0,
-              points: q.points || 10,
-              timeLimit: q.timeLimit || 30,
-              order: idx + 1,
-              options: q.options || []
-            }))
-          }
+          ownerId: owner.id
         }
       });
-      return preset.id;
+      const questionCount = await prisma.question.count({
+        where: { quizBankId: preset.id }
+      });
+      if (questionCount === 0 && preset.questions && preset.questions.length > 0) {
+        await prisma.question.createMany({
+          data: preset.questions.map((q, idx) => ({
+            id: `${preset.id}_q${idx + 1}`,
+            quizBankId: preset.id,
+            type: q.type || (preset.id.includes("_mw_") ? "WORD_PUZZLE" : "MC_SINGLE"),
+            content: q.content || "",
+            answer: q.answer || "",
+            hint: q.hint || null,
+            points: q.points || 10,
+            timeLimit: q.timeLimit || 30,
+            order: idx + 1,
+            options: q.options || []
+          })),
+          skipDuplicates: true
+        });
+      }
+      const verified = await prisma.quizBank.findUnique({
+        where: { id: preset.id },
+        select: { id: true }
+      });
+      return verified ? verified.id : null;
     }
-    return cleanId;
+    return null;
   } catch (err) {
-    console.warn(`[ensureQuizBankExists] Non-fatal seeding warning for bank ${cleanId}:`, err);
-    return cleanId;
+    console.error(`[ensureQuizBankExists] Error seeding preset bank ${cleanId}:`, err);
+    return null;
   }
 }
 
@@ -18078,6 +19458,27 @@ function registerSocketHandlers(io2) {
       }
       const validBankId = await ensureQuizBankExists(payload.quizBankId);
       if (!validBankId) {
+        if (payload.localBank?.questions?.length) {
+          const currentConfig = typeof room.config === "object" && room.config !== null ? room.config : {};
+          const newConfig = {
+            ...currentConfig,
+            customQuestions: payload.localBank.questions,
+            customBankTitle: payload.localBank.title
+          };
+          await prisma.room.update({
+            where: { id: room.id },
+            data: { quizBankId: null, config: newConfig }
+          });
+          roomQuestionsCache.set(room.id, payload.localBank.questions);
+          const cached2 = roomCache.get(room.id);
+          if (cached2) {
+            cached2.quizBankId = null;
+            cached2.config = newConfig;
+          }
+          const fullRoomState2 = await buildRoomState(room.id);
+          if (fullRoomState2) io2.to(`room:${room.code}`).emit("room:state", fullRoomState2);
+          return;
+        }
         socket.emit("error", "Kh\xF4ng t\xECm th\u1EA5y b\u1ED9 \u0111\u1EC1 y\xEAu c\u1EA7u!");
         return;
       }
@@ -21459,7 +22860,13 @@ async function getRoomQuestions(roomId) {
     where: { id: roomId },
     include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
   });
-  const questions = room?.quizBank?.questions ?? [];
+  let questions = room?.quizBank?.questions ?? [];
+  if (questions.length === 0 && room?.config) {
+    const cfg = room.config;
+    if (cfg?.customQuestions && Array.isArray(cfg.customQuestions)) {
+      questions = cfg.customQuestions;
+    }
+  }
   if (questions.length > 0) {
     roomQuestionsCache.set(roomId, questions);
   }

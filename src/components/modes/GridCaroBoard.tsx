@@ -69,7 +69,7 @@ export default function GridCaroBoard({
   };
 
   return (
-    <div className={`glass rounded-2xl ${isDisplay ? "p-3 sm:p-4 space-y-2.5" : "p-2.5 sm:p-3 space-y-2"} max-h-[75vh] overflow-y-auto`}>
+    <div className={`glass rounded-2xl ${isDisplay ? "p-3 sm:p-4 space-y-2 flex flex-col justify-between h-[calc(100vh-140px)] max-h-[calc(100vh-140px)] overflow-hidden" : "p-2.5 sm:p-3 space-y-2 max-h-[75vh] overflow-y-auto"}`}>
       {/* Header Info */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2">
         <div className="flex items-center gap-3">
@@ -211,7 +211,7 @@ export default function GridCaroBoard({
 
       {/* Grid of Rectangles */}
       <div
-        className="grid gap-2 sm:gap-3 select-none"
+        className={`grid gap-2 sm:gap-2.5 select-none ${isDisplay ? "flex-1 min-h-0 items-stretch" : ""}`}
         style={{
           gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
         }}
@@ -230,7 +230,7 @@ export default function GridCaroBoard({
               type="button"
               disabled={!isClickable}
               onClick={() => onSelectCell && onSelectCell(cell.id)}
-              className={`relative rounded-2xl border-2 border-b-[4.5px] border-t border-white/20 transition-all flex flex-col items-center justify-between p-2 sm:p-2.5 text-center w-full aspect-[4/3] sm:aspect-square overflow-hidden select-none ${
+              className={`relative rounded-2xl border-2 border-b-[4.5px] border-t border-white/20 transition-all flex flex-col items-center justify-between p-2 sm:p-2.5 text-center w-full ${isDisplay ? "aspect-auto h-full min-h-[48px]" : "aspect-[4/3] sm:aspect-square"} overflow-hidden select-none ${
                 isSelectedAnim
                   ? "animate-flip-360 border-yellow-400 border-b-yellow-700 bg-yellow-500/35 shadow-2xl ring-4 ring-yellow-400/60 z-20"
                   : isSelected

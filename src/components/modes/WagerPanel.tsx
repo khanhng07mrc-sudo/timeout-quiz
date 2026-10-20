@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { WagerState } from "@/types";
 
 interface Props {
@@ -33,6 +33,7 @@ export default function WagerPanel({
   teams = [],
 }: Props) {
   const [hasSubmittedLocal, setHasSubmittedLocal] = useState(false);
+  const [customSliderWager, setCustomSliderWager] = useState<number>(0);
 
   if (!wagerState) return null;
 
@@ -64,6 +65,13 @@ export default function WagerPanel({
   // 12 Cells calculation: lowest is currentHighestWager + 5, stepping by 5 each
   const minOption = currentHighestWager + 5;
   const wagerOptions = Array.from({ length: 12 }, (_, i) => currentHighestWager + 5 * (i + 1));
+
+  useEffect(() => {
+    setCustomSliderWager((prev) => {
+      if (prev < minOption) return minOption;
+      return Math.min(prev, myTeamScore);
+    });
+  }, [minOption, myTeamScore]);
 
   const myWager = myTeamId && teamWagers ? teamWagers[myTeamId] : undefined;
   const myBailoutInfo = myTeamId && teamBailouts ? teamBailouts[myTeamId] : undefined;
@@ -445,6 +453,34 @@ export default function WagerPanel({
               );
             })}
           </div>
+
+          {!isDisplay && myTeamId && !isPreviousQuestionWagerTeam && !hasLostWagerRight && (
+            <div className="pt-2 border-t border-white/10 space-y-1.5 shrink-0">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400 font-semibold text-[11px]">Hoặc kéo thanh mức cược:</span>
+                <span className="font-mono font-bold text-cyan-300 text-xs">{customSliderWager || minOption}đ</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={minOption}
+                  max={Math.max(minOption, Math.min(myTeamScore, maxBetCap || myTeamScore))}
+                  step={5}
+                  value={customSliderWager || minOption}
+                  onChange={(e) => setCustomSliderWager(Number(e.target.value))}
+                  className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleSubmit(customSliderWager || minOption)}
+                  disabled={phase !== "WAGER_PERIOD" || isConsecutiveBlocked || (customSliderWager || minOption) > myTeamScore}
+                  className="px-3 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 font-black text-xs text-white shadow whitespace-nowrap active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  Xác nhận cược
+                </button>
+              </div>
+            </div>
+          )}
 
           {isDisplay && (
             <p className="text-[9px] text-muted-foreground text-center italic shrink-0 pt-0.5">

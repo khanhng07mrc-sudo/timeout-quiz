@@ -875,38 +875,38 @@ export default function GameQuestion({
         </div>
       )}
 
-      {/* BUZZ Mode Banner */}
+      {/* BUZZ Mode Circular Buzzer */}
       {roomMode === "BUZZ" && (
-        <div className="rounded-xl p-3 border text-sm font-medium transition-all">
+        <div className="rounded-2xl p-4 border border-amber-500/30 bg-gradient-to-b from-[#15172b]/95 to-black/90 shadow-2xl text-center space-y-4 my-2 animate-fade-in">
           {!buzzedBy ? (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-amber-500/15 border border-amber-500/30 p-3 rounded-lg">
+            <div className="flex flex-col items-center justify-center gap-3">
               <div>
-                <p className="font-bold text-amber-300 flex items-center gap-1.5">
+                <p className="font-bold text-base text-amber-300 flex items-center justify-center gap-2">
                   <span>⚡ Tranh quyền trả lời</span>
                   {question.buzzUnlocked ? (
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-500/40 font-normal animate-pulse">
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-500/40 font-bold animate-pulse">
                       Chuông đã mở!
                     </span>
                   ) : question.buzzUnlockMode === "MANUAL" || !question.timerStarted ? (
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-normal">
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">
                       🔒 Chờ MC mở chuông
                     </span>
                   ) : (
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-normal">
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
                       🔒 Mở sau {question.buzzAutoDelaySeconds ?? 3}s...
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
                   {isDisqualifiedFromBuzz
-                    ? "Đội bạn đã dùng lượt bấm chuông ở câu này (tối đa 1 lần/câu). Quyền bấm thuộc về các đội khác."
+                    ? "Đội bạn đã dùng lượt bấm chuông ở câu này. Quyền bấm thuộc về các đội khác."
                     : question.buzzUnlocked
-                    ? `Đội bấm chuông sớm nhất sẽ giành quyền trả lời! (Tối đa 1 lần bấm/đội, tối đa ${question.buzzMaxAttempts || 3} lượt/câu)`
-                    : question.buzzUnlockMode === "MANUAL" || !question.timerStarted
-                    ? "Quản trò sẽ mở khóa chuông sau khi đọc xong câu hỏi (mở ngay lập tức không chờ)."
-                    : `Hệ thống đếm ngược ${question.buzzAutoDelaySeconds ?? 3} giây trước khi mở chuông tự động.`}
+                    ? `Bấm chuông sớm nhất để giành quyền trả lời! (Tối đa ${question.buzzMaxAttempts || 3} lượt/câu)`
+                    : "Chuông sẽ mở ngay khi có hiệu lệnh từ MC hoặc sau đếm ngược."}
                 </p>
               </div>
+
+              {/* Big Circular Buzzer Button */}
               <button
                 type="button"
                 onPointerDown={(e) => {
@@ -921,23 +921,34 @@ export default function GameQuestion({
                 }}
                 disabled={!question.buzzUnlocked || isBuzzedLocally || isDisqualifiedFromBuzz}
                 style={{ touchAction: "manipulation", userSelect: "none", WebkitUserSelect: "none" }}
-                className={`w-full sm:w-auto px-5 sm:px-6 py-2.5 rounded-xl font-black text-sm whitespace-nowrap shrink-0 transition-all ${
+                className={`w-48 h-48 sm:w-56 sm:h-56 rounded-full border-4 sm:border-8 select-none cursor-pointer flex flex-col items-center justify-center gap-2 transition-transform active:scale-90 shadow-2xl my-2 ${
                   isDisqualifiedFromBuzz
-                    ? "bg-rose-950/60 text-rose-400 border border-rose-500/40 cursor-not-allowed opacity-75"
+                    ? "bg-rose-950/70 text-rose-400 border-rose-500/40 cursor-not-allowed opacity-60"
                     : isBuzzedLocally
-                    ? "bg-amber-400 text-black shadow-lg shadow-amber-500/30 opacity-80 cursor-default"
+                    ? "bg-gradient-to-br from-green-500 to-emerald-700 border-green-300 text-white shadow-[0_0_50px_rgba(34,197,94,0.8)] scale-95"
                     : question.buzzUnlocked
-                    ? "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black shadow-lg shadow-amber-500/30 active:scale-95 animate-pulse cursor-pointer"
-                    : "bg-white/10 text-slate-500 border border-white/10 cursor-not-allowed opacity-60"
+                    ? "bg-gradient-to-br from-amber-500 via-orange-500 to-red-600 border-yellow-300 text-white shadow-[0_0_60px_rgba(245,158,11,0.85)] hover:scale-105 animate-pulse"
+                    : "bg-white/10 text-slate-500 border-white/20 cursor-not-allowed opacity-60"
                 }`}
               >
-                {isDisqualifiedFromBuzz
-                  ? "❌ ĐÃ TRẢ LỜI SAI"
-                  : isBuzzedLocally
-                  ? "⚡ ĐÃ BẤM CHUÔNG!"
-                  : question.buzzUnlocked
-                  ? `🔔 BẤM CHUÔNG (Lượt ${question.buzzAttemptNumber || 1}/${question.buzzMaxAttempts || 3})!`
-                  : "🔒 CHUÔNG KHÓA"}
+                <span className="text-5xl sm:text-6xl drop-shadow-md">
+                  {isDisqualifiedFromBuzz
+                    ? "❌"
+                    : isBuzzedLocally
+                    ? "✓"
+                    : question.buzzUnlocked
+                    ? "🔔"
+                    : "🔒"}
+                </span>
+                <span className="font-black text-sm sm:text-base tracking-wider uppercase text-center px-2 drop-shadow">
+                  {isDisqualifiedFromBuzz
+                    ? "Đã trả lời sai"
+                    : isBuzzedLocally
+                    ? "ĐÃ BẤM CHUÔNG!"
+                    : question.buzzUnlocked
+                    ? `BẤM CHUÔNG (Lượt ${question.buzzAttemptNumber || 1}/${question.buzzMaxAttempts || 3})`
+                    : "CHUÔNG KHÓA"}
+                </span>
               </button>
             </div>
           ) : (

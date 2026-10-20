@@ -2221,7 +2221,17 @@ export default function PlayPage() {
                     !roomState.gridCaroState.previewActive &&
                     !roomState.gridCaroState.selectedCellAnimation
                   }
-                  onSelectCell={(cellId) => socketRef.current?.emit("game:grid:select", { cellId })}
+                  onSelectCell={(cellId) => {
+                    if (socketRef.current?.connected) {
+                      socketRef.current.emit("game:grid:select", { cellId });
+                    }
+                    window.parent?.postMessage({
+                      type: "OFFLINE_PLAYER_ACTION",
+                      action: "grid_select_cell",
+                      cellId,
+                      teamId: effectiveTeamId,
+                    }, "*");
+                  }}
                 />
               </div>
             ) : roomState?.mode === "DICE_RACE" && roomState?.diceRaceState ? (

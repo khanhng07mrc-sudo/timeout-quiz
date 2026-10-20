@@ -254,7 +254,15 @@ export default function AdminSandboxPage() {
   const effectiveActiveMode = roomState?.mode || selectedMode;
   const compatibleBanks = useMemo(() => {
     const isMw = effectiveActiveMode === "MAGIC_WHEEL";
-    return quizBanks.filter((b) => (isMw ? isWordPuzzleBank(b) : !isWordPuzzleBank(b)));
+    if (isMw) {
+      // Ưu tiên các bộ đề Ô Chữ lên đầu, nhưng luôn hiển thị TẤT CẢ các bộ đề để người dùng có thể chọn bất kỳ đề nào
+      return [...quizBanks].sort((a, b) => {
+        const aIsWp = isWordPuzzleBank(a) ? 1 : 0;
+        const bIsWp = isWordPuzzleBank(b) ? 1 : 0;
+        return bIsWp - aIsWp;
+      });
+    }
+    return quizBanks;
   }, [quizBanks, effectiveActiveMode, isWordPuzzleBank]);
 
   useEffect(() => {

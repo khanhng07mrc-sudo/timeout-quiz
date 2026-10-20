@@ -88,10 +88,14 @@ export default function CreateRoomPage() {
 
   const compatibleBanks = useMemo(() => {
     const isMw = mode === "MAGIC_WHEEL";
-    return quizBanks.filter((b: any) => {
-      if (b.isMixed) return false; // Mixed question banks are strictly prohibited
-      return isMw ? isWordPuzzleBank(b) : !isWordPuzzleBank(b);
-    });
+    return quizBanks
+      .filter((b: any) => !b.isMixed)
+      .sort((a: any, b: any) => {
+        if (!isMw) return 0;
+        const aIsWp = isWordPuzzleBank(a) ? 1 : 0;
+        const bIsWp = isWordPuzzleBank(b) ? 1 : 0;
+        return bIsWp - aIsWp;
+      });
   }, [quizBanks, mode, isWordPuzzleBank]);
 
   useEffect(() => {

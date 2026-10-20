@@ -1435,10 +1435,7 @@ export default function AdminRoomPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {(() => {
-                    const isMagicWheelLocked =
-                      roomState.magicWheelState?.roundStage !== "TOSS_UP_1" ||
-                      roomState.magicWheelState?.phase !== "TOSS_UP_READY" ||
-                      Boolean(roomState.magicWheelState?.tossUpStartTime);
+                    const isMagicWheelLocked = roomState.status !== "LOBBY" || Boolean(matchStarting);
                     return (
                       <button
                         type="button"

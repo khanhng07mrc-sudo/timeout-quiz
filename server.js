@@ -16083,6 +16083,11 @@ function registerSocketHandlers(io2) {
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.roundStage !== "TOSS_UP_1" && wheelState.roundStage !== "TOSS_UP_2") return;
       if (wheelState.phase !== "TOSS_UP_RUNNING" && wheelState.phase !== "TOSS_UP_READY" && wheelState.phase !== "TOSS_UP_REVEALING") return;
+      const revealedCount = wheelState.currentPuzzle?.revealedIndices?.length || 0;
+      if (revealedCount < 1) {
+        socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c b\u1EA5m chu\xF4ng sau khi ng\u01B0\u1EDDi m\u1EABu ti\u1EBFt l\u1ED9 ch\u1EEF c\xE1i \u0111\u1EA7u ti\xEAn!");
+        return;
+      }
       if (roomTossUpBuzzLocks.has(roomId) || Boolean(wheelState.tossUpBuzzedTeamId)) {
         return;
       }
@@ -16652,78 +16657,92 @@ function registerSocketHandlers(io2) {
     socket.on("magic_wheel:set_edition", async (payload) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
-      const wheelState = roomMagicWheels.get(roomId);
-      if (!wheelState) return;
-      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
-      if (isLocked) {
-        socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i ng\xF4n ng\u1EEF v\xE0 th\u1EC3 l\u1EC7 tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u \u0111\u1EBFm 5s kh\u1EDFi \u0111\u1ED9ng!");
+      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+      if (!room) return;
+      if (room.status !== "LOBBY") {
+        socket.emit("error", "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i th\u1EC3 l\u1EC7/ng\xF4n ng\u1EEF \u1EDF s\u1EA3nh ch\u1EDD tr\u01B0\u1EDBc khi b\u1EA5m b\u1EAFt \u0111\u1EA7u tr\u1EADn!");
         return;
       }
-      wheelState.edition = payload.edition;
-      wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
-      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
-      if (room && wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
+      const currentConfig = typeof room.config === "object" && room.config !== null ? room.config : {};
+      await prisma.room.update({
+        where: { id: roomId },
+        data: { config: { ...currentConfig, magicWheelEdition: payload.edition } }
+      });
+      const wheelState = roomMagicWheels.get(roomId);
+      if (wheelState) {
+        wheelState.edition = payload.edition;
+        wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, void 0, payload.edition, wheelState.englishPreset || "RANDOM_MIX");
         wheelState.puzzles = newPuzzles;
         wheelState.currentPuzzle = newPuzzles[0] || wheelState.currentPuzzle;
+        io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       }
-      io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
     socket.on("admin:magic_wheel:set_edition", async (payload) => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "MAGIC_WHEEL") return;
-      const wheelState = roomMagicWheels.get(room.id);
-      if (!wheelState) return;
-      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
-      if (isLocked) {
-        socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i ng\xF4n ng\u1EEF v\xE0 th\u1EC3 l\u1EC7 tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u \u0111\u1EBFm 5s kh\u1EDFi \u0111\u1ED9ng!");
+      if (room.status !== "LOBBY") {
+        socket.emit("error", "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i th\u1EC3 l\u1EC7/ng\xF4n ng\u1EEF \u1EDF s\u1EA3nh ch\u1EDD tr\u01B0\u1EDBc khi b\u1EA5m b\u1EAFt \u0111\u1EA7u tr\u1EADn!");
         return;
       }
-      wheelState.edition = payload.edition;
-      wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
-      if (wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
+      const currentConfig = typeof room.config === "object" && room.config !== null ? room.config : {};
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { config: { ...currentConfig, magicWheelEdition: payload.edition } }
+      });
+      const wheelState = roomMagicWheels.get(room.id);
+      if (wheelState) {
+        wheelState.edition = payload.edition;
+        wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, void 0, payload.edition, wheelState.englishPreset || "RANDOM_MIX");
         wheelState.puzzles = newPuzzles;
         wheelState.currentPuzzle = newPuzzles[0] || wheelState.currentPuzzle;
+        io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
       }
-      io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
     });
     socket.on("magic_wheel:set_english_preset", async (payload) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
-      const wheelState = roomMagicWheels.get(roomId);
-      if (!wheelState) return;
-      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
-      if (isLocked) {
-        socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i g\xF3i \u0111\u1EC1 tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u \u0111\u1EBFm 5s kh\u1EDFi \u0111\u1ED9ng!");
+      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+      if (!room) return;
+      if (room.status !== "LOBBY") {
+        socket.emit("error", "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i g\xF3i \u0111\u1EC1 \u1EDF s\u1EA3nh ch\u1EDD tr\u01B0\u1EDBc khi b\u1EA5m b\u1EAFt \u0111\u1EA7u tr\u1EADn!");
         return;
       }
-      wheelState.englishPreset = payload.preset;
-      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
-      if (room && wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
+      const currentConfig = typeof room.config === "object" && room.config !== null ? room.config : {};
+      await prisma.room.update({
+        where: { id: roomId },
+        data: { config: { ...currentConfig, magicWheelEnglishPreset: payload.preset } }
+      });
+      const wheelState = roomMagicWheels.get(roomId);
+      if (wheelState) {
+        wheelState.englishPreset = payload.preset;
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, void 0, wheelState.edition || "ENGLISH", payload.preset);
         wheelState.puzzles = newPuzzles;
         wheelState.currentPuzzle = newPuzzles[0] || wheelState.currentPuzzle;
+        io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       }
-      io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
     socket.on("admin:magic_wheel:set_english_preset", async (payload) => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "MAGIC_WHEEL") return;
-      const wheelState = roomMagicWheels.get(room.id);
-      if (!wheelState) return;
-      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
-      if (isLocked) {
-        socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i g\xF3i \u0111\u1EC1 tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u \u0111\u1EBFm 5s kh\u1EDFi \u0111\u1ED9ng!");
+      if (room.status !== "LOBBY") {
+        socket.emit("error", "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i g\xF3i \u0111\u1EC1 \u1EDF s\u1EA3nh ch\u1EDD tr\u01B0\u1EDBc khi b\u1EA5m b\u1EAFt \u0111\u1EA7u tr\u1EADn!");
         return;
       }
-      wheelState.englishPreset = payload.preset;
-      if (wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
+      const currentConfig = typeof room.config === "object" && room.config !== null ? room.config : {};
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { config: { ...currentConfig, magicWheelEnglishPreset: payload.preset } }
+      });
+      const wheelState = roomMagicWheels.get(room.id);
+      if (wheelState) {
+        wheelState.englishPreset = payload.preset;
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, void 0, wheelState.edition || "ENGLISH", payload.preset);
         wheelState.puzzles = newPuzzles;
         wheelState.currentPuzzle = newPuzzles[0] || wheelState.currentPuzzle;
+        io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
       }
-      io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
     });
     socket.on("magic_wheel:set_blackout_guessed", async (payload) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
@@ -16998,13 +17017,12 @@ function registerSocketHandlers(io2) {
     socket.on("admin:magic_wheel:set_mode", async ({ mode }) => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "MAGIC_WHEEL") return;
-      const wheelState = roomMagicWheels.get(room.id);
-      if (!wheelState) return;
-      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
-      if (isLocked) {
-        socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i ch\u1EBF \u0111\u1ED9 ch\u01A1i tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u \u0111\u1EBFm 5s kh\u1EDFi \u0111\u1ED9ng!");
+      if (room.status !== "LOBBY") {
+        socket.emit("error", "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i ch\u1EBF \u0111\u1ED9 ch\u01A1i \u1EDF s\u1EA3nh ch\u1EDD tr\u01B0\u1EDBc khi b\u1EA5m b\u1EAFt \u0111\u1EA7u tr\u1EADn!");
         return;
       }
+      const wheelState = roomMagicWheels.get(room.id);
+      if (!wheelState) return;
       wheelState.operationMode = mode;
       wheelState.lastActionMessage = mode === "HOST_ASSISTED" ? "\u{1F399}\uFE0F \u0110\xE3 chuy\u1EC3n sang Mode MC/Admin \u0111i\u1EC1u khi\u1EC3n h\u1ED7 tr\u1EE3 th\xED sinh!" : "\u{1F4BB} \u0110\xE3 chuy\u1EC3n sang Mode T\u1EF1 thao t\xE1c tr\xEAn m\xE1y t\xEDnh!";
       io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);

@@ -845,28 +845,28 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
           />
         )}
 
-        {/* 3D Catwalk Contact Floor Shadow */}
+        {/* Studio Stage Hardwood Floor Contact Shadow under Heels */}
         <div
-          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-24 sm:w-28 md:w-32 h-5 rounded-full blur-[3px] pointer-events-none"
+          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-20 sm:w-24 md:w-28 h-4 rounded-full blur-[2px] pointer-events-none"
           style={{
-            background: "radial-gradient(ellipse at center, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 50%, transparent 75%)",
+            background: "radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 80%)",
           }}
         />
 
-        {/* Studio Photographic Cutout Model (Trương Ngọc Ánh in Gala Evening Gown) */}
+        {/* Studio Photographic Cutout Model (Full-Body Vietnamese Gameshow Hostess in Evening Gown with Heels) */}
         <div
-          className="relative w-20 sm:w-24 md:w-28 lg:w-32 h-44 sm:h-52 md:h-60 lg:h-68 drop-shadow-[0_10px_20px_rgba(0,0,0,0.85)]"
+          className="relative w-20 sm:w-26 md:w-32 lg:w-36 h-48 sm:h-56 md:h-68 lg:h-80 drop-shadow-[0_12px_24px_rgba(0,0,0,0.9)]"
           style={
             isWalking
               ? { animation: "hostessWalk 650ms infinite ease-in-out" }
               : isTouching
-              ? { filter: "drop-shadow(0 0 12px rgba(6,182,212,0.45)) drop-shadow(0 12px 24px rgba(0,0,0,0.9))" }
+              ? { filter: "drop-shadow(0 0 12px rgba(245,158,11,0.5)) drop-shadow(0 12px 24px rgba(0,0,0,0.9))" }
               : { animation: "hostessBreathe 4s infinite ease-in-out" }
           }
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/magic-wheel/hostess_truong_ngoc_anh.png"
+            src="/images/magic-wheel/hostess_fullbody.png"
             alt="Người mẫu mở ô chữ Chiếc Nón Kỳ Diệu"
             className="w-full h-full object-contain pointer-events-none select-none"
             draggable={false}
@@ -984,6 +984,10 @@ export default function MagicWheelBoard({
     return () => clearInterval(interval);
   }, [phase, tossUpAnswerEndsAt]);
 
+  const [animRevealedIndices, setAnimRevealedIndices] = useState<Set<number>>(
+    new Set(currentPuzzle?.revealedIndices || [])
+  );
+
   useEffect(() => {
     if (phase !== "TOSS_UP_BUZZED") {
       hasBuzzedRef.current = false;
@@ -1003,13 +1007,15 @@ export default function MagicWheelBoard({
 
   const handleTriggerTossUpBuzz = useCallback(
     (targetTeamId?: string) => {
+      const hasFirstLetterRevealed = (animRevealedIndices.size >= 1) || ((currentPuzzle?.revealedIndices?.length || 0) >= 1);
+      if (!hasFirstLetterRevealed) return;
       if (hasBuzzedRef.current || phase === "TOSS_UP_BUZZED") return;
       hasBuzzedRef.current = true;
       setIsLocallyBuzzed(true);
       const buzzId = targetTeamId || myTeamId || currentTurnTeamId || teams[0]?.id;
       onTossUpBuzz?.(buzzId);
     },
-    [phase, myTeamId, currentTurnTeamId, teams, onTossUpBuzz]
+    [animRevealedIndices.size, currentPuzzle?.revealedIndices?.length, phase, myTeamId, currentTurnTeamId, teams, onTossUpBuzz]
   );
 
   const isCurrentTeamEliminated = roundEliminatedTeamIds.includes(currentTurnTeamId);
@@ -1315,9 +1321,6 @@ export default function MagicWheelBoard({
 
   const [highlightedIndices, setHighlightedIndices] = useState<Set<number>>(new Set());
   const [justPoppedIndices, setJustPoppedIndices] = useState<Set<number>>(new Set());
-  const [animRevealedIndices, setAnimRevealedIndices] = useState<Set<number>>(
-    new Set(currentPuzzle?.revealedIndices || [])
-  );
   const prevServerRevealedRef = useRef<number[]>(currentPuzzle?.revealedIndices || []);
   const prevPuzzleIdRef = useRef<string | undefined>(currentPuzzle?.id);
   const activeTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
@@ -2462,7 +2465,7 @@ export default function MagicWheelBoard({
                           return (
                             <div
                               key={cIdx}
-                              className="w-full aspect-[3/4] min-h-[36px] sm:min-h-[48px] md:min-h-[60px] lg:min-h-[72px] rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none"
+                              className="w-full aspect-[3/4] min-h-[clamp(24px,3.5vw,52px)] rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none"
                             >
                               <svg
                                 viewBox="0 0 24 24"
@@ -2498,7 +2501,7 @@ export default function MagicWheelBoard({
                                 }
                               }
                             }}
-                            className={`w-full aspect-[3/4] min-h-[36px] sm:min-h-[48px] md:min-h-[60px] lg:min-h-[72px] rounded font-black flex items-center justify-center select-none ${
+                            className={`w-full aspect-[3/4] min-h-[clamp(24px,3.5vw,52px)] rounded font-black flex items-center justify-center select-none ${
                               isJustCut ? "animate-vtv3-tile-cut" : ""
                             } ${
                               isPopping
@@ -2533,32 +2536,44 @@ export default function MagicWheelBoard({
                 </div>
               </div>
 
-              {/* Sân Khấu Catwalk VTV3 Floor Platform (Sàn bóng có gạch lát & dải đèn LED) */}
+              {/* Sân Khấu Gỗ Bóng S9 VTV3 Floor Platform (Sàn gỗ Mahogany phản chiếu ánh đèn vàng ấm) */}
               <div className="relative w-full h-12 sm:h-16 md:h-20 -mt-2 sm:-mt-3 z-20 flex flex-col justify-end">
-                {/* 3D Catwalk Perspective Floor Plane */}
+                {/* 3D Polished Hardwood Stage Floor Plane */}
                 <div
-                  className="absolute inset-0 rounded-b-2xl overflow-hidden border-t border-cyan-400/30"
+                  className="absolute inset-0 rounded-b-2xl overflow-hidden border-t-2 border-amber-600/60"
                   style={{
-                    background: "linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(2,6,23,0.98) 100%)",
-                    boxShadow: "inset 0 10px 20px rgba(0,0,0,0.8)",
+                    background: "linear-gradient(180deg, #2b180d 0%, #1a0d06 60%, #0d0603 100%)",
+                    boxShadow: "inset 0 10px 25px rgba(0,0,0,0.9), 0 10px 25px rgba(0,0,0,0.7)",
                   }}
                 >
-                  {/* Catwalk Reflective Grid Lines */}
+                  {/* Subtle Polished Wood Floor Grain Planks */}
                   <div
-                    className="w-full h-full opacity-25"
+                    className="w-full h-full opacity-20"
                     style={{
-                      backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(0deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
-                      backgroundSize: "40px 16px",
+                      backgroundImage: "linear-gradient(90deg, rgba(245,158,11,0.2) 1px, transparent 1px), linear-gradient(0deg, rgba(0,0,0,0.4) 1px, transparent 1px)",
+                      backgroundSize: "60px 20px",
                     }}
                   />
-                  {/* Stage Center Glow Reflection */}
-                  <div className="absolute top-0 left-1/4 right-1/4 h-6 bg-gradient-to-b from-cyan-400/20 via-emerald-400/10 to-transparent blur-md pointer-events-none" />
+                  {/* Warm Golden Studio Spotlight Reflection on Hardwood */}
+                  <div
+                    className="absolute inset-x-0 top-0 h-full pointer-events-none"
+                    style={{
+                      background: "radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.3) 0%, rgba(217,119,6,0.15) 45%, transparent 75%)",
+                    }}
+                  />
                 </div>
 
-                {/* Front Stage Platform Neon LED Edge Strip */}
-                <div className="relative z-10 w-full h-1 sm:h-1.5 bg-gradient-to-r from-cyan-500 via-amber-300 to-cyan-500 shadow-[0_0_15px_#06b6d4,0_0_25px_#f59e0b]" />
+                {/* Front Stage Platform Luxury Gold Brass Metallic Rim */}
+                <div className="relative z-10 w-full h-1.5 sm:h-2 bg-gradient-to-r from-amber-700 via-yellow-400 to-amber-700 shadow-[0_0_15px_rgba(245,158,11,0.6),0_2px_4px_rgba(0,0,0,0.9)] flex items-center justify-around px-4">
+                  {/* Studio Footlights along the stage rim */}
+                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                </div>
 
-                {/* Virtual Hostess 3D Studio Character standing firmly on Catwalk Floor */}
+                {/* Virtual Hostess 3D Studio Character standing firmly on Hardwood Stage Floor */}
                 {showHostess && (
                   <Hostess3DStudio
                     xPercent={hostessXPercent}
@@ -2659,19 +2674,14 @@ export default function MagicWheelBoard({
 
       {/* ── WHEEL & STUDIO CONTROL SECTION ─────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
-        {/* Left Col: 3D Wheel Rig (Hidden during Toss-Up rounds 1 & 2) */}
+        {/* Left Col: 3D Wheel Rig (Hidden during Toss-Up rounds 1 & 2 - Optimized 1/2 Wheel Viewport) */}
         {!isTossUpRound && (
-          <div className="lg:col-span-5 flex flex-col items-center justify-center relative p-2 bg-black/25 rounded-2xl border border-white/5">
-            <div
-              className="w-[240px] h-[240px] sm:w-[290px] sm:h-[290px] relative transition-transform select-none flex items-center justify-center"
-            style={{
-              transformOrigin: "50% 0%",
-              transform: isWheelZoomedIn ? "scale(1.45) translateY(38px)" : "scale(1.0) translateY(0)",
-              transitionDuration: `${wheelZoomDurationMs}ms`,
-              transitionTimingFunction: "cubic-bezier(0.25, 1, 0.4, 1)",
-              willChange: "transform",
-            }}
-          >
+          <div className="lg:col-span-5 flex flex-col items-center justify-center relative p-2 bg-gradient-to-b from-black/50 via-slate-950/60 to-black/80 rounded-2xl border border-amber-500/20 shadow-xl overflow-hidden">
+            {/* 1/2 Wheel Studio Viewport: Shows upper half of wheel with needle pointer at top */}
+            <div className="w-[240px] h-[145px] sm:w-[290px] sm:h-[175px] relative select-none flex items-start justify-center overflow-hidden">
+              <div
+                className="w-[240px] h-[240px] sm:w-[290px] sm:h-[290px] relative select-none flex items-center justify-center shrink-0"
+              >
             {/* Top 3D Chrome & Ruby Flipper Pointer at 12 o'clock */}
             <div
               ref={needleRef}
@@ -2904,12 +2914,15 @@ export default function MagicWheelBoard({
                   </g>
                 </g>
               </svg>
+              </div>
             </div>
           </div>
 
-            {selectedSector && !isSpinning && (
-              <div className="mt-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500/30 to-pink-500/30 border border-amber-400/50 text-amber-200 text-xs sm:text-sm font-black shadow animate-scale-up">
-                🎯 Ô quay: {selectedSector.label}
+            {/* Sector Landing Indicator Badge directly beneath 1/2 Wheel */}
+            {selectedSector && (
+              <div className="mt-1.5 px-3 py-1 rounded-full bg-black/70 border border-amber-400/50 text-[11px] font-black text-amber-200 flex items-center gap-1.5 shadow-md animate-scale-up">
+                <span className="text-amber-400">🎯</span>
+                <span>Ô quay: {selectedSector.label}</span>
               </div>
             )}
           </div>
@@ -3020,45 +3033,113 @@ export default function MagicWheelBoard({
                     )}
                   </div>
 
-                  {(phase === "TOSS_UP_RUNNING" || phase === "TOSS_UP_REVEALING" || phase === "TOSS_UP_READY") && (
-                    <div className="space-y-2">
-                      <button
-                        type="button"
-                        disabled={isLocallyBuzzed || Boolean(tossUpBuzzedTeamId)}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleTriggerTossUpBuzz();
-                        }}
-                        className={`w-full py-4 rounded-2xl font-black text-sm sm:text-base transition select-none touch-manipulation cursor-pointer ${
-                          isLocallyBuzzed || Boolean(tossUpBuzzedTeamId)
-                            ? "bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-500 text-slate-950 shadow-[0_0_35px_rgba(52,211,153,0.9)] opacity-90 scale-98 ring-4 ring-emerald-200 cursor-not-allowed"
-                            : "bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 text-slate-950 hover:brightness-110 active:scale-95 shadow-[0_0_25px_rgba(251,191,36,0.6)] ring-2 ring-yellow-200"
-                        }`}
-                      >
-                        {isLocallyBuzzed || Boolean(tossUpBuzzedTeamId)
-                          ? "🔔 ĐÃ GHI NHẬN TIẾNG CHUÔNG! ĐANG KHÓA QUYỀN TRẢ LỜI..."
-                          : "🔔 BẤM CHUÔNG GIÀNH QUYỀN GIẢI Ô CHỮ NGAY!"}
-                      </button>
-                      {isHost && teams.length > 1 && (
-                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                          <span className="text-[10px] font-bold text-slate-400">MC chọn đội bấm chuông:</span>
-                          {teams.map((t) => (
+                  {(phase === "TOSS_UP_RUNNING" || phase === "TOSS_UP_REVEALING" || phase === "TOSS_UP_READY") && (() => {
+                    const hasFirstLetterRevealed = (animRevealedIndices.size >= 1) || ((currentPuzzle?.revealedIndices?.length || 0) >= 1);
+                    const isBuzzedAlready = isLocallyBuzzed || Boolean(tossUpBuzzedTeamId);
+
+                    return (
+                      <div className="w-full flex flex-col items-center justify-center py-2 sm:py-3 space-y-2.5 select-none">
+                        {/* Status Cue */}
+                        <div className="text-center text-xs font-bold">
+                          {!hasFirstLetterRevealed ? (
+                            <span className="text-amber-300/80 animate-pulse flex items-center justify-center gap-1.5 bg-black/40 px-3 py-1 rounded-full border border-amber-500/30">
+                              <span>⏳</span>
+                              <span>ĐANG CHỜ NGƯỜI MẪU TIẾT LỘ CHỮ CÁI ĐẦU TIÊN...</span>
+                            </span>
+                          ) : isBuzzedAlready ? (
+                            <span className="text-emerald-300 font-black animate-pulse flex items-center justify-center gap-1.5 bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-400/50">
+                              <span>🔔</span>
+                              <span>ĐÃ GHI NHẬN CHUÔNG! ĐANG KHÓA QUYỀN TRẢ LỜI...</span>
+                            </span>
+                          ) : (
+                            <span className="text-amber-200 font-extrabold flex items-center justify-center gap-1.5 bg-amber-950/60 px-3 py-1 rounded-full border border-amber-400/50">
+                              <span>⚡</span>
+                              <span>CHUÔNG ĐÃ MỞ! ĐẬP TAY HOẶC BẤM SPACE/ENTER NGAY!</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 3D Big Circular Arcade Dome Buzzer */}
+                        <div className="relative flex items-center justify-center p-2">
+                          {/* Pulsing Ambient Halo when unlocked */}
+                          {hasFirstLetterRevealed && !isBuzzedAlready && (
+                            <div className="absolute inset-0 rounded-full bg-red-600/35 blur-xl animate-ping pointer-events-none" />
+                          )}
+
+                          {/* Outer Gold/Metallic 3D Bezel Rim */}
+                          <div
+                            className={`w-44 h-44 sm:w-52 sm:h-52 rounded-full p-2.5 sm:p-3 flex items-center justify-center transition-all duration-300 ${
+                              !hasFirstLetterRevealed
+                                ? "bg-gradient-to-b from-stone-700 via-stone-800 to-stone-900 border-4 border-stone-600 shadow-lg opacity-60 cursor-not-allowed"
+                                : isBuzzedAlready
+                                ? "bg-gradient-to-b from-emerald-600 via-teal-700 to-emerald-900 border-4 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.7)]"
+                                : "bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 border-4 border-yellow-300 shadow-[0_15px_35px_rgba(0,0,0,0.9),0_0_30px_rgba(245,158,11,0.6)] cursor-pointer"
+                            }`}
+                          >
+                            {/* Inner 3D Red Push Dome Button */}
                             <button
-                              key={t.id}
                               type="button"
+                              disabled={!hasFirstLetterRevealed || isBuzzedAlready}
                               onClick={(e) => {
                                 e.preventDefault();
-                                handleTriggerTossUpBuzz(t.id);
+                                if (!hasFirstLetterRevealed || isBuzzedAlready) return;
+                                handleTriggerTossUpBuzz();
                               }}
-                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white/10 hover:bg-amber-400 hover:text-slate-950 border border-white/20 transition cursor-pointer select-none touch-manipulation"
+                              className={`w-full h-full rounded-full flex flex-col items-center justify-center transition-all select-none touch-manipulation focus:outline-none ${
+                                !hasFirstLetterRevealed
+                                  ? "bg-gradient-to-b from-neutral-800 to-neutral-900 border-2 border-neutral-700 text-neutral-400 cursor-not-allowed"
+                                  : isBuzzedAlready
+                                  ? "bg-gradient-to-b from-emerald-500 to-teal-700 border-2 border-emerald-300 text-white shadow-inner cursor-not-allowed scale-95"
+                                  : "bg-gradient-to-b from-rose-500 via-red-600 to-red-800 active:from-red-700 active:to-red-900 active:scale-90 border-2 border-red-300 text-white shadow-[inset_0_6px_12px_rgba(255,255,255,0.5),0_10px_25px_rgba(220,38,38,0.8)] hover:brightness-110 active:shadow-inner cursor-pointer"
+                              }`}
                             >
-                              🔔 {t.name}
+                              <span className="text-3xl sm:text-4xl filter drop-shadow">
+                                {!hasFirstLetterRevealed ? "🔒" : isBuzzedAlready ? "✅" : "🔔"}
+                              </span>
+                              <span className="mt-1 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow text-center px-2">
+                                {!hasFirstLetterRevealed
+                                  ? "CHỜ MỞ CHỮ"
+                                  : isBuzzedAlready
+                                  ? "ĐÃ BẤM!"
+                                  : "BẤM CHUÔNG!"}
+                              </span>
+                              {hasFirstLetterRevealed && !isBuzzedAlready && (
+                                <span className="text-[10px] text-amber-200/90 font-mono font-bold mt-0.5 tracking-tight">
+                                  [SPACE / ENTER]
+                                </span>
+                              )}
                             </button>
-                          ))}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  )}
+
+                        {/* Host quick controls for testing */}
+                        {isHost && teams.length > 1 && (
+                          <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+                            <span className="text-[10px] font-bold text-slate-400">MC chọn đội bấm chuông:</span>
+                            {teams.map((t) => (
+                              <button
+                                key={t.id}
+                                type="button"
+                                disabled={!hasFirstLetterRevealed}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  if (!hasFirstLetterRevealed) return;
+                                  handleTriggerTossUpBuzz(t.id);
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition select-none touch-manipulation ${
+                                  !hasFirstLetterRevealed
+                                    ? "bg-white/5 text-slate-600 border-white/5 cursor-not-allowed opacity-40"
+                                    : "bg-white/10 hover:bg-amber-400 hover:text-slate-950 text-white border-white/20 cursor-pointer"
+                                }`}
+                              >
+                                🔔 {t.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {phase === "TOSS_UP_BUZZED" && (
                     <div className="p-3 rounded-xl bg-black/50 border border-amber-400/50 space-y-3">

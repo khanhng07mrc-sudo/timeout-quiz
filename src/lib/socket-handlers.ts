@@ -8204,6 +8204,13 @@ export function registerSocketHandlers(io: IO) {
       if (!wheelState || (wheelState.roundStage !== "TOSS_UP_1" && wheelState.roundStage !== "TOSS_UP_2")) return;
       if (wheelState.phase !== "TOSS_UP_RUNNING" && wheelState.phase !== "TOSS_UP_READY" && wheelState.phase !== "TOSS_UP_REVEALING") return;
 
+      // 0. VÒNG ĐOÁN NHANH: Chỉ được bấm chuông sau khi người mẫu đã tiết lộ chữ cái đầu tiên!
+      const revealedCount = wheelState.currentPuzzle?.revealedIndices?.length || 0;
+      if (revealedCount < 1) {
+        socket.emit("error", "Chỉ được bấm chuông sau khi người mẫu tiết lộ chữ cái đầu tiên!");
+        return;
+      }
+
       // 1. Single first-buzz lock check to prevent socket flooding, spamming, or state thrashing
       if (roomTossUpBuzzLocks.has(roomId) || Boolean(wheelState.tossUpBuzzedTeamId)) {
         return;
@@ -8853,81 +8860,95 @@ export function registerSocketHandlers(io: IO) {
     socket.on("magic_wheel:set_edition", async (payload: { edition: "VIETNAMESE" | "ENGLISH" }) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
-      const wheelState = roomMagicWheels.get(roomId);
-      if (!wheelState) return;
-      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
-      if (isLocked) {
-        socket.emit("error", "Chỉ được đổi ngôn ngữ và thể lệ trước khi bắt đầu đếm 5s khởi động!");
+      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+      if (!room) return;
+      if (room.status !== "LOBBY") {
+        socket.emit("error", "Trận đấu đã bắt đầu, chỉ được đổi thể lệ/ngôn ngữ ở sảnh chờ trước khi bấm bắt đầu trận!");
         return;
       }
-      wheelState.edition = payload.edition;
-      wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
-      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
-      if (room && wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
+      const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+      await prisma.room.update({
+        where: { id: roomId },
+        data: { config: { ...currentConfig, magicWheelEdition: payload.edition } },
+      });
+      const wheelState = roomMagicWheels.get(roomId);
+      if (wheelState) {
+        wheelState.edition = payload.edition;
+        wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, undefined, payload.edition, wheelState.englishPreset || "RANDOM_MIX");
         wheelState.puzzles = newPuzzles;
         wheelState.currentPuzzle = newPuzzles[0] || wheelState.currentPuzzle;
+        io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       }
-      io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
 
     socket.on("admin:magic_wheel:set_edition", async (payload: { edition: "VIETNAMESE" | "ENGLISH" }) => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "MAGIC_WHEEL") return;
-      const wheelState = roomMagicWheels.get(room.id);
-      if (!wheelState) return;
-      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
-      if (isLocked) {
-        socket.emit("error", "Chỉ được đổi ngôn ngữ và thể lệ trước khi bắt đầu đếm 5s khởi động!");
+      if (room.status !== "LOBBY") {
+        socket.emit("error", "Trận đấu đã bắt đầu, chỉ được đổi thể lệ/ngôn ngữ ở sảnh chờ trước khi bấm bắt đầu trận!");
         return;
       }
-      wheelState.edition = payload.edition;
-      wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
-      if (wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
+      const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { config: { ...currentConfig, magicWheelEdition: payload.edition } },
+      });
+      const wheelState = roomMagicWheels.get(room.id);
+      if (wheelState) {
+        wheelState.edition = payload.edition;
+        wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, undefined, payload.edition, wheelState.englishPreset || "RANDOM_MIX");
         wheelState.puzzles = newPuzzles;
         wheelState.currentPuzzle = newPuzzles[0] || wheelState.currentPuzzle;
+        io.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
       }
-      io.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
     });
 
     socket.on("magic_wheel:set_english_preset", async (payload: { preset: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3" }) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
-      const wheelState = roomMagicWheels.get(roomId);
-      if (!wheelState) return;
-      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
-      if (isLocked) {
-        socket.emit("error", "Chỉ được đổi gói đề trước khi bắt đầu đếm 5s khởi động!");
+      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+      if (!room) return;
+      if (room.status !== "LOBBY") {
+        socket.emit("error", "Trận đấu đã bắt đầu, chỉ được đổi gói đề ở sảnh chờ trước khi bấm bắt đầu trận!");
         return;
       }
-      wheelState.englishPreset = payload.preset;
-      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
-      if (room && wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
+      const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+      await prisma.room.update({
+        where: { id: roomId },
+        data: { config: { ...currentConfig, magicWheelEnglishPreset: payload.preset } },
+      });
+      const wheelState = roomMagicWheels.get(roomId);
+      if (wheelState) {
+        wheelState.englishPreset = payload.preset;
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, undefined, wheelState.edition || "ENGLISH", payload.preset);
         wheelState.puzzles = newPuzzles;
         wheelState.currentPuzzle = newPuzzles[0] || wheelState.currentPuzzle;
+        io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       }
-      io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
 
     socket.on("admin:magic_wheel:set_english_preset", async (payload: { preset: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3" }) => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "MAGIC_WHEEL") return;
-      const wheelState = roomMagicWheels.get(room.id);
-      if (!wheelState) return;
-      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
-      if (isLocked) {
-        socket.emit("error", "Chỉ được đổi gói đề trước khi bắt đầu đếm 5s khởi động!");
+      if (room.status !== "LOBBY") {
+        socket.emit("error", "Trận đấu đã bắt đầu, chỉ được đổi gói đề ở sảnh chờ trước khi bấm bắt đầu trận!");
         return;
       }
-      wheelState.englishPreset = payload.preset;
-      if (wheelState.roundStage === "TOSS_UP_1" && wheelState.phase === "TOSS_UP_READY") {
+      const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { config: { ...currentConfig, magicWheelEnglishPreset: payload.preset } },
+      });
+      const wheelState = roomMagicWheels.get(room.id);
+      if (wheelState) {
+        wheelState.englishPreset = payload.preset;
         const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, undefined, wheelState.edition || "ENGLISH", payload.preset);
         wheelState.puzzles = newPuzzles;
         wheelState.currentPuzzle = newPuzzles[0] || wheelState.currentPuzzle;
+        io.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
       }
-      io.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
     });
 
     socket.on("magic_wheel:set_blackout_guessed", async (payload: { enabled: boolean }) => {
@@ -9262,13 +9283,12 @@ export function registerSocketHandlers(io: IO) {
     socket.on("admin:magic_wheel:set_mode", async ({ mode }) => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "MAGIC_WHEEL") return;
-      const wheelState = roomMagicWheels.get(room.id);
-      if (!wheelState) return;
-      const isLocked = wheelState.roundStage !== "TOSS_UP_1" || wheelState.phase !== "TOSS_UP_READY" || Boolean(wheelState.tossUpStartTime);
-      if (isLocked) {
-        socket.emit("error", "Chỉ được đổi chế độ chơi trước khi bắt đầu đếm 5s khởi động!");
+      if (room.status !== "LOBBY") {
+        socket.emit("error", "Trận đấu đã bắt đầu, chỉ được đổi chế độ chơi ở sảnh chờ trước khi bấm bắt đầu trận!");
         return;
       }
+      const wheelState = roomMagicWheels.get(room.id);
+      if (!wheelState) return;
       wheelState.operationMode = mode;
       wheelState.lastActionMessage =
         mode === "HOST_ASSISTED"

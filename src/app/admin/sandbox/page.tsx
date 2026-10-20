@@ -2654,8 +2654,8 @@ export default function AdminSandboxPage() {
       return;
     }
     try {
-      const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
-      const storedHostKey = localStorage.getItem(`host_key_${code}`) || "";
+      const token = typeof window !== "undefined" ? (localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token")) : null;
+      const storedHostKey = typeof window !== "undefined" ? (localStorage.getItem(`host_key_${code}`) || new URLSearchParams(window.location.search).get("key") || "") : "";
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
       if (storedHostKey) headers["x-host-key"] = storedHostKey;
@@ -2669,8 +2669,59 @@ export default function AdminSandboxPage() {
         setSelectedBankId(bankId);
         const bTitle = quizBanks.find((b) => b.id === bankId)?.title || bankId;
         addLog(`Admin: Đã đổi bộ đề gán cho phòng: [${bTitle}]`);
+
+        // If Magic Wheel, dynamically reload word puzzles from newly assigned bank
+        if (roomState?.mode === "MAGIC_WHEEL" && bankId) {
+          try {
+            const bRes = await fetch(`/api/quiz-bank/${bankId}`);
+            if (bRes.ok) {
+              const bData = await bRes.json();
+              const bankQuestions = bData?.bank?.questions || [];
+              const bankWordPuzzles = bankQuestions.filter((q: any) => q.type === "WORD_PUZZLE");
+              if (bankWordPuzzles.length > 0) {
+                const customPuzzles: MagicWheelPuzzle[] = bankWordPuzzles.map((q: any, i: number) => {
+                  const roundOpt = q.options?.find((o: any) => o.id === "round");
+                  return {
+                    id: `puzzle-assigned-${i + 1}`,
+                    roundNumber: roundOpt ? Number(roundOpt.text) || (i + 1) : (i + 1),
+                    category: q.hint || "TỔNG HỢP",
+                    secretPhrase: (q.answer || "").toUpperCase(),
+                    clue: q.content || "",
+                    revealedIndices: [],
+                  };
+                });
+                const curWheel = roomState.magicWheelState;
+                const newPuzzles = buildMagicWheelMatchPuzzles(
+                  roomState.teams?.length || 4,
+                  customPuzzles,
+                  curWheel?.edition || "VIETNAMESE",
+                  curWheel?.englishPreset || "RANDOM_MIX"
+                );
+                const updatedWheel: any = {
+                  ...(curWheel || {}),
+                  subMode: curWheel?.subMode || "WORD_PUZZLE",
+                  puzzles: newPuzzles,
+                  currentPuzzle: newPuzzles[0] || curWheel?.currentPuzzle,
+                };
+                setRoomState((prev) => {
+                  if (!prev) return prev;
+                  const nextR = { ...prev, magicWheelState: updatedWheel };
+                  roomStateRef.current = nextR;
+                  syncToIframes({ roomState: nextR, magicWheelState: updatedWheel });
+                  return nextR;
+                });
+                if (adminSocketRef.current?.connected) {
+                  adminSocketRef.current.emit("game:magic_wheel:update" as any, updatedWheel);
+                }
+              }
+            }
+          } catch (loadErr) {
+            console.error("Failed to reload magic wheel puzzles after bank change:", loadErr);
+          }
+        }
       } else {
-        alert("Lỗi khi cập nhật bộ đề cho phòng!");
+        const errJson = await res.json().catch(() => null);
+        alert(errJson?.error || "Lỗi khi cập nhật bộ đề cho phòng!");
       }
     } catch (err) {
       console.error(err);
@@ -5722,6 +5773,10 @@ export default function AdminSandboxPage() {
           magicWheelTossUpFirstTimerRef.current = null;
         }
         const { teamId } = e.data;
+        const revealedCount = roomStateRef.current?.magicWheelState?.currentPuzzle?.revealedIndices?.length || 0;
+        if (revealedCount < 1) {
+          return;
+        }
         if (roomStateRef.current?.magicWheelState?.phase === "TOSS_UP_BUZZED" || roomStateRef.current?.magicWheelState?.tossUpBuzzedTeamId) {
           return;
         }
@@ -10065,10 +10120,7 @@ export default function AdminSandboxPage() {
                 {/* 4b3. Magic Wheel Edition Switcher (1-Click trên Top Bar Sandbox) */}
                 {roomState?.mode === "MAGIC_WHEEL" && (
                   (() => {
-                    const isMagicWheelLocked =
-                      roomState.magicWheelState?.roundStage !== "TOSS_UP_1" ||
-                      roomState.magicWheelState?.phase !== "TOSS_UP_READY" ||
-                      Boolean(roomState.magicWheelState?.tossUpStartTime);
+                    const isMagicWheelLocked = roomState.status !== "LOBBY" || Boolean(matchStarting);
                     return (
                       <button
                         type="button"
@@ -10555,10 +10607,7 @@ export default function AdminSandboxPage() {
 
                       {/* 🎡 Magic Wheel Edition & Rules Configuration */}
                       {roomState.mode === "MAGIC_WHEEL" && (() => {
-                        const isMagicWheelLocked =
-                          roomState.magicWheelState?.roundStage !== "TOSS_UP_1" ||
-                          roomState.magicWheelState?.phase !== "TOSS_UP_READY" ||
-                          Boolean(roomState.magicWheelState?.tossUpStartTime);
+                        const isMagicWheelLocked = roomState.status !== "LOBBY" || Boolean(matchStarting);
                         return (
                           <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-2 mb-1">
                             <div className="flex items-center justify-between">
@@ -12375,10 +12424,7 @@ export default function AdminSandboxPage() {
                       <span className="font-bold text-amber-300">🎡 Magic Wheel (Admin Sandbox Control)</span>
                       <div className="flex flex-wrap items-center gap-1.5">
                         {(() => {
-                          const isMagicWheelLocked =
-                            roomState.magicWheelState?.roundStage !== "TOSS_UP_1" ||
-                            roomState.magicWheelState?.phase !== "TOSS_UP_READY" ||
-                            Boolean(roomState.magicWheelState?.tossUpStartTime);
+                          const isMagicWheelLocked = roomState.status !== "LOBBY" || Boolean(matchStarting);
                           return (
                             <button
                               type="button"

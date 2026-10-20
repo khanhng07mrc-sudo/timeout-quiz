@@ -1949,6 +1949,7 @@ export interface ClientToServerEvents {
   "magic_wheel:toss_up_start": () => void;
   "magic_wheel:toss_up_buzz": (payload?: { teamId?: string }) => void;
   "magic_wheel:toss_up_reveal_tick": (payload?: { index?: number }) => void;
+  "magic_wheel:toss_up_skip": () => void;
   "magic_wheel:special_choose_order": (payload: { order: "SPIN_FIRST" | "SOLVE_FIRST" }) => void;
   "magic_wheel:special_pick_letters": (payload: { letters: string[] }) => void;
   "magic_wheel:reveal_all": () => void;
@@ -1984,6 +1985,7 @@ export interface ClientToServerEvents {
   "admin:magic_wheel:pass_turn": () => void;
   "admin:magic_wheel:quick_reveal_letter": () => void;
   "admin:magic_wheel:reveal_all": () => void;
+  "admin:magic_wheel:toss_up_skip": () => void;
   "admin:wager:skip_timer": () => void;
   "admin:wager:launch_question": () => void;
   "admin:wager:grant_bailout": (payload: { teamId: string }) => void;

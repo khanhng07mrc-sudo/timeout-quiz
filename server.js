@@ -16796,11 +16796,77 @@ function registerSocketHandlers(io2) {
         }, 8500);
       }
     };
+    const abandonTossUpPuzzle = async (rId, rCode) => {
+      const cur = roomMagicWheels.get(rId);
+      if (!cur || cur.roundStage !== "TOSS_UP_1" && cur.roundStage !== "TOSS_UP_2") return;
+      const oldTick = roomTossUpTickTimers.get(rId);
+      if (oldTick) clearInterval(oldTick);
+      roomTossUpTickTimers.delete(rId);
+      const oldFirst = roomTossUpFirstTimers.get(rId);
+      if (oldFirst) clearTimeout(oldFirst);
+      roomTossUpFirstTimers.delete(rId);
+      roomTossUpBuzzLocks.delete(rId);
+      const room = await prisma.room.findUnique({
+        where: { id: rId },
+        include: { teams: { orderBy: { createdAt: "asc" } } }
+      });
+      if (!room) return;
+      const stage = cur.roundStage;
+      const phrase = cur.currentPuzzle?.secretPhrase || "";
+      if (cur.currentPuzzle) {
+        cur.currentPuzzle.revealedIndices = Array.from(
+          { length: cur.currentPuzzle.secretPhrase.length },
+          (_, i) => i
+        );
+      }
+      cur.phase = "ROUND_RECAP";
+      cur.mustSolveWithTones = false;
+      cur.tossUpBuzzedTeamId = void 0;
+      cur.tossUpBuzzedTeamName = void 0;
+      if (stage === "TOSS_UP_2") {
+        const firstTeam = room.teams[0];
+        if (firstTeam) {
+          cur.round1StarterTeamId = firstTeam.id;
+          cur.currentTurnTeamId = firstTeam.id;
+          cur.currentTurnTeamName = firstTeam.name;
+        }
+        cur.lastActionMessage = cur.edition === "ENGLISH" ? `\u26A1 Time expired! No team solved Toss-Up 2 ("${phrase}"). Puzzle skipped! Team 1 (${firstTeam?.name || "leftmost"}) gets first spin in Round 1!` : `\u26A1 H\u1EBFt th\u1EDDi gian! Kh\xF4ng c\xF3 \u0111\u1ED9i n\xE0o gi\u1EA3i \u0111\xFAng V\xF2ng \u0110o\xE1n Nhanh 2 ("${phrase}"). \xD4 ch\u1EEF b\u1ECB b\u1ECF qua! Quy\u1EC1n quay \u0111\u1EA7u ti\xEAn \u1EDF V\xF2ng 1 thu\u1ED9c v\u1EC1 \u0110\u1ED9i 1 (${firstTeam?.name || "b\xEAn tr\xE1i c\xF9ng"})!`;
+      } else {
+        cur.lastActionMessage = cur.edition === "ENGLISH" ? `\u26A1 Time expired! No team solved Toss-Up 1 ("${phrase}"). Puzzle skipped!` : `\u26A1 H\u1EBFt th\u1EDDi gian! Kh\xF4ng c\xF3 \u0111\u1ED9i n\xE0o gi\u1EA3i \u0111\xFAng V\xF2ng \u0110o\xE1n Nhanh 1 ("${phrase}"). \xD4 ch\u1EEF b\u1ECB b\u1ECF qua!`;
+      }
+      io2.to(`room:${rCode}`).emit("game:magic_wheel:puzzle_solved", {
+        teamId: "",
+        teamName: "",
+        isCorrect: false,
+        secretPhrase: phrase,
+        roundWonPoints: 0
+      });
+      io2.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
+      if (cur.operationMode !== "HOST_ASSISTED") {
+        const abandonedRound = cur.currentRound;
+        setTimeout(async () => {
+          const latest = roomMagicWheels.get(rId);
+          if (!latest || latest.phase !== "ROUND_RECAP" || latest.currentRound !== abandonedRound) return;
+          if (latest.currentRound < latest.maxRounds) {
+            const latestRoom = await prisma.room.findUnique({
+              where: { id: rId },
+              include: { teams: { orderBy: { createdAt: "asc" } } }
+            });
+            if (!latestRoom) return;
+            setupMagicWheelRoundStage(latest, latest.currentRound + 1, latestRoom.teams);
+            io2.to(`room:${rCode}`).emit("game:magic_wheel:update", latest);
+          }
+        }, 6500);
+      }
+    };
     const startServerTossUpInterval = (rId, rCode) => {
       const oldTick = roomTossUpTickTimers.get(rId);
       if (oldTick) clearInterval(oldTick);
       roomTossUpTickTimers.delete(rId);
-      const tickInterval = setInterval(() => {
+      const curInitial = roomMagicWheels.get(rId);
+      const isEnglish = curInitial?.edition === "ENGLISH";
+      const tickMs = isEnglish ? 1e3 : 750;
+      const tickInterval = setInterval(async () => {
         const cur = roomMagicWheels.get(rId);
         if (!cur || cur.phase !== "TOSS_UP_RUNNING" && cur.phase !== "TOSS_UP_REVEALING" || !cur.currentPuzzle) {
           clearInterval(tickInterval);
@@ -16813,18 +16879,29 @@ function registerSocketHandlers(io2) {
         if (nextIdx === void 0) {
           clearInterval(tickInterval);
           roomTossUpTickTimers.delete(rId);
-          cur.mustSolveWithTones = true;
-          cur.lastActionMessage = "\u26A1 T\u1EA5t c\u1EA3 ch\u1EEF c\xE1i g\u1ED1c \u0111\xE3 l\u1ED9 di\u1EC7n! \u0110\u1ED9i n\xE0o b\u1EA5m chu\xF4ng v\xE0 g\xF5 \u0111\xFAng d\u1EA5u thanh nhanh nh\u1EA5t s\u1EBD chi\u1EBFn th\u1EAFng!";
-          io2.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
+          if (cur.edition === "ENGLISH") {
+            await abandonTossUpPuzzle(rId, rCode);
+          } else {
+            cur.mustSolveWithTones = true;
+            cur.lastActionMessage = "\u26A1 T\u1EA5t c\u1EA3 ch\u1EEF c\xE1i g\u1ED1c \u0111\xE3 l\u1ED9 di\u1EC7n! \u0110\u1ED9i n\xE0o b\u1EA5m chu\xF4ng v\xE0 g\xF5 \u0111\xFAng d\u1EA5u thanh nhanh nh\u1EA5t s\u1EBD chi\u1EBFn th\u1EAFng!";
+            io2.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
+          }
           return;
         }
         p.revealedIndices.push(nextIdx);
         if (isPuzzleFullyRevealed(p.secretPhrase, p.revealedIndices)) {
-          cur.mustSolveWithTones = true;
-          cur.lastActionMessage = "\u26A1 T\u1EA5t c\u1EA3 ch\u1EEF c\xE1i g\u1ED1c \u0111\xE3 l\u1ED9 di\u1EC7n! \u0110\u1ED9i n\xE0o b\u1EA5m chu\xF4ng v\xE0 g\xF5 \u0111\xFAng d\u1EA5u thanh nhanh nh\u1EA5t s\u1EBD chi\u1EBFn th\u1EAFng!";
+          if (cur.edition === "ENGLISH") {
+            clearInterval(tickInterval);
+            roomTossUpTickTimers.delete(rId);
+            await abandonTossUpPuzzle(rId, rCode);
+            return;
+          } else {
+            cur.mustSolveWithTones = true;
+            cur.lastActionMessage = "\u26A1 T\u1EA5t c\u1EA3 ch\u1EEF c\xE1i g\u1ED1c \u0111\xE3 l\u1ED9 di\u1EC7n! \u0110\u1ED9i n\xE0o b\u1EA5m chu\xF4ng v\xE0 g\xF5 \u0111\xFAng d\u1EA5u thanh nhanh nh\u1EA5t s\u1EBD chi\u1EBFn th\u1EAFng!";
+          }
         }
         io2.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
-      }, 750);
+      }, tickMs);
       roomTossUpTickTimers.set(rId, tickInterval);
     };
     socket.on("magic_wheel:toss_up_start", async () => {
@@ -16865,7 +16942,8 @@ function registerSocketHandlers(io2) {
         }
         wheelState.tossUpRevealOrder = firstLetterIdx !== void 0 ? [firstLetterIdx, ...restIndices] : restIndices;
       }
-      wheelState.lastActionMessage = "C\xE1c ch\u1EEF c\xE1i \u0111ang l\u1EA7n l\u01B0\u1EE3t xu\u1EA5t hi\u1EC7n (0.75s/ch\u1EEF)! H\xE3y b\u1EA5m chu\xF4ng ngay khi \u0111o\xE1n ra \u0111\xE1p \xE1n!";
+      const isEnglish = wheelState.edition === "ENGLISH";
+      wheelState.lastActionMessage = isEnglish ? "Letters are appearing one by one (1.0s/letter)! Buzz in as soon as you know the answer!" : "C\xE1c ch\u1EEF c\xE1i \u0111ang l\u1EA7n l\u01B0\u1EE3t xu\u1EA5t hi\u1EC7n (0.75s/ch\u1EEF)! H\xE3y b\u1EA5m chu\xF4ng ngay khi \u0111o\xE1n ra \u0111\xE1p \xE1n!";
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       const firstTimer = setTimeout(() => {
         const cur = roomMagicWheels.get(roomId);
@@ -16878,8 +16956,13 @@ function registerSocketHandlers(io2) {
         }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
         startServerTossUpInterval(roomId, roomCode);
-      }, 1e3);
+      }, isEnglish ? 1e3 : 1e3);
       roomTossUpFirstTimers.set(roomId, firstTimer);
+    });
+    socket.on("admin:magic_wheel:toss_up_skip", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      await abandonTossUpPuzzle(room.id, room.code);
     });
     const handleTossUpTick = async (payload = {}) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
@@ -17982,6 +18065,11 @@ function registerSocketHandlers(io2) {
           wheelState.tossUpBuzzedTeamId = void 0;
           wheelState.tossUpBuzzedTeamName = void 0;
           wheelState.tossUpAnswerEndsAt = void 0;
+          const isAllRevealed = wheelState.currentPuzzle && isPuzzleFullyRevealed(wheelState.currentPuzzle.secretPhrase, wheelState.currentPuzzle.revealedIndices);
+          if (isAllRevealed && wheelState.edition === "ENGLISH") {
+            await abandonTossUpPuzzle(roomId, roomCode);
+            return;
+          }
           wheelState.lastActionMessage = `\u274C \u0110\xE1p \xE1n "${answer}" c\u1EE7a \u0110\u1ED9i ${teamName} ch\u01B0a ch\xEDnh x\xE1c! C\xE1c ch\u1EEF c\xE1i ti\u1EBFp t\u1EE5c m\u1EDF v\xE0 t\u1EA5t c\u1EA3 c\xE1c \u0111\u1ED9i \u0111\u1EC1u c\xF3 th\u1EC3 b\u1EA5m chu\xF4ng ti\u1EBFp!`;
           startServerTossUpInterval(roomId, roomCode);
           io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);

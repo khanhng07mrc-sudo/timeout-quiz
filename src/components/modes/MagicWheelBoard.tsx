@@ -94,6 +94,7 @@ export interface MagicWheelBoardProps {
   onTossUpStart?: () => void;
   onTossUpBuzz?: (teamId?: string) => void;
   onTossUpRevealTick?: (index?: number) => void;
+  onTossUpSkip?: () => void;
   onExpressDecide?: (rideExpress: boolean) => void;
   onStealSwapDecide?: (action: "STEAL_50" | "SWAP_LEADER" | "STEAL_HALF" | "SWAP_SCORE", targetTeamId?: string) => void;
   onSpecialChooseOrder?: (order: "SPIN_FIRST" | "SOLVE_FIRST") => void;
@@ -777,39 +778,22 @@ function SmartPuzzlePhraseInput({
   );
 }
 
-interface Hostess3DStudioProps {
-  xPercent: number;
-  activeRow: number;
-  facing: "LEFT" | "RIGHT";
+interface HostessCatwalkWingProps {
   pose: "IDLE" | "GESTURE" | "WALKING" | "TOUCHING";
+  activeRow?: number;
+  className?: string;
 }
 
-function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioProps) {
-  const isRightSide = facing === "LEFT"; // If facing LEFT, standing on right edge looking left towards the board
+function HostessCatwalkWing({ pose, activeRow = 1, className = "" }: HostessCatwalkWingProps) {
   const isTouching = pose === "TOUCHING";
   const isGesture = pose === "GESTURE";
-  const isWalking = pose === "WALKING";
 
-  // Reach/lift elevation when touching active row (row 0 is highest)
-  const touchRowLift = [12, 6, 0, -4][activeRow] ?? 0;
+  // Reach/lift elevation when gesturing towards active row
+  const touchRowLift = [10, 5, 0, -3][activeRow] ?? 0;
 
   return (
-    <div
-      className="absolute z-30 pointer-events-none transition-all duration-500 ease-out select-none"
-      style={{
-        left: `${Math.max(4.5, Math.min(95.5, xPercent))}%`,
-        bottom: "6px",
-        transform: "translateX(-50%)",
-      }}
-    >
+    <div className={`relative flex flex-col items-center justify-end select-none pointer-events-none ${className}`}>
       <style>{`
-        @keyframes hostessWalk {
-          0% { transform: translateY(0px) rotate(0deg); }
-          25% { transform: translateY(-3.5px) rotate(${isRightSide ? -1.5 : 1.5}deg); }
-          50% { transform: translateY(0px) rotate(0deg); }
-          75% { transform: translateY(-3.5px) rotate(${isRightSide ? 1.5 : -1.5}deg); }
-          100% { transform: translateY(0px) rotate(0deg); }
-        }
         @keyframes hostessBreathe {
           0%, 100% { transform: scale(1) translateY(0); }
           50% { transform: scale(1.008) translateY(-1.5px); }
@@ -819,59 +803,88 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
           50% { transform: scale(1.35); opacity: 1; }
         }
       `}</style>
+
+      {/* Overhead Conical Studio Spotlight Beam onto Catwalk */}
       <div
-        className="relative flex flex-col items-center"
+        className="absolute -top-16 inset-x-0 h-44 pointer-events-none opacity-40 z-0"
         style={{
-          transform: `${isRightSide ? "scaleX(-1)" : "scaleX(1)"} ${
-            isTouching
-              ? `scale(1.05) translateY(-${6 + touchRowLift}px)`
-              : isGesture
-              ? "scale(1.03) translateY(-3px)"
-              : ""
-          }`,
+          background: "radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.5) 0%, rgba(217,119,6,0.18) 50%, transparent 80%)",
+        }}
+      />
+
+      {/* Hostess Standing Character Container (Facing towards the board on the right) */}
+      <div
+        className="relative z-10 flex flex-col items-center"
+        style={{
+          transform: isTouching
+            ? `scale(1.04) translateY(-${5 + touchRowLift}px)`
+            : isGesture
+            ? "scale(1.02) translateY(-3px)"
+            : "scale(1) translateY(0px)",
           transition: "transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1)",
         }}
       >
-        {/* Soft cyan studio spotlight halo at pointing hand when touching/gesturing */}
+        {/* Soft cyan/gold studio spotlight flare at pointing hand when gesturing towards board */}
         {(isTouching || isGesture) && (
           <div
-            className="absolute z-40 w-4 h-4 rounded-full bg-cyan-300/90 blur-[1px] shadow-[0_0_20px_#06b6d4,0_0_35px_#38bdf8] pointer-events-none"
+            className="absolute z-40 w-5 h-5 rounded-full bg-cyan-300/90 blur-[1px] shadow-[0_0_25px_#06b6d4,0_0_40px_#fde047] pointer-events-none"
             style={{
-              top: `${14 + activeRow * 14}px`,
-              right: isRightSide ? "auto" : "-8px",
-              left: isRightSide ? "-8px" : "auto",
+              top: `${16 + activeRow * 12}px`,
+              right: "-6px",
               animation: "hostessHaloPulse 1.2s infinite ease-in-out",
             }}
           />
         )}
 
-        {/* Studio Stage Hardwood Floor Contact Shadow under Heels */}
+        {/* Model Photographic Cutout (Full-Body Vietnamese Gameshow Hostess) */}
         <div
-          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-20 sm:w-24 md:w-28 h-4 rounded-full blur-[2px] pointer-events-none"
+          className="relative w-24 sm:w-28 md:w-34 lg:w-40 h-52 sm:h-64 md:h-76 lg:h-88 drop-shadow-[0_15px_30px_rgba(0,0,0,0.95)]"
           style={{
-            background: "radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 80%)",
+            animation: "hostessBreathe 4s infinite ease-in-out",
           }}
-        />
-
-        {/* Studio Photographic Cutout Model (Full-Body Vietnamese Gameshow Hostess in Evening Gown with Heels) */}
-        <div
-          className="relative w-20 sm:w-26 md:w-32 lg:w-36 h-48 sm:h-56 md:h-68 lg:h-80 drop-shadow-[0_12px_24px_rgba(0,0,0,0.9)]"
-          style={
-            isWalking
-              ? { animation: "hostessWalk 650ms infinite ease-in-out" }
-              : isTouching
-              ? { filter: "drop-shadow(0 0 12px rgba(245,158,11,0.5)) drop-shadow(0 12px 24px rgba(0,0,0,0.9))" }
-              : { animation: "hostessBreathe 4s infinite ease-in-out" }
-          }
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/images/magic-wheel/hostess_fullbody.png"
-            alt="Người mẫu mở ô chữ Chiếc Nón Kỳ Diệu"
+            alt="Người mẫu Chiếc Nón Kỳ Diệu"
             className="w-full h-full object-contain pointer-events-none select-none"
             draggable={false}
           />
         </div>
+
+        {/* Studio Hardwood Floor Contact Shadow under Heels */}
+        <div
+          className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-24 sm:w-28 md:w-32 h-4 rounded-full blur-[2px] pointer-events-none"
+          style={{
+            background: "radial-gradient(ellipse at center, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 60%, transparent 80%)",
+          }}
+        />
+
+        {/* Gleaming Acrylic/Wood Mirror Floor Reflection under High Heels */}
+        <div
+          className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-24 sm:w-28 md:w-34 h-16 overflow-hidden pointer-events-none opacity-25 select-none"
+          style={{
+            transform: "scaleY(-0.35)",
+            filter: "blur(1.5px)",
+            maskImage: "linear-gradient(to top, rgba(0,0,0,0.8), transparent 75%)",
+            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.8), transparent 75%)",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/magic-wheel/hostess_fullbody.png"
+            alt=""
+            className="w-full h-full object-contain"
+            draggable={false}
+          />
+        </div>
+      </div>
+
+      {/* Catwalk Stage Platform Base (Bục Catwalk Sân Khấu Riêng) */}
+      <div className="relative z-0 w-28 sm:w-32 md:w-36 lg:w-42 h-6 sm:h-7 rounded-2xl border-t-2 border-amber-400/80 bg-gradient-to-b from-[#2b180d] via-[#1a0d06] to-[#0a0502] shadow-[0_8px_20px_rgba(0,0,0,0.9)] flex items-center justify-around px-2 -mt-2">
+        <div className="w-1.5 h-1.5 rounded-full bg-yellow-300 shadow-[0_0_8px_#fde047]" />
+        <div className="w-1.5 h-1.5 rounded-full bg-yellow-300 shadow-[0_0_8px_#fde047]" />
+        <div className="w-1.5 h-1.5 rounded-full bg-yellow-300 shadow-[0_0_8px_#fde047]" />
       </div>
     </div>
   );
@@ -900,6 +913,7 @@ export default function MagicWheelBoard({
   onTossUpStart,
   onTossUpBuzz,
   onTossUpRevealTick,
+  onTossUpSkip,
   onExpressDecide,
   onStealSwapDecide,
   onSpecialChooseOrder,
@@ -1519,46 +1533,15 @@ export default function MagicWheelBoard({
   }, [currentPuzzle?.revealedIndices, phase, roundStage, cellPositionsMap, clearChoreographyTimers, triggerTilePop]);
 
   // ── Toss-Up 1 & 2 Special Choreography Effect ─────────────────────────────
-  // Requirement 10:
-  // "MC đặt tay lên một ô chữ bất kỳ gần họ, nó sẽ highlight, rồi một lúc ngay sau đó hiện chữ cái ở đó,
-  // rồi các chữ cái khác tiếp tục hiện sau mỗi 0.5s (không qua highlight nữa). phát đúng âm thanh nữa nhé"
   const tossUpFirstTileDoneRef = useRef<boolean>(false);
-  const tossUpIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const tossUpFirstTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (roundStage !== "TOSS_UP_1" && roundStage !== "TOSS_UP_2") {
       tossUpFirstTileDoneRef.current = false;
-      if (tossUpIntervalRef.current) {
-        clearInterval(tossUpIntervalRef.current);
-        tossUpIntervalRef.current = null;
-      }
-      if (tossUpFirstTimerRef.current) {
-        clearTimeout(tossUpFirstTimerRef.current);
-        tossUpFirstTimerRef.current = null;
-      }
       return;
     }
     if (phase === "TOSS_UP_READY") {
       tossUpFirstTileDoneRef.current = false;
-      if (tossUpIntervalRef.current) {
-        clearInterval(tossUpIntervalRef.current);
-        tossUpIntervalRef.current = null;
-      }
-      if (tossUpFirstTimerRef.current) {
-        clearTimeout(tossUpFirstTimerRef.current);
-        tossUpFirstTimerRef.current = null;
-      }
-    }
-    if (phase === "TOSS_UP_BUZZED" || phase === "ROUND_RECAP") {
-      if (tossUpIntervalRef.current) {
-        clearInterval(tossUpIntervalRef.current);
-        tossUpIntervalRef.current = null;
-      }
-      if (tossUpFirstTimerRef.current) {
-        clearTimeout(tossUpFirstTimerRef.current);
-        tossUpFirstTimerRef.current = null;
-      }
     }
   }, [roundStage, phase, currentRound]);
 
@@ -1570,114 +1553,15 @@ export default function MagicWheelBoard({
 
   useEffect(() => {
     if (phase !== "TOSS_UP_RUNNING" && phase !== "TOSS_UP_REVEALING") {
-      if (tossUpIntervalRef.current) {
-        clearInterval(tossUpIntervalRef.current);
-        tossUpIntervalRef.current = null;
-      }
-      if (tossUpFirstTimerRef.current) {
-        clearTimeout(tossUpFirstTimerRef.current);
-        tossUpFirstTimerRef.current = null;
-      }
       return;
     }
     if (effectiveBoardStage === "EMPTY_56") {
       handleOpenBoard();
     }
-
-    const phrase = currentPuzzleRef.current?.secretPhrase || "";
-    if (!phrase) return;
-
-    // Authoritative tick driver:
-    // In sandbox: only Host drives (display iframe has no onTossUpRevealTick or is inside iframe)
-    // In live room: Host drives, or standalone Display fallback
-    const isTickDriver = typeof onTossUpRevealTick === "function" && (isHost || (isDisplay && !isInsideSandbox));
-
-    const getUnrevealedLetterIndices = () => {
-      const p = currentPuzzleRef.current;
-      const ph = p?.secretPhrase || "";
-      const currentRev = p?.revealedIndices || [];
-      const animRev = animRevealedIndicesRef.current;
-      const list: number[] = [];
-      for (let i = 0; i < ph.length; i++) {
-        if (isVietnameseAlphabetLetter(ph[i]) && !currentRev.includes(i) && !animRev.has(i)) {
-          list.push(i);
-        }
-      }
-      return list;
-    };
-
-    const scheduleSubsequentTicks = () => {
-      if (!isTickDriver) return;
-      if (tossUpIntervalRef.current) clearInterval(tossUpIntervalRef.current);
-      tossUpIntervalRef.current = setInterval(() => {
-        const unrev = getUnrevealedLetterIndices();
-        if (unrev.length === 0) {
-          if (tossUpIntervalRef.current) {
-            clearInterval(tossUpIntervalRef.current);
-            tossUpIntervalRef.current = null;
-          }
-          return;
-        }
-        const order = tossUpRevealOrder || [];
-        const nextIdx = order.find((idx) => unrev.includes(idx)) ?? unrev[0];
-        onTossUpRevealTick?.(nextIdx);
-      }, 750);
-    };
-
-    if (!tossUpFirstTileDoneRef.current && (currentPuzzleRef.current?.revealedIndices?.length || 0) === 0) {
-      tossUpFirstTileDoneRef.current = true;
-      const unrevealed = getUnrevealedLetterIndices();
-      if (unrevealed.length > 0) {
-        // Deterministic first tile: ALWAYS the first valid Vietnamese/Latin alphabet letter of the secret phrase!
-        // Numbers (0-9) and special characters are pre-revealed and ignored here!
-        const phraseFirstIdx = unrevealed.find((idx) => isVietnameseAlphabetLetter(phrase[idx]));
-        const order = tossUpRevealOrder || [];
-        const firstIdx = (order.length > 0 && unrevealed.includes(order[0]))
-          ? order[0]
-          : (phraseFirstIdx !== undefined ? phraseFirstIdx : unrevealed[0]);
-        const firstPos = cellPositionsMap[firstIdx] || { col: 2, row: 1 };
-        const side = hostessSideRef.current || "LEFT";
-
-        // 1. ALL screens: MC/Hostess touches tile -> tile highlights in Cyan Neon + highlight.mp3 for 1.0s
-        setHostessFacing(side === "LEFT" ? "RIGHT" : "LEFT");
-        setHostessPose("TOUCHING");
-        setHostessActiveRow(firstPos.row);
-        setHostessXPercent(((firstPos.col + 0.5) / COLS) * 100);
-        setHighlightedIndices(new Set([firstIdx]));
-        if (canPlayBoardAudio) soundManager.playMagicWheelMark();
-
-        // 2. Exactly after 1.0s (1000ms), letter appears + pop zoom + letter_open.mp3
-        if (tossUpFirstTimerRef.current) clearTimeout(tossUpFirstTimerRef.current);
-        tossUpFirstTimerRef.current = setTimeout(() => {
-          setHighlightedIndices(new Set());
-          setAnimRevealedIndices((prev) => new Set([...prev, firstIdx]));
-          triggerTilePop(firstIdx);
-          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
-          setHostessPose("IDLE");
-          setHostessXPercent(side === "LEFT" ? 3.5 : 96.5);
-          if (isTickDriver) {
-            onTossUpRevealTick?.(firstIdx);
-            scheduleSubsequentTicks();
-          }
-        }, 1000);
-      }
-    } else if (tossUpFirstTileDoneRef.current && !tossUpIntervalRef.current && isTickDriver) {
-      scheduleSubsequentTicks();
-    }
-
-    return () => {
-      // Keep timers active while Toss-Up is running; phase transition effect resets them
-    };
   }, [
     phase,
     effectiveBoardStage,
-    cellPositionsMap,
     handleOpenBoard,
-    isHost,
-    isDisplay,
-    isInsideSandbox,
-    tossUpRevealOrder,
-    triggerTilePop,
   ]);
 
   // ── Audio Engine Hooks ───────────────────────────────────────────────────
@@ -2357,6 +2241,19 @@ export default function MagicWheelBoard({
             </button>
           )}
 
+          {isHost && (roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2") && phase !== "ROUND_RECAP" && (
+            <button
+              type="button"
+              onClick={() => {
+                onTossUpSkip?.();
+              }}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-rose-600/80 hover:bg-rose-500 text-white border border-rose-400 transition cursor-pointer active:scale-95 shadow flex items-center gap-1 shrink-0"
+              title="Bỏ qua ô chữ Đoán Nhanh nếu không có ai giải được"
+            >
+              <span>⏭️</span> Bỏ qua ô chữ
+            </button>
+          )}
+
           {isHost && (onNextRound || onAdvanceRound) && (
             <button
               type="button"
@@ -2439,149 +2336,143 @@ export default function MagicWheelBoard({
 
           {/* ── 3D Gameshow Studio Stage (Sân Khấu Catwalk VTV3 & Bảng Ô Chữ 3D) ── */}
           <div className="w-full max-w-6xl flex flex-col items-center relative py-2 px-2 sm:px-4 md:px-6">
-            {/* Studio Lighting Truss & Soft Spotlights */}
-            <div className="absolute -top-4 inset-x-0 h-16 pointer-events-none flex justify-around opacity-35 z-0">
-              <div className="w-36 h-24 bg-gradient-to-b from-yellow-300/30 to-transparent blur-xl transform -rotate-12" />
-              <div className="w-48 h-28 bg-gradient-to-b from-emerald-400/25 to-transparent blur-xl" />
-              <div className="w-36 h-24 bg-gradient-to-b from-cyan-400/30 to-transparent blur-xl transform rotate-12" />
+            {/* Studio Lighting Overhead Truss with Multiple Downlight Spotlights */}
+            <div className="absolute -top-6 inset-x-0 h-28 pointer-events-none flex justify-around opacity-45 z-0">
+              <div className="w-48 h-36 bg-gradient-to-b from-amber-400/40 via-yellow-400/15 to-transparent blur-2xl transform -rotate-15" />
+              <div className="w-64 h-40 bg-gradient-to-b from-emerald-400/30 via-emerald-500/10 to-transparent blur-2xl" />
+              <div className="w-64 h-40 bg-gradient-to-b from-cyan-400/30 via-sky-500/10 to-transparent blur-2xl" />
+              <div className="w-48 h-36 bg-gradient-to-b from-amber-400/40 via-yellow-400/15 to-transparent blur-2xl transform rotate-15" />
             </div>
 
-            {/* Main Board Structure with 3D Bevel Border */}
-            <div className="relative w-full z-10 flex flex-col items-center">
-              {/* 14-Column 4-Row Puzzle Matrix with 3D Depth */}
-              <div className="w-full p-2 sm:p-3 md:p-4 rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-[#166534] shadow-[0_15px_35px_rgba(0,0,0,0.85),0_0_30px_rgba(22,101,52,0.4)]">
-                <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5 md:gap-2">
-                  {gridMatrix.map((row, rIdx) => (
-                    <div
-                      key={rIdx}
-                      className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1 sm:gap-1.5 md:gap-2 w-full items-center justify-items-center"
-                    >
-                      {row.map((cell, cIdx) => {
-                        const isCutOpen =
-                          effectiveBoardStage === "READY_CLUE" ||
-                          (effectiveBoardStage === "BLANK_PHRASE" && (cell?.seqIndex ?? 0) < cutRevealedCount);
+            {/* Stage Split: [Cánh Gà Catwalk Người Mẫu] + [Bảng Ô Chữ 3D Trung Tâm] */}
+            <div className="w-full flex items-end justify-center gap-2 sm:gap-3 md:gap-5 relative z-10">
+              {/* STAGE LEFT WING: Bục Catwalk Người Mẫu Độc Lập (Hoàn toàn không che ô chữ) */}
+              {showHostess && (
+                <div className="hidden md:flex flex-col items-center justify-end shrink-0 self-stretch pb-2">
+                  <HostessCatwalkWing
+                    pose={hostessPose}
+                    activeRow={hostessActiveRow}
+                  />
+                </div>
+              )}
 
-                        if (!cell || effectiveBoardStage === "EMPTY_56" || !isCutOpen) {
+              {/* STAGE CENTER: Khung Màn Hình LED Ô Chữ 3D (14 Cột x 4 Hàng Hoàn Toàn Thoáng) */}
+              <div className="flex-1 min-w-0 max-w-5xl flex flex-col items-center relative">
+                {/* 3D Luxury Metallic Beveled Gold Video Wall Casing */}
+                <div className="w-full p-2.5 sm:p-3.5 md:p-4 rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40">
+                  <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5 md:gap-2">
+                    {gridMatrix.map((row, rIdx) => (
+                      <div
+                        key={rIdx}
+                        className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1 sm:gap-1.5 md:gap-2 w-full items-center justify-items-center"
+                      >
+                        {row.map((cell, cIdx) => {
+                          const isCutOpen =
+                            effectiveBoardStage === "READY_CLUE" ||
+                            (effectiveBoardStage === "BLANK_PHRASE" && (cell?.seqIndex ?? 0) < cutRevealedCount);
+
+                          if (!cell || effectiveBoardStage === "EMPTY_56" || !isCutOpen) {
+                            return (
+                              <div
+                                key={cIdx}
+                                className="w-full aspect-[3/4] min-h-[clamp(24px,3.5vw,52px)] rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none"
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  className="w-3 h-3 sm:w-4 sm:h-4 text-[#2a7a33] opacity-60 fill-current"
+                                >
+                                  <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
+                                </svg>
+                              </div>
+                            );
+                          }
+
+                          const isLuckyGreen =
+                            phase === "LUCKY_PICK" && luckyGreenSelectedIdx === cell.originalIndex;
+                          const isPopping = justPoppedIndices.has(cell.originalIndex);
+                          const isJustCut =
+                            effectiveBoardStage === "BLANK_PHRASE" &&
+                            cell.seqIndex === cutRevealedCount - 1;
+
+                          const canPickLucky = phase === "LUCKY_PICK" && !cell.isRevealed && (canInteract || isDisplay || isHost);
+
                           return (
                             <div
                               key={cIdx}
-                              className="w-full aspect-[3/4] min-h-[clamp(24px,3.5vw,52px)] rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none"
+                              onClick={() => {
+                                if (canPickLucky) {
+                                  if (luckyGreenSelectedIdx !== cell.originalIndex) {
+                                    setLuckyGreenSelectedIdx(cell.originalIndex);
+                                    if (canPlayBoardAudio) soundManager.playMagicWheelMark();
+                                  } else {
+                                    setLuckyGreenSelectedIdx(null);
+                                    if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
+                                    onLuckyPick?.(cell.originalIndex);
+                                  }
+                                }
+                              }}
+                              className={`w-full aspect-[3/4] min-h-[clamp(24px,3.5vw,52px)] rounded font-black flex items-center justify-center select-none ${
+                                isJustCut ? "animate-vtv3-tile-cut" : ""
+                              } ${
+                                isPopping
+                                  ? "bg-white text-[#0f172a] border-2 border-yellow-300 shadow-[0_0_35px_#f59e0b] animate-vtv3-tile-pop z-30"
+                                  : isLuckyGreen
+                                  ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
+                                  : cell.isHighlighted
+                                  ? "bg-gradient-to-tr from-cyan-400 via-sky-300 to-cyan-200 text-transparent border-2 border-white scale-110 shadow-[0_0_35px_#06b6d4,0_0_15px_#38bdf8] animate-pulse z-20"
+                                  : cell.isRevealed
+                                  ? "bg-white text-[#0f172a] shadow-[0_4px_12px_rgba(255,255,255,0.45)] border-2 border-white scale-100"
+                                  : phase === "LUCKY_PICK"
+                                  ? "bg-gradient-to-br from-amber-300 via-yellow-300 to-amber-400 text-amber-950 border-2 border-yellow-200 animate-pulse shadow-[0_0_15px_#f59e0b] cursor-pointer hover:scale-105"
+                                  : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
+                              }`}
                             >
-                              <svg
-                                viewBox="0 0 24 24"
-                                className="w-3 h-3 sm:w-4 sm:h-4 text-[#2a7a33] opacity-60 fill-current"
-                              >
-                                <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
-                              </svg>
+                              <span className="text-sm sm:text-lg md:text-2xl lg:text-3xl font-black tracking-tight">
+                                {cell.isRevealed
+                                  ? cell.displayChar
+                                  : isLuckyGreen
+                                  ? "✓"
+                                  : cell.isHighlighted
+                                  ? ""
+                                  : phase === "LUCKY_PICK"
+                                  ? "🍀"
+                                  : "?"}
+                              </span>
                             </div>
                           );
-                        }
-
-                        const isLuckyGreen =
-                          phase === "LUCKY_PICK" && luckyGreenSelectedIdx === cell.originalIndex;
-                        const isPopping = justPoppedIndices.has(cell.originalIndex);
-                        const isJustCut =
-                          effectiveBoardStage === "BLANK_PHRASE" &&
-                          cell.seqIndex === cutRevealedCount - 1;
-
-                        const canPickLucky = phase === "LUCKY_PICK" && !cell.isRevealed && (canInteract || isDisplay || isHost);
-
-                        return (
-                          <div
-                            key={cIdx}
-                            onClick={() => {
-                              if (canPickLucky) {
-                                if (luckyGreenSelectedIdx !== cell.originalIndex) {
-                                  setLuckyGreenSelectedIdx(cell.originalIndex);
-                                  if (canPlayBoardAudio) soundManager.playMagicWheelMark();
-                                } else {
-                                  setLuckyGreenSelectedIdx(null);
-                                  if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
-                                  onLuckyPick?.(cell.originalIndex);
-                                }
-                              }
-                            }}
-                            className={`w-full aspect-[3/4] min-h-[clamp(24px,3.5vw,52px)] rounded font-black flex items-center justify-center select-none ${
-                              isJustCut ? "animate-vtv3-tile-cut" : ""
-                            } ${
-                              isPopping
-                                ? "bg-white text-[#0f172a] border-2 border-yellow-300 shadow-[0_0_35px_#f59e0b] animate-vtv3-tile-pop z-30"
-                                : isLuckyGreen
-                                ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
-                                : cell.isHighlighted
-                                ? "bg-gradient-to-tr from-cyan-400 via-sky-300 to-cyan-200 text-transparent border-2 border-white scale-110 shadow-[0_0_35px_#06b6d4,0_0_15px_#38bdf8] animate-pulse z-20"
-                                : cell.isRevealed
-                                ? "bg-white text-[#0f172a] shadow-[0_4px_12px_rgba(255,255,255,0.45)] border-2 border-white scale-100"
-                                : phase === "LUCKY_PICK"
-                                ? "bg-gradient-to-br from-amber-300 via-yellow-300 to-amber-400 text-amber-950 border-2 border-yellow-200 animate-pulse shadow-[0_0_15px_#f59e0b] cursor-pointer hover:scale-105"
-                                : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
-                            }`}
-                          >
-                            <span className="text-sm sm:text-lg md:text-2xl lg:text-3xl font-black tracking-tight">
-                              {cell.isRevealed
-                                ? cell.displayChar
-                                : isLuckyGreen
-                                ? "✓"
-                                : cell.isHighlighted
-                                ? ""
-                                : phase === "LUCKY_PICK"
-                                ? "🍀"
-                                : "?"}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
+                        })}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Sân Khấu Gỗ Bóng S9 VTV3 Floor Platform (Sàn gỗ Mahogany phản chiếu ánh đèn vàng ấm) */}
-              <div className="relative w-full h-12 sm:h-16 md:h-20 -mt-2 sm:-mt-3 z-20 flex flex-col justify-end">
-                {/* 3D Polished Hardwood Stage Floor Plane */}
-                <div
-                  className="absolute inset-0 rounded-b-2xl overflow-hidden border-t-2 border-amber-600/60"
-                  style={{
-                    background: "linear-gradient(180deg, #2b180d 0%, #1a0d06 60%, #0d0603 100%)",
-                    boxShadow: "inset 0 10px 25px rgba(0,0,0,0.9), 0 10px 25px rgba(0,0,0,0.7)",
-                  }}
-                >
-                  {/* Subtle Polished Wood Floor Grain Planks */}
+                {/* Sàn Sân Khấu Gỗ Bóng Mahogany & Dải Đèn Chân Vàng Sang Trọng */}
+                <div className="relative w-full h-8 sm:h-11 md:h-14 -mt-2 sm:-mt-2.5 z-10 flex flex-col justify-end">
+                  {/* Sàn gỗ bóng phản chiếu ánh đèn vàng */}
                   <div
-                    className="w-full h-full opacity-20"
+                    className="absolute inset-0 rounded-b-2xl overflow-hidden border-t-2 border-amber-600/70"
                     style={{
-                      backgroundImage: "linear-gradient(90deg, rgba(245,158,11,0.2) 1px, transparent 1px), linear-gradient(0deg, rgba(0,0,0,0.4) 1px, transparent 1px)",
-                      backgroundSize: "60px 20px",
+                      background: "linear-gradient(180deg, #2b180d 0%, #1a0d06 60%, #0d0603 100%)",
+                      boxShadow: "inset 0 10px 25px rgba(0,0,0,0.9), 0 10px 25px rgba(0,0,0,0.7)",
                     }}
-                  />
-                  {/* Warm Golden Studio Spotlight Reflection on Hardwood */}
-                  <div
-                    className="absolute inset-x-0 top-0 h-full pointer-events-none"
-                    style={{
-                      background: "radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.3) 0%, rgba(217,119,6,0.15) 45%, transparent 75%)",
-                    }}
-                  />
-                </div>
+                  >
+                    <div
+                      className="absolute inset-x-0 top-0 h-full pointer-events-none"
+                      style={{
+                        background: "radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.35) 0%, rgba(217,119,6,0.15) 50%, transparent 80%)",
+                      }}
+                    />
+                  </div>
 
-                {/* Front Stage Platform Luxury Gold Brass Metallic Rim */}
-                <div className="relative z-10 w-full h-1.5 sm:h-2 bg-gradient-to-r from-amber-700 via-yellow-400 to-amber-700 shadow-[0_0_15px_rgba(245,158,11,0.6),0_2px_4px_rgba(0,0,0,0.9)] flex items-center justify-around px-4">
-                  {/* Studio Footlights along the stage rim */}
-                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                  {/* Nẹp viền kim loại đồng thau và dàn đèn chân (Footlights) */}
+                  <div className="relative z-10 w-full h-1.5 sm:h-2 bg-gradient-to-r from-amber-700 via-yellow-400 to-amber-700 shadow-[0_0_15px_rgba(245,158,11,0.6)] flex items-center justify-around px-4">
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+                  </div>
                 </div>
-
-                {/* Virtual Hostess 3D Studio Character standing firmly on Hardwood Stage Floor */}
-                {showHostess && (
-                  <Hostess3DStudio
-                    xPercent={hostessXPercent}
-                    activeRow={hostessActiveRow}
-                    facing={hostessFacing}
-                    pose={hostessPose}
-                  />
-                )}
               </div>
             </div>
 
@@ -2633,7 +2524,20 @@ export default function MagicWheelBoard({
                   </p>
                 </div>
               </div>
-              {isHost && (onNextRound || onAdvanceRound) && (
+              {isHost && (roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2") && phase !== "ROUND_RECAP" && (
+            <button
+              type="button"
+              onClick={() => {
+                onTossUpSkip?.();
+              }}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-rose-600/80 hover:bg-rose-500 text-white border border-rose-400 transition cursor-pointer active:scale-95 shadow flex items-center gap-1 shrink-0"
+              title="Bỏ qua ô chữ Đoán Nhanh nếu không có ai giải được"
+            >
+              <span>⏭️</span> Bỏ qua ô chữ
+            </button>
+          )}
+
+          {isHost && (onNextRound || onAdvanceRound) && (
                 <button
                   type="button"
                   onClick={() => {

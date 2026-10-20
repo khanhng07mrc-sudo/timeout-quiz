@@ -1524,6 +1524,7 @@ export default function AdminRoomPage() {
                   onTradeDecide={(trade, boxIndex) => emit("magic_wheel:trade_decide", { trade, boxIndex })}
                   onUseFreeSpin={(use) => emit("admin:magic_wheel:use_free_spin", { use })}
                   onTossUpStart={() => emit("magic_wheel:toss_up_start")}
+                  onTossUpSkip={() => emit("admin:magic_wheel:toss_up_skip")}
                   onTossUpBuzz={(teamId) => emit("magic_wheel:toss_up_buzz", { teamId })}
                   onTossUpRevealTick={(targetIndex) => emit("magic_wheel:toss_up_reveal_tick", { index: targetIndex })}
                   onExpressDecide={(boardTrain) => emit("magic_wheel:express_decide", { rideExpress: boardTrain })}

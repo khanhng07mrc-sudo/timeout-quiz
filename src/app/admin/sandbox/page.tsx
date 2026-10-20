@@ -12712,6 +12712,12 @@ export default function AdminSandboxPage() {
                       onTossUpStart={() => {
                         window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START" }, "*");
                       }}
+                      onTossUpSkip={() => {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
+                          adminSocketRef.current.emit("admin:magic_wheel:toss_up_skip" as any);
+                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_SKIP" }, "*");
+                      }}
                       onTossUpBuzz={(targetTeamId) => {
                         const tId = targetTeamId || currentTeam?.id || roomState.teams[0]?.id;
                         if (!isOfflineSandbox && adminSocketRef.current?.connected) {

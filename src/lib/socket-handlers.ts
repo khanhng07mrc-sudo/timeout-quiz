@@ -8078,13 +8078,99 @@ export function registerSocketHandlers(io: IO) {
       }
     };
 
-    // Helper to run authoritative 750ms driver interval on server (immune to network lag)
+    // Helper to skip / abandon a Toss-Up puzzle when time expires or no one solves correctly
+    const abandonTossUpPuzzle = async (rId: string, rCode: string) => {
+      const cur = roomMagicWheels.get(rId);
+      if (!cur || (cur.roundStage !== "TOSS_UP_1" && cur.roundStage !== "TOSS_UP_2")) return;
+
+      const oldTick = roomTossUpTickTimers.get(rId);
+      if (oldTick) clearInterval(oldTick);
+      roomTossUpTickTimers.delete(rId);
+
+      const oldFirst = roomTossUpFirstTimers.get(rId);
+      if (oldFirst) clearTimeout(oldFirst);
+      roomTossUpFirstTimers.delete(rId);
+
+      roomTossUpBuzzLocks.delete(rId);
+
+      const room = await prisma.room.findUnique({
+        where: { id: rId },
+        include: { teams: { orderBy: { createdAt: "asc" } } },
+      });
+      if (!room) return;
+
+      const stage = cur.roundStage;
+      const phrase = cur.currentPuzzle?.secretPhrase || "";
+
+      // Reveal all letters on the board for recap
+      if (cur.currentPuzzle) {
+        cur.currentPuzzle.revealedIndices = Array.from(
+          { length: cur.currentPuzzle.secretPhrase.length },
+          (_, i) => i
+        );
+      }
+
+      cur.phase = "ROUND_RECAP";
+      cur.mustSolveWithTones = false;
+      cur.tossUpBuzzedTeamId = undefined;
+      cur.tossUpBuzzedTeamName = undefined;
+
+      if (stage === "TOSS_UP_2") {
+        // Yêu cầu: nếu ở vòng đoán nhanh 2 không ai đúng, quyền quay đầu tiên ở Vòng chính thức số 1 sẽ mặc định thuộc về người chơi ngồi ở vị trí đầu tiên (bên trái cùng)
+        const firstTeam = room.teams[0];
+        if (firstTeam) {
+          cur.round1StarterTeamId = firstTeam.id;
+          cur.currentTurnTeamId = firstTeam.id;
+          cur.currentTurnTeamName = firstTeam.name;
+        }
+        cur.lastActionMessage = cur.edition === "ENGLISH"
+          ? `⚡ Time expired! No team solved Toss-Up 2 ("${phrase}"). Puzzle skipped! Team 1 (${firstTeam?.name || "leftmost"}) gets first spin in Round 1!`
+          : `⚡ Hết thời gian! Không có đội nào giải đúng Vòng Đoán Nhanh 2 ("${phrase}"). Ô chữ bị bỏ qua! Quyền quay đầu tiên ở Vòng 1 thuộc về Đội 1 (${firstTeam?.name || "bên trái cùng"})!`;
+      } else {
+        cur.lastActionMessage = cur.edition === "ENGLISH"
+          ? `⚡ Time expired! No team solved Toss-Up 1 ("${phrase}"). Puzzle skipped!`
+          : `⚡ Hết thời gian! Không có đội nào giải đúng Vòng Đoán Nhanh 1 ("${phrase}"). Ô chữ bị bỏ qua!`;
+      }
+
+      io.to(`room:${rCode}`).emit("game:magic_wheel:puzzle_solved", {
+        teamId: "",
+        teamName: "",
+        isCorrect: false,
+        secretPhrase: phrase,
+        roundWonPoints: 0,
+      });
+      io.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
+
+      // Auto-advance in self-service mode after 6.5s
+      if (cur.operationMode !== "HOST_ASSISTED") {
+        const abandonedRound = cur.currentRound;
+        setTimeout(async () => {
+          const latest = roomMagicWheels.get(rId);
+          if (!latest || latest.phase !== "ROUND_RECAP" || latest.currentRound !== abandonedRound) return;
+          if (latest.currentRound < latest.maxRounds) {
+            const latestRoom = await prisma.room.findUnique({
+              where: { id: rId },
+              include: { teams: { orderBy: { createdAt: "asc" } } },
+            });
+            if (!latestRoom) return;
+            setupMagicWheelRoundStage(latest, latest.currentRound + 1, latestRoom.teams);
+            io.to(`room:${rCode}`).emit("game:magic_wheel:update", latest);
+          }
+        }, 6500);
+      }
+    };
+
+    // Helper to run authoritative driver interval on server (750ms for VN, 1000ms for EN, immune to network lag)
     const startServerTossUpInterval = (rId: string, rCode: string) => {
       const oldTick = roomTossUpTickTimers.get(rId);
       if (oldTick) clearInterval(oldTick);
       roomTossUpTickTimers.delete(rId);
 
-      const tickInterval = setInterval(() => {
+      const curInitial = roomMagicWheels.get(rId);
+      const isEnglish = curInitial?.edition === "ENGLISH";
+      const tickMs = isEnglish ? 1000 : 750;
+
+      const tickInterval = setInterval(async () => {
         const cur = roomMagicWheels.get(rId);
         if (!cur || (cur.phase !== "TOSS_UP_RUNNING" && cur.phase !== "TOSS_UP_REVEALING") || !cur.currentPuzzle) {
           clearInterval(tickInterval);
@@ -8097,18 +8183,32 @@ export function registerSocketHandlers(io: IO) {
         if (nextIdx === undefined) {
           clearInterval(tickInterval);
           roomTossUpTickTimers.delete(rId);
-          cur.mustSolveWithTones = true;
-          cur.lastActionMessage = "⚡ Tất cả chữ cái gốc đã lộ diện! Đội nào bấm chuông và gõ đúng dấu thanh nhanh nhất sẽ chiến thắng!";
-          io.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
+
+          if (cur.edition === "ENGLISH") {
+            // Luật Anh: 0 giây chờ! Ngay khi chữ cuối cùng lộ diện, nếu không có ai kịp bấm chuông, bỏ qua ô chữ ngay lập tức!
+            await abandonTossUpPuzzle(rId, rCode);
+          } else {
+            // Luật VN: Không giới hạn thời gian chờ các đội bấm chuông gõ dấu thanh, hoặc MC bấm Bỏ qua ô chữ
+            cur.mustSolveWithTones = true;
+            cur.lastActionMessage = "⚡ Tất cả chữ cái gốc đã lộ diện! Đội nào bấm chuông và gõ đúng dấu thanh nhanh nhất sẽ chiến thắng!";
+            io.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
+          }
           return;
         }
         p.revealedIndices.push(nextIdx);
         if (isPuzzleFullyRevealed(p.secretPhrase, p.revealedIndices)) {
-          cur.mustSolveWithTones = true;
-          cur.lastActionMessage = "⚡ Tất cả chữ cái gốc đã lộ diện! Đội nào bấm chuông và gõ đúng dấu thanh nhanh nhất sẽ chiến thắng!";
+          if (cur.edition === "ENGLISH") {
+            clearInterval(tickInterval);
+            roomTossUpTickTimers.delete(rId);
+            await abandonTossUpPuzzle(rId, rCode);
+            return;
+          } else {
+            cur.mustSolveWithTones = true;
+            cur.lastActionMessage = "⚡ Tất cả chữ cái gốc đã lộ diện! Đội nào bấm chuông và gõ đúng dấu thanh nhanh nhất sẽ chiến thắng!";
+          }
         }
         io.to(`room:${rCode}`).emit("game:magic_wheel:update", cur);
-      }, 750);
+      }, tickMs);
       roomTossUpTickTimers.set(rId, tickInterval);
     };
 
@@ -8157,10 +8257,13 @@ export function registerSocketHandlers(io: IO) {
         }
         wheelState.tossUpRevealOrder = firstLetterIdx !== undefined ? [firstLetterIdx, ...restIndices] : restIndices;
       }
-      wheelState.lastActionMessage = "Các chữ cái đang lần lượt xuất hiện (0.75s/chữ)! Hãy bấm chuông ngay khi đoán ra đáp án!";
+      const isEnglish = wheelState.edition === "ENGLISH";
+      wheelState.lastActionMessage = isEnglish
+        ? "Letters are appearing one by one (1.0s/letter)! Buzz in as soon as you know the answer!"
+        : "Các chữ cái đang lần lượt xuất hiện (0.75s/chữ)! Hãy bấm chuông ngay khi đoán ra đáp án!";
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
 
-      // 1. Authoritative 1000ms delay for Tile 1 (Cyan Neon highlight + sound)
+      // 1. Authoritative delay for Tile 1 (Cyan Neon highlight + sound)
       const firstTimer = setTimeout(() => {
         const cur = roomMagicWheels.get(roomId);
         if (!cur || (cur.phase !== "TOSS_UP_RUNNING" && cur.phase !== "TOSS_UP_REVEALING") || !cur.currentPuzzle) return;
@@ -8172,10 +8275,16 @@ export function registerSocketHandlers(io: IO) {
         }
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
 
-        // 2. Authoritative 750ms driver interval for all subsequent letters
+        // 2. Authoritative driver interval for all subsequent letters (750ms for VN, 1000ms for EN)
         startServerTossUpInterval(roomId, roomCode);
-      }, 1000);
+      }, isEnglish ? 1000 : 1000);
       roomTossUpFirstTimers.set(roomId, firstTimer);
+    });
+
+    socket.on("admin:magic_wheel:toss_up_skip", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      await abandonTossUpPuzzle(room.id, room.code);
     });
 
     const handleTossUpTick = async (payload: any = {}) => {
@@ -9425,8 +9534,16 @@ export function registerSocketHandlers(io: IO) {
           wheelState.tossUpBuzzedTeamId = undefined;
           wheelState.tossUpBuzzedTeamName = undefined;
           wheelState.tossUpAnswerEndsAt = undefined;
+
+          // Nếu theo Luật Anh và tất cả chữ đã mở hết mà đội bấm chuông giải sai -> Bỏ qua ô chữ ngay!
+          const isAllRevealed = wheelState.currentPuzzle && isPuzzleFullyRevealed(wheelState.currentPuzzle.secretPhrase, wheelState.currentPuzzle.revealedIndices);
+          if (isAllRevealed && wheelState.edition === "ENGLISH") {
+            await abandonTossUpPuzzle(roomId, roomCode);
+            return;
+          }
+
           wheelState.lastActionMessage = `❌ Đáp án "${answer}" của Đội ${teamName} chưa chính xác! Các chữ cái tiếp tục mở và tất cả các đội đều có thể bấm chuông tiếp!`;
-          // Resume authoritative 750ms interval directly on server!
+          // Resume authoritative driver interval directly on server!
           startServerTossUpInterval(roomId, roomCode);
           io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
         }

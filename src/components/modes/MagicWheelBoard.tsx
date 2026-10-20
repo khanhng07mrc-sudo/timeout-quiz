@@ -1152,13 +1152,13 @@ function InteractiveWheelRig({
     const isLarge = size === "large";
     const dimClasses = isLarge
       ? "w-[280px] h-[280px] sm:w-[380px] sm:h-[380px] md:w-[480px] md:h-[480px] lg:w-[580px] lg:h-[580px] xl:w-[680px] xl:h-[680px] max-h-[72vh] max-w-[72vh]"
-      : "w-[190px] h-[190px] sm:w-[230px] sm:h-[230px] md:w-[270px] md:h-[270px] lg:w-[310px] lg:h-[310px] max-h-[36vh] max-w-[36vh]";
+      : "h-full max-h-[min(38vh,260px)] sm:max-h-[38vh] max-w-full aspect-square";
     const borderClasses = isLarge
       ? "border-[12px] sm:border-[16px] md:border-[20px] border-[#d97706]"
-      : "border-[8px] sm:border-[10px] md:border-[12px] border-[#d97706]";
+      : "border-[6px] sm:border-[8px] md:border-[10px] border-[#d97706]";
     return (
-      <div className="w-full flex flex-col items-center justify-center relative select-none">
-        <div className={`${dimClasses} aspect-square relative select-none flex items-center justify-center shrink-0`}>
+      <div className="w-full h-full flex flex-col items-center justify-center relative select-none min-h-0 pt-2 pb-1">
+        <div className={`${dimClasses} aspect-square relative select-none flex items-center justify-center shrink-0 transition-all duration-700 ease-in-out`}>
           <div
             ref={needleRef}
             className="absolute -top-[4.2%] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
@@ -1171,7 +1171,7 @@ function InteractiveWheelRig({
           >
             <NeedlePointerSvg />
           </div>
-          <div className="absolute -inset-4 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.95)_45%,rgba(15,8,30,0.7)_70%,transparent_85%)] blur-md pointer-events-none -z-10" />
+          <div className="absolute -inset-3 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.95)_45%,rgba(15,8,30,0.7)_70%,transparent_85%)] blur-md pointer-events-none -z-10" />
           <div className={`absolute inset-0 aspect-square rounded-full ${borderClasses} shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_35px_rgba(245,158,11,0.45),inset_0_2px_4px_rgba(254,240,138,0.9),inset_0_-3px_8px_rgba(69,26,3,0.95)] pointer-events-none z-20`}>
             <div className="w-full h-full rounded-full border border-amber-950/70 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
           </div>
@@ -1184,7 +1184,7 @@ function InteractiveWheelRig({
           </div>
         </div>
         {selectedSector && (
-          <div className="mt-1 px-3 py-0.5 rounded-full bg-black/80 border border-amber-400/50 text-[11px] font-black text-amber-200 flex items-center gap-1.5 shadow-md">
+          <div className="mt-1 px-2.5 py-0.5 rounded-full bg-black/85 border border-amber-400/50 text-[10px] font-black text-amber-200 flex items-center gap-1 shadow-md shrink-0">
             <span className="text-amber-400">🎯</span>
             <span>Ô quay: {selectedSector.label}</span>
           </div>
@@ -2810,7 +2810,7 @@ export default function MagicWheelBoard({
 
   // ── 3. 56-TILE BOARD MATRIX RENDERER ──
   const renderBoardGridMatrix = (isDisplayMode = false) => (
-    <div className={`w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] ${isDisplayMode ? "p-1.5 sm:p-2 max-w-4xl" : "p-2.5 sm:p-4 max-w-5xl"} rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-hidden shrink-0`}>
+    <div className={`w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] ${isDisplayMode ? "p-1 sm:p-1.5 max-w-4xl" : "p-2.5 sm:p-4 max-w-5xl"} rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-hidden shrink-0`}>
       {!isDisplayMode && !isTempActive && (
         <div className="mb-1.5 px-3.5 py-0.5 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow">
           {effectiveBoardStage === "EMPTY_56" ? (
@@ -2825,13 +2825,13 @@ export default function MagicWheelBoard({
         </div>
       )}
 
-      <div className={`w-full ${isDisplayMode ? "max-w-4xl" : "max-w-5xl"} flex flex-col items-center relative py-0.5 px-1 sm:px-2`}>
-        <div className={`w-full ${isDisplayMode ? "p-1.5 sm:p-2" : "p-2 sm:p-3"} rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40`}>
-          <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5">
+      <div className={`w-full ${isDisplayMode ? "max-w-4xl" : "max-w-5xl"} flex flex-col items-center relative py-0.5 px-0.5 sm:px-1.5`}>
+        <div className={`w-full ${isDisplayMode ? "p-1 sm:p-1.5" : "p-2 sm:p-3"} rounded-xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-2 sm:border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40`}>
+          <div className="w-full grid grid-rows-4 gap-0.5 sm:gap-1">
             {gridMatrix.map((row, rIdx) => (
               <div
                 key={rIdx}
-                className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1 sm:gap-1.5 w-full items-center justify-items-center"
+                className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-0.5 sm:gap-1 w-full items-center justify-items-center"
               >
                 {row.map((cell, cIdx) => {
                   const isCutOpen =
@@ -2843,7 +2843,7 @@ export default function MagicWheelBoard({
                     return (
                       <div
                         key={cIdx}
-                        className={`w-full aspect-[3/4] ${isDisplayMode ? "min-h-[clamp(16px,2.2vw,36px)]" : "min-h-[clamp(24px,3.5vw,52px)]"} rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none`}
+                        className={`w-full aspect-[3/4] ${isDisplayMode ? "min-h-[clamp(13px,1.6vw,26px)]" : "min-h-[clamp(24px,3.5vw,52px)]"} rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none`}
                       >
                         <svg viewBox="0 0 24 24" className="w-3 h-3 text-[#2a7a33] opacity-60 fill-current">
                           <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
@@ -2872,7 +2872,7 @@ export default function MagicWheelBoard({
                           }
                         }
                       }}
-                      className={`w-full aspect-[3/4] ${isDisplayMode ? "min-h-[clamp(16px,2.2vw,36px)]" : "min-h-[clamp(24px,3.5vw,52px)]"} rounded font-black flex items-center justify-center select-none ${
+                      className={`w-full aspect-[3/4] ${isDisplayMode ? "min-h-[clamp(13px,1.6vw,26px)]" : "min-h-[clamp(24px,3.5vw,52px)]"} rounded font-black flex items-center justify-center select-none ${
                         isJustCut ? "animate-vtv3-tile-cut" : ""
                       } ${
                         isPopping
@@ -2888,7 +2888,7 @@ export default function MagicWheelBoard({
                           : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
                       }`}
                     >
-                      <span className={`font-black tracking-tight ${isDisplayMode ? "text-xs sm:text-base md:text-xl lg:text-2xl" : "text-sm sm:text-lg md:text-2xl lg:text-3xl"}`}>
+                      <span className={`font-black tracking-tight ${isDisplayMode ? "text-[11px] sm:text-sm md:text-lg lg:text-xl" : "text-sm sm:text-lg md:text-2xl lg:text-3xl"}`}>
                         {cell.isRevealed ? cell.displayChar : isLuckyGreen ? "✓" : cell.isHighlighted ? "" : phase === "LUCKY_PICK" ? "🍀" : "?"}
                       </span>
                     </div>
@@ -2936,8 +2936,8 @@ export default function MagicWheelBoard({
 
         {/* Lower-Third Chyron */}
         {!isTempActive && (
-          <div className="w-full mt-2 z-20 flex flex-col items-start drop-shadow-2xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-t-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow border-t border-x border-amber-300">
+          <div className="w-full mt-1 sm:mt-1.5 z-20 flex flex-col items-start drop-shadow-2xl">
+            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-t-lg bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-[10px] sm:text-xs uppercase tracking-wider shadow border-t border-x border-amber-300">
               <span className="text-amber-900">⭐</span>
               <span>
                 {edition === "ENGLISH"
@@ -2945,14 +2945,14 @@ export default function MagicWheelBoard({
                   : `CHỦ ĐỀ: ${effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", "VIETNAMESE")}`}
               </span>
             </div>
-            <div className="w-full px-3.5 py-1.5 rounded-b-xl rounded-tr-xl bg-black/90 border border-amber-400/40 flex items-center justify-between gap-3 text-slate-100 font-bold text-xs sm:text-sm shadow-2xl">
-              <p className="leading-snug flex-1 truncate">
+            <div className={`w-full ${isDisplayMode ? "px-2.5 py-1" : "px-3.5 py-1.5"} rounded-b-xl rounded-tr-xl bg-black/90 border border-amber-400/40 flex items-center justify-between gap-2.5 text-slate-100 font-bold text-xs sm:text-sm shadow-2xl`}>
+              <p className="leading-tight flex-1 whitespace-normal break-words text-[11px] sm:text-xs md:text-sm line-clamp-3">
                 {effectiveBoardStage === "READY_CLUE"
                   ? currentPuzzle?.clue || "Lắng nghe gợi ý từ MC và đoán các chữ cái!"
                   : "Bảng ô chữ đang chuẩn bị..."}
               </p>
               {currentPuzzle?.secretPhrase && effectiveBoardStage !== "EMPTY_56" && (
-                <span className="shrink-0 px-2 py-0.5 rounded bg-amber-400/15 text-amber-300 font-mono font-black text-xs border border-amber-400/30 whitespace-nowrap">
+                <span className="shrink-0 px-2 py-0.5 rounded bg-amber-400/15 text-amber-300 font-mono font-black text-[10px] sm:text-xs border border-amber-400/30 whitespace-nowrap">
                   {currentPuzzle.secretPhrase.replace(/\s+/g, "").length} {edition === "ENGLISH" ? "LETTERS" : "KÝ TỰ"}
                 </span>
               )}
@@ -3537,119 +3537,142 @@ export default function MagicWheelBoard({
     </div>
   );
 
-  // ── 5. DISPLAY VIEW (isDisplay = true): ZERO-SCROLL, FULL 360° WHEEL, LAYOUT SWITCHER ──
-  const renderDisplayView = () => (
-    <div className="w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-2 sm:p-3.5 md:p-4 box-border bg-gradient-to-b from-[#050811] via-[#091122] to-[#04060d] text-white select-none">
-      {/* Top Header */}
-      <div className="w-full flex items-center justify-between shrink-0 mb-1">
-        <div className="flex items-center gap-2">
-          <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 uppercase shadow">
-            {stageBadgeLabel}
-          </span>
-          <span className="text-xs text-slate-300 font-bold">
-            Màn {currentRound}/{maxRounds}
-          </span>
-          {mainRoundNumber === 4 && roundStage === "MAIN" && jackpotPool && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-200 border border-cyan-400/50">
-              💎 {(jackpotPool).toLocaleString()}đ
-            </span>
-          )}
-        </div>
+  // ── 5. DISPLAY VIEW (isDisplay = true): ZERO-SCROLL, FULL 360° WHEEL, POWERPOINT MORPH LAYOUT ──
+  const renderDisplayView = () => {
+    const isFocusWheel = effDisplayLayoutMode === "FOCUS_WHEEL";
+    const isFocusBoard = effDisplayLayoutMode === "FOCUS_BOARD" || (effDisplayLayoutMode === "AUTO" && isTossUpRound);
+    const isStacked = !isFocusWheel && !isFocusBoard;
 
-        <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-black/60 border border-white/10">
-          <span className="w-2.5 h-2.5 rounded-full shadow animate-pulse" style={{ background: activeTeam?.color || "#ec4899" }} />
-          <span className="text-xs font-bold text-slate-300">
-            {isTossUpRound
-              ? tossUpBuzzedTeamName ? `Đội bấm: ${tossUpBuzzedTeamName}` : "Tranh quyền bấm chuông"
-              : `Đang đến lượt: ${currentTurnTeamName || "Chưa có"}`}
-          </span>
-        </div>
-      </div>
+    const halfTeams = Math.ceil(teams.length / 2);
+    const leftTeams = teams.slice(0, halfTeams);
+    const rightTeams = teams.slice(halfTeams);
+    const isCompactFlank = teams.length >= 4;
 
-      {/* Body: Focus Wheel / Focus Board / Stacked View */}
-      {effDisplayLayoutMode === "FOCUS_WHEEL" ? (
-        <div className="w-full flex-1 flex flex-col items-center justify-center min-h-0 gap-3">
-          <InteractiveWheelRig
-            variant="DISPLAY_360"
-            size="large"
-            wheelRef={wheelRef}
-            needleRef={needleRef}
-            clientWheelAngle={clientWheelAngle}
-            effectiveIsSpinning={effectiveIsSpinning}
-            sectors={sectors}
-            selectedSector={selectedSector}
-          />
-        </div>
-      ) : effDisplayLayoutMode === "FOCUS_BOARD" || (effDisplayLayoutMode === "AUTO" && isTossUpRound) ? (
-        <div className="w-full flex-1 flex flex-col items-center justify-center min-h-0">
-          {renderBoardGridMatrix(true)}
-          {isTossUpRound && (
-            <div className="mt-2 px-4 py-1.5 rounded-full bg-black/80 border border-amber-400/40 text-amber-200 text-xs font-bold flex items-center gap-2 animate-pulse">
-              <span>🔔</span>
-              <span>
-                {tossUpBuzzedTeamName
-                  ? `ĐỘI ${tossUpBuzzedTeamName.toUpperCase()} ĐÃ BẤM CHUÔNG!`
-                  : "ĐANG MỞ CHỮ NGẪU NHIÊN · CÁC ĐỘI SẴN SÀNG BẤM CHUÔNG!"}
+    const renderDisplayTeamCard = (t: TeamState, isCompact: boolean) => {
+      const rScore = roundScores?.[t.id] || 0;
+      const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
+      const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
+      return (
+        <div
+          key={t.id}
+          className={`${isCompact ? "p-1.5 px-2 rounded-xl gap-0.5" : "p-2 px-2.5 rounded-xl gap-1"} border flex flex-col transition-all duration-300 shadow min-h-0 ${
+            isTurn
+              ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)] ring-2 ring-amber-400 scale-[1.02]"
+              : "bg-black/60 border-white/10 text-slate-200"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-1 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <span className="w-2.5 h-2.5 rounded-full shadow shrink-0" style={{ background: t.color || "#6366f1" }} />
+              <span className="font-black truncate text-xs sm:text-sm">{t.name}</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0 font-mono">
+              {rScore > 0 && (
+                <span className="text-[10px] sm:text-[11px] text-emerald-400 font-bold">
+                  +{edition === "ENGLISH" ? `$${rScore.toLocaleString("en-US")}` : `${rScore.toLocaleString()}đ`}
+                </span>
+              )}
+              <span className="text-xs sm:text-sm font-black text-amber-300">
+                {edition === "ENGLISH" ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}` : `${((t.score || 0) + rScore).toLocaleString()}đ`}
               </span>
             </div>
+          </div>
+          {strikes > 0 && edition !== "ENGLISH" && (
+            <div className="text-rose-400 font-mono text-[9px] tracking-tighter -mt-0.5">
+              {"✕".repeat(Math.min(3, strikes))}
+            </div>
           )}
         </div>
-      ) : (
-        /* STACKED (Toàn diện: Bảng ô chữ ở trên ~50%, Vòng quay tròn 360° ở giữa, Điểm số chia đều 2 bên) */
-        <div className="w-full flex-1 flex flex-col justify-between min-h-0 gap-1.5 sm:gap-2">
-          {/* Upper: 56-tile board */}
-          <div className="w-full flex justify-center shrink-0">
-            {renderBoardGridMatrix(true)}
+      );
+    };
+
+    return (
+      <div className="w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-2 sm:p-3.5 md:p-4 box-border bg-gradient-to-b from-[#050811] via-[#091122] to-[#04060d] text-white select-none">
+        {/* Top Header */}
+        <div className="w-full flex items-center justify-between shrink-0 mb-1 z-30">
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 uppercase shadow">
+              {stageBadgeLabel}
+            </span>
+            <span className="text-xs text-slate-300 font-bold">
+              Màn {currentRound}/{maxRounds}
+            </span>
+            {mainRoundNumber === 4 && roundStage === "MAIN" && jackpotPool && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-200 border border-cyan-400/50">
+                💎 {(jackpotPool).toLocaleString()}đ
+              </span>
+            )}
           </div>
 
-          {/* Lower: 3-column row (Left teams | Center 360° Wheel | Right teams) */}
-          <div className="w-full flex-1 grid grid-cols-12 gap-2 sm:gap-3 items-center min-h-0">
-            {/* Left Column: First Half Teams */}
-            <div className="col-span-3 flex flex-col justify-center gap-1.5 sm:gap-2 min-h-0">
-              {(() => {
-                const half = Math.ceil(teams.length / 2);
-                const leftTeams = teams.slice(0, half);
-                const isCompact = teams.length >= 4;
-                return leftTeams.map((t) => {
-                  const rScore = roundScores?.[t.id] || 0;
-                  const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
-                  const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
-                  return (
-                    <div
-                      key={t.id}
-                      className={`${isCompact ? "p-1.5 sm:p-2 py-1 rounded-xl gap-0.5" : "p-2.5 sm:p-3 rounded-2xl gap-1"} border flex flex-col transition shadow min-h-0 ${
-                        isTurn
-                          ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)] ring-2 ring-amber-400"
-                          : "bg-black/60 border-white/10 text-slate-200"
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="w-3 h-3 rounded-full shadow shrink-0" style={{ background: t.color || "#6366f1" }} />
-                        <span className={`font-black truncate ${isCompact ? "text-xs" : "text-xs sm:text-sm"}`}>{t.name}</span>
-                      </div>
-                      <div className="flex items-center justify-between pt-0.5">
-                        <span className={`${isCompact ? "text-[10px]" : "text-[10px] sm:text-[11px]"} text-emerald-400 font-mono font-bold`}>
-                          +{edition === "ENGLISH" ? `$${rScore.toLocaleString("en-US")}` : `${rScore.toLocaleString()}đ`}
-                        </span>
-                        <span className={`${isCompact ? "text-xs sm:text-sm" : "text-sm sm:text-base"} font-black text-amber-300 font-mono`}>
-                          {edition === "ENGLISH" ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}` : `${((t.score || 0) + rScore).toLocaleString()}đ`}
-                        </span>
-                      </div>
-                      {strikes > 0 && edition !== "ENGLISH" && (
-                        <div className="text-rose-400 font-mono text-[9px] tracking-tighter pt-0.5">
-                          {"✕".repeat(Math.min(3, strikes))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                });
-              })()}
+          <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-black/60 border border-white/10">
+            <span className="w-2.5 h-2.5 rounded-full shadow animate-pulse" style={{ background: activeTeam?.color || "#ec4899" }} />
+            <span className="text-xs font-bold text-slate-300">
+              {isTossUpRound
+                ? tossUpBuzzedTeamName ? `Đội bấm: ${tossUpBuzzedTeamName}` : "Tranh quyền bấm chuông"
+                : `Đang đến lượt: ${currentTurnTeamName || "Chưa có"}`}
+            </span>
+          </div>
+        </div>
+
+        {/* ── UNIFIED MORPH BODY (PowerPoint Morph transition between FOCUS_BOARD, FOCUS_WHEEL, and STACKED) ── */}
+        <div className="w-full flex-1 flex flex-col justify-center min-h-0 relative overflow-hidden transition-all duration-700 ease-in-out">
+          {/* OBJECT 1: BOARD (Vật thể chủ ở FOCUS_BOARD, nửa trên ở STACKED, fade & slide up ở FOCUS_WHEEL) */}
+          <div
+            className={`w-full flex flex-col items-center justify-center transition-all duration-700 ease-in-out ${
+              isFocusBoard
+                ? "flex-1 scale-100 sm:scale-105 opacity-100 translate-y-0"
+                : isStacked
+                ? "shrink-0 scale-100 opacity-100 translate-y-0 pb-1"
+                : "opacity-0 max-h-0 scale-90 -translate-y-12 pointer-events-none overflow-hidden"
+            }`}
+          >
+            {renderBoardGridMatrix(true)}
+            {isFocusBoard && isTossUpRound && (
+              <div className="mt-2 px-4 py-1.5 rounded-full bg-black/80 border border-amber-400/40 text-amber-200 text-xs font-bold flex items-center gap-2 animate-pulse">
+                <span>🔔</span>
+                <span>
+                  {tossUpBuzzedTeamName
+                    ? `ĐỘI ${tossUpBuzzedTeamName.toUpperCase()} ĐÃ BẤM CHUÔNG!`
+                    : "ĐANG MỞ CHỮ NGẪU NHIÊN · CÁC ĐỘI SẴN SÀNG BẤM CHUÔNG!"}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* OBJECT 2: WHEEL + TEAM FLANKS (Vật thể chủ ở FOCUS_WHEEL, nửa dưới ở STACKED, fade & slide down ở FOCUS_BOARD) */}
+          <div
+            className={`w-full transition-all duration-700 ease-in-out min-h-0 ${
+              isFocusWheel
+                ? "flex-1 flex flex-col items-center justify-center opacity-100 scale-100 translate-y-0"
+                : isStacked
+                ? "flex-1 grid grid-cols-12 gap-2 sm:gap-3 items-center opacity-100 scale-100 translate-y-0"
+                : "opacity-0 max-h-0 scale-75 translate-y-12 pointer-events-none overflow-hidden"
+            }`}
+          >
+            {/* Left Flank Teams (Active in STACKED, fade out in FOCUS_WHEEL) */}
+            <div
+              className={`transition-all duration-500 ease-in-out ${
+                isStacked
+                  ? "col-span-3 flex flex-col justify-center gap-1.5 min-h-0 opacity-100 translate-x-0"
+                  : "hidden opacity-0 -translate-x-8 pointer-events-none"
+              }`}
+            >
+              {leftTeams.map((t) => renderDisplayTeamCard(t, isCompactFlank))}
             </div>
 
-            {/* Center Column: Full 360° Circular 3D Wheel */}
-            <div className="col-span-6 flex flex-col items-center justify-center h-full max-h-full min-h-0">
+            {/* Center Wheel (Morphs from STACKED normal size to FOCUS_WHEEL huge center size) */}
+            <div
+              className={`flex flex-col items-center justify-center transition-all duration-700 ease-in-out min-h-0 ${
+                isFocusWheel
+                  ? "w-full h-full scale-100"
+                  : isStacked
+                  ? "col-span-6 h-full max-h-full scale-100"
+                  : "scale-75 opacity-0"
+              }`}
+            >
               <InteractiveWheelRig
                 variant="DISPLAY_360"
+                size={isFocusWheel ? "large" : "normal"}
                 wheelRef={wheelRef}
                 needleRef={needleRef}
                 clientWheelAngle={clientWheelAngle}
@@ -3659,70 +3682,43 @@ export default function MagicWheelBoard({
               />
             </div>
 
-            {/* Right Column: Second Half Teams */}
-            <div className="col-span-3 flex flex-col justify-center gap-1.5 sm:gap-2 min-h-0">
-              {(() => {
-                const half = Math.ceil(teams.length / 2);
-                const rightTeams = teams.slice(half);
-                const isCompact = teams.length >= 4;
-                return rightTeams.map((t) => {
-                  const rScore = roundScores?.[t.id] || 0;
-                  const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
-                  const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
-                  return (
-                    <div
-                      key={t.id}
-                      className={`${isCompact ? "p-1.5 sm:p-2 py-1 rounded-xl gap-0.5" : "p-2.5 sm:p-3 rounded-2xl gap-1"} border flex flex-col transition shadow min-h-0 ${
-                        isTurn
-                          ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)] ring-2 ring-amber-400"
-                          : "bg-black/60 border-white/10 text-slate-200"
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="w-3 h-3 rounded-full shadow shrink-0" style={{ background: t.color || "#6366f1" }} />
-                        <span className={`font-black truncate ${isCompact ? "text-xs" : "text-xs sm:text-sm"}`}>{t.name}</span>
-                      </div>
-                      <div className="flex items-center justify-between pt-0.5">
-                        <span className={`${isCompact ? "text-[10px]" : "text-[10px] sm:text-[11px]"} text-emerald-400 font-mono font-bold`}>
-                          +{edition === "ENGLISH" ? `$${rScore.toLocaleString("en-US")}` : `${rScore.toLocaleString()}đ`}
-                        </span>
-                        <span className={`${isCompact ? "text-xs sm:text-sm" : "text-sm sm:text-base"} font-black text-amber-300 font-mono`}>
-                          {edition === "ENGLISH" ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}` : `${((t.score || 0) + rScore).toLocaleString()}đ`}
-                        </span>
-                      </div>
-                      {strikes > 0 && edition !== "ENGLISH" && (
-                        <div className="text-rose-400 font-mono text-[9px] tracking-tighter pt-0.5">
-                          {"✕".repeat(Math.min(3, strikes))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                });
-              })()}
+            {/* Right Flank Teams (Active in STACKED, fade out in FOCUS_WHEEL) */}
+            <div
+              className={`transition-all duration-500 ease-in-out ${
+                isStacked
+                  ? "col-span-3 flex flex-col justify-center gap-1.5 min-h-0 opacity-100 translate-x-0"
+                  : "hidden opacity-0 translate-x-8 pointer-events-none"
+              }`}
+            >
+              {rightTeams.map((t) => renderDisplayTeamCard(t, isCompactFlank))}
             </div>
           </div>
         </div>
-      )}
 
-      {/* Bottom: Victory Banner if ROUND_RECAP */}
-      {phase === "ROUND_RECAP" && (
-        <div className="w-full mt-1 p-2.5 rounded-xl bg-gradient-to-r from-amber-500/30 via-yellow-400/30 to-emerald-500/30 border border-amber-400 flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-xl">👑</span>
-            <span className="font-black text-amber-300 uppercase">GIẢI MÃ THÀNH CÔNG:</span>
-            <span className="font-black text-white">&ldquo;{currentPuzzle?.secretPhrase}&rdquo;</span>
+        {/* Bottom: Victory Banner if ROUND_RECAP */}
+        {phase === "ROUND_RECAP" && (
+          <div className="w-full mt-1 p-2 rounded-xl bg-gradient-to-r from-amber-500/30 via-yellow-400/30 to-emerald-500/30 border border-amber-400 flex items-center justify-between gap-3 shrink-0 shadow-lg animate-fade-in">
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              <span className="text-xl">👑</span>
+              <span className="font-black text-amber-300 uppercase">GIẢI MÃ THÀNH CÔNG:</span>
+              <span className="font-black text-white">&ldquo;{currentPuzzle?.secretPhrase}&rdquo;</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Bottom: Ultra-compact Scorebar in Focus Modes */}
-      {(effDisplayLayoutMode === "FOCUS_WHEEL" || effDisplayLayoutMode === "FOCUS_BOARD") && (
-        <div className="w-full shrink-0 pt-1">
+        {/* Bottom: Ultra-compact Scorebar in Focus Modes (Fades in smoothly) */}
+        <div
+          className={`w-full shrink-0 pt-1 transition-all duration-500 ease-in-out ${
+            isFocusWheel || isFocusBoard
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 max-h-0 overflow-hidden pointer-events-none -translate-y-2"
+          }`}
+        >
           {renderCompactSingleRowScorebar()}
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   const renderHostView = () => (
     <div

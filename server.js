@@ -18808,17 +18808,9 @@ function registerSocketHandlers(io2) {
           cur.phase = "ACTION_INPUT";
           cur.lastActionMessage = `\u2694\uFE0F \u0110\u1ED9i ${teamName} quay tr\xFAng \xD4 \u0110\u1ED0I \u0110\u1EA6U / CHUY\u1EC2N NH\u01AF\u1EE2NG! \u0110o\xE1n \u0111\xFAng ch\u1EEF c\xE1i \u0111\u1EC3 k\xEDch ho\u1EA1t quy\u1EC1n C\u01B0\u1EDBp 50% ho\u1EB7c Ho\xE1n \u0110\u1ED5i \u0110i\u1EC3m!`;
         } else if (sector.type === "ONE_MILLION_SANDWICH") {
-          cur.pendingSpecialAction = "POINTS";
-          if (!cur.held25kBonusTeams) cur.held25kBonusTeams = {};
-          cur.held25kBonusTeams[tId] = (cur.held25kBonusTeams[tId] || 0) + 1;
-          const bonusPts = 25e3;
-          const teamObj = room.teams.find((t) => t.id === tId);
-          if (teamObj) {
-            teamObj.score = (teamObj.score || 0) + bonusPts;
-          }
-          cur.roundScores[tId] = (cur.roundScores[tId] || 0) + bonusPts;
+          cur.pendingSpecialAction = "ONE_MILLION_SANDWICH";
           cur.phase = "ACTION_INPUT";
-          cur.lastActionMessage = `\u{1F31F} K\u1EF2 DI\u1EC6U! \u0110\u1ED9i ${teamName} quay tr\xFAng \xD4 25.000 \u0110I\u1EC2M k\u1EB9p gi\u1EEFa 2 \xF4 M\u1EA5t \u0110i\u1EC3m! Nh\u1EADn ngay +25.000 \u0111i\u1EC3m th\u01B0\u1EDFng! (L\u01B0u \xFD: N\u1EBFu sau n\xE0y d\xEDnh M\u1EA5t \u0110i\u1EC3m s\u1EBD b\u1ECB thu h\u1ED3i 25.000\u0111). M\u1EDDi \u0111o\xE1n ch\u1EEF c\xE1i!`;
+          cur.lastActionMessage = `\u{1F31F} K\u1EF2 DI\u1EC6U! \u0110\u1ED9i ${teamName} quay tr\xFAng \xD4 25.000 \u0110I\u1EC2M k\u1EB9p gi\u1EEFa 2 \xF4 M\u1EA5t \u0110i\u1EC3m! H\xE3y \u0111o\xE1n \u0111\xFAng \xEDt nh\u1EA5t 1 ch\u1EEF c\xE1i \u0111\u1EC3 rinh tr\u1ECDn 25.000\u0111 th\u01B0\u1EDFng n\xF3ng! (N\u1EBFu \u0111o\xE1n sai s\u1EBD kh\xF4ng c\xF3 \u0111i\u1EC3m). M\u1EDDi g\u1ECDi ch\u1EEF c\xE1i!`;
         } else {
           cur.pendingSpecialAction = "POINTS";
           cur.phase = "ACTION_INPUT";
@@ -18914,6 +18906,15 @@ function registerSocketHandlers(io2) {
         } else if (wheelState.isFreePlayActive || wheelState.pendingSpecialAction === "FREE_PLAY") {
           earned = 0;
           wheelState.isFreePlayActive = false;
+        } else if (wheelState.pendingSpecialAction === "ONE_MILLION_SANDWICH") {
+          earned = 25e3;
+          wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + 25e3;
+          const teamObj = room.teams.find((t) => t.id === tId);
+          if (teamObj) {
+            teamObj.score = (teamObj.score || 0) + 25e3;
+          }
+          if (!wheelState.held25kBonusTeams) wheelState.held25kBonusTeams = {};
+          wheelState.held25kBonusTeams[tId] = (wheelState.held25kBonusTeams[tId] || 0) + 1;
         } else {
           const baseVal = wheelState.selectedSector?.value || 300;
           earned = baseVal * check.count;

@@ -4788,21 +4788,9 @@ export default function AdminSandboxPage() {
                 nextWheel.phase = "ACTION_INPUT";
                 nextWheel.lastActionMessage = `⚡ Đội ${teamName} quay vào ô CƯỚP / HOÁN ĐỔI! Hãy đoán đúng 1 chữ cái trước để kích hoạt quyền Cướp 50% hoặc Hoán đổi điểm!`;
               } else if (sector.type === "ONE_MILLION_SANDWICH") {
-                nextWheel.pendingSpecialAction = "POINTS";
-                const bonusPts = 25000;
-                nextWheel.held25kBonusTeams = {
-                  ...nextWheel.held25kBonusTeams,
-                  [tId]: ((nextWheel.held25kBonusTeams?.[tId]) || 0) + 1,
-                };
-                currentTeams = currentTeams.map((t) =>
-                  t.id === tId ? { ...t, score: (t.score || 0) + bonusPts } : t
-                );
-                nextWheel.roundScores = {
-                  ...nextWheel.roundScores,
-                  [tId]: (nextWheel.roundScores[tId] || 0) + bonusPts,
-                };
+                nextWheel.pendingSpecialAction = "ONE_MILLION_SANDWICH";
                 nextWheel.phase = "ACTION_INPUT";
-                nextWheel.lastActionMessage = `🌟 KỲ DIỆU! Đội ${teamName} quay trúng Ô 25.000 ĐIỂM kẹp giữa 2 ô Mất Điểm! Nhận ngay +25.000 điểm thưởng! (Lưu ý: Nếu sau này dính Mất Điểm sẽ bị thu hồi 25.000đ). Mời đoán chữ cái!`;
+                nextWheel.lastActionMessage = `🌟 KỲ DIỆU! Đội ${teamName} quay trúng Ô 25.000 ĐIỂM kẹp giữa 2 ô Mất Điểm! Hãy đoán đúng ít nhất 1 chữ cái để rinh trọn 25.000đ thưởng nóng! (Nếu đoán sai sẽ không có điểm). Mời gọi chữ cái!`;
               } else {
                 nextWheel.pendingSpecialAction = "POINTS";
                 nextWheel.phase = "ACTION_INPUT";
@@ -4884,6 +4872,13 @@ export default function AdminSandboxPage() {
               roomStateRef.current = nextRoom;
               syncToIframes({ roomState: nextRoom });
               return nextRoom;
+            } else if (cur.pendingSpecialAction === "ONE_MILLION_SANDWICH") {
+              earned = 25000;
+              cur.roundScores = { ...cur.roundScores, [tId]: (cur.roundScores[tId] || 0) + 25000 };
+              cur.held25kBonusTeams = {
+                ...cur.held25kBonusTeams,
+                [tId]: ((cur.held25kBonusTeams?.[tId]) || 0) + 1,
+              };
             } else {
               const baseVal = cur.selectedSector?.value || 300;
               earned = baseVal * check.count;

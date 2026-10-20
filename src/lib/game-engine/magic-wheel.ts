@@ -107,7 +107,8 @@ export interface MagicWheelState {
     | "PRIZE"
     | "EXPRESS"
     | "JACKPOT"
-    | "STEAL_SWAP";
+    | "STEAL_SWAP"
+    | "ONE_MILLION_SANDWICH";
   phase:
     | "TOSS_UP_READY"     // Chờ bắt đầu chạy mở chữ ngẫu nhiên 0.75s/chữ
     | "TOSS_UP_RUNNING"   // Đang mở chữ ngẫu nhiên 0.75s/chữ, chờ bấm chuông

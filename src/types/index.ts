@@ -862,7 +862,8 @@ export interface MagicWheelState {
     | "PRIZE"
     | "EXPRESS"
     | "JACKPOT"
-    | "STEAL_SWAP";
+    | "STEAL_SWAP"
+    | "ONE_MILLION_SANDWICH";
   phase:
     | "SPIN_WAITING"      // Chờ đội đến lượt bấm quay
     | "SPINNING"          // Nón đang xoay

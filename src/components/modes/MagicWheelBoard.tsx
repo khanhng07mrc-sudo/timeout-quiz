@@ -252,6 +252,7 @@ function SmartPuzzlePhraseInput({
   continuousMode = false,
   attemptLog = [],
   edition = "VIETNAMESE",
+  compact = false,
 }: {
   secretPhrase: string;
   revealedIndices: Set<number>;
@@ -261,6 +262,7 @@ function SmartPuzzlePhraseInput({
   continuousMode?: boolean;
   attemptLog?: string[];
   edition?: "VIETNAMESE" | "ENGLISH";
+  compact?: boolean;
 }) {
   const upperPhrase = (secretPhrase || "").toUpperCase();
 
@@ -595,11 +597,11 @@ function SmartPuzzlePhraseInput({
   }, [slots]);
 
   return (
-    <div className="space-y-3.5">
+    <div className={compact ? "space-y-1.5" : "space-y-3.5"}>
       {/* ── Primary Full-Phrase Vietnamese Input ── */}
-      <div className="space-y-2 p-3 sm:p-4 rounded-2xl bg-[#080d1a] border-2 border-amber-400/60 shadow-[0_0_25px_rgba(245,158,11,0.15)]">
+      <div className={`space-y-1.5 ${compact ? "p-2 sm:p-2.5 rounded-xl" : "p-3 sm:p-4 rounded-2xl"} bg-[#080d1a] border-2 border-amber-400/60 shadow-[0_0_25px_rgba(245,158,11,0.15)]`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <label className="text-xs sm:text-sm font-black text-amber-300 flex items-center gap-2">
+          <label className={`${compact ? "text-xs" : "text-xs sm:text-sm"} font-black text-amber-300 flex items-center gap-2`}>
             <span>✏️ GÕ ĐÁP ÁN Ô CHỮ:</span>
           </label>
           {/* IME Input Method Selector Toolbar */}
@@ -648,44 +650,47 @@ function SmartPuzzlePhraseInput({
             }
           }}
           placeholder="Nhập trực tiếp cả cụm từ đầy đủ dấu thanh tại đây (VD: THĂNG LONG HÀ NỘI)..."
-          className="w-full px-4 py-3 rounded-xl bg-black/80 border-2 border-amber-400 text-white font-black text-sm sm:text-base focus:outline-none focus:ring-4 focus:ring-amber-400/30 uppercase tracking-widest shadow-inner placeholder:text-slate-500 placeholder:font-normal placeholder:tracking-normal"
+          className={`w-full ${compact ? "px-3 py-2 text-xs sm:text-sm" : "px-4 py-3 text-sm sm:text-base"} rounded-xl bg-black/80 border-2 border-amber-400 text-white font-black focus:outline-none focus:ring-4 focus:ring-amber-400/30 uppercase tracking-widest shadow-inner placeholder:text-slate-500 placeholder:font-normal placeholder:tracking-normal`}
         />
-        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+        <div className={`flex items-center justify-between ${compact ? "text-[10px]" : "text-[11px]"} text-slate-400 pt-0.5`}>
           <span>💡 Các chữ cái bạn gõ sẽ tự động đồng bộ lên các ô chữ bên dưới.</span>
           <span>Bấm <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-amber-300 font-mono font-bold">Enter ↵</kbd> để chốt</span>
         </div>
       </div>
 
-      {/* Guided Legend */}
-      <div className="flex flex-wrap items-center gap-2 text-[11px] bg-black/40 p-2 rounded-xl border border-white/10">
-        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
-          🔒 Phụ âm đã mở: Khóa sẵn
-        </span>
-        <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
-          🎵 Nguyên âm: Tự gắn dấu thanh
-        </span>
-        <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">
-          ✏️ Ô chữ: Tự động điền theo từ bạn gõ
-        </span>
-      </div>
+      {/* Guided Legend (hidden in compact mode) */}
+      {!compact && (
+        <div className="flex flex-wrap items-center gap-2 text-[11px] bg-black/40 p-2 rounded-xl border border-white/10">
+          <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+            🔒 Phụ âm đã mở: Khóa sẵn
+          </span>
+          <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+            🎵 Nguyên âm: Tự gắn dấu thanh
+          </span>
+          <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">
+            ✏️ Ô chữ: Tự động điền theo từ bạn gõ
+          </span>
+        </div>
+      )}
 
       {/* Interactive Character Slots Grouped by Word */}
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2.5 p-3 rounded-2xl bg-[#07111e] border border-white/15 shadow-inner">
+      <div className={`flex flex-wrap items-center justify-center ${compact ? "gap-x-2.5 gap-y-1.5 p-2 rounded-xl" : "gap-x-4 gap-y-2.5 p-3 rounded-2xl"} bg-[#07111e] border border-white/15 shadow-inner`}>
         {words.map((wordSlots, wIdx) => (
           <div key={wIdx} className="flex items-center gap-1">
             {wordSlots.map((slot) => {
               const val = charValues[slot.index] || "";
               const isFocused = focusedSlotIdx === slot.index;
+              const slotBoxDim = compact ? "w-6 h-8 sm:w-7 sm:h-9 text-xs" : "w-8 h-10 sm:w-9 sm:h-11 text-sm sm:text-base";
 
               if (slot.isLockedConsonant) {
                 return (
                   <div
                     key={slot.index}
-                    className="w-8 h-10 sm:w-9 sm:h-11 rounded-lg bg-emerald-950/80 border-2 border-emerald-500/50 text-emerald-200 font-black text-sm sm:text-base flex flex-col items-center justify-center select-none shadow"
+                    className={`${slotBoxDim} rounded-lg bg-emerald-950/80 border-2 border-emerald-500/50 text-emerald-200 font-black flex flex-col items-center justify-center select-none shadow`}
                     title="Phụ âm đã mở sẵn"
                   >
                     <span>{slot.baseChar}</span>
-                    <span className="text-[7px] text-emerald-400/80 font-normal">KHÓA</span>
+                    <span className="text-[6px] text-emerald-400/80 font-normal">KHÓA</span>
                   </div>
                 );
               }
@@ -713,7 +718,7 @@ function SmartPuzzlePhraseInput({
                   onKeyDown={(e) => handleSlotKeyDown(slot.index, e)}
                   onChange={(e) => handleSlotChange(slot.index, e.target.value)}
                   placeholder={slot.isRevealedVowel ? slot.baseChar : "_"}
-                  className={`w-8 h-10 sm:w-9 sm:h-11 rounded-lg text-center font-black text-sm sm:text-base uppercase transition-all focus:outline-none ${
+                  className={`${slotBoxDim} rounded-lg text-center font-black uppercase transition-all focus:outline-none ${
                     slot.isRevealedVowel
                       ? isFocused
                         ? "bg-amber-400 text-slate-950 border-2 border-white shadow-[0_0_15px_#f59e0b] scale-105"
@@ -730,11 +735,11 @@ function SmartPuzzlePhraseInput({
       </div>
 
       {/* 1-Click Tone Mark Selector Bar for Vowels */}
-      <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-400/30 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[11px] font-bold text-amber-200">
+      <div className={`${compact ? "p-1.5 rounded-lg" : "p-2.5 rounded-xl"} bg-amber-950/40 border border-amber-400/30 flex flex-wrap items-center justify-between gap-1.5`}>
+        <span className={`${compact ? "text-[10px]" : "text-[11px]"} font-bold text-amber-200`}>
           🎶 Hoặc chọn nhanh dấu thanh cho ô nguyên âm đang click:
         </span>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1">
           {TONE_BUTTONS.map((tb) => (
             <button
               key={tb.tone}
@@ -743,13 +748,13 @@ function SmartPuzzlePhraseInput({
               onClick={() => {
                 if (focusedSlotIdx !== null) applyToneAtSlot(focusedSlotIdx, tb.tone);
               }}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition ${
+              className={`${compact ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-[11px]"} rounded-lg font-black transition ${
                 canApplyToneToFocused
                   ? "bg-amber-400/20 hover:bg-amber-400 text-amber-200 hover:text-slate-950 border border-amber-400/50 cursor-pointer"
                   : "bg-white/5 text-slate-500 border border-white/10 opacity-40 cursor-not-allowed"
               }`}
             >
-              {tb.label} <span className="opacity-70 text-[9px]">[{tb.keyHint}]</span>
+              {tb.label} <span className="opacity-70 text-[8px]">[{tb.keyHint}]</span>
             </button>
           ))}
         </div>
@@ -1126,6 +1131,7 @@ function WheelDiscSvg({
 
 function InteractiveWheelRig({
   variant,
+  size = "normal",
   wheelRef,
   needleRef,
   clientWheelAngle,
@@ -1134,6 +1140,7 @@ function InteractiveWheelRig({
   selectedSector,
 }: {
   variant: "DISPLAY_360" | "PLAYER_INVERTED" | "HOST_HALF";
+  size?: "normal" | "large";
   wheelRef: React.RefObject<HTMLDivElement | null>;
   needleRef: React.RefObject<HTMLDivElement | null>;
   clientWheelAngle: number;
@@ -1142,9 +1149,16 @@ function InteractiveWheelRig({
   selectedSector?: MagicWheelSector;
 }) {
   if (variant === "DISPLAY_360") {
+    const isLarge = size === "large";
+    const dimClasses = isLarge
+      ? "w-[280px] h-[280px] sm:w-[380px] sm:h-[380px] md:w-[480px] md:h-[480px] lg:w-[580px] lg:h-[580px] xl:w-[680px] xl:h-[680px] max-h-[72vh] max-w-[72vh]"
+      : "w-[190px] h-[190px] sm:w-[230px] sm:h-[230px] md:w-[270px] md:h-[270px] lg:w-[310px] lg:h-[310px] max-h-[36vh] max-w-[36vh]";
+    const borderClasses = isLarge
+      ? "border-[12px] sm:border-[16px] md:border-[20px] border-[#d97706]"
+      : "border-[8px] sm:border-[10px] md:border-[12px] border-[#d97706]";
     return (
       <div className="w-full flex flex-col items-center justify-center relative select-none">
-        <div className="w-[190px] h-[190px] sm:w-[230px] sm:h-[230px] md:w-[270px] md:h-[270px] lg:w-[310px] lg:h-[310px] max-h-[34vh] max-w-[34vh] aspect-square relative select-none flex items-center justify-center shrink-0">
+        <div className={`${dimClasses} aspect-square relative select-none flex items-center justify-center shrink-0`}>
           <div
             ref={needleRef}
             className="absolute -top-[4.2%] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
@@ -1158,7 +1172,7 @@ function InteractiveWheelRig({
             <NeedlePointerSvg />
           </div>
           <div className="absolute -inset-4 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.95)_45%,rgba(15,8,30,0.7)_70%,transparent_85%)] blur-md pointer-events-none -z-10" />
-          <div className="absolute inset-0 aspect-square rounded-full border-[8px] sm:border-[10px] md:border-[12px] border-[#d97706] shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_35px_rgba(245,158,11,0.45),inset_0_2px_4px_rgba(254,240,138,0.9),inset_0_-3px_8px_rgba(69,26,3,0.95)] pointer-events-none z-20">
+          <div className={`absolute inset-0 aspect-square rounded-full ${borderClasses} shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_35px_rgba(245,158,11,0.45),inset_0_2px_4px_rgba(254,240,138,0.9),inset_0_-3px_8px_rgba(69,26,3,0.95)] pointer-events-none z-20`}>
             <div className="w-full h-full rounded-full border border-amber-950/70 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
           </div>
           <div
@@ -1393,14 +1407,17 @@ export default function MagicWheelBoard({
       const fallbackTimer = setTimeout(() => {
         setIsLocallyBuzzed(false);
         hasBuzzedRef.current = false;
-      }, 3500);
+      }, 400);
       return () => clearTimeout(fallbackTimer);
     }
   }, [isLocallyBuzzed, phase]);
 
   const handleTriggerTossUpBuzz = useCallback(
     (targetTeamId?: string) => {
-      const hasFirstLetterRevealed = (animRevealedIndices.size >= 1) || ((currentPuzzle?.revealedIndices?.length || 0) >= 1);
+      const hasFirstLetterRevealed =
+        (animRevealedIndices.size >= 1) ||
+        ((currentPuzzle?.revealedIndices?.length || 0) >= 1) ||
+        ((activeState?.currentPuzzle?.revealedIndices?.length || 0) >= 1);
       if (!hasFirstLetterRevealed) return;
       if (hasBuzzedRef.current || phase === "TOSS_UP_BUZZED") return;
       hasBuzzedRef.current = true;
@@ -1408,7 +1425,7 @@ export default function MagicWheelBoard({
       const buzzId = targetTeamId || myTeamId || currentTurnTeamId || teams[0]?.id;
       onTossUpBuzz?.(buzzId);
     },
-    [animRevealedIndices.size, currentPuzzle?.revealedIndices?.length, phase, myTeamId, currentTurnTeamId, teams, onTossUpBuzz]
+    [animRevealedIndices.size, currentPuzzle?.revealedIndices?.length, activeState?.currentPuzzle?.revealedIndices?.length, phase, myTeamId, currentTurnTeamId, teams, onTossUpBuzz]
   );
 
   const isCurrentTeamEliminated = roundEliminatedTeamIds.includes(currentTurnTeamId);
@@ -2793,7 +2810,7 @@ export default function MagicWheelBoard({
 
   // ── 3. 56-TILE BOARD MATRIX RENDERER ──
   const renderBoardGridMatrix = (isDisplayMode = false) => (
-    <div className={`w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] ${isDisplayMode ? "p-2 sm:p-3" : "p-2.5 sm:p-4"} rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-hidden shrink-0`}>
+    <div className={`w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] ${isDisplayMode ? "p-1.5 sm:p-2 max-w-4xl" : "p-2.5 sm:p-4 max-w-5xl"} rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-hidden shrink-0`}>
       {!isDisplayMode && !isTempActive && (
         <div className="mb-1.5 px-3.5 py-0.5 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow">
           {effectiveBoardStage === "EMPTY_56" ? (
@@ -2808,8 +2825,8 @@ export default function MagicWheelBoard({
         </div>
       )}
 
-      <div className="w-full max-w-5xl flex flex-col items-center relative py-1 px-1 sm:px-3">
-        <div className="w-full p-2 sm:p-3 rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40">
+      <div className={`w-full ${isDisplayMode ? "max-w-4xl" : "max-w-5xl"} flex flex-col items-center relative py-0.5 px-1 sm:px-2`}>
+        <div className={`w-full ${isDisplayMode ? "p-1.5 sm:p-2" : "p-2 sm:p-3"} rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40`}>
           <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5">
             {gridMatrix.map((row, rIdx) => (
               <div
@@ -2826,7 +2843,7 @@ export default function MagicWheelBoard({
                     return (
                       <div
                         key={cIdx}
-                        className={`w-full aspect-[3/4] ${isDisplayMode ? "min-h-[clamp(20px,2.8vw,42px)]" : "min-h-[clamp(24px,3.5vw,52px)]"} rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none`}
+                        className={`w-full aspect-[3/4] ${isDisplayMode ? "min-h-[clamp(16px,2.2vw,36px)]" : "min-h-[clamp(24px,3.5vw,52px)]"} rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none`}
                       >
                         <svg viewBox="0 0 24 24" className="w-3 h-3 text-[#2a7a33] opacity-60 fill-current">
                           <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
@@ -2855,7 +2872,7 @@ export default function MagicWheelBoard({
                           }
                         }
                       }}
-                      className={`w-full aspect-[3/4] ${isDisplayMode ? "min-h-[clamp(20px,2.8vw,42px)]" : "min-h-[clamp(24px,3.5vw,52px)]"} rounded font-black flex items-center justify-center select-none ${
+                      className={`w-full aspect-[3/4] ${isDisplayMode ? "min-h-[clamp(16px,2.2vw,36px)]" : "min-h-[clamp(24px,3.5vw,52px)]"} rounded font-black flex items-center justify-center select-none ${
                         isJustCut ? "animate-vtv3-tile-cut" : ""
                       } ${
                         isPopping
@@ -2948,10 +2965,10 @@ export default function MagicWheelBoard({
 
   // ── 4. CONTESTANT VIEW (isPlayer = true): ZERO-SCROLL, 3 FIXED ZONES ──
   const renderPlayerView = () => (
-    <div className="w-full h-full max-h-screen flex flex-col justify-between p-2.5 sm:p-4 select-none overflow-hidden box-border bg-gradient-to-b from-[#060b18] via-[#091224] to-[#040710] text-white">
+    <div className="w-full h-full max-h-[100dvh] flex flex-col justify-between p-2 sm:p-3 select-none overflow-hidden box-border bg-gradient-to-b from-[#060b18] via-[#091224] to-[#040710] text-white">
       {/* ZONE 1: TOP — Inverted Half-Wheel + Category & Secret Phrase strip */}
       <div className="flex flex-col items-center w-full shrink-0">
-        <div className="w-full flex items-center justify-between px-2 py-1 text-xs">
+        <div className="w-full flex items-center justify-between px-2 py-0.5 text-xs">
           <div className="flex items-center gap-2">
             <span className="font-black text-amber-300">
               {stageBadgeLabel} · Màn {currentRound}/{maxRounds}
@@ -2974,16 +2991,18 @@ export default function MagicWheelBoard({
           </span>
         </div>
 
-        {/* Inverted Half-Wheel */}
-        <InteractiveWheelRig
-          variant="PLAYER_INVERTED"
-          wheelRef={wheelRef}
-          needleRef={needleRef}
-          clientWheelAngle={clientWheelAngle}
-          effectiveIsSpinning={effectiveIsSpinning}
-          sectors={sectors}
-          selectedSector={selectedSector}
-        />
+        {/* Inverted Half-Wheel: Tự động ẩn khi thí sinh đang gõ câu đố nhanh để vừa vặn 100% không cuộn */}
+        {!(isTossUpRound && phase === "TOSS_UP_BUZZED") && (
+          <InteractiveWheelRig
+            variant="PLAYER_INVERTED"
+            wheelRef={wheelRef}
+            needleRef={needleRef}
+            clientWheelAngle={clientWheelAngle}
+            effectiveIsSpinning={effectiveIsSpinning}
+            sectors={sectors}
+            selectedSector={selectedSector}
+          />
+        )}
 
         {/* Compact Phrase Strip */}
         <div className="w-full mt-1 px-3 py-1 rounded-xl bg-black/60 border border-amber-400/30 flex flex-col items-center gap-0.5 shadow-inner shrink-0">
@@ -3030,94 +3049,105 @@ export default function MagicWheelBoard({
       {/* ZONE 2: MIDDLE — Varies by Round Stage */}
       <div className="w-full flex-1 flex flex-col justify-center min-h-0 my-1 overflow-hidden">
         {isTossUpRound ? (
-          /* Vòng Đoán Nhanh: Nút chuông bên trái, Vùng gõ đáp án bên phải */
-          <div className="w-full grid grid-cols-1 sm:grid-cols-12 gap-3 items-center h-full max-h-full">
-            <div className="sm:col-span-5 flex flex-col items-center justify-center p-2">
-              {(() => {
-                const hasFirstLetterRevealed = (animRevealedIndices.size >= 1) || ((currentPuzzle?.revealedIndices?.length || 0) >= 1);
-                const isBuzzedAlready = isLocallyBuzzed || Boolean(tossUpBuzzedTeamId);
-                return (
-                  <div className="relative flex flex-col items-center justify-center">
-                    {hasFirstLetterRevealed && !isBuzzedAlready && (
-                      <div className="absolute inset-0 rounded-full bg-red-600/35 blur-xl animate-ping pointer-events-none" />
-                    )}
-                    <div
-                      className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full p-2.5 flex items-center justify-center transition-all duration-300 ${
-                        !hasFirstLetterRevealed
-                          ? "bg-gradient-to-b from-stone-700 via-stone-800 to-stone-900 border-4 border-stone-600 shadow-lg opacity-60 cursor-not-allowed"
-                          : isBuzzedAlready
-                          ? "bg-gradient-to-b from-emerald-600 via-teal-700 to-emerald-900 border-4 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.7)]"
-                          : "bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 border-4 border-yellow-300 shadow-[0_15px_35px_rgba(0,0,0,0.9),0_0_30px_rgba(245,158,11,0.6)] cursor-pointer"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        disabled={!hasFirstLetterRevealed || isBuzzedAlready}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (!hasFirstLetterRevealed || isBuzzedAlready) return;
-                          handleTriggerTossUpBuzz();
-                        }}
-                        className={`w-full h-full rounded-full flex flex-col items-center justify-center transition-all select-none touch-manipulation focus:outline-none ${
-                          !hasFirstLetterRevealed
-                            ? "bg-gradient-to-b from-neutral-800 to-neutral-900 border-2 border-neutral-700 text-neutral-400 cursor-not-allowed"
-                            : isBuzzedAlready
-                            ? "bg-gradient-to-b from-emerald-500 to-teal-700 border-2 border-emerald-300 text-white shadow-inner cursor-not-allowed scale-95"
-                            : "bg-gradient-to-b from-rose-500 via-red-600 to-red-800 active:from-red-700 active:to-red-900 active:scale-90 border-2 border-red-300 text-white shadow-[inset_0_6px_12px_rgba(255,255,255,0.5),0_10px_25px_rgba(220,38,38,0.8)] hover:brightness-110 active:shadow-inner cursor-pointer"
-                        }`}
-                      >
-                        <span className="text-3xl sm:text-4xl filter drop-shadow">
-                          {!hasFirstLetterRevealed ? "🔒" : isBuzzedAlready ? "✅" : "🔔"}
-                        </span>
-                        <span className="mt-1 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow text-center px-1">
-                          {!hasFirstLetterRevealed
-                            ? "CHỜ MỞ CHỮ"
-                            : isBuzzedAlready
-                            ? "ĐÃ BẤM!"
-                            : "BẤM CHUÔNG!"}
-                        </span>
-                        {hasFirstLetterRevealed && !isBuzzedAlready && (
-                          <span className="text-[10px] text-amber-200/90 font-mono font-bold mt-0.5 tracking-tight">
-                            [SPACE / ENTER]
-                          </span>
-                        )}
-                      </button>
-                    </div>
+          phase === "TOSS_UP_BUZZED" ? (
+            /* Khi đã có đội bấm chuông: Toàn màn hình gõ từ, không bị ép 2 cột */
+            <div className="w-full flex-1 flex flex-col justify-center min-h-0 max-w-2xl mx-auto overflow-hidden">
+              {!isHost && myTeamId && tossUpBuzzedTeamId && myTeamId !== tossUpBuzzedTeamId && !isInsideSandbox ? (
+                <div className="p-4 text-center rounded-2xl bg-black/60 border border-white/10 text-sm font-bold text-slate-300 flex flex-col items-center justify-center gap-2 shadow-xl">
+                  <span className="text-2xl animate-pulse">⏳</span>
+                  <span>Đang chờ <span className="text-amber-400 font-black">{formatTeamLabel(tossUpBuzzedTeamName || "Đối thủ")}</span> gõ câu trả lời...</span>
+                </div>
+              ) : (
+                <div className="p-2 sm:p-2.5 rounded-2xl bg-black/70 border border-amber-400/50 space-y-1.5 flex flex-col min-h-0 overflow-hidden shadow-2xl">
+                  <div className="flex items-center justify-between pb-1 border-b border-amber-400/30 shrink-0">
+                    <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                      🔔 {formatTeamLabel(tossUpBuzzedTeamName || currentTurnTeamName)} ĐANG TRẢ LỜI ĐOÁN NHANH:
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/40 shrink-0">
+                      ĐÃ BẤM CHUÔNG!
+                    </span>
                   </div>
-                );
-              })()}
-            </div>
-
-            <div className="sm:col-span-7 flex flex-col justify-center p-2">
-              {phase === "TOSS_UP_BUZZED" ? (
-                !isHost && myTeamId && tossUpBuzzedTeamId && myTeamId !== tossUpBuzzedTeamId && !isInsideSandbox ? (
-                  <div className="p-4 text-center text-xs font-bold text-slate-400 italic bg-white/5 rounded-xl border border-white/10">
-                    Đang chờ {formatTeamLabel(tossUpBuzzedTeamName || "đối thủ")} gõ câu trả lời...
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-xl bg-black/60 border border-amber-400/50 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-amber-300">
-                        🔔 {formatTeamLabel(tossUpBuzzedTeamName || currentTurnTeamName)} đang trả lời:
-                      </span>
-                    </div>
+                  <div className="flex-1 min-h-0 overflow-y-auto">
                     <SmartPuzzlePhraseInput
                       secretPhrase={currentPuzzle?.secretPhrase || ""}
                       revealedIndices={animRevealedIndices}
                       onSubmit={(ans) => onSolvePuzzle?.(ans)}
                       submitLabel="CHỐT ĐÁP ÁN ĐOÁN NHANH ➔"
                       edition={edition}
+                      compact={true}
                     />
                   </div>
-                )
-              ) : (
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Vòng Đoán Nhanh: Nút chuông bên trái, Vùng hướng dẫn bên phải */
+            <div className="w-full grid grid-cols-1 sm:grid-cols-12 gap-3 items-center h-full max-h-full">
+              <div className="sm:col-span-5 flex flex-col items-center justify-center p-2">
+                {(() => {
+                  const hasFirstLetterRevealed = (animRevealedIndices.size >= 1) || ((currentPuzzle?.revealedIndices?.length || 0) >= 1);
+                  const isBuzzedAlready = isLocallyBuzzed || Boolean(tossUpBuzzedTeamId);
+                  return (
+                    <div className="relative flex flex-col items-center justify-center">
+                      {hasFirstLetterRevealed && !isBuzzedAlready && (
+                        <div className="absolute inset-0 rounded-full bg-red-600/35 blur-xl animate-ping pointer-events-none" />
+                      )}
+                      <div
+                        className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full p-2.5 flex items-center justify-center transition-all duration-300 ${
+                          !hasFirstLetterRevealed
+                            ? "bg-gradient-to-b from-stone-700 via-stone-800 to-stone-900 border-4 border-stone-600 shadow-lg opacity-60 cursor-not-allowed"
+                            : isBuzzedAlready
+                            ? "bg-gradient-to-b from-emerald-600 via-teal-700 to-emerald-900 border-4 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.7)]"
+                            : "bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 border-4 border-yellow-300 shadow-[0_15px_35px_rgba(0,0,0,0.9),0_0_30px_rgba(245,158,11,0.6)] cursor-pointer"
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          disabled={!hasFirstLetterRevealed || isBuzzedAlready}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (!hasFirstLetterRevealed || isBuzzedAlready) return;
+                            handleTriggerTossUpBuzz();
+                          }}
+                          className={`w-full h-full rounded-full flex flex-col items-center justify-center transition-all select-none touch-manipulation focus:outline-none ${
+                            !hasFirstLetterRevealed
+                              ? "bg-gradient-to-b from-neutral-800 to-neutral-900 border-2 border-neutral-700 text-neutral-400 cursor-not-allowed"
+                              : isBuzzedAlready
+                              ? "bg-gradient-to-b from-emerald-500 to-teal-700 border-2 border-emerald-300 text-white shadow-inner cursor-not-allowed scale-95"
+                              : "bg-gradient-to-b from-rose-500 via-red-600 to-red-800 active:from-red-700 active:to-red-900 active:scale-90 border-2 border-red-300 text-white shadow-[inset_0_6px_12px_rgba(255,255,255,0.5),0_10px_25px_rgba(220,38,38,0.8)] hover:brightness-110 active:shadow-inner cursor-pointer"
+                          }`}
+                        >
+                          <span className="text-3xl sm:text-4xl filter drop-shadow">
+                            {!hasFirstLetterRevealed ? "🔒" : isBuzzedAlready ? "✅" : "🔔"}
+                          </span>
+                          <span className="mt-1 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow text-center px-1">
+                            {!hasFirstLetterRevealed
+                              ? "CHỜ MỞ CHỮ"
+                              : isBuzzedAlready
+                              ? "ĐÃ BẤM!"
+                              : "BẤM CHUÔNG!"}
+                          </span>
+                          {hasFirstLetterRevealed && !isBuzzedAlready && (
+                            <span className="text-[10px] text-amber-200/90 font-mono font-bold mt-0.5 tracking-tight">
+                              [SPACE / ENTER]
+                            </span>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="sm:col-span-7 flex flex-col justify-center p-2">
                 <div className="p-4 text-center rounded-2xl bg-black/40 border border-white/10 text-xs font-bold text-amber-200/90 flex flex-col items-center justify-center gap-2">
                   <span className="text-xl">⚡</span>
                   <span>Chuông đã mở! Hãy đập tay vào nút bên trái hoặc bấm phím Space/Enter ngay khi biết đáp án!</span>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
+          )
         ) : roundStage === "SPECIAL_FINAL" ? (
           /* Vòng Đặc Biệt / Chung Kết */
           <div className="p-3 rounded-2xl bg-gradient-to-b from-amber-950/70 via-purple-950/80 to-slate-950 border border-amber-400/60 space-y-2.5">
@@ -3509,7 +3539,7 @@ export default function MagicWheelBoard({
 
   // ── 5. DISPLAY VIEW (isDisplay = true): ZERO-SCROLL, FULL 360° WHEEL, LAYOUT SWITCHER ──
   const renderDisplayView = () => (
-    <div className="w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-3 sm:p-5 md:p-6 box-border bg-gradient-to-b from-[#050811] via-[#091122] to-[#04060d] text-white select-none">
+    <div className="w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-2 sm:p-3.5 md:p-4 box-border bg-gradient-to-b from-[#050811] via-[#091122] to-[#04060d] text-white select-none">
       {/* Top Header */}
       <div className="w-full flex items-center justify-between shrink-0 mb-1">
         <div className="flex items-center gap-2">
@@ -3541,6 +3571,7 @@ export default function MagicWheelBoard({
         <div className="w-full flex-1 flex flex-col items-center justify-center min-h-0 gap-3">
           <InteractiveWheelRig
             variant="DISPLAY_360"
+            size="large"
             wheelRef={wheelRef}
             needleRef={needleRef}
             clientWheelAngle={clientWheelAngle}
@@ -3564,54 +3595,59 @@ export default function MagicWheelBoard({
           )}
         </div>
       ) : (
-        /* STACKED (Toàn diện: Bảng ô chữ ở trên ~52%, Vòng quay tròn 360° ở dưới ~46%) */
-        <div className="w-full flex-1 flex flex-col justify-between min-h-0 gap-2">
+        /* STACKED (Toàn diện: Bảng ô chữ ở trên ~50%, Vòng quay tròn 360° ở giữa, Điểm số chia đều 2 bên) */
+        <div className="w-full flex-1 flex flex-col justify-between min-h-0 gap-1.5 sm:gap-2">
           {/* Upper: 56-tile board */}
           <div className="w-full flex justify-center shrink-0">
             {renderBoardGridMatrix(true)}
           </div>
 
-          {/* Lower: 3-column row (Left team | Center 360° Wheel | Right teams) */}
-          <div className="w-full flex-1 grid grid-cols-12 gap-3 items-center min-h-0">
-            {/* Left Column: Team 1 */}
-            <div className="col-span-3 flex flex-col justify-center gap-2">
-              {teams.slice(0, 1).map((t) => {
-                const rScore = roundScores?.[t.id] || 0;
-                const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
-                const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
-                return (
-                  <div
-                    key={t.id}
-                    className={`p-3 rounded-2xl border flex flex-col gap-1 transition shadow ${
-                      isTurn
-                        ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)] ring-2 ring-amber-400"
-                        : "bg-black/50 border-white/10 text-slate-200"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="w-3.5 h-3.5 rounded-full shadow" style={{ background: t.color || "#6366f1" }} />
-                      <span className="font-black text-sm truncate">{t.name}</span>
-                    </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[11px] text-emerald-400 font-mono font-bold">
-                        +{edition === "ENGLISH" ? `$${rScore.toLocaleString("en-US")}` : `${rScore.toLocaleString()}đ`}
-                      </span>
-                      <span className="text-base font-black text-amber-300 font-mono">
-                        {edition === "ENGLISH" ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}` : `${((t.score || 0) + rScore).toLocaleString()}đ`}
-                      </span>
-                    </div>
-                    {strikes > 0 && edition !== "ENGLISH" && (
-                      <div className="text-rose-400 font-mono text-xs tracking-tighter pt-0.5">
-                        {"✕".repeat(Math.min(3, strikes))}
+          {/* Lower: 3-column row (Left teams | Center 360° Wheel | Right teams) */}
+          <div className="w-full flex-1 grid grid-cols-12 gap-2 sm:gap-3 items-center min-h-0">
+            {/* Left Column: First Half Teams */}
+            <div className="col-span-3 flex flex-col justify-center gap-1.5 sm:gap-2 min-h-0">
+              {(() => {
+                const half = Math.ceil(teams.length / 2);
+                const leftTeams = teams.slice(0, half);
+                const isCompact = teams.length >= 4;
+                return leftTeams.map((t) => {
+                  const rScore = roundScores?.[t.id] || 0;
+                  const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
+                  const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
+                  return (
+                    <div
+                      key={t.id}
+                      className={`${isCompact ? "p-1.5 sm:p-2 py-1 rounded-xl gap-0.5" : "p-2.5 sm:p-3 rounded-2xl gap-1"} border flex flex-col transition shadow min-h-0 ${
+                        isTurn
+                          ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)] ring-2 ring-amber-400"
+                          : "bg-black/60 border-white/10 text-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-3 h-3 rounded-full shadow shrink-0" style={{ background: t.color || "#6366f1" }} />
+                        <span className={`font-black truncate ${isCompact ? "text-xs" : "text-xs sm:text-sm"}`}>{t.name}</span>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                      <div className="flex items-center justify-between pt-0.5">
+                        <span className={`${isCompact ? "text-[10px]" : "text-[10px] sm:text-[11px]"} text-emerald-400 font-mono font-bold`}>
+                          +{edition === "ENGLISH" ? `$${rScore.toLocaleString("en-US")}` : `${rScore.toLocaleString()}đ`}
+                        </span>
+                        <span className={`${isCompact ? "text-xs sm:text-sm" : "text-sm sm:text-base"} font-black text-amber-300 font-mono`}>
+                          {edition === "ENGLISH" ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}` : `${((t.score || 0) + rScore).toLocaleString()}đ`}
+                        </span>
+                      </div>
+                      {strikes > 0 && edition !== "ENGLISH" && (
+                        <div className="text-rose-400 font-mono text-[9px] tracking-tighter pt-0.5">
+                          {"✕".repeat(Math.min(3, strikes))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
 
             {/* Center Column: Full 360° Circular 3D Wheel */}
-            <div className="col-span-6 flex flex-col items-center justify-center h-full max-h-full">
+            <div className="col-span-6 flex flex-col items-center justify-center h-full max-h-full min-h-0">
               <InteractiveWheelRig
                 variant="DISPLAY_360"
                 wheelRef={wheelRef}
@@ -3623,41 +3659,46 @@ export default function MagicWheelBoard({
               />
             </div>
 
-            {/* Right Column: Teams 2 and 3 */}
-            <div className="col-span-3 flex flex-col justify-center gap-2">
-              {teams.slice(1).map((t) => {
-                const rScore = roundScores?.[t.id] || 0;
-                const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
-                const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
-                return (
-                  <div
-                    key={t.id}
-                    className={`p-3 rounded-2xl border flex flex-col gap-1 transition shadow ${
-                      isTurn
-                        ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)] ring-2 ring-amber-400"
-                        : "bg-black/50 border-white/10 text-slate-200"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="w-3.5 h-3.5 rounded-full shadow" style={{ background: t.color || "#6366f1" }} />
-                      <span className="font-black text-sm truncate">{t.name}</span>
-                    </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[11px] text-emerald-400 font-mono font-bold">
-                        +{edition === "ENGLISH" ? `$${rScore.toLocaleString("en-US")}` : `${rScore.toLocaleString()}đ`}
-                      </span>
-                      <span className="text-base font-black text-amber-300 font-mono">
-                        {edition === "ENGLISH" ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}` : `${((t.score || 0) + rScore).toLocaleString()}đ`}
-                      </span>
-                    </div>
-                    {strikes > 0 && edition !== "ENGLISH" && (
-                      <div className="text-rose-400 font-mono text-xs tracking-tighter pt-0.5">
-                        {"✕".repeat(Math.min(3, strikes))}
+            {/* Right Column: Second Half Teams */}
+            <div className="col-span-3 flex flex-col justify-center gap-1.5 sm:gap-2 min-h-0">
+              {(() => {
+                const half = Math.ceil(teams.length / 2);
+                const rightTeams = teams.slice(half);
+                const isCompact = teams.length >= 4;
+                return rightTeams.map((t) => {
+                  const rScore = roundScores?.[t.id] || 0;
+                  const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
+                  const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
+                  return (
+                    <div
+                      key={t.id}
+                      className={`${isCompact ? "p-1.5 sm:p-2 py-1 rounded-xl gap-0.5" : "p-2.5 sm:p-3 rounded-2xl gap-1"} border flex flex-col transition shadow min-h-0 ${
+                        isTurn
+                          ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)] ring-2 ring-amber-400"
+                          : "bg-black/60 border-white/10 text-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-3 h-3 rounded-full shadow shrink-0" style={{ background: t.color || "#6366f1" }} />
+                        <span className={`font-black truncate ${isCompact ? "text-xs" : "text-xs sm:text-sm"}`}>{t.name}</span>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                      <div className="flex items-center justify-between pt-0.5">
+                        <span className={`${isCompact ? "text-[10px]" : "text-[10px] sm:text-[11px]"} text-emerald-400 font-mono font-bold`}>
+                          +{edition === "ENGLISH" ? `$${rScore.toLocaleString("en-US")}` : `${rScore.toLocaleString()}đ`}
+                        </span>
+                        <span className={`${isCompact ? "text-xs sm:text-sm" : "text-sm sm:text-base"} font-black text-amber-300 font-mono`}>
+                          {edition === "ENGLISH" ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}` : `${((t.score || 0) + rScore).toLocaleString()}đ`}
+                        </span>
+                      </div>
+                      {strikes > 0 && edition !== "ENGLISH" && (
+                        <div className="text-rose-400 font-mono text-[9px] tracking-tighter pt-0.5">
+                          {"✕".repeat(Math.min(3, strikes))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>

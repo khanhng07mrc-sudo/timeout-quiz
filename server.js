@@ -10178,6 +10178,8 @@ var roomQuestionStartedAt = /* @__PURE__ */ new Map();
 var playerSockets = /* @__PURE__ */ new Map();
 var adminSockets = /* @__PURE__ */ new Map();
 var displaySockets = /* @__PURE__ */ new Map();
+var roomCodeCache = /* @__PURE__ */ new Map();
+var roomTeamsCache = /* @__PURE__ */ new Map();
 var roomTimers = /* @__PURE__ */ new Map();
 var roomRemainingTimes = /* @__PURE__ */ new Map();
 var roomTimerEndsAt = /* @__PURE__ */ new Map();
@@ -16557,18 +16559,41 @@ function registerSocketHandlers(io2) {
       let teamId;
       const isAdmin = Boolean(adminSockets.get(socket.id));
       const isSandboxSocket = Boolean(playerId && playerId.startsWith("sb_"));
-      if (playerId) {
+      const sess = socketPlayerSessions.get(socket.id) || (playerId ? playerSessions.get(playerId) : void 0);
+      if (sess && sess.roomId) {
+        roomId = sess.roomId;
+        roomCode = sess.roomCode || roomCodeCache.get(sess.roomId);
+        teamId = isSandboxSocket && roomSandboxActiveTeam.get(sess.roomId) || sess.teamId || void 0;
+      } else if (playerId) {
         const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
         if (player?.room?.mode === "MAGIC_WHEEL") {
           roomId = player.roomId;
           roomCode = player.room.code;
           teamId = isSandboxSocket && roomSandboxActiveTeam.get(player.roomId) || player.teamId || void 0;
+          roomCodeCache.set(player.roomId, player.room.code);
+          const cachedSession = {
+            playerId,
+            playerName: player.name,
+            roomId: player.roomId,
+            roomCode: player.room.code,
+            teamId: player.teamId || void 0,
+            roomMode: player.room.mode
+          };
+          socketPlayerSessions.set(socket.id, cachedSession);
+          playerSessions.set(playerId, cachedSession);
         }
       } else {
         roomId = adminSockets.get(socket.id) || displaySockets.get(socket.id);
         if (roomId) {
-          const room = await prisma.room.findUnique({ where: { id: roomId }, select: { code: true, mode: true } });
-          if (room?.mode === "MAGIC_WHEEL") roomCode = room.code;
+          if (roomCodeCache.has(roomId)) {
+            roomCode = roomCodeCache.get(roomId);
+          } else {
+            const room = await prisma.room.findUnique({ where: { id: roomId }, select: { code: true, mode: true } });
+            if (room?.mode === "MAGIC_WHEEL") {
+              roomCode = room.code;
+              roomCodeCache.set(roomId, room.code);
+            }
+          }
         }
       }
       const isDisplay = displaySockets.has(socket.id);
@@ -16988,12 +17013,18 @@ function registerSocketHandlers(io2) {
         roomTossUpPendingBuzz.delete(roomId);
         return;
       }
-      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
-      if (!room) {
-        roomTossUpPendingBuzz.delete(roomId);
-        return;
+      let teams = roomTeamsCache.get(roomId);
+      if (!teams || teams.length === 0) {
+        const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
+        if (!room) {
+          roomTossUpPendingBuzz.delete(roomId);
+          return;
+        }
+        teams = room.teams.map((t) => ({ id: t.id, name: t.name }));
+        roomTeamsCache.set(roomId, teams);
+        roomCodeCache.set(roomId, room.code);
       }
-      const buzzTeam = room.teams.find((t) => t.id === buzzTeamId);
+      const buzzTeam = teams.find((t) => t.id === buzzTeamId);
       if (!buzzTeam) {
         roomTossUpPendingBuzz.delete(roomId);
         return;
@@ -17059,8 +17090,9 @@ function registerSocketHandlers(io2) {
         const cur = roomMagicWheels.get(roomId);
         if (!cur) return;
         cur.isSpinning = false;
-        const sector = cur.sectors[landingSectorIndex];
+        const sector = cur.sectors[landingSectorIndex] || cur.sectors[0];
         cur.selectedSector = sector;
+        cur.selectedSectorIndex = landingSectorIndex;
         const teamName = cur.currentTurnTeamName;
         const tId = cur.currentTurnTeamId;
         if (isSpecialSpin) {

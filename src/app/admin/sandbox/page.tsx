@@ -5953,9 +5953,8 @@ export default function AdminSandboxPage() {
           return;
         }
         const targetBuzzTeam = roomStateRef.current?.teams.find((t) => t.id === teamId) || roomStateRef.current?.teams[0];
-        if (adminSocketRef.current?.connected && targetBuzzTeam) {
-          adminSocketRef.current.emit("magic_wheel:toss_up_buzz" as any, { teamId: targetBuzzTeam.id });
-        }
+        // Note: Socket emission is handled once by the top-level MAGIC_WHEEL_* forwarder (line ~4461).
+        // Avoid duplicate socket emission here.
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState) return prev;
           const cur = { ...prev.magicWheelState };
@@ -12994,9 +12993,6 @@ export default function AdminSandboxPage() {
                       }}
                       onTossUpBuzz={(targetTeamId) => {
                         const tId = targetTeamId || currentTeam?.id || roomState.teams[0]?.id;
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:toss_up_buzz" as any, { teamId: tId });
-                        }
                         window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
                       }}
                       onTossUpRevealTick={(targetIndex?: number) => {

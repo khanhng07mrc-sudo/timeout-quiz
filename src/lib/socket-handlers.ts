@@ -164,6 +164,8 @@ const roomQuestionStartedAt = new Map<string, number>(); // roomId -> timestamp 
 const playerSockets = new Map<string, string>(); // socketId -> playerId
 const adminSockets = new Map<string, string>(); // socketId -> roomId
 const displaySockets = new Map<string, string>(); // socketId -> roomId
+const roomCodeCache = new Map<string, string>(); // roomId -> roomCode (fast lookup)
+const roomTeamsCache = new Map<string, Array<{ id: string; name: string }>>(); // roomId -> teams cache (zero-latency buzz)
 const roomTimers = new Map<string, NodeJS.Timeout>(); // roomId -> timer
 const roomRemainingTimes = new Map<string, number>(); // roomId -> remaining seconds
 const roomTimerEndsAt = new Map<string, number>(); // roomId -> endsAt timestamp (epoch ms)
@@ -7819,18 +7821,41 @@ export function registerSocketHandlers(io: IO) {
       const isAdmin = Boolean(adminSockets.get(socket.id));
       const isSandboxSocket = Boolean(playerId && playerId.startsWith("sb_"));
 
-      if (playerId) {
+      const sess = socketPlayerSessions.get(socket.id) || (playerId ? playerSessions.get(playerId) : undefined);
+      if (sess && sess.roomId) {
+        roomId = sess.roomId;
+        roomCode = sess.roomCode || roomCodeCache.get(sess.roomId);
+        teamId = (isSandboxSocket && roomSandboxActiveTeam.get(sess.roomId)) || sess.teamId || undefined;
+      } else if (playerId) {
         const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
         if (player?.room?.mode === "MAGIC_WHEEL") {
           roomId = player.roomId;
           roomCode = player.room.code;
           teamId = (isSandboxSocket && roomSandboxActiveTeam.get(player.roomId)) || player.teamId || undefined;
+          roomCodeCache.set(player.roomId, player.room.code);
+          const cachedSession: CachedPlayerSession = {
+            playerId,
+            playerName: player.name,
+            roomId: player.roomId,
+            roomCode: player.room.code,
+            teamId: player.teamId || undefined,
+            roomMode: player.room.mode as any,
+          };
+          socketPlayerSessions.set(socket.id, cachedSession);
+          playerSessions.set(playerId, cachedSession);
         }
       } else {
         roomId = adminSockets.get(socket.id) || displaySockets.get(socket.id);
         if (roomId) {
-          const room = await prisma.room.findUnique({ where: { id: roomId }, select: { code: true, mode: true } });
-          if (room?.mode === "MAGIC_WHEEL") roomCode = room.code;
+          if (roomCodeCache.has(roomId)) {
+            roomCode = roomCodeCache.get(roomId);
+          } else {
+            const room = await prisma.room.findUnique({ where: { id: roomId }, select: { code: true, mode: true } });
+            if (room?.mode === "MAGIC_WHEEL") {
+              roomCode = room.code;
+              roomCodeCache.set(roomId, room.code);
+            }
+          }
         }
       }
       const isDisplay = displaySockets.has(socket.id);
@@ -8320,13 +8345,19 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
-      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
-      if (!room) {
-        roomTossUpPendingBuzz.delete(roomId);
-        return;
+      let teams = roomTeamsCache.get(roomId);
+      if (!teams || teams.length === 0) {
+        const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
+        if (!room) {
+          roomTossUpPendingBuzz.delete(roomId);
+          return;
+        }
+        teams = room.teams.map((t) => ({ id: t.id, name: t.name }));
+        roomTeamsCache.set(roomId, teams);
+        roomCodeCache.set(roomId, room.code);
       }
 
-      const buzzTeam = room.teams.find((t) => t.id === buzzTeamId);
+      const buzzTeam = teams.find((t) => t.id === buzzTeamId);
       if (!buzzTeam) {
         roomTossUpPendingBuzz.delete(roomId);
         return;

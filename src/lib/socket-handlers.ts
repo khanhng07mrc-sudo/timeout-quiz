@@ -8555,6 +8555,14 @@ export function registerSocketHandlers(io: IO) {
             cur.selectedSector = sector;
             cur.lastActionMessage = `Đội ${teamName} quay vào MẤT ĐIỂM nhưng Khiên Bảo Hộ 🛡️ đã kích hoạt chặn phạt! Điểm số an toàn và tiếp tục quay!`;
           } else {
+            // V5 25k bonus clawback logic: mỗi lần quay trúng ô mất điểm sẽ bị trừ 1 lần 25.000đ đã nhận từ ô kẹp
+            if (cur.held25kBonusTeams && (cur.held25kBonusTeams[tId] || 0) > 0) {
+              cur.held25kBonusTeams[tId]--;
+              const teamObj = room.teams.find((t) => t.id === tId);
+              if (teamObj) {
+                teamObj.score = Math.max(0, (teamObj.score || 0) - 25000);
+              }
+            }
             cur.roundScores[tId] = 0;
             if (isSoleSurvivor) {
               cur.phase = "SPIN_WAITING";
@@ -8632,6 +8640,18 @@ export function registerSocketHandlers(io: IO) {
           cur.pendingSpecialAction = "STEAL_SWAP";
           cur.phase = "ACTION_INPUT";
           cur.lastActionMessage = `⚔️ Đội ${teamName} quay trúng Ô ĐỐI ĐẦU / CHUYỂN NHƯỢNG! Đoán đúng chữ cái để kích hoạt quyền Cướp 50% hoặc Hoán Đổi Điểm!`;
+        } else if (sector.type === "ONE_MILLION_SANDWICH") {
+          cur.pendingSpecialAction = "POINTS";
+          if (!cur.held25kBonusTeams) cur.held25kBonusTeams = {};
+          cur.held25kBonusTeams[tId] = (cur.held25kBonusTeams[tId] || 0) + 1;
+          const bonusPts = 25000;
+          const teamObj = room.teams.find((t) => t.id === tId);
+          if (teamObj) {
+            teamObj.score = (teamObj.score || 0) + bonusPts;
+          }
+          cur.roundScores[tId] = (cur.roundScores[tId] || 0) + bonusPts;
+          cur.phase = "ACTION_INPUT";
+          cur.lastActionMessage = `🌟 KỲ DIỆU! Đội ${teamName} quay trúng Ô 25.000 ĐIỂM kẹp giữa 2 ô Mất Điểm! Nhận ngay +25.000 điểm thưởng! (Lưu ý: Nếu sau này dính Mất Điểm sẽ bị thu hồi 25.000đ). Mời đoán chữ cái!`;
         } else {
           cur.pendingSpecialAction = "POINTS";
           cur.phase = "ACTION_INPUT";

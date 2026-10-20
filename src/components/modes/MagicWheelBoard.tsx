@@ -957,6 +957,13 @@ function WheelDiscSvg({
   return (
     <svg viewBox="0 0 440 440" className="w-full h-full select-none">
       <defs>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Playfair+Display:wght@900&family=Rokkitt:wght@800;900&display=swap');
+          .gameshow-font {
+            font-family: 'Cinzel', 'Playfair Display', 'Rokkitt', 'Georgia', serif;
+            font-weight: 900;
+          }
+        `}</style>
         <linearGradient id="chromeStemGrad" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#64748b" />
           <stop offset="30%" stopColor="#f8fafc" />
@@ -997,12 +1004,18 @@ function WheelDiscSvg({
         </filter>
       </defs>
 
+      {/* ── INTEGRATED 3D GOLD RIM & BEZEL COLLAR (Perfect Vector Alignment) ── */}
+      <circle cx="220" cy="220" r="211" fill="none" stroke="url(#goldRimGrad3D)" strokeWidth="16" />
+      <circle cx="220" cy="220" r="219" fill="none" stroke="#78350f" strokeWidth="2" />
+      <circle cx="220" cy="220" r="203" fill="none" stroke="#451a03" strokeWidth="2.5" />
+      <circle cx="220" cy="220" r="201" fill="none" stroke="#fef08a" strokeWidth="1" strokeDasharray="3 4" opacity="0.65" />
+
       {sectors.map((sec, idx) => {
         const segCount = sectors.length || 24;
         const degPerSeg = 360 / segCount;
         const theta1 = (idx * degPerSeg * Math.PI) / 180;
         const theta2 = ((idx + 1) * degPerSeg * Math.PI) / 180;
-        const r = 196;
+        const r = 201;
         const cx = 220;
         const cy = 220;
         const x1 = cx + r * Math.sin(theta1);
@@ -1011,28 +1024,155 @@ function WheelDiscSvg({
         const y2 = cy - r * Math.cos(theta2);
         const midDeg = (idx + 0.5) * degPerSeg;
 
-        const rPeg = 190;
+        const rPeg = 194;
         const pegX = cx + rPeg * Math.sin(theta1);
         const pegY = cy - rPeg * Math.cos(theta1);
 
-        // BUG-12 FIX: Dùng indexOf để tránh highlight sai khi nhiều sector cùng id
-        // WheelDiscSvg không nhận selectedSectorIndex prop, dùng indexOf(selectedSector) để tìm đúng sector
         const isWinningSector = !isSpinning && selectedSector !== undefined && sectors.indexOf(selectedSector) === idx;
-        const isNumeric = sec.type === "POINTS" || /^\d+$/.test(sec.label.trim());
-        const digits = isNumeric ? sec.label.trim().split("") : [];
+        const cleanLabel = sec.label.replace(/[,.]/g, "");
+        const isNumeric = sec.type === "POINTS" || /^\$?\d+$/.test(cleanLabel.trim());
+        const digits = isNumeric ? cleanLabel.trim().split("") : [];
         const numCount = digits.length;
-        const charStep = numCount >= 4 ? 15.5 : 18.5;
-        const outerRimStartY = cy - 177;
+        const charStep = numCount >= 5 ? 14 : numCount >= 4 ? 15.5 : 18.5;
+        const outerRimStartY = cy - 180;
 
-        const specialLabel = sec.label;
+        const specialLabel = cleanLabel;
         const specialFontSize =
           specialLabel.length > 10 ? "9.5" : specialLabel.length > 8 ? "10.5" : "12";
-        const textOuterStartY = cy - 180;
+        const textOuterStartY = cy - 182;
 
         const isTextDark = sec.textColor === "#000000" || sec.textColor === "#78350f" || sec.textColor === "#451a03";
         const textFill = isWinningSector ? "#fef08a" : sec.textColor || "#ffffff";
         const textStroke = isWinningSector ? "#000000" : isTextDark ? "#ffffff" : "#000000";
         const textStrokeWidth = isTextDark ? "0.8" : "1.0";
+
+        // Vòng 5: Ô 25.000 điểm KẸP GIỮA HAI Ô MẤT ĐIỂM (Sandwich Wedge)
+        if (sec.isSandwich) {
+          const a0 = theta1;
+          const a1 = theta1 + 0.25 * (theta2 - theta1);
+          const a2 = theta1 + 0.75 * (theta2 - theta1);
+          const a3 = theta2;
+
+          const subX1_0 = cx + r * Math.sin(a0);
+          const subY1_0 = cy - r * Math.cos(a0);
+          const subX1_1 = cx + r * Math.sin(a1);
+          const subY1_1 = cy - r * Math.cos(a1);
+
+          const subX2_1 = cx + r * Math.sin(a2);
+          const subY2_1 = cy - r * Math.cos(a2);
+          const subX2_2 = cx + r * Math.sin(a3);
+          const subY2_2 = cy - r * Math.cos(a3);
+
+          const midLeftDeg = (idx + 0.125) * degPerSeg;
+          const midRightDeg = (idx + 0.875) * degPerSeg;
+
+          return (
+            <g key={sec.id}>
+              {/* Left Sub-Slice: 25% MẤT ĐIỂM */}
+              <path
+                d={`M ${cx} ${cy} L ${subX1_0} ${subY1_0} A ${r} ${r} 0 0 1 ${subX1_1} ${subY1_1} Z`}
+                fill="#000000"
+                stroke="#fbbf24"
+                strokeWidth="0.8"
+                strokeOpacity={0.8}
+              />
+              {/* Center Sub-Slice: 50% 25.000 ĐIỂM */}
+              <path
+                d={`M ${cx} ${cy} L ${subX1_1} ${subY1_1} A ${r} ${r} 0 0 1 ${subX2_1} ${subY2_1} Z`}
+                fill={isWinningSector ? "#4c1d95" : "#059669"}
+                stroke={isWinningSector ? "#fbbf24" : "#ffffff"}
+                strokeWidth={isWinningSector ? "3.5" : "1.2"}
+                strokeOpacity={isWinningSector ? 1 : 0.6}
+                filter={isWinningSector ? "url(#winningSliceGlow)" : undefined}
+              />
+              {/* Right Sub-Slice: 25% MẤT ĐIỂM */}
+              <path
+                d={`M ${cx} ${cy} L ${subX2_1} ${subY2_1} A ${r} ${r} 0 0 1 ${subX2_2} ${subY2_2} Z`}
+                fill="#000000"
+                stroke="#fbbf24"
+                strokeWidth="0.8"
+                strokeOpacity={0.8}
+              />
+
+              {/* Text: Left MẤT */}
+              <g transform={`rotate(${midLeftDeg} ${cx} ${cy})`}>
+                <g transform={`rotate(90 ${cx} ${textOuterStartY})`}>
+                  <text
+                    x={cx}
+                    y={textOuterStartY}
+                    textAnchor="start"
+                    fontSize="7"
+                    fontWeight="900"
+                    fill="#ef4444"
+                    stroke="#000000"
+                    strokeWidth="0.5"
+                    style={{ paintOrder: "stroke fill", fontFamily: "'Cinzel', 'Playfair Display', 'Rokkitt', 'Georgia', serif" }}
+                    dominantBaseline="central"
+                    className="gameshow-font select-none pointer-events-none tracking-tighter uppercase"
+                  >
+                    MẤT
+                  </text>
+                </g>
+              </g>
+
+              {/* Text: Center 25000 Digits */}
+              <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
+                <circle cx={cx} cy={cy - 192} r="1.3" fill="#ffffff" opacity="0.9" />
+                <g className="gameshow-font select-none pointer-events-none">
+                  {["2", "5", "0", "0", "0"].map((digit, dIdx) => (
+                    <text
+                      key={dIdx}
+                      x={cx}
+                      y={outerRimStartY + dIdx * 14}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize="14"
+                      fontWeight="900"
+                      fill={isWinningSector ? "#fef08a" : "#ffffff"}
+                      stroke="#000000"
+                      strokeWidth="1.0"
+                      style={{ paintOrder: "stroke fill", fontFamily: "'Cinzel', 'Playfair Display', 'Rokkitt', 'Georgia', serif" }}
+                      className="gameshow-font select-none pointer-events-none"
+                    >
+                      {digit}
+                    </text>
+                  ))}
+                </g>
+                <circle cx={cx} cy={cy - 56} r="1.1" fill="#ffffff" opacity="0.6" />
+              </g>
+
+              {/* Text: Right ĐIỂM */}
+              <g transform={`rotate(${midRightDeg} ${cx} ${cy})`}>
+                <g transform={`rotate(90 ${cx} ${textOuterStartY})`}>
+                  <text
+                    x={cx}
+                    y={textOuterStartY}
+                    textAnchor="start"
+                    fontSize="7"
+                    fontWeight="900"
+                    fill="#ef4444"
+                    stroke="#000000"
+                    strokeWidth="0.5"
+                    style={{ paintOrder: "stroke fill", fontFamily: "'Cinzel', 'Playfair Display', 'Rokkitt', 'Georgia', serif" }}
+                    dominantBaseline="central"
+                    className="gameshow-font select-none pointer-events-none tracking-tighter uppercase"
+                  >
+                    ĐIỂM
+                  </text>
+                </g>
+              </g>
+
+              {/* Chrome Detent Peg */}
+              <g transform={`rotate(${idx * degPerSeg} ${pegX} ${pegY})`}>
+                <ellipse cx={pegX + 1.5} cy={pegY + 1.8} rx="3.8" ry="2" fill="#000000" opacity="0.65" />
+                <ellipse cx={pegX} cy={pegY} rx="3.6" ry="2.2" fill="url(#chromeCollarGrad)" stroke="#0f172a" strokeWidth="0.5" />
+                <rect x={pegX - 1.8} y={pegY - 8.5} width="3.6" height="8.5" rx="1.8" fill="url(#chromeStemGrad)" stroke="#1e293b" strokeWidth="0.5" />
+                <circle cx={pegX} cy={pegY - 8.5} r="3.6" fill="url(#chromeCapGrad)" stroke="#1e293b" strokeWidth="0.6" />
+                <circle cx={pegX - 1.1} cy={pegY - 9.8} r="1" fill="#ffffff" opacity="0.95" />
+              </g>
+            </g>
+          );
+        }
 
         return (
           <g key={sec.id}>
@@ -1056,10 +1196,10 @@ function WheelDiscSvg({
             />
 
             <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
-              <circle cx={cx} cy={cy - 188} r="1.3" fill={sec.textColor || "#ffffff"} opacity="0.85" />
+              <circle cx={cx} cy={cy - 192} r="1.3" fill={sec.textColor || "#ffffff"} opacity="0.85" />
 
               {isNumeric ? (
-                <g className="font-black select-none pointer-events-none">
+                <g className="gameshow-font select-none pointer-events-none">
                   {digits.map((digit: string, dIdx: number) => (
                     <text
                       key={dIdx}
@@ -1067,13 +1207,13 @@ function WheelDiscSvg({
                       y={outerRimStartY + dIdx * charStep}
                       textAnchor="middle"
                       dominantBaseline="central"
-                      fontSize={numCount >= 4 ? "14.5" : "17"}
+                      fontSize={numCount >= 5 ? "13.5" : numCount >= 4 ? "14.5" : "17"}
                       fontWeight="900"
                       fill={textFill}
                       stroke={textStroke}
                       strokeWidth={textStrokeWidth}
-                      style={{ paintOrder: "stroke fill" }}
-                      className="font-black select-none pointer-events-none"
+                      style={{ paintOrder: "stroke fill", fontFamily: "'Cinzel', 'Playfair Display', 'Rokkitt', 'Georgia', serif" }}
+                      className="gameshow-font select-none pointer-events-none"
                     >
                       {digit}
                     </text>
@@ -1090,9 +1230,9 @@ function WheelDiscSvg({
                     fill={textFill}
                     stroke={textStroke}
                     strokeWidth={textStrokeWidth}
-                    style={{ paintOrder: "stroke fill" }}
+                    style={{ paintOrder: "stroke fill", fontFamily: "'Cinzel', 'Playfair Display', 'Rokkitt', 'Georgia', serif" }}
                     dominantBaseline="central"
-                    className="font-black select-none pointer-events-none tracking-tight uppercase"
+                    className="gameshow-font select-none pointer-events-none tracking-tight uppercase"
                   >
                     {specialLabel}
                   </text>
@@ -1113,7 +1253,7 @@ function WheelDiscSvg({
         );
       })}
 
-      <circle cx="220" cy="220" r="186" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.4" />
+      <circle cx="220" cy="220" r="190" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.4" />
 
       <g filter="url(#hubDropShadow)">
         <circle cx="220" cy="220" r="48" fill="url(#chromeCollarGrad)" stroke="#0f172a" strokeWidth="1.5" />
@@ -1182,7 +1322,10 @@ function InteractiveWheelRig({
           <div
             ref={wheelRef}
             className="w-full h-full aspect-square rounded-full overflow-hidden shadow-2xl relative"
-            style={effectiveIsSpinning ? { willChange: "transform" } : { transform: `rotate(${clientWheelAngle}deg)` }}
+            style={{
+              transform: `rotate(${clientWheelAngle}deg)`,
+              willChange: effectiveIsSpinning ? "transform" : undefined,
+            }}
           >
             <WheelDiscSvg sectors={sectors} selectedSector={selectedSector} isSpinning={effectiveIsSpinning} />
           </div>
@@ -1209,7 +1352,10 @@ function InteractiveWheelRig({
             <div
               ref={wheelRef}
               className="w-full h-full aspect-square rounded-full overflow-hidden shadow-2xl relative"
-              style={effectiveIsSpinning ? { willChange: "transform" } : { transform: `rotate(${clientWheelAngle + 180}deg)` }}
+              style={{
+                transform: `rotate(${clientWheelAngle + 180}deg)`,
+                willChange: effectiveIsSpinning ? "transform" : undefined,
+              }}
             >
               <WheelDiscSvg sectors={sectors} selectedSector={selectedSector} isSpinning={effectiveIsSpinning} />
             </div>
@@ -1261,7 +1407,10 @@ function InteractiveWheelRig({
           <div
             ref={wheelRef}
             className="w-full h-full aspect-square rounded-full overflow-hidden shadow-2xl relative"
-            style={effectiveIsSpinning ? { willChange: "transform" } : { transform: `rotate(${clientWheelAngle}deg)` }}
+            style={{
+              transform: `rotate(${clientWheelAngle}deg)`,
+              willChange: effectiveIsSpinning ? "transform" : undefined,
+            }}
           >
             <WheelDiscSvg sectors={sectors} selectedSector={selectedSector} isSpinning={effectiveIsSpinning} />
           </div>
@@ -1831,29 +1980,26 @@ export default function MagicWheelBoard({
     }
 
     // In Toss-Up running mode, if 1 letter is revealed via tick, handle it according to Toss-Up rules
+    // (Highlight trước, chờ 1s rồi mới lật mở chữ cái kèm hiệu ứng âm thanh)
     if (roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2") {
-      const isFirstLetterEver = animRevealedIndicesRef.current.size === 0;
-      if (isFirstLetterEver && newLetters.length > 0) {
-        const firstTileIdx = newLetters[0];
-        setHighlightedIndices(new Set([firstTileIdx]));
-        if (canPlayBoardAudio) soundManager.playMagicWheelMark();
-        const t = setTimeout(() => {
-          setHighlightedIndices(new Set());
-          triggerTilePop(firstTileIdx);
-          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
-          setAnimRevealedIndices(new Set(serverRevealed));
-        }, 400);
-        activeTimersRef.current.push(t);
-        return;
-      }
-
       newLetters.forEach((tileIdx) => {
         if (!animRevealedIndicesRef.current.has(tileIdx)) {
-          triggerTilePop(tileIdx);
-          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
+          setHighlightedIndices((prev) => new Set([...prev, tileIdx]));
+          if (canPlayBoardAudio) soundManager.playMagicWheelMark();
+
+          const t = setTimeout(() => {
+            setHighlightedIndices((prev) => {
+              const next = new Set(prev);
+              next.delete(tileIdx);
+              return next;
+            });
+            triggerTilePop(tileIdx);
+            if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
+            setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
+          }, 1000);
+          activeTimersRef.current.push(t);
         }
       });
-      setAnimRevealedIndices(new Set(serverRevealed));
       return;
     }
 
@@ -1928,13 +2074,13 @@ export default function MagicWheelBoard({
       });
 
       let elapsedWalkMs = totalHighlightTime;
-      let prevCol = 0;
+      let prevCol = hostessSideRef.current === "LEFT" ? 0 : 13;
 
       orderedForWalk.forEach((tileIdx) => {
         const pos = cellPositionsMap[tileIdx] || { col: 7, row: 1 };
         const colDist = Math.abs(pos.col - prevCol);
-        // Tốc độ bước đi thực tế theo khoảng cách: 1.2s - 1.8s thong thả thanh lịch
-        const travelMs = Math.max(1200, Math.min(1800, 1000 + colDist * 70));
+        // Tốc độ bước đi thực tế theo khoảng cách: 3.2s - 3.5s thong thả thanh lịch
+        const travelMs = Math.max(3200, Math.min(3500, 3100 + colDist * 30));
 
         // Move hostess to column
         const moveTimer = setTimeout(() => {
@@ -1942,7 +2088,7 @@ export default function MagicWheelBoard({
           setHostessPose("WALKING");
           setHostessWalkDurationMs(travelMs);
           setHostessActiveRow(pos.row);
-          const colPercent = ((pos.col + 0.5) / COLS) * 100;
+          const colPercent = Math.max(8, Math.min(92, ((pos.col + 0.5) / COLS) * 100));
           setHostessXPercent(colPercent);
         }, elapsedWalkMs);
         activeTimersRef.current.push(moveTimer);
@@ -1968,20 +2114,39 @@ export default function MagicWheelBoard({
         prevCol = pos.col;
       });
 
-      // Lùi thong thả về vị trí chờ bên Cánh trái (Stage Left Idle, bên ngoài Cột 0)
-      const returnTravelMs = 1400;
+      // Directional exit after opening the last letter:
+      // Người mẫu tiến tiếp theo hướng đang đi, trừ khi cách cánh đối diện <= 2 ô (ngưỡng 20%)
+      const lastTileIdx = orderedForWalk[orderedForWalk.length - 1];
+      const lastTilePos = cellPositionsMap[lastTileIdx] || { col: 7, row: 1 };
+      const lastTileCol = lastTilePos.col;
+
+      let exitSide: "LEFT" | "RIGHT";
+      if (lastTileCol <= 2) {
+        // Gần cánh trái <= 2 ô -> về cánh trái
+        exitSide = "LEFT";
+      } else if (lastTileCol >= 11) {
+        // Gần cánh phải <= 2 ô -> về cánh phải
+        exitSide = "RIGHT";
+      } else {
+        // Tiếp tục theo hướng đang đi
+        exitSide = walkDirection === "LEFT_TO_RIGHT" ? "RIGHT" : "LEFT";
+      }
+
+      const returnTravelMs = 3200; // 3.2s thong thả về cánh gà
+      const exitPercent = exitSide === "LEFT" ? 0 : 100;
+
       const finishWalkTimer = setTimeout(() => {
-        setHostessFacing("LEFT");
+        setHostessFacing(exitSide === "LEFT" ? "LEFT" : "RIGHT");
         setHostessPose("WALKING");
         setHostessWalkDurationMs(returnTravelMs);
-        setHostessXPercent(0);
+        setHostessXPercent(exitPercent);
       }, elapsedWalkMs);
       activeTimersRef.current.push(finishWalkTimer);
 
       const parkTimer = setTimeout(() => {
-        setHostessSide("LEFT");
-        hostessSideRef.current = "LEFT";
-        setHostessFacing("RIGHT");
+        setHostessSide(exitSide);
+        hostessSideRef.current = exitSide;
+        setHostessFacing(exitSide === "LEFT" ? "RIGHT" : "LEFT");
         setHostessPose("IDLE");
       }, elapsedWalkMs + returnTravelMs + 100);
       activeTimersRef.current.push(parkTimer);
@@ -2326,7 +2491,9 @@ export default function MagicWheelBoard({
     };
   }, [effectiveIsSpinning, targetRotationDegrees, activeState.spinPower, sectors.length, canPlayBoardAudio, isPlayer, playSectorLandingAudio]);
 
-  const activeTeam = teams.find((t) => t.id === (tossUpBuzzedTeamId || currentTurnTeamId));
+  const activeTeam = isTossUpRound
+    ? (tossUpBuzzedTeamId ? teams.find((t) => t.id === tossUpBuzzedTeamId) : undefined)
+    : teams.find((t) => t.id === currentTurnTeamId);
 
   // Kiểm tra trạng thái HẾT PHỤ ÂM (CHỈ ÁP DỤNG VỚI LUẬT ANH, TUYỆT ĐỐI KHÔNG CHỒNG CHÉO VỚI BẢN VIỆT)
   const isNoMoreConsonants =
@@ -2794,7 +2961,9 @@ export default function MagicWheelBoard({
     <div className="w-full flex items-center justify-center gap-1.5 sm:gap-2.5 py-1 px-2 bg-black/60 rounded-xl border border-white/10 shrink-0">
       {teams.map((t) => {
         const rScore = roundScores?.[t.id] || 0;
-        const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
+        const isTurn = isTossUpRound
+          ? (phase === "TOSS_UP_BUZZED" && Boolean(tossUpBuzzedTeamId) && t.id === tossUpBuzzedTeamId)
+          : (t.id === currentTurnTeamId);
         const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
         const isEliminated = roundEliminatedTeamIds.includes(t.id) || (activeState.disqualifiedTeamIdsInRound || []).includes(t.id);
         return (
@@ -3587,7 +3756,9 @@ export default function MagicWheelBoard({
 
     const renderDisplayTeamCard = (t: TeamState, isCompact: boolean) => {
       const rScore = roundScores?.[t.id] || 0;
-      const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
+      const isTurn = isTossUpRound
+        ? (phase === "TOSS_UP_BUZZED" && Boolean(tossUpBuzzedTeamId) && t.id === tossUpBuzzedTeamId)
+        : (t.id === currentTurnTeamId);
       const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
       return (
         <div
@@ -3973,7 +4144,9 @@ export default function MagicWheelBoard({
                 const rScore = roundScores?.[t.id] || 0;
                 const strikes =
                   activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
-                const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
+                const isTurn = isTossUpRound
+          ? (phase === "TOSS_UP_BUZZED" && Boolean(tossUpBuzzedTeamId) && t.id === tossUpBuzzedTeamId)
+          : (t.id === currentTurnTeamId);
                 const isEliminatedBySolve = roundEliminatedTeamIds.includes(t.id);
                 const isEliminatedByStrikes = (activeState.disqualifiedTeamIdsInRound || []).includes(t.id);
                 const isEliminated = isEliminatedBySolve || isEliminatedByStrikes;
@@ -4148,7 +4321,7 @@ export default function MagicWheelBoard({
           )}
 
           {/* ── 3D Gameshow Studio Stage (Sân Khấu Catwalk VTV3 & Bảng Ô Chữ 3D) ── */}
-          <div className="w-full max-w-6xl flex flex-col items-center relative py-2 px-2 sm:px-4 md:px-6">
+          <div className="w-full max-w-5xl flex flex-col items-center relative py-2 px-6 sm:px-10 md:px-14">
             {/* Studio Lighting Overhead Truss with Multiple Downlight Spotlights */}
             <div className="absolute -top-6 inset-x-0 h-28 pointer-events-none flex justify-around opacity-45 z-0">
               <div className="w-48 h-36 bg-gradient-to-b from-amber-400/40 via-yellow-400/15 to-transparent blur-2xl transform -rotate-15" />
@@ -4157,8 +4330,8 @@ export default function MagicWheelBoard({
               <div className="w-48 h-36 bg-gradient-to-b from-amber-400/40 via-yellow-400/15 to-transparent blur-2xl transform rotate-15" />
             </div>
 
-            {/* SÂN KHẤU LIỀN MẠCH: Bảng Video Wall 3D + Sàn Runway Người Mẫu Đồng Nhất */}
-            <div className="w-full max-w-5xl flex flex-col items-center relative z-10">
+            {/* SÂN KHẤU LIỀN MẠCH: Bảng Video Wall 3D + Sàn Runway Người Mẫu Đồng Nhất (max-w-4xl để không che khuất người mẫu) */}
+            <div className="w-full max-w-4xl flex flex-col items-center relative z-10">
                 {/* 3D Luxury Metallic Beveled Gold Video Wall Casing */}
                 <div className="w-full p-2.5 sm:p-3.5 md:p-4 rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40">
                   <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5 md:gap-2">
@@ -4406,255 +4579,15 @@ export default function MagicWheelBoard({
         {/* Left Col: 3D Wheel Rig (Hidden during Toss-Up rounds 1 & 2 - Optimized 1/2 Wheel Viewport) */}
         {!isTossUpRound && (
           <div className="lg:col-span-5 flex flex-col items-center justify-center relative p-2 bg-gradient-to-b from-black/50 via-slate-950/60 to-black/80 rounded-2xl border border-amber-500/20 shadow-xl overflow-hidden">
-            {/* 1/2 Wheel Studio Viewport: Shows upper half of wheel with needle pointer at top */}
-            <div className="w-[240px] h-[145px] sm:w-[290px] sm:h-[175px] relative select-none flex items-start justify-center overflow-hidden">
-              <div
-                className="w-[240px] h-[240px] sm:w-[290px] sm:h-[290px] relative select-none flex items-center justify-center shrink-0"
-              >
-            {/* Top 3D Chrome & Ruby Flipper Pointer at 12 o'clock */}
-            <div
-              ref={needleRef}
-              className="absolute -top-[4.2%] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
-              style={{
-                transformOrigin: "50% 22.92%",
-                transform: "rotate(0deg) scale(1.06) translateZ(0)",
-                filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.85))",
-                willChange: "transform",
-              }}
-            >
-              <svg viewBox="0 0 44 48" className="w-full h-full">
-                <defs>
-                  <linearGradient id="mwChromeNeedleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#ffffff" />
-                    <stop offset="30%" stopColor="#e2e8f0" />
-                    <stop offset="60%" stopColor="#94a3b8" />
-                    <stop offset="100%" stopColor="#334155" />
-                  </linearGradient>
-                  <linearGradient id="mwNeedleFacetLeft" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#fef08a" />
-                    <stop offset="50%" stopColor="#f59e0b" />
-                    <stop offset="100%" stopColor="#d97706" />
-                  </linearGradient>
-                  <linearGradient id="mwNeedleFacetRight" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#d97706" />
-                    <stop offset="60%" stopColor="#b45309" />
-                    <stop offset="100%" stopColor="#78350f" />
-                  </linearGradient>
-                </defs>
-                <path d="M22 39 L11 8 Q22 13 22 8 Z" fill="url(#mwNeedleFacetLeft)" stroke="#fef08a" strokeWidth="1.2" strokeLinejoin="round" />
-                <path d="M22 39 L33 8 Q22 13 22 8 Z" fill="url(#mwNeedleFacetRight)" stroke="#b45309" strokeWidth="1.2" strokeLinejoin="round" />
-                <path d="M22 38 L22 10" stroke="url(#mwChromeNeedleGrad)" strokeWidth="2.8" strokeLinecap="round" />
-                <circle cx="22" cy="11" r="5.5" fill="#0f172a" stroke="#fef08a" strokeWidth="1.8" />
-                <circle cx="22" cy="11" r="3.6" fill="url(#mwChromeNeedleGrad)" />
-                <circle cx="20.6" cy="9.6" r="1.2" fill="#ffffff" />
-              </svg>
-            </div>
-
-            {/* Stage Floor Shadow */}
-            <div className="absolute -inset-4 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.95)_45%,rgba(15,8,30,0.7)_70%,transparent_85%)] blur-md pointer-events-none -z-10" />
-
-            {/* Royal Gold Outer Bezel Frame */}
-            <div className="absolute inset-0 aspect-square rounded-full border-[10px] sm:border-[12px] border-[#d97706] shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_35px_rgba(245,158,11,0.45),inset_0_2px_4px_rgba(254,240,138,0.9),inset_0_-3px_8px_rgba(69,26,3,0.95)] pointer-events-none z-20">
-              <div className="w-full h-full rounded-full border border-amber-950/70 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
-            </div>
-
-            {/* Spinning Wheel Body */}
-            <div
-              ref={wheelRef}
-              className="w-full h-full aspect-square rounded-full overflow-hidden shadow-2xl relative"
-              style={effectiveIsSpinning ? { willChange: "transform" } : { transform: `rotate(${clientWheelAngle}deg)` }}
-            >
-              <svg viewBox="0 0 440 440" className="w-full h-full select-none">
-                <defs>
-                  <linearGradient id="chromeStemGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#64748b" />
-                    <stop offset="30%" stopColor="#f8fafc" />
-                    <stop offset="60%" stopColor="#cbd5e1" />
-                    <stop offset="85%" stopColor="#94a3b8" />
-                    <stop offset="100%" stopColor="#334155" />
-                  </linearGradient>
-                  <linearGradient id="chromeCollarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#cbd5e1" />
-                    <stop offset="50%" stopColor="#64748b" />
-                    <stop offset="100%" stopColor="#1e293b" />
-                  </linearGradient>
-                  <radialGradient id="chromeCapGrad" cx="35%" cy="30%" r="65%">
-                    <stop offset="0%" stopColor="#ffffff" />
-                    <stop offset="35%" stopColor="#e2e8f0" />
-                    <stop offset="70%" stopColor="#64748b" />
-                    <stop offset="100%" stopColor="#1e293b" />
-                  </radialGradient>
-                  <linearGradient id="goldRimGrad3D" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#fef08a" />
-                    <stop offset="25%" stopColor="#f59e0b" />
-                    <stop offset="50%" stopColor="#78350f" />
-                    <stop offset="75%" stopColor="#fbbf24" />
-                    <stop offset="100%" stopColor="#b45309" />
-                  </linearGradient>
-                  <radialGradient id="hubObsidianGrad" cx="45%" cy="40%" r="55%">
-                    <stop offset="0%" stopColor="#1e1b4b" />
-                    <stop offset="40%" stopColor="#0f172a" />
-                    <stop offset="80%" stopColor="#020617" />
-                    <stop offset="100%" stopColor="#000000" />
-                  </radialGradient>
-                  <filter id="hubDropShadow" x="-30%" y="-30%" width="160%" height="160%">
-                    <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000000" floodOpacity="0.85" />
-                  </filter>
-                  <filter id="winningSliceGlow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="0" dy="0" stdDeviation="8" floodColor="#fbbf24" floodOpacity="0.95" />
-                    <feDropShadow dx="0" dy="0" stdDeviation="16" floodColor="#f59e0b" floodOpacity="0.8" />
-                  </filter>
-                </defs>
-
-                {/* 24 Sectors (15 deg each) — Labels pushed close to the outer rim! */}
-                {sectors.map((sec, idx) => {
-                  const segCount = sectors.length || 24;
-                  const degPerSeg = 360 / segCount;
-                  const theta1 = (idx * degPerSeg * Math.PI) / 180;
-                  const theta2 = ((idx + 1) * degPerSeg * Math.PI) / 180;
-                  const r = 196;
-                  const cx = 220;
-                  const cy = 220;
-                  const x1 = cx + r * Math.sin(theta1);
-                  const y1 = cy - r * Math.cos(theta1);
-                  const x2 = cx + r * Math.sin(theta2);
-                  const y2 = cy - r * Math.cos(theta2);
-                  const midDeg = (idx + 0.5) * degPerSeg;
-
-                  const rPeg = 190;
-                  const pegX = cx + rPeg * Math.sin(theta1);
-                  const pegY = cy - rPeg * Math.cos(theta1);
-
-                  // BUG-12 FIX: Dùng index thay vì sector.id để tránh highlight sai khi nhiều sector cùng id
-                  const isWinningSector = !isSpinning && activeState.selectedSectorIndex !== undefined && activeState.selectedSectorIndex === idx;
-                  const isNumeric = sec.type === "POINTS" || /^\d+$/.test(sec.label.trim());
-                  const digits = isNumeric ? sec.label.trim().split("") : [];
-                  const numCount = digits.length;
-                  // Place digits starting right near the outer rim (r = 177px) stepping inward!
-                  const charStep = numCount >= 4 ? 15.5 : 18.5;
-                  const outerRimStartY = cy - 177;
-
-                  // Place text labels anchored near the outer rim (r = 180px) reading inward along the spoke!
-                  const specialLabel = sec.label;
-                  const specialFontSize =
-                    specialLabel.length > 10 ? "9.5" : specialLabel.length > 8 ? "10.5" : "12";
-                  const textOuterStartY = cy - 180;
-
-                  const isTextDark = sec.textColor === "#000000" || sec.textColor === "#78350f" || sec.textColor === "#451a03";
-                  const textFill = isWinningSector ? "#fef08a" : sec.textColor || "#ffffff";
-                  const textStroke = isWinningSector ? "#000000" : isTextDark ? "#ffffff" : "#000000";
-                  const textStrokeWidth = isTextDark ? "0.8" : "1.0";
-
-                  return (
-                    <g key={sec.id}>
-                      <path
-                        d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`}
-                        fill={isWinningSector ? "#4c1d95" : sec.color}
-                        stroke={isWinningSector ? "#fbbf24" : "#ffffff"}
-                        strokeWidth={isWinningSector ? "3.5" : "1.2"}
-                        strokeOpacity={isWinningSector ? 1 : 0.4}
-                        filter={isWinningSector ? "url(#winningSliceGlow)" : undefined}
-                      />
-
-                      <line
-                        x1={cx}
-                        y1={cy}
-                        x2={x1}
-                        y2={y1}
-                        stroke="#ffffff"
-                        strokeWidth="0.6"
-                        strokeOpacity="0.3"
-                      />
-
-                      {/* Wedge Content Positioned Near Outer Rim */}
-                      <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
-                        <circle cx={cx} cy={cy - 188} r="1.3" fill={sec.textColor || "#ffffff"} opacity="0.85" />
-
-                        {isNumeric ? (
-                          <g className="font-black select-none pointer-events-none">
-                            {digits.map((digit, dIdx) => (
-                              <text
-                                key={dIdx}
-                                x={cx}
-                                y={outerRimStartY + dIdx * charStep}
-                                textAnchor="middle"
-                                dominantBaseline="central"
-                                fontSize={numCount >= 4 ? "14.5" : "17"}
-                                fontWeight="900"
-                                fill={textFill}
-                                stroke={textStroke}
-                                strokeWidth={textStrokeWidth}
-                                style={{ paintOrder: "stroke fill" }}
-                                className="font-black select-none pointer-events-none"
-                              >
-                                {digit}
-                              </text>
-                            ))}
-                          </g>
-                        ) : (
-                          <g transform={`rotate(90 ${cx} ${textOuterStartY})`}>
-                            <text
-                              x={cx}
-                              y={textOuterStartY}
-                              textAnchor="start"
-                              fontSize={specialFontSize}
-                              fontWeight="900"
-                              fill={textFill}
-                              stroke={textStroke}
-                              strokeWidth={textStrokeWidth}
-                              style={{ paintOrder: "stroke fill" }}
-                              dominantBaseline="central"
-                              className="font-black select-none pointer-events-none tracking-tight uppercase"
-                            >
-                              {specialLabel}
-                            </text>
-                          </g>
-                        )}
-
-                        <circle cx={cx} cy={cy - 56} r="1.1" fill={sec.textColor || "#ffffff"} opacity="0.5" />
-                      </g>
-
-                      {/* 3D Radial Outward Chrome Peg */}
-                      <g transform={`rotate(${idx * degPerSeg} ${pegX} ${pegY})`}>
-                        <ellipse cx={pegX + 1.5} cy={pegY + 1.8} rx="3.8" ry="2" fill="#000000" opacity="0.65" />
-                        <ellipse cx={pegX} cy={pegY} rx="3.6" ry="2.2" fill="url(#chromeCollarGrad)" stroke="#0f172a" strokeWidth="0.5" />
-                        <rect x={pegX - 1.8} y={pegY - 8.5} width="3.6" height="8.5" rx="1.8" fill="url(#chromeStemGrad)" stroke="#1e293b" strokeWidth="0.5" />
-                        <circle cx={pegX} cy={pegY - 8.5} r="3.6" fill="url(#chromeCapGrad)" stroke="#1e293b" strokeWidth="0.6" />
-                        <circle cx={pegX - 1.1} cy={pegY - 9.8} r="1" fill="#ffffff" opacity="0.95" />
-                      </g>
-                    </g>
-                  );
-                })}
-
-                <circle cx="220" cy="220" r="186" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.4" />
-
-                {/* 3D Center Hub */}
-                <g filter="url(#hubDropShadow)">
-                  <circle cx="220" cy="220" r="48" fill="url(#chromeCollarGrad)" stroke="#0f172a" strokeWidth="1.5" />
-                  <circle cx="220" cy="220" r="44" fill="url(#goldRimGrad3D)" stroke="#451a03" strokeWidth="1" />
-                  <circle cx="220" cy="220" r="39" fill="url(#hubObsidianGrad)" stroke="#fde68a" strokeWidth="1.8" />
-                  <g transform="translate(202, 202)">
-                    <svg width="36" height="36" viewBox="0 0 32 32">
-                      <polygon points="16,2 19,13 30,16 19,19 16,30 13,19 2,16 13,13" fill="none" stroke="#fde68a" strokeWidth="1.3" opacity="0.8" />
-                      <polygon points="6,6 14,13 26,6 19,16 26,26 16,19 6,26 13,16" fill="none" stroke="#fbbf24" strokeWidth="1" opacity="0.5" />
-                      <circle cx="16" cy="16" r="7.5" fill="#090514" stroke="#fde68a" strokeWidth="1.6" />
-                      <polygon points="16,10 18,14 22,16 18,18 16,22 14,18 10,16 14,14" fill="#fbbf24" />
-                      <circle cx="16" cy="16" r="2.8" fill="url(#chromeCapGrad)" stroke="#0f172a" strokeWidth="0.5" />
-                    </svg>
-                  </g>
-                </g>
-              </svg>
-              </div>
-            </div>
-          </div>
-
-            {/* Sector Landing Indicator Badge directly beneath 1/2 Wheel */}
-            {selectedSector && (
-              <div className="mt-1.5 px-3 py-1 rounded-full bg-black/70 border border-amber-400/50 text-[11px] font-black text-amber-200 flex items-center gap-1.5 shadow-md animate-scale-up">
-                <span className="text-amber-400">🎯</span>
-                <span>Ô quay: {selectedSector.label}</span>
-              </div>
-            )}
+            <InteractiveWheelRig
+              variant="HOST_HALF"
+              wheelRef={wheelRef}
+              needleRef={needleRef}
+              clientWheelAngle={clientWheelAngle}
+              effectiveIsSpinning={effectiveIsSpinning}
+              sectors={sectors}
+              selectedSector={selectedSector}
+            />
           </div>
         )}
 
@@ -5788,7 +5721,9 @@ export default function MagicWheelBoard({
                 {teams.map((t) => {
                   const rScore = roundScores?.[t.id] || 0;
                   const freeCount = freeSpinCount?.[t.id] || 0;
-                  const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
+                  const isTurn = isTossUpRound
+          ? (phase === "TOSS_UP_BUZZED" && Boolean(tossUpBuzzedTeamId) && t.id === tossUpBuzzedTeamId)
+          : (t.id === currentTurnTeamId);
                   const strikes =
                     activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
                   const isEliminatedByStrikes = (activeState.disqualifiedTeamIdsInRound || []).includes(t.id);

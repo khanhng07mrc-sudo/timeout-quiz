@@ -4637,6 +4637,7 @@ export default function AdminSandboxPage() {
               nextWheel.selectedSectorIndex = landingSectorIndex;
               const tId = nextWheel.currentTurnTeamId;
               const teamName = nextWheel.currentTurnTeamName;
+              let currentTeams = latest.teams;
               const eligibleTeams = latest.teams.filter(
                 (t) =>
                   !(nextWheel.disqualifiedTeamIdsInRound || []).includes(t.id) &&
@@ -4708,6 +4709,16 @@ export default function AdminSandboxPage() {
                 }
               } else if (sector.type === "BANKRUPT") {
                 nextWheel.pendingSpecialAction = "NONE";
+                // V5 25k bonus clawback logic: mỗi lần quay trúng ô mất điểm sẽ bị trừ 1 lần 25.000đ đã nhận từ ô kẹp
+                if (nextWheel.held25kBonusTeams && (nextWheel.held25kBonusTeams[tId] || 0) > 0) {
+                  nextWheel.held25kBonusTeams = {
+                    ...nextWheel.held25kBonusTeams,
+                    [tId]: nextWheel.held25kBonusTeams[tId] - 1,
+                  };
+                  currentTeams = currentTeams.map((t) =>
+                    t.id === tId ? { ...t, score: Math.max(0, (t.score || 0) - 25000) } : t
+                  );
+                }
                 nextWheel.roundScores = { ...nextWheel.roundScores, [tId]: 0 };
                 if (isSoleSurvivor) {
                   nextWheel.phase = "SPIN_WAITING";
@@ -4776,6 +4787,22 @@ export default function AdminSandboxPage() {
                 nextWheel.pendingSpecialAction = "STEAL_SWAP";
                 nextWheel.phase = "ACTION_INPUT";
                 nextWheel.lastActionMessage = `⚡ Đội ${teamName} quay vào ô CƯỚP / HOÁN ĐỔI! Hãy đoán đúng 1 chữ cái trước để kích hoạt quyền Cướp 50% hoặc Hoán đổi điểm!`;
+              } else if (sector.type === "ONE_MILLION_SANDWICH") {
+                nextWheel.pendingSpecialAction = "POINTS";
+                const bonusPts = 25000;
+                nextWheel.held25kBonusTeams = {
+                  ...nextWheel.held25kBonusTeams,
+                  [tId]: ((nextWheel.held25kBonusTeams?.[tId]) || 0) + 1,
+                };
+                currentTeams = currentTeams.map((t) =>
+                  t.id === tId ? { ...t, score: (t.score || 0) + bonusPts } : t
+                );
+                nextWheel.roundScores = {
+                  ...nextWheel.roundScores,
+                  [tId]: (nextWheel.roundScores[tId] || 0) + bonusPts,
+                };
+                nextWheel.phase = "ACTION_INPUT";
+                nextWheel.lastActionMessage = `🌟 KỲ DIỆU! Đội ${teamName} quay trúng Ô 25.000 ĐIỂM kẹp giữa 2 ô Mất Điểm! Nhận ngay +25.000 điểm thưởng! (Lưu ý: Nếu sau này dính Mất Điểm sẽ bị thu hồi 25.000đ). Mời đoán chữ cái!`;
               } else {
                 nextWheel.pendingSpecialAction = "POINTS";
                 nextWheel.phase = "ACTION_INPUT";
@@ -4786,7 +4813,7 @@ export default function AdminSandboxPage() {
                 });
               }
 
-              const nextRoom = { ...latest, magicWheelState: nextWheel };
+              const nextRoom = { ...latest, teams: currentTeams, magicWheelState: nextWheel };
               roomStateRef.current = nextRoom;
               syncToIframes({ roomState: nextRoom });
               return nextRoom;
@@ -6462,7 +6489,7 @@ export default function AdminSandboxPage() {
             cur.roundStage = "MAIN";
             cur.currentRound = 1;
             cur.mainRoundNumber = 1;
-            cur.sectors = generateMagicWheelSectors(1);
+            cur.sectors = generateMagicWheelSectors(1, "MAIN", cur.edition);
             cur.currentPuzzle = { ...(cur.puzzles[2] || cur.puzzles[0]), revealedIndices: [] };
             const starterId = cur.mainRound1StarterTeamId || prev.teams[0]?.id || "";
             const starterTeam = prev.teams.find((t) => t.id === starterId) || prev.teams[0];
@@ -6486,7 +6513,7 @@ export default function AdminSandboxPage() {
             const nextMainNum = (cur.mainRoundNumber || cur.currentRound) + 1;
             cur.currentRound = nextMainNum;
             cur.mainRoundNumber = nextMainNum;
-            cur.sectors = generateMagicWheelSectors(nextMainNum);
+            cur.sectors = generateMagicWheelSectors(nextMainNum, "MAIN", cur.edition);
             const puzzleIdx = Math.min(cur.puzzles.length - 2, nextMainNum + 1);
             cur.currentPuzzle = { ...(cur.puzzles[puzzleIdx] || cur.puzzles[0]), revealedIndices: [] };
             // Xoay vòng người chơi mở màn kế tiếp người đã mở màn Vòng 1
@@ -9572,18 +9599,13 @@ export default function AdminSandboxPage() {
     const targetTeam = stableTeams[idx];
     if (!targetTeam) return;
     activeTeamIdRef.current = targetTeam.id;
-    if (roomStateRef.current?.mode === "MAGIC_WHEEL") {
-      window.postMessage({ type: "MAGIC_WHEEL_OVERRIDE_TURN", teamId: targetTeam.id }, "*");
-    }
+    // Chuyển góc nhìn thiết bị thí sinh cục bộ, không tự tiện cướp lượt chơi hay phát âm thanh đổi lượt sang Display
     if (!isOfflineSandbox) {
       adminSocketRef.current?.emit("admin:sandbox:set_active_team", {
         teamId: targetTeam.id,
         teamIndex: idx,
         code,
       });
-      if (roomStateRef.current?.mode === "MAGIC_WHEEL") {
-        adminSocketRef.current?.emit("admin:magic_wheel:override_turn" as any, { teamId: targetTeam.id });
-      }
     }
 
     const targetName = idx === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;

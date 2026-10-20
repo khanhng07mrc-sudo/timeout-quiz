@@ -775,6 +775,8 @@ export type MagicWheelSectorType =
   | "EXPRESS"
   | "JACKPOT"
   | "STEAL_SWAP"
+  | "ONE_MILLION"
+  | "ONE_MILLION_SANDWICH"
   | "SPECIAL_ENVELOPE"
   | "BONUS_ENVELOPE";
 
@@ -799,7 +801,9 @@ export interface MagicWheelSector {
     | "TRIPLE"
     | "WILD_CARD"
     | "FREE_SPIN"
+    | "ONE_MILLION"
     | "SPECIAL_ENVELOPE";
+  isSandwich?: boolean;
   basePoints?: number;
   mysteryContent?: "PRIZE_3M" | "BANKRUPT";
   envelopePrizePoints?: number;
@@ -902,6 +906,8 @@ export interface MagicWheelState {
   wildCardsCount?: Record<string, number>; // Bản Anh: Số thẻ Wild Card đội đang nắm giữ (đoán thêm phụ âm cùng giá hoặc thêm phụ âm ở Bonus Round)
   mustSpinOnly?: boolean; // Bản Anh: Khi dùng Thẻ Free Spin, bắt buộc phải quay nón ở lượt được thêm, chưa được giải ô chữ ngay
   freeSpinTokenClaimed?: boolean; // Bản Anh: Thẻ Free Spin trên ô $500 đã có người nhặt chưa
+  held25kBonusTeams?: Record<string, number>; // V5: Số lần đội đang giữ 25.000 điểm thưởng nóng từ ô kẹp Mất Điểm (mỗi lần dính Mất Điểm sẽ bị thu hồi 1 lần 25.000đ)
+  hasMillionPrizeInSpecial?: boolean; // Cờ kích hoạt giải thưởng 1 TỶ ĐỒNG ở Vòng Đặc Biệt
   mustSolveWithTones?: boolean; // Đã lộ hết chữ cái gốc trên bảng, bắt buộc Giải Ô Chữ đúng dấu thanh
   // Toss-up state
   tossUpRevealOrder?: number[];

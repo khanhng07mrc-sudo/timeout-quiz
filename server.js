@@ -2541,7 +2541,7 @@ var US_BASE_24_SECTORS = [
   { id: 7, label: "$900", type: "POINTS", value: 900, color: "#ea580c", textColor: "#ffffff" },
   { id: 8, label: "BANKRUPT", type: "BANKRUPT", color: "#000000", textColor: "#ef4444" },
   { id: 9, label: "$500", type: "POINTS", value: 500, color: "#0d9488", textColor: "#ffffff" },
-  { id: 10, label: "$1,000", type: "POINTS", value: 1e3, color: "#f59e0b", textColor: "#000000" },
+  { id: 10, label: "$1000", type: "POINTS", value: 1e3, color: "#f59e0b", textColor: "#000000" },
   { id: 11, label: "BANKRUPT", type: "BANKRUPT", color: "#000000", textColor: "#ef4444" },
   { id: 12, label: "$600", type: "POINTS", value: 600, color: "#4f46e5", textColor: "#ffffff" },
   { id: 13, label: "$500", type: "POINTS", value: 500, color: "#16a34a", textColor: "#ffffff" },
@@ -2553,8 +2553,8 @@ var US_BASE_24_SECTORS = [
   { id: 19, label: "$700", type: "POINTS", value: 700, color: "#eab308", textColor: "#000000" },
   { id: 20, label: "$600", type: "POINTS", value: 600, color: "#9333ea", textColor: "#ffffff" },
   { id: 21, label: "$900", type: "POINTS", value: 900, color: "#f97316", textColor: "#ffffff" },
-  { id: 22, label: "$1,000", type: "POINTS", value: 1e3, color: "#e11d48", textColor: "#ffffff" },
-  { id: 23, label: "$2,500", type: "POINTS", value: 2500, color: "#ffd700", textColor: "#000000" }
+  { id: 22, label: "$1000", type: "POINTS", value: 1e3, color: "#e11d48", textColor: "#ffffff" },
+  { id: 23, label: "$2500", type: "POINTS", value: 2500, color: "#ffd700", textColor: "#000000" }
 ];
 function localizeSectorsForEdition(sectors, edition = "VIETNAMESE") {
   if (edition !== "ENGLISH") return sectors;
@@ -2611,22 +2611,22 @@ function localizeSectorsForEdition(sectors, edition = "VIETNAMESE") {
     };
   });
 }
-function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMESE") {
+function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMESE", hasMillionPrize = false) {
   if (stage === "SPECIAL_FINAL" || mainRoundOrStage === 99) {
     const specialPalette = [
-      { pts: 2e3, labelVi: "PHONG B\xCC 2000", labelEn: "ENVELOPE $2,000", color: "#2563eb", textColor: "#ffffff" },
-      { pts: 3e3, labelVi: "PHONG B\xCC 3000", labelEn: "ENVELOPE $3,000", color: "#7c3aed", textColor: "#ffffff" },
-      { pts: 4e3, labelVi: "PHONG B\xCC 4000", labelEn: "ENVELOPE $4,000", color: "#059669", textColor: "#ffffff" },
-      { pts: 5e3, labelVi: "PHONG B\xCC 5000", labelEn: "ENVELOPE $5,000", color: "#e11d48", textColor: "#ffffff" },
-      { pts: 8e3, labelVi: "PHONG B\xCC 8000", labelEn: "ENVELOPE $8,000", color: "#ea580c", textColor: "#ffffff" },
-      { pts: 1e4, labelVi: "\u0110\u1EB6C BI\u1EC6T 10000", labelEn: "\u{1F451} $10,000", color: "#ffd700", textColor: "#78350f" }
+      { pts: 2e3, labelVi: "PHONG B\xCC 2000", labelEn: "ENVELOPE $2000", color: "#2563eb", textColor: "#ffffff" },
+      { pts: 3e3, labelVi: "PHONG B\xCC 3000", labelEn: "ENVELOPE $3000", color: "#7c3aed", textColor: "#ffffff" },
+      { pts: 4e3, labelVi: "PHONG B\xCC 4000", labelEn: "ENVELOPE $4000", color: "#059669", textColor: "#ffffff" },
+      { pts: 5e3, labelVi: "PHONG B\xCC 5000", labelEn: "ENVELOPE $5000", color: "#e11d48", textColor: "#ffffff" },
+      { pts: 8e3, labelVi: "PHONG B\xCC 8000", labelEn: "ENVELOPE $8000", color: "#ea580c", textColor: "#ffffff" },
+      hasMillionPrize ? { pts: 1e6, labelVi: "\u{1F451} 1 T\u1EF6 \u0110\u1ED2NG", labelEn: "\u{1F451} $1000000", color: "#ffd700", textColor: "#78350f" } : { pts: 1e4, labelVi: "\u0110\u1EB6C BI\u1EC6T 10000", labelEn: "\u{1F451} $10000", color: "#ffd700", textColor: "#78350f" }
     ];
     return Array.from({ length: 24 }, (_, idx) => {
       const item = specialPalette[idx % specialPalette.length];
       const isEn = edition === "ENGLISH";
       return {
         id: idx,
-        label: isEn ? item.pts === 1e4 ? "\u{1F451} $10,000" : `\u2709\uFE0F $${item.pts.toLocaleString("en-US")}` : item.pts === 1e4 ? "\u{1F451} 10000" : `\u2709\uFE0F ${item.pts}`,
+        label: isEn ? item.pts === 1e6 ? "\u{1F451} $1M" : item.pts === 1e4 ? "\u{1F451} $10000" : `\u2709\uFE0F $${item.pts}` : item.pts === 1e6 ? "\u{1F451} 1 T\u1EF6" : item.pts === 1e4 ? "\u{1F451} 10000" : `\u2709\uFE0F ${item.pts}`,
         type: "SPECIAL_ENVELOPE",
         value: item.pts,
         color: item.color,
@@ -2643,7 +2643,7 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
     const topVal = mainRoundOrStage === 1 ? 2500 : mainRoundOrStage <= 3 ? 3500 : 5e3;
     sectors2[23] = {
       id: 23,
-      label: `$${topVal.toLocaleString("en-US")}`,
+      label: `$${topVal}`,
       type: "POINTS",
       value: topVal,
       color: "#ffd700",
@@ -2783,11 +2783,14 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
     if (idx13 !== -1) {
       sectors[idx13] = {
         id: 13,
-        label: "\u2B50 2000",
-        type: "POINTS",
-        value: 2e3,
-        color: "#10b981",
-        textColor: "#ffffff"
+        label: "25000",
+        type: "ONE_MILLION_SANDWICH",
+        value: 25e3,
+        color: "#059669",
+        textColor: "#ffffff",
+        isOverlay: true,
+        overlayType: "ONE_MILLION",
+        isSandwich: true
       };
     }
     const idx16 = sectors.findIndex((s) => s.id === 16);
@@ -2991,7 +2994,7 @@ function calculateSpinDestination(currentDegrees, powerPercent, totalSectors = 2
   const currentSector = Math.floor(currentAngle / sectorAngle) % totalSectors;
   const travelSectors = Math.floor(powerFactor * totalSectors * 2) + Math.floor(Math.random() * totalSectors);
   const landingSectorIndex = (currentSector + travelSectors + 1) % totalSectors;
-  const safeJitter = (Math.random() - 0.5) * (sectorAngle * 0.5);
+  const safeJitter = (Math.random() - 0.5) * 2.4;
   const thetaTarget = (landingSectorIndex + 0.5) * sectorAngle + safeJitter;
   const neededMod360 = (360 - thetaTarget % 360) % 360;
   const currentMod360 = currentDegrees % 360;
@@ -18722,6 +18725,13 @@ function registerSocketHandlers(io2) {
             cur.selectedSector = sector;
             cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o M\u1EA4T \u0110I\u1EC2M nh\u01B0ng Khi\xEAn B\u1EA3o H\u1ED9 \u{1F6E1}\uFE0F \u0111\xE3 k\xEDch ho\u1EA1t ch\u1EB7n ph\u1EA1t! \u0110i\u1EC3m s\u1ED1 an to\xE0n v\xE0 ti\u1EBFp t\u1EE5c quay!`;
           } else {
+            if (cur.held25kBonusTeams && (cur.held25kBonusTeams[tId] || 0) > 0) {
+              cur.held25kBonusTeams[tId]--;
+              const teamObj = room.teams.find((t) => t.id === tId);
+              if (teamObj) {
+                teamObj.score = Math.max(0, (teamObj.score || 0) - 25e3);
+              }
+            }
             cur.roundScores[tId] = 0;
             if (isSoleSurvivor) {
               cur.phase = "SPIN_WAITING";
@@ -18797,6 +18807,18 @@ function registerSocketHandlers(io2) {
           cur.pendingSpecialAction = "STEAL_SWAP";
           cur.phase = "ACTION_INPUT";
           cur.lastActionMessage = `\u2694\uFE0F \u0110\u1ED9i ${teamName} quay tr\xFAng \xD4 \u0110\u1ED0I \u0110\u1EA6U / CHUY\u1EC2N NH\u01AF\u1EE2NG! \u0110o\xE1n \u0111\xFAng ch\u1EEF c\xE1i \u0111\u1EC3 k\xEDch ho\u1EA1t quy\u1EC1n C\u01B0\u1EDBp 50% ho\u1EB7c Ho\xE1n \u0110\u1ED5i \u0110i\u1EC3m!`;
+        } else if (sector.type === "ONE_MILLION_SANDWICH") {
+          cur.pendingSpecialAction = "POINTS";
+          if (!cur.held25kBonusTeams) cur.held25kBonusTeams = {};
+          cur.held25kBonusTeams[tId] = (cur.held25kBonusTeams[tId] || 0) + 1;
+          const bonusPts = 25e3;
+          const teamObj = room.teams.find((t) => t.id === tId);
+          if (teamObj) {
+            teamObj.score = (teamObj.score || 0) + bonusPts;
+          }
+          cur.roundScores[tId] = (cur.roundScores[tId] || 0) + bonusPts;
+          cur.phase = "ACTION_INPUT";
+          cur.lastActionMessage = `\u{1F31F} K\u1EF2 DI\u1EC6U! \u0110\u1ED9i ${teamName} quay tr\xFAng \xD4 25.000 \u0110I\u1EC2M k\u1EB9p gi\u1EEFa 2 \xF4 M\u1EA5t \u0110i\u1EC3m! Nh\u1EADn ngay +25.000 \u0111i\u1EC3m th\u01B0\u1EDFng! (L\u01B0u \xFD: N\u1EBFu sau n\xE0y d\xEDnh M\u1EA5t \u0110i\u1EC3m s\u1EBD b\u1ECB thu h\u1ED3i 25.000\u0111). M\u1EDDi \u0111o\xE1n ch\u1EEF c\xE1i!`;
         } else {
           cur.pendingSpecialAction = "POINTS";
           cur.phase = "ACTION_INPUT";

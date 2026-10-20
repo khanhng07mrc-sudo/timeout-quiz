@@ -32,6 +32,8 @@ export type MagicWheelSectorType =
   | "JACKPOT"
   | "STEAL_SWAP"
   | "TRIPLE"
+  | "ONE_MILLION"
+  | "ONE_MILLION_SANDWICH"
   | "SPECIAL_ENVELOPE"
   | "BONUS_ENVELOPE";
 
@@ -47,7 +49,8 @@ export interface MagicWheelSector {
   color: string;
   textColor: string;
   isOverlay?: boolean;
-  overlayType?: "PRIZE" | "MYSTERY" | "EXPRESS" | "JACKPOT" | "STEAL_SWAP" | "TRIPLE" | "WILD_CARD" | "FREE_SPIN" | "SPECIAL_ENVELOPE";
+  overlayType?: "PRIZE" | "MYSTERY" | "EXPRESS" | "JACKPOT" | "STEAL_SWAP" | "TRIPLE" | "WILD_CARD" | "FREE_SPIN" | "ONE_MILLION" | "SPECIAL_ENVELOPE";
+  isSandwich?: boolean;
   basePoints?: number;
   mysteryContent?: "PRIZE_3M" | "BANKRUPT";
   envelopePrizePoints?: number;
@@ -163,6 +166,9 @@ export interface MagicWheelState {
   jackpotPool?: number; // Hũ Kim Cương tích lũy ở Vòng 4
   expressModeActive?: boolean; // Đang đi Tàu Tốc Hành ở Vòng 4
   speedUpBellActive?: boolean; // Chuông Tăng Tốc chung cuộc ở Vòng 6+ (1500đ/chữ không cần quay)
+  millionTokenTeamId?: string; // V5: Đội đang nắm giữ Thẻ 1 Triệu Đồng (bảo toàn tới Chung Kết đổi giải 1 Tỷ)
+  held25kBonusTeams?: Record<string, number>; // V5: Số lần đội đang giữ 25.000 điểm thưởng nóng từ ô kẹp Mất Điểm (mỗi lần dính Mất Điểm sẽ bị thu hồi 1 lần 25.000đ)
+  hasMillionPrizeInSpecial?: boolean; // Cờ kích hoạt giải thưởng 1 TỶ ĐỒNG ở Vòng Đặc Biệt
   // Trạng thái Vòng Đặc Biệt (Special Final Round)
   specialRoundOrder?: "SPIN_FIRST" | "SOLVE_FIRST";
   specialPhase?: "CHOOSE_ORDER" | "SPIN_ENVELOPE" | "PICK_LETTERS" | "SOLVE_40S" | "AWAIT_POST_SOLVE_SPIN" | "DONE";
@@ -228,7 +234,7 @@ export const US_BASE_24_SECTORS: MagicWheelSector[] = [
   { id: 7, label: "$900", type: "POINTS", value: 900, color: "#ea580c", textColor: "#ffffff" },
   { id: 8, label: "BANKRUPT", type: "BANKRUPT", color: "#000000", textColor: "#ef4444" },
   { id: 9, label: "$500", type: "POINTS", value: 500, color: "#0d9488", textColor: "#ffffff" },
-  { id: 10, label: "$1,000", type: "POINTS", value: 1000, color: "#f59e0b", textColor: "#000000" },
+  { id: 10, label: "$1000", type: "POINTS", value: 1000, color: "#f59e0b", textColor: "#000000" },
   { id: 11, label: "BANKRUPT", type: "BANKRUPT", color: "#000000", textColor: "#ef4444" },
   { id: 12, label: "$600", type: "POINTS", value: 600, color: "#4f46e5", textColor: "#ffffff" },
   { id: 13, label: "$500", type: "POINTS", value: 500, color: "#16a34a", textColor: "#ffffff" },
@@ -240,8 +246,8 @@ export const US_BASE_24_SECTORS: MagicWheelSector[] = [
   { id: 19, label: "$700", type: "POINTS", value: 700, color: "#eab308", textColor: "#000000" },
   { id: 20, label: "$600", type: "POINTS", value: 600, color: "#9333ea", textColor: "#ffffff" },
   { id: 21, label: "$900", type: "POINTS", value: 900, color: "#f97316", textColor: "#ffffff" },
-  { id: 22, label: "$1,000", type: "POINTS", value: 1000, color: "#e11d48", textColor: "#ffffff" },
-  { id: 23, label: "$2,500", type: "POINTS", value: 2500, color: "#ffd700", textColor: "#000000" },
+  { id: 22, label: "$1000", type: "POINTS", value: 1000, color: "#e11d48", textColor: "#ffffff" },
+  { id: 23, label: "$2500", type: "POINTS", value: 2500, color: "#ffd700", textColor: "#000000" },
 ];
 
 /**
@@ -323,16 +329,19 @@ export function localizeSectorsForEdition(
 export function generateMagicWheelSectors(
   mainRoundOrStage: number,
   stage?: MagicWheelRoundStage,
-  edition: "VIETNAMESE" | "ENGLISH" = "VIETNAMESE"
+  edition: "VIETNAMESE" | "ENGLISH" = "VIETNAMESE",
+  hasMillionPrize: boolean = false
 ): MagicWheelSector[] {
   if (stage === "SPECIAL_FINAL" || mainRoundOrStage === 99) {
     const specialPalette = [
-      { pts: 2000, labelVi: "PHONG BÌ 2000", labelEn: "ENVELOPE $2,000", color: "#2563eb", textColor: "#ffffff" },
-      { pts: 3000, labelVi: "PHONG BÌ 3000", labelEn: "ENVELOPE $3,000", color: "#7c3aed", textColor: "#ffffff" },
-      { pts: 4000, labelVi: "PHONG BÌ 4000", labelEn: "ENVELOPE $4,000", color: "#059669", textColor: "#ffffff" },
-      { pts: 5000, labelVi: "PHONG BÌ 5000", labelEn: "ENVELOPE $5,000", color: "#e11d48", textColor: "#ffffff" },
-      { pts: 8000, labelVi: "PHONG BÌ 8000", labelEn: "ENVELOPE $8,000", color: "#ea580c", textColor: "#ffffff" },
-      { pts: 10000, labelVi: "ĐẶC BIỆT 10000", labelEn: "👑 $10,000", color: "#ffd700", textColor: "#78350f" },
+      { pts: 2000, labelVi: "PHONG BÌ 2000", labelEn: "ENVELOPE $2000", color: "#2563eb", textColor: "#ffffff" },
+      { pts: 3000, labelVi: "PHONG BÌ 3000", labelEn: "ENVELOPE $3000", color: "#7c3aed", textColor: "#ffffff" },
+      { pts: 4000, labelVi: "PHONG BÌ 4000", labelEn: "ENVELOPE $4000", color: "#059669", textColor: "#ffffff" },
+      { pts: 5000, labelVi: "PHONG BÌ 5000", labelEn: "ENVELOPE $5000", color: "#e11d48", textColor: "#ffffff" },
+      { pts: 8000, labelVi: "PHONG BÌ 8000", labelEn: "ENVELOPE $8000", color: "#ea580c", textColor: "#ffffff" },
+      hasMillionPrize
+        ? { pts: 1000000, labelVi: "👑 1 TỶ ĐỒNG", labelEn: "👑 $1000000", color: "#ffd700", textColor: "#78350f" }
+        : { pts: 10000, labelVi: "ĐẶC BIỆT 10000", labelEn: "👑 $10000", color: "#ffd700", textColor: "#78350f" },
     ];
     return Array.from({ length: 24 }, (_, idx) => {
       const item = specialPalette[idx % specialPalette.length];
@@ -340,8 +349,8 @@ export function generateMagicWheelSectors(
       return {
         id: idx,
         label: isEn
-          ? (item.pts === 10000 ? "👑 $10,000" : `✉️ $${item.pts.toLocaleString("en-US")}`)
-          : (item.pts === 10000 ? "👑 10000" : `✉️ ${item.pts}`),
+          ? (item.pts === 1000000 ? "👑 $1M" : item.pts === 10000 ? "👑 $10000" : `✉️ $${item.pts}`)
+          : (item.pts === 1000000 ? "👑 1 TỶ" : item.pts === 10000 ? "👑 10000" : `✉️ ${item.pts}`),
         type: "SPECIAL_ENVELOPE" as const,
         value: item.pts,
         color: item.color,
@@ -361,7 +370,7 @@ export function generateMagicWheelSectors(
     const topVal = mainRoundOrStage === 1 ? 2500 : (mainRoundOrStage <= 3 ? 3500 : 5000);
     sectors[23] = {
       id: 23,
-      label: `$${topVal.toLocaleString("en-US")}`,
+      label: `$${topVal}`,
       type: "POINTS",
       value: topVal,
       color: "#ffd700",
@@ -515,11 +524,14 @@ export function generateMagicWheelSectors(
     if (idx13 !== -1) {
       sectors[idx13] = {
         id: 13,
-        label: "⭐ 2000",
-        type: "POINTS",
-        value: 2000,
-        color: "#10b981",
+        label: "25000",
+        type: "ONE_MILLION_SANDWICH",
+        value: 25000,
+        color: "#059669",
         textColor: "#ffffff",
+        isOverlay: true,
+        overlayType: "ONE_MILLION",
+        isSandwich: true,
       };
     }
     const idx16 = sectors.findIndex((s) => s.id === 16);
@@ -970,8 +982,8 @@ export function calculateSpinDestination(
   const landingSectorIndex = (currentSector + travelSectors + 1) % totalSectors;
 
   // Crucial physical detent ratchet behavior:
-  // Wheel NEVER stops perched on a peg! Settle securely within the central 50% body of the sector (safe margin >= 3.75 deg from any peg)
-  const safeJitter = (Math.random() - 0.5) * (sectorAngle * 0.5); // [-0.25*sectorAngle, +0.25*sectorAngle]
+  // Wheel NEVER stops perched on a peg! Settle securely within the central body of the sector (safe margin >= 6.3 deg from any peg)
+  const safeJitter = (Math.random() - 0.5) * 2.4; // [-1.2 deg, +1.2 deg]
   const thetaTarget = (landingSectorIndex + 0.5) * sectorAngle + safeJitter;
 
   // Calculate rotation degrees needed to align thetaTarget with 12 o'clock (0 deg)

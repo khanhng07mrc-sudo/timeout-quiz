@@ -202,6 +202,7 @@ const roomTotalActorsCache = new Map<string, number>(); // roomId -> cached tota
 const roomTournaments = new Map<string, TournamentState>();
 const roomMagicWheels = new Map<string, MagicWheelState>();
 const roomTossUpBuzzLocks = new Map<string, { teamId: string; timestamp: number }>();
+const roomTossUpPendingBuzz = new Set<string>();
 const roomTossUpAnswerTimers = new Map<string, NodeJS.Timeout>();
 const roomTossUpTickTimers = new Map<string, NodeJS.Timeout>();
 const roomTossUpFirstTimers = new Map<string, NodeJS.Timeout>();
@@ -7902,6 +7903,7 @@ export function registerSocketHandlers(io: IO) {
 
       if (roomId) {
         roomTossUpBuzzLocks.delete(roomId);
+        roomTossUpPendingBuzz.delete(roomId);
         const oldTimer = roomTossUpAnswerTimers.get(roomId);
         if (oldTimer) clearTimeout(oldTimer);
         roomTossUpAnswerTimers.delete(roomId);
@@ -8079,6 +8081,7 @@ export function registerSocketHandlers(io: IO) {
       roomTossUpFirstTimers.delete(rId);
 
       roomTossUpBuzzLocks.delete(rId);
+      roomTossUpPendingBuzz.delete(rId);
 
       const room = await prisma.room.findUnique({
         where: { id: rId },
@@ -8191,6 +8194,7 @@ export function registerSocketHandlers(io: IO) {
 
       // Clean locks and timeout timers
       roomTossUpBuzzLocks.delete(roomId);
+      roomTossUpPendingBuzz.delete(roomId);
       const oldTimer = roomTossUpAnswerTimers.get(roomId);
       if (oldTimer) clearTimeout(oldTimer);
       roomTossUpAnswerTimers.delete(roomId);
@@ -8301,25 +8305,36 @@ export function registerSocketHandlers(io: IO) {
       }
 
       // 1. Single first-buzz lock check to prevent socket flooding, spamming, or state thrashing
-      if (roomTossUpBuzzLocks.has(roomId) || Boolean(wheelState.tossUpBuzzedTeamId)) {
+      if (roomTossUpBuzzLocks.has(roomId) || roomTossUpPendingBuzz.has(roomId) || Boolean(wheelState.tossUpBuzzedTeamId)) {
         return;
       }
+      roomTossUpPendingBuzz.add(roomId);
 
       // 2. Prevent packet spoofing: non-admin sockets can only buzz for their authenticated team
       const buzzTeamId = isSandboxSocket
         ? (payload?.teamId || roomSandboxActiveTeam.get(roomId) || teamId)
         : (isAdmin ? (payload?.teamId || teamId) : teamId);
 
-      if (!buzzTeamId) return;
+      if (!buzzTeamId) {
+        roomTossUpPendingBuzz.delete(roomId);
+        return;
+      }
 
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
-      if (!room) return;
+      if (!room) {
+        roomTossUpPendingBuzz.delete(roomId);
+        return;
+      }
 
       const buzzTeam = room.teams.find((t) => t.id === buzzTeamId);
-      if (!buzzTeam) return;
+      if (!buzzTeam) {
+        roomTossUpPendingBuzz.delete(roomId);
+        return;
+      }
 
       // 4. Synchronously claim first-buzz lock immediately in 0ms
       roomTossUpBuzzLocks.set(roomId, { teamId: buzzTeam.id, timestamp: Date.now() });
+      roomTossUpPendingBuzz.delete(roomId);
       const oldTick = roomTossUpTickTimers.get(roomId);
       if (oldTick) clearInterval(oldTick);
       roomTossUpTickTimers.delete(roomId);
@@ -8440,6 +8455,7 @@ export function registerSocketHandlers(io: IO) {
             }
           } else {
             advanceMagicWheelTurnHelper(cur, room.teams);
+            cur.selectedSector = sector; // Giữ lại sector để hiển thị và phát âm thanh mất lượt
             if (cur.mainRoundNumber === 3) {
               if (!cur.round3FirstTurnAttempted) cur.round3FirstTurnAttempted = {};
               cur.round3FirstTurnAttempted[tId] = true;
@@ -8456,24 +8472,29 @@ export function registerSocketHandlers(io: IO) {
           if (cur.teamShields?.[tId]) {
             cur.teamShields[tId] = false;
             cur.phase = "SPIN_WAITING";
+            cur.selectedSector = sector;
             cur.lastActionMessage = `Đội ${teamName} quay vào MẤT ĐIỂM nhưng Khiên Bảo Hộ 🛡️ đã kích hoạt chặn phạt! Điểm số an toàn và tiếp tục quay!`;
           } else {
             cur.roundScores[tId] = 0;
             if (isSoleSurvivor) {
               cur.phase = "SPIN_WAITING";
+              cur.selectedSector = sector;
               cur.lastActionMessage = `Đội ${teamName} quay vào ô MẤT ĐIỂM (về 0đ)! Vì là đội duy nhất còn lại trong vòng nên vẫn được quay tiếp.`;
             } else if ((cur.freeSpinCount[tId] || 0) > 0) {
               if (cur.edition === "ENGLISH") {
                 cur.phase = "FREE_SPIN_CHOICE";
+                cur.selectedSector = sector;
                 cur.lastActionMessage = `Đội ${teamName} quay vào ô BANKRUPT (Mất điểm)! Bạn đang có ${cur.freeSpinCount[tId]} Thẻ Free Spin. Bạn có muốn dùng 1 thẻ để quay tiếp không? (Bắt buộc phải quay nón ở lượt được thêm!)`;
               } else {
                 cur.freeSpinCount[tId]--;
                 cur.phase = "SPIN_WAITING";
                 cur.mustSpinOnly = false;
+                cur.selectedSector = sector;
                 cur.lastActionMessage = `Đội ${teamName} quay vào ô MẤT ĐIỂM (về 0đ) nhưng đã dùng 1 Lượt Thêm để giữ quyền chơi! Bạn có thể tiếp tục Quay nón HOẶC Đoán ô chữ!`;
               }
             } else {
               advanceMagicWheelTurnHelper(cur, room.teams);
+              cur.selectedSector = sector; // Giữ lại sector để hiển thị và phát âm thanh phá sản
               cur.lastActionMessage = generateFlexibleMCCommentary("BANKRUPT", { teamName });
             }
           }
@@ -9466,6 +9487,7 @@ export function registerSocketHandlers(io: IO) {
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
         // Clear first-buzz lock and auto-timeout timer
         roomTossUpBuzzLocks.delete(roomId);
+        roomTossUpPendingBuzz.delete(roomId);
         const ansTimer = roomTossUpAnswerTimers.get(roomId);
         if (ansTimer) clearTimeout(ansTimer);
         roomTossUpAnswerTimers.delete(roomId);
@@ -10383,6 +10405,26 @@ export function registerSocketHandlers(io: IO) {
       const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode || (!isAdmin && !isSandboxSocket)) return;
       await handleClearTemporaryText(roomId, roomCode);
+    });
+
+    const handleSetDisplayLayout = async (roomId: string, roomCode: string, layout: "AUTO" | "STACKED" | "FOCUS_WHEEL" | "FOCUS_BOARD") => {
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState) return;
+      wheelState.displayLayoutMode = layout;
+      io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      persistGameStateSnapshot(roomId).catch(() => {});
+    };
+
+    socket.on("admin:magic_wheel:set_display_layout", async ({ layout }: { layout: "AUTO" | "STACKED" | "FOCUS_WHEEL" | "FOCUS_BOARD" }) => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      await handleSetDisplayLayout(room.id, room.code, layout);
+    });
+
+    socket.on("magic_wheel:set_display_layout" as any, async ({ layout }: any) => {
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || (!isAdmin && !isSandboxSocket)) return;
+      await handleSetDisplayLayout(roomId, roomCode, layout);
     });
 
     socket.on("admin:magic_wheel:open_board", async () => {

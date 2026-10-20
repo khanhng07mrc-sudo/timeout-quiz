@@ -2201,7 +2201,7 @@ export default function PlayPage() {
             )}
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-2">
+          <div className={`flex-1 flex flex-col ${roomState?.mode === "MAGIC_WHEEL" ? "p-0 overflow-hidden h-full" : "items-center justify-center p-2"}`}>
             {roomState?.mode === "TOURNAMENT" && roomState?.tournamentState ? (
               <div className="w-full">
                 <TournamentBracket
@@ -2416,7 +2416,7 @@ export default function PlayPage() {
                 />
               </div>
             ) : roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState ? (
-              <div className="w-full max-w-5xl mx-auto">
+              <div className="w-full h-full max-h-screen overflow-hidden flex flex-col justify-between">
                 <MagicWheelBoard
                   wheelState={roomState.magicWheelState}
                   isDisplay={false}
@@ -2478,20 +2478,18 @@ export default function PlayPage() {
                     }
                   }}
                   onTossUpStart={() => {
-                    if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START", teamId: effectiveTeamId }, "*");
-                    }
                     if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("magic_wheel:toss_up_start");
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START", teamId: effectiveTeamId }, "*");
                     }
                   }}
                   onTossUpBuzz={(targetTeamId) => {
                     const tId = targetTeamId || effectiveTeamId;
-                    if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
-                    }
                     if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("magic_wheel:toss_up_buzz", { teamId: tId });
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
                     }
                   }}
                   onExpressDecide={(boardTrain) => {

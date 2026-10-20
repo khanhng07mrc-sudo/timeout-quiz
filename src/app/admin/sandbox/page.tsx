@@ -399,8 +399,9 @@ export default function AdminSandboxPage() {
   const currentTeam = stableTeams[activeTeamIndex] || stableTeams[0];
 
   useEffect(() => {
-    // Trong sandbox: Bật âm thanh để người kiểm thử nhận phản hồi âm thanh trực tiếp
-    soundManager.setMuted(false);
+    // Trong Sandbox: Display iframe là nguồn phát âm thanh TV Studio chính duy nhất.
+    // Cửa sổ Admin Host tắt âm thanh mặc định để tránh vọng âm / lặp tiếng đúp 2x-3x.
+    soundManager.setMuted(true);
   }, []);
 
   useEffect(() => {
@@ -4482,6 +4483,8 @@ export default function AdminSandboxPage() {
           adminSocketRef.current.emit("admin:magic_wheel:quick_reveal_letter" as any);
         } else if (msg.type === "MAGIC_WHEEL_REVEAL_ALL") {
           adminSocketRef.current.emit("admin:magic_wheel:reveal_all" as any);
+        } else if (msg.type === "MAGIC_WHEEL_SET_DISPLAY_LAYOUT") {
+          adminSocketRef.current.emit("admin:magic_wheel:set_display_layout" as any, { layout: msg.layout });
         } else if (msg.type === "MAGIC_WHEEL_ADVANCE_ROUND" || msg.type === "MAGIC_WHEEL_NEXT_ROUND") {
           adminSocketRef.current.emit("admin:magic_wheel:advance_round" as any);
         } else if (msg.type === "MAGIC_WHEEL_JUDGE_SOLVE") {
@@ -8388,6 +8391,16 @@ export default function AdminSandboxPage() {
     addLog(`🗑️ [Quản trò] Đã xóa chữ hiển thị tạm thời`);
   };
 
+  const handleMagicWheelSetDisplayLayout = (layout: "AUTO" | "STACKED" | "FOCUS_WHEEL" | "FOCUS_BOARD") => {
+    if (adminSocketRef.current?.connected) {
+      adminSocketRef.current.emit("admin:magic_wheel:set_display_layout" as any, { layout });
+    } else {
+      window.postMessage({ type: "MAGIC_WHEEL_SET_DISPLAY_LAYOUT", layout }, "*");
+    }
+    const label = layout === "AUTO" ? "Tự động" : layout === "STACKED" ? "Toàn diện Trên-Dưới" : layout === "FOCUS_WHEEL" ? "Focus Nón" : "Focus Bảng";
+    addLog(`📺 [Quản trò] Chuyển bố cục Display: ${label}`);
+  };
+
   const handleMagicWheelStartTossUp = () => {
     if (adminSocketRef.current?.connected) {
       adminSocketRef.current.emit("magic_wheel:toss_up_start" as any);
@@ -10073,6 +10086,85 @@ export default function AdminSandboxPage() {
                         );
                       })()}
 
+                      {/* Bố cục Display Switcher Pills */}
+                      <div className="flex items-center rounded-lg bg-slate-900/80 p-0.5 border border-white/10 text-[11px] font-bold">
+                        <span className="px-1.5 text-[10px] text-slate-400 font-normal">Display:</span>
+                        <button
+                          type="button"
+                          onClick={() => handleMagicWheelSetDisplayLayout("AUTO")}
+                          className={`px-2 py-1 rounded transition cursor-pointer ${
+                            (roomState?.magicWheelState?.displayLayoutMode || "STACKED") === "AUTO"
+                              ? "bg-purple-600 text-white font-black shadow"
+                              : "text-slate-400 hover:text-white"
+                          }`}
+                          title="Tự động thông minh: zoom nón khi quay, zoom bảng khi đoán chữ"
+                        >
+                          🤖 Tự động
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMagicWheelSetDisplayLayout("STACKED")}
+                          className={`px-2 py-1 rounded transition cursor-pointer ${
+                            (roomState?.magicWheelState?.displayLayoutMode || "STACKED") === "STACKED"
+                              ? "bg-amber-500 text-slate-950 font-black shadow"
+                              : "text-slate-400 hover:text-white"
+                          }`}
+                          title="Toàn diện: Bảng ô chữ ở trên (~55%), Vòng quay 360° ở dưới (~45%)"
+                        >
+                          📺 Toàn diện
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMagicWheelSetDisplayLayout("FOCUS_WHEEL")}
+                          className={`px-2 py-1 rounded transition cursor-pointer ${
+                            roomState?.magicWheelState?.displayLayoutMode === "FOCUS_WHEEL"
+                              ? "bg-pink-600 text-white font-black shadow"
+                              : "text-slate-400 hover:text-white"
+                          }`}
+                          title="Tập trung vòng quay"
+                        >
+                          🎡 Nón
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMagicWheelSetDisplayLayout("FOCUS_BOARD")}
+                          className={`px-2 py-1 rounded transition cursor-pointer ${
+                            roomState?.magicWheelState?.displayLayoutMode === "FOCUS_BOARD"
+                              ? "bg-cyan-600 text-white font-black shadow"
+                              : "text-slate-400 hover:text-white"
+                          }`}
+                          title="Tập trung bảng ô chữ"
+                        >
+                          🔤 Bảng
+                        </button>
+                      </div>
+
+                      {/* Nút Cài đặt chữ tạm thời trực tiếp trên Topbar */}
+                      {(() => {
+                        const mw = roomState?.magicWheelState;
+                        const isBetweenRounds = mw?.phase === "ROUND_RECAP" || mw?.boardStage === "EMPTY_56";
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setShowSandboxTempTextModal(true)}
+                            disabled={!isBetweenRounds}
+                            className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                              isBetweenRounds
+                                ? "bg-purple-900/40 border-purple-400/50 text-purple-200 hover:bg-purple-800/50 shadow-sm"
+                                : "bg-slate-800/40 border-white/5 text-slate-500 opacity-40 cursor-not-allowed"
+                            }`}
+                            title={
+                              isBetweenRounds
+                                ? "Cài đặt chữ hiển thị thủ công tạm thời trên bảng ô chữ"
+                                : "Chỉ được cài đặt chữ tạm thời giữa 2 thời điểm: sau khi công bố đáp án vòng hiện tại, trước khi mở ô chữ vòng kế tiếp"
+                            }
+                          >
+                            <span>✍️</span>
+                            <span>Chữ tạm</span>
+                          </button>
+                        );
+                      })()}
+
                       {/* Dropdown Menu: Công cụ MC (Tập trung toàn bộ phím phụ & xử lý khẩn cấp) */}
                       <div className="relative inline-block">
                         <button
@@ -10193,6 +10285,54 @@ export default function AdminSandboxPage() {
                               <span>⏩</span>
                               <span>Đóng ô chữ & Sang vòng tiếp theo</span>
                             </button>
+
+                            <div className="px-2 py-1 border-t border-white/10 mt-1 mb-1">
+                              <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block mb-1">
+                                📺 Bố cục màn Display
+                              </span>
+                              <div className="grid grid-cols-2 gap-1 text-[11px]">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleMagicWheelSetDisplayLayout("AUTO");
+                                    setShowMagicWheelMCDropdown(false);
+                                  }}
+                                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-left cursor-pointer"
+                                >
+                                  🤖 Tự động
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleMagicWheelSetDisplayLayout("STACKED");
+                                    setShowMagicWheelMCDropdown(false);
+                                  }}
+                                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-left cursor-pointer"
+                                >
+                                  📺 Toàn diện
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleMagicWheelSetDisplayLayout("FOCUS_WHEEL");
+                                    setShowMagicWheelMCDropdown(false);
+                                  }}
+                                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-left cursor-pointer"
+                                >
+                                  🎡 Focus Nón
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleMagicWheelSetDisplayLayout("FOCUS_BOARD");
+                                    setShowMagicWheelMCDropdown(false);
+                                  }}
+                                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-left cursor-pointer"
+                                >
+                                  🔤 Focus Bảng
+                                </button>
+                              </div>
+                            </div>
 
                             <button
                               type="button"

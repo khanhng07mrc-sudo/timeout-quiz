@@ -10205,6 +10205,7 @@ var roomTotalActorsCache = /* @__PURE__ */ new Map();
 var roomTournaments = /* @__PURE__ */ new Map();
 var roomMagicWheels = /* @__PURE__ */ new Map();
 var roomTossUpBuzzLocks = /* @__PURE__ */ new Map();
+var roomTossUpPendingBuzz = /* @__PURE__ */ new Set();
 var roomTossUpAnswerTimers = /* @__PURE__ */ new Map();
 var roomTossUpTickTimers = /* @__PURE__ */ new Map();
 var roomTossUpFirstTimers = /* @__PURE__ */ new Map();
@@ -16637,6 +16638,7 @@ function registerSocketHandlers(io2) {
       wheelState.temporaryDisplayActive = false;
       if (roomId) {
         roomTossUpBuzzLocks.delete(roomId);
+        roomTossUpPendingBuzz.delete(roomId);
         const oldTimer = roomTossUpAnswerTimers.get(roomId);
         if (oldTimer) clearTimeout(oldTimer);
         roomTossUpAnswerTimers.delete(roomId);
@@ -16795,6 +16797,7 @@ function registerSocketHandlers(io2) {
       if (oldFirst) clearTimeout(oldFirst);
       roomTossUpFirstTimers.delete(rId);
       roomTossUpBuzzLocks.delete(rId);
+      roomTossUpPendingBuzz.delete(rId);
       const room = await prisma.room.findUnique({
         where: { id: rId },
         include: { teams: { orderBy: { createdAt: "asc" } } }
@@ -16884,6 +16887,7 @@ function registerSocketHandlers(io2) {
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.roundStage !== "TOSS_UP_1" && wheelState.roundStage !== "TOSS_UP_2") return;
       roomTossUpBuzzLocks.delete(roomId);
+      roomTossUpPendingBuzz.delete(roomId);
       const oldTimer = roomTossUpAnswerTimers.get(roomId);
       if (oldTimer) clearTimeout(oldTimer);
       roomTossUpAnswerTimers.delete(roomId);
@@ -16975,16 +16979,27 @@ function registerSocketHandlers(io2) {
         socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c b\u1EA5m chu\xF4ng sau khi ng\u01B0\u1EDDi m\u1EABu ti\u1EBFt l\u1ED9 ch\u1EEF c\xE1i \u0111\u1EA7u ti\xEAn!");
         return;
       }
-      if (roomTossUpBuzzLocks.has(roomId) || Boolean(wheelState.tossUpBuzzedTeamId)) {
+      if (roomTossUpBuzzLocks.has(roomId) || roomTossUpPendingBuzz.has(roomId) || Boolean(wheelState.tossUpBuzzedTeamId)) {
         return;
       }
+      roomTossUpPendingBuzz.add(roomId);
       const buzzTeamId = isSandboxSocket ? payload?.teamId || roomSandboxActiveTeam.get(roomId) || teamId : isAdmin ? payload?.teamId || teamId : teamId;
-      if (!buzzTeamId) return;
+      if (!buzzTeamId) {
+        roomTossUpPendingBuzz.delete(roomId);
+        return;
+      }
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
-      if (!room) return;
+      if (!room) {
+        roomTossUpPendingBuzz.delete(roomId);
+        return;
+      }
       const buzzTeam = room.teams.find((t) => t.id === buzzTeamId);
-      if (!buzzTeam) return;
+      if (!buzzTeam) {
+        roomTossUpPendingBuzz.delete(roomId);
+        return;
+      }
       roomTossUpBuzzLocks.set(roomId, { teamId: buzzTeam.id, timestamp: Date.now() });
+      roomTossUpPendingBuzz.delete(roomId);
       const oldTick = roomTossUpTickTimers.get(roomId);
       if (oldTick) clearInterval(oldTick);
       roomTossUpTickTimers.delete(roomId);
@@ -17091,6 +17106,7 @@ function registerSocketHandlers(io2) {
             }
           } else {
             advanceMagicWheelTurnHelper(cur, room.teams);
+            cur.selectedSector = sector;
             if (cur.mainRoundNumber === 3) {
               if (!cur.round3FirstTurnAttempted) cur.round3FirstTurnAttempted = {};
               cur.round3FirstTurnAttempted[tId] = true;
@@ -17107,24 +17123,29 @@ function registerSocketHandlers(io2) {
           if (cur.teamShields?.[tId]) {
             cur.teamShields[tId] = false;
             cur.phase = "SPIN_WAITING";
+            cur.selectedSector = sector;
             cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o M\u1EA4T \u0110I\u1EC2M nh\u01B0ng Khi\xEAn B\u1EA3o H\u1ED9 \u{1F6E1}\uFE0F \u0111\xE3 k\xEDch ho\u1EA1t ch\u1EB7n ph\u1EA1t! \u0110i\u1EC3m s\u1ED1 an to\xE0n v\xE0 ti\u1EBFp t\u1EE5c quay!`;
           } else {
             cur.roundScores[tId] = 0;
             if (isSoleSurvivor) {
               cur.phase = "SPIN_WAITING";
+              cur.selectedSector = sector;
               cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 M\u1EA4T \u0110I\u1EC2M (v\u1EC1 0\u0111)! V\xEC l\xE0 \u0111\u1ED9i duy nh\u1EA5t c\xF2n l\u1EA1i trong v\xF2ng n\xEAn v\u1EABn \u0111\u01B0\u1EE3c quay ti\u1EBFp.`;
             } else if ((cur.freeSpinCount[tId] || 0) > 0) {
               if (cur.edition === "ENGLISH") {
                 cur.phase = "FREE_SPIN_CHOICE";
+                cur.selectedSector = sector;
                 cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 BANKRUPT (M\u1EA5t \u0111i\u1EC3m)! B\u1EA1n \u0111ang c\xF3 ${cur.freeSpinCount[tId]} Th\u1EBB Free Spin. B\u1EA1n c\xF3 mu\u1ED1n d\xF9ng 1 th\u1EBB \u0111\u1EC3 quay ti\u1EBFp kh\xF4ng? (B\u1EAFt bu\u1ED9c ph\u1EA3i quay n\xF3n \u1EDF l\u01B0\u1EE3t \u0111\u01B0\u1EE3c th\xEAm!)`;
               } else {
                 cur.freeSpinCount[tId]--;
                 cur.phase = "SPIN_WAITING";
                 cur.mustSpinOnly = false;
+                cur.selectedSector = sector;
                 cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 M\u1EA4T \u0110I\u1EC2M (v\u1EC1 0\u0111) nh\u01B0ng \u0111\xE3 d\xF9ng 1 L\u01B0\u1EE3t Th\xEAm \u0111\u1EC3 gi\u1EEF quy\u1EC1n ch\u01A1i! B\u1EA1n c\xF3 th\u1EC3 ti\u1EBFp t\u1EE5c Quay n\xF3n HO\u1EB6C \u0110o\xE1n \xF4 ch\u1EEF!`;
               }
             } else {
               advanceMagicWheelTurnHelper(cur, room.teams);
+              cur.selectedSector = sector;
               cur.lastActionMessage = generateFlexibleMCCommentary("BANKRUPT", { teamName });
             }
           }
@@ -18004,6 +18025,7 @@ function registerSocketHandlers(io2) {
       }
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
         roomTossUpBuzzLocks.delete(roomId);
+        roomTossUpPendingBuzz.delete(roomId);
         const ansTimer = roomTossUpAnswerTimers.get(roomId);
         if (ansTimer) clearTimeout(ansTimer);
         roomTossUpAnswerTimers.delete(roomId);
@@ -18802,6 +18824,24 @@ function registerSocketHandlers(io2) {
       const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode || !isAdmin && !isSandboxSocket) return;
       await handleClearTemporaryText(roomId, roomCode);
+    });
+    const handleSetDisplayLayout = async (roomId, roomCode, layout) => {
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState) return;
+      wheelState.displayLayoutMode = layout;
+      io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      persistGameStateSnapshot(roomId).catch(() => {
+      });
+    };
+    socket.on("admin:magic_wheel:set_display_layout", async ({ layout }) => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      await handleSetDisplayLayout(room.id, room.code, layout);
+    });
+    socket.on("magic_wheel:set_display_layout", async ({ layout }) => {
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || !isAdmin && !isSandboxSocket) return;
+      await handleSetDisplayLayout(roomId, roomCode, layout);
     });
     socket.on("admin:magic_wheel:open_board", async () => {
       const room = await getAdminRoom(socket);

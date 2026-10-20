@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { MagicWheelState, MagicWheelOperationMode, TeamState } from "@/types";
+import { MagicWheelState, MagicWheelOperationMode, TeamState, MagicWheelSector } from "@/types";
 import {
   VIETNAMESE_ALPHABET,
   ENGLISH_ALPHABET,
@@ -73,6 +73,7 @@ function evaluateThreePhaseWheelProgress(elapsedMs: number, totalDurationMs: num
 export interface MagicWheelBoardProps {
   magicWheelState?: MagicWheelState;
   wheelState?: MagicWheelState;
+  displayLayoutMode?: "AUTO" | "STACKED" | "FOCUS_WHEEL" | "FOCUS_BOARD";
   teams: TeamState[];
   myTeamId?: string;
   isHost?: boolean;
@@ -109,6 +110,7 @@ export interface MagicWheelBoardProps {
   onOpenBoard?: () => void;
   onSetTemporaryText?: (text: string) => void;
   onClearTemporaryText?: () => void;
+  onSetDisplayLayout?: (layout: "AUTO" | "STACKED" | "FOCUS_WHEEL" | "FOCUS_BOARD") => void;
 }
 
 interface RewardCardItem {
@@ -904,9 +906,364 @@ function HostessTVStage({ pose, facing = "RIGHT", activeRow = 1, className = "" 
   );
 }
 
+
+function NeedlePointerSvg() {
+  return (
+    <svg viewBox="0 0 44 48" className="w-full h-full">
+      <defs>
+        <linearGradient id="mwChromeNeedleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="30%" stopColor="#e2e8f0" />
+          <stop offset="60%" stopColor="#94a3b8" />
+          <stop offset="100%" stopColor="#334155" />
+        </linearGradient>
+        <linearGradient id="mwNeedleFacetLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#fef08a" />
+          <stop offset="50%" stopColor="#f59e0b" />
+          <stop offset="100%" stopColor="#d97706" />
+        </linearGradient>
+        <linearGradient id="mwNeedleFacetRight" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#d97706" />
+          <stop offset="60%" stopColor="#b45309" />
+          <stop offset="100%" stopColor="#78350f" />
+        </linearGradient>
+      </defs>
+      <path d="M22 39 L11 8 Q22 13 22 8 Z" fill="url(#mwNeedleFacetLeft)" stroke="#fef08a" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M22 39 L33 8 Q22 13 22 8 Z" fill="url(#mwNeedleFacetRight)" stroke="#b45309" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M22 38 L22 10" stroke="url(#mwChromeNeedleGrad)" strokeWidth="2.8" strokeLinecap="round" />
+      <circle cx="22" cy="11" r="5.5" fill="#0f172a" stroke="#fef08a" strokeWidth="1.8" />
+      <circle cx="22" cy="11" r="3.6" fill="url(#mwChromeNeedleGrad)" />
+      <circle cx="20.6" cy="9.6" r="1.2" fill="#ffffff" />
+    </svg>
+  );
+}
+
+function WheelDiscSvg({
+  sectors,
+  selectedSector,
+  isSpinning,
+}: {
+  sectors: MagicWheelSector[];
+  selectedSector?: MagicWheelSector;
+  isSpinning?: boolean;
+}) {
+  return (
+    <svg viewBox="0 0 440 440" className="w-full h-full select-none">
+      <defs>
+        <linearGradient id="chromeStemGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#64748b" />
+          <stop offset="30%" stopColor="#f8fafc" />
+          <stop offset="60%" stopColor="#cbd5e1" />
+          <stop offset="85%" stopColor="#94a3b8" />
+          <stop offset="100%" stopColor="#334155" />
+        </linearGradient>
+        <linearGradient id="chromeCollarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#cbd5e1" />
+          <stop offset="50%" stopColor="#64748b" />
+          <stop offset="100%" stopColor="#1e293b" />
+        </linearGradient>
+        <radialGradient id="chromeCapGrad" cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="35%" stopColor="#e2e8f0" />
+          <stop offset="70%" stopColor="#64748b" />
+          <stop offset="100%" stopColor="#1e293b" />
+        </radialGradient>
+        <linearGradient id="goldRimGrad3D" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fef08a" />
+          <stop offset="25%" stopColor="#f59e0b" />
+          <stop offset="50%" stopColor="#78350f" />
+          <stop offset="75%" stopColor="#fbbf24" />
+          <stop offset="100%" stopColor="#b45309" />
+        </linearGradient>
+        <radialGradient id="hubObsidianGrad" cx="45%" cy="40%" r="55%">
+          <stop offset="0%" stopColor="#1e1b4b" />
+          <stop offset="40%" stopColor="#0f172a" />
+          <stop offset="80%" stopColor="#020617" />
+          <stop offset="100%" stopColor="#000000" />
+        </radialGradient>
+        <filter id="hubDropShadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000000" floodOpacity="0.85" />
+        </filter>
+        <filter id="winningSliceGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="0" stdDeviation="8" floodColor="#fbbf24" floodOpacity="0.95" />
+          <feDropShadow dx="0" dy="0" stdDeviation="16" floodColor="#f59e0b" floodOpacity="0.8" />
+        </filter>
+      </defs>
+
+      {sectors.map((sec, idx) => {
+        const segCount = sectors.length || 24;
+        const degPerSeg = 360 / segCount;
+        const theta1 = (idx * degPerSeg * Math.PI) / 180;
+        const theta2 = ((idx + 1) * degPerSeg * Math.PI) / 180;
+        const r = 196;
+        const cx = 220;
+        const cy = 220;
+        const x1 = cx + r * Math.sin(theta1);
+        const y1 = cy - r * Math.cos(theta1);
+        const x2 = cx + r * Math.sin(theta2);
+        const y2 = cy - r * Math.cos(theta2);
+        const midDeg = (idx + 0.5) * degPerSeg;
+
+        const rPeg = 190;
+        const pegX = cx + rPeg * Math.sin(theta1);
+        const pegY = cy - rPeg * Math.cos(theta1);
+
+        const isWinningSector = !isSpinning && selectedSector && selectedSector.id === sec.id;
+        const isNumeric = sec.type === "POINTS" || /^\d+$/.test(sec.label.trim());
+        const digits = isNumeric ? sec.label.trim().split("") : [];
+        const numCount = digits.length;
+        const charStep = numCount >= 4 ? 15.5 : 18.5;
+        const outerRimStartY = cy - 177;
+
+        const specialLabel = sec.label;
+        const specialFontSize =
+          specialLabel.length > 10 ? "9.5" : specialLabel.length > 8 ? "10.5" : "12";
+        const textOuterStartY = cy - 180;
+
+        const isTextDark = sec.textColor === "#000000" || sec.textColor === "#78350f" || sec.textColor === "#451a03";
+        const textFill = isWinningSector ? "#fef08a" : sec.textColor || "#ffffff";
+        const textStroke = isWinningSector ? "#000000" : isTextDark ? "#ffffff" : "#000000";
+        const textStrokeWidth = isTextDark ? "0.8" : "1.0";
+
+        return (
+          <g key={sec.id}>
+            <path
+              d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`}
+              fill={isWinningSector ? "#4c1d95" : sec.color}
+              stroke={isWinningSector ? "#fbbf24" : "#ffffff"}
+              strokeWidth={isWinningSector ? "3.5" : "1.2"}
+              strokeOpacity={isWinningSector ? 1 : 0.4}
+              filter={isWinningSector ? "url(#winningSliceGlow)" : undefined}
+            />
+
+            <line
+              x1={cx}
+              y1={cy}
+              x2={x1}
+              y2={y1}
+              stroke="#ffffff"
+              strokeWidth="0.6"
+              strokeOpacity="0.3"
+            />
+
+            <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
+              <circle cx={cx} cy={cy - 188} r="1.3" fill={sec.textColor || "#ffffff"} opacity="0.85" />
+
+              {isNumeric ? (
+                <g className="font-black select-none pointer-events-none">
+                  {digits.map((digit: string, dIdx: number) => (
+                    <text
+                      key={dIdx}
+                      x={cx}
+                      y={outerRimStartY + dIdx * charStep}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize={numCount >= 4 ? "14.5" : "17"}
+                      fontWeight="900"
+                      fill={textFill}
+                      stroke={textStroke}
+                      strokeWidth={textStrokeWidth}
+                      style={{ paintOrder: "stroke fill" }}
+                      className="font-black select-none pointer-events-none"
+                    >
+                      {digit}
+                    </text>
+                  ))}
+                </g>
+              ) : (
+                <g transform={`rotate(90 ${cx} ${textOuterStartY})`}>
+                  <text
+                    x={cx}
+                    y={textOuterStartY}
+                    textAnchor="start"
+                    fontSize={specialFontSize}
+                    fontWeight="900"
+                    fill={textFill}
+                    stroke={textStroke}
+                    strokeWidth={textStrokeWidth}
+                    style={{ paintOrder: "stroke fill" }}
+                    dominantBaseline="central"
+                    className="font-black select-none pointer-events-none tracking-tight uppercase"
+                  >
+                    {specialLabel}
+                  </text>
+                </g>
+              )}
+
+              <circle cx={cx} cy={cy - 56} r="1.1" fill={sec.textColor || "#ffffff"} opacity="0.5" />
+            </g>
+
+            <g transform={`rotate(${idx * degPerSeg} ${pegX} ${pegY})`}>
+              <ellipse cx={pegX + 1.5} cy={pegY + 1.8} rx="3.8" ry="2" fill="#000000" opacity="0.65" />
+              <ellipse cx={pegX} cy={pegY} rx="3.6" ry="2.2" fill="url(#chromeCollarGrad)" stroke="#0f172a" strokeWidth="0.5" />
+              <rect x={pegX - 1.8} y={pegY - 8.5} width="3.6" height="8.5" rx="1.8" fill="url(#chromeStemGrad)" stroke="#1e293b" strokeWidth="0.5" />
+              <circle cx={pegX} cy={pegY - 8.5} r="3.6" fill="url(#chromeCapGrad)" stroke="#1e293b" strokeWidth="0.6" />
+              <circle cx={pegX - 1.1} cy={pegY - 9.8} r="1" fill="#ffffff" opacity="0.95" />
+            </g>
+          </g>
+        );
+      })}
+
+      <circle cx="220" cy="220" r="186" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.4" />
+
+      <g filter="url(#hubDropShadow)">
+        <circle cx="220" cy="220" r="48" fill="url(#chromeCollarGrad)" stroke="#0f172a" strokeWidth="1.5" />
+        <circle cx="220" cy="220" r="44" fill="url(#goldRimGrad3D)" stroke="#451a03" strokeWidth="1" />
+        <circle cx="220" cy="220" r="39" fill="url(#hubObsidianGrad)" stroke="#fde68a" strokeWidth="1.8" />
+        <g transform="translate(202, 202)">
+          <svg width="36" height="36" viewBox="0 0 32 32">
+            <polygon points="16,2 19,13 30,16 19,19 16,30 13,19 2,16 13,13" fill="none" stroke="#fde68a" strokeWidth="1.3" opacity="0.8" />
+            <polygon points="6,6 14,13 26,6 19,16 26,26 16,19 6,26 13,16" fill="none" stroke="#fbbf24" strokeWidth="1" opacity="0.5" />
+            <circle cx="16" cy="16" r="7.5" fill="#090514" stroke="#fde68a" strokeWidth="1.6" />
+            <polygon points="16,10 18,14 22,16 18,18 16,22 14,18 10,16 14,14" fill="#fbbf24" />
+            <circle cx="16" cy="16" r="2.8" fill="url(#chromeCapGrad)" stroke="#0f172a" strokeWidth="0.5" />
+          </svg>
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+function InteractiveWheelRig({
+  variant,
+  wheelRef,
+  needleRef,
+  clientWheelAngle,
+  effectiveIsSpinning,
+  sectors,
+  selectedSector,
+}: {
+  variant: "DISPLAY_360" | "PLAYER_INVERTED" | "HOST_HALF";
+  wheelRef: React.RefObject<HTMLDivElement | null>;
+  needleRef: React.RefObject<HTMLDivElement | null>;
+  clientWheelAngle: number;
+  effectiveIsSpinning: boolean;
+  sectors: MagicWheelSector[];
+  selectedSector?: MagicWheelSector;
+}) {
+  if (variant === "DISPLAY_360") {
+    return (
+      <div className="w-full flex flex-col items-center justify-center relative select-none">
+        <div className="w-[190px] h-[190px] sm:w-[230px] sm:h-[230px] md:w-[270px] md:h-[270px] lg:w-[310px] lg:h-[310px] max-h-[34vh] max-w-[34vh] aspect-square relative select-none flex items-center justify-center shrink-0">
+          <div
+            ref={needleRef}
+            className="absolute -top-[4.2%] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
+            style={{
+              transformOrigin: "50% 22.92%",
+              transform: "translateX(-50%) rotate(0deg) scale(1.06) translateZ(0)",
+              filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.85))",
+              willChange: "transform",
+            }}
+          >
+            <NeedlePointerSvg />
+          </div>
+          <div className="absolute -inset-4 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.95)_45%,rgba(15,8,30,0.7)_70%,transparent_85%)] blur-md pointer-events-none -z-10" />
+          <div className="absolute inset-0 aspect-square rounded-full border-[8px] sm:border-[10px] md:border-[12px] border-[#d97706] shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_35px_rgba(245,158,11,0.45),inset_0_2px_4px_rgba(254,240,138,0.9),inset_0_-3px_8px_rgba(69,26,3,0.95)] pointer-events-none z-20">
+            <div className="w-full h-full rounded-full border border-amber-950/70 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
+          </div>
+          <div
+            ref={wheelRef}
+            className="w-full h-full aspect-square rounded-full overflow-hidden shadow-2xl relative"
+            style={effectiveIsSpinning ? { willChange: "transform" } : { transform: `rotate(${clientWheelAngle}deg)` }}
+          >
+            <WheelDiscSvg sectors={sectors} selectedSector={selectedSector} isSpinning={effectiveIsSpinning} />
+          </div>
+        </div>
+        {selectedSector && (
+          <div className="mt-1 px-3 py-0.5 rounded-full bg-black/80 border border-amber-400/50 text-[11px] font-black text-amber-200 flex items-center gap-1.5 shadow-md">
+            <span className="text-amber-400">🎯</span>
+            <span>Ô quay: {selectedSector.label}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (variant === "PLAYER_INVERTED") {
+    return (
+      <div className="w-full flex flex-col items-center justify-center relative select-none shrink-0">
+        <div className="w-full max-w-[320px] h-[115px] sm:h-[130px] relative select-none flex items-start justify-center overflow-hidden">
+          <div className="w-[230px] h-[230px] sm:w-[260px] sm:h-[260px] -top-[115px] sm:-top-[130px] relative select-none flex items-center justify-center shrink-0">
+            <div className="absolute -inset-4 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.95)_45%,rgba(15,8,30,0.7)_70%,transparent_85%)] blur-md pointer-events-none -z-10" />
+            <div className="absolute inset-0 aspect-square rounded-full border-[8px] sm:border-[10px] border-[#d97706] shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_35px_rgba(245,158,11,0.45),inset_0_2px_4px_rgba(254,240,138,0.9),inset_0_-3px_8px_rgba(69,26,3,0.95)] pointer-events-none z-20">
+              <div className="w-full h-full rounded-full border border-amber-950/70 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
+            </div>
+            <div
+              ref={wheelRef}
+              className="w-full h-full aspect-square rounded-full overflow-hidden shadow-2xl relative"
+              style={effectiveIsSpinning ? { willChange: "transform" } : { transform: `rotate(${clientWheelAngle + 180}deg)` }}
+            >
+              <WheelDiscSvg sectors={sectors} selectedSector={selectedSector} isSpinning={effectiveIsSpinning} />
+            </div>
+            <div
+              ref={needleRef}
+              className="absolute bottom-[-1px] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
+              style={{
+                transformOrigin: "50% 22.92%",
+                transform: "translateX(-50%) rotate(180deg) scale(1.06) translateZ(0)",
+                filter: "drop-shadow(0px -4px 8px rgba(0,0,0,0.85))",
+                willChange: "transform",
+              }}
+            >
+              <NeedlePointerSvg />
+            </div>
+          </div>
+        </div>
+        {selectedSector && (
+          <div className="mt-0.5 px-2.5 py-0.5 rounded-full bg-black/85 border border-amber-400/50 text-[10px] font-black text-amber-200 flex items-center gap-1 shadow-md z-30">
+            <span className="text-amber-400">🎯</span>
+            <span>Ô quay: {selectedSector.label}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Host Half
+  return (
+    <div className="w-full flex flex-col items-center justify-center relative select-none">
+      <div className="w-[240px] h-[145px] sm:w-[290px] sm:h-[175px] relative select-none flex items-start justify-center overflow-hidden">
+        <div className="w-[240px] h-[240px] sm:w-[290px] sm:h-[290px] relative select-none flex items-center justify-center shrink-0">
+          <div
+            ref={needleRef}
+            className="absolute -top-[4.2%] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
+            style={{
+              transformOrigin: "50% 22.92%",
+              transform: "translateX(-50%) rotate(0deg) scale(1.06) translateZ(0)",
+              filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.85))",
+              willChange: "transform",
+            }}
+          >
+            <NeedlePointerSvg />
+          </div>
+          <div className="absolute -inset-4 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.95)_45%,rgba(15,8,30,0.7)_70%,transparent_85%)] blur-md pointer-events-none -z-10" />
+          <div className="absolute inset-0 aspect-square rounded-full border-[10px] sm:border-[12px] border-[#d97706] shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_35px_rgba(245,158,11,0.45),inset_0_2px_4px_rgba(254,240,138,0.9),inset_0_-3px_8px_rgba(69,26,3,0.95)] pointer-events-none z-20">
+            <div className="w-full h-full rounded-full border border-amber-950/70 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
+          </div>
+          <div
+            ref={wheelRef}
+            className="w-full h-full aspect-square rounded-full overflow-hidden shadow-2xl relative"
+            style={effectiveIsSpinning ? { willChange: "transform" } : { transform: `rotate(${clientWheelAngle}deg)` }}
+          >
+            <WheelDiscSvg sectors={sectors} selectedSector={selectedSector} isSpinning={effectiveIsSpinning} />
+          </div>
+        </div>
+      </div>
+      {selectedSector && (
+        <div className="mt-1 px-3 py-0.5 rounded-full bg-black/70 border border-amber-400/50 text-[11px] font-black text-amber-200 flex items-center gap-1.5 shadow-md">
+          <span className="text-amber-400">🎯</span>
+          <span>Ô quay: {selectedSector.label}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MagicWheelBoard({
   magicWheelState,
   wheelState,
+  displayLayoutMode,
+  onSetDisplayLayout,
   teams,
   myTeamId,
   isHost = false,
@@ -1056,6 +1413,9 @@ export default function MagicWheelBoard({
 
   const isCurrentTeamEliminated = roundEliminatedTeamIds.includes(currentTurnTeamId);
   const isTossUpRound = roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2";
+  const isPlayer = !isDisplay && !isHost;
+  const effDisplayLayoutMode: "AUTO" | "STACKED" | "FOCUS_WHEEL" | "FOCUS_BOARD" =
+    displayLayoutMode || activeState.displayLayoutMode || "STACKED";
 
   const isIframe = typeof window !== "undefined" && window.self !== window.top;
   const isInsideSandbox =
@@ -1063,9 +1423,9 @@ export default function MagicWheelBoard({
     (isIframe ||
       window.location.search.includes("sandbox=1") ||
       window.location.pathname.includes("/sandbox"));
-  // Audio rule: In sandbox, the top dashboard window plays audio directly with user gestures. Child iframes inside sandbox don't duplicate audio.
-  // In live room: All participants (Host, Display, Players) can hear audio.
-  const canPlayBoardAudio = isInsideSandbox ? !isIframe : true;
+  // Audio rule: Trong Sandbox, màn hình Display là nguồn phát âm thanh TV Studio chính duy nhất.
+  // Khung Player và Host parent tắt âm thanh mặc định để triệt tiêu tiếng vọng và lặp 2x-3x.
+  const canPlayBoardAudio = isInsideSandbox ? Boolean(isDisplay) : true;
 
   const isSolveMountedRef = useRef<boolean>(false);
   useEffect(() => {
@@ -1427,6 +1787,21 @@ export default function MagicWheelBoard({
 
     // In Toss-Up running mode, if 1 letter is revealed via tick, handle it according to Toss-Up rules
     if (roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2") {
+      const isFirstLetterEver = animRevealedIndicesRef.current.size === 0;
+      if (isFirstLetterEver && newLetters.length > 0) {
+        const firstTileIdx = newLetters[0];
+        setHighlightedIndices(new Set([firstTileIdx]));
+        if (canPlayBoardAudio) soundManager.playMagicWheelMark();
+        const t = setTimeout(() => {
+          setHighlightedIndices(new Set());
+          triggerTilePop(firstTileIdx);
+          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
+          setAnimRevealedIndices(new Set(serverRevealed));
+        }, 400);
+        activeTimersRef.current.push(t);
+        return;
+      }
+
       newLetters.forEach((tileIdx) => {
         if (!animRevealedIndicesRef.current.has(tileIdx)) {
           triggerTilePop(tileIdx);
@@ -1609,25 +1984,26 @@ export default function MagicWheelBoard({
     } else if (!isSpinning && prevIsSpinning.current) {
       if (canPlayBoardAudio) {
         soundManager.stopMagicWheelSpin();
-        if (selectedSector) {
-          if (selectedSector.type === "DOUBLE" || selectedSector.type === "TRIPLE") {
+        const effSector = selectedSector || (activeState.selectedSectorIndex !== undefined ? sectors[activeState.selectedSectorIndex] : undefined);
+        if (effSector) {
+          if (effSector.type === "DOUBLE" || effSector.type === "TRIPLE") {
             soundManager.playMagicWheelDouble();
-          } else if (selectedSector.type === "HALF") {
+          } else if (effSector.type === "HALF") {
             soundManager.playMagicWheelHalve();
-          } else if (selectedSector.type === "BANKRUPT") {
+          } else if (effSector.type === "BANKRUPT") {
             soundManager.playMagicWheelBankrupt();
-          } else if (selectedSector.type === "LOSE_TURN") {
+          } else if (effSector.type === "LOSE_TURN") {
             soundManager.playMagicWheelLoseTurn();
           } else if (
-            selectedSector.type === "LUCKY" ||
-            selectedSector.type === "EXTRA_TURN" ||
-            selectedSector.type === "EXPRESS" ||
-            selectedSector.type === "JACKPOT"
+            effSector.type === "LUCKY" ||
+            effSector.type === "EXTRA_TURN" ||
+            effSector.type === "EXPRESS" ||
+            effSector.type === "JACKPOT"
           ) {
             soundManager.playMagicWheelLucky();
-          } else if (selectedSector.type === "PRIZE" || selectedSector.type === "BONUS_ENVELOPE") {
+          } else if (effSector.type === "PRIZE" || effSector.type === "BONUS_ENVELOPE") {
             soundManager.playMagicWheelReward();
-          } else if (selectedSector.type === "MYSTERY" || selectedSector.type === "STEAL_SWAP") {
+          } else if (effSector.type === "MYSTERY" || effSector.type === "STEAL_SWAP") {
             soundManager.playMagicWheelMystery();
           } else {
             soundManager.playWheelStopChime();
@@ -1715,12 +2091,14 @@ export default function MagicWheelBoard({
       return;
     }
 
+    if (target === undefined || target === null || target <= wheelPrevAngleRef.current) {
+      // Đợi góc quay chính thức từ server, không dùng góc giả lập 2160° để triệt tiêu hoàn toàn giật khựng
+      return;
+    }
+
     isSpinningRafRunningRef.current = true;
     const startAngle = wheelPrevAngleRef.current;
-    const effectiveTarget = (target !== undefined && target !== null && target > startAngle)
-      ? target
-      : startAngle + 2160;
-    targetAngleRef.current = effectiveTarget;
+    targetAngleRef.current = target;
 
     const durationMs = 15000 + Math.round(((activeState.spinPower || 65) / 100) * 6000);
     const segAngle = 360 / (sectors.length || 24);
@@ -1730,9 +2108,10 @@ export default function MagicWheelBoard({
     let rafId = 0;
     let zoomStartTimer: ReturnType<typeof setTimeout> | null = null;
 
+    const angleOffset = isPlayer ? 180 : 0;
     lastSnapTimeRef.current = 0;
-    if (wheelRef.current) wheelRef.current.style.transform = `rotate(${startAngle}deg)`;
-    if (needleRef.current) needleRef.current.style.transform = "translateX(-50%) rotate(0deg) scale(1.06) translateZ(0)";
+    if (wheelRef.current) wheelRef.current.style.transform = `rotate(${startAngle + angleOffset}deg)`;
+    if (needleRef.current) needleRef.current.style.transform = `translateX(-50%) rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
 
     if (canPlayBoardAudio) soundManager.playWheelPegTick(0.05);
 
@@ -1750,7 +2129,7 @@ export default function MagicWheelBoard({
       const currentLiveAngle = startAngle + (targetAngleRef.current - startAngle) * threePhaseProgress;
 
       if (wheelRef.current) {
-        wheelRef.current.style.transform = `rotate(${currentLiveAngle}deg)`;
+        wheelRef.current.style.transform = `rotate(${currentLiveAngle + angleOffset}deg)`;
       }
 
       const currentPegIndex = Math.floor(currentLiveAngle / segAngle);
@@ -1789,7 +2168,7 @@ export default function MagicWheelBoard({
       }
 
       if (needleRef.current) {
-        needleRef.current.style.transform = `translateX(-50%) rotate(${needleAngle}deg) scale(1.06) translateZ(0)`;
+        needleRef.current.style.transform = `translateX(-50%) rotate(${needleAngle + angleOffset}deg) scale(1.06) translateZ(0)`;
       }
 
       if (rawProgress < 1) {
@@ -1799,12 +2178,12 @@ export default function MagicWheelBoard({
         setLocalIsSpinning(false);
         const finalTarget = targetAngleRef.current;
         if (wheelRef.current) {
-          wheelRef.current.style.transform = `rotate(${finalTarget}deg)`;
+          wheelRef.current.style.transform = `rotate(${finalTarget + angleOffset}deg)`;
         }
         setClientWheelAngle(finalTarget);
         wheelPrevAngleRef.current = finalTarget;
         if (needleRef.current) {
-          needleRef.current.style.transform = "translateX(-50%) rotate(0deg) scale(1.06) translateZ(0)";
+          needleRef.current.style.transform = `translateX(-50%) rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
         }
       }
     };
@@ -1818,7 +2197,7 @@ export default function MagicWheelBoard({
         if (zoomStartTimer) clearTimeout(zoomStartTimer);
       }
     };
-  }, [effectiveIsSpinning, targetRotationDegrees, activeState.spinPower, sectors.length, canPlayBoardAudio]);
+  }, [effectiveIsSpinning, targetRotationDegrees, activeState.spinPower, sectors.length, canPlayBoardAudio, isPlayer]);
 
   const activeTeam = teams.find((t) => t.id === (tossUpBuzzedTeamId || currentTurnTeamId));
 
@@ -2040,7 +2419,1190 @@ export default function MagicWheelBoard({
     stageBadgeLabel,
   ]);
 
-  return (
+
+
+  // ── 1. MODALS (Solve, Buy Vowel, Temp Text) ──
+  const renderModals = () => (
+    <>
+      {solveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-2xl p-5 rounded-2xl bg-[#121829] border-2 border-amber-400/60 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🎯</span>
+                <div>
+                  <h4 className="font-black text-base text-amber-300">
+                    GIẢI Ô CHỮ BÍ MẬT — CHÍNH XÁC TỪNG DẤU THANH ĐIỆU
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    Các phụ âm đã mở trên bảng được giữ cố định. Hãy chọn dấu thanh cho các nguyên âm đã mở và điền các chữ cái còn thiếu!
+                  </p>
+                </div>
+              </div>
+              {isHost && onJudgeSolve && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSolveModalOpen(false);
+                      onJudgeSolve(true);
+                    }}
+                    className="px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500 text-slate-950 hover:brightness-110 cursor-pointer"
+                  >
+                    ✓ Chấm ĐÚNG
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSolveModalOpen(false);
+                      onJudgeSolve(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl text-xs font-black bg-rose-500 text-white hover:brightness-110 cursor-pointer"
+                  >
+                    ✕ Chấm SAI
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <SmartPuzzlePhraseInput
+              secretPhrase={currentPuzzle?.secretPhrase || ""}
+              revealedIndices={animRevealedIndices}
+              onCancel={() => setSolveModalOpen(false)}
+              onSubmit={(finalAnswer) => {
+                onSolvePuzzle?.(finalAnswer);
+                setSolveModalOpen(false);
+              }}
+              edition={edition}
+            />
+          </div>
+        </div>
+      )}
+
+      {buyVowelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md p-5 rounded-2xl bg-[#121829] border-2 border-amber-400/60 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🛒</span>
+                <div>
+                  <h4 className="font-black text-base text-amber-300">
+                    BUY A VOWEL (MUA NGUYÊN ÂM)
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    Chi phí cố định: <strong className="text-amber-400">250 điểm</strong> từ điểm vòng của đội. Chọn 1 trong 5 nguyên âm:
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBuyVowelModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-5 gap-2.5 py-2">
+              {ENGLISH_VOWELS.map((vowel) => {
+                const isGuessed = guessedLetters.includes(vowel);
+                const isAffordable = (roundScores?.[currentTurnTeamId] || 0) >= 250;
+
+                return (
+                  <button
+                    key={vowel}
+                    type="button"
+                    disabled={isGuessed || !isAffordable}
+                    onClick={() => {
+                      if (isGuessed || !isAffordable) return;
+                      onBuyVowel?.(vowel);
+                      setBuyVowelModalOpen(false);
+                    }}
+                    className={`py-4 rounded-xl flex flex-col items-center justify-center font-black text-lg transition-all ${
+                      isGuessed
+                        ? "bg-white/5 text-slate-600 border border-white/5 opacity-40 cursor-not-allowed line-through"
+                        : !isAffordable
+                        ? "bg-white/5 text-slate-500 border border-white/10 opacity-50 cursor-not-allowed"
+                        : "bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 hover:brightness-110 active:scale-95 shadow-[0_0_15px_rgba(245,158,11,0.4)] cursor-pointer"
+                    }`}
+                  >
+                    <span>{vowel}</span>
+                    <span className="text-[9px] font-bold opacity-80 mt-1">
+                      {isGuessed ? "Đã gọi" : "250đ"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="text-center text-[11px] text-slate-400 border-t border-white/10 pt-2.5">
+              Điểm vòng hiện tại của {formatTeamLabel(currentTurnTeamName)}:{" "}
+              <strong className="text-emerald-400">
+                {(roundScores?.[currentTurnTeamId] || 0).toLocaleString()}đ
+              </strong>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tempTextModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg p-5 rounded-2xl bg-[#121829] border-2 border-purple-400/60 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">✍️</span>
+                <div>
+                  <h4 className="font-black text-base text-purple-300">
+                    CÀI ĐẶT CHỮ HIỂN THỊ TẠM THỜI
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    Hiển thị thông điệp tùy chọn trực tiếp lên 56 ô chữ (14 cột × 4 hàng)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTempTextModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Nội dung hiển thị (tối đa 56 ký tự):
+                </label>
+                <textarea
+                  value={tempTextInput}
+                  onChange={(e) => setTempTextInput(e.target.value.toUpperCase().slice(0, 56))}
+                  rows={2}
+                  placeholder="Nhập nội dung cần hiển thị trên bảng ô chữ..."
+                  className="w-full p-3 rounded-xl bg-slate-900 border border-purple-500/40 text-purple-200 font-black tracking-wider text-sm focus:outline-none focus:border-purple-400 resize-none uppercase"
+                />
+                <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1">
+                  <span>
+                    Độ dài: <strong className="text-purple-300">{tempTextInput.length}/56</strong> ký tự
+                  </span>
+                  <span>
+                    Tự động căn đều trên khung 14 cột × 4 hàng
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1.5">
+                  Mẫu thông điệp có sẵn:
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    "CHÚC MỪNG CHIẾN THẮNG",
+                    "VÒNG TIẾP THEO SẮP BẮT ĐẦU",
+                    "GIẢI LAO NGHỈ TAY",
+                    "XIN CẢM ƠN NHÀ TÀI TRỢ",
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setTempTextInput(preset)}
+                      className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-purple-900/40 border border-white/10 hover:border-purple-400/50 text-slate-200 hover:text-purple-200 text-xs font-semibold text-left transition truncate cursor-pointer"
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-white/10 pt-3">
+              <div>
+                {temporaryDisplayActive && onClearTemporaryText && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClearTemporaryText();
+                      setTempTextModalOpen(false);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 border border-rose-400/50 text-rose-200 text-xs font-bold transition cursor-pointer"
+                  >
+                    🗑️ Xóa chữ trên bảng
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTempTextModalOpen(false)}
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold transition cursor-pointer"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  disabled={!tempTextInput.trim()}
+                  onClick={() => {
+                    if (!tempTextInput.trim()) return;
+                    onSetTemporaryText?.(tempTextInput.trim());
+                    setTempTextModalOpen(false);
+                  }}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black shadow-lg transition cursor-pointer ${
+                    tempTextInput.trim()
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:brightness-110 active:scale-95"
+                      : "bg-slate-700 text-slate-400 opacity-50 cursor-not-allowed"
+                  }`}
+                >
+                  ✨ Hiển thị lên bảng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  // ── 2. COMPACT SINGLE ROW SCOREBAR ──
+  const renderCompactSingleRowScorebar = () => (
+    <div className="w-full flex items-center justify-center gap-1.5 sm:gap-2.5 py-1 px-2 bg-black/60 rounded-xl border border-white/10 shrink-0">
+      {teams.map((t) => {
+        const rScore = roundScores?.[t.id] || 0;
+        const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
+        const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
+        const isEliminated = roundEliminatedTeamIds.includes(t.id) || (activeState.disqualifiedTeamIdsInRound || []).includes(t.id);
+        return (
+          <div
+            key={t.id}
+            className={`flex-1 min-w-0 max-w-[220px] px-2 py-1 rounded-lg border text-xs font-bold transition flex items-center justify-between gap-1.5 ${
+              isTurn
+                ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_12px_rgba(245,158,11,0.3)] ring-1 ring-amber-400/50"
+                : isEliminated
+                ? "bg-red-950/20 border-red-500/30 text-rose-300 opacity-60"
+                : "bg-black/40 border-white/10 text-slate-200"
+            }`}
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow" style={{ background: t.color || "#6366f1" }} />
+              <span className="truncate text-[11px]">{t.name}</span>
+              {strikes > 0 && edition !== "ENGLISH" && (
+                <span className="text-rose-400 font-mono text-[9px]">{"✕".repeat(Math.min(3, strikes))}</span>
+              )}
+              {(activeState.wildCardsCount?.[t.id] || 0) > 0 ? (
+                <span className="text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-1 rounded font-bold" title="1 Wild Card">
+                  🃏
+                </span>
+              ) : null}
+              {(freeSpinCount?.[t.id] || 0) > 0 ? (
+                <span className="text-[9px] text-sky-300 font-bold" title="Thẻ thêm lượt">
+                  🎟️{freeSpinCount[t.id]}
+                </span>
+              ) : null}
+            </div>
+            <div className="text-right shrink-0">
+              <span className="font-mono font-black text-amber-300 text-xs">
+                {edition === "ENGLISH" ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}` : `${((t.score || 0) + rScore).toLocaleString()}đ`}
+              </span>
+              <span className="text-[9px] text-emerald-400 block font-mono">
+                +{edition === "ENGLISH" ? `$${rScore.toLocaleString("en-US")}` : `${rScore.toLocaleString()}đ`}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // ── 3. 56-TILE BOARD MATRIX RENDERER ──
+  const renderBoardGridMatrix = (isDisplayMode = false) => (
+    <div className={`w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] ${isDisplayMode ? "p-2 sm:p-3" : "p-2.5 sm:p-4"} rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-hidden shrink-0`}>
+      {!isDisplayMode && !isTempActive && (
+        <div className="mb-1.5 px-3.5 py-0.5 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow">
+          {effectiveBoardStage === "EMPTY_56" ? (
+            isHost ? (
+              <span>⭐ BẢNG Ô CHỮ SẴN SÀNG — BẤM NÚT MC ĐỂ MỞ ⭐</span>
+            ) : (
+              <span className="animate-pulse">⏳ Chờ Quản trò/MC mở ô chữ...</span>
+            )
+          ) : (
+            <span>⭐ CHỦ ĐỀ: {currentPuzzle?.category || "TỔNG HỢP"} ⭐</span>
+          )}
+        </div>
+      )}
+
+      <div className="w-full max-w-5xl flex flex-col items-center relative py-1 px-1 sm:px-3">
+        <div className="w-full p-2 sm:p-3 rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40">
+          <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5">
+            {gridMatrix.map((row, rIdx) => (
+              <div
+                key={rIdx}
+                className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1 sm:gap-1.5 w-full items-center justify-items-center"
+              >
+                {row.map((cell, cIdx) => {
+                  const isCutOpen =
+                    isTempActive ||
+                    effectiveBoardStage === "READY_CLUE" ||
+                    (effectiveBoardStage === "BLANK_PHRASE" && (cell?.seqIndex ?? 0) < cutRevealedCount);
+
+                  if (!cell || (!isTempActive && effectiveBoardStage === "EMPTY_56") || !isCutOpen) {
+                    return (
+                      <div
+                        key={cIdx}
+                        className={`w-full aspect-[3/4] ${isDisplayMode ? "min-h-[clamp(20px,2.8vw,42px)]" : "min-h-[clamp(24px,3.5vw,52px)]"} rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none`}
+                      >
+                        <svg viewBox="0 0 24 24" className="w-3 h-3 text-[#2a7a33] opacity-60 fill-current">
+                          <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
+                        </svg>
+                      </div>
+                    );
+                  }
+
+                  const isLuckyGreen = phase === "LUCKY_PICK" && luckyGreenSelectedIdx === cell.originalIndex;
+                  const isPopping = justPoppedIndices.has(cell.originalIndex);
+                  const isJustCut = effectiveBoardStage === "BLANK_PHRASE" && cell.seqIndex === cutRevealedCount - 1;
+                  const canPickLucky = phase === "LUCKY_PICK" && !cell.isRevealed && (canInteract || isDisplay || isHost);
+
+                  return (
+                    <div
+                      key={cIdx}
+                      onClick={() => {
+                        if (canPickLucky) {
+                          if (luckyGreenSelectedIdx !== cell.originalIndex) {
+                            setLuckyGreenSelectedIdx(cell.originalIndex);
+                            if (canPlayBoardAudio) soundManager.playMagicWheelMark();
+                          } else {
+                            setLuckyGreenSelectedIdx(null);
+                            if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
+                            onLuckyPick?.(cell.originalIndex);
+                          }
+                        }
+                      }}
+                      className={`w-full aspect-[3/4] ${isDisplayMode ? "min-h-[clamp(20px,2.8vw,42px)]" : "min-h-[clamp(24px,3.5vw,52px)]"} rounded font-black flex items-center justify-center select-none ${
+                        isJustCut ? "animate-vtv3-tile-cut" : ""
+                      } ${
+                        isPopping
+                          ? "bg-white text-[#0f172a] border-2 border-yellow-300 shadow-[0_0_35px_#f59e0b] animate-vtv3-tile-pop z-30"
+                          : isLuckyGreen
+                          ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
+                          : cell.isHighlighted
+                          ? "bg-gradient-to-tr from-cyan-400 via-sky-300 to-cyan-200 text-transparent border-2 border-white scale-110 shadow-[0_0_35px_#06b6d4,0_0_15px_#38bdf8] animate-pulse z-20"
+                          : cell.isRevealed
+                          ? "bg-white text-[#0f172a] shadow-[0_4px_12px_rgba(255,255,255,0.45)] border-2 border-white scale-100"
+                          : phase === "LUCKY_PICK"
+                          ? "bg-gradient-to-br from-amber-300 via-yellow-300 to-amber-400 text-amber-950 border-2 border-yellow-200 animate-pulse shadow-[0_0_15px_#f59e0b] cursor-pointer hover:scale-105"
+                          : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
+                      }`}
+                    >
+                      <span className={`font-black tracking-tight ${isDisplayMode ? "text-xs sm:text-base md:text-xl lg:text-2xl" : "text-sm sm:text-lg md:text-2xl lg:text-3xl"}`}>
+                        {cell.isRevealed ? cell.displayChar : isLuckyGreen ? "✓" : cell.isHighlighted ? "" : phase === "LUCKY_PICK" ? "🍀" : "?"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Runway & Hostess */}
+        <div className="relative w-full h-7 sm:h-9 -mt-1.5 z-10 flex flex-col justify-end">
+          <div
+            className="absolute inset-0 rounded-b-2xl overflow-hidden border-t-2 border-amber-600/70"
+            style={{
+              background: "linear-gradient(180deg, #2b180d 0%, #1a0d06 60%, #0d0603 100%)",
+              boxShadow: "inset 0 10px 25px rgba(0,0,0,0.9), 0 10px 25px rgba(0,0,0,0.7)",
+            }}
+          />
+          <div className="relative z-10 w-full h-1.5 bg-gradient-to-r from-amber-700 via-yellow-400 to-amber-700 shadow-[0_0_15px_rgba(245,158,11,0.6)] flex items-center justify-around px-4">
+            <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+            <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+            <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+            <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
+          </div>
+          {showHostess && (
+            <div
+              className="absolute bottom-1 z-30 select-none pointer-events-none transition-all hidden md:block"
+              style={{
+                left: `${hostessXPercent}%`,
+                transform: "translateX(-50%)",
+                transition: hostessPose === "WALKING"
+                  ? `left ${hostessWalkDurationMs}ms cubic-bezier(0.4, 0, 0.2, 1)`
+                  : "left 400ms ease-out",
+              }}
+            >
+              <HostessTVStage
+                pose={hostessPose}
+                facing={hostessFacing}
+                activeRow={hostessActiveRow}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Lower-Third Chyron */}
+        {!isTempActive && (
+          <div className="w-full mt-2 z-20 flex flex-col items-start drop-shadow-2xl">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-t-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow border-t border-x border-amber-300">
+              <span className="text-amber-900">⭐</span>
+              <span>
+                {edition === "ENGLISH"
+                  ? `CATEGORY: ${formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
+                  : `CHỦ ĐỀ: ${effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", "VIETNAMESE")}`}
+              </span>
+            </div>
+            <div className="w-full px-3.5 py-1.5 rounded-b-xl rounded-tr-xl bg-black/90 border border-amber-400/40 flex items-center justify-between gap-3 text-slate-100 font-bold text-xs sm:text-sm shadow-2xl">
+              <p className="leading-snug flex-1 truncate">
+                {effectiveBoardStage === "READY_CLUE"
+                  ? currentPuzzle?.clue || "Lắng nghe gợi ý từ MC và đoán các chữ cái!"
+                  : "Bảng ô chữ đang chuẩn bị..."}
+              </p>
+              {currentPuzzle?.secretPhrase && effectiveBoardStage !== "EMPTY_56" && (
+                <span className="shrink-0 px-2 py-0.5 rounded bg-amber-400/15 text-amber-300 font-mono font-black text-xs border border-amber-400/30 whitespace-nowrap">
+                  {currentPuzzle.secretPhrase.replace(/\s+/g, "").length} {edition === "ENGLISH" ? "LETTERS" : "KÝ TỰ"}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // ── 4. CONTESTANT VIEW (isPlayer = true): ZERO-SCROLL, 3 FIXED ZONES ──
+  const renderPlayerView = () => (
+    <div className="w-full h-full max-h-screen flex flex-col justify-between p-2.5 sm:p-4 select-none overflow-hidden box-border bg-gradient-to-b from-[#060b18] via-[#091224] to-[#040710] text-white">
+      {/* ZONE 1: TOP — Inverted Half-Wheel + Category & Secret Phrase strip */}
+      <div className="flex flex-col items-center w-full shrink-0">
+        <div className="w-full flex items-center justify-between px-2 py-1 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-black text-amber-300">
+              {stageBadgeLabel} · Màn {currentRound}/{maxRounds}
+            </span>
+            {mainRoundNumber === 4 && roundStage === "MAIN" && jackpotPool && (
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-cyan-500/20 text-cyan-200 border border-cyan-400/50">
+                💎 {(jackpotPool).toLocaleString()}đ
+              </span>
+            )}
+            {speedUpBellActive && (
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-500/30 text-rose-200 border border-rose-400 animate-bounce">
+                🔔 TĂNG TỐC
+              </span>
+            )}
+          </div>
+          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+            effectiveIsMyTurn ? "bg-amber-400 text-slate-950 font-black animate-pulse" : "bg-white/10 text-slate-300"
+          }`}>
+            {effectiveIsMyTurn ? "✨ ĐẾN LƯỢT BẠN" : `Lượt: ${formatTeamLabel(currentTurnTeamName)}`}
+          </span>
+        </div>
+
+        {/* Inverted Half-Wheel */}
+        <InteractiveWheelRig
+          variant="PLAYER_INVERTED"
+          wheelRef={wheelRef}
+          needleRef={needleRef}
+          clientWheelAngle={clientWheelAngle}
+          effectiveIsSpinning={effectiveIsSpinning}
+          sectors={sectors}
+          selectedSector={selectedSector}
+        />
+
+        {/* Compact Phrase Strip */}
+        <div className="w-full mt-1 px-3 py-1 rounded-xl bg-black/60 border border-amber-400/30 flex flex-col items-center gap-0.5 shadow-inner shrink-0">
+          <div className="flex items-center justify-between w-full text-[11px] font-bold">
+            <span className="text-amber-300 uppercase">⭐ {formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", edition)}</span>
+            <span className="text-slate-400 font-mono text-[10px]">
+              {currentPuzzle?.secretPhrase?.replace(/\s+/g, "").length || 0} {edition === "ENGLISH" ? "LETTERS" : "KÝ TỰ"}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-1 py-0.5 max-h-12 overflow-hidden">
+            {currentPuzzle?.secretPhrase ? (
+              currentPuzzle.secretPhrase.split(" ").map((word, wIdx) => {
+                const words = currentPuzzle.secretPhrase.split(" ");
+                let offset = 0;
+                for (let i = 0; i < wIdx; i++) offset += words[i].length + 1;
+                return (
+                  <div key={wIdx} className="flex items-center gap-0.5 sm:gap-1 mr-1.5">
+                    {word.split("").map((ch, cIdx) => {
+                      const absIdx = offset + cIdx;
+                      const isRevealed = animRevealedIndices.has(absIdx) || phase === "ROUND_RECAP";
+                      return (
+                        <div
+                          key={cIdx}
+                          className={`w-5 h-7 sm:w-6 sm:h-8 rounded font-black text-xs sm:text-sm flex items-center justify-center border shadow-sm ${
+                            isRevealed
+                              ? "bg-white text-slate-950 border-amber-300 shadow-[0_0_8px_rgba(255,255,255,0.4)]"
+                              : "bg-emerald-950/80 border-emerald-500/40 text-emerald-300/40"
+                          }`}
+                        >
+                          {isRevealed ? ch : ""}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })
+            ) : (
+              <span className="text-xs text-slate-400 italic">Đang chờ câu đố...</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ZONE 2: MIDDLE — Varies by Round Stage */}
+      <div className="w-full flex-1 flex flex-col justify-center min-h-0 my-1 overflow-hidden">
+        {isTossUpRound ? (
+          /* Vòng Đoán Nhanh: Nút chuông bên trái, Vùng gõ đáp án bên phải */
+          <div className="w-full grid grid-cols-1 sm:grid-cols-12 gap-3 items-center h-full max-h-full">
+            <div className="sm:col-span-5 flex flex-col items-center justify-center p-2">
+              {(() => {
+                const hasFirstLetterRevealed = (animRevealedIndices.size >= 1) || ((currentPuzzle?.revealedIndices?.length || 0) >= 1);
+                const isBuzzedAlready = isLocallyBuzzed || Boolean(tossUpBuzzedTeamId);
+                return (
+                  <div className="relative flex flex-col items-center justify-center">
+                    {hasFirstLetterRevealed && !isBuzzedAlready && (
+                      <div className="absolute inset-0 rounded-full bg-red-600/35 blur-xl animate-ping pointer-events-none" />
+                    )}
+                    <div
+                      className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full p-2.5 flex items-center justify-center transition-all duration-300 ${
+                        !hasFirstLetterRevealed
+                          ? "bg-gradient-to-b from-stone-700 via-stone-800 to-stone-900 border-4 border-stone-600 shadow-lg opacity-60 cursor-not-allowed"
+                          : isBuzzedAlready
+                          ? "bg-gradient-to-b from-emerald-600 via-teal-700 to-emerald-900 border-4 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.7)]"
+                          : "bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 border-4 border-yellow-300 shadow-[0_15px_35px_rgba(0,0,0,0.9),0_0_30px_rgba(245,158,11,0.6)] cursor-pointer"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        disabled={!hasFirstLetterRevealed || isBuzzedAlready}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (!hasFirstLetterRevealed || isBuzzedAlready) return;
+                          handleTriggerTossUpBuzz();
+                        }}
+                        className={`w-full h-full rounded-full flex flex-col items-center justify-center transition-all select-none touch-manipulation focus:outline-none ${
+                          !hasFirstLetterRevealed
+                            ? "bg-gradient-to-b from-neutral-800 to-neutral-900 border-2 border-neutral-700 text-neutral-400 cursor-not-allowed"
+                            : isBuzzedAlready
+                            ? "bg-gradient-to-b from-emerald-500 to-teal-700 border-2 border-emerald-300 text-white shadow-inner cursor-not-allowed scale-95"
+                            : "bg-gradient-to-b from-rose-500 via-red-600 to-red-800 active:from-red-700 active:to-red-900 active:scale-90 border-2 border-red-300 text-white shadow-[inset_0_6px_12px_rgba(255,255,255,0.5),0_10px_25px_rgba(220,38,38,0.8)] hover:brightness-110 active:shadow-inner cursor-pointer"
+                        }`}
+                      >
+                        <span className="text-3xl sm:text-4xl filter drop-shadow">
+                          {!hasFirstLetterRevealed ? "🔒" : isBuzzedAlready ? "✅" : "🔔"}
+                        </span>
+                        <span className="mt-1 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow text-center px-1">
+                          {!hasFirstLetterRevealed
+                            ? "CHỜ MỞ CHỮ"
+                            : isBuzzedAlready
+                            ? "ĐÃ BẤM!"
+                            : "BẤM CHUÔNG!"}
+                        </span>
+                        {hasFirstLetterRevealed && !isBuzzedAlready && (
+                          <span className="text-[10px] text-amber-200/90 font-mono font-bold mt-0.5 tracking-tight">
+                            [SPACE / ENTER]
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="sm:col-span-7 flex flex-col justify-center p-2">
+              {phase === "TOSS_UP_BUZZED" ? (
+                !isHost && myTeamId && tossUpBuzzedTeamId && myTeamId !== tossUpBuzzedTeamId && !isInsideSandbox ? (
+                  <div className="p-4 text-center text-xs font-bold text-slate-400 italic bg-white/5 rounded-xl border border-white/10">
+                    Đang chờ {formatTeamLabel(tossUpBuzzedTeamName || "đối thủ")} gõ câu trả lời...
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-black/60 border border-amber-400/50 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-amber-300">
+                        🔔 {formatTeamLabel(tossUpBuzzedTeamName || currentTurnTeamName)} đang trả lời:
+                      </span>
+                    </div>
+                    <SmartPuzzlePhraseInput
+                      secretPhrase={currentPuzzle?.secretPhrase || ""}
+                      revealedIndices={animRevealedIndices}
+                      onSubmit={(ans) => onSolvePuzzle?.(ans)}
+                      submitLabel="CHỐT ĐÁP ÁN ĐOÁN NHANH ➔"
+                      edition={edition}
+                    />
+                  </div>
+                )
+              ) : (
+                <div className="p-4 text-center rounded-2xl bg-black/40 border border-white/10 text-xs font-bold text-amber-200/90 flex flex-col items-center justify-center gap-2">
+                  <span className="text-xl">⚡</span>
+                  <span>Chuông đã mở! Hãy đập tay vào nút bên trái hoặc bấm phím Space/Enter ngay khi biết đáp án!</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : roundStage === "SPECIAL_FINAL" ? (
+          /* Vòng Đặc Biệt / Chung Kết */
+          <div className="p-3 rounded-2xl bg-gradient-to-b from-amber-950/70 via-purple-950/80 to-slate-950 border border-amber-400/60 space-y-2.5">
+            <div className="flex items-center justify-between border-b border-amber-400/30 pb-1.5">
+              <span className="font-black text-xs text-amber-300 uppercase">
+                👑 VÒNG ĐẶC BIỆT — Quán quân: {formatTeamLabel(currentTurnTeamName)}
+              </span>
+              <span className="text-[10px] font-bold text-amber-200">
+                {edition === "ENGLISH" ? "Mở sẵn R,S,T,L,N,E · Chọn 3 Phụ + 1 Nguyên · 40s" : `Chọn ${specialAllowedLettersCount} chữ · 30s suy nghĩ + 10s giải`}
+              </span>
+            </div>
+
+            {phase === "SPECIAL_ORDER_CHOICE" && (
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => onSpecialChooseOrder?.("SPIN_FIRST")} className="p-2.5 rounded-xl font-black text-xs bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 cursor-pointer">
+                  🎡 QUAY THƯỞNG TRƯỚC
+                </button>
+                <button type="button" onClick={() => onSpecialChooseOrder?.("SOLVE_FIRST")} className="p-2.5 rounded-xl font-black text-xs bg-gradient-to-r from-cyan-500 to-blue-600 text-white cursor-pointer">
+                  🧩 GIẢI Ô CHỮ TRƯỚC
+                </button>
+              </div>
+            )}
+
+            {phase === "SPECIAL_SPIN_WAITING" && (
+              <button
+                type="button"
+                disabled={effectiveIsSpinning}
+                onClick={() => {
+                  if (effectiveIsSpinning) return;
+                  if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
+                  setLocalIsSpinning(true);
+                  onSpin?.(oscillatingPower);
+                }}
+                className="w-full py-2.5 rounded-xl font-black text-xs text-slate-950 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 cursor-pointer"
+              >
+                ✦ QUAY PHONG BÌ ĐẶC BIỆT ({oscillatingPower}%) ✦
+              </button>
+            )}
+
+            {phase === "SPECIAL_SOLVING" && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-2 rounded-xl bg-black/50 border border-amber-400/40">
+                  <span className="text-xs font-black text-amber-300">
+                    ⏱️ THỜI GIAN: Còn {specialRemainingSec}s!
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-lg bg-amber-400 text-slate-950 font-mono font-black text-xs">
+                    {specialRemainingSec}s
+                  </span>
+                </div>
+                <SmartPuzzlePhraseInput
+                  secretPhrase={currentPuzzle?.secretPhrase || ""}
+                  revealedIndices={animRevealedIndices}
+                  onSubmit={(ans) => onSolvePuzzle?.(ans)}
+                  submitLabel="GỬI PHƯƠNG ÁN GIẢI Ô CHỮ ➔"
+                  continuousMode={true}
+                  attemptLog={specialAttemptLog}
+                  edition={edition}
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Vòng Chơi Chính: Nút chuông LOẠI BỎ, Hàng lệnh + Bàn phím (hoặc Thẻ quà thay thế) */
+          <div className="w-full flex-1 flex flex-col justify-center gap-2 min-h-0 my-1 overflow-hidden">
+            {/* Hàng nút lệnh */}
+            {phase === "SPIN_WAITING" &&
+             effectiveBoardStage === "READY_CLUE" &&
+             !effectiveIsSpinning &&
+             !isSpinning &&
+             !mustSolveWithTones &&
+             !speedUpBellActive && (
+              <div className="p-2 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-1.5 shrink-0">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                  <span className="flex items-center gap-1 text-amber-300 text-[11px]">
+                    ⚡ LỰC QUAY: {oscillatingPower}%
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">Nhấn chốt để quay ngay</span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden p-0.5 border border-white/20">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-amber-400 to-rose-500 transition-all duration-75 shadow-lg"
+                    style={{ width: `${oscillatingPower}%` }}
+                  />
+                </div>
+                {(() => {
+                  const isMyTurnToSpin = isHost || (myTeamId ? myTeamId === currentTurnTeamId : effectiveIsMyTurn);
+                  if (canInteract && isMyTurnToSpin) {
+                    return (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated || isNoMoreConsonants) return;
+                            if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
+                            setLocalIsSpinning(true);
+                            onSpin?.(oscillatingPower);
+                          }}
+                          disabled={!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated || isNoMoreConsonants}
+                          className={`flex-1 py-2 rounded-xl font-black text-xs text-white transition shadow cursor-pointer ${
+                            isCurrentTeamEliminated
+                              ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                              : isNoMoreConsonants
+                              ? "bg-slate-850 text-amber-400/80 border border-amber-500/40 cursor-not-allowed opacity-75"
+                              : "bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:brightness-110 active:scale-98"
+                          }`}
+                        >
+                          {isCurrentTeamEliminated
+                            ? "⛔ HẾT LƯỢT"
+                            : isNoMoreConsonants
+                            ? "🚫 HẾT PHỤ ÂM"
+                            : `✦ QUAY NÓN (${oscillatingPower}%) ✦`}
+                        </button>
+                        {edition === "ENGLISH" && subMode === "WORD_PUZZLE" && (
+                          <button
+                            type="button"
+                            onClick={() => setBuyVowelModalOpen(true)}
+                            disabled={
+                              isSpinning ||
+                              isCurrentTeamEliminated ||
+                              ((roundScores?.[currentTurnTeamId] || 0) < 250)
+                            }
+                            className="px-3 py-2 rounded-xl font-black text-xs whitespace-nowrap bg-gradient-to-r from-amber-600 to-orange-700 text-amber-100 hover:brightness-110 active:scale-98 cursor-pointer shadow"
+                          >
+                            🛒 MUA NGUYÊN ÂM (250đ)
+                          </button>
+                        )}
+                        {subMode === "WORD_PUZZLE" && (
+                          <button
+                            type="button"
+                            onClick={() => setSolveModalOpen(true)}
+                            disabled={isSpinning || isSolveForbiddenInRound3 || isCurrentTeamEliminated}
+                            className="px-3 py-2 rounded-xl font-black text-xs whitespace-nowrap text-black bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 active:scale-98 cursor-pointer shadow"
+                          >
+                            🎯 GIẢI Ô CHỮ
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="text-center py-1 text-xs text-amber-300/80 italic font-medium">
+                      ⏳ Đang chờ {formatTeamLabel(currentTurnTeamName)} quay nón hoặc giải ô chữ...
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Bàn phím chữ cái hoặc Thẻ quà tặng thay thế tạm thời */}
+            <div className="flex-1 flex flex-col justify-center min-h-0 overflow-hidden">
+              {phase === "REWARD_CHOICE" ? (
+                /* 20 Lá thăm bí mật thay thế tạm thời vùng chọn chữ */
+                <div className="p-2 sm:p-2.5 rounded-2xl bg-gradient-to-b from-amber-950/80 via-slate-900/90 to-amber-950/80 border-2 border-amber-400/50 shadow-xl space-y-1.5">
+                  <div className="flex items-center justify-between border-b border-amber-400/30 pb-1">
+                    <span className="font-black text-xs text-amber-300 uppercase">
+                      🎁 Ô PHẦN THƯỞNG: 20 LÁ THĂM BÍ MẬT (CHỌN 1 LÁ)
+                    </span>
+                    <span className="text-[10px] text-amber-200/80">
+                      {pickedRewardCardIdx !== null ? "Đang mở quà..." : "Chạm vào 1 lá thăm"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-1 sm:gap-1.5">
+                    {rewardCards.map((card, idx) => {
+                      const isRevealed = pickedRewardCardIdx === idx;
+                      const isOtherPicked = pickedRewardCardIdx !== null && pickedRewardCardIdx !== idx;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          disabled={pickedRewardCardIdx !== null || !canInteract}
+                          onClick={() => {
+                            if (pickedRewardCardIdx !== null) return;
+                            setPickedRewardCardIdx(idx);
+                            if (canPlayBoardAudio) soundManager.playMagicWheelReward();
+                            setTimeout(() => {
+                              onSelectRewardCard?.({
+                                cardIndex: idx,
+                                rewardType: card.type,
+                                points: card.points,
+                              });
+                            }, 1200);
+                          }}
+                          className={`aspect-[3/4] rounded-lg flex flex-col items-center justify-center p-0.5 font-black text-center transition-all duration-300 select-none ${
+                            isRevealed
+                              ? "bg-gradient-to-tr from-amber-300 via-yellow-200 to-amber-400 text-amber-950 border-2 border-yellow-100 scale-110 shadow-[0_0_20px_#f59e0b] z-10"
+                              : isOtherPicked
+                              ? "bg-black/30 border border-white/5 opacity-40 cursor-not-allowed"
+                              : "bg-gradient-to-b from-amber-900/60 to-purple-950/80 border border-amber-400/40 hover:scale-105 active:scale-95 text-amber-200 shadow cursor-pointer"
+                          }`}
+                        >
+                          {isRevealed ? (
+                            <>
+                              <span className="text-base sm:text-xl">{card.icon}</span>
+                              <span className="text-[9px] font-black leading-none mt-0.5">{card.label}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-sm opacity-80">✉️</span>
+                              <span className="text-[9px] font-black text-amber-300 mt-0.5">#{idx + 1}</span>
+                            </>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : phase === "MYSTERY_CHOICE" ? (
+                <div className="p-3 rounded-xl bg-purple-950/60 border border-purple-500/40 shadow space-y-2">
+                  <span className="font-black text-xs text-purple-200">🔮 QUYẾT ĐỊNH Ô BÍ MẬT:</span>
+                  {canInteract ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => onMysteryDecide?.(false)} className="py-2 px-3 rounded-lg font-black text-xs bg-emerald-600 text-white cursor-pointer">
+                        🛡️ AN TOÀN (1.000đ/chữ)
+                      </button>
+                      <button type="button" onClick={() => onMysteryDecide?.(true)} className="py-2 px-3 rounded-lg font-black text-xs bg-purple-600 text-white cursor-pointer">
+                        🎲 LẬT BÍ MẬT (3 Triệu / Mất điểm)
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center text-xs text-slate-400 italic">Đang đợi {formatTeamLabel(currentTurnTeamName)}...</div>
+                  )}
+                </div>
+              ) : phase === "TRADE_CHOICE" ? (
+                <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-500/40 shadow space-y-2">
+                  <span className="text-xs font-black text-rose-200">🎁 ĐỔI HAY KHÔNG ĐỔI? (VÒNG 3)</span>
+                  {canInteract ? (
+                    <div className="space-y-1.5">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+                        {[
+                          { label: "🎁 Hộp #1", desc: "5.000.000đ" },
+                          { label: "🎁 Hộp #2", desc: "3.000.000đ" },
+                          { label: "🎁 Hộp #3", desc: "Nồi chiên" },
+                          { label: "🎁 Hộp #4", desc: "Bộ nồi Inox" },
+                        ].map((box, idx) => (
+                          <button key={idx} type="button" onClick={() => onTradeDecide?.(true, idx)} className="p-1.5 rounded-lg border border-rose-400/40 bg-rose-500/20 text-rose-200 text-xs font-black cursor-pointer">
+                            <span>{box.label}</span>
+                            <span className="text-[9px] block text-rose-300 font-normal">{box.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <button type="button" onClick={() => onTradeDecide?.(false)} className="w-full py-1.5 rounded-lg font-black text-xs bg-cyan-600 text-white cursor-pointer">
+                        🛡️ KHÔNG ĐỔI — TIẾP TỤC ĐUA Ô CHỮ ➔
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center text-xs text-slate-400 italic">Đang đợi {formatTeamLabel(currentTurnTeamName)}...</div>
+                  )}
+                </div>
+              ) : phase === "FREE_SPIN_CHOICE" ? (
+                <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-400/50 space-y-2">
+                  <span className="text-xs font-black text-emerald-200">🎟️ SỬ DỤNG THẺ THÊM LƯỢT?</span>
+                  {canInteract ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => onUseFreeSpin?.(true)} className="py-2 px-3 rounded-lg font-black text-xs bg-emerald-500 text-white cursor-pointer">
+                        🎟️ DÙNG THẺ (QUAY TIẾP)
+                      </button>
+                      <button type="button" onClick={() => onUseFreeSpin?.(false)} className="py-2 px-3 rounded-lg font-black text-xs bg-slate-800 text-slate-300 cursor-pointer">
+                        ⏭️ GIỮ THẺ (CHUYỂN LƯỢT)
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center text-xs text-slate-400 italic">Đang đợi {formatTeamLabel(currentTurnTeamName)}...</div>
+                  )}
+                </div>
+              ) : phase === "EXPRESS_CHOICE" ? (
+                <div className="p-3 rounded-xl bg-amber-950/60 border border-amber-400/50 space-y-2">
+                  <span className="text-xs font-black text-amber-200">⚡ LÊN TÀU TỐC ĐỘ (1.000đ/chữ)?</span>
+                  {canInteract && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => onExpressDecide?.(true)} className="py-2 px-3 rounded-lg font-black text-xs bg-amber-400 text-slate-950 cursor-pointer">
+                        ⚡ LÊN TÀU
+                      </button>
+                      <button type="button" onClick={() => onExpressDecide?.(false)} className="py-2 px-3 rounded-lg font-black text-xs bg-slate-700 text-white cursor-pointer">
+                        🛡️ DỪNG AN TOÀN
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : phase === "STEAL_SWAP_CHOICE" ? (
+                <div className="p-3 rounded-xl bg-indigo-950/70 border border-indigo-400/50 space-y-2">
+                  <span className="text-xs font-black text-indigo-200">⚔️ Ô ĐỐI ĐẦU / CHUYỂN NHƯỢNG:</span>
+                  {canInteract && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => onStealSwapDecide?.("STEAL_50")} className="py-2 px-3 rounded-lg font-black text-xs bg-rose-500 text-white cursor-pointer">
+                        ⚔️ CƯỚP 50%
+                      </button>
+                      <button type="button" onClick={() => onStealSwapDecide?.("SWAP_LEADER")} className="py-2 px-3 rounded-lg font-black text-xs bg-cyan-500 text-white cursor-pointer">
+                        🔄 ĐỔI VỚI DẪN ĐẦU
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* BÀN PHÍM CHỮ CÁI */
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px] font-black text-slate-300">
+                    <span>
+                      {edition === "ENGLISH"
+                        ? (selectedSector?.type === "FREE_PLAY" || activeState.pendingSpecialAction === "FREE_PLAY")
+                          ? "🎉 FREE PLAY: Đoán tự do cả Nguyên âm MIỄN PHÍ!"
+                          : "Bàn phím phụ âm tiếng Anh (Nguyên âm mua qua nút 250đ):"
+                        : "Bàn phím chữ cái:"}
+                    </span>
+                    {guessedLetterWarning && (
+                      <span className="text-amber-400 font-bold animate-pulse text-[10px]">{guessedLetterWarning}</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-7 sm:grid-cols-10 gap-1">
+                    {(() => {
+                      const isFreePlayActive =
+                        selectedSector?.type === "FREE_PLAY" || activeState.pendingSpecialAction === "FREE_PLAY";
+                      const lettersList =
+                        edition === "ENGLISH"
+                          ? isFreePlayActive
+                            ? ENGLISH_ALPHABET
+                            : ENGLISH_ALPHABET.filter((l) => !isEnglishVowel(l))
+                          : VIETNAMESE_ALPHABET;
+
+                      return lettersList.map((letter) => {
+                        const isGuessed = guessedLetters.includes(letter);
+                        const isVowel = edition === "ENGLISH" && isEnglishVowel(letter);
+                        const isCurrentTarget =
+                          canInteract &&
+                          (phase === "ACTION_INPUT" || expressModeActive || speedUpBellActive) &&
+                          !mustSolveWithTones &&
+                          !isSpinning &&
+                          (isFreePlayActive || !(edition === "ENGLISH" && isVowel));
+
+                        const handleLetterClick = () => {
+                          if (isGuessed) {
+                            if (blackoutGuessedLetters === false) {
+                              setGuessedLetterWarning(`⚠️ Chữ "${letter}" đã có người đoán trước đó rồi!`);
+                              setTimeout(() => setGuessedLetterWarning(null), 3000);
+                            }
+                            return;
+                          }
+                          if (edition === "ENGLISH" && isVowel && !isFreePlayActive) {
+                            setGuessedLetterWarning("⚠️ Trong bản tiếng Anh, nguyên âm phải mua với giá 250đ!");
+                            setTimeout(() => setGuessedLetterWarning(null), 3500);
+                            return;
+                          }
+                          onGuessLetter?.(letter);
+                        };
+
+                        return (
+                          <button
+                            key={letter}
+                            type="button"
+                            disabled={isGuessed && blackoutGuessedLetters !== false}
+                            onClick={handleLetterClick}
+                            className={`p-1.5 sm:p-2 rounded-lg font-black text-xs transition-all select-none relative ${
+                              isGuessed && blackoutGuessedLetters !== false
+                                ? "bg-white/5 text-slate-500 border border-white/5 opacity-40 cursor-not-allowed line-through"
+                                : isGuessed && blackoutGuessedLetters === false
+                                ? "bg-gradient-to-b from-cyan-500/20 to-blue-600/30 text-cyan-200 border border-cyan-400/40 shadow hover:scale-105 active:scale-95 cursor-pointer"
+                                : isCurrentTarget
+                                ? "bg-gradient-to-b from-cyan-500/20 to-blue-600/30 hover:from-cyan-400/40 hover:to-blue-500/50 text-cyan-200 border border-cyan-400/40 shadow hover:scale-105 active:scale-95 cursor-pointer"
+                                : isVowel
+                                ? "bg-amber-500/15 text-amber-300 border border-amber-400/30 hover:bg-amber-500/25 cursor-pointer"
+                                : "bg-white/5 text-slate-300 border border-white/10 opacity-70 cursor-not-allowed"
+                            }`}
+                          >
+                            <span>{letter}</span>
+                            {edition === "ENGLISH" && isVowel && !isGuessed && (
+                              <span className="block text-[8px] text-emerald-400 font-normal leading-none mt-0.5">
+                                FREE
+                              </span>
+                            )}
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ZONE 3: BOTTOM — Tinh giản điểm số */}
+      <div className="w-full shrink-0 pt-1 pb-1">
+        {renderCompactSingleRowScorebar()}
+      </div>
+    </div>
+  );
+
+  // ── 5. DISPLAY VIEW (isDisplay = true): ZERO-SCROLL, FULL 360° WHEEL, LAYOUT SWITCHER ──
+  const renderDisplayView = () => (
+    <div className="w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-3 sm:p-5 md:p-6 box-border bg-gradient-to-b from-[#050811] via-[#091122] to-[#04060d] text-white select-none">
+      {/* Top Header */}
+      <div className="w-full flex items-center justify-between shrink-0 mb-1">
+        <div className="flex items-center gap-2">
+          <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 uppercase shadow">
+            {stageBadgeLabel}
+          </span>
+          <span className="text-xs text-slate-300 font-bold">
+            Màn {currentRound}/{maxRounds}
+          </span>
+          {mainRoundNumber === 4 && roundStage === "MAIN" && jackpotPool && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-200 border border-cyan-400/50">
+              💎 {(jackpotPool).toLocaleString()}đ
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-black/60 border border-white/10">
+          <span className="w-2.5 h-2.5 rounded-full shadow animate-pulse" style={{ background: activeTeam?.color || "#ec4899" }} />
+          <span className="text-xs font-bold text-slate-300">
+            {isTossUpRound
+              ? tossUpBuzzedTeamName ? `Đội bấm: ${tossUpBuzzedTeamName}` : "Tranh quyền bấm chuông"
+              : `Đang đến lượt: ${currentTurnTeamName || "Chưa có"}`}
+          </span>
+        </div>
+      </div>
+
+      {/* Body: Focus Wheel / Focus Board / Stacked View */}
+      {effDisplayLayoutMode === "FOCUS_WHEEL" ? (
+        <div className="w-full flex-1 flex flex-col items-center justify-center min-h-0 gap-3">
+          <InteractiveWheelRig
+            variant="DISPLAY_360"
+            wheelRef={wheelRef}
+            needleRef={needleRef}
+            clientWheelAngle={clientWheelAngle}
+            effectiveIsSpinning={effectiveIsSpinning}
+            sectors={sectors}
+            selectedSector={selectedSector}
+          />
+        </div>
+      ) : effDisplayLayoutMode === "FOCUS_BOARD" || (effDisplayLayoutMode === "AUTO" && isTossUpRound) ? (
+        <div className="w-full flex-1 flex flex-col items-center justify-center min-h-0">
+          {renderBoardGridMatrix(true)}
+          {isTossUpRound && (
+            <div className="mt-2 px-4 py-1.5 rounded-full bg-black/80 border border-amber-400/40 text-amber-200 text-xs font-bold flex items-center gap-2 animate-pulse">
+              <span>🔔</span>
+              <span>
+                {tossUpBuzzedTeamName
+                  ? `ĐỘI ${tossUpBuzzedTeamName.toUpperCase()} ĐÃ BẤM CHUÔNG!`
+                  : "ĐANG MỞ CHỮ NGẪU NHIÊN · CÁC ĐỘI SẴN SÀNG BẤM CHUÔNG!"}
+              </span>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* STACKED (Toàn diện: Bảng ô chữ ở trên ~52%, Vòng quay tròn 360° ở dưới ~46%) */
+        <div className="w-full flex-1 flex flex-col justify-between min-h-0 gap-2">
+          {/* Upper: 56-tile board */}
+          <div className="w-full flex justify-center shrink-0">
+            {renderBoardGridMatrix(true)}
+          </div>
+
+          {/* Lower: 3-column row (Left team | Center 360° Wheel | Right teams) */}
+          <div className="w-full flex-1 grid grid-cols-12 gap-3 items-center min-h-0">
+            {/* Left Column: Team 1 */}
+            <div className="col-span-3 flex flex-col justify-center gap-2">
+              {teams.slice(0, 1).map((t) => {
+                const rScore = roundScores?.[t.id] || 0;
+                const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
+                const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
+                return (
+                  <div
+                    key={t.id}
+                    className={`p-3 rounded-2xl border flex flex-col gap-1 transition shadow ${
+                      isTurn
+                        ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)] ring-2 ring-amber-400"
+                        : "bg-black/50 border-white/10 text-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 rounded-full shadow" style={{ background: t.color || "#6366f1" }} />
+                      <span className="font-black text-sm truncate">{t.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] text-emerald-400 font-mono font-bold">
+                        +{edition === "ENGLISH" ? `$${rScore.toLocaleString("en-US")}` : `${rScore.toLocaleString()}đ`}
+                      </span>
+                      <span className="text-base font-black text-amber-300 font-mono">
+                        {edition === "ENGLISH" ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}` : `${((t.score || 0) + rScore).toLocaleString()}đ`}
+                      </span>
+                    </div>
+                    {strikes > 0 && edition !== "ENGLISH" && (
+                      <div className="text-rose-400 font-mono text-xs tracking-tighter pt-0.5">
+                        {"✕".repeat(Math.min(3, strikes))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Center Column: Full 360° Circular 3D Wheel */}
+            <div className="col-span-6 flex flex-col items-center justify-center h-full max-h-full">
+              <InteractiveWheelRig
+                variant="DISPLAY_360"
+                wheelRef={wheelRef}
+                needleRef={needleRef}
+                clientWheelAngle={clientWheelAngle}
+                effectiveIsSpinning={effectiveIsSpinning}
+                sectors={sectors}
+                selectedSector={selectedSector}
+              />
+            </div>
+
+            {/* Right Column: Teams 2 and 3 */}
+            <div className="col-span-3 flex flex-col justify-center gap-2">
+              {teams.slice(1).map((t) => {
+                const rScore = roundScores?.[t.id] || 0;
+                const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
+                const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
+                return (
+                  <div
+                    key={t.id}
+                    className={`p-3 rounded-2xl border flex flex-col gap-1 transition shadow ${
+                      isTurn
+                        ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)] ring-2 ring-amber-400"
+                        : "bg-black/50 border-white/10 text-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 rounded-full shadow" style={{ background: t.color || "#6366f1" }} />
+                      <span className="font-black text-sm truncate">{t.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] text-emerald-400 font-mono font-bold">
+                        +{edition === "ENGLISH" ? `$${rScore.toLocaleString("en-US")}` : `${rScore.toLocaleString()}đ`}
+                      </span>
+                      <span className="text-base font-black text-amber-300 font-mono">
+                        {edition === "ENGLISH" ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}` : `${((t.score || 0) + rScore).toLocaleString()}đ`}
+                      </span>
+                    </div>
+                    {strikes > 0 && edition !== "ENGLISH" && (
+                      <div className="text-rose-400 font-mono text-xs tracking-tighter pt-0.5">
+                        {"✕".repeat(Math.min(3, strikes))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom: Victory Banner if ROUND_RECAP */}
+      {phase === "ROUND_RECAP" && (
+        <div className="w-full mt-1 p-2.5 rounded-xl bg-gradient-to-r from-amber-500/30 via-yellow-400/30 to-emerald-500/30 border border-amber-400 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-xl">👑</span>
+            <span className="font-black text-amber-300 uppercase">GIẢI MÃ THÀNH CÔNG:</span>
+            <span className="font-black text-white">&ldquo;{currentPuzzle?.secretPhrase}&rdquo;</span>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom: Ultra-compact Scorebar in Focus Modes */}
+      {(effDisplayLayoutMode === "FOCUS_WHEEL" || effDisplayLayoutMode === "FOCUS_BOARD") && (
+        <div className="w-full shrink-0 pt-1">
+          {renderCompactSingleRowScorebar()}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderHostView = () => (
     <div
       className={`w-full flex flex-col gap-3.5 ${
         isDisplay ? "p-3 sm:p-5" : "p-2 sm:p-3"
@@ -2724,9 +4286,9 @@ export default function MagicWheelBoard({
                     <stop offset="100%" stopColor="#78350f" />
                   </linearGradient>
                 </defs>
-                <path d="M22 45 L11 8 Q22 13 22 8 Z" fill="url(#mwNeedleFacetLeft)" stroke="#fef08a" strokeWidth="1.2" strokeLinejoin="round" />
-                <path d="M22 45 L33 8 Q22 13 22 8 Z" fill="url(#mwNeedleFacetRight)" stroke="#b45309" strokeWidth="1.2" strokeLinejoin="round" />
-                <path d="M22 44 L22 10" stroke="url(#mwChromeNeedleGrad)" strokeWidth="2.8" strokeLinecap="round" />
+                <path d="M22 39 L11 8 Q22 13 22 8 Z" fill="url(#mwNeedleFacetLeft)" stroke="#fef08a" strokeWidth="1.2" strokeLinejoin="round" />
+                <path d="M22 39 L33 8 Q22 13 22 8 Z" fill="url(#mwNeedleFacetRight)" stroke="#b45309" strokeWidth="1.2" strokeLinejoin="round" />
+                <path d="M22 38 L22 10" stroke="url(#mwChromeNeedleGrad)" strokeWidth="2.8" strokeLinecap="round" />
                 <circle cx="22" cy="11" r="5.5" fill="#0f172a" stroke="#fef08a" strokeWidth="1.8" />
                 <circle cx="22" cy="11" r="3.6" fill="url(#mwChromeNeedleGrad)" />
                 <circle cx="20.6" cy="9.6" r="1.2" fill="#ffffff" />
@@ -3613,8 +5175,8 @@ export default function MagicWheelBoard({
                     </div>
                   )}
 
-                  {/* 2. Alphabet Keyboard & Solve Trigger */}
-                  {subMode === "WORD_PUZZLE" && (
+                  {/* 2. Alphabet Keyboard & Solve Trigger (Thay thế tạm thời bằng Phần Thưởng khi rơi vào ô chức năng đặc biệt) */}
+                  {subMode === "WORD_PUZZLE" && phase !== "REWARD_CHOICE" && phase !== "MYSTERY_CHOICE" && (
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="text-[11px] font-black uppercase tracking-wider text-slate-300">
@@ -3625,7 +5187,9 @@ export default function MagicWheelBoard({
                             : speedUpBellActive
                             ? "🔔 CHUÔNG TĂNG TỐC (1.500đ/chữ — Không cần quay nón):"
                             : edition === "ENGLISH"
-                            ? "Bàn phím 26 chữ cái tiếng Anh (Quay nón gọi Phụ âm, Mua Nguyên âm 250đ):"
+                            ? (selectedSector?.type === "FREE_PLAY" || activeState.pendingSpecialAction === "FREE_PLAY"
+                                ? "🎉 Ô FREE PLAY: Đoán tự do bất kỳ chữ cái nào (kể cả Nguyên âm) MIỄN PHÍ 0đ!"
+                                : "Bàn phím phụ âm tiếng Anh (Nguyên âm chỉ dùng qua nút Mua 250đ):")
                             : "Bàn phím 29 chữ cái tiếng Việt (chỉ mở chữ cái gốc, không mở dấu thanh):"}
                         </span>
                         {canInteract && (
@@ -3636,16 +5200,21 @@ export default function MagicWheelBoard({
                                 onClick={() => setBuyVowelModalOpen(true)}
                                 disabled={
                                   isCurrentTeamEliminated ||
+                                  (selectedSector?.type === "FREE_PLAY" || activeState.pendingSpecialAction === "FREE_PLAY") ||
                                   (edition === "ENGLISH" && mustSpinOnly) ||
                                   ((roundScores?.[currentTurnTeamId] || 0) < 250)
                                 }
                                 className={`px-2.5 py-1 rounded-lg text-xs font-black shadow transition ${
-                                  isCurrentTeamEliminated || (edition === "ENGLISH" && mustSpinOnly) || (roundScores?.[currentTurnTeamId] || 0) < 250
+                                  (selectedSector?.type === "FREE_PLAY" || activeState.pendingSpecialAction === "FREE_PLAY")
+                                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 cursor-default"
+                                    : isCurrentTeamEliminated || (edition === "ENGLISH" && mustSpinOnly) || (roundScores?.[currentTurnTeamId] || 0) < 250
                                     ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50"
                                     : "bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 hover:brightness-110 cursor-pointer shadow"
                                 }`}
                               >
-                                🛒 Mua Nguyên Âm (250đ)
+                                {(selectedSector?.type === "FREE_PLAY" || activeState.pendingSpecialAction === "FREE_PLAY")
+                                  ? "✨ Free Play (Nguyên âm 0đ)"
+                                  : "🛒 Mua Nguyên Âm (250đ)"}
                               </button>
                             )}
                             <button
@@ -3706,59 +5275,75 @@ export default function MagicWheelBoard({
                       )}
 
                       <div className="grid grid-cols-7 sm:grid-cols-10 gap-1">
-                        {(edition === "ENGLISH" ? ENGLISH_ALPHABET : VIETNAMESE_ALPHABET).map((letter) => {
-                          const isGuessed = guessedLetters.includes(letter);
-                          const isVowel = edition === "ENGLISH" && isEnglishVowel(letter);
-                          const isCurrentTarget =
-                            canInteract &&
-                            (phase === "ACTION_INPUT" || expressModeActive || speedUpBellActive) &&
-                            !mustSolveWithTones &&
-                            !isSpinning &&
-                            !(edition === "ENGLISH" && isVowel);
+                        {(() => {
+                          const isFreePlayActive =
+                            selectedSector?.type === "FREE_PLAY" || activeState.pendingSpecialAction === "FREE_PLAY";
+                          const lettersList =
+                            edition === "ENGLISH"
+                              ? isFreePlayActive
+                                ? ENGLISH_ALPHABET // Đầy đủ 26 chữ cái (cả nguyên âm) khi trúng Free Play!
+                                : ENGLISH_ALPHABET.filter((l) => !isEnglishVowel(l)) // Khu phụ âm riêng biệt
+                              : VIETNAMESE_ALPHABET;
 
-                          const handleLetterClick = () => {
-                            if (isGuessed) {
-                              if (blackoutGuessedLetters === false) {
-                                setGuessedLetterWarning(`⚠️ Chữ "${letter}" đã có người đoán trước đó rồi!`);
-                                setTimeout(() => setGuessedLetterWarning(null), 3000);
+                          return lettersList.map((letter) => {
+                            const isGuessed = guessedLetters.includes(letter);
+                            const isVowel = edition === "ENGLISH" && isEnglishVowel(letter);
+                            const isCurrentTarget =
+                              canInteract &&
+                              (phase === "ACTION_INPUT" || expressModeActive || speedUpBellActive) &&
+                              !mustSolveWithTones &&
+                              !isSpinning &&
+                              (isFreePlayActive || !(edition === "ENGLISH" && isVowel));
+
+                            const handleLetterClick = () => {
+                              if (isGuessed) {
+                                if (blackoutGuessedLetters === false) {
+                                  setGuessedLetterWarning(`⚠️ Chữ "${letter}" đã có người đoán trước đó rồi!`);
+                                  setTimeout(() => setGuessedLetterWarning(null), 3000);
+                                }
+                                return;
                               }
-                              return;
-                            }
-                            if (edition === "ENGLISH" && isVowel) {
-                              setGuessedLetterWarning("⚠️ Trong bản tiếng Anh, nguyên âm (A, E, I, O, U) phải mua với giá 250đ!");
-                              setTimeout(() => setGuessedLetterWarning(null), 3500);
-                              return;
-                            }
-                            onGuessLetter?.(letter);
-                          };
+                              if (edition === "ENGLISH" && isVowel && !isFreePlayActive) {
+                                setGuessedLetterWarning("⚠️ Trong bản tiếng Anh, nguyên âm (A, E, I, O, U) phải mua với giá 250đ!");
+                                setTimeout(() => setGuessedLetterWarning(null), 3500);
+                                return;
+                              }
+                              onGuessLetter?.(letter);
+                            };
 
-                          return (
-                            <button
-                              key={letter}
-                              type="button"
-                              disabled={isGuessed && blackoutGuessedLetters !== false}
-                              onClick={handleLetterClick}
-                              className={`p-1.5 sm:p-2 rounded-lg font-black text-xs transition-all select-none relative ${
-                                isGuessed && blackoutGuessedLetters !== false
-                                  ? "bg-white/5 text-slate-500 border border-white/5 opacity-40 cursor-not-allowed line-through"
-                                  : isGuessed && blackoutGuessedLetters === false
-                                  ? "bg-gradient-to-b from-cyan-500/20 to-blue-600/30 text-cyan-200 border border-cyan-400/40 shadow hover:scale-105 active:scale-95 cursor-pointer"
-                                  : isCurrentTarget
-                                  ? "bg-gradient-to-b from-cyan-500/20 to-blue-600/30 hover:from-cyan-400/40 hover:to-blue-500/50 text-cyan-200 border border-cyan-400/40 shadow hover:scale-105 active:scale-95 cursor-pointer"
-                                  : isVowel
-                                  ? "bg-amber-500/15 text-amber-300 border border-amber-400/30 hover:bg-amber-500/25 cursor-pointer"
-                                  : "bg-white/5 text-slate-300 border border-white/10 opacity-70 cursor-not-allowed"
-                              }`}
-                            >
-                              <span>{letter}</span>
-                              {edition === "ENGLISH" && isVowel && !isGuessed && (
-                                <span className="block text-[8px] text-amber-400/80 font-normal leading-none mt-0.5">
-                                  250đ
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
+                            return (
+                              <button
+                                key={letter}
+                                type="button"
+                                disabled={isGuessed && blackoutGuessedLetters !== false}
+                                onClick={handleLetterClick}
+                                className={`p-1.5 sm:p-2 rounded-lg font-black text-xs transition-all select-none relative ${
+                                  isGuessed && blackoutGuessedLetters !== false
+                                    ? "bg-white/5 text-slate-500 border border-white/5 opacity-40 cursor-not-allowed line-through"
+                                    : isGuessed && blackoutGuessedLetters === false
+                                    ? "bg-gradient-to-b from-cyan-500/20 to-blue-600/30 text-cyan-200 border border-cyan-400/40 shadow hover:scale-105 active:scale-95 cursor-pointer"
+                                    : isCurrentTarget
+                                    ? "bg-gradient-to-b from-cyan-500/20 to-blue-600/30 hover:from-cyan-400/40 hover:to-blue-500/50 text-cyan-200 border border-cyan-400/40 shadow hover:scale-105 active:scale-95 cursor-pointer"
+                                    : isVowel
+                                    ? "bg-amber-500/15 text-amber-300 border border-amber-400/30 hover:bg-amber-500/25 cursor-pointer"
+                                    : "bg-white/5 text-slate-300 border border-white/10 opacity-70 cursor-not-allowed"
+                                }`}
+                              >
+                                <span>{letter}</span>
+                                {edition === "ENGLISH" && isVowel && !isGuessed && !isFreePlayActive && (
+                                  <span className="block text-[8px] text-amber-400/80 font-normal leading-none mt-0.5">
+                                    250đ
+                                  </span>
+                                )}
+                                {edition === "ENGLISH" && isVowel && !isGuessed && isFreePlayActive && (
+                                  <span className="block text-[8px] text-emerald-400 font-normal leading-none mt-0.5">
+                                    FREE
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          });
+                        })()}
                       </div>
                     </div>
                   )}
@@ -4385,5 +5970,32 @@ export default function MagicWheelBoard({
         </div>
       )}
     </div>
+  );
+
+
+  // ── THREE-WAY VIEW DISPATCH: CONTESTANT (isPlayer), TV DISPLAY (isDisplay), HOST (isHost) ──
+  if (isPlayer) {
+    return (
+      <>
+        {renderPlayerView()}
+        {renderModals()}
+      </>
+    );
+  }
+
+  if (isDisplay) {
+    return (
+      <>
+        {renderDisplayView()}
+        {renderModals()}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {renderHostView()}
+      {renderModals()}
+    </>
   );
 }

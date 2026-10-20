@@ -1138,7 +1138,7 @@ export default function DisplayPage() {
             <MysteryQuestBoard mysteryState={roomState.mysteryQuestState!} isDisplay={true} teams={roomState.teams} />
           </div>
         ) : isMagicWheel ? (
-          <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col justify-start md:justify-center overflow-y-auto animate-slide-up">
+          <div className="w-full max-w-7xl mx-auto flex-1 flex flex-col justify-center overflow-hidden animate-slide-up">
             <MagicWheelBoard
               wheelState={roomState.magicWheelState!}
               isDisplay={true}
@@ -2391,7 +2391,7 @@ export default function DisplayPage() {
                 />
               </div>
             ) : roomState.mode === "MAGIC_WHEEL" && roomState.magicWheelState ? (
-              <div className="w-full max-w-7xl my-auto">
+              <div className="w-full max-w-7xl h-full flex flex-col justify-center overflow-hidden my-auto">
                 <MagicWheelBoard
                   wheelState={roomState.magicWheelState}
                   isDisplay={true}

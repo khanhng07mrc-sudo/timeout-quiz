@@ -953,6 +953,7 @@ export interface MagicWheelState {
   noMoreConsonants?: boolean;         // Bản Anh: Đã lật hết toàn bộ phụ âm, các ô chữ còn lại đều là nguyên âm (A, E, I, O, U)
   temporaryDisplayText?: string;      // Admin: Chữ hiển thị thủ công tạm thời trên bảng ô chữ giữa 2 vòng
   temporaryDisplayActive?: boolean;   // Admin: Có đang hiển thị chữ tạm thời hay không
+  displayLayoutMode?: "AUTO" | "STACKED" | "FOCUS_WHEEL" | "FOCUS_BOARD"; // Chế độ bố cục Display
 }
 
 // ─── Grid Caro Mode ──────────────────────────────────────────────────────────
@@ -1992,6 +1993,7 @@ export interface ClientToServerEvents {
   "admin:magic_wheel:toss_up_skip": () => void;
   "admin:magic_wheel:set_temporary_text": (payload: { text: string }) => void;
   "admin:magic_wheel:clear_temporary_text": () => void;
+  "admin:magic_wheel:set_display_layout": (payload: { layout: "AUTO" | "STACKED" | "FOCUS_WHEEL" | "FOCUS_BOARD" }) => void;
   "admin:wager:skip_timer": () => void;
   "admin:wager:launch_question": () => void;
   "admin:wager:grant_bailout": (payload: { teamId: string }) => void;

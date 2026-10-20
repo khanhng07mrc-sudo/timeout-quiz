@@ -14,6 +14,7 @@ import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 import { allocateQuestionsForMatch } from "@/lib/game-engine/question-allocator";
 import { downloadMagicWheelExcelTemplate, downloadMagicWheelJsonTemplate } from "@/lib/quiz-template-generator";
 import { MAGIC_WHEEL_PRESET_BANKS, offlineStorage } from "@/lib/offline-storage";
+import { detectQuizBankLanguage } from "@/lib/game-engine/magic-wheel";
 import { BilingualCategoryPicker } from "@/components/modes/BilingualCategoryPicker";
 import {
   DEFAULT_MAGIC_WHEEL_PUZZLES,
@@ -88,14 +89,12 @@ export default function CreateRoomPage() {
 
   const compatibleBanks = useMemo(() => {
     const isMw = mode === "MAGIC_WHEEL";
-    return quizBanks
-      .filter((b: any) => !b.isMixed)
-      .sort((a: any, b: any) => {
-        if (!isMw) return 0;
-        const aIsWp = isWordPuzzleBank(a) ? 1 : 0;
-        const bIsWp = isWordPuzzleBank(b) ? 1 : 0;
-        return bIsWp - aIsWp;
-      });
+    if (isMw) {
+      // Magic Wheel: Chỉ lấy các bộ đề Ô Chữ!
+      return quizBanks.filter((b: any) => isWordPuzzleBank(b));
+    }
+    // Các mode khác: Chỉ lấy các bộ đề trắc nghiệm thông thường!
+    return quizBanks.filter((b: any) => !isWordPuzzleBank(b));
   }, [quizBanks, mode, isWordPuzzleBank]);
 
   useEffect(() => {
@@ -108,6 +107,22 @@ export default function CreateRoomPage() {
       })
       .catch(() => {});
   }, []);
+
+    // Tự động nhận diện ngôn ngữ Anh / Việt khi chọn bộ đề trong Magic Wheel
+  useEffect(() => {
+    if (mode === "MAGIC_WHEEL" && quizBankId) {
+      const selected = quizBanks.find((b: any) => b.id === quizBankId);
+      if (selected) {
+        const detected = detectQuizBankLanguage({
+          id: selected.id,
+          title: selected.title,
+          description: (selected as any).description,
+          questions: bankQuestions,
+        });
+        setMagicWheelEdition(detected);
+      }
+    }
+  }, [mode, quizBankId, quizBanks, bankQuestions]);
 
   // Tự động chọn bộ đề phù hợp nhất khi đổi mode hoặc khi danh sách bộ đề tải xong
   useEffect(() => {
@@ -531,9 +546,20 @@ export default function CreateRoomPage() {
             </select>
 
             {mode === "MAGIC_WHEEL" ? (
-              <p className="text-[11px] text-amber-300/90 mt-2 flex items-center gap-1.5 font-medium">
-                <span>💡 Ưu tiên hiển thị các bộ đề Ô Chữ (🔤) tương thích cho Magic Wheel.</span>
-              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <p className="text-[11px] text-amber-300/90 flex items-center gap-1.5 font-medium">
+                  <span>💡 Chỉ hiển thị các bộ đề Ô Chữ (🔤) tương thích cho Chiếc Nón Kỳ Diệu.</span>
+                </p>
+                {quizBankId && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                    magicWheelEdition === "ENGLISH"
+                      ? "bg-cyan-500/20 text-cyan-200 border-cyan-400/40"
+                      : "bg-emerald-500/20 text-emerald-200 border-emerald-400/40"
+                  }`}>
+                    {magicWheelEdition === "ENGLISH" ? "🇺🇸 Tự nhận diện: Bản Tiếng Anh" : "🇻🇳 Tự nhận diện: Bản Tiếng Việt"}
+                  </span>
+                )}
+              </div>
             ) : (
               <p className="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5 font-medium">
                 <span>💡 Hiển thị ngân hàng câu hỏi trắc nghiệm (🎯) tương thích với chế độ thi đấu.</span>

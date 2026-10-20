@@ -48,6 +48,7 @@ import {
   DEFAULT_MAGIC_WHEEL_PUZZLES,
   BASE_24_SECTORS,
   buildMagicWheelMatchPuzzles,
+  detectQuizBankLanguage,
   calculateSpecialRoundAllowedLetters,
   generateFlexibleMCCommentary,
   MagicWheelOperationMode,
@@ -7155,12 +7156,16 @@ export function registerSocketHandlers(io: IO) {
     socket.on("ancient-tarot-reveal", async ({ code }: { code?: string } = {}) => {
       const playerId = playerSockets.get(socket.id);
       let room: any = null;
+      let playerTeamId: string | null = null;
       if (playerId) {
         const player = await prisma.player.findUnique({
           where: { id: playerId },
           include: { room: true },
         });
-        if (player?.room) room = player.room;
+        if (player?.room) {
+          room = player.room;
+          playerTeamId = player.teamId;
+        }
       }
       if (!room && code) {
         room = await getAdminRoom(socket, code);
@@ -7169,6 +7174,12 @@ export function registerSocketHandlers(io: IO) {
 
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+
+      // SECURITY FIX: Chống phá hoại từ đối thủ - chỉ admin hoặc đội đang trong lượt mới được reveal
+      if (playerTeamId && !code && !canPlayerActForTurn({ id: playerId, teamId: playerTeamId }, questState, room)) {
+        socket.emit("error", "Chưa đến lượt lật bài của đội bạn!");
+        return;
+      }
 
       await executeMysteryTarotReveal(room, questState);
     });
@@ -7176,12 +7187,16 @@ export function registerSocketHandlers(io: IO) {
     socket.on("game:mystery:ancient_tarot_reveal", async ({ code }: { code?: string } = {}) => {
       const playerId = playerSockets.get(socket.id);
       let room: any = null;
+      let playerTeamId: string | null = null;
       if (playerId) {
         const player = await prisma.player.findUnique({
           where: { id: playerId },
           include: { room: true },
         });
-        if (player?.room) room = player.room;
+        if (player?.room) {
+          room = player.room;
+          playerTeamId = player.teamId;
+        }
       }
       if (!room && code) {
         room = await getAdminRoom(socket, code);
@@ -7190,6 +7205,12 @@ export function registerSocketHandlers(io: IO) {
 
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+
+      // SECURITY FIX: Chống phá hoại từ đối thủ - chỉ admin hoặc đội đang trong lượt mới được reveal
+      if (playerTeamId && !code && !canPlayerActForTurn({ id: playerId, teamId: playerTeamId }, questState, room)) {
+        socket.emit("error", "Chưa đến lượt lật bài của đội bạn!");
+        return;
+      }
 
       await executeMysteryTarotReveal(room, questState);
     });
@@ -8044,9 +8065,26 @@ export function registerSocketHandlers(io: IO) {
       }
 
       const tRes = await applyScoreDeltaToTeam(winnerTeamId, wonPoints);
-      io.to(`room:${roomCode}`).emit("game:score:update", [
+
+      // BUG-06 FIX: Apply permanentScores cho tất cả đội trong English edition
+      // (Vietnamese edition dùng roundScores => won by winner, nhưng English có permanentScores riêng)
+      const scoreUpdates: { teamId: string; score: number; delta: number }[] = [
         { teamId: winnerTeamId, score: tRes.newScore, delta: tRes.effectiveDelta },
-      ]);
+      ];
+      if (wheelState.edition === "ENGLISH" && wheelState.permanentScores) {
+        for (const [permTeamId, permPts] of Object.entries(wheelState.permanentScores)) {
+          if (permTeamId !== winnerTeamId && (permPts as number) > 0) {
+            try {
+              const permRes = await applyScoreDeltaToTeam(permTeamId, permPts as number);
+              scoreUpdates.push({ teamId: permTeamId, score: permRes.newScore, delta: permRes.effectiveDelta });
+            } catch (err) {
+              console.error(`[BUG-06] Failed to apply permanentScore for team ${permTeamId}:`, err);
+            }
+          }
+        }
+      }
+
+      io.to(`room:${roomCode}`).emit("game:score:update", scoreUpdates);
 
       wheelState.phase = "ROUND_RECAP";
       wheelState.lastAwardedPoints = wonPoints;
@@ -8275,7 +8313,7 @@ export function registerSocketHandlers(io: IO) {
 
         // 2. Authoritative driver interval for all subsequent letters (750ms for VN, 1000ms for EN)
         startServerTossUpInterval(roomId, roomCode);
-      }, isEnglish ? 1000 : 1000);
+      }, isEnglish ? 1000 : 750);
       roomTossUpFirstTimers.set(roomId, firstTimer);
     });
 
@@ -8322,6 +8360,10 @@ export function registerSocketHandlers(io: IO) {
       if (!wheelState || (wheelState.roundStage !== "TOSS_UP_1" && wheelState.roundStage !== "TOSS_UP_2")) return;
       if (wheelState.phase !== "TOSS_UP_RUNNING" && wheelState.phase !== "TOSS_UP_READY" && wheelState.phase !== "TOSS_UP_REVEALING") return;
 
+      // BUG-01 FIX: Re-check lock NGAY sau await resolveMagicWheelSocketContext() để tránh race condition.
+      // Vì resolveMagicWheelSocketContext() là async, 2 coroutines có thể cùng qua check và cùng set lock.
+      // Double-check pattern đảm bảo chỉ 1 coroutine tiếp tục.
+
       // 0. VÒNG ĐOÁN NHANH: Chỉ được bấm chuông sau khi người mẫu đã tiết lộ chữ cái đầu tiên!
       const revealedCount = wheelState.currentPuzzle?.revealedIndices?.length || 0;
       if (revealedCount < 1) {
@@ -8330,6 +8372,8 @@ export function registerSocketHandlers(io: IO) {
       }
 
       // 1. Single first-buzz lock check to prevent socket flooding, spamming, or state thrashing
+      // BUG-01 FIX: Set pending NGAY sau check (sync) để tránh race condition giữa 2 coroutines
+      // (resolveMagicWheelSocketContext là async nên cần double-check sau khi resolve xong)
       if (roomTossUpBuzzLocks.has(roomId) || roomTossUpPendingBuzz.has(roomId) || Boolean(wheelState.tossUpBuzzedTeamId)) {
         return;
       }
@@ -8664,9 +8708,14 @@ export function registerSocketHandlers(io: IO) {
           wheelState.jackpotPool = 500;
         } else if (wheelState.pendingSpecialAction === "DOUBLE") {
           const prevScore = wheelState.roundScores[tId] || 0;
+          // BUG-02 FIX: Khi prevScore = 0 (sau BANKRUPT), dùng sector value làm base thay vì trả về 0
           if (prevScore > 0) {
             wheelState.roundScores[tId] = prevScore * 2;
             earned = prevScore;
+          } else {
+            const sectorVal = wheelState.selectedSector?.value ?? 500;
+            earned = sectorVal * check.count;
+            wheelState.roundScores[tId] = earned;
           }
         } else if (wheelState.pendingSpecialAction === "TRIPLE") {
           const prevScore = wheelState.roundScores[tId] || 0;
@@ -8674,7 +8723,9 @@ export function registerSocketHandlers(io: IO) {
             wheelState.roundScores[tId] = prevScore * 3;
             earned = prevScore * 2;
           } else {
-            earned = 900 * check.count;
+            // BUG-02 FIX: Dùng sector value thực tế thay vì hardcode 900
+            const sectorVal = Math.max(wheelState.selectedSector?.value ?? 900, 900);
+            earned = sectorVal * check.count;
             wheelState.roundScores[tId] = earned;
           }
         } else if (wheelState.pendingSpecialAction === "HALF") {
@@ -8726,11 +8777,10 @@ export function registerSocketHandlers(io: IO) {
         // IMPORTANT: In English edition, fully revealing the puzzle auto-wins the round! In Vietnamese edition, must solve with exact tone marks!
         if (isPuzzleFullyRevealed(puzzle.secretPhrase, puzzle.revealedIndices)) {
           if (wheelState.edition === "ENGLISH") {
-            wheelState.phase = "ROUND_RECAP";
-            wheelState.lastActionMessage = `🎉 Xin chúc mừng! Đội ${teamName} đã lật mở chữ cái cuối cùng và giải mã trọn vẹn ô chữ: "${puzzle.secretPhrase}"!`;
+            // BUG-14 FIX: Gọi completeMagicWheelRoundHelper để ghi DB thay vì chỉ update memory
             if (!wheelState.permanentScores) wheelState.permanentScores = {};
             wheelState.permanentScores[tId] = (wheelState.permanentScores[tId] || 0) + (wheelState.roundScores[tId] || 0);
-            io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+            await completeMagicWheelRoundHelper(roomId, roomCode, tId);
             return;
           } else {
             wheelState.mustSolveWithTones = true;
@@ -8949,11 +8999,10 @@ export function registerSocketHandlers(io: IO) {
 
         // If English Edition and puzzle fully revealed -> Team auto-wins!
         if (isPuzzleFullyRevealed(puzzle.secretPhrase, puzzle.revealedIndices)) {
-          wheelState.phase = "ROUND_RECAP";
-          wheelState.lastActionMessage = `🎉 Tuyệt vời! Đội ${teamName} đã mua nguyên âm "${normVowel}" và mở trọn vẹn ô chữ: "${puzzle.secretPhrase}"! Đội ${teamName} giành chiến thắng vòng này!`;
+          // BUG-14 FIX: Gọi completeMagicWheelRoundHelper để ghi DB (vowel purchase case)
           if (!wheelState.permanentScores) wheelState.permanentScores = {};
           wheelState.permanentScores[tId] = (wheelState.permanentScores[tId] || 0) + (wheelState.roundScores[tId] || 0);
-          io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+          await completeMagicWheelRoundHelper(roomId, roomCode, tId);
           return;
         }
 
@@ -9266,7 +9315,8 @@ export function registerSocketHandlers(io: IO) {
       });
 
       const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
-      const newConfig = { ...currentConfig, magicWheelPuzzles: customPuzzles };
+      const detectedEd = detectQuizBankLanguage({ id: bank.id, title: bank.title, description: bank.description, questions: bank.questions });
+      const newConfig = { ...currentConfig, magicWheelPuzzles: customPuzzles, magicWheelEdition: detectedEd };
       await prisma.room.update({
         where: { id: room.id },
         data: { quizBankId: bank.id, config: newConfig },
@@ -9280,7 +9330,7 @@ export function registerSocketHandlers(io: IO) {
         const newMatchPuzzles = buildMagicWheelMatchPuzzles(
           room.teams.length,
           customPuzzles,
-          wheelState.edition || "VIETNAMESE",
+          detectedEd || wheelState.edition || "VIETNAMESE",
           wheelState.englishPreset || "RANDOM_MIX"
         );
         wheelState.puzzles = newMatchPuzzles;
@@ -9291,7 +9341,8 @@ export function registerSocketHandlers(io: IO) {
             revealedIndices: wheelState.currentPuzzle?.revealedIndices || [],
           };
         }
-        wheelState.lastActionMessage = `🚨 MC đã đổi khẩn cấp sang bộ đề: [${bank.title}]!`;
+        wheelState.edition = detectedEd || wheelState.edition;
+        wheelState.lastActionMessage = `🚨 MC đã đổi khẩn cấp sang bộ đề [${bank.title}] (${detectedEd === "ENGLISH" ? "Bản Tiếng Anh" : "Bản Tiếng Việt"})!`;
         io.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
       }
 
@@ -9339,6 +9390,20 @@ export function registerSocketHandlers(io: IO) {
       });
 
       roomQuestionsCache.delete(room.id);
+      if (room.mode === "MAGIC_WHEEL") {
+        const hasWp = bank.questions.some((q: any) => q.type === "WORD_PUZZLE");
+        if (!hasWp) {
+          socket.emit("error", "Chế độ Chiếc Nón Kỳ Diệu chỉ chấp nhận bộ đề có câu hỏi Ô Chữ (WORD_PUZZLE)!");
+          return;
+        }
+      } else {
+        const isAllWp = bank.questions.length > 0 && bank.questions.every((q: any) => q.type === "WORD_PUZZLE");
+        if (isAllWp) {
+          socket.emit("error", "Bộ đề Ô Chữ chỉ dành riêng cho chế độ Chiếc Nón Kỳ Diệu!");
+          return;
+        }
+      }
+
       if (bank.questions && bank.questions.length > 0) {
         roomQuestionsCache.set(room.id, bank.questions);
       }
@@ -9802,11 +9867,17 @@ export function registerSocketHandlers(io: IO) {
           (targetTeamId ? otherTeams.find((t) => t.id === targetTeamId) : undefined) ||
           otherTeams.sort((a, b) => (wheelState.roundScores[b.id] || 0) - (wheelState.roundScores[a.id] || 0))[0];
         if (victim) {
-          const victimScore = wheelState.roundScores[victim.id] || 0;
-          const stolen = Math.max(200, Math.floor(victimScore * 0.5));
-          wheelState.roundScores[victim.id] = Math.max(0, victimScore - Math.floor(victimScore * 0.5));
-          wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + stolen;
-          wheelState.lastActionMessage = `⚔️ Đội ${teamName} đã CƯỚP +${stolen} điểm vòng từ Đội ${victim.name}! Mời quay tiếp!`;
+          const victimScore = Math.max(0, wheelState.roundScores[victim.id] || 0);
+          // BUG-04 FIX: Không cướp nếu victim có 0đ (ngăn điểm âm và tiền từ không có gì)
+          if (victimScore === 0) {
+            wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + 200;
+            wheelState.lastActionMessage = `⚔️ Đội ${victim.name} không có điểm vòng để cướp! Đội ${teamName} nhận bù +200đ.`;
+          } else {
+            const stealAmount = Math.min(Math.max(200, Math.floor(victimScore * 0.5)), victimScore);
+            wheelState.roundScores[victim.id] = Math.max(0, victimScore - stealAmount);
+            wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + stealAmount;
+            wheelState.lastActionMessage = `⚔️ Đội ${teamName} đã CƯỚP +${stealAmount} điểm vòng từ Đội ${victim.name}! Mời quay tiếp!`;
+          }
         }
       } else if (action === "SWAP_LEADER") {
         const otherTeams = room.teams.filter((t) => t.id !== tId);
@@ -9821,6 +9892,10 @@ export function registerSocketHandlers(io: IO) {
           wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + 1000;
           wheelState.lastActionMessage = `⚡ Đội ${teamName} đang dẫn đầu nên nhận thưởng nóng +1.000 điểm vòng!`;
         }
+      } else {
+        // BUG-05: STEAL_HALF và SWAP_SCORE không có UI - fallback graceful nếu nhận action không hợp lệ
+        console.warn(`[BUG-05] Unhandled steal_swap action: ${action}, falling back to STEAL_50 behavior`);
+        wheelState.lastActionMessage = `⚠️ Hành động không hợp lệ. Đội ${teamName} tiếp tục quay.`;
       }
       wheelState.phase = "SPIN_WAITING";
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
@@ -9894,6 +9969,37 @@ export function registerSocketHandlers(io: IO) {
       wheelState.specialSolveEndsAt = Date.now() + 40000; // 30s suy nghĩ + 10s trả lời liên tục
       wheelState.lastActionMessage = `Đã mở ${totalFound} ô từ ${cleanLetters.length} chữ cái (${cleanLetters.join(", ")})! Bạn có 30s suy nghĩ + 10s trả lời (được gõ đáp án liên tục không giới hạn số lần)!`;
 
+      // BUG-09 FIX: Server-side auto-expire timer — game không bị treo nếu player không submit
+      {
+        const capturedRoomId = roomId;
+        const capturedRoomCode = roomCode;
+        const specialTeamName = wheelState.specialFinalTeamName || wheelState.currentTurnTeamName;
+        const existingSpecialTimer = roomTimers.get(`special_solve_${capturedRoomId}`);
+        if (existingSpecialTimer) clearTimeout(existingSpecialTimer);
+        const specialExpireTimer = setTimeout(async () => {
+          const ws = roomMagicWheels.get(capturedRoomId);
+          if (!ws || ws.phase !== "SPECIAL_SOLVING") return;
+          ws.phase = "ROUND_RECAP";
+          ws.lastSolveFeedback = {
+            teamId: ws.specialFinalTeamId,
+            teamName: specialTeamName,
+            isCorrect: false,
+            guess: "",
+            pointsAwarded: 0,
+            timestamp: Date.now(),
+          };
+          ws.lastActionMessage = `⏰ Hết 40 giây! Đội ${specialTeamName} không giải được Ô Chữ Đặc Biệt trong thời gian quy định.`;
+          if (ws.currentPuzzle) {
+            ws.currentPuzzle.revealedIndices = Array.from(
+              { length: ws.currentPuzzle.secretPhrase.length },
+              (_, i) => i
+            );
+          }
+          io.to(`room:${capturedRoomCode}`).emit("game:magic_wheel:update", ws);
+        }, 41500); // 40s + 1.5s buffer
+        roomTimers.set(`special_solve_${capturedRoomId}`, specialExpireTimer as any);
+      }
+
       io.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
         letter: cleanLetters.join(","),
         found: totalFound > 0,
@@ -9923,7 +10029,9 @@ export function registerSocketHandlers(io: IO) {
 
       const currentSector = wheelState.selectedSector || wheelState.sectors[wheelState.selectedSectorIndex ?? -1];
       const basePts = currentSector?.basePoints || (currentSector?.id === 13 ? 100 : 200);
-      const is3M = currentSector?.mysteryContent ? currentSector.mysteryContent === "PRIZE_3M" : Math.random() >= 0.5;
+      // BUG-03 FIX: Không bao giờ random lại — mysteryContent phải được gắn khi generate sectors.
+      // Nếu undefined, default về BANKRUPT (safe fallback, không sinh 3M ngẫu nhiên mỗi lần handler chạy)
+      const is3M = currentSector?.mysteryContent === "PRIZE_3M";
 
       if (openMystery) {
         if (currentSector) {
@@ -9994,6 +10102,11 @@ export function registerSocketHandlers(io: IO) {
         const char = p.secretPhrase[index];
         const baseChar = normalizeVietnameseBaseLetter(char);
         const tId = wheelState.currentTurnTeamId;
+
+        // BUG-08 FIX: Thêm chữ vào guessedLetters để bàn phím hiển thị đúng (ô đã dùng)
+        if (baseChar && !wheelState.guessedLetters.includes(baseChar)) {
+          wheelState.guessedLetters.push(baseChar);
+        }
 
         io.to(`room:${roomCode}`).emit("game:magic_wheel:lucky_picked", {
           teamId: tId,
@@ -10314,8 +10427,9 @@ export function registerSocketHandlers(io: IO) {
     });
 
     socket.on("magic_wheel:reveal_all", async () => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
-      if (!roomId || !roomCode) return;
+      // BUG-11 FIX: Authorization check — chỉ admin/sandbox được reveal all
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || (!isAdmin && !isSandboxSocket)) return;
       await handleRevealAllMagicWheelPuzzle(roomId, roomCode);
     });
 
@@ -10353,14 +10467,16 @@ export function registerSocketHandlers(io: IO) {
     });
 
     socket.on("magic_wheel:next_round", async () => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
-      if (!roomId || !roomCode) return;
+      // BUG-11 FIX: Authorization check — chỉ admin/sandbox được chuyển vòng
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || (!isAdmin && !isSandboxSocket)) return;
       await handleAdvanceMagicWheelRound(roomId, roomCode);
     });
 
     socket.on("magic_wheel:advance_round", async () => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
-      if (!roomId || !roomCode) return;
+      // BUG-11 FIX: Authorization check — chỉ admin/sandbox được advance round
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || (!isAdmin && !isSandboxSocket)) return;
       await handleAdvanceMagicWheelRound(roomId, roomCode);
     });
 
@@ -10509,8 +10625,9 @@ export function registerSocketHandlers(io: IO) {
     });
 
     socket.on("magic_wheel:pass_turn", async () => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
-      if (!roomId || !roomCode) return;
+      // BUG-11 FIX: Authorization check — chỉ admin/sandbox được pass turn
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || (!isAdmin && !isSandboxSocket)) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
       const fullRoom = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
@@ -10521,8 +10638,9 @@ export function registerSocketHandlers(io: IO) {
     });
 
     socket.on("magic_wheel:quick_reveal", async () => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
-      if (!roomId || !roomCode) return;
+      // BUG-11 FIX: Authorization check — chỉ admin/sandbox được quick_reveal
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || (!isAdmin && !isSandboxSocket)) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || !wheelState.currentPuzzle) return;
       const phrase = wheelState.currentPuzzle.secretPhrase;

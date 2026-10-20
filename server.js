@@ -523,10 +523,10 @@ var MAGIC_WHEEL_PRESET_BANKS = [
   {
     id: "bank_mw_preset_en_1",
     title: "Wheel of Fortune - Set 1: Vietnam Heritage & Flavors (B\u1EA3n Ti\u1EBFng Anh)",
-    description: "B\u1ED9 \u0111\u1EC1 Ti\u1EBFng Anh 9 v\xF2ng: V\u0103n h\xF3a Vi\u1EC7t Nam, Di s\u1EA3n & \u1EA8m th\u1EF1c (Pho, Ha Long Bay, Ao Dai, Golden Bridge, Banh Mi...)",
+    description: "B\u1ED9 \u0111\u1EC1 Ti\u1EBFng Anh chu\u1EA9n 11 v\xF2ng (2 \u0110o\xE1n Nhanh + 8 V\xF2ng Ch\xEDnh t\u1ED1i \u0111a + 1 V\xF2ng \u0110\u1EB7c Bi\u1EC7t): V\u0103n h\xF3a Vi\u1EC7t Nam, Di s\u1EA3n & \u1EA8m th\u1EF1c (Pho, Ha Long Bay, Ao Dai, Golden Bridge, Banh Mi, Egg Coffee, Sapa...)",
     createdAt: "2026-01-01T00:00:00.000Z",
     isLocalOnly: true,
-    _count: { questions: 9 },
+    _count: { questions: 11 },
     questions: [
       {
         id: "mw_en1_1",
@@ -611,22 +611,42 @@ var MAGIC_WHEEL_PRESET_BANKS = [
       {
         id: "mw_en1_9",
         type: "WORD_PUZZLE",
+        content: "Rich and creamy specialty beverage originating in Hanoi made from robusta beans and whipped egg yolks.",
+        answer: "TRADITIONAL EGG COFFEE",
+        hint: "FOOD & DRINK",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "9", isCorrect: true }, { id: "category", text: "FOOD & DRINK", isCorrect: true }]
+      },
+      {
+        id: "mw_en1_10",
+        type: "WORD_PUZZLE",
+        content: "Breathtaking cascading emerald terraces sculpted across mountain slopes in northwestern Vietnam.",
+        answer: "TERRACED RICE FIELDS SAPA",
+        hint: "PLACE(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "10", isCorrect: true }, { id: "category", text: "PLACE(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en1_11",
+        type: "WORD_PUZZLE",
         content: "The largest natural cave in the world nestled in the karst heart of Phong Nha.",
         answer: "SON DOONG CAVE",
-        hint: "LANDMARK(S)",
+        hint: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: LANDMARK(S)",
         points: 40,
         timeLimit: 40,
-        options: [{ id: "round", text: "9", isCorrect: true }, { id: "category", text: "LANDMARK(S)", isCorrect: true }]
+        options: [{ id: "round", text: "11", isCorrect: true }, { id: "category", text: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: LANDMARK(S)", isCorrect: true }]
       }
     ]
   },
   {
     id: "bank_mw_preset_en_2",
     title: "Wheel of Fortune - Set 2: Global Wonders & Pop Culture (B\u1EA3n Ti\u1EBFng Anh)",
-    description: "B\u1ED9 \u0111\u1EC1 Ti\u1EBFng Anh 9 v\xF2ng: K\u1EF3 quan th\u1EBF gi\u1EDBi, \u0110i\u1EC7n \u1EA3nh & \xC2m nh\u1EA1c (Broadway, Statue of Liberty, Eiffel Tower, Lion King...)",
+    description: "B\u1ED9 \u0111\u1EC1 Ti\u1EBFng Anh chu\u1EA9n 11 v\xF2ng (2 \u0110o\xE1n Nhanh + 8 V\xF2ng Ch\xEDnh t\u1ED1i \u0111a + 1 V\xF2ng \u0110\u1EB7c Bi\u1EC7t): K\u1EF3 quan th\u1EBF gi\u1EDBi, \u0110i\u1EC7n \u1EA3nh & \xC2m nh\u1EA1c (Broadway, Statue of Liberty, Eiffel Tower, Lion King, Machu Picchu, Walk of Fame...)",
     createdAt: "2026-01-01T00:00:00.000Z",
     isLocalOnly: true,
-    _count: { questions: 9 },
+    _count: { questions: 11 },
     questions: [
       {
         id: "mw_en2_1",
@@ -711,22 +731,42 @@ var MAGIC_WHEEL_PRESET_BANKS = [
       {
         id: "mw_en2_9",
         type: "WORD_PUZZLE",
+        content: "Mystical 15th-century Inca sanctuary perched high in the Andes mountains of Peru.",
+        answer: "MACHU PICCHU INCA CITADEL",
+        hint: "LANDMARK(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "9", isCorrect: true }, { id: "category", text: "LANDMARK(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en2_10",
+        type: "WORD_PUZZLE",
+        content: "World-famous sidewalk embedded with brass stars honoring entertainment icons.",
+        answer: "HOLLYWOOD WALK OF FAME",
+        hint: "SHOW BIZ",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "10", isCorrect: true }, { id: "category", text: "SHOW BIZ", isCorrect: true }]
+      },
+      {
+        id: "mw_en2_11",
+        type: "WORD_PUZZLE",
         content: "Ancient monumental fortification snaking thousands of miles across northern frontiers.",
         answer: "GREAT WALL OF CHINA",
-        hint: "LANDMARK(S)",
+        hint: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: LANDMARK(S)",
         points: 40,
         timeLimit: 40,
-        options: [{ id: "round", text: "9", isCorrect: true }, { id: "category", text: "LANDMARK(S)", isCorrect: true }]
+        options: [{ id: "round", text: "11", isCorrect: true }, { id: "category", text: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: LANDMARK(S)", isCorrect: true }]
       }
     ]
   },
   {
     id: "bank_mw_preset_en_3",
     title: "Wheel of Fortune - Set 3: Classic Idioms & Phrases (B\u1EA3n Ti\u1EBFng Anh)",
-    description: "B\u1ED9 \u0111\u1EC1 Ti\u1EBFng Anh 9 v\xF2ng: Th\xE0nh ng\u1EEF kinh \u0111i\u1EC3n, Ca dao & C\u1EE5m t\u1EEB tr\xF2 ch\u01A1i WOF (Piece of cake, Break the ice, On cloud nine...)",
+    description: "B\u1ED9 \u0111\u1EC1 Ti\u1EBFng Anh chu\u1EA9n 11 v\xF2ng (2 \u0110o\xE1n Nhanh + 8 V\xF2ng Ch\xEDnh t\u1ED1i \u0111a + 1 V\xF2ng \u0110\u1EB7c Bi\u1EC7t): Th\xE0nh ng\u1EEF kinh \u0111i\u1EC3n, Ca dao & C\u1EE5m t\u1EEB tr\xF2 ch\u01A1i WOF (Piece of cake, Break the ice, On cloud nine, Midnight oil...)",
     createdAt: "2026-01-01T00:00:00.000Z",
     isLocalOnly: true,
-    _count: { questions: 9 },
+    _count: { questions: 11 },
     questions: [
       {
         id: "mw_en3_1",
@@ -811,12 +851,32 @@ var MAGIC_WHEEL_PRESET_BANKS = [
       {
         id: "mw_en3_9",
         type: "WORD_PUZZLE",
+        content: "Working or studying late into the night with steadfast diligence and focus.",
+        answer: "BURNING THE MIDNIGHT OIL",
+        hint: "PHRASE(S)",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "9", isCorrect: true }, { id: "category", text: "PHRASE(S)", isCorrect: true }]
+      },
+      {
+        id: "mw_en3_10",
+        type: "WORD_PUZZLE",
+        content: "Fun wordplay combining financial prudence and a comfortable piece of convertible furniture.",
+        answer: "SAVE FOR A RAINY DAY BED",
+        hint: "BEFORE & AFTER",
+        points: 20,
+        timeLimit: 30,
+        options: [{ id: "round", text: "10", isCorrect: true }, { id: "category", text: "BEFORE & AFTER", isCorrect: true }]
+      },
+      {
+        id: "mw_en3_11",
+        type: "WORD_PUZZLE",
         content: "An unexpected stroke of good fortune disguised initially as misfortune.",
         answer: "A BLESSING IN DISGUISE",
-        hint: "PHRASE(S)",
+        hint: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: PHRASE(S)",
         points: 40,
         timeLimit: 40,
-        options: [{ id: "round", text: "9", isCorrect: true }, { id: "category", text: "PHRASE(S)", isCorrect: true }]
+        options: [{ id: "round", text: "11", isCorrect: true }, { id: "category", text: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: PHRASE(S)", isCorrect: true }]
       }
     ]
   }
@@ -1146,6 +1206,14 @@ function localizeSectorsForEdition(sectors, edition = "VIETNAMESE") {
       label = "\u{1F48E} JACKPOT";
     } else if (s.isOverlay && s.overlayType === "TRIPLE") {
       label = "\u{1F525} TRIPLE";
+    } else if (type === "STEAL_SWAP") {
+      label = "\u2694\uFE0F STEAL/SWAP";
+    } else if (type === "WILD_CARD") {
+      label = "\u{1F0CF} WILD CARD";
+    } else if (type === "SPECIAL_ENVELOPE") {
+      label = "\u2709\uFE0F SPECIAL ENV.";
+    } else if (type === "BONUS_ENVELOPE") {
+      label = "\u{1F381} BONUS ENV.";
     } else if (type === "POINTS" && s.value) {
       if (label.includes("\u2B50")) {
         label = `\u2B50 $${s.value}`;
@@ -1366,11 +1434,12 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
     });
     const tripleIdx = sectors.findIndex((s) => s.id === 17);
     if (tripleIdx !== -1) {
+      const baseTripleValue = sectors[tripleIdx].value ?? 3e3;
       sectors[tripleIdx] = {
         id: 17,
         label: "\u{1F525} NH\xC2N BA",
         type: "TRIPLE",
-        value: 3e3,
+        value: baseTripleValue,
         color: "#f97316",
         textColor: "#ffffff",
         isOverlay: true,
@@ -1743,8 +1812,28 @@ var ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE = [
     revealedIndices: []
   },
   {
-    id: "en-set1-special",
+    id: "en-set1-r7",
     roundNumber: 9,
+    stage: "MAIN",
+    mainRoundIndex: 7,
+    category: "FOOD & DRINK",
+    secretPhrase: "TRADITIONAL EGG COFFEE",
+    clue: "Rich and creamy specialty beverage originating in Hanoi made from robusta beans and whipped egg yolks.",
+    revealedIndices: []
+  },
+  {
+    id: "en-set1-r8",
+    roundNumber: 10,
+    stage: "MAIN",
+    mainRoundIndex: 8,
+    category: "PLACE(S)",
+    secretPhrase: "TERRACED RICE FIELDS SAPA",
+    clue: "Breathtaking cascading emerald terraces sculpted across mountain slopes in northwestern Vietnam.",
+    revealedIndices: []
+  },
+  {
+    id: "en-set1-special",
+    roundNumber: 11,
     stage: "SPECIAL_FINAL",
     category: "LANDMARK(S)",
     secretPhrase: "SON DOONG CAVE",
@@ -1832,8 +1921,28 @@ var ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS = [
     revealedIndices: []
   },
   {
-    id: "en-set2-special",
+    id: "en-set2-r7",
     roundNumber: 9,
+    stage: "MAIN",
+    mainRoundIndex: 7,
+    category: "LANDMARK(S)",
+    secretPhrase: "MACHU PICCHU INCA CITADEL",
+    clue: "Mystical 15th-century Inca sanctuary perched high in the Andes mountains of Peru.",
+    revealedIndices: []
+  },
+  {
+    id: "en-set2-r8",
+    roundNumber: 10,
+    stage: "MAIN",
+    mainRoundIndex: 8,
+    category: "SHOW BIZ",
+    secretPhrase: "HOLLYWOOD WALK OF FAME",
+    clue: "World-famous sidewalk embedded with brass stars honoring entertainment icons.",
+    revealedIndices: []
+  },
+  {
+    id: "en-set2-special",
+    roundNumber: 11,
     stage: "SPECIAL_FINAL",
     category: "LANDMARK(S)",
     secretPhrase: "GREAT WALL OF CHINA",
@@ -1921,8 +2030,28 @@ var ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS = [
     revealedIndices: []
   },
   {
-    id: "en-set3-special",
+    id: "en-set3-r7",
     roundNumber: 9,
+    stage: "MAIN",
+    mainRoundIndex: 7,
+    category: "PHRASE(S)",
+    secretPhrase: "BURNING THE MIDNIGHT OIL",
+    clue: "Working or studying late into the night with steadfast diligence and focus.",
+    revealedIndices: []
+  },
+  {
+    id: "en-set3-r8",
+    roundNumber: 10,
+    stage: "MAIN",
+    mainRoundIndex: 8,
+    category: "BEFORE & AFTER",
+    secretPhrase: "SAVE FOR A RAINY DAY BED",
+    clue: "Fun wordplay combining financial prudence and a comfortable piece of convertible furniture.",
+    revealedIndices: []
+  },
+  {
+    id: "en-set3-special",
+    roundNumber: 11,
     stage: "SPECIAL_FINAL",
     category: "PHRASE(S)",
     secretPhrase: "A BLESSING IN DISGUISE",
@@ -1966,14 +2095,14 @@ function buildMagicWheelMatchPuzzles(firstArg, secondArg, edition = "VIETNAMESE"
         ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS[1]
       ];
       const spPool = [
-        ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE[8],
-        ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS[8],
-        ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS[8]
+        ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE[10],
+        ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS[10],
+        ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS[10]
       ];
       const mainPuzzles = [
-        ...ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE.slice(2, 8),
-        ...ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS.slice(2, 8),
-        ...ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS.slice(2, 8)
+        ...ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE.slice(2, 10),
+        ...ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS.slice(2, 10),
+        ...ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS.slice(2, 10)
       ].sort(() => Math.random() - 0.5);
       pool = [
         t1Pool[Math.floor(Math.random() * t1Pool.length)],
@@ -2034,6 +2163,28 @@ function buildMagicWheelMatchPuzzles(firstArg, secondArg, edition = "VIETNAMESE"
     revealedIndices: []
   });
   return schedule;
+}
+function detectQuizBankLanguage(bank) {
+  if (!bank) return "VIETNAMESE";
+  const bankId = bank.id || "";
+  const title = (bank.title || "").toLowerCase();
+  const desc = (bank.description || "").toLowerCase();
+  if (bankId.includes("_en_") || bankId.endsWith("_en") || /wheel of fortune|tiếng anh|english|\(en\)/i.test(title)) {
+    return "ENGLISH";
+  }
+  const vietnameseDiacriticsRegex = /[àáảãạăắằẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđÀÁẢÃẠĂẮẰẴẶÂẤẦẨẪẬÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴĐ]/;
+  let sampleText = `${title} ${desc} `;
+  const questions = bank.questions || [];
+  for (const q of questions.slice(0, 15)) {
+    sampleText += ` ${q.content || ""} ${q.answer || ""} ${q.hint || ""}`;
+  }
+  if (vietnameseDiacriticsRegex.test(sampleText)) {
+    return "VIETNAMESE";
+  }
+  if (/set\s*\d|idioms|heritage|wonders|english/i.test(sampleText)) {
+    return "ENGLISH";
+  }
+  return "VIETNAMESE";
 }
 
 // src/lib/game-engine/scoring.ts
@@ -16017,12 +16168,16 @@ function registerSocketHandlers(io2) {
     socket.on("ancient-tarot-reveal", async ({ code } = {}) => {
       const playerId = playerSockets.get(socket.id);
       let room = null;
+      let playerTeamId = null;
       if (playerId) {
         const player = await prisma.player.findUnique({
           where: { id: playerId },
           include: { room: true }
         });
-        if (player?.room) room = player.room;
+        if (player?.room) {
+          room = player.room;
+          playerTeamId = player.teamId;
+        }
       }
       if (!room && code) {
         room = await getAdminRoom(socket, code);
@@ -16030,17 +16185,25 @@ function registerSocketHandlers(io2) {
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+      if (playerTeamId && !code && !canPlayerActForTurn({ id: playerId, teamId: playerTeamId }, questState, room)) {
+        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t l\u1EADt b\xE0i c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        return;
+      }
       await executeMysteryTarotReveal(room, questState);
     });
     socket.on("game:mystery:ancient_tarot_reveal", async ({ code } = {}) => {
       const playerId = playerSockets.get(socket.id);
       let room = null;
+      let playerTeamId = null;
       if (playerId) {
         const player = await prisma.player.findUnique({
           where: { id: playerId },
           include: { room: true }
         });
-        if (player?.room) room = player.room;
+        if (player?.room) {
+          room = player.room;
+          playerTeamId = player.teamId;
+        }
       }
       if (!room && code) {
         room = await getAdminRoom(socket, code);
@@ -16048,6 +16211,10 @@ function registerSocketHandlers(io2) {
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+      if (playerTeamId && !code && !canPlayerActForTurn({ id: playerId, teamId: playerTeamId }, questState, room)) {
+        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t l\u1EADt b\xE0i c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        return;
+      }
       await executeMysteryTarotReveal(room, questState);
     });
     socket.on("admin:mystery:ancient_tarot_reveal", async ({ code } = {}) => {
@@ -16769,9 +16936,22 @@ function registerSocketHandlers(io2) {
         );
       }
       const tRes = await applyScoreDeltaToTeam(winnerTeamId, wonPoints);
-      io2.to(`room:${roomCode}`).emit("game:score:update", [
+      const scoreUpdates = [
         { teamId: winnerTeamId, score: tRes.newScore, delta: tRes.effectiveDelta }
-      ]);
+      ];
+      if (wheelState.edition === "ENGLISH" && wheelState.permanentScores) {
+        for (const [permTeamId, permPts] of Object.entries(wheelState.permanentScores)) {
+          if (permTeamId !== winnerTeamId && permPts > 0) {
+            try {
+              const permRes = await applyScoreDeltaToTeam(permTeamId, permPts);
+              scoreUpdates.push({ teamId: permTeamId, score: permRes.newScore, delta: permRes.effectiveDelta });
+            } catch (err) {
+              console.error(`[BUG-06] Failed to apply permanentScore for team ${permTeamId}:`, err);
+            }
+          }
+        }
+      }
+      io2.to(`room:${roomCode}`).emit("game:score:update", scoreUpdates);
       wheelState.phase = "ROUND_RECAP";
       wheelState.lastAwardedPoints = wonPoints;
       wheelState.lastSolveFeedback = {
@@ -16958,7 +17138,7 @@ function registerSocketHandlers(io2) {
         }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
         startServerTossUpInterval(roomId, roomCode);
-      }, isEnglish ? 1e3 : 1e3);
+      }, isEnglish ? 1e3 : 750);
       roomTossUpFirstTimers.set(roomId, firstTimer);
     });
     socket.on("admin:magic_wheel:toss_up_skip", async () => {
@@ -17303,6 +17483,10 @@ function registerSocketHandlers(io2) {
           if (prevScore > 0) {
             wheelState.roundScores[tId] = prevScore * 2;
             earned = prevScore;
+          } else {
+            const sectorVal = wheelState.selectedSector?.value ?? 500;
+            earned = sectorVal * check.count;
+            wheelState.roundScores[tId] = earned;
           }
         } else if (wheelState.pendingSpecialAction === "TRIPLE") {
           const prevScore = wheelState.roundScores[tId] || 0;
@@ -17310,7 +17494,8 @@ function registerSocketHandlers(io2) {
             wheelState.roundScores[tId] = prevScore * 3;
             earned = prevScore * 2;
           } else {
-            earned = 900 * check.count;
+            const sectorVal = Math.max(wheelState.selectedSector?.value ?? 900, 900);
+            earned = sectorVal * check.count;
             wheelState.roundScores[tId] = earned;
           }
         } else if (wheelState.pendingSpecialAction === "HALF") {
@@ -17357,11 +17542,9 @@ function registerSocketHandlers(io2) {
         }
         if (isPuzzleFullyRevealed(puzzle.secretPhrase, puzzle.revealedIndices)) {
           if (wheelState.edition === "ENGLISH") {
-            wheelState.phase = "ROUND_RECAP";
-            wheelState.lastActionMessage = `\u{1F389} Xin ch\xFAc m\u1EEBng! \u0110\u1ED9i ${teamName} \u0111\xE3 l\u1EADt m\u1EDF ch\u1EEF c\xE1i cu\u1ED1i c\xF9ng v\xE0 gi\u1EA3i m\xE3 tr\u1ECDn v\u1EB9n \xF4 ch\u1EEF: "${puzzle.secretPhrase}"!`;
             if (!wheelState.permanentScores) wheelState.permanentScores = {};
             wheelState.permanentScores[tId] = (wheelState.permanentScores[tId] || 0) + (wheelState.roundScores[tId] || 0);
-            io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+            await completeMagicWheelRoundHelper(roomId, roomCode, tId);
             return;
           } else {
             wheelState.mustSolveWithTones = true;
@@ -17549,11 +17732,9 @@ function registerSocketHandlers(io2) {
           pointsAwarded: -250
         });
         if (isPuzzleFullyRevealed(puzzle.secretPhrase, puzzle.revealedIndices)) {
-          wheelState.phase = "ROUND_RECAP";
-          wheelState.lastActionMessage = `\u{1F389} Tuy\u1EC7t v\u1EDDi! \u0110\u1ED9i ${teamName} \u0111\xE3 mua nguy\xEAn \xE2m "${normVowel}" v\xE0 m\u1EDF tr\u1ECDn v\u1EB9n \xF4 ch\u1EEF: "${puzzle.secretPhrase}"! \u0110\u1ED9i ${teamName} gi\xE0nh chi\u1EBFn th\u1EAFng v\xF2ng n\xE0y!`;
           if (!wheelState.permanentScores) wheelState.permanentScores = {};
           wheelState.permanentScores[tId] = (wheelState.permanentScores[tId] || 0) + (wheelState.roundScores[tId] || 0);
-          io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+          await completeMagicWheelRoundHelper(roomId, roomCode, tId);
           return;
         }
         wheelState.phase = "SPIN_WAITING";
@@ -17843,7 +18024,8 @@ function registerSocketHandlers(io2) {
         };
       });
       const currentConfig = typeof room.config === "object" && room.config !== null ? room.config : {};
-      const newConfig = { ...currentConfig, magicWheelPuzzles: customPuzzles };
+      const detectedEd = detectQuizBankLanguage({ id: bank.id, title: bank.title, description: bank.description, questions: bank.questions });
+      const newConfig = { ...currentConfig, magicWheelPuzzles: customPuzzles, magicWheelEdition: detectedEd };
       await prisma.room.update({
         where: { id: room.id },
         data: { quizBankId: bank.id, config: newConfig }
@@ -17855,7 +18037,7 @@ function registerSocketHandlers(io2) {
         const newMatchPuzzles = buildMagicWheelMatchPuzzles(
           room.teams.length,
           customPuzzles,
-          wheelState.edition || "VIETNAMESE",
+          detectedEd || wheelState.edition || "VIETNAMESE",
           wheelState.englishPreset || "RANDOM_MIX"
         );
         wheelState.puzzles = newMatchPuzzles;
@@ -17866,7 +18048,8 @@ function registerSocketHandlers(io2) {
             revealedIndices: wheelState.currentPuzzle?.revealedIndices || []
           };
         }
-        wheelState.lastActionMessage = `\u{1F6A8} MC \u0111\xE3 \u0111\u1ED5i kh\u1EA9n c\u1EA5p sang b\u1ED9 \u0111\u1EC1: [${bank.title}]!`;
+        wheelState.edition = detectedEd || wheelState.edition;
+        wheelState.lastActionMessage = `\u{1F6A8} MC \u0111\xE3 \u0111\u1ED5i kh\u1EA9n c\u1EA5p sang b\u1ED9 \u0111\u1EC1 [${bank.title}] (${detectedEd === "ENGLISH" ? "B\u1EA3n Ti\u1EBFng Anh" : "B\u1EA3n Ti\u1EBFng Vi\u1EC7t"})!`;
         io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
       }
       const fullRoomState = await buildRoomState(room.id);
@@ -17907,6 +18090,19 @@ function registerSocketHandlers(io2) {
         data: { quizBankId: bank.id }
       });
       roomQuestionsCache.delete(room.id);
+      if (room.mode === "MAGIC_WHEEL") {
+        const hasWp = bank.questions.some((q) => q.type === "WORD_PUZZLE");
+        if (!hasWp) {
+          socket.emit("error", "Ch\u1EBF \u0111\u1ED9 Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u ch\u1EC9 ch\u1EA5p nh\u1EADn b\u1ED9 \u0111\u1EC1 c\xF3 c\xE2u h\u1ECFi \xD4 Ch\u1EEF (WORD_PUZZLE)!");
+          return;
+        }
+      } else {
+        const isAllWp = bank.questions.length > 0 && bank.questions.every((q) => q.type === "WORD_PUZZLE");
+        if (isAllWp) {
+          socket.emit("error", "B\u1ED9 \u0111\u1EC1 \xD4 Ch\u1EEF ch\u1EC9 d\xE0nh ri\xEAng cho ch\u1EBF \u0111\u1ED9 Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u!");
+          return;
+        }
+      }
       if (bank.questions && bank.questions.length > 0) {
         roomQuestionsCache.set(room.id, bank.questions);
       }
@@ -18289,11 +18485,16 @@ function registerSocketHandlers(io2) {
         const otherTeams = room.teams.filter((t) => t.id !== tId);
         const victim = (targetTeamId ? otherTeams.find((t) => t.id === targetTeamId) : void 0) || otherTeams.sort((a, b) => (wheelState.roundScores[b.id] || 0) - (wheelState.roundScores[a.id] || 0))[0];
         if (victim) {
-          const victimScore = wheelState.roundScores[victim.id] || 0;
-          const stolen = Math.max(200, Math.floor(victimScore * 0.5));
-          wheelState.roundScores[victim.id] = Math.max(0, victimScore - Math.floor(victimScore * 0.5));
-          wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + stolen;
-          wheelState.lastActionMessage = `\u2694\uFE0F \u0110\u1ED9i ${teamName} \u0111\xE3 C\u01AF\u1EDAP +${stolen} \u0111i\u1EC3m v\xF2ng t\u1EEB \u0110\u1ED9i ${victim.name}! M\u1EDDi quay ti\u1EBFp!`;
+          const victimScore = Math.max(0, wheelState.roundScores[victim.id] || 0);
+          if (victimScore === 0) {
+            wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + 200;
+            wheelState.lastActionMessage = `\u2694\uFE0F \u0110\u1ED9i ${victim.name} kh\xF4ng c\xF3 \u0111i\u1EC3m v\xF2ng \u0111\u1EC3 c\u01B0\u1EDBp! \u0110\u1ED9i ${teamName} nh\u1EADn b\xF9 +200\u0111.`;
+          } else {
+            const stealAmount = Math.min(Math.max(200, Math.floor(victimScore * 0.5)), victimScore);
+            wheelState.roundScores[victim.id] = Math.max(0, victimScore - stealAmount);
+            wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + stealAmount;
+            wheelState.lastActionMessage = `\u2694\uFE0F \u0110\u1ED9i ${teamName} \u0111\xE3 C\u01AF\u1EDAP +${stealAmount} \u0111i\u1EC3m v\xF2ng t\u1EEB \u0110\u1ED9i ${victim.name}! M\u1EDDi quay ti\u1EBFp!`;
+          }
         }
       } else if (action === "SWAP_LEADER") {
         const otherTeams = room.teams.filter((t) => t.id !== tId);
@@ -18308,6 +18509,9 @@ function registerSocketHandlers(io2) {
           wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + 1e3;
           wheelState.lastActionMessage = `\u26A1 \u0110\u1ED9i ${teamName} \u0111ang d\u1EABn \u0111\u1EA7u n\xEAn nh\u1EADn th\u01B0\u1EDFng n\xF3ng +1.000 \u0111i\u1EC3m v\xF2ng!`;
         }
+      } else {
+        console.warn(`[BUG-05] Unhandled steal_swap action: ${action}, falling back to STEAL_50 behavior`);
+        wheelState.lastActionMessage = `\u26A0\uFE0F H\xE0nh \u0111\u1ED9ng kh\xF4ng h\u1EE3p l\u1EC7. \u0110\u1ED9i ${teamName} ti\u1EBFp t\u1EE5c quay.`;
       }
       wheelState.phase = "SPIN_WAITING";
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
@@ -18372,6 +18576,35 @@ function registerSocketHandlers(io2) {
       wheelState.phase = "SPECIAL_SOLVING";
       wheelState.specialSolveEndsAt = Date.now() + 4e4;
       wheelState.lastActionMessage = `\u0110\xE3 m\u1EDF ${totalFound} \xF4 t\u1EEB ${cleanLetters.length} ch\u1EEF c\xE1i (${cleanLetters.join(", ")})! B\u1EA1n c\xF3 30s suy ngh\u0129 + 10s tr\u1EA3 l\u1EDDi (\u0111\u01B0\u1EE3c g\xF5 \u0111\xE1p \xE1n li\xEAn t\u1EE5c kh\xF4ng gi\u1EDBi h\u1EA1n s\u1ED1 l\u1EA7n)!`;
+      {
+        const capturedRoomId = roomId;
+        const capturedRoomCode = roomCode;
+        const specialTeamName = wheelState.specialFinalTeamName || wheelState.currentTurnTeamName;
+        const existingSpecialTimer = roomTimers.get(`special_solve_${capturedRoomId}`);
+        if (existingSpecialTimer) clearTimeout(existingSpecialTimer);
+        const specialExpireTimer = setTimeout(async () => {
+          const ws = roomMagicWheels.get(capturedRoomId);
+          if (!ws || ws.phase !== "SPECIAL_SOLVING") return;
+          ws.phase = "ROUND_RECAP";
+          ws.lastSolveFeedback = {
+            teamId: ws.specialFinalTeamId,
+            teamName: specialTeamName,
+            isCorrect: false,
+            guess: "",
+            pointsAwarded: 0,
+            timestamp: Date.now()
+          };
+          ws.lastActionMessage = `\u23F0 H\u1EBFt 40 gi\xE2y! \u0110\u1ED9i ${specialTeamName} kh\xF4ng gi\u1EA3i \u0111\u01B0\u1EE3c \xD4 Ch\u1EEF \u0110\u1EB7c Bi\u1EC7t trong th\u1EDDi gian quy \u0111\u1ECBnh.`;
+          if (ws.currentPuzzle) {
+            ws.currentPuzzle.revealedIndices = Array.from(
+              { length: ws.currentPuzzle.secretPhrase.length },
+              (_, i) => i
+            );
+          }
+          io2.to(`room:${capturedRoomCode}`).emit("game:magic_wheel:update", ws);
+        }, 41500);
+        roomTimers.set(`special_solve_${capturedRoomId}`, specialExpireTimer);
+      }
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
         letter: cleanLetters.join(","),
         found: totalFound > 0,
@@ -18396,7 +18629,7 @@ function registerSocketHandlers(io2) {
       if (!wheelState.permanentScores) wheelState.permanentScores = {};
       const currentSector = wheelState.selectedSector || wheelState.sectors[wheelState.selectedSectorIndex ?? -1];
       const basePts = currentSector?.basePoints || (currentSector?.id === 13 ? 100 : 200);
-      const is3M = currentSector?.mysteryContent ? currentSector.mysteryContent === "PRIZE_3M" : Math.random() >= 0.5;
+      const is3M = currentSector?.mysteryContent === "PRIZE_3M";
       if (openMystery) {
         if (currentSector) {
           const sIdx = wheelState.sectors.findIndex((s) => s.id === currentSector.id);
@@ -18463,6 +18696,9 @@ function registerSocketHandlers(io2) {
         const char = p.secretPhrase[index];
         const baseChar = normalizeVietnameseBaseLetter(char);
         const tId = wheelState.currentTurnTeamId;
+        if (baseChar && !wheelState.guessedLetters.includes(baseChar)) {
+          wheelState.guessedLetters.push(baseChar);
+        }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:lucky_picked", {
           teamId: tId,
           index,
@@ -18746,8 +18982,8 @@ function registerSocketHandlers(io2) {
       await handleRevealAllMagicWheelPuzzle(room.id, room.code);
     });
     socket.on("magic_wheel:reveal_all", async () => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
-      if (!roomId || !roomCode) return;
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || !isAdmin && !isSandboxSocket) return;
       await handleRevealAllMagicWheelPuzzle(roomId, roomCode);
     });
     const handleAdvanceMagicWheelRound = async (roomId, roomCode) => {
@@ -18781,13 +19017,13 @@ function registerSocketHandlers(io2) {
       await handleAdvanceMagicWheelRound(room.id, room.code);
     });
     socket.on("magic_wheel:next_round", async () => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
-      if (!roomId || !roomCode) return;
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || !isAdmin && !isSandboxSocket) return;
       await handleAdvanceMagicWheelRound(roomId, roomCode);
     });
     socket.on("magic_wheel:advance_round", async () => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
-      if (!roomId || !roomCode) return;
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || !isAdmin && !isSandboxSocket) return;
       await handleAdvanceMagicWheelRound(roomId, roomCode);
     });
     const handleOpenMagicWheelBoard = async (roomId, roomCode) => {
@@ -18914,8 +19150,8 @@ function registerSocketHandlers(io2) {
       await executeMagicWheelSolvePuzzle(roomId, roomCode, verdict ? phrase : "(Ch\u1EA5m SAI)", verdict);
     });
     socket.on("magic_wheel:pass_turn", async () => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
-      if (!roomId || !roomCode) return;
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || !isAdmin && !isSandboxSocket) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
       const fullRoom = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
@@ -18925,8 +19161,8 @@ function registerSocketHandlers(io2) {
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
     socket.on("magic_wheel:quick_reveal", async () => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
-      if (!roomId || !roomCode) return;
+      const { roomId, roomCode, isAdmin, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode || !isAdmin && !isSandboxSocket) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || !wheelState.currentPuzzle) return;
       const phrase = wheelState.currentPuzzle.secretPhrase;

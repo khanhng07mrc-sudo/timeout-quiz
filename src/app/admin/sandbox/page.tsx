@@ -46,6 +46,7 @@ import {
   isVietnameseAlphabetLetter,
   hasRemainingConsonants,
   checkNoMoreConsonants,
+  detectQuizBankLanguage,
 } from "@/lib/game-engine/magic-wheel";
 import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
 import type { MagicWheelState, MagicWheelPuzzle } from "@/types";
@@ -271,14 +272,11 @@ export default function AdminSandboxPage() {
   const compatibleBanks = useMemo(() => {
     const isMw = effectiveActiveMode === "MAGIC_WHEEL";
     if (isMw) {
-      // Ưu tiên các bộ đề Ô Chữ lên đầu, nhưng luôn hiển thị TẤT CẢ các bộ đề để người dùng có thể chọn bất kỳ đề nào
-      return [...quizBanks].sort((a, b) => {
-        const aIsWp = isWordPuzzleBank(a) ? 1 : 0;
-        const bIsWp = isWordPuzzleBank(b) ? 1 : 0;
-        return bIsWp - aIsWp;
-      });
+      // Chế độ Chiếc Nón Kỳ Diệu: CHỈ hiển thị bộ đề Ô Chữ (Word Puzzle)! Chặn tuyệt đối đề trắc nghiệm!
+      return quizBanks.filter((b) => isWordPuzzleBank(b));
     }
-    return quizBanks;
+    // Các chế độ trắc nghiệm thông thường: CHỈ hiển thị đề trắc nghiệm! Chặn tuyệt đối đề Ô Chữ!
+    return quizBanks.filter((b) => !isWordPuzzleBank(b));
   }, [quizBanks, effectiveActiveMode, isWordPuzzleBank]);
 
   useEffect(() => {
@@ -2692,6 +2690,20 @@ export default function AdminSandboxPage() {
       addLog(`Ngoại tuyến: Đã chuyển sang bộ đề [${bank.title}] (${allocResult.allocatedQuestions.length} câu)`);
       return;
     }
+    const isMw = (roomState?.mode || selectedMode) === "MAGIC_WHEEL";
+    const selectedBank = quizBanks.find((b) => b.id === bankId) || (bankId ? offlineStorage.getLocalBankById(bankId) : null);
+    if (bankId && selectedBank) {
+      const isWp = isWordPuzzleBank(selectedBank);
+      if (isMw && !isWp) {
+        alert("⚠️ Chế độ Chiếc Nón Kỳ Diệu chỉ chấp nhận bộ đề Ô Chữ (Word Puzzle)! Vui lòng chọn bộ đề Ô Chữ phù hợp.");
+        return;
+      }
+      if (!isMw && isWp) {
+        alert("⚠️ Bộ đề Ô Chữ chỉ dành riêng cho chế độ Chiếc Nón Kỳ Diệu! Vui lòng chọn bộ đề trắc nghiệm phù hợp.");
+        return;
+      }
+    }
+
     try {
       const token = typeof window !== "undefined" ? (localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token")) : null;
       const storedHostKey = typeof window !== "undefined" ? (localStorage.getItem(`host_key_${code}`) || new URLSearchParams(window.location.search).get("key") || "") : "";
@@ -2735,11 +2747,12 @@ export default function AdminSandboxPage() {
                   };
                 }).filter((p: any) => p.secretPhrase.length > 0);
 
+                const detectedEd = detectQuizBankLanguage(bData?.bank || selectedBank || { title: bTitle });
                 const curWheel = roomState.magicWheelState;
                 const newPuzzles = buildMagicWheelMatchPuzzles(
                   roomState.teams?.length || 4,
                   customPuzzles,
-                  curWheel?.edition || "VIETNAMESE",
+                  detectedEd,
                   curWheel?.englishPreset || "RANDOM_MIX"
                 );
                 const updatedWheel: any = {
@@ -2752,8 +2765,8 @@ export default function AdminSandboxPage() {
                   if (!prev) return prev;
                   const nextR = {
                     ...prev,
-                    config: { ...(prev.config as any), magicWheelPuzzles: customPuzzles },
-                    magicWheelState: updatedWheel,
+                    config: { ...(prev.config as any), magicWheelPuzzles: customPuzzles, magicWheelEdition: detectedEd },
+                    magicWheelState: { ...updatedWheel, edition: detectedEd },
                   };
                   roomStateRef.current = nextR;
                   syncToIframes({ roomState: nextR, magicWheelState: updatedWheel });
@@ -4579,8 +4592,8 @@ export default function AdminSandboxPage() {
                   const allowed = calculateSpecialRoundAllowedLetters(
                     nextWheel.currentPuzzle?.secretPhrase || ""
                   );
-                  nextWheel.specialAllowedLetterCount = allowed;
-                  nextWheel.specialSelectedLetters = [];
+                  nextWheel.specialAllowedLettersCount = allowed;
+                  nextWheel.specialPickedLetters = [];
                   nextWheel.phase = "SPECIAL_PICK_LETTERS";
                   nextWheel.lastActionMessage = `🎉 Đã khóa ${nextWheel.specialEnvelopePrize.label}! Bây giờ mời ${teamName} chọn trước ${allowed} chữ cái!`;
                 } else {
@@ -5849,8 +5862,12 @@ export default function AdminSandboxPage() {
           return nextRoom;
         });
 
-        // 1. Authoritative 1000ms delay for Tile 1 + 750ms driver interval ONLY for offline sandbox (server runs authoritative interval in online mode)
+        // 1. Authoritative delay for Tile 1 (750ms VN, 1000ms EN) + driver interval ONLY for offline sandbox
         if (isOfflineSandbox) {
+          const isEnglish = roomStateRef.current?.magicWheelState?.edition === "ENGLISH";
+          const delayMs = isEnglish ? 1000 : 750;
+          const intervalMs = isEnglish ? 1000 : 750;
+
           magicWheelTossUpFirstTimerRef.current = setTimeout(() => {
             setRoomState((prev) => {
               if (!prev || !prev.magicWheelState?.currentPuzzle) return prev;
@@ -5869,7 +5886,7 @@ export default function AdminSandboxPage() {
               return nextRoom;
             });
 
-            // 2. Authoritative 750ms driver interval for all subsequent letters (immune to React re-renders)
+            // 2. Authoritative driver interval for all subsequent letters (750ms VN, 1000ms EN)
             magicWheelTossUpIntervalRef.current = setInterval(() => {
               setRoomState((prev) => {
                 if (!prev || !prev.magicWheelState?.currentPuzzle) {
@@ -5905,8 +5922,8 @@ export default function AdminSandboxPage() {
                 syncToIframes({ roomState: nextRoom });
                 return nextRoom;
               });
-            }, 750);
-          }, 1000);
+            }, intervalMs);
+          }, delayMs);
         }
       } else if (e.data?.type === "MAGIC_WHEEL_TOSS_UP_TICK" || e.data?.type === "MAGIC_WHEEL_TOSS_UP_REVEAL_TICK") {
         const tickIdx = e.data.index;
@@ -6027,8 +6044,8 @@ export default function AdminSandboxPage() {
           const allowed = calculateSpecialRoundAllowedLetters(
             cur.currentPuzzle?.secretPhrase || ""
           );
-          cur.specialAllowedLetterCount = allowed;
-          cur.specialSelectedLetters = [];
+          cur.specialAllowedLettersCount = allowed;
+          cur.specialPickedLetters = [];
 
           if (order === "SPIN_FIRST") {
             cur.sectors = generateSpecialRoundWheelSectors();
@@ -6053,7 +6070,7 @@ export default function AdminSandboxPage() {
           const normLetters: string[] = (letters || []).map((l: string) =>
             normalizeVietnameseBaseLetter(l)
           );
-          cur.specialSelectedLetters = normLetters;
+          cur.specialPickedLetters = normLetters;
           cur.guessedLetters = [...new Set([...cur.guessedLetters, ...normLetters])];
 
           let revealed = [...p.revealedIndices];
@@ -6476,8 +6493,8 @@ export default function AdminSandboxPage() {
               cur.mustSolveWithTones = false;
               cur.specialFinalChoiceOrder = undefined;
               cur.specialEnvelopePrize = undefined;
-              cur.specialSelectedLetters = [];
-              cur.specialAllowedLetterCount = calculateSpecialRoundAllowedLetters(
+              cur.specialPickedLetters = [];
+              cur.specialAllowedLettersCount = calculateSpecialRoundAllowedLetters(
                 finalPuzzle.secretPhrase
               );
               cur.phase = "SPECIAL_CHOOSE_ORDER";
@@ -10054,10 +10071,10 @@ export default function AdminSandboxPage() {
                               type="button"
                               onClick={handleMagicWheelStartTossUp}
                               className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
-                              title="Bắt đầu mở các chữ cái ngẫu nhiên (0.75s/chữ)"
+                              title={`Bắt đầu mở các chữ cái ngẫu nhiên (${mw?.edition === "ENGLISH" ? "1.0s" : "0.75s"}/chữ)`}
                             >
                               <span>▶️</span>
-                              <span>Bắt đầu mở chữ (0.75s)</span>
+                              <span>Bắt đầu mở chữ ({mw?.edition === "ENGLISH" ? "1.0s" : "0.75s"})</span>
                             </button>
                           );
                         }
@@ -12924,8 +12941,8 @@ export default function AdminSandboxPage() {
                           onClick={() => {
                             const newBankId = window.prompt(
                               "🚨 ĐỔI BỘ ĐỀ KHẨN CẤP CHO MC\nNhập Bank ID của bộ đề mới muốn chuyển sang:\n\n" +
-                              quizBanks.slice(0, 8).map((b) => `• ${b.title}: ${b.id}`).join("\n") +
-                              (quizBanks.length > 8 ? `\n... và ${quizBanks.length - 8} bộ đề khác` : "") +
+                              compatibleBanks.slice(0, 8).map((b) => `• ${b.title}: ${b.id}`).join("\n") +
+                              (compatibleBanks.length > 8 ? `\n... và ${compatibleBanks.length - 8} bộ đề khác` : "") +
                               "\n\nNhập Bank ID:"
                             );
                             if (newBankId && newBankId.trim()) {

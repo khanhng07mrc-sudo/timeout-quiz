@@ -282,6 +282,15 @@ export function localizeSectorsForEdition(
       label = "💎 JACKPOT";
     } else if (s.isOverlay && s.overlayType === "TRIPLE") {
       label = "🔥 TRIPLE";
+    } else if (type === "STEAL_SWAP") {
+      // BUG-24 FIX: Localize STEAL_SWAP for English edition
+      label = "⚔️ STEAL/SWAP";
+    } else if (type === "WILD_CARD") {
+      label = "🃏 WILD CARD";
+    } else if (type === "SPECIAL_ENVELOPE") {
+      label = "✉️ SPECIAL ENV.";
+    } else if (type === "BONUS_ENVELOPE") {
+      label = "🎁 BONUS ENV.";
     } else if (type === "POINTS" && s.value) {
       if (label.includes("⭐")) {
         label = `⭐ $${s.value}`;
@@ -538,11 +547,14 @@ export function generateMagicWheelSectors(
     });
     const tripleIdx = sectors.findIndex((s) => s.id === 17);
     if (tripleIdx !== -1) {
+      // BUG-16 FIX: Dùng value sau khi doubled của sector id=17 thay vì hardcode 3000
+      // (sector id=17 đã được doubled ở vòng forEach ở trên nếu nó là type POINTS)
+      const baseTripleValue = sectors[tripleIdx].value ?? 3000;
       sectors[tripleIdx] = {
         id: 17,
         label: "🔥 NHÂN BA",
         type: "TRIPLE",
-        value: 3000,
+        value: baseTripleValue,
         color: "#f97316",
         textColor: "#ffffff",
         isOverlay: true,
@@ -1187,8 +1199,28 @@ export const ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE: MagicWheelPuzzle[] = [
     revealedIndices: [],
   },
   {
-    id: "en-set1-special",
+    id: "en-set1-r7",
     roundNumber: 9,
+    stage: "MAIN",
+    mainRoundIndex: 7,
+    category: "FOOD & DRINK",
+    secretPhrase: "TRADITIONAL EGG COFFEE",
+    clue: "Rich and creamy specialty beverage originating in Hanoi made from robusta beans and whipped egg yolks.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set1-r8",
+    roundNumber: 10,
+    stage: "MAIN",
+    mainRoundIndex: 8,
+    category: "PLACE(S)",
+    secretPhrase: "TERRACED RICE FIELDS SAPA",
+    clue: "Breathtaking cascading emerald terraces sculpted across mountain slopes in northwestern Vietnam.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set1-special",
+    roundNumber: 11,
     stage: "SPECIAL_FINAL",
     category: "LANDMARK(S)",
     secretPhrase: "SON DOONG CAVE",
@@ -1278,8 +1310,28 @@ export const ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS: MagicWheelPuzzle[] = [
     revealedIndices: [],
   },
   {
-    id: "en-set2-special",
+    id: "en-set2-r7",
     roundNumber: 9,
+    stage: "MAIN",
+    mainRoundIndex: 7,
+    category: "LANDMARK(S)",
+    secretPhrase: "MACHU PICCHU INCA CITADEL",
+    clue: "Mystical 15th-century Inca sanctuary perched high in the Andes mountains of Peru.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set2-r8",
+    roundNumber: 10,
+    stage: "MAIN",
+    mainRoundIndex: 8,
+    category: "SHOW BIZ",
+    secretPhrase: "HOLLYWOOD WALK OF FAME",
+    clue: "World-famous sidewalk embedded with brass stars honoring entertainment icons.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set2-special",
+    roundNumber: 11,
     stage: "SPECIAL_FINAL",
     category: "LANDMARK(S)",
     secretPhrase: "GREAT WALL OF CHINA",
@@ -1369,8 +1421,28 @@ export const ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS: MagicWheelPuzzle[] = [
     revealedIndices: [],
   },
   {
-    id: "en-set3-special",
+    id: "en-set3-r7",
     roundNumber: 9,
+    stage: "MAIN",
+    mainRoundIndex: 7,
+    category: "PHRASE(S)",
+    secretPhrase: "BURNING THE MIDNIGHT OIL",
+    clue: "Working or studying late into the night with steadfast diligence and focus.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set3-r8",
+    roundNumber: 10,
+    stage: "MAIN",
+    mainRoundIndex: 8,
+    category: "BEFORE & AFTER",
+    secretPhrase: "SAVE FOR A RAINY DAY BED",
+    clue: "Fun wordplay combining financial prudence and a comfortable piece of convertible furniture.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set3-special",
+    roundNumber: 11,
     stage: "SPECIAL_FINAL",
     category: "PHRASE(S)",
     secretPhrase: "A BLESSING IN DISGUISE",
@@ -1437,14 +1509,14 @@ export function buildMagicWheelMatchPuzzles(
         ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS[1],
       ];
       const spPool = [
-        ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE[8],
-        ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS[8],
-        ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS[8],
+        ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE[10],
+        ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS[10],
+        ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS[10],
       ];
       const mainPuzzles = [
-        ...ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE.slice(2, 8),
-        ...ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS.slice(2, 8),
-        ...ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS.slice(2, 8),
+        ...ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE.slice(2, 10),
+        ...ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS.slice(2, 10),
+        ...ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS.slice(2, 10),
       ].sort(() => Math.random() - 0.5);
 
       pool = [
@@ -1518,3 +1590,46 @@ export function buildMagicWheelMatchPuzzles(
 
   return schedule;
 }
+
+/**
+ * Tự động nhận diện ngôn ngữ của bộ đề (VIETNAMESE hoặc ENGLISH):
+ * - Phân tích sự hiện diện của dấu thanh Tiếng Việt (à, á, ả, ã, ạ, ă, â, đ, ê, ô, ơ, ư,...) trong câu hỏi, đáp án, gợi ý và tiêu đề.
+ * - Nhận diện từ khóa tiếng Anh trong tiêu đề/metadata (English, Wheel of Fortune, Set 1/2/3,...)
+ */
+export function detectQuizBankLanguage(bank: {
+  id?: string | null;
+  title?: string | null;
+  description?: string | null;
+  questions?: Array<{ content?: string | null; answer?: string | null; hint?: string | null; options?: any }>;
+}): "VIETNAMESE" | "ENGLISH" {
+  if (!bank) return "VIETNAMESE";
+
+  const bankId = bank.id || "";
+  const title = (bank.title || "").toLowerCase();
+  const desc = (bank.description || "").toLowerCase();
+
+  if (bankId.includes("_en_") || bankId.endsWith("_en") || /wheel of fortune|tiếng anh|english|\(en\)/i.test(title)) {
+    return "ENGLISH";
+  }
+
+  // Regex phát hiện ký tự có dấu thanh đặc trưng tiếng Việt
+  const vietnameseDiacriticsRegex = /[àáảãạăắằẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđÀÁẢÃẠĂẮẰẴẶÂẤẦẨẪẬÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴĐ]/;
+
+  let sampleText = `${title} ${desc} `;
+  const questions = bank.questions || [];
+  for (const q of questions.slice(0, 15)) {
+    sampleText += ` ${q.content || ""} ${q.answer || ""} ${q.hint || ""}`;
+  }
+
+  if (vietnameseDiacriticsRegex.test(sampleText)) {
+    return "VIETNAMESE";
+  }
+
+  // Nếu không chứa bất kỳ dấu tiếng Việt nào và có từ khóa hoặc thuần English
+  if (/set\s*\d|idioms|heritage|wonders|english/i.test(sampleText)) {
+    return "ENGLISH";
+  }
+
+  return "VIETNAMESE";
+}
+

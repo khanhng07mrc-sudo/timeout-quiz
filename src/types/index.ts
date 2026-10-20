@@ -925,9 +925,9 @@ export interface MagicWheelState {
   specialPuzzleCompleted?: boolean;
   specialBonusPoints?: number; // Mệnh giá phong bì quay được (ẩn cho đến khi giải xong)
   specialAllowedLettersCount?: number; // Số chữ cái K được chọn trước
-  specialAllowedLetterCount?: number;
+  // BUG-29 FIX: Removed duplicate `specialAllowedLetterCount` (missing 's') - use `specialAllowedLettersCount`
   specialPickedLetters?: string[];     // Các chữ cái đã chọn ở Vòng Đặc Biệt
-  specialSelectedLetters?: string[];
+  // BUG-30 FIX: Removed duplicate `specialSelectedLetters` - use `specialPickedLetters`
   specialThinkEndsAt?: number;
   specialAnswerEndsAt?: number;
   specialSolveEndsAt?: number;         // Timestamp hết 40s (30s suy nghĩ + 10s trả lời)

@@ -296,7 +296,8 @@ function SmartPuzzlePhraseInput({
     slots.map((s) => {
       if (s.isSpace) return " ";
       if (s.isLockedConsonant) return s.baseChar;
-      if (s.isRevealedVowel) return s.baseChar;
+      // BUG-10 FIX: Dùng targetChar (có dấu đầy đủ) thay vì baseChar (mất dấu thanh)
+      if (s.isRevealedVowel) return s.targetChar;
       return "";
     })
   );
@@ -527,7 +528,8 @@ function SmartPuzzlePhraseInput({
       const next = slots.map((s) => {
         if (s.isSpace) return " ";
         if (s.isLockedConsonant) return s.baseChar;
-        if (s.isRevealedVowel) return s.baseChar;
+        // BUG-10 FIX: Reset về targetChar (có đủ dấu) thay vì baseChar (mất dấu)
+        if (s.isRevealedVowel) return s.targetChar;
         return "";
       });
       if (!upper) return next;
@@ -1013,7 +1015,9 @@ function WheelDiscSvg({
         const pegX = cx + rPeg * Math.sin(theta1);
         const pegY = cy - rPeg * Math.cos(theta1);
 
-        const isWinningSector = !isSpinning && selectedSector && selectedSector.id === sec.id;
+        // BUG-12 FIX: Dùng indexOf để tránh highlight sai khi nhiều sector cùng id
+        // WheelDiscSvg không nhận selectedSectorIndex prop, dùng indexOf(selectedSector) để tìm đúng sector
+        const isWinningSector = !isSpinning && selectedSector !== undefined && sectors.indexOf(selectedSector) === idx;
         const isNumeric = sec.type === "POINTS" || /^\d+$/.test(sec.label.trim());
         const digits = isNumeric ? sec.label.trim().split("") : [];
         const numCount = digits.length;
@@ -1395,6 +1399,22 @@ export default function MagicWheelBoard({
     new Set(currentPuzzle?.revealedIndices || [])
   );
 
+  // BUG-07 FIX: Sync animRevealedIndices khi server gửi state mới (sau reconnect hoặc letter reveal)
+  useEffect(() => {
+    if (!currentPuzzle?.revealedIndices) return;
+    setAnimRevealedIndices((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      for (const idx of currentPuzzle.revealedIndices) {
+        if (!next.has(idx)) {
+          next.add(idx);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [currentPuzzle?.revealedIndices]);
+
   useEffect(() => {
     if (phase !== "TOSS_UP_BUZZED") {
       hasBuzzedRef.current = false;
@@ -1521,6 +1541,14 @@ export default function MagicWheelBoard({
 
   // Power bar animation for auto-oscillating effect
   const [oscillatingPower, setOscillatingPower] = useState<number>(65);
+
+  // BUG-18 FIX: Reset power về 65 khi bắt đầu lượt quay mới (tránh tiếp tục từ giá trị cũ)
+  useEffect(() => {
+    if (phase === "SPIN_WAITING" || phase === "SPECIAL_SPIN_WAITING") {
+      setOscillatingPower(65);
+    }
+  }, [phase, currentRound]);
+
   useEffect(() => {
     if ((phase !== "SPIN_WAITING" && phase !== "SPECIAL_SPIN_WAITING") || isSpinning) return;
     let dir = 1;
@@ -2151,13 +2179,14 @@ export default function MagicWheelBoard({
   // ── 3D Wheel Animation Loop (RequestAnimationFrame) ──────────────────────
   useEffect(() => {
     const target = targetRotationDegrees;
+    const angleOffset = isPlayer ? 180 : 0;
     if (target === undefined || target === null) {
       isSpinningRafRunningRef.current = false;
       wheelPrevAngleRef.current = 0;
       setClientWheelAngle(0);
       lastSnapTimeRef.current = 0;
-      if (wheelRef.current) wheelRef.current.style.transform = "rotate(0deg)";
-      if (needleRef.current) needleRef.current.style.transform = "translateX(-50%) rotate(0deg) scale(1.06) translateZ(0)";
+      if (wheelRef.current) wheelRef.current.style.transform = `rotate(${angleOffset}deg)`;
+      if (needleRef.current) needleRef.current.style.transform = `translateX(-50%) rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
       soundManager.stopWheelSpinMusic(150);
       return;
     }
@@ -2166,11 +2195,11 @@ export default function MagicWheelBoard({
       isSpinningRafRunningRef.current = false;
       wheelPrevAngleRef.current = target;
       setClientWheelAngle(target);
-      if (wheelRef.current) wheelRef.current.style.transform = `rotate(${target}deg)`;
+      if (wheelRef.current) wheelRef.current.style.transform = `rotate(${target + angleOffset}deg)`;
       setIsWheelZoomedIn(false);
       setWheelZoomDurationMs(800);
       lastSnapTimeRef.current = 0;
-      if (needleRef.current) needleRef.current.style.transform = "translateX(-50%) rotate(0deg) scale(1.06) translateZ(0)";
+      if (needleRef.current) needleRef.current.style.transform = `translateX(-50%) rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
       return;
     }
 
@@ -2200,7 +2229,6 @@ export default function MagicWheelBoard({
     let rafId = 0;
     let zoomStartTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const angleOffset = isPlayer ? 180 : 0;
     lastSnapTimeRef.current = 0;
     if (wheelRef.current) wheelRef.current.style.transform = `rotate(${startAngle + angleOffset}deg)`;
     if (needleRef.current) needleRef.current.style.transform = `translateX(-50%) rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
@@ -2242,15 +2270,18 @@ export default function MagicWheelBoard({
         const contactWindow = 3.6;
 
         // Physical needle contact with oncoming chrome peg:
-        // Wheel turns clockwise -> rim moves left-to-right past 12h -> peg pushes downward needle tip to the RIGHT (-deg in CSS)!
+        // Wheel turns clockwise ->
+        // At 12h: rim moves left-to-right -> peg pushes needle tip to the RIGHT (-deg in CSS)
+        // At 6h (isPlayer): rim moves right-to-left -> peg pushes upward needle tip to the LEFT (+deg in CSS)
+        const pegDeflectionSign = isPlayer ? 1.0 : -1.0;
         if (pegDistToSnap <= contactWindow) {
           const contactProgress = 1.0 - pegDistToSnap / contactWindow;
-          needleAngle = -18.0 * Math.pow(contactProgress, 1.15);
+          needleAngle = pegDeflectionSign * 18.0 * Math.pow(contactProgress, 1.15);
         } else if (lastSnapTimeRef.current > 0) {
           const dt = (now - lastSnapTimeRef.current) / 1000;
           if (dt < 0.085) {
-            // Rebound bounce to left (+deg) with damped oscillation settling to 0
-            needleAngle = 10.0 * Math.exp(-32.0 * dt) * Math.cos(50.0 * dt);
+            // Rebound bounce with damped oscillation settling to 0
+            needleAngle = -pegDeflectionSign * 10.0 * Math.exp(-32.0 * dt) * Math.cos(50.0 * dt);
           } else {
             needleAngle = 0;
           }
@@ -3013,11 +3044,17 @@ export default function MagicWheelBoard({
             </span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-1 py-0.5 max-h-12 overflow-hidden">
-            {currentPuzzle?.secretPhrase ? (
-              currentPuzzle.secretPhrase.split(" ").map((word, wIdx) => {
-                const words = currentPuzzle.secretPhrase.split(" ");
-                let offset = 0;
-                for (let i = 0; i < wIdx; i++) offset += words[i].length + 1;
+            {currentPuzzle?.secretPhrase ? (() => {
+              // BUG-19 FIX: Tính offset một lần bên ngoài thay vì tính lại trong mỗi iteration
+              const words = currentPuzzle.secretPhrase.split(" ");
+              const wordOffsets: number[] = [];
+              let runningOffset = 0;
+              for (const w of words) {
+                wordOffsets.push(runningOffset);
+                runningOffset += w.length + 1; // +1 for space
+              }
+              return words.map((word, wIdx) => {
+                const offset = wordOffsets[wIdx];
                 return (
                   <div key={wIdx} className="flex items-center gap-0.5 sm:gap-1 mr-1.5">
                     {word.split("").map((ch, cIdx) => {
@@ -3038,8 +3075,8 @@ export default function MagicWheelBoard({
                     })}
                   </div>
                 );
-              })
-            ) : (
+              });
+            })() : (
               <span className="text-xs text-slate-400 italic">Đang chờ câu đố...</span>
             )}
           </div>
@@ -4488,7 +4525,8 @@ export default function MagicWheelBoard({
                   const pegX = cx + rPeg * Math.sin(theta1);
                   const pegY = cy - rPeg * Math.cos(theta1);
 
-                  const isWinningSector = !isSpinning && selectedSector && selectedSector.id === sec.id;
+                  // BUG-12 FIX: Dùng index thay vì sector.id để tránh highlight sai khi nhiều sector cùng id
+                  const isWinningSector = !isSpinning && activeState.selectedSectorIndex !== undefined && activeState.selectedSectorIndex === idx;
                   const isNumeric = sec.type === "POINTS" || /^\d+$/.test(sec.label.trim());
                   const digits = isNumeric ? sec.label.trim().split("") : [];
                   const numCount = digits.length;
@@ -4714,7 +4752,7 @@ export default function MagicWheelBoard({
                           }}
                           className="px-4 py-2 rounded-xl font-black text-xs bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 shadow-lg hover:brightness-110 cursor-pointer animate-pulse"
                         >
-                          ▶️ BẮT ĐẦU MỞ CHỮ NGẪU NHIÊN (0.75s/chữ)
+                          ▶️ BẮT ĐẦU MỞ CHỮ NGẪU NHIÊN ({edition === "ENGLISH" ? "1.0s" : "0.75s"}/chữ)
                         </button>
                       ) : (
                         <div className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold text-xs flex items-center gap-1.5 animate-pulse">
@@ -4888,7 +4926,7 @@ export default function MagicWheelBoard({
                     </span>
                     <span className="text-[11px] font-bold text-amber-200">
                       {edition === "ENGLISH"
-                        ? "Đã mở sẵn R, S, T, L, N, E · Chọn 3 Phụ âm + 1 Nguyên âm · 40s giải"
+                        ? "R, S, T, L, N, E given · Pick 3 Consonants + 1 Vowel · 40s to solve" // BUG-22 FIX: English instructions in English
                         : `Được chọn ${specialAllowedLettersCount} chữ cái · 30s suy nghĩ + 10s trả lời`}
                     </span>
                   </div>

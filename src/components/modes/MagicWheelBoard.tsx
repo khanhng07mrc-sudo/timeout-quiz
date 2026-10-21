@@ -24,6 +24,9 @@ import {
 import { formatCategoryByEdition } from "@/lib/game-engine/magic-wheel-categories";
 import { soundManager } from "@/lib/sound-manager";
 import { formatVietnameseText, VietnameseInputMethod } from "@/lib/vietnamese-ime";
+import dynamic from "next/dynamic";
+
+const WheelStudio3DScene = dynamic(() => import("./WheelStudio3DScene"), { ssr: false });
 
 export function formatTeamLabel(rawName?: string): string {
   if (!rawName) return "Đội chơi";
@@ -2011,27 +2014,39 @@ export default function MagicWheelBoard({
   }, [isSpinning]);
 
   // Camera auto-cut during spin (Display view only) — 4 góc quay như trường quay CNKD
+  // Thứ tự người dùng chỉ định: Wheel zoom (2s) -> Wide (3s) -> Board (4s) -> Disc closeup (đến khi dừng quay)
   useEffect(() => {
     if (!isDisplay || !effectiveIsSpinning) {
       setCamAngle(0);
       if (camTimerRef.current) clearTimeout(camTimerRef.current);
       return;
     }
-    // Durations cho từng góc (ms): CAM1 wheel zoom, CAM2 wide, CAM3 board zoom, CAM4 disc closeup
-    const durations = [2400, 2800, 2500, 3000];
-    const schedule = (angle: number) => {
-      camTimerRef.current = setTimeout(() => {
-        const next = (angle + 1) % 4;
-        setCamAngle(next);
-        schedule(next);
-      }, durations[angle]);
-    };
-    const startTimer = setTimeout(() => {
-      setCamAngle(1);
-      schedule(1);
-    }, 800);
+
+    // Góc 1: Wheel zoom (2s)
+    setCamAngle(1);
+
+    const t1 = setTimeout(() => {
+      // Góc 2: Wide shot (3s)
+      setCamAngle(2);
+
+      const t2 = setTimeout(() => {
+        // Góc 3: Board zoom (4s)
+        setCamAngle(3);
+
+        const t3 = setTimeout(() => {
+          // Góc 4: Disc closeup (giữ nguyên cho tới khi vòng quay dừng hẳn)
+          setCamAngle(4);
+        }, 4000);
+
+        camTimerRef.current = t3;
+      }, 3000);
+
+      camTimerRef.current = t2;
+    }, 2000);
+
+    camTimerRef.current = t1;
+
     return () => {
-      clearTimeout(startTimer);
       if (camTimerRef.current) clearTimeout(camTimerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4135,8 +4150,9 @@ export default function MagicWheelBoard({
 
   // ── 5. DISPLAY VIEW (isDisplay = true): ZERO-SCROLL, FULL 360° WHEEL, POWERPOINT MORPH LAYOUT ──
   const renderDisplayView = () => {
-    const isFocusWheel = effDisplayLayoutMode === "FOCUS_WHEEL";
-    const isFocusBoard = effDisplayLayoutMode === "FOCUS_BOARD" || (effDisplayLayoutMode === "AUTO" && isTossUpRound);
+    const isBoardZoomCam = effectiveIsSpinning && camAngle === 3;
+    const isFocusBoard = effDisplayLayoutMode === "FOCUS_BOARD" || (effDisplayLayoutMode === "AUTO" && isTossUpRound) || isBoardZoomCam;
+    const isFocusWheel = !isFocusBoard && effDisplayLayoutMode === "FOCUS_WHEEL";
     const isStacked = !isFocusWheel && !isFocusBoard;
 
     const halfTeams = Math.ceil(teams.length / 2);
@@ -4145,66 +4161,7 @@ export default function MagicWheelBoard({
     const isCompactFlank = teams.length >= 4;
     const podiumGapClass = teams.length >= 6 ? "gap-0.5" : teams.length >= 4 ? "gap-1" : "gap-1.5";
 
-    const renderDisplayTeamCard = (t: TeamState, isCompact: boolean) => {
-      const rScore = roundScores?.[t.id] || 0;
-      const isTurn = isTossUpRound
-        ? (phase === "TOSS_UP_BUZZED" && Boolean(tossUpBuzzedTeamId) && t.id === tossUpBuzzedTeamId)
-        : (t.id === currentTurnTeamId);
-      const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
-      return (
-        <TeamPodium3D
-          key={t.id}
-          team={t}
-          roundScore={rScore}
-          isTurn={isTurn}
-          isCompact={isCompact}
-          side={leftTeams.includes(t) ? "left" : "right"}
-          edition={edition}
-          strikes={strikes}
-        />
-      );
-    };
-
-    // ── Virtual Camera Transform (4 góc quay TV khi spinning) ──────────────
-    const camTransforms = [
-      "scale(1) translate(0%, 0%)",          // CAM 0: Bình thường (reset)
-      "scale(1.6) translate(0%, 20%)",        // CAM 1: Zoom vào vòng quay, kéo lùi
-      "scale(0.92) translate(0%, 2%)",        // CAM 2: Zoom out toàn cảnh (ảnh 2)
-      "scale(1.22) translate(0%, -18%)",      // CAM 3: Zoom ô chữ phía trên (ảnh 3)
-      // CAM 4 = 2.0x zoom vào top wheel gần kim (ảnh 4) — dùng index wrap 4→0 thành cam4 ở index 3
-    ];
-    // Khi camAngle=3 thực ra là CAM 4: zoom sâu vào disc (ảnh 4)
-    const camTransformsFull = [
-      "scale(1) translate(0%, 0%)",
-      "scale(1.6) translate(0%, 20%)",
-      "scale(0.92) translate(0%, 2%)",
-      "scale(1.22) translate(0%, -18%)",
-    ] as const;
-    const activeCamTransform = effectiveIsSpinning
-      ? (camTransformsFull[camAngle] ?? "scale(1) translate(0%, 0%)")
-      : "scale(1) translate(0%, 0%)";
-    void camTransforms; // suppress unused
-
     return (
-      <>
-        <style>{`
-          @keyframes camFlash { 0% { opacity: 0.82; } 100% { opacity: 1; } }
-        `}</style>
-        <div
-          style={{
-            transform: activeCamTransform,
-            transformOrigin: "50% 50%",
-            transition: effectiveIsSpinning
-              ? "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)"
-              : "transform 0.9s ease-out",
-            willChange: effectiveIsSpinning ? "transform" : "auto",
-            animation: effectiveIsSpinning && camAngle > 0 ? "camFlash 0.35s ease-out" : undefined,
-            width: "100%",
-            height: "100vh",
-            maxHeight: "100vh",
-            overflow: "hidden",
-          }}
-        >
       <div className="w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-2 sm:p-3.5 md:p-4 box-border bg-gradient-to-b from-[#050811] via-[#091122] to-[#04060d] text-white select-none">
         {/* Top Header */}
         <div className="w-full flex items-center justify-between shrink-0 mb-1 z-30">
@@ -4257,61 +4214,29 @@ export default function MagicWheelBoard({
             )}
           </div>
 
-          {/* OBJECT 2: WHEEL + TEAM FLANKS (Vật thể chủ ở FOCUS_WHEEL, nửa dưới ở STACKED, fade & slide down ở FOCUS_BOARD) */}
+          {/* OBJECT 2: 3D STUDIO STAGE & WHEEL MACHINE (True WebGL 3D Studio via Three.js) */}
           <div
-            className={`w-full transition-all duration-700 ease-in-out min-h-0 ${
-              isFocusWheel
-                ? "flex-1 flex flex-col items-center justify-center opacity-100 scale-100 translate-y-0"
-                : isStacked
-                ? "flex-1 grid grid-cols-12 gap-2 sm:gap-3 items-center opacity-100 scale-100 translate-y-0"
-                : "opacity-0 max-h-0 scale-75 translate-y-12 pointer-events-none overflow-hidden"
+            className={`w-full transition-all duration-700 ease-in-out min-h-0 relative ${
+              isFocusBoard
+                ? "opacity-0 max-h-0 scale-75 translate-y-12 pointer-events-none overflow-hidden"
+                : "flex-1 flex flex-col items-center justify-center opacity-100 scale-100 translate-y-0"
             }`}
           >
-            {/* Left Flank Teams (Active in STACKED, fade out in FOCUS_WHEEL) */}
-            <div
-              className={`transition-all duration-500 ease-in-out ${
-                isStacked
-                  ? `col-span-3 flex flex-col justify-center ${podiumGapClass} min-h-0 opacity-100 translate-x-0`
-                  : "hidden opacity-0 -translate-x-8 pointer-events-none"
-              }`}
-            >
-              {leftTeams.map((t) => renderDisplayTeamCard(t, isCompactFlank))}
-            </div>
-
-            {/* Center Wheel (Morphs from STACKED normal size to FOCUS_WHEEL huge center size) */}
-            <div
-              className={`flex flex-col items-center justify-center transition-all duration-700 ease-in-out min-h-0 ${
-                isFocusWheel
-                  ? "w-full h-full scale-100"
-                  : isStacked
-                  ? "col-span-6 h-full max-h-full scale-100"
-                  : "scale-75 opacity-0"
-              }`}
-            >
-              <WheelMachine3DBase isSpinning={effectiveIsSpinning}>
-                <InteractiveWheelRig
-                  variant="DISPLAY_360"
-                  size={isFocusWheel ? "large" : "normal"}
-                  wheelRef={wheelRef}
-                  needleRef={needleRef}
-                  clientWheelAngle={clientWheelAngle}
-                  effectiveIsSpinning={effectiveIsSpinning}
-                  sectors={sectors}
-                  selectedSector={selectedSector}
-                />
-              </WheelMachine3DBase>
-            </div>
-
-            {/* Right Flank Teams (Active in STACKED, fade out in FOCUS_WHEEL) */}
-            <div
-              className={`transition-all duration-500 ease-in-out ${
-                isStacked
-                  ? `col-span-3 flex flex-col justify-center ${podiumGapClass} min-h-0 opacity-100 translate-x-0`
-                  : "hidden opacity-0 translate-x-8 pointer-events-none"
-              }`}
-            >
-              {rightTeams.map((t) => renderDisplayTeamCard(t, isCompactFlank))}
-            </div>
+            <WheelStudio3DScene
+              sectors={sectors}
+              clientWheelAngle={clientWheelAngle}
+              effectiveIsSpinning={effectiveIsSpinning}
+              selectedSector={selectedSector}
+              teams={teams}
+              roundScores={roundScores}
+              currentTurnTeamId={currentTurnTeamId}
+              tossUpBuzzedTeamId={tossUpBuzzedTeamId}
+              isTossUpRound={isTossUpRound}
+              phase={phase}
+              camAngle={camAngle}
+              edition={edition}
+              className="w-full h-full"
+            />
           </div>
         </div>
 
@@ -4337,8 +4262,6 @@ export default function MagicWheelBoard({
           {renderCompactSingleRowScorebar()}
         </div>
       </div>
-        </div>
-      </>
     );
   };
 

@@ -12,7 +12,7 @@
  *   - Camera Cut Controller: 4 authentic TV studio angles
  */
 
-import React, { useRef, useEffect, useMemo } from "react";
+import React, { useRef, useEffect, useMemo, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { MeshReflectorMaterial } from "@react-three/drei";
 import * as THREE from "three";
@@ -31,9 +31,16 @@ interface WheelStudio3DSceneProps {
   tossUpBuzzedTeamId?: string;
   isTossUpRound?: boolean;
   phase?: string;
-  camAngle: number; // 0=default, 1=wheel zoom, 2=wide, 3=board (UI focus), 4=disc closeup
+  camAngle: number; // 0=default, 1=wheel center, 2=master wide, 3=board hero, 4=disc closeup, 5=player, 6=audience
   edition?: string;
   className?: string;
+  currentPuzzle?: {
+    category: string;
+    description?: string;
+    secretPhrase: string;
+    revealedIndices: number[];
+  } | null;
+  onCamAngleChange?: (cam: number) => void;
 }
 
 interface CamConfig {
@@ -41,22 +48,28 @@ interface CamConfig {
   target: [number, number, number];
 }
 
-// ── Authentic Studio Camera Configurations ──────────────────────────────────
+// ── Authentic Studio Camera Configurations (6 CAM Multi-Director System) ─────
 const CAM_POSITIONS: Record<string, CamConfig> = {
-  // CAM 0 / Default: TV broadcast angle bao trọn nón ở tiền cảnh, bục 5 đội kê cao ở hậu cảnh, không khoảng đen thừa
+  // CAM 0 / Default: TV broadcast angle bao trọn nón ở tiền cảnh, bục 5 đội kê cao ở hậu cảnh
   DEFAULT: { pos: [0, 3.25, 4.95], target: [0, 1.15, -0.30] },
 
-  // CAM 1: Wheel zoom-in (2s) — dramatic perspective looking down at conical wheel
-  CAM1_WHEEL: { pos: [0, 2.8, 3.1], target: [0, 1.25, 0] },
+  // CAM 1: Trực diện Vòng quay & Bàn thí sinh + MC (Contestant & Host Center)
+  CAM1_CENTER: { pos: [0, 3.20, 5.00], target: [0, 1.30, -0.40] },
 
-  // CAM 2: Wide shot (3s) — toàn cảnh trường quay vừa vặn
-  CAM2_WIDE: { pos: [0, 3.8, 5.8], target: [0, 0.8, -0.4] },
+  // CAM 2: Đại cảnh toàn bộ trường quay (Master Wide Angle: Wheel + Board + Host + LED Backdrop + Audience)
+  CAM2_WIDE: { pos: [0, 5.80, 10.50], target: [-0.60, 2.00, -1.50] },
 
-  // CAM 3: Board zoom (4s) — tilts slightly upward as UI focuses on the letter board
-  CAM3_BOARD: { pos: [0, 3.2, 5.4], target: [0, 1.0, 0] },
+  // CAM 3: Cận cảnh trực diện Bảng ô chữ 3D & Người mẫu (Stage Left Z ~ +3.0m)
+  CAM3_BOARD: { pos: [-3.80, 2.60, 5.20], target: [-5.80, 2.40, 3.00] },
 
-  // CAM 4: Disc closeup (stays until spin stops) — authentic TV broadcast elevated angle, wider & less foreshortened (không cắt xén, không chéo lệch)
-  CAM4_DISC: { pos: [-1.30, 3.20, 3.40], target: [-0.60, 1.20, 0.10] },
+  // CAM 4: Cận cảnh mâm nón quay và kim gạt từ trên xuống (Wheel Close-up)
+  CAM4_DISC: { pos: [-1.40, 3.20, 3.40], target: [-0.50, 1.20, 0.10] },
+
+  // CAM 5: Lia cận cảnh thí sinh đang đến lượt (Active Player Close-up)
+  CAM5_PLAYER: { pos: [0.80, 2.80, 2.40], target: [1.20, 2.20, -2.80] },
+
+  // CAM 6: Góc khán giả từ khán đài nhìn lên sân khấu hoành tráng (Audience Perspective)
+  CAM6_AUDIENCE: { pos: [2.50, 2.60, 11.20], target: [-0.80, 2.00, -1.80] },
 };
 
 // ── Texture Generators ───────────────────────────────────────────────────────
@@ -851,13 +864,13 @@ function StylizedHostMannequin() {
 
 /** Bục đứng riêng biệt cho MC (Host Podium & Lectern) đặt bên trái các thí sinh theo góc nhìn khán giả */
 function DedicatedMcStation() {
-  // MC đứng ở mạn trái camera (-X), lệch trái so với các thí sinh, góc theta ~ -34°
+  // MC đứng ở mạn trái camera (-X), ngay bên trái bục thí sinh số 1, góc theta ~ -30°
   const RADIUS_MC = 3.30;
-  const thetaRad = THREE.MathUtils.degToRad(-34);
-  const posX = Math.sin(thetaRad) * RADIUS_MC; // ~ -1.85m
-  const posZ = -Math.cos(thetaRad) * RADIUS_MC; // ~ -2.73m
+  const thetaRad = THREE.MathUtils.degToRad(-30);
+  const posX = Math.sin(thetaRad) * RADIUS_MC; // ~ -1.65m
+  const posZ = -Math.cos(thetaRad) * RADIUS_MC; // ~ -2.86m
   // Xoay mặt hướng về tâm vòng quay và bao quát toàn bộ trường quay
-  const rotY = -thetaRad + 0.22;
+  const rotY = -thetaRad + 0.35;
 
   return (
     <group position={[posX, -0.75, posZ]} rotation={[0, rotY, 0]}>
@@ -1115,43 +1128,6 @@ function ElevatedSlotStation({
   );
 }
 
-/** Dàn hộp đèn số 3D VTV3 phát sáng hậu trường: 600 (đỏ), 900 (lục), 800 (lam), 500 (vàng) */
-function Vtv3BacklitScoreCubes() {
-  const cubes = [
-    { label: "600", color: "#ef4444", emissive: "#dc2626", pos: [-3.2, 3.3, -4.6] as [number, number, number], rotY: 0.22 },
-    { label: "900", color: "#10b981", emissive: "#059669", pos: [-1.1, 3.6, -4.9] as [number, number, number], rotY: 0.06 },
-    { label: "800", color: "#3b82f6", emissive: "#2563eb", pos: [1.1, 3.4, -4.8] as [number, number, number], rotY: -0.12 },
-    { label: "500", color: "#f59e0b", emissive: "#d97706", pos: [3.2, 3.1, -4.5] as [number, number, number], rotY: -0.26 },
-  ];
-
-  return (
-    <group>
-      {cubes.map((c, idx) => (
-        <group key={`cube-${idx}`} position={c.pos} rotation={[0, c.rotY, 0]}>
-          {/* Hộp đèn phát sáng lập phương */}
-          <mesh castShadow>
-            <boxGeometry args={[0.76, 0.76, 0.76]} />
-            <meshStandardMaterial
-              color={c.color}
-              emissive={c.emissive}
-              emissiveIntensity={1.5}
-              roughness={0.2}
-              metalness={0.1}
-            />
-          </mesh>
-          {/* Khung viền kim loại bảo vệ hộp */}
-          <mesh>
-            <boxGeometry args={[0.80, 0.80, 0.80]} />
-            <meshStandardMaterial color="#f8fafc" metalness={0.95} roughness={0.05} wireframe />
-          </mesh>
-          {/* Ánh sáng điểm tỏa ra từ hộp đèn */}
-          <pointLight color={c.emissive} intensity={3.5} distance={4.0} />
-        </group>
-      ))}
-    </group>
-  );
-}
-
 /** Bục thí sinh bán nguyệt nâng cao phía sau vòng quay chuẩn VTV3 (Elevated Contestant Dais Behind Wheel) */
 function ElevatedContestantDaisBehindWheel({
   teams,
@@ -1275,8 +1251,584 @@ function ElevatedContestantDaisBehindWheel({
         );
       })}
 
-      {/* 3. Dàn hộp đèn số 3D biểu tượng VTV3 hậu trường (Backlit Score Cubes: 600, 900, 800, 500) */}
-      <Vtv3BacklitScoreCubes />
+    </group>
+  );
+}
+
+/** Texture Cache cho các ô chữ và ô hộp xoay */
+const studioTextureCache = new Map<string, THREE.CanvasTexture>();
+
+function getLetterTileTexture(char: string): THREE.CanvasTexture {
+  const key = `tile_${char}`;
+  if (studioTextureCache.has(key)) return studioTextureCache.get(key)!;
+  if (typeof document === "undefined") return new THREE.Texture() as unknown as THREE.CanvasTexture;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 160;
+  canvas.height = 220;
+  const ctx = canvas.getContext("2d")!;
+
+  // Nền trắng sứ bóng đẹp
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, 160, 220);
+
+  // Viền khung đen mỏng tinh tế
+  ctx.strokeStyle = "#0f172a";
+  ctx.lineWidth = 6;
+  ctx.strokeRect(4, 4, 152, 212);
+
+  // Chữ cái màu đen đậm
+  ctx.fillStyle = "#0f172a";
+  ctx.font = '900 130px "Roboto Slab", "Merriweather", sans-serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(char, 80, 115);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  studioTextureCache.set(key, texture);
+  return texture;
+}
+
+function getClosedTileTexture(): THREE.CanvasTexture {
+  const key = "tile_closed";
+  if (studioTextureCache.has(key)) return studioTextureCache.get(key)!;
+  if (typeof document === "undefined") return new THREE.Texture() as unknown as THREE.CanvasTexture;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 160;
+  canvas.height = 220;
+  const ctx = canvas.getContext("2d")!;
+
+  // Nền xanh ngọc bích truyền hình VTV3
+  ctx.fillStyle = "#15803d";
+  ctx.fillRect(0, 0, 160, 220);
+
+  // Viền vàng kim
+  ctx.strokeStyle = "#fbbf24";
+  ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, 152, 212);
+
+  // Ngôi sao vàng 4 cánh ở tâm
+  ctx.fillStyle = "#fde047";
+  ctx.beginPath();
+  const cx = 80, cy = 110, rOuter = 30, rInner = 10;
+  for (let i = 0; i < 8; i++) {
+    const angle = (i * Math.PI) / 4 - Math.PI / 2;
+    const r = i % 2 === 0 ? rOuter : rInner;
+    const x = cx + Math.cos(angle) * r;
+    const y = cy + Math.sin(angle) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  studioTextureCache.set(key, texture);
+  return texture;
+}
+
+function getSpinningCubeTexture(text: string, bgColor: string, textColor = "#ffffff"): THREE.CanvasTexture {
+  const key = `cube_${text}_${bgColor}`;
+  if (studioTextureCache.has(key)) return studioTextureCache.get(key)!;
+  if (typeof document === "undefined") return new THREE.Texture() as unknown as THREE.CanvasTexture;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d")!;
+
+  const grad = ctx.createLinearGradient(0, 0, 256, 256);
+  grad.addColorStop(0, bgColor);
+  grad.addColorStop(1, "#020617");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 256);
+
+  ctx.strokeStyle = "#fbbf24";
+  ctx.lineWidth = 10;
+  ctx.strokeRect(5, 5, 246, 246);
+
+  ctx.fillStyle = textColor;
+  ctx.font = text.length > 5 ? '900 40px "Roboto Slab", sans-serif' : text.length > 3 ? '900 64px "Roboto Slab", sans-serif' : '900 120px "Roboto Slab", sans-serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 128, 128);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  studioTextureCache.set(key, texture);
+  return texture;
+}
+
+interface FormattedTile {
+  char: string;
+  isLetter: boolean;
+  origIdx: number;
+}
+
+function formatPhraseTo4x14(phrase?: string): FormattedTile[][] {
+  const grid: FormattedTile[][] = Array.from({ length: 4 }, () =>
+    Array.from({ length: 14 }, () => ({ char: "", isLetter: false, origIdx: -1 }))
+  );
+  if (!phrase) return grid;
+
+  const words = phrase.toUpperCase().split(" ");
+  const rows: FormattedTile[][] = [];
+  let currentRow: FormattedTile[] = [];
+  let currentLen = 0;
+  let charIdx = 0;
+
+  words.forEach((word) => {
+    const wordChars: FormattedTile[] = word.split("").map((c) => ({
+      char: c,
+      isLetter: /[A-ZÀ-Ỹ]/i.test(c),
+      origIdx: charIdx++,
+    }));
+    charIdx++; // include space index
+
+    if (currentLen + (currentLen > 0 ? 1 : 0) + wordChars.length <= 14) {
+      if (currentLen > 0) {
+        currentRow.push({ char: " ", isLetter: false, origIdx: -1 });
+        currentLen++;
+      }
+      currentRow.push(...wordChars);
+      currentLen += wordChars.length;
+    } else {
+      if (currentRow.length > 0) rows.push(currentRow);
+      currentRow = [...wordChars];
+      currentLen = wordChars.length;
+    }
+  });
+  if (currentRow.length > 0) rows.push(currentRow);
+
+  const startRow = Math.max(0, Math.floor((4 - rows.length) / 2));
+  rows.slice(0, 4).forEach((rowChars, r) => {
+    const targetRow = startRow + r;
+    if (targetRow >= 4) return;
+    const startCol = Math.max(0, Math.floor((14 - rowChars.length) / 2));
+    rowChars.forEach((ch, c) => {
+      const targetCol = startCol + c;
+      if (targetCol < 14) {
+        grid[targetRow][targetCol] = ch;
+      }
+    });
+  });
+
+  return grid;
+}
+
+/** Dải đường line trắng phát sáng đặc trưng VTV3 uốn cong từ lối vào MC vòng qua nón đến bảng ô chữ */
+function WhiteRunwayTrack() {
+  const curvePoints = useMemo(() => {
+    return [
+      new THREE.Vector3(-1.75, 0.08, -2.85), // Khu vực MC
+      new THREE.Vector3(-1.60, 0.08, -0.60),
+      new THREE.Vector3(-1.20, 0.08, 1.60),
+      new THREE.Vector3(0.00, 0.08, 2.70),  // Trước mặt cỗ máy nón quay
+      new THREE.Vector3(1.80, 0.08, 2.10),
+      new THREE.Vector3(2.80, 0.08, 0.60),
+      new THREE.Vector3(2.20, 0.08, -1.20), // Vòng bên phải
+      new THREE.Vector3(0.00, 0.08, 2.70),  // Trước mặt nón
+      new THREE.Vector3(-2.80, 0.08, 2.90),
+      new THREE.Vector3(-5.20, 0.08, 3.10), // Chân Bảng Ô Chữ 3D bên cánh trái
+    ];
+  }, []);
+
+  const lineGeometry = useMemo(() => {
+    const curve = new THREE.CatmullRomCurve3(curvePoints);
+    return new THREE.TubeGeometry(curve, 96, 0.055, 8, false);
+  }, [curvePoints]);
+
+  return (
+    <mesh geometry={lineGeometry}>
+      <meshStandardMaterial
+        color="#ffffff"
+        emissive="#ffffff"
+        emissiveIntensity={3.2}
+        roughness={0.1}
+      />
+    </mesh>
+  );
+}
+
+/** Ô chữ 3D độc lập với cơ chế lật xoay 180 độ (Trilon Flip) */
+function Studio3DPuzzleTile({
+  tile,
+  isRevealed,
+  posX,
+  posY,
+}: {
+  tile: FormattedTile;
+  isRevealed: boolean;
+  posX: number;
+  posY: number;
+}) {
+  const meshRef = useRef<THREE.Group>(null);
+  const targetRotY = isRevealed ? Math.PI : 0;
+
+  useFrame((_, delta) => {
+    if (!meshRef.current) return;
+    meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, targetRotY, delta * 4.5);
+  });
+
+  if (!tile.isLetter) {
+    return (
+      <mesh position={[posX, posY, 0]}>
+        <boxGeometry args={[0.32, 0.44, 0.04]} />
+        <meshStandardMaterial color="#062512" roughness={0.5} />
+      </mesh>
+    );
+  }
+
+  const frontTex = getClosedTileTexture();
+  const backTex = getLetterTileTexture(tile.char);
+
+  return (
+    <group ref={meshRef} position={[posX, posY, 0]}>
+      <mesh>
+        <boxGeometry args={[0.32, 0.44, 0.04]} />
+        <meshStandardMaterial attach="material-0" color="#fbbf24" metalness={0.8} roughness={0.2} />
+        <meshStandardMaterial attach="material-1" color="#fbbf24" metalness={0.8} roughness={0.2} />
+        <meshStandardMaterial attach="material-2" color="#fbbf24" metalness={0.8} roughness={0.2} />
+        <meshStandardMaterial attach="material-3" color="#fbbf24" metalness={0.8} roughness={0.2} />
+        <meshStandardMaterial attach="material-4" map={frontTex} />
+        <meshStandardMaterial attach="material-5" map={backTex} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Hình nhân người mẫu trợ lý lật ô chữ (Stylized Hostess) */
+function StylizedHostess({ isRevealing }: { isRevealing: boolean }) {
+  const armRef = useRef<THREE.Group>(null);
+
+  useFrame((_, delta) => {
+    if (!armRef.current) return;
+    const targetRotZ = isRevealing ? -0.85 : -0.22;
+    armRef.current.rotation.z = THREE.MathUtils.lerp(armRef.current.rotation.z, targetRotZ, delta * 3.5);
+  });
+
+  return (
+    <group position={[2.6, 0.4, 0.35]} rotation={[0, -0.4, 0]}>
+      <mesh position={[0, 0.65, 0]} castShadow>
+        <cylinderGeometry args={[0.16, 0.34, 1.30, 24]} />
+        <meshStandardMaterial color="#f59e0b" emissive="#d97706" emissiveIntensity={0.3} metalness={0.8} roughness={0.2} />
+      </mesh>
+      <mesh position={[0, 1.40, 0]}>
+        <cylinderGeometry args={[0.13, 0.15, 0.35, 16]} />
+        <meshStandardMaterial color="#fde047" metalness={0.7} roughness={0.3} />
+      </mesh>
+      <mesh position={[0, 1.62, 0]}>
+        <cylinderGeometry args={[0.04, 0.045, 0.12, 12]} />
+        <meshStandardMaterial color="#fef3c7" roughness={0.3} />
+      </mesh>
+      <mesh position={[0, 1.76, 0]} castShadow>
+        <sphereGeometry args={[0.10, 20, 20]} />
+        <meshStandardMaterial color="#fef3c7" roughness={0.25} />
+      </mesh>
+      <mesh position={[0, 1.84, -0.04]}>
+        <sphereGeometry args={[0.07, 16, 16]} />
+        <meshStandardMaterial color="#1e1b4b" roughness={0.6} />
+      </mesh>
+      <group ref={armRef} position={[-0.16, 1.48, 0]} rotation={[0.2, 0, -0.25]}>
+        <mesh position={[-0.20, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.035, 0.04, 0.40, 12]} />
+          <meshStandardMaterial color="#fef3c7" roughness={0.3} />
+        </mesh>
+        <mesh position={[-0.42, 0, 0]}>
+          <sphereGeometry args={[0.035, 12, 12]} />
+          <meshStandardMaterial color="#fef3c7" roughness={0.3} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+/** Bảng Ô Chữ 3D đặt tại Cánh Trái sân khấu ở cự ly chiều sâu Z ~ +3.0m (khoảng giữa nón Z=0 và khán đài Z=10m) */
+function Studio3DPuzzleBoard({
+  currentPuzzle,
+  phase,
+}: {
+  currentPuzzle?: {
+    category: string;
+    description?: string;
+    secretPhrase: string;
+    revealedIndices: number[];
+  } | null;
+  phase?: string;
+}) {
+  const grid = useMemo(() => {
+    return formatPhraseTo4x14(currentPuzzle?.secretPhrase);
+  }, [currentPuzzle?.secretPhrase]);
+
+  const revealedSet = useMemo(() => {
+    return new Set(currentPuzzle?.revealedIndices || []);
+  }, [currentPuzzle?.revealedIndices]);
+
+  const isRevealing = phase === "ROUND_RECAP" || (revealedSet.size > 0);
+
+  return (
+    <group position={[-5.8, -0.75, 3.0]} rotation={[0, 0.65, 0]}>
+      {/* 1. Bục nâng sân khấu cho Bảng Ô Chữ 3D */}
+      <mesh position={[0, 0.20, 0]} receiveShadow>
+        <boxGeometry args={[6.4, 0.40, 2.6]} />
+        <meshStandardMaterial color="#cbd5e1" metalness={0.92} roughness={0.12} />
+      </mesh>
+      {/* Vành viền LED vàng trên bục */}
+      <mesh position={[0, 0.41, 0]}>
+        <boxGeometry args={[6.44, 0.02, 2.64]} />
+        <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.8} />
+      </mesh>
+
+      {/* 2. Cột trụ Art-Deco mạ bạc hai bên bảng */}
+      {[-2.8, 2.8].map((px, i) => (
+        <group key={`col-${i}`} position={[px, 2.2, 0]}>
+          <mesh position={[0, 0, 0]}>
+            <cylinderGeometry args={[0.18, 0.22, 3.8, 24]} />
+            <meshStandardMaterial color="#e2e8f0" metalness={0.95} roughness={0.08} />
+          </mesh>
+          <mesh position={[0, 1.95, 0]}>
+            <boxGeometry args={[0.5, 0.15, 0.5]} />
+            <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.5} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Thanh vòm trên (Header Bar) */}
+      <mesh position={[0, 4.15, 0]}>
+        <boxGeometry args={[6.1, 0.45, 0.25]} />
+        <meshStandardMaterial color="#0f172a" metalness={0.9} roughness={0.2} />
+      </mesh>
+      {/* Dải LED phát sáng trên vòm */}
+      <mesh position={[0, 4.15, 0.13]}>
+        <boxGeometry args={[5.8, 0.04, 0.02]} />
+        <meshStandardMaterial color="#fde047" emissive="#f59e0b" emissiveIntensity={2.5} />
+      </mesh>
+
+      {/* 3. Khung bảng Video Wall (5.3m x 2.3m) */}
+      <mesh position={[0, 2.20, 0]}>
+        <boxGeometry args={[5.3, 2.3, 0.08]} />
+        <meshStandardMaterial color="#052e16" roughness={0.4} />
+      </mesh>
+
+      {/* 4. Ma trận 4x14 ô chữ 3D độc lập lật xoay */}
+      <group position={[0, 0, 0.05]}>
+        {grid.map((row, r) => {
+          const posY = 2.2 + (1.5 - r) * 0.50;
+          return row.map((tile, c) => {
+            const posX = (c - 6.5) * 0.36;
+            const isRevealed = tile.isLetter && (revealedSet.has(tile.origIdx) || phase === "ROUND_RECAP");
+            return (
+              <Studio3DPuzzleTile
+                key={`tile-${r}-${c}`}
+                tile={tile}
+                isRevealed={isRevealed}
+                posX={posX}
+                posY={posY}
+              />
+            );
+          });
+        })}
+      </group>
+
+      {/* 5. Người mẫu trợ lý lật ô chữ (Stylized Hostess in evening gown) */}
+      <StylizedHostess isRevealing={isRevealing} />
+    </group>
+  );
+}
+
+const CUBES_DATA = [
+  { text: "C", color: "#06b6d4", emissive: "#0891b2", pos: [-4.6, 4.8, -0.4], scale: 0.65, rotSpeed: [0.8, 1.2, 0.5] },
+  { text: "N", color: "#eab308", emissive: "#ca8a04", pos: [-3.2, 3.4, 0.2], scale: 0.70, rotSpeed: [1.1, 0.7, 0.9] },
+  { text: "K", color: "#10b981", emissive: "#059669", pos: [-1.8, 5.2, -0.2], scale: 0.68, rotSpeed: [0.6, 1.4, 0.4] },
+  { text: "D", color: "#f43f5e", emissive: "#e11d48", pos: [-0.4, 3.6, 0.4], scale: 0.72, rotSpeed: [0.9, 0.8, 1.2] },
+  { text: "VTV3", color: "#dc2626", emissive: "#b91c1c", pos: [1.2, 5.0, -0.3], scale: 0.75, rotSpeed: [0.7, 1.0, 0.8] },
+  { text: "600", color: "#ef4444", emissive: "#dc2626", pos: [2.6, 3.5, 0.3], scale: 0.68, rotSpeed: [1.2, 0.6, 1.0] },
+  { text: "900", color: "#059669", emissive: "#047857", pos: [4.0, 4.9, -0.2], scale: 0.70, rotSpeed: [0.5, 1.3, 0.7] },
+  { text: "800", color: "#2563eb", emissive: "#1d4ed8", pos: [5.2, 3.8, 0.1], scale: 0.65, rotSpeed: [1.0, 0.9, 0.6] },
+  { text: "500", color: "#f59e0b", emissive: "#d97706", pos: [-4.2, 2.4, 0.5], scale: 0.62, rotSpeed: [0.7, 1.1, 0.8] },
+  { text: "1000", color: "#8b5cf6", emissive: "#7c3aed", pos: [-2.4, 2.0, -0.1], scale: 0.65, rotSpeed: [1.3, 0.5, 1.1] },
+  { text: "MAY MẮN", color: "#fbbf24", emissive: "#f59e0b", pos: [0.2, 2.2, 0.3], scale: 0.72, rotSpeed: [0.8, 1.2, 0.6] },
+  { text: "PHẦN THƯỞNG", color: "#ec4899", emissive: "#db2777", pos: [2.2, 2.1, -0.2], scale: 0.68, rotSpeed: [0.9, 0.7, 1.3] },
+  { text: "A", color: "#ea580c", emissive: "#c2410c", pos: [4.4, 2.3, 0.4], scale: 0.60, rotSpeed: [1.1, 1.0, 0.5] },
+  { text: "O", color: "#0284c7", emissive: "#0369a1", pos: [-5.0, 3.8, 0.1], scale: 0.62, rotSpeed: [0.6, 1.4, 0.9] },
+  { text: "QUIZ", color: "#14b8a6", emissive: "#0d9488", pos: [0.0, 5.8, -0.4], scale: 0.74, rotSpeed: [1.0, 0.8, 1.1] },
+  { text: "TIMEOUT", color: "#6366f1", emissive: "#4f46e5", pos: [3.4, 6.0, -0.1], scale: 0.72, rotSpeed: [0.8, 1.1, 0.7] },
+];
+
+/** Màn hình LED hậu trường vòm vàng 3 tầng & 16 khối ô chữ 3D xoay lơ lửng */
+function BackdropLedScreenWithSpinningCubes() {
+  const cubeMeshRefs = useRef<(THREE.Mesh | null)[]>([]);
+
+  useFrame((state, delta) => {
+    const t = state.clock.getElapsedTime();
+    cubeMeshRefs.current.forEach((mesh, i) => {
+      if (!mesh) return;
+      const d = CUBES_DATA[i];
+      mesh.rotation.x += delta * d.rotSpeed[0];
+      mesh.rotation.y += delta * d.rotSpeed[1];
+      mesh.rotation.z += delta * d.rotSpeed[2];
+      mesh.position.y = d.pos[1] + Math.sin(t * 1.4 + i * 0.7) * 0.12;
+    });
+  });
+
+  return (
+    <group position={[0, -0.75, -6.2]}>
+      {/* 1. Khung vòm cổng vát 3 tầng màu vàng neon (Triple Gold Archway) */}
+      <group position={[0, 4.4, 0]}>
+        <mesh position={[0, 0, 0]}>
+          <torusGeometry args={[7.2, 0.16, 16, 48, Math.PI]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.9} />
+        </mesh>
+        <mesh position={[0, 0, 0.05]}>
+          <torusGeometry args={[6.7, 0.14, 16, 48, Math.PI]} />
+          <meshStandardMaterial color="#fde047" emissive="#b45309" emissiveIntensity={1.2} metalness={0.92} />
+        </mesh>
+        <mesh position={[0, 0, 0.10]}>
+          <torusGeometry args={[6.2, 0.12, 16, 48, Math.PI]} />
+          <meshStandardMaterial color="#eab308" emissive="#ca8a04" emissiveIntensity={1.0} metalness={0.94} />
+        </mesh>
+      </group>
+
+      {/* 2. Màn hình LED cong nền xanh sapphire sâu */}
+      <mesh position={[0, 4.2, -0.2]}>
+        <planeGeometry args={[13.2, 6.4]} />
+        <meshStandardMaterial
+          color="#0c2461"
+          emissive="#061838"
+          emissiveIntensity={0.6}
+          roughness={0.3}
+          metalness={0.4}
+        />
+      </mesh>
+
+      {/* 3. Dàn 16 khối ô chữ 3D xoay lơ lửng */}
+      {CUBES_DATA.map((c, i) => {
+        const tex = getSpinningCubeTexture(c.text, c.color);
+        return (
+          <mesh
+            key={`cube-spin-${i}`}
+            ref={(el) => {
+              cubeMeshRefs.current[i] = el;
+            }}
+            position={[c.pos[0], c.pos[1], c.pos[2]]}
+            scale={c.scale}
+            castShadow
+          >
+            <boxGeometry args={[0.74, 0.74, 0.74]} />
+            <meshStandardMaterial map={tex} emissive={c.emissive} emissiveIntensity={0.8} roughness={0.2} metalness={0.2} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+/** Cụm hoa văn bánh xe nan hoa quạt xòe phát sáng hai bên cánh gà */
+function StudioSetWingMotifs() {
+  const SPOKES = 24;
+
+  const renderFan = (x: number, z: number, rotY: number) => (
+    <group position={[x, 3.6, z]} rotation={[0, rotY, 0]}>
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.32, 0.32, 0.08, 32]} />
+        <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.5} metalness={0.9} />
+      </mesh>
+      {Array.from({ length: SPOKES }).map((_, i) => {
+        const a = (i * Math.PI * 2) / SPOKES;
+        const len = 2.4;
+        const midR = len / 2 + 0.32;
+        const isWhite = i % 2 === 0;
+
+        return (
+          <mesh
+            key={`spoke-${i}`}
+            position={[Math.sin(a) * midR, Math.cos(a) * midR, 0]}
+            rotation={[0, 0, -a]}
+          >
+            <boxGeometry args={[0.045, len, 0.02]} />
+            <meshStandardMaterial
+              color={isWhite ? "#f8fafc" : "#fde047"}
+              emissive={isWhite ? "#ffffff" : "#f59e0b"}
+              emissiveIntensity={2.0}
+            />
+          </mesh>
+        );
+      })}
+      <mesh rotation={[0, 0, 0]}>
+        <torusGeometry args={[2.75, 0.04, 16, 48]} />
+        <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.8} />
+      </mesh>
+      {[-0.8, 0.8].map((ox, idx) => (
+        <mesh key={`col-${idx}`} position={[ox, -1.2, -0.2]}>
+          <cylinderGeometry args={[0.06, 0.06, 3.2, 16]} />
+          <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={1.5} />
+        </mesh>
+      ))}
+    </group>
+  );
+
+  return (
+    <group>
+      {renderFan(-8.4, -4.5, 0.3)}
+      {renderFan(8.4, -4.5, -0.3)}
+    </group>
+  );
+}
+
+/** Khán đài khán giả hình cánh cung đa tầng (Audience Amphitheater) đặt tại Z = +10.0m đến +14.0m */
+function AudienceAmphitheater() {
+  const TIERS = [
+    { r: 9.8, h: 0.35, seats: 12 },
+    { r: 11.0, h: 0.70, seats: 14 },
+    { r: 12.2, h: 1.05, seats: 16 },
+    { r: 13.4, h: 1.40, seats: 18 },
+  ];
+
+  return (
+    <group position={[0, -0.75, 0]}>
+      {TIERS.map((tier, tIdx) => {
+        const startAngle = Math.PI * 0.28;
+        const endAngle = Math.PI * 0.72;
+        const angleSpan = endAngle - startAngle;
+
+        return (
+          <group key={`tier-${tIdx}`}>
+            <mesh position={[0, tier.h / 2, 0]} receiveShadow>
+              <cylinderGeometry
+                args={[tier.r + 0.6, tier.r + 0.6, tier.h, 48, 1, false, startAngle, angleSpan]}
+              />
+              <meshStandardMaterial color="#1e293b" roughness={0.4} metalness={0.5} />
+            </mesh>
+
+            {Array.from({ length: tier.seats }).map((_, sIdx) => {
+              const a = startAngle + (sIdx + 0.5) * (angleSpan / tier.seats);
+              const sx = Math.cos(a) * tier.r;
+              const sz = Math.sin(a) * tier.r;
+              const isRed = (sIdx + tIdx) % 2 === 0;
+
+              return (
+                <group key={`seat-${tIdx}-${sIdx}`} position={[sx, tier.h, sz]} rotation={[0, -a + Math.PI / 2, 0]}>
+                  <mesh position={[0, 0.22, 0]}>
+                    <boxGeometry args={[0.42, 0.38, 0.36]} />
+                    <meshStandardMaterial color={isRed ? "#991b1b" : "#1e3a8a"} roughness={0.3} />
+                  </mesh>
+                  <mesh position={[0, 0.55, -0.04]}>
+                    <cylinderGeometry args={[0.10, 0.14, 0.35, 12]} />
+                    <meshStandardMaterial color={sIdx % 3 === 0 ? "#cbd5e1" : "#0f172a"} roughness={0.5} />
+                  </mesh>
+                  <mesh position={[0, 0.80, -0.04]}>
+                    <sphereGeometry args={[0.075, 12, 12]} />
+                    <meshStandardMaterial color="#fde68a" roughness={0.4} />
+                  </mesh>
+                </group>
+              );
+            })}
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -1291,21 +1843,20 @@ function CameraController({
 }) {
   const { camera } = useThree();
   const targetConfig = useRef<CamConfig>(CAM_POSITIONS.DEFAULT);
-  const targetLookAtRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 1.15, 0.35));
+  const targetLookAtRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 1.15, -0.30));
   const initialized = useRef(false);
 
   useEffect(() => {
-    if (!effectiveIsSpinning) {
-      targetConfig.current = CAM_POSITIONS.DEFAULT;
-    } else {
-      const configs: Record<number, CamConfig> = {
-        1: CAM_POSITIONS.CAM1_WHEEL,
-        2: CAM_POSITIONS.CAM2_WIDE,
-        3: CAM_POSITIONS.CAM3_BOARD,
-        4: CAM_POSITIONS.CAM4_DISC,
-      };
-      targetConfig.current = configs[camAngle] ?? CAM_POSITIONS.DEFAULT;
-    }
+    const configs: Record<number, CamConfig> = {
+      0: CAM_POSITIONS.DEFAULT,
+      1: CAM_POSITIONS.CAM1_CENTER,
+      2: CAM_POSITIONS.CAM2_WIDE,
+      3: CAM_POSITIONS.CAM3_BOARD,
+      4: CAM_POSITIONS.CAM4_DISC,
+      5: CAM_POSITIONS.CAM5_PLAYER,
+      6: CAM_POSITIONS.CAM6_AUDIENCE,
+    };
+    targetConfig.current = configs[camAngle] ?? CAM_POSITIONS.DEFAULT;
   }, [camAngle, effectiveIsSpinning]);
 
   useFrame((_, delta) => {
@@ -1328,115 +1879,152 @@ function CameraController({
   return null;
 }
 
-/** Sân khấu trường quay TV cao cấp: Sàn kính phản chiếu nhẹ (MeshReflectorMaterial), các dải LED đồng tâm & nan toả sáng */
+/** Giàn đèn trần trường quay TV (Ceiling Studio Lighting Truss & Softboxes) */
+function StudioCeilingRig() {
+  return (
+    <group position={[0, 9.5, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[8.2, 0.12, 16, 64]} />
+        <meshStandardMaterial color="#64748b" metalness={0.92} roughness={0.15} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[5.4, 0.1, 16, 48]} />
+        <meshStandardMaterial color="#64748b" metalness={0.92} roughness={0.15} />
+      </mesh>
+
+      {Array.from({ length: 8 }).map((_, i) => {
+        const angle = (i * Math.PI * 2) / 8;
+        const rx = Math.sin(angle) * 6.8;
+        const rz = -Math.cos(angle) * 6.8;
+        return (
+          <group key={`softbox-${i}`} position={[rx, 0, rz]} rotation={[0, -angle, 0]}>
+            <mesh position={[0, 0.15, 0]}>
+              <boxGeometry args={[1.9, 0.25, 0.95]} />
+              <meshStandardMaterial color="#1e293b" metalness={0.8} roughness={0.3} />
+            </mesh>
+            <mesh position={[0, 0.02, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[1.8, 0.85]} />
+              <meshBasicMaterial color="#f0f9ff" />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+/** Sân khấu trường quay TV cao cấp: Sàn Bạc Ánh Kim Metallic (Silver-Platinum Mirror Floor) */
 function StudioFloor() {
   return (
     <group position={[0, -0.75, 0]}>
-      {/* 1. Sàn studio mở rộng toàn cảnh (Deep Broadcast Studio Floor) */}
+      {/* 1. Sàn trường quay mở rộng toàn cảnh - Tone xám bạc công nghệ cao không bị tối đen */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[50, 50]} />
+        <planeGeometry args={[70, 70]} />
         <meshStandardMaterial
-          color="#08152c"
-          roughness={0.15}
-          metalness={0.2}
+          color="#64748b"
+          emissive="#334155"
+          emissiveIntensity={0.25}
+          roughness={0.18}
+          metalness={0.5}
         />
       </mesh>
 
-      {/* 2. Sân khấu chính hình tròn nổi (Raised Circular Stage Deck) */}
-      <mesh position={[0, 0.03, 0]} receiveShadow>
-        <cylinderGeometry args={[6.2, 6.25, 0.06, 64]} />
-        <meshStandardMaterial
-          color="#0b1b38"
-          roughness={0.25}
-          metalness={0.35}
-        />
-      </mesh>
+      {/* Lưới kẻ kính sàn trường quay TV phản quang */}
+      {[-21, -18, -15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15, 18, 21].map((x) => (
+        <mesh key={`grid-x-${x}`} position={[x, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[0.03, 50]} />
+          <meshStandardMaterial color="#94a3b8" emissive="#cbd5e1" emissiveIntensity={0.8} />
+        </mesh>
+      ))}
+      {[-21, -18, -15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15, 18, 21].map((z) => (
+        <mesh key={`grid-z-${z}`} position={[0, 0.005, z]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[50, 0.03]} />
+          <meshStandardMaterial color="#94a3b8" emissive="#cbd5e1" emissiveIntensity={0.8} />
+        </mesh>
+      ))}
 
-      {/* Mặt sàn kính phản chiếu nhẹ chuẩn trường quay TV (Glass Mirror Stage Floor with Soft Reflection) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.062, 0]} receiveShadow>
-        <circleGeometry args={[6.18, 64]} />
-        <MeshReflectorMaterial
-          blur={[300, 100]}
-          resolution={1024}
-          mirror={0.42}
-          mixBlur={0.8}
-          mixStrength={1.8}
+      {/* 2. Vành bậc sân khấu ngoài (Outer Stage Apron Deck R = 12.0m) */}
+      <mesh position={[0, 0.02, 0]} receiveShadow>
+        <cylinderGeometry args={[12.0, 12.05, 0.04, 64]} />
+        <meshStandardMaterial
+          color="#94a3b8"
+          emissive="#475569"
+          emissiveIntensity={0.2}
           roughness={0.12}
-          depthScale={1.1}
-          minDepthThreshold={0.4}
-          maxDepthThreshold={1.5}
-          color="#0d244d"
-          metalness={0.45}
+          metalness={0.7}
         />
       </mesh>
 
-      {/* Vành viền Chrome bảo vệ quanh mép sàn khấu */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.063, 0]}>
-        <ringGeometry args={[6.15, 6.25, 64]} />
-        <meshStandardMaterial
-          color="#e2e8f0"
-          metalness={0.96}
-          roughness={0.05}
-        />
-      </mesh>
-
-      {/* Dải đèn LED vàng hoàng kim viền ngoài mép sàn (Perimeter Stage Halo) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.064, 0]}>
-        <ringGeometry args={[6.00, 6.12, 64]} />
+      {/* Vành LED biên ngoài sàn trường quay R = 11.9m */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.042, 0]}>
+        <ringGeometry args={[11.80, 11.92, 64]} />
         <meshStandardMaterial
           color="#fde047"
           emissive="#f59e0b"
-          emissiveIntensity={1.5}
-          roughness={0.1}
-          metalness={0.9}
-        />
-      </mesh>
-
-      {/* Vòng đai LED xanh Indigo phân làn khu vực người chơi (Contestant Arc Track) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.064, 0]}>
-        <ringGeometry args={[4.95, 5.08, 64]} />
-        <meshStandardMaterial
-          color="#818cf8"
-          emissive="#6366f1"
-          emissiveIntensity={1.3}
-          roughness={0.15}
-          metalness={0.9}
-        />
-      </mesh>
-
-      {/* Vòng đai LED xanh Cyan sáng rực khu vực giữa sàn */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.064, 0]}>
-        <ringGeometry args={[3.80, 3.92, 64]} />
-        <meshStandardMaterial
-          color="#38bdf8"
-          emissive="#0ea5e9"
-          emissiveIntensity={1.6}
-          roughness={0.1}
+          emissiveIntensity={2.5}
+          roughness={0.06}
           metalness={0.92}
         />
       </mesh>
 
+      {/* 3. Sân khấu chính hình tròn nổi (Raised Circular Stage Deck R = 10.0m) */}
+      <mesh position={[0, 0.045, 0]} receiveShadow>
+        <cylinderGeometry args={[10.0, 10.05, 0.05, 64]} />
+        <meshStandardMaterial
+          color="#cbd5e1"
+          roughness={0.10}
+          metalness={0.85}
+        />
+      </mesh>
+
+      {/* Mặt sàn kính bạc ánh kim phản chiếu gương chuẩn truyền hình TV (True Silver Mirror Stage Floor) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.071, 0]} receiveShadow>
+        <circleGeometry args={[9.95, 64]} />
+        <MeshReflectorMaterial
+          blur={[30, 15]}
+          resolution={1024}
+          mirror={0.65}
+          mixBlur={0.15}
+          mixStrength={2.6}
+          roughness={0.06}
+          depthScale={0}
+          minDepthThreshold={0}
+          maxDepthThreshold={60}
+          color="#f8fafc"
+          metalness={0.88}
+        />
+      </mesh>
+
+      {/* Dải đường line trắng phát sáng đặc trưng VTV3 */}
+      <WhiteRunwayTrack />
+
+      {/* Vành viền Chrome bảo vệ quanh mép sàn khấu */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.073, 0]}>
+        <ringGeometry args={[9.92, 10.02, 64]} />
+        <meshStandardMaterial color="#f8fafc" metalness={0.98} roughness={0.03} />
+      </mesh>
+
       {/* Vòng spotlight sân khấu hoàng kim ôm sát chân cỗ máy nón */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.064, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.074, 0]}>
         <ringGeometry args={[2.62, 2.76, 64]} />
         <meshStandardMaterial
           color="#fbbf24"
           emissive="#f59e0b"
-          emissiveIntensity={1.8}
-          roughness={0.08}
+          emissiveIntensity={2.5}
+          roughness={0.06}
           metalness={0.94}
         />
       </mesh>
 
       {/* Soft Center Stage Glow Disc */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0635, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0735, 0]}>
         <circleGeometry args={[2.60, 48]} />
         <meshStandardMaterial
-          color="#1e40af"
-          emissive="#1d4ed8"
-          emissiveIntensity={0.3}
-          roughness={0.1}
-          metalness={0.2}
+          color="#e2e8f0"
+          emissive="#cbd5e1"
+          emissiveIntensity={0.8}
+          roughness={0.06}
+          metalness={0.4}
         />
       </mesh>
     </group>
@@ -1447,31 +2035,33 @@ function StudioFloor() {
 function StudioBackdrop() {
   return (
     <group position={[0, 4.0, 0]}>
-      {/* Vòm tường cong trường quay TV bao trọn không gian (không còn góc chết đen) */}
       <mesh rotation={[0, -Math.PI / 2, 0]}>
         <cylinderGeometry args={[26, 26, 22, 64, 1, true, -Math.PI * 0.65, Math.PI * 1.3]} />
         <meshStandardMaterial
-          color="#0f2652"
-          roughness={0.35}
+          color="#1e40af"
+          roughness={0.3}
           metalness={0.2}
           side={THREE.BackSide}
         />
       </mesh>
 
-      {/* Dải LED viền vòm trên trường quay */}
       <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 10.5, -18]}>
         <ringGeometry args={[25.7, 26.0, 64]} />
-        <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={1.5} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={2.2} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* 5 Cột đèn nhuộm màu nền trường quay (Backdrop Wash Columns) */}
-      {[-12, -6, 0, 6, 12].map((x, i) => (
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, -3.8, -18]}>
+        <ringGeometry args={[25.7, 26.0, 64]} />
+        <meshStandardMaterial color="#f59e0b" emissive="#d97706" emissiveIntensity={2.4} side={THREE.DoubleSide} />
+      </mesh>
+
+      {[-16, -12, -8, -4, 0, 4, 8, 12, 16].map((x, i) => (
         <pointLight
           key={`cyc-light-${i}`}
           position={[x, 3.5, -16]}
           color={i % 2 === 0 ? "#38bdf8" : "#fbbf24"}
-          intensity={7.0}
-          distance={22.0}
+          intensity={11.0}
+          distance={26.0}
         />
       ))}
     </group>
@@ -1494,7 +2084,36 @@ export default function WheelStudio3DScene({
   camAngle,
   edition = "VIETNAMESE",
   className = "",
+  currentPuzzle,
+  onCamAngleChange,
 }: WheelStudio3DSceneProps) {
+  const [internalCam, setInternalCam] = useState<number>(camAngle || 0);
+
+  // Sync camAngle from props
+  useEffect(() => {
+    setInternalCam(camAngle || 0);
+  }, [camAngle]);
+
+  // Smart Auto-Director: Khi đang quay nón chuyển sang CAM 4; khi mở chữ sang CAM 3
+  useEffect(() => {
+    if (effectiveIsSpinning) {
+      setInternalCam(4);
+    }
+  }, [effectiveIsSpinning]);
+
+  // Keyboard shortcut listener (keys 1 - 6)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const num = parseInt(e.key, 10);
+      if (num >= 1 && num <= 6) {
+        setInternalCam(num);
+        onCamAngleChange?.(num);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onCamAngleChange]);
+
   // Ensure Roboto Slab font link is loaded in head
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -1520,15 +2139,16 @@ export default function WheelStudio3DScene({
           inset: 0,
           width: "100%",
           height: "100%",
-          background: "radial-gradient(ellipse at 50% 30%, #0d2757 0%, #051021 100%)",
+          background: "radial-gradient(ellipse at 50% 35%, #1e40af 0%, #172554 45%, #0f172a 80%, #020617 100%)",
         }}
       >
-        <CameraController camAngle={camAngle} effectiveIsSpinning={effectiveIsSpinning} />
+        <CameraController camAngle={internalCam} effectiveIsSpinning={effectiveIsSpinning} />
 
-        {/* ── SUPERCHARGED 6-POINT BROADCAST STUDIO LIGHTING (SÁNG BỪNG RỰC RỠ, PHẢN CHIẾU SÀN BÓNG GƯƠNG) ── */}
-        <ambientLight intensity={2.8} color="#ffffff" />
+        {/* ── SUPERCHARGED 6-POINT BROADCAST STUDIO LIGHTING ── */}
+        <ambientLight intensity={3.2} color="#eff6ff" />
+        <directionalLight position={[0, 14, 6]} intensity={3.5} color="#dbeafe" />
 
-        {/* Key Spotlight: trực diện siêu sáng rọi tâm nón */}
+        {/* Key Spotlight: trực diện rọi tâm nón */}
         <spotLight
           position={[0, 9.5, 4.0]}
           intensity={14.0}
@@ -1541,54 +2161,40 @@ export default function WheelStudio3DScene({
 
         {/* Dedicated Floor Specular Downlight (Rọi sàn tạo vệt sáng bóng gương chói lọi) */}
         <spotLight
-          position={[0, 8.5, 2.0]}
-          intensity={16.0}
-          angle={0.85}
-          penumbra={0.5}
+          position={[0, 10.0, 1.5]}
+          intensity={24.0}
+          angle={0.9}
+          penumbra={0.4}
           color="#bae6fd"
         />
 
-        {/* Front Camera Fill Spotlight: xóa bóng đổ đen, sáng đều toàn bộ mặt trước */}
-        <spotLight
-          position={[0, 5.0, 5.5]}
-          intensity={9.0}
-          angle={0.8}
-          penumbra={0.4}
-          color="#fffbeb"
-        />
+        {/* Front Camera Fill Spotlight */}
+        <spotLight position={[0, 5.0, 5.5]} intensity={9.0} angle={0.8} penumbra={0.4} color="#fffbeb" />
 
-        {/* Left Studio Floor Wash Spotlight (Warm Gold Specular) */}
+        {/* Left Studio Floor Wash Spotlight */}
         <spotLight position={[-5.0, 6.5, 2.5]} intensity={8.5} angle={0.8} penumbra={0.5} color="#fef08a" />
 
-        {/* Right Studio Floor Wash Spotlight (Electric Cyan Specular) */}
+        {/* Right Studio Floor Wash Spotlight */}
         <spotLight position={[5.0, 6.5, 2.5]} intensity={8.5} angle={0.8} penumbra={0.5} color="#bae6fd" />
 
-        {/* Back Rim / Kicker Light (Làm nổi bật viền nón và kim quay) */}
+        {/* Back Rim / Kicker Light */}
         <pointLight position={[0, 4.5, -4.5]} color="#93c5fd" intensity={8.0} />
 
         {/* Ground Warm Gold Ambiance Fill */}
         <pointLight position={[0, 0.4, 3.5]} color="#fde68a" intensity={4.5} />
 
-        {/* Center Under-Pedestal Uplight: xóa bỏ hoàn toàn vùng tối đen dưới gầm */}
+        {/* Center Under-Pedestal Uplight */}
         <pointLight position={[0, -0.4, 0]} color="#fef08a" intensity={6.0} distance={5.0} />
 
-        {/* Dedicated Needle Studio Light at 9 o'clock (Làm kim quay đỏ thẫm & viền vàng hoàng kim nổi bật sắc nét) */}
-        <pointLight
-          position={[-2.30, 1.80, 0.60]}
-          intensity={6.0}
-          distance={4.0}
-          color="#fffbeb"
-        />
-        <spotLight
-          position={[-3.2, 3.2, 1.5]}
-          intensity={5.5}
-          angle={0.6}
-          penumbra={0.4}
-          color="#fef08a"
-        />
+        {/* Dedicated Needle Studio Light at 9 o'clock */}
+        <pointLight position={[-2.30, 1.80, 0.60]} intensity={6.0} distance={4.0} color="#fffbeb" />
+        <spotLight position={[-3.2, 3.2, 1.5]} intensity={5.5} angle={0.6} penumbra={0.4} color="#fef08a" />
 
-        {/* Studio Elements */}
+        {/* ── Studio Elements ── */}
+        <StudioCeilingRig />
         <StudioBackdrop />
+        <StudioSetWingMotifs />
+        <BackdropLedScreenWithSpinningCubes />
         <StudioFloor />
         <WheelMachineGroup
           sectors={sectors}
@@ -1596,9 +2202,9 @@ export default function WheelStudio3DScene({
           effectiveIsSpinning={effectiveIsSpinning}
           selectedSector={selectedSector}
         />
-        {/* Bục đứng riêng biệt cho MC bên trái thí sinh */}
+        {/* Bục đứng riêng biệt cho MC ngay bên trái bục thí sinh số 1 */}
         <DedicatedMcStation />
-        {/* Bục thí sinh kê cao chuẩn VTV3 không bị đè nhau */}
+        {/* Bục thí sinh kê cao chuẩn VTV3 (đã xoá hộp trên đầu) */}
         <ElevatedContestantDaisBehindWheel
           teams={teams}
           roundScores={roundScores}
@@ -1608,7 +2214,43 @@ export default function WheelStudio3DScene({
           phase={phase}
           edition={edition}
         />
+        {/* Bảng Ô Chữ 3D tại Cánh Trái (Z ~ +3.0m) & Người mẫu trợ lý */}
+        <Studio3DPuzzleBoard currentPuzzle={currentPuzzle} phase={phase} />
+        {/* Khán đài khán giả đa tầng phía trước sân khấu (Z = +10m - +14m) */}
+        <AudienceAmphitheater />
       </Canvas>
+
+      {/* ── BROADCAST CAMERA DIRECTOR BAR ── */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 p-1.5 rounded-2xl bg-black/75 backdrop-blur-md border border-white/20 shadow-2xl">
+        {[
+          { id: 1, label: "CAM 1: Nón & Đội", icon: "🎡" },
+          { id: 2, label: "CAM 2: Toàn Cảnh", icon: "🌐" },
+          { id: 3, label: "CAM 3: Bảng Ô Chữ", icon: "🔤" },
+          { id: 4, label: "CAM 4: Cận Nón", icon: "🎯" },
+          { id: 5, label: "CAM 5: Thí Sinh", icon: "👤" },
+          { id: 6, label: "CAM 6: Khán Đài", icon: "👥" },
+        ].map((c) => {
+          const isActive = internalCam === c.id;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => {
+                setInternalCam(c.id);
+                onCamAngleChange?.(c.id);
+              }}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                isActive
+                  ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-[0_0_15px_#f59e0b] scale-105"
+                  : "bg-white/10 hover:bg-white/20 text-slate-200"
+              }`}
+            >
+              <span>{c.icon}</span>
+              <span className="hidden md:inline">{c.label}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

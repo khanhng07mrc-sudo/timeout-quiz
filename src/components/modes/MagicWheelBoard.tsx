@@ -4221,6 +4221,8 @@ export default function MagicWheelBoard({
               phase={phase}
               camAngle={camAngle}
               edition={edition}
+              currentPuzzle={currentPuzzle}
+              onCamAngleChange={(cam) => setCamAngle(cam)}
               className="absolute inset-0 w-full h-full"
             />
           </div>

@@ -61,11 +61,11 @@ const CAM_POSITIONS: Record<string, CamConfig> = {
   // CAM 2: Đại cảnh toàn bộ trường quay tầm mắt TV (Master Wide Broadcast Angle như ảnh 3 VTV3 10:28)
   CAM2_WIDE: { pos: [0, 2.70, 7.80], target: [0, 1.40, -1.00] },
 
-  // CAM 3: Trực diện vuông góc toàn bộ Bảng ô chữ 3D & Người mẫu toàn thân (Stage Left Z ~ -1.0m)
-  CAM3_BOARD: { pos: [-4.00, 1.65, 4.30], target: [-6.80, 1.60, -1.00] },
+  // CAM 3: Trực diện vuông góc toàn bộ Bảng ô chữ 3D lùi sâu Z=-3.8m & Người mẫu toàn thân
+  CAM3_BOARD: { pos: [-5.30, 1.95, 1.20], target: [-7.40, 1.80, -3.80] },
 
-  // CAM 4: Cận cảnh kim chỉ thị và các chốt ô nón đang quay (Kim quay hero close-up)
-  CAM4_DISC: { pos: [-2.10, 2.50, 1.40], target: [-1.65, 1.20, 0.10] },
+  // CAM 4: Cận cảnh kim chỉ thị cong đỏ cherry và các chốt ô nón đang quay chúc 40° (chuẩn ảnh 16:58)
+  CAM4_DISC: { pos: [-2.15, 2.45, 1.35], target: [-1.65, 1.22, 0.08] },
 
   // CAM 5: Lia cận cảnh thí sinh đang đến lượt (Active Player Close-up)
   CAM5_PLAYER: { pos: [0.80, 2.80, 2.40], target: [1.20, 2.20, -2.80] },
@@ -522,63 +522,70 @@ function WheelMachineGroup({
       </group>
 
       {/* ── 2. NEEDLE AT 9 O'CLOCK FLANK WITH AUTHENTIC SLANTED SUPPORT PILLAR (VTV3 BROADCAST STYLE) ── */}
-      {/* Flexible mechanical pointer needle (lưỡi kim gạt) at 9 o'clock */}
-      <group position={[-2.30, 1.25, 0.08]} rotation={[0.34, 0.12, 0]}>
+      {/* ── 2. SLEEK MECHANICAL NEEDLE ACCORDING TO VTV3 2015 BROADCAST (16:58) ── */}
+      {/* Curved cherry red lacquer support arm & chrome pivot assembly at 9 o'clock */}
+      <group position={[-2.32, 1.25, 0.08]} rotation={[0.32, 0.10, 0]}>
+        {/* Sleek Curved Arm base in glossy cherry red lacquer */}
+        <mesh position={[-0.14, -0.12, 0]} rotation={[0, 0, -0.45]} castShadow>
+          <cylinderGeometry args={[0.042, 0.054, 0.38, 20]} />
+          <meshStandardMaterial
+            color="#b91c1c"
+            roughness={0.15}
+            metalness={0.45}
+            emissive="#7f1d1d"
+            emissiveIntensity={0.3}
+          />
+        </mesh>
+
+        {/* Chrome & Gold cylindrical pivot housing */}
+        <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.082, 0.082, 0.14, 24]} />
+          <meshStandardMaterial color="#f8fafc" metalness={0.96} roughness={0.04} />
+        </mesh>
+        <mesh position={[0, 0, 0.072]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.05, 0.05, 0.02, 20]} />
+          <meshStandardMaterial color="#fbbf24" metalness={0.92} roughness={0.08} emissive="#d97706" emissiveIntensity={0.6} />
+        </mesh>
+
         {/* Dynamic vibrating pointer flapper pointing into the 3D pegs */}
-        <mesh
-          ref={needleRef}
-          position={[0.16, 0, 0]}
-          castShadow
-        >
-          {/* Lưỡi kim gạt đỏ thẫm to rõ chuẩn VTV3 (Crimson red flexible flapper) */}
-          <boxGeometry args={[0.34, 0.12, 0.045]} />
-          <meshStandardMaterial
-            color="#dc2626"
-            emissive="#991b1b"
-            emissiveIntensity={0.6}
-            metalness={0.15}
-            roughness={0.25}
-          />
-        </mesh>
-
-        {/* Mũi tên chỉ thị nhọn màu vàng đậm phát quang (Pointer tip indicator) */}
-        <mesh position={[0.34, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
-          <coneGeometry args={[0.075, 0.13, 16]} />
-          <meshStandardMaterial
-            color="#fbbf24"
-            emissive="#d97706"
-            emissiveIntensity={1.5}
-            metalness={0.96}
-            roughness={0.06}
-          />
-        </mesh>
-
-        {/* Dedicated metallic mounting box & pivot joint */}
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[0.12, 0.15, 0.14]} />
-          <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.05} />
-        </mesh>
-        <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[0.08, 16, 16]} />
-          <meshStandardMaterial
-            color="#fbbf24"
-            metalness={0.96}
-            roughness={0.05}
-            emissive="#f59e0b"
-            emissiveIntensity={0.8}
-          />
-        </mesh>
+        <group ref={needleRef} position={[0, 0, 0]}>
+          {/* Sleek tapering red acrylic blade */}
+          <mesh position={[0.22, 0, 0]} rotation={[0, 0, -Math.PI / 2]} castShadow>
+            <coneGeometry args={[0.065, 0.44, 24]} />
+            <meshStandardMaterial
+              color="#dc2626"
+              emissive="#b91c1c"
+              emissiveIntensity={0.7}
+              metalness={0.25}
+              roughness={0.18}
+            />
+          </mesh>
+          {/* Golden pointer tip accent */}
+          <mesh position={[0.42, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
+            <coneGeometry args={[0.042, 0.12, 16]} />
+            <meshStandardMaterial
+              color="#fef08a"
+              emissive="#f59e0b"
+              emissiveIntensity={1.8}
+              metalness={0.95}
+              roughness={0.05}
+            />
+          </mesh>
+          {/* Chrome pivot pin head */}
+          <mesh position={[0, 0, 0.08]}>
+            <sphereGeometry args={[0.038, 16, 16]} />
+            <meshStandardMaterial color="#f8fafc" metalness={0.98} roughness={0.02} />
+          </mesh>
+        </group>
       </group>
 
-      {/* Slanted support arm extending from pillar head to needle mounting box */}
-      <mesh position={[-2.34, 1.08, 0.06]} rotation={[0.18, 0, -0.28]} castShadow>
-        <cylinderGeometry args={[0.048, 0.052, 0.44, 16]} />
-        <meshStandardMaterial color="#e2e8f0" metalness={0.95} roughness={0.08} />
+      {/* Slanted chrome support pillar extending down to floor */}
+      <mesh position={[-2.42, 0.65, 0.10]} rotation={[0.06, 0, -0.14]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.058, 0.075, 1.25, 24]} />
+        <meshStandardMaterial color="#e2e8f0" metalness={0.95} roughness={0.06} />
       </mesh>
-
-      {/* Chrome vertical pillar anchored into stage floor */}
-      <mesh position={[-2.40, 0.15, 0.12]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.065, 0.082, 1.6, 24]} />
+      <mesh position={[-2.46, 0.02, 0.10]} receiveShadow>
+        <cylinderGeometry args={[0.18, 0.22, 0.08, 24]} />
         <meshStandardMaterial color="#cbd5e1" metalness={0.92} roughness={0.12} />
       </mesh>
 
@@ -668,33 +675,128 @@ function WheelMachineGroup({
   );
 }
 
-/** Individual 3D Team Podium Mesh */
-/** 3D Stylized Mannequin Figure (Hình nhân 3D mặc vest màu đội đứng sau bàn thi đấu) */
-function StylizedMannequin({
-  color,
-  isTurn,
+/** Đầu người 3D Stylized Humanoid có đầy đủ mắt, mũi, miệng, nụ cười, tóc 3D và ngũ quan chân thực */
+function StylizedHumanoidHead({
+  hairColor = "#0f172a",
+  skinColor = "#fed7aa",
+  isHost = false,
+  isTurn = false,
+  isSpinning = false,
 }: {
-  color: string;
-  isTurn: boolean;
+  hairColor?: string;
+  skinColor?: string;
+  isHost?: boolean;
+  isTurn?: boolean;
+  isSpinning?: boolean;
 }) {
-  const groupRef = useRef<THREE.Group>(null);
+  const headRef = useRef<THREE.Group>(null);
 
-  useFrame(() => {
-    if (groupRef.current) {
-      const t = Date.now() / 1000;
-      if (isTurn) {
-        // Nhấp nhô nhẹ & nghiêng người hướng về vòng quay khi đến lượt
-        groupRef.current.position.y = Math.sin(t * 3.5) * 0.015;
-        groupRef.current.rotation.x = -0.06 + Math.sin(t * 2.0) * 0.025;
-      } else {
-        groupRef.current.position.y = Math.sin(t * 1.5) * 0.005;
-        groupRef.current.rotation.x = 0;
-      }
+  useFrame((state) => {
+    if (!headRef.current) return;
+    const t = state.clock.getElapsedTime();
+    if (isSpinning) {
+      // Đầu xoay nhẹ theo dõi vòng quay nón đang xoay
+      headRef.current.rotation.y = Math.sin(t * 3.5) * 0.14;
+      headRef.current.rotation.x = 0.08 + Math.cos(t * 2.0) * 0.03;
+    } else if (isTurn) {
+      // Đội đến lượt: ngẩng cao đầu tự tin, mỉm cười rạng rỡ
+      headRef.current.rotation.y = Math.sin(t * 1.5) * 0.06;
+      headRef.current.rotation.x = -0.04;
+    } else {
+      headRef.current.rotation.y = Math.sin(t * 0.8 + (isHost ? 1 : 0)) * 0.04;
+      headRef.current.rotation.x = 0;
     }
   });
 
   return (
-    <group ref={groupRef} position={[0, 0, 0]}>
+    <group ref={headRef} position={[0, 1.02, 0]}>
+      {/* 1. Khuôn mặt 3D hình khối đầu oval ấm áp */}
+      <mesh castShadow scale={[0.94, 1.05, 0.96]}>
+        <sphereGeometry args={[0.125, 24, 24]} />
+        <meshStandardMaterial color={skinColor} roughness={0.35} metalness={0.05} />
+      </mesh>
+
+      {/* 2. Mái tóc 3D vuốt gel bóng bẩy phong cách truyền hình */}
+      <group position={[0, 0.04, -0.01]}>
+        {/* Mũ tóc chính */}
+        <mesh position={[0, 0.03, -0.015]} scale={[0.98, 1.02, 1.0]}>
+          <sphereGeometry args={[0.128, 20, 20, 0, Math.PI * 2, 0, Math.PI * 0.52]} />
+          <meshStandardMaterial color={hairColor} roughness={0.4} metalness={0.15} />
+        </mesh>
+        {/* Tóc mái bồng rẽ ngôi lịch lãm */}
+        <mesh position={[0, 0.08, 0.07]} rotation={[0.2, 0, 0]}>
+          <boxGeometry args={[0.16, 0.04, 0.08]} />
+          <meshStandardMaterial color={hairColor} roughness={0.4} metalness={0.15} />
+        </mesh>
+      </group>
+
+      {/* 3. Ngũ quan khuôn mặt chân thực */}
+      {/* Mắt trái & phải (Tròng trắng + Con ngươi đen sáng) */}
+      {[-0.042, 0.042].map((ex, i) => (
+        <group key={`eye-${i}`} position={[ex, 0.02, 0.112]}>
+          {/* Tròng trắng */}
+          <mesh>
+            <sphereGeometry args={[0.018, 12, 12]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.1} />
+          </mesh>
+          {/* Con ngươi đen */}
+          <mesh position={[0, 0, 0.012]}>
+            <sphereGeometry args={[0.009, 12, 12]} />
+            <meshStandardMaterial color="#020617" roughness={0.2} metalness={0.4} />
+          </mesh>
+          {/* Đốm sáng phản chiếu trong mắt */}
+          <mesh position={[0.003, 0.004, 0.018]}>
+            <sphereGeometry args={[0.0028, 8, 8]} />
+            <meshBasicMaterial color="#ffffff" />
+          </mesh>
+          {/* Lông mày */}
+          <mesh position={[0, 0.028, 0.005]} rotation={[0, 0, i === 0 ? 0.08 : -0.08]}>
+            <boxGeometry args={[0.034, 0.007, 0.008]} />
+            <meshStandardMaterial color={hairColor} roughness={0.6} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Sống mũi 3D thanh tú */}
+      <mesh position={[0, -0.005, 0.122]} rotation={[0.18, 0, 0]}>
+        <coneGeometry args={[0.016, 0.038, 12]} />
+        <meshStandardMaterial color={skinColor} roughness={0.4} />
+      </mesh>
+
+      {/* Miệng cười tươi thân thiện chuẩn gameshow */}
+      <mesh position={[0, -0.042, 0.112]}>
+        <boxGeometry args={[0.046, 0.010, 0.014]} />
+        <meshStandardMaterial color="#be123c" roughness={0.3} />
+      </mesh>
+      {/* Nụ cười hé răng trắng */}
+      <mesh position={[0, -0.041, 0.117]}>
+        <boxGeometry args={[0.030, 0.005, 0.006]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+
+      {/* Đôi tai hai bên */}
+      {[-0.122, 0.122].map((tx, i) => (
+        <mesh key={`ear-${i}`} position={[tx, 0.005, 0]} rotation={[0, 0, i === 0 ? 0.2 : -0.2]}>
+          <sphereGeometry args={[0.024, 12, 12]} />
+          <meshStandardMaterial color={skinColor} roughness={0.4} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** 3D Stylized Contestant Mannequin (Hình nhân thí sinh trang trọng mang màu sắc đội thi, có đầy đủ ngũ quan) */
+function StylizedMannequin({
+  color,
+  isTurn,
+  isSpinning,
+}: {
+  color?: string;
+  isTurn?: boolean;
+  isSpinning?: boolean;
+}) {
+  return (
+    <group position={[0, 0, 0]}>
       {/* 1. Đôi chân và quần âu lịch sự */}
       <mesh position={[-0.10, 0.22, 0]} castShadow>
         <cylinderGeometry args={[0.055, 0.065, 0.44, 16]} />
@@ -735,15 +837,13 @@ function StylizedMannequin({
         <meshStandardMaterial color="#0f172a" roughness={0.3} />
       </mesh>
 
-      {/* 4. Đầu hình nhân cách điệu bo tròn nhẵn bóng */}
-      <mesh position={[0, 1.02, 0]} castShadow>
-        <sphereGeometry args={[0.125, 24, 24]} />
-        <meshStandardMaterial
-          color="#fef3c7"
-          roughness={0.25}
-          metalness={0.06}
-        />
-      </mesh>
+      {/* 4. Đầu người 3D Stylized Humanoid ngũ quan chi tiết */}
+      <StylizedHumanoidHead
+        hairColor="#1e293b"
+        skinColor="#fed7aa"
+        isTurn={isTurn}
+        isSpinning={isSpinning}
+      />
 
       {/* 5. Cánh tay tự nhiên hướng về mặt bàn chuông bấm */}
       {/* Cánh tay trái */}
@@ -753,7 +853,7 @@ function StylizedMannequin({
       </mesh>
       <mesh position={[-0.25, 0.54, 0.24]}>
         <sphereGeometry args={[0.042, 12, 12]} />
-        <meshStandardMaterial color="#fef3c7" roughness={0.3} />
+        <meshStandardMaterial color="#fed7aa" roughness={0.3} />
       </mesh>
 
       {/* Cánh tay phải */}
@@ -763,13 +863,13 @@ function StylizedMannequin({
       </mesh>
       <mesh position={[0.25, 0.54, 0.24]}>
         <sphereGeometry args={[0.042, 12, 12]} />
-        <meshStandardMaterial color="#fef3c7" roughness={0.3} />
+        <meshStandardMaterial color="#fed7aa" roughness={0.3} />
       </mesh>
     </group>
   );
 }
 
-/** 3D Stylized MC / Host Figure (Hình nhân MC mặc vest tuxedo đen lịch lãm, sơ mi trắng, nơ đỏ, cầm thẻ cue card) */
+/** 3D Stylized MC / Host Figure (MC lịch lãm mặc vest tuxedo đen, sơ mi trắng, nơ đỏ, cầm thẻ cue card và micro) */
 function StylizedHostMannequin() {
   const groupRef = useRef<THREE.Group>(null);
 
@@ -827,19 +927,14 @@ function StylizedHostMannequin() {
         <meshStandardMaterial color="#dc2626" emissive="#991b1b" emissiveIntensity={0.5} roughness={0.3} />
       </mesh>
 
-      {/* 4. Đầu hình nhân cách điệu sáng màu da thanh lịch */}
-      <mesh position={[0, 1.02, 0]} castShadow>
-        <sphereGeometry args={[0.125, 24, 24]} />
-        <meshStandardMaterial color="#fef3c7" roughness={0.25} metalness={0.06} />
-      </mesh>
+      {/* 4. Đầu MC 3D Stylized Humanoid lịch lãm với ngũ quan chân thực */}
+      <StylizedHumanoidHead
+        hairColor="#0f172a"
+        skinColor="#ffedd5"
+        isHost={true}
+      />
 
-      {/* Mái tóc đen vuốt gel lịch sự */}
-      <mesh position={[0, 1.08, -0.02]}>
-        <sphereGeometry args={[0.126, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.4} />
-      </mesh>
-
-      {/* 5. Cánh tay MC: tay trái cầm thẻ kịch bản dẫn, tay phải tự nhiên đặt gần bục */}
+      {/* 5. Cánh tay MC: tay trái cầm thẻ kịch bản dẫn, tay phải cầm micro */}
       <mesh position={[-0.24, 0.72, 0.06]} rotation={[0.55, 0, 0.22]}>
         <cylinderGeometry args={[0.048, 0.052, 0.36, 12]} />
         <meshStandardMaterial color="#090d16" roughness={0.3} metalness={0.2} />
@@ -850,15 +945,26 @@ function StylizedHostMannequin() {
         <meshStandardMaterial color="#fef08a" emissive="#eab308" emissiveIntensity={0.35} metalness={0.5} roughness={0.2} />
       </mesh>
 
-      {/* Tay phải tự nhiên đặt gần bục */}
-      <mesh position={[0.24, 0.72, 0.06]} rotation={[0.42, 0, -0.20]}>
+      {/* Tay phải cầm micro studio mạ chrome */}
+      <mesh position={[0.24, 0.72, 0.06]} rotation={[0.58, 0, -0.25]}>
         <cylinderGeometry args={[0.048, 0.052, 0.36, 12]} />
         <meshStandardMaterial color="#090d16" roughness={0.3} metalness={0.2} />
       </mesh>
-      <mesh position={[0.26, 0.54, 0.22]}>
+      <mesh position={[0.26, 0.54, 0.26]}>
         <sphereGeometry args={[0.042, 12, 12]} />
-        <meshStandardMaterial color="#fef3c7" roughness={0.3} />
+        <meshStandardMaterial color="#ffedd5" roughness={0.3} />
       </mesh>
+      {/* Micro cầm tay */}
+      <group position={[0.28, 0.60, 0.30]} rotation={[0.4, 0, -0.3]}>
+        <mesh position={[0, 0, 0]}>
+          <cylinderGeometry args={[0.016, 0.014, 0.16, 12]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.8} />
+        </mesh>
+        <mesh position={[0, 0.09, 0]}>
+          <sphereGeometry args={[0.024, 12, 12]} />
+          <meshStandardMaterial color="#e2e8f0" metalness={0.96} roughness={0.06} />
+        </mesh>
+      </group>
     </group>
   );
 }
@@ -965,6 +1071,7 @@ function ElevatedSlotStation({
   posZ,
   rotY,
   edition,
+  isSpinning,
 }: {
   team: TeamState;
   roundScore: number;
@@ -975,6 +1082,7 @@ function ElevatedSlotStation({
   posZ: number;
   rotY: number;
   edition: string;
+  isSpinning?: boolean;
 }) {
   const screenRef = useRef<THREE.Mesh>(null);
 
@@ -1118,7 +1226,11 @@ function ElevatedSlotStation({
 
       {/* 5. Hình nhân 3D cách điệu (Stylized Mannequin) đứng trên bục sau bàn thi đấu */}
       <group position={[0, 2.10, -0.22]}>
-        <StylizedMannequin color={team.color || "#3b82f6"} isTurn={isTurn} />
+        <StylizedMannequin
+          color={team.color || "#3b82f6"}
+          isTurn={isTurn}
+          isSpinning={isSpinning}
+        />
       </group>
 
       {/* 6. Spotlight chiếu sáng riêng khi đội đến lượt quay */}
@@ -1138,6 +1250,7 @@ function ElevatedContestantDaisBehindWheel({
   isTossUpRound,
   phase,
   edition,
+  effectiveIsSpinning,
 }: {
   teams: TeamState[];
   roundScores?: Record<string, number>;
@@ -1146,6 +1259,7 @@ function ElevatedContestantDaisBehindWheel({
   isTossUpRound?: boolean;
   phase?: string;
   edition: string;
+  effectiveIsSpinning?: boolean;
 }) {
   const N = teams.length;
   if (N === 0) return null;
@@ -1203,6 +1317,7 @@ function ElevatedContestantDaisBehindWheel({
             posZ={posZ}
             rotY={rotY}
             edition={edition}
+            isSpinning={effectiveIsSpinning}
           />
         );
       })}
@@ -1653,44 +1768,76 @@ function Studio3DPuzzleBoard({
   const isRevealing = phase === "ROUND_RECAP" || (revealedSet.size > 0);
 
   return (
-    <group position={[-6.8, -0.75, -1.0]} rotation={[0, 0.48, 0]}>
-      {/* ── Tường Kiến Trúc Hậu Cảnh Bảng Ô Chữ: Dàn nan kim loại & Đèn hắt stage wash sống động ── */}
-      <group position={[0, 2.2, -0.3]}>
-        {/* Vách tường đen ngọc bích broadcast */}
+    <group position={[-7.4, -0.75, -3.8]} rotation={[0, 0.40, 0]}>
+      {/* ── VÁCH KIẾN TRÚC ART-DECO BẢNG Ô CHỮ CHUYÊN DỤNG (Rộng 14m x Cao 6.2m lấp kín 100% CAM 3) ── */}
+      <group position={[0, 2.8, -0.3]}>
+        {/* Vách tường đen ngọc bích broadcast mở rộng 14m che kín toàn bộ góc nhìn CAM 3 */}
         <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[7.4, 4.8, 0.1]} />
-          <meshStandardMaterial color="#051f11" roughness={0.6} metalness={0.4} />
+          <boxGeometry args={[14.0, 6.2, 0.12]} />
+          <meshStandardMaterial color="#051f11" roughness={0.65} metalness={0.35} />
         </mesh>
-        {/* 18 nan cột dọc kim loại mạ vàng sang trọng */}
-        {Array.from({ length: 18 }).map((_, i) => {
-          const fx = -3.3 + i * 0.388;
+
+        {/* Cánh vách Art-Deco hoa văn hình học trắng kem & vàng kim bên trái (theo tư liệu VTV3 2015) */}
+        {[-4.6, -5.6, -6.4].map((px, idx) => (
+          <group key={`wing-left-${idx}`} position={[px, 0, 0.08]}>
+            <mesh position={[0, 0, 0]}>
+              <boxGeometry args={[0.75, 5.8, 0.06]} />
+              <meshStandardMaterial color="#f8fafc" roughness={0.25} metalness={0.2} />
+            </mesh>
+            {/* Hoa văn rãnh dọc Art-Deco vàng kim */}
+            <mesh position={[0, 0, 0.04]}>
+              <boxGeometry args={[0.12, 5.4, 0.02]} />
+              <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.2} metalness={0.9} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* Cánh vách Art-Deco hoa văn hình học trắng kem & vàng kim bên phải (theo tư liệu VTV3 2015) */}
+        {[4.6, 5.6, 6.4].map((px, idx) => (
+          <group key={`wing-right-${idx}`} position={[px, 0, 0.08]}>
+            <mesh position={[0, 0, 0]}>
+              <boxGeometry args={[0.75, 5.8, 0.06]} />
+              <meshStandardMaterial color="#f8fafc" roughness={0.25} metalness={0.2} />
+            </mesh>
+            {/* Hoa văn rãnh dọc Art-Deco vàng kim */}
+            <mesh position={[0, 0, 0.04]}>
+              <boxGeometry args={[0.12, 5.4, 0.02]} />
+              <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.2} metalness={0.9} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* 22 nan cột dọc kim loại mạ vàng sang trọng khu vực trung tâm */}
+        {Array.from({ length: 22 }).map((_, i) => {
+          const fx = -3.8 + i * 0.362;
           return (
-            <mesh key={`arch-fin-${i}`} position={[fx, 0, 0.07]}>
-              <boxGeometry args={[0.045, 4.4, 0.06]} />
-              <meshStandardMaterial color="#fef08a" metalness={0.9} roughness={0.15} />
+            <mesh key={`arch-fin-${i}`} position={[fx, -0.4, 0.07]}>
+              <boxGeometry args={[0.045, 4.8, 0.06]} />
+              <meshStandardMaterial color="#fef08a" metalness={0.92} roughness={0.12} />
             </mesh>
           );
         })}
-        {/* Đèn hắt trần Amber Cove Light */}
-        <mesh position={[0, 2.3, 0.12]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.035, 0.035, 7.2, 16]} />
+
+        {/* Đèn hắt trần Amber Cove Light mở rộng 13.5m */}
+        <mesh position={[0, 2.9, 0.12]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.035, 0.035, 13.5, 16]} />
           <meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={2.5} />
         </mesh>
-        {/* Đèn hắt chân tường Emerald Cove Light */}
-        <mesh position={[0, -2.1, 0.12]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.035, 0.035, 7.2, 16]} />
+        {/* Đèn hắt chân tường Emerald Cove Light mở rộng 13.5m */}
+        <mesh position={[0, -2.8, 0.12]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.035, 0.035, 13.5, 16]} />
           <meshStandardMaterial color="#4ade80" emissive="#10b981" emissiveIntensity={2.2} />
         </mesh>
       </group>
 
-      {/* 1. Bục nâng sân khấu cho Bảng Ô Chữ 3D */}
+      {/* 1. Bục nâng sân khấu mở rộng cho Bảng Ô Chữ 3D */}
       <mesh position={[0, 0.20, 0]} receiveShadow>
-        <boxGeometry args={[7.2, 0.40, 2.8]} />
+        <boxGeometry args={[13.8, 0.40, 3.4]} />
         <meshStandardMaterial color="#cbd5e1" metalness={0.92} roughness={0.12} />
       </mesh>
       {/* Vành viền LED vàng trên bục */}
       <mesh position={[0, 0.41, 0]}>
-        <boxGeometry args={[7.24, 0.02, 2.84]} />
+        <boxGeometry args={[13.84, 0.02, 3.44]} />
         <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.8} />
       </mesh>
 
@@ -1753,66 +1900,136 @@ function Studio3DPuzzleBoard({
   );
 }
 
-const CUBES_DATA = [
-  { text: "C", color: "#06b6d4", emissive: "#0891b2", pos: [-4.6, 5.8, -0.3], scale: 0.95, rotSpeed: [0.8, 1.2, 0.5] },
-  { text: "N", color: "#eab308", emissive: "#ca8a04", pos: [-3.2, 4.2, 0.2], scale: 0.98, rotSpeed: [1.1, 0.7, 0.9] },
-  { text: "K", color: "#10b981", emissive: "#059669", pos: [-1.8, 6.2, -0.2], scale: 0.92, rotSpeed: [0.6, 1.4, 0.4] },
-  { text: "D", color: "#f43f5e", emissive: "#e11d48", pos: [-0.4, 4.4, 0.4], scale: 1.02, rotSpeed: [0.9, 0.8, 1.2] },
-  { text: "VTV3", color: "#dc2626", emissive: "#b91c1c", pos: [1.4, 6.0, -0.3], scale: 1.05, rotSpeed: [0.7, 1.0, 0.8] },
-  { text: "600", color: "#ef4444", emissive: "#dc2626", pos: [2.8, 4.3, 0.3], scale: 0.95, rotSpeed: [1.2, 0.6, 1.0] },
-  { text: "900", color: "#059669", emissive: "#047857", pos: [4.2, 5.9, -0.2], scale: 0.98, rotSpeed: [0.5, 1.3, 0.7] },
-  { text: "800", color: "#2563eb", emissive: "#1d4ed8", pos: [4.8, 4.6, 0.1], scale: 0.92, rotSpeed: [1.0, 0.9, 0.6] },
-  { text: "500", color: "#f59e0b", emissive: "#d97706", pos: [-4.2, 3.2, 0.4], scale: 0.90, rotSpeed: [0.7, 1.1, 0.8] },
-  { text: "1000", color: "#8b5cf6", emissive: "#7c3aed", pos: [-2.4, 2.8, -0.1], scale: 0.95, rotSpeed: [1.3, 0.5, 1.1] },
-  { text: "MAY MẮN", color: "#fbbf24", emissive: "#f59e0b", pos: [0.2, 3.0, 0.3], scale: 1.02, rotSpeed: [0.8, 1.2, 0.6] },
-  { text: "PHẦN THƯỞNG", color: "#ec4899", emissive: "#db2777", pos: [2.4, 2.9, -0.2], scale: 0.96, rotSpeed: [0.9, 0.7, 1.3] },
-  { text: "A", color: "#ea580c", emissive: "#c2410c", pos: [4.4, 3.1, 0.4], scale: 0.88, rotSpeed: [1.1, 1.0, 0.5] },
-  { text: "O", color: "#0284c7", emissive: "#0369a1", pos: [-5.0, 4.6, 0.1], scale: 0.90, rotSpeed: [0.6, 1.4, 0.9] },
-  { text: "QUIZ", color: "#14b8a6", emissive: "#0d9488", pos: [-0.2, 7.0, -0.3], scale: 1.02, rotSpeed: [1.0, 0.8, 1.1] },
-  { text: "TIMEOUT", color: "#6366f1", emissive: "#4f46e5", pos: [3.2, 7.1, -0.1], scale: 1.00, rotSpeed: [0.8, 1.1, 0.7] },
-];
+/** Màn hình LED cong vòm hậu trường hiển thị video đồ họa sóng chữ & logo 3D Chiếc Nón Kỳ Diệu chuẩn VTV3 */
+function BackdropCurvedLedScreen() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const textureRef = useRef<THREE.CanvasTexture | null>(null);
 
-/** Màn hình LED hậu trường Cổng Vòm Vàng VTV3 2016 lùi sâu Z=-8.5m cao 7.8m & 16 khối ô chữ 3D xoay lơ lửng */
-function BackdropLedScreenWithSpinningCubes() {
-  const cubeMeshRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const ledTexture = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024;
+    canvas.height = 512;
+    canvasRef.current = canvas;
+    const tex = new THREE.CanvasTexture(canvas);
+    textureRef.current = tex;
+    return tex;
+  }, []);
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
+    const canvas = canvasRef.current;
+    const tex = textureRef.current;
+    if (!canvas || !tex) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     const t = state.clock.getElapsedTime();
-    cubeMeshRefs.current.forEach((mesh, i) => {
-      if (!mesh) return;
-      const d = CUBES_DATA[i];
-      mesh.rotation.x += delta * d.rotSpeed[0];
-      mesh.rotation.y += delta * d.rotSpeed[1];
-      mesh.rotation.z += delta * d.rotSpeed[2];
-      mesh.position.y = d.pos[1] + Math.sin(t * 1.4 + i * 0.7) * 0.14;
+
+    // 1. Nền chuyển sắc Broadcast Midnight Blue to Sapphire
+    const grad = ctx.createLinearGradient(0, 0, 1024, 512);
+    grad.addColorStop(0, "#030712");
+    grad.addColorStop(0.3, "#082f49");
+    grad.addColorStop(0.5, "#0c4a6e");
+    grad.addColorStop(0.7, "#082f49");
+    grad.addColorStop(1, "#030712");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1024, 512);
+
+    // 2. Các tia sáng nan hoa xoay nhẹ từ tâm
+    ctx.save();
+    ctx.translate(512, 256);
+    ctx.rotate(t * 0.15);
+    for (let i = 0; i < 24; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      const a = (i * Math.PI * 2) / 24;
+      ctx.arc(0, 0, 500, a, a + 0.08);
+      ctx.fillStyle = i % 2 === 0 ? "rgba(14, 165, 233, 0.08)" : "rgba(251, 191, 36, 0.06)";
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // 3. Các khối thẻ chữ và điểm số chuyển động sóng lượn (Swirling Waves of Word Cards & Points)
+    const ITEMS = [
+      { text: "CHIẾC NÓN KỲ DIỆU", color: "#fde047", scale: 1.3, yOffset: 0, speed: 0.7 },
+      { text: "1000", color: "#38bdf8", scale: 1.0, yOffset: -120, speed: 0.9 },
+      { text: "MAY MẮN", color: "#f43f5e", scale: 1.1, yOffset: 120, speed: 0.6 },
+      { text: "500", color: "#4ade80", scale: 0.9, yOffset: -80, speed: 1.1 },
+      { text: "VTV3", color: "#fb7185", scale: 1.0, yOffset: 80, speed: 0.8 },
+      { text: "PHẦN THƯỞNG", color: "#c084fc", scale: 1.1, yOffset: -140, speed: 0.75 },
+      { text: "900", color: "#fbbf24", scale: 0.9, yOffset: 140, speed: 1.0 },
+      { text: "ĐOÁN ĐÚNG", color: "#2dd4bf", scale: 1.0, yOffset: -40, speed: 0.85 },
+    ];
+
+    ITEMS.forEach((item, idx) => {
+      const baseX = ((t * item.speed * 60 + idx * 240) % 1400) - 180;
+      const baseY = 256 + item.yOffset + Math.sin(t * 1.5 + idx * 0.8) * 35;
+      const rot = Math.sin(t * 1.2 + idx) * 0.12;
+
+      ctx.save();
+      ctx.translate(baseX, baseY);
+      ctx.rotate(rot);
+
+      // Thẻ bài 3D bo góc
+      ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+      ctx.strokeStyle = item.color;
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.roundRect(-85 * item.scale, -28 * item.scale, 170 * item.scale, 56 * item.scale, 14);
+      ctx.fill();
+      ctx.stroke();
+
+      // Chữ phát sáng
+      ctx.font = `900 ${Math.floor(22 * item.scale)}px "Impact", "Montserrat", sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = item.color;
+      ctx.shadowColor = item.color;
+      ctx.shadowBlur = 12;
+      ctx.fillText(item.text, 0, 0);
+      ctx.restore();
     });
+
+    // 4. Logo gameshow 3D trung tâm phát quang rực rỡ
+    ctx.save();
+    ctx.font = '900 38px "Impact", "Montserrat", sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "#f59e0b";
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("★ CHIẾC NÓN KỲ DIỆU ★", 512, 70 + Math.sin(t * 2.0) * 8);
+    ctx.restore();
+
+    // 5. Scanlines LED TV
+    ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+    for (let y = 0; y < 512; y += 4) {
+      ctx.fillRect(0, y, 1024, 2);
+    }
+
+    tex.needsUpdate = true;
   });
 
   return (
     <group position={[0, -0.75, -8.5]}>
       {/* 1. Cổng vòm vàng hoàng gia bo cong mềm mại (VTV3 Stadium Arch Y=7.8m, W=13.6m) */}
       <group position={[0, 0, 0]}>
-        {/* Cột đứng bên trái */}
         <mesh position={[-5.8, 3.4, 0]}>
           <cylinderGeometry args={[0.22, 0.22, 6.8, 24]} />
           <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
         </mesh>
-        {/* Cột đứng bên phải */}
         <mesh position={[5.8, 3.4, 0]}>
           <cylinderGeometry args={[0.22, 0.22, 6.8, 24]} />
           <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
         </mesh>
-        {/* Xà ngang đỉnh vòm cao 7.8m */}
         <mesh position={[0, 7.8, 0]} rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[0.22, 0.22, 7.6, 24]} />
           <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
         </mesh>
-        {/* Cung bo cong góc trên bên trái */}
         <mesh position={[-3.8, 5.8, 0]} rotation={[0, 0, Math.PI / 2]}>
           <torusGeometry args={[2.0, 0.22, 16, 24, Math.PI / 2]} />
           <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
         </mesh>
-        {/* Cung bo cong góc trên bên phải */}
         <mesh position={[3.8, 5.8, 0]} rotation={[0, 0, 0]}>
           <torusGeometry args={[2.0, 0.22, 16, 24, Math.PI / 2]} />
           <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
@@ -1841,36 +2058,17 @@ function BackdropLedScreenWithSpinningCubes() {
         </mesh>
       </group>
 
-      {/* 2. Màn hình LED hậu trường nền đen sâu thẳm điểm xuyết ánh sáng sapphire */}
-      <mesh position={[0, 4.3, -0.2]}>
-        <planeGeometry args={[14.8, 8.8]} />
+      {/* 2. Màn hình LED Video Wall cong hiển thị đồ họa động sóng chữ & logo 3D */}
+      <mesh ref={meshRef} position={[0, 4.3, -0.15]}>
+        <planeGeometry args={[14.6, 8.2]} />
         <meshStandardMaterial
-          color="#020617"
-          emissive="#061838"
+          map={ledTexture ?? undefined}
+          emissive="#38bdf8"
           emissiveIntensity={0.65}
-          roughness={0.4}
-          metalness={0.3}
+          roughness={0.2}
+          metalness={0.1}
         />
       </mesh>
-
-      {/* 3. Dàn 16 khối ô chữ 3D to bản xoay lơ lửng phân tầng từ 2.8m đến 7.2m */}
-      {CUBES_DATA.map((c, i) => {
-        const tex = getSpinningCubeTexture(c.text, c.color);
-        return (
-          <mesh
-            key={`cube-spin-${i}`}
-            ref={(el) => {
-              cubeMeshRefs.current[i] = el;
-            }}
-            position={[c.pos[0], c.pos[1], c.pos[2]]}
-            scale={c.scale}
-            castShadow
-          >
-            <boxGeometry args={[0.85, 0.85, 0.85]} />
-            <meshStandardMaterial map={tex} emissive={c.emissive} emissiveIntensity={0.85} roughness={0.2} metalness={0.2} />
-          </mesh>
-        );
-      })}
     </group>
   );
 }
@@ -2151,21 +2349,21 @@ function StudioFloor() {
         />
       </mesh>
 
-      {/* Mặt sàn kính bạc ánh kim phản chiếu gương chuẩn truyền hình TV (True Silver Mirror Stage Floor) */}
+      {/* Mặt sàn kính bạc ánh kim phản chiếu satin mềm mại chuẩn truyền hình TV (Soft Satin Studio Floor) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.071, 0]} receiveShadow>
         <circleGeometry args={[9.95, 64]} />
         <MeshReflectorMaterial
-          blur={[30, 15]}
+          blur={[300, 100]}
           resolution={1024}
-          mirror={0.65}
-          mixBlur={0.15}
-          mixStrength={2.6}
-          roughness={0.06}
+          mirror={0.30}
+          mixBlur={1.0}
+          mixStrength={1.2}
+          roughness={0.28}
           depthScale={0}
           minDepthThreshold={0}
-          maxDepthThreshold={60}
-          color="#f8fafc"
-          metalness={0.88}
+          maxDepthThreshold={40}
+          color="#cbd5e1"
+          metalness={0.55}
         />
       </mesh>
 
@@ -2376,7 +2574,7 @@ export default function WheelStudio3DScene({
         <StudioCeilingRig />
         <StudioBackdrop />
         <StudioSetWingMotifs />
-        <BackdropLedScreenWithSpinningCubes />
+        <BackdropCurvedLedScreen />
         <StudioFloor />
         <WheelMachineGroup
           sectors={sectors}
@@ -2395,6 +2593,7 @@ export default function WheelStudio3DScene({
           isTossUpRound={isTossUpRound}
           phase={phase}
           edition={edition}
+          effectiveIsSpinning={effectiveIsSpinning}
         />
         {/* Bảng Ô Chữ 3D tại Cánh Trái (Z ~ -1.0m) & Người mẫu trợ lý */}
         <Studio3DPuzzleBoard

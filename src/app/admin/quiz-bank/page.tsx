@@ -17,7 +17,7 @@ import {
 import QuizorraQuestionStudioModal from "@/components/admin/QuizorraQuestionStudioModal";
 import { downloadMagicWheelExcelTemplate, downloadMagicWheelJsonTemplate } from "@/lib/quiz-template-generator";
 import { MAGIC_WHEEL_PRESET_BANKS } from "@/lib/offline-storage";
-import { isVietnameseAlphabetLetter } from "@/lib/game-engine/magic-wheel";
+import { isVietnameseAlphabetLetter, detectQuizBankLanguage } from "@/lib/game-engine/magic-wheel";
 
 function buildPuzzle4x14Preview(phrase: string): { rows: string[][]; isOverflow: boolean; oversizedWord?: string } {
   const clean = (phrase || "").trim().toUpperCase();
@@ -84,6 +84,7 @@ interface QuizBank {
   id: string;
   title: string;
   description?: string;
+  language?: "VIETNAMESE" | "ENGLISH";
   createdAt: string;
   isBuiltIn?: boolean;
   isPublic?: boolean;
@@ -108,6 +109,7 @@ export default function QuizBankPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newBankCategory, setNewBankCategory] = useState<"STANDARD" | "WORD_PUZZLE">("STANDARD");
+  const [newBankLanguage, setNewBankLanguage] = useState<"VIETNAMESE" | "ENGLISH">("VIETNAMESE");
   const [newBankInitMode, setNewBankInitMode] = useState<"MANUAL" | "AI_STUDIO" | "IMPORT_FILE" | "EMPTY">("MANUAL");
   const [isCreatingBank, setIsCreatingBank] = useState(false);
 
@@ -148,6 +150,7 @@ export default function QuizBankPage() {
   const [showEditBankModal, setShowEditBankModal] = useState(false);
   const [editBankTitle, setEditBankTitle] = useState("");
   const [editBankDesc, setEditBankDesc] = useState("");
+  const [editBankLanguage, setEditBankLanguage] = useState<"VIETNAMESE" | "ENGLISH">("VIETNAMESE");
   const [savingBank, setSavingBank] = useState(false);
 
   // New Question Form State
@@ -580,18 +583,21 @@ export default function QuizBankPage() {
           id: `local-${Date.now()}`,
           title: finalTitle,
           description: finalDesc,
+          language: newBankLanguage,
           createdAt: new Date().toISOString(),
           isWordPuzzle: isCategoryWordPuzzle,
           isPureWordPuzzle: isCategoryWordPuzzle,
           isPureStandard: !isCategoryWordPuzzle,
           _count: { questions: 0 },
         };
+        createdBank.language = newBankLanguage;
 
         // Cache into local storage
         offlineStorage.saveLocalBank({
           id: createdBank.id,
           title: createdBank.title,
           description: createdBank.description,
+          language: newBankLanguage,
           createdAt: createdBank.createdAt,
           questions: [],
           isLocalOnly: false,
@@ -647,6 +653,29 @@ export default function QuizBankPage() {
     if (isCurrentBankStandard && qType === "WORD_PUZZLE") {
       alert("Bộ đề này là 'Trắc Nghiệm Tiêu Chuẩn'. Không thể thêm câu hỏi Ô chữ Chiếc nón kỳ diệu!");
       return;
+    }
+
+    // Kiểm tra ngôn ngữ đồng bộ với setting bộ đề
+    const localBankObj = offlineStorage.getLocalBankById(selectedBank.id);
+    const bankLang = selectedBank.language || localBankObj?.language || detectQuizBankLanguage(selectedBank);
+    const vietnameseDiacriticsRegex = /[àáảãạăắằẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđÀÁẢÃẠĂẮẰẴẶÂẤẦẨẪẬÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴĐ]/;
+    const questionFullText = `${qContent} ${qAnswer || ""} ${qHint || ""} ${qOptions.map((o) => o.text).join(" ")}`;
+    const hasVietnameseMarks = vietnameseDiacriticsRegex.test(questionFullText);
+
+    if (bankLang === "ENGLISH" && hasVietnameseMarks) {
+      const confirmAdd = confirm(
+        "⚠️ CẢNH BÁO NGÔN NGỮ:\n" +
+        "Bộ đề này được cài đặt ngôn ngữ là TIẾNG ANH (ENGLISH), nhưng câu hỏi bạn vừa nhập có chứa dấu Tiếng Việt!\n\n" +
+        "Bạn có chắc chắn muốn tiếp tục lưu câu hỏi này không?"
+      );
+      if (!confirmAdd) return;
+    } else if (bankLang === "VIETNAMESE" && !hasVietnameseMarks && qType === "WORD_PUZZLE" && qAnswer.trim().length > 3) {
+      // Nếu là Ô chữ VTV3 bản tiếng Việt mà đáp án không có dấu tiếng Việt nào
+      // Nhắc nhở người soạn để tránh quên dấu thanh
+      const isEnglishWords = /^[a-zA-Z\s]+$/.test(qAnswer.trim());
+      if (isEnglishWords && !/^[A-Z0-9\s]+$/i.test(qContent)) {
+        // Chỉ cảnh báo nhẹ
+      }
     }
 
     const rawPoints = Math.max(10, Math.round((Number(qPoints) || 10) / 10) * 10);
@@ -732,6 +761,9 @@ export default function QuizBankPage() {
     if (!target) return;
     setEditBankTitle(target.title);
     setEditBankDesc(target.description || "");
+    const localTarget = offlineStorage.getLocalBankById(target.id);
+    const existingLang = target.language || localTarget?.language || detectQuizBankLanguage(target);
+    setEditBankLanguage(existingLang);
     setShowEditBankModal(true);
   };
 
@@ -751,10 +783,19 @@ export default function QuizBankPage() {
       if (res.ok) {
         const data = await res.json();
         const updated = data.bank;
-        setSelectedBank((prev) => (prev ? { ...prev, title: updated.title, description: updated.description } : prev));
+        setSelectedBank((prev) => (prev ? { ...prev, title: updated.title, description: updated.description, language: editBankLanguage } : prev));
         setBanks((prev) =>
-          prev.map((b) => (b.id === selectedBank.id ? { ...b, title: updated.title, description: updated.description } : b))
+          prev.map((b) => (b.id === selectedBank.id ? { ...b, title: updated.title, description: updated.description, language: editBankLanguage } : b))
         );
+        const local = offlineStorage.getLocalBankById(selectedBank.id);
+        if (local) {
+          offlineStorage.saveLocalBank({
+            ...local,
+            title: updated.title,
+            description: updated.description,
+            language: editBankLanguage,
+          });
+        }
         setShowEditBankModal(false);
       } else {
         alert("Lỗi khi cập nhật bộ đề!");
@@ -886,6 +927,22 @@ export default function QuizBankPage() {
     if (isCurrentBankStandard && editQType === "WORD_PUZZLE") {
       alert("Bộ đề này là 'Trắc Nghiệm Tiêu Chuẩn'. Không thể chuyển sang câu hỏi Ô chữ!");
       return;
+    }
+
+    // Kiểm tra ngôn ngữ đồng bộ với setting bộ đề khi sửa
+    const localBankObj = offlineStorage.getLocalBankById(selectedBank.id);
+    const bankLang = selectedBank.language || localBankObj?.language || detectQuizBankLanguage(selectedBank);
+    const vietnameseDiacriticsRegex = /[àáảãạăắằẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđÀÁẢÃẠĂẮẰẴẶÂẤẦẨẪẬÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴĐ]/;
+    const questionFullText = `${editQContent} ${editQAnswer || ""} ${editQHint || ""} ${editQOptions.map((o) => o.text).join(" ")}`;
+    const hasVietnameseMarks = vietnameseDiacriticsRegex.test(questionFullText);
+
+    if (bankLang === "ENGLISH" && hasVietnameseMarks) {
+      const confirmEdit = confirm(
+        "⚠️ CẢNH BÁO NGÔN NGỮ:\n" +
+        "Bộ đề này được cài đặt ngôn ngữ là TIẾNG ANH (ENGLISH), nhưng câu hỏi bạn vừa chỉnh sửa có chứa dấu Tiếng Việt!\n\n" +
+        "Bạn có chắc chắn muốn lưu cập nhật câu hỏi này không?"
+      );
+      if (!confirmEdit) return;
     }
 
     setSavingQuestion(true);
@@ -1554,10 +1611,27 @@ export default function QuizBankPage() {
                 <div>
                   <div className="flex items-center gap-2.5">
                     <h2 className="text-xl font-black">{selectedBank.title}</h2>
+                    {(() => {
+                      const localTarget = offlineStorage.getLocalBankById(selectedBank.id);
+                      const currentLang = selectedBank.language || localTarget?.language || detectQuizBankLanguage(selectedBank);
+                      return (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-black border flex items-center gap-1 ${
+                            currentLang === "ENGLISH"
+                              ? "bg-blue-500/20 text-blue-300 border-blue-400/40"
+                              : "bg-red-500/20 text-red-300 border-red-400/40"
+                          }`}
+                          title={`Ngôn ngữ cài đặt: ${currentLang === "ENGLISH" ? "Tiếng Anh (US)" : "Tiếng Việt (VTV3)"}`}
+                        >
+                          <span>{currentLang === "ENGLISH" ? "🇺🇸" : "🇻🇳"}</span>
+                          <span>{currentLang === "ENGLISH" ? "Bản Tiếng Anh" : "Bản Tiếng Việt"}</span>
+                        </span>
+                      );
+                    })()}
                     <button
                       onClick={() => openEditBank(selectedBank)}
                       className="px-2.5 py-1 rounded-lg bg-card hover:bg-muted border border-border text-xs text-purple-300 hover:text-white flex items-center gap-1 transition whitespace-nowrap"
-                      title="Sửa tên và mô tả bộ đề"
+                      title="Sửa tên, mô tả và cài đặt ngôn ngữ bộ đề"
                     >
                       <span>✏️</span>
                       <span className="whitespace-nowrap">Sửa đề</span>
@@ -1961,6 +2035,47 @@ export default function QuizBankPage() {
                   ? "💡 Bộ đề này chỉ chứa câu hỏi Ô chữ VTV3, không cho phép kết hợp câu hỏi trắc nghiệm."
                   : "💡 Bộ đề trắc nghiệm chuẩn không thể kết hợp câu hỏi ô chữ Chiếc Nón Kỳ Diệu."}
               </p>
+            </div>
+
+            {/* Khuyến khích chọn Ngôn ngữ ngay từ khi tạo đề */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Ngôn ngữ chính của bộ đề *</span>
+                <span className="text-[10px] text-amber-400 font-normal">Hệ thống sẽ gắn vào setting & cảnh báo nếu nhập sai</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setNewBankLanguage("VIETNAMESE")}
+                  className={`p-3 rounded-xl border text-left transition flex items-center gap-2.5 cursor-pointer ${
+                    newBankLanguage === "VIETNAMESE"
+                      ? "border-red-500 bg-red-500/20 shadow-md shadow-red-500/20 text-white"
+                      : "border-slate-800 bg-slate-900/50 hover:border-slate-700 text-slate-400"
+                  }`}
+                >
+                  <span className="text-2xl">🇻🇳</span>
+                  <div>
+                    <p className="text-xs font-bold text-white">Tiếng Việt (Mặc định)</p>
+                    <p className="text-[10px] text-slate-400">Luật VTV3, hỗ trợ gõ dấu thanh</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNewBankLanguage("ENGLISH")}
+                  className={`p-3 rounded-xl border text-left transition flex items-center gap-2.5 cursor-pointer ${
+                    newBankLanguage === "ENGLISH"
+                      ? "border-blue-500 bg-blue-500/20 shadow-md shadow-blue-500/20 text-white"
+                      : "border-slate-800 bg-slate-900/50 hover:border-slate-700 text-slate-400"
+                  }`}
+                >
+                  <span className="text-2xl">🇺🇸</span>
+                  <div>
+                    <p className="text-xs font-bold text-blue-200">English (Tiếng Anh)</p>
+                    <p className="text-[10px] text-blue-400/80">US rules, mua nguyên âm $250</p>
+                  </div>
+                </button>
+              </div>
             </div>
 
             <div>
@@ -2894,6 +3009,38 @@ export default function QuizBankPage() {
                 rows={3}
                 className="w-full px-3 py-2 rounded-xl bg-input border border-border focus:ring-2 focus:ring-ring resize-none"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                <span>Ngôn ngữ chính *</span>
+                <span className="text-[10px] text-amber-400 font-normal">Gắn vào setting bộ đề</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditBankLanguage("VIETNAMESE")}
+                  className={`px-3 py-2 rounded-xl border text-left transition flex items-center gap-2 cursor-pointer ${
+                    editBankLanguage === "VIETNAMESE"
+                      ? "border-red-500 bg-red-500/20 text-white font-bold"
+                      : "border-slate-800 bg-slate-900/50 text-slate-400"
+                  }`}
+                >
+                  <span className="text-xl">🇻🇳</span>
+                  <span className="text-xs">Tiếng Việt</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditBankLanguage("ENGLISH")}
+                  className={`px-3 py-2 rounded-xl border text-left transition flex items-center gap-2 cursor-pointer ${
+                    editBankLanguage === "ENGLISH"
+                      ? "border-blue-500 bg-blue-500/20 text-blue-200 font-bold"
+                      : "border-slate-800 bg-slate-900/50 text-slate-400"
+                  }`}
+                >
+                  <span className="text-xl">🇺🇸</span>
+                  <span className="text-xs">English</span>
+                </button>
+              </div>
             </div>
             <div className="flex gap-2 justify-end pt-2">
               <button

@@ -3549,6 +3549,9 @@ function buildMagicWheelMatchPuzzles(firstArg, secondArg, edition = "VIETNAMESE"
 }
 function detectQuizBankLanguage(bank) {
   if (!bank) return "VIETNAMESE";
+  if (bank.language === "ENGLISH" || bank.language === "VIETNAMESE") {
+    return bank.language;
+  }
   const bankId = bank.id || "";
   const title = (bank.title || "").toLowerCase();
   const desc = (bank.description || "").toLowerCase();

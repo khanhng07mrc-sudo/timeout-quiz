@@ -18,6 +18,7 @@ export interface OfflineQuizBank {
   id: string;
   title: string;
   description?: string;
+  language?: "VIETNAMESE" | "ENGLISH";
   createdAt: string;
   questions?: OfflineQuestion[];
   _count?: { questions: number };

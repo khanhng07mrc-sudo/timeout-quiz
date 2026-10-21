@@ -1904,7 +1904,7 @@ export default function MagicWheelBoard({
   // ── Virtual Hostess ("Người Mẫu") Sân Khấu Liền Mạch & Di Chuyển Thong Thả ─────
   const [hostessSide, setHostessSide] = useState<"LEFT" | "RIGHT">("LEFT");
   const hostessSideRef = useRef<"LEFT" | "RIGHT">("LEFT");
-  const [hostessXPercent, setHostessXPercent] = useState<number>(0); // 0% = Vị trí chờ bên ngoài Cột 0 (Stage Left)
+  const [hostessXPercent, setHostessXPercent] = useState<number>(6); // 6% = Vị trí an toàn ở Cánh Gà Trái (Stage Left, trọn vẹn 100% không bị xén)
   const [hostessFacing, setHostessFacing] = useState<"LEFT" | "RIGHT">("RIGHT");
   const [hostessPose, setHostessPose] = useState<"IDLE" | "GESTURE" | "WALKING" | "TOUCHING">("IDLE");
   const [hostessActiveRow, setHostessActiveRow] = useState<number>(1);
@@ -1945,7 +1945,7 @@ export default function MagicWheelBoard({
       setHighlightedIndices(new Set());
       setAnimRevealedIndices(initialSet);
       setHostessPose("IDLE");
-      setHostessXPercent(hostessSideRef.current === "LEFT" ? 3.5 : 96.5);
+      setHostessXPercent(hostessSideRef.current === "LEFT" ? 6 : 94);
     }
   }, [currentPuzzle?.id, currentPuzzle?.revealedIndices, clearChoreographyTimers]);
 
@@ -2133,7 +2133,7 @@ export default function MagicWheelBoard({
       }
 
       const returnTravelMs = 3200; // 3.2s thong thả về cánh gà
-      const exitPercent = exitSide === "LEFT" ? 0 : 100;
+      const exitPercent = exitSide === "LEFT" ? 6 : 94;
 
       const finishWalkTimer = setTimeout(() => {
         setHostessFacing(exitSide === "LEFT" ? "LEFT" : "RIGHT");
@@ -3010,7 +3010,7 @@ export default function MagicWheelBoard({
 
   // ── 3. 56-TILE BOARD MATRIX RENDERER ──
   const renderBoardGridMatrix = (isDisplayMode = false) => (
-    <div className={`w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] ${isDisplayMode ? "p-1 sm:p-1.5 max-w-4xl" : "p-2.5 sm:p-4 max-w-5xl"} rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-hidden shrink-0`}>
+    <div className={`w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] ${isDisplayMode ? "p-1 sm:p-1.5 max-w-4xl" : "p-2.5 sm:p-4 max-w-5xl"} rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-visible shrink-0`}>
       {!isDisplayMode && !isTempActive && (
         <div className="mb-1.5 px-3.5 py-0.5 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow">
           {effectiveBoardStage === "EMPTY_56" ? (
@@ -3025,7 +3025,7 @@ export default function MagicWheelBoard({
         </div>
       )}
 
-      <div className={`w-full ${isDisplayMode ? "max-w-4xl" : "max-w-5xl"} flex flex-col items-center relative py-0.5 px-0.5 sm:px-1.5`}>
+      <div className={`w-full ${isDisplayMode ? "max-w-4xl" : "max-w-5xl"} flex flex-col items-center relative py-0.5 px-3 sm:px-6`}>
         <div className={`w-full ${isDisplayMode ? "p-1 sm:p-1.5" : "p-2 sm:p-3"} rounded-xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-2 sm:border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40`}>
           <div className="w-full grid grid-rows-4 gap-0.5 sm:gap-1">
             {gridMatrix.map((row, rIdx) => (
@@ -4282,7 +4282,7 @@ export default function MagicWheelBoard({
 
       {/* ── THE ICONIC VTV3 PUZZLE BOARD GRID (4 ROWS x 14 COLS = 56 TILES) + VIRTUAL HOSTESS ─ */}
       {subMode === "WORD_PUZZLE" && (
-        <div className="w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] p-2.5 sm:p-4 rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-hidden">
+        <div className="w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] p-2.5 sm:p-4 rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-visible">
           {/* Header Action: Category Banner OR Waiting Badge (Hidden on Display to avoid duplicate with lower-third) */}
           {!isDisplay && !isTempActive && (
             <div className="mb-2 px-3.5 py-1 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow transition-all duration-500 animate-scale-up">
@@ -4321,7 +4321,7 @@ export default function MagicWheelBoard({
           )}
 
           {/* ── 3D Gameshow Studio Stage (Sân Khấu Catwalk VTV3 & Bảng Ô Chữ 3D) ── */}
-          <div className="w-full max-w-5xl flex flex-col items-center relative py-2 px-6 sm:px-10 md:px-14">
+          <div className="w-full max-w-6xl flex flex-col items-center relative py-2 px-2 sm:px-4 md:px-6">
             {/* Studio Lighting Overhead Truss with Multiple Downlight Spotlights */}
             <div className="absolute -top-6 inset-x-0 h-28 pointer-events-none flex justify-around opacity-45 z-0">
               <div className="w-48 h-36 bg-gradient-to-b from-amber-400/40 via-yellow-400/15 to-transparent blur-2xl transform -rotate-15" />
@@ -4330,8 +4330,8 @@ export default function MagicWheelBoard({
               <div className="w-48 h-36 bg-gradient-to-b from-amber-400/40 via-yellow-400/15 to-transparent blur-2xl transform rotate-15" />
             </div>
 
-            {/* SÂN KHẤU LIỀN MẠCH: Bảng Video Wall 3D + Sàn Runway Người Mẫu Đồng Nhất (max-w-4xl để không che khuất người mẫu) */}
-            <div className="w-full max-w-4xl flex flex-col items-center relative z-10">
+            {/* SÂN KHẤU LIỀN MẠCH: Bảng Video Wall 3D + Sàn Runway Người Mẫu Đồng Nhất (max-w-5xl để không che khuất người mẫu) */}
+            <div className="w-full max-w-5xl flex flex-col items-center relative z-10 px-6 sm:px-10">
                 {/* 3D Luxury Metallic Beveled Gold Video Wall Casing */}
                 <div className="w-full p-2.5 sm:p-3.5 md:p-4 rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40">
                   <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5 md:gap-2">

@@ -1613,9 +1613,14 @@ export function detectQuizBankLanguage(bank: {
   id?: string | null;
   title?: string | null;
   description?: string | null;
+  language?: "VIETNAMESE" | "ENGLISH" | string | null;
   questions?: Array<{ content?: string | null; answer?: string | null; hint?: string | null; options?: any }>;
 }): "VIETNAMESE" | "ENGLISH" {
   if (!bank) return "VIETNAMESE";
+
+  if (bank.language === "ENGLISH" || bank.language === "VIETNAMESE") {
+    return bank.language;
+  }
 
   const bankId = bank.id || "";
   const title = (bank.title || "").toLowerCase();

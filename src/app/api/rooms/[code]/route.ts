@@ -57,8 +57,8 @@ export async function PATCH(
   }
 
   const body = await req.json();
-  // Prevent overriding critical immutable fields
-  const { id: _id, code: _c, hostKey: _hk, hostId: _hid, ...safeUpdates } = body;
+  // Prevent overriding critical immutable fields and non-scalar payload fields
+  const { id: _id, code: _c, hostKey: _hk, hostId: _hid, localBank, ...safeUpdates } = body;
 
   if (safeUpdates.quizBankId !== undefined) {
     if (safeUpdates.quizBankId) {
@@ -69,37 +69,72 @@ export async function PATCH(
         // Bộ đề không tồn tại trong DB (ví dụ đề Local chỉ lưu ở Client)
         // Đặt quizBankId = null để không vi phạm ràng buộc Foreign Key Room_quizBankId_fkey
         safeUpdates.quizBankId = null;
-        if (body.localBank) {
+        if (localBank) {
           const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
           safeUpdates.config = {
             ...currentConfig,
-            customQuestions: body.localBank.questions,
-            customBankTitle: body.localBank.title,
+            customQuestions: localBank.questions,
+            customBankTitle: localBank.title,
             ...(body.config || {}),
           };
         }
       }
     } else {
       safeUpdates.quizBankId = null;
+      if (localBank) {
+        const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+        safeUpdates.config = {
+          ...currentConfig,
+          customQuestions: localBank.questions,
+          customBankTitle: localBank.title,
+          ...(body.config || {}),
+        };
+      }
+    }
+  } else if (localBank) {
+    const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+    safeUpdates.config = {
+      ...currentConfig,
+      customQuestions: localBank.questions,
+      customBankTitle: localBank.title,
+      ...(body.config || {}),
+    };
+  }
+
+  // Ensure safeUpdates only contains scalar fields recognized by prisma.room.update
+  const allowedRoomFields = new Set([
+    "name",
+    "quizBankId",
+    "mode",
+    "teamMode",
+    "status",
+    "currentQuestion",
+    "config",
+    "inviteUrl",
+  ]);
+  const sanitizedData: Record<string, any> = {};
+  for (const [key, value] of Object.entries(safeUpdates)) {
+    if (allowedRoomFields.has(key)) {
+      sanitizedData[key] = value;
     }
   }
 
   try {
     const updatedRoom = await prisma.room.update({
       where: { code },
-      data: safeUpdates,
+      data: sanitizedData,
     });
     return NextResponse.json({ room: updatedRoom });
   } catch (dbErr: any) {
     console.error("[PATCH /api/rooms/[code]] Error updating room:", dbErr);
     // Phòng thủ kép (Defensive retry): Nếu vẫn gặp lỗi P2003 (Foreign key constraint violation)
     // tự động fallback về quizBankId = null để phòng thi luôn hoạt động trơn tru
-    if (dbErr?.code === "P2003" && safeUpdates.quizBankId) {
+    if (dbErr?.code === "P2003" && sanitizedData.quizBankId) {
       try {
         console.warn(`[PATCH /api/rooms/[code]] Retrying update with quizBankId: null after P2003`);
         const fallbackRoom = await prisma.room.update({
           where: { code },
-          data: { ...safeUpdates, quizBankId: null },
+          data: { ...sanitizedData, quizBankId: null },
         });
         return NextResponse.json({ room: fallbackRoom });
       } catch (retryErr) {

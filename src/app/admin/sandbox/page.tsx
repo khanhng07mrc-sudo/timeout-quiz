@@ -2815,20 +2815,24 @@ export default function AdminSandboxPage() {
                 detectedEd,
                 curWheel?.englishPreset || "RANDOM_MIX"
               );
+              const newSectors = generateMagicWheelSectors(1, curWheel?.roundStage || "MAIN", detectedEd);
               const updatedWheel: any = {
                 ...(curWheel || {}),
                 subMode: curWheel?.subMode || "WORD_PUZZLE",
+                edition: detectedEd,
+                sectors: newSectors,
                 puzzles: newPuzzles,
                 currentPuzzle: newPuzzles[0] || curWheel?.currentPuzzle,
                 currentRound: 1,
                 guessedLetters: [],
+                lastActionMessage: `Đã nạp ${newPuzzles.length} ô chữ từ bộ đề [${bTitle}] (${detectedEd === "ENGLISH" ? "Bản Tiếng Anh" : "Bản Tiếng Việt"})`,
               };
               setRoomState((prev) => {
                 if (!prev) return prev;
                 const nextR = {
                   ...prev,
                   config: { ...(prev.config as any), magicWheelPuzzles: customPuzzles, magicWheelEdition: detectedEd },
-                  magicWheelState: { ...updatedWheel, edition: detectedEd },
+                  magicWheelState: updatedWheel,
                 };
                 roomStateRef.current = nextR;
                 syncToIframes({ roomState: nextR, magicWheelState: updatedWheel });
@@ -2836,6 +2840,7 @@ export default function AdminSandboxPage() {
               });
               if (adminSocketRef.current?.connected) {
                 adminSocketRef.current.emit("admin:magic_wheel:emergency_change_bank" as any, { quizBankId: bankId });
+                adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: detectedEd });
                 adminSocketRef.current.emit("game:magic_wheel:update" as any, updatedWheel);
               }
             }

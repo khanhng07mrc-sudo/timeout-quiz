@@ -19196,7 +19196,10 @@ function registerSocketHandlers(io2) {
     socket.on("magic_wheel:set_edition", async (payload) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
-      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+      const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        include: { teams: { orderBy: { createdAt: "asc" } } }
+      });
       if (!room) return;
       const isSandbox = room.code.startsWith("SANDBOX") || room.config?.isSandbox;
       if (room.status !== "LOBBY" && !isSandbox && !payload.force) {
@@ -19212,7 +19215,7 @@ function registerSocketHandlers(io2) {
       const cached = roomCache.get(roomId);
       if (cached) cached.config = newConfig;
       let wheelState = roomMagicWheels.get(roomId);
-      const teamsCount = Math.max(3, room.teams.length || 3);
+      const teamsCount = Math.max(3, room.teams?.length || 3);
       if (!wheelState) {
         const subMode = currentConfig?.magicWheelSubMode || "WORD_PUZZLE";
         const englishPreset = currentConfig?.magicWheelEnglishPreset || "RANDOM_MIX";
@@ -19257,6 +19260,13 @@ function registerSocketHandlers(io2) {
       } else {
         wheelState.edition = payload.edition;
         wheelState.sectors = generateMagicWheelSectors(wheelState.currentRound || 1, wheelState.roundStage, payload.edition);
+        if (!wheelState.currentTurnTeamId || !room.teams.some((t) => t.id === wheelState.currentTurnTeamId)) {
+          wheelState.currentTurnTeamId = room.teams[0]?.id || "";
+          wheelState.currentTurnTeamName = room.teams[0]?.name || "";
+        }
+        if (!wheelState.round1StarterTeamId || !room.teams.some((t) => t.id === wheelState.round1StarterTeamId)) {
+          wheelState.round1StarterTeamId = room.teams[0]?.id || "";
+        }
         if (!currentConfig?.magicWheelPuzzles || currentConfig.magicWheelPuzzles.length === 0) {
           const newPuzzles = buildMagicWheelMatchPuzzles(
             teamsCount,
@@ -19266,6 +19276,7 @@ function registerSocketHandlers(io2) {
           );
           wheelState.puzzles = newPuzzles;
           wheelState.currentPuzzle = newPuzzles[0] || wheelState.currentPuzzle;
+          wheelState.maxRounds = newPuzzles.length;
         }
       }
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
@@ -19282,16 +19293,21 @@ function registerSocketHandlers(io2) {
         socket.emit("error", "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i th\u1EC3 l\u1EC7/ng\xF4n ng\u1EEF \u1EDF s\u1EA3nh ch\u1EDD tr\u01B0\u1EDBc khi b\u1EA5m b\u1EAFt \u0111\u1EA7u tr\u1EADn!");
         return;
       }
-      const currentConfig = typeof room.config === "object" && room.config !== null ? room.config : {};
+      const fullRoom = await prisma.room.findUnique({
+        where: { id: room.id },
+        include: { teams: { orderBy: { createdAt: "asc" } } }
+      });
+      if (!fullRoom) return;
+      const currentConfig = typeof fullRoom.config === "object" && fullRoom.config !== null ? fullRoom.config : {};
       const newConfig = { ...currentConfig, magicWheelEdition: payload.edition };
       await prisma.room.update({
-        where: { id: room.id },
+        where: { id: fullRoom.id },
         data: { config: newConfig }
       });
-      const cached = roomCache.get(room.id);
+      const cached = roomCache.get(fullRoom.id);
       if (cached) cached.config = newConfig;
-      let wheelState = roomMagicWheels.get(room.id);
-      const teamsCount = Math.max(3, room.teams.length || 3);
+      let wheelState = roomMagicWheels.get(fullRoom.id);
+      const teamsCount = Math.max(3, fullRoom.teams?.length || 3);
       if (!wheelState) {
         const subMode = currentConfig?.magicWheelSubMode || "WORD_PUZZLE";
         const englishPreset = currentConfig?.magicWheelEnglishPreset || "RANDOM_MIX";
@@ -19309,14 +19325,14 @@ function registerSocketHandlers(io2) {
           operationMode: currentConfig?.magicWheelOperationMode === "HOST_ASSISTED" ? "HOST_ASSISTED" : "SELF_SERVICE",
           boardStage: "EMPTY_56",
           sectors: generateMagicWheelSectors(1, "TOSS_UP_1", payload.edition),
-          currentTurnTeamId: room.teams[0]?.id || "",
-          currentTurnTeamName: room.teams[0]?.name || "",
+          currentTurnTeamId: fullRoom.teams[0]?.id || "",
+          currentTurnTeamName: fullRoom.teams[0]?.name || "",
           currentRound: 1,
           maxRounds: puzzles.length,
           roundStage: "TOSS_UP_1",
           mainRoundNumber: 0,
           totalMainRounds: teamsCount,
-          round1StarterTeamId: room.teams[0]?.id || "",
+          round1StarterTeamId: fullRoom.teams[0]?.id || "",
           puzzles,
           currentPuzzle: puzzles[0],
           isSpinning: false,
@@ -19332,10 +19348,17 @@ function registerSocketHandlers(io2) {
           phase: "TOSS_UP_READY",
           lastActionMessage: payload.edition === "ENGLISH" ? "Welcome to Wheel of Fortune! Ready for Toss-Up 1." : "Ch\xE0o m\u1EEBng \u0111\u1EBFn v\u1EDBi Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u! S\u1EB5n s\xE0ng cho V\xF2ng \u0110o\xE1n Nhanh 1."
         };
-        roomMagicWheels.set(room.id, wheelState);
+        roomMagicWheels.set(fullRoom.id, wheelState);
       } else {
         wheelState.edition = payload.edition;
-        wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
+        wheelState.sectors = generateMagicWheelSectors(wheelState.currentRound || 1, wheelState.roundStage, payload.edition);
+        if (!wheelState.currentTurnTeamId || !fullRoom.teams.some((t) => t.id === wheelState.currentTurnTeamId)) {
+          wheelState.currentTurnTeamId = fullRoom.teams[0]?.id || "";
+          wheelState.currentTurnTeamName = fullRoom.teams[0]?.name || "";
+        }
+        if (!wheelState.round1StarterTeamId || !fullRoom.teams.some((t) => t.id === wheelState.round1StarterTeamId)) {
+          wheelState.round1StarterTeamId = fullRoom.teams[0]?.id || "";
+        }
         if (!currentConfig?.magicWheelPuzzles || currentConfig.magicWheelPuzzles.length === 0) {
           const newPuzzles = buildMagicWheelMatchPuzzles(
             teamsCount,
@@ -19345,18 +19368,22 @@ function registerSocketHandlers(io2) {
           );
           wheelState.puzzles = newPuzzles;
           wheelState.currentPuzzle = newPuzzles[0] || wheelState.currentPuzzle;
+          wheelState.maxRounds = newPuzzles.length;
         }
       }
-      io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
-      const fullRoomState = await buildRoomState(room.id);
+      io2.to(`room:${fullRoom.code}`).emit("game:magic_wheel:update", wheelState);
+      const fullRoomState = await buildRoomState(fullRoom.id);
       if (fullRoomState) {
-        io2.to(`room:${room.code}`).emit("room:state", fullRoomState);
+        io2.to(`room:${fullRoom.code}`).emit("room:state", fullRoomState);
       }
     });
     socket.on("magic_wheel:set_english_preset", async (payload) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
-      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+      const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        include: { teams: { orderBy: { createdAt: "asc" } } }
+      });
       if (!room) return;
       if (room.status !== "LOBBY") {
         socket.emit("error", "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i g\xF3i \u0111\u1EC1 \u1EDF s\u1EA3nh ch\u1EDD tr\u01B0\u1EDBc khi b\u1EA5m b\u1EAFt \u0111\u1EA7u tr\u1EADn!");
@@ -19371,12 +19398,14 @@ function registerSocketHandlers(io2) {
       const cached = roomCache.get(roomId);
       if (cached) cached.config = newConfig;
       const wheelState = roomMagicWheels.get(roomId);
+      const teamsCount = Math.max(3, room.teams?.length || 3);
       if (wheelState) {
         wheelState.englishPreset = payload.preset;
         if (!currentConfig?.magicWheelPuzzles || currentConfig.magicWheelPuzzles.length === 0) {
-          const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, void 0, wheelState.edition || "ENGLISH", payload.preset);
+          const newPuzzles = buildMagicWheelMatchPuzzles(teamsCount, void 0, wheelState.edition || "ENGLISH", payload.preset);
           wheelState.puzzles = newPuzzles;
           wheelState.currentPuzzle = newPuzzles[0] || wheelState.currentPuzzle;
+          wheelState.maxRounds = newPuzzles.length;
         }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       }
@@ -19392,27 +19421,34 @@ function registerSocketHandlers(io2) {
         socket.emit("error", "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i g\xF3i \u0111\u1EC1 \u1EDF s\u1EA3nh ch\u1EDD tr\u01B0\u1EDBc khi b\u1EA5m b\u1EAFt \u0111\u1EA7u tr\u1EADn!");
         return;
       }
-      const currentConfig = typeof room.config === "object" && room.config !== null ? room.config : {};
+      const fullRoom = await prisma.room.findUnique({
+        where: { id: room.id },
+        include: { teams: { orderBy: { createdAt: "asc" } } }
+      });
+      if (!fullRoom) return;
+      const currentConfig = typeof fullRoom.config === "object" && fullRoom.config !== null ? fullRoom.config : {};
       const newConfig = { ...currentConfig, magicWheelEnglishPreset: payload.preset };
       await prisma.room.update({
-        where: { id: room.id },
+        where: { id: fullRoom.id },
         data: { config: newConfig }
       });
-      const cached = roomCache.get(room.id);
+      const cached = roomCache.get(fullRoom.id);
       if (cached) cached.config = newConfig;
-      const wheelState = roomMagicWheels.get(room.id);
+      const wheelState = roomMagicWheels.get(fullRoom.id);
+      const teamsCount = Math.max(3, fullRoom.teams?.length || 3);
       if (wheelState) {
         wheelState.englishPreset = payload.preset;
         if (!currentConfig?.magicWheelPuzzles || currentConfig.magicWheelPuzzles.length === 0) {
-          const newPuzzles = buildMagicWheelMatchPuzzles(room.teams.length, void 0, wheelState.edition || "ENGLISH", payload.preset);
+          const newPuzzles = buildMagicWheelMatchPuzzles(teamsCount, void 0, wheelState.edition || "ENGLISH", payload.preset);
           wheelState.puzzles = newPuzzles;
           wheelState.currentPuzzle = newPuzzles[0] || wheelState.currentPuzzle;
+          wheelState.maxRounds = newPuzzles.length;
         }
-        io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
+        io2.to(`room:${fullRoom.code}`).emit("game:magic_wheel:update", wheelState);
       }
-      const fullRoomState = await buildRoomState(room.id);
+      const fullRoomState = await buildRoomState(fullRoom.id);
       if (fullRoomState) {
-        io2.to(`room:${room.code}`).emit("room:state", fullRoomState);
+        io2.to(`room:${fullRoom.code}`).emit("room:state", fullRoomState);
       }
     });
     socket.on("admin:magic_wheel:emergency_change_bank", async (payload) => {

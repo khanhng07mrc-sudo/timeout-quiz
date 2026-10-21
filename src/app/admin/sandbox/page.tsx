@@ -4603,7 +4603,9 @@ export default function AdminSandboxPage() {
         } else if (msg.type === "MAGIC_WHEEL_TRADE_DECIDE") {
           adminSocketRef.current.emit("magic_wheel:trade_decide" as any, { trade: msg.trade, boxIndex: msg.boxIndex });
         } else if (msg.type === "MAGIC_WHEEL_SET_EDITION") {
-          adminSocketRef.current.emit("magic_wheel:set_edition" as any, { edition: msg.edition });
+          if (adminSocketRef.current?.connected) {
+            adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: msg.edition });
+          }
         } else if (msg.type === "MAGIC_WHEEL_SET_BLACKOUT_GUESSED") {
           adminSocketRef.current.emit("magic_wheel:set_blackout_guessed" as any, { enabled: msg.enabled });
           adminSocketRef.current.emit("admin:magic_wheel:set_blackout_guessed" as any, { enabled: msg.enabled });
@@ -5090,6 +5092,9 @@ export default function AdminSandboxPage() {
           return nextRoom;
         });
       } else if (e.data?.type === "MAGIC_WHEEL_SET_EDITION") {
+        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
+          return;
+        }
         const edition = (e.data.edition === "ENGLISH" ? "ENGLISH" : "VIETNAMESE") as "VIETNAMESE" | "ENGLISH";
         setRoomState((prev) => {
           if (!prev) return prev;
@@ -5133,10 +5138,13 @@ export default function AdminSandboxPage() {
           const updatedWheel: any = {
             ...curWheel,
             edition,
-            sectors: generateMagicWheelSectors(1, curWheel.roundStage || "TOSS_UP_1", edition),
+            sectors: generateMagicWheelSectors(curWheel.currentRound || 1, curWheel.roundStage || "TOSS_UP_1", edition),
             puzzles: activePuzzles,
-            currentPuzzle: curWheel.currentPuzzle || activePuzzles[0],
+            currentPuzzle: activePuzzles[0] || curWheel.currentPuzzle,
             maxRounds: activePuzzles.length,
+            currentTurnTeamId: curWheel.currentTurnTeamId || prev.teams[0]?.id || "",
+            currentTurnTeamName: curWheel.currentTurnTeamName || prev.teams[0]?.name || "",
+            round1StarterTeamId: curWheel.round1StarterTeamId || prev.teams[0]?.id || "",
           };
           const updatedConfig = { ...(prev.config as any), magicWheelEdition: edition };
           const nextRoom = { ...prev, config: updatedConfig, magicWheelState: updatedWheel };
@@ -8522,6 +8530,29 @@ export default function AdminSandboxPage() {
     addLog(`⚡ [Quản trò] Bắt đầu mở các chữ cái vòng đoán nhanh (0.75s/chữ)!`);
   };
 
+  const handleToggleMagicWheelEdition = useCallback((targetEd?: "VIETNAMESE" | "ENGLISH") => {
+    const isLocked = roomState?.status !== "LOBBY" || Boolean(matchStarting);
+    if (isLocked) return;
+    const curEd = roomState?.magicWheelState?.edition || (roomState?.config as any)?.magicWheelEdition || "VIETNAMESE";
+    const nextEd: "VIETNAMESE" | "ENGLISH" = targetEd || (curEd === "ENGLISH" ? "VIETNAMESE" : "ENGLISH");
+    lastUserEditionChangeTimestampRef.current = Date.now();
+    setRoomState((prev) => {
+      if (!prev) return prev;
+      const mw = prev.magicWheelState ? { ...prev.magicWheelState, edition: nextEd } : prev.magicWheelState;
+      const cfg = prev.config ? { ...(prev.config as any), magicWheelEdition: nextEd } : prev.config;
+      const next: RoomState = { ...prev, magicWheelState: mw, config: cfg };
+      roomStateRef.current = next;
+      syncToIframes({ roomState: next, magicWheelState: mw });
+      return next;
+    });
+    if (adminSocketRef.current?.connected) {
+      adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: nextEd });
+    } else {
+      window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition: nextEd }, "*");
+    }
+    addLog(`⚙️ Đã chuyển sang: ${nextEd === "ENGLISH" ? "English" : "Tiếng Việt"}`);
+  }, [roomState?.status, roomState?.magicWheelState?.edition, roomState?.config, matchStarting, syncToIframes, addLog]);
+
   // ── Magic Wheel Bot Automation Timer ──────────────────────────────────────
   const pendingBotWheelTimerRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
@@ -10634,27 +10665,7 @@ export default function AdminSandboxPage() {
                       <button
                         type="button"
                         disabled={isMagicWheelLocked}
-                        onClick={() => {
-                          if (isMagicWheelLocked) return;
-                          const curEd = roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition || "VIETNAMESE";
-                          const nextEd: "VIETNAMESE" | "ENGLISH" = curEd === "ENGLISH" ? "VIETNAMESE" : "ENGLISH";
-                          lastUserEditionChangeTimestampRef.current = Date.now();
-                          setRoomState((prev) => {
-                            if (!prev) return prev;
-                            const mw = prev.magicWheelState ? { ...prev.magicWheelState, edition: nextEd } : prev.magicWheelState;
-                            const cfg = prev.config ? { ...(prev.config as any), magicWheelEdition: nextEd } : prev.config;
-                            const next: RoomState = { ...prev, magicWheelState: mw, config: cfg };
-                            roomStateRef.current = next;
-                            syncToIframes({ roomState: next, magicWheelState: mw });
-                            return next;
-                          });
-                          if (adminSocketRef.current?.connected) {
-                            adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: nextEd });
-                            adminSocketRef.current.emit("magic_wheel:set_edition" as any, { edition: nextEd });
-                          }
-                          window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition: nextEd }, "*");
-                          addLog(`⚙️ Đã chuyển sang: ${nextEd === "ENGLISH" ? "English" : "Tiếng Việt"}`);
-                        }}
+                        onClick={() => handleToggleMagicWheelEdition()}
                         className={`px-3 py-1 rounded-lg border text-xs font-black transition flex items-center gap-1.5 whitespace-nowrap shadow-md ${
                           isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
                         } ${
@@ -11150,25 +11161,7 @@ export default function AdminSandboxPage() {
                               <button
                                 type="button"
                                 disabled={isMagicWheelLocked}
-                                onClick={() => {
-                                  if (isMagicWheelLocked) return;
-                                  lastUserEditionChangeTimestampRef.current = Date.now();
-                                  setRoomState((prev) => {
-                                    if (!prev) return prev;
-                                    const mw = prev.magicWheelState ? { ...prev.magicWheelState, edition: "VIETNAMESE" as const } : prev.magicWheelState;
-                                    const cfg = prev.config ? { ...(prev.config as any), magicWheelEdition: "VIETNAMESE" as const } : prev.config;
-                                    const next: RoomState = { ...prev, magicWheelState: mw, config: cfg };
-                                    roomStateRef.current = next;
-                                    syncToIframes({ roomState: next, magicWheelState: mw });
-                                    return next;
-                                  });
-                                  if (adminSocketRef.current?.connected) {
-                                    adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: "VIETNAMESE" });
-                                    adminSocketRef.current.emit("magic_wheel:set_edition" as any, { edition: "VIETNAMESE" });
-                                  }
-                                  window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition: "VIETNAMESE" }, "*");
-                                  addLog("⚙️ Đã chuyển sang: Tiếng Việt");
-                                }}
+                                onClick={() => handleToggleMagicWheelEdition("VIETNAMESE")}
                                 className={`py-1.5 px-2 rounded-md font-black text-[11px] flex items-center justify-center gap-1 transition ${
                                   isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
                                 } ${
@@ -11183,25 +11176,7 @@ export default function AdminSandboxPage() {
                               <button
                                 type="button"
                                 disabled={isMagicWheelLocked}
-                                onClick={() => {
-                                  if (isMagicWheelLocked) return;
-                                  lastUserEditionChangeTimestampRef.current = Date.now();
-                                  setRoomState((prev) => {
-                                    if (!prev) return prev;
-                                    const mw = prev.magicWheelState ? { ...prev.magicWheelState, edition: "ENGLISH" as const } : prev.magicWheelState;
-                                    const cfg = prev.config ? { ...(prev.config as any), magicWheelEdition: "ENGLISH" as const } : prev.config;
-                                    const next: RoomState = { ...prev, magicWheelState: mw, config: cfg };
-                                    roomStateRef.current = next;
-                                    syncToIframes({ roomState: next, magicWheelState: mw });
-                                    return next;
-                                  });
-                                  if (adminSocketRef.current?.connected) {
-                                    adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: "ENGLISH" });
-                                    adminSocketRef.current.emit("magic_wheel:set_edition" as any, { edition: "ENGLISH" });
-                                  }
-                                  window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition: "ENGLISH" }, "*");
-                                  addLog("⚙️ Đã chuyển sang: English");
-                                }}
+                                onClick={() => handleToggleMagicWheelEdition("ENGLISH")}
                                 className={`py-1.5 px-2 rounded-md font-black text-[11px] flex items-center justify-center gap-1 transition ${
                                   isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
                                 } ${
@@ -12968,26 +12943,7 @@ export default function AdminSandboxPage() {
                             <button
                               type="button"
                               disabled={isMagicWheelLocked}
-                              onClick={() => {
-                                if (isMagicWheelLocked) return;
-                                const nextEd: "VIETNAMESE" | "ENGLISH" = isEnglish ? "VIETNAMESE" : "ENGLISH";
-                                lastUserEditionChangeTimestampRef.current = Date.now();
-                                setRoomState((prev) => {
-                                  if (!prev) return prev;
-                                  const mw = prev.magicWheelState ? { ...prev.magicWheelState, edition: nextEd } : prev.magicWheelState;
-                                  const cfg = prev.config ? { ...(prev.config as any), magicWheelEdition: nextEd } : prev.config;
-                                  const next: RoomState = { ...prev, magicWheelState: mw, config: cfg };
-                                  roomStateRef.current = next;
-                                  syncToIframes({ roomState: next, magicWheelState: mw });
-                                  return next;
-                                });
-                                if (adminSocketRef.current?.connected) {
-                                  adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: nextEd });
-                                  adminSocketRef.current.emit("magic_wheel:set_edition" as any, { edition: nextEd });
-                                }
-                                window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition: nextEd }, "*");
-                                addLog(`⚙️ Đã chuyển sang: ${nextEd === "ENGLISH" ? "English" : "Tiếng Việt"}`);
-                              }}
+                              onClick={() => handleToggleMagicWheelEdition()}
                               className={`px-2.5 py-1 rounded font-bold text-xs shadow transition ${
                                 isMagicWheelLocked
                                   ? "bg-indigo-900/40 text-slate-400 cursor-not-allowed opacity-50"
@@ -13065,7 +13021,7 @@ export default function AdminSandboxPage() {
                         window.postMessage({ type: "MAGIC_WHEEL_BUY_VOWEL", vowel }, "*");
                       }}
                       onSetEdition={(edition) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition }, "*");
+                        handleToggleMagicWheelEdition(edition);
                       }}
                       onSetBlackoutGuessed={(enabled) => {
                         window.postMessage({ type: "MAGIC_WHEEL_SET_BLACKOUT_GUESSED", enabled }, "*");

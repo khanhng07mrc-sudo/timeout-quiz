@@ -1299,47 +1299,49 @@ export default function DisplayPage() {
         )}
 
         {/* Responsive Two-Column Main Body */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 flex-1 min-h-0 items-stretch overflow-y-auto md:overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 flex-1 min-h-0 w-full min-w-0 max-w-full items-stretch overflow-y-auto md:overflow-hidden">
           {/* Left Column: Room identity, Large PIN, Link & Rules Trigger */}
-          <div className="md:col-span-5 flex flex-col justify-between glass rounded-3xl p-4 sm:p-5 border border-white/10 shadow-2xl overflow-hidden bg-gradient-to-b from-[#15172b]/95 to-[#0e1022]/95 min-h-0">
+          <div className="md:col-span-5 flex flex-col justify-between glass rounded-3xl p-3.5 sm:p-5 border border-white/10 shadow-2xl overflow-hidden bg-gradient-to-b from-[#15172b]/95 to-[#0e1022]/95 min-h-0 min-w-0 max-w-full">
             {/* Header info */}
             <div>
-              <div className="inline-block px-3 py-0.5 rounded-full text-[11px] font-mono font-bold tracking-wider bg-purple-500/20 text-cyan-300 border border-cyan-400/30 mb-2 shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+              <div className="inline-block max-w-full px-3 py-0.5 rounded-full text-[11px] font-mono font-bold tracking-wider bg-purple-500/20 text-cyan-300 border border-cyan-400/30 mb-2 shadow-[0_0_10px_rgba(6,182,212,0.3)] truncate">
                 {badgeText}
               </div>
-              <h1 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-purple-300 via-pink-300 to-cyan-300 bg-clip-text text-transparent tracking-tight leading-tight">
+              <h1 className="text-xl sm:text-3xl md:text-2xl lg:text-4xl font-black bg-gradient-to-r from-purple-300 via-pink-300 to-cyan-300 bg-clip-text text-transparent tracking-tight leading-tight break-words">
                 {mainTitle}
               </h1>
             </div>
 
             {/* Giant PIN Box */}
-            <div className="my-auto py-3 text-center">
+            <div className="my-auto py-2 sm:py-3 text-center min-w-0 max-w-full">
               <p className="text-xs sm:text-sm text-slate-400 font-semibold uppercase tracking-wider mb-2">Mã phòng tham gia</p>
-              <div className="inline-block px-6 sm:px-8 py-3 rounded-2xl glass border-2 border-purple-500/50 glow-purple shadow-2xl bg-black/40">
-                <p className="text-5xl sm:text-6xl font-black font-mono tracking-widest text-cyan-300">{code}</p>
+              <div className="inline-block max-w-full px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl glass border-2 border-purple-500/50 glow-purple shadow-2xl bg-black/40">
+                <p className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-black font-mono tracking-wider sm:tracking-widest text-cyan-300 truncate">{code}</p>
               </div>
-              <p className="text-slate-300 mt-3 text-xs sm:text-sm">
+              <p className="text-slate-300 mt-2 sm:mt-3 text-xs sm:text-sm truncate">
                 Truy cập <span className="text-white font-bold font-mono bg-white/10 px-2 py-0.5 rounded">/play/{code}</span> để vào phòng
               </p>
             </div>
 
             {/* Quick Rules Footer Callout */}
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5 truncate">
-                  <span>⚡</span>
-                  <span>{roomState?.mode === "MAGIC_WHEEL" ? "Chiếc Nón Kỳ Diệu" : "Đấu Trường Quiz"}</span>
-                </p>
-                <p className="text-[11px] text-slate-400 truncate">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 min-w-0">
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5 leading-snug">
+                  <span className="shrink-0">⚡</span>
+                  <span className="whitespace-normal sm:truncate">
+                    {roomState?.mode === "MAGIC_WHEEL" ? "Chiếc Nón Kỳ Diệu" : "Đấu Trường Quiz"}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-400 truncate">
                   {roomState?.mode === "MAGIC_WHEEL"
                     ? (roomState.magicWheelState?.edition === "ENGLISH" ? "🇺🇸 English Edition" : "🇻🇳 Bản Tiếng Việt")
                     : "Sẵn sàng khởi tranh theo thời gian thực"}
-                </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowRulesModal(true)}
-                className="px-3 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-xs font-bold whitespace-nowrap transition cursor-pointer"
+                className="px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-[11px] sm:text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0"
               >
                 Xem thể lệ →
               </button>
@@ -1347,7 +1349,7 @@ export default function DisplayPage() {
           </div>
 
           {/* Right Column: Teams / Participants (adaptive, internal scroll if > 6 teams) */}
-          <div className="md:col-span-7 flex flex-col glass rounded-3xl p-4 sm:p-5 border border-white/10 shadow-2xl min-h-0 bg-[#121324]/90 overflow-hidden">
+          <div className="md:col-span-7 flex flex-col glass rounded-3xl p-3.5 sm:p-5 border border-white/10 shadow-2xl min-h-0 bg-[#121324]/90 overflow-hidden min-w-0 max-w-full">
             {/* Right Column Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3 shrink-0">
               <div className="flex items-center gap-2">

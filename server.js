@@ -2585,31 +2585,25 @@ function localizeSectorsForEdition(sectors, edition = "VIETNAMESE") {
       type = "FREE_PLAY";
       color = "#10b981";
     } else if (s.isOverlay && s.overlayType === "PRIZE") {
-      label = "\u{1F381} PRIZE";
+      label = "PRIZE";
     } else if (s.isOverlay && s.overlayType === "MYSTERY") {
-      label = "\u{1F52E} MYSTERY";
+      label = "MYSTERY";
     } else if (s.isOverlay && s.overlayType === "EXPRESS") {
-      label = "\u26A1 EXPRESS";
+      label = "EXPRESS";
     } else if (s.isOverlay && s.overlayType === "JACKPOT") {
-      label = "\u{1F48E} JACKPOT";
+      label = "JACKPOT";
     } else if (s.isOverlay && s.overlayType === "TRIPLE") {
-      label = "\u{1F525} TRIPLE";
+      label = "TRIPLE";
     } else if (type === "STEAL_SWAP") {
-      label = "\u2694\uFE0F STEAL/SWAP";
+      label = "STEAL/SWAP";
     } else if (type === "WILD_CARD") {
-      label = "\u{1F0CF} WILD CARD";
+      label = "WILD CARD";
     } else if (type === "SPECIAL_ENVELOPE") {
-      label = "\u2709\uFE0F SPECIAL ENV.";
+      label = "SPECIAL ENV.";
     } else if (type === "BONUS_ENVELOPE") {
-      label = "\u{1F381} BONUS ENV.";
+      label = "BONUS ENV.";
     } else if (type === "POINTS" && s.value) {
-      if (label.includes("\u2B50")) {
-        label = `\u2B50 $${s.value}`;
-      } else if (label.includes("\u{1F31F}")) {
-        label = `\u{1F31F} $${s.value}`;
-      } else {
-        label = `$${s.value}`;
-      }
+      label = `$${s.value}`;
     }
     return {
       ...s,
@@ -2627,14 +2621,14 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
       { pts: 4e3, labelVi: "PHONG B\xCC 4000", labelEn: "ENVELOPE $4000", color: "#059669", textColor: "#ffffff" },
       { pts: 5e3, labelVi: "PHONG B\xCC 5000", labelEn: "ENVELOPE $5000", color: "#e11d48", textColor: "#ffffff" },
       { pts: 8e3, labelVi: "PHONG B\xCC 8000", labelEn: "ENVELOPE $8000", color: "#ea580c", textColor: "#ffffff" },
-      hasMillionPrize ? { pts: 1e6, labelVi: "\u{1F451} 1 T\u1EF6 \u0110\u1ED2NG", labelEn: "\u{1F451} $1000000", color: "#ffd700", textColor: "#78350f" } : { pts: 1e4, labelVi: "\u0110\u1EB6C BI\u1EC6T 10000", labelEn: "\u{1F451} $10000", color: "#ffd700", textColor: "#78350f" }
+      { pts: 25e3, labelVi: "\u0110\u1EB6C BI\u1EC6T 25000", labelEn: "SPECIAL $25000", color: "#ffd700", textColor: "#78350f" }
     ];
     return Array.from({ length: 24 }, (_, idx) => {
       const item = specialPalette[idx % specialPalette.length];
       const isEn = edition === "ENGLISH";
       return {
         id: idx,
-        label: isEn ? item.pts === 1e6 ? "\u{1F451} $1M" : item.pts === 1e4 ? "\u{1F451} $10000" : `\u2709\uFE0F $${item.pts}` : item.pts === 1e6 ? "\u{1F451} 1 T\u1EF6" : item.pts === 1e4 ? "\u{1F451} 10000" : `\u2709\uFE0F ${item.pts}`,
+        label: isEn ? `$${item.pts}` : `${item.pts}`,
         type: "SPECIAL_ENVELOPE",
         value: item.pts,
         color: item.color,
@@ -2662,7 +2656,7 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
       if (targetIdx !== -1) {
         sectors2[targetIdx] = {
           id: 13,
-          label: "\u{1F381} PRIZE",
+          label: "PRIZE",
           type: "PRIZE",
           value: 1e3,
           color: "#fbbf24",
@@ -2679,7 +2673,7 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
         if (idx !== -1) {
           sectors2[idx] = {
             id: targetId,
-            label: "\u{1F52E} MYSTERY",
+            label: "MYSTERY",
             type: "MYSTERY",
             color: "#8b5cf6",
             textColor: "#ffffff",
@@ -2695,7 +2689,7 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
       if (expIdx !== -1) {
         sectors2[expIdx] = {
           id: 13,
-          label: "\u26A1 EXPRESS",
+          label: "EXPRESS",
           type: "EXPRESS",
           value: 1e3,
           color: "#06b6d4",
@@ -2709,13 +2703,28 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
       if (jpIdx !== -1) {
         sectors2[jpIdx] = {
           id: 4,
-          label: "\u{1F48E} JACKPOT",
+          label: "JACKPOT",
           type: "JACKPOT",
           value: 1500,
           color: "#ec4899",
           textColor: "#ffffff",
           isOverlay: true,
           overlayType: "JACKPOT"
+        };
+      }
+    } else if (mainRoundOrStage === 5) {
+      const idx13 = sectors2.findIndex((s) => s.id === 13);
+      if (idx13 !== -1) {
+        sectors2[idx13] = {
+          id: 13,
+          label: "25000",
+          type: "ONE_MILLION_SANDWICH",
+          value: 25e3,
+          color: "#059669",
+          textColor: "#ffffff",
+          isOverlay: true,
+          overlayType: "ONE_MILLION",
+          isSandwich: true
         };
       }
     }
@@ -2727,7 +2736,7 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
     if (targetIdx !== -1) {
       sectors[targetIdx] = {
         id: 13,
-        label: "\u{1F381} PH\u1EA6N TH\u01AF\u1EDENG",
+        label: "PH\u1EA6N TH\u01AF\u1EDENG",
         type: "PRIZE",
         value: 500,
         color: "#fbbf24",
@@ -2748,7 +2757,7 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
       if (idx !== -1) {
         sectors[idx] = {
           id: target.id,
-          label: "\u{1F52E} B\xCD M\u1EACT",
+          label: "B\xCD M\u1EACT",
           type: "MYSTERY",
           color: "#8b5cf6",
           textColor: "#ffffff",
@@ -2764,7 +2773,7 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
     if (expIdx !== -1) {
       sectors[expIdx] = {
         id: 13,
-        label: "\u26A1 T\u1ED0C \u0110\u1ED8",
+        label: "T\u1ED0C \u0110\u1ED8",
         type: "EXPRESS",
         value: 1e3,
         color: "#06b6d4",
@@ -2777,7 +2786,7 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
     if (jpIdx !== -1) {
       sectors[jpIdx] = {
         id: 4,
-        label: "\u{1F48E} KIM C\u01AF\u01A0NG",
+        label: "KIM C\u01AF\u01A0NG",
         type: "JACKPOT",
         value: 1500,
         color: "#ec4899",
@@ -2805,7 +2814,7 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
     if (idx16 !== -1) {
       sectors[idx16] = {
         id: 16,
-        label: "\u{1F31F} 3000",
+        label: "3000",
         type: "POINTS",
         value: 3e3,
         color: "#f59e0b",
@@ -2828,7 +2837,7 @@ function generateMagicWheelSectors(mainRoundOrStage, stage, edition = "VIETNAMES
       const baseTripleValue = sectors[tripleIdx].value ?? 3e3;
       sectors[tripleIdx] = {
         id: 17,
-        label: "\u{1F525} NH\xC2N BA",
+        label: "NH\xC2N BA",
         type: "TRIPLE",
         value: baseTripleValue,
         color: "#f97316",

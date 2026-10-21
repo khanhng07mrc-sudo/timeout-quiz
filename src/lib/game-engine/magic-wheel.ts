@@ -280,32 +280,25 @@ export function localizeSectorsForEdition(
       type = "FREE_PLAY";
       color = "#10b981"; // Emerald green cho Free Play
     } else if (s.isOverlay && s.overlayType === "PRIZE") {
-      label = "🎁 PRIZE";
+      label = "PRIZE";
     } else if (s.isOverlay && s.overlayType === "MYSTERY") {
-      label = "🔮 MYSTERY";
+      label = "MYSTERY";
     } else if (s.isOverlay && s.overlayType === "EXPRESS") {
-      label = "⚡ EXPRESS";
+      label = "EXPRESS";
     } else if (s.isOverlay && s.overlayType === "JACKPOT") {
-      label = "💎 JACKPOT";
+      label = "JACKPOT";
     } else if (s.isOverlay && s.overlayType === "TRIPLE") {
-      label = "🔥 TRIPLE";
+      label = "TRIPLE";
     } else if (type === "STEAL_SWAP") {
-      // BUG-24 FIX: Localize STEAL_SWAP for English edition
-      label = "⚔️ STEAL/SWAP";
+      label = "STEAL/SWAP";
     } else if (type === "WILD_CARD") {
-      label = "🃏 WILD CARD";
+      label = "WILD CARD";
     } else if (type === "SPECIAL_ENVELOPE") {
-      label = "✉️ SPECIAL ENV.";
+      label = "SPECIAL ENV.";
     } else if (type === "BONUS_ENVELOPE") {
-      label = "🎁 BONUS ENV.";
+      label = "BONUS ENV.";
     } else if (type === "POINTS" && s.value) {
-      if (label.includes("⭐")) {
-        label = `⭐ $${s.value}`;
-      } else if (label.includes("🌟")) {
-        label = `🌟 $${s.value}`;
-      } else {
-        label = `$${s.value}`;
-      }
+      label = `$${s.value}`;
     }
 
     return {
@@ -340,18 +333,14 @@ export function generateMagicWheelSectors(
       { pts: 4000, labelVi: "PHONG BÌ 4000", labelEn: "ENVELOPE $4000", color: "#059669", textColor: "#ffffff" },
       { pts: 5000, labelVi: "PHONG BÌ 5000", labelEn: "ENVELOPE $5000", color: "#e11d48", textColor: "#ffffff" },
       { pts: 8000, labelVi: "PHONG BÌ 8000", labelEn: "ENVELOPE $8000", color: "#ea580c", textColor: "#ffffff" },
-      hasMillionPrize
-        ? { pts: 1000000, labelVi: "👑 1 TỶ ĐỒNG", labelEn: "👑 $1000000", color: "#ffd700", textColor: "#78350f" }
-        : { pts: 10000, labelVi: "ĐẶC BIỆT 10000", labelEn: "👑 $10000", color: "#ffd700", textColor: "#78350f" },
+      { pts: 25000, labelVi: "ĐẶC BIỆT 25000", labelEn: "SPECIAL $25000", color: "#ffd700", textColor: "#78350f" },
     ];
     return Array.from({ length: 24 }, (_, idx) => {
       const item = specialPalette[idx % specialPalette.length];
       const isEn = edition === "ENGLISH";
       return {
         id: idx,
-        label: isEn
-          ? (item.pts === 1000000 ? "👑 $1M" : item.pts === 10000 ? "👑 $10000" : `✉️ $${item.pts}`)
-          : (item.pts === 1000000 ? "👑 1 TỶ" : item.pts === 10000 ? "👑 10000" : `✉️ ${item.pts}`),
+        label: isEn ? `$${item.pts}` : `${item.pts}`,
         type: "SPECIAL_ENVELOPE" as const,
         value: item.pts,
         color: item.color,
@@ -384,7 +373,7 @@ export function generateMagicWheelSectors(
       if (targetIdx !== -1) {
         sectors[targetIdx] = {
           id: 13,
-          label: "🎁 PRIZE",
+          label: "PRIZE",
           type: "PRIZE",
           value: 1000,
           color: "#fbbf24",
@@ -404,7 +393,7 @@ export function generateMagicWheelSectors(
         if (idx !== -1) {
           sectors[idx] = {
             id: targetId,
-            label: "🔮 MYSTERY",
+            label: "MYSTERY",
             type: "MYSTERY",
             color: "#8b5cf6",
             textColor: "#ffffff",
@@ -421,7 +410,7 @@ export function generateMagicWheelSectors(
       if (expIdx !== -1) {
         sectors[expIdx] = {
           id: 13,
-          label: "⚡ EXPRESS",
+          label: "EXPRESS",
           type: "EXPRESS",
           value: 1000,
           color: "#06b6d4",
@@ -436,13 +425,29 @@ export function generateMagicWheelSectors(
       if (jpIdx !== -1) {
         sectors[jpIdx] = {
           id: 4,
-          label: "💎 JACKPOT",
+          label: "JACKPOT",
           type: "JACKPOT",
           value: 1500,
           color: "#ec4899",
           textColor: "#ffffff",
           isOverlay: true,
           overlayType: "JACKPOT",
+        };
+      }
+    } else if (mainRoundOrStage === 5) {
+      // Vòng 5: Ô 25.000 điểm áp dụng cho mọi phiên bản
+      const idx13 = sectors.findIndex((s) => s.id === 13);
+      if (idx13 !== -1) {
+        sectors[idx13] = {
+          id: 13,
+          label: "25000",
+          type: "ONE_MILLION_SANDWICH",
+          value: 25000,
+          color: "#059669",
+          textColor: "#ffffff",
+          isOverlay: true,
+          overlayType: "ONE_MILLION",
+          isSandwich: true,
         };
       }
     }
@@ -457,7 +462,7 @@ export function generateMagicWheelSectors(
     if (targetIdx !== -1) {
       sectors[targetIdx] = {
         id: 13,
-        label: "🎁 PHẦN THƯỞNG",
+        label: "PHẦN THƯỞNG",
         type: "PRIZE",
         value: 500,
         color: "#fbbf24",
@@ -481,7 +486,7 @@ export function generateMagicWheelSectors(
       if (idx !== -1) {
         sectors[idx] = {
           id: target.id,
-          label: "🔮 BÍ MẬT",
+          label: "BÍ MẬT",
           type: "MYSTERY",
           color: "#8b5cf6",
           textColor: "#ffffff",
@@ -493,12 +498,12 @@ export function generateMagicWheelSectors(
       }
     });
   } else if (mainRoundOrStage === 4) {
-    // Vòng 4: Ô Tốc Độ ⚡ (id 13) và Ô Kim Cương 💎 Jackpot (id 4)
+    // Vòng 4: Ô Tốc Độ (id 13) và Ô Kim Cương Jackpot (id 4)
     const expIdx = sectors.findIndex((s) => s.id === 13);
     if (expIdx !== -1) {
       sectors[expIdx] = {
         id: 13,
-        label: "⚡ TỐC ĐỘ",
+        label: "TỐC ĐỘ",
         type: "EXPRESS",
         value: 1000,
         color: "#06b6d4",
@@ -511,7 +516,7 @@ export function generateMagicWheelSectors(
     if (jpIdx !== -1) {
       sectors[jpIdx] = {
         id: 4,
-        label: "💎 KIM CƯƠNG",
+        label: "KIM CƯƠNG",
         type: "JACKPOT",
         value: 1500,
         color: "#ec4899",
@@ -539,7 +544,7 @@ export function generateMagicWheelSectors(
     if (idx16 !== -1) {
       sectors[idx16] = {
         id: 16,
-        label: "🌟 3000",
+        label: "3000",
         type: "POINTS",
         value: 3000,
         color: "#f59e0b",
@@ -547,7 +552,7 @@ export function generateMagicWheelSectors(
       };
     }
   } else if (mainRoundOrStage >= 6) {
-    // Vòng 6+: Nhân đôi toàn bộ điểm cơ bản + Ô Nhân Ba 🔥 (id 17)
+    // Vòng 6+: Nhân đôi toàn bộ điểm cơ bản + Ô Nhân Ba (id 17)
     sectors.forEach((s, i) => {
       if (s.type === "POINTS" && s.value) {
         const doubled = s.value * 2;
@@ -560,12 +565,10 @@ export function generateMagicWheelSectors(
     });
     const tripleIdx = sectors.findIndex((s) => s.id === 17);
     if (tripleIdx !== -1) {
-      // BUG-16 FIX: Dùng value sau khi doubled của sector id=17 thay vì hardcode 3000
-      // (sector id=17 đã được doubled ở vòng forEach ở trên nếu nó là type POINTS)
       const baseTripleValue = sectors[tripleIdx].value ?? 3000;
       sectors[tripleIdx] = {
         id: 17,
-        label: "🔥 NHÂN BA",
+        label: "NHÂN BA",
         type: "TRIPLE",
         value: baseTripleValue,
         color: "#f97316",

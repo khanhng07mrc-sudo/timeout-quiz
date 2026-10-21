@@ -3324,7 +3324,7 @@ export default function MagicWheelBoard({
 
   // ── 3. 56-TILE BOARD MATRIX RENDERER ──
   const renderBoardGridMatrix = (isDisplayMode = false) => (
-    <div className={`w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] ${isDisplayMode ? "p-1 sm:p-1.5 max-w-4xl" : "p-2.5 sm:p-4 max-w-5xl"} rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-visible shrink-0`}>
+    <div className={`w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] ${isDisplayMode ? "p-1 sm:p-1.5 max-w-4xl" : "p-2 sm:p-2.5 w-full max-w-6xl"} rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-visible shrink-0`}>
       {!isDisplayMode && !isTempActive && (
         <div className="mb-1.5 px-3.5 py-0.5 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow">
           {effectiveBoardStage === "EMPTY_56" ? (
@@ -3339,11 +3339,12 @@ export default function MagicWheelBoard({
         </div>
       )}
 
-      <div className={`w-full ${isDisplayMode ? "max-w-4xl" : "max-w-6xl"} flex flex-col items-center relative py-0.5 px-1 sm:px-2 md:px-4`}>
+      <div className={`w-full ${isDisplayMode ? "max-w-4xl px-1 sm:px-2 md:px-4" : "max-w-full px-0.5 sm:px-1 md:px-2"} flex flex-col items-center relative py-0.5`}>
         {/* Stage Proscenium: Cánh Gà Trái + Bảng 56 Ô + Cánh Gà Phải */}
         <div className="w-full flex items-stretch justify-center gap-1.5 sm:gap-2 md:gap-3 relative">
           {/* Trụ Tháp 3D Cánh Trái - Nơi Người Mẫu Đứng Trực Tiếp Vững Chãi */}
-          <div className="hidden md:flex flex-col items-center justify-end w-20 sm:w-24 md:w-28 lg:w-32 shrink-0 relative py-1 select-none pointer-events-none">
+          {(isDisplayMode || showHostess) && (
+            <div className={`hidden md:flex flex-col items-center justify-end ${isDisplayMode ? "w-20 sm:w-24 md:w-28 lg:w-32" : "w-16 sm:w-20"} shrink-0 relative py-1 select-none pointer-events-none`}>
             {/* Tower Machine Hardware (VU-Meters & Vents) */}
             <div 
               className="absolute inset-x-0 top-1 bottom-4 rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2 flex flex-col items-center justify-between overflow-hidden ring-1 ring-yellow-400/40"
@@ -3386,10 +3387,11 @@ export default function MagicWheelBoard({
               <div className="w-14 sm:w-18 h-3 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
             </div>
           </div>
+          )}
 
           {/* Bảng Video Wall Trung Tâm */}
-          <div className="flex-1 min-w-0 max-w-5xl">
-            <div className={`w-full ${isDisplayMode ? "p-1 sm:p-1.5" : "p-2 sm:p-3"} rounded-xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-2 sm:border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40`}>
+          <div className="flex-1 min-w-0 w-full max-w-6xl">
+            <div className={`w-full ${isDisplayMode ? "p-1 sm:p-1.5" : "p-2 sm:p-2.5"} rounded-xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-2 sm:border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40`}>
               <div className="w-full grid grid-rows-4 gap-0.5 sm:gap-1">
             {gridMatrix.map((row, rIdx) => (
               <div
@@ -3406,9 +3408,9 @@ export default function MagicWheelBoard({
                     return (
                       <div
                         key={cIdx}
-                        className={`w-full aspect-[3/4] ${isDisplayMode ? "min-h-[clamp(13px,1.6vw,26px)]" : "min-h-[clamp(24px,3.5vw,52px)]"} rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none`}
+                        className="w-full aspect-[4/5] sm:aspect-[5/6] min-h-0 min-w-0 rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none"
                       >
-                        <svg viewBox="0 0 24 24" className="w-3 h-3 text-[#2a7a33] opacity-60 fill-current">
+                        <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-[#2a7a33] opacity-60 fill-current">
                           <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
                         </svg>
                       </div>
@@ -3435,7 +3437,7 @@ export default function MagicWheelBoard({
                           }
                         }
                       }}
-                      className={`w-full aspect-[3/4] ${isDisplayMode ? "min-h-[clamp(13px,1.6vw,26px)]" : "min-h-[clamp(24px,3.5vw,52px)]"} rounded font-black flex items-center justify-center select-none ${
+                      className={`w-full aspect-[4/5] sm:aspect-[5/6] min-h-0 min-w-0 rounded font-black flex items-center justify-center select-none ${
                         isJustCut ? "animate-vtv3-tile-cut" : ""
                       } ${
                         isPopping
@@ -3451,7 +3453,7 @@ export default function MagicWheelBoard({
                           : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
                       }`}
                     >
-                      <span className={`font-black tracking-tight ${isDisplayMode ? (isTossUpRound ? "text-xs sm:text-base md:text-xl lg:text-2xl" : "text-[11px] sm:text-sm md:text-lg lg:text-xl") : (isTossUpRound ? "text-base sm:text-xl md:text-3xl lg:text-4xl" : "text-sm sm:text-lg md:text-2xl lg:text-3xl")}`}>
+                      <span className={`font-black tracking-tight leading-none ${isDisplayMode ? (isTossUpRound ? "text-xs sm:text-base md:text-xl lg:text-2xl" : "text-[11px] sm:text-sm md:text-lg lg:text-xl") : (isTossUpRound ? "text-base sm:text-xl md:text-2xl lg:text-3xl" : "text-xs sm:text-base md:text-xl lg:text-2xl")}`}>
                         {cell.isRevealed ? cell.displayChar : isLuckyGreen ? "✓" : cell.isHighlighted ? "" : phase === "LUCKY_PICK" ? "🍀" : "?"}
                       </span>
                     </div>
@@ -3463,8 +3465,9 @@ export default function MagicWheelBoard({
         </div>
       </div>
 
-      {/* Trụ Tháp 3D Cánh Phải - Đối Xứng Cơ Khí Studio (Không Dùng Chữ 2D Thô) */}
-      <div className="hidden md:flex flex-col items-center justify-between w-20 sm:w-24 md:w-28 lg:w-32 shrink-0 relative py-1 select-none pointer-events-none">
+      {/* Trụ Tháp 3D Cánh Phải - Đối Xứng Cơ Khí Studio (Chỉ hiển thị trên Display, trên Host/MC ẩn hoàn toàn để tối đa hóa chiều rộng) */}
+      {isDisplayMode && (
+        <div className="hidden md:flex flex-col items-center justify-between w-20 sm:w-24 md:w-28 lg:w-32 shrink-0 relative py-1 select-none pointer-events-none">
         <div 
           className="w-full h-full rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2 flex flex-col items-center justify-between relative overflow-hidden ring-1 ring-yellow-400/40"
           style={{
@@ -3495,6 +3498,7 @@ export default function MagicWheelBoard({
           </div>
         </div>
       </div>
+      )}
     </div>
 
     {/* Runway & Hostess */}
@@ -4125,8 +4129,8 @@ export default function MagicWheelBoard({
 
   // ── 5. DISPLAY VIEW (isDisplay = true): ZERO-SCROLL, FULL 360° WHEEL, POWERPOINT MORPH LAYOUT ──
   const renderDisplayView = () => {
-    const isBoardZoomCam = effectiveIsSpinning && camAngle === 3;
-    const isFocusBoard = effDisplayLayoutMode === "FOCUS_BOARD" || (effDisplayLayoutMode === "AUTO" && isTossUpRound) || isBoardZoomCam;
+    // Vòng quay kể cả đã quay xong thì để yên trên sân khấu, tuyệt đối không fade out
+    const isFocusBoard = effDisplayLayoutMode === "FOCUS_BOARD" || (effDisplayLayoutMode === "AUTO" && isTossUpRound);
     const isFocusWheel = !isFocusBoard && effDisplayLayoutMode === "FOCUS_WHEEL";
     const isStacked = !isFocusWheel && !isFocusBoard;
 
@@ -4137,7 +4141,7 @@ export default function MagicWheelBoard({
     const podiumGapClass = teams.length >= 6 ? "gap-0.5" : teams.length >= 4 ? "gap-1" : "gap-1.5";
 
     return (
-      <div className="w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-2 sm:p-3.5 md:p-4 box-border bg-gradient-to-b from-[#081226] via-[#0a1733] to-[#040914] text-white select-none relative">
+      <div className="w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-2 sm:p-3 pb-0 box-border bg-gradient-to-b from-[#081226] via-[#0a1733] to-[#040914] text-white select-none relative">
         {/* ── Studio Stage Lighting Truss & Overhead Volumetric Glow ── */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
           <div className="absolute -top-10 left-1/4 w-96 h-[600px] bg-gradient-to-b from-amber-400/20 via-yellow-400/5 to-transparent blur-3xl transform -rotate-12" />
@@ -4198,10 +4202,10 @@ export default function MagicWheelBoard({
 
           {/* OBJECT 2: 3D STUDIO STAGE & WHEEL MACHINE (True WebGL 3D Studio via Three.js) */}
           <div
-            className={`w-full transition-all duration-700 ease-in-out min-h-0 relative ${
+            className={`w-full flex-1 min-h-0 relative transition-all duration-700 ease-in-out ${
               isFocusBoard
                 ? "opacity-0 max-h-0 scale-75 translate-y-12 pointer-events-none overflow-hidden"
-                : "flex-1 flex flex-col items-center justify-center opacity-100 scale-100 translate-y-0"
+                : "opacity-100 scale-100 translate-y-0"
             }`}
           >
             <WheelStudio3DScene
@@ -4217,7 +4221,7 @@ export default function MagicWheelBoard({
               phase={phase}
               camAngle={camAngle}
               edition={edition}
-              className="w-full h-full"
+              className="absolute inset-0 w-full h-full"
             />
           </div>
         </div>
@@ -4650,56 +4654,58 @@ export default function MagicWheelBoard({
             </div>
 
             {/* SÂN KHẤU TRUYỀN HÌNH 3D: Cánh Gà Trái + Bảng Video Wall 56 Ô + Cánh Gà Phải + Sàn Runway Liền Mạch */}
-            <div className="w-full max-w-6xl flex flex-col items-center relative z-10 px-2 sm:px-4 md:px-6">
+            <div className={`w-full ${isDisplay ? "max-w-6xl px-2 sm:px-4 md:px-6" : "w-full max-w-full px-0 sm:px-1 md:px-2"} flex flex-col items-center relative z-10`}>
               {/* Proscenium Row: Left Wing - Center Board - Right Wing */}
-              <div className="w-full flex items-stretch justify-center gap-2 sm:gap-3 md:gap-4 relative">
+              <div className="w-full flex items-stretch justify-center gap-1 sm:gap-2 md:gap-3 relative">
                 {/* Trụ Tháp 3D Cánh Trái - Nơi Người Mẫu Đứng Trực Tiếp Vững Chãi */}
-                <div className="hidden md:flex flex-col items-center justify-end w-24 sm:w-28 md:w-32 lg:w-36 shrink-0 relative py-1 select-none pointer-events-none">
-                  <div 
-                    className="absolute inset-x-0 top-1 bottom-4 rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2.5 flex flex-col items-center justify-between overflow-hidden ring-1 ring-yellow-400/40"
-                    style={{
-                      boxShadow: "inset 0 3px 6px rgba(255,255,255,0.15), inset -4px 0 10px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.95)",
-                    }}
-                  >
-                    {/* Khe tản nhiệt cơ khí & đèn tín hiệu studio */}
-                    <div className="w-full flex items-center justify-between px-2 pt-0.5 opacity-70">
-                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-pulse" />
-                      <div className="h-0.5 w-12 sm:w-16 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse" />
+                {(isDisplay || showHostess) && (
+                  <div className={`hidden md:flex flex-col items-center justify-end ${isDisplay ? "w-24 sm:w-28 md:w-32 lg:w-36" : "w-16 sm:w-20 md:w-24"} shrink-0 relative py-1 select-none pointer-events-none`}>
+                    <div 
+                      className="absolute inset-x-0 top-1 bottom-4 rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2.5 flex flex-col items-center justify-between overflow-hidden ring-1 ring-yellow-400/40"
+                      style={{
+                        boxShadow: "inset 0 3px 6px rgba(255,255,255,0.15), inset -4px 0 10px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.95)",
+                      }}
+                    >
+                      {/* Khe tản nhiệt cơ khí & đèn tín hiệu studio */}
+                      <div className="w-full flex items-center justify-between px-2 pt-0.5 opacity-70">
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-pulse" />
+                        <div className="h-0.5 w-12 sm:w-16 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse" />
+                      </div>
+
+                      {/* Dàn đèn LED cột dọc VU-Meter phát sáng đồng bộ */}
+                      <div className="my-auto flex flex-col items-center gap-1.5 py-2 w-full">
+                        {[...Array(9)].map((_, i) => (
+                          <div 
+                            key={i} 
+                            className="w-12 sm:w-16 h-1.5 rounded-sm bg-gradient-to-r from-emerald-500 via-yellow-400 to-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] opacity-80"
+                            style={{ animation: `pulse ${1.1 + i * 0.15}s infinite ease-in-out` }}
+                          />
+                        ))}
+                      </div>
                     </div>
 
-                    {/* Dàn đèn LED cột dọc VU-Meter phát sáng đồng bộ */}
-                    <div className="my-auto flex flex-col items-center gap-1.5 py-2 w-full">
-                      {[...Array(9)].map((_, i) => (
-                        <div 
-                          key={i} 
-                          className="w-12 sm:w-16 h-1.5 rounded-sm bg-gradient-to-r from-emerald-500 via-yellow-400 to-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] opacity-80"
-                          style={{ animation: `pulse ${1.1 + i * 0.15}s infinite ease-in-out` }}
+                    {/* NGƯỜI MẪU ĐỨNG NGUYÊN VẸN TRÊN BỤC VÀNG CÁNH TRÁI */}
+                    {showHostess && (
+                      <div className="relative z-30 mb-[-4px] flex flex-col items-center pointer-events-none">
+                        <HostessTVStage
+                          pose={hostessPose}
+                          facing={hostessFacing}
+                          activeRow={hostessActiveRow}
                         />
-                      ))}
+                      </div>
+                    )}
+
+                    {/* Bục tròn 3D mạ vàng vươn nhẹ phía trước dành cho Người Mẫu */}
+                    <div className="w-22 sm:w-26 h-8 rounded-full border-2 border-amber-400 bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 shadow-[0_8px_20px_rgba(0,0,0,0.9),0_0_25px_rgba(245,158,11,0.6)] flex items-center justify-center relative z-20">
+                      <div className="w-16 sm:w-20 h-3.5 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
                     </div>
                   </div>
-
-                  {/* NGƯỜI MẪU ĐỨNG NGUYÊN VẸN TRÊN BỤC VÀNG CÁNH TRÁI */}
-                  {showHostess && (
-                    <div className="relative z-30 mb-[-4px] flex flex-col items-center pointer-events-none">
-                      <HostessTVStage
-                        pose={hostessPose}
-                        facing={hostessFacing}
-                        activeRow={hostessActiveRow}
-                      />
-                    </div>
-                  )}
-
-                  {/* Bục tròn 3D mạ vàng vươn nhẹ phía trước dành cho Người Mẫu */}
-                  <div className="w-22 sm:w-26 h-8 rounded-full border-2 border-amber-400 bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 shadow-[0_8px_20px_rgba(0,0,0,0.9),0_0_25px_rgba(245,158,11,0.6)] flex items-center justify-center relative z-20">
-                    <div className="w-16 sm:w-20 h-3.5 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
-                  </div>
-                </div>
+                )}
 
                 {/* Bảng Video Wall 3D Trung Tâm (14 Cột Ô Chữ Hoàn Toàn Rõ Ràng) */}
-                <div className="flex-1 min-w-0 max-w-5xl">
-                  <div className="w-full p-2.5 sm:p-3.5 md:p-4 rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40">
+                <div className="flex-1 min-w-0 w-full max-w-6xl">
+                  <div className={`w-full ${isDisplay ? "p-2.5 sm:p-3.5 md:p-4" : "p-1.5 sm:p-2.5 md:p-3"} rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40`}>
                     <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5 md:gap-2">
                     {gridMatrix.map((row, rIdx) => (
                       <div
@@ -4716,11 +4722,11 @@ export default function MagicWheelBoard({
                             return (
                               <div
                                 key={cIdx}
-                                className="w-full aspect-[3/4] min-h-[clamp(24px,3.5vw,52px)] rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none"
+                                className="w-full aspect-[4/5] sm:aspect-[5/6] min-h-0 min-w-0 rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80 select-none"
                               >
                                 <svg
                                   viewBox="0 0 24 24"
-                                  className="w-3 h-3 sm:w-4 sm:h-4 text-[#2a7a33] opacity-60 fill-current"
+                                  className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-[#2a7a33] opacity-60 fill-current"
                                 >
                                   <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
                                 </svg>
@@ -4752,7 +4758,7 @@ export default function MagicWheelBoard({
                                   }
                                 }
                               }}
-                              className={`w-full aspect-[3/4] min-h-[clamp(24px,3.5vw,52px)] rounded font-black flex items-center justify-center select-none ${
+                              className={`w-full aspect-[4/5] sm:aspect-[5/6] min-h-0 min-w-0 rounded font-black flex items-center justify-center select-none ${
                                 isJustCut ? "animate-vtv3-tile-cut" : ""
                               } ${
                                 isPopping
@@ -4768,7 +4774,7 @@ export default function MagicWheelBoard({
                                   : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
                               }`}
                             >
-                              <span className={`${isTossUpRound ? "text-base sm:text-xl md:text-3xl lg:text-4xl" : "text-sm sm:text-lg md:text-2xl lg:text-3xl"} font-black tracking-tight`}>
+                              <span className={`${isTossUpRound ? "text-base sm:text-xl md:text-2xl lg:text-3xl" : "text-xs sm:text-base md:text-xl lg:text-2xl"} font-black tracking-tight leading-none`}>
                                 {cell.isRevealed
                                   ? cell.displayChar
                                   : isLuckyGreen
@@ -4788,38 +4794,40 @@ export default function MagicWheelBoard({
                 </div>
               </div>
 
-              {/* Trụ Tháp 3D Cánh Phải - Đối Xứng Cơ Khí Studio (Không Dùng Chữ 2D) */}
-              <div className="hidden md:flex flex-col items-center justify-between w-24 sm:w-28 md:w-32 lg:w-36 shrink-0 relative py-1 select-none pointer-events-none">
-                <div 
-                  className="w-full h-full rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2.5 flex flex-col items-center justify-between relative overflow-hidden ring-1 ring-yellow-400/40"
-                  style={{
-                    boxShadow: "inset 0 3px 6px rgba(255,255,255,0.15), inset 4px 0 10px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.95)",
-                  }}
-                >
-                  {/* Khe tản nhiệt cơ khí & đèn tín hiệu studio */}
-                  <div className="w-full flex items-center justify-between px-2 pt-0.5 opacity-70">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse" />
-                    <div className="h-0.5 w-12 sm:w-16 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-pulse" />
-                  </div>
+              {/* Trụ Tháp 3D Cánh Phải - Đối Xứng Cơ Khí Studio (Chỉ hiển thị trên Display toàn màn hình, trên Host/MC ẩn đi để tối đa hóa 100% diện tích cho 14 cột ô chữ) */}
+              {isDisplay && (
+                <div className="hidden md:flex flex-col items-center justify-between w-24 sm:w-28 md:w-32 lg:w-36 shrink-0 relative py-1 select-none pointer-events-none">
+                  <div 
+                    className="w-full h-full rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2.5 flex flex-col items-center justify-between relative overflow-hidden ring-1 ring-yellow-400/40"
+                    style={{
+                      boxShadow: "inset 0 3px 6px rgba(255,255,255,0.15), inset 4px 0 10px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.95)",
+                    }}
+                  >
+                    {/* Khe tản nhiệt cơ khí & đèn tín hiệu studio */}
+                    <div className="w-full flex items-center justify-between px-2 pt-0.5 opacity-70">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse" />
+                      <div className="h-0.5 w-12 sm:w-16 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-pulse" />
+                    </div>
 
-                  {/* Dàn đèn LED cột dọc VU-Meter phát sáng đồng bộ */}
-                  <div className="my-auto flex flex-col items-center gap-1.5 py-2 w-full">
-                    {[...Array(9)].map((_, i) => (
-                      <div 
-                        key={i} 
-                        className="w-12 sm:w-16 h-1.5 rounded-sm bg-gradient-to-r from-emerald-500 via-yellow-400 to-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] opacity-80"
-                        style={{ animation: `pulse ${1.1 + (8 - i) * 0.15}s infinite ease-in-out` }}
-                      />
-                    ))}
-                  </div>
+                    {/* Dàn đèn LED cột dọc VU-Meter phát sáng đồng bộ */}
+                    <div className="my-auto flex flex-col items-center gap-1.5 py-2 w-full">
+                      {[...Array(9)].map((_, i) => (
+                        <div 
+                          key={i} 
+                          className="w-12 sm:w-16 h-1.5 rounded-sm bg-gradient-to-r from-emerald-500 via-yellow-400 to-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] opacity-80"
+                          style={{ animation: `pulse ${1.1 + (8 - i) * 0.15}s infinite ease-in-out` }}
+                        />
+                      ))}
+                    </div>
 
-                  {/* Bục tròn 3D mạ vàng đối xứng */}
-                  <div className="w-22 sm:w-26 h-8 rounded-full border-2 border-amber-400 bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 shadow-[0_8px_20px_rgba(0,0,0,0.9),0_0_25px_rgba(245,158,11,0.6)] flex items-center justify-center transform translate-y-1">
-                    <div className="w-16 sm:w-20 h-3.5 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
+                    {/* Bục tròn 3D mạ vàng đối xứng */}
+                    <div className="w-22 sm:w-26 h-8 rounded-full border-2 border-amber-400 bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 shadow-[0_8px_20px_rgba(0,0,0,0.9),0_0_25px_rgba(245,158,11,0.6)] flex items-center justify-center transform translate-y-1">
+                      <div className="w-16 sm:w-20 h-3.5 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Sàn Sân Khấu Gỗ Bóng Mahogany & Dải Đèn Chân Vàng Sang Trọng (Liền Mạch Toàn Sân Khấu) */}

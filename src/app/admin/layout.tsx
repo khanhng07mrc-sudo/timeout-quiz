@@ -305,9 +305,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <main
           className={`${
             sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
-          } flex-1 p-3 sm:p-4 lg:p-6 pt-16 lg:pt-6 min-h-screen transition-all duration-200`}
+          } flex-1 p-2 sm:p-3 lg:px-4 lg:py-2.5 pt-16 lg:pt-2.5 min-h-screen flex flex-col transition-all duration-200`}
         >
-          <div key={pathname} className="w-full max-w-full animate-fade-in">
+          <div key={pathname} className="w-full max-w-full flex-1 flex flex-col min-h-0 animate-fade-in">
             {children}
           </div>
         </main>

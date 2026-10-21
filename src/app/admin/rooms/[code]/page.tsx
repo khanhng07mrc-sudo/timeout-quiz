@@ -1128,9 +1128,9 @@ export default function AdminRoomPage() {
         </div>
       )}
 
-      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 ${isPlayingOrPaused ? "flex-1 min-h-0" : "gap-6"}`}>
+      <div className={`grid grid-cols-1 ${roomState?.mode === "MAGIC_WHEEL" ? "lg:grid-cols-12" : "lg:grid-cols-2"} gap-3 sm:gap-4 ${isPlayingOrPaused ? "flex-1 min-h-0" : "gap-6"}`}>
         {/* Game controls */}
-        <div className={`glass rounded-2xl p-4 sm:p-5 space-y-3.5 ${isPlayingOrPaused ? "overflow-y-auto min-h-0 flex flex-col justify-between" : "p-6 space-y-4"}`}>
+        <div className={`glass rounded-2xl p-4 sm:p-5 space-y-3.5 ${roomState?.mode === "MAGIC_WHEEL" ? "lg:col-span-8 2xl:col-span-9" : ""} ${isPlayingOrPaused ? "overflow-y-auto min-h-0 flex flex-col justify-between" : "p-6 space-y-4"}`}>
           <h2 className="font-bold text-lg">⚡ Điều khiển game</h2>
 
           {/* Match warmup countdown banner with Skip button */}
@@ -2403,27 +2403,158 @@ export default function AdminRoomPage() {
           )}
         </div>
 
-        {/* Leaderboard */}
-        <div className={`glass rounded-2xl p-4 sm:p-5 ${isPlayingOrPaused ? "overflow-y-auto min-h-0 flex flex-col justify-between" : "p-6"}`}>
-          <h2 className="font-bold text-lg mb-4 inline-flex items-center gap-2">
-            <SystemIcon name="trophy" className="w-5 h-5 text-amber-400 shrink-0" />
-            <span>Bảng xếp hạng</span>
-          </h2>
-          <div className="space-y-2">
-            {sortedEntries.slice(0, 10).map((entry: any, i) => (
-              <div key={entry.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: `${entry.color ?? "#6366f1"}20` }}>
-                <span className="w-8 text-lg font-black text-center">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}</span>
-                <div className="flex-1">
-                  <p className="font-medium truncate">{entry.name}</p>
-                  <p className="text-xs text-muted-foreground">{entry.playerCount !== undefined ? `${entry.playerCount} người` : ""}</p>
-                </div>
-                <span className="font-black text-cyan-400">{entry.score.toLocaleString()}</span>
-              </div>
-            ))}
-            {sortedEntries.length === 0 && (
-              <p className="text-muted-foreground text-center py-4">Chưa có người tham gia</p>
+        {/* Column 2: Leaderboard & Live Team Scores (Cockpit view when playing) */}
+        <div className={`glass rounded-2xl p-3 sm:p-4 ${roomState?.mode === "MAGIC_WHEEL" ? "lg:col-span-4 2xl:col-span-3" : ""} ${isPlayingOrPaused ? "overflow-y-auto min-h-0 flex flex-col gap-2.5" : "p-6"}`}>
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-base sm:text-lg inline-flex items-center gap-2">
+              <SystemIcon name="trophy" className="w-5 h-5 text-amber-400 shrink-0" />
+              <span>{isPlayingOrPaused ? "Bảng điểm & Đội thi trực tiếp" : "Bảng xếp hạng"}</span>
+            </h2>
+            {isPlayingOrPaused && roomState?.teamMode === "TEAM" && (
+              <span className="text-xs text-muted-foreground font-mono">
+                {roomState.teams.length} đội · {roomState.players.length} người
+              </span>
             )}
           </div>
+
+          {isPlayingOrPaused && roomState?.teamMode === "TEAM" ? (
+            <div className="space-y-2 flex-1 overflow-y-auto pr-1">
+              {roomState.teams
+                .slice()
+                .sort((a, b) => b.score - a.score)
+                .map((team, rankIdx) => {
+                  const members = roomState.players.filter((p) => p.teamId === team.id);
+                  const isCurrentTurn = roomState.magicWheelState?.currentTurnTeamId === team.id;
+                  const roundScore = roomState.magicWheelState?.roundScores?.[team.id] || 0;
+
+                  return (
+                    <div
+                      key={team.id}
+                      className={`p-2.5 rounded-xl border transition-all ${
+                        isCurrentTurn
+                          ? "bg-purple-900/35 border-amber-400 shadow-md shadow-amber-500/20 ring-1 ring-amber-400/50"
+                          : "bg-slate-900/40 border-border/70 hover:border-border"
+                      }`}
+                      style={{ borderLeft: `4px solid ${team.color || "#6366f1"}` }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-6 text-sm font-black text-center shrink-0">
+                            {rankIdx === 0 ? "🥇" : rankIdx === 1 ? "🥈" : rankIdx === 2 ? "🥉" : `${rankIdx + 1}`}
+                          </span>
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 text-white"
+                            style={{ background: team.color || "#6366f1" }}
+                          >
+                            {team.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-xs sm:text-sm truncate">{team.name}</span>
+                              {isCurrentTurn && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40 animate-pulse">
+                                  LƯỢT QUAY
+                                </span>
+                              )}
+                            </div>
+                            {roundScore > 0 && (
+                              <span className="text-[10px] text-emerald-400 font-mono font-semibold block">
+                                Vòng này: +{roundScore.toLocaleString()}đ
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Quick score adjustment controls */}
+                        <div className="flex items-center gap-1.5 shrink-0" title="Chỉnh sửa điểm (Admin/MC)">
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min={0}
+                              step={5}
+                              value={editingTeamScores[team.id] ?? team.score}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseInt(e.target.value) || 0);
+                                setEditingTeamScores((prev) => ({ ...prev, [team.id]: val }));
+                              }}
+                              onBlur={() => {
+                                const val = editingTeamScores[team.id];
+                                if (val !== undefined && val !== team.score) {
+                                  handleUpdateTeamScore(team.id, val);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  const val = editingTeamScores[team.id];
+                                  if (val !== undefined) {
+                                    handleUpdateTeamScore(team.id, val);
+                                  }
+                                }
+                              }}
+                              className="w-16 px-1.5 py-0.5 rounded bg-black/50 border border-border text-center font-mono font-black text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                            />
+                            <span className="text-[10px] text-muted-foreground font-semibold">pts</span>
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateTeamScore(team.id, Math.max(0, team.score + 10))}
+                              className="px-1.5 py-0.5 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 font-mono font-bold text-[10px] cursor-pointer"
+                              title="Cộng 10 điểm"
+                            >
+                              +10
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateTeamScore(team.id, Math.max(0, team.score - 10))}
+                              className="px-1.5 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 font-mono font-bold text-[10px] cursor-pointer"
+                              title="Trừ 10 điểm"
+                            >
+                              -10
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Members pill row */}
+                      {members.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5 pt-1 border-t border-white/5">
+                          {members.map((m) => (
+                            <span
+                              key={m.id}
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium border ${
+                                m.isOnline
+                                  ? "bg-muted/40 text-foreground border-border/40"
+                                  : "bg-red-500/10 text-muted-foreground border-red-500/20"
+                              }`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${m.isOnline ? "bg-green-400" : "bg-gray-500"}`} />
+                              <span>{m.name}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {sortedEntries.slice(0, 10).map((entry: any, i) => (
+                <div key={entry.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: `${entry.color ?? "#6366f1"}20` }}>
+                  <span className="w-8 text-lg font-black text-center">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}</span>
+                  <div className="flex-1">
+                    <p className="font-medium truncate">{entry.name}</p>
+                    <p className="text-xs text-muted-foreground">{entry.playerCount !== undefined ? `${entry.playerCount} người` : ""}</p>
+                  </div>
+                  <span className="font-black text-cyan-400">{entry.score.toLocaleString()}</span>
+                </div>
+              ))}
+              {sortedEntries.length === 0 && (
+                <p className="text-muted-foreground text-center py-4">Chưa có người tham gia</p>
+              )}
+            </div>
+          )}
 
           {/* Essay grading section */}
           {revealPayload?.answers.some((a) => a.isCorrect === null || a.isCorrect === undefined) && (
@@ -2456,239 +2587,241 @@ export default function AdminRoomPage() {
         </div>
       </div>
 
-      {/* Players/Teams grid */}
-      <div className="glass rounded-2xl p-6">
-        {(() => {
-          const offlineCount = (roomState?.players ?? []).filter((p) => !p.isOnline).length;
-          return (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <h2 className="font-bold text-lg inline-flex items-center gap-2">
-                <SystemIcon name="team" className="w-5 h-5 text-cyan-400 shrink-0" />
-                <span>{roomState?.teamMode === "TEAM" ? `Danh sách Đội (${roomState.teams.length}) · Thí sinh: ${roomState.players.length} người` : `Thí sinh (${roomState?.players.length ?? 0})`}</span>
-              </h2>
-              {roomState?.status === "LOBBY" && offlineCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm(`Dọn dẹp và xoá tất cả ${offlineCount} thí sinh offline khỏi phòng?`)) {
-                      socketRef.current?.emit("admin:clean:offline", (res) => {
-                        if (res?.success) alert(`Đã dọn dẹp ${res.count ?? offlineCount} thí sinh offline`);
-                      });
-                    }
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
-                >
-                  <span>🧹</span> Dọn dẹp thí sinh offline ({offlineCount})
-                </button>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* Warning if any players have not picked a team yet */}
-        {roomState?.teamMode === "TEAM" && (() => {
-          const unassigned = roomState.players.filter((p) => !p.teamId);
-          if (unassigned.length === 0) return null;
-          return (
-            <div className="mb-4 p-3.5 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-200 text-sm flex flex-col gap-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">⚠️</span>
-                  <span>
-                    <strong>Thí sinh chưa chọn đội ({unassigned.length}):</strong>
-                  </span>
-                </div>
-                <span className="text-xs text-yellow-400/80 italic">
-                  (Thí sinh cần bấm &quot;Vào đội này&quot; trên thiết bị của họ)
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {unassigned.map((p) => (
-                  <span
-                    key={p.id}
-                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border ${
-                      p.isOnline
-                        ? "bg-yellow-500/20 text-yellow-200 border-yellow-500/30"
-                        : "bg-red-500/10 text-muted-foreground border-red-500/30"
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${p.isOnline ? "bg-green-400" : "bg-gray-500"}`} />
-                    <span>{p.name}</span>
-                    {!p.isOnline && <span className="text-[10px] text-red-400">(offline)</span>}
-                    {roomState?.status === "LOBBY" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm(`Xoá thí sinh "${p.name}" khỏi phòng?`)) {
-                            socketRef.current?.emit("admin:kick:player", { playerId: p.id });
-                          }
-                        }}
-                        className="ml-1 text-muted-foreground hover:text-red-400 cursor-pointer"
-                        title="Xoá thí sinh này"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </span>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
-
-        {roomState?.teamMode === "TEAM" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {roomState.teams.map((team) => {
-              const members = roomState.players.filter((p) => p.teamId === team.id);
-              return (
-                <div
-                  key={team.id}
-                  className="glass rounded-xl p-4 flex flex-col gap-2.5 border border-border/80 hover:border-purple-500/40 transition"
-                  style={{ borderLeft: `4px solid ${team.color}` }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 text-white"
-                        style={{ background: team.color }}
-                      >
-                        {team.name.charAt(0).toUpperCase()}
-                      </div>
-                      <p className="font-bold text-sm truncate">{team.name}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-wrap" title="Chỉnh sửa điểm cho đội này (Admin/MC)">
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min={0}
-                          step={5}
-                          value={editingTeamScores[team.id] ?? team.score}
-                          onChange={(e) => {
-                            const val = Math.max(0, parseInt(e.target.value) || 0);
-                            setEditingTeamScores((prev) => ({ ...prev, [team.id]: val }));
-                          }}
-                          onBlur={() => {
-                            const val = editingTeamScores[team.id];
-                            if (val !== undefined && val !== team.score) {
-                              handleUpdateTeamScore(team.id, val);
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              const val = editingTeamScores[team.id];
-                              if (val !== undefined) {
-                                handleUpdateTeamScore(team.id, val);
-                              }
-                            }
-                          }}
-                          className="w-14 px-1.5 py-0.5 rounded bg-black/40 border border-border text-center font-bold text-xs text-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-400"
-                        />
-                        <span className="text-[10px] text-muted-foreground font-semibold">pts</span>
-                      </div>
-                      <div className="flex items-center gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateTeamScore(team.id, Math.max(0, team.score + 10))}
-                          className="px-1.5 py-0.5 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 font-mono font-bold text-[10px] cursor-pointer"
-                          title="Cộng 10 điểm"
-                        >
-                          +10
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateTeamScore(team.id, Math.max(0, team.score - 10))}
-                          className="px-1.5 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 font-mono font-bold text-[10px] cursor-pointer"
-                          title="Trừ 10 điểm"
-                        >
-                          -10
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-muted-foreground flex items-center justify-between border-t border-border/40 pt-2">
-                    <span>Thành viên:</span>
-                    <span className={`font-semibold ${members.length > 0 ? "text-foreground" : "text-yellow-400/80"}`}>
-                      {members.length} người
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5 min-h-[28px]">
-                    {members.length > 0 ? (
-                      members.map((m) => (
-                        <span
-                          key={m.id}
-                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border ${
-                            m.isOnline
-                              ? "bg-muted/60 text-foreground border-border/50"
-                              : "bg-red-500/10 text-muted-foreground border-red-500/20"
-                          }`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${m.isOnline ? "bg-green-400" : "bg-gray-500"}`} />
-                          <span>{m.name}</span>
-                          {!m.isOnline && <span className="text-[9px] text-red-400 font-normal">(off)</span>}
-                          {roomState?.status === "LOBBY" && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (confirm(`Xoá thí sinh "${m.name}" khỏi phòng?`)) {
-                                  socketRef.current?.emit("admin:kick:player", { playerId: m.id });
-                                }
-                              }}
-                              title="Xoá thí sinh này"
-                              className="ml-0.5 text-muted-foreground hover:text-red-400 transition cursor-pointer"
-                            >
-                              ✕
-                            </button>
-                          )}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground italic">Chưa có ai vào đội</span>
-                    )}
-                  </div>
-                  {team.isEliminated && <p className="text-xs text-red-400 font-bold mt-auto">❌ Đã bị loại</p>}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {(roomState?.players ?? []).map((entry) => (
-              <div key={entry.id} className="glass rounded-xl p-3 text-center relative group">
-                {roomState?.status === "LOBBY" && (
+      {/* Players/Teams grid — Only rendered in LOBBY or FINISHED (in PLAYING it is integrated into Column 2 above to eliminate scrolling) */}
+      {!isPlayingOrPaused && (
+        <div className="glass rounded-2xl p-6">
+          {(() => {
+            const offlineCount = (roomState?.players ?? []).filter((p) => !p.isOnline).length;
+            return (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <h2 className="font-bold text-lg inline-flex items-center gap-2">
+                  <SystemIcon name="team" className="w-5 h-5 text-cyan-400 shrink-0" />
+                  <span>{roomState?.teamMode === "TEAM" ? `Danh sách Đội (${roomState.teams.length}) · Thí sinh: ${roomState.players.length} người` : `Thí sinh (${roomState?.players.length ?? 0})`}</span>
+                </h2>
+                {roomState?.status === "LOBBY" && offlineCount > 0 && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm(`Xoá thí sinh "${entry.name}" khỏi phòng?`)) {
-                        socketRef.current?.emit("admin:kick:player", { playerId: entry.id });
+                      if (confirm(`Dọn dẹp và xoá tất cả ${offlineCount} thí sinh offline khỏi phòng?`)) {
+                        socketRef.current?.emit("admin:clean:offline", (res) => {
+                          if (res?.success) alert(`Đã dọn dẹp ${res.count ?? offlineCount} thí sinh offline`);
+                        });
                       }
                     }}
-                    title="Xoá thí sinh này"
-                    className="absolute top-2 right-2 text-xs text-muted-foreground hover:text-red-400 cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
                   >
-                    ✕
+                    <span>🧹</span> Dọn dẹp thí sinh offline ({offlineCount})
                   </button>
                 )}
-                <div
-                  className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center font-bold text-white relative"
-                  style={{ background: "#6366f1" }}
-                >
-                  {entry.name.charAt(0).toUpperCase()}
-                  <span
-                    className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border border-black ${
-                      entry.isOnline ? "bg-green-400" : "bg-gray-500"
-                    }`}
-                  />
-                </div>
-                <p className="text-sm font-medium truncate">{entry.name}</p>
-                <p className="text-xs text-cyan-400 font-bold">{entry.score} pts</p>
-                {!entry.isOnline && <p className="text-[10px] text-muted-foreground">(offline)</p>}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            );
+          })()}
+
+          {/* Warning if any players have not picked a team yet */}
+          {roomState?.teamMode === "TEAM" && (() => {
+            const unassigned = roomState.players.filter((p) => !p.teamId);
+            if (unassigned.length === 0) return null;
+            return (
+              <div className="mb-4 p-3.5 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-200 text-sm flex flex-col gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">⚠️</span>
+                    <span>
+                      <strong>Thí sinh chưa chọn đội ({unassigned.length}):</strong>
+                    </span>
+                  </div>
+                  <span className="text-xs text-yellow-400/80 italic">
+                    (Thí sinh cần bấm &quot;Vào đội này&quot; trên thiết bị của họ)
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {unassigned.map((p) => (
+                    <span
+                      key={p.id}
+                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border ${
+                        p.isOnline
+                          ? "bg-yellow-500/20 text-yellow-200 border-yellow-500/30"
+                          : "bg-red-500/10 text-muted-foreground border-red-500/30"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${p.isOnline ? "bg-green-400" : "bg-gray-500"}`} />
+                      <span>{p.name}</span>
+                      {!p.isOnline && <span className="text-[10px] text-red-400">(offline)</span>}
+                      {roomState?.status === "LOBBY" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`Xoá thí sinh "${p.name}" khỏi phòng?`)) {
+                              socketRef.current?.emit("admin:kick:player", { playerId: p.id });
+                            }
+                          }}
+                          className="ml-1 text-muted-foreground hover:text-red-400 cursor-pointer"
+                          title="Xoá thí sinh này"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {roomState?.teamMode === "TEAM" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {roomState.teams.map((team) => {
+                const members = roomState.players.filter((p) => p.teamId === team.id);
+                return (
+                  <div
+                    key={team.id}
+                    className="glass rounded-xl p-4 flex flex-col gap-2.5 border border-border/80 hover:border-purple-500/40 transition"
+                    style={{ borderLeft: `4px solid ${team.color}` }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 text-white"
+                          style={{ background: team.color }}
+                        >
+                          {team.name.charAt(0).toUpperCase()}
+                        </div>
+                        <p className="font-bold text-sm truncate">{team.name}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap" title="Chỉnh sửa điểm cho đội này (Admin/MC)">
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={0}
+                            step={5}
+                            value={editingTeamScores[team.id] ?? team.score}
+                            onChange={(e) => {
+                              const val = Math.max(0, parseInt(e.target.value) || 0);
+                              setEditingTeamScores((prev) => ({ ...prev, [team.id]: val }));
+                            }}
+                            onBlur={() => {
+                              const val = editingTeamScores[team.id];
+                              if (val !== undefined && val !== team.score) {
+                                handleUpdateTeamScore(team.id, val);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const val = editingTeamScores[team.id];
+                                if (val !== undefined) {
+                                  handleUpdateTeamScore(team.id, val);
+                                }
+                              }
+                            }}
+                            className="w-14 px-1.5 py-0.5 rounded bg-black/40 border border-border text-center font-bold text-xs text-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                          />
+                          <span className="text-[10px] text-muted-foreground font-semibold">pts</span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateTeamScore(team.id, Math.max(0, team.score + 10))}
+                            className="px-1.5 py-0.5 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 font-mono font-bold text-[10px] cursor-pointer"
+                            title="Cộng 10 điểm"
+                          >
+                            +10
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateTeamScore(team.id, Math.max(0, team.score - 10))}
+                            className="px-1.5 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 font-mono font-bold text-[10px] cursor-pointer"
+                            title="Trừ 10 điểm"
+                          >
+                            -10
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground flex items-center justify-between border-t border-border/40 pt-2">
+                      <span>Thành viên:</span>
+                      <span className={`font-semibold ${members.length > 0 ? "text-foreground" : "text-yellow-400/80"}`}>
+                        {members.length} người
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+                      {members.length > 0 ? (
+                        members.map((m) => (
+                          <span
+                            key={m.id}
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border ${
+                              m.isOnline
+                                ? "bg-muted/60 text-foreground border-border/50"
+                                : "bg-red-500/10 text-muted-foreground border-red-500/20"
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${m.isOnline ? "bg-green-400" : "bg-gray-500"}`} />
+                            <span>{m.name}</span>
+                            {!m.isOnline && <span className="text-[9px] text-red-400 font-normal">(off)</span>}
+                            {roomState?.status === "LOBBY" && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm(`Xoá thí sinh "${m.name}" khỏi phòng?`)) {
+                                    socketRef.current?.emit("admin:kick:player", { playerId: m.id });
+                                  }
+                                }}
+                                title="Xoá thí sinh này"
+                                className="ml-0.5 text-muted-foreground hover:text-red-400 transition cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground italic">Chưa có ai vào đội</span>
+                      )}
+                    </div>
+                    {team.isEliminated && <p className="text-xs text-red-400 font-bold mt-auto">❌ Đã bị loại</p>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {(roomState?.players ?? []).map((entry) => (
+                <div key={entry.id} className="glass rounded-xl p-3 text-center relative group">
+                  {roomState?.status === "LOBBY" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`Xoá thí sinh "${entry.name}" khỏi phòng?`)) {
+                          socketRef.current?.emit("admin:kick:player", { playerId: entry.id });
+                        }
+                      }}
+                      title="Xoá thí sinh này"
+                      className="absolute top-2 right-2 text-xs text-muted-foreground hover:text-red-400 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <div
+                    className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center font-bold text-white relative"
+                    style={{ background: "#6366f1" }}
+                  >
+                    {entry.name.charAt(0).toUpperCase()}
+                    <span
+                      className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border border-black ${
+                        entry.isOnline ? "bg-green-400" : "bg-gray-500"
+                      }`}
+                    />
+                  </div>
+                  <p className="text-sm font-medium truncate">{entry.name}</p>
+                  <p className="text-xs text-cyan-400 font-bold">{entry.score} pts</p>
+                  {!entry.isOnline && <p className="text-[10px] text-muted-foreground">(offline)</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Rules Modal */}
       <GameModeRulesModal

@@ -1138,7 +1138,7 @@ export default function DisplayPage() {
             <MysteryQuestBoard mysteryState={roomState.mysteryQuestState!} isDisplay={true} teams={roomState.teams} />
           </div>
         ) : isMagicWheel ? (
-          <div className="w-full max-w-7xl mx-auto flex-1 flex flex-col justify-center overflow-hidden animate-slide-up">
+          <div className="w-full h-full flex-1 flex flex-col justify-center overflow-hidden animate-slide-up">
             <MagicWheelBoard
               wheelState={roomState.magicWheelState!}
               isDisplay={true}
@@ -1511,7 +1511,7 @@ export default function DisplayPage() {
 
   return (
     <div
-      className={`h-screen max-h-[100dvh] overflow-hidden flex flex-col ${layoutGridClass} gap-2 p-2 relative animate-loaded-reveal select-none ${
+      className={`h-screen max-h-[100dvh] overflow-hidden flex flex-col ${layoutGridClass} ${isMagicWheelMode ? "p-0 gap-0" : "gap-2 p-2"} relative animate-loaded-reveal select-none ${
         highContrast ? "contrast-125 bg-black" : ""
       }`}
       onClick={handleUnlockAudio}
@@ -1603,7 +1603,7 @@ export default function DisplayPage() {
       ))}
 
       {/* Main content area */}
-      <div className="flex flex-col gap-2 min-w-0 min-h-0 flex-1 overflow-y-auto lg:overflow-hidden justify-between">
+      <div className={`flex flex-col ${isMagicWheelMode ? "gap-0" : "gap-2"} min-w-0 min-h-0 flex-1 overflow-y-auto lg:overflow-hidden justify-between`}>
         {/* Powerup notification */}
         {lastPowerup && (
           <div className="glass rounded-xl p-4 flex items-center gap-3 animate-bounce-in border border-purple-500/50 shadow-xl">
@@ -2395,7 +2395,7 @@ export default function DisplayPage() {
                 />
               </div>
             ) : roomState.mode === "MAGIC_WHEEL" && roomState.magicWheelState ? (
-              <div className="w-full max-w-7xl h-full flex flex-col justify-center overflow-hidden my-auto">
+              <div className="w-full h-full flex flex-col justify-center overflow-hidden my-auto">
                 <MagicWheelBoard
                   wheelState={roomState.magicWheelState}
                   isDisplay={true}

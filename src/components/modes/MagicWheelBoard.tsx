@@ -1002,6 +1002,30 @@ function WheelDiscSvg({
           <feDropShadow dx="0" dy="0" stdDeviation="8" floodColor="#fbbf24" floodOpacity="0.95" />
           <feDropShadow dx="0" dy="0" stdDeviation="16" floodColor="#f59e0b" floodOpacity="0.8" />
         </filter>
+
+        {/* ── 3D CONICAL SLOPE SHADING (Độ dốc hình nón từ tâm cao xuống vành ngoài) ── */}
+        <radialGradient id="wheelConicalSlope3D" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.32" />
+          <stop offset="22%" stopColor="#ffffff" stopOpacity="0.18" />
+          <stop offset="50%" stopColor="#ffffff" stopOpacity="0.02" />
+          <stop offset="76%" stopColor="#000000" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0.55" />
+        </radialGradient>
+
+        {/* ── STUDIO OVERHEAD KEY-LIGHT (Ánh đèn sân khấu chuyên nghiệp rọi góc 10h) ── */}
+        <radialGradient id="wheelStudioSpotlight" cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.28" />
+          <stop offset="35%" stopColor="#ffffff" stopOpacity="0.08" />
+          <stop offset="70%" stopColor="#000000" stopOpacity="0.10" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0.45" />
+        </radialGradient>
+
+        {/* ── 3D WEDGE BEVEL RIBS: Gờ Ngăn Ô Kim Loại Nổi Khối (Cạnh Phản Quang & Đổ Bóng) ── */}
+        <linearGradient id="wedgeRibHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fef08a" stopOpacity="0.95" />
+          <stop offset="50%" stopColor="#ffffff" stopOpacity="0.75" />
+          <stop offset="100%" stopColor="#cbd5e1" stopOpacity="0.35" />
+        </linearGradient>
       </defs>
 
       {/* ── INTEGRATED 3D GOLD RIM & BEZEL COLLAR (Perfect Vector Alignment) ── */}
@@ -1185,14 +1209,24 @@ function WheelDiscSvg({
               filter={isWinningSector ? "url(#winningSliceGlow)" : undefined}
             />
 
+            {/* ── 3D Wedge Bevel Ribs: Cạnh Đổ Bóng & Cạnh Phản Quang Kim Loại Tạo Độ Dày Cơ Học ── */}
             <line
               x1={cx}
               y1={cy}
               x2={x1}
               y2={y1}
-              stroke="#ffffff"
-              strokeWidth="0.6"
-              strokeOpacity="0.3"
+              stroke="#000000"
+              strokeWidth="1.6"
+              strokeOpacity="0.55"
+            />
+            <line
+              x1={cx}
+              y1={cy}
+              x2={x1}
+              y2={y1}
+              stroke="url(#wedgeRibHighlight)"
+              strokeWidth="0.8"
+              strokeOpacity="0.75"
             />
 
             <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
@@ -1253,7 +1287,16 @@ function WheelDiscSvg({
         );
       })}
 
-      <circle cx="220" cy="220" r="190" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.4" />
+      {/* ── 3D CONICAL SLOPE SHADING & STUDIO LIGHTING OVERLAYS (Dốc xuống từ tâm ra) ── */}
+      <circle cx="220" cy="220" r="201" fill="url(#wheelConicalSlope3D)" pointerEvents="none" />
+      <circle cx="220" cy="220" r="201" fill="url(#wheelStudioSpotlight)" pointerEvents="none" />
+      {/* ── AMBIENT OCCLUSION RIM SHADOW & GOLD BEZEL ACCENT ── */}
+      <circle cx="220" cy="220" r="201" fill="none" stroke="#000000" strokeWidth="8" opacity="0.32" pointerEvents="none" />
+      <circle cx="220" cy="220" r="197" fill="none" stroke="#fef08a" strokeWidth="0.8" strokeDasharray="4 4" opacity="0.4" pointerEvents="none" />
+      <circle cx="220" cy="220" r="190" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.4" pointerEvents="none" />
+
+      {/* ── BÓNG ĐỔ NỔI CAO CỦA TRỤC XOAY TRUNG TÂM (Elevated Hub Shadow Ring) ── */}
+      <circle cx="220" cy="224" r="52" fill="#000000" opacity="0.55" pointerEvents="none" />
 
       <g filter="url(#hubDropShadow)">
         <circle cx="220" cy="220" r="48" fill="url(#chromeCollarGrad)" stroke="#0f172a" strokeWidth="1.5" />
@@ -1980,24 +2023,33 @@ export default function MagicWheelBoard({
     }
 
     // In Toss-Up running mode, if 1 letter is revealed via tick, handle it according to Toss-Up rules
-    // (Highlight trước, chờ 1s rồi mới lật mở chữ cái kèm hiệu ứng âm thanh)
+    // (CHỈ CÓ CHỮ ĐẦU TIÊN được highlight xanh đậm, các chữ tiếp theo lật mở trực tiếp)
     if (roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2") {
       newLetters.forEach((tileIdx) => {
         if (!animRevealedIndicesRef.current.has(tileIdx)) {
-          setHighlightedIndices((prev) => new Set([...prev, tileIdx]));
-          if (canPlayBoardAudio) soundManager.playMagicWheelMark();
+          const isFirstTossUpLetter = animRevealedIndicesRef.current.size === 0;
 
-          const t = setTimeout(() => {
-            setHighlightedIndices((prev) => {
-              const next = new Set(prev);
-              next.delete(tileIdx);
-              return next;
-            });
+          if (isFirstTossUpLetter) {
+            setHighlightedIndices((prev) => new Set([...prev, tileIdx]));
+            if (canPlayBoardAudio) soundManager.playMagicWheelMark();
+
+            const t = setTimeout(() => {
+              setHighlightedIndices((prev) => {
+                const next = new Set(prev);
+                next.delete(tileIdx);
+                return next;
+              });
+              triggerTilePop(tileIdx);
+              if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
+              setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
+            }, 750);
+            activeTimersRef.current.push(t);
+          } else {
+            // Các chữ cái tiếp theo sau chữ đầu tiên: lật mở trực tiếp, không qua highlight
             triggerTilePop(tileIdx);
             if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
             setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
-          }, 1000);
-          activeTimersRef.current.push(t);
+          }
         }
       });
       return;
@@ -3030,18 +3082,35 @@ export default function MagicWheelBoard({
       <div className={`w-full ${isDisplayMode ? "max-w-4xl" : "max-w-6xl"} flex flex-col items-center relative py-0.5 px-1 sm:px-2 md:px-4`}>
         {/* Stage Proscenium: Cánh Gà Trái + Bảng 56 Ô + Cánh Gà Phải */}
         <div className="w-full flex items-stretch justify-center gap-1.5 sm:gap-2 md:gap-3 relative">
-          {/* Cánh Gà Trái (Stage Left Wing - Bục Nghỉ Người Mẫu) */}
-          <div className="hidden md:flex flex-col items-center justify-between w-18 sm:w-22 md:w-26 lg:w-30 shrink-0 relative py-1 select-none pointer-events-none">
-            <div className="w-full h-full rounded-xl bg-gradient-to-b from-[#0a1f10] via-[#041407] to-[#020b04] border border-amber-500/50 p-1.5 flex flex-col items-center justify-between relative shadow-xl overflow-hidden ring-1 ring-yellow-400/30">
-              <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
-              <div className="w-full flex items-center justify-center gap-1 opacity-80 pt-0.5">
-                <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-[9px] font-black tracking-widest text-amber-300 uppercase">CÁNH TRÁI</span>
-                <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+          {/* Trụ Tháp 3D Cánh Trái - Phần Cứng Studio Nguyên Khối (Không Dùng Chữ 2D Thô) */}
+          <div className="hidden md:flex flex-col items-center justify-between w-20 sm:w-24 md:w-28 lg:w-32 shrink-0 relative py-1 select-none pointer-events-none">
+            <div 
+              className="w-full h-full rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2 flex flex-col items-center justify-between relative overflow-hidden ring-1 ring-yellow-400/40"
+              style={{
+                boxShadow: "inset 0 3px 6px rgba(255,255,255,0.12), inset -4px 0 10px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.95)",
+              }}
+            >
+              {/* Khe tản nhiệt cơ khí & đèn tín hiệu studio */}
+              <div className="w-full flex items-center justify-between px-1.5 pt-0.5 opacity-70">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-pulse" />
+                <div className="h-0.5 w-10 sm:w-14 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse" />
               </div>
-              <div className="w-14 h-32 bg-gradient-to-b from-amber-400/20 via-yellow-400/5 to-transparent blur-lg pointer-events-none" />
-              <div className="w-14 sm:w-18 h-5 rounded-full border border-amber-400/70 bg-gradient-to-r from-amber-900/80 via-yellow-600/50 to-amber-900/80 shadow-[0_0_15px_rgba(245,158,11,0.4)] flex items-center justify-center mb-0.5">
-                <div className="w-10 sm:w-14 h-2.5 rounded-full bg-yellow-400/30 border border-yellow-300/60" />
+
+              {/* Dàn đèn LED cột dọc VU-Meter phát sáng đồng bộ */}
+              <div className="my-auto flex flex-col items-center gap-1.5 py-2 w-full">
+                {[...Array(8)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="w-10 sm:w-14 h-1.5 rounded-sm bg-gradient-to-r from-emerald-500 via-yellow-400 to-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] opacity-80"
+                    style={{ animation: `pulse ${1.1 + i * 0.15}s infinite ease-in-out` }}
+                  />
+                ))}
+              </div>
+
+              {/* Bục tròn 3D mạ vàng vươn nhẹ phía trước dành cho Người Mẫu */}
+              <div className="w-20 sm:w-24 h-7 rounded-full border-2 border-amber-400 bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 shadow-[0_6px_16px_rgba(0,0,0,0.9),0_0_20px_rgba(245,158,11,0.5)] flex items-center justify-center transform translate-y-0.5">
+                <div className="w-14 sm:w-18 h-3 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
               </div>
             </div>
           </div>
@@ -3102,7 +3171,7 @@ export default function MagicWheelBoard({
                           : isLuckyGreen
                           ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
                           : cell.isHighlighted
-                          ? "bg-gradient-to-tr from-cyan-400 via-sky-300 to-cyan-200 text-transparent border-2 border-white scale-110 shadow-[0_0_35px_#06b6d4,0_0_15px_#38bdf8] animate-pulse z-20"
+                          ? "bg-gradient-to-tr from-[#0a1f44] via-[#1e40af] to-[#0284c7] text-transparent border-2 border-cyan-300 scale-110 shadow-[0_0_35px_#1d4ed8,0_0_20px_#0284c7] animate-pulse z-20"
                           : cell.isRevealed
                           ? "bg-white text-[#0f172a] shadow-[0_4px_12px_rgba(255,255,255,0.45)] border-2 border-white scale-100"
                           : phase === "LUCKY_PICK"
@@ -3110,7 +3179,7 @@ export default function MagicWheelBoard({
                           : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
                       }`}
                     >
-                      <span className={`font-black tracking-tight ${isDisplayMode ? "text-[11px] sm:text-sm md:text-lg lg:text-xl" : "text-sm sm:text-lg md:text-2xl lg:text-3xl"}`}>
+                      <span className={`font-black tracking-tight ${isDisplayMode ? (isTossUpRound ? "text-xs sm:text-base md:text-xl lg:text-2xl" : "text-[11px] sm:text-sm md:text-lg lg:text-xl") : (isTossUpRound ? "text-base sm:text-xl md:text-3xl lg:text-4xl" : "text-sm sm:text-lg md:text-2xl lg:text-3xl")}`}>
                         {cell.isRevealed ? cell.displayChar : isLuckyGreen ? "✓" : cell.isHighlighted ? "" : phase === "LUCKY_PICK" ? "🍀" : "?"}
                       </span>
                     </div>
@@ -3122,18 +3191,35 @@ export default function MagicWheelBoard({
         </div>
       </div>
 
-      {/* Cánh Gà Phải (Stage Right Wing - Đối Xứng) */}
-      <div className="hidden md:flex flex-col items-center justify-between w-18 sm:w-22 md:w-26 lg:w-30 shrink-0 relative py-1 select-none pointer-events-none">
-        <div className="w-full h-full rounded-xl bg-gradient-to-b from-[#0a1f10] via-[#041407] to-[#020b04] border border-amber-500/50 p-1.5 flex flex-col items-center justify-between relative shadow-xl overflow-hidden ring-1 ring-yellow-400/30">
-          <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
-          <div className="w-full flex items-center justify-center gap-1 opacity-80 pt-0.5">
-            <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-[9px] font-black tracking-widest text-amber-300 uppercase">CÁNH PHẢI</span>
-            <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+      {/* Trụ Tháp 3D Cánh Phải - Đối Xứng Cơ Khí Studio (Không Dùng Chữ 2D Thô) */}
+      <div className="hidden md:flex flex-col items-center justify-between w-20 sm:w-24 md:w-28 lg:w-32 shrink-0 relative py-1 select-none pointer-events-none">
+        <div 
+          className="w-full h-full rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2 flex flex-col items-center justify-between relative overflow-hidden ring-1 ring-yellow-400/40"
+          style={{
+            boxShadow: "inset 0 3px 6px rgba(255,255,255,0.12), inset 4px 0 10px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.95)",
+          }}
+        >
+          {/* Khe tản nhiệt cơ khí & đèn tín hiệu studio */}
+          <div className="w-full flex items-center justify-between px-1.5 pt-0.5 opacity-70">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse" />
+            <div className="h-0.5 w-10 sm:w-14 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-pulse" />
           </div>
-          <div className="w-14 h-32 bg-gradient-to-b from-amber-400/20 via-yellow-400/5 to-transparent blur-lg pointer-events-none" />
-          <div className="w-14 sm:w-18 h-5 rounded-full border border-amber-400/70 bg-gradient-to-r from-amber-900/80 via-yellow-600/50 to-amber-900/80 shadow-[0_0_15px_rgba(245,158,11,0.4)] flex items-center justify-center mb-0.5">
-            <div className="w-10 sm:w-14 h-2.5 rounded-full bg-yellow-400/30 border border-yellow-300/60" />
+
+          {/* Dàn đèn LED cột dọc VU-Meter phát sáng đồng bộ */}
+          <div className="my-auto flex flex-col items-center gap-1.5 py-2 w-full">
+            {[...Array(8)].map((_, i) => (
+              <div 
+                key={i} 
+                className="w-10 sm:w-14 h-1.5 rounded-sm bg-gradient-to-r from-emerald-500 via-yellow-400 to-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] opacity-80"
+                style={{ animation: `pulse ${1.1 + (7 - i) * 0.15}s infinite ease-in-out` }}
+              />
+            ))}
+          </div>
+
+          {/* Bục tròn 3D mạ vàng đối xứng */}
+          <div className="w-20 sm:w-24 h-7 rounded-full border-2 border-amber-400 bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 shadow-[0_6px_16px_rgba(0,0,0,0.9),0_0_20px_rgba(245,158,11,0.5)] flex items-center justify-center transform translate-y-0.5">
+            <div className="w-14 sm:w-18 h-3 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
           </div>
         </div>
       </div>
@@ -4374,20 +4460,35 @@ export default function MagicWheelBoard({
             <div className="w-full max-w-6xl flex flex-col items-center relative z-10 px-2 sm:px-4 md:px-6">
               {/* Proscenium Row: Left Wing - Center Board - Right Wing */}
               <div className="w-full flex items-stretch justify-center gap-2 sm:gap-3 md:gap-4 relative">
-                {/* Cánh Gà Trái (Stage Left Wing - Bục Đứng Người Mẫu 0% Che Chữ) */}
-                <div className="hidden md:flex flex-col items-center justify-between w-22 sm:w-26 md:w-28 lg:w-32 shrink-0 relative py-1 select-none pointer-events-none">
-                  <div className="w-full h-full rounded-2xl bg-gradient-to-b from-[#0a1f10] via-[#041407] to-[#020b04] border-2 border-amber-500/50 p-2 flex flex-col items-center justify-between relative shadow-2xl overflow-hidden ring-1 ring-yellow-400/30">
-                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
-                    <div className="w-full flex items-center justify-center gap-1.5 opacity-80 pt-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                      <span className="text-[10px] font-black tracking-widest text-amber-300 uppercase">CÁNH TRÁI</span>
-                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                {/* Trụ Tháp 3D Cánh Trái - Phần Cứng Cỗ Máy Studio Chân Thực (Không Dùng Chữ 2D) */}
+                <div className="hidden md:flex flex-col items-center justify-between w-24 sm:w-28 md:w-32 lg:w-36 shrink-0 relative py-1 select-none pointer-events-none">
+                  <div 
+                    className="w-full h-full rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2.5 flex flex-col items-center justify-between relative overflow-hidden ring-1 ring-yellow-400/40"
+                    style={{
+                      boxShadow: "inset 0 3px 6px rgba(255,255,255,0.15), inset -4px 0 10px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.95)",
+                    }}
+                  >
+                    {/* Khe tản nhiệt cơ khí & đèn tín hiệu studio */}
+                    <div className="w-full flex items-center justify-between px-2 pt-0.5 opacity-70">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-pulse" />
+                      <div className="h-0.5 w-12 sm:w-16 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse" />
                     </div>
-                    {/* Đèn rọi sân khấu */}
-                    <div className="w-20 h-40 bg-gradient-to-b from-amber-400/25 via-yellow-400/10 to-transparent blur-xl pointer-events-none" />
-                    {/* Bục đứng tròn hoàng gia */}
-                    <div className="w-18 sm:w-22 h-6 sm:h-7 rounded-full border border-amber-400/70 bg-gradient-to-r from-amber-900/80 via-yellow-600/50 to-amber-900/80 shadow-[0_0_20px_rgba(245,158,11,0.4)] flex items-center justify-center mb-1">
-                      <div className="w-12 sm:w-16 h-3 rounded-full bg-yellow-400/30 border border-yellow-300/60 shadow-inner" />
+
+                    {/* Dàn đèn LED cột dọc VU-Meter phát sáng đồng bộ */}
+                    <div className="my-auto flex flex-col items-center gap-1.5 py-2 w-full">
+                      {[...Array(9)].map((_, i) => (
+                        <div 
+                          key={i} 
+                          className="w-12 sm:w-16 h-1.5 rounded-sm bg-gradient-to-r from-emerald-500 via-yellow-400 to-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] opacity-80"
+                          style={{ animation: `pulse ${1.1 + i * 0.15}s infinite ease-in-out` }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Bục tròn 3D mạ vàng vươn nhẹ phía trước dành cho Người Mẫu */}
+                    <div className="w-22 sm:w-26 h-8 rounded-full border-2 border-amber-400 bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 shadow-[0_8px_20px_rgba(0,0,0,0.9),0_0_25px_rgba(245,158,11,0.6)] flex items-center justify-center transform translate-y-1">
+                      <div className="w-16 sm:w-20 h-3.5 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
                     </div>
                   </div>
                 </div>
@@ -4455,7 +4556,7 @@ export default function MagicWheelBoard({
                                   : isLuckyGreen
                                   ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
                                   : cell.isHighlighted
-                                  ? "bg-gradient-to-tr from-cyan-400 via-sky-300 to-cyan-200 text-transparent border-2 border-white scale-110 shadow-[0_0_35px_#06b6d4,0_0_15px_#38bdf8] animate-pulse z-20"
+                                  ? "bg-gradient-to-tr from-[#0a1f44] via-[#1e40af] to-[#0284c7] text-transparent border-2 border-cyan-300 scale-110 shadow-[0_0_35px_#1d4ed8,0_0_20px_#0284c7] animate-pulse z-20"
                                   : cell.isRevealed
                                   ? "bg-white text-[#0f172a] shadow-[0_4px_12px_rgba(255,255,255,0.45)] border-2 border-white scale-100"
                                   : phase === "LUCKY_PICK"
@@ -4463,7 +4564,7 @@ export default function MagicWheelBoard({
                                   : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
                               }`}
                             >
-                              <span className="text-sm sm:text-lg md:text-2xl lg:text-3xl font-black tracking-tight">
+                              <span className={`${isTossUpRound ? "text-base sm:text-xl md:text-3xl lg:text-4xl" : "text-sm sm:text-lg md:text-2xl lg:text-3xl"} font-black tracking-tight`}>
                                 {cell.isRevealed
                                   ? cell.displayChar
                                   : isLuckyGreen
@@ -4483,20 +4584,35 @@ export default function MagicWheelBoard({
                 </div>
               </div>
 
-              {/* Cánh Gà Phải (Stage Right Wing - Đối Xứng Sang Trọng) */}
-              <div className="hidden md:flex flex-col items-center justify-between w-22 sm:w-26 md:w-28 lg:w-32 shrink-0 relative py-1 select-none pointer-events-none">
-                <div className="w-full h-full rounded-2xl bg-gradient-to-b from-[#0a1f10] via-[#041407] to-[#020b04] border-2 border-amber-500/50 p-2 flex flex-col items-center justify-between relative shadow-2xl overflow-hidden ring-1 ring-yellow-400/30">
-                  <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
-                  <div className="w-full flex items-center justify-center gap-1.5 opacity-80 pt-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    <span className="text-[10px] font-black tracking-widest text-amber-300 uppercase">CÁNH PHẢI</span>
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              {/* Trụ Tháp 3D Cánh Phải - Đối Xứng Cơ Khí Studio (Không Dùng Chữ 2D) */}
+              <div className="hidden md:flex flex-col items-center justify-between w-24 sm:w-28 md:w-32 lg:w-36 shrink-0 relative py-1 select-none pointer-events-none">
+                <div 
+                  className="w-full h-full rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2.5 flex flex-col items-center justify-between relative overflow-hidden ring-1 ring-yellow-400/40"
+                  style={{
+                    boxShadow: "inset 0 3px 6px rgba(255,255,255,0.15), inset 4px 0 10px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.95)",
+                  }}
+                >
+                  {/* Khe tản nhiệt cơ khí & đèn tín hiệu studio */}
+                  <div className="w-full flex items-center justify-between px-2 pt-0.5 opacity-70">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse" />
+                    <div className="h-0.5 w-12 sm:w-16 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-pulse" />
                   </div>
-                  {/* Đèn rọi sân khấu */}
-                  <div className="w-20 h-40 bg-gradient-to-b from-amber-400/25 via-yellow-400/10 to-transparent blur-xl pointer-events-none" />
-                  {/* Bục đứng tròn hoàng gia */}
-                  <div className="w-18 sm:w-22 h-6 sm:h-7 rounded-full border border-amber-400/70 bg-gradient-to-r from-amber-900/80 via-yellow-600/50 to-amber-900/80 shadow-[0_0_20px_rgba(245,158,11,0.4)] flex items-center justify-center mb-1">
-                    <div className="w-12 sm:w-16 h-3 rounded-full bg-yellow-400/30 border border-yellow-300/60 shadow-inner" />
+
+                  {/* Dàn đèn LED cột dọc VU-Meter phát sáng đồng bộ */}
+                  <div className="my-auto flex flex-col items-center gap-1.5 py-2 w-full">
+                    {[...Array(9)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="w-12 sm:w-16 h-1.5 rounded-sm bg-gradient-to-r from-emerald-500 via-yellow-400 to-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] opacity-80"
+                        style={{ animation: `pulse ${1.1 + (8 - i) * 0.15}s infinite ease-in-out` }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Bục tròn 3D mạ vàng đối xứng */}
+                  <div className="w-22 sm:w-26 h-8 rounded-full border-2 border-amber-400 bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 shadow-[0_8px_20px_rgba(0,0,0,0.9),0_0_25px_rgba(245,158,11,0.6)] flex items-center justify-center transform translate-y-1">
+                    <div className="w-16 sm:w-20 h-3.5 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
                   </div>
                 </div>
               </div>

@@ -1316,6 +1316,235 @@ function WheelDiscSvg({
   );
 }
 
+/** Bệ 3D kim loại bạc-xanh nâng vòng quay lên, viền LED */
+function WheelMachine3DBase({ isSpinning, children }: { isSpinning: boolean; children: React.ReactNode }) {
+  return (
+    <div className="relative flex flex-col items-center justify-center" style={{ filter: "drop-shadow(0 20px 40px rgba(14,165,233,0.25))" }}>
+      {/* Children = vòng quay */}
+      <div className="relative z-10">{children}</div>
+
+      {/* LED Ring viền bệ */}
+      <div
+        className={`relative w-[88%] mt-[-6px] z-20 overflow-visible flex items-center justify-center`}
+        style={{ height: "18px" }}
+      >
+        <div
+          className="w-full rounded-full"
+          style={{
+            height: "10px",
+            background: "linear-gradient(90deg, #0ea5e9 0%, #38bdf8 20%, #bae6fd 40%, #0ea5e9 60%, #1d4ed8 80%, #0ea5e9 100%)",
+            boxShadow: isSpinning
+              ? "0 0 20px rgba(14,165,233,0.9), 0 0 40px rgba(14,165,233,0.6), 0 0 8px rgba(186,230,253,0.8)"
+              : "0 0 10px rgba(14,165,233,0.5), 0 0 20px rgba(14,165,233,0.3)",
+            animation: isSpinning ? "ledChase 0.6s linear infinite" : "ledPulse 3s ease-in-out infinite",
+            borderRadius: "9999px",
+          }}
+        />
+      </div>
+
+      {/* Pedestal cylinder - top face (ellipse) */}
+      <div
+        className="relative z-10"
+        style={{
+          width: "85%",
+          height: "12px",
+          background: "radial-gradient(ellipse at 40% 30%, #e0f2fe, #7dd3fc, #1d4ed8 70%, #1e3a5f 100%)",
+          borderRadius: "50%",
+          boxShadow: "0 4px 16px rgba(30,58,95,0.7), inset 0 2px 4px rgba(255,255,255,0.4)",
+          marginTop: "-1px",
+        }}
+      />
+      {/* Pedestal cylinder - side face */}
+      <div
+        style={{
+          width: "80%",
+          height: "32px",
+          background: "linear-gradient(180deg, #1d4ed8 0%, #1e3a5f 35%, #0c1a35 65%, #020818 100%)",
+          borderRadius: "0 0 40% 40% / 0 0 80% 80%",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.8), inset 2px 0 6px rgba(14,165,233,0.2), inset -2px 0 6px rgba(14,165,233,0.1)",
+          position: "relative",
+          zIndex: 9,
+        }}
+      >
+        {/* Horizontal accent line on pedestal */}
+        <div style={{
+          position: "absolute",
+          top: "40%",
+          left: "8%",
+          right: "8%",
+          height: "2px",
+          background: "linear-gradient(90deg, transparent, #38bdf8, #7dd3fc, #38bdf8, transparent)",
+          opacity: 0.7,
+          borderRadius: "1px",
+        }} />
+      </div>
+
+      {/* Pedestal base — wider foot */}
+      <div
+        style={{
+          width: "88%",
+          height: "10px",
+          background: "linear-gradient(180deg, #1e3a5f 0%, #0c1a35 50%, #030a1a 100%)",
+          borderRadius: "0 0 50% 50% / 0 0 100% 100%",
+          boxShadow: "0 6px 20px rgba(0,0,0,0.9)",
+          zIndex: 8,
+          position: "relative",
+        }}
+      />
+
+      {/* CSS keyframes for LED animations (injected inline as style tag) */}
+      <style>{`
+        @keyframes ledChase {
+          0% { filter: hue-rotate(0deg) brightness(1.3); }
+          50% { filter: hue-rotate(30deg) brightness(1.8); }
+          100% { filter: hue-rotate(0deg) brightness(1.3); }
+        }
+        @keyframes ledPulse {
+          0%, 100% { opacity: 0.7; }
+          50% { opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/** Bục đội 3D với màn hình LED, dùng CSS perspective */
+function TeamPodium3D({
+  team,
+  roundScore,
+  isTurn,
+  isCompact,
+  side,
+  edition,
+  strikes,
+}: {
+  team: { id: string; name: string; color?: string; score?: number };
+  roundScore: number;
+  isTurn: boolean;
+  isCompact: boolean;
+  side: "left" | "right";
+  edition: string;
+  strikes: number;
+}) {
+  const tiltDeg = side === "left" ? 8 : -8;
+  const totalScore = (team.score || 0) + roundScore;
+  const scoreStr = edition === "ENGLISH"
+    ? `$${totalScore.toLocaleString("en-US")}`
+    : `${totalScore.toLocaleString()}đ`;
+  const roundStr = roundScore > 0
+    ? (edition === "ENGLISH" ? `+$${roundScore.toLocaleString("en-US")}` : `+${roundScore.toLocaleString()}đ`)
+    : null;
+
+  const screenBg = isTurn
+    ? "linear-gradient(135deg, #0c2a5e 0%, #0e3a7a 40%, #0a1f4a 100%)"
+    : "linear-gradient(135deg, #0a0f1d 0%, #0f172a 60%, #070c18 100%)";
+  const borderColor = isTurn ? "#38bdf8" : "#1e40af";
+  const glowColor = isTurn ? "rgba(56,189,248,0.6)" : "rgba(30,64,175,0.25)";
+
+  return (
+    <div
+      style={{
+        perspective: "400px",
+        perspectiveOrigin: side === "left" ? "80% 50%" : "20% 50%",
+      }}
+    >
+      <div
+        style={{
+          transform: `rotateY(${tiltDeg}deg)`,
+          transformStyle: "preserve-3d",
+          transition: "all 0.3s ease",
+        }}
+      >
+        {/* LED Screen */}
+        <div
+          style={{
+            background: screenBg,
+            border: `2px solid ${borderColor}`,
+            borderRadius: "10px",
+            boxShadow: `0 0 ${isTurn ? "18px" : "8px"} ${glowColor}, inset 0 1px 3px rgba(255,255,255,0.07)`,
+            padding: isCompact ? "4px 6px" : "6px 10px",
+            minWidth: isCompact ? "70px" : "90px",
+            maxWidth: isCompact ? "100px" : "130px",
+            animation: isTurn ? "podiumPulse 1.5s ease-in-out infinite" : undefined,
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* Scanline overlay */}
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px)",
+            pointerEvents: "none",
+            borderRadius: "8px",
+          }} />
+          {/* Team dot + name */}
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "2px" }}>
+            <div style={{
+              width: isCompact ? "6px" : "8px",
+              height: isCompact ? "6px" : "8px",
+              borderRadius: "50%",
+              background: team.color || "#6366f1",
+              boxShadow: `0 0 6px ${team.color || "#6366f1"}`,
+              flexShrink: 0,
+            }} />
+            <span style={{
+              color: isTurn ? "#bae6fd" : "#94a3b8",
+              fontSize: isCompact ? "9px" : "11px",
+              fontWeight: 900,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: isCompact ? "70px" : "100px",
+              letterSpacing: "0.5px",
+              textTransform: "uppercase",
+              fontFamily: "monospace",
+            }}>{team.name}</span>
+          </div>
+          {/* Score */}
+          <div style={{ display: "flex", alignItems: "baseline", gap: "4px", flexWrap: "wrap" }}>
+            {roundStr && (
+              <span style={{
+                color: "#34d399",
+                fontSize: isCompact ? "8px" : "10px",
+                fontWeight: 700,
+                fontFamily: "monospace",
+              }}>{roundStr}</span>
+            )}
+            <span style={{
+              color: isTurn ? "#fde68a" : "#f59e0b",
+              fontSize: isCompact ? "11px" : "14px",
+              fontWeight: 900,
+              fontFamily: "monospace",
+              lineHeight: 1,
+            }}>{scoreStr}</span>
+          </div>
+          {/* Strike indicators */}
+          {strikes > 0 && (
+            <div style={{ color: "#f87171", fontSize: "8px", marginTop: "1px", fontFamily: "monospace" }}>
+              {"✕".repeat(Math.min(3, strikes))}
+            </div>
+          )}
+        </div>
+        {/* Podium base */}
+        <div style={{
+          height: isCompact ? "8px" : "10px",
+          background: "linear-gradient(180deg, #1d4ed8 0%, #1e3a5f 50%, #0c1a35 100%)",
+          borderRadius: "0 0 6px 6px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.6)",
+          marginTop: "-1px",
+        }} />
+      </div>
+      <style>{`
+        @keyframes podiumPulse {
+          0%, 100% { box-shadow: 0 0 18px rgba(56,189,248,0.6), inset 0 1px 3px rgba(255,255,255,0.07); }
+          50% { box-shadow: 0 0 30px rgba(56,189,248,0.9), 0 0 50px rgba(14,165,233,0.4), inset 0 1px 3px rgba(255,255,255,0.1); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 function InteractiveWheelRig({
   variant,
   size = "normal",
@@ -1341,11 +1570,14 @@ function InteractiveWheelRig({
       ? "w-[280px] h-[280px] sm:w-[380px] sm:h-[380px] md:w-[480px] md:h-[480px] lg:w-[580px] lg:h-[580px] xl:w-[680px] xl:h-[680px] max-h-[72vh] max-w-[72vh]"
       : "h-full max-h-[min(38vh,260px)] sm:max-h-[38vh] max-w-full aspect-square";
     const borderClasses = isLarge
-      ? "border-[12px] sm:border-[16px] md:border-[20px] border-[#d97706]"
-      : "border-[6px] sm:border-[8px] md:border-[10px] border-[#d97706]";
+      ? "border-[6px] sm:border-[8px] md:border-[10px] border-[#1e40af]"
+      : "border-[3px] sm:border-[4px] md:border-[5px] border-[#1e40af]";
     return (
       <div className="w-full h-full flex flex-col items-center justify-center relative select-none min-h-0 pt-2 pb-1">
-        <div className={`${dimClasses} aspect-square relative select-none flex items-center justify-center shrink-0 transition-all duration-700 ease-in-out`}>
+        <div
+          className={`${dimClasses} aspect-square relative select-none flex items-center justify-center shrink-0 transition-all duration-700 ease-in-out`}
+          style={{ perspective: "900px", perspectiveOrigin: "50% 30%" }}
+        >
           <div
             ref={needleRef}
             className="absolute -top-[4.2%] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
@@ -1366,8 +1598,9 @@ function InteractiveWheelRig({
             ref={wheelRef}
             className="w-full h-full aspect-square rounded-full overflow-hidden shadow-2xl relative"
             style={{
-              transform: `rotate(${clientWheelAngle}deg)`,
+              transform: `rotate(${clientWheelAngle}deg) rotateX(15deg)`,
               willChange: effectiveIsSpinning ? "transform" : undefined,
+              transformStyle: "preserve-3d",
             }}
           >
             <WheelDiscSvg sectors={sectors} selectedSector={selectedSector} isSpinning={effectiveIsSpinning} />
@@ -1734,6 +1967,10 @@ export default function MagicWheelBoard({
   // Power bar animation for auto-oscillating effect
   const [oscillatingPower, setOscillatingPower] = useState<number>(65);
 
+  // Virtual Camera Cut System (only during spinning in Display view)
+  const [camAngle, setCamAngle] = useState(0);
+  const camTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // BUG-18 FIX: Reset power về 65 khi bắt đầu lượt quay mới (tránh tiếp tục từ giá trị cũ)
   useEffect(() => {
     if (phase === "SPIN_WAITING" || phase === "SPECIAL_SPIN_WAITING") {
@@ -1772,6 +2009,33 @@ export default function MagicWheelBoard({
       setLocalIsSpinning(false);
     }
   }, [isSpinning]);
+
+  // Camera auto-cut during spin (Display view only) — 4 góc quay như trường quay CNKD
+  useEffect(() => {
+    if (!isDisplay || !effectiveIsSpinning) {
+      setCamAngle(0);
+      if (camTimerRef.current) clearTimeout(camTimerRef.current);
+      return;
+    }
+    // Durations cho từng góc (ms): CAM1 wheel zoom, CAM2 wide, CAM3 board zoom, CAM4 disc closeup
+    const durations = [2400, 2800, 2500, 3000];
+    const schedule = (angle: number) => {
+      camTimerRef.current = setTimeout(() => {
+        const next = (angle + 1) % 4;
+        setCamAngle(next);
+        schedule(next);
+      }, durations[angle]);
+    };
+    const startTimer = setTimeout(() => {
+      setCamAngle(1);
+      schedule(1);
+    }, 800);
+    return () => {
+      clearTimeout(startTimer);
+      if (camTimerRef.current) clearTimeout(camTimerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDisplay, effectiveIsSpinning]);
 
   // ── TV Board Staged Appearance Sequence ───────────────────────────────────
   const [boardStage, setBoardStage] = useState<"EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE">("EMPTY_56");
@@ -3879,6 +4143,7 @@ export default function MagicWheelBoard({
     const leftTeams = teams.slice(0, halfTeams);
     const rightTeams = teams.slice(halfTeams);
     const isCompactFlank = teams.length >= 4;
+    const podiumGapClass = teams.length >= 6 ? "gap-0.5" : teams.length >= 4 ? "gap-1" : "gap-1.5";
 
     const renderDisplayTeamCard = (t: TeamState, isCompact: boolean) => {
       const rScore = roundScores?.[t.id] || 0;
@@ -3887,40 +4152,59 @@ export default function MagicWheelBoard({
         : (t.id === currentTurnTeamId);
       const strikes = activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
       return (
-        <div
+        <TeamPodium3D
           key={t.id}
-          className={`${isCompact ? "p-1.5 px-2 rounded-xl gap-0.5" : "p-2 px-2.5 rounded-xl gap-1"} border flex flex-col transition-all duration-300 shadow min-h-0 ${
-            isTurn
-              ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)] ring-2 ring-amber-400 scale-[1.02]"
-              : "bg-black/60 border-white/10 text-slate-200"
-          }`}
-        >
-          <div className="flex items-center justify-between gap-1 min-w-0">
-            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <span className="w-2.5 h-2.5 rounded-full shadow shrink-0" style={{ background: t.color || "#6366f1" }} />
-              <span className="font-black truncate text-xs sm:text-sm">{t.name}</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0 font-mono">
-              {rScore > 0 && (
-                <span className="text-[10px] sm:text-[11px] text-emerald-400 font-bold">
-                  +{edition === "ENGLISH" ? `$${rScore.toLocaleString("en-US")}` : `${rScore.toLocaleString()}đ`}
-                </span>
-              )}
-              <span className="text-xs sm:text-sm font-black text-amber-300">
-                {edition === "ENGLISH" ? `$${((t.score || 0) + rScore).toLocaleString("en-US")}` : `${((t.score || 0) + rScore).toLocaleString()}đ`}
-              </span>
-            </div>
-          </div>
-          {strikes > 0 && edition !== "ENGLISH" && (
-            <div className="text-rose-400 font-mono text-[9px] tracking-tighter -mt-0.5">
-              {"✕".repeat(Math.min(3, strikes))}
-            </div>
-          )}
-        </div>
+          team={t}
+          roundScore={rScore}
+          isTurn={isTurn}
+          isCompact={isCompact}
+          side={leftTeams.includes(t) ? "left" : "right"}
+          edition={edition}
+          strikes={strikes}
+        />
       );
     };
 
+    // ── Virtual Camera Transform (4 góc quay TV khi spinning) ──────────────
+    const camTransforms = [
+      "scale(1) translate(0%, 0%)",          // CAM 0: Bình thường (reset)
+      "scale(1.6) translate(0%, 20%)",        // CAM 1: Zoom vào vòng quay, kéo lùi
+      "scale(0.92) translate(0%, 2%)",        // CAM 2: Zoom out toàn cảnh (ảnh 2)
+      "scale(1.22) translate(0%, -18%)",      // CAM 3: Zoom ô chữ phía trên (ảnh 3)
+      // CAM 4 = 2.0x zoom vào top wheel gần kim (ảnh 4) — dùng index wrap 4→0 thành cam4 ở index 3
+    ];
+    // Khi camAngle=3 thực ra là CAM 4: zoom sâu vào disc (ảnh 4)
+    const camTransformsFull = [
+      "scale(1) translate(0%, 0%)",
+      "scale(1.6) translate(0%, 20%)",
+      "scale(0.92) translate(0%, 2%)",
+      "scale(1.22) translate(0%, -18%)",
+    ] as const;
+    const activeCamTransform = effectiveIsSpinning
+      ? (camTransformsFull[camAngle] ?? "scale(1) translate(0%, 0%)")
+      : "scale(1) translate(0%, 0%)";
+    void camTransforms; // suppress unused
+
     return (
+      <>
+        <style>{`
+          @keyframes camFlash { 0% { opacity: 0.82; } 100% { opacity: 1; } }
+        `}</style>
+        <div
+          style={{
+            transform: activeCamTransform,
+            transformOrigin: "50% 50%",
+            transition: effectiveIsSpinning
+              ? "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)"
+              : "transform 0.9s ease-out",
+            willChange: effectiveIsSpinning ? "transform" : "auto",
+            animation: effectiveIsSpinning && camAngle > 0 ? "camFlash 0.35s ease-out" : undefined,
+            width: "100%",
+            height: "100vh",
+            maxHeight: "100vh",
+            overflow: "hidden",
+          }}
+        >
       <div className="w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-2 sm:p-3.5 md:p-4 box-border bg-gradient-to-b from-[#050811] via-[#091122] to-[#04060d] text-white select-none">
         {/* Top Header */}
         <div className="w-full flex items-center justify-between shrink-0 mb-1 z-30">
@@ -3987,7 +4271,7 @@ export default function MagicWheelBoard({
             <div
               className={`transition-all duration-500 ease-in-out ${
                 isStacked
-                  ? "col-span-3 flex flex-col justify-center gap-1.5 min-h-0 opacity-100 translate-x-0"
+                  ? `col-span-3 flex flex-col justify-center ${podiumGapClass} min-h-0 opacity-100 translate-x-0`
                   : "hidden opacity-0 -translate-x-8 pointer-events-none"
               }`}
             >
@@ -4004,23 +4288,25 @@ export default function MagicWheelBoard({
                   : "scale-75 opacity-0"
               }`}
             >
-              <InteractiveWheelRig
-                variant="DISPLAY_360"
-                size={isFocusWheel ? "large" : "normal"}
-                wheelRef={wheelRef}
-                needleRef={needleRef}
-                clientWheelAngle={clientWheelAngle}
-                effectiveIsSpinning={effectiveIsSpinning}
-                sectors={sectors}
-                selectedSector={selectedSector}
-              />
+              <WheelMachine3DBase isSpinning={effectiveIsSpinning}>
+                <InteractiveWheelRig
+                  variant="DISPLAY_360"
+                  size={isFocusWheel ? "large" : "normal"}
+                  wheelRef={wheelRef}
+                  needleRef={needleRef}
+                  clientWheelAngle={clientWheelAngle}
+                  effectiveIsSpinning={effectiveIsSpinning}
+                  sectors={sectors}
+                  selectedSector={selectedSector}
+                />
+              </WheelMachine3DBase>
             </div>
 
             {/* Right Flank Teams (Active in STACKED, fade out in FOCUS_WHEEL) */}
             <div
               className={`transition-all duration-500 ease-in-out ${
                 isStacked
-                  ? "col-span-3 flex flex-col justify-center gap-1.5 min-h-0 opacity-100 translate-x-0"
+                  ? `col-span-3 flex flex-col justify-center ${podiumGapClass} min-h-0 opacity-100 translate-x-0`
                   : "hidden opacity-0 translate-x-8 pointer-events-none"
               }`}
             >
@@ -4051,6 +4337,8 @@ export default function MagicWheelBoard({
           {renderCompactSingleRowScorebar()}
         </div>
       </div>
+        </div>
+      </>
     );
   };
 

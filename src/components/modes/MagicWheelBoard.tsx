@@ -942,9 +942,9 @@ function WheelDiscSvg({
     <svg viewBox="0 0 440 440" className="w-full h-full select-none">
       <defs>
         <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Playfair+Display:wght@900&family=Rokkitt:wght@800;900&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700;800;900&family=Merriweather:wght@900&display=swap');
           .gameshow-font {
-            font-family: 'Cinzel', 'Playfair Display', 'Rokkitt', 'Georgia', serif;
+            font-family: 'Roboto Slab', 'Merriweather', serif;
             font-weight: 900;
           }
         `}</style>
@@ -1109,12 +1109,12 @@ function WheelDiscSvg({
                     x={cx}
                     y={textOuterStartY}
                     textAnchor="start"
-                    fontSize="7"
+                    fontSize="8"
                     fontWeight="900"
                     fill="#ef4444"
                     stroke="#000000"
-                    strokeWidth="0.5"
-                    style={{ paintOrder: "stroke fill", fontFamily: "'Cinzel', 'Playfair Display', 'Rokkitt', 'Georgia', serif" }}
+                    strokeWidth="0.8"
+                    style={{ paintOrder: "stroke fill", fontFamily: "'Roboto Slab', 'Merriweather', serif" }}
                     dominantBaseline="central"
                     className="gameshow-font select-none pointer-events-none tracking-tighter uppercase"
                   >
@@ -1138,8 +1138,8 @@ function WheelDiscSvg({
                       fontWeight="900"
                       fill={isWinningSector ? "#fef08a" : "#ffffff"}
                       stroke="#000000"
-                      strokeWidth="1.0"
-                      style={{ paintOrder: "stroke fill", fontFamily: "'Cinzel', 'Playfair Display', 'Rokkitt', 'Georgia', serif" }}
+                      strokeWidth="1.2"
+                      style={{ paintOrder: "stroke fill", fontFamily: "'Roboto Slab', 'Merriweather', serif" }}
                       className="gameshow-font select-none pointer-events-none"
                     >
                       {digit}
@@ -1156,12 +1156,12 @@ function WheelDiscSvg({
                     x={cx}
                     y={textOuterStartY}
                     textAnchor="start"
-                    fontSize="7"
+                    fontSize="8"
                     fontWeight="900"
                     fill="#ef4444"
                     stroke="#000000"
-                    strokeWidth="0.5"
-                    style={{ paintOrder: "stroke fill", fontFamily: "'Cinzel', 'Playfair Display', 'Rokkitt', 'Georgia', serif" }}
+                    strokeWidth="0.8"
+                    style={{ paintOrder: "stroke fill", fontFamily: "'Roboto Slab', 'Merriweather', serif" }}
                     dominantBaseline="central"
                     className="gameshow-font select-none pointer-events-none tracking-tighter uppercase"
                   >
@@ -1230,7 +1230,7 @@ function WheelDiscSvg({
                       fill={textFill}
                       stroke={textStroke}
                       strokeWidth={textStrokeWidth}
-                      style={{ paintOrder: "stroke fill", fontFamily: "'Cinzel', 'Playfair Display', 'Rokkitt', 'Georgia', serif" }}
+                      style={{ paintOrder: "stroke fill", fontFamily: "'Roboto Slab', 'Merriweather', serif" }}
                       className="gameshow-font select-none pointer-events-none"
                     >
                       {digit}
@@ -1248,9 +1248,9 @@ function WheelDiscSvg({
                     fill={textFill}
                     stroke={textStroke}
                     strokeWidth={textStrokeWidth}
-                    style={{ paintOrder: "stroke fill", fontFamily: "'Cinzel', 'Playfair Display', 'Rokkitt', 'Georgia', serif" }}
+                    style={{ paintOrder: "stroke fill", fontFamily: "'Roboto Slab', 'Merriweather', serif", letterSpacing: "0.5px" }}
                     dominantBaseline="central"
-                    className="gameshow-font select-none pointer-events-none tracking-tight uppercase"
+                    className="gameshow-font select-none pointer-events-none uppercase"
                   >
                     {specialLabel}
                   </text>
@@ -1316,10 +1316,10 @@ function WheelMachine3DBase({ isSpinning, children }: { isSpinning: boolean; chi
           className="w-full rounded-full"
           style={{
             height: "10px",
-            background: "linear-gradient(90deg, #0ea5e9 0%, #38bdf8 20%, #bae6fd 40%, #0ea5e9 60%, #1d4ed8 80%, #0ea5e9 100%)",
+            background: "linear-gradient(90deg, #d97706 0%, #f59e0b 20%, #fef08a 40%, #fbbf24 60%, #b45309 80%, #d97706 100%)",
             boxShadow: isSpinning
-              ? "0 0 20px rgba(14,165,233,0.9), 0 0 40px rgba(14,165,233,0.6), 0 0 8px rgba(186,230,253,0.8)"
-              : "0 0 10px rgba(14,165,233,0.5), 0 0 20px rgba(14,165,233,0.3)",
+              ? "0 0 20px rgba(245,158,11,0.9), 0 0 40px rgba(217,119,6,0.6), 0 0 8px rgba(254,240,138,0.8)"
+              : "0 0 10px rgba(245,158,11,0.5), 0 0 20px rgba(217,119,6,0.3)",
             animation: isSpinning ? "ledChase 0.6s linear infinite" : "ledPulse 3s ease-in-out infinite",
             borderRadius: "9999px",
           }}
@@ -1332,9 +1332,9 @@ function WheelMachine3DBase({ isSpinning, children }: { isSpinning: boolean; chi
         style={{
           width: "85%",
           height: "12px",
-          background: "radial-gradient(ellipse at 40% 30%, #e0f2fe, #7dd3fc, #1d4ed8 70%, #1e3a5f 100%)",
+          background: "radial-gradient(ellipse at 40% 30%, #fef08a, #fbbf24, #b45309 70%, #451a03 100%)",
           borderRadius: "50%",
-          boxShadow: "0 4px 16px rgba(30,58,95,0.7), inset 0 2px 4px rgba(255,255,255,0.4)",
+          boxShadow: "0 4px 16px rgba(69,26,3,0.7), inset 0 2px 4px rgba(255,255,255,0.4)",
           marginTop: "-1px",
         }}
       />
@@ -1343,9 +1343,9 @@ function WheelMachine3DBase({ isSpinning, children }: { isSpinning: boolean; chi
         style={{
           width: "80%",
           height: "32px",
-          background: "linear-gradient(180deg, #1d4ed8 0%, #1e3a5f 35%, #0c1a35 65%, #020818 100%)",
+          background: "linear-gradient(180deg, #b45309 0%, #1e293b 35%, #0f172a 65%, #020617 100%)",
           borderRadius: "0 0 40% 40% / 0 0 80% 80%",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.8), inset 2px 0 6px rgba(14,165,233,0.2), inset -2px 0 6px rgba(14,165,233,0.1)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.8), inset 2px 0 6px rgba(245,158,11,0.2), inset -2px 0 6px rgba(245,158,11,0.1)",
           position: "relative",
           zIndex: 9,
         }}
@@ -1357,8 +1357,8 @@ function WheelMachine3DBase({ isSpinning, children }: { isSpinning: boolean; chi
           left: "8%",
           right: "8%",
           height: "2px",
-          background: "linear-gradient(90deg, transparent, #38bdf8, #7dd3fc, #38bdf8, transparent)",
-          opacity: 0.7,
+          background: "linear-gradient(90deg, transparent, #fbbf24, #fef08a, #fbbf24, transparent)",
+          opacity: 0.8,
           borderRadius: "1px",
         }} />
       </div>
@@ -1554,8 +1554,8 @@ function InteractiveWheelRig({
       ? "w-[280px] h-[280px] sm:w-[380px] sm:h-[380px] md:w-[480px] md:h-[480px] lg:w-[580px] lg:h-[580px] xl:w-[680px] xl:h-[680px] max-h-[72vh] max-w-[72vh]"
       : "h-full max-h-[min(38vh,260px)] sm:max-h-[38vh] max-w-full aspect-square";
     const borderClasses = isLarge
-      ? "border-[6px] sm:border-[8px] md:border-[10px] border-[#1e40af]"
-      : "border-[3px] sm:border-[4px] md:border-[5px] border-[#1e40af]";
+      ? "border-[6px] sm:border-[8px] md:border-[10px] border-[#d97706]"
+      : "border-[3px] sm:border-[4px] md:border-[5px] border-[#d97706]";
     return (
       <div className="w-full h-full flex flex-col items-center justify-center relative select-none min-h-0 pt-2 pb-1">
         <div
@@ -4137,7 +4137,14 @@ export default function MagicWheelBoard({
     const podiumGapClass = teams.length >= 6 ? "gap-0.5" : teams.length >= 4 ? "gap-1" : "gap-1.5";
 
     return (
-      <div className="w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-2 sm:p-3.5 md:p-4 box-border bg-gradient-to-b from-[#050811] via-[#091122] to-[#04060d] text-white select-none">
+      <div className="w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-2 sm:p-3.5 md:p-4 box-border bg-gradient-to-b from-[#081226] via-[#0a1733] to-[#040914] text-white select-none relative">
+        {/* ── Studio Stage Lighting Truss & Overhead Volumetric Glow ── */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="absolute -top-10 left-1/4 w-96 h-[600px] bg-gradient-to-b from-amber-400/20 via-yellow-400/5 to-transparent blur-3xl transform -rotate-12" />
+          <div className="absolute -top-10 right-1/4 w-96 h-[600px] bg-gradient-to-b from-sky-400/20 via-blue-500/5 to-transparent blur-3xl transform rotate-12" />
+          <div className="absolute bottom-0 inset-x-0 h-72 bg-gradient-to-t from-blue-950/30 via-slate-900/15 to-transparent blur-xl" />
+        </div>
+
         {/* Top Header */}
         <div className="w-full flex items-center justify-between shrink-0 mb-1 z-30">
           <div className="flex items-center gap-2">

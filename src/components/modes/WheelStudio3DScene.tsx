@@ -3,13 +3,11 @@
  * WheelStudio3DScene — Three.js WebGL scene cho Magic Wheel Display view.
  *
  * Renders:
- *   - Genuine 3D Conical Wheel (dốc từ tâm ra vành chuẩn CNKD)
- *   - Radial digits and labels (chữ chạy đúng chiều nan quạt từ vành vào tâm)
- *   - Chrome separator pegs on the rim
- *   - Central Chrome hub with metallic bevels
- *   - Needle at 12 o'clock pointing down the conical slope into winning sector
- *   - Cylindrical metallic pedestal with glowing LED accent ring
- *   - Multi-point studio lighting (Key, Fill, Rim, Ambient) & glossy reflective stage floor
+ *   - Genuine 3D Conical Wheel (nón thật dốc từ tâm ra vành chuẩn CNKD)
+ *   - Typography: Roboto Slab (800/900) & Merriweather (900) chuẩn 100% tiếng Việt
+ *   - Golden Brass & Chrome hardware styling (không còn viền xanh lạc quẻ)
+ *   - Supercharged Broadcast Studio 5-Point Lighting (sáng bừng rực rỡ trường quay)
+ *   - Studio Stage Floor with circular golden stage lighting & studio backdrop
  *   - Team podiums arranged in an arc facing the machine
  *   - Camera Cut Controller: 4 authentic TV studio angles
  */
@@ -43,9 +41,6 @@ interface CamConfig {
 }
 
 // ── Authentic Studio Camera Configurations ──────────────────────────────────
-// Coordinate system:
-// Center of wheel: [0, 1.25, 0], radius: 2.12.
-// Needle is at 12 o'clock: [0, 1.76, -2.18], pointing down into the cone apex.
 const CAM_POSITIONS: Record<string, CamConfig> = {
   // CAM 0 / Default: 35° overhead angle, showing entire machine & arc of podiums
   DEFAULT: { pos: [0, 3.8, 5.4], target: [0, 0.5, 0] },
@@ -65,7 +60,7 @@ const CAM_POSITIONS: Record<string, CamConfig> = {
 
 // ── Texture Generators ───────────────────────────────────────────────────────
 
-/** Generate high-resolution wheel texture mirroring TV gameshow aesthetic */
+/** Generate high-resolution wheel texture with authentic Roboto Slab typography */
 function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -97,7 +92,7 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
     ctx.stroke();
     ctx.restore();
 
-    // ── Wedge Text & Numbers Along the Radial Axis (Đúng chiều nan quạt từ vành vào tâm) ──
+    // ── Wedge Text & Numbers Along the Radial Axis (Xuôi từ vành vào tâm, font Roboto Slab) ──
     ctx.save();
     const midAngle = a1 + degPerSeg / 2;
     ctx.translate(cx, cy);
@@ -109,11 +104,12 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
     if (isNumeric && cleanLabel.length > 0) {
       // Numbers: Stacked upright digits along the radial ray from rim towards center
       const digits = cleanLabel.split("");
-      const startX = r - 36;
+      const startX = r - 38;
       const stepX = digits.length >= 5 ? 28 : digits.length >= 4 ? 34 : 38;
-      const fontSize = Math.floor(size / (digits.length >= 5 ? 26 : 22));
+      const fontSize = Math.floor(size / (digits.length >= 5 ? 26 : 21));
 
-      ctx.font = `900 ${fontSize}px "Impact", "Arial Black", sans-serif`;
+      // Font chuẩn tiếng Việt Roboto Slab 900
+      ctx.font = `900 ${fontSize}px "Roboto Slab", "Merriweather", serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
@@ -134,7 +130,7 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
         ctx.restore();
       });
     } else {
-      // Special action label (e.g., MẤT LƯỢT, BANKRUPT, NHÂN ĐÔI, Ô MAY MẮN)
+      // Special action label (e.g., MẤT LƯỢT, BANKRUPT, NHÂN ĐÔI, Ô MAY MẮN, CHIA ĐÔI)
       // Running radially along the wedge length (chạy dọc từ vành ngoài vào trong)
       ctx.translate(r - 28, 0);
       ctx.rotate(Math.PI); // Now +X points toward the center of the wheel
@@ -146,27 +142,27 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
         const line1 = words.slice(0, Math.ceil(words.length / 2)).join(" ");
         const line2 = words.slice(Math.ceil(words.length / 2)).join(" ");
         const maxLen = Math.max(line1.length, line2.length);
-        const fontSize = Math.min(26, Math.floor(size / (maxLen > 6 ? 42 : 36)));
+        const fontSize = Math.min(27, Math.floor(size / (maxLen > 6 ? 40 : 34)));
 
-        ctx.font = `900 ${fontSize}px "Arial Black", "Arial", sans-serif`;
+        ctx.font = `900 ${fontSize}px "Roboto Slab", "Merriweather", serif`;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
 
         ctx.strokeStyle = "#000000";
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 5.5;
         ctx.strokeText(line1, 8, -fontSize * 0.62);
         ctx.fillStyle = sec.textColor || "#ffffff";
         ctx.fillText(line1, 8, -fontSize * 0.62);
 
         ctx.strokeStyle = "#000000";
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 5.5;
         ctx.strokeText(line2, 8, fontSize * 0.62);
         ctx.fillStyle = sec.textColor || "#ffffff";
         ctx.fillText(line2, 8, fontSize * 0.62);
       } else {
         // Single word or short phrase running along the centerline
-        const fontSize = Math.min(32, Math.floor(size / (cleanLabel.length > 8 ? 38 : 30)));
-        ctx.font = `900 ${fontSize}px "Arial Black", "Arial", sans-serif`;
+        const fontSize = Math.min(34, Math.floor(size / (cleanLabel.length > 8 ? 36 : 28)));
+        ctx.font = `900 ${fontSize}px "Roboto Slab", "Merriweather", serif`;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
 
@@ -183,8 +179,8 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
 
   // Conical 3D Shading Overlay
   const conicalShade = ctx.createRadialGradient(cx, cy, 20, cx, cy, r);
-  conicalShade.addColorStop(0, "rgba(255,255,255,0.38)");
-  conicalShade.addColorStop(0.35, "rgba(255,255,255,0.12)");
+  conicalShade.addColorStop(0, "rgba(255,255,255,0.42)");
+  conicalShade.addColorStop(0.35, "rgba(255,255,255,0.15)");
   conicalShade.addColorStop(0.7, "rgba(0,0,0,0.0)");
   conicalShade.addColorStop(0.92, "rgba(0,0,0,0.22)");
   conicalShade.addColorStop(1, "rgba(0,0,0,0.45)");
@@ -222,18 +218,18 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
 
     ctx.beginPath();
     ctx.arc(px, py, 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = "#64748b";
+    ctx.fillStyle = "#cbd5e1";
     ctx.fill();
     ctx.shadowBlur = 0;
   });
 
-  // Center Metallic Chrome Hub
+  // Center Metallic Chrome & Gold Hub
   const hubRadius = size * 0.085;
   const hubGrad = ctx.createRadialGradient(cx - hubRadius * 0.3, cy - hubRadius * 0.3, 0, cx, cy, hubRadius);
   hubGrad.addColorStop(0, "#ffffff");
-  hubGrad.addColorStop(0.3, "#e2e8f0");
-  hubGrad.addColorStop(0.7, "#64748b");
-  hubGrad.addColorStop(1, "#1e293b");
+  hubGrad.addColorStop(0.3, "#fef08a");
+  hubGrad.addColorStop(0.7, "#d97706");
+  hubGrad.addColorStop(1, "#451a03");
 
   ctx.beginPath();
   ctx.arc(cx, cy, hubRadius, 0, Math.PI * 2);
@@ -243,7 +239,7 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
   ctx.beginPath();
   ctx.arc(cx, cy, hubRadius, 0, Math.PI * 2);
   ctx.strokeStyle = "#fbbf24";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 3.5;
   ctx.stroke();
 
   return canvas;
@@ -280,8 +276,8 @@ function generatePodiumTexture(
   ctx.roundRect(0, 0, w, h, 12);
   ctx.fill();
 
-  // Glowing neon border
-  ctx.strokeStyle = isTurn ? "#38bdf8" : "#1e40af";
+  // Glowing golden/neon border
+  ctx.strokeStyle = isTurn ? "#f59e0b" : "#3b82f6";
   ctx.lineWidth = isTurn ? 4 : 2;
   ctx.roundRect(2, 2, w - 4, h - 4, 10);
   ctx.stroke();
@@ -296,8 +292,8 @@ function generatePodiumTexture(
   ctx.stroke();
 
   // Team name
-  ctx.fillStyle = isTurn ? "#bae6fd" : "#94a3b8";
-  ctx.font = "bold 17px Arial, sans-serif";
+  ctx.fillStyle = isTurn ? "#fef08a" : "#94a3b8";
+  ctx.font = "bold 17px 'Roboto Slab', Arial, sans-serif";
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   const shortName = name.length > 11 ? name.substring(0, 11) : name;
@@ -305,8 +301,8 @@ function generatePodiumTexture(
 
   // Active status tag
   if (isTurn) {
-    ctx.fillStyle = "#38bdf8";
-    ctx.font = "900 11px Arial, sans-serif";
+    ctx.fillStyle = "#f59e0b";
+    ctx.font = "900 11px 'Roboto Slab', Arial, sans-serif";
     ctx.textAlign = "right";
     ctx.fillText("ĐANG QUAY", w - 12, 28);
   }
@@ -318,7 +314,7 @@ function generatePodiumTexture(
         ? `+$${roundScore.toLocaleString("en-US")}`
         : `+${roundScore.toLocaleString()}đ`;
     ctx.fillStyle = "#34d399";
-    ctx.font = "bold 15px Arial, monospace";
+    ctx.font = "bold 15px 'Roboto Slab', monospace";
     ctx.textAlign = "right";
     ctx.fillText(rStr, w - 14, 76);
   }
@@ -329,7 +325,7 @@ function generatePodiumTexture(
       ? `$${totalScore.toLocaleString("en-US")}`
       : `${totalScore.toLocaleString()}đ`;
   ctx.fillStyle = isTurn ? "#fef08a" : "#f59e0b";
-  ctx.font = "900 28px Arial, monospace";
+  ctx.font = "900 28px 'Roboto Slab', monospace";
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.fillText(scoreStr, 14, 94);
@@ -345,7 +341,7 @@ function generatePodiumTexture(
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
-/** 3D Wheel Machine (Conical Disc + Hub + Needle + Pedestal + LED Ring) */
+/** 3D Wheel Machine (Conical Disc + Hub + Needle + Pedestal - NO BLUE RING) */
 function WheelMachineGroup({
   sectors,
   clientWheelAngle,
@@ -358,7 +354,7 @@ function WheelMachineGroup({
 }) {
   const spinningGroupRef = useRef<THREE.Group>(null);
   const needleRef = useRef<THREE.Mesh>(null);
-  const ledRef = useRef<THREE.Mesh>(null);
+  const goldAccentRef = useRef<THREE.Mesh>(null);
 
   // Canvas texture for the wheel disc
   const wheelTexture = useMemo(() => {
@@ -395,13 +391,11 @@ function WheelMachineGroup({
   // Sync wheel rotation & realistic needle vibration
   useFrame(() => {
     if (spinningGroupRef.current) {
-      // Rotate around the local Z axis of the cone
       spinningGroupRef.current.rotation.z = THREE.MathUtils.degToRad(-clientWheelAngle);
     }
 
     if (needleRef.current) {
       if (effectiveIsSpinning) {
-        // High-frequency mechanical flutter simulating clicking across pegs
         const t = Date.now() / 1000;
         needleRef.current.rotation.y = Math.sin(t * 42) * 0.1;
       } else {
@@ -409,20 +403,20 @@ function WheelMachineGroup({
       }
     }
 
-    if (ledRef.current) {
-      const mat = ledRef.current.material as THREE.MeshStandardMaterial;
+    if (goldAccentRef.current) {
+      const mat = goldAccentRef.current.material as THREE.MeshStandardMaterial;
       const t = Date.now() / 1000;
       if (effectiveIsSpinning) {
-        mat.emissiveIntensity = 1.6 + Math.sin(t * 8) * 0.6;
+        mat.emissiveIntensity = 0.6 + Math.sin(t * 8) * 0.3;
       } else {
-        mat.emissiveIntensity = 0.8 + Math.sin(t * 2) * 0.25;
+        mat.emissiveIntensity = 0.35 + Math.sin(t * 2) * 0.1;
       }
     }
   });
 
   return (
     <group position={[0, 0, 0]}>
-      {/* ── 1. ROTATING 3D CONICAL WHEEL DISC (Lying horizontally, tilted 12.6° towards camera) ── */}
+      {/* ── 1. ROTATING 3D CONICAL WHEEL DISC ── */}
       <group position={[0, 1.25, 0]} rotation={[-Math.PI / 2 + WHEEL_TILT_RAD, 0, 0]}>
         <group ref={spinningGroupRef}>
           {/* Conical Sloped Mesh */}
@@ -430,27 +424,27 @@ function WheelMachineGroup({
             <meshStandardMaterial
               map={wheelTexture ?? undefined}
               color={wheelTexture ? "#ffffff" : "#4f46e5"}
-              roughness={0.25}
-              metalness={0.18}
+              roughness={0.22}
+              metalness={0.22}
             />
           </mesh>
 
-          {/* Gold outer rim bevel ring */}
+          {/* Gold outer rim bevel ring (Hoàng kim sáng bóng) */}
           <mesh position={[0, 0, -0.01]}>
             <ringGeometry args={[2.08, 2.16, 64]} />
             <meshStandardMaterial
-              color="#f59e0b"
-              metalness={0.9}
-              roughness={0.12}
+              color="#fbbf24"
+              metalness={0.92}
+              roughness={0.1}
               emissive="#d97706"
-              emissiveIntensity={0.35}
+              emissiveIntensity={0.4}
             />
           </mesh>
 
-          {/* Center Chrome Hub Dome */}
+          {/* Center Chrome & Gold Hub Dome */}
           <mesh position={[0, 0, 0.36]} castShadow>
             <cylinderGeometry args={[0.18, 0.22, 0.12, 32]} />
-            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.06} />
+            <meshStandardMaterial color="#fef08a" metalness={0.95} roughness={0.06} />
           </mesh>
           <mesh position={[0, 0, 0.44]}>
             <sphereGeometry args={[0.13, 16, 16]} />
@@ -460,7 +454,6 @@ function WheelMachineGroup({
       </group>
 
       {/* ── 2. NEEDLE AT 12 O'CLOCK RIM (Fixed, pointing down into winning wedge) ── */}
-      {/* Needle cone tip pointing down along the conical slope toward the center */}
       <mesh
         ref={needleRef}
         position={[0, 1.74, -1.94]}
@@ -471,69 +464,69 @@ function WheelMachineGroup({
         <meshStandardMaterial
           color="#f59e0b"
           emissive="#f59e0b"
-          emissiveIntensity={0.8}
-          metalness={0.85}
-          roughness={0.12}
+          emissiveIntensity={0.85}
+          metalness={0.88}
+          roughness={0.1}
         />
       </mesh>
       {/* Needle chrome base mounting post */}
       <mesh position={[0, 1.76, -2.18]}>
         <cylinderGeometry args={[0.08, 0.1, 0.18, 16]} />
-        <meshStandardMaterial color="#94a3b8" metalness={0.95} roughness={0.08} />
+        <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.06} />
       </mesh>
       <mesh position={[0, 1.86, -2.18]}>
         <sphereGeometry args={[0.08, 12, 12]} />
         <meshStandardMaterial
           color="#fef08a"
           metalness={0.95}
-          roughness={0.08}
+          roughness={0.06}
           emissive="#fbbf24"
           emissiveIntensity={0.7}
         />
       </mesh>
 
-      {/* ── 3. PEDESTAL CYLINDER & LED ACCENT RING ── */}
-      {/* Glowing LED Ring under wheel rim */}
-      <mesh ref={ledRef} position={[0, 1.08, 0]} rotation={[-Math.PI / 2 + WHEEL_TILT_RAD, 0, 0]}>
-        <torusGeometry args={[2.14, 0.05, 8, 64]} />
+      {/* ── 3. PEDESTAL CYLINDER & GOLD ACCENTS (KHÔNG CÒN VIỀN XANH LẠC QUẺ) ── */}
+      {/* Golden Brass Bevel Ring under wheel rim */}
+      <mesh ref={goldAccentRef} position={[0, 1.08, 0]} rotation={[-Math.PI / 2 + WHEEL_TILT_RAD, 0, 0]}>
+        <torusGeometry args={[2.14, 0.045, 8, 64]} />
         <meshStandardMaterial
-          color="#38bdf8"
-          emissive="#0ea5e9"
-          emissiveIntensity={1.2}
-          metalness={0.2}
-          roughness={0.3}
+          color="#f59e0b"
+          emissive="#d97706"
+          emissiveIntensity={0.4}
+          metalness={0.92}
+          roughness={0.12}
         />
       </mesh>
 
-      {/* 6 LED Point Lights around the ring */}
+      {/* 6 Warm Golden Spotlights around the ring */}
       {[0, 1, 2, 3, 4, 5].map((i) => {
         const angle = (i / 6) * Math.PI * 2;
         return (
           <pointLight
             key={i}
-            position={[Math.cos(angle) * 2.12, 1.08, Math.sin(angle) * 2.12]}
-            color="#38bdf8"
-            intensity={effectiveIsSpinning ? 1.8 : 0.7}
-            distance={3.0}
+            position={[Math.cos(angle) * 2.12, 1.1, Math.sin(angle) * 2.12]}
+            color="#fef08a"
+            intensity={effectiveIsSpinning ? 2.0 : 1.2}
+            distance={3.2}
             decay={2}
           />
         );
       })}
 
-      {/* Tapered metallic pedestal trunk */}
+      {/* Tapered metallic pedestal trunk (Slate Blue & Gold Accents) */}
       <mesh position={[0, 0.16, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[1.9, 2.25, 1.35, 32]} />
-        <meshStandardMaterial color="#1e3a8a" metalness={0.78} roughness={0.22} />
+        <meshStandardMaterial color="#0f1f38" metalness={0.82} roughness={0.2} />
       </mesh>
 
-      {/* Chrome accent belt on pedestal */}
+      {/* Golden Brass belt on pedestal */}
       <mesh position={[0, 0.28, 0]}>
         <torusGeometry args={[2.08, 0.038, 6, 32]} />
         <meshStandardMaterial
-          color="#38bdf8"
-          emissive="#0ea5e9"
-          emissiveIntensity={0.7}
-          metalness={0.92}
+          color="#fbbf24"
+          emissive="#d97706"
+          emissiveIntensity={0.45}
+          metalness={0.94}
           roughness={0.08}
         />
       </mesh>
@@ -541,13 +534,13 @@ function WheelMachineGroup({
       {/* Flared pedestal base foot */}
       <mesh position={[0, -0.58, 0]} receiveShadow>
         <cylinderGeometry args={[2.35, 2.52, 0.24, 32]} />
-        <meshStandardMaterial color="#0c1a35" metalness={0.65} roughness={0.35} />
+        <meshStandardMaterial color="#07101f" metalness={0.75} roughness={0.3} />
       </mesh>
 
       {/* Soft circular floor shadow */}
       <mesh position={[0, -0.73, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[3.0, 32]} />
-        <meshStandardMaterial color="#000000" transparent opacity={0.55} />
+        <circleGeometry args={[2.9, 32]} />
+        <meshStandardMaterial color="#000000" transparent opacity={0.6} />
       </mesh>
     </group>
   );
@@ -597,9 +590,9 @@ function TeamPodiumMesh({
       const mat = screenRef.current.material as THREE.MeshStandardMaterial;
       if (isTurn) {
         const t = Date.now() / 1000;
-        mat.emissiveIntensity = 0.5 + Math.sin(t * 3.0) * 0.25;
+        mat.emissiveIntensity = 0.55 + Math.sin(t * 3.0) * 0.25;
       } else {
-        mat.emissiveIntensity = 0.1;
+        mat.emissiveIntensity = 0.12;
       }
     }
   });
@@ -612,9 +605,9 @@ function TeamPodiumMesh({
         <meshStandardMaterial
           map={screenTexture ?? undefined}
           color={screenTexture ? "#ffffff" : isTurn ? "#1e3a8a" : "#1e293b"}
-          emissive={isTurn ? "#0ea5e9" : "#1e3a8a"}
-          emissiveIntensity={0.25}
-          roughness={0.18}
+          emissive={isTurn ? "#f59e0b" : "#1e3a8a"}
+          emissiveIntensity={0.3}
+          roughness={0.16}
           metalness={0.12}
         />
       </mesh>
@@ -623,10 +616,10 @@ function TeamPodiumMesh({
       <mesh position={[0, 0.52, 0.02]}>
         <boxGeometry args={[0.98, 0.52, 0.04]} />
         <meshStandardMaterial
-          color={isTurn ? "#38bdf8" : "#1e40af"}
-          metalness={0.88}
-          roughness={0.12}
-          emissive={isTurn ? "#0ea5e9" : "#1e3a5f"}
+          color={isTurn ? "#fbbf24" : "#3b82f6"}
+          metalness={0.9}
+          roughness={0.1}
+          emissive={isTurn ? "#d97706" : "#1e3a5f"}
           emissiveIntensity={isTurn ? 0.75 : 0.25}
         />
       </mesh>
@@ -635,9 +628,9 @@ function TeamPodiumMesh({
       <mesh position={[0, 0.14, 0]} castShadow>
         <boxGeometry args={[0.88, 0.28, 0.22]} />
         <meshStandardMaterial
-          color="#1e3a5f"
-          metalness={0.72}
-          roughness={0.28}
+          color="#1e293b"
+          metalness={0.75}
+          roughness={0.25}
           emissive="#0c1a35"
           emissiveIntensity={0.22}
         />
@@ -646,12 +639,12 @@ function TeamPodiumMesh({
       {/* Podium base foot */}
       <mesh position={[0, -0.01, 0]}>
         <boxGeometry args={[0.98, 0.03, 0.32]} />
-        <meshStandardMaterial color="#0c1a35" metalness={0.55} roughness={0.45} />
+        <meshStandardMaterial color="#07101f" metalness={0.6} roughness={0.4} />
       </mesh>
 
       {/* Spotlight on active team podium */}
       {isTurn && (
-        <pointLight position={[0, 0.88, 0.26]} color="#38bdf8" intensity={2.2} distance={2.2} decay={2} />
+        <pointLight position={[0, 0.88, 0.26]} color="#fef08a" intensity={2.6} distance={2.5} decay={2} />
       )}
     </group>
   );
@@ -739,7 +732,7 @@ function CameraController({
       };
       targetConfig.current = configs[camAngle] ?? CAM_POSITIONS.DEFAULT;
     }
-    applied.current = false; // Trigger immediate hard cut
+    applied.current = false;
   }, [camAngle, effectiveIsSpinning]);
 
   useFrame(() => {
@@ -754,39 +747,46 @@ function CameraController({
   return null;
 }
 
-/** Glossy Reflective Studio Floor with Concentric Neon Rings */
+/** Sân khấu trường quay TV: Sàn kim loại phản chiếu gương + vòng ánh sáng sân khấu tinh tế quanh cỗ máy */
 function StudioFloor() {
   return (
     <group position={[0, -0.75, 0]}>
-      {/* Glossy reflective metallic stage floor */}
+      {/* Sàn gương kim loại phản chiếu toàn trường quay */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[28, 28]} />
+        <planeGeometry args={[32, 32]} />
         <meshStandardMaterial
-          color="#060c18"
-          roughness={0.16}
-          metalness={0.84}
+          color="#060c1a"
+          roughness={0.14}
+          metalness={0.88}
         />
       </mesh>
 
-      {/* Concentric stage floor glowing rings */}
+      {/* Vòng spotlight sân khấu hoàng kim quanh chân bệ máy (Tập trung điểm nhấn, không bị thừa) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]}>
-        <ringGeometry args={[2.85, 2.92, 64]} />
+        <ringGeometry args={[2.65, 2.73, 64]} />
         <meshStandardMaterial
-          color="#38bdf8"
-          emissive="#0ea5e9"
-          emissiveIntensity={1.4}
+          color="#fbbf24"
+          emissive="#d97706"
+          emissiveIntensity={1.2}
           roughness={0.15}
           metalness={0.9}
         />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]}>
-        <ringGeometry args={[4.25, 4.33, 64]} />
+    </group>
+  );
+}
+
+/** Phông nền vòm trường quay TV (Curved Studio Cyc Backdrop) */
+function StudioBackdrop() {
+  return (
+    <group position={[0, 2.5, -7]}>
+      {/* Curved background cyc wall */}
+      <mesh>
+        <planeGeometry args={[24, 12]} />
         <meshStandardMaterial
-          color="#1d4ed8"
-          emissive="#2563eb"
-          emissiveIntensity={0.9}
-          roughness={0.25}
-          metalness={0.8}
+          color="#0a1936"
+          roughness={0.4}
+          metalness={0.2}
         />
       </mesh>
     </group>
@@ -810,6 +810,19 @@ export default function WheelStudio3DScene({
   edition = "VIETNAMESE",
   className = "",
 }: WheelStudio3DSceneProps) {
+  // Ensure Roboto Slab font link is loaded in head
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const fontId = "gameshow-roboto-slab-link";
+    if (!document.getElementById(fontId)) {
+      const link = document.createElement("link");
+      link.id = fontId;
+      link.rel = "stylesheet";
+      link.href = "https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700;800;900&family=Merriweather:wght@900&display=swap";
+      document.head.appendChild(link);
+    }
+  }, []);
+
   return (
     <div className={`w-full h-full relative select-none ${className}`} style={{ minHeight: "300px" }}>
       <Canvas
@@ -821,33 +834,43 @@ export default function WheelStudio3DScene({
       >
         <CameraController camAngle={camAngle} effectiveIsSpinning={effectiveIsSpinning} />
 
-        {/* ── High-Intensity Broadcast 4-Point Studio Lighting ── */}
-        <ambientLight intensity={1.2} color="#e0f2fe" />
+        {/* ── SUPERCHARGED 5-POINT BROADCAST STUDIO LIGHTING (SÁNG BỪNG RỰC RỠ) ── */}
+        <ambientLight intensity={2.2} color="#ffffff" />
 
-        {/* Key Spotlight: direct high-intensity beam on conical wheel disc */}
+        {/* Key Spotlight: trực diện siêu sáng rọi tâm nón */}
         <spotLight
-          position={[0, 8.5, 4.2]}
-          intensity={6.0}
-          angle={0.65}
-          penumbra={0.35}
+          position={[0, 9.5, 4.0]}
+          intensity={12.0}
+          angle={0.7}
+          penumbra={0.3}
           castShadow
           shadow-mapSize={[1024, 1024]}
           color="#ffffff"
         />
 
-        {/* Left Soft Fill Spotlight (Sky Blue) */}
-        <spotLight position={[-4.5, 5.5, 3.2]} intensity={2.6} angle={0.7} penumbra={0.5} color="#38bdf8" />
+        {/* Front Camera Fill Spotlight: xóa bóng đổ đen, sáng đều toàn bộ mặt trước */}
+        <spotLight
+          position={[0, 5.0, 5.5]}
+          intensity={6.0}
+          angle={0.75}
+          penumbra={0.4}
+          color="#fffbeb"
+        />
 
-        {/* Right Warm Fill Spotlight (Amber Gold) */}
-        <spotLight position={[4.5, 5.5, 3.2]} intensity={2.6} angle={0.7} penumbra={0.5} color="#fbbf24" />
+        {/* Left Studio Wash Spotlight (Cool Daylight) */}
+        <spotLight position={[-5.0, 6.0, 3.0]} intensity={4.5} angle={0.75} penumbra={0.5} color="#e0f2fe" />
 
-        {/* Back Rim / Kicker Light (separates machine & podiums from background) */}
-        <pointLight position={[0, 4.2, -4.5]} color="#60a5fa" intensity={4.0} />
+        {/* Right Studio Wash Spotlight (Warm Gold) */}
+        <spotLight position={[5.0, 6.0, 3.0]} intensity={4.5} angle={0.75} penumbra={0.5} color="#fef3c7" />
 
-        {/* Ground ambiance fill */}
-        <pointLight position={[0, 0.2, 3.8]} color="#93c5fd" intensity={0.9} />
+        {/* Back Rim / Kicker Light (Làm nổi bật viền nón và kim quay) */}
+        <pointLight position={[0, 4.5, -4.5]} color="#93c5fd" intensity={6.0} />
+
+        {/* Ground Warm Gold Ambiance Fill */}
+        <pointLight position={[0, 0.4, 3.5]} color="#fde68a" intensity={2.0} />
 
         {/* Studio Elements */}
+        <StudioBackdrop />
         <StudioFloor />
         <WheelMachineGroup
           sectors={sectors}

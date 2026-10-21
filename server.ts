@@ -10,12 +10,15 @@ async function ensureDatabaseSchema() {
   try {
     const modes = [
       "CLASSIC", "BUZZ", "BOUNCEBACK", "ELIMINATION", "TOURNAMENT",
-      "GRID_CARO", "DICE_RACE", "WAGER", "MYSTERY_QUEST"
+      "GRID_CARO", "DICE_RACE", "WAGER", "MYSTERY_QUEST", "MAGIC_WHEEL"
     ];
     for (const m of modes) {
       await prisma.$executeRawUnsafe(`ALTER TYPE "GameMode" ADD VALUE IF NOT EXISTS '${m}'`).catch(() => {});
     }
-    await prisma.$executeRawUnsafe(`ALTER TYPE "QuestionType" ADD VALUE IF NOT EXISTS 'CLOZE_DROPDOWN'`).catch(() => {});
+    const qTypes = ["CLOZE_DROPDOWN", "WORD_PUZZLE", "MATCHING", "DRAG_DROP"];
+    for (const qt of qTypes) {
+      await prisma.$executeRawUnsafe(`ALTER TYPE "QuestionType" ADD VALUE IF NOT EXISTS '${qt}'`).catch(() => {});
+    }
     await prisma.$executeRawUnsafe(`ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "mediaPlaybackMode" TEXT DEFAULT 'AFTER_PLAY'`).catch(() => {});
     await prisma.$executeRawUnsafe(`ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "allowManualGrading" BOOLEAN DEFAULT false`).catch(() => {});
     await prisma.$executeRawUnsafe(`ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "gradingCriteria" TEXT`).catch(() => {});

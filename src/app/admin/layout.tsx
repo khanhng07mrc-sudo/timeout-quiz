@@ -21,7 +21,8 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const isSandbox = pathname.startsWith("/admin/sandbox");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(isSandbox);
+  const isRoomHost = pathname.startsWith("/admin/rooms/") && pathname !== "/admin/rooms/create";
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(isSandbox || isRoomHost);
   const { user, logout } = useAdminAuth();
 
   const handleLogout = async () => {
@@ -297,6 +298,16 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           } flex-1 h-screen max-h-screen overflow-hidden p-1 sm:p-2 pt-16 lg:pt-2 flex flex-col min-h-0 transition-all duration-200`}
         >
           <div key={pathname} className="w-full h-full flex flex-col min-h-0 animate-fade-in">
+            {children}
+          </div>
+        </main>
+      ) : isRoomHost ? (
+        <main
+          className={`${
+            sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
+          } flex-1 p-3 sm:p-4 lg:p-6 pt-16 lg:pt-6 min-h-screen transition-all duration-200`}
+        >
+          <div key={pathname} className="w-full max-w-full animate-fade-in">
             {children}
           </div>
         </main>

@@ -2,6 +2,7 @@ import { Server as SocketIOServer, Socket } from "socket.io";
 import { AsyncLocalStorage } from "async_hooks";
 import { prisma } from "./prisma";
 import { ensureQuizBankExists } from "./quiz-bank-seeder";
+import { MAGIC_WHEEL_PRESET_BANKS, DEFAULT_OFFLINE_BANK } from "./offline-storage";
 import {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -9073,12 +9074,13 @@ export function registerSocketHandlers(io: IO) {
       await executeMagicWheelBuyVowel(room.id, room.code, payload.vowel);
     });
 
-    socket.on("magic_wheel:set_edition", async (payload: { edition: "VIETNAMESE" | "ENGLISH" }) => {
+    socket.on("magic_wheel:set_edition", async (payload: { edition: "VIETNAMESE" | "ENGLISH"; force?: boolean }) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
       if (!room) return;
-      if (room.status !== "LOBBY") {
+      const isSandbox = room.code.startsWith("SANDBOX") || (room.config as any)?.isSandbox;
+      if (room.status !== "LOBBY" && !isSandbox && !payload.force) {
         socket.emit("error", "Trận đấu đã bắt đầu, chỉ được đổi thể lệ/ngôn ngữ ở sảnh chờ trước khi bấm bắt đầu trận!");
         return;
       }
@@ -9138,7 +9140,7 @@ export function registerSocketHandlers(io: IO) {
         roomMagicWheels.set(roomId, wheelState);
       } else {
         wheelState.edition = payload.edition;
-        wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
+        wheelState.sectors = generateMagicWheelSectors(wheelState.currentRound || 1, wheelState.roundStage, payload.edition);
         if (!currentConfig?.magicWheelPuzzles || currentConfig.magicWheelPuzzles.length === 0) {
           const newPuzzles = buildMagicWheelMatchPuzzles(
             teamsCount,
@@ -9157,10 +9159,11 @@ export function registerSocketHandlers(io: IO) {
       }
     });
 
-    socket.on("admin:magic_wheel:set_edition", async (payload: { edition: "VIETNAMESE" | "ENGLISH" }) => {
+    socket.on("admin:magic_wheel:set_edition", async (payload: { edition: "VIETNAMESE" | "ENGLISH"; force?: boolean }) => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "MAGIC_WHEEL") return;
-      if (room.status !== "LOBBY") {
+      const isSandbox = room.code.startsWith("SANDBOX") || (room.config as any)?.isSandbox;
+      if (room.status !== "LOBBY" && !isSandbox && !payload.force) {
         socket.emit("error", "Trận đấu đã bắt đầu, chỉ được đổi thể lệ/ngôn ngữ ở sảnh chờ trước khi bấm bắt đầu trận!");
         return;
       }
@@ -9305,50 +9308,109 @@ export function registerSocketHandlers(io: IO) {
       }
     });
 
-    socket.on("admin:magic_wheel:emergency_change_bank", async (payload: { quizBankId: string }) => {
+    socket.on("admin:magic_wheel:emergency_change_bank", async (payload: { quizBankId: string; localBank?: any }) => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "MAGIC_WHEEL") return;
       if (!payload.quizBankId) return;
 
+      // Seed preset vào DB nếu là preset mẫu
+      await ensureQuizBankExists(payload.quizBankId);
+
+      let bankTitle = payload.quizBankId;
+      let candidateQuestions: any[] = [];
+      let bankRecord: any = null;
+
       const bank = await prisma.quizBank.findUnique({
         where: { id: payload.quizBankId },
-        include: { questions: true },
+        include: { questions: { orderBy: { order: "asc" } } },
       });
-      if (!bank) {
-        socket.emit("error", "Không tìm thấy bộ đề yêu cầu!");
-        return;
+      if (bank) {
+        bankRecord = bank;
+        bankTitle = bank.title;
+        if (bank.questions && bank.questions.length > 0) {
+          candidateQuestions = bank.questions;
+        }
       }
 
-      const wordQuestions = bank.questions.filter((q) => q.type === "WORD_PUZZLE");
-      if (wordQuestions.length === 0) {
+      // Fallback 1: Preset banks (e.g. MAGIC_WHEEL_PRESET_BANKS)
+      if (candidateQuestions.length === 0) {
+        const allPresets = [DEFAULT_OFFLINE_BANK, ...MAGIC_WHEEL_PRESET_BANKS];
+        const preset = allPresets.find((p) => p.id === payload.quizBankId);
+        if (preset) {
+          bankTitle = preset.title || bankTitle;
+          if (preset.questions && preset.questions.length > 0) {
+            candidateQuestions = preset.questions;
+          }
+        }
+      }
+
+      // Fallback 2: payload.localBank
+      if (candidateQuestions.length === 0 && payload.localBank?.questions?.length) {
+        bankTitle = payload.localBank.title || bankTitle;
+        candidateQuestions = payload.localBank.questions;
+      }
+
+      // Fallback 3: room.config.customQuestions
+      if (candidateQuestions.length === 0) {
+        const cfg = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+        if (cfg.customQuestions && cfg.customQuestions.length > 0) {
+          candidateQuestions = cfg.customQuestions;
+          bankTitle = cfg.customBankTitle || bankTitle;
+        }
+      }
+
+      const wordQuestions = candidateQuestions.filter((q) => q.type === "WORD_PUZZLE");
+      const finalQuestions = wordQuestions.length > 0 ? wordQuestions : candidateQuestions;
+      if (finalQuestions.length === 0) {
         socket.emit("error", "Bộ đề này không có câu hỏi Ô Chữ (WORD_PUZZLE)!");
         return;
       }
 
-      const customPuzzles: MagicWheelPuzzle[] = wordQuestions.map((q, idx) => {
+      const customPuzzles: MagicWheelPuzzle[] = finalQuestions.map((q, idx) => {
         const roundOpt = Array.isArray(q.options)
           ? (q.options as any[]).find((o) => o?.id === "round")
           : undefined;
+        const rawAns = q.answer || (Array.isArray(q.options) ? (q.options as any[]).find((o) => o?.isCorrect)?.text : "") || "";
         return {
           id: `puzzle-emergency-${idx + 1}`,
           roundNumber: roundOpt ? Number(roundOpt.text) || idx + 1 : idx + 1,
           category: q.hint || "TỔNG HỢP",
-          secretPhrase: (q.answer || "").toUpperCase(),
+          secretPhrase: (rawAns || "").toUpperCase().trim(),
           clue: q.content || "",
           revealedIndices: [],
         };
-      });
+      }).filter((p) => p.secretPhrase.length > 0);
 
       const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
-      const detectedEd = detectQuizBankLanguage({ id: bank.id, title: bank.title, description: bank.description, questions: bank.questions });
-      const newConfig = { ...currentConfig, magicWheelPuzzles: customPuzzles, magicWheelEdition: detectedEd };
-      await prisma.room.update({
-        where: { id: room.id },
-        data: { quizBankId: bank.id, config: newConfig },
-      });
+      const detectedEd = detectQuizBankLanguage({ id: payload.quizBankId, title: bankTitle, questions: candidateQuestions });
+      const newConfig = {
+        ...currentConfig,
+        magicWheelPuzzles: customPuzzles,
+        magicWheelEdition: detectedEd,
+        customQuestions: candidateQuestions,
+        customBankTitle: bankTitle,
+      };
+
+      try {
+        await prisma.room.update({
+          where: { id: room.id },
+          data: {
+            quizBankId: bankRecord ? bankRecord.id : null,
+            config: newConfig,
+          },
+        });
+      } catch {
+        await prisma.room.update({
+          where: { id: room.id },
+          data: { quizBankId: null, config: newConfig },
+        }).catch(() => null);
+      }
 
       const cached = roomCache.get(room.id);
-      if (cached) cached.config = newConfig;
+      if (cached) {
+        cached.config = newConfig;
+        if (bankRecord) cached.quizBankId = bankRecord.id;
+      }
 
       const wheelState = roomMagicWheels.get(room.id);
       if (wheelState) {
@@ -9367,7 +9429,8 @@ export function registerSocketHandlers(io: IO) {
           };
         }
         wheelState.edition = detectedEd || wheelState.edition;
-        wheelState.lastActionMessage = `🚨 MC đã đổi khẩn cấp sang bộ đề [${bank.title}] (${detectedEd === "ENGLISH" ? "Bản Tiếng Anh" : "Bản Tiếng Việt"})!`;
+        wheelState.sectors = generateMagicWheelSectors(wheelState.currentRound || 1, wheelState.roundStage || "MAIN", wheelState.edition);
+        wheelState.lastActionMessage = `🚨 MC đã đổi khẩn cấp sang bộ đề [${bankTitle}] (${wheelState.edition === "ENGLISH" ? "Bản Tiếng Anh" : "Bản Tiếng Việt"})!`;
         io.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
       }
 
@@ -9434,14 +9497,26 @@ export function registerSocketHandlers(io: IO) {
       }
 
       // Validate bank compatibility BEFORE updating room in database
+      let availableQuestions: any[] = bank.questions || [];
+      if (availableQuestions.length === 0 && payload.localBank?.questions?.length) {
+        availableQuestions = payload.localBank.questions;
+      }
+      if (availableQuestions.length === 0) {
+        const allPresets = [DEFAULT_OFFLINE_BANK, ...MAGIC_WHEEL_PRESET_BANKS];
+        const preset = allPresets.find((p) => p.id === validBankId);
+        if (preset?.questions?.length) {
+          availableQuestions = preset.questions;
+        }
+      }
+
       if (room.mode === "MAGIC_WHEEL") {
-        const hasWp = bank.questions.some((q: any) => q.type === "WORD_PUZZLE");
+        const hasWp = availableQuestions.some((q: any) => q.type === "WORD_PUZZLE");
         if (!hasWp) {
           socket.emit("error", "Chế độ Chiếc Nón Kỳ Diệu chỉ chấp nhận bộ đề có câu hỏi Ô Chữ (WORD_PUZZLE)!");
           return;
         }
       } else {
-        const isAllWp = bank.questions.length > 0 && bank.questions.every((q: any) => q.type === "WORD_PUZZLE");
+        const isAllWp = availableQuestions.length > 0 && availableQuestions.every((q: any) => q.type === "WORD_PUZZLE");
         if (isAllWp) {
           socket.emit("error", "Bộ đề Ô Chữ chỉ dành riêng cho chế độ Chiếc Nón Kỳ Diệu!");
           return;
@@ -9455,8 +9530,8 @@ export function registerSocketHandlers(io: IO) {
 
       roomQuestionsCache.delete(room.id);
 
-      if (bank.questions && bank.questions.length > 0) {
-        roomQuestionsCache.set(room.id, bank.questions);
+      if (availableQuestions.length > 0) {
+        roomQuestionsCache.set(room.id, availableQuestions);
       }
 
       const cached = roomCache.get(room.id);
@@ -9465,8 +9540,8 @@ export function registerSocketHandlers(io: IO) {
       }
 
       if (room.mode === "MAGIC_WHEEL") {
-        const wordQuestions = bank.questions.filter((q) => q.type === "WORD_PUZZLE");
-        const candidateQuestions = wordQuestions.length > 0 ? wordQuestions : bank.questions;
+        const wordQuestions = availableQuestions.filter((q: any) => q.type === "WORD_PUZZLE");
+        const candidateQuestions = wordQuestions.length > 0 ? wordQuestions : availableQuestions;
         const customPuzzles: MagicWheelPuzzle[] = candidateQuestions.map((q, idx) => {
           const roundOpt = Array.isArray(q.options)
             ? (q.options as any[]).find((o) => o?.id === "round")

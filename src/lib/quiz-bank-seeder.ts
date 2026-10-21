@@ -17,13 +17,24 @@ export async function ensureQuizBankExists(bankId: string | null | undefined): P
   try {
     const existing = await prisma.quizBank.findUnique({
       where: { id: cleanId },
-      select: { id: true },
+      include: { questions: { select: { id: true }, take: 1 } },
     });
-    if (existing) return existing.id;
 
     // Danh sách toàn bộ các bộ đề mẫu cài sẵn hệ thống (Magic Wheel + Đề Đa Chế Độ)
     const allPresets = [DEFAULT_OFFLINE_BANK, ...MAGIC_WHEEL_PRESET_BANKS];
     const preset = allPresets.find((p) => p.id === cleanId);
+
+    if (existing) {
+      // Nếu bank đã có câu hỏi, hoặc không phải là preset -> ID hợp lệ
+      if (existing.questions && existing.questions.length > 0) {
+        return existing.id;
+      }
+      if (!preset) {
+        return existing.id;
+      }
+      // Nếu là preset nhưng rỗng câu hỏi trong DB -> xóa để re-seed đầy đủ bên dưới!
+      await prisma.quizBank.delete({ where: { id: cleanId } }).catch(() => null);
+    }
     if (preset) {
       // Tìm hoặc tạo User System để làm chủ sở hữu bộ đề preset (tránh vi phạm FK QuizBank_ownerId_fkey)
       let owner = await prisma.user.findFirst({

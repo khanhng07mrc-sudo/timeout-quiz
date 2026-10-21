@@ -1955,7 +1955,7 @@ export default function MagicWheelBoard({
       clearChoreographyTimers();
       setHighlightedIndices(new Set());
       setHostessPose("IDLE");
-      setHostessXPercent(0);
+      setHostessXPercent(hostessSideRef.current === "LEFT" ? 6 : 94);
       return;
     }
 
@@ -2088,7 +2088,9 @@ export default function MagicWheelBoard({
           setHostessPose("WALKING");
           setHostessWalkDurationMs(travelMs);
           setHostessActiveRow(pos.row);
-          const colPercent = Math.max(8, Math.min(92, ((pos.col + 0.5) / COLS) * 100));
+          // Stage Wings layout: Cánh Gà Trái 12%, Bảng Ô Chữ 76%, Cánh Gà Phải 12%
+          // Người mẫu bước đến đúng vị trí cột ô chữ trên sân khấu mà không che khuất
+          const colPercent = 12 + ((pos.col + 0.5) / COLS) * 76;
           setHostessXPercent(colPercent);
         }, elapsedWalkMs);
         activeTimersRef.current.push(moveTimer);
@@ -3025,9 +3027,29 @@ export default function MagicWheelBoard({
         </div>
       )}
 
-      <div className={`w-full ${isDisplayMode ? "max-w-4xl" : "max-w-5xl"} flex flex-col items-center relative py-0.5 px-3 sm:px-6`}>
-        <div className={`w-full ${isDisplayMode ? "p-1 sm:p-1.5" : "p-2 sm:p-3"} rounded-xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-2 sm:border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40`}>
-          <div className="w-full grid grid-rows-4 gap-0.5 sm:gap-1">
+      <div className={`w-full ${isDisplayMode ? "max-w-4xl" : "max-w-6xl"} flex flex-col items-center relative py-0.5 px-1 sm:px-2 md:px-4`}>
+        {/* Stage Proscenium: Cánh Gà Trái + Bảng 56 Ô + Cánh Gà Phải */}
+        <div className="w-full flex items-stretch justify-center gap-1.5 sm:gap-2 md:gap-3 relative">
+          {/* Cánh Gà Trái (Stage Left Wing - Bục Nghỉ Người Mẫu) */}
+          <div className="hidden md:flex flex-col items-center justify-between w-18 sm:w-22 md:w-26 lg:w-30 shrink-0 relative py-1 select-none pointer-events-none">
+            <div className="w-full h-full rounded-xl bg-gradient-to-b from-[#0a1f10] via-[#041407] to-[#020b04] border border-amber-500/50 p-1.5 flex flex-col items-center justify-between relative shadow-xl overflow-hidden ring-1 ring-yellow-400/30">
+              <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+              <div className="w-full flex items-center justify-center gap-1 opacity-80 pt-0.5">
+                <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-[9px] font-black tracking-widest text-amber-300 uppercase">CÁNH TRÁI</span>
+                <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+              </div>
+              <div className="w-14 h-32 bg-gradient-to-b from-amber-400/20 via-yellow-400/5 to-transparent blur-lg pointer-events-none" />
+              <div className="w-14 sm:w-18 h-5 rounded-full border border-amber-400/70 bg-gradient-to-r from-amber-900/80 via-yellow-600/50 to-amber-900/80 shadow-[0_0_15px_rgba(245,158,11,0.4)] flex items-center justify-center mb-0.5">
+                <div className="w-10 sm:w-14 h-2.5 rounded-full bg-yellow-400/30 border border-yellow-300/60" />
+              </div>
+            </div>
+          </div>
+
+          {/* Bảng Video Wall Trung Tâm */}
+          <div className="flex-1 min-w-0 max-w-5xl">
+            <div className={`w-full ${isDisplayMode ? "p-1 sm:p-1.5" : "p-2 sm:p-3"} rounded-xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-2 sm:border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40`}>
+              <div className="w-full grid grid-rows-4 gap-0.5 sm:gap-1">
             {gridMatrix.map((row, rIdx) => (
               <div
                 key={rIdx}
@@ -3098,9 +3120,27 @@ export default function MagicWheelBoard({
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Runway & Hostess */}
-        <div className="relative w-full h-7 sm:h-9 -mt-1.5 z-10 flex flex-col justify-end">
+      {/* Cánh Gà Phải (Stage Right Wing - Đối Xứng) */}
+      <div className="hidden md:flex flex-col items-center justify-between w-18 sm:w-22 md:w-26 lg:w-30 shrink-0 relative py-1 select-none pointer-events-none">
+        <div className="w-full h-full rounded-xl bg-gradient-to-b from-[#0a1f10] via-[#041407] to-[#020b04] border border-amber-500/50 p-1.5 flex flex-col items-center justify-between relative shadow-xl overflow-hidden ring-1 ring-yellow-400/30">
+          <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+          <div className="w-full flex items-center justify-center gap-1 opacity-80 pt-0.5">
+            <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-[9px] font-black tracking-widest text-amber-300 uppercase">CÁNH PHẢI</span>
+            <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+          </div>
+          <div className="w-14 h-32 bg-gradient-to-b from-amber-400/20 via-yellow-400/5 to-transparent blur-lg pointer-events-none" />
+          <div className="w-14 sm:w-18 h-5 rounded-full border border-amber-400/70 bg-gradient-to-r from-amber-900/80 via-yellow-600/50 to-amber-900/80 shadow-[0_0_15px_rgba(245,158,11,0.4)] flex items-center justify-center mb-0.5">
+            <div className="w-10 sm:w-14 h-2.5 rounded-full bg-yellow-400/30 border border-yellow-300/60" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Runway & Hostess */}
+    <div className="relative w-full h-7 sm:h-9 -mt-1.5 z-20 flex flex-col justify-end">
           <div
             className="absolute inset-0 rounded-b-2xl overflow-hidden border-t-2 border-amber-600/70"
             style={{
@@ -4330,11 +4370,32 @@ export default function MagicWheelBoard({
               <div className="w-48 h-36 bg-gradient-to-b from-amber-400/40 via-yellow-400/15 to-transparent blur-2xl transform rotate-15" />
             </div>
 
-            {/* SÂN KHẤU LIỀN MẠCH: Bảng Video Wall 3D + Sàn Runway Người Mẫu Đồng Nhất (max-w-5xl để không che khuất người mẫu) */}
-            <div className="w-full max-w-5xl flex flex-col items-center relative z-10 px-6 sm:px-10">
-                {/* 3D Luxury Metallic Beveled Gold Video Wall Casing */}
-                <div className="w-full p-2.5 sm:p-3.5 md:p-4 rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40">
-                  <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5 md:gap-2">
+            {/* SÂN KHẤU TRUYỀN HÌNH 3D: Cánh Gà Trái + Bảng Video Wall 56 Ô + Cánh Gà Phải + Sàn Runway Liền Mạch */}
+            <div className="w-full max-w-6xl flex flex-col items-center relative z-10 px-2 sm:px-4 md:px-6">
+              {/* Proscenium Row: Left Wing - Center Board - Right Wing */}
+              <div className="w-full flex items-stretch justify-center gap-2 sm:gap-3 md:gap-4 relative">
+                {/* Cánh Gà Trái (Stage Left Wing - Bục Đứng Người Mẫu 0% Che Chữ) */}
+                <div className="hidden md:flex flex-col items-center justify-between w-22 sm:w-26 md:w-28 lg:w-32 shrink-0 relative py-1 select-none pointer-events-none">
+                  <div className="w-full h-full rounded-2xl bg-gradient-to-b from-[#0a1f10] via-[#041407] to-[#020b04] border-2 border-amber-500/50 p-2 flex flex-col items-center justify-between relative shadow-2xl overflow-hidden ring-1 ring-yellow-400/30">
+                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+                    <div className="w-full flex items-center justify-center gap-1.5 opacity-80 pt-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      <span className="text-[10px] font-black tracking-widest text-amber-300 uppercase">CÁNH TRÁI</span>
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    </div>
+                    {/* Đèn rọi sân khấu */}
+                    <div className="w-20 h-40 bg-gradient-to-b from-amber-400/25 via-yellow-400/10 to-transparent blur-xl pointer-events-none" />
+                    {/* Bục đứng tròn hoàng gia */}
+                    <div className="w-18 sm:w-22 h-6 sm:h-7 rounded-full border border-amber-400/70 bg-gradient-to-r from-amber-900/80 via-yellow-600/50 to-amber-900/80 shadow-[0_0_20px_rgba(245,158,11,0.4)] flex items-center justify-center mb-1">
+                      <div className="w-12 sm:w-16 h-3 rounded-full bg-yellow-400/30 border border-yellow-300/60 shadow-inner" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bảng Video Wall 3D Trung Tâm (14 Cột Ô Chữ Hoàn Toàn Rõ Ràng) */}
+                <div className="flex-1 min-w-0 max-w-5xl">
+                  <div className="w-full p-2.5 sm:p-3.5 md:p-4 rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_35px_rgba(245,158,11,0.3)] ring-2 ring-yellow-400/40">
+                    <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5 md:gap-2">
                     {gridMatrix.map((row, rIdx) => (
                       <div
                         key={rIdx}
@@ -4420,9 +4481,29 @@ export default function MagicWheelBoard({
                     ))}
                   </div>
                 </div>
+              </div>
 
-                {/* Sàn Sân Khấu Gỗ Bóng Mahogany & Dải Đèn Chân Vàng Sang Trọng (Liền Mạch) */}
-                <div className="relative w-full h-8 sm:h-11 md:h-14 -mt-2 sm:-mt-2.5 z-10 flex flex-col justify-end">
+              {/* Cánh Gà Phải (Stage Right Wing - Đối Xứng Sang Trọng) */}
+              <div className="hidden md:flex flex-col items-center justify-between w-22 sm:w-26 md:w-28 lg:w-32 shrink-0 relative py-1 select-none pointer-events-none">
+                <div className="w-full h-full rounded-2xl bg-gradient-to-b from-[#0a1f10] via-[#041407] to-[#020b04] border-2 border-amber-500/50 p-2 flex flex-col items-center justify-between relative shadow-2xl overflow-hidden ring-1 ring-yellow-400/30">
+                  <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+                  <div className="w-full flex items-center justify-center gap-1.5 opacity-80 pt-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    <span className="text-[10px] font-black tracking-widest text-amber-300 uppercase">CÁNH PHẢI</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  </div>
+                  {/* Đèn rọi sân khấu */}
+                  <div className="w-20 h-40 bg-gradient-to-b from-amber-400/25 via-yellow-400/10 to-transparent blur-xl pointer-events-none" />
+                  {/* Bục đứng tròn hoàng gia */}
+                  <div className="w-18 sm:w-22 h-6 sm:h-7 rounded-full border border-amber-400/70 bg-gradient-to-r from-amber-900/80 via-yellow-600/50 to-amber-900/80 shadow-[0_0_20px_rgba(245,158,11,0.4)] flex items-center justify-center mb-1">
+                    <div className="w-12 sm:w-16 h-3 rounded-full bg-yellow-400/30 border border-yellow-300/60 shadow-inner" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Sàn Sân Khấu Gỗ Bóng Mahogany & Dải Đèn Chân Vàng Sang Trọng (Liền Mạch Toàn Sân Khấu) */}
+            <div className="relative w-full h-8 sm:h-11 md:h-14 -mt-2 sm:-mt-2.5 z-20 flex flex-col justify-end">
                   {/* Sàn gỗ bóng phản chiếu ánh đèn vàng */}
                   <div
                     className="absolute inset-0 rounded-b-2xl overflow-hidden border-t-2 border-amber-600/70"

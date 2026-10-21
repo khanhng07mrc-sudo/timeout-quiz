@@ -2245,11 +2245,19 @@ async function ensureQuizBankExists(bankId) {
   try {
     const existing = await prisma.quizBank.findUnique({
       where: { id: cleanId },
-      select: { id: true }
+      include: { questions: { select: { id: true }, take: 1 } }
     });
-    if (existing) return existing.id;
     const allPresets = [DEFAULT_OFFLINE_BANK, ...MAGIC_WHEEL_PRESET_BANKS];
     const preset = allPresets.find((p) => p.id === cleanId);
+    if (existing) {
+      if (existing.questions && existing.questions.length > 0) {
+        return existing.id;
+      }
+      if (!preset) {
+        return existing.id;
+      }
+      await prisma.quizBank.delete({ where: { id: cleanId } }).catch(() => null);
+    }
     if (preset) {
       let owner = await prisma.user.findFirst({
         where: { role: "ADMIN" },
@@ -19190,7 +19198,8 @@ function registerSocketHandlers(io2) {
       if (!roomId || !roomCode) return;
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
       if (!room) return;
-      if (room.status !== "LOBBY") {
+      const isSandbox = room.code.startsWith("SANDBOX") || room.config?.isSandbox;
+      if (room.status !== "LOBBY" && !isSandbox && !payload.force) {
         socket.emit("error", "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i th\u1EC3 l\u1EC7/ng\xF4n ng\u1EEF \u1EDF s\u1EA3nh ch\u1EDD tr\u01B0\u1EDBc khi b\u1EA5m b\u1EAFt \u0111\u1EA7u tr\u1EADn!");
         return;
       }
@@ -19247,7 +19256,7 @@ function registerSocketHandlers(io2) {
         roomMagicWheels.set(roomId, wheelState);
       } else {
         wheelState.edition = payload.edition;
-        wheelState.sectors = generateMagicWheelSectors(1, wheelState.roundStage, payload.edition);
+        wheelState.sectors = generateMagicWheelSectors(wheelState.currentRound || 1, wheelState.roundStage, payload.edition);
         if (!currentConfig?.magicWheelPuzzles || currentConfig.magicWheelPuzzles.length === 0) {
           const newPuzzles = buildMagicWheelMatchPuzzles(
             teamsCount,
@@ -19268,7 +19277,8 @@ function registerSocketHandlers(io2) {
     socket.on("admin:magic_wheel:set_edition", async (payload) => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "MAGIC_WHEEL") return;
-      if (room.status !== "LOBBY") {
+      const isSandbox = room.code.startsWith("SANDBOX") || room.config?.isSandbox;
+      if (room.status !== "LOBBY" && !isSandbox && !payload.force) {
         socket.emit("error", "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, ch\u1EC9 \u0111\u01B0\u1EE3c \u0111\u1ED5i th\u1EC3 l\u1EC7/ng\xF4n ng\u1EEF \u1EDF s\u1EA3nh ch\u1EDD tr\u01B0\u1EDBc khi b\u1EA5m b\u1EAFt \u0111\u1EA7u tr\u1EADn!");
         return;
       }
@@ -19409,39 +19419,88 @@ function registerSocketHandlers(io2) {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "MAGIC_WHEEL") return;
       if (!payload.quizBankId) return;
+      await ensureQuizBankExists(payload.quizBankId);
+      let bankTitle = payload.quizBankId;
+      let candidateQuestions = [];
+      let bankRecord = null;
       const bank = await prisma.quizBank.findUnique({
         where: { id: payload.quizBankId },
-        include: { questions: true }
+        include: { questions: { orderBy: { order: "asc" } } }
       });
-      if (!bank) {
-        socket.emit("error", "Kh\xF4ng t\xECm th\u1EA5y b\u1ED9 \u0111\u1EC1 y\xEAu c\u1EA7u!");
-        return;
+      if (bank) {
+        bankRecord = bank;
+        bankTitle = bank.title;
+        if (bank.questions && bank.questions.length > 0) {
+          candidateQuestions = bank.questions;
+        }
       }
-      const wordQuestions = bank.questions.filter((q) => q.type === "WORD_PUZZLE");
-      if (wordQuestions.length === 0) {
+      if (candidateQuestions.length === 0) {
+        const allPresets = [DEFAULT_OFFLINE_BANK, ...MAGIC_WHEEL_PRESET_BANKS];
+        const preset = allPresets.find((p) => p.id === payload.quizBankId);
+        if (preset) {
+          bankTitle = preset.title || bankTitle;
+          if (preset.questions && preset.questions.length > 0) {
+            candidateQuestions = preset.questions;
+          }
+        }
+      }
+      if (candidateQuestions.length === 0 && payload.localBank?.questions?.length) {
+        bankTitle = payload.localBank.title || bankTitle;
+        candidateQuestions = payload.localBank.questions;
+      }
+      if (candidateQuestions.length === 0) {
+        const cfg = typeof room.config === "object" && room.config !== null ? room.config : {};
+        if (cfg.customQuestions && cfg.customQuestions.length > 0) {
+          candidateQuestions = cfg.customQuestions;
+          bankTitle = cfg.customBankTitle || bankTitle;
+        }
+      }
+      const wordQuestions = candidateQuestions.filter((q) => q.type === "WORD_PUZZLE");
+      const finalQuestions = wordQuestions.length > 0 ? wordQuestions : candidateQuestions;
+      if (finalQuestions.length === 0) {
         socket.emit("error", "B\u1ED9 \u0111\u1EC1 n\xE0y kh\xF4ng c\xF3 c\xE2u h\u1ECFi \xD4 Ch\u1EEF (WORD_PUZZLE)!");
         return;
       }
-      const customPuzzles = wordQuestions.map((q, idx) => {
+      const customPuzzles = finalQuestions.map((q, idx) => {
         const roundOpt = Array.isArray(q.options) ? q.options.find((o) => o?.id === "round") : void 0;
+        const rawAns = q.answer || (Array.isArray(q.options) ? q.options.find((o) => o?.isCorrect)?.text : "") || "";
         return {
           id: `puzzle-emergency-${idx + 1}`,
           roundNumber: roundOpt ? Number(roundOpt.text) || idx + 1 : idx + 1,
           category: q.hint || "T\u1ED4NG H\u1EE2P",
-          secretPhrase: (q.answer || "").toUpperCase(),
+          secretPhrase: (rawAns || "").toUpperCase().trim(),
           clue: q.content || "",
           revealedIndices: []
         };
-      });
+      }).filter((p) => p.secretPhrase.length > 0);
       const currentConfig = typeof room.config === "object" && room.config !== null ? room.config : {};
-      const detectedEd = detectQuizBankLanguage({ id: bank.id, title: bank.title, description: bank.description, questions: bank.questions });
-      const newConfig = { ...currentConfig, magicWheelPuzzles: customPuzzles, magicWheelEdition: detectedEd };
-      await prisma.room.update({
-        where: { id: room.id },
-        data: { quizBankId: bank.id, config: newConfig }
-      });
+      const detectedEd = detectQuizBankLanguage({ id: payload.quizBankId, title: bankTitle, questions: candidateQuestions });
+      const newConfig = {
+        ...currentConfig,
+        magicWheelPuzzles: customPuzzles,
+        magicWheelEdition: detectedEd,
+        customQuestions: candidateQuestions,
+        customBankTitle: bankTitle
+      };
+      try {
+        await prisma.room.update({
+          where: { id: room.id },
+          data: {
+            quizBankId: bankRecord ? bankRecord.id : null,
+            config: newConfig
+          }
+        });
+      } catch {
+        await prisma.room.update({
+          where: { id: room.id },
+          data: { quizBankId: null, config: newConfig }
+        }).catch(() => null);
+      }
       const cached = roomCache.get(room.id);
-      if (cached) cached.config = newConfig;
+      if (cached) {
+        cached.config = newConfig;
+        if (bankRecord) cached.quizBankId = bankRecord.id;
+      }
       const wheelState = roomMagicWheels.get(room.id);
       if (wheelState) {
         const newMatchPuzzles = buildMagicWheelMatchPuzzles(
@@ -19459,7 +19518,8 @@ function registerSocketHandlers(io2) {
           };
         }
         wheelState.edition = detectedEd || wheelState.edition;
-        wheelState.lastActionMessage = `\u{1F6A8} MC \u0111\xE3 \u0111\u1ED5i kh\u1EA9n c\u1EA5p sang b\u1ED9 \u0111\u1EC1 [${bank.title}] (${detectedEd === "ENGLISH" ? "B\u1EA3n Ti\u1EBFng Anh" : "B\u1EA3n Ti\u1EBFng Vi\u1EC7t"})!`;
+        wheelState.sectors = generateMagicWheelSectors(wheelState.currentRound || 1, wheelState.roundStage || "MAIN", wheelState.edition);
+        wheelState.lastActionMessage = `\u{1F6A8} MC \u0111\xE3 \u0111\u1ED5i kh\u1EA9n c\u1EA5p sang b\u1ED9 \u0111\u1EC1 [${bankTitle}] (${wheelState.edition === "ENGLISH" ? "B\u1EA3n Ti\u1EBFng Anh" : "B\u1EA3n Ti\u1EBFng Vi\u1EC7t"})!`;
         io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
       }
       const fullRoomState = await buildRoomState(room.id);
@@ -19516,14 +19576,25 @@ function registerSocketHandlers(io2) {
         socket.emit("error", "Kh\xF4ng t\xECm th\u1EA5y b\u1ED9 \u0111\u1EC1 trong c\u01A1 s\u1EDF d\u1EEF li\u1EC7u!");
         return;
       }
+      let availableQuestions = bank.questions || [];
+      if (availableQuestions.length === 0 && payload.localBank?.questions?.length) {
+        availableQuestions = payload.localBank.questions;
+      }
+      if (availableQuestions.length === 0) {
+        const allPresets = [DEFAULT_OFFLINE_BANK, ...MAGIC_WHEEL_PRESET_BANKS];
+        const preset = allPresets.find((p) => p.id === validBankId);
+        if (preset?.questions?.length) {
+          availableQuestions = preset.questions;
+        }
+      }
       if (room.mode === "MAGIC_WHEEL") {
-        const hasWp = bank.questions.some((q) => q.type === "WORD_PUZZLE");
+        const hasWp = availableQuestions.some((q) => q.type === "WORD_PUZZLE");
         if (!hasWp) {
           socket.emit("error", "Ch\u1EBF \u0111\u1ED9 Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u ch\u1EC9 ch\u1EA5p nh\u1EADn b\u1ED9 \u0111\u1EC1 c\xF3 c\xE2u h\u1ECFi \xD4 Ch\u1EEF (WORD_PUZZLE)!");
           return;
         }
       } else {
-        const isAllWp = bank.questions.length > 0 && bank.questions.every((q) => q.type === "WORD_PUZZLE");
+        const isAllWp = availableQuestions.length > 0 && availableQuestions.every((q) => q.type === "WORD_PUZZLE");
         if (isAllWp) {
           socket.emit("error", "B\u1ED9 \u0111\u1EC1 \xD4 Ch\u1EEF ch\u1EC9 d\xE0nh ri\xEAng cho ch\u1EBF \u0111\u1ED9 Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u!");
           return;
@@ -19534,16 +19605,16 @@ function registerSocketHandlers(io2) {
         data: { quizBankId: bank.id }
       });
       roomQuestionsCache.delete(room.id);
-      if (bank.questions && bank.questions.length > 0) {
-        roomQuestionsCache.set(room.id, bank.questions);
+      if (availableQuestions.length > 0) {
+        roomQuestionsCache.set(room.id, availableQuestions);
       }
       const cached = roomCache.get(room.id);
       if (cached) {
         cached.quizBankId = bank.id;
       }
       if (room.mode === "MAGIC_WHEEL") {
-        const wordQuestions = bank.questions.filter((q) => q.type === "WORD_PUZZLE");
-        const candidateQuestions = wordQuestions.length > 0 ? wordQuestions : bank.questions;
+        const wordQuestions = availableQuestions.filter((q) => q.type === "WORD_PUZZLE");
+        const candidateQuestions = wordQuestions.length > 0 ? wordQuestions : availableQuestions;
         const customPuzzles = candidateQuestions.map((q, idx) => {
           const roundOpt = Array.isArray(q.options) ? q.options.find((o) => o?.id === "round") : void 0;
           const rawAns = q.answer || (Array.isArray(q.options) ? q.options.find((o) => o?.isCorrect)?.text : "") || "";

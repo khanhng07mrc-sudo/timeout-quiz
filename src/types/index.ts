@@ -1967,7 +1967,7 @@ export interface ClientToServerEvents {
   "magic_wheel:advance_round": () => void;
   "magic_wheel:set_mode": (payload: { mode: MagicWheelOperationMode }) => void;
   "magic_wheel:set_operation_mode": (payload: { mode: MagicWheelOperationMode }) => void;
-  "magic_wheel:set_edition": (payload: { edition: "VIETNAMESE" | "ENGLISH" }) => void;
+  "magic_wheel:set_edition": (payload: { edition: "VIETNAMESE" | "ENGLISH"; force?: boolean }) => void;
   "magic_wheel:set_english_preset": (payload: { preset: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3" }) => void;
   "magic_wheel:set_blackout_guessed": (payload: { enabled: boolean }) => void;
   "magic_wheel:buy_vowel": (payload: { vowel: string; teamId?: string }) => void;
@@ -1978,7 +1978,7 @@ export interface ClientToServerEvents {
   "magic_wheel:override_turn": (payload: { teamId: string }) => void;
   "magic_wheel:set_temporary_text": (payload: { text: string }) => void;
   "magic_wheel:clear_temporary_text": () => void;
-  "admin:magic_wheel:set_edition": (payload: { edition: "VIETNAMESE" | "ENGLISH" }) => void;
+  "admin:magic_wheel:set_edition": (payload: { edition: "VIETNAMESE" | "ENGLISH"; force?: boolean }) => void;
   "admin:magic_wheel:set_english_preset": (payload: { preset: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3" }) => void;
   "admin:magic_wheel:set_blackout_guessed": (payload: { enabled: boolean }) => void;
   "admin:magic_wheel:buy_vowel": (payload: { vowel: string }) => void;
@@ -1991,8 +1991,8 @@ export interface ClientToServerEvents {
   "admin:magic_wheel:use_free_spin": (payload: { use: boolean }) => void;
   "admin:magic_wheel:judge_solve": (payload: { isCorrect: boolean }) => void;
   "admin:magic_wheel:set_mode": (payload: { mode: MagicWheelOperationMode }) => void;
-  "admin:magic_wheel:emergency_change_bank": (payload: { quizBankId: string }) => void;
-  "admin:room:change_quiz_bank": (payload: { quizBankId: string }) => void;
+  "admin:magic_wheel:emergency_change_bank": (payload: { quizBankId: string; localBank?: any }) => void;
+  "admin:room:change_quiz_bank": (payload: { quizBankId: string | null; localBank?: any }) => void;
   "admin:magic_wheel:override_turn": (payload: { teamId: string }) => void;
   "admin:magic_wheel:pass_turn": () => void;
   "admin:magic_wheel:quick_reveal_letter": () => void;

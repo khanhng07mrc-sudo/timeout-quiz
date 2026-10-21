@@ -2839,8 +2839,14 @@ export default function AdminSandboxPage() {
                 return nextR;
               });
               if (adminSocketRef.current?.connected) {
-                adminSocketRef.current.emit("admin:magic_wheel:emergency_change_bank" as any, { quizBankId: bankId });
-                adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: detectedEd });
+                adminSocketRef.current.emit("admin:magic_wheel:emergency_change_bank" as any, { 
+                  quizBankId: bankId,
+                  localBank: selectedBank || undefined,
+                });
+                adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { 
+                  edition: detectedEd,
+                  force: true,
+                });
                 adminSocketRef.current.emit("game:magic_wheel:update" as any, updatedWheel);
               }
             }

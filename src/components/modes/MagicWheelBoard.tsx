@@ -869,7 +869,7 @@ function HostessTVStage({ pose, facing = "RIGHT", activeRow = 1, className = "" 
 
         {/* Model Photographic Cutout (Full-Body Vietnamese Gameshow Hostess) */}
         <div
-          className="relative w-22 sm:w-26 md:w-30 lg:w-36 h-48 sm:h-58 md:h-68 lg:h-80 drop-shadow-[0_15px_30px_rgba(0,0,0,0.95)]"
+          className="relative w-20 sm:w-24 md:w-28 lg:w-32 h-44 sm:h-52 md:h-60 lg:h-68 drop-shadow-[0_15px_30px_rgba(0,0,0,0.95)]"
           style={{
             animation: isWalking
               ? "hostessCatwalkWalk 0.7s infinite ease-in-out"
@@ -885,32 +885,13 @@ function HostessTVStage({ pose, facing = "RIGHT", activeRow = 1, className = "" 
           />
         </div>
 
-        {/* Studio Hardwood Floor Contact Shadow under Heels */}
+        {/* Studio Floor Contact Shadow under Heels */}
         <div
-          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-22 sm:w-26 md:w-30 h-3.5 rounded-full blur-[2px] pointer-events-none"
+          className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-16 sm:w-20 md:w-24 h-2.5 rounded-full blur-[2px] pointer-events-none"
           style={{
             background: "radial-gradient(ellipse at center, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 60%, transparent 80%)",
           }}
         />
-
-        {/* Gleaming Wood Mirror Floor Reflection under High Heels */}
-        <div
-          className="absolute -bottom-7 left-1/2 -translate-x-1/2 w-22 sm:w-26 md:w-30 h-14 overflow-hidden pointer-events-none opacity-25 select-none"
-          style={{
-            transform: "scaleY(-0.35)",
-            filter: "blur(1.5px)",
-            maskImage: "linear-gradient(to top, rgba(0,0,0,0.8), transparent 75%)",
-            WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.8), transparent 75%)",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/magic-wheel/hostess_fullbody.png"
-            alt=""
-            className="w-full h-full object-contain"
-            draggable={false}
-          />
-        </div>
       </div>
     </div>
   );
@@ -3361,10 +3342,11 @@ export default function MagicWheelBoard({
       <div className={`w-full ${isDisplayMode ? "max-w-4xl" : "max-w-6xl"} flex flex-col items-center relative py-0.5 px-1 sm:px-2 md:px-4`}>
         {/* Stage Proscenium: Cánh Gà Trái + Bảng 56 Ô + Cánh Gà Phải */}
         <div className="w-full flex items-stretch justify-center gap-1.5 sm:gap-2 md:gap-3 relative">
-          {/* Trụ Tháp 3D Cánh Trái - Phần Cứng Studio Nguyên Khối (Không Dùng Chữ 2D Thô) */}
-          <div className="hidden md:flex flex-col items-center justify-between w-20 sm:w-24 md:w-28 lg:w-32 shrink-0 relative py-1 select-none pointer-events-none">
+          {/* Trụ Tháp 3D Cánh Trái - Nơi Người Mẫu Đứng Trực Tiếp Vững Chãi */}
+          <div className="hidden md:flex flex-col items-center justify-end w-20 sm:w-24 md:w-28 lg:w-32 shrink-0 relative py-1 select-none pointer-events-none">
+            {/* Tower Machine Hardware (VU-Meters & Vents) */}
             <div 
-              className="w-full h-full rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2 flex flex-col items-center justify-between relative overflow-hidden ring-1 ring-yellow-400/40"
+              className="absolute inset-x-0 top-1 bottom-4 rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2 flex flex-col items-center justify-between overflow-hidden ring-1 ring-yellow-400/40"
               style={{
                 boxShadow: "inset 0 3px 6px rgba(255,255,255,0.12), inset -4px 0 10px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.95)",
               }}
@@ -3386,11 +3368,22 @@ export default function MagicWheelBoard({
                   />
                 ))}
               </div>
+            </div>
 
-              {/* Bục tròn 3D mạ vàng vươn nhẹ phía trước dành cho Người Mẫu */}
-              <div className="w-20 sm:w-24 h-7 rounded-full border-2 border-amber-400 bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 shadow-[0_6px_16px_rgba(0,0,0,0.9),0_0_20px_rgba(245,158,11,0.5)] flex items-center justify-center transform translate-y-0.5">
-                <div className="w-14 sm:w-18 h-3 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
+            {/* NGƯỜI MẪU ĐỨNG NGUYÊN VẸN TRÊN BỤC VÀNG CÁNH TRÁI */}
+            {showHostess && (
+              <div className="relative z-30 mb-[-4px] flex flex-col items-center pointer-events-none">
+                <HostessTVStage
+                  pose={hostessPose}
+                  facing={hostessFacing}
+                  activeRow={hostessActiveRow}
+                />
               </div>
+            )}
+
+            {/* Bục tròn 3D mạ vàng vươn nhẹ phía trước dành cho Người Mẫu */}
+            <div className="w-20 sm:w-24 h-7 rounded-full border-2 border-amber-400 bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 shadow-[0_6px_16px_rgba(0,0,0,0.9),0_0_20px_rgba(245,158,11,0.5)] flex items-center justify-center relative z-20">
+              <div className="w-14 sm:w-18 h-3 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
             </div>
           </div>
 
@@ -3519,24 +3512,6 @@ export default function MagicWheelBoard({
             <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
             <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
           </div>
-          {showHostess && (
-            <div
-              className="absolute bottom-1 z-30 select-none pointer-events-none transition-all hidden md:block"
-              style={{
-                left: `${hostessXPercent}%`,
-                transform: "translateX(-50%)",
-                transition: hostessPose === "WALKING"
-                  ? `left ${hostessWalkDurationMs}ms cubic-bezier(0.4, 0, 0.2, 1)`
-                  : "left 400ms ease-out",
-              }}
-            >
-              <HostessTVStage
-                pose={hostessPose}
-                facing={hostessFacing}
-                activeRow={hostessActiveRow}
-              />
-            </div>
-          )}
         </div>
 
         {/* Lower-Third Chyron */}
@@ -4671,10 +4646,10 @@ export default function MagicWheelBoard({
             <div className="w-full max-w-6xl flex flex-col items-center relative z-10 px-2 sm:px-4 md:px-6">
               {/* Proscenium Row: Left Wing - Center Board - Right Wing */}
               <div className="w-full flex items-stretch justify-center gap-2 sm:gap-3 md:gap-4 relative">
-                {/* Trụ Tháp 3D Cánh Trái - Phần Cứng Cỗ Máy Studio Chân Thực (Không Dùng Chữ 2D) */}
-                <div className="hidden md:flex flex-col items-center justify-between w-24 sm:w-28 md:w-32 lg:w-36 shrink-0 relative py-1 select-none pointer-events-none">
+                {/* Trụ Tháp 3D Cánh Trái - Nơi Người Mẫu Đứng Trực Tiếp Vững Chãi */}
+                <div className="hidden md:flex flex-col items-center justify-end w-24 sm:w-28 md:w-32 lg:w-36 shrink-0 relative py-1 select-none pointer-events-none">
                   <div 
-                    className="w-full h-full rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2.5 flex flex-col items-center justify-between relative overflow-hidden ring-1 ring-yellow-400/40"
+                    className="absolute inset-x-0 top-1 bottom-4 rounded-2xl bg-gradient-to-b from-[#142018] via-[#09150c] to-[#040a05] border-2 border-amber-500/60 p-2.5 flex flex-col items-center justify-between overflow-hidden ring-1 ring-yellow-400/40"
                     style={{
                       boxShadow: "inset 0 3px 6px rgba(255,255,255,0.15), inset -4px 0 10px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.95)",
                     }}
@@ -4696,11 +4671,22 @@ export default function MagicWheelBoard({
                         />
                       ))}
                     </div>
+                  </div>
 
-                    {/* Bục tròn 3D mạ vàng vươn nhẹ phía trước dành cho Người Mẫu */}
-                    <div className="w-22 sm:w-26 h-8 rounded-full border-2 border-amber-400 bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 shadow-[0_8px_20px_rgba(0,0,0,0.9),0_0_25px_rgba(245,158,11,0.6)] flex items-center justify-center transform translate-y-1">
-                      <div className="w-16 sm:w-20 h-3.5 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
+                  {/* NGƯỜI MẪU ĐỨNG NGUYÊN VẸN TRÊN BỤC VÀNG CÁNH TRÁI */}
+                  {showHostess && (
+                    <div className="relative z-30 mb-[-4px] flex flex-col items-center pointer-events-none">
+                      <HostessTVStage
+                        pose={hostessPose}
+                        facing={hostessFacing}
+                        activeRow={hostessActiveRow}
+                      />
                     </div>
+                  )}
+
+                  {/* Bục tròn 3D mạ vàng vươn nhẹ phía trước dành cho Người Mẫu */}
+                  <div className="w-22 sm:w-26 h-8 rounded-full border-2 border-amber-400 bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 shadow-[0_8px_20px_rgba(0,0,0,0.9),0_0_25px_rgba(245,158,11,0.6)] flex items-center justify-center relative z-20">
+                    <div className="w-16 sm:w-20 h-3.5 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 border border-yellow-100/80 shadow-inner" />
                   </div>
                 </div>
 
@@ -4857,26 +4843,6 @@ export default function MagicWheelBoard({
                     <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
                     <div className="w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fde047]" />
                   </div>
-
-                  {/* Người Mẫu Di Chuyển Trực Tiếp Trên Sàn Runway Liền Mạch */}
-                  {showHostess && (
-                    <div
-                      className="absolute bottom-1 sm:bottom-1.5 z-30 select-none pointer-events-none transition-all hidden md:block"
-                      style={{
-                        left: `${hostessXPercent}%`,
-                        transform: "translateX(-50%)",
-                        transition: hostessPose === "WALKING"
-                          ? `left ${hostessWalkDurationMs}ms cubic-bezier(0.4, 0, 0.2, 1)`
-                          : "left 400ms ease-out",
-                      }}
-                    >
-                      <HostessTVStage
-                        pose={hostessPose}
-                        facing={hostessFacing}
-                        activeRow={hostessActiveRow}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
 

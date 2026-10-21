@@ -1953,6 +1953,7 @@ export default function MagicWheelBoard({
 
   // Virtual Camera Cut System (only during spinning in Display view)
   const [camAngle, setCamAngle] = useState(0);
+  const [localDisplayMode, setLocalDisplayMode] = useState<"AUTO" | "FOCUS_BOARD">("AUTO");
   const camTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // BUG-18 FIX: Reset power về 65 khi bắt đầu lượt quay mới (tránh tiếp tục từ giá trị cũ)
@@ -3445,12 +3446,12 @@ export default function MagicWheelBoard({
                           : isLuckyGreen
                           ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
                           : cell.isHighlighted
-                          ? "bg-gradient-to-tr from-[#0a1f44] via-[#1e40af] to-[#0284c7] text-transparent border-2 border-cyan-300 scale-110 shadow-[0_0_35px_#1d4ed8,0_0_20px_#0284c7] animate-pulse z-20"
+                          ? "bg-gradient-to-tr from-emerald-600 via-green-500 to-emerald-400 text-transparent border-2 border-green-200 scale-110 shadow-[0_0_35px_#22c55e,0_0_20px_#10b981] animate-pulse z-20"
                           : cell.isRevealed
                           ? "bg-white text-[#0f172a] shadow-[0_4px_12px_rgba(255,255,255,0.45)] border-2 border-white scale-100"
                           : phase === "LUCKY_PICK"
                           ? "bg-gradient-to-br from-amber-300 via-yellow-300 to-amber-400 text-amber-950 border-2 border-yellow-200 animate-pulse shadow-[0_0_15px_#f59e0b] cursor-pointer hover:scale-105"
-                          : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
+                          : "bg-white text-transparent border-2 border-slate-200 shadow-md"
                       }`}
                     >
                       <span className={`font-black tracking-tight leading-none ${isDisplayMode ? (isTossUpRound ? "text-xs sm:text-base md:text-xl lg:text-2xl" : "text-[11px] sm:text-sm md:text-lg lg:text-xl") : (isTossUpRound ? "text-base sm:text-xl md:text-2xl lg:text-3xl" : "text-xs sm:text-base md:text-xl lg:text-2xl")}`}>
@@ -4127,29 +4128,18 @@ export default function MagicWheelBoard({
     </div>
   );
 
-  // ── 5. DISPLAY VIEW (isDisplay = true): ZERO-SCROLL, FULL 360° WHEEL, POWERPOINT MORPH LAYOUT ──
+  // ── 5. DISPLAY VIEW (isDisplay = true): 100% THUẦN TRƯỜNG QUAY 3D VTV3 2016 (ZERO 2D BOARD) ──
   const renderDisplayView = () => {
-    // Vòng quay kể cả đã quay xong thì để yên trên sân khấu, tuyệt đối không fade out
-    const isFocusBoard = effDisplayLayoutMode === "FOCUS_BOARD" || (effDisplayLayoutMode === "AUTO" && isTossUpRound);
-    const isFocusWheel = !isFocusBoard && effDisplayLayoutMode === "FOCUS_WHEEL";
-    const isStacked = !isFocusWheel && !isFocusBoard;
-
-    const halfTeams = Math.ceil(teams.length / 2);
-    const leftTeams = teams.slice(0, halfTeams);
-    const rightTeams = teams.slice(halfTeams);
-    const isCompactFlank = teams.length >= 4;
-    const podiumGapClass = teams.length >= 6 ? "gap-0.5" : teams.length >= 4 ? "gap-1" : "gap-1.5";
-
     return (
       <div className="w-full h-screen max-h-screen overflow-hidden flex flex-col justify-between p-2 sm:p-3 pb-0 box-border bg-gradient-to-b from-[#081226] via-[#0a1733] to-[#040914] text-white select-none relative">
-        {/* ── Studio Stage Lighting Truss & Overhead Volumetric Glow ── */}
+        {/* Overhead Volumetric Lighting Glow */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
           <div className="absolute -top-10 left-1/4 w-96 h-[600px] bg-gradient-to-b from-amber-400/20 via-yellow-400/5 to-transparent blur-3xl transform -rotate-12" />
           <div className="absolute -top-10 right-1/4 w-96 h-[600px] bg-gradient-to-b from-sky-400/20 via-blue-500/5 to-transparent blur-3xl transform rotate-12" />
           <div className="absolute bottom-0 inset-x-0 h-72 bg-gradient-to-t from-blue-950/30 via-slate-900/15 to-transparent blur-xl" />
         </div>
 
-        {/* Top Header */}
+        {/* Top Header: Game Status */}
         <div className="w-full flex items-center justify-between shrink-0 mb-1 z-30">
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 uppercase shadow">
@@ -4175,62 +4165,32 @@ export default function MagicWheelBoard({
           </div>
         </div>
 
-        {/* ── UNIFIED MORPH BODY (PowerPoint Morph transition between FOCUS_BOARD, FOCUS_WHEEL, and STACKED) ── */}
-        <div className="w-full flex-1 flex flex-col justify-center min-h-0 relative overflow-hidden transition-all duration-700 ease-in-out">
-          {/* OBJECT 1: BOARD (Vật thể chủ ở FOCUS_BOARD, nửa trên ở STACKED, fade & slide up ở FOCUS_WHEEL) */}
-          <div
-            className={`w-full flex flex-col items-center justify-center transition-all duration-700 ease-in-out ${
-              isFocusBoard
-                ? "flex-1 scale-100 sm:scale-105 opacity-100 translate-y-0"
-                : isStacked
-                ? "shrink-0 scale-100 opacity-100 translate-y-0 pb-1"
-                : "opacity-0 max-h-0 scale-90 -translate-y-12 pointer-events-none overflow-hidden"
-            }`}
-          >
-            {renderBoardGridMatrix(true)}
-            {isFocusBoard && isTossUpRound && (
-              <div className="mt-2 px-4 py-1.5 rounded-full bg-black/80 border border-amber-400/40 text-amber-200 text-xs font-bold flex items-center gap-2 animate-pulse">
-                <span>🔔</span>
-                <span>
-                  {tossUpBuzzedTeamName
-                    ? `ĐỘI ${tossUpBuzzedTeamName.toUpperCase()} ĐÃ BẤM CHUÔNG!`
-                    : "ĐANG MỞ CHỮ NGẪU NHIÊN · CÁC ĐỘI SẴN SÀNG BẤM CHUÔNG!"}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* OBJECT 2: 3D STUDIO STAGE & WHEEL MACHINE (True WebGL 3D Studio via Three.js) */}
-          <div
-            className={`w-full flex-1 min-h-0 relative transition-all duration-700 ease-in-out ${
-              isFocusBoard
-                ? "opacity-0 max-h-0 scale-75 translate-y-12 pointer-events-none overflow-hidden"
-                : "opacity-100 scale-100 translate-y-0"
-            }`}
-          >
-            <WheelStudio3DScene
-              sectors={sectors}
-              clientWheelAngle={clientWheelAngle}
-              effectiveIsSpinning={effectiveIsSpinning}
-              selectedSector={selectedSector}
-              teams={teams}
-              roundScores={roundScores}
-              currentTurnTeamId={currentTurnTeamId}
-              tossUpBuzzedTeamId={tossUpBuzzedTeamId}
-              isTossUpRound={isTossUpRound}
-              phase={phase}
-              camAngle={camAngle}
-              edition={edition}
-              currentPuzzle={currentPuzzle}
-              onCamAngleChange={(cam) => setCamAngle(cam)}
-              className="absolute inset-0 w-full h-full"
-            />
-          </div>
+        {/* ── 3D STUDIO STAGE & WHEEL MACHINE (100% Full Viewport WebGL Three.js) ── */}
+        <div className="w-full flex-1 min-h-0 relative overflow-hidden">
+          <WheelStudio3DScene
+            sectors={sectors}
+            clientWheelAngle={clientWheelAngle}
+            effectiveIsSpinning={effectiveIsSpinning}
+            selectedSector={selectedSector}
+            teams={teams}
+            roundScores={roundScores}
+            currentTurnTeamId={currentTurnTeamId}
+            tossUpBuzzedTeamId={tossUpBuzzedTeamId}
+            isTossUpRound={isTossUpRound}
+            phase={phase}
+            camAngle={camAngle}
+            edition={edition}
+            currentPuzzle={currentPuzzle}
+            highlightedIndices={highlightedIndices}
+            animRevealedIndices={animRevealedIndices}
+            onCamAngleChange={(cam) => setCamAngle(cam)}
+            className="absolute inset-0 w-full h-full"
+          />
         </div>
 
         {/* Bottom: Victory Banner if ROUND_RECAP */}
         {phase === "ROUND_RECAP" && (
-          <div className="w-full mt-1 p-2 rounded-xl bg-gradient-to-r from-amber-500/30 via-yellow-400/30 to-emerald-500/30 border border-amber-400 flex items-center justify-between gap-3 shrink-0 shadow-lg animate-fade-in">
+          <div className="w-full mt-1 p-2 rounded-xl bg-gradient-to-r from-amber-500/30 via-yellow-400/30 to-emerald-500/30 border border-amber-400 flex items-center justify-between gap-3 shrink-0 shadow-lg animate-fade-in z-30">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
               <span className="text-xl">👑</span>
               <span className="font-black text-amber-300 uppercase">GIẢI MÃ THÀNH CÔNG:</span>
@@ -4238,17 +4198,6 @@ export default function MagicWheelBoard({
             </div>
           </div>
         )}
-
-        {/* Bottom: Ultra-compact Scorebar in Focus Modes (Fades in smoothly) */}
-        <div
-          className={`w-full shrink-0 pt-1 transition-all duration-500 ease-in-out ${
-            isFocusWheel || isFocusBoard
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 max-h-0 overflow-hidden pointer-events-none -translate-y-2"
-          }`}
-        >
-          {renderCompactSingleRowScorebar()}
-        </div>
       </div>
     );
   };

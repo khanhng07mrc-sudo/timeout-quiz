@@ -40,6 +40,8 @@ interface WheelStudio3DSceneProps {
     secretPhrase: string;
     revealedIndices: number[];
   } | null;
+  highlightedIndices?: Set<number>;
+  animRevealedIndices?: Set<number>;
   onCamAngleChange?: (cam: number) => void;
 }
 
@@ -50,20 +52,20 @@ interface CamConfig {
 
 // ── Authentic Studio Camera Configurations (6 CAM Multi-Director System) ─────
 const CAM_POSITIONS: Record<string, CamConfig> = {
-  // CAM 0 / Default: TV broadcast angle bao trọn nón ở tiền cảnh, bục 5 đội kê cao ở hậu cảnh
-  DEFAULT: { pos: [0, 3.25, 4.95], target: [0, 1.15, -0.30] },
+  // CAM 0 / Default: Tầm mắt truyền hình trực diện như ảnh phát sóng VTV3 10:28
+  DEFAULT: { pos: [0, 2.70, 7.80], target: [0, 1.40, -1.00] },
 
   // CAM 1: Trực diện Vòng quay & Bàn thí sinh + MC (Contestant & Host Center)
   CAM1_CENTER: { pos: [0, 3.20, 5.00], target: [0, 1.30, -0.40] },
 
-  // CAM 2: Đại cảnh toàn bộ trường quay (Master Wide Angle: Wheel + Board + Host + LED Backdrop + Audience)
-  CAM2_WIDE: { pos: [0, 5.80, 10.50], target: [-0.60, 2.00, -1.50] },
+  // CAM 2: Đại cảnh toàn bộ trường quay tầm mắt TV (Master Wide Broadcast Angle như ảnh 3 VTV3 10:28)
+  CAM2_WIDE: { pos: [0, 2.70, 7.80], target: [0, 1.40, -1.00] },
 
-  // CAM 3: Cận cảnh trực diện Bảng ô chữ 3D & Người mẫu (Stage Left Z ~ +3.0m)
-  CAM3_BOARD: { pos: [-3.80, 2.60, 5.20], target: [-5.80, 2.40, 3.00] },
+  // CAM 3: Trực diện vuông góc toàn bộ Bảng ô chữ 3D & Người mẫu toàn thân (Stage Left Z ~ -1.0m)
+  CAM3_BOARD: { pos: [-4.00, 1.65, 4.30], target: [-6.80, 1.60, -1.00] },
 
-  // CAM 4: Cận cảnh mâm nón quay và kim gạt từ trên xuống (Wheel Close-up)
-  CAM4_DISC: { pos: [-1.40, 3.20, 3.40], target: [-0.50, 1.20, 0.10] },
+  // CAM 4: Cận cảnh kim chỉ thị và các chốt ô nón đang quay (Kim quay hero close-up)
+  CAM4_DISC: { pos: [-2.10, 2.50, 1.40], target: [-1.65, 1.20, 0.10] },
 
   // CAM 5: Lia cận cảnh thí sinh đang đến lượt (Active Player Close-up)
   CAM5_PLAYER: { pos: [0.80, 2.80, 2.40], target: [1.20, 2.20, -2.80] },
@@ -149,14 +151,14 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
 
     if (isNumeric && cleanLabel.length > 0) {
       // Numbers: Stacked upright digits along the radial ray from rim towards center
+      // Fix spacing: stepX (74px) lớn hơn nhiều so với fontSize (52px) để triệt tiêu hoàn toàn lỗi đè chữ số
       const digits = cleanLabel.split("");
-      // Bolder, larger digits matching authentic VTV3 broadcast
-      const fontSize = digits.length >= 5 ? 64 : digits.length >= 4 ? 76 : 84;
-      const stepX = digits.length >= 5 ? 40 : digits.length >= 4 ? 48 : 56;
-      const startX = r - (digits.length >= 5 ? 40 : 46);
+      const fontSize = digits.length >= 5 ? 40 : digits.length >= 4 ? 46 : 52;
+      const stepX = digits.length >= 5 ? 54 : digits.length >= 4 ? 64 : 74;
+      const startX = r - (digits.length >= 5 ? 44 : 52);
 
-      // Font chuẩn tiếng Việt Roboto Slab 900
-      ctx.font = `900 ${fontSize}px "Roboto Slab", "Merriweather", "Impact", sans-serif`;
+      // Font Gameshow in hoa không chân dày dặn chuẩn VTV3 (Impact / Arial Black / Montserrat)
+      ctx.font = `900 ${fontSize}px "Impact", "Montserrat", "Arial Black", sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
@@ -164,36 +166,35 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
         const curX = startX - dIdx * stepX;
         ctx.save();
         ctx.translate(curX, 0);
-        ctx.rotate(Math.PI / 2); // Flip 180 độ đúng chuẩn góc nhìn phát sóng VTV3 thực tế
+        ctx.rotate(Math.PI / 2); // Flip theo chiều nhìn từ vành nón
 
-        // Dynamic high-contrast outline (bolder 3.8px)
+        // Viền tương phản sắc nét (3.2px)
         ctx.strokeStyle = colors.stroke;
-        ctx.lineWidth = 3.8;
+        ctx.lineWidth = 3.2;
         ctx.strokeText(digit, 0, 0);
 
-        // Crisp fill
+        // Màu fill nổi bật
         ctx.fillStyle = colors.fill;
         ctx.fillText(digit, 0, 0);
         ctx.restore();
       });
     } else {
-      // Special action label (e.g. PHẦN THƯỞNG, MẤT LƯỢT, NHÂN ĐÔI, CHIA ĐÔI, BÍ MẬT, TỐC ĐỘ, KIM CƯƠNG, 25000)
-      // ALWAYS ON A SINGLE LINE running radially along the wedge length from rim towards center!
+      // Special action label (e.g. PHẦN THƯỞNG, MẤT LƯỢT, NHÂN ĐÔI, CHIA ĐÔI, BÍ MẬT, TỐC ĐỘ, KIM CƯƠNG)
       ctx.translate(r - 28, 0);
       ctx.rotate(Math.PI); // Now +X points toward the center of the wheel
 
       // Calculate dynamic font size to guarantee everything fits on 1 single line without overflow
       const maxAvailableWidth = r - 75;
       const charCount = Math.max(cleanLabel.length, 5);
-      const targetFontSize = Math.min(36, Math.max(18, Math.floor(maxAvailableWidth / (charCount * 0.60))));
+      const targetFontSize = Math.min(34, Math.max(18, Math.floor(maxAvailableWidth / (charCount * 0.58))));
 
-      ctx.font = `900 ${targetFontSize}px "Roboto Slab", "Merriweather", sans-serif`;
+      ctx.font = `900 ${targetFontSize}px "Montserrat", "Impact", "Arial Black", sans-serif`;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
 
-      // Thin crisp stroke (2.8px)
+      // Thin crisp stroke (2.6px)
       ctx.strokeStyle = colors.stroke;
-      ctx.lineWidth = 2.8;
+      ctx.lineWidth = 2.6;
       ctx.strokeText(cleanLabel, 8, 0);
 
       ctx.fillStyle = colors.fill;
@@ -1330,6 +1331,63 @@ function getClosedTileTexture(): THREE.CanvasTexture {
   return texture;
 }
 
+function getBlankWhiteTileTexture(): THREE.CanvasTexture {
+  const key = "tile_blank_white";
+  if (studioTextureCache.has(key)) return studioTextureCache.get(key)!;
+  if (typeof document === "undefined") return new THREE.Texture() as unknown as THREE.CanvasTexture;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 160;
+  canvas.height = 220;
+  const ctx = canvas.getContext("2d")!;
+
+  // Nền trắng sứ bóng đẹp sẵn sàng cho câu đố VTV3
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, 160, 220);
+
+  // Viền vàng kim tinh tế
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.lineWidth = 6;
+  ctx.strokeRect(3, 3, 154, 214);
+  ctx.strokeStyle = "#fbbf24";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(6, 6, 148, 208);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  studioTextureCache.set(key, texture);
+  return texture;
+}
+
+function getHighlightTileTexture(): THREE.CanvasTexture {
+  const key = "tile_highlight_green";
+  if (studioTextureCache.has(key)) return studioTextureCache.get(key)!;
+  if (typeof document === "undefined") return new THREE.Texture() as unknown as THREE.CanvasTexture;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 160;
+  canvas.height = 220;
+  const ctx = canvas.getContext("2d")!;
+
+  // Nền xanh lá cây phát sáng rực rỡ (Highlight VTV3 khi đoán trúng)
+  const grad = ctx.createRadialGradient(80, 110, 10, 80, 110, 100);
+  grad.addColorStop(0, "#4ade80");
+  grad.addColorStop(0.6, "#16a34a");
+  grad.addColorStop(1, "#14532d");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 160, 220);
+
+  // Viền vàng neon phát sáng rực rỡ
+  ctx.strokeStyle = "#fef08a";
+  ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, 152, 212);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  studioTextureCache.set(key, texture);
+  return texture;
+}
+
 function getSpinningCubeTexture(text: string, bgColor: string, textColor = "#ffffff"): THREE.CanvasTexture {
   const key = `cube_${text}_${bgColor}`;
   if (studioTextureCache.has(key)) return studioTextureCache.get(key)!;
@@ -1424,15 +1482,16 @@ function WhiteRunwayTrack() {
   const curvePoints = useMemo(() => {
     return [
       new THREE.Vector3(-1.75, 0.08, -2.85), // Khu vực MC
-      new THREE.Vector3(-1.60, 0.08, -0.60),
-      new THREE.Vector3(-1.20, 0.08, 1.60),
-      new THREE.Vector3(0.00, 0.08, 2.70),  // Trước mặt cỗ máy nón quay
-      new THREE.Vector3(1.80, 0.08, 2.10),
-      new THREE.Vector3(2.80, 0.08, 0.60),
-      new THREE.Vector3(2.20, 0.08, -1.20), // Vòng bên phải
-      new THREE.Vector3(0.00, 0.08, 2.70),  // Trước mặt nón
-      new THREE.Vector3(-2.80, 0.08, 2.90),
-      new THREE.Vector3(-5.20, 0.08, 3.10), // Chân Bảng Ô Chữ 3D bên cánh trái
+      new THREE.Vector3(-2.20, 0.08, -1.20),
+      new THREE.Vector3(-2.60, 0.08, 0.80),
+      new THREE.Vector3(-1.40, 0.08, 2.80),
+      new THREE.Vector3(0.00, 0.08, 3.20),   // Trước mặt cỗ máy nón quay
+      new THREE.Vector3(1.80, 0.08, 2.60),
+      new THREE.Vector3(2.80, 0.08, 0.80),
+      new THREE.Vector3(2.20, 0.08, -1.20),  // Cánh phải
+      new THREE.Vector3(0.00, 0.08, 3.20),   // Vòng qua trước nón
+      new THREE.Vector3(-3.40, 0.08, 1.60),
+      new THREE.Vector3(-5.80, 0.08, -0.60), // Chân Bảng Ô Chữ 3D bên cánh trái
     ];
   }, []);
 
@@ -1453,15 +1512,17 @@ function WhiteRunwayTrack() {
   );
 }
 
-/** Ô chữ 3D độc lập với cơ chế lật xoay 180 độ (Trilon Flip) */
+/** Ô chữ 3D độc lập với cơ chế lật xoay 180 độ (Trilon Flip), sẵn ô trắng và highlight xanh chuẩn VTV3 */
 function Studio3DPuzzleTile({
   tile,
   isRevealed,
+  isHighlighted,
   posX,
   posY,
 }: {
   tile: FormattedTile;
   isRevealed: boolean;
+  isHighlighted: boolean;
   posX: number;
   posY: number;
 }) {
@@ -1474,15 +1535,22 @@ function Studio3DPuzzleTile({
   });
 
   if (!tile.isLetter) {
+    const closedTex = getClosedTileTexture();
     return (
       <mesh position={[posX, posY, 0]}>
         <boxGeometry args={[0.32, 0.44, 0.04]} />
-        <meshStandardMaterial color="#062512" roughness={0.5} />
+        <meshStandardMaterial attach="material-0" color="#166534" roughness={0.5} />
+        <meshStandardMaterial attach="material-1" color="#166534" roughness={0.5} />
+        <meshStandardMaterial attach="material-2" color="#166534" roughness={0.5} />
+        <meshStandardMaterial attach="material-3" color="#166534" roughness={0.5} />
+        <meshStandardMaterial attach="material-4" map={closedTex} />
+        <meshStandardMaterial attach="material-5" map={closedTex} />
       </mesh>
     );
   }
 
-  const frontTex = getClosedTileTexture();
+  // Khi chưa mở: sẵn nền trắng; khi có chữ đoán trúng: chớp sáng highlight xanh; khi mở: lật 180° thành chữ đen
+  const frontTex = isHighlighted ? getHighlightTileTexture() : getBlankWhiteTileTexture();
   const backTex = getLetterTileTexture(tile.char);
 
   return (
@@ -1493,63 +1561,75 @@ function Studio3DPuzzleTile({
         <meshStandardMaterial attach="material-1" color="#fbbf24" metalness={0.8} roughness={0.2} />
         <meshStandardMaterial attach="material-2" color="#fbbf24" metalness={0.8} roughness={0.2} />
         <meshStandardMaterial attach="material-3" color="#fbbf24" metalness={0.8} roughness={0.2} />
-        <meshStandardMaterial attach="material-4" map={frontTex} />
+        <meshStandardMaterial
+          attach="material-4"
+          map={frontTex}
+          emissive={isHighlighted ? "#16a34a" : "#000000"}
+          emissiveIntensity={isHighlighted ? 1.5 : 0}
+        />
         <meshStandardMaterial attach="material-5" map={backTex} />
       </mesh>
     </group>
   );
 }
 
-/** Hình nhân người mẫu trợ lý lật ô chữ (Stylized Hostess) */
+/** Người mẫu trợ lý lật ô chữ (Photorealistic Hostess Cutout Billboard chuẩn sắc nét như bản 2D) */
 function StylizedHostess({ isRevealing }: { isRevealing: boolean }) {
-  const armRef = useRef<THREE.Group>(null);
+  const meshRef = useRef<THREE.Group>(null);
+  const texture = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    const loader = new THREE.TextureLoader();
+    const tex = loader.load("/images/magic-wheel/hostess_fullbody.png");
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    return tex;
+  }, []);
 
-  useFrame((_, delta) => {
-    if (!armRef.current) return;
-    const targetRotZ = isRevealing ? -0.85 : -0.22;
-    armRef.current.rotation.z = THREE.MathUtils.lerp(armRef.current.rotation.z, targetRotZ, delta * 3.5);
+  useFrame((state, delta) => {
+    if (!meshRef.current) return;
+    const t = state.clock.getElapsedTime();
+    // Nhịp thở mềm mại và nhô nhẹ khi có mở chữ
+    const breatheY = Math.sin(t * 1.6) * 0.012;
+    const gestureScale = isRevealing ? 1.025 : 1.0;
+    meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, 1.275 + breatheY, delta * 3.0);
+    meshRef.current.scale.lerp(new THREE.Vector3(gestureScale, gestureScale, gestureScale), delta * 4.0);
   });
 
   return (
-    <group position={[2.6, 0.4, 0.35]} rotation={[0, -0.4, 0]}>
-      <mesh position={[0, 0.65, 0]} castShadow>
-        <cylinderGeometry args={[0.16, 0.34, 1.30, 24]} />
-        <meshStandardMaterial color="#f59e0b" emissive="#d97706" emissiveIntensity={0.3} metalness={0.8} roughness={0.2} />
+    <group position={[-2.85, 0.41, 0.40]}>
+      {/* Vệt bóng đổ gót chân mềm mại trên sàn bục */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
+        <planeGeometry args={[0.75, 0.35]} />
+        <meshBasicMaterial color="#000000" transparent opacity={0.65} />
       </mesh>
-      <mesh position={[0, 1.40, 0]}>
-        <cylinderGeometry args={[0.13, 0.15, 0.35, 16]} />
-        <meshStandardMaterial color="#fde047" metalness={0.7} roughness={0.3} />
-      </mesh>
-      <mesh position={[0, 1.62, 0]}>
-        <cylinderGeometry args={[0.04, 0.045, 0.12, 12]} />
-        <meshStandardMaterial color="#fef3c7" roughness={0.3} />
-      </mesh>
-      <mesh position={[0, 1.76, 0]} castShadow>
-        <sphereGeometry args={[0.10, 20, 20]} />
-        <meshStandardMaterial color="#fef3c7" roughness={0.25} />
-      </mesh>
-      <mesh position={[0, 1.84, -0.04]}>
-        <sphereGeometry args={[0.07, 16, 16]} />
-        <meshStandardMaterial color="#1e1b4b" roughness={0.6} />
-      </mesh>
-      <group ref={armRef} position={[-0.16, 1.48, 0]} rotation={[0.2, 0, -0.25]}>
-        <mesh position={[-0.20, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.035, 0.04, 0.40, 12]} />
-          <meshStandardMaterial color="#fef3c7" roughness={0.3} />
-        </mesh>
-        <mesh position={[-0.42, 0, 0]}>
-          <sphereGeometry args={[0.035, 12, 12]} />
-          <meshStandardMaterial color="#fef3c7" roughness={0.3} />
-        </mesh>
+
+      {/* Tấm billboard Người mẫu ảnh chụp thực tế sắc nét, tỉ lệ chuẩn 508x1090 */}
+      <group ref={meshRef} position={[0, 1.275, 0]} rotation={[0, 0.12, 0]}>
+        {texture && (
+          <mesh castShadow>
+            {/* Tỉ lệ chuẩn xác 508x1090: Cao 2.55m x Rộng 1.188m (không bị dẹt hay giãn ngang) */}
+            <planeGeometry args={[1.188, 2.55]} />
+            <meshStandardMaterial
+              map={texture}
+              transparent
+              alphaTest={0.08}
+              roughness={0.4}
+              metalness={0.1}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        )}
       </group>
     </group>
   );
 }
 
-/** Bảng Ô Chữ 3D đặt tại Cánh Trái sân khấu ở cự ly chiều sâu Z ~ +3.0m (khoảng giữa nón Z=0 và khán đài Z=10m) */
+/** Bảng Ô Chữ 3D đặt tại Cánh Trái sân khấu ở cự ly chiều sâu Z ~ -1.0m với tường kiến trúc nan kim loại & ánh sáng sống động */
 function Studio3DPuzzleBoard({
   currentPuzzle,
   phase,
+  highlightedIndices,
+  animRevealedIndices,
 }: {
   currentPuzzle?: {
     category: string;
@@ -1558,32 +1638,64 @@ function Studio3DPuzzleBoard({
     revealedIndices: number[];
   } | null;
   phase?: string;
+  highlightedIndices?: Set<number>;
+  animRevealedIndices?: Set<number>;
 }) {
   const grid = useMemo(() => {
     return formatPhraseTo4x14(currentPuzzle?.secretPhrase);
   }, [currentPuzzle?.secretPhrase]);
 
   const revealedSet = useMemo(() => {
+    if (animRevealedIndices && animRevealedIndices.size > 0) return animRevealedIndices;
     return new Set(currentPuzzle?.revealedIndices || []);
-  }, [currentPuzzle?.revealedIndices]);
+  }, [animRevealedIndices, currentPuzzle?.revealedIndices]);
 
   const isRevealing = phase === "ROUND_RECAP" || (revealedSet.size > 0);
 
   return (
-    <group position={[-5.8, -0.75, 3.0]} rotation={[0, 0.65, 0]}>
+    <group position={[-6.8, -0.75, -1.0]} rotation={[0, 0.48, 0]}>
+      {/* ── Tường Kiến Trúc Hậu Cảnh Bảng Ô Chữ: Dàn nan kim loại & Đèn hắt stage wash sống động ── */}
+      <group position={[0, 2.2, -0.3]}>
+        {/* Vách tường đen ngọc bích broadcast */}
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[7.4, 4.8, 0.1]} />
+          <meshStandardMaterial color="#051f11" roughness={0.6} metalness={0.4} />
+        </mesh>
+        {/* 18 nan cột dọc kim loại mạ vàng sang trọng */}
+        {Array.from({ length: 18 }).map((_, i) => {
+          const fx = -3.3 + i * 0.388;
+          return (
+            <mesh key={`arch-fin-${i}`} position={[fx, 0, 0.07]}>
+              <boxGeometry args={[0.045, 4.4, 0.06]} />
+              <meshStandardMaterial color="#fef08a" metalness={0.9} roughness={0.15} />
+            </mesh>
+          );
+        })}
+        {/* Đèn hắt trần Amber Cove Light */}
+        <mesh position={[0, 2.3, 0.12]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.035, 0.035, 7.2, 16]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={2.5} />
+        </mesh>
+        {/* Đèn hắt chân tường Emerald Cove Light */}
+        <mesh position={[0, -2.1, 0.12]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.035, 0.035, 7.2, 16]} />
+          <meshStandardMaterial color="#4ade80" emissive="#10b981" emissiveIntensity={2.2} />
+        </mesh>
+      </group>
+
       {/* 1. Bục nâng sân khấu cho Bảng Ô Chữ 3D */}
       <mesh position={[0, 0.20, 0]} receiveShadow>
-        <boxGeometry args={[6.4, 0.40, 2.6]} />
+        <boxGeometry args={[7.2, 0.40, 2.8]} />
         <meshStandardMaterial color="#cbd5e1" metalness={0.92} roughness={0.12} />
       </mesh>
       {/* Vành viền LED vàng trên bục */}
       <mesh position={[0, 0.41, 0]}>
-        <boxGeometry args={[6.44, 0.02, 2.64]} />
+        <boxGeometry args={[7.24, 0.02, 2.84]} />
         <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.8} />
       </mesh>
 
       {/* 2. Cột trụ Art-Deco mạ bạc hai bên bảng */}
-      {[-2.8, 2.8].map((px, i) => (
+      {[-3.0, 3.0].map((px, i) => (
         <group key={`col-${i}`} position={[px, 2.2, 0]}>
           <mesh position={[0, 0, 0]}>
             <cylinderGeometry args={[0.18, 0.22, 3.8, 24]} />
@@ -1598,12 +1710,12 @@ function Studio3DPuzzleBoard({
 
       {/* Thanh vòm trên (Header Bar) */}
       <mesh position={[0, 4.15, 0]}>
-        <boxGeometry args={[6.1, 0.45, 0.25]} />
+        <boxGeometry args={[6.4, 0.45, 0.25]} />
         <meshStandardMaterial color="#0f172a" metalness={0.9} roughness={0.2} />
       </mesh>
       {/* Dải LED phát sáng trên vòm */}
       <mesh position={[0, 4.15, 0.13]}>
-        <boxGeometry args={[5.8, 0.04, 0.02]} />
+        <boxGeometry args={[6.1, 0.04, 0.02]} />
         <meshStandardMaterial color="#fde047" emissive="#f59e0b" emissiveIntensity={2.5} />
       </mesh>
 
@@ -1620,11 +1732,13 @@ function Studio3DPuzzleBoard({
           return row.map((tile, c) => {
             const posX = (c - 6.5) * 0.36;
             const isRevealed = tile.isLetter && (revealedSet.has(tile.origIdx) || phase === "ROUND_RECAP");
+            const isHighlighted = Boolean(tile.isLetter && highlightedIndices && highlightedIndices.has(tile.origIdx));
             return (
               <Studio3DPuzzleTile
                 key={`tile-${r}-${c}`}
                 tile={tile}
                 isRevealed={isRevealed}
+                isHighlighted={isHighlighted}
                 posX={posX}
                 posY={posY}
               />
@@ -1640,25 +1754,25 @@ function Studio3DPuzzleBoard({
 }
 
 const CUBES_DATA = [
-  { text: "C", color: "#06b6d4", emissive: "#0891b2", pos: [-4.6, 4.8, -0.4], scale: 0.65, rotSpeed: [0.8, 1.2, 0.5] },
-  { text: "N", color: "#eab308", emissive: "#ca8a04", pos: [-3.2, 3.4, 0.2], scale: 0.70, rotSpeed: [1.1, 0.7, 0.9] },
-  { text: "K", color: "#10b981", emissive: "#059669", pos: [-1.8, 5.2, -0.2], scale: 0.68, rotSpeed: [0.6, 1.4, 0.4] },
-  { text: "D", color: "#f43f5e", emissive: "#e11d48", pos: [-0.4, 3.6, 0.4], scale: 0.72, rotSpeed: [0.9, 0.8, 1.2] },
-  { text: "VTV3", color: "#dc2626", emissive: "#b91c1c", pos: [1.2, 5.0, -0.3], scale: 0.75, rotSpeed: [0.7, 1.0, 0.8] },
-  { text: "600", color: "#ef4444", emissive: "#dc2626", pos: [2.6, 3.5, 0.3], scale: 0.68, rotSpeed: [1.2, 0.6, 1.0] },
-  { text: "900", color: "#059669", emissive: "#047857", pos: [4.0, 4.9, -0.2], scale: 0.70, rotSpeed: [0.5, 1.3, 0.7] },
-  { text: "800", color: "#2563eb", emissive: "#1d4ed8", pos: [5.2, 3.8, 0.1], scale: 0.65, rotSpeed: [1.0, 0.9, 0.6] },
-  { text: "500", color: "#f59e0b", emissive: "#d97706", pos: [-4.2, 2.4, 0.5], scale: 0.62, rotSpeed: [0.7, 1.1, 0.8] },
-  { text: "1000", color: "#8b5cf6", emissive: "#7c3aed", pos: [-2.4, 2.0, -0.1], scale: 0.65, rotSpeed: [1.3, 0.5, 1.1] },
-  { text: "MAY MẮN", color: "#fbbf24", emissive: "#f59e0b", pos: [0.2, 2.2, 0.3], scale: 0.72, rotSpeed: [0.8, 1.2, 0.6] },
-  { text: "PHẦN THƯỞNG", color: "#ec4899", emissive: "#db2777", pos: [2.2, 2.1, -0.2], scale: 0.68, rotSpeed: [0.9, 0.7, 1.3] },
-  { text: "A", color: "#ea580c", emissive: "#c2410c", pos: [4.4, 2.3, 0.4], scale: 0.60, rotSpeed: [1.1, 1.0, 0.5] },
-  { text: "O", color: "#0284c7", emissive: "#0369a1", pos: [-5.0, 3.8, 0.1], scale: 0.62, rotSpeed: [0.6, 1.4, 0.9] },
-  { text: "QUIZ", color: "#14b8a6", emissive: "#0d9488", pos: [0.0, 5.8, -0.4], scale: 0.74, rotSpeed: [1.0, 0.8, 1.1] },
-  { text: "TIMEOUT", color: "#6366f1", emissive: "#4f46e5", pos: [3.4, 6.0, -0.1], scale: 0.72, rotSpeed: [0.8, 1.1, 0.7] },
+  { text: "C", color: "#06b6d4", emissive: "#0891b2", pos: [-4.6, 5.8, -0.3], scale: 0.95, rotSpeed: [0.8, 1.2, 0.5] },
+  { text: "N", color: "#eab308", emissive: "#ca8a04", pos: [-3.2, 4.2, 0.2], scale: 0.98, rotSpeed: [1.1, 0.7, 0.9] },
+  { text: "K", color: "#10b981", emissive: "#059669", pos: [-1.8, 6.2, -0.2], scale: 0.92, rotSpeed: [0.6, 1.4, 0.4] },
+  { text: "D", color: "#f43f5e", emissive: "#e11d48", pos: [-0.4, 4.4, 0.4], scale: 1.02, rotSpeed: [0.9, 0.8, 1.2] },
+  { text: "VTV3", color: "#dc2626", emissive: "#b91c1c", pos: [1.4, 6.0, -0.3], scale: 1.05, rotSpeed: [0.7, 1.0, 0.8] },
+  { text: "600", color: "#ef4444", emissive: "#dc2626", pos: [2.8, 4.3, 0.3], scale: 0.95, rotSpeed: [1.2, 0.6, 1.0] },
+  { text: "900", color: "#059669", emissive: "#047857", pos: [4.2, 5.9, -0.2], scale: 0.98, rotSpeed: [0.5, 1.3, 0.7] },
+  { text: "800", color: "#2563eb", emissive: "#1d4ed8", pos: [4.8, 4.6, 0.1], scale: 0.92, rotSpeed: [1.0, 0.9, 0.6] },
+  { text: "500", color: "#f59e0b", emissive: "#d97706", pos: [-4.2, 3.2, 0.4], scale: 0.90, rotSpeed: [0.7, 1.1, 0.8] },
+  { text: "1000", color: "#8b5cf6", emissive: "#7c3aed", pos: [-2.4, 2.8, -0.1], scale: 0.95, rotSpeed: [1.3, 0.5, 1.1] },
+  { text: "MAY MẮN", color: "#fbbf24", emissive: "#f59e0b", pos: [0.2, 3.0, 0.3], scale: 1.02, rotSpeed: [0.8, 1.2, 0.6] },
+  { text: "PHẦN THƯỞNG", color: "#ec4899", emissive: "#db2777", pos: [2.4, 2.9, -0.2], scale: 0.96, rotSpeed: [0.9, 0.7, 1.3] },
+  { text: "A", color: "#ea580c", emissive: "#c2410c", pos: [4.4, 3.1, 0.4], scale: 0.88, rotSpeed: [1.1, 1.0, 0.5] },
+  { text: "O", color: "#0284c7", emissive: "#0369a1", pos: [-5.0, 4.6, 0.1], scale: 0.90, rotSpeed: [0.6, 1.4, 0.9] },
+  { text: "QUIZ", color: "#14b8a6", emissive: "#0d9488", pos: [-0.2, 7.0, -0.3], scale: 1.02, rotSpeed: [1.0, 0.8, 1.1] },
+  { text: "TIMEOUT", color: "#6366f1", emissive: "#4f46e5", pos: [3.2, 7.1, -0.1], scale: 1.00, rotSpeed: [0.8, 1.1, 0.7] },
 ];
 
-/** Màn hình LED hậu trường vòm vàng 3 tầng & 16 khối ô chữ 3D xoay lơ lửng */
+/** Màn hình LED hậu trường Cổng Vòm Vàng VTV3 2016 lùi sâu Z=-8.5m cao 7.8m & 16 khối ô chữ 3D xoay lơ lửng */
 function BackdropLedScreenWithSpinningCubes() {
   const cubeMeshRefs = useRef<(THREE.Mesh | null)[]>([]);
 
@@ -1670,41 +1784,76 @@ function BackdropLedScreenWithSpinningCubes() {
       mesh.rotation.x += delta * d.rotSpeed[0];
       mesh.rotation.y += delta * d.rotSpeed[1];
       mesh.rotation.z += delta * d.rotSpeed[2];
-      mesh.position.y = d.pos[1] + Math.sin(t * 1.4 + i * 0.7) * 0.12;
+      mesh.position.y = d.pos[1] + Math.sin(t * 1.4 + i * 0.7) * 0.14;
     });
   });
 
   return (
-    <group position={[0, -0.75, -6.2]}>
-      {/* 1. Khung vòm cổng vát 3 tầng màu vàng neon (Triple Gold Archway) */}
-      <group position={[0, 4.4, 0]}>
-        <mesh position={[0, 0, 0]}>
-          <torusGeometry args={[7.2, 0.16, 16, 48, Math.PI]} />
-          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.9} />
+    <group position={[0, -0.75, -8.5]}>
+      {/* 1. Cổng vòm vàng hoàng gia bo cong mềm mại (VTV3 Stadium Arch Y=7.8m, W=13.6m) */}
+      <group position={[0, 0, 0]}>
+        {/* Cột đứng bên trái */}
+        <mesh position={[-5.8, 3.4, 0]}>
+          <cylinderGeometry args={[0.22, 0.22, 6.8, 24]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
         </mesh>
-        <mesh position={[0, 0, 0.05]}>
-          <torusGeometry args={[6.7, 0.14, 16, 48, Math.PI]} />
-          <meshStandardMaterial color="#fde047" emissive="#b45309" emissiveIntensity={1.2} metalness={0.92} />
+        {/* Cột đứng bên phải */}
+        <mesh position={[5.8, 3.4, 0]}>
+          <cylinderGeometry args={[0.22, 0.22, 6.8, 24]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
         </mesh>
-        <mesh position={[0, 0, 0.10]}>
-          <torusGeometry args={[6.2, 0.12, 16, 48, Math.PI]} />
-          <meshStandardMaterial color="#eab308" emissive="#ca8a04" emissiveIntensity={1.0} metalness={0.94} />
+        {/* Xà ngang đỉnh vòm cao 7.8m */}
+        <mesh position={[0, 7.8, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.22, 0.22, 7.6, 24]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
+        </mesh>
+        {/* Cung bo cong góc trên bên trái */}
+        <mesh position={[-3.8, 5.8, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <torusGeometry args={[2.0, 0.22, 16, 24, Math.PI / 2]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
+        </mesh>
+        {/* Cung bo cong góc trên bên phải */}
+        <mesh position={[3.8, 5.8, 0]} rotation={[0, 0, 0]}>
+          <torusGeometry args={[2.0, 0.22, 16, 24, Math.PI / 2]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
+        </mesh>
+
+        {/* Dải đèn neon vàng phát sáng rực rỡ chạy dọc viền cổng vòm */}
+        <mesh position={[-5.8, 3.4, 0.08]}>
+          <cylinderGeometry args={[0.07, 0.07, 6.8, 16]} />
+          <meshStandardMaterial color="#fef08a" emissive="#fde047" emissiveIntensity={2.8} />
+        </mesh>
+        <mesh position={[5.8, 3.4, 0.08]}>
+          <cylinderGeometry args={[0.07, 0.07, 6.8, 16]} />
+          <meshStandardMaterial color="#fef08a" emissive="#fde047" emissiveIntensity={2.8} />
+        </mesh>
+        <mesh position={[0, 7.8, 0.08]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.07, 0.07, 7.6, 16]} />
+          <meshStandardMaterial color="#fef08a" emissive="#fde047" emissiveIntensity={2.8} />
+        </mesh>
+        <mesh position={[-3.8, 5.8, 0.08]} rotation={[0, 0, Math.PI / 2]}>
+          <torusGeometry args={[2.0, 0.07, 16, 24, Math.PI / 2]} />
+          <meshStandardMaterial color="#fef08a" emissive="#fde047" emissiveIntensity={2.8} />
+        </mesh>
+        <mesh position={[3.8, 5.8, 0.08]} rotation={[0, 0, 0]}>
+          <torusGeometry args={[2.0, 0.07, 16, 24, Math.PI / 2]} />
+          <meshStandardMaterial color="#fef08a" emissive="#fde047" emissiveIntensity={2.8} />
         </mesh>
       </group>
 
-      {/* 2. Màn hình LED cong nền xanh sapphire sâu */}
-      <mesh position={[0, 4.2, -0.2]}>
-        <planeGeometry args={[13.2, 6.4]} />
+      {/* 2. Màn hình LED hậu trường nền đen sâu thẳm điểm xuyết ánh sáng sapphire */}
+      <mesh position={[0, 4.3, -0.2]}>
+        <planeGeometry args={[14.8, 8.8]} />
         <meshStandardMaterial
-          color="#0c2461"
+          color="#020617"
           emissive="#061838"
-          emissiveIntensity={0.6}
-          roughness={0.3}
-          metalness={0.4}
+          emissiveIntensity={0.65}
+          roughness={0.4}
+          metalness={0.3}
         />
       </mesh>
 
-      {/* 3. Dàn 16 khối ô chữ 3D xoay lơ lửng */}
+      {/* 3. Dàn 16 khối ô chữ 3D to bản xoay lơ lửng phân tầng từ 2.8m đến 7.2m */}
       {CUBES_DATA.map((c, i) => {
         const tex = getSpinningCubeTexture(c.text, c.color);
         return (
@@ -1717,8 +1866,8 @@ function BackdropLedScreenWithSpinningCubes() {
             scale={c.scale}
             castShadow
           >
-            <boxGeometry args={[0.74, 0.74, 0.74]} />
-            <meshStandardMaterial map={tex} emissive={c.emissive} emissiveIntensity={0.8} roughness={0.2} metalness={0.2} />
+            <boxGeometry args={[0.85, 0.85, 0.85]} />
+            <meshStandardMaterial map={tex} emissive={c.emissive} emissiveIntensity={0.85} roughness={0.2} metalness={0.2} />
           </mesh>
         );
       })}
@@ -1726,54 +1875,79 @@ function BackdropLedScreenWithSpinningCubes() {
   );
 }
 
-/** Cụm hoa văn bánh xe nan hoa quạt xòe phát sáng hai bên cánh gà */
+/** Cụm hoa văn đĩa nan hoa chữ 'CHIẾC NÓN KỲ DIỆU' và cánh vòm tối hai bên cánh gà chuẩn VTV3 2016 */
 function StudioSetWingMotifs() {
-  const SPOKES = 24;
+  const LEFT_LETTERS = ["C", "H", "I", "E", "C", "N", "O", "N", "600", "500", "800", "VTV3", "★", "★", "★", "★"];
+  const RIGHT_LETTERS = ["K", "Y", "D", "I", "E", "U", "V", "T", "V", "3", "900", "1000", "MAY MẮN", "★", "★", "★"];
 
-  const renderFan = (x: number, z: number, rotY: number) => (
-    <group position={[x, 3.6, z]} rotation={[0, rotY, 0]}>
+  const renderDecorativeWheel = (x: number, z: number, rotY: number, letters: string[]) => (
+    <group position={[x, 4.2, z]} rotation={[0, rotY, 0]}>
+      {/* 1. Đĩa tròn nền đen bóng kim loại */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.32, 0.32, 0.08, 32]} />
-        <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.5} metalness={0.9} />
+        <cylinderGeometry args={[2.55, 2.55, 0.08, 36]} />
+        <meshStandardMaterial color="#0b0f19" metalness={0.9} roughness={0.15} />
       </mesh>
-      {Array.from({ length: SPOKES }).map((_, i) => {
-        const a = (i * Math.PI * 2) / SPOKES;
-        const len = 2.4;
-        const midR = len / 2 + 0.32;
-        const isWhite = i % 2 === 0;
+      {/* Tâm đĩa mạ vàng sang trọng */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.06]}>
+        <cylinderGeometry args={[0.55, 0.55, 0.12, 32]} />
+        <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.5} metalness={0.92} />
+      </mesh>
+      {/* Vành tròn ngoài viền vàng neon */}
+      <mesh position={[0, 0, 0.05]}>
+        <torusGeometry args={[2.55, 0.07, 16, 48]} />
+        <meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={2.0} />
+      </mesh>
+
+      {/* 16 nan hoa hướng tâm gắn chữ cái & số điểm phát sáng */}
+      {letters.map((char, i) => {
+        const a = (i * Math.PI * 2) / 16;
+        const rSpoke = 1.60;
+        const px = Math.sin(a) * rSpoke;
+        const py = Math.cos(a) * rSpoke;
+        const isGold = i % 2 === 0;
 
         return (
-          <mesh
-            key={`spoke-${i}`}
-            position={[Math.sin(a) * midR, Math.cos(a) * midR, 0]}
-            rotation={[0, 0, -a]}
-          >
-            <boxGeometry args={[0.045, len, 0.02]} />
-            <meshStandardMaterial
-              color={isWhite ? "#f8fafc" : "#fde047"}
-              emissive={isWhite ? "#ffffff" : "#f59e0b"}
-              emissiveIntensity={2.0}
-            />
-          </mesh>
+          <group key={`spoke-${i}`} position={[px, py, 0.06]} rotation={[0, 0, -a]}>
+            {/* Thanh nan hoa */}
+            <mesh position={[0, 0, 0]}>
+              <boxGeometry args={[0.04, 1.8, 0.02]} />
+              <meshStandardMaterial color="#475569" metalness={0.8} />
+            </mesh>
+            {/* Phiến thẻ chữ / điểm nổi bật */}
+            <mesh position={[0, 0, 0.03]} rotation={[0, 0, a]}>
+              <boxGeometry args={[0.34, 0.34, 0.03]} />
+              <meshStandardMaterial
+                color={isGold ? "#fde047" : "#38bdf8"}
+                emissive={isGold ? "#f59e0b" : "#0284c7"}
+                emissiveIntensity={1.6}
+              />
+            </mesh>
+          </group>
         );
       })}
-      <mesh rotation={[0, 0, 0]}>
-        <torusGeometry args={[2.75, 0.04, 16, 48]} />
-        <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.8} />
-      </mesh>
-      {[-0.8, 0.8].map((ox, idx) => (
-        <mesh key={`col-${idx}`} position={[ox, -1.2, -0.2]}>
-          <cylinderGeometry args={[0.06, 0.06, 3.2, 16]} />
-          <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={1.5} />
-        </mesh>
-      ))}
     </group>
   );
 
   return (
     <group>
-      {renderFan(-8.4, -4.5, 0.3)}
-      {renderFan(8.4, -4.5, -0.3)}
+      {/* Cặp đĩa nan hoa chữ hai bên hông vòm màn hình */}
+      {renderDecorativeWheel(-7.4, -8.2, 0.28, LEFT_LETTERS)}
+      {renderDecorativeWheel(7.4, -8.2, -0.28, RIGHT_LETTERS)}
+
+      {/* Cặp cánh vòm tối bo cong (Dark Arched Wings) ôm hai bên tạo chiều sâu thị giác đa lớp */}
+      {[-9.4, 9.4].map((wx, idx) => (
+        <group key={`dark-wing-${idx}`} position={[wx, 3.8, -7.8]} rotation={[0, idx === 0 ? 0.35 : -0.35, 0]}>
+          <mesh>
+            <boxGeometry args={[1.6, 7.8, 0.15]} />
+            <meshStandardMaterial color="#030712" metalness={0.85} roughness={0.25} />
+          </mesh>
+          {/* Dải viền LED vàng trên mép cánh vòm */}
+          <mesh position={[idx === 0 ? 0.8 : -0.8, 0, 0.1]}>
+            <cylinderGeometry args={[0.04, 0.04, 7.8, 16]} />
+            <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={2.0} />
+          </mesh>
+        </group>
+      ))}
     </group>
   );
 }
@@ -1798,9 +1972,9 @@ function AudienceAmphitheater() {
           <group key={`tier-${tIdx}`}>
             <mesh position={[0, tier.h / 2, 0]} receiveShadow>
               <cylinderGeometry
-                args={[tier.r + 0.6, tier.r + 0.6, tier.h, 48, 1, false, startAngle, angleSpan]}
+                args={[tier.r + 0.6, tier.r + 0.6, tier.h, 48, 1, true, startAngle, angleSpan]}
               />
-              <meshStandardMaterial color="#1e293b" roughness={0.4} metalness={0.5} />
+              <meshStandardMaterial color="#1e293b" roughness={0.4} metalness={0.5} side={THREE.DoubleSide} />
             </mesh>
 
             {Array.from({ length: tier.seats }).map((_, sIdx) => {
@@ -2085,6 +2259,8 @@ export default function WheelStudio3DScene({
   edition = "VIETNAMESE",
   className = "",
   currentPuzzle,
+  highlightedIndices,
+  animRevealedIndices,
   onCamAngleChange,
 }: WheelStudio3DSceneProps) {
   const [internalCam, setInternalCam] = useState<number>(camAngle || 0);
@@ -2094,12 +2270,18 @@ export default function WheelStudio3DScene({
     setInternalCam(camAngle || 0);
   }, [camAngle]);
 
-  // Smart Auto-Director: Khi đang quay nón chuyển sang CAM 4; khi mở chữ sang CAM 3
+  // Smart Auto-Director: Khi đang quay nón chuyển sang CAM 4; khi mở chữ / highlight sang CAM 3
   useEffect(() => {
     if (effectiveIsSpinning) {
       setInternalCam(4);
     }
   }, [effectiveIsSpinning]);
+
+  useEffect(() => {
+    if (highlightedIndices && highlightedIndices.size > 0) {
+      setInternalCam(3);
+    }
+  }, [highlightedIndices]);
 
   // Keyboard shortcut listener (keys 1 - 6)
   useEffect(() => {
@@ -2214,8 +2396,13 @@ export default function WheelStudio3DScene({
           phase={phase}
           edition={edition}
         />
-        {/* Bảng Ô Chữ 3D tại Cánh Trái (Z ~ +3.0m) & Người mẫu trợ lý */}
-        <Studio3DPuzzleBoard currentPuzzle={currentPuzzle} phase={phase} />
+        {/* Bảng Ô Chữ 3D tại Cánh Trái (Z ~ -1.0m) & Người mẫu trợ lý */}
+        <Studio3DPuzzleBoard
+          currentPuzzle={currentPuzzle}
+          phase={phase}
+          highlightedIndices={highlightedIndices}
+          animRevealedIndices={animRevealedIndices}
+        />
         {/* Khán đài khán giả đa tầng phía trước sân khấu (Z = +10m - +14m) */}
         <AudienceAmphitheater />
       </Canvas>

@@ -946,28 +946,150 @@ function WheelMachineGroup({
   );
 }
 
-/** Đầu người 3D Stylized Humanoid có đầy đủ mắt, mũi, miệng, nụ cười, tóc 3D và ngũ quan chân thực */
-function StylizedHumanoidHead({
+/** Bàn tay 5 ngón phân đốt chân thực (Articulated Human Hand with 5 fingers) */
+function RealisticArticulatedHand({
+  skinColor = "#fed7aa",
+  side = "right",
+  pose = "OPEN",
+}: {
+  skinColor?: string;
+  side?: "left" | "right";
+  pose?: "OPEN" | "GRIP" | "TOUCH" | "HOLD_MIC" | "REST_TABLE";
+}) {
+  const isRight = side === "right";
+  const mirrorX = isRight ? 1 : -1;
+
+  // Cấu hình góc gập các khớp đốt ngón tay theo từng tư thế cử động
+  const fingerConfigs = useMemo(() => {
+    switch (pose) {
+      case "GRIP":
+        return {
+          thumb: { rotZ: -0.45 * mirrorX, rotX: 0.65, curl: 0.85 },
+          index: { rotZ: 0.05 * mirrorX, curl1: 1.15, curl2: 1.05 },
+          middle: { rotZ: 0.0 * mirrorX, curl1: 1.25, curl2: 1.15 },
+          ring: { rotZ: -0.05 * mirrorX, curl1: 1.20, curl2: 1.10 },
+          pinky: { rotZ: -0.10 * mirrorX, curl1: 1.05, curl2: 0.95 },
+        };
+      case "TOUCH":
+        return {
+          thumb: { rotZ: -0.22 * mirrorX, rotX: 0.20, curl: 0.25 },
+          index: { rotZ: 0.02 * mirrorX, curl1: 0.12, curl2: 0.08 }, // Duỗi thẳng ngón tay trỏ chạm ô chữ
+          middle: { rotZ: -0.02 * mirrorX, curl1: 0.25, curl2: 0.18 },
+          ring: { rotZ: -0.06 * mirrorX, curl1: 0.48, curl2: 0.38 },
+          pinky: { rotZ: -0.12 * mirrorX, curl1: 0.62, curl2: 0.50 },
+        };
+      case "HOLD_MIC":
+        return {
+          thumb: { rotZ: -0.50 * mirrorX, rotX: 0.55, curl: 0.75 },
+          index: { rotZ: 0.04 * mirrorX, curl1: 1.02, curl2: 0.92 },
+          middle: { rotZ: 0.0 * mirrorX, curl1: 1.08, curl2: 0.98 },
+          ring: { rotZ: -0.04 * mirrorX, curl1: 1.02, curl2: 0.92 },
+          pinky: { rotZ: -0.08 * mirrorX, curl1: 0.95, curl2: 0.85 },
+        };
+      case "REST_TABLE":
+        return {
+          thumb: { rotZ: -0.32 * mirrorX, rotX: 0.10, curl: 0.08 },
+          index: { rotZ: 0.02 * mirrorX, curl1: 0.12, curl2: 0.05 },
+          middle: { rotZ: 0.0 * mirrorX, curl1: 0.12, curl2: 0.05 },
+          ring: { rotZ: -0.02 * mirrorX, curl1: 0.12, curl2: 0.05 },
+          pinky: { rotZ: -0.05 * mirrorX, curl1: 0.12, curl2: 0.05 },
+        };
+      case "OPEN":
+      default:
+        return {
+          thumb: { rotZ: -0.25 * mirrorX, rotX: 0.18, curl: 0.22 },
+          index: { rotZ: 0.03 * mirrorX, curl1: 0.28, curl2: 0.18 },
+          middle: { rotZ: 0.0 * mirrorX, curl1: 0.32, curl2: 0.22 },
+          ring: { rotZ: -0.03 * mirrorX, curl1: 0.32, curl2: 0.22 },
+          pinky: { rotZ: -0.07 * mirrorX, curl1: 0.38, curl2: 0.28 },
+        };
+    }
+  }, [pose, mirrorX]);
+
+  return (
+    <group scale={[mirrorX, 1, 1]}>
+      {/* 1. Mu bàn tay & Lòng bàn tay mềm mại có độ vòm giải phẫu (Palm) */}
+      <mesh position={[0, -0.034, 0]} castShadow>
+        <boxGeometry args={[0.044, 0.062, 0.020]} />
+        <meshStandardMaterial color={skinColor} roughness={0.38} metalness={0.05} />
+      </mesh>
+
+      {/* 2. Ngón cái (Thumb - 2 đốt phân khớp cử động) */}
+      <group position={[-0.025, -0.018, 0.005]} rotation={[fingerConfigs.thumb.rotX, 0, fingerConfigs.thumb.rotZ]}>
+        <mesh position={[-0.008, -0.012, 0]}>
+          <cylinderGeometry args={[0.0068, 0.0078, 0.024, 10]} />
+          <meshStandardMaterial color={skinColor} roughness={0.38} metalness={0.05} />
+        </mesh>
+        <group position={[-0.012, -0.024, 0]} rotation={[fingerConfigs.thumb.curl, 0, 0]}>
+          <mesh position={[0, -0.010, 0]}>
+            <cylinderGeometry args={[0.0058, 0.0068, 0.020, 10]} />
+            <meshStandardMaterial color={skinColor} roughness={0.38} metalness={0.05} />
+          </mesh>
+          <mesh position={[0, -0.020, 0]}>
+            <sphereGeometry args={[0.0058, 8, 8]} />
+            <meshStandardMaterial color={skinColor} roughness={0.38} metalness={0.05} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* 3. Bốn ngón: Trỏ, Giữa, Áp út, Út (3 đốt khớp nối liên hoàn) */}
+      {[
+        { name: "index", x: -0.015, len1: 0.024, len2: 0.018, cfg: fingerConfigs.index },
+        { name: "middle", x: -0.005, len1: 0.027, len2: 0.020, cfg: fingerConfigs.middle },
+        { name: "ring", x: 0.005, len1: 0.025, len2: 0.018, cfg: fingerConfigs.ring },
+        { name: "pinky", x: 0.015, len1: 0.020, len2: 0.015, cfg: fingerConfigs.pinky },
+      ].map((finger) => (
+        <group key={finger.name} position={[finger.x, -0.065, 0]} rotation={[0, 0, finger.cfg.rotZ]}>
+          {/* Đốt 1 (Proximal phalanx) */}
+          <group rotation={[finger.cfg.curl1, 0, 0]}>
+            <mesh position={[0, -finger.len1 / 2, 0]}>
+              <cylinderGeometry args={[0.0054, 0.0060, finger.len1, 10]} />
+              <meshStandardMaterial color={skinColor} roughness={0.38} metalness={0.05} />
+            </mesh>
+            {/* Đốt 2 & 3 (Distal phalanx) */}
+            <group position={[0, -finger.len1, 0]} rotation={[finger.cfg.curl2, 0, 0]}>
+              <mesh position={[0, -finger.len2 / 2, 0]}>
+                <cylinderGeometry args={[0.0046, 0.0054, finger.len2, 10]} />
+                <meshStandardMaterial color={skinColor} roughness={0.38} metalness={0.05} />
+              </mesh>
+              {/* Đầu búp ngón tay mềm mại */}
+              <mesh position={[0, -finger.len2, 0]}>
+                <sphereGeometry args={[0.0048, 8, 8]} />
+                <meshStandardMaterial color={skinColor} roughness={0.38} metalness={0.05} />
+              </mesh>
+            </group>
+          </group>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/** Đầu người 3D chuẩn tỷ lệ giải phẫu người thật Á Đông (Metahuman Realistic Style với giác mạc phản quang và tóc 3D) */
+function RealisticHumanHead({
   hairColor = "#0f172a",
   skinColor = "#fed7aa",
+  gender = "male",
   isHost = false,
   isTurn = false,
   isSpinning = false,
 }: {
   hairColor?: string;
   skinColor?: string;
+  gender?: "male" | "female";
   isHost?: boolean;
   isTurn?: boolean;
   isSpinning?: boolean;
 }) {
   const headRef = useRef<THREE.Group>(null);
+  const isFemale = gender === "female";
 
   useFrame((state) => {
     if (!headRef.current) return;
     const t = state.clock.getElapsedTime();
     if (isSpinning) {
-      // Đầu xoay nhẹ theo dõi vòng quay nón đang xoay
-      headRef.current.rotation.y = Math.sin(t * 3.5) * 0.14;
+      // Dõi mắt và xoay đầu nhịp nhàng theo chiều quay của bánh xe
+      headRef.current.rotation.y = Math.sin(t * 3.2) * 0.16;
       headRef.current.rotation.x = 0.08 + Math.cos(t * 2.0) * 0.03;
     } else if (isTurn) {
       // Đội đến lượt: ngẩng cao đầu tự tin, mỉm cười rạng rỡ
@@ -981,83 +1103,174 @@ function StylizedHumanoidHead({
 
   return (
     <group ref={headRef} position={[0, 1.02, 0]}>
-      {/* 1. Khuôn mặt 3D hình khối đầu oval ấm áp */}
-      <mesh castShadow scale={[0.94, 1.05, 0.96]}>
-        <sphereGeometry args={[0.125, 24, 24]} />
-        <meshStandardMaterial color={skinColor} roughness={0.35} metalness={0.05} />
+      {/* 1. Cổ người thật (Neck) thon gọn nối từ ngực */}
+      <mesh position={[0, -0.07, -0.01]} castShadow>
+        <cylinderGeometry args={[0.046, 0.054, 0.12, 16]} />
+        <meshStandardMaterial color={skinColor} roughness={0.38} metalness={0.04} />
       </mesh>
 
-      {/* 2. Mái tóc 3D vuốt gel bóng bẩy phong cách truyền hình */}
-      <group position={[0, 0.04, -0.01]}>
-        {/* Mũ tóc chính */}
-        <mesh position={[0, 0.03, -0.015]} scale={[0.98, 1.02, 1.0]}>
-          <sphereGeometry args={[0.128, 20, 20, 0, Math.PI * 2, 0, Math.PI * 0.52]} />
-          <meshStandardMaterial color={hairColor} roughness={0.4} metalness={0.15} />
-        </mesh>
-        {/* Tóc mái bồng rẽ ngôi lịch lãm */}
-        <mesh position={[0, 0.08, 0.07]} rotation={[0.2, 0, 0]}>
-          <boxGeometry args={[0.16, 0.04, 0.08]} />
-          <meshStandardMaterial color={hairColor} roughness={0.4} metalness={0.15} />
-        </mesh>
-      </group>
+      {/* 2. Khung sọ đầu bo tròn tự nhiên (Cranial Skull) */}
+      <mesh castShadow scale={[0.92, 1.08, 0.96]}>
+        <sphereGeometry args={[0.118, 28, 28]} />
+        <meshStandardMaterial color={skinColor} roughness={0.38} metalness={0.04} />
+      </mesh>
 
-      {/* 3. Ngũ quan khuôn mặt chân thực */}
-      {/* Mắt trái & phải (Tròng trắng + Con ngươi đen sáng) */}
-      {[-0.042, 0.042].map((ex, i) => (
-        <group key={`eye-${i}`} position={[ex, 0.02, 0.112]}>
-          {/* Tròng trắng */}
+      {/* Cằm và xương hàm thon V-line Á Đông thanh tú */}
+      <mesh position={[0, -0.062, 0.024]} rotation={[Math.PI, 0, 0]} scale={[0.94, 0.65, 0.85]}>
+        <coneGeometry args={[0.078, 0.09, 16]} />
+        <meshStandardMaterial color={skinColor} roughness={0.38} metalness={0.04} />
+      </mesh>
+
+      {/* 3. Mái tóc 3D nhiều lớp (Multi-layer procedural hair) */}
+      {isFemale ? (
+        // Tóc Nữ: Búi tóc đài các sau gáy (Chignon bun), tóc mái lượn sóng và dải tóc mai mềm mại
+        <group position={[0, 0.03, -0.01]}>
+          {/* Mũ tóc chính ôm sọ */}
+          <mesh position={[0, 0.025, -0.012]} scale={[0.96, 1.02, 1.0]}>
+            <sphereGeometry args={[0.126, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.58]} />
+            <meshStandardMaterial color={hairColor} roughness={0.32} metalness={0.18} />
+          </mesh>
+          {/* Búi tóc đài các phía sau gáy (Chignon) */}
+          <mesh position={[0, 0.01, -0.11]} scale={[1.1, 0.95, 0.85]}>
+            <sphereGeometry args={[0.065, 20, 20]} />
+            <meshStandardMaterial color={hairColor} roughness={0.35} metalness={0.16} />
+          </mesh>
+          {/* Trâm cài / kẹp tóc mạ vàng champagne lấp lánh */}
+          <mesh position={[0, 0.03, -0.115]} rotation={[0, 0, 0.3]}>
+            <torusGeometry args={[0.048, 0.005, 12, 24]} />
+            <meshStandardMaterial color="#fbbf24" metalness={0.95} roughness={0.08} emissive="#d97706" emissiveIntensity={0.3} />
+          </mesh>
+          {/* Lọn tóc mái uốn sóng mềm mại hai bên thái dương */}
+          <mesh position={[-0.08, -0.01, 0.08]} rotation={[0.2, 0.2, -0.1]}>
+            <boxGeometry args={[0.02, 0.12, 0.03]} />
+            <meshStandardMaterial color={hairColor} roughness={0.35} />
+          </mesh>
+          <mesh position={[0.08, -0.01, 0.08]} rotation={[0.2, -0.2, 0.1]}>
+            <boxGeometry args={[0.02, 0.12, 0.03]} />
+            <meshStandardMaterial color={hairColor} roughness={0.35} />
+          </mesh>
+        </group>
+      ) : (
+        // Tóc Nam: Tóc rẽ ngôi 7/3 vuốt sáp bóng bẩy lịch lãm chuẩn MC / Gameshow truyền hình
+        <group position={[0, 0.04, -0.01]}>
+          <mesh position={[0, 0.032, -0.014]} scale={[0.98, 1.02, 1.0]}>
+            <sphereGeometry args={[0.126, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.52]} />
+            <meshStandardMaterial color={hairColor} roughness={0.38} metalness={0.15} />
+          </mesh>
+          {/* Mái tóc bồng rẽ ngôi lịch lãm */}
+          <mesh position={[0.02, 0.085, 0.072]} rotation={[0.2, 0.1, -0.08]}>
+            <boxGeometry args={[0.15, 0.038, 0.08]} />
+            <meshStandardMaterial color={hairColor} roughness={0.38} metalness={0.15} />
+          </mesh>
+          {/* Hai bên mang tai tỉa gọn gàng (side fade) */}
+          <mesh position={[-0.10, 0.02, 0.01]} rotation={[0, 0, 0.1]}>
+            <boxGeometry args={[0.02, 0.09, 0.09]} />
+            <meshStandardMaterial color={hairColor} roughness={0.45} />
+          </mesh>
+          <mesh position={[0.10, 0.02, 0.01]} rotation={[0, 0, -0.1]}>
+            <boxGeometry args={[0.02, 0.09, 0.09]} />
+            <meshStandardMaterial color={hairColor} roughness={0.45} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 4. Đôi mắt có giác mạc phản quang (Sclera + Iris + Specular Reflection) */}
+      {[-0.040, 0.040].map((ex, i) => (
+        <group key={`eye-${i}`} position={[ex, 0.018, 0.108]}>
+          {/* Tròng trắng mắt (Sclera) */}
           <mesh>
-            <sphereGeometry args={[0.018, 12, 12]} />
-            <meshStandardMaterial color="#f8fafc" roughness={0.1} />
+            <sphereGeometry args={[0.016, 16, 16]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.12} />
           </mesh>
-          {/* Con ngươi đen */}
-          <mesh position={[0, 0, 0.012]}>
-            <sphereGeometry args={[0.009, 12, 12]} />
-            <meshStandardMaterial color="#020617" roughness={0.2} metalness={0.4} />
+          {/* Mống mắt nâu hạt dẻ sâu thẳm Á Đông (Iris) */}
+          <mesh position={[0, 0, 0.011]}>
+            <sphereGeometry args={[0.0092, 14, 14]} />
+            <meshStandardMaterial color="#2d1a0e" roughness={0.2} metalness={0.2} />
           </mesh>
-          {/* Đốm sáng phản chiếu trong mắt */}
-          <mesh position={[0.003, 0.004, 0.018]}>
-            <sphereGeometry args={[0.0028, 8, 8]} />
+          {/* Con ngươi đen tuyền (Pupil) */}
+          <mesh position={[0, 0, 0.014]}>
+            <sphereGeometry args={[0.0050, 10, 10]} />
+            <meshStandardMaterial color="#050810" roughness={0.1} metalness={0.4} />
+          </mesh>
+          {/* Đốm sáng phản chiếu ánh đèn studio rực rỡ (Specular highlight) */}
+          <mesh position={[0.003, 0.0035, 0.017]}>
+            <sphereGeometry args={[0.0026, 8, 8]} />
             <meshBasicMaterial color="#ffffff" />
           </mesh>
-          {/* Lông mày */}
-          <mesh position={[0, 0.028, 0.005]} rotation={[0, 0, i === 0 ? 0.08 : -0.08]}>
-            <boxGeometry args={[0.034, 0.007, 0.008]} />
+          {/* Lông mi và mí mắt mềm mại */}
+          <mesh position={[0, 0.012, 0.008]} rotation={[0.2, 0, i === 0 ? 0.05 : -0.05]}>
+            <boxGeometry args={[0.026, 0.003, 0.012]} />
+            <meshStandardMaterial color="#0f172a" roughness={0.4} />
+          </mesh>
+          {/* Chân mày tỉ mỉ sắc nét */}
+          <mesh position={[0, 0.024, 0.004]} rotation={[0, 0, i === 0 ? 0.08 : -0.08]}>
+            <boxGeometry args={[0.034, 0.006, 0.008]} />
             <meshStandardMaterial color={hairColor} roughness={0.6} />
           </mesh>
         </group>
       ))}
 
-      {/* Sống mũi 3D thanh tú */}
-      <mesh position={[0, -0.005, 0.122]} rotation={[0.18, 0, 0]}>
-        <coneGeometry args={[0.016, 0.038, 12]} />
-        <meshStandardMaterial color={skinColor} roughness={0.4} />
-      </mesh>
-
-      {/* Miệng cười tươi thân thiện chuẩn gameshow */}
-      <mesh position={[0, -0.042, 0.112]}>
-        <boxGeometry args={[0.046, 0.010, 0.014]} />
-        <meshStandardMaterial color="#be123c" roughness={0.3} />
-      </mesh>
-      {/* Nụ cười hé răng trắng */}
-      <mesh position={[0, -0.041, 0.117]}>
-        <boxGeometry args={[0.030, 0.005, 0.006]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
-
-      {/* Đôi tai hai bên */}
-      {[-0.122, 0.122].map((tx, i) => (
-        <mesh key={`ear-${i}`} position={[tx, 0.005, 0]} rotation={[0, 0, i === 0 ? 0.2 : -0.2]}>
-          <sphereGeometry args={[0.024, 12, 12]} />
-          <meshStandardMaterial color={skinColor} roughness={0.4} />
+      {/* 5. Sống mũi thanh tú Á Đông có cánh mũi 3D */}
+      <group position={[0, -0.008, 0.118]}>
+        <mesh rotation={[0.16, 0, 0]}>
+          <coneGeometry args={[0.015, 0.042, 12]} />
+          <meshStandardMaterial color={skinColor} roughness={0.38} />
         </mesh>
+        {/* Cánh mũi hai bên */}
+        <mesh position={[-0.012, -0.014, -0.004]}>
+          <sphereGeometry args={[0.007, 8, 8]} />
+          <meshStandardMaterial color={skinColor} roughness={0.38} />
+        </mesh>
+        <mesh position={[0.012, -0.014, -0.004]}>
+          <sphereGeometry args={[0.007, 8, 8]} />
+          <meshStandardMaterial color={skinColor} roughness={0.38} />
+        </mesh>
+      </group>
+
+      {/* 6. Bờ môi căng mọng quyến rũ (Nữ son đỏ thanh lịch, Nam màu tự nhiên) */}
+      <group position={[0, -0.044, 0.106]}>
+        {/* Môi trên uốn cánh cung */}
+        <mesh position={[0, 0.004, 0]}>
+          <boxGeometry args={[0.042, 0.007, 0.012]} />
+          <meshStandardMaterial color={isFemale ? "#be123c" : "#d9777f"} roughness={0.25} />
+        </mesh>
+        {/* Môi dưới đầy đặn */}
+        <mesh position={[0, -0.004, 0]}>
+          <boxGeometry args={[0.038, 0.009, 0.014]} />
+          <meshStandardMaterial color={isFemale ? "#be123c" : "#d9777f"} roughness={0.25} />
+        </mesh>
+        {/* Nụ cười hé răng ngà trắng */}
+        <mesh position={[0, 0, 0.006]}>
+          <boxGeometry args={[0.028, 0.004, 0.005]} />
+          <meshBasicMaterial color="#ffffff" />
+        </mesh>
+      </group>
+
+      {/* 7. Đôi tai 3D với hoa tai pha lê nếu là Nữ */}
+      {[-0.114, 0.114].map((tx, i) => (
+        <group key={`ear-${i}`} position={[tx, 0.006, 0]} rotation={[0, 0, i === 0 ? 0.15 : -0.15]}>
+          <mesh>
+            <sphereGeometry args={[0.022, 12, 12]} />
+            <meshStandardMaterial color={skinColor} roughness={0.4} />
+          </mesh>
+          {/* Hoa tai / Bông tai ngọc trai lấp lánh cho Nữ */}
+          {isFemale && (
+            <mesh position={[0, -0.024, 0]}>
+              <sphereGeometry args={[0.007, 10, 10]} />
+              <meshStandardMaterial color="#fef08a" metalness={0.95} roughness={0.08} emissive="#fbbf24" emissiveIntensity={0.4} />
+            </mesh>
+          )}
+        </group>
       ))}
     </group>
   );
 }
 
-/** 3D Stylized Contestant Mannequin (Hình nhân thí sinh trang trọng mang màu sắc đội thi, có đầy đủ ngũ quan) */
-function StylizedMannequin({
+// Giữ alias tương thích
+const StylizedHumanoidHead = RealisticHumanHead;
+
+/** 3D Realistic Contestant Mannequin (Thí sinh người thật mặc vest âu cao cấp với động tác 2 tay dồn lực đẩy nón nằm ngang) */
+function RealisticContestantMannequin({
   color,
   isTurn,
   isSpinning,
@@ -1068,11 +1281,15 @@ function StylizedMannequin({
 }) {
   const rootGroupRef = useRef<THREE.Group>(null);
   const upperBodyRef = useRef<THREE.Group>(null);
+  const leftArmRef = useRef<THREE.Group>(null);
   const rightArmRef = useRef<THREE.Group>(null);
   const spinStartTimeRef = useRef<number>(0);
 
+  const [handPoseRight, setHandPoseRight] = useState<"OPEN" | "GRIP" | "TOUCH" | "HOLD_MIC" | "REST_TABLE">("OPEN");
+  const [handPoseLeft, setHandPoseLeft] = useState<"OPEN" | "GRIP" | "TOUCH" | "HOLD_MIC" | "REST_TABLE">("REST_TABLE");
+
   useFrame((state, delta) => {
-    if (!rootGroupRef.current || !upperBodyRef.current || !rightArmRef.current) return;
+    if (!rootGroupRef.current || !upperBodyRef.current || !rightArmRef.current || !leftArmRef.current) return;
     const now = state.clock.getElapsedTime();
 
     if (isTurn && isSpinning) {
@@ -1082,126 +1299,181 @@ function StylizedMannequin({
       const t = now - spinStartTimeRef.current;
 
       if (t < 0.4) {
-        // Giai đoạn 1 (0s - 0.4s): Nhoài người về phía trước, tay phải vươn bám chốt kim loại
+        // Giai đoạn 1 (0s - 0.4s): Nhoài người về phía trước mép bục, tay trái tì làm điểm tựa, tay phải vươn bám chốt nón
         const p = Math.min(1, t / 0.4);
-        upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(0, 0.35, p);
-        upperBodyRef.current.position.z = THREE.MathUtils.lerp(0, 0.18, p);
-        upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(0, -0.22, p);
+        upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(0, 0.38, p);
+        upperBodyRef.current.position.z = THREE.MathUtils.lerp(0, 0.22, p);
+        upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(0, -0.26, p);
 
-        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(0.45, -1.05, p);
-        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(-0.18, -0.45, p);
+        // Tay trái tì lên mép bục nón làm điểm tựa
+        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(0.45, 0.72, p);
+        leftArmRef.current.rotation.z = THREE.MathUtils.lerp(0.18, 0.32, p);
+        setHandPoseLeft("REST_TABLE");
+
+        // Tay phải vươn xa nắm chặt lấy chốt kim loại thẳng đứng của nón
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(0.45, -1.15, p);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(-0.18, -0.48, p);
+        setHandPoseRight("GRIP");
       } else if (t < 1.5) {
-        // Giai đoạn 2 (0.4s - 1.5s): Vung tay & thân trên đẩy mạnh theo chiều kim đồng hồ
+        // Giai đoạn 2 (0.4s - 1.5s): Vung tay & dồn toàn bộ trọng tâm cơ bắp đẩy mạnh nón xoay theo chiều kim đồng hồ
         const p = Math.min(1, (t - 0.4) / 1.1);
-        upperBodyRef.current.rotation.x = 0.35 * (1 - p * 0.4);
-        upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(-0.22, 0.38, p);
+        upperBodyRef.current.rotation.x = 0.38 * (1 - p * 0.35);
+        upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(-0.26, 0.42, p);
 
-        // Vung tay từ trái sang phải
-        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(-1.05, -0.65, p);
-        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(-0.45, 0.75, p);
+        // Vung tay phải từ trái qua phải theo chiều xoay nón
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(-1.15, -0.68, p);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(-0.48, 0.82, p);
+        setHandPoseRight("GRIP");
       } else {
-        // Giai đoạn 3 (1.5s trở đi): Buông tay, đứng thẳng người lại bục quan sát nón trôi
+        // Giai đoạn 3 (1.5s trở đi): Buông tay, đứng thẳng người lại bục quan sát nón trôi chậm dần
         upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(upperBodyRef.current.rotation.x, 0, delta * 3.0);
         upperBodyRef.current.position.z = THREE.MathUtils.lerp(upperBodyRef.current.position.z, 0, delta * 3.0);
         upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(upperBodyRef.current.rotation.y, 0, delta * 3.0);
 
+        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, 0.45, delta * 3.0);
+        leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, 0.18, delta * 3.0);
+
         rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 0.45, delta * 3.0);
         rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -0.18, delta * 3.0);
+
+        setHandPoseRight("OPEN");
+        setHandPoseLeft("REST_TABLE");
       }
     } else {
       spinStartTimeRef.current = 0;
-      // Trạng thái nghỉ: Thở nhẹ tự nhiên
+      // Trạng thái nghỉ: Thở nhẹ tự nhiên, đứng phong thái tự tin
       const breathe = Math.sin(now * 1.6) * 0.005;
       upperBodyRef.current.position.y = breathe;
       upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(upperBodyRef.current.rotation.x, 0, delta * 4.0);
       upperBodyRef.current.position.z = THREE.MathUtils.lerp(upperBodyRef.current.position.z, 0, delta * 4.0);
       upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(upperBodyRef.current.rotation.y, 0, delta * 4.0);
+
+      leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, 0.45, delta * 4.0);
+      leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, 0.18, delta * 4.0);
+
       rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 0.45, delta * 4.0);
       rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -0.18, delta * 4.0);
+
+      setHandPoseRight("OPEN");
+      setHandPoseLeft("REST_TABLE");
     }
   });
 
   return (
     <group ref={rootGroupRef} position={[0, 0, 0]}>
-      {/* 1. Đôi chân và quần âu lịch sự */}
+      {/* 1. Đôi chân và quần âu ống đứng phẳng phiu */}
       <mesh position={[-0.10, 0.22, 0]} castShadow>
-        <cylinderGeometry args={[0.055, 0.065, 0.44, 16]} />
-        <meshStandardMaterial color="#0f172a" roughness={0.5} />
+        <cylinderGeometry args={[0.052, 0.062, 0.44, 16]} />
+        <meshStandardMaterial color="#0f172a" roughness={0.45} />
       </mesh>
       <mesh position={[0.10, 0.22, 0]} castShadow>
-        <cylinderGeometry args={[0.055, 0.065, 0.44, 16]} />
-        <meshStandardMaterial color="#0f172a" roughness={0.5} />
+        <cylinderGeometry args={[0.052, 0.062, 0.44, 16]} />
+        <meshStandardMaterial color="#0f172a" roughness={0.45} />
       </mesh>
 
-      {/* Giày da đen */}
-      <mesh position={[-0.10, 0.02, 0.03]}>
-        <boxGeometry args={[0.11, 0.04, 0.16]} />
-        <meshStandardMaterial color="#020617" roughness={0.2} metalness={0.6} />
+      {/* Giày da tây Derby đen bóng sang trọng */}
+      <mesh position={[-0.10, 0.02, 0.03]} castShadow>
+        <boxGeometry args={[0.10, 0.04, 0.17]} />
+        <meshStandardMaterial color="#020617" roughness={0.16} metalness={0.65} />
       </mesh>
-      <mesh position={[0.10, 0.02, 0.03]}>
-        <boxGeometry args={[0.11, 0.04, 0.16]} />
-        <meshStandardMaterial color="#020617" roughness={0.2} metalness={0.6} />
+      <mesh position={[0.10, 0.02, 0.03]} castShadow>
+        <boxGeometry args={[0.10, 0.04, 0.17]} />
+        <meshStandardMaterial color="#020617" roughness={0.16} metalness={0.65} />
       </mesh>
 
       {/* Upper Body group có khả năng xoay và nhoài người đẩy nón */}
       <group ref={upperBodyRef} position={[0, 0, 0]}>
-        {/* 2. Thân áo vest nam/nữ sang trọng mang màu sắc đội thi */}
+        {/* 2. Thân áo vest comple cao cấp phối màu theo đội thi */}
         <mesh position={[0, 0.65, 0]} castShadow>
-          <cylinderGeometry args={[0.18, 0.22, 0.46, 16]} />
+          <cylinderGeometry args={[0.18, 0.22, 0.48, 20]} />
           <meshStandardMaterial
             color={color || "#3b82f6"}
-            roughness={0.35}
-            metalness={0.18}
+            roughness={0.32}
+            metalness={0.20}
           />
         </mesh>
 
-        {/* 3. Cổ áo sơ mi trắng & Cà vạt */}
-        <mesh position={[0, 0.88, 0.02]}>
-          <cylinderGeometry args={[0.08, 0.095, 0.07, 16]} />
-          <meshStandardMaterial color="#f8fafc" roughness={0.2} />
+        {/* Ve áo vest chữ V (Notch Lapel) tinh xảo */}
+        <mesh position={[-0.06, 0.68, 0.10]} rotation={[0, 0, -0.22]}>
+          <boxGeometry args={[0.05, 0.32, 0.02]} />
+          <meshStandardMaterial color={color || "#3b82f6"} roughness={0.25} metalness={0.3} />
         </mesh>
-        <mesh position={[0, 0.74, 0.10]}>
-          <boxGeometry args={[0.04, 0.20, 0.015]} />
+        <mesh position={[0.06, 0.68, 0.10]} rotation={[0, 0, 0.22]}>
+          <boxGeometry args={[0.05, 0.32, 0.02]} />
+          <meshStandardMaterial color={color || "#3b82f6"} roughness={0.25} metalness={0.3} />
+        </mesh>
+
+        {/* Khăn cài túi ngực áo vest (Pocket Square) trắng tinh khôi */}
+        <mesh position={[-0.10, 0.76, 0.10]} rotation={[0, 0, 0.15]}>
+          <boxGeometry args={[0.04, 0.02, 0.01]} />
+          <meshStandardMaterial color="#ffffff" roughness={0.2} />
+        </mesh>
+
+        {/* 3. Cổ áo sơ mi trắng & Cà vạt thắt nút Windsor */}
+        <mesh position={[0, 0.89, 0.02]}>
+          <cylinderGeometry args={[0.075, 0.090, 0.07, 16]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.18} />
+        </mesh>
+        {/* Cà vạt sang trọng */}
+        <mesh position={[0, 0.74, 0.11]}>
+          <boxGeometry args={[0.038, 0.22, 0.015]} />
           <meshStandardMaterial color="#0f172a" roughness={0.3} />
         </mesh>
 
-        {/* 4. Đầu người 3D Stylized Humanoid ngũ quan chi tiết */}
-        <StylizedHumanoidHead
+        {/* 4. Đầu người 3D chân thực tỷ lệ giải phẫu */}
+        <RealisticHumanHead
           hairColor="#1e293b"
           skinColor="#fed7aa"
+          gender="male"
           isTurn={isTurn}
           isSpinning={isSpinning}
         />
 
-        {/* 5. Cánh tay trái tự nhiên */}
-        <mesh position={[-0.24, 0.72, 0.06]} rotation={[0.45, 0, 0.18]}>
-          <cylinderGeometry args={[0.048, 0.052, 0.36, 12]} />
-          <meshStandardMaterial color={color || "#3b82f6"} roughness={0.35} metalness={0.18} />
-        </mesh>
-        <mesh position={[-0.25, 0.54, 0.24]}>
-          <sphereGeometry args={[0.042, 12, 12]} />
-          <meshStandardMaterial color="#fed7aa" roughness={0.3} />
-        </mesh>
+        {/* 5. Cánh tay trái tì bệ làm điểm tựa */}
+        <group ref={leftArmRef} position={[-0.24, 0.72, 0.06]} rotation={[0.45, 0, 0.18]}>
+          <mesh position={[0, -0.18, 0]}>
+            <cylinderGeometry args={[0.046, 0.050, 0.36, 14]} />
+            <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
+          </mesh>
+          {/* Cổ tay áo sơ mi trắng */}
+          <mesh position={[0, -0.34, 0]}>
+            <cylinderGeometry args={[0.038, 0.042, 0.04, 12]} />
+            <meshStandardMaterial color="#ffffff" roughness={0.2} />
+          </mesh>
+          {/* Bàn tay 5 ngón trái */}
+          <group position={[0, -0.36, 0]} rotation={[0.2, 0, 0]}>
+            <RealisticArticulatedHand skinColor="#fed7aa" side="left" pose={handPoseLeft} />
+          </group>
+        </group>
 
-        {/* Cánh tay phải có khớp xoay vung đẩy nón */}
+        {/* 6. Cánh tay phải có khớp xoay vung dồn lực đẩy nón */}
         <group ref={rightArmRef} position={[0.24, 0.72, 0.06]} rotation={[0.45, 0, -0.18]}>
           <mesh position={[0, -0.18, 0]}>
-            <cylinderGeometry args={[0.048, 0.052, 0.36, 12]} />
-            <meshStandardMaterial color={color || "#3b82f6"} roughness={0.35} metalness={0.18} />
+            <cylinderGeometry args={[0.046, 0.050, 0.36, 14]} />
+            <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
           </mesh>
-          <mesh position={[0, -0.36, 0.02]}>
-            <sphereGeometry args={[0.042, 12, 12]} />
-            <meshStandardMaterial color="#fed7aa" roughness={0.3} />
+          {/* Cổ tay áo sơ mi trắng */}
+          <mesh position={[0, -0.34, 0]}>
+            <cylinderGeometry args={[0.038, 0.042, 0.04, 12]} />
+            <meshStandardMaterial color="#ffffff" roughness={0.2} />
           </mesh>
+          {/* Bàn tay 5 ngón phải vươn nắm chốt nón */}
+          <group position={[0, -0.36, 0]} rotation={[0.2, 0, 0]}>
+            <RealisticArticulatedHand skinColor="#fed7aa" side="right" pose={handPoseRight} />
+          </group>
         </group>
       </group>
     </group>
   );
 }
 
-/** 3D Stylized MC / Host Figure (MC lịch lãm mặc vest tuxedo đen, sơ mi trắng, nơ đỏ, cầm thẻ cue card và micro) */
-function StylizedHostMannequin() {
+// Giữ alias tương thích
+const StylizedMannequin = RealisticContestantMannequin;
+
+/** 3D Realistic MC / Host Figure (MC lịch lãm mặc tuxedo đen hoàng gia, sơ mi trắng, nơ đỏ, tay cầm micro studio và cue card) */
+function RealisticHostMC() {
   const groupRef = useRef<THREE.Group>(null);
+  const headRef = useRef<THREE.Group>(null);
 
   useFrame(() => {
     if (groupRef.current) {
@@ -1216,88 +1488,105 @@ function StylizedHostMannequin() {
     <group ref={groupRef} position={[0, 0, 0]}>
       {/* 1. Đôi chân và quần âu đen lịch lãm */}
       <mesh position={[-0.10, 0.22, 0]} castShadow>
-        <cylinderGeometry args={[0.055, 0.065, 0.44, 16]} />
-        <meshStandardMaterial color="#020617" roughness={0.4} />
+        <cylinderGeometry args={[0.054, 0.064, 0.44, 16]} />
+        <meshStandardMaterial color="#020617" roughness={0.35} />
       </mesh>
       <mesh position={[0.10, 0.22, 0]} castShadow>
-        <cylinderGeometry args={[0.055, 0.065, 0.44, 16]} />
-        <meshStandardMaterial color="#020617" roughness={0.4} />
+        <cylinderGeometry args={[0.054, 0.064, 0.44, 16]} />
+        <meshStandardMaterial color="#020617" roughness={0.35} />
       </mesh>
 
-      {/* Giày da đen bóng */}
-      <mesh position={[-0.10, 0.02, 0.03]}>
-        <boxGeometry args={[0.11, 0.04, 0.16]} />
-        <meshStandardMaterial color="#000000" roughness={0.15} metalness={0.7} />
+      {/* Giày da đen bóng loáng */}
+      <mesh position={[-0.10, 0.02, 0.03]} castShadow>
+        <boxGeometry args={[0.10, 0.04, 0.17]} />
+        <meshStandardMaterial color="#000000" roughness={0.12} metalness={0.75} />
       </mesh>
-      <mesh position={[0.10, 0.02, 0.03]}>
-        <boxGeometry args={[0.11, 0.04, 0.16]} />
-        <meshStandardMaterial color="#000000" roughness={0.15} metalness={0.7} />
+      <mesh position={[0.10, 0.02, 0.03]} castShadow>
+        <boxGeometry args={[0.10, 0.04, 0.17]} />
+        <meshStandardMaterial color="#000000" roughness={0.12} metalness={0.75} />
       </mesh>
 
-      {/* 2. Thân áo vest đen tuxedo trang trọng của MC */}
+      {/* 2. Thân áo vest đen tuxedo hoàng gia trang trọng của MC */}
       <mesh position={[0, 0.65, 0]} castShadow>
-        <cylinderGeometry args={[0.19, 0.23, 0.46, 16]} />
-        <meshStandardMaterial color="#090d16" roughness={0.3} metalness={0.2} />
+        <cylinderGeometry args={[0.19, 0.23, 0.48, 20]} />
+        <meshStandardMaterial color="#090d16" roughness={0.28} metalness={0.22} />
       </mesh>
 
-      {/* Ve áo vest lụa đen satin bóng */}
+      {/* Ve áo vest lụa đen satin bóng (Shawl Lapel) */}
       <mesh position={[0, 0.66, 0.09]}>
         <boxGeometry args={[0.16, 0.36, 0.02]} />
-        <meshStandardMaterial color="#020617" roughness={0.15} metalness={0.4} />
+        <meshStandardMaterial color="#020617" roughness={0.12} metalness={0.5} />
       </mesh>
 
       {/* 3. Cổ áo sơ mi trắng & Nơ cổ màu đỏ ruby sang trọng */}
-      <mesh position={[0, 0.88, 0.02]}>
-        <cylinderGeometry args={[0.08, 0.095, 0.07, 16]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.2} />
+      <mesh position={[0, 0.89, 0.02]}>
+        <cylinderGeometry args={[0.078, 0.092, 0.07, 16]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.15} />
       </mesh>
-      {/* Nơ bướm màu đỏ ruby */}
-      <mesh position={[0, 0.83, 0.11]}>
+      {/* Nơ bướm màu đỏ ruby quý phái */}
+      <mesh position={[0, 0.84, 0.11]}>
         <boxGeometry args={[0.09, 0.04, 0.02]} />
-        <meshStandardMaterial color="#dc2626" emissive="#991b1b" emissiveIntensity={0.5} roughness={0.3} />
+        <meshStandardMaterial color="#dc2626" emissive="#991b1b" emissiveIntensity={0.6} roughness={0.25} />
       </mesh>
 
-      {/* 4. Đầu MC 3D Stylized Humanoid lịch lãm với ngũ quan chân thực */}
-      <StylizedHumanoidHead
+      {/* 4. Đầu MC 3D Realistic với ngũ quan và tóc chải sáp */}
+      <RealisticHumanHead
         hairColor="#0f172a"
         skinColor="#ffedd5"
+        gender="male"
         isHost={true}
       />
 
-      {/* 5. Cánh tay MC: tay trái cầm thẻ kịch bản dẫn, tay phải cầm micro */}
-      <mesh position={[-0.24, 0.72, 0.06]} rotation={[0.55, 0, 0.22]}>
-        <cylinderGeometry args={[0.048, 0.052, 0.36, 12]} />
-        <meshStandardMaterial color="#090d16" roughness={0.3} metalness={0.2} />
-      </mesh>
-      {/* Thẻ dẫn chương trình màu vàng gold trên tay */}
-      <mesh position={[-0.26, 0.58, 0.26]} rotation={[0.4, 0.2, -0.1]}>
-        <boxGeometry args={[0.16, 0.22, 0.008]} />
-        <meshStandardMaterial color="#fef08a" emissive="#eab308" emissiveIntensity={0.35} metalness={0.5} roughness={0.2} />
-      </mesh>
+      {/* 5. Cánh tay trái MC: cầm thẻ kịch bản dẫn chương trình (Cue Card) */}
+      <group position={[-0.24, 0.72, 0.06]} rotation={[0.55, 0, 0.22]}>
+        <mesh position={[0, -0.18, 0]}>
+          <cylinderGeometry args={[0.046, 0.050, 0.36, 14]} />
+          <meshStandardMaterial color="#090d16" roughness={0.28} metalness={0.22} />
+        </mesh>
+        <group position={[0, -0.36, 0]} rotation={[0.2, 0, 0]}>
+          <RealisticArticulatedHand skinColor="#ffedd5" side="left" pose="HOLD_MIC" />
+          {/* Thẻ dẫn chương trình màu vàng gold trên tay */}
+          <mesh position={[-0.04, -0.04, 0.08]} rotation={[0.4, 0.2, -0.1]}>
+            <boxGeometry args={[0.18, 0.24, 0.008]} />
+            <meshStandardMaterial color="#fef08a" emissive="#eab308" emissiveIntensity={0.4} metalness={0.5} roughness={0.2} />
+          </mesh>
+        </group>
+      </group>
 
-      {/* Tay phải cầm micro studio mạ chrome */}
-      <mesh position={[0.24, 0.72, 0.06]} rotation={[0.58, 0, -0.25]}>
-        <cylinderGeometry args={[0.048, 0.052, 0.36, 12]} />
-        <meshStandardMaterial color="#090d16" roughness={0.3} metalness={0.2} />
-      </mesh>
-      <mesh position={[0.26, 0.54, 0.26]}>
-        <sphereGeometry args={[0.042, 12, 12]} />
-        <meshStandardMaterial color="#ffedd5" roughness={0.3} />
-      </mesh>
-      {/* Micro cầm tay */}
-      <group position={[0.28, 0.60, 0.30]} rotation={[0.4, 0, -0.3]}>
-        <mesh position={[0, 0, 0]}>
-          <cylinderGeometry args={[0.016, 0.014, 0.16, 12]} />
-          <meshStandardMaterial color="#1e293b" metalness={0.8} />
+      {/* 6. Cánh tay phải MC: cầm micro truyền hình chuyên nghiệp */}
+      <group position={[0.24, 0.72, 0.06]} rotation={[0.62, 0, -0.28]}>
+        <mesh position={[0, -0.18, 0]}>
+          <cylinderGeometry args={[0.046, 0.050, 0.36, 14]} />
+          <meshStandardMaterial color="#090d16" roughness={0.28} metalness={0.22} />
         </mesh>
-        <mesh position={[0, 0.09, 0]}>
-          <sphereGeometry args={[0.024, 12, 12]} />
-          <meshStandardMaterial color="#e2e8f0" metalness={0.96} roughness={0.06} />
-        </mesh>
+        <group position={[0, -0.36, 0]} rotation={[0.4, 0, -0.2]}>
+          <RealisticArticulatedHand skinColor="#ffedd5" side="right" pose="HOLD_MIC" />
+          {/* Micro truyền hình bọc mút và vành mạ vàng */}
+          <group position={[0.01, -0.05, 0.02]} rotation={[0.2, 0, 0]}>
+            {/* Thân micro kim loại đen */}
+            <mesh position={[0, 0, 0]}>
+              <cylinderGeometry args={[0.015, 0.013, 0.16, 14]} />
+              <meshStandardMaterial color="#1e293b" metalness={0.85} roughness={0.2} />
+            </mesh>
+            {/* Vành mạ vàng kim */}
+            <mesh position={[0, 0.07, 0]}>
+              <cylinderGeometry args={[0.018, 0.018, 0.01, 14]} />
+              <meshStandardMaterial color="#fbbf24" metalness={0.95} roughness={0.08} emissive="#d97706" emissiveIntensity={0.4} />
+            </mesh>
+            {/* Đầu micro bọc mút đen / lưới kim loại */}
+            <mesh position={[0, 0.10, 0]}>
+              <sphereGeometry args={[0.024, 14, 14]} />
+              <meshStandardMaterial color="#334155" metalness={0.65} roughness={0.35} />
+            </mesh>
+          </group>
+        </group>
       </group>
     </group>
   );
 }
+
+// Giữ alias tương thích
+const StylizedHostMannequin = RealisticHostMC;
 
 /** Bục đứng riêng biệt cho MC (Host Podium & Lectern) đặt bên trái các thí sinh theo góc nhìn khán giả */
 function DedicatedMcStation() {
@@ -1971,8 +2260,8 @@ function Studio3DPuzzleTile({
   );
 }
 
-/** Người mẫu trợ lý lật ô chữ (Lướt chân trên bục catwalk đến từng ô và vươn tay chạm mở) */
-function StylizedHostess({
+/** 3D Realistic Hostess / Người mẫu trợ lý lật ô chữ (Metahuman Realistic Style với đầm dạ hội đuôi cá cúp ngực sequin champagne, catwalk co gối và vươn tay 5 ngón chạm mở) */
+function RealisticHostess3D({
   targetPosX = 2.85,
   isTouching = false,
   isRevealing,
@@ -1982,70 +2271,221 @@ function StylizedHostess({
   isRevealing: boolean;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const meshRef = useRef<THREE.Group>(null);
+  const bodyGroupRef = useRef<THREE.Group>(null);
+  const rightArmRef = useRef<THREE.Group>(null);
+  const leftArmRef = useRef<THREE.Group>(null);
   const currentXRef = useRef<number>(2.85);
 
-  const texture = useMemo(() => {
-    if (typeof document === "undefined") return null;
-    const loader = new THREE.TextureLoader();
-    const tex = loader.load("/images/magic-wheel/hostess_fullbody.png");
-    tex.generateMipmaps = true;
-    tex.minFilter = THREE.LinearMipmapLinearFilter;
-    return tex;
-  }, []);
-
   useFrame((state, delta) => {
-    if (!groupRef.current || !meshRef.current) return;
+    if (!groupRef.current || !bodyGroupRef.current || !rightArmRef.current || !leftArmRef.current) return;
     const t = state.clock.getElapsedTime();
 
-    // Lướt chân mượt mà trên bục runway theo trục X
+    // 1. Sải bước di chuyển catwalk mượt mà trên bục runway theo trục X
     const prevX = currentXRef.current;
-    const nextX = THREE.MathUtils.lerp(prevX, targetPosX, delta * 3.5);
+    const nextX = THREE.MathUtils.lerp(prevX, targetPosX, delta * 3.2);
     currentXRef.current = nextX;
     groupRef.current.position.x = nextX;
 
     const isMoving = Math.abs(nextX - targetPosX) > 0.03;
-    const walkBob = isMoving ? Math.sin(t * 10) * 0.025 : 0;
-    const breatheY = Math.sin(t * 1.6) * 0.012;
+    const walkCycle = Math.sin(t * 7.5);
+    const walkBob = isMoving ? Math.abs(walkCycle) * 0.028 : 0;
+    const breatheY = Math.sin(t * 1.8) * 0.012;
+    const hipSway = isMoving ? walkCycle * 0.06 : Math.sin(t * 1.2) * 0.015;
 
-    meshRef.current.position.y = 1.475 + breatheY + walkBob;
+    bodyGroupRef.current.position.y = breatheY + walkBob;
+    bodyGroupRef.current.rotation.z = hipSway;
 
-    // Vươn tay chạm ô chữ khi isTouching
-    const targetScale = isTouching ? 1.05 : 1.0;
-    meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), delta * 5.0);
+    if (isTouching) {
+      // 2. Tư thế vươn tay chạm mở ô chữ: Xoay người 45° hướng về mặt bảng ô chữ
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, -0.72, delta * 5.0);
 
-    // Hướng xoay người: khi lướt sang trái xoay nhẹ về phía bảng chữ
-    const targetRotY = isMoving ? (targetPosX < prevX ? -0.22 : -0.52) : -0.45;
-    groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotY, delta * 4.0);
+      // Cánh tay phải vươn cao thanh lịch, cẳng tay hướng về ô chữ
+      rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, -1.48, delta * 5.5);
+      rightArmRef.current.rotation.y = THREE.MathUtils.lerp(rightArmRef.current.rotation.y, 0.28, delta * 5.5);
+      rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, 0.38, delta * 5.5);
+
+      // Cánh tay trái khép nhẹ duyên dáng bên hông
+      leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, 0.35, delta * 4.0);
+      leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, 0.22, delta * 4.0);
+    } else if (isMoving) {
+      // 3. Tư thế Catwalk khi di chuyển: Xoay người theo hướng đi, hai tay đánh nhịp nhấp nhô
+      const moveDir = targetPosX < prevX ? -0.28 : -0.58;
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, moveDir, delta * 4.0);
+
+      // Đánh tay nhịp nhàng theo bước đi
+      rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 0.35 + walkCycle * 0.25, delta * 6.0);
+      rightArmRef.current.rotation.y = THREE.MathUtils.lerp(rightArmRef.current.rotation.y, 0, delta * 4.0);
+      rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -0.16, delta * 4.0);
+
+      leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, 0.35 - walkCycle * 0.25, delta * 6.0);
+      leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, 0.16, delta * 4.0);
+    } else {
+      // 4. Tư thế đứng chờ bên cánh phải (IDLE): Đứng dáng hoa hậu kiêu sa, xoay góc 35° đón camera
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, -0.45, delta * 3.5);
+
+      rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 0.28, delta * 3.5);
+      rightArmRef.current.rotation.y = THREE.MathUtils.lerp(rightArmRef.current.rotation.y, 0, delta * 3.5);
+      rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -0.18, delta * 3.5);
+
+      leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, 0.32, delta * 3.5);
+      leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, 0.20, delta * 3.5);
+    }
   });
 
   return (
     <group ref={groupRef} position={[2.85, 0.41, 0.40]} rotation={[0, -0.45, 0]}>
-      {/* Vệt bóng đổ gót chân mềm mại trên sàn bục */}
+      {/* Vệt bóng đổ gót chân mềm mại trên sàn bục catwalk */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-        <planeGeometry args={[1.1, 0.50]} />
+        <planeGeometry args={[1.0, 0.45]} />
         <meshBasicMaterial color="#000000" transparent opacity={0.65} />
       </mesh>
 
-      {/* Tấm billboard Người mẫu ảnh chụp thực tế sắc nét, tỉ lệ tự nhiên không bị dẹt ngang */}
-      <group ref={meshRef} position={[0, 1.475, 0]} rotation={[0, 0, 0]}>
-        {texture && (
-          <mesh castShadow>
-            <planeGeometry args={[1.55, 2.95]} />
-            <meshStandardMaterial
-              map={texture}
-              transparent
-              alphaTest={0.08}
-              roughness={0.4}
-              metalness={0.1}
-              side={THREE.DoubleSide}
-            />
+      {/* Body group thực hiện hoạt ảnh thở, bước đi nhịp nhàng và chạm mở */}
+      <group ref={bodyGroupRef} position={[0, 0, 0]}>
+        {/* 1. Đôi giày cao gót mũi nhọn mạ vàng champagne lấp lánh */}
+        <group position={[0, 0, 0]}>
+          <mesh position={[-0.075, 0.035, 0.02]} castShadow>
+            <coneGeometry args={[0.038, 0.09, 12]} />
+            <meshStandardMaterial color="#fef08a" metalness={0.95} roughness={0.08} emissive="#fbbf24" emissiveIntensity={0.3} />
           </mesh>
-        )}
+          <mesh position={[0.075, 0.035, 0.02]} castShadow>
+            <coneGeometry args={[0.038, 0.09, 12]} />
+            <meshStandardMaterial color="#fef08a" metalness={0.95} roughness={0.08} emissive="#fbbf24" emissiveIntensity={0.3} />
+          </mesh>
+          {/* Gót nhọn giày stiletto */}
+          <mesh position={[-0.075, 0.035, -0.04]}>
+            <cylinderGeometry args={[0.006, 0.004, 0.07, 8]} />
+            <meshStandardMaterial color="#fbbf24" metalness={0.96} roughness={0.05} />
+          </mesh>
+          <mesh position={[0.075, 0.035, -0.04]}>
+            <cylinderGeometry args={[0.006, 0.004, 0.07, 8]} />
+            <meshStandardMaterial color="#fbbf24" metalness={0.96} roughness={0.05} />
+          </mesh>
+        </group>
+
+        {/* 2. Đầm dạ hội đuôi cá sequin champagne/vàng gold lộng lẫy (Mermaid Silhouette) */}
+        {/* Vạt xòe đuôi cá xếp ly chân váy */}
+        <mesh position={[0, 0.34, 0]} castShadow>
+          <cylinderGeometry args={[0.22, 0.42, 0.62, 24]} />
+          <meshStandardMaterial
+            color="#fef08a"
+            roughness={0.22}
+            metalness={0.88}
+            emissive="#d97706"
+            emissiveIntensity={0.18}
+          />
+        </mesh>
+
+        {/* Phần đầm ôm sát hông và đùi nữ tính */}
+        <mesh position={[0, 0.82, 0]} castShadow>
+          <cylinderGeometry args={[0.18, 0.23, 0.42, 24]} />
+          <meshStandardMaterial
+            color="#fef08a"
+            roughness={0.22}
+            metalness={0.88}
+            emissive="#d97706"
+            emissiveIntensity={0.18}
+          />
+        </mesh>
+
+        {/* Thắt eo con kiến thon thả */}
+        <mesh position={[0, 1.08, 0]} castShadow>
+          <cylinderGeometry args={[0.155, 0.18, 0.18, 24]} />
+          <meshStandardMaterial
+            color="#fef08a"
+            roughness={0.22}
+            metalness={0.88}
+            emissive="#d97706"
+            emissiveIntensity={0.18}
+          />
+        </mesh>
+
+        {/* Thân trên đầm cúp ngực trái tim (Sweetheart Corset) */}
+        <mesh position={[0, 1.25, 0]} castShadow>
+          <cylinderGeometry args={[0.175, 0.158, 0.22, 24]} />
+          <meshStandardMaterial
+            color="#fef08a"
+            roughness={0.22}
+            metalness={0.88}
+            emissive="#d97706"
+            emissiveIntensity={0.18}
+          />
+        </mesh>
+
+        {/* Viền cúp ngực lấp lánh khoe xương quai xanh */}
+        <mesh position={[0, 1.34, 0.08]} rotation={[0.15, 0, 0]}>
+          <boxGeometry args={[0.22, 0.04, 0.02]} />
+          <meshStandardMaterial color="#fbbf24" metalness={0.96} roughness={0.06} emissive="#f59e0b" emissiveIntensity={0.4} />
+        </mesh>
+
+        {/* 3. Bờ vai trần & Vòng cổ kim cương pha lê lấp lánh */}
+        <mesh position={[0, 1.40, 0]}>
+          <cylinderGeometry args={[0.165, 0.175, 0.10, 20]} />
+          <meshStandardMaterial color="#ffedd5" roughness={0.35} metalness={0.04} />
+        </mesh>
+        {/* Chuỗi vòng cổ kim cương quý phái quanh cổ ngọc */}
+        <mesh position={[0, 1.44, 0.03]} rotation={[-0.15, 0, 0]}>
+          <torusGeometry args={[0.075, 0.007, 12, 28]} />
+          <meshStandardMaterial color="#ffffff" metalness={0.98} roughness={0.04} emissive="#e0f2fe" emissiveIntensity={0.35} />
+        </mesh>
+
+        {/* 4. Đầu người mẫu 3D Nữ Á Đông quý phái với búi tóc chignon và ngũ quan thanh tú */}
+        <group position={[0, 0.52, 0]}>
+          <RealisticHumanHead
+            hairColor="#1c1917"
+            skinColor="#ffedd5"
+            gender="female"
+            isTurn={false}
+            isSpinning={false}
+          />
+        </group>
+
+        {/* 5. Cánh tay trái thanh mảnh duyên dáng */}
+        <group ref={leftArmRef} position={[-0.22, 1.36, 0.02]} rotation={[0.32, 0, 0.20]}>
+          {/* Bắp tay */}
+          <mesh position={[0, -0.16, 0]}>
+            <cylinderGeometry args={[0.036, 0.040, 0.32, 12]} />
+            <meshStandardMaterial color="#ffedd5" roughness={0.35} metalness={0.04} />
+          </mesh>
+          {/* Vòng tay pha lê vàng */}
+          <mesh position={[0, -0.31, 0]}>
+            <torusGeometry args={[0.032, 0.005, 10, 20]} />
+            <meshStandardMaterial color="#fbbf24" metalness={0.95} roughness={0.08} emissive="#d97706" emissiveIntensity={0.4} />
+          </mesh>
+          {/* Cẳng tay và Bàn tay 5 ngón trái */}
+          <group position={[0, -0.34, 0]} rotation={[0.15, 0, 0]}>
+            <RealisticArticulatedHand skinColor="#ffedd5" side="left" pose="OPEN" />
+          </group>
+        </group>
+
+        {/* 6. Cánh tay phải vươn chạm mở ô chữ (Articulated Right Arm with Touch Action) */}
+        <group ref={rightArmRef} position={[0.22, 1.36, 0.02]} rotation={[0.28, 0, -0.18]}>
+          {/* Bắp tay */}
+          <mesh position={[0, -0.16, 0]}>
+            <cylinderGeometry args={[0.036, 0.040, 0.32, 12]} />
+            <meshStandardMaterial color="#ffedd5" roughness={0.35} metalness={0.04} />
+          </mesh>
+          {/* Vòng tay pha lê vàng */}
+          <mesh position={[0, -0.31, 0]}>
+            <torusGeometry args={[0.032, 0.005, 10, 20]} />
+            <meshStandardMaterial color="#fbbf24" metalness={0.95} roughness={0.08} emissive="#d97706" emissiveIntensity={0.4} />
+          </mesh>
+          {/* Cẳng tay và Bàn tay 5 ngón phải */}
+          <group position={[0, -0.34, 0]} rotation={[0.15, 0, 0]}>
+            <RealisticArticulatedHand
+              skinColor="#ffedd5"
+              side="right"
+              pose={isTouching ? "TOUCH" : "OPEN"}
+            />
+          </group>
+        </group>
       </group>
     </group>
   );
 }
+
+// Giữ alias tương thích
+const StylizedHostess = RealisticHostess3D;
 
 /** Bảng Ô Chữ 3D đặt vuông góc 90° tại Cánh Trái sân khấu với vách kiến trúc Art-Deco khép kín 100% */
 function Studio3DPuzzleBoard({

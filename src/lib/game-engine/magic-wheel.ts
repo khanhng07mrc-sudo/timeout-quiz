@@ -792,6 +792,80 @@ export function checkNoMoreConsonants(
   return !hasRemainingConsonants(phrase, revealedIndices) && hasRemainingVowels(phrase, revealedIndices);
 }
 
+export interface SameLetterValidationResult {
+  valid: boolean;
+  sameLetter?: string;
+  error?: string;
+}
+
+/**
+ * Kiểm tra tính hợp lệ của câu hỏi thuộc chủ đề SAME LETTER (bản tiếng Anh Wheel of Fortune).
+ * Luật chơi:
+ * - Tất cả các từ thực tế phải bắt đầu bằng cùng một chữ cái.
+ * - Chữ cái bắt đầu BẮT BUỘC là PHỤ ÂM (Consonant); nguyên âm A, E, I, O, U không được phép.
+ * - Ngoại lệ duy nhất: Các dấu/ký tự kết nối đứng xen giữa độc lập (chẳng hạn dấu "-", "&", "+", "/", v.v.)
+ *   sẽ không vi phạm nếu tất cả các từ còn lại đều bắt đầu bằng chữ cái đó.
+ * - Cụm từ phải có ít nhất 2 từ thực tế.
+ */
+export function validateSameLetterPhrase(phrase: string): SameLetterValidationResult {
+  if (!phrase || typeof phrase !== "string") {
+    return { valid: false, error: "Cụm từ bí mật không được để trống." };
+  }
+
+  const tokens = phrase.trim().split(/\s+/).filter(Boolean);
+  // Lọc ra các từ thực tế có chứa chữ cái (bỏ qua dấu/ký tự độc lập như '-', '&', '+', '/', '—')
+  const wordTokens = tokens.filter((tok) => /[A-Za-zÀ-ỹ]/.test(tok));
+
+  if (wordTokens.length < 2) {
+    return {
+      valid: false,
+      error: "Chủ đề SAME LETTER yêu cầu cụm từ phải có ít nhất 2 từ (các ký tự nối độc lập như & hay - được bỏ qua).",
+    };
+  }
+
+  const firstLetters: string[] = [];
+  for (const tok of wordTokens) {
+    const m = tok.match(/[A-Za-zÀ-ỹ]/);
+    if (m) {
+      firstLetters.push(normalizeVietnameseBaseLetter(m[0]).toUpperCase());
+    }
+  }
+
+  if (firstLetters.length === 0) {
+    return { valid: false, error: "Không tìm thấy chữ cái nào trong cụm từ." };
+  }
+
+  const commonLetter = firstLetters[0];
+  const VOWELS = new Set(["A", "E", "I", "O", "U"]);
+
+  // Chữ cái bắt đầu phải là PHỤ ÂM, nguyên âm A, E, I, O, U bị cấm
+  if (VOWELS.has(commonLetter)) {
+    return {
+      valid: false,
+      error: `Chủ đề SAME LETTER chỉ cho phép chữ cái bắt đầu là PHỤ ÂM. Chữ "${commonLetter}" là nguyên âm, không được phép (A, E, I, O, U không được phép).`,
+    };
+  }
+
+  if (!/^[B-DF-HJ-NP-TV-Z]$/.test(commonLetter)) {
+    return {
+      valid: false,
+      error: `Chữ cái bắt đầu "${commonLetter}" không phải là một phụ âm tiếng Anh hợp lệ.`,
+    };
+  }
+
+  for (let i = 0; i < wordTokens.length; i++) {
+    const char = firstLetters[i];
+    if (char !== commonLetter) {
+      return {
+        valid: false,
+        error: `Chủ đề SAME LETTER yêu cầu tất cả các từ phải bắt đầu bằng cùng một phụ âm. Từ "${wordTokens[i]}" bắt đầu bằng chữ "${char}", khác với chữ cái chung "${commonLetter}".`,
+      };
+    }
+  }
+
+  return { valid: true, sameLetter: commonLetter };
+}
+
 /**
  * Các chữ cái mặc định luôn được mở sẵn ở Vòng Đặc Biệt (Bonus Round) phiên bản Anh (Wheel of Fortune):
  * R, S, T, L, N, E
@@ -1338,9 +1412,9 @@ export const ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS: MagicWheelPuzzle[] = [
     roundNumber: 6,
     stage: "MAIN",
     mainRoundIndex: 4,
-    category: "LANDMARK(S)",
-    secretPhrase: "SYDNEY OPERA HOUSE",
-    clue: "Architectural wonder in Sydney Harbour renowned for sweeping precast concrete shells.",
+    category: "SAME LETTER",
+    secretPhrase: "SWEET & SOUR",
+    clue: "A tantalizing classic culinary flavor profile where all key words share the same initial consonant.",
     revealedIndices: [],
   },
   {

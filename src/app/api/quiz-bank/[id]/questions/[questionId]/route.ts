@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAdminRequest, sanitizeInput } from "@/lib/security";
 import { normalizeToThreeLevels } from "@/lib/game-engine/scoring";
+import { validateSameLetterPhrase } from "@/lib/game-engine/magic-wheel";
 
 export async function GET(
   _req: NextRequest,
@@ -23,6 +24,20 @@ export async function PATCH(
 
   const { questionId } = await params;
   const body = await req.json();
+
+  const existing = await prisma.question.findUnique({ where: { id: questionId } });
+  if (!existing) return NextResponse.json({ error: "Không tìm thấy câu hỏi" }, { status: 404 });
+
+  const effectiveType = body.type || existing.type;
+  const effectiveHint = body.hint !== undefined ? body.hint : existing.hint;
+  const effectiveAnswer = body.answer !== undefined ? body.answer : existing.answer;
+
+  if (effectiveType === "WORD_PUZZLE" && effectiveHint && /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(effectiveHint)) {
+    const slCheck = validateSameLetterPhrase(effectiveAnswer || "");
+    if (!slCheck.valid) {
+      return NextResponse.json({ error: `Câu hỏi không hợp lệ: ${slCheck.error}` }, { status: 400 });
+    }
+  }
 
   const question = await prisma.question.update({
     where: { id: questionId },

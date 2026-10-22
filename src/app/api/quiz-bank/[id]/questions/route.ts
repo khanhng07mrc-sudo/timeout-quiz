@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyAdminRequest, sanitizeInput } from "@/lib/security";
 import { normalizeToThreeLevels } from "@/lib/game-engine/scoring";
 import { MAGIC_WHEEL_PRESET_BANKS } from "@/lib/offline-storage";
+import { validateSameLetterPhrase } from "@/lib/game-engine/magic-wheel";
 
 export async function GET(
   _req: NextRequest,
@@ -39,6 +40,15 @@ export async function POST(
 
   // Support bulk creation (import)
   if (Array.isArray(body)) {
+    for (const q of body) {
+      if (q.type === "WORD_PUZZLE" && q.hint && /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(q.hint)) {
+        const slCheck = validateSameLetterPhrase(q.answer || "");
+        if (!slCheck.valid) {
+          return NextResponse.json({ error: `Câu hỏi không hợp lệ: ${slCheck.error}` }, { status: 400 });
+        }
+      }
+    }
+
     const created = await prisma.$transaction(
       body.map((q, i) =>
         prisma.question.create({
@@ -63,6 +73,13 @@ export async function POST(
   }
 
   // Single question
+  if (body.type === "WORD_PUZZLE" && body.hint && /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(body.hint)) {
+    const slCheck = validateSameLetterPhrase(body.answer || "");
+    if (!slCheck.valid) {
+      return NextResponse.json({ error: `Câu hỏi không hợp lệ: ${slCheck.error}` }, { status: 400 });
+    }
+  }
+
   const question = await prisma.question.create({
     data: {
       quizBankId: id,

@@ -958,6 +958,9 @@ export interface MagicWheelState {
   englishPreset?: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3"; // 3 bộ đề tiếng Anh hoặc trộn ngẫu nhiên
   blackoutGuessedLetters?: boolean;   // Admin setting: Có bôi đen/làm mờ chữ cái đã đoán hay không (mặc định: true)
   noMoreConsonants?: boolean;         // Bản Anh: Đã lật hết toàn bộ phụ âm, các ô chữ còn lại đều là nguyên âm (A, E, I, O, U)
+  sameLetterBonusAwarded?: boolean;   // Bản Anh: Đã trao thưởng +1.000 điểm cho chữ cái SAME LETTER chưa
+  sameLetterChar?: string;           // Phụ âm khởi đầu chung của chủ đề SAME LETTER
+  sameLetterBonusEarnedTeamId?: string; // Đội đã nhận thưởng +1.000đ từ chữ cái SAME LETTER
   temporaryDisplayText?: string;      // Admin: Chữ hiển thị thủ công tạm thời trên bảng ô chữ giữa 2 vòng
   temporaryDisplayActive?: boolean;   // Admin: Có đang hiển thị chữ tạm thời hay không
   displayLayoutMode?: "AUTO" | "STACKED" | "FOCUS_WHEEL" | "FOCUS_BOARD"; // Chế độ bố cục Display

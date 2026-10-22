@@ -17,7 +17,7 @@ import {
 import QuizorraQuestionStudioModal from "@/components/admin/QuizorraQuestionStudioModal";
 import { downloadMagicWheelExcelTemplate, downloadMagicWheelJsonTemplate } from "@/lib/quiz-template-generator";
 import { MAGIC_WHEEL_PRESET_BANKS } from "@/lib/offline-storage";
-import { isVietnameseAlphabetLetter, detectQuizBankLanguage } from "@/lib/game-engine/magic-wheel";
+import { isVietnameseAlphabetLetter, detectQuizBankLanguage, validateSameLetterPhrase } from "@/lib/game-engine/magic-wheel";
 
 function buildPuzzle4x14Preview(phrase: string): { rows: string[][]; isOverflow: boolean; oversizedWord?: string } {
   const clean = (phrase || "").trim().toUpperCase();
@@ -724,6 +724,13 @@ export default function QuizBankPage() {
     } else if (qType === "WORD_PUZZLE") {
       const phrase = qAnswer.trim().toUpperCase();
       const category = qHint.trim().toUpperCase() || "Ô CHỮ BÍ MẬT";
+      if (/SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(category)) {
+        const slCheck = validateSameLetterPhrase(phrase);
+        if (!slCheck.valid) {
+          alert(`❌ Câu hỏi không hợp lệ:\n${slCheck.error}`);
+          return;
+        }
+      }
       payload.answer = phrase;
       payload.hint = category;
       payload.options = [
@@ -993,6 +1000,14 @@ export default function QuizBankPage() {
     } else if (editQType === "WORD_PUZZLE") {
       const phrase = editQAnswer.trim().toUpperCase();
       const category = editQHint.trim().toUpperCase() || "Ô CHỮ BÍ MẬT";
+      if (/SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(category)) {
+        const slCheck = validateSameLetterPhrase(phrase);
+        if (!slCheck.valid) {
+          alert(`❌ Câu hỏi không hợp lệ:\n${slCheck.error}`);
+          setSavingQuestion(false);
+          return;
+        }
+      }
       payload.answer = phrase;
       payload.hint = category;
       payload.options = [
@@ -2726,6 +2741,40 @@ export default function QuizBankPage() {
                       className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 font-bold text-sm tracking-wider uppercase focus:border-amber-400"
                     />
                     {(() => {
+                      const isSameLetterCat = /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(qHint);
+                      if (isSameLetterCat) {
+                        const trimmed = qAnswer.trim();
+                        if (trimmed.length === 0) {
+                          return (
+                            <div className="mt-2 p-2.5 rounded-lg bg-indigo-500/15 border border-indigo-500/40 text-indigo-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                              <span className="text-base shrink-0">✨</span>
+                              <div className="leading-relaxed">
+                                <strong className="font-bold text-indigo-300">Luật SAME LETTER (Bản Anh):</strong> Tất cả các từ phải bắt đầu bằng cùng một phụ âm (không được dùng nguyên âm A, E, I, O, U). Ký tự nối độc lập như &quot;&amp;&quot; hay &quot;-&quot; được phép đứng xen giữa. Đoán trúng chữ SAME LETTER sẽ nhận thưởng nóng <strong>+$1,000 / +1.000 điểm</strong>!
+                              </div>
+                            </div>
+                          );
+                        }
+                        const slCheck = validateSameLetterPhrase(trimmed);
+                        if (!slCheck.valid) {
+                          return (
+                            <div className="mt-2 p-2.5 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                              <span className="text-base shrink-0">❌</span>
+                              <div className="leading-relaxed">
+                                <strong className="font-bold text-red-300">Câu hỏi không hợp lệ:</strong> {slCheck.error}
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                              <span className="text-base shrink-0">✅</span>
+                              <div className="leading-relaxed">
+                                <strong className="font-bold text-emerald-300">SAME LETTER hợp lệ:</strong> Tất cả các từ đều bắt đầu bằng phụ âm <strong>[{slCheck.sameLetter}]</strong>. Thí sinh gọi đúng chữ <strong>[{slCheck.sameLetter}]</strong> sẽ được thưởng nóng +$1,000 / +1.000 điểm!
+                              </div>
+                            </div>
+                          );
+                        }
+                      }
                       const trimmed = qAnswer.trim();
                       if (trimmed.length > 0 && !isVietnameseAlphabetLetter(trimmed[0])) {
                         return (
@@ -3609,6 +3658,40 @@ export default function QuizBankPage() {
                       className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 font-bold text-sm tracking-wider uppercase focus:border-amber-400"
                     />
                     {(() => {
+                      const isSameLetterCat = /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(editQHint);
+                      if (isSameLetterCat) {
+                        const trimmed = editQAnswer.trim();
+                        if (trimmed.length === 0) {
+                          return (
+                            <div className="mt-2 p-2.5 rounded-lg bg-indigo-500/15 border border-indigo-500/40 text-indigo-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                              <span className="text-base shrink-0">✨</span>
+                              <div className="leading-relaxed">
+                                <strong className="font-bold text-indigo-300">Luật SAME LETTER (Bản Anh):</strong> Tất cả các từ phải bắt đầu bằng cùng một phụ âm (không được dùng nguyên âm A, E, I, O, U). Ký tự nối độc lập như &quot;&amp;&quot; hay &quot;-&quot; được phép đứng xen giữa. Đoán trúng chữ SAME LETTER sẽ nhận thưởng nóng <strong>+$1,000 / +1.000 điểm</strong>!
+                              </div>
+                            </div>
+                          );
+                        }
+                        const slCheck = validateSameLetterPhrase(trimmed);
+                        if (!slCheck.valid) {
+                          return (
+                            <div className="mt-2 p-2.5 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                              <span className="text-base shrink-0">❌</span>
+                              <div className="leading-relaxed">
+                                <strong className="font-bold text-red-300">Câu hỏi không hợp lệ:</strong> {slCheck.error}
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                              <span className="text-base shrink-0">✅</span>
+                              <div className="leading-relaxed">
+                                <strong className="font-bold text-emerald-300">SAME LETTER hợp lệ:</strong> Tất cả các từ đều bắt đầu bằng phụ âm <strong>[{slCheck.sameLetter}]</strong>. Thí sinh gọi đúng chữ <strong>[{slCheck.sameLetter}]</strong> sẽ được thưởng nóng +$1,000 / +1.000 điểm!
+                              </div>
+                            </div>
+                          );
+                        }
+                      }
                       const trimmed = editQAnswer.trim();
                       if (trimmed.length > 0 && !isVietnameseAlphabetLetter(trimmed[0])) {
                         return (

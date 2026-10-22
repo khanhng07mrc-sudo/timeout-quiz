@@ -3513,6 +3513,11 @@ export default function MagicWheelBoard({
                   ? `CATEGORY: ${formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
                   : `CHỦ ĐỀ: ${effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", "VIETNAMESE")}`}
               </span>
+              {/SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(currentPuzzle?.category || "") && (
+                <span className="ml-2 px-2 py-0.5 rounded-full bg-indigo-950/90 text-indigo-200 border border-indigo-400 text-[10px] font-black tracking-wider uppercase animate-pulse shadow-sm">
+                  ✨ {activeState.sameLetterBonusAwarded ? `SAME LETTER [${activeState.sameLetterChar || ""}] +$1,000` : "SAME LETTER BONUS +$1,000"}
+                </span>
+              )}
             </div>
             <div className={`w-full ${isDisplayMode ? "px-2.5 py-1" : "px-3.5 py-1.5"} rounded-b-xl rounded-tr-xl bg-black/90 border border-amber-400/40 flex items-center justify-between gap-2.5 text-slate-100 font-bold text-xs sm:text-sm shadow-2xl`}>
               <p className="leading-tight flex-1 whitespace-normal break-words text-[11px] sm:text-xs md:text-sm line-clamp-3">
@@ -3554,9 +3559,25 @@ export default function MagicWheelBoard({
             )}
           </div>
           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-            effectiveIsMyTurn ? "bg-amber-400 text-slate-950 font-black animate-pulse" : "bg-white/10 text-slate-300"
+            isTossUpRound
+              ? tossUpBuzzedTeamId
+                ? isMyTurn
+                  ? "bg-emerald-400 text-slate-950 font-black animate-pulse"
+                  : "bg-white/10 text-slate-300"
+                : "bg-rose-500/20 text-rose-300 border border-rose-500/40 font-black animate-pulse"
+              : effectiveIsMyTurn
+              ? "bg-amber-400 text-slate-950 font-black animate-pulse"
+              : "bg-white/10 text-slate-300"
           }`}>
-            {effectiveIsMyTurn ? "✨ ĐẾN LƯỢT BẠN" : `Lượt: ${formatTeamLabel(currentTurnTeamName)}`}
+            {isTossUpRound
+              ? tossUpBuzzedTeamId
+                ? isMyTurn
+                  ? "🔔 BẠN ĐÃ BẤM CHUÔNG!"
+                  : `Đã bấm: ${formatTeamLabel(currentTurnTeamName)}`
+                : "⚡ TRANH BẤM CHUÔNG"
+              : effectiveIsMyTurn
+              ? "✨ ĐẾN LƯỢT BẠN"
+              : `Lượt: ${formatTeamLabel(currentTurnTeamName)}`}
           </span>
         </div>
 
@@ -3657,73 +3678,77 @@ export default function MagicWheelBoard({
                 </div>
               )}
             </div>
-          ) : (
-            /* Vòng Đoán Nhanh: Nút chuông bên trái, Vùng hướng dẫn bên phải */
-            <div className="w-full grid grid-cols-1 sm:grid-cols-12 gap-3 items-center h-full max-h-full">
-              <div className="sm:col-span-5 flex flex-col items-center justify-center p-2">
-                {(() => {
-                  const hasFirstLetterRevealed = (animRevealedIndices.size >= 1) || ((currentPuzzle?.revealedIndices?.length || 0) >= 1);
-                  const isBuzzedAlready = isLocallyBuzzed || Boolean(tossUpBuzzedTeamId);
-                  return (
-                    <div className="relative flex flex-col items-center justify-center">
-                      {hasFirstLetterRevealed && !isBuzzedAlready && (
-                        <div className="absolute inset-0 rounded-full bg-red-600/35 blur-xl animate-ping pointer-events-none" />
-                      )}
-                      <div
-                        className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full p-2.5 flex items-center justify-center transition-all duration-300 ${
+          ) : (() => {
+            const hasFirstLetterRevealed = (animRevealedIndices.size >= 1) || ((currentPuzzle?.revealedIndices?.length || 0) >= 1);
+            const isBuzzedAlready = isLocallyBuzzed || Boolean(tossUpBuzzedTeamId);
+            return (
+              /* Vòng Đoán Nhanh: Nút chuông bên trái, Vùng hướng dẫn bên phải */
+              <div className="w-full grid grid-cols-1 sm:grid-cols-12 gap-3 items-center h-full max-h-full">
+                <div className="sm:col-span-5 flex flex-col items-center justify-center p-2">
+                  <div className="relative flex flex-col items-center justify-center">
+                    {hasFirstLetterRevealed && !isBuzzedAlready && (
+                      <div className="absolute inset-0 rounded-full bg-red-600/35 blur-xl animate-ping pointer-events-none" />
+                    )}
+                    <div
+                      className={`w-36 h-36 sm:w-44 sm:h-44 rounded-full p-2.5 flex items-center justify-center transition-all duration-300 ${
+                        !hasFirstLetterRevealed
+                          ? "bg-gradient-to-b from-stone-700 via-stone-800 to-stone-900 border-4 border-stone-600 shadow-lg opacity-60 cursor-not-allowed"
+                          : isBuzzedAlready
+                          ? "bg-gradient-to-b from-emerald-600 via-teal-700 to-emerald-900 border-4 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.7)]"
+                          : "bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 border-4 border-yellow-300 shadow-[0_15px_35px_rgba(0,0,0,0.9),0_0_30px_rgba(245,158,11,0.6)] cursor-pointer"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        disabled={!hasFirstLetterRevealed || isBuzzedAlready}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (!hasFirstLetterRevealed || isBuzzedAlready) return;
+                          handleTriggerTossUpBuzz();
+                        }}
+                        className={`w-full h-full rounded-full flex flex-col items-center justify-center transition-all select-none touch-manipulation focus:outline-none ${
                           !hasFirstLetterRevealed
-                            ? "bg-gradient-to-b from-stone-700 via-stone-800 to-stone-900 border-4 border-stone-600 shadow-lg opacity-60 cursor-not-allowed"
+                            ? "bg-gradient-to-b from-neutral-800 to-neutral-900 border-2 border-neutral-700 text-neutral-400 cursor-not-allowed"
                             : isBuzzedAlready
-                            ? "bg-gradient-to-b from-emerald-600 via-teal-700 to-emerald-900 border-4 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.7)]"
-                            : "bg-gradient-to-b from-amber-400 via-yellow-500 to-amber-700 border-4 border-yellow-300 shadow-[0_15px_35px_rgba(0,0,0,0.9),0_0_30px_rgba(245,158,11,0.6)] cursor-pointer"
+                            ? "bg-gradient-to-b from-emerald-500 to-teal-700 border-2 border-emerald-300 text-white shadow-inner cursor-not-allowed scale-95"
+                            : "bg-gradient-to-b from-rose-500 via-red-600 to-red-800 active:from-red-700 active:to-red-900 active:scale-90 border-2 border-red-300 text-white shadow-[inset_0_6px_12px_rgba(255,255,255,0.5),0_10px_25px_rgba(220,38,38,0.8)] hover:brightness-110 active:shadow-inner cursor-pointer"
                         }`}
                       >
-                        <button
-                          type="button"
-                          disabled={!hasFirstLetterRevealed || isBuzzedAlready}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (!hasFirstLetterRevealed || isBuzzedAlready) return;
-                            handleTriggerTossUpBuzz();
-                          }}
-                          className={`w-full h-full rounded-full flex flex-col items-center justify-center transition-all select-none touch-manipulation focus:outline-none ${
-                            !hasFirstLetterRevealed
-                              ? "bg-gradient-to-b from-neutral-800 to-neutral-900 border-2 border-neutral-700 text-neutral-400 cursor-not-allowed"
-                              : isBuzzedAlready
-                              ? "bg-gradient-to-b from-emerald-500 to-teal-700 border-2 border-emerald-300 text-white shadow-inner cursor-not-allowed scale-95"
-                              : "bg-gradient-to-b from-rose-500 via-red-600 to-red-800 active:from-red-700 active:to-red-900 active:scale-90 border-2 border-red-300 text-white shadow-[inset_0_6px_12px_rgba(255,255,255,0.5),0_10px_25px_rgba(220,38,38,0.8)] hover:brightness-110 active:shadow-inner cursor-pointer"
-                          }`}
-                        >
-                          <span className="text-3xl sm:text-4xl filter drop-shadow">
-                            {!hasFirstLetterRevealed ? "🔒" : isBuzzedAlready ? "✅" : "🔔"}
+                        <span className="text-3xl sm:text-4xl filter drop-shadow">
+                          {!hasFirstLetterRevealed ? "🔒" : isBuzzedAlready ? "✅" : "🔔"}
+                        </span>
+                        <span className="mt-1 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow text-center px-1">
+                          {!hasFirstLetterRevealed
+                            ? "CHỜ MỞ CHỮ"
+                            : isBuzzedAlready
+                            ? "ĐÃ BẤM!"
+                            : "BẤM CHUÔNG!"}
+                        </span>
+                        {hasFirstLetterRevealed && !isBuzzedAlready && (
+                          <span className="text-[10px] text-amber-200/90 font-mono font-bold mt-0.5 tracking-tight">
+                            [SPACE / ENTER]
                           </span>
-                          <span className="mt-1 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow text-center px-1">
-                            {!hasFirstLetterRevealed
-                              ? "CHỜ MỞ CHỮ"
-                              : isBuzzedAlready
-                              ? "ĐÃ BẤM!"
-                              : "BẤM CHUÔNG!"}
-                          </span>
-                          {hasFirstLetterRevealed && !isBuzzedAlready && (
-                            <span className="text-[10px] text-amber-200/90 font-mono font-bold mt-0.5 tracking-tight">
-                              [SPACE / ENTER]
-                            </span>
-                          )}
-                        </button>
-                      </div>
+                        )}
+                      </button>
                     </div>
-                  );
-                })()}
-              </div>
+                  </div>
+                </div>
 
-              <div className="sm:col-span-7 flex flex-col justify-center p-2">
-                <div className="p-4 text-center rounded-2xl bg-black/40 border border-white/10 text-xs font-bold text-amber-200/90 flex flex-col items-center justify-center gap-2">
-                  <span className="text-xl">⚡</span>
-                  <span>Chuông đã mở! Hãy đập tay vào nút bên trái hoặc bấm phím Space/Enter ngay khi biết đáp án!</span>
+                <div className="sm:col-span-7 flex flex-col justify-center p-2">
+                  <div className="p-4 text-center rounded-2xl bg-black/40 border border-white/10 text-xs font-bold text-amber-200/90 flex flex-col items-center justify-center gap-2">
+                    <span className="text-xl">
+                      {!hasFirstLetterRevealed ? "⏳" : "⚡"}
+                    </span>
+                    <span>
+                      {!hasFirstLetterRevealed
+                        ? "Chờ chữ cái đầu tiên bắt đầu mở để kích hoạt chuông bấm!"
+                        : "Chuông đã mở! Hãy đập tay vào nút bên trái hoặc bấm phím Space/Enter ngay khi biết đáp án!"}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )
+            );
+          })()
         ) : roundStage === "SPECIAL_FINAL" ? (
           /* Vòng Đặc Biệt / Chung Kết */
           <div className="p-3 rounded-2xl bg-gradient-to-b from-amber-950/70 via-purple-950/80 to-slate-950 border border-amber-400/60 space-y-2.5">
@@ -4811,6 +4836,11 @@ export default function MagicWheelBoard({
                       ? `CATEGORY: ${formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
                       : `CHỦ ĐỀ: ${effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", "VIETNAMESE")}`}
                   </span>
+                  {/SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(currentPuzzle?.category || "") && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full bg-indigo-950/90 text-indigo-200 border border-indigo-400 text-[10px] font-black tracking-wider uppercase animate-pulse shadow-sm">
+                      ✨ {activeState.sameLetterBonusAwarded ? `SAME LETTER [${activeState.sameLetterChar || ""}] +$1,000` : "SAME LETTER BONUS +$1,000"}
+                    </span>
+                  )}
                 </div>
                 {/* Tier 2: Clue Chyron Body Full-Width (Không bị co hẹp ngang) */}
                 <div className="w-full px-4 py-2.5 sm:py-3 rounded-b-2xl rounded-tr-2xl bg-black/90 border border-amber-400/40 backdrop-blur-md flex items-center justify-between gap-4 text-slate-100 font-bold text-xs sm:text-sm md:text-base shadow-2xl">

@@ -2930,6 +2930,53 @@ function checkNoMoreConsonants(phrase, revealedIndices, edition = "VIETNAMESE") 
   if (edition !== "ENGLISH") return false;
   return !hasRemainingConsonants(phrase, revealedIndices) && hasRemainingVowels(phrase, revealedIndices);
 }
+function validateSameLetterPhrase(phrase) {
+  if (!phrase || typeof phrase !== "string") {
+    return { valid: false, error: "C\u1EE5m t\u1EEB b\xED m\u1EADt kh\xF4ng \u0111\u01B0\u1EE3c \u0111\u1EC3 tr\u1ED1ng." };
+  }
+  const tokens = phrase.trim().split(/\s+/).filter(Boolean);
+  const wordTokens = tokens.filter((tok) => /[A-Za-zÀ-ỹ]/.test(tok));
+  if (wordTokens.length < 2) {
+    return {
+      valid: false,
+      error: "Ch\u1EE7 \u0111\u1EC1 SAME LETTER y\xEAu c\u1EA7u c\u1EE5m t\u1EEB ph\u1EA3i c\xF3 \xEDt nh\u1EA5t 2 t\u1EEB (c\xE1c k\xFD t\u1EF1 n\u1ED1i \u0111\u1ED9c l\u1EADp nh\u01B0 & hay - \u0111\u01B0\u1EE3c b\u1ECF qua)."
+    };
+  }
+  const firstLetters = [];
+  for (const tok of wordTokens) {
+    const m = tok.match(/[A-Za-zÀ-ỹ]/);
+    if (m) {
+      firstLetters.push(normalizeVietnameseBaseLetter(m[0]).toUpperCase());
+    }
+  }
+  if (firstLetters.length === 0) {
+    return { valid: false, error: "Kh\xF4ng t\xECm th\u1EA5y ch\u1EEF c\xE1i n\xE0o trong c\u1EE5m t\u1EEB." };
+  }
+  const commonLetter = firstLetters[0];
+  const VOWELS = /* @__PURE__ */ new Set(["A", "E", "I", "O", "U"]);
+  if (VOWELS.has(commonLetter)) {
+    return {
+      valid: false,
+      error: `Ch\u1EE7 \u0111\u1EC1 SAME LETTER ch\u1EC9 cho ph\xE9p ch\u1EEF c\xE1i b\u1EAFt \u0111\u1EA7u l\xE0 PH\u1EE4 \xC2M. Ch\u1EEF "${commonLetter}" l\xE0 nguy\xEAn \xE2m, kh\xF4ng \u0111\u01B0\u1EE3c ph\xE9p (A, E, I, O, U kh\xF4ng \u0111\u01B0\u1EE3c ph\xE9p).`
+    };
+  }
+  if (!/^[B-DF-HJ-NP-TV-Z]$/.test(commonLetter)) {
+    return {
+      valid: false,
+      error: `Ch\u1EEF c\xE1i b\u1EAFt \u0111\u1EA7u "${commonLetter}" kh\xF4ng ph\u1EA3i l\xE0 m\u1ED9t ph\u1EE5 \xE2m ti\u1EBFng Anh h\u1EE3p l\u1EC7.`
+    };
+  }
+  for (let i = 0; i < wordTokens.length; i++) {
+    const char = firstLetters[i];
+    if (char !== commonLetter) {
+      return {
+        valid: false,
+        error: `Ch\u1EE7 \u0111\u1EC1 SAME LETTER y\xEAu c\u1EA7u t\u1EA5t c\u1EA3 c\xE1c t\u1EEB ph\u1EA3i b\u1EAFt \u0111\u1EA7u b\u1EB1ng c\xF9ng m\u1ED9t ph\u1EE5 \xE2m. T\u1EEB "${wordTokens[i]}" b\u1EAFt \u0111\u1EA7u b\u1EB1ng ch\u1EEF "${char}", kh\xE1c v\u1EDBi ch\u1EEF c\xE1i chung "${commonLetter}".`
+      };
+    }
+  }
+  return { valid: true, sameLetter: commonLetter };
+}
 var ENGLISH_BONUS_ROUND_GIVEN_LETTERS = ["R", "S", "T", "L", "N", "E"];
 var ENGLISH_BONUS_ROUND_PICKABLE_VOWELS = ["A", "I", "O", "U"];
 function applyBonusRoundGivenLetters(secretPhrase, alreadyRevealedIndices) {
@@ -3295,9 +3342,9 @@ var ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS = [
     roundNumber: 6,
     stage: "MAIN",
     mainRoundIndex: 4,
-    category: "LANDMARK(S)",
-    secretPhrase: "SYDNEY OPERA HOUSE",
-    clue: "Architectural wonder in Sydney Harbour renowned for sweeping precast concrete shells.",
+    category: "SAME LETTER",
+    secretPhrase: "SWEET & SOUR",
+    clue: "A tantalizing classic culinary flavor profile where all key words share the same initial consonant.",
     revealedIndices: []
   },
   {
@@ -18235,6 +18282,15 @@ function registerSocketHandlers(io2) {
       wheelState.boardStage = "EMPTY_56";
       wheelState.temporaryDisplayText = void 0;
       wheelState.temporaryDisplayActive = false;
+      wheelState.sameLetterBonusAwarded = false;
+      wheelState.sameLetterBonusEarnedTeamId = void 0;
+      wheelState.sameLetterChar = void 0;
+      if (puzzle?.category && /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(puzzle.category)) {
+        const slCheck = validateSameLetterPhrase(puzzle.secretPhrase);
+        if (slCheck.valid && slCheck.sameLetter) {
+          wheelState.sameLetterChar = slCheck.sameLetter;
+        }
+      }
       if (roomId) {
         roomTossUpBuzzLocks.delete(roomId);
         roomTossUpPendingBuzz.delete(roomId);
@@ -18950,13 +19006,32 @@ function registerSocketHandlers(io2) {
             wheelState.sectors = wheelState.sectors.map((s) => s.id === 5 ? { ...s, overlayType: void 0 } : s);
           }
         }
+        let sameLetterBonus = 0;
+        const isSameLetterCategory = /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(puzzle.category || "");
+        if (isSameLetterCategory && !wheelState.sameLetterBonusAwarded) {
+          const slCheck = validateSameLetterPhrase(puzzle.secretPhrase);
+          if (slCheck.valid && slCheck.sameLetter && normLetter === slCheck.sameLetter) {
+            sameLetterBonus = 1e3;
+            wheelState.sameLetterBonusAwarded = true;
+            wheelState.sameLetterChar = slCheck.sameLetter;
+            wheelState.sameLetterBonusEarnedTeamId = tId;
+            earned += sameLetterBonus;
+            wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + sameLetterBonus;
+            if (wheelState.edition === "ENGLISH") {
+              if (!wheelState.permanentScores) wheelState.permanentScores = {};
+              wheelState.permanentScores[tId] = (wheelState.permanentScores[tId] || 0) + sameLetterBonus;
+            }
+          }
+        }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
           letter: normLetter,
           found: true,
           count: check.count,
           teamId: tId,
           teamName,
-          pointsAwarded: earned
+          pointsAwarded: earned,
+          isSameLetter: sameLetterBonus > 0,
+          sameLetterBonus
         });
         if ((wheelState.mainRoundNumber || 0) >= 6 && !wheelState.speedUpBellActive) {
           let totalLetters = 0;
@@ -19016,7 +19091,9 @@ function registerSocketHandlers(io2) {
           wheelState.lastActionMessage = wheelState.expressModeActive ? `\u26A1 T\xE0u T\u1ED1c \u0110\u1ED9: C\xF3 ${check.count} ch\u1EEF "${normLetter}" (+${earned}\u0111)! M\u1EDDi \u0110\u1ED9i ${teamName} g\u1ECDi ti\u1EBFp ch\u1EEF c\xE1i (1.000\u0111/ch\u1EEF) ho\u1EB7c Gi\u1EA3i \xD4 Ch\u1EEF!` : `\u{1F514} Chu\xF4ng T\u0103ng T\u1ED1c: C\xF3 ${check.count} ch\u1EEF "${normLetter}" (+${earned}\u0111)! M\u1EDDi \u0110\u1ED9i ${teamName} g\u1ECDi ti\u1EBFp ho\u1EB7c Gi\u1EA3i \xD4 Ch\u1EEF ngay!`;
         } else {
           wheelState.phase = "SPIN_WAITING";
-          if (wheelState.edition === "ENGLISH") {
+          if (sameLetterBonus > 0) {
+            wheelState.lastActionMessage = wheelState.edition === "ENGLISH" ? `\u{1F389} SAME LETTER BONUS! Team ${teamName} found the matching Same Letter "${normLetter}" (${check.count} letters, scored +$${earned.toLocaleString()} including +$1,000 bonus)! Spin again or solve!` : `\u{1F389} TH\u01AF\u1EDENG SAME LETTER! \u0110\u1ED9i ${teamName} \u0111\xE3 \u0111o\xE1n \u0111\xFAng ch\u1EEF c\xE1i \u0111\u1EA7u \u0111\u1EB7c tr\u01B0ng "${normLetter}" (${check.count} ch\u1EEF, nh\u1EADn t\u1ED5ng +${earned.toLocaleString()}\u0111 g\u1ED3m TH\u01AF\u1EDENG N\xD3NG +1.000\u0111)! M\u1EDDi quay ti\u1EBFp!`;
+          } else if (wheelState.edition === "ENGLISH") {
             const noMore = checkNoMoreConsonants(puzzle.secretPhrase, puzzle.revealedIndices, "ENGLISH");
             wheelState.noMoreConsonants = noMore;
             if (noMore) {
@@ -20579,6 +20656,13 @@ function registerSocketHandlers(io2) {
       if (!wheelState) return;
       wheelState.temporaryDisplayText = void 0;
       wheelState.temporaryDisplayActive = false;
+      const curPuzzle = wheelState.currentPuzzle;
+      if (curPuzzle?.category && /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(curPuzzle.category)) {
+        const slCheck = validateSameLetterPhrase(curPuzzle.secretPhrase);
+        if (slCheck.valid && slCheck.sameLetter) {
+          wheelState.sameLetterChar = slCheck.sameLetter;
+        }
+      }
       wheelState.boardStage = "BLANK_PHRASE";
       wheelState.lastActionMessage = "\u2B50 Qu\u1EA3n tr\xF2 m\u1EDF \xF4 ch\u1EEF & ch\u1EE7 \u0111\u1EC1! B\u1EA3ng \xF4 ch\u1EEF \u0111ang l\u1EADt m\u1EDF...";
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);

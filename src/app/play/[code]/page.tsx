@@ -1891,6 +1891,7 @@ export default function PlayPage() {
         )}
         <button
           onClick={toggleSound}
+          suppressHydrationWarning
           title={soundEnabled ? "Tắt âm thanh" : "Bật âm thanh"}
           className={`${isSandbox ? "p-1.5 text-xs" : "p-2 sm:p-2.5 text-sm sm:text-base"} rounded-xl glass border border-white/20 hover:bg-white/10 transition shrink-0`}
         >

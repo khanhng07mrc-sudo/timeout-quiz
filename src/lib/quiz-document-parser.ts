@@ -3,6 +3,7 @@ import Papa from "papaparse";
 import * as mammoth from "mammoth";
 import { normalizeToThreeLevels } from "./game-engine/scoring";
 import { quantizeOlympiaTimeLimit } from "@/types";
+import { validateSameLetterPhrase } from "./game-engine/magic-wheel";
 
 export interface OptionUniformityAnalysis {
   isUniform: boolean;
@@ -224,6 +225,14 @@ export function validateQuestionItem(q: Partial<ParsedQuestionItem>): ParsedQues
       const oversizedWord = words.find((w) => w.length > 14);
       if (oversizedWord) {
         errors.push(`Từ "${oversizedWord}" dài hơn 14 ký tự, vượt quá chiều rộng bàn chữ 4x14`);
+      }
+
+      // Kiểm tra tính hợp lệ của chủ đề SAME LETTER
+      if (/SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(hint || "")) {
+        const slCheck = validateSameLetterPhrase(answer);
+        if (!slCheck.valid && slCheck.error) {
+          errors.push(slCheck.error);
+        }
       }
     }
     if (!hint) {

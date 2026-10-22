@@ -55,6 +55,7 @@ import {
   MagicWheelOperationMode,
   hasRemainingConsonants,
   checkNoMoreConsonants,
+  validateSameLetterPhrase,
   ENGLISH_BONUS_ROUND_GIVEN_LETTERS,
   ENGLISH_BONUS_ROUND_PICKABLE_CONSONANTS,
   ENGLISH_BONUS_ROUND_PICKABLE_VOWELS,
@@ -7951,6 +7952,16 @@ export function registerSocketHandlers(io: IO) {
       wheelState.boardStage = "EMPTY_56";
       wheelState.temporaryDisplayText = undefined;
       wheelState.temporaryDisplayActive = false;
+      wheelState.sameLetterBonusAwarded = false;
+      wheelState.sameLetterBonusEarnedTeamId = undefined;
+      wheelState.sameLetterChar = undefined;
+
+      if (puzzle?.category && /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(puzzle.category)) {
+        const slCheck = validateSameLetterPhrase(puzzle.secretPhrase);
+        if (slCheck.valid && slCheck.sameLetter) {
+          wheelState.sameLetterChar = slCheck.sameLetter;
+        }
+      }
 
       if (roomId) {
         roomTossUpBuzzLocks.delete(roomId);
@@ -8780,6 +8791,25 @@ export function registerSocketHandlers(io: IO) {
           }
         }
 
+        // ── SAME LETTER SPECIAL RULE (+1000 điểm khi đoán ra chữ cái khởi đầu) ──
+        let sameLetterBonus = 0;
+        const isSameLetterCategory = /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(puzzle.category || "");
+        if (isSameLetterCategory && !wheelState.sameLetterBonusAwarded) {
+          const slCheck = validateSameLetterPhrase(puzzle.secretPhrase);
+          if (slCheck.valid && slCheck.sameLetter && normLetter === slCheck.sameLetter) {
+            sameLetterBonus = 1000;
+            wheelState.sameLetterBonusAwarded = true;
+            wheelState.sameLetterChar = slCheck.sameLetter;
+            wheelState.sameLetterBonusEarnedTeamId = tId;
+            earned += sameLetterBonus;
+            wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + sameLetterBonus;
+            if (wheelState.edition === "ENGLISH") {
+              if (!wheelState.permanentScores) wheelState.permanentScores = {};
+              wheelState.permanentScores[tId] = (wheelState.permanentScores[tId] || 0) + sameLetterBonus;
+            }
+          }
+        }
+
         io.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
           letter: normLetter,
           found: true,
@@ -8787,7 +8817,9 @@ export function registerSocketHandlers(io: IO) {
           teamId: tId,
           teamName,
           pointsAwarded: earned,
-        });
+          isSameLetter: sameLetterBonus > 0,
+          sameLetterBonus,
+        } as any);
 
         // Check if Round 6+ Speed-Up Bell should activate (>= 50% letters revealed)
         if ((wheelState.mainRoundNumber || 0) >= 6 && !wheelState.speedUpBellActive) {
@@ -8859,7 +8891,11 @@ export function registerSocketHandlers(io: IO) {
             : `🔔 Chuông Tăng Tốc: Có ${check.count} chữ "${normLetter}" (+${earned}đ)! Mời Đội ${teamName} gọi tiếp hoặc Giải Ô Chữ ngay!`;
         } else {
           wheelState.phase = "SPIN_WAITING";
-          if (wheelState.edition === "ENGLISH") {
+          if (sameLetterBonus > 0) {
+            wheelState.lastActionMessage = wheelState.edition === "ENGLISH"
+              ? `🎉 SAME LETTER BONUS! Team ${teamName} found the matching Same Letter "${normLetter}" (${check.count} letters, scored +$${earned.toLocaleString()} including +$1,000 bonus)! Spin again or solve!`
+              : `🎉 THƯỞNG SAME LETTER! Đội ${teamName} đã đoán đúng chữ cái đầu đặc trưng "${normLetter}" (${check.count} chữ, nhận tổng +${earned.toLocaleString()}đ gồm THƯỞNG NÓNG +1.000đ)! Mời quay tiếp!`;
+          } else if (wheelState.edition === "ENGLISH") {
             const noMore = checkNoMoreConsonants(puzzle.secretPhrase, puzzle.revealedIndices, "ENGLISH");
             wheelState.noMoreConsonants = noMore;
             if (noMore) {
@@ -10652,6 +10688,14 @@ export function registerSocketHandlers(io: IO) {
       if (!wheelState) return;
       wheelState.temporaryDisplayText = undefined;
       wheelState.temporaryDisplayActive = false;
+
+      const curPuzzle = wheelState.currentPuzzle;
+      if (curPuzzle?.category && /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(curPuzzle.category)) {
+        const slCheck = validateSameLetterPhrase(curPuzzle.secretPhrase);
+        if (slCheck.valid && slCheck.sameLetter) {
+          wheelState.sameLetterChar = slCheck.sameLetter;
+        }
+      }
       wheelState.boardStage = "BLANK_PHRASE";
       wheelState.lastActionMessage = "⭐ Quản trò mở ô chữ & chủ đề! Bảng ô chữ đang lật mở...";
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);

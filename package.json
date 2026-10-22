@@ -7,6 +7,7 @@
     "dev:next": "next dev",
     "build": "next build --webpack && esbuild server.ts --bundle --platform=node --target=node20 --outfile=server.js --external:next --external:@prisma/client --external:socket.io --external:bcryptjs",
     "start": "node server.js",
+    "app": "electron electron/main.js",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "postinstall": "prisma generate",

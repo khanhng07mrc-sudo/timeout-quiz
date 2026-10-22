@@ -9896,18 +9896,15 @@ export default function AdminSandboxPage() {
               <span>📱</span>
               <span>Thí sinh</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setMobileTab("DISPLAY")}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                mobileTab === "DISPLAY"
-                  ? "bg-cyan-600 text-white shadow"
-                  : "text-slate-400 hover:text-white"
-              }`}
+            <Link
+              href={`/display/${code}`}
+              target="_blank"
+              className="px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 text-slate-400 hover:text-cyan-300"
+              title="Mở Màn hình hiển thị hội trường ở tab riêng"
             >
               <span>📺</span>
-              <span>Màn chiếu</span>
-            </button>
+              <span>Màn chiếu ↗</span>
+            </Link>
             <button
               type="button"
               onClick={() => setMobileTab("HOST")}
@@ -12130,63 +12127,6 @@ export default function AdminSandboxPage() {
       ) : (
         <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2 overflow-hidden animate-loaded-reveal">
           {/* ══════════════════════════════════════════════════════════════════
-              LEFT COLUMN (7 cols ~58%): Large Display + Host Master Controls
-             ══════════════════════════════════════════════════════════════════ */}
-          <div className={`lg:col-span-7 flex flex-col min-h-0 h-full gap-1.5 overflow-hidden animate-slide-in-left ${
-            mobileTab === "DISPLAY" ? "flex" : "hidden lg:flex"
-          }`}>
-            {/* Display Iframe Viewport (Fills Remaining Height) */}
-            <div className="flex-1 min-h-0 glass rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-black">
-              <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
-                <div className="flex items-center gap-2">
-                  <span>📺</span>
-                  <span>Màn hình hiển thị hội trường (Display Màn chiếu)</span>
-                </div>
-                <Link
-                  href={`/display/${code}`}
-                  target="_blank"
-                  className="text-cyan-400 hover:underline flex items-center gap-1 text-[11px]"
-                >
-                  Mở tab riêng ↗
-                </Link>
-              </div>
-              <div className="flex-1 min-h-0 bg-black">
-                <iframe
-                  ref={displayIframeRef}
-                  src={`/display/${code}?sandbox=1`}
-                  title="Display Preview"
-                  className="w-full h-full border-0"
-                  allow="autoplay; camera; microphone"
-                  onLoad={() => {
-                    syncToIframes();
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Live Bot Event Logs (Compact Single-line Ticker Bar) */}
-            <div className="glass rounded-xl px-3 py-1.5 border border-white/10 text-xs bg-[#121424] flex items-center justify-between shrink-0 shadow-lg">
-              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${botAutoEnabled ? "bg-emerald-400 animate-pulse glow-neon-emerald" : "bg-cyan-400 animate-pulse glow-neon-cyan"}`} />
-                <span className="font-bold text-slate-400 text-[11px] shrink-0 uppercase tracking-wider">Live Ticker:</span>
-                <span
-                  key={botLogs[0] || "initial"}
-                  className="font-mono text-[11px] text-slate-200 truncate animate-ticker-slide"
-                >
-                  {botLogs[0] || "Phòng Sandbox sẵn sàng · Đang chờ sự kiện đầu tiên..."}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowLogsModal(true)}
-                className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[11px] font-bold shrink-0 transition btn-tactile cursor-pointer"
-              >
-                📜 Xem tất cả ({botLogs.length})
-              </button>
-            </div>
-          </div>
-
-          {/* ══════════════════════════════════════════════════════════════════
               RIGHT COLUMN (5 cols ~42%): Unified Mobile Device + Team Switcher
              ══════════════════════════════════════════════════════════════════ */}
           <div className={`lg:col-span-5 flex flex-col min-h-0 h-full gap-1 overflow-hidden animate-slide-in-right ${
@@ -12485,13 +12425,33 @@ export default function AdminSandboxPage() {
           </div>
 
           {/* ══════════════════════════════════════════════════════════════════
-              MOBILE HOST CONTROL PANEL (Only visible on mobile when mobileTab === 'HOST')
+              HOST MASTER CONTROL PANEL (Desktop: 7 cols on left; Mobile: Tab HOST)
              ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`lg:hidden flex-col min-h-0 h-full gap-2.5 overflow-y-auto p-2 glass rounded-2xl border border-white/10 bg-[#0c0d18] animate-tab-enter ${
-              mobileTab === "HOST" ? "flex" : "hidden"
+            className={`flex-col min-h-0 h-full gap-2.5 overflow-y-auto p-2 glass rounded-2xl border border-white/10 bg-[#0c0d18] animate-tab-enter lg:col-span-7 lg:order-first ${
+              mobileTab === "HOST" ? "flex" : "hidden lg:flex"
             }`}
           >
+            {/* Live Bot Event Logs (Compact Single-line Ticker Bar) */}
+            <div className="glass rounded-xl px-3 py-1.5 border border-white/10 text-xs bg-[#121424] flex items-center justify-between shrink-0 shadow-lg mb-1">
+              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${botAutoEnabled ? "bg-emerald-400 animate-pulse glow-neon-emerald" : "bg-cyan-400 animate-pulse glow-neon-cyan"}`} />
+                <span className="font-bold text-slate-400 text-[11px] shrink-0 uppercase tracking-wider">Live Ticker:</span>
+                <span
+                  key={botLogs[0] || "initial"}
+                  className="font-mono text-[11px] text-slate-200 truncate animate-ticker-slide"
+                >
+                  {botLogs[0] || "Phòng Sandbox sẵn sàng · Đang chờ sự kiện đầu tiên..."}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLogsModal(true)}
+                className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[11px] font-bold shrink-0 transition btn-tactile cursor-pointer"
+              >
+                📜 Xem tất cả ({botLogs.length})
+              </button>
+            </div>
             {/* 1. Header & Primary Game Flow Card */}
             <div className="p-3 rounded-xl bg-[#151728]/80 border border-white/10 space-y-2.5 shadow-lg">
               <div className="flex items-center justify-between border-b border-white/10 pb-2">

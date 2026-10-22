@@ -908,21 +908,24 @@ function NeedlePointerSvg() {
           <stop offset="60%" stopColor="#94a3b8" />
           <stop offset="100%" stopColor="#334155" />
         </linearGradient>
+        {/* Red lacquer pointer blade: authentic VTV3 Chiếc Nón Kỳ Diệu needle */}
         <linearGradient id="mwNeedleFacetLeft" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#fef08a" />
-          <stop offset="50%" stopColor="#f59e0b" />
-          <stop offset="100%" stopColor="#d97706" />
+          <stop offset="0%" stopColor="#f87171" />
+          <stop offset="45%" stopColor="#ef4444" />
+          <stop offset="100%" stopColor="#dc2626" />
         </linearGradient>
         <linearGradient id="mwNeedleFacetRight" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#d97706" />
-          <stop offset="60%" stopColor="#b45309" />
-          <stop offset="100%" stopColor="#78350f" />
+          <stop offset="0%" stopColor="#dc2626" />
+          <stop offset="55%" stopColor="#b91c1c" />
+          <stop offset="100%" stopColor="#7f1d1d" />
         </linearGradient>
       </defs>
-      <path d="M22 39 L11 8 Q22 13 22 8 Z" fill="url(#mwNeedleFacetLeft)" stroke="#fef08a" strokeWidth="1.2" strokeLinejoin="round" />
-      <path d="M22 39 L33 8 Q22 13 22 8 Z" fill="url(#mwNeedleFacetRight)" stroke="#b45309" strokeWidth="1.2" strokeLinejoin="round" />
+      {/* Sleek crimson needle blade pointing cleanly into the pegs */}
+      <path d="M22 39 L11 8 Q22 13 22 8 Z" fill="url(#mwNeedleFacetLeft)" stroke="#fca5a5" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M22 39 L33 8 Q22 13 22 8 Z" fill="url(#mwNeedleFacetRight)" stroke="#991b1b" strokeWidth="1.2" strokeLinejoin="round" />
       <path d="M22 38 L22 10" stroke="url(#mwChromeNeedleGrad)" strokeWidth="2.8" strokeLinecap="round" />
-      <circle cx="22" cy="11" r="5.5" fill="#0f172a" stroke="#fef08a" strokeWidth="1.8" />
+      {/* Chrome & gold pivot collar */}
+      <circle cx="22" cy="11" r="5.5" fill="#0f172a" stroke="#fbbf24" strokeWidth="1.8" />
       <circle cx="22" cy="11" r="3.6" fill="url(#mwChromeNeedleGrad)" />
       <circle cx="20.6" cy="9.6" r="1.2" fill="#ffffff" />
     </svg>
@@ -932,10 +935,12 @@ function NeedlePointerSvg() {
 function WheelDiscSvg({
   sectors,
   selectedSector,
+  selectedSectorIndex,
   isSpinning,
 }: {
   sectors: MagicWheelSector[];
   selectedSector?: MagicWheelSector;
+  selectedSectorIndex?: number;
   isSpinning?: boolean;
 }) {
   return (
@@ -1036,7 +1041,11 @@ function WheelDiscSvg({
         const pegX = cx + rPeg * Math.sin(theta1);
         const pegY = cy - rPeg * Math.cos(theta1);
 
-        const isWinningSector = !isSpinning && selectedSector !== undefined && sectors.indexOf(selectedSector) === idx;
+        const isWinningSector =
+          !isSpinning &&
+          (selectedSectorIndex !== undefined
+            ? selectedSectorIndex === idx
+            : selectedSector !== undefined && sectors.indexOf(selectedSector) === idx);
         const cleanLabel = sec.label.replace(/[,.]/g, "");
         const isNumeric = sec.type === "POINTS" || /^\$?\d+$/.test(cleanLabel.trim());
         const digits = isNumeric ? cleanLabel.trim().split("") : [];
@@ -1538,6 +1547,7 @@ function InteractiveWheelRig({
   effectiveIsSpinning,
   sectors,
   selectedSector,
+  selectedSectorIndex,
 }: {
   variant: "DISPLAY_360" | "PLAYER_INVERTED" | "HOST_HALF";
   size?: "normal" | "large";
@@ -1547,6 +1557,7 @@ function InteractiveWheelRig({
   effectiveIsSpinning: boolean;
   sectors: MagicWheelSector[];
   selectedSector?: MagicWheelSector;
+  selectedSectorIndex?: number;
 }) {
   if (variant === "DISPLAY_360") {
     const isLarge = size === "large";
@@ -1587,7 +1598,12 @@ function InteractiveWheelRig({
               transformStyle: "preserve-3d",
             }}
           >
-            <WheelDiscSvg sectors={sectors} selectedSector={selectedSector} isSpinning={effectiveIsSpinning} />
+            <WheelDiscSvg
+              sectors={sectors}
+              selectedSector={selectedSector}
+              selectedSectorIndex={selectedSectorIndex}
+              isSpinning={effectiveIsSpinning}
+            />
           </div>
         </div>
         {selectedSector && (
@@ -1617,11 +1633,16 @@ function InteractiveWheelRig({
                 willChange: effectiveIsSpinning ? "transform" : undefined,
               }}
             >
-              <WheelDiscSvg sectors={sectors} selectedSector={selectedSector} isSpinning={effectiveIsSpinning} />
+              <WheelDiscSvg
+                sectors={sectors}
+                selectedSector={selectedSector}
+                selectedSectorIndex={selectedSectorIndex}
+                isSpinning={effectiveIsSpinning}
+              />
             </div>
             <div
               ref={needleRef}
-              className="absolute bottom-[-1px] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
+              className="absolute bottom-[-16px] sm:bottom-[-18px] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
               style={{
                 transformOrigin: "50% 22.92%",
                 transform: "translateX(-50%) rotate(180deg) scale(1.06) translateZ(0)",
@@ -1672,7 +1693,12 @@ function InteractiveWheelRig({
               willChange: effectiveIsSpinning ? "transform" : undefined,
             }}
           >
-            <WheelDiscSvg sectors={sectors} selectedSector={selectedSector} isSpinning={effectiveIsSpinning} />
+            <WheelDiscSvg
+              sectors={sectors}
+              selectedSector={selectedSector}
+              selectedSectorIndex={selectedSectorIndex}
+              isSpinning={effectiveIsSpinning}
+            />
           </div>
         </div>
       </div>
@@ -1980,11 +2006,12 @@ export default function MagicWheelBoard({
   // ── 3D Wheel Physics & DOM Refs ──────────────────────────────────────────
   const wheelRef = useRef<HTMLDivElement>(null);
   const needleRef = useRef<HTMLDivElement>(null);
-  const wheelPrevAngleRef = useRef<number>(0);
+  const initialWheelRestingAngle = (360 - 0.5 * (360 / (sectors?.length || 24))) % 360;
+  const wheelPrevAngleRef = useRef<number>(initialWheelRestingAngle);
   const lastSnapTimeRef = useRef<number>(0);
   const isSpinningRafRunningRef = useRef<boolean>(false);
   const targetAngleRef = useRef<number>(0);
-  const [clientWheelAngle, setClientWheelAngle] = useState<number>(0);
+  const [clientWheelAngle, setClientWheelAngle] = useState<number>(initialWheelRestingAngle);
   const [isWheelZoomedIn, setIsWheelZoomedIn] = useState<boolean>(false);
   const [wheelZoomDurationMs, setWheelZoomDurationMs] = useState<number>(7000);
   const [localIsSpinning, setLocalIsSpinning] = useState<boolean>(false);
@@ -2658,18 +2685,14 @@ export default function MagicWheelBoard({
 
   // ── 3D Wheel Animation Loop (RequestAnimationFrame) ──────────────────────
   useEffect(() => {
-    const target = targetRotationDegrees;
+    const sLen = sectors.length || 24;
+    const segAngle = 360 / sLen;
+    const deadCenterRestingAngle = (360 - 0.5 * segAngle) % 360;
+    const target =
+      targetRotationDegrees === undefined || targetRotationDegrees === null || targetRotationDegrees === 0
+        ? deadCenterRestingAngle
+        : targetRotationDegrees;
     const angleOffset = isPlayer ? 180 : 0;
-    if (target === undefined || target === null) {
-      isSpinningRafRunningRef.current = false;
-      wheelPrevAngleRef.current = 0;
-      setClientWheelAngle(0);
-      lastSnapTimeRef.current = 0;
-      if (wheelRef.current) wheelRef.current.style.transform = `rotate(${angleOffset}deg)`;
-      if (needleRef.current) needleRef.current.style.transform = `translateX(-50%) rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
-      soundManager.stopWheelSpinMusic(150);
-      return;
-    }
 
     if (!effectiveIsSpinning) {
       isSpinningRafRunningRef.current = false;
@@ -2680,6 +2703,7 @@ export default function MagicWheelBoard({
       setWheelZoomDurationMs(800);
       lastSnapTimeRef.current = 0;
       if (needleRef.current) needleRef.current.style.transform = `translateX(-50%) rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
+      soundManager.stopWheelSpinMusic(150);
       return;
     }
 
@@ -2702,7 +2726,6 @@ export default function MagicWheelBoard({
     targetAngleRef.current = target;
 
     const durationMs = 15000 + Math.round(((activeState.spinPower || 65) / 100) * 6000);
-    const segAngle = 360 / (sectors.length || 24);
     const startTime = performance.now();
     let lastPegIndex = Math.floor(startAngle / segAngle);
     let lastTickAudioTime = 0;
@@ -2752,8 +2775,8 @@ export default function MagicWheelBoard({
         // Physical needle contact with oncoming chrome peg:
         // Wheel turns clockwise ->
         // At 12h: rim moves left-to-right -> peg pushes needle tip to the RIGHT (-deg in CSS)
-        // At 6h (isPlayer): rim moves right-to-left -> peg pushes upward needle tip to the LEFT (+deg in CSS)
-        const pegDeflectionSign = isPlayer ? 1.0 : -1.0;
+        // At 6h (isPlayer): rim moves right-to-left -> peg pushes upward needle tip to the LEFT (-deg in CSS from 180deg)
+        const pegDeflectionSign = -1.0;
         if (pegDistToSnap <= contactWindow) {
           const contactProgress = 1.0 - pegDistToSnap / contactWindow;
           needleAngle = pegDeflectionSign * 18.0 * Math.pow(contactProgress, 1.15);
@@ -3586,6 +3609,7 @@ export default function MagicWheelBoard({
             effectiveIsSpinning={effectiveIsSpinning}
             sectors={sectors}
             selectedSector={selectedSector}
+            selectedSectorIndex={activeState.selectedSectorIndex}
           />
         )}
 
@@ -4178,6 +4202,7 @@ export default function MagicWheelBoard({
             tossUpBuzzedTeamId={tossUpBuzzedTeamId}
             isTossUpRound={isTossUpRound}
             phase={phase}
+            boardStage={effectiveBoardStage}
             camAngle={camAngle}
             edition={edition}
             currentPuzzle={currentPuzzle}
@@ -4927,6 +4952,7 @@ export default function MagicWheelBoard({
               effectiveIsSpinning={effectiveIsSpinning}
               sectors={sectors}
               selectedSector={selectedSector}
+              selectedSectorIndex={activeState.selectedSectorIndex}
             />
           </div>
         )}

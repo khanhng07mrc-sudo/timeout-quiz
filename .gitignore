@@ -41,5 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# electron app distribution build
+dist-app/
+*.lnk
+
 # scratch
 scratch/

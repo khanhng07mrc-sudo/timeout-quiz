@@ -56,32 +56,32 @@ const CAM_POSITIONS: Record<string, CamConfig> = {
   // CAM 0 / Default: Tầm mắt truyền hình trực diện nhìn toàn cảnh sân khấu (Master Wide)
   DEFAULT: { pos: [0.00, 2.70, 8.80], target: [0.00, 1.60, -1.50] },
 
-  // CAM 1: Trực diện Vòng quay & Bàn thí sinh + MC (Contestant & Host Center)
-  CAM1_CENTER: { pos: [0.00, 3.10, 5.20], target: [0.00, 1.30, -0.50] },
+  // CAM 1: Trực diện Vòng quay 5.4m & Bàn thí sinh + MC (Contestant & Host Center)
+  CAM1_CENTER: { pos: [0.00, 3.35, 5.80], target: [0.00, 1.45, -0.40] },
 
-  // CAM 2: Đại cảnh toàn bộ trường quay tầm mắt TV (Master Wide: Sân khấu chính giữa & Bảng ô chữ lùi sâu cánh trái)
+  // CAM 2: Đại cảnh toàn bộ trường quay tầm mắt TV (Master Wide)
   CAM2_WIDE: { pos: [0.00, 2.70, 8.80], target: [0.00, 1.60, -1.50] },
 
-  // CAM 3: Trực diện vuông góc 100% Bảng ô chữ 3D & Người mẫu tại Sườn Trái phía trước (Hoàn toàn thông thoáng không bị che)
-  CAM3_BOARD: { pos: [-2.00, 1.95, 3.80], target: [-7.50, 1.85, 2.30] },
+  // CAM 3: Trực diện vuông góc 90° Bảng ô chữ 3D & Người mẫu tại Sườn Trái (Z = +4.5m)
+  CAM3_BOARD: { pos: [-1.50, 1.95, 5.00], target: [-7.80, 1.90, 5.00] },
 
   // CAM 4: Cận cảnh kim chỉ thị cong đỏ cherry và các chốt ô nón đang quay chúc 40°
-  CAM4_DISC: { pos: [-2.15, 2.45, 1.35], target: [-1.65, 1.22, 0.08] },
+  CAM4_DISC: { pos: [-2.75, 2.75, 1.55], target: [-2.15, 1.40, 0.10] },
 
   // CAM 5: Lia cận cảnh thí sinh đang đến lượt (Active Player Close-up)
   CAM5_PLAYER: { pos: [0.60, 2.70, 2.20], target: [0.80, 2.10, -2.60] },
 
-  // CAM 6: Đại cảnh toàn bộ Khán đài 6 tầng & Phông nền Trống đồng Đông Sơn mạ vàng (Audience & Dong Son Drum Hero Shot)
-  CAM6_AUDIENCE: { pos: [0.00, 2.60, 4.20], target: [0.00, 4.50, 18.80] },
+  // CAM 6: Đại cảnh toàn bộ Khán đài 6 tầng & Phông nền Trống đồng Đông Sơn cổ bắt sáng Spotlight
+  CAM6_AUDIENCE: { pos: [0.00, 2.90, 4.00], target: [0.00, 5.80, 22.00] },
 
-  // CAM 7: Cận cảnh hàng ghế rạp nhung đỏ Burgundy, tựa cao, tay vịn gỗ gụ & từng khán giả 3D
-  CAM7_AUDIENCE_CLOSEUP: { pos: [0.00, 2.40, 11.80], target: [0.00, 2.80, 17.20] },
+  // CAM 7: Cận cảnh hàng ghế rạp nhung đỏ Burgundy phóng to 28%, tựa cao, tay vịn gỗ gụ
+  CAM7_AUDIENCE_CLOSEUP: { pos: [0.00, 2.60, 14.80], target: [0.00, 3.00, 20.20] },
 
-  // CAM 8: Góc chéo 45° khán đài cánh cung, bậc thang dốc gờ LED & đèn lồng đỏ Hội An
-  CAM8_AUDIENCE_DIAG: { pos: [-8.00, 3.50, 8.20], target: [1.50, 3.00, 16.80] },
+  // CAM 8: Góc chéo 45° khán đài cánh cung ôm 150° nhìn từ mạn phải sang trái, 0% che khuất
+  CAM8_AUDIENCE_DIAG: { pos: [9.50, 3.20, 9.50], target: [-3.50, 3.20, 18.50] },
 
   // CAM 9: Góc nhìn từ đỉnh hàng ghế Khán giả ngắm toàn cảnh Sân khấu (Audience POV Master Wide)
-  CAM9_AUDIENCE_POV: { pos: [0.00, 3.40, 16.20], target: [0.00, 1.20, 0.00] },
+  CAM9_AUDIENCE_POV: { pos: [0.00, 4.00, 20.50], target: [0.00, 1.25, 0.00] },
 };
 
 // ── Texture Generators ───────────────────────────────────────────────────────
@@ -406,12 +406,12 @@ function generateDongSonTexture(size = 1024): HTMLCanvasElement {
   const cy = size / 2;
   const maxR = size / 2 - 24;
 
-  // 1. Nền đồng nâu gụ ấm ánh vàng kim hoàng gia (Gilded Royal Antique Bronze)
+  // 1. Nền đồng nâu gụ cổ trầm ánh kim (Antique Aged Dark Bronze)
   const bgGrad = ctx.createRadialGradient(cx, cy, 20, cx, cy, maxR);
-  bgGrad.addColorStop(0, "#3a250d");
-  bgGrad.addColorStop(0.35, "#4a3012");
-  bgGrad.addColorStop(0.7, "#2b1b0a");
-  bgGrad.addColorStop(1, "#180f05");
+  bgGrad.addColorStop(0, "#26170b");
+  bgGrad.addColorStop(0.35, "#301d0e");
+  bgGrad.addColorStop(0.7, "#1c1007");
+  bgGrad.addColorStop(1, "#100903");
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, size, size);
 
@@ -421,8 +421,8 @@ function generateDongSonTexture(size = 1024): HTMLCanvasElement {
   ctx.arc(cx, cy, maxR, 0, Math.PI * 2);
   ctx.clip();
 
-  // Helper hàm vẽ vòng tròn nẹp vàng
-  const strokeRing = (r: number, lw = 2, color = "#f59e0b") => {
+  // Helper hàm vẽ vòng tròn nẹp đồng cổ chìm
+  const strokeRing = (r: number, lw = 2, color = "#5c381c") => {
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.strokeStyle = color;
@@ -431,7 +431,7 @@ function generateDongSonTexture(size = 1024): HTMLCanvasElement {
   };
 
   // Helper hàm vẽ dải răng cưa tam giác (sawtooth)
-  const drawSawtoothRing = (rInner: number, rOuter: number, count: number, color = "#fbbf24") => {
+  const drawSawtoothRing = (rInner: number, rOuter: number, count: number, color = "#6b4421") => {
     ctx.fillStyle = color;
     const step = (Math.PI * 2) / count;
     for (let i = 0; i < count; i++) {
@@ -448,7 +448,7 @@ function generateDongSonTexture(size = 1024): HTMLCanvasElement {
   };
 
   // Helper hàm vẽ các chấm tròn tiếp tuyến (concentric dots)
-  const drawDotRing = (r: number, dotR: number, count: number, color = "#fde047") => {
+  const drawDotRing = (r: number, dotR: number, count: number, color = "#875b30") => {
     ctx.fillStyle = color;
     const step = (Math.PI * 2) / count;
     for (let i = 0; i < count; i++) {
@@ -461,14 +461,12 @@ function generateDongSonTexture(size = 1024): HTMLCanvasElement {
     }
   };
 
-  // ── 2. NGÔI SAO TRUNG TÂM 14 CÁNH (14-Point Sun Star) ──
+  // ── 2. NGÔI SAO TRUNG TÂM 14 CÁNH KHẮC ĐỒNG CỔ CHÌM (14-Point Sun Star) ──
   const starPoints = 14;
   const rStarOuter = 138;
   const rStarInner = 52;
   ctx.save();
-  ctx.shadowColor = "rgba(251, 191, 36, 0.9)";
-  ctx.shadowBlur = 20;
-  ctx.fillStyle = "#fef08a";
+  ctx.fillStyle = "#784f27";
   ctx.beginPath();
   for (let i = 0; i < starPoints * 2; i++) {
     const r = i % 2 === 0 ? rStarOuter : rStarInner;
@@ -480,29 +478,29 @@ function generateDongSonTexture(size = 1024): HTMLCanvasElement {
   }
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = "#b45309";
+  ctx.strokeStyle = "#422610";
   ctx.lineWidth = 3.5;
   ctx.stroke();
   ctx.restore();
 
-  // Tâm mặt trời
+  // Tâm mặt trời đồng rêu
   ctx.beginPath();
   ctx.arc(cx, cy, 34, 0, Math.PI * 2);
-  ctx.fillStyle = "#f59e0b";
+  ctx.fillStyle = "#5c391b";
   ctx.fill();
-  ctx.strokeStyle = "#fef08a";
+  ctx.strokeStyle = "#7c522b";
   ctx.lineWidth = 3;
   ctx.stroke();
 
   // ── 3. VÀNH 1: HOA VĂN RĂNG CƯA & CHẤM NỔI ──
-  strokeRing(152, 2.5, "#d97706");
-  drawSawtoothRing(156, 172, 56, "#fbbf24");
-  strokeRing(176, 2.5, "#d97706");
-  drawDotRing(186, 2.8, 64, "#fef08a");
-  strokeRing(196, 2.5, "#f59e0b");
+  strokeRing(152, 2.5, "#4d2e15");
+  drawSawtoothRing(156, 172, 56, "#6b4421");
+  strokeRing(176, 2.5, "#4d2e15");
+  drawDotRing(186, 2.8, 64, "#875b30");
+  strokeRing(196, 2.5, "#5c381c");
 
   // ── 4. VÀNH 2: 16 CHIM LẠC SẢI CÁNH BAY NGƯỢC CHIỀU KIM ĐỒNG HỒ ──
-  strokeRing(202, 2, "#d97706");
+  strokeRing(202, 2, "#4d2e15");
   const birdCount = 16;
   const rBird = 240;
   ctx.save();
@@ -512,9 +510,9 @@ function generateDongSonTexture(size = 1024): HTMLCanvasElement {
     ctx.translate(cx, cy);
     ctx.rotate(a);
     ctx.translate(rBird, 0);
-    // Vẽ chim Lạc cách điệu: mỏ dài, cánh xòe, đuôi xòe
-    ctx.fillStyle = "#fef08a";
-    ctx.strokeStyle = "#b45309";
+    // Vẽ chim Lạc khắc đồng chìm
+    ctx.fillStyle = "#82572d";
+    ctx.strokeStyle = "#3e220e";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     // Mỏ và đầu chim
@@ -535,20 +533,20 @@ function generateDongSonTexture(size = 1024): HTMLCanvasElement {
     // Mắt chim
     ctx.beginPath();
     ctx.arc(4, -10, 1.8, 0, Math.PI * 2);
-    ctx.fillStyle = "#78350f";
+    ctx.fillStyle = "#261508";
     ctx.fill();
     ctx.restore();
   }
   ctx.restore();
-  strokeRing(282, 3, "#f59e0b");
+  strokeRing(282, 3, "#5c381c");
 
   // ── 5. VÀNH 3: HOA VĂN CÁNH SEN & RĂNG CƯA KÉP ──
-  drawDotRing(292, 3.2, 72, "#fde047");
-  strokeRing(302, 2.5, "#d97706");
-  drawSawtoothRing(306, 326, 68, "#fbbf24");
-  strokeRing(330, 2.5, "#d97706");
+  drawDotRing(292, 3.2, 72, "#875b30");
+  strokeRing(302, 2.5, "#4d2e15");
+  drawSawtoothRing(306, 326, 68, "#6b4421");
+  strokeRing(330, 2.5, "#4d2e15");
 
-  // Cánh sen cách điệu (Lotus Petals)
+  // Cánh sen cách điệu (Lotus Petals) đồng cổ
   const lotusCount = 32;
   const rLotus = 356;
   ctx.save();
@@ -562,25 +560,25 @@ function generateDongSonTexture(size = 1024): HTMLCanvasElement {
     ctx.moveTo(-12, 0);
     ctx.quadraticCurveTo(0, -18, 12, 0);
     ctx.quadraticCurveTo(0, 18, -12, 0);
-    ctx.fillStyle = i % 2 === 0 ? "#fde047" : "#f59e0b";
+    ctx.fillStyle = i % 2 === 0 ? "#784f27" : "#633f1f";
     ctx.fill();
-    ctx.strokeStyle = "#92400e";
+    ctx.strokeStyle = "#3a200d";
     ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.restore();
   }
   ctx.restore();
-  strokeRing(382, 3, "#f59e0b");
+  strokeRing(382, 3, "#5c381c");
 
-  // ── 6. VÀNH NGOÀI CÙNG: DẢI CHẤM NỔI & VIỀN VÀNG HOÀNG KIM ──
-  drawDotRing(396, 3.8, 88, "#fef08a");
-  strokeRing(408, 4, "#d97706");
-  drawSawtoothRing(414, 438, 84, "#fbbf24");
-  strokeRing(444, 4, "#f59e0b");
-  drawDotRing(456, 4.2, 96, "#fef08a");
-  strokeRing(468, 6, "#d97706");
-  strokeRing(478, 4, "#fbbf24");
-  strokeRing(maxR - 2, 8, "#f59e0b");
+  // ── 6. VÀNH NGOÀI CÙNG: DẢI CHẤM NỔI & VIỀN ĐỒNG RÊU CỔ ──
+  drawDotRing(396, 3.8, 88, "#875b30");
+  strokeRing(408, 4, "#4d2e15");
+  drawSawtoothRing(414, 438, 84, "#6b4421");
+  strokeRing(444, 4, "#5c381c");
+  drawDotRing(456, 4.2, 96, "#875b30");
+  strokeRing(468, 6, "#4d2e15");
+  strokeRing(478, 4, "#6b4421");
+  strokeRing(maxR - 2, 8, "#3e230f");
 
   ctx.restore();
   return canvas;
@@ -632,8 +630,8 @@ function WheelMachineGroup({
     return geom;
   }, []);
 
-  // Tilt angle: 12.6 degrees towards camera for broadcast perspective
-  const WHEEL_TILT_RAD = 0.22;
+  // Tilt angle: 7.7 degrees towards camera for broadcast perspective (comfortably below contestant desk)
+  const WHEEL_TILT_RAD = 0.135;
 
   const currentAngleRef = useRef<number>(clientWheelAngle || 0);
   const spinStartTimeRef = useRef<number>(0);
@@ -685,9 +683,9 @@ function WheelMachineGroup({
   });
 
   return (
-    <group position={[0, 0, 0]}>
+    <group position={[0, -0.05, 0]} scale={[1.25, 1.25, 1.25]}>
       {/* ── 1. ROTATING 3D CONICAL WHEEL DISC ── */}
-      <group position={[0, 1.25, 0]} rotation={[-Math.PI / 2 + WHEEL_TILT_RAD, 0, 0]}>
+      <group position={[0, 1.10, 0]} rotation={[-Math.PI / 2 + WHEEL_TILT_RAD, 0, 0]}>
         <group ref={spinningGroupRef}>
           {/* Conical Sloped Mesh */}
           <mesh geometry={conicalGeometry} castShadow receiveShadow>
@@ -754,7 +752,7 @@ function WheelMachineGroup({
       {/* ── 2. NEEDLE AT 9 O'CLOCK FLANK WITH AUTHENTIC SLANTED SUPPORT PILLAR (VTV3 BROADCAST STYLE) ── */}
       {/* ── 2. SLEEK MECHANICAL NEEDLE ACCORDING TO VTV3 2015 BROADCAST (16:58) ── */}
       {/* Curved cherry red lacquer support arm & chrome pivot assembly at 9 o'clock */}
-      <group position={[-2.32, 1.25, 0.08]} rotation={[0.32, 0.10, 0]}>
+      <group position={[-2.32, 1.10, 0.08]} rotation={[0.18, 0.10, 0]}>
         {/* Sleek Curved Arm base in glossy cherry red lacquer */}
         <mesh position={[-0.14, -0.12, 0]} rotation={[0, 0, -0.45]} castShadow>
           <cylinderGeometry args={[0.042, 0.054, 0.38, 20]} />
@@ -799,36 +797,36 @@ function WheelMachineGroup({
       </group>
 
       {/* Slanted chrome support pillar extending down to floor */}
-      <mesh position={[-2.42, 0.65, 0.10]} rotation={[0.06, 0, -0.14]} castShadow receiveShadow>
+      <mesh position={[-2.42, 0.50, 0.10]} rotation={[0.06, 0, -0.14]} castShadow receiveShadow>
         <cylinderGeometry args={[0.058, 0.075, 1.25, 24]} />
         <meshStandardMaterial color="#e2e8f0" metalness={0.95} roughness={0.06} />
       </mesh>
-      <mesh position={[-2.46, 0.02, 0.10]} receiveShadow>
+      <mesh position={[-2.46, -0.08, 0.10]} receiveShadow>
         <cylinderGeometry args={[0.18, 0.22, 0.08, 24]} />
         <meshStandardMaterial color="#cbd5e1" metalness={0.92} roughness={0.12} />
       </mesh>
 
       {/* Gold decorative collar ring on pillar */}
-      <mesh position={[-2.40, 0.88, 0.12]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh position={[-2.40, 0.72, 0.12]} rotation={[-Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.085, 0.022, 8, 24]} />
         <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={0.5} metalness={0.94} roughness={0.08} />
       </mesh>
 
       {/* Pillar floor flared base anchor plinth */}
-      <mesh position={[-2.40, -0.68, 0.12]}>
+      <mesh position={[-2.40, -0.72, 0.12]}>
         <cylinderGeometry args={[0.16, 0.22, 0.14, 24]} />
         <meshStandardMaterial color="#e2e8f0" metalness={0.94} roughness={0.08} />
       </mesh>
 
       {/* ── 3. MULTI-TIER METALLIC ILLUMINATED PEDESTAL (ĐƯỜNG KÍNH THON GỌN, HOÀN TOÀN DƯỚI GẦM NÓN) ── */}
       {/* Tier 1: Bright Chrome Axle Collar supporting center of wheel hub */}
-      <mesh position={[0, 0.88, 0]} castShadow>
+      <mesh position={[0, 0.76, 0]} castShadow>
         <cylinderGeometry args={[0.72, 0.82, 0.22, 32]} />
         <meshStandardMaterial color="#e2e8f0" metalness={0.95} roughness={0.06} />
       </mesh>
 
       {/* Tier 2: Illuminated Golden Collar Belt */}
-      <mesh ref={goldAccentRef} position={[0, 0.84, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh ref={goldAccentRef} position={[0, 0.72, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.84, 0.035, 8, 48]} />
         <meshStandardMaterial
           color="#fbbf24"
@@ -840,13 +838,13 @@ function WheelMachineGroup({
       </mesh>
 
       {/* Tier 3: Sleek Studio Navy Lacquered Tapered Trunk */}
-      <mesh position={[0, 0.40, 0]} castShadow receiveShadow>
+      <mesh position={[0, 0.32, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.85, 1.45, 0.75, 32]} />
         <meshStandardMaterial color="#0f254e" metalness={0.88} roughness={0.15} />
       </mesh>
 
       {/* Mid-trunk reflective Chrome Belt */}
-      <mesh position={[0, 0.40, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh position={[0, 0.32, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <torusGeometry args={[1.18, 0.035, 8, 48]} />
         <meshStandardMaterial
           color="#e2e8f0"
@@ -856,13 +854,13 @@ function WheelMachineGroup({
       </mesh>
 
       {/* Tier 4: Lower Chrome Stepped Tier */}
-      <mesh position={[0, -0.15, 0]} receiveShadow>
+      <mesh position={[0, -0.18, 0]} receiveShadow>
         <cylinderGeometry args={[1.50, 1.95, 0.35, 32]} />
         <meshStandardMaterial color="#e2e8f0" metalness={0.92} roughness={0.08} />
       </mesh>
 
       {/* Tier 5: Studio Navy Base Tier */}
-      <mesh position={[0, -0.50, 0]} receiveShadow>
+      <mesh position={[0, -0.52, 0]} receiveShadow>
         <cylinderGeometry args={[2.05, 2.45, 0.35, 32]} />
         <meshStandardMaterial color="#0a1a36" metalness={0.85} roughness={0.2} />
       </mesh>
@@ -1879,7 +1877,7 @@ function StylizedHostess({ isRevealing }: { isRevealing: boolean }) {
   });
 
   return (
-    <group position={[3.30, 0.41, 0.40]}>
+    <group position={[2.85, 0.41, 0.40]} rotation={[0, -0.45, 0]}>
       {/* Vệt bóng đổ gót chân mềm mại trên sàn bục */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
         <planeGeometry args={[1.1, 0.50]} />
@@ -1938,8 +1936,8 @@ function Studio3DPuzzleBoard({
   const isRevealing = phase === "ROUND_RECAP" || (revealedSet.size > 0);
 
   return (
-    <group position={[-7.80, -0.75, 2.50]} rotation={[0, 1.30, 0]}>
-      {/* ── VÁCH KIẾN TRÚC ART-DECO BẢNG Ô CHỮ TẠI SƯỜN TRÁI PHÍA TRƯỚC (XOAY 74.5° HƯỚNG VÀO SÂN KHẤU) ── */}
+    <group position={[-7.80, -0.75, 4.50]} rotation={[0, Math.PI / 2, 0]}>
+      {/* ── VÁCH KIẾN TRÚC ART-DECO BẢNG Ô CHỮ TẠI SƯỜN TRÁI (XOAY VUÔNG GÓC 90° HƯỚNG VÀO SÂN KHẤU) ── */}
       <group position={[0, 2.8, -0.3]}>
         {/* Vách tường đen ngọc bích Art-Deco sang trọng che kín vách sườn trái */}
         <mesh position={[0, 0, 0]}>
@@ -1947,17 +1945,17 @@ function Studio3DPuzzleBoard({
           <meshStandardMaterial color="#051f11" roughness={0.65} metalness={0.35} />
         </mesh>
 
-        {/* Cánh vách Art-Deco hoa văn hình học trắng kem & vàng kim bên trái */}
-        {[-3.6, -4.0].map((px, idx) => (
-          <group key={`wing-left-${idx}`} position={[px, 0, 0.08]}>
+        {/* Khối panel Art-Deco bậc thang màu hổ phách ấm (Amber/Gold Stepped Wings) theo chuẩn ảnh VTV3 27/06/2015 */}
+        {[-3.6, -4.1, -4.6].map((px, idx) => (
+          <group key={`wing-upstage-${idx}`} position={[px, 0.2 - idx * 0.25, 0.08]}>
             <mesh position={[0, 0, 0]}>
-              <boxGeometry args={[0.35, 5.2, 0.06]} />
-              <meshStandardMaterial color="#f8fafc" roughness={0.25} metalness={0.2} />
+              <boxGeometry args={[0.45, 5.0 - idx * 0.5, 0.08]} />
+              <meshStandardMaterial color="#b45309" roughness={0.35} metalness={0.4} />
             </mesh>
-            {/* Hoa văn rãnh dọc Art-Deco vàng kim */}
-            <mesh position={[0, 0, 0.04]}>
-              <boxGeometry args={[0.08, 4.8, 0.02]} />
-              <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.2} metalness={0.9} />
+            {/* Rãnh nẹp viền hổ phách vàng sáng */}
+            <mesh position={[0, 0, 0.05]}>
+              <boxGeometry args={[0.12, 4.6 - idx * 0.5, 0.02]} />
+              <meshStandardMaterial color="#f59e0b" emissive="#d97706" emissiveIntensity={1.4} metalness={0.8} />
             </mesh>
           </group>
         ))}
@@ -2025,6 +2023,52 @@ function Studio3DPuzzleBoard({
         </group>
       ))}
 
+      {/* ── 3. VÒM CONG NEON QUẠT ÁNH SÁNG MỀM MẠI ĐỐI XỨNG 100% (Radiating Fan Neon Arch - Chuẩn ảnh VTV3 27/06/2015) ── */}
+      <group position={[0, 4.38, 0]}>
+        {/* Vành ngoài vòm neon vàng đối xứng hoàn hảo, tiếp đất chính xác lên thanh vòm header */}
+        <mesh position={[0, -0.20, 0]} rotation={[0, 0, 0.084]}>
+          <torusGeometry args={[2.40, 0.035, 16, 64, 2.974]} />
+          <meshStandardMaterial color="#fef08a" emissive="#f59e0b" emissiveIntensity={2.4} />
+        </mesh>
+
+        {/* Vành trong vòm neon vàng song song, tiếp đất lên thanh vòm header */}
+        <mesh position={[0, -0.20, 0]} rotation={[0, 0, 0.096]}>
+          <torusGeometry args={[2.10, 0.024, 16, 64, 2.951]} />
+          <meshStandardMaterial color="#fde047" emissive="#d97706" emissiveIntensity={2.0} />
+        </mesh>
+
+        {/* Chân đế nẹp vàng cố định hai đầu vòm tiếp xúc mặt phẳng Header Bar */}
+        {[-2.39, 2.39].map((bx, bi) => (
+          <mesh key={`arch-base-${bi}`} position={[bx, 0.04, 0]}>
+            <boxGeometry args={[0.22, 0.08, 0.12]} />
+            <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.5} metalness={0.9} />
+          </mesh>
+        ))}
+
+        {/* 11 nan quạt neon tỏa tia đối xứng hoàn hảo từ tâm vòm */}
+        {Array.from({ length: 11 }).map((_, fi) => {
+          const angle = 0.12 * Math.PI + (fi / 10) * (0.76 * Math.PI);
+          const midR = 1.825;
+          const rayLen = 1.05;
+          const rx = Math.cos(angle) * midR;
+          const ry = -0.20 + Math.sin(angle) * midR;
+          return (
+            <mesh
+              key={`fan-ray-${fi}`}
+              position={[rx, ry, 0.02]}
+              rotation={[0, 0, angle - Math.PI / 2]}
+            >
+              <cylinderGeometry args={[0.018, 0.022, rayLen, 12]} />
+              <meshStandardMaterial
+                color={fi % 2 === 0 ? "#fef08a" : "#fde047"}
+                emissive="#f59e0b"
+                emissiveIntensity={2.2}
+              />
+            </mesh>
+          );
+        })}
+      </group>
+
       {/* Thanh vòm trên (Header Bar) */}
       <mesh position={[0, 4.15, 0]}>
         <boxGeometry args={[6.4, 0.45, 0.25]} />
@@ -2036,19 +2080,20 @@ function Studio3DPuzzleBoard({
         <meshStandardMaterial color="#fde047" emissive="#f59e0b" emissiveIntensity={2.5} />
       </mesh>
 
-      {/* 3. Khung bảng Video Wall (5.3m x 2.3m) */}
+      {/* 4. Khung bảng Video Wall (5.3m x 2.3m) */}
       <mesh position={[0, 2.20, 0]}>
         <boxGeometry args={[5.3, 2.3, 0.08]} />
         <meshStandardMaterial color="#052e16" roughness={0.4} />
       </mesh>
 
-      {/* 4. Ma trận 4x14 ô chữ 3D độc lập lật xoay */}
+      {/* 5. Ma trận 4x14 ô chữ 3D độc lập lật xoay */}
       <group position={[0, 0, 0.05]}>
         {grid.map((row, r) => {
           const posY = 2.2 + (1.5 - r) * 0.50;
           return row.map((tile, c) => {
             const posX = (c - 6.5) * 0.36;
-            const isRevealed = tile.isLetter && (revealedSet.has(tile.origIdx) || phase === "ROUND_RECAP");
+            // CRITICAL RULE: Tuyệt đối không lật ô chữ khi isBoardEmpty (boardStage === "EMPTY_56")
+            const isRevealed = !isBoardEmpty && tile.isLetter && (revealedSet.has(tile.origIdx) || phase === "ROUND_RECAP");
             const isHighlighted = Boolean(tile.isLetter && highlightedIndices && highlightedIndices.has(tile.origIdx));
             return (
               <Studio3DPuzzleTile
@@ -2065,7 +2110,7 @@ function Studio3DPuzzleBoard({
         })}
       </group>
 
-      {/* 5. Người mẫu trợ lý lật ô chữ (Stylized Hostess in evening gown) */}
+      {/* 6. Người mẫu trợ lý lật ô chữ (Stylized Hostess in evening gown) */}
       <StylizedHostess isRevealing={isRevealing} />
     </group>
   );
@@ -2268,54 +2313,77 @@ function BackdropCurvedLedScreen({ quality = "HIGH" }: { quality?: "HIGH" | "MED
 
   return (
     <group position={[0, -0.75, -8.5]}>
-      {/* 1. Cổng vòm vàng hoàng gia bo cong mềm mại (VTV3 Stadium Arch Y=7.8m, W=13.6m) */}
+      {/* 1. KHUNG BEZEL TITANIUM KIM LOẠI THANH MẢNH 50MM VỚI ĐƯỜNG CHỈ VÀNG TINH TẾ */}
       <group position={[0, 0, 0]}>
-        <mesh position={[-5.8, 3.4, 0]}>
-          <cylinderGeometry args={[0.22, 0.22, 6.8, 24]} />
-          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
+        {/* Viền trái Titanium */}
+        <mesh position={[-5.64, 4.05, 0.02]}>
+          <boxGeometry args={[0.08, 7.66, 0.06]} />
+          <meshStandardMaterial color="#0b1120" metalness={0.92} roughness={0.2} />
         </mesh>
-        <mesh position={[5.8, 3.4, 0]}>
-          <cylinderGeometry args={[0.22, 0.22, 6.8, 24]} />
-          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
+        {/* Viền phải Titanium */}
+        <mesh position={[5.64, 4.05, 0.02]}>
+          <boxGeometry args={[0.08, 7.66, 0.06]} />
+          <meshStandardMaterial color="#0b1120" metalness={0.92} roughness={0.2} />
         </mesh>
-        <mesh position={[0, 7.8, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.22, 0.22, 7.6, 24]} />
-          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
+        {/* Viền trên Titanium */}
+        <mesh position={[0, 7.84, 0.02]}>
+          <boxGeometry args={[11.36, 0.08, 0.06]} />
+          <meshStandardMaterial color="#0b1120" metalness={0.92} roughness={0.2} />
         </mesh>
-        <mesh position={[-3.8, 5.8, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <torusGeometry args={[2.0, 0.22, 16, 24, Math.PI / 2]} />
-          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
-        </mesh>
-        <mesh position={[3.8, 5.8, 0]} rotation={[0, 0, 0]}>
-          <torusGeometry args={[2.0, 0.22, 16, 24, Math.PI / 2]} />
-          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.4} metalness={0.92} roughness={0.15} />
+        {/* Viền dưới Titanium */}
+        <mesh position={[0, 0.26, 0.02]}>
+          <boxGeometry args={[11.36, 0.08, 0.06]} />
+          <meshStandardMaterial color="#0b1120" metalness={0.92} roughness={0.2} />
         </mesh>
 
-        {/* Dải đèn neon vàng phát sáng rực rỡ chạy dọc viền cổng vòm */}
-        <mesh position={[-5.8, 3.4, 0.08]}>
-          <cylinderGeometry args={[0.07, 0.07, 6.8, 16]} />
-          <meshStandardMaterial color="#fef08a" emissive="#fde047" emissiveIntensity={2.8} />
+        {/* Đường chỉ LED vàng hoàng kim chạy âm chỉ viền trong tạo điểm nhấn thanh lịch */}
+        <mesh position={[-5.60, 4.05, 0.05]}>
+          <boxGeometry args={[0.015, 7.52, 0.02]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.8} />
         </mesh>
-        <mesh position={[5.8, 3.4, 0.08]}>
-          <cylinderGeometry args={[0.07, 0.07, 6.8, 16]} />
-          <meshStandardMaterial color="#fef08a" emissive="#fde047" emissiveIntensity={2.8} />
+        <mesh position={[5.60, 4.05, 0.05]}>
+          <boxGeometry args={[0.015, 7.52, 0.02]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.8} />
         </mesh>
-        <mesh position={[0, 7.8, 0.08]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.07, 0.07, 7.6, 16]} />
-          <meshStandardMaterial color="#fef08a" emissive="#fde047" emissiveIntensity={2.8} />
+        <mesh position={[0, 7.80, 0.05]}>
+          <boxGeometry args={[11.20, 0.015, 0.02]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.8} />
         </mesh>
-        <mesh position={[-3.8, 5.8, 0.08]} rotation={[0, 0, Math.PI / 2]}>
-          <torusGeometry args={[2.0, 0.07, 16, 24, Math.PI / 2]} />
-          <meshStandardMaterial color="#fef08a" emissive="#fde047" emissiveIntensity={2.8} />
-        </mesh>
-        <mesh position={[3.8, 5.8, 0.08]} rotation={[0, 0, 0]}>
-          <torusGeometry args={[2.0, 0.07, 16, 24, Math.PI / 2]} />
-          <meshStandardMaterial color="#fef08a" emissive="#fde047" emissiveIntensity={2.8} />
+        <mesh position={[0, 0.30, 0.05]}>
+          <boxGeometry args={[11.20, 0.015, 0.02]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.8} />
         </mesh>
       </group>
 
-      {/* 2. Màn hình LED Video Wall cong hiển thị đồ họa động sóng chữ & logo 3D (Nằm trọn vẹn trong lòng khung vòm) */}
-      <mesh ref={meshRef} position={[0, 3.85, -0.05]}>
+      {/* 2. BỆ CHỨA MÀN HÌNH LED ĐA TẦNG NGHỆ THUẬT (Architectural Tiered Pedestal) */}
+      <group position={[0, 0, 0]}>
+        {/* Tầng bệ trên: Khối kim loại phay xước sapphire sẫm viền LED */}
+        <mesh position={[0, 0.18, 0.10]} receiveShadow castShadow>
+          <boxGeometry args={[11.8, 0.16, 0.50]} />
+          <meshStandardMaterial color="#0f172a" metalness={0.88} roughness={0.18} />
+        </mesh>
+        {/* Dải LED phát sáng ấm áp chạy dọc gờ bệ trên */}
+        <mesh position={[0, 0.25, 0.35]}>
+          <boxGeometry args={[11.7, 0.02, 0.02]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={2.0} />
+        </mesh>
+
+        {/* Tầng bệ dưới: Đế bục kính đen bóng gương obsidian chịu lực */}
+        <mesh position={[0, 0.04, 0.15]} receiveShadow>
+          <boxGeometry args={[12.4, 0.20, 0.80]} />
+          <meshStandardMaterial color="#050811" metalness={0.95} roughness={0.08} />
+        </mesh>
+        {/* Nẹp chân mạ vàng 3 điểm tiếp sàn */}
+        {[-5.6, 0, 5.6].map((bx, bi) => (
+          <mesh key={`led-pedestal-foot-${bi}`} position={[bx, 0.02, 0.56]}>
+            <boxGeometry args={[0.35, 0.04, 0.06]} />
+            <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.2} metalness={0.9} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* 3. Màn hình LED Video Wall hiển thị đồ họa sóng chữ & logo 3D */}
+      <mesh ref={meshRef} position={[0, 4.05, -0.01]}>
         <planeGeometry args={[11.2, 7.5]} />
         <meshBasicMaterial map={ledTexture ?? undefined} toneMapped={false} />
       </mesh>
@@ -2439,7 +2507,7 @@ function StudioSetWingMotifs() {
   );
 }
 
-/** Khán đài khán giả 6 tầng bậc thang hoành tráng & Phông nền Mặt Trống Đồng Đông Sơn mạ vàng hoàng gia Việt Nam */
+/** Khán đài khán giả 6 tầng bậc thang hoành tráng & Phông nền Mặt Trống Đồng Đông Sơn cổ trầm Việt Nam */
 function AudienceAmphitheaterVietnamese() {
   const dongSonTexture = useMemo(() => {
     if (typeof document === "undefined") return null;
@@ -2449,14 +2517,14 @@ function AudienceAmphitheaterVietnamese() {
     return tex;
   }, []);
 
-  // 6 tầng bậc thang lùi sâu +2.5m (bán kính R = 11.1m đến 17.1m) mở rộng không gian trường quay cực kỳ thoáng đãng
+  // 6 tầng bậc thang bán kính R = 14.5m đến 21.0m lùi sâu hậu trường, tạo không gian thoáng đãng tuyệt đối cho CAM 8
   const TIERS = [
-    { r: 11.1, h: 0.45, seats: 18 },
-    { r: 12.3, h: 0.95, seats: 20 },
-    { r: 13.5, h: 1.45, seats: 22 },
-    { r: 14.7, h: 1.95, seats: 24 },
-    { r: 15.9, h: 2.45, seats: 26 },
-    { r: 17.1, h: 2.95, seats: 28 },
+    { r: 14.5, h: 0.50, seats: 22 },
+    { r: 15.8, h: 1.05, seats: 24 },
+    { r: 17.1, h: 1.60, seats: 26 },
+    { r: 18.4, h: 2.15, seats: 28 },
+    { r: 19.7, h: 2.70, seats: 30 },
+    { r: 21.0, h: 3.25, seats: 32 },
   ];
 
   const SHIRT_COLORS = [
@@ -2467,38 +2535,81 @@ function AudienceAmphitheaterVietnamese() {
   const HAIR_COLORS = ["#0f172a", "#1c1917", "#27170a", "#18181b"];
   const SKIN_COLORS = ["#fed7aa", "#fde68a", "#fcd34d", "#fbcfe8"];
 
+  const startAngle = Math.PI * 0.25;
+  const endAngle = Math.PI * 0.75;
+  const angleSpan = endAngle - startAngle;
+
   return (
     <group position={[0, -0.75, 0]}>
-      {/* ── 1. PHÔNG NỀN DÂN GIAN VIỆT NAM: VÁCH GỖ GỤ ẤM, ĐÈN LỒNG HỘI AN & MẶT TRỐNG ĐỒNG ĐÔNG SƠN MẠ VÀNG (Z = +18.8m) ── */}
-      <group position={[0, 0, 18.8]}>
-        {/* Vách hậu trường ốp gỗ gụ nâu ấm sang trọng (36m x 11.5m) */}
-        <mesh position={[0, 5.0, 0.1]} receiveShadow>
-          <boxGeometry args={[36, 11.5, 0.3]} />
-          <meshStandardMaterial color="#442817" roughness={0.55} metalness={0.2} />
+      {/* ── 1. PHÔNG NỀN DÂN GIAN VIỆT NAM ĐA TẦNG ÁNH SÁNG (Layered Wall Lighting & Dong Son Drum Hero) ── */}
+      <group position={[0, 0, 0]}>
+        {/* Vách cong hình trụ ôm trọn 150° chu vi trường quay (R = 22.5m, H = 14.0m) triệt tiêu hoàn toàn khoảng hở */}
+        <mesh position={[0, 6.25, 0]} receiveShadow>
+          <cylinderGeometry args={[22.5, 22.5, 14.0, 64, 1, true, Math.PI * 0.14, Math.PI * 0.72]} />
+          <meshStandardMaterial color="#2d180b" roughness={0.65} metalness={0.2} side={THREE.BackSide} />
         </mesh>
 
-        {/* Các dải lam gỗ dọc trang trí tiêu âm hai bên cánh vách với nẹp đồng vàng kim */}
-        {[-16, -14, -12, -10, -8, 8, 10, 12, 14, 16].map((lx, i) => (
-          <group key={`back-slat-${i}`} position={[lx, 5.0, 0.28]}>
-            <mesh>
-              <boxGeometry args={[0.32, 11.0, 0.1]} />
-              <meshStandardMaterial color="#2d180b" roughness={0.45} metalness={0.35} />
-            </mesh>
-            {/* Nẹp viền vàng kim loại phát sáng */}
-            <mesh position={[0, 0, 0.055]}>
-              <boxGeometry args={[0.045, 11.0, 0.02]} />
-              <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.3} metalness={0.94} />
-            </mesh>
-          </group>
-        ))}
+        {/* 28 dải lam gỗ dọc trang trí tiêu âm uốn cong dọc theo vách hình trụ với nẹp đồng cổ chìm */}
+        {Array.from({ length: 28 }).map((_, i) => {
+          const a = Math.PI * 0.15 + (i / 27) * (Math.PI * 0.70);
+          const wx = Math.cos(a) * 22.35;
+          const wz = Math.sin(a) * 22.35;
+          return (
+            <group key={`back-slat-${i}`} position={[wx, 6.25, wz]} rotation={[0, -a + Math.PI / 2, 0]}>
+              <mesh>
+                <boxGeometry args={[0.32, 13.2, 0.12]} />
+                <meshStandardMaterial color="#1a0e06" roughness={0.5} metalness={0.3} />
+              </mesh>
+              {/* Nẹp viền đồng cổ bắt sáng ấm áp nổi bật trên vách */}
+              <mesh position={[0, 0, 0.065]}>
+                <boxGeometry args={[0.045, 13.2, 0.02]} />
+                <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.2} roughness={0.3} metalness={0.8} />
+              </mesh>
+            </group>
+          );
+        })}
 
-        {/* Đèn hắt wash ánh sáng vàng ấm lan tỏa trên mặt vách gỗ tiêu âm */}
-        <pointLight position={[-12, 6.0, 0.8]} intensity={4.5} distance={12} color="#fde047" />
-        <pointLight position={[12, 6.0, 0.8]} intensity={4.5} distance={12} color="#fde047" />
+        {/* ── TẦNG ÁNH SÁNG 1: DẢI LED COVE ĐỈNH TƯỜNG (Top Cove Lighting Y = 12.8m, R = 22.3m) ── */}
+        <mesh position={[0, 12.8, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[22.25, 22.38, 64, 1, Math.PI * 0.14, Math.PI * 0.72]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={2.8} side={THREE.DoubleSide} />
+        </mesh>
 
-        {/* CẶP ĐÈN LỒNG ĐỎ HỘI AN PHÁT SÁNG LUNG LINH HAI BÊN CÁNH GÀ (X = ±8.8m, Y = 5.8m) */}
-        {[-8.8, 8.8].map((lx, i) => (
-          <group key={`lantern-${i}`} position={[lx, 5.8, -0.4]}>
+        {/* ── TẦNG ÁNH SÁNG 2A: DẢI LED COVE TRUNG CẢNH TRÊN (Mid-Upper Cove Lighting Y = 8.8m, R = 22.3m) ── */}
+        <mesh position={[0, 8.8, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[22.25, 22.38, 64, 1, Math.PI * 0.14, Math.PI * 0.72]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={2.2} side={THREE.DoubleSide} />
+        </mesh>
+
+        {/* ── TẦNG ÁNH SÁNG 2B: VÀNG KIM HALO HÀO QUANG QUANH TRỐNG ĐỒNG ĐÔNG SƠN (Y = 5.4m, Z = 22.05m) ── */}
+        <mesh position={[0, 5.4, 22.0]}>
+          <torusGeometry args={[4.12, 0.06, 16, 64]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={2.8} />
+        </mesh>
+
+        {/* ── TẦNG ÁNH SÁNG 2C: DẢI LED COVE TRUNG CẢNH DƯỚI (Mid-Lower Cove Lighting Y = 6.2m, R = 22.3m) ── */}
+        <mesh position={[0, 6.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[22.25, 22.38, 64, 1, Math.PI * 0.14, Math.PI * 0.72]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={1.8} side={THREE.DoubleSide} />
+        </mesh>
+
+        {/* ── TẦNG ÁNH SÁNG 3: DẢI LED COVE UPLIGHT CHÂN VÁCH SAU TẦNG 6 (Y = 3.6m, R = 21.6m) ── */}
+        <mesh position={[0, 3.6, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[21.55, 21.68, 64, 1, Math.PI * 0.14, Math.PI * 0.72]} />
+          <meshStandardMaterial color="#fbbf24" emissive="#f59e0b" emissiveIntensity={2.4} side={THREE.DoubleSide} />
+        </mesh>
+
+        {/* Đèn hắt wash ánh sáng vàng ấm lan tỏa đa điểm trên mặt vách gỗ tiêu âm loại bỏ hoàn toàn vùng tối */}
+        <pointLight position={[-8, 6.5, 19.5]} intensity={9.5} distance={18} color="#fed7aa" />
+        <pointLight position={[8, 6.5, 19.5]} intensity={9.5} distance={18} color="#fed7aa" />
+        <pointLight position={[-12, 9.0, 19.0]} intensity={9.0} distance={18} color="#fed7aa" />
+        <pointLight position={[12, 9.0, 19.0]} intensity={9.0} distance={18} color="#fed7aa" />
+        <pointLight position={[0, 9.2, 20.0]} intensity={11.0} distance={18} color="#fed7aa" />
+        <pointLight position={[0, 2.5, 16.0]} intensity={7.0} distance={16} color="#fed7aa" />
+
+        {/* CẶP ĐÈN LỒNG ĐỎ HỘI AN PHÁT SÁNG LUNG LINH HAI BÊN CÁNH GÀ (X = ±10.8m, Y = 6.2m, Z = 20.0m) */}
+        {[-10.8, 10.8].map((lx, i) => (
+          <group key={`lantern-${i}`} position={[lx, 6.2, 20.0]}>
             {/* Dây treo kim loại mạ vàng */}
             <mesh position={[0, 0.65, 0]}>
               <cylinderGeometry args={[0.012, 0.012, 1.3, 8]} />
@@ -2515,14 +2626,14 @@ function AudienceAmphitheaterVietnamese() {
               <meshStandardMaterial
                 color="#ef4444"
                 emissive="#dc2626"
-                emissiveIntensity={2.2}
+                emissiveIntensity={2.0}
                 roughness={0.3}
               />
             </mesh>
             {/* Vành nan tre vàng bo giữa thân đèn */}
             <mesh position={[0, 0, 0]}>
               <torusGeometry args={[0.43, 0.02, 12, 24]} />
-              <meshStandardMaterial color="#fef08a" emissive="#f59e0b" emissiveIntensity={1.5} />
+              <meshStandardMaterial color="#fef08a" emissive="#f59e0b" emissiveIntensity={1.2} />
             </mesh>
             {/* Nắp đáy vàng */}
             <mesh position={[0, -0.36, 0]}>
@@ -2535,75 +2646,111 @@ function AudienceAmphitheaterVietnamese() {
               <meshStandardMaterial color="#b91c1c" roughness={0.6} />
             </mesh>
             {/* Ánh sáng đèn lồng tỏa ra xung quanh */}
-            <pointLight color="#ef4444" intensity={5.0} distance={10} />
+            <pointLight color="#ef4444" intensity={5.0} distance={12} />
           </group>
         ))}
 
-        {/* MẶT TRỐNG ĐỒNG ĐÔNG SƠN KHỔNG LỒ (Đường kính 7.4m) MẠ VÀNG HOÀNG GIA */}
-        <group position={[0, 4.8, -0.10]}>
-          {/* Đĩa tròn mặt trống đồng Đông Sơn sắc nét */}
+        {/* MẶT TRỐNG ĐỒNG ĐÔNG SƠN CỔ CHÌM (Đường kính 8.0m) TƯƠNG TÁC ÁNH SÁNG ĐÈN CHIẾU RỌI */}
+        <group position={[0, 5.4, 22.1]} rotation={[0, Math.PI, 0]}>
+          {/* Đĩa tròn mặt trống đồng Đông Sơn khắc chìm cổ */}
           <mesh position={[0, 0, 0]}>
-            <circleGeometry args={[3.7, 64]} />
-            <meshBasicMaterial map={dongSonTexture ?? undefined} toneMapped={false} side={THREE.DoubleSide} />
+            <circleGeometry args={[4.0, 64]} />
+            <meshStandardMaterial
+              map={dongSonTexture ?? undefined}
+              roughness={0.42}
+              metalness={0.50}
+              color="#b47036"
+              emissive="#3d1d08"
+              emissiveIntensity={0.45}
+              side={THREE.DoubleSide}
+            />
           </mesh>
-          {/* Viền ngoài khung đồng vàng hoàng kim nổi khối 3D */}
+          {/* Viền ngoài khung đồng cổ đúc khối 3D */}
           <mesh position={[0, 0, -0.02]}>
-            <torusGeometry args={[3.75, 0.16, 16, 64]} />
-            <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={1.5} metalness={0.95} roughness={0.1} />
-          </mesh>
-          {/* Vòng hào quang LED vàng hắt lưng (Backlight Halo) */}
-          <mesh position={[0, 0, 0.06]}>
-            <ringGeometry args={[3.76, 4.08, 64]} />
-            <meshBasicMaterial color="#fbbf24" toneMapped={false} side={THREE.DoubleSide} />
+            <torusGeometry args={[4.05, 0.16, 16, 64]} />
+            <meshStandardMaterial color="#854d1d" roughness={0.45} metalness={0.65} />
           </mesh>
         </group>
       </group>
 
-      {/* ── 2. ĐÈN HẮT CHIẾU SÁNG RIÊNG CHO KHÁN ĐÀI & TRỐNG ĐỒNG ── */}
-      <spotLight
-        position={[-7, 10.5, 9.5]}
-        target-position={[0, 4.8, 18.8]}
-        intensity={12.0}
-        angle={0.75}
-        penumbra={0.4}
-        color="#fffbeb"
-      />
-      <spotLight
-        position={[7, 10.5, 9.5]}
-        target-position={[0, 4.8, 18.8]}
-        intensity={12.0}
-        angle={0.75}
-        penumbra={0.4}
-        color="#fffbeb"
-      />
-      <pointLight position={[0, 5.5, 16.5]} intensity={6.0} distance={22} color="#fef08a" />
-      <pointLight position={[0, 2.0, 11.0]} intensity={4.5} distance={15} color="#fed7aa" />
+      {/* ── 2. ĐÈN CHIẾU RỌI TRỰC TIẾP LÊN MẶT TRỐNG ĐỒNG ĐÔNG SƠN & VÁCH HẬU ── */}
+      <pointLight position={[0, 5.8, 18.5]} intensity={12.0} distance={18} color="#fed7aa" />
+      <pointLight position={[-5.0, 6.5, 18.5]} intensity={8.5} distance={16} color="#fef08a" />
+      <pointLight position={[5.0, 6.5, 18.5]} intensity={8.5} distance={16} color="#fef08a" />
+      <pointLight position={[0, 2.5, 14.5]} intensity={6.0} distance={16} color="#fed7aa" />
 
-      {/* ── 3. HỆ THỐNG KHÁN ĐÀI 6 TẦNG BẬC THANG CÁNH CUNG & GHẾ RẠP NHUNG ĐỎ BURGUNDY ── */}
+      {/* ── 3. LAN CAN THANG ĐI LẠI HAI BÊN KHÁN ĐÀI (Side Staircase Balustrades) — Thanh mảnh, không che khuất CAM 8 ── */}
+      {[startAngle, endAngle].map((ang, pi) => {
+        return (
+          <group key={`stair-railing-${pi}`}>
+            {TIERS.map((tier, tIdx) => {
+              const rx = Math.cos(ang) * tier.r;
+              const rz = Math.sin(ang) * tier.r;
+              return (
+                <group key={`post-${pi}-${tIdx}`} position={[rx, tier.h, rz]}>
+                  {/* Trụ lan can kim loại inox mạ đồng cổ */}
+                  <mesh position={[0, 0.42, 0]}>
+                    <cylinderGeometry args={[0.02, 0.02, 0.84, 8]} />
+                    <meshStandardMaterial color="#784f27" roughness={0.3} metalness={0.8} />
+                  </mesh>
+                  {/* Quả cầu đỉnh trụ lan can */}
+                  <mesh position={[0, 0.85, 0]}>
+                    <sphereGeometry args={[0.035, 12, 12]} />
+                    <meshStandardMaterial color="#fbbf24" metalness={0.9} roughness={0.15} />
+                  </mesh>
+                </group>
+              );
+            })}
+          </group>
+        );
+      })}
+
+      {/* ── 4. HỆ THỐNG KHÁN ĐÀI 6 TẦNG BẬC THANG CÓ NỀN MÓNG ĐẶC KÍN (Solid Foundations) & GHẾ RẠP NHUNG ĐỎ BURGUNDY PHÓNG TO +28% ── */}
       {TIERS.map((tier, tIdx) => {
-        const startAngle = Math.PI * 0.26;
-        const endAngle = Math.PI * 0.74;
-        const angleSpan = endAngle - startAngle;
-
         return (
           <group key={`tier-${tIdx}`}>
+            {/* Mặt đứng trước của bục bậc thang (Front Riser) — Chặn kín từ sàn Y=0 lên đến bậc */}
+            <mesh position={[0, tier.h / 2, 0]} receiveShadow>
+              <cylinderGeometry
+                args={[tier.r - 0.78, tier.r - 0.78, tier.h, 48, 1, true, startAngle, angleSpan]}
+              />
+              <meshStandardMaterial color="#080d17" roughness={0.7} metalness={0.3} side={THREE.DoubleSide} />
+            </mesh>
+
+            {/* Mặt đứng sau của bục bậc thang (Back Riser) */}
+            <mesh position={[0, tier.h / 2, 0]} receiveShadow>
+              <cylinderGeometry
+                args={[tier.r + 0.78, tier.r + 0.78, tier.h, 48, 1, true, startAngle, angleSpan]}
+              />
+              <meshStandardMaterial color="#080d17" roughness={0.7} metalness={0.3} side={THREE.DoubleSide} />
+            </mesh>
+
+            {/* Hai đầu chái bậc thang bịt kín hoàn toàn khoảng hở (Tier Side Endcaps) */}
+            {[startAngle, endAngle].map((ang, eIdx) => {
+              const ex = Math.cos(ang) * tier.r;
+              const ez = Math.sin(ang) * tier.r;
+              return (
+                <mesh
+                  key={`tier-endcap-${tIdx}-${eIdx}`}
+                  position={[ex, tier.h / 2, ez]}
+                  rotation={[0, -ang + Math.PI / 2, 0]}
+                  receiveShadow
+                >
+                  <boxGeometry args={[0.08, tier.h, 1.56]} />
+                  <meshStandardMaterial color="#080d17" roughness={0.7} metalness={0.3} />
+                </mesh>
+              );
+            })}
+
             {/* Mặt sàn bậc thang đi lại (Floor Tread) có thảm tối màu */}
-            <mesh position={[0, tier.h, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-              <ringGeometry args={[tier.r - 0.70, tier.r + 0.70, 64, 1, startAngle, angleSpan]} />
+            <mesh position={[0, tier.h + 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+              <ringGeometry args={[tier.r - 0.78, tier.r + 0.78, 64, 1, startAngle, angleSpan]} />
               <meshStandardMaterial color="#0c1220" roughness={0.7} metalness={0.3} side={THREE.DoubleSide} />
             </mesh>
 
-            {/* Vách đứng bục bậc thang (Riser) */}
-            <mesh position={[0, tier.h / 2, 0]} receiveShadow>
-              <cylinderGeometry
-                args={[tier.r - 0.70, tier.r - 0.70, tier.h, 48, 1, true, startAngle, angleSpan]}
-              />
-              <meshStandardMaterial color="#080d17" roughness={0.6} metalness={0.4} side={THREE.DoubleSide} />
-            </mesh>
-
             {/* Dải đèn LED phát sáng chạy dọc mép gờ bậc thang (Stair Nosing Light) */}
-            <mesh position={[0, tier.h + 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[tier.r - 0.71, tier.r - 0.67, 64, 1, startAngle, angleSpan]} />
+            <mesh position={[0, tier.h + 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[tier.r - 0.79, tier.r - 0.75, 64, 1, startAngle, angleSpan]} />
               <meshBasicMaterial color={tIdx % 2 === 0 ? "#fbbf24" : "#f59e0b"} toneMapped={false} side={THREE.DoubleSide} />
             </mesh>
 
@@ -2622,93 +2769,93 @@ function AudienceAmphitheaterVietnamese() {
 
               return (
                 <group key={`seat-${tIdx}-${sIdx}`} position={[sx, tier.h, sz]} rotation={[0, -a + Math.PI / 2, 0]}>
-                  {/* ── GHẾ RẠP NHUNG ĐỎ BURGUNDY CHUẨN XÁC ── */}
+                  {/* ── GHẾ RẠP NHUNG ĐỎ BURGUNDY PHÓNG TO +28% CHUẨN XÁC ── */}
                   {/* Chân ghế thép tròn đôi sơn đen dập bản mã bắt sàn */}
-                  <mesh position={[-0.17, 0.17, 0]}>
-                    <cylinderGeometry args={[0.02, 0.02, 0.34, 8]} />
+                  <mesh position={[-0.20, 0.18, 0]}>
+                    <cylinderGeometry args={[0.024, 0.024, 0.36, 8]} />
                     <meshStandardMaterial color="#0f172a" metalness={0.92} roughness={0.15} />
                   </mesh>
-                  <mesh position={[0.17, 0.17, 0]}>
-                    <cylinderGeometry args={[0.02, 0.02, 0.34, 8]} />
+                  <mesh position={[0.20, 0.18, 0]}>
+                    <cylinderGeometry args={[0.024, 0.024, 0.36, 8]} />
                     <meshStandardMaterial color="#0f172a" metalness={0.92} roughness={0.15} />
                   </mesh>
 
-                  {/* Đệm ngồi bọc nhung đỏ êm ái dày dặn */}
-                  <mesh position={[0, 0.35, 0]}>
-                    <boxGeometry args={[0.48, 0.12, 0.44]} />
+                  {/* Đệm ngồi bọc nhung đỏ êm ái dày dặn (rộng 0.58m, sâu 0.52m) */}
+                  <mesh position={[0, 0.38, 0]}>
+                    <boxGeometry args={[0.58, 0.14, 0.52]} />
                     <meshStandardMaterial color={seatColor} roughness={0.7} metalness={0.1} />
                   </mesh>
 
                   {/* Tựa lưng ghế rạp nhung vươn cao vượt vai ngả nhẹ 10° */}
-                  <mesh position={[0, 0.78, 0.20]} rotation={[-0.12, 0, 0]}>
-                    <boxGeometry args={[0.48, 0.72, 0.10]} />
+                  <mesh position={[0, 0.86, 0.23]} rotation={[-0.12, 0, 0]}>
+                    <boxGeometry args={[0.58, 0.85, 0.12]} />
                     <meshStandardMaterial color={seatColor} roughness={0.7} metalness={0.1} />
                   </mesh>
 
                   {/* Đệm gối tựa đầu nổi khối trên đỉnh tựa lưng (Headrest) */}
-                  <mesh position={[0, 1.08, 0.25]} rotation={[-0.12, 0, 0]}>
-                    <boxGeometry args={[0.42, 0.18, 0.08]} />
+                  <mesh position={[0, 1.22, 0.29]} rotation={[-0.12, 0, 0]}>
+                    <boxGeometry args={[0.50, 0.22, 0.10]} />
                     <meshStandardMaterial color="#9f1239" roughness={0.65} metalness={0.12} />
                   </mesh>
 
                   {/* Tay vịn gỗ gụ sang trọng hai bên ghế */}
-                  <mesh position={[-0.26, 0.54, 0.04]}>
-                    <boxGeometry args={[0.06, 0.05, 0.38]} />
+                  <mesh position={[-0.31, 0.58, 0.04]}>
+                    <boxGeometry args={[0.07, 0.06, 0.45]} />
                     <meshStandardMaterial color="#3b1708" roughness={0.3} metalness={0.25} />
                   </mesh>
-                  <mesh position={[0.26, 0.54, 0.04]}>
-                    <boxGeometry args={[0.06, 0.05, 0.38]} />
+                  <mesh position={[0.31, 0.58, 0.04]}>
+                    <boxGeometry args={[0.07, 0.06, 0.45]} />
                     <meshStandardMaterial color="#3b1708" roughness={0.3} metalness={0.25} />
                   </mesh>
 
-                  {/* ── KHÁN GIẢ 3D TỶ LỆ NGƯỜI NGỒI CHÂN THỰC ── */}
+                  {/* ── KHÁN GIẢ 3D TỶ LỆ NGƯỜI THẬT PHÓNG TO +28% ── */}
                   {/* Đùi ngồi trên đệm ghế */}
-                  <mesh position={[0, 0.42, -0.04]}>
-                    <boxGeometry args={[0.36, 0.14, 0.34]} />
+                  <mesh position={[0, 0.46, -0.05]}>
+                    <boxGeometry args={[0.44, 0.16, 0.40]} />
                     <meshStandardMaterial color={sIdx % 3 === 0 ? "#1e293b" : "#334155"} roughness={0.7} />
                   </mesh>
 
                   {/* Cẳng chân buông thẳng vuông góc xuống mặt sàn bậc thang */}
-                  <mesh position={[-0.11, 0.20, -0.21]}>
-                    <cylinderGeometry args={[0.05, 0.045, 0.38, 8]} />
+                  <mesh position={[-0.13, 0.22, -0.25]}>
+                    <cylinderGeometry args={[0.06, 0.055, 0.44, 8]} />
                     <meshStandardMaterial color={sIdx % 3 === 0 ? "#1e293b" : "#334155"} roughness={0.7} />
                   </mesh>
-                  <mesh position={[0.11, 0.20, -0.21]}>
-                    <cylinderGeometry args={[0.05, 0.045, 0.38, 8]} />
+                  <mesh position={[0.13, 0.22, -0.25]}>
+                    <cylinderGeometry args={[0.06, 0.055, 0.44, 8]} />
                     <meshStandardMaterial color={sIdx % 3 === 0 ? "#1e293b" : "#334155"} roughness={0.7} />
                   </mesh>
 
                   {/* Đôi giày đặt chắc chắn trên mặt sàn bậc thang */}
-                  <mesh position={[-0.11, 0.03, -0.25]}>
-                    <boxGeometry args={[0.09, 0.06, 0.14]} />
+                  <mesh position={[-0.13, 0.04, -0.29]}>
+                    <boxGeometry args={[0.11, 0.07, 0.16]} />
                     <meshStandardMaterial color="#0f172a" roughness={0.8} />
                   </mesh>
-                  <mesh position={[0.11, 0.03, -0.25]}>
-                    <boxGeometry args={[0.09, 0.06, 0.14]} />
+                  <mesh position={[0.13, 0.04, -0.29]}>
+                    <boxGeometry args={[0.11, 0.07, 0.16]} />
                     <meshStandardMaterial color="#0f172a" roughness={0.8} />
                   </mesh>
 
                   {/* Thân áo / Ngực khán giả có vai uốn tự nhiên */}
-                  <mesh position={[0, 0.74, -0.02]}>
-                    <boxGeometry args={[0.36, 0.46, 0.22]} />
+                  <mesh position={[0, 0.84, -0.02]}>
+                    <boxGeometry args={[0.44, 0.54, 0.26]} />
                     <meshStandardMaterial color={shirtColor} roughness={0.5} />
                   </mesh>
 
                   {/* Cổ áo */}
-                  <mesh position={[0, 1.01, -0.02]}>
-                    <cylinderGeometry args={[0.06, 0.07, 0.09, 10]} />
+                  <mesh position={[0, 1.15, -0.02]}>
+                    <cylinderGeometry args={[0.07, 0.08, 0.10, 10]} />
                     <meshStandardMaterial color={skinColor} roughness={0.5} />
                   </mesh>
 
                   {/* Đầu khán giả */}
-                  <mesh position={[0, 1.13, -0.02]}>
-                    <sphereGeometry args={[0.11, 14, 14]} />
+                  <mesh position={[0, 1.28, -0.02]}>
+                    <sphereGeometry args={[0.13, 14, 14]} />
                     <meshStandardMaterial color={skinColor} roughness={0.5} />
                   </mesh>
 
                   {/* Mái tóc đa dạng */}
-                  <mesh position={[0, 1.17, -0.02]}>
-                    <sphereGeometry args={[0.115, 14, 14, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
+                  <mesh position={[0, 1.33, -0.02]}>
+                    <sphereGeometry args={[0.135, 14, 14, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
                     <meshStandardMaterial color={hairColor} roughness={0.6} />
                   </mesh>
 
@@ -2716,36 +2863,36 @@ function AudienceAmphitheaterVietnamese() {
                   {isClapping ? (
                     <group>
                       {/* Tay gập phía trước vỗ tay */}
-                      <mesh position={[-0.12, 0.60, -0.16]} rotation={[0.45, 0, -0.2]}>
-                        <cylinderGeometry args={[0.04, 0.045, 0.28, 8]} />
+                      <mesh position={[-0.14, 0.68, -0.19]} rotation={[0.45, 0, -0.2]}>
+                        <cylinderGeometry args={[0.048, 0.052, 0.32, 8]} />
                         <meshStandardMaterial color={shirtColor} roughness={0.5} />
                       </mesh>
-                      <mesh position={[0.12, 0.60, -0.16]} rotation={[0.45, 0, 0.2]}>
-                        <cylinderGeometry args={[0.04, 0.045, 0.28, 8]} />
+                      <mesh position={[0.14, 0.68, -0.19]} rotation={[0.45, 0, 0.2]}>
+                        <cylinderGeometry args={[0.048, 0.052, 0.32, 8]} />
                         <meshStandardMaterial color={shirtColor} roughness={0.5} />
                       </mesh>
-                      <mesh position={[0, 0.52, -0.24]}>
-                        <sphereGeometry args={[0.06, 8, 8]} />
+                      <mesh position={[0, 0.59, -0.28]}>
+                        <sphereGeometry args={[0.07, 8, 8]} />
                         <meshStandardMaterial color={skinColor} roughness={0.5} />
                       </mesh>
                     </group>
                   ) : (
                     <group>
                       {/* Tay tựa trên tay vịn gỗ gụ */}
-                      <mesh position={[-0.22, 0.58, 0.04]} rotation={[0.1, 0, 0]}>
-                        <cylinderGeometry args={[0.04, 0.04, 0.28, 8]} />
+                      <mesh position={[-0.26, 0.66, 0.04]} rotation={[0.1, 0, 0]}>
+                        <cylinderGeometry args={[0.048, 0.05, 0.32, 8]} />
                         <meshStandardMaterial color={shirtColor} roughness={0.5} />
                       </mesh>
-                      <mesh position={[0.22, 0.58, 0.04]} rotation={[0.1, 0, 0]}>
-                        <cylinderGeometry args={[0.04, 0.04, 0.28, 8]} />
+                      <mesh position={[0.26, 0.66, 0.04]} rotation={[0.1, 0, 0]}>
+                        <cylinderGeometry args={[0.048, 0.05, 0.32, 8]} />
                         <meshStandardMaterial color={shirtColor} roughness={0.5} />
                       </mesh>
-                      <mesh position={[-0.24, 0.55, -0.12]}>
-                        <sphereGeometry args={[0.045, 8, 8]} />
+                      <mesh position={[-0.28, 0.62, -0.14]}>
+                        <sphereGeometry args={[0.055, 8, 8]} />
                         <meshStandardMaterial color={skinColor} roughness={0.5} />
                       </mesh>
-                      <mesh position={[0.24, 0.55, -0.12]}>
-                        <sphereGeometry args={[0.045, 8, 8]} />
+                      <mesh position={[0.28, 0.62, -0.14]}>
+                        <sphereGeometry args={[0.055, 8, 8]} />
                         <meshStandardMaterial color={skinColor} roughness={0.5} />
                       </mesh>
                     </group>
@@ -2858,33 +3005,33 @@ function StudioCeilingRig() {
   );
 }
 
-/** Sân khấu trường quay TV cao cấp: Sàn Bạc Ánh Kim Metallic (Tối ưu độ phân giải theo mức đồ họa) */
+/** Sân khấu trường quay TV cao cấp: Sàn Gương Đen Epoxy Phản Chiếu Sang Trọng (Chuẩn ảnh VTV3 27/06/2015) */
 function StudioFloor({ quality = "HIGH" }: { quality?: "HIGH" | "MEDIUM" | "LOW" }) {
   return (
     <group position={[0, -0.75, 0]}>
-      {/* 1. Sàn trường quay mở rộng toàn cảnh - Tone xám bạc công nghệ cao không bị tối đen */}
+      {/* 1. Sàn trường quay mở rộng toàn cảnh - Tone đen epoxy bóng gương cao cấp */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[70, 70]} />
         <meshStandardMaterial
-          color="#64748b"
-          emissive="#334155"
-          emissiveIntensity={0.25}
-          roughness={0.18}
-          metalness={0.5}
+          color="#060a14"
+          emissive="#020408"
+          emissiveIntensity={0.2}
+          roughness={0.12}
+          metalness={0.88}
         />
       </mesh>
 
-      {/* Lưới kẻ kính sàn trường quay TV phản quang */}
+      {/* Lưới kẻ kính sàn trường quay TV phản quang chìm */}
       {[-21, -18, -15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15, 18, 21].map((x) => (
         <mesh key={`grid-x-${x}`} position={[x, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[0.03, 50]} />
-          <meshStandardMaterial color="#94a3b8" emissive="#cbd5e1" emissiveIntensity={0.8} />
+          <planeGeometry args={[0.02, 50]} />
+          <meshStandardMaterial color="#334155" emissive="#1e293b" emissiveIntensity={0.5} />
         </mesh>
       ))}
       {[-21, -18, -15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15, 18, 21].map((z) => (
         <mesh key={`grid-z-${z}`} position={[0, 0.005, z]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[50, 0.03]} />
-          <meshStandardMaterial color="#94a3b8" emissive="#cbd5e1" emissiveIntensity={0.8} />
+          <planeGeometry args={[50, 0.02]} />
+          <meshStandardMaterial color="#334155" emissive="#1e293b" emissiveIntensity={0.5} />
         </mesh>
       ))}
 
@@ -2892,17 +3039,17 @@ function StudioFloor({ quality = "HIGH" }: { quality?: "HIGH" | "MEDIUM" | "LOW"
       <mesh position={[0, 0.02, 0]} receiveShadow>
         <cylinderGeometry args={[12.0, 12.05, 0.04, 64]} />
         <meshStandardMaterial
-          color="#94a3b8"
-          emissive="#475569"
+          color="#0b1324"
+          emissive="#040812"
           emissiveIntensity={0.2}
           roughness={0.12}
-          metalness={0.7}
+          metalness={0.85}
         />
       </mesh>
 
       {/* Vành LED biên ngoài sàn trường quay R = 11.9m */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.042, 0]}>
-        <ringGeometry args={[11.80, 11.92, 64]} />
+        <ringGeometry args={[11.82, 11.92, 64]} />
         <meshStandardMaterial
           color="#fde047"
           emissive="#f59e0b"
@@ -2916,22 +3063,22 @@ function StudioFloor({ quality = "HIGH" }: { quality?: "HIGH" | "MEDIUM" | "LOW"
       <mesh position={[0, 0.045, 0]} receiveShadow>
         <cylinderGeometry args={[10.0, 10.05, 0.05, 64]} />
         <meshStandardMaterial
-          color="#cbd5e1"
-          roughness={0.10}
-          metalness={0.85}
+          color="#0f172a"
+          roughness={0.08}
+          metalness={0.92}
         />
       </mesh>
 
-      {/* Mặt sàn kính bạc ánh kim: LOW: Sàn kim loại khuếch tán 0 pass phụ; HIGH/MEDIUM: Reflector tối ưu */}
+      {/* Mặt sàn gương đen phản chiếu: LOW: Sàn kim loại tối ưu; HIGH/MEDIUM: Reflector tối ưu gương bóng */}
       {quality === "LOW" ? (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.071, 0]} receiveShadow>
           <circleGeometry args={[9.95, 48]} />
           <meshStandardMaterial
-            color="#cbd5e1"
-            roughness={0.25}
-            metalness={0.65}
-            emissive="#1e293b"
-            emissiveIntensity={0.25}
+            color="#090f1d"
+            roughness={0.14}
+            metalness={0.85}
+            emissive="#040710"
+            emissiveIntensity={0.3}
           />
         </mesh>
       ) : (
@@ -2940,15 +3087,15 @@ function StudioFloor({ quality = "HIGH" }: { quality?: "HIGH" | "MEDIUM" | "LOW"
           <MeshReflectorMaterial
             blur={[250, 80]}
             resolution={quality === "HIGH" ? 512 : 256}
-            mirror={0.28}
-            mixBlur={1.0}
-            mixStrength={1.2}
-            roughness={0.28}
+            mirror={0.52}
+            mixBlur={0.8}
+            mixStrength={2.0}
+            roughness={0.10}
             depthScale={0}
             minDepthThreshold={0}
             maxDepthThreshold={40}
-            color="#cbd5e1"
-            metalness={0.55}
+            color="#080e1c"
+            metalness={0.85}
           />
         </mesh>
       )}
@@ -2959,9 +3106,27 @@ function StudioFloor({ quality = "HIGH" }: { quality?: "HIGH" | "MEDIUM" | "LOW"
         <meshStandardMaterial color="#f8fafc" metalness={0.98} roughness={0.03} />
       </mesh>
 
-      {/* Vòng spotlight sân khấu hoàng kim ôm sát chân cỗ máy nón */}
+      {/* Các dải chỉ bạc LED uốn lượn cong mềm mại trên mặt sàn theo ảnh VTV3 27/06/2015 */}
+      {[
+        { r1: 3.35, r2: 3.42, col: "#e2e8f0", em: "#cbd5e1", intensity: 1.8 },
+        { r1: 5.40, r2: 5.48, col: "#94a3b8", em: "#64748b", intensity: 1.2 },
+        { r1: 7.60, r2: 7.70, col: "#cbd5e1", em: "#94a3b8", intensity: 1.4 },
+      ].map((ring, idx) => (
+        <mesh key={`floor-ribbon-${idx}`} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0735, 0]}>
+          <ringGeometry args={[ring.r1, ring.r2, 64]} />
+          <meshStandardMaterial
+            color={ring.col}
+            emissive={ring.em}
+            emissiveIntensity={ring.intensity}
+            roughness={0.1}
+            metalness={0.85}
+          />
+        </mesh>
+      ))}
+
+      {/* Vòng spotlight sân khấu hoàng kim ôm chân cỗ máy nón 5.4m */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.074, 0]}>
-        <ringGeometry args={[2.62, 2.76, 64]} />
+        <ringGeometry args={[3.25, 3.45, 64]} />
         <meshStandardMaterial
           color="#fbbf24"
           emissive="#f59e0b"
@@ -2973,13 +3138,13 @@ function StudioFloor({ quality = "HIGH" }: { quality?: "HIGH" | "MEDIUM" | "LOW"
 
       {/* Soft Center Stage Glow Disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0735, 0]}>
-        <circleGeometry args={[2.60, 48]} />
+        <circleGeometry args={[3.24, 48]} />
         <meshStandardMaterial
-          color="#e2e8f0"
-          emissive="#cbd5e1"
-          emissiveIntensity={0.8}
-          roughness={0.06}
-          metalness={0.4}
+          color="#1e293b"
+          emissive="#0f172a"
+          emissiveIntensity={0.6}
+          roughness={0.1}
+          metalness={0.8}
         />
       </mesh>
     </group>

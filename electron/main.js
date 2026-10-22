@@ -1,6 +1,8 @@
 const { app, BrowserWindow, globalShortcut, Menu } = require("electron");
 const http = require("http");
 const path = require("path");
+const fs = require("fs");
+const { spawn } = require("child_process");
 
 // ── CHROMIUM HARDWARE ACCELERATION & GPU OPTIMIZATION FLAGS ──
 // Bỏ qua giới hạn background throttling và mở khóa hiệu năng tối đa của GPU
@@ -14,8 +16,44 @@ app.commandLine.appendSwitch("force_high_performance_gpu");
 app.commandLine.appendSwitch("high-dpi-support", "1");
 
 let mainWindow = null;
+let serverProcess = null;
 
-function checkServerReady(url, timeoutMs = 15000) {
+function startBackendServerIfNeeded(url) {
+  return new Promise((resolve) => {
+    const testReq = http.get(url, (res) => {
+      resolve(true); // Server is already running
+    });
+    testReq.on("error", () => {
+      // Server not running, auto-spawn background node server
+      const appRoot = path.resolve(__dirname, "..");
+      const serverJs = path.join(appRoot, "server.js");
+      if (fs.existsSync(serverJs)) {
+        try {
+          serverProcess = spawn("node", ["server.js"], {
+            cwd: appRoot,
+            env: { ...process.env, PORT: "3000" },
+            stdio: "ignore",
+          });
+        } catch (err) {
+          try {
+            serverProcess = spawn(process.execPath, [serverJs], {
+              cwd: appRoot,
+              env: { ...process.env, PORT: "3000", ELECTRON_RUN_AS_NODE: "1" },
+              stdio: "ignore",
+            });
+          } catch (_) {}
+        }
+      }
+      resolve(false);
+    });
+    testReq.setTimeout(600, () => {
+      testReq.destroy();
+      resolve(false);
+    });
+  });
+}
+
+function checkServerReady(url, timeoutMs = 25000) {
   const startTime = Date.now();
   return new Promise((resolve) => {
     const interval = setInterval(() => {
@@ -108,8 +146,11 @@ async function createWindow() {
     mainWindow.show();
   });
 
+  // Đảm bảo server backend đang chạy (nếu chưa thì tự động khởi chạy ngầm)
+  await startBackendServerIfNeeded(targetUrl);
+
   // Kiểm tra kết nối tới server
-  const isReady = await checkServerReady(targetUrl, 20000);
+  const isReady = await checkServerReady(targetUrl, 25000);
   if (isReady) {
     mainWindow.loadURL(targetUrl);
   } else {
@@ -135,6 +176,14 @@ app.whenReady().then(() => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on("will-quit", () => {
+  if (serverProcess) {
+    try {
+      serverProcess.kill();
+    } catch (_) {}
+  }
 });
 
 app.on("window-all-closed", () => {

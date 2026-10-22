@@ -2514,18 +2514,12 @@ export default function MagicWheelBoard({
   const currentPuzzleRef = useRef(currentPuzzle);
   currentPuzzleRef.current = currentPuzzle;
 
+  // Tuyệt đối không tự động mở bảng khi vào vòng Toss-Up hoặc bất kỳ vòng nào - chỉ mở khi Admin/MC bấm nút
   useEffect(() => {
-    if (phase !== "TOSS_UP_RUNNING" && phase !== "TOSS_UP_REVEALING") {
-      return;
-    }
     if (effectiveBoardStage === "EMPTY_56") {
-      handleOpenBoard();
+      setAnimRevealedIndices(new Set());
     }
-  }, [
-    phase,
-    effectiveBoardStage,
-    handleOpenBoard,
-  ]);
+  }, [effectiveBoardStage]);
 
   // ── Audio Engine Hooks ───────────────────────────────────────────────────
   const prevIsSpinning = useRef<boolean>(false);

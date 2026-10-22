@@ -428,7 +428,8 @@ export default function AdminSandboxPage() {
   const [showUtilitiesDropdown, setShowUtilitiesDropdown] = useState(false);
   const [showMagicWheelMCDropdown, setShowMagicWheelMCDropdown] = useState(false);
   const [revealPayload, setRevealPayload] = useState<any>(null);
-  const [mobileTab, setMobileTab] = useState<"PLAYER" | "DISPLAY" | "HOST">("PLAYER");
+  const [mobileTab, setMobileTab] = useState<"PLAYER" | "DISPLAY" | "HOST">("DISPLAY");
+  const [showDesktopHostPanel, setShowDesktopHostPanel] = useState(false);
 
   // Sockets
   const adminSocketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
@@ -9886,6 +9887,18 @@ export default function AdminSandboxPage() {
           <div className="flex lg:hidden items-center p-0.5 rounded-xl bg-black/40 border border-white/10 shrink-0">
             <button
               type="button"
+              onClick={() => setMobileTab("DISPLAY")}
+              className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                mobileTab === "DISPLAY"
+                  ? "bg-cyan-600 text-white shadow"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <span>📺</span>
+              <span>Màn chiếu</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setMobileTab("PLAYER")}
               className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
                 mobileTab === "PLAYER"
@@ -9896,15 +9909,6 @@ export default function AdminSandboxPage() {
               <span>📱</span>
               <span>Thí sinh</span>
             </button>
-            <Link
-              href={`/display/${code}`}
-              target="_blank"
-              className="px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 text-slate-400 hover:text-cyan-300"
-              title="Mở Màn hình hiển thị hội trường ở tab riêng"
-            >
-              <span>📺</span>
-              <span>Màn chiếu ↗</span>
-            </Link>
             <button
               type="button"
               onClick={() => setMobileTab("HOST")}
@@ -12425,35 +12429,58 @@ export default function AdminSandboxPage() {
           </div>
 
           {/* ══════════════════════════════════════════════════════════════════
-              HOST MASTER CONTROL PANEL (Desktop: 7 cols on left; Mobile: Tab HOST)
+              LEFT COLUMN (7 cols ~58%): Màn hình Chiếu (Display Screen / Studio 3D) & Quản trò
              ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`flex-col min-h-0 h-full gap-2.5 overflow-y-auto p-2 glass rounded-2xl border border-white/10 bg-[#0c0d18] animate-tab-enter lg:col-span-7 lg:order-first ${
-              mobileTab === "HOST" ? "flex" : "hidden lg:flex"
+            className={`flex-col min-h-0 h-full gap-1.5 overflow-hidden animate-slide-in-left lg:col-span-7 lg:order-first ${
+              mobileTab === "DISPLAY" || mobileTab === "HOST" ? "flex" : "hidden lg:flex"
             }`}
           >
-            {/* Live Bot Event Logs (Compact Single-line Ticker Bar) */}
-            <div className="glass rounded-xl px-3 py-1.5 border border-white/10 text-xs bg-[#121424] flex items-center justify-between shrink-0 shadow-lg mb-1">
-              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${botAutoEnabled ? "bg-emerald-400 animate-pulse glow-neon-emerald" : "bg-cyan-400 animate-pulse glow-neon-cyan"}`} />
-                <span className="font-bold text-slate-400 text-[11px] shrink-0 uppercase tracking-wider">Live Ticker:</span>
-                <span
-                  key={botLogs[0] || "initial"}
-                  className="font-mono text-[11px] text-slate-200 truncate animate-ticker-slide"
-                >
-                  {botLogs[0] || "Phòng Sandbox sẵn sàng · Đang chờ sự kiện đầu tiên..."}
-                </span>
+            {/* Viewport Card: Display Iframe or Host Panel */}
+            <div className="flex-1 min-h-0 glass rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-black">
+              {/* Card Header with View Toggle */}
+              <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${showDesktopHostPanel || mobileTab === "HOST" ? "bg-amber-400 shadow-[0_0_8px_#f59e0b]" : "bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]"}`} />
+                  <span className="text-white font-black tracking-wide">
+                    {showDesktopHostPanel || mobileTab === "HOST" ? "🎛️ BẢNG ĐIỀU KHIỂN QUẢN TRÒ (HOST CONTROL)" : "📺 MÀN HÌNH HIỂN THỊ TRƯỜNG QUAY (DISPLAY SCREEN)"}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${showDesktopHostPanel || mobileTab === "HOST" ? "bg-amber-500/20 text-amber-300 border border-amber-500/30" : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"}`}>
+                    {showDesktopHostPanel || mobileTab === "HOST" ? "Admin Master" : "Live Studio 3D"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (mobileTab === "HOST") {
+                        setMobileTab("DISPLAY");
+                      } else {
+                        setShowDesktopHostPanel((prev) => !prev);
+                      }
+                    }}
+                    className="px-2 py-0.5 rounded glass hover:bg-white/10 text-amber-300 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                    title="Chuyển đổi giữa Màn hình Chiếu và Bảng Quản trò"
+                  >
+                    <span>{showDesktopHostPanel || mobileTab === "HOST" ? "📺 Xem Màn chiếu" : "🎛️ Bảng Quản trò"}</span>
+                  </button>
+                  <Link
+                    href={`/display/${code}`}
+                    target="_blank"
+                    className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
+                  >
+                    <span>Mở tab riêng</span>
+                    <span>↗</span>
+                  </Link>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowLogsModal(true)}
-                className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[11px] font-bold shrink-0 transition btn-tactile cursor-pointer"
-              >
-                📜 Xem tất cả ({botLogs.length})
-              </button>
-            </div>
-            {/* 1. Header & Primary Game Flow Card */}
-            <div className="p-3 rounded-xl bg-[#151728]/80 border border-white/10 space-y-2.5 shadow-lg">
+
+              {/* Viewport Content */}
+              <div className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col">
+                {showDesktopHostPanel || mobileTab === "HOST" ? (
+                  <div className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-2.5">
+                    {/* 1. Header & Primary Game Flow Card */}
+                    <div className="p-3 rounded-xl bg-[#151728]/80 border border-white/10 space-y-2.5 shadow-lg">
               <div className="flex items-center justify-between border-b border-white/10 pb-2">
                 <div className="flex items-center gap-1.5">
                   <span className="text-base">🎛️</span>
@@ -13440,6 +13467,44 @@ export default function AdminSandboxPage() {
               >
                 <span>✕</span>
                 <span>Thoát và đổi phòng</span>
+              </button>
+            </div>
+                  </div>
+                ) : (
+                  <iframe
+                    ref={displayIframeRef}
+                    src={`/display/${code}?sandbox=1`}
+                    title="Display Viewport"
+                    className="w-full h-full border-0 bg-black"
+                    allow="autoplay; camera; microphone; display-capture"
+                    onLoad={() => {
+                      if (isOfflineSandbox) {
+                        syncToIframes();
+                      }
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Live Bot Event Logs (Compact Single-line Ticker Bar) */}
+            <div className="glass rounded-xl px-3 py-1.5 border border-white/10 text-xs bg-[#121424] flex items-center justify-between shrink-0 shadow-lg">
+              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${botAutoEnabled ? "bg-emerald-400 animate-pulse glow-neon-emerald" : "bg-cyan-400 animate-pulse glow-neon-cyan"}`} />
+                <span className="font-bold text-slate-400 text-[11px] shrink-0 uppercase tracking-wider">Live Ticker:</span>
+                <span
+                  key={botLogs[0] || "initial"}
+                  className="font-mono text-[11px] text-slate-200 truncate animate-ticker-slide"
+                >
+                  {botLogs[0] || "Phòng Sandbox sẵn sàng · Đang kết nối hiển thị trường quay..."}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLogsModal(true)}
+                className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[11px] font-bold shrink-0 transition btn-tactile cursor-pointer"
+              >
+                📜 Xem tất cả ({botLogs.length})
               </button>
             </div>
           </div>

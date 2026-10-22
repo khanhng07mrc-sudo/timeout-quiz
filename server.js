@@ -3078,6 +3078,7 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     category: "\u0110O\xC1N NHANH 1: DI S\u1EA2N L\u1ECACH S\u1EEC",
     secretPhrase: "HO\xC0NG TH\xC0NH TH\u0102NG LONG",
     clue: "Qu\u1EA7n th\u1EC3 di t\xEDch l\u1ECBch s\u1EED c\u1ED1 \u0111\xF4 ng\xE0n n\u0103m v\u0103n hi\u1EBFn \u0111\u01B0\u1EE3c UNESCO vinh danh l\xE0 Di s\u1EA3n Th\u1EBF gi\u1EDBi.",
+    clueDisplayMode: "CLUE",
     revealedIndices: []
   },
   {
@@ -3087,6 +3088,7 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     category: "\u0110O\xC1N NHANH 2: V\u0102N H\xD3A \u1EA8M TH\u1EF0C",
     secretPhrase: "B\xC1NH CH\u01AFNG - B\xC1NH GI\u1EA6Y",
     clue: "Hai th\u1EE9c b\xE1nh t\u01B0\u1EE3ng tr\u01B0ng tr\u1EDDi tr\xF2n \u0111\u1EA5t vu\xF4ng g\u1EAFn v\u1EDBi truy\u1EC1n thuy\u1EBFt ho\xE0ng t\u1EED Lang Li\xEAu \u0111\u1EDDi vua H\xF9ng.",
+    clueDisplayMode: "CLUE",
     revealedIndices: []
   },
   {
@@ -3097,6 +3099,7 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     category: "V\xD2NG 1: DANH NH\xC2N L\u1ECACH S\u1EEC",
     secretPhrase: "NGUY\u1EC4N TR\xC3I",
     clue: "Nh\xE0 qu\xE2n s\u1EF1, danh nh\xE2n v\u0103n h\xF3a l\u1ED7i l\u1EA1c th\u1EBF gi\u1EDBi c\u1EE7a Vi\u1EC7t Nam th\u1EDDi H\u1EADu L\xEA.",
+    clueDisplayMode: "CLUE",
     revealedIndices: []
   },
   {
@@ -3107,6 +3110,7 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     category: "V\xD2NG 2: DI S\u1EA2N THI\xCAN NHI\xCAN",
     secretPhrase: "V\u1ECANH H\u1EA0 LONG",
     clue: "K\u1EF3 quan thi\xEAn nhi\xEAn th\u1EBF gi\u1EDBi v\u1EDBi h\xE0ng ngh\xECn \u0111\u1EA3o \u0111\xE1 v\xF4i k\u1EF3 v\u0129 t\u1EA1i Qu\u1EA3ng Ninh.",
+    clueDisplayMode: "CLUE",
     revealedIndices: []
   },
   {
@@ -3117,6 +3121,7 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     category: "V\xD2NG 3: TH\xC0NH NG\u1EEE T\u1EE4C NG\u1EEE",
     secretPhrase: "U\u1ED0NG N\u01AF\u1EDAC NH\u1EDA NGU\u1ED2N",
     clue: "Truy\u1EC1n th\u1ED1ng \u0111\u1EA1o l\xFD tri \xE2n s\xE2u s\u1EAFc c\xE1c th\u1EBF h\u1EC7 \u0111i tr\u01B0\u1EDBc c\u1EE7a d\xE2n t\u1ED9c Vi\u1EC7t Nam.",
+    clueDisplayMode: "CLUE",
     revealedIndices: []
   },
   {
@@ -3127,6 +3132,7 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     category: "V\xD2NG 4: V\u0102N H\u1ECCC VI\u1EC6T NAM",
     secretPhrase: "D\u1EBE M\xC8N PHI\xCAU L\u01AFU K\xDD",
     clue: "T\xE1c ph\u1EA9m v\u0103n h\u1ECDc thi\u1EBFu nhi kinh \u0111i\u1EC3n n\u1ED5i ti\u1EBFng nh\u1EA5t c\u1EE7a nh\xE0 v\u0103n T\xF4 Ho\xE0i.",
+    clueDisplayMode: "CLUE",
     revealedIndices: []
   },
   {
@@ -3137,6 +3143,7 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     category: "V\xD2NG 5: L\xC0NG NGH\u1EC0 TRUY\u1EC0N TH\u1ED0NG",
     secretPhrase: "G\u1ED0M S\u1EE8 B\xC1T TR\xC0NG",
     clue: "L\xE0ng ngh\u1EC1 l\xE0m g\u1ED1m l\xE2u \u0111\u1EDDi n\u1EB1m b\xEAn b\u1EDD s\xF4ng H\u1ED3ng thu\u1ED9c huy\u1EC7n Gia L\xE2m, H\xE0 N\u1ED9i.",
+    clueDisplayMode: "CLUE",
     revealedIndices: []
   },
   {
@@ -3147,6 +3154,7 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     category: "V\xD2NG 6: \xC2M NH\u1EA0C D\xC2N T\u1ED8C",
     secretPhrase: "NH\xC3 NH\u1EA0C CUNG \u0110\xCCNH HU\u1EBE",
     clue: "Lo\u1EA1i h\xECnh \xE2m nh\u1EA1c b\xE1c h\u1ECDc \u0111\u1EA7u ti\xEAn c\u1EE7a Vi\u1EC7t Nam \u0111\u01B0\u1EE3c UNESCO vinh danh.",
+    clueDisplayMode: "CLUE",
     revealedIndices: []
   },
   {
@@ -3157,6 +3165,7 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     category: "V\xD2NG 7: K\u1EF2 QUAN HANG \u0110\u1ED8NG",
     secretPhrase: "HANG S\u01A0N \u0110O\xD2NG",
     clue: "Hang \u0111\u1ED9ng t\u1EF1 nhi\xEAn l\u1EDBn nh\u1EA5t th\u1EBF gi\u1EDBi n\u1EB1m trong qu\u1EA7n th\u1EC3 Phong Nha - K\u1EBB B\xE0ng.",
+    clueDisplayMode: "CLUE",
     revealedIndices: []
   },
   {
@@ -3167,6 +3176,7 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     category: "V\xD2NG 8: KHOA H\u1ECCC C\xD4NG NGH\u1EC6",
     secretPhrase: "TR\xCD TU\u1EC6 NH\xC2N T\u1EA0O",
     clue: "L\u0129nh v\u1EF1c c\xF4ng ngh\u1EC7 \u0111\u1ED9t ph\xE1 m\xF4 ph\u1ECFng t\u01B0 duy v\xE0 kh\u1EA3 n\u0103ng h\u1ECDc h\u1ECFi c\u1EE7a con ng\u01B0\u1EDDi.",
+    clueDisplayMode: "CLUE",
     revealedIndices: []
   },
   {
@@ -3176,6 +3186,7 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     category: "V\xD2NG \u0110\u1EB6C BI\u1EC6T: KI\u1EC6T T\xC1C THI CA",
     secretPhrase: "TRUY\u1EC6N KI\u1EC0U NGUY\u1EC4N DU",
     clue: "Ki\u1EC7t t\xE1c th\u01A1 N\xF4m l\u1EE5c b\xE1t b\u1EA5t h\u1EE7 \u0111\u01B0\u1EE3c xem l\xE0 \u0111\u1EC9nh cao c\u1EE7a n\u1EC1n v\u0103n h\u1ECDc trung \u0111\u1EA1i Vi\u1EC7t Nam.",
+    clueDisplayMode: "CLUE",
     revealedIndices: []
   }
 ];
@@ -3521,6 +3532,7 @@ function buildMagicWheelMatchPuzzles(firstArg, secondArg, edition = "VIETNAMESE"
       category: p.category,
       secretPhrase: p.secretPhrase,
       clue: p.clue,
+      clueDisplayMode: p.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
       revealedIndices: []
     }));
   } else if (edition === "ENGLISH") {
@@ -3572,6 +3584,7 @@ function buildMagicWheelMatchPuzzles(firstArg, secondArg, edition = "VIETNAMESE"
     roundNumber: 1,
     stage: "TOSS_UP_1",
     category: tu1Source.category.includes("\u0110O\xC1N NHANH") ? tu1Source.category : `\u0110O\xC1N NHANH 1: ${tu1Source.category}`,
+    clueDisplayMode: tu1Source.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
     revealedIndices: []
   });
   const tu2Source = pool[1] || defaultTossUp2;
@@ -3581,6 +3594,7 @@ function buildMagicWheelMatchPuzzles(firstArg, secondArg, edition = "VIETNAMESE"
     roundNumber: 2,
     stage: "TOSS_UP_2",
     category: tu2Source.category.includes("\u0110O\xC1N NHANH") ? tu2Source.category : `\u0110O\xC1N NHANH 2: ${tu2Source.category}`,
+    clueDisplayMode: tu2Source.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
     revealedIndices: []
   });
   const customMainSlice = pool.length >= 4 ? pool.slice(2, pool.length - 1) : [];
@@ -3596,6 +3610,7 @@ function buildMagicWheelMatchPuzzles(firstArg, secondArg, edition = "VIETNAMESE"
       stage: "MAIN",
       mainRoundIndex: m,
       category: `V\xD2NG ${m}: ${cleanCat}`,
+      clueDisplayMode: src.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
       revealedIndices: []
     });
   }
@@ -3607,6 +3622,7 @@ function buildMagicWheelMatchPuzzles(firstArg, secondArg, edition = "VIETNAMESE"
     roundNumber: 2 + totalMainRounds + 1,
     stage: "SPECIAL_FINAL",
     category: `V\xD2NG \u0110\u1EB6C BI\u1EC6T: ${cleanSpecialCat}`,
+    clueDisplayMode: specialSource.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
     revealedIndices: []
   });
   return schedule;

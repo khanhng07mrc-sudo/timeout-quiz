@@ -1780,6 +1780,7 @@ export default function MagicWheelBoard({
   const [tossUpRemainingSec, setTossUpRemainingSec] = useState<number>(0);
   const [isBoardShaking, setIsBoardShaking] = useState<boolean>(false);
   const [isLocallyBuzzed, setIsLocallyBuzzed] = useState<boolean>(false);
+  const [is16x9Letterbox, setIs16x9Letterbox] = useState<boolean>(false);
   const hasBuzzedRef = useRef<boolean>(false);
   const prevSolveFeedbackKeyRef = useRef<string | null>(null);
 
@@ -4163,6 +4164,19 @@ export default function MagicWheelBoard({
                 💎 {(jackpotPool).toLocaleString()}đ
               </span>
             )}
+            {/* Nút bật/tắt Tỷ lệ 16:9 Letterbox chuẩn TV */}
+            <button
+              type="button"
+              onClick={() => setIs16x9Letterbox((prev) => !prev)}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors flex items-center gap-1 cursor-pointer ${
+                is16x9Letterbox
+                  ? "bg-amber-500/20 text-amber-300 border-amber-400/60 shadow-[0_0_8px_rgba(245,158,11,0.3)]"
+                  : "bg-white/5 text-slate-400 border-white/10 hover:text-white"
+              }`}
+              title="Khóa tỷ lệ khung hình 16:9 chuẩn truyền hình TV"
+            >
+              📺 {is16x9Letterbox ? "16:9 ON" : "16:9"}
+            </button>
           </div>
 
           <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-black/60 border border-white/10">
@@ -4175,30 +4189,38 @@ export default function MagicWheelBoard({
           </div>
         </div>
 
-        {/* ── 3D STUDIO STAGE & WHEEL MACHINE (100% Full Viewport WebGL Three.js) ── */}
-        <div className="w-full flex-1 min-h-0 relative overflow-hidden">
-          <WheelStudio3DScene
-            sectors={sectors}
-            clientWheelAngle={clientWheelAngle}
-            effectiveIsSpinning={effectiveIsSpinning}
-            selectedSector={selectedSector}
-            teams={teams}
-            roundScores={roundScores}
-            currentTurnTeamId={currentTurnTeamId}
-            tossUpBuzzedTeamId={tossUpBuzzedTeamId}
-            isTossUpRound={isTossUpRound}
-            phase={phase}
-            boardStage={effectiveBoardStage}
-            camAngle={camAngle}
-            edition={edition}
-            currentPuzzle={currentPuzzle}
-            highlightedIndices={highlightedIndices}
-            animRevealedIndices={animRevealedIndices}
-            hostessXPercent={hostessXPercent}
-            hostessPose={hostessPose}
-            onCamAngleChange={(cam) => setCamAngle(cam)}
-            className="absolute inset-0 w-full h-full"
-          />
+        {/* ── 3D STUDIO STAGE & WHEEL MACHINE (WebGL Three.js) ── */}
+        <div className="w-full flex-1 min-h-0 relative overflow-hidden flex items-center justify-center bg-black">
+          <div
+            className={`relative transition-all duration-300 ${
+              is16x9Letterbox
+                ? "aspect-video w-full max-h-full max-w-full shadow-2xl rounded-2xl border border-white/10 overflow-hidden"
+                : "w-full h-full"
+            }`}
+          >
+            <WheelStudio3DScene
+              sectors={sectors}
+              clientWheelAngle={clientWheelAngle}
+              effectiveIsSpinning={effectiveIsSpinning}
+              selectedSector={selectedSector}
+              teams={teams}
+              roundScores={roundScores}
+              currentTurnTeamId={currentTurnTeamId}
+              tossUpBuzzedTeamId={tossUpBuzzedTeamId}
+              isTossUpRound={isTossUpRound}
+              phase={phase}
+              boardStage={effectiveBoardStage}
+              camAngle={camAngle}
+              edition={edition}
+              currentPuzzle={currentPuzzle}
+              highlightedIndices={highlightedIndices}
+              animRevealedIndices={animRevealedIndices}
+              hostessXPercent={hostessXPercent}
+              hostessPose={hostessPose}
+              onCamAngleChange={(cam) => setCamAngle(cam)}
+              className="absolute inset-0 w-full h-full"
+            />
+          </div>
         </div>
 
         {/* Bottom: Victory Banner if ROUND_RECAP */}

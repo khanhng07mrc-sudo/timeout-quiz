@@ -43,6 +43,7 @@ interface WheelStudio3DSceneProps {
     clue?: string;
     secretPhrase: string;
     revealedIndices: number[];
+    clueDisplayMode?: "CATEGORY" | "CLUE";
   } | null;
   highlightedIndices?: Set<number>;
   animRevealedIndices?: Set<number>;
@@ -68,8 +69,8 @@ const CAM_POSITIONS: Record<string, CamConfig> = {
   // CAM 2: Đại cảnh toàn bộ trường quay tầm mắt TV (Master Wide)
   CAM2_WIDE: { pos: [0.00, 2.70, 8.80], target: [0.00, 1.60, -1.50] },
 
-  // CAM 3: Trực diện vuông góc 90° Bảng ô chữ 3D chính giữa tâm ma trận 4x14
-  CAM3_BOARD: { pos: [-2.40, 1.45, 4.50], target: [-7.80, 1.45, 4.50] },
+  // CAM 3: Trực diện Bảng ô chữ 3D & Người mẫu trợ lý (Hostess) trên bục runway
+  CAM3_BOARD: { pos: [-1.80, 1.40, 4.80], target: [-7.80, 1.40, 4.80] },
 
   // CAM 4: Cận cảnh kim chỉ thị cong đỏ cherry và các chốt ô nón đang quay chúc 40°
   CAM4_DISC: { pos: [-2.75, 2.75, 1.55], target: [-2.15, 1.40, 0.10] },
@@ -207,7 +208,7 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
         // Dòng 1 (sát vành ngoài): MẤT, NHÂN, CHIA, PHẦN, MAY...
         ctx.save();
         ctx.translate(r - 46, 0);
-        ctx.rotate(Math.PI / 2); // Xoay 90° để chữ nằm ngang theo cung nón, đứng thẳng mắt nhìn từ ngoài vào
+        ctx.rotate(-Math.PI / 2); // Xoay -90° để chữ nằm xuôi mắt 100% khi nhìn từ vành nón vào tâm
         const size1 = Math.min(36, Math.max(22, Math.floor(110 / (line1.length * 0.65))));
         ctx.font = `900 ${size1}px "Roboto Slab", "Montserrat", "Arial Black", sans-serif`;
         ctx.strokeStyle = colors.stroke;
@@ -220,7 +221,7 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
         // Dòng 2 (hướng vào tâm): LƯỢT, ĐÔI, ĐIỂM, THƯỞNG, MẮN...
         ctx.save();
         ctx.translate(r - 92, 0);
-        ctx.rotate(Math.PI / 2);
+        ctx.rotate(-Math.PI / 2);
         const size2 = Math.min(32, Math.max(18, Math.floor(100 / (line2.length * 0.65))));
         ctx.font = `900 ${size2}px "Roboto Slab", "Montserrat", "Arial Black", sans-serif`;
         ctx.strokeStyle = colors.stroke;
@@ -242,7 +243,7 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
           ].forEach((line) => {
             ctx.save();
             ctx.translate(line.offset, 0);
-            ctx.rotate(Math.PI / 2);
+            ctx.rotate(-Math.PI / 2);
             const fs = Math.min(line.maxS, Math.max(18, Math.floor(100 / (line.text.length * 0.65))));
             ctx.font = `900 ${fs}px "Roboto Slab", "Montserrat", "Arial Black", sans-serif`;
             ctx.strokeStyle = colors.stroke;
@@ -255,7 +256,7 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
         } else {
           ctx.save();
           ctx.translate(r - 65, 0);
-          ctx.rotate(Math.PI / 2);
+          ctx.rotate(-Math.PI / 2);
           const fs = Math.min(38, Math.max(22, Math.floor(105 / (word.length * 0.65))));
           ctx.font = `900 ${fs}px "Roboto Slab", "Montserrat", "Arial Black", sans-serif`;
           ctx.strokeStyle = colors.stroke;
@@ -386,9 +387,9 @@ function generatePodiumTexture(
   ctx.lineWidth = 5;
   ctx.stroke();
 
-  // Team name (Uppercase, prominent)
+  // Team name (Uppercase, prominent, font stack chuẩn tiếng Việt)
   ctx.fillStyle = isTurn ? "#fef08a" : "#e2e8f0";
-  ctx.font = "900 46px 'Roboto Slab', 'Montserrat', Arial, sans-serif";
+  ctx.font = "900 46px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Montserrat', sans-serif";
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   const shortName = name.length > 12 ? name.substring(0, 12) : name;
@@ -397,7 +398,7 @@ function generatePodiumTexture(
   // Rank badge
   if (rank) {
     ctx.fillStyle = rank === 1 ? "#fbbf24" : "#94a3b8";
-    ctx.font = "900 38px 'Roboto Slab', Arial, sans-serif";
+    ctx.font = "900 38px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Montserrat', sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(`HẠNG #${rank}`, w - 42, 76);
   }
@@ -405,21 +406,22 @@ function generatePodiumTexture(
   // Active status tag / LƯỢT QUAY
   if (isTurn) {
     ctx.fillStyle = "#f59e0b";
-    ctx.font = "900 36px 'Roboto Slab', Arial, sans-serif";
+    ctx.font = "900 36px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Montserrat', sans-serif";
     ctx.textAlign = "right";
     ctx.fillText("★ LƯỢT QUAY ★", w - 42, 160);
   }
 
-  // Total score display (Centered, colossal 150px digital broadcast font with radiant gold neon glow)
+  // Total score display (Centered, colossal 152px digital broadcast font with radiant gold neon glow)
+  // FIX: Chỉ hiện số nguyên bản, TUYỆT ĐỐI không ghi chữ 'đ'
   const scoreStr =
     edition === "ENGLISH"
       ? `$${totalScore.toLocaleString("en-US")}`
-      : `${totalScore.toLocaleString()}đ`;
+      : `${totalScore.toLocaleString("vi-VN")}`;
 
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = "900 150px 'Roboto Slab', 'Montserrat', Arial Black, monospace";
+  ctx.font = "900 152px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Montserrat', 'Arial Black', sans-serif";
   // Golden drop glow
   ctx.shadowColor = isTurn ? "rgba(254, 240, 138, 0.95)" : "rgba(245, 158, 11, 0.75)";
   ctx.shadowBlur = 24;
@@ -430,16 +432,16 @@ function generatePodiumTexture(
   ctx.fillText(scoreStr, 512, 305);
   ctx.restore();
 
-  // Round score pill
+  // Round score pill (FIX: chỉ hiện số, không có chữ 'đ')
   if (roundScore > 0) {
     const rStr =
       edition === "ENGLISH"
         ? `+$${roundScore.toLocaleString("en-US")}`
-        : `+${roundScore.toLocaleString()}đ`;
+        : `+${roundScore.toLocaleString("vi-VN")}`;
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "bold 44px 'Roboto Slab', monospace";
+    ctx.font = "bold 44px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace";
     ctx.fillStyle = "#34d399";
     ctx.fillText(rStr, 512, 445);
     ctx.restore();
@@ -1523,18 +1525,22 @@ function RealisticContestantMannequin({
           />
         </mesh>
 
-        {/* Đệm cầu vai âu phục (Shoulder Pads) tạo phom vai ngang nam tính rộng 0.52m */}
-        <mesh position={[0, 1.48, 0]}>
-          <boxGeometry args={[0.52, 0.06, 0.24]} />
+        {/* Phom vai xuôi tự nhiên nam tính góc nghiêng 14° tỷ lệ chuẩn 0.44m */}
+        <mesh position={[-0.13, 1.46, 0]} rotation={[0, 0, 0.24]}>
+          <boxGeometry args={[0.15, 0.05, 0.20]} />
           <meshStandardMaterial color={color || "#3b82f6"} roughness={0.30} metalness={0.22} />
         </mesh>
-        {/* Khối cầu đệm vai 2 bên */}
-        <mesh position={[-0.26, 1.48, 0]}>
-          <sphereGeometry args={[0.072, 18, 18]} />
+        <mesh position={[0.13, 1.46, 0]} rotation={[0, 0, -0.24]}>
+          <boxGeometry args={[0.15, 0.05, 0.20]} />
           <meshStandardMaterial color={color || "#3b82f6"} roughness={0.30} metalness={0.22} />
         </mesh>
-        <mesh position={[0.26, 1.48, 0]}>
-          <sphereGeometry args={[0.072, 18, 18]} />
+        {/* Khối cầu chỏm vai deltoid 2 bên (span 0.44m) */}
+        <mesh position={[-0.22, 1.43, 0]}>
+          <sphereGeometry args={[0.052, 16, 16]} />
+          <meshStandardMaterial color={color || "#3b82f6"} roughness={0.30} metalness={0.22} />
+        </mesh>
+        <mesh position={[0.22, 1.43, 0]}>
+          <sphereGeometry args={[0.052, 16, 16]} />
           <meshStandardMaterial color={color || "#3b82f6"} roughness={0.30} metalness={0.22} />
         </mesh>
 
@@ -1564,9 +1570,15 @@ function RealisticContestantMannequin({
           <meshStandardMaterial color="#fef08a" metalness={0.95} roughness={0.1} />
         </mesh>
 
+        {/* Trụ cổ liên kết thân người và đầu (Sculpted Neck Column) */}
+        <mesh position={[0, 1.54, 0.01]}>
+          <cylinderGeometry args={[0.052, 0.062, 0.10, 18]} />
+          <meshStandardMaterial color="#fed7aa" roughness={0.55} />
+        </mesh>
+
         {/* 3. Cổ áo sơ mi trắng & Cà vạt thắt nút Windsor */}
         <mesh position={[0, 1.50, 0.02]}>
-          <cylinderGeometry args={[0.085, 0.10, 0.08, 20]} />
+          <cylinderGeometry args={[0.080, 0.095, 0.07, 20]} />
           <meshStandardMaterial color="#f8fafc" roughness={0.18} />
         </mesh>
         {/* Cà vạt sang trọng */}
@@ -1590,8 +1602,8 @@ function RealisticContestantMannequin({
           position={[0, 1.62, 0]}
         />
 
-        {/* 5. Cánh tay trái tì bệ làm điểm tựa (Khớp vai Y = 1.44m, tầm vươn dài 0.70m) */}
-        <group ref={leftArmRef} position={[-0.30, 1.44, 0.04]} rotation={[0.45, 0, 0.18]}>
+        {/* 5. Cánh tay trái tì bệ làm điểm tựa (Khớp vai Y = 1.42m, tầm vươn dài 0.70m) */}
+        <group ref={leftArmRef} position={[-0.22, 1.42, 0.03]} rotation={[0.45, 0, 0.18]}>
           {/* Khớp vai */}
           <mesh position={[0, 0, 0]}>
             <sphereGeometry args={[0.055, 14, 14]} />
@@ -1624,7 +1636,7 @@ function RealisticContestantMannequin({
         </group>
 
         {/* 6. Cánh tay phải có khớp xoay vung dồn lực đẩy nón (tầm vươn dài 0.70m nắm chốt kim loại) */}
-        <group ref={rightArmRef} position={[0.30, 1.44, 0.04]} rotation={[0.45, 0, -0.18]}>
+        <group ref={rightArmRef} position={[0.22, 1.42, 0.03]} rotation={[0.45, 0, -0.18]}>
           {/* Khớp vai */}
           <mesh position={[0, 0, 0]}>
             <sphereGeometry args={[0.055, 14, 14]} />
@@ -1736,17 +1748,22 @@ function RealisticHostMC() {
         <meshStandardMaterial color="#090d16" roughness={0.28} metalness={0.22} />
       </mesh>
 
-      {/* Cầu vai có đệm âu phục rộng 0.52m */}
-      <mesh position={[0, 1.48, 0]}>
-        <boxGeometry args={[0.52, 0.06, 0.24]} />
+      {/* Phom vai xuôi tự nhiên nam tính góc nghiêng 14° tỷ lệ chuẩn 0.44m của Tuxedo */}
+      <mesh position={[-0.13, 1.46, 0]} rotation={[0, 0, 0.24]}>
+        <boxGeometry args={[0.15, 0.05, 0.20]} />
         <meshStandardMaterial color="#090d16" roughness={0.28} metalness={0.22} />
       </mesh>
-      <mesh position={[-0.26, 1.48, 0]}>
-        <sphereGeometry args={[0.072, 18, 18]} />
+      <mesh position={[0.13, 1.46, 0]} rotation={[0, 0, -0.24]}>
+        <boxGeometry args={[0.15, 0.05, 0.20]} />
         <meshStandardMaterial color="#090d16" roughness={0.28} metalness={0.22} />
       </mesh>
-      <mesh position={[0.26, 1.48, 0]}>
-        <sphereGeometry args={[0.072, 18, 18]} />
+      {/* Khối cầu chỏm vai deltoid 2 bên (span 0.44m) */}
+      <mesh position={[-0.22, 1.43, 0]}>
+        <sphereGeometry args={[0.052, 16, 16]} />
+        <meshStandardMaterial color="#090d16" roughness={0.28} metalness={0.22} />
+      </mesh>
+      <mesh position={[0.22, 1.43, 0]}>
+        <sphereGeometry args={[0.052, 16, 16]} />
         <meshStandardMaterial color="#090d16" roughness={0.28} metalness={0.22} />
       </mesh>
 
@@ -1756,9 +1773,15 @@ function RealisticHostMC() {
         <meshStandardMaterial color="#020617" roughness={0.12} metalness={0.5} />
       </mesh>
 
+      {/* Trụ cổ liên kết thân người và đầu MC (Sculpted Neck Column) */}
+      <mesh position={[0, 1.54, 0.01]}>
+        <cylinderGeometry args={[0.052, 0.062, 0.10, 18]} />
+        <meshStandardMaterial color="#ffedd5" roughness={0.55} />
+      </mesh>
+
       {/* 3. Cổ áo sơ mi trắng & Nơ cổ màu đỏ ruby sang trọng */}
       <mesh position={[0, 1.50, 0.02]}>
-        <cylinderGeometry args={[0.085, 0.10, 0.08, 20]} />
+        <cylinderGeometry args={[0.080, 0.095, 0.07, 20]} />
         <meshStandardMaterial color="#ffffff" roughness={0.15} />
       </mesh>
       {/* Nơ bướm màu đỏ ruby quý phái */}
@@ -1777,7 +1800,7 @@ function RealisticHostMC() {
       />
 
       {/* 5. Cánh tay trái MC: cầm thẻ kịch bản dẫn chương trình (Cue Card) với khuỷu tay cong */}
-      <group position={[-0.30, 1.44, 0.04]} rotation={[0.55, 0, 0.22]}>
+      <group position={[-0.22, 1.42, 0.03]} rotation={[0.55, 0, 0.22]}>
         <mesh position={[0, -0.17, 0]}>
           <cylinderGeometry args={[0.052, 0.058, 0.34, 16]} />
           <meshStandardMaterial color="#090d16" roughness={0.28} metalness={0.22} />
@@ -1806,7 +1829,7 @@ function RealisticHostMC() {
       </group>
 
       {/* 6. Cánh tay phải MC: cầm micro truyền hình chuyên nghiệp với khuỷu tay cong */}
-      <group position={[0.30, 1.44, 0.04]} rotation={[0.62, 0, -0.28]}>
+      <group position={[0.22, 1.42, 0.03]} rotation={[0.62, 0, -0.28]}>
         <mesh position={[0, -0.17, 0]}>
           <cylinderGeometry args={[0.052, 0.058, 0.34, 16]} />
           <meshStandardMaterial color="#090d16" roughness={0.28} metalness={0.22} />
@@ -2043,11 +2066,11 @@ function ElevatedSlotStation({
         />
       </mesh>
 
-      {/* 3. Bảng hiện điểm LED kỹ thuật số gắn trực diện mặt trước bàn (Front Fascia Scoreboard) - KÍCH THƯỚC VỪA VẶN, KHÔNG BỊ ĐÈ NHAU */}
-      <group position={[0, 2.42, 0.44]} rotation={[-0.20, 0, 0]}>
+      {/* 3. Bảng hiện điểm LED kỹ thuật số gắn trực diện mặt trước bàn (Front Fascia Scoreboard) - KÍCH THƯỚC NỔI BẬT, CAO HƠN VÀNH NÓN */}
+      <group position={[0, 2.58, 0.44]} rotation={[0, 0, 0]}>
         {/* Khung màn hình mạ vàng/xanh neon */}
         <mesh position={[0, 0, -0.01]}>
-          <boxGeometry args={[0.78, 0.46, 0.03]} />
+          <boxGeometry args={[0.80, 0.46, 0.03]} />
           <meshStandardMaterial
             color={isTurn ? "#fbbf24" : "#3b82f6"}
             metalness={0.92}
@@ -2058,7 +2081,7 @@ function ElevatedSlotStation({
         </mesh>
         {/* Màn hình LED sắc nét chuẩn VTV3 (Hiển thị chân thực như màn hình phát sáng tự thân OLED phẳng 1024x512) */}
         <mesh ref={screenRef} position={[0, 0, 0.02]}>
-          <planeGeometry args={[0.74, 0.42]} />
+          <planeGeometry args={[0.76, 0.42]} />
           <meshBasicMaterial map={screenTexture ?? undefined} toneMapped={false} />
         </mesh>
       </group>
@@ -2905,13 +2928,13 @@ function Studio3DPuzzleBoard({
     phase === "ROUND_RECAP" ||
     (revealedSet.size > 0 && cleanLettersCount > 0 && revealedSet.size >= cleanLettersCount);
 
-  // Tính toán vị trí di chuyển X của Người mẫu trên bục runway
+  // Tính toán vị trí di chuyển X của Người mẫu trên bục runway (nằm trong khung hình CAM 3)
   const targetHostessX = useMemo(() => {
     if (typeof hostessXPercent === "number") {
-      if (hostessXPercent <= 10) return -2.85;
-      if (hostessXPercent >= 90) return 2.85;
+      if (hostessXPercent <= 10) return -2.20;
+      if (hostessXPercent >= 90) return 2.10;
       const norm = Math.max(0, Math.min(1, (hostessXPercent - 12) / 76));
-      return -2.34 + norm * 4.68;
+      return -2.00 + norm * 4.10;
     }
     // Fallback nếu không có hostessXPercent: tự tìm vị trí của ô đang highlight
     if (highlightedIndices && highlightedIndices.size > 0) {
@@ -2920,12 +2943,12 @@ function Studio3DPuzzleBoard({
           const t = row[c];
           if (t.isLetter && highlightedIndices.has(t.origIdx)) {
             const posX = (c - 6.5) * 0.36;
-            return posX + 0.32;
+            return Math.max(-2.20, Math.min(2.10, posX + 0.32));
           }
         }
       }
     }
-    return 2.85;
+    return 1.85;
   }, [hostessXPercent, highlightedIndices, grid]);
 
   const isTouching = hostessPose === "TOUCHING";
@@ -3112,28 +3135,28 @@ function Studio3DPuzzleBoard({
   );
 }
 
-/** Vẽ phông nền video wall xoay ô chữ và logo Chiếc Nón Kỳ Diệu vào canvas 1024x512 */
+/** Vẽ phông nền video wall hậu trường sang trọng chuẩn Gameshow truyền hình hiện đại */
 function renderVideoWallCanvas(ctx: CanvasRenderingContext2D, t: number) {
-  // 1. Phông nền LED Cyberspace xanh đậm hoàng gia sang trọng (Deep Cyber Navy & Horizon)
-  const grad = ctx.createRadialGradient(512, 256, 30, 512, 256, 540);
-  grad.addColorStop(0, "#082154");
-  grad.addColorStop(0.38, "#051336");
-  grad.addColorStop(0.75, "#02091c");
-  grad.addColorStop(1, "#01040e");
+  // 1. Phông nền LED Cyberspace xanh đậm hoàng gia sang trọng (Deep Sapphire & Obsidian Horizon)
+  const grad = ctx.createRadialGradient(512, 230, 20, 512, 256, 560);
+  grad.addColorStop(0, "#0a2663");
+  grad.addColorStop(0.35, "#061842");
+  grad.addColorStop(0.70, "#030c22");
+  grad.addColorStop(1, "#01040f");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 1024, 512);
 
-  // 2. Lưới Cyberspace 3D phát sáng ở nền dưới chân
+  // 2. Lưới không gian sân khấu phát sáng mờ dưới chân
   ctx.save();
-  ctx.strokeStyle = "rgba(14, 165, 233, 0.16)";
+  ctx.strokeStyle = "rgba(14, 165, 233, 0.14)";
   ctx.lineWidth = 1.2;
   for (let x = -200; x <= 1224; x += 64) {
     ctx.beginPath();
     ctx.moveTo(x, 512);
-    ctx.lineTo(512 + (x - 512) * 0.15, 280);
+    ctx.lineTo(512 + (x - 512) * 0.18, 300);
     ctx.stroke();
   }
-  for (let y = 300; y <= 512; y += 22 + (y - 300) * 0.22) {
+  for (let y = 310; y <= 512; y += 20 + (y - 310) * 0.20) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(1024, y);
@@ -3141,120 +3164,67 @@ function renderVideoWallCanvas(ctx: CanvasRenderingContext2D, t: number) {
   }
   ctx.restore();
 
-  // 3. Vòng xoáy tia năng lượng xoay nhẹ từ tâm
+  // 3. Dải luồng sáng Cinematic (Volumetric Ambient Light Rays) tỏa từ tâm sân khấu
   ctx.save();
-  ctx.translate(512, 230);
-  ctx.rotate(t * 0.12);
-  for (let i = 0; i < 20; i++) {
+  ctx.translate(512, 210);
+  for (let i = 0; i < 16; i++) {
+    const rayAngle = (i * Math.PI * 2) / 16 + Math.sin(t * 0.25 + i) * 0.08;
+    const rayWidth = 0.09 + Math.sin(t * 0.5 + i * 2) * 0.025;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    const a = (i * Math.PI * 2) / 20;
-    ctx.arc(0, 0, 520, a, a + 0.07);
-    ctx.fillStyle = i % 2 === 0 ? "rgba(14, 165, 233, 0.08)" : "rgba(251, 191, 36, 0.06)";
+    ctx.arc(0, 0, 580, rayAngle, rayAngle + rayWidth);
+    ctx.closePath();
+    const rayGrad = ctx.createRadialGradient(0, 0, 50, 0, 0, 550);
+    if (i % 3 === 0) {
+      rayGrad.addColorStop(0, "rgba(251, 191, 36, 0.12)");
+      rayGrad.addColorStop(0.5, "rgba(245, 158, 11, 0.04)");
+      rayGrad.addColorStop(1, "rgba(245, 158, 11, 0)");
+    } else {
+      rayGrad.addColorStop(0, "rgba(56, 189, 248, 0.14)");
+      rayGrad.addColorStop(0.5, "rgba(14, 165, 233, 0.05)");
+      rayGrad.addColorStop(1, "rgba(14, 165, 233, 0)");
+    }
+    ctx.fillStyle = rayGrad;
     ctx.fill();
   }
   ctx.restore();
 
-  // 4. Các khối lập phương & ô chữ 3D xoay vòng, nhào lộn trong không gian (3D Tumbling Letter Cubes/Tiles)
-  const CUBES = [
-    { char: "A", color: "#fde047", size: 48, x0: 120, y0: 140, vx: 22, vy: 14, rx: 1.4, ry: 2.1, rz: 0.8 },
-    { char: "N", color: "#38bdf8", size: 42, x0: 280, y0: 360, vx: -18, vy: 10, rx: 2.0, ry: 1.2, rz: 1.5 },
-    { char: "O", color: "#f43f5e", size: 44, x0: 740, y0: 120, vx: 25, vy: -12, rx: 1.1, ry: 2.4, rz: 0.9 },
-    { char: "N", color: "#4ade80", size: 40, x0: 890, y0: 380, vx: -20, vy: 16, rx: 1.7, ry: 1.8, rz: 1.2 },
-    { char: "★", color: "#fbbf24", size: 52, x0: 512, y0: 160, vx: 15, vy: -18, rx: 0.9, ry: 2.6, rz: 1.0 },
-    { char: "K", color: "#c084fc", size: 42, x0: 200, y0: 220, vx: 18, vy: 20, rx: 1.8, ry: 1.4, rz: 1.1 },
-    { char: "Y", color: "#38bdf8", size: 44, x0: 820, y0: 260, vx: -16, vy: -15, rx: 1.3, ry: 2.2, rz: 0.7 },
-    { char: "D", color: "#fb7185", size: 42, x0: 380, y0: 100, vx: 20, vy: 12, rx: 2.2, ry: 1.5, rz: 1.4 },
-    { char: "I", color: "#2dd4bf", size: 38, x0: 640, y0: 400, vx: -24, vy: -14, rx: 1.6, ry: 1.9, rz: 0.8 },
-    { char: "E", color: "#fde047", size: 40, x0: 160, y0: 420, vx: 16, vy: -20, rx: 2.4, ry: 1.1, rz: 1.3 },
-    { char: "U", color: "#60a5fa", size: 42, x0: 880, y0: 140, vx: -18, vy: 18, rx: 1.5, ry: 2.0, rz: 1.0 },
-    { char: "500", color: "#4ade80", size: 46, x0: 420, y0: 360, vx: 14, vy: -12, rx: 1.2, ry: 1.6, rz: 0.9 },
-    { char: "1000", color: "#f59e0b", size: 48, x0: 600, y0: 100, vx: -15, vy: 16, rx: 1.9, ry: 1.3, rz: 1.2 },
-    { char: "900", color: "#a855f7", size: 44, x0: 300, y0: 200, vx: -22, vy: -10, rx: 1.4, ry: 2.3, rz: 0.8 },
-    { char: "VTV3", color: "#f43f5e", size: 46, x0: 720, y0: 340, vx: 19, vy: 14, rx: 1.7, ry: 1.7, rz: 1.1 },
-    { char: "B", color: "#38bdf8", size: 38, x0: 100, y0: 290, vx: 12, vy: 15, rx: 2.1, ry: 1.6, rz: 1.0 },
-    { char: "C", color: "#fbbf24", size: 40, x0: 940, y0: 240, vx: -14, vy: -16, rx: 1.5, ry: 2.1, rz: 0.9 },
-  ];
-
-  CUBES.forEach((cube) => {
-    // Flowing floating position with wrap-around
-    const curX = (((cube.x0 + t * cube.vx) % 1160) + 1160) % 1160 - 68;
-    const curY = (((cube.y0 + t * cube.vy + Math.sin(t * 1.5 + cube.x0) * 25) % 580) + 580) % 580 - 34;
-
-    // 3D rotation angles
-    const rotY = t * cube.ry;
-    const rotX = t * cube.rx;
-    const rotZ = Math.sin(t * cube.rz) * 0.4;
-
-    const cosY = Math.cos(rotY);
-    const sinY = Math.sin(rotY);
-    const cosX = Math.cos(rotX);
-    const sinX = Math.sin(rotX);
-
-    const s = cube.size;
-    const w = s * Math.max(0.12, Math.abs(cosY));
-    const h = s * Math.max(0.12, Math.abs(cosX));
-    const d = s * 0.32 * Math.abs(sinY); // 3D bevel depth
-
-    ctx.save();
-    ctx.translate(curX, curY);
-    ctx.rotate(rotZ);
-
-    // Top 3D bevel face
-    if (sinX < 0) {
-      ctx.beginPath();
-      ctx.moveTo(-w / 2, -h / 2);
-      ctx.lineTo(-w / 2 + d, -h / 2 - d * 0.7);
-      ctx.lineTo(w / 2 + d, -h / 2 - d * 0.7);
-      ctx.lineTo(w / 2, -h / 2);
-      ctx.closePath();
-      ctx.fillStyle = "rgba(255, 255, 255, 0.20)";
-      ctx.fill();
-      ctx.strokeStyle = cube.color;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-
-    // Side 3D extrusion face
+  // 4. Các vòng cung hào quang neon mạ vàng & xanh vòm hậu trường (Concentric Glowing Arcs)
+  ctx.save();
+  [
+    { r: 180, col: "rgba(56, 189, 248, 0.25)", lw: 2.0 },
+    { r: 280, col: "rgba(251, 191, 36, 0.20)", lw: 2.2 },
+    { r: 380, col: "rgba(14, 165, 233, 0.18)", lw: 1.8 },
+  ].forEach((arc, aIdx) => {
     ctx.beginPath();
-    const sideDir = sinY >= 0 ? 1 : -1;
-    ctx.moveTo((sideDir * w) / 2, -h / 2);
-    ctx.lineTo(sideDir * (w / 2 + d), -h / 2 - d * 0.5);
-    ctx.lineTo(sideDir * (w / 2 + d), h / 2 - d * 0.5);
-    ctx.lineTo((sideDir * w) / 2, h / 2);
-    ctx.closePath();
-    ctx.fillStyle = "rgba(10, 20, 45, 0.85)";
-    ctx.fill();
-    ctx.strokeStyle = cube.color;
-    ctx.lineWidth = 1;
+    ctx.arc(512, 210, arc.r + Math.sin(t * 1.2 + aIdx) * 4, Math.PI * 0.9, Math.PI * 2.1);
+    ctx.strokeStyle = arc.col;
+    ctx.lineWidth = arc.lw;
     ctx.stroke();
-
-    // Front Face
-    ctx.beginPath();
-    ctx.roundRect(-w / 2, -h / 2, w, h, Math.min(8, w / 4));
-    ctx.fillStyle = "rgba(12, 24, 55, 0.92)";
-    ctx.fill();
-    ctx.strokeStyle = cube.color;
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // Front letter/number (only rendered when face turns towards viewer)
-    if (Math.abs(cosY) > 0.35 && Math.abs(cosX) > 0.35) {
-      ctx.save();
-      ctx.scale(cosY >= 0 ? 1 : -1, 1);
-      ctx.font = `900 ${Math.floor(cube.size * 0.48)}px "Roboto Slab", "Montserrat", "Arial Black", sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = cube.color;
-      ctx.fillText(cube.char, 0, 0);
-      ctx.restore();
-    }
-
-    ctx.restore();
   });
+  ctx.restore();
 
-  // 5. Scanlines LED TV
-  ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+  // 5. Các hạt bụi ánh kim lấp lánh (Golden Shimmer Particles) bay lơ lửng sinh động
+  ctx.save();
+  const PARTICLE_COUNT = 32;
+  for (let p = 0; p < PARTICLE_COUNT; p++) {
+    const seed = p * 137.5;
+    const px = (((seed * 11 + t * (18 + (p % 10))) % 1060) + 1060) % 1060 - 18;
+    const py = 60 + (((seed * 7 + Math.sin(t * 0.8 + p) * 35 + t * 6) % 360) + 360) % 360;
+    const pSize = 1.8 + (p % 4) * 0.9;
+    const pAlpha = 0.25 + 0.55 * Math.abs(Math.sin(t * 1.5 + p));
+
+    ctx.beginPath();
+    ctx.arc(px, py, pSize, 0, Math.PI * 2);
+    ctx.fillStyle = p % 2 === 0 ? `rgba(254, 240, 138, ${pAlpha})` : `rgba(186, 230, 253, ${pAlpha * 0.85})`;
+    ctx.shadowColor = p % 2 === 0 ? "#fef08a" : "#38bdf8";
+    ctx.shadowBlur = 6;
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 6. Scanlines LED TV viền phát sáng tự nhiên
+  ctx.fillStyle = "rgba(0, 0, 0, 0.10)";
   for (let y = 0; y < 512; y += 4) {
     ctx.fillRect(0, y, 1024, 2);
   }
@@ -3913,7 +3883,7 @@ function CameraController({
   effectiveIsSpinning: boolean;
   transitionMode?: "CUT" | "MORPH";
 }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const targetConfig = useRef<CamConfig>(CAM_POSITIONS.DEFAULT);
   const targetLookAtRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 1.15, -0.30));
   const initialized = useRef(false);
@@ -3994,12 +3964,6 @@ function CameraController({
         camera.position.set(curX, curY, curZ);
         targetLookAtRef.current.set(0, tgtY, tgtZ);
         camera.lookAt(targetLookAtRef.current);
-
-        if (Math.abs(persCamera.fov - targetFovRef.current) > 0.05) {
-          persCamera.fov = THREE.MathUtils.lerp(persCamera.fov, targetFovRef.current, delta * 5);
-          persCamera.updateProjectionMatrix();
-        }
-        return;
       } else if (camAngle === 3) {
         // CAM 3 (7s - 11s): Zoom nhẹ 1.15x trong suốt 4s hiển thị
         const p = Math.max(0, Math.min(1, (elapsed - 7.0) / 4.0));
@@ -4016,9 +3980,18 @@ function CameraController({
       targetFovRef.current = 46;
     }
 
+    // Adaptive Horizontal FOV: tính toán vertical FOV khi màn hình tỉ lệ hẹp hoặc vuông (aspect < 16/9)
+    // để chiều rộng toàn cảnh sân khấu (horizontal FOV) không bao giờ bị cắt xén
+    const aspect = size.width / Math.max(1, size.height);
+    let computedTargetFov = targetFovRef.current;
+    if (aspect < 16 / 9) {
+      const baseHRad = 2 * Math.atan(Math.tan((targetFovRef.current * Math.PI) / 360) * (16 / 9));
+      computedTargetFov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(baseHRad / 2) / aspect));
+    }
+
     // Apply FOV smoothly
-    if (Math.abs(persCamera.fov - targetFovRef.current) > 0.05) {
-      persCamera.fov = THREE.MathUtils.lerp(persCamera.fov, targetFovRef.current, delta * 4.5);
+    if (Math.abs(persCamera.fov - computedTargetFov) > 0.05) {
+      persCamera.fov = THREE.MathUtils.lerp(persCamera.fov, computedTargetFov, delta * 4.5);
       persCamera.updateProjectionMatrix();
     }
 
@@ -4503,36 +4476,52 @@ function WheelStudio3DSceneComponent({
       {internalCam === 3 &&
         phase !== "ROUND_RECAP" &&
         showClue &&
-        Boolean(currentPuzzle?.category || currentPuzzle?.description || currentPuzzle?.clue) && (
-          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-40 max-w-[94vw] sm:max-w-4xl md:max-w-5xl px-5 py-2 rounded-2xl bg-gradient-to-r from-slate-950/95 via-sky-950/90 to-slate-950/95 border-2 border-amber-400/80 shadow-[0_4px_30px_rgba(245,158,11,0.45)] backdrop-blur-md flex items-center gap-3 animate-fade-in pointer-events-auto">
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xl">💡</span>
-              {currentPuzzle?.category && (
-                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/60 font-black text-amber-300 uppercase tracking-widest text-xs sm:text-sm">
-                  CHỦ ĐỀ: {currentPuzzle.category.trim()}
-                </span>
-              )}
-              {currentPuzzle?.category && /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(currentPuzzle.category) && (
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/60 font-black text-emerald-300 text-[11px] animate-pulse">
+        Boolean(currentPuzzle?.category || currentPuzzle?.description || currentPuzzle?.clue) && (() => {
+          const effectiveMode = currentPuzzle?.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE");
+          const isCategoryMode = effectiveMode === "CATEGORY";
+          const rawClueText = (currentPuzzle?.description || currentPuzzle?.clue || "")
+            .replace(/\s*\(\s*\d+\s*(ký\s*tự|chữ\s*cái|chữ|letters|chars?)\s*\)/gi, "")
+            .trim();
+          const categoryText = (currentPuzzle?.category || "").trim();
+
+          const labelText = isCategoryMode
+            ? (edition === "ENGLISH" ? "CATEGORY" : "CHỦ ĐỀ")
+            : (edition === "ENGLISH" ? "CLUE" : "GỢI Ý");
+
+          const displayText = isCategoryMode
+            ? (categoryText || rawClueText)
+            : (rawClueText || categoryText);
+
+          const isSameLetter = categoryText && /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(categoryText);
+
+          return (
+            <div className="absolute bottom-11 left-1/2 -translate-x-1/2 z-40 max-w-[92vw] sm:max-w-2xl md:max-w-3xl px-4 py-1.5 rounded-xl bg-slate-950/90 border border-amber-400/60 shadow-[0_4px_24px_rgba(0,0,0,0.8)] backdrop-blur-md flex items-center gap-2.5 animate-fade-in pointer-events-auto">
+              <span className="text-base shrink-0">{isCategoryMode ? "🏷️" : "💡"}</span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/50 font-black text-amber-300 uppercase tracking-wider text-[11px] sm:text-xs shrink-0">
+                {labelText}
+              </span>
+              {isSameLetter && (
+                <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/50 font-black text-emerald-300 text-[10px] shrink-0 animate-pulse">
                   ✨ +$1,000
                 </span>
               )}
+              <div
+                className="font-semibold text-white text-xs sm:text-sm tracking-wide truncate flex-1 text-left"
+                title={displayText}
+              >
+                {displayText}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowClue(false)}
+                className="ml-auto text-xs text-white/50 hover:text-white/90 p-1 rounded-md transition-colors shrink-0"
+                title="Ẩn thanh thông tin trên CAM 3"
+              >
+                ✕
+              </button>
             </div>
-            <div className="font-bold text-white text-xs sm:text-sm md:text-base tracking-wide whitespace-normal leading-snug text-left flex-1">
-              {(currentPuzzle?.description || currentPuzzle?.clue || "")
-                .replace(/\s*\(\s*\d+\s*(ký\s*tự|chữ\s*cái|chữ|letters|chars?)\s*\)/gi, "")
-                .trim()}
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowClue(false)}
-              className="ml-auto text-xs text-white/50 hover:text-white/90 p-1 rounded-md transition-colors shrink-0"
-              title="Ẩn gợi ý trên CAM 3"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+          );
+        })()}
 
       {/* ── BROADCAST CAMERA DIRECTOR BAR (MICRO DOCK MỜ 25% OPACITY) ── */}
       <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 p-1 rounded-lg bg-black/40 backdrop-blur-sm border border-white/10 shadow-lg opacity-25 hover:opacity-100 transition-opacity duration-300">

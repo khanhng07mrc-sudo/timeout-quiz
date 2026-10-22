@@ -65,6 +65,7 @@ export interface MagicWheelPuzzle {
   category: string;    // "Danh nhân", "Địa danh", "Văn học", "Khoa học"
   secretPhrase: string; // "NGUYỄN TRÃI"
   clue?: string;        // "Nhà quân sự, danh nhân văn hóa..."
+  clueDisplayMode?: "CATEGORY" | "CLUE"; // Chế độ hiển thị: Chủ đề hay Gợi ý
   revealedIndices: number[]; // Vị trí các ký tự đã được lật mở (chỉ hiện chữ gốc không dấu khi chưa giải xong)
 }
 
@@ -1128,6 +1129,7 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     category: "ĐOÁN NHANH 1: DI SẢN LỊCH SỬ",
     secretPhrase: "HOÀNG THÀNH THĂNG LONG",
     clue: "Quần thể di tích lịch sử cố đô ngàn năm văn hiến được UNESCO vinh danh là Di sản Thế giới.",
+    clueDisplayMode: "CLUE",
     revealedIndices: [],
   },
   {
@@ -1137,6 +1139,7 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     category: "ĐOÁN NHANH 2: VĂN HÓA ẨM THỰC",
     secretPhrase: "BÁNH CHƯNG - BÁNH GIẦY",
     clue: "Hai thức bánh tượng trưng trời tròn đất vuông gắn với truyền thuyết hoàng tử Lang Liêu đời vua Hùng.",
+    clueDisplayMode: "CLUE",
     revealedIndices: [],
   },
   {
@@ -1147,6 +1150,7 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     category: "VÒNG 1: DANH NHÂN LỊCH SỬ",
     secretPhrase: "NGUYỄN TRÃI",
     clue: "Nhà quân sự, danh nhân văn hóa lỗi lạc thế giới của Việt Nam thời Hậu Lê.",
+    clueDisplayMode: "CLUE",
     revealedIndices: [],
   },
   {
@@ -1157,6 +1161,7 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     category: "VÒNG 2: DI SẢN THIÊN NHIÊN",
     secretPhrase: "VỊNH HẠ LONG",
     clue: "Kỳ quan thiên nhiên thế giới với hàng nghìn đảo đá vôi kỳ vĩ tại Quảng Ninh.",
+    clueDisplayMode: "CLUE",
     revealedIndices: [],
   },
   {
@@ -1167,6 +1172,7 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     category: "VÒNG 3: THÀNH NGỮ TỤC NGỮ",
     secretPhrase: "UỐNG NƯỚC NHỚ NGUỒN",
     clue: "Truyền thống đạo lý tri ân sâu sắc các thế hệ đi trước của dân tộc Việt Nam.",
+    clueDisplayMode: "CLUE",
     revealedIndices: [],
   },
   {
@@ -1177,6 +1183,7 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     category: "VÒNG 4: VĂN HỌC VIỆT NAM",
     secretPhrase: "DẾ MÈN PHIÊU LƯU KÝ",
     clue: "Tác phẩm văn học thiếu nhi kinh điển nổi tiếng nhất của nhà văn Tô Hoài.",
+    clueDisplayMode: "CLUE",
     revealedIndices: [],
   },
   {
@@ -1187,6 +1194,7 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     category: "VÒNG 5: LÀNG NGHỀ TRUYỀN THỐNG",
     secretPhrase: "GỐM SỨ BÁT TRÀNG",
     clue: "Làng nghề làm gốm lâu đời nằm bên bờ sông Hồng thuộc huyện Gia Lâm, Hà Nội.",
+    clueDisplayMode: "CLUE",
     revealedIndices: [],
   },
   {
@@ -1197,6 +1205,7 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     category: "VÒNG 6: ÂM NHẠC DÂN TỘC",
     secretPhrase: "NHÃ NHẠC CUNG ĐÌNH HUẾ",
     clue: "Loại hình âm nhạc bác học đầu tiên của Việt Nam được UNESCO vinh danh.",
+    clueDisplayMode: "CLUE",
     revealedIndices: [],
   },
   {
@@ -1207,6 +1216,7 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     category: "VÒNG 7: KỲ QUAN HANG ĐỘNG",
     secretPhrase: "HANG SƠN ĐOÒNG",
     clue: "Hang động tự nhiên lớn nhất thế giới nằm trong quần thể Phong Nha - Kẻ Bàng.",
+    clueDisplayMode: "CLUE",
     revealedIndices: [],
   },
   {
@@ -1217,6 +1227,7 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     category: "VÒNG 8: KHOA HỌC CÔNG NGHỆ",
     secretPhrase: "TRÍ TUỆ NHÂN TẠO",
     clue: "Lĩnh vực công nghệ đột phá mô phỏng tư duy và khả năng học hỏi của con người.",
+    clueDisplayMode: "CLUE",
     revealedIndices: [],
   },
   {
@@ -1226,6 +1237,7 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     category: "VÒNG ĐẶC BIỆT: KIỆT TÁC THI CA",
     secretPhrase: "TRUYỆN KIỀU NGUYỄN DU",
     clue: "Kiệt tác thơ Nôm lục bát bất hủ được xem là đỉnh cao của nền văn học trung đại Việt Nam.",
+    clueDisplayMode: "CLUE",
     revealedIndices: [],
   },
 ];
@@ -1588,8 +1600,8 @@ export const DEFAULT_ENGLISH_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
  * [Đoán nhanh 1] -> [Đoán nhanh 2] -> [Vòng chính 1 .. Vòng chính N] -> [Vòng Đặc Biệt]
  */
 export function buildMagicWheelMatchPuzzles(
-  firstArg?: number | Array<{ roundNumber?: number; stage?: MagicWheelRoundStage; category: string; secretPhrase: string; clue?: string }>,
-  secondArg?: number | Array<{ roundNumber?: number; stage?: MagicWheelRoundStage; category: string; secretPhrase: string; clue?: string }>,
+  firstArg?: number | Array<{ roundNumber?: number; stage?: MagicWheelRoundStage; category: string; secretPhrase: string; clue?: string; clueDisplayMode?: "CATEGORY" | "CLUE" }>,
+  secondArg?: number | Array<{ roundNumber?: number; stage?: MagicWheelRoundStage; category: string; secretPhrase: string; clue?: string; clueDisplayMode?: "CATEGORY" | "CLUE" }>,
   edition: "VIETNAMESE" | "ENGLISH" = "VIETNAMESE",
   englishPreset: EnglishPuzzleSetPreset = "RANDOM_MIX"
 ): MagicWheelPuzzle[] {
@@ -1615,6 +1627,7 @@ export function buildMagicWheelMatchPuzzles(
       category: p.category,
       secretPhrase: p.secretPhrase,
       clue: p.clue,
+      clueDisplayMode: p.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
       revealedIndices: [],
     }));
   } else if (edition === "ENGLISH") {
@@ -1672,6 +1685,7 @@ export function buildMagicWheelMatchPuzzles(
     roundNumber: 1,
     stage: "TOSS_UP_1",
     category: tu1Source.category.includes("ĐOÁN NHANH") ? tu1Source.category : `ĐOÁN NHANH 1: ${tu1Source.category}`,
+    clueDisplayMode: tu1Source.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
     revealedIndices: [],
   });
 
@@ -1683,6 +1697,7 @@ export function buildMagicWheelMatchPuzzles(
     roundNumber: 2,
     stage: "TOSS_UP_2",
     category: tu2Source.category.includes("ĐOÁN NHANH") ? tu2Source.category : `ĐOÁN NHANH 2: ${tu2Source.category}`,
+    clueDisplayMode: tu2Source.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
     revealedIndices: [],
   });
 
@@ -1700,6 +1715,7 @@ export function buildMagicWheelMatchPuzzles(
       stage: "MAIN",
       mainRoundIndex: m,
       category: `VÒNG ${m}: ${cleanCat}`,
+      clueDisplayMode: src.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
       revealedIndices: [],
     });
   }
@@ -1713,6 +1729,7 @@ export function buildMagicWheelMatchPuzzles(
     roundNumber: 2 + totalMainRounds + 1,
     stage: "SPECIAL_FINAL",
     category: `VÒNG ĐẶC BIỆT: ${cleanSpecialCat}`,
+    clueDisplayMode: specialSource.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
     revealedIndices: [],
   });
 

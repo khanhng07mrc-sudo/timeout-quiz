@@ -162,6 +162,7 @@ export default function QuizBankPage() {
   const [qHint, setQHint] = useState("");
   const [qAnswer, setQAnswer] = useState("");
   const [qRound, setQRound] = useState(1);
+  const [qClueDisplayMode, setQClueDisplayMode] = useState<"CATEGORY" | "CLUE">("CLUE");
   const [qAllowManualGrading, setQAllowManualGrading] = useState(false);
   const [qGradingCriteria, setQGradingCriteria] = useState("");
   const [qOptions, setQOptions] = useState([
@@ -206,6 +207,7 @@ export default function QuizBankPage() {
   const [editQHint, setEditQHint] = useState("");
   const [editQAnswer, setEditQAnswer] = useState("");
   const [editQRound, setEditQRound] = useState(1);
+  const [editQClueDisplayMode, setEditQClueDisplayMode] = useState<"CATEGORY" | "CLUE">("CLUE");
   const [editQAllowManualGrading, setEditQAllowManualGrading] = useState(false);
   const [editQGradingCriteria, setEditQGradingCriteria] = useState("");
   const [editQOptions, setEditQOptions] = useState([
@@ -543,6 +545,7 @@ export default function QuizBankPage() {
       setQHint("");
       setQAnswer("");
       setQContent("");
+      setQClueDisplayMode(selectedBank?.language === "ENGLISH" ? "CATEGORY" : "CLUE");
     } else {
       if (qType === "WORD_PUZZLE") setQType("MC_SINGLE");
       setQContent("");
@@ -736,6 +739,7 @@ export default function QuizBankPage() {
       payload.options = [
         { id: "round", text: String(qRound || 1), isCorrect: true },
         { id: "category", text: category, isCorrect: true },
+        { id: "clueDisplayMode", text: qClueDisplayMode, isCorrect: true },
       ];
       payload.pairs = null;
     }
@@ -918,6 +922,9 @@ export default function QuizBankPage() {
       setEditQHint(q.hint || "");
       const roundOpt = q.options?.find((o: any) => o.id === "round");
       setEditQRound(roundOpt ? Number(roundOpt.text) || 1 : 1);
+      const clueModeOpt = q.options?.find((o: any) => o.id === "clueDisplayMode");
+      const modeVal = clueModeOpt?.text || (q as any).clueDisplayMode;
+      setEditQClueDisplayMode(modeVal === "CATEGORY" ? "CATEGORY" : "CLUE");
     }
 
     setShowEditQModal(true);
@@ -1013,6 +1020,7 @@ export default function QuizBankPage() {
       payload.options = [
         { id: "round", text: String(editQRound || 1), isCorrect: true },
         { id: "category", text: category, isCorrect: true },
+        { id: "clueDisplayMode", text: editQClueDisplayMode, isCorrect: true },
       ];
       payload.pairs = null;
     }
@@ -1720,7 +1728,7 @@ export default function QuizBankPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setShowNewQModal(true)}
+                    onClick={openNewQuestionModal}
                     className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer"
                   >
                     + Thêm câu hỏi
@@ -1755,7 +1763,7 @@ export default function QuizBankPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-6 text-left">
                     <button
                       type="button"
-                      onClick={() => setShowNewQModal(true)}
+                      onClick={openNewQuestionModal}
                       className="p-4 rounded-xl border border-border/80 bg-card/60 hover:bg-card hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/5 transition-all text-left group cursor-pointer flex flex-col justify-between"
                     >
                       <div>
@@ -2791,6 +2799,37 @@ export default function QuizBankPage() {
                   </div>
                 </div>
 
+                {/* Chế độ hiển thị CAM 3 Lower-Third (New) */}
+                <div>
+                  <label className="block text-xs font-bold text-amber-200 mb-1">
+                    Chế độ hiển thị trên màn hình trường quay (CAM 3 Lower-Third)
+                  </label>
+                  <div className="flex flex-wrap items-center gap-4 p-2.5 rounded-lg bg-black/40 border border-amber-500/30">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-100">
+                      <input
+                        type="radio"
+                        name="qClueDisplayMode"
+                        value="CLUE"
+                        checked={qClueDisplayMode === "CLUE"}
+                        onChange={() => setQClueDisplayMode("CLUE")}
+                        className="text-amber-500 focus:ring-amber-400"
+                      />
+                      <span>💡 Ưu tiên hiện Gợi ý (Mặc định Bản Việt / VTV3)</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-100">
+                      <input
+                        type="radio"
+                        name="qClueDisplayMode"
+                        value="CATEGORY"
+                        checked={qClueDisplayMode === "CATEGORY"}
+                        onChange={() => setQClueDisplayMode("CATEGORY")}
+                        className="text-amber-500 focus:ring-amber-400"
+                      />
+                      <span>🏷️ Ưu tiên hiện Chủ đề (Mặc định Bản Anh / WOF)</span>
+                    </label>
+                  </div>
+                </div>
+
                 {/* Live Preview 4x14 Grid */}
                 {(() => {
                   const preview = buildPuzzle4x14Preview(qAnswer);
@@ -3705,6 +3744,37 @@ export default function QuizBankPage() {
                       }
                       return null;
                     })()}
+                  </div>
+                </div>
+
+                {/* Chế độ hiển thị CAM 3 Lower-Third (Edit) */}
+                <div>
+                  <label className="block text-xs font-bold text-amber-200 mb-1">
+                    Chế độ hiển thị trên màn hình trường quay (CAM 3 Lower-Third)
+                  </label>
+                  <div className="flex flex-wrap items-center gap-4 p-2.5 rounded-lg bg-black/40 border border-amber-500/30">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-100">
+                      <input
+                        type="radio"
+                        name="editQClueDisplayMode"
+                        value="CLUE"
+                        checked={editQClueDisplayMode === "CLUE"}
+                        onChange={() => setEditQClueDisplayMode("CLUE")}
+                        className="text-amber-500 focus:ring-amber-400"
+                      />
+                      <span>💡 Ưu tiên hiện Gợi ý (Mặc định Bản Việt / VTV3)</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-100">
+                      <input
+                        type="radio"
+                        name="editQClueDisplayMode"
+                        value="CATEGORY"
+                        checked={editQClueDisplayMode === "CATEGORY"}
+                        onChange={() => setEditQClueDisplayMode("CATEGORY")}
+                        className="text-amber-500 focus:ring-amber-400"
+                      />
+                      <span>🏷️ Ưu tiên hiện Chủ đề (Mặc định Bản Anh / WOF)</span>
+                    </label>
                   </div>
                 </div>
 

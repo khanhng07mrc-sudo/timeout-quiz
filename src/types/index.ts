@@ -818,6 +818,7 @@ export interface MagicWheelPuzzle {
   category: string;    // "Danh nhân", "Địa danh", "Văn học", "Khoa học"
   secretPhrase: string; // "NGUYỄN HUỆ"
   clue?: string;        // "Vị anh hùng áo vải cờ đào..."
+  clueDisplayMode?: "CATEGORY" | "CLUE"; // Chế độ hiển thị trên màn hình: Chủ đề hay Gợi ý
   revealedIndices: number[]; // Vị trí các ký tự đã được lật mở
 }
 

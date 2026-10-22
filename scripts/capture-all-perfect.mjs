@@ -22,39 +22,40 @@ async function run() {
   const BASE_URL = 'http://localhost:3000';
 
   // 1. Authenticate with Super Admin Master Key
-  console.log('Navigating to /admin for Master Key authentication...');
+  console.log('Authenticating via /api/admin/auth...');
   await page.goto(`${BASE_URL}/admin`, { waitUntil: 'networkidle2', timeout: 30000 });
-  await new Promise(r => setTimeout(r, 1200));
-
-  console.log('Clicking Master Key switch...');
-  await page.evaluate(() => {
-    const mkBtn = Array.from(document.querySelectorAll('button, a, span, p')).find(el => el.textContent && el.textContent.includes('Master Key'));
-    if (mkBtn) mkBtn.click();
+  await page.evaluate(async () => {
+    try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: 'TimeoutQuiz@Admin2026' })
+      });
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('admin_token', data.token);
+        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('master_key_authenticated', 'true');
+      }
+    } catch (e) {
+      console.error('API auth error', e);
+    }
   });
-  await new Promise(r => setTimeout(r, 600));
-
-  console.log('Typing master password...');
-  const passInput = await page.$('input[type="password"]') || await page.$('input');
-  if (passInput) {
-    await passInput.click();
-    await page.keyboard.type('TimeoutQuiz@Admin2026');
-    await new Promise(r => setTimeout(r, 400));
-    await page.evaluate(() => {
-      const submit = Array.from(document.querySelectorAll('button')).find(b => b.textContent && (b.textContent.includes('Super Admin') || b.textContent.includes('Đăng nhập')));
-      if (submit) submit.click();
-    });
-    console.log('Submitted login. Waiting for redirect...');
-    await new Promise(r => setTimeout(r, 3000));
-  }
+  await new Promise(r => setTimeout(r, 1000));
 
   // 2. Open Quiz Bank to test SAME LETTER
   console.log('Navigating to /admin/quiz-bank...');
   await page.goto(`${BASE_URL}/admin/quiz-bank`, { waitUntil: 'networkidle2', timeout: 30000 });
   await new Promise(r => setTimeout(r, 2000));
+  console.log('Quiz bank page URL:', page.url());
 
   console.log('Selecting Chiếc Nón Kỳ Diệu quiz bank...');
   const selected = await page.evaluate(() => {
-    // Click any bank item with "Chiếc Nón" or "Magic Wheel" or the first bank card
+    // If there is a preset load button, click it first to ensure bank exists
+    const loadPresetBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Chiếc Nón Kỳ Diệu'));
+    if (loadPresetBtn) loadPresetBtn.click();
+
+    // Click bank card
     const items = Array.from(document.querySelectorAll('div, button, tr, li')).filter(el => {
       return el.textContent && (el.textContent.includes('Chiếc Nón') || el.textContent.includes('Magic Wheel') || el.textContent.includes('Bộ đề'));
     });
@@ -75,6 +76,17 @@ async function run() {
     if (addBtns.length > 0) addBtns[0].click();
   });
   await new Promise(r => setTimeout(r, 1500));
+
+  // Capture Quiz Bank Modal with Clue Display Mode radio selector
+  console.log('Capturing Quiz Bank modal with Clue Display Mode radio selector...');
+  // Scroll modal slightly to show clue display mode and preview
+  await page.evaluate(() => {
+    const form = document.querySelector('form');
+    if (form) form.scrollTop = 200;
+  });
+  await new Promise(r => setTimeout(r, 600));
+  await page.screenshot({ path: path.join(ARTIFACT_DIR, 'screenshot_quiz_bank_clue_mode_selector.png') });
+  console.log('Saved screenshot_quiz_bank_clue_mode_selector.png');
 
   // Type SAME LETTER in Hint and AWESOME APPLES in Answer
   console.log('Testing invalid vowel phrase: AWESOME APPLES...');
@@ -162,8 +174,25 @@ async function run() {
     // CAM 5 (Contestant Push)
     await captureCam('5', 'screenshot_cam5_contestant_push.png');
 
-    // CAM 2 (Master Wide)
+    // CAM 2 (Master Wide with Adaptive Horizontal FOV)
     await captureCam('2', 'screenshot_cam2_master_wide.png');
+
+    // Toggle 16:9 Letterbox on Display frame
+    console.log('Testing 16:9 Letterbox TV toggle...');
+    await displayFrame.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('16:9'));
+      if (btn) btn.click();
+    });
+    await new Promise(r => setTimeout(r, 1200));
+    await iframeHandle.screenshot({ path: path.join(ARTIFACT_DIR, 'screenshot_cam2_16x9_letterbox_tv.png') });
+    console.log('Saved screenshot_cam2_16x9_letterbox_tv.png');
+
+    // Toggle back to fluid
+    await displayFrame.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('16:9'));
+      if (btn) btn.click();
+    });
+    await new Promise(r => setTimeout(r, 600));
   } else {
     console.warn('Display iframe not found in frames list');
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { MagicWheelState, MagicWheelOperationMode, TeamState, MagicWheelSector } from "@/types";
+import { MagicWheelState, MagicWheelOperationMode, TeamState, MagicWheelSector, MagicWheelPuzzle } from "@/types";
 import {
   VIETNAMESE_ALPHABET,
   ENGLISH_ALPHABET,
@@ -22,6 +22,9 @@ import {
   isPuzzleFullyRevealed,
   evaluateThreePhaseWheelProgress,
   stripVietnameseToneKeepBase,
+  CrosswordWordItem,
+  validateCrosswordLayout,
+  validateCrosswordSolve,
 } from "@/lib/game-engine/magic-wheel";
 import { formatCategoryByEdition } from "@/lib/game-engine/magic-wheel-categories";
 import { soundManager } from "@/lib/sound-manager";
@@ -770,6 +773,278 @@ function SmartPuzzlePhraseInput({
           {submitLabel}
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Hộp thoại giải Ô Chữ Liên Kết hỗ trợ 2 Tab:
+ * - Tab 1: Nhập nhanh danh sách từ (phân tách DUY NHẤT bằng dấu phẩy ',', nghiêm cấm từ nối như 'và', 'and', 'với', '&').
+ * - Tab 2: Điền trực quan vào lưới ô chữ 4x14 (chạm vào các ô trống để điền chữ).
+ */
+function CrosswordSolveModalInput({
+  puzzle,
+  revealedIndices,
+  onSubmit,
+  onCancel,
+  edition = "VIETNAMESE",
+}: {
+  puzzle: MagicWheelPuzzle;
+  revealedIndices: Set<number>;
+  onSubmit: (finalAnswer: string) => void;
+  onCancel?: () => void;
+  edition?: "VIETNAMESE" | "ENGLISH";
+}) {
+  const [activeTab, setActiveTab] = useState<"COMMA_LIST" | "GRID_FILL">("COMMA_LIST");
+  const [commaText, setCommaText] = useState("");
+  const words = useMemo(() => puzzle.crosswordWords || [], [puzzle.crosswordWords]);
+  const layout = useMemo(() => validateCrosswordLayout(words), [words]);
+
+  // Tab 2 Grid State: map of gridKey (r * 14 + c) -> character entered by player
+  const [gridChars, setGridChars] = useState<Record<number, string>>({});
+
+  // Client-side forbidden words detector for Tab 1
+  const forbiddenMatch = useMemo(() => {
+    const match = commaText.match(/(^|[^A-ZÀ-Ỹ0-9])(VÀ|AND|VỚI|CÙNG|KÈM|[&+])([^A-ZÀ-Ỹ0-9]|$)/i);
+    return match ? match[2].toUpperCase() : null;
+  }, [commaText]);
+
+  // Extract comma tokens
+  const commaTokens = useMemo(() => {
+    return commaText
+      .split(",")
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+  }, [commaText]);
+
+  const handleSubmitCommaList = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!commaText.trim()) return;
+    if (forbiddenMatch) {
+      alert(`⚠️ Vi phạm quy tắc nghiêm ngặt: Không được dùng từ nối "${forbiddenMatch}"! Bạn chỉ được dùng dấu phẩy ',' để phân tách các từ khoá.`);
+      return;
+    }
+    onSubmit(commaText.trim().toUpperCase());
+  };
+
+  const handleSubmitGridFill = () => {
+    // Reconstruct each word from grid
+    const extractedWords: string[] = [];
+    for (const item of words) {
+      const chars: string[] = [];
+      const cleanW = (item.word || "").trim().toUpperCase();
+      for (let i = 0; i < cleanW.length; i++) {
+        const r = item.direction === "ACROSS" ? item.row : item.row + i;
+        const c = item.direction === "ACROSS" ? item.col + i : item.col;
+        const key = r * 14 + c;
+        // If already revealed or user typed
+        const ch = gridChars[key] || (revealedIndices.has(key) ? cleanW[i] : "");
+        chars.push(ch);
+      }
+      extractedWords.push(chars.join(""));
+    }
+    onSubmit(extractedWords.join(", "));
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Tab Switcher */}
+      <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-black/60 border border-amber-500/30">
+        <button
+          type="button"
+          onClick={() => setActiveTab("COMMA_LIST")}
+          className={`px-3 py-2 rounded-lg text-xs font-black transition flex items-center justify-center gap-1.5 ${
+            activeTab === "COMMA_LIST"
+              ? "bg-amber-500 text-slate-950 shadow-md"
+              : "text-amber-200/70 hover:bg-white/5"
+          }`}
+        >
+          <span>✍️</span>
+          <span>Tab 1: Nhập danh sách từ (Dấu phẩy)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("GRID_FILL")}
+          className={`px-3 py-2 rounded-lg text-xs font-black transition flex items-center justify-center gap-1.5 ${
+            activeTab === "GRID_FILL"
+              ? "bg-amber-500 text-slate-950 shadow-md"
+              : "text-amber-200/70 hover:bg-white/5"
+          }`}
+        >
+          <span>📐</span>
+          <span>Tab 2: Điền trực quan vào lưới 4x14</span>
+        </button>
+      </div>
+
+      {activeTab === "COMMA_LIST" && (
+        <form onSubmit={handleSubmitCommaList} className="space-y-3">
+          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1.5">
+            <div className="font-bold text-amber-300 flex items-center gap-1.5">
+              <span>⚠️</span>
+              <span>QUY TẮC NGHIÊM NGẶT (WOF CROSSWORD RULES):</span>
+            </div>
+            <p className="leading-relaxed text-[11px]">
+              Nhập đầy đủ <strong>{words.length} từ khoá</strong> trên bảng, phân tách <strong>DUY NHẤT bằng dấu phẩy &quot;,&quot;</strong> (thứ tự tự do).
+              <br />
+              <span className="text-red-400 font-bold">
+                CẤM TUYỆT ĐỐI dùng các từ nối ngoài bảng (như &quot;và&quot;, &quot;and&quot;, &quot;với&quot;, &quot;&amp;&quot;).
+              </span>
+            </p>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-bold text-amber-200">
+                Nhập các từ khoá (ngăn cách bằng dấu phẩy):
+              </label>
+              <span className="text-[11px] text-amber-300/80 font-mono font-bold">
+                {commaTokens.length} / {words.length} từ khoá
+              </span>
+            </div>
+            <textarea
+              rows={2}
+              value={commaText}
+              onChange={(e) => setCommaText(e.target.value.toUpperCase())}
+              placeholder={
+                edition === "ENGLISH"
+                  ? "e.g.: PLANET, STAR, AIR (separate with commas only)"
+                  : "VD: VĂN HỌC, NHO, HÀ NỘI (chỉ dùng dấu phẩy)"
+              }
+              className={`w-full px-3.5 py-2.5 rounded-xl bg-black/60 border text-white font-bold text-sm tracking-wider uppercase focus:outline-none transition ${
+                forbiddenMatch
+                  ? "border-red-500 ring-2 ring-red-500/50"
+                  : "border-amber-500/40 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/40"
+              }`}
+            />
+            {forbiddenMatch && (
+              <div className="mt-1.5 p-2 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 text-xs flex items-center gap-1.5 font-bold animate-pulse">
+                <span>⛔</span>
+                <span>
+                  Phát hiện từ nối cấm &quot;{forbiddenMatch}&quot;! Bạn chỉ được dùng dấu phẩy &quot;,&quot; để phân tách.
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Tokens chips preview */}
+          {commaTokens.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {commaTokens.map((tok, i) => (
+                <span
+                  key={i}
+                  className="px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 font-black text-xs shadow-sm flex items-center gap-1"
+                >
+                  <span className="text-[10px] opacity-70">#{i + 1}</span>
+                  <span>{tok}</span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition"
+              >
+                HỦY
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={commaTokens.length === 0 || Boolean(forbiddenMatch)}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs sm:text-sm tracking-wider uppercase shadow-lg hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition transform active:scale-95"
+            >
+              CHỐT GIẢI Ô CHỮ LIÊN KẾT ➔
+            </button>
+          </div>
+        </form>
+      )}
+
+      {activeTab === "GRID_FILL" && (
+        <div className="space-y-3">
+          <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-200 text-xs flex items-center gap-2">
+            <span>💡</span>
+            <span>Chạm/gõ từng chữ cái vào các ô còn trống. Điểm giao 🔗 sẽ tự động đồng bộ giữa các từ!</span>
+          </div>
+
+          {/* 4x14 Interactive Grid */}
+          <div className="grid grid-rows-4 gap-1 p-2 bg-[#021307] rounded-xl border-2 border-amber-500/50 shadow-inner">
+            {Array.from({ length: 4 }).map((_, rIdx) => (
+              <div key={rIdx} className="grid grid-cols-14 gap-1">
+                {Array.from({ length: 14 }).map((_, cIdx) => {
+                  const key = rIdx * 14 + cIdx;
+                  const cell = layout.cellMap.get(key);
+                  const isInter = layout.intersections.some((it) => it.row === rIdx && it.col === cIdx);
+                  const isAlreadyRevealed = revealedIndices.has(key);
+                  const currentVal = gridChars[key] || (isAlreadyRevealed && cell ? cell.char : "");
+
+                  if (!cell) {
+                    return (
+                      <div
+                        key={cIdx}
+                        className="w-full aspect-[4/5] rounded bg-[#0f3414]/60 border border-[#1e5824]/40"
+                      />
+                    );
+                  }
+
+                  if (isAlreadyRevealed) {
+                    return (
+                      <div
+                        key={cIdx}
+                        className="w-full aspect-[4/5] rounded bg-white text-slate-900 font-black text-xs sm:text-sm flex items-center justify-center shadow select-none relative"
+                      >
+                        <span>{cell.char}</span>
+                        {isInter && (
+                          <span className="absolute -top-1 -right-1 text-[8px]">🔗</span>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <input
+                      key={cIdx}
+                      type="text"
+                      maxLength={1}
+                      value={currentVal}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        setGridChars((prev) => ({ ...prev, [key]: val }));
+                      }}
+                      className={`w-full aspect-[4/5] rounded font-black text-xs sm:text-sm text-center uppercase focus:outline-none transition ${
+                        isInter
+                          ? "bg-amber-400 text-slate-950 border-2 border-yellow-200 ring-2 ring-amber-400/50"
+                          : "bg-slate-900 text-amber-200 border-2 border-amber-400/60 focus:border-white focus:bg-slate-800"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition"
+              >
+                HỦY
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSubmitGridFill}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs sm:text-sm tracking-wider uppercase shadow-lg hover:brightness-110 cursor-pointer transition transform active:scale-95"
+            >
+              LẤY TỪ TRÊN LƯỚI &amp; CHỐT ĐÁP ÁN ➔
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2082,6 +2357,23 @@ export default function MagicWheelBoard({
 
   const cellPositionsMap = useMemo(() => {
     const map: Record<number, { col: number; row: number; char: string }> = {};
+
+    // 🔀 CROSSWORD / Ô CHỮ LIÊN KẾT: Tọa độ được cấu hình trực tiếp từ danh sách từ khóa
+    if (!isTempActive && currentPuzzle?.puzzleType === "CROSSWORD" && currentPuzzle.crosswordWords && currentPuzzle.crosswordWords.length > 0) {
+      currentPuzzle.crosswordWords.forEach((item) => {
+        const cleanW = (item.word || "").toUpperCase();
+        for (let i = 0; i < cleanW.length; i++) {
+          const r = item.direction === "DOWN" ? item.row + i : item.row;
+          const c = item.direction === "ACROSS" ? item.col + i : item.col;
+          if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+            const gridKey = r * COLS + c;
+            map[gridKey] = { col: c, row: r, char: cleanW[i] };
+          }
+        }
+      });
+      return map;
+    }
+
     const phrase = (isTempActive ? temporaryDisplayText || "" : currentPuzzle?.secretPhrase || "").toUpperCase();
     if (!phrase) return map;
 
@@ -2179,7 +2471,7 @@ export default function MagicWheelBoard({
     });
 
     return map;
-  }, [currentPuzzle?.secretPhrase, isTempActive, temporaryDisplayText]);
+  }, [currentPuzzle?.secretPhrase, currentPuzzle?.puzzleType, currentPuzzle?.crosswordWords, isTempActive, temporaryDisplayText]);
 
   // ── Show / Hide Hostess ("Người Mẫu") State (persisted to localStorage) ───
   const [showHostess, setShowHostess] = useState<boolean>(() => {
@@ -2863,7 +3155,7 @@ export default function MagicWheelBoard({
       return matrix;
     }
 
-    if (!currentPuzzle || !currentPuzzle.secretPhrase) {
+    if (!currentPuzzle || (!currentPuzzle.secretPhrase && (!currentPuzzle.crosswordWords || currentPuzzle.crosswordWords.length === 0))) {
       return matrix;
     }
 
@@ -3023,13 +3315,17 @@ export default function MagicWheelBoard({
           <div className="w-full max-w-2xl p-5 rounded-2xl bg-[#121829] border-2 border-amber-400/60 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
               <div className="flex items-center gap-2">
-                <span className="text-2xl">🎯</span>
+                <span className="text-2xl">{currentPuzzle?.puzzleType === "CROSSWORD" ? "🔀" : "🎯"}</span>
                 <div>
                   <h4 className="font-black text-base text-amber-300">
-                    GIẢI Ô CHỮ BÍ MẬT — CHÍNH XÁC TỪNG DẤU THANH ĐIỆU
+                    {currentPuzzle?.puzzleType === "CROSSWORD"
+                      ? "GIẢI Ô CHỮ LIÊN KẾT / TUNG HOÀNH"
+                      : "GIẢI Ô CHỮ BÍ MẬT — CHÍNH XÁC TỪNG DẤU THANH ĐIỆU"}
                   </h4>
                   <p className="text-[11px] text-slate-300">
-                    Các phụ âm đã mở trên bảng được giữ cố định. Hãy chọn dấu thanh cho các nguyên âm đã mở và điền các chữ cái còn thiếu!
+                    {currentPuzzle?.puzzleType === "CROSSWORD"
+                      ? "Nhập tất cả các từ trong ô chữ cách nhau bằng dấu phẩy (thứ tự tùy ý). TUYỆT ĐỐI không dùng từ nối (và, and, với...)!"
+                      : "Các phụ âm đã mở trên bảng được giữ cố định. Hãy chọn dấu thanh cho các nguyên âm đã mở và điền các chữ cái còn thiếu!"}
                   </p>
                 </div>
               </div>
@@ -3059,16 +3355,29 @@ export default function MagicWheelBoard({
               )}
             </div>
 
-            <SmartPuzzlePhraseInput
-              secretPhrase={currentPuzzle?.secretPhrase || ""}
-              revealedIndices={animRevealedIndices}
-              onCancel={() => setSolveModalOpen(false)}
-              onSubmit={(finalAnswer) => {
-                onSolvePuzzle?.(finalAnswer);
-                setSolveModalOpen(false);
-              }}
-              edition={edition}
-            />
+            {currentPuzzle?.puzzleType === "CROSSWORD" ? (
+              <CrosswordSolveModalInput
+                puzzle={currentPuzzle}
+                revealedIndices={animRevealedIndices}
+                onCancel={() => setSolveModalOpen(false)}
+                onSubmit={(finalAnswer) => {
+                  onSolvePuzzle?.(finalAnswer);
+                  setSolveModalOpen(false);
+                }}
+                edition={edition}
+              />
+            ) : (
+              <SmartPuzzlePhraseInput
+                secretPhrase={currentPuzzle?.secretPhrase || ""}
+                revealedIndices={animRevealedIndices}
+                onCancel={() => setSolveModalOpen(false)}
+                onSubmit={(finalAnswer) => {
+                  onSolvePuzzle?.(finalAnswer);
+                  setSolveModalOpen(false);
+                }}
+                edition={edition}
+              />
+            )}
           </div>
         </div>
       )}
@@ -3514,6 +3823,11 @@ export default function MagicWheelBoard({
                   ? `CATEGORY: ${formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
                   : `CHỦ ĐỀ: ${effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", "VIETNAMESE")}`}
               </span>
+              {currentPuzzle?.puzzleType === "CROSSWORD" && (
+                <span className="ml-2 px-2 py-0.5 rounded-full bg-violet-950/90 text-violet-200 border border-violet-400 text-[10px] font-black tracking-wider uppercase animate-pulse shadow-sm">
+                  🔀 {edition === "ENGLISH" ? "CROSSWORD" : "Ô CHỮ LIÊN KẾT"}
+                </span>
+              )}
               {/SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(currentPuzzle?.category || "") && (
                 <span className="ml-2 px-2 py-0.5 rounded-full bg-indigo-950/90 text-indigo-200 border border-indigo-400 text-[10px] font-black tracking-wider uppercase animate-pulse shadow-sm">
                   ✨ {activeState.sameLetterBonusAwarded ? `SAME LETTER [${activeState.sameLetterChar || ""}] +$1,000` : "SAME LETTER BONUS +$1,000"}
@@ -3526,10 +3840,16 @@ export default function MagicWheelBoard({
                   ? currentPuzzle?.clue || "Lắng nghe gợi ý từ MC và đoán các chữ cái!"
                   : "Bảng ô chữ đang chuẩn bị..."}
               </p>
-              {currentPuzzle?.secretPhrase && effectiveBoardStage !== "EMPTY_56" && (
+              {currentPuzzle?.puzzleType === "CROSSWORD" && currentPuzzle.crosswordWords ? (
                 <span className="shrink-0 px-2 py-0.5 rounded bg-amber-400/15 text-amber-300 font-mono font-black text-[10px] sm:text-xs border border-amber-400/30 whitespace-nowrap">
-                  {currentPuzzle.secretPhrase.replace(/\s+/g, "").length} {edition === "ENGLISH" ? "LETTERS" : "KÝ TỰ"}
+                  {currentPuzzle.crosswordWords.length} {edition === "ENGLISH" ? "WORDS" : "TỪ KHÓA"}
                 </span>
+              ) : (
+                currentPuzzle?.secretPhrase && effectiveBoardStage !== "EMPTY_56" && (
+                  <span className="shrink-0 px-2 py-0.5 rounded bg-amber-400/15 text-amber-300 font-mono font-black text-[10px] sm:text-xs border border-amber-400/30 whitespace-nowrap">
+                    {currentPuzzle.secretPhrase.replace(/\s+/g, "").length} {edition === "ENGLISH" ? "LETTERS" : "KÝ TỰ"}
+                  </span>
+                )
               )}
             </div>
           </div>
@@ -4229,7 +4549,11 @@ export default function MagicWheelBoard({
             <div className="flex items-center gap-2 text-xs sm:text-sm">
               <span className="text-xl">👑</span>
               <span className="font-black text-amber-300 uppercase">GIẢI MÃ THÀNH CÔNG:</span>
-              <span className="font-black text-white">&ldquo;{currentPuzzle?.secretPhrase}&rdquo;</span>
+              <span className="font-black text-white">
+                {currentPuzzle?.puzzleType === "CROSSWORD" && currentPuzzle.crosswordWords
+                  ? currentPuzzle.crosswordWords.map((w) => w.word).join(" · ")
+                  : `“${currentPuzzle?.secretPhrase}”`}
+              </span>
             </div>
           </div>
         )}
@@ -4858,6 +5182,11 @@ export default function MagicWheelBoard({
                       ? `CATEGORY: ${formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
                       : `CHỦ ĐỀ: ${effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", "VIETNAMESE")}`}
                   </span>
+                  {currentPuzzle?.puzzleType === "CROSSWORD" && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full bg-violet-950/90 text-violet-200 border border-violet-400 text-[10px] font-black tracking-wider uppercase animate-pulse shadow-sm">
+                      🔀 {edition === "ENGLISH" ? "CROSSWORD" : "Ô CHỮ LIÊN KẾT"}
+                    </span>
+                  )}
                   {/SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(currentPuzzle?.category || "") && (
                     <span className="ml-2 px-2 py-0.5 rounded-full bg-indigo-950/90 text-indigo-200 border border-indigo-400 text-[10px] font-black tracking-wider uppercase animate-pulse shadow-sm">
                       ✨ {activeState.sameLetterBonusAwarded ? `SAME LETTER [${activeState.sameLetterChar || ""}] +$1,000` : "SAME LETTER BONUS +$1,000"}
@@ -4871,10 +5200,16 @@ export default function MagicWheelBoard({
                       ? currentPuzzle?.clue || "Lắng nghe gợi ý từ MC và đoán các chữ cái!"
                       : "Bảng ô chữ đang chuẩn bị..."}
                   </p>
-                  {currentPuzzle?.secretPhrase && effectiveBoardStage !== "EMPTY_56" && (
+                  {currentPuzzle?.puzzleType === "CROSSWORD" && currentPuzzle.crosswordWords ? (
                     <span className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-400/15 text-amber-300 font-mono font-black text-xs sm:text-sm border border-amber-400/30 whitespace-nowrap shadow-inner">
-                      {currentPuzzle.secretPhrase.replace(/\s+/g, "").length} {edition === "ENGLISH" ? "LETTERS" : "KÝ TỰ"}
+                      {currentPuzzle.crosswordWords.length} {edition === "ENGLISH" ? "WORDS" : "TỪ KHÓA"}
                     </span>
+                  ) : (
+                    currentPuzzle?.secretPhrase && effectiveBoardStage !== "EMPTY_56" && (
+                      <span className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-400/15 text-amber-300 font-mono font-black text-xs sm:text-sm border border-amber-400/30 whitespace-nowrap shadow-inner">
+                        {currentPuzzle.secretPhrase.replace(/\s+/g, "").length} {edition === "ENGLISH" ? "LETTERS" : "KÝ TỰ"}
+                      </span>
+                    )
                   )}
                 </div>
               </div>
@@ -4898,7 +5233,12 @@ export default function MagicWheelBoard({
                     )}
                   </div>
                   <p className="text-base sm:text-xl font-black text-white mt-1 tracking-wide">
-                    Ô CHỮ ĐẦY ĐỦ: &ldquo;{currentPuzzle?.secretPhrase}&rdquo;
+                    {currentPuzzle?.puzzleType === "CROSSWORD" ? "CÁC TỪ KHÓA LIÊN KẾT: " : "Ô CHỮ ĐẦY ĐỦ: "}
+                    &ldquo;
+                    {currentPuzzle?.puzzleType === "CROSSWORD" && currentPuzzle.crosswordWords
+                      ? currentPuzzle.crosswordWords.map((w) => w.word).join(" · ")
+                      : currentPuzzle?.secretPhrase}
+                    &rdquo;
                   </p>
                 </div>
               </div>
@@ -6211,13 +6551,17 @@ export default function MagicWheelBoard({
           <div className="w-full max-w-2xl p-5 rounded-2xl bg-[#121829] border-2 border-amber-400/60 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
               <div className="flex items-center gap-2">
-                <span className="text-2xl">🎯</span>
+                <span className="text-2xl">{currentPuzzle?.puzzleType === "CROSSWORD" ? "🔀" : "🎯"}</span>
                 <div>
                   <h4 className="font-black text-base text-amber-300">
-                    GIẢI Ô CHỮ BÍ MẬT — CHÍNH XÁC TỪNG DẤU THANH ĐIỆU
+                    {currentPuzzle?.puzzleType === "CROSSWORD"
+                      ? "GIẢI Ô CHỮ LIÊN KẾT / TUNG HOÀNH"
+                      : "GIẢI Ô CHỮ BÍ MẬT — CHÍNH XÁC TỪNG DẤU THANH ĐIỆU"}
                   </h4>
                   <p className="text-[11px] text-slate-300">
-                    Các phụ âm đã mở trên bảng được giữ cố định. Hãy chọn dấu thanh cho các nguyên âm đã mở và điền các chữ cái còn thiếu!
+                    {currentPuzzle?.puzzleType === "CROSSWORD"
+                      ? "Nhập tất cả các từ trong ô chữ cách nhau bằng dấu phẩy (thứ tự tùy ý). TUYỆT ĐỐI không dùng từ nối (và, and, với...)!"
+                      : "Các phụ âm đã mở trên bảng được giữ cố định. Hãy chọn dấu thanh cho các nguyên âm đã mở và điền các chữ cái còn thiếu!"}
                   </p>
                 </div>
               </div>
@@ -6247,16 +6591,29 @@ export default function MagicWheelBoard({
               )}
             </div>
 
-            <SmartPuzzlePhraseInput
-              secretPhrase={currentPuzzle?.secretPhrase || ""}
-              revealedIndices={animRevealedIndices}
-              onCancel={() => setSolveModalOpen(false)}
-              onSubmit={(finalAnswer) => {
-                onSolvePuzzle?.(finalAnswer);
-                setSolveModalOpen(false);
-              }}
-              edition={edition}
-            />
+            {currentPuzzle?.puzzleType === "CROSSWORD" ? (
+              <CrosswordSolveModalInput
+                puzzle={currentPuzzle}
+                revealedIndices={animRevealedIndices}
+                onCancel={() => setSolveModalOpen(false)}
+                onSubmit={(finalAnswer) => {
+                  onSolvePuzzle?.(finalAnswer);
+                  setSolveModalOpen(false);
+                }}
+                edition={edition}
+              />
+            ) : (
+              <SmartPuzzlePhraseInput
+                secretPhrase={currentPuzzle?.secretPhrase || ""}
+                revealedIndices={animRevealedIndices}
+                onCancel={() => setSolveModalOpen(false)}
+                onSubmit={(finalAnswer) => {
+                  onSolvePuzzle?.(finalAnswer);
+                  setSolveModalOpen(false);
+                }}
+                edition={edition}
+              />
+            )}
           </div>
         </div>
       )}

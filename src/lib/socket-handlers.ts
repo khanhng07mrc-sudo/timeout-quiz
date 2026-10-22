@@ -25,6 +25,8 @@ import {
   MagicWheelState,
   MagicWheelSector,
   MagicWheelPuzzle,
+  MagicWheelPuzzleType,
+  CrosswordWordItem,
   GridCell,
   GridCaroState,
   DiceTile,
@@ -44,6 +46,9 @@ import {
   normalizeVietnameseBaseLetter,
   isVietnameseAlphabetLetter,
   checkLetterInSecretPhrase,
+  checkLetterInCrossword,
+  validateCrosswordSolve,
+  validateCrosswordLayout,
   isPuzzleFullyRevealed,
   matchWholeSecretPhrase,
   DEFAULT_MAGIC_WHEEL_PUZZLES,
@@ -7897,10 +7902,15 @@ export function registerSocketHandlers(io: IO) {
       const eligibleTeams = teams.filter((t) => !eliminatedSet.has(t.id));
       if (eligibleTeams.length === 0) {
         if (wheelState.currentPuzzle) {
-          wheelState.currentPuzzle.revealedIndices = Array.from(
-            { length: wheelState.currentPuzzle.secretPhrase.length },
-            (_, i) => i
-          );
+          if (wheelState.currentPuzzle.puzzleType === "CROSSWORD" && wheelState.currentPuzzle.crosswordWords) {
+            const layout = validateCrosswordLayout(wheelState.currentPuzzle.crosswordWords);
+            wheelState.currentPuzzle.revealedIndices = Array.from(layout.cellMap.keys());
+          } else {
+            wheelState.currentPuzzle.revealedIndices = Array.from(
+              { length: wheelState.currentPuzzle.secretPhrase.length },
+              (_, i) => i
+            );
+          }
         }
         wheelState.phase = "ROUND_RECAP";
         wheelState.lastActionMessage = `⚠️ Tất cả các đội đều đã hết quyền thi đấu trong vòng này! Đáp án chính xác là: "${wheelState.currentPuzzle?.secretPhrase || ""}"`;
@@ -8074,10 +8084,15 @@ export function registerSocketHandlers(io: IO) {
       }
 
       if (wheelState.currentPuzzle) {
-        wheelState.currentPuzzle.revealedIndices = Array.from(
-          { length: wheelState.currentPuzzle.secretPhrase.length },
-          (_, i) => i
-        );
+        if (wheelState.currentPuzzle.puzzleType === "CROSSWORD" && wheelState.currentPuzzle.crosswordWords) {
+          const layout = validateCrosswordLayout(wheelState.currentPuzzle.crosswordWords);
+          wheelState.currentPuzzle.revealedIndices = Array.from(layout.cellMap.keys());
+        } else {
+          wheelState.currentPuzzle.revealedIndices = Array.from(
+            { length: wheelState.currentPuzzle.secretPhrase.length },
+            (_, i) => i
+          );
+        }
       }
 
       const tRes = await applyScoreDeltaToTeam(winnerTeamId, wonPoints);
@@ -8706,7 +8721,10 @@ export function registerSocketHandlers(io: IO) {
       const puzzle = wheelState.currentPuzzle;
       if (!puzzle) return;
 
-      const check = checkLetterInSecretPhrase(puzzle.secretPhrase, normLetter, puzzle.revealedIndices);
+      const check =
+        puzzle.puzzleType === "CROSSWORD" && puzzle.crosswordWords && puzzle.crosswordWords.length > 0
+          ? checkLetterInCrossword(puzzle.crosswordWords, normLetter, puzzle.revealedIndices)
+          : checkLetterInSecretPhrase(puzzle.secretPhrase, normLetter, puzzle.revealedIndices);
       const tId = wheelState.currentTurnTeamId;
       const teamName = wheelState.currentTurnTeamName;
 
@@ -9047,7 +9065,10 @@ export function registerSocketHandlers(io: IO) {
       const puzzle = wheelState.currentPuzzle;
       if (!puzzle) return;
 
-      const check = checkLetterInSecretPhrase(puzzle.secretPhrase, normVowel, puzzle.revealedIndices);
+      const check =
+        puzzle.puzzleType === "CROSSWORD" && puzzle.crosswordWords && puzzle.crosswordWords.length > 0
+          ? checkLetterInCrossword(puzzle.crosswordWords, normVowel, puzzle.revealedIndices)
+          : checkLetterInSecretPhrase(puzzle.secretPhrase, normVowel, puzzle.revealedIndices);
       if (check.count > 0) {
         puzzle.revealedIndices = check.newRevealedIndices;
         io.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
@@ -9444,8 +9465,26 @@ export function registerSocketHandlers(io: IO) {
 
       const customPuzzles: MagicWheelPuzzle[] = finalQuestions.map((q, idx) => {
         const roundOpt = Array.isArray(q.options)
-          ? (q.options as any[]).find((o) => o?.id === "round")
+          ? (q.options as any[]).find((o) => o?.id === "round" || o?.id === "puzzleRound")
           : undefined;
+        const clueModeOpt = Array.isArray(q.options)
+          ? (q.options as any[]).find((o) => o?.id === "clueDisplayMode")
+          : undefined;
+        const puzzleTypeOpt = Array.isArray(q.options)
+          ? (q.options as any[]).find((o) => o?.id === "puzzleType")
+          : undefined;
+        const crosswordWordsOpt = Array.isArray(q.options)
+          ? (q.options as any[]).find((o) => o?.id === "crosswordWords")
+          : undefined;
+
+        const puzzleType = (q.puzzleType || puzzleTypeOpt?.text || "STANDARD") as MagicWheelPuzzleType;
+        let crosswordWords: CrosswordWordItem[] | undefined = q.crosswordWords;
+        if (!crosswordWords && crosswordWordsOpt?.text) {
+          try {
+            crosswordWords = JSON.parse(crosswordWordsOpt.text);
+          } catch {}
+        }
+
         const rawAns = q.answer || (Array.isArray(q.options) ? (q.options as any[]).find((o) => o?.isCorrect)?.text : "") || "";
         return {
           id: `puzzle-emergency-${idx + 1}`,
@@ -9453,9 +9492,12 @@ export function registerSocketHandlers(io: IO) {
           category: q.hint || "TỔNG HỢP",
           secretPhrase: (rawAns || "").toUpperCase().trim(),
           clue: q.content || "",
+          clueDisplayMode: (clueModeOpt?.text as any) || (puzzleType === "CROSSWORD" ? "CATEGORY" : "CLUE"),
           revealedIndices: [],
+          puzzleType,
+          crosswordWords,
         };
-      }).filter((p) => p.secretPhrase.length > 0);
+      }).filter((p) => p.secretPhrase.length > 0 || (p.crosswordWords && p.crosswordWords.length > 0));
 
       const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
       const detectedEd = detectQuizBankLanguage({ id: payload.quizBankId, title: bankTitle, questions: candidateQuestions });
@@ -9736,10 +9778,18 @@ export function registerSocketHandlers(io: IO) {
         }
       }
 
-      const isCorrect =
-        typeof forcedVerdict === "boolean"
-          ? forcedVerdict
-          : matchWholeSecretPhrase(wheelState.currentPuzzle.secretPhrase, answer);
+      let isCorrect: boolean;
+      let solveReason: string | undefined;
+
+      if (typeof forcedVerdict === "boolean") {
+        isCorrect = forcedVerdict;
+      } else if (wheelState.currentPuzzle.puzzleType === "CROSSWORD") {
+        const cwRes = validateCrosswordSolve(wheelState.currentPuzzle, answer);
+        isCorrect = cwRes.isCorrect;
+        solveReason = cwRes.reason;
+      } else {
+        isCorrect = matchWholeSecretPhrase(wheelState.currentPuzzle.secretPhrase, answer);
+      }
 
       // Case 1: Special Final Round continuous 40s solving
       if (stage === "SPECIAL_FINAL") {
@@ -9749,10 +9799,15 @@ export function registerSocketHandlers(io: IO) {
         }
         if (isCorrect) {
           wheelState.specialPuzzleCompleted = true;
-          wheelState.currentPuzzle.revealedIndices = Array.from(
-            { length: wheelState.currentPuzzle.secretPhrase.length },
-            (_, i) => i
-          );
+          if (wheelState.currentPuzzle.puzzleType === "CROSSWORD" && wheelState.currentPuzzle.crosswordWords) {
+            const layout = validateCrosswordLayout(wheelState.currentPuzzle.crosswordWords);
+            wheelState.currentPuzzle.revealedIndices = Array.from(layout.cellMap.keys());
+          } else {
+            wheelState.currentPuzzle.revealedIndices = Array.from(
+              { length: wheelState.currentPuzzle.secretPhrase.length },
+              (_, i) => i
+            );
+          }
           if (wheelState.specialBonusCompleted) {
             await completeMagicWheelRoundHelper(roomId, roomCode, tId, (wheelState.specialBonusPoints || 5000) + 3000);
           } else {
@@ -9800,10 +9855,15 @@ export function registerSocketHandlers(io: IO) {
           if (oldFirst) clearTimeout(oldFirst);
           roomTossUpFirstTimers.delete(roomId);
 
-          wheelState.currentPuzzle.revealedIndices = Array.from(
-            { length: wheelState.currentPuzzle.secretPhrase.length },
-            (_, i) => i
-          );
+          if (wheelState.currentPuzzle.puzzleType === "CROSSWORD" && wheelState.currentPuzzle.crosswordWords) {
+            const layout = validateCrosswordLayout(wheelState.currentPuzzle.crosswordWords);
+            wheelState.currentPuzzle.revealedIndices = Array.from(layout.cellMap.keys());
+          } else {
+            wheelState.currentPuzzle.revealedIndices = Array.from(
+              { length: wheelState.currentPuzzle.secretPhrase.length },
+              (_, i) => i
+            );
+          }
           await completeMagicWheelRoundHelper(roomId, roomCode, tId);
         } else {
           wheelState.lastSolveFeedback = {
@@ -9846,10 +9906,15 @@ export function registerSocketHandlers(io: IO) {
         wheelState.consecutiveWrongGuesses[tId] = 0;
         wheelState.wrongGuessesCount[tId] = 0;
         wheelState.mustSolveWithTones = false;
-        wheelState.currentPuzzle.revealedIndices = Array.from(
-          { length: wheelState.currentPuzzle.secretPhrase.length },
-          (_, i) => i
-        );
+        if (wheelState.currentPuzzle.puzzleType === "CROSSWORD" && wheelState.currentPuzzle.crosswordWords) {
+          const layout = validateCrosswordLayout(wheelState.currentPuzzle.crosswordWords);
+          wheelState.currentPuzzle.revealedIndices = Array.from(layout.cellMap.keys());
+        } else {
+          wheelState.currentPuzzle.revealedIndices = Array.from(
+            { length: wheelState.currentPuzzle.secretPhrase.length },
+            (_, i) => i
+          );
+        }
         await completeMagicWheelRoundHelper(roomId, roomCode, tId);
       } else {
         wheelState.isSpinning = false;
@@ -9963,7 +10028,9 @@ export function registerSocketHandlers(io: IO) {
           if (allEliminated) {
             wheelState.lastActionMessage = `❌ Đáp án "${answer}" của Đội ${teamName} chưa chính xác! Cả ${room.teams.length} đội đều đã hết lượt Giải Ô Chữ trong vòng này. Đáp án đúng là: "${wheelState.currentPuzzle.secretPhrase}"!`;
           } else {
-            wheelState.lastActionMessage = `❌ Đáp án "${answer}" chưa chính xác! Đội ${teamName} đã hết quyền thi đấu trong vòng này (mỗi đội chỉ có 1 lượt Giải Ô Chữ). Chuyển lượt sang Đội ${wheelState.currentTurnTeamName}!`;
+            wheelState.lastActionMessage = solveReason
+              ? `❌ ${solveReason} Đội ${teamName} đã hết quyền thi đấu trong vòng này. Chuyển lượt sang Đội ${wheelState.currentTurnTeamName}!`
+              : `❌ Đáp án "${answer}" chưa chính xác! Đội ${teamName} đã hết quyền thi đấu trong vòng này (mỗi đội chỉ có 1 lượt Giải Ô Chữ). Chuyển lượt sang Đội ${wheelState.currentTurnTeamName}!`;
           }
         }
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);

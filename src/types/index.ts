@@ -593,6 +593,9 @@ export interface Question {
   hint?: string;
   order: number;
   bloomLevel?: BloomLevel;
+  // Chiếc Nón Kỳ Diệu / Ô Chữ Liên Kết (Crossword)
+  puzzleType?: MagicWheelPuzzleType;
+  crosswordWords?: CrosswordWordItem[];
 }
 
 // ─── Game Config ──────────────────────────────────────────────────────────────
@@ -810,16 +813,29 @@ export interface MagicWheelSector {
   envelopeTitle?: string;
 }
 
+export type MagicWheelPuzzleType = "STANDARD" | "CROSSWORD";
+
+export interface CrosswordWordItem {
+  id: string;
+  word: string;                   // Từ khoá (vd: "DANTE", "TƯỢNG HỌC")
+  row: number;                    // Hàng bắt đầu (0..3)
+  col: number;                    // Cột bắt đầu (0..13)
+  direction: "ACROSS" | "DOWN";   // Hướng: Ngang (ACROSS) hoặc Dọc (DOWN)
+  clue?: string;                  // Gợi ý tuỳ chọn cho từ
+}
+
 export interface MagicWheelPuzzle {
   id: string;
   roundNumber: number; // 1..N (vòng chính), 0/-1 (Toss-up), 99 (Vòng Đặc Biệt)
   stage?: MagicWheelRoundStage;
   mainRoundIndex?: number; // 1, 2, 3, 4... cho các vòng chính
   category: string;    // "Danh nhân", "Địa danh", "Văn học", "Khoa học"
-  secretPhrase: string; // "NGUYỄN HUỆ"
+  secretPhrase: string; // "NGUYỄN HUỆ" hoặc danh sách từ liên kết
   clue?: string;        // "Vị anh hùng áo vải cờ đào..."
   clueDisplayMode?: "CATEGORY" | "CLUE"; // Chế độ hiển thị trên màn hình: Chủ đề hay Gợi ý
-  revealedIndices: number[]; // Vị trí các ký tự đã được lật mở
+  revealedIndices: number[]; // Vị trí các ký tự đã được lật mở (hoặc row * 14 + col cho crossword)
+  puzzleType?: MagicWheelPuzzleType; // "STANDARD" | "CROSSWORD"
+  crosswordWords?: CrosswordWordItem[]; // Danh sách các từ đan xen trong Ô Chữ Liên Kết
 }
 
 export interface MagicWheelState {

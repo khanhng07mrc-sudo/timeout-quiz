@@ -12,6 +12,8 @@ export interface OfflineQuestion {
   timeLimit: number;
   hint?: string;
   isTieBreaker?: boolean;
+  puzzleType?: "STANDARD" | "CROSSWORD";
+  crosswordWords?: any[];
 }
 
 export interface OfflineQuizBank {
@@ -1462,14 +1464,31 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
       {
         id: "mw_vtv3_6",
         type: "WORD_PUZZLE",
-        content: "Tác phẩm văn học thiếu nhi kinh điển nổi tiếng nhất của nhà văn Tô Hoài.",
-        answer: "DẾ MÈN PHIÊU LƯU KÝ",
-        hint: "VÒNG 4: VĂN HỌC VIỆT NAM",
-        points: 20,
+        content: "Các từ khoá về Văn hóa và Thủ đô ngàn năm văn hiến đan xen nhau trên bàn ô chữ (gồm 3 từ).",
+        answer: "VĂN HỌC, NHO, HÀ NỘI",
+        hint: "VÒNG 4: 🔀 Ô CHỮ LIÊN KẾT: VĂN HÓA THỦ ĐÔ",
+        points: 25,
         timeLimit: 30,
         options: [
           { id: "round", text: "6", isCorrect: true },
-          { id: "category", text: "VÒNG 4: VĂN HỌC VIỆT NAM", isCorrect: true },
+          { id: "category", text: "VÒNG 4: 🔀 Ô CHỮ LIÊN KẾT: VĂN HÓA THỦ ĐÔ", isCorrect: true },
+          { id: "puzzleType", text: "CROSSWORD", isCorrect: true },
+          {
+            id: "crosswordWords",
+            text: JSON.stringify([
+              { id: "cw_1", word: "VĂN HỌC", row: 1, col: 3, direction: "ACROSS" },
+              { id: "cw_2", word: "NHO", row: 1, col: 5, direction: "DOWN" },
+              { id: "cw_3", word: "HÀ NỘI", row: 2, col: 5, direction: "ACROSS" },
+            ]),
+            isCorrect: true,
+          },
+          { id: "clueDisplayMode", text: "CATEGORY", isCorrect: true },
+        ],
+        puzzleType: "CROSSWORD",
+        crosswordWords: [
+          { id: "cw_1", word: "VĂN HỌC", row: 1, col: 3, direction: "ACROSS" },
+          { id: "cw_2", word: "NHO", row: 1, col: 5, direction: "DOWN" },
+          { id: "cw_3", word: "HÀ NỘI", row: 2, col: 5, direction: "ACROSS" },
         ],
       },
       {
@@ -2146,12 +2165,32 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
       {
         id: "mw_en3_6",
         type: "WORD_PUZZLE",
-        content: "An astronomical metaphor for an occurrence that takes place very rarely.",
-        answer: "ONCE IN A BLUE MOON",
-        hint: "PHRASE(S)",
-        points: 20,
+        content: "Objects and elements found looking up in the sky (3 interconnected words on the board).",
+        answer: "PLANET, STAR, AIR",
+        hint: "🔀 CROSSWORD: IN THE SKY",
+        points: 25,
         timeLimit: 30,
-        options: [{ id: "round", text: "6", isCorrect: true }, { id: "category", text: "PHRASE(S)", isCorrect: true }],
+        options: [
+          { id: "round", text: "6", isCorrect: true },
+          { id: "category", text: "🔀 CROSSWORD: IN THE SKY", isCorrect: true },
+          { id: "puzzleType", text: "CROSSWORD", isCorrect: true },
+          {
+            id: "crosswordWords",
+            text: JSON.stringify([
+              { id: "cw_1", word: "PLANET", row: 1, col: 2, direction: "ACROSS" },
+              { id: "cw_2", word: "STAR", row: 0, col: 7, direction: "DOWN" },
+              { id: "cw_3", word: "AIR", row: 2, col: 7, direction: "ACROSS" },
+            ]),
+            isCorrect: true,
+          },
+          { id: "clueDisplayMode", text: "CATEGORY", isCorrect: true },
+        ],
+        puzzleType: "CROSSWORD",
+        crosswordWords: [
+          { id: "cw_1", word: "PLANET", row: 1, col: 2, direction: "ACROSS" },
+          { id: "cw_2", word: "STAR", row: 0, col: 7, direction: "DOWN" },
+          { id: "cw_3", word: "AIR", row: 2, col: 7, direction: "ACROSS" },
+        ],
       },
       {
         id: "mw_en3_7",

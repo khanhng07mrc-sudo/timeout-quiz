@@ -17,7 +17,43 @@ import {
 import QuizorraQuestionStudioModal from "@/components/admin/QuizorraQuestionStudioModal";
 import { downloadMagicWheelExcelTemplate, downloadMagicWheelJsonTemplate } from "@/lib/quiz-template-generator";
 import { MAGIC_WHEEL_PRESET_BANKS } from "@/lib/offline-storage";
-import { isVietnameseAlphabetLetter, detectQuizBankLanguage, validateSameLetterPhrase } from "@/lib/game-engine/magic-wheel";
+import {
+  isVietnameseAlphabetLetter,
+  detectQuizBankLanguage,
+  validateSameLetterPhrase,
+  validateCrosswordLayout,
+  generateAutoCrosswordLayout,
+  CrosswordWordItem,
+} from "@/lib/game-engine/magic-wheel";
+
+function buildCrossword4x14Preview(words: CrosswordWordItem[]): {
+  rows: string[][];
+  intersections: Set<number>;
+  isValid: boolean;
+  errors: string[];
+} {
+  const rows: string[][] = Array.from({ length: 4 }, () => Array(14).fill(""));
+  const intersections = new Set<number>();
+  const validation = validateCrosswordLayout(words);
+
+  if (validation.cellMap) {
+    validation.cellMap.forEach((cell) => {
+      if (cell.row >= 0 && cell.row < 4 && cell.col >= 0 && cell.col < 14) {
+        rows[cell.row][cell.col] = cell.char;
+      }
+    });
+    validation.intersections.forEach((inter) => {
+      intersections.add(inter.row * 14 + inter.col);
+    });
+  }
+
+  return {
+    rows,
+    intersections,
+    isValid: validation.isValid,
+    errors: validation.errors,
+  };
+}
 
 function buildPuzzle4x14Preview(phrase: string): { rows: string[][]; isOverflow: boolean; oversizedWord?: string } {
   const clean = (phrase || "").trim().toUpperCase();
@@ -78,6 +114,8 @@ interface QuestionItem {
   steps?: string[];
   allowManualGrading?: boolean;
   gradingCriteria?: string;
+  puzzleType?: "STANDARD" | "CROSSWORD";
+  crosswordWords?: CrosswordWordItem[];
 }
 
 interface QuizBank {
@@ -163,6 +201,11 @@ export default function QuizBankPage() {
   const [qAnswer, setQAnswer] = useState("");
   const [qRound, setQRound] = useState(1);
   const [qClueDisplayMode, setQClueDisplayMode] = useState<"CATEGORY" | "CLUE">("CLUE");
+  const [qPuzzleType, setQPuzzleType] = useState<"STANDARD" | "CROSSWORD">("STANDARD");
+  const [qCrosswordWords, setQCrosswordWords] = useState<CrosswordWordItem[]>([
+    { id: "cw_1", word: "HOA", row: 1, col: 2, direction: "ACROSS" },
+    { id: "cw_2", word: "CON", row: 0, col: 3, direction: "DOWN" },
+  ]);
   const [qAllowManualGrading, setQAllowManualGrading] = useState(false);
   const [qGradingCriteria, setQGradingCriteria] = useState("");
   const [qOptions, setQOptions] = useState([
@@ -208,6 +251,8 @@ export default function QuizBankPage() {
   const [editQAnswer, setEditQAnswer] = useState("");
   const [editQRound, setEditQRound] = useState(1);
   const [editQClueDisplayMode, setEditQClueDisplayMode] = useState<"CATEGORY" | "CLUE">("CLUE");
+  const [editQPuzzleType, setEditQPuzzleType] = useState<"STANDARD" | "CROSSWORD">("STANDARD");
+  const [editQCrosswordWords, setEditQCrosswordWords] = useState<CrosswordWordItem[]>([]);
   const [editQAllowManualGrading, setEditQAllowManualGrading] = useState(false);
   const [editQGradingCriteria, setEditQGradingCriteria] = useState("");
   const [editQOptions, setEditQOptions] = useState([
@@ -725,23 +770,45 @@ export default function QuizBankPage() {
       payload.pairs = null;
       payload.answer = JSON.stringify(qClozeBlanks.map((b) => b.options.find((o) => o.isCorrect)?.id));
     } else if (qType === "WORD_PUZZLE") {
-      const phrase = qAnswer.trim().toUpperCase();
       const category = qHint.trim().toUpperCase() || "Ô CHỮ BÍ MẬT";
-      if (/SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(category)) {
-        const slCheck = validateSameLetterPhrase(phrase);
-        if (!slCheck.valid) {
-          alert(`❌ Câu hỏi không hợp lệ:\n${slCheck.error}`);
+      if (qPuzzleType === "CROSSWORD") {
+        const val = validateCrosswordLayout(qCrosswordWords);
+        if (!val.isValid) {
+          alert(`❌ Bố cục Ô Chữ Liên Kết chưa hợp lệ:\n- ${val.errors.join("\n- ")}`);
           return;
         }
+        payload.puzzleType = "CROSSWORD";
+        payload.crosswordWords = qCrosswordWords;
+        payload.answer = qCrosswordWords.map((w) => w.word.trim().toUpperCase()).join(", ");
+        payload.hint = category;
+        payload.options = [
+          { id: "round", text: String(qRound || 1), isCorrect: true },
+          { id: "category", text: category, isCorrect: true },
+          { id: "clueDisplayMode", text: qClueDisplayMode, isCorrect: true },
+          { id: "puzzleType", text: "CROSSWORD", isCorrect: true },
+          { id: "crosswordWords", text: JSON.stringify(qCrosswordWords), isCorrect: true },
+        ];
+        payload.pairs = null;
+      } else {
+        const phrase = qAnswer.trim().toUpperCase();
+        if (/SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(category)) {
+          const slCheck = validateSameLetterPhrase(phrase);
+          if (!slCheck.valid) {
+            alert(`❌ Câu hỏi không hợp lệ:\n${slCheck.error}`);
+            return;
+          }
+        }
+        payload.puzzleType = "STANDARD";
+        payload.answer = phrase;
+        payload.hint = category;
+        payload.options = [
+          { id: "round", text: String(qRound || 1), isCorrect: true },
+          { id: "category", text: category, isCorrect: true },
+          { id: "clueDisplayMode", text: qClueDisplayMode, isCorrect: true },
+          { id: "puzzleType", text: "STANDARD", isCorrect: true },
+        ];
+        payload.pairs = null;
       }
-      payload.answer = phrase;
-      payload.hint = category;
-      payload.options = [
-        { id: "round", text: String(qRound || 1), isCorrect: true },
-        { id: "category", text: category, isCorrect: true },
-        { id: "clueDisplayMode", text: qClueDisplayMode, isCorrect: true },
-      ];
-      payload.pairs = null;
     }
 
     try {
@@ -925,6 +992,25 @@ export default function QuizBankPage() {
       const clueModeOpt = q.options?.find((o: any) => o.id === "clueDisplayMode");
       const modeVal = clueModeOpt?.text || (q as any).clueDisplayMode;
       setEditQClueDisplayMode(modeVal === "CATEGORY" ? "CATEGORY" : "CLUE");
+
+      const pTypeOpt = q.options?.find((o: any) => o.id === "puzzleType");
+      const detectedType = (q.puzzleType || pTypeOpt?.text || "STANDARD") as "STANDARD" | "CROSSWORD";
+      setEditQPuzzleType(detectedType);
+
+      const cwWordsOpt = q.options?.find((o: any) => o.id === "crosswordWords");
+      let cwWords: CrosswordWordItem[] = q.crosswordWords || [];
+      if ((!cwWords || cwWords.length === 0) && cwWordsOpt?.text) {
+        try {
+          cwWords = JSON.parse(cwWordsOpt.text);
+        } catch {}
+      }
+      if (!cwWords || cwWords.length === 0) {
+        cwWords = [
+          { id: "cw_1", word: "HOA", row: 1, col: 2, direction: "ACROSS" },
+          { id: "cw_2", word: "CON", row: 0, col: 3, direction: "DOWN" },
+        ];
+      }
+      setEditQCrosswordWords(cwWords);
     }
 
     setShowEditQModal(true);
@@ -1005,24 +1091,47 @@ export default function QuizBankPage() {
       payload.pairs = null;
       payload.answer = JSON.stringify(editQClozeBlanks.map((b) => b.options.find((o) => o.isCorrect)?.id));
     } else if (editQType === "WORD_PUZZLE") {
-      const phrase = editQAnswer.trim().toUpperCase();
       const category = editQHint.trim().toUpperCase() || "Ô CHỮ BÍ MẬT";
-      if (/SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(category)) {
-        const slCheck = validateSameLetterPhrase(phrase);
-        if (!slCheck.valid) {
-          alert(`❌ Câu hỏi không hợp lệ:\n${slCheck.error}`);
+      if (editQPuzzleType === "CROSSWORD") {
+        const val = validateCrosswordLayout(editQCrosswordWords);
+        if (!val.isValid) {
+          alert(`❌ Bố cục Ô Chữ Liên Kết chưa hợp lệ:\n- ${val.errors.join("\n- ")}`);
           setSavingQuestion(false);
           return;
         }
+        payload.puzzleType = "CROSSWORD";
+        payload.crosswordWords = editQCrosswordWords;
+        payload.answer = editQCrosswordWords.map((w) => w.word.trim().toUpperCase()).join(", ");
+        payload.hint = category;
+        payload.options = [
+          { id: "round", text: String(editQRound || 1), isCorrect: true },
+          { id: "category", text: category, isCorrect: true },
+          { id: "clueDisplayMode", text: editQClueDisplayMode, isCorrect: true },
+          { id: "puzzleType", text: "CROSSWORD", isCorrect: true },
+          { id: "crosswordWords", text: JSON.stringify(editQCrosswordWords), isCorrect: true },
+        ];
+        payload.pairs = null;
+      } else {
+        const phrase = editQAnswer.trim().toUpperCase();
+        if (/SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(category)) {
+          const slCheck = validateSameLetterPhrase(phrase);
+          if (!slCheck.valid) {
+            alert(`❌ Câu hỏi không hợp lệ:\n${slCheck.error}`);
+            setSavingQuestion(false);
+            return;
+          }
+        }
+        payload.puzzleType = "STANDARD";
+        payload.answer = phrase;
+        payload.hint = category;
+        payload.options = [
+          { id: "round", text: String(editQRound || 1), isCorrect: true },
+          { id: "category", text: category, isCorrect: true },
+          { id: "clueDisplayMode", text: editQClueDisplayMode, isCorrect: true },
+          { id: "puzzleType", text: "STANDARD", isCorrect: true },
+        ];
+        payload.pairs = null;
       }
-      payload.answer = phrase;
-      payload.hint = category;
-      payload.options = [
-        { id: "round", text: String(editQRound || 1), isCorrect: true },
-        { id: "category", text: category, isCorrect: true },
-        { id: "clueDisplayMode", text: editQClueDisplayMode, isCorrect: true },
-      ];
-      payload.pairs = null;
     }
 
     try {
@@ -2719,6 +2828,42 @@ export default function QuizBankPage() {
                   </div>
                 </div>
 
+                {/* Bộ chọn Định dạng: Tiêu chuẩn vs Ô chữ liên kết */}
+                <div>
+                  <label className="block text-xs font-bold text-amber-200 mb-1">
+                    Định dạng Ô Chữ (Puzzle Format)
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-black/50 border border-amber-500/30">
+                    <button
+                      type="button"
+                      onClick={() => setQPuzzleType("STANDARD")}
+                      className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                        qPuzzleType === "STANDARD"
+                          ? "bg-amber-500 text-slate-950 shadow-md"
+                          : "text-amber-200/70 hover:bg-white/5"
+                      }`}
+                    >
+                      <span>📝</span>
+                      <span>Tiêu chuẩn (Hàng ngang)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQPuzzleType("CROSSWORD");
+                        setQClueDisplayMode("CATEGORY"); // Tự động ưu tiên Chủ đề cho Ô Chữ Liên Kết
+                      }}
+                      className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                        qPuzzleType === "CROSSWORD"
+                          ? "bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-md ring-2 ring-yellow-300"
+                          : "text-amber-200/70 hover:bg-white/5"
+                      }`}
+                    >
+                      <span>🔀</span>
+                      <span>Ô Chữ Liên Kết / Tung Hoành</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
                     <label className="block text-xs font-bold text-amber-200 mb-1">
@@ -2732,90 +2877,96 @@ export default function QuizBankPage() {
                       className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 text-sm focus:border-amber-400"
                     />
                   </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-amber-200">
-                        Cụm từ bí mật (Đáp án) *
-                      </label>
-                      <span className="text-[10px] text-amber-300/80 font-mono">
-                        {qAnswer.replace(/\s+/g, "").length} chữ cái
-                      </span>
-                    </div>
-                    <input
-                      type="text"
-                      value={qAnswer}
-                      onChange={(e) => setQAnswer(e.target.value.toUpperCase())}
-                      placeholder="VD: NGUYỄN TRÃI, VỊNH HẠ LONG..."
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 font-bold text-sm tracking-wider uppercase focus:border-amber-400"
-                    />
-                    {(() => {
-                      const isSameLetterCat = /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(qHint);
-                      if (isSameLetterCat) {
+                  {qPuzzleType === "STANDARD" && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-amber-200">
+                          Cụm từ bí mật (Đáp án) *
+                        </label>
+                        <span className="text-[10px] text-amber-300/80 font-mono">
+                          {qAnswer.replace(/\s+/g, "").length} chữ cái
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        value={qAnswer}
+                        onChange={(e) => setQAnswer(e.target.value.toUpperCase())}
+                        placeholder="VD: NGUYỄN TRÃI, VỊNH HẠ LONG..."
+                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 font-bold text-sm tracking-wider uppercase focus:border-amber-400"
+                      />
+                      {(() => {
+                        const isSameLetterCat = /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(qHint);
+                        if (isSameLetterCat) {
+                          const trimmed = qAnswer.trim();
+                          if (trimmed.length === 0) {
+                            return (
+                              <div className="mt-2 p-2.5 rounded-lg bg-indigo-500/15 border border-indigo-500/40 text-indigo-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                                <span className="text-base shrink-0">✨</span>
+                                <div className="leading-relaxed">
+                                  <strong className="font-bold text-indigo-300">Luật SAME LETTER (Bản Anh):</strong> Tất cả các từ phải bắt đầu bằng cùng một phụ âm (không được dùng nguyên âm A, E, I, O, U). Ký tự nối độc lập như &quot;&amp;&quot; hay &quot;-&quot; được phép đứng xen giữa. Đoán trúng chữ SAME LETTER sẽ nhận thưởng nóng <strong>+$1,000 / +1.000 điểm</strong>!
+                                </div>
+                              </div>
+                            );
+                          }
+                          const slCheck = validateSameLetterPhrase(trimmed);
+                          if (!slCheck.valid) {
+                            return (
+                              <div className="mt-2 p-2.5 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                                <span className="text-base shrink-0">❌</span>
+                                <div className="leading-relaxed">
+                                  <strong className="font-bold text-red-300">Câu hỏi không hợp lệ:</strong> {slCheck.error}
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                                <span className="text-base shrink-0">✅</span>
+                                <div className="leading-relaxed">
+                                  <strong className="font-bold text-emerald-300">SAME LETTER hợp lệ:</strong> Tất cả các từ đều bắt đầu bằng phụ âm <strong>[{slCheck.sameLetter}]</strong>. Thí sinh gọi đúng chữ <strong>[{slCheck.sameLetter}]</strong> sẽ được thưởng nóng +$1,000 / +1.000 điểm!
+                                </div>
+                              </div>
+                            );
+                          }
+                        }
                         const trimmed = qAnswer.trim();
-                        if (trimmed.length === 0) {
+                        if (trimmed.length > 0 && !isVietnameseAlphabetLetter(trimmed[0])) {
                           return (
-                            <div className="mt-2 p-2.5 rounded-lg bg-indigo-500/15 border border-indigo-500/40 text-indigo-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
-                              <span className="text-base shrink-0">✨</span>
+                            <div className="mt-2 p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                              <span className="text-base shrink-0">⚠️</span>
                               <div className="leading-relaxed">
-                                <strong className="font-bold text-indigo-300">Luật SAME LETTER (Bản Anh):</strong> Tất cả các từ phải bắt đầu bằng cùng một phụ âm (không được dùng nguyên âm A, E, I, O, U). Ký tự nối độc lập như &quot;&amp;&quot; hay &quot;-&quot; được phép đứng xen giữa. Đoán trúng chữ SAME LETTER sẽ nhận thưởng nóng <strong>+$1,000 / +1.000 điểm</strong>!
+                                <strong className="font-bold text-amber-200">Khuyến cáo:</strong> Từ khoá nên bắt đầu bằng chữ cái tiếng Việt. Ký tự đặc biệt hoặc số ở đầu (&quot;{trimmed[0]}&quot;) sẽ được hệ thống tự động hiển thị ngay khi mở bảng và không được tính vào lượt lật chữ đoán nhanh.
                               </div>
                             </div>
                           );
                         }
-                        const slCheck = validateSameLetterPhrase(trimmed);
-                        if (!slCheck.valid) {
-                          return (
-                            <div className="mt-2 p-2.5 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
-                              <span className="text-base shrink-0">❌</span>
-                              <div className="leading-relaxed">
-                                <strong className="font-bold text-red-300">Câu hỏi không hợp lệ:</strong> {slCheck.error}
-                              </div>
-                            </div>
-                          );
-                        } else {
-                          return (
-                            <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
-                              <span className="text-base shrink-0">✅</span>
-                              <div className="leading-relaxed">
-                                <strong className="font-bold text-emerald-300">SAME LETTER hợp lệ:</strong> Tất cả các từ đều bắt đầu bằng phụ âm <strong>[{slCheck.sameLetter}]</strong>. Thí sinh gọi đúng chữ <strong>[{slCheck.sameLetter}]</strong> sẽ được thưởng nóng +$1,000 / +1.000 điểm!
-                              </div>
-                            </div>
-                          );
-                        }
-                      }
-                      const trimmed = qAnswer.trim();
-                      if (trimmed.length > 0 && !isVietnameseAlphabetLetter(trimmed[0])) {
-                        return (
-                          <div className="mt-2 p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
-                            <span className="text-base shrink-0">⚠️</span>
-                            <div className="leading-relaxed">
-                              <strong className="font-bold text-amber-200">Khuyến cáo:</strong> Từ khoá nên bắt đầu bằng chữ cái tiếng Việt. Ký tự đặc biệt hoặc số ở đầu (&quot;{trimmed[0]}&quot;) sẽ được hệ thống tự động hiển thị ngay khi mở bảng và không được tính vào lượt lật chữ đoán nhanh.
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                  {qPuzzleType === "CROSSWORD" && (
+                    <div className="flex flex-col justify-center">
+                      <div className="p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2">
+                        <span>ℹ️</span>
+                        <span>Nhập các từ khoá đan xen vào bảng bên dưới. Khi lưu, đáp án tổng thể sẽ được hệ thống tự động tổng hợp.</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Chế độ hiển thị CAM 3 Lower-Third (New) */}
+                {/* Chế độ hiển thị CAM 3 Lower-Third */}
                 <div>
-                  <label className="block text-xs font-bold text-amber-200 mb-1">
-                    Chế độ hiển thị trên màn hình trường quay (CAM 3 Lower-Third)
-                  </label>
-                  <div className="flex flex-wrap items-center gap-4 p-2.5 rounded-lg bg-black/40 border border-amber-500/30">
-                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-100">
-                      <input
-                        type="radio"
-                        name="qClueDisplayMode"
-                        value="CLUE"
-                        checked={qClueDisplayMode === "CLUE"}
-                        onChange={() => setQClueDisplayMode("CLUE")}
-                        className="text-amber-500 focus:ring-amber-400"
-                      />
-                      <span>💡 Ưu tiên hiện Gợi ý (Mặc định Bản Việt / VTV3)</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-amber-200">
+                      Chế độ hiển thị trên màn hình trường quay (CAM 3 Lower-Third)
                     </label>
+                    {qPuzzleType === "CROSSWORD" && (
+                      <span className="text-[10px] text-amber-300/80">
+                        ⭐ Ưu tiên Chủ đề cho Ô Chữ Liên Kết
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-4 p-2.5 rounded-lg bg-black/40 border border-amber-500/30">
                     <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-100">
                       <input
                         type="radio"
@@ -2825,13 +2976,223 @@ export default function QuizBankPage() {
                         onChange={() => setQClueDisplayMode("CATEGORY")}
                         className="text-amber-500 focus:ring-amber-400"
                       />
-                      <span>🏷️ Ưu tiên hiện Chủ đề (Mặc định Bản Anh / WOF)</span>
+                      <span>🏷️ Ưu tiên hiện Chủ đề (Khuyến nghị cho Ô Chữ Liên Kết)</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-100">
+                      <input
+                        type="radio"
+                        name="qClueDisplayMode"
+                        value="CLUE"
+                        checked={qClueDisplayMode === "CLUE"}
+                        onChange={() => setQClueDisplayMode("CLUE")}
+                        className="text-amber-500 focus:ring-amber-400"
+                      />
+                      <span>💡 Ưu tiên hiện Gợi ý (Gợi ý phải bao quát tất cả từ khoá)</span>
                     </label>
                   </div>
                 </div>
 
-                {/* Live Preview 4x14 Grid */}
-                {(() => {
+                {/* BỘ SOẠN Ô CHỮ LIÊN KẾT (CROSSWORD BUILDER) */}
+                {qPuzzleType === "CROSSWORD" && (
+                  <div className="space-y-3 p-3.5 rounded-xl bg-black/60 border border-amber-500/40">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-400 font-black text-sm">🔀 DANH SÁCH TỪ KHOÁ LIÊN KẾT:</span>
+                        <span className="text-[11px] text-amber-200/70">
+                          ({qCrosswordWords.length} từ)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const wordsList = qCrosswordWords.map((w) => w.word).filter(Boolean);
+                            if (wordsList.length < 2) {
+                              alert("Vui lòng nhập ít nhất 2 từ khoá để tự động tìm giao điểm!");
+                              return;
+                            }
+                            const autoLayout = generateAutoCrosswordLayout(wordsList);
+                            setQCrosswordWords(autoLayout);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs shadow hover:brightness-110 flex items-center gap-1 transition"
+                        >
+                          <span>⚡ Tự động tìm giao điểm &amp; xếp ô chữ</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (qCrosswordWords.length >= 6) {
+                              alert("Tối đa 6 từ khoá trong một ô chữ liên kết!");
+                              return;
+                            }
+                            setQCrosswordWords([
+                              ...qCrosswordWords,
+                              {
+                                id: `cw_${Date.now()}`,
+                                word: "",
+                                row: Math.min(3, qCrosswordWords.length),
+                                col: 2,
+                                direction: "ACROSS",
+                              },
+                            ]);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow flex items-center gap-1 transition"
+                        >
+                          <span>+ Thêm từ</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Words rows list */}
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {qCrosswordWords.map((item, idx) => (
+                        <div
+                          key={item.id}
+                          className="p-2 rounded-lg bg-black/40 border border-amber-500/20 flex flex-wrap items-center gap-2 text-xs"
+                        >
+                          <span className="font-bold text-amber-300 w-6 shrink-0">#{idx + 1}</span>
+                          <input
+                            type="text"
+                            value={item.word}
+                            onChange={(e) => {
+                              const next = [...qCrosswordWords];
+                              next[idx] = { ...item, word: e.target.value.toUpperCase() };
+                              setQCrosswordWords(next);
+                            }}
+                            placeholder="Nhập từ khoá..."
+                            className="flex-1 min-w-[120px] px-2.5 py-1.5 rounded bg-black/60 border border-amber-500/30 text-amber-100 font-bold uppercase tracking-wider"
+                          />
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">Chiều:</span>
+                            <select
+                              value={item.direction}
+                              onChange={(e) => {
+                                const next = [...qCrosswordWords];
+                                next[idx] = { ...item, direction: e.target.value as "ACROSS" | "DOWN" };
+                                setQCrosswordWords(next);
+                              }}
+                              className="px-2 py-1 rounded bg-black/60 border border-amber-500/30 text-amber-200 font-semibold"
+                            >
+                              <option value="ACROSS">Ngang (ACROSS)</option>
+                              <option value="DOWN">Dọc (DOWN · max 4 ký tự)</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">Hàng:</span>
+                            <select
+                              value={item.row}
+                              onChange={(e) => {
+                                const next = [...qCrosswordWords];
+                                next[idx] = { ...item, row: Number(e.target.value) };
+                                setQCrosswordWords(next);
+                              }}
+                              className="px-1.5 py-1 rounded bg-black/60 border border-amber-500/30 text-amber-200 font-semibold"
+                            >
+                              {[0, 1, 2, 3].map((r) => (
+                                <option key={r} value={r}>Hàng {r + 1}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">Cột:</span>
+                            <select
+                              value={item.col}
+                              onChange={(e) => {
+                                const next = [...qCrosswordWords];
+                                next[idx] = { ...item, col: Number(e.target.value) };
+                                setQCrosswordWords(next);
+                              }}
+                              className="px-1.5 py-1 rounded bg-black/60 border border-amber-500/30 text-amber-200 font-semibold"
+                            >
+                              {Array.from({ length: 14 }, (_, c) => (
+                                <option key={c} value={c}>Cột {c + 1}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {qCrosswordWords.length > 2 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setQCrosswordWords(qCrosswordWords.filter((_, i) => i !== idx));
+                              }}
+                              className="px-2 py-1 rounded text-red-400 hover:bg-red-500/20 font-bold transition"
+                              title="Xóa từ này"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Live Crossword Preview 4x14 */}
+                    {(() => {
+                      const cwPreview = buildCrossword4x14Preview(qCrosswordWords);
+                      return (
+                        <div className="p-3 rounded-lg bg-black/60 border border-amber-500/30 space-y-2">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-bold text-amber-300 flex items-center gap-1">
+                              <span>📐</span> Bản đồ 4x14 Ô Chữ Liên Kết:
+                            </span>
+                            {cwPreview.isValid ? (
+                              <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                <span>✓ Bố cục hợp lệ!</span>
+                                <span>({cwPreview.intersections.size} điểm giao nhau 🔗)</span>
+                              </span>
+                            ) : (
+                              <span className="text-red-400 font-bold">
+                                ⚠️ Bố cục chưa hợp lệ
+                              </span>
+                            )}
+                          </div>
+
+                          {!cwPreview.isValid && cwPreview.errors.length > 0 && (
+                            <div className="p-2 rounded bg-red-500/15 border border-red-500/40 text-red-200 text-xs space-y-0.5">
+                              {cwPreview.errors.map((err, i) => (
+                                <div key={i} className="flex items-start gap-1">
+                                  <span>•</span>
+                                  <span>{err}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="grid grid-rows-4 gap-1 p-2 bg-[#0a192f] rounded-lg border border-cyan-500/30">
+                            {cwPreview.rows.map((row, rIdx) => (
+                              <div key={rIdx} className="grid grid-cols-14 gap-1">
+                                {row.map((char, cIdx) => {
+                                  const key = rIdx * 14 + cIdx;
+                                  const isInter = cwPreview.intersections.has(key);
+                                  const hasChar = Boolean(char && char !== " ");
+                                  return (
+                                    <div
+                                      key={cIdx}
+                                      className={`w-full aspect-square flex items-center justify-center font-black rounded-sm text-xs relative ${
+                                        isInter
+                                          ? "bg-amber-400 text-slate-950 ring-2 ring-yellow-200 shadow-[0_0_8px_#f59e0b] animate-pulse"
+                                          : hasChar
+                                          ? "bg-amber-400 text-slate-900 border border-amber-200 shadow"
+                                          : "bg-[#050c18] border border-cyan-900/40 text-transparent"
+                                      }`}
+                                    >
+                                      <span>{char || "·"}</span>
+                                      {isInter && (
+                                        <span className="absolute -top-1 -right-1 text-[8px]">🔗</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Standard Live Preview 4x14 Grid */}
+                {qPuzzleType === "STANDARD" && (() => {
                   const preview = buildPuzzle4x14Preview(qAnswer);
                   return (
                     <div className="p-3 rounded-lg bg-black/60 border border-amber-500/30 space-y-2">
@@ -3667,6 +4028,42 @@ export default function QuizBankPage() {
                   </div>
                 </div>
 
+                {/* Bộ chọn Định dạng: Tiêu chuẩn vs Ô chữ liên kết */}
+                <div>
+                  <label className="block text-xs font-bold text-amber-200 mb-1">
+                    Định dạng Ô Chữ (Puzzle Format)
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-black/50 border border-amber-500/30">
+                    <button
+                      type="button"
+                      onClick={() => setEditQPuzzleType("STANDARD")}
+                      className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                        editQPuzzleType === "STANDARD"
+                          ? "bg-amber-500 text-slate-950 shadow-md"
+                          : "text-amber-200/70 hover:bg-white/5"
+                      }`}
+                    >
+                      <span>📝</span>
+                      <span>Tiêu chuẩn (Hàng ngang)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditQPuzzleType("CROSSWORD");
+                        setEditQClueDisplayMode("CATEGORY"); // Tự động ưu tiên Chủ đề cho Ô Chữ Liên Kết
+                      }}
+                      className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                        editQPuzzleType === "CROSSWORD"
+                          ? "bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-md ring-2 ring-yellow-300"
+                          : "text-amber-200/70 hover:bg-white/5"
+                      }`}
+                    >
+                      <span>🔀</span>
+                      <span>Ô Chữ Liên Kết / Tung Hoành</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
                     <label className="block text-xs font-bold text-amber-200 mb-1">
@@ -3680,90 +4077,96 @@ export default function QuizBankPage() {
                       className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 text-sm focus:border-amber-400"
                     />
                   </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-amber-200">
-                        Cụm từ bí mật (Đáp án) *
-                      </label>
-                      <span className="text-[10px] text-amber-300/80 font-mono">
-                        {editQAnswer.replace(/\s+/g, "").length} chữ cái
-                      </span>
-                    </div>
-                    <input
-                      type="text"
-                      value={editQAnswer}
-                      onChange={(e) => setEditQAnswer(e.target.value.toUpperCase())}
-                      placeholder="VD: NGUYỄN TRÃI, VỊNH HẠ LONG..."
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 font-bold text-sm tracking-wider uppercase focus:border-amber-400"
-                    />
-                    {(() => {
-                      const isSameLetterCat = /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(editQHint);
-                      if (isSameLetterCat) {
+                  {editQPuzzleType === "STANDARD" && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-amber-200">
+                          Cụm từ bí mật (Đáp án) *
+                        </label>
+                        <span className="text-[10px] text-amber-300/80 font-mono">
+                          {editQAnswer.replace(/\s+/g, "").length} chữ cái
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        value={editQAnswer}
+                        onChange={(e) => setEditQAnswer(e.target.value.toUpperCase())}
+                        placeholder="VD: NGUYỄN TRÃI, VỊNH HẠ LONG..."
+                        className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 font-bold text-sm tracking-wider uppercase focus:border-amber-400"
+                      />
+                      {(() => {
+                        const isSameLetterCat = /SAME[\s_-]*LETTER|CÙNG CHỮ CÁI ĐẦU/i.test(editQHint);
+                        if (isSameLetterCat) {
+                          const trimmed = editQAnswer.trim();
+                          if (trimmed.length === 0) {
+                            return (
+                              <div className="mt-2 p-2.5 rounded-lg bg-indigo-500/15 border border-indigo-500/40 text-indigo-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                                <span className="text-base shrink-0">✨</span>
+                                <div className="leading-relaxed">
+                                  <strong className="font-bold text-indigo-300">Luật SAME LETTER (Bản Anh):</strong> Tất cả các từ phải bắt đầu bằng cùng một phụ âm (không được dùng nguyên âm A, E, I, O, U). Ký tự nối độc lập như &quot;&amp;&quot; hay &quot;-&quot; được phép đứng xen giữa. Đoán trúng chữ SAME LETTER sẽ nhận thưởng nóng <strong>+$1,000 / +1.000 điểm</strong>!
+                                </div>
+                              </div>
+                            );
+                          }
+                          const slCheck = validateSameLetterPhrase(trimmed);
+                          if (!slCheck.valid) {
+                            return (
+                              <div className="mt-2 p-2.5 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                                <span className="text-base shrink-0">❌</span>
+                                <div className="leading-relaxed">
+                                  <strong className="font-bold text-red-300">Câu hỏi không hợp lệ:</strong> {slCheck.error}
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                                <span className="text-base shrink-0">✅</span>
+                                <div className="leading-relaxed">
+                                  <strong className="font-bold text-emerald-300">SAME LETTER hợp lệ:</strong> Tất cả các từ đều bắt đầu bằng phụ âm <strong>[{slCheck.sameLetter}]</strong>. Thí sinh gọi đúng chữ <strong>[{slCheck.sameLetter}]</strong> sẽ được thưởng nóng +$1,000 / +1.000 điểm!
+                                </div>
+                              </div>
+                            );
+                          }
+                        }
                         const trimmed = editQAnswer.trim();
-                        if (trimmed.length === 0) {
+                        if (trimmed.length > 0 && !isVietnameseAlphabetLetter(trimmed[0])) {
                           return (
-                            <div className="mt-2 p-2.5 rounded-lg bg-indigo-500/15 border border-indigo-500/40 text-indigo-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
-                              <span className="text-base shrink-0">✨</span>
+                            <div className="mt-2 p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
+                              <span className="text-base shrink-0">⚠️</span>
                               <div className="leading-relaxed">
-                                <strong className="font-bold text-indigo-300">Luật SAME LETTER (Bản Anh):</strong> Tất cả các từ phải bắt đầu bằng cùng một phụ âm (không được dùng nguyên âm A, E, I, O, U). Ký tự nối độc lập như &quot;&amp;&quot; hay &quot;-&quot; được phép đứng xen giữa. Đoán trúng chữ SAME LETTER sẽ nhận thưởng nóng <strong>+$1,000 / +1.000 điểm</strong>!
+                                <strong className="font-bold text-amber-200">Khuyến cáo:</strong> Từ khoá nên bắt đầu bằng chữ cái tiếng Việt. Ký tự đặc biệt hoặc số ở đầu (&quot;{trimmed[0]}&quot;) sẽ được hệ thống tự động hiển thị ngay khi mở bảng và không được tính vào lượt lật chữ đoán nhanh.
                               </div>
                             </div>
                           );
                         }
-                        const slCheck = validateSameLetterPhrase(trimmed);
-                        if (!slCheck.valid) {
-                          return (
-                            <div className="mt-2 p-2.5 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
-                              <span className="text-base shrink-0">❌</span>
-                              <div className="leading-relaxed">
-                                <strong className="font-bold text-red-300">Câu hỏi không hợp lệ:</strong> {slCheck.error}
-                              </div>
-                            </div>
-                          );
-                        } else {
-                          return (
-                            <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
-                              <span className="text-base shrink-0">✅</span>
-                              <div className="leading-relaxed">
-                                <strong className="font-bold text-emerald-300">SAME LETTER hợp lệ:</strong> Tất cả các từ đều bắt đầu bằng phụ âm <strong>[{slCheck.sameLetter}]</strong>. Thí sinh gọi đúng chữ <strong>[{slCheck.sameLetter}]</strong> sẽ được thưởng nóng +$1,000 / +1.000 điểm!
-                              </div>
-                            </div>
-                          );
-                        }
-                      }
-                      const trimmed = editQAnswer.trim();
-                      if (trimmed.length > 0 && !isVietnameseAlphabetLetter(trimmed[0])) {
-                        return (
-                          <div className="mt-2 p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex items-start gap-2 shadow-sm animate-fadeIn">
-                            <span className="text-base shrink-0">⚠️</span>
-                            <div className="leading-relaxed">
-                              <strong className="font-bold text-amber-200">Khuyến cáo:</strong> Từ khoá nên bắt đầu bằng chữ cái tiếng Việt. Ký tự đặc biệt hoặc số ở đầu (&quot;{trimmed[0]}&quot;) sẽ được hệ thống tự động hiển thị ngay khi mở bảng và không được tính vào lượt lật chữ đoán nhanh.
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                  {editQPuzzleType === "CROSSWORD" && (
+                    <div className="flex flex-col justify-center">
+                      <div className="p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2">
+                        <span>ℹ️</span>
+                        <span>Nhập các từ khoá đan xen vào bảng bên dưới. Khi lưu, đáp án tổng thể sẽ được hệ thống tự động tổng hợp.</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Chế độ hiển thị CAM 3 Lower-Third (Edit) */}
                 <div>
-                  <label className="block text-xs font-bold text-amber-200 mb-1">
-                    Chế độ hiển thị trên màn hình trường quay (CAM 3 Lower-Third)
-                  </label>
-                  <div className="flex flex-wrap items-center gap-4 p-2.5 rounded-lg bg-black/40 border border-amber-500/30">
-                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-100">
-                      <input
-                        type="radio"
-                        name="editQClueDisplayMode"
-                        value="CLUE"
-                        checked={editQClueDisplayMode === "CLUE"}
-                        onChange={() => setEditQClueDisplayMode("CLUE")}
-                        className="text-amber-500 focus:ring-amber-400"
-                      />
-                      <span>💡 Ưu tiên hiện Gợi ý (Mặc định Bản Việt / VTV3)</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-amber-200">
+                      Chế độ hiển thị trên màn hình trường quay (CAM 3 Lower-Third)
                     </label>
+                    {editQPuzzleType === "CROSSWORD" && (
+                      <span className="text-[10px] text-amber-300/80">
+                        ⭐ Ưu tiên Chủ đề cho Ô Chữ Liên Kết
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-4 p-2.5 rounded-lg bg-black/40 border border-amber-500/30">
                     <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-100">
                       <input
                         type="radio"
@@ -3773,13 +4176,223 @@ export default function QuizBankPage() {
                         onChange={() => setEditQClueDisplayMode("CATEGORY")}
                         className="text-amber-500 focus:ring-amber-400"
                       />
-                      <span>🏷️ Ưu tiên hiện Chủ đề (Mặc định Bản Anh / WOF)</span>
+                      <span>🏷️ Ưu tiên hiện Chủ đề (Khuyến nghị cho Ô Chữ Liên Kết)</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-100">
+                      <input
+                        type="radio"
+                        name="editQClueDisplayMode"
+                        value="CLUE"
+                        checked={editQClueDisplayMode === "CLUE"}
+                        onChange={() => setEditQClueDisplayMode("CLUE")}
+                        className="text-amber-500 focus:ring-amber-400"
+                      />
+                      <span>💡 Ưu tiên hiện Gợi ý (Gợi ý phải bao quát tất cả từ khoá)</span>
                     </label>
                   </div>
                 </div>
 
-                {/* Live Preview 4x14 Grid */}
-                {(() => {
+                {/* BỘ SOẠN Ô CHỮ LIÊN KẾT (CROSSWORD BUILDER - EDIT) */}
+                {editQPuzzleType === "CROSSWORD" && (
+                  <div className="space-y-3 p-3.5 rounded-xl bg-black/60 border border-amber-500/40">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-400 font-black text-sm">🔀 DANH SÁCH TỪ KHOÁ LIÊN KẾT:</span>
+                        <span className="text-[11px] text-amber-200/70">
+                          ({editQCrosswordWords.length} từ)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const wordsList = editQCrosswordWords.map((w) => w.word).filter(Boolean);
+                            if (wordsList.length < 2) {
+                              alert("Vui lòng nhập ít nhất 2 từ khoá để tự động tìm giao điểm!");
+                              return;
+                            }
+                            const autoLayout = generateAutoCrosswordLayout(wordsList);
+                            setEditQCrosswordWords(autoLayout);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs shadow hover:brightness-110 flex items-center gap-1 transition"
+                        >
+                          <span>⚡ Tự động tìm giao điểm &amp; xếp ô chữ</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (editQCrosswordWords.length >= 6) {
+                              alert("Tối đa 6 từ khoá trong một ô chữ liên kết!");
+                              return;
+                            }
+                            setEditQCrosswordWords([
+                              ...editQCrosswordWords,
+                              {
+                                id: `cw_${Date.now()}`,
+                                word: "",
+                                row: Math.min(3, editQCrosswordWords.length),
+                                col: 2,
+                                direction: "ACROSS",
+                              },
+                            ]);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow flex items-center gap-1 transition"
+                        >
+                          <span>+ Thêm từ</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Words rows list */}
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {editQCrosswordWords.map((item, idx) => (
+                        <div
+                          key={item.id}
+                          className="p-2 rounded-lg bg-black/40 border border-amber-500/20 flex flex-wrap items-center gap-2 text-xs"
+                        >
+                          <span className="font-bold text-amber-300 w-6 shrink-0">#{idx + 1}</span>
+                          <input
+                            type="text"
+                            value={item.word}
+                            onChange={(e) => {
+                              const next = [...editQCrosswordWords];
+                              next[idx] = { ...item, word: e.target.value.toUpperCase() };
+                              setEditQCrosswordWords(next);
+                            }}
+                            placeholder="Nhập từ khoá..."
+                            className="flex-1 min-w-[120px] px-2.5 py-1.5 rounded bg-black/60 border border-amber-500/30 text-amber-100 font-bold uppercase tracking-wider"
+                          />
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">Chiều:</span>
+                            <select
+                              value={item.direction}
+                              onChange={(e) => {
+                                const next = [...editQCrosswordWords];
+                                next[idx] = { ...item, direction: e.target.value as "ACROSS" | "DOWN" };
+                                setEditQCrosswordWords(next);
+                              }}
+                              className="px-2 py-1 rounded bg-black/60 border border-amber-500/30 text-amber-200 font-semibold"
+                            >
+                              <option value="ACROSS">Ngang (ACROSS)</option>
+                              <option value="DOWN">Dọc (DOWN · max 4 ký tự)</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">Hàng:</span>
+                            <select
+                              value={item.row}
+                              onChange={(e) => {
+                                const next = [...editQCrosswordWords];
+                                next[idx] = { ...item, row: Number(e.target.value) };
+                                setEditQCrosswordWords(next);
+                              }}
+                              className="px-1.5 py-1 rounded bg-black/60 border border-amber-500/30 text-amber-200 font-semibold"
+                            >
+                              {[0, 1, 2, 3].map((r) => (
+                                <option key={r} value={r}>Hàng {r + 1}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">Cột:</span>
+                            <select
+                              value={item.col}
+                              onChange={(e) => {
+                                const next = [...editQCrosswordWords];
+                                next[idx] = { ...item, col: Number(e.target.value) };
+                                setEditQCrosswordWords(next);
+                              }}
+                              className="px-1.5 py-1 rounded bg-black/60 border border-amber-500/30 text-amber-200 font-semibold"
+                            >
+                              {Array.from({ length: 14 }, (_, c) => (
+                                <option key={c} value={c}>Cột {c + 1}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {editQCrosswordWords.length > 2 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditQCrosswordWords(editQCrosswordWords.filter((_, i) => i !== idx));
+                              }}
+                              className="px-2 py-1 rounded text-red-400 hover:bg-red-500/20 font-bold transition"
+                              title="Xóa từ này"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Live Crossword Preview 4x14 */}
+                    {(() => {
+                      const cwPreview = buildCrossword4x14Preview(editQCrosswordWords);
+                      return (
+                        <div className="p-3 rounded-lg bg-black/60 border border-amber-500/30 space-y-2">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-bold text-amber-300 flex items-center gap-1">
+                              <span>📐</span> Bản đồ 4x14 Ô Chữ Liên Kết:
+                            </span>
+                            {cwPreview.isValid ? (
+                              <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                <span>✓ Bố cục hợp lệ!</span>
+                                <span>({cwPreview.intersections.size} điểm giao nhau 🔗)</span>
+                              </span>
+                            ) : (
+                              <span className="text-red-400 font-bold">
+                                ⚠️ Bố cục chưa hợp lệ
+                              </span>
+                            )}
+                          </div>
+
+                          {!cwPreview.isValid && cwPreview.errors.length > 0 && (
+                            <div className="p-2 rounded bg-red-500/15 border border-red-500/40 text-red-200 text-xs space-y-0.5">
+                              {cwPreview.errors.map((err, i) => (
+                                <div key={i} className="flex items-start gap-1">
+                                  <span>•</span>
+                                  <span>{err}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="grid grid-rows-4 gap-1 p-2 bg-[#0a192f] rounded-lg border border-cyan-500/30">
+                            {cwPreview.rows.map((row, rIdx) => (
+                              <div key={rIdx} className="grid grid-cols-14 gap-1">
+                                {row.map((char, cIdx) => {
+                                  const key = rIdx * 14 + cIdx;
+                                  const isInter = cwPreview.intersections.has(key);
+                                  const hasChar = Boolean(char && char !== " ");
+                                  return (
+                                    <div
+                                      key={cIdx}
+                                      className={`w-full aspect-square flex items-center justify-center font-black rounded-sm text-xs relative ${
+                                        isInter
+                                          ? "bg-amber-400 text-slate-950 ring-2 ring-yellow-200 shadow-[0_0_8px_#f59e0b] animate-pulse"
+                                          : hasChar
+                                          ? "bg-amber-400 text-slate-900 border border-amber-200 shadow"
+                                          : "bg-[#050c18] border border-cyan-900/40 text-transparent"
+                                      }`}
+                                    >
+                                      <span>{char || "·"}</span>
+                                      {isInter && (
+                                        <span className="absolute -top-1 -right-1 text-[8px]">🔗</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Standard Live Preview 4x14 Grid */}
+                {editQPuzzleType === "STANDARD" && (() => {
                   const preview = buildPuzzle4x14Preview(editQAnswer);
                   return (
                     <div className="p-3 rounded-lg bg-black/60 border border-amber-500/30 space-y-2">

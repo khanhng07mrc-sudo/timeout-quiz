@@ -16,7 +16,7 @@ import React, { useRef, useEffect, useMemo, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { MeshReflectorMaterial } from "@react-three/drei";
 import * as THREE from "three";
-import { MagicWheelSector, TeamState } from "@/types";
+import { MagicWheelSector, TeamState, MagicWheelPuzzleType, CrosswordWordItem } from "@/types";
 import { stripVietnameseToneKeepBase, evaluateThreePhaseWheelProgress } from "@/lib/game-engine/magic-wheel";
 import { soundManager } from "@/lib/sound-manager";
 
@@ -44,6 +44,8 @@ interface WheelStudio3DSceneProps {
     secretPhrase: string;
     revealedIndices: number[];
     clueDisplayMode?: "CATEGORY" | "CLUE";
+    puzzleType?: MagicWheelPuzzleType;
+    crosswordWords?: CrosswordWordItem[];
   } | null;
   highlightedIndices?: Set<number>;
   animRevealedIndices?: Set<number>;
@@ -2479,6 +2481,31 @@ function formatPhraseTo4x14(phrase?: string): FormattedTile[][] {
   return grid;
 }
 
+function formatCrosswordTo4x14(words?: CrosswordWordItem[]): FormattedTile[][] {
+  const grid: FormattedTile[][] = Array.from({ length: 4 }, () =>
+    Array.from({ length: 14 }, () => ({ char: "", isLetter: false, origIdx: -1 }))
+  );
+  if (!words || words.length === 0) return grid;
+
+  words.forEach((item) => {
+    const cleanW = (item.word || "").toUpperCase();
+    for (let i = 0; i < cleanW.length; i++) {
+      const r = item.direction === "DOWN" ? item.row + i : item.row;
+      const c = item.direction === "ACROSS" ? item.col + i : item.col;
+      if (r >= 0 && r < 4 && c >= 0 && c < 14) {
+        const ch = cleanW[i];
+        grid[r][c] = {
+          char: ch,
+          isLetter: /[A-ZÀ-Ỹ]/i.test(ch),
+          origIdx: r * 14 + c,
+        };
+      }
+    }
+  });
+
+  return grid;
+}
+
 
 /** Ô chữ 3D độc lập với cơ chế lật xoay 180 độ (Trilon Flip), sẵn ô trắng và highlight xanh chuẩn VTV3 */
 function Studio3DPuzzleTile({
@@ -2900,6 +2927,8 @@ function Studio3DPuzzleBoard({
     description?: string;
     secretPhrase: string;
     revealedIndices: number[];
+    puzzleType?: MagicWheelPuzzleType;
+    crosswordWords?: CrosswordWordItem[];
   } | null;
   phase?: string;
   boardStage?: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE";
@@ -2909,8 +2938,11 @@ function Studio3DPuzzleBoard({
   hostessPose?: "IDLE" | "GESTURE" | "WALKING" | "TOUCHING";
 }) {
   const grid = useMemo(() => {
+    if (currentPuzzle?.puzzleType === "CROSSWORD" && currentPuzzle.crosswordWords && currentPuzzle.crosswordWords.length > 0) {
+      return formatCrosswordTo4x14(currentPuzzle.crosswordWords);
+    }
     return formatPhraseTo4x14(currentPuzzle?.secretPhrase);
-  }, [currentPuzzle?.secretPhrase]);
+  }, [currentPuzzle?.secretPhrase, currentPuzzle?.puzzleType, currentPuzzle?.crosswordWords]);
 
   const revealedSet = useMemo(() => {
     if (animRevealedIndices && animRevealedIndices.size > 0) return animRevealedIndices;
@@ -2921,8 +2953,13 @@ function Studio3DPuzzleBoard({
   const isRevealing = phase === "ROUND_RECAP" || (revealedSet.size > 0);
 
   const cleanLettersCount = useMemo(() => {
+    if (currentPuzzle?.puzzleType === "CROSSWORD" && currentPuzzle.crosswordWords) {
+      let count = 0;
+      grid.forEach((row) => row.forEach((tile) => { if (tile.isLetter) count++; }));
+      return count;
+    }
     return (currentPuzzle?.secretPhrase || "").replace(/\s+/g, "").length;
-  }, [currentPuzzle?.secretPhrase]);
+  }, [currentPuzzle?.secretPhrase, currentPuzzle?.puzzleType, currentPuzzle?.crosswordWords, grid]);
 
   const isSolvedOrRecap =
     phase === "ROUND_RECAP" ||
@@ -4476,19 +4513,26 @@ function WheelStudio3DSceneComponent({
       {internalCam === 3 &&
         phase !== "ROUND_RECAP" &&
         showClue &&
-        Boolean(currentPuzzle?.category || currentPuzzle?.description || currentPuzzle?.clue) && (() => {
-          const effectiveMode = currentPuzzle?.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE");
+        Boolean(currentPuzzle?.category || currentPuzzle?.description || currentPuzzle?.clue || currentPuzzle?.crosswordWords) && (() => {
+          const isCrossword = currentPuzzle?.puzzleType === "CROSSWORD";
+          const effectiveMode = isCrossword ? "CATEGORY" : (currentPuzzle?.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"));
           const isCategoryMode = effectiveMode === "CATEGORY";
           const rawClueText = (currentPuzzle?.description || currentPuzzle?.clue || "")
             .replace(/\s*\(\s*\d+\s*(ký\s*tự|chữ\s*cái|chữ|letters|chars?)\s*\)/gi, "")
             .trim();
           const categoryText = (currentPuzzle?.category || "").trim();
 
-          const labelText = isCategoryMode
+          const labelText = isCrossword
+            ? (edition === "ENGLISH" ? "CROSSWORD" : "Ô CHỮ LIÊN KẾT")
+            : isCategoryMode
             ? (edition === "ENGLISH" ? "CATEGORY" : "CHỦ ĐỀ")
             : (edition === "ENGLISH" ? "CLUE" : "GỢI Ý");
 
-          const displayText = isCategoryMode
+          const displayText = isCrossword
+            ? (categoryText
+                ? (rawClueText ? `${categoryText} — Gợi ý chung: ${rawClueText}` : categoryText)
+                : (rawClueText || "Tìm các từ khóa có ký tự giao nhau trên bảng"))
+            : isCategoryMode
             ? (categoryText || rawClueText)
             : (rawClueText || categoryText);
 
@@ -4496,10 +4540,15 @@ function WheelStudio3DSceneComponent({
 
           return (
             <div className="absolute bottom-11 left-1/2 -translate-x-1/2 z-40 max-w-[92vw] sm:max-w-2xl md:max-w-3xl px-4 py-1.5 rounded-xl bg-slate-950/90 border border-amber-400/60 shadow-[0_4px_24px_rgba(0,0,0,0.8)] backdrop-blur-md flex items-center gap-2.5 animate-fade-in pointer-events-auto">
-              <span className="text-base shrink-0">{isCategoryMode ? "🏷️" : "💡"}</span>
+              <span className="text-base shrink-0">{isCrossword ? "🔀" : (isCategoryMode ? "🏷️" : "💡")}</span>
               <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/50 font-black text-amber-300 uppercase tracking-wider text-[11px] sm:text-xs shrink-0">
                 {labelText}
               </span>
+              {isCrossword && currentPuzzle?.crosswordWords && (
+                <span className="px-2 py-0.5 rounded-md bg-violet-500/20 border border-violet-400/50 font-black text-violet-300 text-[10px] sm:text-xs shrink-0">
+                  {currentPuzzle.crosswordWords.length} {edition === "ENGLISH" ? "WORDS" : "TỪ KHÓA"}
+                </span>
+              )}
               {isSameLetter && (
                 <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/50 font-black text-emerald-300 text-[10px] shrink-0 animate-pulse">
                   ✨ +$1,000

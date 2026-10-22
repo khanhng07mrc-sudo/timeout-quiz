@@ -57,6 +57,17 @@ export interface MagicWheelSector {
   envelopeTitle?: string;
 }
 
+export type MagicWheelPuzzleType = "STANDARD" | "CROSSWORD";
+
+export interface CrosswordWordItem {
+  id: string;
+  word: string;                   // Từ khoá (vd: "DANTE", "TƯỢNG HỌC")
+  row: number;                    // Hàng bắt đầu (0..3)
+  col: number;                    // Cột bắt đầu (0..13)
+  direction: "ACROSS" | "DOWN";   // Hướng: Ngang (ACROSS) hoặc Dọc (DOWN)
+  clue?: string;                  // Gợi ý tuỳ chọn cho từ
+}
+
 export interface MagicWheelPuzzle {
   id: string;
   roundNumber: number; // Thứ tự tổng thể trong trận (1, 2, 3...)
@@ -67,6 +78,8 @@ export interface MagicWheelPuzzle {
   clue?: string;        // "Nhà quân sự, danh nhân văn hóa..."
   clueDisplayMode?: "CATEGORY" | "CLUE"; // Chế độ hiển thị: Chủ đề hay Gợi ý
   revealedIndices: number[]; // Vị trí các ký tự đã được lật mở (chỉ hiện chữ gốc không dấu khi chưa giải xong)
+  puzzleType?: MagicWheelPuzzleType; // "STANDARD" | "CROSSWORD"
+  crosswordWords?: CrosswordWordItem[]; // Danh sách các từ đan xen trong Ô Chữ Liên Kết
 }
 
 export interface MagicWheelState {
@@ -734,7 +747,24 @@ export function checkLetterInSecretPhrase(
 /**
  * Kiểm tra xem toàn bộ các chữ cái gốc trong cụm từ đã được lật mở hết chưa
  */
-export function isPuzzleFullyRevealed(phrase: string, revealedIndices: number[]): boolean {
+export function isPuzzleFullyRevealed(
+  phraseOrPuzzle: string | MagicWheelPuzzle,
+  revealedIndices: number[]
+): boolean {
+  if (typeof phraseOrPuzzle === "object" && phraseOrPuzzle !== null) {
+    if (phraseOrPuzzle.puzzleType === "CROSSWORD" && phraseOrPuzzle.crosswordWords && phraseOrPuzzle.crosswordWords.length > 0) {
+      const layout = validateCrosswordLayout(phraseOrPuzzle.crosswordWords);
+      for (const [gridKey, cellInfo] of layout.cellMap.entries()) {
+        if (cellInfo.isLetter && !revealedIndices.includes(gridKey)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return isPuzzleFullyRevealed(phraseOrPuzzle.secretPhrase || "", revealedIndices);
+  }
+
+  const phrase = phraseOrPuzzle;
   for (let i = 0; i < phrase.length; i++) {
     const char = phrase[i];
     if (/[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(char)) {
@@ -749,9 +779,25 @@ export function isPuzzleFullyRevealed(phrase: string, revealedIndices: number[])
 /**
  * Kiểm tra xem ô chữ còn phụ âm nào chưa lật hay không (dành cho Bản Anh & Luật Vòng 3)
  */
-export function hasRemainingConsonants(phrase: string, revealedIndices: number[]): boolean {
-  if (!phrase) return false;
+export function hasRemainingConsonants(phraseOrPuzzle: string | MagicWheelPuzzle, revealedIndices: number[]): boolean {
+  if (!phraseOrPuzzle) return false;
   const vowels = ["A", "E", "I", "O", "U"];
+  if (typeof phraseOrPuzzle === "object" && phraseOrPuzzle !== null) {
+    if (phraseOrPuzzle.puzzleType === "CROSSWORD" && phraseOrPuzzle.crosswordWords && phraseOrPuzzle.crosswordWords.length > 0) {
+      const layout = validateCrosswordLayout(phraseOrPuzzle.crosswordWords);
+      for (const [gridKey, cellInfo] of layout.cellMap.entries()) {
+        if (cellInfo.isLetter && !revealedIndices.includes(gridKey)) {
+          if (!vowels.includes(cellInfo.baseChar)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+    return hasRemainingConsonants(phraseOrPuzzle.secretPhrase || "", revealedIndices);
+  }
+
+  const phrase = phraseOrPuzzle;
   const upper = phrase.toUpperCase();
   for (let i = 0; i < upper.length; i++) {
     const ch = upper[i];
@@ -767,9 +813,25 @@ export function hasRemainingConsonants(phrase: string, revealedIndices: number[]
 /**
  * Kiểm tra xem ô chữ còn nguyên âm nào chưa lật hay không (dành cho Bản Anh)
  */
-export function hasRemainingVowels(phrase: string, revealedIndices: number[]): boolean {
-  if (!phrase) return false;
+export function hasRemainingVowels(phraseOrPuzzle: string | MagicWheelPuzzle, revealedIndices: number[]): boolean {
+  if (!phraseOrPuzzle) return false;
   const vowels = ["A", "E", "I", "O", "U"];
+  if (typeof phraseOrPuzzle === "object" && phraseOrPuzzle !== null) {
+    if (phraseOrPuzzle.puzzleType === "CROSSWORD" && phraseOrPuzzle.crosswordWords && phraseOrPuzzle.crosswordWords.length > 0) {
+      const layout = validateCrosswordLayout(phraseOrPuzzle.crosswordWords);
+      for (const [gridKey, cellInfo] of layout.cellMap.entries()) {
+        if (cellInfo.isLetter && !revealedIndices.includes(gridKey)) {
+          if (vowels.includes(cellInfo.baseChar)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+    return hasRemainingVowels(phraseOrPuzzle.secretPhrase || "", revealedIndices);
+  }
+
+  const phrase = phraseOrPuzzle;
   const upper = phrase.toUpperCase();
   for (let i = 0; i < upper.length; i++) {
     const ch = upper[i];
@@ -784,13 +846,13 @@ export function hasRemainingVowels(phrase: string, revealedIndices: number[]): b
  * Kiểm tra trạng thái "NO MORE CONSONANTS" (Hết phụ âm, tất cả ô còn lại đều là nguyên âm)
  */
 export function checkNoMoreConsonants(
-  phrase: string,
+  phraseOrPuzzle: string | MagicWheelPuzzle,
   revealedIndices: number[],
   edition: "VIETNAMESE" | "ENGLISH" = "VIETNAMESE"
 ): boolean {
   if (edition !== "ENGLISH") return false;
   // Đã hết phụ âm, và vẫn còn nguyên âm chưa lật
-  return !hasRemainingConsonants(phrase, revealedIndices) && hasRemainingVowels(phrase, revealedIndices);
+  return !hasRemainingConsonants(phraseOrPuzzle, revealedIndices) && hasRemainingVowels(phraseOrPuzzle, revealedIndices);
 }
 
 export interface SameLetterValidationResult {
@@ -944,6 +1006,371 @@ export function matchWholeSecretPhrase(phrase: string, guess: string): boolean {
     .trim();
 
   return cleanPhrase.length > 0 && cleanPhrase === cleanGuess;
+}
+
+// ─── Ô CHỮ LIÊN KẾT (CROSSWORD PUZZLE ENGINE) ─────────────────────────────────
+
+export interface CrosswordCellInfo {
+  row: number; // 0..3
+  col: number; // 0..13
+  char: string;
+  baseChar: string;
+  isLetter: boolean;
+  wordIds: string[];
+}
+
+/**
+ * Kiểm tra tính hợp lệ của bố cục Ô Chữ Liên Kết:
+ * - Không tràn bảng (Row 0..3, Col 0..13)
+ * - Từ dọc (DOWN) có độ dài tối đa 4 (do bảng có 4 hàng)
+ * - Từ ngang (ACROSS) có độ dài tối đa 14
+ * - Mọi điểm giao nhau giữa các từ phải trùng khớp ký tự
+ */
+export function validateCrosswordLayout(words: CrosswordWordItem[]): {
+  isValid: boolean;
+  errors: string[];
+  intersections: Array<{ row: number; col: number; char: string; wordIds: string[] }>;
+  cellMap: Map<number, CrosswordCellInfo>; // key: row * 14 + col
+} {
+  const errors: string[] = [];
+  const intersections: Array<{ row: number; col: number; char: string; wordIds: string[] }> = [];
+  const cellMap = new Map<number, CrosswordCellInfo>();
+
+  if (!words || words.length === 0) {
+    return { isValid: false, errors: ["Chưa có từ khoá nào trong ô chữ!"], intersections: [], cellMap };
+  }
+
+  for (let wIdx = 0; wIdx < words.length; wIdx++) {
+    const item = words[wIdx];
+    const cleanWord = (item.word || "").trim().toUpperCase().replace(/\s+/g, " ");
+    if (!cleanWord) {
+      errors.push(`Từ khoá thứ #${wIdx + 1} đang bị để trống.`);
+      continue;
+    }
+
+    const len = cleanWord.length;
+    if (item.direction === "ACROSS") {
+      if (item.row < 0 || item.row > 3) {
+        errors.push(`Từ "${cleanWord}" có chỉ số hàng (${item.row}) nằm ngoài bảng [0..3].`);
+      }
+      if (item.col < 0 || item.col + len > 14) {
+        errors.push(`Từ "${cleanWord}" (dài ${len} ký tự) ở cột ${item.col} vượt quá chiều ngang 14 cột.`);
+      }
+    } else {
+      // DOWN
+      if (item.col < 0 || item.col > 13) {
+        errors.push(`Từ "${cleanWord}" có chỉ số cột (${item.col}) nằm ngoài bảng [0..13].`);
+      }
+      if (item.row < 0 || item.row + len > 4) {
+        errors.push(`Từ "${cleanWord}" (dài ${len} ký tự) ở hàng ${item.row} vượt quá chiều dọc 4 hàng.`);
+      }
+    }
+
+    // Duyệt qua từng ký tự của từ
+    for (let i = 0; i < len; i++) {
+      const r = item.direction === "ACROSS" ? item.row : item.row + i;
+      const c = item.direction === "ACROSS" ? item.col + i : item.col;
+      if (r < 0 || r > 3 || c < 0 || c > 13) continue;
+
+      const char = cleanWord[i];
+      const baseChar = normalizeVietnameseBaseLetter(char);
+      const isLetter = /[A-ZÀ-Ỹ]/i.test(char);
+      const key = r * 14 + c;
+
+      if (cellMap.has(key)) {
+        const existing = cellMap.get(key)!;
+        // Điểm giao nhau: kiểm tra xem chữ cái có khớp nhau không
+        if (normalizeVietnameseBaseLetter(existing.char) !== baseChar) {
+          errors.push(
+            `Xung đột ký tự tại Hàng ${r + 1}, Cột ${c + 1}: Từ "${cleanWord}" có chữ '${char}' nhưng ô đã bị chiếm bởi chữ '${existing.char}' từ từ trước!`
+          );
+        } else {
+          // Khớp điểm giao
+          if (!existing.wordIds.includes(item.id)) {
+            existing.wordIds.push(item.id);
+          }
+          if (!intersections.some((x) => x.row === r && x.col === c)) {
+            intersections.push({ row: r, col: c, char: existing.char, wordIds: existing.wordIds });
+          }
+        }
+      } else {
+        cellMap.set(key, {
+          row: r,
+          col: c,
+          char,
+          baseChar,
+          isLetter,
+          wordIds: [item.id],
+        });
+      }
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    intersections,
+    cellMap,
+  };
+}
+
+/**
+ * Thuật toán tự động xếp Ô Chữ Liên Kết từ danh sách từ khoá:
+ * - Tìm giao điểm các ký tự chung giữa từ hàng ngang và từ cột dọc
+ * - Đảm bảo vừa vặn lưới 4x14 và căn chỉnh hài hoà
+ */
+export function generateAutoCrosswordLayout(words: string[]): CrosswordWordItem[] {
+  const cleanWords = words
+    .map((w) => w.trim().toUpperCase())
+    .filter((w) => w.length > 0 && w.length <= 14);
+
+  if (cleanWords.length === 0) return [];
+
+  // Sắp xếp: từ dài nhất xếp trước
+  const sorted = [...cleanWords].sort((a, b) => b.length - a.length);
+  const items: CrosswordWordItem[] = [];
+
+  // Từ đầu tiên (dài nhất) đặt nằm ngang ở Hàng 1 (hoặc Hàng 2) căn giữa
+  const w1 = sorted[0];
+  const startCol1 = Math.max(0, Math.floor((14 - w1.length) / 2));
+  items.push({
+    id: "cw_word_1",
+    word: w1,
+    row: 1,
+    col: startCol1,
+    direction: "ACROSS",
+  });
+
+  // Với các từ tiếp theo, thử xếp giao cắt với từ đã có
+  for (let idx = 1; idx < sorted.length; idx++) {
+    const curWord = sorted[idx];
+    let placed = false;
+
+    // Ưu tiên 1: Thử xếp DOWN nếu từ có độ dài <= 4
+    if (curWord.length <= 4) {
+      for (const placedItem of items) {
+        if (placedItem.direction !== "ACROSS") continue;
+        for (let iPlaced = 0; iPlaced < placedItem.word.length; iPlaced++) {
+          const charP = normalizeVietnameseBaseLetter(placedItem.word[iPlaced]);
+          for (let iCur = 0; iCur < curWord.length; iCur++) {
+            const charC = normalizeVietnameseBaseLetter(curWord[iCur]);
+            if (charP === charC) {
+              const testRow = placedItem.row - iCur;
+              const testCol = placedItem.col + iPlaced;
+              if (testRow >= 0 && testRow + curWord.length <= 4 && testCol >= 0 && testCol <= 13) {
+                // Thử thêm và kiểm tra không xung đột
+                const candidate: CrosswordWordItem = {
+                  id: `cw_word_${idx + 1}`,
+                  word: curWord,
+                  row: testRow,
+                  col: testCol,
+                  direction: "DOWN",
+                };
+                const val = validateCrosswordLayout([...items, candidate]);
+                if (val.isValid) {
+                  items.push(candidate);
+                  placed = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (placed) break;
+        }
+        if (placed) break;
+      }
+    }
+
+    // Ưu tiên 2: Nếu chưa xếp được và từ có giao điểm với từ dọc đã có
+    if (!placed) {
+      for (const placedItem of items) {
+        if (placedItem.direction !== "DOWN") continue;
+        for (let iPlaced = 0; iPlaced < placedItem.word.length; iPlaced++) {
+          const charP = normalizeVietnameseBaseLetter(placedItem.word[iPlaced]);
+          for (let iCur = 0; iCur < curWord.length; iCur++) {
+            const charC = normalizeVietnameseBaseLetter(curWord[iCur]);
+            if (charP === charC) {
+              const testRow = placedItem.row + iPlaced;
+              const testCol = placedItem.col - iCur;
+              if (testCol >= 0 && testCol + curWord.length <= 14 && testRow >= 0 && testRow <= 3) {
+                const candidate: CrosswordWordItem = {
+                  id: `cw_word_${idx + 1}`,
+                  word: curWord,
+                  row: testRow,
+                  col: testCol,
+                  direction: "ACROSS",
+                };
+                const val = validateCrosswordLayout([...items, candidate]);
+                if (val.isValid) {
+                  items.push(candidate);
+                  placed = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (placed) break;
+        }
+        if (placed) break;
+      }
+    }
+
+    // Fallback: Nếu không tìm thấy giao điểm hợp lệ, đặt trên các hàng trống khác
+    if (!placed) {
+      const usedRows = new Set(items.filter((it) => it.direction === "ACROSS").map((it) => it.row));
+      let targetRow = 2;
+      if (usedRows.has(targetRow)) targetRow = 0;
+      if (usedRows.has(targetRow)) targetRow = 3;
+      const startCol = Math.max(0, Math.floor((14 - curWord.length) / 2));
+      items.push({
+        id: `cw_word_${idx + 1}`,
+        word: curWord,
+        row: targetRow,
+        col: startCol,
+        direction: "ACROSS",
+      });
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Kiểm tra chữ cái được gọi trong Ô Chữ Liên Kết:
+ * Mỗi ô trùng chữ trên bảng chỉ được tính 1 lần (điểm giao nhau không nhân đôi).
+ */
+export function checkLetterInCrossword(
+  words: CrosswordWordItem[],
+  letter: string,
+  alreadyRevealedIndices: number[]
+): {
+  found: boolean;
+  count: number;
+  newRevealedIndices: number[];
+  newlyOpenedIndices: number[];
+} {
+  const targetLetter = normalizeVietnameseBaseLetter(letter);
+  const layout = validateCrosswordLayout(words);
+  const newlyOpenedIndices: number[] = [];
+
+  layout.cellMap.forEach((cellInfo, gridKey) => {
+    if (cellInfo.isLetter && cellInfo.baseChar === targetLetter) {
+      if (!alreadyRevealedIndices.includes(gridKey)) {
+        newlyOpenedIndices.push(gridKey);
+      }
+    }
+  });
+
+  return {
+    found: newlyOpenedIndices.length > 0,
+    count: newlyOpenedIndices.length,
+    newRevealedIndices: [...alreadyRevealedIndices, ...newlyOpenedIndices],
+    newlyOpenedIndices,
+  };
+}
+
+/**
+ * Xác thực giải ô chữ liên kết:
+ * LUẬT NGHIÊM NGẶT (Strict WOF Rules):
+ * 1. Phải nhập tất cả các từ trong ô chữ (hoặc phân tách bằng dấu phẩy ',').
+ * 2. CẤM TUYỆT ĐỐI dùng từ nối ngoài bảng ("VÀ", "AND", "VỚI", "CÙNG", "KÈM", "&", "+").
+ * 3. Thứ tự các từ tự do, không bắt buộc đọc theo thứ tự trên bảng.
+ */
+export function validateCrosswordSolve(
+  puzzle: MagicWheelPuzzle,
+  rawGuess: string
+): {
+  isCorrect: boolean;
+  reason?: string;
+  matchedWordsCount: number;
+  totalWordsCount: number;
+} {
+  const words = puzzle.crosswordWords || [];
+  if (words.length === 0) {
+    // Fallback về giải ô chữ thường nếu không có crosswordWords
+    const isOk = matchWholeSecretPhrase(puzzle.secretPhrase || "", rawGuess);
+    return {
+      isCorrect: isOk,
+      matchedWordsCount: isOk ? 1 : 0,
+      totalWordsCount: 1,
+    };
+  }
+
+  const expectedWords = words.map((w) =>
+    w.word
+      .trim()
+      .toUpperCase()
+      .normalize("NFC")
+      .replace(/[^A-ZÀ-Ỹ0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+
+  const cleanInput = (rawGuess || "").trim().toUpperCase().normalize("NFC");
+
+  // Kiểm tra từ cấm ngoài bảng (Filler/conjunction words)
+  // Dùng Unicode boundary an toàn (không dùng \b vì \b không hỗ trợ ký tự có dấu như 'À')
+  const forbiddenRegex = /(^|[^A-ZÀ-Ỹ0-9])(VÀ|AND|VỚI|CÙNG|KÈM|[&+])([^A-ZÀ-Ỹ0-9]|$)/i;
+  if (forbiddenRegex.test(cleanInput)) {
+    return {
+      isCorrect: false,
+      reason:
+        "Quy tắc nghiêm ngặt: Không được dùng các từ nối ngoài bảng (như 'VÀ', 'AND', 'VỚI', '&'). Bạn chỉ được dùng dấu phẩy ',' để phân tách các từ khoá!",
+      matchedWordsCount: 0,
+      totalWordsCount: expectedWords.length,
+    };
+  }
+
+  // Tách các từ khoá nhập vào theo dấu phẩy
+  let inputTokens = cleanInput
+    .split(",")
+    .map((s) => s.replace(/[^A-ZÀ-Ỹ0-9\s]/g, " ").replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  // Nếu người chơi gõ liền các từ mà không có dấu phẩy (vd: người chơi điền từ giao diện chữ cái),
+  // thử kiểm tra chuỗi có chứa tất cả các từ hay không
+  if (inputTokens.length === 1 && expectedWords.length > 1) {
+    const singleStr = inputTokens[0];
+    let allFound = true;
+    for (const exp of expectedWords) {
+      if (!singleStr.includes(exp)) {
+        allFound = false;
+        break;
+      }
+    }
+    if (allFound) {
+      return {
+        isCorrect: true,
+        matchedWordsCount: expectedWords.length,
+        totalWordsCount: expectedWords.length,
+      };
+    }
+  }
+
+  // Kiểm tra đối chiếu từng từ (thứ tự tự do)
+  const unmatchedExpected = [...expectedWords];
+  let matchedCount = 0;
+
+  for (const token of inputTokens) {
+    const matchIdx = unmatchedExpected.findIndex((exp) => matchWholeSecretPhrase(exp, token));
+    if (matchIdx !== -1) {
+      matchedCount++;
+      unmatchedExpected.splice(matchIdx, 1);
+    }
+  }
+
+  const isAllMatched = matchedCount === expectedWords.length && inputTokens.length === expectedWords.length;
+
+  return {
+    isCorrect: isAllMatched,
+    reason: isAllMatched
+      ? undefined
+      : unmatchedExpected.length > 0
+      ? `Còn thiếu hoặc chưa khớp các từ khoá: ${unmatchedExpected.join(", ")}.`
+      : "Số lượng từ nhập vào không khớp với các từ khoá trên bảng.",
+    matchedWordsCount: matchedCount,
+    totalWordsCount: expectedWords.length,
+  };
 }
 
 /**
@@ -1180,10 +1607,16 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     roundNumber: 6,
     stage: "MAIN",
     mainRoundIndex: 4,
-    category: "VÒNG 4: VĂN HỌC VIỆT NAM",
-    secretPhrase: "DẾ MÈN PHIÊU LƯU KÝ",
-    clue: "Tác phẩm văn học thiếu nhi kinh điển nổi tiếng nhất của nhà văn Tô Hoài.",
-    clueDisplayMode: "CLUE",
+    category: "VÒNG 4: 🔀 VĂN HÓA THỦ ĐÔ",
+    secretPhrase: "VĂN HỌC, NHO, HÀ NỘI",
+    clue: "Các từ khoá về Văn hóa và Thủ đô ngàn năm văn hiến đan xen nhau trên bàn ô chữ.",
+    clueDisplayMode: "CATEGORY",
+    puzzleType: "CROSSWORD",
+    crosswordWords: [
+      { id: "cw_1", word: "VĂN HỌC", row: 1, col: 3, direction: "ACROSS" },
+      { id: "cw_2", word: "NHO", row: 1, col: 5, direction: "DOWN" },
+      { id: "cw_3", word: "HÀ NỘI", row: 2, col: 5, direction: "ACROSS" },
+    ],
     revealedIndices: [],
   },
   {
@@ -1535,9 +1968,16 @@ export const ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS: MagicWheelPuzzle[] = [
     roundNumber: 6,
     stage: "MAIN",
     mainRoundIndex: 4,
-    category: "PHRASE(S)",
-    secretPhrase: "ONCE IN A BLUE MOON",
-    clue: "An astronomical metaphor for an occurrence that takes place very rarely.",
+    category: "CROSSWORD: CELESTIAL",
+    secretPhrase: "PLANET, STAR, AIR",
+    clue: "Three celestial words interlocking across the board.",
+    clueDisplayMode: "CATEGORY",
+    puzzleType: "CROSSWORD",
+    crosswordWords: [
+      { id: "cw_en1", word: "PLANET", row: 1, col: 2, direction: "ACROSS" },
+      { id: "cw_en2", word: "STAR", row: 0, col: 4, direction: "DOWN" },
+      { id: "cw_en3", word: "AIR", row: 2, col: 4, direction: "ACROSS" },
+    ],
     revealedIndices: [],
   },
   {
@@ -1600,8 +2040,8 @@ export const DEFAULT_ENGLISH_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
  * [Đoán nhanh 1] -> [Đoán nhanh 2] -> [Vòng chính 1 .. Vòng chính N] -> [Vòng Đặc Biệt]
  */
 export function buildMagicWheelMatchPuzzles(
-  firstArg?: number | Array<{ roundNumber?: number; stage?: MagicWheelRoundStage; category: string; secretPhrase: string; clue?: string; clueDisplayMode?: "CATEGORY" | "CLUE" }>,
-  secondArg?: number | Array<{ roundNumber?: number; stage?: MagicWheelRoundStage; category: string; secretPhrase: string; clue?: string; clueDisplayMode?: "CATEGORY" | "CLUE" }>,
+  firstArg?: number | Array<{ roundNumber?: number; stage?: MagicWheelRoundStage; category: string; secretPhrase: string; clue?: string; clueDisplayMode?: "CATEGORY" | "CLUE"; puzzleType?: MagicWheelPuzzleType; crosswordWords?: CrosswordWordItem[] }>,
+  secondArg?: number | Array<{ roundNumber?: number; stage?: MagicWheelRoundStage; category: string; secretPhrase: string; clue?: string; clueDisplayMode?: "CATEGORY" | "CLUE"; puzzleType?: MagicWheelPuzzleType; crosswordWords?: CrosswordWordItem[] }>,
   edition: "VIETNAMESE" | "ENGLISH" = "VIETNAMESE",
   englishPreset: EnglishPuzzleSetPreset = "RANDOM_MIX"
 ): MagicWheelPuzzle[] {
@@ -1627,8 +2067,10 @@ export function buildMagicWheelMatchPuzzles(
       category: p.category,
       secretPhrase: p.secretPhrase,
       clue: p.clue,
-      clueDisplayMode: p.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
+      clueDisplayMode: p.clueDisplayMode || (p.puzzleType === "CROSSWORD" ? "CATEGORY" : (edition === "ENGLISH" ? "CATEGORY" : "CLUE")),
       revealedIndices: [],
+      puzzleType: p.puzzleType || "STANDARD",
+      crosswordWords: p.crosswordWords,
     }));
   } else if (edition === "ENGLISH") {
     if (englishPreset === "SET_1") {

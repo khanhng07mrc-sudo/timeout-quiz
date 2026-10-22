@@ -1492,14 +1492,31 @@ var MAGIC_WHEEL_PRESET_BANKS = [
       {
         id: "mw_vtv3_6",
         type: "WORD_PUZZLE",
-        content: "T\xE1c ph\u1EA9m v\u0103n h\u1ECDc thi\u1EBFu nhi kinh \u0111i\u1EC3n n\u1ED5i ti\u1EBFng nh\u1EA5t c\u1EE7a nh\xE0 v\u0103n T\xF4 Ho\xE0i.",
-        answer: "D\u1EBE M\xC8N PHI\xCAU L\u01AFU K\xDD",
-        hint: "V\xD2NG 4: V\u0102N H\u1ECCC VI\u1EC6T NAM",
-        points: 20,
+        content: "C\xE1c t\u1EEB kho\xE1 v\u1EC1 V\u0103n h\xF3a v\xE0 Th\u1EE7 \u0111\xF4 ng\xE0n n\u0103m v\u0103n hi\u1EBFn \u0111an xen nhau tr\xEAn b\xE0n \xF4 ch\u1EEF (g\u1ED3m 3 t\u1EEB).",
+        answer: "V\u0102N H\u1ECCC, NHO, H\xC0 N\u1ED8I",
+        hint: "V\xD2NG 4: \u{1F500} \xD4 CH\u1EEE LI\xCAN K\u1EBET: V\u0102N H\xD3A TH\u1EE6 \u0110\xD4",
+        points: 25,
         timeLimit: 30,
         options: [
           { id: "round", text: "6", isCorrect: true },
-          { id: "category", text: "V\xD2NG 4: V\u0102N H\u1ECCC VI\u1EC6T NAM", isCorrect: true }
+          { id: "category", text: "V\xD2NG 4: \u{1F500} \xD4 CH\u1EEE LI\xCAN K\u1EBET: V\u0102N H\xD3A TH\u1EE6 \u0110\xD4", isCorrect: true },
+          { id: "puzzleType", text: "CROSSWORD", isCorrect: true },
+          {
+            id: "crosswordWords",
+            text: JSON.stringify([
+              { id: "cw_1", word: "V\u0102N H\u1ECCC", row: 1, col: 3, direction: "ACROSS" },
+              { id: "cw_2", word: "NHO", row: 1, col: 5, direction: "DOWN" },
+              { id: "cw_3", word: "H\xC0 N\u1ED8I", row: 2, col: 5, direction: "ACROSS" }
+            ]),
+            isCorrect: true
+          },
+          { id: "clueDisplayMode", text: "CATEGORY", isCorrect: true }
+        ],
+        puzzleType: "CROSSWORD",
+        crosswordWords: [
+          { id: "cw_1", word: "V\u0102N H\u1ECCC", row: 1, col: 3, direction: "ACROSS" },
+          { id: "cw_2", word: "NHO", row: 1, col: 5, direction: "DOWN" },
+          { id: "cw_3", word: "H\xC0 N\u1ED8I", row: 2, col: 5, direction: "ACROSS" }
         ]
       },
       {
@@ -2176,12 +2193,32 @@ var MAGIC_WHEEL_PRESET_BANKS = [
       {
         id: "mw_en3_6",
         type: "WORD_PUZZLE",
-        content: "An astronomical metaphor for an occurrence that takes place very rarely.",
-        answer: "ONCE IN A BLUE MOON",
-        hint: "PHRASE(S)",
-        points: 20,
+        content: "Objects and elements found looking up in the sky (3 interconnected words on the board).",
+        answer: "PLANET, STAR, AIR",
+        hint: "\u{1F500} CROSSWORD: IN THE SKY",
+        points: 25,
         timeLimit: 30,
-        options: [{ id: "round", text: "6", isCorrect: true }, { id: "category", text: "PHRASE(S)", isCorrect: true }]
+        options: [
+          { id: "round", text: "6", isCorrect: true },
+          { id: "category", text: "\u{1F500} CROSSWORD: IN THE SKY", isCorrect: true },
+          { id: "puzzleType", text: "CROSSWORD", isCorrect: true },
+          {
+            id: "crosswordWords",
+            text: JSON.stringify([
+              { id: "cw_1", word: "PLANET", row: 1, col: 2, direction: "ACROSS" },
+              { id: "cw_2", word: "STAR", row: 0, col: 7, direction: "DOWN" },
+              { id: "cw_3", word: "AIR", row: 2, col: 7, direction: "ACROSS" }
+            ]),
+            isCorrect: true
+          },
+          { id: "clueDisplayMode", text: "CATEGORY", isCorrect: true }
+        ],
+        puzzleType: "CROSSWORD",
+        crosswordWords: [
+          { id: "cw_1", word: "PLANET", row: 1, col: 2, direction: "ACROSS" },
+          { id: "cw_2", word: "STAR", row: 0, col: 7, direction: "DOWN" },
+          { id: "cw_3", word: "AIR", row: 2, col: 7, direction: "ACROSS" }
+        ]
       },
       {
         id: "mw_en3_7",
@@ -2889,7 +2926,20 @@ function checkLetterInSecretPhrase(phrase, letter, alreadyRevealedIndices) {
     newlyOpenedIndices: newIndices
   };
 }
-function isPuzzleFullyRevealed(phrase, revealedIndices) {
+function isPuzzleFullyRevealed(phraseOrPuzzle, revealedIndices) {
+  if (typeof phraseOrPuzzle === "object" && phraseOrPuzzle !== null) {
+    if (phraseOrPuzzle.puzzleType === "CROSSWORD" && phraseOrPuzzle.crosswordWords && phraseOrPuzzle.crosswordWords.length > 0) {
+      const layout = validateCrosswordLayout(phraseOrPuzzle.crosswordWords);
+      for (const [gridKey, cellInfo] of layout.cellMap.entries()) {
+        if (cellInfo.isLetter && !revealedIndices.includes(gridKey)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return isPuzzleFullyRevealed(phraseOrPuzzle.secretPhrase || "", revealedIndices);
+  }
+  const phrase = phraseOrPuzzle;
   for (let i = 0; i < phrase.length; i++) {
     const char = phrase[i];
     if (/[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(char)) {
@@ -2900,9 +2950,24 @@ function isPuzzleFullyRevealed(phrase, revealedIndices) {
   }
   return true;
 }
-function hasRemainingConsonants(phrase, revealedIndices) {
-  if (!phrase) return false;
+function hasRemainingConsonants(phraseOrPuzzle, revealedIndices) {
+  if (!phraseOrPuzzle) return false;
   const vowels = ["A", "E", "I", "O", "U"];
+  if (typeof phraseOrPuzzle === "object" && phraseOrPuzzle !== null) {
+    if (phraseOrPuzzle.puzzleType === "CROSSWORD" && phraseOrPuzzle.crosswordWords && phraseOrPuzzle.crosswordWords.length > 0) {
+      const layout = validateCrosswordLayout(phraseOrPuzzle.crosswordWords);
+      for (const [gridKey, cellInfo] of layout.cellMap.entries()) {
+        if (cellInfo.isLetter && !revealedIndices.includes(gridKey)) {
+          if (!vowels.includes(cellInfo.baseChar)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+    return hasRemainingConsonants(phraseOrPuzzle.secretPhrase || "", revealedIndices);
+  }
+  const phrase = phraseOrPuzzle;
   const upper = phrase.toUpperCase();
   for (let i = 0; i < upper.length; i++) {
     const ch = upper[i];
@@ -2914,9 +2979,24 @@ function hasRemainingConsonants(phrase, revealedIndices) {
   }
   return false;
 }
-function hasRemainingVowels(phrase, revealedIndices) {
-  if (!phrase) return false;
+function hasRemainingVowels(phraseOrPuzzle, revealedIndices) {
+  if (!phraseOrPuzzle) return false;
   const vowels = ["A", "E", "I", "O", "U"];
+  if (typeof phraseOrPuzzle === "object" && phraseOrPuzzle !== null) {
+    if (phraseOrPuzzle.puzzleType === "CROSSWORD" && phraseOrPuzzle.crosswordWords && phraseOrPuzzle.crosswordWords.length > 0) {
+      const layout = validateCrosswordLayout(phraseOrPuzzle.crosswordWords);
+      for (const [gridKey, cellInfo] of layout.cellMap.entries()) {
+        if (cellInfo.isLetter && !revealedIndices.includes(gridKey)) {
+          if (vowels.includes(cellInfo.baseChar)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+    return hasRemainingVowels(phraseOrPuzzle.secretPhrase || "", revealedIndices);
+  }
+  const phrase = phraseOrPuzzle;
   const upper = phrase.toUpperCase();
   for (let i = 0; i < upper.length; i++) {
     const ch = upper[i];
@@ -2926,9 +3006,9 @@ function hasRemainingVowels(phrase, revealedIndices) {
   }
   return false;
 }
-function checkNoMoreConsonants(phrase, revealedIndices, edition = "VIETNAMESE") {
+function checkNoMoreConsonants(phraseOrPuzzle, revealedIndices, edition = "VIETNAMESE") {
   if (edition !== "ENGLISH") return false;
-  return !hasRemainingConsonants(phrase, revealedIndices) && hasRemainingVowels(phrase, revealedIndices);
+  return !hasRemainingConsonants(phraseOrPuzzle, revealedIndices) && hasRemainingVowels(phraseOrPuzzle, revealedIndices);
 }
 function validateSameLetterPhrase(phrase) {
   if (!phrase || typeof phrase !== "string") {
@@ -2997,6 +3077,153 @@ function matchWholeSecretPhrase(phrase, guess) {
   const cleanPhrase = phrase.trim().toUpperCase().normalize("NFC").replace(/[^A-ZÀ-Ỹ0-9\s]/g, " ").replace(/\s+/g, " ").trim();
   const cleanGuess = guess.trim().toUpperCase().normalize("NFC").replace(/[^A-ZÀ-Ỹ0-9\s]/g, " ").replace(/\s+/g, " ").trim();
   return cleanPhrase.length > 0 && cleanPhrase === cleanGuess;
+}
+function validateCrosswordLayout(words) {
+  const errors = [];
+  const intersections = [];
+  const cellMap = /* @__PURE__ */ new Map();
+  if (!words || words.length === 0) {
+    return { isValid: false, errors: ["Ch\u01B0a c\xF3 t\u1EEB kho\xE1 n\xE0o trong \xF4 ch\u1EEF!"], intersections: [], cellMap };
+  }
+  for (let wIdx = 0; wIdx < words.length; wIdx++) {
+    const item = words[wIdx];
+    const cleanWord = (item.word || "").trim().toUpperCase().replace(/\s+/g, " ");
+    if (!cleanWord) {
+      errors.push(`T\u1EEB kho\xE1 th\u1EE9 #${wIdx + 1} \u0111ang b\u1ECB \u0111\u1EC3 tr\u1ED1ng.`);
+      continue;
+    }
+    const len = cleanWord.length;
+    if (item.direction === "ACROSS") {
+      if (item.row < 0 || item.row > 3) {
+        errors.push(`T\u1EEB "${cleanWord}" c\xF3 ch\u1EC9 s\u1ED1 h\xE0ng (${item.row}) n\u1EB1m ngo\xE0i b\u1EA3ng [0..3].`);
+      }
+      if (item.col < 0 || item.col + len > 14) {
+        errors.push(`T\u1EEB "${cleanWord}" (d\xE0i ${len} k\xFD t\u1EF1) \u1EDF c\u1ED9t ${item.col} v\u01B0\u1EE3t qu\xE1 chi\u1EC1u ngang 14 c\u1ED9t.`);
+      }
+    } else {
+      if (item.col < 0 || item.col > 13) {
+        errors.push(`T\u1EEB "${cleanWord}" c\xF3 ch\u1EC9 s\u1ED1 c\u1ED9t (${item.col}) n\u1EB1m ngo\xE0i b\u1EA3ng [0..13].`);
+      }
+      if (item.row < 0 || item.row + len > 4) {
+        errors.push(`T\u1EEB "${cleanWord}" (d\xE0i ${len} k\xFD t\u1EF1) \u1EDF h\xE0ng ${item.row} v\u01B0\u1EE3t qu\xE1 chi\u1EC1u d\u1ECDc 4 h\xE0ng.`);
+      }
+    }
+    for (let i = 0; i < len; i++) {
+      const r = item.direction === "ACROSS" ? item.row : item.row + i;
+      const c = item.direction === "ACROSS" ? item.col + i : item.col;
+      if (r < 0 || r > 3 || c < 0 || c > 13) continue;
+      const char = cleanWord[i];
+      const baseChar = normalizeVietnameseBaseLetter(char);
+      const isLetter = /[A-ZÀ-Ỹ]/i.test(char);
+      const key = r * 14 + c;
+      if (cellMap.has(key)) {
+        const existing = cellMap.get(key);
+        if (normalizeVietnameseBaseLetter(existing.char) !== baseChar) {
+          errors.push(
+            `Xung \u0111\u1ED9t k\xFD t\u1EF1 t\u1EA1i H\xE0ng ${r + 1}, C\u1ED9t ${c + 1}: T\u1EEB "${cleanWord}" c\xF3 ch\u1EEF '${char}' nh\u01B0ng \xF4 \u0111\xE3 b\u1ECB chi\u1EBFm b\u1EDFi ch\u1EEF '${existing.char}' t\u1EEB t\u1EEB tr\u01B0\u1EDBc!`
+          );
+        } else {
+          if (!existing.wordIds.includes(item.id)) {
+            existing.wordIds.push(item.id);
+          }
+          if (!intersections.some((x) => x.row === r && x.col === c)) {
+            intersections.push({ row: r, col: c, char: existing.char, wordIds: existing.wordIds });
+          }
+        }
+      } else {
+        cellMap.set(key, {
+          row: r,
+          col: c,
+          char,
+          baseChar,
+          isLetter,
+          wordIds: [item.id]
+        });
+      }
+    }
+  }
+  return {
+    isValid: errors.length === 0,
+    errors,
+    intersections,
+    cellMap
+  };
+}
+function checkLetterInCrossword(words, letter, alreadyRevealedIndices) {
+  const targetLetter = normalizeVietnameseBaseLetter(letter);
+  const layout = validateCrosswordLayout(words);
+  const newlyOpenedIndices = [];
+  layout.cellMap.forEach((cellInfo, gridKey) => {
+    if (cellInfo.isLetter && cellInfo.baseChar === targetLetter) {
+      if (!alreadyRevealedIndices.includes(gridKey)) {
+        newlyOpenedIndices.push(gridKey);
+      }
+    }
+  });
+  return {
+    found: newlyOpenedIndices.length > 0,
+    count: newlyOpenedIndices.length,
+    newRevealedIndices: [...alreadyRevealedIndices, ...newlyOpenedIndices],
+    newlyOpenedIndices
+  };
+}
+function validateCrosswordSolve(puzzle, rawGuess) {
+  const words = puzzle.crosswordWords || [];
+  if (words.length === 0) {
+    const isOk = matchWholeSecretPhrase(puzzle.secretPhrase || "", rawGuess);
+    return {
+      isCorrect: isOk,
+      matchedWordsCount: isOk ? 1 : 0,
+      totalWordsCount: 1
+    };
+  }
+  const expectedWords = words.map(
+    (w) => w.word.trim().toUpperCase().normalize("NFC").replace(/[^A-ZÀ-Ỹ0-9\s]/g, " ").replace(/\s+/g, " ").trim()
+  );
+  const cleanInput = (rawGuess || "").trim().toUpperCase().normalize("NFC");
+  const forbiddenRegex = /(^|[^A-ZÀ-Ỹ0-9])(VÀ|AND|VỚI|CÙNG|KÈM|[&+])([^A-ZÀ-Ỹ0-9]|$)/i;
+  if (forbiddenRegex.test(cleanInput)) {
+    return {
+      isCorrect: false,
+      reason: "Quy t\u1EAFc nghi\xEAm ng\u1EB7t: Kh\xF4ng \u0111\u01B0\u1EE3c d\xF9ng c\xE1c t\u1EEB n\u1ED1i ngo\xE0i b\u1EA3ng (nh\u01B0 'V\xC0', 'AND', 'V\u1EDAI', '&'). B\u1EA1n ch\u1EC9 \u0111\u01B0\u1EE3c d\xF9ng d\u1EA5u ph\u1EA9y ',' \u0111\u1EC3 ph\xE2n t\xE1ch c\xE1c t\u1EEB kho\xE1!",
+      matchedWordsCount: 0,
+      totalWordsCount: expectedWords.length
+    };
+  }
+  let inputTokens = cleanInput.split(",").map((s) => s.replace(/[^A-ZÀ-Ỹ0-9\s]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
+  if (inputTokens.length === 1 && expectedWords.length > 1) {
+    const singleStr = inputTokens[0];
+    let allFound = true;
+    for (const exp of expectedWords) {
+      if (!singleStr.includes(exp)) {
+        allFound = false;
+        break;
+      }
+    }
+    if (allFound) {
+      return {
+        isCorrect: true,
+        matchedWordsCount: expectedWords.length,
+        totalWordsCount: expectedWords.length
+      };
+    }
+  }
+  const unmatchedExpected = [...expectedWords];
+  let matchedCount = 0;
+  for (const token of inputTokens) {
+    const matchIdx = unmatchedExpected.findIndex((exp) => matchWholeSecretPhrase(exp, token));
+    if (matchIdx !== -1) {
+      matchedCount++;
+      unmatchedExpected.splice(matchIdx, 1);
+    }
+  }
+  const isAllMatched = matchedCount === expectedWords.length && inputTokens.length === expectedWords.length;
+  return {
+    isCorrect: isAllMatched,
+    reason: isAllMatched ? void 0 : unmatchedExpected.length > 0 ? `C\xF2n thi\u1EBFu ho\u1EB7c ch\u01B0a kh\u1EDBp c\xE1c t\u1EEB kho\xE1: ${unmatchedExpected.join(", ")}.` : "S\u1ED1 l\u01B0\u1EE3ng t\u1EEB nh\u1EADp v\xE0o kh\xF4ng kh\u1EDBp v\u1EDBi c\xE1c t\u1EEB kho\xE1 tr\xEAn b\u1EA3ng.",
+    matchedWordsCount: matchedCount,
+    totalWordsCount: expectedWords.length
+  };
 }
 function generateFlexibleMCCommentary(eventOrParams, extraParams) {
   const merged = typeof eventOrParams === "string" ? { event: eventOrParams, ...extraParams || {} } : { ...eventOrParams, ...extraParams || {} };
@@ -3129,10 +3356,16 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     roundNumber: 6,
     stage: "MAIN",
     mainRoundIndex: 4,
-    category: "V\xD2NG 4: V\u0102N H\u1ECCC VI\u1EC6T NAM",
-    secretPhrase: "D\u1EBE M\xC8N PHI\xCAU L\u01AFU K\xDD",
-    clue: "T\xE1c ph\u1EA9m v\u0103n h\u1ECDc thi\u1EBFu nhi kinh \u0111i\u1EC3n n\u1ED5i ti\u1EBFng nh\u1EA5t c\u1EE7a nh\xE0 v\u0103n T\xF4 Ho\xE0i.",
-    clueDisplayMode: "CLUE",
+    category: "V\xD2NG 4: \u{1F500} V\u0102N H\xD3A TH\u1EE6 \u0110\xD4",
+    secretPhrase: "V\u0102N H\u1ECCC, NHO, H\xC0 N\u1ED8I",
+    clue: "C\xE1c t\u1EEB kho\xE1 v\u1EC1 V\u0103n h\xF3a v\xE0 Th\u1EE7 \u0111\xF4 ng\xE0n n\u0103m v\u0103n hi\u1EBFn \u0111an xen nhau tr\xEAn b\xE0n \xF4 ch\u1EEF.",
+    clueDisplayMode: "CATEGORY",
+    puzzleType: "CROSSWORD",
+    crosswordWords: [
+      { id: "cw_1", word: "V\u0102N H\u1ECCC", row: 1, col: 3, direction: "ACROSS" },
+      { id: "cw_2", word: "NHO", row: 1, col: 5, direction: "DOWN" },
+      { id: "cw_3", word: "H\xC0 N\u1ED8I", row: 2, col: 5, direction: "ACROSS" }
+    ],
     revealedIndices: []
   },
   {
@@ -3462,9 +3695,16 @@ var ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS = [
     roundNumber: 6,
     stage: "MAIN",
     mainRoundIndex: 4,
-    category: "PHRASE(S)",
-    secretPhrase: "ONCE IN A BLUE MOON",
-    clue: "An astronomical metaphor for an occurrence that takes place very rarely.",
+    category: "CROSSWORD: CELESTIAL",
+    secretPhrase: "PLANET, STAR, AIR",
+    clue: "Three celestial words interlocking across the board.",
+    clueDisplayMode: "CATEGORY",
+    puzzleType: "CROSSWORD",
+    crosswordWords: [
+      { id: "cw_en1", word: "PLANET", row: 1, col: 2, direction: "ACROSS" },
+      { id: "cw_en2", word: "STAR", row: 0, col: 4, direction: "DOWN" },
+      { id: "cw_en3", word: "AIR", row: 2, col: 4, direction: "ACROSS" }
+    ],
     revealedIndices: []
   },
   {
@@ -3532,8 +3772,10 @@ function buildMagicWheelMatchPuzzles(firstArg, secondArg, edition = "VIETNAMESE"
       category: p.category,
       secretPhrase: p.secretPhrase,
       clue: p.clue,
-      clueDisplayMode: p.clueDisplayMode || (edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
-      revealedIndices: []
+      clueDisplayMode: p.clueDisplayMode || (p.puzzleType === "CROSSWORD" ? "CATEGORY" : edition === "ENGLISH" ? "CATEGORY" : "CLUE"),
+      revealedIndices: [],
+      puzzleType: p.puzzleType || "STANDARD",
+      crosswordWords: p.crosswordWords
     }));
   } else if (edition === "ENGLISH") {
     if (englishPreset === "SET_1") {
@@ -18244,10 +18486,15 @@ function registerSocketHandlers(io2) {
       const eligibleTeams = teams.filter((t) => !eliminatedSet.has(t.id));
       if (eligibleTeams.length === 0) {
         if (wheelState.currentPuzzle) {
-          wheelState.currentPuzzle.revealedIndices = Array.from(
-            { length: wheelState.currentPuzzle.secretPhrase.length },
-            (_, i) => i
-          );
+          if (wheelState.currentPuzzle.puzzleType === "CROSSWORD" && wheelState.currentPuzzle.crosswordWords) {
+            const layout = validateCrosswordLayout(wheelState.currentPuzzle.crosswordWords);
+            wheelState.currentPuzzle.revealedIndices = Array.from(layout.cellMap.keys());
+          } else {
+            wheelState.currentPuzzle.revealedIndices = Array.from(
+              { length: wheelState.currentPuzzle.secretPhrase.length },
+              (_, i) => i
+            );
+          }
         }
         wheelState.phase = "ROUND_RECAP";
         wheelState.lastActionMessage = `\u26A0\uFE0F T\u1EA5t c\u1EA3 c\xE1c \u0111\u1ED9i \u0111\u1EC1u \u0111\xE3 h\u1EBFt quy\u1EC1n thi \u0111\u1EA5u trong v\xF2ng n\xE0y! \u0110\xE1p \xE1n ch\xEDnh x\xE1c l\xE0: "${wheelState.currentPuzzle?.secretPhrase || ""}"`;
@@ -18409,10 +18656,15 @@ function registerSocketHandlers(io2) {
         wonPoints = Math.max(300, wheelState.roundScores[winnerTeamId] || 500);
       }
       if (wheelState.currentPuzzle) {
-        wheelState.currentPuzzle.revealedIndices = Array.from(
-          { length: wheelState.currentPuzzle.secretPhrase.length },
-          (_, i) => i
-        );
+        if (wheelState.currentPuzzle.puzzleType === "CROSSWORD" && wheelState.currentPuzzle.crosswordWords) {
+          const layout = validateCrosswordLayout(wheelState.currentPuzzle.crosswordWords);
+          wheelState.currentPuzzle.revealedIndices = Array.from(layout.cellMap.keys());
+        } else {
+          wheelState.currentPuzzle.revealedIndices = Array.from(
+            { length: wheelState.currentPuzzle.secretPhrase.length },
+            (_, i) => i
+          );
+        }
       }
       const tRes = await applyScoreDeltaToTeam(winnerTeamId, wonPoints);
       const scoreUpdates = [
@@ -18945,7 +19197,7 @@ function registerSocketHandlers(io2) {
       wheelState.guessedLetters.push(normLetter);
       const puzzle = wheelState.currentPuzzle;
       if (!puzzle) return;
-      const check = checkLetterInSecretPhrase(puzzle.secretPhrase, normLetter, puzzle.revealedIndices);
+      const check = puzzle.puzzleType === "CROSSWORD" && puzzle.crosswordWords && puzzle.crosswordWords.length > 0 ? checkLetterInCrossword(puzzle.crosswordWords, normLetter, puzzle.revealedIndices) : checkLetterInSecretPhrase(puzzle.secretPhrase, normLetter, puzzle.revealedIndices);
       const tId = wheelState.currentTurnTeamId;
       const teamName = wheelState.currentTurnTeamName;
       if (check.found) {
@@ -19240,7 +19492,7 @@ function registerSocketHandlers(io2) {
       wheelState.guessedLetters.push(normVowel);
       const puzzle = wheelState.currentPuzzle;
       if (!puzzle) return;
-      const check = checkLetterInSecretPhrase(puzzle.secretPhrase, normVowel, puzzle.revealedIndices);
+      const check = puzzle.puzzleType === "CROSSWORD" && puzzle.crosswordWords && puzzle.crosswordWords.length > 0 ? checkLetterInCrossword(puzzle.crosswordWords, normVowel, puzzle.revealedIndices) : checkLetterInSecretPhrase(puzzle.secretPhrase, normVowel, puzzle.revealedIndices);
       if (check.count > 0) {
         puzzle.revealedIndices = check.newRevealedIndices;
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
@@ -19600,7 +19852,18 @@ function registerSocketHandlers(io2) {
         return;
       }
       const customPuzzles = finalQuestions.map((q, idx) => {
-        const roundOpt = Array.isArray(q.options) ? q.options.find((o) => o?.id === "round") : void 0;
+        const roundOpt = Array.isArray(q.options) ? q.options.find((o) => o?.id === "round" || o?.id === "puzzleRound") : void 0;
+        const clueModeOpt = Array.isArray(q.options) ? q.options.find((o) => o?.id === "clueDisplayMode") : void 0;
+        const puzzleTypeOpt = Array.isArray(q.options) ? q.options.find((o) => o?.id === "puzzleType") : void 0;
+        const crosswordWordsOpt = Array.isArray(q.options) ? q.options.find((o) => o?.id === "crosswordWords") : void 0;
+        const puzzleType = q.puzzleType || puzzleTypeOpt?.text || "STANDARD";
+        let crosswordWords = q.crosswordWords;
+        if (!crosswordWords && crosswordWordsOpt?.text) {
+          try {
+            crosswordWords = JSON.parse(crosswordWordsOpt.text);
+          } catch {
+          }
+        }
         const rawAns = q.answer || (Array.isArray(q.options) ? q.options.find((o) => o?.isCorrect)?.text : "") || "";
         return {
           id: `puzzle-emergency-${idx + 1}`,
@@ -19608,9 +19871,12 @@ function registerSocketHandlers(io2) {
           category: q.hint || "T\u1ED4NG H\u1EE2P",
           secretPhrase: (rawAns || "").toUpperCase().trim(),
           clue: q.content || "",
-          revealedIndices: []
+          clueDisplayMode: clueModeOpt?.text || (puzzleType === "CROSSWORD" ? "CATEGORY" : "CLUE"),
+          revealedIndices: [],
+          puzzleType,
+          crosswordWords
         };
-      }).filter((p) => p.secretPhrase.length > 0);
+      }).filter((p) => p.secretPhrase.length > 0 || p.crosswordWords && p.crosswordWords.length > 0);
       const currentConfig = typeof room.config === "object" && room.config !== null ? room.config : {};
       const detectedEd = detectQuizBankLanguage({ id: payload.quizBankId, title: bankTitle, questions: candidateQuestions });
       const newConfig = {
@@ -19852,7 +20118,17 @@ function registerSocketHandlers(io2) {
           }
         }
       }
-      const isCorrect = typeof forcedVerdict === "boolean" ? forcedVerdict : matchWholeSecretPhrase(wheelState.currentPuzzle.secretPhrase, answer);
+      let isCorrect;
+      let solveReason;
+      if (typeof forcedVerdict === "boolean") {
+        isCorrect = forcedVerdict;
+      } else if (wheelState.currentPuzzle.puzzleType === "CROSSWORD") {
+        const cwRes = validateCrosswordSolve(wheelState.currentPuzzle, answer);
+        isCorrect = cwRes.isCorrect;
+        solveReason = cwRes.reason;
+      } else {
+        isCorrect = matchWholeSecretPhrase(wheelState.currentPuzzle.secretPhrase, answer);
+      }
       if (stage === "SPECIAL_FINAL") {
         if (!wheelState.specialAttemptLog) wheelState.specialAttemptLog = [];
         if (answer?.trim()) {
@@ -19860,10 +20136,15 @@ function registerSocketHandlers(io2) {
         }
         if (isCorrect) {
           wheelState.specialPuzzleCompleted = true;
-          wheelState.currentPuzzle.revealedIndices = Array.from(
-            { length: wheelState.currentPuzzle.secretPhrase.length },
-            (_, i) => i
-          );
+          if (wheelState.currentPuzzle.puzzleType === "CROSSWORD" && wheelState.currentPuzzle.crosswordWords) {
+            const layout = validateCrosswordLayout(wheelState.currentPuzzle.crosswordWords);
+            wheelState.currentPuzzle.revealedIndices = Array.from(layout.cellMap.keys());
+          } else {
+            wheelState.currentPuzzle.revealedIndices = Array.from(
+              { length: wheelState.currentPuzzle.secretPhrase.length },
+              (_, i) => i
+            );
+          }
           if (wheelState.specialBonusCompleted) {
             await completeMagicWheelRoundHelper(roomId, roomCode, tId, (wheelState.specialBonusPoints || 5e3) + 3e3);
           } else {
@@ -19905,10 +20186,15 @@ function registerSocketHandlers(io2) {
           const oldFirst = roomTossUpFirstTimers.get(roomId);
           if (oldFirst) clearTimeout(oldFirst);
           roomTossUpFirstTimers.delete(roomId);
-          wheelState.currentPuzzle.revealedIndices = Array.from(
-            { length: wheelState.currentPuzzle.secretPhrase.length },
-            (_, i) => i
-          );
+          if (wheelState.currentPuzzle.puzzleType === "CROSSWORD" && wheelState.currentPuzzle.crosswordWords) {
+            const layout = validateCrosswordLayout(wheelState.currentPuzzle.crosswordWords);
+            wheelState.currentPuzzle.revealedIndices = Array.from(layout.cellMap.keys());
+          } else {
+            wheelState.currentPuzzle.revealedIndices = Array.from(
+              { length: wheelState.currentPuzzle.secretPhrase.length },
+              (_, i) => i
+            );
+          }
           await completeMagicWheelRoundHelper(roomId, roomCode, tId);
         } else {
           wheelState.lastSolveFeedback = {
@@ -19944,10 +20230,15 @@ function registerSocketHandlers(io2) {
         wheelState.consecutiveWrongGuesses[tId] = 0;
         wheelState.wrongGuessesCount[tId] = 0;
         wheelState.mustSolveWithTones = false;
-        wheelState.currentPuzzle.revealedIndices = Array.from(
-          { length: wheelState.currentPuzzle.secretPhrase.length },
-          (_, i) => i
-        );
+        if (wheelState.currentPuzzle.puzzleType === "CROSSWORD" && wheelState.currentPuzzle.crosswordWords) {
+          const layout = validateCrosswordLayout(wheelState.currentPuzzle.crosswordWords);
+          wheelState.currentPuzzle.revealedIndices = Array.from(layout.cellMap.keys());
+        } else {
+          wheelState.currentPuzzle.revealedIndices = Array.from(
+            { length: wheelState.currentPuzzle.secretPhrase.length },
+            (_, i) => i
+          );
+        }
         await completeMagicWheelRoundHelper(roomId, roomCode, tId);
       } else {
         wheelState.isSpinning = false;
@@ -20042,7 +20333,7 @@ function registerSocketHandlers(io2) {
           if (allEliminated) {
             wheelState.lastActionMessage = `\u274C \u0110\xE1p \xE1n "${answer}" c\u1EE7a \u0110\u1ED9i ${teamName} ch\u01B0a ch\xEDnh x\xE1c! C\u1EA3 ${room.teams.length} \u0111\u1ED9i \u0111\u1EC1u \u0111\xE3 h\u1EBFt l\u01B0\u1EE3t Gi\u1EA3i \xD4 Ch\u1EEF trong v\xF2ng n\xE0y. \u0110\xE1p \xE1n \u0111\xFAng l\xE0: "${wheelState.currentPuzzle.secretPhrase}"!`;
           } else {
-            wheelState.lastActionMessage = `\u274C \u0110\xE1p \xE1n "${answer}" ch\u01B0a ch\xEDnh x\xE1c! \u0110\u1ED9i ${teamName} \u0111\xE3 h\u1EBFt quy\u1EC1n thi \u0111\u1EA5u trong v\xF2ng n\xE0y (m\u1ED7i \u0111\u1ED9i ch\u1EC9 c\xF3 1 l\u01B0\u1EE3t Gi\u1EA3i \xD4 Ch\u1EEF). Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}!`;
+            wheelState.lastActionMessage = solveReason ? `\u274C ${solveReason} \u0110\u1ED9i ${teamName} \u0111\xE3 h\u1EBFt quy\u1EC1n thi \u0111\u1EA5u trong v\xF2ng n\xE0y. Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}!` : `\u274C \u0110\xE1p \xE1n "${answer}" ch\u01B0a ch\xEDnh x\xE1c! \u0110\u1ED9i ${teamName} \u0111\xE3 h\u1EBFt quy\u1EC1n thi \u0111\u1EA5u trong v\xF2ng n\xE0y (m\u1ED7i \u0111\u1ED9i ch\u1EC9 c\xF3 1 l\u01B0\u1EE3t Gi\u1EA3i \xD4 Ch\u1EEF). Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}!`;
           }
         }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);

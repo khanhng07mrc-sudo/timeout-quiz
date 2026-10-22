@@ -3689,14 +3689,14 @@ function WheelStudio3DSceneComponent({
         phase !== "ROUND_RECAP" &&
         showClue &&
         Boolean(currentPuzzle?.category || currentPuzzle?.description || currentPuzzle?.clue) && (
-          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-40 max-w-2xl w-[92%] sm:w-auto px-6 py-2.5 rounded-2xl bg-gradient-to-r from-slate-950/95 via-sky-950/90 to-slate-950/95 border-2 border-amber-400/80 shadow-[0_4px_30px_rgba(245,158,11,0.45)] backdrop-blur-md flex items-center gap-3 animate-fade-in pointer-events-auto">
+          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-40 max-w-[94vw] sm:max-w-4xl md:max-w-5xl px-6 py-2.5 rounded-2xl bg-gradient-to-r from-slate-950/95 via-sky-950/90 to-slate-950/95 border-2 border-amber-400/80 shadow-[0_4px_30px_rgba(245,158,11,0.45)] backdrop-blur-md flex items-center gap-3 animate-fade-in pointer-events-auto">
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xl">💡</span>
               <span className="font-black text-amber-400 uppercase tracking-widest text-xs sm:text-sm">
                 {currentPuzzle?.description || currentPuzzle?.clue ? "GỢI Ý:" : "CHỦ ĐỀ:"}
               </span>
             </div>
-            <div className="font-bold text-white text-sm sm:text-base tracking-wide truncate">
+            <div className="font-bold text-white text-sm sm:text-base md:text-lg tracking-wide whitespace-normal leading-snug text-left flex-1">
               {(currentPuzzle?.description || currentPuzzle?.clue || currentPuzzle?.category || "")
                 .replace(/\s*\(\s*\d+\s*(ký\s*tự|chữ\s*cái|chữ|letters|chars?)\s*\)/gi, "")
                 .trim()}
@@ -3704,7 +3704,7 @@ function WheelStudio3DSceneComponent({
             <button
               type="button"
               onClick={() => setShowClue(false)}
-              className="ml-auto text-xs text-white/50 hover:text-white/90 p-1 rounded-md transition-colors"
+              className="ml-auto text-xs text-white/50 hover:text-white/90 p-1 rounded-md transition-colors shrink-0"
               title="Ẩn gợi ý trên CAM 3"
             >
               ✕

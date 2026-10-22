@@ -17,6 +17,8 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { MeshReflectorMaterial } from "@react-three/drei";
 import * as THREE from "three";
 import { MagicWheelSector, TeamState } from "@/types";
+import { stripVietnameseToneKeepBase, evaluateThreePhaseWheelProgress } from "@/lib/game-engine/magic-wheel";
+import { soundManager } from "@/lib/sound-manager";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,11 +40,15 @@ interface WheelStudio3DSceneProps {
   currentPuzzle?: {
     category: string;
     description?: string;
+    clue?: string;
     secretPhrase: string;
     revealedIndices: number[];
   } | null;
   highlightedIndices?: Set<number>;
   animRevealedIndices?: Set<number>;
+  hostessXPercent?: number;
+  hostessPose?: "IDLE" | "GESTURE" | "WALKING" | "TOUCHING";
+  showClueOnCam3?: boolean;
   onCamAngleChange?: (cam: number) => void;
 }
 
@@ -62,8 +68,8 @@ const CAM_POSITIONS: Record<string, CamConfig> = {
   // CAM 2: Đại cảnh toàn bộ trường quay tầm mắt TV (Master Wide)
   CAM2_WIDE: { pos: [0.00, 2.70, 8.80], target: [0.00, 1.60, -1.50] },
 
-  // CAM 3: Trực diện vuông góc 90° Bảng ô chữ 3D & Người mẫu tại Sườn Trái (Z = +4.5m)
-  CAM3_BOARD: { pos: [-1.50, 1.95, 5.00], target: [-7.80, 1.90, 5.00] },
+  // CAM 3: Trực diện vuông góc 90° Bảng ô chữ 3D chính giữa tâm ma trận 4x14
+  CAM3_BOARD: { pos: [-2.40, 1.45, 4.50], target: [-7.80, 1.45, 4.50] },
 
   // CAM 4: Cận cảnh kim chỉ thị cong đỏ cherry và các chốt ô nón đang quay chúc 40°
   CAM4_DISC: { pos: [-2.75, 2.75, 1.55], target: [-2.15, 1.40, 0.10] },
@@ -634,40 +640,88 @@ function WheelMachineGroup({
   const WHEEL_TILT_RAD = 0.135;
 
   const currentAngleRef = useRef<number>(clientWheelAngle || 0);
+  const startAngleRef = useRef<number>(clientWheelAngle || 0);
+  const targetAngleRef = useRef<number>(clientWheelAngle || 0);
   const spinStartTimeRef = useRef<number>(0);
+  const lastPegIndexRef = useRef<number>(0);
+  const lastSnapTimeRef = useRef<number>(0);
+  const DURATION_MS = 16000;
 
-  // Sync wheel rotation (+90° offset for 9 o'clock needle alignment) & realistic 60fps spin & needle vibration
-  useFrame((state, delta) => {
-    if (spinningGroupRef.current) {
-      if (effectiveIsSpinning) {
-        if (spinStartTimeRef.current === 0) {
-          spinStartTimeRef.current = state.clock.getElapsedTime();
-        }
-        const elapsed = state.clock.getElapsedTime() - spinStartTimeRef.current;
-        // Tốc độ quay siêu mượt mà trực tiếp trên GPU 60 FPS (không phụ thuộc React re-render)
-        const spinSpeed = Math.max(90, 1300 * Math.exp(-elapsed * 0.18));
-        currentAngleRef.current += spinSpeed * delta;
-        spinningGroupRef.current.rotation.z = THREE.MathUtils.degToRad(-currentAngleRef.current + 90);
-      } else {
-        spinStartTimeRef.current = 0;
-        // Khi dừng quay, mượt mà định vị chính xác 100% vào ô đích
-        const targetAngle = clientWheelAngle || 0;
-        const diff = targetAngle - currentAngleRef.current;
-        const normDiff = ((diff + 180) % 360) - 180;
-        currentAngleRef.current += normDiff * Math.min(1, delta * 9.0);
-        spinningGroupRef.current.rotation.z = THREE.MathUtils.degToRad(-currentAngleRef.current + 90);
+  useEffect(() => {
+    if (effectiveIsSpinning) {
+      startAngleRef.current = currentAngleRef.current;
+      targetAngleRef.current = clientWheelAngle;
+      spinStartTimeRef.current = performance.now();
+      const sLen = sectors.length || 24;
+      lastPegIndexRef.current = Math.floor(startAngleRef.current / (360 / sLen));
+    } else {
+      currentAngleRef.current = clientWheelAngle;
+      if (spinningGroupRef.current) {
+        spinningGroupRef.current.rotation.z = THREE.MathUtils.degToRad(-clientWheelAngle + 90);
       }
-    }
-
-    if (needleRef.current) {
-      if (effectiveIsSpinning) {
-        const t = Date.now() / 1000;
-        // Mechanical peg deflection vibration at 9 o'clock
-        needleRef.current.rotation.z = Math.sin(t * 54) * 0.12;
-        needleRef.current.position.y = Math.sin(t * 42) * 0.008;
-      } else {
+      if (needleRef.current) {
         needleRef.current.rotation.z = 0;
         needleRef.current.position.y = 0;
+      }
+    }
+  }, [effectiveIsSpinning, clientWheelAngle, sectors.length]);
+
+  // Sync wheel rotation (+90° offset for 9 o'clock needle alignment) & realistic heavy-inertia 60fps spin & mechanical needle peg-snap
+  useFrame((_, delta) => {
+    const sLen = sectors.length || 24;
+    const segAngle = 360 / sLen;
+
+    if (spinningGroupRef.current) {
+      if (effectiveIsSpinning) {
+        const now = performance.now();
+        const elapsed = now - (spinStartTimeRef.current || now);
+        const progress = evaluateThreePhaseWheelProgress(elapsed, DURATION_MS);
+        const liveAngle = startAngleRef.current + (targetAngleRef.current - startAngleRef.current) * progress;
+        currentAngleRef.current = liveAngle;
+        spinningGroupRef.current.rotation.z = THREE.MathUtils.degToRad(-liveAngle + 90);
+
+        // Peg detection for mechanical needle deflection
+        const currentPegIndex = Math.floor(liveAngle / segAngle);
+        if (currentPegIndex > lastPegIndexRef.current) {
+          lastPegIndexRef.current = currentPegIndex;
+          lastSnapTimeRef.current = now;
+        }
+
+        // Mechanical needle contact & spring snap at 9 o'clock
+        if (needleRef.current) {
+          const pegDistToSnap = segAngle - (liveAngle % segAngle);
+          const contactWindow = 3.5; // degrees before peg releases needle
+          const pegDeflectionSign = -1.0;
+
+          if (pegDistToSnap <= contactWindow) {
+            // Peg pushes needle tip upward/deflecting
+            const contactProgress = 1.0 - pegDistToSnap / contactWindow;
+            const needleAngle = pegDeflectionSign * 0.28 * Math.pow(contactProgress, 1.15);
+            needleRef.current.rotation.z = needleAngle;
+            needleRef.current.position.y = -Math.abs(needleAngle) * 0.04;
+          } else if (lastSnapTimeRef.current > 0) {
+            // Elastic spring snap rebound damping to 0
+            const dt = (now - lastSnapTimeRef.current) / 1000;
+            if (dt < 0.09) {
+              const snapAngle = -pegDeflectionSign * 0.16 * Math.exp(-30.0 * dt) * Math.cos(48.0 * dt);
+              needleRef.current.rotation.z = snapAngle;
+              needleRef.current.position.y = 0;
+            } else {
+              needleRef.current.rotation.z = 0;
+              needleRef.current.position.y = 0;
+            }
+          } else {
+            needleRef.current.rotation.z = 0;
+            needleRef.current.position.y = 0;
+          }
+        }
+      } else {
+        currentAngleRef.current = clientWheelAngle || 0;
+        spinningGroupRef.current.rotation.z = THREE.MathUtils.degToRad(-currentAngleRef.current + 90);
+        if (needleRef.current) {
+          needleRef.current.rotation.z = 0;
+          needleRef.current.position.y = 0;
+        }
       }
     }
 
@@ -1012,8 +1066,63 @@ function StylizedMannequin({
   isTurn?: boolean;
   isSpinning?: boolean;
 }) {
+  const rootGroupRef = useRef<THREE.Group>(null);
+  const upperBodyRef = useRef<THREE.Group>(null);
+  const rightArmRef = useRef<THREE.Group>(null);
+  const spinStartTimeRef = useRef<number>(0);
+
+  useFrame((state, delta) => {
+    if (!rootGroupRef.current || !upperBodyRef.current || !rightArmRef.current) return;
+    const now = state.clock.getElapsedTime();
+
+    if (isTurn && isSpinning) {
+      if (spinStartTimeRef.current === 0) {
+        spinStartTimeRef.current = now;
+      }
+      const t = now - spinStartTimeRef.current;
+
+      if (t < 0.4) {
+        // Giai đoạn 1 (0s - 0.4s): Nhoài người về phía trước, tay phải vươn bám chốt kim loại
+        const p = Math.min(1, t / 0.4);
+        upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(0, 0.35, p);
+        upperBodyRef.current.position.z = THREE.MathUtils.lerp(0, 0.18, p);
+        upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(0, -0.22, p);
+
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(0.45, -1.05, p);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(-0.18, -0.45, p);
+      } else if (t < 1.5) {
+        // Giai đoạn 2 (0.4s - 1.5s): Vung tay & thân trên đẩy mạnh theo chiều kim đồng hồ
+        const p = Math.min(1, (t - 0.4) / 1.1);
+        upperBodyRef.current.rotation.x = 0.35 * (1 - p * 0.4);
+        upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(-0.22, 0.38, p);
+
+        // Vung tay từ trái sang phải
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(-1.05, -0.65, p);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(-0.45, 0.75, p);
+      } else {
+        // Giai đoạn 3 (1.5s trở đi): Buông tay, đứng thẳng người lại bục quan sát nón trôi
+        upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(upperBodyRef.current.rotation.x, 0, delta * 3.0);
+        upperBodyRef.current.position.z = THREE.MathUtils.lerp(upperBodyRef.current.position.z, 0, delta * 3.0);
+        upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(upperBodyRef.current.rotation.y, 0, delta * 3.0);
+
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 0.45, delta * 3.0);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -0.18, delta * 3.0);
+      }
+    } else {
+      spinStartTimeRef.current = 0;
+      // Trạng thái nghỉ: Thở nhẹ tự nhiên
+      const breathe = Math.sin(now * 1.6) * 0.005;
+      upperBodyRef.current.position.y = breathe;
+      upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(upperBodyRef.current.rotation.x, 0, delta * 4.0);
+      upperBodyRef.current.position.z = THREE.MathUtils.lerp(upperBodyRef.current.position.z, 0, delta * 4.0);
+      upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(upperBodyRef.current.rotation.y, 0, delta * 4.0);
+      rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 0.45, delta * 4.0);
+      rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -0.18, delta * 4.0);
+    }
+  });
+
   return (
-    <group position={[0, 0, 0]}>
+    <group ref={rootGroupRef} position={[0, 0, 0]}>
       {/* 1. Đôi chân và quần âu lịch sự */}
       <mesh position={[-0.10, 0.22, 0]} castShadow>
         <cylinderGeometry args={[0.055, 0.065, 0.44, 16]} />
@@ -1034,54 +1143,58 @@ function StylizedMannequin({
         <meshStandardMaterial color="#020617" roughness={0.2} metalness={0.6} />
       </mesh>
 
-      {/* 2. Thân áo vest nam/nữ sang trọng mang màu sắc đội thi */}
-      <mesh position={[0, 0.65, 0]} castShadow>
-        <cylinderGeometry args={[0.18, 0.22, 0.46, 16]} />
-        <meshStandardMaterial
-          color={color || "#3b82f6"}
-          roughness={0.35}
-          metalness={0.18}
+      {/* Upper Body group có khả năng xoay và nhoài người đẩy nón */}
+      <group ref={upperBodyRef} position={[0, 0, 0]}>
+        {/* 2. Thân áo vest nam/nữ sang trọng mang màu sắc đội thi */}
+        <mesh position={[0, 0.65, 0]} castShadow>
+          <cylinderGeometry args={[0.18, 0.22, 0.46, 16]} />
+          <meshStandardMaterial
+            color={color || "#3b82f6"}
+            roughness={0.35}
+            metalness={0.18}
+          />
+        </mesh>
+
+        {/* 3. Cổ áo sơ mi trắng & Cà vạt */}
+        <mesh position={[0, 0.88, 0.02]}>
+          <cylinderGeometry args={[0.08, 0.095, 0.07, 16]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.2} />
+        </mesh>
+        <mesh position={[0, 0.74, 0.10]}>
+          <boxGeometry args={[0.04, 0.20, 0.015]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.3} />
+        </mesh>
+
+        {/* 4. Đầu người 3D Stylized Humanoid ngũ quan chi tiết */}
+        <StylizedHumanoidHead
+          hairColor="#1e293b"
+          skinColor="#fed7aa"
+          isTurn={isTurn}
+          isSpinning={isSpinning}
         />
-      </mesh>
 
-      {/* 3. Cổ áo sơ mi trắng & Cà vạt */}
-      <mesh position={[0, 0.88, 0.02]}>
-        <cylinderGeometry args={[0.08, 0.095, 0.07, 16]} />
-        <meshStandardMaterial color="#f8fafc" roughness={0.2} />
-      </mesh>
-      <mesh position={[0, 0.74, 0.10]}>
-        <boxGeometry args={[0.04, 0.20, 0.015]} />
-        <meshStandardMaterial color="#0f172a" roughness={0.3} />
-      </mesh>
+        {/* 5. Cánh tay trái tự nhiên */}
+        <mesh position={[-0.24, 0.72, 0.06]} rotation={[0.45, 0, 0.18]}>
+          <cylinderGeometry args={[0.048, 0.052, 0.36, 12]} />
+          <meshStandardMaterial color={color || "#3b82f6"} roughness={0.35} metalness={0.18} />
+        </mesh>
+        <mesh position={[-0.25, 0.54, 0.24]}>
+          <sphereGeometry args={[0.042, 12, 12]} />
+          <meshStandardMaterial color="#fed7aa" roughness={0.3} />
+        </mesh>
 
-      {/* 4. Đầu người 3D Stylized Humanoid ngũ quan chi tiết */}
-      <StylizedHumanoidHead
-        hairColor="#1e293b"
-        skinColor="#fed7aa"
-        isTurn={isTurn}
-        isSpinning={isSpinning}
-      />
-
-      {/* 5. Cánh tay tự nhiên hướng về mặt bàn chuông bấm */}
-      {/* Cánh tay trái */}
-      <mesh position={[-0.24, 0.72, 0.06]} rotation={[0.45, 0, 0.18]}>
-        <cylinderGeometry args={[0.048, 0.052, 0.36, 12]} />
-        <meshStandardMaterial color={color || "#3b82f6"} roughness={0.35} metalness={0.18} />
-      </mesh>
-      <mesh position={[-0.25, 0.54, 0.24]}>
-        <sphereGeometry args={[0.042, 12, 12]} />
-        <meshStandardMaterial color="#fed7aa" roughness={0.3} />
-      </mesh>
-
-      {/* Cánh tay phải */}
-      <mesh position={[0.24, 0.72, 0.06]} rotation={[0.45, 0, -0.18]}>
-        <cylinderGeometry args={[0.048, 0.052, 0.36, 12]} />
-        <meshStandardMaterial color={color || "#3b82f6"} roughness={0.35} metalness={0.18} />
-      </mesh>
-      <mesh position={[0.25, 0.54, 0.24]}>
-        <sphereGeometry args={[0.042, 12, 12]} />
-        <meshStandardMaterial color="#fed7aa" roughness={0.3} />
-      </mesh>
+        {/* Cánh tay phải có khớp xoay vung đẩy nón */}
+        <group ref={rightArmRef} position={[0.24, 0.72, 0.06]} rotation={[0.45, 0, -0.18]}>
+          <mesh position={[0, -0.18, 0]}>
+            <cylinderGeometry args={[0.048, 0.052, 0.36, 12]} />
+            <meshStandardMaterial color={color || "#3b82f6"} roughness={0.35} metalness={0.18} />
+          </mesh>
+          <mesh position={[0, -0.36, 0.02]}>
+            <sphereGeometry args={[0.042, 12, 12]} />
+            <meshStandardMaterial color="#fed7aa" roughness={0.3} />
+          </mesh>
+        </group>
+      </group>
     </group>
   );
 }
@@ -1796,6 +1909,7 @@ function Studio3DPuzzleTile({
   isOpen = true,
   isRevealed,
   isHighlighted,
+  isSolvedOrRecap = false,
   posX,
   posY,
 }: {
@@ -1803,6 +1917,7 @@ function Studio3DPuzzleTile({
   isOpen?: boolean;
   isRevealed: boolean;
   isHighlighted: boolean;
+  isSolvedOrRecap?: boolean;
   posX: number;
   posY: number;
 }) {
@@ -1831,8 +1946,10 @@ function Studio3DPuzzleTile({
   }
 
   // Khi đã mở bảng: sẵn nền trắng; khi có chữ đoán trúng: chớp sáng highlight xanh; khi mở: lật 180° thành chữ đen
+  // Chuẩn VTV3: Khi chưa giải đúng toàn bộ ô chữ, chỉ hiện chữ cái gốc (stripVietnameseToneKeepBase)
   const frontTex = isHighlighted ? getHighlightTileTexture() : getBlankWhiteTileTexture();
-  const backTex = getLetterTileTexture(tile.char);
+  const displayChar = isSolvedOrRecap ? tile.char : stripVietnameseToneKeepBase(tile.char);
+  const backTex = getLetterTileTexture(displayChar);
 
   return (
     <group ref={meshRef} position={[posX, posY, 0]}>
@@ -1854,9 +1971,20 @@ function Studio3DPuzzleTile({
   );
 }
 
-/** Người mẫu trợ lý lật ô chữ (Photorealistic Hostess Cutout Billboard chuẩn sắc nét và cân đối) */
-function StylizedHostess({ isRevealing }: { isRevealing: boolean }) {
+/** Người mẫu trợ lý lật ô chữ (Lướt chân trên bục catwalk đến từng ô và vươn tay chạm mở) */
+function StylizedHostess({
+  targetPosX = 2.85,
+  isTouching = false,
+  isRevealing,
+}: {
+  targetPosX?: number;
+  isTouching?: boolean;
+  isRevealing: boolean;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Group>(null);
+  const currentXRef = useRef<number>(2.85);
+
   const texture = useMemo(() => {
     if (typeof document === "undefined") return null;
     const loader = new THREE.TextureLoader();
@@ -1867,17 +1995,32 @@ function StylizedHostess({ isRevealing }: { isRevealing: boolean }) {
   }, []);
 
   useFrame((state, delta) => {
-    if (!meshRef.current) return;
+    if (!groupRef.current || !meshRef.current) return;
     const t = state.clock.getElapsedTime();
-    // Nhịp thở mềm mại và nhô nhẹ khi có mở chữ
-    const breatheY = Math.sin(t * 1.6) * 0.015;
-    const gestureScale = isRevealing ? 1.025 : 1.0;
-    meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, 1.475 + breatheY, delta * 3.0);
-    meshRef.current.scale.lerp(new THREE.Vector3(gestureScale, gestureScale, gestureScale), delta * 4.0);
+
+    // Lướt chân mượt mà trên bục runway theo trục X
+    const prevX = currentXRef.current;
+    const nextX = THREE.MathUtils.lerp(prevX, targetPosX, delta * 3.5);
+    currentXRef.current = nextX;
+    groupRef.current.position.x = nextX;
+
+    const isMoving = Math.abs(nextX - targetPosX) > 0.03;
+    const walkBob = isMoving ? Math.sin(t * 10) * 0.025 : 0;
+    const breatheY = Math.sin(t * 1.6) * 0.012;
+
+    meshRef.current.position.y = 1.475 + breatheY + walkBob;
+
+    // Vươn tay chạm ô chữ khi isTouching
+    const targetScale = isTouching ? 1.05 : 1.0;
+    meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), delta * 5.0);
+
+    // Hướng xoay người: khi lướt sang trái xoay nhẹ về phía bảng chữ
+    const targetRotY = isMoving ? (targetPosX < prevX ? -0.22 : -0.52) : -0.45;
+    groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotY, delta * 4.0);
   });
 
   return (
-    <group position={[2.85, 0.41, 0.40]} rotation={[0, -0.45, 0]}>
+    <group ref={groupRef} position={[2.85, 0.41, 0.40]} rotation={[0, -0.45, 0]}>
       {/* Vệt bóng đổ gót chân mềm mại trên sàn bục */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
         <planeGeometry args={[1.1, 0.50]} />
@@ -1911,6 +2054,8 @@ function Studio3DPuzzleBoard({
   boardStage,
   highlightedIndices,
   animRevealedIndices,
+  hostessXPercent,
+  hostessPose,
 }: {
   currentPuzzle?: {
     category: string;
@@ -1922,6 +2067,8 @@ function Studio3DPuzzleBoard({
   boardStage?: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE";
   highlightedIndices?: Set<number>;
   animRevealedIndices?: Set<number>;
+  hostessXPercent?: number;
+  hostessPose?: "IDLE" | "GESTURE" | "WALKING" | "TOUCHING";
 }) {
   const grid = useMemo(() => {
     return formatPhraseTo4x14(currentPuzzle?.secretPhrase);
@@ -1934,6 +2081,39 @@ function Studio3DPuzzleBoard({
 
   const isBoardEmpty = boardStage === "EMPTY_56" && phase !== "ROUND_RECAP";
   const isRevealing = phase === "ROUND_RECAP" || (revealedSet.size > 0);
+
+  const cleanLettersCount = useMemo(() => {
+    return (currentPuzzle?.secretPhrase || "").replace(/\s+/g, "").length;
+  }, [currentPuzzle?.secretPhrase]);
+
+  const isSolvedOrRecap =
+    phase === "ROUND_RECAP" ||
+    (revealedSet.size > 0 && cleanLettersCount > 0 && revealedSet.size >= cleanLettersCount);
+
+  // Tính toán vị trí di chuyển X của Người mẫu trên bục runway
+  const targetHostessX = useMemo(() => {
+    if (typeof hostessXPercent === "number") {
+      if (hostessXPercent <= 10) return -2.85;
+      if (hostessXPercent >= 90) return 2.85;
+      const norm = Math.max(0, Math.min(1, (hostessXPercent - 12) / 76));
+      return -2.34 + norm * 4.68;
+    }
+    // Fallback nếu không có hostessXPercent: tự tìm vị trí của ô đang highlight
+    if (highlightedIndices && highlightedIndices.size > 0) {
+      for (const row of grid) {
+        for (let c = 0; c < row.length; c++) {
+          const t = row[c];
+          if (t.isLetter && highlightedIndices.has(t.origIdx)) {
+            const posX = (c - 6.5) * 0.36;
+            return posX + 0.32;
+          }
+        }
+      }
+    }
+    return 2.85;
+  }, [hostessXPercent, highlightedIndices, grid]);
+
+  const isTouching = hostessPose === "TOUCHING";
 
   return (
     <group position={[-7.80, -0.75, 4.50]} rotation={[0, Math.PI / 2, 0]}>
@@ -2102,6 +2282,7 @@ function Studio3DPuzzleBoard({
                 isOpen={!isBoardEmpty}
                 isRevealed={isRevealed}
                 isHighlighted={isHighlighted}
+                isSolvedOrRecap={isSolvedOrRecap}
                 posX={posX}
                 posY={posY}
               />
@@ -2111,7 +2292,7 @@ function Studio3DPuzzleBoard({
       </group>
 
       {/* 6. Người mẫu trợ lý lật ô chữ (Stylized Hostess in evening gown) */}
-      <StylizedHostess isRevealing={isRevealing} />
+      <StylizedHostess isRevealing={isRevealing} targetPosX={targetHostessX} isTouching={isTouching} />
     </group>
   );
 }
@@ -2921,6 +3102,18 @@ function CameraController({
   const targetConfig = useRef<CamConfig>(CAM_POSITIONS.DEFAULT);
   const targetLookAtRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 1.15, -0.30));
   const initialized = useRef(false);
+  const spinStartTimeRef = useRef<number>(0);
+  const targetFovRef = useRef<number>(46);
+
+  useEffect(() => {
+    if (effectiveIsSpinning) {
+      if (spinStartTimeRef.current === 0) {
+        spinStartTimeRef.current = performance.now();
+      }
+    } else {
+      spinStartTimeRef.current = 0;
+    }
+  }, [effectiveIsSpinning]);
 
   useEffect(() => {
     const configs: Record<number, CamConfig> = {
@@ -2940,14 +3133,21 @@ function CameraController({
 
     // Hard Cut: Instant 0ms broadcast vision mixer cut
     if (transitionMode === "CUT" && initialized.current) {
-      camera.position.set(...nextCfg.pos);
-      targetLookAtRef.current.set(...nextCfg.target);
+      if (camAngle === 2 && effectiveIsSpinning) {
+        camera.position.set(0.00, 4.40, 22.55);
+        targetLookAtRef.current.set(0.00, 1.25, 0.00);
+      } else {
+        camera.position.set(...nextCfg.pos);
+        targetLookAtRef.current.set(...nextCfg.target);
+      }
       camera.lookAt(targetLookAtRef.current);
     }
   }, [camAngle, effectiveIsSpinning, transitionMode, camera]);
 
   useFrame((_, delta) => {
+    const persCamera = camera as THREE.PerspectiveCamera;
     const cfg = targetConfig.current;
+
     if (!initialized.current) {
       camera.position.set(...cfg.pos);
       targetLookAtRef.current.set(...cfg.target);
@@ -2956,12 +3156,63 @@ function CameraController({
       return;
     }
 
+    const elapsed =
+      spinStartTimeRef.current > 0 ? (performance.now() - spinStartTimeRef.current) / 1000 : 0;
+
+    // Dynamic Zoom & Dolly logic when spinning
+    if (effectiveIsSpinning && spinStartTimeRef.current > 0) {
+      if (camAngle === 5) {
+        // CAM 5 (0s - 3s): Zoom cận 1.25x vào thí sinh đang quay
+        targetFovRef.current = 46 / 1.25; // ~36.8°
+        targetLookAtRef.current.set(...CAM_POSITIONS.CAM5_PLAYER.target);
+      } else if (camAngle === 2) {
+        // CAM 2 (3s - 7s): Bắt đầu từ xa 1.1x CAM 9 ([0, 4.40, 22.55]) rồi dolly-in lướt vào toàn cảnh [0, 2.70, 8.80]
+        targetFovRef.current = 46;
+        const p = Math.max(0, Math.min(1, (elapsed - 3.0) / 4.0));
+        const ease = p * p * (3 - 2 * p); // smoothstep
+        const curX = 0;
+        const curY = THREE.MathUtils.lerp(4.40, 2.70, ease);
+        const curZ = THREE.MathUtils.lerp(22.55, 8.80, ease);
+        const tgtY = THREE.MathUtils.lerp(1.25, 1.60, ease);
+        const tgtZ = THREE.MathUtils.lerp(0.00, -1.50, ease);
+
+        camera.position.set(curX, curY, curZ);
+        targetLookAtRef.current.set(0, tgtY, tgtZ);
+        camera.lookAt(targetLookAtRef.current);
+
+        if (Math.abs(persCamera.fov - targetFovRef.current) > 0.05) {
+          persCamera.fov = THREE.MathUtils.lerp(persCamera.fov, targetFovRef.current, delta * 5);
+          persCamera.updateProjectionMatrix();
+        }
+        return;
+      } else if (camAngle === 3) {
+        // CAM 3 (7s - 11s): Zoom nhẹ 1.15x trong suốt 4s hiển thị
+        const p = Math.max(0, Math.min(1, (elapsed - 7.0) / 4.0));
+        const ease = p * p * (3 - 2 * p);
+        targetFovRef.current = THREE.MathUtils.lerp(46, 46 / 1.15, ease); // 46 -> ~40.0°
+        targetLookAtRef.current.set(...CAM_POSITIONS.CAM3_BOARD.target);
+      } else {
+        // CAM 4 (11s - 16s): 1.0x không zoom
+        targetFovRef.current = 46;
+        targetLookAtRef.current.set(...CAM_POSITIONS.CAM4_DISC.target);
+      }
+    } else {
+      // Idle / Non-spinning: standard 46° FOV
+      targetFovRef.current = 46;
+    }
+
+    // Apply FOV smoothly
+    if (Math.abs(persCamera.fov - targetFovRef.current) > 0.05) {
+      persCamera.fov = THREE.MathUtils.lerp(persCamera.fov, targetFovRef.current, delta * 4.5);
+      persCamera.updateProjectionMatrix();
+    }
+
     if (transitionMode === "CUT") {
       camera.lookAt(targetLookAtRef.current);
       return;
     }
 
-    // Chuyển góc quay lướt mượt mà như trục cẩu jib trường quay (Morph / Jib)
+    // Morph / Jib smooth fly
     const factor = Math.min(1, delta * 4.2);
     camera.position.lerp(new THREE.Vector3(...cfg.pos), factor);
     targetLookAtRef.current.lerp(new THREE.Vector3(...cfg.target), factor);
@@ -3265,10 +3516,14 @@ function WheelStudio3DSceneComponent({
   currentPuzzle,
   highlightedIndices,
   animRevealedIndices,
+  hostessXPercent,
+  hostessPose,
+  showClueOnCam3 = true,
   onCamAngleChange,
 }: WheelStudio3DSceneProps) {
   const [internalCam, setInternalCam] = useState<number>(camAngle || 0);
   const [transitionMode, setTransitionMode] = useState<"CUT" | "MORPH">("CUT");
+  const [showClue, setShowClue] = useState<boolean>(showClueOnCam3);
 
   // Mức cấu hình đồ họa: HIGH (512 Reflector + 25Hz LED), MEDIUM (256 Reflector + 15Hz LED), LOW (Satin chuẩn 0 pass phụ + static LED)
   const [quality, setQuality] = useState<"HIGH" | "MEDIUM" | "LOW">(() => {
@@ -3294,13 +3549,6 @@ function WheelStudio3DSceneComponent({
   useEffect(() => {
     setInternalCam(camAngle || 0);
   }, [camAngle]);
-
-  // Smart Auto-Director: Khi đang quay nón chuyển sang CAM 4; khi mở chữ / highlight sang CAM 3
-  useEffect(() => {
-    if (effectiveIsSpinning) {
-      setInternalCam(4);
-    }
-  }, [effectiveIsSpinning]);
 
   useEffect(() => {
     if (highlightedIndices && highlightedIndices.size > 0) {
@@ -3429,23 +3677,53 @@ function WheelStudio3DSceneComponent({
           boardStage={boardStage}
           highlightedIndices={highlightedIndices}
           animRevealedIndices={animRevealedIndices}
+          hostessXPercent={hostessXPercent}
+          hostessPose={hostessPose}
         />
         {/* Khán đài khán giả 6 tầng bậc thang & Phông nền Trống đồng Đông Sơn mạ vàng Việt Nam (Z = +8.6m - +16.5m) */}
         <AudienceAmphitheaterVietnamese />
       </Canvas>
 
-      {/* ── BROADCAST CAMERA DIRECTOR BAR ── */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 p-1.5 rounded-2xl bg-black/80 backdrop-blur-md border border-white/20 shadow-2xl">
+      {/* ── LOWER-THIRD CÂU HỎI / GỢI Ý TRÊN CAM 3 (TỰ ĐỘNG ẨN KHI HẾT VÒNG) ── */}
+      {internalCam === 3 &&
+        phase !== "ROUND_RECAP" &&
+        showClue &&
+        Boolean(currentPuzzle?.category || currentPuzzle?.description || currentPuzzle?.clue) && (
+          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-40 max-w-2xl w-[92%] sm:w-auto px-6 py-2.5 rounded-2xl bg-gradient-to-r from-slate-950/95 via-sky-950/90 to-slate-950/95 border-2 border-amber-400/80 shadow-[0_4px_30px_rgba(245,158,11,0.45)] backdrop-blur-md flex items-center gap-3 animate-fade-in pointer-events-auto">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xl">💡</span>
+              <span className="font-black text-amber-400 uppercase tracking-widest text-xs sm:text-sm">
+                {currentPuzzle?.description || currentPuzzle?.clue ? "GỢI Ý:" : "CHỦ ĐỀ:"}
+              </span>
+            </div>
+            <div className="font-bold text-white text-sm sm:text-base tracking-wide truncate">
+              {(currentPuzzle?.description || currentPuzzle?.clue || currentPuzzle?.category || "")
+                .replace(/\s*\(\s*\d+\s*(ký\s*tự|chữ\s*cái|chữ|letters|chars?)\s*\)/gi, "")
+                .trim()}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowClue(false)}
+              className="ml-auto text-xs text-white/50 hover:text-white/90 p-1 rounded-md transition-colors"
+              title="Ẩn gợi ý trên CAM 3"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+      {/* ── BROADCAST CAMERA DIRECTOR BAR (MICRO DOCK MỜ 25% OPACITY) ── */}
+      <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 p-1 rounded-lg bg-black/40 backdrop-blur-sm border border-white/10 shadow-lg opacity-25 hover:opacity-100 transition-opacity duration-300">
         {[
-          { id: 1, label: "CAM 1: Nón", icon: "🎡" },
-          { id: 2, label: "CAM 2: Toàn Cảnh", icon: "🌐" },
-          { id: 3, label: "CAM 3: Ô Chữ", icon: "🔤" },
-          { id: 4, label: "CAM 4: Cận Nón", icon: "🎯" },
-          { id: 5, label: "CAM 5: Thí Sinh", icon: "👤" },
-          { id: 6, label: "CAM 6: Khán Đài", icon: "👥" },
-          { id: 7, label: "CAM 7: Cận Ghế", icon: "💺" },
-          { id: 8, label: "CAM 8: Góc Chéo", icon: "📐" },
-          { id: 9, label: "CAM 9: POV", icon: "👁️" },
+          { id: 1, label: "CAM 1: Nón" },
+          { id: 2, label: "CAM 2: Toàn Cảnh" },
+          { id: 3, label: "CAM 3: Ô Chữ" },
+          { id: 4, label: "CAM 4: Cận Nón" },
+          { id: 5, label: "CAM 5: Thí Sinh" },
+          { id: 6, label: "CAM 6: Khán Đài" },
+          { id: 7, label: "CAM 7: Cận Ghế" },
+          { id: 8, label: "CAM 8: Góc Chéo" },
+          { id: 9, label: "CAM 9: POV" },
         ].map((c) => {
           const isActive = internalCam === c.id;
           return (
@@ -3457,53 +3735,62 @@ function WheelStudio3DSceneComponent({
                 setInternalCam(c.id);
                 onCamAngleChange?.(c.id);
               }}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+              title={c.label}
+              className={`w-5 h-5 rounded text-[11px] font-bold transition-all flex items-center justify-center cursor-pointer ${
                 isActive
-                  ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-[0_0_15px_#f59e0b] scale-105"
-                  : "bg-white/10 hover:bg-white/20 text-slate-200"
+                  ? "bg-amber-400 text-slate-950 font-black shadow-[0_0_8px_#f59e0b]"
+                  : "bg-white/5 hover:bg-white/20 text-white/70 hover:text-white"
               }`}
             >
-              <span>{c.icon}</span>
-              <span className="hidden md:inline">{c.label}</span>
+              {c.id}
             </button>
           );
         })}
 
-        {/* Nút chuyển đổi chế độ Camera Switcher: Cắt Nhanh (0ms) vs Lướt Mượt (Morph) */}
-        <div className="h-4 w-px bg-white/20 mx-0.5" />
+        {/* Nút chuyển đổi chế độ Camera Switcher: Cắt Nhanh vs Lướt Mượt */}
+        <div className="h-3 w-px bg-white/20 mx-0.5" />
         <button
           type="button"
           onClick={() => setTransitionMode((prev) => (prev === "CUT" ? "MORPH" : "CUT"))}
-          className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer border ${
+          className={`px-1.5 h-5 rounded text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer border ${
             transitionMode === "CUT"
-              ? "bg-amber-500/20 text-amber-300 border-amber-400/40 hover:bg-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
-              : "bg-cyan-500/20 text-cyan-300 border-cyan-400/40 hover:bg-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.3)]"
+              ? "bg-amber-500/20 text-amber-300 border-amber-400/40"
+              : "bg-cyan-500/20 text-cyan-300 border-cyan-400/40"
           }`}
           title={
             transitionMode === "CUT"
-              ? "Chế độ hiện tại: CẮT NHANH (0ms chuẩn truyền hình VTV3) · Bấm để đổi sang Lướt Mượt"
-              : "Chế độ hiện tại: LƯỚT MƯỢT (Morph/Jib) · Bấm để đổi sang Cắt Nhanh"
+              ? "CẮT NHANH (0ms)"
+              : "LƯỚT MƯỢT (Morph)"
           }
         >
-          <span>{transitionMode === "CUT" ? "✂️" : "🎥"}</span>
-          <span className="hidden sm:inline">
-            {transitionMode === "CUT" ? "Cắt nhanh" : "Lướt mượt"}
-          </span>
+          {transitionMode === "CUT" ? "✂" : "🎥"}
         </button>
 
         {/* Nút chuyển đổi mức cấu hình đồ họa (Quality Preset Toggle) */}
-        <div className="h-4 w-px bg-white/20 mx-0.5" />
+        <div className="h-3 w-px bg-white/20 mx-0.5" />
         <button
           type="button"
           onClick={cycleQuality}
-          className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer bg-white/10 hover:bg-white/20 text-amber-300 border border-amber-400/30"
-          title="Bấm để đổi chế độ đồ họa (Cao 60FPS / Vừa / Siêu nhẹ)"
+          className="px-1.5 h-5 rounded text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer bg-white/5 hover:bg-white/20 text-amber-300 border border-amber-400/30"
+          title={`Đồ họa: ${quality === "HIGH" ? "Cao (HQ)" : quality === "MEDIUM" ? "Vừa (MD)" : "Siêu nhẹ (LT)"}`}
         >
-          <span>{quality === "HIGH" ? "🚀" : quality === "MEDIUM" ? "⚡" : "🍃"}</span>
-          <span className="hidden sm:inline">
-            {quality === "HIGH" ? "Đồ họa: Cao" : quality === "MEDIUM" ? "Đồ họa: Vừa" : "Đồ họa: Siêu nhẹ"}
-          </span>
+          {quality === "HIGH" ? "HQ" : quality === "MEDIUM" ? "MD" : "LT"}
         </button>
+
+        {/* Toggle hiển thị lại Gợi ý trên CAM 3 nếu bị tắt */}
+        {!showClue && internalCam === 3 && (
+          <>
+            <div className="h-3 w-px bg-white/20 mx-0.5" />
+            <button
+              type="button"
+              onClick={() => setShowClue(true)}
+              className="px-1.5 h-5 rounded text-[10px] font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
+              title="Hiện lại gợi ý trên CAM 3"
+            >
+              💡
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

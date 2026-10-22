@@ -3004,8 +3004,8 @@ function generateFlexibleMCCommentary(eventOrParams, extraParams) {
 function calculateSpinDestination(currentDegrees, powerPercent, totalSectors = 24) {
   const sectorAngle = 360 / totalSectors;
   const powerFactor = Math.max(0.1, Math.min(1, powerPercent / 100));
-  const minFullSpins = 4;
-  const additionalSpins = Math.floor(powerFactor * 3);
+  const minFullSpins = 2;
+  const additionalSpins = Math.floor(powerFactor * 1.5);
   const totalFullSpins = minFullSpins + additionalSpins;
   const currentAngle = (360 - currentDegrees % 360) % 360;
   const currentSector = Math.floor(currentAngle / sectorAngle) % totalSectors;

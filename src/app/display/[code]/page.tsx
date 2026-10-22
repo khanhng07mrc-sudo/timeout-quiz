@@ -65,18 +65,22 @@ export default function DisplayPage() {
   const [intermission, setIntermission] = useState<GameIntermissionPayload | null>(null);
   const [displayModeTab, setDisplayModeTab] = useState<"QUESTION" | "BOARD">("QUESTION");
   const [soundMuted, setSoundMuted] = useState(false);
-  const [isSandbox, setIsSandbox] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const isIframe = window.self !== window.top;
-    const urlParams = new URLSearchParams(window.location.search);
-    return isIframe || urlParams.get("sandbox") === "1";
-  });
-  const [audioUnlocked, setAudioUnlocked] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const isIframe = window.self !== window.top;
-    const urlParams = new URLSearchParams(window.location.search);
-    return isIframe || urlParams.get("sandbox") === "1";
-  });
+  const [mounted, setMounted] = useState(false);
+  const [isSandbox, setIsSandbox] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (typeof window !== "undefined") {
+      const isIframe = window.self !== window.top;
+      const urlParams = new URLSearchParams(window.location.search);
+      const isSb = isIframe || urlParams.get("sandbox") === "1";
+      setIsSandbox(isSb);
+      if (isSb) {
+        setAudioUnlocked(true);
+      }
+    }
+  }, []);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [stealPrepCountdown, setStealPrepCountdown] = useState<{ teamName: string; seconds: number } | null>(null);
   const [eliminationNotice, setEliminationNotice] = useState<{
@@ -959,7 +963,7 @@ export default function DisplayPage() {
           </button>
         </div>
 
-        {!audioUnlocked && !isSandbox && (
+        {mounted && !audioUnlocked && !isSandbox && (
           <div
             onClick={handleUnlockAudio}
             className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs sm:text-sm font-bold shadow-xl border border-white/30 cursor-pointer flex items-center gap-2 animate-bounce"
@@ -1065,7 +1069,7 @@ export default function DisplayPage() {
           </button>
         </div>
 
-        {!audioUnlocked && !isSandbox && (
+        {mounted && !audioUnlocked && !isSandbox && (
           <div
             onClick={handleUnlockAudio}
             className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs sm:text-sm font-bold shadow-xl border border-white/30 cursor-pointer flex items-center gap-2 animate-bounce"
@@ -1288,7 +1292,7 @@ export default function DisplayPage() {
           </div>
         </div>
 
-        {!audioUnlocked && !isSandbox && (
+        {mounted && !audioUnlocked && !isSandbox && (
           <div
             onClick={handleUnlockAudio}
             className="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-5 py-2 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs font-bold shadow-xl border border-white/30 cursor-pointer flex items-center gap-2 animate-bounce text-center max-w-[90vw]"
@@ -1516,7 +1520,7 @@ export default function DisplayPage() {
       }`}
       onClick={handleUnlockAudio}
     >
-      {!audioUnlocked && !isSandbox && (
+      {mounted && !audioUnlocked && !isSandbox && (
         <div
           onClick={handleUnlockAudio}
           className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 sm:px-6 sm:py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs sm:text-sm font-bold shadow-xl border border-white/30 cursor-pointer flex items-center justify-center gap-2 animate-bounce max-w-[90vw] text-center"

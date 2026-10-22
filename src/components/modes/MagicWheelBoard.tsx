@@ -20,6 +20,8 @@ import {
   ENGLISH_BONUS_ROUND_PICKABLE_CONSONANTS,
   ENGLISH_BONUS_ROUND_PICKABLE_VOWELS,
   isPuzzleFullyRevealed,
+  evaluateThreePhaseWheelProgress,
+  stripVietnameseToneKeepBase,
 } from "@/lib/game-engine/magic-wheel";
 import { formatCategoryByEdition } from "@/lib/game-engine/magic-wheel-categories";
 import { soundManager } from "@/lib/sound-manager";
@@ -37,41 +39,6 @@ export function formatTeamLabel(rawName?: string): string {
   return `Đội ${trimmed}`;
 }
 
-/**
- * 3-Phase Physics Speed Curve for 15s - 21s Authentic Spin:
- * - 0s to 3s: Smooth sinusoidal acceleration from 0 to V_max
- * - 3s to 10s: Constant MAXIMUM velocity V_max (FASTEST PHASE)
- * - 10s to T: Smooth cubic friction deceleration to 0 at T
- * Returns normalized progress in [0, 1].
- */
-function evaluateThreePhaseWheelProgress(elapsedMs: number, totalDurationMs: number): number {
-  if (elapsedMs <= 0) return 0;
-  if (elapsedMs >= totalDurationMs) return 1;
-
-  const t = elapsedMs / 1000;
-  const T = Math.max(14, totalDurationMs / 1000);
-  const t1 = 3.0;
-  const t2 = Math.min(10.0, T - 2.5);
-
-  const D1 = 0.5 * t1;
-  const D2 = t2 - t1;
-  const D3 = (T - t2) / 3;
-  const D_total = D1 + D2 + D3;
-
-  if (t < t1) {
-    const d = 0.5 * (t - (t1 / Math.PI) * Math.sin((Math.PI * t) / t1));
-    return Math.max(0, Math.min(1, d / D_total));
-  } else if (t < t2) {
-    const d = D1 + (t - t1);
-    return Math.max(0, Math.min(1, d / D_total));
-  } else {
-    const u = (t - t2) / (T - t2);
-    const uClamped = Math.max(0, Math.min(1, u));
-    const dDecel = ((T - t2) * (1 - Math.pow(1 - uClamped, 3))) / 3;
-    const d = D1 + D2 + dDecel;
-    return Math.max(0, Math.min(1, d / D_total));
-  }
-}
 
 export interface MagicWheelBoardProps {
   magicWheelState?: MagicWheelState;
@@ -2022,8 +1989,8 @@ export default function MagicWheelBoard({
     }
   }, [isSpinning]);
 
-  // Camera auto-cut during spin (Display view only) — 4 góc quay như trường quay CNKD
-  // Thứ tự người dùng chỉ định: Wheel zoom (2s) -> Wide (3s) -> Board (4s) -> Disc closeup (đến khi dừng quay)
+  // Camera auto-cut during spin (Display view only) — 4 góc quay truyền hình kèm Dynamic Zoom chuẩn VTV3
+  // Chuỗi: CAM 5 (Cận thí sinh 3s) -> CAM 2 (Đại cảnh 4s) -> CAM 3 (Bảng chữ 4s) -> CAM 4 (Cận nón 5s)
   useEffect(() => {
     if (!isDisplay || !effectiveIsSpinning) {
       setCamAngle(0);
@@ -2031,27 +1998,27 @@ export default function MagicWheelBoard({
       return;
     }
 
-    // Góc 1: Wheel zoom (2s)
-    setCamAngle(1);
+    // Giai đoạn 1 (0s - 3s): CAM 5 (Cận người chơi thực hiện lượt)
+    setCamAngle(5);
 
     const t1 = setTimeout(() => {
-      // Góc 2: Wide shot (3s)
+      // Giai đoạn 2 (3s - 7s): CAM 2 (Đại cảnh sân khấu lướt vào)
       setCamAngle(2);
 
       const t2 = setTimeout(() => {
-        // Góc 3: Board zoom (4s)
+        // Giai đoạn 3 (7s - 11s): CAM 3 (Bảng ô chữ chính tâm kèm Lower-Third)
         setCamAngle(3);
 
         const t3 = setTimeout(() => {
-          // Góc 4: Disc closeup (giữ nguyên cho tới khi vòng quay dừng hẳn)
+          // Giai đoạn 4 (11s - 16s): CAM 4 (Cận cảnh nón trôi chậm và dừng chuẩn xác)
           setCamAngle(4);
         }, 4000);
 
         camTimerRef.current = t3;
-      }, 3000);
+      }, 4000);
 
       camTimerRef.current = t2;
-    }, 2000);
+    }, 3000);
 
     camTimerRef.current = t1;
 
@@ -4202,6 +4169,8 @@ export default function MagicWheelBoard({
             currentPuzzle={currentPuzzle}
             highlightedIndices={highlightedIndices}
             animRevealedIndices={animRevealedIndices}
+            hostessXPercent={hostessXPercent}
+            hostessPose={hostessPose}
             onCamAngleChange={(cam) => setCamAngle(cam)}
             className="absolute inset-0 w-full h-full"
           />

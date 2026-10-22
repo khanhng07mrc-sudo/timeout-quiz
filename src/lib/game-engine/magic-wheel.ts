@@ -675,6 +675,8 @@ export function normalizeVietnameseBaseLetter(char: string): string {
     .normalize("NFC");
 }
 
+export const stripVietnameseToneKeepBase = normalizeVietnameseBaseLetter;
+
 /**
  * Tính số lượng chữ cái K được phép đoán trước ở Vòng Đặc Biệt
  * dựa vào độ dài từ khóa và tần suất xuất hiện của các chữ cái
@@ -973,8 +975,10 @@ export function calculateSpinDestination(
 } {
   const sectorAngle = 360 / totalSectors;
   const powerFactor = Math.max(0.1, Math.min(1.0, powerPercent / 100));
-  const minFullSpins = 4;
-  const additionalSpins = Math.floor(powerFactor * 3);
+  // Vòng quay sân khấu cực nặng (VTV3 Chiếc Nón Kỳ Diệu) - mô men quán tính lớn
+  // Tổng cộng quay khoảng 2.5 đến 3.5 vòng trong 16s
+  const minFullSpins = 2;
+  const additionalSpins = Math.floor(powerFactor * 1.5);
   const totalFullSpins = minFullSpins + additionalSpins;
 
   // Determine current sector at 12 o'clock
@@ -1002,6 +1006,40 @@ export function calculateSpinDestination(
     targetDegrees,
     landingSectorIndex,
   };
+}
+
+/**
+ * Mô phỏng vật lý nón sân khấu cực nặng (Gameshow Chiếc Nón Kỳ Diệu VTV3):
+ * - Toàn bộ lượt quay diễn ra trong 16 giây.
+ * - 0s đến 1.5s: Thí sinh nhoài người bám chốt đẩy nón, nón tăng tốc dần từ 0 lên đỉnh tốc V_max (~0.8 - 1.0 vòng/s).
+ * - 1.5s đến 16s: Nón tự trôi trơn tru theo quán tính bánh đà cực nặng, giảm tốc mượt mà bậc 3 (Cubic Deceleration) về 0.
+ * Tuyệt đối không giật, không tăng tốc ở những giây cuối.
+ */
+export function evaluateThreePhaseWheelProgress(elapsedMs: number, totalDurationMs: number = 16000): number {
+  if (elapsedMs <= 0) return 0;
+  if (elapsedMs >= totalDurationMs) return 1;
+
+  const t = elapsedMs / 1000;
+  const T = Math.max(14, totalDurationMs / 1000);
+  const t1 = 1.5; // Giai đoạn người chơi đẩy nón (0s - 1.5s)
+  const p = 2.8;  // Độ dốc giảm tốc quán tính nặng
+
+  const D1 = 0.5 * t1;
+  const D2 = (T - t1) / (p + 1);
+  const D_total = D1 + D2;
+
+  if (t < t1) {
+    // Tăng tốc hình sin mượt mà do lực đẩy tay của người chơi
+    const d = 0.5 * (t - (t1 / Math.PI) * Math.sin((Math.PI * t) / t1));
+    return Math.max(0, Math.min(1, d / D_total));
+  } else {
+    // Giảm tốc quán tính bánh đà trôi êm tự nhiên về 0 tại T
+    const u = (t - t1) / (T - t1);
+    const uClamped = Math.max(0, Math.min(1, u));
+    const dDecel = ((T - t1) / (p + 1)) * (1 - Math.pow(1 - uClamped, p + 1));
+    const d = D1 + dDecel;
+    return Math.max(0, Math.min(1, d / D_total));
+  }
 }
 
 /**

@@ -10225,58 +10225,7 @@ export default function AdminSandboxPage() {
                         );
                       })()}
 
-                      {/* Bố cục Display Switcher Pills */}
-                      <div className="flex items-center rounded-lg bg-slate-900/80 p-0.5 border border-white/10 text-[11px] font-bold">
-                        <span className="px-1.5 text-[10px] text-slate-400 font-normal">Display:</span>
-                        <button
-                          type="button"
-                          onClick={() => handleMagicWheelSetDisplayLayout("AUTO")}
-                          className={`px-2 py-1 rounded transition cursor-pointer ${
-                            (roomState?.magicWheelState?.displayLayoutMode || "STACKED") === "AUTO"
-                              ? "bg-purple-600 text-white font-black shadow"
-                              : "text-slate-400 hover:text-white"
-                          }`}
-                          title="Tự động thông minh: zoom nón khi quay, zoom bảng khi đoán chữ"
-                        >
-                          🤖 Tự động
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleMagicWheelSetDisplayLayout("STACKED")}
-                          className={`px-2 py-1 rounded transition cursor-pointer ${
-                            (roomState?.magicWheelState?.displayLayoutMode || "STACKED") === "STACKED"
-                              ? "bg-amber-500 text-slate-950 font-black shadow"
-                              : "text-slate-400 hover:text-white"
-                          }`}
-                          title="Toàn diện: Bảng ô chữ ở trên (~55%), Vòng quay 360° ở dưới (~45%)"
-                        >
-                          📺 Toàn diện
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleMagicWheelSetDisplayLayout("FOCUS_WHEEL")}
-                          className={`px-2 py-1 rounded transition cursor-pointer ${
-                            roomState?.magicWheelState?.displayLayoutMode === "FOCUS_WHEEL"
-                              ? "bg-pink-600 text-white font-black shadow"
-                              : "text-slate-400 hover:text-white"
-                          }`}
-                          title="Tập trung vòng quay"
-                        >
-                          🎡 Nón
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleMagicWheelSetDisplayLayout("FOCUS_BOARD")}
-                          className={`px-2 py-1 rounded transition cursor-pointer ${
-                            roomState?.magicWheelState?.displayLayoutMode === "FOCUS_BOARD"
-                              ? "bg-cyan-600 text-white font-black shadow"
-                              : "text-slate-400 hover:text-white"
-                          }`}
-                          title="Tập trung bảng ô chữ"
-                        >
-                          🔤 Bảng
-                        </button>
-                      </div>
+
 
                       {/* Nút Cài đặt chữ tạm thời trực tiếp trên Topbar */}
                       {(() => {

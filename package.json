@@ -1,8 +1,8 @@
 {
-  "name": "timeout-quiz",
+  "name": "quizorra",
   "version": "0.1.0",
-  "description": "Timeout Quiz VTV3 Studio 3D Desktop Application",
-  "author": "Timeout Quiz Team",
+  "description": "Quizorra VTV3 Studio 3D Desktop Application",
+  "author": "Quizorra Team",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
@@ -11,7 +11,7 @@
     "build": "next build --webpack && esbuild server.ts --bundle --platform=node --target=node20 --outfile=server.js --external:next --external:@prisma/client --external:socket.io --external:bcryptjs",
     "start": "node server.js",
     "app": "electron electron/main.js",
-    "package:app": "npm run build && npx electron-packager . \"Timeout-Quiz-Studio3D\" --platform=win32 --arch=x64 --out=\"dist-app\" --overwrite --ignore=\"^/(dist-app|scratch|\\.git|\\.next/cache)\"",
+    "package:app": "npm run build && npx electron-packager . \"Quizorra\" --platform=win32 --arch=x64 --out=\"dist-app\" --overwrite --icon=\"public/brand/quizorra.ico\" --ignore=\"^/(dist-app|scratch|\\.git|\\.next/cache)\"",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "postinstall": "prisma generate",

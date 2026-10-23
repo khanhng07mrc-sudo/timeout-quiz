@@ -102,7 +102,8 @@ async function createWindow() {
     height: 1080,
     minWidth: 1280,
     minHeight: 720,
-    title: "Timeout Quiz Studio 3D (Desktop Edition)",
+    title: "Quizorra Studio 3D (Desktop Edition)",
+    icon: path.join(__dirname, "../public/brand/icon.png"),
     backgroundColor: "#030712",
     autoHideMenuBar: true,
     show: false,
@@ -156,7 +157,7 @@ async function createWindow() {
       </head>
       <body>
         <div class="spinner"></div>
-        <h2>Timeout Quiz Studio 3D</h2>
+        <h2>Quizorra Studio 3D</h2>
         <p>Đang kết nối hệ thống đồ họa tăng tốc GPU...</p>
       </body>
     </html>

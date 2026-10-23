@@ -1841,7 +1841,7 @@ function InteractiveWheelRig({
             className="absolute -top-[4.2%] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
             style={{
               transformOrigin: "50% 22.92%",
-              transform: "translateX(-50%) rotate(0deg) scale(1.06) translateZ(0)",
+              transform: "rotate(0deg) scale(1.06) translateZ(0)",
               filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.85))",
               willChange: "transform",
             }}
@@ -1908,7 +1908,7 @@ function InteractiveWheelRig({
               className="absolute bottom-[-16px] sm:bottom-[-18px] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
               style={{
                 transformOrigin: "50% 22.92%",
-                transform: "translateX(-50%) rotate(180deg) scale(1.06) translateZ(0)",
+                transform: "rotate(180deg) scale(1.06) translateZ(0)",
                 filter: "drop-shadow(0px -4px 8px rgba(0,0,0,0.85))",
                 willChange: "transform",
               }}
@@ -1937,7 +1937,7 @@ function InteractiveWheelRig({
             className="absolute -top-[4.2%] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
             style={{
               transformOrigin: "50% 22.92%",
-              transform: "translateX(-50%) rotate(0deg) scale(1.06) translateZ(0)",
+              transform: "rotate(0deg) scale(1.06) translateZ(0)",
               filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.85))",
               willChange: "transform",
             }}
@@ -2101,8 +2101,8 @@ export default function MagicWheelBoard({
   // BUG-07 FIX: Sync animRevealedIndices khi server gửi state mới (sau reconnect hoặc letter reveal)
   useEffect(() => {
     if (!currentPuzzle?.revealedIndices) return;
-    // Khi đang trong trận đấu trực tiếp, để choreography xử lý highlight xanh 500ms trước khi thêm vào animRevealedIndices
-    if (phase !== "ROUND_RECAP" && prevServerRevealedRef.current.length > 0) {
+    // Khi đang trong trận đấu trực tiếp (đặc biệt là Toss-Up), để choreography xử lý highlight xanh 500ms trước khi thêm vào animRevealedIndices
+    if (phase !== "ROUND_RECAP" && (prevServerRevealedRef.current.length > 0 || roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2")) {
       return;
     }
     setAnimRevealedIndices((prev) => {
@@ -2574,19 +2574,24 @@ export default function MagicWheelBoard({
     activeTimersRef.current = [];
   }, []);
 
-  // Reset revealed state when puzzle changes
+    const roundPuzzleKey = `${currentRound}_${roundStage}_${currentPuzzle?.id || ""}_${currentPuzzle?.secretPhrase || ""}`;
+  const prevRoundPuzzleKeyRef = useRef<string>(roundPuzzleKey);
+
+  // Reset revealed state when puzzle or round changes (Đảm bảo TOSS_UP_2 luôn được reset sạch sẽ để kích hoạt highlight ô đầu)
   useEffect(() => {
-    if (currentPuzzle?.id !== prevPuzzleIdRef.current) {
-      prevPuzzleIdRef.current = currentPuzzle?.id;
+    if (roundPuzzleKey !== prevRoundPuzzleKeyRef.current) {
+      prevRoundPuzzleKeyRef.current = roundPuzzleKey;
       clearChoreographyTimers();
-      const initialSet = new Set(currentPuzzle?.revealedIndices || []);
-      prevServerRevealedRef.current = [...(currentPuzzle?.revealedIndices || [])];
+      const isTossUp = roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2";
+      const initialSet = isTossUp ? new Set<number>() : new Set(currentPuzzle?.revealedIndices || []);
+      prevServerRevealedRef.current = isTossUp ? [] : [...(currentPuzzle?.revealedIndices || [])];
       setHighlightedIndices(new Set());
       setAnimRevealedIndices(initialSet);
+      animRevealedIndicesRef.current = new Set(initialSet);
       setHostessPose("IDLE");
       setHostessXPercent(hostessSideRef.current === "LEFT" ? 6 : 94);
     }
-  }, [currentPuzzle?.id, currentPuzzle?.revealedIndices, clearChoreographyTimers]);
+  }, [roundPuzzleKey, roundStage, currentPuzzle?.revealedIndices, clearChoreographyTimers]);
 
   // Sequential Highlight (highlight.mp3) -> Hostess Intelligent Reveal (letter_open.mp3)
   useEffect(() => {
@@ -2899,7 +2904,7 @@ export default function MagicWheelBoard({
       setIsWheelZoomedIn(false);
       setWheelZoomDurationMs(800);
       lastSnapTimeRef.current = 0;
-      if (needleRef.current) needleRef.current.style.transform = `translateX(-50%) rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
+      if (needleRef.current) needleRef.current.style.transform = `rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
       soundManager.stopWheelSpinMusic(150);
       return;
     }
@@ -2931,7 +2936,7 @@ export default function MagicWheelBoard({
 
     lastSnapTimeRef.current = 0;
     if (wheelRef.current) wheelRef.current.style.transform = `rotate(${startAngle + angleOffset}deg)`;
-    if (needleRef.current) needleRef.current.style.transform = `translateX(-50%) rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
+    if (needleRef.current) needleRef.current.style.transform = `rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
 
     if (canPlayBoardAudio) soundManager.playWheelPegTick(0.05);
 
@@ -2991,7 +2996,7 @@ export default function MagicWheelBoard({
       }
 
       if (needleRef.current) {
-        needleRef.current.style.transform = `translateX(-50%) rotate(${needleAngle + angleOffset}deg) scale(1.06) translateZ(0)`;
+        needleRef.current.style.transform = `rotate(${needleAngle + angleOffset}deg) scale(1.06) translateZ(0)`;
       }
 
       if (rawProgress < 1) {
@@ -3006,7 +3011,7 @@ export default function MagicWheelBoard({
         setClientWheelAngle(finalTarget);
         wheelPrevAngleRef.current = finalTarget;
         if (needleRef.current) {
-          needleRef.current.style.transform = `translateX(-50%) rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
+          needleRef.current.style.transform = `rotate(${angleOffset}deg) scale(1.06) translateZ(0)`;
         }
         if (canPlayBoardAudio && !hasPlayedLandingAudioRef.current) {
           hasPlayedLandingAudioRef.current = true;
@@ -3106,8 +3111,9 @@ export default function MagicWheelBoard({
       const origIdx = Number(origIdxStr);
       const isLetter = isVietnameseAlphabetLetter(pos.char);
       // Digits (0-9) and special characters (like '-') are revealed immediately when opening the board without requiring players to guess!
+      const isNonLetterSymbol = !isLetter && pos.char.trim().length > 0;
       const isAutoRevealed = !isLetter;
-      const isRev = isAutoRevealed || animRevealedIndices.has(origIdx);
+      const isRev = isNonLetterSymbol || isAutoRevealed || animRevealedIndices.has(origIdx);
       const isHl = highlightedIndices.has(origIdx);
       // CRITICAL REQUIREMENT: Show ONLY base letter without tone marks during play!
       // Full accented phrase is only shown on ROUND_RECAP after solving with exact tones.
@@ -3683,12 +3689,12 @@ export default function MagicWheelBoard({
                       className={`w-full aspect-[4/5] sm:aspect-[5/6] min-h-0 min-w-0 rounded font-black flex items-center justify-center select-none ${
                         isJustCut ? "animate-vtv3-tile-cut" : ""
                       } ${
-                        isPopping
+                        cell.isHighlighted
+                          ? "bg-gradient-to-tr from-emerald-600 via-green-500 to-emerald-400 text-transparent border-2 border-green-200 scale-105 shadow-[0_0_35px_#22c55e,0_0_20px_#10b981] animate-pulse z-20"
+                          : isPopping
                           ? "bg-white text-[#0f172a] border-2 border-yellow-300 shadow-[0_0_35px_#f59e0b] animate-vtv3-tile-pop z-30"
                           : isLuckyGreen
                           ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
-                          : cell.isHighlighted
-                          ? "bg-gradient-to-tr from-emerald-600 via-green-500 to-emerald-400 text-transparent border-2 border-green-200 scale-105 shadow-[0_0_35px_#22c55e,0_0_20px_#10b981] animate-pulse z-20"
                           : cell.isRevealed
                           ? "bg-white text-[#0f172a] shadow-[0_4px_12px_rgba(255,255,255,0.45)] border-2 border-white scale-100"
                           : phase === "LUCKY_PICK"
@@ -3701,7 +3707,7 @@ export default function MagicWheelBoard({
                       }}
                     >
                       <span className={`font-black tracking-tight leading-none ${isDisplayMode ? (isTossUpRound ? "text-xs sm:text-base md:text-xl lg:text-2xl" : "text-[11px] sm:text-sm md:text-lg lg:text-xl") : (isTossUpRound ? "text-base sm:text-xl md:text-2xl lg:text-3xl" : "text-xs sm:text-base md:text-xl lg:text-2xl")}`}>
-                        {cell.isRevealed ? cell.displayChar : isLuckyGreen ? "✓" : cell.isHighlighted ? "" : phase === "LUCKY_PICK" ? "🍀" : "?"}
+                        {cell.isHighlighted ? "" : cell.isRevealed ? cell.displayChar : isLuckyGreen ? "✓" : phase === "LUCKY_PICK" ? "🍀" : "?"}
                       </span>
                     </div>
                   );
@@ -4503,8 +4509,7 @@ export default function MagicWheelBoard({
           <div className="w-full mt-1 p-2 rounded-xl bg-gradient-to-r from-amber-500/30 via-yellow-400/30 to-emerald-500/30 border border-amber-400 flex items-center justify-between gap-3 shrink-0 shadow-lg animate-fade-in z-30">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
               <span className="text-xl">👑</span>
-              <span className="font-black text-amber-300 uppercase">GIẢI MÃ THÀNH CÔNG:</span>
-              <span className="font-black text-white">
+              <span className="font-black text-white text-sm sm:text-base md:text-lg tracking-wider uppercase text-center w-full">
                 {currentPuzzle?.puzzleType === "CROSSWORD" && currentPuzzle.crosswordWords
                   ? currentPuzzle.crosswordWords.map((w) => w.word).join(" · ")
                   : `“${currentPuzzle?.secretPhrase}”`}
@@ -5182,9 +5187,7 @@ export default function MagicWheelBoard({
                 <span className="text-3xl sm:text-4xl animate-bounce">👑</span>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950">
-                      GIẢI MÃ THÀNH CÔNG
-                    </span>
+                    
                     {lastSolveFeedback?.teamName && (
                       <span className="font-black text-xs sm:text-sm text-amber-300">
                         🎉 {formatTeamLabel(lastSolveFeedback.teamName)} (+{(lastSolveFeedback.pointsAwarded || 0).toLocaleString()}đ)

@@ -24644,9 +24644,13 @@ process.on("unhandledRejection", (reason, promise) => {
 process.on("uncaughtException", (error) => {
   console.error("[Process Safety] Uncaught Exception:", error);
 });
-var dev = process.env.NODE_ENV !== "production";
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = "production";
+}
+var dev = process.env.NODE_ENV === "development";
 var hostname = process.env.HOSTNAME || "0.0.0.0";
 var port = parseInt(process.env.PORT ?? "3000", 10);
+console.log(`[Server Boot] Mode: ${dev ? "DEVELOPMENT (Turbopack JIT)" : "PRODUCTION (Precompiled Static Chunks)"} | Port: ${port}`);
 var app = (0, import_next.default)({ dev, hostname, port });
 var handle = app.getRequestHandler();
 app.prepare().then(async () => {

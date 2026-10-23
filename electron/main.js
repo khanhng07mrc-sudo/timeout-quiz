@@ -18,37 +18,57 @@ app.commandLine.appendSwitch("high-dpi-support", "1");
 let mainWindow = null;
 let serverProcess = null;
 
+function killProcessTree(proc) {
+  if (!proc || !proc.pid) return;
+  try {
+    if (process.platform === "win32") {
+      spawn("taskkill", ["/pid", proc.pid.toString(), "/T", "/F"], { stdio: "ignore" });
+    } else {
+      proc.kill("SIGKILL");
+    }
+  } catch (_) {}
+}
+
 function startBackendServerIfNeeded(url) {
   return new Promise((resolve) => {
+    const appRoot = path.resolve(__dirname, "..");
+    const serverJs = path.join(appRoot, "server.js");
+    const logFile = path.join(appRoot, "electron-debug.log");
+    fs.writeFileSync(logFile, `[${new Date().toISOString()}] startBackendServerIfNeeded started. appRoot=${appRoot}, serverJs=${serverJs}, exists=${fs.existsSync(serverJs)}\n`, { flag: "a" });
+
     const testReq = http.get(url, (res) => {
+      fs.writeFileSync(logFile, `[${new Date().toISOString()}] Server already running on ${url} (status: ${res.statusCode})\n`, { flag: "a" });
       resolve(true); // Server is already running
     });
-    testReq.on("error", () => {
-      // Server not running, auto-spawn background node server
-      const appRoot = path.resolve(__dirname, "..");
-      const serverJs = path.join(appRoot, "server.js");
+    testReq.on("error", (reqErr) => {
+      fs.writeFileSync(logFile, `[${new Date().toISOString()}] testReq error: ${reqErr.message}. Attempting spawn...\n`, { flag: "a" });
       if (fs.existsSync(serverJs)) {
+        const prodEnv = { ...process.env, PORT: "3000", NODE_ENV: "production" };
         try {
           serverProcess = spawn("node", ["server.js"], {
             cwd: appRoot,
-            env: { ...process.env, PORT: "3000" },
+            env: prodEnv,
+            shell: process.platform === "win32",
+            windowsHide: true,
             stdio: "ignore",
           });
+          fs.writeFileSync(logFile, `[${new Date().toISOString()}] Spawned serverProcess with PID: ${serverProcess ? serverProcess.pid : "null"}\n`, { flag: "a" });
+          serverProcess.on("error", (err) => {
+            fs.writeFileSync(logFile, `[${new Date().toISOString()}] serverProcess error event: ${err.message}\n`, { flag: "a" });
+          });
+          serverProcess.on("exit", (code, signal) => {
+            fs.writeFileSync(logFile, `[${new Date().toISOString()}] serverProcess exit: code=${code}, signal=${signal}\n`, { flag: "a" });
+          });
         } catch (err) {
-          try {
-            serverProcess = spawn(process.execPath, [serverJs], {
-              cwd: appRoot,
-              env: { ...process.env, PORT: "3000", ELECTRON_RUN_AS_NODE: "1" },
-              stdio: "ignore",
-            });
-          } catch (_) {}
+          fs.writeFileSync(logFile, `[${new Date().toISOString()}] Spawn exception: ${err.message}\n`, { flag: "a" });
         }
+      } else {
+        fs.writeFileSync(logFile, `[${new Date().toISOString()}] serverJs NOT FOUND at ${serverJs}!\n`, { flag: "a" });
       }
       resolve(false);
     });
     testReq.setTimeout(600, () => {
       testReq.destroy();
-      resolve(false);
     });
   });
 }
@@ -69,10 +89,10 @@ function checkServerReady(url, timeoutMs = 25000) {
           resolve(false);
         }
       });
-      req.setTimeout(800, () => {
+      req.setTimeout(600, () => {
         req.destroy();
       });
-    }, 400);
+    }, 150);
   });
 }
 
@@ -151,9 +171,14 @@ async function createWindow() {
 
   // Kiểm tra kết nối tới server
   const isReady = await checkServerReady(targetUrl, 25000);
-  if (isReady) {
+  if (mainWindow && mainWindow.webContents && mainWindow.webContents.session) {
+    try {
+      await mainWindow.webContents.session.clearCache();
+    } catch (_) {}
+  }
+  if (isReady && mainWindow) {
     mainWindow.loadURL(targetUrl);
-  } else {
+  } else if (mainWindow) {
     mainWindow.loadURL(targetUrl); // Thử tải trực tiếp
   }
 
@@ -178,12 +203,12 @@ app.whenReady().then(() => {
   });
 });
 
+app.on("before-quit", () => {
+  killProcessTree(serverProcess);
+});
+
 app.on("will-quit", () => {
-  if (serverProcess) {
-    try {
-      serverProcess.kill();
-    } catch (_) {}
-  }
+  killProcessTree(serverProcess);
 });
 
 app.on("window-all-closed", () => {

@@ -37,9 +37,15 @@ process.on("uncaughtException", (error) => {
   console.error("[Process Safety] Uncaught Exception:", error);
 });
 
-const dev = process.env.NODE_ENV !== "production";
+// Enforce production mode by default for packaged/bundled server.js
+if (!process.env.NODE_ENV) {
+  (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+}
+const dev = process.env.NODE_ENV === "development";
 const hostname = process.env.HOSTNAME || "0.0.0.0";
 const port = parseInt(process.env.PORT ?? "3000", 10);
+
+console.log(`[Server Boot] Mode: ${dev ? "DEVELOPMENT (Turbopack JIT)" : "PRODUCTION (Precompiled Static Chunks)"} | Port: ${port}`);
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();

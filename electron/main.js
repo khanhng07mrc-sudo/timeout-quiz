@@ -34,23 +34,27 @@ function startBackendServerIfNeeded(url) {
     const appRoot = path.resolve(__dirname, "..");
     const serverJs = path.join(appRoot, "server.js");
     const logFile = path.join(appRoot, "electron-debug.log");
+    const serverLog = path.join(appRoot, "server-runtime.log");
     fs.writeFileSync(logFile, `[${new Date().toISOString()}] startBackendServerIfNeeded started. appRoot=${appRoot}, serverJs=${serverJs}, exists=${fs.existsSync(serverJs)}\n`, { flag: "a" });
 
     const testReq = http.get(url, (res) => {
+      res.resume(); // Tiêu thụ stream để giải phóng socket
       fs.writeFileSync(logFile, `[${new Date().toISOString()}] Server already running on ${url} (status: ${res.statusCode})\n`, { flag: "a" });
-      resolve(true); // Server is already running
+      resolve(true);
     });
     testReq.on("error", (reqErr) => {
       fs.writeFileSync(logFile, `[${new Date().toISOString()}] testReq error: ${reqErr.message}. Attempting spawn...\n`, { flag: "a" });
       if (fs.existsSync(serverJs)) {
-        const prodEnv = { ...process.env, PORT: "3000", NODE_ENV: "production" };
+        const prodEnv = { ...process.env, PORT: "3000", HOSTNAME: "127.0.0.1", NODE_ENV: "production" };
         try {
+          const outStream = fs.openSync(serverLog, "a");
+          const errStream = fs.openSync(serverLog, "a");
           serverProcess = spawn("node", ["server.js"], {
             cwd: appRoot,
             env: prodEnv,
             shell: process.platform === "win32",
             windowsHide: true,
-            stdio: "ignore",
+            stdio: ["ignore", outStream, errStream],
           });
           fs.writeFileSync(logFile, `[${new Date().toISOString()}] Spawned serverProcess with PID: ${serverProcess ? serverProcess.pid : "null"}\n`, { flag: "a" });
           serverProcess.on("error", (err) => {
@@ -67,32 +71,37 @@ function startBackendServerIfNeeded(url) {
       }
       resolve(false);
     });
-    testReq.setTimeout(600, () => {
+    testReq.setTimeout(1200, () => {
       testReq.destroy();
     });
   });
 }
 
-function checkServerReady(url, timeoutMs = 25000) {
+function checkServerReady(url, timeoutMs = 35000) {
   const startTime = Date.now();
   return new Promise((resolve) => {
+    let done = false;
     const interval = setInterval(() => {
+      if (done) return;
       const req = http.get(url, (res) => {
+        res.resume(); // Luôn tiêu thụ body để đóng socket đúng cách, chống FIN_WAIT_1
         if (res.statusCode && res.statusCode < 500) {
+          done = true;
           clearInterval(interval);
           resolve(true);
         }
       });
       req.on("error", () => {
         if (Date.now() - startTime > timeoutMs) {
+          done = true;
           clearInterval(interval);
           resolve(false);
         }
       });
-      req.setTimeout(600, () => {
+      req.setTimeout(1200, () => {
         req.destroy();
       });
-    }, 150);
+    }, 400); // 400ms polling êm dịu, không nghẽn backlog
   });
 }
 
@@ -118,7 +127,7 @@ async function createWindow() {
   // Tùy chỉnh Menu trống để giao diện gọn gàng chuẩn TV
   Menu.setApplicationMenu(null);
 
-  const targetUrl = process.env.APP_URL || "http://localhost:3000";
+  const targetUrl = process.env.APP_URL || "http://127.0.0.1:3000";
 
   // Hiển thị Splash Screen với Holographic 3D Gyroscope Quizorra Logo
   mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`

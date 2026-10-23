@@ -2623,16 +2623,58 @@ export default function MagicWheelBoard({
     }
 
     // In Toss-Up running mode:
-    // QUY TẮC CHUẨN: MỌI chữ cái (1, 2, 3...) khi đến lượt đều phải được HIGHLIGHT XANH 450ms trước -> Tắt highlight -> BUNG CHỮ zoom punch 135% -> 100%!
-    // Tuyệt đối không bao giờ để chữ lộ ra trước khi highlight!
+    // QUY TẮC CỦA NGƯỜI DÙNG:
+    // 1. Chỉ highlight chữ đầu tiên của vòng đoán nhanh, VÀ PHẢI CÓ ĐỘNG TÁC TAY TỪ NGƯỜI MẪU.
+    // 2. Tất cả các chữ tiếp theo (từ chữ thứ 2 trở đi): TUYỆT ĐỐI KHÔNG HIGHLIGHT XANH, tự động bung ra trực tiếp (zoom punch)!
     if (roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2") {
-      newLetters.forEach((tileIdx, letterIdx) => {
-        if (!animRevealedIndicesRef.current.has(tileIdx)) {
-          const staggerDelay = letterIdx * 900;
-          const tHl = setTimeout(() => {
-            setHighlightedIndices((prev) => new Set([...prev, tileIdx]));
-            if (canPlayBoardAudio) soundManager.playMagicWheelMark();
+      newLetters.forEach((tileIdx) => {
+        if (animRevealedIndicesRef.current.has(tileIdx)) return;
 
+        if (!tossUpFirstTileDoneRef.current) {
+          // ── CHỮ ĐẦU TIÊN CỦA TOSS-UP: Bật highlight xanh + Người mẫu catwalk bước tới giơ tay chạm lật! ──
+          tossUpFirstTileDoneRef.current = true;
+
+          // 1. Bật highlight xanh cho duy nhất chữ đầu tiên
+          setHighlightedIndices(new Set([tileIdx]));
+          if (canPlayBoardAudio) soundManager.playMagicWheelMark();
+
+          // 2. Tính tọa độ ô chữ
+          const pos = cellPositionsMap[tileIdx] || { col: 6, row: 1 };
+          const tileCol = pos.col;
+          const tileRow = pos.row;
+
+          const prevX = hostessXPercentRef.current;
+          const prevCol = (prevX / 100) * 14;
+          const colDist = Math.abs(tileCol - prevCol);
+          const standSide = colDist <= 4 ? hostessSideRef.current : (hostessSideRef.current === "LEFT" ? "RIGHT" : "LEFT");
+          hostessSideRef.current = standSide;
+
+          const tileCenterPercent = ((tileCol + 0.5) / 14) * 100;
+          const targetPercent = standSide === "LEFT"
+            ? Math.max(6, tileCenterPercent - 9)
+            : Math.min(94, tileCenterPercent + 9);
+
+          const walkTime = colDist <= 4 ? 600 : 900;
+          const touchTime = 500;
+
+          // Người mẫu bước tới ô
+          const tWalk = setTimeout(() => {
+            setHostessPose("WALKING");
+            setHostessFacing(standSide === "LEFT" ? "RIGHT" : "LEFT");
+            setHostessActiveRow(tileRow);
+            setHostessWalkDurationMs(walkTime);
+            setHostessXPercent(targetPercent);
+            hostessXPercentRef.current = targetPercent;
+          }, 200);
+          activeTimersRef.current.push(tWalk);
+
+          // Tới nơi: Người mẫu giơ tay chạm ô chữ
+          const tTouch = setTimeout(() => {
+            setHostessPose("TOUCHING");
+            setHostessFacing(standSide === "LEFT" ? "RIGHT" : "LEFT");
+            setHostessActiveRow(tileRow);
+
+            // Khoảnh khắc chạm: tắt highlight xanh, BUNG CHỮ zoom punch!
             const tRev = setTimeout(() => {
               setHighlightedIndices((prev) => {
                 const next = new Set(prev);
@@ -2643,23 +2685,44 @@ export default function MagicWheelBoard({
               animRevealedIndicesRef.current.add(tileIdx);
               triggerTilePop(tileIdx);
               if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
-            }, 450);
+            }, 180);
             activeTimersRef.current.push(tRev);
-          }, staggerDelay);
-          activeTimersRef.current.push(tHl);
+          }, 200 + walkTime);
+          activeTimersRef.current.push(tTouch);
+
+          // Sau khi chạm xong: Người mẫu catwalk bước dứt khoát về 1 trong 2 bên cánh bảng (6% hoặc 94%)
+          const finishSide = targetPercent < 50 ? "LEFT" : "RIGHT";
+          const finishTargetX = finishSide === "LEFT" ? 6 : 94;
+          const tFinish = setTimeout(() => {
+            setHostessPose("WALKING");
+            setHostessFacing(finishSide === "LEFT" ? "RIGHT" : "LEFT");
+            setHostessWalkDurationMs(750);
+            setHostessXPercent(finishTargetX);
+            hostessXPercentRef.current = finishTargetX;
+
+            const tIdle = setTimeout(() => {
+              setHostessPose("IDLE");
+            }, 750);
+            activeTimersRef.current.push(tIdle);
+          }, 200 + walkTime + touchTime + 200);
+          activeTimersRef.current.push(tFinish);
+
+        } else {
+          // ── TẤT CẢ CÁC CHỮ TIẾP THEO CỦA TOSS-UP: KHÔNG HIGHLIGHT XANH, BUNG TRỰC TIẾP ZOOM PUNCH! ──
+          setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
+          animRevealedIndicesRef.current.add(tileIdx);
+          triggerTilePop(tileIdx);
+          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
         }
       });
       return;
     }
 
-    // ── VÒNG CHÍNH 1..N: HOSTESS VŨ ĐẠO BƯỚC SANG ĐỐI DIỆN -> CHẠM TỪNG Ô XANH ĐỂ BUNG CHỮ ──
+    // ── VÒNG CHÍNH 1..N & VÒNG ĐẶC BIỆT ──
     // Quy tắc:
-    // 1. Highlight xanh ngẫu nhiên / đồng loạt tất cả các vị trí chính xác của chữ cái vừa đoán.
-    // 2. Người mẫu xác định thứ tự mở các ô. Mặc định sẽ di chuyển về phía đối diện của bảng ô chữ
-    //    so với chỗ cũ đã đứng (để không che khuất ô chữ trước máy quay và khán giả).
-    //    Nếu ô chữ chỉ cách khoảng 4 cột (khoảng cách rất gần) thì người mẫu sẽ tiến về vị trí cũ thay vì ra chỗ đối diện.
-    // 3. Người mẫu di chuyển tới ô (WALKING) -> tới nơi đưa tay chạm vào (TOUCHING) -> ô chữ mới tắt highlight xanh,
-    //    zoom lên 135% rồi thu về 100% (zoom punch) kèm âm thanh letter_reveal.
+    // 1. Highlight LẦN LƯỢT các ô đúng với khoảng cách đúng 0.5s (500ms) mỗi chữ.
+    // 2. Sau khi tất cả các ô sáng xanh xong, Người mẫu catwalk bước tới từng ô chạm tay vào để bung chữ (zoom punch).
+    // 3. Kết thúc mở chữ, Người mẫu catwalk dịch hẳn ra 1 trong 2 bên cánh bảng (6% hoặc 94%) rồi mới đứng IDLE!
     const sortedTiles = [...newLetters].sort((a, b) => {
       const posA = cellPositionsMap[a] || { col: 0, row: 0 };
       const posB = cellPositionsMap[b] || { col: 0, row: 0 };
@@ -2667,34 +2730,36 @@ export default function MagicWheelBoard({
       return posA.row - posB.row;
     });
 
-    // Bật highlight xanh cho tất cả các ô chữ đoán đúng
-    setHighlightedIndices((prev) => new Set([...prev, ...sortedTiles]));
-    if (canPlayBoardAudio) soundManager.playMagicWheelMark();
+    // Bước 1: Highlight LẦN LƯỢT các ô đúng với khoảng cách 0.5s mỗi chữ
+    sortedTiles.forEach((tileIdx, sIdx) => {
+      const tHl = setTimeout(() => {
+        setHighlightedIndices((prev) => new Set([...prev, tileIdx]));
+        if (canPlayBoardAudio) soundManager.playMagicWheelMark();
+      }, sIdx * 500); // 0.5s mỗi chữ!
+      activeTimersRef.current.push(tHl);
+    });
 
-    // Bắt đầu chuỗi bước đi và chạm từng ô chữ của người mẫu
-    let currentStepDelay = 350; // Chờ 350ms highlight xanh chớp sáng ổn định
+    // Bước 2: Sau khi tất cả các ô đã sáng xanh xong: Người mẫu mới catwalk bước tới từng ô chạm tay vào
+    const allHighlightedDelay = sortedTiles.length * 500 + 200;
+    let currentStepDelay = allHighlightedDelay;
 
     sortedTiles.forEach((tileIdx) => {
       const pos = cellPositionsMap[tileIdx] || { col: 6, row: 1 };
-      const tileCol = pos.col; // 0..13
+      const tileCol = pos.col;
       const tileRow = pos.row;
 
-      // Xác định vị trí và phía đứng của người mẫu
       const prevX = hostessXPercentRef.current;
       const prevCol = (prevX / 100) * 14;
       const colDist = Math.abs(tileCol - prevCol);
 
-      // Quy tắc: Nếu người mẫu chỉ di chuyển rất gần (<= 4 cột) thì đứng phía cũ thay vì đổi bên
       let standSide: "LEFT" | "RIGHT";
       if (colDist <= 4) {
         standSide = hostessSideRef.current;
       } else {
         standSide = hostessSideRef.current === "LEFT" ? "RIGHT" : "LEFT";
       }
-
       hostessSideRef.current = standSide;
 
-      // Tọa độ % X của người mẫu khi đứng cạnh ô chữ:
       const tileCenterPercent = ((tileCol + 0.5) / 14) * 100;
       const targetPercent = standSide === "LEFT"
         ? Math.max(6, tileCenterPercent - 9)
@@ -2703,7 +2768,7 @@ export default function MagicWheelBoard({
       const walkTime = colDist <= 4 ? 600 : 950;
       const touchTime = 450;
 
-      // Bước 1: Người mẫu Catwalk bước tới ô
+      // Bước 2a: Người mẫu Catwalk bước tới ô
       const tWalk = setTimeout(() => {
         setHostessPose("WALKING");
         setHostessFacing(standSide === "LEFT" ? "RIGHT" : "LEFT");
@@ -2716,7 +2781,7 @@ export default function MagicWheelBoard({
 
       currentStepDelay += walkTime;
 
-      // Bước 2: Người mẫu tới nơi -> đưa tay chạm vào ô chữ
+      // Bước 2b: Người mẫu tới nơi -> đưa tay chạm vào ô chữ
       const tTouch = setTimeout(() => {
         setHostessPose("TOUCHING");
         setHostessFacing(standSide === "LEFT" ? "RIGHT" : "LEFT");
@@ -2740,7 +2805,7 @@ export default function MagicWheelBoard({
       currentStepDelay += touchTime;
     });
 
-    // Kết thúc toàn bộ các ô chữ: Người mẫu catwalk di chuyển dứt khoát ra một trong hai bên cánh bảng (6% hoặc 94%), tuyệt đối không đứng giữa bảng che chữ!
+    // Bước 3: Kết thúc toàn bộ các ô chữ: Người mẫu catwalk di chuyển dứt khoát ra một trong hai bên cánh bảng (6% hoặc 94%), tuyệt đối không đứng giữa bảng che chữ!
     const finishSide = hostessXPercentRef.current < 50 ? "LEFT" : "RIGHT";
     const finishTargetX = finishSide === "LEFT" ? 6 : 94;
     const tWalkSide = setTimeout(() => {
@@ -2749,8 +2814,12 @@ export default function MagicWheelBoard({
       setHostessWalkDurationMs(750);
       setHostessXPercent(finishTargetX);
       hostessXPercentRef.current = finishTargetX;
-      hostessSideRef.current = finishSide;
-    }, currentStepDelay + 250);
+
+      const tIdle = setTimeout(() => {
+        setHostessPose("IDLE");
+      }, 750);
+      activeTimersRef.current.push(tIdle);
+    }, currentStepDelay + 200);
     activeTimersRef.current.push(tWalkSide);
 
     const tFinish = setTimeout(() => {

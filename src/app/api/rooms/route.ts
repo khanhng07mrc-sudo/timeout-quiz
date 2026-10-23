@@ -56,6 +56,9 @@ const DEFAULT_CONFIG = {
   matchMaxQuestions: 0,
 };
 
+// In-memory cache for verified host IDs to eliminate redundant WAN queries
+const verifiedHostIds = new Set<string>();
+
 export async function POST(req: NextRequest) {
   if (!verifyAdminRequest(req)) {
     return NextResponse.json({ error: "Yêu cầu quyền Quản trị viên (Unauthorized)" }, { status: 401 });
@@ -72,19 +75,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Vui lòng nhập tên phòng thi" }, { status: 400 });
     }
 
-    // Ensure host User record exists in DB to prevent foreign key errors
-    const existingHost = await prisma.user.findUnique({ where: { id: effectiveHostId } });
-    if (!existingHost) {
-      await prisma.user.upsert({
-        where: { email: user?.email || `${effectiveHostId}@quizorra.com` },
-        update: {},
-        create: {
-          id: effectiveHostId,
-          name: user?.name || "Quizorra Host",
-          email: user?.email || `${effectiveHostId}@quizorra.com`,
-          role: "ADMIN",
-        },
-      });
+    // Ensure host User record exists in DB with in-memory caching to save 1.5s
+    if (!verifiedHostIds.has(effectiveHostId)) {
+      const existingHost = await prisma.user.findUnique({ where: { id: effectiveHostId } });
+      if (!existingHost) {
+        await prisma.user.upsert({
+          where: { email: user?.email || `${effectiveHostId}@quizorra.com` },
+          update: {},
+          create: {
+            id: effectiveHostId,
+            name: user?.name || "Quizorra Host",
+            email: user?.email || `${effectiveHostId}@quizorra.com`,
+            role: "ADMIN",
+          },
+        });
+      }
+      verifiedHostIds.add(effectiveHostId);
     }
 
     const targetMode = mode ?? "CLASSIC";
@@ -180,7 +186,16 @@ export async function POST(req: NextRequest) {
     const inviteUrl = generateInviteUrl(code);
     const hostKey = generateHostKey();
 
-    let room;
+    const initialTeamScore = (mode ?? "CLASSIC") === "DICE_RACE" ? 1 : Math.max(0, Number(mergedConfig.initialTeamScore) || 0);
+    const teamsCreateData = (teams && Array.isArray(teams))
+      ? teams.map((team: any) => ({
+          name: sanitizeInput(team.name, 50),
+          color: team.color ?? "#6366f1",
+          score: initialTeamScore,
+        }))
+      : [];
+
+    let room: any;
     try {
       room = await prisma.room.create({
         data: {
@@ -194,6 +209,10 @@ export async function POST(req: NextRequest) {
           status: "LOBBY",
           config: mergedConfig,
           inviteUrl,
+          ...(teamsCreateData.length > 0 ? { teams: { create: teamsCreateData } } : {}),
+        },
+        include: {
+          teams: { select: { id: true, name: true } },
         },
       });
     } catch (createErr: any) {
@@ -212,6 +231,10 @@ export async function POST(req: NextRequest) {
             status: "LOBBY",
             config: mergedConfig,
             inviteUrl,
+            ...(teamsCreateData.length > 0 ? { teams: { create: teamsCreateData } } : {}),
+          },
+          include: {
+            teams: { select: { id: true, name: true } },
           },
         });
       } else {
@@ -219,21 +242,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Create teams if provided
-    if (teams && Array.isArray(teams)) {
-      for (const team of teams) {
-        await prisma.team.create({
-          data: {
-            name: sanitizeInput(team.name, 50),
-            color: team.color ?? "#6366f1",
-            roomId: room.id,
-            score: (mode ?? "CLASSIC") === "DICE_RACE" ? 1 : Math.max(0, Number(mergedConfig.initialTeamScore) || 0),
-          },
-        });
-      }
-    }
-
-    // Generate power-up cards if enabled
+    // Generate power-up cards in a single batch query
     if (mergedConfig.powerupEnabled) {
       const allowedTypes = mergedConfig.allowedPowerups as string[];
       if (mergedConfig.powerupOwnerType === "SHARED") {
@@ -245,27 +254,28 @@ export async function POST(req: NextRequest) {
             roomId: room.id,
           })),
         });
-      } else {
-        const createdTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-        const teamIds = createdTeams.map((t) => t.id);
+      } else if (room.teams && room.teams.length > 0) {
+        const teamIds = room.teams.map((t: any) => t.id);
         const cardsMap = distributeCategorizedCardsToTeams(
           teamIds,
           allowedTypes as any,
           mergedConfig.powerupCountPerTeam || 2,
           mergedConfig.sharedPowerupTeamQuota
         );
-        for (const team of createdTeams) {
+        const allCards: any[] = [];
+        for (const team of room.teams) {
           const cards = cardsMap.get(team.id) || [];
-          if (cards.length > 0) {
-            await prisma.powerupCard.createMany({
-              data: cards.map((type) => ({
-                type: type as any,
-                ownerType: "TEAM",
-                teamId: team.id,
-                roomId: room.id,
-              })),
+          for (const cardType of cards) {
+            allCards.push({
+              type: cardType as any,
+              ownerType: "TEAM",
+              teamId: team.id,
+              roomId: room.id,
             });
           }
+        }
+        if (allCards.length > 0) {
+          await prisma.powerupCard.createMany({ data: allCards });
         }
       }
     }

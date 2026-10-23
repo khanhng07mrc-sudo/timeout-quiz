@@ -2275,10 +2275,12 @@ var MAGIC_WHEEL_PRESET_BANKS = [
 ];
 
 // src/lib/quiz-bank-seeder.ts
+var verifiedBankIds = /* @__PURE__ */ new Set();
 async function ensureQuizBankExists(bankId) {
   if (!bankId || typeof bankId !== "string") return null;
   const cleanId = bankId.trim();
   if (!cleanId) return null;
+  if (verifiedBankIds.has(cleanId)) return cleanId;
   try {
     const existing = await prisma.quizBank.findUnique({
       where: { id: cleanId },
@@ -2288,9 +2290,11 @@ async function ensureQuizBankExists(bankId) {
     const preset = allPresets.find((p) => p.id === cleanId);
     if (existing) {
       if (existing.questions && existing.questions.length > 0) {
+        verifiedBankIds.add(existing.id);
         return existing.id;
       }
       if (!preset) {
+        verifiedBankIds.add(existing.id);
         return existing.id;
       }
       await prisma.quizBank.delete({ where: { id: cleanId } }).catch(() => null);
@@ -2357,6 +2361,7 @@ async function ensureQuizBankExists(bankId) {
         where: { id: preset.id },
         select: { id: true }
       });
+      if (verified) verifiedBankIds.add(verified.id);
       return verified ? verified.id : null;
     }
     return null;
@@ -24654,7 +24659,6 @@ console.log(`[Server Boot] Mode: ${dev ? "DEVELOPMENT (Turbopack JIT)" : "PRODUC
 var app = (0, import_next.default)({ dev, hostname, port });
 var handle = app.getRequestHandler();
 app.prepare().then(async () => {
-  await ensureDatabaseSchema();
   const httpServer = (0, import_http.createServer)(async (req, res) => {
     try {
       const parsedUrl = (0, import_url.parse)(req.url, true);
@@ -24667,6 +24671,11 @@ app.prepare().then(async () => {
   });
   const io2 = initSocketServer(httpServer);
   registerSocketHandlers(io2);
+  httpServer.listen(port, "0.0.0.0", () => {
+    console.log(`> Ready on http://${hostname}:${port}`);
+    console.log(`> Socket.IO server initialized`);
+  });
+  ensureDatabaseSchema().catch((err) => console.warn("[DB] Background schema sync note:", err));
   const CLEANUP_INTERVAL_MS = 15 * 60 * 1e3;
   setTimeout(() => {
     cleanupStaleRooms().then((res) => {
@@ -24682,8 +24691,4 @@ app.prepare().then(async () => {
       }).catch((err) => console.error("[Room Cleanup] Periodic error:", err));
     }, CLEANUP_INTERVAL_MS);
   }, 1e4);
-  httpServer.listen(port, "0.0.0.0", () => {
-    console.log(`> Ready on http://${hostname}:${port}`);
-    console.log(`> Socket.IO server initialized`);
-  });
 });

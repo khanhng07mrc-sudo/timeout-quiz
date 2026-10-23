@@ -226,14 +226,18 @@ export default function AdminRoomsListPage() {
 
   const handleDeleteRoom = async (room: RoomItem) => {
     if (!confirm(`Xóa phòng "${room.name}" (${room.code})? Không thể hoàn tác!`)) return;
+    
+    // Optimistic UI: Xóa tức thì khỏi màn hình trong 0ms
+    const previousRooms = rooms;
+    setRooms((prev) => prev.filter((r) => r.code !== room.code));
+    removeLocalSandboxStorage(room.code);
+
+    if (room.code === "OFFLINE" || room.code.startsWith("OFFLINE") || room.config?.isLocalOnly) {
+      return;
+    }
+
     setDeletingId(room.code);
     try {
-      removeLocalSandboxStorage(room.code);
-      if (room.code === "OFFLINE" || room.code.startsWith("OFFLINE") || room.config?.isLocalOnly) {
-        setRooms((prev) => prev.filter((r) => r.code !== room.code));
-        return;
-      }
-
       const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
       const hostKey = localStorage.getItem(`host_key_${room.code}`);
       const headers: Record<string, string> = {};
@@ -241,13 +245,13 @@ export default function AdminRoomsListPage() {
       if (hostKey) headers["x-host-key"] = hostKey;
 
       const res = await fetch(`/api/rooms/${room.code}`, { method: "DELETE", headers });
-      if (res.ok || res.status === 404) {
-        setRooms((prev) => prev.filter((r) => r.code !== room.code));
-      } else {
+      if (!res.ok && res.status !== 404) {
+        setRooms(previousRooms);
         const errData = await res.json().catch(() => ({}));
         alert(errData.error || "Lỗi khi xóa phòng!");
       }
     } catch {
+      setRooms(previousRooms);
       alert("Lỗi kết nối!");
     } finally {
       setDeletingId(null);

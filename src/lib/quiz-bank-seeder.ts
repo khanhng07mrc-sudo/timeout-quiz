@@ -9,10 +9,14 @@ import { MAGIC_WHEEL_PRESET_BANKS, DEFAULT_OFFLINE_BANK } from "@/lib/offline-st
  * Nếu bankId không tồn tại trong DB và không phải Preset, hàm trả về null một cách an toàn
  * để caller không bao giờ ghi ID rác vào trường quizBankId của Room.
  */
+// In-memory cache for verified/seeded quiz bank IDs to eliminate redundant WAN queries
+const verifiedBankIds = new Set<string>();
+
 export async function ensureQuizBankExists(bankId: string | null | undefined): Promise<string | null> {
   if (!bankId || typeof bankId !== "string") return null;
   const cleanId = bankId.trim();
   if (!cleanId) return null;
+  if (verifiedBankIds.has(cleanId)) return cleanId;
 
   try {
     const existing = await prisma.quizBank.findUnique({
@@ -27,9 +31,11 @@ export async function ensureQuizBankExists(bankId: string | null | undefined): P
     if (existing) {
       // Nếu bank đã có câu hỏi, hoặc không phải là preset -> ID hợp lệ
       if (existing.questions && existing.questions.length > 0) {
+        verifiedBankIds.add(existing.id);
         return existing.id;
       }
       if (!preset) {
+        verifiedBankIds.add(existing.id);
         return existing.id;
       }
       // Nếu là preset nhưng rỗng câu hỏi trong DB -> xóa để re-seed đầy đủ bên dưới!
@@ -114,6 +120,7 @@ export async function ensureQuizBankExists(bankId: string | null | undefined): P
         where: { id: preset.id },
         select: { id: true },
       });
+      if (verified) verifiedBankIds.add(verified.id);
       return verified ? verified.id : null;
     }
 

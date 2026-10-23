@@ -503,14 +503,14 @@ export default function ArenaModeLaunchTransition({
       transitionSoundEngine.playTransitionSfx(modeStr);
     }
 
-    // Thời gian transition mượt mà (1.25s)
+    // Thời gian transition siêu tốc (600ms)
     timerOutroRef.current = setTimeout(() => {
       triggerOutro();
-    }, 1250);
+    }, 600);
 
     timerFallbackRef.current = setTimeout(() => {
       triggerOutro();
-    }, 5000);
+    }, 3000);
 
     return () => {
       if (timerOutroRef.current) clearTimeout(timerOutroRef.current);
@@ -530,6 +530,7 @@ export default function ArenaModeLaunchTransition({
   return createPortal(
     <div
       aria-hidden="true"
+      onClick={() => triggerOutro()}
       style={{
         position: "fixed",
         top: 0,
@@ -538,9 +539,11 @@ export default function ArenaModeLaunchTransition({
         height: "100vh",
         zIndex: 99999,
         willChange: "opacity",
+        cursor: "pointer",
       }}
-      className={`pointer-events-none overflow-hidden flex items-center justify-center select-none transition-opacity duration-300 ${
-        isOutro ? "opacity-0" : "opacity-100"
+      title="Bấm chuột bất kỳ để vào phòng ngay"
+      className={`overflow-hidden flex items-center justify-center select-none transition-opacity duration-300 ${
+        isOutro ? "opacity-0 pointer-events-none" : "opacity-100 pointer-events-auto"
       }`}
     >
       {/* ── 1. VẦNG HÀO QUANG RADIAL AURA TRUNG TÂM (100% trong suốt bên ngoài) ── */}

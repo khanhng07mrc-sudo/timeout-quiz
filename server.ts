@@ -51,7 +51,6 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(async () => {
-  await ensureDatabaseSchema();
   const httpServer = createServer(async (req, res) => {
     try {
       const parsedUrl = parse(req.url!, true);
@@ -65,6 +64,14 @@ app.prepare().then(async () => {
 
   const io = initSocketServer(httpServer);
   registerSocketHandlers(io);
+
+  httpServer.listen(port, "0.0.0.0", () => {
+    console.log(`> Ready on http://${hostname}:${port}`);
+    console.log(`> Socket.IO server initialized`);
+  });
+
+  // Run database schema check asynchronously in background without blocking server boot
+  ensureDatabaseSchema().catch((err) => console.warn("[DB] Background schema sync note:", err));
 
   // Periodic room garbage collection every 15 minutes
   const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
@@ -87,9 +94,4 @@ app.prepare().then(async () => {
         .catch((err) => console.error("[Room Cleanup] Periodic error:", err));
     }, CLEANUP_INTERVAL_MS);
   }, 10000);
-
-  httpServer.listen(port, "0.0.0.0", () => {
-    console.log(`> Ready on http://${hostname}:${port}`);
-    console.log(`> Socket.IO server initialized`);
-  });
 });

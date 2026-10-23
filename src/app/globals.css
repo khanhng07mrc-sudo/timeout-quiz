@@ -1104,15 +1104,21 @@ button:not(:disabled):active,
   will-change: transform, opacity;
 }
 
-/* Pop zoom effect when letter is revealed by hostess / player guess */
+/* Pop zoom effect when letter is revealed by hostess / player guess:
+   Zoom punch 138% -> settle down to 100% */
 @keyframes vtv3TilePop {
   0% {
-    transform: scale(0.9);
-    filter: brightness(1.4);
-  }
-  50% {
-    transform: scale(1.15);
+    transform: scale(0.95);
     filter: brightness(1.2);
+  }
+  35% {
+    transform: scale(1.38);
+    filter: brightness(1.4);
+    box-shadow: 0 0 25px rgba(254, 240, 138, 0.9);
+  }
+  70% {
+    transform: scale(0.96);
+    filter: brightness(1.05);
   }
   100% {
     transform: scale(1);
@@ -1121,8 +1127,8 @@ button:not(:disabled):active,
 }
 
 .animate-vtv3-tile-pop {
-  animation: vtv3TilePop 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: vtv3TilePop 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transform-origin: center;
-  will-change: transform;
+  will-change: transform, filter;
 }
 

@@ -18782,7 +18782,7 @@ function registerSocketHandlers(io2) {
       roomTossUpTickTimers.delete(rId);
       const curInitial = roomMagicWheels.get(rId);
       const isEnglish = curInitial?.edition === "ENGLISH";
-      const tickMs = isEnglish ? 1e3 : 750;
+      const tickMs = isEnglish ? 1e3 : 900;
       const tickInterval = setInterval(async () => {
         const cur = roomMagicWheels.get(rId);
         if (!cur || cur.phase !== "TOSS_UP_RUNNING" && cur.phase !== "TOSS_UP_REVEALING" || !cur.currentPuzzle) {
@@ -18861,7 +18861,7 @@ function registerSocketHandlers(io2) {
         wheelState.tossUpRevealOrder = firstLetterIdx !== void 0 ? [firstLetterIdx, ...restIndices] : restIndices;
       }
       const isEnglish = wheelState.edition === "ENGLISH";
-      wheelState.lastActionMessage = isEnglish ? "Letters are appearing one by one (1.0s/letter)! Buzz in as soon as you know the answer!" : "C\xE1c ch\u1EEF c\xE1i \u0111ang l\u1EA7n l\u01B0\u1EE3t xu\u1EA5t hi\u1EC7n (0.75s/ch\u1EEF)! H\xE3y b\u1EA5m chu\xF4ng ngay khi \u0111o\xE1n ra \u0111\xE1p \xE1n!";
+      wheelState.lastActionMessage = isEnglish ? "Letters are appearing one by one (1.0s/letter)! Buzz in as soon as you know the answer!" : "C\xE1c ch\u1EEF c\xE1i \u0111ang l\u1EA7n l\u01B0\u1EE3t xu\u1EA5t hi\u1EC7n (0.9s/ch\u1EEF)! H\xE3y b\u1EA5m chu\xF4ng ngay khi \u0111o\xE1n ra \u0111\xE1p \xE1n!";
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       const firstTimer = setTimeout(() => {
         const cur = roomMagicWheels.get(roomId);
@@ -18874,7 +18874,7 @@ function registerSocketHandlers(io2) {
         }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
         startServerTossUpInterval(roomId, roomCode);
-      }, isEnglish ? 1e3 : 750);
+      }, isEnglish ? 1500 : 1500);
       roomTossUpFirstTimers.set(roomId, firstTimer);
     });
     socket.on("admin:magic_wheel:toss_up_skip", async () => {
@@ -18986,6 +18986,7 @@ function registerSocketHandlers(io2) {
         wheelState.sectors.length
       );
       wheelState.isSpinning = true;
+      wheelState.selectedSector = void 0;
       wheelState.mustSpinOnly = false;
       wheelState.spinPower = effPower;
       wheelState.targetRotationDegrees = targetDegrees;

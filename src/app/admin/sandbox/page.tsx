@@ -10212,16 +10212,44 @@ export default function AdminSandboxPage() {
                           );
                         }
 
+                        const isGuessingLetter = mw?.phase === "ACTION_INPUT" || mw?.phase === "VOWEL_BUY";
+                        const canSpin = !mw?.isSpinning && !isGuessingLetter;
+
                         return (
                           <>
                             <button
                               type="button"
                               onClick={handleMagicWheelQuickSpin}
-                              className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-bold transition text-xs cursor-pointer shadow-sm flex items-center gap-1 active:scale-95"
-                              title="Quay nón cho đội hiện tại"
+                              disabled={!canSpin}
+                              className={`px-3 py-1.5 rounded-lg border font-bold transition text-xs flex items-center gap-1 active:scale-95 ${
+                                canSpin
+                                  ? "bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30 cursor-pointer shadow-sm"
+                                  : "bg-slate-800/40 border-white/5 text-slate-500 opacity-40 cursor-not-allowed"
+                              }`}
+                              title={
+                                isGuessingLetter
+                                  ? "Đang trong lượt đoán chữ — Không thể quay nón cho đến khi đoán chữ xong hoặc MC bấm Qua lượt"
+                                  : mw?.isSpinning
+                                  ? "Vòng quay đang xoay"
+                                  : "Quay nón cho đội hiện tại"
+                              }
                             >
                               <span>🎡</span>
                               <span>Quay nón</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleMagicWheelPassTurn}
+                              disabled={mw?.isSpinning}
+                              className={`px-3 py-1.5 rounded-lg border font-bold transition text-xs flex items-center gap-1 active:scale-95 ${
+                                !mw?.isSpinning
+                                  ? "bg-rose-500/20 border-rose-500/40 text-rose-300 hover:bg-rose-500/30 cursor-pointer shadow-sm"
+                                  : "bg-slate-800/40 border-white/5 text-slate-500 opacity-40 cursor-not-allowed"
+                              }`}
+                              title="Bỏ qua lượt của đội hiện tại khi họ suy nghĩ quá lâu"
+                            >
+                              <span>⏭️</span>
+                              <span>Qua lượt</span>
                             </button>
                             <button
                               type="button"
@@ -12108,7 +12136,7 @@ export default function AdminSandboxPage() {
                       key={t.id}
                       type="button"
                       onClick={() => handleSwitchActiveTeam(idx)}
-                      className={`relative px-1 sm:px-1.5 py-1 rounded-lg text-left border transition flex items-center justify-between gap-0.5 sm:gap-1 cursor-pointer btn-tactile ${
+                      className={`relative px-2 py-1 rounded-lg text-left border transition flex flex-col justify-center gap-0.5 cursor-pointer btn-tactile shrink-0 min-w-[95px] sm:min-w-[110px] ${
                         isActive
                           ? "bg-purple-600/30 border-purple-500 shadow ring-1 ring-purple-400/50"
                           : "glass border-white/10 hover:border-white/30 text-slate-300"
@@ -12127,21 +12155,27 @@ export default function AdminSandboxPage() {
                           {p.text}
                         </span>
                       ))}
-                      <div className="flex items-center gap-1 min-w-0">
+                      {/* Dòng 1: Tên đội */}
+                      <div className="flex items-center gap-1.5 min-w-0 w-full">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
-                        <span className="font-bold text-[10px] truncate text-white">{t.name}</span>
+                        <span className="font-bold text-[10.5px] truncate text-white leading-tight">{t.name}</span>
                       </div>
-                      <span className="font-mono font-bold text-cyan-300 text-[10px] shrink-0 flex items-center gap-1">
-                        <span>{((t.score || 0) + (roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[t.id] || 0) : 0)).toLocaleString()}đ</span>
+                      {/* Dòng 2: Tổng điểm và Điểm vòng riêng biệt */}
+                      <div className="flex items-center justify-between gap-1 w-full text-[9.5px] leading-tight">
+                        <span className="font-mono font-bold text-cyan-300 shrink-0">
+                          {((t.score || 0) + (roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[t.id] || 0) : 0)).toLocaleString()}đ
+                        </span>
                         {roomState?.mode === "MAGIC_WHEEL" && (roomState?.magicWheelState?.roundScores?.[t.id] || 0) > 0 ? (
-                          <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                            Vòng: {(roomState.magicWheelState?.roundScores?.[t.id] || 0).toLocaleString()}đ
+                          <span className="text-[8.5px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold shrink-0">
+                            +{(roomState.magicWheelState?.roundScores?.[t.id] || 0).toLocaleString()}đ
                           </span>
                         ) : null}
                         {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === t.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
-                          <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
+                          <span className="text-yellow-400 font-extrabold text-[8.5px] shrink-0">
+                            (+{roomState.mysteryQuestState.potPoints}đ)
+                          </span>
                         ) : null}
-                      </span>
+                      </div>
                     </button>
                   );
                 })}

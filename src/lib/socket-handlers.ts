@@ -8234,7 +8234,7 @@ export function registerSocketHandlers(io: IO) {
 
       const curInitial = roomMagicWheels.get(rId);
       const isEnglish = curInitial?.edition === "ENGLISH";
-      const tickMs = isEnglish ? 1000 : 750;
+      const tickMs = isEnglish ? 1000 : 900;
 
       const tickInterval = setInterval(async () => {
         const cur = roomMagicWheels.get(rId);
@@ -8327,7 +8327,7 @@ export function registerSocketHandlers(io: IO) {
       const isEnglish = wheelState.edition === "ENGLISH";
       wheelState.lastActionMessage = isEnglish
         ? "Letters are appearing one by one (1.0s/letter)! Buzz in as soon as you know the answer!"
-        : "Các chữ cái đang lần lượt xuất hiện (0.75s/chữ)! Hãy bấm chuông ngay khi đoán ra đáp án!";
+        : "Các chữ cái đang lần lượt xuất hiện (0.9s/chữ)! Hãy bấm chuông ngay khi đoán ra đáp án!";
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
 
       // 1. Authoritative delay for Tile 1 (Cyan Neon highlight + sound)
@@ -8344,7 +8344,7 @@ export function registerSocketHandlers(io: IO) {
 
         // 2. Authoritative driver interval for all subsequent letters (750ms for VN, 1000ms for EN)
         startServerTossUpInterval(roomId, roomCode);
-      }, isEnglish ? 1000 : 750);
+      }, isEnglish ? 1500 : 1500);
       roomTossUpFirstTimers.set(roomId, firstTimer);
     });
 
@@ -8488,6 +8488,7 @@ export function registerSocketHandlers(io: IO) {
       );
 
       wheelState.isSpinning = true;
+      wheelState.selectedSector = undefined;
       wheelState.mustSpinOnly = false;
       wheelState.spinPower = effPower;
       wheelState.targetRotationDegrees = targetDegrees;

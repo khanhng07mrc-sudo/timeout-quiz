@@ -1257,19 +1257,19 @@ function WheelDiscSvg({
 
         {/* ── 3D CONICAL SLOPE SHADING (Độ dốc hình nón từ tâm cao xuống vành ngoài) ── */}
         <radialGradient id="wheelConicalSlope3D" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.32" />
-          <stop offset="22%" stopColor="#ffffff" stopOpacity="0.18" />
-          <stop offset="50%" stopColor="#ffffff" stopOpacity="0.02" />
-          <stop offset="76%" stopColor="#000000" stopOpacity="0.22" />
-          <stop offset="100%" stopColor="#000000" stopOpacity="0.55" />
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.36" />
+          <stop offset="30%" stopColor="#ffffff" stopOpacity="0.18" />
+          <stop offset="60%" stopColor="#ffffff" stopOpacity="0.04" />
+          <stop offset="88%" stopColor="#ffffff" stopOpacity="0.00" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0.08" />
         </radialGradient>
 
-        {/* ── STUDIO OVERHEAD KEY-LIGHT (Ánh đèn sân khấu chuyên nghiệp rọi góc 10h) ── */}
+        {/* ── STUDIO OVERHEAD KEY-LIGHT (Ánh đèn sân khấu chuyên nghiệp rọi sáng trong) ── */}
         <radialGradient id="wheelStudioSpotlight" cx="35%" cy="30%" r="65%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.28" />
-          <stop offset="35%" stopColor="#ffffff" stopOpacity="0.08" />
-          <stop offset="70%" stopColor="#000000" stopOpacity="0.10" />
-          <stop offset="100%" stopColor="#000000" stopOpacity="0.45" />
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.34" />
+          <stop offset="40%" stopColor="#ffffff" stopOpacity="0.14" />
+          <stop offset="75%" stopColor="#ffffff" stopOpacity="0.02" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0.05" />
         </radialGradient>
 
         {/* ── 3D WEDGE BEVEL RIBS: Gờ Ngăn Ô Kim Loại Nổi Khối (Cạnh Phản Quang & Đổ Bóng) ── */}
@@ -2097,25 +2097,25 @@ export default function MagicWheelBoard({
     new Set(currentPuzzle?.revealedIndices || [])
   );
 
-  // BUG-07 FIX: Sync animRevealedIndices khi server gửi state mới (sau reconnect hoặc letter reveal)
+  // BUG-07 FIX: Sync animRevealedIndices khi server gửi state mới (sau reconnect hoặc round recap)
+  // Trong suốt trận đấu trực tiếp (Toss-Up & Vòng chính), choreography kiểm soát hoàn toàn việc highlight -> mở chữ
+  const hasInitializedAnimRef = useRef(false);
   useEffect(() => {
     if (!currentPuzzle?.revealedIndices) return;
-    // Khi đang trong trận đấu trực tiếp (đặc biệt là Toss-Up), để choreography xử lý highlight xanh 500ms trước khi thêm vào animRevealedIndices
-    if (phase !== "ROUND_RECAP" && (prevServerRevealedRef.current.length > 0 || roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2")) {
+    if (phase === "ROUND_RECAP") {
+      setAnimRevealedIndices(new Set(currentPuzzle.revealedIndices));
       return;
     }
-    setAnimRevealedIndices((prev) => {
-      let changed = false;
-      const next = new Set(prev);
-      for (const idx of currentPuzzle.revealedIndices) {
-        if (!next.has(idx)) {
-          next.add(idx);
-          changed = true;
-        }
+    // Chỉ sync 1 lần lúc mount / reconnect nếu có chữ đã mở sẵn trước đó và không phải toss-up
+    if (!hasInitializedAnimRef.current) {
+      hasInitializedAnimRef.current = true;
+      const isTossUp = roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2";
+      if (!isTossUp && currentPuzzle.revealedIndices.length > 0) {
+        setAnimRevealedIndices(new Set(currentPuzzle.revealedIndices));
+        prevServerRevealedRef.current = [...currentPuzzle.revealedIndices];
       }
-      return changed ? next : prev;
-    });
-  }, [currentPuzzle?.revealedIndices, phase]);
+    }
+  }, [currentPuzzle?.revealedIndices, phase, roundStage]);
 
   const isSubmittingTossUpAnswerRef = useRef<boolean>(false);
   const lastTossUpSubmitTimeRef = useRef<number>(0);
@@ -2312,8 +2312,6 @@ export default function MagicWheelBoard({
     if (!isDisplay || !effectiveIsSpinning) {
       if (effectiveBoardStage === "BLANK_PHRASE" || effectiveBoardStage === "READY_CLUE") {
         setCamAngle(3);
-      } else {
-        setCamAngle(0);
       }
       if (camTimerRef.current) clearTimeout(camTimerRef.current);
       return;
@@ -2625,33 +2623,30 @@ export default function MagicWheelBoard({
     }
 
     // In Toss-Up running mode:
-    // (BƯỚC 1: Highlight xanh ô đầu tiên đúng 500ms -> BƯỚC 2: Tắt xanh, chữ cái zoom nảy 135% -> 100%)
+    // QUY TẮC CHUẨN: MỌI chữ cái (1, 2, 3...) khi đến lượt đều phải được HIGHLIGHT XANH 450ms trước -> Tắt highlight -> BUNG CHỮ zoom punch 135% -> 100%!
+    // Tuyệt đối không bao giờ để chữ lộ ra trước khi highlight!
     if (roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2") {
-      newLetters.forEach((tileIdx) => {
+      newLetters.forEach((tileIdx, letterIdx) => {
         if (!animRevealedIndicesRef.current.has(tileIdx)) {
-          const isFirstTossUpLetter = animRevealedIndicesRef.current.size === 0;
-
-          if (isFirstTossUpLetter) {
+          const staggerDelay = letterIdx * 900;
+          const tHl = setTimeout(() => {
             setHighlightedIndices((prev) => new Set([...prev, tileIdx]));
             if (canPlayBoardAudio) soundManager.playMagicWheelMark();
 
-            const t = setTimeout(() => {
+            const tRev = setTimeout(() => {
               setHighlightedIndices((prev) => {
                 const next = new Set(prev);
                 next.delete(tileIdx);
                 return next;
               });
               setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
+              animRevealedIndicesRef.current.add(tileIdx);
               triggerTilePop(tileIdx);
               if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
-            }, 500); // ĐÚNG 500ms highlight xanh chuẩn yêu cầu
-            activeTimersRef.current.push(t);
-          } else {
-            // Các chữ tiếp theo: lật mở tức thì với hiệu ứng zoom nảy
-            setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
-            triggerTilePop(tileIdx);
-            if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
-          }
+            }, 450);
+            activeTimersRef.current.push(tRev);
+          }, staggerDelay);
+          activeTimersRef.current.push(tHl);
         }
       });
       return;
@@ -2788,8 +2783,8 @@ export default function MagicWheelBoard({
 
     let targetSec =
       sector ||
-      selectedSector ||
-      (activeState.selectedSectorIndex !== undefined ? sectors[activeState.selectedSectorIndex] : undefined);
+      (activeState.selectedSectorIndex !== undefined ? sectors[activeState.selectedSectorIndex] : undefined) ||
+      selectedSector;
 
     if (!targetSec && sectors && sectors.length > 0) {
       const segAngle = 360 / sectors.length;
@@ -2806,6 +2801,12 @@ export default function MagicWheelBoard({
     const sType = targetSec.type;
     const oType = targetSec.overlayType;
     const isEnglish = edition === "ENGLISH";
+
+    // Ô điểm số / tiền thưởng: Phát tiếng chime dừng chuẩn xác, tuyệt đối không chạy vào âm thanh ô chức năng cũ
+    if (sType === "POINTS") {
+      soundManager.playWheelStopChime();
+      return;
+    }
 
     // Bản Anh: Các ô đặc biệt như FREE_PLAY, WILD_CARD không có file audio VTV3 tiếng Việt
     if (isEnglish && (sType === "FREE_PLAY" || sType === "WILD_CARD" || oType === "WILD_CARD")) {
@@ -3000,11 +3001,7 @@ export default function MagicWheelBoard({
     if (canPlayBoardAudio) soundManager.playWheelPegTick(0.05);
 
     setIsWheelZoomedIn(false);
-    setWheelZoomDurationMs(7000);
-    zoomStartTimer = setTimeout(() => {
-      setIsWheelZoomedIn(true);
-      setWheelZoomDurationMs(7000);
-    }, 3000);
+    setWheelZoomDurationMs(800);
 
     const step = (now: number) => {
       const elapsed = now - startTime;
@@ -3037,15 +3034,19 @@ export default function MagicWheelBoard({
         // Wheel turns clockwise ->
         // At 12h: rim moves left-to-right -> peg pushes needle tip to the RIGHT (-deg in CSS)
         // At 6h (isPlayer): rim moves right-to-left -> peg pushes upward needle tip to the LEFT (-deg in CSS from 180deg)
+        // Chuẩn hóa 3 trạng thái kim nón theo sơ đồ cơ học:
+        // Trạng thái 1 & 2: Chốt tiến tới sườn kim và đẩy mũi kim lệch sang phải cực đại (hướng -X trong CSS)
+        // Trạng thái 3: Ngay khi chốt thoát, kim bật nảy đàn hồi ngược lại và dao động tắt dần về 0°
         const pegDeflectionSign = -1.0;
-        if (pegDistToSnap <= contactWindow) {
-          const contactProgress = 1.0 - pegDistToSnap / contactWindow;
-          needleAngle = pegDeflectionSign * 18.0 * Math.pow(contactProgress, 1.15);
+        const contactWindowEx = 4.2;
+        if (pegDistToSnap <= contactWindowEx) {
+          const contactProgress = 1.0 - pegDistToSnap / contactWindowEx;
+          needleAngle = pegDeflectionSign * 21.0 * Math.pow(contactProgress, 1.25);
         } else if (lastSnapTimeRef.current > 0) {
           const dt = (now - lastSnapTimeRef.current) / 1000;
-          if (dt < 0.085) {
-            // Rebound bounce with damped oscillation settling to 0
-            needleAngle = -pegDeflectionSign * 10.0 * Math.exp(-32.0 * dt) * Math.cos(50.0 * dt);
+          if (dt < 0.095) {
+            // Spring damped oscillation starting from max deflection and snapping past zero
+            needleAngle = pegDeflectionSign * 21.0 * Math.exp(-28.0 * dt) * Math.cos(55.0 * dt);
           } else {
             needleAngle = 0;
           }
@@ -3172,7 +3173,7 @@ export default function MagicWheelBoard({
       // Digits (0-9) and special characters (like '-') are revealed immediately when opening the board without requiring players to guess!
       const isNonLetterSymbol = !isLetter && pos.char.trim().length > 0;
       const isAutoRevealed = !isLetter;
-      const isRev = isNonLetterSymbol || isAutoRevealed || animRevealedIndices.has(origIdx);
+      const isRev = (isNonLetterSymbol || isAutoRevealed || animRevealedIndices.has(origIdx)) && !highlightedIndices.has(origIdx);
       const isHl = highlightedIndices.has(origIdx);
       // CRITICAL REQUIREMENT: Show ONLY base letter without tone marks during play!
       // Full accented phrase is only shown on ROUND_RECAP after solving with exact tones.
@@ -4557,6 +4558,7 @@ export default function MagicWheelBoard({
               currentPuzzle={currentPuzzle}
               highlightedIndices={highlightedIndices}
               animRevealedIndices={animRevealedIndices}
+              justPoppedIndices={justPoppedIndices}
               hostessXPercent={hostessXPercent}
               hostessPose={hostessPose}
               onCamAngleChange={(cam) => setCamAngle(cam)}

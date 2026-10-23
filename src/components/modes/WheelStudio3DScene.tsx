@@ -51,6 +51,7 @@ interface WheelStudio3DSceneProps {
   } | null;
   highlightedIndices?: Set<number>;
   animRevealedIndices?: Set<number>;
+  justPoppedIndices?: Set<number>;
   hostessXPercent?: number;
   hostessPose?: "IDLE" | "GESTURE" | "WALKING" | "TOUCHING";
   showClueOnCam3?: boolean;
@@ -65,13 +66,13 @@ interface CamConfig {
 // ── Authentic Studio Camera Configurations (6 CAM Multi-Director System) ─────
 const CAM_POSITIONS: Record<string, CamConfig> = {
   // CAM 0 / Default: Tầm mắt truyền hình trực diện nhìn toàn cảnh sân khấu (Master Wide)
-  DEFAULT: { pos: [0.00, 2.70, 8.80], target: [0.00, 1.60, -1.50] },
+  DEFAULT: { pos: [0.00, 2.70, 6.80], target: [0.00, 1.60, -1.50] },
 
   // CAM 1: Trực diện Vòng quay 5.4m & Bàn thí sinh + MC (Contestant & Host Center)
   CAM1_CENTER: { pos: [0.00, 3.35, 5.80], target: [0.00, 1.45, -0.40] },
 
   // CAM 2: Đại cảnh toàn bộ trường quay tầm mắt TV (Master Wide)
-  CAM2_WIDE: { pos: [0.00, 2.70, 8.80], target: [0.00, 1.60, -1.50] },
+  CAM2_WIDE: { pos: [0.00, 2.70, 6.80], target: [0.00, 1.60, -1.50] },
 
   // CAM 3: Trực diện Bảng ô chữ 3D & Người mẫu trợ lý (Hostess) trên bục runway
   CAM3_BOARD: { pos: [-1.80, 1.40, 4.80], target: [-7.80, 1.40, 4.80] },
@@ -710,9 +711,15 @@ function WheelMachineGroup({
   const durationMs = 15000 + Math.round(((spinPower || 65) / 100) * 6000);
 
   useEffect(() => {
-    const candidateTarget = targetRotationDegrees || clientWheelAngle;
-    if (effectiveIsSpinning && candidateTarget > startAngleRef.current) {
-      targetAngleRef.current = candidateTarget;
+    if (effectiveIsSpinning) {
+      spinStartTimeRef.current = performance.now();
+      startAngleRef.current = currentAngleRef.current;
+      const candidateTarget = targetRotationDegrees || clientWheelAngle;
+      if (candidateTarget > startAngleRef.current) {
+        targetAngleRef.current = candidateTarget;
+      }
+    } else {
+      spinStartTimeRef.current = 0;
     }
   }, [clientWheelAngle, targetRotationDegrees, effectiveIsSpinning]);
 
@@ -737,23 +744,24 @@ function WheelMachineGroup({
           lastSnapTimeRef.current = now;
         }
 
-        // Mechanical needle contact & spring snap at 9 o'clock
+        // Chuẩn hóa 3 trạng thái kim nón 3D theo sơ đồ cơ học tại mạn 9h:
+        // Chiều quay CW khiến chốt di chuyển từ dưới lên trên (-Y sang +Y)
+        // Trạng thái 1 & 2: Chốt tiếp xúc cạnh dưới và đẩy mũi kim chúc LÊN TRÊN (+Y, rotation.z > 0) cực đại
+        // Trạng thái 3: Ngay khi chốt vừa thoát, kim đàn hồi bung mạnh ngược lại và dao động tắt dần về 0
         if (needleRef.current) {
           const pegDistToSnap = segAngle - (liveAngle % segAngle);
-          const contactWindow = 3.5; // degrees before peg releases needle
-          const pegDeflectionSign = -1.0;
+          const contactWindow = 4.2;
+          const pegDeflectionSign = 1.0;
 
           if (pegDistToSnap <= contactWindow) {
-            // Peg pushes needle tip upward/deflecting
             const contactProgress = 1.0 - pegDistToSnap / contactWindow;
-            const needleAngle = pegDeflectionSign * 0.28 * Math.pow(contactProgress, 1.15);
+            const needleAngle = pegDeflectionSign * 0.32 * Math.pow(contactProgress, 1.25);
             needleRef.current.rotation.z = needleAngle;
-            needleRef.current.position.y = -Math.abs(needleAngle) * 0.04;
+            needleRef.current.position.y = Math.abs(needleAngle) * 0.035;
           } else if (lastSnapTimeRef.current > 0) {
-            // Elastic spring snap rebound damping to 0
             const dt = (now - lastSnapTimeRef.current) / 1000;
-            if (dt < 0.09) {
-              const snapAngle = -pegDeflectionSign * 0.16 * Math.exp(-30.0 * dt) * Math.cos(48.0 * dt);
+            if (dt < 0.095) {
+              const snapAngle = pegDeflectionSign * 0.32 * Math.exp(-28.0 * dt) * Math.cos(52.0 * dt);
               needleRef.current.rotation.z = snapAngle;
               needleRef.current.position.y = 0;
             } else {
@@ -1389,28 +1397,28 @@ function RealisticContestantMannequin({
       if (t < 0.4) {
         // Giai đoạn 1 (0s - 0.4s): Nhoài người về phía trước mép bục, tay trái tì làm điểm tựa, tay phải vươn bám chốt nón
         const p = Math.min(1, t / 0.4);
-        upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(0, 0.38, p);
-        upperBodyRef.current.position.z = THREE.MathUtils.lerp(0, 0.22, p);
+        upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(0, 0.45, p);
+        upperBodyRef.current.position.z = THREE.MathUtils.lerp(0, 0.32, p);
         upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(0, -0.26, p);
 
         // Tay trái tì lên mép bục nón làm điểm tựa
-        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(0.45, 0.72, p);
+        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(0.45, 0.75, p);
         leftArmRef.current.rotation.z = THREE.MathUtils.lerp(0.18, 0.32, p);
         setHandPoseLeft("REST_TABLE");
 
         // Tay phải vươn xa nắm chặt lấy chốt kim loại thẳng đứng của nón nằm ngang
-        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(0.45, -1.15, p);
-        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(-0.18, -0.48, p);
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(0.45, -1.35, p);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(-0.18, -0.35, p);
         setHandPoseRight("GRIP");
       } else if (t < 1.5) {
         // Giai đoạn 2 (0.4s - 1.5s): Vung tay & dồn toàn bộ trọng tâm cơ bắp đẩy mạnh nón xoay theo chiều kim đồng hồ
         const p = Math.min(1, (t - 0.4) / 1.1);
-        upperBodyRef.current.rotation.x = 0.38 * (1 - p * 0.35);
+        upperBodyRef.current.rotation.x = 0.45 * (1 - p * 0.35);
         upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(-0.26, 0.42, p);
 
         // Vung tay phải từ trái qua phải theo chiều xoay nón
-        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(-1.15, -0.68, p);
-        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(-0.48, 0.82, p);
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(-1.35, -0.68, p);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(-0.35, 0.82, p);
         setHandPoseRight("GRIP");
       } else {
         // Giai đoạn 3 (1.5s trở đi): Buông tay, đứng thẳng người lại bục quan sát nón trôi chậm dần
@@ -2164,7 +2172,7 @@ function ElevatedContestantDaisBehindWheel({
   // -theta: lệch trái camera (mạn 9h). MC đứng riêng tại theta ~ -30°.
   // +theta: lệch phải camera (mạn 3h).
   // Thí sinh xếp đối xứng chính giữa từ minAngleDeg = -10° sang phải chuẩn VTV3 Chiếc Nón Kỳ Diệu.
-  const RADIUS_DAIS = 3.35;
+  const RADIUS_DAIS = 2.58;
   const minAngleDeg = N <= 3 ? -10 : -12;
   const maxAngleDeg = N <= 3 ? 28 : Math.min(68, 28 + (N - 3) * 12);
   const angleStepDeg = N > 1 ? (maxAngleDeg - minAngleDeg) / (N - 1) : 0;
@@ -2915,6 +2923,7 @@ function Studio3DBigLedWall({
   boardStage,
   revealedSet,
   highlightedIndices,
+  justPoppedIndices,
   isSolvedOrRecap,
 }: {
   grid: FormattedTile[][];
@@ -2922,6 +2931,7 @@ function Studio3DBigLedWall({
   boardStage?: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE";
   revealedSet: Set<number>;
   highlightedIndices?: Set<number>;
+  justPoppedIndices?: Set<number>;
   isSolvedOrRecap: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -3003,8 +3013,9 @@ function Studio3DBigLedWall({
         const tile = grid[r]?.[c];
         const isLetter = tile?.isLetter;
         const isStaggerOpen = staggerOpenedKeys.has("ALL") || staggerOpenedKeys.has(`${r}_${c}`);
-        const isRev = isLetter && (revealedSet.has(tile.origIdx) || isSolvedOrRecap);
         const isHl = Boolean(isLetter && highlightedIndices && highlightedIndices.has(tile.origIdx));
+        const isRev = Boolean(isLetter && !isHl && (revealedSet.has(tile.origIdx) || isSolvedOrRecap));
+        const isPopping = Boolean(isRev && justPoppedIndices && justPoppedIndices.has(tile.origIdx));
 
         if (!tile || !isLetter || !isOpen || !isStaggerOpen) {
           // Ô đóng: Màu xanh ngọc bích đậm chuẩn gameshow VTV3 với viền vàng kim
@@ -3037,21 +3048,33 @@ function Studio3DBigLedWall({
           ctx.stroke();
           ctx.shadowBlur = 0;
         } else if (isRev) {
-          // ── BƯỚC 2: CHỮ CÁI MỞ SẮC NÉT (NỀN TRẮNG, CHỮ ĐEN DÁNG CONDENSED) ──
+          // ── BƯỚC 2: CHỮ CÁI MỞ SẮC NÉT (NỀN TRẮNG, ZOOM PUNCH 108PX -> 82PX) ──
           ctx.fillStyle = "#ffffff";
           ctx.beginPath();
           ctx.roundRect(x, y, w, h, 6);
           ctx.fill();
-          ctx.strokeStyle = "#fbbf24";
-          ctx.lineWidth = 3;
-          ctx.stroke();
+
+          if (isPopping) {
+            ctx.strokeStyle = "#fef08a";
+            ctx.lineWidth = 5;
+            ctx.shadowColor = "#f59e0b";
+            ctx.shadowBlur = 18;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          } else {
+            ctx.strokeStyle = "#fbbf24";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+          }
 
           const charToDraw = isSolvedOrRecap ? tile.char : stripVietnameseToneKeepBase(tile.char);
           ctx.fillStyle = "#0f172a";
-          ctx.font = "900 82px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif";
+          ctx.font = isPopping
+            ? "900 106px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif"
+            : "900 82px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(charToDraw.toUpperCase(), x + w / 2, y + h / 2 + 4);
+          ctx.fillText(charToDraw.toUpperCase(), x + w / 2, y + h / 2 + (isPopping ? 6 : 4));
         } else {
           // Ô trắng chờ đoán chữ (Blank white tile)
           ctx.fillStyle = "#ffffff";
@@ -3087,6 +3110,7 @@ function Studio3DPuzzleBoard({
   boardStage,
   highlightedIndices,
   animRevealedIndices,
+  justPoppedIndices,
   hostessXPercent,
   hostessPose,
 }: {
@@ -3102,6 +3126,7 @@ function Studio3DPuzzleBoard({
   boardStage?: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE";
   highlightedIndices?: Set<number>;
   animRevealedIndices?: Set<number>;
+  justPoppedIndices?: Set<number>;
   hostessXPercent?: number;
   hostessPose?: "IDLE" | "GESTURE" | "WALKING" | "TOUCHING";
 }) {
@@ -3113,7 +3138,7 @@ function Studio3DPuzzleBoard({
   }, [currentPuzzle?.secretPhrase, currentPuzzle?.puzzleType, currentPuzzle?.crosswordWords]);
 
   const revealedSet = useMemo(() => {
-    if (animRevealedIndices && animRevealedIndices.size > 0) return animRevealedIndices;
+    if (animRevealedIndices !== undefined) return animRevealedIndices;
     return new Set(currentPuzzle?.revealedIndices || []);
   }, [animRevealedIndices, currentPuzzle?.revealedIndices]);
 
@@ -3319,6 +3344,7 @@ function Studio3DPuzzleBoard({
         boardStage={boardStage}
         revealedSet={revealedSet}
         highlightedIndices={highlightedIndices}
+        justPoppedIndices={justPoppedIndices}
         isSolvedOrRecap={isSolvedOrRecap}
       />
 
@@ -4087,8 +4113,8 @@ function CameraController({
     // Hard Cut: Instant 0ms broadcast vision mixer cut
     if (transitionMode === "CUT" && initialized.current) {
       if (camAngle === 2 && effectiveIsSpinning) {
-        camera.position.set(0.00, 4.40, 22.55);
-        targetLookAtRef.current.set(0.00, 1.25, 0.00);
+        camera.position.set(0.00, 3.60, 11.50);
+        targetLookAtRef.current.set(0.00, 1.40, -0.50);
       } else {
         camera.position.set(...nextCfg.pos);
         targetLookAtRef.current.set(...nextCfg.target);
@@ -4119,15 +4145,15 @@ function CameraController({
         targetFovRef.current = 46 / 1.25; // ~36.8°
         targetLookAtRef.current.set(...CAM_POSITIONS.CAM5_PLAYER.target);
       } else if (camAngle === 2) {
-        // CAM 2 (3s - 7s): Bắt đầu từ xa 1.1x CAM 9 ([0, 4.40, 22.55]) rồi dolly-in lướt vào toàn cảnh [0, 2.70, 8.80]
+        // CAM 2 (3s - 7s): Bắt đầu từ trước hàng ghế khán giả [0, 3.60, 11.50] rồi dolly-in lướt vào toàn cảnh [0, 2.70, 6.80]
         targetFovRef.current = 46;
         const p = Math.max(0, Math.min(1, (elapsed - 3.0) / 4.0));
         const ease = p * p * (3 - 2 * p); // smoothstep
         const curX = 0;
-        const curY = THREE.MathUtils.lerp(4.40, 2.70, ease);
-        const curZ = THREE.MathUtils.lerp(22.55, 8.80, ease);
-        const tgtY = THREE.MathUtils.lerp(1.25, 1.60, ease);
-        const tgtZ = THREE.MathUtils.lerp(0.00, -1.50, ease);
+        const curY = THREE.MathUtils.lerp(3.60, 2.70, ease);
+        const curZ = THREE.MathUtils.lerp(11.50, 6.80, ease);
+        const tgtY = THREE.MathUtils.lerp(1.40, 1.60, ease);
+        const tgtZ = THREE.MathUtils.lerp(-0.50, -1.50, ease);
 
         camera.position.set(curX, curY, curZ);
         targetLookAtRef.current.set(0, tgtY, tgtZ);
@@ -4455,6 +4481,7 @@ function WheelStudio3DSceneComponent({
   currentPuzzle,
   highlightedIndices,
   animRevealedIndices,
+  justPoppedIndices,
   hostessXPercent,
   hostessPose,
   showClueOnCam3 = true,

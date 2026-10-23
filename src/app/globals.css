@@ -1,5 +1,38 @@
 @import "tailwindcss";
 
+/* ── SFU Helvetica Condensed Việt Hoá (Typography Bảng Ô Chữ) ── */
+@font-face {
+  font-family: 'SFU Helvetica Condensed';
+  src: local('SFU Helvetica Condensed Bold'),
+       local('SFU Helvetica Condensed'),
+       local('SFUHelveticaCondensed'),
+       local('SFU Helvetica Bold Condensed'),
+       local('SFUHelveticaBoldCondensed'),
+       url('/fonts/SFU-Helvetica-Condensed.ttf') format('truetype'),
+       url('/fonts/RobotoCondensed-Bold.ttf') format('truetype');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Animation Mở Chữ 2 Bước: Zoom Nảy 135% -> 100% ── */
+@keyframes letterPunchZoom {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.anim-letter-punch {
+  animation: letterPunchZoom 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  will-change: transform;
+}
+
 :root {
   --background: #090a12;
   --foreground: #f8fafc;

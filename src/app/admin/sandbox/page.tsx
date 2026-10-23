@@ -8398,6 +8398,17 @@ export default function AdminSandboxPage() {
   // ── Magic Wheel Dedicated Admin Controls ──────────────────────────────────
   const handleMagicWheelQuickSpin = () => {
     const power = Math.floor(Math.random() * 40 + 50);
+    // Optimistic UI: Lập tức kích hoạt trạng thái quay và phát âm thanh, xóa bỏ độ trễ so với máy thí sinh
+    soundManager.playMagicWheelSpin();
+    setRoomState((prev) => {
+      if (!prev || !prev.magicWheelState) return prev;
+      const cur = { ...prev.magicWheelState, isSpinning: true, spinPower: power };
+      const nextRoom = { ...prev, magicWheelState: cur };
+      roomStateRef.current = nextRoom;
+      syncToIframes({ roomState: nextRoom });
+      return nextRoom;
+    });
+
     if (adminSocketRef.current?.connected) {
       adminSocketRef.current.emit("magic_wheel:spin" as any, { power });
     } else {

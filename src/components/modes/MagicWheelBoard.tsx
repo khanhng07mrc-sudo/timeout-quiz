@@ -376,6 +376,10 @@ function SmartPuzzlePhraseInput({
         return;
       }
       e.preventDefault();
+      e.stopPropagation();
+      if (document.activeElement && typeof (document.activeElement as HTMLElement).blur === "function") {
+        (document.activeElement as HTMLElement).blur();
+      }
       handleTriggerSubmit();
       return;
     }
@@ -621,6 +625,10 @@ function SmartPuzzlePhraseInput({
                 return;
               }
               e.preventDefault();
+              e.stopPropagation();
+              if (e.currentTarget && typeof e.currentTarget.blur === "function") {
+                e.currentTarget.blur();
+              }
               handleTriggerSubmit();
             }
           }}
@@ -818,11 +826,17 @@ function CrosswordSolveModalInput({
   }, [commaText]);
 
   const handleSubmitCommaList = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!commaText.trim()) return;
     if (forbiddenMatch) {
       alert(`⚠️ Vi phạm quy tắc nghiêm ngặt: Không được dùng từ nối "${forbiddenMatch}"! Bạn chỉ được dùng dấu phẩy ',' để phân tách các từ khoá.`);
       return;
+    }
+    if (document.activeElement && typeof (document.activeElement as HTMLElement).blur === "function") {
+      (document.activeElement as HTMLElement).blur();
     }
     onSubmit(commaText.trim().toUpperCase());
   };
@@ -905,6 +919,13 @@ function CrosswordSolveModalInput({
               rows={2}
               value={commaText}
               onChange={(e) => setCommaText(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSubmitCommaList();
+                }
+              }}
               placeholder={
                 edition === "ENGLISH"
                   ? "e.g.: PLANET, STAR, AIR (separate with commas only)"
@@ -2080,6 +2101,10 @@ export default function MagicWheelBoard({
   // BUG-07 FIX: Sync animRevealedIndices khi server gửi state mới (sau reconnect hoặc letter reveal)
   useEffect(() => {
     if (!currentPuzzle?.revealedIndices) return;
+    // Khi đang trong trận đấu trực tiếp, để choreography xử lý highlight xanh 500ms trước khi thêm vào animRevealedIndices
+    if (phase !== "ROUND_RECAP" && prevServerRevealedRef.current.length > 0) {
+      return;
+    }
     setAnimRevealedIndices((prev) => {
       let changed = false;
       const next = new Set(prev);
@@ -2091,7 +2116,7 @@ export default function MagicWheelBoard({
       }
       return changed ? next : prev;
     });
-  }, [currentPuzzle?.revealedIndices]);
+  }, [currentPuzzle?.revealedIndices, phase]);
 
   useEffect(() => {
     if (phase !== "TOSS_UP_BUZZED") {
@@ -2570,8 +2595,8 @@ export default function MagicWheelBoard({
       return;
     }
 
-    // In Toss-Up running mode, if 1 letter is revealed via tick, handle it according to Toss-Up rules
-    // (CHỈ CÓ CHỮ ĐẦU TIÊN được highlight xanh đậm, các chữ tiếp theo lật mở trực tiếp)
+    // In Toss-Up running mode:
+    // (BƯỚC 1: Highlight xanh ô đầu tiên đúng 500ms -> BƯỚC 2: Tắt xanh, chữ cái zoom nảy 135% -> 100%)
     if (roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2") {
       newLetters.forEach((tileIdx) => {
         if (!animRevealedIndicesRef.current.has(tileIdx)) {
@@ -2587,23 +2612,25 @@ export default function MagicWheelBoard({
                 next.delete(tileIdx);
                 return next;
               });
+              setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
               triggerTilePop(tileIdx);
               if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
-              setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
-            }, 750);
+            }, 500); // ĐÚNG 500ms highlight xanh chuẩn yêu cầu
             activeTimersRef.current.push(t);
           } else {
-            // Các chữ cái tiếp theo sau chữ đầu tiên: lật mở trực tiếp, không qua highlight
+            // Các chữ tiếp theo: lật mở tức thì với hiệu ứng zoom nảy
+            setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
             triggerTilePop(tileIdx);
             if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
-            setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
           }
         }
       });
       return;
     }
 
-    // Sort new letters by column (left -> right), then row (top -> bottom)
+    // ── VÒNG CHÍNH 1..N: ANIMATION 2 BƯỚC TINH GỌN CHUẨN YÊU CẦU ──
+    // BƯỚC 1: Highlight xanh TẤT CẢ các ô chứa chữ cái đoán đúng (500ms)
+    // BƯỚC 2: Tắt màu highlight ngay, chữ cái tương ứng zoom lên 135% rồi thu nhỏ nhẹ về 100%
     const sortedAsc = [...newLetters].sort((a, b) => {
       const posA = cellPositionsMap[a] || { col: 0, row: 0 };
       const posB = cellPositionsMap[b] || { col: 0, row: 0 };
@@ -2611,148 +2638,31 @@ export default function MagicWheelBoard({
       return posA.row - posB.row;
     });
 
-    // STEP 1: Sequential Highlight (play highlight.mp3 on each tile)
-    const highlightStepMs = 430;
-    sortedAsc.forEach((tileIdx, stepIdx) => {
-      const t = setTimeout(() => {
-        setHighlightedIndices((prev) => new Set([...prev, tileIdx]));
-        if (canPlayBoardAudio) soundManager.playMagicWheelMark(); // Plays /sounds/magic-wheel/highlight.mp3
-      }, stepIdx * highlightStepMs);
-      activeTimersRef.current.push(t);
-    });
+    // Bật highlight xanh ngay lập tức cho các ô đúng
+    setHighlightedIndices((prev) => new Set([...prev, ...sortedAsc]));
+    if (canPlayBoardAudio) soundManager.playMagicWheelMark();
 
-    const totalHighlightTime = sortedAsc.length * highlightStepMs + 350;
+    // Hostess đứng ở cánh làm cử chỉ tay giới thiệu bảng
+    setHostessPose("GESTURE");
 
-    // STEP 2: Virtual Hostess Intelligent 1-Way Movement & Tile Opening (letter_open.mp3)
-    const startSide = hostessSideRef.current;
-    const isNearStartSide = sortedAsc.every((idx) => {
-      const col = cellPositionsMap[idx]?.col ?? 7;
-      return startSide === "LEFT" ? col <= 3 : col >= 10;
-    });
-    const useStayAndGesture = sortedAsc.length <= 2 && isNearStartSide;
-
-    if (useStayAndGesture) {
-      // Hostess stays at her current side, turns & extends her hand gracefully
-      const gestureStart = setTimeout(() => {
-        setHostessFacing(startSide === "LEFT" ? "RIGHT" : "LEFT");
-        setHostessPose("GESTURE");
-      }, totalHighlightTime - 150);
-      activeTimersRef.current.push(gestureStart);
-
-      const revealStepMs = 420;
-      sortedAsc.forEach((tileIdx, rStep) => {
-        const t = setTimeout(() => {
-          setHighlightedIndices((prev) => {
-            const next = new Set(prev);
-            next.delete(tileIdx);
-            return next;
-          });
-          setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
-          triggerTilePop(tileIdx);
-          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal(); // Plays /sounds/magic-wheel/letter_open.mp3
-        }, totalHighlightTime + rStep * revealStepMs);
-        activeTimersRef.current.push(t);
+    // Sau đúng 500ms: Tắt highlight xanh, mở chữ và kích hoạt zoom punch
+    const revealTimer = setTimeout(() => {
+      setHighlightedIndices((prev) => {
+        const next = new Set(prev);
+        sortedAsc.forEach((idx) => next.delete(idx));
+        return next;
       });
+      setAnimRevealedIndices((prev) => new Set([...prev, ...sortedAsc]));
+      sortedAsc.forEach((idx) => triggerTilePop(idx));
+      if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
 
-      const finishTimer = setTimeout(() => {
+      // Đưa MC về vị trí nghỉ an toàn ở cánh sau 1.2s
+      const resetHostessTimer = setTimeout(() => {
         setHostessPose("IDLE");
-      }, totalHighlightTime + sortedAsc.length * revealStepMs + 400);
-      activeTimersRef.current.push(finishTimer);
-    } else {
-      // Hostess walks strictly in ONE direction from startSide to oppositeSide!
-      // Never walks backward or zig-zags!
-      const walkDirection = startSide === "LEFT" ? "LEFT_TO_RIGHT" : "RIGHT_TO_LEFT";
-      const targetEndSide: "LEFT" | "RIGHT" = startSide === "LEFT" ? "RIGHT" : "LEFT";
-
-      const orderedForWalk = [...sortedAsc].sort((a, b) => {
-        const posA = cellPositionsMap[a] || { col: 0, row: 0 };
-        const posB = cellPositionsMap[b] || { col: 0, row: 0 };
-        if (posA.col !== posB.col) {
-          return walkDirection === "LEFT_TO_RIGHT" ? posA.col - posB.col : posB.col - posA.col;
-        }
-        return posA.row - posB.row;
-      });
-
-      let elapsedWalkMs = totalHighlightTime;
-      let prevCol = hostessSideRef.current === "LEFT" ? 0 : 13;
-
-      orderedForWalk.forEach((tileIdx) => {
-        const pos = cellPositionsMap[tileIdx] || { col: 7, row: 1 };
-        const colDist = Math.abs(pos.col - prevCol);
-        // Tốc độ bước đi thực tế theo khoảng cách: 3.2s - 3.5s thong thả thanh lịch
-        const travelMs = Math.max(3200, Math.min(3500, 3100 + colDist * 30));
-
-        // Move hostess to column
-        const moveTimer = setTimeout(() => {
-          setHostessFacing(pos.col >= prevCol ? "RIGHT" : "LEFT");
-          setHostessPose("WALKING");
-          setHostessWalkDurationMs(travelMs);
-          setHostessActiveRow(pos.row);
-          // Stage Wings layout: Cánh Gà Trái 12%, Bảng Ô Chữ 76%, Cánh Gà Phải 12%
-          // Người mẫu bước đến đúng vị trí cột ô chữ trên sân khấu mà không che khuất
-          const colPercent = 12 + ((pos.col + 0.5) / COLS) * 76;
-          setHostessXPercent(colPercent);
-        }, elapsedWalkMs);
-        activeTimersRef.current.push(moveTimer);
-
-        elapsedWalkMs += travelMs;
-
-        // Touch & open tile (dừng lại 0.8s tạo dáng giơ tay)
-        const touchTimer = setTimeout(() => {
-          setHostessPose("TOUCHING");
-          setHostessActiveRow(pos.row);
-          setHighlightedIndices((prev) => {
-            const next = new Set(prev);
-            next.delete(tileIdx);
-            return next;
-          });
-          setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
-          triggerTilePop(tileIdx);
-          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal(); // Plays /sounds/magic-wheel/letter_open.mp3
-        }, elapsedWalkMs);
-        activeTimersRef.current.push(touchTimer);
-
-        elapsedWalkMs += 800; // Dừng lại 0.8s tạo dáng chỉ tay
-        prevCol = pos.col;
-      });
-
-      // Directional exit after opening the last letter:
-      // Người mẫu tiến tiếp theo hướng đang đi, trừ khi cách cánh đối diện <= 2 ô (ngưỡng 20%)
-      const lastTileIdx = orderedForWalk[orderedForWalk.length - 1];
-      const lastTilePos = cellPositionsMap[lastTileIdx] || { col: 7, row: 1 };
-      const lastTileCol = lastTilePos.col;
-
-      let exitSide: "LEFT" | "RIGHT";
-      if (lastTileCol <= 2) {
-        // Gần cánh trái <= 2 ô -> về cánh trái
-        exitSide = "LEFT";
-      } else if (lastTileCol >= 11) {
-        // Gần cánh phải <= 2 ô -> về cánh phải
-        exitSide = "RIGHT";
-      } else {
-        // Tiếp tục theo hướng đang đi
-        exitSide = walkDirection === "LEFT_TO_RIGHT" ? "RIGHT" : "LEFT";
-      }
-
-      const returnTravelMs = 3200; // 3.2s thong thả về cánh gà
-      const exitPercent = exitSide === "LEFT" ? 6 : 94;
-
-      const finishWalkTimer = setTimeout(() => {
-        setHostessFacing(exitSide === "LEFT" ? "LEFT" : "RIGHT");
-        setHostessPose("WALKING");
-        setHostessWalkDurationMs(returnTravelMs);
-        setHostessXPercent(exitPercent);
-      }, elapsedWalkMs);
-      activeTimersRef.current.push(finishWalkTimer);
-
-      const parkTimer = setTimeout(() => {
-        setHostessSide(exitSide);
-        hostessSideRef.current = exitSide;
-        setHostessFacing(exitSide === "LEFT" ? "RIGHT" : "LEFT");
-        setHostessPose("IDLE");
-      }, elapsedWalkMs + returnTravelMs + 100);
-      activeTimersRef.current.push(parkTimer);
-    }
+      }, 1200);
+      activeTimersRef.current.push(resetHostessTimer);
+    }, 500);
+    activeTimersRef.current.push(revealTimer);
   }, [currentPuzzle?.revealedIndices, phase, roundStage, cellPositionsMap, clearChoreographyTimers, triggerTilePop]);
 
   // ── Toss-Up 1 & 2 Special Choreography Effect ─────────────────────────────
@@ -2909,6 +2819,7 @@ export default function MagicWheelBoard({
     prevWrongCount.current = totalWrongGuesses;
   }, [totalWrongGuesses, canPlayBoardAudio]);
 
+  const lastBuzzedPhaseRef = useRef<string | null>(null);
   const prevPhase = useRef<string>(phase || "SPIN_WAITING");
   const isPhaseMountedRef = useRef<boolean>(false);
   useEffect(() => {
@@ -2931,11 +2842,17 @@ export default function MagicWheelBoard({
       } else if (phase === "TRADE_CHOICE") {
         soundManager.playMagicWheelTrade();
       } else if (phase === "TOSS_UP_BUZZED") {
-        soundManager.playMagicWheelBuzzSolve();
+        if (lastBuzzedPhaseRef.current !== `${currentRound}_${tossUpBuzzedTeamId || currentTurnTeamId}`) {
+          lastBuzzedPhaseRef.current = `${currentRound}_${tossUpBuzzedTeamId || currentTurnTeamId}`;
+          soundManager.playMagicWheelBuzzSolve();
+        }
       }
     }
+    if (phase !== "TOSS_UP_BUZZED") {
+      lastBuzzedPhaseRef.current = null;
+    }
     prevPhase.current = phase;
-  }, [phase, canPlayBoardAudio]);
+  }, [phase, canPlayBoardAudio, currentRound, tossUpBuzzedTeamId, currentTurnTeamId]);
 
   // ── 3D Wheel Animation Loop (RequestAnimationFrame) ──────────────────────
   useEffect(() => {
@@ -2946,7 +2863,8 @@ export default function MagicWheelBoard({
       targetRotationDegrees === undefined || targetRotationDegrees === null || targetRotationDegrees === 0
         ? deadCenterRestingAngle
         : targetRotationDegrees;
-    const angleOffset = isPlayer ? 180 : 0;
+    // Cả Display và Player đều dùng kim 12h chuẩn 360° đồng bộ 1:1, góc bù bằng 0
+    const angleOffset = 0;
 
     if (!effectiveIsSpinning) {
       isSpinningRafRunningRef.current = false;
@@ -3740,13 +3658,17 @@ export default function MagicWheelBoard({
                           : isLuckyGreen
                           ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
                           : cell.isHighlighted
-                          ? "bg-gradient-to-tr from-emerald-600 via-green-500 to-emerald-400 text-transparent border-2 border-green-200 scale-110 shadow-[0_0_35px_#22c55e,0_0_20px_#10b981] animate-pulse z-20"
+                          ? "bg-gradient-to-tr from-emerald-600 via-green-500 to-emerald-400 text-transparent border-2 border-green-200 scale-105 shadow-[0_0_35px_#22c55e,0_0_20px_#10b981] animate-pulse z-20"
                           : cell.isRevealed
                           ? "bg-white text-[#0f172a] shadow-[0_4px_12px_rgba(255,255,255,0.45)] border-2 border-white scale-100"
                           : phase === "LUCKY_PICK"
                           ? "bg-gradient-to-br from-amber-300 via-yellow-300 to-amber-400 text-amber-950 border-2 border-yellow-200 animate-pulse shadow-[0_0_15px_#f59e0b] cursor-pointer hover:scale-105"
                           : "bg-white text-transparent border-2 border-slate-200 shadow-md"
                       }`}
+                      style={{
+                        fontFamily: "'SFU Helvetica Condensed', 'Roboto Condensed', 'Helvetica Condensed', sans-serif",
+                        fontWeight: 900,
+                      }}
                     >
                       <span className={`font-black tracking-tight leading-none ${isDisplayMode ? (isTossUpRound ? "text-xs sm:text-base md:text-xl lg:text-2xl" : "text-[11px] sm:text-sm md:text-lg lg:text-xl") : (isTossUpRound ? "text-base sm:text-xl md:text-2xl lg:text-3xl" : "text-xs sm:text-base md:text-xl lg:text-2xl")}`}>
                         {cell.isRevealed ? cell.displayChar : isLuckyGreen ? "✓" : cell.isHighlighted ? "" : phase === "LUCKY_PICK" ? "🍀" : "?"}
@@ -3902,18 +3824,21 @@ export default function MagicWheelBoard({
           </span>
         </div>
 
-        {/* Inverted Half-Wheel: Tự động ẩn khi thí sinh đang gõ câu đố nhanh để vừa vặn 100% không cuộn */}
+        {/* Full 360° Circular 2D Wheel Disc for Contestant Machine: Thay thế nửa vòng quay bằng vòng tròn 2D đầy đủ, kim 12h khớp 1:1 tránh lỗi lệch kim */}
         {!(isTossUpRound && phase === "TOSS_UP_BUZZED") && (
-          <InteractiveWheelRig
-            variant="PLAYER_INVERTED"
-            wheelRef={wheelRef}
-            needleRef={needleRef}
-            clientWheelAngle={clientWheelAngle}
-            effectiveIsSpinning={effectiveIsSpinning}
-            sectors={sectors}
-            selectedSector={selectedSector}
-            selectedSectorIndex={activeState.selectedSectorIndex}
-          />
+          <div className="w-full flex flex-col items-center justify-center p-1 sm:p-2 overflow-visible shrink-0">
+            <InteractiveWheelRig
+              variant="DISPLAY_360"
+              size="normal"
+              wheelRef={wheelRef}
+              needleRef={needleRef}
+              clientWheelAngle={clientWheelAngle}
+              effectiveIsSpinning={effectiveIsSpinning}
+              sectors={sectors}
+              selectedSector={selectedSector}
+              selectedSectorIndex={activeState.selectedSectorIndex}
+            />
+          </div>
         )}
 
         {/* Compact Phrase Strip */}
@@ -4573,11 +4498,11 @@ export default function MagicWheelBoard({
       <style>{`
         @keyframes vtv3TilePopZoom {
           0% { transform: scale(1); }
-          40% { transform: scale(1.35); box-shadow: 0 0 28px #f59e0b, 0 0 50px rgba(245, 158, 11, 0.75); z-index: 40; }
+          55% { transform: scale(1.35); box-shadow: 0 0 28px #f59e0b, 0 0 50px rgba(245, 158, 11, 0.75); z-index: 40; }
           100% { transform: scale(1); box-shadow: 0 4px 10px rgba(255, 255, 255, 0.4); z-index: 10; }
         }
         .animate-vtv3-tile-pop {
-          animation: vtv3TilePopZoom 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+          animation: vtv3TilePopZoom 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
         }
       `}</style>
 
@@ -5076,13 +5001,17 @@ export default function MagicWheelBoard({
                                   : isLuckyGreen
                                   ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
                                   : cell.isHighlighted
-                                  ? "bg-gradient-to-tr from-[#0a1f44] via-[#1e40af] to-[#0284c7] text-transparent border-2 border-cyan-300 scale-110 shadow-[0_0_35px_#1d4ed8,0_0_20px_#0284c7] animate-pulse z-20"
+                                  ? "bg-gradient-to-tr from-emerald-600 via-green-500 to-emerald-400 text-transparent border-2 border-green-200 scale-105 shadow-[0_0_35px_#22c55e,0_0_20px_#10b981] animate-pulse z-20"
                                   : cell.isRevealed
                                   ? "bg-white text-[#0f172a] shadow-[0_4px_12px_rgba(255,255,255,0.45)] border-2 border-white scale-100"
                                   : phase === "LUCKY_PICK"
                                   ? "bg-gradient-to-br from-amber-300 via-yellow-300 to-amber-400 text-amber-950 border-2 border-yellow-200 animate-pulse shadow-[0_0_15px_#f59e0b] cursor-pointer hover:scale-105"
                                   : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
                               }`}
+                              style={{
+                                fontFamily: "'SFU Helvetica Condensed', 'Roboto Condensed', 'Helvetica Condensed', sans-serif",
+                                fontWeight: 900,
+                              }}
                             >
                               <span className={`${isTossUpRound ? "text-base sm:text-xl md:text-2xl lg:text-3xl" : "text-xs sm:text-base md:text-xl lg:text-2xl"} font-black tracking-tight leading-none`}>
                                 {cell.isRevealed

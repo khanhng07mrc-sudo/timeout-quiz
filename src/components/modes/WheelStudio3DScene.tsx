@@ -706,7 +706,12 @@ function WheelMachineGroup({
   useEffect(() => {
     if (effectiveIsSpinning) {
       startAngleRef.current = currentAngleRef.current;
-      targetAngleRef.current = clientWheelAngle;
+      // Khởi tạo quán tính quay tức thời khi thí sinh rướn đẩy, không bị khựng đợi server:
+      const minSpinDelta = 1440;
+      targetAngleRef.current =
+        clientWheelAngle > currentAngleRef.current
+          ? clientWheelAngle
+          : currentAngleRef.current + minSpinDelta;
       spinStartTimeRef.current = performance.now();
       const sLen = sectors.length || 24;
       lastPegIndexRef.current = Math.floor(startAngleRef.current / (360 / sLen));
@@ -720,7 +725,14 @@ function WheelMachineGroup({
         needleRef.current.position.y = 0;
       }
     }
-  }, [effectiveIsSpinning, clientWheelAngle, sectors.length]);
+  }, [effectiveIsSpinning, sectors.length]);
+
+  // Cập nhật góc đích server khi phản hồi đến trong lúc đang quay
+  useEffect(() => {
+    if (effectiveIsSpinning && clientWheelAngle > startAngleRef.current) {
+      targetAngleRef.current = clientWheelAngle;
+    }
+  }, [clientWheelAngle, effectiveIsSpinning]);
 
   // Sync wheel rotation (+90° offset for 9 o'clock needle alignment) & realistic heavy-inertia 60fps spin & mechanical needle peg-snap
   useFrame((_, delta) => {
@@ -2912,6 +2924,142 @@ function RealisticHostess3D({
 // Giữ alias tương thích
 const StylizedHostess = RealisticHostess3D;
 
+/** Màn hình LED kỹ thuật số lớn trên vách sân khấu 3D (Single Quad Canvas Texture)
+ *  Thay thế hoàn toàn 56 khối 3D độc lập lật 180°, triệt tiêu 100% giật lag!
+ */
+function Studio3DBigLedWall({
+  grid,
+  isOpen,
+  revealedSet,
+  highlightedIndices,
+  isSolvedOrRecap,
+}: {
+  grid: FormattedTile[][];
+  isOpen: boolean;
+  revealedSet: Set<number>;
+  highlightedIndices?: Set<number>;
+  isSolvedOrRecap: boolean;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const textureRef = useRef<THREE.CanvasTexture | null>(null);
+
+  const texture = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = 1400;
+    canvas.height = 560;
+    canvasRef.current = canvas;
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    textureRef.current = tex;
+    return tex;
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const tex = textureRef.current;
+    if (!canvas || !tex) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Phông nền LED Cyber-Board đen ngọc bích
+    ctx.fillStyle = "#041508";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const cols = 14;
+    const rows = 4;
+    const padX = 14;
+    const padY = 12;
+    const totalW = canvas.width - padX * 2;
+    const totalH = canvas.height - padY * 2;
+    const tileW = totalW / cols;
+    const tileH = totalH / rows;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = padX + c * tileW + 4;
+        const y = padY + r * tileH + 4;
+        const w = tileW - 8;
+        const h = tileH - 8;
+        const tile = grid[r]?.[c];
+        const isLetter = tile?.isLetter;
+        const isRev = isLetter && (revealedSet.has(tile.origIdx) || isSolvedOrRecap);
+        const isHl = Boolean(isLetter && highlightedIndices && highlightedIndices.has(tile.origIdx));
+
+        if (!tile || !isLetter || !isOpen) {
+          // Ô đóng: Màu xanh ngọc bích đậm chuẩn gameshow VTV3 với viền vàng kim
+          ctx.fillStyle = "#064e3b";
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, 6);
+          ctx.fill();
+          ctx.strokeStyle = "#15803d";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Hoạ tiết sao trung tâm nhẹ
+          ctx.fillStyle = "rgba(74, 222, 128, 0.25)";
+          ctx.beginPath();
+          ctx.arc(x + w / 2, y + h / 2, 6, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (isHl) {
+          // ── BƯỚC 1: HIGHLIGHT XANH CHỚP SÁNG RỰC RỠ ──
+          ctx.fillStyle = "#16a34a";
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, 6);
+          ctx.fill();
+          ctx.strokeStyle = "#4ade80";
+          ctx.lineWidth = 4;
+          ctx.stroke();
+
+          // Hiệu ứng phát sáng neon
+          ctx.shadowColor = "#22c55e";
+          ctx.shadowBlur = 18;
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        } else if (isRev) {
+          // ── BƯỚC 2: CHỮ CÁI MỞ SẮC NÉT (NỀN TRẮNG, CHỮ ĐEN DÁNG CONDENSED) ──
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, 6);
+          ctx.fill();
+          ctx.strokeStyle = "#fbbf24";
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          const charToDraw = isSolvedOrRecap ? tile.char : stripVietnameseToneKeepBase(tile.char);
+          ctx.fillStyle = "#0f172a";
+          ctx.font = "900 82px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(charToDraw.toUpperCase(), x + w / 2, y + h / 2 + 4);
+        } else {
+          // Ô trắng chờ đoán chữ (Blank white tile)
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, 6);
+          ctx.fill();
+          ctx.strokeStyle = "#e2e8f0";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      }
+    }
+
+    tex.needsUpdate = true;
+  }, [grid, isOpen, revealedSet, highlightedIndices, isSolvedOrRecap]);
+
+  return (
+    <mesh position={[0, 2.20, 0.05]}>
+      <planeGeometry args={[5.14, 2.10]} />
+      {texture ? (
+        <meshBasicMaterial map={texture} toneMapped={false} />
+      ) : (
+        <meshStandardMaterial color="#064e3b" />
+      )}
+    </mesh>
+  );
+}
+
 /** Bảng Ô Chữ 3D đặt vuông góc 90° tại Cánh Trái sân khấu với vách kiến trúc Art-Deco khép kín 100% */
 function Studio3DPuzzleBoard({
   currentPuzzle,
@@ -2966,26 +3114,29 @@ function Studio3DPuzzleBoard({
     (revealedSet.size > 0 && cleanLettersCount > 0 && revealedSet.size >= cleanLettersCount);
 
   // Tính toán vị trí di chuyển X của Người mẫu trên bục runway (nằm trong khung hình CAM 3)
+  // Vị trí di chuyển X của MC trợ lý trên runway:
+  // Vị trí nghỉ (IDLE): Luôn đứng ngoài biên 14 cột ô chữ (X >= 2.55 hoặc X <= -2.55)
+  // để 100% các ô chữ (cột 0 đến 13) luôn thông thoáng tuyệt đối, không bị che khuất!
   const targetHostessX = useMemo(() => {
     if (typeof hostessXPercent === "number") {
-      if (hostessXPercent <= 10) return -2.20;
-      if (hostessXPercent >= 90) return 2.10;
+      if (hostessXPercent <= 10) return -2.65;
+      if (hostessXPercent >= 90) return 2.65;
       const norm = Math.max(0, Math.min(1, (hostessXPercent - 12) / 76));
-      return -2.00 + norm * 4.10;
+      return -2.45 + norm * 4.90;
     }
-    // Fallback nếu không có hostessXPercent: tự tìm vị trí của ô đang highlight
+    // Khi có ô highlight, MC đứng chếch cạnh bên ô đó (không đứng đè trước mặt)
     if (highlightedIndices && highlightedIndices.size > 0) {
       for (const row of grid) {
         for (let c = 0; c < row.length; c++) {
           const t = row[c];
           if (t.isLetter && highlightedIndices.has(t.origIdx)) {
             const posX = (c - 6.5) * 0.36;
-            return Math.max(-2.20, Math.min(2.10, posX + 0.32));
+            return posX < 0 ? Math.min(posX - 0.42, -2.55) : Math.max(posX + 0.42, 2.55);
           }
         }
       }
     }
-    return 1.85;
+    return 2.65; // Safe Idle tại Cánh Phải (Stage Left của khán giả)
   }, [hostessXPercent, highlightedIndices, grid]);
 
   const isTouching = hostessPose === "TOUCHING";
@@ -3141,30 +3292,14 @@ function Studio3DPuzzleBoard({
         <meshStandardMaterial color="#052e16" roughness={0.4} />
       </mesh>
 
-      {/* 5. Ma trận 4x14 ô chữ 3D độc lập lật xoay */}
-      <group position={[0, 0, 0.05]}>
-        {grid.map((row, r) => {
-          const posY = 2.2 + (1.5 - r) * 0.50;
-          return row.map((tile, c) => {
-            const posX = (c - 6.5) * 0.36;
-            // CRITICAL RULE: Tuyệt đối không lật ô chữ khi isBoardEmpty (boardStage === "EMPTY_56")
-            const isRevealed = !isBoardEmpty && tile.isLetter && (revealedSet.has(tile.origIdx) || phase === "ROUND_RECAP");
-            const isHighlighted = Boolean(tile.isLetter && highlightedIndices && highlightedIndices.has(tile.origIdx));
-            return (
-              <Studio3DPuzzleTile
-                key={`tile-${r}-${c}`}
-                tile={tile}
-                isOpen={!isBoardEmpty}
-                isRevealed={isRevealed}
-                isHighlighted={isHighlighted}
-                isSolvedOrRecap={isSolvedOrRecap}
-                posX={posX}
-                posY={posY}
-              />
-            );
-          });
-        })}
-      </group>
+      {/* 5. Màn hình lớn LED Backdrop 4x14 kỹ thuật số siêu nhẹ (Thay thế 56 khối 3D) */}
+      <Studio3DBigLedWall
+        grid={grid}
+        isOpen={!isBoardEmpty}
+        revealedSet={revealedSet}
+        highlightedIndices={highlightedIndices}
+        isSolvedOrRecap={isSolvedOrRecap}
+      />
 
       {/* 6. Người mẫu trợ lý lật ô chữ (Stylized Hostess in evening gown) */}
       <StylizedHostess isRevealing={isRevealing} targetPosX={targetHostessX} isTouching={isTouching} />

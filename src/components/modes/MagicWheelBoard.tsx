@@ -2740,10 +2740,22 @@ export default function MagicWheelBoard({
       currentStepDelay += touchTime;
     });
 
-    // Kết thúc toàn bộ các ô chữ: Đưa người mẫu về vị trí IDLE duyên dáng
+    // Kết thúc toàn bộ các ô chữ: Người mẫu catwalk di chuyển dứt khoát ra một trong hai bên cánh bảng (6% hoặc 94%), tuyệt đối không đứng giữa bảng che chữ!
+    const finishSide = hostessXPercentRef.current < 50 ? "LEFT" : "RIGHT";
+    const finishTargetX = finishSide === "LEFT" ? 6 : 94;
+    const tWalkSide = setTimeout(() => {
+      setHostessPose("WALKING");
+      setHostessFacing(finishSide === "LEFT" ? "RIGHT" : "LEFT");
+      setHostessWalkDurationMs(750);
+      setHostessXPercent(finishTargetX);
+      hostessXPercentRef.current = finishTargetX;
+      hostessSideRef.current = finishSide;
+    }, currentStepDelay + 250);
+    activeTimersRef.current.push(tWalkSide);
+
     const tFinish = setTimeout(() => {
       setHostessPose("IDLE");
-    }, currentStepDelay + 400);
+    }, currentStepDelay + 250 + 800);
     activeTimersRef.current.push(tFinish);
   }, [currentPuzzle?.revealedIndices, phase, roundStage, cellPositionsMap, clearChoreographyTimers, triggerTilePop]);
 
@@ -3838,7 +3850,7 @@ export default function MagicWheelBoard({
               <span className="text-amber-900">⭐</span>
               <span>
                 {edition === "ENGLISH"
-                  ? `CATEGORY: ${formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
+                  ? `CATEGORY: ${effectiveBoardStage === "EMPTY_56" ? "(Waiting for board to open...)" : formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
                   : `CHỦ ĐỀ: ${effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", "VIETNAMESE")}`}
               </span>
               {currentPuzzle?.puzzleType === "CROSSWORD" && (
@@ -3940,7 +3952,7 @@ export default function MagicWheelBoard({
         {/* Compact Phrase Strip */}
         <div className="w-full mt-1 px-3 py-1 rounded-xl bg-black/60 border border-amber-400/30 flex flex-col items-center gap-0.5 shadow-inner shrink-0">
           <div className="flex items-center justify-between w-full text-[11px] font-bold">
-            <span className="text-amber-300 uppercase">⭐ {formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", edition)}</span>
+            <span className="text-amber-300 uppercase">⭐ {effectiveBoardStage === "EMPTY_56" ? (edition === "ENGLISH" ? "(WAITING FOR BOARD TO OPEN...)" : "(CHỜ MC MỞ BẢNG)") : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", edition)}</span>
             <span className="text-slate-400 font-mono text-[10px]">
               {currentPuzzle?.secretPhrase?.replace(/\s+/g, "").length || 0} {edition === "ENGLISH" ? "LETTERS" : "KÝ TỰ"}
             </span>
@@ -4254,7 +4266,7 @@ export default function MagicWheelBoard({
                       {pickedRewardCardIdx !== null ? "Đang mở quà..." : "Chạm vào 1 lá thăm"}
                     </span>
                   </div>
-                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-1 sm:gap-1.5">
+                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-1 max-h-[min(42vh,260px)] overflow-y-auto pr-0.5">
                     {rewardCards.map((card, idx) => {
                       const isRevealed = pickedRewardCardIdx === idx;
                       const isOtherPicked = pickedRewardCardIdx !== null && pickedRewardCardIdx !== idx;
@@ -4275,9 +4287,9 @@ export default function MagicWheelBoard({
                               });
                             }, 1200);
                           }}
-                          className={`aspect-[3/4] rounded-lg flex flex-col items-center justify-center p-0.5 font-black text-center transition-all duration-300 select-none ${
+                          className={`aspect-[4/3] sm:aspect-square rounded-lg flex flex-col items-center justify-center p-0.5 font-black text-center transition-all duration-300 select-none min-h-0 ${
                             isRevealed
-                              ? "bg-gradient-to-tr from-amber-300 via-yellow-200 to-amber-400 text-amber-950 border-2 border-yellow-100 scale-110 shadow-[0_0_20px_#f59e0b] z-10"
+                              ? "bg-gradient-to-tr from-amber-300 via-yellow-200 to-amber-400 text-amber-950 border-2 border-yellow-100 scale-105 shadow-[0_0_20px_#f59e0b] z-10"
                               : isOtherPicked
                               ? "bg-black/30 border border-white/5 opacity-40 cursor-not-allowed"
                               : "bg-gradient-to-b from-amber-900/60 to-purple-950/80 border border-amber-400/40 hover:scale-105 active:scale-95 text-amber-200 shadow cursor-pointer"
@@ -4285,13 +4297,13 @@ export default function MagicWheelBoard({
                         >
                           {isRevealed ? (
                             <>
-                              <span className="text-base sm:text-xl">{card.icon}</span>
-                              <span className="text-[9px] font-black leading-none mt-0.5">{card.label}</span>
+                              <span className="text-sm sm:text-base leading-none">{card.icon}</span>
+                              <span className="text-[8px] sm:text-[9px] font-black leading-none mt-0.5 truncate max-w-full px-0.5">{card.label}</span>
                             </>
                           ) : (
                             <>
-                              <span className="text-sm opacity-80">✉️</span>
-                              <span className="text-[9px] font-black text-amber-300 mt-0.5">#{idx + 1}</span>
+                              <span className="text-xs opacity-80 leading-none">✉️</span>
+                              <span className="text-[9px] sm:text-[10px] font-black text-amber-300 mt-0.5 leading-none">#{idx + 1}</span>
                             </>
                           )}
                         </button>
@@ -5206,7 +5218,7 @@ export default function MagicWheelBoard({
                   <span className="text-amber-900">⭐</span>
                   <span>
                     {edition === "ENGLISH"
-                      ? `CATEGORY: ${formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
+                      ? `CATEGORY: ${effectiveBoardStage === "EMPTY_56" ? "(Waiting for board to open...)" : formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
                       : `CHỦ ĐỀ: ${effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", "VIETNAMESE")}`}
                   </span>
                   {currentPuzzle?.puzzleType === "CROSSWORD" && (
@@ -6206,7 +6218,7 @@ export default function MagicWheelBoard({
                       </div>
 
                       {canInteract ? (
-                        <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 sm:gap-2">
+                        <div className="grid grid-cols-5 sm:grid-cols-10 gap-1 sm:gap-1.5 max-h-[min(44vh,280px)] overflow-y-auto pr-0.5">
                           {rewardCards.map((card, idx) => {
                             const isRevealed = pickedRewardCardIdx === idx;
                             const isOtherPicked = pickedRewardCardIdx !== null && pickedRewardCardIdx !== idx;
@@ -6228,9 +6240,9 @@ export default function MagicWheelBoard({
                                     });
                                   }, 1200);
                                 }}
-                                className={`aspect-[3/4] rounded-xl flex flex-col items-center justify-center p-1 font-black text-center transition-all duration-300 select-none relative ${
+                                className={`aspect-[4/3] sm:aspect-square rounded-lg flex flex-col items-center justify-center p-0.5 font-black text-center transition-all duration-300 select-none relative min-h-0 ${
                                   isRevealed
-                                    ? "bg-gradient-to-tr from-amber-300 via-yellow-200 to-amber-400 text-amber-950 border-2 border-yellow-100 scale-110 shadow-[0_0_25px_#f59e0b] z-10 animate-scale-up"
+                                    ? "bg-gradient-to-tr from-amber-300 via-yellow-200 to-amber-400 text-amber-950 border-2 border-yellow-100 scale-105 shadow-[0_0_20px_#f59e0b] z-10 animate-scale-up"
                                     : isOtherPicked
                                     ? "bg-black/30 border border-white/5 opacity-40 cursor-not-allowed"
                                     : "bg-gradient-to-b from-amber-900/60 to-purple-950/80 border-2 border-amber-400/40 hover:border-amber-300 hover:scale-105 active:scale-95 text-amber-200 shadow-md cursor-pointer"
@@ -6238,15 +6250,15 @@ export default function MagicWheelBoard({
                               >
                                 {isRevealed ? (
                                   <>
-                                    <span className="text-xl sm:text-2xl">{card.icon}</span>
-                                    <span className="text-[10px] sm:text-xs font-black tracking-tight leading-tight mt-0.5">
+                                    <span className="text-base sm:text-lg leading-none">{card.icon}</span>
+                                    <span className="text-[9px] sm:text-[10px] font-black tracking-tight leading-tight mt-0.5 truncate max-w-full px-0.5">
                                       {card.label}
                                     </span>
                                   </>
                                 ) : (
                                   <>
-                                    <span className="text-base sm:text-lg opacity-80">✉️</span>
-                                    <span className="text-[10px] sm:text-xs font-black text-amber-300 mt-0.5">
+                                    <span className="text-xs sm:text-sm opacity-80 leading-none">✉️</span>
+                                    <span className="text-[9px] sm:text-[10px] font-black text-amber-300 mt-0.5 leading-none">
                                       #{idx + 1}
                                     </span>
                                   </>

@@ -4617,8 +4617,19 @@ export default function AdminSandboxPage() {
       }
 
       if (e.data?.type === "MAGIC_WHEEL_SPIN") {
+        // Optimistic UI for player iframe spin: xoay ngay tức khắc trên Display screen
+        const spinPwr = e.data.power || Math.floor(Math.random() * 40 + 50);
+        soundManager.playMagicWheelSpin();
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState || prev.magicWheelState.isSpinning) return prev;
+          const cur = { ...prev.magicWheelState, isSpinning: true, spinPower: spinPwr };
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
         if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-          // Online sandbox: Server is the single authoritative driver for spin degrees and landing sector!
+          adminSocketRef.current.emit("magic_wheel:spin" as any, { power: spinPwr });
           return;
         }
         const { power } = e.data;
@@ -12124,10 +12135,10 @@ export default function AdminSandboxPage() {
           <div className={`lg:col-span-5 flex flex-col min-h-0 h-full gap-1 overflow-hidden animate-slide-in-right ${
             mobileTab === "PLAYER" ? "flex" : "hidden lg:flex"
           }`}>
-            {/* Team Switcher Tabs (Ultra-Compact Single Row) */}
+            {/* Team Switcher Tabs (Auto-fit No Horizontal Scrollbar) */}
             <div className="glass rounded-xl px-2 py-1 border border-white/10 bg-[#121424] shrink-0 flex items-center gap-1.5">
               <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0 hidden sm:inline">📱 Chọn Đội:</span>
-              <div className="flex items-center gap-1 flex-1 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-1 flex-1 overflow-hidden">
                 {stableTeams.map((t: TeamState, idx: number) => {
                   const isActive = activeTeamIndex === idx;
                   const teamPopups = scorePopups.filter((p) => p.teamId === t.id);
@@ -12136,7 +12147,7 @@ export default function AdminSandboxPage() {
                       key={t.id}
                       type="button"
                       onClick={() => handleSwitchActiveTeam(idx)}
-                      className={`relative px-2 py-1 rounded-lg text-left border transition flex flex-col justify-center gap-0.5 cursor-pointer btn-tactile shrink-0 min-w-[95px] sm:min-w-[110px] ${
+                      className={`relative px-1.5 py-0.5 rounded-lg text-left border transition flex flex-col justify-center gap-0.5 cursor-pointer btn-tactile flex-1 min-w-0 max-w-[125px] ${
                         isActive
                           ? "bg-purple-600/30 border-purple-500 shadow ring-1 ring-purple-400/50"
                           : "glass border-white/10 hover:border-white/30 text-slate-300"

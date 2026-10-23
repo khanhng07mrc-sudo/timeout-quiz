@@ -200,78 +200,40 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
         ctx.restore();
       });
     } else {
-      // Special action label (e.g. PHẦN THƯỞNG, MẤT LƯỢT, NHÂN ĐÔI, CHIA ĐÔI, BÍ MẬT, TỐC ĐỘ, MAY MẮN, MẤT ĐIỂM)
-      // Chữ in hoa chuẩn VTV3: Hiển thị 2 dòng xuôi mắt, hướng từ vành nón vào tâm, KHÔNG BAO GIỜ BỊ NGƯỢC
-      const words = cleanLabel.split(/\s+/);
-      ctx.textAlign = "center";
+      // Special action label (e.g. BANKRUPT, LOSE A TURN, FREE PLAY, PHẦN THƯỞNG, MẤT LƯỢT, NHÂN ĐÔI, CHIA ĐÔI, BÍ MẬT, MAY MẮN, MẤT ĐIỂM)
+      // Chữ in hoa chuẩn Gameshow VTV3 / Wheel of Fortune: Xoay cả từ 90 độ dọc theo chiều nan ô,
+      // đọc xuôi theo chiều vòng quay từ vành nón vào tâm, KHÔNG NGẮT ĐÔI DÒNG (BANK- RUPT)
+      const labelText = cleanLabel.trim().toUpperCase();
+      const textLen = labelText.length;
+
+      let fs = 42;
+      if (textLen >= 12) {
+        fs = 26;
+      } else if (textLen >= 9) {
+        fs = 30;
+      } else if (textLen >= 7) {
+        fs = 34;
+      } else if (textLen >= 5) {
+        fs = 38;
+      }
+
+      ctx.save();
+      ctx.translate(r - 35, 0);
+      ctx.rotate(Math.PI); // Xoay dọc theo nan ô, hướng từ vành nón vào tâm
+      ctx.textAlign = "left";
       ctx.textBaseline = "middle";
 
-      if (words.length >= 2) {
-        const line1 = words[0];
-        const line2 = words.slice(1).join(" ");
+      ctx.font = `900 ${fs}px "Roboto Slab", "Montserrat", "Arial Black", sans-serif`;
 
-        // Dòng 1 (sát vành ngoài): MẤT, NHÂN, CHIA, PHẦN, MAY...
-        ctx.save();
-        ctx.translate(r - 46, 0);
-        ctx.rotate(-Math.PI / 2); // Xoay -90° để chữ nằm xuôi mắt 100% khi nhìn từ vành nón vào tâm
-        const size1 = Math.min(36, Math.max(22, Math.floor(110 / (line1.length * 0.65))));
-        ctx.font = `900 ${size1}px "Roboto Slab", "Montserrat", "Arial Black", sans-serif`;
-        ctx.strokeStyle = colors.stroke;
-        ctx.lineWidth = 3.2;
-        ctx.strokeText(line1, 0, 0);
-        ctx.fillStyle = colors.fill;
-        ctx.fillText(line1, 0, 0);
-        ctx.restore();
+      // Viền tương phản sắc nét
+      ctx.strokeStyle = colors.stroke;
+      ctx.lineWidth = Math.max(2.8, fs * 0.08);
+      ctx.strokeText(labelText, 0, 0);
 
-        // Dòng 2 (hướng vào tâm): LƯỢT, ĐÔI, ĐIỂM, THƯỞNG, MẮN...
-        ctx.save();
-        ctx.translate(r - 92, 0);
-        ctx.rotate(-Math.PI / 2);
-        const size2 = Math.min(32, Math.max(18, Math.floor(100 / (line2.length * 0.65))));
-        ctx.font = `900 ${size2}px "Roboto Slab", "Montserrat", "Arial Black", sans-serif`;
-        ctx.strokeStyle = colors.stroke;
-        ctx.lineWidth = 3.0;
-        ctx.strokeText(line2, 0, 0);
-        ctx.fillStyle = colors.fill;
-        ctx.fillText(line2, 0, 0);
-        ctx.restore();
-      } else {
-        // Ô 1 từ đơn (VD: BANKRUPT, JACKPOT, MYSTERY)
-        const word = words[0] || "";
-        if (word.length >= 7) {
-          const mid = Math.ceil(word.length / 2);
-          const p1 = word.slice(0, mid) + "-";
-          const p2 = word.slice(mid);
-          [
-            { text: p1, offset: r - 46, maxS: 32 },
-            { text: p2, offset: r - 92, maxS: 28 },
-          ].forEach((line) => {
-            ctx.save();
-            ctx.translate(line.offset, 0);
-            ctx.rotate(-Math.PI / 2);
-            const fs = Math.min(line.maxS, Math.max(18, Math.floor(100 / (line.text.length * 0.65))));
-            ctx.font = `900 ${fs}px "Roboto Slab", "Montserrat", "Arial Black", sans-serif`;
-            ctx.strokeStyle = colors.stroke;
-            ctx.lineWidth = 3.0;
-            ctx.strokeText(line.text, 0, 0);
-            ctx.fillStyle = colors.fill;
-            ctx.fillText(line.text, 0, 0);
-            ctx.restore();
-          });
-        } else {
-          ctx.save();
-          ctx.translate(r - 65, 0);
-          ctx.rotate(-Math.PI / 2);
-          const fs = Math.min(38, Math.max(22, Math.floor(105 / (word.length * 0.65))));
-          ctx.font = `900 ${fs}px "Roboto Slab", "Montserrat", "Arial Black", sans-serif`;
-          ctx.strokeStyle = colors.stroke;
-          ctx.lineWidth = 3.2;
-          ctx.strokeText(word, 0, 0);
-          ctx.fillStyle = colors.fill;
-          ctx.fillText(word, 0, 0);
-          ctx.restore();
-        }
-      }
+      // Màu fill nổi bật
+      ctx.fillStyle = colors.fill;
+      ctx.fillText(labelText, 0, 0);
+      ctx.restore();
     }
 
     ctx.restore();
@@ -744,33 +706,33 @@ function WheelMachineGroup({
           lastSnapTimeRef.current = now;
         }
 
-        // Chuẩn hóa 3 trạng thái kim nón 3D theo sơ đồ cơ học tại mạn 9h:
-        // Chiều quay CW khiến chốt di chuyển từ dưới lên trên (-Y sang +Y)
-        // Trạng thái 1 & 2: Chốt tiếp xúc cạnh dưới và đẩy mũi kim chúc LÊN TRÊN (+Y, rotation.z > 0) cực đại
-        // Trạng thái 3: Ngay khi chốt vừa thoát, kim đàn hồi bung mạnh ngược lại và dao động tắt dần về 0
+        // Cơ học Kim nón 3D: Chốt đẩy kim gạt sang TRÁI/PHẢI theo mặt phẳng vành nón (Xoay quanh trục Y thẳng đứng)
+        // Tuyệt đối không giật lên/xuống (rotation.z = 0, position.y = 0)
         if (needleRef.current) {
           const pegDistToSnap = segAngle - (liveAngle % segAngle);
           const contactWindow = 4.2;
           const pegDeflectionSign = 1.0;
 
+          needleRef.current.rotation.x = 0;
+          needleRef.current.rotation.z = 0;
+          needleRef.current.position.set(0, 0, 0);
+
           if (pegDistToSnap <= contactWindow) {
+            // Trạng thái 1 & 2: Chốt đẩy mũi kim lệch sang ngang theo đà quay của nón
             const contactProgress = 1.0 - pegDistToSnap / contactWindow;
-            const needleAngle = pegDeflectionSign * 0.32 * Math.pow(contactProgress, 1.25);
-            needleRef.current.rotation.z = needleAngle;
-            needleRef.current.position.y = Math.abs(needleAngle) * 0.035;
+            const needleAngleY = pegDeflectionSign * 0.35 * Math.pow(contactProgress, 1.25);
+            needleRef.current.rotation.y = needleAngleY;
           } else if (lastSnapTimeRef.current > 0) {
+            // Trạng thái 3: Kim bung nảy đàn hồi ngược lại và dao động tắt dần về vị trí cân bằng 0°
             const dt = (now - lastSnapTimeRef.current) / 1000;
             if (dt < 0.095) {
-              const snapAngle = pegDeflectionSign * 0.32 * Math.exp(-28.0 * dt) * Math.cos(52.0 * dt);
-              needleRef.current.rotation.z = snapAngle;
-              needleRef.current.position.y = 0;
+              const snapAngleY = pegDeflectionSign * 0.35 * Math.exp(-28.0 * dt) * Math.cos(52.0 * dt);
+              needleRef.current.rotation.y = snapAngleY;
             } else {
-              needleRef.current.rotation.z = 0;
-              needleRef.current.position.y = 0;
+              needleRef.current.rotation.y = 0;
             }
           } else {
-            needleRef.current.rotation.z = 0;
-            needleRef.current.position.y = 0;
+            needleRef.current.rotation.y = 0;
           }
         }
       } else {
@@ -2070,11 +2032,11 @@ function ElevatedSlotStation({
         />
       </mesh>
 
-      {/* 3. Bảng hiện điểm LED kỹ thuật số gắn trực diện mặt trước bàn (Front Fascia Scoreboard) - KÍCH THƯỚC NỔI BẬT, CAO HƠN VÀNH NÓN */}
-      <group position={[0, 2.58, 0.44]} rotation={[0, 0, 0]}>
-        {/* Khung màn hình mạ vàng/xanh neon */}
+      {/* 3. Bảng hiện điểm LED độc lập cho từng đội - Kích thước gọn 0.56m tạo khoảng gap 55cm rõ ràng giữa các đội */}
+      <group position={[0, 2.58, 0.28]} rotation={[0, 0, 0]}>
+        {/* Khung màn hình vát góc mạ vàng/xanh neon */}
         <mesh position={[0, 0, -0.01]}>
-          <boxGeometry args={[0.80, 0.46, 0.03]} />
+          <boxGeometry args={[0.56, 0.36, 0.03]} />
           <meshStandardMaterial
             color={isTurn ? "#fbbf24" : "#3b82f6"}
             metalness={0.92}
@@ -2083,9 +2045,9 @@ function ElevatedSlotStation({
             emissiveIntensity={isTurn ? 0.95 : 0.25}
           />
         </mesh>
-        {/* Màn hình LED sắc nét chuẩn VTV3 (Hiển thị chân thực như màn hình phát sáng tự thân OLED phẳng 1024x512) */}
+        {/* Màn hình LED sắc nét chuẩn VTV3 */}
         <mesh ref={screenRef} position={[0, 0, 0.02]}>
-          <planeGeometry args={[0.76, 0.42]} />
+          <planeGeometry args={[0.52, 0.32]} />
           <meshBasicMaterial map={screenTexture ?? undefined} toneMapped={false} />
         </mesh>
       </group>
@@ -2172,9 +2134,10 @@ function ElevatedContestantDaisBehindWheel({
   // -theta: lệch trái camera (mạn 9h). MC đứng riêng tại theta ~ -30°.
   // +theta: lệch phải camera (mạn 3h).
   // Thí sinh xếp đối xứng chính giữa từ minAngleDeg = -10° sang phải chuẩn VTV3 Chiếc Nón Kỳ Diệu.
-  const RADIUS_DAIS = 2.58;
-  const minAngleDeg = N <= 3 ? -10 : -12;
-  const maxAngleDeg = N <= 3 ? 28 : Math.min(68, 28 + (N - 3) * 12);
+  // Bán kính bục: 3.55m (lùi về sau vành nón 2.65m một khoảng an toàn 50cm, không đè lên nón)
+  const RADIUS_DAIS = 3.55;
+  const minAngleDeg = -18 - Math.max(0, N - 3) * 6;
+  const maxAngleDeg = 26 + Math.max(0, N - 3) * 8;
   const angleStepDeg = N > 1 ? (maxAngleDeg - minAngleDeg) / (N - 1) : 0;
 
   return (
@@ -4554,7 +4517,7 @@ function WheelStudio3DSceneComponent({
         shadows={quality === "HIGH"}
         dpr={quality === "HIGH" ? [1, 1.5] : quality === "MEDIUM" ? [1, 1.25] : [1, 1.0]}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-        camera={{ fov: 46, near: 0.1, far: 100, position: [0, 3.8, 5.4] }}
+        camera={{ fov: 46, near: 0.1, far: 100, position: [0.00, 2.70, 6.80] }}
         style={{
           position: "absolute",
           inset: 0,
@@ -4652,9 +4615,10 @@ function WheelStudio3DSceneComponent({
         <AudienceAmphitheaterVietnamese />
       </Canvas>
 
-      {/* ── LOWER-THIRD CÂU HỎI / GỢI Ý TRÊN CAM 3 (TẬP TRUNG DUY NHẤT 1 NỘI DUNG, CĂN GIỮA, KHÔNG TIỂU TIẾT) ── */}
+      {/* ── LOWER-THIRD CÂU HỎI / GỢI Ý TRÊN CAM 3 (TẮT HOÀN TOÀN KHI ĐÓNG Ô CHỮ EMPTY_56) ── */}
       {internalCam === 3 &&
         phase !== "ROUND_RECAP" &&
+        boardStage !== "EMPTY_56" &&
         showClue &&
         Boolean(currentPuzzle?.category || currentPuzzle?.description || currentPuzzle?.clue || currentPuzzle?.crosswordWords) && (() => {
           const rawClueText = (currentPuzzle?.description || currentPuzzle?.clue || "")

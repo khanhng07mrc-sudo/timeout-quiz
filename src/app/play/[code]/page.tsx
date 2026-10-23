@@ -2429,10 +2429,13 @@ export default function PlayPage() {
                       roomState.magicWheelState.currentTurnTeamId) === effectiveTeamId
                   }
                   onSpin={(power) => {
+                    // Optimistic feedback: lập tức phát âm thanh và báo parent sandbox quay ngay lập tức (xóa bỏ độ trễ)
+                    if (soundEnabledRef.current) soundManager.playMagicWheelSpin();
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_SPIN", power, teamId: effectiveTeamId }, "*");
+                    }
                     if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("magic_wheel:spin", { power, teamId: effectiveTeamId });
-                    } else if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MAGIC_WHEEL_SPIN", power, teamId: effectiveTeamId }, "*");
                     }
                   }}
                   onGuessLetter={(letter) => {
@@ -2469,6 +2472,13 @@ export default function PlayPage() {
                       socketRef.current.emit("magic_wheel:reward_select", data);
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", ...data, teamId: effectiveTeamId }, "*");
+                    }
+                  }}
+                  onUseFreeSpin={(use) => {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                      socketRef.current.emit("magic_wheel:use_free_spin", { use });
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_USE_FREE_SPIN", use, teamId: effectiveTeamId }, "*");
                     }
                   }}
                   onTradeDecide={(trade, boxIndex) => {

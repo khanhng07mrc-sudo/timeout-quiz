@@ -27,6 +27,8 @@ interface WheelStudio3DSceneProps {
   clientWheelAngle: number;
   effectiveIsSpinning: boolean;
   selectedSector?: MagicWheelSector;
+  targetRotationDegrees?: number;
+  spinPower?: number;
   teams: TeamState[];
   roundScores?: Record<string, number>;
   currentTurnTeamId?: string;
@@ -75,7 +77,7 @@ const CAM_POSITIONS: Record<string, CamConfig> = {
   CAM3_BOARD: { pos: [-1.80, 1.40, 4.80], target: [-7.80, 1.40, 4.80] },
 
   // CAM 4: Cận cảnh kim chỉ thị cong đỏ cherry và các chốt ô nón đang quay chúc 40°
-  CAM4_DISC: { pos: [0.00, 3.20, 2.20], target: [0.00, 1.35, -0.10] },
+  CAM4_DISC: { pos: [-2.75, 2.75, 1.55], target: [-2.15, 1.40, 0.10] },
 
   // CAM 5: Lia cận cảnh thí sinh đang đến lượt (Active Player Close-up)
   CAM5_PLAYER: { pos: [0.60, 2.70, 2.20], target: [0.80, 2.10, -2.60] },
@@ -653,11 +655,15 @@ function WheelMachineGroup({
   sectors,
   clientWheelAngle,
   effectiveIsSpinning,
+  targetRotationDegrees,
+  spinPower,
 }: {
   sectors: MagicWheelSector[];
   clientWheelAngle: number;
   effectiveIsSpinning: boolean;
   selectedSector?: MagicWheelSector;
+  targetRotationDegrees?: number;
+  spinPower?: number;
 }) {
   const spinningGroupRef = useRef<THREE.Group>(null);
   const needleRef = useRef<THREE.Mesh>(null);
@@ -701,38 +707,14 @@ function WheelMachineGroup({
   const spinStartTimeRef = useRef<number>(0);
   const lastPegIndexRef = useRef<number>(0);
   const lastSnapTimeRef = useRef<number>(0);
-  const DURATION_MS = 16000;
+  const durationMs = 15000 + Math.round(((spinPower || 65) / 100) * 6000);
 
   useEffect(() => {
-    if (effectiveIsSpinning) {
-      startAngleRef.current = currentAngleRef.current;
-      // Khởi tạo quán tính quay tức thời khi thí sinh rướn đẩy, không bị khựng đợi server:
-      const minSpinDelta = 1440;
-      targetAngleRef.current =
-        clientWheelAngle > currentAngleRef.current
-          ? clientWheelAngle
-          : currentAngleRef.current + minSpinDelta;
-      spinStartTimeRef.current = performance.now();
-      const sLen = sectors.length || 24;
-      lastPegIndexRef.current = Math.floor(startAngleRef.current / (360 / sLen));
-    } else {
-      currentAngleRef.current = clientWheelAngle;
-      if (spinningGroupRef.current) {
-        spinningGroupRef.current.rotation.z = THREE.MathUtils.degToRad(-clientWheelAngle);
-      }
-      if (needleRef.current) {
-        needleRef.current.rotation.z = 0;
-        needleRef.current.position.y = 0;
-      }
+    const candidateTarget = targetRotationDegrees || clientWheelAngle;
+    if (effectiveIsSpinning && candidateTarget > startAngleRef.current) {
+      targetAngleRef.current = candidateTarget;
     }
-  }, [effectiveIsSpinning, sectors.length]);
-
-  // Cập nhật góc đích server khi phản hồi đến trong lúc đang quay
-  useEffect(() => {
-    if (effectiveIsSpinning && clientWheelAngle > startAngleRef.current) {
-      targetAngleRef.current = clientWheelAngle;
-    }
-  }, [clientWheelAngle, effectiveIsSpinning]);
+  }, [clientWheelAngle, targetRotationDegrees, effectiveIsSpinning]);
 
   // Sync wheel rotation (+90° offset for 9 o'clock needle alignment) & realistic heavy-inertia 60fps spin & mechanical needle peg-snap
   useFrame((_, delta) => {
@@ -743,10 +725,10 @@ function WheelMachineGroup({
       if (effectiveIsSpinning) {
         const now = performance.now();
         const elapsed = now - (spinStartTimeRef.current || now);
-        const progress = evaluateThreePhaseWheelProgress(elapsed, DURATION_MS);
+        const progress = evaluateThreePhaseWheelProgress(elapsed, durationMs);
         const liveAngle = startAngleRef.current + (targetAngleRef.current - startAngleRef.current) * progress;
         currentAngleRef.current = liveAngle;
-        spinningGroupRef.current.rotation.z = THREE.MathUtils.degToRad(-liveAngle);
+        spinningGroupRef.current.rotation.z = THREE.MathUtils.degToRad(-liveAngle + 90);
 
         // Peg detection for mechanical needle deflection
         const currentPegIndex = Math.floor(liveAngle / segAngle);
@@ -755,38 +737,37 @@ function WheelMachineGroup({
           lastSnapTimeRef.current = now;
         }
 
-        // Mechanical needle contact & damped spring snap at 12 o'clock
+        // Mechanical needle contact & spring snap at 9 o'clock
         if (needleRef.current) {
           const pegDistToSnap = segAngle - (liveAngle % segAngle);
-          const contactWindow = 3.6; // degrees before peg releases needle
-          // Tại 12h: nón quay theo chiều kim đồng hồ (trái qua phải), chốt đẩy mũi kim lệch sang bên phải (góc âm)
+          const contactWindow = 3.5; // degrees before peg releases needle
           const pegDeflectionSign = -1.0;
 
           if (pegDistToSnap <= contactWindow) {
-            // Peg gạt kim lệch dần theo đà quay của chốt
+            // Peg pushes needle tip upward/deflecting
             const contactProgress = 1.0 - pegDistToSnap / contactWindow;
-            const needleAngle = pegDeflectionSign * 0.32 * Math.pow(contactProgress, 1.15);
+            const needleAngle = pegDeflectionSign * 0.28 * Math.pow(contactProgress, 1.15);
             needleRef.current.rotation.z = needleAngle;
-            needleRef.current.position.x = pegDeflectionSign * Math.abs(needleAngle) * 0.05;
+            needleRef.current.position.y = -Math.abs(needleAngle) * 0.04;
           } else if (lastSnapTimeRef.current > 0) {
-            // Peg vừa vượt qua đỉnh -> Kim bật nảy đàn hồi (spring damped harmonic bounce) về 0
+            // Elastic spring snap rebound damping to 0
             const dt = (now - lastSnapTimeRef.current) / 1000;
             if (dt < 0.09) {
-              const snapAngle = -pegDeflectionSign * 0.20 * Math.exp(-32.0 * dt) * Math.cos(50.0 * dt);
+              const snapAngle = -pegDeflectionSign * 0.16 * Math.exp(-30.0 * dt) * Math.cos(48.0 * dt);
               needleRef.current.rotation.z = snapAngle;
-              needleRef.current.position.x = 0;
+              needleRef.current.position.y = 0;
             } else {
               needleRef.current.rotation.z = 0;
-              needleRef.current.position.x = 0;
+              needleRef.current.position.y = 0;
             }
           } else {
             needleRef.current.rotation.z = 0;
-            needleRef.current.position.x = 0;
+            needleRef.current.position.y = 0;
           }
         }
       } else {
-        currentAngleRef.current = clientWheelAngle || 0;
-        spinningGroupRef.current.rotation.z = THREE.MathUtils.degToRad(-currentAngleRef.current);
+        // Giữ nguyên góc hiện tại khi dừng, không đổi sang clientWheelAngle gây giật ngược
+        spinningGroupRef.current.rotation.z = THREE.MathUtils.degToRad(-currentAngleRef.current + 90);
         if (needleRef.current) {
           needleRef.current.rotation.z = 0;
           needleRef.current.position.y = 0;
@@ -872,12 +853,13 @@ function WheelMachineGroup({
         </group>
       </group>
 
-      {/* ── 2. SLEEK MECHANICAL NEEDLE AT 12 O'CLOCK (CHÍNH TÂM ĐỈNH NÓN 12H ĐỒNG NHẤT 100% VỚI 2D) ── */}
-      {/* Chrome pivot assembly & sleek crimson blade at 12 o'clock */}
-      <group position={[0, 1.10 + 2.10 * Math.cos(WHEEL_TILT_RAD), -2.10 * Math.sin(WHEEL_TILT_RAD) + 0.06]} rotation={[WHEEL_TILT_RAD, 0, 0]}>
-        {/* Support arm in glossy cherry red lacquer */}
-        <mesh position={[0, 0.16, 0]} castShadow>
-          <cylinderGeometry args={[0.044, 0.056, 0.34, 20]} />
+      {/* ── 2. NEEDLE AT 9 O'CLOCK FLANK WITH AUTHENTIC SLANTED SUPPORT PILLAR (VTV3 BROADCAST STYLE) ── */}
+      {/* ── 2. SLEEK MECHANICAL NEEDLE ACCORDING TO VTV3 2015 BROADCAST (16:58) ── */}
+      {/* Curved cherry red lacquer support arm & chrome pivot assembly at 9 o'clock */}
+      <group position={[-2.32, 1.10, 0.08]} rotation={[0.18, 0.10, 0]}>
+        {/* Sleek Curved Arm base in glossy cherry red lacquer */}
+        <mesh position={[-0.14, -0.12, 0]} rotation={[0, 0, -0.45]} castShadow>
+          <cylinderGeometry args={[0.042, 0.054, 0.38, 20]} />
           <meshStandardMaterial
             color="#b91c1c"
             roughness={0.15}
@@ -887,7 +869,7 @@ function WheelMachineGroup({
           />
         </mesh>
 
-        {/* Chrome and Gold cylindrical pivot housing */}
+        {/* Chrome & Gold cylindrical pivot housing */}
         <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
           <cylinderGeometry args={[0.082, 0.082, 0.14, 24]} />
           <meshStandardMaterial color="#f8fafc" metalness={0.96} roughness={0.04} />
@@ -897,10 +879,10 @@ function WheelMachineGroup({
           <meshStandardMaterial color="#fbbf24" metalness={0.92} roughness={0.08} emissive="#d97706" emissiveIntensity={0.6} />
         </mesh>
 
-        {/* Dynamic vibrating pointer flapper pointing downwards into 12 o'clock pegs */}
+        {/* Dynamic vibrating pointer flapper pointing into the 3D pegs (Sleek crimson acrylic blade - NO YELLOW TIP) */}
         <group ref={needleRef} position={[0, 0, 0]}>
-          {/* Sleek tapering red acrylic blade pointing down (-Y) into the pegs */}
-          <mesh position={[0, -0.26, 0]} rotation={[0, 0, Math.PI]} castShadow>
+          {/* Sleek tapering red acrylic blade pointing directly into the pegs */}
+          <mesh position={[0.26, 0, 0]} rotation={[0, 0, -Math.PI / 2]} castShadow>
             <coneGeometry args={[0.052, 0.52, 24]} />
             <meshStandardMaterial
               color="#dc2626"
@@ -918,21 +900,25 @@ function WheelMachineGroup({
         </group>
       </group>
 
-      {/* Chrome vertical support pillar extending down behind wheel */}
-      <mesh position={[0, 0.50, -0.32]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.065, 0.082, 1.35, 24]} />
+      {/* Slanted chrome support pillar extending down to floor */}
+      <mesh position={[-2.42, 0.50, 0.10]} rotation={[0.06, 0, -0.14]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.058, 0.075, 1.25, 24]} />
         <meshStandardMaterial color="#e2e8f0" metalness={0.95} roughness={0.06} />
       </mesh>
-      <mesh position={[0, -0.12, -0.32]} receiveShadow>
-        <cylinderGeometry args={[0.20, 0.24, 0.08, 24]} />
+      <mesh position={[-2.46, -0.08, 0.10]} receiveShadow>
+        <cylinderGeometry args={[0.18, 0.22, 0.08, 24]} />
         <meshStandardMaterial color="#cbd5e1" metalness={0.92} roughness={0.12} />
       </mesh>
-      <mesh position={[0, 0.76, -0.32]} rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.09, 0.022, 8, 24]} />
+
+      {/* Gold decorative collar ring on pillar */}
+      <mesh position={[-2.40, 0.72, 0.12]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.085, 0.022, 8, 24]} />
         <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={0.5} metalness={0.94} roughness={0.08} />
       </mesh>
-      <mesh position={[0, -0.72, -0.32]}>
-        <cylinderGeometry args={[0.18, 0.24, 0.14, 24]} />
+
+      {/* Pillar floor flared base anchor plinth */}
+      <mesh position={[-2.40, -0.72, 0.12]}>
+        <cylinderGeometry args={[0.16, 0.22, 0.14, 24]} />
         <meshStandardMaterial color="#e2e8f0" metalness={0.94} roughness={0.08} />
       </mesh>
 
@@ -2435,7 +2421,6 @@ function getSpinningCubeTexture(text: string, bgColor: string, textColor = "#fff
 interface FormattedTile {
   char: string;
   isLetter: boolean;
-  isSymbol?: boolean;
   origIdx: number;
 }
 
@@ -2455,7 +2440,6 @@ function formatPhraseTo4x14(phrase?: string): FormattedTile[][] {
     const wordChars: FormattedTile[] = word.split("").map((c) => ({
       char: c,
       isLetter: /[A-ZÀ-Ỹ]/i.test(c),
-      isSymbol: !/[A-ZÀ-Ỹ\s]/i.test(c),
       origIdx: charIdx++,
     }));
     charIdx++; // include space index
@@ -2931,7 +2915,6 @@ function Studio3DBigLedWall({
   boardStage,
   revealedSet,
   highlightedIndices,
-  justPoppedIndices,
   isSolvedOrRecap,
 }: {
   grid: FormattedTile[][];
@@ -2939,7 +2922,6 @@ function Studio3DBigLedWall({
   boardStage?: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE";
   revealedSet: Set<number>;
   highlightedIndices?: Set<number>;
-  justPoppedIndices?: Set<number>;
   isSolvedOrRecap: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -3019,14 +3001,12 @@ function Studio3DBigLedWall({
         const w = tileW - 8;
         const h = tileH - 8;
         const tile = grid[r]?.[c];
-        const isTileActive = Boolean(tile && tile.char && tile.char !== " ");
         const isLetter = tile?.isLetter;
-        const isSymbol = tile?.isSymbol;
         const isStaggerOpen = staggerOpenedKeys.has("ALL") || staggerOpenedKeys.has(`${r}_${c}`);
         const isRev = isLetter && (revealedSet.has(tile.origIdx) || isSolvedOrRecap);
         const isHl = Boolean(isLetter && highlightedIndices && highlightedIndices.has(tile.origIdx));
 
-        if (!tile || !isTileActive || !isOpen || !isStaggerOpen) {
+        if (!tile || !isLetter || !isOpen || !isStaggerOpen) {
           // Ô đóng: Màu xanh ngọc bích đậm chuẩn gameshow VTV3 với viền vàng kim
           ctx.fillStyle = "#064e3b";
           ctx.beginPath();
@@ -3042,7 +3022,7 @@ function Studio3DBigLedWall({
           ctx.arc(x + w / 2, y + h / 2, 6, 0, Math.PI * 2);
           ctx.fill();
         } else if (isHl) {
-          // ── BƯỚC 1: HIGHLIGHT XANH CHỚP SÁNG RỰC RỠ (CHỮ CHƯA VẼ) ──
+          // ── BƯỚC 1: HIGHLIGHT XANH CHỚP SÁNG RỰC RỠ ──
           ctx.fillStyle = "#16a34a";
           ctx.beginPath();
           ctx.roundRect(x, y, w, h, 6);
@@ -3056,50 +3036,22 @@ function Studio3DBigLedWall({
           ctx.shadowBlur = 18;
           ctx.stroke();
           ctx.shadowBlur = 0;
-        } else if (isSymbol) {
-          // ── KÝ TỰ ĐẶC BIỆT (Dấu '-', số, ký hiệu): MẶC ĐỊNH HIỆN NGAY LẬP TỨC TRÊN Ô TRẮNG ──
+        } else if (isRev) {
+          // ── BƯỚC 2: CHỮ CÁI MỞ SẮC NÉT (NỀN TRẮNG, CHỮ ĐEN DÁNG CONDENSED) ──
           ctx.fillStyle = "#ffffff";
           ctx.beginPath();
           ctx.roundRect(x, y, w, h, 6);
           ctx.fill();
-          ctx.strokeStyle = "#cbd5e1";
-          ctx.lineWidth = 2;
+          ctx.strokeStyle = "#fbbf24";
+          ctx.lineWidth = 3;
           ctx.stroke();
 
+          const charToDraw = isSolvedOrRecap ? tile.char : stripVietnameseToneKeepBase(tile.char);
           ctx.fillStyle = "#0f172a";
           ctx.font = "900 82px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(tile.char, x + w / 2, y + h / 2 + 4);
-        } else if (isRev) {
-          // ── BƯỚC 2: CHỮ CÁI MỞ SẮC NÉT (NỀN TRẮNG, CHỮ ĐEN DÁNG CONDENSED) ──
-          const isPopping = Boolean(justPoppedIndices && justPoppedIndices.has(tile.origIdx));
-          const zoomScale = isPopping ? 1.25 : 1.0;
-          const drawW = w * zoomScale;
-          const drawH = h * zoomScale;
-          const drawX = x + (w - drawW) / 2;
-          const drawY = y + (h - drawH) / 2;
-
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(drawX, drawY, drawW, drawH, 6);
-          ctx.fill();
-          ctx.strokeStyle = isPopping ? "#fde047" : "#fbbf24";
-          ctx.lineWidth = isPopping ? 6 : 3;
-          if (isPopping) {
-            ctx.shadowColor = "#f59e0b";
-            ctx.shadowBlur = 24;
-          }
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-
-          const charToDraw = isSolvedOrRecap ? tile.char : stripVietnameseToneKeepBase(tile.char);
-          ctx.fillStyle = "#0f172a";
-          const fontSize = Math.round(82 * zoomScale);
-          ctx.font = `900 ${fontSize}px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(charToDraw.toUpperCase(), drawX + drawW / 2, drawY + drawH / 2 + 4);
+          ctx.fillText(charToDraw.toUpperCase(), x + w / 2, y + h / 2 + 4);
         } else {
           // Ô trắng chờ đoán chữ (Blank white tile)
           ctx.fillStyle = "#ffffff";
@@ -3114,7 +3066,7 @@ function Studio3DBigLedWall({
     }
 
     tex.needsUpdate = true;
-  }, [grid, isOpen, revealedSet, highlightedIndices, justPoppedIndices, isSolvedOrRecap, staggerOpenedKeys]);
+  }, [grid, isOpen, revealedSet, highlightedIndices, isSolvedOrRecap, staggerOpenedKeys]);
 
   return (
     <mesh position={[0, 2.20, 0.05]}>
@@ -3161,11 +3113,9 @@ function Studio3DPuzzleBoard({
   }, [currentPuzzle?.secretPhrase, currentPuzzle?.puzzleType, currentPuzzle?.crosswordWords]);
 
   const revealedSet = useMemo(() => {
-    if (phase === "ROUND_RECAP") {
-      return new Set(currentPuzzle?.revealedIndices || []);
-    }
-    return animRevealedIndices || new Set<number>();
-  }, [animRevealedIndices, currentPuzzle?.revealedIndices, phase]);
+    if (animRevealedIndices && animRevealedIndices.size > 0) return animRevealedIndices;
+    return new Set(currentPuzzle?.revealedIndices || []);
+  }, [animRevealedIndices, currentPuzzle?.revealedIndices]);
 
   const isBoardEmpty = boardStage === "EMPTY_56" && phase !== "ROUND_RECAP";
   const isRevealing = phase === "ROUND_RECAP" || (revealedSet.size > 0);
@@ -4490,6 +4440,8 @@ function WheelStudio3DSceneComponent({
   clientWheelAngle,
   effectiveIsSpinning,
   selectedSector,
+  targetRotationDegrees,
+  spinPower,
   teams,
   roundScores,
   currentTurnTeamId,
@@ -4643,6 +4595,8 @@ function WheelStudio3DSceneComponent({
           clientWheelAngle={clientWheelAngle}
           effectiveIsSpinning={effectiveIsSpinning}
           selectedSector={selectedSector}
+          targetRotationDegrees={targetRotationDegrees}
+          spinPower={spinPower}
         />
         {/* Bục đứng riêng biệt cho MC ngay bên trái bục thí sinh số 1 */}
         <DedicatedMcStation />
@@ -4674,23 +4628,32 @@ function WheelStudio3DSceneComponent({
       {/* ── LOWER-THIRD CÂU HỎI / GỢI Ý TRÊN CAM 3 (TẬP TRUNG DUY NHẤT 1 NỘI DUNG, CĂN GIỮA, KHÔNG TIỂU TIẾT) ── */}
       {internalCam === 3 &&
         phase !== "ROUND_RECAP" &&
+        showClue &&
         Boolean(currentPuzzle?.category || currentPuzzle?.description || currentPuzzle?.clue || currentPuzzle?.crosswordWords) && (() => {
           const rawClueText = (currentPuzzle?.description || currentPuzzle?.clue || "")
             .replace(/\s*\(\s*\d+\s*(ký\s*tự|chữ\s*cái|chữ|letters|chars?)\s*\)/gi, "")
             .trim();
           const categoryText = (currentPuzzle?.category || "").trim();
-          // Ưu tiên toàn bộ nội dung câu hỏi/gợi ý chi tiết; nếu rỗng mới hiển thị Chủ đề
+          // Tập trung một nội dung duy nhất: ưu tiên toàn bộ nội dung câu hỏi/gợi ý chi tiết; nếu không có thì lấy chủ đề
           const displayText = rawClueText || categoryText;
           if (!displayText) return null;
 
           return (
-            <div className="absolute bottom-11 left-1/2 -translate-x-1/2 z-40 w-auto max-w-[92vw] sm:max-w-3xl md:max-w-4xl px-6 py-2.5 rounded-2xl bg-slate-950/95 border-2 border-amber-400/80 shadow-[0_6px_30px_rgba(0,0,0,0.9)] backdrop-blur-md flex items-center justify-center text-center animate-fade-in pointer-events-auto">
+            <div className="absolute bottom-11 left-1/2 -translate-x-1/2 z-40 w-auto max-w-[92vw] sm:max-w-2xl md:max-w-3xl px-6 py-2.5 rounded-2xl bg-slate-950/95 border-2 border-amber-400/80 shadow-[0_6px_30px_rgba(0,0,0,0.9)] backdrop-blur-md flex items-center justify-center text-center animate-fade-in pointer-events-auto">
               <div
                 className="font-bold text-white text-xs sm:text-sm md:text-base tracking-wide whitespace-normal text-center leading-relaxed"
                 title={displayText}
               >
                 {displayText}
               </div>
+              <button
+                type="button"
+                onClick={() => setShowClue(false)}
+                className="ml-3 text-xs text-white/40 hover:text-white/90 p-1 rounded-md transition-colors shrink-0"
+                title="Ẩn thông tin câu hỏi"
+              >
+                ✕
+              </button>
             </div>
           );
         })()}

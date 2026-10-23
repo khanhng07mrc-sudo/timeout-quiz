@@ -1834,7 +1834,6 @@ function InteractiveWheelRig({
       <div className="w-full h-full flex flex-col items-center justify-center relative select-none min-h-0 pt-2 pb-1">
         <div
           className={`${dimClasses} aspect-square relative select-none flex items-center justify-center shrink-0 transition-all duration-700 ease-in-out`}
-          style={{ perspective: "900px", perspectiveOrigin: "50% 30%" }}
         >
           <div
             ref={needleRef}
@@ -1856,7 +1855,7 @@ function InteractiveWheelRig({
             ref={wheelRef}
             className="w-full h-full aspect-square rounded-full overflow-hidden shadow-2xl relative"
             style={{
-              transform: `rotate(${clientWheelAngle}deg) rotateX(15deg)`,
+              transform: `rotate(${clientWheelAngle}deg)`,
               willChange: effectiveIsSpinning ? "transform" : undefined,
               transformStyle: "preserve-3d",
             }}
@@ -4543,6 +4542,8 @@ export default function MagicWheelBoard({
               sectors={sectors}
               clientWheelAngle={clientWheelAngle}
               effectiveIsSpinning={effectiveIsSpinning}
+              targetRotationDegrees={targetRotationDegrees}
+              spinPower={activeState.spinPower || 65}
               selectedSector={selectedSector}
               teams={teams}
               roundScores={roundScores}

@@ -755,32 +755,33 @@ function WheelMachineGroup({
           lastSnapTimeRef.current = now;
         }
 
-        // Mechanical needle contact & spring snap at 9 o'clock
+        // Mechanical needle contact & damped spring snap at 12 o'clock
         if (needleRef.current) {
           const pegDistToSnap = segAngle - (liveAngle % segAngle);
-          const contactWindow = 3.5; // degrees before peg releases needle
+          const contactWindow = 3.6; // degrees before peg releases needle
+          // Tại 12h: nón quay theo chiều kim đồng hồ (trái qua phải), chốt đẩy mũi kim lệch sang bên phải (góc âm)
           const pegDeflectionSign = -1.0;
 
           if (pegDistToSnap <= contactWindow) {
-            // Peg pushes needle tip upward/deflecting
+            // Peg gạt kim lệch dần theo đà quay của chốt
             const contactProgress = 1.0 - pegDistToSnap / contactWindow;
-            const needleAngle = pegDeflectionSign * 0.28 * Math.pow(contactProgress, 1.15);
+            const needleAngle = pegDeflectionSign * 0.32 * Math.pow(contactProgress, 1.15);
             needleRef.current.rotation.z = needleAngle;
-            needleRef.current.position.y = -Math.abs(needleAngle) * 0.04;
+            needleRef.current.position.x = pegDeflectionSign * Math.abs(needleAngle) * 0.05;
           } else if (lastSnapTimeRef.current > 0) {
-            // Elastic spring snap rebound damping to 0
+            // Peg vừa vượt qua đỉnh -> Kim bật nảy đàn hồi (spring damped harmonic bounce) về 0
             const dt = (now - lastSnapTimeRef.current) / 1000;
             if (dt < 0.09) {
-              const snapAngle = -pegDeflectionSign * 0.16 * Math.exp(-30.0 * dt) * Math.cos(48.0 * dt);
+              const snapAngle = -pegDeflectionSign * 0.20 * Math.exp(-32.0 * dt) * Math.cos(50.0 * dt);
               needleRef.current.rotation.z = snapAngle;
-              needleRef.current.position.y = 0;
+              needleRef.current.position.x = 0;
             } else {
               needleRef.current.rotation.z = 0;
-              needleRef.current.position.y = 0;
+              needleRef.current.position.x = 0;
             }
           } else {
             needleRef.current.rotation.z = 0;
-            needleRef.current.position.y = 0;
+            needleRef.current.position.x = 0;
           }
         }
       } else {

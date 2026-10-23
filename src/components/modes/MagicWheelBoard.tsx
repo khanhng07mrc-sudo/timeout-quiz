@@ -2544,6 +2544,8 @@ export default function MagicWheelBoard({
   const [hostessSide, setHostessSide] = useState<"LEFT" | "RIGHT">("LEFT");
   const hostessSideRef = useRef<"LEFT" | "RIGHT">("LEFT");
   const [hostessXPercent, setHostessXPercent] = useState<number>(6); // 6% = Vị trí an toàn ở Cánh Gà Trái (Stage Left, trọn vẹn 100% không bị xén)
+  const hostessXPercentRef = useRef<number>(6);
+  hostessXPercentRef.current = hostessXPercent;
   const [hostessFacing, setHostessFacing] = useState<"LEFT" | "RIGHT">("RIGHT");
   const [hostessPose, setHostessPose] = useState<"IDLE" | "GESTURE" | "WALKING" | "TOUCHING">("IDLE");
   const [hostessActiveRow, setHostessActiveRow] = useState<number>(1);
@@ -2656,41 +2658,99 @@ export default function MagicWheelBoard({
       return;
     }
 
-    // ── VÒNG CHÍNH 1..N: ANIMATION 2 BƯỚC TINH GỌN CHUẨN YÊU CẦU ──
-    // BƯỚC 1: Highlight xanh TẤT CẢ các ô chứa chữ cái đoán đúng (500ms)
-    // BƯỚC 2: Tắt màu highlight ngay, chữ cái tương ứng zoom lên 135% rồi thu nhỏ nhẹ về 100%
-    const sortedAsc = [...newLetters].sort((a, b) => {
+    // ── VÒNG CHÍNH 1..N: HOSTESS VŨ ĐẠO BƯỚC SANG ĐỐI DIỆN -> CHẠM TỪNG Ô XANH ĐỂ BUNG CHỮ ──
+    // Quy tắc:
+    // 1. Highlight xanh ngẫu nhiên / đồng loạt tất cả các vị trí chính xác của chữ cái vừa đoán.
+    // 2. Người mẫu xác định thứ tự mở các ô. Mặc định sẽ di chuyển về phía đối diện của bảng ô chữ
+    //    so với chỗ cũ đã đứng (để không che khuất ô chữ trước máy quay và khán giả).
+    //    Nếu ô chữ chỉ cách khoảng 4 cột (khoảng cách rất gần) thì người mẫu sẽ tiến về vị trí cũ thay vì ra chỗ đối diện.
+    // 3. Người mẫu di chuyển tới ô (WALKING) -> tới nơi đưa tay chạm vào (TOUCHING) -> ô chữ mới tắt highlight xanh,
+    //    zoom lên 135% rồi thu về 100% (zoom punch) kèm âm thanh letter_reveal.
+    const sortedTiles = [...newLetters].sort((a, b) => {
       const posA = cellPositionsMap[a] || { col: 0, row: 0 };
       const posB = cellPositionsMap[b] || { col: 0, row: 0 };
       if (posA.col !== posB.col) return posA.col - posB.col;
       return posA.row - posB.row;
     });
 
-    // Bật highlight xanh ngay lập tức cho các ô đúng
-    setHighlightedIndices((prev) => new Set([...prev, ...sortedAsc]));
+    // Bật highlight xanh cho tất cả các ô chữ đoán đúng
+    setHighlightedIndices((prev) => new Set([...prev, ...sortedTiles]));
     if (canPlayBoardAudio) soundManager.playMagicWheelMark();
 
-    // Hostess đứng ở cánh làm cử chỉ tay giới thiệu bảng
-    setHostessPose("GESTURE");
+    // Bắt đầu chuỗi bước đi và chạm từng ô chữ của người mẫu
+    let currentStepDelay = 350; // Chờ 350ms highlight xanh chớp sáng ổn định
 
-    // Sau đúng 500ms: Tắt highlight xanh, mở chữ và kích hoạt zoom punch
-    const revealTimer = setTimeout(() => {
-      setHighlightedIndices((prev) => {
-        const next = new Set(prev);
-        sortedAsc.forEach((idx) => next.delete(idx));
-        return next;
-      });
-      setAnimRevealedIndices((prev) => new Set([...prev, ...sortedAsc]));
-      sortedAsc.forEach((idx) => triggerTilePop(idx));
-      if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
+    sortedTiles.forEach((tileIdx) => {
+      const pos = cellPositionsMap[tileIdx] || { col: 6, row: 1 };
+      const tileCol = pos.col; // 0..13
+      const tileRow = pos.row;
 
-      // Đưa MC về vị trí nghỉ an toàn ở cánh sau 1.2s
-      const resetHostessTimer = setTimeout(() => {
-        setHostessPose("IDLE");
-      }, 1200);
-      activeTimersRef.current.push(resetHostessTimer);
-    }, 500);
-    activeTimersRef.current.push(revealTimer);
+      // Xác định vị trí và phía đứng của người mẫu
+      const prevX = hostessXPercentRef.current;
+      const prevCol = (prevX / 100) * 14;
+      const colDist = Math.abs(tileCol - prevCol);
+
+      // Quy tắc: Nếu người mẫu chỉ di chuyển rất gần (<= 4 cột) thì đứng phía cũ thay vì đổi bên
+      let standSide: "LEFT" | "RIGHT";
+      if (colDist <= 4) {
+        standSide = hostessSideRef.current;
+      } else {
+        standSide = hostessSideRef.current === "LEFT" ? "RIGHT" : "LEFT";
+      }
+
+      hostessSideRef.current = standSide;
+
+      // Tọa độ % X của người mẫu khi đứng cạnh ô chữ:
+      const tileCenterPercent = ((tileCol + 0.5) / 14) * 100;
+      const targetPercent = standSide === "LEFT"
+        ? Math.max(6, tileCenterPercent - 9)
+        : Math.min(94, tileCenterPercent + 9);
+
+      const walkTime = colDist <= 4 ? 600 : 950;
+      const touchTime = 450;
+
+      // Bước 1: Người mẫu Catwalk bước tới ô
+      const tWalk = setTimeout(() => {
+        setHostessPose("WALKING");
+        setHostessFacing(standSide === "LEFT" ? "RIGHT" : "LEFT");
+        setHostessActiveRow(tileRow);
+        setHostessWalkDurationMs(walkTime);
+        setHostessXPercent(targetPercent);
+        hostessXPercentRef.current = targetPercent;
+      }, currentStepDelay);
+      activeTimersRef.current.push(tWalk);
+
+      currentStepDelay += walkTime;
+
+      // Bước 2: Người mẫu tới nơi -> đưa tay chạm vào ô chữ
+      const tTouch = setTimeout(() => {
+        setHostessPose("TOUCHING");
+        setHostessFacing(standSide === "LEFT" ? "RIGHT" : "LEFT");
+        setHostessActiveRow(tileRow);
+
+        // KHOẢNH KHẮC CHẠM TAY: Ô chữ tắt highlight xanh và ZOOM LỘ CHỮ CÁI
+        const tRevealLetter = setTimeout(() => {
+          setHighlightedIndices((prev) => {
+            const next = new Set(prev);
+            next.delete(tileIdx);
+            return next;
+          });
+          setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
+          triggerTilePop(tileIdx);
+          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
+        }, 180);
+        activeTimersRef.current.push(tRevealLetter);
+      }, currentStepDelay);
+      activeTimersRef.current.push(tTouch);
+
+      currentStepDelay += touchTime;
+    });
+
+    // Kết thúc toàn bộ các ô chữ: Đưa người mẫu về vị trí IDLE duyên dáng
+    const tFinish = setTimeout(() => {
+      setHostessPose("IDLE");
+    }, currentStepDelay + 400);
+    activeTimersRef.current.push(tFinish);
   }, [currentPuzzle?.revealedIndices, phase, roundStage, cellPositionsMap, clearChoreographyTimers, triggerTilePop]);
 
   // ── Toss-Up 1 & 2 Special Choreography Effect ─────────────────────────────

@@ -120,45 +120,160 @@ async function createWindow() {
 
   const targetUrl = process.env.APP_URL || "http://localhost:3000";
 
-  // Hiển thị Splash Screen trong lúc chờ server Next.js sẵn sàng
+  // Hiển thị Splash Screen với Holographic 3D Gyroscope Quizorra Logo
   mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Loading Studio 3D...</title>
+        <title>Quizorra Studio 3D</title>
         <style>
+          * { box-sizing: border-box; }
           body {
             margin: 0;
-            background: radial-gradient(circle at center, #0f172a 0%, #030712 100%);
-            color: #f8fafc;
+            background: radial-gradient(circle at center, #0f172a 0%, #060b18 55%, #020610 100%);
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
             user-select: none;
           }
-          .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(245, 158, 11, 0.2);
-            border-top-color: #f59e0b;
+          .gyro-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .glow-orb {
+            position: absolute;
+            width: 240px;
+            height: 240px;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-bottom: 20px;
+            background: radial-gradient(circle, rgba(6, 182, 212, 0.25) 0%, rgba(168, 85, 247, 0.15) 45%, transparent 70%);
+            filter: blur(24px);
+            animation: orbBreathe 3s ease-in-out infinite;
           }
-          @keyframes spin {
-            to { transform: rotate(360deg); }
+          .gyro-container {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            perspective: 800px;
+            transform-style: preserve-3d;
           }
-          h2 { margin: 0 0 8px 0; font-size: 22px; color: #fbbf24; }
-          p { margin: 0; color: #94a3b8; font-size: 14px; }
+          .gyro-outer {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px solid rgba(6, 182, 212, 0.6);
+            border-top-color: rgba(168, 85, 247, 0.95);
+            border-bottom-color: rgba(6, 182, 212, 0.95);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.6);
+            animation: gyroOrbitOuter 8s linear infinite;
+            transform-style: preserve-3d;
+            will-change: transform;
+          }
+          .star-dot-outer {
+            position: absolute;
+            top: -3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #e0f2fe;
+            box-shadow: 0 0 10px #38bdf8;
+          }
+          .gyro-inner {
+            position: absolute;
+            inset: 12px;
+            border-radius: 50%;
+            border: 2px solid rgba(168, 85, 247, 0.6);
+            border-left-color: rgba(192, 132, 252, 0.95);
+            border-right-color: rgba(56, 189, 248, 0.95);
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
+            animation: gyroOrbitInner 5s linear infinite;
+            transform-style: preserve-3d;
+            will-change: transform;
+          }
+          .star-dot-inner {
+            position: absolute;
+            bottom: -3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #f3e8ff;
+            box-shadow: 0 0 10px #c084fc;
+          }
+          .gyro-core {
+            position: absolute;
+            inset: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: gyroCorePulse 3s ease-in-out infinite;
+            transform-style: preserve-3d;
+            will-change: transform, filter;
+          }
+          @keyframes gyroOrbitOuter {
+            0% { transform: rotateX(65deg) rotateY(15deg) rotateZ(0deg); }
+            100% { transform: rotateX(65deg) rotateY(15deg) rotateZ(360deg); }
+          }
+          @keyframes gyroOrbitInner {
+            0% { transform: rotateX(45deg) rotateY(-35deg) rotateZ(360deg); }
+            100% { transform: rotateX(45deg) rotateY(-35deg) rotateZ(0deg); }
+          }
+          @keyframes gyroCorePulse {
+            0%, 100% {
+              transform: scale(1) translateZ(10px);
+              filter: drop-shadow(0 0 16px rgba(168, 85, 247, 0.65));
+            }
+            50% {
+              transform: scale(1.08) translateZ(16px);
+              filter: drop-shadow(0 0 28px rgba(6, 182, 212, 0.85));
+            }
+          }
+          @keyframes orbBreathe {
+            0%, 100% { transform: scale(0.92); opacity: 0.7; }
+            50% { transform: scale(1.12); opacity: 1; }
+          }
         </style>
       </head>
       <body>
-        <div class="spinner"></div>
-        <h2>Quizorra Studio 3D</h2>
-        <p>Đang kết nối hệ thống đồ họa tăng tốc GPU...</p>
+        <div class="gyro-wrapper">
+          <div class="glow-orb"></div>
+          <div class="gyro-container">
+            <div class="gyro-outer">
+              <div class="star-dot-outer"></div>
+            </div>
+            <div class="gyro-inner">
+              <div class="star-dot-inner"></div>
+            </div>
+            <div class="gyro-core">
+              <svg viewBox="0 0 200 200" fill="none" style="width: 100%; height: 100%;">
+                <defs>
+                  <linearGradient id="gyroQGrad" x1="40" y1="30" x2="160" y2="150" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#f5d0fe" />
+                    <stop offset="25%" stop-color="#c084fc" />
+                    <stop offset="60%" stop-color="#38bdf8" />
+                    <stop offset="100%" stop-color="#00f2fe" />
+                  </linearGradient>
+                  <linearGradient id="gyroTailGrad" x1="100" y1="90" x2="160" y2="150" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#38bdf8" />
+                    <stop offset="60%" stop-color="#06b6d4" />
+                    <stop offset="100%" stop-color="#0284c7" />
+                  </linearGradient>
+                </defs>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M 100 32 C 69.07 32 44 57.07 44 88 C 44 118.93 69.07 144 100 144 C 130.93 144 156 118.93 156 88 C 156 57.07 130.93 32 100 32 Z M 100 58 C 116.57 58 130 71.43 130 88 C 130 104.57 116.57 118 100 118 C 83.43 118 70 104.57 70 88 C 70 71.43 83.43 58 100 58 Z" transform="translate(0, 4)" fill="#1e103d" />
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M 100 32 C 69.07 32 44 57.07 44 88 C 44 118.93 69.07 144 100 144 C 130.93 144 156 118.93 156 88 C 156 57.07 130.93 32 100 32 Z M 100 58 C 116.57 58 130 71.43 130 88 C 130 104.57 116.57 118 100 118 C 83.43 118 70 104.57 70 88 C 70 71.43 83.43 58 100 58 Z" fill="url(#gyroQGrad)" />
+                <path d="M 116.32 87.24 A 13 13 0 0 0 98.68 105.76 L 138.61 146.93 A 15 15 0 0 0 159.39 125.07 Z" transform="translate(0, 4)" fill="#09223d" />
+                <path d="M 116.32 87.24 A 13 13 0 0 0 98.68 105.76 L 138.61 146.93 A 15 15 0 0 0 159.39 125.07 Z" transform="translate(0, 4)" fill="#09223d" />
+                <path d="M 116.32 87.24 A 13 13 0 0 0 98.68 105.76 L 138.61 146.93 A 15 15 0 0 0 159.39 125.07 Z" transform="translate(0, 4)" fill="url(#gyroTailGrad)" />
+              </svg>
+            </div>
+          </div>
+        </div>
       </body>
     </html>
   `)}`);

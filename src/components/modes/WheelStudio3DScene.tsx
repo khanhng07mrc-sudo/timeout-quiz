@@ -14,7 +14,7 @@
 
 import React, { useRef, useEffect, useMemo, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { MeshReflectorMaterial } from "@react-three/drei";
+// MeshReflectorMaterial removed for 60 FPS performance optimization
 import * as THREE from "three";
 import { MagicWheelSector, TeamState, MagicWheelPuzzleType, CrosswordWordItem } from "@/types";
 import { stripVietnameseToneKeepBase, evaluateThreePhaseWheelProgress } from "@/lib/game-engine/magic-wheel";
@@ -2930,18 +2930,55 @@ const StylizedHostess = RealisticHostess3D;
 function Studio3DBigLedWall({
   grid,
   isOpen,
+  boardStage,
   revealedSet,
   highlightedIndices,
   isSolvedOrRecap,
 }: {
   grid: FormattedTile[][];
   isOpen: boolean;
+  boardStage?: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE";
   revealedSet: Set<number>;
   highlightedIndices?: Set<number>;
   isSolvedOrRecap: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
+
+  // Staggered wave animation when opening board in 3D (Column left to right, lower rows slightly delayed)
+  const [staggerOpenedKeys, setStaggerOpenedKeys] = useState<Set<string>>(() => {
+    return boardStage === "READY_CLUE" || !boardStage ? new Set(["ALL"]) : new Set();
+  });
+
+  useEffect(() => {
+    if (boardStage === "EMPTY_56") {
+      setStaggerOpenedKeys(new Set());
+      return;
+    }
+    if (boardStage === "READY_CLUE" || !boardStage) {
+      setStaggerOpenedKeys(new Set(["ALL"]));
+      return;
+    }
+    if (boardStage === "BLANK_PHRASE") {
+      setStaggerOpenedKeys(new Set());
+      const timers: NodeJS.Timeout[] = [];
+      for (let c = 0; c < 14; c++) {
+        for (let r = 0; r < 4; r++) {
+          const tile = grid[r]?.[c];
+          if (tile?.isLetter) {
+            const delayMs = c * 60 + r * 25;
+            const t = setTimeout(() => {
+              setStaggerOpenedKeys((prev) => new Set(prev).add(`${r}_${c}`));
+            }, delayMs);
+            timers.push(t);
+          }
+        }
+      }
+      return () => {
+        timers.forEach((t) => clearTimeout(t));
+      };
+    }
+  }, [boardStage, grid]);
 
   const texture = useMemo(() => {
     if (typeof document === "undefined") return null;
@@ -2983,10 +3020,11 @@ function Studio3DBigLedWall({
         const h = tileH - 8;
         const tile = grid[r]?.[c];
         const isLetter = tile?.isLetter;
+        const isStaggerOpen = staggerOpenedKeys.has("ALL") || staggerOpenedKeys.has(`${r}_${c}`);
         const isRev = isLetter && (revealedSet.has(tile.origIdx) || isSolvedOrRecap);
         const isHl = Boolean(isLetter && highlightedIndices && highlightedIndices.has(tile.origIdx));
 
-        if (!tile || !isLetter || !isOpen) {
+        if (!tile || !isLetter || !isOpen || !isStaggerOpen) {
           // Ô đóng: Màu xanh ngọc bích đậm chuẩn gameshow VTV3 với viền vàng kim
           ctx.fillStyle = "#064e3b";
           ctx.beginPath();
@@ -3046,7 +3084,7 @@ function Studio3DBigLedWall({
     }
 
     tex.needsUpdate = true;
-  }, [grid, isOpen, revealedSet, highlightedIndices, isSolvedOrRecap]);
+  }, [grid, isOpen, revealedSet, highlightedIndices, isSolvedOrRecap, staggerOpenedKeys]);
 
   return (
     <mesh position={[0, 2.20, 0.05]}>
@@ -3296,6 +3334,7 @@ function Studio3DPuzzleBoard({
       <Studio3DBigLedWall
         grid={grid}
         isOpen={!isBoardEmpty}
+        boardStage={boardStage}
         revealedSet={revealedSet}
         highlightedIndices={highlightedIndices}
         isSolvedOrRecap={isSolvedOrRecap}
@@ -3407,8 +3446,6 @@ function BackdropCurvedLedScreen({ quality = "HIGH" }: { quality?: "HIGH" | "MED
   const meshRef = useRef<THREE.Mesh>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
-  const lastUpdateRef = useRef<number>(0);
-  const hasRenderedOnceRef = useRef<boolean>(false);
 
   const ledTexture = useMemo(() => {
     if (typeof document === "undefined") return null;
@@ -3425,29 +3462,6 @@ function BackdropCurvedLedScreen({ quality = "HIGH" }: { quality?: "HIGH" | "MED
     textureRef.current = tex;
     return tex;
   }, []);
-
-  useFrame((state) => {
-    const canvas = canvasRef.current;
-    const tex = textureRef.current;
-    if (!canvas || !tex) return;
-
-    const t = state.clock.getElapsedTime();
-    // Throttling tối ưu CPU/GPU: HIGH: 25Hz (0.04s); MEDIUM: 15Hz (0.066s); LOW: Render 1 lần duy nhất (0 continuous cost)
-    if (quality === "LOW") {
-      if (hasRenderedOnceRef.current) return;
-      hasRenderedOnceRef.current = true;
-    } else {
-      const interval = quality === "HIGH" ? 0.04 : 0.066;
-      if (t - lastUpdateRef.current < interval) return;
-      lastUpdateRef.current = t;
-    }
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    renderVideoWallCanvas(ctx, t);
-    tex.needsUpdate = true;
-  });
 
   return (
     <group position={[0, -0.75, -8.5]}>
@@ -4280,36 +4294,17 @@ function StudioFloor({ quality = "HIGH" }: { quality?: "HIGH" | "MEDIUM" | "LOW"
         />
       </mesh>
 
-      {/* Mặt sàn gương đen phản chiếu: LOW: Sàn kim loại tối ưu; HIGH/MEDIUM: Reflector tối ưu gương bóng */}
-      {quality === "LOW" ? (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.071, 0]} receiveShadow>
-          <circleGeometry args={[9.95, 48]} />
-          <meshStandardMaterial
-            color="#090f1d"
-            roughness={0.14}
-            metalness={0.85}
-            emissive="#040710"
-            emissiveIntensity={0.3}
-          />
-        </mesh>
-      ) : (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.071, 0]} receiveShadow>
-          <circleGeometry args={[9.95, 64]} />
-          <MeshReflectorMaterial
-            blur={[250, 80]}
-            resolution={quality === "HIGH" ? 512 : 256}
-            mirror={0.52}
-            mixBlur={0.8}
-            mixStrength={2.0}
-            roughness={0.10}
-            depthScale={0}
-            minDepthThreshold={0}
-            maxDepthThreshold={40}
-            color="#080e1c"
-            metalness={0.85}
-          />
-        </mesh>
-      )}
+      {/* Mặt sàn gương đen phản chiếu: satin PBR cao cấp tối ưu mượt mà 60 FPS */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.071, 0]} receiveShadow>
+        <circleGeometry args={[9.95, quality === "LOW" ? 48 : 64]} />
+        <meshStandardMaterial
+          color="#080e1c"
+          roughness={0.10}
+          metalness={0.90}
+          emissive="#030610"
+          emissiveIntensity={0.25}
+        />
+      </mesh>
 
       {/* Vành viền Chrome bảo vệ quanh mép sàn khấu */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.073, 0]}>

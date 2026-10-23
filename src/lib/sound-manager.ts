@@ -101,6 +101,8 @@ class SoundManager {
   private currentFanfareAudio: HTMLAudioElement | null = null;
   private wheelSpinAudio: HTMLAudioElement | null = null;
   private wheelSpinStartingTime: number = 0;
+  private lastMagicWheelSolveWinTime: number = 0;
+  private lastMagicWheelBuzzSolveTime: number = 0;
   private initialized: boolean = false;
 
   constructor() {
@@ -1394,15 +1396,27 @@ class SoundManager {
 
   /**
    * 7. Nhạc ăn mừng giải thành công cả ô chữ (Mở đáp án ô chữ chuẩn 2012)
+   * Chống dội âm (debounce 3s) triệt để giữa các frame và sự kiện đồng thời
    */
   public playMagicWheelSolveWin() {
+    const now = Date.now();
+    if (now - this.lastMagicWheelSolveWinTime < 3000) {
+      return;
+    }
+    this.lastMagicWheelSolveWinTime = now;
     this.playSFX("mw_solve_reveal", 1.0);
   }
 
   /**
    * 8. Chuông bấm giành quyền giải ô chữ
+   * Chống reo lại (debounce 1.8s) khi vừa bấm chuông hoặc khi chốt đáp án
    */
   public playMagicWheelBuzzSolve() {
+    const now = Date.now();
+    if (now - this.lastMagicWheelBuzzSolveTime < 1800) {
+      return;
+    }
+    this.lastMagicWheelBuzzSolveTime = now;
     this.playSFX("mw_buzz_solve", 1.0);
   }
 

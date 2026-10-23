@@ -2118,6 +2118,22 @@ export default function MagicWheelBoard({
     });
   }, [currentPuzzle?.revealedIndices, phase]);
 
+  const isSubmittingTossUpAnswerRef = useRef<boolean>(false);
+  const lastTossUpSubmitTimeRef = useRef<number>(0);
+
+  const handleSafeSolvePuzzle = useCallback(
+    (ans: string) => {
+      isSubmittingTossUpAnswerRef.current = true;
+      lastTossUpSubmitTimeRef.current = Date.now();
+      lastBuzzedPhaseRef.current = `${currentRound}_locked`;
+      onSolvePuzzle?.(ans);
+      setTimeout(() => {
+        isSubmittingTossUpAnswerRef.current = false;
+      }, 2500);
+    },
+    [currentRound, onSolvePuzzle]
+  );
+
   useEffect(() => {
     if (phase !== "TOSS_UP_BUZZED") {
       hasBuzzedRef.current = false;
@@ -2137,6 +2153,7 @@ export default function MagicWheelBoard({
 
   const handleTriggerTossUpBuzz = useCallback(
     (targetTeamId?: string) => {
+      if (isSubmittingTossUpAnswerRef.current || (Date.now() - lastTossUpSubmitTimeRef.current < 2500)) return;
       const hasFirstLetterRevealed =
         (animRevealedIndices.size >= 1) ||
         ((currentPuzzle?.revealedIndices?.length || 0) >= 1) ||
@@ -2294,7 +2311,11 @@ export default function MagicWheelBoard({
   // Chuỗi: CAM 5 (Cận thí sinh 3s) -> CAM 2 (Đại cảnh 4s) -> CAM 3 (Bảng chữ 4s) -> CAM 4 (Cận nón 5s)
   useEffect(() => {
     if (!isDisplay || !effectiveIsSpinning) {
-      setCamAngle(0);
+      if (effectiveBoardStage === "BLANK_PHRASE" || effectiveBoardStage === "READY_CLUE") {
+        setCamAngle(3);
+      } else {
+        setCamAngle(0);
+      }
       if (camTimerRef.current) clearTimeout(camTimerRef.current);
       return;
     }
@@ -2341,6 +2362,7 @@ export default function MagicWheelBoard({
       if (canPlayBoardAudio) {
         soundManager.playMagicWheelBoardOpen();
       }
+      setCamAngle(3);
     }
     prevBoardStageRef.current = curStage;
     setBoardStage(curStage);
@@ -2349,6 +2371,7 @@ export default function MagicWheelBoard({
   const handleOpenBoard = useCallback(() => {
     if (canPlayBoardAudio) soundManager.playMagicWheelBoardOpen();
     setBoardStage("BLANK_PHRASE");
+    setCamAngle(3);
     onOpenBoard?.();
     const secretPhrase = currentPuzzle?.secretPhrase || "";
     const nonSpaceCharsCount = secretPhrase.replace(/\s+/g, "").length;
@@ -2836,20 +2859,22 @@ export default function MagicWheelBoard({
 
     if (canPlayBoardAudio) {
       if (phase === "ROUND_RECAP") {
-        soundManager.playMagicWheelSolveWin();
+        // Âm thanh mở đáp án giải thành công được kích hoạt duy nhất tại lastSolveFeedback (line 2190) để triệt tiêu dội âm
       } else if (phase === "ACTION_INPUT" || phase === "SPECIAL_SOLVING") {
         soundManager.playMagicWheelThinking();
       } else if (phase === "TRADE_CHOICE") {
         soundManager.playMagicWheelTrade();
       } else if (phase === "TOSS_UP_BUZZED") {
-        if (lastBuzzedPhaseRef.current !== `${currentRound}_${tossUpBuzzedTeamId || currentTurnTeamId}`) {
+        if (!isSubmittingTossUpAnswerRef.current && (Date.now() - lastTossUpSubmitTimeRef.current > 2500) && lastBuzzedPhaseRef.current !== `${currentRound}_${tossUpBuzzedTeamId || currentTurnTeamId}`) {
           lastBuzzedPhaseRef.current = `${currentRound}_${tossUpBuzzedTeamId || currentTurnTeamId}`;
           soundManager.playMagicWheelBuzzSolve();
         }
       }
     }
     if (phase !== "TOSS_UP_BUZZED") {
-      lastBuzzedPhaseRef.current = null;
+      if (phase !== "ROUND_RECAP") {
+        lastBuzzedPhaseRef.current = null;
+      }
     }
     prevPhase.current = phase;
   }, [phase, canPlayBoardAudio, currentRound, tossUpBuzzedTeamId, currentTurnTeamId]);
@@ -3128,35 +3153,39 @@ export default function MagicWheelBoard({
     return count;
   }, [gridMatrix]);
 
-  // ── Sequential Cut Animation for Board Opening (0.125s per tile) ───────────
-  const [cutRevealedCount, setCutRevealedCount] = useState<number>(() => {
-    return (activeState.boardStage || boardStage) === "READY_CLUE" ? 9999 : 0;
+  // ── Staggered Wave Animation for Board Opening (Column left-to-right, row below delayed) ──
+  const [openedBlankCellKeys, setOpenedBlankCellKeys] = useState<Set<string>>(() => {
+    return (activeState.boardStage || boardStage) === "READY_CLUE" ? new Set(["ALL"]) : new Set();
   });
 
   useEffect(() => {
     if (effectiveBoardStage === "EMPTY_56") {
-      setCutRevealedCount(0);
+      setOpenedBlankCellKeys(new Set());
       return;
     }
     if (effectiveBoardStage === "READY_CLUE") {
-      setCutRevealedCount(9999);
+      setOpenedBlankCellKeys(new Set(["ALL"]));
       return;
     }
     if (effectiveBoardStage === "BLANK_PHRASE") {
-      setCutRevealedCount(0);
+      setOpenedBlankCellKeys(new Set());
       const timers: NodeJS.Timeout[] = [];
-      const totalTiles = totalActiveTiles;
-      for (let k = 0; k < totalTiles; k++) {
-        const t = setTimeout(() => {
-          setCutRevealedCount(k + 1);
-        }, k * 125);
-        timers.push(t);
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) {
+          if (gridMatrix[r]?.[c]) {
+            const delayMs = c * 60 + r * 25;
+            const t = setTimeout(() => {
+              setOpenedBlankCellKeys((prev) => new Set(prev).add(`${r}_${c}`));
+            }, delayMs);
+            timers.push(t);
+          }
+        }
       }
       return () => {
         timers.forEach((t) => clearTimeout(t));
       };
     }
-  }, [effectiveBoardStage, totalActiveTiles]);
+  }, [effectiveBoardStage, gridMatrix]);
 
   // Stage Title Badge
   const stageBadgeLabel = useMemo(() => {
@@ -3615,7 +3644,8 @@ export default function MagicWheelBoard({
                   const isCutOpen =
                     isTempActive ||
                     effectiveBoardStage === "READY_CLUE" ||
-                    (effectiveBoardStage === "BLANK_PHRASE" && (cell?.seqIndex ?? 0) < cutRevealedCount);
+                    openedBlankCellKeys.has("ALL") ||
+                    openedBlankCellKeys.has(`${rIdx}_${cIdx}`);
 
                   if (!cell || (!isTempActive && effectiveBoardStage === "EMPTY_56") || !isCutOpen) {
                     return (
@@ -3632,7 +3662,7 @@ export default function MagicWheelBoard({
 
                   const isLuckyGreen = phase === "LUCKY_PICK" && luckyGreenSelectedIdx === cell.originalIndex;
                   const isPopping = justPoppedIndices.has(cell.originalIndex);
-                  const isJustCut = effectiveBoardStage === "BLANK_PHRASE" && cell.seqIndex === cutRevealedCount - 1;
+                  const isJustCut = effectiveBoardStage === "BLANK_PHRASE" && openedBlankCellKeys.has(`${rIdx}_${cIdx}`);
                   const canPickLucky = phase === "LUCKY_PICK" && !cell.isRevealed && (canInteract || isDisplay || isHost);
 
                   return (
@@ -3915,7 +3945,7 @@ export default function MagicWheelBoard({
                     <SmartPuzzlePhraseInput
                       secretPhrase={currentPuzzle?.secretPhrase || ""}
                       revealedIndices={animRevealedIndices}
-                      onSubmit={(ans) => onSolvePuzzle?.(ans)}
+                      onSubmit={handleSafeSolvePuzzle}
                       submitLabel="CHỐT ĐÁP ÁN ĐOÁN NHANH ➔"
                       edition={edition}
                       compact={true}
@@ -4951,7 +4981,8 @@ export default function MagicWheelBoard({
                           const isCutOpen =
                             isTempActive ||
                             effectiveBoardStage === "READY_CLUE" ||
-                            (effectiveBoardStage === "BLANK_PHRASE" && (cell?.seqIndex ?? 0) < cutRevealedCount);
+                            openedBlankCellKeys.has("ALL") ||
+                            openedBlankCellKeys.has(`${rIdx}_${cIdx}`);
 
                           if (!cell || (!isTempActive && effectiveBoardStage === "EMPTY_56") || !isCutOpen) {
                             return (
@@ -4973,8 +5004,7 @@ export default function MagicWheelBoard({
                             phase === "LUCKY_PICK" && luckyGreenSelectedIdx === cell.originalIndex;
                           const isPopping = justPoppedIndices.has(cell.originalIndex);
                           const isJustCut =
-                            effectiveBoardStage === "BLANK_PHRASE" &&
-                            cell.seqIndex === cutRevealedCount - 1;
+                            effectiveBoardStage === "BLANK_PHRASE" && openedBlankCellKeys.has(`${rIdx}_${cIdx}`);
 
                           const canPickLucky = phase === "LUCKY_PICK" && !cell.isRevealed && (canInteract || isDisplay || isHost);
 
@@ -5490,7 +5520,7 @@ export default function MagicWheelBoard({
                         <SmartPuzzlePhraseInput
                           secretPhrase={currentPuzzle?.secretPhrase || ""}
                           revealedIndices={animRevealedIndices}
-                          onSubmit={(ans) => onSolvePuzzle?.(ans)}
+                          onSubmit={handleSafeSolvePuzzle}
                           submitLabel="CHỐT ĐÁP ÁN ĐOÁN NHANH ➔"
                           edition={edition}
                         />

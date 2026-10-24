@@ -81,7 +81,7 @@ export default function HomePage() {
         {/* ── 3 CỔNG ĐIỀU PHỐI NỀN TẢNG (HERO PORTALS) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full max-w-5xl mb-16 items-stretch text-left">
           {/* CỔNG 1: THÍ SINH THAM GIA PHÒNG THI (7 CỘT) */}
-          <div className="lg:col-span-7 cyber-cut rounded-3xl p-6 sm:p-7 relative overflow-hidden border border-purple-500/40 bg-gradient-to-br from-[#16142e] via-[#101222] to-[#0a0b16] shadow-2xl shadow-purple-950/40 flex flex-col justify-between">
+          <div className="lg:col-span-7 cyber-glow-card rounded-3xl p-6 sm:p-7 relative overflow-hidden border border-purple-500/40 bg-gradient-to-br from-[#16142e] via-[#101222] to-[#0a0b16] shadow-2xl shadow-purple-950/40 flex flex-col justify-between">
             <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-[90px] pointer-events-none" />
 
             <div>
@@ -171,7 +171,7 @@ export default function HomePage() {
             <a
               href="/display"
               onClick={(e) => { e.preventDefault(); navigateWithPortal("/display", t.displayPortal.title); }}
-              className="cyber-cut rounded-3xl p-5 border border-cyan-500/30 bg-gradient-to-br from-[#0e172a] via-[#091122] to-[#070913] hover:border-cyan-400/60 transition group flex flex-col justify-between flex-1 shadow-lg shadow-cyan-950/30 cursor-pointer"
+              className="cyber-glow-card rounded-3xl p-5 border border-cyan-500/30 bg-gradient-to-br from-[#0e172a] via-[#091122] to-[#070913] hover:border-cyan-400/60 transition group flex flex-col justify-between flex-1 shadow-lg shadow-cyan-950/30 cursor-pointer"
             >
               <div>
                 <div className="w-full flex items-center justify-between mb-3">
@@ -199,7 +199,7 @@ export default function HomePage() {
             <a
               href="/admin"
               onClick={(e) => { e.preventDefault(); navigateWithPortal("/admin", t.adminPortal.title); }}
-              className="cyber-cut rounded-3xl p-5 border border-slate-700/60 bg-gradient-to-br from-[#121424] via-[#0c0e1a] to-[#070913] hover:border-slate-500 transition group flex flex-col justify-between flex-1 shadow-lg cursor-pointer"
+              className="cyber-glow-card rounded-3xl p-5 border border-slate-700/60 bg-gradient-to-br from-[#121424] via-[#0c0e1a] to-[#070913] hover:border-slate-500 transition group flex flex-col justify-between flex-1 shadow-lg cursor-pointer"
             >
               <div>
                 <div className="w-full flex items-center justify-between mb-3">
@@ -227,7 +227,7 @@ export default function HomePage() {
 
         {/* ── 4 TRỤ CỘT NỀN TẢNG PHỔ QUÁT ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-5xl text-left">
-          <div className="cyber-cut p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
+          <div className="cyber-glow-card p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
             <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center text-cyan-400 mb-3">
               <SystemIcon name="device" className="w-5 h-5" />
             </div>
@@ -237,7 +237,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="cyber-cut p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
+          <div className="cyber-glow-card p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
             <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-400/30 flex items-center justify-center text-purple-400 mb-3">
               <SystemIcon name="sandbox" className="w-5 h-5" />
             </div>
@@ -247,7 +247,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="cyber-cut p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
+          <div className="cyber-glow-card p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
             <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-400/30 flex items-center justify-center text-indigo-400 mb-3">
               <SystemIcon name="team" className="w-5 h-5" />
             </div>
@@ -257,7 +257,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="cyber-cut p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
+          <div className="cyber-glow-card p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400 mb-3">
               <SystemIcon name="trophy" className="w-5 h-5" />
             </div>

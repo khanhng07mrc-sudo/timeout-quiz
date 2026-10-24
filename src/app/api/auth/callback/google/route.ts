@@ -91,12 +91,16 @@ export async function GET(req: NextRequest) {
           name,
           image: picture,
           role: "USER",
+          emailVerified: new Date(),
         },
       });
-    } else if (picture && !user.image) {
+    } else {
       user = await prisma.user.update({
         where: { id: user.id },
-        data: { image: picture },
+        data: {
+          image: picture && !user.image ? picture : undefined,
+          emailVerified: user.emailVerified || new Date(),
+        },
       });
     }
 

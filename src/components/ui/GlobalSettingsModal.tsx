@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation, SUPPORTED_LANGUAGES, Language } from "@/lib/i18n";
 import Link from "next/link";
+import TwoFactorSetupModal from "@/components/admin/TwoFactorSetupModal";
 
 interface GlobalSettingsModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export default function GlobalSettingsModal({ isOpen, onClose }: GlobalSettingsM
   const [sfxEnabled, setSfxEnabled] = useState(true);
   const [gpuSaver, setGpuSaver] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
 
   useEffect(() => {
     try {
@@ -198,6 +200,30 @@ export default function GlobalSettingsModal({ isOpen, onClose }: GlobalSettingsM
             </div>
           </div>
 
+          {/* 4. Bảo mật 2 lớp (2FA) */}
+          <div className="p-4 rounded-2xl bg-[#14182e] border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-amber-300 uppercase tracking-wider text-[11px]">
+                Bảo mật & Xác minh 2 bước (2FA)
+              </h4>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono">
+                Google / GitHub
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-white">Xác minh Google Authenticator & OTP</p>
+                <p className="text-[11px] text-slate-400">Quét mã QR, mã 30s offline và cấp 8 mã dự phòng</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTwoFactorModal(true)}
+                className="px-3 py-1.5 rounded-xl border border-purple-500/40 bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 text-xs font-bold transition cursor-pointer"
+              >
+                Cấu hình 2FA
+              </button>
+            </div>
+          </div>
           {/* 3. Ngôn ngữ */}
           <div className="p-4 rounded-2xl bg-[#14182e] border border-slate-800 space-y-2">
             <h4 className="font-bold text-emerald-300 uppercase tracking-wider text-[11px]">
@@ -237,6 +263,7 @@ export default function GlobalSettingsModal({ isOpen, onClose }: GlobalSettingsM
           </div>
         </div>
       </div>
+      <TwoFactorSetupModal isOpen={showTwoFactorModal} onClose={() => setShowTwoFactorModal(false)} />
     </div>
   );
 }

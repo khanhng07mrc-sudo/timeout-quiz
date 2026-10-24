@@ -4,9 +4,11 @@ import {
   comparePassword,
   createUserToken,
   createAdminToken,
-  getAdminMasterPassword,
   isValidMasterPassword,
 } from "@/lib/security";
+import { isDeviceTrusted } from "@/lib/device-trust";
+import { sendOtpEmail } from "@/lib/email-service";
+import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
   try {
@@ -78,6 +80,38 @@ export async function POST(req: NextRequest) {
         { error: "Email hoặc mật khẩu không chính xác" },
         { status: 401 }
       );
+    }
+
+    // 3. Check 2-Step Verification (2FA)
+    if (user.twoFactorEnabled) {
+      const deviceToken = req.cookies.get("quizorra_trust_device")?.value;
+      const trusted = isDeviceTrusted(user.trustedDevices, deviceToken);
+
+      if (!trusted) {
+        // Prepare Email OTP fallback
+        const emailOtp = crypto.randomInt(100000, 999999).toString();
+        await prisma.verificationCode.deleteMany({
+          where: { email: user.email, type: "EMAIL_2FA" },
+        });
+        await prisma.verificationCode.create({
+          data: {
+            email: user.email,
+            code: emailOtp,
+            type: "EMAIL_2FA",
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+          },
+        });
+        const mailRes = await sendOtpEmail(user.email, emailOtp, "EMAIL_2FA");
+
+        return NextResponse.json({
+          success: true,
+          require2FA: true,
+          email: user.email,
+          hasTotp: !!user.twoFactorSecret,
+          devCode: mailRes.devCode,
+          message: "Phát hiện thiết bị mới. Vui lòng nhập mã xác minh 2 bước để tiếp tục.",
+        });
+      }
     }
 
     const token = createUserToken(user);

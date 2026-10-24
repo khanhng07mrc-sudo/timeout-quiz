@@ -307,3 +307,5 @@ export function sanitizeInput(text: string | null | undefined, maxLength = 500):
   return cleaned;
 }
 
+
+export const verifyToken = verifyUserToken;

@@ -1417,15 +1417,15 @@ var DEFAULT_OFFLINE_BANK = {
 };
 var MAGIC_WHEEL_PRESET_BANKS = [
   {
-    id: "bank_mw_preset_vtv3",
-    title: "Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u - V\u0103n H\xF3a & L\u1ECBch S\u1EED (B\u1EA3n Ti\u1EBFng Vi\u1EC7t)",
+    id: "bank_mw_preset_culture",
+    title: "V\xF2ng Quay Tr\xED Tu\u1EC7 - V\u0103n H\xF3a & L\u1ECBch S\u1EED (B\u1EA3n Ti\u1EBFng Vi\u1EC7t)",
     description: "B\u1ED9 \u0111\u1EC1 chu\u1EA9n 11 v\xF2ng (2 \u0110o\xE1n Nhanh + 8 V\xF2ng Ch\xEDnh t\u1ED1i \u0111a + 1 V\xF2ng \u0110\u1EB7c Bi\u1EC7t): L\u1ECBch s\u1EED, Danh nh\xE2n, Ca dao & V\u0103n h\u1ECDc Vi\u1EC7t Nam",
     createdAt: "2026-01-01T00:00:00.000Z",
     isLocalOnly: true,
     _count: { questions: 11 },
     questions: [
       {
-        id: "mw_vtv3_1",
+        id: "mw_vi_culture_1",
         type: "WORD_PUZZLE",
         content: "Qu\u1EA7n th\u1EC3 di t\xEDch l\u1ECBch s\u1EED c\u1ED1 \u0111\xF4 ng\xE0n n\u0103m v\u0103n hi\u1EBFn \u0111\u01B0\u1EE3c UNESCO vinh danh l\xE0 Di s\u1EA3n Th\u1EBF gi\u1EDBi.",
         answer: "HO\xC0NG TH\xC0NH TH\u0102NG LONG",
@@ -1438,7 +1438,7 @@ var MAGIC_WHEEL_PRESET_BANKS = [
         ]
       },
       {
-        id: "mw_vtv3_2",
+        id: "mw_vi_culture_2",
         type: "WORD_PUZZLE",
         content: "Hai th\u1EE9c b\xE1nh t\u01B0\u1EE3ng tr\u01B0ng tr\u1EDDi tr\xF2n \u0111\u1EA5t vu\xF4ng g\u1EAFn v\u1EDBi truy\u1EC1n thuy\u1EBFt ho\xE0ng t\u1EED Lang Li\xEAu \u0111\u1EDDi vua H\xF9ng.",
         answer: "B\xC1NH CH\u01AFNG - B\xC1NH GI\u1EA6Y",
@@ -1451,7 +1451,7 @@ var MAGIC_WHEEL_PRESET_BANKS = [
         ]
       },
       {
-        id: "mw_vtv3_3",
+        id: "mw_vi_culture_3",
         type: "WORD_PUZZLE",
         content: "Nh\xE0 qu\xE2n s\u1EF1, danh nh\xE2n v\u0103n h\xF3a l\u1ED7i l\u1EA1c th\u1EBF gi\u1EDBi c\u1EE7a Vi\u1EC7t Nam th\u1EDDi H\u1EADu L\xEA.",
         answer: "NGUY\u1EC4N TR\xC3I",
@@ -1464,7 +1464,7 @@ var MAGIC_WHEEL_PRESET_BANKS = [
         ]
       },
       {
-        id: "mw_vtv3_4",
+        id: "mw_vi_culture_4",
         type: "WORD_PUZZLE",
         content: "Qu\u1EA7n th\u1EC3 di t\xEDch kinh th\xE0nh tri\u1EC1u Nguy\u1EC5n b\xEAn d\xF2ng s\xF4ng H\u01B0\u01A1ng th\u01A1 m\u1ED9ng.",
         answer: "C\u1ED0 \u0110\xD4 HU\u1EBE",
@@ -1477,7 +1477,7 @@ var MAGIC_WHEEL_PRESET_BANKS = [
         ]
       },
       {
-        id: "mw_vtv3_5",
+        id: "mw_vi_culture_5",
         type: "WORD_PUZZLE",
         content: "Truy\u1EC1n th\u1ED1ng \u0111\u1EA1o l\xFD tri \xE2n s\xE2u s\u1EAFc c\xE1c th\u1EBF h\u1EC7 \u0111i tr\u01B0\u1EDBc c\u1EE7a d\xE2n t\u1ED9c ta.",
         answer: "U\u1ED0NG N\u01AF\u1EDAC NH\u1EDA NGU\u1ED2N",
@@ -1490,7 +1490,7 @@ var MAGIC_WHEEL_PRESET_BANKS = [
         ]
       },
       {
-        id: "mw_vtv3_6",
+        id: "mw_vi_culture_6",
         type: "WORD_PUZZLE",
         content: "C\xE1c t\u1EEB kho\xE1 v\u1EC1 V\u0103n h\xF3a v\xE0 Th\u1EE7 \u0111\xF4 ng\xE0n n\u0103m v\u0103n hi\u1EBFn \u0111an xen nhau tr\xEAn b\xE0n \xF4 ch\u1EEF (g\u1ED3m 3 t\u1EEB).",
         answer: "V\u0102N H\u1ECCC, NHO, H\xC0 N\u1ED8I",
@@ -1520,7 +1520,7 @@ var MAGIC_WHEEL_PRESET_BANKS = [
         ]
       },
       {
-        id: "mw_vtv3_7",
+        id: "mw_vi_culture_7",
         type: "WORD_PUZZLE",
         content: "L\xE0ng ngh\u1EC1 l\xE0m g\u1ED1m l\xE2u \u0111\u1EDDi n\u1EB1m b\xEAn b\u1EDD s\xF4ng H\u1ED3ng thu\u1ED9c huy\u1EC7n Gia L\xE2m, H\xE0 N\u1ED9i.",
         answer: "G\u1ED0M S\u1EE8 B\xC1T TR\xC0NG",
@@ -1533,7 +1533,7 @@ var MAGIC_WHEEL_PRESET_BANKS = [
         ]
       },
       {
-        id: "mw_vtv3_8",
+        id: "mw_vi_culture_8",
         type: "WORD_PUZZLE",
         content: "Lo\u1EA1i h\xECnh \xE2m nh\u1EA1c b\xE1c h\u1ECDc \u0111\u1EA7u ti\xEAn c\u1EE7a Vi\u1EC7t Nam \u0111\u01B0\u1EE3c UNESCO vinh danh.",
         answer: "NH\xC3 NH\u1EA0C CUNG \u0110\xCCNH HU\u1EBE",
@@ -1546,7 +1546,7 @@ var MAGIC_WHEEL_PRESET_BANKS = [
         ]
       },
       {
-        id: "mw_vtv3_9",
+        id: "mw_vi_culture_9",
         type: "WORD_PUZZLE",
         content: "V\u1ECB anh h\xF9ng \xE1o v\u1EA3i c\u1EDD \u0111\xE0o l\u1EADp n\xEAn chi\u1EBFn th\u1EAFng Ng\u1ECDc H\u1ED3i - \u0110\u1ED1ng \u0110a l\u1EABy l\u1EEBng.",
         answer: "QUANG TRUNG NGUY\u1EC4N HU\u1EC6",
@@ -1559,7 +1559,7 @@ var MAGIC_WHEEL_PRESET_BANKS = [
         ]
       },
       {
-        id: "mw_vtv3_10",
+        id: "mw_vi_culture_10",
         type: "WORD_PUZZLE",
         content: "Tr\u01B0\u1EDDng \u0111\u1EA1i h\u1ECDc \u0111\u1EA7u ti\xEAn c\u1EE7a Vi\u1EC7t Nam \u0111\u01B0\u1EE3c x\xE2y d\u1EF1ng d\u01B0\u1EDBi tri\u1EC1u \u0111\u1EA1i nh\xE0 L\xFD.",
         answer: "V\u0102N MI\u1EBEU QU\u1ED0C T\u1EEC GI\xC1M",
@@ -1572,7 +1572,7 @@ var MAGIC_WHEEL_PRESET_BANKS = [
         ]
       },
       {
-        id: "mw_vtv3_11",
+        id: "mw_vi_culture_11",
         type: "WORD_PUZZLE",
         content: "Ki\u1EC7t t\xE1c b\u1EA5t h\u1EE7 g\u1ED3m 3254 c\xE2u th\u01A1 l\u1EE5c b\xE1t \u0111\u1EC9nh cao c\u1EE7a v\u0103n h\u1ECDc trung \u0111\u1EA1i Vi\u1EC7t Nam.",
         answer: "TRUY\u1EC6N KI\u1EC0U NGUY\u1EC4N DU",
@@ -1588,7 +1588,7 @@ var MAGIC_WHEEL_PRESET_BANKS = [
   },
   {
     id: "bank_mw_preset_nature",
-    title: "Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u - Non N\u01B0\u1EDBc Vi\u1EC7t Nam (Du L\u1ECBch & Th\u1EAFng C\u1EA3nh)",
+    title: "V\xF2ng Quay Tr\xED Tu\u1EC7 - Non N\u01B0\u1EDBc Vi\u1EC7t Nam (Du L\u1ECBch & Th\u1EAFng C\u1EA3nh)",
     description: "B\u1ED9 \u0111\u1EC1 chu\u1EA9n 11 v\xF2ng (2 \u0110o\xE1n Nhanh + 8 V\xF2ng Ch\xEDnh t\u1ED1i \u0111a + 1 V\xF2ng \u0110\u1EB7c Bi\u1EC7t): Danh lam th\u1EAFng c\u1EA3nh, \u1EA8m th\u1EF1c & Di s\u1EA3n thi\xEAn nhi\xEAn",
     createdAt: "2026-01-01T00:00:00.000Z",
     isLocalOnly: true,
@@ -1741,7 +1741,7 @@ var MAGIC_WHEEL_PRESET_BANKS = [
   },
   {
     id: "bank_mw_preset_science",
-    title: "Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u - Khoa H\u1ECDc & \u0110\u1EDDi S\u1ED1ng (T\u1EF1 Nhi\xEAn & C\xF4ng Ngh\u1EC7)",
+    title: "V\xF2ng Quay Tr\xED Tu\u1EC7 - Khoa H\u1ECDc & \u0110\u1EDDi S\u1ED1ng (T\u1EF1 Nhi\xEAn & C\xF4ng Ngh\u1EC7)",
     description: "B\u1ED9 \u0111\u1EC1 chu\u1EA9n 11 v\xF2ng (2 \u0110o\xE1n Nhanh + 8 V\xF2ng Ch\xEDnh t\u1ED1i \u0111a + 1 V\xF2ng \u0110\u1EB7c Bi\u1EC7t): Thi\xEAn v\u0103n, V\u1EADt l\xFD, Sinh h\u1ECDc & C\xF4ng ngh\u1EC7 hi\u1EC7n \u0111\u1EA1i",
     createdAt: "2026-01-01T00:00:00.000Z",
     isLocalOnly: true,
@@ -2320,8 +2320,8 @@ async function ensureQuizBankExists(bankId) {
           select: { id: true }
         });
       }
-      const cleanTitle = (preset.title || cleanId).replace(/vtv3 huyền thoại/gi, "V\u0103n H\xF3a & L\u1ECBch S\u1EED").replace(/vtv3/gi, "").replace(/\s{2,}/g, " ").trim();
-      const cleanDesc = (preset.description || "").replace(/vtv3/gi, "").replace(/\s{2,}/g, " ").trim();
+      const cleanTitle = (preset.title || cleanId).replace(/chiếc nón kỳ diệu/gi, "V\xF2ng Quay Tr\xED Tu\u1EC7").replace(/vtv3 huyền thoại/gi, "V\u0103n H\xF3a & L\u1ECBch S\u1EED").replace(/vtv3/gi, "").replace(/\s{2,}/g, " ").trim();
+      const cleanDesc = (preset.description || "").replace(/chiếc nón kỳ diệu/gi, "V\xF2ng Quay Tr\xED Tu\u1EC7").replace(/vtv3/gi, "").replace(/\s{2,}/g, " ").trim();
       await prisma.quizBank.upsert({
         where: { id: preset.id },
         update: {

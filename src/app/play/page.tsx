@@ -1,19 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import BrandLogo from "@/components/ui/BrandLogo";
-import SystemIcon from "@/components/ui/SystemIcon";
 
-export default function JoinPage() {
+function PlayContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [pin, setPin] = useState("");
   const [name, setName] = useState("");
   const [passcode, setPasscode] = useState("");
   const [needsPasscode, setNeedsPasscode] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isQrJoined, setIsQrJoined] = useState(false);
+
+  useEffect(() => {
+    const urlPin = searchParams?.get("pin") || searchParams?.get("room");
+    if (urlPin) {
+      const cleanPin = urlPin.replace(/\D/g, "").slice(0, 6);
+      setPin(cleanPin);
+      setIsQrJoined(true);
+    }
+  }, [searchParams]);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,15 +83,38 @@ export default function JoinPage() {
             Tham gia phòng thi
           </h1>
           <p className="text-sm text-slate-400 mt-1 whitespace-nowrap">
-            Nhập mã PIN 6 số được chiếu trên màn hình
+            {isQrJoined
+              ? "Đã kết nối qua mã QR! Nhập tên để tham gia ngay"
+              : "Nhập mã PIN 6 số hoặc quét mã QR trên màn hình"}
           </p>
         </div>
 
-        <form onSubmit={handleJoin} className="quiz-card p-8 sm:p-10 space-y-5 backdrop-blur-xl border border-[#232845] bg-[#131626]/90 shadow-2xl">
+        <form
+          onSubmit={handleJoin}
+          className="quiz-card p-8 sm:p-10 space-y-5 backdrop-blur-xl border border-[#232845] bg-[#131626]/90 shadow-2xl rounded-3xl"
+        >
+          {isQrJoined && (
+            <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs text-center font-bold flex items-center justify-center gap-2">
+              <span>✓</span>
+              <span>Đã kết nối mã phòng: <span className="font-mono text-sm underline">{pin}</span></span>
+            </div>
+          )}
+
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-2 whitespace-nowrap">
-              Mã phòng (PIN)
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-slate-300 whitespace-nowrap">
+                Mã phòng (PIN)
+              </label>
+              {isQrJoined && (
+                <button
+                  type="button"
+                  onClick={() => setIsQrJoined(false)}
+                  className="text-[11px] text-cyan-400 hover:underline"
+                >
+                  Đổi mã khác
+                </button>
+              )}
+            </div>
             <input
               type="text"
               value={pin}
@@ -89,10 +123,10 @@ export default function JoinPage() {
                 setError("");
               }}
               placeholder="123456"
-              className="input-box w-full py-4 text-center text-3xl font-mono font-black tracking-widest text-purple-300 placeholder:text-slate-600"
+              className="input-box w-full py-4 text-center text-3xl font-mono font-black tracking-widest text-purple-300 placeholder:text-slate-600 tabular-nums"
               maxLength={6}
               inputMode="numeric"
-              autoFocus
+              autoFocus={!isQrJoined}
             />
           </div>
 
@@ -110,6 +144,7 @@ export default function JoinPage() {
               placeholder="VD: Nguyễn Văn A hoặc Tên Đội..."
               className="input-box w-full py-3.5 px-4 text-base"
               maxLength={30}
+              autoFocus={isQrJoined}
             />
           </div>
 
@@ -151,5 +186,19 @@ export default function JoinPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+export default function JoinPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#0b0c16] text-slate-400">
+          Đang tải phòng thi...
+        </div>
+      }
+    >
+      <PlayContent />
+    </Suspense>
   );
 }

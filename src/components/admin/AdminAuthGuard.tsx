@@ -3,6 +3,7 @@
 import { useEffect, useState, createContext, useContext } from "react";
 import BrandLogo from "@/components/ui/BrandLogo";
 import SystemIcon from "@/components/ui/SystemIcon";
+import OtpInputModal from "@/components/ui/OtpInputModal";
 
 export interface AuthUser {
   id: string;
@@ -47,6 +48,12 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
   // Terms and conditions consent
   const [termsScrolledToBottom, setTermsScrolledToBottom] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+
+  // OTP Verification Modal states
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpType, setOtpType] = useState<"REGISTER" | "LOGIN_2FA" | "EMAIL_2FA">("REGISTER");
+  const [otpDevCode, setOtpDevCode] = useState<string | null>(null);
 
   const checkAuth = async () => {
     try {
@@ -96,6 +103,15 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
       const data = await res.json();
 
       if (res.ok && data.success) {
+        // If 2FA is required for this login
+        if (data.require2FA) {
+          setOtpEmail(data.email || email.trim());
+          setOtpType("LOGIN_2FA");
+          setOtpDevCode(data.devCode || null);
+          setOtpModalOpen(true);
+          return;
+        }
+
         if (data.token) {
           localStorage.setItem("admin_token", data.token);
           sessionStorage.setItem("admin_token", data.token);
@@ -136,7 +152,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
     setError("");
 
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch("/api/auth/register-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), email: email.trim(), password, termsAccepted: true }),
@@ -145,20 +161,29 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
       const data = await res.json();
 
       if (res.ok && data.success) {
-        if (data.token) {
-          localStorage.setItem("admin_token", data.token);
-          sessionStorage.setItem("admin_token", data.token);
-        }
-        setUser(data.user);
-        setIsAuthenticated(true);
-        setPassword("");
+        setOtpEmail(data.email || email.trim());
+        setOtpType("REGISTER");
+        setOtpDevCode(data.devCode || null);
+        setOtpModalOpen(true);
       } else {
-        setError(data.error || "Không thể tạo tài khoản. Vui lòng kiểm tra lại thông tin.");
+        setError(data.error || "Không thể gửi mã xác thực. Vui lòng kiểm tra lại thông tin.");
       }
     } catch {
       setError("Lỗi kết nối máy chủ. Vui lòng thử lại sau.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (otpType === "REGISTER") {
+      const res = await fetch("/api/auth/register-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password, termsAccepted: true }),
+      });
+      const data = await res.json();
+      return data.devCode || null;
     }
   };
 
@@ -201,7 +226,10 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
 
   const handleSocialClick = (provider: "Google" | "Facebook") => {
     if (provider === "Google") {
-      window.location.href = "/api/auth/oauth/google";
+      setSocialNotice(
+        "Tính năng đăng nhập Google đang chờ hoàn tất xác minh Domain chính thức. Bạn có thể tạo tài khoản Email & Mật khẩu ngay bên dưới để trải nghiệm đầy đủ 100% tính năng ngay lập tức!"
+      );
+      setTimeout(() => setSocialNotice(null), 8000);
       return;
     }
     setSocialNotice(
@@ -245,7 +273,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-[#0b0c16] relative overflow-hidden">
-        {/* Subtle Ambient Lighting (Non-glare) */}
+        {/* Subtle Ambient Lighting */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[250px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
 
@@ -301,7 +329,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                 <button
                   type="button"
                   onClick={() => handleSocialClick("Google")}
-                  className="w-full py-2.5 px-3 rounded-xl border border-[#2d335c] bg-[#171a30] hover:bg-[#1e2240] text-white text-xs font-semibold flex items-center justify-center gap-2.5 transition active:scale-[0.98] shadow-sm"
+                  className="w-full py-2.5 px-3 rounded-xl border border-[#2d335c] bg-[#171a30] hover:bg-[#1e2240] text-white text-xs font-semibold flex items-center justify-center gap-2.5 transition active:scale-[0.98] shadow-sm cursor-pointer"
                 >
                   <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                     <path
@@ -366,7 +394,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="text-[11px] text-cyan-400 hover:text-cyan-300 font-medium"
+                      className="text-[11px] text-cyan-400 hover:text-cyan-300 font-medium cursor-pointer"
                     >
                       {showPassword ? "Ẩn" : "Hiện"}
                     </button>
@@ -441,7 +469,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="text-[11px] text-cyan-400 hover:text-cyan-300 font-medium"
+                      className="text-[11px] text-cyan-400 hover:text-cyan-300 font-medium cursor-pointer"
                     >
                       {showPassword ? "Ẩn" : "Hiện"}
                     </button>
@@ -485,9 +513,9 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                     <p>
                       Quizorra cam kết bảo mật thông tin cá nhân và KHÔNG BAO GIỜ thương mại hóa hoặc chia sẻ dữ liệu của bạn cho bất kỳ bên thứ ba nào. Bạn giữ toàn bộ quyền sở hữu trí tuệ đối với ngân hàng câu hỏi do mình tạo lập.
                     </p>
-                    <p className="font-bold text-slate-200">3. Quy chuẩn chống gian lận:</p>
+                    <p className="font-bold text-slate-200">3. Quy chuẩn chống gian lận &amp; Mạo danh:</p>
                     <p>
-                      Nghiêm cấm can thiệp kỹ thuật tự động, bot giả mạo, tấn công mạng hoặc truyền tải nội dung vi phạm pháp luật. Mọi hành vi vi phạm sẽ bị khóa tài khoản vĩnh viễn.
+                      Mọi tài khoản bắt buộc phải xác minh quyền sở hữu hòm thư qua mã OTP 6 số. Nghiêm cấm sử dụng email của người khác hoặc các hành vi gian lận.
                     </p>
                     <p className="font-bold text-slate-200">4. Xem chi tiết toàn văn bản:</p>
                     <p>
@@ -531,9 +559,9 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                   className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-500 hover:from-cyan-500 hover:to-teal-400 text-white text-sm sm:text-base font-bold flex items-center justify-center gap-2 shadow-lg shadow-cyan-600/30 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
                 >
                   {loading ? (
-                    <span>Đang tạo tài khoản...</span>
+                    <span>Đang gửi mã xác thực...</span>
                   ) : (
-                    <span>Tạo tài khoản Quizorra</span>
+                    <span>Nhận mã OTP xác thực Email →</span>
                   )}
                 </button>
               </form>
@@ -574,14 +602,14 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                       setAuthMode("LOGIN");
                       setError("");
                     }}
-                    className="w-1/3 py-3 rounded-xl border border-[#2d335c] text-slate-400 hover:text-white text-xs font-bold"
+                    className="w-1/3 py-3 rounded-xl border border-[#2d335c] text-slate-400 hover:text-white text-xs font-bold cursor-pointer"
                   >
                     Quay lại
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-2/3 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/30 disabled:opacity-50"
+                    className="w-2/3 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/30 disabled:opacity-50 cursor-pointer"
                   >
                     {loading ? "Đang xác thực..." : "Mở khóa Super Admin"}
                   </button>
@@ -606,38 +634,41 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                       setAuthMode("MASTER_KEY");
                       setError("");
                     }}
-                    className="text-slate-500 hover:text-amber-400 transition"
+                    className="text-slate-500 hover:text-amber-400 transition cursor-pointer"
                   >
-                    🔑 Dùng Master Key
+                    Master Key
                   </button>
                 </>
               ) : null}
             </div>
           </div>
-
-          <div className="mt-6 text-center space-y-2">
-            <div>
-              <a
-                href="/"
-                className="text-xs text-slate-500 hover:text-slate-300 transition-colors inline-flex items-center gap-1.5"
-              >
-                <SystemIcon name="home" className="w-3.5 h-3.5" />
-                <span>Quay lại trang chủ người chơi</span>
-              </a>
-            </div>
-            <div className="flex items-center justify-center gap-3 text-[11px] text-slate-600">
-              <a href="/terms" target="_blank" className="hover:text-slate-400 transition">Điều khoản dịch vụ</a>
-              <span>•</span>
-              <a href="/privacy" target="_blank" className="hover:text-slate-400 transition">Chính sách bảo mật</a>
-            </div>
-          </div>
         </div>
+
+        {/* OTP Verification Modal */}
+        <OtpInputModal
+          isOpen={otpModalOpen}
+          onClose={() => setOtpModalOpen(false)}
+          email={otpEmail}
+          type={otpType}
+          devCode={otpDevCode}
+          onSuccess={(userData, token) => {
+            if (token) {
+              localStorage.setItem("admin_token", token);
+              sessionStorage.setItem("admin_token", token);
+            }
+            setUser(userData);
+            setIsAuthenticated(true);
+            setPassword("");
+            setOtpModalOpen(false);
+          }}
+          onResendOtp={handleResendOtp}
+        />
       </div>
     );
   }
 
   return (
-    <AdminAuthContext.Provider value={{ isAuthenticated: true, user, logout, refreshUser: checkAuth }}>
+    <AdminAuthContext.Provider value={{ isAuthenticated: !!isAuthenticated, user, logout, refreshUser: checkAuth }}>
       {children}
     </AdminAuthContext.Provider>
   );

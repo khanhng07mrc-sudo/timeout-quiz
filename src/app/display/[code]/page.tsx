@@ -40,6 +40,8 @@ import {
 } from "@/lib/clock-sync";
 import { ContinuousTimerBar, ContinuousTimerRing } from "@/components/ui/ContinuousTimerBar";
 import DualTabTransition from "@/components/ui/DualTabTransition";
+import RoomQRCodeModal from "@/components/room/RoomQRCodeModal";
+import QRCode from "qrcode";
 
 export default function DisplayPage() {
   const { code } = useParams<{ code: string }>();
@@ -54,10 +56,21 @@ export default function DisplayPage() {
   const [buzzed, setBuzzed] = useState<{ playerName: string } | null>(null);
   const [lastPowerup, setLastPowerup] = useState<PowerupUsedPayload | null>(null);
   const [isStealOpen, setIsStealOpen] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [displayQrUrl, setDisplayQrUrl] = useState<string>("");
   const [stealBuzzed, setStealBuzzed] = useState<{ teamName: string; playerName: string } | null>(null);
 
   const [matchStarting, setMatchStarting] = useState<{ seconds: number; endsAt?: number; total?: number } | null>(null);
   const matchStartingRef = useRef(false);
+  useEffect(() => {
+    if (!code) return;
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://quizorra.app";
+    const joinUrl = `${origin}/play?pin=${code}`;
+    QRCode.toDataURL(joinUrl, { width: 120, margin: 1 })
+      .then((url) => setDisplayQrUrl(url))
+      .catch((err) => console.error(err));
+  }, [code]);
+
   useEffect(() => {
     matchStartingRef.current = Boolean(matchStarting);
   }, [matchStarting]);
@@ -1334,14 +1347,34 @@ export default function DisplayPage() {
               </h1>
             </div>
 
-            {/* Giant PIN Box */}
-            <div className="my-auto py-2 sm:py-3 text-center min-w-0 max-w-full">
-              <p className="text-xs sm:text-sm text-slate-400 font-semibold uppercase tracking-wider mb-2">Mã phòng tham gia</p>
-              <div className="inline-block max-w-full px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl glass border-2 border-purple-500/50 glow-purple shadow-2xl bg-black/40">
-                <p className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-black font-mono tracking-wider sm:tracking-widest text-cyan-300 truncate">{code}</p>
+            {/* Giant PIN Box & QR Code */}
+            <div className="my-auto py-2 sm:py-3 text-center min-w-0 max-w-full space-y-2">
+              <p className="text-xs sm:text-sm text-slate-400 font-semibold uppercase tracking-wider">Mã phòng tham gia</p>
+              <div className="flex items-center justify-center gap-3">
+                <div className="px-4 sm:px-6 py-2 sm:py-3 rounded-2xl glass border-2 border-purple-500/50 glow-purple shadow-2xl bg-black/40">
+                  <p className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-black font-mono tracking-wider sm:tracking-widest text-cyan-300 truncate tabular-nums">{code}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowQRModal(true)}
+                  className="p-1.5 sm:p-2 rounded-2xl glass border border-cyan-500/40 hover:border-cyan-400 bg-white/5 hover:bg-white/10 transition shadow-lg group flex flex-col items-center cursor-pointer shrink-0"
+                  title="Bấm để phóng to mã QR cho cả khán phòng quét"
+                >
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white p-1 rounded-xl flex items-center justify-center overflow-hidden">
+                    {displayQrUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={displayQrUrl} alt="QR Code" className="w-full h-full block" />
+                    ) : (
+                      <span className="text-[10px] text-slate-800 font-mono">QR</span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-cyan-300 font-bold mt-0.5 group-hover:text-white flex items-center gap-0.5">
+                    <span>⛶ Phóng to</span>
+                  </span>
+                </button>
               </div>
-              <p className="text-slate-300 mt-2 sm:mt-3 text-xs sm:text-sm truncate">
-                Truy cập <span className="text-white font-bold font-mono bg-white/10 px-2 py-0.5 rounded">/play/{code}</span> để vào phòng
+              <p className="text-slate-300 mt-1 text-xs sm:text-sm truncate">
+                Quét mã QR hoặc truy cập <span className="text-white font-bold font-mono bg-white/10 px-2 py-0.5 rounded">/play?pin={code}</span>
               </p>
             </div>
 
@@ -1463,6 +1496,12 @@ export default function DisplayPage() {
           mode={roomState?.mode}
           isOpen={showRulesModal}
           onClose={() => setShowRulesModal(false)}
+        />
+        <RoomQRCodeModal
+          isOpen={showQRModal}
+          onClose={() => setShowQRModal(false)}
+          roomCode={code}
+          roomTitle={(roomState as any)?.title || formatRoomTitle(roomState?.mode || "CLASSIC")}
         />
       </div>
     );

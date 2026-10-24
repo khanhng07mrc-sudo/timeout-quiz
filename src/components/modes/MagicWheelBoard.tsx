@@ -2355,7 +2355,7 @@ export default function MagicWheelBoard({
       ? "FULL_BOARD"
       : tossUpLayoutMode;
 
-  const shouldShowSplit = activeTossUpLayout === "SPLIT" && isTossUpActive && !isTossUpAutoCollapsed;
+  const shouldShowSplit = isTossUpRound && activeTossUpLayout === "SPLIT" && !isTossUpAutoCollapsed;
 
   const handleSelectLayoutMode = useCallback(
     (mode: "SPLIT" | "FULL_3D" | "FULL_BOARD") => {
@@ -2678,7 +2678,7 @@ export default function MagicWheelBoard({
         next.delete(idx);
         return next;
       });
-    }, 700);
+    }, 450);
     activeTimersRef.current.push(t);
   }, []);
 

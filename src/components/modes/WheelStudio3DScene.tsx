@@ -2968,8 +2968,28 @@ export function getCleanPuzzleCategoryOrClue(puzzle?: { category?: string; clue?
 
 const StylizedHostess = RealisticHostess3D;
 
+/** Đường cong Elastic Zoom Punch 60FPS mượt mà cho từng ô chữ khi lật mở */
+function getTilePopMetrics(p: number): { scale: number; glow: number } {
+  if (p <= 0) return { scale: 1.0, glow: 1.0 };
+  if (p >= 1) return { scale: 1.0, glow: 0.0 };
+
+  // Phase 1 (0 -> 0.28, ~125ms): Bung nổ zoom nhanh từ 1.0 -> 1.35x
+  let scale = 1.0;
+  if (p < 0.28) {
+    const t = p / 0.28;
+    scale = 1.0 + 0.35 * (t * (2 - t));
+  } else {
+    // Phase 2 (0.28 -> 1.0, ~325ms): Sóng đàn hồi nhún nảy êm ái về 1.00x
+    const t = (p - 0.28) / 0.72;
+    const decay = Math.exp(-t * 3.6);
+    scale = 1.0 + 0.35 * decay * Math.cos(t * Math.PI * 2.2);
+  }
+  const glow = Math.pow(1 - p, 1.5);
+  return { scale, glow };
+}
+
 /** Màn hình LED kỹ thuật số lớn trên vách sân khấu 3D (Single Quad Canvas Texture)
- *  Thay thế hoàn toàn 56 khối 3D độc lập lật 180°, triệt tiêu 100% giật lag!
+ *  Tích hợp bộ điều phối hoạt ảnh Elastic Zoom Punch 60FPS thời gian thực mượt mà!
  */
 function Studio3DBigLedWall({
   grid,
@@ -2990,6 +3010,9 @@ function Studio3DBigLedWall({
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
+  const popTimesRef = useRef<Map<number, number>>(new Map());
+  const prevPoppedSetRef = useRef<Set<number>>(new Set());
+  const needsRedrawRef = useRef<boolean>(true);
 
   // Staggered wave animation when opening board in 3D (Column left to right, lower rows slightly delayed)
   const [staggerOpenedKeys, setStaggerOpenedKeys] = useState<Set<string>>(() => {
@@ -3026,6 +3049,23 @@ function Studio3DBigLedWall({
     }
   }, [boardStage, grid]);
 
+  // Ghi nhận timestamp chính xác khi mỗi ô chữ bắt đầu được kích hoạt bung chữ (Pop)
+  useEffect(() => {
+    if (!justPoppedIndices) return;
+    const now = performance.now();
+    justPoppedIndices.forEach((idx) => {
+      if (!prevPoppedSetRef.current.has(idx)) {
+        popTimesRef.current.set(idx, now);
+        needsRedrawRef.current = true;
+      }
+    });
+    prevPoppedSetRef.current = new Set(justPoppedIndices);
+  }, [justPoppedIndices]);
+
+  useEffect(() => {
+    needsRedrawRef.current = true;
+  }, [grid, isOpen, boardStage, revealedSet, highlightedIndices, isSolvedOrRecap, staggerOpenedKeys]);
+
   const texture = useMemo(() => {
     if (typeof document === "undefined") return null;
     const canvas = document.createElement("canvas");
@@ -3038,112 +3078,155 @@ function Studio3DBigLedWall({
     return tex;
   }, []);
 
-  useEffect(() => {
+  // Vòng lặp render hoạt ảnh 60FPS thời gian thực (Frame-by-frame)
+  useFrame(() => {
     const canvas = canvasRef.current;
     const tex = textureRef.current;
     if (!canvas || !tex) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
 
-    // Phông nền LED Cyber-Board đen ngọc bích
-    ctx.fillStyle = "#041508";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const now = performance.now();
+    const POP_DURATION_MS = 450;
+    let hasActivePop = false;
 
-    const cols = 14;
-    const rows = 4;
-    const padX = 14;
-    const padY = 12;
-    const totalW = canvas.width - padX * 2;
-    const totalH = canvas.height - padY * 2;
-    const tileW = totalW / cols;
-    const tileH = totalH / rows;
-
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const x = padX + c * tileW + 4;
-        const y = padY + r * tileH + 4;
-        const w = tileW - 8;
-        const h = tileH - 8;
-        const tile = grid[r]?.[c];
-        const isLetter = tile?.isLetter;
-        const isStaggerOpen = staggerOpenedKeys.has("ALL") || staggerOpenedKeys.has(`${r}_${c}`);
-        const isHl = Boolean(isLetter && highlightedIndices && highlightedIndices.has(tile.origIdx));
-        const isRev = Boolean(isLetter && !isHl && (revealedSet.has(tile.origIdx) || isSolvedOrRecap));
-        const isPopping = Boolean(isRev && justPoppedIndices && justPoppedIndices.has(tile.origIdx));
-
-        if (!tile || !isLetter || !isOpen || !isStaggerOpen) {
-          // Ô đóng: Màu xanh ngọc bích đậm chuẩn gameshow VTV3 với viền vàng kim
-          ctx.fillStyle = "#064e3b";
-          ctx.beginPath();
-          ctx.roundRect(x, y, w, h, 6);
-          ctx.fill();
-          ctx.strokeStyle = "#15803d";
-          ctx.lineWidth = 2;
-          ctx.stroke();
-
-          // Hoạ tiết sao trung tâm nhẹ
-          ctx.fillStyle = "rgba(74, 222, 128, 0.25)";
-          ctx.beginPath();
-          ctx.arc(x + w / 2, y + h / 2, 6, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (isHl) {
-          // ── BƯỚC 1: HIGHLIGHT XANH CHỚP SÁNG RỰC RỠ ──
-          ctx.fillStyle = "#16a34a";
-          ctx.beginPath();
-          ctx.roundRect(x, y, w, h, 6);
-          ctx.fill();
-          ctx.strokeStyle = "#4ade80";
-          ctx.lineWidth = 4;
-          ctx.stroke();
-
-          // Hiệu ứng phát sáng neon
-          ctx.shadowColor = "#22c55e";
-          ctx.shadowBlur = 18;
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-        } else if (isRev) {
-          // ── BƯỚC 2: CHỮ CÁI MỞ SẮC NÉT (NỀN TRẮNG, ZOOM PUNCH 108PX -> 82PX) ──
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(x, y, w, h, 6);
-          ctx.fill();
-
-          if (isPopping) {
-            ctx.strokeStyle = "#fef08a";
-            ctx.lineWidth = 6;
-            ctx.shadowColor = "#f59e0b";
-            ctx.shadowBlur = 24;
-            ctx.stroke();
-            ctx.shadowBlur = 0;
-          } else {
-            ctx.strokeStyle = "#fbbf24";
-            ctx.lineWidth = 3;
-            ctx.stroke();
-          }
-
-          const charToDraw = isSolvedOrRecap ? tile.char : stripVietnameseToneKeepBase(tile.char);
-          ctx.fillStyle = "#0f172a";
-          ctx.font = isPopping
-            ? "900 114px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif"
-            : "900 82px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(charToDraw.toUpperCase(), x + w / 2, y + h / 2 + (isPopping ? 6 : 4));
+    if (popTimesRef.current.size > 0) {
+      for (const [idx, st] of popTimesRef.current.entries()) {
+        if (now - st < POP_DURATION_MS) {
+          hasActivePop = true;
         } else {
-          // Ô trắng chờ đoán chữ (Blank white tile)
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.roundRect(x, y, w, h, 6);
-          ctx.fill();
-          ctx.strokeStyle = "#e2e8f0";
-          ctx.lineWidth = 2;
-          ctx.stroke();
+          popTimesRef.current.delete(idx);
+          needsRedrawRef.current = true;
         }
       }
     }
 
-    tex.needsUpdate = true;
-  }, [grid, isOpen, revealedSet, highlightedIndices, isSolvedOrRecap, staggerOpenedKeys, justPoppedIndices]);
+    if (hasActivePop || needsRedrawRef.current) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        // Phông nền LED Cyber-Board đen ngọc bích
+        ctx.fillStyle = "#041508";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const cols = 14;
+        const rows = 4;
+        const padX = 14;
+        const padY = 12;
+        const totalW = canvas.width - padX * 2;
+        const totalH = canvas.height - padY * 2;
+        const tileW = totalW / cols;
+        const tileH = totalH / rows;
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const x = padX + c * tileW + 4;
+            const y = padY + r * tileH + 4;
+            const w = tileW - 8;
+            const h = tileH - 8;
+            const tile = grid[r]?.[c];
+            const isLetter = tile?.isLetter;
+            const isStaggerOpen = staggerOpenedKeys.has("ALL") || staggerOpenedKeys.has(`${r}_${c}`);
+            const isHl = Boolean(isLetter && highlightedIndices && highlightedIndices.has(tile.origIdx));
+            const isRev = Boolean(isLetter && !isHl && (revealedSet.has(tile.origIdx) || isSolvedOrRecap));
+
+            if (!tile || !isLetter || !isOpen || !isStaggerOpen) {
+              // Ô đóng: Màu xanh ngọc bích đậm chuẩn gameshow VTV3 với viền vàng kim
+              ctx.fillStyle = "#064e3b";
+              ctx.beginPath();
+              ctx.roundRect(x, y, w, h, 6);
+              ctx.fill();
+              ctx.strokeStyle = "#15803d";
+              ctx.lineWidth = 2;
+              ctx.stroke();
+
+              // Hoạ tiết sao trung tâm nhẹ
+              ctx.fillStyle = "rgba(74, 222, 128, 0.25)";
+              ctx.beginPath();
+              ctx.arc(x + w / 2, y + h / 2, 6, 0, Math.PI * 2);
+              ctx.fill();
+            } else if (isHl) {
+              // ── BƯỚC 1: HIGHLIGHT XANH CHỚP SÁNG RỰC RỠ ──
+              ctx.fillStyle = "#16a34a";
+              ctx.beginPath();
+              ctx.roundRect(x, y, w, h, 6);
+              ctx.fill();
+              ctx.strokeStyle = "#4ade80";
+              ctx.lineWidth = 4;
+              ctx.stroke();
+
+              // Hiệu ứng phát sáng neon
+              ctx.shadowColor = "#22c55e";
+              ctx.shadowBlur = 18;
+              ctx.stroke();
+              ctx.shadowBlur = 0;
+            } else if (isRev) {
+              // ── BƯỚC 2: CHỮ CÁI MỞ SẮC NÉT (NỀN TRẮNG, ELASTIC ZOOM PUNCH 60FPS) ──
+              const popStartTime = popTimesRef.current.get(tile.origIdx);
+              const isPopping = popStartTime !== undefined && now - popStartTime < POP_DURATION_MS;
+
+              if (isPopping) {
+                const p = Math.max(0, Math.min(1, (now - popStartTime) / POP_DURATION_MS));
+                const { scale, glow } = getTilePopMetrics(p);
+
+                ctx.save();
+                ctx.translate(x + w / 2, y + h / 2);
+                ctx.scale(scale, scale);
+
+                ctx.fillStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.roundRect(-w / 2, -h / 2, w, h, 6);
+                ctx.fill();
+
+                ctx.strokeStyle = glow > 0.08 ? "#fef08a" : "#fbbf24";
+                ctx.lineWidth = 3 + glow * 5;
+                if (glow > 0.05) {
+                  ctx.shadowColor = "#f59e0b";
+                  ctx.shadowBlur = 24 * glow;
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                const charToDraw = isSolvedOrRecap ? tile.char : stripVietnameseToneKeepBase(tile.char);
+                ctx.fillStyle = "#0f172a";
+                ctx.font = "900 84px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(charToDraw.toUpperCase(), 0, 4);
+
+                ctx.restore();
+              } else {
+                ctx.fillStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.roundRect(x, y, w, h, 6);
+                ctx.fill();
+
+                ctx.strokeStyle = "#fbbf24";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                const charToDraw = isSolvedOrRecap ? tile.char : stripVietnameseToneKeepBase(tile.char);
+                ctx.fillStyle = "#0f172a";
+                ctx.font = "900 84px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(charToDraw.toUpperCase(), x + w / 2, y + h / 2 + 4);
+              }
+            } else {
+              // Ô trắng chờ đoán chữ (Blank white tile)
+              ctx.fillStyle = "#ffffff";
+              ctx.beginPath();
+              ctx.roundRect(x, y, w, h, 6);
+              ctx.fill();
+              ctx.strokeStyle = "#e2e8f0";
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
+          }
+        }
+
+        tex.needsUpdate = true;
+      }
+      needsRedrawRef.current = false;
+    }
+  });
 
   return (
     <mesh position={[0, 2.20, 0.05]}>

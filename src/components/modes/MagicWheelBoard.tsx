@@ -2321,6 +2321,51 @@ export default function MagicWheelBoard({
 
   // Virtual Camera Cut System (only during spinning in Display view)
   const [camAngle, setCamAngle] = useState(0);
+  const [tossUpLayoutMode, setTossUpLayoutMode] = useState<"SPLIT" | "FULL_3D" | "FULL_BOARD">(
+    effDisplayLayoutMode === "FOCUS_WHEEL" ? "FULL_3D" : effDisplayLayoutMode === "FOCUS_BOARD" ? "FULL_BOARD" : "SPLIT"
+  );
+  const [tossUpCamAngle, setTossUpCamAngle] = useState<number>(10);
+  const [isTossUpAutoCollapsed, setIsTossUpAutoCollapsed] = useState<boolean>(false);
+
+  const isTossUpActive = Boolean(
+    isTossUpRound &&
+      ((animRevealedIndices && animRevealedIndices.size > 0) ||
+        (currentPuzzle?.revealedIndices && currentPuzzle.revealedIndices.length > 0) ||
+        phase === "TOSS_UP_BUZZED" ||
+        phase === "ACTION_INPUT" ||
+        phase === "SPECIAL_SOLVING" ||
+        phase === "ROUND_RECAP")
+  );
+
+  useEffect(() => {
+    if (isTossUpRound && (phase === "ROUND_RECAP" || (lastSolveFeedback && (lastSolveFeedback.isCorrect ?? lastSolveFeedback.success)))) {
+      const timer = setTimeout(() => {
+        setIsTossUpAutoCollapsed(true);
+      }, 3500);
+      return () => clearTimeout(timer);
+    } else {
+      setIsTossUpAutoCollapsed(false);
+    }
+  }, [isTossUpRound, phase, lastSolveFeedback]);
+
+  const activeTossUpLayout: "SPLIT" | "FULL_3D" | "FULL_BOARD" =
+    effDisplayLayoutMode === "FOCUS_WHEEL"
+      ? "FULL_3D"
+      : effDisplayLayoutMode === "FOCUS_BOARD"
+      ? "FULL_BOARD"
+      : tossUpLayoutMode;
+
+  const shouldShowSplit = activeTossUpLayout === "SPLIT" && isTossUpActive && !isTossUpAutoCollapsed;
+
+  const handleSelectLayoutMode = useCallback(
+    (mode: "SPLIT" | "FULL_3D" | "FULL_BOARD") => {
+      setTossUpLayoutMode(mode);
+      onSetDisplayLayout?.(
+        mode === "SPLIT" ? "STACKED" : mode === "FULL_3D" ? "FOCUS_WHEEL" : "FOCUS_BOARD"
+      );
+    },
+    [onSetDisplayLayout]
+  );
   const [localDisplayMode, setLocalDisplayMode] = useState<"AUTO" | "FOCUS_BOARD">("AUTO");
   const camTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -2368,7 +2413,7 @@ export default function MagicWheelBoard({
   // Chuỗi: CAM 5 (Cận thí sinh 3s) -> CAM 2 (Đại cảnh 4s) -> CAM 3 (Bảng chữ 4s) -> CAM 4 (Cận nón 5s)
   useEffect(() => {
     if (!isDisplay || !effectiveIsSpinning) {
-      if (effectiveBoardStage === "BLANK_PHRASE" || effectiveBoardStage === "READY_CLUE") {
+      if (!isTossUpRound && (effectiveBoardStage === "BLANK_PHRASE" || effectiveBoardStage === "READY_CLUE")) {
         setCamAngle(3);
       }
       if (camTimerRef.current) clearTimeout(camTimerRef.current);
@@ -2426,7 +2471,9 @@ export default function MagicWheelBoard({
       if (canPlayBoardAudio) {
         soundManager.playMagicWheelBoardOpen();
       }
-      setCamAngle(3);
+      if (!isTossUpRound) {
+        setCamAngle(3);
+      }
     }
     prevBoardStageRef.current = curStage;
     setBoardStage(curStage);
@@ -2435,7 +2482,9 @@ export default function MagicWheelBoard({
   const handleOpenBoard = useCallback(() => {
     if (canPlayBoardAudio) soundManager.playMagicWheelBoardOpen();
     setBoardStage("BLANK_PHRASE");
-    setCamAngle(3);
+    if (!isTossUpRound) {
+      setCamAngle(3);
+    }
     onOpenBoard?.();
     const secretPhrase = currentPuzzle?.secretPhrase || "";
     const nonSpaceCharsCount = secretPhrase.replace(/\s+/g, "").length;
@@ -4708,6 +4757,90 @@ export default function MagicWheelBoard({
             >
               📺 {is16x9Letterbox ? "16:9 ON" : "16:9"}
             </button>
+
+            {/* Quyền điều khiển Màn hình cho MC/Host khi ở Vòng Đoán Nhanh */}
+            {isTossUpRound && (
+              <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-full border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => handleSelectLayoutMode("SPLIT")}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                    activeTossUpLayout === "SPLIT"
+                      ? "bg-amber-500 text-slate-950 font-black shadow"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                  title="Chia đôi màn hình chuẩn VTV3 (Nửa trên Camera, Nửa dưới Bảng ô chữ)"
+                >
+                  📺 Chia đôi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectLayoutMode("FULL_3D")}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                    activeTossUpLayout === "FULL_3D"
+                      ? "bg-amber-500 text-slate-950 font-black shadow"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                  title="Toàn màn hình trường quay 3D"
+                >
+                  🔲 3D Studio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectLayoutMode("FULL_BOARD")}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                    activeTossUpLayout === "FULL_BOARD"
+                      ? "bg-amber-500 text-slate-950 font-black shadow"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                  title="Toàn màn hình Bảng ô chữ 56 ô"
+                >
+                  🟩 Bảng chữ
+                </button>
+              </div>
+            )}
+
+            {/* Chọn nhanh góc quay nửa trên khi đang ở Toss-Up */}
+            {isTossUpRound && (activeTossUpLayout === "SPLIT" || activeTossUpLayout === "FULL_3D") && (
+              <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-full border border-white/10 hidden sm:flex">
+                <button
+                  type="button"
+                  onClick={() => setTossUpCamAngle(10)}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                    tossUpCamAngle === 10
+                      ? "bg-cyan-500 text-slate-950 font-black shadow"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                  title="CAM 10: Cận cảnh các thí sinh và chuông bấm"
+                >
+                  👤 Thí sinh
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTossUpCamAngle(1)}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                    tossUpCamAngle === 1
+                      ? "bg-cyan-500 text-slate-950 font-black shadow"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                  title="CAM 1: Toàn cảnh trường quay"
+                >
+                  🎡 Toàn cảnh
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTossUpCamAngle(2)}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                    tossUpCamAngle === 2
+                      ? "bg-cyan-500 text-slate-950 font-black shadow"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                  title="CAM 2: Cận cảnh vòng quay"
+                >
+                  🎯 Nón
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-black/60 border border-white/10">
@@ -4722,43 +4855,138 @@ export default function MagicWheelBoard({
 
         {/* ── TOSS-UP VTV3 SPLIT SCREEN OR MAIN ROUND 3D STAGE ── */}
         {isTossUpRound ? (
-          <div className="w-full flex-1 min-h-0 flex flex-col justify-between overflow-hidden gap-1.5 pb-1">
-            {/* Top Half (~46%): 3D Studio Camera 10 framing the 3 contestants & their buzzers */}
-            <div className="w-full h-[46%] min-h-0 relative rounded-xl border border-white/10 overflow-hidden bg-black shadow-2xl">
-              <WheelStudio3DScene
-                sectors={sectors}
-                clientWheelAngle={clientWheelAngle}
-                effectiveIsSpinning={false}
-                targetRotationDegrees={targetRotationDegrees}
-                spinPower={activeState.spinPower || 65}
-                selectedSector={selectedSector}
-                teams={teams}
-                roundScores={roundScores}
-                currentTurnTeamId={currentTurnTeamId}
-                tossUpBuzzedTeamId={tossUpBuzzedTeamId}
-                isTossUpRound={true}
-                phase={phase}
-                boardStage={effectiveBoardStage}
-                camAngle={10}
-                edition={edition}
-                currentPuzzle={currentPuzzle}
-                highlightedIndices={highlightedIndices}
-                animRevealedIndices={animRevealedIndices}
-                justPoppedIndices={justPoppedIndices}
-                hostessXPercent={hostessXPercent}
-                hostessPose={hostessPose}
-                onCamAngleChange={(cam) => setCamAngle(cam)}
-                className="absolute inset-0 w-full h-full"
-              />
-            </div>
+          shouldShowSplit ? (
+            <div className="w-full flex-1 min-h-0 flex flex-col justify-between overflow-hidden gap-1.5 pb-1">
+              {/* Top Half (~48%): 3D Studio Camera (CAM 10) framing the contestants, MC & buzzers with PTZ */}
+              <div className="w-full h-[48%] min-h-0 relative rounded-xl border border-white/10 overflow-hidden bg-black shadow-2xl">
+                <WheelStudio3DScene
+                  sectors={sectors}
+                  clientWheelAngle={clientWheelAngle}
+                  effectiveIsSpinning={false}
+                  targetRotationDegrees={targetRotationDegrees}
+                  spinPower={activeState.spinPower || 65}
+                  selectedSector={selectedSector}
+                  teams={teams}
+                  roundScores={roundScores}
+                  currentTurnTeamId={currentTurnTeamId}
+                  tossUpBuzzedTeamId={tossUpBuzzedTeamId}
+                  isTossUpRound={true}
+                  phase={phase}
+                  boardStage={effectiveBoardStage}
+                  camAngle={tossUpCamAngle}
+                  edition={edition}
+                  currentPuzzle={currentPuzzle}
+                  highlightedIndices={highlightedIndices}
+                  animRevealedIndices={animRevealedIndices}
+                  justPoppedIndices={justPoppedIndices}
+                  hostessXPercent={hostessXPercent}
+                  hostessPose={hostessPose}
+                  allowPTZ={true}
+                  onCamAngleChange={(cam) => setTossUpCamAngle(cam)}
+                  className="absolute inset-0 w-full h-full"
+                />
+              </div>
 
-            {/* Bottom Half (~54%): Letter Board Grid Matrix & Clue Banner */}
-            <div className="w-full h-[54%] min-h-0 flex flex-col items-center justify-center overflow-hidden">
-              <div className="w-full max-w-5xl h-full flex flex-col justify-center">
-                {renderBoardGridMatrix(true)}
+              {/* Bottom Half (~52%): 3D Studio Camera (CAM 3) looking directly at the 3D Letter Board with PTZ & Lower-third Clue */}
+              <div className="w-full h-[52%] min-h-0 relative rounded-xl border border-white/10 overflow-hidden bg-black shadow-2xl">
+                <WheelStudio3DScene
+                  sectors={sectors}
+                  clientWheelAngle={clientWheelAngle}
+                  effectiveIsSpinning={false}
+                  targetRotationDegrees={targetRotationDegrees}
+                  spinPower={activeState.spinPower || 65}
+                  selectedSector={selectedSector}
+                  teams={teams}
+                  roundScores={roundScores}
+                  currentTurnTeamId={currentTurnTeamId}
+                  tossUpBuzzedTeamId={tossUpBuzzedTeamId}
+                  isTossUpRound={true}
+                  phase={phase}
+                  boardStage={effectiveBoardStage}
+                  camAngle={3}
+                  edition={edition}
+                  currentPuzzle={currentPuzzle}
+                  highlightedIndices={highlightedIndices}
+                  animRevealedIndices={animRevealedIndices}
+                  justPoppedIndices={justPoppedIndices}
+                  hostessXPercent={hostessXPercent}
+                  hostessPose={hostessPose}
+                  showClueOnCam3={true}
+                  isBoardCameraOnly={true}
+                  allowPTZ={true}
+                  className="absolute inset-0 w-full h-full"
+                />
               </div>
             </div>
-          </div>
+          ) : activeTossUpLayout === "FULL_BOARD" ? (
+            <div className="w-full flex-1 min-h-0 relative overflow-hidden flex items-center justify-center bg-black">
+              <div className="relative w-full h-full">
+                <WheelStudio3DScene
+                  sectors={sectors}
+                  clientWheelAngle={clientWheelAngle}
+                  effectiveIsSpinning={false}
+                  targetRotationDegrees={targetRotationDegrees}
+                  spinPower={activeState.spinPower || 65}
+                  selectedSector={selectedSector}
+                  teams={teams}
+                  roundScores={roundScores}
+                  currentTurnTeamId={currentTurnTeamId}
+                  tossUpBuzzedTeamId={tossUpBuzzedTeamId}
+                  isTossUpRound={true}
+                  phase={phase}
+                  boardStage={effectiveBoardStage}
+                  camAngle={3}
+                  edition={edition}
+                  currentPuzzle={currentPuzzle}
+                  highlightedIndices={highlightedIndices}
+                  animRevealedIndices={animRevealedIndices}
+                  justPoppedIndices={justPoppedIndices}
+                  hostessXPercent={hostessXPercent}
+                  hostessPose={hostessPose}
+                  showClueOnCam3={true}
+                  allowPTZ={true}
+                  className="absolute inset-0 w-full h-full"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="w-full flex-1 min-h-0 relative overflow-hidden flex items-center justify-center bg-black">
+              <div
+                className={`relative transition-all duration-300 ${
+                  is16x9Letterbox
+                    ? "aspect-video w-full max-h-full max-w-full shadow-2xl rounded-2xl border border-white/10 overflow-hidden"
+                    : "w-full h-full"
+                }`}
+              >
+                <WheelStudio3DScene
+                  sectors={sectors}
+                  clientWheelAngle={clientWheelAngle}
+                  effectiveIsSpinning={false}
+                  targetRotationDegrees={targetRotationDegrees}
+                  spinPower={activeState.spinPower || 65}
+                  selectedSector={selectedSector}
+                  teams={teams}
+                  roundScores={roundScores}
+                  currentTurnTeamId={currentTurnTeamId}
+                  tossUpBuzzedTeamId={tossUpBuzzedTeamId}
+                  isTossUpRound={true}
+                  phase={phase}
+                  boardStage={effectiveBoardStage}
+                  camAngle={tossUpCamAngle}
+                  edition={edition}
+                  currentPuzzle={currentPuzzle}
+                  highlightedIndices={highlightedIndices}
+                  animRevealedIndices={animRevealedIndices}
+                  justPoppedIndices={justPoppedIndices}
+                  hostessXPercent={hostessXPercent}
+                  hostessPose={hostessPose}
+                  allowPTZ={true}
+                  onCamAngleChange={(cam) => setTossUpCamAngle(cam)}
+                  className="absolute inset-0 w-full h-full"
+                />
+              </div>
+            </div>
+          )
         ) : (
           <div className="w-full flex-1 min-h-0 relative overflow-hidden flex items-center justify-center bg-black">
             <div
@@ -5648,6 +5876,89 @@ export default function MagicWheelBoard({
                       <p className="text-[11px] text-slate-300">
                         MC chạm mở ô đầu tiên (highlight ➔ mở chữ), sau đó cứ 0,75s hiện ngẫu nhiên 1 chữ cái. Đội bấm chuông trả lời sai các đội (kể cả đội vừa bấm) vẫn được bấm tiếp!
                       </p>
+                    </div>
+
+                    {/* Điều khiển bố cục màn chiếu cho Quản trò */}
+                    <div className="w-full flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-amber-500/20">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-amber-300">Bố cục màn chiếu:</span>
+                        <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/10">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectLayoutMode("SPLIT")}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                              activeTossUpLayout === "SPLIT"
+                                ? "bg-amber-500 text-slate-950 font-black shadow"
+                                : "text-slate-300 hover:text-white"
+                            }`}
+                          >
+                            📺 Chia đôi
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectLayoutMode("FULL_3D")}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                              activeTossUpLayout === "FULL_3D"
+                                ? "bg-amber-500 text-slate-950 font-black shadow"
+                                : "text-slate-300 hover:text-white"
+                            }`}
+                          >
+                            🔲 Toàn màn 3D
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectLayoutMode("FULL_BOARD")}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                              activeTossUpLayout === "FULL_BOARD"
+                                ? "bg-amber-500 text-slate-950 font-black shadow"
+                                : "text-slate-300 hover:text-white"
+                            }`}
+                          >
+                            🟩 Toàn màn Bảng chữ
+                          </button>
+                        </div>
+                      </div>
+
+                      {(activeTossUpLayout === "SPLIT" || activeTossUpLayout === "FULL_3D") && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] font-bold text-cyan-300">Góc quay nửa trên:</span>
+                          <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/10">
+                            <button
+                              type="button"
+                              onClick={() => setTossUpCamAngle(10)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                tossUpCamAngle === 10
+                                  ? "bg-cyan-500 text-slate-950 font-black shadow"
+                                  : "text-slate-300 hover:text-white"
+                              }`}
+                            >
+                              👤 Thí sinh (CAM 10)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTossUpCamAngle(1)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                tossUpCamAngle === 1
+                                  ? "bg-cyan-500 text-slate-950 font-black shadow"
+                                  : "text-slate-300 hover:text-white"
+                              }`}
+                            >
+                              🎡 Toàn cảnh (CAM 1)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTossUpCamAngle(2)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                tossUpCamAngle === 2
+                                  ? "bg-cyan-500 text-slate-950 font-black shadow"
+                                  : "text-slate-300 hover:text-white"
+                              }`}
+                            >
+                              🎯 Nón (CAM 2)
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     {phase === "TOSS_UP_READY" && (
                       isHost ? (

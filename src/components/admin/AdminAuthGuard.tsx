@@ -44,6 +44,10 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
   const [error, setError] = useState("");
   const [socialNotice, setSocialNotice] = useState<string | null>(null);
 
+  // Terms and conditions consent
+  const [termsScrolledToBottom, setTermsScrolledToBottom] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
   const checkAuth = async () => {
     try {
       const res = await fetch("/api/auth/me");
@@ -123,6 +127,10 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
       setError("Mật khẩu phải có độ dài tối thiểu 6 ký tự");
       return;
     }
+    if (!termsAccepted) {
+      setError("Vui lòng cuộn xuống hết nội dung và tích chọn đồng ý Điều khoản & Chính sách");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -131,7 +139,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password, termsAccepted: true }),
       });
 
       const data = await res.json();
@@ -192,6 +200,10 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
   };
 
   const handleSocialClick = (provider: "Google" | "Facebook") => {
+    if (provider === "Google") {
+      window.location.href = "/api/auth/oauth/google";
+      return;
+    }
     setSocialNotice(
       `Hệ thống OAuth cho ${provider} đang được chuẩn bị. Bạn có thể đăng ký tài khoản cá nhân bằng Email/Mật khẩu ngay bên dưới để sử dụng đầy đủ 100% tính năng!`
     );
@@ -458,6 +470,68 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                   />
                 </div>
 
+                {/* Must-Scroll Terms Viewport */}
+                <div className="space-y-2 pt-1 text-left">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-slate-300 uppercase tracking-wider">
+                      Điều khoản &amp; Chính sách
+                    </span>
+                    <span className={`font-semibold ${termsScrolledToBottom ? "text-emerald-400" : "text-amber-400"}`}>
+                      {termsScrolledToBottom ? "✓ Đã đọc hết văn bản" : "↓ Cuộn xuống đáy để mở khóa"}
+                    </span>
+                  </div>
+
+                  <div
+                    onScroll={(e) => {
+                      const el = e.currentTarget;
+                      if (el.scrollHeight - el.scrollTop <= el.clientHeight + 8) {
+                        setTermsScrolledToBottom(true);
+                      }
+                    }}
+                    className="h-28 overflow-y-auto p-3 rounded-xl bg-black/40 border border-slate-700/80 text-[11px] text-slate-400 leading-relaxed space-y-2 select-none scrollbar-thin scrollbar-thumb-slate-700"
+                  >
+                    <p className="font-bold text-slate-200">1. Quy định chung &amp; Chấp thuận:</p>
+                    <p>
+                      Bằng việc tạo tài khoản trên Quizorra, bạn đồng ý tuân thủ toàn bộ Điều khoản dịch vụ và Chính sách bảo mật quyền riêng tư của nền tảng theo Nghị định 13/2023/NĐ-CP và các tiêu chuẩn bảo mật hiện hành.
+                    </p>
+                    <p className="font-bold text-slate-200">2. Quyền sở hữu &amp; Bảo vệ dữ liệu:</p>
+                    <p>
+                      Quizorra cam kết bảo mật thông tin cá nhân và KHÔNG BAO GIỜ thương mại hóa hoặc chia sẻ dữ liệu của bạn cho bất kỳ bên thứ ba nào. Bạn giữ toàn bộ quyền sở hữu trí tuệ đối với ngân hàng câu hỏi do mình tạo lập.
+                    </p>
+                    <p className="font-bold text-slate-200">3. Quy chuẩn chống gian lận:</p>
+                    <p>
+                      Nghiêm cấm can thiệp kỹ thuật tự động, bot giả mạo, tấn công mạng hoặc truyền tải nội dung vi phạm pháp luật. Mọi hành vi vi phạm sẽ bị khóa tài khoản vĩnh viễn.
+                    </p>
+                    <p className="font-bold text-slate-200">4. Xem chi tiết toàn văn bản:</p>
+                    <p>
+                      Bạn có thể đọc toàn văn tại{" "}
+                      <a href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Điều khoản dịch vụ</a>
+                      {" "}và{" "}
+                      <a href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Chính sách bảo mật</a>.
+                    </p>
+                    <p className="text-center font-bold text-emerald-400 pt-1 pb-0.5">
+                      --- Hết văn bản tóm tắt ---
+                    </p>
+                  </div>
+
+                  {/* Checkbox */}
+                  <label className={`flex items-start gap-2.5 pt-1 text-xs select-none ${termsScrolledToBottom ? "cursor-pointer text-slate-200" : "cursor-not-allowed opacity-50 text-slate-500"}`}>
+                    <input
+                      type="checkbox"
+                      disabled={!termsScrolledToBottom}
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      className="mt-0.5 rounded border-slate-600 bg-slate-900 text-cyan-500 focus:ring-cyan-400 w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <span>
+                      Tôi đã đọc toàn bộ và đồng ý với{" "}
+                      <a href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Điều khoản dịch vụ</a>
+                      {" "}và{" "}
+                      <a href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Chính sách bảo mật</a>
+                    </span>
+                  </label>
+                </div>
+
                 {error && (
                   <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-semibold text-center animate-bounce-in">
                     ⚠️ {error}
@@ -466,13 +540,13 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
 
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-500 hover:from-cyan-500 hover:to-teal-400 text-white text-sm sm:text-base font-bold flex items-center justify-center gap-2 shadow-lg shadow-cyan-600/30 disabled:opacity-50 cursor-pointer"
+                  disabled={loading || !termsAccepted}
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-500 hover:from-cyan-500 hover:to-teal-400 text-white text-sm sm:text-base font-bold flex items-center justify-center gap-2 shadow-lg shadow-cyan-600/30 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
                 >
                   {loading ? (
                     <span>Đang tạo tài khoản...</span>
                   ) : (
-                    <span>Tạo tài khoản Quizorra miễn phí</span>
+                    <span>Tạo tài khoản Quizorra</span>
                   )}
                 </button>
               </form>
@@ -554,14 +628,21 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
             </div>
           </div>
 
-          <div className="mt-6 text-center">
-            <a
-              href="/"
-              className="text-xs text-slate-500 hover:text-slate-300 transition-colors inline-flex items-center gap-1.5"
-            >
-              <SystemIcon name="home" className="w-3.5 h-3.5" />
-              <span>Quay lại trang chủ người chơi</span>
-            </a>
+          <div className="mt-6 text-center space-y-2">
+            <div>
+              <a
+                href="/"
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors inline-flex items-center gap-1.5"
+              >
+                <SystemIcon name="home" className="w-3.5 h-3.5" />
+                <span>Quay lại trang chủ người chơi</span>
+              </a>
+            </div>
+            <div className="flex items-center justify-center gap-3 text-[11px] text-slate-600">
+              <a href="/terms" target="_blank" className="hover:text-slate-400 transition">Điều khoản dịch vụ</a>
+              <span>•</span>
+              <a href="/privacy" target="_blank" className="hover:text-slate-400 transition">Chính sách bảo mật</a>
+            </div>
           </div>
         </div>
       </div>

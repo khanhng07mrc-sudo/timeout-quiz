@@ -127,6 +127,10 @@ async function createWindow() {
   // Tùy chỉnh Menu trống để giao diện gọn gàng chuẩn TV
   Menu.setApplicationMenu(null);
 
+  // Bỏ định danh "Electron" khỏi User-Agent để Google OAuth cho phép đăng nhập mượt mà không chặn
+  const originalUA = mainWindow.webContents.userAgent;
+  mainWindow.webContents.userAgent = originalUA.replace(/Electron\/\S*\s?/i, "");
+
   const targetUrl = process.env.APP_URL || "http://127.0.0.1:3000";
 
   // Hiển thị Splash Screen với Holographic 3D Gyroscope Quizorra Logo

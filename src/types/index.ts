@@ -190,10 +190,10 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
   },
   MAGIC_WHEEL: {
     mode: "MAGIC_WHEEL",
-    nameVi: "Magic Wheel (Chiếc Nón Kỳ Diệu)",
+    nameVi: "Vòng Quay Trí Tuệ (Magic Wheel)",
     emoji: "🎡",
-    taglineVi: "Quay nón 24 ô, Ô chữ bí mật & Tranh giải thưởng lớn",
-    summaryVi: "Mô phỏng chân thực gameshow Chiếc nón kỳ diệu truyền hình. Đội đến lượt bấm chốt lực quay chiếc nón 24 ô định mệnh (100 - 2000đ, Mất lượt, Mất điểm, Nhân đôi, Chia đôi, May mắn, Ô Phần thưởng & Bí mật). Đoán đúng chữ cái hoặc câu hỏi để tích lũy điểm và giữ quyền quay tiếp; đội xuất sắc giải mã toàn bộ ô chữ sẽ ẵm trọn giải thưởng vòng thi!",
+    taglineVi: "Vòng quay 24 ô, Ô chữ bí mật & Tranh giải thưởng lớn",
+    summaryVi: "Đấu trường Vòng Quay Trí Tuệ tương tác thời gian thực. Đội đến lượt điều chỉnh lực quay vòng quay 24 ô định mệnh (100 - 2000đ, Mất lượt, Mất điểm, Nhân đôi, Chia đôi, May mắn, Ô Phần thưởng & Bí mật). Đoán đúng chữ cái hoặc câu hỏi để tích lũy điểm và giữ quyền quay tiếp; giải mã chính xác ô chữ để chiến thắng vòng thi!",
     mechanicsVi: [
       "Quay nón 24 ô: Đội đến lượt điều chỉnh thanh lực (0-100%) và chốt quay nón nhận điểm hoặc hiệu ứng.",
       "2 Thể thức tùy chọn: Thể thức 'Ô chữ bí mật' (đoán chữ cái trong cụm từ ẩn) hoặc Thể thức 'Quiz Vòng Quay' (trả lời câu hỏi ngân hàng đề).",

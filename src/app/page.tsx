@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BrandLogo from "@/components/ui/BrandLogo";
 import SystemIcon from "@/components/ui/SystemIcon";
+import LanguageSelector from "@/components/ui/LanguageSelector";
+import { useTranslation } from "@/lib/i18n";
 
 export default function HomePage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [pin, setPin] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,7 +19,7 @@ export default function HomePage() {
   const handleQuickJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pin.trim() || !name.trim()) {
-      setError("Vui lòng nhập đầy đủ mã PIN và tên người chơi");
+      setError(t.playerPortal.errorEmpty);
       return;
     }
     setLoading(true);
@@ -24,7 +27,7 @@ export default function HomePage() {
     try {
       const res = await fetch(`/api/rooms/${pin.trim()}/validate`);
       if (!res.ok) {
-        setError("Mã phòng không tồn tại hoặc cuộc thi đã kết thúc");
+        setError(t.playerPortal.errorNotFound);
         setLoading(false);
         return;
       }
@@ -32,96 +35,104 @@ export default function HomePage() {
       localStorage.setItem("playerName", name.trim());
       router.push(`/play/${pin.trim()}`);
     } catch {
-      setError("Lỗi kết nối máy chủ. Vui lòng thử lại sau.");
+      setError(t.playerPortal.errorConnection);
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-16 relative overflow-hidden">
-      {/* Dynamic Arena Volumetric Lighting */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-purple-600/20 rounded-full blur-[150px] pointer-events-none" />
-      <div className="absolute bottom-1/3 left-1/3 w-[500px] h-[300px] bg-cyan-500/15 rounded-full blur-[130px] pointer-events-none" />
+    <div className="min-h-screen flex flex-col bg-[#070913] text-slate-200 relative overflow-hidden font-sans selection:bg-purple-600/30 selection:text-purple-200">
+      {/* Subtle Volumetric Ambient Lights */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[380px] bg-purple-600/15 rounded-full blur-[160px] pointer-events-none" />
+      <div className="absolute top-2/3 right-1/4 w-[450px] h-[280px] bg-cyan-500/10 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="relative z-10 w-full max-w-6xl mx-auto flex flex-col items-center text-center">
-        {/* Esports Arena Top Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/15 border border-purple-400/40 text-purple-300 text-xs font-black tracking-wider uppercase mb-5 shadow-lg shadow-purple-900/30 backdrop-blur-md">
+      {/* Top Header with Language Selector */}
+      <header className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-2 flex items-center justify-between relative z-20">
+        <div className="flex items-center gap-2">
+          {/* Subtle live indicator */}
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            Quizorra Network
+          </span>
+        </div>
+        <LanguageSelector variant="header" />
+      </header>
+
+      {/* Main Container */}
+      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 relative z-10 w-full max-w-6xl mx-auto text-center">
+        {/* Platform Status Badge */}
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/80 border border-slate-700/80 text-cyan-300 text-xs font-semibold tracking-wider uppercase mb-5 shadow-lg backdrop-blur-md">
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-          <span>REALTIME MULTIPLAYER ARENA · ĐẤU TRƯỜNG TƯƠNG LAI</span>
+          <span>{t.statusBadge}</span>
         </div>
 
-        {/* Brand Logo with 3D Specular Glow */}
-        <div className="mb-4 hover:scale-105 transition-transform duration-300 cursor-pointer drop-shadow-[0_0_35px_rgba(168,85,247,0.35)]">
-          <BrandLogo variant="full" size="xl" subText="Tactical Game Show Engine" />
+        {/* Brand Logo */}
+        <div className="mb-3 hover:scale-[1.02] transition-transform duration-300 cursor-pointer drop-shadow-[0_0_35px_rgba(168,85,247,0.25)]">
+          <BrandLogo variant="full" size="xl" subText="INTELLECTUAL ARENA" />
         </div>
 
-        {/* Dynamic Tagline */}
-        <p className="text-sm sm:text-base md:text-lg text-slate-300 font-medium max-w-3xl mb-10 leading-relaxed text-balance">
-          <span className="text-white font-bold">Nền tảng thi đấu câu hỏi realtime</span>
-          <span className="hidden sm:inline mx-3 text-cyan-400 font-bold">/</span>
-          <span className="text-purple-300 font-bold">10 thẻ bài chiến thuật</span>
-          <span className="hidden sm:inline mx-3 text-cyan-400 font-bold">/</span>
-          <span className="text-cyan-300 font-bold">9 chế độ tranh tài đỉnh cao</span>
+        {/* Universal Subtitle */}
+        <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl mb-12 leading-relaxed font-normal">
+          {t.tagline}
         </p>
 
-        {/* ── 3 CỔNG DỊCH CHUYỂN PHÂN CẤP THỊ GIÁC (HERO PORTAL DOCK) ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full max-w-5xl mb-16 items-stretch">
-          {/* CỔNG 1: VÀO THI ĐẤU (THÍ SINH) - HERO CARD (7 CỘT ~ 60%) NỔI BẬT NHẤT */}
-          <div className="lg:col-span-7 portal-gate-3d portal-gate-purple flex flex-col justify-between text-left p-6 sm:p-7 relative overflow-hidden ring-2 ring-purple-500/50 shadow-2xl shadow-purple-950/60 bg-gradient-to-br from-[#1c183b] via-[#121428] to-[#0b0c18]">
-            {/* Top decorative glow */}
-            <div className="absolute top-0 right-0 w-56 h-56 bg-purple-500/20 rounded-full blur-[80px] pointer-events-none" />
+        {/* ── 3 CỔNG ĐIỀU PHỐI NỀN TẢNG (HERO PORTALS) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full max-w-5xl mb-16 items-stretch text-left">
+          {/* CỔNG 1: THÍ SINH THAM GIA PHÒNG THI (7 CỘT) */}
+          <div className="lg:col-span-7 rounded-3xl p-6 sm:p-7 relative overflow-hidden border border-purple-500/40 bg-gradient-to-br from-[#16142e] via-[#101222] to-[#0a0b16] shadow-2xl shadow-purple-950/40 flex flex-col justify-between">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-[90px] pointer-events-none" />
 
             <div>
               <div className="w-full flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/35 to-indigo-600/35 border-2 border-purple-400/50 flex items-center justify-center text-white shadow-xl shadow-purple-950/60">
-                    <SystemIcon name="device" className="w-7 h-7 text-white" />
+                  <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-purple-300 shadow-lg">
+                    <SystemIcon name="device" className="w-6 h-6" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-cyan-300 block mb-0.5">
-                      CỔNG CHÍNH DÀNH CHO NGƯỜI CHƠI
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 block">
+                      {t.playerPortal.badge}
                     </span>
-                    <h2 className="text-2xl sm:text-3xl font-black text-white">
-                      Vào thi đấu
+                    <h2 className="text-xl sm:text-2xl font-black text-white">
+                      {t.playerPortal.title}
                     </h2>
                   </div>
                 </div>
-                <span className="text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md border border-purple-300/40 shrink-0">
-                  Phổ biến nhất ✨
+                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-200">
+                  {t.playerPortal.live}
                 </span>
               </div>
 
-              <p className="text-xs sm:text-sm text-purple-200/90 leading-relaxed mb-5">
-                Nhập mã PIN 6 số và tên hiển thị để tham gia phòng thi tức thì, sử dụng thẻ bài chiến thuật và bấm Buzz độc quyền ngay trên điện thoại!
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-5">
+                {t.playerPortal.desc}
               </p>
 
-              {/* Inline Quick PIN Entry Form */}
-              <form onSubmit={handleQuickJoin} className="p-3.5 sm:p-4 rounded-2xl bg-black/40 border border-purple-500/30 backdrop-blur-md space-y-3 mb-4">
+              {/* Quick PIN Entry Form */}
+              <form onSubmit={handleQuickJoin} className="p-3.5 sm:p-4 rounded-2xl bg-black/40 border border-slate-700/60 backdrop-blur-md space-y-3 mb-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                      Mã phòng (PIN)
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">
+                      {t.playerPortal.pinLabel}
                     </label>
                     <input
                       type="text"
                       value={pin}
                       onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      placeholder="123456"
-                      className="input-box w-full py-2.5 px-3 text-center text-xl sm:text-2xl font-mono font-black tracking-widest text-purple-300 placeholder:text-slate-600"
+                      placeholder={t.playerPortal.pinPlaceholder}
+                      className="input-box w-full py-2.5 px-3 text-center text-xl font-mono font-bold tracking-widest text-cyan-300 placeholder:text-slate-600 bg-slate-900/80 border border-slate-700 rounded-xl"
                       maxLength={6}
                       inputMode="numeric"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1 uppercase tracking-wider">
-                      Tên của bạn
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">
+                      {t.playerPortal.nameLabel}
                     </label>
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value.slice(0, 30))}
-                      placeholder="VD: Nguyễn Văn A"
-                      className="input-box w-full py-2.5 px-3 text-sm font-semibold"
+                      placeholder={t.playerPortal.namePlaceholder}
+                      className="input-box w-full py-2.5 px-3 text-sm font-semibold bg-slate-900/80 border border-slate-700 rounded-xl"
                       maxLength={30}
                     />
                   </div>
@@ -136,47 +147,47 @@ export default function HomePage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-black text-sm uppercase tracking-wider shadow-xl shadow-purple-900/40 border border-white/20 active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-sm uppercase tracking-wider shadow-xl shadow-purple-950/40 border border-white/20 active:scale-[0.99] transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                 >
-                  <span>{loading ? "Đang kết nối..." : "🚀 Vào phòng thi ngay"}</span>
+                  <span>{loading ? t.playerPortal.connecting : t.playerPortal.submitBtn}</span>
                 </button>
               </form>
             </div>
 
-            <div className="pt-2 border-t border-purple-400/20 flex items-center justify-between text-xs font-bold text-purple-300">
-              <Link href="/play" className="hover:text-white transition-colors flex items-center gap-1.5">
-                <span>Hoặc mở cổng riêng Thí sinh (/play)</span>
+            <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <Link href="/play" className="hover:text-cyan-300 transition-colors flex items-center gap-1 font-semibold">
+                <span>{t.playerPortal.independentLink}</span>
                 <span>➔</span>
               </Link>
-              <span className="text-[11px] text-slate-400">Hỗ trợ Mobile, Tablet &amp; PC</span>
+              <span className="text-[11px] text-slate-500">{t.playerPortal.deviceSupport}</span>
             </div>
           </div>
 
-          {/* NHÓM 2 CỔNG PHỤ DÀNH CHO BAN TỔ CHỨC (5 CỘT ~ 40%) */}
-          <div className="lg:col-span-5 flex flex-col gap-5 justify-between">
+          {/* NHÓM 2 CỔNG DÀNH CHO BAN TỔ CHỨC (5 CỘT) */}
+          <div className="lg:col-span-5 flex flex-col gap-4 justify-between">
             {/* Cổng 2: Màn hình chiếu */}
             <Link
               href="/display"
-              className="portal-gate-3d portal-gate-cyan group text-left flex-1 p-5 flex flex-col justify-between"
+              className="rounded-3xl p-5 border border-cyan-500/30 bg-gradient-to-br from-[#0e172a] via-[#091122] to-[#070913] hover:border-cyan-400/60 transition group flex flex-col justify-between flex-1 shadow-lg shadow-cyan-950/30"
             >
               <div>
                 <div className="w-full flex items-center justify-between mb-3">
-                  <div className="w-12 h-12 rounded-xl bg-cyan-500/25 border border-cyan-300/40 flex items-center justify-center text-cyan-200 shadow-lg group-hover:scale-110 transition-transform">
-                    <SystemIcon name="display" className="w-6 h-6 text-cyan-200" />
+                  <div className="w-11 h-11 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-105 transition-transform">
+                    <SystemIcon name="display" className="w-5 h-5" />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-cyan-500/30 text-cyan-200 border border-cyan-400/30">
-                    Hội trường
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
+                    {t.displayPortal.badge}
                   </span>
                 </div>
-                <div className="text-xl font-black text-white group-hover:text-cyan-200 transition-colors mb-1">
-                  Màn hình chiếu
+                <div className="text-lg font-bold text-white group-hover:text-cyan-200 transition-colors mb-1">
+                  {t.displayPortal.title}
                 </div>
-                <p className="text-xs text-cyan-200/80 leading-snug">
-                  Chế độ TV / Máy chiếu độ nét cao, phát đề, đồng hồ đếm ngược và bảng xếp hạng sống động
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {t.displayPortal.desc}
                 </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-cyan-400/20 flex items-center justify-between text-xs font-black text-cyan-300 group-hover:text-white">
-                <span>Mở cổng màn chiếu</span>
+              <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-cyan-300 group-hover:text-white">
+                <span>{t.displayPortal.btn}</span>
                 <span className="group-hover:translate-x-1 transition-transform">➔</span>
               </div>
             </Link>
@@ -184,105 +195,102 @@ export default function HomePage() {
             {/* Cổng 3: Đài chỉ huy Quản trị */}
             <Link
               href="/admin"
-              className="portal-gate-3d portal-gate-slate group text-left flex-1 p-5 flex flex-col justify-between"
+              className="rounded-3xl p-5 border border-slate-700/60 bg-gradient-to-br from-[#121424] via-[#0c0e1a] to-[#070913] hover:border-slate-500 transition group flex flex-col justify-between flex-1 shadow-lg"
             >
               <div>
                 <div className="w-full flex items-center justify-between mb-3">
-                  <div className="w-12 h-12 rounded-xl bg-slate-700/40 border border-slate-500/40 flex items-center justify-center text-purple-400 shadow-lg group-hover:scale-110 transition-transform">
-                    <SystemIcon name="dashboard" className="w-6 h-6 text-purple-400" />
+                  <div className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-600 flex items-center justify-center text-purple-300 group-hover:scale-105 transition-transform">
+                    <SystemIcon name="dashboard" className="w-5 h-5" />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-white/10 text-slate-300 border border-white/15">
-                    Ban tổ chức
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                    {t.adminPortal.badge}
                   </span>
                 </div>
-                <div className="text-xl font-black text-white group-hover:text-purple-300 transition-colors mb-1">
-                  Đài chỉ huy (Admin)
+                <div className="text-lg font-bold text-white group-hover:text-purple-200 transition-colors mb-1">
+                  {t.adminPortal.title}
                 </div>
-                <p className="text-xs text-slate-300/80 leading-snug">
-                  Tạo phòng thi, cấp thẻ chiến thuật, điều hành trận đấu hoặc kiểm thử solo tại Sandbox
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {t.adminPortal.desc}
                 </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-600/30 flex items-center justify-between text-xs font-black text-slate-300 group-hover:text-white">
-                <span>Quản trị &amp; Điều hành</span>
+              <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-slate-300 group-hover:text-white">
+                <span>{t.adminPortal.btn}</span>
                 <span className="group-hover:translate-x-1 transition-transform">➔</span>
               </div>
             </Link>
           </div>
         </div>
 
-        {/* ── 5 MODULE VÒM CHIẾN HẠM (SCI-FI COCKPIT HUD PANELS) ── */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full">
-          <div className="cockpit-panel-card text-center flex flex-col items-center justify-between group">
-            <div className="flex flex-col items-center w-full">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-purple-400 mb-3 shadow-md group-hover:scale-110 group-hover:border-purple-300/60 transition-all duration-200 shrink-0">
-                <SystemIcon name="sandbox" className="w-6 h-6" />
-              </div>
-              <div className="font-bold text-sm sm:text-base text-white mb-2 whitespace-nowrap tracking-tight group-hover:text-purple-300 transition-colors">
-                Thẻ chiến thuật
-              </div>
+        {/* ── 4 TRỤ CỘT NỀN TẢNG PHỔ QUÁT ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-5xl text-left">
+          <div className="p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center text-cyan-400 mb-3">
+              <SystemIcon name="device" className="w-5 h-5" />
             </div>
-            <div className="text-xs text-slate-400 leading-snug">
-              10 loại thẻ độc quyền cướp điểm, phong tỏa, nhân đôi và khiên bảo vệ
-            </div>
+            <h3 className="text-sm font-bold text-white mb-1.5">{t.pillars.realtime.title}</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {t.pillars.realtime.desc}
+            </p>
           </div>
 
-          <div className="cockpit-panel-card text-center flex flex-col items-center justify-between group">
-            <div className="flex flex-col items-center w-full">
-              <div className="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 mb-3 shadow-md group-hover:scale-110 group-hover:border-cyan-300/60 transition-all duration-200 shrink-0">
-                <SystemIcon name="device" className="w-6 h-6" />
-              </div>
-              <div className="font-bold text-sm sm:text-base text-white mb-2 whitespace-nowrap tracking-tight group-hover:text-cyan-300 transition-colors">
-                Realtime Sync
-              </div>
+          <div className="p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-400/30 flex items-center justify-center text-purple-400 mb-3">
+              <SystemIcon name="sandbox" className="w-5 h-5" />
             </div>
-            <div className="text-xs text-slate-400 leading-snug">
-              Đồng bộ dữ liệu tức thời qua WebSocket, độ trễ cực thấp dưới 15ms
-            </div>
+            <h3 className="text-sm font-bold text-white mb-1.5">{t.pillars.quizBank.title}</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {t.pillars.quizBank.desc}
+            </p>
           </div>
 
-          <div className="cockpit-panel-card text-center flex flex-col items-center justify-between group border-cyan-500/40">
-            <div className="flex flex-col items-center w-full">
-              <div className="w-12 h-12 rounded-xl bg-cyan-500/25 border border-cyan-400/60 flex items-center justify-center text-cyan-300 mb-3 shadow-md group-hover:scale-110 group-hover:border-cyan-200 transition-all duration-200 shrink-0">
-                <SystemIcon name="display" className="w-6 h-6" />
-              </div>
-              <div className="font-bold text-sm sm:text-base text-cyan-300 mb-2 whitespace-nowrap tracking-tight group-hover:text-white transition-colors">
-                Màn hình chiếu
-              </div>
+          <div className="p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-400/30 flex items-center justify-center text-indigo-400 mb-3">
+              <SystemIcon name="team" className="w-5 h-5" />
             </div>
-            <div className="text-xs text-slate-300 leading-snug">
-              Tối ưu hội trường, hiển thị câu hỏi và bảng xếp hạng sống động
-            </div>
+            <h3 className="text-sm font-bold text-white mb-1.5">{t.pillars.flexibleModes.title}</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {t.pillars.flexibleModes.desc}
+            </p>
           </div>
 
-          <div className="cockpit-panel-card text-center flex flex-col items-center justify-between group">
-            <div className="flex flex-col items-center w-full">
-              <div className="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-400 mb-3 shadow-md group-hover:scale-110 group-hover:border-indigo-300/60 transition-all duration-200 shrink-0">
-                <SystemIcon name="team" className="w-6 h-6" />
-              </div>
-              <div className="font-bold text-sm sm:text-base text-white mb-2 whitespace-nowrap tracking-tight group-hover:text-indigo-300 transition-colors">
-                Đội ngũ linh hoạt
-              </div>
+          <div className="p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400 mb-3">
+              <SystemIcon name="trophy" className="w-5 h-5" />
             </div>
-            <div className="text-xs text-slate-400 leading-snug">
-              Thi đấu cá nhân hoặc chia đội linh hoạt, hỗ trợ không giới hạn thí sinh
-            </div>
-          </div>
-
-          <div className="cockpit-panel-card text-center flex flex-col items-center justify-between group col-span-2 md:col-span-1">
-            <div className="flex flex-col items-center w-full">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 mb-3 shadow-md group-hover:scale-110 group-hover:border-amber-300/60 transition-all duration-200 shrink-0">
-                <SystemIcon name="trophy" className="w-6 h-6" />
-              </div>
-              <div className="font-bold text-sm sm:text-base text-white mb-2 whitespace-nowrap tracking-tight group-hover:text-amber-300 transition-colors">
-                9 chế độ chơi
-              </div>
-            </div>
-            <div className="text-xs text-slate-400 leading-snug">
-              Classic, Buzz bấm chuông, Bounceback cướp lượt, Caro 4x4, Đua cờ xí ngầu
-            </div>
+            <h3 className="text-sm font-bold text-white mb-1.5">{t.pillars.analytics.title}</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {t.pillars.analytics.desc}
+            </p>
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+
+      {/* ── CHÂN TRANG HỆ THỐNG TOÀN DIỆN (GLOBAL FOOTER) ── */}
+      <footer className="border-t border-slate-800/80 bg-[#060812] py-10 px-4 sm:px-6 relative z-10 text-xs text-slate-400">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+            <BrandLogo variant="compact" size="sm" />
+            <div className="sm:border-l sm:border-slate-700 sm:pl-3">
+              <p className="font-semibold text-slate-300">Quizorra Intellectual Arena</p>
+              <p className="text-[11px] text-slate-500">{t.footer.brandSub}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-6 font-medium">
+            <Link href="/play" className="hover:text-cyan-300 transition-colors">{t.footer.play}</Link>
+            <Link href="/display" className="hover:text-cyan-300 transition-colors">{t.footer.display}</Link>
+            <Link href="/admin" className="hover:text-cyan-300 transition-colors">{t.footer.admin}</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">{t.footer.terms}</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">{t.footer.privacy}</Link>
+            <LanguageSelector variant="footer" />
+          </div>
+        </div>
+
+        <div className="max-w-5xl mx-auto mt-6 pt-6 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
+          <p>{t.footer.copyright}</p>
+          <p>{t.footer.support} <span className="text-slate-400 font-mono">support@quizorra.com</span></p>
+        </div>
+      </footer>
+    </div>
   );
 }

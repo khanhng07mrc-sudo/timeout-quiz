@@ -28,7 +28,7 @@ const GAME_MODES = [
   { value: "BUZZ", label: "Fast Buzz", desc: "Bấm chuông siêu tốc tranh quyền trả lời độc quyền", emoji: "⚡", badge: "Tốc độ", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
   { value: "BOUNCEBACK", label: "Bounceback", desc: "Đội chính trả lời sai, mở chuông 5s cho đối thủ cướp lượt", emoji: "🔄", badge: "Cướp điểm", badgeColor: "text-cyan-300 bg-cyan-500/20 border-cyan-500/30" },
   { value: "ELIMINATION", label: "Survival", desc: "Loại trực tiếp đội điểm thấp nhất sau mỗi chặng", emoji: "❌", badge: "Sinh tồn", badgeColor: "text-rose-300 bg-rose-500/20 border-rose-500/30" },
-  { value: "MAGIC_WHEEL", label: "Magic Wheel", desc: "Chiếc Nón Kỳ Diệu: 2 Vòng Đoán Nhanh, Vòng Quay Điểm Thưởng & Ô Chữ Đặc Biệt 40s", emoji: "🎡", badge: "Gameshow Truyền Hình", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
+  { value: "MAGIC_WHEEL", label: "Magic Wheel", desc: "Vòng Quay Trí Tuệ: 2 Vòng Đoán Nhanh, Vòng Quay Điểm Thưởng & Ô Chữ Đặc Biệt 40s", emoji: "🎡", badge: "Đấu Trường Tương Tác", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
   { value: "GRID_CARO", label: "Grid Caro", desc: "Chiếm ô ma trận 4x4, nối chuỗi Caro K ô ăn thưởng lớn", emoji: "🎯", badge: "Chiến thuật", badgeColor: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
   { value: "DICE_RACE", label: "Dice Race", desc: "Đường đua marathon 3D, gieo 2 xí ngầu và vượt cạm bẫy", emoji: "🎲", badge: "Board Game", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
   { value: "WAGER", label: "Secret Wager", desc: "Bí mật cược điểm trước khi công bố nội dung câu hỏi", emoji: "💰", badge: "Tâm lý", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },

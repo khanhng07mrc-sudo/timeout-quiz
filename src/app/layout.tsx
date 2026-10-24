@@ -5,6 +5,7 @@ import "./globals.css";
 import OfflineBanner from "@/components/ui/OfflineBanner";
 import QuizSoulBackground from "@/components/ui/QuizSoulBackground";
 import GlobalPageTransition from "@/components/ui/GlobalPageTransition";
+import AppProviders from "@/components/providers/AppProviders";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["vietnamese", "latin"],
@@ -35,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <GlobalPageTransition />
         <OfflineBanner />
         <div className="relative z-10 w-full min-h-screen flex flex-col">
-          {children}
+          <AppProviders>{children}</AppProviders>
         </div>
       </body>
     </html>

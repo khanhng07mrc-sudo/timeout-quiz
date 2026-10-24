@@ -5,7 +5,14 @@ import { hashPassword, createUserToken, sanitizeInput } from "@/lib/security";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, password } = body;
+    const { name, email, password, termsAccepted } = body;
+
+    if (!termsAccepted) {
+      return NextResponse.json(
+        { error: "Bạn phải đọc toàn bộ và đồng ý với Điều khoản dịch vụ và Chính sách bảo mật trước khi tạo tài khoản" },
+        { status: 400 }
+      );
+    }
 
     const cleanName = sanitizeInput(name?.trim(), 50);
     const cleanEmail = email?.trim().toLowerCase();

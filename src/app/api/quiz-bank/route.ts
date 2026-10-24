@@ -198,7 +198,24 @@ export async function GET(req: NextRequest) {
     }),
   ];
 
-  return NextResponse.json({ banks: finalBanks });
+  const seenBankTitles = new Set<string>();
+  const seenBankIds = new Set<string>();
+  const dedupedFinal: any[] = [];
+  for (const b of finalBanks) {
+    const cleanNormTitle = (b.title || "")
+      .replace(/^[(Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)]\s*/gi, "")
+      .replace(/\(VTV3\)/gi, "")
+      .replace(/VTV3/gi, "")
+      .replace(/Chiếc Nón Kỳ Diệu/gi, "Vòng Quay Trí Tuệ")
+      .trim()
+      .toLowerCase();
+    if (seenBankIds.has(b.id) || (cleanNormTitle && seenBankTitles.has(cleanNormTitle))) continue;
+    seenBankIds.add(b.id);
+    if (cleanNormTitle) seenBankTitles.add(cleanNormTitle);
+    dedupedFinal.push(b);
+  }
+
+  return NextResponse.json({ banks: dedupedFinal });
 }
 
 export async function POST(req: NextRequest) {

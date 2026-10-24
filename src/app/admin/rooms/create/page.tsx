@@ -102,7 +102,22 @@ export default function CreateRoomPage() {
       .then((r) => r.json())
       .then((d) => {
         if (d.banks) {
-          setQuizBanks(d.banks);
+          const seen = new Set<string>();
+          const seenTitles = new Set<string>();
+          const unique = d.banks.filter((b: any) => {
+            const normTitle = (b.title || "")
+              .replace(/^[(Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)]\s*/gi, "")
+              .replace(/\(VTV3\)/gi, "")
+              .replace(/VTV3/gi, "")
+              .replace(/Chiếc Nón Kỳ Diệu/gi, "Vòng Quay Trí Tuệ")
+              .trim()
+              .toLowerCase();
+            if (seen.has(b.id) || (normTitle && seenTitles.has(normTitle))) return false;
+            seen.add(b.id);
+            if (normTitle) seenTitles.add(normTitle);
+            return true;
+          });
+          setQuizBanks(unique);
         }
       })
       .catch(() => {});

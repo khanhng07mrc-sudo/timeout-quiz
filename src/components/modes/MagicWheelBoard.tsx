@@ -33,6 +33,29 @@ import dynamic from "next/dynamic";
 
 const WheelStudio3DScene = dynamic(() => import("./WheelStudio3DScene"), { ssr: false });
 
+
+export function getCleanPuzzleCategoryOrClue(puzzle?: { category?: string; clue?: string; description?: string; hint?: string } | null): string {
+  if (!puzzle) return "";
+  const rawCat = (puzzle.category || puzzle.hint || "").trim();
+  const cleanCat = rawCat
+    .replace(/^[⭐✨⚡💡]+\s*/g, "")
+    .replace(/^(chủ\s*đề|category|gợi\s*ý|clue|hint)[\s:]+/gi, "")
+    .trim();
+
+  if (cleanCat && !/^(tổng\s*hợp|general)$/i.test(cleanCat)) {
+    return cleanCat.toUpperCase();
+  }
+
+  const rawClue = (puzzle.clue || puzzle.description || "").trim();
+  const cleanClue = rawClue
+    .replace(/^[⭐✨⚡💡]+\s*/g, "")
+    .replace(/^(chủ\s*đề|category|gợi\s*ý|clue|hint)[\s:]+/gi, "")
+    .replace(/\s*\(\s*\d+\s*(ký\s*tự|chữ\s*cái|chữ|letters|chars?)\s*\)/gi, "")
+    .trim();
+
+  return cleanClue || cleanCat || "";
+}
+
 export function formatTeamLabel(rawName?: string): string {
   if (!rawName) return "Đội chơi";
   const trimmed = rawName.trim();
@@ -2349,8 +2372,16 @@ export default function MagicWheelBoard({
 
   // ── TV Board Staged Appearance Sequence ───────────────────────────────────
   const [boardStage, setBoardStage] = useState<"EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE">("EMPTY_56");
+    const isPlayingActive = Boolean(
+    animRevealedIndices.size > 0 ||
+    phase === "TOSS_UP_RUNNING" || phase === "TOSS_UP_REVEALING" ||
+    phase === "TOSS_UP_BUZZED" ||
+    phase === "ACTION_INPUT" ||
+    phase === "SPINNING" ||
+    phase === "ROUND_RECAP"
+  );
   const effectiveBoardStage: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE" =
-    isTempActive ? "READY_CLUE" : (activeState.boardStage || boardStage);
+    isTempActive || isPlayingActive ? "READY_CLUE" : (activeState.boardStage || boardStage);
 
   const prevBoardStageRef = useRef<string>(activeState.boardStage || "EMPTY_56");
   useEffect(() => {
@@ -3918,9 +3949,7 @@ export default function MagicWheelBoard({
             <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-t-lg bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-[10px] sm:text-xs uppercase tracking-wider shadow border-t border-x border-amber-300">
               <span className="text-amber-900">⭐</span>
               <span>
-                {edition === "ENGLISH"
-                  ? `CATEGORY: ${effectiveBoardStage === "EMPTY_56" ? "(Waiting for board to open...)" : formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
-                  : `CHỦ ĐỀ: ${effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", "VIETNAMESE")}`}
+                {getCleanPuzzleCategoryOrClue(currentPuzzle)}
               </span>
               {currentPuzzle?.puzzleType === "CROSSWORD" && (
                 <span className="ml-2 px-2 py-0.5 rounded-full bg-violet-950/90 text-violet-200 border border-violet-400 text-[10px] font-black tracking-wider uppercase animate-pulse shadow-sm">
@@ -4021,7 +4050,7 @@ export default function MagicWheelBoard({
         {/* Compact Phrase Strip */}
         <div className="w-full mt-1 px-3 py-1 rounded-xl bg-black/60 border border-amber-400/30 flex flex-col items-center gap-0.5 shadow-inner shrink-0">
           <div className="flex items-center justify-between w-full text-[11px] font-bold">
-            <span className="text-amber-300 uppercase">⭐ {effectiveBoardStage === "EMPTY_56" ? (edition === "ENGLISH" ? "(WAITING FOR BOARD TO OPEN...)" : "(CHỜ MC MỞ BẢNG)") : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", edition)}</span>
+            <span className="text-amber-300 uppercase font-black">{getCleanPuzzleCategoryOrClue(currentPuzzle)}</span>
             <span className="text-slate-400 font-mono text-[10px]">
               {currentPuzzle?.secretPhrase?.replace(/\s+/g, "").length || 0} {edition === "ENGLISH" ? "LETTERS" : "KÝ TỰ"}
             </span>
@@ -5286,9 +5315,7 @@ export default function MagicWheelBoard({
                 <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-t-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-md border-t border-x border-amber-300">
                   <span className="text-amber-900">⭐</span>
                   <span>
-                    {edition === "ENGLISH"
-                      ? `CATEGORY: ${effectiveBoardStage === "EMPTY_56" ? "(Waiting for board to open...)" : formatCategoryByEdition(currentPuzzle?.category || "GENERAL", "ENGLISH")}`
-                      : `CHỦ ĐỀ: ${effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : formatCategoryByEdition(currentPuzzle?.category || "TỔNG HỢP", "VIETNAMESE")}`}
+                    {getCleanPuzzleCategoryOrClue(currentPuzzle)}
                   </span>
                   {currentPuzzle?.puzzleType === "CROSSWORD" && (
                     <span className="ml-2 px-2 py-0.5 rounded-full bg-violet-950/90 text-violet-200 border border-violet-400 text-[10px] font-black tracking-wider uppercase animate-pulse shadow-sm">

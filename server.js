@@ -1417,7 +1417,7 @@ var DEFAULT_OFFLINE_BANK = {
 };
 var MAGIC_WHEEL_PRESET_BANKS = [
   {
-    id: "bank_mw_preset_culture",
+    id: "bank_mw_preset_vtv3",
     title: "V\xF2ng Quay Tr\xED Tu\u1EC7 - V\u0103n H\xF3a & L\u1ECBch S\u1EED (B\u1EA3n Ti\u1EBFng Vi\u1EC7t)",
     description: "B\u1ED9 \u0111\u1EC1 chu\u1EA9n 11 v\xF2ng (2 \u0110o\xE1n Nhanh + 8 V\xF2ng Ch\xEDnh t\u1ED1i \u0111a + 1 V\xF2ng \u0110\u1EB7c Bi\u1EC7t): L\u1ECBch s\u1EED, Danh nh\xE2n, Ca dao & V\u0103n h\u1ECDc Vi\u1EC7t Nam",
     createdAt: "2026-01-01T00:00:00.000Z",

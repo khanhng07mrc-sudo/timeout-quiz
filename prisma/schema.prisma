@@ -158,6 +158,8 @@ model Question {
   hint       String?      @db.Text
   order      Int          @default(0)
   isTieBreaker Boolean    @default(false)
+  allowManualGrading Boolean @default(false)
+  mediaPlaybackMode  String  @default("LOOP")
   quizBankId String
   createdAt  DateTime     @default(now())
 

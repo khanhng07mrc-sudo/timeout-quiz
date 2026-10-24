@@ -586,11 +586,20 @@ export default function AdminSandboxPage() {
         const localOnly = offlineStorage.getLocalBanks().filter((b) => b.isLocalOnly);
         const mwPresets = offlineStorage.getMagicWheelPresetBanks();
         const combined = [...localOnly, ...mwPresets, ...banksList];
-        // Deduplicate by ID
+        // Deduplicate by ID & clean normalized title
         const seen = new Set<string>();
+        const seenTitles = new Set<string>();
         const unique = combined.filter((b) => {
-          if (seen.has(b.id)) return false;
+          const normTitle = (b.title || "")
+            .replace(/^[(Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)]\s*/gi, "")
+            .replace(/\(VTV3\)/gi, "")
+            .replace(/VTV3/gi, "")
+            .replace(/Chiếc Nón Kỳ Diệu/gi, "Vòng Quay Trí Tuệ")
+            .trim()
+            .toLowerCase();
+          if (seen.has(b.id) || (normTitle && seenTitles.has(normTitle))) return false;
           seen.add(b.id);
+          if (normTitle) seenTitles.add(normTitle);
           return true;
         });
         if (unique.length > 0) {

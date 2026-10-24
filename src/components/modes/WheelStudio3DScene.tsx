@@ -2875,6 +2875,29 @@ function RealisticHostess3D({
 }
 
 // Giữ alias tương thích
+
+export function getCleanPuzzleCategoryOrClue(puzzle?: { category?: string; clue?: string; description?: string; hint?: string } | null): string {
+  if (!puzzle) return "";
+  const rawCat = (puzzle.category || puzzle.hint || "").trim();
+  const cleanCat = rawCat
+    .replace(/^[⭐✨⚡💡]+\s*/g, "")
+    .replace(/^(chủ\s*đề|category|gợi\s*ý|clue|hint)[\s:]+/gi, "")
+    .trim();
+
+  if (cleanCat && !/^(tổng\s*hợp|general)$/i.test(cleanCat)) {
+    return cleanCat.toUpperCase();
+  }
+
+  const rawClue = (puzzle.clue || puzzle.description || "").trim();
+  const cleanClue = rawClue
+    .replace(/^[⭐✨⚡💡]+\s*/g, "")
+    .replace(/^(chủ\s*đề|category|gợi\s*ý|clue|hint)[\s:]+/gi, "")
+    .replace(/\s*\(\s*\d+\s*(ký\s*tự|chữ\s*cái|chữ|letters|chars?)\s*\)/gi, "")
+    .trim();
+
+  return cleanClue || cleanCat || "";
+}
+
 const StylizedHostess = RealisticHostess3D;
 
 /** Màn hình LED kỹ thuật số lớn trên vách sân khấu 3D (Single Quad Canvas Texture)
@@ -3105,7 +3128,7 @@ function Studio3DPuzzleBoard({
     return new Set(currentPuzzle?.revealedIndices || []);
   }, [animRevealedIndices, currentPuzzle?.revealedIndices]);
 
-  const isBoardEmpty = boardStage === "EMPTY_56" && phase !== "ROUND_RECAP";
+  const isBoardEmpty = (boardStage === "EMPTY_56" && phase !== "ROUND_RECAP" && revealedSet.size === 0 && phase !== "TOSS_UP_RUNNING" && phase !== "TOSS_UP_REVEALING" && phase !== "ACTION_INPUT" && phase !== "SPINNING") || !currentPuzzle?.secretPhrase;
   const isRevealing = phase === "ROUND_RECAP" || (revealedSet.size > 0);
 
   const cleanLettersCount = useMemo(() => {

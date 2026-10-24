@@ -1389,7 +1389,7 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
 
 export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
   {
-    id: "bank_mw_preset_culture",
+    id: "bank_mw_preset_vtv3",
     title: "Vòng Quay Trí Tuệ - Văn Hóa & Lịch Sử (Bản Tiếng Việt)",
     description: "Bộ đề chuẩn 11 vòng (2 Đoán Nhanh + 8 Vòng Chính tối đa + 1 Vòng Đặc Biệt): Lịch sử, Danh nhân, Ca dao & Văn học Việt Nam",
     createdAt: "2026-01-01T00:00:00.000Z",

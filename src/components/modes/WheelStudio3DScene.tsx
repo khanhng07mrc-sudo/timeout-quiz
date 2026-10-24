@@ -3043,9 +3043,9 @@ function Studio3DBigLedWall({
 
           if (isPopping) {
             ctx.strokeStyle = "#fef08a";
-            ctx.lineWidth = 5;
+            ctx.lineWidth = 6;
             ctx.shadowColor = "#f59e0b";
-            ctx.shadowBlur = 18;
+            ctx.shadowBlur = 24;
             ctx.stroke();
             ctx.shadowBlur = 0;
           } else {
@@ -3057,7 +3057,7 @@ function Studio3DBigLedWall({
           const charToDraw = isSolvedOrRecap ? tile.char : stripVietnameseToneKeepBase(tile.char);
           ctx.fillStyle = "#0f172a";
           ctx.font = isPopping
-            ? "900 106px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif"
+            ? "900 114px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif"
             : "900 82px 'SFU Helvetica Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -3076,7 +3076,7 @@ function Studio3DBigLedWall({
     }
 
     tex.needsUpdate = true;
-  }, [grid, isOpen, revealedSet, highlightedIndices, isSolvedOrRecap, staggerOpenedKeys]);
+  }, [grid, isOpen, revealedSet, highlightedIndices, isSolvedOrRecap, staggerOpenedKeys, justPoppedIndices]);
 
   return (
     <mesh position={[0, 2.20, 0.05]}>
@@ -4636,6 +4636,7 @@ function WheelStudio3DSceneComponent({
           animRevealedIndices={animRevealedIndices}
           hostessXPercent={hostessXPercent}
           hostessPose={hostessPose}
+          justPoppedIndices={justPoppedIndices}
         />
         {/* Khán đài khán giả 6 tầng bậc thang & Phông nền Trống đồng Đông Sơn mạ vàng Việt Nam (Z = +8.6m - +16.5m) */}
         <AudienceAmphitheaterVietnamese />

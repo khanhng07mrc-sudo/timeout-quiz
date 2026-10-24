@@ -272,9 +272,12 @@ function SmartPuzzlePhraseInput({
       const baseChar = isSymbolOrDigit ? ch : normalizeVietnameseBaseLetter(ch);
       const isVowel = isLetter && isVietnameseVowel(baseChar);
       // Consonants that are already revealed, or numbers (0-9) and non-letter symbols (like '-') are 100% fixed/locked!
-      const isLockedConsonant = isSymbolOrDigit || (!isSpace && isRevealed && !isVowel);
-      // Vowels that are already revealed have their base vowel fixed, only needing tone mark!
-      const isRevealedVowel = !isSpace && isRevealed && isVowel;
+      // In English edition, ALL revealed letters (consonants AND vowels) are 100% fixed/locked! English has NO tone marks!
+      const isLockedConsonant = edition === "ENGLISH"
+        ? (isSymbolOrDigit || (!isSpace && isRevealed))
+        : (isSymbolOrDigit || (!isSpace && isRevealed && !isVowel));
+      // Vowels that are already revealed have their base vowel fixed, only needing tone mark! (ONLY in Vietnamese edition)
+      const isRevealedVowel = edition === "ENGLISH" ? false : (!isSpace && isRevealed && isVowel);
       return {
         index: idx,
         targetChar: ch,
@@ -286,7 +289,7 @@ function SmartPuzzlePhraseInput({
         isRevealedVowel,
       };
     });
-  }, [upperPhrase, revealedIndices]);
+  }, [upperPhrase, revealedIndices, edition]);
 
   const [charValues, setCharValues] = useState<string[]>(() =>
     slots.map((s) => {
@@ -606,8 +609,9 @@ function SmartPuzzlePhraseInput({
           <label className={`${compact ? "text-xs" : "text-xs sm:text-sm"} font-black text-amber-300 flex items-center gap-2`}>
             <span>✏️ GÕ ĐÁP ÁN Ô CHỮ:</span>
           </label>
-          {/* IME Input Method Selector Toolbar */}
-          <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-lg border border-white/10 text-[10px]">
+          {/* IME Input Method Selector Toolbar (Only for Vietnamese) */}
+          {edition !== "ENGLISH" && (
+            <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-lg border border-white/10 text-[10px]">
             {(["AUTO", "TELEX", "VNI", "VIQR", "OFF"] as const).map((m) => (
               <button
                 key={m}
@@ -629,7 +633,8 @@ function SmartPuzzlePhraseInput({
                 {m === "AUTO" ? "⚡ Tự động (Telex/VNI)" : m === "OFF" ? "⚙️ EVKey/UniKey" : m}
               </button>
             ))}
-          </div>
+            </div>
+          )}
         </div>
         <input
           ref={fullLineInputRef}
@@ -655,7 +660,7 @@ function SmartPuzzlePhraseInput({
               handleTriggerSubmit();
             }
           }}
-          placeholder="Nhập trực tiếp cả cụm từ đầy đủ dấu thanh tại đây (VD: THĂNG LONG HÀ NỘI)..."
+          placeholder={edition === "ENGLISH" ? "Type your answer here (e.g. BROADWAY MUSICAL)..." : "Nhập trực tiếp cả cụm từ đầy đủ dấu thanh tại đây (VD: THĂNG LONG HÀ NỘI)..."}
           className={`w-full ${compact ? "px-3 py-2 text-xs sm:text-sm" : "px-4 py-3 text-sm sm:text-base"} rounded-xl bg-black/80 border-2 border-amber-400 text-white font-black focus:outline-none focus:ring-4 focus:ring-amber-400/30 uppercase tracking-widest shadow-inner placeholder:text-slate-500 placeholder:font-normal placeholder:tracking-normal`}
         />
         <div className={`flex items-center justify-between ${compact ? "text-[10px]" : "text-[11px]"} text-slate-400 pt-0.5`}>
@@ -668,13 +673,15 @@ function SmartPuzzlePhraseInput({
       {!compact && (
         <div className="flex flex-wrap items-center gap-2 text-[11px] bg-black/40 p-2 rounded-xl border border-white/10">
           <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
-            🔒 Phụ âm đã mở: Khóa sẵn
+            {edition === "ENGLISH" ? "🔒 Revealed letters: Locked" : "🔒 Phụ âm đã mở: Khóa sẵn"}
           </span>
-          <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
-            🎵 Nguyên âm: Tự gắn dấu thanh
-          </span>
+          {edition !== "ENGLISH" && (
+            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+              🎵 Nguyên âm: Tự gắn dấu thanh
+            </span>
+          )}
           <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">
-            ✏️ Ô chữ: Tự động điền theo từ bạn gõ
+            {edition === "ENGLISH" ? "✏️ Blank letters: Type to fill" : "✏️ Ô chữ: Tự động điền theo từ bạn gõ"}
           </span>
         </div>
       )}
@@ -693,10 +700,10 @@ function SmartPuzzlePhraseInput({
                   <div
                     key={slot.index}
                     className={`${slotBoxDim} rounded-lg bg-emerald-950/80 border-2 border-emerald-500/50 text-emerald-200 font-black flex flex-col items-center justify-center select-none shadow`}
-                    title="Phụ âm đã mở sẵn"
+                    title={edition === "ENGLISH" ? "Revealed letter (Locked)" : "Phụ âm đã mở sẵn"}
                   >
                     <span>{slot.baseChar}</span>
-                    <span className="text-[6px] text-emerald-400/80 font-normal">KHÓA</span>
+                    <span className="text-[6px] text-emerald-400/80 font-normal">{edition === "ENGLISH" ? "LOCKED" : "KHÓA"}</span>
                   </div>
                 );
               }
@@ -740,8 +747,9 @@ function SmartPuzzlePhraseInput({
         ))}
       </div>
 
-      {/* 1-Click Tone Mark Selector Bar for Vowels */}
-      <div className={`${compact ? "p-1.5 rounded-lg" : "p-2.5 rounded-xl"} bg-amber-950/40 border border-amber-400/30 flex flex-wrap items-center justify-between gap-1.5`}>
+      {/* 1-Click Tone Mark Selector Bar for Vowels (Only in Vietnamese edition) */}
+      {edition !== "ENGLISH" && (
+        <div className={`${compact ? "p-1.5 rounded-lg" : "p-2.5 rounded-xl"} bg-amber-950/40 border border-amber-400/30 flex flex-wrap items-center justify-between gap-1.5`}>
         <span className={`${compact ? "text-[10px]" : "text-[11px]"} font-bold text-amber-200`}>
           🎶 Hoặc chọn nhanh dấu thanh cho ô nguyên âm đang click:
         </span>
@@ -765,6 +773,7 @@ function SmartPuzzlePhraseInput({
           ))}
         </div>
       </div>
+      )}
 
       {/* Continuous Attempt Log (Special Final Round) */}
       {continuousMode && attemptLog.length > 0 && (
@@ -2691,6 +2700,7 @@ export default function MagicWheelBoard({
         if (!tossUpFirstTileDoneRef.current) {
           // ── CHỮ ĐẦU TIÊN CỦA TOSS-UP: Bật highlight xanh + Người mẫu catwalk bước tới giơ tay chạm lật! ──
           tossUpFirstTileDoneRef.current = true;
+          isFirstTileAnimatingRef.current = true;
 
           // 1. Bật highlight xanh cho duy nhất chữ đầu tiên
           setHighlightedIndices(new Set([tileIdx]));
@@ -2743,6 +2753,22 @@ export default function MagicWheelBoard({
               animRevealedIndicesRef.current.add(tileIdx);
               triggerTilePop(tileIdx);
               if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
+              isFirstTileAnimatingRef.current = false;
+
+              // Flush any pending tiles after a dramatic pause
+              if (pendingTossUpTilesRef.current.length > 0) {
+                const queued = [...pendingTossUpTilesRef.current];
+                pendingTossUpTilesRef.current = [];
+                queued.forEach((qIdx, qStep) => {
+                  const tQ = setTimeout(() => {
+                    setAnimRevealedIndices((prev) => new Set([...prev, qIdx]));
+                    animRevealedIndicesRef.current.add(qIdx);
+                    triggerTilePop(qIdx);
+                    if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
+                  }, 800 * (qStep + 1));
+                  activeTimersRef.current.push(tQ);
+                });
+              }
             }, 180);
             activeTimersRef.current.push(tRev);
           }, 200 + walkTime);
@@ -2765,6 +2791,11 @@ export default function MagicWheelBoard({
           }, 200 + walkTime + touchTime + 200);
           activeTimersRef.current.push(tFinish);
 
+        } else if (isFirstTileAnimatingRef.current) {
+          // If first tile is still walking / touching, queue subsequent letters so they NEVER pop in parallel!
+          if (!pendingTossUpTilesRef.current.includes(tileIdx)) {
+            pendingTossUpTilesRef.current.push(tileIdx);
+          }
         } else {
           // ── TẤT CẢ CÁC CHỮ TIẾP THEO CỦA TOSS-UP: KHÔNG HIGHLIGHT XANH, BUNG TRỰC TIẾP ZOOM PUNCH! ──
           setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
@@ -2888,6 +2919,8 @@ export default function MagicWheelBoard({
 
   // ── Toss-Up 1 & 2 Special Choreography Effect ─────────────────────────────
   const tossUpFirstTileDoneRef = useRef<boolean>(false);
+  const isFirstTileAnimatingRef = useRef<boolean>(false);
+  const pendingTossUpTilesRef = useRef<number[]>([]);
 
   useEffect(() => {
     if (roundStage !== "TOSS_UP_1" && roundStage !== "TOSS_UP_2") {
@@ -2896,6 +2929,8 @@ export default function MagicWheelBoard({
     }
     if (phase === "TOSS_UP_READY") {
       tossUpFirstTileDoneRef.current = false;
+      isFirstTileAnimatingRef.current = false;
+      pendingTossUpTilesRef.current = [];
     }
   }, [roundStage, phase, currentRound]);
 

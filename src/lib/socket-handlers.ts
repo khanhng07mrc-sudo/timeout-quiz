@@ -8342,9 +8342,17 @@ export function registerSocketHandlers(io: IO) {
         }
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
 
-        // 2. Authoritative driver interval for all subsequent letters (750ms for VN, 1000ms for EN)
-        startServerTossUpInterval(roomId, roomCode);
-      }, isEnglish ? 1500 : 1500);
+        // 2. Authoritative driver interval for all subsequent letters (900ms for VN, 1000ms for EN)
+        // BUG FIX: Delay starting subsequent letter interval by 2200ms (VN) / 2500ms (EN) so that:
+        // Hostess walks to Tile 1 (~900ms), touches and reveals it (~200ms), walks back (~750ms),
+        // and Tile 1 is shown alone on the board for a clean dramatic pause before Letter 2 appears!
+        const subsequentTimer = setTimeout(() => {
+          const checkState = roomMagicWheels.get(roomId);
+          if (!checkState || (checkState.phase !== "TOSS_UP_RUNNING" && checkState.phase !== "TOSS_UP_REVEALING") || !checkState.currentPuzzle) return;
+          startServerTossUpInterval(roomId, roomCode);
+        }, isEnglish ? 2500 : 2200);
+        roomTossUpFirstTimers.set(roomId, subsequentTimer);
+      }, isEnglish ? 1200 : 1200);
       roomTossUpFirstTimers.set(roomId, firstTimer);
     });
 

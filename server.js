@@ -18873,8 +18873,13 @@ function registerSocketHandlers(io2) {
           p.revealedIndices.push(firstIdx);
         }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
-        startServerTossUpInterval(roomId, roomCode);
-      }, isEnglish ? 1500 : 1500);
+        const subsequentTimer = setTimeout(() => {
+          const checkState = roomMagicWheels.get(roomId);
+          if (!checkState || checkState.phase !== "TOSS_UP_RUNNING" && checkState.phase !== "TOSS_UP_REVEALING" || !checkState.currentPuzzle) return;
+          startServerTossUpInterval(roomId, roomCode);
+        }, isEnglish ? 2500 : 2200);
+        roomTossUpFirstTimers.set(roomId, subsequentTimer);
+      }, isEnglish ? 1200 : 1200);
       roomTossUpFirstTimers.set(roomId, firstTimer);
     });
     socket.on("admin:magic_wheel:toss_up_skip", async () => {

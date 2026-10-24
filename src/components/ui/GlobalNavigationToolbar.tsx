@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import FloatingLegalButton from "./FloatingLegalButton";
 import GlobalSettingsModal from "./GlobalSettingsModal";
 
 export default function GlobalNavigationToolbar() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isInsideIframe, setIsInsideIframe] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -14,8 +16,12 @@ export default function GlobalNavigationToolbar() {
     }
   }, []);
 
-  // Tuyệt đối không hiển thị đè trong iframe màn hình chiếu hoặc iframe thí sinh
-  if (isInsideIframe) return null;
+  // Tuyệt đối không hiển thị đè trong iframe hoặc các trang có thanh điều khiển chuyên biệt
+  // (/admin/sandbox và /display đã có nút Cài đặt & Pháp lý chuyên biệt ở góc dưới bên trái)
+  const isSandbox = pathname?.startsWith("/admin/sandbox");
+  const isDisplay = pathname?.startsWith("/display");
+
+  if (isInsideIframe || isSandbox || isDisplay) return null;
 
   return (
     <>

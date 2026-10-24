@@ -25,6 +25,8 @@ import { CARD_METADATA, quantizeOlympiaTimeLimit } from "@/types";
 import Link from "next/link";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import RoomQRCodeModal from "@/components/room/RoomQRCodeModal";
+import FloatingLegalButton from "@/components/ui/FloatingLegalButton";
+import GlobalSettingsModal from "@/components/ui/GlobalSettingsModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import ArenaModeLaunchTransition from "@/components/ui/ArenaModeLaunchTransition";
 import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
@@ -433,6 +435,7 @@ export default function AdminSandboxPage() {
   const [revealPayload, setRevealPayload] = useState<any>(null);
   const [mobileTab, setMobileTab] = useState<"PLAYER" | "DISPLAY" | "HOST">("DISPLAY");
   const [showDesktopHostPanel, setShowDesktopHostPanel] = useState(false);
+  const [showGlobalSettingsModal, setShowGlobalSettingsModal] = useState(false);
 
   // Sockets
   const adminSocketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
@@ -12151,17 +12154,17 @@ export default function AdminSandboxPage() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2 overflow-hidden animate-loaded-reveal">
+        <div className="flex-1 min-h-0 grid grid-cols-1 landscape:grid-cols-2 lg:grid-cols-12 gap-1.5 sm:gap-2 overflow-hidden animate-loaded-reveal pb-14 lg:pb-0">
           {/* ══════════════════════════════════════════════════════════════════
               RIGHT COLUMN (5 cols ~42%): Unified Mobile Device + Team Switcher
              ══════════════════════════════════════════════════════════════════ */}
-          <div className={`lg:col-span-5 flex flex-col min-h-0 h-full gap-1 overflow-hidden animate-slide-in-right ${
-            mobileTab === "PLAYER" ? "flex" : "hidden lg:flex"
-          }`}>
+          <div className={`lg:col-span-5 landscape:col-span-1 flex flex-col min-h-0 h-full gap-1 overflow-hidden animate-slide-in-right ${
+            mobileTab === "PLAYER" ? "flex" : mobileTab === "DISPLAY" ? "hidden landscape:flex lg:flex" : "hidden lg:flex"
+          }}`}>
             {/* Team Switcher Tabs (Auto-fit No Horizontal Scrollbar) */}
             <div className="glass rounded-xl px-2 py-1 border border-white/10 bg-[#121424] shrink-0 flex items-center gap-1.5">
               <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0 hidden sm:inline">📱 Chọn Đội:</span>
-              <div className="flex items-center gap-1 flex-1 overflow-hidden">
+              <div className="flex items-center gap-1.5 flex-1 overflow-x-auto no-scrollbar py-0.5">
                 {stableTeams.map((t: TeamState, idx: number) => {
                   const isActive = activeTeamIndex === idx;
                   const teamPopups = scorePopups.filter((p) => p.teamId === t.id);
@@ -12170,7 +12173,7 @@ export default function AdminSandboxPage() {
                       key={t.id}
                       type="button"
                       onClick={() => handleSwitchActiveTeam(idx)}
-                      className={`relative px-1.5 py-0.5 rounded-lg text-left border transition flex flex-col justify-center gap-0.5 cursor-pointer btn-tactile flex-1 min-w-0 max-w-[125px] ${
+                      className={`relative px-1.5 py-0.5 rounded-lg text-left border transition flex flex-col justify-center gap-0.5 cursor-pointer btn-tactile shrink-0 sm:flex-1 sm:max-w-[130px] min-w-[105px] ${
                         isActive
                           ? "bg-purple-600/30 border-purple-500 shadow ring-1 ring-purple-400/50"
                           : "glass border-white/10 hover:border-white/30 text-slate-300"
@@ -12457,11 +12460,11 @@ export default function AdminSandboxPage() {
           </div>
 
           {/* ══════════════════════════════════════════════════════════════════
-              LEFT COLUMN (7 cols ~58%): Màn hình Chiếu (Display Screen / Studio 3D) & Quản trò
+              LEFT COLUMN (7 cols ~58%): Màn hình Chiếu (Display Screen / Studio 3D)
              ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`flex-col min-h-0 h-full gap-1.5 overflow-hidden animate-slide-in-left lg:col-span-7 lg:order-first ${
-              mobileTab === "DISPLAY" || mobileTab === "HOST" ? "flex" : "hidden lg:flex"
+            className={`flex-col min-h-0 h-full gap-1.5 overflow-hidden animate-slide-in-left landscape:col-span-1 lg:col-span-7 lg:order-first ${
+              mobileTab === "DISPLAY" ? "flex" : "hidden landscape:flex lg:flex"
             }`}
           >
             {/* Viewport Card: Display Iframe or Host Panel */}
@@ -12506,27 +12509,452 @@ export default function AdminSandboxPage() {
               </div>
             </div>
 
-            {/* Live Bot Event Logs (Compact Single-line Ticker Bar) */}
-            <div className="glass rounded-xl px-3 py-1.5 border border-white/10 text-xs bg-[#121424] flex items-center justify-between shrink-0 shadow-lg">
-              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${botAutoEnabled ? "bg-emerald-400 animate-pulse glow-neon-emerald" : "bg-cyan-400 animate-pulse glow-neon-cyan"}`} />
-                <span className="font-bold text-slate-400 text-[11px] shrink-0 uppercase tracking-wider">Live Ticker:</span>
-                <span
-                  key={botLogs[0] || "initial"}
-                  className="font-mono text-[11px] text-slate-200 truncate animate-ticker-slide"
+            {/* Bottom Controls Bar (Red Area): Cài đặt & Pháp lý + Live Ticker */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 shrink-0">
+              {/* Cài đặt & Pháp lý Buttons Dock (Vùng đỏ theo thiết kế) */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowGlobalSettingsModal(true)}
+                  className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#12162a]/90 hover:bg-[#1c2242] border border-cyan-500/30 hover:border-cyan-400 text-xs text-slate-300 hover:text-white shadow-md backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+                  title="Cài đặt hệ thống (Âm thanh, Đồ họa, Ngôn ngữ, Toàn màn hình)"
                 >
-                  {botLogs[0] || "Phòng Sandbox sẵn sàng · Đang kết nối hiển thị trường quay..."}
-                </span>
+                  <span className="w-3.5 h-3.5 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                    <svg className="w-2.5 h-2.5 group-hover:rotate-45 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </span>
+                  <span className="font-semibold text-[11px] text-slate-300 group-hover:text-cyan-200">
+                    Cài đặt
+                  </span>
+                </button>
+                <FloatingLegalButton />
               </div>
-              <button
-                type="button"
-                onClick={() => setShowLogsModal(true)}
-                className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[11px] font-bold shrink-0 transition btn-tactile cursor-pointer"
-              >
-                📜 Xem tất cả ({botLogs.length})
-              </button>
+
+              {/* Live Bot Event Logs (Compact Single-line Ticker Bar) */}
+              <div className="glass rounded-xl px-2.5 py-1 border border-white/10 text-xs bg-[#121424] flex items-center justify-between flex-1 min-w-0 shadow-lg">
+                <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${botAutoEnabled ? "bg-emerald-400 animate-pulse glow-neon-emerald" : "bg-cyan-400 animate-pulse glow-neon-cyan"}`} />
+                  <span className="font-bold text-slate-400 text-[10px] sm:text-[11px] shrink-0 uppercase tracking-wider hidden sm:inline">Live Ticker:</span>
+                  <span
+                    key={botLogs[0] || "initial"}
+                    className="font-mono text-[10px] sm:text-[11px] text-slate-200 truncate animate-ticker-slide"
+                  >
+                    {botLogs[0] || "Phòng Sandbox sẵn sàng · Đang kết nối hiển thị trường quay..."}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLogsModal(true)}
+                  className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[10px] sm:text-[11px] font-bold shrink-0 transition btn-tactile cursor-pointer"
+                >
+                  📜 Logs ({botLogs.length})
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              DEDICATED MOBILE HOST CONTROL PANEL (Screen < lg when mobileTab === "HOST")
+             ══════════════════════════════════════════════════════════════════ */}
+          <div
+            className={`flex-col min-h-0 h-full gap-2.5 overflow-y-auto no-scrollbar p-1 pb-16 animate-slide-in-up landscape:col-span-1 lg:hidden ${
+              mobileTab === "HOST" ? "flex" : "hidden"
+            }`}
+          >
+            {/* Host Overview Card */}
+            <div className="glass rounded-2xl border border-white/15 p-3.5 bg-[#121426] shadow-xl flex flex-col gap-2.5 shrink-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-purple-600 flex items-center justify-center text-sm shadow">
+                    🎛️
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-black text-white flex items-center gap-1.5">
+                      <span>Bảng Quản Trò Di Động</span>
+                    </h3>
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                      <span>Mã:</span>
+                      <span className="font-mono font-black text-cyan-300">{code}</span>
+                      <span>·</span>
+                      <span className="font-semibold text-purple-300 flex items-center gap-1">
+                        <GameModeIcon mode={roomState?.mode || selectedMode} className="w-3.5 h-3.5" />
+                        <span>{MODE_DISPLAY_NAMES[(roomState?.mode || selectedMode).toUpperCase()] || (roomState?.mode || selectedMode)}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 ${
+                  roomState?.status === "PLAYING"
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                    : roomState?.status === "LOBBY"
+                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                    : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+                }`}>
+                  {roomState?.status || "KẾT NỐI"}
+                </span>
+              </div>
+
+              {/* Quick utility pill buttons */}
+              <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowRulesModal(true)}
+                  className="px-2.5 py-1 rounded-xl glass hover:bg-white/10 border border-white/15 text-slate-200 text-xs font-bold flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                >
+                  <span>📖</span>
+                  <span>Luật chơi</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowQRModal(true)}
+                  className="px-2.5 py-1 rounded-xl glass hover:bg-white/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                >
+                  <span>⛶</span>
+                  <span>Mã QR</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowGlobalSettingsModal(true)}
+                  className="px-2.5 py-1 rounded-xl glass hover:bg-white/10 border border-purple-500/30 text-purple-300 text-xs font-bold flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                >
+                  <span>⚙️</span>
+                  <span>Cài đặt</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLogsModal(true)}
+                  className="px-2.5 py-1 rounded-xl glass hover:bg-white/10 border border-white/15 text-slate-300 text-xs font-bold flex items-center gap-1 transition active:scale-95 cursor-pointer ml-auto"
+                >
+                  <span>📜</span>
+                  <span>Logs ({botLogs.length})</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Primary Action Card (Big Touch Buttons) */}
+            <div className="glass rounded-2xl border border-white/15 p-3.5 bg-[#121426] shadow-xl flex flex-col gap-3 shrink-0">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <span>⚡</span>
+                <span>Thao tác điều khiển chính</span>
+              </h4>
+
+              {/* Lobby Start Action */}
+              {roomState?.status === "LOBBY" && (
+                <button
+                  type="button"
+                  onClick={handleAdminNext}
+                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-black text-sm shadow-xl shadow-purple-600/30 active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer ring-2 ring-cyan-400/50"
+                >
+                  <span className="text-lg">🚀</span>
+                  <span>BẮT ĐẦU TRẬN ĐẤU</span>
+                </button>
+              )}
+
+              {/* Skip Countdown / Prepare */}
+              {(matchStarting || questionPrepare) && (
+                <button
+                  type="button"
+                  onClick={handleSkipPrepare}
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 text-black font-black text-xs shadow-lg animate-pulse active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span className="text-base">⚡</span>
+                  <span>BỎ QUA CHUẨN BỊ ({matchStarting?.seconds ?? questionPrepare?.seconds ?? 3}s)</span>
+                </button>
+              )}
+
+              {/* Timer Pending Button */}
+              {currentQuestion?.timerPending && selectedMode !== "MAGIC_WHEEL" && (
+                <button
+                  type="button"
+                  onClick={handleStartTimer}
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-green-500 hover:from-amber-400 text-black font-black text-xs shadow-lg animate-pulse active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span className="text-base">⏱️</span>
+                  <span>BẮT ĐẦU TÍNH GIỜ</span>
+                </button>
+              )}
+
+              {/* General Modes: Next Question / Phase */}
+              {roomState?.status === "PLAYING" && selectedMode !== "MAGIC_WHEEL" && (
+                <button
+                  type="button"
+                  onClick={handleAdminNext}
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xs shadow-lg active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>➡️</span>
+                  <span>CÂU TIẾP THEO / TIẾP TỤC VÒNG</span>
+                </button>
+              )}
+
+              {/* MAGIC WHEEL Actions Grid */}
+              {selectedMode === "MAGIC_WHEEL" && roomState?.status === "PLAYING" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleMagicWheelQuickSpin}
+                    className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>🎡</span>
+                    <span>Quay nón</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleMagicWheelPassTurn}
+                    className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-200 font-bold text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>⏭️</span>
+                    <span>Đổi lượt</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleMagicWheelQuickRevealLetter}
+                    className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-black text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>🔤</span>
+                    <span>Mở chữ kế</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleMagicWheelDirectSolve}
+                    className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white font-black text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>🏆</span>
+                    <span>Đoán đúng từ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleMagicWheelOpenBoard}
+                    className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/10 text-cyan-300 font-bold text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>🟩</span>
+                    <span>Mở ô chữ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleMagicWheelRevealAll}
+                    className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/10 text-yellow-300 font-bold text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>✨</span>
+                    <span>Mở toàn bộ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleMagicWheelNextRound}
+                    className="py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 text-white font-black text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer col-span-2"
+                  >
+                    <span>⏩</span>
+                    <span>SANG VÒNG TIẾP THEO</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowSandboxTempTextModal(true)}
+                    className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/10 text-purple-300 font-bold text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer col-span-2"
+                  >
+                    <span>💬</span>
+                    <span>Nhập chữ thông báo tạm thời</span>
+                  </button>
+                </div>
+              )}
+
+              {/* WAGER Mode Actions */}
+              {roomState?.mode === "WAGER" && roomState?.wagerState?.phase === "QUESTION_PERIOD" && !roomState?.wagerState?.questionReady && (
+                <button
+                  type="button"
+                  onClick={handleWagerLaunchQuestion}
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-black text-xs shadow-lg animate-pulse active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>📢</span>
+                  <span>MỞ CÂU HỎI CƯỢC</span>
+                </button>
+              )}
+
+              {roomState?.mode === "WAGER" && roomState?.wagerState?.bailoutQueue && roomState.wagerState.bailoutQueue.length > 0 && !roomState.wagerState.currentQuestionBailoutUsed && (
+                <button
+                  type="button"
+                  onClick={() => handleGrantBailout(roomState.wagerState!.bailoutQueue![0].teamId)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-amber-500 text-white font-black text-xs shadow-lg animate-pulse active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>🆘</span>
+                  <span>CỨU TRỢ: {roomState.wagerState.bailoutQueue[0].teamName}</span>
+                </button>
+              )}
+
+              {/* TOURNAMENT Mode Action */}
+              {roomState?.mode === "TOURNAMENT" && (
+                <button
+                  type="button"
+                  onClick={handleTournamentAdvance}
+                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-black text-xs shadow active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>{roomState?.tournamentState?.championTeamName ? "👑" : "➡️"}</span>
+                  <span>{roomState?.tournamentState?.championTeamName ? `Vô địch: ${roomState.tournamentState.championTeamName}` : "Chuyển trận kế (1v1)"}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Team Scores & Quick Adjustment Card */}
+            <div className="glass rounded-2xl border border-white/15 p-3.5 bg-[#121426] shadow-xl flex flex-col gap-2.5 shrink-0">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <span>📊</span>
+                  <span>Bảng điểm & Chỉnh điểm thủ công</span>
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">{stableTeams.length} đội</span>
+              </h4>
+
+              <div className="flex flex-col gap-2">
+                {stableTeams.map((t) => (
+                  <div key={t.id} className="p-2.5 rounded-xl bg-[#0c0d18] border border-white/10 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-3 h-3 rounded-full shrink-0" style={{ background: t.color }} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-white truncate">{t.name}</p>
+                        <p className="text-[11px] font-mono font-bold text-cyan-300">{t.score.toLocaleString()}đ</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustScore(t.id, 10)}
+                        className="px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-black border border-emerald-500/30 transition active:scale-95 cursor-pointer"
+                        title="Cộng 10 điểm"
+                      >
+                        +10
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustScore(t.id, 20)}
+                        className="px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-black border border-emerald-500/30 transition active:scale-95 cursor-pointer"
+                        title="Cộng 20 điểm"
+                      >
+                        +20
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustScore(t.id, -10)}
+                        className="px-2 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[10px] font-black border border-rose-500/30 transition active:scale-95 cursor-pointer"
+                        title="Trừ 10 điểm"
+                      >
+                        -10
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustScore(t.id, undefined, 0)}
+                        className="px-1.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-[10px] font-bold border border-white/10 transition active:scale-95 cursor-pointer"
+                        title="Về 0 điểm"
+                      >
+                        0
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Simulator Utilities Card */}
+            <div className="glass rounded-2xl border border-white/15 p-3.5 bg-[#121426] shadow-xl flex flex-col gap-2.5 shrink-0">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <span>🛠️</span>
+                <span>Tiện ích Sandbox</span>
+              </h4>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBotAutoEnabled((prev) => !prev)}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    botAutoEnabled
+                      ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                      : "bg-slate-800 border-white/10 text-slate-400"
+                  }`}
+                >
+                  <span>🤖</span>
+                  <span>Bot: {botAutoEnabled ? "Bật" : "Tắt"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCardModal(true)}
+                  className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/10 text-purple-300 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>🃏</span>
+                  <span>Cấp Power-up</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm("Bạn có chắc chắn muốn đặt lại hoặc đổi phòng Sandbox khác?")) {
+                      clearSandboxSession();
+                      setCode("");
+                      setIsOfflineSandbox(false);
+                      setRoomState(null);
+                      setCurrentQuestion(null);
+                    }
+                  }}
+                  className="py-2 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer col-span-2"
+                >
+                  <span>🔄</span>
+                  <span>Đổi hoặc làm mới phòng</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Fixed Mobile Bottom Navigation Bar (Screens < lg) ── */}
+      {code && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0e101f]/95 backdrop-blur-xl border-t border-white/10 px-3 py-1.5 flex items-center justify-around shadow-2xl safe-area-bottom">
+          <button
+            type="button"
+            onClick={() => setMobileTab("DISPLAY")}
+            className={`flex-1 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center gap-0.5 transition cursor-pointer ${
+              mobileTab === "DISPLAY"
+                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.3)] font-bold"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <span className="text-base leading-none">📺</span>
+            <span className="text-[10.5px] font-bold tracking-wide">Màn chiếu</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileTab("PLAYER")}
+            className={`flex-1 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center gap-0.5 transition cursor-pointer ${
+              mobileTab === "PLAYER"
+                ? "bg-purple-500/20 text-purple-300 border border-purple-400/40 shadow-[0_0_12px_rgba(168,85,247,0.3)] font-bold"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <span className="text-base leading-none">📱</span>
+            <span className="text-[10.5px] font-bold tracking-wide">Thí sinh</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileTab("HOST")}
+            className={`flex-1 py-1.5 px-2 rounded-xl flex flex-col items-center justify-center gap-0.5 transition cursor-pointer ${
+              mobileTab === "HOST"
+                ? "bg-amber-500/20 text-amber-300 border border-amber-400/40 shadow-[0_0_12px_rgba(245,158,11,0.3)] font-bold"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <span className="text-base leading-none">🎛️</span>
+            <span className="text-[10.5px] font-bold tracking-wide">Quản trò</span>
+          </button>
         </div>
       )}
 
@@ -13316,6 +13744,12 @@ export default function AdminSandboxPage() {
         mode={roomState?.mode || selectedMode}
         isOpen={showRulesModal}
         onClose={() => setShowRulesModal(false)}
+      />
+
+      {/* ── Global Settings Modal ─────────────────────────────────────────── */}
+      <GlobalSettingsModal
+        isOpen={showGlobalSettingsModal}
+        onClose={() => setShowGlobalSettingsModal(false)}
       />
     </div>
   );

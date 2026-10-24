@@ -66,11 +66,13 @@ export async function ensureQuizBankExists(bankId: string | null | undefined): P
 
       // Làm sạch tiêu đề và mô tả
       const cleanTitle = (preset.title || cleanId)
+        .replace(/chiếc nón kỳ diệu/gi, "Vòng Quay Trí Tuệ")
         .replace(/vtv3 huyền thoại/gi, "Văn Hóa & Lịch Sử")
         .replace(/vtv3/gi, "")
         .replace(/\s{2,}/g, " ")
         .trim();
       const cleanDesc = (preset.description || "")
+        .replace(/chiếc nón kỳ diệu/gi, "Vòng Quay Trí Tuệ")
         .replace(/vtv3/gi, "")
         .replace(/\s{2,}/g, " ")
         .trim();

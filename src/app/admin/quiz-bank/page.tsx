@@ -190,6 +190,7 @@ export default function QuizBankPage() {
   const [editBankDesc, setEditBankDesc] = useState("");
   const [editBankLanguage, setEditBankLanguage] = useState<"VIETNAMESE" | "ENGLISH">("VIETNAMESE");
   const [savingBank, setSavingBank] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // New Question Form State
   const [showNewQModal, setShowNewQModal] = useState(false);
@@ -453,11 +454,23 @@ export default function QuizBankPage() {
         const data = await res.json();
         if (data.banks) {
           const localOnly = offlineStorage.getLocalBanks().filter((b: OfflineQuizBank) => b.isLocalOnly);
-          const combined = [...localOnly, ...data.banks].map((b: any) => {
+          const rawCombined = [...localOnly, ...data.banks];
+          const seenIds = new Set<string>();
+          const seenTitles = new Set<string>();
+          const deduped: any[] = [];
+          for (const b of rawCombined) {
+            const normTitle = (b.title || "").trim().toLowerCase();
+            if (b.id && seenIds.has(b.id)) continue;
+            if (normTitle && seenTitles.has(normTitle)) continue;
+            if (b.id) seenIds.add(b.id);
+            if (normTitle) seenTitles.add(normTitle);
+            deduped.push(b);
+          }
+          const combined = deduped.map((b: any) => {
             const isPureWP = b.isPureWordPuzzle ?? (
               b.id?.startsWith("bank_mw_preset") ||
               (b.questions && b.questions.length > 0 && b.questions.every((q: any) => q.type === "WORD_PUZZLE")) ||
-              /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(b.title || "")
+              /vòng quay|ô chữ|magic wheel/i.test(b.title || "")
             );
             const isPureStd = b.isPureStandard ?? (
               b.questions && b.questions.length > 0 && b.questions.every((q: any) => q.type !== "WORD_PUZZLE")
@@ -477,11 +490,23 @@ export default function QuizBankPage() {
       throw new Error("Offline or server unreachable");
     } catch {
       console.warn("[QuizBank] Loading offline banks from local storage");
-      const local = offlineStorage.getLocalBanks().map((b: any) => {
+      const local = offlineStorage.getLocalBanks();
+      const seenIds = new Set<string>();
+      const seenTitles = new Set<string>();
+      const deduped: any[] = [];
+      for (const b of local) {
+        const normTitle = (b.title || "").trim().toLowerCase();
+        if (b.id && seenIds.has(b.id)) continue;
+        if (normTitle && seenTitles.has(normTitle)) continue;
+        if (b.id) seenIds.add(b.id);
+        if (normTitle) seenTitles.add(normTitle);
+        deduped.push(b);
+      }
+      const combined = deduped.map((b: any) => {
         const isPureWP = b.isPureWordPuzzle ?? (
           b.id?.startsWith("bank_mw_preset") ||
           (b.questions && b.questions.length > 0 && b.questions.every((q: any) => q.type === "WORD_PUZZLE")) ||
-          /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(b.title || "")
+          /vòng quay|ô chữ|magic wheel/i.test(b.title || "")
         );
         const isPureStd = b.isPureStandard ?? (
           b.questions && b.questions.length > 0 && b.questions.every((q: any) => q.type !== "WORD_PUZZLE")
@@ -491,9 +516,9 @@ export default function QuizBankPage() {
         );
         return { ...b, isPureWordPuzzle: isPureWP, isPureStandard: isPureStd, isMixed };
       });
-      setBanks(local);
-      if (local.length > 0 && !selectedBank) {
-        selectBank(local[0]);
+      setBanks(combined);
+      if (combined.length > 0 && !selectedBank) {
+        selectBank(combined[0]);
       }
     } finally {
       setLoading(false);
@@ -609,10 +634,10 @@ export default function QuizBankPage() {
 
     setIsCreatingBank(true);
     const isCategoryWordPuzzle = newBankCategory === "WORD_PUZZLE";
-    const finalTitle = isCategoryWordPuzzle && !/ô chữ|chiếc nón|magic wheel/i.test(newTitle)
-      ? `[Ô Chữ VTV3] ${newTitle.trim()}`
+    const finalTitle = isCategoryWordPuzzle && !/ô chữ|magic wheel|vòng quay/i.test(newTitle)
+      ? `[Ô Chữ] ${newTitle.trim()}`
       : newTitle.trim();
-    const finalDesc = newDesc.trim() || (isCategoryWordPuzzle ? "Bộ đề chuyên biệt Ô chữ Chiếc nón kỳ diệu (VTV3)" : undefined);
+    const finalDesc = newDesc.trim() || (isCategoryWordPuzzle ? "Bộ đề chuyên biệt Ô chữ Vòng Quay Trí Tuệ" : undefined);
 
     try {
       const res = await fetch("/api/quiz-bank", {
@@ -718,7 +743,7 @@ export default function QuizBankPage() {
       );
       if (!confirmAdd) return;
     } else if (bankLang === "VIETNAMESE" && !hasVietnameseMarks && qType === "WORD_PUZZLE" && qAnswer.trim().length > 3) {
-      // Nếu là Ô chữ VTV3 bản tiếng Việt mà đáp án không có dấu tiếng Việt nào
+      // Nếu là Ô chữ bản tiếng Việt mà đáp án không có dấu tiếng Việt nào
       // Nhắc nhở người soạn để tránh quên dấu thanh
       const isEnglishWords = /^[a-zA-Z\s]+$/.test(qAnswer.trim());
       if (isEnglishWords && !/^[A-Z0-9\s]+$/i.test(qContent)) {
@@ -1459,8 +1484,8 @@ export default function QuizBankPage() {
       let targetBankId = selectedBank?.id;
 
       if (previewTargetMode === "new" || !targetBankId) {
-        const title = previewNewBankTitle.trim() || (wpCount > 0 ? "[Ô Chữ VTV3] Bộ đề ô chữ mới" : "Bộ đề thi mới");
-        const desc = previewNewBankDesc.trim() || (wpCount > 0 ? "Bộ đề chuyên biệt Ô chữ Chiếc nón kỳ diệu (VTV3)" : undefined);
+        const title = previewNewBankTitle.trim() || (wpCount > 0 ? "[Ô Chữ] Bộ đề ô chữ mới" : "Bộ đề thi mới");
+        const desc = previewNewBankDesc.trim() || (wpCount > 0 ? "Bộ đề chuyên biệt Ô chữ Vòng Quay Trí Tuệ" : undefined);
 
         const createRes = await fetch("/api/quiz-bank", {
           method: "POST",
@@ -1625,14 +1650,14 @@ export default function QuizBankPage() {
                 const local = offlineStorage.getLocalBanks();
                 setBanks(local);
                 selectBank(loaded as any);
-                alert("Đã nạp thành công bộ đề mẫu Chiếc Nón Kỳ Diệu vào danh sách!");
+                alert("Đã nạp thành công bộ đề mẫu Vòng Quay Trí Tuệ vào danh sách!");
               }
             }}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs sm:text-sm shadow-lg transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-            title="Nạp ngay bộ đề mẫu 4 vòng chơi Chiếc Nón Kỳ Diệu chuẩn format VTV3"
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            title="Nạp ngay bộ đề mẫu Vòng Quay Trí Tuệ"
           >
             <span>🎡</span>
-            <span>Nạp Đề Mẫu Chiếc Nón</span>
+            <span>Nạp Đề Mẫu Vòng Quay</span>
           </button>
           <button
             onClick={() => setShowNewBankModal(true)}
@@ -1644,104 +1669,125 @@ export default function QuizBankPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-loaded-reveal">
+      <div className="flex flex-col lg:flex-row gap-5 items-start w-full animate-loaded-reveal">
         {/* Left Col: List of Banks */}
-        <div className="glass rounded-2xl p-4 flex flex-col gap-3">
-          <h2 className="font-bold text-lg px-2 flex items-center gap-2 whitespace-nowrap">
-            <SystemIcon name="quiz_bank" className="w-5 h-5 text-purple-400 shrink-0" />
-            <span className="whitespace-nowrap">Danh sách bộ câu hỏi</span>
-          </h2>
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-3">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs">Đang tải bộ câu hỏi...</span>
+        {isSidebarCollapsed ? (
+          <div className="w-full lg:w-14 shrink-0 flex flex-col items-center gap-3 glass rounded-2xl p-2.5 border border-border">
+            <button
+              onClick={() => setIsSidebarCollapsed(false)}
+              className="w-9 h-9 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 flex items-center justify-center transition cursor-pointer shadow-md"
+              title="Mở rộng danh sách bộ đề"
+            >
+              ▶
+            </button>
+            <span className="text-[10px] font-bold text-slate-400 [writing-mode:vertical-lr] tracking-wider uppercase mt-1">
+              Bộ đề ({banks.length})
+            </span>
+          </div>
+        ) : (
+          <div className="w-full lg:w-72 xl:w-80 shrink-0 glass rounded-2xl p-3.5 flex flex-col gap-3 border border-border transition-all duration-300">
+            <div className="flex items-center justify-between px-1 border-b border-border/50 pb-2">
+              <h2 className="font-bold text-sm sm:text-base flex items-center gap-2 text-white">
+                <SystemIcon name="quiz_bank" className="w-4 h-4 text-purple-400 shrink-0" />
+                <span>Danh sách bộ đề</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-mono font-bold">
+                  {banks.length}
+                </span>
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsSidebarCollapsed(true)}
+                className="text-xs px-2 py-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center gap-1 transition cursor-pointer"
+                title="Thu gọn cột danh sách để xem câu hỏi rộng hơn"
+              >
+                <span>◀</span>
+                <span className="hidden sm:inline text-[11px]">Thu gọn</span>
+              </button>
             </div>
-          ) : banks.length === 0 ? (
-            <p className="text-muted-foreground p-3 animate-loaded-reveal">Chưa có bộ câu hỏi nào</p>
-          ) : (
-            <div className="space-y-2 overflow-y-auto max-h-[70vh] animate-loaded-reveal">
-              {banks.map((b) => (
-                <div
-                  key={b.id}
-                  onClick={() => selectBank(b)}
-                  className={`p-4 rounded-xl cursor-pointer transition border group relative ${
-                    selectedBank?.id === b.id
-                      ? "border-purple-500 bg-purple-500/10"
-                      : "border-border hover:border-purple-400/50"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 flex flex-col gap-0.5">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="font-bold text-base">{b.title}</p>
-                        {(b.isBuiltIn || b.id.startsWith("bank_mw_preset")) && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/25 text-amber-300 border border-amber-500/40 whitespace-nowrap shadow-sm">
-                            ⭐ Đề Mẫu VTV3
-                          </span>
-                        )}
-                        {b.isPureWordPuzzle && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 whitespace-nowrap shadow-sm">
-                            🎡 Ô Chữ (VTV3)
-                          </span>
-                        )}
-                        {b.isPureStandard && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 whitespace-nowrap shadow-sm">
-                            🎯 Trắc Nghiệm
-                          </span>
-                        )}
-                        {b.isMixed && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 whitespace-nowrap shadow-sm">
-                            ⚠️ Hỗn hợp (Cần tách)
-                          </span>
-                        )}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-3">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs">Đang tải bộ câu hỏi...</span>
+              </div>
+            ) : banks.length === 0 ? (
+              <p className="text-muted-foreground p-3 animate-loaded-reveal text-xs">Chưa có bộ câu hỏi nào</p>
+            ) : (
+              <div className="space-y-1.5 overflow-y-auto max-h-[75vh] pr-1 custom-scrollbar">
+                {banks.map((b) => {
+                  const isSelected = selectedBank?.id === b.id;
+                  const qCount = b._count?.questions ?? ((b as any).questions?.length || 0);
+                  return (
+                    <div
+                      key={b.id}
+                      onClick={() => selectBank(b)}
+                      className={`p-3 rounded-xl cursor-pointer transition border group relative ${
+                        isSelected
+                          ? "border-purple-500 bg-purple-600/15 shadow-md shadow-purple-950/40"
+                          : "border-slate-800/80 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-800/40"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-bold text-sm leading-snug truncate ${isSelected ? "text-white" : "text-slate-200 group-hover:text-white"}`}>
+                            {b.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+                            <span className="font-semibold text-purple-300">{qCount} câu</span>
+                            <span>•</span>
+                            <span>{new Date(b.createdAt).toLocaleDateString("vi-VN")}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditBank(b);
+                            }}
+                            className="p-1 rounded hover:bg-slate-700/60 text-slate-300 hover:text-white text-xs transition"
+                            title="Sửa thông tin bộ đề"
+                          >
+                            ✏️
+                          </button>
+                          {!(b.isBuiltIn || b.id.startsWith("bank_mw_preset")) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteBank(b);
+                              }}
+                              disabled={deletingBankId === b.id}
+                              className="p-1 rounded hover:bg-rose-500/20 text-rose-400 text-xs transition flex items-center justify-center"
+                              title="Xóa bộ đề"
+                            >
+                              {deletingBankId === b.id ? "..." : <SystemIcon name="trash" className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditBank(b);
-                        }}
-                        className="p-1 rounded-lg hover:bg-card text-muted-foreground hover:text-foreground text-xs transition"
-                        title="Sửa thông tin bộ đề"
-                      >
-                        ✏️
-                      </button>
-                      {!(b.isBuiltIn || b.id.startsWith("bank_mw_preset")) && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteBank(b);
-                          }}
-                          disabled={deletingBankId === b.id}
-                          className="p-1 rounded-lg hover:bg-destructive/20 text-destructive text-xs transition flex items-center justify-center"
-                          title="Xóa bộ đề"
-                        >
-                          {deletingBankId === b.id ? "..." : <SystemIcon name="trash" className="w-3.5 h-3.5 text-red-400" />}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {b.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{b.description}</p>
-                  )}
-                  <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                    <span>{b._count?.questions ?? 0} câu hỏi</span>
-                    <span>{new Date(b.createdAt).toLocaleDateString("vi-VN")}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Right Col: Questions inside selected bank */}
-        <div key={selectedBank?.id || "empty"} className="md:col-span-2 glass rounded-2xl p-6 flex flex-col gap-4 animate-pull-from-left">
+        <div key={selectedBank?.id || "empty"} className="flex-1 min-w-0 w-full glass rounded-2xl p-5 sm:p-6 flex flex-col gap-4 animate-pull-from-left">
           {selectedBank ? (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
                 <div>
                   <div className="flex items-center gap-2.5">
+                    {isSidebarCollapsed && (
+                      <button
+                        onClick={() => setIsSidebarCollapsed(false)}
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 text-cyan-300 border border-slate-700 hover:bg-slate-700 text-xs font-semibold flex items-center gap-1"
+                        title="Mở danh sách bộ đề"
+                      >
+                        <span>▶</span>
+                        <span>Danh sách đề</span>
+                      </button>
+                    )}
                     <h2 className="text-xl font-black">{selectedBank.title}</h2>
                     {(() => {
                       const localTarget = offlineStorage.getLocalBankById(selectedBank.id);
@@ -1753,7 +1799,7 @@ export default function QuizBankPage() {
                               ? "bg-blue-500/20 text-blue-300 border-blue-400/40"
                               : "bg-red-500/20 text-red-300 border-red-400/40"
                           }`}
-                          title={`Ngôn ngữ cài đặt: ${currentLang === "ENGLISH" ? "Tiếng Anh (US)" : "Tiếng Việt (VTV3)"}`}
+                          title={`Ngôn ngữ cài đặt: ${currentLang === "ENGLISH" ? "Tiếng Anh (US)" : "Tiếng Việt"}`}
                         >
                           <span>{currentLang === "ENGLISH" ? "🇺🇸" : "🇻🇳"}</span>
                           <span>{currentLang === "ENGLISH" ? "Bản Tiếng Anh" : "Bản Tiếng Việt"}</span>
@@ -2157,15 +2203,15 @@ export default function QuizBankPage() {
                 >
                   <span className="text-xl">🎡</span>
                   <div>
-                    <p className="text-xs font-bold text-amber-200">Ô Chữ Chiếc Nón (VTV3)</p>
+                    <p className="text-xs font-bold text-amber-200">Ô Chữ Vòng Quay Trí Tuệ</p>
                     <p className="text-[11px] text-amber-400/80">Chuyên biệt bàn ô chữ 4x14</p>
                   </div>
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 mt-1">
                 {newBankCategory === "WORD_PUZZLE"
-                  ? "💡 Bộ đề này chỉ chứa câu hỏi Ô chữ VTV3, không cho phép kết hợp câu hỏi trắc nghiệm."
-                  : "💡 Bộ đề trắc nghiệm chuẩn không thể kết hợp câu hỏi ô chữ Chiếc Nón Kỳ Diệu."}
+                  ? "💡 Bộ đề chuyên biệt Ô chữ Vòng Quay Trí Tuệ, tối ưu bảng ô chữ 4x14."
+                  : "💡 Bộ đề trắc nghiệm chuẩn không thể kết hợp câu hỏi ô chữ Vòng Quay."}
               </p>
             </div>
 
@@ -2188,7 +2234,7 @@ export default function QuizBankPage() {
                   <span className="text-2xl">🇻🇳</span>
                   <div>
                     <p className="text-xs font-bold text-white">Tiếng Việt (Mặc định)</p>
-                    <p className="text-[10px] text-slate-400">Luật VTV3, hỗ trợ gõ dấu thanh</p>
+                    <p className="text-[10px] text-slate-400">Luật tiếng Việt có dấu thanh</p>
                   </div>
                 </button>
 
@@ -2329,58 +2375,104 @@ export default function QuizBankPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* 1-Touch Question Type Grid */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                Dạng câu hỏi *
+              </label>
+              {isCurrentBankWordPuzzle ? (
+                <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-500/50 flex items-center gap-3">
+                  <span className="text-2xl">🎡</span>
+                  <div>
+                    <p className="text-sm font-bold text-purple-200">Ô chữ Vòng Quay Trí Tuệ (4 hàng x 14 ô)</p>
+                    <p className="text-xs text-slate-400">Định dạng bảng chữ trường quay chuẩn 56 ô</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: "MC_SINGLE", icon: "🔘", label: "Trắc nghiệm 1", sub: "1 đáp án đúng" },
+                    { id: "MC_MULTI", icon: "☑️", label: "Nhiều đáp án", sub: "Chọn nhiều câu" },
+                    { id: "TRUE_FALSE", icon: "⚖️", label: "Đúng / Sai", sub: "2 lựa chọn nhanh" },
+                    { id: "FILL_BLANK", icon: "✍️", label: "Điền từ", sub: "Tự luận ngắn" },
+                    { id: "MATCHING", icon: "🔗", label: "Nối cặp", sub: "Ghép cột A - B" },
+                    { id: "DRAG_DROP", icon: "🔀", label: "Sắp xếp", sub: "Theo thứ tự" },
+                    { id: "CLOZE_DROPDOWN", icon: "📑", label: "Đục lỗ", sub: "Menu thả [1],[2]" },
+                  ].map((item) => {
+                    const isSelected = qType === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setQType(item.id)}
+                        className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                          isSelected
+                            ? "bg-purple-600/30 border-purple-400 shadow-md shadow-purple-950/50 text-white"
+                            : "bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-800/40"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-base">{item.icon}</span>
+                          <span className="text-xs font-bold leading-tight">{item.label}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400">{item.sub}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Point & Timer Pills */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
-                <label className="block text-xs font-medium mb-1">Loại câu hỏi</label>
-                <select
-                  value={qType}
-                  onChange={(e) => setQType(e.target.value)}
-                  disabled={isCurrentBankWordPuzzle}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm disabled:opacity-75"
-                >
-                  {isCurrentBankWordPuzzle ? (
-                    <option value="WORD_PUZZLE">🎡 Ô chữ Chiếc nón kỳ diệu (4 hàng x 14 ô)</option>
-                  ) : (
-                    <>
-                      <option value="MC_SINGLE">Trắc nghiệm 1 đáp án (2-10 lựa chọn)</option>
-                      <option value="MC_MULTI">Trắc nghiệm nhiều đáp án (2-10 lựa chọn)</option>
-                      <option value="TRUE_FALSE">Đúng / Sai</option>
-                      <option value="FILL_BLANK">Điền từ / Tự luận ngắn</option>
-                      <option value="MATCHING">Nối cặp tương ứng A - B (2-8 cặp)</option>
-                      <option value="DRAG_DROP">Sắp xếp thứ tự các bước (2-8 bước)</option>
-                      <option value="CLOZE_DROPDOWN">Đoạn văn đục lỗ menu thả xuống</option>
-                    </>
-                  )}
-                </select>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Mức điểm chuẩn hóa
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { pts: 10, time: 15, label: "10đ", sub: "15s" },
+                    { pts: 20, time: 20, label: "20đ", sub: "20s" },
+                    { pts: 30, time: 30, label: "30đ", sub: "30s" },
+                    { pts: 40, time: 60, label: "40đ", sub: "60s" },
+                  ].map((lvl) => {
+                    const isSelected = qPoints === lvl.pts;
+                    return (
+                      <button
+                        key={lvl.pts}
+                        type="button"
+                        onClick={() => {
+                          setQPoints(lvl.pts);
+                          setQTimeLimit(lvl.time);
+                        }}
+                        className={`py-2 px-1 rounded-xl border text-center transition cursor-pointer ${
+                          isSelected
+                            ? "bg-cyan-500/25 border-cyan-400 text-cyan-200 font-bold shadow-md shadow-cyan-950/50"
+                            : "bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700"
+                        }`}
+                      >
+                        <div className="text-xs font-black">{lvl.label}</div>
+                        <div className="text-[10px] text-slate-400">{lvl.sub}</div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">Điểm số gốc (10đ, 20đ, 30đ, 40đ)</label>
-                <select
-                  value={qPoints}
-                  onChange={(e) => {
-                    const pts = Number(e.target.value);
-                    setQPoints(pts);
-                    setQTimeLimit(pts === 40 ? 60 : pts === 30 ? 30 : pts === 20 ? 20 : 15);
-                  }}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
-                >
-                  <option value={10}>10 Điểm (Cơ bản / Ghi nhớ - 15s)</option>
-                  <option value={20}>20 Điểm (Trung bình / Thông hiểu - 20s)</option>
-                  <option value={30}>30 Điểm (Nâng cao / Vận dụng - 30s)</option>
-                  <option value={40}>40 Điểm (Phức tạp / Đa số liệu - 60s)</option>
-                </select>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống chuẩn hóa 4 mức điểm gốc</p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1">Thời gian trả lời (giây)</label>
-                <input
-                  type="number"
-                  min={5}
-                  max={300}
-                  value={qTimeLimit}
-                  onChange={(e) => setQTimeLimit(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
-                />
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Thời gian tùy chỉnh (giây)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={5}
+                    max={300}
+                    value={qTimeLimit}
+                    onChange={(e) => setQTimeLimit(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono font-bold text-cyan-300 text-center"
+                  />
+                  <span className="text-xs text-slate-400 font-semibold whitespace-nowrap">giây</span>
+                </div>
               </div>
             </div>
 
@@ -2434,22 +2526,25 @@ export default function QuizBankPage() {
                 <div className="space-y-2 pt-1">
                   {qOptions.map((opt, idx) => (
                     <div key={opt.id} className="flex items-center gap-2">
-                      <input
-                        type={qType === "MC_SINGLE" ? "radio" : "checkbox"}
-                        name="correct-option-new"
-                        checked={opt.isCorrect}
-                        onChange={(e) => {
+                      <button
+                        type="button"
+                        onClick={() => {
                           if (qType === "MC_SINGLE") {
                             setQOptions(qOptions.map((o, i) => ({ ...o, isCorrect: i === idx })));
                           } else {
-                            setQOptions(qOptions.map((o, i) => (i === idx ? { ...o, isCorrect: e.target.checked } : o)));
+                            setQOptions(qOptions.map((o, i) => (i === idx ? { ...o, isCorrect: !o.isCorrect } : o)));
                           }
                         }}
-                        className="w-4 h-4 cursor-pointer text-purple-600"
-                      />
-                      <span className="font-bold text-sm w-5 text-center text-purple-300">
+                        className={`w-9 h-9 rounded-xl border flex items-center justify-center font-black text-xs transition cursor-pointer shrink-0 ${
+                          opt.isCorrect
+                            ? "bg-emerald-500/25 border-emerald-400 text-emerald-300 shadow-md shadow-emerald-950/50"
+                            : "bg-slate-800/80 border-slate-700 text-slate-400 hover:border-slate-600"
+                        }`}
+                        title={opt.isCorrect ? "Đáp án ĐÚNG (bấm để đổi)" : "Bấm để chọn làm đáp án ĐÚNG"}
+                      >
                         {String.fromCharCode(65 + idx)}
-                      </span>
+                        {opt.isCorrect && <span className="ml-0.5 text-[10px]">✓</span>}
+                      </button>
                       <input
                         type="text"
                         value={opt.text}
@@ -2458,14 +2553,16 @@ export default function QuizBankPage() {
                           newOpts[idx].text = e.target.value;
                           setQOptions(newOpts);
                         }}
-                        placeholder={`Nội dung lựa chọn ${String.fromCharCode(65 + idx)}`}
-                        className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
+                        placeholder={`Nội dung lựa chọn ${String.fromCharCode(65 + idx)}...`}
+                        className={`flex-1 px-3 py-2 rounded-xl bg-slate-900 border text-sm transition ${
+                          opt.isCorrect ? "border-emerald-500/50 text-white" : "border-slate-800 text-slate-200"
+                        }`}
                       />
                       {qOptions.length > 2 && (
                         <button
                           type="button"
                           onClick={() => removeOption(idx, false)}
-                          className="p-1.5 rounded-lg hover:bg-destructive/20 text-destructive text-xs"
+                          className="w-8 h-8 rounded-lg hover:bg-rose-500/20 text-rose-400 text-xs flex items-center justify-center transition shrink-0"
                           title="Xóa lựa chọn này"
                         >
                           ✕
@@ -2809,7 +2906,7 @@ export default function QuizBankPage() {
                         Cấu hình Ô Chữ Chiếc Nón Kỳ Diệu (Bàn 4 hàng x 14 ô)
                       </h4>
                       <p className="text-[11px] text-muted-foreground">
-                        Hệ thống tự động canh giữa và dàn trải chữ cái trên lưới 4 hàng x 14 ô chuẩn VTV3.
+                        Hệ thống tự động canh giữa và dàn trải chữ cái trên lưới 4 hàng x 14 ô chuẩn trường quay.
                       </p>
                     </div>
                   </div>
@@ -3529,58 +3626,104 @@ export default function QuizBankPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* 1-Touch Question Type Grid */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                Dạng câu hỏi *
+              </label>
+              {isCurrentBankWordPuzzle ? (
+                <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-500/50 flex items-center gap-3">
+                  <span className="text-2xl">🎡</span>
+                  <div>
+                    <p className="text-sm font-bold text-purple-200">Ô chữ Vòng Quay Trí Tuệ (4 hàng x 14 ô)</p>
+                    <p className="text-xs text-slate-400">Định dạng bảng chữ trường quay chuẩn 56 ô</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: "MC_SINGLE", icon: "🔘", label: "Trắc nghiệm 1", sub: "1 đáp án đúng" },
+                    { id: "MC_MULTI", icon: "☑️", label: "Nhiều đáp án", sub: "Chọn nhiều câu" },
+                    { id: "TRUE_FALSE", icon: "⚖️", label: "Đúng / Sai", sub: "2 lựa chọn nhanh" },
+                    { id: "FILL_BLANK", icon: "✍️", label: "Điền từ", sub: "Tự luận ngắn" },
+                    { id: "MATCHING", icon: "🔗", label: "Nối cặp", sub: "Ghép cột A - B" },
+                    { id: "DRAG_DROP", icon: "🔀", label: "Sắp xếp", sub: "Theo thứ tự" },
+                    { id: "CLOZE_DROPDOWN", icon: "📑", label: "Đục lỗ", sub: "Menu thả [1],[2]" },
+                  ].map((item) => {
+                    const isSelected = editQType === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setEditQType(item.id)}
+                        className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                          isSelected
+                            ? "bg-purple-600/30 border-purple-400 shadow-md shadow-purple-950/50 text-white"
+                            : "bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-800/40"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-base">{item.icon}</span>
+                          <span className="text-xs font-bold leading-tight">{item.label}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400">{item.sub}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Point & Timer Pills */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
-                <label className="block text-xs font-medium mb-1">Loại câu hỏi</label>
-                <select
-                  value={editQType}
-                  onChange={(e) => setEditQType(e.target.value)}
-                  disabled={isCurrentBankWordPuzzle}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm disabled:opacity-75"
-                >
-                  {isCurrentBankWordPuzzle ? (
-                    <option value="WORD_PUZZLE">🎡 Ô chữ Chiếc nón kỳ diệu (4 hàng x 14 ô)</option>
-                  ) : (
-                    <>
-                      <option value="MC_SINGLE">Trắc nghiệm 1 đáp án (2-10 lựa chọn)</option>
-                      <option value="MC_MULTI">Trắc nghiệm nhiều đáp án (2-10 lựa chọn)</option>
-                      <option value="TRUE_FALSE">Đúng / Sai</option>
-                      <option value="FILL_BLANK">Điền từ / Tự luận ngắn</option>
-                      <option value="MATCHING">Nối cặp tương ứng A - B (2-8 cặp)</option>
-                      <option value="DRAG_DROP">Sắp xếp thứ tự các bước (2-8 bước)</option>
-                      <option value="CLOZE_DROPDOWN">Đoạn văn đục lỗ menu thả xuống</option>
-                    </>
-                  )}
-                </select>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Mức điểm chuẩn hóa
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { pts: 10, time: 15, label: "10đ", sub: "15s" },
+                    { pts: 20, time: 20, label: "20đ", sub: "20s" },
+                    { pts: 30, time: 30, label: "30đ", sub: "30s" },
+                    { pts: 40, time: 60, label: "40đ", sub: "60s" },
+                  ].map((lvl) => {
+                    const isSelected = editQPoints === lvl.pts;
+                    return (
+                      <button
+                        key={lvl.pts}
+                        type="button"
+                        onClick={() => {
+                          setEditQPoints(lvl.pts);
+                          setEditQTimeLimit(lvl.time);
+                        }}
+                        className={`py-2 px-1 rounded-xl border text-center transition cursor-pointer ${
+                          isSelected
+                            ? "bg-cyan-500/25 border-cyan-400 text-cyan-200 font-bold shadow-md shadow-cyan-950/50"
+                            : "bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700"
+                        }`}
+                      >
+                        <div className="text-xs font-black">{lvl.label}</div>
+                        <div className="text-[10px] text-slate-400">{lvl.sub}</div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">Điểm số gốc (10đ, 20đ, 30đ, 40đ)</label>
-                <select
-                  value={editQPoints}
-                  onChange={(e) => {
-                    const pts = Number(e.target.value);
-                    setEditQPoints(pts);
-                    setEditQTimeLimit(pts === 40 ? 60 : pts === 30 ? 30 : pts === 20 ? 20 : 15);
-                  }}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
-                >
-                  <option value={10}>10 Điểm (Cơ bản / Ghi nhớ - 15s)</option>
-                  <option value={20}>20 Điểm (Trung bình / Thông hiểu - 20s)</option>
-                  <option value={30}>30 Điểm (Nâng cao / Vận dụng - 30s)</option>
-                  <option value={40}>40 Điểm (Phức tạp / Đa số liệu - 60s)</option>
-                </select>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống chuẩn hóa 4 mức điểm gốc</p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1">Thời gian trả lời (giây)</label>
-                <input
-                  type="number"
-                  min={5}
-                  max={300}
-                  value={editQTimeLimit}
-                  onChange={(e) => setEditQTimeLimit(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
-                />
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Thời gian tùy chỉnh (giây)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={5}
+                    max={300}
+                    value={editQTimeLimit}
+                    onChange={(e) => setEditQTimeLimit(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm font-mono font-bold text-cyan-300 text-center"
+                  />
+                  <span className="text-xs text-slate-400 font-semibold whitespace-nowrap">giây</span>
+                </div>
               </div>
             </div>
 
@@ -3634,22 +3777,25 @@ export default function QuizBankPage() {
                 <div className="space-y-2 pt-1">
                   {editQOptions.map((opt, idx) => (
                     <div key={opt.id} className="flex items-center gap-2">
-                      <input
-                        type={editQType === "MC_SINGLE" ? "radio" : "checkbox"}
-                        name="edit-correct-option-group"
-                        checked={opt.isCorrect}
-                        onChange={(e) => {
+                      <button
+                        type="button"
+                        onClick={() => {
                           if (editQType === "MC_SINGLE") {
                             setEditQOptions(editQOptions.map((o, i) => ({ ...o, isCorrect: i === idx })));
                           } else {
-                            setEditQOptions(editQOptions.map((o, i) => (i === idx ? { ...o, isCorrect: e.target.checked } : o)));
+                            setEditQOptions(editQOptions.map((o, i) => (i === idx ? { ...o, isCorrect: !o.isCorrect } : o)));
                           }
                         }}
-                        className="w-4 h-4 cursor-pointer text-purple-600"
-                      />
-                      <span className="font-bold text-sm w-5 text-center text-purple-300">
+                        className={`w-9 h-9 rounded-xl border flex items-center justify-center font-black text-xs transition cursor-pointer shrink-0 ${
+                          opt.isCorrect
+                            ? "bg-emerald-500/25 border-emerald-400 text-emerald-300 shadow-md shadow-emerald-950/50"
+                            : "bg-slate-800/80 border-slate-700 text-slate-400 hover:border-slate-600"
+                        }`}
+                        title={opt.isCorrect ? "Đáp án ĐÚNG (bấm để đổi)" : "Bấm để chọn làm đáp án ĐÚNG"}
+                      >
                         {String.fromCharCode(65 + idx)}
-                      </span>
+                        {opt.isCorrect && <span className="ml-0.5 text-[10px]">✓</span>}
+                      </button>
                       <input
                         type="text"
                         value={opt.text}
@@ -3658,14 +3804,16 @@ export default function QuizBankPage() {
                           newOpts[idx].text = e.target.value;
                           setEditQOptions(newOpts);
                         }}
-                        placeholder={`Nội dung lựa chọn ${String.fromCharCode(65 + idx)}`}
-                        className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
+                        placeholder={`Nội dung lựa chọn ${String.fromCharCode(65 + idx)}...`}
+                        className={`flex-1 px-3 py-2 rounded-xl bg-slate-900 border text-sm transition ${
+                          opt.isCorrect ? "border-emerald-500/50 text-white" : "border-slate-800 text-slate-200"
+                        }`}
                       />
                       {editQOptions.length > 2 && (
                         <button
                           type="button"
                           onClick={() => removeOption(idx, true)}
-                          className="p-1.5 rounded-lg hover:bg-destructive/20 text-destructive text-xs"
+                          className="w-8 h-8 rounded-lg hover:bg-rose-500/20 text-rose-400 text-xs flex items-center justify-center transition shrink-0"
                           title="Xóa lựa chọn này"
                         >
                           ✕
@@ -4009,7 +4157,7 @@ export default function QuizBankPage() {
                         Cấu hình Ô Chữ Chiếc Nón Kỳ Diệu (Bàn 4 hàng x 14 ô)
                       </h4>
                       <p className="text-[11px] text-muted-foreground">
-                        Hệ thống tự động canh giữa và dàn trải chữ cái trên lưới 4 hàng x 14 ô chuẩn VTV3.
+                        Hệ thống tự động canh giữa và dàn trải chữ cái trên lưới 4 hàng x 14 ô chuẩn trường quay.
                       </p>
                     </div>
                   </div>

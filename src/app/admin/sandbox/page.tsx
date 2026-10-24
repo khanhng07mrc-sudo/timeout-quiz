@@ -188,7 +188,7 @@ const AVAILABLE_MODES: {
     mode: "MAGIC_WHEEL",
     name: "Magic Wheel",
     emoji: "🎡",
-    tagline: "Chiếc Nón Kỳ Diệu · 2 Vòng Đoán Nhanh, Vòng Quay Điểm Thưởng & Ô Chữ Đặc Biệt 40s",
+    tagline: "Vòng Quay Trí Tuệ (Magic Wheel) · 2 Vòng Đoán Nhanh, Vòng Quay Điểm Thưởng & Ô Chữ Đặc Biệt 40s",
     badge: "Gameshow Truyền Hình",
     gradient: "from-amber-600 via-orange-600 to-yellow-600",
     accentColor: "#f59e0b",
@@ -272,7 +272,7 @@ export default function AdminSandboxPage() {
   const compatibleBanks = useMemo(() => {
     const isMw = effectiveActiveMode === "MAGIC_WHEEL";
     if (isMw) {
-      // Chế độ Chiếc Nón Kỳ Diệu: CHỈ hiển thị bộ đề Ô Chữ (Word Puzzle)! Chặn tuyệt đối đề trắc nghiệm!
+      // chế độ Vòng Quay Trí Tuệ: CHỈ hiển thị bộ đề Ô Chữ (Word Puzzle)! Chặn tuyệt đối đề trắc nghiệm!
       return quizBanks.filter((b) => isWordPuzzleBank(b));
     }
     // Các chế độ trắc nghiệm thông thường: CHỈ hiển thị đề trắc nghiệm! Chặn tuyệt đối đề Ô Chữ!
@@ -313,6 +313,7 @@ export default function AdminSandboxPage() {
   const [isOfflineSandbox, setIsOfflineSandbox] = useState(false);
   const displayIframeRef = useRef<HTMLIFrameElement | null>(null);
   const playerIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const sandboxChannelRef = useRef<BroadcastChannel | null>(null);
   const offlineQuestionsRef = useRef<any[]>([]);
   const offlineQIndexRef = useRef<number>(-1);
   const offlineTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1494,12 +1495,14 @@ export default function AdminSandboxPage() {
     };
     displayIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
     playerIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
+    try { sandboxChannelRef.current?.postMessage({ type: "OFFLINE_SYNC", payload }); } catch {}
   }, [isOfflineSandbox]);
 
   const syncTimerToIframes = useCallback((timerPayload: { remaining: number; total: number; endsAt?: number } | null) => {
     setTimer(timerPayload);
     displayIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_TIMER_TICK", payload: timerPayload }, "*");
     playerIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_TIMER_TICK", payload: timerPayload }, "*");
+    try { sandboxChannelRef.current?.postMessage({ type: "OFFLINE_TIMER_TICK", payload: timerPayload }); } catch {}
   }, []);
 
   useEffect(() => {
@@ -2736,11 +2739,11 @@ export default function AdminSandboxPage() {
     if (bankId && selectedBank) {
       const isWp = isWordPuzzleBank(selectedBank);
       if (isMw && !isWp) {
-        alert("⚠️ Chế độ Chiếc Nón Kỳ Diệu chỉ chấp nhận bộ đề Ô Chữ (Word Puzzle)! Vui lòng chọn bộ đề Ô Chữ phù hợp.");
+        alert("⚠️ chế độ Vòng Quay Trí Tuệ chỉ chấp nhận bộ đề Ô Chữ (Word Puzzle)! Vui lòng chọn bộ đề Ô Chữ phù hợp.");
         return;
       }
       if (!isMw && isWp) {
-        alert("⚠️ Bộ đề Ô Chữ chỉ dành riêng cho chế độ Chiếc Nón Kỳ Diệu! Vui lòng chọn bộ đề trắc nghiệm phù hợp.");
+        alert("⚠️ Bộ đề Ô Chữ chỉ dành riêng cho chế độ Vòng Quay Trí Tuệ! Vui lòng chọn bộ đề trắc nghiệm phù hợp.");
         return;
       }
     }
@@ -5140,7 +5143,7 @@ export default function AdminSandboxPage() {
             consecutiveWrongGuesses: {},
             pendingSpecialAction: "NONE",
             phase: "TOSS_UP_READY",
-            lastActionMessage: edition === "ENGLISH" ? "Welcome to Wheel of Fortune!" : "Chào mừng đến với Chiếc Nón Kỳ Diệu!",
+            lastActionMessage: edition === "ENGLISH" ? "Welcome to Wheel of Fortune!" : "Chào mừng đến với Vòng Quay Trí Tuệ!",
           };
           const hasCustomPuzzles = Boolean((prev.config as any)?.magicWheelPuzzles?.length);
           const activePuzzles = hasCustomPuzzles
@@ -7484,7 +7487,7 @@ export default function AdminSandboxPage() {
               revealPayload: null,
               timer: null,
             });
-            addLog("🎡 Magic Wheel (Chiếc Nón Kỳ Diệu) bắt đầu! Vòng quay nón và ô chữ 4x14 sẵn sàng.");
+            addLog("🎡 Vòng Quay Trí Tuệ (Magic Wheel) bắt đầu! Vòng quay nón và ô chữ 4x14 sẵn sàng.");
             return;
           }
 
@@ -10114,7 +10117,7 @@ export default function AdminSandboxPage() {
                       type="button"
                       onClick={handleAdminNext}
                       className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white text-xs font-black shadow-lg shadow-purple-500/30 animate-pulse transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap cursor-pointer ring-2 ring-cyan-400 btn-tactile"
-                      title="Bắt đầu trận đấu Chiếc Nón Kỳ Diệu"
+                      title="Bắt đầu trận đấu Vòng Quay Trí Tuệ"
                     >
                       <span>🚀</span>
                       <span>Bắt đầu trận</span>
@@ -12456,7 +12459,7 @@ export default function AdminSandboxPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Link
-                    href={`/display/${code}`}
+                    href={`/display/${code}?sandbox=1&standalone=1`}
                     target="_blank"
                     className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
                   >

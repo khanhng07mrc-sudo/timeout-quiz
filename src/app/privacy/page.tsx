@@ -3,7 +3,7 @@ import Link from "next/link";
 import BrandLogo from "@/components/ui/BrandLogo";
 
 export const metadata = {
-  title: "Chính Sách Bảo Mật Quyền Riêng Tư | Quizorra",
+  title: "Chính sách bảo mật quyền riêng tư | Quizorra",
   description: "Quy định toàn diện về bảo vệ dữ liệu cá nhân, quyền riêng tư và cam kết bảo mật của nền tảng Quizorra theo Nghị định 13/2023/NĐ-CP và tiêu chuẩn quốc tế.",
 };
 
@@ -37,10 +37,10 @@ export default function PrivacyPolicyPage() {
       <section className="border-b border-slate-800/60 bg-gradient-to-b from-[#101426] to-[#070913] py-12 px-4 sm:px-6 text-center">
         <div className="max-w-3xl mx-auto">
           <span className="inline-block px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-bold tracking-wider uppercase mb-3">
-            Bảo Vệ Dữ Liệu Cá Nhân
+            Bảo vệ dữ liệu cá nhân
           </span>
           <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight mb-4">
-            Chính Sách Bảo Mật Quyền Riêng Tư
+            Chính sách bảo mật quyền riêng tư
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-2xl mx-auto">
             Văn bản này công bố chi tiết cách thức Quizorra thu thập, lưu trữ, sử dụng và bảo vệ dữ liệu cá nhân của người dùng, tuân thủ các nguyên tắc minh bạch, bảo mật và quyền kiểm soát tối cao của chủ thể dữ liệu.
@@ -64,7 +64,7 @@ export default function PrivacyPolicyPage() {
               <span className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 text-xs font-black flex items-center justify-center shrink-0">
                 01
               </span>
-              Nguyên Tắc Chung &amp; Đối Tượng Áp Dụng
+              Nguyên tắc chung &amp; đối tượng áp dụng
             </h2>
             <p>
               Chính sách bảo mật này áp dụng cho toàn bộ người dùng tương tác với nền tảng Quizorra (bao gồm phiên bản Web trực tuyến, ứng dụng máy tính và các API kết nối). Chúng tôi cam kết tuân thủ các quy định hiện hành về bảo vệ dữ liệu cá nhân theo pháp luật Việt Nam (Nghị định số 13/2023/NĐ-CP) và các thông lệ bảo mật dữ liệu quốc tế (như Quy định chung về bảo vệ dữ liệu - GDPR).
@@ -80,14 +80,14 @@ export default function PrivacyPolicyPage() {
               <span className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 text-xs font-black flex items-center justify-center shrink-0">
                 02
               </span>
-              Danh Mục Dữ Liệu Thu Thập
+              Danh mục dữ liệu thu thập
             </h2>
             <p>
               Quizorra chỉ thu thập lượng dữ liệu tối thiểu cần thiết để phục vụ công tác tổ chức, quản lý câu hỏi và vận hành các phiên thi đấu trực tiếp:
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div className="p-4 rounded-xl bg-[#14192f] border border-slate-700/60">
-                <h3 className="font-bold text-cyan-300 text-sm mb-1.5">1. Thông tin Đăng ký &amp; Tài khoản</h3>
+                <h3 className="font-bold text-cyan-300 text-sm mb-1.5">1. Thông tin đăng ký &amp; tài khoản</h3>
                 <ul className="text-xs text-slate-400 space-y-1 list-disc pl-4">
                   <li>Họ và tên hiển thị do người dùng chỉ định.</li>
                   <li>Địa chỉ thư điện tử (Email) dùng để đăng nhập và khôi phục tài khoản.</li>
@@ -106,7 +106,7 @@ export default function PrivacyPolicyPage() {
               </div>
 
               <div className="p-4 rounded-xl bg-[#14192f] border border-slate-700/60">
-                <h3 className="font-bold text-cyan-300 text-sm mb-1.5">3. Dữ liệu Ngân hàng Đề &amp; Nội dung</h3>
+                <h3 className="font-bold text-cyan-300 text-sm mb-1.5">3. Dữ liệu ngân hàng đề &amp; nội dung</h3>
                 <ul className="text-xs text-slate-400 space-y-1 list-disc pl-4">
                   <li>Danh sách câu hỏi, phương án trả lời, đáp án chính xác và hình ảnh/âm thanh đính kèm do bạn chủ động tạo lập.</li>
                   <li>Cấu hình thiết lập phòng thi (thời gian làm bài, điểm số, chế độ phân nhóm).</li>
@@ -114,7 +114,7 @@ export default function PrivacyPolicyPage() {
               </div>
 
               <div className="p-4 rounded-xl bg-[#14192f] border border-slate-700/60">
-                <h3 className="font-bold text-cyan-300 text-sm mb-1.5">4. Dữ liệu Phiên thi Đấu Thời Gian Thực</h3>
+                <h3 className="font-bold text-cyan-300 text-sm mb-1.5">4. Dữ liệu phiên thi đấu thời gian thực</h3>
                 <ul className="text-xs text-slate-400 space-y-1 list-disc pl-4">
                   <li>Tên thí sinh tham gia theo từng phòng thi.</li>
                   <li>Phương án đã chọn, mốc thời gian phản hồi (timestamp) và số điểm tích lũy.</li>
@@ -130,7 +130,7 @@ export default function PrivacyPolicyPage() {
               <span className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 text-xs font-black flex items-center justify-center shrink-0">
                 03
               </span>
-              Mục Đích &amp; Cơ Sở Sử Dụng Dữ Liệu
+              Mục đích &amp; cơ sở sử dụng dữ liệu
             </h2>
             <p>Dữ liệu thu thập được sử dụng riêng biệt cho các mục đích sau:</p>
             <ul className="list-disc pl-5 space-y-2 text-slate-400">
@@ -155,7 +155,7 @@ export default function PrivacyPolicyPage() {
               <span className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 text-xs font-black flex items-center justify-center shrink-0">
                 04
               </span>
-              Cam Kết Không Thương Mại Hóa &amp; Không Chia Sẻ Dữ Liệu
+              Cam kết không thương mại hóa &amp; không chia sẻ dữ liệu
             </h2>
             <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/30 text-cyan-200 text-xs sm:text-sm">
               Quizorra cam kết nguyên tắc đạo đức công nghệ: <strong>Chúng tôi KHÔNG BAO GIỜ bán, cho thuê, thương mại hóa hoặc trao đổi dữ liệu cá nhân hay nội dung câu hỏi của bạn cho bất kỳ đơn vị quảng cáo hoặc bên thứ ba nào vì mục đích tiếp thị.</strong>
@@ -171,7 +171,7 @@ export default function PrivacyPolicyPage() {
               <span className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 text-xs font-black flex items-center justify-center shrink-0">
                 05
               </span>
-              Tiêu Chuẩn Bảo Mật Kỹ Thuật
+              Tiêu chuẩn bảo mật kỹ thuật
             </h2>
             <p>Hệ thống Quizorra áp dụng các tiêu chuẩn an toàn thông tin chuyên sâu:</p>
             <ul className="list-disc pl-5 space-y-1.5 text-slate-400 text-xs sm:text-sm">
@@ -188,7 +188,7 @@ export default function PrivacyPolicyPage() {
               <span className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 text-xs font-black flex items-center justify-center shrink-0">
                 06
               </span>
-              Quyền Hạn Toàn Diện Của Chủ Thể Dữ Liệu
+              Quyền hạn toàn diện của chủ thể dữ liệu
             </h2>
             <p>Theo quy định của pháp luật và cam kết của Quizorra, bạn sở hữu toàn bộ các quyền sau:</p>
             <div className="space-y-2 text-xs sm:text-sm text-slate-400">
@@ -205,7 +205,7 @@ export default function PrivacyPolicyPage() {
               <span className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 text-xs font-black flex items-center justify-center shrink-0">
                 07
               </span>
-              Lưu Trữ &amp; Thời Hạn Dữ Liệu
+              Lưu trữ &amp; thời hạn dữ liệu
             </h2>
             <p>
               Dữ liệu của bạn được lưu trữ an toàn trong suốt thời gian tài khoản hoạt động. Khi một phòng thi kết thúc, dữ liệu điểm số chi tiết của lượt đấu sẽ được chuyển sang trạng thái lưu trữ tĩnh để làm báo cáo cho người tổ chức. Nếu một tài khoản không phát sinh hoạt động trong vòng 24 tháng liên tục, hệ thống có thể gửi thông báo xác nhận trước khi đưa dữ liệu vào diện lưu trữ đóng băng.
@@ -218,7 +218,7 @@ export default function PrivacyPolicyPage() {
               <span className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 text-xs font-black flex items-center justify-center shrink-0">
                 08
               </span>
-              Đầu Mối Liên Hệ &amp; Tiếp Nhận Yêu Cầu
+              Đầu mối liên hệ &amp; tiếp nhận yêu cầu
             </h2>
             <p>
               Mọi câu hỏi, phản ánh về việc bảo vệ quyền riêng tư hoặc yêu cầu xử lý dữ liệu cá nhân, xin vui lòng gửi về bộ phận phụ trách bảo mật thông tin của Quizorra:

@@ -3,7 +3,7 @@ import Link from "next/link";
 import BrandLogo from "@/components/ui/BrandLogo";
 
 export const metadata = {
-  title: "Điều Khoản Sử Dụng Dịch Vụ | Quizorra",
+  title: "Điều khoản sử dụng dịch vụ | Quizorra",
   description: "Thỏa thuận người dùng, quy chuẩn hành vi, bảo hộ quyền sở hữu trí tuệ và cam kết sử dụng dịch vụ trên nền tảng Quizorra.",
 };
 
@@ -37,10 +37,10 @@ export default function TermsOfServicePage() {
       <section className="border-b border-slate-800/60 bg-gradient-to-b from-[#131128] to-[#070913] py-12 px-4 sm:px-6 text-center">
         <div className="max-w-3xl mx-auto">
           <span className="inline-block px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-400/30 text-indigo-300 text-xs font-bold tracking-wider uppercase mb-3">
-            Thỏa Thuận Sử Dụng
+            Thỏa thuận sử dụng
           </span>
           <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight mb-4">
-            Điều Khoản Sử Dụng Dịch Vụ
+            Điều khoản sử dụng dịch vụ
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-2xl mx-auto">
             Văn bản này quy định các quyền, nghĩa vụ và trách nhiệm pháp lý ràng buộc giữa người dùng và Nền tảng Đấu trường Trí tuệ Quizorra khi truy cập và khai thác các dịch vụ trắc nghiệm tương tác trực tuyến.
@@ -64,7 +64,7 @@ export default function TermsOfServicePage() {
               <span className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs font-black flex items-center justify-center shrink-0">
                 01
               </span>
-              Định Nghĩa Thuật Ngữ &amp; Hiệu Lực Chấp Thuận
+              Định nghĩa thuật ngữ &amp; hiệu lực chấp thuận
             </h2>
             <p>
               Bằng việc đăng ký tài khoản, đăng nhập qua bên thứ ba (Google/Facebook) hoặc tham gia phòng thi thông qua mã số PIN, bạn xác nhận rằng bạn đã đủ năng lực hành vi dân sự theo quy định pháp luật và đồng ý chịu sự ràng buộc vô điều kiện bởi các điều khoản trong văn bản này.
@@ -82,7 +82,7 @@ export default function TermsOfServicePage() {
               <span className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs font-black flex items-center justify-center shrink-0">
                 02
               </span>
-              Tạo Lập Tài Khoản &amp; Nghĩa Vụ Bảo Mật
+              Tạo lập tài khoản &amp; nghĩa vụ bảo mật
             </h2>
             <p>
               Khi đăng ký tài khoản quản trị trên Quizorra, bạn cam kết cung cấp thông tin chính xác, trung thực và thuộc quyền sử dụng hợp pháp của mình.
@@ -100,7 +100,7 @@ export default function TermsOfServicePage() {
               <span className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs font-black flex items-center justify-center shrink-0">
                 03
               </span>
-              Quy Chuẩn Hành Vi Người Dùng &amp; Chống Gian Lận
+              Quy chuẩn hành vi người dùng &amp; chống gian lận
             </h2>
             <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-500/30 text-rose-200 text-xs sm:text-sm">
               Quizorra xây dựng môi trường thi đấu trí tuệ công bằng và văn minh. Chúng tôi kiên quyết xử lý và ngăn chặn mọi hành vi vi phạm chuẩn mực đạo đức hoặc kỹ thuật.
@@ -122,14 +122,14 @@ export default function TermsOfServicePage() {
               <span className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs font-black flex items-center justify-center shrink-0">
                 04
               </span>
-              Quyền Sở Hữu Trí Tuệ (Intellectual Property)
+              Quyền sở hữu trí tuệ
             </h2>
             <div className="space-y-3 text-xs sm:text-sm text-slate-400">
               <p>
                 <strong className="text-slate-200">1. Tài sản thuộc quyền sở hữu của Quizorra:</strong> Toàn bộ giao diện đồ họa, biểu tượng, logo thương hiệu, thiết kế 3D, âm thanh trường quay và kiến trúc mã nguồn đều thuộc quyền sở hữu trí tuệ độc quyền của ban phát triển Quizorra. Mọi hành vi sao chép, dịch ngược mã nguồn (reverse engineering) hoặc sao chép thương hiệu mà không có sự cho phép bằng văn bản đều là vi phạm pháp luật.
               </p>
               <p>
-                <strong className="text-slate-200">2. Quyền sở hữu đối với Nội dung Câu hỏi:</strong> Bạn giữ toàn bộ quyền sở hữu trí tuệ đối với các câu hỏi, ngân hàng đề và tư liệu do chính bạn soạn thảo và đưa lên nền tảng. Bằng việc nhập liệu, bạn cấp cho Quizorra quyền sử dụng kỹ thuật có giới hạn để hiển thị, đồng bộ và trình chiếu các nội dung này trong khuôn khổ các phòng thi do bạn tổ chức.
+                <strong className="text-slate-200">2. Quyền sở hữu đối với nội dung câu hỏi:</strong> Bạn giữ toàn bộ quyền sở hữu trí tuệ đối với các câu hỏi, ngân hàng đề và tư liệu do chính bạn soạn thảo và đưa lên nền tảng. Bằng việc nhập liệu, bạn cấp cho Quizorra quyền sử dụng kỹ thuật có giới hạn để hiển thị, đồng bộ và trình chiếu các nội dung này trong khuôn khổ các phòng thi do bạn tổ chức.
               </p>
             </div>
           </section>
@@ -140,7 +140,7 @@ export default function TermsOfServicePage() {
               <span className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs font-black flex items-center justify-center shrink-0">
                 05
               </span>
-              Tình Trạng Khả Dụng &amp; Giới Hạn Trách Nhiệm Dịch Vụ
+              Tình trạng khả dụng &amp; giới hạn trách nhiệm dịch vụ
             </h2>
             <p>
               Quizorra nỗ lực tối đa để duy trì hạ tầng vận hành ổn định 24/7 với độ trễ thấp nhất. Tuy nhiên, dịch vụ được cung cấp trên cơ sở nguyên trạng ("as is") và "như hiện có" ("as available").
@@ -158,7 +158,7 @@ export default function TermsOfServicePage() {
               <span className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs font-black flex items-center justify-center shrink-0">
                 06
               </span>
-              Đình Chỉ, Tạm Khóa &amp; Hủy Quyền Truy Cập
+              Đình chỉ, tạm khóa &amp; hủy quyền truy cập
             </h2>
             <p>
               Ban quản trị Quizorra có toàn quyền đình chỉ tạm thời hoặc chấm dứt vĩnh viễn quyền truy cập tài khoản của người dùng mà không cần bồi thường trong các trường hợp:
@@ -176,7 +176,7 @@ export default function TermsOfServicePage() {
               <span className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs font-black flex items-center justify-center shrink-0">
                 07
               </span>
-              Luật Áp Dụng &amp; Cơ Chế Giải Quyết Tranh Chấp
+              Luật áp dụng &amp; cơ chế giải quyết tranh chấp
             </h2>
             <p>
               Các điều khoản này được diễn giải và điều chỉnh hoàn toàn theo pháp luật nước Cộng hòa Xã hội Chủ nghĩa Việt Nam. Mọi tranh chấp phát sinh liên quan đến việc sử dụng dịch vụ trước hết sẽ được ưu tiên thương lượng hòa giải trên tinh thần tôn trọng và thiện chí giữa các bên.

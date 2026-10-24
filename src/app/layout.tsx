@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import { Be_Vietnam_Pro } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 import OfflineBanner from "@/components/ui/OfflineBanner";
 import QuizSoulBackground from "@/components/ui/QuizSoulBackground";
 import GlobalPageTransition from "@/components/ui/GlobalPageTransition";
 import AppProviders from "@/components/providers/AppProviders";
+import GlobalNavigationToolbar from "@/components/ui/GlobalNavigationToolbar";
 
-const beVietnamPro = Be_Vietnam_Pro({
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["vietnamese", "latin"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
-  variable: "--font-be-vietnam-pro",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-plus-jakarta-sans",
   display: "swap",
 });
 
@@ -30,13 +31,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" className={beVietnamPro.variable}>
-      <body className={`${beVietnamPro.className} font-sans bg-background text-foreground relative min-h-screen antialiased`}>
+    <html lang="vi" className={plusJakartaSans.variable}>
+      <body className={`${plusJakartaSans.className} font-sans bg-background text-foreground relative min-h-screen antialiased`}>
         <QuizSoulBackground />
         <GlobalPageTransition />
         <OfflineBanner />
         <div className="relative z-10 w-full min-h-screen flex flex-col">
-          <AppProviders>{children}</AppProviders>
+          <AppProviders>
+            {children}
+            <GlobalNavigationToolbar />
+          </AppProviders>
         </div>
       </body>
     </html>

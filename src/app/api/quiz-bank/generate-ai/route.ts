@@ -158,7 +158,7 @@ Mỗi câu hỏi phải được phân bổ điểm số là 10, 20 hoặc 30 đ
 
       if (isWordPuzzleMode) {
         prompt = `
-Bạn là chuyên gia biên soạn đề thi Gameshow Chiếc Nón Kỳ Diệu (Vòng Quay Tri Thức - Wheel of Fortune Vietnam) của Đài Truyền hình Việt Nam VTV3.
+Bạn là chuyên gia biên soạn đề thi Gameshow Vòng Quay Trí Tuệ (Magic Wheel - Wheel of Fortune).
 ${
   isDocMode
     ? `DƯỚI ĐÂY LÀ NỘI DUNG TÀI LIỆU CẦN RA ĐỀ Ô CHỮ:\n"""\n${documentText.slice(0, 15000)}\n"""\n`

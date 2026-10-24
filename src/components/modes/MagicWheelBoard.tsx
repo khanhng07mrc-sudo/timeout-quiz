@@ -4694,7 +4694,7 @@ export default function MagicWheelBoard({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-black text-base sm:text-lg text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-pink-400 to-cyan-300">
-                CHIẾC NÓN KỲ DIỆU VTV3
+                VÒNG QUAY TRÍ TUỆ
               </h3>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
                 {stageBadgeLabel}
@@ -5000,7 +5000,7 @@ export default function MagicWheelBoard({
             <span className="text-2xl animate-pulse">🎙️</span>
             <div>
               <div className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide">
-                Bảng ô chữ đang đóng (56 ô xanh VTV3)
+                Bảng ô chữ đang đóng (56 ô tiêu chuẩn)
               </div>
               <div className="text-[11px] text-slate-300">
                 Chỉ có Quản trò/MC mới có quyền mở câu hỏi. Nhấn nút để mở các ô chữ và công bố chủ đề cho tất cả các máy!

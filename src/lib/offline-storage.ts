@@ -1389,15 +1389,15 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
 
 export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
   {
-    id: "bank_mw_preset_vtv3",
-    title: "Chiếc Nón Kỳ Diệu - Văn Hóa & Lịch Sử (Bản Tiếng Việt)",
+    id: "bank_mw_preset_culture",
+    title: "Vòng Quay Trí Tuệ - Văn Hóa & Lịch Sử (Bản Tiếng Việt)",
     description: "Bộ đề chuẩn 11 vòng (2 Đoán Nhanh + 8 Vòng Chính tối đa + 1 Vòng Đặc Biệt): Lịch sử, Danh nhân, Ca dao & Văn học Việt Nam",
     createdAt: "2026-01-01T00:00:00.000Z",
     isLocalOnly: true,
     _count: { questions: 11 },
     questions: [
       {
-        id: "mw_vtv3_1",
+        id: "mw_vi_culture_1",
         type: "WORD_PUZZLE",
         content: "Quần thể di tích lịch sử cố đô ngàn năm văn hiến được UNESCO vinh danh là Di sản Thế giới.",
         answer: "HOÀNG THÀNH THĂNG LONG",
@@ -1410,7 +1410,7 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
         ],
       },
       {
-        id: "mw_vtv3_2",
+        id: "mw_vi_culture_2",
         type: "WORD_PUZZLE",
         content: "Hai thức bánh tượng trưng trời tròn đất vuông gắn với truyền thuyết hoàng tử Lang Liêu đời vua Hùng.",
         answer: "BÁNH CHƯNG - BÁNH GIẦY",
@@ -1423,7 +1423,7 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
         ],
       },
       {
-        id: "mw_vtv3_3",
+        id: "mw_vi_culture_3",
         type: "WORD_PUZZLE",
         content: "Nhà quân sự, danh nhân văn hóa lỗi lạc thế giới của Việt Nam thời Hậu Lê.",
         answer: "NGUYỄN TRÃI",
@@ -1436,7 +1436,7 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
         ],
       },
       {
-        id: "mw_vtv3_4",
+        id: "mw_vi_culture_4",
         type: "WORD_PUZZLE",
         content: "Quần thể di tích kinh thành triều Nguyễn bên dòng sông Hương thơ mộng.",
         answer: "CỐ ĐÔ HUẾ",
@@ -1449,7 +1449,7 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
         ],
       },
       {
-        id: "mw_vtv3_5",
+        id: "mw_vi_culture_5",
         type: "WORD_PUZZLE",
         content: "Truyền thống đạo lý tri ân sâu sắc các thế hệ đi trước của dân tộc ta.",
         answer: "UỐNG NƯỚC NHỚ NGUỒN",
@@ -1462,7 +1462,7 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
         ],
       },
       {
-        id: "mw_vtv3_6",
+        id: "mw_vi_culture_6",
         type: "WORD_PUZZLE",
         content: "Các từ khoá về Văn hóa và Thủ đô ngàn năm văn hiến đan xen nhau trên bàn ô chữ (gồm 3 từ).",
         answer: "VĂN HỌC, NHO, HÀ NỘI",
@@ -1492,7 +1492,7 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
         ],
       },
       {
-        id: "mw_vtv3_7",
+        id: "mw_vi_culture_7",
         type: "WORD_PUZZLE",
         content: "Làng nghề làm gốm lâu đời nằm bên bờ sông Hồng thuộc huyện Gia Lâm, Hà Nội.",
         answer: "GỐM SỨ BÁT TRÀNG",
@@ -1505,7 +1505,7 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
         ],
       },
       {
-        id: "mw_vtv3_8",
+        id: "mw_vi_culture_8",
         type: "WORD_PUZZLE",
         content: "Loại hình âm nhạc bác học đầu tiên của Việt Nam được UNESCO vinh danh.",
         answer: "NHÃ NHẠC CUNG ĐÌNH HUẾ",
@@ -1518,7 +1518,7 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
         ],
       },
       {
-        id: "mw_vtv3_9",
+        id: "mw_vi_culture_9",
         type: "WORD_PUZZLE",
         content: "Vị anh hùng áo vải cờ đào lập nên chiến thắng Ngọc Hồi - Đống Đa lẫy lừng.",
         answer: "QUANG TRUNG NGUYỄN HUỆ",
@@ -1531,7 +1531,7 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
         ],
       },
       {
-        id: "mw_vtv3_10",
+        id: "mw_vi_culture_10",
         type: "WORD_PUZZLE",
         content: "Trường đại học đầu tiên của Việt Nam được xây dựng dưới triều đại nhà Lý.",
         answer: "VĂN MIẾU QUỐC TỬ GIÁM",
@@ -1544,7 +1544,7 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
         ],
       },
       {
-        id: "mw_vtv3_11",
+        id: "mw_vi_culture_11",
         type: "WORD_PUZZLE",
         content: "Kiệt tác bất hủ gồm 3254 câu thơ lục bát đỉnh cao của văn học trung đại Việt Nam.",
         answer: "TRUYỆN KIỀU NGUYỄN DU",
@@ -1560,7 +1560,7 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
   },
   {
     id: "bank_mw_preset_nature",
-    title: "Chiếc Nón Kỳ Diệu - Non Nước Việt Nam (Du Lịch & Thắng Cảnh)",
+    title: "Vòng Quay Trí Tuệ - Non Nước Việt Nam (Du Lịch & Thắng Cảnh)",
     description: "Bộ đề chuẩn 11 vòng (2 Đoán Nhanh + 8 Vòng Chính tối đa + 1 Vòng Đặc Biệt): Danh lam thắng cảnh, Ẩm thực & Di sản thiên nhiên",
     createdAt: "2026-01-01T00:00:00.000Z",
     isLocalOnly: true,
@@ -1713,7 +1713,7 @@ export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
   },
   {
     id: "bank_mw_preset_science",
-    title: "Chiếc Nón Kỳ Diệu - Khoa Học & Đời Sống (Tự Nhiên & Công Nghệ)",
+    title: "Vòng Quay Trí Tuệ - Khoa Học & Đời Sống (Tự Nhiên & Công Nghệ)",
     description: "Bộ đề chuẩn 11 vòng (2 Đoán Nhanh + 8 Vòng Chính tối đa + 1 Vòng Đặc Biệt): Thiên văn, Vật lý, Sinh học & Công nghệ hiện đại",
     createdAt: "2026-01-01T00:00:00.000Z",
     isLocalOnly: true,
@@ -2264,21 +2264,53 @@ export const offlineStorage = {
         return [DEFAULT_OFFLINE_BANK];
       }
       let list: OfflineQuizBank[] = JSON.parse(data);
-      // Sanitize: Clear rogue needsSync on any bank with 0 questions or non-local banks
+      // Sanitize: Clear rogue needsSync on any bank with 0 questions or non-local banks, clean legacy VTV3 / Chiếc nón strings
       let modified = false;
       list = list.map((b) => {
+        let title = b.title || "";
+        if (/chiếc nón kỳ diệu/i.test(title) || /vtv3/i.test(title)) {
+          title = title.replace(/chiếc nón kỳ diệu/gi, "Vòng Quay Trí Tuệ").replace(/\(vtv3\)/gi, "").replace(/vtv3/gi, "").trim();
+          modified = true;
+        }
+        let desc = b.description || "";
+        if (/chiếc nón kỳ diệu/i.test(desc) || /vtv3/i.test(desc)) {
+          desc = desc.replace(/chiếc nón kỳ diệu/gi, "Vòng Quay Trí Tuệ").replace(/\(vtv3\)/gi, "").replace(/vtv3/gi, "").trim();
+          modified = true;
+        }
         const qCount = b.questions?.length ?? b._count?.questions ?? 0;
         if (b.needsSync && (qCount === 0 || !b.isLocalOnly)) {
           modified = true;
-          return { ...b, needsSync: false, isLocalOnly: false };
+          return { ...b, title, description: desc, needsSync: false, isLocalOnly: false };
         }
-        return b;
+        return title !== b.title || desc !== b.description ? { ...b, title, description: desc } : b;
       });
+
+      // Deduplicate by ID and normalized title
+      const seenIds = new Set<string>();
+      const seenTitles = new Set<string>();
+      const dedupedList: OfflineQuizBank[] = [];
+      for (const b of list) {
+        const normTitle = (b.title || "").trim().toLowerCase();
+        if (b.id && seenIds.has(b.id)) {
+          modified = true;
+          continue;
+        }
+        if (normTitle && seenTitles.has(normTitle)) {
+          modified = true;
+          continue;
+        }
+        if (b.id) seenIds.add(b.id);
+        if (normTitle) seenTitles.add(normTitle);
+        dedupedList.push(b);
+      }
+      list = dedupedList;
+
+      if (!list.some((b) => b.id === DEFAULT_OFFLINE_BANK.id || (b.title || "").trim().toLowerCase() === DEFAULT_OFFLINE_BANK.title.trim().toLowerCase())) {
+        list.unshift(DEFAULT_OFFLINE_BANK);
+        modified = true;
+      }
       if (modified) {
         localStorage.setItem(LOCAL_BANKS_KEY, JSON.stringify(list));
-      }
-      if (!list.some((b) => b.id === DEFAULT_OFFLINE_BANK.id)) {
-        list.unshift(DEFAULT_OFFLINE_BANK);
       }
       return list;
     } catch {

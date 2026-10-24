@@ -7,10 +7,12 @@ import BrandLogo from "@/components/ui/BrandLogo";
 import SystemIcon from "@/components/ui/SystemIcon";
 import LanguageSelector from "@/components/ui/LanguageSelector";
 import { useTranslation } from "@/lib/i18n";
+import { useSciFiPortal } from "@/components/ui/SciFiPortalTransition";
 
 export default function HomePage() {
   const router = useRouter();
   const { t } = useTranslation();
+  const { navigateWithPortal } = useSciFiPortal();
   const [pin, setPin] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,7 +35,7 @@ export default function HomePage() {
       }
       sessionStorage.setItem("playerName", name.trim());
       localStorage.setItem("playerName", name.trim());
-      router.push(`/play/${pin.trim()}`);
+      navigateWithPortal(`/play/${pin.trim()}`, t.playerPortal.title);
     } catch {
       setError(t.playerPortal.errorConnection);
       setLoading(false);
@@ -79,7 +81,7 @@ export default function HomePage() {
         {/* ── 3 CỔNG ĐIỀU PHỐI NỀN TẢNG (HERO PORTALS) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full max-w-5xl mb-16 items-stretch text-left">
           {/* CỔNG 1: THÍ SINH THAM GIA PHÒNG THI (7 CỘT) */}
-          <div className="lg:col-span-7 rounded-3xl p-6 sm:p-7 relative overflow-hidden border border-purple-500/40 bg-gradient-to-br from-[#16142e] via-[#101222] to-[#0a0b16] shadow-2xl shadow-purple-950/40 flex flex-col justify-between">
+          <div className="lg:col-span-7 cyber-cut rounded-3xl p-6 sm:p-7 relative overflow-hidden border border-purple-500/40 bg-gradient-to-br from-[#16142e] via-[#101222] to-[#0a0b16] shadow-2xl shadow-purple-950/40 flex flex-col justify-between">
             <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-[90px] pointer-events-none" />
 
             <div>
@@ -155,10 +157,10 @@ export default function HomePage() {
             </div>
 
             <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-              <Link href="/play" className="hover:text-cyan-300 transition-colors flex items-center gap-1 font-semibold">
+              <a href="/play" onClick={(e) => { e.preventDefault(); navigateWithPortal("/play", t.playerPortal.title); }} className="hover:text-cyan-300 transition-colors flex items-center gap-1 font-semibold cursor-pointer">
                 <span>{t.playerPortal.independentLink}</span>
                 <span>➔</span>
-              </Link>
+              </a>
               <span className="text-[11px] text-slate-500">{t.playerPortal.deviceSupport}</span>
             </div>
           </div>
@@ -166,9 +168,10 @@ export default function HomePage() {
           {/* NHÓM 2 CỔNG DÀNH CHO BAN TỔ CHỨC (5 CỘT) */}
           <div className="lg:col-span-5 flex flex-col gap-4 justify-between">
             {/* Cổng 2: Màn hình chiếu */}
-            <Link
+            <a
               href="/display"
-              className="rounded-3xl p-5 border border-cyan-500/30 bg-gradient-to-br from-[#0e172a] via-[#091122] to-[#070913] hover:border-cyan-400/60 transition group flex flex-col justify-between flex-1 shadow-lg shadow-cyan-950/30"
+              onClick={(e) => { e.preventDefault(); navigateWithPortal("/display", t.displayPortal.title); }}
+              className="cyber-cut rounded-3xl p-5 border border-cyan-500/30 bg-gradient-to-br from-[#0e172a] via-[#091122] to-[#070913] hover:border-cyan-400/60 transition group flex flex-col justify-between flex-1 shadow-lg shadow-cyan-950/30 cursor-pointer"
             >
               <div>
                 <div className="w-full flex items-center justify-between mb-3">
@@ -190,12 +193,13 @@ export default function HomePage() {
                 <span>{t.displayPortal.btn}</span>
                 <span className="group-hover:translate-x-1 transition-transform">➔</span>
               </div>
-            </Link>
+            </a>
 
             {/* Cổng 3: Đài chỉ huy Quản trị */}
-            <Link
+            <a
               href="/admin"
-              className="rounded-3xl p-5 border border-slate-700/60 bg-gradient-to-br from-[#121424] via-[#0c0e1a] to-[#070913] hover:border-slate-500 transition group flex flex-col justify-between flex-1 shadow-lg"
+              onClick={(e) => { e.preventDefault(); navigateWithPortal("/admin", t.adminPortal.title); }}
+              className="cyber-cut rounded-3xl p-5 border border-slate-700/60 bg-gradient-to-br from-[#121424] via-[#0c0e1a] to-[#070913] hover:border-slate-500 transition group flex flex-col justify-between flex-1 shadow-lg cursor-pointer"
             >
               <div>
                 <div className="w-full flex items-center justify-between mb-3">
@@ -217,13 +221,13 @@ export default function HomePage() {
                 <span>{t.adminPortal.btn}</span>
                 <span className="group-hover:translate-x-1 transition-transform">➔</span>
               </div>
-            </Link>
+            </a>
           </div>
         </div>
 
         {/* ── 4 TRỤ CỘT NỀN TẢNG PHỔ QUÁT ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-5xl text-left">
-          <div className="p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
+          <div className="cyber-cut p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
             <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center text-cyan-400 mb-3">
               <SystemIcon name="device" className="w-5 h-5" />
             </div>
@@ -233,7 +237,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
+          <div className="cyber-cut p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
             <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-400/30 flex items-center justify-center text-purple-400 mb-3">
               <SystemIcon name="sandbox" className="w-5 h-5" />
             </div>
@@ -243,7 +247,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
+          <div className="cyber-cut p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
             <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-400/30 flex items-center justify-center text-indigo-400 mb-3">
               <SystemIcon name="team" className="w-5 h-5" />
             </div>
@@ -253,7 +257,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
+          <div className="cyber-cut p-5 rounded-2xl bg-[#0d1020] border border-slate-800 hover:border-slate-700 transition">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400 mb-3">
               <SystemIcon name="trophy" className="w-5 h-5" />
             </div>

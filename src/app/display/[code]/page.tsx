@@ -412,6 +412,23 @@ export default function DisplayPage() {
     };
     window.addEventListener("message", handlePostMessage);
 
+    let sandboxChannel: BroadcastChannel | null = null;
+    if (typeof window !== "undefined") {
+      const isSandbox = new URLSearchParams(window.location.search).get("sandbox") === "1";
+      if (isSandbox) {
+        try {
+          sandboxChannel = new BroadcastChannel(`quizorra_sandbox_${code}`);
+          sandboxChannel.onmessage = (e) => {
+            handlePostMessage({ data: e.data } as MessageEvent);
+          };
+          // Immediately request current authoritative state from sandbox master
+          sandboxChannel.postMessage({ type: "REQUEST_CURRENT_STATE" });
+        } catch (err) {
+          console.warn("[Display] BroadcastChannel init error:", err);
+        }
+      }
+    }
+
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
       transports: ["websocket", "polling"],
     });
@@ -857,6 +874,7 @@ export default function DisplayPage() {
 
     return () => {
       window.removeEventListener("message", handlePostMessage);
+      try { sandboxChannel?.close(); } catch {}
       soundManager.stopMusic();
       socket.disconnect();
     };

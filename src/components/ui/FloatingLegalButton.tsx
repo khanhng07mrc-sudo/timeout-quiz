@@ -9,24 +9,22 @@ export default function FloatingLegalButton() {
 
   return (
     <>
-      {/* Floating Action Button */}
-      <div className="fixed bottom-4 right-4 z-40 print:hidden select-none">
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          className="group flex items-center gap-2 px-3 py-2 rounded-full bg-[#12162a]/90 hover:bg-[#1c2242] border border-cyan-500/30 hover:border-cyan-400 text-xs text-slate-300 hover:text-white shadow-xl shadow-black/60 backdrop-blur-md transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
-          title="Xem nhanh Chính sách bảo mật & Điều khoản sử dụng"
-        >
-          <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </span>
-          <span className="hidden sm:inline font-semibold text-[11px] tracking-wide text-slate-300 group-hover:text-cyan-200">
-            Pháp lý
-          </span>
-        </button>
-      </div>
+      {/* Legal Button */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#12162a]/90 hover:bg-[#1c2242] border border-cyan-500/30 hover:border-cyan-400 text-xs text-slate-300 hover:text-white shadow-xl shadow-black/60 backdrop-blur-md transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+        title="Xem nhanh Chính sách bảo mật & Điều khoản sử dụng"
+      >
+        <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </span>
+        <span className="font-semibold text-[11px] tracking-wide text-slate-300 group-hover:text-cyan-200">
+          Pháp lý
+        </span>
+      </button>
 
       {/* Slide-over Drawer */}
       {isOpen && (
@@ -58,93 +56,89 @@ export default function FloatingLegalButton() {
             </div>
 
             {/* Tabs */}
-            <div className="grid grid-cols-2 p-1.5 bg-[#151930] border-b border-slate-800 text-xs font-bold shrink-0">
+            <div className="flex border-b border-slate-800 bg-[#0a0d18] px-4 pt-2 gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveTab("PRIVACY")}
-                className={`py-2 rounded-xl transition cursor-pointer ${
+                className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition ${
                   activeTab === "PRIVACY"
-                    ? "bg-cyan-600 text-white shadow-md"
-                    : "text-slate-400 hover:text-white"
+                    ? "border-cyan-400 text-cyan-400"
+                    : "border-transparent text-slate-400 hover:text-slate-200"
                 }`}
               >
-                Chính sách bảo mật
+                🔒 Chính sách bảo mật
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("TERMS")}
-                className={`py-2 rounded-xl transition cursor-pointer ${
+                className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition ${
                   activeTab === "TERMS"
-                    ? "bg-indigo-600 text-white shadow-md"
-                    : "text-slate-400 hover:text-white"
+                    ? "border-purple-400 text-purple-400"
+                    : "border-transparent text-slate-400 hover:text-slate-200"
                 }`}
               >
-                Điều khoản dịch vụ
+                📜 Điều khoản sử dụng
               </button>
             </div>
 
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 text-xs text-slate-300 space-y-4 leading-relaxed scrollbar-thin scrollbar-thumb-slate-700">
+            {/* Content Body */}
+            <div className="p-4 sm:p-5 flex-1 overflow-y-auto space-y-4 text-xs text-slate-300 leading-relaxed font-sans custom-scrollbar">
               {activeTab === "PRIVACY" ? (
-                <>
-                  <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-200">
-                    🔒 Cam kết bảo vệ dữ liệu cá nhân theo Nghị định 13/2023/NĐ-CP &amp; GDPR. Không thương mại hóa dữ liệu người dùng.
+                <div className="space-y-3">
+                  <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-800/40 text-cyan-200">
+                    <p className="font-semibold mb-1">🛡️ Bảo mật thông tin thí sinh & phòng thi:</p>
+                    <p className="text-[11px] text-cyan-300/80">
+                      Quizorra cam kết bảo vệ toàn vẹn dữ liệu cá nhân, điểm số và kết quả các vòng thi theo chuẩn bảo mật ứng dụng thi đấu hiện đại.
+                    </p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-1">1. Dữ liệu thu thập</h4>
-                    <p className="text-slate-400">Chỉ thu thập thông tin cơ bản: Tên hiển thị, Email, Mật khẩu đã băm (Bcrypt), và dữ liệu công khai từ Google OAuth (nếu đăng nhập qua Google).</p>
+                    <h4 className="font-bold text-white text-[13px] mb-1">1. Dữ liệu thu thập</h4>
+                    <p>Hệ thống chỉ lưu trữ tên hiển thị (Nickname), định danh phòng thi và lịch sử điểm số trong phiên đấu trực tiếp để phục vụ tính điểm theo thời gian thực.</p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-1">2. Mục đích xử lý</h4>
-                    <p className="text-slate-400">Xác thực đăng nhập an toàn, lưu trữ câu hỏi cá nhân và đồng bộ điểm số trận đấu theo thời gian thực.</p>
+                    <h4 className="font-bold text-white text-[13px] mb-1">2. Cơ chế lưu trữ Offline Sandbox</h4>
+                    <p>Trong chế độ Thử nghiệm Độc lập (Offline Sandbox), 100% dữ liệu bộ đề và lịch sử quay nón được lưu trữ trực tiếp trên thiết bị (Local Storage / IndexedDB), không truyền tải ra ngoài máy tính của bạn.</p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-1">3. Quyền của người dùng</h4>
-                    <p className="text-slate-400">Bạn có toàn quyền truy xuất, sửa đổi, xuất dữ liệu hoặc xóa vĩnh viễn tài khoản cùng ngân hàng câu hỏi bất cứ lúc nào.</p>
+                    <h4 className="font-bold text-white text-[13px] mb-1">3. Mã hóa & Phiên làm việc</h4>
+                    <p>Mọi kết nối phòng thi trực tuyến đều được mã hóa bằng TLS/HTTPS và WebSocket bảo mật, chống can thiệp hoặc gian lận điểm số giữa chừng.</p>
                   </div>
-                  <div className="pt-2">
-                    <Link
-                      href="/privacy"
-                      onClick={() => setIsOpen(false)}
-                      className="inline-block px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition"
-                    >
-                      Đọc toàn văn Chính sách bảo mật ➔
-                    </Link>
-                  </div>
-                </>
+                </div>
               ) : (
-                <>
-                  <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-200">
-                    ⚖️ Thỏa thuận sử dụng và quy chuẩn hành vi công bằng trên đấu trường kiến thức Quizorra.
+                <div className="space-y-3">
+                  <div className="p-3 rounded-xl bg-purple-950/30 border border-purple-800/40 text-purple-200">
+                    <p className="font-semibold mb-1">⚖️ Thỏa thuận sử dụng Quizorra Studio:</p>
+                    <p className="text-[11px] text-purple-300/80">
+                      Bằng việc tham gia hoặc điều hành phòng thi đấu, người dùng đồng ý tuân thủ các quy tắc công bằng và điều khoản của nền tảng.
+                    </p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-1">1. Tiêu chuẩn người chơi</h4>
-                    <p className="text-slate-400">Chấp thuận các quy định thi đấu, tự chịu trách nhiệm bảo mật tài khoản cá nhân và mật khẩu đăng nhập.</p>
+                    <h4 className="font-bold text-white text-[13px] mb-1">1. Tính công bằng trong thi đấu</h4>
+                    <p>Nghiêm cấm các hành vi sử dụng công cụ gian lận tự động (auto-buzz, script can thiệp điểm số). Hệ thống có cơ chế kiểm tra nhịp nhấn chuông và khóa quyền đối với các hành vi bất thường.</p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-1">2. Chống gian lận</h4>
-                    <p className="text-slate-400">Nghiêm cấm can thiệp kỹ thuật tự động, bot giả mạo hoặc phá hoại đường truyền WebSocket của hệ thống.</p>
+                    <h4 className="font-bold text-white text-[13px] mb-1">2. Bản quyền nội dung câu đố</h4>
+                    <p>Bộ đề do người dùng tự tạo hoặc nhập từ file thuộc quyền sở hữu của người tạo. Quizorra cung cấp công cụ lưu trữ và mô phỏng giao diện trường quay phục vụ giáo dục và giải trí lành mạnh.</p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-1">3. Bản quyền nội dung</h4>
-                    <p className="text-slate-400">Quizorra sở hữu bản quyền nền tảng; bạn giữ 100% quyền tác giả đối với nội dung ngân hàng câu hỏi do mình tạo lập.</p>
+                    <h4 className="font-bold text-white text-[13px] mb-1">3. Quyền của Quản trò (Host / Admin)</h4>
+                    <p>Quản trò có quyền tối cao trong việc bắt đầu trận đấu, sửa điểm số khi có khiếu nại, dừng vòng thi hoặc kích hoạt câu hỏi phụ (Tie-Breaker).</p>
                   </div>
-                  <div className="pt-2">
-                    <Link
-                      href="/terms"
-                      onClick={() => setIsOpen(false)}
-                      className="inline-block px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition"
-                    >
-                      Đọc toàn văn Điều khoản dịch vụ ➔
-                    </Link>
-                  </div>
-                </>
+                </div>
               )}
             </div>
 
             {/* Footer */}
-            <div className="p-3 border-t border-slate-800 bg-[#0a0d18] text-center text-[11px] text-slate-500 shrink-0">
-              © 2026 Quizorra • Hỗ trợ: privacy@quizorra.com
+            <div className="p-3 border-t border-slate-800 bg-[#12162a]/90 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
+              <span>Phiên bản 2.5 (Cyber Edition)</span>
+              <div className="flex items-center gap-3">
+                <Link href="/privacy" className="text-cyan-400 hover:underline" onClick={() => setIsOpen(false)}>
+                  Chi tiết bảo mật ↗
+                </Link>
+                <Link href="/terms" className="text-purple-400 hover:underline" onClick={() => setIsOpen(false)}>
+                  Điều khoản đầy đủ ↗
+                </Link>
+              </div>
             </div>
           </div>
         </div>

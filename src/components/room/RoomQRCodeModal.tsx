@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import QRCode from "qrcode";
-import BrandLogo from "@/components/ui/BrandLogo";
 
 interface RoomQRCodeModalProps {
   isOpen: boolean;
@@ -25,34 +24,64 @@ export default function RoomQRCodeModal({
   useEffect(() => {
     if (!isOpen || !roomCode) return;
 
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://quizorra.app";
-    const url = `${origin}/play?pin=${roomCode}`;
-    setJoinUrl(url);
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "https://quizorra.app";
+      const url = `${origin}/play?pin=${roomCode}`;
+      setJoinUrl(url);
 
-    QRCode.toDataURL(url, {
-      width: 480,
-      margin: 2,
-      color: {
-        dark: "#080a16",
-        light: "#ffffff",
-      },
-      errorCorrectionLevel: "H",
-    })
-      .then((dataUrl) => setQrDataUrl(dataUrl))
-      .catch((err) => console.error("Could not generate room QR code", err));
+      QRCode.toDataURL(url, {
+        width: 480,
+        margin: 2,
+        color: {
+          dark: "#080a16",
+          light: "#ffffff",
+        },
+        errorCorrectionLevel: "H",
+      })
+        .then((dataUrl) => setQrDataUrl(dataUrl))
+        .catch((err) => console.error("Could not generate room QR code", err));
+    } catch (e) {
+      console.error(e);
+    }
   }, [isOpen, roomCode]);
 
   if (!isOpen) return null;
 
   const copyLink = () => {
     if (!joinUrl) return;
-    navigator.clipboard.writeText(joinUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
+    try {
+      if (navigator?.clipboard?.writeText) {
+        navigator.clipboard.writeText(joinUrl).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 3000);
+        }).catch(() => {
+          fallbackCopy();
+        });
+      } else {
+        fallbackCopy();
+      }
+    } catch (_) {
+      fallbackCopy();
+    }
+  };
+
+  const fallbackCopy = () => {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = joinUrl;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch (_) {}
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-lg animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-lg animate-fade-in select-none">
       <div
         className={`relative w-full ${
           isFullscreen ? "max-w-3xl" : "max-w-md"
@@ -80,7 +109,9 @@ export default function RoomQRCodeModal({
         {/* Header */}
         <div className="space-y-1">
           <div className="flex justify-center mb-1">
-            <BrandLogo size="sm" variant="icon" />
+            <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-lg font-black text-white shadow-lg shadow-cyan-500/30">
+              Q
+            </span>
           </div>
           <h3 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
             Quét mã QR để Tham Gia Phòng

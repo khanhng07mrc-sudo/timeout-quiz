@@ -670,7 +670,7 @@ function WheelMachineGroup({
   const spinStartTimeRef = useRef<number>(0);
   const lastPegIndexRef = useRef<number>(0);
   const lastSnapTimeRef = useRef<number>(0);
-  const durationMs = 15000 + Math.round(((spinPower || 65) / 100) * 6000);
+  const durationMs = 18000 + Math.round(((spinPower || 65) / 100) * 4000);
 
   useEffect(() => {
     if (effectiveIsSpinning) {
@@ -718,15 +718,16 @@ function WheelMachineGroup({
           needleRef.current.position.set(0, 0, 0);
 
           if (pegDistToSnap <= contactWindow) {
-            // Trạng thái 1 & 2: Chốt đẩy mũi kim lệch sang ngang theo đà quay của nón
-            const contactProgress = 1.0 - pegDistToSnap / contactWindow;
-            const needleAngleY = pegDeflectionSign * 0.35 * Math.pow(contactProgress, 1.25);
+            // Trạng thái 1 & 2: Chốt kim loại ĐANG TIẾP XÚC và đè uốn cong mũi kim theo đà quay của nón
+            // TUYỆT ĐỐI không hồi về vị trí cân bằng khi chốt vẫn còn trong vùng tiếp xúc!
+            const contactProgress = 1.0 - (pegDistToSnap / contactWindow);
+            const needleAngleY = pegDeflectionSign * 0.38 * Math.pow(contactProgress, 1.2);
             needleRef.current.rotation.y = needleAngleY;
           } else if (lastSnapTimeRef.current > 0) {
-            // Trạng thái 3: Kim bung nảy đàn hồi ngược lại và dao động tắt dần về vị trí cân bằng 0°
+            // Trạng thái 3: Chốt kim loại ĐÃ THỰC SỰ RỜI ĐẦU KIM -> Kim bung nảy đàn hồi ngược lại và dao động tắt dần về 0°
             const dt = (now - lastSnapTimeRef.current) / 1000;
-            if (dt < 0.095) {
-              const snapAngleY = pegDeflectionSign * 0.35 * Math.exp(-28.0 * dt) * Math.cos(52.0 * dt);
+            if (dt < 0.16) {
+              const snapAngleY = pegDeflectionSign * 0.38 * Math.exp(-22.0 * dt) * Math.cos(50.0 * dt);
               needleRef.current.rotation.y = snapAngleY;
             } else {
               needleRef.current.rotation.y = 0;
@@ -3149,23 +3150,25 @@ function Studio3DPuzzleBoard({
   // Vị trí nghỉ (IDLE): Luôn đứng ngoài biên 14 cột ô chữ (X >= 2.55 hoặc X <= -2.55)
   // để 100% các ô chữ (cột 0 đến 13) luôn thông thoáng tuyệt đối, không bị che khuất!
   const targetHostessX = useMemo(() => {
-    if (typeof hostessXPercent === "number") {
-      if (hostessXPercent <= 10) return -2.65;
-      if (hostessXPercent >= 90) return 2.65;
-      const norm = Math.max(0, Math.min(1, (hostessXPercent - 12) / 76));
-      return -2.45 + norm * 4.90;
-    }
-    // Khi có ô highlight, MC đứng chếch cạnh bên ô đó (không đứng đè trước mặt)
+    // Khi có ô highlight cần lật, Người mẫu bước tới cạnh ô đó để vươn tay chạm mở
     if (highlightedIndices && highlightedIndices.size > 0) {
       for (const row of grid) {
         for (let c = 0; c < row.length; c++) {
           const t = row[c];
           if (t.isLetter && highlightedIndices.has(t.origIdx)) {
             const posX = (c - 6.5) * 0.36;
-            return posX < 0 ? Math.min(posX - 0.42, -2.55) : Math.max(posX + 0.42, 2.55);
+            // Đứng chếch bên trái ô chữ khoảng 0.32m để tay phải vươn chạm chuẩn
+            return Math.max(-2.35, Math.min(2.35, posX - 0.32));
           }
         }
       }
+    }
+    if (typeof hostessXPercent === "number") {
+      if (hostessXPercent <= 8) return -2.65; // Cánh trái an toàn
+      if (hostessXPercent >= 92) return 2.65; // Cánh phải an toàn
+      // Catwalk mượt mà trên toàn bộ sàn runway từ -2.35 đến +2.35
+      const norm = (hostessXPercent - 8) / 84;
+      return -2.35 + norm * 4.70;
     }
     return 2.65; // Safe Idle tại Cánh Phải (Stage Left của khán giả)
   }, [hostessXPercent, highlightedIndices, grid]);

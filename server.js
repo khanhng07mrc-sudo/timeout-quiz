@@ -3284,7 +3284,7 @@ function calculateSpinDestination(currentDegrees, powerPercent, totalSectors = 2
   const sectorAngle = 360 / totalSectors;
   const powerFactor = Math.max(0.1, Math.min(1, powerPercent / 100));
   const minFullSpins = 2;
-  const additionalSpins = Math.floor(powerFactor * 1.5);
+  const additionalSpins = Math.floor(powerFactor * 1.2);
   const totalFullSpins = minFullSpins + additionalSpins;
   const currentAngle = (360 - currentDegrees % 360) % 360;
   const currentSector = Math.floor(currentAngle / sectorAngle) % totalSectors;
@@ -18991,7 +18991,7 @@ function registerSocketHandlers(io2) {
       wheelState.spinPower = effPower;
       wheelState.targetRotationDegrees = targetDegrees;
       wheelState.selectedSectorIndex = landingSectorIndex;
-      const spinDurationMs = 15e3 + Math.round(effPower / 100 * 6e3);
+      const spinDurationMs = 18e3 + Math.round(effPower / 100 * 4e3);
       wheelState.lastActionMessage = generateFlexibleMCCommentary("SPIN_START", {
         teamName: wheelState.currentTurnTeamName
       });
@@ -19544,8 +19544,13 @@ function registerSocketHandlers(io2) {
       }
     };
     socket.on("magic_wheel:buy_vowel", async (payload) => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState) return;
+      const effectiveTeamId = isSandboxSocket ? payload?.teamId || teamId : isAdmin ? payload?.teamId || teamId : teamId;
+      if (effectiveTeamId && !isSandboxSocket && !isAdmin && effectiveTeamId !== wheelState.currentTurnTeamId) return;
+      if (!effectiveTeamId && !isSandboxSocket && !isAdmin) return;
       await executeMagicWheelBuyVowel(roomId, roomCode, payload.vowel);
     });
     socket.on("admin:magic_wheel:buy_vowel", async (payload) => {

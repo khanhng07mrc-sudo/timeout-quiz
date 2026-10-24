@@ -24,6 +24,7 @@ import type {
 import { CARD_METADATA, quantizeOlympiaTimeLimit } from "@/types";
 import Link from "next/link";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
+import RoomQRCodeModal from "@/components/room/RoomQRCodeModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import ArenaModeLaunchTransition from "@/components/ui/ArenaModeLaunchTransition";
 import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
@@ -423,6 +424,7 @@ export default function AdminSandboxPage() {
   // Rule modal
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
   const [showCheatDropdown, setShowCheatDropdown] = useState(false);
   const [cheatMenuPos, setCheatMenuPos] = useState({ top: 0, right: 0 });
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
@@ -5992,8 +5994,8 @@ export default function AdminSandboxPage() {
         // 1. Authoritative delay for Tile 1 (750ms VN, 1000ms EN) + driver interval ONLY for offline sandbox
         if (isOfflineSandbox) {
           const isEnglish = roomStateRef.current?.magicWheelState?.edition === "ENGLISH";
-          const delayMs = isEnglish ? 1000 : 750;
-          const intervalMs = isEnglish ? 1000 : 750;
+          const delayMs = isEnglish ? 1500 : 1500;
+          const intervalMs = isEnglish ? 1000 : 900;
 
           magicWheelTossUpFirstTimerRef.current = setTimeout(() => {
             setRoomState((prev) => {
@@ -9901,6 +9903,15 @@ export default function AdminSandboxPage() {
                 <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 rounded-lg bg-white/5 border border-purple-500/30 text-xs shrink-0">
                   <span className="text-muted-foreground text-[10px]">PIN:</span>
                   <span className="font-mono font-black text-cyan-300 text-xs">{code}</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowQRModal(true)}
+                    className="px-2 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold flex items-center gap-1 transition cursor-pointer"
+                    title="Phóng to mã QR phòng cho thí sinh quét"
+                  >
+                    <span>⛶</span>
+                    <span>Mã QR</span>
+                  </button>
                   <span className="text-purple-300 font-bold hidden sm:inline-flex items-center gap-1.5 text-[11px]">
                     <GameModeIcon mode={roomState?.mode || selectedMode} className="w-3.5 h-3.5 drop-shadow-sm" />
                     <span>{MODE_DISPLAY_NAMES[(roomState?.mode || selectedMode).toUpperCase()] || (roomState?.mode || selectedMode)}</span>
@@ -12518,6 +12529,13 @@ export default function AdminSandboxPage() {
           </div>
         </div>
       )}
+
+      <RoomQRCodeModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        roomCode={code}
+        roomTitle={(roomState as any)?.title || (roomState as any)?.name || "Phòng Sandbox"}
+      />
 
       {/* ── Debug Card Grant Modal ────────────────────────────────────────── */}
       {showCardModal && (

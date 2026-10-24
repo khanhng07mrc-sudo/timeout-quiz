@@ -8493,7 +8493,7 @@ export function registerSocketHandlers(io: IO) {
       wheelState.spinPower = effPower;
       wheelState.targetRotationDegrees = targetDegrees;
       wheelState.selectedSectorIndex = landingSectorIndex;
-      const spinDurationMs = 15000 + Math.round((effPower / 100) * 6000);
+      const spinDurationMs = 18000 + Math.round((effPower / 100) * 4000);
       wheelState.lastActionMessage = generateFlexibleMCCommentary("SPIN_START", {
         teamName: wheelState.currentTurnTeamName,
       });
@@ -9121,8 +9121,15 @@ export function registerSocketHandlers(io: IO) {
     };
 
     socket.on("magic_wheel:buy_vowel", async (payload: { vowel: string; teamId?: string }) => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState) return;
+      const effectiveTeamId = isSandboxSocket
+        ? (payload?.teamId || teamId)
+        : (isAdmin ? (payload?.teamId || teamId) : teamId);
+      if (effectiveTeamId && !isSandboxSocket && !isAdmin && effectiveTeamId !== wheelState.currentTurnTeamId) return;
+      if (!effectiveTeamId && !isSandboxSocket && !isAdmin) return;
       await executeMagicWheelBuyVowel(roomId, roomCode, payload.vowel);
     });
 

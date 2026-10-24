@@ -2093,6 +2093,32 @@ export default function MagicWheelBoard({
   const [tempTextModalOpen, setTempTextModalOpen] = useState<boolean>(false);
   const [tempTextInput, setTempTextInput] = useState<string>("");
   const [guessedLetterWarning, setGuessedLetterWarning] = useState<string | null>(null);
+  const [actionToast, setActionToast] = useState<{ text: string; isSuccess: boolean } | null>(null);
+  const prevActionMsgRef = useRef<string>("");
+
+  useEffect(() => {
+    if (lastActionMessage && lastActionMessage !== prevActionMsgRef.current) {
+      prevActionMsgRef.current = lastActionMessage;
+      const isSuccess =
+        lastActionMessage.includes("Có ") ||
+        lastActionMessage.includes("Tuyệt vời") ||
+        lastActionMessage.includes("🎉") ||
+        lastActionMessage.includes("chính xác");
+      const isMiss =
+        lastActionMessage.includes("Không có") ||
+        lastActionMessage.includes("Trật") ||
+        lastActionMessage.includes("TRẬT ĐƯỜNG RAY") ||
+        lastActionMessage.includes("❌");
+
+      if (isSuccess || isMiss) {
+        setActionToast({ text: lastActionMessage, isSuccess });
+        const timer = setTimeout(() => {
+          setActionToast(null);
+        }, 3500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [lastActionMessage]);
   const [specialPickedSet, setSpecialPickedSet] = useState<string[]>([]);
   const [specialRemainingSec, setSpecialRemainingSec] = useState<number>(40);
   const [tossUpRemainingSec, setTossUpRemainingSec] = useState<number>(0);
@@ -2372,16 +2398,17 @@ export default function MagicWheelBoard({
 
   // ── TV Board Staged Appearance Sequence ───────────────────────────────────
   const [boardStage, setBoardStage] = useState<"EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE">("EMPTY_56");
-    const isPlayingActive = Boolean(
-    animRevealedIndices.size > 0 ||
-    phase === "TOSS_UP_RUNNING" || phase === "TOSS_UP_REVEALING" ||
-    phase === "TOSS_UP_BUZZED" ||
-    phase === "ACTION_INPUT" ||
-    phase === "SPINNING" ||
-    phase === "ROUND_RECAP"
+    // Khi MC chủ động đóng bảng (EMPTY_56), giữ nguyên bảng đóng 56 ô xanh ngọc bích,
+  // tuyệt đối không chớp nháy đề của vòng tiếp theo cho đến khi mở vòng mới!
+  const isActivelyPlaying = Boolean(
+    (phase === "TOSS_UP_RUNNING" || phase === "TOSS_UP_REVEALING" || phase === "TOSS_UP_BUZZED" || phase === "ACTION_INPUT" || phase === "SPINNING")
+    && currentPuzzle?.secretPhrase
+    && animRevealedIndices.size > 0
   );
   const effectiveBoardStage: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE" =
-    isTempActive || isPlayingActive ? "READY_CLUE" : (activeState.boardStage || boardStage);
+    (activeState.boardStage === "EMPTY_56" || boardStage === "EMPTY_56") && !isActivelyPlaying
+      ? "EMPTY_56"
+      : isTempActive || isActivelyPlaying ? "READY_CLUE" : (activeState.boardStage || boardStage);
 
   const prevBoardStageRef = useRef<string>(activeState.boardStage || "EMPTY_56");
   useEffect(() => {
@@ -3099,7 +3126,7 @@ export default function MagicWheelBoard({
     const startAngle = wheelPrevAngleRef.current;
     targetAngleRef.current = target;
 
-    const durationMs = 15000 + Math.round(((activeState.spinPower || 65) / 100) * 6000);
+    const durationMs = 18000 + Math.round(((activeState.spinPower || 65) / 100) * 4000);
     const startTime = performance.now();
     let lastPegIndex = Math.floor(startAngle / segAngle);
     let lastTickAudioTime = 0;
@@ -3152,13 +3179,14 @@ export default function MagicWheelBoard({
         const pegDeflectionSign = -1.0;
         const contactWindowEx = 4.2;
         if (pegDistToSnap <= contactWindowEx) {
-          const contactProgress = 1.0 - pegDistToSnap / contactWindowEx;
-          needleAngle = pegDeflectionSign * 21.0 * Math.pow(contactProgress, 1.25);
+          // Chốt kim loại ĐANG TIẾP XÚC và uốn cong kim 2D - không được tự hồi về 0
+          const contactProgress = 1.0 - (pegDistToSnap / contactWindowEx);
+          needleAngle = pegDeflectionSign * 22.0 * Math.pow(contactProgress, 1.2);
         } else if (lastSnapTimeRef.current > 0) {
+          // Chốt ĐÃ THỰC SỰ RỜI ĐẦU KIM -> Bật nảy đàn hồi tắt dần
           const dt = (now - lastSnapTimeRef.current) / 1000;
-          if (dt < 0.095) {
-            // Spring damped oscillation starting from max deflection and snapping past zero
-            needleAngle = pegDeflectionSign * 21.0 * Math.exp(-28.0 * dt) * Math.cos(55.0 * dt);
+          if (dt < 0.16) {
+            needleAngle = pegDeflectionSign * 22.0 * Math.exp(-22.0 * dt) * Math.cos(50.0 * dt);
           } else {
             needleAngle = 0;
           }
@@ -4300,7 +4328,7 @@ export default function MagicWheelBoard({
                             setLocalIsSpinning(true);
                             onSpin?.(oscillatingPower);
                           }}
-                          disabled={!isMyTurnToSpin || effectiveIsSpinning || isCurrentTeamEliminated || isNoMoreConsonants}
+                          disabled={!isMyTurnToSpin || effectiveIsSpinning || Boolean(actionToast) || isCurrentTeamEliminated || isNoMoreConsonants}
                           className={`flex-1 py-2 rounded-xl font-black text-xs text-white transition shadow cursor-pointer ${
                             isCurrentTeamEliminated
                               ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
@@ -4318,13 +4346,21 @@ export default function MagicWheelBoard({
                         {edition === "ENGLISH" && subMode === "WORD_PUZZLE" && (
                           <button
                             type="button"
-                            onClick={() => setBuyVowelModalOpen(true)}
+                            onClick={() => {
+                              if (!isMyTurnToSpin) return;
+                              setBuyVowelModalOpen(true);
+                            }}
                             disabled={
+                              !isMyTurnToSpin ||
                               isSpinning ||
                               isCurrentTeamEliminated ||
                               ((roundScores?.[currentTurnTeamId] || 0) < 250)
                             }
-                            className="px-3 py-2 rounded-xl font-black text-xs whitespace-nowrap bg-gradient-to-r from-amber-600 to-orange-700 text-amber-100 hover:brightness-110 active:scale-98 cursor-pointer shadow"
+                            className={`px-3 py-2 rounded-xl font-black text-xs whitespace-nowrap shadow transition ${
+                              !isMyTurnToSpin
+                                ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50"
+                                : "bg-gradient-to-r from-amber-600 to-orange-700 text-amber-100 hover:brightness-110 active:scale-98 cursor-pointer"
+                            }`}
                           >
                             🛒 MUA NGUYÊN ÂM (250đ)
                           </button>
@@ -4332,9 +4368,16 @@ export default function MagicWheelBoard({
                         {subMode === "WORD_PUZZLE" && (
                           <button
                             type="button"
-                            onClick={() => setSolveModalOpen(true)}
-                            disabled={isSpinning || isSolveForbiddenInRound3 || isCurrentTeamEliminated}
-                            className="px-3 py-2 rounded-xl font-black text-xs whitespace-nowrap text-black bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 active:scale-98 cursor-pointer shadow"
+                            onClick={() => {
+                              if (!isMyTurnToSpin) return;
+                              setSolveModalOpen(true);
+                            }}
+                            disabled={!isMyTurnToSpin || isSpinning || isSolveForbiddenInRound3 || isCurrentTeamEliminated}
+                            className={`px-3 py-2 rounded-xl font-black text-xs whitespace-nowrap shadow transition ${
+                              !isMyTurnToSpin
+                                ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50"
+                                : "text-black bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 active:scale-98 cursor-pointer"
+                            }`}
                           >
                             🎯 GIẢI Ô CHỮ
                           </button>

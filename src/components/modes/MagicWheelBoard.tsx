@@ -2677,8 +2677,9 @@ export default function MagicWheelBoard({
       return;
     }
 
-    // If round recap (whole puzzle revealed at once), reveal all immediately
-    if (phase === "ROUND_RECAP") {
+    // If round recap or correct solve (whole puzzle revealed at once), reveal all immediately without individual letter sounds
+    const isSolveSuccess = phase === "ROUND_RECAP" || Boolean(lastSolveFeedback?.isCorrect ?? lastSolveFeedback?.success);
+    if (isSolveSuccess) {
       clearChoreographyTimers();
       setHighlightedIndices(new Set());
       setAnimRevealedIndices(new Set(serverRevealed));
@@ -3348,13 +3349,14 @@ export default function MagicWheelBoard({
       // Digits (0-9) and special characters (like '-') are revealed immediately when opening the board without requiring players to guess!
       const isNonLetterSymbol = !isLetter && pos.char.trim().length > 0;
       const isAutoRevealed = !isLetter;
-      const isRev = (isNonLetterSymbol || isAutoRevealed || animRevealedIndices.has(origIdx)) && !highlightedIndices.has(origIdx);
-      const isHl = highlightedIndices.has(origIdx);
+      const isSolvedOrRecap = phase === "ROUND_RECAP" || Boolean(lastSolveFeedback?.isCorrect ?? lastSolveFeedback?.success);
+      const isRev = (isNonLetterSymbol || isAutoRevealed || animRevealedIndices.has(origIdx) || isSolvedOrRecap) && !highlightedIndices.has(origIdx);
+      const isHl = !isSolvedOrRecap && highlightedIndices.has(origIdx);
       // CRITICAL REQUIREMENT: Show ONLY base letter without tone marks during play!
-      // Full accented phrase is only shown on ROUND_RECAP after solving with exact tones.
+      // Full accented phrase is shown on correct solve or ROUND_RECAP.
       // Non-letters (digits 0-9 and symbols) always show pos.char directly.
       const displayChar =
-        phase === "ROUND_RECAP"
+        isSolvedOrRecap
           ? pos.char
           : isLetter
           ? normalizeVietnameseBaseLetter(pos.char)
@@ -4094,7 +4096,7 @@ export default function MagicWheelBoard({
         </div>
 
         {/* Full 360° Circular 2D Wheel Disc for Contestant Machine: Thay thế nửa vòng quay bằng vòng tròn 2D đầy đủ, kim 12h khớp 1:1 tránh lỗi lệch kim */}
-        {!(isTossUpRound && phase === "TOSS_UP_BUZZED") && (
+        {!isTossUpRound && (
           <div className="w-full flex flex-col items-center justify-center p-1 sm:p-2 overflow-visible shrink-0">
             <InteractiveWheelRig
               variant="DISPLAY_360"
@@ -4718,42 +4720,82 @@ export default function MagicWheelBoard({
           </div>
         </div>
 
-        {/* ── 3D STUDIO STAGE & WHEEL MACHINE (WebGL Three.js) ── */}
-        <div className="w-full flex-1 min-h-0 relative overflow-hidden flex items-center justify-center bg-black">
-          <div
-            className={`relative transition-all duration-300 ${
-              is16x9Letterbox
-                ? "aspect-video w-full max-h-full max-w-full shadow-2xl rounded-2xl border border-white/10 overflow-hidden"
-                : "w-full h-full"
-            }`}
-          >
-            <WheelStudio3DScene
-              sectors={sectors}
-              clientWheelAngle={clientWheelAngle}
-              effectiveIsSpinning={effectiveIsSpinning}
-              targetRotationDegrees={targetRotationDegrees}
-              spinPower={activeState.spinPower || 65}
-              selectedSector={selectedSector}
-              teams={teams}
-              roundScores={roundScores}
-              currentTurnTeamId={currentTurnTeamId}
-              tossUpBuzzedTeamId={tossUpBuzzedTeamId}
-              isTossUpRound={isTossUpRound}
-              phase={phase}
-              boardStage={effectiveBoardStage}
-              camAngle={camAngle}
-              edition={edition}
-              currentPuzzle={currentPuzzle}
-              highlightedIndices={highlightedIndices}
-              animRevealedIndices={animRevealedIndices}
-              justPoppedIndices={justPoppedIndices}
-              hostessXPercent={hostessXPercent}
-              hostessPose={hostessPose}
-              onCamAngleChange={(cam) => setCamAngle(cam)}
-              className="absolute inset-0 w-full h-full"
-            />
+        {/* ── TOSS-UP VTV3 SPLIT SCREEN OR MAIN ROUND 3D STAGE ── */}
+        {isTossUpRound ? (
+          <div className="w-full flex-1 min-h-0 flex flex-col justify-between overflow-hidden gap-1.5 pb-1">
+            {/* Top Half (~46%): 3D Studio Camera 10 framing the 3 contestants & their buzzers */}
+            <div className="w-full h-[46%] min-h-0 relative rounded-xl border border-white/10 overflow-hidden bg-black shadow-2xl">
+              <WheelStudio3DScene
+                sectors={sectors}
+                clientWheelAngle={clientWheelAngle}
+                effectiveIsSpinning={false}
+                targetRotationDegrees={targetRotationDegrees}
+                spinPower={activeState.spinPower || 65}
+                selectedSector={selectedSector}
+                teams={teams}
+                roundScores={roundScores}
+                currentTurnTeamId={currentTurnTeamId}
+                tossUpBuzzedTeamId={tossUpBuzzedTeamId}
+                isTossUpRound={true}
+                phase={phase}
+                boardStage={effectiveBoardStage}
+                camAngle={10}
+                edition={edition}
+                currentPuzzle={currentPuzzle}
+                highlightedIndices={highlightedIndices}
+                animRevealedIndices={animRevealedIndices}
+                justPoppedIndices={justPoppedIndices}
+                hostessXPercent={hostessXPercent}
+                hostessPose={hostessPose}
+                onCamAngleChange={(cam) => setCamAngle(cam)}
+                className="absolute inset-0 w-full h-full"
+              />
+            </div>
+
+            {/* Bottom Half (~54%): Letter Board Grid Matrix & Clue Banner */}
+            <div className="w-full h-[54%] min-h-0 flex flex-col items-center justify-center overflow-hidden">
+              <div className="w-full max-w-5xl h-full flex flex-col justify-center">
+                {renderBoardGridMatrix(true)}
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="w-full flex-1 min-h-0 relative overflow-hidden flex items-center justify-center bg-black">
+            <div
+              className={`relative transition-all duration-300 ${
+                is16x9Letterbox
+                  ? "aspect-video w-full max-h-full max-w-full shadow-2xl rounded-2xl border border-white/10 overflow-hidden"
+                  : "w-full h-full"
+              }`}
+            >
+              <WheelStudio3DScene
+                sectors={sectors}
+                clientWheelAngle={clientWheelAngle}
+                effectiveIsSpinning={effectiveIsSpinning}
+                targetRotationDegrees={targetRotationDegrees}
+                spinPower={activeState.spinPower || 65}
+                selectedSector={selectedSector}
+                teams={teams}
+                roundScores={roundScores}
+                currentTurnTeamId={currentTurnTeamId}
+                tossUpBuzzedTeamId={tossUpBuzzedTeamId}
+                isTossUpRound={isTossUpRound}
+                phase={phase}
+                boardStage={effectiveBoardStage}
+                camAngle={camAngle}
+                edition={edition}
+                currentPuzzle={currentPuzzle}
+                highlightedIndices={highlightedIndices}
+                animRevealedIndices={animRevealedIndices}
+                justPoppedIndices={justPoppedIndices}
+                hostessXPercent={hostessXPercent}
+                hostessPose={hostessPose}
+                onCamAngleChange={(cam) => setCamAngle(cam)}
+                className="absolute inset-0 w-full h-full"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Bottom: Victory Banner if ROUND_RECAP */}
         {phase === "ROUND_RECAP" && (
@@ -7016,27 +7058,21 @@ export default function MagicWheelBoard({
 
 
   // ── THREE-WAY VIEW DISPATCH: CONTESTANT (isPlayer), TV DISPLAY (isDisplay), HOST (isHost) ──
-  if (isPlayer) {
-    return (
-      <>
-        {renderPlayerView()}
-        {renderModals()}
-      </>
-    );
-  }
-
-  if (isDisplay) {
-    return (
-      <>
-        {renderDisplayView()}
-        {renderModals()}
-      </>
-    );
-  }
-
   return (
     <>
-      {renderHostView()}
+      {/* ── Global VTV3 Tile Pop Zoom & Animation Styles for Display, Player, and Host ── */}
+      <style>{`
+        @keyframes vtv3TilePopZoom {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.38); box-shadow: 0 0 35px #f59e0b, 0 0 55px rgba(245, 158, 11, 0.85); z-index: 50; }
+          100% { transform: scale(1); box-shadow: 0 4px 12px rgba(255, 255, 255, 0.45); z-index: 10; }
+        }
+        .animate-vtv3-tile-pop {
+          animation: vtv3TilePopZoom 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+          will-change: transform, box-shadow;
+        }
+      `}</style>
+      {isPlayer ? renderPlayerView() : isDisplay ? renderDisplayView() : renderHostView()}
       {renderModals()}
     </>
   );

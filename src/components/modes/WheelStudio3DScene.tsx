@@ -94,6 +94,8 @@ const CAM_POSITIONS: Record<string, CamConfig> = {
 
   // CAM 9: Góc nhìn từ đỉnh hàng ghế Khán giả ngắm toàn cảnh Sân khấu (Audience POV Master Wide)
   CAM9_AUDIENCE_POV: { pos: [0.00, 4.00, 20.50], target: [0.00, 1.25, 0.00] },
+  // CAM 10: Trực diện Cận cảnh Bục 3 thí sinh và Chuông bấm (Toss-Up Contestants & Buzzers)
+  CAM10_TOSSUP: { pos: [0.00, 3.40, 5.20], target: [0.00, 2.45, -0.50] },
 };
 
 // ── Texture Generators ───────────────────────────────────────────────────────
@@ -1946,6 +1948,8 @@ function ElevatedSlotStation({
   rotY,
   edition,
   isSpinning,
+  isTossUpRound,
+  tossUpBuzzedTeamId,
 }: {
   team: TeamState;
   roundScore: number;
@@ -1957,7 +1961,10 @@ function ElevatedSlotStation({
   rotY: number;
   edition: string;
   isSpinning?: boolean;
+  isTossUpRound?: boolean;
+  tossUpBuzzedTeamId?: string;
 }) {
+  const isBuzzed = Boolean(isTossUpRound && tossUpBuzzedTeamId && team.id === tossUpBuzzedTeamId);
   const screenRef = useRef<THREE.Mesh>(null);
 
   // Podium screen texture
@@ -2060,22 +2067,38 @@ function ElevatedSlotStation({
           <cylinderGeometry args={[0.055, 0.07, 0.03, 16]} />
           <meshStandardMaterial color="#cbd5e1" metalness={0.96} roughness={0.05} />
         </mesh>
-        {/* Nắp chuông vòm vàng hoàng kim bóng loáng */}
+        {/* Nắp chuông vòm vàng hoàng kim (Phát sáng rực rỡ khi bấm chuông và duy trì tới khi MC chấm) */}
         <mesh position={[0, 0.05, 0]}>
-          <sphereGeometry args={[0.05, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
+          <sphereGeometry args={[isBuzzed ? 0.056 : 0.05, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
           <meshStandardMaterial
-            color="#fbbf24"
-            emissive="#d97706"
-            emissiveIntensity={0.65}
-            metalness={0.96}
+            color={isBuzzed ? "#fef08a" : "#fbbf24"}
+            emissive={isBuzzed ? "#f59e0b" : "#d97706"}
+            emissiveIntensity={isBuzzed ? 4.5 : 0.65}
+            metalness={isBuzzed ? 0.2 : 0.96}
             roughness={0.05}
           />
         </mesh>
         {/* Nút bấm đỏ trên đỉnh chuông */}
         <mesh position={[0, 0.085, 0]}>
           <cylinderGeometry args={[0.014, 0.014, 0.02, 12]} />
-          <meshStandardMaterial color="#ef4444" roughness={0.2} />
+          <meshStandardMaterial
+            color={isBuzzed ? "#ffffff" : "#ef4444"}
+            emissive={isBuzzed ? "#ef4444" : "#000000"}
+            emissiveIntensity={isBuzzed ? 5.0 : 0}
+            roughness={0.2}
+          />
         </mesh>
+        {/* Hào quang chói lọi quanh quả chuông và spotlight rọi vào thí sinh khi bấm chuông */}
+        {isBuzzed && (
+          <>
+            <pointLight position={[0, 0.12, 0]} color="#fbbf24" intensity={9.5} distance={3.0} decay={1.5} />
+            <pointLight position={[0, 1.20, 0]} color="#fef08a" intensity={7.5} distance={4.5} decay={1.5} />
+            <mesh position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[0.08, 0.18, 32]} />
+              <meshBasicMaterial color="#f59e0b" transparent opacity={0.85} toneMapped={false} />
+            </mesh>
+          </>
+        )}
       </group>
 
       {/* 5. Hình nhân 3D cách điệu (Stylized Mannequin) đứng trên bục sau bàn thi đấu */}
@@ -2173,6 +2196,8 @@ function ElevatedContestantDaisBehindWheel({
             rotY={rotY}
             edition={edition}
             isSpinning={effectiveIsSpinning}
+            isTossUpRound={isTossUpRound}
+            tossUpBuzzedTeamId={tossUpBuzzedTeamId}
           />
         );
       })}
@@ -4095,6 +4120,7 @@ function CameraController({
       7: CAM_POSITIONS.CAM7_AUDIENCE_CLOSEUP,
       8: CAM_POSITIONS.CAM8_AUDIENCE_DIAG,
       9: CAM_POSITIONS.CAM9_AUDIENCE_POV,
+      10: CAM_POSITIONS.CAM10_TOSSUP,
     };
     const nextCfg = configs[camAngle] ?? CAM_POSITIONS.DEFAULT;
     targetConfig.current = nextCfg;

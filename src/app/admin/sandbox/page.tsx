@@ -5997,8 +5997,8 @@ export default function AdminSandboxPage() {
         // 1. Authoritative delay for Tile 1 (750ms VN, 1000ms EN) + driver interval ONLY for offline sandbox
         if (isOfflineSandbox) {
           const isEnglish = roomStateRef.current?.magicWheelState?.edition === "ENGLISH";
-          const delayMs = isEnglish ? 1500 : 1500;
-          const intervalMs = isEnglish ? 1000 : 900;
+          const delayMs = isEnglish ? 1000 : 750;
+          const intervalMs = isEnglish ? 1000 : 750;
 
           magicWheelTossUpFirstTimerRef.current = setTimeout(() => {
             setRoomState((prev) => {
@@ -10232,20 +10232,39 @@ export default function AdminSandboxPage() {
                           );
                         }
 
-                        if (
-                          (mw?.roundStage === "TOSS_UP_1" || mw?.roundStage === "TOSS_UP_2") &&
-                          mw?.phase === "TOSS_UP_READY"
-                        ) {
+                        if (mw?.roundStage === "TOSS_UP_1" || mw?.roundStage === "TOSS_UP_2") {
                           return (
-                            <button
-                              type="button"
-                              onClick={handleMagicWheelStartTossUp}
-                              className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
-                              title={`Bắt đầu mở các chữ cái ngẫu nhiên (${mw?.edition === "ENGLISH" ? "1.0s" : "0.75s"}/chữ)`}
-                            >
-                              <span>▶️</span>
-                              <span>Bắt đầu mở chữ ({mw?.edition === "ENGLISH" ? "1.0s" : "0.75s"})</span>
-                            </button>
+                            <>
+                              {mw?.phase === "TOSS_UP_READY" && (
+                                <button
+                                  type="button"
+                                  onClick={handleMagicWheelStartTossUp}
+                                  className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                                  title={`Bắt đầu mở các chữ cái ngẫu nhiên (${mw?.edition === "ENGLISH" ? "1.0s" : "0.75s"}/chữ)`}
+                                >
+                                  <span>▶️</span>
+                                  <span>Bắt đầu mở chữ ({mw?.edition === "ENGLISH" ? "1.0s" : "0.75s"})</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={handleMagicWheelQuickRevealLetter}
+                                className="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 font-bold transition text-xs cursor-pointer shadow-sm flex items-center gap-1 active:scale-95"
+                                title="Mở một chữ cái tiếp theo"
+                              >
+                                <span>🔤</span>
+                                <span>Mở chữ kế</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleMagicWheelDirectSolve}
+                                className="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-xs cursor-pointer shadow-sm flex items-center gap-1 active:scale-95"
+                                title="Đoán ô chữ chính xác"
+                              >
+                                <span>🎯</span>
+                                <span>Đoán ô chữ</span>
+                              </button>
+                            </>
                           );
                         }
 
@@ -12690,25 +12709,44 @@ export default function AdminSandboxPage() {
               )}
 
               {/* MAGIC WHEEL Actions Grid */}
-              {selectedMode === "MAGIC_WHEEL" && roomState?.status === "PLAYING" && (
+              {selectedMode === "MAGIC_WHEEL" && roomState?.status === "PLAYING" && (() => {
+                const mwState = roomState?.magicWheelState;
+                return (
                 <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={handleMagicWheelQuickSpin}
-                    className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <span>🎡</span>
-                    <span>Quay nón</span>
-                  </button>
+                  {(mwState?.roundStage === "TOSS_UP_1" || mwState?.roundStage === "TOSS_UP_2") ? (
+                    <>
+                      {mwState?.phase === "TOSS_UP_READY" && (
+                        <button
+                          type="button"
+                          onClick={handleMagicWheelStartTossUp}
+                          className="col-span-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-black text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span>▶️</span>
+                          <span>Bắt đầu mở chữ ({mwState?.edition === "ENGLISH" ? "1.0s" : "0.75s"})</span>
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleMagicWheelQuickSpin}
+                        className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>🎡</span>
+                        <span>Quay nón</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={handleMagicWheelPassTurn}
-                    className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-200 font-bold text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <span>⏭️</span>
-                    <span>Đổi lượt</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={handleMagicWheelPassTurn}
+                        className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-200 font-bold text-xs shadow active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>⏭️</span>
+                        <span>Đổi lượt</span>
+                      </button>
+                    </>
+                  )}
 
                   <button
                     type="button"
@@ -12764,7 +12802,8 @@ export default function AdminSandboxPage() {
                     <span>Nhập chữ thông báo tạm thời</span>
                   </button>
                 </div>
-              )}
+                );
+              })()}
 
               {/* WAGER Mode Actions */}
               {roomState?.mode === "WAGER" && roomState?.wagerState?.phase === "QUESTION_PERIOD" && !roomState?.wagerState?.questionReady && (

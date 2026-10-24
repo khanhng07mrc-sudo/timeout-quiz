@@ -116,7 +116,7 @@ export default function RoomQRCodeModal({
           <h3 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
             Quét mã QR để Tham Gia Phòng
           </h3>
-          {roomTitle && (
+          {Boolean(roomTitle) && typeof roomTitle === "string" && (
             <p className="text-xs sm:text-sm text-slate-400 font-medium truncate max-w-sm mx-auto">
               {roomTitle}
             </p>

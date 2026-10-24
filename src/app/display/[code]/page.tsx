@@ -1501,7 +1501,7 @@ export default function DisplayPage() {
           isOpen={showQRModal}
           onClose={() => setShowQRModal(false)}
           roomCode={code}
-          roomTitle={(roomState as any)?.title || formatRoomTitle(roomState?.mode || "CLASSIC")}
+          roomTitle={(roomState as any)?.title || (roomState as any)?.name || mainTitle || "Phòng Thi Đấu"}
         />
       </div>
     );

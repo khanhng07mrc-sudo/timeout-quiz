@@ -571,7 +571,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
             {authMode === "MASTER_KEY" && (
               <form onSubmit={handleMasterKeyLogin} className="space-y-4 animate-slide-up">
                 <div className="text-center p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
-                  🔐 <strong>Chế độ Super Admin</strong>: Dành cho quản trị viên tối cao sử dụng Master Passcode khẩn cấp.
+                  🔐 <strong>Chế độ Quản trị viên cấp cao</strong>: Dành cho quản trị viên tối cao sử dụng Master Passcode khẩn cấp.
                 </div>
 
                 <div>
@@ -611,7 +611,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                     disabled={loading}
                     className="w-2/3 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/30 disabled:opacity-50 cursor-pointer"
                   >
-                    {loading ? "Đang xác thực..." : "Mở khóa Super Admin"}
+                    {loading ? "Đang xác thực..." : "Mở khóa Quản trị viên"}
                   </button>
                 </div>
               </form>

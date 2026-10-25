@@ -8,11 +8,11 @@ import SystemIcon, { SystemIconName } from "@/components/ui/SystemIcon";
 import AdminAuthGuard, { useAdminAuth } from "@/components/admin/AdminAuthGuard";
 
 const NAV_ITEMS: { href: string; icon: SystemIconName; label: string; desc: string }[] = [
-  { href: "/admin", icon: "dashboard", label: "Dashboard", desc: "Tổng quan" },
+  { href: "/admin", icon: "dashboard", label: "Tổng quan", desc: "Bảng điều khiển trung tâm" },
   { href: "/admin/quiz-bank", icon: "quiz_bank", label: "Bộ câu hỏi", desc: "Soạn & Nhập file" },
   { href: "/admin/rooms/create", icon: "create_room", label: "Tạo phòng thi", desc: "Thiết lập trận đấu" },
   { href: "/admin/rooms", icon: "rooms", label: "Phòng đấu chính", desc: "Quản lý trận đấu" },
-  { href: "/admin/sandbox", icon: "sandbox", label: "Sandbox Studio", desc: "Test độc lập trên máy" },
+  { href: "/admin/sandbox", icon: "sandbox", label: "Phòng thử nghiệm", desc: "Thử nghiệm độc lập trên máy" },
   { href: "/display", icon: "display", label: "Màn hình chiếu", desc: "TV & Máy chiếu" },
   { href: "/play", icon: "device", label: "Vào thi đấu", desc: "Thí sinh & Thiết bị" },
 ];
@@ -48,7 +48,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col lg:flex-row bg-transparent text-foreground relative">
       {/* ── Mobile Top Header (Screens < lg) ── */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#131626]/90 backdrop-blur-md border-b border-[#232845] px-4 flex items-center justify-between z-40">
-        <BrandLogo variant="compact" size="sm" subText="ADMIN PORTAL" href="/" />
+        <BrandLogo variant="compact" size="sm" subText="CỔNG QUẢN TRỊ" href="/" />
 
         <button
           type="button"
@@ -155,7 +155,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           {sidebarCollapsed ? (
             <BrandLogo variant="icon" size="sm" href="/" />
           ) : (
-            <BrandLogo variant="compact" size="md" subText="CYBER CONTROL CENTER" href="/" />
+            <BrandLogo variant="compact" size="md" subText="TRUNG TÂM ĐIỀU HÀNH" href="/" />
           )}
           <button
             type="button"
@@ -245,7 +245,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                   </div>
                   {user.role === "ADMIN" && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold shrink-0">
-                      ADMIN
+                      QUẢN TRỊ
                     </span>
                   )}
                 </>

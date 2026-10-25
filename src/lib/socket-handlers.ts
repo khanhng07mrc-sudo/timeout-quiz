@@ -8405,7 +8405,7 @@ export function registerSocketHandlers(io: IO) {
 
       // 0. VÒNG ĐOÁN NHANH: Chỉ được bấm chuông sau khi người mẫu đã tiết lộ chữ cái đầu tiên!
       const revealedCount = wheelState.currentPuzzle?.revealedIndices?.length || 0;
-      if (revealedCount < 1) {
+      if (revealedCount < 1 && wheelState.phase !== "TOSS_UP_REVEALING" && wheelState.phase !== "TOSS_UP_RUNNING") {
         socket.emit("error", "Chỉ được bấm chuông sau khi người mẫu tiết lộ chữ cái đầu tiên!");
         return;
       }

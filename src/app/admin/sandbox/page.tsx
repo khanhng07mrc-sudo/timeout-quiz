@@ -6095,7 +6095,7 @@ export default function AdminSandboxPage() {
         }
         const { teamId } = e.data;
         const revealedCount = roomStateRef.current?.magicWheelState?.currentPuzzle?.revealedIndices?.length || 0;
-        if (revealedCount < 1) {
+        if (revealedCount < 1 && roomStateRef.current?.magicWheelState?.phase !== "TOSS_UP_REVEALING" && roomStateRef.current?.magicWheelState?.phase !== "TOSS_UP_RUNNING") {
           return;
         }
         if (roomStateRef.current?.magicWheelState?.phase === "TOSS_UP_BUZZED" || roomStateRef.current?.magicWheelState?.tossUpBuzzedTeamId) {
@@ -9922,7 +9922,7 @@ export default function AdminSandboxPage() {
                   <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
                     roomState?.status === "PLAYING" ? "bg-green-500/20 text-green-300" : roomState?.status ? "bg-yellow-500/20 text-yellow-300" : "bg-cyan-500/20 text-cyan-300 animate-pulse"
                   }`}>
-                    {roomState?.status || "KẾT NỐI..."}
+                    {roomState?.status === "LOBBY" ? "SẢNH CHỜ" : roomState?.status === "PLAYING" ? "ĐANG THI ĐẤU" : roomState?.status === "PAUSED" ? "TẠM DỪNG" : roomState?.status === "FINISHED" ? "KẾT THÚC" : roomState?.status || "KẾT NỐI..."}
                   </span>
                 </div>
               )}
@@ -10699,7 +10699,7 @@ export default function AdminSandboxPage() {
                   title="Kích hoạt mô phỏng câu hỏi phụ đột tử (Sudden Death buzz & Lucky Draw) để phân định ngôi vô địch"
                 >
                   <span>⚔️</span>
-                  <span>{sandboxTieBreaker ? "Đang Test Đột Tử" : "Test Tie-Breaker"}</span>
+                  <span>{sandboxTieBreaker ? "Đang thử câu hỏi phụ" : "Thử câu hỏi phụ"}</span>
                 </button>
 
                 {/* 4b3. Magic Wheel Edition Switcher (1-Click trên Top Bar Sandbox) */}
@@ -11807,7 +11807,7 @@ export default function AdminSandboxPage() {
           <div className="text-center space-y-3 max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold shadow-sm">
               <span className="text-base">🧪</span>
-              <span>Sandbox Studio · Môi trường thử nghiệm độc lập trên máy của bạn</span>
+              <span>Phòng thử nghiệm · Môi trường thử nghiệm độc lập trên máy của bạn</span>
             </div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">
               Chọn chế độ trò chơi thử nghiệm
@@ -12335,7 +12335,7 @@ export default function AdminSandboxPage() {
                       className="px-1.5 sm:px-2 py-0.5 rounded-lg glass border border-white/20 text-slate-300 hover:text-white font-bold transition text-[10px] flex items-center gap-0.5 btn-tactile cursor-pointer"
                       title="Chỉnh điểm nhanh cho đội này"
                     >
-                      <span>Cheat</span>
+                      <span>Thử nghiệm</span>
                       <span>▾</span>
                     </button>
 
@@ -12493,10 +12493,10 @@ export default function AdminSandboxPage() {
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
                   <span className="text-white font-black tracking-wide">
-                    📺 MÀN HÌNH HIỂN THỊ TRƯỜNG QUAY (DISPLAY SCREEN 3D)
+                    📺 MÀN HÌNH HIỂN THỊ TRƯỜNG QUAY (TRỰC TIẾP 3D)
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                    Live Studio 3D
+                    Trực tiếp 3D
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -12555,7 +12555,7 @@ export default function AdminSandboxPage() {
               <div className="glass rounded-xl px-2.5 py-1 border border-white/10 text-xs bg-[#121424] flex items-center justify-between flex-1 min-w-0 shadow-lg">
                 <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
                   <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${botAutoEnabled ? "bg-emerald-400 animate-pulse glow-neon-emerald" : "bg-cyan-400 animate-pulse glow-neon-cyan"}`} />
-                  <span className="font-bold text-slate-400 text-[10px] sm:text-[11px] shrink-0 uppercase tracking-wider hidden sm:inline">Live Ticker:</span>
+                  <span className="font-bold text-slate-400 text-[10px] sm:text-[11px] shrink-0 uppercase tracking-wider hidden sm:inline">Bản tin trực tiếp:</span>
                   <span
                     key={botLogs[0] || "initial"}
                     className="font-mono text-[10px] sm:text-[11px] text-slate-200 truncate animate-ticker-slide"
@@ -12568,7 +12568,7 @@ export default function AdminSandboxPage() {
                   onClick={() => setShowLogsModal(true)}
                   className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[10px] sm:text-[11px] font-bold shrink-0 transition btn-tactile cursor-pointer"
                 >
-                  📜 Logs ({botLogs.length})
+                  📜 Nhật ký ({botLogs.length})
                 </button>
               </div>
             </div>
@@ -12612,7 +12612,7 @@ export default function AdminSandboxPage() {
                     ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                     : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
                 }`}>
-                  {roomState?.status || "KẾT NỐI"}
+                  {roomState?.status === "LOBBY" ? "SẢNH CHỜ" : roomState?.status === "PLAYING" ? "ĐANG THI ĐẤU" : roomState?.status === "PAUSED" ? "TẠM DỪNG" : roomState?.status === "FINISHED" ? "KẾT THÚC" : roomState?.status || "KẾT NỐI"}
                 </span>
               </div>
 
@@ -12648,7 +12648,7 @@ export default function AdminSandboxPage() {
                   className="px-2.5 py-1 rounded-xl glass hover:bg-white/10 border border-white/15 text-slate-300 text-xs font-bold flex items-center gap-1 transition active:scale-95 cursor-pointer ml-auto"
                 >
                   <span>📜</span>
-                  <span>Logs ({botLogs.length})</span>
+                  <span>Nhật ký ({botLogs.length})</span>
                 </button>
               </div>
             </div>

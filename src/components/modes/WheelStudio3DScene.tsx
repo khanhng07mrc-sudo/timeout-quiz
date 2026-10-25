@@ -207,7 +207,10 @@ function generateWheelTexture(sectors: MagicWheelSector[], size = 1024): HTMLCan
       // Special action label (e.g. BANKRUPT, LOSE A TURN, FREE PLAY, PHẦN THƯỞNG, MẤT LƯỢT, NHÂN ĐÔI, CHIA ĐÔI, BÍ MẬT, MAY MẮN, MẤT ĐIỂM)
       // Chữ in hoa chuẩn Gameshow VTV3 / Wheel of Fortune: Xoay cả từ 90 độ dọc theo chiều nan ô,
       // đọc xuôi theo chiều vòng quay từ vành nón vào tâm, KHÔNG NGẮT ĐÔI DÒNG (BANK- RUPT)
-      const labelText = cleanLabel.trim().toUpperCase();
+      let labelText = cleanLabel.trim().toUpperCase();
+      if (labelText === "BANKRUPT") labelText = "MẤT ĐIỂM";
+      else if (labelText === "LOSE A TURN" || labelText === "LOSE TURN") labelText = "MẤT LƯỢT";
+      else if (labelText === "FREE SPIN" || labelText === "FREE PLAY") labelText = "THÊM LƯỢT";
       const textLen = labelText.length;
 
       let fs = 42;
@@ -1338,19 +1341,23 @@ function RealisticContestantMannequin({
   isTurn,
   isSpinning,
   isBuzzed,
+  isTossUpRound,
 }: {
   color?: string;
   isTurn?: boolean;
   isSpinning?: boolean;
   isBuzzed?: boolean;
+  isTossUpRound?: boolean;
 }) {
   const rootGroupRef = useRef<THREE.Group>(null);
   const upperBodyRef = useRef<THREE.Group>(null);
   const leftArmRef = useRef<THREE.Group>(null);
   const rightArmRef = useRef<THREE.Group>(null);
+  const leftForearmRef = useRef<THREE.Group>(null);
+  const rightForearmRef = useRef<THREE.Group>(null);
   const spinStartTimeRef = useRef<number>(0);
 
-  const [handPoseRight, setHandPoseRight] = useState<"OPEN" | "GRIP" | "TOUCH" | "HOLD_MIC" | "REST_TABLE">("OPEN");
+  const [handPoseRight, setHandPoseRight] = useState<"OPEN" | "GRIP" | "TOUCH" | "HOLD_MIC" | "REST_TABLE">("REST_TABLE");
   const [handPoseLeft, setHandPoseLeft] = useState<"OPEN" | "GRIP" | "TOUCH" | "HOLD_MIC" | "REST_TABLE">("REST_TABLE");
 
   useFrame((state, delta) => {
@@ -1373,11 +1380,13 @@ function RealisticContestantMannequin({
         // Tay trái tì lên mép bục nón làm điểm tựa
         leftArmRef.current.rotation.x = THREE.MathUtils.lerp(0.45, 0.75, p);
         leftArmRef.current.rotation.z = THREE.MathUtils.lerp(0.18, 0.32, p);
+        if (leftForearmRef.current) leftForearmRef.current.rotation.x = THREE.MathUtils.lerp(0, -0.35, p);
         setHandPoseLeft("REST_TABLE");
 
         // Tay phải vươn xa nắm chặt lấy chốt kim loại thẳng đứng của nón nằm ngang
-        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(0.45, -1.35, p);
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(0.45, -1.25, p);
         rightArmRef.current.rotation.z = THREE.MathUtils.lerp(-0.18, -0.35, p);
+        if (rightForearmRef.current) rightForearmRef.current.rotation.x = THREE.MathUtils.lerp(0, -0.3, p);
         setHandPoseRight("GRIP");
       } else if (t < 1.5) {
         // Giai đoạn 2 (0.4s - 1.5s): Vung tay & dồn toàn bộ trọng tâm cơ bắp đẩy mạnh nón xoay theo chiều kim đồng hồ
@@ -1386,8 +1395,9 @@ function RealisticContestantMannequin({
         upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(-0.26, 0.42, p);
 
         // Vung tay phải từ trái qua phải theo chiều xoay nón
-        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(-1.35, -0.68, p);
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(-1.25, -0.68, p);
         rightArmRef.current.rotation.z = THREE.MathUtils.lerp(-0.35, 0.82, p);
+        if (rightForearmRef.current) rightForearmRef.current.rotation.x = THREE.MathUtils.lerp(-0.3, -0.15, p);
         setHandPoseRight("GRIP");
       } else {
         // Giai đoạn 3 (1.5s trở đi): Buông tay, đứng thẳng người lại bục quan sát nón trôi chậm dần
@@ -1397,50 +1407,99 @@ function RealisticContestantMannequin({
 
         leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, 0.45, delta * 3.0);
         leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, 0.18, delta * 3.0);
+        if (leftForearmRef.current) leftForearmRef.current.rotation.x = THREE.MathUtils.lerp(leftForearmRef.current.rotation.x, 0, delta * 3.0);
 
         rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 0.45, delta * 3.0);
         rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -0.18, delta * 3.0);
+        if (rightForearmRef.current) rightForearmRef.current.rotation.x = THREE.MathUtils.lerp(rightForearmRef.current.rotation.x, 0, delta * 3.0);
 
         setHandPoseRight("OPEN");
         setHandPoseLeft("REST_TABLE");
       }
     } else {
+      spinStartTimeRef.current = 0;
       if (isBuzzed) {
-      spinStartTimeRef.current = 0;
-      // Thí sinh nhoài người đập mạnh tay dứt khoát lên đỉnh chuông khi bấm chuông
-      const breathe = Math.sin(now * 2.2) * 0.004;
-      upperBodyRef.current.position.y = breathe;
-      upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(upperBodyRef.current.rotation.x, 0.22, delta * 8.0);
-      upperBodyRef.current.position.z = THREE.MathUtils.lerp(upperBodyRef.current.position.z, 0.16, delta * 8.0);
-      upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(upperBodyRef.current.rotation.y, -0.10, delta * 8.0);
+        // Thí sinh bấm chuông: Nhoài người dứt khoát ấn mạnh tay phải xuống nút chuông đỏ trên bàn
+        const breathe = Math.sin(now * 2.4) * 0.003;
+        upperBodyRef.current.position.y = breathe;
+        upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(upperBodyRef.current.rotation.x, 0.28, delta * 12.0);
+        upperBodyRef.current.position.z = THREE.MathUtils.lerp(upperBodyRef.current.position.z, 0.18, delta * 12.0);
+        upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(upperBodyRef.current.rotation.y, -0.08, delta * 12.0);
 
-      leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, 0.85, delta * 6.0);
-      leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, 0.22, delta * 6.0);
+        // Tay trái tì chắc lên mặt bàn
+        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, 0.52, delta * 8.0);
+        leftArmRef.current.rotation.y = THREE.MathUtils.lerp(leftArmRef.current.rotation.y, 0.15, delta * 8.0);
+        leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, 0.10, delta * 8.0);
+        if (leftForearmRef.current) {
+          leftForearmRef.current.rotation.x = THREE.MathUtils.lerp(leftForearmRef.current.rotation.x, -0.95, delta * 8.0);
+          leftForearmRef.current.rotation.y = THREE.MathUtils.lerp(leftForearmRef.current.rotation.y, 0.32, delta * 8.0);
+        }
 
-      rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 1.15, delta * 10.0);
-      rightArmRef.current.rotation.y = THREE.MathUtils.lerp(rightArmRef.current.rotation.y, -0.22, delta * 10.0);
-      rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, 0.14, delta * 10.0);
+        // Tay phải đập dứt khoát xuống đỉnh nút chuông
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 0.72, delta * 15.0);
+        rightArmRef.current.rotation.y = THREE.MathUtils.lerp(rightArmRef.current.rotation.y, -0.30, delta * 15.0);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -0.12, delta * 15.0);
+        if (rightForearmRef.current) {
+          rightForearmRef.current.rotation.x = THREE.MathUtils.lerp(rightForearmRef.current.rotation.x, -1.05, delta * 15.0);
+          rightForearmRef.current.rotation.y = THREE.MathUtils.lerp(rightForearmRef.current.rotation.y, -0.32, delta * 15.0);
+        }
 
-      setHandPoseRight("TOUCH");
-      setHandPoseLeft("REST_TABLE");
-    } else {
-      spinStartTimeRef.current = 0;
-      // Trạng thái nghỉ: Thở nhẹ lồng ngực tự nhiên, 2 tay vươn đặt tự nhiên tì lên mặt bàn cạnh quả chuông
-      const breathe = Math.sin(now * 1.8) * 0.007;
-      upperBodyRef.current.position.y = breathe;
-      upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(upperBodyRef.current.rotation.x, 0.08, delta * 4.0);
-      upperBodyRef.current.position.z = THREE.MathUtils.lerp(upperBodyRef.current.position.z, 0.06, delta * 4.0);
-      upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(upperBodyRef.current.rotation.y, 0, delta * 4.0);
+        setHandPoseRight("TOUCH");
+        setHandPoseLeft("REST_TABLE");
+      } else if (isTossUpRound) {
+        // VÒNG ĐOÁN NHANH: Hai tay đặt tự nhiên trên mặt bàn sát cạnh chuông bấm, nhấp nhổm hồi hộp chờ bấm
+        const breathe = Math.sin(now * 2.8) * 0.005;
+        const microAnticipation = Math.sin(now * 1.5) * 0.015;
+        upperBodyRef.current.position.y = breathe;
+        upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(upperBodyRef.current.rotation.x, 0.12 + microAnticipation, delta * 4.0);
+        upperBodyRef.current.position.z = THREE.MathUtils.lerp(upperBodyRef.current.position.z, 0.08, delta * 4.0);
+        upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(upperBodyRef.current.rotation.y, 0, delta * 4.0);
 
-      leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, 0.78, delta * 4.0);
-      leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, 0.15, delta * 4.0);
+        // Tay trái đặt cạnh chuông
+        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, 0.42, delta * 4.0);
+        leftArmRef.current.rotation.y = THREE.MathUtils.lerp(leftArmRef.current.rotation.y, 0.18, delta * 4.0);
+        leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, 0.08, delta * 4.0);
+        if (leftForearmRef.current) {
+          leftForearmRef.current.rotation.x = THREE.MathUtils.lerp(leftForearmRef.current.rotation.x, -0.92, delta * 4.0);
+          leftForearmRef.current.rotation.y = THREE.MathUtils.lerp(leftForearmRef.current.rotation.y, 0.35, delta * 4.0);
+        }
 
-      rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 0.78, delta * 4.0);
-      rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -0.15, delta * 4.0);
+        // Tay phải đặt cạnh chuông sẵn sàng bấm
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 0.42, delta * 4.0);
+        rightArmRef.current.rotation.y = THREE.MathUtils.lerp(rightArmRef.current.rotation.y, -0.18, delta * 4.0);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -0.08, delta * 4.0);
+        if (rightForearmRef.current) {
+          rightForearmRef.current.rotation.x = THREE.MathUtils.lerp(rightForearmRef.current.rotation.x, -0.92, delta * 4.0);
+          rightForearmRef.current.rotation.y = THREE.MathUtils.lerp(rightForearmRef.current.rotation.y, -0.35, delta * 4.0);
+        }
 
-      setHandPoseRight("REST_TABLE");
-      setHandPoseLeft("REST_TABLE");
-    }
+        setHandPoseRight("REST_TABLE");
+        setHandPoseLeft("REST_TABLE");
+      } else {
+        // Vòng chính thường: đứng thẳng người, 2 tay buông nhẹ hoặc đặt bàn
+        const breathe = Math.sin(now * 1.8) * 0.006;
+        upperBodyRef.current.position.y = breathe;
+        upperBodyRef.current.rotation.x = THREE.MathUtils.lerp(upperBodyRef.current.rotation.x, 0.04, delta * 4.0);
+        upperBodyRef.current.position.z = THREE.MathUtils.lerp(upperBodyRef.current.position.z, 0.02, delta * 4.0);
+        upperBodyRef.current.rotation.y = THREE.MathUtils.lerp(upperBodyRef.current.rotation.y, 0, delta * 4.0);
+
+        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, 0.35, delta * 4.0);
+        leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, 0.12, delta * 4.0);
+        if (leftForearmRef.current) {
+          leftForearmRef.current.rotation.x = THREE.MathUtils.lerp(leftForearmRef.current.rotation.x, -0.65, delta * 4.0);
+          leftForearmRef.current.rotation.y = THREE.MathUtils.lerp(leftForearmRef.current.rotation.y, 0.20, delta * 4.0);
+        }
+
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, 0.35, delta * 4.0);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -0.12, delta * 4.0);
+        if (rightForearmRef.current) {
+          rightForearmRef.current.rotation.x = THREE.MathUtils.lerp(rightForearmRef.current.rotation.x, -0.65, delta * 4.0);
+          rightForearmRef.current.rotation.y = THREE.MathUtils.lerp(rightForearmRef.current.rotation.y, -0.20, delta * 4.0);
+        }
+
+        setHandPoseRight("REST_TABLE");
+        setHandPoseLeft("REST_TABLE");
+      }
     }
   });
 
@@ -1619,7 +1678,7 @@ function RealisticContestantMannequin({
           position={[0, 1.62, 0]}
         />
 
-        {/* 5. Cánh tay trái tì bệ làm điểm tựa (Khớp vai Y = 1.42m, tầm vươn dài 0.70m) */}
+        {/* 5. Cánh tay trái có khớp khuỷu độc lập */}
         <group ref={leftArmRef} position={[-0.22, 1.42, 0.03]} rotation={[0.45, 0, 0.18]}>
           {/* Khớp vai */}
           <mesh position={[0, 0, 0]}>
@@ -1627,32 +1686,34 @@ function RealisticContestantMannequin({
             <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
           </mesh>
           {/* Bắp tay áo vest */}
-          <mesh position={[0, -0.17, 0]}>
-            <cylinderGeometry args={[0.052, 0.058, 0.34, 16]} />
+          <mesh position={[0, -0.16, 0]}>
+            <cylinderGeometry args={[0.052, 0.056, 0.32, 16]} />
             <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
           </mesh>
-          {/* Khớp khuỷu tay */}
-          <mesh position={[0, -0.34, 0]}>
-            <sphereGeometry args={[0.050, 14, 14]} />
-            <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
-          </mesh>
-          {/* Cẳng tay áo vest */}
-          <mesh position={[0, -0.49, 0]}>
-            <cylinderGeometry args={[0.046, 0.050, 0.30, 16]} />
-            <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
-          </mesh>
-          {/* Cổ tay áo sơ mi trắng thò ra 1.5cm */}
-          <mesh position={[0, -0.65, 0]}>
-            <cylinderGeometry args={[0.042, 0.046, 0.035, 14]} />
-            <meshStandardMaterial color="#ffffff" roughness={0.2} />
-          </mesh>
-          {/* Bàn tay 5 ngón trái */}
-          <group position={[0, -0.68, 0]} rotation={[0.2, 0, 0]}>
-            <RealisticArticulatedHand skinColor="#fed7aa" side="left" pose={handPoseLeft} />
+          {/* Khớp khuỷu tay & Cẳng tay độc lập */}
+          <group ref={leftForearmRef} position={[0, -0.32, 0]}>
+            <mesh position={[0, 0, 0]}>
+              <sphereGeometry args={[0.050, 14, 14]} />
+              <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
+            </mesh>
+            {/* Cẳng tay áo vest */}
+            <mesh position={[0, -0.14, 0]}>
+              <cylinderGeometry args={[0.046, 0.050, 0.28, 16]} />
+              <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
+            </mesh>
+            {/* Cổ tay áo sơ mi trắng thò ra 1.5cm */}
+            <mesh position={[0, -0.29, 0]}>
+              <cylinderGeometry args={[0.042, 0.046, 0.035, 14]} />
+              <meshStandardMaterial color="#ffffff" roughness={0.2} />
+            </mesh>
+            {/* Bàn tay 5 ngón trái */}
+            <group position={[0, -0.32, 0]} rotation={[0.2, 0, 0]}>
+              <RealisticArticulatedHand skinColor="#fed7aa" side="left" pose={handPoseLeft} />
+            </group>
           </group>
         </group>
 
-        {/* 6. Cánh tay phải có khớp xoay vung dồn lực đẩy nón (tầm vươn dài 0.70m nắm chốt kim loại) */}
+        {/* 6. Cánh tay phải có khớp khuỷu độc lập vung dồn lực đẩy nón hoặc slap chuông */}
         <group ref={rightArmRef} position={[0.22, 1.42, 0.03]} rotation={[0.45, 0, -0.18]}>
           {/* Khớp vai */}
           <mesh position={[0, 0, 0]}>
@@ -1660,28 +1721,30 @@ function RealisticContestantMannequin({
             <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
           </mesh>
           {/* Bắp tay áo vest */}
-          <mesh position={[0, -0.17, 0]}>
-            <cylinderGeometry args={[0.052, 0.058, 0.34, 16]} />
+          <mesh position={[0, -0.16, 0]}>
+            <cylinderGeometry args={[0.052, 0.056, 0.32, 16]} />
             <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
           </mesh>
-          {/* Khớp khuỷu tay */}
-          <mesh position={[0, -0.34, 0]}>
-            <sphereGeometry args={[0.050, 14, 14]} />
-            <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
-          </mesh>
-          {/* Cẳng tay áo vest */}
-          <mesh position={[0, -0.49, 0]}>
-            <cylinderGeometry args={[0.046, 0.050, 0.30, 16]} />
-            <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
-          </mesh>
-          {/* Cổ tay áo sơ mi trắng thò ra 1.5cm */}
-          <mesh position={[0, -0.65, 0]}>
-            <cylinderGeometry args={[0.042, 0.046, 0.035, 14]} />
-            <meshStandardMaterial color="#ffffff" roughness={0.2} />
-          </mesh>
-          {/* Bàn tay 5 ngón phải vươn nắm chốt nón */}
-          <group position={[0, -0.68, 0]} rotation={[0.2, 0, 0]}>
-            <RealisticArticulatedHand skinColor="#fed7aa" side="right" pose={handPoseRight} />
+          {/* Khớp khuỷu tay & Cẳng tay độc lập */}
+          <group ref={rightForearmRef} position={[0, -0.32, 0]}>
+            <mesh position={[0, 0, 0]}>
+              <sphereGeometry args={[0.050, 14, 14]} />
+              <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
+            </mesh>
+            {/* Cẳng tay áo vest */}
+            <mesh position={[0, -0.14, 0]}>
+              <cylinderGeometry args={[0.046, 0.050, 0.28, 16]} />
+              <meshStandardMaterial color={color || "#3b82f6"} roughness={0.32} metalness={0.20} />
+            </mesh>
+            {/* Cổ tay áo sơ mi trắng thò ra 1.5cm */}
+            <mesh position={[0, -0.29, 0]}>
+              <cylinderGeometry args={[0.042, 0.046, 0.035, 14]} />
+              <meshStandardMaterial color="#ffffff" roughness={0.2} />
+            </mesh>
+            {/* Bàn tay 5 ngón phải */}
+            <group position={[0, -0.32, 0]} rotation={[0.2, 0, 0]}>
+              <RealisticArticulatedHand skinColor="#fed7aa" side="right" pose={handPoseRight} />
+            </group>
           </group>
         </group>
       </group>
@@ -2113,14 +2176,14 @@ function ElevatedSlotStation({
           <cylinderGeometry args={[0.055, 0.07, 0.03, 16]} />
           <meshStandardMaterial color="#cbd5e1" metalness={0.96} roughness={0.05} />
         </mesh>
-        {/* Nắp chuông vòm phát quang ĐỎ RỰC rực rỡ khi bấm chuông (Crimson Red Neon #ef4444) và duy trì tới khi MC chấm Đúng/Sai */}
-        <mesh position={[0, 0.05, 0]} scale={isBuzzed ? [1.12, 1.12, 1.12] : [1, 1, 1]}>
+        {/* Nắp chuông vòm phát quang ĐỎ RỰC rực rỡ khi bấm chuông (Crimson Red #ff0000) và duy trì tới khi MC chấm Đúng/Sai */}
+        <mesh position={[0, 0.05, 0]} scale={isBuzzed ? [1.15, 1.15, 1.15] : [1, 1, 1]}>
           <sphereGeometry args={[0.052, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
           <meshStandardMaterial
-            color={isBuzzed ? "#ff4d4d" : "#fbbf24"}
-            emissive={isBuzzed ? "#ef4444" : "#d97706"}
-            emissiveIntensity={isBuzzed ? 5.8 : 0.65}
-            metalness={isBuzzed ? 0.2 : 0.96}
+            color={isBuzzed ? "#ff0000" : "#fbbf24"}
+            emissive={isBuzzed ? "#ff0000" : "#d97706"}
+            emissiveIntensity={isBuzzed ? 8.5 : 0.65}
+            metalness={isBuzzed ? 0.1 : 0.96}
             roughness={0.05}
           />
         </mesh>
@@ -2129,14 +2192,14 @@ function ElevatedSlotStation({
           <cylinderGeometry args={[0.014, 0.014, 0.02, 12]} />
           <meshStandardMaterial
             color={isBuzzed ? "#ffffff" : "#dc2626"}
-            emissive={isBuzzed ? "#ef4444" : "#991b1b"}
-            emissiveIntensity={isBuzzed ? 6.5 : 0.2}
+            emissive={isBuzzed ? "#ff0000" : "#991b1b"}
+            emissiveIntensity={isBuzzed ? 9.5 : 0.2}
             roughness={0.2}
           />
         </mesh>
-        {/* Hào quang đỏ rực rỡ quanh quả chuông và spotlight rọi vào thí sinh khi bấm chuông (Pre-instantiated triệt tiêu giật lag shader 0ms) */}
-        <pointLight position={[0, 0.12, 0]} color="#ef4444" intensity={isBuzzed ? 11.5 : 0} distance={3.8} decay={1.5} />
-        <pointLight position={[0, 1.20, 0]} color="#ff4d4d" intensity={isBuzzed ? 9.0 : 0} distance={4.8} decay={1.5} />
+        {/* Hào quang đỏ rực rỡ quanh quả chuông rọi sáng bàn điểm */}
+        <pointLight position={[0, 0.14, 0]} color="#ff0000" intensity={isBuzzed ? 14.0 : 0} distance={4.5} decay={1.5} />
+        <pointLight position={[0, 1.20, 0]} color="#ff1111" intensity={isBuzzed ? 10.0 : 0} distance={5.0} decay={1.5} />
         {/* Vòng hào quang đỏ rực neon dưới chân quả chuông */}
         <mesh position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} visible={isBuzzed}>
           <ringGeometry args={[0.08, 0.22, 32]} />
@@ -2151,6 +2214,7 @@ function ElevatedSlotStation({
           isTurn={isTurn}
           isSpinning={isSpinning}
           isBuzzed={isBuzzed}
+          isTossUpRound={isTossUpRound}
         />
       </group>
 
@@ -4804,23 +4868,23 @@ function WheelStudio3DSceneComponent({
           color="#ffffff"
         />
 
-        {/* Dedicated Floor Specular Downlight (Rọi sàn tạo vệt sáng bóng gương chói lọi) */}
+        {/* Dedicated Floor Specular Downlight (Rọi sàn nhẹ nhàng, không gây vệt trắng lóa lệch bàn điểm) */}
         <spotLight
           position={[0, 10.0, 1.5]}
-          intensity={24.0}
+          intensity={6.0}
           angle={0.9}
-          penumbra={0.4}
-          color="#bae6fd"
+          penumbra={0.8}
+          color="#fffdf0"
         />
 
         {/* Front Camera Fill Spotlight */}
-        <spotLight position={[0, 5.0, 5.5]} intensity={9.0} angle={0.8} penumbra={0.4} color="#fffbeb" />
+        <spotLight position={[0, 5.0, 5.5]} intensity={7.0} angle={0.8} penumbra={0.5} color="#fffbeb" />
 
         {/* Left Studio Floor Wash Spotlight */}
-        <spotLight position={[-5.0, 6.5, 2.5]} intensity={8.5} angle={0.8} penumbra={0.5} color="#fef08a" />
+        <spotLight position={[-5.0, 6.5, 2.5]} intensity={5.5} angle={0.8} penumbra={0.5} color="#fffbeb" />
 
-        {/* Right Studio Floor Wash Spotlight */}
-        <spotLight position={[5.0, 6.5, 2.5]} intensity={8.5} angle={0.8} penumbra={0.5} color="#bae6fd" />
+        {/* Right Studio Floor Wash Spotlight (Cân bằng đồng nhất màu ấm broadcast với bên trái) */}
+        <spotLight position={[5.0, 6.5, 2.5]} intensity={5.5} angle={0.8} penumbra={0.5} color="#fffbeb" />
 
         {/* Back Rim / Kicker Light */}
         <pointLight position={[0, 4.5, -4.5]} color="#93c5fd" intensity={8.0} />

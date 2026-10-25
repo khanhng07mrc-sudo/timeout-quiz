@@ -1387,12 +1387,12 @@ export default function DisplayPage() {
                 <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5 leading-snug">
                   <span className="shrink-0">⚡</span>
                   <span className="whitespace-normal sm:truncate">
-                    {roomState?.mode === "MAGIC_WHEEL" ? "Chiếc Nón Kỳ Diệu" : "Đấu Trường Quiz"}
+                    {roomState?.mode === "MAGIC_WHEEL" ? "Magic Wheel" : "Đấu Trường Quiz"}
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-400 truncate">
                   {roomState?.mode === "MAGIC_WHEEL"
-                    ? (roomState.magicWheelState?.edition === "ENGLISH" ? "🇺🇸 English Edition" : "🇻🇳 Bản Tiếng Việt")
+                    ? (roomState.magicWheelState?.edition === "ENGLISH" ? "🇺🇸 Bản Tiếng Anh" : "🇻🇳 Bản Tiếng Việt")
                     : "Sẵn sàng khởi tranh theo thời gian thực"}
                 </div>
               </div>

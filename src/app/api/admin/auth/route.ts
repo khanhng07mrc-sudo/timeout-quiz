@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       token,
       user: {
         id: "master-admin",
-        name: "Super Admin",
+        name: "Quản trị viên cấp cao",
         email: "admin@quizorra.com",
         role: "ADMIN",
       },

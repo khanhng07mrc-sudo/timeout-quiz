@@ -18921,7 +18921,7 @@ function registerSocketHandlers(io2) {
       if (!wheelState || wheelState.roundStage !== "TOSS_UP_1" && wheelState.roundStage !== "TOSS_UP_2") return;
       if (wheelState.phase !== "TOSS_UP_RUNNING" && wheelState.phase !== "TOSS_UP_READY" && wheelState.phase !== "TOSS_UP_REVEALING") return;
       const revealedCount = wheelState.currentPuzzle?.revealedIndices?.length || 0;
-      if (revealedCount < 1) {
+      if (revealedCount < 1 && wheelState.phase !== "TOSS_UP_REVEALING" && wheelState.phase !== "TOSS_UP_RUNNING") {
         socket.emit("error", "Ch\u1EC9 \u0111\u01B0\u1EE3c b\u1EA5m chu\xF4ng sau khi ng\u01B0\u1EDDi m\u1EABu ti\u1EBFt l\u1ED9 ch\u1EEF c\xE1i \u0111\u1EA7u ti\xEAn!");
         return;
       }

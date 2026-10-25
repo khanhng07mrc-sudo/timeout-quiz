@@ -893,7 +893,9 @@ export default function AdminRoomPage() {
           </div>
           <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
             Mã: <span className="font-mono font-bold text-white">{code}</span>
-            {" "}· Trạng thái: <span className={`font-bold ${ roomState?.status === "PLAYING" ? "text-green-400" : roomState?.status === "PAUSED" ? "text-yellow-400" : roomState?.status === "FINISHED" ? "text-red-400" : "text-cyan-400" }`}>{roomState?.status ?? "..."}</span>
+            {" "}· Trạng thái: <span className={`font-bold ${ roomState?.status === "PLAYING" ? "text-green-400" : roomState?.status === "PAUSED" ? "text-yellow-400" : roomState?.status === "FINISHED" ? "text-red-400" : "text-cyan-400" }`}>
+              {roomState?.status === "LOBBY" ? "SẢNH CHỜ" : roomState?.status === "PLAYING" ? "ĐANG THI ĐẤU" : roomState?.status === "PAUSED" ? "TẠM DỪNG" : roomState?.status === "FINISHED" ? "KẾT THÚC" : roomState?.status ?? "..."}
+            </span>
           </p>
         </div>
         <div className="flex gap-2 flex-wrap sm:justify-end">

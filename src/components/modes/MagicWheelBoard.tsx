@@ -459,6 +459,7 @@ function SmartPuzzlePhraseInput({
         next[slotIdx] = lastKey;
         return next;
       });
+      focusNextEditable(slotIdx);
       return;
     }
 
@@ -520,6 +521,14 @@ function SmartPuzzlePhraseInput({
         next[slotIdx] = resolvedChar;
         return next;
       });
+    }
+
+    // Auto-advance for Vietnamese single slot:
+    // Theo luật: ký tự không thuộc {A, Ă, Â, D, E, Ê, I, O, Ô, Ơ, U, Ư, Y} (riêng Đ chuyển luôn) thì tự nhảy sang ô tiếp theo
+    const TONE_ELIGIBLE_LETTERS = new Set(["A", "Ă", "Â", "D", "E", "Ê", "I", "O", "Ô", "Ơ", "U", "Ư", "Y"]);
+    const upperResolved = resolvedChar.toUpperCase();
+    if (upperResolved === "Đ" || (!TONE_ELIGIBLE_LETTERS.has(upperResolved) && upperResolved.length > 0)) {
+      focusNextEditable(slotIdx);
     }
   };
 
@@ -2210,19 +2219,24 @@ export default function MagicWheelBoard({
 
   const handleTriggerTossUpBuzz = useCallback(
     (targetTeamId?: string) => {
-      if (isSubmittingTossUpAnswerRef.current || (Date.now() - lastTossUpSubmitTimeRef.current < 2500)) return;
+      if (isSubmittingTossUpAnswerRef.current || (Date.now() - lastTossUpSubmitTimeRef.current < 1200)) return;
+      const isRevealingOrRunning = phase === "TOSS_UP_REVEALING" || phase === "TOSS_UP_RUNNING";
       const hasFirstLetterRevealed =
+        isRevealingOrRunning ||
         (animRevealedIndices.size >= 1) ||
         ((currentPuzzle?.revealedIndices?.length || 0) >= 1) ||
         ((activeState?.currentPuzzle?.revealedIndices?.length || 0) >= 1);
       if (!hasFirstLetterRevealed) return;
       if (hasBuzzedRef.current || phase === "TOSS_UP_BUZZED") return;
+
+      // 0ms instant feedback: Audio & local buzzer state
+      soundManager.playMagicWheelBuzzSolve();
       hasBuzzedRef.current = true;
       setIsLocallyBuzzed(true);
       const buzzId = targetTeamId || myTeamId || currentTurnTeamId || teams[0]?.id;
       onTossUpBuzz?.(buzzId);
     },
-    [animRevealedIndices.size, currentPuzzle?.revealedIndices?.length, activeState?.currentPuzzle?.revealedIndices?.length, phase, myTeamId, currentTurnTeamId, teams, onTossUpBuzz]
+    [phase, animRevealedIndices.size, currentPuzzle?.revealedIndices?.length, activeState?.currentPuzzle?.revealedIndices?.length, myTeamId, currentTurnTeamId, teams, onTossUpBuzz]
   );
 
   const isCurrentTeamEliminated = roundEliminatedTeamIds.includes(currentTurnTeamId);
@@ -2851,7 +2865,8 @@ export default function MagicWheelBoard({
           setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
           animRevealedIndicesRef.current.add(tileIdx);
           triggerTilePop(tileIdx);
-          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
+          const isBulkSolveReveal = newLetters.length > 2 || (phase as string) === "ROUND_RECAP" || (activeState.phase as string) === "ROUND_RECAP" || Boolean(lastSolveFeedback?.isCorrect ?? lastSolveFeedback?.success);
+          if (canPlayBoardAudio && !isBulkSolveReveal) soundManager.playMagicWheelLetterReveal();
         }
       });
       return;
@@ -3490,6 +3505,13 @@ export default function MagicWheelBoard({
     return `🎡 VÒNG CHÍNH ${mainRoundNumber}/${totalMainRounds}`;
   }, [roundStage, mainRoundNumber, totalMainRounds]);
 
+  const stageShortBadgeLabel = useMemo(() => {
+    if (roundStage === "TOSS_UP_1") return "⚡ ĐOÁN NHANH 1 (+500đ)";
+    if (roundStage === "TOSS_UP_2") return "⚡ ĐOÁN NHANH 2 (+1.000đ)";
+    if (roundStage === "SPECIAL_FINAL") return "👑 VÒNG ĐẶC BIỆT";
+    return `🎡 VÒNG ${mainRoundNumber}`;
+  }, [roundStage, mainRoundNumber]);
+
   // Virtual MC Comment & Expression
   const mcReaction = useMemo(() => {
     if (mustSolveWithTones && phase !== "ROUND_RECAP") {
@@ -3503,7 +3525,7 @@ export default function MagicWheelBoard({
     if (phase === "SPINNING") {
       return {
         emotion: "🤩",
-        text: lastActionMessage || "Chiếc nón đang quay rất đều! Hãy cùng hồi hộp chờ xem kim dừng ở ô nào...",
+        text: lastActionMessage || "Vòng quay đang quay rất đều! Hãy cùng hồi hộp chờ xem kim dừng ở ô nào...",
       };
     }
     if (phase === "TOSS_UP_RUNNING") {
@@ -3532,7 +3554,7 @@ export default function MagicWheelBoard({
     }
     return {
       emotion: "🎙️",
-      text: lastActionMessage || `Chào mừng đến với Chiếc Nón Kỳ Diệu! (${stageBadgeLabel})`,
+      text: lastActionMessage || `Chào mừng đến với Magic Wheel! (${stageBadgeLabel})`,
     };
   }, [
     mustSolveWithTones,
@@ -4730,17 +4752,20 @@ export default function MagicWheelBoard({
           <div className="absolute bottom-0 inset-x-0 h-72 bg-gradient-to-t from-blue-950/30 via-slate-900/15 to-transparent blur-xl" />
         </div>
 
-        {/* Top Header: Game Status */}
-        <div className="w-full flex items-center justify-between shrink-0 mb-1 z-30">
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 uppercase shadow">
-              {stageBadgeLabel}
+        {/* Top Header: Game Status (Compact Single-Row Broadcast Toolbar) */}
+        <div className="w-full flex items-center justify-between shrink-0 mb-1 z-30 gap-1.5 flex-nowrap">
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap min-w-0 overflow-x-auto no-scrollbar py-0.5">
+            <span
+              className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 uppercase shadow whitespace-nowrap shrink-0"
+              title={stageBadgeLabel}
+            >
+              {stageShortBadgeLabel}
             </span>
-            <span className="text-xs text-slate-300 font-bold">
+            <span className="text-[10px] sm:text-[11px] text-slate-300 font-bold whitespace-nowrap shrink-0 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
               Màn {currentRound}/{maxRounds}
             </span>
             {mainRoundNumber === 4 && roundStage === "MAIN" && jackpotPool && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-200 border border-cyan-400/50">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-200 border border-cyan-400/50 whitespace-nowrap shrink-0">
                 💎 {(jackpotPool).toLocaleString()}đ
               </span>
             )}
@@ -4748,7 +4773,7 @@ export default function MagicWheelBoard({
             <button
               type="button"
               onClick={() => setIs16x9Letterbox((prev) => !prev)}
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors flex items-center gap-1 cursor-pointer ${
+              className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 ${
                 is16x9Letterbox
                   ? "bg-amber-500/20 text-amber-300 border-amber-400/60 shadow-[0_0_8px_rgba(245,158,11,0.3)]"
                   : "bg-white/5 text-slate-400 border-white/10 hover:text-white"
@@ -4760,11 +4785,11 @@ export default function MagicWheelBoard({
 
             {/* Quyền điều khiển Màn hình cho MC/Host khi ở Vòng Đoán Nhanh */}
             {isTossUpRound && (
-              <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-full border border-white/10">
+              <div className="flex items-center gap-0.5 sm:gap-1 bg-black/60 p-0.5 rounded-full border border-white/10 shrink-0">
                 <button
                   type="button"
                   onClick={() => handleSelectLayoutMode("SPLIT")}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer whitespace-nowrap ${
                     activeTossUpLayout === "SPLIT"
                       ? "bg-amber-500 text-slate-950 font-black shadow"
                       : "text-slate-400 hover:text-white"
@@ -4776,37 +4801,37 @@ export default function MagicWheelBoard({
                 <button
                   type="button"
                   onClick={() => handleSelectLayoutMode("FULL_3D")}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer whitespace-nowrap ${
                     activeTossUpLayout === "FULL_3D"
                       ? "bg-amber-500 text-slate-950 font-black shadow"
                       : "text-slate-400 hover:text-white"
                   }`}
                   title="Toàn màn hình trường quay 3D"
                 >
-                  🔲 3D Studio
+                  🔲 3D
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSelectLayoutMode("FULL_BOARD")}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer whitespace-nowrap ${
                     activeTossUpLayout === "FULL_BOARD"
                       ? "bg-amber-500 text-slate-950 font-black shadow"
                       : "text-slate-400 hover:text-white"
                   }`}
                   title="Toàn màn hình Bảng ô chữ 56 ô"
                 >
-                  🟩 Bảng chữ
+                  🟩 Ô chữ
                 </button>
               </div>
             )}
 
             {/* Chọn nhanh góc quay nửa trên khi đang ở Toss-Up */}
             {isTossUpRound && (activeTossUpLayout === "SPLIT" || activeTossUpLayout === "FULL_3D") && (
-              <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-full border border-white/10 hidden sm:flex">
+              <div className="flex items-center gap-0.5 sm:gap-1 bg-black/60 p-0.5 rounded-full border border-white/10 hidden sm:flex shrink-0">
                 <button
                   type="button"
                   onClick={() => setTossUpCamAngle(10)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer whitespace-nowrap ${
                     tossUpCamAngle === 10
                       ? "bg-cyan-500 text-slate-950 font-black shadow"
                       : "text-slate-400 hover:text-white"
@@ -4818,7 +4843,7 @@ export default function MagicWheelBoard({
                 <button
                   type="button"
                   onClick={() => setTossUpCamAngle(1)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer whitespace-nowrap ${
                     tossUpCamAngle === 1
                       ? "bg-cyan-500 text-slate-950 font-black shadow"
                       : "text-slate-400 hover:text-white"
@@ -4830,7 +4855,7 @@ export default function MagicWheelBoard({
                 <button
                   type="button"
                   onClick={() => setTossUpCamAngle(2)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer whitespace-nowrap ${
                     tossUpCamAngle === 2
                       ? "bg-cyan-500 text-slate-950 font-black shadow"
                       : "text-slate-400 hover:text-white"
@@ -4843,12 +4868,12 @@ export default function MagicWheelBoard({
             )}
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-black/60 border border-white/10">
-            <span className="w-2.5 h-2.5 rounded-full shadow animate-pulse" style={{ background: activeTeam?.color || "#ec4899" }} />
-            <span className="text-xs font-bold text-slate-300">
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/70 border border-white/10 shrink-0 whitespace-nowrap">
+            <span className="w-2 h-2 rounded-full shadow animate-pulse shrink-0" style={{ background: activeTeam?.color || "#ec4899" }} />
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-300">
               {isTossUpRound
-                ? tossUpBuzzedTeamName ? `Đội bấm: ${tossUpBuzzedTeamName}` : "Tranh quyền bấm chuông"
-                : `Đang đến lượt: ${currentTurnTeamName || "Chưa có"}`}
+                ? tossUpBuzzedTeamName ? `Đội bấm: ${tossUpBuzzedTeamName}` : "Tranh chuông"
+                : `Lượt: ${currentTurnTeamName || "Chưa có"}`}
             </span>
           </div>
         </div>

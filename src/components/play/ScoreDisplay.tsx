@@ -66,7 +66,7 @@ export default function ScoreDisplay({ roomState, playerId, teamId, overridePlay
         <div className="hidden sm:block text-center px-2 border-l border-border/50 shrink-0">
           <p className="text-[10px] text-muted-foreground uppercase whitespace-nowrap">Cá nhân</p>
           <p className="font-bold text-xs sm:text-sm text-yellow-400 font-mono whitespace-nowrap">
-            {(me?.score ?? 0).toLocaleString()} <span className="text-[9px]">pts</span>
+            {(me?.score ?? 0).toLocaleString()} <span className="text-[9px]">điểm</span>
           </p>
         </div>
       )}

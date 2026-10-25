@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
           authenticated: true,
           user: {
             id: "master-admin",
-            name: "Super Admin",
+            name: "Quản trị viên cấp cao",
             email: "admin@quizorra.com",
             role: "ADMIN",
           },
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
           authenticated: true,
           user: {
             id: "master-admin",
-            name: "Super Admin",
+            name: "Quản trị viên cấp cao",
             email: "admin@quizorra.com",
             role: "ADMIN",
           },

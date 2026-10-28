@@ -11,7 +11,7 @@
     "build": "next build --webpack && esbuild server.ts --bundle --platform=node --target=node20 --outfile=server.js --external:next --external:@prisma/client --external:socket.io --external:bcryptjs",
     "start": "node server.js",
     "app": "electron electron/main.js",
-    "package:app": "npm run build && npx electron-packager . \"Quizorra\" --platform=win32 --arch=x64 --out=\"dist-app\" --overwrite --icon=\"public/brand/quizorra.ico\" --ignore=\"^/(dist-app|scratch|\\.git|\\.next/cache)\"",
+    "package:app": "npm run build && npx electron-packager . \"Quizorra\" --platform=win32 --arch=x64 --out=\"release\" --overwrite --icon=\"public/brand/quizorra.ico\" --ignore=\"^/(dist-app|release|scratch|\\.git|\\.next/cache)\" --no-prune",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test:olympia": "esbuild src/lib/olympia/engine.test.ts --bundle --platform=node --target=node20 --outfile=scratch/olympia-test.cjs && node scratch/olympia-test.cjs",

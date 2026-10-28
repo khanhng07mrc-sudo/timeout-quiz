@@ -11,7 +11,6 @@ const NAV_ITEMS: { href: string; icon: SystemIconName; label: string; desc: stri
   { href: "/admin", icon: "dashboard", label: "Tổng quan", desc: "Bảng điều khiển trung tâm" },
   { href: "/admin/quiz-bank", icon: "quiz_bank", label: "Bộ câu hỏi", desc: "Soạn & Nhập file" },
   { href: "/admin/rooms/create", icon: "create_room", label: "Tạo phòng thi", desc: "Thiết lập trận đấu" },
-  { href: "/admin/olympia/create", icon: "create_room", label: "Tạo phòng Olympia", desc: "Đường Lên Đỉnh Olympia" },
   { href: "/admin/rooms", icon: "rooms", label: "Phòng đấu chính", desc: "Quản lý trận đấu" },
   { href: "/admin/sandbox", icon: "sandbox", label: "Phòng thử nghiệm", desc: "Thử nghiệm độc lập trên máy" },
   { href: "/display", icon: "display", label: "Màn hình chiếu", desc: "TV & Máy chiếu" },
@@ -296,7 +295,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <main
           className={`${
             sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
-          } flex-1 h-screen max-h-screen overflow-hidden p-1 sm:p-2 pt-16 lg:pt-2 flex flex-col min-h-0 transition-all duration-200`}
+          } flex-1 h-screen max-h-screen overflow-hidden p-1 sm:p-2 pt-16 lg:pt-2 flex flex-col min-h-0 relative z-30 transition-all duration-200`}
         >
           <div key={pathname} className="w-full h-full flex flex-col min-h-0 animate-fade-in">
             {children}
@@ -306,7 +305,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <main
           className={`${
             sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
-          } flex-1 p-2 sm:p-3 lg:px-4 lg:py-2.5 pt-16 lg:pt-2.5 min-h-screen flex flex-col transition-all duration-200`}
+          } flex-1 p-2 sm:p-3 lg:px-4 lg:py-2.5 pt-16 lg:pt-2.5 min-h-screen flex flex-col relative z-30 transition-all duration-200`}
         >
           <div key={pathname} className="w-full max-w-full flex-1 flex flex-col min-h-0 animate-fade-in">
             {children}
@@ -316,7 +315,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <main
           className={`${
             sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
-          } flex-1 p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10 min-h-screen transition-all duration-200`}
+          } flex-1 p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10 min-h-screen relative z-30 transition-all duration-200`}
         >
           <div key={pathname} className="max-w-6xl mx-auto w-full animate-fade-in">
             {children}

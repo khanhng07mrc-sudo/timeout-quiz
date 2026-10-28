@@ -136,15 +136,15 @@ export default function OlympiaTranscriptModal({ open, onClose, state, defaultBa
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center lg:pl-64 xl:pl-72 p-2 sm:p-4 overflow-y-auto">
       <div className="bg-slate-950 border border-white/15 rounded-2xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-white">
         {/* Header */}
         <div className="px-5 py-4 border-b border-white/10 bg-gradient-to-r from-indigo-950/80 via-slate-900 to-slate-950 flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2.5">
               <span className="text-2xl">📋</span>
-              <h2 className="text-lg sm:text-xl font-black tracking-tight">
-                Biên Bản Trận Đấu Olympia — {state.name}
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight">
+                Biên bản trận đấu Olympia — {state.name || state.code}
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-400/20 text-yellow-300 border border-yellow-400/40">
                 Mùa {state.rulesetId} · Mã {state.code}

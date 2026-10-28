@@ -1758,8 +1758,8 @@ export default function QuizBankPage() {
               {/* Left list of Olympia Banks */}
               <div className="lg:col-span-4 glass rounded-2xl p-4 border border-amber-500/30 space-y-3">
                 <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                  <h2 className="font-black text-base text-yellow-300">
-                    🏔️ Kho đề Olympia ({olympiaBanks.length})
+                  <h2 className="font-bold text-base text-yellow-300">
+                    Kho đề Olympia ({olympiaBanks.length})
                   </h2>
                   <button
                     type="button"
@@ -1767,7 +1767,7 @@ export default function QuizBankPage() {
                       setCreatingNewOlympiaBank(true);
                       setShowOlympiaStudio(true);
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-xs font-black"
+                    className="px-3 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-xs font-bold"
                   >
                     + Tạo kho Olympia mới
                   </button>
@@ -1780,27 +1780,26 @@ export default function QuizBankPage() {
                       <div
                         key={ob.id}
                         onClick={() => setSelectedOlympiaBankId(ob.id)}
-                        className={`p-3 rounded-xl border cursor-pointer transition space-y-1.5 ${
+                        className={`p-3 rounded-xl border cursor-pointer transition space-y-2 ${
                           active
-                            ? "border-yellow-400 bg-yellow-400/15"
+                            ? "border-yellow-400/80 bg-yellow-400/15 shadow-sm"
                             : "border-white/10 bg-slate-900/60 hover:border-white/25"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="font-bold text-sm text-white">{ob.name}</div>
+                          <div className="font-bold text-sm text-white leading-snug">{ob.name}</div>
                           {ob.isPreset && (
-                            <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold shrink-0">
-                              Mẫu Chuẩn
+                            <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold shrink-0">
+                              Mẫu chuẩn
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-400 line-clamp-2">{ob.description}</p>
-                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300 pt-1">
-                          <span className="px-2 py-0.5 rounded bg-white/5">
-                            KĐ: <b>{obInv.kdTotal.remaining}</b>/{obInv.kdTotal.total} câu (Đã dùng {obInv.kdTotal.used})
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-300 pt-0.5">
+                          <span className="px-2.5 py-0.5 rounded-md bg-white/5 border border-white/10 font-medium">
+                            KĐ: <b className="text-emerald-400">{obInv.kdTotal.remaining}</b>/{obInv.kdTotal.total} (dùng {obInv.kdTotal.used})
                           </span>
-                          <span className="px-2 py-0.5 rounded bg-white/5">
-                            VĐ: <b>{obInv.vdTotal.remaining}</b>/{obInv.vdTotal.total} câu
+                          <span className="px-2.5 py-0.5 rounded-md bg-white/5 border border-white/10 font-medium">
+                            VĐ: <b className="text-emerald-400">{obInv.vdTotal.remaining}</b>/{obInv.vdTotal.total}
                           </span>
                         </div>
                       </div>
@@ -1816,7 +1815,9 @@ export default function QuizBankPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 pb-4">
                       <div>
                         <h2 className="text-xl font-black text-yellow-300">{curOlyBank.name}</h2>
-                        <p className="text-xs text-slate-300 mt-1">{curOlyBank.description}</p>
+                        {curOlyBank.description && (
+                          <p className="text-xs text-slate-300 mt-1">{curOlyBank.description}</p>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <button
@@ -1825,23 +1826,23 @@ export default function QuizBankPage() {
                             setCreatingNewOlympiaBank(false);
                             setShowOlympiaStudio(true);
                           }}
-                          className="px-4 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-xs shadow"
+                          className="px-4 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold text-xs shadow"
                         >
-                          🛠 Chỉnh sửa Kho đề & Quản lý Câu Đã dùng
+                          Chỉnh sửa kho đề & quản lý câu đã dùng
                         </button>
                         <button
                           type="button"
                           onClick={() => downloadOlympiaSetExcel(curOlyBank.set, `${curOlyBank.name}.xlsx`)}
                           className="px-3 py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white font-bold text-xs"
                         >
-                          📥 Tải Excel (.xlsx)
+                          Tải Excel (.xlsx)
                         </button>
                         <button
                           type="button"
                           onClick={() => downloadOlympiaSetJson(curOlyBank.set, `${curOlyBank.name}.json`)}
                           className="px-3 py-2 rounded-xl bg-cyan-600/80 hover:bg-cyan-500 text-white font-bold text-xs"
                         >
-                          {`{ } Tải JSON`}
+                          Tải JSON
                         </button>
                         <button
                           type="button"
@@ -1854,7 +1855,7 @@ export default function QuizBankPage() {
                           }}
                           className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold"
                         >
-                          📑 Nhân bản
+                          Nhân bản
                         </button>
                         {!curOlyBank.isPreset && (
                           <button
@@ -1867,7 +1868,7 @@ export default function QuizBankPage() {
                             }}
                             className="px-3 py-2 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 text-xs font-bold"
                           >
-                            Xóa
+                            Xóa kho đề
                           </button>
                         )}
                       </div>
@@ -1876,28 +1877,28 @@ export default function QuizBankPage() {
                     {/* Inventory Summary Cards */}
                     <div className="grid sm:grid-cols-4 gap-3 text-xs">
                       <div className="p-3 rounded-xl bg-slate-900/80 border border-white/10">
-                        <div className="text-slate-400">1. Kho Khởi Động</div>
+                        <div className="text-slate-400">1. Kho Khởi động</div>
                         <div className="text-lg font-black text-white mt-0.5">
                           Còn {inv.kdTotal.remaining} / {inv.kdTotal.total} câu
                         </div>
                         <div className="text-amber-300">Đã dùng: {inv.kdTotal.used} câu</div>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-900/80 border border-white/10">
-                        <div className="text-slate-400">2. VCNV (5 mảnh ghép)</div>
+                        <div className="text-slate-400">2. Vượt chướng ngại vật (5 mảnh ghép)</div>
                         <div className="text-sm font-black text-yellow-300 mt-0.5 truncate">
                           CNV: {curOlyBank.set.vcnv.answer}
                         </div>
-                        <div className="text-slate-300">4 hàng ngang + 1 Ô trung tâm</div>
+                        <div className="text-slate-300">4 hàng ngang + 1 ô trung tâm</div>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-900/80 border border-white/10">
-                        <div className="text-slate-400">3. Tăng Tốc</div>
+                        <div className="text-slate-400">3. Tăng tốc</div>
                         <div className="text-lg font-black text-cyan-300 mt-0.5">
                           {curOlyBank.set.tangToc.length} / 4 câu
                         </div>
-                        <div className="text-slate-300">Hỗ trợ chuỗi ảnh theo giây</div>
+                        <div className="text-slate-300">Kèm ảnh & video cục bộ</div>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-900/80 border border-white/10">
-                        <div className="text-slate-400">4. Kho Về Đích & Phụ</div>
+                        <div className="text-slate-400">4. Kho Về đích & Phụ</div>
                         <div className="text-lg font-black text-purple-300 mt-0.5">
                           Còn {inv.vdTotal.remaining} / {inv.vdTotal.total} câu VĐ
                         </div>
@@ -1911,7 +1912,7 @@ export default function QuizBankPage() {
                     <div className="grid md:grid-cols-2 gap-4 text-xs">
                       <div className="p-3.5 rounded-xl bg-slate-900/70 border border-white/10 space-y-2">
                         <div className="font-bold text-yellow-300">
-                          Phân bổ 6 Phân vùng Khởi Động (Tự động cân bằng giữa các thí sinh)
+                          Phân bổ 6 phân vùng Khởi động (cân bằng giữa các thí sinh)
                         </div>
                         {KD_ZONES.map((z) => {
                           const st = inv.kdByZone[z.id];
@@ -1931,7 +1932,7 @@ export default function QuizBankPage() {
 
                       <div className="p-3.5 rounded-xl bg-slate-900/70 border border-white/10 space-y-2">
                         <div className="font-bold text-purple-300">
-                          Phân bổ 3 Phân vùng Về Đích (1 KHTN + 1 KHXH + 1 HBC / gói)
+                          Phân bổ 3 phân vùng Về đích (1 KHTN + 1 KHXH + 1 HBC / gói)
                         </div>
                         {VD_ZONES.map((vz) => {
                           const st = inv.vdByZone[vz.id];
@@ -1950,9 +1951,9 @@ export default function QuizBankPage() {
                         <div className="pt-2 flex justify-end">
                           <Link
                             href="/admin/olympia/create"
-                            className="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs"
+                            className="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs"
                           >
-                            🚀 Tạo phòng thi Olympia với Kho đề này →
+                            Tạo phòng thi Olympia với kho đề này →
                           </Link>
                         </div>
                       </div>

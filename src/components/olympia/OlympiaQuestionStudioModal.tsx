@@ -218,18 +218,18 @@ export default function OlympiaQuestionStudioModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-slate-950 border border-white/15 rounded-2xl w-full max-w-7xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden text-white">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center lg:pl-64 xl:pl-72 p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-slate-950 border border-white/15 rounded-2xl w-full max-w-6xl xl:max-w-7xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden text-white">
         {/* Top Header */}
         <div className="px-5 py-3.5 border-b border-white/10 bg-gradient-to-r from-amber-950/60 via-slate-900 to-indigo-950/60 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🏛️</span>
             <div>
-              <h2 className="text-lg sm:text-xl font-black tracking-tight text-yellow-300">
-                Studio Thiết Kế & Quản Lý Kho Đề Đường Lên Đỉnh Olympia
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-yellow-300">
+                Studio thiết kế & quản lý kho đề Đường lên đỉnh Olympia
               </h2>
               <p className="text-xs text-slate-300">
-                Quản lý 5 vòng thi · AI Tự động gán nhãn 6 phân vùng Khởi Động & 3 phân vùng Về Đích · Theo dõi câu Đã dùng / Còn lại
+                Quản lý 5 vòng thi · AI tự động gán nhãn 6 phân vùng Khởi động & 3 phân vùng Về đích · Theo dõi câu đã dùng / còn lại
               </p>
             </div>
           </div>
@@ -265,9 +265,9 @@ export default function OlympiaQuestionStudioModal({
             <button
               type="button"
               onClick={() => handleSaveToBank(false)}
-              className="px-3.5 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-xs font-black"
+              className="px-3.5 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-xs font-bold"
             >
-              💾 Lưu vào Kho & Áp dụng
+              💾 Lưu vào kho & áp dụng
             </button>
             <button
               type="button"
@@ -387,7 +387,7 @@ export default function OlympiaQuestionStudioModal({
               }}
               className="px-3 py-1.5 rounded-lg bg-rose-600/80 hover:bg-rose-500 text-white font-bold flex items-center gap-1.5"
             >
-              🔄 Reset trạng thái Đã dùng ({report.kdTotal.used + report.vdTotal.used + report.chpTotal.used} câu đã dùng)
+              🔄 Reset trạng thái đã dùng ({report.kdTotal.used + report.vdTotal.used + report.chpTotal.used} câu đã dùng)
             </button>
           </div>
 
@@ -407,13 +407,13 @@ export default function OlympiaQuestionStudioModal({
             [
               [
                 "inventory",
-                `📊 Thống kê Kho & Cảnh báo (${report.kdTotal.remaining} KĐ · ${report.vdTotal.remaining} VĐ còn lại)`,
+                `📊 Thống kê kho & cảnh báo (${report.kdTotal.remaining} KĐ · ${report.vdTotal.remaining} VĐ còn lại)`,
               ],
-              ["khoiDong", `1. Khởi Động (${report.kdTotal.total} câu · Đã dùng ${report.kdTotal.used})`],
-              ["vcnv", `2. Vượt Chướng Ngại Vật (5 mảnh ghép)`],
-              ["tangToc", `3. Tăng Tốc (${draft.tangToc.length}/4 câu)`],
-              ["veDich", `4. Về Đích (${report.vdTotal.total} câu · Đã dùng ${report.vdTotal.used})`],
-              ["cauHoiPhu", `5. Câu Hỏi Phụ (${report.chpTotal.total} câu)`],
+              ["khoiDong", `1. Khởi động (${report.kdTotal.total} câu · Đã dùng ${report.kdTotal.used})`],
+              ["vcnv", `2. Vượt chướng ngại vật (5 mảnh ghép)`],
+              ["tangToc", `3. Tăng tốc (${draft.tangToc.length}/4 câu)`],
+              ["veDich", `4. Về đích (${report.vdTotal.total} câu · Đã dùng ${report.vdTotal.used})`],
+              ["cauHoiPhu", `5. Câu hỏi phụ (${report.chpTotal.total} câu)`],
             ] as const
           ).map(([tabId, label]) => (
             <button
@@ -447,13 +447,13 @@ export default function OlympiaQuestionStudioModal({
                 }`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                  <div className="font-black text-base flex items-center gap-2">
+                  <div className="font-bold text-base flex items-center gap-2">
                     <span>
                       {report.overallStatus === "ok"
-                        ? "🟢 Kho đề Olympia Đạt Chuẩn Toàn Diện"
+                        ? "🟢 Kho đề Olympia đạt chuẩn toàn diện"
                         : report.overallStatus === "yellow"
-                        ? "🟡 Cảnh Báo Vàng: Số câu hỏi chưa dùng ở một số mục thấp hơn mức khuyến nghị"
-                        : "🔴 Báo Động Đỏ: Số câu hỏi chưa dùng không đủ chia đều cho trận đấu!"}
+                        ? "🟡 Cảnh báo vàng: Số câu hỏi chưa dùng ở một số mục thấp hơn mức khuyến nghị"
+                        : "🔴 Báo động đỏ: Số câu hỏi chưa dùng không đủ chia đều cho trận đấu!"}
                     </span>
                   </div>
                   <label className="flex items-center gap-2 text-xs cursor-pointer">
@@ -466,15 +466,15 @@ export default function OlympiaQuestionStudioModal({
                         })
                       }
                     />
-                    <span className="font-bold">
-                      Bật thuật toán Rút câu hỏi ngẫu nhiên cân bằng lĩnh vực & Ưu tiên câu Chưa dùng
+                    <span className="font-medium">
+                      Bật thuật toán rút câu hỏi ngẫu nhiên cân bằng lĩnh vực & ưu tiên câu chưa dùng
                     </span>
                   </label>
                 </div>
 
                 {report.alerts.length === 0 ? (
                   <p className="text-xs text-emerald-300">
-                    Tất cả 6 phân vùng Khởi Động ({report.kdTotal.remaining}/{report.kdTotal.total} câu chưa dùng) và 3 phân vùng × 3 mức điểm Về Đích ({report.vdTotal.remaining}/{report.vdTotal.total} câu chưa dùng) đều vượt ngưỡng an toàn cho {simPlayers} thí sinh.
+                    Tất cả 6 phân vùng Khởi động ({report.kdTotal.remaining}/{report.kdTotal.total} câu chưa dùng) và 3 phân vùng × 3 mức điểm Về đích ({report.vdTotal.remaining}/{report.vdTotal.total} câu chưa dùng) đều vượt ngưỡng an toàn cho {simPlayers} thí sinh.
                   </p>
                 ) : (
                   <ul className="space-y-1 text-xs max-h-40 overflow-y-auto pr-2">
@@ -495,7 +495,7 @@ export default function OlympiaQuestionStudioModal({
                 <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-bold text-sm text-yellow-300">
-                      1. Vòng Khởi Động — Tổng Kho & 6 Phân Vùng Chuẩn
+                      1. Vòng Khởi động — Tổng kho & 6 phân vùng chuẩn
                     </h3>
                     {renderStatusBadge(report.kdTotal)}
                   </div>
@@ -503,7 +503,7 @@ export default function OlympiaQuestionStudioModal({
                     <table className="w-full text-xs text-left">
                       <thead className="bg-white/5 text-slate-400">
                         <tr>
-                          <th className="px-2.5 py-2">Phân vùng Khởi Động</th>
+                          <th className="px-2.5 py-2">Phân vùng Khởi động</th>
                           <th className="px-2.5 py-2 text-center">Tổng số câu</th>
                           <th className="px-2.5 py-2 text-center">Đã dùng</th>
                           <th className="px-2.5 py-2 text-center">Còn lại</th>
@@ -512,7 +512,7 @@ export default function OlympiaQuestionStudioModal({
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         <tr className="bg-indigo-500/10 font-bold">
-                          <td className="px-2.5 py-2 text-white">📦 Tổng cộng Kho Khởi Động</td>
+                          <td className="px-2.5 py-2 text-white">📦 Tổng cộng kho Khởi động</td>
                           <td className="px-2.5 py-2 text-center">{report.kdTotal.total}</td>
                           <td className="px-2.5 py-2 text-center text-amber-300">{report.kdTotal.used}</td>
                           <td className="px-2.5 py-2 text-center text-emerald-300">{report.kdTotal.remaining}</td>

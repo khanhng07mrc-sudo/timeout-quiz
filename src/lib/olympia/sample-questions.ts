@@ -8,9 +8,9 @@ import { autoTagOlympiaSet } from "./ai-classifier";
  */
 const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
   id: "olympia_preset_standard_full",
-  name: "Kho Đề Chuẩn Olympia (96 câu KĐ • VCNV • TT • 27 câu VĐ • 6 CHP)",
+  name: "Đề thi Olympia 25–26 toàn tập (113 câu Khởi động · 27 câu Về đích)",
   description:
-    "Kho đề Olympia quy mô lớn (96 câu Khởi Động phủ đều 6 phân vùng & 11 môn cho 2–8 thí sinh, VCNV 5 mảnh ghép, Tăng Tốc đa dữ kiện, 27 câu Về Đích cân bằng KHTN - KHXH - Hiểu biết chung, 6 Câu hỏi phụ).",
+    "Kho đề Olympia chuẩn đa lĩnh vực (tham khảo Form test Olympia 25 & O22–O26): 80 câu Khởi động riêng (8 thí sinh × 10 câu) + 33 câu Khởi động chung (11 lĩnh vực × 3 câu), VCNV 5 mảnh ghép (ảnh bí ẩn nội bộ), 4 câu Tăng tốc kèm ảnh & video nội bộ, 27 câu Về đích cân bằng KHTN - KHXH - Hiểu biết chung và 6 Câu hỏi phụ.",
   balancedRandom: true,
   khoiDong: {
     solo: {
@@ -112,29 +112,67 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
       ],
     },
     shared: [
-      { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Quốc gia nào có diện tích tự nhiên lớn nhất thế giới?", a: "Nga" },
-      { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Trong hóa học, dung dịch có độ pH = 7 ở 25°C mang tính chất gì?", a: "Trung tính" },
-      { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Ai là tác giả của áng thiên cổ hùng văn 'Bình Ngô đại cáo'?", a: "Nguyễn Trãi" },
+      // 1. Toán (3 câu)
+      { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Trong hình học phẳng Euclid, tổng ba góc trong một hình tam giác luôn bằng bao nhiêu độ?", a: "180" },
+      { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Số nguyên tố chẵn duy nhất trong tập hợp các số tự nhiên là số nào?", a: "2" },
+      { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Hình đa giác đều có 6 cạnh bằng nhau và 6 góc bằng nhau được gọi là hình gì?", a: "Lục giác đều" },
+
+      // 2. Lý (3 câu)
       { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Trọng lượng của một vật trên bề mặt Mặt Trăng bằng khoảng một phần mấy trọng lượng của nó trên Trái Đất?", a: "1/6" },
-      { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Quân và dân vùng đất nào của TP. Hồ Chí Minh được phong tặng danh hiệu 'Đất thép thành đồng'?", a: "Củ Chi" },
-      { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Kênh đào Panama nối liền hai đại dương lớn nào trên thế giới?", a: "Thái Bình Dương và Đại Tây Dương" },
-      { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Cơ quan tiêu hóa dài nhất trong hệ tiêu hóa của cơ thể người trưởng thành là gì?", a: "Ruột non" },
       { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Loại điốt phát sáng nào được sử dụng phổ biến nhất trên màn hình trường quay S14?", a: "LED" },
-      { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Bức họa 'Mona Lisa' hiện đang được trưng bày cố định tại bảo tàng nghệ thuật nào của nước Pháp?", a: "Bảo tàng Louvre" },
+      { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Vận tốc truyền ánh sáng trong môi trường chân không xấp xỉ bằng bao nhiêu nghìn km/s?", a: "300" },
+
+      // 3. Hóa (3 câu)
+      { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Trong hóa học, dung dịch có độ pH = 7 ở nhiệt độ 25°C mang tính chất gì?", a: "Trung tính" },
+      { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Kim loại nào ở thể lỏng ở điều kiện nhiệt độ phòng tiêu chuẩn (thường dùng trong nhiệt kế y tế)?", a: "Thủy ngân" },
+      { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Khí gas sinh học (biogas) có thành phần chính là hợp chất hydrocacbon nào?", a: "Methane (hoặc CH4)" },
+
+      // 4. Sinh (3 câu)
+      { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Cơ quan tiêu hóa dài nhất trong hệ tiêu hóa của cơ thể người trưởng thành là gì?", a: "Ruột non" },
+      { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Nhóm máu nào được gọi là nhóm máu chuyên cho trong hệ thống nhóm máu ABO?", a: "Nhóm O" },
+      { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Bào quan nào trong tế bào thực vật chứa chất diệp lục giúp thực hiện quá trình quang hợp?", a: "Lục lạp" },
+
+      // 5. Văn (3 câu)
+      { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Ai là tác giả của áng thiên cổ hùng văn 'Bình Ngô đại cáo'?", a: "Nguyễn Trãi" },
+      { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Tác phẩm Truyện Kiều của đại thi hào Nguyễn Du được sáng tác theo thể thơ dân tộc nào?", a: "Lục bát" },
+      { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Nhân vật Lão Hạc trong truyện ngắn cùng tên của Nam Cao nuôi một con chó cưng tên là gì?", a: "Cậu Vàng" },
+
+      // 6. Sử (3 câu)
+      { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Quân và dân vùng đất nào của TP. Hồ Chí Minh được phong tặng danh hiệu 'Đất thép thành đồng'?", a: "Củ Chi" },
+      { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Chiến thắng Điện Biên Phủ 'lừng lẫy năm châu, chấn động địa cầu' diễn ra vào năm nào?", a: "1954" },
+      { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Vị vua anh minh nào của triều Hậu Lê đã ban hành bộ luật Hồng Đức (Quốc triều hình luật)?", a: "Lê Thánh Tông" },
+
+      // 7. Địa (3 câu)
+      { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Quốc gia nào có diện tích tự nhiên lớn nhất thế giới hiện nay?", a: "Nga" },
+      { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Kênh đào Panama nối liền hai đại dương lớn nào trên thế giới?", a: "Thái Bình Dương và Đại Tây Dương" },
+      { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Đỉnh núi Fansipan – 'Nóc nhà Đông Dương' nằm trên dãy núi nào của Việt Nam?", a: "Hoàng Liên Sơn" },
+
+      // 8. Thể thao (3 câu)
       { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Đội tuyển bóng đá quốc gia nào đã giành chức vô địch FIFA World Cup 2022 tại Qatar?", a: "Argentina" },
-      { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the currency of the United Kingdom?", a: "Pound Sterling" },
+      { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Biểu tượng của phong trào Thế vận hội Olympic quốc tế gồm bao nhiêu vòng tròn đan vào nhau?", a: "5" },
+      { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Cự ly chạy tiêu chuẩn của một chặng đua Marathon đường trường là bao nhiêu km?", a: "42,195 km" },
+
+      // 9. Nghệ thuật (3 câu)
+      { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Bức họa 'Mona Lisa' hiện đang được trưng bày cố định tại bảo tàng nghệ thuật nào của nước Pháp?", a: "Bảo tàng Louvre" },
+      { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Nhạc sĩ tài hoa nào là tác giả của bài hát 'Tiến quân ca' – Quốc ca Việt Nam?", a: "Văn Cao" },
+      { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Nhạc cụ truyền thống nào của Việt Nam chỉ có duy nhất một dây nhưng phát ra âm thanh biến hóa đặc sắc nhờ cần đàn?", a: "Đàn bầu (hoặc Độc huyền cầm)" },
+
+      // 10. Tiếng Anh (4 câu)
+      { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the official currency of the United Kingdom?", a: "Pound Sterling" },
       { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "Which chemical element has the symbol 'Au' in the periodic table?", a: "Gold" },
-      { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "How many continents are there in the Olympic rings symbol?", a: "5" },
       { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What does the abbreviation 'CPU' stand for in computer science?", a: "Central Processing Unit" },
-      { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Ai được mệnh danh là Cha đẻ của khoa học máy tính và trí tuệ nhân tạo hiện đại?", a: "Alan Turing" },
-      { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Kẽm oxit và titan đioxit là hai hoạt chất vật lý thường có trong thành phần loại mỹ phẩm bảo vệ da nào?", a: "Kem chống nắng" },
+      { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the capital city of Australia?", a: "Canberra" },
+
+      // 11. Lĩnh vực khác (4 câu)
+      { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Nhà khoa học nào được mệnh danh là Cha đẻ của khoa học máy tính và trí tuệ nhân tạo hiện đại?", a: "Alan Turing" },
       { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Số điện thoại khẩn cấp gọi lực lượng Cảnh sát Phòng cháy chữa cháy và Cứu nạn cứu hộ tại Việt Nam là số nào?", a: "114" },
+      { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Tổ chức Giáo dục, Khoa học và Văn hóa của Liên Hợp Quốc viết tắt theo tiếng Anh là gì?", a: "UNESCO" },
       { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Tổ chức Hàng không Dân dụng Quốc tế viết tắt theo tiếng Anh là gì?", a: "ICAO" },
     ],
   },
   vcnv: {
     answer: "TIÊU LỆNH CHỮA CHÁY",
-    mysteryImage: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Fire_extinguisher_sign.svg/640px-Fire_extinguisher_sign.svg.png",
+    mysteryImage: "/olympia/media/vcnv_mystery.png",
     rows: [
       {
         hint: "Hiện nay, Việt Nam có bao nhiêu tỉnh mà tên gọi bắt đầu bằng chữ cái N? (1 chữ số)",
@@ -161,8 +199,9 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
   tangToc: [
     {
       category: "iq",
-      q: "[Câu 1 — Tư duy IQ] Tìm số thích hợp điền vào dấu chấm hỏi trong dãy số quy luật sau: 2, 3, 5, 8, 13, 21, ?",
+      q: "[Câu 1 — Tư duy IQ] Tìm số thích hợp điền vào dấu chấm hỏi trong quy luật dãy số: 2, 3, 5, 8, 13, 21, ?",
       type: "image",
+      media: "/olympia/media/tangtoc_cau1_iq.png",
       answer: "34",
       duration: 20,
     },
@@ -170,32 +209,45 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
       category: "data",
       q: "[Câu 2 — Dữ kiện mở dần] Đây là địa danh nào của Việt Nam? Quan sát các gợi ý xuất hiện theo thời gian để đưa ra câu trả lời chính xác.",
       type: "image",
+      media: "/olympia/media/tangtoc_cau2_clue1.png",
       answer: "Vịnh Hạ Long",
       duration: 20,
       clueImages: [
         {
           atSecond: 0,
-          label: "Dữ kiện 1 (0s): Khu vực vịnh biển thuộc vùng Đông Bắc Việt Nam với diện tích hơn 1.500 km²",
-          url: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Flag_of_Vietnam.svg/640px-Flag_of_Vietnam.svg.png",
+          label: "Dữ kiện 1 (0s): Vịnh biển Đông Bắc diện tích hơn 1.500 km² với bờ biển dài 120 km",
+          url: "/olympia/media/tangtoc_cau2_clue1.png",
         },
         {
           atSecond: 5,
-          label: "Dữ kiện 2 (5s): Nơi sở hữu gần 2.000 hòn đảo đá vôi lớn nhỏ như hòn Trống Mái, đảo Ti Tốp, hang Sửng Sốt",
-          url: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Ha_Long_Bay_in_2019.jpg/640px-Ha_Long_Bay_in_2019.jpg",
+          label: "Dữ kiện 2 (5s): Sở hữu gần 2.000 hòn đảo đá vôi kỳ vĩ như Hòn Trống Mái, Đảo Ti Tốp",
+          url: "/olympia/media/tangtoc_cau2_clue2.png",
+        },
+        {
+          atSecond: 10,
+          label: "Dữ kiện 3 (10s): Quần thể hang động thạch nhũ tráng lệ: Hang Sửng Sốt, Động Thiên Cung",
+          url: "/olympia/media/tangtoc_cau2_clue3.png",
+        },
+        {
+          atSecond: 15,
+          label: "Dữ kiện 4 (15s): Được UNESCO công nhận là Di sản thiên nhiên thế giới vào các năm 1994 và 2000",
+          url: "/olympia/media/tangtoc_cau2_clue4.png",
         },
       ],
     },
     {
       category: "arrange",
-      q: "[Câu 3 — Sắp xếp 6 mảnh] Sắp xếp các hành tinh và thiên thể sau theo thứ tự khoảng cách từ gần Mặt Trời nhất đến xa Mặt Trời nhất: (1) Sao Hỏa, (2) Sao Thủy, (3) Sao Mộc, (4) Sao Kim, (5) Sao Thổ, (6) Trái Đất.",
+      q: "[Câu 3 — Sắp xếp 6 mảnh] Sắp xếp 6 thiên thể sau theo thứ tự khoảng cách từ gần Mặt Trời nhất đến xa Mặt Trời nhất: (1) Sao Hỏa, (2) Sao Thủy, (3) Sao Mộc, (4) Sao Kim, (5) Sao Thổ, (6) Trái Đất.",
       type: "image",
+      media: "/olympia/media/tangtoc_cau3_arrange.png",
       answer: "246135",
       duration: 30,
     },
     {
       category: "data",
-      q: "[Câu 4 — Dữ kiện tổng hợp] Đây là ai? Nhà vật lý, toán học vĩ đại người Anh (1643–1727), tác giả bộ sách 'Principia', người phát hiện định luật vạn vật hấp dẫn và 3 định luật cơ học cổ điển.",
-      type: "image",
+      q: "[Câu 4 — Dữ kiện tổng hợp / Video] Đây là ai? Nhà vật lý, toán học vĩ đại người Anh (1643–1727), tác giả bộ sách 'Principia', người phát biểu 3 định luật chuyển động và định luật vạn vật hấp dẫn.",
+      type: "video",
+      media: "/olympia/media/tangtoc_cau4_video.webm",
       answer: "Isaac Newton",
       duration: 30,
     },

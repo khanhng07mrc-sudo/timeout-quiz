@@ -275,12 +275,21 @@ export default function AdminSandboxPage() {
     return /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(bank.title || "");
   }, []);
 
+  const [creating, setCreating] = useState(false);
+  const [isLaunchingAnim, setIsLaunchingAnim] = useState(false);
+  const [isLaunchReady, setIsLaunchReady] = useState(false);
+  const [launchSourceRect, setLaunchSourceRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [launchingMeta, setLaunchingMeta] = useState<typeof AVAILABLE_MODES[0] | null>(null);
+  const [roomState, setRoomState] = useState<RoomState | null>(null);
+
+  const effectiveActiveMode = roomState?.mode || selectedMode;
+
   const formatCleanBankTitle = useCallback((bank: any) => {
     if (bank.isOlympia || effectiveActiveMode === "OLYMPIA") {
       const cleanTitle = (bank.title || bank.name || "")
         .replace(/^[(Olympia|Đề Thi|Đề thi|Ô Chữ|Trắc Nghiệm)]\s*/gi, "")
         .trim();
-      const count = bank._count?.questions ?? (bank.set?.khoiDong?.length || 0);
+      const count = bank._count?.questions ?? countOlympiaQuestions(bank.set);
       return `🏔️ ${cleanTitle}${count > 0 ? ` (${count} câu)` : ""}`;
     }
     const isWp = isWordPuzzleBank(bank);
@@ -295,14 +304,7 @@ export default function AdminSandboxPage() {
     return `${icon}${cleanTitle} (${count} ${isWp ? "vòng" : "câu"})`;
   }, [isWordPuzzleBank, effectiveActiveMode]);
 
-  const [creating, setCreating] = useState(false);
-  const [isLaunchingAnim, setIsLaunchingAnim] = useState(false);
-  const [isLaunchReady, setIsLaunchReady] = useState(false);
-  const [launchSourceRect, setLaunchSourceRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
-  const [launchingMeta, setLaunchingMeta] = useState<typeof AVAILABLE_MODES[0] | null>(null);
-  const [roomState, setRoomState] = useState<RoomState | null>(null);
 
-  const effectiveActiveMode = roomState?.mode || selectedMode;
   const compatibleBanks = useMemo(() => {
     if (effectiveActiveMode === "OLYMPIA") {
       const olyBanks = getOlympiaBanks();

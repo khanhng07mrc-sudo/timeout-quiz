@@ -359,6 +359,17 @@ export default function CreateRoomPage() {
       const isDeviceOnly = mode === "CLASSIC" || mode === "ELIMINATION";
       const finalAnswerMethod = isDeviceOnly ? "DEVICE" : answerMethod;
 
+      let olympiaConfig: any = undefined;
+      if (mode === "OLYMPIA") {
+        const olyBanks = getOlympiaBanks();
+        const found = olyBanks.find((b) => b.id === quizBankId) || olyBanks[0] || getPresetOlympiaBanks()[0];
+        olympiaConfig = {
+          rulesetId: "O26",
+          rounds: ["khoiDong", "vcnv", "tangToc", "veDich"],
+          questionSet: found?.set,
+        };
+      }
+
       const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;

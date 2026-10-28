@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { RULESETS, RULESET_LIST } from "@/lib/olympia/rulesets";
+import { RULESETS, RULESET_LIST, RULESET_YEAR_BUTTONS } from "@/lib/olympia/rulesets";
 import { SAMPLE_QUESTION_SET } from "@/lib/olympia/sample-questions";
+import { analyzeSetInventoryAndThresholds } from "@/lib/olympia/ai-classifier";
+import { getOlympiaBanks, type OlympiaBankItem } from "@/lib/olympia/olympia-storage";
+import OlympiaQuestionStudioModal from "@/components/olympia/OlympiaQuestionStudioModal";
 import {
   applyMediaMap,
   baseName,
@@ -34,6 +37,19 @@ export default function CreateOlympiaPage() {
   const [uploading, setUploading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [err, setErr] = useState("");
+  const [showRulesInfo, setShowRulesInfo] = useState(false);
+  const [showStudio, setShowStudio] = useState(false);
+  const [banks, setBanks] = useState<OlympiaBankItem[]>([]);
+  const [selectedBankId, setSelectedBankId] = useState<string>("olympia_preset_o25_o26_full");
+
+  useEffect(() => {
+    const loaded = getOlympiaBanks();
+    setBanks(loaded);
+    if (loaded.length > 0) {
+      setSelectedBankId(loaded[0].id);
+      setQuestionSet(loaded[0].set);
+    }
+  }, []);
 
   const authHeader = (): Record<string, string> => {
     const token =
@@ -172,6 +188,7 @@ export default function CreateOlympiaPage() {
   const finalSet = applyMediaMap(questionSet, mediaMap);
   const missingMedia = localMediaRefs(finalSet);
   const stats = statsOf(finalSet);
+  const inventory = useMemo(() => analyzeSetInventoryAndThresholds(finalSet, 4), [finalSet]);
   const rs = RULESETS[rulesetId];
 
   const onCreate = async () => {
@@ -238,24 +255,84 @@ export default function CreateOlympiaPage() {
       </section>
 
       <section className="rounded-2xl border border-white/15 bg-slate-900/70 p-4 space-y-3">
-        <div className="text-sm font-bold text-sky-300">2. Chọn bộ luật (mùa Olympia)</div>
-        <div className="grid sm:grid-cols-3 gap-2">
-          {RULESET_LIST.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => setRulesetId(r.id)}
-              className={`text-left rounded-xl p-3 border transition ${rulesetId === r.id ? "border-yellow-300 bg-yellow-300/15" : "border-white/15 bg-white/5 hover:bg-white/10"}`}
-            >
-              <div className="font-black text-lg">{r.label}</div>
-              <div className="text-xs text-slate-300 mt-1">{r.note}</div>
-            </button>
-          ))}
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-bold text-sky-300">2. Chọn bộ luật: Olympia năm thứ</div>
+          <button
+            type="button"
+            onClick={() => setShowRulesInfo((v) => !v)}
+            title="Xem chi tiết định nghĩa bộ luật các mùa Olympia"
+            className={`w-7 h-7 rounded-full border flex items-center justify-center text-xs font-black transition ${
+              showRulesInfo
+                ? "border-yellow-300 bg-yellow-300 text-slate-950"
+                : "border-sky-400/50 bg-sky-500/15 text-sky-300 hover:bg-sky-500/30"
+            }`}
+          >
+            i
+          </button>
         </div>
-        <div className="text-xs text-slate-400">
-          Âm thanh mùa: <b>{rs.audioSeason}</b> · Điểm CNV: <b>{rs.vcnv.cnvPoints.join(" / ")}</b> · Gói Về Đích:{" "}
-          <b>{rs.veDich.pointOptions.join(" / ")}đ</b>
+        <div className="grid grid-cols-5 sm:grid-cols-9 gap-2">
+          {RULESET_YEAR_BUTTONS.map((btnItem) => {
+            const active = rulesetId === btnItem.id;
+            return (
+              <button
+                key={btnItem.id}
+                type="button"
+                title={btnItem.fullTitle}
+                onClick={() => setRulesetId(btnItem.id)}
+                className={`rounded-xl py-2.5 px-2 border text-center font-black text-base transition ${
+                  active
+                    ? "border-yellow-300 bg-yellow-300/20 text-yellow-300 shadow-md"
+                    : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                }`}
+              >
+                {btnItem.numberLabel}
+              </button>
+            );
+          })}
         </div>
+
+        {showRulesInfo && (
+          <div className="rounded-xl border border-sky-400/30 bg-slate-950/90 p-3.5 space-y-2.5 text-xs animate-fade-in">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <span className="font-bold text-yellow-300">
+                ℹ️ Chi tiết bộ luật đang chọn: {rs.label} (Âm thanh: {rs.audioSeason})
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowRulesInfo(false)}
+                className="text-slate-400 hover:text-white font-bold"
+              >
+                Đóng ✕
+              </button>
+            </div>
+            <p className="text-slate-200 leading-relaxed">{rs.note}</p>
+            <div className="text-slate-400">
+              Điểm giải CNV: <b className="text-slate-200">{rs.vcnv.cnvPoints.join(" / ")}đ</b> · Mức điểm Về Đích:{" "}
+              <b className="text-slate-200">{rs.veDich.pointOptions.join(" / ")}đ</b>
+            </div>
+            <details className="pt-1 border-t border-white/10">
+              <summary className="cursor-pointer text-sky-300 font-semibold">
+                Xem bảng tra cứu toàn bộ các mùa Olympia (13 → 26)
+              </summary>
+              <div className="mt-2 space-y-1.5 text-slate-300">
+                {RULESET_LIST.map((item) => (
+                  <div key={item.id} className="p-2 rounded bg-white/5 border border-white/5">
+                    <b className="text-yellow-300">{item.label}:</b> {item.note}
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3.5 flex items-center justify-between gap-3">
+        <div className="text-xs text-cyan-100">
+          <b className="text-cyan-300">🎙 Phương thức điều khiển & Chấm điểm:</b> Mặc định MC/Admin điều khiển & chấm điểm toàn quyền (Ở VCNV & Tăng Tốc thí sinh nhập đáp án trực tiếp về máy MC, máy không tự chấm Đúng/Sai).
+        </div>
+        <span className="px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-xs font-black shrink-0">
+          Mặc định qua MC/Admin
+        </span>
       </section>
 
       <section className="rounded-2xl border border-white/15 bg-slate-900/70 p-4 space-y-3">
@@ -283,18 +360,14 @@ export default function CreateOlympiaPage() {
 
       <section className="rounded-2xl border border-white/15 bg-slate-900/70 p-4 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="text-sm font-bold text-sky-300">4. Bộ câu hỏi & Media</div>
-          <div className="flex gap-2 text-xs">
+          <div className="text-sm font-bold text-sky-300">4. Kho câu hỏi Olympia & Media</div>
+          <div className="flex flex-wrap gap-2 text-xs">
             <button
               type="button"
-              onClick={() => {
-                setQuestionSet(SAMPLE_QUESTION_SET);
-                setWarnings([]);
-                setMediaMap({});
-              }}
-              className="px-2 py-1 rounded border border-white/20 bg-white/10"
+              onClick={() => setShowStudio(true)}
+              className="px-3 py-1.5 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black"
             >
-              Dùng bộ mẫu có sẵn
+              🛠 Mở Studio Kho Đề Olympia & Quản Lý Câu Đã Dùng
             </button>
             <button type="button" onClick={downloadSampleExcel} className="px-2 py-1 rounded border border-white/20 bg-white/10">
               ⬇ Tải mẫu Excel (.xlsx)
@@ -303,6 +376,27 @@ export default function CreateOlympiaPage() {
               ⬇ Tải mẫu JSON
             </button>
           </div>
+        </div>
+
+        {/* Select from saved Olympia Banks */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-slate-300 font-semibold">Chọn từ Kho đề Olympia đã lưu:</span>
+          <select
+            value={selectedBankId}
+            onChange={(e) => {
+              const id = e.target.value;
+              setSelectedBankId(id);
+              const found = banks.find((b) => b.id === id);
+              if (found) setQuestionSet(found.set);
+            }}
+            className="flex-1 bg-slate-950 border border-white/20 rounded-lg px-3 py-1.5 text-xs font-bold text-yellow-300"
+          >
+            {banks.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex flex-wrap gap-3 items-center text-sm">
@@ -321,19 +415,29 @@ export default function CreateOlympiaPage() {
         </div>
 
         <div className="grid sm:grid-cols-3 gap-2 text-xs text-slate-300 bg-white/5 rounded-xl p-3">
-          <div>Khởi động riêng (ghế 1–4): {stats.soloPerSeat.join(" / ")} câu</div>
-          <div>Khởi động chung: {stats.shared} câu</div>
+          <div>
+            Khởi động: Tổng <b>{inventory.kdTotal.total}</b> · Đã dùng{" "}
+            <b className="text-amber-300">{inventory.kdTotal.used}</b> · Còn lại{" "}
+            <b className="text-emerald-300">{inventory.kdTotal.remaining}</b> câu
+          </div>
           <div>
             VCNV: {stats.vcnvRows}/4 hàng · Từ khóa: <b>{finalSet.vcnv.answer || "—"}</b>
           </div>
-          <div>Tăng Tốc: {stats.tangToc} câu</div>
+          <div>Tăng Tốc: {stats.tangToc}/4 câu</div>
           <div>
-            Về Đích:{" "}
+            Về Đích: Tổng <b>{inventory.vdTotal.total}</b> · Đã dùng{" "}
+            <b className="text-amber-300">{inventory.vdTotal.used}</b> · Còn lại{" "}
+            <b className="text-emerald-300">{inventory.vdTotal.remaining}</b> câu
+          </div>
+          <div>
+            Chi tiết VĐ:{" "}
             {Object.entries(stats.veDich)
               .map(([k, v]) => `${k}đ:${v}`)
               .join(" · ")}
           </div>
-          <div>Câu hỏi phụ: {stats.cauHoiPhu} câu</div>
+          <div>
+            Câu hỏi phụ: Tổng <b>{inventory.chpTotal.total}</b> (Còn {inventory.chpTotal.remaining})
+          </div>
         </div>
 
         {warnings.length > 0 && (
@@ -387,6 +491,23 @@ export default function CreateOlympiaPage() {
       >
         {creating ? "Đang tạo phòng…" : "🚀 Tạo phòng & Mở bàn điều khiển"}
       </button>
+
+      {showStudio && (
+        <OlympiaQuestionStudioModal
+          open={showStudio}
+          onClose={() => setShowStudio(false)}
+          initialSet={finalSet}
+          bankId={selectedBankId}
+          bankName={finalSet.name}
+          onApply={(updatedSet, savedId) => {
+            setQuestionSet(updatedSet);
+            const refreshed = getOlympiaBanks();
+            setBanks(refreshed);
+            if (savedId) setSelectedBankId(savedId);
+            setShowStudio(false);
+          }}
+        />
+      )}
     </div>
   );
 }

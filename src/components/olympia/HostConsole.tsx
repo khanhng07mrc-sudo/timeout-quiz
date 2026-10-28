@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
-import { normalizeAnswer } from "@/lib/olympia/engine";
 import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId } from "@/lib/olympia/types";
 import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
+import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
 import { MediaView, Panel, ScoreStrip, SEAT_COLORS, Timer, activeSeats, btn, btnBad, btnOk, btnPrimary, seatName } from "./ui";
 
 export default function HostConsole({ code, hostKey }: { code: string; hostKey: string }) {
   const { state, join, connected, emit, serverNow } = useOlympiaSocket({ code, role: "host", hostKey });
   const [err, setErr] = useState("");
   const [audioOn, setAudioOn] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
   useOlympiaAudio(state, join?.audioSeason, audioOn);
 
   const call = async (type: string, extra: Record<string, unknown> = {}) => {
@@ -32,19 +33,31 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       <header className="flex flex-wrap items-center gap-3 justify-between">
         <div>
           <h1 className="text-2xl font-black text-sky-300">🏔️ Đường lên đỉnh Olympia — Bàn điều khiển</h1>
-          <p className="text-sm text-slate-300">
-            Phòng <b className="text-yellow-300 text-lg">{code}</b> · Luật <b>{rs.label}</b> · {connected ? "🟢 Đã kết nối" : "🔴 Mất kết nối"}
+          <p className="text-sm text-slate-300 flex flex-wrap items-center gap-2">
+            <span>
+              Phòng <b className="text-yellow-300 text-lg">{code}</b> · Luật <b>{rs.label}</b> · {connected ? "🟢 Đã kết nối" : "🔴 Mất kết nối"}
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/20 border border-cyan-400/40 text-cyan-200">
+              🎙 Mặc định: MC/Admin điều khiển & chấm điểm toàn quyền
+            </span>
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
+          <button
+            type="button"
+            className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm shadow"
+            onClick={() => setShowTranscript(true)}
+          >
+            📋 Biên bản ({(state.transcript ?? []).length})
+          </button>
           <a className={btn} href={`/olympia/display/${code}`} target="_blank" rel="noreferrer">
             📺 Màn hình chiếu
           </a>
           <button className={btn} onClick={() => navigator.clipboard?.writeText(`${origin}/play?pin=${code}`)}>
-            📋 Chép link thí sinh
+            📋 Link thí sinh
           </button>
           <button className={btn} onClick={() => setAudioOn((v) => !v)}>
-            {audioOn ? "🔊 Âm thanh bật" : "🔈 Bật âm thanh"}
+            {audioOn ? "🔊 Âm thanh" : "🔈 Tắt tiếng"}
           </button>
         </div>
       </header>
@@ -80,6 +93,12 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
           ))}
         </div>
       </Panel>
+
+      <OlympiaTranscriptModal
+        open={showTranscript}
+        onClose={() => setShowTranscript(false)}
+        state={state}
+      />
     </div>
   );
 }
@@ -282,19 +301,10 @@ function VcnvPanel({ state, call, serverNow }: { state: OlympiaState; call: Call
   const seats = activeSeats(state);
   const row = v.currentRow >= 0 && v.currentRow < 4 ? v.rows[v.currentRow] : null;
   const isCenterRow = v.currentRow === 4;
-  const currentTargetAnswer = isCenterRow ? (v.centerQuestion?.a ?? v.keyword) : (row?.answer ?? "");
-  const [checked, setChecked] = useState<number[] | null>(null);
-  useEffect(() => setChecked(null), [v.currentRow]);
-  const auto = useMemo(
-    () =>
-      v.currentRow >= 0 && currentTargetAnswer
-        ? seats
-            .filter((s) => !v.eliminatedSeats.includes(s.id) && normalizeAnswer(v.answers[s.id]?.text ?? "") === normalizeAnswer(currentTargetAnswer))
-            .map((s) => s.id)
-        : [],
-    [v.currentRow, currentTargetAnswer, seats, v.answers, v.eliminatedSeats]
-  );
-  const sel = checked ?? auto;
+  // Mặc định để trống toàn bộ ô tích (0 người được chọn sẵn): MC/Admin tự tay tích chọn thí sinh trả lời đúng
+  const [checked, setChecked] = useState<number[]>([]);
+  useEffect(() => setChecked([]), [v.currentRow]);
+  const sel = checked;
   const currentCnvPts = cnvPointsFor(rs, v.openedCount, Boolean(v.centerOpened));
   return (
     <Panel title="Vượt Chướng Ngại Vật">
@@ -340,10 +350,10 @@ function VcnvPanel({ state, call, serverNow }: { state: OlympiaState; call: Call
           </div>
           <div className="flex flex-wrap gap-2">
             <button className={btn} onClick={() => call("vcnv:timer")}>
-              ⏱ 15s Bắt đầu/Tạm dừng
+              ⏱ 15s
             </button>
             <button className={btn} onClick={() => call("vcnv:reveal")}>
-              👁 Lật đáp án thí sinh
+              👁 Lật đáp án
             </button>
             <button className={btnOk} onClick={() => call("vcnv:correct", { seatIds: sel })}>
               ✔ Chấm đúng ({sel.length})
@@ -352,7 +362,13 @@ function VcnvPanel({ state, call, serverNow }: { state: OlympiaState; call: Call
               ✘ Không ai đúng
             </button>
             <button className={btn} onClick={() => call("vcnv:revealTile")}>
-              🧩 Lật miếng ghép
+              🧩 Lật mảnh
+            </button>
+            <button className={btn} onClick={() => call("vcnv:revealRowsOnly")}>
+              🔤 Mở hết ô chữ
+            </button>
+            <button className={btn} onClick={() => call("vcnv:revealPiecesOnly")}>
+              🧩 Mở hết mảnh ghép
             </button>
             <button className={btn} onClick={() => call("vcnv:revealAll")}>
               Mở tất cả
@@ -362,21 +378,41 @@ function VcnvPanel({ state, call, serverNow }: { state: OlympiaState; call: Call
             </button>
           </div>
           {(row || isCenterRow) && (
-            <div className="rounded-lg bg-white/5 p-2">
-              <div className="text-xs text-slate-400 mb-1">
-                Đáp án thí sinh cho {isCenterRow ? "Ô Trung Tâm (Câu 5)" : `Hàng ${v.currentRow + 1}`} (tích để cộng {rs.vcnv.rowPoints}đ)
+            <div className="rounded-lg bg-white/5 p-2.5 space-y-1.5">
+              <div className="text-xs text-slate-300 mb-1">
+                Đáp án thí sinh cho <b>{isCenterRow ? "Ô Trung Tâm (Câu 5)" : `Hàng ${v.currentRow + 1}`}</b> — MC tự tích chọn thí sinh đúng (+{rs.vcnv.rowPoints}đ):
               </div>
-              {seats.map((s) => (
-                <label key={s.id} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={sel.includes(s.id)}
-                    onChange={(e) => setChecked(e.target.checked ? [...sel, s.id] : sel.filter((x) => x !== s.id))}
-                  />
-                  <span style={{ color: SEAT_COLORS[s.id] }}>{s.name}</span>: <b>{v.answers[s.id]?.text || "—"}</b>
-                  {v.eliminatedSeats.includes(s.id) && <span className="text-rose-300">(đã bị loại)</span>}
-                </label>
-              ))}
+              {seats.map((s) => {
+                const ans = v.answers[s.id];
+                return (
+                  <label key={s.id} className="flex flex-wrap items-center gap-2 text-sm py-0.5">
+                    <input
+                      type="checkbox"
+                      checked={sel.includes(s.id)}
+                      onChange={(e) => setChecked(e.target.checked ? [...sel, s.id] : sel.filter((x) => x !== s.id))}
+                    />
+                    <span className="font-bold" style={{ color: SEAT_COLORS[s.id] }}>
+                      {s.name}:
+                    </span>
+                    <b className="text-white">{ans?.text || "—"}</b>
+                    {ans?.ms != null && (
+                      <span className="text-xs font-mono text-cyan-300">({(ans.ms / 1000).toFixed(2)}s)</span>
+                    )}
+                    {ans?.previousText && (
+                      <span className="text-xs text-amber-200/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-400/20">
+                        Áp chót: &ldquo;{ans.previousText}&rdquo;
+                        {ans.previousMs != null ? ` (${(ans.previousMs / 1000).toFixed(2)}s)` : ""}
+                      </span>
+                    )}
+                    {ans?.history && ans.history.length > 2 && (
+                      <span className="text-[11px] text-slate-400">
+                        ({ans.history.length} lần nhập)
+                      </span>
+                    )}
+                    {v.eliminatedSeats.includes(s.id) && <span className="text-rose-300 text-xs">(đã bị loại)</span>}
+                  </label>
+                );
+              })}
             </div>
           )}
           <div className="rounded-lg bg-white/5 p-2">
@@ -409,10 +445,10 @@ function VcnvPanel({ state, call, serverNow }: { state: OlympiaState; call: Call
 function TangTocPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
   const tt = state.tangToc!;
   const q = tt.questions[tt.qIdx];
-  const [checked, setChecked] = useState<number[] | null>(null);
-  useEffect(() => setChecked(null), [tt.qIdx, tt.phase]);
-  const auto = tt.ranking.filter((r) => !r.noAnswer && normalizeAnswer(r.answer) === normalizeAnswer(tt.correctAnswer ?? "")).map((r) => r.seat);
-  const sel = checked ?? auto;
+  // Mặc định để trống toàn bộ ô tích (0 người được chọn sẵn): MC/Admin tự tay tích chọn thí sinh đúng
+  const [checked, setChecked] = useState<number[]>([]);
+  useEffect(() => setChecked([]), [tt.qIdx, tt.phase]);
+  const sel = checked;
   return (
     <Panel title={`Tăng Tốc — Câu ${tt.qIdx + 1}/${tt.questions.length}`}>
       <div className="grid md:grid-cols-3 gap-4">
@@ -437,7 +473,7 @@ function TangTocPanel({ state, call, serverNow }: { state: OlympiaState; call: C
               ⏱ Bắt đầu/Tạm dừng
             </button>
             <button className={btn} onClick={() => call("tt:reveal")}>
-              👁 Lật bảng xếp hạng
+              👁 Lật xếp hạng
             </button>
             <button className={btnOk} disabled={tt.phase !== "ranking"} onClick={() => call("tt:grade", { correctSeats: sel })}>
               ✔ Chấm điểm ({sel.length} đúng)
@@ -452,20 +488,32 @@ function TangTocPanel({ state, call, serverNow }: { state: OlympiaState; call: C
             </div>
           )}
           {tt.ranking.length > 0 && (
-            <div className="rounded-lg bg-white/5 p-2 space-y-1">
+            <div className="rounded-lg bg-white/5 p-2.5 space-y-1.5">
+              <div className="text-xs text-slate-300 mb-1">
+                Thứ tự trả lời của thí sinh — MC tự tích chọn những người trả lời Đúng rồi bấm <b>Chấm điểm</b>:
+              </div>
               {tt.ranking.map((r, i) => (
-                <label key={r.seat} className="flex items-center gap-2 text-sm">
+                <label key={r.seat} className="flex flex-wrap items-center gap-2 text-sm py-0.5">
                   <input
                     type="checkbox"
                     disabled={tt.phase === "graded" || r.noAnswer}
                     checked={sel.includes(r.seat)}
                     onChange={(e) => setChecked(e.target.checked ? [...sel, r.seat] : sel.filter((x) => x !== r.seat))}
                   />
-                  <span className="w-5">{i + 1}.</span>
+                  <span className="w-6 font-mono font-bold text-yellow-300">#{i + 1}</span>
                   <b style={{ color: SEAT_COLORS[r.seat] }}>{seatName(state, r.seat)}</b>
                   <span>{r.noAnswer ? "(không trả lời)" : `“${r.answer}” — ${(r.ms / 1000).toFixed(2)}s`}</span>
-                  {r.points ? <span className="text-yellow-300">+{r.points}</span> : null}
-                  {r.wrong && <span className="text-rose-300">sai</span>}
+                  {r.previousAnswer && (
+                    <span className="text-xs text-amber-200/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-400/20">
+                      Áp chót: &ldquo;{r.previousAnswer}&rdquo;
+                      {r.previousMs != null ? ` (${(r.previousMs / 1000).toFixed(2)}s)` : ""}
+                    </span>
+                  )}
+                  {r.history && r.history.length > 2 && (
+                    <span className="text-[11px] text-slate-400">({r.history.length} lần nhập)</span>
+                  )}
+                  {r.points ? <span className="text-emerald-300 font-bold">+{r.points}đ</span> : null}
+                  {r.wrong && <span className="text-rose-300 text-xs">✘ Sai</span>}
                 </label>
               ))}
             </div>

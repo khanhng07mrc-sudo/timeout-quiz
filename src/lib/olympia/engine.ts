@@ -1,5 +1,6 @@
 // Olympia game engine — pure state machine (no sockets, no I/O). Fully unit-testable.
 import { RULESETS, cnvPointsFor, tangTocTierPoints } from "./rulesets";
+import { buildBalancedKhoiDongQueues, pickBalancedVeDichPackage, tagQAWithAI } from "./ai-classifier";
 import {
   KHOI_DONG_SUBJECTS,
   MAX_SEATS,
@@ -12,11 +13,14 @@ import {
   type OlympiaConfig,
   type OlympiaRuleset,
   type OlympiaState,
+  type OlympiaTranscriptEntry,
   type QA,
   type RoundId,
   type Seat,
   type TangTocState,
   type TimerState,
+  type TranscriptBuzzerItem,
+  type TranscriptSubmissionItem,
   type VcnvState,
   type VeDichQuestion,
   type VeDichState,
@@ -104,10 +108,38 @@ export class OlympiaGame {
       version: 0,
       now,
       log: [],
+      openedQuestionKeys: [],
+      transcript: [],
     };
   }
 
   // ── helpers ──
+  private seatName(id: number): string {
+    return this.seat(id)?.name || `Ghế ${id + 1}`;
+  }
+
+  private pushTranscript(entry: Omit<OlympiaTranscriptEntry, "seq" | "scoresAfter">) {
+    if (!this.state.transcript) this.state.transcript = [];
+    const scoresAfter: Record<number, number> = {};
+    for (const id of this.activeSeatIds) {
+      scoresAfter[id] = this.seat(id)?.score ?? 0;
+    }
+    this.state.transcript.push({
+      ...entry,
+      seq: this.state.transcript.length + 1,
+      scoresAfter,
+    });
+  }
+
+  private recordOpenedQuestion(qText?: string) {
+    if (!qText) return;
+    const clean = qText.trim();
+    if (!clean) return;
+    if (!this.state.openedQuestionKeys) this.state.openedQuestionKeys = [];
+    if (!this.state.openedQuestionKeys.includes(clean)) {
+      this.state.openedQuestionKeys.push(clean);
+    }
+  }
   private cue(sound: string, kind: "sound" | "bgm" | "stop" = "sound") {
     this.state.cueSeq += 1;
     this.state.cue = { id: this.state.cueSeq, sound, kind };
@@ -246,6 +278,11 @@ export class OlympiaGame {
         const segs: KdSegmentDef[] = this.ruleset.khoiDong.segments(active.length).map((seg) =>
           seg.kind === "solo" ? { ...seg, seat: active[seg.seat as number], label: seg.label } : seg
         );
+        const useBalanced = this.config.balancedRandom !== false && qs.balancedRandom !== false;
+        const maxSoloQuestions = Math.max(12, ...segs.filter((s) => s.kind === "solo").map((s) => Math.min(s.questions, 24)));
+        const balanced = useBalanced
+          ? buildBalancedKhoiDongQueues(qs.khoiDong, active, maxSoloQuestions)
+          : undefined;
         st.khoiDong = {
           segments: segs,
           segIdx: 0,
@@ -258,6 +295,8 @@ export class OlympiaGame {
           lockedSeats: [],
           nextLockedSeats: [],
           poolCursor: 0,
+          seatQueues: balanced?.seatQueues,
+          sharedQueue: balanced?.sharedQueue,
           current: null,
           lastVerdict: null,
         };
@@ -324,6 +363,7 @@ export class OlympiaGame {
           hopeStarActive: false,
           deductedOnSteal: false,
           pointers: {},
+          usedKeys: [],
           lastVerdict: null,
         };
         this.cue("4_VeDich/choose_package");
@@ -333,6 +373,10 @@ export class OlympiaGame {
         const tie = this.topTie();
         const tied = tie.length >= 2 ? tie : forced ? [...active] : [];
         if (tied.length < 2 && !forced) return fail("Không có thí sinh đồng hạng");
+        const chpQuestions = [
+          ...qs.cauHoiPhu.filter((q) => !q.used),
+          ...qs.cauHoiPhu.filter((q) => q.used),
+        ].map((q) => tagQAWithAI(q, false));
         st.cauHoiPhu = {
           tied,
           qIdx: -1,
@@ -342,7 +386,7 @@ export class OlympiaGame {
           buzzedSeat: null,
           buzzedThisQuestion: [],
           winner: null,
-          questions: qs.cauHoiPhu,
+          questions: chpQuestions,
         };
         break;
       }
@@ -433,7 +477,20 @@ export class OlympiaGame {
       case "score:adjust": {
         const id = num("seat");
         if (!this.seat(id)) return fail("Ghế không hợp lệ");
-        this.addScore(id, Number(a.delta) || 0);
+        const delta = Number(a.delta) || 0;
+        this.addScore(id, delta);
+        this.pushTranscript({
+          at: now,
+          round: st.currentRound ?? "system",
+          roundLabel: st.currentRound ? ROUND_LABELS[st.currentRound] : "Hệ thống",
+          segmentLabel: "Điều chỉnh điểm thủ công",
+          entryKind: "score_adjust",
+          actorSeat: id,
+          actorName: this.seatName(id),
+          verdict: "info",
+          scoreChanges: { [id]: delta },
+          note: `Quản trò điều chỉnh điểm ${this.seatName(id)}: ${delta >= 0 ? "+" : ""}${delta}`,
+        });
         return OK;
       }
       case "seat:kick":
@@ -471,12 +528,22 @@ export class OlympiaGame {
   // ───────────────────────── KHỞI ĐỘNG ─────────────────────────
   private kdPoolQuestion(kd: KhoiDongState, seg: KdSegmentDef): QA | null {
     const set = this.config.questionSet.khoiDong;
+    const attach = (item: QA | null): QA | null => {
+      if (!item) return null;
+      const tagged = tagQAWithAI(item, false);
+      return {
+        ...tagged,
+        subject: tagged.subject || KHOI_DONG_SUBJECTS[Math.max(0, kd.qIdx) % KHOI_DONG_SUBJECTS.length],
+      };
+    };
     if (seg.kind === "solo") {
-      const order = this.activeSeatIds.indexOf(seg.seat as number);
-      // seats beyond the 4 authored solo lists fall back to the shared pool
+      const seatId = seg.seat as number;
+      if (kd.seatQueues && kd.seatQueues[seatId] && kd.seatQueues[seatId].length > 0) {
+        const qList = kd.seatQueues[seatId];
+        return attach(qList[kd.qIdx % qList.length] ?? null);
+      }
+      const order = this.activeSeatIds.indexOf(seatId);
       const pool = set.solo[String(order + 1)] ?? set.shared;
-      const attach = (item: QA | null): QA | null =>
-        item ? { ...item, subject: item.subject || KHOI_DONG_SUBJECTS[Math.max(0, kd.qIdx) % KHOI_DONG_SUBJECTS.length] } : null;
       if (kd.qIdx < pool.length) return attach(pool[kd.qIdx] ?? null);
       const flatSolo = [...set.shared, ...Object.values(set.solo).flat()];
       if (flatSolo.length === 0) return null;
@@ -484,11 +551,16 @@ export class OlympiaGame {
       kd.poolCursor += 1;
       return attach(item);
     }
+    if (kd.sharedQueue && kd.sharedQueue.length > 0) {
+      const q = kd.sharedQueue[kd.poolCursor % kd.sharedQueue.length];
+      kd.poolCursor += 1;
+      return attach(q);
+    }
     const flat = [...set.shared, ...Object.values(set.solo).flat()];
     if (flat.length === 0) return null;
     const q = flat[kd.poolCursor % flat.length];
     kd.poolCursor += 1;
-    return { ...q, subject: q.subject || KHOI_DONG_SUBJECTS[Math.max(0, kd.qIdx) % KHOI_DONG_SUBJECTS.length] };
+    return attach(q);
   }
 
   private kdAction(type: string, a: HostAction, now: number): ActionResult {
@@ -534,7 +606,17 @@ export class OlympiaGame {
           kd.current = null;
           return OK;
         }
-        kd.current = { q: q.q, a: q.a, subject: q.subject, media: q.media, mediaType: q.mediaType };
+        q.used = true;
+        this.recordOpenedQuestion(q.q);
+        kd.current = {
+          q: q.q,
+          a: q.a,
+          subject: q.subject,
+          kdZone: q.kdZone,
+          vdZone: q.vdZone,
+          media: q.media,
+          mediaType: q.mediaType,
+        };
         kd.phase = "question";
         resetTimer(kd.timer, seg.perQuestionMs);
         kd.buzzedSeat = null;
@@ -577,6 +659,32 @@ export class OlympiaGame {
         if (isSolo && seg.globalMs && kd.globalTimer && kd.qIdx + 1 >= seg.questions) {
           pauseTimer(kd.globalTimer, now);
         }
+        const buzzers: TranscriptBuzzerItem[] = [];
+        if (!isSolo) {
+          kd.lockedSeats.forEach((sId, idx) => {
+            buzzers.push({ order: idx + 1, seat: sId, name: this.seatName(sId), verdict: "wrong" });
+          });
+          buzzers.push({ order: buzzers.length + 1, seat: target, name: this.seatName(target), verdict: "correct" });
+        }
+        this.pushTranscript({
+          at: now,
+          round: "khoiDong",
+          roundLabel: ROUND_LABELS.khoiDong,
+          segmentLabel: `${seg.label} • Câu ${kd.qIdx + 1}`,
+          entryKind: "question",
+          questionText: kd.current?.q,
+          correctAnswer: kd.current?.a,
+          subject: kd.current?.subject,
+          kdZone: kd.current?.kdZone,
+          vdZone: kd.current?.vdZone,
+          mediaUrl: kd.current?.media,
+          actorSeat: target,
+          actorName: this.seatName(target),
+          selectedPoints: rs.correctPoints,
+          buzzerEvents: buzzers.length > 0 ? buzzers : undefined,
+          verdict: "correct",
+          scoreChanges: { [target]: rs.correctPoints },
+        });
         kd.buzzOpen = false;
         kd.phase = "result";
         kd.lastVerdict = "correct";
@@ -586,12 +694,31 @@ export class OlympiaGame {
       case "kd:wrong": {
         if (kd.phase !== "question") return fail("Chưa mở câu hỏi");
         if (isSolo) {
+          const target = seg.seat as number;
           kd.phase = "result";
           kd.lastVerdict = "wrong";
           pauseTimer(kd.timer, now);
           if (seg.globalMs && kd.globalTimer && kd.qIdx + 1 >= seg.questions) {
             pauseTimer(kd.globalTimer, now);
           }
+          this.pushTranscript({
+            at: now,
+            round: "khoiDong",
+            roundLabel: ROUND_LABELS.khoiDong,
+            segmentLabel: `${seg.label} • Câu ${kd.qIdx + 1}`,
+            entryKind: "question",
+            questionText: kd.current?.q,
+            correctAnswer: kd.current?.a,
+            subject: kd.current?.subject,
+            kdZone: kd.current?.kdZone,
+            vdZone: kd.current?.vdZone,
+            mediaUrl: kd.current?.media,
+            actorSeat: target,
+            actorName: this.seatName(target),
+            selectedPoints: rs.correctPoints,
+            verdict: "wrong",
+            scoreChanges: { [target]: 0 },
+          });
           this.cue("1_KhoiDong/wrong");
           return OK;
         }
@@ -611,6 +738,35 @@ export class OlympiaGame {
           kd.phase = "result";
           kd.lastVerdict = "wrong";
           kd.buzzOpen = false;
+          const buzzers: TranscriptBuzzerItem[] = kd.lockedSeats.map((sId, idx) => ({
+            order: idx + 1,
+            seat: sId,
+            name: this.seatName(sId),
+            verdict: "wrong",
+          }));
+          const changes: Record<number, number> = {};
+          if (rs.wrongPenalty) {
+            kd.lockedSeats.forEach((sId) => (changes[sId] = -rs.wrongPenalty));
+          }
+          this.pushTranscript({
+            at: now,
+            round: "khoiDong",
+            roundLabel: ROUND_LABELS.khoiDong,
+            segmentLabel: `${seg.label} • Câu ${kd.qIdx + 1}`,
+            entryKind: "question",
+            questionText: kd.current?.q,
+            correctAnswer: kd.current?.a,
+            subject: kd.current?.subject,
+            kdZone: kd.current?.kdZone,
+            vdZone: kd.current?.vdZone,
+            mediaUrl: kd.current?.media,
+            actorSeat: who,
+            actorName: this.seatName(who),
+            selectedPoints: rs.correctPoints,
+            buzzerEvents: buzzers,
+            verdict: "wrong",
+            scoreChanges: changes,
+          });
         }
         return OK;
       }
@@ -620,6 +776,23 @@ export class OlympiaGame {
         kd.buzzOpen = false;
         kd.phase = "result";
         kd.lastVerdict = null;
+        this.pushTranscript({
+          at: now,
+          round: "khoiDong",
+          roundLabel: ROUND_LABELS.khoiDong,
+          segmentLabel: `${seg.label} • Câu ${kd.qIdx + 1}`,
+          entryKind: "question",
+          questionText: kd.current?.q,
+          correctAnswer: kd.current?.a,
+          subject: kd.current?.subject,
+          kdZone: kd.current?.kdZone,
+          vdZone: kd.current?.vdZone,
+          mediaUrl: kd.current?.media,
+          actorSeat: isSolo ? (seg.seat as number) : undefined,
+          actorName: isSolo ? this.seatName(seg.seat as number) : undefined,
+          selectedPoints: rs.correctPoints,
+          verdict: "skipped",
+        });
         return OK;
       }
       case "kd:buzzer": {
@@ -690,6 +863,7 @@ export class OlympiaGame {
       case "vcnv:correct": {
         if (row < 0) return fail("Chưa chọn hàng");
         const answerText = row === 4 ? (v.centerQuestion?.a ?? v.keyword) : (v.rows[row]?.answer ?? "");
+        const qText = row === 4 ? (v.centerQuestion?.q ?? "Câu hỏi số 5 (Ô trung tâm)") : (v.rows[row]?.hint ?? "");
         const target = normalizeAnswer(answerText);
         const given = Array.isArray(a.seatIds)
           ? (a.seatIds as number[]).map(Number)
@@ -700,10 +874,56 @@ export class OlympiaGame {
                 target !== ""
             );
         const awarded = given.filter((id) => this.seat(id));
-        awarded.forEach((id) => this.addScore(id, rs.vcnv.rowPoints));
+        const changes: Record<number, number> = {};
+        awarded.forEach((id) => {
+          this.addScore(id, rs.vcnv.rowPoints);
+          changes[id] = rs.vcnv.rowPoints;
+        });
         v.rowResults[row] = awarded;
         if (row === 4) v.centerWrong = false;
-        else if (v.rows[row]) v.rows[row].wrong = false;
+        else if (v.rows[row]) {
+          v.rows[row].wrong = false;
+          v.rows[row].used = true;
+        }
+        this.recordOpenedQuestion(qText);
+        const orderedSeats = [...this.activeSeatIds].sort((x, y) => {
+          const ax = v.answers[x];
+          const ay = v.answers[y];
+          const hasX = Boolean(ax?.text?.trim());
+          const hasY = Boolean(ay?.text?.trim());
+          if (hasX !== hasY) return hasX ? -1 : 1;
+          return (ax?.ms ?? ax?.at ?? 0) - (ay?.ms ?? ay?.at ?? 0) || x - y;
+        });
+        const subs: TranscriptSubmissionItem[] = orderedSeats.map((sId, idx) => {
+          const rec = v.answers[sId];
+          const isOk = awarded.includes(sId);
+          return {
+            rank: idx + 1,
+            seat: sId,
+            name: this.seatName(sId),
+            finalAnswer: rec?.text ?? "",
+            finalMs: rec?.ms ?? 0,
+            previousAnswer: rec?.previousText,
+            previousMs: rec?.previousMs,
+            allAttempts: rec?.history ? [...rec.history] : rec?.text ? [{ text: rec.text, ms: rec.ms ?? 0, at: rec.at }] : [],
+            isCorrect: isOk,
+            pointsAwarded: isOk ? rs.vcnv.rowPoints : 0,
+            noAnswer: !rec || !rec.text.trim(),
+          };
+        });
+        this.pushTranscript({
+          at: now,
+          round: "vcnv",
+          roundLabel: ROUND_LABELS.vcnv,
+          segmentLabel: row === 4 ? "Câu hỏi số 5 (Ô trung tâm)" : `Hàng ngang số ${row + 1}`,
+          entryKind: "question",
+          questionText: qText,
+          correctAnswer: answerText,
+          selectedPoints: rs.vcnv.rowPoints,
+          submissions: subs,
+          verdict: "correct",
+          scoreChanges: changes,
+        });
         v.phase = "answers";
         v.answersRevealed = true;
         pauseTimer(v.timer, now);
@@ -712,9 +932,52 @@ export class OlympiaGame {
       }
       case "vcnv:wrong": {
         if (row < 0) return fail("Chưa chọn hàng");
+        const answerText = row === 4 ? (v.centerQuestion?.a ?? v.keyword) : (v.rows[row]?.answer ?? "");
+        const qText = row === 4 ? (v.centerQuestion?.q ?? "Câu hỏi số 5 (Ô trung tâm)") : (v.rows[row]?.hint ?? "");
         if (row === 4) v.centerWrong = true;
-        else if (v.rows[row]) v.rows[row].wrong = true;
+        else if (v.rows[row]) {
+          v.rows[row].wrong = true;
+          v.rows[row].used = true;
+        }
+        this.recordOpenedQuestion(qText);
         v.rowResults[row] = [];
+        const orderedSeats = [...this.activeSeatIds].sort((x, y) => {
+          const ax = v.answers[x];
+          const ay = v.answers[y];
+          const hasX = Boolean(ax?.text?.trim());
+          const hasY = Boolean(ay?.text?.trim());
+          if (hasX !== hasY) return hasX ? -1 : 1;
+          return (ax?.ms ?? ax?.at ?? 0) - (ay?.ms ?? ay?.at ?? 0) || x - y;
+        });
+        const subs: TranscriptSubmissionItem[] = orderedSeats.map((sId, idx) => {
+          const rec = v.answers[sId];
+          return {
+            rank: idx + 1,
+            seat: sId,
+            name: this.seatName(sId),
+            finalAnswer: rec?.text ?? "",
+            finalMs: rec?.ms ?? 0,
+            previousAnswer: rec?.previousText,
+            previousMs: rec?.previousMs,
+            allAttempts: rec?.history ? [...rec.history] : rec?.text ? [{ text: rec.text, ms: rec.ms ?? 0, at: rec.at }] : [],
+            isCorrect: false,
+            pointsAwarded: 0,
+            noAnswer: !rec || !rec.text.trim(),
+          };
+        });
+        this.pushTranscript({
+          at: now,
+          round: "vcnv",
+          roundLabel: ROUND_LABELS.vcnv,
+          segmentLabel: row === 4 ? "Câu hỏi số 5 (Ô trung tâm)" : `Hàng ngang số ${row + 1}`,
+          entryKind: "question",
+          questionText: qText,
+          correctAnswer: answerText,
+          selectedPoints: rs.vcnv.rowPoints,
+          submissions: subs,
+          verdict: "wrong",
+          scoreChanges: {},
+        });
         v.phase = "answers";
         v.answersRevealed = true;
         pauseTimer(v.timer, now);
@@ -742,7 +1005,8 @@ export class OlympiaGame {
       case "vcnv:correctCNV": {
         const seat = Number(a.seat);
         if (!this.seat(seat)) return fail("Chọn thí sinh");
-        this.addScore(seat, cnvPointsFor(rs, v.openedCount, Boolean(v.centerOpened)));
+        const pts = cnvPointsFor(rs, v.openedCount, Boolean(v.centerOpened));
+        this.addScore(seat, pts);
         v.solvedBy = seat;
         v.rows.forEach((r, i) => {
           r.opened = true;
@@ -753,6 +1017,31 @@ export class OlympiaGame {
         v.phase = "done";
         v.currentRow = 4;
         pauseTimer(v.timer, now);
+        const buzzers: TranscriptBuzzerItem[] = v.bells.map((b, idx) => ({
+          order: idx + 1,
+          seat: b.seat,
+          name: this.seatName(b.seat),
+          note: b.before ? "Bấm trước khi lật đáp án hàng" : "Bấm sau khi lật đáp án hàng",
+          verdict: b.seat === seat ? "correct" : undefined,
+        }));
+        if (!buzzers.some((b) => b.seat === seat)) {
+          buzzers.push({ order: buzzers.length + 1, seat, name: this.seatName(seat), verdict: "correct" });
+        }
+        this.pushTranscript({
+          at: now,
+          round: "vcnv",
+          roundLabel: ROUND_LABELS.vcnv,
+          segmentLabel: `Giải Chướng Ngại Vật (đã mở ${v.openedCount} hàng${v.centerOpened ? " + ô trung tâm" : ""})`,
+          entryKind: "cnv_bell",
+          questionText: "Từ khóa Chướng ngại vật",
+          correctAnswer: v.keyword,
+          actorSeat: seat,
+          actorName: this.seatName(seat),
+          selectedPoints: pts,
+          buzzerEvents: buzzers,
+          verdict: "correct",
+          scoreChanges: { [seat]: pts },
+        });
         this.cue("2_VuotChuongNgaiVat/cnv_correct");
         return OK;
       }
@@ -760,6 +1049,20 @@ export class OlympiaGame {
         const seat = Number(a.seat);
         if (!this.seat(seat)) return fail("Chọn thí sinh");
         if (!v.eliminatedSeats.includes(seat)) v.eliminatedSeats.push(seat);
+        this.pushTranscript({
+          at: now,
+          round: "vcnv",
+          roundLabel: ROUND_LABELS.vcnv,
+          segmentLabel: "Bấm chuông giải Chướng Ngại Vật (Sai)",
+          entryKind: "cnv_bell",
+          questionText: "Từ khóa Chướng ngại vật",
+          correctAnswer: v.keyword,
+          actorSeat: seat,
+          actorName: this.seatName(seat),
+          buzzerEvents: [{ order: 1, seat, name: this.seatName(seat), verdict: "wrong" }],
+          verdict: "wrong",
+          note: `${this.seatName(seat)} trả lời sai CNV và dừng quyền chơi VCNV.`,
+        });
         this.cue("2_VuotChuongNgaiVat/cnv_wrong");
         return OK;
       }
@@ -768,8 +1071,20 @@ export class OlympiaGame {
           r.opened = true;
           v.piecesRevealed[i] = true;
         });
+        v.centerOpened = true;
         v.piecesRevealed[4] = true;
         v.phase = "done";
+        return OK;
+      }
+      case "vcnv:revealRowsOnly": {
+        v.rows.forEach((r) => {
+          r.opened = true;
+        });
+        v.centerOpened = true;
+        return OK;
+      }
+      case "vcnv:revealPiecesOnly": {
+        v.piecesRevealed = [true, true, true, true, true];
         return OK;
       }
       case "vcnv:clearBells":
@@ -806,6 +1121,11 @@ export class OlympiaGame {
       }
       case "tt:show": {
         if (tt.qIdx < 0) return fail("Hãy bấm Câu tiếp theo trước");
+        const q = tt.questions[tt.qIdx];
+        if (q) {
+          q.used = true;
+          this.recordOpenedQuestion(q.q || q.answer);
+        }
         tt.phase = "question";
         this.cue("3_TangToc/show_question");
         return OK;
@@ -827,7 +1147,15 @@ export class OlympiaGame {
         tt.ranking = this.activeSeatIds
           .map((id) => {
             const sub = tt.submissions[id];
-            return { seat: id, answer: sub?.answer ?? "", ms: sub?.ms ?? 0, noAnswer: !sub || !sub.answer.trim() };
+            return {
+              seat: id,
+              answer: sub?.answer ?? "",
+              ms: sub?.ms ?? 0,
+              previousAnswer: sub?.previousAnswer,
+              previousMs: sub?.previousMs,
+              history: sub?.history ? [...sub.history] : [],
+              noAnswer: !sub || !sub.answer.trim(),
+            };
           })
           .sort((x, y) => {
             if (x.noAnswer !== y.noAnswer) return x.noAnswer ? 1 : -1;
@@ -851,6 +1179,7 @@ export class OlympiaGame {
         const tierTable = tangTocTierPoints(this.activeSeatIds.length);
         const valid = tt.ranking.filter((r) => correct.includes(r.seat) && !r.noAnswer);
         const times = Array.from(new Set(valid.map((r) => r.ms)));
+        const scoreChanges: Record<number, number> = {};
         tt.ranking.forEach((r) => {
           if (r.noAnswer) return;
           r.wrong = !correct.includes(r.seat);
@@ -858,8 +1187,39 @@ export class OlympiaGame {
             const tier = times.indexOf(r.ms);
             const pts = tierTable[tier] ?? 0;
             r.points = pts;
-            if (pts) this.addScore(r.seat, pts);
+            if (pts) {
+              this.addScore(r.seat, pts);
+              scoreChanges[r.seat] = pts;
+            }
           }
+        });
+        const q = tt.questions[tt.qIdx];
+        const submissions: TranscriptSubmissionItem[] = tt.ranking.map((r, idx) => ({
+          rank: r.noAnswer ? 0 : idx + 1,
+          seat: r.seat,
+          name: this.seatName(r.seat),
+          finalAnswer: r.answer,
+          finalMs: r.noAnswer ? undefined : r.ms,
+          previousAnswer: r.previousAnswer,
+          previousMs: r.previousMs,
+          allAttempts: r.history ?? [],
+          correct: r.noAnswer ? false : !r.wrong,
+          pointsAwarded: r.points ?? 0,
+          noAnswer: Boolean(r.noAnswer),
+        }));
+        this.pushTranscript({
+          at: now,
+          round: "tangToc",
+          roundLabel: ROUND_LABELS.tangToc,
+          segmentLabel: `Tăng Tốc — Câu ${tt.qIdx + 1}/${tt.questions.length}`,
+          questionNumber: tt.qIdx + 1,
+          entryKind: "question",
+          questionText: q?.q || `Câu hỏi Tăng Tốc số ${tt.qIdx + 1}`,
+          correctAnswer: q?.answer ?? tt.correctAnswer ?? "",
+          media: q?.media,
+          verdict: valid.length > 0 ? "correct" : "wrong",
+          submissions,
+          scoreChanges,
         });
         tt.phase = "graded";
         this.cue(valid.length ? "3_TangToc/correct" : "3_TangToc/wrong");
@@ -878,12 +1238,21 @@ export class OlympiaGame {
   }
 
   private allocatePackage(vd: VeDichState, points: number[]) {
-    const pool = this.config.questionSet.veDich;
+    const qs = this.config.questionSet;
+    const useBalanced = this.config.balancedRandom !== false && qs.balancedRandom !== false;
+    if (useBalanced) {
+      const usedSet = new Set<string>(vd.usedKeys ?? []);
+      const pkg = pickBalancedVeDichPackage(qs.veDich, points, usedSet, vd.turnIdx);
+      vd.usedKeys = [...usedSet];
+      return pkg;
+    }
+    const pool = qs.veDich;
     return points.map((p) => {
       const key = String(p);
       const list = pool[key] ?? [];
       const ptr = vd.pointers[key] ?? 0;
-      const q: VeDichQuestion = list[ptr] ?? { q: "Câu hỏi dự phòng", a: "Đáp án", type: "theory" };
+      const raw: VeDichQuestion = list[ptr] ?? { q: "Câu hỏi dự phòng", a: "Đáp án", type: "theory" };
+      const q = tagQAWithAI(raw, false);
       vd.pointers[key] = ptr + 1;
       return { points: p, q };
     });
@@ -914,9 +1283,24 @@ export class OlympiaGame {
       if (resolvedPoints.length !== rs.questionsPerSeat || resolvedPoints.some((p) => !rs.pointOptions.includes(p)))
         return fail(`Gói phải gồm ${rs.questionsPerSeat} câu với mức điểm ${rs.pointOptions.join("/")}`);
     }
-    vd.packages[this.vdSeat(vd)] = this.allocatePackage(vd, resolvedPoints);
+    const ownerSeat = this.vdSeat(vd);
+    vd.packages[ownerSeat] = this.allocatePackage(vd, resolvedPoints);
     vd.qIdx = -1;
     vd.phase = "packageReady";
+    const totalPkg = resolvedPoints.reduce((s, p) => s + p, 0);
+    this.pushTranscript({
+      at: now,
+      round: "veDich",
+      roundLabel: ROUND_LABELS.veDich,
+      segmentLabel: `${this.seatName(ownerSeat)} chọn gói Về Đích`,
+      entryKind: "package_select",
+      actorSeat: ownerSeat,
+      actorName: this.seatName(ownerSeat),
+      packagePoints: [...resolvedPoints],
+      packageLabel: `Gói ${totalPkg}đ (${resolvedPoints.join(" - ")})`,
+      verdict: "info",
+      note: `${this.seatName(ownerSeat)} chọn gói câu hỏi ${resolvedPoints.join(" - ")} điểm (Tổng ${totalPkg}đ).`,
+    });
     this.cue("4_VeDich/open_question");
     this.touch(now);
     return OK;
@@ -955,6 +1339,10 @@ export class OlympiaGame {
           return OK;
         }
         vd.current = pkg[vd.qIdx];
+        if (vd.current?.q) {
+          vd.current.q.used = true;
+          this.recordOpenedQuestion(vd.current.q.q);
+        }
         vd.phase = "thinking";
         vd.timer = mkTimer(rs.thinkMs[String(vd.current.points)] ?? 15000);
         vd.steal = null;
@@ -985,7 +1373,32 @@ export class OlympiaGame {
       case "vd:correct": {
         if (!cur || vd.phase !== "thinking") return fail("Không có câu hỏi đang chờ");
         pauseTimer(vd.timer, now);
-        this.addScore(owner, cur.points * (vd.hopeStarActive ? 2 : 1));
+        const delta = cur.points * (vd.hopeStarActive ? 2 : 1);
+        const usedStar = vd.hopeStarActive;
+        this.addScore(owner, delta);
+        const pkgPts = (vd.packages[owner] ?? []).map((x) => x.points);
+        this.pushTranscript({
+          at: now,
+          round: "veDich",
+          roundLabel: ROUND_LABELS.veDich,
+          segmentLabel: `${this.seatName(owner)} — Câu ${vd.qIdx + 1} (${cur.points}đ)`,
+          questionNumber: vd.qIdx + 1,
+          entryKind: "question",
+          questionText: cur.q.q,
+          correctAnswer: cur.q.a,
+          subject: cur.q.subject,
+          kdZone: cur.q.kdZone,
+          vdZone: cur.q.vdZone,
+          media: cur.q.media,
+          packagePoints: pkgPts,
+          packageLabel: `Gói ${pkgPts.join(" - ")}`,
+          questionPoints: cur.points,
+          hopeStar: usedStar,
+          actorSeat: owner,
+          actorName: this.seatName(owner),
+          verdict: "correct",
+          scoreChanges: { [owner]: delta },
+        });
         vd.hopeStarActive = false;
         vd.phase = "result";
         vd.lastVerdict = "correct";
@@ -995,6 +1408,29 @@ export class OlympiaGame {
       case "vd:wrong": {
         if (!cur || vd.phase !== "thinking") return fail("Không có câu hỏi đang chờ");
         pauseTimer(vd.timer, now);
+        const pkgPts = (vd.packages[owner] ?? []).map((x) => x.points);
+        this.pushTranscript({
+          at: now,
+          round: "veDich",
+          roundLabel: ROUND_LABELS.veDich,
+          segmentLabel: `${this.seatName(owner)} — Câu ${vd.qIdx + 1} (${cur.points}đ)`,
+          questionNumber: vd.qIdx + 1,
+          entryKind: "question",
+          questionText: cur.q.q,
+          correctAnswer: cur.q.a,
+          subject: cur.q.subject,
+          kdZone: cur.q.kdZone,
+          vdZone: cur.q.vdZone,
+          media: cur.q.media,
+          packagePoints: pkgPts,
+          packageLabel: `Gói ${pkgPts.join(" - ")}`,
+          questionPoints: cur.points,
+          hopeStar: vd.hopeStarActive,
+          actorSeat: owner,
+          actorName: this.seatName(owner),
+          verdict: "wrong",
+          note: `${this.seatName(owner)} trả lời chưa chính xác (Chờ mở quyền bấm chuông cướp điểm).`,
+        });
         vd.phase = "result";
         vd.lastVerdict = "wrong";
         this.cue("4_VeDich/wrong");
@@ -1019,8 +1455,38 @@ export class OlympiaGame {
       case "vd:correctSteal": {
         if (!cur || !vd.steal || vd.steal.buzzedSeat == null) return fail("Chưa có ai bấm cướp");
         const stealer = vd.steal.buzzedSeat;
+        const ownerPenalty = !vd.deductedOnSteal ? -cur.points : 0;
         if (!vd.deductedOnSteal) this.addScore(owner, -cur.points);
         this.addScore(stealer, cur.points);
+        const pkgPts = (vd.packages[owner] ?? []).map((x) => x.points);
+        const scoreChanges: Record<number, number> = { [stealer]: cur.points };
+        if (ownerPenalty !== 0) scoreChanges[owner] = ownerPenalty;
+        else if (vd.deductedOnSteal) scoreChanges[owner] = -cur.points;
+        this.pushTranscript({
+          at: now,
+          round: "veDich",
+          roundLabel: ROUND_LABELS.veDich,
+          segmentLabel: `${this.seatName(owner)} — Câu ${vd.qIdx + 1} (${cur.points}đ) · Cướp điểm`,
+          questionNumber: vd.qIdx + 1,
+          entryKind: "question",
+          questionText: cur.q.q,
+          correctAnswer: cur.q.a,
+          subject: cur.q.subject,
+          kdZone: cur.q.kdZone,
+          vdZone: cur.q.vdZone,
+          media: cur.q.media,
+          packagePoints: pkgPts,
+          packageLabel: `Gói ${pkgPts.join(" - ")}`,
+          questionPoints: cur.points,
+          hopeStar: vd.hopeStarActive,
+          actorSeat: owner,
+          actorName: this.seatName(owner),
+          buzzedSeat: stealer,
+          buzzedName: this.seatName(stealer),
+          buzzerEvents: [{ order: 1, seat: stealer, name: this.seatName(stealer), verdict: "correct" }],
+          verdict: "steal_correct",
+          scoreChanges,
+        });
         vd.hopeStarActive = false;
         vd.steal.open = false;
         pauseTimer(vd.steal.timer, now);
@@ -1031,7 +1497,37 @@ export class OlympiaGame {
       }
       case "vd:wrongSteal": {
         if (!cur || !vd.steal || vd.steal.buzzedSeat == null) return fail("Chưa có ai bấm cướp");
-        this.addScore(vd.steal.buzzedSeat, -Math.floor(cur.points / rs.stealPenaltyDivisor));
+        const stealer = vd.steal.buzzedSeat;
+        const penalty = -Math.floor(cur.points / rs.stealPenaltyDivisor);
+        this.addScore(stealer, penalty);
+        const pkgPts = (vd.packages[owner] ?? []).map((x) => x.points);
+        const scoreChanges: Record<number, number> = { [stealer]: penalty };
+        if (vd.deductedOnSteal) scoreChanges[owner] = -cur.points;
+        this.pushTranscript({
+          at: now,
+          round: "veDich",
+          roundLabel: ROUND_LABELS.veDich,
+          segmentLabel: `${this.seatName(owner)} — Câu ${vd.qIdx + 1} (${cur.points}đ) · Cướp điểm sai`,
+          questionNumber: vd.qIdx + 1,
+          entryKind: "question",
+          questionText: cur.q.q,
+          correctAnswer: cur.q.a,
+          subject: cur.q.subject,
+          kdZone: cur.q.kdZone,
+          vdZone: cur.q.vdZone,
+          media: cur.q.media,
+          packagePoints: pkgPts,
+          packageLabel: `Gói ${pkgPts.join(" - ")}`,
+          questionPoints: cur.points,
+          hopeStar: vd.hopeStarActive,
+          actorSeat: owner,
+          actorName: this.seatName(owner),
+          buzzedSeat: stealer,
+          buzzedName: this.seatName(stealer),
+          buzzerEvents: [{ order: 1, seat: stealer, name: this.seatName(stealer), verdict: "wrong" }],
+          verdict: "steal_wrong",
+          scoreChanges,
+        });
         vd.hopeStarActive = false;
         vd.steal.open = false;
         pauseTimer(vd.steal.timer, now);
@@ -1096,6 +1592,11 @@ export class OlympiaGame {
       case "chp:show": {
         if (cp.qIdx < 0) return fail("Hãy bấm Câu tiếp theo trước");
         cp.phase = "question";
+        const curQ = cp.questions[cp.qIdx];
+        if (curQ) {
+          curQ.used = true;
+          this.recordOpenedQuestion(curQ.q);
+        }
         this.cue("5_CauHoiPhu/open_question");
         return OK;
       }
@@ -1113,16 +1614,69 @@ export class OlympiaGame {
       }
       case "chp:correct": {
         if (cp.buzzedSeat == null) return fail("Chưa có ai bấm chuông");
-        cp.winner = cp.buzzedSeat;
+        const winnerSeat = cp.buzzedSeat;
+        const curQ = cp.questions[cp.qIdx];
+        cp.winner = winnerSeat;
         cp.phase = "result";
         cp.buzzOpen = false;
         pauseTimer(cp.timer, now);
+        this.pushTranscript({
+          at: now,
+          round: "cauHoiPhu",
+          roundLabel: ROUND_LABELS.cauHoiPhu,
+          segmentLabel: `Câu hỏi phụ số ${cp.qIdx + 1}`,
+          questionNumber: cp.qIdx + 1,
+          entryKind: "question",
+          questionText: curQ?.q ?? "",
+          correctAnswer: curQ?.a ?? "",
+          subject: curQ?.subject,
+          kdZone: curQ?.kdZone,
+          vdZone: curQ?.vdZone,
+          actorSeat: winnerSeat,
+          actorName: this.seatName(winnerSeat),
+          buzzedSeat: winnerSeat,
+          buzzedName: this.seatName(winnerSeat),
+          buzzerEvents: cp.buzzedThisQuestion.map((sId, i) => ({
+            order: i + 1,
+            seat: sId,
+            name: this.seatName(sId),
+            verdict: sId === winnerSeat ? "correct" : "wrong",
+          })),
+          verdict: "correct",
+          note: `${this.seatName(winnerSeat)} trả lời đúng Câu hỏi phụ và giành chiến thắng chung cuộc!`,
+        });
         this.cue("5_CauHoiPhu/correct");
         return OK;
       }
       case "chp:wrong": {
         if (cp.buzzedSeat == null) return fail("Chưa có ai bấm chuông");
+        const wrongSeat = cp.buzzedSeat;
+        const curQ = cp.questions[cp.qIdx];
         cp.buzzedSeat = null;
+        this.pushTranscript({
+          at: now,
+          round: "cauHoiPhu",
+          roundLabel: ROUND_LABELS.cauHoiPhu,
+          segmentLabel: `Câu hỏi phụ số ${cp.qIdx + 1}`,
+          questionNumber: cp.qIdx + 1,
+          entryKind: "question",
+          questionText: curQ?.q ?? "",
+          correctAnswer: curQ?.a ?? "",
+          subject: curQ?.subject,
+          kdZone: curQ?.kdZone,
+          vdZone: curQ?.vdZone,
+          actorSeat: wrongSeat,
+          actorName: this.seatName(wrongSeat),
+          buzzedSeat: wrongSeat,
+          buzzedName: this.seatName(wrongSeat),
+          buzzerEvents: cp.buzzedThisQuestion.map((sId, i) => ({
+            order: i + 1,
+            seat: sId,
+            name: this.seatName(sId),
+            verdict: "wrong",
+          })),
+          verdict: "wrong",
+        });
         this.cue("5_CauHoiPhu/wrong");
         const remaining = cp.tied.filter((id) => !cp.buzzedThisQuestion.includes(id));
         if (remaining.length === 0) {
@@ -1201,7 +1755,7 @@ export class OlympiaGame {
     return OK;
   }
 
-  /** Text answer (VCNV rows, Tăng Tốc). */
+  /** Text answer (VCNV rows, Tăng Tốc). Records last 2 answers + full attempt history. */
   playerAnswer(seatId: number, text: string, now: number): ActionResult {
     const st = this.state;
     const clean = String(text ?? "").slice(0, 120);
@@ -1211,7 +1765,18 @@ export class OlympiaGame {
       if (v.currentRow < 0 || v.currentRow > 4) return fail("Chưa mở hàng ngang / ô trung tâm");
       if (v.eliminatedSeats.includes(seatId)) return fail("Bạn đã bị loại");
       if (!timerRunning(v.timer) || timerRemaining(v.timer, now) <= 0) return fail("Hết giờ nhập đáp án");
-      v.answers[seatId] = { text: clean, at: now };
+      const elapsed = Math.max(0, Math.round(v.timer.totalMs - timerRemaining(v.timer, now)));
+      const prev = v.answers[seatId];
+      const history = prev?.history ? [...prev.history] : [];
+      history.push({ answer: clean, ms: elapsed });
+      v.answers[seatId] = {
+        text: clean,
+        at: now,
+        ms: elapsed,
+        previousText: prev?.text,
+        previousMs: prev?.ms,
+        history,
+      };
       this.touch(now);
       return OK;
     }
@@ -1219,8 +1784,17 @@ export class OlympiaGame {
       const tt = st.tangToc;
       if (tt.phase !== "question") return fail("Chưa mở câu hỏi");
       if (!timerRunning(tt.timer) || timerRemaining(tt.timer, now) <= 0) return fail("Hết giờ nhập đáp án");
-      const elapsed = Math.round(tt.timer.totalMs - timerRemaining(tt.timer, now));
-      tt.submissions[seatId] = { answer: clean, ms: elapsed };
+      const elapsed = Math.max(0, Math.round(tt.timer.totalMs - timerRemaining(tt.timer, now)));
+      const prev = tt.submissions[seatId];
+      const history = prev?.history ? [...prev.history] : [];
+      history.push({ answer: clean, ms: elapsed });
+      tt.submissions[seatId] = {
+        answer: clean,
+        ms: elapsed,
+        previousAnswer: prev?.answer,
+        previousMs: prev?.ms,
+        history,
+      };
       this.touch(now);
       return OK;
     }
@@ -1246,7 +1820,11 @@ export class OlympiaGame {
       return rec[seatId] ? { [seatId]: rec[seatId] } : {};
     };
 
-    if (s.khoiDong?.current && s.khoiDong.phase !== "result") delete (s.khoiDong.current as { a?: string }).a;
+    if (s.khoiDong) {
+      delete s.khoiDong.seatQueues;
+      delete s.khoiDong.sharedQueue;
+      if (s.khoiDong.current && s.khoiDong.phase !== "result") delete (s.khoiDong.current as { a?: string }).a;
+    }
     if (s.vcnv) {
       s.vcnv.rows.forEach((r, i) => {
         if (!r.opened && !(s.vcnv!.answersRevealed && s.vcnv!.currentRow === i)) r.answer = "";
@@ -1271,6 +1849,7 @@ export class OlympiaGame {
         answer: i === s.tangToc!.qIdx && s.tangToc!.phase !== "idle" && s.tangToc!.phase !== "question" ? q.answer : "",
         // media only for the current question once it is shown
         media: i === s.tangToc!.qIdx && s.tangToc!.phase !== "idle" ? q.media : undefined,
+        clueImages: i === s.tangToc!.qIdx && s.tangToc!.phase !== "idle" ? q.clueImages : undefined,
         q: i === s.tangToc!.qIdx && s.tangToc!.phase !== "idle" ? q.q : undefined,
       }));
       if (s.tangToc.phase === "question" || s.tangToc.phase === "idle") {
@@ -1290,9 +1869,16 @@ export class OlympiaGame {
       Object.values(vd.packages).forEach((pkg) => pkg.forEach((p) => (p.q = { ...p.q, q: "", media: undefined })));
       if (vd.current) {
         vd.current = { ...vd.current, q: { ...vd.current.q, a: showAns ? vd.current.q.a : "" } };
-        // restore the current question text from the authoritative state
+        // restore the current question text and media from the authoritative state
         const real = this.state.veDich?.current;
-        if (real) vd.current.q.q = real.q.q;
+        if (real) {
+          vd.current.q.q = real.q.q;
+          vd.current.q.media = real.q.media;
+          vd.current.q.mediaType = real.q.mediaType;
+          vd.current.q.subject = real.q.subject;
+          vd.current.q.kdZone = real.q.kdZone;
+          vd.current.q.vdZone = real.q.vdZone;
+        }
       }
     }
     if (s.cauHoiPhu) {

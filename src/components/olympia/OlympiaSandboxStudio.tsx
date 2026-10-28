@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { OlympiaGame, normalizeAnswer } from "@/lib/olympia/engine";
-import { RULESETS, RULESET_LIST, cnvPointsFor } from "@/lib/olympia/rulesets";
+import { OlympiaGame } from "@/lib/olympia/engine";
+import { RULESETS, RULESET_LIST, RULESET_YEAR_BUTTONS, cnvPointsFor } from "@/lib/olympia/rulesets";
 import { SAMPLE_QUESTION_SET } from "@/lib/olympia/sample-questions";
 import { parseJsonSet, parseSheets } from "@/lib/olympia/excel-import";
 import {
@@ -15,6 +15,8 @@ import {
   type RulesetId,
 } from "@/lib/olympia/types";
 import { useOlympiaAudio } from "./hooks";
+import OlympiaQuestionStudioModal from "./OlympiaQuestionStudioModal";
+import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
 import {
   MediaView,
   Panel,
@@ -49,10 +51,13 @@ export default function OlympiaSandboxStudio({ onExit }: { onExit: () => void })
   const [audioOn, setAudioOn] = useState(true);
   const [err, setErr] = useState("");
   const [tickVer, setTickVer] = useState(0);
-  const [checkedVcnv, setCheckedVcnv] = useState<number[] | null>(null);
-  const [checkedTt, setCheckedTt] = useState<number[] | null>(null);
+  const [checkedVcnv, setCheckedVcnv] = useState<number[]>([]);
+  const [checkedTt, setCheckedTt] = useState<number[]>([]);
   const [vdPkgDraft, setVdPkgDraft] = useState<number[]>([20, 20, 20]);
   const [answersDraft, setAnswersDraft] = useState<Record<number, string>>({});
+  const [showRulesInfo, setShowRulesInfo] = useState(false);
+  const [showStudio, setShowStudio] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
 
   const buildGame = useCallback(
     (rsId: RulesetId, rds: RoundId[], count: number, qSet: OlympiaQuestionSet) => {
@@ -76,8 +81,8 @@ export default function OlympiaSandboxStudio({ onExit }: { onExit: () => void })
   const recreateGame = useCallback(
     (nextRs = rulesetId, nextRounds = rounds, nextCount = playerCount, nextSet = questionSet) => {
       gameRef.current = buildGame(nextRs, nextRounds, nextCount, nextSet);
-      setCheckedVcnv(null);
-      setCheckedTt(null);
+      setCheckedVcnv([]);
+      setCheckedTt([]);
       setErr("");
       const opts = RULESETS[nextRs].veDich.pointOptions;
       setVdPkgDraft(Array(RULESETS[nextRs].veDich.questionsPerSeat).fill(opts[0] ?? 20));
@@ -151,42 +156,108 @@ export default function OlympiaSandboxStudio({ onExit }: { onExit: () => void })
   return (
     <div className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-white/15 bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950 text-white p-3 sm:p-4 space-y-3">
       {/* Top configuration & toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-900/90 border border-sky-500/30 px-3 py-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-base font-black text-sky-300">🏔️ Olympia Sandbox All-in-One</span>
-          <select
-            value={rulesetId}
-            onChange={(e) => {
-              const next = e.target.value as RulesetId;
-              setRulesetId(next);
-              recreateGame(next, rounds, playerCount, questionSet);
-            }}
-            className="bg-slate-800 border border-white/20 rounded-lg px-2 py-1 text-xs font-bold"
-          >
-            {RULESET_LIST.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.label} (Audio {r.audioSeason})
-              </option>
-            ))}
-          </select>
+      <div className="rounded-xl bg-slate-900/90 border border-sky-500/30 px-3 py-2.5 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-base font-black text-sky-300">🏔️ Olympia Sandbox All-in-One</span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/20 border border-cyan-400/40 text-cyan-200">
+              🎙 Mặc định: MC/Admin điều khiển & chấm điểm toàn quyền
+            </span>
+          </div>
 
-          <select
-            value={playerCount}
-            onChange={(e) => {
-              const n = Number(e.target.value);
-              setPlayerCount(n);
-              recreateGame(rulesetId, rounds, n, questionSet);
-            }}
-            className="bg-slate-800 border border-white/20 rounded-lg px-2 py-1 text-xs font-bold"
-          >
-            {[2, 3, 4, 5, 6, 7, 8].map((n) => (
-              <option key={n} value={n}>
-                👥 {n} thí sinh
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setShowStudio(true)}
+              className="px-2.5 py-1 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-xs font-black"
+            >
+              🛠 Kho đề Olympia
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowTranscript(true)}
+              className="px-2.5 py-1 rounded-lg bg-amber-500/25 hover:bg-amber-500/35 border border-amber-400/50 text-amber-200 text-xs font-bold"
+            >
+              📋 Biên bản ({(state.transcript ?? []).length})
+            </button>
+            <label className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold cursor-pointer">
+              📂 Đề Excel/JSON
+              <input
+                type="file"
+                accept=".xlsx,.xls,.json"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && onImportFile(e.target.files[0])}
+              />
+            </label>
+            <button type="button" className={btn} onClick={() => setAudioOn((v) => !v)}>
+              {audioOn ? "🔊 Âm thanh" : "🔈 Tắt tiếng"}
+            </button>
+            <button type="button" className={btn} onClick={() => recreateGame()}>
+              ↺ Reset trận
+            </button>
+            <button type="button" className={btnBad} onClick={onExit}>
+              ✕ Đổi chế độ khác
+            </button>
+          </div>
+        </div>
 
-          <div className="flex items-center gap-1 text-xs">
+        {/* Compact Ruleset Selector + Rounds */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-white/10 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-bold text-sky-300">Chọn bộ luật: Olympia năm thứ</span>
+            <div className="flex flex-wrap items-center gap-1">
+              {RULESET_YEAR_BUTTONS.map((btnItem) => {
+                const active = rulesetId === btnItem.id;
+                return (
+                  <button
+                    key={btnItem.id}
+                    type="button"
+                    title={btnItem.fullTitle}
+                    onClick={() => {
+                      setRulesetId(btnItem.id);
+                      recreateGame(btnItem.id, rounds, playerCount, questionSet);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg border font-black text-xs transition ${
+                      active
+                        ? "border-yellow-300 bg-yellow-300 text-slate-950"
+                        : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                    }`}
+                  >
+                    {btnItem.numberLabel}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setShowRulesInfo((v) => !v)}
+                title="Xem chi tiết định nghĩa bộ luật"
+                className={`w-6 h-6 rounded-full border flex items-center justify-center text-[11px] font-black transition ${
+                  showRulesInfo
+                    ? "border-yellow-300 bg-yellow-300 text-slate-950"
+                    : "border-sky-400/50 bg-sky-500/15 text-sky-300"
+                }`}
+              >
+                i
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <select
+              value={playerCount}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                setPlayerCount(n);
+                recreateGame(rulesetId, rounds, n, questionSet);
+              }}
+              className="bg-slate-800 border border-white/20 rounded-lg px-2 py-1 text-xs font-bold"
+            >
+              {[2, 3, 4, 5, 6, 7, 8].map((n) => (
+                <option key={n} value={n}>
+                  👥 {n} thí sinh
+                </option>
+              ))}
+            </select>
             {SELECTABLE_ROUNDS.map((r) => {
               const on = rounds.includes(r);
               return (
@@ -213,26 +284,22 @@ export default function OlympiaSandboxStudio({ onExit }: { onExit: () => void })
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <label className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold cursor-pointer">
-            📂 Đề Excel/JSON
-            <input
-              type="file"
-              accept=".xlsx,.xls,.json"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && onImportFile(e.target.files[0])}
-            />
-          </label>
-          <button type="button" className={btn} onClick={() => setAudioOn((v) => !v)}>
-            {audioOn ? "🔊 Âm thanh" : "🔈 Tắt tiếng"}
-          </button>
-          <button type="button" className={btn} onClick={() => recreateGame()}>
-            ↺ Reset trận
-          </button>
-          <button type="button" className={btnBad} onClick={onExit}>
-            ✕ Đổi chế độ khác
-          </button>
-        </div>
+        {showRulesInfo && (
+          <div className="rounded-xl border border-sky-400/30 bg-slate-950/90 p-3 text-xs space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-yellow-300">
+                ℹ️ Chi tiết luật {rs.label} (Âm thanh: {rs.audioSeason}):
+              </span>
+              <button type="button" onClick={() => setShowRulesInfo(false)} className="text-slate-400 hover:text-white">
+                ✕
+              </button>
+            </div>
+            <p className="text-slate-200">{rs.note}</p>
+            <div className="text-slate-400">
+              Điểm CNV: <b>{rs.vcnv.cnvPoints.join(" / ")}đ</b> · Gói Về Đích: <b>{rs.veDich.pointOptions.join(" / ")}đ</b>
+            </div>
+          </div>
+        )}
       </div>
 
       {err && (
@@ -476,6 +543,25 @@ export default function OlympiaSandboxStudio({ onExit }: { onExit: () => void })
           </Panel>
         </div>
       </div>
+      {showStudio && (
+        <OlympiaQuestionStudioModal
+          open={showStudio}
+          onClose={() => setShowStudio(false)}
+          initialSet={questionSet}
+          playerCount={playerCount}
+          onApply={(updatedSet) => {
+            setQuestionSet(updatedSet);
+            recreateGame(rulesetId, rounds, playerCount, updatedSet);
+            setShowStudio(false);
+          }}
+        />
+      )}
+
+      <OlympiaTranscriptModal
+        open={showTranscript}
+        onClose={() => setShowTranscript(false)}
+        state={state}
+      />
     </div>
   );
 }
@@ -549,26 +635,13 @@ function SandboxVcnv({
   state: OlympiaState;
   act: Act;
   serverNow: SN;
-  checked: number[] | null;
-  setChecked: (v: number[] | null) => void;
+  checked: number[];
+  setChecked: (v: number[]) => void;
 }) {
   const v = state.vcnv!;
   const rs = RULESETS[state.rulesetId] ?? RULESETS.O26;
   const seats = activeSeats(state);
-  const row = v.currentRow >= 0 && v.currentRow < 4 ? v.rows[v.currentRow] : null;
-  const isCenterRow = v.currentRow === 4;
-  const targetAns = isCenterRow ? (v.centerQuestion?.a ?? v.keyword) : (row?.answer ?? "");
-  const auto =
-    v.currentRow >= 0 && targetAns
-      ? seats
-          .filter(
-            (s) =>
-              !v.eliminatedSeats.includes(s.id) &&
-              normalizeAnswer(v.answers[s.id]?.text ?? "") === normalizeAnswer(targetAns)
-          )
-          .map((s) => s.id)
-      : [];
-  const sel = checked ?? auto;
+  const sel = checked;
   const cnvPts = cnvPointsFor(rs, v.openedCount, Boolean(v.centerOpened));
 
   return (
@@ -588,7 +661,7 @@ function SandboxVcnv({
             key={i}
             disabled={r.opened}
             onClick={() => {
-              setChecked(null);
+              setChecked([]);
               act("vcnv:selectRow", { row: i });
             }}
             className={`text-left rounded-lg p-2 border text-xs ${
@@ -604,7 +677,7 @@ function SandboxVcnv({
         <button
           disabled={Boolean(v.centerOpened)}
           onClick={() => {
-            setChecked(null);
+            setChecked([]);
             act("vcnv:selectRow", { row: 4 });
           }}
           className={`col-span-2 text-left rounded-lg p-2 border text-xs ${
@@ -633,12 +706,40 @@ function SandboxVcnv({
           ✘ Cả hàng sai
         </button>
         <button className={btn} onClick={() => act("vcnv:revealTile")}>
-          🧩 Lật mảnh ghép
+          🧩 Lật mảnh
+        </button>
+        <button className={btn} onClick={() => act("vcnv:revealRowsOnly")}>
+          🔤 Mở hết ô chữ
+        </button>
+        <button className={btn} onClick={() => act("vcnv:revealPiecesOnly")}>
+          🧩 Mở hết mảnh ghép
         </button>
         <button className={btn} onClick={() => act("vcnv:revealAll")}>
           Mở tất cả
         </button>
       </div>
+      {v.currentRow >= 0 && (
+        <div className="space-y-1 text-xs bg-slate-950/60 p-2 rounded border border-white/10">
+          <div className="text-slate-400">MC tự tích chọn thí sinh trả lời đúng:</div>
+          {seats.map((s) => {
+            const ans = v.answers[s.id];
+            return (
+              <label key={s.id} className="flex flex-wrap items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={sel.includes(s.id)}
+                  onChange={(e) => setChecked(e.target.checked ? [...sel, s.id] : sel.filter((x) => x !== s.id))}
+                />
+                <b style={{ color: SEAT_COLORS[s.id] }}>{s.name}:</b>
+                <span>{ans?.text || "—"}</span>
+                {ans?.previousText && (
+                  <span className="text-amber-300 text-[11px]">(Áp chót: &ldquo;{ans.previousText}&rdquo;)</span>
+                )}
+              </label>
+            );
+          })}
+        </div>
+      )}
       {v.bells.length > 0 && (
         <div className="space-y-1 text-xs bg-slate-900/60 p-2 rounded">
           {v.bells.map((b) => (
@@ -668,15 +769,12 @@ function SandboxTangToc({
   state: OlympiaState;
   act: Act;
   serverNow: SN;
-  checked: number[] | null;
-  setChecked: (v: number[] | null) => void;
+  checked: number[];
+  setChecked: (v: number[]) => void;
 }) {
   const tt = state.tangToc!;
   const q = tt.questions[tt.qIdx];
-  const auto = tt.ranking
-    .filter((r) => !r.noAnswer && normalizeAnswer(r.answer) === normalizeAnswer(tt.correctAnswer ?? ""))
-    .map((r) => r.seat);
-  const sel = checked ?? auto;
+  const sel = checked;
 
   return (
     <div className="space-y-2 rounded-xl bg-white/5 p-3">
@@ -695,7 +793,7 @@ function SandboxTangToc({
         <button
           className={btnPrimary}
           onClick={() => {
-            setChecked(null);
+            setChecked([]);
             act("tt:next");
           }}
         >
@@ -708,7 +806,7 @@ function SandboxTangToc({
           ⏱ Đếm giờ
         </button>
         <button className={btn} onClick={() => act("tt:reveal")}>
-          👁 Lật BXH
+          👁 Lật xếp hạng
         </button>
         <button
           className={btnOk}
@@ -720,8 +818,9 @@ function SandboxTangToc({
       </div>
       {tt.ranking.length > 0 && (
         <div className="space-y-1 text-xs">
+          <div className="text-slate-400">MC tự tích chọn thí sinh trả lời đúng:</div>
           {tt.ranking.map((r, i) => (
-            <label key={r.seat} className="flex items-center gap-2">
+            <label key={r.seat} className="flex flex-wrap items-center gap-2">
               <input
                 type="checkbox"
                 disabled={tt.phase === "graded" || r.noAnswer}
@@ -729,8 +828,9 @@ function SandboxTangToc({
                 onChange={(e) => setChecked(e.target.checked ? [...sel, r.seat] : sel.filter((x) => x !== r.seat))}
               />
               <span>
-                {i + 1}. <b>{seatName(state, r.seat)}</b>: {r.noAnswer ? "—" : `${r.answer} (${(r.ms / 1000).toFixed(2)}s)`}
-                {r.points ? <b className="text-yellow-300"> +{r.points}</b> : ""}
+                #{i + 1} <b>{seatName(state, r.seat)}</b>: {r.noAnswer ? "—" : `${r.answer} (${(r.ms / 1000).toFixed(2)}s)`}
+                {r.previousAnswer && <span className="text-amber-300 ml-1">(Áp chót: &ldquo;{r.previousAnswer}&rdquo;)</span>}
+                {r.points ? <b className="text-yellow-300"> +{r.points}đ</b> : ""}
               </span>
             </label>
           ))}

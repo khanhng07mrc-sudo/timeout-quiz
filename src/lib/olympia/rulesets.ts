@@ -113,12 +113,12 @@ function make(partial: Partial<OlympiaRuleset> & Pick<OlympiaRuleset, "id" | "la
   };
 }
 
-function makeO15ToO19(id: RulesetId, yearNum: number, audioSeason: "O13-15" | "O16-21"): OlympiaRuleset {
+function makeO15ToO19(id: RulesetId, label: string, audioSeason: "O13-15" | "O16-21"): OlympiaRuleset {
   return make({
     id,
-    label: `Olympia ${yearNum}`,
+    label,
     audioSeason,
-    note: `Khởi động 60s (tối đa 12 câu). VCNV 80-60-40-20-10đ. Tăng tốc 30s×4 câu. Về đích 3 câu theo gói cố định 40 (10-10-20), 60 (10-20-30), 80 (20-30-30).`,
+    note: `Khởi động 60s (tối đa 12 câu). VCNV 80–60–40–20–10đ. Tăng tốc 30s×4 câu. Về đích 3 câu theo gói cố định 40 (10–10–20), 60 (10–20–30), 80 (20–30–30).`,
     khoiDong: {
       correctPoints: 10,
       wrongPenalty: 0,
@@ -189,11 +189,11 @@ export const RULESETS: Record<RulesetId, OlympiaRuleset> = {
       turnOrderMode: "seat_order",
     },
   }),
-  O15: makeO15ToO19("O15", 15, "O13-15"),
-  O16: makeO15ToO19("O16", 16, "O16-21"),
-  O17: makeO15ToO19("O17", 17, "O16-21"),
-  O18: makeO15ToO19("O18", 18, "O16-21"),
-  O19: makeO15ToO19("O19", 19, "O16-21"),
+  O15: makeO15ToO19("O15", "Olympia 15 – 19", "O16-21"),
+  O16: makeO15ToO19("O16", "Olympia 15 – 19", "O16-21"),
+  O17: makeO15ToO19("O17", "Olympia 15 – 19", "O16-21"),
+  O18: makeO15ToO19("O18", "Olympia 15 – 19", "O16-21"),
+  O19: makeO15ToO19("O19", "Olympia 15 – 19", "O16-21"),
   O20: make({
     id: "O20",
     label: "Olympia 20",
@@ -288,27 +288,52 @@ export const RULESETS: Record<RulesetId, OlympiaRuleset> = {
   }),
   O24: make({
     id: "O24",
-    label: "Olympia 24",
+    label: "Olympia 24 – 25",
     audioSeason: "O24-25",
-    note: "Khởi động riêng 6 câu + khởi động chung X×3 câu. Tăng Tốc 10/20/30/40s. CNV 60-50-40-30-20. Về đích chọn 3 câu 20/30đ.",
+    note: "Khởi động riêng 6 câu + khởi động chung X×3 câu. Tăng Tốc 10/20/30/40s. CNV 60–50–40–30–20. Về đích chọn 3 câu 20/30đ.",
     tangToc: { timers: [10000, 20000, 30000, 40000] },
   }),
   O25: make({
     id: "O25",
-    label: "Olympia 25",
+    label: "Olympia 24 – 25",
     audioSeason: "O24-25",
-    note: "Giống O24: Khởi động riêng 6 câu + chung X×3 câu, Tăng Tốc 10/20/30/40s, CNV 60-50-40-30-20, Về đích 20/30đ.",
+    note: "Khởi động riêng 6 câu + khởi động chung X×3 câu. Tăng Tốc 10/20/30/40s. CNV 60–50–40–30–20. Về đích chọn 3 câu 20/30đ.",
     tangToc: { timers: [10000, 20000, 30000, 40000] },
   }),
   O26: make({
     id: "O26",
     label: "Olympia 26",
     audioSeason: "O26",
-    note: "Tăng Tốc 20/20/30/30s, CNV 60-50-40-30-20, Về Đích gói 20/30 điểm.",
+    note: "Tăng Tốc 20/20/30/30s, CNV 60–50–40–30–20, Về Đích gói 20/30 điểm.",
   }),
 };
 
-export const RULESET_LIST: OlympiaRuleset[] = Object.values(RULESETS);
+/**
+ * Distinct rulesets shown in the UI selector (O15–O19 merged into "15", O24–O25 merged into "24").
+ */
+export const RULESET_LIST: OlympiaRuleset[] = [
+  RULESETS.O13,
+  RULESETS.O14,
+  RULESETS.O15,
+  RULESETS.O20,
+  RULESETS.O21,
+  RULESETS.O22,
+  RULESETS.O23,
+  RULESETS.O24,
+  RULESETS.O26,
+];
+
+export const RULESET_YEAR_BUTTONS: Array<{ id: RulesetId; numberLabel: string; fullTitle: string }> = [
+  { id: "O13", numberLabel: "13", fullTitle: "Olympia 13" },
+  { id: "O14", numberLabel: "14", fullTitle: "Olympia 14" },
+  { id: "O15", numberLabel: "15", fullTitle: "Olympia 15 – 19" },
+  { id: "O20", numberLabel: "20", fullTitle: "Olympia 20" },
+  { id: "O21", numberLabel: "21", fullTitle: "Olympia 21" },
+  { id: "O22", numberLabel: "22", fullTitle: "Olympia 22" },
+  { id: "O23", numberLabel: "23", fullTitle: "Olympia 23" },
+  { id: "O24", numberLabel: "24", fullTitle: "Olympia 24 – 25" },
+  { id: "O26", numberLabel: "26", fullTitle: "Olympia 26" },
+];
 
 /**
  * Points for solving the keyword given number of opened horizontal rows (0..4)

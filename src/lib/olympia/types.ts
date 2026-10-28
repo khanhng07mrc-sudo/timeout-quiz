@@ -47,43 +47,126 @@ export const KHOI_DONG_SUBJECTS = [
   "Tiếng Anh",
 ] as const;
 
+export type KhoiDongSubject = (typeof KHOI_DONG_SUBJECTS)[number];
+
+/** 6 phân vùng chuẩn ở vòng Khởi Động */
+export type KdZoneId =
+  | "MATH_IT"
+  | "NATURAL_SCI"
+  | "SOCIAL_SCI"
+  | "ARTS_SPORTS"
+  | "FOREIGN_LANG"
+  | "GENERAL";
+
+export const KD_ZONES: KdZoneId[] = [
+  "MATH_IT",
+  "NATURAL_SCI",
+  "SOCIAL_SCI",
+  "ARTS_SPORTS",
+  "FOREIGN_LANG",
+  "GENERAL",
+];
+
+export const KD_ZONE_LABELS: Record<KdZoneId, string> = {
+  MATH_IT: "Toán - Tin",
+  NATURAL_SCI: "Khoa học tự nhiên (Lý, Hóa, Sinh)",
+  SOCIAL_SCI: "Khoa học xã hội (Văn, Sử, Địa)",
+  ARTS_SPORTS: "Nghệ thuật - Thể thao",
+  FOREIGN_LANG: "Tiếng Anh - Ngoại ngữ",
+  GENERAL: "Hiểu biết chung",
+};
+
+export const KD_ZONE_SHORT_LABELS: Record<KdZoneId, string> = {
+  MATH_IT: "Toán - Tin",
+  NATURAL_SCI: "KHTN (Lý-Hóa-Sinh)",
+  SOCIAL_SCI: "KHXH (Văn-Sử-Địa)",
+  ARTS_SPORTS: "Nghệ thuật - Thể thao",
+  FOREIGN_LANG: "Tiếng Anh",
+  GENERAL: "Hiểu biết chung",
+};
+
+/** 3 phân vùng lớn ở vòng Về Đích */
+export type VdZoneId = "KHTN" | "KHXH" | "HBC";
+
+export const VD_ZONES: VdZoneId[] = ["KHTN", "KHXH", "HBC"];
+
+export const VD_ZONE_LABELS: Record<VdZoneId, string> = {
+  KHTN: "Khoa học tự nhiên (Toán, Lý, Hóa, Sinh)",
+  KHXH: "Khoa học xã hội (Văn, Sử, Địa)",
+  HBC: "Hiểu biết chung (Thể thao, Nghệ thuật, Tiếng Anh, Đời sống)",
+};
+
+export const VD_ZONE_SHORT_LABELS: Record<VdZoneId, string> = {
+  KHTN: "Khoa học tự nhiên",
+  KHXH: "Khoa học xã hội",
+  HBC: "Hiểu biết chung",
+};
+
 // ── Question set (same shape as the original app's questions/*.json) ──
 export interface QA {
   q: string;
   a: string;
   /** optional subject/category label (e.g. Toán, Lý, Hóa, Sinh, Văn, Sử, Địa, Thể thao, Nghệ thuật, Lĩnh vực khác, Tiếng Anh) */
   subject?: string;
-  /** optional media attached to the question (image/video url) */
+  /** 1 of 6 Khởi Động zones */
+  kdZone?: KdZoneId;
+  /** 1 of 3 Về Đích macro-zones */
+  vdZone?: VdZoneId;
+  /** AI classification confidence (0..100) */
+  aiConfidence?: number;
+  /** Whether this question has already been used in a match */
+  used?: boolean;
+  usedAt?: string;
+  /** optional media attached to the question (image/video/audio url) */
   media?: string;
-  mediaType?: "image" | "video";
+  mediaType?: "image" | "video" | "audio";
 }
 
 export interface VeDichQuestion extends QA {
   type?: "theory" | "practice";
 }
 
+export interface TangTocClueImage {
+  url: string;
+  /** Second offset from question start when this clue image appears (e.g. 0, 5, 10, 15) */
+  atSecond?: number;
+  atSec?: number;
+  label?: string;
+}
+
 export interface TangTocQuestion {
   media?: string;
-  type?: "image" | "video";
+  type?: "image" | "video" | "audio";
   /** optional text prompt shown with the media */
   q?: string;
   answer: string;
   duration?: number;
   /** question category (O13+: iq = Câu 1 IQ, data = Câu 2 & 4 Dữ kiện, arrange = Câu 3 Sắp xếp 6 mảnh 1..6) */
   category?: "iq" | "data" | "arrange";
+  /** optional timed sequence of clue images for "data" (Dữ kiện mở dần) questions */
+  clueImages?: TangTocClueImage[];
+  /** Whether this question has already been used */
+  used?: boolean;
 }
 
 export interface VcnvRowDef {
   hint: string;
   answer: string;
   media?: string;
-  mediaType?: "image" | "video";
+  mediaType?: "image" | "video" | "audio";
+  used?: boolean;
 }
 
 export interface OlympiaQuestionSet {
+  id?: string;
   name: string;
+  description?: string;
+  targetRuleset?: RulesetId;
+  /** Whether to draw questions using Stratified Fair Draw across subject zones (default true) */
+  balancedRandom?: boolean;
+  updatedAt?: string;
   khoiDong: {
-    solo: Record<string, QA[]>; // "1".."4"
+    solo: Record<string, QA[]>; // "1".."8"
     shared: QA[];
   };
   vcnv: {
@@ -96,6 +179,8 @@ export interface OlympiaQuestionSet {
   veDich: Record<string, VeDichQuestion[]>; // "10" | "20" | "30" | "40"
   cauHoiPhu: QA[];
 }
+
+export type QuestionSet = OlympiaQuestionSet;
 
 // ── Ruleset ──
 export type KdSegmentKind = "solo" | "shared" | "turn";
@@ -183,6 +268,8 @@ export interface OlympiaConfig {
   /** user-selected rounds (without cauHoiPhu) */
   rounds: RoundId[];
   questionSet: OlympiaQuestionSet;
+  /** When true (default), draw questions randomly while balancing across 6 KD zones & 3 VD zones */
+  balancedRandom?: boolean;
 }
 
 export type RoundStatus = "pending" | "active" | "done";
@@ -199,8 +286,50 @@ export interface KhoiDongState {
   lockedSeats: number[]; // locked out for next question (O22 lockout) or this question after wrong
   nextLockedSeats: number[];
   poolCursor: number;
-  current: { q: string; a: string; subject?: string; media?: string; mediaType?: string } | null;
+  /** Pre-balanced per-seat question queues when balancedRandom is enabled */
+  seatQueues?: Record<number, QA[]>;
+  /** Pre-balanced shared question queue when balancedRandom is enabled */
+  sharedQueue?: QA[];
+  current: {
+    q: string;
+    a: string;
+    subject?: string;
+    kdZone?: KdZoneId;
+    vdZone?: VdZoneId;
+    media?: string;
+    mediaType?: string;
+  } | null;
   lastVerdict: "correct" | "wrong" | null;
+}
+
+export interface AnswerAttempt {
+  text?: string;
+  answer?: string;
+  /** Elapsed milliseconds from question timer start */
+  ms: number;
+  /** Server timestamp */
+  at?: number;
+}
+
+export interface VcnvAnswerRecord {
+  text: string;
+  at: number;
+  ms?: number;
+  /** Penultimate (2nd-to-last) answer text if player submitted >= 2 times */
+  previousText?: string;
+  previousMs?: number;
+  /** Full chronological list of all submitted answers in this question (for Detailed Transcript) */
+  history?: AnswerAttempt[];
+}
+
+export interface TangTocSubmissionRecord {
+  answer: string;
+  ms: number;
+  /** Penultimate (2nd-to-last) answer text if player submitted >= 2 times */
+  previousAnswer?: string;
+  previousMs?: number;
+  /** Full chronological list of all submitted answers in this question (for Detailed Transcript) */
+  history?: AnswerAttempt[];
 }
 
 export interface VcnvRowState extends VcnvRowDef {
@@ -218,10 +347,10 @@ export interface VcnvState {
   currentRow: number; // -1 none, 0..3 row, 4 = center question (#5)
   phase: "grid" | "question" | "answers" | "done";
   timer: TimerState;
-  answers: Record<number, { text: string; at: number }>;
+  answers: Record<number, VcnvAnswerRecord>;
   answersRevealed: boolean;
   /** seats that rang the keyword bell, in order */
-  bells: { seat: number; before: boolean }[];
+  bells: { seat: number; before: boolean; atMs?: number }[];
   eliminatedSeats: number[];
   openedCount: number;
   piecesRevealed: boolean[];
@@ -229,12 +358,24 @@ export interface VcnvState {
   rowResults: Record<number, number[]>; // rowIdx (0..4) -> seats awarded
 }
 
+export interface TangTocRankingItem {
+  seat: number;
+  answer: string;
+  ms: number;
+  noAnswer: boolean;
+  wrong?: boolean;
+  points?: number;
+  previousAnswer?: string;
+  previousMs?: number;
+  history?: AnswerAttempt[];
+}
+
 export interface TangTocState {
   qIdx: number; // -1 none
   phase: "idle" | "question" | "ranking" | "graded";
   timer: TimerState;
-  submissions: Record<number, { answer: string; ms: number }>;
-  ranking: { seat: number; answer: string; ms: number; noAnswer: boolean; wrong?: boolean; points?: number }[];
+  submissions: Record<number, TangTocSubmissionRecord>;
+  ranking: TangTocRankingItem[];
   questions: TangTocQuestion[];
   correctAnswer?: string;
 }
@@ -253,6 +394,8 @@ export interface VeDichState {
   hopeStarActive: boolean;
   deductedOnSteal: boolean;
   pointers: Record<string, number>;
+  /** Keys of VeDich questions already drawn in this match */
+  usedKeys?: string[];
   lastVerdict: "correct" | "wrong" | "stealCorrect" | "stealWrong" | "noSteal" | null;
 }
 
@@ -268,10 +411,89 @@ export interface CauHoiPhuState {
   questions: QA[];
 }
 
+export interface TranscriptBuzzerItem {
+  order: number;
+  seat: number;
+  name: string;
+  ms?: number;
+  beforeReveal?: boolean;
+  note?: string;
+  verdict?: "correct" | "wrong";
+}
+
+export interface TranscriptSubmissionItem {
+  rank: number;
+  seat: number;
+  name: string;
+  finalAnswer: string;
+  finalMs?: number;
+  previousAnswer?: string;
+  previousMs?: number;
+  /** All attempts from 1st to last (shown in "Chi tiết" transcript mode) */
+  allAttempts: AnswerAttempt[];
+  isCorrect?: boolean;
+  correct?: boolean;
+  pointsAwarded?: number;
+  noAnswer?: boolean;
+}
+
+export interface OlympiaTranscriptEntry {
+  seq: number;
+  at: number;
+  round: RoundId | "system";
+  roundLabel: string;
+  segmentLabel: string;
+  /** "question" | "package" | "package_select" | "cnv_bell" | "score_adjust" */
+  entryKind: "question" | "package" | "package_select" | "cnv_bell" | "score_adjust";
+  questionNumber?: number;
+  questionText?: string;
+  correctAnswer?: string;
+  subject?: string;
+  kdZone?: KdZoneId;
+  vdZone?: VdZoneId;
+  mediaUrl?: string;
+  media?: string;
+  /** Active contestant seat (for solo KD or VeDich owner) */
+  actorSeat?: number;
+  actorName?: string;
+  /** Main buzzer / responder seat & name */
+  buzzedSeat?: number;
+  buzzedName?: string;
+  /** VeDich chosen package point array (e.g. [20, 30, 20] or [10, 10, 20, 20]) */
+  packageChoices?: number[];
+  packagePoints?: number[];
+  packageLabel?: string;
+  /** Point value of the question in VeDich/KD/VCNV */
+  selectedPoints?: number;
+  questionPoints?: number;
+  hopeStar?: boolean;
+  /** Buzzer sequence for shared KD, VCNV CNV bell, VeDich steal, CauHoiPhu */
+  buzzerEvents?: TranscriptBuzzerItem[];
+  /** Ranked submissions for VCNV & TangToc (contains finalAnswer, previousAnswer, and allAttempts[]) */
+  submissions?: TranscriptSubmissionItem[];
+  verdict?:
+    | "correct"
+    | "wrong"
+    | "stealCorrect"
+    | "steal_correct"
+    | "stealWrong"
+    | "steal_wrong"
+    | "noSteal"
+    | "skipped"
+    | "skip"
+    | "graded"
+    | "info";
+  scoreChanges?: Record<number, number>;
+  scoresAfter?: Record<number, number>;
+  scoresSnapshot?: Record<number, number>;
+  note?: string;
+}
+
 export type LobbyPhase = "lobby" | "playing" | "finished";
 
 export interface OlympiaState {
   code: string;
+  name?: string;
   rulesetId: RulesetId;
   rounds: RoundId[]; // selected rounds in canonical order (excl. CHP)
   stage: LobbyPhase;
@@ -293,6 +515,10 @@ export interface OlympiaState {
   /** server clock at serialization — clients compute offset */
   now: number;
   log: string[];
+  /** Normalized question strings opened during the match so the bank can mark them as used */
+  openedQuestionKeys?: string[];
+  /** Structured match transcript supporting both "Rút gọn" and "Chi tiết" modes */
+  transcript?: OlympiaTranscriptEntry[];
 }
 
 export type HostAction = { type: string; [k: string]: unknown };

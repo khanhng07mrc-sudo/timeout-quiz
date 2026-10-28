@@ -10913,14 +10913,15 @@ var DEFAULT_ALLOWED_POWERUPS_BY_MODE = {
   // MYSTERY_QUEST: Hành trình phiêu lưu - Mode DUY NHẤT không hỗ trợ thẻ bổ trợ (Power-up) do đặc thù sân khấu luân phiên & Ô số phận
   MYSTERY_QUEST: [],
   // MAGIC_WHEEL: Chiếc Nón Kỳ Diệu - Tự vận hành bằng 24 ô đặc biệt trên nón (Thêm lượt, Nhân đôi, Chia đôi, May mắn, Mất lượt...)
-  MAGIC_WHEEL: []
+  MAGIC_WHEEL: [],
+  OLYMPIA: []
 };
 function getDefaultAllowedPowerupsForMode(mode) {
-  if (mode === "MYSTERY_QUEST" || mode === "MAGIC_WHEEL") return [];
+  if (mode === "MYSTERY_QUEST" || mode === "MAGIC_WHEEL" || mode === "OLYMPIA") return [];
   return DEFAULT_ALLOWED_POWERUPS_BY_MODE[mode] ?? DEFAULT_ALLOWED_POWERUPS_BY_MODE.CLASSIC;
 }
 function isPowerupAllowedForMode(mode, cardType) {
-  if (mode === "MYSTERY_QUEST" || mode === "MAGIC_WHEEL") return false;
+  if (mode === "MYSTERY_QUEST" || mode === "MAGIC_WHEEL" || mode === "OLYMPIA") return false;
   const allowed = getDefaultAllowedPowerupsForMode(mode);
   return allowed.includes(cardType);
 }
@@ -24528,6 +24529,2743 @@ async function safelyFinishGame({
   return true;
 }
 
+// src/lib/olympia/rulesets.ts
+var solo60s12q = (seatCount) => Array.from({ length: seatCount }, (_, i) => ({
+  kind: "solo",
+  label: `Th\xED sinh ${i + 1} \u2014 Kh\u1EDFi \u0111\u1ED9ng 60s (t\u1ED1i \u0111a 12 c\xE2u)`,
+  seat: i,
+  questions: 12,
+  perQuestionMs: 6e4,
+  globalMs: 6e4
+}));
+var solo60sUnlimited = (seatCount) => Array.from({ length: seatCount }, (_, i) => ({
+  kind: "solo",
+  label: `Th\xED sinh ${i + 1} \u2014 Kh\u1EDFi \u0111\u1ED9ng 60s (kh\xF4ng gi\u1EDBi h\u1EA1n c\xE2u)`,
+  seat: i,
+  questions: 999,
+  perQuestionMs: 6e4,
+  globalMs: 6e4
+}));
+var soloSegments = (seatCount) => Array.from({ length: seatCount }, (_, i) => ({
+  kind: "solo",
+  label: `Th\xED sinh ${i + 1} \u2014 Kh\u1EDFi \u0111\u1ED9ng ri\xEAng`,
+  seat: i,
+  questions: 6,
+  perQuestionMs: 5e3
+}));
+var sharedSegment = (seatCount) => ({
+  kind: "shared",
+  label: "Kh\u1EDFi \u0111\u1ED9ng chung",
+  // O24+: X * 3 questions for X contestants
+  questions: seatCount * 3,
+  perQuestionMs: 3e3
+});
+var turnsO23 = (seatCount) => [2, 3, 4].map((m) => seatCount * m).map((n, i) => ({
+  kind: "turn",
+  label: `L\u01B0\u1EE3t chung ${i + 1} (${n} c\xE2u)`,
+  questions: n,
+  perQuestionMs: 3e3
+}));
+var turnsO22 = () => [30, 60, 90].map((s, i) => ({
+  kind: "turn",
+  label: `L\u01B0\u1EE3t chung ${i + 1} (${s} gi\xE2y)`,
+  questions: 99,
+  perQuestionMs: 3e3,
+  globalMs: s * 1e3
+}));
+var THINK_CLASSIC = { "10": 1e4, "20": 15e3, "30": 2e4, "40": 3e4 };
+var THINK_MODERN = { "10": 15e3, "20": 15e3, "30": 2e4, "40": 3e4 };
+var PRESET_PACKAGES_O13_O14 = {
+  "40": [10, 10, 10, 10],
+  "60": [10, 10, 20, 20],
+  "80": [10, 20, 20, 30]
+};
+var PRESET_PACKAGES_O15_O19 = {
+  "40": [10, 10, 20],
+  "60": [10, 20, 30],
+  "80": [20, 30, 30]
+};
+var CNV_O13 = [80, 80, 80, 40, 40, 20];
+var CNV_O14_O22 = [80, 80, 60, 40, 20, 10];
+var CNV_O23 = [50, 50, 40, 30, 20, 10];
+var CNV_MODERN = [60, 60, 50, 40, 30, 20];
+function make(partial) {
+  return {
+    note: void 0,
+    khoiDong: {
+      correctPoints: 10,
+      wrongPenalty: 5,
+      lockoutOnWrong: false,
+      segments: (n) => [...soloSegments(n), sharedSegment(n)]
+    },
+    vcnv: { rowPoints: 10, cnvPoints: CNV_MODERN, rowTimerMs: 15e3 },
+    tangToc: { timers: [2e4, 2e4, 3e4, 3e4] },
+    veDich: {
+      questionsPerSeat: 3,
+      selectionMode: "customPoints",
+      pointOptions: [20, 30],
+      thinkMs: THINK_MODERN,
+      stealMs: 5e3,
+      stealPenaltyDivisor: 2,
+      turnOrderMode: "highest_unplayed"
+    },
+    cauHoiPhu: { timerMs: 15e3 },
+    ...partial
+  };
+}
+function makeO15ToO19(id, label, audioSeason) {
+  return make({
+    id,
+    label,
+    audioSeason,
+    note: `Kh\u1EDFi \u0111\u1ED9ng 60s (t\u1ED1i \u0111a 12 c\xE2u). VCNV 80\u201360\u201340\u201320\u201310\u0111. T\u0103ng t\u1ED1c 30s\xD74 c\xE2u. V\u1EC1 \u0111\xEDch 3 c\xE2u theo g\xF3i c\u1ED1 \u0111\u1ECBnh 40 (10\u201310\u201320), 60 (10\u201320\u201330), 80 (20\u201330\u201330).`,
+    khoiDong: {
+      correctPoints: 10,
+      wrongPenalty: 0,
+      lockoutOnWrong: false,
+      segments: (n) => solo60s12q(n)
+    },
+    vcnv: { rowPoints: 10, cnvPoints: CNV_O14_O22, rowTimerMs: 15e3 },
+    tangToc: { timers: [3e4, 3e4, 3e4, 3e4] },
+    veDich: {
+      questionsPerSeat: 3,
+      selectionMode: "presetPackages",
+      presetPackages: PRESET_PACKAGES_O15_O19,
+      pointOptions: [10, 20, 30],
+      thinkMs: THINK_CLASSIC,
+      stealMs: 5e3,
+      stealPenaltyDivisor: 2,
+      turnOrderMode: "seat_order"
+    }
+  });
+}
+var RULESETS = {
+  O13: make({
+    id: "O13",
+    label: "Olympia 13",
+    audioSeason: "O13-15",
+    note: "Kh\u1EDFi \u0111\u1ED9ng 60s (t\u1ED1i \u0111a 12 c\xE2u). VCNV: 2 h\xE0ng \u0111\u1EA7u 80\u0111, 2 h\xE0ng sau 40\u0111, sau c\xE2u th\u1EE9 5 (\xF4 trung t\xE2m) 20\u0111. T\u0103ng t\u1ED1c 30s\xD74. V\u1EC1 \u0111\xEDch g\xF3i 4 c\xE2u: 40 (10\xD74), 60 (10\xD72, 20\xD72), 80 (10, 20\xD72, 30).",
+    khoiDong: {
+      correctPoints: 10,
+      wrongPenalty: 0,
+      lockoutOnWrong: false,
+      segments: (n) => solo60s12q(n)
+    },
+    vcnv: { rowPoints: 10, cnvPoints: CNV_O13, rowTimerMs: 15e3 },
+    tangToc: { timers: [3e4, 3e4, 3e4, 3e4] },
+    veDich: {
+      questionsPerSeat: 4,
+      selectionMode: "presetPackages",
+      presetPackages: PRESET_PACKAGES_O13_O14,
+      pointOptions: [10, 20, 30],
+      thinkMs: THINK_CLASSIC,
+      stealMs: 5e3,
+      stealPenaltyDivisor: 2,
+      turnOrderMode: "seat_order"
+    }
+  }),
+  O14: make({
+    id: "O14",
+    label: "Olympia 14",
+    audioSeason: "O13-15",
+    note: "T\u01B0\u01A1ng t\u1EF1 O13, thay \u0111\u1ED5i \u0111i\u1EC3m VCNV: h\xE0ng 1: 80\u0111, h\xE0ng 2: 60\u0111, h\xE0ng 3: 40\u0111, h\xE0ng 4: 20\u0111, sau c\xE2u th\u1EE9 5 (\xF4 trung t\xE2m): 10\u0111. V\u1EC1 \u0111\xEDch g\xF3i 4 c\xE2u (40/60/80\u0111).",
+    khoiDong: {
+      correctPoints: 10,
+      wrongPenalty: 0,
+      lockoutOnWrong: false,
+      segments: (n) => solo60s12q(n)
+    },
+    vcnv: { rowPoints: 10, cnvPoints: CNV_O14_O22, rowTimerMs: 15e3 },
+    tangToc: { timers: [3e4, 3e4, 3e4, 3e4] },
+    veDich: {
+      questionsPerSeat: 4,
+      selectionMode: "presetPackages",
+      presetPackages: PRESET_PACKAGES_O13_O14,
+      pointOptions: [10, 20, 30],
+      thinkMs: THINK_CLASSIC,
+      stealMs: 5e3,
+      stealPenaltyDivisor: 2,
+      turnOrderMode: "seat_order"
+    }
+  }),
+  O15: makeO15ToO19("O15", "Olympia 15 \u2013 19", "O16-21"),
+  O16: makeO15ToO19("O16", "Olympia 15 \u2013 19", "O16-21"),
+  O17: makeO15ToO19("O17", "Olympia 15 \u2013 19", "O16-21"),
+  O18: makeO15ToO19("O18", "Olympia 15 \u2013 19", "O16-21"),
+  O19: makeO15ToO19("O19", "Olympia 15 \u2013 19", "O16-21"),
+  O20: make({
+    id: "O20",
+    label: "Olympia 20",
+    audioSeason: "O16-21",
+    note: "Kh\u1EDFi \u0111\u1ED9ng 60s kh\xF4ng gi\u1EDBi h\u1EA1n s\u1ED1 c\xE2u h\u1ECFi. VCNV 80-60-40-20-10\u0111. T\u0103ng t\u1ED1c 30s\xD74. V\u1EC1 \u0111\xEDch t\u1EF1 ch\u1ECDn 3 c\xE2u \u1EDF 3 m\u1EE9c \u0111i\u1EC3m b\u1EA5t k\u1EF3 (10, 20, 30) theo th\u1EE9 t\u1EF1 v\u1ECB tr\xED 1\u2192X.",
+    khoiDong: {
+      correctPoints: 10,
+      wrongPenalty: 0,
+      lockoutOnWrong: false,
+      segments: (n) => solo60sUnlimited(n)
+    },
+    vcnv: { rowPoints: 10, cnvPoints: CNV_O14_O22, rowTimerMs: 15e3 },
+    tangToc: { timers: [3e4, 3e4, 3e4, 3e4] },
+    veDich: {
+      questionsPerSeat: 3,
+      selectionMode: "customPoints",
+      pointOptions: [10, 20, 30],
+      thinkMs: THINK_CLASSIC,
+      stealMs: 5e3,
+      stealPenaltyDivisor: 2,
+      turnOrderMode: "seat_order"
+    }
+  }),
+  O21: make({
+    id: "O21",
+    label: "Olympia 21",
+    audioSeason: "O16-21",
+    note: "T\u01B0\u01A1ng t\u1EF1 O20 (Kh\u1EDFi \u0111\u1ED9ng 60s kh\xF4ng gi\u1EDBi h\u1EA1n c\xE2u, V\u1EC1 \u0111\xEDch ch\u1ECDn 3 c\xE2u 10/20/30\u0111); ri\xEAng V\u1EC1 \u0111\xEDch th\xED sinh c\xF3 \u0111i\u1EC3m cao nh\u1EA5t qua m\u1ED7i l\u01B0\u1EE3t m\xE0 ch\u01B0a thi s\u1EBD l\xEAn thi \u1EDF l\u01B0\u1EE3t \u0111\xF3.",
+    khoiDong: {
+      correctPoints: 10,
+      wrongPenalty: 0,
+      lockoutOnWrong: false,
+      segments: (n) => solo60sUnlimited(n)
+    },
+    vcnv: { rowPoints: 10, cnvPoints: CNV_O14_O22, rowTimerMs: 15e3 },
+    tangToc: { timers: [3e4, 3e4, 3e4, 3e4] },
+    veDich: {
+      questionsPerSeat: 3,
+      selectionMode: "customPoints",
+      pointOptions: [10, 20, 30],
+      thinkMs: THINK_CLASSIC,
+      stealMs: 5e3,
+      stealPenaltyDivisor: 2,
+      turnOrderMode: "highest_unplayed"
+    }
+  }),
+  O22: make({
+    id: "O22",
+    label: "Olympia 22",
+    audioSeason: "O22",
+    note: "Kh\u1EDFi \u0111\u1ED9ng: l\u01B0\u1EE3t chung theo \u0111\u1ED3ng h\u1ED3 30/60/90 gi\xE2y; sai b\u1ECB kh\xF3a l\u01B0\u1EE3t c\xE2u sau (kh\xF4ng tr\u1EEB \u0111i\u1EC3m). T\u0103ng t\u1ED1c 10/20/30/40s.",
+    khoiDong: {
+      correctPoints: 10,
+      wrongPenalty: 0,
+      lockoutOnWrong: true,
+      segments: (n) => [...soloSegments(n), ...turnsO22()]
+    },
+    vcnv: { rowPoints: 10, cnvPoints: CNV_O14_O22, rowTimerMs: 15e3 },
+    tangToc: { timers: [1e4, 2e4, 3e4, 4e4] },
+    veDich: {
+      questionsPerSeat: 3,
+      selectionMode: "customPoints",
+      pointOptions: [10, 20, 30],
+      thinkMs: THINK_MODERN,
+      stealMs: 5e3,
+      stealPenaltyDivisor: 2,
+      turnOrderMode: "highest_unplayed"
+    }
+  }),
+  O23: make({
+    id: "O23",
+    label: "Olympia 23",
+    audioSeason: "O23",
+    note: "Kh\u1EDFi \u0111\u1ED9ng: 3 l\u01B0\u1EE3t chung X\xD72 / X\xD73 / X\xD74 c\xE2u (X = s\u1ED1 th\xED sinh), sai tr\u1EEB 5 \u0111i\u1EC3m. CNV 50-40-30-20-10.",
+    khoiDong: {
+      correctPoints: 10,
+      wrongPenalty: 5,
+      lockoutOnWrong: false,
+      segments: (n) => [...soloSegments(n), ...turnsO23(n)]
+    },
+    vcnv: { rowPoints: 10, cnvPoints: CNV_O23, rowTimerMs: 15e3 },
+    tangToc: { timers: [1e4, 2e4, 3e4, 4e4] },
+    veDich: {
+      questionsPerSeat: 3,
+      selectionMode: "customPoints",
+      pointOptions: [10, 20, 30],
+      thinkMs: THINK_MODERN,
+      stealMs: 5e3,
+      stealPenaltyDivisor: 2,
+      turnOrderMode: "highest_unplayed"
+    }
+  }),
+  O24: make({
+    id: "O24",
+    label: "Olympia 24 \u2013 25",
+    audioSeason: "O24-25",
+    note: "Kh\u1EDFi \u0111\u1ED9ng ri\xEAng 6 c\xE2u + kh\u1EDFi \u0111\u1ED9ng chung X\xD73 c\xE2u. T\u0103ng T\u1ED1c 10/20/30/40s. CNV 60\u201350\u201340\u201330\u201320. V\u1EC1 \u0111\xEDch ch\u1ECDn 3 c\xE2u 20/30\u0111.",
+    tangToc: { timers: [1e4, 2e4, 3e4, 4e4] }
+  }),
+  O25: make({
+    id: "O25",
+    label: "Olympia 24 \u2013 25",
+    audioSeason: "O24-25",
+    note: "Kh\u1EDFi \u0111\u1ED9ng ri\xEAng 6 c\xE2u + kh\u1EDFi \u0111\u1ED9ng chung X\xD73 c\xE2u. T\u0103ng T\u1ED1c 10/20/30/40s. CNV 60\u201350\u201340\u201330\u201320. V\u1EC1 \u0111\xEDch ch\u1ECDn 3 c\xE2u 20/30\u0111.",
+    tangToc: { timers: [1e4, 2e4, 3e4, 4e4] }
+  }),
+  O26: make({
+    id: "O26",
+    label: "Olympia 26",
+    audioSeason: "O26",
+    note: "T\u0103ng T\u1ED1c 20/20/30/30s, CNV 60\u201350\u201340\u201330\u201320, V\u1EC1 \u0110\xEDch g\xF3i 20/30 \u0111i\u1EC3m."
+  })
+};
+var RULESET_LIST = [
+  RULESETS.O13,
+  RULESETS.O14,
+  RULESETS.O15,
+  RULESETS.O20,
+  RULESETS.O21,
+  RULESETS.O22,
+  RULESETS.O23,
+  RULESETS.O24,
+  RULESETS.O26
+];
+function cnvPointsFor(rs, openedRows, centerOpened = false) {
+  const n = Math.max(0, Math.floor(openedRows));
+  const arr = rs.vcnv.cnvPoints;
+  if (arr.length >= 6) {
+    if (centerOpened || n >= 5) return arr[5];
+    return arr[Math.min(4, n)];
+  }
+  if (centerOpened || n >= 5) return arr[arr.length - 1];
+  const idx = Math.min(n <= 1 ? 0 : n - 1, arr.length - 1);
+  return arr[idx];
+}
+var TANG_TOC_TABLE = {
+  1: [40],
+  2: [20, 10],
+  3: [30, 20, 10],
+  4: [40, 30, 20, 10],
+  5: [40, 30, 20, 15, 10],
+  6: [40, 30, 25, 20, 15, 10],
+  7: [40, 35, 30, 25, 20, 15, 10],
+  8: [40, 35, 30, 25, 20, 15, 10, 5]
+};
+function tangTocTierPoints(contestants) {
+  const n = Math.min(8, Math.max(1, Math.floor(contestants) || 1));
+  return TANG_TOC_TABLE[n];
+}
+
+// src/lib/olympia/types.ts
+var ROUND_ORDER = ["khoiDong", "vcnv", "tangToc", "veDich", "cauHoiPhu"];
+var ROUND_LABELS = {
+  khoiDong: "Kh\u1EDFi \u0110\u1ED9ng",
+  vcnv: "V\u01B0\u1EE3t Ch\u01B0\u1EDBng Ng\u1EA1i V\u1EADt",
+  tangToc: "T\u0103ng T\u1ED1c",
+  veDich: "V\u1EC1 \u0110\xEDch",
+  cauHoiPhu: "C\xE2u H\u1ECFi Ph\u1EE5"
+};
+var MAX_SEATS = 8;
+var KHOI_DONG_SUBJECTS = [
+  "To\xE1n",
+  "L\xFD",
+  "H\xF3a",
+  "Sinh",
+  "V\u0103n",
+  "S\u1EED",
+  "\u0110\u1ECBa",
+  "Th\u1EC3 thao",
+  "Ngh\u1EC7 thu\u1EADt",
+  "L\u0129nh v\u1EF1c kh\xE1c",
+  "Ti\u1EBFng Anh"
+];
+var KD_ZONES = [
+  "MATH_IT",
+  "NATURAL_SCI",
+  "SOCIAL_SCI",
+  "ARTS_SPORTS",
+  "FOREIGN_LANG",
+  "GENERAL"
+];
+var VD_ZONES = ["KHTN", "KHXH", "HBC"];
+
+// src/lib/olympia/ai-classifier.ts
+var SUBJECT_TO_KD_ZONE = {
+  To\u00E1n: "MATH_IT",
+  L\u00FD: "NATURAL_SCI",
+  H\u00F3a: "NATURAL_SCI",
+  Sinh: "NATURAL_SCI",
+  V\u0103n: "SOCIAL_SCI",
+  S\u1EED: "SOCIAL_SCI",
+  \u0110\u1ECBa: "SOCIAL_SCI",
+  "Th\u1EC3 thao": "ARTS_SPORTS",
+  "Ngh\u1EC7 thu\u1EADt": "ARTS_SPORTS",
+  "Ti\u1EBFng Anh": "FOREIGN_LANG",
+  "L\u0129nh v\u1EF1c kh\xE1c": "GENERAL"
+};
+var SUBJECT_TO_VD_ZONE = {
+  To\u00E1n: "KHTN",
+  L\u00FD: "KHTN",
+  H\u00F3a: "KHTN",
+  Sinh: "KHTN",
+  V\u0103n: "KHXH",
+  S\u1EED: "KHXH",
+  \u0110\u1ECBa: "KHXH",
+  "Th\u1EC3 thao": "HBC",
+  "Ngh\u1EC7 thu\u1EADt": "HBC",
+  "Ti\u1EBFng Anh": "HBC",
+  "L\u0129nh v\u1EF1c kh\xE1c": "HBC"
+};
+var SUBJECT_KEYWORDS = {
+  To\u00E1n: [
+    {
+      weight: 4,
+      patterns: [
+        /\b(số nguyên tố|phương trình|tam giác|hình học|đạo hàm|tích phân|đa thức|phân số|tỉ lệ thức|căn bậc|logarit|hệ trục tọa độ|diện tích|thể tích|chu vi|góc vuông|cạnh huyền|pythagore|pitago|fibonacci|ma trận|xác suất|tổ hợp|chỉnh hợp|bội chung|ước chung|hàm số|đồ thị|vectơ|vector|số tự nhiên|số thực|số chẵn|số lẻ|chia hết)\b/i
+      ]
+    },
+    {
+      weight: 2,
+      patterns: [/\b(tính|bằng bao nhiêu|tổng của|tích của|hiệu của|thương của|chữ số|hình chữ nhật|hình vuông|hình tròn|bán kính|đường kính|nhị phân|thuật toán)\b/i]
+    }
+  ],
+  L\u00FD: [
+    {
+      weight: 4,
+      patterns: [
+        /\b(vật lý|vận tốc|gia tốc|lực ma sát|trọng lực|trọng trường|điện trở|cường độ dòng điện|hiệu điện thế|công suất|tần số|bước sóng|khúc xạ|phản xạ ánh sáng|thấu kính|nhiệt động lực|định luật newton|định luật ôm|ohm|ampe|vôn|volt|watt|joule|jun|hạt nhân|quang học|cơ học|điện từ|từ trường|siêu âm|áp suất|lực đẩy ác-si-mét|archimedes)\b/i
+      ]
+    },
+    {
+      weight: 2,
+      patterns: [/\b(chuyển động|quãng đường|nhiệt độ sôi|nóng chảy|chân không|vận tốc ánh sáng|m\/s|km\/h|hz|kwh)\b/i]
+    }
+  ],
+  H\u00F3a: [
+    {
+      weight: 4,
+      patterns: [
+        /\b(hóa học|nguyên tố|bảng tuần hoàn|nguyên tử khối|phân tử|liên kết cộng hóa trị|liên kết ion|axit|acid|bazơ|base|muối|oxit|oxi hóa|khử|chất xúc tác|kết tủa|dung dịch|nồng độ mol|phản ứng hóa học|mendeleev|hidro|oxi|cacbon|nitơ|natri|canxi|sắt|đồng|nhôm|kẽm|clo|lưu huỳnh|h2o|co2|nacl|h2so4|hcl|naoh|caco3|ch4)\b/i
+      ]
+    },
+    {
+      weight: 2,
+      patterns: [/\b(kim loại|phi kim|khí hiếm|quỳ tím|polime|este|glucozo|ancol|hidrocacbon|hợp chất)\b/i]
+    }
+  ],
+  Sinh: [
+    {
+      weight: 4,
+      patterns: [
+        /\b(sinh học|tế bào|nhiễm sắc thể|adn|dna|arn|rna|gen|di truyền|đột biến|quang hợp|hô hấp tế bào|tiêu hóa|tuần hoàn|hệ thần kinh|vi khuẩn|virus|vi rút|nấm|thực vật|động vật|động vật có vú|lưỡng cư|bò sát|côn trùng|sinh thái|chuỗi thức ăn|máu|hồng cầu|bạch cầu|kháng thể|vaccine|vắc xin|protein|enzym|men|darwin|menden|mendel)\b/i
+      ]
+    },
+    {
+      weight: 2,
+      patterns: [/\b(cơ thể người|vitamin|lá cây|rễ cây|thụ phấn|loài vật|huyết áp|nhịp tim|phổi|gan|thận)\b/i]
+    }
+  ],
+  V\u0103n: [
+    {
+      weight: 4,
+      patterns: [
+        /\b(văn học|bài thơ|nhà thơ|nhà văn|tiểu thuyết|truyện ngắn|tác phẩm|tác giả|nhân vật văn học|truyện kiều|nguyễn du|nam cao|tố hữu|xuân diệu|hồ xuân hương|nguyễn trãi|vũ trọng phụng|ngô tất tố|tô hoài|nguyễn tuân|chữ nôm|lục bát|thất ngôn|ca dao|tục ngữ|thành ngữ|ẩn dụ|hoán dụ|nhân hóa|biện pháp tu từ|kịch|vở kịch)\b/i
+      ]
+    },
+    {
+      weight: 2,
+      patterns: [/\b(câu thơ|đoạn thơ|khổ thơ|tập thơ|bút danh|văn xuôi|thần thoại|cổ tích|ngụ ngôn)\b/i]
+    }
+  ],
+  S\u1EED: [
+    {
+      weight: 4,
+      patterns: [
+        /\b(lịch sử|triều đại|nhà lý|nhà trần|nhà lê|nhà nguyễn|nhà hồ|nhà tiền lê|nhà đinh|vua|hoàng đế|khởi nghĩa|chiến dịch|chiến thắng|bạch đằng|điện biên phủ|cách mạng tháng tám|hiệp định|geneva|pari|paris|thế chiến|chiến tranh thế giới|danh tướng|trần hưng đạo|quang trung|nguyễn huệ|lê lợi|ngô quyền|hai bà trưng|bà triệu|lý thường kiệt|di tích lịch sử|niên hiệu|kinh đô|thăng long)\b/i
+      ]
+    },
+    {
+      weight: 2,
+      patterns: [/\b(năm \d{3,4}|thế kỷ|thời kỳ|cổ đại|trung đại|cận đại|hiện đại|di chỉ|văn hóa đông sơn)\b/i]
+    }
+  ],
+  \u0110\u1ECBa: [
+    {
+      weight: 4,
+      patterns: [
+        /\b(địa lý|châu lục|châu á|châu âu|châu phi|châu mỹ|châu đại dương|châu nam cực|đại dương|thái bình dương|đại tây dương|ấn độ dương|bắc băng dương|dãy núi|đỉnh núi|sông|hồ|biển|đảo|quần đảo|bán đảo|eo biển|kênh đào|thủ đô|tỉnh|thành phố|đồng bằng|cao nguyên|khí hậu|nhiệt đới|xích đạo|vĩ tuyến|kinh tuyến|múi giờ|biên giới|diện tích tự nhiên|dân số)\b/i
+      ]
+    },
+    {
+      weight: 2,
+      patterns: [/\b(quốc gia nào|nước nào|tỉnh nào|miền bắc|miền trung|miền nam|tây nguyên|đồng bằng sông cửu long|sông hồng|sông mê kông)\b/i]
+    }
+  ],
+  "Th\u1EC3 thao": [
+    {
+      weight: 4,
+      patterns: [
+        /\b(thể thao|bóng đá|world cup|euro|olympic|sea games|asiad|huy chương vàng|vận động viên|cầu thủ|huấn luyện viên|sân vận động|bóng rổ|bóng chuyền|quần vợt|tennis|cầu lông|bơi lội|điền kinh|marathon|cờ vua|võ thuật|thẻ đỏ|thẻ vàng|phạt đền|penalty|việt vị|vô địch|giải đấu|fifa)\b/i
+      ]
+    },
+    {
+      weight: 2,
+      patterns: [/\b(môn thể thao|đội tuyển|bàn thắng|kỷ lục thế giới|nhà vô địch)\b/i]
+    }
+  ],
+  "Ngh\u1EC7 thu\u1EADt": [
+    {
+      weight: 4,
+      patterns: [
+        /\b(nghệ thuật|âm nhạc|bài hát|ca khúc|nhạc sĩ|ca sĩ|hội họa|bức tranh|họa sĩ|điêu khắc|kiến trúc|điện ảnh|bộ phim|đạo diễn|diễn viên|oscar|grammy|nhạc cụ|piano|guitar|violin|sáo|đàn bầu|đàn tranh|dân ca|quan họ|cải lương|tuồng|chèo|nhã nhạc|di sản văn hóa phi vật thể|văn cao|trịnh công sơn|beethoven|mozart|picasso|leonardo da vinci|mona lisa)\b/i
+      ]
+    },
+    {
+      weight: 2,
+      patterns: [/\b(giai điệu|nốt nhạc|hợp xướng|giao hưởng|triển lãm|bảo tàng mỹ thuật)\b/i]
+    }
+  ],
+  "Ti\u1EBFng Anh": [
+    {
+      weight: 5,
+      patterns: [
+        /\b(what|which|where|when|who|how many| how much|in english|tiếng anh|complete the sentence|choose the correct|synonym|antonym|meaning of the word|translate into|means in english)\b/i
+      ]
+    },
+    {
+      weight: 3,
+      patterns: [/\b(the|is|are|was|were|have|has|will|would|can|could|should|from|with|about|called)\b.*\b(what|which|who|where|when|how)\b/i]
+    }
+  ],
+  "L\u0129nh v\u1EF1c kh\xE1c": [
+    {
+      weight: 2,
+      patterns: [
+        /\b(hiểu biết chung|pháp luật|hiến pháp|giao thông|tổ chức quốc tế|liên hợp quốc|unesco|unicef|who|asean|wto|internet|mạng xã hội|ẩm thực|món ăn|lễ hội|tết|danh lam|kỳ quan|nobel|giải thưởng|tiền tệ|ngân hàng)\b/i
+      ]
+    }
+  ]
+};
+function normalizeSubjectLabel(raw) {
+  if (!raw) return null;
+  const s = raw.trim().toLowerCase();
+  if (!s) return null;
+  if (s.includes("to\xE1n") || s.includes("math") || s.includes("tin h\u1ECDc") || s.includes("logic")) return "To\xE1n";
+  if (s.includes("l\xFD") || s.includes("l\xED") || s.includes("v\u1EADt l\xFD") || s.includes("physics")) return "L\xFD";
+  if (s.includes("h\xF3a") || s.includes("ho\xE1") || s.includes("chemistry")) return "H\xF3a";
+  if (s.includes("sinh") || s.includes("biology")) return "Sinh";
+  if (s.includes("v\u0103n") || s.includes("literature") || s.includes("ti\u1EBFng vi\u1EC7t")) return "V\u0103n";
+  if (s.includes("s\u1EED") || s.includes("history")) return "S\u1EED";
+  if (s.includes("\u0111\u1ECBa") || s.includes("geography")) return "\u0110\u1ECBa";
+  if (s.includes("th\u1EC3 thao") || s.includes("sport")) return "Th\u1EC3 thao";
+  if (s.includes("ngh\u1EC7 thu\u1EADt") || s.includes("\xE2m nh\u1EA1c") || s.includes("m\u1EF9 thu\u1EADt") || s.includes("art") || s.includes("music")) return "Ngh\u1EC7 thu\u1EADt";
+  if (s.includes("anh") || s.includes("english") || s.includes("ngo\u1EA1i ng\u1EEF")) return "Ti\u1EBFng Anh";
+  if (s.includes("kh\xE1c") || s.includes("hi\u1EC3u bi\u1EBFt") || s.includes("general") || s.includes("x\xE3 h\u1ED9i") || s.includes("\u0111\u1EDDi s\u1ED1ng")) return "L\u0129nh v\u1EF1c kh\xE1c";
+  return null;
+}
+function classifyOlympiaQuestion(qText, aText = "", existingSubject, existingKdZone, existingVdZone) {
+  const normalizedExisting = normalizeSubjectLabel(existingSubject);
+  if (normalizedExisting && existingSubject && existingSubject.trim() !== "") {
+    const kdZone2 = existingKdZone ?? SUBJECT_TO_KD_ZONE[normalizedExisting];
+    const vdZone2 = existingVdZone ?? SUBJECT_TO_VD_ZONE[normalizedExisting];
+    return {
+      subject: normalizedExisting,
+      kdZone: kdZone2,
+      vdZone: vdZone2,
+      confidence: 98
+    };
+  }
+  const combined = `${qText || ""} ${aText || ""}`.trim();
+  if (!combined) {
+    return {
+      subject: "L\u0129nh v\u1EF1c kh\xE1c",
+      kdZone: existingKdZone ?? "GENERAL",
+      vdZone: existingVdZone ?? "HBC",
+      confidence: 50
+    };
+  }
+  const scores = {
+    To\u00E1n: 0,
+    L\u00FD: 0,
+    H\u00F3a: 0,
+    Sinh: 0,
+    V\u0103n: 0,
+    S\u1EED: 0,
+    \u0110\u1ECBa: 0,
+    "Th\u1EC3 thao": 0,
+    "Ngh\u1EC7 thu\u1EADt": 0,
+    "Ti\u1EBFng Anh": 0,
+    "L\u0129nh v\u1EF1c kh\xE1c": 1
+    // baseline fallback
+  };
+  const words = combined.split(/\s+/).filter(Boolean);
+  const hasViDiacritics = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(qText);
+  if (!hasViDiacritics && words.length >= 5 && /\b(the|is|are|what|which|who|where|when|how|of|in|to|for|and)\b/i.test(qText)) {
+    scores["Ti\u1EBFng Anh"] += 10;
+  }
+  if (/[+\-*/=^]|(\b\d+\s*[+\-x*÷:]\s*\d+)/.test(qText)) {
+    scores["To\xE1n"] += 5;
+  }
+  for (const subj of KHOI_DONG_SUBJECTS) {
+    const rules = SUBJECT_KEYWORDS[subj] ?? [];
+    for (const rule of rules) {
+      for (const pat of rule.patterns) {
+        if (pat.test(combined)) {
+          scores[subj] += rule.weight;
+        }
+      }
+    }
+  }
+  let bestSubject = "L\u0129nh v\u1EF1c kh\xE1c";
+  let bestScore = scores["L\u0129nh v\u1EF1c kh\xE1c"];
+  for (const subj of KHOI_DONG_SUBJECTS) {
+    if (scores[subj] > bestScore) {
+      bestScore = scores[subj];
+      bestSubject = subj;
+    }
+  }
+  const kdZone = existingKdZone ?? SUBJECT_TO_KD_ZONE[bestSubject];
+  const vdZone = existingVdZone ?? SUBJECT_TO_VD_ZONE[bestSubject];
+  const confidence = bestScore >= 8 ? 96 : bestScore >= 4 ? 88 : bestScore >= 2 ? 76 : 62;
+  return {
+    subject: bestSubject,
+    kdZone,
+    vdZone,
+    confidence
+  };
+}
+function tagQAWithAI(item, overwrite = false) {
+  const res = classifyOlympiaQuestion(
+    item.q,
+    item.a,
+    overwrite ? void 0 : item.subject,
+    overwrite ? void 0 : item.kdZone,
+    overwrite ? void 0 : item.vdZone
+  );
+  return {
+    ...item,
+    subject: res.subject,
+    kdZone: res.kdZone,
+    vdZone: res.vdZone,
+    aiConfidence: res.confidence
+  };
+}
+function shuffleWithRng(items, rng = Math.random) {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
+function buildBalancedKhoiDongQueues(khoiDong, activeSeatIds, questionsPerSeat = 12, rng = Math.random) {
+  const allRaw = [
+    ...Object.values(khoiDong.solo ?? {}).flat(),
+    ...khoiDong.shared ?? []
+  ];
+  const seen = /* @__PURE__ */ new Set();
+  const taggedPool = [];
+  for (const item of allRaw) {
+    if (!item || !item.q) continue;
+    const key = item.q.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    taggedPool.push(tagQAWithAI(item, false));
+  }
+  const byZone = {
+    MATH_IT: [],
+    NATURAL_SCI: [],
+    SOCIAL_SCI: [],
+    ARTS_SPORTS: [],
+    FOREIGN_LANG: [],
+    GENERAL: []
+  };
+  for (const q of taggedPool) {
+    const z = q.kdZone ?? "GENERAL";
+    byZone[z].push(q);
+  }
+  for (const z of KD_ZONES) {
+    const unused = shuffleWithRng(byZone[z].filter((q) => !q.used), rng);
+    const alreadyUsed = shuffleWithRng(byZone[z].filter((q) => q.used), rng);
+    byZone[z] = [...unused, ...alreadyUsed];
+  }
+  const zoneCursors = {
+    MATH_IT: 0,
+    NATURAL_SCI: 0,
+    SOCIAL_SCI: 0,
+    ARTS_SPORTS: 0,
+    FOREIGN_LANG: 0,
+    GENERAL: 0
+  };
+  let fallbackCursor = 0;
+  const fallbackPool = [
+    ...shuffleWithRng(taggedPool.filter((q) => !q.used), rng),
+    ...shuffleWithRng(taggedPool.filter((q) => q.used), rng)
+  ];
+  const drawFromZone = (zone, usedInSeat) => {
+    const bucket = byZone[zone];
+    if (bucket.length > 0) {
+      for (let attempt = 0; attempt < bucket.length; attempt++) {
+        const idx = (zoneCursors[zone] + attempt) % bucket.length;
+        const candidate = bucket[idx];
+        if (!usedInSeat.has(candidate.q)) {
+          zoneCursors[zone] = idx + 1;
+          usedInSeat.add(candidate.q);
+          return candidate;
+        }
+      }
+      const pick2 = bucket[zoneCursors[zone] % bucket.length];
+      zoneCursors[zone] += 1;
+      return pick2;
+    }
+    if (fallbackPool.length === 0) return null;
+    const pick = fallbackPool[fallbackCursor % fallbackPool.length];
+    fallbackCursor += 1;
+    return { ...pick, kdZone: zone };
+  };
+  const targetLen = Math.max(questionsPerSeat, 18);
+  const cycles = Math.ceil(targetLen / KD_ZONES.length);
+  const seatQueues = {};
+  for (const seatId of activeSeatIds) {
+    const queue = [];
+    const usedInSeat = /* @__PURE__ */ new Set();
+    for (let c = 0; c < cycles; c++) {
+      const cycleZones = shuffleWithRng(KD_ZONES, rng);
+      for (const z of cycleZones) {
+        if (queue.length >= targetLen) break;
+        const picked = drawFromZone(z, usedInSeat);
+        if (picked) queue.push(picked);
+      }
+    }
+    seatQueues[seatId] = queue;
+  }
+  const sharedQueue = [];
+  const usedInShared = /* @__PURE__ */ new Set();
+  const sharedTarget = Math.max(36, activeSeatIds.length * 9, taggedPool.length);
+  const sharedCycles = Math.ceil(sharedTarget / KD_ZONES.length);
+  for (let c = 0; c < sharedCycles; c++) {
+    const cycleZones = shuffleWithRng(KD_ZONES, rng);
+    for (const z of cycleZones) {
+      if (sharedQueue.length >= sharedTarget) break;
+      const picked = drawFromZone(z, usedInShared);
+      if (picked) sharedQueue.push(picked);
+    }
+  }
+  return { seatQueues, sharedQueue };
+}
+function pickBalancedVeDichPackage(veDichPool, pointsList, usedKeys, seatTurnIdx = 0, rng = Math.random) {
+  const baseThree = shuffleWithRng(VD_ZONES, rng);
+  const targetZones = pointsList.map(
+    (_, idx) => idx < 3 ? baseThree[idx] : VD_ZONES[(seatTurnIdx + idx) % VD_ZONES.length]
+  );
+  const result = [];
+  for (let i = 0; i < pointsList.length; i++) {
+    const p = pointsList[i];
+    const desiredZone = targetZones[i];
+    const rawBucket = (veDichPool[String(p)] ?? []).map((q) => tagQAWithAI(q, false));
+    if (rawBucket.length === 0) {
+      result.push({
+        points: p,
+        q: {
+          q: `(Thi\u1EBFu c\xE2u ${p} \u0111i\u1EC3m trong b\u1ED9 \u0111\u1EC1)`,
+          a: "",
+          type: "theory",
+          vdZone: desiredZone
+        }
+      });
+      continue;
+    }
+    const freshPool = rawBucket.filter((q) => !q.used && !usedKeys.has(`${p}:${q.q}`));
+    const unplayedInMatchPool = rawBucket.filter((q) => !usedKeys.has(`${p}:${q.q}`));
+    const activePool = freshPool.length > 0 ? freshPool : unplayedInMatchPool.length > 0 ? unplayedInMatchPool : rawBucket;
+    const zonesInPkg = new Set(result.map((r) => r.q.vdZone));
+    const inDesiredZone = activePool.filter((q) => q.vdZone === desiredZone);
+    const inUnseenZone = activePool.filter((q) => q.vdZone && !zonesInPkg.has(q.vdZone));
+    const candidatePool = inDesiredZone.length > 0 ? inDesiredZone : inUnseenZone.length > 0 ? inUnseenZone : activePool;
+    const picked = candidatePool[Math.floor(rng() * candidatePool.length)];
+    usedKeys.add(`${p}:${picked.q}`);
+    result.push({ points: p, q: picked });
+  }
+  return result;
+}
+
+// src/lib/olympia/engine.ts
+var mkTimer = (ms) => ({ totalMs: ms, remainingMs: ms, startedAt: null });
+var timerRemaining = (t, now) => t.startedAt == null ? t.remainingMs : Math.max(0, t.remainingMs - (now - t.startedAt));
+var timerRunning = (t) => t.startedAt != null;
+var startTimer = (t, now) => {
+  if (t.startedAt == null && t.remainingMs > 0) t.startedAt = now;
+};
+var pauseTimer = (t, now) => {
+  if (t.startedAt != null) {
+    t.remainingMs = timerRemaining(t, now);
+    t.startedAt = null;
+  }
+};
+var resetTimer = (t, ms) => {
+  if (ms != null) t.totalMs = ms;
+  t.remainingMs = t.totalMs;
+  t.startedAt = null;
+};
+function normalizeAnswer(s) {
+  return (s || "").normalize("NFC").toLowerCase().replace(/[.,;:!?'"“”‘’()\-_]/g, " ").replace(/\s+/g, " ").trim();
+}
+var OK = { ok: true };
+var fail = (error) => ({ ok: false, error });
+var emptyRoundStatus = () => ({
+  khoiDong: "pending",
+  vcnv: "pending",
+  tangToc: "pending",
+  veDich: "pending",
+  cauHoiPhu: "pending"
+});
+function sortRounds(rounds) {
+  const set = new Set(rounds);
+  return ROUND_ORDER.filter((r) => r !== "cauHoiPhu" && set.has(r));
+}
+var OlympiaGame = class _OlympiaGame {
+  constructor(code, config, now = Date.now()) {
+    this.config = config;
+    this.ruleset = RULESETS[config.rulesetId] ?? RULESETS.O26;
+    const rounds = sortRounds(config.rounds);
+    this.state = {
+      code,
+      rulesetId: this.ruleset.id,
+      rounds,
+      stage: "lobby",
+      seats: Array.from({ length: MAX_SEATS }, (_, i) => ({
+        id: i,
+        name: "",
+        playerKey: null,
+        connected: false,
+        score: 0
+      })),
+      roundIdx: -1,
+      roundsPlan: [...rounds, "cauHoiPhu"],
+      currentRound: null,
+      roundStatus: emptyRoundStatus(),
+      banner: null,
+      khoiDong: null,
+      vcnv: null,
+      tangToc: null,
+      veDich: null,
+      cauHoiPhu: null,
+      cue: null,
+      cueSeq: 0,
+      version: 0,
+      now,
+      log: [],
+      openedQuestionKeys: [],
+      transcript: []
+    };
+  }
+  // ── helpers ──
+  seatName(id) {
+    return this.seat(id)?.name || `Gh\u1EBF ${id + 1}`;
+  }
+  pushTranscript(entry) {
+    if (!this.state.transcript) this.state.transcript = [];
+    const scoresAfter = {};
+    for (const id of this.activeSeatIds) {
+      scoresAfter[id] = this.seat(id)?.score ?? 0;
+    }
+    this.state.transcript.push({
+      ...entry,
+      seq: this.state.transcript.length + 1,
+      scoresAfter
+    });
+  }
+  recordOpenedQuestion(qText) {
+    if (!qText) return;
+    const clean = qText.trim();
+    if (!clean) return;
+    if (!this.state.openedQuestionKeys) this.state.openedQuestionKeys = [];
+    if (!this.state.openedQuestionKeys.includes(clean)) {
+      this.state.openedQuestionKeys.push(clean);
+    }
+  }
+  cue(sound, kind = "sound") {
+    this.state.cueSeq += 1;
+    this.state.cue = { id: this.state.cueSeq, sound, kind };
+  }
+  logMsg(msg) {
+    this.state.log.push(msg);
+    if (this.state.log.length > 80) this.state.log.shift();
+  }
+  get activeSeatIds() {
+    return this.state.seats.filter((s) => s.name).map((s) => s.id);
+  }
+  seat(id) {
+    return this.state.seats[id];
+  }
+  addScore(id, delta) {
+    const s = this.seat(id);
+    if (!s) return;
+    s.score += delta;
+    this.logMsg(`${s.name || "Gh\u1EBF " + (id + 1)} ${delta >= 0 ? "+" : ""}${delta}`);
+  }
+  // ── lobby ──
+  /** Reserve a seat for a player. Returns seat id, or -1 if the room is full. */
+  joinSeat(name, playerKey) {
+    const existing = this.state.seats.find((s) => s.playerKey === playerKey);
+    if (existing) {
+      existing.connected = true;
+      if (name) existing.name = name;
+      return existing.id;
+    }
+    if (this.state.stage !== "lobby") return -1;
+    const free = this.state.seats.find((s) => !s.name);
+    if (!free) return -1;
+    free.name = name;
+    free.playerKey = playerKey;
+    free.connected = true;
+    return free.id;
+  }
+  setConnected(seatId, connected) {
+    const s = this.seat(seatId);
+    if (s) s.connected = connected;
+  }
+  kickSeat(id) {
+    const s = this.seat(id);
+    if (!s) return;
+    s.name = "";
+    s.playerKey = null;
+    s.connected = false;
+    if (this.state.stage === "lobby") s.score = 0;
+  }
+  // ── tick (auto-expire timers) ──
+  /** Returns true if state changed. */
+  tick(now) {
+    const st = this.state;
+    let changed = false;
+    const expired = (t) => !!t && timerRunning(t) && timerRemaining(t, now) <= 0;
+    const fin = (t) => {
+      t.remainingMs = 0;
+      t.startedAt = null;
+      changed = true;
+    };
+    if (st.khoiDong) {
+      const kd = st.khoiDong;
+      if (kd.globalTimer && expired(kd.globalTimer)) {
+        fin(kd.globalTimer);
+        kd.buzzOpen = false;
+        if (kd.phase === "question" || kd.phase === "result") kd.phase = "segmentDone";
+        this.cue("1_KhoiDong/finish_turn");
+      }
+      if (expired(kd.timer)) {
+        fin(kd.timer);
+        kd.buzzOpen = false;
+      }
+    }
+    if (st.vcnv && expired(st.vcnv.timer)) fin(st.vcnv.timer);
+    if (st.tangToc && expired(st.tangToc.timer)) fin(st.tangToc.timer);
+    if (st.veDich) {
+      const vd = st.veDich;
+      if (expired(vd.timer)) fin(vd.timer);
+      if (vd.steal && expired(vd.steal.timer)) {
+        fin(vd.steal.timer);
+        vd.steal.open = false;
+        if (!vd.steal.buzzedSeat) {
+          vd.phase = "result";
+          vd.lastVerdict = "noSteal";
+        }
+      }
+    }
+    if (st.cauHoiPhu && expired(st.cauHoiPhu.timer)) {
+      fin(st.cauHoiPhu.timer);
+      st.cauHoiPhu.buzzOpen = false;
+    }
+    if (changed) this.touch(now);
+    return changed;
+  }
+  touch(now) {
+    this.state.version += 1;
+    this.state.now = now;
+  }
+  // ── game flow ──
+  topTie() {
+    const seats = this.activeSeatIds.map((i) => this.state.seats[i]);
+    if (seats.length < 2) return [];
+    const max = Math.max(...seats.map((s) => s.score));
+    const top = seats.filter((s) => s.score === max).map((s) => s.id);
+    return top.length >= 2 ? top : [];
+  }
+  beginRound(round, now, forced = false) {
+    const st = this.state;
+    const qs = this.config.questionSet;
+    const active = this.activeSeatIds;
+    if (active.length === 0) return fail("Ch\u01B0a c\xF3 th\xED sinh n\xE0o trong ph\xF2ng");
+    st.currentRound = round;
+    st.roundStatus[round] = "active";
+    st.banner = ROUND_LABELS[round];
+    this.cue(
+      round === "khoiDong" ? "1_KhoiDong/start_round" : round === "vcnv" ? "2_VuotChuongNgaiVat/start_round" : round === "tangToc" ? "3_TangToc/start_round" : round === "veDich" ? "4_VeDich/start_round" : "5_CauHoiPhu/open_question"
+    );
+    switch (round) {
+      case "khoiDong": {
+        const segs = this.ruleset.khoiDong.segments(active.length).map(
+          (seg) => seg.kind === "solo" ? { ...seg, seat: active[seg.seat], label: seg.label } : seg
+        );
+        const useBalanced = this.config.balancedRandom !== false && qs.balancedRandom !== false;
+        const maxSoloQuestions = Math.max(12, ...segs.filter((s) => s.kind === "solo").map((s) => Math.min(s.questions, 24)));
+        const balanced = useBalanced ? buildBalancedKhoiDongQueues(qs.khoiDong, active, maxSoloQuestions) : void 0;
+        st.khoiDong = {
+          segments: segs,
+          segIdx: 0,
+          qIdx: -1,
+          phase: "intro",
+          timer: mkTimer(segs[0].perQuestionMs),
+          globalTimer: segs[0].globalMs ? mkTimer(segs[0].globalMs) : null,
+          buzzedSeat: null,
+          buzzOpen: false,
+          lockedSeats: [],
+          nextLockedSeats: [],
+          poolCursor: 0,
+          seatQueues: balanced?.seatQueues,
+          sharedQueue: balanced?.sharedQueue,
+          current: null,
+          lastVerdict: null
+        };
+        break;
+      }
+      case "vcnv": {
+        const v = qs.vcnv;
+        const rows = Array.from({ length: 4 }, (_, i) => ({
+          hint: v.rows[i]?.hint ?? "",
+          answer: v.rows[i]?.answer ?? "",
+          media: v.rows[i]?.media,
+          mediaType: v.rows[i]?.mediaType,
+          opened: false,
+          wrong: false
+        }));
+        st.vcnv = {
+          rows,
+          keyword: v.answer,
+          mysteryImage: v.mysteryImage,
+          centerQuestion: v.centerQuestion,
+          centerOpened: false,
+          centerWrong: false,
+          currentRow: -1,
+          phase: "grid",
+          timer: mkTimer(this.ruleset.vcnv.rowTimerMs),
+          answers: {},
+          answersRevealed: false,
+          bells: [],
+          eliminatedSeats: [],
+          openedCount: 0,
+          piecesRevealed: [false, false, false, false, false],
+          solvedBy: null,
+          rowResults: {}
+        };
+        break;
+      }
+      case "tangToc": {
+        st.tangToc = {
+          qIdx: -1,
+          phase: "idle",
+          timer: mkTimer(this.ruleset.tangToc.timers[0]),
+          submissions: {},
+          ranking: [],
+          questions: qs.tangToc.slice(0, 4)
+        };
+        break;
+      }
+      case "veDich": {
+        const initialOrder = [...active];
+        if (this.ruleset.veDich.turnOrderMode === "highest_unplayed" && initialOrder.length > 1) {
+          initialOrder.sort((a, b) => (this.seat(b)?.score ?? 0) - (this.seat(a)?.score ?? 0) || a - b);
+        }
+        st.veDich = {
+          order: initialOrder,
+          turnIdx: 0,
+          playedSeats: [],
+          phase: "choosing",
+          packages: {},
+          qIdx: -1,
+          current: null,
+          timer: mkTimer(15e3),
+          steal: null,
+          hopeStarUsed: [],
+          hopeStarActive: false,
+          deductedOnSteal: false,
+          pointers: {},
+          usedKeys: [],
+          lastVerdict: null
+        };
+        this.cue("4_VeDich/choose_package");
+        break;
+      }
+      case "cauHoiPhu": {
+        const tie = this.topTie();
+        const tied = tie.length >= 2 ? tie : forced ? [...active] : [];
+        if (tied.length < 2 && !forced) return fail("Kh\xF4ng c\xF3 th\xED sinh \u0111\u1ED3ng h\u1EA1ng");
+        const chpQuestions = [
+          ...qs.cauHoiPhu.filter((q) => !q.used),
+          ...qs.cauHoiPhu.filter((q) => q.used)
+        ].map((q) => tagQAWithAI(q, false));
+        st.cauHoiPhu = {
+          tied,
+          qIdx: -1,
+          phase: "idle",
+          timer: mkTimer(this.ruleset.cauHoiPhu.timerMs),
+          buzzOpen: false,
+          buzzedSeat: null,
+          buzzedThisQuestion: [],
+          winner: null,
+          questions: chpQuestions
+        };
+        break;
+      }
+    }
+    this.touch(now);
+    return OK;
+  }
+  finishRound(now) {
+    const st = this.state;
+    if (st.currentRound) st.roundStatus[st.currentRound] = "done";
+    st.banner = null;
+    this.cue("", "stop");
+    this.touch(now);
+  }
+  /** Advance to the next planned round (CHP is only played on a tie). */
+  nextRound(now) {
+    const st = this.state;
+    if (st.currentRound && st.roundStatus[st.currentRound] === "active") this.finishRound(now);
+    let idx = st.roundIdx + 1;
+    while (idx < st.roundsPlan.length) {
+      const r = st.roundsPlan[idx];
+      if (r === "cauHoiPhu") {
+        if (this.topTie().length >= 2 && st.roundStatus.cauHoiPhu === "pending") {
+          st.roundIdx = idx;
+          return this.beginRound(r, now);
+        }
+        break;
+      }
+      st.roundIdx = idx;
+      return this.beginRound(r, now);
+    }
+    st.stage = "finished";
+    st.currentRound = null;
+    st.banner = null;
+    this.cue("6_NhacKhac/ending_music");
+    this.touch(now);
+    return OK;
+  }
+  // ── host actions ──
+  hostAction(action, now) {
+    const st = this.state;
+    const type = String(action.type || "");
+    const result = this.dispatch(type, action, now);
+    if (result.ok) {
+      this.touch(now);
+      void st;
+    }
+    return result;
+  }
+  dispatch(type, a, now) {
+    const st = this.state;
+    const num = (k) => Number(a[k]);
+    switch (type) {
+      case "game:start": {
+        if (st.stage !== "lobby") return fail("Tr\u1EADn \u0111\xE3 b\u1EAFt \u0111\u1EA7u");
+        if (this.activeSeatIds.length === 0) return fail("C\u1EA7n \xEDt nh\u1EA5t 1 th\xED sinh");
+        st.stage = "playing";
+        st.roundIdx = -1;
+        if (st.rounds.length === 0) return fail("Ch\u01B0a ch\u1ECDn v\xF2ng thi n\xE0o");
+        this.cue("6_NhacKhac/show_intro");
+        return this.nextRound(now);
+      }
+      case "round:next":
+        if (st.stage !== "playing") return fail("Tr\u1EADn ch\u01B0a b\u1EAFt \u0111\u1EA7u");
+        return this.nextRound(now);
+      case "round:finish":
+        if (!st.currentRound) return fail("Ch\u01B0a c\xF3 v\xF2ng thi");
+        this.finishRound(now);
+        return OK;
+      case "round:force": {
+        const r = a.round;
+        if (!ROUND_ORDER.includes(r)) return fail("V\xF2ng kh\xF4ng h\u1EE3p l\u1EC7");
+        if (st.stage === "lobby") return fail("H\xE3y b\u1EAFt \u0111\u1EA7u tr\u1EADn tr\u01B0\u1EDBc");
+        if (st.stage === "finished") st.stage = "playing";
+        if (st.currentRound && st.roundStatus[st.currentRound] === "active") this.finishRound(now);
+        st.roundStatus[r] = "pending";
+        return this.beginRound(r, now, true);
+      }
+      case "banner:hide":
+        st.banner = null;
+        return OK;
+      case "score:adjust": {
+        const id = num("seat");
+        if (!this.seat(id)) return fail("Gh\u1EBF kh\xF4ng h\u1EE3p l\u1EC7");
+        const delta = Number(a.delta) || 0;
+        this.addScore(id, delta);
+        this.pushTranscript({
+          at: now,
+          round: st.currentRound ?? "system",
+          roundLabel: st.currentRound ? ROUND_LABELS[st.currentRound] : "H\u1EC7 th\u1ED1ng",
+          segmentLabel: "\u0110i\u1EC1u ch\u1EC9nh \u0111i\u1EC3m th\u1EE7 c\xF4ng",
+          entryKind: "score_adjust",
+          actorSeat: id,
+          actorName: this.seatName(id),
+          verdict: "info",
+          scoreChanges: { [id]: delta },
+          note: `Qu\u1EA3n tr\xF2 \u0111i\u1EC1u ch\u1EC9nh \u0111i\u1EC3m ${this.seatName(id)}: ${delta >= 0 ? "+" : ""}${delta}`
+        });
+        return OK;
+      }
+      case "seat:kick":
+        this.kickSeat(num("seat"));
+        return OK;
+      case "seat:rename": {
+        const s = this.seat(num("seat"));
+        if (!s) return fail("Gh\u1EBF kh\xF4ng h\u1EE3p l\u1EC7");
+        s.name = String(a.name || "").slice(0, 30);
+        return OK;
+      }
+      case "game:reset": {
+        const fresh = new _OlympiaGame(st.code, this.config, now).state;
+        fresh.seats = st.seats.map((s) => ({ ...s, score: 0 }));
+        this.state = fresh;
+        return OK;
+      }
+      case "game:end":
+        st.stage = "finished";
+        st.currentRound = null;
+        st.banner = null;
+        this.cue("6_NhacKhac/ending_music");
+        return OK;
+    }
+    if (st.banner) st.banner = null;
+    if (type.startsWith("kd:")) return this.kdAction(type, a, now);
+    if (type.startsWith("vcnv:")) return this.vcnvAction(type, a, now);
+    if (type.startsWith("tt:")) return this.ttAction(type, a, now);
+    if (type.startsWith("vd:")) return this.vdAction(type, a, now);
+    if (type.startsWith("chp:")) return this.chpAction(type, a, now);
+    return fail("H\xE0nh \u0111\u1ED9ng kh\xF4ng h\u1EE3p l\u1EC7: " + type);
+  }
+  // ───────────────────────── KHỞI ĐỘNG ─────────────────────────
+  kdPoolQuestion(kd, seg) {
+    const set = this.config.questionSet.khoiDong;
+    const attach = (item) => {
+      if (!item) return null;
+      const tagged = tagQAWithAI(item, false);
+      return {
+        ...tagged,
+        subject: tagged.subject || KHOI_DONG_SUBJECTS[Math.max(0, kd.qIdx) % KHOI_DONG_SUBJECTS.length]
+      };
+    };
+    if (seg.kind === "solo") {
+      const seatId = seg.seat;
+      if (kd.seatQueues && kd.seatQueues[seatId] && kd.seatQueues[seatId].length > 0) {
+        const qList = kd.seatQueues[seatId];
+        return attach(qList[kd.qIdx % qList.length] ?? null);
+      }
+      const order = this.activeSeatIds.indexOf(seatId);
+      const pool = set.solo[String(order + 1)] ?? set.shared;
+      if (kd.qIdx < pool.length) return attach(pool[kd.qIdx] ?? null);
+      const flatSolo = [...set.shared, ...Object.values(set.solo).flat()];
+      if (flatSolo.length === 0) return null;
+      const item = flatSolo[kd.poolCursor % flatSolo.length];
+      kd.poolCursor += 1;
+      return attach(item);
+    }
+    if (kd.sharedQueue && kd.sharedQueue.length > 0) {
+      const q2 = kd.sharedQueue[kd.poolCursor % kd.sharedQueue.length];
+      kd.poolCursor += 1;
+      return attach(q2);
+    }
+    const flat = [...set.shared, ...Object.values(set.solo).flat()];
+    if (flat.length === 0) return null;
+    const q = flat[kd.poolCursor % flat.length];
+    kd.poolCursor += 1;
+    return attach(q);
+  }
+  kdAction(type, a, now) {
+    const st = this.state;
+    const kd = st.khoiDong;
+    if (st.currentRound !== "khoiDong" || !kd) return fail("Kh\xF4ng \u1EDF v\xF2ng Kh\u1EDFi \u0110\u1ED9ng");
+    const seg = kd.segments[kd.segIdx];
+    const isSolo = seg.kind === "solo";
+    const rs = this.ruleset.khoiDong;
+    switch (type) {
+      case "kd:next": {
+        if (kd.phase === "segmentDone" || seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0 && kd.phase !== "intro") {
+          if (kd.segIdx + 1 >= kd.segments.length) {
+            this.finishRound(now);
+            return OK;
+          }
+          kd.segIdx += 1;
+          const ns = kd.segments[kd.segIdx];
+          kd.qIdx = -1;
+          kd.phase = "intro";
+          kd.timer = mkTimer(ns.perQuestionMs);
+          kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
+          kd.buzzedSeat = null;
+          kd.buzzOpen = false;
+          kd.lockedSeats = [];
+          kd.nextLockedSeats = [];
+          kd.current = null;
+          kd.lastVerdict = null;
+          return OK;
+        }
+        kd.qIdx += 1;
+        if (kd.qIdx >= seg.questions) {
+          kd.phase = "segmentDone";
+          kd.current = null;
+          kd.buzzOpen = false;
+          this.cue("1_KhoiDong/finish_turn");
+          return OK;
+        }
+        const q = this.kdPoolQuestion(kd, seg);
+        if (!q) {
+          kd.phase = "segmentDone";
+          kd.current = null;
+          return OK;
+        }
+        q.used = true;
+        this.recordOpenedQuestion(q.q);
+        kd.current = {
+          q: q.q,
+          a: q.a,
+          subject: q.subject,
+          kdZone: q.kdZone,
+          vdZone: q.vdZone,
+          media: q.media,
+          mediaType: q.mediaType
+        };
+        kd.phase = "question";
+        resetTimer(kd.timer, seg.perQuestionMs);
+        kd.buzzedSeat = null;
+        kd.buzzOpen = !isSolo && !!(seg.globalMs && kd.globalTimer && timerRunning(kd.globalTimer));
+        kd.lockedSeats = [...kd.nextLockedSeats];
+        kd.nextLockedSeats = [];
+        kd.lastVerdict = null;
+        this.cue("1_KhoiDong/open_question");
+        return OK;
+      }
+      case "kd:timer": {
+        if (kd.phase !== "question") return fail("Ch\u01B0a m\u1EDF c\xE2u h\u1ECFi");
+        if (seg.globalMs && kd.globalTimer) {
+          if (timerRunning(kd.globalTimer)) {
+            pauseTimer(kd.globalTimer, now);
+            kd.buzzOpen = false;
+          } else {
+            startTimer(kd.globalTimer, now);
+            kd.buzzOpen = !isSolo;
+            this.cue(`1_KhoiDong/${seg.globalMs >= 9e4 ? "kd_bgm_3" : seg.globalMs >= 6e4 ? "kd_bgm_2" : "kd_bgm_1"}`, "bgm");
+          }
+          return OK;
+        }
+        if (timerRunning(kd.timer)) {
+          pauseTimer(kd.timer, now);
+          kd.buzzOpen = false;
+        } else {
+          startTimer(kd.timer, now);
+          if (!isSolo && kd.buzzedSeat == null) kd.buzzOpen = true;
+          this.cue("1_KhoiDong/kd_bgm_" + (isSolo ? "1" : "2"), "bgm");
+        }
+        return OK;
+      }
+      case "kd:correct": {
+        if (kd.phase !== "question") return fail("Ch\u01B0a m\u1EDF c\xE2u h\u1ECFi");
+        const target = isSolo ? seg.seat : kd.buzzedSeat;
+        if (target == null) return fail("Ch\u01B0a c\xF3 th\xED sinh n\xE0o b\u1EA5m chu\xF4ng");
+        this.addScore(target, rs.correctPoints);
+        pauseTimer(kd.timer, now);
+        if (isSolo && seg.globalMs && kd.globalTimer && kd.qIdx + 1 >= seg.questions) {
+          pauseTimer(kd.globalTimer, now);
+        }
+        const buzzers = [];
+        if (!isSolo) {
+          kd.lockedSeats.forEach((sId, idx) => {
+            buzzers.push({ order: idx + 1, seat: sId, name: this.seatName(sId), verdict: "wrong" });
+          });
+          buzzers.push({ order: buzzers.length + 1, seat: target, name: this.seatName(target), verdict: "correct" });
+        }
+        this.pushTranscript({
+          at: now,
+          round: "khoiDong",
+          roundLabel: ROUND_LABELS.khoiDong,
+          segmentLabel: `${seg.label} \u2022 C\xE2u ${kd.qIdx + 1}`,
+          entryKind: "question",
+          questionText: kd.current?.q,
+          correctAnswer: kd.current?.a,
+          subject: kd.current?.subject,
+          kdZone: kd.current?.kdZone,
+          vdZone: kd.current?.vdZone,
+          mediaUrl: kd.current?.media,
+          actorSeat: target,
+          actorName: this.seatName(target),
+          selectedPoints: rs.correctPoints,
+          buzzerEvents: buzzers.length > 0 ? buzzers : void 0,
+          verdict: "correct",
+          scoreChanges: { [target]: rs.correctPoints }
+        });
+        kd.buzzOpen = false;
+        kd.phase = "result";
+        kd.lastVerdict = "correct";
+        this.cue("1_KhoiDong/correct");
+        return OK;
+      }
+      case "kd:wrong": {
+        if (kd.phase !== "question") return fail("Ch\u01B0a m\u1EDF c\xE2u h\u1ECFi");
+        if (isSolo) {
+          const target = seg.seat;
+          kd.phase = "result";
+          kd.lastVerdict = "wrong";
+          pauseTimer(kd.timer, now);
+          if (seg.globalMs && kd.globalTimer && kd.qIdx + 1 >= seg.questions) {
+            pauseTimer(kd.globalTimer, now);
+          }
+          this.pushTranscript({
+            at: now,
+            round: "khoiDong",
+            roundLabel: ROUND_LABELS.khoiDong,
+            segmentLabel: `${seg.label} \u2022 C\xE2u ${kd.qIdx + 1}`,
+            entryKind: "question",
+            questionText: kd.current?.q,
+            correctAnswer: kd.current?.a,
+            subject: kd.current?.subject,
+            kdZone: kd.current?.kdZone,
+            vdZone: kd.current?.vdZone,
+            mediaUrl: kd.current?.media,
+            actorSeat: target,
+            actorName: this.seatName(target),
+            selectedPoints: rs.correctPoints,
+            verdict: "wrong",
+            scoreChanges: { [target]: 0 }
+          });
+          this.cue("1_KhoiDong/wrong");
+          return OK;
+        }
+        const who = kd.buzzedSeat;
+        if (who == null) return fail("Ch\u01B0a c\xF3 th\xED sinh n\xE0o b\u1EA5m chu\xF4ng");
+        if (rs.wrongPenalty) this.addScore(who, -rs.wrongPenalty);
+        if (rs.lockoutOnWrong && !kd.nextLockedSeats.includes(who)) kd.nextLockedSeats.push(who);
+        kd.lockedSeats.push(who);
+        kd.buzzedSeat = null;
+        this.cue("1_KhoiDong/wrong");
+        const globalRunning = !!(seg.globalMs && kd.globalTimer && timerRunning(kd.globalTimer));
+        const others = this.activeSeatIds.filter((i) => !kd.lockedSeats.includes(i));
+        if ((timerRemaining(kd.timer, now) > 0 || globalRunning) && others.length > 0) {
+          kd.buzzOpen = true;
+          if (!seg.globalMs) startTimer(kd.timer, now);
+        } else {
+          kd.phase = "result";
+          kd.lastVerdict = "wrong";
+          kd.buzzOpen = false;
+          const buzzers = kd.lockedSeats.map((sId, idx) => ({
+            order: idx + 1,
+            seat: sId,
+            name: this.seatName(sId),
+            verdict: "wrong"
+          }));
+          const changes = {};
+          if (rs.wrongPenalty) {
+            kd.lockedSeats.forEach((sId) => changes[sId] = -rs.wrongPenalty);
+          }
+          this.pushTranscript({
+            at: now,
+            round: "khoiDong",
+            roundLabel: ROUND_LABELS.khoiDong,
+            segmentLabel: `${seg.label} \u2022 C\xE2u ${kd.qIdx + 1}`,
+            entryKind: "question",
+            questionText: kd.current?.q,
+            correctAnswer: kd.current?.a,
+            subject: kd.current?.subject,
+            kdZone: kd.current?.kdZone,
+            vdZone: kd.current?.vdZone,
+            mediaUrl: kd.current?.media,
+            actorSeat: who,
+            actorName: this.seatName(who),
+            selectedPoints: rs.correctPoints,
+            buzzerEvents: buzzers,
+            verdict: "wrong",
+            scoreChanges: changes
+          });
+        }
+        return OK;
+      }
+      case "kd:skip": {
+        if (kd.phase !== "question") return fail("Ch\u01B0a m\u1EDF c\xE2u h\u1ECFi");
+        pauseTimer(kd.timer, now);
+        kd.buzzOpen = false;
+        kd.phase = "result";
+        kd.lastVerdict = null;
+        this.pushTranscript({
+          at: now,
+          round: "khoiDong",
+          roundLabel: ROUND_LABELS.khoiDong,
+          segmentLabel: `${seg.label} \u2022 C\xE2u ${kd.qIdx + 1}`,
+          entryKind: "question",
+          questionText: kd.current?.q,
+          correctAnswer: kd.current?.a,
+          subject: kd.current?.subject,
+          kdZone: kd.current?.kdZone,
+          vdZone: kd.current?.vdZone,
+          mediaUrl: kd.current?.media,
+          actorSeat: isSolo ? seg.seat : void 0,
+          actorName: isSolo ? this.seatName(seg.seat) : void 0,
+          selectedPoints: rs.correctPoints,
+          verdict: "skipped"
+        });
+        return OK;
+      }
+      case "kd:buzzer": {
+        if (isSolo) return fail("Kh\u1EDFi \u0111\u1ED9ng ri\xEAng kh\xF4ng c\xF3 chu\xF4ng");
+        kd.buzzOpen = !kd.buzzOpen;
+        if (kd.buzzOpen) kd.buzzedSeat = null;
+        return OK;
+      }
+    }
+    return fail("H\xE0nh \u0111\u1ED9ng Kh\u1EDFi \u0110\u1ED9ng kh\xF4ng h\u1EE3p l\u1EC7");
+  }
+  // ───────────────────────── VCNV ─────────────────────────
+  vcnvAction(type, a, now) {
+    const st = this.state;
+    const v = st.vcnv;
+    if (st.currentRound !== "vcnv" || !v) return fail("Kh\xF4ng \u1EDF v\xF2ng VCNV");
+    const rs = this.ruleset;
+    const row = v.currentRow;
+    switch (type) {
+      case "vcnv:selectRow": {
+        const i = Number(a.row);
+        if (!(i >= 0 && i <= 4)) return fail("H\xE0ng kh\xF4ng h\u1EE3p l\u1EC7");
+        if (i === 4) {
+          if (v.centerOpened) return fail("\xD4 trung t\xE2m \u0111\xE3 m\u1EDF");
+          if (!v.centerQuestion) {
+            v.centerQuestion = { q: "C\xE2u h\u1ECFi g\u1EE3i \xFD cu\u1ED1i c\xF9ng t\u1EA1i \xF4 trung t\xE2m", a: v.keyword };
+          }
+          v.currentRow = 4;
+          v.phase = "question";
+          resetTimer(v.timer, rs.vcnv.rowTimerMs);
+          v.answers = {};
+          v.answersRevealed = false;
+          v.bells = [];
+          v.centerWrong = false;
+          this.cue("2_VuotChuongNgaiVat/show_row");
+          return OK;
+        }
+        if (v.rows[i].opened) return fail("H\xE0ng n\xE0y \u0111\xE3 m\u1EDF");
+        v.currentRow = i;
+        v.phase = "question";
+        resetTimer(v.timer, rs.vcnv.rowTimerMs);
+        v.answers = {};
+        v.answersRevealed = false;
+        v.bells = [];
+        v.rows[i].wrong = false;
+        this.cue("2_VuotChuongNgaiVat/show_row");
+        return OK;
+      }
+      case "vcnv:timer": {
+        if (row < 0) return fail("Ch\u01B0a ch\u1ECDn h\xE0ng");
+        if (timerRunning(v.timer)) pauseTimer(v.timer, now);
+        else {
+          startTimer(v.timer, now);
+          this.cue("2_VuotChuongNgaiVat/15s_tick", "bgm");
+        }
+        return OK;
+      }
+      case "vcnv:reveal": {
+        if (row < 0) return fail("Ch\u01B0a ch\u1ECDn h\xE0ng");
+        pauseTimer(v.timer, now);
+        v.answersRevealed = true;
+        v.phase = "answers";
+        this.cue("2_VuotChuongNgaiVat/reveal_answers");
+        return OK;
+      }
+      case "vcnv:correct": {
+        if (row < 0) return fail("Ch\u01B0a ch\u1ECDn h\xE0ng");
+        const answerText = row === 4 ? v.centerQuestion?.a ?? v.keyword : v.rows[row]?.answer ?? "";
+        const qText = row === 4 ? v.centerQuestion?.q ?? "C\xE2u h\u1ECFi s\u1ED1 5 (\xD4 trung t\xE2m)" : v.rows[row]?.hint ?? "";
+        const target = normalizeAnswer(answerText);
+        const given = Array.isArray(a.seatIds) ? a.seatIds.map(Number) : this.activeSeatIds.filter(
+          (id) => !v.eliminatedSeats.includes(id) && normalizeAnswer(v.answers[id]?.text ?? "") === target && target !== ""
+        );
+        const awarded = given.filter((id) => this.seat(id));
+        const changes = {};
+        awarded.forEach((id) => {
+          this.addScore(id, rs.vcnv.rowPoints);
+          changes[id] = rs.vcnv.rowPoints;
+        });
+        v.rowResults[row] = awarded;
+        if (row === 4) v.centerWrong = false;
+        else if (v.rows[row]) {
+          v.rows[row].wrong = false;
+          v.rows[row].used = true;
+        }
+        this.recordOpenedQuestion(qText);
+        const orderedSeats = [...this.activeSeatIds].sort((x, y) => {
+          const ax = v.answers[x];
+          const ay = v.answers[y];
+          const hasX = Boolean(ax?.text?.trim());
+          const hasY = Boolean(ay?.text?.trim());
+          if (hasX !== hasY) return hasX ? -1 : 1;
+          return (ax?.ms ?? ax?.at ?? 0) - (ay?.ms ?? ay?.at ?? 0) || x - y;
+        });
+        const subs = orderedSeats.map((sId, idx) => {
+          const rec = v.answers[sId];
+          const isOk = awarded.includes(sId);
+          return {
+            rank: idx + 1,
+            seat: sId,
+            name: this.seatName(sId),
+            finalAnswer: rec?.text ?? "",
+            finalMs: rec?.ms ?? 0,
+            previousAnswer: rec?.previousText,
+            previousMs: rec?.previousMs,
+            allAttempts: rec?.history ? [...rec.history] : rec?.text ? [{ text: rec.text, ms: rec.ms ?? 0, at: rec.at }] : [],
+            isCorrect: isOk,
+            pointsAwarded: isOk ? rs.vcnv.rowPoints : 0,
+            noAnswer: !rec || !rec.text.trim()
+          };
+        });
+        this.pushTranscript({
+          at: now,
+          round: "vcnv",
+          roundLabel: ROUND_LABELS.vcnv,
+          segmentLabel: row === 4 ? "C\xE2u h\u1ECFi s\u1ED1 5 (\xD4 trung t\xE2m)" : `H\xE0ng ngang s\u1ED1 ${row + 1}`,
+          entryKind: "question",
+          questionText: qText,
+          correctAnswer: answerText,
+          selectedPoints: rs.vcnv.rowPoints,
+          submissions: subs,
+          verdict: "correct",
+          scoreChanges: changes
+        });
+        v.phase = "answers";
+        v.answersRevealed = true;
+        pauseTimer(v.timer, now);
+        this.cue("2_VuotChuongNgaiVat/correct");
+        return OK;
+      }
+      case "vcnv:wrong": {
+        if (row < 0) return fail("Ch\u01B0a ch\u1ECDn h\xE0ng");
+        const answerText = row === 4 ? v.centerQuestion?.a ?? v.keyword : v.rows[row]?.answer ?? "";
+        const qText = row === 4 ? v.centerQuestion?.q ?? "C\xE2u h\u1ECFi s\u1ED1 5 (\xD4 trung t\xE2m)" : v.rows[row]?.hint ?? "";
+        if (row === 4) v.centerWrong = true;
+        else if (v.rows[row]) {
+          v.rows[row].wrong = true;
+          v.rows[row].used = true;
+        }
+        this.recordOpenedQuestion(qText);
+        v.rowResults[row] = [];
+        const orderedSeats = [...this.activeSeatIds].sort((x, y) => {
+          const ax = v.answers[x];
+          const ay = v.answers[y];
+          const hasX = Boolean(ax?.text?.trim());
+          const hasY = Boolean(ay?.text?.trim());
+          if (hasX !== hasY) return hasX ? -1 : 1;
+          return (ax?.ms ?? ax?.at ?? 0) - (ay?.ms ?? ay?.at ?? 0) || x - y;
+        });
+        const subs = orderedSeats.map((sId, idx) => {
+          const rec = v.answers[sId];
+          return {
+            rank: idx + 1,
+            seat: sId,
+            name: this.seatName(sId),
+            finalAnswer: rec?.text ?? "",
+            finalMs: rec?.ms ?? 0,
+            previousAnswer: rec?.previousText,
+            previousMs: rec?.previousMs,
+            allAttempts: rec?.history ? [...rec.history] : rec?.text ? [{ text: rec.text, ms: rec.ms ?? 0, at: rec.at }] : [],
+            isCorrect: false,
+            pointsAwarded: 0,
+            noAnswer: !rec || !rec.text.trim()
+          };
+        });
+        this.pushTranscript({
+          at: now,
+          round: "vcnv",
+          roundLabel: ROUND_LABELS.vcnv,
+          segmentLabel: row === 4 ? "C\xE2u h\u1ECFi s\u1ED1 5 (\xD4 trung t\xE2m)" : `H\xE0ng ngang s\u1ED1 ${row + 1}`,
+          entryKind: "question",
+          questionText: qText,
+          correctAnswer: answerText,
+          selectedPoints: rs.vcnv.rowPoints,
+          submissions: subs,
+          verdict: "wrong",
+          scoreChanges: {}
+        });
+        v.phase = "answers";
+        v.answersRevealed = true;
+        pauseTimer(v.timer, now);
+        this.cue("2_VuotChuongNgaiVat/wrong");
+        return OK;
+      }
+      case "vcnv:revealTile": {
+        const i = a.row != null ? Number(a.row) : row;
+        if (!(i >= 0 && i <= 4)) return fail("Ch\u01B0a ch\u1ECDn h\xE0ng");
+        if (i === 4) {
+          v.centerOpened = true;
+          v.piecesRevealed[4] = true;
+        } else if (!v.rows[i].opened) {
+          v.rows[i].opened = true;
+          v.piecesRevealed[i] = true;
+          v.openedCount += 1;
+        }
+        v.currentRow = -1;
+        v.phase = "grid";
+        v.answers = {};
+        v.answersRevealed = false;
+        this.cue("2_VuotChuongNgaiVat/reveal_puzzle_piece");
+        return OK;
+      }
+      case "vcnv:correctCNV": {
+        const seat = Number(a.seat);
+        if (!this.seat(seat)) return fail("Ch\u1ECDn th\xED sinh");
+        const pts = cnvPointsFor(rs, v.openedCount, Boolean(v.centerOpened));
+        this.addScore(seat, pts);
+        v.solvedBy = seat;
+        v.rows.forEach((r, i) => {
+          r.opened = true;
+          v.piecesRevealed[i] = true;
+        });
+        v.centerOpened = true;
+        v.piecesRevealed[4] = true;
+        v.phase = "done";
+        v.currentRow = 4;
+        pauseTimer(v.timer, now);
+        const buzzers = v.bells.map((b, idx) => ({
+          order: idx + 1,
+          seat: b.seat,
+          name: this.seatName(b.seat),
+          note: b.before ? "B\u1EA5m tr\u01B0\u1EDBc khi l\u1EADt \u0111\xE1p \xE1n h\xE0ng" : "B\u1EA5m sau khi l\u1EADt \u0111\xE1p \xE1n h\xE0ng",
+          verdict: b.seat === seat ? "correct" : void 0
+        }));
+        if (!buzzers.some((b) => b.seat === seat)) {
+          buzzers.push({ order: buzzers.length + 1, seat, name: this.seatName(seat), verdict: "correct" });
+        }
+        this.pushTranscript({
+          at: now,
+          round: "vcnv",
+          roundLabel: ROUND_LABELS.vcnv,
+          segmentLabel: `Gi\u1EA3i Ch\u01B0\u1EDBng Ng\u1EA1i V\u1EADt (\u0111\xE3 m\u1EDF ${v.openedCount} h\xE0ng${v.centerOpened ? " + \xF4 trung t\xE2m" : ""})`,
+          entryKind: "cnv_bell",
+          questionText: "T\u1EEB kh\xF3a Ch\u01B0\u1EDBng ng\u1EA1i v\u1EADt",
+          correctAnswer: v.keyword,
+          actorSeat: seat,
+          actorName: this.seatName(seat),
+          selectedPoints: pts,
+          buzzerEvents: buzzers,
+          verdict: "correct",
+          scoreChanges: { [seat]: pts }
+        });
+        this.cue("2_VuotChuongNgaiVat/cnv_correct");
+        return OK;
+      }
+      case "vcnv:wrongCNV": {
+        const seat = Number(a.seat);
+        if (!this.seat(seat)) return fail("Ch\u1ECDn th\xED sinh");
+        if (!v.eliminatedSeats.includes(seat)) v.eliminatedSeats.push(seat);
+        this.pushTranscript({
+          at: now,
+          round: "vcnv",
+          roundLabel: ROUND_LABELS.vcnv,
+          segmentLabel: "B\u1EA5m chu\xF4ng gi\u1EA3i Ch\u01B0\u1EDBng Ng\u1EA1i V\u1EADt (Sai)",
+          entryKind: "cnv_bell",
+          questionText: "T\u1EEB kh\xF3a Ch\u01B0\u1EDBng ng\u1EA1i v\u1EADt",
+          correctAnswer: v.keyword,
+          actorSeat: seat,
+          actorName: this.seatName(seat),
+          buzzerEvents: [{ order: 1, seat, name: this.seatName(seat), verdict: "wrong" }],
+          verdict: "wrong",
+          note: `${this.seatName(seat)} tr\u1EA3 l\u1EDDi sai CNV v\xE0 d\u1EEBng quy\u1EC1n ch\u01A1i VCNV.`
+        });
+        this.cue("2_VuotChuongNgaiVat/cnv_wrong");
+        return OK;
+      }
+      case "vcnv:revealAll": {
+        v.rows.forEach((r, i) => {
+          r.opened = true;
+          v.piecesRevealed[i] = true;
+        });
+        v.centerOpened = true;
+        v.piecesRevealed[4] = true;
+        v.phase = "done";
+        return OK;
+      }
+      case "vcnv:revealRowsOnly": {
+        v.rows.forEach((r) => {
+          r.opened = true;
+        });
+        v.centerOpened = true;
+        return OK;
+      }
+      case "vcnv:revealPiecesOnly": {
+        v.piecesRevealed = [true, true, true, true, true];
+        return OK;
+      }
+      case "vcnv:clearBells":
+        v.bells = [];
+        return OK;
+      case "vcnv:end":
+        this.finishRound(now);
+        return OK;
+    }
+    return fail("H\xE0nh \u0111\u1ED9ng VCNV kh\xF4ng h\u1EE3p l\u1EC7");
+  }
+  // ───────────────────────── TĂNG TỐC ─────────────────────────
+  ttAction(type, a, now) {
+    const st = this.state;
+    const tt = st.tangToc;
+    if (st.currentRound !== "tangToc" || !tt) return fail("Kh\xF4ng \u1EDF v\xF2ng T\u0103ng T\u1ED1c");
+    const rs = this.ruleset.tangToc;
+    switch (type) {
+      case "tt:next": {
+        tt.qIdx += 1;
+        if (tt.qIdx >= tt.questions.length) {
+          this.finishRound(now);
+          return OK;
+        }
+        tt.phase = "idle";
+        tt.submissions = {};
+        tt.ranking = [];
+        tt.correctAnswer = void 0;
+        tt.timer = mkTimer(rs.timers[Math.min(tt.qIdx, rs.timers.length - 1)]);
+        this.cue("", "stop");
+        return OK;
+      }
+      case "tt:show": {
+        if (tt.qIdx < 0) return fail("H\xE3y b\u1EA5m C\xE2u ti\u1EBFp theo tr\u01B0\u1EDBc");
+        const q = tt.questions[tt.qIdx];
+        if (q) {
+          q.used = true;
+          this.recordOpenedQuestion(q.q || q.answer);
+        }
+        tt.phase = "question";
+        this.cue("3_TangToc/show_question");
+        return OK;
+      }
+      case "tt:timer": {
+        if (tt.phase !== "question") return fail("H\xE3y hi\u1EC7n c\xE2u h\u1ECFi tr\u01B0\u1EDBc");
+        if (timerRunning(tt.timer)) pauseTimer(tt.timer, now);
+        else {
+          startTimer(tt.timer, now);
+          const s = Math.round(tt.timer.totalMs / 1e3);
+          this.cue(`3_TangToc/tick_${s}s`, "bgm");
+        }
+        return OK;
+      }
+      case "tt:reveal": {
+        if (tt.qIdx < 0) return fail("Ch\u01B0a c\xF3 c\xE2u h\u1ECFi");
+        pauseTimer(tt.timer, now);
+        const q = tt.questions[tt.qIdx];
+        tt.ranking = this.activeSeatIds.map((id) => {
+          const sub = tt.submissions[id];
+          return {
+            seat: id,
+            answer: sub?.answer ?? "",
+            ms: sub?.ms ?? 0,
+            previousAnswer: sub?.previousAnswer,
+            previousMs: sub?.previousMs,
+            history: sub?.history ? [...sub.history] : [],
+            noAnswer: !sub || !sub.answer.trim()
+          };
+        }).sort((x, y) => {
+          if (x.noAnswer !== y.noAnswer) return x.noAnswer ? 1 : -1;
+          if (x.noAnswer && y.noAnswer) return x.seat - y.seat;
+          return x.ms - y.ms || x.seat - y.seat;
+        });
+        tt.correctAnswer = q?.answer;
+        tt.phase = "ranking";
+        this.cue("3_TangToc/show_answer");
+        return OK;
+      }
+      case "tt:grade": {
+        if (tt.phase !== "ranking" && tt.phase !== "graded") return fail("H\xE3y l\u1EADt \u0111\xE1p \xE1n tr\u01B0\u1EDBc");
+        if (tt.phase === "graded") return fail("C\xE2u n\xE0y \u0111\xE3 ch\u1EA5m");
+        let correct;
+        if (Array.isArray(a.correctSeats)) correct = a.correctSeats.map(Number);
+        else {
+          const target = normalizeAnswer(tt.correctAnswer ?? "");
+          correct = tt.ranking.filter((r) => !r.noAnswer && normalizeAnswer(r.answer) === target).map((r) => r.seat);
+        }
+        const tierTable = tangTocTierPoints(this.activeSeatIds.length);
+        const valid = tt.ranking.filter((r) => correct.includes(r.seat) && !r.noAnswer);
+        const times = Array.from(new Set(valid.map((r) => r.ms)));
+        const scoreChanges = {};
+        tt.ranking.forEach((r) => {
+          if (r.noAnswer) return;
+          r.wrong = !correct.includes(r.seat);
+          if (!r.wrong) {
+            const tier = times.indexOf(r.ms);
+            const pts = tierTable[tier] ?? 0;
+            r.points = pts;
+            if (pts) {
+              this.addScore(r.seat, pts);
+              scoreChanges[r.seat] = pts;
+            }
+          }
+        });
+        const q = tt.questions[tt.qIdx];
+        const submissions = tt.ranking.map((r, idx) => ({
+          rank: r.noAnswer ? 0 : idx + 1,
+          seat: r.seat,
+          name: this.seatName(r.seat),
+          finalAnswer: r.answer,
+          finalMs: r.noAnswer ? void 0 : r.ms,
+          previousAnswer: r.previousAnswer,
+          previousMs: r.previousMs,
+          allAttempts: r.history ?? [],
+          correct: r.noAnswer ? false : !r.wrong,
+          pointsAwarded: r.points ?? 0,
+          noAnswer: Boolean(r.noAnswer)
+        }));
+        this.pushTranscript({
+          at: now,
+          round: "tangToc",
+          roundLabel: ROUND_LABELS.tangToc,
+          segmentLabel: `T\u0103ng T\u1ED1c \u2014 C\xE2u ${tt.qIdx + 1}/${tt.questions.length}`,
+          questionNumber: tt.qIdx + 1,
+          entryKind: "question",
+          questionText: q?.q || `C\xE2u h\u1ECFi T\u0103ng T\u1ED1c s\u1ED1 ${tt.qIdx + 1}`,
+          correctAnswer: q?.answer ?? tt.correctAnswer ?? "",
+          media: q?.media,
+          verdict: valid.length > 0 ? "correct" : "wrong",
+          submissions,
+          scoreChanges
+        });
+        tt.phase = "graded";
+        this.cue(valid.length ? "3_TangToc/correct" : "3_TangToc/wrong");
+        return OK;
+      }
+      case "tt:end":
+        this.finishRound(now);
+        return OK;
+    }
+    return fail("H\xE0nh \u0111\u1ED9ng T\u0103ng T\u1ED1c kh\xF4ng h\u1EE3p l\u1EC7");
+  }
+  // ───────────────────────── VỀ ĐÍCH ─────────────────────────
+  vdSeat(vd) {
+    return vd.order[vd.turnIdx];
+  }
+  allocatePackage(vd, points) {
+    const qs = this.config.questionSet;
+    const useBalanced = this.config.balancedRandom !== false && qs.balancedRandom !== false;
+    if (useBalanced) {
+      const usedSet = new Set(vd.usedKeys ?? []);
+      const pkg = pickBalancedVeDichPackage(qs.veDich, points, usedSet, vd.turnIdx);
+      vd.usedKeys = [...usedSet];
+      return pkg;
+    }
+    const pool = qs.veDich;
+    return points.map((p) => {
+      const key = String(p);
+      const list = pool[key] ?? [];
+      const ptr = vd.pointers[key] ?? 0;
+      const raw = list[ptr] ?? { q: "C\xE2u h\u1ECFi d\u1EF1 ph\xF2ng", a: "\u0110\xE1p \xE1n", type: "theory" };
+      const q = tagQAWithAI(raw, false);
+      vd.pointers[key] = ptr + 1;
+      return { points: p, q };
+    });
+  }
+  /** Called for both host and player package picks. */
+  setPackage(points, now) {
+    const st = this.state;
+    const vd = st.veDich;
+    if (st.currentRound !== "veDich" || !vd) return fail("Kh\xF4ng \u1EDF v\xF2ng V\u1EC1 \u0110\xEDch");
+    if (vd.phase !== "choosing") return fail("Ch\u01B0a \u0111\u1EBFn l\xFAc ch\u1ECDn g\xF3i");
+    const rs = this.ruleset.veDich;
+    let resolvedPoints = points;
+    if (rs.selectionMode === "presetPackages" && rs.presetPackages) {
+      if (points.length === 1 && rs.presetPackages[String(points[0])]) {
+        resolvedPoints = rs.presetPackages[String(points[0])];
+      } else {
+        const matched = Object.values(rs.presetPackages).find(
+          (preset) => preset.length === points.length && preset.every((v, i) => v === points[i])
+        );
+        if (!matched) {
+          const validKeys = Object.keys(rs.presetPackages).join("/");
+          return fail(`M\xF9a ${this.ruleset.id} y\xEAu c\u1EA7u ch\u1ECDn 1 trong c\xE1c g\xF3i c\u1ED1 \u0111\u1ECBnh: ${validKeys} \u0111i\u1EC3m`);
+        }
+        resolvedPoints = matched;
+      }
+    } else {
+      if (resolvedPoints.length !== rs.questionsPerSeat || resolvedPoints.some((p) => !rs.pointOptions.includes(p)))
+        return fail(`G\xF3i ph\u1EA3i g\u1ED3m ${rs.questionsPerSeat} c\xE2u v\u1EDBi m\u1EE9c \u0111i\u1EC3m ${rs.pointOptions.join("/")}`);
+    }
+    const ownerSeat = this.vdSeat(vd);
+    vd.packages[ownerSeat] = this.allocatePackage(vd, resolvedPoints);
+    vd.qIdx = -1;
+    vd.phase = "packageReady";
+    const totalPkg = resolvedPoints.reduce((s, p) => s + p, 0);
+    this.pushTranscript({
+      at: now,
+      round: "veDich",
+      roundLabel: ROUND_LABELS.veDich,
+      segmentLabel: `${this.seatName(ownerSeat)} ch\u1ECDn g\xF3i V\u1EC1 \u0110\xEDch`,
+      entryKind: "package_select",
+      actorSeat: ownerSeat,
+      actorName: this.seatName(ownerSeat),
+      packagePoints: [...resolvedPoints],
+      packageLabel: `G\xF3i ${totalPkg}\u0111 (${resolvedPoints.join(" - ")})`,
+      verdict: "info",
+      note: `${this.seatName(ownerSeat)} ch\u1ECDn g\xF3i c\xE2u h\u1ECFi ${resolvedPoints.join(" - ")} \u0111i\u1EC3m (T\u1ED5ng ${totalPkg}\u0111).`
+    });
+    this.cue("4_VeDich/open_question");
+    this.touch(now);
+    return OK;
+  }
+  vdAction(type, a, now) {
+    const st = this.state;
+    const vd = st.veDich;
+    if (st.currentRound !== "veDich" || !vd) return fail("Kh\xF4ng \u1EDF v\xF2ng V\u1EC1 \u0110\xEDch");
+    const rs = this.ruleset.veDich;
+    const cur = vd.current;
+    const owner = this.vdSeat(vd);
+    switch (type) {
+      case "vd:setSeat": {
+        const idx = vd.order.indexOf(Number(a.seat));
+        if (idx < 0) return fail("Th\xED sinh kh\xF4ng h\u1EE3p l\u1EC7");
+        vd.turnIdx = idx;
+        vd.phase = vd.packages[vd.order[idx]] ? "packageReady" : "choosing";
+        vd.qIdx = -1;
+        vd.current = null;
+        return OK;
+      }
+      case "vd:choosePackage":
+        return this.setPackage((a.points ?? []).map(Number), now);
+      case "vd:startQuestion": {
+        const pkg = vd.packages[owner];
+        if (!pkg) return fail("Th\xED sinh ch\u01B0a ch\u1ECDn g\xF3i");
+        if (vd.phase === "thinking" || vd.phase === "stealing") return fail("C\xE2u h\u1ECFi \u0111ang di\u1EC5n ra");
+        vd.qIdx += 1;
+        if (vd.qIdx >= pkg.length) {
+          vd.phase = "seatDone";
+          vd.current = null;
+          vd.steal = null;
+          this.cue("4_VeDich/finish_turn");
+          return OK;
+        }
+        vd.current = pkg[vd.qIdx];
+        if (vd.current?.q) {
+          vd.current.q.used = true;
+          this.recordOpenedQuestion(vd.current.q.q);
+        }
+        vd.phase = "thinking";
+        vd.timer = mkTimer(rs.thinkMs[String(vd.current.points)] ?? 15e3);
+        vd.steal = null;
+        vd.hopeStarActive = false;
+        vd.deductedOnSteal = false;
+        vd.lastVerdict = null;
+        this.cue("4_VeDich/open_question");
+        return OK;
+      }
+      case "vd:timer": {
+        if (vd.phase !== "thinking") return fail("Kh\xF4ng c\xF3 c\xE2u h\u1ECFi \u0111ang ch\u1EDD");
+        if (timerRunning(vd.timer)) pauseTimer(vd.timer, now);
+        else {
+          startTimer(vd.timer, now);
+          const s = Math.round(vd.timer.totalMs / 1e3);
+          this.cue(`4_VeDich/${s}s_tick`, "bgm");
+        }
+        return OK;
+      }
+      case "vd:hopeStar": {
+        if (!cur || vd.phase !== "thinking") return fail("Ch\u1EC9 d\xF9ng Ng\xF4i sao hy v\u1ECDng khi c\xE2u h\u1ECFi \u0111ang di\u1EC5n ra");
+        if (vd.hopeStarUsed.includes(owner)) return fail("Th\xED sinh \u0111\xE3 d\xF9ng Ng\xF4i sao hy v\u1ECDng");
+        vd.hopeStarUsed.push(owner);
+        vd.hopeStarActive = true;
+        this.cue("4_VeDich/star_of_hope");
+        return OK;
+      }
+      case "vd:correct": {
+        if (!cur || vd.phase !== "thinking") return fail("Kh\xF4ng c\xF3 c\xE2u h\u1ECFi \u0111ang ch\u1EDD");
+        pauseTimer(vd.timer, now);
+        const delta = cur.points * (vd.hopeStarActive ? 2 : 1);
+        const usedStar = vd.hopeStarActive;
+        this.addScore(owner, delta);
+        const pkgPts = (vd.packages[owner] ?? []).map((x) => x.points);
+        this.pushTranscript({
+          at: now,
+          round: "veDich",
+          roundLabel: ROUND_LABELS.veDich,
+          segmentLabel: `${this.seatName(owner)} \u2014 C\xE2u ${vd.qIdx + 1} (${cur.points}\u0111)`,
+          questionNumber: vd.qIdx + 1,
+          entryKind: "question",
+          questionText: cur.q.q,
+          correctAnswer: cur.q.a,
+          subject: cur.q.subject,
+          kdZone: cur.q.kdZone,
+          vdZone: cur.q.vdZone,
+          media: cur.q.media,
+          packagePoints: pkgPts,
+          packageLabel: `G\xF3i ${pkgPts.join(" - ")}`,
+          questionPoints: cur.points,
+          hopeStar: usedStar,
+          actorSeat: owner,
+          actorName: this.seatName(owner),
+          verdict: "correct",
+          scoreChanges: { [owner]: delta }
+        });
+        vd.hopeStarActive = false;
+        vd.phase = "result";
+        vd.lastVerdict = "correct";
+        this.cue("4_VeDich/correct", "sound");
+        return OK;
+      }
+      case "vd:wrong": {
+        if (!cur || vd.phase !== "thinking") return fail("Kh\xF4ng c\xF3 c\xE2u h\u1ECFi \u0111ang ch\u1EDD");
+        pauseTimer(vd.timer, now);
+        const pkgPts = (vd.packages[owner] ?? []).map((x) => x.points);
+        this.pushTranscript({
+          at: now,
+          round: "veDich",
+          roundLabel: ROUND_LABELS.veDich,
+          segmentLabel: `${this.seatName(owner)} \u2014 C\xE2u ${vd.qIdx + 1} (${cur.points}\u0111)`,
+          questionNumber: vd.qIdx + 1,
+          entryKind: "question",
+          questionText: cur.q.q,
+          correctAnswer: cur.q.a,
+          subject: cur.q.subject,
+          kdZone: cur.q.kdZone,
+          vdZone: cur.q.vdZone,
+          media: cur.q.media,
+          packagePoints: pkgPts,
+          packageLabel: `G\xF3i ${pkgPts.join(" - ")}`,
+          questionPoints: cur.points,
+          hopeStar: vd.hopeStarActive,
+          actorSeat: owner,
+          actorName: this.seatName(owner),
+          verdict: "wrong",
+          note: `${this.seatName(owner)} tr\u1EA3 l\u1EDDi ch\u01B0a ch\xEDnh x\xE1c (Ch\u1EDD m\u1EDF quy\u1EC1n b\u1EA5m chu\xF4ng c\u01B0\u1EDBp \u0111i\u1EC3m).`
+        });
+        vd.phase = "result";
+        vd.lastVerdict = "wrong";
+        this.cue("4_VeDich/wrong");
+        return OK;
+      }
+      case "vd:openSteal": {
+        if (!cur) return fail("Kh\xF4ng c\xF3 c\xE2u h\u1ECFi");
+        const okPhase = vd.phase === "thinking" || vd.phase === "result" && vd.lastVerdict === "wrong";
+        if (!okPhase) return fail("Ch\u1EC9 m\u1EDF c\u01B0\u1EDBp \u0111i\u1EC3m sau khi th\xED sinh tr\u1EA3 l\u1EDDi sai/h\u1EBFt gi\u1EDD");
+        pauseTimer(vd.timer, now);
+        if (vd.hopeStarActive && !vd.deductedOnSteal) {
+          this.addScore(owner, -cur.points);
+          vd.deductedOnSteal = true;
+        }
+        const t = mkTimer(rs.stealMs);
+        startTimer(t, now);
+        vd.steal = { timer: t, open: true, buzzedSeat: null };
+        vd.phase = "stealing";
+        this.cue("4_VeDich/5s_steal", "bgm");
+        return OK;
+      }
+      case "vd:correctSteal": {
+        if (!cur || !vd.steal || vd.steal.buzzedSeat == null) return fail("Ch\u01B0a c\xF3 ai b\u1EA5m c\u01B0\u1EDBp");
+        const stealer = vd.steal.buzzedSeat;
+        const ownerPenalty = !vd.deductedOnSteal ? -cur.points : 0;
+        if (!vd.deductedOnSteal) this.addScore(owner, -cur.points);
+        this.addScore(stealer, cur.points);
+        const pkgPts = (vd.packages[owner] ?? []).map((x) => x.points);
+        const scoreChanges = { [stealer]: cur.points };
+        if (ownerPenalty !== 0) scoreChanges[owner] = ownerPenalty;
+        else if (vd.deductedOnSteal) scoreChanges[owner] = -cur.points;
+        this.pushTranscript({
+          at: now,
+          round: "veDich",
+          roundLabel: ROUND_LABELS.veDich,
+          segmentLabel: `${this.seatName(owner)} \u2014 C\xE2u ${vd.qIdx + 1} (${cur.points}\u0111) \xB7 C\u01B0\u1EDBp \u0111i\u1EC3m`,
+          questionNumber: vd.qIdx + 1,
+          entryKind: "question",
+          questionText: cur.q.q,
+          correctAnswer: cur.q.a,
+          subject: cur.q.subject,
+          kdZone: cur.q.kdZone,
+          vdZone: cur.q.vdZone,
+          media: cur.q.media,
+          packagePoints: pkgPts,
+          packageLabel: `G\xF3i ${pkgPts.join(" - ")}`,
+          questionPoints: cur.points,
+          hopeStar: vd.hopeStarActive,
+          actorSeat: owner,
+          actorName: this.seatName(owner),
+          buzzedSeat: stealer,
+          buzzedName: this.seatName(stealer),
+          buzzerEvents: [{ order: 1, seat: stealer, name: this.seatName(stealer), verdict: "correct" }],
+          verdict: "steal_correct",
+          scoreChanges
+        });
+        vd.hopeStarActive = false;
+        vd.steal.open = false;
+        pauseTimer(vd.steal.timer, now);
+        vd.phase = "result";
+        vd.lastVerdict = "stealCorrect";
+        this.cue("4_VeDich/correct");
+        return OK;
+      }
+      case "vd:wrongSteal": {
+        if (!cur || !vd.steal || vd.steal.buzzedSeat == null) return fail("Ch\u01B0a c\xF3 ai b\u1EA5m c\u01B0\u1EDBp");
+        const stealer = vd.steal.buzzedSeat;
+        const penalty = -Math.floor(cur.points / rs.stealPenaltyDivisor);
+        this.addScore(stealer, penalty);
+        const pkgPts = (vd.packages[owner] ?? []).map((x) => x.points);
+        const scoreChanges = { [stealer]: penalty };
+        if (vd.deductedOnSteal) scoreChanges[owner] = -cur.points;
+        this.pushTranscript({
+          at: now,
+          round: "veDich",
+          roundLabel: ROUND_LABELS.veDich,
+          segmentLabel: `${this.seatName(owner)} \u2014 C\xE2u ${vd.qIdx + 1} (${cur.points}\u0111) \xB7 C\u01B0\u1EDBp \u0111i\u1EC3m sai`,
+          questionNumber: vd.qIdx + 1,
+          entryKind: "question",
+          questionText: cur.q.q,
+          correctAnswer: cur.q.a,
+          subject: cur.q.subject,
+          kdZone: cur.q.kdZone,
+          vdZone: cur.q.vdZone,
+          media: cur.q.media,
+          packagePoints: pkgPts,
+          packageLabel: `G\xF3i ${pkgPts.join(" - ")}`,
+          questionPoints: cur.points,
+          hopeStar: vd.hopeStarActive,
+          actorSeat: owner,
+          actorName: this.seatName(owner),
+          buzzedSeat: stealer,
+          buzzedName: this.seatName(stealer),
+          buzzerEvents: [{ order: 1, seat: stealer, name: this.seatName(stealer), verdict: "wrong" }],
+          verdict: "steal_wrong",
+          scoreChanges
+        });
+        vd.hopeStarActive = false;
+        vd.steal.open = false;
+        pauseTimer(vd.steal.timer, now);
+        vd.phase = "result";
+        vd.lastVerdict = "stealWrong";
+        this.cue("4_VeDich/wrong");
+        return OK;
+      }
+      case "vd:nextSeat": {
+        if (!vd.playedSeats) vd.playedSeats = [];
+        if (!vd.playedSeats.includes(owner)) vd.playedSeats.push(owner);
+        vd.turnIdx += 1;
+        vd.qIdx = -1;
+        vd.current = null;
+        vd.steal = null;
+        if (vd.turnIdx >= vd.order.length) {
+          this.finishRound(now);
+          return OK;
+        }
+        if (rs.turnOrderMode === "highest_unplayed") {
+          const remaining = this.activeSeatIds.filter((id) => !vd.playedSeats.includes(id));
+          if (remaining.length > 0) {
+            remaining.sort((a2, b) => (this.seat(b)?.score ?? 0) - (this.seat(a2)?.score ?? 0) || a2 - b);
+            const nextBest = remaining[0];
+            const swapIdx = vd.order.indexOf(nextBest, vd.turnIdx);
+            if (swapIdx >= vd.turnIdx) {
+              const tmp = vd.order[vd.turnIdx];
+              vd.order[vd.turnIdx] = vd.order[swapIdx];
+              vd.order[swapIdx] = tmp;
+            }
+          }
+        }
+        vd.phase = vd.packages[vd.order[vd.turnIdx]] ? "packageReady" : "choosing";
+        this.cue("4_VeDich/choose_package");
+        return OK;
+      }
+    }
+    return fail("H\xE0nh \u0111\u1ED9ng V\u1EC1 \u0110\xEDch kh\xF4ng h\u1EE3p l\u1EC7");
+  }
+  // ───────────────────────── CÂU HỎI PHỤ ─────────────────────────
+  chpAction(type, a, now) {
+    const st = this.state;
+    const cp = st.cauHoiPhu;
+    if (st.currentRound !== "cauHoiPhu" || !cp) return fail("Kh\xF4ng \u1EDF v\xF2ng C\xE2u h\u1ECFi ph\u1EE5");
+    switch (type) {
+      case "chp:next": {
+        cp.qIdx += 1;
+        if (cp.qIdx >= cp.questions.length) {
+          cp.phase = "done";
+          return OK;
+        }
+        cp.phase = "idle";
+        resetTimer(cp.timer);
+        cp.buzzOpen = false;
+        cp.buzzedSeat = null;
+        cp.buzzedThisQuestion = [];
+        cp.winner = null;
+        return OK;
+      }
+      case "chp:show": {
+        if (cp.qIdx < 0) return fail("H\xE3y b\u1EA5m C\xE2u ti\u1EBFp theo tr\u01B0\u1EDBc");
+        cp.phase = "question";
+        const curQ = cp.questions[cp.qIdx];
+        if (curQ) {
+          curQ.used = true;
+          this.recordOpenedQuestion(curQ.q);
+        }
+        this.cue("5_CauHoiPhu/open_question");
+        return OK;
+      }
+      case "chp:timer": {
+        if (cp.phase !== "question") return fail("H\xE3y hi\u1EC7n c\xE2u h\u1ECFi tr\u01B0\u1EDBc");
+        if (timerRunning(cp.timer)) {
+          pauseTimer(cp.timer, now);
+          cp.buzzOpen = false;
+        } else {
+          startTimer(cp.timer, now);
+          if (cp.buzzedSeat == null) cp.buzzOpen = true;
+          this.cue("5_CauHoiPhu/15s_tick", "bgm");
+        }
+        return OK;
+      }
+      case "chp:correct": {
+        if (cp.buzzedSeat == null) return fail("Ch\u01B0a c\xF3 ai b\u1EA5m chu\xF4ng");
+        const winnerSeat = cp.buzzedSeat;
+        const curQ = cp.questions[cp.qIdx];
+        cp.winner = winnerSeat;
+        cp.phase = "result";
+        cp.buzzOpen = false;
+        pauseTimer(cp.timer, now);
+        this.pushTranscript({
+          at: now,
+          round: "cauHoiPhu",
+          roundLabel: ROUND_LABELS.cauHoiPhu,
+          segmentLabel: `C\xE2u h\u1ECFi ph\u1EE5 s\u1ED1 ${cp.qIdx + 1}`,
+          questionNumber: cp.qIdx + 1,
+          entryKind: "question",
+          questionText: curQ?.q ?? "",
+          correctAnswer: curQ?.a ?? "",
+          subject: curQ?.subject,
+          kdZone: curQ?.kdZone,
+          vdZone: curQ?.vdZone,
+          actorSeat: winnerSeat,
+          actorName: this.seatName(winnerSeat),
+          buzzedSeat: winnerSeat,
+          buzzedName: this.seatName(winnerSeat),
+          buzzerEvents: cp.buzzedThisQuestion.map((sId, i) => ({
+            order: i + 1,
+            seat: sId,
+            name: this.seatName(sId),
+            verdict: sId === winnerSeat ? "correct" : "wrong"
+          })),
+          verdict: "correct",
+          note: `${this.seatName(winnerSeat)} tr\u1EA3 l\u1EDDi \u0111\xFAng C\xE2u h\u1ECFi ph\u1EE5 v\xE0 gi\xE0nh chi\u1EBFn th\u1EAFng chung cu\u1ED9c!`
+        });
+        this.cue("5_CauHoiPhu/correct");
+        return OK;
+      }
+      case "chp:wrong": {
+        if (cp.buzzedSeat == null) return fail("Ch\u01B0a c\xF3 ai b\u1EA5m chu\xF4ng");
+        const wrongSeat = cp.buzzedSeat;
+        const curQ = cp.questions[cp.qIdx];
+        cp.buzzedSeat = null;
+        this.pushTranscript({
+          at: now,
+          round: "cauHoiPhu",
+          roundLabel: ROUND_LABELS.cauHoiPhu,
+          segmentLabel: `C\xE2u h\u1ECFi ph\u1EE5 s\u1ED1 ${cp.qIdx + 1}`,
+          questionNumber: cp.qIdx + 1,
+          entryKind: "question",
+          questionText: curQ?.q ?? "",
+          correctAnswer: curQ?.a ?? "",
+          subject: curQ?.subject,
+          kdZone: curQ?.kdZone,
+          vdZone: curQ?.vdZone,
+          actorSeat: wrongSeat,
+          actorName: this.seatName(wrongSeat),
+          buzzedSeat: wrongSeat,
+          buzzedName: this.seatName(wrongSeat),
+          buzzerEvents: cp.buzzedThisQuestion.map((sId, i) => ({
+            order: i + 1,
+            seat: sId,
+            name: this.seatName(sId),
+            verdict: "wrong"
+          })),
+          verdict: "wrong"
+        });
+        this.cue("5_CauHoiPhu/wrong");
+        const remaining = cp.tied.filter((id) => !cp.buzzedThisQuestion.includes(id));
+        if (remaining.length === 0) {
+          cp.buzzOpen = false;
+          cp.phase = "result";
+        } else {
+          cp.buzzOpen = true;
+          startTimer(cp.timer, now);
+        }
+        return OK;
+      }
+      case "chp:finish":
+        this.finishRound(now);
+        return OK;
+    }
+    void a;
+    return fail("H\xE0nh \u0111\u1ED9ng C\xE2u h\u1ECFi ph\u1EE5 kh\xF4ng h\u1EE3p l\u1EC7");
+  }
+  // ── player actions ──
+  playerBuzz(seatId, now) {
+    const st = this.state;
+    if (!this.seat(seatId)?.name) return fail("Gh\u1EBF tr\u1ED1ng");
+    if (st.stage !== "playing") return fail("Ch\u01B0a trong tr\u1EADn");
+    switch (st.currentRound) {
+      case "khoiDong": {
+        const kd = st.khoiDong;
+        if (!kd || kd.phase !== "question" || !kd.buzzOpen) return fail("Chu\xF4ng ch\u01B0a m\u1EDF");
+        if (kd.segments[kd.segIdx].kind === "solo") return fail("Kh\u1EDFi \u0111\u1ED9ng ri\xEAng kh\xF4ng c\xF3 chu\xF4ng");
+        if (kd.lockedSeats.includes(seatId)) return fail("B\u1EA1n b\u1ECB kh\xF3a chu\xF4ng c\xE2u n\xE0y");
+        if (kd.buzzedSeat != null) return fail("\u0110\xE3 c\xF3 ng\u01B0\u1EDDi b\u1EA5m");
+        kd.buzzedSeat = seatId;
+        kd.buzzOpen = false;
+        pauseTimer(kd.timer, now);
+        this.cue("1_KhoiDong/bell_ring");
+        break;
+      }
+      case "vcnv": {
+        const v = st.vcnv;
+        if (!v || v.phase === "done") return fail("Kh\xF4ng th\u1EC3 b\u1EA5m chu\xF4ng");
+        if (v.eliminatedSeats.includes(seatId)) return fail("B\u1EA1n \u0111\xE3 b\u1ECB lo\u1EA1i kh\u1ECFi l\u01B0\u1EE3t \u0111o\xE1n CNV");
+        if (v.bells.some((b) => b.seat === seatId)) return fail("B\u1EA1n \u0111\xE3 b\u1EA5m chu\xF4ng");
+        v.bells.push({ seat: seatId, before: !v.answersRevealed });
+        this.cue("2_VuotChuongNgaiVat/bell_ring");
+        break;
+      }
+      case "veDich": {
+        const vd = st.veDich;
+        if (!vd || vd.phase !== "stealing" || !vd.steal || !vd.steal.open) return fail("Ch\u01B0a m\u1EDF c\u01B0\u1EDBp \u0111i\u1EC3m");
+        if (seatId === this.vdSeat(vd)) return fail("B\u1EA1n l\xE0 ng\u01B0\u1EDDi \u0111ang thi");
+        if (vd.steal.buzzedSeat != null) return fail("\u0110\xE3 c\xF3 ng\u01B0\u1EDDi c\u01B0\u1EDBp");
+        vd.steal.buzzedSeat = seatId;
+        vd.steal.open = false;
+        pauseTimer(vd.steal.timer, now);
+        this.cue("4_VeDich/bell_ring");
+        break;
+      }
+      case "cauHoiPhu": {
+        const cp = st.cauHoiPhu;
+        if (!cp || cp.phase !== "question" || !cp.buzzOpen) return fail("Chu\xF4ng ch\u01B0a m\u1EDF");
+        if (!cp.tied.includes(seatId)) return fail("B\u1EA1n kh\xF4ng thu\u1ED9c nh\xF3m \u0111\u1ED3ng h\u1EA1ng");
+        if (cp.buzzedThisQuestion.includes(seatId)) return fail("B\u1EA1n \u0111\xE3 b\u1EA5m c\xE2u n\xE0y");
+        if (cp.buzzedSeat != null) return fail("\u0110\xE3 c\xF3 ng\u01B0\u1EDDi b\u1EA5m");
+        cp.buzzedSeat = seatId;
+        cp.buzzedThisQuestion.push(seatId);
+        cp.buzzOpen = false;
+        pauseTimer(cp.timer, now);
+        this.cue("5_CauHoiPhu/bell_ring");
+        break;
+      }
+      default:
+        return fail("Kh\xF4ng th\u1EC3 b\u1EA5m chu\xF4ng l\xFAc n\xE0y");
+    }
+    this.touch(now);
+    return OK;
+  }
+  /** Text answer (VCNV rows, Tăng Tốc). Records last 2 answers + full attempt history. */
+  playerAnswer(seatId, text, now) {
+    const st = this.state;
+    const clean = String(text ?? "").slice(0, 120);
+    if (!this.seat(seatId)?.name) return fail("Gh\u1EBF tr\u1ED1ng");
+    if (st.currentRound === "vcnv" && st.vcnv) {
+      const v = st.vcnv;
+      if (v.currentRow < 0 || v.currentRow > 4) return fail("Ch\u01B0a m\u1EDF h\xE0ng ngang / \xF4 trung t\xE2m");
+      if (v.eliminatedSeats.includes(seatId)) return fail("B\u1EA1n \u0111\xE3 b\u1ECB lo\u1EA1i");
+      if (!timerRunning(v.timer) || timerRemaining(v.timer, now) <= 0) return fail("H\u1EBFt gi\u1EDD nh\u1EADp \u0111\xE1p \xE1n");
+      const elapsed = Math.max(0, Math.round(v.timer.totalMs - timerRemaining(v.timer, now)));
+      const prev = v.answers[seatId];
+      const history = prev?.history ? [...prev.history] : [];
+      history.push({ answer: clean, ms: elapsed });
+      v.answers[seatId] = {
+        text: clean,
+        at: now,
+        ms: elapsed,
+        previousText: prev?.text,
+        previousMs: prev?.ms,
+        history
+      };
+      this.touch(now);
+      return OK;
+    }
+    if (st.currentRound === "tangToc" && st.tangToc) {
+      const tt = st.tangToc;
+      if (tt.phase !== "question") return fail("Ch\u01B0a m\u1EDF c\xE2u h\u1ECFi");
+      if (!timerRunning(tt.timer) || timerRemaining(tt.timer, now) <= 0) return fail("H\u1EBFt gi\u1EDD nh\u1EADp \u0111\xE1p \xE1n");
+      const elapsed = Math.max(0, Math.round(tt.timer.totalMs - timerRemaining(tt.timer, now)));
+      const prev = tt.submissions[seatId];
+      const history = prev?.history ? [...prev.history] : [];
+      history.push({ answer: clean, ms: elapsed });
+      tt.submissions[seatId] = {
+        answer: clean,
+        ms: elapsed,
+        previousAnswer: prev?.answer,
+        previousMs: prev?.ms,
+        history
+      };
+      this.touch(now);
+      return OK;
+    }
+    return fail("Kh\xF4ng th\u1EC3 g\u1EEDi \u0111\xE1p \xE1n l\xFAc n\xE0y");
+  }
+  playerPickPackage(seatId, points, now) {
+    const vd = this.state.veDich;
+    if (!vd || this.state.currentRound !== "veDich") return fail("Kh\xF4ng \u1EDF v\xF2ng V\u1EC1 \u0110\xEDch");
+    if (this.vdSeat(vd) !== seatId) return fail("Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t b\u1EA1n");
+    return this.setPackage(points, now);
+  }
+  // ── views ──
+  /** Redacted snapshot for a given audience. */
+  view(role, seatId) {
+    const s = JSON.parse(JSON.stringify(this.state));
+    s.now = Date.now();
+    if (role === "host") return s;
+    const keepSelf = (rec) => {
+      if (role !== "player" || seatId == null) return {};
+      return rec[seatId] ? { [seatId]: rec[seatId] } : {};
+    };
+    if (s.khoiDong) {
+      delete s.khoiDong.seatQueues;
+      delete s.khoiDong.sharedQueue;
+      if (s.khoiDong.current && s.khoiDong.phase !== "result") delete s.khoiDong.current.a;
+    }
+    if (s.vcnv) {
+      s.vcnv.rows.forEach((r, i) => {
+        if (!r.opened && !(s.vcnv.answersRevealed && s.vcnv.currentRow === i)) r.answer = "";
+      });
+      if (s.vcnv.solvedBy == null && s.vcnv.phase !== "done") s.vcnv.keyword = s.vcnv.keyword.replace(/[^\s]/g, "\u2022");
+      if (!s.vcnv.answersRevealed) s.vcnv.answers = keepSelf(s.vcnv.answers);
+      if (s.vcnv.centerQuestion) {
+        if (s.vcnv.currentRow === 4 || s.vcnv.centerOpened || s.vcnv.solvedBy != null || s.vcnv.phase === "done") {
+          const showCenterAns = s.vcnv.centerOpened || s.vcnv.currentRow === 4 && s.vcnv.answersRevealed || s.vcnv.solvedBy != null || s.vcnv.phase === "done";
+          s.vcnv.centerQuestion = {
+            ...s.vcnv.centerQuestion,
+            a: showCenterAns ? s.vcnv.centerQuestion.a : ""
+          };
+        } else {
+          delete s.vcnv.centerQuestion;
+        }
+      }
+    }
+    if (s.tangToc) {
+      s.tangToc.questions = s.tangToc.questions.map((q, i) => ({
+        ...q,
+        answer: i === s.tangToc.qIdx && s.tangToc.phase !== "idle" && s.tangToc.phase !== "question" ? q.answer : "",
+        // media only for the current question once it is shown
+        media: i === s.tangToc.qIdx && s.tangToc.phase !== "idle" ? q.media : void 0,
+        clueImages: i === s.tangToc.qIdx && s.tangToc.phase !== "idle" ? q.clueImages : void 0,
+        q: i === s.tangToc.qIdx && s.tangToc.phase !== "idle" ? q.q : void 0
+      }));
+      if (s.tangToc.phase === "question" || s.tangToc.phase === "idle") {
+        s.tangToc.submissions = keepSelf(s.tangToc.submissions);
+      }
+    }
+    if (s.veDich) {
+      const vd = s.veDich;
+      const showAns = vd.phase === "result";
+      Object.values(vd.packages).forEach(
+        (pkg) => pkg.forEach((p) => {
+          p.q = { ...p.q, a: "" };
+          if (vd.current !== p) p.q.q = vd.phase === "idle" ? "" : p.q.q;
+        })
+      );
+      Object.values(vd.packages).forEach((pkg) => pkg.forEach((p) => p.q = { ...p.q, q: "", media: void 0 }));
+      if (vd.current) {
+        vd.current = { ...vd.current, q: { ...vd.current.q, a: showAns ? vd.current.q.a : "" } };
+        const real = this.state.veDich?.current;
+        if (real) {
+          vd.current.q.q = real.q.q;
+          vd.current.q.media = real.q.media;
+          vd.current.q.mediaType = real.q.mediaType;
+          vd.current.q.subject = real.q.subject;
+          vd.current.q.kdZone = real.q.kdZone;
+          vd.current.q.vdZone = real.q.vdZone;
+        }
+      }
+    }
+    if (s.cauHoiPhu) {
+      const cp = s.cauHoiPhu;
+      cp.questions = cp.questions.map(
+        (q, i) => i === cp.qIdx && cp.phase !== "idle" ? { ...q, a: cp.phase === "result" ? q.a : "" } : { q: "", a: "" }
+      );
+    }
+    return s;
+  }
+};
+
+// src/lib/olympia/socket-olympia.ts
+var games = /* @__PURE__ */ new Map();
+var loading = /* @__PURE__ */ new Map();
+async function loadGame(code) {
+  const cached = games.get(code);
+  if (cached) return cached;
+  const pending = loading.get(code);
+  if (pending) return pending;
+  const p = (async () => {
+    const room = await prisma.room.findUnique({
+      where: { code },
+      select: { id: true, mode: true, config: true, hostKey: true }
+    });
+    if (!room || room.mode !== "OLYMPIA") return null;
+    const cfg = room.config && typeof room.config === "object" ? room.config : {};
+    const olympia = cfg.olympia;
+    if (!olympia) return null;
+    const game = new OlympiaGame(code, olympia);
+    const snap = cfg.olympiaSnapshot;
+    if (snap && snap.code === code) {
+      game.state = snap;
+      game.state.seats.forEach((s) => s.connected = false);
+    }
+    const entry = {
+      game,
+      roomId: room.id,
+      hostKey: room.hostKey ?? "",
+      baseConfig: cfg,
+      clients: /* @__PURE__ */ new Map(),
+      saveTimer: null,
+      lastStage: game.state.stage
+    };
+    games.set(code, entry);
+    return entry;
+  })().finally(() => loading.delete(code));
+  loading.set(code, p);
+  return p;
+}
+function scheduleSave(entry) {
+  if (entry.saveTimer) return;
+  entry.saveTimer = setTimeout(async () => {
+    entry.saveTimer = null;
+    try {
+      const stage = entry.game.state.stage;
+      const data = {
+        config: { ...entry.baseConfig, olympiaSnapshot: entry.game.state }
+      };
+      if (stage !== entry.lastStage) {
+        data.status = stage === "playing" ? "PLAYING" : stage === "finished" ? "FINISHED" : "LOBBY";
+        if (stage === "finished") data.endedAt = /* @__PURE__ */ new Date();
+        entry.lastStage = stage;
+      }
+      await prisma.room.update({ where: { id: entry.roomId }, data });
+    } catch (e) {
+      console.warn("[Olympia] snapshot save failed:", e.message);
+    }
+  }, 1500);
+}
+function registerOlympiaSocket(io2) {
+  const nsp = io2.of("/olympia");
+  function broadcast(code) {
+    const entry = games.get(code);
+    if (!entry) return;
+    const g = entry.game;
+    const hostView = g.view("host");
+    const displayView = g.view("display");
+    const playerViews = /* @__PURE__ */ new Map();
+    for (const [sid, info] of entry.clients) {
+      const sock = nsp.sockets.get(sid);
+      if (!sock) {
+        entry.clients.delete(sid);
+        continue;
+      }
+      if (info.role === "host") sock.emit("state", hostView);
+      else if (info.role === "display") sock.emit("state", displayView);
+      else {
+        const seat = info.seatId ?? -1;
+        if (!playerViews.has(seat)) playerViews.set(seat, g.view("player", seat));
+        sock.emit("state", playerViews.get(seat));
+      }
+    }
+    scheduleSave(entry);
+  }
+  nsp.on("connection", (socket) => {
+    let info = null;
+    socket.on("time:sync", (clientTime, cb) => {
+      cb?.({ clientTime, serverTime: Date.now() });
+    });
+    socket.on(
+      "join",
+      async (payload, ack) => {
+        try {
+          const code = String(payload?.code ?? "").trim();
+          const role = payload?.role;
+          if (!code || role !== "host" && role !== "display" && role !== "player") {
+            return ack?.({ ok: false, error: "Y\xEAu c\u1EA7u kh\xF4ng h\u1EE3p l\u1EC7" });
+          }
+          const entry = await loadGame(code);
+          if (!entry) return ack?.({ ok: false, error: "Ph\xF2ng Olympia kh\xF4ng t\u1ED3n t\u1EA1i" });
+          let seatId;
+          if (role === "host") {
+            if (!entry.hostKey || payload.key !== entry.hostKey) {
+              return ack?.({ ok: false, error: "Sai kh\xF3a qu\u1EA3n tr\xF2 (host key)" });
+            }
+          } else if (role === "player") {
+            const token = String(payload.token ?? "").slice(0, 80);
+            const name = sanitizePlayerName(payload.name);
+            if (!token) return ack?.({ ok: false, error: "Thi\u1EBFu m\xE3 thi\u1EBFt b\u1ECB" });
+            const existing = entry.game.state.seats.find((s) => s.playerKey === token);
+            if (!existing && !name) return ack?.({ ok: false, error: "Vui l\xF2ng nh\u1EADp t\xEAn" });
+            seatId = entry.game.joinSeat(name || existing?.name || "", token);
+            if (seatId < 0) {
+              return ack?.({
+                ok: false,
+                error: entry.game.state.stage !== "lobby" ? "Tr\u1EADn \u0111\xE3 b\u1EAFt \u0111\u1EA7u" : "Ph\xF2ng \u0111\xE3 \u0111\u1EE7 8 th\xED sinh"
+              });
+            }
+          }
+          info = { code, role, seatId };
+          entry.clients.set(socket.id, info);
+          await socket.join(`olympia:${code}`);
+          entry.game.touch(Date.now());
+          ack?.({
+            ok: true,
+            seatId,
+            role,
+            rulesetId: entry.game.state.rulesetId,
+            audioSeason: entry.game.ruleset.audioSeason,
+            rounds: entry.game.state.rounds
+          });
+          broadcast(code);
+        } catch (e) {
+          console.error("[Olympia] join error", e);
+          ack?.({ ok: false, error: "L\u1ED7i m\xE1y ch\u1EE7" });
+        }
+      }
+    );
+    const withEntry = () => info ? games.get(info.code) ?? null : null;
+    socket.on("action", (action, ack) => {
+      const entry = withEntry();
+      if (!entry || !info || info.role !== "host") return ack?.({ ok: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n" });
+      const res = entry.game.hostAction(action, Date.now());
+      ack?.(res);
+      if (res.ok) broadcast(info.code);
+    });
+    socket.on("buzz", (_p, ack) => {
+      const entry = withEntry();
+      if (!entry || !info || info.role !== "player" || info.seatId == null) return ack?.({ ok: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n" });
+      const res = entry.game.playerBuzz(info.seatId, Date.now());
+      ack?.(res);
+      if (res.ok) broadcast(info.code);
+    });
+    socket.on("answer", (p, ack) => {
+      const entry = withEntry();
+      if (!entry || !info || info.role !== "player" || info.seatId == null) return ack?.({ ok: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n" });
+      const res = entry.game.playerAnswer(info.seatId, String(p?.text ?? ""), Date.now());
+      ack?.(res);
+      if (res.ok) broadcast(info.code);
+    });
+    socket.on("pick", (p, ack) => {
+      const entry = withEntry();
+      if (!entry || !info || info.role !== "player" || info.seatId == null) return ack?.({ ok: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n" });
+      const res = entry.game.playerPickPackage(info.seatId, (p?.points ?? []).map(Number), Date.now());
+      ack?.(res);
+      if (res.ok) broadcast(info.code);
+    });
+    socket.on("disconnect", () => {
+      if (!info) return;
+      const entry = games.get(info.code);
+      if (!entry) return;
+      entry.clients.delete(socket.id);
+      if (info.role === "player" && info.seatId != null) {
+        const stillConnected = [...entry.clients.values()].some((c) => c.role === "player" && c.seatId === info.seatId);
+        if (!stillConnected) {
+          entry.game.setConnected(info.seatId, false);
+          if (entry.game.state.stage === "lobby") entry.game.kickSeat(info.seatId);
+          entry.game.touch(Date.now());
+          broadcast(info.code);
+        }
+      }
+    });
+  });
+  const ticker = setInterval(() => {
+    const now = Date.now();
+    for (const [code, entry] of games) {
+      if (entry.game.tick(now)) broadcast(code);
+    }
+  }, 250);
+  ticker.unref?.();
+  const gc = setInterval(() => {
+    for (const [code, entry] of games) {
+      if (entry.clients.size === 0) games.delete(code);
+    }
+  }, 30 * 60 * 1e3);
+  gc.unref?.();
+}
+
 // src/lib/room-cleanup.ts
 async function cleanupStaleRooms(options = {}) {
   const {
@@ -24632,7 +27370,8 @@ async function ensureDatabaseSchema() {
       "DICE_RACE",
       "WAGER",
       "MYSTERY_QUEST",
-      "MAGIC_WHEEL"
+      "MAGIC_WHEEL",
+      "OLYMPIA"
     ];
     for (const m of modes) {
       await prisma.$executeRawUnsafe(`ALTER TYPE "GameMode" ADD VALUE IF NOT EXISTS '${m}'`).catch(() => {
@@ -24682,6 +27421,7 @@ app.prepare().then(async () => {
   });
   const io2 = initSocketServer(httpServer);
   registerSocketHandlers(io2);
+  registerOlympiaSocket(io2);
   httpServer.listen(port, "0.0.0.0", () => {
     console.log(`> Ready on http://${hostname}:${port}`);
     console.log(`> Socket.IO server initialized`);

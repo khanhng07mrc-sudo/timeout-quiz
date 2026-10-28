@@ -15,6 +15,17 @@ import {
   parseCsvQuestions,
 } from "@/lib/quiz-document-parser";
 import QuizorraQuestionStudioModal from "@/components/admin/QuizorraQuestionStudioModal";
+import OlympiaQuestionStudioModal from "@/components/olympia/OlympiaQuestionStudioModal";
+import {
+  deleteOlympiaBank,
+  downloadOlympiaSetExcel,
+  downloadOlympiaSetJson,
+  duplicateOlympiaBank,
+  getOlympiaBanks,
+  type OlympiaBankItem,
+} from "@/lib/olympia/olympia-storage";
+import { analyzeSetInventoryAndThresholds, KD_ZONES, VD_ZONES } from "@/lib/olympia/ai-classifier";
+import { SAMPLE_QUESTION_SET } from "@/lib/olympia/sample-questions";
 import { downloadMagicWheelExcelTemplate, downloadMagicWheelJsonTemplate } from "@/lib/quiz-template-generator";
 import { MAGIC_WHEEL_PRESET_BANKS } from "@/lib/offline-storage";
 import {
@@ -141,6 +152,19 @@ export default function QuizBankPage() {
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [deletingBankId, setDeletingBankId] = useState<string | null>(null);
   const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null);
+
+  // Mode-specific Bank Filter & Olympia Bank Manager State
+  const [bankModeTab, setBankModeTab] = useState<"STANDARD" | "MAGIC_WHEEL" | "OLYMPIA">("STANDARD");
+  const [olympiaBanks, setOlympiaBanks] = useState<OlympiaBankItem[]>([]);
+  const [selectedOlympiaBankId, setSelectedOlympiaBankId] = useState<string>("olympia_preset_o25_o26_full");
+  const [showOlympiaStudio, setShowOlympiaStudio] = useState(false);
+  const [creatingNewOlympiaBank, setCreatingNewOlympiaBank] = useState(false);
+
+  useEffect(() => {
+    const loadedOlympia = getOlympiaBanks();
+    setOlympiaBanks(loadedOlympia);
+    if (loadedOlympia.length > 0) setSelectedOlympiaBankId(loadedOlympia[0].id);
+  }, []);
 
   // New Bank Modal State
   const [showNewBankModal, setShowNewBankModal] = useState(false);
@@ -1610,9 +1634,22 @@ export default function QuizBankPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black whitespace-nowrap">Ngân hàng câu hỏi (Quiz Bank)</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-1">Tạo, chỉnh sửa và nhập file câu hỏi (Excel/CSV/JSON)</p>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">
+            Phân khu Kho đề chuyên biệt theo từng chế độ: Đa Chế Độ Chuẩn · Chiếc Nón Kỳ Diệu · Đường Lên Đỉnh Olympia
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <button
+            onClick={() => {
+              setBankModeTab("OLYMPIA");
+              setCreatingNewOlympiaBank(false);
+              setShowOlympiaStudio(true);
+            }}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-xs sm:text-sm shadow-lg transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+          >
+            <span>🏔️</span>
+            <span>Studio Kho Đề Olympia</span>
+          </button>
           <button
             onClick={() => {
               setPreviewTargetMode("new");
@@ -1669,6 +1706,264 @@ export default function QuizBankPage() {
         </div>
       </div>
 
+      {/* Mode-Specific Question Bank Tabs */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-900/80 border border-border">
+        <button
+          type="button"
+          onClick={() => setBankModeTab("STANDARD")}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 ${
+            bankModeTab === "STANDARD"
+              ? "bg-purple-600 text-white shadow"
+              : "text-slate-300 hover:bg-white/5"
+          }`}
+        >
+          <span>🎯</span>
+          <span>Kho đề Đa Chế Độ Chuẩn ({banks.filter((b) => !b.isPureWordPuzzle).length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setBankModeTab("MAGIC_WHEEL")}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 ${
+            bankModeTab === "MAGIC_WHEEL"
+              ? "bg-pink-600 text-white shadow"
+              : "text-slate-300 hover:bg-white/5"
+          }`}
+        >
+          <span>🎡</span>
+          <span>Kho đề Chiếc Nón Kỳ Diệu ({banks.filter((b) => b.isWordPuzzle || b.isPureWordPuzzle).length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setBankModeTab("OLYMPIA")}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-2 ${
+            bankModeTab === "OLYMPIA"
+              ? "bg-yellow-400 text-slate-950 shadow"
+              : "text-amber-300 hover:bg-white/5"
+          }`}
+        >
+          <span>🏔️</span>
+          <span>Kho đề Đường Lên Đỉnh Olympia ({olympiaBanks.length} kho chuyên biệt)</span>
+        </button>
+      </div>
+
+      {bankModeTab === "OLYMPIA" ? (
+        (() => {
+          const curOlyBank =
+            olympiaBanks.find((b) => b.id === selectedOlympiaBankId) ?? olympiaBanks[0];
+          const inv = curOlyBank
+            ? analyzeSetInventoryAndThresholds(curOlyBank.set, 4)
+            : null;
+          return (
+            <div className="grid lg:grid-cols-12 gap-5">
+              {/* Left list of Olympia Banks */}
+              <div className="lg:col-span-4 glass rounded-2xl p-4 border border-amber-500/30 space-y-3">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                  <h2 className="font-black text-base text-yellow-300">
+                    🏔️ Kho đề Olympia ({olympiaBanks.length})
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreatingNewOlympiaBank(true);
+                      setShowOlympiaStudio(true);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-xs font-black"
+                  >
+                    + Tạo kho Olympia mới
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {olympiaBanks.map((ob) => {
+                    const obInv = analyzeSetInventoryAndThresholds(ob.set, 4);
+                    const active = curOlyBank?.id === ob.id;
+                    return (
+                      <div
+                        key={ob.id}
+                        onClick={() => setSelectedOlympiaBankId(ob.id)}
+                        className={`p-3 rounded-xl border cursor-pointer transition space-y-1.5 ${
+                          active
+                            ? "border-yellow-400 bg-yellow-400/15"
+                            : "border-white/10 bg-slate-900/60 hover:border-white/25"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-bold text-sm text-white">{ob.name}</div>
+                          {ob.isPreset && (
+                            <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold shrink-0">
+                              Mẫu Chuẩn
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 line-clamp-2">{ob.description}</p>
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300 pt-1">
+                          <span className="px-2 py-0.5 rounded bg-white/5">
+                            KĐ: <b>{obInv.kdTotal.remaining}</b>/{obInv.kdTotal.total} câu (Đã dùng {obInv.kdTotal.used})
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-white/5">
+                            VĐ: <b>{obInv.vdTotal.remaining}</b>/{obInv.vdTotal.total} câu
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right details of selected Olympia Bank */}
+              <div className="lg:col-span-8 glass rounded-2xl p-5 border border-white/15 space-y-4">
+                {curOlyBank && inv ? (
+                  <>
+                    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 pb-4">
+                      <div>
+                        <h2 className="text-xl font-black text-yellow-300">{curOlyBank.name}</h2>
+                        <p className="text-xs text-slate-300 mt-1">{curOlyBank.description}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCreatingNewOlympiaBank(false);
+                            setShowOlympiaStudio(true);
+                          }}
+                          className="px-4 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-xs shadow"
+                        >
+                          🛠 Chỉnh sửa Kho đề & Quản lý Câu Đã dùng
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => downloadOlympiaSetExcel(curOlyBank.set, `${curOlyBank.name}.xlsx`)}
+                          className="px-3 py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white font-bold text-xs"
+                        >
+                          📥 Tải Excel (.xlsx)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => downloadOlympiaSetJson(curOlyBank.set, `${curOlyBank.name}.json`)}
+                          className="px-3 py-2 rounded-xl bg-cyan-600/80 hover:bg-cyan-500 text-white font-bold text-xs"
+                        >
+                          {`{ } Tải JSON`}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const copy = duplicateOlympiaBank(curOlyBank.id);
+                            if (copy) {
+                              setOlympiaBanks(getOlympiaBanks());
+                              setSelectedOlympiaBankId(copy.id);
+                            }
+                          }}
+                          className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold"
+                        >
+                          📑 Nhân bản
+                        </button>
+                        {!curOlyBank.isPreset && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              deleteOlympiaBank(curOlyBank.id);
+                              const next = getOlympiaBanks();
+                              setOlympiaBanks(next);
+                              if (next[0]) setSelectedOlympiaBankId(next[0].id);
+                            }}
+                            className="px-3 py-2 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 text-xs font-bold"
+                          >
+                            Xóa
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Inventory Summary Cards */}
+                    <div className="grid sm:grid-cols-4 gap-3 text-xs">
+                      <div className="p-3 rounded-xl bg-slate-900/80 border border-white/10">
+                        <div className="text-slate-400">1. Kho Khởi Động</div>
+                        <div className="text-lg font-black text-white mt-0.5">
+                          Còn {inv.kdTotal.remaining} / {inv.kdTotal.total} câu
+                        </div>
+                        <div className="text-amber-300">Đã dùng: {inv.kdTotal.used} câu</div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900/80 border border-white/10">
+                        <div className="text-slate-400">2. VCNV (5 mảnh ghép)</div>
+                        <div className="text-sm font-black text-yellow-300 mt-0.5 truncate">
+                          CNV: {curOlyBank.set.vcnv.answer}
+                        </div>
+                        <div className="text-slate-300">4 hàng ngang + 1 Ô trung tâm</div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900/80 border border-white/10">
+                        <div className="text-slate-400">3. Tăng Tốc</div>
+                        <div className="text-lg font-black text-cyan-300 mt-0.5">
+                          {curOlyBank.set.tangToc.length} / 4 câu
+                        </div>
+                        <div className="text-slate-300">Hỗ trợ chuỗi ảnh theo giây</div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900/80 border border-white/10">
+                        <div className="text-slate-400">4. Kho Về Đích & Phụ</div>
+                        <div className="text-lg font-black text-purple-300 mt-0.5">
+                          Còn {inv.vdTotal.remaining} / {inv.vdTotal.total} câu VĐ
+                        </div>
+                        <div className="text-amber-300">
+                          Đã dùng VĐ: {inv.vdTotal.used} · Phụ: {inv.chpTotal.remaining}/{inv.chpTotal.total}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 6 KD Zones & 3 VD Zones Table */}
+                    <div className="grid md:grid-cols-2 gap-4 text-xs">
+                      <div className="p-3.5 rounded-xl bg-slate-900/70 border border-white/10 space-y-2">
+                        <div className="font-bold text-yellow-300">
+                          Phân bổ 6 Phân vùng Khởi Động (Tự động cân bằng giữa các thí sinh)
+                        </div>
+                        {KD_ZONES.map((z) => {
+                          const st = inv.kdByZone[z.id];
+                          return (
+                            <div key={z.id} className="flex items-center justify-between py-1 border-b border-white/5">
+                              <span>
+                                {z.icon} <b>{z.shortLabel}</b>
+                              </span>
+                              <span className="font-mono">
+                                Tổng <b>{st.total}</b> · Đã dùng <b className="text-amber-300">{st.used}</b> · Còn{" "}
+                                <b className="text-emerald-300">{st.remaining}</b>
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-slate-900/70 border border-white/10 space-y-2">
+                        <div className="font-bold text-purple-300">
+                          Phân bổ 3 Phân vùng Về Đích (1 KHTN + 1 KHXH + 1 HBC / gói)
+                        </div>
+                        {VD_ZONES.map((vz) => {
+                          const st = inv.vdByZone[vz.id];
+                          return (
+                            <div key={vz.id} className="flex items-center justify-between py-1 border-b border-white/5">
+                              <span>
+                                {vz.icon} <b>{vz.label}</b>
+                              </span>
+                              <span className="font-mono">
+                                Tổng <b>{st.total}</b> · Đã dùng <b className="text-amber-300">{st.used}</b> · Còn{" "}
+                                <b className="text-emerald-300">{st.remaining}</b>
+                              </span>
+                            </div>
+                          );
+                        })}
+                        <div className="pt-2 flex justify-end">
+                          <Link
+                            href="/admin/olympia/create"
+                            className="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs"
+                          >
+                            🚀 Tạo phòng thi Olympia với Kho đề này →
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          );
+        })()
+      ) : (
       <div className="flex flex-col lg:flex-row gap-5 items-start w-full animate-loaded-reveal">
         {/* Left Col: List of Banks */}
         {isSidebarCollapsed ? (
@@ -2121,6 +2416,7 @@ export default function QuizBankPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* Modal: New Bank */}
       {showNewBankModal && (
@@ -5643,6 +5939,35 @@ export default function QuizBankPage() {
         onSuccess={handleStudioSuccess}
         selectedBank={selectedBank}
       />
+
+      {showOlympiaStudio && (
+        <OlympiaQuestionStudioModal
+          open={showOlympiaStudio}
+          onClose={() => setShowOlympiaStudio(false)}
+          initialSet={
+            creatingNewOlympiaBank
+              ? SAMPLE_QUESTION_SET
+              : olympiaBanks.find((b) => b.id === selectedOlympiaBankId)?.set ?? SAMPLE_QUESTION_SET
+          }
+          bankId={creatingNewOlympiaBank ? undefined : selectedOlympiaBankId}
+          bankName={
+            creatingNewOlympiaBank
+              ? "Kho đề Đường Lên Đỉnh Olympia Mới"
+              : olympiaBanks.find((b) => b.id === selectedOlympiaBankId)?.name
+          }
+          bankDescription={
+            creatingNewOlympiaBank
+              ? "Bộ đề Olympia 5 vòng thi đa lĩnh vực"
+              : olympiaBanks.find((b) => b.id === selectedOlympiaBankId)?.description
+          }
+          onApply={(_set, savedId) => {
+            const refreshed = getOlympiaBanks();
+            setOlympiaBanks(refreshed);
+            if (savedId) setSelectedOlympiaBankId(savedId);
+            setShowOlympiaStudio(false);
+          }}
+        />
+      )}
     </div>
   );
 }

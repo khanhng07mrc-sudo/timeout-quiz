@@ -149,7 +149,7 @@ function Vcnv({ state, serverNow }: P) {
           <img src={v.mysteryImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
         )}
         <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
-          {v.rows.map((r, i) => (
+          {v.rows.map((_r, i) => (
             <div
               key={i}
               className={`flex items-center justify-center text-4xl font-black border border-slate-900 transition-all duration-700 ${v.piecesRevealed[i] ? "opacity-0" : "bg-blue-800/95 opacity-100"}`}
@@ -157,6 +157,13 @@ function Vcnv({ state, serverNow }: P) {
               {i + 1}
             </div>
           ))}
+        </div>
+        <div
+          className={`absolute inset-1/4 rounded-2xl border-2 border-amber-300/60 flex items-center justify-center text-2xl font-black transition-all duration-700 ${
+            v.piecesRevealed[4] ? "opacity-0 pointer-events-none" : "bg-indigo-950/95 text-amber-300 shadow-2xl opacity-100"
+          }`}
+        >
+          Ô Trung Tâm
         </div>
       </div>
       <div className="space-y-1">
@@ -223,7 +230,21 @@ function TangToc({ state, serverNow }: P) {
       {q && tt.phase !== "idle" && (
         <>
           {q.q && <div className="text-4xl font-bold">{q.q}</div>}
-          <MediaView url={q.media} type={q.type} className="max-h-[48vh] rounded-xl mx-auto" />
+          {q.clueImages && q.clueImages.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-4xl mx-auto">
+              {q.clueImages.map((cl, idx) => (
+                <div key={idx} className="rounded-xl overflow-hidden border border-white/20 bg-slate-900/80 p-1.5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={cl.url} alt={cl.label || `Gợi ý ${idx + 1}`} className="w-full h-36 object-cover rounded-lg" />
+                  <div className="text-xs text-sky-300 font-bold mt-1">
+                    {cl.label || `Dữ kiện ${idx + 1}`} ({cl.atSec}s)
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <MediaView url={q.media} type={q.type} className="max-h-[48vh] rounded-xl mx-auto" />
+          )}
         </>
       )}
       {tt.phase === "question" && (
@@ -278,6 +299,11 @@ function VeDich({ state, serverNow }: P) {
       )}
       {cur && (
         <>
+          {cur.q.subject && (
+            <div className="inline-block px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-200 text-base font-bold">
+              📚 Lĩnh vực: {cur.q.subject} ({cur.points} điểm)
+            </div>
+          )}
           {vd.hopeStarActive && <div className="text-3xl text-yellow-300 font-black">⭐ NGÔI SAO HY VỌNG ⭐</div>}
           <div className="text-5xl font-bold leading-tight">{cur.q.q}</div>
           <MediaView url={cur.q.media} type={cur.q.mediaType} className="max-h-60 rounded-xl mx-auto" />

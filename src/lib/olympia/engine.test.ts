@@ -307,6 +307,50 @@ test("timers expire on tick", () => {
 
 import * as XLSX from "xlsx";
 import { parseSheets, parseJsonSet } from "./excel-import";
+import { RULESET_YEAR_BUTTONS } from "./rulesets";
+import { analyzeSetInventoryAndThresholds, classifyQuestionWithAI } from "./ai-classifier";
+
+test("RULESET_YEAR_BUTTONS merges O15–O19 into '15' and O24–O25 into '24'", () => {
+  assert.deepEqual(
+    RULESET_YEAR_BUTTONS.map((b) => b.numberLabel),
+    ["13", "14", "15", "20", "21", "22", "23", "24", "26"]
+  );
+});
+
+test("SAMPLE_QUESTION_SET has >= 75 Khởi Động and >= 24 Về Đích balanced across zones", () => {
+  const inv = analyzeSetInventoryAndThresholds(SAMPLE_QUESTION_SET, 4);
+  assert.ok(inv.kdTotal.total >= 75, `Expected >= 75 KD questions, got ${inv.kdTotal.total}`);
+  assert.ok(inv.vdTotal.total >= 24, `Expected >= 24 VD questions, got ${inv.vdTotal.total}`);
+  assert.equal(inv.overallStatus, "ok");
+  const tagged = classifyQuestionWithAI("Giải phương trình bậc hai trong mặt phẳng tọa độ Oxy", "x = 2");
+  assert.equal(tagged.kdZone, "MATH_IT");
+  assert.equal(tagged.vdZone, "KHTN");
+});
+
+test("VCNV separate reveal buttons (vcnv:revealRowsOnly vs vcnv:revealPiecesOnly) & 2-level transcript with allAttempts", () => {
+  const g = game("O26", ["vcnv", "tangToc"], 3);
+  act(g, "game:start");
+  act(g, "vcnv:selectRow", { row: 0 });
+  act(g, "vcnv:timer", {}, 0);
+  g.playerAnswer(0, "Nháp lần 1", 1000);
+  g.playerAnswer(0, "Nháp áp chót", 2500);
+  g.playerAnswer(0, SAMPLE_QUESTION_SET.vcnv.rows[0].answer, 4000);
+  act(g, "vcnv:reveal", {}, 5000);
+  act(g, "vcnv:correct", { seatIds: [0] }, 6000);
+
+  const vcnvEntry = (g.state.transcript ?? []).find((e) => e.round === "vcnv")!;
+  assert.ok(vcnvEntry, "VCNV transcript entry recorded");
+  const sub0 = vcnvEntry.submissions!.find((s) => s.seat === 0)!;
+  assert.equal(sub0.finalAnswer, SAMPLE_QUESTION_SET.vcnv.rows[0].answer);
+  assert.equal(sub0.previousAnswer, "Nháp áp chót");
+  assert.equal(sub0.allAttempts.length, 3);
+
+  act(g, "vcnv:revealRowsOnly");
+  assert.ok(g.state.vcnv!.rows.every((r) => r.opened), "all rows opened");
+  assert.equal(g.state.vcnv!.piecesRevealed[1], false, "piece 2 still closed");
+  act(g, "vcnv:revealPiecesOnly");
+  assert.ok(g.state.vcnv!.piecesRevealed.every(Boolean), "all 5 pieces opened");
+});
 
 test("excel-import parses CauHoi_Mau.xlsx and CauHoi_Mau_O22_23.xlsx", () => {
   for (const fn of ["D:/Olympia 26/CauHoi_Mau.xlsx", "D:/Olympia 26/CauHoi_Mau_O22_23.xlsx"]) {
@@ -319,6 +363,6 @@ test("excel-import parses CauHoi_Mau.xlsx and CauHoi_Mau_O22_23.xlsx", () => {
     assert.ok(Object.values(set.veDich).flat().length > 0, fn + " veDich");
   }
   const j = parseJsonSet(SAMPLE_QUESTION_SET);
-  assert.equal(j.set.vcnv.answer, "TOÁN HỌC");
+  assert.equal(j.set?.vcnv.answer, "TIÊU LỆNH CHỮA CHÁY");
 });
 console.log(`${passed} tests passed`);

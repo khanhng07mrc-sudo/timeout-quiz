@@ -10053,6 +10053,20 @@ export default function AdminSandboxPage() {
                 <span>Offline</span>
               </button>
 
+              <button
+                type="button"
+                onClick={() => setShowSettingsDropdown(true)}
+                className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                  showSettingsDropdown
+                    ? "bg-purple-600/30 border-purple-400/50 text-white"
+                    : "glass border-white/20 text-slate-300 hover:text-white"
+                }`}
+                title="Cài đặt chế độ chơi và cấu hình phòng"
+              >
+                <span>⚙️</span>
+                <span>Cài đặt</span>
+              </button>
+
               <form onSubmit={handleConnectExisting} className="flex items-center gap-1 ml-1">
                 <input
                   type="text"
@@ -11188,8 +11202,8 @@ export default function AdminSandboxPage() {
                   <button
                     type="button"
                     onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-                    disabled={!roomState}
-                    className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40 ${
+                    className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer ${
+
                       showSettingsDropdown
                         ? "bg-slate-500/30 border-slate-400/50 text-white"
                         : "glass border-white/10 text-muted-foreground hover:text-white"
@@ -11199,609 +11213,7 @@ export default function AdminSandboxPage() {
                     <span>⚙️</span>
                     <span className="whitespace-nowrap">Cài đặt</span>
                   </button>
-                  {showSettingsDropdown && roomState && (
-                    <div
-                      className="absolute right-0 top-full mt-1 z-40 w-80 sm:w-96 max-h-[85vh] overflow-y-auto rounded-2xl glass border border-white/20 bg-[#151728]/98 shadow-2xl p-3 flex flex-col gap-2 text-xs"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-0.5">
-                        <span className="font-black text-white text-[11px]">⚙️ Cài đặt — {roomState.mode}</span>
-                        <button type="button" onClick={() => setShowSettingsDropdown(false)} className="text-muted-foreground hover:text-white text-[11px] cursor-pointer">✕</button>
-                      </div>
-
-                      {/* 🎡 Magic Wheel Edition & Rules Configuration */}
-                      {roomState.mode === "MAGIC_WHEEL" && (() => {
-                        const isMagicWheelLocked = roomState.status !== "LOBBY" || Boolean(matchStarting);
-                        return (
-                          <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-2 mb-1">
-                            <div className="flex items-center justify-between">
-                              <span className="font-black text-amber-300 text-[11px] flex items-center gap-1">
-                                <span>🎡</span>
-                                <span>PHIÊN BẢN LUẬT CHƠI</span>
-                              </span>
-                              <span className="text-[10px] text-purple-300 font-bold">
-                                {roomState.magicWheelState?.edition === "ENGLISH" ? "English" : "Tiếng Việt"}
-                              </span>
-                            </div>
-
-                            {isMagicWheelLocked && (
-                              <div className="text-[10px] text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30 px-2 py-1 rounded">
-                                🔒 Đã khóa: Chỉ được đổi thể lệ/ngôn ngữ trước khi bấm đếm 5s khởi động!
-                              </div>
-                            )}
-
-                            {/* Edition Segmented Switch */}
-                            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-lg bg-black/50 border border-white/10">
-                              <button
-                                type="button"
-                                disabled={isMagicWheelLocked}
-                                onClick={() => handleToggleMagicWheelEdition("VIETNAMESE")}
-                                className={`py-1.5 px-2 rounded-md font-black text-[11px] flex items-center justify-center gap-1 transition ${
-                                  isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
-                                } ${
-                                  (roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition || "VIETNAMESE") === "VIETNAMESE"
-                                    ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md border border-amber-400"
-                                    : "text-slate-400 hover:text-white"
-                                }`}
-                              >
-                                <span>🇻🇳</span>
-                                <span>Tiếng Việt</span>
-                              </button>
-                              <button
-                                type="button"
-                                disabled={isMagicWheelLocked}
-                                onClick={() => handleToggleMagicWheelEdition("ENGLISH")}
-                                className={`py-1.5 px-2 rounded-md font-black text-[11px] flex items-center justify-center gap-1 transition ${
-                                  isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
-                                } ${
-                                  (roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition) === "ENGLISH"
-                                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-cyan-400"
-                                    : "text-slate-400 hover:text-white"
-                                }`}
-                              >
-                                <span>🇺🇸</span>
-                                <span>English</span>
-                              </button>
-                            </div>
-
-                            {/* Rule differences description */}
-                            <div className="text-[10px] text-slate-300 leading-relaxed bg-black/30 p-2 rounded-lg border border-white/5 space-y-1">
-                              {(roomState.magicWheelState?.edition || "VIETNAMESE") === "VIETNAMESE" ? (
-                                <>
-                                  <p className="text-amber-200 font-bold">• Luật Tiếng Việt:</p>
-                                  <p className="text-slate-300">29 chữ cái, quay được cả nguyên âm & phụ âm. Có ô Thêm Lượt riêng trên nón (dùng lượt thêm vẫn được Đoán ô chữ hoặc Quay tiếp). Đoán sai 3 lần hoặc giải sai từ khóa bị <strong className="text-rose-400">LOẠI KHỎI VÒNG</strong>. Vòng 3 bắt buộc mở hết tất cả chữ cái. Giải ô chữ chuẩn dấu tiếng Việt.</p>
-                                </>
-                              ) : (
-                                <>
-                                  <p className="text-cyan-200 font-bold">• Luật Tiếng Anh (Wheel of Fortune):</p>
-                                  <p className="text-slate-300">26 chữ cái (A-Z), quay chỉ đoán phụ âm, mua nguyên âm 250đ. Thẻ Free Spin đặt trên ô $500, khi dùng thẻ Free Spin bắt buộc phải quay nón (chưa được đoán ô chữ ngay). Báo No more consonants khi hết phụ âm. Đoán/giải sai <strong className="text-emerald-400">CHỈ MẤT LƯỢT</strong> (không bị loại, giữ điểm vòng). Vòng ĐB mở sẵn R,S,T,L,N,E.</p>
-                                </>
-                              )}
-                            </div>
-
-                            {/* English Preset Selection (When English is selected) */}
-                            {roomState.magicWheelState?.edition === "ENGLISH" && (
-                              <div className="space-y-1 pt-1 border-t border-white/10">
-                                <span className="text-cyan-300 text-[10px] font-bold block">Gói đề mẫu tiếng Anh (Thematic Preset):</span>
-                                <div className="grid grid-cols-2 gap-1 text-[10px]">
-                                  {[
-                                    { id: "SET_1", label: "🇻🇳 Vietnam Heritage" },
-                                    { id: "SET_2", label: "🗽 Global Wonders" },
-                                    { id: "SET_3", label: "🥠 Classic Idioms" },
-                                    { id: "RANDOM_MIX", label: "🎲 Trộn ngẫu nhiên" },
-                                  ].map((p) => {
-                                    const isCur = (roomState.magicWheelState?.englishPreset || "RANDOM_MIX") === p.id;
-                                    return (
-                                      <button
-                                        key={p.id}
-                                        type="button"
-                                        disabled={isMagicWheelLocked}
-                                        onClick={() => {
-                                          if (isMagicWheelLocked) return;
-                                          if (adminSocketRef.current?.connected) {
-                                            adminSocketRef.current.emit("admin:magic_wheel:set_english_preset" as any, { preset: p.id });
-                                            adminSocketRef.current.emit("magic_wheel:set_english_preset" as any, { preset: p.id });
-                                          }
-                                          window.postMessage({ type: "MAGIC_WHEEL_SET_ENGLISH_PRESET", preset: p.id }, "*");
-                                          addLog(`⚙️ Đã chọn gói đề tiếng Anh: ${p.label}`);
-                                        }}
-                                        className={`py-1 px-1.5 rounded text-left truncate font-bold border transition ${
-                                          isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
-                                        } ${
-                                          isCur
-                                            ? "bg-cyan-600/40 border-cyan-400 text-cyan-200"
-                                            : "glass border-white/10 text-slate-400 hover:text-white"
-                                        }`}
-                                      >
-                                        {p.label}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-
-                          {/* Blackout Guessed Letters Toggle */}
-                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                            <div>
-                              <span className="text-slate-300 block text-[11px]">Bôi đen chữ cái đã đoán</span>
-                              <span className="text-[9px] text-slate-400">
-                                {roomState.magicWheelState?.blackoutGuessedLetters === false
-                                  ? "Giữ sáng phím, cảnh báo khi click lại"
-                                  : "Gạch mờ phím chữ đã đoán"}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const curVal = roomState.magicWheelState?.blackoutGuessedLetters !== false;
-                                const nextVal = !curVal;
-                                if (adminSocketRef.current?.connected) {
-                                  adminSocketRef.current.emit("admin:magic_wheel:set_blackout_guessed" as any, { enabled: nextVal });
-                                  adminSocketRef.current.emit("magic_wheel:set_blackout_guessed" as any, { enabled: nextVal });
-                                }
-                                window.postMessage({ type: "MAGIC_WHEEL_SET_BLACKOUT_GUESSED", enabled: nextVal }, "*");
-                                addLog(`⚙️ Bôi đen chữ đã đoán: ${nextVal ? "BẬT" : "TẮT"}`);
-                              }}
-                              className={`px-2 py-0.5 rounded font-bold text-[10px] border transition cursor-pointer ${
-                                roomState.magicWheelState?.blackoutGuessedLetters === false
-                                  ? "bg-slate-700 border-slate-500 text-slate-300"
-                                  : "bg-emerald-600 border-emerald-400 text-white"
-                              }`}
-                            >
-                              {roomState.magicWheelState?.blackoutGuessedLetters === false ? "TẮT" : "BẬT"}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                      {/* Penalty for wrong */}
-                      <label className="flex items-center justify-between cursor-pointer gap-2">
-                        <span className="text-slate-300">Trừ điểm khi sai</span>
-                        <button
-                          type="button"
-                          onClick={() => updateConfig("penaltyForWrong", !roomState.config.penaltyForWrong)}
-                          className={`w-10 h-5 rounded-full border transition-all relative ${roomState.config.penaltyForWrong ? "bg-red-500 border-red-400" : "bg-slate-700 border-slate-500"}`}
-                        >
-                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${roomState.config.penaltyForWrong ? "left-5" : "left-0.5"}`} />
-                        </button>
-                      </label>
-
-                      {/* Time bonus */}
-                      <label className="flex items-center justify-between cursor-pointer gap-2">
-                        <span className="text-slate-300">Bonus thời gian còn lại</span>
-                        <button
-                          type="button"
-                          onClick={() => updateConfig("timeBonusEnabled", !roomState.config.timeBonusEnabled)}
-                          className={`w-10 h-5 rounded-full border transition-all relative ${roomState.config.timeBonusEnabled ? "bg-emerald-500 border-emerald-400" : "bg-slate-700 border-slate-500"}`}
-                        >
-                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${roomState.config.timeBonusEnabled ? "left-5" : "left-0.5"}`} />
-                        </button>
-                      </label>
-
-                      {/* Answer submission mode */}
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-slate-300">Chế độ trả lời</span>
-                        <select
-                          value={roomState.config.answerSubmissionMode || "ALLOW_CHANGE"}
-                          onChange={(e) => updateConfig("answerSubmissionMode", e.target.value as any)}
-                          className="px-2 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none"
-                        >
-                          <option value="ALLOW_CHANGE">Cho phép đổi</option>
-                          <option value="SINGLE_SUBMIT">Bấm 1 lần duy nhất</option>
-                        </select>
-                      </div>
-
-                      {/* Auto-timer (duplicate for settings panel) */}
-                      <label className="flex items-center justify-between cursor-pointer gap-2">
-                        <span className="text-slate-300">Đếm ngược tự động</span>
-                        <button
-                          type="button"
-                          onClick={() => updateConfig("autoTimerStart", !roomState.config.autoTimerStart)}
-                          className={`w-10 h-5 rounded-full border transition-all relative ${roomState.config.autoTimerStart ? "bg-cyan-500 border-cyan-400" : "bg-slate-700 border-slate-500"}`}
-                        >
-                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${roomState.config.autoTimerStart ? "left-5" : "left-0.5"}`} />
-                        </button>
-                      </label>
-
-                      {/* Penalty points */}
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-slate-300">Mức trừ điểm</span>
-                        <input
-                          type="number"
-                          min={0}
-                          max={50}
-                          value={roomState.config.penaltyPoints ?? 10}
-                          onChange={(e) => updateConfig("penaltyPoints", Number(e.target.value))}
-                          className="w-16 px-2 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none text-right"
-                        />
-                      </div>
-
-                      {roomState.mode === "WAGER" && (
-                        <>
-                          {/* Wager Betting Duration Setting */}
-                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                            <span className="text-slate-300">Thời gian cược</span>
-                            <div className="flex items-center gap-1 flex-wrap justify-end">
-                              {[10, 15, 20, 30, 45].map((sec) => (
-                                <button
-                                  key={sec}
-                                  type="button"
-                                  onClick={() => updateConfig("wagerTimeSeconds", sec)}
-                                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                                    (roomState.config.wagerTimeSeconds ?? 15) === sec
-                                      ? "bg-amber-500/30 border-amber-400 text-amber-300"
-                                      : "glass border-white/10 text-slate-400 hover:text-white"
-                                  }`}
-                                >
-                                  {sec}s
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Wager Max Bet Cap Multiplier (Cố định 5 mức chia hết cho 5: x1.0 - x3.0) */}
-                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                            <span className="text-slate-300">Trần cược</span>
-                            <div className="flex items-center gap-1 flex-wrap justify-end">
-                              {[1, 1.5, 2, 2.5, 3].map((mult) => (
-                                <button
-                                  key={mult}
-                                  type="button"
-                                  onClick={() => updateConfig("wagerMultiplierCap", mult)}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                                    (roomState.config.wagerMultiplierCap ?? 2.5) === mult
-                                      ? "bg-amber-500/30 border-amber-400 text-amber-300 ring-1 ring-amber-400/50"
-                                      : "glass border-white/10 text-slate-400 hover:text-white"
-                                  }`}
-                                >
-                                  x{mult}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Wager Rounds Per Team */}
-                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                            <span className="text-slate-300">Số vòng thi/đội</span>
-                            <div className="flex items-center gap-1">
-                              {[1, 2, 3].map((r) => (
-                                <button
-                                  key={r}
-                                  type="button"
-                                  onClick={() => updateConfig("wagerRoundsPerTeam", r)}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                                    (roomState.config.wagerRoundsPerTeam ?? 2) === r
-                                      ? "bg-amber-500/30 border-amber-400 text-amber-300"
-                                      : "glass border-white/10 text-slate-400 hover:text-white"
-                                  }`}
-                                >
-                                  {r} vòng
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                            <span className="text-slate-300">Giới hạn cứu trợ</span>
-                            <div className="flex items-center gap-1">
-                              {[1, 2, 3].map((limit) => (
-                                <button
-                                  key={limit}
-                                  type="button"
-                                  onClick={() => handleSetBailoutLimit(limit)}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                                    (roomState.config.wagerBailoutLimit ?? 1) === limit
-                                      ? "bg-amber-500/30 border-amber-400 text-amber-300"
-                                      : "glass border-white/10 text-slate-400 hover:text-white"
-                                  }`}
-                                >
-                                  {limit} lần
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Bounceback Rounds (Cycles) */}
-                      {roomState.mode === "BOUNCEBACK" && (
-                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                          <span className="text-slate-300">Số vòng thi/đội</span>
-                          <div className="flex items-center gap-1">
-                            {[1, 2].map((cycles) => (
-                              <button
-                                key={cycles}
-                                type="button"
-                                onClick={() => updateConfig("bouncebackCycles", cycles)}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                                  (roomState.config.bouncebackCycles ?? 1) === cycles
-                                    ? "bg-cyan-500/30 border-cyan-400 text-cyan-300"
-                                    : "glass border-white/10 text-slate-400 hover:text-white"
-                                }`}
-                              >
-                                {cycles} vòng
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Dice Race Max Questions Limit */}
-                      {roomState.mode === "DICE_RACE" && (
-                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                          <span className="text-slate-300">Giới hạn câu đua</span>
-                          <div className="flex items-center gap-1 flex-wrap justify-end">
-                            {[8, 12, 16, 0].map((qLimit) => (
-                              <button
-                                key={qLimit}
-                                type="button"
-                                onClick={() => updateConfig("diceRaceMaxQuestions", qLimit)}
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                                  (roomState.config.diceRaceMaxQuestions ?? 0) === qLimit
-                                    ? "bg-indigo-500/30 border-indigo-400 text-indigo-300"
-                                    : "glass border-white/10 text-slate-400 hover:text-white"
-                                }`}
-                              >
-                                {qLimit === 0 ? "Hết đề" : `${qLimit}c`}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Universal Match Max Questions (Tất cả các mode) */}
-                      {(() => {
-                        const isTeamMultipleMode = ["MYSTERY_QUEST", "WAGER", "BOUNCEBACK"].includes(roomState.mode);
-                        const teamsCount = Math.max(1, roomState.teams.length || 4);
-                        const currentMaxQ = roomState.config.matchMaxQuestions ?? 0;
-                        const turnsPerTeam = currentMaxQ > 0 ? Math.floor(currentMaxQ / teamsCount) : 0;
-
-                        const presetList = isTeamMultipleMode
-                          ? [teamsCount * 1, teamsCount * 2, teamsCount * 3, teamsCount * 4, teamsCount * 5, 0]
-                          : [5, 10, 12, 15, 20, 25, 0];
-
-                        const handleSaveCustomMaxQuestions = (rawVal: number | string) => {
-                          const num = Number(rawVal);
-                          if (!rawVal || isNaN(num) || num <= 0) {
-                            updateConfig("matchMaxQuestions", 0);
-                            setCustomMaxQuestionsInput("");
-                            return;
-                          }
-                          if (isTeamMultipleMode) {
-                            const turns = Math.max(1, Math.round(num / teamsCount));
-                            const snapped = turns * teamsCount;
-                            updateConfig("matchMaxQuestions", snapped);
-                            setCustomMaxQuestionsInput(String(snapped));
-                            if (snapped !== num) {
-                              addLog(`⚙️ Đã làm tròn số câu thành ${snapped} (${turns} lượt/đội × ${teamsCount} đội) cho chế độ ${roomState.mode}`);
-                            }
-                          } else {
-                            updateConfig("matchMaxQuestions", num);
-                            setCustomMaxQuestionsInput(String(num));
-                          }
-                        };
-
-                        return (
-                          <div className="space-y-1.5 pt-1.5 border-t border-white/10">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-slate-300 font-bold">Tổng số câu hỏi</span>
-                                <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${
-                                  isTeamMultipleMode
-                                    ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                                    : "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                                }`}>
-                                  {isTeamMultipleMode ? `Bội số ${teamsCount} đội` : "Tất cả mode"}
-                                </span>
-                              </div>
-
-                              {/* Numeric Input Field */}
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="number"
-                                  min={isTeamMultipleMode ? teamsCount : 1}
-                                  step={isTeamMultipleMode ? teamsCount : 1}
-                                  placeholder={isTeamMultipleMode ? `Bội ${teamsCount}` : "Số câu"}
-                                  value={customMaxQuestionsInput}
-                                  onChange={(e) => setCustomMaxQuestionsInput(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      handleSaveCustomMaxQuestions(customMaxQuestionsInput);
-                                    }
-                                  }}
-                                  className="w-16 px-1.5 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none text-right font-mono"
-                                  title={isTeamMultipleMode ? `Nhập số câu (tự động làm tròn theo bội số ${teamsCount})` : "Nhập số câu hỏi tùy ý"}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleSaveCustomMaxQuestions(customMaxQuestionsInput)}
-                                  className="px-2 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold transition active:scale-95 cursor-pointer"
-                                  title="Lưu số câu hỏi"
-                                >
-                                  Lưu
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Preset Buttons */}
-                            <div className="flex items-center gap-1 flex-wrap justify-end">
-                              {presetList.map((qCount) => {
-                                const isCurrent = currentMaxQ === qCount;
-                                const label = qCount === 0
-                                  ? "Hết đề"
-                                  : isTeamMultipleMode
-                                  ? `${qCount}c (${qCount / teamsCount}v)`
-                                  : `${qCount}c`;
-                                return (
-                                  <button
-                                    key={qCount}
-                                    type="button"
-                                    onClick={() => {
-                                      updateConfig("matchMaxQuestions", qCount);
-                                      setCustomMaxQuestionsInput(qCount === 0 ? "" : String(qCount));
-                                    }}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                                      isCurrent
-                                        ? "bg-purple-500/30 border-purple-400 text-purple-300"
-                                        : "glass border-white/10 text-slate-400 hover:text-white"
-                                    }`}
-                                  >
-                                    {label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-
-                            {/* Helper hint for modes requiring team multiples */}
-                            {isTeamMultipleMode && (
-                              <div className="text-[10px] text-amber-400/90 flex items-center justify-between">
-                                <span>⚠️ Bắt buộc là bội số của {teamsCount} đội</span>
-                                <span className="font-mono text-cyan-300 font-bold">
-                                  {currentMaxQ > 0 ? `${turnsPerTeam} lượt/đội (${currentMaxQ}c)` : "Toàn bộ bộ đề"}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      {/* Initial Team Score */}
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                        <span className="text-slate-300">Điểm ban đầu</span>
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            min={0}
-                            max={1000}
-                            value={initialTeamScoreInput}
-                            onChange={(e) => setInitialTeamScoreInput(Number(e.target.value))}
-                            className="w-16 px-2 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none text-right"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSetAllTeamsInitialScores(initialTeamScoreInput)}
-                            className="px-2 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold transition active:scale-95 cursor-pointer"
-                          >
-                            Set
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Powerup Card Lock / Unlock & Shuffle */}
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                        <span className="text-slate-300">Thẻ hỗ trợ</span>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleCards(!cardsLocked)}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                              cardsLocked
-                                ? "bg-red-500/30 border-red-400 text-red-300"
-                                : "glass border-white/20 text-slate-300 hover:text-white"
-                            }`}
-                          >
-                            {cardsLocked ? "🔒 Đã khóa" : "🔓 Mở"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleShuffleCards}
-                            className="px-2 py-0.5 rounded glass border border-white/20 text-slate-300 hover:text-white text-[10px] font-bold transition cursor-pointer"
-                            title="Xáo lại kho bài chia cho các đội"
-                          >
-                            🔀 Xáo bài
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Clean offline participants */}
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                        <span className="text-slate-300">Dọn dẹp offline</span>
-                        <button
-                          type="button"
-                          onClick={handleCleanOfflinePlayers}
-                          className="px-2 py-0.5 rounded glass border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 text-[10px] font-bold transition cursor-pointer"
-                          title="Xóa thí sinh mất kết nối"
-                        >
-                          🧹 Xóa offline
-                        </button>
-                      </div>
-
-                      {/* Assign Quiz Bank selector */}
-                      <div className="flex flex-col gap-1 pt-1 border-t border-white/10">
-                        <span className="text-slate-300 text-[10px]">Đổi bộ đề đang gán:</span>
-                        <select
-                          value={selectedBankId}
-                          onChange={(e) => handleAssignQuizBank(e.target.value)}
-                          className="w-full px-2 py-1 rounded-lg glass border border-white/20 text-white text-[10px] bg-[#0f0f1a] focus:outline-none truncate"
-                        >
-                          {compatibleBanks.length === 0 ? (
-                            <option value="">{effectiveActiveMode === "MAGIC_WHEEL" ? "🎡 11 Vòng Ô Chữ Tiếng Việt Mặc định" : "📚 Mặc định (25 câu)"}</option>
-                          ) : (
-                            compatibleBanks.map((b) => (
-                              <option key={b.id} value={b.id}>
-                                {formatCleanBankTitle(b)}
-                              </option>
-                            ))
-                          )}
-                        </select>
-                      </div>
-
-                      {/* Team Configuration inside Settings */}
-                      <div className="space-y-1.5 pt-1.5 border-t border-white/10">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-slate-300 font-bold">Cấu hình Đội ({sandboxCustomTeams.length} đội)</span>
-                          <div className="flex items-center gap-1">
-                            {[2, 3, 4, 5, 6, 8].map((cnt) => (
-                              <button
-                                key={cnt}
-                                type="button"
-                                onClick={() => handleSetSandboxTeamCount(cnt)}
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                                  sandboxCustomTeams.length === cnt
-                                    ? "bg-purple-500/30 border-purple-400 text-purple-200"
-                                    : "glass border-white/10 text-slate-400 hover:text-white"
-                                }`}
-                              >
-                                {cnt}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-1.5 pt-1 max-h-36 overflow-y-auto no-scrollbar">
-                          {sandboxCustomTeams.map((team, idx) => (
-                            <div key={idx} className="flex items-center gap-1.5 p-1 rounded-lg bg-black/40 border border-white/10">
-                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: team.color }} />
-                              <input
-                                type="text"
-                                value={team.name}
-                                onChange={(e) => handleUpdateSandboxTeamName(idx, e.target.value)}
-                                className="flex-1 bg-transparent text-[10px] font-bold text-white focus:outline-none"
-                              />
-                            </div>
-                          ))}
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowSettingsDropdown(false);
-                            if (isOfflineSandbox) {
-                              startOfflineSandbox(roomState.mode, selectedBankId);
-                            } else {
-                              handleLaunchSandbox(roomState.mode);
-                            }
-                          }}
-                          className="w-full mt-1 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-[10px] shadow transition flex items-center justify-center gap-1 cursor-pointer"
-                        >
-                          <span>🔄</span>
-                          <span>Áp dụng & Chạy lại với cấu hình đội này</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  
                 </div>
 
                 {/* Delete Room */}
@@ -11846,7 +11258,7 @@ export default function AdminSandboxPage() {
               Chọn chế độ trò chơi thử nghiệm
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              Hệ thống tích hợp Màn chiếu hội trường bên trái và Điện thoại thí sinh bên phải. Bạn có thể tự do tùy chỉnh số đội và tên đội mong muốn để kiểm thử toàn diện.
+              Hệ thống tích hợp Màn chiếu hội trường ở trên và Điện thoại thí sinh ở dưới. Bạn có thể tự do tùy chỉnh số đội và tên đội mong muốn để kiểm thử toàn diện.
             </p>
           </div>
 
@@ -12206,15 +11618,184 @@ export default function AdminSandboxPage() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 grid grid-cols-1 landscape:grid-cols-2 lg:grid-cols-12 gap-1.5 sm:gap-2 overflow-hidden animate-loaded-reveal pb-14 lg:pb-0">
-          {/* ══════════════════════════════════════════════════════════════════
-              RIGHT COLUMN (5 cols ~42%): Unified Mobile Device + Team Switcher
+        <div className="flex-1 min-h-0 flex flex-col gap-1.5 sm:gap-2 overflow-hidden animate-loaded-reveal pb-14 lg:pb-0">
+{/* ══════════════════════════════════════════════════════════════════
+              PHẦN TRÊN (~55% chiều cao): Màn hình Chiếu Trường Quay (TV 3D Display)
              ══════════════════════════════════════════════════════════════════ */}
-          <div className={`lg:col-span-5 landscape:col-span-1 flex flex-col min-h-0 h-full gap-1 overflow-hidden animate-slide-in-right ${
-            mobileTab === "PLAYER" ? "flex" : mobileTab === "DISPLAY" ? "hidden landscape:flex lg:flex" : "hidden lg:flex"
-          }}`}>
-            {/* Team Switcher Tabs (Auto-fit No Horizontal Scrollbar) */}
-            <div className="glass rounded-xl px-2 py-1 border border-white/10 bg-[#121424] shrink-0 flex items-center gap-1.5">
+          <div
+            className={`flex-col min-h-0 h-full gap-1.5 overflow-hidden animate-slide-in-left landscape:col-span-1 lg:col-span-7 lg:order-first ${
+              mobileTab === "DISPLAY" ? "flex" : "hidden landscape:flex lg:flex"
+            }`}
+          >
+            {/* Viewport Card: Display Iframe or Host Panel */}
+            <div className="flex-1 min-h-0 glass rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-black">
+              {/* Card Header */}
+              <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
+                  <span className="text-white font-black tracking-wide">
+                    📺 MÀN HÌNH HIỂN THỊ TRƯỜNG QUAY (TRỰC TIẾP 3D)
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    Trực tiếp 3D
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/display/${code}?sandbox=1&standalone=1`}
+                    target="_blank"
+                    className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
+                  >
+                    <span>Mở tab riêng</span>
+                    <span>↗</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Viewport Content */}
+              <div className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col">
+                <iframe
+                    ref={displayIframeRef}
+                    src={`/display/${code}?sandbox=1`}
+                    title="Display Viewport"
+                    className="w-full h-full border-0 bg-black"
+                    allow="autoplay; camera; microphone; display-capture"
+                    onLoad={() => {
+                      if (isOfflineSandbox) {
+                        syncToIframes();
+                      }
+                    }}
+                  />
+              </div>
+            </div>
+
+            {/* Bottom Controls Bar (Red Area): Cài đặt & Pháp lý + Live Ticker */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 shrink-0">
+              {/* Cài đặt & Pháp lý Buttons Dock (Vùng đỏ theo thiết kế) */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowGlobalSettingsModal(true)}
+                  className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#12162a]/90 hover:bg-[#1c2242] border border-cyan-500/30 hover:border-cyan-400 text-xs text-slate-300 hover:text-white shadow-md backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+                  title="Cài đặt hệ thống (Âm thanh, Đồ họa, Ngôn ngữ, Toàn màn hình)"
+                >
+                  <span className="w-3.5 h-3.5 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                    <svg className="w-2.5 h-2.5 group-hover:rotate-45 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </span>
+                  <span className="font-semibold text-[11px] text-slate-300 group-hover:text-cyan-200">
+                    Cài đặt
+                  </span>
+                </button>
+                <FloatingLegalButton />
+              </div>
+
+              {/* Live Bot Event Logs (Compact Single-line Ticker Bar) */}
+              <div className="glass rounded-xl px-2.5 py-1 border border-white/10 text-xs bg-[#121424] flex items-center justify-between flex-1 min-w-0 shadow-lg">
+                <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${botAutoEnabled ? "bg-emerald-400 animate-pulse glow-neon-emerald" : "bg-cyan-400 animate-pulse glow-neon-cyan"}`} />
+                  <span className="font-bold text-slate-400 text-[10px] sm:text-[11px] shrink-0 uppercase tracking-wider hidden sm:inline">Bản tin trực tiếp:</span>
+                  <span
+                    key={botLogs[0] || "initial"}
+                    className="font-mono text-[10px] sm:text-[11px] text-slate-200 truncate animate-ticker-slide"
+                  >
+                    {botLogs[0] || "Phòng Sandbox sẵn sàng · Đang kết nối hiển thị trường quay..."}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLogsModal(true)}
+                  className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[10px] sm:text-[11px] font-bold shrink-0 transition btn-tactile cursor-pointer"
+                >
+                  📜 Nhật ký ({botLogs.length})
+                </button>
+              </div>
+            </div>
+          </div>
+
+                    {/* ══════════════════════════════════════════════════════════════════
+              PHẦN DƯỚI (~45% chiều cao): Điện thoại Thí sinh (Trái) + Chọn Đội & Bàn Phím Điều Khiển (Phải)
+             ══════════════════════════════════════════════════════════════════ */}
+          <div
+            className={`flex-1 min-h-[240px] flex flex-col lg:flex-row gap-2 overflow-hidden animate-slide-in-up ${
+              mobileTab === "PLAYER" ? "flex" : mobileTab === "DISPLAY" ? "hidden lg:flex" : "hidden lg:flex"
+            }`}
+          >
+            {/* Cột trái: Khung Điện thoại Thí sinh */}
+            <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 h-full flex flex-col min-h-0 glass rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-[#0b0c16]">
+              {/* Thanh tiêu đề thiết bị */}
+              <div className="bg-[#151728] px-2.5 py-1.5 border-b border-white/10 flex items-center justify-between gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse" style={{ background: currentTeam?.color || "#a855f7" }} />
+                  <span className="font-black text-xs text-white truncate max-w-[120px]">
+                    {activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
+                    {(((currentTeam?.score ?? 0)) + (roomState?.mode === "MAGIC_WHEEL" && currentTeam?.id && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[currentTeam.id] || 0) : 0)).toLocaleString()}đ
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-medium">📱 Điện thoại thí sinh</span>
+              </div>
+
+              <div className="flex-1 min-h-0 bg-[#0f0f1a]">
+                <iframe
+                  ref={playerIframeRef}
+                  src={`/play/${code}?sandbox=1&playerId=sb_${code}_t0&teamIndex=0&name=${encodeURIComponent("Bạn (Tester)")}`}
+                  allow="autoplay; camera; microphone"
+                  onLoad={() => {
+                    if (isOfflineSandbox) {
+                      syncToIframes();
+                    }
+                    const targetTeam = stableTeams[activeTeamIndex] || stableTeams[0];
+                    if (targetTeam) {
+                      const tName = activeTeamIndex === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
+                      const isQuestionActive = Boolean(currentQuestion && !revealPayload);
+                      const targetAnswer = isQuestionActive
+                        ? (isOfflineSandbox
+                            ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null)
+                            : (teamSelectedAnswers[targetTeam.id] || null))
+                        : null;
+                      const allAnswers = isQuestionActive
+                        ? (isOfflineSandbox
+                            ? Object.fromEntries(
+                                Array.from(offlineAnswersRef.current.entries()).map(([tid, val]) => [tid, val.answer])
+                              )
+                            : teamSelectedAnswers)
+                        : {};
+                      playerIframeRef.current?.contentWindow?.postMessage(
+                        {
+                          type: "SWITCH_ACTIVE_TEAM",
+                          teamId: targetTeam.id,
+                          teamName: tName,
+                          teamIndex: activeTeamIndex,
+                          currentAnswer: targetAnswer,
+                          allTeamAnswers: allAnswers,
+                          roomState,
+                          currentQuestion,
+                          timer,
+                          revealPayload,
+                          payload: {
+                            teamId: targetTeam.id,
+                            teamName: tName,
+                            teamIndex: activeTeamIndex,
+                            currentAnswer: targetAnswer,
+                          },
+                        },
+                        "*"
+                      );
+                    }
+                  }}
+                  title="Player Viewport"
+                  className="w-full h-full border-0"
+                />
+              </div>
+            </div>
+
+            {/* Cột phải: Chọn Đội & Bàn Phím Thử Nghiệm / Quản Trò */}
+            <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto no-scrollbar">
+              <div className="glass rounded-xl px-2 py-1 border border-white/10 bg-[#121424] shrink-0 flex items-center gap-1.5">
               <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0 hidden sm:inline">📱 Chọn Đội:</span>
               <div className="flex items-center gap-1.5 flex-1 overflow-x-auto no-scrollbar py-0.5">
                 {stableTeams.map((t: TeamState, idx: number) => {
@@ -12271,9 +11852,8 @@ export default function AdminSandboxPage() {
               </div>
             </div>
 
-            {/* Mobile Device Frame with Integrated Quick Testing Header */}
-            <div className="flex-1 min-h-0 glass rounded-2xl border border-white/10 overflow-hidden shadow-2xl flex flex-col bg-[#0b0c16]">
-              {/* Integrated Tester Header (Single Slim Bar) */}
+            
+
               <div className="bg-[#151728] px-2 sm:px-2.5 py-1.5 border-b border-white/10 flex items-center justify-between gap-1 sm:gap-2 shrink-0 overflow-x-auto no-scrollbar">
                 {/* Active Team Identity Badge */}
                 <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 shrink-0 relative">
@@ -12455,159 +12035,10 @@ export default function AdminSandboxPage() {
                 </div>
               </div>
 
-              {/* Player Viewport */}
-              <div className="flex-1 min-h-0 bg-[#0f0f1a]">
-                <iframe
-                  ref={playerIframeRef}
-                  src={`/play/${code}?sandbox=1&playerId=sb_${code}_t0&teamIndex=0&name=${encodeURIComponent("Bạn (Tester)")}`}
-                  allow="autoplay; camera; microphone"
-                  onLoad={() => {
-                    if (isOfflineSandbox) {
-                      syncToIframes();
-                    }
-                    const targetTeam = stableTeams[activeTeamIndex] || stableTeams[0];
-                    if (targetTeam) {
-                      const tName = activeTeamIndex === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
-                      const isQuestionActive = Boolean(currentQuestion && !revealPayload);
-                      const targetAnswer = isQuestionActive
-                        ? (isOfflineSandbox
-                            ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null)
-                            : (teamSelectedAnswers[targetTeam.id] || null))
-                        : null;
-                      const allAnswers = isQuestionActive
-                        ? (isOfflineSandbox
-                            ? Object.fromEntries(
-                                Array.from(offlineAnswersRef.current.entries()).map(([tid, val]) => [tid, val.answer])
-                              )
-                            : teamSelectedAnswers)
-                        : {};
-                      playerIframeRef.current?.contentWindow?.postMessage(
-                        {
-                          type: "SWITCH_ACTIVE_TEAM",
-                          teamId: targetTeam.id,
-                          teamName: tName,
-                          teamIndex: activeTeamIndex,
-                          currentAnswer: targetAnswer,
-                          allTeamAnswers: allAnswers,
-                          roomState,
-                          currentQuestion,
-                          timer,
-                          revealPayload,
-                          payload: {
-                            teamId: targetTeam.id,
-                            teamName: tName,
-                            teamIndex: activeTeamIndex,
-                            currentAnswer: targetAnswer,
-                          },
-                        },
-                        "*"
-                      );
-                    }
-                  }}
-                  title="Player Viewport"
-                  className="w-full h-full border-0"
-                />
               </div>
-            </div>
           </div>
 
-          {/* ══════════════════════════════════════════════════════════════════
-              LEFT COLUMN (7 cols ~58%): Màn hình Chiếu (Display Screen / Studio 3D)
-             ══════════════════════════════════════════════════════════════════ */}
-          <div
-            className={`flex-col min-h-0 h-full gap-1.5 overflow-hidden animate-slide-in-left landscape:col-span-1 lg:col-span-7 lg:order-first ${
-              mobileTab === "DISPLAY" ? "flex" : "hidden landscape:flex lg:flex"
-            }`}
-          >
-            {/* Viewport Card: Display Iframe or Host Panel */}
-            <div className="flex-1 min-h-0 glass rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-black">
-              {/* Card Header */}
-              <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
-                  <span className="text-white font-black tracking-wide">
-                    📺 MÀN HÌNH HIỂN THỊ TRƯỜNG QUAY (TRỰC TIẾP 3D)
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                    Trực tiếp 3D
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={`/display/${code}?sandbox=1&standalone=1`}
-                    target="_blank"
-                    className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
-                  >
-                    <span>Mở tab riêng</span>
-                    <span>↗</span>
-                  </Link>
-                </div>
-              </div>
-
-              {/* Viewport Content */}
-              <div className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col">
-                <iframe
-                    ref={displayIframeRef}
-                    src={`/display/${code}?sandbox=1`}
-                    title="Display Viewport"
-                    className="w-full h-full border-0 bg-black"
-                    allow="autoplay; camera; microphone; display-capture"
-                    onLoad={() => {
-                      if (isOfflineSandbox) {
-                        syncToIframes();
-                      }
-                    }}
-                  />
-              </div>
-            </div>
-
-            {/* Bottom Controls Bar (Red Area): Cài đặt & Pháp lý + Live Ticker */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 shrink-0">
-              {/* Cài đặt & Pháp lý Buttons Dock (Vùng đỏ theo thiết kế) */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowGlobalSettingsModal(true)}
-                  className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#12162a]/90 hover:bg-[#1c2242] border border-cyan-500/30 hover:border-cyan-400 text-xs text-slate-300 hover:text-white shadow-md backdrop-blur-md transition-all active:scale-95 cursor-pointer"
-                  title="Cài đặt hệ thống (Âm thanh, Đồ họa, Ngôn ngữ, Toàn màn hình)"
-                >
-                  <span className="w-3.5 h-3.5 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <svg className="w-2.5 h-2.5 group-hover:rotate-45 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </span>
-                  <span className="font-semibold text-[11px] text-slate-300 group-hover:text-cyan-200">
-                    Cài đặt
-                  </span>
-                </button>
-                <FloatingLegalButton />
-              </div>
-
-              {/* Live Bot Event Logs (Compact Single-line Ticker Bar) */}
-              <div className="glass rounded-xl px-2.5 py-1 border border-white/10 text-xs bg-[#121424] flex items-center justify-between flex-1 min-w-0 shadow-lg">
-                <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${botAutoEnabled ? "bg-emerald-400 animate-pulse glow-neon-emerald" : "bg-cyan-400 animate-pulse glow-neon-cyan"}`} />
-                  <span className="font-bold text-slate-400 text-[10px] sm:text-[11px] shrink-0 uppercase tracking-wider hidden sm:inline">Bản tin trực tiếp:</span>
-                  <span
-                    key={botLogs[0] || "initial"}
-                    className="font-mono text-[10px] sm:text-[11px] text-slate-200 truncate animate-ticker-slide"
-                  >
-                    {botLogs[0] || "Phòng Sandbox sẵn sàng · Đang kết nối hiển thị trường quay..."}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowLogsModal(true)}
-                  className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[10px] sm:text-[11px] font-bold shrink-0 transition btn-tactile cursor-pointer"
-                >
-                  📜 Nhật ký ({botLogs.length})
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* ══════════════════════════════════════════════════════════════════
+{/* ══════════════════════════════════════════════════════════════════
               DEDICATED MOBILE HOST CONTROL PANEL (Screen < lg when mobileTab === "HOST")
              ══════════════════════════════════════════════════════════════════ */}
           <div
@@ -13819,6 +13250,734 @@ export default function AdminSandboxPage() {
       />
 
       {/* ── Global Settings Modal ─────────────────────────────────────────── */}
+      
+      {/* ── Global/Room Settings Modal (Accessible anytime) ── */}
+      {showSettingsDropdown && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowSettingsDropdown(false)}
+        >
+          <div
+            className="w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-2xl glass border border-white/20 bg-[#151728]/98 shadow-2xl p-4 flex flex-col gap-3 text-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-1">
+              <span className="font-black text-white text-sm flex items-center gap-2">
+                <span>⚙️</span>
+                <span>Cài đặt phòng thi — {roomState?.mode || selectedMode}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowSettingsDropdown(false)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center cursor-pointer transition text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* If room is running, show full room settings */}
+            {roomState ? (
+              <>
+                      
+
+                      {/* 🎡 Magic Wheel Edition & Rules Configuration */}
+                      {roomState.mode === "MAGIC_WHEEL" && (() => {
+                        const isMagicWheelLocked = roomState.status !== "LOBBY" || Boolean(matchStarting);
+                        return (
+                          <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-2 mb-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-black text-amber-300 text-[11px] flex items-center gap-1">
+                                <span>🎡</span>
+                                <span>PHIÊN BẢN LUẬT CHƠI</span>
+                              </span>
+                              <span className="text-[10px] text-purple-300 font-bold">
+                                {roomState.magicWheelState?.edition === "ENGLISH" ? "English" : "Tiếng Việt"}
+                              </span>
+                            </div>
+
+                            {isMagicWheelLocked && (
+                              <div className="text-[10px] text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30 px-2 py-1 rounded">
+                                🔒 Đã khóa: Chỉ được đổi thể lệ/ngôn ngữ trước khi bấm đếm 5s khởi động!
+                              </div>
+                            )}
+
+                            {/* Edition Segmented Switch */}
+                            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-lg bg-black/50 border border-white/10">
+                              <button
+                                type="button"
+                                disabled={isMagicWheelLocked}
+                                onClick={() => handleToggleMagicWheelEdition("VIETNAMESE")}
+                                className={`py-1.5 px-2 rounded-md font-black text-[11px] flex items-center justify-center gap-1 transition ${
+                                  isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
+                                } ${
+                                  (roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition || "VIETNAMESE") === "VIETNAMESE"
+                                    ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md border border-amber-400"
+                                    : "text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                <span>🇻🇳</span>
+                                <span>Tiếng Việt</span>
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isMagicWheelLocked}
+                                onClick={() => handleToggleMagicWheelEdition("ENGLISH")}
+                                className={`py-1.5 px-2 rounded-md font-black text-[11px] flex items-center justify-center gap-1 transition ${
+                                  isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
+                                } ${
+                                  (roomState.magicWheelState?.edition || (roomState.config as any)?.magicWheelEdition) === "ENGLISH"
+                                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border border-cyan-400"
+                                    : "text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                <span>🇺🇸</span>
+                                <span>English</span>
+                              </button>
+                            </div>
+
+                            {/* Rule differences description */}
+                            <div className="text-[10px] text-slate-300 leading-relaxed bg-black/30 p-2 rounded-lg border border-white/5 space-y-1">
+                              {(roomState.magicWheelState?.edition || "VIETNAMESE") === "VIETNAMESE" ? (
+                                <>
+                                  <p className="text-amber-200 font-bold">• Luật Tiếng Việt:</p>
+                                  <p className="text-slate-300">29 chữ cái, quay được cả nguyên âm & phụ âm. Có ô Thêm Lượt riêng trên nón (dùng lượt thêm vẫn được Đoán ô chữ hoặc Quay tiếp). Đoán sai 3 lần hoặc giải sai từ khóa bị <strong className="text-rose-400">LOẠI KHỎI VÒNG</strong>. Vòng 3 bắt buộc mở hết tất cả chữ cái. Giải ô chữ chuẩn dấu tiếng Việt.</p>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="text-cyan-200 font-bold">• Luật Tiếng Anh (Wheel of Fortune):</p>
+                                  <p className="text-slate-300">26 chữ cái (A-Z), quay chỉ đoán phụ âm, mua nguyên âm 250đ. Thẻ Free Spin đặt trên ô $500, khi dùng thẻ Free Spin bắt buộc phải quay nón (chưa được đoán ô chữ ngay). Báo No more consonants khi hết phụ âm. Đoán/giải sai <strong className="text-emerald-400">CHỈ MẤT LƯỢT</strong> (không bị loại, giữ điểm vòng). Vòng ĐB mở sẵn R,S,T,L,N,E.</p>
+                                </>
+                              )}
+                            </div>
+
+                            {/* English Preset Selection (When English is selected) */}
+                            {roomState.magicWheelState?.edition === "ENGLISH" && (
+                              <div className="space-y-1 pt-1 border-t border-white/10">
+                                <span className="text-cyan-300 text-[10px] font-bold block">Gói đề mẫu tiếng Anh (Thematic Preset):</span>
+                                <div className="grid grid-cols-2 gap-1 text-[10px]">
+                                  {[
+                                    { id: "SET_1", label: "🇻🇳 Vietnam Heritage" },
+                                    { id: "SET_2", label: "🗽 Global Wonders" },
+                                    { id: "SET_3", label: "🥠 Classic Idioms" },
+                                    { id: "RANDOM_MIX", label: "🎲 Trộn ngẫu nhiên" },
+                                  ].map((p) => {
+                                    const isCur = (roomState.magicWheelState?.englishPreset || "RANDOM_MIX") === p.id;
+                                    return (
+                                      <button
+                                        key={p.id}
+                                        type="button"
+                                        disabled={isMagicWheelLocked}
+                                        onClick={() => {
+                                          if (isMagicWheelLocked) return;
+                                          if (adminSocketRef.current?.connected) {
+                                            adminSocketRef.current.emit("admin:magic_wheel:set_english_preset" as any, { preset: p.id });
+                                            adminSocketRef.current.emit("magic_wheel:set_english_preset" as any, { preset: p.id });
+                                          }
+                                          window.postMessage({ type: "MAGIC_WHEEL_SET_ENGLISH_PRESET", preset: p.id }, "*");
+                                          addLog(`⚙️ Đã chọn gói đề tiếng Anh: ${p.label}`);
+                                        }}
+                                        className={`py-1 px-1.5 rounded text-left truncate font-bold border transition ${
+                                          isMagicWheelLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
+                                        } ${
+                                          isCur
+                                            ? "bg-cyan-600/40 border-cyan-400 text-cyan-200"
+                                            : "glass border-white/10 text-slate-400 hover:text-white"
+                                        }`}
+                                      >
+                                        {p.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                          {/* Blackout Guessed Letters Toggle */}
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                            <div>
+                              <span className="text-slate-300 block text-[11px]">Bôi đen chữ cái đã đoán</span>
+                              <span className="text-[9px] text-slate-400">
+                                {roomState.magicWheelState?.blackoutGuessedLetters === false
+                                  ? "Giữ sáng phím, cảnh báo khi click lại"
+                                  : "Gạch mờ phím chữ đã đoán"}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const curVal = roomState.magicWheelState?.blackoutGuessedLetters !== false;
+                                const nextVal = !curVal;
+                                if (adminSocketRef.current?.connected) {
+                                  adminSocketRef.current.emit("admin:magic_wheel:set_blackout_guessed" as any, { enabled: nextVal });
+                                  adminSocketRef.current.emit("magic_wheel:set_blackout_guessed" as any, { enabled: nextVal });
+                                }
+                                window.postMessage({ type: "MAGIC_WHEEL_SET_BLACKOUT_GUESSED", enabled: nextVal }, "*");
+                                addLog(`⚙️ Bôi đen chữ đã đoán: ${nextVal ? "BẬT" : "TẮT"}`);
+                              }}
+                              className={`px-2 py-0.5 rounded font-bold text-[10px] border transition cursor-pointer ${
+                                roomState.magicWheelState?.blackoutGuessedLetters === false
+                                  ? "bg-slate-700 border-slate-500 text-slate-300"
+                                  : "bg-emerald-600 border-emerald-400 text-white"
+                              }`}
+                            >
+                              {roomState.magicWheelState?.blackoutGuessedLetters === false ? "TẮT" : "BẬT"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                      {/* Penalty for wrong */}
+                      <label className="flex items-center justify-between cursor-pointer gap-2">
+                        <span className="text-slate-300">Trừ điểm khi sai</span>
+                        <button
+                          type="button"
+                          onClick={() => updateConfig("penaltyForWrong", !roomState.config.penaltyForWrong)}
+                          className={`w-10 h-5 rounded-full border transition-all relative ${roomState.config.penaltyForWrong ? "bg-red-500 border-red-400" : "bg-slate-700 border-slate-500"}`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${roomState.config.penaltyForWrong ? "left-5" : "left-0.5"}`} />
+                        </button>
+                      </label>
+
+                      {/* Time bonus */}
+                      <label className="flex items-center justify-between cursor-pointer gap-2">
+                        <span className="text-slate-300">Bonus thời gian còn lại</span>
+                        <button
+                          type="button"
+                          onClick={() => updateConfig("timeBonusEnabled", !roomState.config.timeBonusEnabled)}
+                          className={`w-10 h-5 rounded-full border transition-all relative ${roomState.config.timeBonusEnabled ? "bg-emerald-500 border-emerald-400" : "bg-slate-700 border-slate-500"}`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${roomState.config.timeBonusEnabled ? "left-5" : "left-0.5"}`} />
+                        </button>
+                      </label>
+
+                      {/* Answer submission mode */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-300">Chế độ trả lời</span>
+                        <select
+                          value={roomState.config.answerSubmissionMode || "ALLOW_CHANGE"}
+                          onChange={(e) => updateConfig("answerSubmissionMode", e.target.value as any)}
+                          className="px-2 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none"
+                        >
+                          <option value="ALLOW_CHANGE">Cho phép đổi</option>
+                          <option value="SINGLE_SUBMIT">Bấm 1 lần duy nhất</option>
+                        </select>
+                      </div>
+
+                      {/* Auto-timer (duplicate for settings panel) */}
+                      <label className="flex items-center justify-between cursor-pointer gap-2">
+                        <span className="text-slate-300">Đếm ngược tự động</span>
+                        <button
+                          type="button"
+                          onClick={() => updateConfig("autoTimerStart", !roomState.config.autoTimerStart)}
+                          className={`w-10 h-5 rounded-full border transition-all relative ${roomState.config.autoTimerStart ? "bg-cyan-500 border-cyan-400" : "bg-slate-700 border-slate-500"}`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${roomState.config.autoTimerStart ? "left-5" : "left-0.5"}`} />
+                        </button>
+                      </label>
+
+                      {/* Penalty points */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-300">Mức trừ điểm</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={50}
+                          value={roomState.config.penaltyPoints ?? 10}
+                          onChange={(e) => updateConfig("penaltyPoints", Number(e.target.value))}
+                          className="w-16 px-2 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none text-right"
+                        />
+                      </div>
+
+                      {roomState.mode === "WAGER" && (
+                        <>
+                          {/* Wager Betting Duration Setting */}
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                            <span className="text-slate-300">Thời gian cược</span>
+                            <div className="flex items-center gap-1 flex-wrap justify-end">
+                              {[10, 15, 20, 30, 45].map((sec) => (
+                                <button
+                                  key={sec}
+                                  type="button"
+                                  onClick={() => updateConfig("wagerTimeSeconds", sec)}
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                    (roomState.config.wagerTimeSeconds ?? 15) === sec
+                                      ? "bg-amber-500/30 border-amber-400 text-amber-300"
+                                      : "glass border-white/10 text-slate-400 hover:text-white"
+                                  }`}
+                                >
+                                  {sec}s
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Wager Max Bet Cap Multiplier (Cố định 5 mức chia hết cho 5: x1.0 - x3.0) */}
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                            <span className="text-slate-300">Trần cược</span>
+                            <div className="flex items-center gap-1 flex-wrap justify-end">
+                              {[1, 1.5, 2, 2.5, 3].map((mult) => (
+                                <button
+                                  key={mult}
+                                  type="button"
+                                  onClick={() => updateConfig("wagerMultiplierCap", mult)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                    (roomState.config.wagerMultiplierCap ?? 2.5) === mult
+                                      ? "bg-amber-500/30 border-amber-400 text-amber-300 ring-1 ring-amber-400/50"
+                                      : "glass border-white/10 text-slate-400 hover:text-white"
+                                  }`}
+                                >
+                                  x{mult}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Wager Rounds Per Team */}
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                            <span className="text-slate-300">Số vòng thi/đội</span>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3].map((r) => (
+                                <button
+                                  key={r}
+                                  type="button"
+                                  onClick={() => updateConfig("wagerRoundsPerTeam", r)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                    (roomState.config.wagerRoundsPerTeam ?? 2) === r
+                                      ? "bg-amber-500/30 border-amber-400 text-amber-300"
+                                      : "glass border-white/10 text-slate-400 hover:text-white"
+                                  }`}
+                                >
+                                  {r} vòng
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                            <span className="text-slate-300">Giới hạn cứu trợ</span>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3].map((limit) => (
+                                <button
+                                  key={limit}
+                                  type="button"
+                                  onClick={() => handleSetBailoutLimit(limit)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                    (roomState.config.wagerBailoutLimit ?? 1) === limit
+                                      ? "bg-amber-500/30 border-amber-400 text-amber-300"
+                                      : "glass border-white/10 text-slate-400 hover:text-white"
+                                  }`}
+                                >
+                                  {limit} lần
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Bounceback Rounds (Cycles) */}
+                      {roomState.mode === "BOUNCEBACK" && (
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                          <span className="text-slate-300">Số vòng thi/đội</span>
+                          <div className="flex items-center gap-1">
+                            {[1, 2].map((cycles) => (
+                              <button
+                                key={cycles}
+                                type="button"
+                                onClick={() => updateConfig("bouncebackCycles", cycles)}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                  (roomState.config.bouncebackCycles ?? 1) === cycles
+                                    ? "bg-cyan-500/30 border-cyan-400 text-cyan-300"
+                                    : "glass border-white/10 text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                {cycles} vòng
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Dice Race Max Questions Limit */}
+                      {roomState.mode === "DICE_RACE" && (
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                          <span className="text-slate-300">Giới hạn câu đua</span>
+                          <div className="flex items-center gap-1 flex-wrap justify-end">
+                            {[8, 12, 16, 0].map((qLimit) => (
+                              <button
+                                key={qLimit}
+                                type="button"
+                                onClick={() => updateConfig("diceRaceMaxQuestions", qLimit)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                  (roomState.config.diceRaceMaxQuestions ?? 0) === qLimit
+                                    ? "bg-indigo-500/30 border-indigo-400 text-indigo-300"
+                                    : "glass border-white/10 text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                {qLimit === 0 ? "Hết đề" : `${qLimit}c`}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Universal Match Max Questions (Tất cả các mode) */}
+                      {(() => {
+                        const isTeamMultipleMode = ["MYSTERY_QUEST", "WAGER", "BOUNCEBACK"].includes(roomState.mode);
+                        const teamsCount = Math.max(1, roomState.teams.length || 4);
+                        const currentMaxQ = roomState.config.matchMaxQuestions ?? 0;
+                        const turnsPerTeam = currentMaxQ > 0 ? Math.floor(currentMaxQ / teamsCount) : 0;
+
+                        const presetList = isTeamMultipleMode
+                          ? [teamsCount * 1, teamsCount * 2, teamsCount * 3, teamsCount * 4, teamsCount * 5, 0]
+                          : [5, 10, 12, 15, 20, 25, 0];
+
+                        const handleSaveCustomMaxQuestions = (rawVal: number | string) => {
+                          const num = Number(rawVal);
+                          if (!rawVal || isNaN(num) || num <= 0) {
+                            updateConfig("matchMaxQuestions", 0);
+                            setCustomMaxQuestionsInput("");
+                            return;
+                          }
+                          if (isTeamMultipleMode) {
+                            const turns = Math.max(1, Math.round(num / teamsCount));
+                            const snapped = turns * teamsCount;
+                            updateConfig("matchMaxQuestions", snapped);
+                            setCustomMaxQuestionsInput(String(snapped));
+                            if (snapped !== num) {
+                              addLog(`⚙️ Đã làm tròn số câu thành ${snapped} (${turns} lượt/đội × ${teamsCount} đội) cho chế độ ${roomState.mode}`);
+                            }
+                          } else {
+                            updateConfig("matchMaxQuestions", num);
+                            setCustomMaxQuestionsInput(String(num));
+                          }
+                        };
+
+                        return (
+                          <div className="space-y-1.5 pt-1.5 border-t border-white/10">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-slate-300 font-bold">Tổng số câu hỏi</span>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${
+                                  isTeamMultipleMode
+                                    ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                    : "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                }`}>
+                                  {isTeamMultipleMode ? `Bội số ${teamsCount} đội` : "Tất cả mode"}
+                                </span>
+                              </div>
+
+                              {/* Numeric Input Field */}
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min={isTeamMultipleMode ? teamsCount : 1}
+                                  step={isTeamMultipleMode ? teamsCount : 1}
+                                  placeholder={isTeamMultipleMode ? `Bội ${teamsCount}` : "Số câu"}
+                                  value={customMaxQuestionsInput}
+                                  onChange={(e) => setCustomMaxQuestionsInput(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      handleSaveCustomMaxQuestions(customMaxQuestionsInput);
+                                    }
+                                  }}
+                                  className="w-16 px-1.5 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none text-right font-mono"
+                                  title={isTeamMultipleMode ? `Nhập số câu (tự động làm tròn theo bội số ${teamsCount})` : "Nhập số câu hỏi tùy ý"}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveCustomMaxQuestions(customMaxQuestionsInput)}
+                                  className="px-2 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold transition active:scale-95 cursor-pointer"
+                                  title="Lưu số câu hỏi"
+                                >
+                                  Lưu
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Preset Buttons */}
+                            <div className="flex items-center gap-1 flex-wrap justify-end">
+                              {presetList.map((qCount) => {
+                                const isCurrent = currentMaxQ === qCount;
+                                const label = qCount === 0
+                                  ? "Hết đề"
+                                  : isTeamMultipleMode
+                                  ? `${qCount}c (${qCount / teamsCount}v)`
+                                  : `${qCount}c`;
+                                return (
+                                  <button
+                                    key={qCount}
+                                    type="button"
+                                    onClick={() => {
+                                      updateConfig("matchMaxQuestions", qCount);
+                                      setCustomMaxQuestionsInput(qCount === 0 ? "" : String(qCount));
+                                    }}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                      isCurrent
+                                        ? "bg-purple-500/30 border-purple-400 text-purple-300"
+                                        : "glass border-white/10 text-slate-400 hover:text-white"
+                                    }`}
+                                  >
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Helper hint for modes requiring team multiples */}
+                            {isTeamMultipleMode && (
+                              <div className="text-[10px] text-amber-400/90 flex items-center justify-between">
+                                <span>⚠️ Bắt buộc là bội số của {teamsCount} đội</span>
+                                <span className="font-mono text-cyan-300 font-bold">
+                                  {currentMaxQ > 0 ? `${turnsPerTeam} lượt/đội (${currentMaxQ}c)` : "Toàn bộ bộ đề"}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Initial Team Score */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                        <span className="text-slate-300">Điểm ban đầu</span>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={0}
+                            max={1000}
+                            value={initialTeamScoreInput}
+                            onChange={(e) => setInitialTeamScoreInput(Number(e.target.value))}
+                            className="w-16 px-2 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none text-right"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSetAllTeamsInitialScores(initialTeamScoreInput)}
+                            className="px-2 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold transition active:scale-95 cursor-pointer"
+                          >
+                            Set
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Powerup Card Lock / Unlock & Shuffle */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                        <span className="text-slate-300">Thẻ hỗ trợ</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCards(!cardsLocked)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                              cardsLocked
+                                ? "bg-red-500/30 border-red-400 text-red-300"
+                                : "glass border-white/20 text-slate-300 hover:text-white"
+                            }`}
+                          >
+                            {cardsLocked ? "🔒 Đã khóa" : "🔓 Mở"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleShuffleCards}
+                            className="px-2 py-0.5 rounded glass border border-white/20 text-slate-300 hover:text-white text-[10px] font-bold transition cursor-pointer"
+                            title="Xáo lại kho bài chia cho các đội"
+                          >
+                            🔀 Xáo bài
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Clean offline participants */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                        <span className="text-slate-300">Dọn dẹp offline</span>
+                        <button
+                          type="button"
+                          onClick={handleCleanOfflinePlayers}
+                          className="px-2 py-0.5 rounded glass border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 text-[10px] font-bold transition cursor-pointer"
+                          title="Xóa thí sinh mất kết nối"
+                        >
+                          🧹 Xóa offline
+                        </button>
+                      </div>
+
+                      {/* Assign Quiz Bank selector */}
+                      <div className="flex flex-col gap-1 pt-1 border-t border-white/10">
+                        <span className="text-slate-300 text-[10px]">Đổi bộ đề đang gán:</span>
+                        <select
+                          value={selectedBankId}
+                          onChange={(e) => handleAssignQuizBank(e.target.value)}
+                          className="w-full px-2 py-1 rounded-lg glass border border-white/20 text-white text-[10px] bg-[#0f0f1a] focus:outline-none truncate"
+                        >
+                          {compatibleBanks.length === 0 ? (
+                            <option value="">{effectiveActiveMode === "MAGIC_WHEEL" ? "🎡 11 Vòng Ô Chữ Tiếng Việt Mặc định" : "📚 Mặc định (25 câu)"}</option>
+                          ) : (
+                            compatibleBanks.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {formatCleanBankTitle(b)}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+
+                      {/* Team Configuration inside Settings */}
+                      <div className="space-y-1.5 pt-1.5 border-t border-white/10">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-slate-300 font-bold">Cấu hình Đội ({sandboxCustomTeams.length} đội)</span>
+                          <div className="flex items-center gap-1">
+                            {[2, 3, 4, 5, 6, 8].map((cnt) => (
+                              <button
+                                key={cnt}
+                                type="button"
+                                onClick={() => handleSetSandboxTeamCount(cnt)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                  sandboxCustomTeams.length === cnt
+                                    ? "bg-purple-500/30 border-purple-400 text-purple-200"
+                                    : "glass border-white/10 text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                {cnt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-1.5 pt-1 max-h-36 overflow-y-auto no-scrollbar">
+                          {sandboxCustomTeams.map((team, idx) => (
+                            <div key={idx} className="flex items-center gap-1.5 p-1 rounded-lg bg-black/40 border border-white/10">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: team.color }} />
+                              <input
+                                type="text"
+                                value={team.name}
+                                onChange={(e) => handleUpdateSandboxTeamName(idx, e.target.value)}
+                                className="flex-1 bg-transparent text-[10px] font-bold text-white focus:outline-none"
+                              />
+                            </div>
+                          ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowSettingsDropdown(false);
+                            if (isOfflineSandbox) {
+                              startOfflineSandbox(roomState.mode, selectedBankId);
+                            } else {
+                              handleLaunchSandbox(roomState.mode);
+                            }
+                          }}
+                          className="w-full mt-1 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-[10px] shadow transition flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <span>🔄</span>
+                          <span>Áp dụng & Chạy lại với cấu hình đội này</span>
+                        </button>
+                      </div>
+              </>
+            ) : (
+              /* If room is not yet started, show pre-launch configuration */
+              <div className="space-y-3.5">
+                <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-purple-200">Chế độ đang chọn:</span>
+                    <span className="font-mono font-bold text-cyan-300">{selectedMode}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    Bạn có thể tùy chỉnh danh sách đội thi và bộ đề bên dưới trước khi tạo phòng.
+                  </p>
+                </div>
+
+                {/* Team Configuration */}
+                <div className="space-y-2 pt-2 border-t border-white/10">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-200 font-bold">Số lượng đội ({sandboxCustomTeams.length} đội):</span>
+                    <div className="flex items-center gap-1">
+                      {[2, 3, 4, 5, 6, 8].map((cnt) => (
+                        <button
+                          key={cnt}
+                          type="button"
+                          onClick={() => handleSetSandboxTeamCount(cnt)}
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold border transition cursor-pointer ${
+                            sandboxCustomTeams.length === cnt
+                              ? "bg-purple-500/30 border-purple-400 text-purple-200"
+                              : "glass border-white/10 text-slate-400 hover:text-white"
+                          }`}
+                        >
+                          {cnt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5 pt-1 max-h-40 overflow-y-auto no-scrollbar">
+                    {sandboxCustomTeams.map((team, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5 p-1.5 rounded-lg bg-black/40 border border-white/10">
+                        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: team.color }} />
+                        <input
+                          type="text"
+                          value={team.name}
+                          onChange={(e) => handleUpdateSandboxTeamName(idx, e.target.value)}
+                          className="flex-1 bg-transparent text-[11px] font-bold text-white focus:outline-none"
+                          placeholder={`Đội ${idx + 1}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Assign Quiz Bank */}
+                <div className="space-y-1 pt-2 border-t border-white/10">
+                  <span className="text-slate-200 font-bold text-xs block">Ngân hàng câu hỏi:</span>
+                  <select
+                    value={selectedBankId}
+                    onChange={(e) => setSelectedBankId(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg glass border border-white/20 text-white text-xs bg-[#0f0f1a] focus:outline-none"
+                  >
+                    {compatibleBanks.length === 0 ? (
+                      <option value="">{effectiveActiveMode === "MAGIC_WHEEL" ? "🎡 11 Vòng Ô Chữ Tiếng Việt Mặc định" : "📚 Mặc định (25 câu)"}</option>
+                    ) : (
+                      compatibleBanks.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {formatCleanBankTitle(b)}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                <div className="pt-3 border-t border-white/10 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSettingsDropdown(false)}
+                    className="px-4 py-2 rounded-xl glass hover:bg-white/10 text-slate-300 font-bold text-xs transition cursor-pointer"
+                  >
+                    Đóng
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSettingsDropdown(false);
+                      handleLaunchOffline();
+                    }}
+                    className="px-4 py-2 rounded-xl glass hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs transition cursor-pointer"
+                  >
+                    🔌 Chạy Offline
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSettingsDropdown(false);
+                      handleLaunchSandbox(selectedMode);
+                    }}
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-xs shadow-lg transition cursor-pointer"
+                  >
+                    ⚡ Khởi chạy Online
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <GlobalSettingsModal
         isOpen={showGlobalSettingsModal}
         onClose={() => setShowGlobalSettingsModal(false)}

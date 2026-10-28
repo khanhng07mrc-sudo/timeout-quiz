@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { GameMode, MODE_RULES } from "@/types";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 
@@ -21,6 +21,7 @@ const MODE_TAB_NAMES: Partial<Record<GameMode, string>> = {
   DICE_RACE: "Đua cờ Xí ngầu",
   WAGER: "Cược điểm",
   MYSTERY_QUEST: "Hành trình bí ẩn",
+  OLYMPIA: "Olympia",
 };
 
 interface WalkthroughStep {
@@ -68,6 +69,41 @@ const MAGIC_WHEEL_STEPS: WalkthroughStep[] = [
 ];
 
 const GENERIC_MODE_STEPS: Record<string, WalkthroughStep[]> = {
+  OLYMPIA: [
+    {
+      step: 1,
+      badge: "VÒNG 1: KHỞI ĐỘNG",
+      emoji: "🚀",
+      title: "Khởi Động Cá Nhân & Khởi Động Chung",
+      desc: "Mỗi thí sinh có 60 giây khởi động cá nhân tích lũy điểm xuất phát. Sau đó bước vào lượt thi chung bấm chuông tranh tài nảy lửa (đúng +10đ, bấm sai -5đ tuỳ luật năm thi).",
+      highlights: ["⏱️ 60 giây cá nhân bứt phá", "🔔 Bấm chuông tranh lượt chung (+10đ / -5đ)", "🎯 Đa dạng 11 lĩnh vực tri thức"],
+    },
+    {
+      step: 2,
+      badge: "VÒNG 2: VƯỢT CHƯỚNG NGẠI VẬT",
+      emoji: "🧩",
+      title: "Mở 4 Hàng Ngang Hé Lộ Ẩn Số",
+      desc: "Lần lượt mở 4 câu hỏi hàng ngang hé lộ từng góc hình ảnh bí mật. Bấm chuông đoán Chướng ngại vật càng sớm điểm nhận được càng cao (lên tới 60đ - 80đ tuỳ luật năm).",
+      highlights: ["🧩 4 hàng ngang hé lộ 4 góc ảnh bí ẩn", "🔔 Chuông CNV sớm ăn trọn điểm số cao nhất", "⚠️ Đoán sai CNV dừng chơi ở vòng này"],
+    },
+    {
+      step: 3,
+      badge: "VÒNG 3: TĂNG TỐC",
+      emoji: "⚡",
+      title: "4 Câu Hỏi Tốc Độ 30 Giây",
+      desc: "Gồm 4 câu hỏi dạng IQ, sắp xếp, dữ kiện ảnh và video với thời gian suy nghĩ 30s. Trả lời đúng và gửi đáp án nhanh nhất nhận điểm bậc thang: 40 - 30 - 20 - 10đ.",
+      highlights: ["⏱️ 30 giây chạy đua thời gian", "📈 Bậc điểm 40 - 30 - 20 - 10 theo tốc độ", "🎬 Hỗ trợ hình ảnh & video trực quan"],
+    },
+    {
+      step: 4,
+      badge: "VÒNG 4: VỀ ĐÍCH",
+      emoji: "🏁",
+      title: "Chọn Gói Câu Hỏi & Ngôi Sao Hy Vọng",
+      desc: "Lần lượt chọn gói câu hỏi (20đ, 30đ), đặt Ngôi sao hy vọng để nhân đôi điểm số (+X2) hoặc bị trừ điểm nếu sai. Thí sinh khác có thể bấm chuông giành quyền khi người thi chính trả lời sai.",
+      highlights: ["⭐ Ngôi sao hy vọng nhân đôi thắng lợi", "🔔 Chuông giành quyền khi thí sinh chính sai", "🏆 Vinh danh chủ nhân Vòng nguyệt quế"],
+    },
+  ],
+
   GRID_CARO: [
     {
       step: 1,
@@ -357,6 +393,65 @@ export default function GameModeRulesModal({ mode = "CLASSIC", isOpen, onClose }
   const [viewType, setViewType] = useState<"WALKTHROUGH" | "RULES">("WALKTHROUGH");
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+
+  // Sync mode whenever modal opens or mode prop updates
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedMode(mode);
+      setCurrentStepIndex(0);
+    }
+  }, [isOpen, mode]);
+
+  // Auto-scroll active tab into view when selectedMode changes or modal opens
+  useEffect(() => {
+    if (isOpen && activeTabRef.current) {
+      activeTabRef.current.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, [isOpen, selectedMode]);
+
+  const scrollTabs = (delta: number) => {
+    if (tabsContainerRef.current) {
+      tabsContainerRef.current.scrollBy({ left: delta, behavior: "smooth" });
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (tabsContainerRef.current) {
+      if (e.deltaY !== 0) {
+        tabsContainerRef.current.scrollLeft += e.deltaY;
+      }
+    }
+  };
+
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startScrollLeftRef = useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!tabsContainerRef.current) return;
+    isDraggingRef.current = true;
+    startXRef.current = e.pageX - tabsContainerRef.current.offsetLeft;
+    startScrollLeftRef.current = tabsContainerRef.current.scrollLeft;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current || !tabsContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - tabsContainerRef.current.offsetLeft;
+    const walk = (x - startXRef.current) * 1.5;
+    tabsContainerRef.current.scrollLeft = startScrollLeftRef.current - walk;
+  };
+
+  const handleMouseUpOrLeave = () => {
+    isDraggingRef.current = false;
+  };
+
   if (!isOpen) return null;
 
   const currentMode = selectedMode || mode || "CLASSIC";
@@ -405,29 +500,63 @@ export default function GameModeRulesModal({ mode = "CLASSIC", isOpen, onClose }
           </button>
         </div>
 
-        {/* Mode Selector Tabs */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {(Object.keys(MODE_RULES) as GameMode[]).map((m) => {
-            const r = MODE_RULES[m];
-            const active = m === currentMode;
-            return (
-              <button
-                key={m}
-                onClick={() => {
-                  setSelectedMode(m);
-                  setCurrentStepIndex(0);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 transition-all whitespace-nowrap ${
-                  active
-                    ? "bg-gradient-to-r from-purple-600 to-cyan-600 text-white shadow-lg ring-1 ring-white/30"
-                    : "glass hover:bg-white/10 text-muted-foreground hover:text-white"
-                }`}
-              >
-                <GameModeIcon mode={m} className="w-4 h-4 shrink-0" />
-                <span className="whitespace-nowrap">{MODE_TAB_NAMES[m] || r.nameVi.replace(/\s*\(.*?\)/, "").trim() || r.nameVi}</span>
-              </button>
-            );
-          })}
+        {/* Mode Selector Tabs with Horizontal Scrolling Controls */}
+        <div className="relative flex items-center gap-1">
+          {/* Scroll Left Button */}
+          <button
+            type="button"
+            onClick={() => scrollTabs(-200)}
+            className="w-7 h-7 rounded-lg glass hover:bg-white/15 flex items-center justify-center text-slate-300 hover:text-white transition shrink-0 active:scale-95 cursor-pointer shadow-sm text-base font-bold"
+            title="Cuộn sang trái"
+            aria-label="Cuộn sang trái"
+          >
+            ‹
+          </button>
+
+          {/* Mode Tabs Scrollable Container */}
+          <div
+            ref={tabsContainerRef}
+            onWheel={handleWheel}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUpOrLeave}
+            onMouseLeave={handleMouseUpOrLeave}
+            className="flex-1 flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40 scrollbar-track-transparent select-none cursor-grab active:cursor-grabbing"
+          >
+            {(Object.keys(MODE_RULES) as GameMode[]).map((m) => {
+              const r = MODE_RULES[m];
+              const active = m === currentMode;
+              return (
+                <button
+                  key={m}
+                  ref={active ? activeTabRef : undefined}
+                  onClick={() => {
+                    setSelectedMode(m);
+                    setCurrentStepIndex(0);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+                    active
+                      ? "bg-gradient-to-r from-purple-600 to-cyan-600 text-white shadow-lg ring-1 ring-white/30"
+                      : "glass hover:bg-white/10 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  <GameModeIcon mode={m} className="w-4 h-4 shrink-0" />
+                  <span className="whitespace-nowrap">{MODE_TAB_NAMES[m] || r.nameVi.replace(/\s*\(.*?\)/, "").trim() || r.nameVi}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Scroll Right Button */}
+          <button
+            type="button"
+            onClick={() => scrollTabs(200)}
+            className="w-7 h-7 rounded-lg glass hover:bg-white/15 flex items-center justify-center text-slate-300 hover:text-white transition shrink-0 active:scale-95 cursor-pointer shadow-sm text-base font-bold"
+            title="Cuộn sang phải"
+            aria-label="Cuộn sang phải"
+          >
+            ›
+          </button>
         </div>
 
         {/* View Mode Switcher: 🎬 4 Bước Trực Quan vs 📋 Chi Tiết Thể Lệ */}

@@ -258,14 +258,11 @@ export default function DisplayPage() {
           const auth = calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining);
           setTimer((prev) => (prev ? { ...prev, remaining: auth.remaining } : null));
         }
-        if (roomState?.status === "LOBBY" && !soundMuted && !matchStartingRef.current) {
-          soundManager.playLobbyMusic(roomState?.mode);
-        }
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [timer?.endsAt, timer?.total, timer?.remaining, roomState?.status, roomState?.mode, soundMuted]);
+  }, [timer?.endsAt, timer?.total, timer?.remaining]);
 
   useEffect(() => {
     // Default sound ON on Display

@@ -117,9 +117,24 @@ class SoundManager {
     if (typeof document === "undefined") return;
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
-        if (this.currentMusicType === "LOBBY" && this.currentMusicAudio && this.currentMusicAudio.paused && !this.isMuted) {
-          this.currentMusicAudio.play().catch(() => {});
+        // Silently resume AudioContext if suspended by browser during background tab
+        const wheelCtx = this.getWheelAudioCtx();
+        if (wheelCtx && wheelCtx.state === "suspended") {
+          wheelCtx.resume().catch(() => {});
         }
+        // Finalize any fade intervals that were throttled while in background
+        this.activeFadeMap.forEach((intervalId, audio) => {
+          clearInterval(intervalId);
+          if (audio === this.currentMusicAudio) {
+            audio.volume = this.isMuted ? 0 : this.volume * 0.75;
+          } else {
+            try {
+              audio.pause();
+              audio.currentTime = 0;
+            } catch {}
+          }
+        });
+        this.activeFadeMap.clear();
       }
     });
   }
@@ -316,6 +331,17 @@ class SoundManager {
       this.activeFadeMap.delete(audio);
     }
 
+    // Tab is in background: avoid throttled slow timer ramp, immediately set target volume
+    if (typeof document !== "undefined" && document.hidden) {
+      audio.volume = this.isMuted ? 0 : targetVol;
+      audio.currentTime = 0;
+      audio.play().catch(() => {
+        if (onAutoplayBlocked) onAutoplayBlocked();
+        this.setupGlobalUnlockListener();
+      });
+      return;
+    }
+
     const steps = 15;
     const stepInterval = Math.max(15, Math.floor(durationMs / steps));
     const initialVol = 0.02;
@@ -323,17 +349,24 @@ class SoundManager {
     audio.currentTime = 0;
 
     audio.play().then(() => {
-      let currentVol = initialVol;
-      const volStep = Math.max(0.01, (targetVol - initialVol) / steps);
-
+      const startTime = Date.now();
       const interval = setInterval(() => {
-        currentVol = Math.min(targetVol, currentVol + volStep);
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(1, elapsed / durationMs);
+        const currentVol = initialVol + (targetVol - initialVol) * progress;
         if (this.currentMusicAudio === audio) {
-          audio.volume = this.isMuted ? 0 : currentVol;
+          audio.volume = this.isMuted ? 0 : Math.min(targetVol, currentVol);
         }
-        if (currentVol >= targetVol) {
+        if (
+          progress >= 1 ||
+          currentVol >= targetVol ||
+          (typeof document !== "undefined" && document.hidden)
+        ) {
           clearInterval(interval);
           this.activeFadeMap.delete(audio);
+          if (this.currentMusicAudio === audio) {
+            audio.volume = this.isMuted ? 0 : targetVol;
+          }
         }
       }, stepInterval);
       this.activeFadeMap.set(audio, interval);

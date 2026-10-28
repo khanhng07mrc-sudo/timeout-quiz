@@ -33,6 +33,7 @@ import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
 import OlympiaSandboxStudio from "@/components/olympia/OlympiaSandboxStudio";
+import { getOlympiaBanks } from "@/lib/olympia/olympia-storage";
 import {
   generateMagicWheelSectors,
   generateSpecialRoundWheelSectors,
@@ -246,6 +247,16 @@ const AVAILABLE_MODES: {
 
 ];
 
+function countOlympiaQuestions(s: any): number {
+  if (!s) return 0;
+  const kdShared = s.khoiDong?.shared?.length || 0;
+  const kdSolo = Object.values(s.khoiDong?.solo || {}).reduce((sum: number, arr: any) => sum + (arr?.length || 0), 0);
+  const vcnv = (s.vcnv?.rows?.length || 0) + (s.vcnv?.centerQuestion ? 1 : 0);
+  const tt = s.tangToc?.length || 0;
+  const vd = Object.values(s.veDich || {}).reduce((sum: number, arr: any) => sum + (arr?.length || 0), 0);
+  return kdShared + kdSolo + vcnv + tt + vd;
+}
+
 export default function AdminSandboxPage() {
   const [olympiaSandboxActive, setOlympiaSandboxActive] = useState<boolean>(false);
   const [code, setCode] = useState<string>("");
@@ -265,17 +276,24 @@ export default function AdminSandboxPage() {
   }, []);
 
   const formatCleanBankTitle = useCallback((bank: any) => {
+    if (bank.isOlympia || effectiveActiveMode === "OLYMPIA") {
+      const cleanTitle = (bank.title || bank.name || "")
+        .replace(/^[(Olympia|Đề Thi|Đề thi|Ô Chữ|Trắc Nghiệm)]\s*/gi, "")
+        .trim();
+      const count = bank._count?.questions ?? (bank.set?.khoiDong?.length || 0);
+      return `🏔️ ${cleanTitle}${count > 0 ? ` (${count} câu)` : ""}`;
+    }
     const isWp = isWordPuzzleBank(bank);
     const icon = isWp ? "🔤 " : "🎯 ";
     const cleanTitle = (bank.title || "")
-      .replace(/^\[(Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)\]\s*/gi, "")
+      .replace(/^[(Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)]\s*/gi, "")
       .replace(/\(VTV3\)/gi, "(Tiếng Việt)")
       .replace(/VTV3 Huyền Thoại/gi, "Văn Hóa & Lịch Sử")
       .replace(/VTV3/gi, "")
       .trim();
     const count = bank._count?.questions ?? (isWp ? 11 : 25);
     return `${icon}${cleanTitle} (${count} ${isWp ? "vòng" : "câu"})`;
-  }, [isWordPuzzleBank]);
+  }, [isWordPuzzleBank, effectiveActiveMode]);
 
   const [creating, setCreating] = useState(false);
   const [isLaunchingAnim, setIsLaunchingAnim] = useState(false);
@@ -286,13 +304,27 @@ export default function AdminSandboxPage() {
 
   const effectiveActiveMode = roomState?.mode || selectedMode;
   const compatibleBanks = useMemo(() => {
+    if (effectiveActiveMode === "OLYMPIA") {
+      const olyBanks = getOlympiaBanks();
+      return olyBanks.map((b) => ({
+        id: b.id,
+        title: b.name,
+        name: b.name,
+        description: b.description,
+        isOlympia: true,
+        set: b.set,
+        _count: {
+          questions: countOlympiaQuestions(b.set),
+        },
+      }));
+    }
     const isMw = effectiveActiveMode === "MAGIC_WHEEL";
     if (isMw) {
-      // chế độ Vòng Quay Trí Tuệ: CHỈ hiển thị bộ đề Ô Chữ (Word Puzzle)! Chặn tuyệt đối đề trắc nghiệm!
-      return quizBanks.filter((b) => isWordPuzzleBank(b));
+      // chế độ Vòng Quay Trí Tuệ: CHỈ hiển thị bộ đề Ô Chữ (Word Puzzle)! Chặn tuyệt đối đề trắc nghiệm và Olympia!
+      return quizBanks.filter((b: any) => isWordPuzzleBank(b) && !b.isOlympia);
     }
-    // Các chế độ trắc nghiệm thông thường: CHỈ hiển thị đề trắc nghiệm! Chặn tuyệt đối đề Ô Chữ!
-    return quizBanks.filter((b) => !isWordPuzzleBank(b));
+    // Các chế độ trắc nghiệm thông thường: CHỈ hiển thị đề trắc nghiệm! Chặn tuyệt đối đề Ô Chữ và Olympia!
+    return quizBanks.filter((b: any) => !isWordPuzzleBank(b) && !b.isOlympia);
   }, [quizBanks, effectiveActiveMode, isWordPuzzleBank]);
 
   useEffect(() => {
@@ -10023,7 +10055,7 @@ export default function AdminSandboxPage() {
                 className="px-2.5 py-1.5 rounded-lg glass border border-white/20 text-xs font-medium text-white bg-[#151728] focus:outline-none min-w-[140px] max-w-[200px] truncate"
               >
                 {compatibleBanks.length === 0 ? (
-                  <option value="">{effectiveActiveMode === "MAGIC_WHEEL" ? "🎡 11 Vòng Ô Chữ Tiếng Việt Mặc định" : "📚 Mặc định (25 câu)"}</option>
+                  <option value="">{effectiveActiveMode === "OLYMPIA" ? "🏔️ Đề Thi Olympia Toàn Tập (Mặc định)" : effectiveActiveMode === "MAGIC_WHEEL" ? "🎡 11 Vòng Ô Chữ Tiếng Việt Mặc định" : "📚 Mặc định (25 câu)"}</option>
                 ) : (
                   compatibleBanks.map((b) => (
                     <option key={b.id} value={b.id}>
@@ -11244,7 +11276,7 @@ export default function AdminSandboxPage() {
       {/* ── Studio Main Area (100% Fit Screen) ───────────────────────── */}
       {olympiaSandboxActive ? (
         <div className="flex-1 min-h-0 overflow-hidden">
-          <OlympiaSandboxStudio onExit={() => { setOlympiaSandboxActive(false); setCode(""); }} />
+          <OlympiaSandboxStudio selectedBankId={selectedBankId} onExit={() => { setOlympiaSandboxActive(false); setCode(""); }} />
         </div>
       ) : !code ? (
         <div className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 lg:p-6 space-y-6 animate-pull-from-left">
@@ -11330,7 +11362,7 @@ export default function AdminSandboxPage() {
                 className="flex-1 md:w-64 px-3 py-2 rounded-xl glass border border-white/20 text-xs font-bold text-white bg-[#151728] focus:outline-none focus:ring-2 focus:ring-purple-400 truncate cursor-pointer"
               >
                 {compatibleBanks.length === 0 ? (
-                  <option value="">{effectiveActiveMode === "MAGIC_WHEEL" ? "🎡 11 Vòng Ô Chữ Tiếng Việt Tiêu Chuẩn" : "📚 Bộ đề mẫu Đa chế độ (25 câu)"}</option>
+                  <option value="">{effectiveActiveMode === "OLYMPIA" ? "🏔️ Đề Thi Olympia Toàn Tập (Mặc định)" : effectiveActiveMode === "MAGIC_WHEEL" ? "🎡 11 Vòng Ô Chữ Tiếng Việt Tiêu Chuẩn" : "📚 Bộ đề mẫu Đa chế độ (25 câu)"}</option>
                 ) : (
                   compatibleBanks.map((b) => (
                     <option key={b.id} value={b.id}>

@@ -15,6 +15,7 @@ import { allocateQuestionsForMatch } from "@/lib/game-engine/question-allocator"
 import { downloadMagicWheelExcelTemplate, downloadMagicWheelJsonTemplate } from "@/lib/quiz-template-generator";
 import { MAGIC_WHEEL_PRESET_BANKS, offlineStorage } from "@/lib/offline-storage";
 import { detectQuizBankLanguage } from "@/lib/game-engine/magic-wheel";
+import { getOlympiaBanks, getPresetOlympiaBanks } from "@/lib/olympia/olympia-storage";
 import { BilingualCategoryPicker } from "@/components/modes/BilingualCategoryPicker";
 import {
   DEFAULT_MAGIC_WHEEL_PUZZLES,
@@ -50,6 +51,16 @@ const POWERUP_TYPES = [
 ];
 
 const TEAM_COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#ef4444", "#8b5cf6", "#f97316"];
+
+function countOlympiaQuestions(s: any): number {
+  if (!s) return 0;
+  const kdShared = s.khoiDong?.shared?.length || 0;
+  const kdSolo = Object.values(s.khoiDong?.solo || {}).reduce((sum: number, arr: any) => sum + (arr?.length || 0), 0);
+  const vcnv = (s.vcnv?.rows?.length || 0) + (s.vcnv?.centerQuestion ? 1 : 0);
+  const tt = s.tangToc?.length || 0;
+  const vd = Object.values(s.veDich || {}).reduce((sum: number, arr: any) => sum + (arr?.length || 0), 0);
+  return kdShared + kdSolo + vcnv + tt + vd;
+}
 
 export default function CreateRoomPage() {
   const router = useRouter();
@@ -89,13 +100,27 @@ export default function CreateRoomPage() {
   }, []);
 
   const compatibleBanks = useMemo(() => {
+    if (mode === "OLYMPIA") {
+      const olyBanks = getOlympiaBanks();
+      return olyBanks.map((b) => ({
+        id: b.id,
+        title: b.name,
+        name: b.name,
+        description: b.description,
+        isOlympia: true,
+        set: b.set,
+        _count: {
+          questions: countOlympiaQuestions(b.set),
+        },
+      }));
+    }
     const isMw = mode === "MAGIC_WHEEL";
     if (isMw) {
       // Magic Wheel: Chỉ lấy các bộ đề Ô Chữ!
-      return quizBanks.filter((b: any) => isWordPuzzleBank(b));
+      return quizBanks.filter((b: any) => isWordPuzzleBank(b) && !b.isOlympia);
     }
     // Các mode khác: Chỉ lấy các bộ đề trắc nghiệm thông thường!
-    return quizBanks.filter((b: any) => !isWordPuzzleBank(b));
+    return quizBanks.filter((b: any) => !isWordPuzzleBank(b) && !b.isOlympia);
   }, [quizBanks, mode, isWordPuzzleBank]);
 
   useEffect(() => {
@@ -369,6 +394,7 @@ export default function CreateRoomPage() {
             eliminationIntervalQuestions,
             eliminationTeamsPerStage: mode === "ELIMINATION" ? eliminationTeamsPerStage : 1,
             eliminationRevivalCount: mode === "ELIMINATION" ? eliminationRevivalCount : 1,
+            olympia: olympiaConfig,
             // Tournament config (Legacy)
             tournamentQuestionsPerMatch: mode === "TOURNAMENT" ? tournamentQuestionsPerMatch : 3,
             // Magic Wheel config
@@ -546,26 +572,31 @@ export default function CreateRoomPage() {
               className="w-full px-4 py-3.5 rounded-2xl bg-[#0e1022]/80 backdrop-blur-md border border-purple-500/30 text-white text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 transition-all shadow-inner"
             >
               <option value="" className="bg-[#151728] text-white">
-                {mode === "MAGIC_WHEEL" ? "— Đề Mẫu Ô Chữ Tiếng Việt (11 vòng) —" : "— Chọn bộ đề câu hỏi —"}
+                {mode === "OLYMPIA" ? "— Đề Thi Olympia 25–26 Toàn Tập (Mặc định) —" : mode === "MAGIC_WHEEL" ? "— Đề Mẫu Ô Chữ Tiếng Việt (11 vòng) —" : "— Chọn bộ đề câu hỏi —"}
               </option>
               {compatibleBanks.map((bank: any) => {
                 const isWp = isWordPuzzleBank(bank);
-                const cleanTitle = (bank.title || "")
-                  .replace(/^\[(Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)\]\s*/gi, "")
+                const isOly = bank.isOlympia || mode === "OLYMPIA";
+                const cleanTitle = (bank.title || bank.name || "")
+                  .replace(/^[(Olympia|Đề Thi|Đề thi|Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)]\s*/gi, "")
                   .replace(/\(VTV3\)/gi, "(Tiếng Việt)")
                   .replace(/VTV3 Huyền Thoại/gi, "Văn Hóa & Lịch Sử")
                   .replace(/VTV3/gi, "")
                   .trim();
                 return (
                   <option key={bank.id} value={bank.id} className="bg-[#151728] text-white">
-                    {isWp ? "🔤 " : "🎯 "}
-                    {cleanTitle}{bank._count ? ` (${bank._count.questions} ${isWp ? "vòng" : "câu"})` : ""}
+                    {isOly ? "🏔️ " : isWp ? "🔤 " : "🎯 "}
+                    {cleanTitle}{bank._count ? ` (${bank._count.questions} ${isOly ? "câu" : isWp ? "vòng" : "câu"})` : ""}
                   </option>
                 );
               })}
             </select>
 
-            {mode === "MAGIC_WHEEL" ? (
+            {mode === "OLYMPIA" ? (
+              <p className="text-[11px] text-sky-300 mt-2 flex items-center gap-1.5 font-medium">
+                <span>💡 Chỉ hiển thị các bộ đề Olympia (🏔️) chuyên biệt gồm Khởi Động, VCNV, Tăng Tốc, Về Đích.</span>
+              </p>
+            ) : mode === "MAGIC_WHEEL" ? (
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <p className="text-[11px] text-amber-300/90 flex items-center gap-1.5 font-medium">
                   <span>💡 Chỉ hiển thị các bộ đề Ô Chữ (🔤) tương thích cho Chiếc Nón Kỳ Diệu.</span>

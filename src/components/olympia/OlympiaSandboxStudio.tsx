@@ -14,6 +14,7 @@ import {
   type RoundId,
   type RulesetId,
 } from "@/lib/olympia/types";
+import { getOlympiaBanks, getOlympiaBankById, type OlympiaBankItem } from "@/lib/olympia/olympia-storage";
 import { useOlympiaAudio } from "./hooks";
 import OlympiaQuestionStudioModal from "./OlympiaQuestionStudioModal";
 import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
@@ -43,11 +44,26 @@ const DEFAULT_NAMES = [
   "Thí sinh 8",
 ];
 
-export default function OlympiaSandboxStudio({ onExit }: { onExit: () => void }) {
+export default function OlympiaSandboxStudio({
+  onExit,
+  selectedBankId,
+}: {
+  onExit: () => void;
+  selectedBankId?: string;
+}) {
+  const [banks, setBanks] = useState<OlympiaBankItem[]>([]);
+  const [activeBankId, setActiveBankId] = useState<string>(selectedBankId || "");
   const [rulesetId, setRulesetId] = useState<RulesetId>("O26");
   const [rounds, setRounds] = useState<RoundId[]>([...SELECTABLE_ROUNDS]);
   const [playerCount, setPlayerCount] = useState<number>(4);
-  const [questionSet, setQuestionSet] = useState<OlympiaQuestionSet>(SAMPLE_QUESTION_SET);
+  const [questionSet, setQuestionSet] = useState<OlympiaQuestionSet>(() => {
+    if (selectedBankId) {
+      const b = getOlympiaBankById(selectedBankId);
+      if (b?.set) return b.set;
+    }
+    const all = getOlympiaBanks();
+    return all[0]?.set || SAMPLE_QUESTION_SET;
+  });
   const [audioOn, setAudioOn] = useState(true);
   const [err, setErr] = useState("");
   const [tickVer, setTickVer] = useState(0);
@@ -76,6 +92,32 @@ export default function OlympiaSandboxStudio({ onExit }: { onExit: () => void })
   }
 
   const refresh = useCallback(() => setTickVer((v) => v + 1), []);
+
+  useEffect(() => {
+    const loaded = getOlympiaBanks();
+    setBanks(loaded);
+    const targetId = selectedBankId || activeBankId || loaded[0]?.id;
+    if (targetId) {
+      setActiveBankId(targetId);
+      const b = loaded.find((item) => item.id === targetId) || getOlympiaBankById(targetId);
+      if (b?.set) {
+        setQuestionSet(b.set);
+        if (gameRef.current) {
+          gameRef.current = buildGame(rulesetId, rounds, playerCount, b.set);
+          refresh();
+        }
+      }
+    }
+  }, [selectedBankId]);
+
+  const handleSwitchBank = (bankId: string) => {
+    setActiveBankId(bankId);
+    const b = banks.find((item) => item.id === bankId) || getOlympiaBankById(bankId);
+    if (b?.set) {
+      setQuestionSet(b.set);
+      recreateGame(rulesetId, rounds, playerCount, b.set);
+    }
+  };
 
   // Re-initialize when lobby config changes
   const recreateGame = useCallback(

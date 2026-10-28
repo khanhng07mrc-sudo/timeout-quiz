@@ -14,6 +14,7 @@
     "package:app": "npm run build && npx electron-packager . \"Quizorra\" --platform=win32 --arch=x64 --out=\"dist-app\" --overwrite --icon=\"public/brand/quizorra.ico\" --ignore=\"^/(dist-app|scratch|\\.git|\\.next/cache)\"",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "test:olympia": "esbuild src/lib/olympia/engine.test.ts --bundle --platform=node --target=node20 --outfile=scratch/olympia-test.cjs && node scratch/olympia-test.cjs",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",

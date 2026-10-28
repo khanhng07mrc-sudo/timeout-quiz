@@ -7,6 +7,7 @@ import { getDefaultAllowedPowerupsForMode, distributeCategorizedCardsToTeams } f
 import { calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
 import { ensureQuizBankExists } from "@/lib/quiz-bank-seeder";
+import { SAMPLE_QUESTION_SET } from "@/lib/olympia/sample-questions";
 
 const DEFAULT_SANDBOX_CONFIG = {
   powerupEnabled: true,
@@ -166,9 +167,17 @@ export async function POST(req: NextRequest) {
       isSandbox: true,
     };
 
-    if (mode === "MYSTERY_QUEST") {
+    if (mode === "MYSTERY_QUEST" || mode === "OLYMPIA") {
       sandboxConfig.powerupEnabled = false;
       sandboxConfig.allowedPowerups = [];
+    }
+
+    if (mode === "OLYMPIA") {
+      (sandboxConfig as any).olympia = {
+        rulesetId: "O26",
+        rounds: ["khoiDong", "vcnv", "tangToc", "veDich"],
+        questionSet: SAMPLE_QUESTION_SET,
+      };
     }
 
     const TEAM_PALETTE = ["#ef4444", "#3b82f6", "#eab308", "#10b981", "#a855f7", "#ec4899", "#06b6d4", "#f97316"];
@@ -288,8 +297,8 @@ export async function POST(req: NextRequest) {
       createdPlayers.push(player);
     }
 
-    // Distribute 2 categorized powerup cards per team matched strictly to mode (MYSTERY_QUEST has NO powerups)
-    if (mode !== "MYSTERY_QUEST") {
+    // Distribute 2 categorized powerup cards per team matched strictly to mode (MYSTERY_QUEST / OLYMPIA have NO powerups)
+    if (mode !== "MYSTERY_QUEST" && mode !== "OLYMPIA") {
       const allowedTypes = modeAllowedPowerups;
       const teamIds = createdTeams.map((t) => t.id);
       const cardsMap = distributeCategorizedCardsToTeams(teamIds, allowedTypes as any, 2, 2);

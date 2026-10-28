@@ -32,6 +32,7 @@ import ArenaModeLaunchTransition from "@/components/ui/ArenaModeLaunchTransition
 import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
+import OlympiaSandboxStudio from "@/components/olympia/OlympiaSandboxStudio";
 import {
   generateMagicWheelSectors,
   generateSpecialRoundWheelSectors,
@@ -231,10 +232,22 @@ const AVAILABLE_MODES: {
     glowClass: "glow-neon-cyan",
     perks: ["Tính thời gian", "Bonus tốc độ", "Kho thẻ bài"],
   },
+  {
+    mode: "OLYMPIA",
+    name: "Đường Lên Đỉnh Olympia",
+    emoji: "🏔️",
+    tagline: "5 phần thi Olympia (Khởi Động, VCNV, Tăng Tốc, Về Đích, Câu Hỏi Phụ) · Bộ luật O21–O26 · 2–8 thí sinh",
+    badge: "Leo Núi",
+    gradient: "from-sky-600 via-blue-600 to-indigo-700",
+    accentColor: "#38bdf8",
+    glowClass: "glow-neon-cyan",
+    perks: ["Luật O21–O26 chuẩn", "Tối đa 8 thí sinh", "Chấm tay & Giả lập 1 chạm"],
+  },
 
 ];
 
 export default function AdminSandboxPage() {
+  const [olympiaSandboxActive, setOlympiaSandboxActive] = useState<boolean>(false);
   const [code, setCode] = useState<string>("");
   const [inputCode, setInputCode] = useState<string>("");
   const [selectedMode, setSelectedMode] = useState<GameMode>("GRID_CARO");
@@ -6719,7 +6732,7 @@ export default function AdminSandboxPage() {
     setIsLaunchReady(false);
     // Cho phép video transition 3D khởi chạy mượt mà ngay frame đầu tiên không bị giật lag
     setTimeout(() => {
-      startOfflineSandbox(selectedMode, selectedBankId);
+      if (selectedMode === "OLYMPIA") { setOlympiaSandboxActive(true); } else { startOfflineSandbox(selectedMode, selectedBankId); }
       setIsLaunchReady(true);
     }, 120);
   }, [selectedMode, selectedBankId, startOfflineSandbox]);
@@ -6733,6 +6746,14 @@ export default function AdminSandboxPage() {
     setIsLaunchReady(false);
     setCreating(true);
 
+    if (modeToUse === "OLYMPIA") {
+      setTimeout(() => {
+        setOlympiaSandboxActive(true);
+        setIsLaunchReady(true);
+        setCreating(false);
+      }, 120);
+      return;
+    }
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       setTimeout(() => {
         startOfflineSandbox(modeToUse, selectedBankId);
@@ -9974,7 +9995,15 @@ export default function AdminSandboxPage() {
 
         {/* Room Launch or Connected Status Controls */}
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
-          {!code ? (
+          {olympiaSandboxActive ? (
+            <button
+              type="button"
+              onClick={() => { setOlympiaSandboxActive(false); setCode(""); }}
+              className="px-2.5 py-1 rounded-lg glass hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition shrink-0 whitespace-nowrap cursor-pointer"
+            >
+              ✕ Đổi chế độ khác
+            </button>
+          ) : !code ? (
             <div className="flex items-center gap-1.5 flex-wrap">
               <select
                 value={selectedMode}
@@ -11801,7 +11830,11 @@ export default function AdminSandboxPage() {
       </div>
 
       {/* ── Studio Main Area (100% Fit Screen) ───────────────────────── */}
-      {!code ? (
+      {olympiaSandboxActive ? (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <OlympiaSandboxStudio onExit={() => { setOlympiaSandboxActive(false); setCode(""); }} />
+        </div>
+      ) : !code ? (
         <div className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 lg:p-6 space-y-6 animate-pull-from-left">
           {/* ── Top Hero Banner ── */}
           <div className="text-center space-y-3 max-w-3xl mx-auto">
@@ -12002,7 +12035,7 @@ export default function AdminSandboxPage() {
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Danh sách chế độ:</span>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  9 Chế độ
+                  {AVAILABLE_MODES.length} Chế độ
                 </span>
               </div>
               <span className="text-xs text-slate-400 hidden sm:inline">

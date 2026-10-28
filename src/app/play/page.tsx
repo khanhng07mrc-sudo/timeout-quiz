@@ -56,7 +56,11 @@ function PlayContent() {
         sessionStorage.setItem(`room_passcode_${pin.trim()}`, passcode.trim());
         localStorage.setItem(`room_passcode_${pin.trim()}`, passcode.trim());
       }
-      router.push(`/play/${pin.trim()}`);
+      if (data.room?.mode === "OLYMPIA") {
+        router.push(`/olympia/play/${pin.trim()}`);
+      } else {
+        router.push(`/play/${pin.trim()}`);
+      }
     } catch {
       setError("Lỗi kết nối máy chủ. Vui lòng thử lại sau.");
       setLoading(false);

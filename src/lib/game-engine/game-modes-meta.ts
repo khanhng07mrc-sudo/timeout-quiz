@@ -15,6 +15,7 @@ export const MODE_DISPLAY_NAMES: Record<string, string> = {
   DICE_RACE: "Dice Race",
   WAGER: "Secret Wager",
   MYSTERY_QUEST: "Mystery Quest",
+  OLYMPIA: "Đường Lên Đỉnh Olympia",
 };
 
 export const MODE_RULES_SUMMARY: Record<string, ModeRulesSummary> = {
@@ -67,6 +68,11 @@ export const MODE_RULES_SUMMARY: Record<string, ModeRulesSummary> = {
     objective: "Khám phá sân khấu phiêu lưu truyền hình qua các bối cảnh thần bí luân phiên.",
     mechanism: "Thi đấu luân phiên theo lượt; giải đố để lật mở Rương kho báu, Cánh cửa bí mật và Ô số phận.",
     tip: "Đưa ra quyết định Dừng chơi (Cash-out) đúng lúc trước khi chạm phải cạm bẫy chia đôi điểm.",
+  },
+  OLYMPIA: {
+    objective: "Chinh phục vòng nguyệt quế qua các phần thi Khởi Động, VCNV, Tăng Tốc, Về Đích và Câu Hỏi Phụ.",
+    mechanism: "Hỗ trợ tối đa 8 thí sinh, lựa chọn bộ luật từng mùa (O21–O26) và chọn riêng các vòng muốn thi đấu.",
+    tip: "Phân bổ chiến thuật bấm chuông hợp lý và tận dụng Ngôi sao hy vọng ở vòng Về Đích.",
   },
 };
 

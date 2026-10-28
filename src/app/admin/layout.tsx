@@ -11,6 +11,7 @@ const NAV_ITEMS: { href: string; icon: SystemIconName; label: string; desc: stri
   { href: "/admin", icon: "dashboard", label: "Tổng quan", desc: "Bảng điều khiển trung tâm" },
   { href: "/admin/quiz-bank", icon: "quiz_bank", label: "Bộ câu hỏi", desc: "Soạn & Nhập file" },
   { href: "/admin/rooms/create", icon: "create_room", label: "Tạo phòng thi", desc: "Thiết lập trận đấu" },
+  { href: "/admin/olympia/create", icon: "create_room", label: "Tạo phòng Olympia", desc: "Đường Lên Đỉnh Olympia" },
   { href: "/admin/rooms", icon: "rooms", label: "Phòng đấu chính", desc: "Quản lý trận đấu" },
   { href: "/admin/sandbox", icon: "sandbox", label: "Phòng thử nghiệm", desc: "Thử nghiệm độc lập trên máy" },
   { href: "/display", icon: "display", label: "Màn hình chiếu", desc: "TV & Máy chiếu" },

@@ -645,7 +645,7 @@ export default function AdminRoomsListPage() {
                 <div className="space-y-2 pt-2 border-t border-border/50">
                   <div className="flex gap-2">
                     <Link
-                      href={`/admin/rooms/${room.code}`}
+                      href={room.mode === "OLYMPIA" ? `/olympia/host/${room.code}` : `/admin/rooms/${room.code}`}
                       className={`flex-1 py-2 rounded-xl font-bold text-xs text-center transition flex items-center justify-center gap-1.5 text-white ${
                         isSb ? "bg-cyan-600 hover:bg-cyan-500" : "bg-purple-600 hover:bg-purple-500"
                       }`}
@@ -653,7 +653,7 @@ export default function AdminRoomsListPage() {
                       <SystemIcon name="dashboard" className="w-3.5 h-3.5 shrink-0" /> Điều khiển
                     </Link>
                     <Link
-                      href={`/display/${room.code}`}
+                      href={room.mode === "OLYMPIA" ? `/olympia/display/${room.code}` : `/display/${room.code}`}
                       target="_blank"
                       className="px-3 py-2 rounded-xl glass border border-border hover:border-cyan-400 font-bold text-xs text-center transition flex items-center justify-center text-cyan-400"
                       title="Mở màn chiếu"
@@ -661,7 +661,7 @@ export default function AdminRoomsListPage() {
                       <SystemIcon name="display" className="w-3.5 h-3.5 shrink-0" />
                     </Link>
                     <Link
-                      href={`/play/${room.code}`}
+                      href={room.mode === "OLYMPIA" ? `/olympia/play/${room.code}` : `/play/${room.code}`}
                       target="_blank"
                       className="px-3 py-2 rounded-xl glass border border-border hover:border-purple-400 font-bold text-xs text-center transition flex items-center justify-center text-purple-400"
                       title="Vào giao diện thí sinh"
@@ -748,7 +748,7 @@ export default function AdminRoomsListPage() {
 
                 <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
                   <Link
-                    href={`/admin/rooms/${room.code}`}
+                    href={room.mode === "OLYMPIA" ? `/olympia/host/${room.code}` : `/admin/rooms/${room.code}`}
                     className={`px-4 py-2 rounded-xl font-bold text-xs text-center transition inline-flex items-center gap-1.5 text-white ${
                       isSb ? "bg-cyan-600 hover:bg-cyan-500" : "bg-purple-600 hover:bg-purple-500"
                     }`}
@@ -756,7 +756,7 @@ export default function AdminRoomsListPage() {
                     <SystemIcon name="dashboard" className="w-3.5 h-3.5 shrink-0" /> Điều khiển
                   </Link>
                   <Link
-                    href={`/display/${room.code}`}
+                    href={room.mode === "OLYMPIA" ? `/olympia/display/${room.code}` : `/display/${room.code}`}
                     target="_blank"
                     className="p-2 rounded-xl glass border border-border hover:border-cyan-400 font-bold text-xs transition inline-flex items-center text-cyan-400"
                     title="Mở màn chiếu"
@@ -764,7 +764,7 @@ export default function AdminRoomsListPage() {
                     <SystemIcon name="display" className="w-3.5 h-3.5 shrink-0" />
                   </Link>
                   <Link
-                    href={`/play/${room.code}`}
+                    href={room.mode === "OLYMPIA" ? `/olympia/play/${room.code}` : `/play/${room.code}`}
                     target="_blank"
                     className="p-2 rounded-xl glass border border-border hover:border-purple-400 font-bold text-xs transition inline-flex items-center text-purple-400"
                     title="Vào giao diện thí sinh"

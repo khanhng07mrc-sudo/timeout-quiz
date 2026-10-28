@@ -54,7 +54,8 @@ export type GameMode =
   | "GRID_CARO"
   | "DICE_RACE"
   | "WAGER"
-  | "MYSTERY_QUEST";
+  | "MYSTERY_QUEST"
+  | "OLYMPIA";
 export type TeamMode = "INDIVIDUAL" | "TEAM";
 export type RoomStatus = "LOBBY" | "PLAYING" | "PAUSED" | "FINISHED";
 
@@ -307,6 +308,30 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
     tipsVi: [
       "Cố gắng trả lời đúng câu hỏi thử thách của ô mình đã chọn để nắm bắt cơ hội lật mở kho báu khổng lồ!",
       "Quản lý số tim cẩn thận, cân nhắc giữ điểm an toàn hoặc mạo hiểm để không bị trừ sạch điểm số!",
+    ],
+  },
+  OLYMPIA: {
+    mode: "OLYMPIA",
+    nameVi: "Đường Lên Đỉnh Olympia",
+    emoji: "🏔️",
+    taglineVi: "Trải nghiệm trọn vẹn 5 phần thi Olympia với các bộ luật O21–O26 (tối đa 8 thí sinh)",
+    summaryVi: "Chế độ thi đấu theo format Đường Lên Đỉnh Olympia truyền hình, hỗ trợ tối đa 8 thí sinh/đội, cho phép chọn bộ luật từng mùa (O21–O26) và chọn riêng các vòng thi (Khởi Động, Vượt Chướng Ngại Vật, Tăng Tốc, Về Đích; vòng Câu Hỏi Phụ tự động kích hoạt khi đồng hạng nhất).",
+    mechanicsVi: [
+      "Khởi Động: Thi riêng 6 câu/người và lượt thi chung bấm chuông giành quyền trả lời (số câu/thời gian theo mùa và số thí sinh X).",
+      "Vượt Chướng Ngại Vật: 4 hàng ngang gợi ý + hình ảnh bí ẩn + từ khóa trung tâm, bấm chuông giải CNV bất kỳ lúc nào.",
+      "Tăng Tốc: 4 câu hỏi hình ảnh/video, xếp hạng theo thời gian trả lời nhanh nhất.",
+      "Về Đích: Chọn gói câu hỏi 20/30 điểm, quyền đặt Ngôi sao hy vọng nhân đôi điểm và chuông 5 giây cướp điểm.",
+      "Câu Hỏi Phụ: Tự động mở cho các thí sinh đồng hạng cao nhất sau vòng cuối.",
+    ],
+    scoringVi: [
+      "Khởi Động: +10đ mỗi câu đúng; lượt chung trả lời sai bị phạt theo luật mùa (O22 khóa câu kế, O23–O26 trừ 5đ).",
+      "VCNV: +10đ mỗi hàng ngang; điểm từ khóa giảm dần theo số hàng đã mở (O24–O26: 60/50/40/30/20; O23: 50/40/30/20/10; O22: 80/60/40/20/10).",
+      "Tăng Tốc: Điểm phân bậc theo số thí sinh X (tối đa +40đ cho người nhanh nhất).",
+      "Về Đích: Điểm theo gói câu hỏi (x2 nếu có Ngôi sao hy vọng), cướp điểm sai trừ 1/2 số điểm câu hỏi.",
+    ],
+    tipsVi: [
+      "Quan sát kỹ các mảnh ghép ở VCNV để bấm chuông sớm ăn điểm tối đa.",
+      "Sử dụng Ngôi sao hy vọng ở câu hỏi thuộc lĩnh vực sở trường trong vòng Về Đích.",
     ],
   },
 };

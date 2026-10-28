@@ -3,6 +3,7 @@ import { parse } from "url";
 import next from "next";
 import { initSocketServer } from "./src/lib/socket-server";
 import { registerSocketHandlers } from "./src/lib/socket-handlers";
+import { registerOlympiaSocket } from "./src/lib/olympia/socket-olympia";
 import { cleanupStaleRooms } from "./src/lib/room-cleanup";
 import { prisma } from "./src/lib/prisma";
 
@@ -10,7 +11,7 @@ async function ensureDatabaseSchema() {
   try {
     const modes = [
       "CLASSIC", "BUZZ", "BOUNCEBACK", "ELIMINATION", "TOURNAMENT",
-      "GRID_CARO", "DICE_RACE", "WAGER", "MYSTERY_QUEST", "MAGIC_WHEEL"
+      "GRID_CARO", "DICE_RACE", "WAGER", "MYSTERY_QUEST", "MAGIC_WHEEL", "OLYMPIA"
     ];
     for (const m of modes) {
       await prisma.$executeRawUnsafe(`ALTER TYPE "GameMode" ADD VALUE IF NOT EXISTS '${m}'`).catch(() => {});
@@ -64,6 +65,7 @@ app.prepare().then(async () => {
 
   const io = initSocketServer(httpServer);
   registerSocketHandlers(io);
+  registerOlympiaSocket(io);
 
   httpServer.listen(port, "0.0.0.0", () => {
     console.log(`> Ready on http://${hostname}:${port}`);

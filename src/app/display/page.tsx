@@ -58,12 +58,17 @@ export default function DisplayIndexPage() {
 
     try {
       const res = await fetch(`/api/rooms/${cleanPin}/validate`);
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError("Mã phòng không tồn tại hoặc phòng đã bị xóa");
         setLoading(false);
         return;
       }
-      router.push(`/display/${cleanPin}`);
+      if (data.room?.mode === "OLYMPIA") {
+        router.push(`/olympia/display/${cleanPin}`);
+      } else {
+        router.push(`/display/${cleanPin}`);
+      }
     } catch {
       setError("Lỗi kết nối máy chủ. Vui lòng thử lại sau.");
       setLoading(false);

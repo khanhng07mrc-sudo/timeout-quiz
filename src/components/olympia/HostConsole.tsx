@@ -1,0 +1,605 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { RULESETS } from "@/lib/olympia/rulesets";
+import { normalizeAnswer } from "@/lib/olympia/engine";
+import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId } from "@/lib/olympia/types";
+import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
+import { MediaView, Panel, ScoreStrip, SEAT_COLORS, Timer, activeSeats, btn, btnBad, btnOk, btnPrimary, seatName } from "./ui";
+
+export default function HostConsole({ code, hostKey }: { code: string; hostKey: string }) {
+  const { state, join, connected, emit, serverNow } = useOlympiaSocket({ code, role: "host", hostKey });
+  const [err, setErr] = useState("");
+  const [audioOn, setAudioOn] = useState(false);
+  useOlympiaAudio(state, join?.audioSeason, audioOn);
+
+  const call = async (type: string, extra: Record<string, unknown> = {}) => {
+    const r = await emit("action", { type, ...extra });
+    setErr(r.ok ? "" : r.error || "Lỗi");
+    return r;
+  };
+
+  if (join && !join.ok) {
+    return <div className="p-8 text-rose-300 text-lg">Không thể vào bàn điều khiển: {join.error}</div>;
+  }
+  if (!state) return <div className="p-8 text-sky-200">Đang kết nối…</div>;
+
+  const rs = RULESETS[state.rulesetId];
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950 text-white p-4 md:p-6 space-y-4">
+      <header className="flex flex-wrap items-center gap-3 justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-sky-300">🏔️ Đường lên đỉnh Olympia — Bàn điều khiển</h1>
+          <p className="text-sm text-slate-300">
+            Phòng <b className="text-yellow-300 text-lg">{code}</b> · Luật <b>{rs.label}</b> · {connected ? "🟢 Đã kết nối" : "🔴 Mất kết nối"}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 items-center">
+          <a className={btn} href={`/olympia/display/${code}`} target="_blank" rel="noreferrer">
+            📺 Màn hình chiếu
+          </a>
+          <button className={btn} onClick={() => navigator.clipboard?.writeText(`${origin}/play?pin=${code}`)}>
+            📋 Chép link thí sinh
+          </button>
+          <button className={btn} onClick={() => setAudioOn((v) => !v)}>
+            {audioOn ? "🔊 Âm thanh bật" : "🔈 Bật âm thanh"}
+          </button>
+        </div>
+      </header>
+
+      {err && <div className="rounded-lg bg-rose-500/20 border border-rose-400 px-3 py-2 text-rose-100">⚠ {err}</div>}
+
+      <Panel title="Bảng điểm">
+        {activeSeats(state).length ? (
+          <ScoreStrip state={state} />
+        ) : (
+          <p className="text-slate-400">Chưa có thí sinh nào vào phòng.</p>
+        )}
+      </Panel>
+
+      {state.stage === "lobby" && <Lobby state={state} call={call} code={code} origin={origin} />}
+      {state.stage === "playing" && (
+        <>
+          <RoundTracker state={state} call={call} />
+          {state.currentRound === "khoiDong" && <KhoiDongPanel state={state} call={call} serverNow={serverNow} />}
+          {state.currentRound === "vcnv" && <VcnvPanel state={state} call={call} serverNow={serverNow} />}
+          {state.currentRound === "tangToc" && <TangTocPanel state={state} call={call} serverNow={serverNow} />}
+          {state.currentRound === "veDich" && <VeDichPanel state={state} call={call} serverNow={serverNow} />}
+          {state.currentRound === "cauHoiPhu" && <ChpPanel state={state} call={call} serverNow={serverNow} />}
+          <ScoreAdjust state={state} call={call} />
+        </>
+      )}
+      {state.stage === "finished" && <Finished state={state} call={call} />}
+
+      <Panel title="Nhật ký">
+        <div className="text-xs text-slate-300 max-h-28 overflow-auto space-y-0.5">
+          {[...state.log].reverse().map((l, i) => (
+            <div key={i}>{l}</div>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+type Call = (type: string, extra?: Record<string, unknown>) => Promise<{ ok: boolean; error?: string }>;
+type SN = () => number;
+
+function Lobby({ state, call, code, origin }: { state: OlympiaState; call: Call; code: string; origin: string }) {
+  const seats = state.seats;
+  return (
+    <Panel title="Sảnh chờ">
+      <p className="text-sm text-slate-300 mb-3">
+        Thí sinh vào <b className="text-sky-300">{origin}/play</b> và nhập mã <b className="text-yellow-300">{code}</b> (tối đa 8 người).
+      </p>
+      <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+        {seats.map((s) => (
+          <div key={s.id} className="rounded-lg border border-white/15 p-2 bg-white/5" style={{ borderLeft: `4px solid ${SEAT_COLORS[s.id]}` }}>
+            <div className="text-xs text-slate-400">Ghế {s.id + 1}</div>
+            {s.name ? (
+              <>
+                <div className="font-bold truncate">
+                  {s.connected ? "🟢" : "⚪"} {s.name}
+                </div>
+                <button className="text-xs text-rose-300 underline" onClick={() => call("seat:kick", { seat: s.id })}>
+                  Mời ra
+                </button>
+              </>
+            ) : (
+              <div className="text-slate-500 italic">Trống</div>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="text-sm mb-3">
+        Các vòng sẽ chơi:{" "}
+        {state.rounds.map((r) => (
+          <span key={r} className="inline-block mr-2 px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/40">
+            {ROUND_LABELS[r]}
+          </span>
+        ))}
+        <span className="inline-block px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40">
+          {ROUND_LABELS.cauHoiPhu} (tự động nếu đồng hạng)
+        </span>
+      </div>
+      <button className={btnPrimary} disabled={activeSeats(state).length === 0} onClick={() => call("game:start")}>
+        ▶ Bắt đầu trận đấu
+      </button>
+    </Panel>
+  );
+}
+
+function RoundTracker({ state, call }: { state: OlympiaState; call: Call }) {
+  return (
+    <Panel title="Tiến trình">
+      <div className="flex flex-wrap gap-2 items-center">
+        {state.roundsPlan.map((r) => {
+          const st = state.roundStatus[r];
+          const cur = state.currentRound === r;
+          return (
+            <span
+              key={r}
+              className={`px-3 py-1 rounded-full text-sm border ${cur ? "bg-yellow-300 text-slate-950 border-yellow-200 font-black" : st === "done" ? "bg-emerald-500/20 border-emerald-400/40" : "bg-white/5 border-white/15"}`}
+            >
+              {ROUND_LABELS[r]}
+              {st === "done" ? " ✓" : ""}
+            </span>
+          );
+        })}
+        <span className="flex-1" />
+        <button className={btnPrimary} onClick={() => call("round:next")}>
+          Vòng tiếp theo ⏭
+        </button>
+        <button className={btn} onClick={() => call("round:force", { round: "cauHoiPhu" })}>
+          Chạy Câu hỏi phụ
+        </button>
+        <button className={btnBad} onClick={() => confirm("Kết thúc trận đấu?") && call("game:end")}>
+          Kết thúc
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+function ScoreAdjust({ state, call }: { state: OlympiaState; call: Call }) {
+  return (
+    <Panel title="Chỉnh điểm thủ công">
+      <div className="flex flex-wrap gap-3">
+        {activeSeats(state).map((s) => (
+          <div key={s.id} className="flex items-center gap-1 text-sm">
+            <span style={{ color: SEAT_COLORS[s.id] }} className="font-bold">
+              {s.name}
+            </span>
+            {[-10, -5, 5, 10].map((d) => (
+              <button key={d} className={btn} onClick={() => call("score:adjust", { seat: s.id, delta: d })}>
+                {d > 0 ? "+" : ""}
+                {d}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function Finished({ state, call }: { state: OlympiaState; call: Call }) {
+  const ranking = [...activeSeats(state)].sort((a, b) => b.score - a.score);
+  return (
+    <Panel title="Kết quả chung cuộc">
+      <ol className="space-y-1 mb-3">
+        {ranking.map((s, i) => (
+          <li key={s.id} className="text-lg">
+            {["🥇", "🥈", "🥉"][i] ?? `${i + 1}.`} <b>{s.name}</b> — {s.score} điểm
+          </li>
+        ))}
+      </ol>
+      <button className={btn} onClick={() => call("game:reset")}>
+        ↺ Chơi lại (giữ thí sinh, reset điểm)
+      </button>
+    </Panel>
+  );
+}
+
+// ───────── Khởi Động ─────────
+function KhoiDongPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
+  const kd = state.khoiDong!;
+  const seg = kd.segments[kd.segIdx];
+  const total = seg.globalMs ? "∞" : seg.questions;
+  return (
+    <Panel title={`Khởi Động — ${seg.label}`}>
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="md:col-span-2 space-y-2">
+          <div className="text-sm text-slate-300">
+            Câu {Math.max(0, kd.qIdx + 1)}/{total} · Giai đoạn: <b>{kd.phase}</b>
+            {kd.buzzedSeat != null && (
+              <span className="ml-2 px-2 rounded bg-yellow-300 text-slate-950 font-bold">🔔 {seatName(state, kd.buzzedSeat)}</span>
+            )}
+            {kd.buzzOpen && <span className="ml-2 text-emerald-300">chuông đang mở</span>}
+          </div>
+          {kd.current ? (
+            <div className="rounded-xl bg-white/5 p-3">
+              <div className="text-xl font-semibold">{kd.current.q}</div>
+              <div className="text-emerald-300 mt-1">Đáp án: {kd.current.a}</div>
+              <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-40 mt-2 rounded" />
+            </div>
+          ) : (
+            <div className="text-slate-400 italic">{kd.phase === "segmentDone" ? "Hết phần thi — bấm Tiếp để sang phần kế." : "Bấm “Câu tiếp” để mở câu hỏi."}</div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button className={btnPrimary} onClick={() => call("kd:next")}>
+              {kd.phase === "segmentDone" ? "Phần tiếp ⏭" : "Câu tiếp ⏭"}
+            </button>
+            <button className={btn} onClick={() => call("kd:timer")}>
+              ⏱ Bắt đầu/Tạm dừng
+            </button>
+            {seg.kind !== "solo" && (
+              <button className={btn} onClick={() => call("kd:buzzer")}>
+                🔔 Mở/Đóng chuông
+              </button>
+            )}
+            <button className={btnOk} onClick={() => call("kd:correct")}>
+              ✔ Đúng
+            </button>
+            <button className={btnBad} onClick={() => call("kd:wrong")}>
+              ✘ Sai
+            </button>
+            <button className={btn} onClick={() => call("kd:skip")}>
+              Bỏ qua
+            </button>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Timer timer={kd.timer} serverNow={serverNow} />
+          {kd.globalTimer && (
+            <div>
+              <div className="text-xs text-slate-400">Đồng hồ cả lượt</div>
+              <Timer timer={kd.globalTimer} serverNow={serverNow} />
+            </div>
+          )}
+          {kd.lockedSeats.length > 0 && (
+            <div className="text-xs text-amber-300">Bị khóa: {kd.lockedSeats.map((i) => seatName(state, i)).join(", ")}</div>
+          )}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+// ───────── VCNV ─────────
+function VcnvPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
+  const v = state.vcnv!;
+  const seats = activeSeats(state);
+  const row = v.currentRow >= 0 && v.currentRow < 4 ? v.rows[v.currentRow] : null;
+  const [checked, setChecked] = useState<number[] | null>(null);
+  useEffect(() => setChecked(null), [v.currentRow]);
+  const auto = useMemo(
+    () =>
+      row
+        ? seats
+            .filter((s) => !v.eliminatedSeats.includes(s.id) && normalizeAnswer(v.answers[s.id]?.text ?? "") === normalizeAnswer(row.answer) && row.answer)
+            .map((s) => s.id)
+        : [],
+    [row, seats, v.answers, v.eliminatedSeats]
+  );
+  const sel = checked ?? auto;
+  return (
+    <Panel title="Vượt Chướng Ngại Vật">
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="md:col-span-2 space-y-3">
+          <div className="text-sm">
+            Từ khóa: <b className="text-yellow-300">{v.keyword}</b> · Đã mở {v.openedCount}/4 hàng
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {v.rows.map((r, i) => (
+              <button
+                key={i}
+                disabled={r.opened}
+                onClick={() => call("vcnv:selectRow", { row: i })}
+                className={`text-left rounded-lg p-2 border ${v.currentRow === i ? "border-yellow-300 bg-yellow-300/10" : "border-white/15 bg-white/5"} ${r.opened ? "opacity-40" : ""}`}
+              >
+                <div className="text-xs text-slate-400">
+                  Hàng {i + 1} {r.opened ? "✓ đã mở" : r.wrong ? "✘ sai" : ""}
+                </div>
+                <div className="text-sm">{r.hint}</div>
+                <div className="text-emerald-300 text-xs">ĐA: {r.answer}</div>
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className={btn} onClick={() => call("vcnv:timer")}>
+              ⏱ 15s Bắt đầu/Tạm dừng
+            </button>
+            <button className={btn} onClick={() => call("vcnv:reveal")}>
+              👁 Lật đáp án thí sinh
+            </button>
+            <button className={btnOk} onClick={() => call("vcnv:correct", { seatIds: sel })}>
+              ✔ Chấm đúng ({sel.length})
+            </button>
+            <button className={btnBad} onClick={() => call("vcnv:wrong")}>
+              ✘ Không ai đúng
+            </button>
+            <button className={btn} onClick={() => call("vcnv:revealTile")}>
+              🧩 Lật miếng ghép
+            </button>
+            <button className={btn} onClick={() => call("vcnv:revealAll")}>
+              Mở tất cả
+            </button>
+            <button className={btnPrimary} onClick={() => call("vcnv:end")}>
+              Kết thúc vòng ⏭
+            </button>
+          </div>
+          {row && (
+            <div className="rounded-lg bg-white/5 p-2">
+              <div className="text-xs text-slate-400 mb-1">Đáp án thí sinh (tích để cộng {state.rulesetId ? RULESETS[state.rulesetId].vcnv.rowPoints : 10}đ)</div>
+              {seats.map((s) => (
+                <label key={s.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={sel.includes(s.id)}
+                    onChange={(e) => setChecked(e.target.checked ? [...sel, s.id] : sel.filter((x) => x !== s.id))}
+                  />
+                  <span style={{ color: SEAT_COLORS[s.id] }}>{s.name}</span>: <b>{v.answers[s.id]?.text || "—"}</b>
+                  {v.eliminatedSeats.includes(s.id) && <span className="text-rose-300">(đã bị loại)</span>}
+                </label>
+              ))}
+            </div>
+          )}
+          <div className="rounded-lg bg-white/5 p-2">
+            <div className="text-xs text-slate-400 mb-1">Chuông Chướng ngại vật</div>
+            {v.bells.length === 0 && <div className="text-slate-500 text-sm">Chưa ai bấm chuông</div>}
+            {v.bells.map((b) => (
+              <div key={b.seat} className="flex items-center gap-2 text-sm py-0.5">
+                🔔 <b style={{ color: SEAT_COLORS[b.seat] }}>{seatName(state, b.seat)}</b>
+                {b.before && <span className="text-xs text-amber-300">(trước khi lật đáp án hàng)</span>}
+                <button className={btnOk} onClick={() => call("vcnv:correctCNV", { seat: b.seat })}>
+                  CNV đúng
+                </button>
+                <button className={btnBad} onClick={() => call("vcnv:wrongCNV", { seat: b.seat })}>
+                  CNV sai (loại)
+                </button>
+              </div>
+            ))}
+            {v.centerQuestion && <div className="text-xs text-slate-400 mt-2">Câu hỏi trung tâm: {v.centerQuestion.q} → {v.centerQuestion.a}</div>}
+          </div>
+        </div>
+        <div>
+          <Timer timer={v.timer} serverNow={serverNow} />
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+// ───────── Tăng Tốc ─────────
+function TangTocPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
+  const tt = state.tangToc!;
+  const q = tt.questions[tt.qIdx];
+  const [checked, setChecked] = useState<number[] | null>(null);
+  useEffect(() => setChecked(null), [tt.qIdx, tt.phase]);
+  const auto = tt.ranking.filter((r) => !r.noAnswer && normalizeAnswer(r.answer) === normalizeAnswer(tt.correctAnswer ?? "")).map((r) => r.seat);
+  const sel = checked ?? auto;
+  return (
+    <Panel title={`Tăng Tốc — Câu ${tt.qIdx + 1}/${tt.questions.length}`}>
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="md:col-span-2 space-y-3">
+          {q ? (
+            <div className="rounded-xl bg-white/5 p-3">
+              {q.q && <div className="text-lg">{q.q}</div>}
+              <MediaView url={q.media} type={q.type} className="max-h-48 rounded mt-2" />
+              <div className="text-emerald-300 mt-1">Đáp án: {q.answer}</div>
+            </div>
+          ) : (
+            <div className="text-slate-400 italic">Bấm “Câu tiếp” để chuẩn bị câu hỏi.</div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button className={btnPrimary} onClick={() => call("tt:next")}>
+              Câu tiếp ⏭
+            </button>
+            <button className={btn} onClick={() => call("tt:show")}>
+              🖼 Hiện câu hỏi
+            </button>
+            <button className={btn} onClick={() => call("tt:timer")}>
+              ⏱ Bắt đầu/Tạm dừng
+            </button>
+            <button className={btn} onClick={() => call("tt:reveal")}>
+              👁 Lật bảng xếp hạng
+            </button>
+            <button className={btnOk} disabled={tt.phase !== "ranking"} onClick={() => call("tt:grade", { correctSeats: sel })}>
+              ✔ Chấm điểm ({sel.length} đúng)
+            </button>
+            <button className={btn} onClick={() => call("tt:end")}>
+              Kết thúc vòng
+            </button>
+          </div>
+          {tt.phase === "question" && (
+            <div className="text-sm text-slate-300">
+              Đã gửi: {Object.keys(tt.submissions).length}/{activeSeats(state).length}
+            </div>
+          )}
+          {tt.ranking.length > 0 && (
+            <div className="rounded-lg bg-white/5 p-2 space-y-1">
+              {tt.ranking.map((r, i) => (
+                <label key={r.seat} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    disabled={tt.phase === "graded" || r.noAnswer}
+                    checked={sel.includes(r.seat)}
+                    onChange={(e) => setChecked(e.target.checked ? [...sel, r.seat] : sel.filter((x) => x !== r.seat))}
+                  />
+                  <span className="w-5">{i + 1}.</span>
+                  <b style={{ color: SEAT_COLORS[r.seat] }}>{seatName(state, r.seat)}</b>
+                  <span>{r.noAnswer ? "(không trả lời)" : `“${r.answer}” — ${(r.ms / 1000).toFixed(2)}s`}</span>
+                  {r.points ? <span className="text-yellow-300">+{r.points}</span> : null}
+                  {r.wrong && <span className="text-rose-300">sai</span>}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+        <Timer timer={tt.timer} serverNow={serverNow} />
+      </div>
+    </Panel>
+  );
+}
+
+// ───────── Về Đích ─────────
+function VeDichPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
+  const vd = state.veDich!;
+  const rs = RULESETS[state.rulesetId].veDich;
+  const owner = vd.order[vd.turnIdx];
+  const [pts, setPts] = useState<number[]>(() => Array(rs.questionsPerSeat).fill(rs.pointOptions[0]));
+  const cur = vd.current;
+  const pkg = vd.packages[owner];
+  return (
+    <Panel title={`Về Đích — Lượt của ${seatName(state, owner)}`}>
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="md:col-span-2 space-y-3">
+          <div className="flex flex-wrap gap-1 text-sm">
+            {vd.order.map((id) => (
+              <button
+                key={id}
+                className={`px-2 py-1 rounded border ${id === owner ? "bg-yellow-300 text-slate-950 border-yellow-200" : "border-white/20 bg-white/5"}`}
+                onClick={() => call("vd:setSeat", { seat: id })}
+              >
+                {seatName(state, id)} {vd.hopeStarUsed.includes(id) ? "⭐✓" : ""}
+              </button>
+            ))}
+          </div>
+          {vd.phase === "choosing" && (
+            <div className="rounded-lg bg-white/5 p-3">
+              <div className="text-sm mb-2">Chọn gói {rs.questionsPerSeat} câu (thí sinh cũng có thể tự chọn trên điện thoại):</div>
+              <div className="flex gap-2 mb-2">
+                {pts.map((p, i) => (
+                  <select
+                    key={i}
+                    value={p}
+                    className="bg-slate-800 border border-white/20 rounded px-2 py-1"
+                    onChange={(e) => setPts(pts.map((x, j) => (j === i ? Number(e.target.value) : x)))}
+                  >
+                    {rs.pointOptions.map((o) => (
+                      <option key={o} value={o}>
+                        {o}đ
+                      </option>
+                    ))}
+                  </select>
+                ))}
+              </div>
+              <button className={btnPrimary} onClick={() => call("vd:choosePackage", { points: pts })}>
+                Xác nhận gói
+              </button>
+            </div>
+          )}
+          {pkg && (
+            <div className="text-sm text-slate-300">
+              Gói: {pkg.map((p, i) => (
+                <span key={i} className={`mr-2 px-2 rounded ${vd.qIdx === i ? "bg-yellow-300 text-slate-950 font-bold" : "bg-white/10"}`}>
+                  {p.points}đ
+                </span>
+              ))}
+            </div>
+          )}
+          {cur && (
+            <div className="rounded-xl bg-white/5 p-3">
+              <div className="text-xs text-slate-400">
+                {cur.points} điểm · {cur.q.type === "practice" ? "thực hành" : "lý thuyết"} {vd.hopeStarActive && <b className="text-yellow-300">⭐ Ngôi sao hy vọng</b>}
+              </div>
+              <div className="text-xl font-semibold">{cur.q.q}</div>
+              <div className="text-emerald-300">Đáp án: {cur.q.a}</div>
+              <MediaView url={cur.q.media} type={cur.q.mediaType} className="max-h-40 rounded mt-2" />
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button className={btnPrimary} onClick={() => call("vd:startQuestion")}>
+              Câu tiếp ⏭
+            </button>
+            <button className={btn} onClick={() => call("vd:timer")}>
+              ⏱ Bắt đầu/Tạm dừng
+            </button>
+            <button className={btn} onClick={() => call("vd:hopeStar")}>
+              ⭐ Ngôi sao hy vọng
+            </button>
+            <button className={btnOk} onClick={() => call("vd:correct")}>
+              ✔ Đúng
+            </button>
+            <button className={btnBad} onClick={() => call("vd:wrong")}>
+              ✘ Sai / hết giờ
+            </button>
+            <button className={btn} onClick={() => call("vd:openSteal")}>
+              🚨 Mở cướp điểm 5s
+            </button>
+            <button className={btnOk} onClick={() => call("vd:correctSteal")}>
+              Cướp đúng
+            </button>
+            <button className={btnBad} onClick={() => call("vd:wrongSteal")}>
+              Cướp sai
+            </button>
+            <button className={btn} onClick={() => call("vd:nextSeat")}>
+              Thí sinh tiếp theo ⏭
+            </button>
+          </div>
+          {vd.steal && (
+            <div className="text-sm">
+              Cướp điểm: {vd.steal.buzzedSeat != null ? <b className="text-yellow-300">🔔 {seatName(state, vd.steal.buzzedSeat)}</b> : "chưa ai bấm"}
+            </div>
+          )}
+          {vd.lastVerdict && <div className="text-xs text-slate-400">Kết quả: {vd.lastVerdict}</div>}
+        </div>
+        <div className="space-y-2">
+          <Timer timer={vd.timer} serverNow={serverNow} />
+          {vd.steal && <Timer timer={vd.steal.timer} serverNow={serverNow} />}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+// ───────── Câu hỏi phụ ─────────
+function ChpPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
+  const cp = state.cauHoiPhu!;
+  const q = cp.questions[cp.qIdx];
+  return (
+    <Panel title={`Câu hỏi phụ — ${cp.tied.map((i) => seatName(state, i)).join(", ")}`}>
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="md:col-span-2 space-y-3">
+          {q ? (
+            <div className="rounded-xl bg-white/5 p-3">
+              <div className="text-xl font-semibold">{q.q}</div>
+              <div className="text-emerald-300">Đáp án: {q.a}</div>
+            </div>
+          ) : (
+            <div className="text-slate-400 italic">{cp.phase === "done" ? "Hết câu hỏi phụ." : "Bấm “Câu tiếp”."}</div>
+          )}
+          {cp.buzzedSeat != null && <div className="text-yellow-300 font-bold">🔔 {seatName(state, cp.buzzedSeat)}</div>}
+          {cp.winner != null && <div className="text-emerald-300 font-bold">🏆 {seatName(state, cp.winner)} trả lời đúng</div>}
+          <div className="flex flex-wrap gap-2">
+            <button className={btnPrimary} onClick={() => call("chp:next")}>
+              Câu tiếp ⏭
+            </button>
+            <button className={btn} onClick={() => call("chp:show")}>
+              Hiện câu hỏi
+            </button>
+            <button className={btn} onClick={() => call("chp:timer")}>
+              ⏱ Bắt đầu/Tạm dừng (mở chuông)
+            </button>
+            <button className={btnOk} onClick={() => call("chp:correct")}>
+              ✔ Đúng
+            </button>
+            <button className={btnBad} onClick={() => call("chp:wrong")}>
+              ✘ Sai
+            </button>
+            <button className={btn} onClick={() => call("chp:finish")}>
+              Kết thúc vòng
+            </button>
+          </div>
+        </div>
+        <Timer timer={cp.timer} serverNow={serverNow} />
+      </div>
+    </Panel>
+  );
+}
+
+export type { RoundId };
+void ROUND_ORDER;

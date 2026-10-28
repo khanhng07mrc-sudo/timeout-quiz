@@ -33,6 +33,7 @@ const GAME_MODES = [
   { value: "DICE_RACE", label: "Dice Race", desc: "Đường đua marathon 3D, gieo 2 xí ngầu và vượt cạm bẫy", emoji: "🎲", badge: "Board Game", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
   { value: "WAGER", label: "Secret Wager", desc: "Bí mật cược điểm trước khi công bố nội dung câu hỏi", emoji: "💰", badge: "Tâm lý", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },
   { value: "MYSTERY_QUEST", label: "Mystery Quest", desc: "Lật mở Rương thần bí, Minigame cân não & Ô số phận", emoji: "🗝️", badge: "Gameshow", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
+  { value: "OLYMPIA", label: "Olympia", desc: "Đường Lên Đỉnh Olympia: Chọn mùa O21–O26, tùy chọn vòng thi (Khởi Động, VCNV, Tăng Tốc, Về Đích, Câu Hỏi Phụ) tối đa 8 thí sinh", emoji: "🏔️", badge: "Leo Núi", badgeColor: "text-sky-300 bg-sky-500/20 border-sky-500/30" },
 ];
 
 const POWERUP_TYPES = [
@@ -269,6 +270,10 @@ export default function CreateRoomPage() {
   };
 
   const handleSelectMode = (newMode: string) => {
+    if (newMode === "OLYMPIA") {
+      router.push("/admin/olympia/create");
+      return;
+    }
     setMode(newMode);
     if (newMode === "MYSTERY_QUEST") {
       setPowerupEnabled(false);

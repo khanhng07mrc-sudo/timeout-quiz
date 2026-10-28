@@ -38,11 +38,107 @@ test("max 8 seats, 9th player rejected", () => {
   assert.equal(g.activeSeatIds.length, 8);
 });
 
-test("CNV points per season (original app values)", () => {
-  const o = (s: RulesetId) => [1, 2, 3, 4, 5].map((n) => cnvPointsFor(RULESETS[s], n));
-  assert.deepEqual(o("O26"), [60, 50, 40, 30, 20]);
-  assert.deepEqual(o("O23"), [50, 40, 30, 20, 10]);
-  assert.deepEqual(o("O22"), [80, 60, 40, 20, 10]);
+test("CNV points per season (O13 through O26)", () => {
+  const o = (s: RulesetId) => [0, 1, 2, 3, 4].map((n) => cnvPointsFor(RULESETS[s], n, false)).concat([cnvPointsFor(RULESETS[s], 4, true)]);
+  assert.deepEqual(o("O13"), [80, 80, 80, 40, 40, 20]);
+  assert.deepEqual(o("O14"), [80, 80, 60, 40, 20, 10]);
+  assert.deepEqual(o("O15"), [80, 80, 60, 40, 20, 10]);
+  assert.deepEqual(o("O20"), [80, 80, 60, 40, 20, 10]);
+  assert.deepEqual(o("O21"), [80, 80, 60, 40, 20, 10]);
+  assert.deepEqual(o("O22"), [80, 80, 60, 40, 20, 10]);
+  assert.deepEqual(o("O23"), [50, 50, 40, 30, 20, 10]);
+  assert.deepEqual(o("O26"), [60, 60, 50, 40, 30, 20]);
+});
+
+test("O13–O19 Khởi Động: 60s personal clock, max 12 questions, manual kd:next", () => {
+  const g = game("O13", ["khoiDong"], 2);
+  act(g, "game:start");
+  assert.equal(g.state.khoiDong!.segments.length, 2);
+  assert.equal(g.state.khoiDong!.segments[0].questions, 12);
+  assert.equal(g.state.khoiDong!.segments[0].globalMs, 60000);
+  act(g, "kd:next");
+  assert.ok(g.state.khoiDong!.current?.subject, "has subject badge");
+  act(g, "kd:timer", {}, 1000);
+  assert.ok(g.state.khoiDong!.globalTimer!.startedAt != null, "60s clock running");
+  act(g, "kd:correct", {}, 2000);
+  assert.equal(g.state.khoiDong!.phase, "result", "waits for manual kd:next");
+  assert.ok(g.state.khoiDong!.globalTimer!.startedAt != null, "60s clock continues running between questions");
+});
+
+test("O20–O21 Khởi Động: 60s personal clock, unlimited questions (>12 allowed)", () => {
+  const g = game("O20", ["khoiDong"], 2);
+  act(g, "game:start");
+  for (let i = 0; i < 15; i++) {
+    act(g, "kd:next");
+    assert.equal(g.state.khoiDong!.phase, "question");
+    act(g, "kd:correct");
+  }
+  assert.equal(g.state.seats[0].score, 150);
+});
+
+test("O13–O21 Tăng Tốc uses 30s for all 4 questions", () => {
+  for (const id of ["O13", "O14", "O15", "O16", "O17", "O18", "O19", "O20", "O21"] as RulesetId[]) {
+    assert.deepEqual(RULESETS[id].tangToc.timers, [30000, 30000, 30000, 30000]);
+  }
+});
+
+test("VCNV Question #5 (Center Question): +10 pts and post-center CNV points (20 in O13, 10 in O14)", () => {
+  const g13 = game("O13", ["vcnv"], 2);
+  act(g13, "game:start");
+  act(g13, "vcnv:selectRow", { row: 4 }); // Center question (#5)
+  act(g13, "vcnv:timer", {}, 0);
+  g13.playerAnswer(0, SAMPLE_QUESTION_SET.vcnv.centerQuestion!.a, 1000);
+  act(g13, "vcnv:reveal", {}, 2000);
+  act(g13, "vcnv:correct");
+  assert.equal(g13.state.seats[0].score, 10);
+  act(g13, "vcnv:revealTile");
+  assert.equal(g13.state.vcnv!.centerOpened, true);
+  act(g13, "vcnv:correctCNV", { seat: 1 });
+  assert.equal(g13.state.seats[1].score, 20, "O13 post-center CNV = 20 pts");
+
+  const g14 = game("O14", ["vcnv"], 2);
+  act(g14, "game:start");
+  act(g14, "vcnv:selectRow", { row: 4 });
+  act(g14, "vcnv:revealTile");
+  act(g14, "vcnv:correctCNV", { seat: 1 });
+  assert.equal(g14.state.seats[1].score, 10, "O14 post-center CNV = 10 pts");
+});
+
+test("O13–O14 vs O15–O19 Về Đích preset packages (4 questions vs 3 questions)", () => {
+  const g13 = game("O13", ["veDich"], 2);
+  act(g13, "game:start");
+  assert.ok(!g13.hostAction({ type: "vd:choosePackage", points: [10, 20, 30] }, 0).ok, "O13 rejects 3-q package");
+  act(g13, "vd:choosePackage", { points: [10, 10, 20, 20] }); // Gói 60đ (4 câu)
+  assert.equal(g13.state.veDich!.packages[0].length, 4);
+  act(g13, "vd:startQuestion");
+  assert.equal(g13.state.veDich!.timer.totalMs, 10000, "10đ question has 10s timer in O13");
+
+  const g15 = game("O15", ["veDich"], 2);
+  act(g15, "game:start");
+  act(g15, "vd:choosePackage", { points: [20, 30, 30] }); // Gói 80đ (3 câu)
+  assert.equal(g15.state.veDich!.packages[0].length, 3);
+});
+
+test("O20 vs O21 Về Đích turn order: seat_order vs highest_unplayed", () => {
+  const g20 = game("O20", ["khoiDong", "veDich"], 3);
+  act(g20, "game:start");
+  g20.state.seats[0].score = 50;
+  g20.state.seats[1].score = 120;
+  g20.state.seats[2].score = 90;
+  act(g20, "round:next");
+  assert.deepEqual(g20.state.veDich!.order, [0, 1, 2], "O20 keeps fixed seat order 1->2->3");
+
+  const g21 = game("O21", ["khoiDong", "veDich"], 3);
+  act(g21, "game:start");
+  g21.state.seats[0].score = 50;
+  g21.state.seats[1].score = 120;
+  g21.state.seats[2].score = 90;
+  act(g21, "round:next");
+  assert.equal(g21.state.veDich!.order[0], 1, "O21 starts with highest scorer (seat 1: 120)");
+  // During seat 1's turn, seat 0 steals points and overtakes seat 2!
+  g21.state.seats[0].score = 100;
+  act(g21, "vd:nextSeat");
+  assert.equal(g21.state.veDich!.order[1], 0, "O21 dynamically picks seat 0 (100 > 90) for turn 2");
 });
 
 test("Tăng Tốc point tables for 2..8 contestants", () => {

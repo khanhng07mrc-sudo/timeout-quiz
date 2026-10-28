@@ -137,8 +137,9 @@ function Round({ state, seatId, emit, serverNow }: { state: OlympiaState; seatId
       return (
         <>
           {v.currentRow >= 0 && v.currentRow < 4 && <div className="text-center text-xl">Hàng {v.currentRow + 1}: {v.rows[v.currentRow].hint}</div>}
+          {v.currentRow === 4 && v.centerQuestion && <div className="text-center text-xl text-amber-300">⭐ Ô Trung Tâm: {v.centerQuestion.q}</div>}
           <Timer timer={v.timer} serverNow={serverNow} />
-          <AnswerBox enabled={running && !out && v.currentRow >= 0 && v.currentRow < 4} emit={emit} />
+          <AnswerBox enabled={running && !out && v.currentRow >= 0 && v.currentRow <= 4} emit={emit} />
           <BuzzButton enabled={!out && v.phase !== "done" && !v.bells.some((b) => b.seat === seatId)} onPress={() => emit("buzz")} label="CHƯỚNG NGẠI VẬT" />
           {out && <Center>Bạn đã bị loại khỏi lượt đoán chướng ngại vật</Center>}
         </>
@@ -165,7 +166,15 @@ function Round({ state, seatId, emit, serverNow }: { state: OlympiaState; seatId
           <Center>
             Đang thi: <b style={{ color: SEAT_COLORS[owner] }}>{seatName(state, owner)}</b>
           </Center>
-          {vd.phase === "choosing" && owner === seatId && <PackagePicker options={rs.pointOptions} count={rs.questionsPerSeat} emit={emit} />}
+          {vd.phase === "choosing" && owner === seatId && (
+            <PackagePicker
+              options={rs.pointOptions}
+              count={rs.questionsPerSeat}
+              selectionMode={rs.selectionMode}
+              presetPackages={rs.presetPackages}
+              emit={emit}
+            />
+          )}
           {vd.current && <div className="text-center text-2xl font-semibold">{vd.current.q.q}</div>}
           {(vd.phase === "thinking" || vd.phase === "stealing") && <Timer timer={vd.phase === "stealing" && vd.steal ? vd.steal.timer : vd.timer} serverNow={serverNow} />}
           {vd.phase === "stealing" && owner !== seatId && (
@@ -199,9 +208,44 @@ function PadTimer({ state, serverNow }: { state: OlympiaState; serverNow: () => 
   return <div className="text-center text-3xl font-mono">{(ms / 1000).toFixed(1)}s</div>;
 }
 
-function PackagePicker({ options, count, emit }: { options: number[]; count: number; emit: Emit }) {
+function PackagePicker({
+  options,
+  count,
+  selectionMode,
+  presetPackages,
+  emit,
+}: {
+  options: number[];
+  count: number;
+  selectionMode?: "presetPackages" | "customPoints";
+  presetPackages?: Record<string, number[]>;
+  emit: Emit;
+}) {
   const [pts, setPts] = useState<number[]>(Array(count).fill(options[0]));
   const [msg, setMsg] = useState("");
+  if (selectionMode === "presetPackages" && presetPackages) {
+    return (
+      <div className="space-y-3 rounded-xl bg-white/5 p-3">
+        <div className="text-center">Chọn gói câu hỏi cố định ({count} câu)</div>
+        <div className="grid grid-cols-3 gap-2">
+          {Object.entries(presetPackages).map(([pkgKey, pkgPoints]) => (
+            <button
+              key={pkgKey}
+              className="rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-lg py-3 px-2"
+              onClick={async () => {
+                const r = await emit("pick", { points: pkgPoints });
+                setMsg(r.ok ? `Đã chọn Gói ${pkgKey}đ` : r.error || "Lỗi");
+              }}
+            >
+              Gói {pkgKey}đ
+              <div className="text-xs font-semibold opacity-80">({pkgPoints.join("-")})</div>
+            </button>
+          ))}
+        </div>
+        {msg && <div className="text-center text-sm">{msg}</div>}
+      </div>
+    );
+  }
   return (
     <div className="space-y-3 rounded-xl bg-white/5 p-3">
       <div className="text-center">Chọn mức điểm cho {count} câu hỏi</div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { RULESETS } from "@/lib/olympia/rulesets";
+import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
 import { normalizeAnswer } from "@/lib/olympia/engine";
 import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId } from "@/lib/olympia/types";
 import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
@@ -207,13 +207,20 @@ function Finished({ state, call }: { state: OlympiaState; call: Call }) {
 function KhoiDongPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
   const kd = state.khoiDong!;
   const seg = kd.segments[kd.segIdx];
-  const total = seg.globalMs ? "∞" : seg.questions;
+  const total = seg.questions > 100 ? "∞" : seg.questions;
   return (
     <Panel title={`Khởi Động — ${seg.label}`}>
       <div className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 space-y-2">
-          <div className="text-sm text-slate-300">
-            Câu {Math.max(0, kd.qIdx + 1)}/{total} · Giai đoạn: <b>{kd.phase}</b>
+          <div className="text-sm text-slate-300 flex items-center flex-wrap gap-2">
+            <span>
+              Câu {Math.max(0, kd.qIdx + 1)}/{total} · Giai đoạn: <b>{kd.phase}</b>
+            </span>
+            {kd.current?.subject && (
+              <span className="px-2 py-0.5 rounded-full bg-sky-500/20 border border-sky-400/40 text-sky-300 text-xs font-bold">
+                📚 {kd.current.subject}
+              </span>
+            )}
             {kd.buzzedSeat != null && (
               <span className="ml-2 px-2 rounded bg-yellow-300 text-slate-950 font-bold">🔔 {seatName(state, kd.buzzedSeat)}</span>
             )}
@@ -271,26 +278,36 @@ function KhoiDongPanel({ state, call, serverNow }: { state: OlympiaState; call: 
 // ───────── VCNV ─────────
 function VcnvPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
   const v = state.vcnv!;
+  const rs = RULESETS[state.rulesetId] ?? RULESETS.O26;
   const seats = activeSeats(state);
   const row = v.currentRow >= 0 && v.currentRow < 4 ? v.rows[v.currentRow] : null;
+  const isCenterRow = v.currentRow === 4;
+  const currentTargetAnswer = isCenterRow ? (v.centerQuestion?.a ?? v.keyword) : (row?.answer ?? "");
   const [checked, setChecked] = useState<number[] | null>(null);
   useEffect(() => setChecked(null), [v.currentRow]);
   const auto = useMemo(
     () =>
-      row
+      v.currentRow >= 0 && currentTargetAnswer
         ? seats
-            .filter((s) => !v.eliminatedSeats.includes(s.id) && normalizeAnswer(v.answers[s.id]?.text ?? "") === normalizeAnswer(row.answer) && row.answer)
+            .filter((s) => !v.eliminatedSeats.includes(s.id) && normalizeAnswer(v.answers[s.id]?.text ?? "") === normalizeAnswer(currentTargetAnswer))
             .map((s) => s.id)
         : [],
-    [row, seats, v.answers, v.eliminatedSeats]
+    [v.currentRow, currentTargetAnswer, seats, v.answers, v.eliminatedSeats]
   );
   const sel = checked ?? auto;
+  const currentCnvPts = cnvPointsFor(rs, v.openedCount, Boolean(v.centerOpened));
   return (
     <Panel title="Vượt Chướng Ngại Vật">
       <div className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 space-y-3">
-          <div className="text-sm">
-            Từ khóa: <b className="text-yellow-300">{v.keyword}</b> · Đã mở {v.openedCount}/4 hàng
+          <div className="text-sm flex items-center flex-wrap gap-3">
+            <span>
+              Từ khóa: <b className="text-yellow-300">{v.keyword}</b> · Đã mở {v.openedCount}/4 hàng
+              {v.centerOpened ? " + Ô trung tâm" : ""}
+            </span>
+            <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold">
+              Điểm giải CNV hiện tại: +{currentCnvPts}đ
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {v.rows.map((r, i) => (
@@ -307,6 +324,19 @@ function VcnvPanel({ state, call, serverNow }: { state: OlympiaState; call: Call
                 <div className="text-emerald-300 text-xs">ĐA: {r.answer}</div>
               </button>
             ))}
+            <button
+              disabled={Boolean(v.centerOpened)}
+              onClick={() => call("vcnv:selectRow", { row: 4 })}
+              className={`col-span-2 text-left rounded-lg p-2 border ${
+                v.currentRow === 4 ? "border-yellow-300 bg-yellow-300/10" : "border-amber-400/30 bg-amber-500/10"
+              } ${v.centerOpened ? "opacity-40" : ""}`}
+            >
+              <div className="text-xs text-amber-300 font-bold">
+                ⭐ Câu hỏi số 5 — Ô Trung Tâm (+10đ) {v.centerOpened ? "✓ đã mở" : v.centerWrong ? "✘ sai" : ""}
+              </div>
+              <div className="text-sm">{v.centerQuestion?.q || "Câu hỏi gợi ý cuối cùng ở trung tâm bức tranh"}</div>
+              <div className="text-emerald-300 text-xs">ĐA: {v.centerQuestion?.a || v.keyword}</div>
+            </button>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className={btn} onClick={() => call("vcnv:timer")}>
@@ -331,9 +361,11 @@ function VcnvPanel({ state, call, serverNow }: { state: OlympiaState; call: Call
               Kết thúc vòng ⏭
             </button>
           </div>
-          {row && (
+          {(row || isCenterRow) && (
             <div className="rounded-lg bg-white/5 p-2">
-              <div className="text-xs text-slate-400 mb-1">Đáp án thí sinh (tích để cộng {state.rulesetId ? RULESETS[state.rulesetId].vcnv.rowPoints : 10}đ)</div>
+              <div className="text-xs text-slate-400 mb-1">
+                Đáp án thí sinh cho {isCenterRow ? "Ô Trung Tâm (Câu 5)" : `Hàng ${v.currentRow + 1}`} (tích để cộng {rs.vcnv.rowPoints}đ)
+              </div>
               {seats.map((s) => (
                 <label key={s.id} className="flex items-center gap-2 text-sm">
                   <input
@@ -469,27 +501,48 @@ function VeDichPanel({ state, call, serverNow }: { state: OlympiaState; call: Ca
             ))}
           </div>
           {vd.phase === "choosing" && (
-            <div className="rounded-lg bg-white/5 p-3">
-              <div className="text-sm mb-2">Chọn gói {rs.questionsPerSeat} câu (thí sinh cũng có thể tự chọn trên điện thoại):</div>
-              <div className="flex gap-2 mb-2">
-                {pts.map((p, i) => (
-                  <select
-                    key={i}
-                    value={p}
-                    className="bg-slate-800 border border-white/20 rounded px-2 py-1"
-                    onChange={(e) => setPts(pts.map((x, j) => (j === i ? Number(e.target.value) : x)))}
-                  >
-                    {rs.pointOptions.map((o) => (
-                      <option key={o} value={o}>
-                        {o}đ
-                      </option>
+            <div className="rounded-lg bg-white/5 p-3 space-y-2">
+              {rs.selectionMode === "presetPackages" && rs.presetPackages ? (
+                <>
+                  <div className="text-sm">
+                    Chọn gói câu hỏi cố định ({rs.questionsPerSeat} câu/gói — chuẩn {state.rulesetId}):
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(rs.presetPackages).map(([pkgKey, pkgPoints]) => (
+                      <button
+                        key={pkgKey}
+                        className={btnPrimary}
+                        onClick={() => call("vd:choosePackage", { points: pkgPoints })}
+                      >
+                        📦 Gói {pkgKey} điểm ({pkgPoints.join(" - ")})
+                      </button>
                     ))}
-                  </select>
-                ))}
-              </div>
-              <button className={btnPrimary} onClick={() => call("vd:choosePackage", { points: pts })}>
-                Xác nhận gói
-              </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-sm mb-2">Chọn gói {rs.questionsPerSeat} câu (thí sinh cũng có thể tự chọn trên điện thoại):</div>
+                  <div className="flex gap-2 mb-2">
+                    {pts.map((p, i) => (
+                      <select
+                        key={i}
+                        value={p}
+                        className="bg-slate-800 border border-white/20 rounded px-2 py-1"
+                        onChange={(e) => setPts(pts.map((x, j) => (j === i ? Number(e.target.value) : x)))}
+                      >
+                        {rs.pointOptions.map((o) => (
+                          <option key={o} value={o}>
+                            {o}đ
+                          </option>
+                        ))}
+                      </select>
+                    ))}
+                  </div>
+                  <button className={btnPrimary} onClick={() => call("vd:choosePackage", { points: pts })}>
+                    Xác nhận gói
+                  </button>
+                </>
+              )}
             </div>
           )}
           {pkg && (

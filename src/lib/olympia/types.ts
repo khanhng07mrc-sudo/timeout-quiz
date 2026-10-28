@@ -13,14 +13,46 @@ export const ROUND_LABELS: Record<RoundId, string> = {
   cauHoiPhu: "Câu Hỏi Phụ",
 };
 
-export type RulesetId = "O21" | "O22" | "O23" | "O24" | "O25" | "O26";
+export type RulesetId =
+  | "O13"
+  | "O14"
+  | "O15"
+  | "O16"
+  | "O17"
+  | "O18"
+  | "O19"
+  | "O20"
+  | "O21"
+  | "O22"
+  | "O23"
+  | "O24"
+  | "O25"
+  | "O26";
+
+export type AudioSeason = "O13-15" | "O16-21" | "O22" | "O23" | "O24-25" | "O26";
 
 export const MAX_SEATS = 8;
+
+export const KHOI_DONG_SUBJECTS = [
+  "Toán",
+  "Lý",
+  "Hóa",
+  "Sinh",
+  "Văn",
+  "Sử",
+  "Địa",
+  "Thể thao",
+  "Nghệ thuật",
+  "Lĩnh vực khác",
+  "Tiếng Anh",
+] as const;
 
 // ── Question set (same shape as the original app's questions/*.json) ──
 export interface QA {
   q: string;
   a: string;
+  /** optional subject/category label (e.g. Toán, Lý, Hóa, Sinh, Văn, Sử, Địa, Thể thao, Nghệ thuật, Lĩnh vực khác, Tiếng Anh) */
+  subject?: string;
   /** optional media attached to the question (image/video url) */
   media?: string;
   mediaType?: "image" | "video";
@@ -37,6 +69,8 @@ export interface TangTocQuestion {
   q?: string;
   answer: string;
   duration?: number;
+  /** question category (O13+: iq = Câu 1 IQ, data = Câu 2 & 4 Dữ kiện, arrange = Câu 3 Sắp xếp 6 mảnh 1..6) */
+  category?: "iq" | "data" | "arrange";
 }
 
 export interface VcnvRowDef {
@@ -82,7 +116,7 @@ export interface OlympiaRuleset {
   id: RulesetId;
   label: string;
   /** folder under /olympia-audio/ */
-  audioSeason: "O22" | "O23" | "O24-25" | "O26";
+  audioSeason: AudioSeason;
   note?: string;
   khoiDong: {
     correctPoints: number;
@@ -94,7 +128,11 @@ export interface OlympiaRuleset {
   };
   vcnv: {
     rowPoints: number;
-    /** points for the keyword by number of rows opened: index = openedRows (0..4), clamped */
+    /**
+     * Points for solving the keyword:
+     * - If 6 elements: index 0..4 = openedRows (0..4), index 5 = after center question (question #5) opened.
+     * - If 5 elements: legacy format where 0 or 1 opened rows = index 0, 2..4 = index 1..3, after all 4/center = index 4.
+     */
     cnvPoints: number[];
     rowTimerMs: number;
   };
@@ -104,10 +142,15 @@ export interface OlympiaRuleset {
   };
   veDich: {
     questionsPerSeat: number;
+    selectionMode?: "presetPackages" | "customPoints";
+    /** Fixed package definitions for O13–O19: e.g. { "40": [10,10,10,10], "60": [10,10,20,20], "80": [10,20,20,30] } */
+    presetPackages?: Record<string, number[]>;
     pointOptions: number[];
     thinkMs: Record<string, number>; // by points
     stealMs: number;
     stealPenaltyDivisor: number;
+    /** "seat_order" (O13–O20: 1 -> X) or "highest_unplayed" (O21–O26: highest current score among unplayed seats) */
+    turnOrderMode?: "seat_order" | "highest_unplayed";
   };
   cauHoiPhu: { timerMs: number };
 }
@@ -121,7 +164,7 @@ export interface TimerState {
 }
 
 export interface Seat {
-  id: number; // 0..3
+  id: number; // 0..7
   name: string;
   playerKey: string | null; // reconnect token owner
   connected: boolean;
@@ -156,7 +199,7 @@ export interface KhoiDongState {
   lockedSeats: number[]; // locked out for next question (O22 lockout) or this question after wrong
   nextLockedSeats: number[];
   poolCursor: number;
-  current: { q: string; a: string; media?: string; mediaType?: string } | null;
+  current: { q: string; a: string; subject?: string; media?: string; mediaType?: string } | null;
   lastVerdict: "correct" | "wrong" | null;
 }
 
@@ -170,7 +213,9 @@ export interface VcnvState {
   keyword: string;
   mysteryImage?: string;
   centerQuestion?: QA;
-  currentRow: number; // -1 none, 0..3 row, 4 = keyword
+  centerOpened?: boolean;
+  centerWrong?: boolean;
+  currentRow: number; // -1 none, 0..3 row, 4 = center question (#5)
   phase: "grid" | "question" | "answers" | "done";
   timer: TimerState;
   answers: Record<number, { text: string; at: number }>;
@@ -181,7 +226,7 @@ export interface VcnvState {
   openedCount: number;
   piecesRevealed: boolean[];
   solvedBy: number | null;
-  rowResults: Record<number, number[]>; // rowIdx -> seats awarded
+  rowResults: Record<number, number[]>; // rowIdx (0..4) -> seats awarded
 }
 
 export interface TangTocState {
@@ -197,6 +242,7 @@ export interface TangTocState {
 export interface VeDichState {
   order: number[]; // seat order
   turnIdx: number;
+  playedSeats?: number[];
   phase: "idle" | "choosing" | "packageReady" | "thinking" | "stealing" | "result" | "seatDone";
   packages: Record<number, { points: number; q: VeDichQuestion }[]>;
   qIdx: number;

@@ -113,9 +113,16 @@ function KhoiDong({ state, serverNow }: P) {
       {kd.phase === "segmentDone" && <div className="text-4xl font-black text-yellow-300">Kết thúc phần thi</div>}
       {kd.current && (
         <>
-          <div className="text-sm text-slate-400">
-            Câu {kd.qIdx + 1}
-            {seg.globalMs ? "" : `/${seg.questions}`}
+          <div className="text-sm text-slate-400 flex items-center justify-center gap-2">
+            <span>
+              Câu {kd.qIdx + 1}
+              {seg.questions > 100 ? "" : `/${seg.questions}`}
+            </span>
+            {kd.current.subject && (
+              <span className="px-2.5 py-0.5 rounded-full bg-sky-500/20 border border-sky-400/40 text-sky-300 font-bold">
+                📚 {kd.current.subject}
+              </span>
+            )}
           </div>
           <div className="text-5xl font-bold leading-tight">{kd.current.q}</div>
           <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-72 rounded-xl mx-auto" />
@@ -133,6 +140,7 @@ function KhoiDong({ state, serverNow }: P) {
 function Vcnv({ state, serverNow }: P) {
   const v = state.vcnv!;
   const cur = v.currentRow >= 0 && v.currentRow < 4 ? v.rows[v.currentRow] : null;
+  const isCenterRow = v.currentRow === 4;
   return (
     <div className="w-full max-w-6xl space-y-4">
       <div className="relative mx-auto rounded-2xl overflow-hidden border border-white/20 bg-slate-800 aspect-[16/7] max-h-[38vh]">
@@ -166,10 +174,17 @@ function Vcnv({ state, serverNow }: P) {
         ))}
       </div>
       <div className="text-center text-2xl tracking-[0.4em] font-black text-yellow-300">
-        {v.piecesRevealed[4] || v.solvedBy != null ? v.keyword : v.keyword}
+        {v.keyword}
         <span className="ml-3 text-sm text-slate-400 tracking-normal">({v.keyword.replace(/\s/g, "").length} chữ cái)</span>
       </div>
-      {cur && (
+      {isCenterRow && v.centerQuestion && (
+        <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-center">
+          <div className="text-xs font-bold text-amber-300 uppercase tracking-wider">⭐ Câu hỏi số 5 — Ô Trung Tâm</div>
+          <div className="text-2xl font-bold text-white mt-1">{v.centerQuestion.q}</div>
+          {v.centerQuestion.a && <div className="text-lg font-bold text-emerald-300 mt-1">Đáp án: {v.centerQuestion.a}</div>}
+        </div>
+      )}
+      {(cur || isCenterRow) && (
         <div className="max-w-xl mx-auto">
           <Timer timer={v.timer} serverNow={serverNow} big />
         </div>

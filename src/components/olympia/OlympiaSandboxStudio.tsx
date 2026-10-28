@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { OlympiaGame, normalizeAnswer } from "@/lib/olympia/engine";
-import { RULESETS, RULESET_LIST } from "@/lib/olympia/rulesets";
+import { RULESETS, RULESET_LIST, cnvPointsFor } from "@/lib/olympia/rulesets";
 import { SAMPLE_QUESTION_SET } from "@/lib/olympia/sample-questions";
 import { parseJsonSet, parseSheets } from "@/lib/olympia/excel-import";
 import {
@@ -371,7 +371,9 @@ export default function OlympiaSandboxStudio({ onExit }: { onExit: () => void })
                 const curVcnvAns =
                   state.vcnv && state.vcnv.currentRow >= 0 && state.vcnv.currentRow < 4
                     ? state.vcnv.rows[state.vcnv.currentRow]?.answer || ""
-                    : "";
+                    : state.vcnv && state.vcnv.currentRow === 4
+                      ? state.vcnv.centerQuestion?.a || state.vcnv.keyword || ""
+                      : "";
                 const curTtAns =
                   state.tangToc && state.tangToc.qIdx >= 0
                     ? state.tangToc.questions[state.tangToc.qIdx]?.answer || ""
@@ -444,13 +446,28 @@ export default function OlympiaSandboxStudio({ onExit }: { onExit: () => void })
                     )}
 
                     {isVdOwner && state.veDich?.phase === "choosing" && (
-                      <button
-                        type="button"
-                        onClick={() => simPick(s.id, vdPkgDraft)}
-                        className="w-full py-1 rounded bg-amber-400 text-slate-950 font-black text-xs"
-                      >
-                        📦 Chốt gói ({vdPkgDraft.join("-")})
-                      </button>
+                      rs.veDich.selectionMode === "presetPackages" && rs.veDich.presetPackages ? (
+                        <div className="grid grid-cols-3 gap-1">
+                          {Object.entries(rs.veDich.presetPackages).map(([pkgKey, pkgPoints]) => (
+                            <button
+                              key={pkgKey}
+                              type="button"
+                              onClick={() => simPick(s.id, pkgPoints)}
+                              className="py-1 rounded bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px]"
+                            >
+                              Gói {pkgKey}đ
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => simPick(s.id, vdPkgDraft)}
+                          className="w-full py-1 rounded bg-amber-400 text-slate-950 font-black text-xs"
+                        >
+                          📦 Chốt gói ({vdPkgDraft.join("-")})
+                        </button>
+                      )
                     )}
                   </div>
                 );
@@ -471,10 +488,15 @@ function SandboxKhoiDong({ state, act, serverNow }: { state: OlympiaState; act: 
   const seg = kd.segments[kd.segIdx];
   return (
     <div className="space-y-2 rounded-xl bg-white/5 p-3">
-      <div className="flex items-center justify-between text-xs text-sky-300">
+      <div className="flex items-center justify-between text-xs text-sky-300 flex-wrap gap-2">
         <span>
-          <b>{seg.label}</b> · Câu {Math.max(0, kd.qIdx + 1)}/{seg.globalMs ? "∞" : seg.questions}
+          <b>{seg.label}</b> · Câu {Math.max(0, kd.qIdx + 1)}/{seg.questions > 100 ? "∞" : seg.questions}
         </span>
+        {kd.current?.subject && (
+          <span className="px-2 py-0.5 rounded-full bg-sky-500/20 border border-sky-400/40 text-sky-200 font-bold">
+            📚 {kd.current.subject}
+          </span>
+        )}
         {kd.buzzedSeat != null && (
           <span className="px-2 py-0.5 rounded bg-yellow-300 text-slate-950 font-black">
             🔔 {seatName(state, kd.buzzedSeat)}
@@ -531,24 +553,34 @@ function SandboxVcnv({
   setChecked: (v: number[] | null) => void;
 }) {
   const v = state.vcnv!;
+  const rs = RULESETS[state.rulesetId] ?? RULESETS.O26;
   const seats = activeSeats(state);
   const row = v.currentRow >= 0 && v.currentRow < 4 ? v.rows[v.currentRow] : null;
-  const auto = row
-    ? seats
-        .filter(
-          (s) =>
-            !v.eliminatedSeats.includes(s.id) &&
-            normalizeAnswer(v.answers[s.id]?.text ?? "") === normalizeAnswer(row.answer) &&
-            row.answer
-        )
-        .map((s) => s.id)
-    : [];
+  const isCenterRow = v.currentRow === 4;
+  const targetAns = isCenterRow ? (v.centerQuestion?.a ?? v.keyword) : (row?.answer ?? "");
+  const auto =
+    v.currentRow >= 0 && targetAns
+      ? seats
+          .filter(
+            (s) =>
+              !v.eliminatedSeats.includes(s.id) &&
+              normalizeAnswer(v.answers[s.id]?.text ?? "") === normalizeAnswer(targetAns)
+          )
+          .map((s) => s.id)
+      : [];
   const sel = checked ?? auto;
+  const cnvPts = cnvPointsFor(rs, v.openedCount, Boolean(v.centerOpened));
 
   return (
     <div className="space-y-2 rounded-xl bg-white/5 p-3">
-      <div className="text-xs">
-        Từ khóa CNV: <b className="text-yellow-300">{v.keyword}</b> · Đã mở {v.openedCount}/4 hàng
+      <div className="text-xs flex items-center justify-between flex-wrap gap-2">
+        <span>
+          Từ khóa CNV: <b className="text-yellow-300">{v.keyword}</b> · Đã mở {v.openedCount}/4 hàng
+          {v.centerOpened ? " + Ô trung tâm" : ""}
+        </span>
+        <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold">
+          Giải CNV hiện tại: +{cnvPts}đ
+        </span>
       </div>
       <div className="grid grid-cols-2 gap-1.5">
         {v.rows.map((r, i) => (
@@ -569,6 +601,22 @@ function SandboxVcnv({
             <div className="text-slate-300 truncate">{r.hint}</div>
           </button>
         ))}
+        <button
+          disabled={Boolean(v.centerOpened)}
+          onClick={() => {
+            setChecked(null);
+            act("vcnv:selectRow", { row: 4 });
+          }}
+          className={`col-span-2 text-left rounded-lg p-2 border text-xs ${
+            v.currentRow === 4 ? "border-yellow-300 bg-yellow-300/15" : "border-amber-400/30 bg-amber-500/10"
+          } ${v.centerOpened ? "opacity-40" : ""}`}
+        >
+          <div className="font-bold text-amber-300">
+            ⭐ Câu hỏi số 5 — Ô Trung Tâm (+10đ) {v.centerOpened ? "✓" : ""} — ĐA:{" "}
+            <span className="text-emerald-300">{v.centerQuestion?.a || v.keyword}</span>
+          </div>
+          <div className="text-slate-200 truncate">{v.centerQuestion?.q || "Câu hỏi gợi ý cuối cùng tại ô trung tâm"}</div>
+        </button>
       </div>
       <Timer timer={v.timer} serverNow={serverNow} />
       <div className="flex flex-wrap gap-1.5">
@@ -727,25 +775,40 @@ function SandboxVeDich({
         ))}
       </div>
       {vd.phase === "choosing" && (
-        <div className="flex items-center gap-2 text-xs">
-          {pts.map((p, i) => (
-            <select
-              key={i}
-              value={p}
-              onChange={(e) => setPts(pts.map((x, j) => (j === i ? Number(e.target.value) : x)))}
-              className="bg-slate-800 border border-white/20 rounded px-2 py-1"
-            >
-              {rs.pointOptions.map((o) => (
-                <option key={o} value={o}>
-                  {o}đ
-                </option>
-              ))}
-            </select>
-          ))}
-          <button className={btnPrimary} onClick={() => act("vd:choosePackage", { points: pts })}>
-            Xác nhận gói
-          </button>
-        </div>
+        rs.selectionMode === "presetPackages" && rs.presetPackages ? (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-slate-300">Chọn gói cố định ({rs.questionsPerSeat} câu):</span>
+            {Object.entries(rs.presetPackages).map(([pkgKey, pkgPoints]) => (
+              <button
+                key={pkgKey}
+                className={btnPrimary}
+                onClick={() => act("vd:choosePackage", { points: pkgPoints })}
+              >
+                📦 Gói {pkgKey}đ ({pkgPoints.join("-")})
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-xs">
+            {pts.map((p, i) => (
+              <select
+                key={i}
+                value={p}
+                onChange={(e) => setPts(pts.map((x, j) => (j === i ? Number(e.target.value) : x)))}
+                className="bg-slate-800 border border-white/20 rounded px-2 py-1"
+              >
+                {rs.pointOptions.map((o) => (
+                  <option key={o} value={o}>
+                    {o}đ
+                  </option>
+                ))}
+              </select>
+            ))}
+            <button className={btnPrimary} onClick={() => act("vd:choosePackage", { points: pts })}>
+              Xác nhận gói
+            </button>
+          </div>
+        )
       )}
       {cur && (
         <div>

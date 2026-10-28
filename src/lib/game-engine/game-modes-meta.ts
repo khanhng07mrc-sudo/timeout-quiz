@@ -71,7 +71,7 @@ export const MODE_RULES_SUMMARY: Record<string, ModeRulesSummary> = {
   },
   OLYMPIA: {
     objective: "Chinh phục vòng nguyệt quế qua các phần thi Khởi Động, VCNV, Tăng Tốc, Về Đích và Câu Hỏi Phụ.",
-    mechanism: "Hỗ trợ tối đa 8 thí sinh, lựa chọn bộ luật từng mùa (O21–O26) và chọn riêng các vòng muốn thi đấu.",
+    mechanism: "Hỗ trợ tối đa 8 thí sinh, lựa chọn bộ luật từng mùa (O13–O26) và chọn riêng các vòng muốn thi đấu.",
     tip: "Phân bổ chiến thuật bấm chuông hợp lý và tận dụng Ngôi sao hy vọng ở vòng Về Đích.",
   },
 };

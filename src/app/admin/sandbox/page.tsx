@@ -236,12 +236,12 @@ const AVAILABLE_MODES: {
     mode: "OLYMPIA",
     name: "Đường Lên Đỉnh Olympia",
     emoji: "🏔️",
-    tagline: "5 phần thi Olympia (Khởi Động, VCNV, Tăng Tốc, Về Đích, Câu Hỏi Phụ) · Bộ luật O21–O26 · 2–8 thí sinh",
+    tagline: "5 phần thi Olympia (Khởi Động, VCNV, Tăng Tốc, Về Đích, Câu Hỏi Phụ) · Bộ luật O13–O26 · 2–8 thí sinh",
     badge: "Leo Núi",
     gradient: "from-sky-600 via-blue-600 to-indigo-700",
     accentColor: "#38bdf8",
     glowClass: "glow-neon-cyan",
-    perks: ["Luật O21–O26 chuẩn", "Tối đa 8 thí sinh", "Chấm tay & Giả lập 1 chạm"],
+    perks: ["Luật O13–O26 chuẩn", "Tối đa 8 thí sinh", "Chấm tay & Giả lập 1 chạm"],
   },
 
 ];

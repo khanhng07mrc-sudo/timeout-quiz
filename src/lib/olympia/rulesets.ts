@@ -1,4 +1,4 @@
-import type { AudioSeason, KdSegmentDef, OlympiaRuleset, RulesetId } from "./types";
+import type { AudioSeason, KdSegmentDef, OlympiaRuleset, RulesetId, O22Quarter } from "./types";
 
 /** O13–O19: 60s personal clock per contestant, max 12 questions */
 const solo60s12q = (seatCount: number): KdSegmentDef[] =>
@@ -48,8 +48,8 @@ const turnsO23 = (seatCount: number): KdSegmentDef[] =>
     perQuestionMs: 3000,
   }));
 
-const turnsO22 = (): KdSegmentDef[] =>
-  [30, 60, 90].map((s, i) => ({
+export const turnsO22 = (quarter: O22Quarter = 1): KdSegmentDef[] =>
+  (quarter === 1 ? [30, 60, 90] : [60, 60, 90]).map((s, i) => ({
     kind: "turn" as const,
     label: `Lượt chung ${i + 1} (${s} giây)`,
     questions: 99,
@@ -61,6 +61,28 @@ const turnsO22 = (): KdSegmentDef[] =>
 const THINK_CLASSIC = { "10": 10000, "20": 15000, "30": 20000, "40": 30000 };
 /** O22–O26 think times: 10/20đ = 15s, 30đ = 20s */
 const THINK_MODERN = { "10": 15000, "20": 15000, "30": 20000, "40": 30000 };
+
+export function getO22Rules(quarter: O22Quarter = 1) {
+  const isQ1 = quarter === 1;
+  const isQ3 = quarter === 3;
+  return {
+    khoiDong: {
+      correctPoints: 10,
+      wrongPenalty: isQ3 ? 5 : 0,
+      lockoutOnWrong: !isQ3,
+      segments: (_n: number) => turnsO22(quarter),
+    },
+    veDich: {
+      questionsPerSeat: isQ1 ? 2 : 3,
+      selectionMode: "customPoints" as const,
+      pointOptions: isQ1 ? [20, 40] : [20, 30],
+      thinkMs: THINK_MODERN,
+      stealMs: 5000,
+      stealPenaltyDivisor: 2,
+      turnOrderMode: "highest_unplayed" as const,
+    },
+  };
+}
 
 /** O13–O14 preset packages (4 questions per package) */
 export const PRESET_PACKAGES_O13_O14: Record<string, number[]> = {
@@ -244,12 +266,12 @@ export const RULESETS: Record<RulesetId, OlympiaRuleset> = {
     id: "O22",
     label: "Olympia 22",
     audioSeason: "O22",
-    note: "Khởi động: lượt chung theo đồng hồ 30/60/90 giây; sai bị khóa lượt câu sau (không trừ điểm). Tăng tốc 10/20/30/40s.",
+    note: "Khởi động: 3 lượt chung (Q1: 30/60/90s; Q2/3: 60/60/90s); Q1-2 sai khóa câu sau, Q3 trừ 5đ. Về đích: Q1 2 câu (20/40đ), Q2-3 3 câu (20/30đ).",
     khoiDong: {
       correctPoints: 10,
       wrongPenalty: 0,
       lockoutOnWrong: true,
-      segments: (n) => [...soloSegments(n), ...turnsO22()],
+      segments: (_n) => turnsO22(1),
     },
     vcnv: { rowPoints: 10, cnvPoints: CNV_O14_O22, rowTimerMs: 15000 },
     tangToc: { timers: [10000, 20000, 30000, 40000] },

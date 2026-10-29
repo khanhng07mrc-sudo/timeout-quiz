@@ -1,5 +1,5 @@
 // Olympia game engine — pure state machine (no sockets, no I/O). Fully unit-testable.
-import { RULESETS, cnvPointsFor, tangTocTierPoints } from "./rulesets";
+import { RULESETS, cnvPointsFor, tangTocTierPoints, turnsO22 } from "./rulesets";
 import { buildBalancedKhoiDongQueues, pickBalancedVeDichPackage, tagQAWithAI } from "./ai-classifier";
 import {
   KHOI_DONG_SUBJECTS,
@@ -10,6 +10,7 @@ import {
   type HostAction,
   type KdSegmentDef,
   type KhoiDongState,
+  type O22Quarter,
   type OlympiaConfig,
   type OlympiaRuleset,
   type OlympiaState,
@@ -89,6 +90,7 @@ export class OlympiaGame {
     this.state = {
       code,
       rulesetId: this.ruleset.id,
+      o22Quarter: config.o22Quarter ?? 1,
       rounds,
       stage: "lobby",
       seatCount,
@@ -374,7 +376,11 @@ export class OlympiaGame {
 
     switch (round) {
       case "khoiDong": {
-        const segs: KdSegmentDef[] = this.ruleset.khoiDong.segments(active.length).map((seg) =>
+        let rawSegs = this.ruleset.khoiDong.segments(active.length);
+        if (this.ruleset.id === "O22") {
+          rawSegs = turnsO22(st.o22Quarter ?? 1);
+        }
+        const segs: KdSegmentDef[] = rawSegs.map((seg) =>
           seg.kind === "solo" ? { ...seg, seat: active[seg.seat as number], label: seg.label } : seg
         );
         const useBalanced = this.config.balancedRandom !== false && qs.balancedRandom !== false;
@@ -613,7 +619,25 @@ export class OlympiaGame {
         });
         return OK;
       }
-      case "seat:kick":
+      case "system:setO22Quarter": {
+        const q = Number(a.quarter) as O22Quarter;
+        if (q === 1 || q === 2 || q === 3) {
+          st.o22Quarter = q;
+          if (this.ruleset.id === "O22") {
+            const kd = st.khoiDong;
+            if (kd && (kd.phase === "intro" || kd.qIdx < 0)) {
+              const segs = turnsO22(q);
+              kd.segments = segs;
+              if (kd.segIdx < segs.length) {
+                const curSeg = segs[kd.segIdx];
+                kd.timer = mkTimer(curSeg.perQuestionMs);
+                kd.globalTimer = curSeg.globalMs ? mkTimer(curSeg.globalMs) : null;
+              }
+            }
+          }
+        }
+        return OK;
+      }
         this.kickSeat(num("seat"));
         return OK;
       case "seat:rename": {
@@ -1089,8 +1113,20 @@ export class OlympiaGame {
         }
         const who = kd.buzzedSeat;
         if (who == null) return fail("Chưa có thí sinh nào bấm chuông");
-        if (rs.wrongPenalty) this.addScore(who, -rs.wrongPenalty);
-        if (rs.lockoutOnWrong && !kd.nextLockedSeats.includes(who)) kd.nextLockedSeats.push(who);
+        let penalty = rs.wrongPenalty;
+        let lockout = rs.lockoutOnWrong;
+        if (this.ruleset.id === "O22") {
+          const q = st.o22Quarter ?? 1;
+          if (q === 3) {
+            penalty = 5;
+            lockout = false;
+          } else {
+            penalty = 0;
+            lockout = true;
+          }
+        }
+        if (penalty) this.addScore(who, -penalty);
+        if (lockout && !kd.nextLockedSeats.includes(who)) kd.nextLockedSeats.push(who);
         kd.lockedSeats.push(who);
         pauseTimer(kd.timer, now);
         kd.buzzedSeat = null;
@@ -1106,8 +1142,8 @@ export class OlympiaGame {
           verdict: "wrong",
         }));
         const changes: Record<number, number> = {};
-        if (rs.wrongPenalty) {
-          kd.lockedSeats.forEach((sId) => (changes[sId] = -rs.wrongPenalty));
+        if (penalty) {
+          kd.lockedSeats.forEach((sId) => (changes[sId] = -penalty));
         }
         this.pushTranscript({
           at: now,
@@ -1687,8 +1723,20 @@ export class OlympiaGame {
         resolvedPoints = matched;
       }
     } else {
-      if (resolvedPoints.length !== rs.questionsPerSeat || resolvedPoints.some((p) => !rs.pointOptions.includes(p)))
-        return fail(`Gói phải gồm ${rs.questionsPerSeat} câu với mức điểm ${rs.pointOptions.join("/")}`);
+      let qPerSeat = rs.questionsPerSeat;
+      let opts = rs.pointOptions;
+      if (this.ruleset.id === "O22") {
+        const q = st.o22Quarter ?? 1;
+        if (q === 1) {
+          qPerSeat = 2;
+          opts = [20, 40];
+        } else {
+          qPerSeat = 3;
+          opts = [20, 30];
+        }
+      }
+      if (resolvedPoints.length !== qPerSeat || resolvedPoints.some((p) => !opts.includes(p)))
+        return fail(`Gói phải gồm ${qPerSeat} câu với mức điểm ${opts.join("/")}`);
     }
     const ownerSeat = this.vdSeat(vd);
     vd.packages[ownerSeat] = this.allocatePackage(vd, resolvedPoints);

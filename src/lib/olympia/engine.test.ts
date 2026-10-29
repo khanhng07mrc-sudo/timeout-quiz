@@ -17,8 +17,8 @@ function test(name: string, fn: () => void) {
   }
 }
 
-function game(rulesetId: RulesetId, rounds: RoundId[], players: number) {
-  const cfg: OlympiaConfig = { rulesetId, rounds, questionSet: SAMPLE_QUESTION_SET };
+function game(rulesetId: RulesetId, rounds: RoundId[], players: number, extraCfg?: Partial<OlympiaConfig>) {
+  const cfg: OlympiaConfig = { rulesetId, rounds, questionSet: SAMPLE_QUESTION_SET, ...extraCfg };
   const g = new OlympiaGame("TEST", cfg, 0);
   for (let i = 0; i < players; i++) g.joinSeat("P" + (i + 1), "k" + i);
   return g;
@@ -256,7 +256,7 @@ test("Khởi Động shared: O22 2s lock, O23+ 5s lock, early manual unlock, tim
   // Test O22 (2s lock & round clock continues during kd:wrong)
   const g22 = game("O22", ["khoiDong"], 2);
   act(g22, "game:start");
-  g22.state.khoiDong!.segIdx = 2;
+  g22.state.khoiDong!.segIdx = 0;
   g22.state.khoiDong!.globalTimer = { totalMs: 30000, remainingMs: 30000, startedAt: null };
   g22.state.khoiDong!.phase = "intro";
   act(g22, "kd:next", {}, 1000);
@@ -456,4 +456,78 @@ test("excel-import parses CauHoi_Mau.xlsx and CauHoi_Mau_O22_23.xlsx", () => {
   const j = parseJsonSet(SAMPLE_QUESTION_SET);
   assert.equal(j.set?.vcnv.answer, "TIÊU LỆNH CHỮA CHÁY");
 });
+test("O22 Quý 1: Khởi động 30s-60s-90s, sai khóa câu sau không trừ điểm, Về đích 2 câu (20/40đ)", () => {
+  const g = game("O22", ["khoiDong", "veDich"], 2, { o22Quarter: 1 });
+  act(g, "game:start");
+  const kd = g.state.khoiDong!;
+  assert.equal(kd.segments.length, 3, "O22 has exactly 3 shared segments");
+  assert.equal(kd.segments[0].globalMs, 30000, "Q1 Lượt 1 is 30s");
+  assert.equal(kd.segments[1].globalMs, 60000, "Q1 Lượt 2 is 60s");
+  assert.equal(kd.segments[2].globalMs, 90000, "Q1 Lượt 3 is 90s");
+
+  // Start question 0 and test wrong answer
+  act(g, "kd:next", {}, 1000);
+  g.tick(1000 + 2000); // 2s lock
+  assert.ok(g.playerBuzz(0, 3100).ok);
+  act(g, "kd:wrong", {}, 3200);
+  assert.equal(g.state.seats[0].score, 0, "No point deduction in Q1");
+  assert.deepEqual(kd.nextLockedSeats, [0], "Seat 0 is locked out of next question in Q1");
+
+  // Advance to Về Đích
+  act(g, "round:force", { round: "veDich" });
+  // In Q1, 2 questions [20, 40] is valid; 3 questions or [10, 20, 30] is rejected
+  assert.equal(g.hostAction({ type: "vd:choosePackage", points: [10, 20, 30] }, 0).ok, false);
+  assert.equal(g.hostAction({ type: "vd:choosePackage", points: [20, 40] }, 0).ok, true);
+});
+
+test("O22 Quý 2: Khởi động 60s-60s-90s, sai khóa câu sau không trừ điểm, Về đích 3 câu (20/30đ)", () => {
+  const g = game("O22", ["khoiDong", "veDich"], 2, { o22Quarter: 2 });
+  act(g, "game:start");
+  const kd = g.state.khoiDong!;
+  assert.equal(kd.segments[0].globalMs, 60000, "Q2 Lượt 1 is 60s");
+  assert.equal(kd.segments[1].globalMs, 60000, "Q2 Lượt 2 is 60s");
+  assert.equal(kd.segments[2].globalMs, 90000, "Q2 Lượt 3 is 90s");
+
+  act(g, "kd:next", {}, 1000);
+  g.tick(1000 + 2000);
+  assert.ok(g.playerBuzz(0, 3100).ok);
+  act(g, "kd:wrong", {}, 3200);
+  assert.equal(g.state.seats[0].score, 0, "No point deduction in Q2");
+  assert.deepEqual(kd.nextLockedSeats, [0], "Seat 0 is locked out of next question in Q2");
+
+  // Advance to Về Đích
+  act(g, "round:force", { round: "veDich" });
+  assert.equal(g.hostAction({ type: "vd:choosePackage", points: [20, 40] }, 0).ok, false, "2 questions rejected in Q2");
+  assert.equal(g.hostAction({ type: "vd:choosePackage", points: [20, 30, 20] }, 0).ok, true, "3 questions [20, 30] accepted in Q2");
+});
+
+test("O22 Quý 3 - CKN: Khởi động 60s-60s-90s, sai trừ 5đ không khóa câu sau, Về đích 3 câu (20/30đ)", () => {
+  const g = game("O22", ["khoiDong", "veDich"], 2, { o22Quarter: 3 });
+  act(g, "game:start");
+  const kd = g.state.khoiDong!;
+  assert.equal(kd.segments[0].globalMs, 60000, "Q3 Lượt 1 is 60s");
+
+  act(g, "kd:next", {}, 1000);
+  g.tick(1000 + 2000);
+  assert.ok(g.playerBuzz(0, 3100).ok);
+  act(g, "kd:wrong", {}, 3200);
+  assert.equal(g.state.seats[0].score, -5, "Q3 deducts 5 points on wrong answer");
+  assert.deepEqual(kd.nextLockedSeats, [], "Seat 0 is NOT locked out of next question in Q3");
+
+  // Advance to Về Đích
+  act(g, "round:force", { round: "veDich" });
+  assert.equal(g.hostAction({ type: "vd:choosePackage", points: [20, 20, 30] }, 0).ok, true);
+});
+
+test("O22 dynamic quarter switch via system:setO22Quarter", () => {
+  const g = game("O22", ["khoiDong"], 2, { o22Quarter: 1 });
+  act(g, "game:start");
+  assert.equal(g.state.khoiDong!.segments[0].globalMs, 30000);
+
+  // Host dynamically switches to Quý 2
+  act(g, "system:setO22Quarter", { quarter: 2 });
+  assert.equal(g.state.o22Quarter, 2);
+  assert.equal(g.state.khoiDong!.segments[0].globalMs, 60000, "Updated to 60s");
+});
+
 console.log(`${passed} tests passed`);

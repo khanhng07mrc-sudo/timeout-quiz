@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
-import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId, type Seat } from "@/lib/olympia/types";
+import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId, type Seat, type O22Quarter } from "@/lib/olympia/types";
 import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
 import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
 import OlympiaAudioManagerDrawer from "./OlympiaAudioManagerDrawer";
@@ -19,7 +19,13 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
   // Auto-enabled by default so Host Console plays all game sounds like the real desktop software
   const [audioOn, setAudioOn] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
-  const [o22Quarter, setO22Quarter] = useState<1 | 2>(1);
+  const [o22Quarter, setO22Quarter] = useState<O22Quarter>(1);
+
+  useEffect(() => {
+    if (state?.o22Quarter && state.o22Quarter !== o22Quarter) {
+      setO22Quarter(state.o22Quarter);
+    }
+  }, [state?.o22Quarter]);
   const [showTranscript, setShowTranscript] = useState(false);
   const [showAudioDrawer, setShowAudioDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
@@ -413,7 +419,14 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               )}
               {curRound === "vcnv" && <VcnvDeck state={state} call={call} seats={seats} />}
               {curRound === "tangToc" && <TangTocDeck state={state} call={call} />}
-              {curRound === "veDich" && <VeDichDeck state={state} call={call} />}
+              {curRound === "veDich" && (
+                <VeDichDeck
+                  state={state}
+                  call={call}
+                  o22Quarter={o22Quarter}
+                  setO22Quarter={setO22Quarter}
+                />
+              )}
               {curRound === "cauHoiPhu" && <CauHoiPhuDeck state={state} call={call} seats={seats} />}
               {!curRound && (
                 <div className="py-6 text-center space-y-2">
@@ -623,8 +636,8 @@ function KhoiDongDeck({
 }: {
   state: OlympiaState;
   call: Call;
-  o22Quarter: 1 | 2;
-  setO22Quarter: (q: 1 | 2) => void;
+  o22Quarter: O22Quarter;
+  setO22Quarter: (q: O22Quarter) => void;
 }) {
   const kd = state.khoiDong!;
   const seg = kd.segments[kd.segIdx];
@@ -677,27 +690,45 @@ function KhoiDongDeck({
           })}
         </div>
 
-        {/* O22 Quarter Toggle (Quý 1 [30s] vs Quý 2..CKN [60s]) */}
-        {isO22 && !isSolo && (
+        {/* O22 Quarter Toggle (Quý 1 [30s] vs Quý 2 [60s] vs Quý 3-CKN [60s, -5đ]) */}
+        {isO22 && (
           <div className="flex items-center gap-1 border-l border-white/10 pl-2">
-            <span className="text-[10px] text-slate-400 font-bold">Lượt 1:</span>
+            <span className="text-[10px] text-amber-300 font-bold">O22:</span>
             <button
               type="button"
-              onClick={() => setO22Quarter(1)}
+              onClick={() => {
+                setO22Quarter(1);
+                call("system:setO22Quarter", { quarter: 1 });
+              }}
               className={`px-2 py-0.5 rounded text-[11px] font-bold border cursor-pointer ${
-                o22Quarter === 1 ? "bg-amber-500 text-black border-amber-400" : "bg-white/5 text-slate-400 border-white/10"
+                o22Quarter === 1 ? "bg-amber-500 text-black border-amber-400 font-black shadow-sm" : "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10"
               }`}
             >
-              30s (Q1)
+              ⚡ Q1 (30s)
             </button>
             <button
               type="button"
-              onClick={() => setO22Quarter(2)}
+              onClick={() => {
+                setO22Quarter(2);
+                call("system:setO22Quarter", { quarter: 2 });
+              }}
               className={`px-2 py-0.5 rounded text-[11px] font-bold border cursor-pointer ${
-                o22Quarter === 2 ? "bg-amber-500 text-black border-amber-400" : "bg-white/5 text-slate-400 border-white/10"
+                o22Quarter === 2 ? "bg-amber-500 text-black border-amber-400 font-black shadow-sm" : "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10"
               }`}
             >
-              60s (Q2..CKN)
+              ⏱️ Q2 (60s)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setO22Quarter(3);
+                call("system:setO22Quarter", { quarter: 3 });
+              }}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold border cursor-pointer ${
+                o22Quarter === 3 ? "bg-amber-500 text-black border-amber-400 font-black shadow-sm" : "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10"
+              }`}
+            >
+              🎯 Q3-CKN (-5đ)
             </button>
           </div>
         )}
@@ -1118,11 +1149,35 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
 // ───────────────────────────────────────────────────────────
 // VỀ ĐÍCH DECK (Image 4 reference)
 // ───────────────────────────────────────────────────────────
-function VeDichDeck({ state, call }: { state: OlympiaState; call: Call }) {
+function VeDichDeck({
+  state,
+  call,
+  o22Quarter,
+  setO22Quarter,
+}: {
+  state: OlympiaState;
+  call: Call;
+  o22Quarter: O22Quarter;
+  setO22Quarter: (q: O22Quarter) => void;
+}) {
   const vd = state.veDich!;
+  const isO22 = state.rulesetId === "O22";
+  const isO22Q1 = isO22 && o22Quarter === 1;
+
   const [pkgQ1, setPkgQ1] = useState<number>(20);
-  const [pkgQ2, setPkgQ2] = useState<number>(20);
+  const [pkgQ2, setPkgQ2] = useState<number>(isO22Q1 ? 40 : 20);
   const [pkgQ3, setPkgQ3] = useState<number>(20);
+
+  useEffect(() => {
+    if (isO22Q1) {
+      if (pkgQ1 !== 20 && pkgQ1 !== 40) setPkgQ1(20);
+      if (pkgQ2 !== 20 && pkgQ2 !== 40) setPkgQ2(40);
+    } else if (isO22) {
+      if (pkgQ1 !== 20 && pkgQ1 !== 30) setPkgQ1(20);
+      if (pkgQ2 !== 20 && pkgQ2 !== 30) setPkgQ2(20);
+      if (pkgQ3 !== 20 && pkgQ3 !== 30) setPkgQ3(30);
+    }
+  }, [isO22Q1, isO22]);
 
   return (
     <div className="space-y-2.5">
@@ -1147,6 +1202,49 @@ function VeDichDeck({ state, call }: { state: OlympiaState; call: Call }) {
             </button>
           </div>
 
+          {/* O22 Quarter Selector in VeDich */}
+          {isO22 && (
+            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/10">
+              <span className="text-[10px] text-amber-300 font-bold px-1">O22:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setO22Quarter(1);
+                  call("system:setO22Quarter", { quarter: 1 });
+                }}
+                className={`flex-1 py-1 rounded text-[10px] font-bold border cursor-pointer ${
+                  o22Quarter === 1 ? "bg-amber-500 text-black border-amber-400 font-black shadow-sm" : "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10"
+                }`}
+              >
+                ⚡ Q1 (2 câu 20/40)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setO22Quarter(2);
+                  call("system:setO22Quarter", { quarter: 2 });
+                }}
+                className={`flex-1 py-1 rounded text-[10px] font-bold border cursor-pointer ${
+                  o22Quarter === 2 ? "bg-amber-500 text-black border-amber-400 font-black shadow-sm" : "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10"
+                }`}
+              >
+                ⏱️ Q2 (3 câu 20/30)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setO22Quarter(3);
+                  call("system:setO22Quarter", { quarter: 3 });
+                }}
+                className={`flex-1 py-1 rounded text-[10px] font-bold border cursor-pointer ${
+                  o22Quarter === 3 ? "bg-amber-500 text-black border-amber-400 font-black shadow-sm" : "bg-white/5 text-slate-400 border-white/10 hover:bg-white/10"
+                }`}
+              >
+                🎯 Q3-CKN
+              </button>
+            </div>
+          )}
+
           {/* Mở bảng chọn gói đồ họa: Phát ngay choose_package.mp3 */}
           <button
             type="button"
@@ -1156,58 +1254,92 @@ function VeDichDeck({ state, call }: { state: OlympiaState; call: Call }) {
             🎨 Mở bảng chọn gói đồ họa
           </button>
 
-          {/* Gói Câu Hỏi 3 Dropdowns */}
+          {/* Gói Câu Hỏi Dropdowns (Quý 1: 2 câu 20/40đ; Quý 2-3: 3 câu 20/30đ) */}
           <div className="space-y-1 bg-[#162032] p-2 rounded-lg border border-white/5">
-            <div className="text-[11px] font-bold text-amber-300">GÓI CÂU HỎI</div>
-            <div className="grid grid-cols-3 gap-1">
-              <div>
-                <span className="text-[10px] text-slate-400">Câu 1</span>
-                <select
-                  value={pkgQ1}
-                  onChange={(e) => setPkgQ1(Number(e.target.value))}
-                  className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
-                >
-                  <option value={10}>10đ</option>
-                  <option value={20}>20đ</option>
-                  <option value={30}>30đ</option>
-                  <option value={40}>40đ</option>
-                </select>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400">Câu 2</span>
-                <select
-                  value={pkgQ2}
-                  onChange={(e) => setPkgQ2(Number(e.target.value))}
-                  className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
-                >
-                  <option value={10}>10đ</option>
-                  <option value={20}>20đ</option>
-                  <option value={30}>30đ</option>
-                  <option value={40}>40đ</option>
-                </select>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400">Câu 3</span>
-                <select
-                  value={pkgQ3}
-                  onChange={(e) => setPkgQ3(Number(e.target.value))}
-                  className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
-                >
-                  <option value={10}>10đ</option>
-                  <option value={20}>20đ</option>
-                  <option value={30}>30đ</option>
-                  <option value={40}>40đ</option>
-                </select>
-              </div>
+            <div className="flex items-center justify-between text-[11px] font-bold text-amber-300">
+              <span>GÓI CÂU HỎI</span>
+              {isO22Q1 && <span className="text-[10px] text-amber-400 font-normal">Quý 1: 2 câu (20đ, 40đ)</span>}
             </div>
+            {isO22Q1 ? (
+              <div className="grid grid-cols-2 gap-1.5">
+                <div>
+                  <span className="text-[10px] text-slate-400">Câu 1</span>
+                  <select
+                    value={pkgQ1}
+                    onChange={(e) => setPkgQ1(Number(e.target.value))}
+                    className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
+                  >
+                    <option value={20}>20đ</option>
+                    <option value={40}>40đ (30s)</option>
+                  </select>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400">Câu 2</span>
+                  <select
+                    value={pkgQ2}
+                    onChange={(e) => setPkgQ2(Number(e.target.value))}
+                    className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
+                  >
+                    <option value={20}>20đ</option>
+                    <option value={40}>40đ (30s)</option>
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-1">
+                <div>
+                  <span className="text-[10px] text-slate-400">Câu 1</span>
+                  <select
+                    value={pkgQ1}
+                    onChange={(e) => setPkgQ1(Number(e.target.value))}
+                    className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
+                  >
+                    {!isO22 && <option value={10}>10đ</option>}
+                    <option value={20}>20đ</option>
+                    <option value={30}>30đ</option>
+                    {!isO22 && <option value={40}>40đ</option>}
+                  </select>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400">Câu 2</span>
+                  <select
+                    value={pkgQ2}
+                    onChange={(e) => setPkgQ2(Number(e.target.value))}
+                    className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
+                  >
+                    {!isO22 && <option value={10}>10đ</option>}
+                    <option value={20}>20đ</option>
+                    <option value={30}>30đ</option>
+                    {!isO22 && <option value={40}>40đ</option>}
+                  </select>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400">Câu 3</span>
+                  <select
+                    value={pkgQ3}
+                    onChange={(e) => setPkgQ3(Number(e.target.value))}
+                    className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
+                  >
+                    {!isO22 && <option value={10}>10đ</option>}
+                    <option value={20}>20đ</option>
+                    <option value={30}>30đ</option>
+                    {!isO22 && <option value={40}>40đ</option>}
+                  </select>
+                </div>
+              </div>
+            )}
 
-            {/* ✔ Xác nhận gói: Phát ngay open_question và 1.8s sau chuyển câu hỏi */}
+            {/* ✔ Xác nhận gói */}
             <button
               type="button"
-              onClick={() => call("vd:confirmPackage", { points: [pkgQ1, pkgQ2, pkgQ3] })}
+              onClick={() =>
+                call("vd:confirmPackage", {
+                  points: isO22Q1 ? [pkgQ1, pkgQ2] : [pkgQ1, pkgQ2, pkgQ3],
+                })
+              }
               className="w-full mt-1.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-black shadow cursor-pointer"
             >
-              ✔ Xác nhận gói
+              ✔ Xác nhận gói ({isO22Q1 ? `${pkgQ1 + pkgQ2}đ` : `${pkgQ1 + pkgQ2 + pkgQ3}đ`})
             </button>
           </div>
         </div>

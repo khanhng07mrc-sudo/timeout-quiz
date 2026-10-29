@@ -22,6 +22,7 @@ import {
   type OlympiaQuestionSet,
   type RoundId,
   type RulesetId,
+  type O22Quarter,
 } from "@/lib/olympia/types";
 
 const SELECTABLE_ROUNDS: RoundId[] = ROUND_ORDER.filter((r) => r !== "cauHoiPhu");
@@ -30,6 +31,7 @@ export default function CreateOlympiaPage() {
   const router = useRouter();
   const [roomName, setRoomName] = useState("Trận đấu Olympia");
   const [rulesetId, setRulesetId] = useState<RulesetId>("O26");
+  const [o22Quarter, setO22Quarter] = useState<O22Quarter>(1);
   const [rounds, setRounds] = useState<RoundId[]>([...SELECTABLE_ROUNDS]);
   const [questionSet, setQuestionSet] = useState<OlympiaQuestionSet>(SAMPLE_QUESTION_SET);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -212,6 +214,7 @@ export default function CreateOlympiaPage() {
             allowedPowerups: [],
             olympia: {
               rulesetId,
+              o22Quarter: rulesetId === "O22" ? o22Quarter : undefined,
               rounds,
               questionSet: finalSet,
               seatCount: targetContestantCount,
@@ -315,6 +318,58 @@ export default function CreateOlympiaPage() {
             );
           })}
         </div>
+
+        {rulesetId === "O22" && (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 p-3 space-y-2 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                ⚡ Chọn giai đoạn Quý Olympia 22:
+              </span>
+              <span className="text-[11px] text-amber-400 font-medium">
+                {o22Quarter === 1
+                  ? "Khởi động 30s/60s/90s · Sai mất lượt · Về đích gói 2 câu (20-40đ)"
+                  : o22Quarter === 2
+                  ? "Khởi động 60s/60s/90s · Sai mất lượt · Về đích gói 3 câu (20-30đ)"
+                  : "Khởi động 60s/60s/90s · Sai trừ 5đ không mất lượt · Về đích gói 3 câu (20-30đ)"}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setO22Quarter(1)}
+                className={`py-2 px-3 rounded-lg border text-xs font-black transition text-center ${
+                  o22Quarter === 1
+                    ? "bg-amber-500 text-slate-950 border-amber-300 shadow-md shadow-amber-500/20"
+                    : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+                }`}
+              >
+                ⚡ Quý 1 (30s · 20/40đ)
+              </button>
+              <button
+                type="button"
+                onClick={() => setO22Quarter(2)}
+                className={`py-2 px-3 rounded-lg border text-xs font-black transition text-center ${
+                  o22Quarter === 2
+                    ? "bg-amber-500 text-slate-950 border-amber-300 shadow-md shadow-amber-500/20"
+                    : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+                }`}
+              >
+                ⏱️ Quý 2 (60s · 20/30đ)
+              </button>
+              <button
+                type="button"
+                onClick={() => setO22Quarter(3)}
+                className={`py-2 px-3 rounded-lg border text-xs font-black transition text-center ${
+                  o22Quarter === 3
+                    ? "bg-amber-500 text-slate-950 border-amber-300 shadow-md shadow-amber-500/20"
+                    : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+                }`}
+              >
+                🎯 Quý 3 - CKN (Trừ 5đ)
+              </button>
+            </div>
+          </div>
+        )}
 
         {showRulesInfo && (
           <div className="rounded-xl border border-sky-400/30 bg-slate-950/90 p-3.5 space-y-2.5 text-xs animate-fade-in">

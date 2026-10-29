@@ -24566,7 +24566,7 @@ var turnsO23 = (seatCount) => [2, 3, 4].map((m) => seatCount * m).map((n, i) => 
   questions: n,
   perQuestionMs: 3e3
 }));
-var turnsO22 = () => [30, 60, 90].map((s, i) => ({
+var turnsO22 = (quarter = 1) => (quarter === 1 ? [30, 60, 90] : [60, 60, 90]).map((s, i) => ({
   kind: "turn",
   label: `L\u01B0\u1EE3t chung ${i + 1} (${s} gi\xE2y)`,
   questions: 99,
@@ -24743,12 +24743,12 @@ var RULESETS = {
     id: "O22",
     label: "Olympia 22",
     audioSeason: "O22",
-    note: "Kh\u1EDFi \u0111\u1ED9ng: l\u01B0\u1EE3t chung theo \u0111\u1ED3ng h\u1ED3 30/60/90 gi\xE2y; sai b\u1ECB kh\xF3a l\u01B0\u1EE3t c\xE2u sau (kh\xF4ng tr\u1EEB \u0111i\u1EC3m). T\u0103ng t\u1ED1c 10/20/30/40s.",
+    note: "Kh\u1EDFi \u0111\u1ED9ng: 3 l\u01B0\u1EE3t chung (Q1: 30/60/90s; Q2/3: 60/60/90s); Q1-2 sai kh\xF3a c\xE2u sau, Q3 tr\u1EEB 5\u0111. V\u1EC1 \u0111\xEDch: Q1 2 c\xE2u (20/40\u0111), Q2-3 3 c\xE2u (20/30\u0111).",
     khoiDong: {
       correctPoints: 10,
       wrongPenalty: 0,
       lockoutOnWrong: true,
-      segments: (n) => [...soloSegments(n), ...turnsO22()]
+      segments: (_n) => turnsO22(1)
     },
     vcnv: { rowPoints: 10, cnvPoints: CNV_O14_O22, rowTimerMs: 15e3 },
     tangToc: { timers: [1e4, 2e4, 3e4, 4e4] },
@@ -25321,6 +25321,7 @@ var OlympiaGame = class _OlympiaGame {
     this.state = {
       code,
       rulesetId: this.ruleset.id,
+      o22Quarter: config.o22Quarter ?? 1,
       rounds,
       stage: "lobby",
       seatCount,
@@ -25585,7 +25586,11 @@ var OlympiaGame = class _OlympiaGame {
     );
     switch (round) {
       case "khoiDong": {
-        const segs = this.ruleset.khoiDong.segments(active.length).map(
+        let rawSegs = this.ruleset.khoiDong.segments(active.length);
+        if (this.ruleset.id === "O22") {
+          rawSegs = turnsO22(st.o22Quarter ?? 1);
+        }
+        const segs = rawSegs.map(
           (seg) => seg.kind === "solo" ? { ...seg, seat: active[seg.seat], label: seg.label } : seg
         );
         const useBalanced = this.config.balancedRandom !== false && qs.balancedRandom !== false;
@@ -25816,7 +25821,26 @@ var OlympiaGame = class _OlympiaGame {
         });
         return OK;
       }
-      case "seat:kick":
+      case "system:setO22Quarter":
+        {
+          const q = Number(a.quarter);
+          if (q === 1 || q === 2 || q === 3) {
+            st.o22Quarter = q;
+            if (this.ruleset.id === "O22") {
+              const kd = st.khoiDong;
+              if (kd && (kd.phase === "intro" || kd.qIdx < 0)) {
+                const segs = turnsO22(q);
+                kd.segments = segs;
+                if (kd.segIdx < segs.length) {
+                  const curSeg = segs[kd.segIdx];
+                  kd.timer = mkTimer(curSeg.perQuestionMs);
+                  kd.globalTimer = curSeg.globalMs ? mkTimer(curSeg.globalMs) : null;
+                }
+              }
+            }
+          }
+          return OK;
+        }
         this.kickSeat(num("seat"));
         return OK;
       case "seat:rename": {
@@ -26269,8 +26293,20 @@ var OlympiaGame = class _OlympiaGame {
         }
         const who = kd.buzzedSeat;
         if (who == null) return fail("Ch\u01B0a c\xF3 th\xED sinh n\xE0o b\u1EA5m chu\xF4ng");
-        if (rs.wrongPenalty) this.addScore(who, -rs.wrongPenalty);
-        if (rs.lockoutOnWrong && !kd.nextLockedSeats.includes(who)) kd.nextLockedSeats.push(who);
+        let penalty = rs.wrongPenalty;
+        let lockout = rs.lockoutOnWrong;
+        if (this.ruleset.id === "O22") {
+          const q = st.o22Quarter ?? 1;
+          if (q === 3) {
+            penalty = 5;
+            lockout = false;
+          } else {
+            penalty = 0;
+            lockout = true;
+          }
+        }
+        if (penalty) this.addScore(who, -penalty);
+        if (lockout && !kd.nextLockedSeats.includes(who)) kd.nextLockedSeats.push(who);
         kd.lockedSeats.push(who);
         pauseTimer(kd.timer, now);
         kd.buzzedSeat = null;
@@ -26286,8 +26322,8 @@ var OlympiaGame = class _OlympiaGame {
           verdict: "wrong"
         }));
         const changes = {};
-        if (rs.wrongPenalty) {
-          kd.lockedSeats.forEach((sId) => changes[sId] = -rs.wrongPenalty);
+        if (penalty) {
+          kd.lockedSeats.forEach((sId) => changes[sId] = -penalty);
         }
         this.pushTranscript({
           at: now,
@@ -26853,8 +26889,20 @@ var OlympiaGame = class _OlympiaGame {
         resolvedPoints = matched;
       }
     } else {
-      if (resolvedPoints.length !== rs.questionsPerSeat || resolvedPoints.some((p) => !rs.pointOptions.includes(p)))
-        return fail(`G\xF3i ph\u1EA3i g\u1ED3m ${rs.questionsPerSeat} c\xE2u v\u1EDBi m\u1EE9c \u0111i\u1EC3m ${rs.pointOptions.join("/")}`);
+      let qPerSeat = rs.questionsPerSeat;
+      let opts = rs.pointOptions;
+      if (this.ruleset.id === "O22") {
+        const q = st.o22Quarter ?? 1;
+        if (q === 1) {
+          qPerSeat = 2;
+          opts = [20, 40];
+        } else {
+          qPerSeat = 3;
+          opts = [20, 30];
+        }
+      }
+      if (resolvedPoints.length !== qPerSeat || resolvedPoints.some((p) => !opts.includes(p)))
+        return fail(`G\xF3i ph\u1EA3i g\u1ED3m ${qPerSeat} c\xE2u v\u1EDBi m\u1EE9c \u0111i\u1EC3m ${opts.join("/")}`);
     }
     const ownerSeat = this.vdSeat(vd);
     vd.packages[ownerSeat] = this.allocatePackage(vd, resolvedPoints);

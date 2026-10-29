@@ -11310,21 +11310,21 @@ export default function AdminSandboxPage() {
                 </div>
               </div>
 
-              {/* Quick team count selector */}
-              <div className="flex items-center gap-1.5">
+              {/* Quick team count selector: Số đội: 2 3 4 5 6 7 8 */}
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-semibold text-slate-300">Số đội:</span>
-                {[2, 3, 4, 5, 6, 8].map((cnt) => (
+                {[2, 3, 4, 5, 6, 7, 8].map((cnt) => (
                   <button
                     key={cnt}
                     type="button"
                     onClick={() => handleSetSandboxTeamCount(cnt)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold border transition flex items-center justify-center cursor-pointer ${
                       sandboxCustomTeams.length === cnt
-                        ? "bg-purple-500/30 border-purple-400 text-purple-200 ring-1 ring-purple-400/40"
-                        : "glass border-white/10 text-slate-400 hover:text-white"
+                        ? "bg-purple-500/30 border-purple-400 text-purple-200 ring-2 ring-purple-400/50 shadow-md"
+                        : "glass border-white/10 text-slate-400 hover:text-white hover:bg-white/10"
                     }`}
                   >
-                    {cnt} đội
+                    {cnt}
                   </button>
                 ))}
               </div>
@@ -11650,6 +11650,152 @@ export default function AdminSandboxPage() {
             })()}
           </div>
         </div>
+      ) : effectiveActiveMode === "OLYMPIA" ? (
+        /* ══════════════════════════════════════════════════════════════════
+           OLYMPIA STUDIO FIT-TO-SCREEN DASHBOARD (100% Khung nhìn, Không cuộn trang)
+           Cột trái: Màn hình Chiếu (trên) + Điện thoại thí sinh (dưới)
+           Cột phải: Bàn điều khiển Olympia Host Console (full height)
+           ══════════════════════════════════════════════════════════════════ */
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2 overflow-hidden animate-loaded-reveal pb-14 lg:pb-0 h-[calc(100vh-68px)] max-h-[calc(100vh-68px)]">
+          {/* CỘT TRÁI (Studio Left: Màn hình chiếu TV 3D + Thí sinh) */}
+          <div className="w-full lg:w-[48%] xl:w-[50%] h-full flex flex-col gap-2 min-h-0 shrink-0">
+            {/* 1. Màn hình Chiếu Trường Quay (Aspect 16:9, ~52% chiều cao) */}
+            <div className="flex-1 min-h-[220px] max-h-[55%] glass rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-black">
+              <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
+                  <span className="text-white font-black tracking-wide text-xs">
+                    📺 MÀN HÌNH HIỂN THỊ TRƯỜNG QUAY (TRỰC TIẾP 3D)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/olympia/display/${code}`}
+                    target="_blank"
+                    className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
+                  >
+                    <span>Mở tab riêng</span>
+                    <span>↗</span>
+                  </Link>
+                </div>
+              </div>
+              <div className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col">
+                <iframe
+                  ref={displayIframeRef}
+                  src={`/olympia/display/${code}`}
+                  title="Display Viewport"
+                  className="w-full h-full border-0 bg-black"
+                  allow="autoplay; camera; microphone; display-capture"
+                />
+              </div>
+            </div>
+
+            {/* Thanh Cài đặt + Ticker Bar */}
+            <div className="flex items-center justify-between gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowGlobalSettingsModal(true)}
+                className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#12162a]/90 hover:bg-[#1c2242] border border-cyan-500/30 hover:border-cyan-400 text-xs text-slate-300 hover:text-white shadow-md backdrop-blur-md transition-all active:scale-95 cursor-pointer shrink-0"
+              >
+                <span className="font-semibold text-[11px] text-slate-300 group-hover:text-cyan-200">
+                  ⚙️ Cài đặt
+                </span>
+              </button>
+              <div className="glass rounded-xl px-2.5 py-1 border border-white/10 text-xs bg-[#121424] flex items-center justify-between flex-1 min-w-0 shadow-lg">
+                <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+                  <span className="font-mono text-[10px] text-slate-200 truncate">
+                    {botLogs[0] || "Phòng Sandbox sẵn sàng · Đang kết nối hiển thị trường quay..."}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLogsModal(true)}
+                  className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[10px] font-bold shrink-0 transition cursor-pointer"
+                >
+                  📜 ({botLogs.length})
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Khung Điện thoại Thí sinh (Chiếm ~45% chiều cao) */}
+            <div className="flex-1 min-h-[200px] flex flex-col glass rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-[#0b0c16]">
+              <div className="bg-[#151728] px-2.5 py-1 border-b border-white/10 flex items-center justify-between gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse bg-sky-400" />
+                  <span className="font-black text-xs text-white">
+                    Thí sinh {olympiaActiveSeat + 1}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 font-medium">📱 Thiết bị Thí sinh</span>
+                  <a
+                    href={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(`Thí sinh ${olympiaActiveSeat + 1}`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-cyan-400 hover:text-cyan-300 text-[10px] font-bold underline"
+                  >
+                    Mở tab riêng ↗
+                  </a>
+                </div>
+              </div>
+
+              {/* Tabs Thí sinh 1..8 */}
+              <div className="flex items-center gap-1 px-2.5 py-1 bg-black/40 border-b border-white/10 shrink-0 overflow-x-auto text-xs no-scrollbar">
+                <span className="text-[10px] text-slate-400 font-bold shrink-0">Thí sinh:</span>
+                {Array.from({ length: Math.min(8, Math.max(4, sandboxCustomTeams.length || 4)) }, (_, sIdx) => (
+                  <button
+                    key={sIdx}
+                    type="button"
+                    onClick={() => setOlympiaActiveSeat(sIdx)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                      olympiaActiveSeat === sIdx
+                        ? "bg-sky-500 text-slate-950 font-black shadow"
+                        : "bg-white/10 text-slate-300 hover:bg-white/20"
+                    }`}
+                  >
+                    Ghế {sIdx + 1}
+                  </button>
+                ))}
+              </div>
+
+              {/* Iframe Thí sinh */}
+              <div className="flex-1 min-h-0 bg-[#0f0f1a]">
+                <iframe
+                  ref={playerIframeRef}
+                  src={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(`Thí sinh ${olympiaActiveSeat + 1}`)}`}
+                  allow="autoplay; camera; microphone"
+                  title="Player Viewport"
+                  className="w-full h-full border-0"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* CỘT PHẢI (Studio Right: Bàn điều khiển Host Console toàn quyền) */}
+          <div className="flex-1 h-full min-h-0 flex flex-col glass rounded-2xl border border-white/10 overflow-hidden bg-slate-950 shadow-2xl">
+            <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_8px_#facc15]" />
+                <span className="text-white font-black tracking-wide">
+                  🎙️ BÀN ĐIỀU KHIỂN OLYMPIA (HOST CONSOLE)
+                </span>
+              </div>
+              <a
+                href={`/olympia/host/${code}?key=${typeof window !== "undefined" ? localStorage.getItem(`host_key_${code}`) || "sandbox" : "sandbox"}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
+              >
+                <span>Mở tab riêng</span>
+                <span>↗</span>
+              </a>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <HostConsole code={code} hostKey={typeof window !== "undefined" ? localStorage.getItem(`host_key_${code}`) || "sandbox" : "sandbox"} />
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="flex-1 min-h-0 flex flex-col gap-1.5 sm:gap-2 overflow-hidden animate-loaded-reveal pb-14 lg:pb-0">
 {/* ══════════════════════════════════════════════════════════════════
@@ -11675,7 +11821,7 @@ export default function AdminSandboxPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Link
-                    href={effectiveActiveMode === "OLYMPIA" ? `/olympia/display/${code}` : `/display/${code}?sandbox=1&standalone=1`}
+                    href={`/display/${code}?sandbox=1&standalone=1`}
                     target="_blank"
                     className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
                   >
@@ -11689,7 +11835,7 @@ export default function AdminSandboxPage() {
               <div className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col">
                 <iframe
                     ref={displayIframeRef}
-                    src={effectiveActiveMode === "OLYMPIA" ? `/olympia/display/${code}` : `/display/${code}?sandbox=1`}
+                    src={`/display/${code}?sandbox=1`}
                     title="Display Viewport"
                     className="w-full h-full border-0 bg-black"
                     allow="autoplay; camera; microphone; display-capture"
@@ -11763,55 +11909,24 @@ export default function AdminSandboxPage() {
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse" style={{ background: currentTeam?.color || "#a855f7" }} />
                   <span className="font-black text-xs text-white truncate max-w-[120px]">
-                    {effectiveActiveMode === "OLYMPIA" ? `Thí sinh ${olympiaActiveSeat + 1}` : activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
+                    {activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
                   </span>
                   <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
-                    {effectiveActiveMode === "OLYMPIA" ? "Olympia" : `${(((currentTeam?.score ?? 0)) + (roomState?.mode === "MAGIC_WHEEL" && currentTeam?.id && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[currentTeam.id] || 0) : 0)).toLocaleString()}đ`}
+                    {`${(((currentTeam?.score ?? 0)) + (roomState?.mode === "MAGIC_WHEEL" && currentTeam?.id && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[currentTeam.id] || 0) : 0)).toLocaleString()}đ`}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">📱 Điện thoại thí sinh</span>
-                  {effectiveActiveMode === "OLYMPIA" && (
-                    <a
-                      href={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(`Thí sinh ${olympiaActiveSeat + 1}`)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-cyan-400 hover:text-cyan-300 text-[10px] font-bold underline"
-                    >
-                      Mở tab riêng ↗
-                    </a>
-                  )}
+
                 </div>
               </div>
 
-              {effectiveActiveMode === "OLYMPIA" && (
-                <div className="flex items-center gap-1 px-2.5 py-1 bg-black/40 border-b border-white/10 shrink-0 overflow-x-auto text-xs">
-                  <span className="text-[10px] text-slate-400 font-bold shrink-0">Thí sinh:</span>
-                  {[0, 1, 2, 3].map((sIdx) => (
-                    <button
-                      key={sIdx}
-                      type="button"
-                      onClick={() => setOlympiaActiveSeat(sIdx)}
-                      className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
-                        olympiaActiveSeat === sIdx
-                          ? "bg-sky-500 text-slate-950 font-black shadow"
-                          : "bg-white/10 text-slate-300 hover:bg-white/20"
-                      }`}
-                    >
-                      Ghế {sIdx + 1}
-                    </button>
-                  ))}
-                </div>
-              )}
+
 
               <div className="flex-1 min-h-0 bg-[#0f0f1a]">
                 <iframe
                   ref={playerIframeRef}
-                  src={
-                    effectiveActiveMode === "OLYMPIA"
-                      ? `/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(`Thí sinh ${olympiaActiveSeat + 1}`)}`
-                      : `/play/${code}?sandbox=1&playerId=sb_${code}_t0&teamIndex=0&name=${encodeURIComponent("Bạn (Tester)")}`
-                  }
+                  src={`/play/${code}?sandbox=1&playerId=sb_${code}_t0&teamIndex=0&name=${encodeURIComponent("Bạn (Tester)")}`}
                   allow="autoplay; camera; microphone"
                   onLoad={() => {
                     if (isOfflineSandbox) {
@@ -11864,31 +11979,6 @@ export default function AdminSandboxPage() {
 
             {/* Cột phải: Chọn Đội & Bàn Phím Thử Nghiệm / Quản Trò */}
             <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto no-scrollbar">
-              {effectiveActiveMode === "OLYMPIA" ? (
-                <div className="flex-1 min-h-0 flex flex-col glass rounded-2xl border border-white/10 overflow-hidden bg-slate-950 shadow-2xl">
-                  <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_8px_#facc15]" />
-                      <span className="text-white font-black tracking-wide">
-                        🎙️ BÀN ĐIỀU KHIỂN OLYMPIA (HOST CONSOLE)
-                      </span>
-                    </div>
-                    <a
-                      href={`/olympia/host/${code}?key=${typeof window !== "undefined" ? localStorage.getItem(`host_key_${code}`) || "" : ""}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
-                    >
-                      <span>Mở tab riêng</span>
-                      <span>↗</span>
-                    </a>
-                  </div>
-                  <div className="flex-1 min-h-0 overflow-y-auto">
-                    <HostConsole code={code} hostKey={typeof window !== "undefined" ? localStorage.getItem(`host_key_${code}`) || "" : ""} />
-                  </div>
-                </div>
-              ) : (
-                <>
               <div className="glass rounded-xl px-2 py-1 border border-white/10 bg-[#121424] shrink-0 flex items-center gap-1.5">
               <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0 hidden sm:inline">📱 Chọn Đội:</span>
               <div className="flex items-center gap-1.5 flex-1 overflow-x-auto no-scrollbar py-0.5">
@@ -12128,8 +12218,6 @@ export default function AdminSandboxPage() {
                   </div>
                 </div>
               </div>
-                </>
-              )}
 
               </div>
           </div>
@@ -13918,9 +14006,9 @@ export default function AdminSandboxPage() {
                       {/* Team Configuration inside Settings */}
                       <div className="space-y-1.5 pt-1.5 border-t border-white/10">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-slate-300 font-bold">Cấu hình Đội ({sandboxCustomTeams.length} đội)</span>
+                          <span className="text-slate-300 font-bold">Số đội:</span>
                           <div className="flex items-center gap-1">
-                            {[2, 3, 4, 5, 6, 8].map((cnt) => (
+                            {[2, 3, 4, 5, 6, 7, 8].map((cnt) => (
                               <button
                                 key={cnt}
                                 type="button"
@@ -13984,9 +14072,9 @@ export default function AdminSandboxPage() {
                 {/* Team Configuration */}
                 <div className="space-y-2 pt-2 border-t border-white/10">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-slate-200 font-bold">Số lượng đội ({sandboxCustomTeams.length} đội):</span>
+                    <span className="text-slate-200 font-bold">Số đội:</span>
                     <div className="flex items-center gap-1">
-                      {[2, 3, 4, 5, 6, 8].map((cnt) => (
+                      {[2, 3, 4, 5, 6, 7, 8].map((cnt) => (
                         <button
                           key={cnt}
                           type="button"

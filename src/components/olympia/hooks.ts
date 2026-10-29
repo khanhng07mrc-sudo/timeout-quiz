@@ -37,6 +37,7 @@ export function useOlympiaSocket({ code, role, hostKey, name, token, enabled = t
     socketRef.current = socket;
 
     const doJoin = () => {
+      versionRef.current = -1;
       const t0 = Date.now();
       socket.emit("time:sync", t0, (r: { serverTime: number }) => {
         const t1 = Date.now();
@@ -50,7 +51,6 @@ export function useOlympiaSocket({ code, role, hostKey, name, token, enabled = t
     });
     socket.on("disconnect", () => setConnected(false));
     socket.on("state", (s: OlympiaState) => {
-      if (s.version < versionRef.current) return;
       versionRef.current = s.version;
       setState(s);
     });

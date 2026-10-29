@@ -18,6 +18,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
   const [showAudioDrawer, setShowAudioDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showMiniDisplay, setShowMiniDisplay] = useState(false);
   useOlympiaAudio(state, join?.audioSeason, audioOn);
 
   useEffect(() => {
@@ -118,6 +119,14 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
           >
             📋 Biên bản ({(state.transcript ?? []).length})
           </button>
+          <button
+            type="button"
+            className={`${btn} ${showMiniDisplay ? "bg-cyan-500/30 border-cyan-400 text-cyan-200 ring-1 ring-cyan-400/50" : ""}`}
+            onClick={() => setShowMiniDisplay((v) => !v)}
+            title="Xem trước màn hình trường quay thu nhỏ ngay trên bàn điều khiển"
+          >
+            👁️ {showMiniDisplay ? "Ẩn màn hình chiếu" : "Xem màn hình chiếu (PiP)"}
+          </button>
           <a className={btn} href={`/olympia/display/${code}`} target="_blank" rel="noreferrer">
             📺 Màn hình chiếu ↗
           </a>
@@ -129,6 +138,32 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
           </button>
         </div>
       </header>
+
+      {showMiniDisplay && (
+        <div className="rounded-2xl border border-cyan-500/40 bg-slate-950/95 p-2 shadow-2xl overflow-hidden flex flex-col gap-1.5 backdrop-blur-md">
+          <div className="flex items-center justify-between text-xs px-2.5 py-1 bg-cyan-950/40 rounded-lg border border-cyan-500/20">
+            <div className="flex items-center gap-2 font-bold text-cyan-300">
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
+              <span>Trực tiếp Màn hình Chiếu Trường Quay (Khán giả & Thí sinh đang thấy)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a href={`/olympia/display/${code}`} target="_blank" rel="noreferrer" className="text-cyan-400 hover:text-cyan-200 hover:underline font-bold text-[11px]">
+                Mở tab riêng ↗
+              </a>
+              <button
+                type="button"
+                onClick={() => setShowMiniDisplay(false)}
+                className="text-slate-400 hover:text-white font-black px-1.5 py-0.5 rounded hover:bg-white/10"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+          <div className="w-full aspect-video max-h-[340px] bg-black rounded-xl overflow-hidden border border-white/10 relative">
+            <iframe src={`/olympia/display/${code}`} className="w-full h-full border-0" title="Mini Display Screen Preview" />
+          </div>
+        </div>
+      )}
 
       {err && <div className="rounded-lg bg-rose-500/20 border border-rose-400 px-3 py-2 text-rose-100">⚠ {err}</div>}
 

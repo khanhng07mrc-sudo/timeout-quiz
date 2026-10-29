@@ -41,6 +41,7 @@ export default function CreateOlympiaPage() {
   const [showStudio, setShowStudio] = useState(false);
   const [banks, setBanks] = useState<OlympiaBankItem[]>([]);
   const [selectedBankId, setSelectedBankId] = useState<string>("olympia_preset_o25_o26_full");
+  const [targetContestantCount, setTargetContestantCount] = useState<number>(4);
 
   useEffect(() => {
     const loaded = getOlympiaBanks();
@@ -252,6 +253,29 @@ export default function CreateOlympiaPage() {
           onChange={(e) => setRoomName(e.target.value)}
           className="w-full rounded-xl bg-slate-800 border border-white/20 px-3 py-2"
         />
+      </section>
+
+      <section className="rounded-2xl border border-white/15 bg-slate-900/70 p-4 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <label className="text-sm font-bold text-sky-300">Số đội / Số thí sinh: ({targetContestantCount} thí sinh)</label>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs font-semibold text-slate-400 mr-1">Số đội:</span>
+            {[2, 3, 4, 5, 6, 7, 8].map((cnt) => (
+              <button
+                key={cnt}
+                type="button"
+                onClick={() => setTargetContestantCount(cnt)}
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-black border transition flex items-center justify-center cursor-pointer ${
+                  targetContestantCount === cnt
+                    ? "bg-sky-500/30 border-sky-400 text-sky-200 ring-2 ring-sky-400/50 shadow-md"
+                    : "glass border-white/10 text-slate-400 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {cnt}
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-white/15 bg-slate-900/70 p-4 space-y-3">

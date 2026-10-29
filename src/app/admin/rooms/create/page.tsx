@@ -2198,11 +2198,44 @@ export default function CreateRoomPage() {
       {/* Step 2: Teams */}
       {step === 2 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">Đội tham gia</h2>
-            <button onClick={addTeam} disabled={teams.length >= 20} className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-medium text-sm disabled:opacity-50">
-              + Thêm đội
-            </button>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h2 className="text-xl font-bold">Đội tham gia ({teams.length} đội)</h2>
+            <div className="flex items-center gap-2">
+              <button onClick={addTeam} disabled={teams.length >= 20} className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-medium text-xs sm:text-sm disabled:opacity-50">
+                + Thêm đội
+              </button>
+            </div>
+          </div>
+
+          {/* Quick preset selector: Số đội: 2 3 4 5 6 7 8 */}
+          <div className="glass rounded-xl px-3 py-2 border border-white/10 flex items-center justify-between flex-wrap gap-2 bg-[#121424]">
+            <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <span>👥</span>
+              <span>Số đội:</span>
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[2, 3, 4, 5, 6, 7, 8].map((cnt) => (
+                <button
+                  key={cnt}
+                  type="button"
+                  onClick={() => {
+                    const palette = TEAM_COLORS;
+                    const next = Array.from({ length: cnt }, (_, idx) => ({
+                      name: teams[idx]?.name || `Đội ${idx + 1}`,
+                      color: teams[idx]?.color || palette[idx % palette.length],
+                    }));
+                    setTeams(next);
+                  }}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-black border transition flex items-center justify-center cursor-pointer ${
+                    teams.length === cnt
+                      ? "bg-purple-500/30 border-purple-400 text-purple-200 ring-2 ring-purple-400/50 shadow-md"
+                      : "glass border-white/10 text-slate-400 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {cnt}
+                </button>
+              ))}
+            </div>
           </div>
           {teams.map((team, i) => (
             <div key={i} className="glass rounded-xl p-4 flex items-center gap-3">

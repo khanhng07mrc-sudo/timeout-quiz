@@ -305,6 +305,8 @@ export interface KhoiDongState {
     mediaType?: string;
   } | null;
   lastVerdict: "correct" | "wrong" | null;
+  bgmMode?: "auto" | "manual";
+  currentBgmTrack?: "kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3";
 }
 
 export interface AnswerAttempt {
@@ -511,6 +513,10 @@ export interface OlympiaState {
   roundStatus: Record<RoundId, RoundStatus>;
   banner: string | null; // section title screen
   introTimer?: TimerState | null; // opening show intro countdown timer (5s)
+  showScoreboard?: boolean; // toggle full scoreboard overlay on DisplayScreen
+  waitingBgm?: boolean; // whether waiting BGM is active
+  kdIntroTimer?: TimerState | null; // prelude timer (3.5s) for KhoiDong
+  vdPackageTimer?: TimerState | null; // delay timer (~1.8s) after package confirmation
   khoiDong: KhoiDongState | null;
   vcnv: VcnvState | null;
   tangToc: TangTocState | null;

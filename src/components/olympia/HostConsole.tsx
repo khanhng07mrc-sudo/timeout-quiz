@@ -1,868 +1,1473 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
-import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId } from "@/lib/olympia/types";
+import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId, type Seat } from "@/lib/olympia/types";
 import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
 import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
 import OlympiaAudioManagerDrawer from "./OlympiaAudioManagerDrawer";
 import OlympiaRulesWikipediaModal from "./OlympiaRulesWikipediaModal";
 import OlympiaMatchReportModal from "./OlympiaMatchReportModal";
-import { MediaView, Panel, ScoreStrip, SEAT_COLORS, Timer, activeSeats, btn, btnBad, btnOk, btnPrimary, seatName } from "./ui";
+import { MediaView, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
+
+type Call = (type: string, extra?: Record<string, unknown>) => Promise<{ ok: boolean; error?: string }>;
+type SN = () => number;
 
 export default function HostConsole({ code, hostKey }: { code: string; hostKey: string }) {
   const { state, join, connected, emit, serverNow } = useOlympiaSocket({ code, role: "host", hostKey });
-  const introRem = useCountdown(state?.introTimer, serverNow);
   const [err, setErr] = useState("");
-  const [audioOn, setAudioOn] = useState(false);
+  // Auto-enabled by default so Host Console plays all game sounds like the real desktop software
+  const [audioOn, setAudioOn] = useState(true);
   const [showTranscript, setShowTranscript] = useState(false);
   const [showAudioDrawer, setShowAudioDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showMiniDisplay, setShowMiniDisplay] = useState(false);
+  const [showScoreModal, setShowScoreModal] = useState(false);
+  const [manualSeat, setManualSeat] = useState<number>(0);
+  const [manualDelta, setManualDelta] = useState<number>(10);
+
   useOlympiaAudio(state, join?.audioSeason, audioOn);
 
+  const call: Call = async (type: string, extra: Record<string, unknown> = {}) => {
+    const r = await emit("action", { type, ...extra });
+    setErr(r.ok ? "" : r.error || "Lỗi");
+    return r;
+  };
+
+  // Keyboard Shortcuts matching the reference application:
+  // Space: Play/Pause | Enter: Đúng | Bksp: Sai | W: Nền chờ | R: Lật đáp án | C: Toggle chuông | S: Ngôi sao | B: Bảng điểm | N: Câu tiếp
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea") return;
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
 
       if (e.code === "Space") {
         e.preventDefault();
         if (state?.currentRound === "khoiDong") call("kd:timer");
         else if (state?.currentRound === "vcnv") call("vcnv:timer");
         else if (state?.currentRound === "tangToc") call("tt:timer");
-        else if (state?.currentRound === "veDich") call("vd:startQuestion");
+        else if (state?.currentRound === "veDich") call("vd:timer");
         else if (state?.currentRound === "cauHoiPhu") call("chp:timer");
       } else if (e.key === "Enter") {
         e.preventDefault();
         if (state?.currentRound === "khoiDong") call("kd:correct");
         else if (state?.currentRound === "vcnv") call("vcnv:correct");
+        else if (state?.currentRound === "tangToc") call("tt:grade");
         else if (state?.currentRound === "veDich") call("vd:correct");
         else if (state?.currentRound === "cauHoiPhu") call("chp:correct");
       } else if (e.key === "Backspace") {
         e.preventDefault();
         if (state?.currentRound === "khoiDong") call("kd:wrong");
+        else if (state?.currentRound === "vcnv") call("vcnv:wrong");
         else if (state?.currentRound === "veDich") call("vd:wrong");
         else if (state?.currentRound === "cauHoiPhu") call("chp:wrong");
+      } else if (e.key === "w" || e.key === "W") {
+        e.preventDefault();
+        call("bgm:waiting");
+      } else if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        if (state?.currentRound === "vcnv") call("vcnv:reveal");
+        else if (state?.currentRound === "tangToc") call("tt:revealAndGrade");
+      } else if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        if (state?.currentRound === "khoiDong") call("kd:buzzer");
+        else if (state?.currentRound === "vcnv") call("vcnv:clearBells");
+        else if (state?.currentRound === "veDich") call("vd:openSteal");
+        else if (state?.currentRound === "cauHoiPhu") call("chp:buzzer");
+      } else if (e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        if (state?.currentRound === "veDich") call("vd:hopeStar");
+      } else if (e.key === "b" || e.key === "B") {
+        e.preventDefault();
+        call("scoreboard:toggle");
       } else if (e.key === "n" || e.key === "N") {
         e.preventDefault();
         if (state?.currentRound === "khoiDong") call("kd:next");
         else if (state?.currentRound === "tangToc") call("tt:next");
         else if (state?.currentRound === "veDich") call("vd:nextSeat");
         else if (state?.currentRound === "cauHoiPhu") call("chp:next");
-      } else if (e.key === "b" || e.key === "B") {
+      } else if (e.key === "f" || e.key === "F") {
         e.preventDefault();
-        if (state?.currentRound === "khoiDong") call("kd:buzzer");
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+        else document.exitFullscreen().catch(() => {});
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [state?.currentRound]);
 
-  const call = async (type: string, extra: Record<string, unknown> = {}) => {
-    const r = await emit("action", { type, ...extra });
-    setErr(r.ok ? "" : r.error || "Lỗi");
-    return r;
-  };
-
   if (join && !join.ok) {
     return <div className="p-8 text-rose-300 text-lg">Không thể vào bàn điều khiển: {join.error}</div>;
   }
-  if (!state) return <div className="p-8 text-sky-200">Đang kết nối…</div>;
+  if (!state) return <div className="p-8 text-sky-200">Đang kết nối bàn điều khiển…</div>;
 
-  const rs = RULESETS[state.rulesetId];
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const seats = activeSeats(state);
+  const curRound = state.currentRound;
+  const curRoundName = curRound ? ROUND_LABELS[curRound] : "CHỜ BẮT ĐẦU";
+
+  // Calculate current timer countdown for right-hand status widget
+  let activeTimerSeconds = "--";
+  if (curRound === "khoiDong") {
+    if (state.khoiDong?.globalTimer) activeTimerSeconds = `${Math.ceil(state.khoiDong.globalTimer.remainingMs / 1000)}s`;
+    else if (state.khoiDong?.timer) activeTimerSeconds = `${Math.ceil(state.khoiDong.timer.remainingMs / 1000)}s`;
+  } else if (curRound === "vcnv" && state.vcnv?.timer) {
+    activeTimerSeconds = `${Math.ceil(state.vcnv.timer.remainingMs / 1000)}s`;
+  } else if (curRound === "tangToc" && state.tangToc?.timer) {
+    activeTimerSeconds = `${Math.ceil(state.tangToc.timer.remainingMs / 1000)}s`;
+  } else if (curRound === "veDich") {
+    if (state.veDich?.steal?.open && state.veDich.steal.timer) activeTimerSeconds = `${Math.ceil(state.veDich.steal.timer.remainingMs / 1000)}s`;
+    else if (state.veDich?.timer) activeTimerSeconds = `${Math.ceil(state.veDich.timer.remainingMs / 1000)}s`;
+  } else if (curRound === "cauHoiPhu" && state.cauHoiPhu?.timer) {
+    activeTimerSeconds = `${Math.ceil(state.cauHoiPhu.timer.remainingMs / 1000)}s`;
+  }
+
+  const buzzerActive =
+    curRound === "khoiDong"
+      ? state.khoiDong?.buzzOpen
+      : curRound === "veDich"
+        ? state.veDich?.steal?.open
+        : curRound === "cauHoiPhu"
+          ? state.cauHoiPhu?.buzzOpen
+          : false;
+
+  const buzzedNameText =
+    curRound === "khoiDong" && state.khoiDong?.buzzedSeat != null
+      ? seatName(state, state.khoiDong.buzzedSeat)
+      : curRound === "vcnv" && (state.vcnv?.bells?.length ?? 0) > 0
+        ? seatName(state, state.vcnv!.bells[0].seat)
+        : curRound === "veDich" && state.veDich?.steal?.buzzedSeat != null
+          ? seatName(state, state.veDich.steal.buzzedSeat)
+          : curRound === "cauHoiPhu" && state.cauHoiPhu?.buzzedSeat != null
+            ? seatName(state, state.cauHoiPhu.buzzedSeat)
+            : "--";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950 text-white p-2 md:p-3 space-y-2">
-      <header className="flex flex-wrap items-center gap-2 justify-between">
-        <div className="min-w-0">
-          <h1 className="text-base font-black text-sky-300 truncate">🏔️ Olympia — Bàn điều khiển</h1>
-          <p className="text-xs text-slate-300">
-            Phòng <b className="text-yellow-300">{code}</b> · <b>{rs.label}</b> · {connected ? "🟢 Đã kết nối" : "🔴 Mất kết nối"}
-          </p>
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans select-none overflow-x-hidden">
+      {/* ── TOP HEADER BAR ── */}
+      <header className="h-12 border-b border-white/10 bg-[#111827] px-3 flex items-center justify-between shrink-0 gap-3">
+        {/* Left: Branding & Current Round */}
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-yellow-400 text-sm font-black tracking-wide flex items-center gap-1.5 whitespace-nowrap">
+            <span>🏔️</span>
+            <span>ĐƯỜNG LÊN ĐỈNH OLYMPIA</span>
+          </span>
+          <span className="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/30 text-sky-300 text-xs font-bold uppercase whitespace-nowrap">
+            {curRoundName}
+          </span>
         </div>
-        <div className="flex flex-wrap gap-1.5 items-center">
-          <button type="button" className="px-2.5 py-1 rounded-lg bg-rose-600/80 hover:bg-rose-500 text-white font-bold text-xs cursor-pointer flex items-center gap-1" onClick={() => call("audio:stop_bgm")} title="Dừng toàn bộ nhạc nền đang phát">⏹ Dừng nhạc</button>
-          <button type="button" className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs cursor-pointer" onClick={() => setShowAudioDrawer(true)} title="Quản lý và nghe thử âm thanh">🎵 Âm thanh</button>
-          <button type="button" className={`px-2.5 py-1 rounded-lg border text-xs font-bold cursor-pointer ${audioOn ? "bg-emerald-600/30 border-emerald-400 text-emerald-200" : "bg-white/10 border-white/20"}`} onClick={() => setAudioOn((v) => !v)}>{audioOn ? "🔊 Tự phát" : "🔈 Tắt tiếng"}</button>
-          <button type="button" className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs cursor-pointer" onClick={() => setShowTranscript(true)}>📋 Biên bản ({(state.transcript ?? []).length})</button>
-          <details className="relative">
-            <summary className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/20 text-xs font-bold cursor-pointer list-none select-none">⋯ Thêm</summary>
-            <div className="absolute right-0 z-30 mt-1 w-56 rounded-xl border border-white/20 bg-slate-900 shadow-2xl p-1.5 flex flex-col gap-1">
-              <button type="button" className="text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold text-amber-300" onClick={() => call("audio:prize")}>🏆 Phát nhạc trao giải</button>
-              <button type="button" className="text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold text-sky-300" onClick={() => call("audio:summary")}>📊 Phát nhạc tổng kết</button>
-              <button type="button" className="text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold" onClick={() => setShowRules(true)}>📜 Luật Wikipedia</button>
-              <button type="button" className="text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold" onClick={() => setShowReport(true)}>📊 Xuất Excel</button>
-              <button type="button" className="text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold" onClick={() => setShowMiniDisplay((v) => !v)}>👁️ {showMiniDisplay ? "Ẩn" : "Xem"} màn hình chiếu (PiP)</button>
-              <a className="px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold" href={`/olympia/display/${code}`} target="_blank" rel="noreferrer">📺 Mở màn hình chiếu ↗</a>
-              <button type="button" className="text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold" onClick={() => navigator.clipboard?.writeText(`${origin}/play?pin=${code}`)}>🔗 Sao chép link thí sinh</button>
+
+        {/* Center: Live 4 Contestant scores strip */}
+        <div className="hidden lg:flex items-center gap-4 text-xs">
+          {seats.slice(0, 4).map((s, idx) => (
+            <div key={s.id} className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: SEAT_COLORS[s.id] || "#38bdf8" }} />
+              <span className="text-slate-300 font-medium">{s.name || `Thí sinh ${idx + 1}`}</span>
+              <b className="text-sm font-black" style={{ color: SEAT_COLORS[s.id] || "#38bdf8" }}>{s.score}</b>
             </div>
-          </details>
+          ))}
+        </div>
+
+        {/* Right: Audio Manager, Connection & Status */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowAudioDrawer(true)}
+            className="px-3 py-1 rounded-lg bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs shadow cursor-pointer flex items-center gap-1.5"
+            title="Mở Audio Manager quản lý và nghe thử âm thanh"
+          >
+            <span>AUDIO MANAGER</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-black/40 text-[10px] text-yellow-300">22</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAudioOn((v) => !v)}
+            className={`px-2 py-1 rounded text-xs font-bold cursor-pointer border ${
+              audioOn ? "bg-emerald-600/30 border-emerald-400 text-emerald-200" : "bg-white/5 border-white/10 text-slate-400"
+            }`}
+            title="Bật/Tắt âm thanh bàn điều khiển"
+          >
+            {audioOn ? "🔊" : "🔈"}
+          </button>
+
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-300 pl-1 border-l border-white/10">
+            <span className={connected ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+              {connected ? "🟢 Kết nối" : "🔴 Mất kết nối"}
+            </span>
+            <span className="text-slate-400 font-mono text-[11px]">1ms</span>
+            <span className="font-mono text-yellow-300 font-bold">PIN: {code}</span>
+          </div>
         </div>
       </header>
 
+      {/* Mini Display PIP Modal if enabled */}
       {showMiniDisplay && (
-        <div className="rounded-2xl border border-cyan-500/40 bg-slate-950/95 p-2 shadow-2xl overflow-hidden flex flex-col gap-1.5 backdrop-blur-md">
-          <div className="flex items-center justify-between text-xs px-2.5 py-1 bg-cyan-950/40 rounded-lg border border-cyan-500/20">
-            <div className="flex items-center gap-2 font-bold text-cyan-300">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
-              <span>Trực tiếp Màn hình Chiếu Trường Quay (Khán giả & Thí sinh đang thấy)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <a href={`/olympia/display/${code}`} target="_blank" rel="noreferrer" className="text-cyan-400 hover:text-cyan-200 hover:underline font-bold text-[11px]">
+        <div className="bg-slate-900 border-b border-cyan-500/30 p-2 flex flex-col gap-1.5">
+          <div className="flex items-center justify-between text-xs px-2 text-cyan-300 font-bold">
+            <span>📺 Xem trước Màn hình Chiếu (Display Screen)</span>
+            <div className="flex gap-2">
+              <a href={`/olympia/display/${code}`} target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">
                 Mở tab riêng ↗
               </a>
-              <button
-                type="button"
-                onClick={() => setShowMiniDisplay(false)}
-                className="text-slate-400 hover:text-white font-black px-1.5 py-0.5 rounded hover:bg-white/10"
-              >
-                ✕
-              </button>
+              <button type="button" onClick={() => setShowMiniDisplay(false)} className="text-slate-400 hover:text-white">✕</button>
             </div>
           </div>
-          <div className="w-full aspect-video max-h-[340px] bg-black rounded-xl overflow-hidden border border-white/10 relative">
-            <iframe src={`/olympia/display/${code}`} className="w-full h-full border-0" title="Mini Display Screen Preview" />
+          <div className="w-full aspect-video max-h-[260px] bg-black rounded-lg overflow-hidden border border-white/10">
+            <iframe src={`/olympia/display/${code}`} className="w-full h-full border-0" title="Mini Display" />
           </div>
         </div>
       )}
 
-      {err && <div className="rounded-lg bg-rose-500/20 border border-rose-400 px-3 py-2 text-rose-100">⚠ {err}</div>}
+      {err && <div className="bg-rose-500/20 border-b border-rose-500/50 px-3 py-1.5 text-rose-200 text-xs">⚠️ {err}</div>}
 
-      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-white/15 bg-slate-900/70 px-2 py-1.5">
-        {activeSeats(state).length ? (
-          activeSeats(state).map((s) => (
-            <span key={s.id} className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-2 py-0.5 text-xs" style={{ borderLeft: `4px solid ${SEAT_COLORS[s.id]}` }}>
-              <span className="font-semibold truncate max-w-[110px]">{s.name}</span>
-              <b className="text-base font-black" style={{ color: SEAT_COLORS[s.id] }}>{s.score}</b>
-            </span>
-          ))
-        ) : (
-          <span className="text-xs text-slate-400">Chưa có thí sinh nào vào phòng.</span>
-        )}
-      </div>
+      {/* ── MAIN 3-COLUMN WORKSPACE ── */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* 1. LEFT SIDEBAR: Rounds & Tools */}
+        <aside className="w-28 sm:w-32 bg-[#0f172a] border-r border-white/10 p-2 flex flex-col justify-between shrink-0">
+          <div className="space-y-1.5">
+            <RoundTabButton
+              id="khoiDong"
+              label="Khởi Động"
+              icon="⭐"
+              active={curRound === "khoiDong"}
+              done={state.roundStatus.khoiDong === "done"}
+              onClick={() => call("round:force", { round: "khoiDong" })}
+            />
+            <RoundTabButton
+              id="vcnv"
+              label="Vượt CNV"
+              icon="🧩"
+              active={curRound === "vcnv"}
+              done={state.roundStatus.vcnv === "done"}
+              onClick={() => call("round:force", { round: "vcnv" })}
+            />
+            <RoundTabButton
+              id="tangToc"
+              label="Tăng Tốc"
+              icon="⚡"
+              active={curRound === "tangToc"}
+              done={state.roundStatus.tangToc === "done"}
+              onClick={() => call("round:force", { round: "tangToc" })}
+            />
+            <RoundTabButton
+              id="veDich"
+              label="Về Đích"
+              icon="🏁"
+              active={curRound === "veDich"}
+              done={state.roundStatus.veDich === "done"}
+              onClick={() => call("round:force", { round: "veDich" })}
+            />
+            <RoundTabButton
+              id="cauHoiPhu"
+              label="Câu Hỏi Phụ"
+              icon="❓"
+              active={curRound === "cauHoiPhu"}
+              done={state.roundStatus.cauHoiPhu === "done"}
+              onClick={() => call("round:force", { round: "cauHoiPhu" })}
+            />
+          </div>
 
-      {state.stage === "lobby" && <Lobby state={state} call={call} code={code} origin={origin} />}
-      {state.stage === "playing" && (
-        <>
-          {state.introTimer && (
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 border-2 border-yellow-400/60 flex flex-wrap items-center justify-between gap-3 animate-pulse shadow-lg shadow-yellow-500/10">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl animate-spin">🎬</span>
-                <div>
-                  <div className="font-black text-yellow-300 text-base">
-                    Đang phát nhạc mở đầu show (show_intro.mp3)
-                  </div>
-                  <div className="text-xs text-slate-300">
-                    Tự động chuyển vào Khởi Động sau <b className="text-yellow-400 text-sm">{Math.max(1, Math.ceil(introRem / 1000))}s</b>
-                  </div>
-                </div>
+          <div className="pt-2 border-t border-white/10 space-y-1">
+            <button
+              type="button"
+              onClick={() => call("scoreboard:toggle")}
+              className="w-full text-left px-2 py-1.5 rounded text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>📊</span>
+              <span>Bảng Điểm</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+                else document.exitFullscreen().catch(() => {});
+              }}
+              className="w-full text-left px-2 py-1.5 rounded text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>🖥️</span>
+              <span>Fullscreen (F)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMiniDisplay((v) => !v)}
+              className="w-full text-left px-2 py-1.5 rounded text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>👁️</span>
+              <span>Màn Chiếu</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowReport(true)}
+              className="w-full text-left px-2 py-1.5 rounded text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>⚙️</span>
+              <span>Cài Đặt / Xuất</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* 2. CENTER STAGE: Question Box, Utility Top Bar & Round Control Deck */}
+        <main className="flex-1 overflow-y-auto p-3 space-y-3 flex flex-col justify-between">
+          <div className="space-y-2.5">
+            {/* Round & Question Indicator Bar */}
+            <div className="flex items-center justify-between text-xs px-1">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-300">
+                  {curRound === "khoiDong" && state.khoiDong
+                    ? `Câu ${Math.max(0, state.khoiDong.qIdx + 1)}/${state.khoiDong.segments[state.khoiDong.segIdx]?.questions ?? 6}`
+                    : curRound === "vcnv" && state.vcnv
+                      ? `Hàng ${state.vcnv.openedCount}/4`
+                      : curRound === "tangToc" && state.tangToc
+                        ? `Câu ${Math.max(0, state.tangToc.qIdx + 1)}/4`
+                        : curRound === "veDich" && state.veDich
+                          ? `Câu ${Math.max(0, state.veDich.qIdx + 1)}/3`
+                          : curRound === "cauHoiPhu" && state.cauHoiPhu
+                            ? `Câu ${Math.max(0, state.cauHoiPhu.qIdx + 1)}/3`
+                            : "Vòng đấu"}
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30 text-[11px]">
+                  {curRound === "khoiDong"
+                    ? "10đ"
+                    : curRound === "vcnv"
+                      ? "10đ/hàng"
+                      : curRound === "tangToc"
+                        ? "10..40đ"
+                        : curRound === "veDich" && state.veDich?.current
+                          ? `${state.veDich.current.points}đ`
+                          : "10đ"}
+                </span>
               </div>
+              <div className="text-xl font-black font-mono text-cyan-300">
+                {activeTimerSeconds}
+              </div>
+            </div>
+
+            {/* Question Card Box */}
+            <div className="rounded-xl border border-white/10 bg-[#162032] p-3.5 space-y-2 shadow-lg">
+              <div className="text-sm md:text-base font-semibold leading-relaxed min-h-[44px] flex items-center">
+                {getQuestionText(state) || <span className="text-slate-400 italic">Đang đợi câu hỏi…</span>}
+              </div>
+
+              {/* Green box: ĐÁP ÁN */}
+              <div className="rounded-lg bg-emerald-950/40 border border-emerald-500/30 px-3 py-1.5 text-xs text-emerald-200 flex items-center gap-2">
+                <span className="font-bold text-emerald-400 shrink-0">ĐÁP ÁN:</span>
+                <span className="font-bold text-sm tracking-wide">{getAnswerText(state) || "--"}</span>
+              </div>
+
+              {/* Purple box: GIẢI THÍCH */}
+              <div className="rounded-lg bg-purple-950/30 border border-purple-500/30 px-3 py-1.5 text-xs text-purple-200 flex items-center gap-2">
+                <span className="font-bold text-purple-400 shrink-0">GIẢI THÍCH:</span>
+                <span className="text-slate-300 text-xs">{getExplanationText(state) || "--"}</span>
+              </div>
+            </div>
+
+            {/* Utility Bar: NỀN CHỜ (W) & BẢNG ĐIỂM (B) */}
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                className="px-4 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-sm shadow-md cursor-pointer transition active:scale-95 flex items-center gap-1.5"
-                onClick={() => call("intro:skip")}
+                onClick={() => call("bgm:waiting")}
+                className={`py-2 rounded-xl border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition ${
+                  state.waitingBgm
+                    ? "bg-amber-500/30 border-amber-400 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.3)] animate-pulse"
+                    : "bg-[#1e293b] border-white/10 text-slate-300 hover:bg-[#334155]"
+                }`}
               >
-                <span>⚡ Bỏ qua mở đầu</span>
-                <span>⏭</span>
+                <span>🎵</span>
+                <span>NỀN CHỜ (W)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => call("scoreboard:toggle")}
+                className={`py-2 rounded-xl border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition ${
+                  state.showScoreboard
+                    ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_15px_rgba(56,189,248,0.3)]"
+                    : "bg-[#1e293b] border-white/10 text-slate-300 hover:bg-[#334155]"
+                }`}
+              >
+                <span>📊</span>
+                <span>BẢNG ĐIỂM (B)</span>
               </button>
             </div>
-          )}
-          <RoundTracker state={state} call={call} />
-          {state.currentRound === "khoiDong" && <KhoiDongPanel state={state} call={call} serverNow={serverNow} />}
-          {state.currentRound === "vcnv" && <VcnvPanel state={state} call={call} serverNow={serverNow} />}
-          {state.currentRound === "tangToc" && <TangTocPanel state={state} call={call} serverNow={serverNow} />}
-          {state.currentRound === "veDich" && <VeDichPanel state={state} call={call} serverNow={serverNow} />}
-          {state.currentRound === "cauHoiPhu" && <ChpPanel state={state} call={call} serverNow={serverNow} />}
-          <details className="rounded-xl border border-white/15 bg-slate-900/70"><summary className="px-3 py-1.5 text-xs font-bold text-sky-300 cursor-pointer select-none">✏️ Chỉnh điểm thủ công</summary><div className="p-2"><ScoreAdjust state={state} call={call} /></div></details>
-        </>
+
+            {/* ROUND-SPECIFIC CONTROL DECK */}
+            <div className="rounded-xl border border-white/10 bg-[#131d2e] p-3 shadow-xl">
+              {curRound === "khoiDong" && <KhoiDongDeck state={state} call={call} />}
+              {curRound === "vcnv" && <VcnvDeck state={state} call={call} seats={seats} />}
+              {curRound === "tangToc" && <TangTocDeck state={state} call={call} />}
+              {curRound === "veDich" && <VeDichDeck state={state} call={call} />}
+              {curRound === "cauHoiPhu" && <CauHoiPhuDeck state={state} call={call} seats={seats} />}
+              {!curRound && (
+                <div className="py-8 text-center space-y-3">
+                  <div className="text-slate-400 text-sm">Trận đấu chưa bắt đầu hoặc đang ở phòng chờ.</div>
+                  <button
+                    type="button"
+                    onClick={() => call("game:start")}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-sm shadow-lg shadow-purple-500/30 cursor-pointer animate-pulse"
+                  >
+                    ▶ BẮT ĐẦU TRẬN ĐẤU OLYMPIA
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </main>
+
+        {/* 3. RIGHT SIDEBAR: Hotkeys & State Dashboard */}
+        <aside className="w-48 sm:w-56 bg-[#0f172a] border-l border-white/10 p-2.5 flex flex-col justify-between shrink-0 space-y-3">
+          {/* Box 1: Phím Tắt */}
+          <div className="space-y-1.5">
+            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <span>⌨️</span>
+              <span>Phím Tắt</span>
+            </div>
+            <div className="bg-[#162032] rounded-lg p-2 border border-white/5 space-y-1 text-[11px]">
+              <HotkeyRow keyName="Space" desc="Play/Pause" color="text-purple-400" />
+              <HotkeyRow keyName="Enter" desc="Đúng ✔" color="text-emerald-400" />
+              <HotkeyRow keyName="Bksp" desc="Sai ✘" color="text-rose-400" />
+              <HotkeyRow keyName="W" desc="Nền chờ" color="text-amber-400" />
+              <HotkeyRow keyName="R" desc="Lật đáp án" color="text-sky-400" />
+              <HotkeyRow keyName="C" desc="Toggle chuông" color="text-yellow-400" />
+              <HotkeyRow keyName="S" desc="Ngôi sao Hy vọng" color="text-yellow-300" />
+              <HotkeyRow keyName="B" desc="Bảng điểm" color="text-sky-300" />
+              <HotkeyRow keyName="N" desc="Câu tiếp" color="text-cyan-300" />
+            </div>
+          </div>
+
+          {/* Box 2: Trạng Thái */}
+          <div className="space-y-1.5">
+            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <span>📶</span>
+              <span>Trạng Thái</span>
+            </div>
+            <div className="bg-[#162032] rounded-lg p-2.5 border border-white/5 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Round:</span>
+                <b className="text-sky-300 truncate max-w-[90px]">{curRound || "lobby"}</b>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Timer:</span>
+                <b className="font-mono text-cyan-300">{activeTimerSeconds}</b>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Buzzer:</span>
+                <b className={buzzerActive ? "text-emerald-400" : "text-slate-400"}>
+                  {buzzerActive ? "🔔 Mở" : "🔒 Khóa"}
+                </b>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Buzzed:</span>
+                <b className="text-yellow-300 truncate max-w-[90px]">{buzzedNameText}</b>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Clients:</span>
+                <b className="text-slate-200">{seats.length}</b>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowScoreModal(true)}
+                className="w-full mt-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold text-amber-300 border border-amber-400/20 cursor-pointer flex items-center justify-center gap-1"
+              >
+                <span>✏</span>
+                <span>Chỉnh Điểm</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* ── BOTTOM BAR: 4 CONTESTANT CARDS WITH +/- BUTTONS ── */}
+      <footer className="border-t border-white/10 bg-[#0d131f] p-2 shrink-0">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {seats.slice(0, 4).map((s, idx) => (
+            <div
+              key={s.id}
+              className="rounded-xl border border-white/10 bg-[#162032] p-2 flex flex-col items-center justify-center gap-1 relative overflow-hidden shadow"
+              style={{ borderTop: `3px solid ${SEAT_COLORS[s.id] || "#38bdf8"}` }}
+            >
+              <div className="text-xs font-bold truncate max-w-full text-slate-300">
+                {s.name || `Thí sinh ${idx + 1}`}
+              </div>
+              <div className="text-2xl font-black" style={{ color: SEAT_COLORS[s.id] || "#38bdf8" }}>
+                {s.score}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <button
+                  type="button"
+                  onClick={() => call("score:adjust", { seat: s.id, delta: -10 })}
+                  className="w-7 h-6 rounded bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-300 text-xs font-bold cursor-pointer"
+                  title="Trừ 10 điểm"
+                >
+                  -
+                </button>
+                <button
+                  type="button"
+                  onClick={() => call("score:adjust", { seat: s.id, delta: 10 })}
+                  className="w-7 h-6 rounded bg-emerald-500/20 border border-emerald-500/40 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold cursor-pointer"
+                  title="Cộng 10 điểm"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </footer>
+
+      {/* Manual Score Adjust Modal */}
+      {showScoreModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="rounded-2xl border border-white/20 bg-slate-900 p-5 w-full max-w-md space-y-4">
+            <h3 className="text-base font-bold text-amber-300">✏ Chỉnh Điểm Thí Sinh</h3>
+            <div className="space-y-2">
+              <label className="text-xs text-slate-400">Chọn Thí sinh:</label>
+              <select
+                className="w-full rounded-lg bg-black/50 border border-white/20 p-2 text-sm text-white"
+                value={manualSeat}
+                onChange={(e) => setManualSeat(Number(e.target.value))}
+              >
+                {seats.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.score}đ)</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-slate-400">Số điểm thay đổi (+ hoặc -):</label>
+              <input
+                type="number"
+                step="5"
+                className="w-full rounded-lg bg-black/50 border border-white/20 p-2 text-sm text-white font-mono"
+                value={manualDelta}
+                onChange={(e) => setManualDelta(Number(e.target.value))}
+              />
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowScoreModal(false)}
+                className="px-3 py-1.5 rounded-lg bg-white/10 text-slate-300 text-xs font-bold"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await call("score:adjust", { seat: manualSeat, delta: manualDelta });
+                  setShowScoreModal(false);
+                }}
+                className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-black"
+              >
+                Cập nhật điểm
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-      {state.stage === "finished" && <Finished state={state} call={call} />}
 
-      <details className="rounded-xl border border-white/15 bg-slate-900/70"><summary className="px-3 py-1.5 text-xs font-bold text-sky-300 cursor-pointer select-none">📜 Nhật ký</summary><div className="p-2 text-xs text-slate-300 max-h-28 overflow-auto space-y-0.5">{[...state.log].reverse().map((l, i) => (<div key={i}>{l}</div>))}</div></details>
-
-      <OlympiaTranscriptModal
-        open={showTranscript}
-        onClose={() => setShowTranscript(false)}
-        state={state}
-      />
+      {/* Modals */}
       <OlympiaAudioManagerDrawer
         open={showAudioDrawer}
         onClose={() => setShowAudioDrawer(false)}
-        audioSeason={rs.audioSeason}
+        audioSeason={join?.audioSeason as any}
         autoAudioMode={audioOn}
-        onToggleAutoAudioMode={(m) => setAudioOn(m)}
+        onToggleAutoAudioMode={(v) => setAudioOn(v)}
       />
-      <OlympiaRulesWikipediaModal
-        open={showRules}
-        onClose={() => setShowRules(false)}
-        initialSeason={state.rulesetId}
-      />
-      <OlympiaMatchReportModal
-        open={showReport}
-        onClose={() => setShowReport(false)}
-        state={state}
-      />
+      <OlympiaTranscriptModal open={showTranscript} onClose={() => setShowTranscript(false)} state={state} />
+      <OlympiaRulesWikipediaModal open={showRules} onClose={() => setShowRules(false)} initialSeason={state.rulesetId} />
+      <OlympiaMatchReportModal open={showReport} onClose={() => setShowReport(false)} state={state} />
     </div>
   );
 }
 
-type Call = (type: string, extra?: Record<string, unknown>) => Promise<{ ok: boolean; error?: string }>;
-type SN = () => number;
-
-function Lobby({ state, call, code, origin }: { state: OlympiaState; call: Call; code: string; origin: string }) {
-  const seats = state.seats;
-  const count = seats.length;
-  const gridCols =
-    count === 2
-      ? "grid-cols-2"
-      : count === 3
-      ? "grid-cols-3"
-      : count === 4
-      ? "grid-cols-2 sm:grid-cols-4"
-      : count <= 6
-      ? "grid-cols-3 sm:grid-cols-6"
-      : "grid-cols-2 sm:grid-cols-4";
-
-  return (
-    <Panel title="Sảnh chờ">
-      <p className="text-xs sm:text-sm text-slate-300 mb-3">
-        Thí sinh vào <b className="text-sky-300">{origin}/play</b> và nhập mã <b className="text-yellow-300">{code}</b> (tối đa {count} người).
-      </p>
-      <div className={`grid ${gridCols} gap-2 mb-4`}>
-        {seats.map((s) => (
-          <div key={s.id} className="rounded-lg border border-white/15 p-2 bg-white/5" style={{ borderLeft: `4px solid ${SEAT_COLORS[s.id]}` }}>
-            <div className="text-xs text-slate-400">Ghế {s.id + 1}</div>
-            {s.name ? (
-              <>
-                <div className="font-bold truncate text-sm">
-                  {s.connected ? "🟢" : "⚪"} {s.name}
-                </div>
-                <button className="text-xs text-rose-300 underline" onClick={() => call("seat:kick", { seat: s.id })}>
-                  Mời ra
-                </button>
-              </>
-            ) : (
-              <div className="text-slate-500 italic text-xs">Trống</div>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="text-sm mb-3">
-        Các vòng sẽ chơi:{" "}
-        {state.rounds.map((r) => (
-          <span key={r} className="inline-block mr-2 px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/40">
-            {ROUND_LABELS[r]}
-          </span>
-        ))}
-        <span className="inline-block px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40">
-          {ROUND_LABELS.cauHoiPhu} (tự động nếu đồng hạng)
-        </span>
-      </div>
-      <button className={btnPrimary} onClick={() => call("game:start")}>
-        {activeSeats(state).length === 0 ? "▶ Bắt đầu trận đấu (Tạo thí sinh mẫu)" : "▶ Bắt đầu trận đấu"}
-      </button>
-    </Panel>
-  );
-}
-
-function RoundTracker({ state, call }: { state: OlympiaState; call: Call }) {
-  return (
-    <div className="flex flex-wrap gap-1.5 items-center rounded-xl border border-white/15 bg-slate-900/70 px-2 py-1.5">
-      {state.roundsPlan.map((r) => {
-        const st = state.roundStatus[r];
-        const cur = state.currentRound === r;
-        return (
-          <span
-            key={r}
-            className={`px-2 py-0.5 rounded-full text-[11px] border ${cur ? "bg-yellow-300 text-slate-950 border-yellow-200 font-black" : st === "done" ? "bg-emerald-500/20 border-emerald-400/40" : "bg-white/5 border-white/15"}`}
-          >
-            {ROUND_LABELS[r]}
-            {st === "done" ? " ✓" : ""}
-          </span>
-        );
-      })}
-      <span className="flex-1" />
-      <button className={btnPrimary} onClick={() => call("round:next")}>
-        Vòng tiếp theo ⏭
-      </button>
-      <button className={btn} onClick={() => call("round:force", { round: "cauHoiPhu" })}>
-        Chạy Câu hỏi phụ
-      </button>
-      <button className={btnBad} onClick={() => confirm("Kết thúc trận đấu?") && call("game:end")}>
-        Kết thúc
-      </button>
-    </div>
-  );
-}
-
-function ScoreAdjust({ state, call }: { state: OlympiaState; call: Call }) {
-  return (
-    <Panel title="Chỉnh điểm thủ công">
-      <div className="flex flex-wrap gap-3">
-        {activeSeats(state).map((s) => (
-          <div key={s.id} className="flex items-center gap-1 text-sm">
-            <span style={{ color: SEAT_COLORS[s.id] }} className="font-bold">
-              {s.name}
-            </span>
-            {[-10, -5, 5, 10].map((d) => (
-              <button key={d} className={btn} onClick={() => call("score:adjust", { seat: s.id, delta: d })}>
-                {d > 0 ? "+" : ""}
-                {d}
-              </button>
-            ))}
-          </div>
-        ))}
-      </div>
-    </Panel>
-  );
-}
-
-function Finished({ state, call }: { state: OlympiaState; call: Call }) {
-  const ranking = [...activeSeats(state)].sort((a, b) => b.score - a.score);
-  return (
-    <Panel title="Kết quả chung cuộc">
-      <ol className="space-y-1 mb-3">
-        {ranking.map((s, i) => (
-          <li key={s.id} className="text-lg">
-            {["🥇", "🥈", "🥉"][i] ?? `${i + 1}.`} <b>{s.name}</b> — {s.score} điểm
-          </li>
-        ))}
-      </ol>
-      <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">
-        <button className={btn} onClick={() => call("audio:prize")} title="Phát nhạc trao giải thưởng Olympia">
-          🏆 Nhạc trao giải
-        </button>
-        <button className={btn} onClick={() => call("audio:summary")} title="Phát nhạc tổng kết điểm số">
-          📊 Nhạc tổng kết
-        </button>
-        <button className={btnBad} onClick={() => call("audio:stop_bgm")} title="Dừng toàn bộ nhạc">
-          ⏹ Dừng nhạc
-        </button>
-        <button className={btn} onClick={() => call("game:reset")}>
-          ↺ Chơi lại (giữ thí sinh, reset điểm)
-        </button>
-      </div>
-    </Panel>
-  );
-}
-
-// ───────── Khởi Động ─────────
-function KhoiDongPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
+// ───────────────────────────────────────────────────────────
+// KHỞI ĐỘNG DECK (Image 1 reference)
+// ───────────────────────────────────────────────────────────
+function KhoiDongDeck({ state, call }: { state: OlympiaState; call: Call }) {
   const kd = state.khoiDong!;
   const seg = kd.segments[kd.segIdx];
-  const total = seg.questions > 100 ? "∞" : seg.questions;
+  const isSolo = seg.kind === "solo";
+
   return (
-    <Panel title={`Khởi Động — ${seg.label}`}>
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 space-y-2">
-          <div className="text-sm text-slate-300 flex items-center flex-wrap gap-2">
-            <span>
-              Câu {Math.max(0, kd.qIdx + 1)}/{total} · Giai đoạn: <b>{kd.phase}</b>
-            </span>
-            {kd.current?.subject && (
-              <span className="px-2 py-0.5 rounded-full bg-sky-500/20 border border-sky-400/40 text-sky-300 text-xs font-bold">
-                📚 {kd.current.subject}
-              </span>
-            )}
-            {kd.buzzedSeat != null && (
-              <span className="ml-2 px-2 rounded bg-yellow-300 text-slate-950 font-bold">🔔 {seatName(state, kd.buzzedSeat)}</span>
-            )}
-            {kd.buzzOpen && <span className="ml-2 text-emerald-300">chuông đang mở</span>}
-            {kd.buzzUnlockAt && kd.buzzUnlockAt > serverNow() && (
-              <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-semibold animate-pulse border border-amber-400/30">
-                🔒 Chuông khoá ({Math.ceil((kd.buzzUnlockAt - serverNow()) / 1000)}s)
-              </span>
-            )}
-          </div>
-          {kd.current ? (
-            <div className="rounded-xl bg-white/5 p-2">
-              <div className="text-xl font-semibold">{kd.current.q}</div>
-              <div className="text-emerald-300 mt-1">Đáp án: {kd.current.a}</div>
-              <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-40 mt-2 rounded" />
-            </div>
-          ) : (
-            <div className="text-slate-400 italic">{kd.phase === "segmentDone" ? "Hết phần thi — bấm Tiếp để sang phần kế." : "Bấm “Câu tiếp” để mở câu hỏi."}</div>
-          )}
-          {(() => {
-            const isLastQuestionDone =
-              kd.segIdx >= kd.segments.length - 1 &&
-              (kd.phase === "segmentDone" || (kd.qIdx >= seg.questions - 1 && kd.phase === "result"));
-            return (
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className={`${btnPrimary} ${isLastQuestionDone ? "opacity-40 cursor-not-allowed pointer-events-none" : ""}`}
-                  disabled={isLastQuestionDone}
-                  onClick={() => call("kd:next")}
-                  title={isLastQuestionDone ? "Đã kết thúc toàn bộ câu hỏi Khởi Động chung" : undefined}
-                >
-                  {kd.phase === "segmentDone" ? "Phần tiếp ⏭" : "Câu tiếp ⏭"}
-                </button>
-            {seg.kind === "solo" && (
-              <button className={btn} onClick={() => call("kd:ready")} title="Phát âm thanh sẵn sàng của thí sinh">
-                🎵 Sẵn sàng
-              </button>
-            )}
-            <button className={btn} onClick={() => call("kd:timer")}>
-              ⏱ Bắt đầu/Tạm dừng
-            </button>
-            {seg.kind !== "solo" && (
-              <button className={btn} onClick={() => call("kd:buzzer")}>
-                🔔 Mở/Đóng chuông
-              </button>
-            )}
-            <button className={btnOk} onClick={() => call("kd:correct")}>
-              ✔ Đúng
-            </button>
-            <button className={btnBad} onClick={() => call("kd:wrong")}>
-              ✘ Sai
-            </button>
-            <button className={btn} onClick={() => call("kd:skip")}>
-              Bỏ qua
-            </button>
-          </div>
-            );
-          })()}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+      {/* Column 1: Lượt Riêng / Lượt Chung & Thí Sinh TS1..TS4 */}
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => call("kd:selectSegment", { kind: "solo", seatId: 0 })}
+            className={`py-1.5 rounded-lg text-xs font-bold border transition ${
+              isSolo ? "bg-purple-600/30 border-purple-400 text-purple-200" : "bg-white/5 border-white/10 text-slate-400"
+            }`}
+          >
+            📍 Lượt Riêng
+          </button>
+          <button
+            type="button"
+            onClick={() => call("kd:selectSegment", { kind: "shared" })}
+            className={`py-1.5 rounded-lg text-xs font-bold border transition ${
+              !isSolo ? "bg-cyan-600/30 border-cyan-400 text-cyan-200" : "bg-white/5 border-white/10 text-slate-400"
+            }`}
+          >
+            👥 Lượt Chung
+          </button>
         </div>
-        <div className="space-y-2">
-          <Timer timer={kd.timer} serverNow={serverNow} />
-          {kd.globalTimer && (
-            <div>
-              <div className="text-xs text-slate-400">Đồng hồ cả lượt</div>
-              <Timer timer={kd.globalTimer} serverNow={serverNow} />
-            </div>
-          )}
-          {kd.lockedSeats.length > 0 && (
-            <div className="text-xs text-amber-300">Bị khóa: {kd.lockedSeats.map((i) => seatName(state, i)).join(", ")}</div>
-          )}
+
+        <div className="grid grid-cols-2 gap-1.5">
+          {[0, 1, 2, 3].map((sId) => {
+            const isCur = isSolo && seg.seat === sId;
+            return (
+              <button
+                key={sId}
+                type="button"
+                onClick={() => call("kd:selectSegment", { seatId: sId })}
+                className={`py-1.5 rounded-lg text-xs font-bold border transition ${
+                  isCur ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow" : "bg-white/5 border-white/10 text-slate-300"
+                }`}
+              >
+                TS{sId + 1}
+              </button>
+            );
+          })}
         </div>
       </div>
-    </Panel>
+
+      {/* Column 2: BẮT ĐẦU, Tính Giờ (Space), Đúng/Sai/Ô Trống, Câu Tiếp (N) */}
+      <div className="space-y-2 flex flex-col items-center">
+        {/* ▶ BẮT ĐẦU: Phát ready.mp3 như nhạc dạo đầu, chưa hiện gì, sau khoảng 3.5s phát open_question và mở đồ hoạ */}
+        <button
+          type="button"
+          onClick={() => call("kd:start")}
+          className="w-full py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+        >
+          <span>▶</span>
+          <span>BẮT ĐẦU</span>
+        </button>
+
+        {/* Tính Giờ (Space): Purple giant button */}
+        <button
+          type="button"
+          onClick={() => call("kd:timer")}
+          className="w-full py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-black shadow-lg shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+        >
+          <span>⏱</span>
+          <span>Tính Giờ (Space)</span>
+        </button>
+
+        {/* Row: Đúng (Enter) | Sai (Bksp) | Ô TRỐNG */}
+        <div className="w-full grid grid-cols-3 gap-1.5">
+          <button
+            type="button"
+            onClick={() => call("kd:correct")}
+            className="py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow cursor-pointer flex items-center justify-center gap-1"
+          >
+            <span>✔</span>
+            <span>ĐÚNG (Enter)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => call("kd:wrong")}
+            className="py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow cursor-pointer flex items-center justify-center gap-1"
+          >
+            <span>✘</span>
+            <span>SAI (Bksp)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => call("kd:blank")}
+            className="py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow cursor-pointer flex items-center justify-center gap-1"
+          >
+            <span>■</span>
+            <span>Ô TRỐNG</span>
+          </button>
+        </div>
+
+        {/* Câu Tiếp (N): Nhấn lần đầu tiên thì phát luôn nhạc kd_bgm hoặc đếm thời gian */}
+        <button
+          type="button"
+          onClick={() => call("kd:next")}
+          className="w-full py-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+        >
+          <span>Câu Tiếp (N)</span>
+          <span>⏭</span>
+        </button>
+      </div>
+
+      {/* Column 3: Đổi nhạc nền (Auto), Dừng nhạc nền, Toggle Chuông (C) */}
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => call("kd:cycle_bgm")}
+          className="w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold border border-white/10 cursor-pointer"
+        >
+          Đổi nhạc nền (Auto)
+        </button>
+        <button
+          type="button"
+          onClick={() => call("audio:stop_bgm")}
+          className="w-full py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer"
+        >
+          Dừng nhạc nền
+        </button>
+        <button
+          type="button"
+          onClick={() => call("kd:buzzer")}
+          className={`w-full py-2 rounded-xl font-black text-xs border shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase transition ${
+            kd.buzzOpen
+              ? "bg-amber-500 border-amber-400 text-black shadow-amber-500/20"
+              : "bg-white/5 border-amber-400/30 text-amber-300 hover:bg-white/10"
+          }`}
+        >
+          <span>🔔</span>
+          <span>Toggle Chuông (C)</span>
+        </button>
+      </div>
+    </div>
   );
 }
 
-// ───────── VCNV ─────────
-function VcnvPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
+// ───────────────────────────────────────────────────────────
+// VƯỢT CHƯỚNG NGẠI VẬT DECK (Image 2 reference)
+// ───────────────────────────────────────────────────────────
+function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; seats: Seat[] }) {
   const v = state.vcnv!;
-  const rs = RULESETS[state.rulesetId] ?? RULESETS.O26;
-  const seats = activeSeats(state);
-  const row = v.currentRow >= 0 && v.currentRow < 4 ? v.rows[v.currentRow] : null;
-  const isCenterRow = v.currentRow === 4;
-  // Mặc định để trống toàn bộ ô tích (0 người được chọn sẵn): MC/Admin tự tay tích chọn thí sinh trả lời đúng
-  const [checked, setChecked] = useState<number[]>([]);
-  useEffect(() => setChecked([]), [v.currentRow]);
-  const sel = checked;
-  const currentCnvPts = cnvPointsFor(rs, v.openedCount, Boolean(v.centerOpened));
+  const [selectedCnvSeat, setSelectedCnvSeat] = useState<number>(0);
+
   return (
-    <Panel title="Vượt Chướng Ngại Vật">
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 space-y-3">
-          <div className="text-sm flex items-center flex-wrap gap-3">
-            <span>
-              Từ khóa: <b className="text-yellow-300">{v.keyword}</b> · Đã mở {v.openedCount}/4 hàng
-              {v.centerOpened ? " + Ô trung tâm" : ""}
-            </span>
-            <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold">
-              Điểm giải CNV hiện tại: +{currentCnvPts}đ
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {v.rows.map((r, i) => (
-              <button
-                key={i}
-                disabled={r.opened}
-                onClick={() => call("vcnv:selectRow", { row: i })}
-                className={`text-left rounded-lg p-2 border ${v.currentRow === i ? "border-yellow-300 bg-yellow-300/10" : "border-white/15 bg-white/5"} ${r.opened ? "opacity-40" : ""}`}
-              >
-                <div className="text-xs text-slate-400">
-                  Hàng {i + 1} {r.opened ? "✓ đã mở" : r.wrong ? "✘ sai" : ""}
-                </div>
-                <div className="text-sm">{r.hint}</div>
-                <div className="text-emerald-300 text-xs">ĐA: {r.answer}</div>
-              </button>
-            ))}
+    <div className="space-y-2.5">
+      {/* Banner status: Phase & Số lượng chữ cái */}
+      <div className="flex items-center justify-between text-xs text-slate-300 px-1 border-b border-white/10 pb-1.5">
+        <span>
+          Phase: <b className="text-cyan-300">{v.phase === "grid" ? "Lưới từ khóa" : v.phase === "question" ? "Câu hỏi hàng ngang" : "Lật đáp án"}</b>
+          {" · "}Hàng chọn: <b className="text-yellow-300">{v.currentRow >= 0 ? (v.currentRow === 4 ? "Trung tâm" : `Hàng ${v.currentRow + 1}`) : "—"}</b>
+        </span>
+        <span className="text-amber-300 font-bold">
+          Số lượng chữ cái Chướng ngại vật: {v.keyword ? v.keyword.replace(/\s+/g, "").length : 0}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Left: Mở Các Hàng Ngang & Hàng 1..4, Trung Tâm */}
+        <div className="space-y-1.5">
+          <button
+            type="button"
+            onClick={() => call("vcnv:showGrid")}
+            className="w-full py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center justify-center gap-1 cursor-pointer"
+          >
+            <span>⭐</span>
+            <span>Mở Các Hàng Ngang</span>
+          </button>
+          {[0, 1, 2, 3].map((rIdx) => (
             <button
-              disabled={Boolean(v.centerOpened)}
-              onClick={() => call("vcnv:selectRow", { row: 4 })}
-              className={`col-span-2 text-left rounded-lg p-2 border ${
-                v.currentRow === 4 ? "border-yellow-300 bg-yellow-300/10" : "border-amber-400/30 bg-amber-500/10"
-              } ${v.centerOpened ? "opacity-40" : ""}`}
+              key={rIdx}
+              type="button"
+              onClick={() => call("vcnv:selectRow", { row: rIdx })}
+              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${
+                v.currentRow === rIdx
+                  ? "bg-yellow-400/20 border-yellow-400 text-yellow-200"
+                  : v.rows[rIdx]?.opened
+                    ? "bg-white/5 border-white/10 text-slate-500"
+                    : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+              }`}
             >
-              <div className="text-xs text-amber-300 font-bold">
-                ⭐ Câu hỏi số 5 — Ô Trung Tâm (+10đ) {v.centerOpened ? "✓ đã mở" : v.centerWrong ? "✘ sai" : ""}
-              </div>
-              <div className="text-sm">{v.centerQuestion?.q || "Câu hỏi gợi ý cuối cùng ở trung tâm bức tranh"}</div>
-              <div className="text-emerald-300 text-xs">ĐA: {v.centerQuestion?.a || v.keyword}</div>
+              Hàng {rIdx + 1} {v.rows[rIdx]?.opened ? "✓" : ""}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => call("vcnv:selectRow", { row: 4 })}
+            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${
+              v.currentRow === 4
+                ? "bg-yellow-400/20 border-yellow-400 text-yellow-200"
+                : v.centerOpened
+                  ? "bg-white/5 border-white/10 text-slate-500"
+                  : "bg-amber-500/10 border-amber-400/30 text-amber-300 hover:bg-amber-500/20"
+            }`}
+          >
+            Trung Tâm {v.centerOpened ? "✓" : ""}
+          </button>
+        </div>
+
+        {/* Center: In-Question flow controls */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => call("vcnv:openQuestion")}
+            className="w-full py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow cursor-pointer"
+          >
+            Mở Câu Hỏi
+          </button>
+
+          <button
+            type="button"
+            onClick={() => call("vcnv:timer")}
+            className="w-full py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow cursor-pointer uppercase tracking-wider"
+          >
+            ⏳ Đếm 15s (Space)
+          </button>
+
+          <div className="grid grid-cols-3 gap-1">
+            <button
+              type="button"
+              onClick={() => call("vcnv:timer")}
+              className="py-1 rounded bg-white/10 hover:bg-white/15 text-[11px] font-bold text-slate-300"
+            >
+              Nền chờ ĐA
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vcnv:reveal")}
+              className="py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-[11px] font-black text-white"
+            >
+              👁 Hiện ĐA (R)
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vcnv:blank")}
+              className="py-1 rounded bg-white/5 hover:bg-white/10 text-[11px] text-slate-400"
+            >
+              ○ Ẩn
             </button>
           </div>
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-xs font-bold text-slate-400">Trong câu hỏi:</span>
-              <button className={btn} onClick={() => call("vcnv:timer")}>
-                ⏱ 15s suy nghĩ
-              </button>
-              <button className={btn} onClick={() => call("vcnv:reveal")}>
-                👁 Hiện đáp án thí sinh
-              </button>
-              <button className={btnOk} onClick={() => call("vcnv:correct", { seatIds: sel })}>
-                ✔ Chấm đúng ({sel.length})
-              </button>
-              <button className={btnBad} onClick={() => call("vcnv:wrong")}>
-                ✘ Không ai đúng
-              </button>
-              <button className={btn} onClick={() => call("vcnv:revealTile")} title="Mở mảnh ghép tương ứng hàng này">
-                🧩 Mở mảnh ghép hàng này
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2 items-center pt-1 border-t border-white/10">
-              <span className="text-xs font-bold text-slate-400">Cuối vòng / Giải CNV:</span>
-              <button className={btn} onClick={() => call("vcnv:revealAll")} title="Mở toàn bộ ô chữ và lật hết mảnh ghép ảnh">
-                🌟 Mở tất cả (ô chữ + mảnh ghép)
-              </button>
-              <button className={btnPrimary} onClick={() => call("vcnv:end")}>
-                ⏭ Kết thúc vòng VCNV
-              </button>
-              <details className="inline-block">
-                <summary className="text-xs text-slate-400 hover:text-white cursor-pointer px-2 py-1 rounded bg-white/5 border border-white/10">
-                  ⚙️ Mở thủ công chi tiết
-                </summary>
-                <div className="flex gap-2 mt-1.5">
-                  <button className={btn} onClick={() => call("vcnv:revealRowsOnly")}>
-                    🔤 Mở tất cả hàng chữ
-                  </button>
-                  <button className={btn} onClick={() => call("vcnv:revealPiecesOnly")}>
-                    🧩 Mở tất cả mảnh ảnh
-                  </button>
-                </div>
-              </details>
-            </div>
+
+          <div className="grid grid-cols-3 gap-1">
+            <button
+              type="button"
+              onClick={() => call("vcnv:correct")}
+              className="py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-[11px] font-black text-white"
+            >
+              ✔ Cộng điểm HN
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vcnv:wrong")}
+              className="py-1.5 rounded bg-rose-600 hover:bg-rose-500 text-[11px] font-black text-white"
+            >
+              ✘ Sai / Không ĐA
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vcnv:blank")}
+              className="py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-[11px] font-bold text-slate-300"
+            >
+              ■ Ô TRỐNG
+            </button>
           </div>
-          {(row || isCenterRow) && (
-            <div className="rounded-lg bg-white/5 p-2.5 space-y-1.5">
-              <div className="text-xs text-slate-300 mb-1">
-                Đáp án thí sinh cho <b>{isCenterRow ? "Ô Trung Tâm (Câu 5)" : `Hàng ${v.currentRow + 1}`}</b> — MC tự tích chọn thí sinh đúng (+{rs.vcnv.rowPoints}đ):
-              </div>
-              {seats.map((s) => {
-                const ans = v.answers[s.id];
+
+          <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-white/10">
+            <button
+              type="button"
+              onClick={() => call("vcnv:revealTile")}
+              className="py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold"
+            >
+              🧩 Lật mở miếng ghép
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vcnv:revealRowText")}
+              className="py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold"
+            >
+              Tiết lộ đáp án HN
+            </button>
+          </div>
+        </div>
+
+        {/* Right: Chướng Ngại Vật bell & CNV grading */}
+        <div className="space-y-2 border-l border-white/10 pl-2.5">
+          <button
+            type="button"
+            className="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black shadow flex items-center justify-center gap-1 cursor-pointer"
+          >
+            <span>🔔</span>
+            <span>Chuông CNV (C)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => call("vcnv:clearBells")}
+            className="w-full py-1 rounded bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold"
+          >
+            🔕 Tắt tín hiệu CNV
+          </button>
+
+          <div className="space-y-1">
+            <span className="text-[11px] text-slate-400 font-bold">Thí sinh bấm chuông:</span>
+            <div className="grid grid-cols-2 gap-1">
+              {seats.slice(0, 4).map((s) => {
+                const buzzed = v.bells?.some((b) => b.seat === s.id);
                 return (
-                  <label key={s.id} className="flex flex-wrap items-center gap-2 text-sm py-0.5">
-                    <input
-                      type="checkbox"
-                      checked={sel.includes(s.id)}
-                      onChange={(e) => setChecked(e.target.checked ? [...sel, s.id] : sel.filter((x) => x !== s.id))}
-                    />
-                    <span className="font-bold" style={{ color: SEAT_COLORS[s.id] }}>
-                      {s.name}:
-                    </span>
-                    <b className="text-white">{ans?.text || "—"}</b>
-                    {ans?.ms != null && (
-                      <span className="text-xs font-mono text-cyan-300">({(ans.ms / 1000).toFixed(2)}s)</span>
-                    )}
-                    {ans?.previousText && (
-                      <span className="text-xs text-amber-200/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-400/20">
-                        Áp chót: &ldquo;{ans.previousText}&rdquo;
-                        {ans.previousMs != null ? ` (${(ans.previousMs / 1000).toFixed(2)}s)` : ""}
-                      </span>
-                    )}
-                    {ans?.history && ans.history.length > 2 && (
-                      <span className="text-[11px] text-slate-400">
-                        ({ans.history.length} lần nhập)
-                      </span>
-                    )}
-                    {v.eliminatedSeats.includes(s.id) && <span className="text-rose-300 text-xs">(đã bị loại)</span>}
-                  </label>
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSelectedCnvSeat(s.id)}
+                    className={`px-1.5 py-1 rounded text-xs font-bold border text-left truncate ${
+                      selectedCnvSeat === s.id
+                        ? "bg-amber-500/20 border-amber-400 text-amber-200"
+                        : buzzed
+                          ? "bg-yellow-400/30 border-yellow-400 text-yellow-300 animate-pulse"
+                          : "bg-white/5 border-white/10 text-slate-400"
+                    }`}
+                  >
+                    TS{s.id + 1} {buzzed ? "🔔" : ""}
+                  </button>
                 );
               })}
             </div>
-          )}
-          <div className="rounded-lg bg-white/5 p-2">
-            <div className="text-xs text-slate-400 mb-1">Chuông Chướng ngại vật</div>
-            {v.bells.length === 0 && <div className="text-slate-500 text-sm">Chưa ai bấm chuông</div>}
-            {v.bells.map((b) => (
-              <div key={b.seat} className="flex items-center gap-2 text-sm py-0.5">
-                🔔 <b style={{ color: SEAT_COLORS[b.seat] }}>{seatName(state, b.seat)}</b>
-                {b.before && <span className="text-xs text-amber-300">(trước khi lật đáp án hàng)</span>}
-                <button className={btnOk} onClick={() => call("vcnv:correctCNV", { seat: b.seat })}>
-                  CNV đúng
-                </button>
-                <button className={btnBad} onClick={() => call("vcnv:wrongCNV", { seat: b.seat })}>
-                  CNV sai (loại)
-                </button>
-              </div>
-            ))}
-            {v.centerQuestion && <div className="text-xs text-slate-400 mt-2">Câu hỏi trung tâm: {v.centerQuestion.q} → {v.centerQuestion.a}</div>}
           </div>
-        </div>
-        <div>
-          <Timer timer={v.timer} serverNow={serverNow} />
+
+          <div className="grid grid-cols-2 gap-1.5 pt-1">
+            <button
+              type="button"
+              onClick={() => call("vcnv:correctCNV", { seat: selectedCnvSeat })}
+              className="py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black"
+            >
+              ✔ CNV Đúng
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vcnv:wrongCNV", { seat: selectedCnvSeat })}
+              className="py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black"
+            >
+              ✘ CNV Sai
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => call("vcnv:revealAll")}
+            className="w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold border border-white/10"
+          >
+            Mở Toàn Bộ Miếng Ghép
+          </button>
         </div>
       </div>
-    </Panel>
+    </div>
   );
 }
 
-// ───────── Tăng Tốc ─────────
-function TangTocPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
+// ───────────────────────────────────────────────────────────
+// TĂNG TỐC DECK (Image 3 reference)
+// ───────────────────────────────────────────────────────────
+function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
   const tt = state.tangToc!;
-  const q = tt.questions[tt.qIdx];
-  // Mặc định để trống toàn bộ ô tích (0 người được chọn sẵn): MC/Admin tự tay tích chọn thí sinh đúng
-  const [checked, setChecked] = useState<number[]>([]);
-  useEffect(() => setChecked([]), [tt.qIdx, tt.phase]);
-  const sel = checked;
+
   return (
-    <Panel title={`Tăng Tốc — Câu ${tt.qIdx + 1}/${tt.questions.length}`}>
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 space-y-3">
-          {q ? (
-            <div className="rounded-xl bg-white/5 p-2">
-              {q.q && <div className="text-lg">{q.q}</div>}
-              <MediaView url={q.media} type={q.type} className="max-h-48 rounded mt-2" />
-              <div className="text-emerald-300 mt-1">Đáp án: {q.answer}</div>
-            </div>
-          ) : (
-            <div className="text-slate-400 italic">Bấm “Câu tiếp” để chuẩn bị câu hỏi.</div>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <button className={btnPrimary} onClick={() => call("tt:next")}>
-              Câu tiếp ⏭
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+      {/* Left: Danh Sách Câu 1..4 (BẢNG ÁN) */}
+      <div className="space-y-1.5">
+        <div className="text-xs font-bold text-slate-400 uppercase">BẢNG ÁN / CÂU HỎI</div>
+        {[0, 1, 2, 3].map((idx) => {
+          const isCur = tt.qIdx === idx;
+          const label = idx === 3 ? "Câu 4 (Video)" : `Câu ${idx + 1} (Ảnh)`;
+          return (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => call("tt:selectQuestion", { qIdx: idx })}
+              className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
+                isCur ? "bg-cyan-600/30 border-cyan-400 text-cyan-200" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+              }`}
+            >
+              {label}
             </button>
-            <button className={btn} onClick={() => call("tt:show")}>
-              🖼 Hiện câu hỏi
-            </button>
-            <button className={btn} onClick={() => call("tt:timer")}>
-              ⏱ Bắt đầu/Tạm dừng
-            </button>
-            <button className={btn} onClick={() => call("tt:reveal")}>
-              👁 Lật xếp hạng
-            </button>
-            <button className={btnOk} disabled={tt.phase !== "ranking"} onClick={() => call("tt:grade", { correctSeats: sel })}>
-              ✔ Chấm điểm ({sel.length} đúng)
-            </button>
-            <button className={btn} onClick={() => call("tt:end")}>
-              Kết thúc vòng
-            </button>
-          </div>
-          {tt.phase === "question" && (
-            <div className="text-sm text-slate-300">
-              Đã gửi: {Object.keys(tt.submissions).length}/{activeSeats(state).length}
-            </div>
-          )}
-          {tt.ranking.length > 0 && (
-            <div className="rounded-lg bg-white/5 p-2.5 space-y-1.5">
-              <div className="text-xs text-slate-300 mb-1">
-                Thứ tự trả lời của thí sinh — MC tự tích chọn những người trả lời Đúng rồi bấm <b>Chấm điểm</b>:
-              </div>
-              {tt.ranking.map((r, i) => (
-                <label key={r.seat} className="flex flex-wrap items-center gap-2 text-sm py-0.5">
-                  <input
-                    type="checkbox"
-                    disabled={tt.phase === "graded" || r.noAnswer}
-                    checked={sel.includes(r.seat)}
-                    onChange={(e) => setChecked(e.target.checked ? [...sel, r.seat] : sel.filter((x) => x !== r.seat))}
-                  />
-                  <span className="w-6 font-mono font-bold text-yellow-300">#{i + 1}</span>
-                  <b style={{ color: SEAT_COLORS[r.seat] }}>{seatName(state, r.seat)}</b>
-                  <span>{r.noAnswer ? "(không trả lời)" : `“${r.answer}” — ${(r.ms / 1000).toFixed(2)}s`}</span>
-                  {r.previousAnswer && (
-                    <span className="text-xs text-amber-200/90 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-400/20">
-                      Áp chót: &ldquo;{r.previousAnswer}&rdquo;
-                      {r.previousMs != null ? ` (${(r.previousMs / 1000).toFixed(2)}s)` : ""}
-                    </span>
-                  )}
-                  {r.history && r.history.length > 2 && (
-                    <span className="text-[11px] text-slate-400">({r.history.length} lần nhập)</span>
-                  )}
-                  {r.points ? <span className="text-emerald-300 font-bold">+{r.points}đ</span> : null}
-                  {r.wrong && <span className="text-rose-300 text-xs">✘ Sai</span>}
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-        <Timer timer={tt.timer} serverNow={serverNow} />
+          );
+        })}
       </div>
-    </Panel>
+
+      {/* Center: Controls */}
+      <div className="space-y-2 flex flex-col items-center">
+        <button
+          type="button"
+          onClick={() => call("tt:show")}
+          className="w-full py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+        >
+          <span>▶</span>
+          <span>Hiện Câu Hỏi</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => call("tt:timer")}
+          className="w-full py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-black shadow-lg shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+        >
+          <span>Bắt đầu đếm giờ (Space)</span>
+        </button>
+
+        <div className="w-full grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => call("tt:revealAndGrade")}
+            className="py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow cursor-pointer flex items-center justify-center gap-1"
+          >
+            <span>✔</span>
+            <span>Hiện ĐA thí sinh (R)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => call("tt:blank")}
+            className="py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow cursor-pointer flex items-center justify-center gap-1"
+          >
+            <span>■</span>
+            <span>Ô Trống</span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => call("tt:next")}
+          className="w-full py-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+        >
+          <span>Câu tiếp (N)</span>
+          <span>⏭</span>
+        </button>
+      </div>
+
+      {/* Right: Nền chờ đáp án */}
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => call("bgm:waiting")}
+          className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold border border-white/10 cursor-pointer"
+        >
+          Nền chờ đáp án
+        </button>
+        <button
+          type="button"
+          onClick={() => call("audio:stop_bgm")}
+          className="w-full py-2 rounded-xl bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer"
+        >
+          Dừng nhạc nền
+        </button>
+      </div>
+    </div>
   );
 }
 
-// ───────── Về Đích ─────────
-function VeDichPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
+// ───────────────────────────────────────────────────────────
+// VỀ ĐÍCH DECK (Image 4 reference)
+// ───────────────────────────────────────────────────────────
+function VeDichDeck({ state, call }: { state: OlympiaState; call: Call }) {
   const vd = state.veDich!;
-  const rs = RULESETS[state.rulesetId].veDich;
-  const owner = vd.order[vd.turnIdx];
-  const [pts, setPts] = useState<number[]>(() => Array(rs.questionsPerSeat).fill(rs.pointOptions[0]));
-  const cur = vd.current;
-  const pkg = vd.packages[owner];
+  const [pkgQ1, setPkgQ1] = useState<number>(20);
+  const [pkgQ2, setPkgQ2] = useState<number>(20);
+  const [pkgQ3, setPkgQ3] = useState<number>(20);
+
   return (
-    <Panel title={`Về Đích — Lượt của ${seatName(state, owner)}`}>
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 space-y-3">
-          <div className="flex flex-wrap gap-1 text-sm">
-            {vd.order.map((id) => (
-              <button
-                key={id}
-                className={`px-2 py-1 rounded border ${id === owner ? "bg-yellow-300 text-slate-950 border-yellow-200" : "border-white/20 bg-white/5"}`}
-                onClick={() => call("vd:setSeat", { seat: id })}
-              >
-                {seatName(state, id)} {vd.hopeStarUsed.includes(id) ? "⭐✓" : ""}
-              </button>
-            ))}
+    <div className="space-y-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Left: Khởi tạo lượt thi, Lên sân khấu/Trở về, Mở chọn gói đồ họa, Xác nhận gói */}
+        <div className="space-y-1.5">
+          <div className="text-xs font-bold text-slate-400 uppercase">Khởi tạo lượt thi</div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => call("vd:onStage")}
+              className="py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow"
+            >
+              Lên sân khấu
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vd:finishTurn")}
+              className="py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow"
+            >
+              Trở về vị trí
+            </button>
           </div>
-          {vd.phase === "choosing" && (
-            <div className="rounded-lg bg-white/5 p-3 space-y-2">
-              {rs.selectionMode === "presetPackages" && rs.presetPackages ? (
-                <>
-                  <div className="text-sm">
-                    Chọn gói câu hỏi cố định ({rs.questionsPerSeat} câu/gói — chuẩn {state.rulesetId}):
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(rs.presetPackages).map(([pkgKey, pkgPoints]) => (
-                      <button
-                        key={pkgKey}
-                        className={btnPrimary}
-                        onClick={() => call("vd:choosePackage", { points: pkgPoints })}
-                      >
-                        📦 Gói {pkgKey} điểm ({pkgPoints.join(" - ")})
-                      </button>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="text-sm mb-2">Chọn gói {rs.questionsPerSeat} câu (thí sinh cũng có thể tự chọn trên điện thoại):</div>
-                  <div className="flex gap-2 mb-2">
-                    {pts.map((p, i) => (
-                      <select
-                        key={i}
-                        value={p}
-                        className="bg-slate-800 border border-white/20 rounded px-2 py-1"
-                        onChange={(e) => setPts(pts.map((x, j) => (j === i ? Number(e.target.value) : x)))}
-                      >
-                        {rs.pointOptions.map((o) => (
-                          <option key={o} value={o}>
-                            {o}đ
-                          </option>
-                        ))}
-                      </select>
-                    ))}
-                  </div>
-                  <button className={btnPrimary} onClick={() => call("vd:choosePackage", { points: pts })}>
-                    Xác nhận gói
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-          {pkg && (
-            <div className="text-sm text-slate-300">
-              Gói: {pkg.map((p, i) => (
-                <span key={i} className={`mr-2 px-2 rounded ${vd.qIdx === i ? "bg-yellow-300 text-slate-950 font-bold" : "bg-white/10"}`}>
-                  {p.points}đ
-                </span>
-              ))}
-            </div>
-          )}
-          {cur && (
-            <div className="rounded-xl bg-white/5 p-2">
-              <div className="text-xs text-slate-400">
-                {cur.points} điểm · {cur.q.type === "practice" ? "thực hành" : "lý thuyết"} {vd.hopeStarActive && <b className="text-yellow-300">⭐ Ngôi sao hy vọng</b>}
+
+          {/* Mở bảng chọn gói đồ họa: Phát ngay choose_package.mp3 */}
+          <button
+            type="button"
+            onClick={() => call("vd:showPackageGraphic")}
+            className="w-full py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow"
+          >
+            🎨 Mở bảng chọn gói đồ họa
+          </button>
+
+          {/* Gói Câu Hỏi 3 Dropdowns */}
+          <div className="space-y-1 bg-[#162032] p-2 rounded-lg border border-white/5">
+            <div className="text-[11px] font-bold text-amber-300">GÓI CÂU HỎI</div>
+            <div className="grid grid-cols-3 gap-1">
+              <div>
+                <span className="text-[10px] text-slate-400">Câu 1</span>
+                <select
+                  value={pkgQ1}
+                  onChange={(e) => setPkgQ1(Number(e.target.value))}
+                  className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
+                >
+                  <option value={10}>10đ</option>
+                  <option value={20}>20đ</option>
+                  <option value={30}>30đ</option>
+                  <option value={40}>40đ</option>
+                </select>
               </div>
-              <div className="text-xl font-semibold">{cur.q.q}</div>
-              <div className="text-emerald-300">Đáp án: {cur.q.a}</div>
-              <MediaView url={cur.q.media} type={cur.q.mediaType} className="max-h-40 rounded mt-2" />
+              <div>
+                <span className="text-[10px] text-slate-400">Câu 2</span>
+                <select
+                  value={pkgQ2}
+                  onChange={(e) => setPkgQ2(Number(e.target.value))}
+                  className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
+                >
+                  <option value={10}>10đ</option>
+                  <option value={20}>20đ</option>
+                  <option value={30}>30đ</option>
+                  <option value={40}>40đ</option>
+                </select>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400">Câu 3</span>
+                <select
+                  value={pkgQ3}
+                  onChange={(e) => setPkgQ3(Number(e.target.value))}
+                  className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
+                >
+                  <option value={10}>10đ</option>
+                  <option value={20}>20đ</option>
+                  <option value={30}>30đ</option>
+                  <option value={40}>40đ</option>
+                </select>
+              </div>
             </div>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <button className={btnPrimary} onClick={() => call("vd:startQuestion")}>
-              Câu tiếp ⏭
-            </button>
-            <button className={btn} onClick={() => call("vd:timer")}>
-              ⏱ Bắt đầu/Tạm dừng
-            </button>
-            <button className={btn} onClick={() => call("vd:hopeStar")}>
-              ⭐ Ngôi sao hy vọng
-            </button>
-            <button className={btnOk} onClick={() => call("vd:correct")}>
-              ✔ Đúng
-            </button>
-            <button className={btnBad} onClick={() => call("vd:wrong")}>
-              ✘ Sai / hết giờ
-            </button>
-            <button className={btn} onClick={() => call("vd:openSteal")}>
-              🚨 Mở cướp điểm 5s
-            </button>
-            <button className={btnOk} onClick={() => call("vd:correctSteal")}>
-              Cướp đúng
-            </button>
-            <button className={btnBad} onClick={() => call("vd:wrongSteal")}>
-              Cướp sai
-            </button>
-            <button className={btn} onClick={() => call("vd:nextSeat")}>
-              Thí sinh tiếp theo ⏭
+
+            {/* ✔ Xác nhận gói: Phát ngay open_question và 1.8s sau chuyển câu hỏi */}
+            <button
+              type="button"
+              onClick={() => call("vd:confirmPackage", { points: [pkgQ1, pkgQ2, pkgQ3] })}
+              className="w-full mt-1.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-black shadow cursor-pointer"
+            >
+              ✔ Xác nhận gói
             </button>
           </div>
-          {vd.steal && (
-            <div className="text-sm">
-              Cướp điểm: {vd.steal.buzzedSeat != null ? <b className="text-yellow-300">🔔 {seatName(state, vd.steal.buzzedSeat)}</b> : "chưa ai bấm"}
+        </div>
+
+        {/* Center: Star of hope, Timer, Evaluation, Câu tiếp */}
+        <div className="space-y-2 flex flex-col items-center">
+          <button
+            type="button"
+            onClick={() => call("vd:hopeStar")}
+            className={`w-full py-2 rounded-xl text-xs font-black border shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase transition ${
+              vd.hopeStarActive
+                ? "bg-yellow-400 border-yellow-300 text-black shadow-yellow-400/30 animate-pulse"
+                : "bg-amber-500/10 border-amber-400/30 text-amber-300 hover:bg-amber-500/20"
+            }`}
+          >
+            <span>⭐</span>
+            <span>Ngôi Sao Hy Vọng (S)</span>
+          </button>
+
+          <div className="w-full grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => call("vd:timer")}
+              className="py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow uppercase"
+            >
+              Tính Giờ Thi (Space)
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vd:practiceTimer")}
+              className="py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow uppercase"
+            >
+              Tính Giờ Thực Hành
+            </button>
+          </div>
+
+          <div className="w-full grid grid-cols-3 gap-1.5">
+            <button
+              type="button"
+              onClick={() => call("vd:correct")}
+              className="py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow"
+            >
+              ✔ ĐÚNG (Enter)
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vd:wrong")}
+              className="py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow"
+            >
+              ✘ SAI (Bksp)
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vd:blank")}
+              className="py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow"
+            >
+              ■ Ô TRỐNG
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => call("vd:startQuestion")}
+            className="w-full py-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white text-xs font-black shadow uppercase"
+          >
+            <span>Câu tiếp (N)</span>
+            <span>⏭</span>
+          </button>
+        </div>
+
+        {/* Right / Steal Controls */}
+        <div className="space-y-2 flex flex-col justify-between">
+          <button
+            type="button"
+            onClick={() => call("vd:openSteal")}
+            className={`w-full py-3 rounded-xl font-black text-xs border shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase ${
+              vd.steal?.open
+                ? "bg-amber-500 border-amber-400 text-black shadow-amber-500/30 animate-pulse"
+                : "bg-amber-500/10 border-amber-400/30 text-amber-300 hover:bg-amber-500/20"
+            }`}
+          >
+            <span>🔔</span>
+            <span>Mở Cướp 5s (C)</span>
+          </button>
+
+          {vd.steal?.buzzedSeat != null && (
+            <div className="bg-yellow-400/10 border border-yellow-400/30 p-2 rounded-lg text-center space-y-1.5">
+              <span className="text-xs text-yellow-300 font-bold">Thí sinh cướp điểm:</span>
+              <div className="text-sm font-black text-white">{seatName(state, vd.steal.buzzedSeat)}</div>
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  onClick={() => call("vd:correctSteal")}
+                  className="py-1 rounded bg-emerald-600 text-white text-xs font-bold"
+                >
+                  ✔ Đúng
+                </button>
+                <button
+                  type="button"
+                  onClick={() => call("vd:wrongSteal")}
+                  className="py-1 rounded bg-rose-600 text-white text-xs font-bold"
+                >
+                  ✘ Sai
+                </button>
+              </div>
             </div>
           )}
-          {vd.lastVerdict && <div className="text-xs text-slate-400">Kết quả: {vd.lastVerdict}</div>}
-        </div>
-        <div className="space-y-2">
-          <Timer timer={vd.timer} serverNow={serverNow} />
-          {vd.steal && <Timer timer={vd.steal.timer} serverNow={serverNow} />}
+
+          <button
+            type="button"
+            onClick={() => call("audio:stop_bgm")}
+            className="w-full py-2 rounded-xl bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer"
+          >
+            Dừng nhạc nền
+          </button>
         </div>
       </div>
-    </Panel>
+    </div>
   );
 }
 
-// ───────── Câu hỏi phụ ─────────
-function ChpPanel({ state, call, serverNow }: { state: OlympiaState; call: Call; serverNow: SN }) {
+// ───────────────────────────────────────────────────────────
+// CÂU HỎI PHỤ DECK (Image 5 reference)
+// ───────────────────────────────────────────────────────────
+function CauHoiPhuDeck({ state, call, seats }: { state: OlympiaState; call: Call; seats: Seat[] }) {
   const cp = state.cauHoiPhu!;
-  const q = cp.questions[cp.qIdx];
+  const [selectedSeats, setSelectedSeats] = useState<number[]>(cp.tied ?? [0, 1]);
+
   return (
-    <Panel title={`Câu hỏi phụ — ${cp.tied.map((i) => seatName(state, i)).join(", ")}`}>
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 space-y-3">
-          {q ? (
-            <div className="rounded-xl bg-white/5 p-2">
-              <div className="text-xl font-semibold">{q.q}</div>
-              <div className="text-emerald-300">Đáp án: {q.a}</div>
-            </div>
-          ) : (
-            <div className="text-slate-400 italic">{cp.phase === "done" ? "Hết câu hỏi phụ." : "Bấm “Câu tiếp”."}</div>
-          )}
-          {cp.buzzedSeat != null && <div className="text-yellow-300 font-bold">🔔 {seatName(state, cp.buzzedSeat)}</div>}
-          {cp.winner != null && <div className="text-emerald-300 font-bold">🏆 {seatName(state, cp.winner)} trả lời đúng</div>}
-          <div className="flex flex-wrap gap-2">
-            <button className={btnPrimary} onClick={() => call("chp:next")}>
-              Câu tiếp ⏭
-            </button>
-            <button className={btn} onClick={() => call("chp:show")}>
-              Hiện câu hỏi
-            </button>
-            <button className={btn} onClick={() => call("chp:timer")}>
-              ⏱ Bắt đầu/Tạm dừng (mở chuông)
-            </button>
-            <button className={btnOk} onClick={() => call("chp:correct")}>
-              ✔ Đúng
-            </button>
-            <button className={btnBad} onClick={() => call("chp:wrong")}>
-              ✘ Sai
-            </button>
-            <button className={btn} onClick={() => call("chp:finish")}>
-              Kết thúc vòng
-            </button>
-          </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+      {/* Left: CHỌN THÍ SINH DỰ THI */}
+      <div className="space-y-1.5">
+        <div className="text-xs font-bold text-slate-400 uppercase">CHỌN THÍ SINH</div>
+        <div className="grid grid-cols-2 gap-1.5">
+          {seats.slice(0, 4).map((s) => {
+            const checked = selectedSeats.includes(s.id);
+            return (
+              <label
+                key={s.id}
+                className={`flex items-center gap-2 p-1.5 rounded-lg border text-xs font-bold cursor-pointer transition ${
+                  checked ? "bg-sky-500/20 border-sky-400 text-sky-200" : "bg-white/5 border-white/10 text-slate-400"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    const next = e.target.checked
+                      ? [...selectedSeats, s.id]
+                      : selectedSeats.filter((x) => x !== s.id);
+                    setSelectedSeats(next);
+                  }}
+                  className="rounded"
+                />
+                <span>TS{s.id + 1}</span>
+              </label>
+            );
+          })}
         </div>
-        <Timer timer={cp.timer} serverNow={serverNow} />
+        <button
+          type="button"
+          onClick={() => call("chp:selectSeats", { seats: selectedSeats })}
+          className="w-full py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow"
+        >
+          ✔ Xác nhận Thí sinh dự thi
+        </button>
       </div>
-    </Panel>
+
+      {/* Center: Hiện Câu Hỏi, Tính Giờ, Đúng/Sai, Câu tiếp */}
+      <div className="space-y-2 flex flex-col items-center">
+        <button
+          type="button"
+          onClick={() => call("chp:show")}
+          className="w-full py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow uppercase tracking-wider"
+        >
+          ▶ Hiện Câu Hỏi
+        </button>
+
+        <button
+          type="button"
+          onClick={() => call("chp:timer")}
+          className="w-full py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-black shadow uppercase tracking-wider"
+        >
+          Tính Giờ (Space)
+        </button>
+
+        <div className="w-full grid grid-cols-3 gap-1.5">
+          <button
+            type="button"
+            onClick={() => call("chp:correct")}
+            className="py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow"
+          >
+            ✔ ĐÚNG (Enter)
+          </button>
+          <button
+            type="button"
+            onClick={() => call("chp:wrong")}
+            className="py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow"
+          >
+            ✘ SAI (Bksp)
+          </button>
+          <button
+            type="button"
+            onClick={() => call("chp:blank")}
+            className="py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow"
+          >
+            ■ Ô TRỐNG
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => call("chp:next")}
+          className="w-full py-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white text-xs font-black shadow uppercase tracking-wider"
+        >
+          <span>Câu tiếp (N)</span>
+          <span>⏭</span>
+        </button>
+      </div>
+
+      {/* Right: Mở chuông thủ công & Dừng nhạc */}
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => call("chp:buzzer")}
+          className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase"
+        >
+          <span>🔔</span>
+          <span>Mở Chuông Thủ Công</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => call("audio:stop_bgm")}
+          className="w-full py-2 rounded-xl bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer"
+        >
+          Dừng Nhạc Khẩn Cấp
+        </button>
+      </div>
+    </div>
   );
 }
 
-export type { RoundId };
-void ROUND_ORDER;
+// ───────────────────────────────────────────────────────────
+// Sub-components & Helpers
+// ───────────────────────────────────────────────────────────
+function RoundTabButton({
+  id,
+  label,
+  icon,
+  active,
+  done,
+  onClick,
+}: {
+  id: RoundId;
+  label: string;
+  icon: string;
+  active: boolean;
+  done: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full p-2 rounded-xl text-left text-xs font-bold border flex items-center justify-between transition cursor-pointer ${
+        active
+          ? "bg-cyan-600/20 border-cyan-400 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.2)]"
+          : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-slate-200"
+      }`}
+    >
+      <div className="flex items-center gap-1.5 truncate">
+        <span>{icon}</span>
+        <span className="truncate">{label}</span>
+      </div>
+      {done && <span className="text-[10px] text-emerald-400">✓</span>}
+    </button>
+  );
+}
+
+function HotkeyRow({ keyName, desc, color }: { keyName: string; desc: string; color: string }) {
+  return (
+    <div className="flex items-center justify-between py-0.5">
+      <span className={`font-mono font-bold px-1 rounded bg-black/40 border border-white/10 text-[10px] ${color}`}>
+        {keyName}
+      </span>
+      <span className="text-slate-400 text-[10px]">{desc}</span>
+    </div>
+  );
+}
+
+function getQuestionText(st: OlympiaState): string {
+  if (st.currentRound === "khoiDong") return st.khoiDong?.current?.q || "";
+  if (st.currentRound === "vcnv") {
+    if (st.vcnv?.currentRow === 4) return st.vcnv.centerQuestion?.q || "Câu hỏi ô trung tâm";
+    if (st.vcnv?.currentRow != null && st.vcnv.currentRow >= 0) return st.vcnv.rows[st.vcnv.currentRow]?.hint || "";
+    return "";
+  }
+  if (st.currentRound === "tangToc") {
+    if (st.tangToc && st.tangToc.qIdx >= 0) return st.tangToc.questions[st.tangToc.qIdx]?.q || `Câu hỏi Tăng Tốc số ${st.tangToc.qIdx + 1}`;
+    return "";
+  }
+  if (st.currentRound === "veDich") return st.veDich?.current?.q?.q || "";
+  if (st.currentRound === "cauHoiPhu") {
+    if (st.cauHoiPhu && st.cauHoiPhu.qIdx >= 0) return st.cauHoiPhu.questions[st.cauHoiPhu.qIdx]?.q || "";
+    return "";
+  }
+  return "";
+}
+
+function getAnswerText(st: OlympiaState): string {
+  if (st.currentRound === "khoiDong") return st.khoiDong?.current?.a || "";
+  if (st.currentRound === "vcnv") {
+    if (st.vcnv?.currentRow === 4) return st.vcnv.centerQuestion?.a || st.vcnv.keyword;
+    if (st.vcnv?.currentRow != null && st.vcnv.currentRow >= 0) return st.vcnv.rows[st.vcnv.currentRow]?.answer || "";
+    return "";
+  }
+  if (st.currentRound === "tangToc") {
+    if (st.tangToc && st.tangToc.qIdx >= 0) return st.tangToc.questions[st.tangToc.qIdx]?.answer || "";
+    return "";
+  }
+  if (st.currentRound === "veDich") return st.veDich?.current?.q?.a || "";
+  if (st.currentRound === "cauHoiPhu") {
+    if (st.cauHoiPhu && st.cauHoiPhu.qIdx >= 0) return st.cauHoiPhu.questions[st.cauHoiPhu.qIdx]?.a || "";
+    return "";
+  }
+  return "";
+}
+
+function getExplanationText(st: OlympiaState): string {
+  if (st.currentRound === "khoiDong") return st.khoiDong?.current?.subject || "--";
+  if (st.currentRound === "vcnv") return `Từ khóa Chướng ngại vật: ${st.vcnv?.keyword || "--"}`;
+  if (st.currentRound === "tangToc") return `Thời gian câu: ${st.tangToc ? [10, 20, 30, 40][st.tangToc.qIdx] || 20 : 20}s`;
+  if (st.currentRound === "veDich") return st.veDich?.current ? `Mức điểm: ${st.veDich.current.points}đ` : "--";
+  if (st.currentRound === "cauHoiPhu") return "Thời gian suy nghĩ: 15s";
+  return "--";
+}

@@ -244,6 +244,56 @@ export class OlympiaGame {
       changed = true;
     };
 
+    if (st.kdIntroTimer && expired(st.kdIntroTimer)) {
+      st.kdIntroTimer = null;
+      changed = true;
+      if (st.khoiDong) {
+        const kd = st.khoiDong;
+        const seg = kd.segments[kd.segIdx];
+        if (kd.qIdx < 0) {
+          kd.qIdx = 0;
+          const q = this.kdPoolQuestion(kd, seg);
+          if (q) {
+            q.used = true;
+            this.recordOpenedQuestion(q.q);
+            kd.current = {
+              q: q.q,
+              a: q.a,
+              subject: q.subject,
+              kdZone: q.kdZone,
+              vdZone: q.vdZone,
+              media: q.media,
+              mediaType: q.mediaType,
+            };
+          }
+        }
+        kd.phase = "question";
+        this.cue("1_KhoiDong/open_question");
+      }
+    }
+
+    if (st.vdPackageTimer && expired(st.vdPackageTimer)) {
+      st.vdPackageTimer = null;
+      changed = true;
+      if (st.veDich) {
+        const vd = st.veDich;
+        const owner = this.vdSeat(vd);
+        const pkg = vd.packages[owner];
+        if (pkg && pkg.length > 0) {
+          vd.qIdx = 0;
+          vd.current = pkg[0];
+          if (vd.current?.q) {
+            vd.current.q.used = true;
+            this.recordOpenedQuestion(vd.current.q.q);
+          }
+          vd.phase = "thinking";
+          const rs = this.ruleset.veDich;
+          vd.timer = mkTimer(rs.thinkMs[String(vd.current.points)] ?? 15000);
+          this.cue("4_VeDich/open_question");
+        }
+      }
+    }
+
     if (st.khoiDong) {
       const kd = st.khoiDong;
       if (kd.buzzUnlockAt && now >= kd.buzzUnlockAt) {
@@ -592,6 +642,17 @@ export class OlympiaGame {
       case "audio:summary":
         this.cue("6_NhacKhac/summary");
         return OK;
+      case "scoreboard:toggle":
+        st.showScoreboard = !st.showScoreboard;
+        return OK;
+      case "bgm:waiting":
+        st.waitingBgm = !st.waitingBgm;
+        if (st.waitingBgm) {
+          this.cue("1_KhoiDong/ready", "bgm");
+        } else {
+          this.cue("", "stop");
+        }
+        return OK;
     }
 
     if (st.banner) st.banner = null;
@@ -719,6 +780,25 @@ export class OlympiaGame {
           return fail("Đã hoàn thành tất cả câu hỏi vòng Khởi Động chung");
         }
 
+        // If question is opened but clock not ticking yet, pressing "Câu tiếp" immediately starts clock & BGM
+        if (kd.phase === "question" && !timerRunning(kd.timer) && !(seg.globalMs && kd.globalTimer && timerRunning(kd.globalTimer))) {
+          if (seg.globalMs && kd.globalTimer) {
+            startTimer(kd.globalTimer, now);
+            kd.buzzOpen = !isSolo;
+            this.cue(`1_KhoiDong/${seg.globalMs >= 90000 ? "kd_bgm_3" : seg.globalMs >= 60000 ? "kd_bgm_2" : "kd_bgm_1"}`, "bgm");
+          } else {
+            startTimer(kd.timer, now);
+            if (!isSolo && kd.buzzedSeat == null) {
+              kd.buzzOpen = !(kd.buzzUnlockAt && now < kd.buzzUnlockAt);
+            }
+            const totalQ = seg.questions || 6;
+            const halfway = Math.ceil(totalQ / 2);
+            let bgmTrack = kd.qIdx < halfway - 1 ? "kd_bgm_1" : kd.qIdx < totalQ - 1 ? "kd_bgm_2" : "kd_bgm_3";
+            this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+          }
+          return OK;
+        }
+
         kd.qIdx += 1;
         if (kd.qIdx >= seg.questions) {
           kd.phase = "segmentDone";
@@ -802,6 +882,60 @@ export class OlympiaGame {
             bgmTrack = "kd_bgm_3";
           }
           this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+        }
+        return OK;
+      }
+      case "kd:start": {
+        st.kdIntroTimer = mkTimer(3500);
+        startTimer(st.kdIntroTimer, now);
+        this.cue("1_KhoiDong/ready");
+        return OK;
+      }
+      case "kd:blank": {
+        kd.lastVerdict = null;
+        return OK;
+      }
+      case "kd:cycle_bgm": {
+        const order: Array<"kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3"> = ["kd_bgm_1", "kd_bgm_2", "kd_bgm_3"];
+        const cur = kd.currentBgmTrack || "kd_bgm_1";
+        const nxt = order[(order.indexOf(cur) + 1) % order.length];
+        kd.currentBgmTrack = nxt;
+        this.cue("1_KhoiDong/" + nxt, "bgm");
+        return OK;
+      }
+      case "kd:selectSegment": {
+        if (a.segIdx != null) {
+          const idx = Number(a.segIdx);
+          if (idx >= 0 && idx < kd.segments.length) {
+            kd.segIdx = idx;
+            kd.qIdx = -1;
+            kd.phase = "intro";
+            kd.current = null;
+            kd.lastVerdict = null;
+            return OK;
+          }
+        }
+        if (a.seatId != null) {
+          const sIdx = kd.segments.findIndex((s) => s.kind === "solo" && s.seat === Number(a.seatId));
+          if (sIdx >= 0) {
+            kd.segIdx = sIdx;
+            kd.qIdx = -1;
+            kd.phase = "intro";
+            kd.current = null;
+            kd.lastVerdict = null;
+            return OK;
+          }
+        }
+        if (a.kind === "shared") {
+          const sIdx = kd.segments.findIndex((s) => s.kind === "shared" || s.kind === "turn");
+          if (sIdx >= 0) {
+            kd.segIdx = sIdx;
+            kd.qIdx = -1;
+            kd.phase = "intro";
+            kd.current = null;
+            kd.lastVerdict = null;
+            return OK;
+          }
         }
         return OK;
       }
@@ -971,6 +1105,28 @@ export class OlympiaGame {
     const row = v.currentRow;
 
     switch (type) {
+      case "vcnv:showGrid": {
+        v.phase = "grid";
+        this.cue("2_VuotChuongNgaiVat/show_row");
+        return OK;
+      }
+      case "vcnv:openQuestion": {
+        if (row < 0) return fail("Chưa chọn hàng");
+        v.phase = "question";
+        this.cue("2_VuotChuongNgaiVat/open_question");
+        return OK;
+      }
+      case "vcnv:blank": {
+        v.phase = "question";
+        return OK;
+      }
+      case "vcnv:revealRowText": {
+        const i = a.row != null ? Number(a.row) : row;
+        if (!(i >= 0 && i <= 4)) return fail("Chưa chọn hàng");
+        if (i === 4) v.centerOpened = true;
+        else if (v.rows[i]) v.rows[i].opened = true;
+        return OK;
+      }
       case "vcnv:selectRow": {
         const i = Number(a.row);
         if (!(i >= 0 && i <= 4)) return fail("Hàng không hợp lệ");
@@ -1262,6 +1418,29 @@ export class OlympiaGame {
     const rs = this.ruleset.tangToc;
 
     switch (type) {
+      case "tt:selectQuestion": {
+        const idx = Number(a.qIdx);
+        if (idx >= 0 && idx < tt.questions.length) {
+          tt.qIdx = idx;
+          tt.phase = "idle";
+          tt.submissions = {};
+          tt.ranking = [];
+          tt.correctAnswer = undefined;
+          tt.timer = mkTimer(rs.timers[Math.min(tt.qIdx, rs.timers.length - 1)]);
+          this.cue("", "stop");
+          return OK;
+        }
+        return fail("Câu không hợp lệ");
+      }
+      case "tt:blank": {
+        tt.phase = "idle";
+        return OK;
+      }
+      case "tt:revealAndGrade": {
+        const res = this.ttAction("tt:reveal", a, now);
+        if (!res.ok) return res;
+        return this.ttAction("tt:grade", a, now);
+      }
       case "tt:next": {
         tt.qIdx += 1;
         if (tt.qIdx >= tt.questions.length) {
@@ -1472,6 +1651,42 @@ export class OlympiaGame {
     const owner = this.vdSeat(vd);
 
     switch (type) {
+      case "vd:showPackageGraphic": {
+        vd.phase = "choosing";
+        this.cue("4_VeDich/choose_package");
+        return OK;
+      }
+      case "vd:confirmPackage": {
+        const pts = ((a.points as number[]) ?? []).map(Number);
+        const res = this.setPackage(pts, now);
+        if (!res.ok) return res;
+        this.cue("4_VeDich/open_question");
+        st.vdPackageTimer = mkTimer(1800);
+        startTimer(st.vdPackageTimer, now);
+        return OK;
+      }
+      case "vd:onStage": {
+        this.cue("4_VeDich/on_stage");
+        return OK;
+      }
+      case "vd:finishTurn": {
+        this.cue("4_VeDich/finish_turn");
+        return OK;
+      }
+      case "vd:blank": {
+        vd.lastVerdict = null;
+        return OK;
+      }
+      case "vd:practiceTimer": {
+        if (vd.phase !== "thinking") return fail("Không có câu hỏi đang chờ");
+        if (timerRunning(vd.timer)) pauseTimer(vd.timer, now);
+        else {
+          startTimer(vd.timer, now);
+          const s = Math.round(vd.timer.totalMs / 1000);
+          this.cue(`4_VeDich/${s}s_practice`, "bgm");
+        }
+        return OK;
+      }
       case "vd:setSeat": {
         const idx = vd.order.indexOf(Number(a.seat));
         if (idx < 0) return fail("Thí sinh không hợp lệ");
@@ -1733,6 +1948,21 @@ export class OlympiaGame {
     if (st.currentRound !== "cauHoiPhu" || !cp) return fail("Không ở vòng Câu hỏi phụ");
 
     switch (type) {
+      case "chp:selectSeats": {
+        if (Array.isArray(a.seats)) {
+          cp.tied = (a.seats as number[]).map(Number);
+        }
+        return OK;
+      }
+      case "chp:blank": {
+        cp.buzzedSeat = null;
+        return OK;
+      }
+      case "chp:buzzer": {
+        cp.buzzOpen = !cp.buzzOpen;
+        if (cp.buzzOpen) this.cue("5_CauHoiPhu/bell_ring");
+        return OK;
+      }
       case "chp:next": {
         cp.qIdx += 1;
         if (cp.qIdx >= cp.questions.length) {

@@ -7,7 +7,7 @@ import { MediaView, ScoreStrip, SEAT_COLORS, Timer, activeSeats, seatName } from
 
 export default function DisplayScreen({ code }: { code: string }) {
   const { state, join, connected, serverNow } = useOlympiaSocket({ code, role: "display" });
-  const [audioOn, setAudioOn] = useState(false);
+  const [audioOn, setAudioOn] = useState(true);
   useOlympiaAudio(state, join?.audioSeason, audioOn);
   const introRemainingMs = useCountdown(state?.introTimer, serverNow);
 
@@ -16,7 +16,22 @@ export default function DisplayScreen({ code }: { code: string }) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <div className="min-h-screen max-h-screen overflow-hidden bg-gradient-to-b from-blue-950 via-indigo-950 to-slate-950 text-white flex flex-col p-3 sm:p-5 gap-2 sm:gap-4 select-none justify-between">
+    <div className="min-h-screen max-h-screen overflow-hidden bg-gradient-to-b from-blue-950 via-indigo-950 to-slate-950 text-white flex flex-col p-3 sm:p-5 gap-2 sm:gap-4 select-none justify-between relative">
+      {state.showScoreboard && (
+        <div className="absolute inset-0 z-50 bg-slate-950/95 flex flex-col items-center justify-center p-6 animate-fade-in backdrop-blur-md">
+          <h2 className="text-4xl sm:text-5xl font-black text-yellow-300 mb-8 uppercase tracking-wider drop-shadow-[0_4px_20px_rgba(234,179,8,0.5)]">
+            BẢNG ĐIỂM HIỆN TẠI
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 w-full max-w-5xl">
+            {activeSeats(state).map((s) => (
+              <div key={s.id} className="rounded-2xl border-2 p-6 text-center bg-white/5 backdrop-blur shadow-2xl flex flex-col items-center justify-center gap-3" style={{ borderColor: SEAT_COLORS[s.id] }}>
+                <span className="text-xl font-bold truncate max-w-full text-slate-200">{s.name}</span>
+                <span className="text-6xl font-black drop-shadow" style={{ color: SEAT_COLORS[s.id] }}>{s.score}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between shrink-0">
         <div className="text-lg sm:text-2xl font-black text-sky-300 tracking-wide">ĐƯỜNG LÊN ĐỈNH OLYMPIA</div>
         <div className="flex items-center gap-3 text-sm text-slate-300">

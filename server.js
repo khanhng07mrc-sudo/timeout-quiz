@@ -25502,18 +25502,12 @@ var OlympiaGame = class _OlympiaGame {
           this.cue("1_KhoiDong/60s", "bgm");
         } else if (rIdTick === "O22" || aSeasonTick === "O22") {
           const segTick = kd.segments[kd.segIdx];
-          if (segTick.kind === "solo") {
-            kd.currentBgmTrack = "kd_bgm_1";
-            this.cue("1_KhoiDong/kd_bgm_1", "bgm");
-          } else {
+          if (segTick.kind !== "solo") {
             const gMs = segTick.globalMs || 6e4;
             if (gMs <= 3e4) this.cue("1_KhoiDong/30s", "bgm");
             else if (gMs <= 6e4) this.cue("1_KhoiDong/60s", "bgm");
             else this.cue("1_KhoiDong/90s", "bgm");
           }
-        } else {
-          kd.currentBgmTrack = "kd_bgm_1";
-          this.cue("1_KhoiDong/kd_bgm_1", "bgm");
         }
       }
     }
@@ -26056,6 +26050,10 @@ var OlympiaGame = class _OlympiaGame {
           if ((rId === "O22" || aSeason2 === "O22") && !isSolo && kd.globalTimer && !timerRunning(kd.globalTimer)) {
             startTimer(kd.globalTimer, now);
             kd.buzzOpen = true;
+          }
+          if (aSeason2 !== "O13-21" && !(rId === "O22" && !isSolo)) {
+            kd.currentBgmTrack = "kd_bgm_1";
+            this.cue("1_KhoiDong/kd_bgm_1", "bgm");
           }
           return OK;
         }

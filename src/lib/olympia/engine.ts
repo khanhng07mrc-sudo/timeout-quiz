@@ -272,26 +272,19 @@ export class OlympiaGame {
         kd.phase = "question";
         kd.questionRevealed = false; // Graphic frame is ready, question text waits for first "Câu tiếp" click
         this.cue("1_KhoiDong/open_question");
-        // Sau khi mở đồ hoạ, bắt đầu phát BGM phù hợp với câu đầu tiên (O23-O26 solo)
+        // Sau 3.5s chỉ mở đồ hoạ và phát open_question. BGM kd_bgm_1 chỉ phát khi nhấn "Câu tiếp" lần đầu (sang câu 1)
         const rIdTick = this.ruleset.id;
         const aSeasonTick = this.ruleset.audioSeason;
         if (aSeasonTick === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rIdTick)) {
           this.cue("1_KhoiDong/60s", "bgm");
         } else if (rIdTick === "O22" || aSeasonTick === "O22") {
           const segTick = kd.segments[kd.segIdx];
-          if (segTick.kind === "solo") {
-            kd.currentBgmTrack = "kd_bgm_1";
-            this.cue("1_KhoiDong/kd_bgm_1", "bgm");
-          } else {
+          if (segTick.kind !== "solo") {
             const gMs = segTick.globalMs || 60000;
             if (gMs <= 30000) this.cue("1_KhoiDong/30s", "bgm");
             else if (gMs <= 60000) this.cue("1_KhoiDong/60s", "bgm");
             else this.cue("1_KhoiDong/90s", "bgm");
           }
-        } else {
-          // O23-O26: câu đầu tiên (qIdx=0) dùng kd_bgm_1
-          kd.currentBgmTrack = "kd_bgm_1";
-          this.cue("1_KhoiDong/kd_bgm_1", "bgm");
         }
       }
     }
@@ -860,7 +853,8 @@ export class OlympiaGame {
           return fail("Đã hoàn thành tất cả câu hỏi vòng Khởi Động chung");
         }
 
-        // If question is opened but not revealed yet, pressing "Câu tiếp" reveals question content.
+        // If question is opened but not revealed yet, pressing "Câu tiếp" reveals question content (từ câu 0 sang câu 1).
+        // Đây chính là thời điểm BGM kd_bgm_1 bắt đầu phát!
         // Không đếm 5s ngay! Quản trò nhấn ⏱ Giờ hoặc Space để bắt đầu đếm 5s.
         // Nhạc không restart sau mỗi câu, giữ nguyên trạng thái chạy.
         if (kd.phase === "question" && !kd.questionRevealed) {
@@ -870,6 +864,10 @@ export class OlympiaGame {
           if ((rId === "O22" || aSeason === "O22") && !isSolo && kd.globalTimer && !timerRunning(kd.globalTimer)) {
             startTimer(kd.globalTimer, now);
             kd.buzzOpen = true;
+          }
+          if (aSeason !== "O13-21" && !(rId === "O22" && !isSolo)) {
+            kd.currentBgmTrack = "kd_bgm_1";
+            this.cue("1_KhoiDong/kd_bgm_1", "bgm");
           }
           return OK;
         }

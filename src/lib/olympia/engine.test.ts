@@ -562,16 +562,18 @@ test("kd:start plays ready, sets 3.5s cooldown, and kd:next respects cooldown", 
   assert.equal(rejected.ok, false);
   assert.ok(rejected.error && rejected.error.includes("3.5s"));
 
-  // After 3.5s cooldown expires, tick opens question and starts kd_bgm_1
+  // After 3.5s cooldown expires, tick opens graphics and plays open_question (BGM not yet!)
   g.tick(1000 + 3500);
   assert.equal(g.state.khoiDong!.phase, "question");
-  assert.equal(g.state.cue!.sound, "1_KhoiDong/kd_bgm_1");
-  assert.equal(g.state.cue!.kind, "bgm");
+  assert.equal(g.state.cue!.sound, "1_KhoiDong/open_question");
 
-  // Then kd:next succeeds and reveals question text without starting timer
+  // When host clicks kd:next for the first time (transitioning from empty/question 0 to question 1):
+  // questionRevealed becomes true AND kd_bgm_1 starts playing!
   const accepted = g.hostAction({ type: "kd:next" }, 5000);
   assert.equal(accepted.ok, true);
   assert.equal(g.state.khoiDong!.questionRevealed, true);
+  assert.equal(g.state.cue!.sound, "1_KhoiDong/kd_bgm_1");
+  assert.equal(g.state.cue!.kind, "bgm");
   assert.equal(g.state.khoiDong!.timer.startedAt, null, "5s timer not started automatically on next");
 });
 

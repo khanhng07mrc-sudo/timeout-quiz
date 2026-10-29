@@ -172,20 +172,22 @@ export async function POST(req: NextRequest) {
       sandboxConfig.allowedPowerups = [];
     }
 
-    if (mode === "OLYMPIA") {
-      (sandboxConfig as any).olympia = {
-        rulesetId: "O26",
-        rounds: ["khoiDong", "vcnv", "tangToc", "veDich"],
-        questionSet: SAMPLE_QUESTION_SET,
-      };
-    }
-
     const TEAM_PALETTE = ["#ef4444", "#3b82f6", "#eab308", "#10b981", "#a855f7", "#ec4899", "#06b6d4", "#f97316"];
     const inputTeams = (Array.isArray(body.teams) && body.teams.length >= 2)
       ? body.teams.slice(0, 10)
       : DEFAULT_TEAMS;
     const teamCount = inputTeams.length;
     sandboxConfig.maxTeams = teamCount;
+
+    if (mode === "OLYMPIA") {
+      (sandboxConfig as any).olympia = {
+        rulesetId: body.config?.olympia?.rulesetId || "O26",
+        rounds: body.config?.olympia?.rounds || ["khoiDong", "vcnv", "tangToc", "veDich"],
+        questionSet: body.config?.olympia?.questionSet || SAMPLE_QUESTION_SET,
+        seatCount: teamCount,
+        teams: inputTeams,
+      };
+    }
 
     if (body.matchMaxQuestions || body.config?.matchMaxQuestions) {
       const maxQ = Number(body.matchMaxQuestions || body.config?.matchMaxQuestions);

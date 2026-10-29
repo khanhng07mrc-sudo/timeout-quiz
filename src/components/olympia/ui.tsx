@@ -50,7 +50,18 @@ export function ScoreStrip({
   large?: boolean;
 }) {
   const seats = activeSeats(state);
-  const cols = seats.length > 4 ? "grid-cols-4" : seats.length === 3 ? "grid-cols-3" : seats.length === 2 ? "grid-cols-2" : "grid-cols-4";
+  const count = seats.length;
+  const cols =
+    count === 2
+      ? "grid-cols-2 max-w-md mx-auto"
+      : count === 3
+      ? "grid-cols-3 max-w-xl mx-auto"
+      : count === 4
+      ? "grid-cols-4 max-w-3xl mx-auto"
+      : count <= 6
+      ? "grid-cols-3 sm:grid-cols-6 max-w-4xl mx-auto"
+      : "grid-cols-4 sm:grid-cols-8 w-full";
+
   return (
     <div className={`grid ${cols} gap-2 w-full`}>
       {seats.map((s) => {
@@ -58,11 +69,11 @@ export function ScoreStrip({
         return (
           <div
             key={s.id}
-            className={`rounded-xl border px-3 py-2 text-center transition ${hl ? "border-yellow-300 bg-yellow-300/20 scale-[1.03]" : "border-white/15 bg-white/5"} ${s.connected ? "" : "opacity-60"}`}
+            className={`rounded-xl border px-2.5 py-1.5 sm:px-3 sm:py-2 text-center transition ${hl ? "border-yellow-300 bg-yellow-300/20 scale-[1.03]" : "border-white/15 bg-white/5"} ${s.connected ? "" : "opacity-60"}`}
             style={{ borderLeft: `5px solid ${SEAT_COLORS[s.id]}` }}
           >
-            <div className={`truncate font-semibold ${large ? "text-xl" : "text-sm"}`}>{s.name}</div>
-            <div className={`font-black tabular-nums ${large ? "text-5xl" : "text-2xl"}`} style={{ color: SEAT_COLORS[s.id] }}>
+            <div className={`truncate font-semibold ${large ? "text-sm sm:text-base" : "text-xs sm:text-sm"}`}>{s.name}</div>
+            <div className={`font-black tabular-nums ${large ? "text-2xl sm:text-4xl" : "text-lg sm:text-2xl"}`} style={{ color: SEAT_COLORS[s.id] }}>
               {s.score}
             </div>
           </div>

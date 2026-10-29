@@ -214,6 +214,7 @@ export default function CreateOlympiaPage() {
               rulesetId,
               rounds,
               questionSet: finalSet,
+              seatCount: targetContestantCount,
             },
           },
         }),

@@ -25317,18 +25317,32 @@ var OlympiaGame = class _OlympiaGame {
     this.config = config;
     this.ruleset = RULESETS[config.rulesetId] ?? RULESETS.O26;
     const rounds = sortRounds(config.rounds);
+    const seatCount = config.seatCount ? Math.max(2, Math.min(MAX_SEATS, config.seatCount)) : config.teams && config.teams.length > 0 ? Math.max(2, Math.min(MAX_SEATS, config.teams.length)) : MAX_SEATS;
     this.state = {
       code,
       rulesetId: this.ruleset.id,
       rounds,
       stage: "lobby",
-      seats: Array.from({ length: MAX_SEATS }, (_, i) => ({
-        id: i,
-        name: "",
-        playerKey: null,
-        connected: false,
-        score: 0
-      })),
+      seatCount,
+      seats: Array.from({ length: seatCount }, (_, i) => {
+        const team = config.teams?.[i];
+        if (team) {
+          return {
+            id: i,
+            name: team.name || `Th\xED sinh ${i + 1}`,
+            playerKey: `sandbox_${code}_seat_${i}`,
+            connected: true,
+            score: 0
+          };
+        }
+        return {
+          id: i,
+          name: "",
+          playerKey: null,
+          connected: false,
+          score: 0
+        };
+      }),
       roundIdx: -1,
       roundsPlan: [...rounds, "cauHoiPhu"],
       currentRound: null,
@@ -25401,6 +25415,17 @@ var OlympiaGame = class _OlympiaGame {
       existing.connected = true;
       if (name) existing.name = name;
       return existing.id;
+    }
+    const sbPrefix = `sandbox_${this.state.code}_seat_`;
+    if (playerKey.startsWith(sbPrefix)) {
+      const idx = Number(playerKey.slice(sbPrefix.length));
+      if (idx >= 0 && idx < this.state.seats.length) {
+        const target = this.state.seats[idx];
+        target.playerKey = playerKey;
+        if (name) target.name = name;
+        target.connected = true;
+        return target.id;
+      }
     }
     if (this.state.stage !== "lobby") return -1;
     const free = this.state.seats.find((s) => !s.name);

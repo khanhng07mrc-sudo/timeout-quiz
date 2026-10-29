@@ -228,18 +228,30 @@ type SN = () => number;
 
 function Lobby({ state, call, code, origin }: { state: OlympiaState; call: Call; code: string; origin: string }) {
   const seats = state.seats;
+  const count = seats.length;
+  const gridCols =
+    count === 2
+      ? "grid-cols-2"
+      : count === 3
+      ? "grid-cols-3"
+      : count === 4
+      ? "grid-cols-2 sm:grid-cols-4"
+      : count <= 6
+      ? "grid-cols-3 sm:grid-cols-6"
+      : "grid-cols-2 sm:grid-cols-4";
+
   return (
     <Panel title="Sảnh chờ">
-      <p className="text-sm text-slate-300 mb-3">
-        Thí sinh vào <b className="text-sky-300">{origin}/play</b> và nhập mã <b className="text-yellow-300">{code}</b> (tối đa 8 người).
+      <p className="text-xs sm:text-sm text-slate-300 mb-3">
+        Thí sinh vào <b className="text-sky-300">{origin}/play</b> và nhập mã <b className="text-yellow-300">{code}</b> (tối đa {count} người).
       </p>
-      <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+      <div className={`grid ${gridCols} gap-2 mb-4`}>
         {seats.map((s) => (
           <div key={s.id} className="rounded-lg border border-white/15 p-2 bg-white/5" style={{ borderLeft: `4px solid ${SEAT_COLORS[s.id]}` }}>
             <div className="text-xs text-slate-400">Ghế {s.id + 1}</div>
             {s.name ? (
               <>
-                <div className="font-bold truncate">
+                <div className="font-bold truncate text-sm">
                   {s.connected ? "🟢" : "⚪"} {s.name}
                 </div>
                 <button className="text-xs text-rose-300 underline" onClick={() => call("seat:kick", { seat: s.id })}>
@@ -247,7 +259,7 @@ function Lobby({ state, call, code, origin }: { state: OlympiaState; call: Call;
                 </button>
               </>
             ) : (
-              <div className="text-slate-500 italic">Trống</div>
+              <div className="text-slate-500 italic text-xs">Trống</div>
             )}
           </div>
         ))}

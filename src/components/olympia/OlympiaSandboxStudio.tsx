@@ -77,7 +77,7 @@ export default function OlympiaSandboxStudio({
 
   const buildGame = useCallback(
     (rsId: RulesetId, rds: RoundId[], count: number, qSet: OlympiaQuestionSet) => {
-      const g = new OlympiaGame("SANDBOX", { rulesetId: rsId, rounds: rds, questionSet: qSet });
+      const g = new OlympiaGame("SANDBOX", { rulesetId: rsId, rounds: rds, questionSet: qSet, seatCount: count });
       for (let i = 0; i < count; i++) {
         g.joinSeat(DEFAULT_NAMES[i] || `Thí sinh ${i + 1}`, `sb_${i}`);
       }

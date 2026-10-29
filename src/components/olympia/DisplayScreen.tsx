@@ -15,9 +15,9 @@ export default function DisplayScreen({ code }: { code: string }) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-950 via-indigo-950 to-slate-950 text-white flex flex-col p-6 gap-4 select-none">
-      <div className="flex items-center justify-between">
-        <div className="text-2xl font-black text-sky-300 tracking-wide">ĐƯỜNG LÊN ĐỈNH OLYMPIA</div>
+    <div className="min-h-screen max-h-screen overflow-hidden bg-gradient-to-b from-blue-950 via-indigo-950 to-slate-950 text-white flex flex-col p-3 sm:p-5 gap-2 sm:gap-4 select-none justify-between">
+      <div className="flex items-center justify-between shrink-0">
+        <div className="text-lg sm:text-2xl font-black text-sky-300 tracking-wide">ĐƯỜNG LÊN ĐỈNH OLYMPIA</div>
         <div className="flex items-center gap-3 text-sm text-slate-300">
           <span>{state.currentRound ? ROUND_LABELS[state.currentRound] : ""}</span>
           <button className="px-2 py-1 border border-white/20 rounded" onClick={() => setAudioOn((v) => !v)}>
@@ -66,15 +66,30 @@ function highlightSeats(s: OlympiaState): (number | null)[] {
 type P = { state: OlympiaState; serverNow: () => number };
 
 function Lobby({ state, code, origin }: { state: OlympiaState; code: string; origin: string }) {
+  const seats = state.seats;
+  const count = seats.length;
+  const gridClass =
+    count === 2
+      ? "grid-cols-2 max-w-md"
+      : count === 3
+      ? "grid-cols-3 max-w-xl"
+      : count === 4
+      ? "grid-cols-4 max-w-2xl"
+      : count <= 6
+      ? "grid-cols-3 sm:grid-cols-6 max-w-3xl"
+      : "grid-cols-4 max-w-3xl";
+
   return (
-    <div className="text-center space-y-6">
-      <div className="text-xl text-slate-300">Vào {origin}/play và nhập mã</div>
-      <div className="text-9xl font-black tracking-[0.3em] text-yellow-300">{code}</div>
-      <div className="grid grid-cols-4 gap-3 max-w-3xl mx-auto">
-        {state.seats.map((s) => (
+    <div className="text-center space-y-3 sm:space-y-4 max-w-4xl mx-auto w-full px-2">
+      <div className="text-sm sm:text-base text-slate-300">Vào {origin}/play và nhập mã</div>
+      <div className="text-5xl sm:text-7xl font-black tracking-[0.2em] sm:tracking-[0.25em] text-yellow-300 drop-shadow select-all">
+        {code}
+      </div>
+      <div className={`grid ${gridClass} gap-2 mx-auto w-full pt-1`}>
+        {seats.map((s) => (
           <div
             key={s.id}
-            className="rounded-xl border border-white/15 bg-white/5 p-3 text-lg"
+            className="rounded-xl border border-white/15 bg-white/5 p-2 sm:p-2.5 text-sm sm:text-base font-semibold shadow-inner truncate transition-all"
             style={{ borderLeft: `5px solid ${SEAT_COLORS[s.id]}` }}
           >
             {s.name || <span className="text-slate-500">Ghế {s.id + 1}</span>}

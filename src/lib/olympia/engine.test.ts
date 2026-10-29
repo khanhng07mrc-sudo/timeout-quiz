@@ -38,6 +38,21 @@ test("max 8 seats, 9th player rejected", () => {
   assert.equal(g.activeSeatIds.length, 8);
 });
 
+test("custom seatCount and sandbox pre-populated teams", () => {
+  const g3 = new OlympiaGame("SB3", {
+    rulesetId: "O26",
+    rounds: ["khoiDong"],
+    questionSet: SAMPLE_QUESTION_SET,
+    seatCount: 3,
+    teams: [{ name: "Thí sinh 1" }, { name: "Thí sinh 2" }, { name: "Thí sinh 3" }],
+  });
+  assert.equal(g3.state.seats.length, 3);
+  assert.equal(g3.activeSeatIds.length, 3);
+  assert.equal(g3.state.seats[0].name, "Thí sinh 1");
+  assert.equal(g3.state.seats[0].connected, true);
+  assert.equal(g3.joinSeat("Thí sinh 4", "k4"), -1); // rejects 4th player
+});
+
 test("CNV points per season (O13 through O26)", () => {
   const o = (s: RulesetId) => [0, 1, 2, 3, 4].map((n) => cnvPointsFor(RULESETS[s], n, false)).concat([cnvPointsFor(RULESETS[s], 4, true)]);
   assert.deepEqual(o("O13"), [80, 80, 80, 40, 40, 20]);

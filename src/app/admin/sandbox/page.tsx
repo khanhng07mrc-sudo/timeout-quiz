@@ -415,6 +415,9 @@ export default function AdminSandboxPage() {
       updated = updated.slice(0, clamped);
     }
     setSandboxCustomTeams(updated);
+    if (olympiaActiveSeat >= clamped) {
+      setOlympiaActiveSeat(clamped - 1);
+    }
     try {
       localStorage.setItem("sandbox_custom_teams", JSON.stringify(updated));
     } catch {}
@@ -11724,13 +11727,13 @@ export default function AdminSandboxPage() {
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse bg-sky-400" />
                   <span className="font-black text-xs text-white">
-                    Thí sinh {olympiaActiveSeat + 1}
+                    {sandboxCustomTeams[olympiaActiveSeat]?.name || `Thí sinh ${olympiaActiveSeat + 1}`}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-slate-400 font-medium">📱 Thiết bị Thí sinh</span>
                   <a
-                    href={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(`Thí sinh ${olympiaActiveSeat + 1}`)}`}
+                    href={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(sandboxCustomTeams[olympiaActiveSeat]?.name || `Thí sinh ${olympiaActiveSeat + 1}`)}`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-cyan-400 hover:text-cyan-300 text-[10px] font-bold underline"
@@ -11740,30 +11743,33 @@ export default function AdminSandboxPage() {
                 </div>
               </div>
 
-              {/* Tabs Thí sinh 1..8 */}
+              {/* Tabs Thí sinh (chỉ hiện đúng số lượng đã cài đặt 2..8) */}
               <div className="flex items-center gap-1 px-2.5 py-1 bg-black/40 border-b border-white/10 shrink-0 overflow-x-auto text-xs no-scrollbar">
                 <span className="text-[10px] text-slate-400 font-bold shrink-0">Thí sinh:</span>
-                {Array.from({ length: Math.min(8, Math.max(4, sandboxCustomTeams.length || 4)) }, (_, sIdx) => (
-                  <button
-                    key={sIdx}
-                    type="button"
-                    onClick={() => setOlympiaActiveSeat(sIdx)}
-                    className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
-                      olympiaActiveSeat === sIdx
-                        ? "bg-sky-500 text-slate-950 font-black shadow"
-                        : "bg-white/10 text-slate-300 hover:bg-white/20"
-                    }`}
-                  >
-                    Ghế {sIdx + 1}
-                  </button>
-                ))}
+                {Array.from({ length: Math.min(8, Math.max(2, sandboxCustomTeams.length || 4)) }, (_, sIdx) => {
+                  const tName = sandboxCustomTeams[sIdx]?.name || `Ghế ${sIdx + 1}`;
+                  return (
+                    <button
+                      key={sIdx}
+                      type="button"
+                      onClick={() => setOlympiaActiveSeat(sIdx)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                        olympiaActiveSeat === sIdx
+                          ? "bg-sky-500 text-slate-950 font-black shadow"
+                          : "bg-white/10 text-slate-300 hover:bg-white/20"
+                      }`}
+                    >
+                      {tName}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Iframe Thí sinh */}
               <div className="flex-1 min-h-0 bg-[#0f0f1a]">
                 <iframe
                   ref={playerIframeRef}
-                  src={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(`Thí sinh ${olympiaActiveSeat + 1}`)}`}
+                  src={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(sandboxCustomTeams[olympiaActiveSeat]?.name || `Thí sinh ${olympiaActiveSeat + 1}`)}`}
                   allow="autoplay; camera; microphone"
                   title="Player Viewport"
                   className="w-full h-full border-0"

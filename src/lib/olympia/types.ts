@@ -270,6 +270,10 @@ export interface OlympiaConfig {
   questionSet: OlympiaQuestionSet;
   /** When true (default), draw questions randomly while balancing across 6 KD zones & 3 VD zones */
   balancedRandom?: boolean;
+  /** Number of contestants / seats (2..8). Defaults to 8 if not specified. */
+  seatCount?: number;
+  /** Pre-configured teams / contestants (for Sandbox or preset matches) */
+  teams?: Array<{ name: string; color?: string }>;
 }
 
 export type RoundStatus = "pending" | "active" | "done";
@@ -498,6 +502,7 @@ export interface OlympiaState {
   rulesetId: RulesetId;
   rounds: RoundId[]; // selected rounds in canonical order (excl. CHP)
   stage: LobbyPhase;
+  seatCount?: number;
   seats: Seat[];
   /** index into `roundsPlan` */
   roundIdx: number;

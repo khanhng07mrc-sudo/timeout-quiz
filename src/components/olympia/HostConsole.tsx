@@ -152,17 +152,17 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             : "--";
 
   return (
-    <div className="h-full max-h-full bg-[#0b0f19] text-slate-100 flex flex-col font-sans select-none overflow-hidden">
+    <div className="h-full max-h-full bg-gradient-to-b from-[#0d0820] via-[#120b2e] to-[#0a0618] text-slate-100 flex flex-col font-sans select-none overflow-hidden">
       {/* ── TOP HEADER BAR (CLEAN, NO OVERLAPPING) ── */}
-      <header className="h-10 border-b border-white/10 bg-[#111827] px-2.5 sm:px-3 flex items-center justify-between shrink-0 gap-2">
+      <header className="h-10 border-b border-violet-500/15 bg-black/30 backdrop-blur-sm px-2.5 sm:px-3 flex items-center justify-between shrink-0 gap-2">
         {/* Left: Branding & Current Round */}
         <div className="flex items-center gap-2 min-w-0 shrink-0">
-          <span className="text-yellow-400 text-xs sm:text-sm font-black tracking-wide flex items-center gap-1.5 whitespace-nowrap">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-red-400 text-xs sm:text-sm font-black tracking-wide flex items-center gap-1.5 whitespace-nowrap">
             <span>🏔️</span>
             <span className="hidden md:inline">ĐƯỜNG LÊN ĐỈNH</span>
             <span>OLYMPIA</span>
           </span>
-          <span className="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/30 text-sky-300 text-[11px] font-bold uppercase whitespace-nowrap">
+          <span className="px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-200 text-[11px] font-bold uppercase whitespace-nowrap">
             {curRoundName}
           </span>
         </div>
@@ -208,7 +208,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             <span className={connected ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
               {connected ? "🟢" : "🔴"}
             </span>
-            <span className="font-mono text-yellow-300 font-bold text-[11px]">PIN: {code}</span>
+            <span className="font-mono text-amber-300 font-bold text-[11px]">PIN: {code}</span>
           </div>
         </div>
       </header>
@@ -236,7 +236,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       {/* ── MAIN 3-COLUMN WORKSPACE ── */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* 1. LEFT SIDEBAR: Rounds & Tools (Compact) */}
-        <aside className="w-20 sm:w-22 bg-[#0f172a] border-r border-white/10 p-1.5 flex flex-col justify-between shrink-0">
+        <aside className="w-20 sm:w-22 bg-black/20 border-r border-violet-500/15 p-1.5 flex flex-col justify-between shrink-0">
           <div className="space-y-1">
             <RoundTabButton
               id="khoiDong"
@@ -324,7 +324,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
         </aside>
 
         {/* 2. CENTER STAGE: Question Box, Utility Top Bar & Round Control Deck */}
-        <main className="flex-1 overflow-y-auto p-2 space-y-2 flex flex-col justify-between min-h-0">
+        <main className="flex-1 overflow-y-auto p-2 space-y-2 flex flex-col justify-between min-h-0 scrollbar-thin">
           <div className="space-y-2">
             {/* Round & Question Indicator Bar */}
             <div className="flex items-center justify-between text-xs px-1">
@@ -354,13 +354,13 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                           : "10đ"}
                 </span>
               </div>
-              <div className="text-xl font-black font-mono text-cyan-300">
+              <div className="text-xl font-black font-mono text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]">
                 {activeTimerSeconds}
               </div>
             </div>
 
             {/* Question Card Box */}
-            <div className="rounded-xl border border-white/10 bg-[#162032] p-2.5 space-y-1.5 shadow-lg">
+            <div className="rounded-xl border border-violet-500/20 bg-gradient-to-b from-[#1a0d3f]/80 to-[#0f0728]/90 p-2.5 space-y-1.5 shadow-lg backdrop-blur-sm">
               <div className="text-xs md:text-sm font-semibold leading-relaxed min-h-[36px] flex items-center">
                 {getQuestionText(state) || <span className="text-slate-400 italic">Đang đợi câu hỏi…</span>}
               </div>
@@ -388,7 +388,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 className={`py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition ${
                   state.waitingBgm
                     ? "bg-amber-500/30 border-amber-400 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.3)] animate-pulse"
-                    : "bg-[#1e293b] border-white/10 text-slate-300 hover:bg-[#334155]"
+                    : "bg-violet-500/10 border-violet-500/20 text-violet-300 hover:bg-violet-500/20"
                 }`}
               >
                 <span>🎵</span>
@@ -400,7 +400,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 className={`py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition ${
                   state.showScoreboard
                     ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_15px_rgba(56,189,248,0.3)]"
-                    : "bg-[#1e293b] border-white/10 text-slate-300 hover:bg-[#334155]"
+                    : "bg-violet-500/10 border-violet-500/20 text-violet-300 hover:bg-violet-500/20"
                 }`}
               >
                 <span>📊</span>
@@ -409,7 +409,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             </div>
 
             {/* ROUND-SPECIFIC CONTROL DECK */}
-            <div className="rounded-xl border border-white/10 bg-[#131d2e] p-2 sm:p-2.5 shadow-xl">
+            <div className="rounded-xl border border-violet-500/15 bg-gradient-to-b from-[#1a0d3f]/60 to-[#0f0728]/80 p-2 sm:p-2.5 shadow-xl backdrop-blur-sm">
               {curRound === "khoiDong" && (
                 <KhoiDongDeck
                   state={state}
@@ -432,11 +432,11 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               {curRound === "cauHoiPhu" && <CauHoiPhuDeck state={state} call={call} seats={seats} />}
               {!curRound && (
                 <div className="py-6 text-center space-y-2">
-                  <div className="text-slate-400 text-xs">Trận đấu chưa bắt đầu hoặc đang ở phòng chờ.</div>
+                  <div className="text-violet-400/70 text-xs">Trận đấu chưa bắt đầu hoặc đang ở phòng chờ.</div>
                   <button
                     type="button"
                     onClick={() => call("game:start")}
-                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-purple-500/30 cursor-pointer animate-pulse"
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-red-500 to-violet-600 hover:from-amber-400 hover:to-violet-500 text-white font-black text-xs shadow-lg shadow-amber-500/30 cursor-pointer animate-pulse"
                   >
                     ▶ BẮT ĐẦU TRẬN ĐẤU OLYMPIA
                   </button>
@@ -448,7 +448,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
 
         {/* 3. RIGHT SIDEBAR: Hotkeys & State Dashboard (Collapsible) */}
         {rightSidebarOpen && (
-          <aside className="w-44 bg-[#0f172a] border-l border-white/10 p-2 flex flex-col justify-between shrink-0 space-y-2 animate-fade-in">
+          <aside className="w-44 bg-black/20 border-l border-violet-500/15 p-2 flex flex-col justify-between shrink-0 space-y-2 animate-fade-in">
             {/* Box 1: Phím Tắt */}
             <div className="space-y-1">
               <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
@@ -465,7 +465,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                   ✕
                 </button>
               </div>
-              <div className="bg-[#162032] rounded-lg p-1.5 border border-white/5 space-y-0.5 text-[10px]">
+              <div className="bg-violet-900/20 rounded-lg p-1.5 border border-violet-500/10 space-y-0.5 text-[10px]">
                 <HotkeyRow keyName="Space" desc="Play/Pause" color="text-purple-400" />
                 <HotkeyRow keyName="Enter" desc="Đúng ✔" color="text-emerald-400" />
                 <HotkeyRow keyName="Bksp" desc="Sai ✘" color="text-rose-400" />
@@ -484,7 +484,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 <span>📶</span>
                 <span>Trạng Thái</span>
               </div>
-              <div className="bg-[#162032] rounded-lg p-2 border border-white/5 space-y-1 text-[11px]">
+              <div className="bg-violet-900/20 rounded-lg p-2 border border-violet-500/10 space-y-1 text-[11px]">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Round:</span>
                   <b className="text-sky-300 truncate max-w-[80px]">{curRound || "lobby"}</b>
@@ -523,12 +523,12 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       </div>
 
       {/* ── BOTTOM BAR: 4 CONTESTANT CARDS COMPACT (ZERO-SCROLL) ── */}
-      <footer className="border-t border-white/10 bg-[#0d131f] px-2 py-1 shrink-0">
+      <footer className="border-t border-violet-500/15 bg-black/25 px-2 py-1 shrink-0">
         <div className="grid grid-cols-4 gap-1.5">
           {seats.slice(0, 4).map((s, idx) => (
             <div
               key={s.id}
-              className="rounded-lg border border-white/10 bg-[#162032] px-2 py-1 flex items-center justify-between gap-1 relative overflow-hidden shadow"
+              className="rounded-lg border bg-gradient-to-b from-violet-900/30 to-violet-950/30 px-2 py-1 flex items-center justify-between gap-1 relative overflow-hidden shadow"
               style={{ borderLeft: `4px solid ${SEAT_COLORS[s.id] || "#38bdf8"}` }}
             >
               <div className="min-w-0 flex-1">

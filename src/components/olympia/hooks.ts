@@ -88,6 +88,8 @@ export function useCountdown(timer: TimerState | null | undefined, serverNow: ()
   return Math.max(0, timer.remainingMs - (serverNow() - timer.startedAt));
 }
 
+const BGM_CROSSFADE_MS = 1500;
+
 /** Plays server "cue" events. Missing files fall back to O26, then fail silently. */
 export function useOlympiaAudio(
   state: OlympiaState | null,
@@ -97,6 +99,7 @@ export function useOlympiaAudio(
 ) {
   const lastCue = useRef<number | null>(null);
   const bgm = useRef<HTMLAudioElement | null>(null);
+  const bgmFadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const getAudioContext = useCallback(() => {
@@ -112,12 +115,68 @@ export function useOlympiaAudio(
     return audioCtxRef.current;
   }, []);
 
+  /** Fade out the old BGM over durationMs, then stop it. Returns the old audio element. */
+  const fadeOutOldBgm = useCallback((old: HTMLAudioElement, durationMs: number) => {
+    if (old.paused || old.volume <= 0) {
+      try { old.pause(); old.currentTime = 0; } catch {}
+      return;
+    }
+    if (bgmFadeTimerRef.current) clearInterval(bgmFadeTimerRef.current);
+    const steps = 20;
+    const stepMs = Math.max(15, Math.floor(durationMs / steps));
+    const startVol = old.volume;
+    const volStep = startVol / steps;
+    let step = 0;
+    bgmFadeTimerRef.current = setInterval(() => {
+      step++;
+      const newVol = Math.max(0, startVol - volStep * step);
+      try { old.volume = newVol; } catch {}
+      if (step >= steps || newVol <= 0) {
+        if (bgmFadeTimerRef.current) clearInterval(bgmFadeTimerRef.current);
+        bgmFadeTimerRef.current = null;
+        try { old.pause(); old.currentTime = 0; } catch {}
+      }
+    }, stepMs);
+  }, []);
+
   const stopBgm = useCallback(() => {
+    if (bgmFadeTimerRef.current) {
+      clearInterval(bgmFadeTimerRef.current);
+      bgmFadeTimerRef.current = null;
+    }
     if (bgm.current) {
-      bgm.current.pause();
+      try { bgm.current.pause(); bgm.current.currentTime = 0; } catch {}
       bgm.current = null;
     }
   }, []);
+
+  /** Crossfade to a new BGM element. Old BGM fades out while new BGM fades in. */
+  const crossfadeToBgm = useCallback((newAudio: HTMLAudioElement, durationMs: number) => {
+    const old = bgm.current;
+    bgm.current = newAudio;
+    newAudio.volume = 0;
+    newAudio.play().catch(() => {});
+
+    if (old && !old.paused) {
+      fadeOutOldBgm(old, durationMs);
+    }
+
+    // Fade in new audio
+    if (bgmFadeTimerRef.current) clearInterval(bgmFadeTimerRef.current);
+    const targetVol = 0.75;
+    const steps = 20;
+    const stepMs = Math.max(15, Math.floor(durationMs / steps));
+    const volStep = targetVol / steps;
+    let step = 0;
+    const fadeInTimer = setInterval(() => {
+      step++;
+      const newVol = Math.min(targetVol, volStep * step);
+      try { newAudio.volume = newVol; } catch {}
+      if (step >= steps || newVol >= targetVol) {
+        clearInterval(fadeInTimer);
+      }
+    }, stepMs);
+  }, [fadeOutOldBgm]);
 
   const pauseBgm = useCallback(() => {
     if (bgm.current && !bgm.current.paused) {
@@ -167,18 +226,9 @@ export function useOlympiaAudio(
 
     const season = audioSeason || "O26";
     const currentChannel = cue.pan || channel || (typeof window !== "undefined" ? (localStorage.getItem("olympia_audio_channel") as any) || "both" : "both");
+    const isBgmCue = cue.kind === "bgm";
 
-    const play = (s: string, fallback: boolean) => {
-      // Build sound path considering left/right channel variant
-      let soundUrl = `/olympia-audio/${s}/${cue.sound}.mp3`;
-      if (currentChannel === "left") soundUrl = `/olympia-audio/${s}/${cue.sound}_left.mp3`;
-      else if (currentChannel === "right") soundUrl = `/olympia-audio/${s}/${cue.sound}_right.mp3`;
-
-      const a = new Audio(soundUrl);
-      const looping = cue.kind === "bgm" && (/kd_bgm_[12]$/.test(cue.sound) || /loop/.test(cue.sound));
-      a.loop = looping;
-
-      // Connect to Web Audio StereoPannerNode for guaranteed hardware channel separation
+    const connectPanner = (a: HTMLAudioElement) => {
       const ctx = getAudioContext();
       if (ctx && ctx.createStereoPanner) {
         try {
@@ -188,54 +238,55 @@ export function useOlympiaAudio(
           source.connect(panner);
           panner.connect(ctx.destination);
         } catch {
-          // Fallback to default output if media element source already connected
+          // Fallback: already connected or not supported
         }
       }
+    };
+
+    const play = (s: string, fallback: boolean) => {
+      let soundUrl = `/olympia-audio/${s}/${cue.sound}.mp3`;
+      if (currentChannel === "left") soundUrl = `/olympia-audio/${s}/${cue.sound}_left.mp3`;
+      else if (currentChannel === "right") soundUrl = `/olympia-audio/${s}/${cue.sound}_right.mp3`;
+
+      const a = new Audio(soundUrl);
+      const looping = isBgmCue && (/kd_bgm_[123]$/.test(cue.sound) || /loop/.test(cue.sound));
+      a.loop = looping;
+      a.volume = isBgmCue ? 0 : 0.75; // BGM starts at 0 for fade-in; SFX at normal volume
+      connectPanner(a);
 
       a.onerror = () => {
-        // If channel variant failed, try standard file
         if (currentChannel !== "both" && soundUrl !== `/olympia-audio/${s}/${cue.sound}.mp3`) {
           const std = new Audio(`/olympia-audio/${s}/${cue.sound}.mp3`);
           std.loop = looping;
-          if (ctx && ctx.createStereoPanner) {
-            try {
-              const src = ctx.createMediaElementSource(std);
-              const p = ctx.createStereoPanner();
-              p.pan.value = currentChannel === "left" ? -1.0 : currentChannel === "right" ? 1.0 : 0.0;
-              src.connect(p);
-              p.connect(ctx.destination);
-            } catch {}
+          std.volume = isBgmCue ? 0 : 0.75;
+          connectPanner(std);
+          if (isBgmCue) {
+            crossfadeToBgm(std, BGM_CROSSFADE_MS);
+          } else {
+            std.volume = 0.75;
+            std.play().catch(() => {});
           }
-          if (cue.kind === "bgm") {
-            stopBgm();
-            bgm.current = std;
-          }
-          std.play().catch(() => {});
           return;
         }
-
         if (fallback && s !== "O26") {
           play("O26", false);
         } else if (/tick_(?:10|40)s/.test(cue.sound)) {
-          // Fallback for missing 10s or 40s tick
           const altSound = cue.sound.replace(/tick_(?:10|40)s/, "tick_20s");
           const alt = new Audio(`/olympia-audio/${s}/${altSound}.mp3`);
-          if (cue.kind === "bgm") {
-            stopBgm();
-            bgm.current = alt;
-          }
-          alt.play().catch(() => {});
+          if (isBgmCue) crossfadeToBgm(alt, BGM_CROSSFADE_MS);
+          else alt.play().catch(() => {});
         }
       };
 
-      if (cue.kind === "bgm") {
-        stopBgm();
-        bgm.current = a;
+      if (isBgmCue) {
+        crossfadeToBgm(a, BGM_CROSSFADE_MS);
+      } else {
+        a.volume = 0.75;
+        a.play().catch(() => {});
       }
-      a.play().catch(() => {});
     };
     play(season, true);
-  }, [state?.cue, audioSeason, enabled, channel, stopBgm, pauseBgm, resumeBgm, getAudioContext]);
+  }, [state?.cue, audioSeason, enabled, channel, stopBgm, pauseBgm, resumeBgm, getAudioContext, crossfadeToBgm]);
 
   useEffect(() => () => stopBgm(), [stopBgm]);
 }

@@ -25388,9 +25388,9 @@ var OlympiaGame = class _OlympiaGame {
       this.state.openedQuestionKeys.push(clean);
     }
   }
-  cue(sound, kind = "sound") {
+  cue(sound, kind = "sound", pan) {
     this.state.cueSeq += 1;
-    this.state.cue = { id: this.state.cueSeq, sound, kind };
+    this.state.cue = { id: this.state.cueSeq, sound, kind, pan };
   }
   logMsg(msg) {
     this.state.log.push(msg);
@@ -25496,6 +25496,25 @@ var OlympiaGame = class _OlympiaGame {
         kd.phase = "question";
         kd.questionRevealed = false;
         this.cue("1_KhoiDong/open_question");
+        const rIdTick = this.ruleset.id;
+        const aSeasonTick = this.ruleset.audioSeason;
+        if (aSeasonTick === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rIdTick)) {
+          this.cue("1_KhoiDong/60s", "bgm");
+        } else if (rIdTick === "O22" || aSeasonTick === "O22") {
+          const segTick = kd.segments[kd.segIdx];
+          if (segTick.kind === "solo") {
+            kd.currentBgmTrack = "kd_bgm_1";
+            this.cue("1_KhoiDong/kd_bgm_1", "bgm");
+          } else {
+            const gMs = segTick.globalMs || 6e4;
+            if (gMs <= 3e4) this.cue("1_KhoiDong/30s", "bgm");
+            else if (gMs <= 6e4) this.cue("1_KhoiDong/60s", "bgm");
+            else this.cue("1_KhoiDong/90s", "bgm");
+          }
+        } else {
+          kd.currentBgmTrack = "kd_bgm_1";
+          this.cue("1_KhoiDong/kd_bgm_1", "bgm");
+        }
       }
     }
     if (st.vdPackageTimer && expired(st.vdPackageTimer)) {
@@ -25802,6 +25821,35 @@ var OlympiaGame = class _OlympiaGame {
       case "banner:hide":
         st.banner = null;
         return OK;
+      case "score:set": {
+        const id = num("seat");
+        const s = this.seat(id);
+        if (!s) return fail("Gh\u1EBF kh\xF4ng h\u1EE3p l\u1EC7");
+        const newScore = Number(a.score);
+        if (Number.isNaN(newScore)) return fail("\u0110i\u1EC3m s\u1ED1 kh\xF4ng h\u1EE3p l\u1EC7");
+        const delta = newScore - s.score;
+        s.score = newScore;
+        this.pushTranscript({
+          at: now,
+          round: st.currentRound ?? "system",
+          roundLabel: st.currentRound ? ROUND_LABELS[st.currentRound] : "H\u1EC7 th\u1ED1ng",
+          segmentLabel: "Nh\u1EADp \u0111i\u1EC3m tr\u1EF1c ti\u1EBFp",
+          entryKind: "score_adjust",
+          actorSeat: id,
+          actorName: this.seatName(id),
+          verdict: "info",
+          scoreChanges: { [id]: delta },
+          note: `Qu\u1EA3n tr\xF2 nh\u1EADp \u0111i\u1EC3m ${this.seatName(id)}: ${newScore}`
+        });
+        return OK;
+      }
+      case "system:setKdFinishTurnPan": {
+        const p = a.pan;
+        if (p === "both" || p === "left" || p === "right") {
+          this.state.kdFinishTurnPan = p;
+        }
+        return OK;
+      }
       case "score:adjust": {
         const id = num("seat");
         if (!this.seat(id)) return fail("Gh\u1EBF kh\xF4ng h\u1EE3p l\u1EC7");
@@ -25936,6 +25984,9 @@ var OlympiaGame = class _OlympiaGame {
     const rs = this.ruleset.khoiDong;
     switch (type) {
       case "kd:next": {
+        if (kd.startCooldownUntil && now < kd.startCooldownUntil) {
+          return fail("Vui l\xF2ng \u0111\u1EE3i \u0111\u1ED3 ho\u1EA1 m\u1EDF xong (3.5s)");
+        }
         if (st.introTimer) {
           st.introTimer = null;
           st.banner = null;
@@ -25972,7 +26023,7 @@ var OlympiaGame = class _OlympiaGame {
             kd.current = null;
             kd.buzzOpen = false;
             kd.buzzUnlockAt = void 0;
-            this.cue("1_KhoiDong/finish_turn");
+            this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
             return OK;
           }
           kd.segIdx += 1;
@@ -25989,7 +26040,7 @@ var OlympiaGame = class _OlympiaGame {
           kd.nextLockedSeats = [];
           kd.current = null;
           kd.lastVerdict = null;
-          this.cue(ns.kind === "solo" ? "1_KhoiDong/ready" : "1_KhoiDong/finish_turn");
+          this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
           return OK;
         }
         if (!isSolo && isLastSeg && kd.qIdx >= seg.questions - 1 && kd.phase === "result") {
@@ -25998,48 +26049,13 @@ var OlympiaGame = class _OlympiaGame {
           kd.buzzUnlockAt = void 0;
           return fail("\u0110\xE3 ho\xE0n th\xE0nh t\u1EA5t c\u1EA3 c\xE2u h\u1ECFi v\xF2ng Kh\u1EDFi \u0110\u1ED9ng chung");
         }
-        if (kd.phase === "question" && !timerRunning(kd.timer) && !(seg.globalMs && kd.globalTimer && timerRunning(kd.globalTimer))) {
+        if (kd.phase === "question" && !kd.questionRevealed) {
           kd.questionRevealed = true;
           const rId = this.ruleset.id;
           const aSeason2 = this.ruleset.audioSeason;
-          if (aSeason2 === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
-            if (seg.globalMs && kd.globalTimer) {
-              startTimer(kd.globalTimer, now);
-            } else {
-              startTimer(kd.timer, now);
-            }
-            this.cue("1_KhoiDong/60s", "bgm");
-          } else if (rId === "O22" || aSeason2 === "O22") {
-            if (isSolo) {
-              startTimer(kd.timer, now);
-              this.cue("1_KhoiDong/kd_bgm_1", "bgm");
-            } else {
-              if (kd.globalTimer) startTimer(kd.globalTimer, now);
-              else startTimer(kd.timer, now);
-              kd.buzzOpen = true;
-              const gMs = seg.globalMs || 6e4;
-              if (gMs <= 3e4) {
-                this.cue("1_KhoiDong/30s", "bgm");
-              } else if (gMs <= 6e4) {
-                this.cue("1_KhoiDong/60s", "bgm");
-              } else {
-                this.cue("1_KhoiDong/90s", "bgm");
-              }
-            }
-          } else {
-            if (seg.globalMs && kd.globalTimer) {
-              startTimer(kd.globalTimer, now);
-              kd.buzzOpen = !isSolo;
-            } else {
-              startTimer(kd.timer, now);
-              if (!isSolo && kd.buzzedSeat == null) {
-                kd.buzzOpen = !(kd.buzzUnlockAt && now < kd.buzzUnlockAt);
-              }
-            }
-            const totalQ = seg.questions || 6;
-            const halfway = Math.ceil(totalQ / 2);
-            let bgmTrack = kd.qIdx < halfway - 1 ? "kd_bgm_1" : kd.qIdx < totalQ - 1 ? "kd_bgm_2" : "kd_bgm_3";
-            this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+          if ((rId === "O22" || aSeason2 === "O22") && !isSolo && kd.globalTimer && !timerRunning(kd.globalTimer)) {
+            startTimer(kd.globalTimer, now);
+            kd.buzzOpen = true;
           }
           return OK;
         }
@@ -26049,7 +26065,7 @@ var OlympiaGame = class _OlympiaGame {
           kd.current = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = void 0;
-          this.cue("1_KhoiDong/finish_turn");
+          this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
           return OK;
         }
         const q = this.kdPoolQuestion(kd, seg);
@@ -26058,7 +26074,7 @@ var OlympiaGame = class _OlympiaGame {
           kd.current = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = void 0;
-          this.cue("1_KhoiDong/finish_turn");
+          this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
           return OK;
         }
         q.used = true;
@@ -26093,9 +26109,11 @@ var OlympiaGame = class _OlympiaGame {
         const aSeason = this.ruleset.audioSeason;
         if (aSeason !== "O13-21" && !(this.ruleset.id === "O22" && !isSolo)) {
           const totalQ = seg.questions || 6;
-          const halfway = Math.ceil(totalQ / 2);
-          let bgmTrack = kd.qIdx < halfway - 1 ? "kd_bgm_1" : kd.qIdx < totalQ - 1 ? "kd_bgm_2" : "kd_bgm_3";
-          this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+          let bgmTrack = kd.qIdx <= 1 ? "kd_bgm_1" : kd.qIdx < totalQ - 1 ? "kd_bgm_2" : "kd_bgm_3";
+          if (bgmTrack !== kd.currentBgmTrack) {
+            kd.currentBgmTrack = bgmTrack;
+            this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+          }
         }
         return OK;
       }
@@ -26108,7 +26126,6 @@ var OlympiaGame = class _OlympiaGame {
           } else {
             startTimer(kd.globalTimer, now);
             kd.buzzOpen = !isSolo;
-            this.cue(`1_KhoiDong/${seg.globalMs >= 9e4 ? "kd_bgm_3" : seg.globalMs >= 6e4 ? "kd_bgm_2" : "kd_bgm_1"}`, "bgm");
           }
           return OK;
         }
@@ -26124,23 +26141,14 @@ var OlympiaGame = class _OlympiaGame {
               kd.buzzOpen = true;
             }
           }
-          const totalQ = seg.questions || 6;
-          const halfway = Math.ceil(totalQ / 2);
-          let bgmTrack = "kd_bgm_1";
-          if (kd.qIdx < halfway - 1) {
-            bgmTrack = "kd_bgm_1";
-          } else if (kd.qIdx < totalQ - 1) {
-            bgmTrack = "kd_bgm_2";
-          } else {
-            bgmTrack = "kd_bgm_3";
-          }
-          this.cue("1_KhoiDong/" + bgmTrack, "bgm");
         }
         return OK;
       }
       case "kd:start": {
         kd.phase = "question";
         kd.questionRevealed = false;
+        kd.started = true;
+        kd.startCooldownUntil = now + 3500;
         if (kd.qIdx < 0) {
           kd.qIdx = 0;
           const q = this.kdPoolQuestion(kd, seg);

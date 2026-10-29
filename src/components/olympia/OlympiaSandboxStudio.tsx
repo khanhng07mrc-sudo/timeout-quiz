@@ -231,6 +231,16 @@ export default function OlympiaSandboxStudio({
                 onChange={(e) => e.target.files?.[0] && onImportFile(e.target.files[0])}
               />
             </label>
+            <select
+              value={state.kdFinishTurnPan || "both"}
+              onChange={(e) => act("system:setKdFinishTurnPan", { pan: e.target.value })}
+              className="bg-black/40 border border-white/20 rounded-lg px-2 py-1 text-xs text-sky-300 font-bold"
+              title="Kênh loa âm thanh kết thúc lượt Khởi Động"
+            >
+              <option value="both">Loa KĐ: Đều 2 bên</option>
+              <option value="left">Loa KĐ: Trái</option>
+              <option value="right">Loa KĐ: Phải</option>
+            </select>
             <button type="button" className={btn} onClick={() => setAudioOn((v) => !v)}>
               {audioOn ? "🔊 Âm thanh" : "🔈 Tắt tiếng"}
             </button>
@@ -452,8 +462,26 @@ export default function OlympiaSandboxStudio({
               {seats.map((s) => (
                 <div key={s.id} className="flex items-center gap-1 text-xs bg-white/5 px-2 py-1 rounded-lg">
                   <span style={{ color: SEAT_COLORS[s.id] }} className="font-bold">
-                    {s.name}
+                    {s.name}:
                   </span>
+                  <input
+                    type="number"
+                    defaultValue={s.score}
+                    key={`sb_q_${s.id}_${s.score}`}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        (e.target as HTMLInputElement).blur();
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val) && val !== s.score) {
+                        act("score:set", { seat: s.id, score: val });
+                      }
+                    }}
+                    className="w-14 px-1 py-0.5 rounded bg-black/40 border border-white/20 text-xs font-black text-amber-300 focus:outline-none focus:border-amber-400"
+                    title="Gõ điểm trực tiếp (Enter để lưu)"
+                  />
                   <button className="px-1.5 py-0.5 rounded bg-rose-500/30" onClick={() => act("score:adjust", { seat: s.id, delta: -10 })}>
                     -10
                   </button>
@@ -503,7 +531,27 @@ export default function OlympiaSandboxStudio({
                       <span className="font-bold text-sm truncate" style={{ color: SEAT_COLORS[s.id] }}>
                         {s.name}
                       </span>
-                      <span className="font-black text-lg tabular-nums">{s.score}đ</span>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          defaultValue={s.score}
+                          key={`sb_p_${s.id}_${s.score}`}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              (e.target as HTMLInputElement).blur();
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            if (!isNaN(val) && val !== s.score) {
+                              act("score:set", { seat: s.id, score: val });
+                            }
+                          }}
+                          className="w-16 px-1.5 py-0.5 rounded bg-black/50 border border-white/20 font-black text-sm text-right tabular-nums text-amber-300 focus:outline-none focus:border-amber-400"
+                          title="Gõ điểm trực tiếp (Enter để lưu)"
+                        />
+                        <span className="font-bold text-xs text-slate-400">đ</span>
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-1">

@@ -263,6 +263,7 @@ export interface Cue {
   /** relative sound id, e.g. "khoidong/correct" — client resolves with season */
   sound: string;
   kind: "sound" | "bgm" | "stop" | "pause_bgm" | "resume_bgm";
+  pan?: "both" | "left" | "right";
 }
 
 export interface OlympiaConfig {
@@ -283,6 +284,8 @@ export interface OlympiaConfig {
 export type RoundStatus = "pending" | "active" | "done";
 
 export interface KhoiDongState {
+  started?: boolean;
+  startCooldownUntil?: number;
   segments: KdSegmentDef[];
   segIdx: number;
   qIdx: number; // -1 = not opened yet
@@ -537,6 +540,7 @@ export interface OlympiaState {
   log: string[];
   /** Normalized question strings opened during the match so the bank can mark them as used */
   openedQuestionKeys?: string[];
+  kdFinishTurnPan?: "both" | "left" | "right";
   /** Structured match transcript supporting both "Rút gọn" and "Chi tiết" modes */
   transcript?: OlympiaTranscriptEntry[];
 }

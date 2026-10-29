@@ -147,6 +147,10 @@ export function useOlympiaAudio(
       return;
     }
 
+    if (cue.kind === "bgm" && bgm.current && !bgm.current.paused && bgm.current.src && bgm.current.src.includes(cue.sound)) {
+      return; // Continuous playback without restarting
+    }
+
     if (cue.kind === ("pause_bgm" as any)) {
       pauseBgm();
       return;
@@ -162,7 +166,7 @@ export function useOlympiaAudio(
     }
 
     const season = audioSeason || "O26";
-    const currentChannel = channel || (typeof window !== "undefined" ? (localStorage.getItem("olympia_audio_channel") as any) || "both" : "both");
+    const currentChannel = cue.pan || channel || (typeof window !== "undefined" ? (localStorage.getItem("olympia_audio_channel") as any) || "both" : "both");
 
     const play = (s: string, fallback: boolean) => {
       // Build sound path considering left/right channel variant

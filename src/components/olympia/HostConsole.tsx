@@ -35,7 +35,8 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
   const [manualSeat, setManualSeat] = useState<number>(0);
   const [manualDelta, setManualDelta] = useState<number>(10);
 
-  useOlympiaAudio(state, join?.audioSeason, audioOn);
+  // HostConsole: Audio is strictly played by Display only
+  useOlympiaAudio(state, join?.audioSeason, false);
 
   const call: Call = async (type: string, extra: Record<string, unknown> = {}) => {
     const r = await emit("action", { type, ...extra });
@@ -415,6 +416,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                   call={call}
                   o22Quarter={o22Quarter}
                   setO22Quarter={setO22Quarter}
+                  serverNow={serverNow}
                 />
               )}
               {curRound === "vcnv" && <VcnvDeck state={state} call={call} seats={seats} />}
@@ -533,9 +535,25 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 <div className="text-[11px] font-bold truncate text-slate-300">
                   {s.name || `TS ${idx + 1}`}
                 </div>
-                <div className="text-base sm:text-lg font-black leading-none" style={{ color: SEAT_COLORS[s.id] || "#38bdf8" }}>
-                  {s.score}
-                </div>
+                <input
+                  type="number"
+                  defaultValue={s.score}
+                  key={`host_score_${s.id}_${s.score}`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val) && val !== s.score) {
+                      call("score:set", { seat: s.id, score: val });
+                    }
+                  }}
+                  className="w-16 px-1 py-0.5 rounded bg-black/40 border border-white/20 text-base sm:text-lg font-black leading-none focus:outline-none focus:border-amber-400"
+                  style={{ color: SEAT_COLORS[s.id] || "#38bdf8" }}
+                  title="Gõ điểm trực tiếp (Enter để lưu)"
+                />
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <button
@@ -633,11 +651,13 @@ function KhoiDongDeck({
   call,
   o22Quarter,
   setO22Quarter,
+  serverNow,
 }: {
   state: OlympiaState;
   call: Call;
   o22Quarter: O22Quarter;
   setO22Quarter: (q: O22Quarter) => void;
+  serverNow: () => number;
 }) {
   const kd = state.khoiDong!;
   const seg = kd.segments[kd.segIdx];
@@ -735,37 +755,46 @@ function KhoiDongDeck({
       </div>
 
       {/* Row 2: Main Action Buttons */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-        {/* ▶ BẮT ĐẦU */}
-        <button
-          type="button"
-          onClick={() => call("kd:start")}
-          className="py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
-        >
-          <span>▶</span>
-          <span>BẮT ĐẦU (Ready 3.5s)</span>
-        </button>
+      {(() => {
+        const inCooldown = state.khoiDong?.startCooldownUntil != null && serverNow() < state.khoiDong.startCooldownUntil;
+        const cdSec = inCooldown ? Math.ceil((state.khoiDong!.startCooldownUntil! - serverNow()) / 1000) : 0;
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+            {/* ▶ BẮT ĐẦU */}
+            <button
+              type="button"
+              onClick={() => call("kd:start")}
+              className="py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+            >
+              <span>▶</span>
+              <span>BẮT ĐẦU</span>
+            </button>
 
-        {/* ⏭ CÂU TIẾP (N) */}
-        <button
-          type="button"
-          onClick={() => call("kd:next")}
-          className="py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-teal-400 hover:from-sky-400 hover:to-teal-300 text-slate-950 text-xs font-black shadow-lg shadow-sky-500/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
-        >
-          <span>CÂU TIẾP (N)</span>
-          <span>⏭</span>
-        </button>
+            {/* ⏭ CÂU TIẾP (N) */}
+            <button
+              type="button"
+              onClick={() => call("kd:next")}
+              disabled={inCooldown}
+              className={`py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-teal-400 hover:from-sky-400 hover:to-teal-300 text-slate-950 text-xs font-black shadow-lg shadow-sky-500/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider ${inCooldown ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <span>{inCooldown ? `CÂU TIẾP (${cdSec}s)` : "CÂU TIẾP (N)"}</span>
+              <span>⏭</span>
+            </button>
 
-        {/* ⏱ TÍNH GIỜ (Space) */}
-        <button
-          type="button"
-          onClick={() => call("kd:timer")}
-          className="py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow-lg shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
-        >
-          <span>⏱</span>
-          <span>TÍNH GIỜ (Space)</span>
-        </button>
-      </div>
+            {/* ⏱ TÍNH GIỜ (Space) */}
+            <button
+              type="button"
+              onClick={() => call("kd:timer")}
+              className="py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow-lg shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+            >
+              <span>⏱</span>
+              <span>TÍNH GIỜ (Space)</span>
+            </button>
+          </div>
+        );
+      })()}
+
+
 
       {/* Row 3: Evaluation: Đúng (Enter) | Sai (Bksp) | Ô TRỐNG */}
       <div className="grid grid-cols-3 gap-1.5">
@@ -1631,7 +1660,10 @@ function HotkeyRow({ keyName, desc, color }: { keyName: string; desc: string; co
 }
 
 function getQuestionText(st: OlympiaState): string {
-  if (st.currentRound === "khoiDong") return st.khoiDong?.current?.q || "";
+  if (st.currentRound === "khoiDong") {
+    if (!st.khoiDong?.questionRevealed) return "";
+    return st.khoiDong?.current?.q || "";
+  }
   if (st.currentRound === "vcnv") {
     if (st.vcnv?.currentRow === 4) return st.vcnv.centerQuestion?.q || "Câu hỏi ô trung tâm";
     if (st.vcnv?.currentRow != null && st.vcnv.currentRow >= 0) return st.vcnv.rows[st.vcnv.currentRow]?.hint || "";
@@ -1650,7 +1682,10 @@ function getQuestionText(st: OlympiaState): string {
 }
 
 function getAnswerText(st: OlympiaState): string {
-  if (st.currentRound === "khoiDong") return st.khoiDong?.current?.a || "";
+  if (st.currentRound === "khoiDong") {
+    if (!st.khoiDong?.questionRevealed) return "";
+    return st.khoiDong?.current?.a || "";
+  }
   if (st.currentRound === "vcnv") {
     if (st.vcnv?.currentRow === 4) return st.vcnv.centerQuestion?.a || st.vcnv.keyword;
     if (st.vcnv?.currentRow != null && st.vcnv.currentRow >= 0) return st.vcnv.rows[st.vcnv.currentRow]?.answer || "";

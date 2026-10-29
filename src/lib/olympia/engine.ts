@@ -160,9 +160,9 @@ export class OlympiaGame {
       this.state.openedQuestionKeys.push(clean);
     }
   }
-  private cue(sound: string, kind: "sound" | "bgm" | "stop" | "pause_bgm" | "resume_bgm" = "sound") {
+  private cue(sound: string, kind: "sound" | "bgm" | "stop" | "pause_bgm" | "resume_bgm" = "sound", pan?: "both" | "left" | "right") {
     this.state.cueSeq += 1;
-    this.state.cue = { id: this.state.cueSeq, sound, kind };
+    this.state.cue = { id: this.state.cueSeq, sound, kind, pan };
   }
   private logMsg(msg: string) {
     this.state.log.push(msg);
@@ -600,6 +600,35 @@ export class OlympiaGame {
       case "banner:hide":
         st.banner = null;
         return OK;
+      case "score:set": {
+        const id = num("seat");
+        const s = this.seat(id);
+        if (!s) return fail("Ghế không hợp lệ");
+        const newScore = Number(a.score);
+        if (Number.isNaN(newScore)) return fail("Điểm số không hợp lệ");
+        const delta = newScore - s.score;
+        s.score = newScore;
+        this.pushTranscript({
+          at: now,
+          round: st.currentRound ?? "system",
+          roundLabel: st.currentRound ? ROUND_LABELS[st.currentRound] : "Hệ thống",
+          segmentLabel: "Nhập điểm trực tiếp",
+          entryKind: "score_adjust",
+          actorSeat: id,
+          actorName: this.seatName(id),
+          verdict: "info",
+          scoreChanges: { [id]: delta },
+          note: `Quản trò nhập điểm ${this.seatName(id)}: ${newScore}`,
+        });
+        return OK;
+      }
+      case "system:setKdFinishTurnPan": {
+        const p = a.pan as "both" | "left" | "right";
+        if (p === "both" || p === "left" || p === "right") {
+          this.state.kdFinishTurnPan = p;
+        }
+        return OK;
+      }
       case "score:adjust": {
         const id = num("seat");
         if (!this.seat(id)) return fail("Ghế không hợp lệ");
@@ -737,6 +766,9 @@ export class OlympiaGame {
 
     switch (type) {
       case "kd:next": {
+        if (kd.startCooldownUntil && now < kd.startCooldownUntil) {
+          return fail("Vui lòng đợi đồ hoạ mở xong (3.5s)");
+        }
         if (st.introTimer) {
           st.introTimer = null;
           st.banner = null;
@@ -778,7 +810,7 @@ export class OlympiaGame {
             kd.current = null;
             kd.buzzOpen = false;
             kd.buzzUnlockAt = undefined;
-            this.cue("1_KhoiDong/finish_turn");
+            this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
             return OK;
           }
           kd.segIdx += 1;
@@ -795,7 +827,7 @@ export class OlympiaGame {
           kd.nextLockedSeats = [];
           kd.current = null;
           kd.lastVerdict = null;
-          this.cue(ns.kind === "solo" ? "1_KhoiDong/ready" : "1_KhoiDong/finish_turn");
+          this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
           return OK;
         }
 
@@ -807,56 +839,16 @@ export class OlympiaGame {
           return fail("Đã hoàn thành tất cả câu hỏi vòng Khởi Động chung");
         }
 
-        // If question is opened but clock not ticking yet, pressing "Câu tiếp" reveals question content & immediately starts clock & BGM
-        if (kd.phase === "question" && !timerRunning(kd.timer) && !(seg.globalMs && kd.globalTimer && timerRunning(kd.globalTimer))) {
+        // If question is opened but not revealed yet, pressing "Câu tiếp" reveals question content.
+        // Không đếm 5s ngay! Quản trò nhấn ⏱ Giờ hoặc Space để bắt đầu đếm 5s.
+        // Nhạc không restart sau mỗi câu, giữ nguyên trạng thái chạy.
+        if (kd.phase === "question" && !kd.questionRevealed) {
           kd.questionRevealed = true;
           const rId = this.ruleset.id;
           const aSeason = this.ruleset.audioSeason;
-
-          // 1. O13 - 21: 60s countdown track
-          if (aSeason === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
-            if (seg.globalMs && kd.globalTimer) {
-              startTimer(kd.globalTimer, now);
-            } else {
-              startTimer(kd.timer, now);
-            }
-            this.cue("1_KhoiDong/60s", "bgm");
-          }
-          // 2. O22:
-          else if (rId === "O22" || aSeason === "O22") {
-            if (isSolo) {
-              startTimer(kd.timer, now);
-              this.cue("1_KhoiDong/kd_bgm_1", "bgm");
-            } else {
-              if (kd.globalTimer) startTimer(kd.globalTimer, now);
-              else startTimer(kd.timer, now);
-              kd.buzzOpen = true;
-
-              const gMs = seg.globalMs || 60000;
-              if (gMs <= 30000) {
-                this.cue("1_KhoiDong/30s", "bgm");
-              } else if (gMs <= 60000) {
-                this.cue("1_KhoiDong/60s", "bgm");
-              } else {
-                this.cue("1_KhoiDong/90s", "bgm");
-              }
-            }
-          }
-          // 3. O23 trở đi (O23, O24-25, O26): kd_bgm_1 / kd_bgm_2 / kd_bgm_3
-          else {
-            if (seg.globalMs && kd.globalTimer) {
-              startTimer(kd.globalTimer, now);
-              kd.buzzOpen = !isSolo;
-            } else {
-              startTimer(kd.timer, now);
-              if (!isSolo && kd.buzzedSeat == null) {
-                kd.buzzOpen = !(kd.buzzUnlockAt && now < kd.buzzUnlockAt);
-              }
-            }
-            const totalQ = seg.questions || 6;
-            const halfway = Math.ceil(totalQ / 2);
-            let bgmTrack = kd.qIdx < halfway - 1 ? "kd_bgm_1" : kd.qIdx < totalQ - 1 ? "kd_bgm_2" : "kd_bgm_3";
-            this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+          if ((rId === "O22" || aSeason === "O22") && !isSolo && kd.globalTimer && !timerRunning(kd.globalTimer)) {
+            startTimer(kd.globalTimer, now);
+            kd.buzzOpen = true;
           }
           return OK;
         }
@@ -867,7 +859,7 @@ export class OlympiaGame {
           kd.current = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = undefined;
-          this.cue("1_KhoiDong/finish_turn");
+          this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
           return OK;
         }
         const q = this.kdPoolQuestion(kd, seg);
@@ -876,7 +868,7 @@ export class OlympiaGame {
           kd.current = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = undefined;
-          this.cue("1_KhoiDong/finish_turn");
+          this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
           return OK;
         }
         q.used = true;
@@ -928,7 +920,7 @@ export class OlympiaGame {
           } else {
             startTimer(kd.globalTimer, now);
             kd.buzzOpen = !isSolo;
-            this.cue(`1_KhoiDong/${seg.globalMs >= 90000 ? "kd_bgm_3" : seg.globalMs >= 60000 ? "kd_bgm_2" : "kd_bgm_1"}`, "bgm");
+            // BGM continues seamlessly
           }
           return OK;
         }
@@ -944,23 +936,15 @@ export class OlympiaGame {
               kd.buzzOpen = true;
             }
           }
-          const totalQ = seg.questions || 6;
-          const halfway = Math.ceil(totalQ / 2);
-          let bgmTrack = "kd_bgm_1";
-          if (kd.qIdx < halfway - 1) {
-            bgmTrack = "kd_bgm_1";
-          } else if (kd.qIdx < totalQ - 1) {
-            bgmTrack = "kd_bgm_2";
-          } else {
-            bgmTrack = "kd_bgm_3";
-          }
-          this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+          // BGM continues seamlessly without restarting on timer start
         }
         return OK;
       }
       case "kd:start": {
         kd.phase = "question";
         kd.questionRevealed = false;
+        kd.started = true;
+        kd.startCooldownUntil = now + 3500;
         if (kd.qIdx < 0) {
           kd.qIdx = 0;
           const q = this.kdPoolQuestion(kd, seg);
@@ -980,7 +964,25 @@ export class OlympiaGame {
         }
         st.kdIntroTimer = mkTimer(3500);
         startTimer(st.kdIntroTimer, now);
-        this.cue("1_KhoiDong/ready");
+
+        // Nút bắt đầu chỉ kích hoạt nhạc và chờ mở đồ họa (3.5s), không phát ready
+        const rId = this.ruleset.id;
+        const aSeason = this.ruleset.audioSeason;
+        if (aSeason === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
+          this.cue("1_KhoiDong/60s", "bgm");
+        } else if (rId === "O22" || aSeason === "O22") {
+          if (isSolo) {
+            this.cue("1_KhoiDong/kd_bgm_1", "bgm");
+          } else {
+            const gMs = seg.globalMs || 60000;
+            if (gMs <= 30000) this.cue("1_KhoiDong/30s", "bgm");
+            else if (gMs <= 60000) this.cue("1_KhoiDong/60s", "bgm");
+            else this.cue("1_KhoiDong/90s", "bgm");
+          }
+        } else {
+          kd.currentBgmTrack = "kd_bgm_1";
+          this.cue("1_KhoiDong/kd_bgm_1", "bgm");
+        }
         return OK;
       }
       case "kd:blank": {

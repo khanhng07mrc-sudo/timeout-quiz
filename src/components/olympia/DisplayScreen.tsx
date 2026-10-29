@@ -269,7 +269,7 @@ function KhoiDong({ state, serverNow }: P) {
               )}
 
               {kd.phase === "result" && kd.current.a && (
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-2xl bg-emerald-950/70 border border-emerald-400/40 text-emerald-300 font-black text-base sm:text-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-bounce">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-2xl bg-emerald-950/70 border border-emerald-400/40 text-emerald-300 font-black text-base sm:text-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-fade-in">
                   <span>✔ ĐÁP ÁN:</span>
                   <span>{kd.current.a}</span>
                 </div>
@@ -297,9 +297,25 @@ function KhoiDong({ state, serverNow }: P) {
         </div>
 
         {/* 3. Footer: Sleek Glowing Timer Bar */}
-        <div className="shrink-0 pt-1 border-t border-white/10">
-          <DisplayTimerBar timer={kd.globalTimer ?? kd.timer} serverNow={serverNow} />
-        </div>
+        {(() => {
+          const isO22OrBefore = state.rulesetId === "O22" || /^O(1[3-9]|2[0-2])$/.test(state.rulesetId);
+          if (isO22OrBefore) {
+            if (!kd.globalTimer) return null;
+            return (
+              <div className="shrink-0 pt-1 border-t border-white/10">
+                <DisplayTimerBar timer={kd.globalTimer} serverNow={serverNow} />
+              </div>
+            );
+          }
+          if (kd.timer && kd.timer.startedAt != null) {
+            return (
+              <div className="shrink-0 pt-1 border-t border-white/10">
+                <DisplayTimerBar timer={kd.timer} serverNow={serverNow} />
+              </div>
+            );
+          }
+          return null;
+        })()}
       </div>
     </div>
   );

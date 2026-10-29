@@ -530,4 +530,44 @@ test("O22 dynamic quarter switch via system:setO22Quarter", () => {
   assert.equal(g.state.khoiDong!.segments[0].globalMs, 60000, "Updated to 60s");
 });
 
+
+test("score:set manually sets candidate score directly", () => {
+  const g = game("O26", ["khoiDong"], 2);
+  act(g, "game:start");
+  assert.equal(g.state.seats[0].score, 0);
+  act(g, "score:set", { seat: 0, score: 75 });
+  assert.equal(g.state.seats[0].score, 75);
+  act(g, "score:set", { seat: 1, score: -20 });
+  assert.equal(g.state.seats[1].score, -20);
+});
+
+test("system:setKdFinishTurnPan updates stereo panning for finish_turn sound", () => {
+  const g = game("O26", ["khoiDong"], 2);
+  act(g, "system:setKdFinishTurnPan", { pan: "left" });
+  assert.equal(g.state.kdFinishTurnPan, "left");
+  act(g, "system:setKdFinishTurnPan", { pan: "right" });
+  assert.equal(g.state.kdFinishTurnPan, "right");
+});
+
+test("kd:start activates BGM, sets 3.5s cooldown, and kd:next respects cooldown", () => {
+  const g = game("O26", ["khoiDong"], 2);
+  act(g, "game:start");
+  act(g, "kd:start", {}, 1000);
+  assert.equal(g.state.khoiDong!.started, true);
+  assert.equal(g.state.khoiDong!.startCooldownUntil, 1000 + 3500);
+  assert.equal(g.state.cue!.sound, "1_KhoiDong/kd_bgm_1");
+  assert.equal(g.state.cue!.kind, "bgm");
+
+  // Attempting kd:next during 3.5s cooldown should fail
+  const rejected = g.hostAction({ type: "kd:next" }, 2000);
+  assert.equal(rejected.ok, false);
+  assert.ok(rejected.error && rejected.error.includes("3.5s"));
+
+  // After 3.5s cooldown, kd:next succeeds and does not run timer immediately
+  const accepted = g.hostAction({ type: "kd:next" }, 4501);
+  assert.equal(accepted.ok, true);
+  assert.equal(g.state.khoiDong!.questionRevealed, true);
+  assert.equal(g.state.khoiDong!.timer.startedAt, null, "5s timer not started automatically on next");
+});
+
 console.log(`${passed} tests passed`);

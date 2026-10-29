@@ -17,6 +17,8 @@ import { MAGIC_WHEEL_PRESET_BANKS, offlineStorage } from "@/lib/offline-storage"
 import { detectQuizBankLanguage } from "@/lib/game-engine/magic-wheel";
 import { getOlympiaBanks, getPresetOlympiaBanks } from "@/lib/olympia/olympia-storage";
 import { BilingualCategoryPicker } from "@/components/modes/BilingualCategoryPicker";
+import { getLocalizedModeMeta } from "@/lib/game-engine/game-modes-meta";
+import { useTranslation, type Language } from "@/lib/i18n";
 import {
   DEFAULT_MAGIC_WHEEL_PUZZLES,
   ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE,
@@ -24,18 +26,37 @@ import {
   ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS,
 } from "@/lib/game-engine/magic-wheel";
 
-const GAME_MODES = [
-  { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng làm bài, chấm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮", badge: "Toàn năng", badgeColor: "text-purple-300 bg-purple-500/20 border-purple-500/30" },
-  { value: "BUZZ", label: "Fast Buzz", desc: "Bấm chuông siêu tốc tranh quyền trả lời độc quyền", emoji: "⚡", badge: "Tốc độ", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
-  { value: "BOUNCEBACK", label: "Bounceback", desc: "Đội chính trả lời sai, mở chuông 5s cho đối thủ cướp lượt", emoji: "🔄", badge: "Cướp điểm", badgeColor: "text-cyan-300 bg-cyan-500/20 border-cyan-500/30" },
-  { value: "ELIMINATION", label: "Survival", desc: "Loại trực tiếp đội điểm thấp nhất sau mỗi chặng", emoji: "❌", badge: "Sinh tồn", badgeColor: "text-rose-300 bg-rose-500/20 border-rose-500/30" },
-  { value: "MAGIC_WHEEL", label: "Magic Wheel", desc: "Vòng Quay Trí Tuệ: 2 Vòng Đoán Nhanh, Vòng Quay Điểm Thưởng & Ô Chữ Đặc Biệt 40s", emoji: "🎡", badge: "Đấu Trường Tương Tác", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
-  { value: "GRID_CARO", label: "Grid Caro", desc: "Chiếm ô ma trận 4x4, nối chuỗi Caro K ô ăn thưởng lớn", emoji: "🎯", badge: "Chiến thuật", badgeColor: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
-  { value: "DICE_RACE", label: "Dice Race", desc: "Đường đua marathon 3D, gieo 2 xí ngầu và vượt cạm bẫy", emoji: "🎲", badge: "Board Game", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
-  { value: "WAGER", label: "Secret Wager", desc: "Bí mật cược điểm trước khi công bố nội dung câu hỏi", emoji: "💰", badge: "Tâm lý", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },
-  { value: "MYSTERY_QUEST", label: "Mystery Quest", desc: "Lật mở Rương thần bí, Minigame cân não & Ô số phận", emoji: "🗝️", badge: "Gameshow", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
-  { value: "OLYMPIA", label: "Olympia", desc: "Đường Lên Đỉnh Olympia: Chọn mùa O21–O26, tùy chọn vòng thi (Khởi Động, VCNV, Tăng Tốc, Về Đích, Câu Hỏi Phụ) tối đa 8 thí sinh", emoji: "🏔️", badge: "Leo Núi", badgeColor: "text-sky-300 bg-sky-500/20 border-sky-500/30" },
+const BASE_GAME_MODES: Array<{
+  value: GameMode;
+  emoji: string;
+  badgeColor: string;
+}> = [
+  { value: "CLASSIC", emoji: "🎮", badgeColor: "text-purple-300 bg-purple-500/20 border-purple-500/30" },
+  { value: "BUZZ", emoji: "⚡", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
+  { value: "BOUNCEBACK", emoji: "🔄", badgeColor: "text-cyan-300 bg-cyan-500/20 border-cyan-500/30" },
+  { value: "ELIMINATION", emoji: "❌", badgeColor: "text-rose-300 bg-rose-500/20 border-rose-500/30" },
+  { value: "TOURNAMENT", emoji: "🏆", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
+  { value: "MAGIC_WHEEL", emoji: "🎡", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
+  { value: "GRID_CARO", emoji: "🎯", badgeColor: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
+  { value: "DICE_RACE", emoji: "🎲", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
+  { value: "WAGER", emoji: "💰", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },
+  { value: "MYSTERY_QUEST", emoji: "🗝️", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
+  { value: "OLYMPIA", emoji: "🏔️", badgeColor: "text-sky-300 bg-sky-500/20 border-sky-500/30" },
 ];
+
+function getGameModes(lang: Language = "vi") {
+  return BASE_GAME_MODES.map((m) => {
+    const loc = getLocalizedModeMeta(m.value, lang);
+    return {
+      value: m.value,
+      label: loc.name,
+      desc: loc.tagline,
+      emoji: m.emoji,
+      badge: loc.badge,
+      badgeColor: m.badgeColor,
+    };
+  });
+}
 
 const POWERUP_TYPES = [
   { value: "FIFTY_FIFTY", emoji: "🔀", label: "50/50", desc: "Bỏ 2 đáp án sai" },
@@ -64,6 +85,8 @@ function countOlympiaQuestions(s: any): number {
 
 export default function CreateRoomPage() {
   const router = useRouter();
+  const { language } = useTranslation();
+  const GAME_MODES = useMemo(() => getGameModes(language), [language]);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -132,7 +155,8 @@ export default function CreateRoomPage() {
           const seenTitles = new Set<string>();
           const unique = d.banks.filter((b: any) => {
             const normTitle = (b.title || "")
-              .replace(/^[(Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)]\s*/gi, "")
+              .replace(/^\[(?:Ô\s*Chữ|Trắc\s*Nghiệm|MCQ|VTV3|Ô\s*chữ\s*VTV3)\]\s*/gi, "")
+              .replace(/^\((?:Ô\s*Chữ|Trắc\s*Nghiệm|MCQ|VTV3|Ô\s*chữ\s*VTV3)\)\s*/gi, "")
               .replace(/\(VTV3\)/gi, "")
               .replace(/VTV3/gi, "")
               .replace(/Chiếc Nón Kỳ Diệu/gi, "Vòng Quay Trí Tuệ")
@@ -589,7 +613,8 @@ export default function CreateRoomPage() {
                 const isWp = isWordPuzzleBank(bank);
                 const isOly = bank.isOlympia || mode === "OLYMPIA";
                 const cleanTitle = (bank.title || bank.name || "")
-                  .replace(/^[(Olympia|Đề Thi|Đề thi|Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)]\s*/gi, "")
+                  .replace(/^\[(?:Olympia|Đề\s*thi|Ô\s*chữ|Trắc\s*nghiệm|MCQ|VTV3|Ô\s*chữ\s*VTV3)\]\s*/gi, "")
+                  .replace(/^\((?:Olympia|Đề\s*thi|Ô\s*chữ|Trắc\s*nghiệm|MCQ|VTV3|Ô\s*chữ\s*VTV3)\)\s*/gi, "")
                   .replace(/\(VTV3\)/gi, "(Tiếng Việt)")
                   .replace(/VTV3 Huyền Thoại/gi, "Văn Hóa & Lịch Sử")
                   .replace(/VTV3/gi, "")

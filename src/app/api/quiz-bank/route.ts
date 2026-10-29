@@ -203,7 +203,8 @@ export async function GET(req: NextRequest) {
   const dedupedFinal: any[] = [];
   for (const b of finalBanks) {
     const cleanNormTitle = (b.title || "")
-      .replace(/^[(Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)]\s*/gi, "")
+      .replace(/^\[(?:Ô\s*Chữ|Trắc\s*Nghiệm|MCQ|VTV3|Ô\s*chữ\s*VTV3)\]\s*/gi, "")
+      .replace(/^\((?:Ô\s*Chữ|Trắc\s*Nghiệm|MCQ|VTV3|Ô\s*chữ\s*VTV3)\)\s*/gi, "")
       .replace(/\(VTV3\)/gi, "")
       .replace(/VTV3/gi, "")
       .replace(/Chiếc Nón Kỳ Diệu/gi, "Vòng Quay Trí Tuệ")

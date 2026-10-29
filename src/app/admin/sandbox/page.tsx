@@ -29,7 +29,8 @@ import FloatingLegalButton from "@/components/ui/FloatingLegalButton";
 import GlobalSettingsModal from "@/components/ui/GlobalSettingsModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import ArenaModeLaunchTransition from "@/components/ui/ArenaModeLaunchTransition";
-import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
+import { MODE_DISPLAY_NAMES, getLocalizedModeMeta } from "@/lib/game-engine/game-modes-meta";
+import { useTranslation, type Language } from "@/lib/i18n";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
 import OlympiaSandboxStudio from "@/components/olympia/OlympiaSandboxStudio";
@@ -113,7 +114,93 @@ function checkOfflineCanAnyTeamBet(
   });
 }
 
-const AVAILABLE_MODES: {
+const BASE_AVAILABLE_MODES: Array<{
+  mode: GameMode;
+  emoji: string;
+  gradient: string;
+  accentColor: string;
+  glowClass: string;
+}> = [
+  {
+    mode: "GRID_CARO",
+    emoji: "🏁",
+    gradient: "from-cyan-600 via-blue-600 to-indigo-700",
+    accentColor: "#06b6d4",
+    glowClass: "glow-neon-cyan",
+  },
+  {
+    mode: "MYSTERY_QUEST",
+    emoji: "🗝️",
+    gradient: "from-violet-600 via-purple-600 to-pink-600",
+    accentColor: "#a855f7",
+    glowClass: "glow-neon-purple",
+  },
+  {
+    mode: "WAGER",
+    emoji: "💰",
+    gradient: "from-amber-500 via-yellow-600 to-orange-600",
+    accentColor: "#f59e0b",
+    glowClass: "glow-neon-amber",
+  },
+  {
+    mode: "DICE_RACE",
+    emoji: "🎲",
+    gradient: "from-orange-500 via-amber-600 to-yellow-600",
+    accentColor: "#f97316",
+    glowClass: "glow-neon-amber",
+  },
+  {
+    mode: "BOUNCEBACK",
+    emoji: "🔄",
+    gradient: "from-emerald-600 via-teal-600 to-cyan-600",
+    accentColor: "#10b981",
+    glowClass: "glow-neon-emerald",
+  },
+  {
+    mode: "BUZZ",
+    emoji: "🛎️",
+    gradient: "from-rose-600 via-red-600 to-amber-600",
+    accentColor: "#ef4444",
+    glowClass: "glow-neon-rose",
+  },
+  {
+    mode: "MAGIC_WHEEL",
+    emoji: "🎡",
+    gradient: "from-amber-600 via-orange-600 to-yellow-600",
+    accentColor: "#f59e0b",
+    glowClass: "glow-neon-amber",
+  },
+  {
+    mode: "TOURNAMENT",
+    emoji: "🏆",
+    gradient: "from-indigo-600 via-purple-600 to-blue-700",
+    accentColor: "#6366f1",
+    glowClass: "glow-neon-purple",
+  },
+  {
+    mode: "ELIMINATION",
+    emoji: "💀",
+    gradient: "from-purple-700 via-pink-700 to-rose-700",
+    accentColor: "#d946ef",
+    glowClass: "glow-neon-rose",
+  },
+  {
+    mode: "CLASSIC",
+    emoji: "⚡",
+    gradient: "from-blue-600 via-indigo-600 to-cyan-500",
+    accentColor: "#3b82f6",
+    glowClass: "glow-neon-cyan",
+  },
+  {
+    mode: "OLYMPIA",
+    emoji: "🏔️",
+    gradient: "from-sky-600 via-blue-600 to-indigo-700",
+    accentColor: "#38bdf8",
+    glowClass: "glow-neon-cyan",
+  },
+];
+
+export interface AvailableModeItem {
   mode: GameMode;
   name: string;
   emoji: string;
@@ -123,130 +210,20 @@ const AVAILABLE_MODES: {
   accentColor: string;
   glowClass: string;
   perks: string[];
-}[] = [
-  {
-    mode: "GRID_CARO",
-    name: "Grid Caro",
-    emoji: "🏁",
-    tagline: "Chiếm ô ma trận 4x4 · Nối chuỗi Caro K ô nhận thưởng lớn",
-    badge: "Chiến thuật",
-    gradient: "from-cyan-600 via-blue-600 to-indigo-700",
-    accentColor: "#06b6d4",
-    glowClass: "glow-neon-cyan",
-    perks: ["Ma trận 4x4", "Chuỗi Caro 3 ô", "Thưởng chuỗi +30đ"],
-  },
-  {
-    mode: "MYSTERY_QUEST",
-    name: "Mystery Quest",
-    emoji: "🗝️",
-    tagline: "Lật mở Rương thần bí · Cân não Minigame & Ô số phận",
-    badge: "Gameshow",
-    gradient: "from-violet-600 via-purple-600 to-pink-600",
-    accentColor: "#a855f7",
-    glowClass: "glow-neon-purple",
-    perks: ["Rương bí ẩn", "3 Minigame cân não", "Khuyến mãi & Khiên"],
-  },
-  {
-    mode: "WAGER",
-    name: "Secret Wager",
-    emoji: "💰",
-    tagline: "Bí mật cược điểm trước câu hỏi · Nhân bội điểm số thắng lớn",
-    badge: "Tâm lý",
-    gradient: "from-amber-500 via-yellow-600 to-orange-600",
-    accentColor: "#f59e0b",
-    glowClass: "glow-neon-amber",
-    perks: ["Cược điểm bí mật", "Hệ số nhân 2.5x", "Bảo hiểm phá sản"],
-  },
-  {
-    mode: "DICE_RACE",
-    name: "Dice Race",
-    emoji: "🎲",
-    tagline: "Gieo 2 xí ngầu 3D marathon · Vượt cạm bẫy tranh đua về đích",
-    badge: "Board Game",
-    gradient: "from-orange-500 via-amber-600 to-yellow-600",
-    accentColor: "#f97316",
-    glowClass: "glow-neon-amber",
-    perks: ["Đường đua 30 ô", "Xúc xắc 3D", "Ô cạm bẫy may rủi"],
-  },
-  {
-    mode: "BOUNCEBACK",
-    name: "Bounceback",
-    emoji: "🔄",
-    tagline: "Đội chính trả lời sai · Mở chuông 5 giây cho đối thủ cướp lượt",
-    badge: "Cướp điểm",
-    gradient: "from-emerald-600 via-teal-600 to-cyan-600",
-    accentColor: "#10b981",
-    glowClass: "glow-neon-emerald",
-    perks: ["Chọn gói điểm", "Sao hy vọng x2", "Cướp quyền luân phiên"],
-  },
-  {
-    mode: "BUZZ",
-    name: "Fast Buzz",
-    emoji: "🛎️",
-    tagline: "Bấm chuông siêu tốc · Độc chiếm quyền trả lời câu hỏi",
-    badge: "Tốc độ",
-    gradient: "from-rose-600 via-red-600 to-amber-600",
-    accentColor: "#ef4444",
-    glowClass: "glow-neon-rose",
-    perks: ["Cướp chuông 0ms", "Khóa nút tự động", "Phạt điểm sai"],
-  },
-  {
-    mode: "MAGIC_WHEEL",
-    name: "Magic Wheel",
-    emoji: "🎡",
-    tagline: "Vòng Quay Trí Tuệ (Magic Wheel) · 2 Vòng Đoán Nhanh, Vòng Quay Điểm Thưởng & Ô Chữ Đặc Biệt 40s",
-    badge: "Gameshow Truyền Hình",
-    gradient: "from-amber-600 via-orange-600 to-yellow-600",
-    accentColor: "#f59e0b",
-    glowClass: "glow-neon-amber",
-    perks: ["Ô chữ 4x14 tiêu chuẩn", "24 ô điểm thưởng phong phú", "Đoán nhanh 0.75s & Ô Đặc Biệt"],
-  },
-  {
-    mode: "TOURNAMENT",
-    name: "Tournament 1v1",
-    emoji: "🏆",
-    tagline: "Nhánh đấu trực tiếp loại trừ · Tranh cúp vô địch đấu trường",
-    badge: "Đối kháng",
-    gradient: "from-indigo-600 via-purple-600 to-blue-700",
-    accentColor: "#6366f1",
-    glowClass: "glow-neon-purple",
-    perks: ["Nhánh đấu 1v1", "Khán giả cổ vũ", "Tranh cúp Vô địch"],
-  },
-  {
-    mode: "ELIMINATION",
-    name: "Survival",
-    emoji: "💀",
-    tagline: "Đấu trường sinh tồn khốc liệt · Loại dần đội điểm thấp nhất",
-    badge: "Sinh tồn",
-    gradient: "from-purple-700 via-pink-700 to-rose-700",
-    accentColor: "#d946ef",
-    glowClass: "glow-neon-rose",
-    perks: ["Loại dần theo vòng", "Thẻ Hồi sinh", "Tính điểm sâu"],
-  },
-  {
-    mode: "CLASSIC",
-    name: "Classic",
-    emoji: "⚡",
-    tagline: "Đấu bảng tính điểm tổng hợp · Trọn bộ thẻ bổ trợ chiến thuật",
-    badge: "Toàn năng",
-    gradient: "from-blue-600 via-indigo-600 to-cyan-500",
-    accentColor: "#3b82f6",
-    glowClass: "glow-neon-cyan",
-    perks: ["Tính thời gian", "Bonus tốc độ", "Kho thẻ bài"],
-  },
-  {
-    mode: "OLYMPIA",
-    name: "Đường Lên Đỉnh Olympia",
-    emoji: "🏔️",
-    tagline: "5 phần thi Olympia (Khởi Động, VCNV, Tăng Tốc, Về Đích, Câu Hỏi Phụ) · Bộ luật O13–O26 · 2–8 thí sinh",
-    badge: "Leo Núi",
-    gradient: "from-sky-600 via-blue-600 to-indigo-700",
-    accentColor: "#38bdf8",
-    glowClass: "glow-neon-cyan",
-    perks: ["Luật O13–O26 chuẩn", "Tối đa 8 thí sinh", "Chấm tay & Giả lập 1 chạm"],
-  },
+}
 
-];
+function getAvailableModes(lang: Language = "vi"): AvailableModeItem[] {
+  return BASE_AVAILABLE_MODES.map((m) => {
+    const loc = getLocalizedModeMeta(m.mode, lang);
+    return {
+      ...m,
+      name: loc.name,
+      tagline: loc.tagline,
+      badge: loc.badge,
+      perks: loc.perks,
+    };
+  });
+}
 
 function countOlympiaQuestions(s: any): number {
   if (!s) return 0;
@@ -259,6 +236,8 @@ function countOlympiaQuestions(s: any): number {
 }
 
 export default function AdminSandboxPage() {
+  const { language } = useTranslation();
+  const AVAILABLE_MODES = useMemo(() => getAvailableModes(language), [language]);
   const [olympiaSandboxActive, setOlympiaSandboxActive] = useState<boolean>(false);
   const [olympiaActiveSeat, setOlympiaActiveSeat] = useState<number>(0);
   const [code, setCode] = useState<string>("");
@@ -281,7 +260,7 @@ export default function AdminSandboxPage() {
   const [isLaunchingAnim, setIsLaunchingAnim] = useState(false);
   const [isLaunchReady, setIsLaunchReady] = useState(false);
   const [launchSourceRect, setLaunchSourceRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
-  const [launchingMeta, setLaunchingMeta] = useState<typeof AVAILABLE_MODES[0] | null>(null);
+  const [launchingMeta, setLaunchingMeta] = useState<AvailableModeItem | null>(null);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
 
   const effectiveActiveMode = roomState?.mode || selectedMode;
@@ -289,7 +268,8 @@ export default function AdminSandboxPage() {
   const formatCleanBankTitle = useCallback((bank: any) => {
     if (bank.isOlympia || effectiveActiveMode === "OLYMPIA") {
       const cleanTitle = (bank.title || bank.name || "")
-        .replace(/^[(Olympia|Đề Thi|Đề thi|Ô Chữ|Trắc Nghiệm)]\s*/gi, "")
+        .replace(/^\[(?:Olympia|Đề\s*thi|Ô\s*chữ|Trắc\s*nghiệm)\]\s*/gi, "")
+        .replace(/^\((?:Olympia|Đề\s*thi|Ô\s*chữ|Trắc\s*nghiệm)\)\s*/gi, "")
         .trim();
       const count = bank._count?.questions ?? countOlympiaQuestions(bank.set);
       return `🏔️ ${cleanTitle}${count > 0 ? ` (${count} câu)` : ""}`;
@@ -297,7 +277,8 @@ export default function AdminSandboxPage() {
     const isWp = isWordPuzzleBank(bank);
     const icon = isWp ? "🔤 " : "🎯 ";
     const cleanTitle = (bank.title || "")
-      .replace(/^[(Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)]\s*/gi, "")
+      .replace(/^\[(?:Ô\s*Chữ|Trắc\s*Nghiệm|MCQ|VTV3|Ô\s*chữ\s*VTV3)\]\s*/gi, "")
+      .replace(/^\((?:Ô\s*Chữ|Trắc\s*Nghiệm|MCQ|VTV3|Ô\s*chữ\s*VTV3)\)\s*/gi, "")
       .replace(/\(VTV3\)/gi, "(Tiếng Việt)")
       .replace(/VTV3 Huyền Thoại/gi, "Văn Hóa & Lịch Sử")
       .replace(/VTV3/gi, "")
@@ -648,7 +629,8 @@ export default function AdminSandboxPage() {
         const seenTitles = new Set<string>();
         const unique = combined.filter((b) => {
           const normTitle = (b.title || "")
-            .replace(/^[(Ô Chữ|Trắc Nghiệm|MCQ|VTV3|Ô chữ VTV3)]\s*/gi, "")
+            .replace(/^\[(?:Ô\s*Chữ|Trắc\s*Nghiệm|MCQ|VTV3|Ô\s*chữ\s*VTV3)\]\s*/gi, "")
+      .replace(/^\((?:Ô\s*Chữ|Trắc\s*Nghiệm|MCQ|VTV3|Ô\s*chữ\s*VTV3)\)\s*/gi, "")
             .replace(/\(VTV3\)/gi, "")
             .replace(/VTV3/gi, "")
             .replace(/Chiếc Nón Kỳ Diệu/gi, "Vòng Quay Trí Tuệ")

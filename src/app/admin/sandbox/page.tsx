@@ -11860,7 +11860,7 @@ export default function AdminSandboxPage() {
                 <span>↗</span>
               </a>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               <HostConsole code={code} hostKey={typeof window !== "undefined" ? localStorage.getItem(`host_key_${code}`) || "sandbox" : "sandbox"} />
             </div>
           </div>

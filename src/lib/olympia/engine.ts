@@ -268,6 +268,7 @@ export class OlympiaGame {
           }
         }
         kd.phase = "question";
+        kd.questionRevealed = false; // Graphic frame is ready, question text waits for first "Câu tiếp" click
         this.cue("1_KhoiDong/open_question");
       }
     }
@@ -729,6 +730,7 @@ export class OlympiaGame {
           const ns = kd.segments[kd.segIdx];
           kd.qIdx = -1;
           kd.phase = "intro";
+          kd.questionRevealed = false;
           kd.timer = mkTimer(ns.perQuestionMs);
           kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
           kd.buzzedSeat = null;
@@ -759,6 +761,7 @@ export class OlympiaGame {
           const ns = kd.segments[kd.segIdx];
           kd.qIdx = -1;
           kd.phase = "intro";
+          kd.questionRevealed = false;
           kd.timer = mkTimer(ns.perQuestionMs);
           kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
           kd.buzzedSeat = null;
@@ -780,16 +783,51 @@ export class OlympiaGame {
           return fail("Đã hoàn thành tất cả câu hỏi vòng Khởi Động chung");
         }
 
-        // If question is opened but clock not ticking yet, pressing "Câu tiếp" immediately starts clock & BGM
+        // If question is opened but clock not ticking yet, pressing "Câu tiếp" reveals question content & immediately starts clock & BGM
         if (kd.phase === "question" && !timerRunning(kd.timer) && !(seg.globalMs && kd.globalTimer && timerRunning(kd.globalTimer))) {
-          if (seg.globalMs && kd.globalTimer) {
-            startTimer(kd.globalTimer, now);
-            kd.buzzOpen = !isSolo;
-            this.cue(`1_KhoiDong/${seg.globalMs >= 90000 ? "kd_bgm_3" : seg.globalMs >= 60000 ? "kd_bgm_2" : "kd_bgm_1"}`, "bgm");
-          } else {
-            startTimer(kd.timer, now);
-            if (!isSolo && kd.buzzedSeat == null) {
-              kd.buzzOpen = !(kd.buzzUnlockAt && now < kd.buzzUnlockAt);
+          kd.questionRevealed = true;
+          const rId = this.ruleset.id;
+          const aSeason = this.ruleset.audioSeason;
+
+          // 1. O13 - 21: 60s countdown track
+          if (aSeason === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
+            if (seg.globalMs && kd.globalTimer) {
+              startTimer(kd.globalTimer, now);
+            } else {
+              startTimer(kd.timer, now);
+            }
+            this.cue("1_KhoiDong/60s", "bgm");
+          }
+          // 2. O22:
+          else if (rId === "O22" || aSeason === "O22") {
+            if (isSolo) {
+              startTimer(kd.timer, now);
+              this.cue("1_KhoiDong/kd_bgm_1", "bgm");
+            } else {
+              if (kd.globalTimer) startTimer(kd.globalTimer, now);
+              else startTimer(kd.timer, now);
+              kd.buzzOpen = true;
+
+              const gMs = seg.globalMs || 60000;
+              if (gMs <= 30000) {
+                this.cue("1_KhoiDong/30s", "bgm");
+              } else if (gMs <= 60000) {
+                this.cue("1_KhoiDong/60s", "bgm");
+              } else {
+                this.cue("1_KhoiDong/90s", "bgm");
+              }
+            }
+          }
+          // 3. O23 trở đi (O23, O24-25, O26): kd_bgm_1 / kd_bgm_2 / kd_bgm_3
+          else {
+            if (seg.globalMs && kd.globalTimer) {
+              startTimer(kd.globalTimer, now);
+              kd.buzzOpen = !isSolo;
+            } else {
+              startTimer(kd.timer, now);
+              if (!isSolo && kd.buzzedSeat == null) {
+                kd.buzzOpen = !(kd.buzzUnlockAt && now < kd.buzzUnlockAt);
+              }
             }
             const totalQ = seg.questions || 6;
             const halfway = Math.ceil(totalQ / 2);
@@ -814,6 +852,7 @@ export class OlympiaGame {
           kd.current = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = undefined;
+          this.cue("1_KhoiDong/finish_turn");
           return OK;
         }
         q.used = true;
@@ -829,6 +868,10 @@ export class OlympiaGame {
         };
         kd.phase = "question";
         resetTimer(kd.timer, seg.perQuestionMs);
+        if (kd.qIdx > 0) {
+          kd.questionRevealed = true;
+          startTimer(kd.timer, now);
+        }
         kd.buzzedSeat = null;
         kd.lockedSeats = [...kd.nextLockedSeats];
         kd.nextLockedSeats = [];
@@ -843,7 +886,13 @@ export class OlympiaGame {
           const lockMs = (this.ruleset.id === "O22") ? 2000 : 5000;
           kd.buzzUnlockAt = now + lockMs;
         }
-        this.cue("1_KhoiDong/open_question");
+        const aSeason = this.ruleset.audioSeason;
+        if (aSeason !== "O13-21" && !(this.ruleset.id === "O22" && !isSolo)) {
+          const totalQ = seg.questions || 6;
+          const halfway = Math.ceil(totalQ / 2);
+          let bgmTrack = kd.qIdx < halfway - 1 ? "kd_bgm_1" : kd.qIdx < totalQ - 1 ? "kd_bgm_2" : "kd_bgm_3";
+          this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+        }
         return OK;
       }
       case "kd:timer": {
@@ -886,6 +935,25 @@ export class OlympiaGame {
         return OK;
       }
       case "kd:start": {
+        kd.phase = "question";
+        kd.questionRevealed = false;
+        if (kd.qIdx < 0) {
+          kd.qIdx = 0;
+          const q = this.kdPoolQuestion(kd, seg);
+          if (q) {
+            q.used = true;
+            this.recordOpenedQuestion(q.q);
+            kd.current = {
+              q: q.q,
+              a: q.a,
+              subject: q.subject,
+              kdZone: q.kdZone,
+              vdZone: q.vdZone,
+              media: q.media,
+              mediaType: q.mediaType,
+            };
+          }
+        }
         st.kdIntroTimer = mkTimer(3500);
         startTimer(st.kdIntroTimer, now);
         this.cue("1_KhoiDong/ready");
@@ -910,6 +978,7 @@ export class OlympiaGame {
             kd.segIdx = idx;
             kd.qIdx = -1;
             kd.phase = "intro";
+            kd.questionRevealed = false;
             kd.current = null;
             kd.lastVerdict = null;
             return OK;
@@ -921,6 +990,7 @@ export class OlympiaGame {
             kd.segIdx = sIdx;
             kd.qIdx = -1;
             kd.phase = "intro";
+            kd.questionRevealed = false;
             kd.current = null;
             kd.lastVerdict = null;
             return OK;
@@ -932,6 +1002,7 @@ export class OlympiaGame {
             kd.segIdx = sIdx;
             kd.qIdx = -1;
             kd.phase = "intro";
+            kd.questionRevealed = false;
             kd.current = null;
             kd.lastVerdict = null;
             return OK;

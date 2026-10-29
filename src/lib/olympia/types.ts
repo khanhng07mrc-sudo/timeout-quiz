@@ -29,7 +29,8 @@ export type RulesetId =
   | "O25"
   | "O26";
 
-export type AudioSeason = "O13-21" | "O13-15" | "O16-21" | "O22" | "O23" | "O24-25" | "O26";
+export type AudioSeason = "O13-21" | "O22" | "O23" | "O24-25" | "O26";
+export type AudioChannel = "both" | "left" | "right";
 
 export const MAX_SEATS = 8;
 
@@ -305,6 +306,8 @@ export interface KhoiDongState {
     mediaType?: string;
   } | null;
   lastVerdict: "correct" | "wrong" | null;
+  /** Whether the question content has been revealed to viewers/players (false during ready/open_question prelude until first "Câu tiếp" click) */
+  questionRevealed?: boolean;
   bgmMode?: "auto" | "manual";
   currentBgmTrack?: "kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3";
 }

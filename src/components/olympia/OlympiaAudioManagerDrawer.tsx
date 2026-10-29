@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { AudioSeason } from "@/lib/olympia/types";
 
 interface SoundItem {
@@ -233,13 +233,41 @@ export default function OlympiaAudioManagerDrawer({
   const [activeTab, setActiveTab] = useState<"O26" | "O24-25" | "O22" | "O13-21">(() => {
     if (audioSeason === "O24-25") return "O24-25";
     if (audioSeason === "O22" || audioSeason === "O23") return "O22";
-    if (audioSeason === "O13-21" || audioSeason === "O13-15" || audioSeason === "O16-21") return "O13-21";
+    if (audioSeason === "O13-21" || (audioSeason as string) === "O13-15" || (audioSeason as string) === "O16-21") return "O13-21";
     return "O26";
+  });
+
+  const [channel, setChannel] = useState<"both" | "left" | "right">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("olympia_audio_channel") as any) || "both";
+    }
+    return "both";
   });
 
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [mutedMap, setMutedMap] = useState<Record<string, boolean>>({});
   const activeAudiosRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const getAudioContext = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioContextClass();
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume().catch(() => {});
+    }
+    return audioCtxRef.current;
+  }, []);
+
+  const handleSetChannel = (ch: "both" | "left" | "right") => {
+    setChannel(ch);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("olympia_audio_channel", ch);
+    }
+  };
 
   // Cleanup on unmount
   useEffect(() => {
@@ -275,8 +303,24 @@ export default function OlympiaAudioManagerDrawer({
     stopSound(id);
 
     const folder = activeTab;
-    const url = `/olympia-audio/${folder}/${id}.mp3`;
+    let url = `/olympia-audio/${folder}/${id}.mp3`;
+    if (channel === "left") url = `/olympia-audio/${folder}/${id}_left.mp3`;
+    else if (channel === "right") url = `/olympia-audio/${folder}/${id}_right.mp3`;
+
     const audio = new Audio(url);
+
+    // Apply hardware stereo panner if available
+    const ctx = getAudioContext();
+    if (ctx && ctx.createStereoPanner) {
+      try {
+        const source = ctx.createMediaElementSource(audio);
+        const panner = ctx.createStereoPanner();
+        panner.pan.value = channel === "left" ? -1.0 : channel === "right" ? 1.0 : 0.0;
+        source.connect(panner);
+        panner.connect(ctx.destination);
+      } catch {}
+    }
+
     activeAudiosRef.current.set(id, audio);
     setPlayingId(id);
 
@@ -286,6 +330,34 @@ export default function OlympiaAudioManagerDrawer({
     };
 
     audio.onerror = () => {
+      // Fallback to standard file if channel suffix variant wasn't found
+      if (channel !== "both" && url !== `/olympia-audio/${folder}/${id}.mp3`) {
+        const stdAudio = new Audio(`/olympia-audio/${folder}/${id}.mp3`);
+        if (ctx && ctx.createStereoPanner) {
+          try {
+            const src = ctx.createMediaElementSource(stdAudio);
+            const p = ctx.createStereoPanner();
+            p.pan.value = channel === "left" ? -1.0 : channel === "right" ? 1.0 : 0.0;
+            src.connect(p);
+            p.connect(ctx.destination);
+          } catch {}
+        }
+        activeAudiosRef.current.set(id, stdAudio);
+        stdAudio.onended = () => {
+          activeAudiosRef.current.delete(id);
+          setPlayingId((curr) => (curr === id ? null : curr));
+        };
+        stdAudio.onerror = () => {
+          activeAudiosRef.current.delete(id);
+          setPlayingId((curr) => (curr === id ? null : curr));
+        };
+        stdAudio.play().catch(() => {
+          activeAudiosRef.current.delete(id);
+          setPlayingId((curr) => (curr === id ? null : curr));
+        });
+        return;
+      }
+
       activeAudiosRef.current.delete(id);
       setPlayingId((curr) => (curr === id ? null : curr));
     };
@@ -397,6 +469,49 @@ export default function OlympiaAudioManagerDrawer({
                 }`}
               >
                 🎙️ Thủ công
+              </button>
+            </div>
+          </div>
+
+          {/* Channel Selector: Both / Left / Right */}
+          <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs">
+            <span className="font-bold text-slate-300">Kênh âm thanh (Pan):</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => handleSetChannel("both")}
+                className={`px-2 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                  channel === "both"
+                    ? "bg-emerald-500 text-slate-950 font-black shadow"
+                    : "bg-white/5 text-slate-400 hover:bg-white/10"
+                }`}
+                title="Phát đều cả 2 bên loa (Stereo chuẩn)"
+              >
+                🟢 Đều 2 bên
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetChannel("left")}
+                className={`px-2 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                  channel === "left"
+                    ? "bg-cyan-400 text-slate-950 font-black shadow"
+                    : "bg-white/5 text-slate-400 hover:bg-white/10"
+                }`}
+                title="Âm thanh lệch sang loa trái (Left)"
+              >
+                ⬅️ Lệch trái
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetChannel("right")}
+                className={`px-2 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
+                  channel === "right"
+                    ? "bg-amber-400 text-slate-950 font-black shadow"
+                    : "bg-white/5 text-slate-400 hover:bg-white/10"
+                }`}
+                title="Âm thanh lệch sang loa phải (Right)"
+              >
+                ➡️ Lệch phải
               </button>
             </div>
           </div>

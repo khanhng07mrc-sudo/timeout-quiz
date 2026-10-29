@@ -18,6 +18,8 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
   const [err, setErr] = useState("");
   // Auto-enabled by default so Host Console plays all game sounds like the real desktop software
   const [audioOn, setAudioOn] = useState(true);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const [o22Quarter, setO22Quarter] = useState<1 | 2>(1);
   const [showTranscript, setShowTranscript] = useState(false);
   const [showAudioDrawer, setShowAudioDrawer] = useState(false);
   const [showRules, setShowRules] = useState(false);
@@ -143,47 +145,37 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             : "--";
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans select-none overflow-x-hidden">
-      {/* ── TOP HEADER BAR ── */}
-      <header className="h-12 border-b border-white/10 bg-[#111827] px-3 flex items-center justify-between shrink-0 gap-3">
+    <div className="h-full max-h-full bg-[#0b0f19] text-slate-100 flex flex-col font-sans select-none overflow-hidden">
+      {/* ── TOP HEADER BAR (CLEAN, NO OVERLAPPING) ── */}
+      <header className="h-10 border-b border-white/10 bg-[#111827] px-2.5 sm:px-3 flex items-center justify-between shrink-0 gap-2">
         {/* Left: Branding & Current Round */}
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-yellow-400 text-sm font-black tracking-wide flex items-center gap-1.5 whitespace-nowrap">
+        <div className="flex items-center gap-2 min-w-0 shrink-0">
+          <span className="text-yellow-400 text-xs sm:text-sm font-black tracking-wide flex items-center gap-1.5 whitespace-nowrap">
             <span>🏔️</span>
-            <span>ĐƯỜNG LÊN ĐỈNH OLYMPIA</span>
+            <span className="hidden md:inline">ĐƯỜNG LÊN ĐỈNH</span>
+            <span>OLYMPIA</span>
           </span>
-          <span className="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/30 text-sky-300 text-xs font-bold uppercase whitespace-nowrap">
+          <span className="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/30 text-sky-300 text-[11px] font-bold uppercase whitespace-nowrap">
             {curRoundName}
           </span>
         </div>
 
-        {/* Center: Live 4 Contestant scores strip */}
-        <div className="hidden lg:flex items-center gap-4 text-xs">
-          {seats.slice(0, 4).map((s, idx) => (
-            <div key={s.id} className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: SEAT_COLORS[s.id] || "#38bdf8" }} />
-              <span className="text-slate-300 font-medium">{s.name || `Thí sinh ${idx + 1}`}</span>
-              <b className="text-sm font-black" style={{ color: SEAT_COLORS[s.id] || "#38bdf8" }}>{s.score}</b>
-            </div>
-          ))}
-        </div>
-
-        {/* Right: Audio Manager, Connection & Status */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right: Audio Manager, Mute, Toggle Sidebar, Connection & PIN */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setShowAudioDrawer(true)}
-            className="px-3 py-1 rounded-lg bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs shadow cursor-pointer flex items-center gap-1.5"
+            className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs shadow cursor-pointer flex items-center gap-1 shrink-0"
             title="Mở Audio Manager quản lý và nghe thử âm thanh"
           >
-            <span>AUDIO MANAGER</span>
+            <span>🎵 AUDIO</span>
             <span className="px-1.5 py-0.2 rounded-full bg-black/40 text-[10px] text-yellow-300">22</span>
           </button>
 
           <button
             type="button"
             onClick={() => setAudioOn((v) => !v)}
-            className={`px-2 py-1 rounded text-xs font-bold cursor-pointer border ${
+            className={`px-2 py-1 rounded text-xs font-bold cursor-pointer border shrink-0 ${
               audioOn ? "bg-emerald-600/30 border-emerald-400 text-emerald-200" : "bg-white/5 border-white/10 text-slate-400"
             }`}
             title="Bật/Tắt âm thanh bàn điều khiển"
@@ -191,12 +183,25 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             {audioOn ? "🔊" : "🔈"}
           </button>
 
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-300 pl-1 border-l border-white/10">
+          <button
+            type="button"
+            onClick={() => setRightSidebarOpen((v) => !v)}
+            className={`px-2 py-1 rounded text-xs font-bold border transition flex items-center gap-1 cursor-pointer shrink-0 ${
+              rightSidebarOpen
+                ? "bg-purple-600/30 border-purple-400 text-purple-200 shadow"
+                : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+            }`}
+            title="Ẩn/Hiện cột Phím tắt & Trạng thái"
+          >
+            <span>⌨️</span>
+            <span className="hidden lg:inline">{rightSidebarOpen ? "Thu gọn cột" : "Phím tắt"}</span>
+          </button>
+
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-300 pl-1.5 border-l border-white/10 shrink-0">
             <span className={connected ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-              {connected ? "🟢 Kết nối" : "🔴 Mất kết nối"}
+              {connected ? "🟢" : "🔴"}
             </span>
-            <span className="text-slate-400 font-mono text-[11px]">1ms</span>
-            <span className="font-mono text-yellow-300 font-bold">PIN: {code}</span>
+            <span className="font-mono text-yellow-300 font-bold text-[11px]">PIN: {code}</span>
           </div>
         </div>
       </header>
@@ -222,13 +227,13 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       {err && <div className="bg-rose-500/20 border-b border-rose-500/50 px-3 py-1.5 text-rose-200 text-xs">⚠️ {err}</div>}
 
       {/* ── MAIN 3-COLUMN WORKSPACE ── */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* 1. LEFT SIDEBAR: Rounds & Tools */}
-        <aside className="w-28 sm:w-32 bg-[#0f172a] border-r border-white/10 p-2 flex flex-col justify-between shrink-0">
-          <div className="space-y-1.5">
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* 1. LEFT SIDEBAR: Rounds & Tools (Compact) */}
+        <aside className="w-20 sm:w-22 bg-[#0f172a] border-r border-white/10 p-1.5 flex flex-col justify-between shrink-0">
+          <div className="space-y-1">
             <RoundTabButton
               id="khoiDong"
-              label="Khởi Động"
+              label="K.Động"
               icon="⭐"
               active={curRound === "khoiDong"}
               done={state.roundStatus.khoiDong === "done"}
@@ -236,7 +241,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             />
             <RoundTabButton
               id="vcnv"
-              label="Vượt CNV"
+              label="VCNV"
               icon="🧩"
               active={curRound === "vcnv"}
               done={state.roundStatus.vcnv === "done"}
@@ -244,7 +249,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             />
             <RoundTabButton
               id="tangToc"
-              label="Tăng Tốc"
+              label="T.Tốc"
               icon="⚡"
               active={curRound === "tangToc"}
               done={state.roundStatus.tangToc === "done"}
@@ -252,7 +257,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             />
             <RoundTabButton
               id="veDich"
-              label="Về Đích"
+              label="V.Đích"
               icon="🏁"
               active={curRound === "veDich"}
               done={state.roundStatus.veDich === "done"}
@@ -260,7 +265,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             />
             <RoundTabButton
               id="cauHoiPhu"
-              label="Câu Hỏi Phụ"
+              label="Phụ"
               icon="❓"
               active={curRound === "cauHoiPhu"}
               done={state.roundStatus.cauHoiPhu === "done"}
@@ -268,14 +273,15 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             />
           </div>
 
-          <div className="pt-2 border-t border-white/10 space-y-1">
+          <div className="pt-1.5 border-t border-white/10 space-y-1">
             <button
               type="button"
               onClick={() => call("scoreboard:toggle")}
-              className="w-full text-left px-2 py-1.5 rounded text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1.5 cursor-pointer"
+              className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1 cursor-pointer truncate"
+              title="Mở Bảng Điểm (Phím B)"
             >
               <span>📊</span>
-              <span>Bảng Điểm</span>
+              <span className="truncate">Điểm (B)</span>
             </button>
             <button
               type="button"
@@ -283,33 +289,36 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
                 else document.exitFullscreen().catch(() => {});
               }}
-              className="w-full text-left px-2 py-1.5 rounded text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1.5 cursor-pointer"
+              className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1 cursor-pointer truncate"
+              title="Toàn màn hình (Phím F)"
             >
               <span>🖥️</span>
-              <span>Fullscreen (F)</span>
+              <span className="truncate">Full (F)</span>
             </button>
             <button
               type="button"
               onClick={() => setShowMiniDisplay((v) => !v)}
-              className="w-full text-left px-2 py-1.5 rounded text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1.5 cursor-pointer"
+              className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1 cursor-pointer truncate"
+              title="Bật PIP xem trước Màn chiếu"
             >
               <span>👁️</span>
-              <span>Màn Chiếu</span>
+              <span className="truncate">Chiếu</span>
             </button>
             <button
               type="button"
               onClick={() => setShowReport(true)}
-              className="w-full text-left px-2 py-1.5 rounded text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1.5 cursor-pointer"
+              className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1 cursor-pointer truncate"
+              title="Cài đặt & Xuất kết quả"
             >
               <span>⚙️</span>
-              <span>Cài Đặt / Xuất</span>
+              <span className="truncate">Cài đặt</span>
             </button>
           </div>
         </aside>
 
         {/* 2. CENTER STAGE: Question Box, Utility Top Bar & Round Control Deck */}
-        <main className="flex-1 overflow-y-auto p-3 space-y-3 flex flex-col justify-between">
-          <div className="space-y-2.5">
+        <main className="flex-1 overflow-y-auto p-2 space-y-2 flex flex-col justify-between min-h-0">
+          <div className="space-y-2">
             {/* Round & Question Indicator Bar */}
             <div className="flex items-center justify-between text-xs px-1">
               <div className="flex items-center gap-2">
@@ -344,30 +353,32 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             </div>
 
             {/* Question Card Box */}
-            <div className="rounded-xl border border-white/10 bg-[#162032] p-3.5 space-y-2 shadow-lg">
-              <div className="text-sm md:text-base font-semibold leading-relaxed min-h-[44px] flex items-center">
+            <div className="rounded-xl border border-white/10 bg-[#162032] p-2.5 space-y-1.5 shadow-lg">
+              <div className="text-xs md:text-sm font-semibold leading-relaxed min-h-[36px] flex items-center">
                 {getQuestionText(state) || <span className="text-slate-400 italic">Đang đợi câu hỏi…</span>}
               </div>
 
               {/* Green box: ĐÁP ÁN */}
-              <div className="rounded-lg bg-emerald-950/40 border border-emerald-500/30 px-3 py-1.5 text-xs text-emerald-200 flex items-center gap-2">
-                <span className="font-bold text-emerald-400 shrink-0">ĐÁP ÁN:</span>
-                <span className="font-bold text-sm tracking-wide">{getAnswerText(state) || "--"}</span>
+              <div className="rounded-lg bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1 text-xs text-emerald-200 flex items-center gap-2">
+                <span className="font-bold text-emerald-400 shrink-0 text-[11px]">ĐÁP ÁN:</span>
+                <span className="font-bold text-xs tracking-wide">{getAnswerText(state) || "--"}</span>
               </div>
 
               {/* Purple box: GIẢI THÍCH */}
-              <div className="rounded-lg bg-purple-950/30 border border-purple-500/30 px-3 py-1.5 text-xs text-purple-200 flex items-center gap-2">
-                <span className="font-bold text-purple-400 shrink-0">GIẢI THÍCH:</span>
-                <span className="text-slate-300 text-xs">{getExplanationText(state) || "--"}</span>
-              </div>
+              {getExplanationText(state) && (
+                <div className="rounded-lg bg-purple-950/30 border border-purple-500/30 px-2.5 py-1 text-xs text-purple-200 flex items-center gap-2">
+                  <span className="font-bold text-purple-400 shrink-0 text-[11px]">GIẢI THÍCH:</span>
+                  <span className="text-slate-300 text-[11px] truncate">{getExplanationText(state)}</span>
+                </div>
+              )}
             </div>
 
             {/* Utility Bar: NỀN CHỜ (W) & BẢNG ĐIỂM (B) */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => call("bgm:waiting")}
-                className={`py-2 rounded-xl border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition ${
+                className={`py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition ${
                   state.waitingBgm
                     ? "bg-amber-500/30 border-amber-400 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.3)] animate-pulse"
                     : "bg-[#1e293b] border-white/10 text-slate-300 hover:bg-[#334155]"
@@ -379,7 +390,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               <button
                 type="button"
                 onClick={() => call("scoreboard:toggle")}
-                className={`py-2 rounded-xl border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition ${
+                className={`py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition ${
                   state.showScoreboard
                     ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_15px_rgba(56,189,248,0.3)]"
                     : "bg-[#1e293b] border-white/10 text-slate-300 hover:bg-[#334155]"
@@ -391,19 +402,26 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             </div>
 
             {/* ROUND-SPECIFIC CONTROL DECK */}
-            <div className="rounded-xl border border-white/10 bg-[#131d2e] p-3 shadow-xl">
-              {curRound === "khoiDong" && <KhoiDongDeck state={state} call={call} />}
+            <div className="rounded-xl border border-white/10 bg-[#131d2e] p-2 sm:p-2.5 shadow-xl">
+              {curRound === "khoiDong" && (
+                <KhoiDongDeck
+                  state={state}
+                  call={call}
+                  o22Quarter={o22Quarter}
+                  setO22Quarter={setO22Quarter}
+                />
+              )}
               {curRound === "vcnv" && <VcnvDeck state={state} call={call} seats={seats} />}
               {curRound === "tangToc" && <TangTocDeck state={state} call={call} />}
               {curRound === "veDich" && <VeDichDeck state={state} call={call} />}
               {curRound === "cauHoiPhu" && <CauHoiPhuDeck state={state} call={call} seats={seats} />}
               {!curRound && (
-                <div className="py-8 text-center space-y-3">
-                  <div className="text-slate-400 text-sm">Trận đấu chưa bắt đầu hoặc đang ở phòng chờ.</div>
+                <div className="py-6 text-center space-y-2">
+                  <div className="text-slate-400 text-xs">Trận đấu chưa bắt đầu hoặc đang ở phòng chờ.</div>
                   <button
                     type="button"
                     onClick={() => call("game:start")}
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-sm shadow-lg shadow-purple-500/30 cursor-pointer animate-pulse"
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-purple-500/30 cursor-pointer animate-pulse"
                   >
                     ▶ BẮT ĐẦU TRẬN ĐẤU OLYMPIA
                   </button>
@@ -413,90 +431,104 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
           </div>
         </main>
 
-        {/* 3. RIGHT SIDEBAR: Hotkeys & State Dashboard */}
-        <aside className="w-48 sm:w-56 bg-[#0f172a] border-l border-white/10 p-2.5 flex flex-col justify-between shrink-0 space-y-3">
-          {/* Box 1: Phím Tắt */}
-          <div className="space-y-1.5">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-              <span>⌨️</span>
-              <span>Phím Tắt</span>
+        {/* 3. RIGHT SIDEBAR: Hotkeys & State Dashboard (Collapsible) */}
+        {rightSidebarOpen && (
+          <aside className="w-44 bg-[#0f172a] border-l border-white/10 p-2 flex flex-col justify-between shrink-0 space-y-2 animate-fade-in">
+            {/* Box 1: Phím Tắt */}
+            <div className="space-y-1">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <span>⌨️</span>
+                  <span>Phím Tắt</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setRightSidebarOpen(false)}
+                  className="text-slate-400 hover:text-white"
+                  title="Thu gọn"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="bg-[#162032] rounded-lg p-1.5 border border-white/5 space-y-0.5 text-[10px]">
+                <HotkeyRow keyName="Space" desc="Play/Pause" color="text-purple-400" />
+                <HotkeyRow keyName="Enter" desc="Đúng ✔" color="text-emerald-400" />
+                <HotkeyRow keyName="Bksp" desc="Sai ✘" color="text-rose-400" />
+                <HotkeyRow keyName="W" desc="Nền chờ" color="text-amber-400" />
+                <HotkeyRow keyName="R" desc="Lật đáp án" color="text-sky-400" />
+                <HotkeyRow keyName="C" desc="Toggle chuông" color="text-yellow-400" />
+                <HotkeyRow keyName="S" desc="Ngôi sao Hy vọng" color="text-yellow-300" />
+                <HotkeyRow keyName="B" desc="Bảng điểm" color="text-sky-300" />
+                <HotkeyRow keyName="N" desc="Câu tiếp" color="text-cyan-300" />
+              </div>
             </div>
-            <div className="bg-[#162032] rounded-lg p-2 border border-white/5 space-y-1 text-[11px]">
-              <HotkeyRow keyName="Space" desc="Play/Pause" color="text-purple-400" />
-              <HotkeyRow keyName="Enter" desc="Đúng ✔" color="text-emerald-400" />
-              <HotkeyRow keyName="Bksp" desc="Sai ✘" color="text-rose-400" />
-              <HotkeyRow keyName="W" desc="Nền chờ" color="text-amber-400" />
-              <HotkeyRow keyName="R" desc="Lật đáp án" color="text-sky-400" />
-              <HotkeyRow keyName="C" desc="Toggle chuông" color="text-yellow-400" />
-              <HotkeyRow keyName="S" desc="Ngôi sao Hy vọng" color="text-yellow-300" />
-              <HotkeyRow keyName="B" desc="Bảng điểm" color="text-sky-300" />
-              <HotkeyRow keyName="N" desc="Câu tiếp" color="text-cyan-300" />
-            </div>
-          </div>
 
-          {/* Box 2: Trạng Thái */}
-          <div className="space-y-1.5">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-              <span>📶</span>
-              <span>Trạng Thái</span>
-            </div>
-            <div className="bg-[#162032] rounded-lg p-2.5 border border-white/5 space-y-1.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Round:</span>
-                <b className="text-sky-300 truncate max-w-[90px]">{curRound || "lobby"}</b>
+            {/* Box 2: Trạng Thái */}
+            <div className="space-y-1">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <span>📶</span>
+                <span>Trạng Thái</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Timer:</span>
-                <b className="font-mono text-cyan-300">{activeTimerSeconds}</b>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Buzzer:</span>
-                <b className={buzzerActive ? "text-emerald-400" : "text-slate-400"}>
-                  {buzzerActive ? "🔔 Mở" : "🔒 Khóa"}
-                </b>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Buzzed:</span>
-                <b className="text-yellow-300 truncate max-w-[90px]">{buzzedNameText}</b>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Clients:</span>
-                <b className="text-slate-200">{seats.length}</b>
-              </div>
+              <div className="bg-[#162032] rounded-lg p-2 border border-white/5 space-y-1 text-[11px]">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Round:</span>
+                  <b className="text-sky-300 truncate max-w-[80px]">{curRound || "lobby"}</b>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Timer:</span>
+                  <b className="font-mono text-cyan-300">{activeTimerSeconds}</b>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Buzzer:</span>
+                  <b className={buzzerActive ? "text-emerald-400" : "text-slate-400"}>
+                    {buzzerActive ? "🔔 Mở" : "🔒 Khóa"}
+                  </b>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Buzzed:</span>
+                  <b className="text-yellow-300 truncate max-w-[80px]">{buzzedNameText}</b>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Clients:</span>
+                  <b className="text-slate-200">{seats.length}</b>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => setShowScoreModal(true)}
-                className="w-full mt-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold text-amber-300 border border-amber-400/20 cursor-pointer flex items-center justify-center gap-1"
-              >
-                <span>✏</span>
-                <span>Chỉnh Điểm</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setShowScoreModal(true)}
+                  className="w-full mt-1.5 py-1 rounded bg-white/10 hover:bg-white/20 text-[11px] font-bold text-amber-300 border border-amber-400/20 cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>✏</span>
+                  <span>Chỉnh Điểm</span>
+                </button>
+              </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+        )}
       </div>
 
-      {/* ── BOTTOM BAR: 4 CONTESTANT CARDS WITH +/- BUTTONS ── */}
-      <footer className="border-t border-white/10 bg-[#0d131f] p-2 shrink-0">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      {/* ── BOTTOM BAR: 4 CONTESTANT CARDS COMPACT (ZERO-SCROLL) ── */}
+      <footer className="border-t border-white/10 bg-[#0d131f] px-2 py-1 shrink-0">
+        <div className="grid grid-cols-4 gap-1.5">
           {seats.slice(0, 4).map((s, idx) => (
             <div
               key={s.id}
-              className="rounded-xl border border-white/10 bg-[#162032] p-2 flex flex-col items-center justify-center gap-1 relative overflow-hidden shadow"
-              style={{ borderTop: `3px solid ${SEAT_COLORS[s.id] || "#38bdf8"}` }}
+              className="rounded-lg border border-white/10 bg-[#162032] px-2 py-1 flex items-center justify-between gap-1 relative overflow-hidden shadow"
+              style={{ borderLeft: `4px solid ${SEAT_COLORS[s.id] || "#38bdf8"}` }}
             >
-              <div className="text-xs font-bold truncate max-w-full text-slate-300">
-                {s.name || `Thí sinh ${idx + 1}`}
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-bold truncate text-slate-300">
+                  {s.name || `TS ${idx + 1}`}
+                </div>
+                <div className="text-base sm:text-lg font-black leading-none" style={{ color: SEAT_COLORS[s.id] || "#38bdf8" }}>
+                  {s.score}
+                </div>
               </div>
-              <div className="text-2xl font-black" style={{ color: SEAT_COLORS[s.id] || "#38bdf8" }}>
-                {s.score}
-              </div>
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
                   onClick={() => call("score:adjust", { seat: s.id, delta: -10 })}
-                  className="w-7 h-6 rounded bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-300 text-xs font-bold cursor-pointer"
+                  className="w-5 h-5 rounded bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-300 text-xs font-bold cursor-pointer flex items-center justify-center"
                   title="Trừ 10 điểm"
                 >
                   -
@@ -504,7 +536,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 <button
                   type="button"
                   onClick={() => call("score:adjust", { seat: s.id, delta: 10 })}
-                  className="w-7 h-6 rounded bg-emerald-500/20 border border-emerald-500/40 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold cursor-pointer"
+                  className="w-5 h-5 rounded bg-emerald-500/20 border border-emerald-500/40 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold cursor-pointer flex items-center justify-center"
                   title="Cộng 10 điểm"
                 >
                   +
@@ -583,21 +615,32 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
 // ───────────────────────────────────────────────────────────
 // KHỞI ĐỘNG DECK (Image 1 reference)
 // ───────────────────────────────────────────────────────────
-function KhoiDongDeck({ state, call }: { state: OlympiaState; call: Call }) {
+function KhoiDongDeck({
+  state,
+  call,
+  o22Quarter,
+  setO22Quarter,
+}: {
+  state: OlympiaState;
+  call: Call;
+  o22Quarter: 1 | 2;
+  setO22Quarter: (q: 1 | 2) => void;
+}) {
   const kd = state.khoiDong!;
   const seg = kd.segments[kd.segIdx];
   const isSolo = seg.kind === "solo";
+  const isO22 = state.rulesetId === "O22";
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-      {/* Column 1: Lượt Riêng / Lượt Chung & Thí Sinh TS1..TS4 */}
-      <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-1.5">
+    <div className="space-y-2">
+      {/* Row 1: Segment & Contestant Selectors */}
+      <div className="flex items-center justify-between gap-1.5 flex-wrap bg-black/30 p-1.5 rounded-xl border border-white/5">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => call("kd:selectSegment", { kind: "solo", seatId: 0 })}
-            className={`py-1.5 rounded-lg text-xs font-bold border transition ${
-              isSolo ? "bg-purple-600/30 border-purple-400 text-purple-200" : "bg-white/5 border-white/10 text-slate-400"
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+              isSolo ? "bg-purple-600/30 border-purple-400 text-purple-200 shadow" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
             }`}
           >
             📍 Lượt Riêng
@@ -605,15 +648,16 @@ function KhoiDongDeck({ state, call }: { state: OlympiaState; call: Call }) {
           <button
             type="button"
             onClick={() => call("kd:selectSegment", { kind: "shared" })}
-            className={`py-1.5 rounded-lg text-xs font-bold border transition ${
-              !isSolo ? "bg-cyan-600/30 border-cyan-400 text-cyan-200" : "bg-white/5 border-white/10 text-slate-400"
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+              !isSolo ? "bg-cyan-600/30 border-cyan-400 text-cyan-200 shadow" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
             }`}
           >
             👥 Lượt Chung
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5">
+        {/* Contestant TS1..TS4 Buttons */}
+        <div className="flex items-center gap-1">
           {[0, 1, 2, 3].map((sId) => {
             const isCur = isSolo && seg.seat === sId;
             return (
@@ -621,8 +665,10 @@ function KhoiDongDeck({ state, call }: { state: OlympiaState; call: Call }) {
                 key={sId}
                 type="button"
                 onClick={() => call("kd:selectSegment", { seatId: sId })}
-                className={`py-1.5 rounded-lg text-xs font-bold border transition ${
-                  isCur ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow" : "bg-white/5 border-white/10 text-slate-300"
+                className={`px-2.5 py-1 rounded-lg text-xs font-black border transition cursor-pointer ${
+                  isCur
+                    ? "bg-sky-500 text-slate-950 border-sky-400 shadow-md"
+                    : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
                 }`}
               >
                 TS{sId + 1}
@@ -630,96 +676,123 @@ function KhoiDongDeck({ state, call }: { state: OlympiaState; call: Call }) {
             );
           })}
         </div>
+
+        {/* O22 Quarter Toggle (Quý 1 [30s] vs Quý 2..CKN [60s]) */}
+        {isO22 && !isSolo && (
+          <div className="flex items-center gap-1 border-l border-white/10 pl-2">
+            <span className="text-[10px] text-slate-400 font-bold">Lượt 1:</span>
+            <button
+              type="button"
+              onClick={() => setO22Quarter(1)}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold border cursor-pointer ${
+                o22Quarter === 1 ? "bg-amber-500 text-black border-amber-400" : "bg-white/5 text-slate-400 border-white/10"
+              }`}
+            >
+              30s (Q1)
+            </button>
+            <button
+              type="button"
+              onClick={() => setO22Quarter(2)}
+              className={`px-2 py-0.5 rounded text-[11px] font-bold border cursor-pointer ${
+                o22Quarter === 2 ? "bg-amber-500 text-black border-amber-400" : "bg-white/5 text-slate-400 border-white/10"
+              }`}
+            >
+              60s (Q2..CKN)
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Column 2: BẮT ĐẦU, Tính Giờ (Space), Đúng/Sai/Ô Trống, Câu Tiếp (N) */}
-      <div className="space-y-2 flex flex-col items-center">
-        {/* ▶ BẮT ĐẦU: Phát ready.mp3 như nhạc dạo đầu, chưa hiện gì, sau khoảng 3.5s phát open_question và mở đồ hoạ */}
+      {/* Row 2: Main Action Buttons */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+        {/* ▶ BẮT ĐẦU */}
         <button
           type="button"
           onClick={() => call("kd:start")}
-          className="w-full py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+          className="py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
         >
           <span>▶</span>
-          <span>BẮT ĐẦU</span>
+          <span>BẮT ĐẦU (Ready 3.5s)</span>
         </button>
 
-        {/* Tính Giờ (Space): Purple giant button */}
-        <button
-          type="button"
-          onClick={() => call("kd:timer")}
-          className="w-full py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-black shadow-lg shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
-        >
-          <span>⏱</span>
-          <span>Tính Giờ (Space)</span>
-        </button>
-
-        {/* Row: Đúng (Enter) | Sai (Bksp) | Ô TRỐNG */}
-        <div className="w-full grid grid-cols-3 gap-1.5">
-          <button
-            type="button"
-            onClick={() => call("kd:correct")}
-            className="py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow cursor-pointer flex items-center justify-center gap-1"
-          >
-            <span>✔</span>
-            <span>ĐÚNG (Enter)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => call("kd:wrong")}
-            className="py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow cursor-pointer flex items-center justify-center gap-1"
-          >
-            <span>✘</span>
-            <span>SAI (Bksp)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => call("kd:blank")}
-            className="py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow cursor-pointer flex items-center justify-center gap-1"
-          >
-            <span>■</span>
-            <span>Ô TRỐNG</span>
-          </button>
-        </div>
-
-        {/* Câu Tiếp (N): Nhấn lần đầu tiên thì phát luôn nhạc kd_bgm hoặc đếm thời gian */}
+        {/* ⏭ CÂU TIẾP (N) */}
         <button
           type="button"
           onClick={() => call("kd:next")}
-          className="w-full py-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+          className="py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-teal-400 hover:from-sky-400 hover:to-teal-300 text-slate-950 text-xs font-black shadow-lg shadow-sky-500/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
         >
-          <span>Câu Tiếp (N)</span>
+          <span>CÂU TIẾP (N)</span>
           <span>⏭</span>
+        </button>
+
+        {/* ⏱ TÍNH GIỜ (Space) */}
+        <button
+          type="button"
+          onClick={() => call("kd:timer")}
+          className="py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow-lg shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+        >
+          <span>⏱</span>
+          <span>TÍNH GIỜ (Space)</span>
         </button>
       </div>
 
-      {/* Column 3: Đổi nhạc nền (Auto), Dừng nhạc nền, Toggle Chuông (C) */}
-      <div className="space-y-2">
+      {/* Row 3: Evaluation: Đúng (Enter) | Sai (Bksp) | Ô TRỐNG */}
+      <div className="grid grid-cols-3 gap-1.5">
         <button
           type="button"
-          onClick={() => call("kd:cycle_bgm")}
-          className="w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold border border-white/10 cursor-pointer"
+          onClick={() => call("kd:correct")}
+          className="py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow cursor-pointer flex items-center justify-center gap-1"
         >
-          Đổi nhạc nền (Auto)
+          <span>✔</span>
+          <span>ĐÚNG (Enter) [+10đ]</span>
         </button>
         <button
           type="button"
-          onClick={() => call("audio:stop_bgm")}
-          className="w-full py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer"
+          onClick={() => call("kd:wrong")}
+          className="py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow cursor-pointer flex items-center justify-center gap-1"
         >
-          Dừng nhạc nền
+          <span>✘</span>
+          <span>SAI (Bksp)</span>
         </button>
+        <button
+          type="button"
+          onClick={() => call("kd:blank")}
+          className="py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold shadow cursor-pointer flex items-center justify-center gap-1"
+        >
+          <span>■</span>
+          <span>Ô TRỐNG</span>
+        </button>
+      </div>
+
+      {/* Row 4: Auxiliary: Toggle Chuông, Đổi BGM, Dừng BGM */}
+      <div className="grid grid-cols-3 gap-1.5 pt-0.5">
         <button
           type="button"
           onClick={() => call("kd:buzzer")}
-          className={`w-full py-2 rounded-xl font-black text-xs border shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase transition ${
+          className={`py-1.5 rounded-lg font-black text-xs border shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase transition ${
             kd.buzzOpen
               ? "bg-amber-500 border-amber-400 text-black shadow-amber-500/20"
               : "bg-white/5 border-amber-400/30 text-amber-300 hover:bg-white/10"
           }`}
         >
           <span>🔔</span>
-          <span>Toggle Chuông (C)</span>
+          <span>Chuông (C): {kd.buzzOpen ? "MỞ" : "KHÓA"}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => call("kd:cycle_bgm")}
+          className="py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold border border-white/10 cursor-pointer flex items-center justify-center gap-1"
+        >
+          <span>🎵</span>
+          <span>Đổi nhạc nền</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => call("audio:stop_bgm")}
+          className="py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer flex items-center justify-center gap-1"
+        >
+          <span>⏹</span>
+          <span>Dừng nhạc nền</span>
         </button>
       </div>
     </div>

@@ -16,7 +16,7 @@ export default function DisplayScreen({ code }: { code: string }) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <div className="min-h-screen max-h-screen overflow-hidden bg-gradient-to-b from-blue-950 via-indigo-950 to-slate-950 text-white flex flex-col p-3 sm:p-5 gap-2 sm:gap-4 select-none justify-between relative">
+    <div className="h-full max-h-full overflow-hidden bg-gradient-to-b from-[#060b1c] via-[#091533] to-[#040714] text-white flex flex-col p-2 sm:p-4 gap-1.5 sm:gap-3 select-none justify-between relative">
       {state.showScoreboard && (
         <div className="absolute inset-0 z-50 bg-slate-950/95 flex flex-col items-center justify-center p-6 animate-fade-in backdrop-blur-md">
           <h2 className="text-4xl sm:text-5xl font-black text-yellow-300 mb-8 uppercase tracking-wider drop-shadow-[0_4px_20px_rgba(234,179,8,0.5)]">
@@ -33,17 +33,22 @@ export default function DisplayScreen({ code }: { code: string }) {
         </div>
       )}
       <div className="flex items-center justify-between shrink-0">
-        <div className="text-lg sm:text-2xl font-black text-sky-300 tracking-wide">ĐƯỜNG LÊN ĐỈNH OLYMPIA</div>
-        <div className="flex items-center gap-3 text-sm text-slate-300">
-          <span>{state.currentRound ? ROUND_LABELS[state.currentRound] : ""}</span>
-          <button className="px-2 py-1 border border-white/20 rounded" onClick={() => setAudioOn((v) => !v)}>
+        <div className="text-base sm:text-xl font-black text-sky-300 tracking-wide flex items-center gap-2">
+          <span>🏔️</span>
+          <span>ĐƯỜNG LÊN ĐỈNH OLYMPIA</span>
+        </div>
+        <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-300">
+          <span className="px-2 py-0.5 rounded bg-sky-500/20 border border-sky-400/30 text-sky-300 font-bold">
+            {state.currentRound ? ROUND_LABELS[state.currentRound] : ""}
+          </span>
+          <button className="px-2 py-1 border border-white/20 rounded hover:bg-white/10 transition cursor-pointer" onClick={() => setAudioOn((v) => !v)}>
             {audioOn ? "🔊" : "🔈 Bật âm thanh"}
           </button>
           <span>{connected ? "🟢" : "🔴"}</span>
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden w-full">
         {state.stage === "lobby" && <Lobby state={state} code={code} origin={origin} />}
         {state.stage === "finished" && <Podium state={state} />}
         {state.stage === "playing" && state.introTimer && (
@@ -146,6 +151,41 @@ function Podium({ state }: { state: OlympiaState }) {
   );
 }
 
+function autoQuestionFontSize(text: string) {
+  const len = text.length;
+  if (len <= 45) return "text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight";
+  if (len <= 90) return "text-xl sm:text-2xl md:text-3xl lg:text-4xl leading-snug";
+  if (len <= 140) return "text-lg sm:text-xl md:text-2xl lg:text-3xl leading-snug";
+  return "text-base sm:text-lg md:text-xl lg:text-2xl leading-normal";
+}
+
+function DisplayTimerBar({ timer, serverNow }: { timer: any; serverNow: () => number }) {
+  const ms = useCountdown(timer, serverNow);
+  const total = timer?.totalMs || 1;
+  const pct = Math.max(0, Math.min(100, (ms / total) * 100));
+  const secs = (ms / 1000).toFixed(ms < 10000 ? 1 : 0);
+  const running = timer?.startedAt != null;
+  const low = ms <= 3000 && ms > 0;
+
+  return (
+    <div className="w-full flex items-center gap-3">
+      <div className={`font-mono font-black tabular-nums text-lg sm:text-2xl shrink-0 ${low ? "text-rose-400 animate-pulse" : running ? "text-cyan-300" : "text-slate-400"}`}>
+        {running ? `${secs}s` : `${Math.round(total / 1000)}s`}
+      </div>
+      <div className="flex-1 h-3 rounded-full bg-black/50 border border-white/15 overflow-hidden p-0.5 shadow-inner">
+        <div
+          className={`h-full rounded-full transition-all duration-100 ${
+            low
+              ? "bg-gradient-to-r from-rose-500 to-amber-500 shadow-[0_0_12px_rgba(244,63,94,0.8)]"
+              : "bg-gradient-to-r from-cyan-400 to-sky-500 shadow-[0_0_12px_rgba(56,189,248,0.7)]"
+          }`}
+          style={{ width: `${running ? pct : 100}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function QuestionCard({ children }: { children: React.ReactNode }) {
   return <div className="max-w-5xl mx-auto text-center space-y-4">{children}</div>;
 }
@@ -153,42 +193,115 @@ function QuestionCard({ children }: { children: React.ReactNode }) {
 function KhoiDong({ state, serverNow }: P) {
   const kd = state.khoiDong!;
   const seg = kd.segments[kd.segIdx];
+  const isSolo = seg.kind === "solo";
+  const seatId = isSolo ? (seg.seat as number) : kd.buzzedSeat;
+  const currentSeat = seatId != null ? state.seats[seatId] : null;
+  const seatColor = (currentSeat && SEAT_COLORS[currentSeat.id]) || "#38bdf8";
+
+  const totalQ = seg.questions > 100 ? "" : `/${seg.questions}`;
+  const qNum = Math.max(1, kd.qIdx + 1);
+
   return (
-    <QuestionCard>
-      <div className="text-xl text-sky-300">{seg.label}</div>
-      {kd.phase === "intro" && <div className="text-3xl text-slate-300">Chuẩn bị…</div>}
-      {kd.phase === "segmentDone" && <div className="text-4xl font-black text-yellow-300">Kết thúc phần thi</div>}
-      {kd.current && (
-        <>
-          <div className="text-sm text-slate-400 flex items-center justify-center gap-2">
-            <span>
-              Câu {kd.qIdx + 1}
-              {seg.questions > 100 ? "" : `/${seg.questions}`}
+    <div className="w-full max-w-5xl mx-auto flex flex-col justify-center items-center h-full min-h-0 py-1">
+      {/* ── ROUNDED GLASSMORPHISM CARD (OLYMPIA 26) ── */}
+      <div className="w-full relative rounded-3xl p-4 sm:p-6 backdrop-blur-2xl bg-gradient-to-b from-slate-900/90 via-slate-900/75 to-slate-950/95 border border-cyan-400/30 ring-1 ring-white/10 shadow-[0_16px_48px_rgba(0,0,0,0.6),0_0_30px_rgba(56,189,248,0.15)] flex flex-col justify-between gap-3 overflow-hidden">
+        {/* Subtle decorative glow orb */}
+        <div className="absolute -top-16 -left-16 w-48 h-48 rounded-full bg-cyan-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
+
+        {/* 1. Header ribbon: Contestant, Segment & Subject chips */}
+        <div className="flex items-center justify-between gap-2 shrink-0 border-b border-white/10 pb-3 flex-wrap">
+          {/* Contestant Tag */}
+          <div className="flex items-center gap-2">
+            <span
+              className="w-3.5 h-3.5 rounded-full ring-2 ring-white/40 shadow-md shrink-0"
+              style={{ backgroundColor: seatColor }}
+            />
+            <span className="font-bold text-sm sm:text-base text-slate-100 tracking-wide">
+              {seg.label}
             </span>
-            {kd.current.subject && (
-              <span className="px-2.5 py-0.5 rounded-full bg-sky-500/20 border border-sky-400/40 text-sky-300 font-bold">
-                📚 {kd.current.subject}
+          </div>
+
+          {/* Badges: Question index & Subject */}
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 font-extrabold text-xs sm:text-sm shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+              Câu {qNum}{totalQ} · 10đ
+            </span>
+            {kd.current?.subject && (
+              <span className="px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/40 text-sky-200 font-bold text-xs sm:text-sm shadow-[0_0_12px_rgba(56,189,248,0.2)] flex items-center gap-1">
+                <span>📚</span>
+                <span>{kd.current.subject}</span>
               </span>
             )}
           </div>
-          <div className="text-5xl font-bold leading-tight">{kd.current.q}</div>
-          <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-72 rounded-xl mx-auto" />
-          {kd.phase === "result" && kd.current.a && <div className="text-4xl text-emerald-300 font-bold">Đáp án: {kd.current.a}</div>}
+        </div>
+
+        {/* 2. Central Question Stage */}
+        <div className="flex-1 min-h-[90px] sm:min-h-[140px] flex flex-col justify-center items-center py-2 relative z-10">
+          {kd.phase === "segmentDone" ? (
+            <div className="text-center space-y-2 animate-fade-in">
+              <div className="text-3xl sm:text-4xl font-black text-yellow-300 drop-shadow">KẾT THÚC LƯỢT THI</div>
+              <div className="text-sm sm:text-base text-slate-300">Chuẩn bị sang phần thi tiếp theo…</div>
+            </div>
+          ) : !kd.current ? (
+            <div className="text-center text-slate-400 text-lg sm:text-xl font-medium animate-pulse">
+              Đang đợi câu hỏi…
+            </div>
+          ) : !kd.questionRevealed ? (
+            /* PRELUDE / READY STATE: Question frame open, but question text NOT revealed yet! */
+            <div className="text-center py-6 space-y-2 animate-pulse">
+              <div className="text-lg sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-300 via-yellow-200 to-amber-300 tracking-wider uppercase">
+                SẴN SÀNG THI ĐẤU
+              </div>
+              <div className="text-xs sm:text-sm text-slate-400">
+                Nhấn [CÂU TIẾP THEO] trên bàn điều khiển để bắt đầu câu hỏi và tính giờ
+              </div>
+            </div>
+          ) : (
+            /* REVEALED QUESTION CONTENT */
+            <div className="w-full text-center space-y-3">
+              <div className={`font-black text-white text-center select-text drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] ${autoQuestionFontSize(kd.current.q)}`}>
+                {kd.current.q}
+              </div>
+
+              {kd.current.media && (
+                <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-56 rounded-2xl mx-auto shadow-2xl border border-white/20" />
+              )}
+
+              {kd.phase === "result" && kd.current.a && (
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-2xl bg-emerald-950/70 border border-emerald-400/40 text-emerald-300 font-black text-base sm:text-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-bounce">
+                  <span>✔ ĐÁP ÁN:</span>
+                  <span>{kd.current.a}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Buzzer unlocked alert (Shared mode) */}
           {kd.buzzUnlockAt && kd.buzzUnlockAt > serverNow() && (
-            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-amber-500/20 border-2 border-amber-400 text-amber-300 font-black text-xl animate-pulse mx-auto shadow-[0_0_20px_rgba(245,158,11,0.5)]">
+            <div className="mt-2 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-400 text-amber-300 font-black text-xs sm:text-sm animate-pulse shadow-[0_0_15px_rgba(245,158,11,0.4)]">
               <span>🔒 Chuông mở sau:</span>
-              <span className="text-3xl font-black text-yellow-300">
+              <span className="font-mono font-black text-yellow-300">
                 {Math.max(1, Math.ceil((kd.buzzUnlockAt - serverNow()) / 1000))}s
               </span>
             </div>
           )}
-          {kd.buzzedSeat != null && <div className="text-4xl font-black text-yellow-300">🔔 {seatName(state, kd.buzzedSeat)}</div>}
-          <div className="max-w-md mx-auto">
-            <Timer timer={kd.globalTimer ?? kd.timer} serverNow={serverNow} big />
-          </div>
-        </>
-      )}
-    </QuestionCard>
+
+          {/* Buzzed player popup */}
+          {kd.buzzedSeat != null && (
+            <div className="mt-2 inline-flex items-center gap-2 px-5 py-2 rounded-2xl bg-yellow-400 text-slate-950 font-black text-lg sm:text-xl shadow-[0_0_25px_rgba(250,204,21,0.6)] animate-bounce">
+              <span>🔔</span>
+              <span>{seatName(state, kd.buzzedSeat)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Footer: Sleek Glowing Timer Bar */}
+        <div className="shrink-0 pt-1 border-t border-white/10">
+          <DisplayTimerBar timer={kd.globalTimer ?? kd.timer} serverNow={serverNow} />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -284,7 +397,7 @@ function TangToc({ state, serverNow }: P) {
       {tt.phase === "idle" && <div className="text-3xl text-slate-300">Chuẩn bị…</div>}
       {q && tt.phase !== "idle" && (
         <>
-          {q.q && <div className="text-4xl font-bold">{q.q}</div>}
+          {q.q && <div className={`font-bold select-text drop-shadow ${autoQuestionFontSize(q.q)}`}>{q.q}</div>}
           {q.clueImages && q.clueImages.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-4xl mx-auto">
               {q.clueImages.map((cl, idx) => (
@@ -360,7 +473,7 @@ function VeDich({ state, serverNow }: P) {
             </div>
           )}
           {vd.hopeStarActive && <div className="text-3xl text-yellow-300 font-black">⭐ NGÔI SAO HY VỌNG ⭐</div>}
-          <div className="text-5xl font-bold leading-tight">{cur.q.q}</div>
+          <div className={`font-bold leading-tight select-text drop-shadow ${autoQuestionFontSize(cur.q.q)}`}>{cur.q.q}</div>
           <MediaView url={cur.q.media} type={cur.q.mediaType} className="max-h-60 rounded-xl mx-auto" />
           {vd.phase === "result" && cur.q.a && <div className="text-4xl text-emerald-300 font-bold">Đáp án: {cur.q.a}</div>}
           <div className="max-w-md mx-auto">
@@ -384,7 +497,7 @@ function Chp({ state, serverNow }: P) {
   return (
     <QuestionCard>
       <div className="text-xl text-amber-300">Câu hỏi phụ — {cp.tied.map((i) => seatName(state, i)).join(" · ")}</div>
-      {q && cp.phase !== "idle" && <div className="text-5xl font-bold leading-tight">{q.q}</div>}
+      {q && cp.phase !== "idle" && <div className={`font-bold leading-tight select-text drop-shadow ${autoQuestionFontSize(q.q)}`}>{q.q}</div>}
       {cp.phase === "result" && q?.a && <div className="text-4xl text-emerald-300 font-bold">Đáp án: {q.a}</div>}
       {cp.buzzedSeat != null && <div className="text-4xl font-black text-yellow-300">🔔 {seatName(state, cp.buzzedSeat)}</div>}
       {cp.winner != null && <div className="text-5xl font-black text-emerald-300">🏆 {seatName(state, cp.winner)}</div>}

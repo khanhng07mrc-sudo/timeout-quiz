@@ -89,9 +89,28 @@ export function useCountdown(timer: TimerState | null | undefined, serverNow: ()
 }
 
 /** Plays server "cue" events. Missing files fall back to O26, then fail silently. */
-export function useOlympiaAudio(state: OlympiaState | null, audioSeason: string | undefined, enabled: boolean) {
+export function useOlympiaAudio(
+  state: OlympiaState | null,
+  audioSeason: string | undefined,
+  enabled: boolean,
+  channel?: "both" | "left" | "right"
+) {
   const lastCue = useRef<number | null>(null);
   const bgm = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const getAudioContext = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioContextClass();
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume().catch(() => {});
+    }
+    return audioCtxRef.current;
+  }, []);
 
   const stopBgm = useCallback(() => {
     if (bgm.current) {
@@ -143,11 +162,54 @@ export function useOlympiaAudio(state: OlympiaState | null, audioSeason: string 
     }
 
     const season = audioSeason || "O26";
+    const currentChannel = channel || (typeof window !== "undefined" ? (localStorage.getItem("olympia_audio_channel") as any) || "both" : "both");
+
     const play = (s: string, fallback: boolean) => {
-      const a = new Audio(`/olympia-audio/${s}/${cue.sound}.mp3`);
+      // Build sound path considering left/right channel variant
+      let soundUrl = `/olympia-audio/${s}/${cue.sound}.mp3`;
+      if (currentChannel === "left") soundUrl = `/olympia-audio/${s}/${cue.sound}_left.mp3`;
+      else if (currentChannel === "right") soundUrl = `/olympia-audio/${s}/${cue.sound}_right.mp3`;
+
+      const a = new Audio(soundUrl);
       const looping = cue.kind === "bgm" && (/kd_bgm_[12]$/.test(cue.sound) || /loop/.test(cue.sound));
       a.loop = looping;
+
+      // Connect to Web Audio StereoPannerNode for guaranteed hardware channel separation
+      const ctx = getAudioContext();
+      if (ctx && ctx.createStereoPanner) {
+        try {
+          const source = ctx.createMediaElementSource(a);
+          const panner = ctx.createStereoPanner();
+          panner.pan.value = currentChannel === "left" ? -1.0 : currentChannel === "right" ? 1.0 : 0.0;
+          source.connect(panner);
+          panner.connect(ctx.destination);
+        } catch {
+          // Fallback to default output if media element source already connected
+        }
+      }
+
       a.onerror = () => {
+        // If channel variant failed, try standard file
+        if (currentChannel !== "both" && soundUrl !== `/olympia-audio/${s}/${cue.sound}.mp3`) {
+          const std = new Audio(`/olympia-audio/${s}/${cue.sound}.mp3`);
+          std.loop = looping;
+          if (ctx && ctx.createStereoPanner) {
+            try {
+              const src = ctx.createMediaElementSource(std);
+              const p = ctx.createStereoPanner();
+              p.pan.value = currentChannel === "left" ? -1.0 : currentChannel === "right" ? 1.0 : 0.0;
+              src.connect(p);
+              p.connect(ctx.destination);
+            } catch {}
+          }
+          if (cue.kind === "bgm") {
+            stopBgm();
+            bgm.current = std;
+          }
+          std.play().catch(() => {});
+          return;
+        }
+
         if (fallback && s !== "O26") {
           play("O26", false);
         } else if (/tick_(?:10|40)s/.test(cue.sound)) {
@@ -161,6 +223,7 @@ export function useOlympiaAudio(state: OlympiaState | null, audioSeason: string 
           alt.play().catch(() => {});
         }
       };
+
       if (cue.kind === "bgm") {
         stopBgm();
         bgm.current = a;
@@ -168,7 +231,7 @@ export function useOlympiaAudio(state: OlympiaState | null, audioSeason: string 
       a.play().catch(() => {});
     };
     play(season, true);
-  }, [state?.cue, audioSeason, enabled, stopBgm, pauseBgm, resumeBgm]);
+  }, [state?.cue, audioSeason, enabled, channel, stopBgm, pauseBgm, resumeBgm, getAudioContext]);
 
   useEffect(() => () => stopBgm(), [stopBgm]);
 }

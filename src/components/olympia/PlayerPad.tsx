@@ -50,22 +50,24 @@ export default function PlayerPad({
 
   const me = state.seats[join.seatId];
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-950 to-slate-950 text-white p-4 flex flex-col gap-3">
-      <div className="flex items-center justify-between rounded-xl bg-white/5 border border-white/15 p-3" style={{ borderLeft: `6px solid ${SEAT_COLORS[me.id]}` }}>
+    <div className="h-full max-h-full overflow-hidden bg-gradient-to-b from-blue-950 to-slate-950 text-white p-2.5 sm:p-4 flex flex-col justify-between gap-2 sm:gap-3">
+      <div className="flex items-center justify-between rounded-xl bg-white/5 border border-white/15 p-2.5 sm:p-3 shrink-0" style={{ borderLeft: `6px solid ${SEAT_COLORS[me.id]}` }}>
         <div>
-          <div className="text-xs text-slate-400">
+          <div className="text-[11px] sm:text-xs text-slate-400">
             Ghế {me.id + 1} · {RULESETS[state.rulesetId].label} {connected ? "🟢" : "🔴"}
           </div>
-          <div className="text-xl font-bold">{me.name}</div>
+          <div className="text-base sm:text-xl font-bold">{me.name}</div>
         </div>
-        <div className="text-4xl font-black" style={{ color: SEAT_COLORS[me.id] }}>
+        <div className="text-2xl sm:text-4xl font-black" style={{ color: SEAT_COLORS[me.id] }}>
           {me.score}
         </div>
       </div>
 
-      <div className="text-center text-sky-300 font-semibold">{state.currentRound ? ROUND_LABELS[state.currentRound] : state.stage === "lobby" ? "Sảnh chờ" : ""}</div>
+      <div className="text-center text-sky-300 font-semibold text-xs sm:text-sm shrink-0">
+        {state.currentRound ? ROUND_LABELS[state.currentRound] : state.stage === "lobby" ? "Sảnh chờ" : ""}
+      </div>
 
-      <div className="flex-1 flex flex-col justify-center gap-4">
+      <div className="flex-1 min-h-0 flex flex-col justify-center items-center gap-3 overflow-hidden">
         {state.stage === "lobby" && <Center>Đã vào phòng. Chờ quản trò bắt đầu trận…</Center>}
         {state.stage === "finished" && <Center>Trận đấu kết thúc. Điểm của bạn: <b>{me.score}</b></Center>}
         {state.stage === "playing" && state.introTimer && (
@@ -142,16 +144,28 @@ function Round({ state, seatId, emit, serverNow }: { state: OlympiaState; seatId
         return (
           <Center>
             {seg.seat === seatId ? <b className="text-yellow-300">Đến lượt bạn trả lời!</b> : `Lượt thi của ${seatName(state, seg.seat)}`}
-            {kd.current && <div className="mt-3 text-2xl font-semibold">{kd.current.q}</div>}
+            {kd.current && (
+              !kd.questionRevealed ? (
+                <div className="mt-2 text-xs sm:text-sm text-sky-300 animate-pulse">Sẵn sàng thi đấu…</div>
+              ) : (
+                <div className="mt-2 text-sm sm:text-base md:text-lg font-semibold leading-relaxed max-h-[35vh] overflow-y-auto">{kd.current.q}</div>
+              )
+            )}
           </Center>
         );
       }
       const locked = kd.lockedSeats.includes(seatId);
       return (
         <>
-          {kd.current && <div className="text-center text-2xl font-semibold">{kd.current.q}</div>}
+          {kd.current && (
+            !kd.questionRevealed ? (
+              <div className="text-center text-xs sm:text-sm text-sky-300 animate-pulse">Sẵn sàng thi đấu…</div>
+            ) : (
+              <div className="text-center text-sm sm:text-base md:text-lg font-semibold leading-relaxed max-h-[35vh] overflow-y-auto">{kd.current.q}</div>
+            )
+          )}
           {kd.buzzUnlockAt && kd.buzzUnlockAt > serverNow() && (
-            <div className="text-center text-amber-300 font-black animate-pulse py-2 text-lg">
+            <div className="text-center text-amber-300 font-black animate-pulse py-1 text-sm sm:text-base">
               🔒 Chuông đang khóa: {Math.max(1, Math.ceil((kd.buzzUnlockAt - serverNow()) / 1000))}s
             </div>
           )}

@@ -26090,7 +26090,6 @@ var OlympiaGame = class _OlympiaGame {
         resetTimer(kd.timer, seg.perQuestionMs);
         if (kd.qIdx > 0) {
           kd.questionRevealed = true;
-          startTimer(kd.timer, now);
         }
         kd.buzzedSeat = null;
         kd.lockedSeats = [...kd.nextLockedSeats];
@@ -26108,7 +26107,7 @@ var OlympiaGame = class _OlympiaGame {
         if (aSeason !== "O13-21" && !(this.ruleset.id === "O22" && !isSolo)) {
           const totalQ = seg.questions || 6;
           let bgmTrack = kd.qIdx <= 1 ? "kd_bgm_1" : kd.qIdx < totalQ - 1 ? "kd_bgm_2" : "kd_bgm_3";
-          if (bgmTrack !== kd.currentBgmTrack) {
+          if (kd.currentBgmTrack && bgmTrack !== kd.currentBgmTrack) {
             kd.currentBgmTrack = bgmTrack;
             this.cue("1_KhoiDong/" + bgmTrack, "bgm");
           }
@@ -26143,6 +26142,9 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "kd:start": {
+        if (kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro" && kd.qIdx < seg.questions - 1) {
+          return fail("L\u01B0\u1EE3t thi \u0111ang di\u1EC5n ra, kh\xF4ng th\u1EC3 nh\u1EA5n B\u1EAFt \u0111\u1EA7u l\u1EA1i!");
+        }
         kd.phase = "question";
         kd.questionRevealed = false;
         kd.started = true;

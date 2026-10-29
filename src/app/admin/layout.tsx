@@ -148,7 +148,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       <aside
         className={`hidden lg:flex ${
           sidebarCollapsed ? "w-16 p-2 items-center" : "w-64 xl:w-72 p-4.5"
-        } bg-[#0c0f20]/90 backdrop-blur-2xl border-r border-purple-500/25 shadow-2xl flex-col fixed h-full z-20 transition-all duration-250`}
+        } bg-[#0c0f20]/95 backdrop-blur-2xl border-r border-purple-500/25 shadow-2xl flex-col fixed h-full z-50 transition-all duration-250`}
       >
         {/* Brand Header & Toggle */}
         <div className={`mb-5 flex items-center ${sidebarCollapsed ? "justify-center flex-col gap-2.5" : "justify-between"} w-full px-1`}>
@@ -295,7 +295,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <main
           className={`${
             sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
-          } flex-1 h-screen max-h-screen overflow-hidden p-1 sm:p-2 pt-16 lg:pt-2 flex flex-col min-h-0 relative z-30 transition-all duration-200`}
+          } flex-1 h-screen max-h-screen overflow-hidden p-1 sm:p-2 pt-16 lg:pt-2 flex flex-col min-h-0 relative z-10 transition-all duration-200`}
         >
           <div key={pathname} className="w-full h-full flex flex-col min-h-0 animate-fade-in">
             {children}
@@ -305,7 +305,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <main
           className={`${
             sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
-          } flex-1 p-2 sm:p-3 lg:px-4 lg:py-2.5 pt-16 lg:pt-2.5 min-h-screen flex flex-col relative z-30 transition-all duration-200`}
+          } flex-1 p-2 sm:p-3 lg:px-4 lg:py-2.5 pt-16 lg:pt-2.5 min-h-screen flex flex-col relative z-10 transition-all duration-200`}
         >
           <div key={pathname} className="w-full max-w-full flex-1 flex flex-col min-h-0 animate-fade-in">
             {children}
@@ -315,7 +315,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <main
           className={`${
             sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
-          } flex-1 p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10 min-h-screen relative z-30 transition-all duration-200`}
+          } flex-1 p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10 min-h-screen relative z-10 transition-all duration-200`}
         >
           <div key={pathname} className="max-w-6xl mx-auto w-full animate-fade-in">
             {children}

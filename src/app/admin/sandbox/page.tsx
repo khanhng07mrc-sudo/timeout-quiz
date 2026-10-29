@@ -245,6 +245,7 @@ export default function AdminSandboxPage() {
   const [inputCode, setInputCode] = useState<string>("");
   const [selectedMode, setSelectedMode] = useState<GameMode>("GRID_CARO");
   const [selectedBankId, setSelectedBankId] = useState<string>("");
+const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
   const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; isWordPuzzle?: boolean; _count?: { questions: number } }[]>([]);
   const lastUserEditionChangeTimestampRef = useRef<number>(0);
 
@@ -6834,6 +6835,11 @@ export default function AdminSandboxPage() {
           mode: modeToUse,
           quizBankId: selectedBankId,
           teams: sandboxCustomTeams,
+          config: modeToUse === "OLYMPIA" ? {
+            olympia: {
+              rulesetId: olympiaRulesetId,
+            }
+          } : undefined,
         }),
       });
       const data = await res.json();
@@ -10072,6 +10078,30 @@ export default function AdminSandboxPage() {
                   </option>
                 ))}
               </select>
+
+              {selectedMode === "OLYMPIA" && (
+                <select
+                  value={olympiaRulesetId}
+                  onChange={(e) => setOlympiaRulesetId(e.target.value)}
+                  className="px-2 py-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold text-xs focus:outline-none cursor-pointer"
+                  title="Chọn mùa / thể thức luật thi đấu Olympia"
+                >
+                  <option value="O26" className="bg-[#151728] text-white">Mùa O26 (Mới nhất)</option>
+                  <option value="O25" className="bg-[#151728] text-white">Mùa O25</option>
+                  <option value="O24" className="bg-[#151728] text-white">Mùa O24</option>
+                  <option value="O23" className="bg-[#151728] text-white">Mùa O23</option>
+                  <option value="O22" className="bg-[#151728] text-white">Mùa O22</option>
+                  <option value="O21" className="bg-[#151728] text-white">Mùa O21</option>
+                  <option value="O20" className="bg-[#151728] text-white">Mùa O20</option>
+                  <option value="O19" className="bg-[#151728] text-white">Mùa O19</option>
+                  <option value="O18" className="bg-[#151728] text-white">Mùa O18</option>
+                  <option value="O17" className="bg-[#151728] text-white">Mùa O17</option>
+                  <option value="O16" className="bg-[#151728] text-white">Mùa O16</option>
+                  <option value="O15" className="bg-[#151728] text-white">Mùa O15</option>
+                  <option value="O14" className="bg-[#151728] text-white">Mùa O14</option>
+                  <option value="O13" className="bg-[#151728] text-white">Mùa O13</option>
+                </select>
+              )}
 
               <select
                 value={selectedBankId}

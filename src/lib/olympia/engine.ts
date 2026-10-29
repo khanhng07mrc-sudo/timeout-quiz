@@ -905,7 +905,7 @@ export class OlympiaGame {
         resetTimer(kd.timer, seg.perQuestionMs);
         if (kd.qIdx > 0) {
           kd.questionRevealed = true;
-          startTimer(kd.timer, now);
+          // Tuyệt đối không tự động đếm 5s khi chuyển câu. Quản trò nhấn Space / Tính giờ mới bắt đầu đếm!
         }
         kd.buzzedSeat = null;
         kd.lockedSeats = [...kd.nextLockedSeats];
@@ -927,8 +927,8 @@ export class OlympiaGame {
           // bgm_1 = câu 1-2 (qIdx 0-1), bgm_2 = câu 3-5 (qIdx 2-4), bgm_3 = câu 6 (qIdx 5+)
           let bgmTrack: "kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3" =
             kd.qIdx <= 1 ? "kd_bgm_1" : kd.qIdx < totalQ - 1 ? "kd_bgm_2" : "kd_bgm_3";
-          // Chỉ gửi cue mới khi track thay đổi (để client crossfade mượt mà, không restart nếu cùng track)
-          if (bgmTrack !== kd.currentBgmTrack) {
+          // Chỉ gửi cue mới khi track thực sự thay đổi và đã có track trước đó
+          if (kd.currentBgmTrack && bgmTrack !== kd.currentBgmTrack) {
             kd.currentBgmTrack = bgmTrack;
             this.cue("1_KhoiDong/" + bgmTrack, "bgm");
           }
@@ -965,6 +965,11 @@ export class OlympiaGame {
         return OK;
       }
       case "kd:start": {
+        // Nút Bắt đầu chỉ được nhấn khi bắt đầu lượt mới (chưa bắt đầu hoặc lượt trước đã kết thúc/hết câu).
+        // Không cho phép nhấn trong khi đội/thí sinh vẫn đang còn câu hỏi đang thi.
+        if (kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro" && kd.qIdx < seg.questions - 1) {
+          return fail("Lượt thi đang diễn ra, không thể nhấn Bắt đầu lại!");
+        }
         kd.phase = "question";
         kd.questionRevealed = false;
         kd.started = true;

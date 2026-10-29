@@ -159,8 +159,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
         <div className="flex items-center gap-2 min-w-0 shrink-0">
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-red-400 text-xs sm:text-sm font-black tracking-wide flex items-center gap-1.5 whitespace-nowrap">
             <span>🏔️</span>
-            <span className="hidden md:inline">ĐƯỜNG LÊN ĐỈNH</span>
-            <span>OLYMPIA</span>
+            <span>ĐƯỜNG LÊN ĐỈNH OLYMPIA</span>
           </span>
           <span className="px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-200 text-[11px] font-bold uppercase whitespace-nowrap">
             {curRoundName}
@@ -236,11 +235,11 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       {/* ── MAIN 3-COLUMN WORKSPACE ── */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* 1. LEFT SIDEBAR: Rounds & Tools (Compact) */}
-        <aside className="w-20 sm:w-22 bg-black/20 border-r border-violet-500/15 p-1.5 flex flex-col justify-between shrink-0">
+        <aside className="w-28 sm:w-32 bg-black/25 border-r border-violet-500/15 p-1.5 flex flex-col justify-between shrink-0">
           <div className="space-y-1">
             <RoundTabButton
               id="khoiDong"
-              label="K.Động"
+              label="Khởi Động"
               icon="⭐"
               active={curRound === "khoiDong"}
               done={state.roundStatus.khoiDong === "done"}
@@ -256,7 +255,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             />
             <RoundTabButton
               id="tangToc"
-              label="T.Tốc"
+              label="Tăng Tốc"
               icon="⚡"
               active={curRound === "tangToc"}
               done={state.roundStatus.tangToc === "done"}
@@ -264,7 +263,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             />
             <RoundTabButton
               id="veDich"
-              label="V.Đích"
+              label="Về Đích"
               icon="🏁"
               active={curRound === "veDich"}
               done={state.roundStatus.veDich === "done"}
@@ -272,7 +271,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             />
             <RoundTabButton
               id="cauHoiPhu"
-              label="Phụ"
+              label="Câu Hỏi Phụ"
               icon="❓"
               active={curRound === "cauHoiPhu"}
               done={state.roundStatus.cauHoiPhu === "done"}
@@ -761,14 +760,26 @@ function KhoiDongDeck({
         return (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
             {/* ▶ BẮT ĐẦU */}
-            <button
-              type="button"
-              onClick={() => call("kd:start")}
-              className="py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
-            >
-              <span>▶</span>
-              <span>BẮT ĐẦU</span>
-            </button>
+            {(() => {
+              const seg = kd.segments[kd.segIdx];
+              const isLocked = kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro" && kd.qIdx < (seg?.questions ?? 6) - 1;
+              return (
+                <button
+                  type="button"
+                  onClick={() => call("kd:start")}
+                  disabled={isLocked}
+                  className={`py-2.5 rounded-xl text-xs font-black shadow flex items-center justify-center gap-1.5 uppercase tracking-wider transition ${
+                    isLocked
+                      ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5 opacity-60"
+                      : "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white cursor-pointer shadow-cyan-600/20"
+                  }`}
+                  title={isLocked ? "Lượt thi đang diễn ra, còn câu hỏi chưa thi xong" : "Bắt đầu lượt thi"}
+                >
+                  <span>▶</span>
+                  <span>BẮT ĐẦU</span>
+                </button>
+              );
+            })()}
 
             {/* ⏭ CÂU TIẾP (N) */}
             <button

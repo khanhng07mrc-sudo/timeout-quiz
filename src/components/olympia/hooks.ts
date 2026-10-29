@@ -153,6 +153,11 @@ export function useOlympiaAudio(
   /** Crossfade to a new BGM element. Old BGM fades out while new BGM fades in. */
   const crossfadeToBgm = useCallback((newAudio: HTMLAudioElement, durationMs: number) => {
     const old = bgm.current;
+    // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại
+    if (old && !old.paused && old.src === newAudio.src) {
+      return;
+    }
+
     bgm.current = newAudio;
     newAudio.volume = 0;
     newAudio.play().catch(() => {});
@@ -162,7 +167,6 @@ export function useOlympiaAudio(
     }
 
     // Fade in new audio
-    if (bgmFadeTimerRef.current) clearInterval(bgmFadeTimerRef.current);
     const targetVol = 0.75;
     const steps = 20;
     const stepMs = Math.max(15, Math.floor(durationMs / steps));
@@ -172,7 +176,7 @@ export function useOlympiaAudio(
       step++;
       const newVol = Math.min(targetVol, volStep * step);
       try { newAudio.volume = newVol; } catch {}
-      if (step >= steps || newVol >= targetVol) {
+      if (step >= steps || newVol >= targetVol || bgm.current !== newAudio) {
         clearInterval(fadeInTimer);
       }
     }, stepMs);

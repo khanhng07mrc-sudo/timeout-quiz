@@ -54,15 +54,15 @@ export const LOCALIZED_GAME_MODES: Record<Language, Record<GameMode, LocalizedMo
     },
     GRID_CARO: {
       name: "Ma Trận Caro",
-      tagline: "Chiếm ô ma trận 4x4 · Nối chuỗi Caro K ô nhận thưởng lớn",
+      tagline: "Chiếm ô bàn cờ chiến thuật · Nối chuỗi ô liên tiếp để giành chiến thắng",
       badge: "Chiến thuật",
-      perks: ["Ma trận 4x4", "Chuỗi Caro K ô", "Thưởng chuỗi +30đ"],
+      perks: ["Bàn cờ đa kích thước", "Nối hàng ngang dọc chéo", "Chiếm ô chiến lược"],
     },
     DICE_RACE: {
       name: "Đua Xúc Xắc",
-      tagline: "Gieo 2 xí ngầu 3D marathon · Vượt cạm bẫy tranh đua về đích",
+      tagline: "Gieo xí ngầu 3D chân thực · Chinh phục đường đua vượt chướng ngại vật",
       badge: "Cờ bàn 3D",
-      perks: ["Đường đua 30 ô", "Xúc xắc 3D vật lý", "Ô cạm bẫy may rủi"],
+      perks: ["Gieo xúc xắc 3D vật lý", "Đường đua nhiều chặng", "Ô sự kiện & cạm bẫy"],
     },
     WAGER: {
       name: "Cược Điểm Bí Mật",
@@ -72,9 +72,9 @@ export const LOCALIZED_GAME_MODES: Record<Language, Record<GameMode, LocalizedMo
     },
     MYSTERY_QUEST: {
       name: "Hành Trình Bí Ẩn",
-      tagline: "Lật mở Rương thần bí · Cân não Minigame & Ô số phận",
+      tagline: "Khám phá các căn phòng bí ẩn · Vượt qua thử thách để tích lũy kho báu",
       badge: "Phiêu lưu",
-      perks: ["Rương kho báu", "3 Minigame cân não", "Quyết định Dừng chơi"],
+      perks: ["Thử thách phòng bí mật", "Minigame giải đố cân não", "Quyết định bảo toàn điểm"],
     },
     OLYMPIA: {
       name: "Đường Lên Đỉnh Olympia",

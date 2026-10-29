@@ -29,7 +29,7 @@ export type RulesetId =
   | "O25"
   | "O26";
 
-export type AudioSeason = "O13-15" | "O16-21" | "O22" | "O23" | "O24-25" | "O26";
+export type AudioSeason = "O13-21" | "O13-15" | "O16-21" | "O22" | "O23" | "O24-25" | "O26";
 
 export const MAX_SEATS = 8;
 
@@ -283,6 +283,7 @@ export interface KhoiDongState {
   globalTimer: TimerState | null;
   buzzedSeat: number | null;
   buzzOpen: boolean;
+  buzzUnlockAt?: number;
   lockedSeats: number[]; // locked out for next question (O22 lockout) or this question after wrong
   nextLockedSeats: number[];
   poolCursor: number;

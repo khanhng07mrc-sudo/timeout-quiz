@@ -1,9 +1,22 @@
-﻿"use client";
+"use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import PlayerPad from "@/components/olympia/PlayerPad";
 
-export default function Page() {
+function Inner() {
   const { code } = useParams<{ code: string }>();
-  return <PlayerPad code={code} />;
+  const search = useSearchParams();
+  const seatStr = search?.get("seat");
+  const name = search?.get("name") ?? undefined;
+  const initialSeat = seatStr !== null && seatStr !== undefined ? Number(seatStr) : undefined;
+  return <PlayerPad code={code} initialSeat={initialSeat} initialName={name} />;
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <Inner />
+    </Suspense>
+  );
 }

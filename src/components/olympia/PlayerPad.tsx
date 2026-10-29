@@ -6,12 +6,26 @@ import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
 import { useCountdown, useOlympiaSocket, useStableToken } from "./hooks";
 import { Timer, SEAT_COLORS, seatName } from "./ui";
 
-export default function PlayerPad({ code }: { code: string }) {
-  const token = useStableToken();
-  const [name, setName] = useState<string | null>(null);
+export default function PlayerPad({
+  code,
+  initialSeat,
+  initialName,
+}: {
+  code: string;
+  initialSeat?: number;
+  initialName?: string;
+}) {
+  const defaultToken = useStableToken();
+  const token = initialSeat !== undefined ? `sandbox_${code}_seat_${initialSeat}` : defaultToken;
+  const [name, setName] = useState<string | null>(
+    initialName || (initialSeat !== undefined ? `Thí sinh ${initialSeat + 1}` : null)
+  );
+
   useEffect(() => {
+    if (initialName || initialSeat !== undefined) return;
     setName(sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || "");
-  }, []);
+  }, [initialName, initialSeat]);
+
   const { state, join, connected, emit, serverNow } = useOlympiaSocket({
     code,
     role: "player",

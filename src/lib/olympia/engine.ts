@@ -206,6 +206,14 @@ export class OlympiaGame {
 
     if (st.khoiDong) {
       const kd = st.khoiDong;
+      if (kd.buzzUnlockAt && now >= kd.buzzUnlockAt) {
+        if (!kd.buzzOpen && kd.phase === "question" && kd.buzzedSeat == null) {
+          kd.buzzOpen = true;
+          changed = true;
+        }
+        kd.buzzUnlockAt = undefined;
+        changed = true;
+      }
       if (kd.globalTimer && expired(kd.globalTimer)) {
         fin(kd.globalTimer);
         kd.buzzOpen = false;
@@ -573,8 +581,11 @@ export class OlympiaGame {
 
     switch (type) {
       case "kd:next": {
+        const isLastSeg = kd.segIdx + 1 >= kd.segments.length;
+
+        // In segmentDone (or expired global clock in intro)
         if (kd.phase === "segmentDone" || (seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0 && kd.phase !== "intro")) {
-          if (kd.segIdx + 1 >= kd.segments.length) {
+          if (isLastSeg) {
             this.finishRound(now);
             return OK;
           }
@@ -586,17 +597,56 @@ export class OlympiaGame {
           kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
           kd.buzzedSeat = null;
           kd.buzzOpen = false;
+          kd.buzzUnlockAt = undefined;
           kd.lockedSeats = [];
           kd.nextLockedSeats = [];
           kd.current = null;
           kd.lastVerdict = null;
           return OK;
         }
+
+        // When finishing question 6/6 of solo KĐ (qIdx >= seg.questions - 1 after result/skip/done),
+        // pressing "kd:next" auto-transitions to question 0/6 of next contestant (or 0/12 of shared round)
+        if (isSolo && kd.qIdx >= seg.questions - 1 && kd.phase !== "intro") {
+          if (isLastSeg) {
+            kd.phase = "segmentDone";
+            kd.current = null;
+            kd.buzzOpen = false;
+            kd.buzzUnlockAt = undefined;
+            this.cue("1_KhoiDong/finish_turn");
+            return OK;
+          }
+          kd.segIdx += 1;
+          const ns = kd.segments[kd.segIdx];
+          kd.qIdx = -1;
+          kd.phase = "intro";
+          kd.timer = mkTimer(ns.perQuestionMs);
+          kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
+          kd.buzzedSeat = null;
+          kd.buzzOpen = false;
+          kd.buzzUnlockAt = undefined;
+          kd.lockedSeats = [];
+          kd.nextLockedSeats = [];
+          kd.current = null;
+          kd.lastVerdict = null;
+          this.cue("1_KhoiDong/finish_turn");
+          return OK;
+        }
+
+        // In final shared KĐ segment, when all questions (e.g. 12/12) are completed:
+        if (!isSolo && isLastSeg && kd.qIdx >= seg.questions - 1 && kd.phase === "result") {
+          kd.phase = "segmentDone";
+          kd.buzzOpen = false;
+          kd.buzzUnlockAt = undefined;
+          return fail("Đã hoàn thành tất cả câu hỏi vòng Khởi Động chung");
+        }
+
         kd.qIdx += 1;
         if (kd.qIdx >= seg.questions) {
           kd.phase = "segmentDone";
           kd.current = null;
           kd.buzzOpen = false;
+          kd.buzzUnlockAt = undefined;
           this.cue("1_KhoiDong/finish_turn");
           return OK;
         }
@@ -604,6 +654,8 @@ export class OlympiaGame {
         if (!q) {
           kd.phase = "segmentDone";
           kd.current = null;
+          kd.buzzOpen = false;
+          kd.buzzUnlockAt = undefined;
           return OK;
         }
         q.used = true;
@@ -620,10 +672,19 @@ export class OlympiaGame {
         kd.phase = "question";
         resetTimer(kd.timer, seg.perQuestionMs);
         kd.buzzedSeat = null;
-        kd.buzzOpen = !isSolo && !!(seg.globalMs && kd.globalTimer && timerRunning(kd.globalTimer));
         kd.lockedSeats = [...kd.nextLockedSeats];
         kd.nextLockedSeats = [];
         kd.lastVerdict = null;
+
+        if (isSolo) {
+          kd.buzzOpen = false;
+          kd.buzzUnlockAt = undefined;
+        } else {
+          // Shared KĐ: locked 2s for O22, 5s for O23+
+          kd.buzzOpen = false;
+          const lockMs = (this.ruleset.id === "O22") ? 2000 : 5000;
+          kd.buzzUnlockAt = now + lockMs;
+        }
         this.cue("1_KhoiDong/open_question");
         return OK;
       }
@@ -645,7 +706,13 @@ export class OlympiaGame {
           kd.buzzOpen = false;
         } else {
           startTimer(kd.timer, now);
-          if (!isSolo && kd.buzzedSeat == null) kd.buzzOpen = true;
+          if (!isSolo && kd.buzzedSeat == null) {
+            if (kd.buzzUnlockAt && now < kd.buzzUnlockAt) {
+              kd.buzzOpen = false;
+            } else {
+              kd.buzzOpen = true;
+            }
+          }
           this.cue("1_KhoiDong/kd_bgm_" + (isSolo ? "1" : "2"), "bgm");
         }
         return OK;
@@ -659,6 +726,8 @@ export class OlympiaGame {
         if (isSolo && seg.globalMs && kd.globalTimer && kd.qIdx + 1 >= seg.questions) {
           pauseTimer(kd.globalTimer, now);
         }
+        kd.buzzOpen = false;
+        kd.buzzUnlockAt = undefined;
         const buzzers: TranscriptBuzzerItem[] = [];
         if (!isSolo) {
           kd.lockedSeats.forEach((sId, idx) => {
@@ -685,7 +754,6 @@ export class OlympiaGame {
           verdict: "correct",
           scoreChanges: { [target]: rs.correctPoints },
         });
-        kd.buzzOpen = false;
         kd.phase = "result";
         kd.lastVerdict = "correct";
         this.cue("1_KhoiDong/correct");
@@ -727,53 +795,50 @@ export class OlympiaGame {
         if (rs.wrongPenalty) this.addScore(who, -rs.wrongPenalty);
         if (rs.lockoutOnWrong && !kd.nextLockedSeats.includes(who)) kd.nextLockedSeats.push(who);
         kd.lockedSeats.push(who);
+        pauseTimer(kd.timer, now);
+        if (kd.globalTimer) pauseTimer(kd.globalTimer, now);
         kd.buzzedSeat = null;
+        kd.buzzOpen = false;
+        kd.buzzUnlockAt = undefined;
+        kd.phase = "result";
+        kd.lastVerdict = "wrong";
         this.cue("1_KhoiDong/wrong");
-        const globalRunning = !!(seg.globalMs && kd.globalTimer && timerRunning(kd.globalTimer));
-        const others = this.activeSeatIds.filter((i) => !kd.lockedSeats.includes(i));
-        if ((timerRemaining(kd.timer, now) > 0 || globalRunning) && others.length > 0) {
-          kd.buzzOpen = true;
-          if (!seg.globalMs) startTimer(kd.timer, now);
-        } else {
-          kd.phase = "result";
-          kd.lastVerdict = "wrong";
-          kd.buzzOpen = false;
-          const buzzers: TranscriptBuzzerItem[] = kd.lockedSeats.map((sId, idx) => ({
-            order: idx + 1,
-            seat: sId,
-            name: this.seatName(sId),
-            verdict: "wrong",
-          }));
-          const changes: Record<number, number> = {};
-          if (rs.wrongPenalty) {
-            kd.lockedSeats.forEach((sId) => (changes[sId] = -rs.wrongPenalty));
-          }
-          this.pushTranscript({
-            at: now,
-            round: "khoiDong",
-            roundLabel: ROUND_LABELS.khoiDong,
-            segmentLabel: `${seg.label} • Câu ${kd.qIdx + 1}`,
-            entryKind: "question",
-            questionText: kd.current?.q,
-            correctAnswer: kd.current?.a,
-            subject: kd.current?.subject,
-            kdZone: kd.current?.kdZone,
-            vdZone: kd.current?.vdZone,
-            mediaUrl: kd.current?.media,
-            actorSeat: who,
-            actorName: this.seatName(who),
-            selectedPoints: rs.correctPoints,
-            buzzerEvents: buzzers,
-            verdict: "wrong",
-            scoreChanges: changes,
-          });
+        const buzzers: TranscriptBuzzerItem[] = kd.lockedSeats.map((sId, idx) => ({
+          order: idx + 1,
+          seat: sId,
+          name: this.seatName(sId),
+          verdict: "wrong",
+        }));
+        const changes: Record<number, number> = {};
+        if (rs.wrongPenalty) {
+          kd.lockedSeats.forEach((sId) => (changes[sId] = -rs.wrongPenalty));
         }
+        this.pushTranscript({
+          at: now,
+          round: "khoiDong",
+          roundLabel: ROUND_LABELS.khoiDong,
+          segmentLabel: `${seg.label} • Câu ${kd.qIdx + 1}`,
+          entryKind: "question",
+          questionText: kd.current?.q,
+          correctAnswer: kd.current?.a,
+          subject: kd.current?.subject,
+          kdZone: kd.current?.kdZone,
+          vdZone: kd.current?.vdZone,
+          mediaUrl: kd.current?.media,
+          actorSeat: who,
+          actorName: this.seatName(who),
+          selectedPoints: rs.correctPoints,
+          buzzerEvents: buzzers,
+          verdict: "wrong",
+          scoreChanges: changes,
+        });
         return OK;
       }
       case "kd:skip": {
         if (kd.phase !== "question") return fail("Chưa mở câu hỏi");
         pauseTimer(kd.timer, now);
         kd.buzzOpen = false;
+        kd.buzzUnlockAt = undefined;
         kd.phase = "result";
         kd.lastVerdict = null;
         this.pushTranscript({
@@ -797,6 +862,7 @@ export class OlympiaGame {
       }
       case "kd:buzzer": {
         if (isSolo) return fail("Khởi động riêng không có chuông");
+        kd.buzzUnlockAt = undefined;
         kd.buzzOpen = !kd.buzzOpen;
         if (kd.buzzOpen) kd.buzzedSeat = null;
         return OK;

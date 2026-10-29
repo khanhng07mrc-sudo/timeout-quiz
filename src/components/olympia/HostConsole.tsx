@@ -5,6 +5,9 @@ import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId } from "@/lib/olympia/types";
 import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
 import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
+import OlympiaAudioManagerDrawer from "./OlympiaAudioManagerDrawer";
+import OlympiaRulesWikipediaModal from "./OlympiaRulesWikipediaModal";
+import OlympiaMatchReportModal from "./OlympiaMatchReportModal";
 import { MediaView, Panel, ScoreStrip, SEAT_COLORS, Timer, activeSeats, btn, btnBad, btnOk, btnPrimary, seatName } from "./ui";
 
 export default function HostConsole({ code, hostKey }: { code: string; hostKey: string }) {
@@ -12,7 +15,48 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
   const [err, setErr] = useState("");
   const [audioOn, setAudioOn] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [showAudioDrawer, setShowAudioDrawer] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   useOlympiaAudio(state, join?.audioSeason, audioOn);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (state?.currentRound === "khoiDong") call("kd:timer");
+        else if (state?.currentRound === "vcnv") call("vcnv:timer");
+        else if (state?.currentRound === "tangToc") call("tt:timer");
+        else if (state?.currentRound === "veDich") call("vd:startQuestion");
+        else if (state?.currentRound === "cauHoiPhu") call("chp:timer");
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (state?.currentRound === "khoiDong") call("kd:correct");
+        else if (state?.currentRound === "vcnv") call("vcnv:correct");
+        else if (state?.currentRound === "veDich") call("vd:correct");
+        else if (state?.currentRound === "cauHoiPhu") call("chp:correct");
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        if (state?.currentRound === "khoiDong") call("kd:wrong");
+        else if (state?.currentRound === "veDich") call("vd:wrong");
+        else if (state?.currentRound === "cauHoiPhu") call("chp:wrong");
+      } else if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        if (state?.currentRound === "khoiDong") call("kd:next");
+        else if (state?.currentRound === "tangToc") call("tt:next");
+        else if (state?.currentRound === "veDich") call("vd:nextSeat");
+        else if (state?.currentRound === "cauHoiPhu") call("chp:next");
+      } else if (e.key === "b" || e.key === "B") {
+        e.preventDefault();
+        if (state?.currentRound === "khoiDong") call("kd:buzzer");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [state?.currentRound]);
 
   const call = async (type: string, extra: Record<string, unknown> = {}) => {
     const r = await emit("action", { type, ...extra });
@@ -45,19 +89,43 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
         <div className="flex flex-wrap gap-2 items-center">
           <button
             type="button"
-            className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm shadow"
+            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow flex items-center gap-1.5 cursor-pointer"
+            onClick={() => setShowAudioDrawer(true)}
+            title="Quản lý và kích hoạt toàn bộ 6 nhóm âm thanh qua các mùa giải"
+          >
+            🎵 Audio Manager
+          </button>
+          <button
+            type="button"
+            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow flex items-center gap-1.5 cursor-pointer"
+            onClick={() => setShowRules(true)}
+            title="Chi tiết luật chơi chuẩn Wikipedia cho tất cả 5 vòng qua mọi mùa giải"
+          >
+            📜 Luật Wikipedia
+          </button>
+          <button
+            type="button"
+            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow flex items-center gap-1.5 cursor-pointer"
+            onClick={() => setShowReport(true)}
+            title="Xem biên bản tổng kết trận và tải file Excel .xlsx / JSON"
+          >
+            📊 Xuất Excel
+          </button>
+          <button
+            type="button"
+            className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm shadow cursor-pointer"
             onClick={() => setShowTranscript(true)}
           >
             📋 Biên bản ({(state.transcript ?? []).length})
           </button>
           <a className={btn} href={`/olympia/display/${code}`} target="_blank" rel="noreferrer">
-            📺 Màn hình chiếu
+            📺 Màn hình chiếu ↗
           </a>
           <button className={btn} onClick={() => navigator.clipboard?.writeText(`${origin}/play?pin=${code}`)}>
             📋 Link thí sinh
           </button>
           <button className={btn} onClick={() => setAudioOn((v) => !v)}>
-            {audioOn ? "🔊 Âm thanh" : "🔈 Tắt tiếng"}
+            {audioOn ? "🔊 Âm thanh tự động" : "🔈 Tắt tiếng"}
           </button>
         </div>
       </header>
@@ -97,6 +165,23 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       <OlympiaTranscriptModal
         open={showTranscript}
         onClose={() => setShowTranscript(false)}
+        state={state}
+      />
+      <OlympiaAudioManagerDrawer
+        open={showAudioDrawer}
+        onClose={() => setShowAudioDrawer(false)}
+        audioSeason={rs.audioSeason}
+        autoAudioMode={audioOn}
+        onToggleAutoAudioMode={(m) => setAudioOn(m)}
+      />
+      <OlympiaRulesWikipediaModal
+        open={showRules}
+        onClose={() => setShowRules(false)}
+        initialSeason={state.rulesetId}
+      />
+      <OlympiaMatchReportModal
+        open={showReport}
+        onClose={() => setShowReport(false)}
         state={state}
       />
     </div>
@@ -244,6 +329,11 @@ function KhoiDongPanel({ state, call, serverNow }: { state: OlympiaState; call: 
               <span className="ml-2 px-2 rounded bg-yellow-300 text-slate-950 font-bold">🔔 {seatName(state, kd.buzzedSeat)}</span>
             )}
             {kd.buzzOpen && <span className="ml-2 text-emerald-300">chuông đang mở</span>}
+            {kd.buzzUnlockAt && kd.buzzUnlockAt > serverNow() && (
+              <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-semibold animate-pulse border border-amber-400/30">
+                🔒 Chuông khoá ({Math.ceil((kd.buzzUnlockAt - serverNow()) / 1000)}s)
+              </span>
+            )}
           </div>
           {kd.current ? (
             <div className="rounded-xl bg-white/5 p-3">
@@ -254,10 +344,20 @@ function KhoiDongPanel({ state, call, serverNow }: { state: OlympiaState; call: 
           ) : (
             <div className="text-slate-400 italic">{kd.phase === "segmentDone" ? "Hết phần thi — bấm Tiếp để sang phần kế." : "Bấm “Câu tiếp” để mở câu hỏi."}</div>
           )}
-          <div className="flex flex-wrap gap-2">
-            <button className={btnPrimary} onClick={() => call("kd:next")}>
-              {kd.phase === "segmentDone" ? "Phần tiếp ⏭" : "Câu tiếp ⏭"}
-            </button>
+          {(() => {
+            const isLastQuestionDone =
+              kd.segIdx >= kd.segments.length - 1 &&
+              (kd.phase === "segmentDone" || (kd.qIdx >= seg.questions - 1 && kd.phase === "result"));
+            return (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className={`${btnPrimary} ${isLastQuestionDone ? "opacity-40 cursor-not-allowed pointer-events-none" : ""}`}
+                  disabled={isLastQuestionDone}
+                  onClick={() => call("kd:next")}
+                  title={isLastQuestionDone ? "Đã kết thúc toàn bộ câu hỏi Khởi Động chung" : undefined}
+                >
+                  {kd.phase === "segmentDone" ? "Phần tiếp ⏭" : "Câu tiếp ⏭"}
+                </button>
             <button className={btn} onClick={() => call("kd:timer")}>
               ⏱ Bắt đầu/Tạm dừng
             </button>
@@ -276,6 +376,8 @@ function KhoiDongPanel({ state, call, serverNow }: { state: OlympiaState; call: 
               Bỏ qua
             </button>
           </div>
+            );
+          })()}
         </div>
         <div className="space-y-2">
           <Timer timer={kd.timer} serverNow={serverNow} />

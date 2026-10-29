@@ -201,28 +201,98 @@ test("Khởi Động solo correct gives +10 to the answering seat", () => {
   assert.equal(g.state.seats[0].score, 10);
 });
 
-test("Khởi Động shared: buzz, wrong gives -5 (O26), others may re-buzz", () => {
+test("Khởi Động solo: 6/6 questions auto-transitions to 0/6 of next seat or 0/X of shared", () => {
   const g = game("O26", ["khoiDong"], 2);
   act(g, "game:start");
-  // finish both solo segments quickly
-  for (let seg = 0; seg < 2; seg++) {
+  assert.equal(g.state.khoiDong!.qIdx, -1);
+  assert.equal(g.state.khoiDong!.phase, "intro");
+
+  // Play questions 1..6 for seat 0
+  for (let i = 0; i < 6; i++) {
     act(g, "kd:next");
-    for (let i = 0; i < 5; i++) act(g, "kd:skip"), act(g, "kd:next");
-    act(g, "kd:skip");
-    act(g, "kd:next"); // -> segmentDone
-    act(g, "kd:next"); // -> next segment
+    assert.equal(g.state.khoiDong!.qIdx, i);
+    assert.equal(g.state.khoiDong!.phase, "question");
+    act(g, "kd:correct");
   }
-  assert.equal(g.state.khoiDong!.segments[g.state.khoiDong!.segIdx].kind, "shared");
+  assert.equal(g.state.khoiDong!.qIdx, 5);
+  assert.equal(g.state.khoiDong!.phase, "result");
+
+  // Pressing kd:next auto-transitions to seat 1 (Câu 0/6, phase intro)
   act(g, "kd:next");
+  assert.equal(g.state.khoiDong!.segIdx, 1);
+  assert.equal(g.state.khoiDong!.qIdx, -1);
+  assert.equal(g.state.khoiDong!.phase, "intro");
+
+  // Play questions 1..6 for seat 1
+  for (let i = 0; i < 6; i++) {
+    act(g, "kd:next");
+    act(g, "kd:correct");
+  }
+
+  // Pressing kd:next after 6/6 of seat 1 auto-transitions to shared round (Câu 0/6, phase intro)
   act(g, "kd:next");
-  assert.equal(g.state.khoiDong!.segments[2].questions, 6); // 2 players * 3
-  act(g, "kd:timer", {}, 1000);
-  assert.ok(g.playerBuzz(1, 1100).ok);
-  act(g, "kd:wrong", {}, 1200);
+  assert.equal(g.state.khoiDong!.segIdx, 2);
+  assert.equal(g.state.khoiDong!.segments[2].kind, "shared");
+  assert.equal(g.state.khoiDong!.qIdx, -1);
+  assert.equal(g.state.khoiDong!.phase, "intro");
+});
+
+test("Khởi Động shared: O22 2s lock, O23+ 5s lock, early manual unlock, timer stops on grading", () => {
+  // Test O22 (2s lock)
+  const g22 = game("O22", ["khoiDong"], 2);
+  act(g22, "game:start");
+  g22.state.khoiDong!.segIdx = 2;
+  g22.state.khoiDong!.phase = "intro";
+  act(g22, "kd:next", {}, 1000);
+  assert.equal(g22.state.khoiDong!.buzzOpen, false, "O22 buzzer locked initially");
+  assert.equal(g22.state.khoiDong!.buzzUnlockAt, 1000 + 2000, "O22 locked for 2s");
+  g22.tick(1000 + 1500);
+  assert.equal(g22.state.khoiDong!.buzzOpen, false);
+  g22.tick(1000 + 2000);
+  assert.equal(g22.state.khoiDong!.buzzOpen, true);
+
+  // Test O26 (5s lock)
+  const g = game("O26", ["khoiDong"], 2);
+  act(g, "game:start");
+  g.state.khoiDong!.segIdx = 2;
+  g.state.khoiDong!.phase = "intro";
+  act(g, "kd:next", {}, 1000);
+  assert.equal(g.state.khoiDong!.buzzOpen, false, "O26 buzzer locked initially");
+  assert.equal(g.state.khoiDong!.buzzUnlockAt, 1000 + 5000, "O26 locked for 5s");
+
+  // Early manual unlock by admin
+  act(g, "kd:buzzer");
+  assert.equal(g.state.khoiDong!.buzzOpen, true, "Admin manual unlock early");
+  assert.equal(g.state.khoiDong!.buzzUnlockAt, undefined);
+
+  // Seat 1 buzzes
+  assert.ok(g.playerBuzz(1, 2000).ok);
+  assert.equal(g.state.khoiDong!.buzzOpen, false);
+
+  // Admin grades wrong -> timer stops, score -5, phase result, buzzer does NOT re-buzz
+  act(g, "kd:wrong", {}, 2500);
   assert.equal(g.state.seats[1].score, -5);
-  assert.equal(g.state.khoiDong!.buzzOpen, true);
-  assert.ok(!g.playerBuzz(1, 1300).ok, "locked seat cannot buzz again");
-  assert.ok(g.playerBuzz(0, 1400).ok);
+  assert.equal(g.state.khoiDong!.phase, "result");
+  assert.equal(g.state.khoiDong!.buzzOpen, false, "Timer stops, buzzer closes");
+  assert.equal(g.state.khoiDong!.timer.startedAt, null, "Timer stopped");
+});
+
+test("Khởi Động shared: when last question completes, kd:next cannot be clicked", () => {
+  const g = game("O26", ["khoiDong"], 2);
+  act(g, "game:start");
+  g.state.khoiDong!.segIdx = 2;
+  g.state.khoiDong!.phase = "intro";
+
+  for (let i = 0; i < 6; i++) {
+    act(g, "kd:next");
+    act(g, "kd:skip");
+  }
+  assert.equal(g.state.khoiDong!.qIdx, 5);
+  assert.equal(g.state.khoiDong!.phase, "result");
+
+  const res = g.hostAction({ type: "kd:next" }, 1000);
+  assert.equal(res.ok, false);
+  assert.equal(g.state.khoiDong!.phase, "segmentDone");
 });
 
 test("Tăng Tốc grading uses X-based table and unique-time tiers", () => {

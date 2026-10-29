@@ -33,6 +33,7 @@ import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
 import OlympiaSandboxStudio from "@/components/olympia/OlympiaSandboxStudio";
+import HostConsole from "@/components/olympia/HostConsole";
 import { getOlympiaBanks } from "@/lib/olympia/olympia-storage";
 import {
   generateMagicWheelSectors,
@@ -259,6 +260,7 @@ function countOlympiaQuestions(s: any): number {
 
 export default function AdminSandboxPage() {
   const [olympiaSandboxActive, setOlympiaSandboxActive] = useState<boolean>(false);
+  const [olympiaActiveSeat, setOlympiaActiveSeat] = useState<number>(0);
   const [code, setCode] = useState<string>("");
   const [inputCode, setInputCode] = useState<string>("");
   const [selectedMode, setSelectedMode] = useState<GameMode>("GRID_CARO");
@@ -6766,8 +6768,12 @@ export default function AdminSandboxPage() {
     setIsLaunchReady(false);
     // Cho phép video transition 3D khởi chạy mượt mà ngay frame đầu tiên không bị giật lag
     setTimeout(() => {
-      if (selectedMode === "OLYMPIA") { setOlympiaSandboxActive(true); } else { startOfflineSandbox(selectedMode, selectedBankId); }
-      setIsLaunchReady(true);
+      if (selectedMode === "OLYMPIA") {
+        handleLaunchSandbox("OLYMPIA");
+      } else {
+        startOfflineSandbox(selectedMode, selectedBankId);
+        setIsLaunchReady(true);
+      }
     }, 120);
   }, [selectedMode, selectedBankId, startOfflineSandbox]);
 
@@ -6780,14 +6786,7 @@ export default function AdminSandboxPage() {
     setIsLaunchReady(false);
     setCreating(true);
 
-    if (modeToUse === "OLYMPIA") {
-      setTimeout(() => {
-        setOlympiaSandboxActive(true);
-        setIsLaunchReady(true);
-        setCreating(false);
-      }, 120);
-      return;
-    }
+    // For OLYMPIA, proceed with /api/sandbox/create for real multi-window socket integration
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       setTimeout(() => {
         startOfflineSandbox(modeToUse, selectedBankId);
@@ -11676,7 +11675,7 @@ export default function AdminSandboxPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Link
-                    href={`/display/${code}?sandbox=1&standalone=1`}
+                    href={effectiveActiveMode === "OLYMPIA" ? `/olympia/display/${code}` : `/display/${code}?sandbox=1&standalone=1`}
                     target="_blank"
                     className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
                   >
@@ -11690,7 +11689,7 @@ export default function AdminSandboxPage() {
               <div className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col">
                 <iframe
                     ref={displayIframeRef}
-                    src={`/display/${code}?sandbox=1`}
+                    src={effectiveActiveMode === "OLYMPIA" ? `/olympia/display/${code}` : `/display/${code}?sandbox=1`}
                     title="Display Viewport"
                     className="w-full h-full border-0 bg-black"
                     allow="autoplay; camera; microphone; display-capture"
@@ -11764,19 +11763,55 @@ export default function AdminSandboxPage() {
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse" style={{ background: currentTeam?.color || "#a855f7" }} />
                   <span className="font-black text-xs text-white truncate max-w-[120px]">
-                    {activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
+                    {effectiveActiveMode === "OLYMPIA" ? `Thí sinh ${olympiaActiveSeat + 1}` : activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
                   </span>
                   <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
-                    {(((currentTeam?.score ?? 0)) + (roomState?.mode === "MAGIC_WHEEL" && currentTeam?.id && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[currentTeam.id] || 0) : 0)).toLocaleString()}đ
+                    {effectiveActiveMode === "OLYMPIA" ? "Olympia" : `${(((currentTeam?.score ?? 0)) + (roomState?.mode === "MAGIC_WHEEL" && currentTeam?.id && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[currentTeam.id] || 0) : 0)).toLocaleString()}đ`}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400 font-medium">📱 Điện thoại thí sinh</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">📱 Điện thoại thí sinh</span>
+                  {effectiveActiveMode === "OLYMPIA" && (
+                    <a
+                      href={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(`Thí sinh ${olympiaActiveSeat + 1}`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 text-[10px] font-bold underline"
+                    >
+                      Mở tab riêng ↗
+                    </a>
+                  )}
+                </div>
               </div>
+
+              {effectiveActiveMode === "OLYMPIA" && (
+                <div className="flex items-center gap-1 px-2.5 py-1 bg-black/40 border-b border-white/10 shrink-0 overflow-x-auto text-xs">
+                  <span className="text-[10px] text-slate-400 font-bold shrink-0">Thí sinh:</span>
+                  {[0, 1, 2, 3].map((sIdx) => (
+                    <button
+                      key={sIdx}
+                      type="button"
+                      onClick={() => setOlympiaActiveSeat(sIdx)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
+                        olympiaActiveSeat === sIdx
+                          ? "bg-sky-500 text-slate-950 font-black shadow"
+                          : "bg-white/10 text-slate-300 hover:bg-white/20"
+                      }`}
+                    >
+                      Ghế {sIdx + 1}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="flex-1 min-h-0 bg-[#0f0f1a]">
                 <iframe
                   ref={playerIframeRef}
-                  src={`/play/${code}?sandbox=1&playerId=sb_${code}_t0&teamIndex=0&name=${encodeURIComponent("Bạn (Tester)")}`}
+                  src={
+                    effectiveActiveMode === "OLYMPIA"
+                      ? `/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(`Thí sinh ${olympiaActiveSeat + 1}`)}`
+                      : `/play/${code}?sandbox=1&playerId=sb_${code}_t0&teamIndex=0&name=${encodeURIComponent("Bạn (Tester)")}`
+                  }
                   allow="autoplay; camera; microphone"
                   onLoad={() => {
                     if (isOfflineSandbox) {
@@ -11829,6 +11864,31 @@ export default function AdminSandboxPage() {
 
             {/* Cột phải: Chọn Đội & Bàn Phím Thử Nghiệm / Quản Trò */}
             <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto no-scrollbar">
+              {effectiveActiveMode === "OLYMPIA" ? (
+                <div className="flex-1 min-h-0 flex flex-col glass rounded-2xl border border-white/10 overflow-hidden bg-slate-950 shadow-2xl">
+                  <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_8px_#facc15]" />
+                      <span className="text-white font-black tracking-wide">
+                        🎙️ BÀN ĐIỀU KHIỂN OLYMPIA (HOST CONSOLE)
+                      </span>
+                    </div>
+                    <a
+                      href={`/olympia/host/${code}?key=${typeof window !== "undefined" ? localStorage.getItem(`host_key_${code}`) || "" : ""}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
+                    >
+                      <span>Mở tab riêng</span>
+                      <span>↗</span>
+                    </a>
+                  </div>
+                  <div className="flex-1 min-h-0 overflow-y-auto">
+                    <HostConsole code={code} hostKey={typeof window !== "undefined" ? localStorage.getItem(`host_key_${code}`) || "" : ""} />
+                  </div>
+                </div>
+              ) : (
+                <>
               <div className="glass rounded-xl px-2 py-1 border border-white/10 bg-[#121424] shrink-0 flex items-center gap-1.5">
               <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0 hidden sm:inline">📱 Chọn Đội:</span>
               <div className="flex items-center gap-1.5 flex-1 overflow-x-auto no-scrollbar py-0.5">
@@ -12068,6 +12128,8 @@ export default function AdminSandboxPage() {
                   </div>
                 </div>
               </div>
+                </>
+              )}
 
               </div>
           </div>

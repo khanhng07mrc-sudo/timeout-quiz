@@ -1,4 +1,4 @@
-import type { KdSegmentDef, OlympiaRuleset, RulesetId } from "./types";
+import type { AudioSeason, KdSegmentDef, OlympiaRuleset, RulesetId } from "./types";
 
 /** O13–O19: 60s personal clock per contestant, max 12 questions */
 const solo60s12q = (seatCount: number): KdSegmentDef[] =>
@@ -113,7 +113,7 @@ function make(partial: Partial<OlympiaRuleset> & Pick<OlympiaRuleset, "id" | "la
   };
 }
 
-function makeO15ToO19(id: RulesetId, label: string, audioSeason: "O13-15" | "O16-21"): OlympiaRuleset {
+function makeO15ToO19(id: RulesetId, label: string, audioSeason: AudioSeason = "O13-21"): OlympiaRuleset {
   return make({
     id,
     label,
@@ -144,7 +144,7 @@ export const RULESETS: Record<RulesetId, OlympiaRuleset> = {
   O13: make({
     id: "O13",
     label: "Olympia 13",
-    audioSeason: "O13-15",
+    audioSeason: "O13-21",
     note: "Khởi động 60s (tối đa 12 câu). VCNV: 2 hàng đầu 80đ, 2 hàng sau 40đ, sau câu thứ 5 (ô trung tâm) 20đ. Tăng tốc 30s×4. Về đích gói 4 câu: 40 (10×4), 60 (10×2, 20×2), 80 (10, 20×2, 30).",
     khoiDong: {
       correctPoints: 10,
@@ -168,7 +168,7 @@ export const RULESETS: Record<RulesetId, OlympiaRuleset> = {
   O14: make({
     id: "O14",
     label: "Olympia 14",
-    audioSeason: "O13-15",
+    audioSeason: "O13-21",
     note: "Tương tự O13, thay đổi điểm VCNV: hàng 1: 80đ, hàng 2: 60đ, hàng 3: 40đ, hàng 4: 20đ, sau câu thứ 5 (ô trung tâm): 10đ. Về đích gói 4 câu (40/60/80đ).",
     khoiDong: {
       correctPoints: 10,
@@ -189,15 +189,15 @@ export const RULESETS: Record<RulesetId, OlympiaRuleset> = {
       turnOrderMode: "seat_order",
     },
   }),
-  O15: makeO15ToO19("O15", "Olympia 15 – 19", "O16-21"),
-  O16: makeO15ToO19("O16", "Olympia 15 – 19", "O16-21"),
-  O17: makeO15ToO19("O17", "Olympia 15 – 19", "O16-21"),
-  O18: makeO15ToO19("O18", "Olympia 15 – 19", "O16-21"),
-  O19: makeO15ToO19("O19", "Olympia 15 – 19", "O16-21"),
+  O15: makeO15ToO19("O15", "Olympia 15 – 19", "O13-21"),
+  O16: makeO15ToO19("O16", "Olympia 15 – 19", "O13-21"),
+  O17: makeO15ToO19("O17", "Olympia 15 – 19", "O13-21"),
+  O18: makeO15ToO19("O18", "Olympia 15 – 19", "O13-21"),
+  O19: makeO15ToO19("O19", "Olympia 15 – 19", "O13-21"),
   O20: make({
     id: "O20",
     label: "Olympia 20",
-    audioSeason: "O16-21",
+    audioSeason: "O13-21",
     note: "Khởi động 60s không giới hạn số câu hỏi. VCNV 80-60-40-20-10đ. Tăng tốc 30s×4. Về đích tự chọn 3 câu ở 3 mức điểm bất kỳ (10, 20, 30) theo thứ tự vị trí 1→X.",
     khoiDong: {
       correctPoints: 10,
@@ -220,7 +220,7 @@ export const RULESETS: Record<RulesetId, OlympiaRuleset> = {
   O21: make({
     id: "O21",
     label: "Olympia 21",
-    audioSeason: "O16-21",
+    audioSeason: "O13-21",
     note: "Tương tự O20 (Khởi động 60s không giới hạn câu, Về đích chọn 3 câu 10/20/30đ); riêng Về đích thí sinh có điểm cao nhất qua mỗi lượt mà chưa thi sẽ lên thi ở lượt đó.",
     khoiDong: {
       correctPoints: 10,

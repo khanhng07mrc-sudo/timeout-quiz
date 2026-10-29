@@ -35,8 +35,9 @@ import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
 import OlympiaSandboxStudio from "@/components/olympia/OlympiaSandboxStudio";
 import HostConsole from "@/components/olympia/HostConsole";
-import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
+import { ROUND_LABELS, type OlympiaState, type RulesetId } from "@/lib/olympia/types";
 import { getOlympiaBanks } from "@/lib/olympia/olympia-storage";
+import { RULESET_YEAR_BUTTONS, RULESETS } from "@/lib/olympia/rulesets";
 import {
   generateMagicWheelSectors,
   generateSpecialRoundWheelSectors,
@@ -10000,7 +10001,11 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   </button>
                   <span className="text-purple-300 font-bold hidden sm:inline-flex items-center gap-1.5 text-[11px]">
                     <GameModeIcon mode={roomState?.mode || selectedMode} className="w-3.5 h-3.5 drop-shadow-sm" />
-                    <span>{MODE_DISPLAY_NAMES[(roomState?.mode || selectedMode).toUpperCase()] || (roomState?.mode || selectedMode)}</span>
+                    <span>
+                      {effectiveActiveMode === "OLYMPIA"
+                        ? `Đường Lên Đỉnh Olympia (Mùa ${olympiaState?.rulesetId || (roomState?.config as any)?.olympia?.rulesetId || olympiaRulesetId})`
+                        : MODE_DISPLAY_NAMES[(roomState?.mode || selectedMode).toUpperCase()] || (roomState?.mode || selectedMode)}
+                    </span>
                   </span>
                   <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
                     roomState?.status === "PLAYING" ? "bg-green-500/20 text-green-300" : roomState?.status ? "bg-yellow-500/20 text-yellow-300" : "bg-cyan-500/20 text-cyan-300 animate-pulse"
@@ -11355,6 +11360,23 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   🗑️ Xóa phòng
                 </button>
 
+                {/* 🏔️ Olympia Season Switcher Button in Header Bar */}
+                {effectiveActiveMode === "OLYMPIA" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedMode("OLYMPIA");
+                      handleExitSandboxRoom();
+                    }}
+                    title="Đổi mùa thi đấu Olympia (O13 - O26)"
+                    className="px-2.5 py-1 rounded-lg glass border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 text-xs font-bold transition shrink-0 whitespace-nowrap cursor-pointer flex items-center gap-1 shadow-sm"
+                  >
+                    <span>🏔️</span>
+                    <span>Mùa {olympiaState?.rulesetId || (roomState?.config as any)?.olympia?.rulesetId || olympiaRulesetId}</span>
+                    <span className="text-[10px] text-amber-400">🔄 Đổi</span>
+                  </button>
+                )}
+
                 {/* Exit / Switch Room */}
                 <button
                   type="button"
@@ -11451,7 +11473,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
           {/* ── Floating Control & Config Bar ── */}
           <div className="glass rounded-2xl p-3 sm:p-4 border border-white/15 bg-[#121424]/90 backdrop-blur-xl max-w-5xl mx-auto shadow-2xl flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4 sticky top-0 z-20">
             {/* Left: Quiz Bank Picker */}
-            <div className="flex items-center gap-2.5 w-full md:w-auto">
+            <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
               <span className="text-xs font-bold text-slate-400 shrink-0 hidden sm:inline">📚 Bộ đề:</span>
               <select
                 value={selectedBankId}
@@ -11468,6 +11490,28 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   ))
                 )}
               </select>
+
+              {/* 🏔️ MÙA THI OLYMPIA (O13 - O26) */}
+              {selectedMode === "OLYMPIA" && (
+                <div className="flex items-center gap-1.5 animate-fade-in">
+                  <span className="text-xs font-bold text-amber-400 shrink-0 flex items-center gap-1">
+                    <span>🏔️</span>
+                    <span className="hidden sm:inline">Mùa thi:</span>
+                  </span>
+                  <select
+                    value={olympiaRulesetId}
+                    onChange={(e) => setOlympiaRulesetId(e.target.value)}
+                    className="px-2.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/25 to-yellow-500/15 border-2 border-amber-400/60 text-amber-300 font-black text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer shadow-lg shadow-amber-500/20"
+                    title="Chọn mùa / thể thức luật thi đấu Olympia (O13 - O26)"
+                  >
+                    {RULESET_YEAR_BUTTONS.map((btn) => (
+                      <option key={btn.id} value={btn.id} className="bg-[#151728] text-white">
+                        Mùa {btn.numberLabel} ({btn.fullTitle})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Center: Connect PIN form */}
@@ -11651,7 +11695,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       </p>
 
                       {/* Feature Chips */}
-                      <div className="flex items-center gap-1.5 flex-wrap mb-4">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-3">
                         {m.perks.map((p, pIdx) => (
                           <span
                             key={pIdx}
@@ -11661,6 +11705,31 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                           </span>
                         ))}
                       </div>
+
+                      {/* 🏔️ Olympia Season Selector directly on the Olympia Card */}
+                      {m.mode === "OLYMPIA" && (
+                        <div
+                          className="mb-3 p-2 rounded-xl bg-gradient-to-r from-amber-950/60 to-yellow-950/40 border border-amber-500/40 flex items-center justify-between gap-2 shadow-inner"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className="text-[11px] font-black text-amber-300 flex items-center gap-1 shrink-0">
+                            <span>🏔️</span>
+                            <span>Mùa giải:</span>
+                          </span>
+                          <select
+                            value={olympiaRulesetId}
+                            onChange={(e) => setOlympiaRulesetId(e.target.value)}
+                            className="px-2 py-1 rounded-lg bg-[#151728] border border-amber-400/50 text-amber-300 font-bold text-xs focus:outline-none cursor-pointer flex-1 min-w-0"
+                            title="Chọn mùa thi Olympia"
+                          >
+                            {RULESET_YEAR_BUTTONS.map((btn) => (
+                              <option key={btn.id} value={btn.id} className="bg-[#151728] text-white">
+                                {btn.fullTitle}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
 
                     {/* Bottom Card Footer */}
@@ -11741,6 +11810,41 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       </button>
                     </div>
                   </div>
+
+                  {/* 🏔️ Olympia Ruleset Year Buttons Strip */}
+                  {currentMeta.mode === "OLYMPIA" && (
+                    <div className="w-full mt-4 pt-4 border-t border-amber-500/30 flex flex-col gap-2.5 animate-fade-in">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <span>🏔️</span>
+                          <span>Chọn thể thức luật mùa thi Olympia:</span>
+                        </span>
+                        <span className="text-xs font-bold text-yellow-300 bg-amber-500/25 px-3 py-0.5 rounded-full border border-amber-400/50 shadow-sm">
+                          {RULESET_YEAR_BUTTONS.find((b) => b.id === olympiaRulesetId)?.fullTitle || `Olympia ${olympiaRulesetId}`}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-5 sm:grid-cols-9 gap-1.5">
+                        {RULESET_YEAR_BUTTONS.map((btnItem) => {
+                          const active = olympiaRulesetId === btnItem.id;
+                          return (
+                            <button
+                              key={btnItem.id}
+                              type="button"
+                              title={btnItem.fullTitle}
+                              onClick={() => setOlympiaRulesetId(btnItem.id)}
+                              className={`rounded-xl py-2.5 px-1 border text-center font-black text-xs sm:text-sm transition cursor-pointer ${
+                                active
+                                  ? "border-amber-400 bg-gradient-to-b from-amber-400/30 to-yellow-500/20 text-yellow-300 shadow-lg shadow-amber-500/30 ring-2 ring-amber-400/50 scale-[1.03]"
+                                  : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                              }`}
+                            >
+                              {btnItem.numberLabel}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -13561,6 +13665,50 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
             {/* If room is running, show full room settings */}
             {roomState ? (
               <>
+                {/* 🏔️ Olympia Ruleset Configuration in Running Room */}
+                {roomState.mode === "OLYMPIA" && (
+                  <div className="p-3 rounded-xl bg-gradient-to-r from-amber-950/60 to-yellow-950/40 border border-amber-500/40 space-y-2 mb-2 shadow-inner">
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-amber-300 text-xs flex items-center gap-1">
+                        <span>🏔️</span>
+                        <span>MÙA THI ĐẤU OLYMPIA</span>
+                      </span>
+                      <span className="text-[10px] text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+                        {RULESET_YEAR_BUTTONS.find((b) => b.id === (olympiaState?.rulesetId || (roomState.config as any)?.olympia?.rulesetId || olympiaRulesetId))?.fullTitle || `Mùa ${olympiaRulesetId}`}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-300">
+                      Phòng thi Olympia hiện tại đang sử dụng bộ luật: <strong className="text-amber-300">{RULESET_YEAR_BUTTONS.find((b) => b.id === (olympiaState?.rulesetId || (roomState.config as any)?.olympia?.rulesetId || olympiaRulesetId))?.fullTitle}</strong>.
+                    </p>
+                    <div className="grid grid-cols-5 sm:grid-cols-9 gap-1 pt-1">
+                      {RULESET_YEAR_BUTTONS.map((btnItem) => {
+                        const active = (olympiaState?.rulesetId || (roomState.config as any)?.olympia?.rulesetId || olympiaRulesetId) === btnItem.id;
+                        return (
+                          <button
+                            key={btnItem.id}
+                            type="button"
+                            title={btnItem.fullTitle}
+                            onClick={() => {
+                              setOlympiaRulesetId(btnItem.id);
+                              setShowSettingsDropdown(false);
+                              handleExitSandboxRoom();
+                            }}
+                            className={`py-1.5 px-1 rounded-lg border text-center font-black text-xs transition cursor-pointer ${
+                              active
+                                ? "border-amber-400 bg-amber-400/30 text-amber-300 shadow ring-1 ring-amber-400"
+                                : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                            }`}
+                          >
+                            {btnItem.numberLabel}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <span className="text-[9px] text-amber-400 block italic">
+                      * Nhấn vào một mùa khác để thoát phòng hiện tại và tạo phòng mới theo thể thức mùa đó.
+                    </span>
+                  </div>
+                )}
                       
 
                       {/* 🎡 Magic Wheel Edition & Rules Configuration */}
@@ -14167,6 +14315,44 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     Bạn có thể tùy chỉnh danh sách đội thi và bộ đề bên dưới trước khi tạo phòng.
                   </p>
                 </div>
+
+                {/* 🏔️ Olympia Ruleset Selector in Pre-launch Settings Modal */}
+                {selectedMode === "OLYMPIA" && (
+                  <div className="p-3 rounded-xl bg-gradient-to-r from-amber-950/60 to-yellow-950/40 border border-amber-500/40 space-y-2 shadow-inner">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-amber-300 text-xs flex items-center gap-1.5">
+                        <span>🏔️</span>
+                        <span>MÙA THI ĐẤU OLYMPIA</span>
+                      </span>
+                      <span className="text-xs font-bold text-yellow-300 bg-amber-500/25 px-2.5 py-0.5 rounded border border-amber-500/40">
+                        {RULESET_YEAR_BUTTONS.find((b) => b.id === olympiaRulesetId)?.fullTitle || `Mùa ${olympiaRulesetId}`}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-300">
+                      Chọn bộ luật của năm thi Olympia bạn muốn mô phỏng trong Sandbox:
+                    </p>
+                    <div className="grid grid-cols-5 sm:grid-cols-9 gap-1 pt-1">
+                      {RULESET_YEAR_BUTTONS.map((btnItem) => {
+                        const active = olympiaRulesetId === btnItem.id;
+                        return (
+                          <button
+                            key={btnItem.id}
+                            type="button"
+                            title={btnItem.fullTitle}
+                            onClick={() => setOlympiaRulesetId(btnItem.id)}
+                            className={`py-1.5 px-1 rounded-lg border text-center font-black text-xs transition cursor-pointer ${
+                              active
+                                ? "border-amber-400 bg-amber-400/30 text-amber-300 shadow ring-1 ring-amber-400 scale-105"
+                                : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                            }`}
+                          >
+                            {btnItem.numberLabel}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Team Configuration */}
                 <div className="space-y-2 pt-2 border-t border-white/10">

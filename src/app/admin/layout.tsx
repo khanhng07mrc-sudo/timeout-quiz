@@ -148,7 +148,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       <aside
         className={`hidden lg:flex ${
           sidebarCollapsed ? "w-16 p-2 items-center" : "w-64 xl:w-72 p-4.5"
-        } bg-[#0c0f20]/95 backdrop-blur-2xl border-r border-purple-500/25 shadow-2xl flex-col fixed h-full z-50 transition-all duration-250`}
+        } bg-[#0c0f20]/95 backdrop-blur-2xl border-r border-purple-500/25 shadow-2xl flex-col fixed top-0 left-0 h-full z-50 transition-all duration-250`}
       >
         {/* Brand Header & Toggle */}
         <div className={`mb-5 flex items-center ${sidebarCollapsed ? "justify-center flex-col gap-2.5" : "justify-between"} w-full px-1`}>

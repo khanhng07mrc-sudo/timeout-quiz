@@ -796,7 +796,6 @@ export class OlympiaGame {
         if (rs.lockoutOnWrong && !kd.nextLockedSeats.includes(who)) kd.nextLockedSeats.push(who);
         kd.lockedSeats.push(who);
         pauseTimer(kd.timer, now);
-        if (kd.globalTimer) pauseTimer(kd.globalTimer, now);
         kd.buzzedSeat = null;
         kd.buzzOpen = false;
         kd.buzzUnlockAt = undefined;

@@ -238,19 +238,25 @@ test("Khởi Động solo: 6/6 questions auto-transitions to 0/6 of next seat or
 });
 
 test("Khởi Động shared: O22 2s lock, O23+ 5s lock, early manual unlock, timer stops on grading", () => {
-  // Test O22 (2s lock)
+  // Test O22 (2s lock & round clock continues during kd:wrong)
   const g22 = game("O22", ["khoiDong"], 2);
   act(g22, "game:start");
   g22.state.khoiDong!.segIdx = 2;
+  g22.state.khoiDong!.globalTimer = { totalMs: 30000, remainingMs: 30000, startedAt: null };
   g22.state.khoiDong!.phase = "intro";
   act(g22, "kd:next", {}, 1000);
   assert.equal(g22.state.khoiDong!.buzzOpen, false, "O22 buzzer locked initially");
   assert.equal(g22.state.khoiDong!.buzzUnlockAt, 1000 + 2000, "O22 locked for 2s");
-  g22.tick(1000 + 1500);
-  assert.equal(g22.state.khoiDong!.buzzOpen, false);
+  act(g22, "kd:timer", {}, 1000);
+  assert.ok(g22.state.khoiDong!.globalTimer!.startedAt != null, "Round clock started");
   g22.tick(1000 + 2000);
   assert.equal(g22.state.khoiDong!.buzzOpen, true);
-
+  assert.ok(g22.playerBuzz(0, 3100).ok);
+  assert.equal(g22.state.khoiDong!.buzzedSeat, 0);
+  act(g22, "kd:wrong", {}, 3200);
+  assert.equal(g22.state.khoiDong!.phase, "result");
+  assert.equal(g22.state.khoiDong!.buzzOpen, false, "Buzzer closed");
+  assert.ok(g22.state.khoiDong!.globalTimer!.startedAt != null, "O22 global round timer MUST keep running on kd:wrong!");
   // Test O26 (5s lock)
   const g = game("O26", ["khoiDong"], 2);
   act(g, "game:start");

@@ -475,9 +475,9 @@ export default function CreateRoomPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      const nextUrl = data.hostKey
-        ? `/admin/rooms/${data.room.code}?key=${data.hostKey}`
-        : `/admin/rooms/${data.room.code}`;
+      const nextUrl = mode === "OLYMPIA"
+        ? (data.hostKey ? `/olympia/host/${data.room.code}?key=${data.hostKey}` : `/olympia/host/${data.room.code}`)
+        : (data.hostKey ? `/admin/rooms/${data.room.code}?key=${data.hostKey}` : `/admin/rooms/${data.room.code}`);
       if (data.hostKey) {
         localStorage.setItem(`host_key_${data.room.code}`, data.hostKey);
       }

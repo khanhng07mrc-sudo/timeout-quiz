@@ -35,6 +35,7 @@ import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
 import OlympiaSandboxStudio from "@/components/olympia/OlympiaSandboxStudio";
 import HostConsole from "@/components/olympia/HostConsole";
+import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
 import { getOlympiaBanks } from "@/lib/olympia/olympia-storage";
 import {
   generateMagicWheelSectors,
@@ -569,6 +570,32 @@ export default function AdminSandboxPage() {
   const handleAdminNextRef = useRef<() => void>(() => {});
   const launchOfflineQuestionRef = useRef<(idx: number) => void>(() => {});
 
+  const olympiaSocketRef = useRef<Socket | null>(null);
+  const [olympiaState, setOlympiaState] = useState<OlympiaState | null>(null);
+
+  useEffect(() => {
+    if (effectiveActiveMode !== "OLYMPIA" || !code) return;
+    const sock = io("/olympia", { transports: ["websocket", "polling"], reconnection: true });
+    olympiaSocketRef.current = sock;
+    const key = typeof window !== "undefined" ? localStorage.getItem(`host_key_${code}`) || "sandbox" : "sandbox";
+    sock.on("connect", () => {
+      sock.emit("join", { code, role: "host", key });
+    });
+    sock.on("state", (s: OlympiaState) => {
+      setOlympiaState(s);
+    });
+    return () => {
+      sock.disconnect();
+      olympiaSocketRef.current = null;
+    };
+  }, [effectiveActiveMode, code]);
+
+  const sendOlympiaAction = useCallback((type: string, extra: Record<string, unknown> = {}) => {
+    if (olympiaSocketRef.current) {
+      olympiaSocketRef.current.emit("action", { type, ...extra });
+    }
+  }, []);
+
   // Authoritative ticker for match warmup countdown (5s)
   useEffect(() => {
     if (!matchStarting?.endsAt) return;
@@ -581,6 +608,9 @@ export default function AdminSandboxPage() {
         if (!prev) return null;
         const rem = Math.min(prev.seconds, remaining);
         if (rem <= 0) {
+          if (effectiveActiveMode === "OLYMPIA") {
+            sendOlympiaAction("game:start");
+          }
           if (pendingOfflineLaunchRef.current) {
             const cb = pendingOfflineLaunchRef.current;
             pendingOfflineLaunchRef.current = null;
@@ -2200,6 +2230,14 @@ export default function AdminSandboxPage() {
   // ── Admin Features Implementation ──────────────────────────────────────────
 
   const handleSkipPrepare = useCallback(() => {
+    if (effectiveActiveMode === "OLYMPIA") {
+      setMatchStarting(null);
+      setQuestionPrepare(null);
+      syncToIframes({ matchStarting: null, questionPrepare: null });
+      sendOlympiaAction("game:start");
+      addLog("Admin: Bỏ qua chuẩn bị và bắt đầu trận đấu Olympia!");
+      return;
+    }
     if (isOfflineSandbox) {
       if (offlinePrepIntervalRef.current) {
         clearInterval(offlinePrepIntervalRef.current);
@@ -10105,7 +10143,130 @@ export default function AdminSandboxPage() {
           ) : (
             <>
               {/* Center Section: Primary Smart MC Flow (Desktop only, mobile has Host Tab & Quick MC Button) */}
-              <div className="hidden lg:flex items-center gap-1.5 flex-wrap justify-center">
+              {effectiveActiveMode === "OLYMPIA" ? (
+                <div className="hidden lg:flex items-center gap-1.5 flex-wrap justify-center">
+                  {(matchStarting || questionPrepare) && (
+                    <button
+                      type="button"
+                      onClick={handleSkipPrepare}
+                      className="px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 text-black text-xs font-black shadow animate-pulse flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                      title="Bỏ qua đếm ngược chuẩn bị"
+                    >
+                      <span>⚡</span>
+                      <span>
+                        Bỏ qua chuẩn bị ({matchStarting?.seconds ?? questionPrepare?.seconds ?? 5}s)
+                      </span>
+                    </button>
+                  )}
+                  {olympiaState?.stage === "lobby" && (
+                    <button
+                      type="button"
+                      onClick={() => sendOlympiaAction("game:start")}
+                      className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-sky-400 text-white text-xs font-black shadow-lg shadow-purple-500/30 animate-pulse flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>▶</span>
+                      <span>Bắt đầu trận đấu Olympia</span>
+                    </button>
+                  )}
+                  {olympiaState?.stage === "playing" && olympiaState.introTimer && (
+                    <button
+                      type="button"
+                      onClick={() => sendOlympiaAction("intro:skip")}
+                      className="px-3.5 py-1.5 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-xs font-black shadow flex items-center gap-1.5 cursor-pointer animate-pulse"
+                    >
+                      <span>⚡</span>
+                      <span>Bỏ qua mở đầu / Vào Khởi Động</span>
+                    </button>
+                  )}
+                  {olympiaState?.stage === "playing" && !olympiaState.introTimer && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (olympiaState.currentRound === "khoiDong") sendOlympiaAction("kd:next");
+                          else if (olympiaState.currentRound === "tangToc") sendOlympiaAction("tt:next");
+                          else if (olympiaState.currentRound === "veDich") sendOlympiaAction("vd:nextSeat");
+                          else if (olympiaState.currentRound === "cauHoiPhu") sendOlympiaAction("chp:next");
+                        }}
+                        className="px-3 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-black shadow flex items-center gap-1 cursor-pointer"
+                        title="Chuyển sang câu hỏi tiếp theo"
+                      >
+                        <span>+</span>
+                        <span>Câu kế</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (olympiaState.currentRound === "khoiDong") sendOlympiaAction("kd:timer");
+                          else if (olympiaState.currentRound === "vcnv") sendOlympiaAction("vcnv:timer");
+                          else if (olympiaState.currentRound === "tangToc") sendOlympiaAction("tt:timer");
+                          else if (olympiaState.currentRound === "veDich") sendOlympiaAction("vd:startQuestion");
+                          else if (olympiaState.currentRound === "cauHoiPhu") sendOlympiaAction("chp:timer");
+                        }}
+                        className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black shadow flex items-center gap-1 cursor-pointer"
+                        title="Bắt đầu hoặc tạm dừng đếm ngược thời gian"
+                      >
+                        <span>⏱️</span>
+                        <span>Bắt đầu/Tạm dừng giờ</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (olympiaState.currentRound === "khoiDong") sendOlympiaAction("kd:correct");
+                          else if (olympiaState.currentRound === "vcnv") sendOlympiaAction("vcnv:correct");
+                          else if (olympiaState.currentRound === "veDich") sendOlympiaAction("vd:correct");
+                          else if (olympiaState.currentRound === "cauHoiPhu") sendOlympiaAction("chp:correct");
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow flex items-center gap-1 cursor-pointer"
+                        title="Chấm ĐÚNG (+10đ hoặc điểm câu hỏi)"
+                      >
+                        <span>✔</span>
+                        <span>Đúng (+10đ)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (olympiaState.currentRound === "khoiDong") sendOlympiaAction("kd:wrong");
+                          else if (olympiaState.currentRound === "veDich") sendOlympiaAction("vd:wrong");
+                          else if (olympiaState.currentRound === "cauHoiPhu") sendOlympiaAction("chp:wrong");
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow flex items-center gap-1 cursor-pointer"
+                        title="Chấm SAI (-5đ hoặc mở cướp)"
+                      >
+                        <span>✘</span>
+                        <span>Sai</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (olympiaState.currentRound === "khoiDong") sendOlympiaAction("kd:buzzer");
+                          else if (olympiaState.currentRound === "veDich") sendOlympiaAction("vd:openSteal");
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow flex items-center gap-1 cursor-pointer"
+                        title="Mở hoặc đóng chuông giành quyền"
+                      >
+                        <span>🔔</span>
+                        <span>Chuông / Cướp</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => sendOlympiaAction("round:next")}
+                        className="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold shadow flex items-center gap-1 cursor-pointer"
+                        title="Chuyển sang vòng thi tiếp theo"
+                      >
+                        <span>⏭</span>
+                        <span>Vòng kế</span>
+                      </button>
+                    </>
+                  )}
+                  {olympiaState?.currentRound && (
+                    <span className="px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-xs font-bold">
+                      {ROUND_LABELS[olympiaState.currentRound]}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="hidden lg:flex items-center gap-1.5 flex-wrap justify-center">
                 {/* 0a. Skip Countdown (Match Starting or Question Prepare) */}
                 {(matchStarting || questionPrepare) && (
                   <button
@@ -11071,7 +11232,8 @@ export default function AdminSandboxPage() {
                   </>
                 )}
 
-              </div>
+                </div>
+              )}
 
               {/* Right Section: Studio Utilities */}
               <div className="flex items-center gap-1.5 shrink-0 justify-end">

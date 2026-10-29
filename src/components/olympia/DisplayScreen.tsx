@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
-import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
+import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
 import { MediaView, ScoreStrip, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
 
 export default function DisplayScreen({ code }: { code: string }) {
   const { state, join, connected, serverNow } = useOlympiaSocket({ code, role: "display" });
   const [audioOn, setAudioOn] = useState(false);
   useOlympiaAudio(state, join?.audioSeason, audioOn);
+  const introRemainingMs = useCountdown(state?.introTimer, serverNow);
 
   if (join && !join.ok) return <div className="p-10 text-rose-300 text-2xl">{join.error}</div>;
   if (!state) return <div className="p-10 text-sky-200 text-2xl">Đang kết nối…</div>;
@@ -30,7 +31,23 @@ export default function DisplayScreen({ code }: { code: string }) {
       <div className="flex-1 flex items-center justify-center">
         {state.stage === "lobby" && <Lobby state={state} code={code} origin={origin} />}
         {state.stage === "finished" && <Podium state={state} />}
-        {state.stage === "playing" && state.banner && (
+        {state.stage === "playing" && state.introTimer && (
+          <div className="text-center space-y-4 animate-fade-in max-w-3xl px-4">
+            <div className="text-xl sm:text-2xl text-sky-300 font-bold uppercase tracking-widest animate-pulse">
+              Chào mừng đến với
+            </div>
+            <div className="text-5xl sm:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-400 drop-shadow-[0_4px_25px_rgba(234,179,8,0.5)]">
+              ĐƯỜNG LÊN ĐỈNH OLYMPIA
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-4">
+              <span className="text-lg sm:text-xl text-slate-300 font-medium">Bắt đầu trận đấu trong:</span>
+              <span className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-slate-950 font-black text-3xl shadow-xl shadow-yellow-500/30 animate-bounce">
+                {Math.max(1, Math.ceil(introRemainingMs / 1000))}
+              </span>
+            </div>
+          </div>
+        )}
+        {state.stage === "playing" && !state.introTimer && state.banner && (
           <div className="text-center">
             <div className="text-xl text-sky-300 mb-2">Phần thi</div>
             <div className="text-6xl font-black text-yellow-300 drop-shadow">{state.banner}</div>
@@ -142,6 +159,14 @@ function KhoiDong({ state, serverNow }: P) {
           <div className="text-5xl font-bold leading-tight">{kd.current.q}</div>
           <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-72 rounded-xl mx-auto" />
           {kd.phase === "result" && kd.current.a && <div className="text-4xl text-emerald-300 font-bold">Đáp án: {kd.current.a}</div>}
+          {kd.buzzUnlockAt && kd.buzzUnlockAt > serverNow() && (
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-amber-500/20 border-2 border-amber-400 text-amber-300 font-black text-xl animate-pulse mx-auto shadow-[0_0_20px_rgba(245,158,11,0.5)]">
+              <span>🔒 Chuông mở sau:</span>
+              <span className="text-3xl font-black text-yellow-300">
+                {Math.max(1, Math.ceil((kd.buzzUnlockAt - serverNow()) / 1000))}s
+              </span>
+            </div>
+          )}
           {kd.buzzedSeat != null && <div className="text-4xl font-black text-yellow-300">🔔 {seatName(state, kd.buzzedSeat)}</div>}
           <div className="max-w-md mx-auto">
             <Timer timer={kd.globalTimer ?? kd.timer} serverNow={serverNow} big />

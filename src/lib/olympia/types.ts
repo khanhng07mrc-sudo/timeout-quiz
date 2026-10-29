@@ -510,6 +510,7 @@ export interface OlympiaState {
   currentRound: RoundId | null;
   roundStatus: Record<RoundId, RoundStatus>;
   banner: string | null; // section title screen
+  introTimer?: TimerState | null; // opening show intro countdown timer (5s)
   khoiDong: KhoiDongState | null;
   vcnv: VcnvState | null;
   tangToc: TangTocState | null;

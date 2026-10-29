@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId } from "@/lib/olympia/types";
-import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
+import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
 import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
 import OlympiaAudioManagerDrawer from "./OlympiaAudioManagerDrawer";
 import OlympiaRulesWikipediaModal from "./OlympiaRulesWikipediaModal";
@@ -12,6 +12,7 @@ import { MediaView, Panel, ScoreStrip, SEAT_COLORS, Timer, activeSeats, btn, btn
 
 export default function HostConsole({ code, hostKey }: { code: string; hostKey: string }) {
   const { state, join, connected, emit, serverNow } = useOlympiaSocket({ code, role: "host", hostKey });
+  const introRem = useCountdown(state?.introTimer, serverNow);
   const [err, setErr] = useState("");
   const [audioOn, setAudioOn] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -178,6 +179,29 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       {state.stage === "lobby" && <Lobby state={state} call={call} code={code} origin={origin} />}
       {state.stage === "playing" && (
         <>
+          {state.introTimer && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 border-2 border-yellow-400/60 flex flex-wrap items-center justify-between gap-3 animate-pulse shadow-lg shadow-yellow-500/10">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl animate-spin">🎬</span>
+                <div>
+                  <div className="font-black text-yellow-300 text-base">
+                    Đang phát nhạc mở đầu show (show_intro.mp3)
+                  </div>
+                  <div className="text-xs text-slate-300">
+                    Tự động chuyển vào Khởi Động sau <b className="text-yellow-400 text-sm">{Math.max(1, Math.ceil(introRem / 1000))}s</b>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-sm shadow-md cursor-pointer transition active:scale-95 flex items-center gap-1.5"
+                onClick={() => call("intro:skip")}
+              >
+                <span>⚡ Bỏ qua mở đầu</span>
+                <span>⏭</span>
+              </button>
+            </div>
+          )}
           <RoundTracker state={state} call={call} />
           {state.currentRound === "khoiDong" && <KhoiDongPanel state={state} call={call} serverNow={serverNow} />}
           {state.currentRound === "vcnv" && <VcnvPanel state={state} call={call} serverNow={serverNow} />}
@@ -275,8 +299,8 @@ function Lobby({ state, call, code, origin }: { state: OlympiaState; call: Call;
           {ROUND_LABELS.cauHoiPhu} (tự động nếu đồng hạng)
         </span>
       </div>
-      <button className={btnPrimary} disabled={activeSeats(state).length === 0} onClick={() => call("game:start")}>
-        ▶ Bắt đầu trận đấu
+      <button className={btnPrimary} onClick={() => call("game:start")}>
+        {activeSeats(state).length === 0 ? "▶ Bắt đầu trận đấu (Tạo thí sinh mẫu)" : "▶ Bắt đầu trận đấu"}
       </button>
     </Panel>
   );

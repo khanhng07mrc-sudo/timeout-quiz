@@ -25451,6 +25451,17 @@ var OlympiaGame = class _OlympiaGame {
   /** Returns true if state changed. */
   tick(now) {
     const st = this.state;
+    if (st.introTimer && !!st.introTimer && timerRunning(st.introTimer) && timerRemaining(st.introTimer, now) <= 0) {
+      st.introTimer.remainingMs = 0;
+      st.introTimer.startedAt = null;
+      st.introTimer = null;
+      st.banner = st.currentRound ? ROUND_LABELS[st.currentRound] : null;
+      if (st.currentRound === "khoiDong") {
+        this.cue("1_KhoiDong/start_round");
+      }
+      this.touch(now);
+      return true;
+    }
     let changed = false;
     const expired = (t) => !!t && timerRunning(t) && timerRemaining(t, now) <= 0;
     const fin = (t) => {
@@ -25690,12 +25701,33 @@ var OlympiaGame = class _OlympiaGame {
     switch (type) {
       case "game:start": {
         if (st.stage !== "lobby") return fail("Tr\u1EADn \u0111\xE3 b\u1EAFt \u0111\u1EA7u");
-        if (this.activeSeatIds.length === 0) return fail("C\u1EA7n \xEDt nh\u1EA5t 1 th\xED sinh");
+        if (this.activeSeatIds.length === 0) {
+          const count = Math.min(8, Math.max(2, this.config.seatCount || 4));
+          for (let i = 0; i < count; i++) {
+            this.state.seats[i].name = `Th\xED sinh ${i + 1}`;
+            this.state.seats[i].connected = true;
+          }
+        }
         st.stage = "playing";
         st.roundIdx = -1;
         if (st.rounds.length === 0) return fail("Ch\u01B0a ch\u1ECDn v\xF2ng thi n\xE0o");
+        const res = this.nextRound(now);
+        if (!res.ok) return res;
+        st.banner = "\u0110\u01AF\u1EDCNG L\xCAN \u0110\u1EC8NH OLYMPIA";
+        st.introTimer = mkTimer(5e3);
+        startTimer(st.introTimer, now);
         this.cue("6_NhacKhac/show_intro");
-        return this.nextRound(now);
+        return OK;
+      }
+      case "intro:skip": {
+        if (st.introTimer) {
+          st.introTimer = null;
+          st.banner = st.currentRound ? ROUND_LABELS[st.currentRound] : null;
+          if (st.currentRound === "khoiDong") {
+            this.cue("1_KhoiDong/start_round");
+          }
+        }
+        return OK;
       }
       case "round:next":
         if (st.stage !== "playing") return fail("Tr\u1EADn ch\u01B0a b\u1EAFt \u0111\u1EA7u");
@@ -25811,6 +25843,11 @@ var OlympiaGame = class _OlympiaGame {
     const rs = this.ruleset.khoiDong;
     switch (type) {
       case "kd:next": {
+        if (st.introTimer) {
+          st.introTimer = null;
+          st.banner = null;
+          this.cue("1_KhoiDong/start_round");
+        }
         const isLastSeg = kd.segIdx + 1 >= kd.segments.length;
         if (kd.phase === "segmentDone" || seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0 && kd.phase !== "intro") {
           if (isLastSeg) {

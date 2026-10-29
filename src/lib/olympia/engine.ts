@@ -224,6 +224,17 @@ export class OlympiaGame {
   /** Returns true if state changed. */
   tick(now: number): boolean {
     const st = this.state;
+    if (st.introTimer && !!st.introTimer && timerRunning(st.introTimer) && timerRemaining(st.introTimer, now) <= 0) {
+      st.introTimer.remainingMs = 0;
+      st.introTimer.startedAt = null;
+      st.introTimer = null;
+      st.banner = st.currentRound ? ROUND_LABELS[st.currentRound] : null;
+      if (st.currentRound === "khoiDong") {
+        this.cue("1_KhoiDong/start_round");
+      }
+      this.touch(now);
+      return true;
+    }
     let changed = false;
     const expired = (t: TimerState | null | undefined) =>
       !!t && timerRunning(t) && timerRemaining(t, now) <= 0;
@@ -485,12 +496,33 @@ export class OlympiaGame {
     switch (type) {
       case "game:start": {
         if (st.stage !== "lobby") return fail("Trận đã bắt đầu");
-        if (this.activeSeatIds.length === 0) return fail("Cần ít nhất 1 thí sinh");
+        if (this.activeSeatIds.length === 0) {
+          const count = Math.min(8, Math.max(2, this.config.seatCount || 4));
+          for (let i = 0; i < count; i++) {
+            this.state.seats[i].name = `Thí sinh ${i + 1}`;
+            this.state.seats[i].connected = true;
+          }
+        }
         st.stage = "playing";
         st.roundIdx = -1;
         if (st.rounds.length === 0) return fail("Chưa chọn vòng thi nào");
+        const res = this.nextRound(now);
+        if (!res.ok) return res;
+        st.banner = "ĐƯỜNG LÊN ĐỈNH OLYMPIA";
+        st.introTimer = mkTimer(5000);
+        startTimer(st.introTimer, now);
         this.cue("6_NhacKhac/show_intro");
-        return this.nextRound(now);
+        return OK;
+      }
+      case "intro:skip": {
+        if (st.introTimer) {
+          st.introTimer = null;
+          st.banner = st.currentRound ? ROUND_LABELS[st.currentRound] : null;
+          if (st.currentRound === "khoiDong") {
+            this.cue("1_KhoiDong/start_round");
+          }
+        }
+        return OK;
       }
       case "round:next":
         if (st.stage !== "playing") return fail("Trận chưa bắt đầu");
@@ -610,6 +642,11 @@ export class OlympiaGame {
 
     switch (type) {
       case "kd:next": {
+        if (st.introTimer) {
+          st.introTimer = null;
+          st.banner = null;
+          this.cue("1_KhoiDong/start_round");
+        }
         const isLastSeg = kd.segIdx + 1 >= kd.segments.length;
 
         // In segmentDone (or expired global clock in intro)

@@ -33,6 +33,7 @@ export default function PlayerPad({
     token,
     enabled: name !== null && !!token,
   });
+  const introRem = useCountdown(state?.introTimer, serverNow);
 
   if (name === null) return null;
   if (join && !join.ok) {
@@ -67,7 +68,18 @@ export default function PlayerPad({
       <div className="flex-1 flex flex-col justify-center gap-4">
         {state.stage === "lobby" && <Center>Đã vào phòng. Chờ quản trò bắt đầu trận…</Center>}
         {state.stage === "finished" && <Center>Trận đấu kết thúc. Điểm của bạn: <b>{me.score}</b></Center>}
-        {state.stage === "playing" && state.banner && <Center>{state.banner}</Center>}
+        {state.stage === "playing" && state.introTimer && (
+          <div className="text-center space-y-3">
+            <div className="text-2xl font-black text-yellow-300 animate-pulse">
+              {state.banner || "ĐƯỜNG LÊN ĐỈNH OLYMPIA"}
+            </div>
+            <div className="text-slate-300">Chuẩn bị thi đấu trong:</div>
+            <div className="text-5xl font-black text-yellow-400">
+              {Math.max(1, Math.ceil(introRem / 1000))}s
+            </div>
+          </div>
+        )}
+        {state.stage === "playing" && !state.introTimer && state.banner && <Center>{state.banner}</Center>}
         {state.stage === "playing" && !state.banner && (
           <Round state={state} seatId={me.id} emit={emit} serverNow={serverNow} />
         )}
@@ -138,6 +150,11 @@ function Round({ state, seatId, emit, serverNow }: { state: OlympiaState; seatId
       return (
         <>
           {kd.current && <div className="text-center text-2xl font-semibold">{kd.current.q}</div>}
+          {kd.buzzUnlockAt && kd.buzzUnlockAt > serverNow() && (
+            <div className="text-center text-amber-300 font-black animate-pulse py-2 text-lg">
+              🔒 Chuông đang khóa: {Math.max(1, Math.ceil((kd.buzzUnlockAt - serverNow()) / 1000))}s
+            </div>
+          )}
           <BuzzButton enabled={kd.phase === "question" && kd.buzzOpen && !locked} onPress={() => emit("buzz")} />
           {locked && <Center>Bạn bị khóa chuông câu này</Center>}
           {kd.buzzedSeat != null && <Center>🔔 {seatName(state, kd.buzzedSeat)} đã bấm chuông</Center>}

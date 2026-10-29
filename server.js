@@ -25788,6 +25788,15 @@ var OlympiaGame = class _OlympiaGame {
         st.banner = null;
         this.cue("6_NhacKhac/ending_music");
         return OK;
+      case "audio:stop_bgm":
+        this.cue("", "stop");
+        return OK;
+      case "audio:prize":
+        this.cue("6_NhacKhac/prize_award");
+        return OK;
+      case "audio:summary":
+        this.cue("6_NhacKhac/summary");
+        return OK;
     }
     if (st.banner) st.banner = null;
     if (type.startsWith("kd:")) return this.kdAction(type, a, now);
@@ -25867,6 +25876,9 @@ var OlympiaGame = class _OlympiaGame {
           kd.nextLockedSeats = [];
           kd.current = null;
           kd.lastVerdict = null;
+          if (ns.kind === "solo") {
+            this.cue("1_KhoiDong/ready");
+          }
           return OK;
         }
         if (isSolo && kd.qIdx >= seg.questions - 1 && kd.phase !== "intro") {
@@ -25891,7 +25903,7 @@ var OlympiaGame = class _OlympiaGame {
           kd.nextLockedSeats = [];
           kd.current = null;
           kd.lastVerdict = null;
-          this.cue("1_KhoiDong/finish_turn");
+          this.cue(ns.kind === "solo" ? "1_KhoiDong/ready" : "1_KhoiDong/finish_turn");
           return OK;
         }
         if (!isSolo && isLastSeg && kd.qIdx >= seg.questions - 1 && kd.phase === "result") {
@@ -25970,8 +25982,22 @@ var OlympiaGame = class _OlympiaGame {
               kd.buzzOpen = true;
             }
           }
-          this.cue("1_KhoiDong/kd_bgm_" + (isSolo ? "1" : "2"), "bgm");
+          const totalQ = seg.questions || 6;
+          const halfway = Math.ceil(totalQ / 2);
+          let bgmTrack = "kd_bgm_1";
+          if (kd.qIdx < halfway - 1) {
+            bgmTrack = "kd_bgm_1";
+          } else if (kd.qIdx < totalQ - 1) {
+            bgmTrack = "kd_bgm_2";
+          } else {
+            bgmTrack = "kd_bgm_3";
+          }
+          this.cue("1_KhoiDong/" + bgmTrack, "bgm");
         }
+        return OK;
+      }
+      case "kd:ready": {
+        this.cue("1_KhoiDong/ready");
         return OK;
       }
       case "kd:correct": {
@@ -26149,7 +26175,7 @@ var OlympiaGame = class _OlympiaGame {
           v.answersRevealed = false;
           v.bells = [];
           v.centerWrong = false;
-          this.cue("2_VuotChuongNgaiVat/show_row");
+          this.cue("2_VuotChuongNgaiVat/choose_row");
           return OK;
         }
         if (v.rows[i].opened) return fail("H\xE0ng n\xE0y \u0111\xE3 m\u1EDF");
@@ -26160,7 +26186,7 @@ var OlympiaGame = class _OlympiaGame {
         v.answersRevealed = false;
         v.bells = [];
         v.rows[i].wrong = false;
-        this.cue("2_VuotChuongNgaiVat/show_row");
+        this.cue("2_VuotChuongNgaiVat/choose_row");
         return OK;
       }
       case "vcnv:timer": {
@@ -26609,7 +26635,7 @@ var OlympiaGame = class _OlympiaGame {
       verdict: "info",
       note: `${this.seatName(ownerSeat)} ch\u1ECDn g\xF3i c\xE2u h\u1ECFi ${resolvedPoints.join(" - ")} \u0111i\u1EC3m (T\u1ED5ng ${totalPkg}\u0111).`
     });
-    this.cue("4_VeDich/open_question");
+    this.cue("4_VeDich/choose_package");
     this.touch(now);
     return OK;
   }
@@ -26628,6 +26654,7 @@ var OlympiaGame = class _OlympiaGame {
         vd.phase = vd.packages[vd.order[idx]] ? "packageReady" : "choosing";
         vd.qIdx = -1;
         vd.current = null;
+        this.cue("4_VeDich/on_stage");
         return OK;
       }
       case "vd:choosePackage":
@@ -26867,7 +26894,7 @@ var OlympiaGame = class _OlympiaGame {
           }
         }
         vd.phase = vd.packages[vd.order[vd.turnIdx]] ? "packageReady" : "choosing";
-        this.cue("4_VeDich/choose_package");
+        this.cue("4_VeDich/on_stage");
         return OK;
       }
     }

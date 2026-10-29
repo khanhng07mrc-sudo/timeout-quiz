@@ -96,15 +96,15 @@ export function MediaView({ url, type, className }: { url?: string; type?: strin
 
 export function Panel({ title, children, className = "" }: { title?: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-white/15 bg-slate-900/70 p-4 ${className}`}>
-      {title && <h3 className="text-xs uppercase tracking-widest text-sky-300 mb-2 font-bold">{title}</h3>}
+    <div className={`rounded-xl border border-white/15 bg-slate-900/70 p-2.5 ${className}`}>
+      {title && <h3 className="text-[11px] uppercase tracking-widest text-sky-300 mb-1.5 font-bold">{title}</h3>}
       {children}
     </div>
   );
 }
 
 export const btn =
-  "px-3 py-2 rounded-lg text-sm font-bold border border-white/20 bg-white/10 hover:bg-white/20 active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed";
-export const btnPrimary = "px-3 py-2 rounded-lg text-sm font-bold bg-sky-500 hover:bg-sky-400 text-slate-950 active:scale-95 transition";
-export const btnOk = "px-3 py-2 rounded-lg text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 active:scale-95 transition";
-export const btnBad = "px-3 py-2 rounded-lg text-sm font-bold bg-rose-500 hover:bg-rose-400 text-white active:scale-95 transition";
+  "px-2.5 py-1.5 rounded-lg text-xs font-bold border border-white/20 bg-white/10 hover:bg-white/20 active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed";
+export const btnPrimary = "px-2.5 py-1.5 rounded-lg text-xs font-bold bg-sky-500 hover:bg-sky-400 text-slate-950 active:scale-95 transition";
+export const btnOk = "px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 active:scale-95 transition";
+export const btnBad = "px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-500 hover:bg-rose-400 text-white active:scale-95 transition";

@@ -75,68 +75,31 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950 text-white p-4 md:p-6 space-y-4">
-      <header className="flex flex-wrap items-center gap-3 justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-sky-300">🏔️ Đường lên đỉnh Olympia — Bàn điều khiển</h1>
-          <p className="text-sm text-slate-300 flex flex-wrap items-center gap-2">
-            <span>
-              Phòng <b className="text-yellow-300 text-lg">{code}</b> · Luật <b>{rs.label}</b> · {connected ? "🟢 Đã kết nối" : "🔴 Mất kết nối"}
-            </span>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/20 border border-cyan-400/40 text-cyan-200">
-              🎙 Mặc định: MC/Admin điều khiển & chấm điểm toàn quyền
-            </span>
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950 text-white p-2 md:p-3 space-y-2">
+      <header className="flex flex-wrap items-center gap-2 justify-between">
+        <div className="min-w-0">
+          <h1 className="text-base font-black text-sky-300 truncate">🏔️ Olympia — Bàn điều khiển</h1>
+          <p className="text-xs text-slate-300">
+            Phòng <b className="text-yellow-300">{code}</b> · <b>{rs.label}</b> · {connected ? "🟢 Đã kết nối" : "🔴 Mất kết nối"}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
-          <button
-            type="button"
-            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow flex items-center gap-1.5 cursor-pointer"
-            onClick={() => setShowAudioDrawer(true)}
-            title="Quản lý và kích hoạt toàn bộ 6 nhóm âm thanh qua các mùa giải"
-          >
-            🎵 Audio Manager
-          </button>
-          <button
-            type="button"
-            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow flex items-center gap-1.5 cursor-pointer"
-            onClick={() => setShowRules(true)}
-            title="Chi tiết luật chơi chuẩn Wikipedia cho tất cả 5 vòng qua mọi mùa giải"
-          >
-            📜 Luật Wikipedia
-          </button>
-          <button
-            type="button"
-            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow flex items-center gap-1.5 cursor-pointer"
-            onClick={() => setShowReport(true)}
-            title="Xem biên bản tổng kết trận và tải file Excel .xlsx / JSON"
-          >
-            📊 Xuất Excel
-          </button>
-          <button
-            type="button"
-            className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm shadow cursor-pointer"
-            onClick={() => setShowTranscript(true)}
-          >
-            📋 Biên bản ({(state.transcript ?? []).length})
-          </button>
-          <button
-            type="button"
-            className={`${btn} ${showMiniDisplay ? "bg-cyan-500/30 border-cyan-400 text-cyan-200 ring-1 ring-cyan-400/50" : ""}`}
-            onClick={() => setShowMiniDisplay((v) => !v)}
-            title="Xem trước màn hình trường quay thu nhỏ ngay trên bàn điều khiển"
-          >
-            👁️ {showMiniDisplay ? "Ẩn màn hình chiếu" : "Xem màn hình chiếu (PiP)"}
-          </button>
-          <a className={btn} href={`/olympia/display/${code}`} target="_blank" rel="noreferrer">
-            📺 Màn hình chiếu ↗
-          </a>
-          <button className={btn} onClick={() => navigator.clipboard?.writeText(`${origin}/play?pin=${code}`)}>
-            📋 Link thí sinh
-          </button>
-          <button className={btn} onClick={() => setAudioOn((v) => !v)}>
-            {audioOn ? "🔊 Âm thanh tự động" : "🔈 Tắt tiếng"}
-          </button>
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <button type="button" className="px-2.5 py-1 rounded-lg bg-rose-600/80 hover:bg-rose-500 text-white font-bold text-xs cursor-pointer flex items-center gap-1" onClick={() => call("audio:stop_bgm")} title="Dừng toàn bộ nhạc nền đang phát">⏹ Dừng nhạc</button>
+          <button type="button" className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs cursor-pointer" onClick={() => setShowAudioDrawer(true)} title="Quản lý và nghe thử âm thanh">🎵 Âm thanh</button>
+          <button type="button" className={`px-2.5 py-1 rounded-lg border text-xs font-bold cursor-pointer ${audioOn ? "bg-emerald-600/30 border-emerald-400 text-emerald-200" : "bg-white/10 border-white/20"}`} onClick={() => setAudioOn((v) => !v)}>{audioOn ? "🔊 Tự phát" : "🔈 Tắt tiếng"}</button>
+          <button type="button" className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs cursor-pointer" onClick={() => setShowTranscript(true)}>📋 Biên bản ({(state.transcript ?? []).length})</button>
+          <details className="relative">
+            <summary className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/20 text-xs font-bold cursor-pointer list-none select-none">⋯ Thêm</summary>
+            <div className="absolute right-0 z-30 mt-1 w-56 rounded-xl border border-white/20 bg-slate-900 shadow-2xl p-1.5 flex flex-col gap-1">
+              <button type="button" className="text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold text-amber-300" onClick={() => call("audio:prize")}>🏆 Phát nhạc trao giải</button>
+              <button type="button" className="text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold text-sky-300" onClick={() => call("audio:summary")}>📊 Phát nhạc tổng kết</button>
+              <button type="button" className="text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold" onClick={() => setShowRules(true)}>📜 Luật Wikipedia</button>
+              <button type="button" className="text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold" onClick={() => setShowReport(true)}>📊 Xuất Excel</button>
+              <button type="button" className="text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold" onClick={() => setShowMiniDisplay((v) => !v)}>👁️ {showMiniDisplay ? "Ẩn" : "Xem"} màn hình chiếu (PiP)</button>
+              <a className="px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold" href={`/olympia/display/${code}`} target="_blank" rel="noreferrer">📺 Mở màn hình chiếu ↗</a>
+              <button type="button" className="text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs font-bold" onClick={() => navigator.clipboard?.writeText(`${origin}/play?pin=${code}`)}>🔗 Sao chép link thí sinh</button>
+            </div>
+          </details>
         </div>
       </header>
 
@@ -168,13 +131,18 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
 
       {err && <div className="rounded-lg bg-rose-500/20 border border-rose-400 px-3 py-2 text-rose-100">⚠ {err}</div>}
 
-      <Panel title="Bảng điểm">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-white/15 bg-slate-900/70 px-2 py-1.5">
         {activeSeats(state).length ? (
-          <ScoreStrip state={state} />
+          activeSeats(state).map((s) => (
+            <span key={s.id} className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-2 py-0.5 text-xs" style={{ borderLeft: `4px solid ${SEAT_COLORS[s.id]}` }}>
+              <span className="font-semibold truncate max-w-[110px]">{s.name}</span>
+              <b className="text-base font-black" style={{ color: SEAT_COLORS[s.id] }}>{s.score}</b>
+            </span>
+          ))
         ) : (
-          <p className="text-slate-400">Chưa có thí sinh nào vào phòng.</p>
+          <span className="text-xs text-slate-400">Chưa có thí sinh nào vào phòng.</span>
         )}
-      </Panel>
+      </div>
 
       {state.stage === "lobby" && <Lobby state={state} call={call} code={code} origin={origin} />}
       {state.stage === "playing" && (
@@ -208,18 +176,12 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
           {state.currentRound === "tangToc" && <TangTocPanel state={state} call={call} serverNow={serverNow} />}
           {state.currentRound === "veDich" && <VeDichPanel state={state} call={call} serverNow={serverNow} />}
           {state.currentRound === "cauHoiPhu" && <ChpPanel state={state} call={call} serverNow={serverNow} />}
-          <ScoreAdjust state={state} call={call} />
+          <details className="rounded-xl border border-white/15 bg-slate-900/70"><summary className="px-3 py-1.5 text-xs font-bold text-sky-300 cursor-pointer select-none">✏️ Chỉnh điểm thủ công</summary><div className="p-2"><ScoreAdjust state={state} call={call} /></div></details>
         </>
       )}
       {state.stage === "finished" && <Finished state={state} call={call} />}
 
-      <Panel title="Nhật ký">
-        <div className="text-xs text-slate-300 max-h-28 overflow-auto space-y-0.5">
-          {[...state.log].reverse().map((l, i) => (
-            <div key={i}>{l}</div>
-          ))}
-        </div>
-      </Panel>
+      <details className="rounded-xl border border-white/15 bg-slate-900/70"><summary className="px-3 py-1.5 text-xs font-bold text-sky-300 cursor-pointer select-none">📜 Nhật ký</summary><div className="p-2 text-xs text-slate-300 max-h-28 overflow-auto space-y-0.5">{[...state.log].reverse().map((l, i) => (<div key={i}>{l}</div>))}</div></details>
 
       <OlympiaTranscriptModal
         open={showTranscript}
@@ -308,33 +270,31 @@ function Lobby({ state, call, code, origin }: { state: OlympiaState; call: Call;
 
 function RoundTracker({ state, call }: { state: OlympiaState; call: Call }) {
   return (
-    <Panel title="Tiến trình">
-      <div className="flex flex-wrap gap-2 items-center">
-        {state.roundsPlan.map((r) => {
-          const st = state.roundStatus[r];
-          const cur = state.currentRound === r;
-          return (
-            <span
-              key={r}
-              className={`px-3 py-1 rounded-full text-sm border ${cur ? "bg-yellow-300 text-slate-950 border-yellow-200 font-black" : st === "done" ? "bg-emerald-500/20 border-emerald-400/40" : "bg-white/5 border-white/15"}`}
-            >
-              {ROUND_LABELS[r]}
-              {st === "done" ? " ✓" : ""}
-            </span>
-          );
-        })}
-        <span className="flex-1" />
-        <button className={btnPrimary} onClick={() => call("round:next")}>
-          Vòng tiếp theo ⏭
-        </button>
-        <button className={btn} onClick={() => call("round:force", { round: "cauHoiPhu" })}>
-          Chạy Câu hỏi phụ
-        </button>
-        <button className={btnBad} onClick={() => confirm("Kết thúc trận đấu?") && call("game:end")}>
-          Kết thúc
-        </button>
-      </div>
-    </Panel>
+    <div className="flex flex-wrap gap-1.5 items-center rounded-xl border border-white/15 bg-slate-900/70 px-2 py-1.5">
+      {state.roundsPlan.map((r) => {
+        const st = state.roundStatus[r];
+        const cur = state.currentRound === r;
+        return (
+          <span
+            key={r}
+            className={`px-2 py-0.5 rounded-full text-[11px] border ${cur ? "bg-yellow-300 text-slate-950 border-yellow-200 font-black" : st === "done" ? "bg-emerald-500/20 border-emerald-400/40" : "bg-white/5 border-white/15"}`}
+          >
+            {ROUND_LABELS[r]}
+            {st === "done" ? " ✓" : ""}
+          </span>
+        );
+      })}
+      <span className="flex-1" />
+      <button className={btnPrimary} onClick={() => call("round:next")}>
+        Vòng tiếp theo ⏭
+      </button>
+      <button className={btn} onClick={() => call("round:force", { round: "cauHoiPhu" })}>
+        Chạy Câu hỏi phụ
+      </button>
+      <button className={btnBad} onClick={() => confirm("Kết thúc trận đấu?") && call("game:end")}>
+        Kết thúc
+      </button>
+    </div>
   );
 }
 
@@ -371,9 +331,20 @@ function Finished({ state, call }: { state: OlympiaState; call: Call }) {
           </li>
         ))}
       </ol>
-      <button className={btn} onClick={() => call("game:reset")}>
-        ↺ Chơi lại (giữ thí sinh, reset điểm)
-      </button>
+      <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">
+        <button className={btn} onClick={() => call("audio:prize")} title="Phát nhạc trao giải thưởng Olympia">
+          🏆 Nhạc trao giải
+        </button>
+        <button className={btn} onClick={() => call("audio:summary")} title="Phát nhạc tổng kết điểm số">
+          📊 Nhạc tổng kết
+        </button>
+        <button className={btnBad} onClick={() => call("audio:stop_bgm")} title="Dừng toàn bộ nhạc">
+          ⏹ Dừng nhạc
+        </button>
+        <button className={btn} onClick={() => call("game:reset")}>
+          ↺ Chơi lại (giữ thí sinh, reset điểm)
+        </button>
+      </div>
     </Panel>
   );
 }
@@ -407,7 +378,7 @@ function KhoiDongPanel({ state, call, serverNow }: { state: OlympiaState; call: 
             )}
           </div>
           {kd.current ? (
-            <div className="rounded-xl bg-white/5 p-3">
+            <div className="rounded-xl bg-white/5 p-2">
               <div className="text-xl font-semibold">{kd.current.q}</div>
               <div className="text-emerald-300 mt-1">Đáp án: {kd.current.a}</div>
               <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-40 mt-2 rounded" />
@@ -429,6 +400,11 @@ function KhoiDongPanel({ state, call, serverNow }: { state: OlympiaState; call: 
                 >
                   {kd.phase === "segmentDone" ? "Phần tiếp ⏭" : "Câu tiếp ⏭"}
                 </button>
+            {seg.kind === "solo" && (
+              <button className={btn} onClick={() => call("kd:ready")} title="Phát âm thanh sẵn sàng của thí sinh">
+                🎵 Sẵn sàng
+              </button>
+            )}
             <button className={btn} onClick={() => call("kd:timer")}>
               ⏱ Bắt đầu/Tạm dừng
             </button>
@@ -521,34 +497,47 @@ function VcnvPanel({ state, call, serverNow }: { state: OlympiaState; call: Call
               <div className="text-emerald-300 text-xs">ĐA: {v.centerQuestion?.a || v.keyword}</div>
             </button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button className={btn} onClick={() => call("vcnv:timer")}>
-              ⏱ 15s
-            </button>
-            <button className={btn} onClick={() => call("vcnv:reveal")}>
-              👁 Lật đáp án
-            </button>
-            <button className={btnOk} onClick={() => call("vcnv:correct", { seatIds: sel })}>
-              ✔ Chấm đúng ({sel.length})
-            </button>
-            <button className={btnBad} onClick={() => call("vcnv:wrong")}>
-              ✘ Không ai đúng
-            </button>
-            <button className={btn} onClick={() => call("vcnv:revealTile")}>
-              🧩 Lật mảnh
-            </button>
-            <button className={btn} onClick={() => call("vcnv:revealRowsOnly")}>
-              🔤 Mở hết ô chữ
-            </button>
-            <button className={btn} onClick={() => call("vcnv:revealPiecesOnly")}>
-              🧩 Mở hết mảnh ghép
-            </button>
-            <button className={btn} onClick={() => call("vcnv:revealAll")}>
-              Mở tất cả
-            </button>
-            <button className={btnPrimary} onClick={() => call("vcnv:end")}>
-              Kết thúc vòng ⏭
-            </button>
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-xs font-bold text-slate-400">Trong câu hỏi:</span>
+              <button className={btn} onClick={() => call("vcnv:timer")}>
+                ⏱ 15s suy nghĩ
+              </button>
+              <button className={btn} onClick={() => call("vcnv:reveal")}>
+                👁 Hiện đáp án thí sinh
+              </button>
+              <button className={btnOk} onClick={() => call("vcnv:correct", { seatIds: sel })}>
+                ✔ Chấm đúng ({sel.length})
+              </button>
+              <button className={btnBad} onClick={() => call("vcnv:wrong")}>
+                ✘ Không ai đúng
+              </button>
+              <button className={btn} onClick={() => call("vcnv:revealTile")} title="Mở mảnh ghép tương ứng hàng này">
+                🧩 Mở mảnh ghép hàng này
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2 items-center pt-1 border-t border-white/10">
+              <span className="text-xs font-bold text-slate-400">Cuối vòng / Giải CNV:</span>
+              <button className={btn} onClick={() => call("vcnv:revealAll")} title="Mở toàn bộ ô chữ và lật hết mảnh ghép ảnh">
+                🌟 Mở tất cả (ô chữ + mảnh ghép)
+              </button>
+              <button className={btnPrimary} onClick={() => call("vcnv:end")}>
+                ⏭ Kết thúc vòng VCNV
+              </button>
+              <details className="inline-block">
+                <summary className="text-xs text-slate-400 hover:text-white cursor-pointer px-2 py-1 rounded bg-white/5 border border-white/10">
+                  ⚙️ Mở thủ công chi tiết
+                </summary>
+                <div className="flex gap-2 mt-1.5">
+                  <button className={btn} onClick={() => call("vcnv:revealRowsOnly")}>
+                    🔤 Mở tất cả hàng chữ
+                  </button>
+                  <button className={btn} onClick={() => call("vcnv:revealPiecesOnly")}>
+                    🧩 Mở tất cả mảnh ảnh
+                  </button>
+                </div>
+              </details>
+            </div>
           </div>
           {(row || isCenterRow) && (
             <div className="rounded-lg bg-white/5 p-2.5 space-y-1.5">
@@ -627,7 +616,7 @@ function TangTocPanel({ state, call, serverNow }: { state: OlympiaState; call: C
       <div className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 space-y-3">
           {q ? (
-            <div className="rounded-xl bg-white/5 p-3">
+            <div className="rounded-xl bg-white/5 p-2">
               {q.q && <div className="text-lg">{q.q}</div>}
               <MediaView url={q.media} type={q.type} className="max-h-48 rounded mt-2" />
               <div className="text-emerald-300 mt-1">Đáp án: {q.answer}</div>
@@ -776,7 +765,7 @@ function VeDichPanel({ state, call, serverNow }: { state: OlympiaState; call: Ca
             </div>
           )}
           {cur && (
-            <div className="rounded-xl bg-white/5 p-3">
+            <div className="rounded-xl bg-white/5 p-2">
               <div className="text-xs text-slate-400">
                 {cur.points} điểm · {cur.q.type === "practice" ? "thực hành" : "lý thuyết"} {vd.hopeStarActive && <b className="text-yellow-300">⭐ Ngôi sao hy vọng</b>}
               </div>
@@ -839,7 +828,7 @@ function ChpPanel({ state, call, serverNow }: { state: OlympiaState; call: Call;
       <div className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 space-y-3">
           {q ? (
-            <div className="rounded-xl bg-white/5 p-3">
+            <div className="rounded-xl bg-white/5 p-2">
               <div className="text-xl font-semibold">{q.q}</div>
               <div className="text-emerald-300">Đáp án: {q.a}</div>
             </div>

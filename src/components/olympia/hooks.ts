@@ -100,6 +100,18 @@ export function useOlympiaAudio(state: OlympiaState | null, audioSeason: string 
     }
   }, []);
 
+  const pauseBgm = useCallback(() => {
+    if (bgm.current && !bgm.current.paused) {
+      bgm.current.pause();
+    }
+  }, []);
+
+  const resumeBgm = useCallback(() => {
+    if (bgm.current && bgm.current.paused) {
+      bgm.current.play().catch(() => {});
+    }
+  }, []);
+
   useEffect(() => {
     const cue = state?.cue;
     if (!cue) return;
@@ -110,17 +122,44 @@ export function useOlympiaAudio(state: OlympiaState | null, audioSeason: string 
     if (cue.id === lastCue.current) return;
     lastCue.current = cue.id;
     if (!enabled) return;
+
     if (cue.kind === "stop" || !cue.sound) {
       stopBgm();
       return;
     }
+
+    if (cue.kind === ("pause_bgm" as any)) {
+      pauseBgm();
+      return;
+    }
+
+    if (cue.kind === ("resume_bgm" as any)) {
+      resumeBgm();
+      return;
+    }
+
+    if (cue.sound.endsWith("bell_ring") && !cue.sound.includes("VuotChuongNgaiVat")) {
+      pauseBgm();
+    }
+
     const season = audioSeason || "O26";
     const play = (s: string, fallback: boolean) => {
       const a = new Audio(`/olympia-audio/${s}/${cue.sound}.mp3`);
-      const looping = cue.kind === "bgm" && /kd_bgm_[12]$/.test(cue.sound);
+      const looping = cue.kind === "bgm" && (/kd_bgm_[12]$/.test(cue.sound) || /loop/.test(cue.sound));
       a.loop = looping;
       a.onerror = () => {
-        if (fallback && s !== "O26") play("O26", false);
+        if (fallback && s !== "O26") {
+          play("O26", false);
+        } else if (/tick_(?:10|40)s/.test(cue.sound)) {
+          // Fallback for missing 10s or 40s tick
+          const altSound = cue.sound.replace(/tick_(?:10|40)s/, "tick_20s");
+          const alt = new Audio(`/olympia-audio/${s}/${altSound}.mp3`);
+          if (cue.kind === "bgm") {
+            stopBgm();
+            bgm.current = alt;
+          }
+          alt.play().catch(() => {});
+        }
       };
       if (cue.kind === "bgm") {
         stopBgm();
@@ -129,7 +168,7 @@ export function useOlympiaAudio(state: OlympiaState | null, audioSeason: string 
       a.play().catch(() => {});
     };
     play(season, true);
-  }, [state?.cue, audioSeason, enabled, stopBgm]);
+  }, [state?.cue, audioSeason, enabled, stopBgm, pauseBgm, resumeBgm]);
 
   useEffect(() => () => stopBgm(), [stopBgm]);
 }

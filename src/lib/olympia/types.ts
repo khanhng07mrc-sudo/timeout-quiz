@@ -260,7 +260,7 @@ export interface Cue {
   id: number;
   /** relative sound id, e.g. "khoidong/correct" — client resolves with season */
   sound: string;
-  kind: "sound" | "bgm" | "stop";
+  kind: "sound" | "bgm" | "stop" | "pause_bgm" | "resume_bgm";
 }
 
 export interface OlympiaConfig {

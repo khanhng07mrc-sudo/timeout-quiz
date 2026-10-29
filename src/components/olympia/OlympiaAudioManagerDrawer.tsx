@@ -146,7 +146,24 @@ const GROUPS_O22: SoundGroup[] = [
   },
   GROUPS_O26[2],
   GROUPS_O24_25[3],
-  GROUPS_O26[4],
+  {
+    group: "4. VỀ ĐÍCH",
+    items: [
+      { id: "4_VeDich/start_round", name: "Nhạc bắt đầu vòng thi" },
+      { id: "4_VeDich/on_stage", name: "Thí sinh bước lên bục" },
+      { id: "4_VeDich/choose_package", name: "Chọn gói câu hỏi" },
+      { id: "4_VeDich/open_question", name: "Mở câu hỏi" },
+      { id: "4_VeDich/10s_tick", name: "Nhạc nền suy nghĩ 10s (câu 10đ)" },
+      { id: "4_VeDich/15s_tick", name: "Nhạc nền suy nghĩ 15s (câu 20đ)" },
+      { id: "4_VeDich/20s_tick", name: "Nhạc nền suy nghĩ 20s (câu 30đ)" },
+      { id: "4_VeDich/5s_steal", name: "Mở cướp điểm 5s" },
+      { id: "4_VeDich/bell_ring", name: "Chuông bấm cướp điểm" },
+      { id: "4_VeDich/star_of_hope", name: "Ngôi sao hy vọng" },
+      { id: "4_VeDich/correct", name: "Trả lời đúng (+Điểm)" },
+      { id: "4_VeDich/wrong", name: "Trả lời sai" },
+      { id: "4_VeDich/finish_turn", name: "Kết thúc lượt thi" },
+    ],
+  },
   GROUPS_O26[5],
 ];
 
@@ -177,7 +194,24 @@ const GROUPS_O13_21: SoundGroup[] = [
       { id: "3_TangToc/wrong", name: "Trả lời sai" },
     ],
   },
-  GROUPS_O26[4],
+  {
+    group: "4. VỀ ĐÍCH",
+    items: [
+      { id: "4_VeDich/start_round", name: "Nhạc bắt đầu vòng thi" },
+      { id: "4_VeDich/on_stage", name: "Thí sinh bước lên bục" },
+      { id: "4_VeDich/choose_package", name: "Chọn gói câu hỏi" },
+      { id: "4_VeDich/open_question", name: "Mở câu hỏi" },
+      { id: "4_VeDich/10s_tick", name: "Nhạc nền suy nghĩ 10s (câu 10đ)" },
+      { id: "4_VeDich/15s_tick", name: "Nhạc nền suy nghĩ 15s (câu 20đ)" },
+      { id: "4_VeDich/20s_tick", name: "Nhạc nền suy nghĩ 20s (câu 30đ)" },
+      { id: "4_VeDich/5s_steal", name: "Mở cướp điểm 5s" },
+      { id: "4_VeDich/bell_ring", name: "Chuông bấm cướp điểm" },
+      { id: "4_VeDich/star_of_hope", name: "Ngôi sao hy vọng" },
+      { id: "4_VeDich/correct", name: "Trả lời đúng (+Điểm)" },
+      { id: "4_VeDich/wrong", name: "Trả lời sai" },
+      { id: "4_VeDich/finish_turn", name: "Kết thúc lượt thi" },
+    ],
+  },
   GROUPS_O26[5],
 ];
 

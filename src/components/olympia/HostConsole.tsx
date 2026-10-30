@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId, type Seat, type O22Quarter } from "@/lib/olympia/types";
 import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
@@ -115,21 +115,30 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
   const curRound = state.currentRound;
   const curRoundName = curRound ? ROUND_LABELS[curRound] : "CHỜ BẮT ĐẦU";
 
-  // Calculate current timer countdown for right-hand status widget
-  let activeTimerSeconds = "--";
-  if (curRound === "khoiDong") {
-    if (state.khoiDong?.globalTimer) activeTimerSeconds = `${Math.ceil(state.khoiDong.globalTimer.remainingMs / 1000)}s`;
-    else if (state.khoiDong?.timer) activeTimerSeconds = `${Math.ceil(state.khoiDong.timer.remainingMs / 1000)}s`;
-  } else if (curRound === "vcnv" && state.vcnv?.timer) {
-    activeTimerSeconds = `${Math.ceil(state.vcnv.timer.remainingMs / 1000)}s`;
-  } else if (curRound === "tangToc" && state.tangToc?.timer) {
-    activeTimerSeconds = `${Math.ceil(state.tangToc.timer.remainingMs / 1000)}s`;
-  } else if (curRound === "veDich") {
-    if (state.veDich?.steal?.open && state.veDich.steal.timer) activeTimerSeconds = `${Math.ceil(state.veDich.steal.timer.remainingMs / 1000)}s`;
-    else if (state.veDich?.timer) activeTimerSeconds = `${Math.ceil(state.veDich.timer.remainingMs / 1000)}s`;
-  } else if (curRound === "cauHoiPhu" && state.cauHoiPhu?.timer) {
-    activeTimerSeconds = `${Math.ceil(state.cauHoiPhu.timer.remainingMs / 1000)}s`;
-  }
+  // Calculate current timer countdown for right-hand status widget with live useCountdown
+  const activeTimer = useMemo(() => {
+    if (!state) return null;
+    const curRound = state.currentRound;
+    if (curRound === "khoiDong") {
+      return state.khoiDong?.globalTimer || state.khoiDong?.timer || null;
+    } else if (curRound === "vcnv") {
+      return state.vcnv?.timer || null;
+    } else if (curRound === "tangToc") {
+      return state.tangToc?.timer || null;
+    } else if (curRound === "veDich") {
+      return (state.veDich?.steal?.open ? state.veDich.steal.timer : state.veDich?.timer) || null;
+    } else if (curRound === "cauHoiPhu") {
+      return state.cauHoiPhu?.timer || null;
+    }
+    return null;
+  }, [state]);
+
+  const activeTimerMs = useCountdown(activeTimer, serverNow);
+  const activeTimerSeconds = activeTimer
+    ? (activeTimer.startedAt != null || activeTimer.remainingMs > 0
+        ? `${Math.ceil(activeTimerMs / 1000)}s`
+        : "0s")
+    : "--";
 
   const buzzerActive =
     curRound === "khoiDong"
@@ -858,37 +867,45 @@ function KhoiDongDeck({
         </button>
       </div>
 
-      {/* Row 4: Auxiliary: Toggle Chuông, Đổi BGM, Dừng BGM */}
-      <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-        <button
-          type="button"
-          onClick={() => call("kd:buzzer")}
-          className={`py-1.5 rounded-lg font-black text-xs border shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase transition ${
-            kd.buzzOpen
-              ? "bg-amber-500 border-amber-400 text-black shadow-amber-500/20"
-              : "bg-white/5 border-amber-400/30 text-amber-300 hover:bg-white/10"
-          }`}
-        >
-          <span>🔔</span>
-          <span>Chuông (C): {kd.buzzOpen ? "MỞ" : "KHÓA"}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => call("kd:cycle_bgm")}
-          className="py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold border border-white/10 cursor-pointer flex items-center justify-center gap-1"
-        >
-          <span>🎵</span>
-          <span>Đổi nhạc nền</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => call("audio:stop_bgm")}
-          className="py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer flex items-center justify-center gap-1"
-        >
-          <span>⏹</span>
-          <span>Dừng nhạc nền</span>
-        </button>
-      </div>
+      {/* Row 4: Auxiliary: Toggle Chuông (chỉ hiện khi có bấm chuông), Đổi BGM, Dừng BGM */}
+      {(() => {
+        const isO13to21 = ["O13", "O14", "O15", "O16", "O17", "O18", "O19", "O20", "O21"].includes(state.rulesetId);
+        const hasBuzzerInKd = !isSolo && !isO13to21;
+        return (
+          <div className={`grid ${hasBuzzerInKd ? "grid-cols-3" : "grid-cols-2"} gap-1.5 pt-0.5`}>
+            {hasBuzzerInKd && (
+              <button
+                type="button"
+                onClick={() => call("kd:buzzer")}
+                className={`py-1.5 rounded-lg font-black text-xs border shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase transition ${
+                  kd.buzzOpen
+                    ? "bg-amber-500 border-amber-400 text-black shadow-amber-500/20"
+                    : "bg-white/5 border-amber-400/30 text-amber-300 hover:bg-white/10"
+                }`}
+              >
+                <span>🔔</span>
+                <span>Chuông (C): {kd.buzzOpen ? "MỞ" : "KHÓA"}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => call("kd:cycle_bgm")}
+              className="py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold border border-white/10 cursor-pointer flex items-center justify-center gap-1"
+            >
+              <span>🎵</span>
+              <span>Đổi nhạc nền</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => call("audio:stop_bgm")}
+              className="py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer flex items-center justify-center gap-1"
+            >
+              <span>⏹</span>
+              <span>Dừng nhạc nền</span>
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -50,24 +50,33 @@ export default function PlayerPad({
 
   const me = state.seats[join.seatId];
   return (
-    <div className="h-full max-h-full overflow-hidden bg-gradient-to-b from-blue-950 to-slate-950 text-white p-2.5 sm:p-4 flex flex-col justify-between gap-2 sm:gap-3">
-      <div className="flex items-center justify-between rounded-xl bg-white/5 border border-white/15 p-2.5 sm:p-3 shrink-0" style={{ borderLeft: `6px solid ${SEAT_COLORS[me.id]}` }}>
-        <div>
-          <div className="text-[11px] sm:text-xs text-slate-400">
-            Ghế {me.id + 1} · {RULESETS[state.rulesetId].label} {connected ? "🟢" : "🔴"}
-          </div>
-          <div className="text-base sm:text-xl font-bold">{me.name}</div>
+    <div className="h-full max-h-full overflow-hidden bg-gradient-to-b from-blue-950 to-slate-950 text-white p-2 sm:p-3 flex flex-col justify-between gap-2">
+      {/* Sleek compact single-line top bar */}
+      <div
+        className="flex items-center justify-between rounded-xl bg-black/40 border border-white/10 px-3 py-1.5 shrink-0 gap-2"
+        style={{ borderLeft: `5px solid ${SEAT_COLORS[me.id]}` }}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: SEAT_COLORS[me.id] }} />
+          <span className="text-xs sm:text-sm font-black truncate text-white">{me.name}</span>
+          <span className="text-[10px] text-slate-400 shrink-0 font-medium hidden xs:inline">
+            · Ghế {me.id + 1} {connected ? "🟢" : "🔴"}
+          </span>
         </div>
-        <div className="text-2xl sm:text-4xl font-black" style={{ color: SEAT_COLORS[me.id] }}>
-          {me.score}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <span className="text-[10px] sm:text-xs font-bold text-sky-300 uppercase tracking-wider bg-sky-500/10 px-2 py-0.5 rounded border border-sky-400/20">
+            {state.currentRound ? ROUND_LABELS[state.currentRound] : state.stage === "lobby" ? "Sảnh" : ""}
+          </span>
+          <span
+            className="text-lg sm:text-2xl font-black tabular-nums"
+            style={{ color: SEAT_COLORS[me.id] }}
+          >
+            {me.score}
+          </span>
         </div>
       </div>
 
-      <div className="text-center text-sky-300 font-semibold text-xs sm:text-sm shrink-0">
-        {state.currentRound ? ROUND_LABELS[state.currentRound] : state.stage === "lobby" ? "Sảnh chờ" : ""}
-      </div>
-
-      <div className="flex-1 min-h-0 flex flex-col justify-center items-center gap-3 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col justify-center items-center gap-2 overflow-hidden">
         {state.stage === "lobby" && <Center>Đã vào phòng. Chờ quản trò bắt đầu trận…</Center>}
         {state.stage === "finished" && <Center>Trận đấu kết thúc. Điểm của bạn: <b>{me.score}</b></Center>}
         {state.stage === "playing" && state.introTimer && (
@@ -82,7 +91,7 @@ export default function PlayerPad({
           </div>
         )}
         {state.stage === "playing" && !state.introTimer && state.banner && <Center>{state.banner}</Center>}
-        {state.stage === "playing" && !state.banner && (
+        {state.stage === "playing" && !state.introTimer && !state.banner && (
           <Round state={state} seatId={me.id} emit={emit} serverNow={serverNow} />
         )}
       </div>
@@ -101,11 +110,14 @@ function BuzzButton({ enabled, onPress, label = "BẤM CHUÔNG" }: { enabled: bo
     <button
       disabled={!enabled}
       onClick={onPress}
-      className={`mx-auto w-64 h-64 rounded-full text-3xl font-black border-8 transition active:scale-95 ${enabled ? "bg-red-500 border-red-300 shadow-[0_0_60px_rgba(239,68,68,0.8)]" : "bg-slate-700 border-slate-600 text-slate-400"}`}
+      className={`mx-auto w-36 h-36 sm:w-44 sm:h-44 rounded-full text-base sm:text-xl font-black border-4 sm:border-6 transition active:scale-95 flex flex-col items-center justify-center cursor-pointer shadow-lg ${
+        enabled
+          ? "bg-gradient-to-b from-red-500 to-rose-600 border-red-300 text-white shadow-[0_0_36px_rgba(239,68,68,0.7)] animate-pulse"
+          : "bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed opacity-60"
+      }`}
     >
-      🔔
-      <br />
-      {label}
+      <span className="text-2xl sm:text-3xl mb-0.5">🔔</span>
+      <span>{label}</span>
     </button>
   );
 }
@@ -141,38 +153,77 @@ function Round({ state, seatId, emit, serverNow }: { state: OlympiaState; seatId
       const kd = state.khoiDong!;
       const seg = kd.segments[kd.segIdx];
       if (seg.kind === "solo") {
+        const isMyTurn = seg.seat === seatId;
         return (
-          <Center>
-            {seg.seat === seatId ? <b className="text-yellow-300">Đến lượt bạn trả lời!</b> : `Lượt thi của ${seatName(state, seg.seat)}`}
-            {kd.current && (
-              !kd.questionRevealed ? (
-                <div className="mt-2 text-xs sm:text-sm text-sky-300 animate-pulse">Sẵn sàng thi đấu…</div>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2.5 max-w-lg mx-auto py-1">
+            <div
+              className={`px-3 py-1 rounded-full text-xs sm:text-sm font-black tracking-wide uppercase transition shrink-0 ${
+                isMyTurn
+                  ? "bg-amber-400/20 text-yellow-300 border border-amber-400/40 animate-pulse shadow-[0_0_12px_rgba(251,191,36,0.3)]"
+                  : "bg-white/5 text-slate-400 border border-white/10"
+              }`}
+            >
+              {isMyTurn ? "🎯 Đến lượt bạn trả lời!" : `Lượt thi của ${seatName(state, seg.seat)}`}
+            </div>
+
+            {/* Fixed question container */}
+            <div className="w-full flex-1 min-h-[120px] max-h-[220px] rounded-2xl bg-white/5 border border-white/10 p-3 sm:p-4 flex flex-col items-center justify-center text-center shadow-inner overflow-y-auto no-scrollbar">
+              {!kd.current ? (
+                <div className="text-slate-400 text-sm sm:text-base font-medium animate-pulse">
+                  Đang đợi câu hỏi…
+                </div>
+              ) : !kd.questionRevealed ? (
+                <div className="text-sky-300 text-sm sm:text-base font-black animate-pulse uppercase tracking-wider">
+                  Sẵn sàng thi đấu…
+                </div>
               ) : (
-                <div className="mt-2 text-sm sm:text-base md:text-lg font-semibold leading-relaxed max-h-[35vh] overflow-y-auto">{kd.current.q}</div>
-              )
-            )}
-          </Center>
+                <div className="text-white text-base sm:text-lg md:text-xl font-bold leading-relaxed select-text">
+                  {kd.current.q}
+                </div>
+              )}
+            </div>
+          </div>
         );
       }
       const locked = kd.lockedSeats.includes(seatId);
       return (
-        <>
-          {kd.current && (
-            !kd.questionRevealed ? (
-              <div className="text-center text-xs sm:text-sm text-sky-300 animate-pulse">Sẵn sàng thi đấu…</div>
+        <div className="w-full h-full flex flex-col items-center justify-between gap-2 max-w-lg mx-auto py-1">
+          {/* Fixed question container */}
+          <div className="w-full flex-1 min-h-[90px] max-h-[140px] rounded-2xl bg-white/5 border border-white/10 p-3 sm:p-4 flex flex-col items-center justify-center text-center shadow-inner overflow-y-auto no-scrollbar">
+            {!kd.current ? (
+              <div className="text-slate-400 text-sm sm:text-base font-medium animate-pulse">
+                Đang đợi câu hỏi…
+              </div>
+            ) : !kd.questionRevealed ? (
+              <div className="text-sky-300 text-sm sm:text-base font-black animate-pulse uppercase tracking-wider">
+                Sẵn sàng thi đấu…
+              </div>
             ) : (
-              <div className="text-center text-sm sm:text-base md:text-lg font-semibold leading-relaxed max-h-[35vh] overflow-y-auto">{kd.current.q}</div>
-            )
-          )}
-          {kd.buzzUnlockAt && kd.buzzUnlockAt > serverNow() && (
-            <div className="text-center text-amber-300 font-black animate-pulse py-1 text-sm sm:text-base">
-              🔒 Chuông đang khóa: {Math.max(1, Math.ceil((kd.buzzUnlockAt - serverNow()) / 1000))}s
-            </div>
-          )}
-          <BuzzButton enabled={kd.phase === "question" && kd.buzzOpen && !locked} onPress={() => emit("buzz")} />
-          {locked && <Center>Bạn bị khóa chuông câu này</Center>}
-          {kd.buzzedSeat != null && <Center>🔔 {seatName(state, kd.buzzedSeat)} đã bấm chuông</Center>}
-        </>
+              <div className="text-white text-base sm:text-lg font-bold leading-relaxed select-text">
+                {kd.current.q}
+              </div>
+            )}
+          </div>
+
+          {/* Lock countdown or Buzzer button fixed */}
+          <div className="shrink-0 flex flex-col items-center gap-1.5 py-1">
+            {kd.buzzUnlockAt && kd.buzzUnlockAt > serverNow() && (
+              <div className="text-center text-amber-300 font-black animate-pulse text-xs sm:text-sm">
+                🔒 Chuông đang khóa: {Math.max(1, Math.ceil((kd.buzzUnlockAt - serverNow()) / 1000))}s
+              </div>
+            )}
+            <BuzzButton
+              enabled={kd.phase === "question" && kd.buzzOpen && !locked}
+              onPress={() => emit("buzz")}
+            />
+            {locked && <div className="text-rose-400 text-xs font-bold">Bạn bị khóa chuông câu này</div>}
+            {kd.buzzedSeat != null && (
+              <div className="text-amber-300 text-xs sm:text-sm font-black">
+                🔔 {seatName(state, kd.buzzedSeat)} đã bấm chuông
+              </div>
+            )}
+          </div>
+        </div>
       );
     }
     case "vcnv": {

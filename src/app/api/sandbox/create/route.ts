@@ -101,31 +101,42 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // If quiz bank specified, ensure it exists (auto-seeding preset if necessary)
-    if (quizBankId) {
-      quizBankId = (await ensureQuizBankExists(quizBankId)) || quizBankId;
-    }
+    let customQuizBankTitle: string | undefined = body.quizBankTitle;
+    let quizBank = null;
+    let quizBankTitle = "Mặc định";
 
-    let quizBank = quizBankId
-      ? await prisma.quizBank.findUnique({
-          where: { id: quizBankId },
+    if (mode === "OLYMPIA") {
+      const oRuleset = body.config?.olympia?.rulesetId || "O26";
+      quizBankTitle = customQuizBankTitle || `Đề Thi Olympia (${oRuleset})`;
+    } else {
+      // If quiz bank specified, ensure it exists (auto-seeding preset if necessary)
+      if (quizBankId) {
+        quizBankId = (await ensureQuizBankExists(quizBankId)) || quizBankId;
+      }
+
+      quizBank = quizBankId
+        ? await prisma.quizBank.findUnique({
+            where: { id: quizBankId },
+            include: { _count: { select: { questions: true } } },
+          })
+        : null;
+
+      if (!quizBank) {
+        quizBank = await prisma.quizBank.findFirst({
+          where: { OR: [{ ownerId: host.id }, { isPublic: true }] },
           include: { _count: { select: { questions: true } } },
-        })
-      : null;
+          orderBy: { createdAt: "desc" },
+        });
+      }
 
-    if (!quizBank) {
-      quizBank = await prisma.quizBank.findFirst({
-        where: { OR: [{ ownerId: host.id }, { isPublic: true }] },
-        include: { _count: { select: { questions: true } } },
-        orderBy: { createdAt: "desc" },
-      });
-    }
+      if (!quizBank) {
+        quizBank = await prisma.quizBank.findFirst({
+          include: { _count: { select: { questions: true } } },
+          orderBy: { createdAt: "desc" },
+        });
+      }
 
-    if (!quizBank) {
-      quizBank = await prisma.quizBank.findFirst({
-        include: { _count: { select: { questions: true } } },
-        orderBy: { createdAt: "desc" },
-      });
+      quizBankTitle = customQuizBankTitle || quizBank?.title || "Mặc định";
     }
 
     // Generate unique 6-digit room code
@@ -326,7 +337,7 @@ export async function POST(req: NextRequest) {
       name: room.name,
       hostKey,
       mode: room.mode,
-      quizBankTitle: quizBank?.title || "Mặc định",
+      quizBankTitle,
       teams: createdTeams,
       players: createdPlayers,
       hostPlayerId: hostPlayer.id,

@@ -130,8 +130,8 @@ export default function DisplayScreen({ code }: { code: string }) {
           )}
         </div>
 
-        {/* Score strip */}
-        {state.stage !== "lobby" && (
+        {/* Score strip (ở Khởi Động các ô tên/điểm đã được đẩy lên trên đầu cạnh câu hỏi) */}
+        {state.stage !== "lobby" && state.currentRound !== "khoiDong" && (
           <div className="shrink-0 px-2 pb-2">
             <ScoreStrip state={state} large highlight={highlightSeats(state)} />
           </div>
@@ -218,33 +218,39 @@ function autoQuestionFontSize(text: string) {
 function DisplayTimerBar({ timer, serverNow }: { timer: any; serverNow: () => number }) {
   const ms = useCountdown(timer, serverNow);
   const total = timer?.totalMs || 1;
-  const pct = Math.max(0, Math.min(100, (ms / total) * 100));
   const running = timer?.startedAt != null;
-  const hasFinished = timer?.remainingMs <= 0 && timer?.startedAt == null;
-  const displayPct = hasFinished ? 0 : running ? pct : 100;
-  const low = ms <= 3000 && ms > 0;
+
+  // Thanh thời gian CHỈ HIỂN THỊ trong thời gian đếm ngược
+  if (!running || ms <= 0) return null;
+
+  // Chạy từ trái sang phải (0 lên 100% khi thời gian trôi qua)
+  const elapsedPct = Math.max(0, Math.min(100, ((total - ms) / total) * 100));
+  const isStart = ms >= total - 1200; // Khoảnh khắc bắt đầu
+  const isEnd = ms <= 3000; // Khoảnh khắc kết thúc / cảnh báo
 
   return (
-    <div className="w-full relative py-1 flex items-center">
+    <div className="w-full relative py-1 flex items-center animate-fade-in">
       {/* Sleek track */}
-      <div className="w-full h-1.5 rounded-full bg-violet-950/70 border border-violet-500/25 overflow-hidden shadow-inner relative">
+      <div className="w-full h-2 rounded-full bg-violet-950/80 border border-violet-500/30 overflow-hidden shadow-inner relative">
         <div
           className={`h-full rounded-full transition-all duration-100 ${
-            low
-              ? "bg-gradient-to-r from-red-500 to-rose-400 shadow-[0_0_8px_rgba(239,68,68,0.7)]"
-              : "bg-gradient-to-r from-amber-400 via-rose-500 to-violet-500 shadow-[0_0_8px_rgba(251,191,36,0.5)]"
+            isEnd
+              ? "bg-gradient-to-r from-red-600 via-rose-500 to-amber-400 shadow-[0_0_12px_rgba(239,68,68,0.9)]"
+              : "bg-gradient-to-r from-violet-600 via-sky-400 to-amber-300 shadow-[0_0_10px_rgba(56,189,248,0.6)]"
           }`}
-          style={{ width: `${displayPct}%` }}
+          style={{ width: `${elapsedPct}%` }}
         />
       </div>
-      {/* Sleek circle thumb indicator attached to the tip of progress */}
+      {/* Sleek circle thumb indicator attached to the tip of progress with O14-19 zoom mechanism */}
       <div
-        className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none transition-all duration-100 rounded-full w-2.5 h-2.5 border ${
-          low
-            ? "bg-red-400 border-red-200 shadow-[0_0_8px_#ef4444]"
-            : "bg-amber-300 border-amber-100 shadow-[0_0_6px_#f59e0b]"
+        className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none transition-all duration-100 rounded-full border ${
+          isEnd
+            ? "w-4 h-4 bg-red-400 border-red-100 shadow-[0_0_14px_#ef4444] scale-125 animate-ping"
+            : isStart
+            ? "w-3.5 h-3.5 bg-sky-300 border-white shadow-[0_0_12px_#38bdf8] scale-125 animate-pulse"
+            : "w-3 h-3 bg-amber-300 border-amber-100 shadow-[0_0_8px_#f59e0b]"
         }`}
-        style={{ left: `${displayPct}%` }}
+        style={{ left: `${elapsedPct}%` }}
       />
     </div>
   );
@@ -261,11 +267,107 @@ function KhoiDong({ state, serverNow }: P) {
   const totalQ = seg.questions > 100 ? "" : `/${seg.questions}`;
   const qNum = Math.max(1, kd.qIdx + 1);
 
+  // Contestant seats for single-row header
+  const seats = activeSeats(state);
+  const currentBuzzedSeat = kd.buzzedSeat;
+  const currentSoloSeat = isSolo ? (seg.seat ?? null) : null;
+
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col h-full min-h-0 py-1">
-      {/* Main card */}
+    <div className="w-full max-w-5xl mx-auto flex flex-col h-full min-h-0 py-1 gap-2">
+      {/* ── SINGLE-LINE TOP BAR: Question number + 4 Contestant Shapes ── */}
+      <div className="flex items-center justify-between gap-1.5 sm:gap-2 shrink-0 w-full">
+        {/* Question Counter Badge */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span
+            className="px-2.5 py-1 rounded-xl text-xs sm:text-sm font-black whitespace-nowrap shadow-sm"
+            style={{
+              background: "linear-gradient(90deg, rgba(245,158,11,0.25), rgba(239,68,68,0.25))",
+              border: "1px solid rgba(245,158,11,0.45)",
+              color: "#fbbf24",
+            }}
+          >
+            Câu {qNum}{totalQ} · 10đ
+          </span>
+          {kd.current?.subject && (
+            <span className="hidden md:inline-flex px-2.5 py-1 rounded-xl bg-violet-500/20 border border-violet-400/30 text-violet-200 font-bold text-xs items-center gap-1 whitespace-nowrap">
+              <span>📚</span>
+              <span>{kd.current.subject}</span>
+            </span>
+          )}
+        </div>
+
+        {/* 4 Contestant Shapes (Tên & Điểm trên cùng 1 hàng duy nhất) */}
+        <div className="flex-1 grid grid-cols-4 gap-1 sm:gap-1.5 min-w-0">
+          {seats.map((s) => {
+            const isBuzzed = currentBuzzedSeat != null && currentBuzzedSeat === s.id;
+            const isSoloTurn = !isBuzzed && currentSoloSeat != null && currentSoloSeat === s.id;
+            const color = SEAT_COLORS[s.id] || "#38bdf8";
+
+            if (isBuzzed) {
+              return (
+                <div
+                  key={s.id}
+                  className="rounded-lg border px-1.5 py-1 text-center transition-all animate-pulse shadow-[0_0_16px_#f59e0b] flex items-center justify-between min-w-0"
+                  style={{
+                    border: "1.5px solid #facc15",
+                    borderLeft: "4px solid #facc15",
+                    background: "linear-gradient(180deg, rgba(245, 158, 11, 0.45) 0%, rgba(217, 119, 6, 0.25) 100%)",
+                  }}
+                >
+                  <span className="truncate font-black text-[11px] sm:text-xs text-amber-200 flex items-center gap-0.5">
+                    <span>🔔</span>
+                    <span>{s.name}</span>
+                  </span>
+                  <span className="font-black tabular-nums text-xs sm:text-sm text-amber-300 ml-1">
+                    {s.score}
+                  </span>
+                </div>
+              );
+            }
+
+            if (isSoloTurn) {
+              return (
+                <div
+                  key={s.id}
+                  className="rounded-lg border px-1.5 py-1 text-center transition-all flex items-center justify-between min-w-0"
+                  style={{
+                    border: `1.5px solid ${color}90`,
+                    borderLeft: `4px solid ${color}`,
+                    background: `linear-gradient(180deg, ${color}45 0%, ${color}20 100%)`,
+                    boxShadow: `0 0 14px ${color}50, inset 0 0 8px ${color}30`,
+                  }}
+                >
+                  <span className="truncate font-black text-[11px] sm:text-xs text-white">
+                    {s.name}
+                  </span>
+                  <span className="font-black tabular-nums text-xs sm:text-sm ml-1" style={{ color, textShadow: `0 0 8px ${color}` }}>
+                    {s.score}
+                  </span>
+                </div>
+              );
+            }
+
+            return (
+              <div
+                key={s.id}
+                className="rounded-lg border px-1.5 py-1 text-center transition-all border-violet-500/20 bg-gradient-to-b from-white/10 to-white/[0.03] flex items-center justify-between min-w-0"
+                style={{ borderLeft: `3px solid ${color}` }}
+              >
+                <span className="truncate font-medium text-[11px] sm:text-xs text-slate-300">
+                  {s.name}
+                </span>
+                <span className="font-bold tabular-nums text-xs sm:text-sm text-slate-200 ml-1">
+                  {s.score}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main question card */}
       <div
-        className="w-full relative rounded-2xl flex flex-col gap-3 overflow-hidden"
+        className="w-full relative rounded-2xl flex flex-col gap-3 overflow-hidden flex-1 min-h-0"
         style={{
           background: "linear-gradient(160deg, rgba(26,13,63,0.95) 0%, rgba(15,7,40,0.98) 100%)",
           border: `1px solid ${seatColor}30`,
@@ -275,28 +377,6 @@ function KhoiDong({ state, serverNow }: P) {
       >
         {/* Accent bar */}
         <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${seatColor}80, #ef4444aa, #7c3aedaa)` }} />
-
-        {/* Header */}
-        <div className="flex items-center justify-between gap-2 shrink-0 border-b border-violet-500/15 pb-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full shadow-md shrink-0" style={{ backgroundColor: seatColor, boxShadow: `0 0 8px ${seatColor}` }} />
-            <span className="font-bold text-sm sm:text-base text-violet-100 tracking-wide">{seg.label}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span
-              className="px-3 py-1 rounded-full text-xs sm:text-sm font-black"
-              style={{ background: "linear-gradient(90deg,rgba(245,158,11,0.2),rgba(239,68,68,0.2))", border: "1px solid rgba(245,158,11,0.4)", color: "#fbbf24" }}
-            >
-              Câu {qNum}{totalQ} · 10đ
-            </span>
-            {kd.current?.subject && (
-              <span className="px-3 py-1 rounded-full bg-violet-500/15 border border-violet-400/30 text-violet-200 font-bold text-xs sm:text-sm flex items-center gap-1">
-                <span>📚</span>
-                <span>{kd.current.subject}</span>
-              </span>
-            )}
-          </div>
-        </div>
 
         {/* Question stage with fixed height */}
         <div className="w-full min-h-[140px] max-h-[140px] flex flex-col justify-center items-center py-2 overflow-y-auto no-scrollbar">

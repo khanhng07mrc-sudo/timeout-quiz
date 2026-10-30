@@ -585,6 +585,18 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     });
     sock.on("state", (s: OlympiaState) => {
       setOlympiaState(s);
+      // Tự động chuyển tab thí sinh theo đúng lượt chơi đơn (Khởi Động cá nhân, Về Đích)
+      if (s.currentRound === "khoiDong" && s.khoiDong) {
+        const seg = s.khoiDong.segments[s.khoiDong.segIdx];
+        if (seg?.kind === "solo" && seg.seat != null) {
+          setOlympiaActiveSeat(seg.seat);
+        }
+      } else if (s.currentRound === "veDich" && s.veDich) {
+        const targetSeat = s.veDich.order[s.veDich.turnIdx];
+        if (targetSeat != null) {
+          setOlympiaActiveSeat(targetSeat);
+        }
+      }
     });
     return () => {
       sock.disconnect();
@@ -1419,7 +1431,24 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       setTeamSelectedAnswers({});
       offlineAnswersRef.current.clear();
       offlineFinalizedActorsRef.current.clear();
-      addLog(`Chuyển về bàn cờ / đường đua`);
+      if (roomStateRef.current?.status === "PLAYING") {
+        const mode = roomStateRef.current?.mode;
+        if (mode === "OLYMPIA") {
+          addLog("Trở về màn hình trường quay");
+        } else if (mode === "DICE_RACE") {
+          addLog("Chuyển về đường đua 30 ô");
+        } else if (mode === "GRID_CARO") {
+          addLog("Chuyển về ma trận Caro");
+        } else if (mode === "MAGIC_WHEEL") {
+          addLog("Chuyển về Vòng quay trí tuệ");
+        } else if (mode === "MYSTERY_QUEST") {
+          addLog("Chuyển về bản đồ kho báu");
+        } else if (mode === "BOUNCEBACK") {
+          addLog("Chuyển về đấu trường tiếp sức");
+        } else {
+          addLog("Chuyển về bàn đấu");
+        }
+      }
     });
 
     sock.on("game:bounceback:awaiting_judgment", (p) => {
@@ -1988,6 +2017,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
             if (data?.room && data.room.status !== "FINISHED") {
               setCode(candidateCode);
               setIsOfflineSandbox(false);
+              if (data.room.mode) setSelectedMode(data.room.mode);
               saveSandboxSession(candidateCode, false, data.room.mode, undefined, undefined, data.room.name);
               connectAdminSocket(candidateCode);
             } else {
@@ -6829,12 +6859,18 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
+      const selectedBank = compatibleBanks.find((b) => b.id === selectedBankId);
+      const chosenBankTitle = modeToUse === "OLYMPIA"
+        ? (selectedBank?.title || `Đề Thi Olympia (${olympiaRulesetId})`)
+        : selectedBank?.title;
+
       const res = await fetch("/api/sandbox/create", {
         method: "POST",
         headers,
         body: JSON.stringify({
           mode: modeToUse,
           quizBankId: selectedBankId,
+          quizBankTitle: chosenBankTitle,
           teams: sandboxCustomTeams,
           config: modeToUse === "OLYMPIA" ? {
             olympia: {
@@ -6859,9 +6895,13 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
         adminQuestionDataRef.current = null;
         setCode(data.code);
         setIsOfflineSandbox(false);
+        setSelectedMode(data.mode || modeToUse);
         saveSandboxSession(data.code, false, data.mode || modeToUse, selectedBankId, data.hostKey, data.name);
         connectAdminSocket(data.code);
-        addLog(`⚡ Đã khởi tạo Sandbox Online: Phòng ${data.code} (${data.mode}) - Bộ đề: ${data.quizBankTitle || "Trực tuyến"}`);
+        const modeLabel = (data.mode || modeToUse) === "OLYMPIA"
+          ? `Đường Lên Đỉnh Olympia - ${olympiaRulesetId}`
+          : (MODE_DISPLAY_NAMES[(data.mode || modeToUse) as GameMode] || data.mode);
+        addLog(`⚡ Đã khởi tạo Sandbox Online: Phòng ${data.code} (${modeLabel}) - Bộ đề: ${data.quizBankTitle || chosenBankTitle || "Đề thi Olympia Chuẩn"}`);
 
         // Chờ 150ms để React hoàn tất mount bàn đấu ngầm, sau đó kích hoạt pha quét logo 110vh & vén màn
         setTimeout(() => {
@@ -11962,15 +12002,20 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                 })}
               </div>
 
-              {/* Iframe Thí sinh */}
-              <div className="flex-1 min-h-0 bg-[#0f0f1a]">
-                <iframe
-                  ref={playerIframeRef}
-                  src={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(sandboxCustomTeams[olympiaActiveSeat]?.name || `Thí sinh ${olympiaActiveSeat + 1}`)}`}
-                  allow="autoplay; camera; microphone"
-                  title="Player Viewport"
-                  className="w-full h-full border-0"
-                />
+              {/* Iframe Thí sinh: Pre-render sẵn các tab thí sinh để chuyển đổi tức thì 0ms không tải lại */}
+              <div className="flex-1 min-h-0 bg-[#0f0f1a] relative">
+                {Array.from({ length: Math.min(8, Math.max(2, sandboxCustomTeams.length || 4)) }, (_, sIdx) => {
+                  const tName = sandboxCustomTeams[sIdx]?.name || `Thí sinh ${sIdx + 1}`;
+                  return (
+                    <iframe
+                      key={sIdx}
+                      src={`/olympia/play/${code}?seat=${sIdx}&name=${encodeURIComponent(tName)}`}
+                      allow="autoplay; camera; microphone"
+                      title={`Player Viewport ${sIdx}`}
+                      className={sIdx === olympiaActiveSeat ? "w-full h-full border-0 absolute inset-0" : "hidden"}
+                    />
+                  );
+                })}
               </div>
             </div>
           </div>

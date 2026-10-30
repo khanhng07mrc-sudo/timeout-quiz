@@ -25532,7 +25532,6 @@ var OlympiaGame = class _OlympiaGame {
       if (kd.globalTimer && expired(kd.globalTimer)) {
         fin(kd.globalTimer);
         kd.buzzOpen = false;
-        this.cue("", "stop");
       }
       if (expired(kd.timer)) {
         fin(kd.timer);

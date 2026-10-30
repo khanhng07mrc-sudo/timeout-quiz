@@ -247,6 +247,7 @@ export default function AdminSandboxPage() {
   const [selectedMode, setSelectedMode] = useState<GameMode>("GRID_CARO");
   const [selectedBankId, setSelectedBankId] = useState<string>("");
 const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
+  const [sandboxPlayIntroOnCreate, setSandboxPlayIntroOnCreate] = useState<boolean>(true);
   const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; isWordPuzzle?: boolean; _count?: { questions: number } }[]>([]);
   const lastUserEditionChangeTimestampRef = useRef<number>(0);
 
@@ -6875,8 +6876,11 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
           config: modeToUse === "OLYMPIA" ? {
             olympia: {
               rulesetId: olympiaRulesetId,
+              playIntroOnCreate: sandboxPlayIntroOnCreate,
             }
-          } : undefined,
+          } : {
+            playIntroOnCreate: sandboxPlayIntroOnCreate,
+          },
         }),
       });
       const data = await res.json();
@@ -11552,6 +11556,23 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   </select>
                 </div>
               )}
+
+              {/* 🎵 Nhạc hiệu mở đầu khi tạo phòng */}
+              <label
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-slate-300 font-bold cursor-pointer transition select-none shadow-sm"
+                title="Mặc định phát nhạc hiệu mở đầu chương trình trên màn hình Chiếu (Display) khi tạo phòng"
+              >
+                <input
+                  type="checkbox"
+                  checked={sandboxPlayIntroOnCreate}
+                  onChange={(e) => setSandboxPlayIntroOnCreate(e.target.checked)}
+                  className="rounded border-white/30 text-amber-500 focus:ring-0 cursor-pointer w-3.5 h-3.5"
+                />
+                <span className="text-[11px] text-amber-300 flex items-center gap-1">
+                  <span>🎵</span>
+                  <span className="hidden sm:inline">Nhạc mở đầu</span>
+                </span>
+              </label>
             </div>
 
             {/* Center: Connect PIN form */}

@@ -44,6 +44,7 @@ export default function CreateOlympiaPage() {
   const [banks, setBanks] = useState<OlympiaBankItem[]>([]);
   const [selectedBankId, setSelectedBankId] = useState<string>("olympia_preset_o25_o26_full");
   const [targetContestantCount, setTargetContestantCount] = useState<number>(4);
+  const [playIntroOnCreate, setPlayIntroOnCreate] = useState<boolean>(true);
 
   useEffect(() => {
     const loaded = getOlympiaBanks();
@@ -218,6 +219,7 @@ export default function CreateOlympiaPage() {
               rounds,
               questionSet: finalSet,
               seatCount: targetContestantCount,
+              playIntroOnCreate,
             },
           },
         }),

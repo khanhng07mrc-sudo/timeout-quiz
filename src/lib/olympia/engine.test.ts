@@ -1271,5 +1271,16 @@ test("O13-O22: when 60s expires, current question is preserved, finish_turn is N
   assert.equal(g.state.khoiDong!.current, null);
 });
 
+
+test("OlympiaGame defaults to playing show_intro on room creation when playIntroOnCreate is true", () => {
+  const gDefault = game("O26", ["khoiDong"], 4);
+  assert.equal(gDefault.state.stage, "lobby");
+  assert.equal(gDefault.state.cue?.sound, "6_NhacKhac/show_intro");
+  assert.equal(gDefault.state.cue?.kind, "sound");
+
+  const gDisabled = game("O26", ["khoiDong"], 4, { playIntroOnCreate: false });
+  assert.equal(gDisabled.state.cue, null);
+});
+
 console.log(`${passed} tests passed`);
 

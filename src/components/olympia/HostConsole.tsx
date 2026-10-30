@@ -106,15 +106,6 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [state?.currentRound]);
 
-  if (join && !join.ok) {
-    return <div className="p-8 text-rose-300 text-lg">Không thể vào bàn điều khiển: {join.error}</div>;
-  }
-  if (!state) return <div className="p-8 text-sky-200">Đang kết nối bàn điều khiển…</div>;
-
-  const seats = activeSeats(state);
-  const curRound = state.currentRound;
-  const curRoundName = curRound ? ROUND_LABELS[curRound] : "CHỜ BẮT ĐẦU";
-
   // Calculate current timer countdown for right-hand status widget with live useCountdown
   const activeTimer = useMemo(() => {
     if (!state) return null;
@@ -139,6 +130,17 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
         ? `${Math.ceil(activeTimerMs / 1000)}s`
         : "0s")
     : "--";
+
+  if (join && !join.ok) {
+    return <div className="p-8 text-rose-300 text-lg">Không thể vào bàn điều khiển: {join.error}</div>;
+  }
+  if (!state) return <div className="p-8 text-sky-200">Đang kết nối bàn điều khiển…</div>;
+
+  const seats = activeSeats(state);
+  const curRound = state.currentRound;
+  const curRoundName = curRound ? ROUND_LABELS[curRound] : "CHỜ BẮT ĐẦU";
+
+
 
   const buzzerActive =
     curRound === "khoiDong"

@@ -279,6 +279,8 @@ export interface OlympiaConfig {
   teams?: Array<{ name: string; color?: string }>;
   /** Olympia 22 Quarter selection (1 = Quý 1, 2 = Quý 2, 3 = Quý 3 - CKN) */
   o22Quarter?: O22Quarter;
+  /** When true (default), play show_intro opening sound on room creation */
+  playIntroOnCreate?: boolean;
 }
 
 export type RoundStatus = "pending" | "active" | "done";

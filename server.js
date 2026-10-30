@@ -25354,8 +25354,8 @@ var OlympiaGame = class _OlympiaGame {
       tangToc: null,
       veDich: null,
       cauHoiPhu: null,
-      cue: null,
-      cueSeq: 0,
+      cue: config.playIntroOnCreate !== false ? { id: 1, sound: "6_NhacKhac/show_intro", kind: "sound" } : null,
+      cueSeq: config.playIntroOnCreate !== false ? 1 : 0,
       version: 0,
       now,
       log: [],
@@ -25709,7 +25709,9 @@ var OlympiaGame = class _OlympiaGame {
     const st = this.state;
     if (st.currentRound) st.roundStatus[st.currentRound] = "done";
     st.banner = null;
-    this.cue("", "stop");
+    if (!st.cue?.sound?.includes("finish_turn")) {
+      this.cue("", "stop");
+    }
     this.touch(now);
   }
   /** Advance to the next planned round (CHP is only played on a tie). */
@@ -26000,40 +26002,51 @@ var OlympiaGame = class _OlympiaGame {
         const isTimeUp = Boolean(seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0);
         const isLastQ = kd.qIdx >= (seg.questions || 6) - 1;
         if (kd.started && kd.phase !== "intro" && (isTimeUp || isLastQ)) {
-          this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
-          if (isLastSeg) {
-            kd.phase = "segmentDone";
-            kd.current = null;
-            this.finishRound(now);
-            return OK;
-          }
-          kd.segIdx += 1;
-          const ns = kd.segments[kd.segIdx];
-          kd.qIdx = -1;
-          kd.phase = "intro";
-          kd.questionRevealed = false;
-          kd.started = false;
-          kd.timer = mkTimer(ns.perQuestionMs);
-          kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
-          kd.buzzedSeat = null;
+          kd.phase = "segmentDone";
+          kd.current = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = void 0;
-          kd.lockedSeats = [];
-          kd.nextLockedSeats = [];
-          kd.current = null;
-          kd.lastVerdict = null;
+          this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
+          if (isLastSeg) {
+            this.finishRound(now);
+          }
           return OK;
         }
-        if (kd.phase === "question" && !kd.questionRevealed) {
+        if (kd.phase === "intro" || kd.phase === "question" && !kd.questionRevealed) {
+          const wasStarted = kd.started;
+          kd.phase = "question";
+          kd.started = true;
           kd.questionRevealed = true;
-          const rId = this.ruleset.id;
-          const aSeason2 = this.ruleset.audioSeason;
-          if (kd.globalTimer) {
+          if (kd.qIdx < 0) {
+            kd.qIdx = 0;
+            const q2 = this.kdPoolQuestion(kd, seg);
+            if (q2) {
+              q2.used = true;
+              this.recordOpenedQuestion(q2.q);
+              kd.current = {
+                q: q2.q,
+                a: q2.a,
+                subject: q2.subject,
+                kdZone: q2.kdZone,
+                vdZone: q2.vdZone,
+                media: q2.media,
+                mediaType: q2.mediaType
+              };
+            }
+          }
+          if (isSolo) {
+            kd.buzzOpen = false;
+            kd.buzzUnlockAt = void 0;
+          } else {
+            kd.buzzOpen = false;
+            const lockMs = this.ruleset.id === "O22" ? 2e3 : 5e3;
+            kd.buzzUnlockAt = now + lockMs;
+          }
+          if (wasStarted && kd.globalTimer) {
+            const rId = this.ruleset.id;
+            const aSeason2 = this.ruleset.audioSeason;
             if (!timerRunning(kd.globalTimer)) {
               startTimer(kd.globalTimer, now);
-            }
-            if (!isSolo) {
-              kd.buzzOpen = true;
             }
             if (aSeason2 === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
               this.cue("1_KhoiDong/60s", "bgm");
@@ -26043,7 +26056,7 @@ var OlympiaGame = class _OlympiaGame {
               else if (gMs <= 6e4) this.cue("1_KhoiDong/60s", "bgm");
               else this.cue("1_KhoiDong/90s", "bgm");
             }
-          } else {
+          } else if (!kd.globalTimer) {
             kd.currentBgmTrack = "kd_bgm_1";
             this.cue("1_KhoiDong/kd_bgm_1", "bgm");
           }
@@ -26107,7 +26120,7 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "kd:timer": {
-        if (kd.phase !== "question") return fail("Ch\u01B0a m\u1EDF c\xE2u h\u1ECFi");
+        if (kd.phase !== "question" && kd.phase !== "intro") return fail("Ch\u01B0a m\u1EDF c\xE2u h\u1ECFi");
         if (seg.globalMs && kd.globalTimer) {
           if (timerRunning(kd.globalTimer)) {
             pauseTimer(kd.globalTimer, now);
@@ -26115,6 +26128,16 @@ var OlympiaGame = class _OlympiaGame {
           } else {
             startTimer(kd.globalTimer, now);
             kd.buzzOpen = !isSolo;
+            const rId = this.ruleset.id;
+            const aSeason = this.ruleset.audioSeason;
+            if (aSeason === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
+              this.cue("1_KhoiDong/60s", "bgm");
+            } else if (rId === "O22" || aSeason === "O22") {
+              const gMs = seg.globalMs || 6e4;
+              if (gMs <= 3e4) this.cue("1_KhoiDong/30s", "bgm");
+              else if (gMs <= 6e4) this.cue("1_KhoiDong/60s", "bgm");
+              else this.cue("1_KhoiDong/90s", "bgm");
+            }
           }
           return OK;
         }
@@ -26168,6 +26191,7 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "kd:blank": {
         kd.lastVerdict = null;
+        this.cue("6_NhacKhac/blank_space");
         return OK;
       }
       case "kd:cycle_bgm": {
@@ -26433,6 +26457,7 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "vcnv:blank": {
         v.phase = "question";
+        this.cue("6_NhacKhac/blank_space");
         return OK;
       }
       case "vcnv:revealRowText": {
@@ -26742,6 +26767,7 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "tt:blank": {
         tt.phase = "idle";
+        this.cue("6_NhacKhac/blank_space");
         return OK;
       }
       case "tt:revealAndGrade": {
@@ -26988,6 +27014,7 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "vd:blank": {
         vd.lastVerdict = null;
+        this.cue("6_NhacKhac/blank_space");
         return OK;
       }
       case "vd:practiceTimer": {
@@ -27267,6 +27294,7 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "chp:blank": {
         cp.buzzedSeat = null;
+        this.cue("6_NhacKhac/blank_space");
         return OK;
       }
       case "chp:buzzer": {

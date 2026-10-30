@@ -245,10 +245,15 @@ export function useOlympiaAudio(
     const cue = state?.cue;
     if (!cue) return;
     if (lastCue.current == null) {
-      lastCue.current = cue.id; // do not replay on first sync
-      return;
+      lastCue.current = cue.id;
+      // Nếu là âm thanh mở đầu khi tạo phòng ở sảnh chờ (show_intro), cho phép phát ngay lần sync đầu tiên
+      if (cue.sound === "6_NhacKhac/show_intro" && state.stage === "lobby") {
+        // Cho phép phát tiếp tục
+      } else {
+        return; // do not replay on first sync
+      }
     }
-    if (cue.id === lastCue.current) return;
+    if (cue.id === lastCue.current && !(cue.sound === "6_NhacKhac/show_intro" && state.stage === "lobby")) return;
     lastCue.current = cue.id;
     if (!enabled) return;
 

@@ -197,6 +197,7 @@ export async function POST(req: NextRequest) {
         questionSet: body.config?.olympia?.questionSet || SAMPLE_QUESTION_SET,
         seatCount: teamCount,
         teams: inputTeams,
+        playIntroOnCreate: body.config?.olympia?.playIntroOnCreate !== false,
       };
     }
 

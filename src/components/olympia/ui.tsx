@@ -8,7 +8,7 @@ import { useCountdown } from "./hooks";
 // Background: #0d0820 → #120b2e → #1a0d3f
 // Accent gradient: #f59e0b (amber) → #ef4444 (red) → #7c3aed (violet)
 
-export const SEAT_COLORS = ["#38bdf8", "#f472b6", "#facc15", "#4ade80", "#c084fc", "#fb923c", "#2dd4bf", "#f87171"];
+export const SEAT_COLORS = ["#ef4444", "#3b82f6", "#eab308", "#10b981", "#c084fc", "#fb923c", "#2dd4bf", "#f87171"];
 
 // Ascend theme tokens
 export const ASCEND = {
@@ -80,11 +80,15 @@ export function Timer({
 
 export function ScoreStrip({
   state,
-  highlight = [],
+  highlight,
+  buzzedSeat,
+  activeSoloSeat,
   large,
 }: {
   state: OlympiaState;
   highlight?: (number | null | undefined)[];
+  buzzedSeat?: number | null;
+  activeSoloSeat?: number | null;
   large?: boolean;
 }) {
   const seats = activeSeats(state);
@@ -100,28 +104,129 @@ export function ScoreStrip({
       ? "grid-cols-3 sm:grid-cols-6 max-w-4xl mx-auto"
       : "grid-cols-4 sm:grid-cols-8 w-full";
 
+  // Xác định thí sinh bấm chuông (chỉ highlight sáng ô khi bấm chuông)
+  const currentBuzzedSeat =
+    buzzedSeat !== undefined
+      ? buzzedSeat
+      : state.currentRound === "khoiDong"
+      ? state.khoiDong?.buzzedSeat
+      : state.currentRound === "vcnv"
+      ? (state.vcnv?.bells?.[0]?.seat ?? null)
+      : state.currentRound === "veDich"
+      ? state.veDich?.steal?.buzzedSeat
+      : state.currentRound === "cauHoiPhu"
+      ? state.cauHoiPhu?.buzzedSeat
+      : null;
+
+  // Xác định thí sinh đang thi lượt riêng cá nhân (O13-21 và lượt riêng O24-26)
+  const currentSoloSeat =
+    activeSoloSeat !== undefined
+      ? activeSoloSeat
+      : state.currentRound === "khoiDong" && state.khoiDong
+      ? (() => {
+          const kd = state.khoiDong;
+          const seg = kd.segments[kd.segIdx];
+          return seg?.kind === "solo" ? (seg.seat ?? null) : null;
+        })()
+      : state.currentRound === "veDich" && state.veDich
+      ? state.veDich.order[state.veDich.turnIdx] ?? null
+      : null;
+
   return (
     <div className={`grid ${cols} gap-1.5 sm:gap-2 w-full`}>
       {seats.map((s) => {
-        const hl = highlight.includes(s.id);
+        const isBuzzed = currentBuzzedSeat != null && currentBuzzedSeat === s.id;
+        const isSoloTurn = !isBuzzed && currentSoloSeat != null && currentSoloSeat === s.id;
+        const color = SEAT_COLORS[s.id] || "#38bdf8";
+
+        // 1. Khi có thí sinh bấm chuông: highlight sáng rực rỡ màu chuông amber
+        if (isBuzzed) {
+          return (
+            <div
+              key={s.id}
+              className={`rounded-xl border px-2 py-1.5 text-center transition-all scale-[1.05] animate-pulse shadow-[0_0_24px_#f59e0b] ${
+                s.connected ? "" : "opacity-50"
+              }`}
+              style={{
+                border: "2px solid #facc15",
+                background: "linear-gradient(180deg, rgba(245, 158, 11, 0.45) 0%, rgba(217, 119, 6, 0.25) 100%)",
+                borderLeft: "5px solid #facc15",
+              }}
+            >
+              <div
+                className={`truncate font-black leading-tight ${
+                  large ? "text-xs sm:text-sm" : "text-[10px] sm:text-xs"
+                } text-amber-200 flex items-center justify-center gap-1`}
+              >
+                <span>🔔</span>
+                <span>{s.name}</span>
+              </div>
+              <div
+                className={`font-black tabular-nums leading-tight ${
+                  large ? "text-xl sm:text-3xl" : "text-base sm:text-xl"
+                } text-amber-300 drop-shadow`}
+              >
+                {s.score}
+              </div>
+            </div>
+          );
+        }
+
+        // 2. Với đội đang chơi ở O13 - 21 và lượt riêng O24 - 26: hiện nền đúng màu sắc chỉ thị như viền bên trái
+        if (isSoloTurn) {
+          return (
+            <div
+              key={s.id}
+              className={`rounded-xl border px-2 py-1.5 text-center transition-all scale-[1.02] ${
+                s.connected ? "" : "opacity-50"
+              }`}
+              style={{
+                border: `1.5px solid ${color}80`,
+                borderLeft: `5px solid ${color}`,
+                background: `linear-gradient(180deg, ${color}35 0%, ${color}12 100%)`,
+                boxShadow: `0 0 18px ${color}40, inset 0 0 10px ${color}20`,
+              }}
+            >
+              <div
+                className={`truncate font-bold leading-tight ${
+                  large ? "text-xs sm:text-sm" : "text-[10px] sm:text-xs"
+                } text-white drop-shadow`}
+              >
+                {s.name}
+              </div>
+              <div
+                className={`font-black tabular-nums leading-tight ${
+                  large ? "text-xl sm:text-3xl" : "text-base sm:text-xl"
+                }`}
+                style={{ color, textShadow: `0 0 12px ${color}80` }}
+              >
+                {s.score}
+              </div>
+            </div>
+          );
+        }
+
+        // 3. Đội bình thường: nền tối nhẹ, chỉ có viền trái mang màu sắc chỉ thị
         return (
           <div
             key={s.id}
-            className={`rounded-xl border px-2 py-1.5 text-center transition-all ${
-              hl
-                ? "border-amber-400/70 bg-gradient-to-b from-amber-500/25 to-amber-800/10 scale-[1.04] shadow-[0_0_16px_rgba(251,191,36,0.35)]"
-                : "border-violet-500/20 bg-gradient-to-b from-white/5 to-white/[0.02]"
-            } ${s.connected ? "" : "opacity-50"}`}
-            style={{ borderLeft: `4px solid ${SEAT_COLORS[s.id]}` }}
+            className={`rounded-xl border px-2 py-1.5 text-center transition-all border-violet-500/20 bg-gradient-to-b from-white/5 to-white/[0.02] ${
+              s.connected ? "" : "opacity-50"
+            }`}
+            style={{ borderLeft: `4px solid ${color}` }}
           >
             <div
-              className={`truncate font-semibold leading-tight ${large ? "text-xs sm:text-sm" : "text-[10px] sm:text-xs"} text-violet-200/80`}
+              className={`truncate font-semibold leading-tight ${
+                large ? "text-xs sm:text-sm" : "text-[10px] sm:text-xs"
+              } text-violet-200/80`}
             >
               {s.name}
             </div>
             <div
-              className={`font-black tabular-nums leading-tight ${large ? "text-xl sm:text-3xl" : "text-base sm:text-xl"}`}
-              style={{ color: SEAT_COLORS[s.id] }}
+              className={`font-black tabular-nums leading-tight ${
+                large ? "text-xl sm:text-3xl" : "text-base sm:text-xl"
+              }`}
+              style={{ color }}
             >
               {s.score}
             </div>

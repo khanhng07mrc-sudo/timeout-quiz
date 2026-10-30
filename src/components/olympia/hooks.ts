@@ -147,8 +147,9 @@ export function useOlympiaAudio(
   /** Crossfade to a new BGM element. Old BGM fades out while new BGM fades in. Triệt tiêu hoàn toàn hiện tượng kẹt nhạc. */
   const crossfadeToBgm = useCallback((newAudio: HTMLAudioElement, durationMs: number) => {
     const old = bgm.current;
-    // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại
-    if (old && !old.paused && old.src === newAudio.src) {
+    // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại, nếu đang pause thì phát tiếp
+    if (old && old.src === newAudio.src) {
+      if (old.paused) old.play().catch(() => {});
       return;
     }
 
@@ -246,7 +247,8 @@ export function useOlympiaAudio(
       return;
     }
 
-    if (cue.sound.endsWith("bell_ring") && !cue.sound.includes("VuotChuongNgaiVat")) {
+    // Tuyệt đối không pause BGM ở vòng Khởi Động khi bấm chuông (chuông là SFX phát đè lên BGM)
+    if (cue.sound.endsWith("bell_ring") && !cue.sound.includes("KhoiDong") && !cue.sound.includes("VuotChuongNgaiVat")) {
       pauseBgm();
     }
 
@@ -255,8 +257,10 @@ export function useOlympiaAudio(
     const isBgmCue = cue.kind === "bgm";
 
     const connectPanner = (a: HTMLAudioElement) => {
+      // Khi phát cả 2 kênh (both) tiêu chuẩn, không gắn MediaElementSource để tránh lỗi AudioContext bị suspended do Autoplay
+      if (currentChannel === "both") return;
       const ctx = getAudioContext();
-      if (ctx && ctx.createStereoPanner) {
+      if (ctx && ctx.state === "running" && ctx.createStereoPanner) {
         try {
           const source = ctx.createMediaElementSource(a);
           const panner = ctx.createStereoPanner();
@@ -275,7 +279,7 @@ export function useOlympiaAudio(
       else if (currentChannel === "right") soundUrl = `/olympia-audio/${s}/${cue.sound}_right.mp3`;
 
       const a = new Audio(soundUrl);
-      const looping = isBgmCue && (/kd_bgm_[123]$/.test(cue.sound) || /loop/.test(cue.sound));
+      const looping = isBgmCue && (/kd_bgm_[123]$/.test(cue.sound) || /loop/.test(cue.sound) || /(?:30|60|90)s$/.test(cue.sound));
       const isOpenQuestion = cue.sound.includes("open_question");
       const defaultSfxVol = isOpenQuestion ? 0.95 : 0.75;
       a.loop = looping;

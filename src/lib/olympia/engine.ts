@@ -807,23 +807,33 @@ export class OlympiaGame {
         }
 
         // When time is up (O13-O22) or at the last question (O23-O26), pressing next / Kết thúc lượt
-        // finishes the turn, reveals the "KẾT THÚC LƯỢT THI" screen, and cues finish_turn!
+        // finishes the turn, cues finish_turn, and immediately advances to the next contestant/segment!
         const isTimeUp = Boolean(seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0);
         const isLastQ = kd.qIdx >= (seg.questions || 6) - 1;
         if (kd.started && kd.phase !== "intro" && (isTimeUp || isLastQ)) {
-          kd.phase = "segmentDone";
-          kd.current = null;
+          this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
+          if (isLastSeg) {
+            kd.phase = "segmentDone";
+            kd.current = null;
+            this.finishRound(now);
+            return OK;
+          }
+          // Chuyển ngay sang thí sinh / lượt tiếp theo
+          kd.segIdx += 1;
+          const ns = kd.segments[kd.segIdx];
+          kd.qIdx = -1;
+          kd.phase = "intro";
+          kd.questionRevealed = false;
+          kd.started = false;
+          kd.timer = mkTimer(ns.perQuestionMs);
+          kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
+          kd.buzzedSeat = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = undefined;
-          if (kd.timer) {
-            kd.timer.remainingMs = 0;
-            kd.timer.startedAt = null;
-          }
-          if (kd.globalTimer) {
-            kd.globalTimer.remainingMs = 0;
-            kd.globalTimer.startedAt = null;
-          }
-          this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
+          kd.lockedSeats = [];
+          kd.nextLockedSeats = [];
+          kd.current = null;
+          kd.lastVerdict = null;
           return OK;
         }
 
@@ -1039,20 +1049,31 @@ export class OlympiaGame {
         return OK;
       }
       case "kd:finishTurn": {
-        if (!kd.started || kd.phase === "segmentDone") return OK;
-        kd.phase = "segmentDone";
-        kd.current = null;
+        if (!kd.started && kd.phase === "segmentDone") return OK;
+        this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
+        const isLastSeg = kd.segIdx + 1 >= kd.segments.length;
+        if (isLastSeg) {
+          kd.phase = "segmentDone";
+          kd.current = null;
+          this.finishRound(now);
+          return OK;
+        }
+        // Chuyển ngay sang thí sinh / lượt tiếp theo, không để kẹt lại ở người cũ
+        kd.segIdx += 1;
+        const ns = kd.segments[kd.segIdx];
+        kd.qIdx = -1;
+        kd.phase = "intro";
+        kd.questionRevealed = false;
+        kd.started = false;
+        kd.timer = mkTimer(ns.perQuestionMs);
+        kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
+        kd.buzzedSeat = null;
         kd.buzzOpen = false;
         kd.buzzUnlockAt = undefined;
-        if (kd.timer) {
-          kd.timer.remainingMs = 0;
-          kd.timer.startedAt = null;
-        }
-        if (kd.globalTimer) {
-          kd.globalTimer.remainingMs = 0;
-          kd.globalTimer.startedAt = null;
-        }
-        this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
+        kd.lockedSeats = [];
+        kd.nextLockedSeats = [];
+        kd.current = null;
+        kd.lastVerdict = null;
         return OK;
       }
       case "kd:ready": {

@@ -1264,15 +1264,11 @@ test("O13-O22: when 60s expires, current question is preserved, finish_turn is N
 
   // Host clicks Kết thúc lượt (kd:finishTurn or kd:next):
   act(g, "kd:finishTurn", {}, 67000);
-  assert.equal(g.state.khoiDong!.phase, "segmentDone");
   assert.equal(g.state.cue!.sound, "1_KhoiDong/finish_turn");
-  assert.equal(g.state.khoiDong!.current, null);
-
-  // Host clicks Câu tiếp (kd:next) after segmentDone:
-  act(g, "kd:next", {}, 68000);
-  assert.equal(g.state.khoiDong!.segIdx, 1);
+  assert.equal(g.state.khoiDong!.segIdx, 1, "Immediately moves to next candidate");
   assert.equal(g.state.khoiDong!.phase, "intro");
   assert.equal(g.state.khoiDong!.started, false);
+  assert.equal(g.state.khoiDong!.current, null);
 });
 
 console.log(`${passed} tests passed`);

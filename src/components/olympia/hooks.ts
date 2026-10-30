@@ -90,6 +90,13 @@ export function useCountdown(timer: TimerState | null | undefined, serverNow: ()
 
 const BGM_CROSSFADE_MS = 1500;
 
+export const isCountdownTrack = (sound: string): boolean =>
+  /(?:(?:^|\/)(?:\d+s(?:_tick|_steal|_practice)?|tick_\d+s))$/.test(sound) ||
+  /(?:10s_tick|15s_tick|20s_tick|30s_tick|40s_tick|5s_steal|20s_practice|30s_practice|40s_practice|60s_practice|60s|30s|90s)$/.test(sound);
+
+export const isLoopingBgm = (sound: string): boolean =>
+  /kd_bgm_[123]$/.test(sound) || /loop/.test(sound);
+
 /** Plays server "cue" events. Missing files fall back to O26, then fail silently. */
 export function useOlympiaAudio(
   state: OlympiaState | null,
@@ -101,6 +108,7 @@ export function useOlympiaAudio(
   const bgm = useRef<HTMLAudioElement | null>(null);
   const activeBgmSet = useRef<Set<HTMLAudioElement>>(new Set());
   const activeFadeTimers = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
+  const activeAudioSet = useRef<Set<HTMLAudioElement>>(new Set());
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const getAudioContext = useCallback(() => {
@@ -144,16 +152,19 @@ export function useOlympiaAudio(
     killAllBgmAudio();
   }, [killAllBgmAudio]);
 
-  /** Crossfade to a new BGM element. Old BGM fades out while new BGM fades in. Triệt tiêu hoàn toàn hiện tượng kẹt nhạc. */
-  const crossfadeToBgm = useCallback((newAudio: HTMLAudioElement, durationMs: number) => {
+  /** Crossfade to a new BGM element. Với Countdown audio thì phát ngay lập tức không fade-in từ 0. */
+  const crossfadeToBgm = useCallback((newAudio: HTMLAudioElement, durationMs: number, immediate: boolean = false) => {
     const old = bgm.current;
-    // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại, nếu đang pause thì phát tiếp
+    // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại; nếu đã kết thúc hoặc pause thì reset và phát lại
     if (old && old.src === newAudio.src) {
-      if (old.paused) old.play().catch(() => {});
+      if (old.paused) {
+        if (old.ended) old.currentTime = 0;
+        old.play().catch(() => {});
+      }
       return;
     }
 
-    // Dừng dứt điểm các track nhạc cũ trước đó nữa nếu đang fade dở dang
+    // Dừng dứt điểm các track nhạc cũ trước đó nếu đang fade dở dang
     activeBgmSet.current.forEach((a) => {
       if (a !== old && a !== newAudio) {
         try { a.pause(); a.currentTime = 0; a.src = ""; } catch {}
@@ -163,6 +174,20 @@ export function useOlympiaAudio(
 
     activeBgmSet.current.add(newAudio);
     bgm.current = newAudio;
+
+    const targetVol = 0.85;
+
+    if (immediate) {
+      // Countdown track: ngắt ngay track nhạc cũ và phát âm lượng đầy đủ ngay lập tức
+      if (old && !old.paused) {
+        try { old.pause(); old.currentTime = 0; old.src = ""; } catch {}
+        activeBgmSet.current.delete(old);
+      }
+      newAudio.volume = targetVol;
+      newAudio.play().catch(() => {});
+      return;
+    }
+
     newAudio.volume = 0;
     newAudio.play().catch(() => {});
 
@@ -187,8 +212,7 @@ export function useOlympiaAudio(
       activeFadeTimers.current.add(fadeTimer);
     }
 
-    // Fade in new audio
-    const targetVol = 0.75;
+    // Fade in new audio (dành riêng cho nhạc nền ambient)
     const steps = 20;
     const stepMs = Math.max(15, Math.floor(durationMs / steps));
     const volStep = targetVol / steps;
@@ -233,6 +257,11 @@ export function useOlympiaAudio(
       return;
     }
 
+    // Khi có âm thanh kết thúc lượt (finish_turn), dừng nhạc nền cũ để hiệu ứng kết thúc lượt ngân vang rõ nét
+    if (cue.sound.endsWith("finish_turn")) {
+      stopBgm();
+    }
+
     if (cue.kind === "bgm" && bgm.current && !bgm.current.paused && bgm.current.src && bgm.current.src.includes(cue.sound)) {
       return; // Continuous playback without restarting
     }
@@ -255,6 +284,8 @@ export function useOlympiaAudio(
     const season = audioSeason || "O26";
     const currentChannel = cue.pan || channel || (typeof window !== "undefined" ? (localStorage.getItem("olympia_audio_channel") as any) || "both" : "both");
     const isBgmCue = cue.kind === "bgm";
+    const isCountdown = isCountdownTrack(cue.sound);
+    const looping = isBgmCue && !isCountdown && isLoopingBgm(cue.sound);
 
     const connectPanner = (a: HTMLAudioElement) => {
       // Khi phát cả 2 kênh (both) tiêu chuẩn, không gắn MediaElementSource để tránh lỗi AudioContext bị suspended do Autoplay
@@ -273,27 +304,37 @@ export function useOlympiaAudio(
       }
     };
 
+    const registerActive = (a: HTMLAudioElement) => {
+      activeAudioSet.current.add(a);
+      const cleanup = () => {
+        activeAudioSet.current.delete(a);
+      };
+      a.addEventListener("ended", cleanup, { once: true });
+      a.addEventListener("error", cleanup, { once: true });
+    };
+
     const play = (s: string, fallback: boolean) => {
       let soundUrl = `/olympia-audio/${s}/${cue.sound}.mp3`;
       if (currentChannel === "left") soundUrl = `/olympia-audio/${s}/${cue.sound}_left.mp3`;
       else if (currentChannel === "right") soundUrl = `/olympia-audio/${s}/${cue.sound}_right.mp3`;
 
       const a = new Audio(soundUrl);
-      const looping = isBgmCue && (/kd_bgm_[123]$/.test(cue.sound) || /loop/.test(cue.sound) || /(?:30|60|90)s$/.test(cue.sound));
       const isOpenQuestion = cue.sound.includes("open_question");
-      const defaultSfxVol = isOpenQuestion ? 0.95 : 0.75;
+      const defaultSfxVol = isOpenQuestion ? 0.95 : 0.85;
       a.loop = looping;
-      a.volume = isBgmCue ? 0 : defaultSfxVol; // BGM starts at 0 for fade-in; SFX at normal/boosted volume
+      a.volume = (isBgmCue && !isCountdown) ? 0 : defaultSfxVol;
       connectPanner(a);
+      registerActive(a);
 
       a.onerror = () => {
         if (currentChannel !== "both" && soundUrl !== `/olympia-audio/${s}/${cue.sound}.mp3`) {
           const std = new Audio(`/olympia-audio/${s}/${cue.sound}.mp3`);
           std.loop = looping;
-          std.volume = isBgmCue ? 0 : defaultSfxVol;
+          std.volume = (isBgmCue && !isCountdown) ? 0 : defaultSfxVol;
           connectPanner(std);
+          registerActive(std);
           if (isBgmCue) {
-            crossfadeToBgm(std, BGM_CROSSFADE_MS);
+            crossfadeToBgm(std, BGM_CROSSFADE_MS, isCountdown);
           } else {
             std.volume = defaultSfxVol;
             std.play().catch(() => {});
@@ -305,13 +346,14 @@ export function useOlympiaAudio(
         } else if (/tick_(?:10|40)s/.test(cue.sound)) {
           const altSound = cue.sound.replace(/tick_(?:10|40)s/, "tick_20s");
           const alt = new Audio(`/olympia-audio/${s}/${altSound}.mp3`);
-          if (isBgmCue) crossfadeToBgm(alt, BGM_CROSSFADE_MS);
+          registerActive(alt);
+          if (isBgmCue) crossfadeToBgm(alt, BGM_CROSSFADE_MS, isCountdown);
           else alt.play().catch(() => {});
         }
       };
 
       if (isBgmCue) {
-        crossfadeToBgm(a, BGM_CROSSFADE_MS);
+        crossfadeToBgm(a, BGM_CROSSFADE_MS, isCountdown);
       } else {
         a.volume = defaultSfxVol;
         a.play().catch(() => {});

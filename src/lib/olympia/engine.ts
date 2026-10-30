@@ -312,9 +312,8 @@ export class OlympiaGame {
       if (kd.globalTimer && expired(kd.globalTimer)) {
         fin(kd.globalTimer);
         kd.buzzOpen = false;
-        // Giữ nguyên câu hỏi hiện tại và trạng thái gần nhất; KHÔNG phát ngay finish_turn
-        // Dừng nhạc nền đếm giờ:
-        this.cue("", "stop");
+        // Giữ nguyên câu hỏi hiện tại và trạng thái gần nhất; KHÔNG phát stop cue làm ngắt tiếng gong/chuông hết giờ.
+        // Âm thanh đếm giờ 60s/30s/90s sẽ tự phát trọn vẹn đến tiếng chuông kết thúc tự nhiên.
       }
       if (expired(kd.timer)) {
         fin(kd.timer);

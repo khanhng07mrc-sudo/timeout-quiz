@@ -1282,5 +1282,45 @@ test("OlympiaGame defaults to playing show_intro on room creation when playIntro
   assert.equal(gDisabled.state.cue, null);
 });
 
+test("game:start cues 6_NhacKhac/contest_intro instead of show_intro", () => {
+  const g = game("O21", ["khoiDong"], 4);
+  g.joinSeat("TS1", "k1");
+  const res = g.hostAction({ type: "game:start" }, 1000);
+  assert.equal(res.ok, true);
+  assert.equal(g.state.stage, "playing");
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
+  assert.equal(g.state.banner, "ĐƯỜNG LÊN ĐỈNH OLYMPIA");
+});
+
+test("KhoiDong TS2 timer and audio runs properly when question 1 is opened", () => {
+  const g = game("O21", ["khoiDong"], 4);
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  g.hostAction({ type: "game:start" }, 1000);
+  g.hostAction({ type: "intro:skip" }, 2000); // vào khoiDong TS1
+  
+  // TS1 lượt thi chạy và kết thúc lượt
+  g.hostAction({ type: "kd:start" }, 3000);
+  g.hostAction({ type: "kd:next" }, 7000);
+  assert.equal(g.state.khoiDong!.segIdx, 0);
+  
+  // Chuyển sang TS2
+  g.hostAction({ type: "kd:selectSegment", seatId: 1 }, 8000);
+  assert.equal(g.state.khoiDong!.segIdx, 1);
+  assert.equal(g.state.khoiDong!.started, false);
+  assert.equal(g.state.khoiDong!.globalTimer?.startedAt, null);
+  
+  // Bấm Bắt đầu ở TS2 -> started = true, cue ready
+  g.hostAction({ type: "kd:start" }, 8500);
+  assert.equal(g.state.khoiDong!.started, true);
+  assert.equal(g.state.cue?.sound, "1_KhoiDong/ready");
+
+  // Hết cooldown 3.5s -> bấm câu tiếp ở TS2 -> kích hoạt timer 60s và audio cue 60s!
+  g.hostAction({ type: "kd:next" }, 12500);
+  assert.equal(g.state.khoiDong!.questionRevealed, true);
+  assert.equal(g.state.khoiDong!.globalTimer?.startedAt, 12500);
+  assert.equal(g.state.cue?.sound, "1_KhoiDong/60s");
+});
+
 console.log(`${passed} tests passed`);
 

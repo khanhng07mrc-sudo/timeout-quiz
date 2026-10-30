@@ -783,7 +783,7 @@ function KhoiDongDeck({
             {/* ▶ BẮT ĐẦU */}
             {(() => {
               const seg = kd.segments[kd.segIdx];
-              const isLocked = kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro" && kd.qIdx < (seg?.questions ?? 6) - 1;
+              const isLocked = kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro" && kd.qIdx >= 0 && kd.qIdx < (seg?.questions ?? 6) - 1;
               return (
                 <button
                   type="button"

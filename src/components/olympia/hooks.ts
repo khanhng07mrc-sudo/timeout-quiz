@@ -105,6 +105,7 @@ export function useOlympiaAudio(
   channel?: "both" | "left" | "right"
 ) {
   const lastCue = useRef<number | null>(null);
+  const hasPlayedIntroLobbyRef = useRef(false);
   const bgm = useRef<HTMLAudioElement | null>(null);
   const activeBgmSet = useRef<Set<HTMLAudioElement>>(new Set());
   const activeFadeTimers = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
@@ -246,15 +247,17 @@ export function useOlympiaAudio(
     if (!cue) return;
     if (lastCue.current == null) {
       lastCue.current = cue.id;
-      // Nếu là âm thanh mở đầu khi tạo phòng ở sảnh chờ (show_intro), cho phép phát ngay lần sync đầu tiên
-      if (cue.sound === "6_NhacKhac/show_intro" && state.stage === "lobby") {
+      // Nếu là âm thanh mở đầu khi tạo phòng ở sảnh chờ (show_intro), cho phép phát đúng 1 lần duy nhất trên lần sync đầu tiên
+      if (cue.sound === "6_NhacKhac/show_intro" && state.stage === "lobby" && !hasPlayedIntroLobbyRef.current) {
+        hasPlayedIntroLobbyRef.current = true;
         // Cho phép phát tiếp tục
       } else {
         return; // do not replay on first sync
       }
+    } else {
+      if (cue.id === lastCue.current) return;
+      lastCue.current = cue.id;
     }
-    if (cue.id === lastCue.current && !(cue.sound === "6_NhacKhac/show_intro" && state.stage === "lobby")) return;
-    lastCue.current = cue.id;
     if (!enabled) return;
 
     if (cue.kind === "stop" || !cue.sound) {

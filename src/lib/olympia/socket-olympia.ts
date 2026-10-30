@@ -94,28 +94,11 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
     const hostView = g.view("host");
     const displayView = g.view("display");
 
-    // Primary: Native Socket.IO room broadcast for 100% reliable multi-window / separate-tab synchronization
+    // Native Socket.IO room broadcast for 100% reliable multi-window / separate-tab synchronization
     nsp.to(`olympia:${code}:host`).emit("state", hostView);
     nsp.to(`olympia:${code}:display`).emit("state", displayView);
     for (let s = 0; s < 8; s++) {
       nsp.to(`olympia:${code}:player:${s}`).emit("state", g.view("player", s));
-    }
-
-    // Secondary: Direct socket fallback for any clients tracked in entry.clients
-    const playerViews = new Map<number, OlympiaState>();
-    for (const [sid, info] of entry.clients) {
-      const sock = nsp.sockets.get(sid);
-      if (!sock) {
-        entry.clients.delete(sid);
-        continue;
-      }
-      if (info.role === "host") sock.emit("state", hostView);
-      else if (info.role === "display") sock.emit("state", displayView);
-      else {
-        const seat = info.seatId ?? -1;
-        if (!playerViews.has(seat)) playerViews.set(seat, g.view("player", seat));
-        sock.emit("state", playerViews.get(seat));
-      }
     }
     scheduleSave(entry);
   }

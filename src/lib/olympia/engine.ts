@@ -573,7 +573,7 @@ export class OlympiaGame {
         st.banner = "ĐƯỜNG LÊN ĐỈNH OLYMPIA";
         st.introTimer = mkTimer(5000);
         startTimer(st.introTimer, now);
-        this.cue("6_NhacKhac/show_intro");
+        this.cue("6_NhacKhac/contest_intro");
         return OK;
       }
       case "intro:skip": {
@@ -1028,39 +1028,45 @@ export class OlympiaGame {
         return OK;
       }
       case "kd:selectSegment": {
+        const applySegment = (idx: number) => {
+          kd.segIdx = idx;
+          kd.qIdx = -1;
+          kd.phase = "intro";
+          kd.questionRevealed = false;
+          kd.started = false;
+          kd.current = null;
+          kd.lastVerdict = null;
+          const ns = kd.segments[idx];
+          kd.timer = mkTimer(ns.perQuestionMs);
+          kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
+          kd.buzzedSeat = null;
+          kd.buzzOpen = false;
+          kd.buzzUnlockAt = undefined;
+          kd.lockedSeats = [];
+          kd.nextLockedSeats = [];
+          if (ns.kind === "solo") {
+            this.cue("1_KhoiDong/ready");
+          }
+        };
+
         if (a.segIdx != null) {
           const idx = Number(a.segIdx);
           if (idx >= 0 && idx < kd.segments.length) {
-            kd.segIdx = idx;
-            kd.qIdx = -1;
-            kd.phase = "intro";
-            kd.questionRevealed = false;
-            kd.current = null;
-            kd.lastVerdict = null;
+            applySegment(idx);
             return OK;
           }
         }
         if (a.seatId != null) {
           const sIdx = kd.segments.findIndex((s) => s.kind === "solo" && s.seat === Number(a.seatId));
           if (sIdx >= 0) {
-            kd.segIdx = sIdx;
-            kd.qIdx = -1;
-            kd.phase = "intro";
-            kd.questionRevealed = false;
-            kd.current = null;
-            kd.lastVerdict = null;
+            applySegment(sIdx);
             return OK;
           }
         }
         if (a.kind === "shared") {
           const sIdx = kd.segments.findIndex((s) => s.kind === "shared" || s.kind === "turn");
           if (sIdx >= 0) {
-            kd.segIdx = sIdx;
-            kd.qIdx = -1;
-            kd.phase = "intro";
-            kd.questionRevealed = false;
-            kd.current = null;
-            kd.lastVerdict = null;
+            applySegment(sIdx);
             return OK;
           }
         }

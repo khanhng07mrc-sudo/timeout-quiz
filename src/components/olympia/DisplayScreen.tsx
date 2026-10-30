@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
 import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
 import { MediaView, ScoreStrip, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
@@ -81,7 +81,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       {/* Main content */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden px-3 py-2">
-          {state.stage === "lobby" && <Lobby state={state} code={code} origin={origin} />}
+          {/* Khi ở sảnh chờ: màn trống chỉ chứa hình nền trường quay chuẩn Olympia */}
           {state.stage === "finished" && <Podium state={state} />}
 
           {state.stage === "playing" && state.introTimer && (
@@ -216,24 +216,42 @@ function autoQuestionFontSize(text: string) {
 }
 
 function DisplayTimerBar({ timer, serverNow }: { timer: any; serverNow: () => number }) {
-  const ms = useCountdown(timer, serverNow);
-  const total = timer?.totalMs || 1;
+  const [now, setNow] = useState(serverNow);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!timer || timer.startedAt == null) return;
+    let active = true;
+    const loop = () => {
+      if (!active) return;
+      setNow(serverNow());
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+    return () => {
+      active = false;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [timer?.startedAt, timer?.remainingMs, serverNow]);
+
   const running = timer?.startedAt != null;
+  if (!running || !timer) return null;
 
-  // Thanh thời gian CHỈ HIỂN THỊ trong thời gian đếm ngược
-  if (!running || ms <= 0) return null;
+  const total = timer.totalMs || 60000;
+  const elapsed = Math.max(0, now - timer.startedAt);
+  const remaining = Math.max(0, timer.remainingMs - elapsed);
+  if (remaining <= 0) return null;
 
-  // Chạy từ trái sang phải (0 lên 100% khi thời gian trôi qua)
-  const elapsedPct = Math.max(0, Math.min(100, ((total - ms) / total) * 100));
-  const isStart = ms >= total - 1200; // Khoảnh khắc bắt đầu
-  const isEnd = ms <= 3000; // Khoảnh khắc kết thúc / cảnh báo
+  // Chạy từ trái sang phải mượt mà 60 FPS không giật lag
+  const elapsedPct = Math.max(0, Math.min(100, ((total - remaining) / total) * 100));
+  const isStart = remaining >= total - 1200;
+  const isEnd = remaining <= 3000;
 
   return (
     <div className="w-full relative py-1 flex items-center animate-fade-in">
-      {/* Sleek track */}
       <div className="w-full h-2 rounded-full bg-violet-950/80 border border-violet-500/30 overflow-hidden shadow-inner relative">
         <div
-          className={`h-full rounded-full transition-all duration-100 ${
+          className={`h-full rounded-full will-change-[width] ${
             isEnd
               ? "bg-gradient-to-r from-red-600 via-rose-500 to-amber-400 shadow-[0_0_12px_rgba(239,68,68,0.9)]"
               : "bg-gradient-to-r from-violet-600 via-sky-400 to-amber-300 shadow-[0_0_10px_rgba(56,189,248,0.6)]"
@@ -241,9 +259,8 @@ function DisplayTimerBar({ timer, serverNow }: { timer: any; serverNow: () => nu
           style={{ width: `${elapsedPct}%` }}
         />
       </div>
-      {/* Sleek circle thumb indicator attached to the tip of progress with O14-19 zoom mechanism */}
       <div
-        className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none transition-all duration-100 rounded-full border ${
+        className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none rounded-full border will-change-[left] ${
           isEnd
             ? "w-4 h-4 bg-red-400 border-red-100 shadow-[0_0_14px_#ef4444] scale-125 animate-ping"
             : isStart
@@ -266,6 +283,11 @@ function KhoiDong({ state, serverNow }: P) {
 
   const totalQ = seg.questions > 100 ? "" : `/${seg.questions}`;
   const qNum = Math.max(1, kd.qIdx + 1);
+
+  // Olympia TV Display rule: Khi phần khởi động chạy mới kích hoạt hiển thị đồ hoạ
+  if (!kd.started || (!kd.questionRevealed && kd.phase !== "segmentDone") || (!kd.current && kd.phase !== "segmentDone")) {
+    return null;
+  }
 
   // Contestant seats for single-row header
   const seats = activeSeats(state);
@@ -412,13 +434,7 @@ function KhoiDong({ state, serverNow }: P) {
               {kd.current.media && (
                 <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-48 rounded-xl mx-auto border border-violet-500/20" />
               )}
-              {kd.phase === "result" && kd.current.a && (
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-xl text-base sm:text-xl font-black animate-fade-in"
-                  style={{ background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.4)", color: "#34d399", boxShadow: "0 0 20px rgba(16,185,129,0.2)" }}>
-                  <span>✔ ĐÁP ÁN:</span>
-                  <span>{kd.current.a}</span>
-                </div>
-              )}
+
             </div>
           )}
 
@@ -462,6 +478,26 @@ function KhoiDong({ state, serverNow }: P) {
           return null;
         })()}
       </div>
+
+      {/* Khung chứa đáp án riêng biệt chỉ có ở vòng Khởi Động */}
+      {kd.phase === "result" && kd.current?.a && (
+        <div
+          className="w-full shrink-0 rounded-2xl px-6 py-3 flex items-center justify-center gap-3 animate-fade-in shadow-2xl backdrop-blur-md"
+          style={{
+            background: "linear-gradient(135deg, rgba(6, 78, 59, 0.95) 0%, rgba(4, 120, 87, 0.9) 100%)",
+            border: "2px solid #10b981",
+            boxShadow: "0 0 30px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25)",
+          }}
+        >
+          <span className="text-emerald-300 font-black text-sm sm:text-base uppercase tracking-wider flex items-center gap-2">
+            <span className="text-lg">✔</span>
+            <span>ĐÁP ÁN:</span>
+          </span>
+          <span className="text-white font-black text-lg sm:text-2xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+            {kd.current.a}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -522,7 +558,7 @@ function Vcnv({ state, serverNow }: P) {
         <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-center">
           <div className="text-xs font-bold text-amber-300 uppercase tracking-wider">⭐ Câu hỏi số 5 — Ô Trung Tâm</div>
           <div className="text-2xl font-bold text-white mt-1">{v.centerQuestion.q}</div>
-          {v.centerQuestion.a && <div className="text-lg font-bold text-emerald-300 mt-1">Đáp án: {v.centerQuestion.a}</div>}
+          
         </div>
       )}
       {(cur || isCenterRow) && (
@@ -557,13 +593,14 @@ function Vcnv({ state, serverNow }: P) {
 function TangToc({ state, serverNow }: P) {
   const tt = state.tangToc!;
   const q = tt.questions[tt.qIdx];
+  if (tt.phase === "idle") return null;
   return (
     <div className="w-full max-w-5xl text-center space-y-4">
       <div className="text-lg text-violet-300 font-bold">
         Câu {Math.max(1, tt.qIdx + 1)}/{tt.questions.length}
       </div>
-      {tt.phase === "idle" && <div className="text-3xl text-violet-200/60">Chuẩn bị…</div>}
-      {q && tt.phase !== "idle" && (
+      {/* Khi idle: màn trống chỉ chứa nền */}
+      {q && (
         <>
           {q.q && (
             <div className={`font-bold select-text leading-tight ${autoQuestionFontSize(q.q)}`}>{q.q}</div>
@@ -654,9 +691,7 @@ function VeDich({ state, serverNow }: P) {
           )}
           <div className={`font-bold leading-tight select-text ${autoQuestionFontSize(cur.q.q)}`}>{cur.q.q}</div>
           <MediaView url={cur.q.media} type={cur.q.mediaType} className="max-h-52 rounded-xl mx-auto" />
-          {vd.phase === "result" && cur.q.a && (
-            <div className="text-4xl text-emerald-300 font-bold">Đáp án: {cur.q.a}</div>
-          )}
+          
           <div className="max-w-md mx-auto">
             <Timer timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer} serverNow={serverNow} big />
           </div>

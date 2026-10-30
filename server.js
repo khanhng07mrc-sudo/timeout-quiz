@@ -25770,7 +25770,7 @@ var OlympiaGame = class _OlympiaGame {
         st.banner = "\u0110\u01AF\u1EDCNG L\xCAN \u0110\u1EC8NH OLYMPIA";
         st.introTimer = mkTimer(5e3);
         startTimer(st.introTimer, now);
-        this.cue("6_NhacKhac/show_intro");
+        this.cue("6_NhacKhac/contest_intro");
         return OK;
       }
       case "intro:skip": {
@@ -26203,39 +26203,44 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "kd:selectSegment": {
+        const applySegment = (idx) => {
+          kd.segIdx = idx;
+          kd.qIdx = -1;
+          kd.phase = "intro";
+          kd.questionRevealed = false;
+          kd.started = false;
+          kd.current = null;
+          kd.lastVerdict = null;
+          const ns = kd.segments[idx];
+          kd.timer = mkTimer(ns.perQuestionMs);
+          kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
+          kd.buzzedSeat = null;
+          kd.buzzOpen = false;
+          kd.buzzUnlockAt = void 0;
+          kd.lockedSeats = [];
+          kd.nextLockedSeats = [];
+          if (ns.kind === "solo") {
+            this.cue("1_KhoiDong/ready");
+          }
+        };
         if (a.segIdx != null) {
           const idx = Number(a.segIdx);
           if (idx >= 0 && idx < kd.segments.length) {
-            kd.segIdx = idx;
-            kd.qIdx = -1;
-            kd.phase = "intro";
-            kd.questionRevealed = false;
-            kd.current = null;
-            kd.lastVerdict = null;
+            applySegment(idx);
             return OK;
           }
         }
         if (a.seatId != null) {
           const sIdx = kd.segments.findIndex((s) => s.kind === "solo" && s.seat === Number(a.seatId));
           if (sIdx >= 0) {
-            kd.segIdx = sIdx;
-            kd.qIdx = -1;
-            kd.phase = "intro";
-            kd.questionRevealed = false;
-            kd.current = null;
-            kd.lastVerdict = null;
+            applySegment(sIdx);
             return OK;
           }
         }
         if (a.kind === "shared") {
           const sIdx = kd.segments.findIndex((s) => s.kind === "shared" || s.kind === "turn");
           if (sIdx >= 0) {
-            kd.segIdx = sIdx;
-            kd.qIdx = -1;
-            kd.phase = "intro";
-            kd.questionRevealed = false;
-            kd.current = null;
-            kd.lastVerdict = null;
+            applySegment(sIdx);
             return OK;
           }
         }
@@ -27679,21 +27684,6 @@ function registerOlympiaSocket(io2) {
     nsp.to(`olympia:${code}:display`).emit("state", displayView);
     for (let s = 0; s < 8; s++) {
       nsp.to(`olympia:${code}:player:${s}`).emit("state", g.view("player", s));
-    }
-    const playerViews = /* @__PURE__ */ new Map();
-    for (const [sid, info] of entry.clients) {
-      const sock = nsp.sockets.get(sid);
-      if (!sock) {
-        entry.clients.delete(sid);
-        continue;
-      }
-      if (info.role === "host") sock.emit("state", hostView);
-      else if (info.role === "display") sock.emit("state", displayView);
-      else {
-        const seat = info.seatId ?? -1;
-        if (!playerViews.has(seat)) playerViews.set(seat, g.view("player", seat));
-        sock.emit("state", playerViews.get(seat));
-      }
     }
     scheduleSave(entry);
   }

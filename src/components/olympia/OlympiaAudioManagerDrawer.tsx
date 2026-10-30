@@ -18,6 +18,7 @@ const GROUPS_O26: SoundGroup[] = [
     group: "ÂM THANH KHÁC",
     items: [
       { id: "6_NhacKhac/show_intro", name: "Mở đầu cuộc thi" },
+      { id: "6_NhacKhac/contest_intro", name: "Giới thiệu cuộc thi" },
       { id: "6_NhacKhac/summary", name: "Tổng kết điểm (Summary)" },
       { id: "6_NhacKhac/prize_award", name: "Trao giải thưởng" },
       { id: "6_NhacKhac/ending_music", name: "Kết thúc chương trình" },

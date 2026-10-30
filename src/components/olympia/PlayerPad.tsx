@@ -33,7 +33,7 @@ export default function PlayerPad({
     token,
     enabled: name !== null && !!token,
   });
-  const introRem = useCountdown(state?.introTimer, serverNow);
+  const introRem = useCountdown(state?.introTimer, serverNow); void introRem; // kept for type compat
 
   if (name === null) return null;
   if (join && !join.ok) {
@@ -80,14 +80,18 @@ export default function PlayerPad({
         {state.stage === "lobby" && <Center>Đã vào phòng. Chờ quản trò bắt đầu trận…</Center>}
         {state.stage === "finished" && <Center>Trận đấu kết thúc. Điểm của bạn: <b>{me.score}</b></Center>}
         {state.stage === "playing" && state.introTimer && (
-          <div className="text-center space-y-3">
-            <div className="text-2xl font-black text-yellow-300 animate-pulse">
-              {state.banner || "ĐƯỜNG LÊN ĐỈNH OLYMPIA"}
+          <div className="text-center space-y-3 px-4">
+            <div
+              className="text-2xl sm:text-3xl font-black tracking-widest uppercase animate-pulse"
+              style={{
+                background: "linear-gradient(135deg, #00bfff, #ffffff 50%, #1e90ff)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              SẴN SÀNG THI ĐẤU
             </div>
-            <div className="text-slate-300">Chuẩn bị thi đấu trong:</div>
-            <div className="text-5xl font-black text-yellow-400">
-              {Math.max(1, Math.ceil(introRem / 1000))}s
-            </div>
+            <div className="text-slate-400 text-sm">Chờ MC bắt đầu trận đấu…</div>
           </div>
         )}
         {state.stage === "playing" && !state.introTimer && state.banner && <Center>{state.banner}</Center>}

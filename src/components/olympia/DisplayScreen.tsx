@@ -22,13 +22,23 @@ export default function DisplayScreen({ code }: { code: string }) {
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
+  // Canvas is shown when introTimer active OR host manually enabled stage graphics
+  const showCanvas = state.stage === "playing" && (!!state.introTimer || !!state.showStageGraphics);
+
   return (
     <div className="h-full max-h-full overflow-hidden bg-gradient-to-b from-[#0d0820] via-[#120b2e] to-[#0a0618] text-white flex flex-col select-none relative">
       {/* Ambient background orbs */}
       <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-violet-600/8 blur-[100px] pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-amber-500/6 blur-[100px] pointer-events-none" />
 
-      {/* Scoreboard overlay */}
+      {/* ✅ FULL-SCREEN hexagonal LED canvas — z-40, covers header + score strip */}
+      {showCanvas && (
+        <div className="absolute inset-0 z-40 pointer-events-none">
+          <OlympiaIntroCanvas />
+        </div>
+      )}
+
+      {/* Scoreboard overlay — z-50 above canvas */}
       {state.showScoreboard && (
         <div className="absolute inset-0 z-50 bg-[#0d0820]/97 flex flex-col items-center justify-center p-6 animate-fade-in backdrop-blur-md">
           <h2 className="text-3xl sm:text-4xl font-black mb-6 tracking-wider"
@@ -84,11 +94,6 @@ export default function DisplayScreen({ code }: { code: string }) {
         <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden px-3 py-2 relative">
           {/* Khi ở sảnh chờ: màn trống chỉ chứa hình nền trường quay chuẩn Olympia */}
           {state.stage === "finished" && <Podium state={state} />}
-
-          {/* Intro canvas: shown when introTimer is active OR host manually triggered stageGraphics */}
-          {(state.stage === "playing" && (!!state.introTimer || !!state.showStageGraphics)) && (
-            <OlympiaIntroCanvas />
-          )}
 
           {/* Round banner: shown when NOT in canvas mode, and there's a banner */}
           {state.stage === "playing" && !state.introTimer && !state.showStageGraphics && state.banner && (
@@ -728,18 +733,22 @@ function Chp({ state, serverNow }: P) {
 
 
 // ─── Hexagonal LED Intro Canvas ─────────────────────────────────────────────
+// Full-screen Canvas 2D animation: hexagonal LED stage inspired by Olympia 26 studio.
+// Rendered via requestAnimationFrame, no external libraries.
 function OlympiaIntroCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
 
-  // Keep canvas pixel size in sync with element size
+  // Keep canvas pixel size in sync with CSS size
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ro = new ResizeObserver(() => {
+    const sync = () => {
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
-    });
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
     ro.observe(canvas);
     return () => ro.disconnect();
   }, []);
@@ -750,23 +759,23 @@ function OlympiaIntroCanvas() {
     const ctx = canvas.getContext("2d")!;
     let t = 0;
 
-    // Floating star particles
-    const stars = Array.from({ length: 120 }, () => ({
-      x: Math.random(),
-      y: Math.random(),
-      vx: (Math.random() - 0.5) * 0.00025,
-      vy: (Math.random() - 0.5) * 0.00018,
-      r: Math.random() * 1.6 + 0.4,
+    // ── Star particles ────────────────────────────────────────────────────────
+    const stars = Array.from({ length: 200 }, () => ({
+      x: Math.random(), y: Math.random(),
+      vx: (Math.random() - 0.5) * 0.00018,
+      vy: (Math.random() - 0.5) * 0.00012,
+      r: Math.random() * 1.8 + 0.3,
+      phase: Math.random() * Math.PI * 2,
     }));
 
-    // Flat-top hexagon path (matches Olympia stage shape)
-    function drawHexPath(cx: number, cy: number, r: number) {
+    // ── Flat-top hexagon path helper ──────────────────────────────────────────
+    function hexPath(cx: number, cy: number, r: number) {
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
-        const angle = (i / 6) * Math.PI * 2 - Math.PI / 6;
-        const x = cx + Math.cos(angle) * r;
-        const y = cy + Math.sin(angle) * r;
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        const a = (i / 6) * Math.PI * 2 - Math.PI / 6;
+        i === 0
+          ? ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r)
+          : ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
       }
       ctx.closePath();
     }
@@ -777,126 +786,137 @@ function OlympiaIntroCanvas() {
       if (!W || !H) { rafRef.current = requestAnimationFrame(draw); return; }
 
       const cx = W * 0.5;
-      const cy = H * 0.46;
-      const hexR = Math.min(W, H) * 0.3;
+      const cy = H * 0.44;
+      const hexR = Math.min(W, H) * 0.30; // ~60% of the shorter dimension → large stage
 
-      // 1. Background
-      const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.75);
-      bg.addColorStop(0, "#001d3d");
-      bg.addColorStop(1, "#000814");
+      // ── 1. Background ──────────────────────────────────────────────────────
+      const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H));
+      bg.addColorStop(0, "#001838");
+      bg.addColorStop(0.5, "#000c20");
+      bg.addColorStop(1, "#000408");
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
 
-      // 2. Star particles
+      // ── 2. Star field ──────────────────────────────────────────────────────
       stars.forEach((s) => {
         s.x = (s.x + s.vx + 1) % 1;
         s.y = (s.y + s.vy + 1) % 1;
-        const alpha = 0.12 + Math.sin(t * 2 + s.x * 10) * 0.06;
+        const alpha = 0.28 + Math.sin(t * 1.2 + s.phase) * 0.16;
         ctx.beginPath();
         ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(200,230,255,${alpha})`;
+        ctx.fillStyle = `rgba(160,210,255,${alpha})`;
         ctx.fill();
       });
 
-      // 3. Outer hex glow aura
-      for (let layer = 4; layer >= 1; layer--) {
+      // ── 3. Nested hex border rings (5 layers, outermost to innermost) ──────
+      // Layer 5 (outermost, faintest) → Layer 1 (main border, brightest)
+      const hexLayers = [
+        { scale: 1.38, alpha: 0.05, lw: 1.0, blur: 4 },
+        { scale: 1.26, alpha: 0.10, lw: 1.5, blur: 6 },
+        { scale: 1.14, alpha: 0.22, lw: 2.0, blur: 10 },
+        { scale: 1.06, alpha: 0.50, lw: 3.0, blur: 18 },
+        { scale: 1.00, alpha: 1.00, lw: 4.5, blur: 32 }, // main LED border
+      ];
+      hexLayers.forEach(({ scale, alpha, lw, blur }) => {
+        const pulse = scale === 1.0 ? 0.12 * Math.sin(t * 3.0) : 0;
         ctx.save();
-        ctx.strokeStyle = `rgba(0,191,255,${0.07 / layer})`;
-        ctx.lineWidth = layer * 2;
-        drawHexPath(cx, cy, hexR * (1 + layer * 0.08));
+        ctx.shadowColor = "#00cfff";
+        ctx.shadowBlur = blur;
+        ctx.strokeStyle = `rgba(0,200,255,${alpha + pulse})`;
+        ctx.lineWidth = lw;
+        hexPath(cx, cy, hexR * scale);
         ctx.stroke();
         ctx.restore();
-      }
+      });
 
-      // 4. Inward-moving concentric ring waves
-      for (let i = 0; i < 7; i++) {
-        const phase = ((t * 0.45 + i / 7) % 1);
-        const r = hexR * 0.88 * (1 - phase * 0.58);
-        const alpha = Math.sin(phase * Math.PI) * 0.55;
+      // ── 4. Hex interior: gradient fill + clip for inner effects ───────────
+      ctx.save();
+      hexPath(cx, cy, hexR * 0.985);
+      ctx.clip();
+
+      // Interior gradient
+      const interior = ctx.createRadialGradient(cx, cy, 0, cx, cy, hexR);
+      interior.addColorStop(0, "rgba(0,80,200,0.50)");
+      interior.addColorStop(0.55, "rgba(0,30,100,0.75)");
+      interior.addColorStop(1, "rgba(0,8,40,0.92)");
+      ctx.fillStyle = interior;
+      ctx.fillRect(0, 0, W, H);
+
+      // ── 5. Radial light beams from centre (inside hex clip) ────────────────
+      for (let i = 0; i < 16; i++) {
+        const angle = (i / 16) * Math.PI * 2 + t * 0.12;
+        const alpha = (Math.sin(t * 1.0 + i * 0.6) * 0.5 + 0.5) * 0.20;
         ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(30,144,255,${alpha})`;
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(angle) * hexR * 1.1, cy + Math.sin(angle) * hexR * 1.1);
+        ctx.strokeStyle = `rgba(0,160,255,${alpha})`;
         ctx.lineWidth = 1.5;
         ctx.stroke();
       }
 
-      // 5. Radial light beams
-      for (let i = 0; i < 14; i++) {
-        const angle = (i / 14) * Math.PI * 2 + t * 0.18;
-        const alpha = (Math.sin(t * 1.4 + i) * 0.5 + 0.5) * 0.16;
+      // ── 6. Concentric rings — inward (outer → center) ────────────────────
+      for (let i = 0; i < 9; i++) {
+        // phase goes 0→1, ring travels from hexR*0.92 down to 0 (inward)
+        const phase = ((t * 0.55 + i / 9) % 1);
+        const r = hexR * 0.92 * (1 - phase);  // inward: starts big, shrinks
+        const alpha = Math.sin(phase * Math.PI) * 0.75;
         ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(angle) * hexR * 1.4, cy + Math.sin(angle) * hexR * 1.4);
-        ctx.strokeStyle = `rgba(0,191,255,${alpha})`;
-        ctx.lineWidth = 0.8;
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0,210,255,${alpha})`;
+        ctx.lineWidth = 2.0;
         ctx.stroke();
       }
 
-      // 6. Hex interior fill
+      ctx.restore(); // end hex clip
+
+      // ── 7. Text overlay: "ĐƯỜNG LÊN ĐỈNH OLYMPIA" centred in hex ──────────
       ctx.save();
-      drawHexPath(cx, cy, hexR);
-      ctx.clip();
-      const inner = ctx.createRadialGradient(cx, cy, 0, cx, cy, hexR);
-      inner.addColorStop(0, "rgba(0,90,200,0.38)");
-      inner.addColorStop(1, "rgba(0,15,55,0.88)");
-      ctx.fillStyle = inner;
-      ctx.fillRect(0, 0, W, H);
-      ctx.restore();
-
-      // 7. Hex border LED strip
-      ctx.save();
-      ctx.shadowColor = "#00bfff";
-      ctx.shadowBlur = 24;
-      ctx.strokeStyle = "#00bfff";
-      ctx.lineWidth = 2.8;
-      drawHexPath(cx, cy, hexR);
-      ctx.stroke();
-      ctx.restore();
-
-      // 8. Floor ellipse reflection
-      const floorY = cy + hexR * 1.08;
-      const floorG = ctx.createRadialGradient(cx, floorY, 0, cx, floorY, hexR * 1.6);
-      floorG.addColorStop(0, "rgba(0,144,255,0.20)");
-      floorG.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.beginPath();
-      ctx.ellipse(cx, floorY, hexR * 1.6, hexR * 0.24, 0, 0, Math.PI * 2);
-      ctx.fillStyle = floorG;
-      ctx.fill();
-
-      // 9. Left panel: math/science symbols
-      const syms = ["Σ", "μ", "sin", "cos", "Ω", "Δ", "kg", "m²", "∮", "π", "∞", "∂"];
-      const symSize = Math.max(13, W * 0.022);
-      ctx.font = `bold ${symSize}px monospace`;
-      ctx.textBaseline = "middle";
-      syms.forEach((sym, idx) => {
-        const col = idx % 3;
-        const row = Math.floor(idx / 3);
-        const alpha = 0.14 + Math.sin(t * 1.1 + idx * 0.85) * 0.08;
-        ctx.fillStyle = `rgba(0,191,255,${alpha})`;
-        ctx.fillText(sym, W * 0.055 + col * W * 0.055, H * 0.22 + row * H * 0.14);
-      });
-
-      // 10. Right panel: "ĐƯỜNG LÊN ĐỈNH OLYMPIA" signboard
-      const pX = W * 0.74;
-      const pY = H * 0.28;
-      const pW = W * 0.22;
-      const pH = H * 0.28;
-      ctx.save();
-      ctx.strokeStyle = `rgba(0,191,255,${0.4 + Math.sin(t * 1.0) * 0.1})`;
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(pX, pY, pW, pH);
-      ctx.strokeStyle = "rgba(0,191,255,0.12)";
-      ctx.lineWidth = 0.6;
-      ctx.strokeRect(pX + 5, pY + 5, pW - 10, pH - 10);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = `rgba(255,255,255,${0.78 + Math.sin(t * 0.4) * 0.1})`;
-      ctx.font = `bold ${Math.max(9, W * 0.014)}px sans-serif`;
-      ctx.fillText("ĐƯỜNG LÊN ĐỈNH", pX + pW / 2, pY + pH * 0.38);
-      ctx.fillStyle = `rgba(0,191,255,${0.92 + Math.sin(t * 0.8) * 0.07})`;
-      ctx.font = `bold ${Math.max(11, W * 0.019)}px sans-serif`;
-      ctx.fillText("OLYMPIA", pX + pW / 2, pY + pH * 0.65);
+
+      // Line 1: "ĐƯỜNG LÊN ĐỈNH"
+      const line1Size = Math.max(11, hexR * 0.155);
+      ctx.font = `bold ${line1Size}px sans-serif`;
+      ctx.fillStyle = `rgba(190,235,255,${0.82 + Math.sin(t * 0.6) * 0.10})`;
+      ctx.shadowColor = "#00bfff";
+      ctx.shadowBlur = 8;
+      ctx.fillText("ĐƯỜNG LÊN ĐỈNH", cx, cy - hexR * 0.175);
+
+      // Line 2: "OLYMPIA"
+      const line2Size = Math.max(15, hexR * 0.225);
+      ctx.font = `bold ${line2Size}px sans-serif`;
+      ctx.fillStyle = `rgba(0,210,255,${0.92 + Math.sin(t * 1.4) * 0.07})`;
+      ctx.shadowColor = "#00e0ff";
+      ctx.shadowBlur = 20;
+      ctx.fillText("OLYMPIA", cx, cy + hexR * 0.115);
+
       ctx.restore();
+
+      // ── 8. Floor glow ellipse ─────────────────────────────────────────────
+      const floorY = cy + hexR * 1.10;
+      const fg = ctx.createRadialGradient(cx, floorY, 0, cx, floorY, hexR * 2.2);
+      fg.addColorStop(0, "rgba(0,130,255,0.24)");
+      fg.addColorStop(0.6, "rgba(0,60,200,0.08)");
+      fg.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.beginPath();
+      ctx.ellipse(cx, floorY, hexR * 2.2, hexR * 0.30, 0, 0, Math.PI * 2);
+      ctx.fillStyle = fg;
+      ctx.fill();
+
+      // ── 9. Left panel: science/math symbols ──────────────────────────────
+      const syms = ["Σ", "π", "∫", "Δ", "√", "∞", "sin", "cos", "kg", "m²", "∮", "∂"];
+      const symSz = Math.max(12, W * 0.019);
+      ctx.font = `bold ${symSz}px monospace`;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      syms.forEach((sym, idx) => {
+        const col = idx % 2;
+        const row = Math.floor(idx / 2);
+        const alpha = 0.16 + Math.sin(t * 0.85 + idx * 1.05) * 0.10;
+        ctx.fillStyle = `rgba(0,200,255,${alpha})`;
+        ctx.shadowColor = "transparent";
+        ctx.fillText(sym, W * 0.035 + col * W * 0.065, H * 0.20 + row * H * 0.10);
+      });
 
       t += 0.016;
       rafRef.current = requestAnimationFrame(draw);
@@ -909,7 +929,7 @@ function OlympiaIntroCanvas() {
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full"
+      className="w-full h-full"
       style={{ display: "block" }}
     />
   );

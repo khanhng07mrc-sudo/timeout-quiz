@@ -106,6 +106,7 @@ export function useOlympiaAudio(
 ) {
   const lastCue = useRef<number | null>(null);
   const hasPlayedIntroLobbyRef = useRef(false);
+  const pendingShowIntroRef = useRef(false); // set when show_intro fired before audioSeason arrived
   const bgm = useRef<HTMLAudioElement | null>(null);
   const activeBgmSet = useRef<Set<HTMLAudioElement>>(new Set());
   const activeFadeTimers = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
@@ -250,7 +251,12 @@ export function useOlympiaAudio(
       // Nếu là âm thanh mở đầu khi tạo phòng ở sảnh chờ (show_intro), cho phép phát đúng 1 lần duy nhất trên lần sync đầu tiên
       if (cue.sound === "6_NhacKhac/show_intro" && state.stage === "lobby" && !hasPlayedIntroLobbyRef.current) {
         hasPlayedIntroLobbyRef.current = true;
-        // Cho phép phát tiếp tục
+        if (!audioSeason) {
+          // audioSeason chưa đến (race condition) → đánh dấu chờ, sẽ phát khi audioSeason arrive
+          pendingShowIntroRef.current = true;
+          return;
+        }
+        // audioSeason đã có, tiếp tục phát bình thường bên dưới
       } else {
         return; // do not replay on first sync
       }
@@ -371,6 +377,21 @@ export function useOlympiaAudio(
   }, [state?.cue, audioSeason, enabled, channel, stopBgm, pauseBgm, resumeBgm, getAudioContext, crossfadeToBgm]);
 
   useEffect(() => () => stopBgm(), [stopBgm]);
+
+  // Retry show_intro khi audioSeason vừa arrive (fix race condition: state đến trước audioSeason)
+  useEffect(() => {
+    if (!audioSeason || !pendingShowIntroRef.current || !enabled) return;
+    pendingShowIntroRef.current = false;
+    const season = audioSeason;
+    const tryPlay = (s: string) => {
+      const a = new Audio(`/olympia-audio/${s}/6_NhacKhac/show_intro.mp3`);
+      a.volume = 0.85;
+      a.play().catch(() => {
+        if (s !== "O26") tryPlay("O26"); // fallback
+      });
+    };
+    tryPlay(season);
+  }, [audioSeason, enabled]);
 }
 
 export function useStableToken(): string {

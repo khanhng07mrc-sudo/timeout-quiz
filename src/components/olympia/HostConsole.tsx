@@ -393,8 +393,8 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               )}
             </div>
 
-            {/* Utility Bar: NỀN CHỜ (W) & BẢNG ĐIỂM (B) */}
-            <div className="grid grid-cols-2 gap-1.5">
+            {/* Utility Bar: NỀN CHỜ (W), BẢNG ĐIỂM (B) & ĐỒ HOẠ SÂN KHẤU */}
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 type="button"
                 onClick={() => call("bgm:waiting")}
@@ -418,6 +418,19 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               >
                 <span>📊</span>
                 <span>BẢNG ĐIỂM (B)</span>
+              </button>
+              <button
+                type="button"
+                disabled={!!activeTimer && activeTimer.startedAt != null}
+                onClick={() => call("display:stageGraphics", { on: !state.showStageGraphics })}
+                className={`py-1.5 rounded-lg border text-xs font-bold flex items-center justify-center gap-1 transition ${
+                  state.showStageGraphics
+                    ? "bg-cyan-500/25 text-cyan-200 border-cyan-400/60 shadow-[0_0_8px_rgba(0,191,255,0.3)]"
+                    : "bg-white/5 text-slate-300 border-white/15 hover:bg-cyan-500/10 hover:border-cyan-500/30"
+                } ${(!!activeTimer && activeTimer.startedAt != null) ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+              >
+                <span>🎬</span>
+                <span className="truncate">{state.showStageGraphics ? "Tắt Đồ Hoạ" : "Đồ Hoạ"}</span>
               </button>
             </div>
 

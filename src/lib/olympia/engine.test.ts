@@ -1,4 +1,4 @@
-// Run: npm run test:olympia   (bundles with esbuild, runs with node:assert)
+﻿// Run: npm run test:olympia   (bundles with esbuild, runs with node:assert)
 
 import assert from "node:assert/strict";
 
@@ -1289,7 +1289,9 @@ test("game:start cues 6_NhacKhac/contest_intro instead of show_intro", () => {
   assert.equal(res.ok, true);
   assert.equal(g.state.stage, "playing");
   assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
-  assert.equal(g.state.banner, "ĐƯỜNG LÊN ĐỈNH OLYMPIA");
+  assert.equal(g.state.banner, null, "banner is null during intro canvas");
+  assert.ok(g.state.introTimer != null, "introTimer active as canvas flag");
+  assert.equal(g.state.introTimer!.totalMs, 86400000, "introTimer is 24h (effectively infinite)");
 });
 
 test("KhoiDong TS2 timer and audio runs properly when question 1 is opened", () => {

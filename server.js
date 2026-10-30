@@ -25349,6 +25349,7 @@ var OlympiaGame = class _OlympiaGame {
       currentRound: null,
       roundStatus: emptyRoundStatus(),
       banner: null,
+      showStageGraphics: false,
       khoiDong: null,
       vcnv: null,
       tangToc: null,
@@ -25576,6 +25577,8 @@ var OlympiaGame = class _OlympiaGame {
     const qs = this.config.questionSet;
     const active = this.activeSeatIds;
     if (active.length === 0) return fail("Ch\u01B0a c\xF3 th\xED sinh n\xE0o trong ph\xF2ng");
+    st.introTimer = null;
+    st.showStageGraphics = false;
     st.currentRound = round;
     st.roundStatus[round] = "active";
     st.banner = ROUND_LABELS[round];
@@ -25767,9 +25770,10 @@ var OlympiaGame = class _OlympiaGame {
         if (st.rounds.length === 0) return fail("Ch\u01B0a ch\u1ECDn v\xF2ng thi n\xE0o");
         const res = this.nextRound(now);
         if (!res.ok) return res;
-        st.banner = "\u0110\u01AF\u1EDCNG L\xCAN \u0110\u1EC8NH OLYMPIA";
-        st.introTimer = mkTimer(5e3);
+        st.banner = null;
+        st.introTimer = mkTimer(864e5);
         startTimer(st.introTimer, now);
+        st.showStageGraphics = false;
         this.cue("6_NhacKhac/contest_intro");
         return OK;
       }
@@ -25802,6 +25806,10 @@ var OlympiaGame = class _OlympiaGame {
       case "banner:hide":
         st.banner = null;
         return OK;
+      case "display:stageGraphics": {
+        st.showStageGraphics = !!a.on;
+        return OK;
+      }
       case "score:set": {
         const id = num("seat");
         const s = this.seat(id);
@@ -26160,6 +26168,7 @@ var OlympiaGame = class _OlympiaGame {
         if (kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro" && kd.qIdx < seg.questions - 1) {
           return fail("L\u01B0\u1EE3t thi \u0111ang di\u1EC5n ra, kh\xF4ng th\u1EC3 nh\u1EA5n B\u1EAFt \u0111\u1EA7u l\u1EA1i!");
         }
+        if (st.showStageGraphics) st.showStageGraphics = false;
         kd.phase = "question";
         kd.questionRevealed = false;
         kd.started = true;
@@ -26809,6 +26818,7 @@ var OlympiaGame = class _OlympiaGame {
         if (tt.phase !== "question") return fail("H\xE3y hi\u1EC7n c\xE2u h\u1ECFi tr\u01B0\u1EDBc");
         if (timerRunning(tt.timer)) pauseTimer(tt.timer, now);
         else {
+          if (st.showStageGraphics) st.showStageGraphics = false;
           startTimer(tt.timer, now);
           const s = Math.round(tt.timer.totalMs / 1e3);
           this.cue(`3_TangToc/tick_${s}s`, "bgm");
@@ -27067,6 +27077,7 @@ var OlympiaGame = class _OlympiaGame {
         vd.hopeStarActive = false;
         vd.deductedOnSteal = false;
         vd.lastVerdict = null;
+        if (st.showStageGraphics) st.showStageGraphics = false;
         this.cue("4_VeDich/open_question");
         return OK;
       }

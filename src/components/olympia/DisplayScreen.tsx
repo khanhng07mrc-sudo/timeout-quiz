@@ -9,7 +9,8 @@ export default function DisplayScreen({ code }: { code: string }) {
   const { state, join, connected, serverNow } = useOlympiaSocket({ code, role: "display" });
   const [audioOn, setAudioOn] = useState(true);
   useOlympiaAudio(state, join?.audioSeason, audioOn);
-  const introRemainingMs = useCountdown(state?.introTimer, serverNow);
+  // introRemainingMs not used for display anymore (canvas is infinite), kept for type safety
+  const _introRemainingMs = useCountdown(state?.introTimer, serverNow); void _introRemainingMs;
 
   if (join && !join.ok) return <div className="p-10 text-rose-300 text-2xl">{join.error}</div>;
   if (!state)
@@ -80,46 +81,35 @@ export default function DisplayScreen({ code }: { code: string }) {
 
       {/* Main content */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden px-3 py-2">
+        <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden px-3 py-2 relative">
           {/* Khi ở sảnh chờ: màn trống chỉ chứa hình nền trường quay chuẩn Olympia */}
           {state.stage === "finished" && <Podium state={state} />}
 
-          {state.stage === "playing" && state.introTimer && (
-            <div className="text-center space-y-5 animate-fade-in max-w-3xl px-4">
-              <div className="text-base sm:text-lg text-violet-300/70 font-bold uppercase tracking-widest animate-pulse">
-                Chào mừng đến với
-              </div>
-              <div
-                className="text-4xl sm:text-6xl font-black tracking-wide"
-                style={{ background: "linear-gradient(90deg,#f59e0b,#ef4444,#7c3aed)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
-              >
-                ĐƯỜNG LÊN ĐỈNH OLYMPIA
-              </div>
-              <div className="flex items-center justify-center gap-4 pt-2">
-                <span className="text-base sm:text-lg text-violet-200/70 font-medium">Bắt đầu trận đấu trong:</span>
-                <span
-                  className="inline-flex items-center justify-center w-14 h-14 rounded-full text-slate-950 font-black text-3xl shadow-2xl"
-                  style={{ background: "linear-gradient(135deg,#f59e0b,#ef4444)" }}
-                >
-                  {Math.max(1, Math.ceil(introRemainingMs / 1000))}
-                </span>
-              </div>
-            </div>
+          {/* Intro canvas: shown when introTimer is active OR host manually triggered stageGraphics */}
+          {(state.stage === "playing" && (!!state.introTimer || !!state.showStageGraphics)) && (
+            <OlympiaIntroCanvas />
           )}
 
-          {state.stage === "playing" && !state.introTimer && state.banner && (
-            <div className="text-center animate-fade-in">
-              <div className="text-base text-violet-300/60 mb-2 uppercase tracking-widest font-bold">Phần thi</div>
+          {/* Round banner: shown when NOT in canvas mode, and there's a banner */}
+          {state.stage === "playing" && !state.introTimer && !state.showStageGraphics && state.banner && (
+            <div className="text-center animate-fade-in flex items-center justify-center h-full">
               <div
-                className="text-4xl sm:text-6xl font-black"
-                style={{ background: "linear-gradient(90deg,#f59e0b,#ef4444,#7c3aed)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+                className="font-black tracking-[0.12em] uppercase animate-fade-in"
+                style={{
+                  fontSize: "clamp(2.8rem, 9vw, 6.5rem)",
+                  lineHeight: 1,
+                  background: "linear-gradient(135deg, #00bfff, #ffffff 50%, #1e90ff)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  filter: "drop-shadow(0 0 25px rgba(0,191,255,0.6))",
+                }}
               >
                 {state.banner}
               </div>
             </div>
           )}
 
-          {state.stage === "playing" && !state.banner && (
+          {state.stage === "playing" && !state.banner && !state.introTimer && !state.showStageGraphics && (
             <>
               {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
               {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} />}
@@ -401,7 +391,7 @@ function KhoiDong({ state, serverNow }: P) {
         <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${seatColor}80, #ef4444aa, #7c3aedaa)` }} />
 
         {/* Question stage with fixed height */}
-        <div className="w-full min-h-[140px] max-h-[140px] flex flex-col justify-center items-center py-2 overflow-y-auto no-scrollbar">
+        <div className="w-full flex-1 min-h-0 flex flex-col justify-center items-center py-2 overflow-hidden">
           {kd.phase === "segmentDone" ? (
             <div className="text-center space-y-2 animate-fade-in">
               <div
@@ -733,5 +723,194 @@ function Chp({ state, serverNow }: P) {
         <Timer timer={cp.timer} serverNow={serverNow} big />
       </div>
     </div>
+  );
+}
+
+
+// ─── Hexagonal LED Intro Canvas ─────────────────────────────────────────────
+function OlympiaIntroCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number>(0);
+
+  // Keep canvas pixel size in sync with element size
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ro = new ResizeObserver(() => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    });
+    ro.observe(canvas);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    let t = 0;
+
+    // Floating star particles
+    const stars = Array.from({ length: 120 }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      vx: (Math.random() - 0.5) * 0.00025,
+      vy: (Math.random() - 0.5) * 0.00018,
+      r: Math.random() * 1.6 + 0.4,
+    }));
+
+    // Flat-top hexagon path (matches Olympia stage shape)
+    function drawHexPath(cx: number, cy: number, r: number) {
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2 - Math.PI / 6;
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    }
+
+    const draw = () => {
+      const W = canvas.width || canvas.offsetWidth;
+      const H = canvas.height || canvas.offsetHeight;
+      if (!W || !H) { rafRef.current = requestAnimationFrame(draw); return; }
+
+      const cx = W * 0.5;
+      const cy = H * 0.46;
+      const hexR = Math.min(W, H) * 0.3;
+
+      // 1. Background
+      const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.75);
+      bg.addColorStop(0, "#001d3d");
+      bg.addColorStop(1, "#000814");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // 2. Star particles
+      stars.forEach((s) => {
+        s.x = (s.x + s.vx + 1) % 1;
+        s.y = (s.y + s.vy + 1) % 1;
+        const alpha = 0.12 + Math.sin(t * 2 + s.x * 10) * 0.06;
+        ctx.beginPath();
+        ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(200,230,255,${alpha})`;
+        ctx.fill();
+      });
+
+      // 3. Outer hex glow aura
+      for (let layer = 4; layer >= 1; layer--) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(0,191,255,${0.07 / layer})`;
+        ctx.lineWidth = layer * 2;
+        drawHexPath(cx, cy, hexR * (1 + layer * 0.08));
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 4. Inward-moving concentric ring waves
+      for (let i = 0; i < 7; i++) {
+        const phase = ((t * 0.45 + i / 7) % 1);
+        const r = hexR * 0.88 * (1 - phase * 0.58);
+        const alpha = Math.sin(phase * Math.PI) * 0.55;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(30,144,255,${alpha})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      // 5. Radial light beams
+      for (let i = 0; i < 14; i++) {
+        const angle = (i / 14) * Math.PI * 2 + t * 0.18;
+        const alpha = (Math.sin(t * 1.4 + i) * 0.5 + 0.5) * 0.16;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(angle) * hexR * 1.4, cy + Math.sin(angle) * hexR * 1.4);
+        ctx.strokeStyle = `rgba(0,191,255,${alpha})`;
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
+
+      // 6. Hex interior fill
+      ctx.save();
+      drawHexPath(cx, cy, hexR);
+      ctx.clip();
+      const inner = ctx.createRadialGradient(cx, cy, 0, cx, cy, hexR);
+      inner.addColorStop(0, "rgba(0,90,200,0.38)");
+      inner.addColorStop(1, "rgba(0,15,55,0.88)");
+      ctx.fillStyle = inner;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+
+      // 7. Hex border LED strip
+      ctx.save();
+      ctx.shadowColor = "#00bfff";
+      ctx.shadowBlur = 24;
+      ctx.strokeStyle = "#00bfff";
+      ctx.lineWidth = 2.8;
+      drawHexPath(cx, cy, hexR);
+      ctx.stroke();
+      ctx.restore();
+
+      // 8. Floor ellipse reflection
+      const floorY = cy + hexR * 1.08;
+      const floorG = ctx.createRadialGradient(cx, floorY, 0, cx, floorY, hexR * 1.6);
+      floorG.addColorStop(0, "rgba(0,144,255,0.20)");
+      floorG.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.beginPath();
+      ctx.ellipse(cx, floorY, hexR * 1.6, hexR * 0.24, 0, 0, Math.PI * 2);
+      ctx.fillStyle = floorG;
+      ctx.fill();
+
+      // 9. Left panel: math/science symbols
+      const syms = ["Σ", "μ", "sin", "cos", "Ω", "Δ", "kg", "m²", "∮", "π", "∞", "∂"];
+      const symSize = Math.max(13, W * 0.022);
+      ctx.font = `bold ${symSize}px monospace`;
+      ctx.textBaseline = "middle";
+      syms.forEach((sym, idx) => {
+        const col = idx % 3;
+        const row = Math.floor(idx / 3);
+        const alpha = 0.14 + Math.sin(t * 1.1 + idx * 0.85) * 0.08;
+        ctx.fillStyle = `rgba(0,191,255,${alpha})`;
+        ctx.fillText(sym, W * 0.055 + col * W * 0.055, H * 0.22 + row * H * 0.14);
+      });
+
+      // 10. Right panel: "ĐƯỜNG LÊN ĐỈNH OLYMPIA" signboard
+      const pX = W * 0.74;
+      const pY = H * 0.28;
+      const pW = W * 0.22;
+      const pH = H * 0.28;
+      ctx.save();
+      ctx.strokeStyle = `rgba(0,191,255,${0.4 + Math.sin(t * 1.0) * 0.1})`;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(pX, pY, pW, pH);
+      ctx.strokeStyle = "rgba(0,191,255,0.12)";
+      ctx.lineWidth = 0.6;
+      ctx.strokeRect(pX + 5, pY + 5, pW - 10, pH - 10);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = `rgba(255,255,255,${0.78 + Math.sin(t * 0.4) * 0.1})`;
+      ctx.font = `bold ${Math.max(9, W * 0.014)}px sans-serif`;
+      ctx.fillText("ĐƯỜNG LÊN ĐỈNH", pX + pW / 2, pY + pH * 0.38);
+      ctx.fillStyle = `rgba(0,191,255,${0.92 + Math.sin(t * 0.8) * 0.07})`;
+      ctx.font = `bold ${Math.max(11, W * 0.019)}px sans-serif`;
+      ctx.fillText("OLYMPIA", pX + pW / 2, pY + pH * 0.65);
+      ctx.restore();
+
+      t += 0.016;
+      rafRef.current = requestAnimationFrame(draw);
+    };
+
+    rafRef.current = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 w-full h-full"
+      style={{ display: "block" }}
+    />
   );
 }

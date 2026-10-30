@@ -545,6 +545,8 @@ export interface OlympiaState {
   kdFinishTurnPan?: "both" | "left" | "right";
   /** Structured match transcript supporting both "Rút gọn" and "Chi tiết" modes */
   transcript?: OlympiaTranscriptEntry[];
+  /** Host-controlled stage graphics overlay (hexagonal LED animation) on DisplayScreen */
+  showStageGraphics?: boolean;
 }
 
 export type HostAction = { type: string; [k: string]: unknown };

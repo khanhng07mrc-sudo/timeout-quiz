@@ -118,6 +118,7 @@ export class OlympiaGame {
       currentRound: null,
       roundStatus: emptyRoundStatus(),
       banner: null,
+      showStageGraphics: false,
       khoiDong: null,
       vcnv: null,
       tangToc: null,
@@ -361,6 +362,9 @@ export class OlympiaGame {
     const qs = this.config.questionSet;
     const active = this.activeSeatIds;
     if (active.length === 0) return fail("Chưa có thí sinh nào trong phòng");
+    // Clear intro animation when any round begins
+    st.introTimer = null;
+    st.showStageGraphics = false;
     st.currentRound = round;
     st.roundStatus[round] = "active";
     st.banner = ROUND_LABELS[round];
@@ -570,9 +574,12 @@ export class OlympiaGame {
         if (st.rounds.length === 0) return fail("Chưa chọn vòng thi nào");
         const res = this.nextRound(now);
         if (!res.ok) return res;
-        st.banner = "ĐƯỜNG LÊN ĐỈNH OLYMPIA";
-        st.introTimer = mkTimer(5000);
+        st.banner = null;
+        // introTimer dùng như flag để DisplayScreen biết đang ở giai đoạn intro
+        // Đặt giá trị rất lớn vì đồ hoạ chạy "mãi mãi" đến khi host chọn vòng thi
+        st.introTimer = mkTimer(86400000); // 24h – effectively infinite
         startTimer(st.introTimer, now);
+        st.showStageGraphics = false; // Canvas được kích hoạt qua introTimer, không qua flag này
         this.cue("6_NhacKhac/contest_intro");
         return OK;
       }
@@ -605,6 +612,11 @@ export class OlympiaGame {
       case "banner:hide":
         st.banner = null;
         return OK;
+      case "display:stageGraphics": {
+        // Host toggle: bật/tắt đồ hoạ lục giác trên màn hình Display
+        st.showStageGraphics = !!a.on;
+        return OK;
+      }
       case "score:set": {
         const id = num("seat");
         const s = this.seat(id);
@@ -983,6 +995,8 @@ export class OlympiaGame {
         if (kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro" && kd.qIdx < seg.questions - 1) {
           return fail("Lượt thi đang diễn ra, không thể nhấn Bắt đầu lại!");
         }
+        // Auto-hide đồ hoạ sân khấu khi bắt đầu lượt thi
+        if (st.showStageGraphics) st.showStageGraphics = false;
         kd.phase = "question";
         kd.questionRevealed = false;
         kd.started = true;
@@ -1645,6 +1659,7 @@ export class OlympiaGame {
         if (tt.phase !== "question") return fail("Hãy hiện câu hỏi trước");
         if (timerRunning(tt.timer)) pauseTimer(tt.timer, now);
         else {
+          if (st.showStageGraphics) st.showStageGraphics = false;
           startTimer(tt.timer, now);
           const s = Math.round(tt.timer.totalMs / 1000);
           this.cue(`3_TangToc/tick_${s}s`, "bgm");
@@ -1910,6 +1925,7 @@ export class OlympiaGame {
         vd.hopeStarActive = false;
         vd.deductedOnSteal = false;
         vd.lastVerdict = null;
+        if (st.showStageGraphics) st.showStageGraphics = false;
         this.cue("4_VeDich/open_question");
         return OK;
       }

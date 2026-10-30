@@ -25532,8 +25532,7 @@ var OlympiaGame = class _OlympiaGame {
       if (kd.globalTimer && expired(kd.globalTimer)) {
         fin(kd.globalTimer);
         kd.buzzOpen = false;
-        if (kd.phase === "question" || kd.phase === "result") kd.phase = "segmentDone";
-        this.cue("1_KhoiDong/finish_turn");
+        this.cue("", "stop");
       }
       if (expired(kd.timer)) {
         fin(kd.timer);
@@ -25974,7 +25973,7 @@ var OlympiaGame = class _OlympiaGame {
           this.cue("1_KhoiDong/start_round");
         }
         const isLastSeg = kd.segIdx + 1 >= kd.segments.length;
-        if (kd.phase === "segmentDone" || seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0 && kd.phase !== "intro") {
+        if (kd.phase === "segmentDone") {
           if (isLastSeg) {
             this.finishRound(now);
             return OK;
@@ -25984,6 +25983,7 @@ var OlympiaGame = class _OlympiaGame {
           kd.qIdx = -1;
           kd.phase = "intro";
           kd.questionRevealed = false;
+          kd.started = false;
           kd.timer = mkTimer(ns.perQuestionMs);
           kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
           kd.buzzedSeat = null;
@@ -25998,37 +25998,23 @@ var OlympiaGame = class _OlympiaGame {
           }
           return OK;
         }
-        if (isSolo && kd.qIdx >= seg.questions - 1 && kd.phase !== "intro") {
-          if (isLastSeg) {
-            kd.phase = "segmentDone";
-            kd.current = null;
-            kd.buzzOpen = false;
-            kd.buzzUnlockAt = void 0;
-            this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
-            return OK;
-          }
-          kd.segIdx += 1;
-          const ns = kd.segments[kd.segIdx];
-          kd.qIdx = -1;
-          kd.phase = "intro";
-          kd.questionRevealed = false;
-          kd.timer = mkTimer(ns.perQuestionMs);
-          kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
-          kd.buzzedSeat = null;
+        const isTimeUp = Boolean(seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0);
+        const isLastQ = kd.qIdx >= (seg.questions || 6) - 1;
+        if (kd.started && kd.phase !== "intro" && (isTimeUp || isLastQ)) {
+          kd.phase = "segmentDone";
+          kd.current = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = void 0;
-          kd.lockedSeats = [];
-          kd.nextLockedSeats = [];
-          kd.current = null;
-          kd.lastVerdict = null;
+          if (kd.timer) {
+            kd.timer.remainingMs = 0;
+            kd.timer.startedAt = null;
+          }
+          if (kd.globalTimer) {
+            kd.globalTimer.remainingMs = 0;
+            kd.globalTimer.startedAt = null;
+          }
           this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
           return OK;
-        }
-        if (!isSolo && isLastSeg && kd.qIdx >= seg.questions - 1 && kd.phase === "result") {
-          kd.phase = "segmentDone";
-          kd.buzzOpen = false;
-          kd.buzzUnlockAt = void 0;
-          return fail("\u0110\xE3 ho\xE0n th\xE0nh t\u1EA5t c\u1EA3 c\xE2u h\u1ECFi v\xF2ng Kh\u1EDFi \u0110\u1ED9ng chung");
         }
         if (kd.phase === "question" && !kd.questionRevealed) {
           kd.questionRevealed = true;
@@ -26221,6 +26207,23 @@ var OlympiaGame = class _OlympiaGame {
             return OK;
           }
         }
+        return OK;
+      }
+      case "kd:finishTurn": {
+        if (!kd.started || kd.phase === "segmentDone") return OK;
+        kd.phase = "segmentDone";
+        kd.current = null;
+        kd.buzzOpen = false;
+        kd.buzzUnlockAt = void 0;
+        if (kd.timer) {
+          kd.timer.remainingMs = 0;
+          kd.timer.startedAt = null;
+        }
+        if (kd.globalTimer) {
+          kd.globalTimer.remainingMs = 0;
+          kd.globalTimer.startedAt = null;
+        }
+        this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
         return OK;
       }
       case "kd:ready": {

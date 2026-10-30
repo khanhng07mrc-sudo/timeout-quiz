@@ -312,8 +312,9 @@ export class OlympiaGame {
       if (kd.globalTimer && expired(kd.globalTimer)) {
         fin(kd.globalTimer);
         kd.buzzOpen = false;
-        if (kd.phase === "question" || kd.phase === "result") kd.phase = "segmentDone";
-        this.cue("1_KhoiDong/finish_turn");
+        // Giữ nguyên câu hỏi hiện tại và trạng thái gần nhất; KHÔNG phát ngay finish_turn
+        // Dừng nhạc nền đếm giờ:
+        this.cue("", "stop");
       }
       if (expired(kd.timer)) {
         fin(kd.timer);
@@ -778,8 +779,8 @@ export class OlympiaGame {
         }
         const isLastSeg = kd.segIdx + 1 >= kd.segments.length;
 
-        // In segmentDone (or expired global clock in intro)
-        if (kd.phase === "segmentDone" || (seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0 && kd.phase !== "intro")) {
+        // When in segmentDone: advance to next segment / finish round
+        if (kd.phase === "segmentDone") {
           if (isLastSeg) {
             this.finishRound(now);
             return OK;
@@ -789,6 +790,7 @@ export class OlympiaGame {
           kd.qIdx = -1;
           kd.phase = "intro";
           kd.questionRevealed = false;
+          kd.started = false;
           kd.timer = mkTimer(ns.perQuestionMs);
           kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
           kd.buzzedSeat = null;
@@ -804,41 +806,25 @@ export class OlympiaGame {
           return OK;
         }
 
-        // When finishing question 6/6 of solo KĐ (qIdx >= seg.questions - 1 after result/skip/done),
-        // pressing "kd:next" auto-transitions to question 0/6 of next contestant (or 0/12 of shared round)
-        if (isSolo && kd.qIdx >= seg.questions - 1 && kd.phase !== "intro") {
-          if (isLastSeg) {
-            kd.phase = "segmentDone";
-            kd.current = null;
-            kd.buzzOpen = false;
-            kd.buzzUnlockAt = undefined;
-            this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
-            return OK;
-          }
-          kd.segIdx += 1;
-          const ns = kd.segments[kd.segIdx];
-          kd.qIdx = -1;
-          kd.phase = "intro";
-          kd.questionRevealed = false;
-          kd.timer = mkTimer(ns.perQuestionMs);
-          kd.globalTimer = ns.globalMs ? mkTimer(ns.globalMs) : null;
-          kd.buzzedSeat = null;
+        // When time is up (O13-O22) or at the last question (O23-O26), pressing next / Kết thúc lượt
+        // finishes the turn, reveals the "KẾT THÚC LƯỢT THI" screen, and cues finish_turn!
+        const isTimeUp = Boolean(seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0);
+        const isLastQ = kd.qIdx >= (seg.questions || 6) - 1;
+        if (kd.started && kd.phase !== "intro" && (isTimeUp || isLastQ)) {
+          kd.phase = "segmentDone";
+          kd.current = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = undefined;
-          kd.lockedSeats = [];
-          kd.nextLockedSeats = [];
-          kd.current = null;
-          kd.lastVerdict = null;
+          if (kd.timer) {
+            kd.timer.remainingMs = 0;
+            kd.timer.startedAt = null;
+          }
+          if (kd.globalTimer) {
+            kd.globalTimer.remainingMs = 0;
+            kd.globalTimer.startedAt = null;
+          }
           this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
           return OK;
-        }
-
-        // In final shared KĐ segment, when all questions (e.g. 12/12) are completed:
-        if (!isSolo && isLastSeg && kd.qIdx >= seg.questions - 1 && kd.phase === "result") {
-          kd.phase = "segmentDone";
-          kd.buzzOpen = false;
-          kd.buzzUnlockAt = undefined;
-          return fail("Đã hoàn thành tất cả câu hỏi vòng Khởi Động chung");
         }
 
         // If question is opened but not revealed yet, pressing "Câu tiếp" reveals question content (từ câu 0 sang câu 1).
@@ -1050,6 +1036,23 @@ export class OlympiaGame {
             return OK;
           }
         }
+        return OK;
+      }
+      case "kd:finishTurn": {
+        if (!kd.started || kd.phase === "segmentDone") return OK;
+        kd.phase = "segmentDone";
+        kd.current = null;
+        kd.buzzOpen = false;
+        kd.buzzUnlockAt = undefined;
+        if (kd.timer) {
+          kd.timer.remainingMs = 0;
+          kd.timer.startedAt = null;
+        }
+        if (kd.globalTimer) {
+          kd.globalTimer.remainingMs = 0;
+          kd.globalTimer.startedAt = null;
+        }
+        this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
         return OK;
       }
       case "kd:ready": {

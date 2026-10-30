@@ -276,20 +276,22 @@ export function useOlympiaAudio(
 
       const a = new Audio(soundUrl);
       const looping = isBgmCue && (/kd_bgm_[123]$/.test(cue.sound) || /loop/.test(cue.sound));
+      const isOpenQuestion = cue.sound.includes("open_question");
+      const defaultSfxVol = isOpenQuestion ? 0.95 : 0.75;
       a.loop = looping;
-      a.volume = isBgmCue ? 0 : 0.75; // BGM starts at 0 for fade-in; SFX at normal volume
+      a.volume = isBgmCue ? 0 : defaultSfxVol; // BGM starts at 0 for fade-in; SFX at normal/boosted volume
       connectPanner(a);
 
       a.onerror = () => {
         if (currentChannel !== "both" && soundUrl !== `/olympia-audio/${s}/${cue.sound}.mp3`) {
           const std = new Audio(`/olympia-audio/${s}/${cue.sound}.mp3`);
           std.loop = looping;
-          std.volume = isBgmCue ? 0 : 0.75;
+          std.volume = isBgmCue ? 0 : defaultSfxVol;
           connectPanner(std);
           if (isBgmCue) {
             crossfadeToBgm(std, BGM_CROSSFADE_MS);
           } else {
-            std.volume = 0.75;
+            std.volume = defaultSfxVol;
             std.play().catch(() => {});
           }
           return;
@@ -307,7 +309,7 @@ export function useOlympiaAudio(
       if (isBgmCue) {
         crossfadeToBgm(a, BGM_CROSSFADE_MS);
       } else {
-        a.volume = 0.75;
+        a.volume = defaultSfxVol;
         a.play().catch(() => {});
       }
     };

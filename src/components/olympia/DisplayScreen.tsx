@@ -220,6 +220,8 @@ function DisplayTimerBar({ timer, serverNow }: { timer: any; serverNow: () => nu
   const total = timer?.totalMs || 1;
   const pct = Math.max(0, Math.min(100, (ms / total) * 100));
   const running = timer?.startedAt != null;
+  const hasFinished = timer?.remainingMs <= 0 && timer?.startedAt == null;
+  const displayPct = hasFinished ? 0 : running ? pct : 100;
   const low = ms <= 3000 && ms > 0;
 
   return (
@@ -232,7 +234,7 @@ function DisplayTimerBar({ timer, serverNow }: { timer: any; serverNow: () => nu
               ? "bg-gradient-to-r from-red-500 to-rose-400 shadow-[0_0_8px_rgba(239,68,68,0.7)]"
               : "bg-gradient-to-r from-amber-400 via-rose-500 to-violet-500 shadow-[0_0_8px_rgba(251,191,36,0.5)]"
           }`}
-          style={{ width: `${running ? pct : 100}%` }}
+          style={{ width: `${displayPct}%` }}
         />
       </div>
       {/* Sleek circle thumb indicator attached to the tip of progress */}
@@ -242,7 +244,7 @@ function DisplayTimerBar({ timer, serverNow }: { timer: any; serverNow: () => nu
             ? "bg-red-400 border-red-200 shadow-[0_0_8px_#ef4444]"
             : "bg-amber-300 border-amber-100 shadow-[0_0_6px_#f59e0b]"
         }`}
-        style={{ left: `${running ? pct : 100}%` }}
+        style={{ left: `${displayPct}%` }}
       />
     </div>
   );

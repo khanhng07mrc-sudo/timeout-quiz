@@ -670,26 +670,29 @@ function KhoiDongDeck({
     <div className="space-y-2">
       {/* Row 1: Segment & Contestant Selectors */}
       <div className="flex items-center justify-between gap-1.5 flex-wrap bg-black/30 p-1.5 rounded-xl border border-white/5">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => call("kd:selectSegment", { kind: "solo", seatId: 0 })}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
-              isSolo ? "bg-purple-600/30 border-purple-400 text-purple-200 shadow" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
-            }`}
-          >
-            📍 Lượt Riêng
-          </button>
-          <button
-            type="button"
-            onClick={() => call("kd:selectSegment", { kind: "shared" })}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
-              !isSolo ? "bg-cyan-600/30 border-cyan-400 text-cyan-200 shadow" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
-            }`}
-          >
-            👥 Lượt Chung
-          </button>
-        </div>
+        {/* Toggle Lượt Riêng / Lượt Chung - CHỈ HIỂN THỊ Ở O24, O25, O26 */}
+        {["O24", "O25", "O26"].includes(state.rulesetId) && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => call("kd:selectSegment", { kind: "solo", seatId: 0 })}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                isSolo ? "bg-purple-600/30 border-purple-400 text-purple-200 shadow" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+              }`}
+            >
+              📍 Lượt Riêng
+            </button>
+            <button
+              type="button"
+              onClick={() => call("kd:selectSegment", { kind: "shared" })}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                !isSolo ? "bg-cyan-600/30 border-cyan-400 text-cyan-200 shadow" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+              }`}
+            >
+              👥 Lượt Chung
+            </button>
+          </div>
+        )}
 
         {/* Contestant TS1..TS4 Buttons */}
         <div className="flex items-center gap-1">
@@ -760,6 +763,10 @@ function KhoiDongDeck({
       {(() => {
         const inCooldown = state.khoiDong?.startCooldownUntil != null && serverNow() < state.khoiDong.startCooldownUntil;
         const cdSec = inCooldown ? Math.ceil((state.khoiDong!.startCooldownUntil! - serverNow()) / 1000) : 0;
+        const isTimeUp = Boolean(seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0);
+        const isLastQ = kd.qIdx >= (seg.questions || 6) - 1;
+        const canFinishTurn = kd.started && kd.phase !== "intro" && kd.phase !== "segmentDone" && (isTimeUp || isLastQ);
+
         return (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
             {/* ▶ BẮT ĐẦU */}
@@ -784,16 +791,29 @@ function KhoiDongDeck({
               );
             })()}
 
-            {/* ⏭ CÂU TIẾP (N) */}
-            <button
-              type="button"
-              onClick={() => call("kd:next")}
-              disabled={inCooldown}
-              className={`py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-teal-400 hover:from-sky-400 hover:to-teal-300 text-slate-950 text-xs font-black shadow-lg shadow-sky-500/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider ${inCooldown ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              <span>{inCooldown ? `CÂU TIẾP (${cdSec}s)` : "CÂU TIẾP (N)"}</span>
-              <span>⏭</span>
-            </button>
+            {/* ⏭ CÂU TIẾP (N) hoặc ⏹ KẾT THÚC LƯỢT */}
+            {canFinishTurn ? (
+              <button
+                type="button"
+                onClick={() => call("kd:finishTurn")}
+                disabled={inCooldown}
+                className="py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-red-600 hover:from-amber-400 hover:to-red-500 text-white text-xs font-black shadow-lg shadow-rose-500/25 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider animate-pulse border border-amber-300/30"
+                title="Hết thời gian hoặc đã đến câu cuối, nhấn để kết thúc lượt thi và phát âm thanh kết thúc"
+              >
+                <span>⏹</span>
+                <span>KẾT THÚC LƯỢT</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => call("kd:next")}
+                disabled={inCooldown}
+                className={`py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-teal-400 hover:from-sky-400 hover:to-teal-300 text-slate-950 text-xs font-black shadow-lg shadow-sky-500/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider ${inCooldown ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <span>{inCooldown ? `CÂU TIẾP (${cdSec}s)` : "CÂU TIẾP (N)"}</span>
+                <span>⏭</span>
+              </button>
+            )}
 
             {/* ⏱ TÍNH GIỜ (Space) */}
             <button

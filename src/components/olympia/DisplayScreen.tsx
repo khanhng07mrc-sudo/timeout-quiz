@@ -219,25 +219,31 @@ function DisplayTimerBar({ timer, serverNow }: { timer: any; serverNow: () => nu
   const ms = useCountdown(timer, serverNow);
   const total = timer?.totalMs || 1;
   const pct = Math.max(0, Math.min(100, (ms / total) * 100));
-  const secs = (ms / 1000).toFixed(ms < 10000 ? 1 : 0);
   const running = timer?.startedAt != null;
   const low = ms <= 3000 && ms > 0;
 
   return (
-    <div className="w-full flex items-center gap-3">
-      <div className={`font-mono font-black tabular-nums text-lg sm:text-2xl shrink-0 transition-colors ${low ? "text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.8)]" : running ? "text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]" : "text-violet-400/50"}`}>
-        {running ? `${secs}s` : `${Math.round(total / 1000)}s`}
-      </div>
-      <div className="flex-1 h-3 rounded-full bg-black/50 border border-violet-500/20 overflow-hidden shadow-inner">
+    <div className="w-full relative py-1 flex items-center">
+      {/* Sleek track */}
+      <div className="w-full h-1.5 rounded-full bg-violet-950/70 border border-violet-500/25 overflow-hidden shadow-inner relative">
         <div
           className={`h-full rounded-full transition-all duration-100 ${
             low
-              ? "bg-gradient-to-r from-red-500 to-rose-400 shadow-[0_0_10px_rgba(239,68,68,0.7)]"
-              : "bg-gradient-to-r from-amber-400 via-red-500 to-violet-500 shadow-[0_0_10px_rgba(251,191,36,0.4)]"
+              ? "bg-gradient-to-r from-red-500 to-rose-400 shadow-[0_0_8px_rgba(239,68,68,0.7)]"
+              : "bg-gradient-to-r from-amber-400 via-rose-500 to-violet-500 shadow-[0_0_8px_rgba(251,191,36,0.5)]"
           }`}
           style={{ width: `${running ? pct : 100}%` }}
         />
       </div>
+      {/* Sleek circle thumb indicator attached to the tip of progress */}
+      <div
+        className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none transition-all duration-100 rounded-full w-2.5 h-2.5 border ${
+          low
+            ? "bg-red-400 border-red-200 shadow-[0_0_8px_#ef4444]"
+            : "bg-amber-300 border-amber-100 shadow-[0_0_6px_#f59e0b]"
+        }`}
+        style={{ left: `${running ? pct : 100}%` }}
+      />
     </div>
   );
 }
@@ -290,8 +296,8 @@ function KhoiDong({ state, serverNow }: P) {
           </div>
         </div>
 
-        {/* Question stage */}
-        <div className="flex-1 min-h-[90px] flex flex-col justify-center items-center py-2">
+        {/* Question stage with fixed height */}
+        <div className="w-full min-h-[140px] max-h-[140px] flex flex-col justify-center items-center py-2 overflow-y-auto no-scrollbar">
           {kd.phase === "segmentDone" ? (
             <div className="text-center space-y-2 animate-fade-in">
               <div

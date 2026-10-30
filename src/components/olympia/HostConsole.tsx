@@ -358,23 +358,26 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               </div>
             </div>
 
-            {/* Question Card Box */}
-            <div className="rounded-xl border border-violet-500/20 bg-gradient-to-b from-[#1a0d3f]/80 to-[#0f0728]/90 p-2.5 space-y-1.5 shadow-lg backdrop-blur-sm">
-              <div className="text-xs md:text-sm font-semibold leading-relaxed min-h-[36px] flex items-center">
+            {/* 1. Question Card Box (Fixed height for stability) */}
+            <div className="rounded-xl border border-violet-500/25 bg-gradient-to-b from-[#1a0d3f]/90 to-[#0f0728]/95 p-2.5 shadow-md backdrop-blur-sm">
+              <div className="text-xs md:text-sm font-semibold leading-relaxed min-h-[52px] max-h-[52px] overflow-y-auto no-scrollbar flex items-center">
                 {getQuestionText(state) || <span className="text-slate-400 italic">Đang đợi câu hỏi…</span>}
               </div>
+            </div>
 
+            {/* 2. Separate Answer & Explanation Card Box */}
+            <div className="rounded-xl border border-emerald-500/35 bg-gradient-to-r from-emerald-950/45 via-[#0b1f1a]/70 to-purple-950/35 p-2 flex flex-col gap-1.5 shadow-md backdrop-blur-sm">
               {/* Green box: ĐÁP ÁN */}
-              <div className="rounded-lg bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1 text-xs text-emerald-200 flex items-center gap-2">
-                <span className="font-bold text-emerald-400 shrink-0 text-[11px]">ĐÁP ÁN:</span>
-                <span className="font-bold text-xs tracking-wide">{getAnswerText(state) || "--"}</span>
+              <div className="rounded-lg bg-emerald-900/50 border border-emerald-400/40 px-2.5 py-1 text-xs text-emerald-200 flex items-center gap-2 shadow-inner">
+                <span className="font-black text-emerald-400 shrink-0 text-[11px] uppercase tracking-wider">ĐÁP ÁN:</span>
+                <span className="font-bold text-xs tracking-wide text-emerald-100 select-text">{getAnswerText(state) || "--"}</span>
               </div>
 
               {/* Purple box: GIẢI THÍCH */}
               {getExplanationText(state) && (
-                <div className="rounded-lg bg-purple-950/30 border border-purple-500/30 px-2.5 py-1 text-xs text-purple-200 flex items-center gap-2">
-                  <span className="font-bold text-purple-400 shrink-0 text-[11px]">GIẢI THÍCH:</span>
-                  <span className="text-slate-300 text-[11px] truncate">{getExplanationText(state)}</span>
+                <div className="rounded-lg bg-purple-950/40 border border-purple-400/30 px-2.5 py-1 text-xs text-purple-200 flex items-center gap-2">
+                  <span className="font-black text-purple-400 shrink-0 text-[11px] uppercase tracking-wider">GIẢI THÍCH:</span>
+                  <span className="text-slate-300 text-[11px] truncate select-text">{getExplanationText(state)}</span>
                 </div>
               )}
             </div>

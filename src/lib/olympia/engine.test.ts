@@ -577,4 +577,32 @@ test("kd:start plays ready, sets 3.5s cooldown, and kd:next respects cooldown", 
   assert.equal(g.state.khoiDong!.timer.startedAt, null, "5s timer not started automatically on next");
 });
 
+test("O13-O22: kd:next first click auto-starts 60s global clock and plays 60s bgm", () => {
+  const g = game("O15", ["khoiDong"], 2);
+  act(g, "game:start");
+  act(g, "kd:start", {}, 1000);
+  assert.equal(g.state.khoiDong!.started, true);
+  assert.equal(g.state.cue!.sound, "1_KhoiDong/ready");
+
+  // After 3.5s cooldown expires: only open_question plays, globalTimer NOT running yet
+  g.tick(1000 + 3500);
+  assert.equal(g.state.khoiDong!.phase, "question");
+  assert.equal(g.state.cue!.sound, "1_KhoiDong/open_question");
+  assert.equal(g.state.khoiDong!.globalTimer!.startedAt, null, "globalTimer must wait for first kd:next");
+
+  // First kd:next click reveals question 1, AUTO-STARTS 60s timer and cues 60s audio!
+  const accepted = g.hostAction({ type: "kd:next" }, 5000);
+  assert.equal(accepted.ok, true);
+  assert.equal(g.state.khoiDong!.questionRevealed, true);
+  assert.equal(g.state.khoiDong!.globalTimer!.startedAt, 5000, "60s globalTimer auto-started");
+  assert.equal(g.state.cue!.sound, "1_KhoiDong/60s");
+  assert.equal(g.state.cue!.kind, "bgm");
+
+  // Subsequent kd:next (question 2): globalTimer continues running uninterrupted
+  act(g, "kd:correct", {}, 8000);
+  act(g, "kd:next", {}, 9000);
+  assert.equal(g.state.khoiDong!.qIdx, 1, "Moved to question 2");
+  assert.equal(g.state.khoiDong!.globalTimer!.startedAt, 5000, "globalTimer continues running uninterrupted");
+});
+
 console.log(`${passed} tests passed`);

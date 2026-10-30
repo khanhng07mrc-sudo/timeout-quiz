@@ -99,7 +99,8 @@ export function useOlympiaAudio(
 ) {
   const lastCue = useRef<number | null>(null);
   const bgm = useRef<HTMLAudioElement | null>(null);
-  const bgmFadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeBgmSet = useRef<Set<HTMLAudioElement>>(new Set());
+  const activeFadeTimers = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const getAudioContext = useCallback(() => {
@@ -115,42 +116,35 @@ export function useOlympiaAudio(
     return audioCtxRef.current;
   }, []);
 
-  /** Fade out the old BGM over durationMs, then stop it. Returns the old audio element. */
-  const fadeOutOldBgm = useCallback((old: HTMLAudioElement, durationMs: number) => {
-    if (old.paused || old.volume <= 0) {
-      try { old.pause(); old.currentTime = 0; } catch {}
-      return;
-    }
-    if (bgmFadeTimerRef.current) clearInterval(bgmFadeTimerRef.current);
-    const steps = 20;
-    const stepMs = Math.max(15, Math.floor(durationMs / steps));
-    const startVol = old.volume;
-    const volStep = startVol / steps;
-    let step = 0;
-    bgmFadeTimerRef.current = setInterval(() => {
-      step++;
-      const newVol = Math.max(0, startVol - volStep * step);
-      try { old.volume = newVol; } catch {}
-      if (step >= steps || newVol <= 0) {
-        if (bgmFadeTimerRef.current) clearInterval(bgmFadeTimerRef.current);
-        bgmFadeTimerRef.current = null;
-        try { old.pause(); old.currentTime = 0; } catch {}
-      }
-    }, stepMs);
-  }, []);
+  /** Dừng và dọn dẹp triệt để 100% tất cả BGM đang phát lẫn các bài hát đang fade-out ngầm */
+  const killAllBgmAudio = useCallback(() => {
+    activeFadeTimers.current.forEach((t) => clearInterval(t));
+    activeFadeTimers.current.clear();
 
-  const stopBgm = useCallback(() => {
-    if (bgmFadeTimerRef.current) {
-      clearInterval(bgmFadeTimerRef.current);
-      bgmFadeTimerRef.current = null;
-    }
+    activeBgmSet.current.forEach((a) => {
+      try {
+        a.pause();
+        a.currentTime = 0;
+        a.src = "";
+      } catch {}
+    });
+    activeBgmSet.current.clear();
+
     if (bgm.current) {
-      try { bgm.current.pause(); bgm.current.currentTime = 0; } catch {}
+      try {
+        bgm.current.pause();
+        bgm.current.currentTime = 0;
+        bgm.current.src = "";
+      } catch {}
       bgm.current = null;
     }
   }, []);
 
-  /** Crossfade to a new BGM element. Old BGM fades out while new BGM fades in. */
+  const stopBgm = useCallback(() => {
+    killAllBgmAudio();
+  }, [killAllBgmAudio]);
+
+  /** Crossfade to a new BGM element. Old BGM fades out while new BGM fades in. Triệt tiêu hoàn toàn hiện tượng kẹt nhạc. */
   const crossfadeToBgm = useCallback((newAudio: HTMLAudioElement, durationMs: number) => {
     const old = bgm.current;
     // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại
@@ -158,12 +152,38 @@ export function useOlympiaAudio(
       return;
     }
 
+    // Dừng dứt điểm các track nhạc cũ trước đó nữa nếu đang fade dở dang
+    activeBgmSet.current.forEach((a) => {
+      if (a !== old && a !== newAudio) {
+        try { a.pause(); a.currentTime = 0; a.src = ""; } catch {}
+        activeBgmSet.current.delete(a);
+      }
+    });
+
+    activeBgmSet.current.add(newAudio);
     bgm.current = newAudio;
     newAudio.volume = 0;
     newAudio.play().catch(() => {});
 
     if (old && !old.paused) {
-      fadeOutOldBgm(old, durationMs);
+      activeBgmSet.current.add(old);
+      const steps = 20;
+      const stepMs = Math.max(15, Math.floor(durationMs / steps));
+      const startVol = old.volume;
+      const volStep = startVol / steps;
+      let step = 0;
+      const fadeTimer = setInterval(() => {
+        step++;
+        const newVol = Math.max(0, startVol - volStep * step);
+        try { old.volume = newVol; } catch {}
+        if (step >= steps || newVol <= 0 || !activeBgmSet.current.has(old)) {
+          clearInterval(fadeTimer);
+          activeFadeTimers.current.delete(fadeTimer);
+          try { old.pause(); old.currentTime = 0; old.src = ""; } catch {}
+          activeBgmSet.current.delete(old);
+        }
+      }, stepMs);
+      activeFadeTimers.current.add(fadeTimer);
     }
 
     // Fade in new audio
@@ -176,11 +196,13 @@ export function useOlympiaAudio(
       step++;
       const newVol = Math.min(targetVol, volStep * step);
       try { newAudio.volume = newVol; } catch {}
-      if (step >= steps || newVol >= targetVol || bgm.current !== newAudio) {
+      if (step >= steps || newVol >= targetVol || bgm.current !== newAudio || !activeBgmSet.current.has(newAudio)) {
         clearInterval(fadeInTimer);
+        activeFadeTimers.current.delete(fadeInTimer);
       }
     }, stepMs);
-  }, [fadeOutOldBgm]);
+    activeFadeTimers.current.add(fadeInTimer);
+  }, []);
 
   const pauseBgm = useCallback(() => {
     if (bgm.current && !bgm.current.paused) {

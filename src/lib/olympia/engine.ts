@@ -272,20 +272,8 @@ export class OlympiaGame {
         kd.phase = "question";
         kd.questionRevealed = false; // Graphic frame is ready, question text waits for first "Câu tiếp" click
         this.cue("1_KhoiDong/open_question");
-        // Sau 3.5s chỉ mở đồ hoạ và phát open_question. BGM kd_bgm_1 chỉ phát khi nhấn "Câu tiếp" lần đầu (sang câu 1)
-        const rIdTick = this.ruleset.id;
-        const aSeasonTick = this.ruleset.audioSeason;
-        if (aSeasonTick === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rIdTick)) {
-          this.cue("1_KhoiDong/60s", "bgm");
-        } else if (rIdTick === "O22" || aSeasonTick === "O22") {
-          const segTick = kd.segments[kd.segIdx];
-          if (segTick.kind !== "solo") {
-            const gMs = segTick.globalMs || 60000;
-            if (gMs <= 30000) this.cue("1_KhoiDong/30s", "bgm");
-            else if (gMs <= 60000) this.cue("1_KhoiDong/60s", "bgm");
-            else this.cue("1_KhoiDong/90s", "bgm");
-          }
-        }
+        // Sau 3.5s cooldown chỉ mở đồ hoạ và phát duy nhất open_question.
+        // Nhạc 60s (O13-O21), 30s/60s/90s (O22) hoặc kd_bgm_1 (O23-O26) CHỈ phát khi nhấn "Câu tiếp" lần đầu (mở câu 1)
       }
     }
 
@@ -854,18 +842,30 @@ export class OlympiaGame {
         }
 
         // If question is opened but not revealed yet, pressing "Câu tiếp" reveals question content (từ câu 0 sang câu 1).
-        // Đây chính là thời điểm BGM kd_bgm_1 bắt đầu phát!
-        // Không đếm 5s ngay! Quản trò nhấn ⏱ Giờ hoặc Space để bắt đầu đếm 5s.
-        // Nhạc không restart sau mỗi câu, giữ nguyên trạng thái chạy.
+        // Đây chính là thời điểm BGM kd_bgm_1 (O23-O26) hoặc âm thanh 60s/30s/90s (O13-O22) bắt đầu phát!
         if (kd.phase === "question" && !kd.questionRevealed) {
           kd.questionRevealed = true;
           const rId = this.ruleset.id;
           const aSeason = this.ruleset.audioSeason;
-          if ((rId === "O22" || aSeason === "O22") && !isSolo && kd.globalTimer && !timerRunning(kd.globalTimer)) {
-            startTimer(kd.globalTimer, now);
-            kd.buzzOpen = true;
-          }
-          if (aSeason !== "O13-21" && !(rId === "O22" && !isSolo)) {
+          if (kd.globalTimer) {
+            // Ở luật O13 - O22 (có globalTimer): đồng hồ 60s/30s/90s TỰ ĐỘNG CHẠY ngay khi nhấn Câu tiếp lần đầu!
+            if (!timerRunning(kd.globalTimer)) {
+              startTimer(kd.globalTimer, now);
+            }
+            if (!isSolo) {
+              kd.buzzOpen = true;
+            }
+            // Kích hoạt âm thanh đếm giờ mùa tương ứng
+            if (aSeason === "O13-21" || /^O(1[3-9]|2[0-1])$/.test(rId)) {
+              this.cue("1_KhoiDong/60s", "bgm");
+            } else if (rId === "O22" || aSeason === "O22") {
+              const gMs = seg.globalMs || 60000;
+              if (gMs <= 30000) this.cue("1_KhoiDong/30s", "bgm");
+              else if (gMs <= 60000) this.cue("1_KhoiDong/60s", "bgm");
+              else this.cue("1_KhoiDong/90s", "bgm");
+            }
+          } else {
+            // Ở luật O23 - O26 (tính giờ 5s từng câu): KHÔNG tự động đếm 5s, chờ MC nhấn Space/Tính giờ thủ công
             kd.currentBgmTrack = "kd_bgm_1";
             this.cue("1_KhoiDong/kd_bgm_1", "bgm");
           }
@@ -974,6 +974,9 @@ export class OlympiaGame {
         kd.questionRevealed = false;
         kd.started = true;
         kd.startCooldownUntil = now + 3500;
+        if (seg.globalMs) {
+          kd.globalTimer = mkTimer(seg.globalMs);
+        }
         if (kd.qIdx < 0) {
           kd.qIdx = 0;
           const q = this.kdPoolQuestion(kd, seg);

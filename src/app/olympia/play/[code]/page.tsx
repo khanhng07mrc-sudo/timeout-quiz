@@ -15,8 +15,10 @@ function Inner() {
 
 export default function Page() {
   return (
-    <Suspense fallback={null}>
-      <Inner />
-    </Suspense>
+    <main className="fixed inset-0 w-screen h-screen overflow-hidden bg-black select-none">
+      <Suspense fallback={null}>
+        <Inner />
+      </Suspense>
+    </main>
   );
 }

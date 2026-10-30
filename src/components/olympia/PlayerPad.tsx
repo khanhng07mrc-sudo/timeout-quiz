@@ -38,7 +38,7 @@ export default function PlayerPad({
   if (name === null) return null;
   if (join && !join.ok) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white p-6 flex flex-col items-center justify-center gap-4">
+      <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#080d24] via-[#0e173b] to-[#040714] text-white p-6 flex flex-col items-center justify-center gap-4">
         <div className="text-rose-300 text-lg text-center">{join.error}</div>
         <a href="/play" className="underline text-sky-300">
           ← Quay lại
@@ -46,11 +46,17 @@ export default function PlayerPad({
       </div>
     );
   }
-  if (!state || join?.seatId == null) return <div className="min-h-screen bg-slate-950 text-sky-200 p-8">Đang kết nối…</div>;
+  if (!state || join?.seatId == null) {
+    return (
+      <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#080d24] via-[#0e173b] to-[#040714] text-sky-200 flex items-center justify-center p-8 text-lg font-bold">
+        Đang kết nối…
+      </div>
+    );
+  }
 
   const me = state.seats[join.seatId];
   return (
-    <div className="h-full max-h-full overflow-hidden bg-gradient-to-b from-blue-950 to-slate-950 text-white p-2 sm:p-3 flex flex-col justify-between gap-2">
+    <div className="fixed inset-0 w-full h-full min-h-screen overflow-hidden bg-gradient-to-b from-[#080d24] via-[#0e173b] to-[#040714] text-white p-2 sm:p-3 flex flex-col justify-between gap-2">
       {/* Sleek compact single-line top bar */}
       <div
         className="flex items-center justify-between rounded-xl bg-black/40 border border-white/10 px-3 py-1.5 shrink-0 gap-2"

@@ -132,9 +132,19 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
     : "--";
 
   if (join && !join.ok) {
-    return <div className="p-8 text-rose-300 text-lg">Không thể vào bàn điều khiển: {join.error}</div>;
+    return (
+      <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#0a0c1a] via-[#101226] to-[#060712] p-8 text-rose-300 text-lg flex items-center justify-center">
+        Không thể vào bàn điều khiển: {join.error}
+      </div>
+    );
   }
-  if (!state) return <div className="p-8 text-sky-200">Đang kết nối bàn điều khiển…</div>;
+  if (!state) {
+    return (
+      <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#0a0c1a] via-[#101226] to-[#060712] p-8 text-sky-200 flex items-center justify-center font-bold text-lg">
+        Đang kết nối bàn điều khiển…
+      </div>
+    );
+  }
 
   const seats = activeSeats(state);
   const curRound = state.currentRound;
@@ -163,7 +173,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             : "--";
 
   return (
-    <div className="h-full max-h-full bg-gradient-to-b from-[#0d0820] via-[#120b2e] to-[#0a0618] text-slate-100 flex flex-col font-sans select-none overflow-hidden">
+    <div className="w-full h-full min-h-full flex-1 bg-gradient-to-b from-[#0a0c1a] via-[#101226] to-[#060712] text-slate-100 flex flex-col font-sans select-none overflow-hidden">
       {/* ── TOP HEADER BAR (CLEAN, NO OVERLAPPING) ── */}
       <header className="h-10 border-b border-violet-500/15 bg-black/30 backdrop-blur-sm px-2.5 sm:px-3 flex items-center justify-between shrink-0 gap-2">
         {/* Left: Branding & Current Round */}

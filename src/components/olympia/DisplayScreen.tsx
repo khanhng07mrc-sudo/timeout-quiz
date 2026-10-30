@@ -12,10 +12,10 @@ export default function DisplayScreen({ code }: { code: string }) {
   // introRemainingMs not used for display anymore (canvas is infinite), kept for type safety
   const _introRemainingMs = useCountdown(state?.introTimer, serverNow); void _introRemainingMs;
 
-  if (join && !join.ok) return <div className="p-10 text-rose-300 text-2xl">{join.error}</div>;
+  if (join && !join.ok) return <div className="fixed inset-0 w-full h-full flex items-center justify-center bg-black p-10 text-rose-300 text-2xl">{join.error}</div>;
   if (!state)
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0d0820] text-violet-300 text-2xl font-bold">
+      <div className="fixed inset-0 w-full h-full flex items-center justify-center bg-gradient-to-b from-[#060814] via-[#0a0f24] to-[#03040a] text-violet-300 text-2xl font-bold">
         Đang kết nối…
       </div>
     );
@@ -24,17 +24,18 @@ export default function DisplayScreen({ code }: { code: string }) {
 
   // Canvas is shown when introTimer active OR host manually enabled stage graphics
   const showCanvas = state.stage === "playing" && (!!state.introTimer || !!state.showStageGraphics);
+  const isIntro = state.stage === "playing" && !!state.introTimer;
 
   return (
-    <div className="h-full max-h-full overflow-hidden bg-gradient-to-b from-[#0d0820] via-[#120b2e] to-[#0a0618] text-white flex flex-col select-none relative">
+    <div className="fixed inset-0 w-full h-full min-h-screen overflow-hidden bg-gradient-to-b from-[#060814] via-[#0a0f24] to-[#03040a] text-white flex flex-col select-none">
       {/* Ambient background orbs */}
       <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-violet-600/8 blur-[100px] pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-amber-500/6 blur-[100px] pointer-events-none" />
 
       {/* ✅ FULL-SCREEN hexagonal LED canvas — z-40, covers header + score strip */}
       {showCanvas && (
-        <div className="absolute inset-0 z-40 pointer-events-none">
-          <OlympiaIntroCanvas />
+        <div className="fixed inset-0 w-full h-full z-40 pointer-events-none">
+          <OlympiaIntroCanvas isIntro={isIntro} />
         </div>
       )}
 
@@ -732,205 +733,433 @@ function Chp({ state, serverNow }: P) {
 }
 
 
-// ─── Hexagonal LED Intro Canvas ─────────────────────────────────────────────
-// Full-screen Canvas 2D animation: hexagonal LED stage inspired by Olympia 26 studio.
-// Rendered via requestAnimationFrame, no external libraries.
-function OlympiaIntroCanvas() {
+// ─── Hexagonal LED Studio Canvas (Trường quay S14 Đường lên đỉnh Olympia) ───
+// Full-screen Canvas 2D: Tái hiện chân thực trường quay Olympia 26 với cổng lục giác đứng,
+// hiệu ứng camera/portal zoom dập dồn từng đợt khi mở đầu, panel ký hiệu khoa học bên trái,
+// màn hình bảng tên bên phải, bục tròn đồng tâm và mặt sàn bóng gương phản chiếu.
+function OlympiaIntroCanvas({ isIntro = false }: { isIntro?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
+  const logoImgRef = useRef<HTMLImageElement | null>(null);
 
-  // Keep canvas pixel size in sync with CSS size
+  // Load logo chính thức Đường lên đỉnh Olympia
+  useEffect(() => {
+    const img = new Image();
+    img.src = "/olympia/olympia_logo.png";
+    img.onload = () => {
+      logoImgRef.current = img;
+    };
+  }, []);
+
+  // Đồng bộ kích thước chuẩn theo viewport thực tế (kể cả iframe hay fullscreen)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const sync = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+
+    const syncSize = () => {
+      const rect = canvas.getBoundingClientRect();
+      const parent = canvas.parentElement;
+      const w = Math.round(rect.width || parent?.clientWidth || window.innerWidth || 1280);
+      const h = Math.round(rect.height || parent?.clientHeight || window.innerHeight || 720);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = Math.max(200, w);
+        canvas.height = Math.max(150, h);
+      }
     };
-    sync();
-    const ro = new ResizeObserver(sync);
+
+    syncSize();
+    const ro = new ResizeObserver(syncSize);
     ro.observe(canvas);
-    return () => ro.disconnect();
+    if (canvas.parentElement) ro.observe(canvas.parentElement);
+    window.addEventListener("resize", syncSize);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", syncSize);
+    };
   }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
+    const ctx = canvas.getContext("2d", { alpha: false }) || canvas.getContext("2d")!;
     let t = 0;
 
-    // ── Star particles ────────────────────────────────────────────────────────
-    const stars = Array.from({ length: 200 }, () => ({
-      x: Math.random(), y: Math.random(),
-      vx: (Math.random() - 0.5) * 0.00018,
-      vy: (Math.random() - 0.5) * 0.00012,
-      r: Math.random() * 1.8 + 0.3,
+    // Hạt sao và bụi sáng không gian trường quay
+    const stars = Array.from({ length: 180 }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      vx: (Math.random() - 0.5) * 0.00016,
+      vy: (Math.random() - 0.5) * 0.0001,
+      r: Math.random() * 1.8 + 0.4,
       phase: Math.random() * Math.PI * 2,
     }));
 
-    // ── Flat-top hexagon path helper ──────────────────────────────────────────
-    function hexPath(cx: number, cy: number, r: number) {
+    // Hàm vẽ hình lục giác đứng (Vertical Flat-top Hexagon - Chuẩn cổng trường quay S14)
+    // Cạnh trên phẳng nằm ngang, cạnh dưới phẳng nằm ngang, 2 bên vát góc thẳng đứng
+    function drawVerticalHex(cx: number, cy: number, w: number, h: number) {
+      const halfW = w * 0.5;
+      const topFlat = w * 0.34; // độ dài cạnh phẳng nằm ngang trên & dưới
+      const halfH = h * 0.5;
       ctx.beginPath();
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2 - Math.PI / 6;
-        i === 0
-          ? ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r)
-          : ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-      }
+      ctx.moveTo(cx - topFlat, cy - halfH); // Đỉnh 1: Trái cạnh trên
+      ctx.lineTo(cx + topFlat, cy - halfH); // Đỉnh 2: Phải cạnh trên
+      ctx.lineTo(cx + halfW, cy + h * 0.02); // Đỉnh 3: Nhô ra góc phải
+      ctx.lineTo(cx + topFlat, cy + halfH); // Đỉnh 4: Phải cạnh dưới
+      ctx.lineTo(cx - topFlat, cy + halfH); // Đỉnh 5: Trái cạnh dưới
+      ctx.lineTo(cx - halfW, cy + h * 0.02); // Đỉnh 6: Nhô ra góc trái
       ctx.closePath();
     }
 
     const draw = () => {
-      const W = canvas.width || canvas.offsetWidth;
-      const H = canvas.height || canvas.offsetHeight;
-      if (!W || !H) { rafRef.current = requestAnimationFrame(draw); return; }
+      const W = canvas.width;
+      const H = canvas.height;
+      if (!W || !H) {
+        rafRef.current = requestAnimationFrame(draw);
+        return;
+      }
 
+      // Vị trí tâm sân khấu trung tâm
       const cx = W * 0.5;
-      const cy = H * 0.44;
-      const hexR = Math.min(W, H) * 0.30; // ~60% of the shorter dimension → large stage
+      const cy = H * 0.42;
 
-      // ── 1. Background ──────────────────────────────────────────────────────
-      const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H));
-      bg.addColorStop(0, "#001838");
-      bg.addColorStop(0.5, "#000c20");
-      bg.addColorStop(1, "#000408");
-      ctx.fillStyle = bg;
+      // Kích thước chuẩn cổng lục giác đứng (chiều cao lớn hơn chiều rộng)
+      const baseHexW = Math.min(W * 0.46, H * 0.62);
+      const baseHexH = baseHexW * 1.25;
+
+      // ── 1. NỀN KHÔNG GIAN TRƯỜNG QUAY S14 (Studio Backdrop) ─────────────────
+      const bgGrad = ctx.createRadialGradient(cx, cy * 0.8, 0, cx, cy, Math.max(W, H) * 0.85);
+      bgGrad.addColorStop(0, "#081b3a");
+      bgGrad.addColorStop(0.35, "#040e24");
+      bgGrad.addColorStop(0.75, "#020713");
+      bgGrad.addColorStop(1, "#010308");
+      ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // ── 2. Star field ──────────────────────────────────────────────────────
+      // ── 2. ĐÈN SPOTLIGHT TỪ ĐỈNH TRẦN RỌI XUỐNG SÀN ĐẤU ──────────────────────
+      ctx.save();
+      const spotGrad = ctx.createLinearGradient(cx, 0, cx, H * 0.85);
+      spotGrad.addColorStop(0, "rgba(0, 195, 255, 0.22)");
+      spotGrad.addColorStop(0.5, "rgba(0, 130, 255, 0.07)");
+      spotGrad.addColorStop(1, "rgba(0, 50, 150, 0)");
+      ctx.fillStyle = spotGrad;
+      ctx.beginPath();
+      ctx.moveTo(cx - W * 0.04, 0);
+      ctx.lineTo(cx + W * 0.04, 0);
+      ctx.lineTo(cx + baseHexW * 0.9, H * 0.85);
+      ctx.lineTo(cx - baseHexW * 0.9, H * 0.85);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // ── 3. MA TRẬN HẠT SAO VÀ BỤI SÁNG SỐ TRÔI TRONG TRƯỜNG QUAY ────────────
       stars.forEach((s) => {
         s.x = (s.x + s.vx + 1) % 1;
         s.y = (s.y + s.vy + 1) % 1;
-        const alpha = 0.28 + Math.sin(t * 1.2 + s.phase) * 0.16;
+        const alpha = 0.22 + Math.sin(t * 1.5 + s.phase) * 0.14;
         ctx.beginPath();
         ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(160,210,255,${alpha})`;
+        ctx.fillStyle = `rgba(165, 215, 255, ${alpha})`;
         ctx.fill();
       });
 
-      // ── 3. Nested hex border rings (5 layers, outermost to innermost) ──────
-      // Layer 5 (outermost, faintest) → Layer 1 (main border, brightest)
-      const hexLayers = [
-        { scale: 1.38, alpha: 0.05, lw: 1.0, blur: 4 },
-        { scale: 1.26, alpha: 0.10, lw: 1.5, blur: 6 },
-        { scale: 1.14, alpha: 0.22, lw: 2.0, blur: 10 },
-        { scale: 1.06, alpha: 0.50, lw: 3.0, blur: 18 },
-        { scale: 1.00, alpha: 1.00, lw: 4.5, blur: 32 }, // main LED border
-      ];
-      hexLayers.forEach(({ scale, alpha, lw, blur }) => {
-        const pulse = scale === 1.0 ? 0.12 * Math.sin(t * 3.0) : 0;
+      // ── 4. HIỆU ỨNG ZOOM TỪNG ĐỢT (ZOOM WAVES CHO PHẦN MỞ ĐẦU) ──────────────
+      // Khi isIntro === true: Camera/Portal zoom dập dồn từng đợt theo chu kỳ 2.6s
+      // Các tầng cổng lục giác liên tục nở từ trong ra ngoài (portal flow)
+      const zoomWaveSpeed = 0.45;
+      const waveCycle = (t * zoomWaveSpeed) % 1;
+
+      // ── 5. CỔNG LỤC GIÁC ĐỨNG ĐA TẦNG 3D (Vertical Hexagonal Tunnel) ────────
+      // Nếu là mở đầu: vẽ các tầng zoom nở dần từ tâm ra ngoài (nhịp 5 tầng)
+      // Nếu là host bật lại: vẽ 5 tầng tĩnh với sóng quét LED êm dịu
+      const portalLayers = 5;
+
+      for (let i = 0; i < portalLayers; i++) {
+        let layerProgress: number;
+        let scale: number;
+        let alpha: number;
+
+        if (isIntro) {
+          // Hiệu ứng Zoom từng đợt liên tục: mỗi tầng dịch chuyển theo waveCycle
+          layerProgress = (waveCycle + i / portalLayers) % 1;
+          // Scale từ 0.25 (sâu bên trong) nở to lên 1.35 (phóng ra trước mắt người xem)
+          scale = 0.25 + Math.pow(layerProgress, 1.4) * 1.15;
+          // Fade in ở giữa và fade out khi nở cực đại
+          alpha = Math.sin(layerProgress * Math.PI) * 0.95;
+        } else {
+          // Chế độ trường quay tĩnh (Host bật thủ công): 5 khung lồng nhau cố định
+          const scales = [1.28, 1.14, 1.0, 0.86, 0.72];
+          const alphas = [0.12, 0.28, 0.95, 0.45, 0.22];
+          scale = scales[i];
+          alpha = alphas[i] + Math.sin(t * 2.5 + i) * 0.08;
+        }
+
+        const curW = baseHexW * scale;
+        const curH = baseHexH * scale;
+
         ctx.save();
-        ctx.shadowColor = "#00cfff";
-        ctx.shadowBlur = blur;
-        ctx.strokeStyle = `rgba(0,200,255,${alpha + pulse})`;
-        ctx.lineWidth = lw;
-        hexPath(cx, cy, hexR * scale);
+        ctx.shadowColor = "#00d4ff";
+        ctx.shadowBlur = Math.min(35, 12 * scale);
+        ctx.strokeStyle = `rgba(0, 215, 255, ${Math.max(0, alpha)})`;
+        ctx.lineWidth = Math.max(1.5, (i === 2 || (!isIntro && scale === 1.0) ? 4.5 : 2.5) * Math.min(1.5, scale));
+        drawVerticalHex(cx, cy, curW, curH);
         ctx.stroke();
+
+        // Viền LED kép bên trong mỗi tầng khung
+        if (scale > 0.4) {
+          ctx.strokeStyle = `rgba(220, 245, 255, ${Math.max(0, alpha * 0.7)})`;
+          ctx.lineWidth = 1.0;
+          drawVerticalHex(cx, cy, curW * 0.96, curH * 0.96);
+          ctx.stroke();
+        }
         ctx.restore();
-      });
+      }
 
-      // ── 4. Hex interior: gradient fill + clip for inner effects ───────────
+      // Khung cổng LED lục giác chính (cố định nền tảng vững chãi)
       ctx.save();
-      hexPath(cx, cy, hexR * 0.985);
-      ctx.clip();
+      ctx.shadowColor = "#00e5ff";
+      ctx.shadowBlur = 28;
+      ctx.strokeStyle = "rgba(0, 230, 255, 0.95)";
+      ctx.lineWidth = 3.5;
+      drawVerticalHex(cx, cy, baseHexW, baseHexH);
+      ctx.stroke();
+      ctx.restore();
 
-      // Interior gradient
-      const interior = ctx.createRadialGradient(cx, cy, 0, cx, cy, hexR);
-      interior.addColorStop(0, "rgba(0,80,200,0.50)");
-      interior.addColorStop(0.55, "rgba(0,30,100,0.75)");
-      interior.addColorStop(1, "rgba(0,8,40,0.92)");
-      ctx.fillStyle = interior;
-      ctx.fillRect(0, 0, W, H);
+      // ── 6. LÒNG TRONG CỔNG LỤC GIÁC (NỀN LED DIGITAL RAIN & CHỮ OLYMPIA) ─────
+      ctx.save();
+      drawVerticalHex(cx, cy, baseHexW * 0.97, baseHexH * 0.97);
+      ctx.clip(); // Giới hạn chỉ vẽ bên trong cổng lục giác
 
-      // ── 5. Radial light beams from centre (inside hex clip) ────────────────
-      for (let i = 0; i < 16; i++) {
-        const angle = (i / 16) * Math.PI * 2 + t * 0.12;
-        const alpha = (Math.sin(t * 1.0 + i * 0.6) * 0.5 + 0.5) * 0.20;
+      // Nền gradient xanh dương đậm sâu thẳm
+      const innerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseHexW * 0.75);
+      innerGrad.addColorStop(0, "rgba(0, 60, 160, 0.55)");
+      innerGrad.addColorStop(0.65, "rgba(0, 20, 75, 0.85)");
+      innerGrad.addColorStop(1, "rgba(0, 5, 25, 0.98)");
+      ctx.fillStyle = innerGrad;
+      ctx.fillRect(cx - baseHexW, cy - baseHexH, baseHexW * 2, baseHexH * 2);
+
+      // Các tia sáng chùm quét từ tâm cổng ra
+      for (let j = 0; j < 14; j++) {
+        const rayAngle = (j / 14) * Math.PI * 2 + t * 0.2;
+        const rayAlpha = (Math.sin(t * 1.8 + j * 0.8) * 0.5 + 0.5) * 0.22;
         ctx.beginPath();
         ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(angle) * hexR * 1.1, cy + Math.sin(angle) * hexR * 1.1);
-        ctx.strokeStyle = `rgba(0,160,255,${alpha})`;
-        ctx.lineWidth = 1.5;
+        ctx.lineTo(cx + Math.cos(rayAngle) * baseHexW * 0.9, cy + Math.sin(rayAngle) * baseHexH * 0.9);
+        ctx.strokeStyle = `rgba(0, 200, 255, ${rayAlpha})`;
+        ctx.lineWidth = 1.6;
         ctx.stroke();
       }
 
-      // ── 6. Concentric rings — inward (outer → center) ────────────────────
-      for (let i = 0; i < 9; i++) {
-        // phase goes 0→1, ring travels from hexR*0.92 down to 0 (inward)
-        const phase = ((t * 0.55 + i / 9) % 1);
-        const r = hexR * 0.92 * (1 - phase);  // inward: starts big, shrinks
-        const alpha = Math.sin(phase * Math.PI) * 0.75;
+      // Vòng tròn ánh sáng đồng tâm co giãn nhẹ bên trong cổng
+      for (let k = 0; k < 6; k++) {
+        const ringPhase = ((t * 0.4 + k / 6) % 1);
+        const ringR = (baseHexW * 0.42) * (1 - ringPhase);
+        const ringAlpha = Math.sin(ringPhase * Math.PI) * 0.65;
         ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(0,210,255,${alpha})`;
+        ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0, 225, 255, ${ringAlpha})`;
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+      }
+
+      // Logo chính thức Đường lên đỉnh Olympia (hoặc text phát sáng nếu ảnh đang tải)
+      if (logoImgRef.current && logoImgRef.current.complete) {
+        const logoImg = logoImgRef.current;
+        const aspect = logoImg.width / logoImg.height;
+        const logoW = Math.min(baseHexW * 0.74, baseHexH * 0.44 * aspect);
+        const logoH = logoW / aspect;
+        const logoY = cy - logoH * 0.5 - baseHexH * 0.02;
+
+        ctx.save();
+        ctx.shadowColor = "#00d4ff";
+        ctx.shadowBlur = 24;
+        const pulse = isIntro ? (1 + Math.sin(t * 3.2) * 0.05) : 1.0;
+        const dw = logoW * pulse;
+        const dh = logoH * pulse;
+        ctx.drawImage(logoImg, cx - dw * 0.5, logoY - (dh - logoH) * 0.5, dw, dh);
+        ctx.restore();
+      } else {
+        // Text fallback "ĐƯỜNG LÊN ĐỈNH OLYMPIA" phát sáng kiêu hãnh
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        const line1FontSize = Math.max(12, Math.round(baseHexW * 0.082));
+        ctx.font = `900 ${line1FontSize}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillStyle = "rgba(220, 245, 255, 0.95)";
+        ctx.shadowColor = "#00d4ff";
+        ctx.shadowBlur = 12;
+        ctx.fillText("ĐƯỜNG LÊN ĐỈNH", cx, cy - baseHexH * 0.08);
+
+        const line2FontSize = Math.max(16, Math.round(baseHexW * 0.125));
+        ctx.font = `900 ${line2FontSize}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillStyle = "rgba(0, 230, 255, 0.98)";
+        ctx.shadowColor = "#00f0ff";
+        ctx.shadowBlur = 24;
+        ctx.fillText("OLYMPIA", cx, cy + baseHexH * 0.06);
+      }
+
+      ctx.restore(); // Kết thúc clip lòng cổng lục giác
+
+      // ── 7. PANEL BÊN TRÁI: KÝ HIỆU KHOA HỌC / TOÁN / LÝ (Left Science Board) ──
+      // Kích thước và vị trí bảng ký hiệu bên trái
+      const pLeftW = Math.min(W * 0.22, baseHexW * 0.65);
+      const pLeftH = pLeftW * 0.95;
+      const pLeftX = cx - baseHexW * 0.68 - pLeftW;
+      const pLeftY = cy - pLeftH * 0.45;
+
+      if (pLeftX > 5) {
+        ctx.save();
+        // Khung bảng đa giác vát góc bên trái
+        ctx.beginPath();
+        const vCut = pLeftW * 0.15;
+        ctx.moveTo(pLeftX + vCut, pLeftY);
+        ctx.lineTo(pLeftX + pLeftW, pLeftY);
+        ctx.lineTo(pLeftX + pLeftW, pLeftY + pLeftH);
+        ctx.lineTo(pLeftX, pLeftY + pLeftH);
+        ctx.lineTo(pLeftX, pLeftY + vCut);
+        ctx.closePath();
+
+        // Nền bảng xanh cyan đậm
+        const panelBg = ctx.createLinearGradient(pLeftX, pLeftY, pLeftX + pLeftW, pLeftY + pLeftH);
+        panelBg.addColorStop(0, "rgba(0, 45, 110, 0.45)");
+        panelBg.addColorStop(1, "rgba(0, 15, 50, 0.75)");
+        ctx.fillStyle = panelBg;
+        ctx.fill();
+
+        ctx.shadowColor = "#00c3ff";
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = "rgba(0, 205, 255, 0.65)";
         ctx.lineWidth = 2.0;
         ctx.stroke();
+
+        // Vẽ các ký hiệu khoa học sáng rực rỡ
+        const symbols = [
+          ["Σ", "kg", "μ", "Ψ"],
+          ["sin", "cos", "Ω", "Δ"],
+          ["π", "∞", "∫", "m²"],
+          ["∂", "tan", "λ", "θ"],
+        ];
+        const symFontSz = Math.max(9, Math.round(pLeftW * 0.08));
+        ctx.font = `bold ${symFontSz}px monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        symbols.forEach((row, rIdx) => {
+          row.forEach((sym, cIdx) => {
+            const symX = pLeftX + (cIdx + 0.5) * (pLeftW / row.length);
+            const symY = pLeftY + (rIdx + 0.5) * (pLeftH / symbols.length);
+            const symAlpha = 0.35 + Math.sin(t * 2.0 + rIdx * 1.2 + cIdx * 0.8) * 0.25;
+            ctx.fillStyle = `rgba(0, 225, 255, ${symAlpha})`;
+            ctx.shadowColor = "#00d4ff";
+            ctx.shadowBlur = 8;
+            ctx.fillText(sym, symX, symY);
+          });
+        });
+        ctx.restore();
       }
 
-      ctx.restore(); // end hex clip
+      // ── 8. PANEL BÊN PHẢI: BẢNG TÊN "ĐƯỜNG LÊN ĐỈNH OLYMPIA" (Right Signboard) ─
+      const pRightW = Math.min(W * 0.22, baseHexW * 0.65);
+      const pRightH = pRightW * 0.72;
+      const pRightX = cx + baseHexW * 0.68;
+      const pRightY = cy - pRightH * 0.45;
 
-      // ── 7. Text overlay: "ĐƯỜNG LÊN ĐỈNH OLYMPIA" centred in hex ──────────
+      if (pRightX + pRightW < W - 5) {
+        ctx.save();
+        // Khung chữ nhật viền kép phát sáng
+        ctx.beginPath();
+        ctx.rect(pRightX, pRightY, pRightW, pRightH);
+        const rGrad = ctx.createLinearGradient(pRightX, pRightY, pRightX + pRightW, pRightY + pRightH);
+        rGrad.addColorStop(0, "rgba(0, 55, 130, 0.55)");
+        rGrad.addColorStop(1, "rgba(0, 15, 60, 0.82)");
+        ctx.fillStyle = rGrad;
+        ctx.fill();
+
+        ctx.shadowColor = "#00c3ff";
+        ctx.shadowBlur = 14;
+        ctx.strokeStyle = "rgba(0, 220, 255, 0.75)";
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+
+        // Viền trong nhỏ
+        ctx.strokeStyle = "rgba(0, 180, 255, 0.35)";
+        ctx.lineWidth = 1.0;
+        ctx.strokeRect(pRightX + 4, pRightY + 4, pRightW - 8, pRightH - 8);
+
+        // Chữ trong bảng bên phải
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const rLine1Sz = Math.max(8, Math.round(pRightW * 0.08));
+        ctx.font = `bold ${rLine1Sz}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillStyle = "rgba(225, 245, 255, 0.9)";
+        ctx.shadowColor = "#00d4ff";
+        ctx.shadowBlur = 6;
+        ctx.fillText("ĐƯỜNG LÊN ĐỈNH", pRightX + pRightW * 0.5, pRightY + pRightH * 0.38);
+
+        const rLine2Sz = Math.max(10, Math.round(pRightW * 0.11));
+        ctx.font = `900 ${rLine2Sz}px "Plus Jakarta Sans", sans-serif`;
+        ctx.fillStyle = "rgba(0, 230, 255, 0.95)";
+        ctx.shadowColor = "#00f0ff";
+        ctx.shadowBlur = 12;
+        ctx.fillText("OLYMPIA", pRightX + pRightW * 0.5, pRightY + pRightH * 0.65);
+        ctx.restore();
+      }
+
+      // ── 9. BỤC TRÒN SÂN KHẤU & MẶT SÀN BÓNG GƯƠNG PHẢN CHIẾU (Stage Platform) ──
+      const floorCenterY = cy + baseHexH * 0.52;
+      const floorRadiusX = baseHexW * 0.95;
+      const floorRadiusY = floorRadiusX * 0.24;
+
       ctx.save();
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      // Vẽ bục tròn đồng tâm phát sáng
+      for (let f = 3; f >= 1; f--) {
+        const ringScale = 0.5 + f * 0.22;
+        ctx.beginPath();
+        ctx.ellipse(cx, floorCenterY, floorRadiusX * ringScale, floorRadiusY * ringScale, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0, 200, 255, ${0.18 + f * 0.15})`;
+        ctx.lineWidth = f === 3 ? 3.0 : 1.5;
+        ctx.shadowColor = "#00bfff";
+        ctx.shadowBlur = 12;
+        ctx.stroke();
+      }
 
-      // Line 1: "ĐƯỜNG LÊN ĐỈNH"
-      const line1Size = Math.max(11, hexR * 0.155);
-      ctx.font = `bold ${line1Size}px sans-serif`;
-      ctx.fillStyle = `rgba(190,235,255,${0.82 + Math.sin(t * 0.6) * 0.10})`;
-      ctx.shadowColor = "#00bfff";
-      ctx.shadowBlur = 8;
-      ctx.fillText("ĐƯỜNG LÊN ĐỈNH", cx, cy - hexR * 0.175);
+      // Ánh sáng phản chiếu mặt sàn đen bóng gương (Floor Mirror Reflection)
+      const floorGrad = ctx.createRadialGradient(cx, floorCenterY, 0, cx, floorCenterY, floorRadiusX);
+      floorGrad.addColorStop(0, "rgba(0, 160, 255, 0.28)");
+      floorGrad.addColorStop(0.5, "rgba(0, 80, 200, 0.12)");
+      floorGrad.addColorStop(1, "rgba(0, 10, 40, 0)");
+      ctx.fillStyle = floorGrad;
+      ctx.beginPath();
+      ctx.ellipse(cx, floorCenterY, floorRadiusX * 1.3, floorRadiusY * 1.4, 0, 0, Math.PI * 2);
+      ctx.fill();
 
-      // Line 2: "OLYMPIA"
-      const line2Size = Math.max(15, hexR * 0.225);
-      ctx.font = `bold ${line2Size}px sans-serif`;
-      ctx.fillStyle = `rgba(0,210,255,${0.92 + Math.sin(t * 1.4) * 0.07})`;
-      ctx.shadowColor = "#00e0ff";
-      ctx.shadowBlur = 20;
-      ctx.fillText("OLYMPIA", cx, cy + hexR * 0.115);
+      // Phản chiếu mờ của chân cổng lục giác xuống sàn
+      ctx.globalAlpha = 0.25;
+      ctx.save();
+      ctx.translate(cx, floorCenterY * 2 - cy);
+      ctx.scale(1, -0.6); // Lật ngược xuống dưới sàn
+      ctx.strokeStyle = "rgba(0, 200, 255, 0.7)";
+      ctx.lineWidth = 2.0;
+      drawVerticalHex(0, 0, baseHexW * 0.85, baseHexH * 0.85);
+      ctx.stroke();
+      ctx.restore();
 
       ctx.restore();
 
-      // ── 8. Floor glow ellipse ─────────────────────────────────────────────
-      const floorY = cy + hexR * 1.10;
-      const fg = ctx.createRadialGradient(cx, floorY, 0, cx, floorY, hexR * 2.2);
-      fg.addColorStop(0, "rgba(0,130,255,0.24)");
-      fg.addColorStop(0.6, "rgba(0,60,200,0.08)");
-      fg.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.beginPath();
-      ctx.ellipse(cx, floorY, hexR * 2.2, hexR * 0.30, 0, 0, Math.PI * 2);
-      ctx.fillStyle = fg;
-      ctx.fill();
-
-      // ── 9. Left panel: science/math symbols ──────────────────────────────
-      const syms = ["Σ", "π", "∫", "Δ", "√", "∞", "sin", "cos", "kg", "m²", "∮", "∂"];
-      const symSz = Math.max(12, W * 0.019);
-      ctx.font = `bold ${symSz}px monospace`;
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "left";
-      syms.forEach((sym, idx) => {
-        const col = idx % 2;
-        const row = Math.floor(idx / 2);
-        const alpha = 0.16 + Math.sin(t * 0.85 + idx * 1.05) * 0.10;
-        ctx.fillStyle = `rgba(0,200,255,${alpha})`;
-        ctx.shadowColor = "transparent";
-        ctx.fillText(sym, W * 0.035 + col * W * 0.065, H * 0.20 + row * H * 0.10);
-      });
-
+      // Tiến triển thời gian cho frame kế tiếp
       t += 0.016;
       rafRef.current = requestAnimationFrame(draw);
     };
 
     rafRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafRef.current);
-  }, []);
+  }, [isIntro]);
 
   return (
     <canvas
       ref={canvasRef}
-      className="w-full h-full"
-      style={{ display: "block" }}
+      className="fixed inset-0 w-full h-full pointer-events-none block"
+      style={{ display: "block", width: "100%", height: "100%" }}
     />
   );
 }

@@ -403,7 +403,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               )}
             </div>
 
-            {/* Utility Bar: NỀN CHỜ (W), BẢNG ĐIỂM (B) & ĐỒ HOẠ SÂN KHẤU */}
+            {/* Utility Bar: NỀN CHỜ (W), BẢNG ĐIỂM (B) & CHẾ ĐỘ HIỂN THỊ */}
             <div className="grid grid-cols-3 gap-1.5">
               <button
                 type="button"
@@ -431,17 +431,76 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               </button>
               <button
                 type="button"
-                disabled={!!activeTimer && activeTimer.startedAt != null}
-                onClick={() => call("display:stageGraphics", { on: !state.showStageGraphics })}
-                className={`py-1.5 rounded-lg border text-xs font-bold flex items-center justify-center gap-1 transition ${
-                  state.showStageGraphics
-                    ? "bg-cyan-500/25 text-cyan-200 border-cyan-400/60 shadow-[0_0_8px_rgba(0,191,255,0.3)]"
-                    : "bg-white/5 text-slate-300 border-white/15 hover:bg-cyan-500/10 hover:border-cyan-500/30"
-                } ${(!!activeTimer && activeTimer.startedAt != null) ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+                onClick={() => call("display:overlayMode")}
+                className={`py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer ${
+                  state.overlayMode === "FULLSCREEN"
+                    ? "bg-purple-600/30 text-purple-200 border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.3)]"
+                    : "bg-emerald-600/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                }`}
+                title="Chuyển chế độ hiển thị: 1/3 Dưới đè lên 3D hoặc Toàn Màn Hình"
               >
-                <span>🎬</span>
-                <span className="truncate">{state.showStageGraphics ? "Tắt Đồ Hoạ" : "Đồ Hoạ"}</span>
+                <span>{state.overlayMode === "FULLSCREEN" ? "🔲" : "📺"}</span>
+                <span className="truncate">{state.overlayMode === "FULLSCREEN" ? "Toàn Màn" : "1/3 Dưới"}</span>
               </button>
+            </div>
+
+            {/* ── BÀN ĐẠO DIỄN HÌNH ẢNH TRƯỜNG QUAY 3D (BROADCAST VISION MIXER) ── */}
+            <div className="rounded-xl border border-cyan-500/30 bg-[#090d1e]/95 p-2 shadow-xl flex flex-col gap-1.5 backdrop-blur-md">
+              <div className="flex items-center justify-between text-[11px] font-bold">
+                <div className="flex items-center gap-1.5 text-cyan-300">
+                  <span className="text-xs">🎥</span>
+                  <span className="uppercase tracking-wider font-black text-white">ĐẠO DIỄN TRƯỜNG QUAY 3D</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-700/50">
+                    {state.studioCameraManual ? `Góc C${state.studioCamera ?? 1}` : "Tự động theo vòng"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => call("studio:camera:auto")}
+                  className={`px-2 py-0.5 rounded text-[10px] font-black border transition cursor-pointer ${
+                    !state.studioCameraManual
+                      ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b]"
+                      : "bg-white/5 text-slate-300 border-white/15 hover:bg-white/10"
+                  }`}
+                  title="Kích hoạt tự động chuyển góc quay thông minh theo diễn biến thi đấu"
+                >
+                  🤖 TỰ ĐỘNG
+                </button>
+              </div>
+
+              {/* Camera Presets Selector */}
+              <div className="grid grid-cols-5 sm:grid-cols-10 gap-1">
+                {[
+                  { id: 1, label: "CAM 1: Toàn Cảnh", short: "Toàn Cảnh" },
+                  { id: 2, label: "CAM 2: Bục TS", short: "Bục TS" },
+                  { id: 3, label: "CAM 3: Bục MC", short: "Bục MC" },
+                  { id: 4, label: "CAM 4: Nguyệt Quế", short: "Nguyệt Quế" },
+                  { id: 5, label: "CAM 5: Cận TS 1", short: "TS 1" },
+                  { id: 6, label: "CAM 6: Cận TS 2", short: "TS 2" },
+                  { id: 7, label: "CAM 7: Cận TS 3", short: "TS 3" },
+                  { id: 8, label: "CAM 8: Cận TS 4", short: "TS 4" },
+                  { id: 9, label: "CAM 9: Góc Cao", short: "Góc Cao" },
+                  { id: 10, label: "CAM 10: Màn LED", short: "Màn LED" },
+                ].map((c) => {
+                  const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => call("studio:camera", { cam: c.id })}
+                      title={c.label}
+                      className={`py-1 px-0.5 rounded text-[10px] font-bold transition flex flex-col items-center justify-center cursor-pointer border ${
+                        isPinned
+                          ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b] font-black"
+                          : "bg-white/5 hover:bg-white/15 text-slate-300 border-white/10 hover:border-cyan-400/40"
+                      }`}
+                    >
+                      <span className="text-[9px] opacity-75 font-mono">C{c.id}</span>
+                      <span className="truncate max-w-full text-[10px] leading-tight">{c.short}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* ROUND-SPECIFIC CONTROL DECK */}

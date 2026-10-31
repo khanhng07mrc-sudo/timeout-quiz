@@ -17,69 +17,70 @@ export interface CamConfig {
 export const OLYMPIA_CAM_PRESETS: Record<number, CamConfig> = {
   1: {
     id: 1,
-    label: "CAM 1: Toàn Cảnh",
+    label: "Toàn Cảnh",
     pos: [0.0, 3.2, 7.8],
     target: [0.0, 2.0, -1.5],
   },
   2: {
     id: 2,
-    label: "CAM 2: Màn LED",
-    pos: [0.0, 3.2, 3.8],
-    target: [0.0, 3.8, -6.5],
+    label: "Bục Thí Sinh",
+    pos: [0.9, 2.3, 2.2],
+    target: [0.9, 1.4, -2.8],
   },
   3: {
     id: 3,
-    label: "CAM 3: Bục Thí Sinh",
-    pos: [0.9, 2.3, 1.2],
-    target: [0.9, 1.4, -2.8],
+    label: "Bục MC",
+    pos: [-3.0, 2.0, 0.2],
+    target: [-4.5, 1.4, -2.0],
   },
   4: {
     id: 4,
-    label: "CAM 4: Bục MC",
-    pos: [-3.2, 2.2, 0.4],
-    target: [-4.5, 1.6, -2.0],
+    label: "Nguyệt Quế",
+    pos: [-1.7, 1.9, -3.2],
+    target: [-2.4, 1.5, -4.8],
   },
   5: {
     id: 5,
-    label: "CAM 5: Nguyệt Quế",
-    pos: [-1.7, 2.0, -3.2],
-    target: [-2.4, 1.7, -4.8],
+    label: "Cận Cảnh TS 1",
+    pos: [-1.8, 1.7, -0.6],
+    target: [-1.8, 1.35, -2.5],
   },
   6: {
     id: 6,
-    label: "CAM 6: Cận TS 1-2",
-    pos: [-0.8, 2.0, -0.6],
-    target: [-0.9, 1.4, -2.7],
+    label: "Cận Cảnh TS 2",
+    pos: [0.0, 1.7, -1.0],
+    target: [0.0, 1.35, -2.9],
   },
   7: {
     id: 7,
-    label: "CAM 7: Cận TS 3-4",
-    pos: [2.6, 2.0, -0.6],
-    target: [2.7, 1.4, -2.9],
+    label: "Cận Cảnh TS 3",
+    pos: [1.8, 1.7, -1.0],
+    target: [1.8, 1.35, -2.9],
   },
   8: {
     id: 8,
-    label: "CAM 8: Góc Nghiêng",
-    pos: [6.8, 3.5, 2.0],
-    target: [-1.0, 1.8, -3.5],
+    label: "Cận Cảnh TS 4",
+    pos: [3.6, 1.7, -0.6],
+    target: [3.6, 1.35, -2.5],
   },
   9: {
     id: 9,
-    label: "CAM 9: Góc Cao",
-    pos: [0.0, 6.8, 6.2],
-    target: [0.0, 1.2, -2.5],
+    label: "Góc Cao",
+    pos: [0.0, 6.8, 1.2],
+    target: [0.0, 1.0, -2.6],
   },
   10: {
     id: 10,
-    label: "CAM 10: Khán Giả",
-    pos: [0.0, 2.6, -1.0],
-    target: [0.0, 4.0, 15.0],
+    label: "Màn LED",
+    pos: [0.0, 3.2, 3.8],
+    target: [0.0, 3.8, -6.5],
   },
 };
 
 interface CameraControllerProps {
   camAngle: number;
   transitionMode?: "CUT" | "MORPH";
+  pushInProgress?: number;
   ptzYaw?: number;
   ptzPitch?: number;
   ptzZoom?: number;
@@ -88,6 +89,7 @@ interface CameraControllerProps {
 export function CameraController({
   camAngle = 1,
   transitionMode = "CUT",
+  pushInProgress = 0,
   ptzYaw = 0,
   ptzPitch = 0,
   ptzZoom = 1.0,
@@ -114,17 +116,7 @@ export function CameraController({
     const persCamera = camera as THREE.PerspectiveCamera;
     const cfg = targetConfig.current;
 
-    if (!initialized.current) {
-      camera.position.set(...cfg.pos);
-      targetLookAtRef.current.set(...cfg.target);
-      camera.lookAt(targetLookAtRef.current);
-      initialized.current = true;
-      return;
-    }
-
-    // ── RESPONSIVE HORIZONTAL FOV AUTO-ADAPTATION ──
-    // When viewport aspect ratio is narrower than standard 16:9,
-    // expand vertical FOV so the horizontal view never clips the stage
+    // Responsive aspect calculation
     const aspect = size.width / Math.max(1, size.height);
     let computedFov = baseFov;
     if (aspect < 16 / 9) {
@@ -141,10 +133,26 @@ export function CameraController({
       persCamera.updateProjectionMatrix();
     }
 
-    // Calculate effective look-at target with PTZ Yaw/Pitch
+    // Calculate position with push-in (dolly zoom forward during questions)
+    const effectivePos = new THREE.Vector3(...cfg.pos);
     const effectiveTarget = targetLookAtRef.current.clone();
+
+    if (pushInProgress > 0) {
+      const forward = new THREE.Vector3(...cfg.target).sub(effectivePos).normalize();
+      effectivePos.addScaledVector(forward, pushInProgress * 0.45);
+    }
+
+    if (!initialized.current) {
+      camera.position.copy(effectivePos);
+      targetLookAtRef.current.set(...cfg.target);
+      camera.lookAt(targetLookAtRef.current);
+      initialized.current = true;
+      return;
+    }
+
+    // Calculate effective look-at target with PTZ Yaw/Pitch
     if (ptzYaw !== 0 || ptzPitch !== 0) {
-      const dir = effectiveTarget.clone().sub(camera.position);
+      const dir = effectiveTarget.clone().sub(effectivePos);
       const dist = dir.length();
       dir.normalize();
       dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), ptzYaw);
@@ -152,17 +160,18 @@ export function CameraController({
       if (right.lengthSq() > 0.01) {
         dir.applyAxisAngle(right, ptzPitch);
       }
-      effectiveTarget.copy(camera.position).addScaledVector(dir, dist);
+      effectiveTarget.copy(effectivePos).addScaledVector(dir, dist);
     }
 
     if (transitionMode === "CUT") {
+      camera.position.copy(effectivePos);
       camera.lookAt(effectiveTarget);
       return;
     }
 
     // Morph: Smooth jib glide
     const factor = Math.min(1, delta * 4.5);
-    camera.position.lerp(new THREE.Vector3(...cfg.pos), factor);
+    camera.position.lerp(effectivePos, factor);
     targetLookAtRef.current.lerp(new THREE.Vector3(...cfg.target), factor);
     camera.lookAt(effectiveTarget);
   });

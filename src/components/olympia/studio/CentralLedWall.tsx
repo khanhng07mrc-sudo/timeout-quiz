@@ -89,8 +89,9 @@ function createLedScreenCanvas(
   ctx.fillRect(0, 0, width, height);
 
   // ── 4. OFFICIAL OLYMPIA 2016 LOGO ──
-  const logoTargetH = 460;
-  const logoTargetY = 160;
+  // Logo is transparent webp: vòng nguyệt quế + nhân vật leo núi on transparent bg
+  const logoTargetH = 600; // tăng từ 460 → 600 để logo rõ hơn trên canvas 2048×1152
+  const logoTargetY = 120; // dịch lên trên một chút
 
   if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
     const aspect = logoImg.naturalWidth / logoImg.naturalHeight;
@@ -195,17 +196,30 @@ export function CentralLedWall({ screenFadeProgress = 0, quality = "HIGH" }: Cen
   const lastDrawTimeRef = useRef(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Preload logo image
+  // Preload logo image — use absolute URL for Electron/Next.js production compatibility
   useEffect(() => {
     if (typeof window === "undefined") return;
     const img = new Image();
-    img.src = "/olympia/Olympia_logo_2016.webp";
     img.crossOrigin = "anonymous";
+    // Absolute URL ensures correct path in both browser and Electron (file:// + custom protocol)
+    img.src = `${window.location.origin}/olympia/Olympia_logo_2016.webp`;
     img.onload = () => {
       logoImageRef.current = img;
       if (canvasRef.current) {
         updateCanvas(canvasRef.current, screenFadeProgress, 0);
       }
+    };
+    img.onerror = () => {
+      // Fallback: try relative path if absolute fails (dev server)
+      const fallback = new Image();
+      fallback.crossOrigin = "anonymous";
+      fallback.src = "/olympia/Olympia_logo_2016.webp";
+      fallback.onload = () => {
+        logoImageRef.current = fallback;
+        if (canvasRef.current) {
+          updateCanvas(canvasRef.current, screenFadeProgress, 0);
+        }
+      };
     };
   }, []);
 

@@ -545,8 +545,14 @@ export interface OlympiaState {
   kdFinishTurnPan?: "both" | "left" | "right";
   /** Structured match transcript supporting both "Rút gọn" and "Chi tiết" modes */
   transcript?: OlympiaTranscriptEntry[];
-  /** Host-controlled stage graphics overlay (hexagonal LED animation) on DisplayScreen */
+  /** Host-controlled stage graphics overlay on DisplayScreen */
   showStageGraphics?: boolean;
+  /** Active 3D studio camera preset index (1=Wide, 2=Contestants, 3=MC, 4=Laurel, 5-8=Seat 1-4, 9=Overhead, 10=LED) */
+  studioCamera?: number;
+  /** Manual camera override — when true, auto-camera is suppressed until host manually changes again */
+  studioCameraManual?: boolean;
+  /** Display overlay mode: "LOWER_THIRD" (1/3 bottom question overlay) or "FULLSCREEN" (centered 2D modal overlay) */
+  overlayMode?: "LOWER_THIRD" | "FULLSCREEN";
 }
 
 export type HostAction = { type: string; [k: string]: unknown };

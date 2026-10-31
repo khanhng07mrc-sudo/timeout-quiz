@@ -11933,9 +11933,10 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   <Link
                     href={`/olympia/display/${code}`}
                     target="_blank"
-                    className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
+                    className="bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/35 hover:text-white px-2.5 py-0.5 rounded-lg border border-cyan-400/50 flex items-center gap-1 text-[11px] font-black transition shadow-[0_0_8px_rgba(34,211,238,0.2)]"
+                    title="Mở toàn màn hình trường quay 3D trong tab riêng biệt"
                   >
-                    <span>Mở tab riêng</span>
+                    <span>🚀 Mở Full Tab 3D</span>
                     <span>↗</span>
                   </Link>
                 </div>

@@ -617,6 +617,27 @@ export class OlympiaGame {
         st.showStageGraphics = !!a.on;
         return OK;
       }
+      case "studio:toggle": {
+        // Host toggle: bật/tắt trường quay 3D Olympia
+        st.showStageGraphics = !st.showStageGraphics;
+        return OK;
+      }
+      case "studio:camera": {
+        // Host chọn góc camera thủ công
+        st.studioCamera = a.cam as number;
+        st.studioCameraManual = true;
+        return OK;
+      }
+      case "studio:camera:auto": {
+        // Reset về auto-camera
+        st.studioCameraManual = false;
+        return OK;
+      }
+      case "display:overlayMode": {
+        // Chuyển đổi giữa 1/3 DƯỚI (Lower-Third) và TOÀN MÀN (Fullscreen)
+        st.overlayMode = (a.mode as "LOWER_THIRD" | "FULLSCREEN") || (st.overlayMode === "FULLSCREEN" ? "LOWER_THIRD" : "FULLSCREEN");
+        return OK;
+      }
       case "score:set": {
         const id = num("seat");
         const s = this.seat(id);

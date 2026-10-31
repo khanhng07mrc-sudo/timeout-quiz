@@ -13,6 +13,8 @@ import { StudioLighting } from "./studio/StudioLighting";
 export interface OlympiaStudio3DSceneProps {
   state?: OlympiaState | null;
   activeCamera?: number;
+  transitionMode?: "CUT" | "MORPH";
+  pushInProgress?: number;
   onCameraChange?: (cam: number) => void;
   debugMode?: boolean;
   className?: string;
@@ -24,6 +26,8 @@ export interface OlympiaStudio3DSceneProps {
 export function OlympiaStudio3DScene({
   state,
   activeCamera = 1,
+  transitionMode: propTransitionMode,
+  pushInProgress = 0,
   onCameraChange,
   debugMode = false,
   className = "",
@@ -41,7 +45,8 @@ export function OlympiaStudio3DScene({
 
   // Camera vision mixer state
   const [internalCam, setInternalCam] = useState<number>(activeCamera);
-  const [transitionMode, setTransitionMode] = useState<"CUT" | "MORPH">("CUT");
+  const [internalTransitionMode, setInternalTransitionMode] = useState<"CUT" | "MORPH">("CUT");
+  const transitionMode = propTransitionMode || internalTransitionMode;
   const [quality, setQuality] = useState<"HIGH" | "MEDIUM" | "LIGHT">("HIGH");
 
   // PTZ interactive controls
@@ -132,6 +137,7 @@ export function OlympiaStudio3DScene({
         <CameraController
           camAngle={internalCam}
           transitionMode={transitionMode}
+          pushInProgress={pushInProgress}
           ptzYaw={ptzYaw}
           ptzPitch={ptzPitch}
           ptzZoom={ptzZoom}
@@ -201,7 +207,7 @@ export function OlympiaStudio3DScene({
           {/* Hard Cut vs Morph Switcher */}
           <button
             type="button"
-            onClick={() => setTransitionMode((prev) => (prev === "CUT" ? "MORPH" : "CUT"))}
+            onClick={() => setInternalTransitionMode((prev: "CUT" | "MORPH") => (prev === "CUT" ? "MORPH" : "CUT"))}
             className={`px-2 h-6 rounded-md text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer border ${
               transitionMode === "CUT"
                 ? "bg-amber-500/25 text-amber-300 border-amber-400/50"

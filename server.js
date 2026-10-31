@@ -25810,6 +25810,23 @@ var OlympiaGame = class _OlympiaGame {
         st.showStageGraphics = !!a.on;
         return OK;
       }
+      case "studio:toggle": {
+        st.showStageGraphics = !st.showStageGraphics;
+        return OK;
+      }
+      case "studio:camera": {
+        st.studioCamera = a.cam;
+        st.studioCameraManual = true;
+        return OK;
+      }
+      case "studio:camera:auto": {
+        st.studioCameraManual = false;
+        return OK;
+      }
+      case "display:overlayMode": {
+        st.overlayMode = a.mode || (st.overlayMode === "FULLSCREEN" ? "LOWER_THIRD" : "FULLSCREEN");
+        return OK;
+      }
       case "score:set": {
         const id = num("seat");
         const s = this.seat(id);

@@ -12,6 +12,13 @@ interface PodiumsProps {
   screenFadeProgress?: number;
 }
 
+const SEAT_THEME_COLORS = [
+  "#ef4444", // TS 1: Đỏ
+  "#3b82f6", // TS 2: Lam
+  "#eab308", // TS 3: Vàng
+  "#22c55e", // TS 4: Lục
+];
+
 /**
  * Creates dynamic high-contrast canvas texture for a contestant's front score screen.
  */
@@ -27,55 +34,61 @@ function createPodiumScoreCanvas(
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
+  const teamColor = SEAT_THEME_COLORS[seatId] || "#00d4ff";
+
   // Background
   const grad = ctx.createLinearGradient(0, 0, 0, 256);
   if (isBuzzed) {
-    grad.addColorStop(0, "#4a040b");
-    grad.addColorStop(1, "#1f0205");
+    grad.addColorStop(0, "#7f1d1d");
+    grad.addColorStop(1, "#450a0a");
   } else {
-    grad.addColorStop(0, "#0d1b3e");
-    grad.addColorStop(1, "#04091a");
+    grad.addColorStop(0, "#172554");
+    grad.addColorStop(1, "#0f172a");
   }
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 512, 256);
 
   // Border & Glow
-  ctx.lineWidth = isBuzzed ? 8 : 4;
-  ctx.strokeStyle = isBuzzed ? "#ff2a4b" : "rgba(0, 210, 255, 0.6)";
-  ctx.strokeRect(4, 4, 504, 248);
+  ctx.lineWidth = isBuzzed ? 10 : 6;
+  ctx.strokeStyle = isBuzzed ? "#ff2a4b" : teamColor;
+  ctx.strokeRect(6, 6, 500, 244);
 
-  // Seat Badge (Top Left)
-  ctx.fillStyle = isBuzzed ? "#ff2a4b" : "#00d4ff";
+  // Top Team Color Header Bar
+  ctx.fillStyle = isBuzzed ? "#ff2a4b" : teamColor;
+  ctx.fillRect(6, 6, 500, 48);
+
+  // Seat Badge (Top Left inside header bar)
+  ctx.fillStyle = "#ffffff";
   ctx.font = '900 24px "Plus Jakarta Sans", sans-serif';
-  ctx.fillText(`THÍ SINH ${seatId + 1}`, 24, 42);
+  ctx.fillText(`THÍ SINH ${seatId + 1}`, 20, 38);
 
   // Contestant Name (Middle)
   ctx.font = '800 36px "Plus Jakarta Sans", "Montserrat", sans-serif';
   ctx.fillStyle = "#ffffff";
-  ctx.fillText(name || `Thí sinh ${seatId + 1}`, 24, 96);
+  ctx.fillText(name || `Thí sinh ${seatId + 1}`, 24, 102);
 
   // Divider Line
-  ctx.strokeStyle = isBuzzed ? "rgba(255, 60, 80, 0.4)" : "rgba(255, 255, 255, 0.2)";
+  ctx.strokeStyle = isBuzzed ? "rgba(255, 60, 80, 0.5)" : "rgba(255, 255, 255, 0.25)";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(24, 118);
-  ctx.lineTo(488, 118);
+  ctx.moveTo(24, 126);
+  ctx.lineTo(488, 126);
   ctx.stroke();
 
   // Score Value (Large bold digital / broadcast style)
   ctx.textAlign = "right";
-  ctx.font = '900 84px "Plus Jakarta Sans", "Montserrat", monospace';
+  ctx.font = '900 88px "Plus Jakarta Sans", "Montserrat", monospace';
   ctx.fillStyle = isBuzzed ? "#ff3355" : "#ffd700";
   ctx.shadowColor = isBuzzed ? "#ff0033" : "#f59e0b";
   ctx.shadowBlur = 18;
-  ctx.fillText(String(score), 488, 205);
+  ctx.fillText(String(score), 488, 215);
 
   // Score Label
   ctx.font = '700 20px "Plus Jakarta Sans", sans-serif';
-  ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
   ctx.shadowBlur = 0;
   ctx.textAlign = "left";
-  ctx.fillText("ĐIỂM SỐ", 24, 205);
+  ctx.fillText("ĐIỂM SỐ", 24, 215);
 
   return canvas;
 }
@@ -127,12 +140,12 @@ function ContestantScoreDisplay({
   }, [name, score, seatId, isBuzzed]);
 
   return (
-    <mesh position={[0, 0.58, 0.46]} rotation={[-0.15, 0, 0]}>
+    <mesh position={[0, 0.58, 0.468]} rotation={[-0.15, 0, 0]}>
       <planeGeometry args={[1.0, 0.5]} />
       {texture ? (
         <meshBasicMaterial map={texture} toneMapped={false} />
       ) : (
-        <meshStandardMaterial color="#000" />
+        <meshStandardMaterial color="#0f172a" />
       )}
     </mesh>
   );
@@ -160,6 +173,7 @@ function ContestantPodium({
 }) {
   const buzzerDomeRef = useRef<THREE.Mesh>(null);
   const haloRef = useRef<THREE.Mesh>(null);
+  const teamColor = SEAT_THEME_COLORS[seatId] || "#00d4ff";
 
   // Chrome materials
   const chromeBaseMat = useMemo(
@@ -193,10 +207,10 @@ function ContestantPodium({
 
   const deskEdgeColor = useMemo(() => {
     if (isBuzzed) return "#ff0033";
-    const c = new THREE.Color("#00d4ff");
+    const c = new THREE.Color(teamColor);
     c.lerp(new THREE.Color("#ff2a4b"), screenFadeProgress);
     return c;
-  }, [isBuzzed, screenFadeProgress]);
+  }, [isBuzzed, teamColor, screenFadeProgress]);
 
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
@@ -207,18 +221,18 @@ function ContestantPodium({
         <meshStandardMaterial color="#0b0f19" metalness={0.9} roughness={0.2} />
       </mesh>
 
-      {/* Main Geometric Body */}
+      {/* Main Geometric Body (Modern White Kiosk as in real VTV3 Studio S14) */}
       <mesh position={[0, 0.52, 0]}>
         <boxGeometry args={[1.15, 0.82, 0.88]} />
         <meshStandardMaterial
-          color="#131b2e"
-          metalness={0.85}
-          roughness={0.25}
-          envMapIntensity={1.2}
+          color="#f8fafc"
+          metalness={0.2}
+          roughness={0.2}
+          envMapIntensity={1.5}
         />
       </mesh>
 
-      {/* Front Recessed Bezel Frame */}
+      {/* Front Recessed Bezel Frame (Dark contrast frame for score display) */}
       <mesh position={[0, 0.58, 0.44]} rotation={[-0.15, 0, 0]}>
         <boxGeometry args={[1.06, 0.56, 0.04]} />
         <meshStandardMaterial color="#050810" metalness={0.95} roughness={0.15} />
@@ -307,38 +321,72 @@ function ContestantPodium({
 }
 
 /**
- * Dedicated MC Podium at Stage Left (X = -4.5m, Z = -2.0m), angled 40° inward
+ * Center Stage Raised Dais with Concentric Glowing Neon Rings
+ * Position: [0, 0.1, -2.8]
  */
-function DedicatedMcPodium({ screenFadeProgress = 0 }: { screenFadeProgress?: number }) {
+function CenterStageRaisedDais({ screenFadeProgress = 0 }: { screenFadeProgress?: number }) {
+  const ringColor = useMemo(() => {
+    const c = new THREE.Color("#00e5ff");
+    c.lerp(new THREE.Color("#ff1a40"), screenFadeProgress);
+    return c;
+  }, [screenFadeProgress]);
+
+  return (
+    <group position={[0, 0.08, -2.8]}>
+      {/* Raised Circular Stage Platform */}
+      <mesh position={[0, 0, 0]}>
+        <cylinderGeometry args={[2.4, 2.5, 0.16, 48]} />
+        <meshStandardMaterial color="#0a1020" roughness={0.12} metalness={0.85} />
+      </mesh>
+
+      {/* Outer Concentric Glowing Ring */}
+      <mesh position={[0, 0.085, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[2.3, 2.38, 48]} />
+        <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Inner Concentric Glowing Ring */}
+      <mesh position={[0, 0.085, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.7, 1.76, 48]} />
+        <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+/**
+ * Dedicated MC Desk on Center Stage Dais
+ * Position: [0, 0.16, -2.4], rotation [0, 0, 0]
+ */
+function CenterMcDesk({ screenFadeProgress = 0 }: { screenFadeProgress?: number }) {
   const trimColor = useMemo(() => {
-    const c = new THREE.Color("#00d4ff");
+    const c = new THREE.Color("#00e5ff");
     c.lerp(new THREE.Color("#ff2a4b"), screenFadeProgress);
     return c;
   }, [screenFadeProgress]);
 
   return (
-    <group position={[-4.5, 0, -2.0]} rotation={[0, (40 * Math.PI) / 180, 0]}>
-      {/* ── 1. MC LECTERN BASE & COLUMN ── */}
-      {/* Sleek Octagonal Titanium Base */}
+    <group position={[0, 0.16, -2.8]} rotation={[0, 0, 0]}>
+      {/* Base Footing */}
       <mesh position={[0, 0.06, 0]}>
-        <cylinderGeometry args={[0.62, 0.68, 0.12, 8]} />
+        <cylinderGeometry args={[0.75, 0.82, 0.12, 8]} />
         <meshStandardMaterial color="#0b0f19" metalness={0.92} roughness={0.18} />
       </mesh>
 
-      {/* Main Angular Lectern Body */}
+      {/* Main Angular Lectern Body (Modern White Faceted Desk) */}
       <mesh position={[0, 0.60, 0]}>
-        <boxGeometry args={[0.78, 1.05, 0.58]} />
+        <boxGeometry args={[1.05, 1.05, 0.62]} />
         <meshStandardMaterial
-          color="#121826"
-          metalness={0.88}
-          roughness={0.22}
-          envMapIntensity={1.3}
+          color="#f8fafc"
+          metalness={0.2}
+          roughness={0.2}
+          envMapIntensity={1.5}
         />
       </mesh>
 
       {/* Front Frosted Glass Fascia with Gold Crest */}
-      <mesh position={[0, 0.62, 0.30]}>
-        <planeGeometry args={[0.68, 0.92]} />
+      <mesh position={[0, 0.62, 0.32]}>
+        <planeGeometry args={[0.92, 0.92]} />
         <meshPhysicalMaterial
           color="#1e293b"
           roughness={0.15}
@@ -350,8 +398,8 @@ function DedicatedMcPodium({ screenFadeProgress = 0 }: { screenFadeProgress?: nu
       </mesh>
 
       {/* Golden Olympia Laurel Emblem on Front of Lectern */}
-      <mesh position={[0, 0.72, 0.31]}>
-        <torusGeometry args={[0.14, 0.015, 16, 32]} />
+      <mesh position={[0, 0.72, 0.33]}>
+        <torusGeometry args={[0.18, 0.018, 16, 32]} />
         <meshStandardMaterial
           color="#ffd700"
           metalness={0.96}
@@ -362,26 +410,24 @@ function DedicatedMcPodium({ screenFadeProgress = 0 }: { screenFadeProgress?: nu
       </mesh>
 
       {/* Edge Neon Accent Trim */}
-      <mesh position={[0, 0.07, 0.34]}>
-        <boxGeometry args={[0.72, 0.02, 0.02]} />
+      <mesh position={[0, 0.07, 0.36]}>
+        <boxGeometry args={[0.96, 0.02, 0.02]} />
         <meshBasicMaterial color={trimColor} />
       </mesh>
 
-      {/* ── 2. SLANTED MC DESK TOP & ACCESSORIES ── */}
       {/* Slanted Top Reading Desk */}
-      <mesh position={[0, 1.15, -0.04]} rotation={[-0.24, 0, 0]}>
-        <boxGeometry args={[0.84, 0.06, 0.64]} />
+      <mesh position={[0, 1.15, -0.04]} rotation={[-0.22, 0, 0]}>
+        <boxGeometry args={[1.12, 0.06, 0.68]} />
         <meshStandardMaterial color="#080c14" metalness={0.92} roughness={0.18} />
       </mesh>
 
       {/* Olympia Cue Card (White card with gold seal) */}
-      <mesh position={[-0.12, 1.19, -0.02]} rotation={[-0.24, 0, 0.04]}>
-        <boxGeometry args={[0.32, 0.008, 0.22]} />
+      <mesh position={[-0.18, 1.19, -0.02]} rotation={[-0.22, 0, 0.04]}>
+        <boxGeometry args={[0.34, 0.008, 0.24]} />
         <meshStandardMaterial color="#f8fafc" roughness={0.4} />
       </mesh>
-      {/* Golden Seal on Cue Card */}
-      <mesh position={[-0.20, 1.20, -0.08]} rotation={[-0.24, 0, 0.04]}>
-        <cylinderGeometry args={[0.022, 0.022, 0.01, 16]} />
+      <mesh position={[-0.26, 1.20, -0.08]} rotation={[-0.22, 0, 0.04]}>
+        <cylinderGeometry args={[0.024, 0.024, 0.01, 16]} />
         <meshStandardMaterial
           color="#ffd700"
           metalness={0.95}
@@ -391,36 +437,32 @@ function DedicatedMcPodium({ screenFadeProgress = 0 }: { screenFadeProgress?: nu
         />
       </mesh>
 
-      {/* ── 3. GOOSENECK MICROPHONE ── */}
-      <group position={[0.26, 1.18, 0.12]}>
-        {/* Mic Base Socket */}
+      {/* Gooseneck Microphone */}
+      <group position={[0.36, 1.18, 0.12]}>
         <mesh position={[0, 0.015, 0]}>
           <cylinderGeometry args={[0.022, 0.026, 0.03, 16]} />
           <meshStandardMaterial color="#1e2430" metalness={0.95} roughness={0.15} />
         </mesh>
-        {/* Lower Straight Stem */}
         <mesh position={[0, 0.12, -0.02]} rotation={[0.25, 0, 0]}>
           <cylinderGeometry args={[0.006, 0.006, 0.22, 12]} />
           <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.2} />
         </mesh>
-        {/* Upper Gooseneck Angled towards MC */}
         <mesh position={[0, 0.27, -0.09]} rotation={[-0.4, 0, 0]}>
           <cylinderGeometry args={[0.006, 0.006, 0.14, 12]} />
           <meshStandardMaterial color="#64748b" metalness={0.85} roughness={0.3} />
         </mesh>
-        {/* Foam Windscreen Capsule Head */}
         <mesh position={[0, 0.32, -0.14]} rotation={[-0.4, 0, 0]}>
           <sphereGeometry args={[0.018, 16, 16]} />
           <meshStandardMaterial color="#0f172a" roughness={0.8} />
         </mesh>
       </group>
 
-      {/* Dedicated MC Key Spotlight */}
+      {/* Dedicated MC Spotlight */}
       <spotLight
-        position={[-3.8, 4.8, 1.2]}
+        position={[0, 6.5, 0.8]}
         target-position={[0, 1.2, 0]}
-        color="#fff4e0"
-        intensity={6.5}
+        color="#fff5e6"
+        intensity={7.0}
         angle={0.42}
         penumbra={0.35}
         distance={10}
@@ -430,27 +472,35 @@ function DedicatedMcPodium({ screenFadeProgress = 0 }: { screenFadeProgress?: nu
 }
 
 /**
- * Podiums Assembly: 1 MC Podium + 4 Contestant Podiums in Curved Arc
+ * Podiums Assembly:
+ * 1. Center Stage Raised Dais + Center MC Desk
+ * 2. 4 Contestant Podiums in Curved Left-Wing Arc (TS 1..4)
  */
-export function Podiums({ state, quality: _quality = "HIGH", screenFadeProgress = 0 }: PodiumsProps) {
-  // 4 Contestant Podiums in Curved Arc configuration
-  // X: -1.8m, 0.0m, +1.8m, +3.6m
-  // Z: -2.5m to -3.1m
+export function Podiums({
+  state,
+  quality: _quality = "HIGH",
+  screenFadeProgress = 0,
+}: PodiumsProps) {
+  // 4 Contestant Podiums along the Stage Left Arc:
+  // Facing slightly inward towards Center Stage & MC
   const contestantConfigs: Array<{
     seatId: number;
     pos: [number, number, number];
     rotY: number;
   }> = [
-    { seatId: 0, pos: [-1.8, 0, -2.5], rotY: -0.18 },
-    { seatId: 1, pos: [0.0, 0, -2.9], rotY: -0.06 },
-    { seatId: 2, pos: [1.8, 0, -2.9], rotY: 0.06 },
-    { seatId: 3, pos: [3.6, 0, -2.5], rotY: 0.18 },
+    { seatId: 0, pos: [-5.8, 0, -2.4], rotY: 0.48 }, // TS 1: Đỏ
+    { seatId: 1, pos: [-4.7, 0, -2.9], rotY: 0.38 }, // TS 2: Lam
+    { seatId: 2, pos: [-3.6, 0, -3.4], rotY: 0.28 }, // TS 3: Vàng
+    { seatId: 3, pos: [-2.5, 0, -3.8], rotY: 0.18 }, // TS 4: Lục
   ];
 
   return (
     <group>
-      {/* 1 MC Dedicated Lectern Station */}
-      <DedicatedMcPodium screenFadeProgress={screenFadeProgress} />
+      {/* Center Stage Raised Dais */}
+      <CenterStageRaisedDais screenFadeProgress={screenFadeProgress} />
+
+      {/* Center MC Desk */}
+      <CenterMcDesk screenFadeProgress={screenFadeProgress} />
 
       {/* 4 Contestant Arc Podiums */}
       {contestantConfigs.map((cfg) => {

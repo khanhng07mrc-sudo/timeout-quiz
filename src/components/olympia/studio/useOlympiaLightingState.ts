@@ -8,6 +8,12 @@ export interface StudioLightingState {
   screenFadeProgress: number;   // 0.0 (Blue) to 1.0 (Red), t_delay = 0.0s
   stageFadeProgress: number;    // 0.0 (Blue) to 1.0 (Red), t_delay = 0.5s
   audienceFadeProgress: number; // 0.0 (Blue) to 1.0 (Red), t_delay = 0.7s
+  // Về Đích Special Lighting Behaviors
+  isVeDichDimmed: boolean;
+  activeMainContestantSeat: number | null;
+  is5sBuzzerChasing: boolean;
+  spotlightChaseIndex: number;
+  lockedSpotlightSeat: number | null;
 }
 
 /**
@@ -160,6 +166,14 @@ export function useOlympiaLightingState(
   const [stageVal, setStageVal] = useState(0);
   const [audienceVal, setAudienceVal] = useState(0);
 
+  // Ticker for Về Đích 5s chase effect
+  const [chaseTick, setChaseTick] = useState(0);
+  useEffect(() => {
+    if (state?.currentRound !== "veDich") return;
+    const iv = setInterval(() => setChaseTick((c) => (c + 1) % 4), 160);
+    return () => clearInterval(iv);
+  }, [state?.currentRound]);
+
   // Current values ref to eliminate missing dependencies and stale closures
   const currentValsRef = useRef({ screen: 0, stage: 0, audience: 0 });
 
@@ -252,11 +266,29 @@ export function useOlympiaLightingState(
     };
   }, [state, getNow]);
 
+  // Về Đích Special Behaviors
+  const isVeDich = state?.stage === "playing" && state?.currentRound === "veDich";
+  const vd = isVeDich ? state?.veDich : null;
+  const isVeDichDimmed = Boolean(
+    isVeDich && vd && vd.phase !== "idle" && vd.phase !== "seatDone"
+  );
+  const activeMainContestantSeat = vd ? (vd.order?.[vd.turnIdx] ?? 0) : null;
+  const is5sBuzzerChasing = Boolean(
+    isVeDich && vd?.phase === "stealing" && vd?.steal?.buzzedSeat == null
+  );
+  const lockedSpotlightSeat =
+    isVeDich && vd?.steal?.buzzedSeat != null ? vd.steal.buzzedSeat : null;
+
   return {
     targetMode: currentMode,
     screenFadeProgress: screenVal,
     stageFadeProgress: stageVal,
     audienceFadeProgress: audienceVal,
     isSeatBuzzed: (seatId: number) => isSeatBuzzedIn3D(seatId, state),
+    isVeDichDimmed,
+    activeMainContestantSeat,
+    is5sBuzzerChasing,
+    spotlightChaseIndex: chaseTick,
+    lockedSpotlightSeat,
   };
 }

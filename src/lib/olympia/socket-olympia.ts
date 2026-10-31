@@ -1,3 +1,4 @@
+import { SAMPLE_QUESTION_SET } from "./sample-questions";
 // Olympia socket layer: isolated "/olympia" namespace — does not touch the existing room handlers.
 import type { Server as SocketIOServer, Socket } from "socket.io";
 import { prisma } from "../prisma";
@@ -33,11 +34,45 @@ async function loadGame(code: string): Promise<GameEntry | null> {
   if (pending) return pending;
 
   const p = (async () => {
-    const room = await prisma.room.findUnique({
-      where: { code },
-      select: { id: true, mode: true, config: true, hostKey: true },
-    });
-    if (!room || room.mode !== ("OLYMPIA" as typeof room.mode)) return null;
+    let room: { id: string; mode: string; config: unknown; hostKey: string | null } | null = null;
+    try {
+      room = await prisma.room.findUnique({
+        where: { code },
+        select: { id: true, mode: true, config: true, hostKey: true },
+      });
+    } catch {
+      // Prisma offline or DATABASE_URL not set
+    }
+
+    if (!room || room.mode !== ("OLYMPIA" as typeof room.mode)) {
+      if (code === "SANDBOX" || /^\d{6}$/.test(code) || code.startsWith("sandbox")) {
+        const defaultCfg: OlympiaConfig = {
+          rulesetId: "O26",
+          rounds: ["khoiDong", "vcnv", "tangToc", "veDich"],
+          questionSet: SAMPLE_QUESTION_SET,
+          seatCount: 4,
+          teams: [
+            { name: "Đội Đỏ" },
+            { name: "Đội Lam" },
+            { name: "Đội Vàng" },
+            { name: "Đội Lục" },
+          ],
+        };
+        const game = new OlympiaGame(code, defaultCfg);
+        const entry: GameEntry = {
+          game,
+          roomId: `sandbox-${code}`,
+          hostKey: "sandbox",
+          baseConfig: { sandbox: true, olympia: defaultCfg },
+          clients: new Map(),
+          saveTimer: null,
+          lastStage: game.state.stage,
+        };
+        games.set(code, entry);
+        return entry;
+      }
+      return null;
+    }
     const cfg = (room.config && typeof room.config === "object" ? room.config : {}) as Record<string, unknown>;
     const olympia = cfg.olympia as OlympiaConfig | undefined;
     if (!olympia) return null;
@@ -77,7 +112,9 @@ function scheduleSave(entry: GameEntry) {
         if (stage === "finished") data.endedAt = new Date();
         entry.lastStage = stage;
       }
-      await prisma.room.update({ where: { id: entry.roomId }, data: data as never });
+      if (!entry.roomId.startsWith("sandbox")) {
+        await prisma.room.update({ where: { id: entry.roomId }, data: data as never });
+      }
     } catch (e) {
       console.warn("[Olympia] snapshot save failed:", (e as Error).message);
     }

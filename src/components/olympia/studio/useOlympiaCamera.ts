@@ -208,7 +208,7 @@ export function useOlympiaCameraState(
       const vd = state.veDich;
       const owner = vd.order?.[vd.turnIdx] ?? 0;
 
-      // If someone steals the turn
+      // If someone steals the turn:
       if (vd.steal?.buzzedSeat != null) {
         const stealSeat = vd.steal.buzzedSeat;
         return {
@@ -219,24 +219,32 @@ export function useOlympiaCameraState(
         };
       }
 
-      // USER REQUIREMENT:
-      // "Về đích ngoài camera theo thí sinh lên sân khấu, còn có góc quay từ trên cao quay xuống gần sát mặt thí sinh,
-      // rồi sau đó chuyển sang camera thu trực diện mặt thí sinh, zoom lên."
-      if (vd.phase === "thinking" || vd.phase === "stealing" || vd.phase === "result") {
+      // During 5s bell stealing countdown (nobody buzzed yet):
+      if (vd.phase === "stealing") {
+        return {
+          camAngle: 9, // Jib Crane High-Angle Wide
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0.2,
+        };
+      }
+
+      // During thinking / result:
+      if (vd.phase === "thinking" || vd.phase === "result") {
         const startedAt = vd.timer?.startedAt || now;
         const elapsed = Math.max(0, (now - startedAt) / 1000);
 
-        // First 3.5s: Góc cao overhead (CAM 9)
+        // First 3.5s: Góc cao overhead / cẩu quay (CAM 9)
         if (elapsed < 3.5) {
           return {
-            camAngle: 9, // Overhead
+            camAngle: 9,
             transitionMode: "MORPH",
             isOverlayHidden: false,
             pushInProgress: (elapsed / 3.5) * 0.5,
           };
         }
 
-        // Then: Thu trực diện mặt thí sinh (CAM 5 + owner) and slow zoom up
+        // Then: Thu trực diện mặt thí sinh chính (CAM 5 + owner) and slow zoom
         const push = Math.min(1.0, (elapsed - 3.5) / 10.0);
         return {
           camAngle: 5 + Math.min(3, owner),
@@ -256,7 +264,7 @@ export function useOlympiaCameraState(
       }
 
       return {
-        camAngle: 2,
+        camAngle: 1,
         transitionMode: "CUT",
         isOverlayHidden: false,
         pushInProgress: 0,

@@ -41,6 +41,11 @@ export function OlympiaStudio3DScene({
     screenFadeProgress,
     stageFadeProgress,
     audienceFadeProgress,
+    isVeDichDimmed,
+    activeMainContestantSeat,
+    is5sBuzzerChasing,
+    spotlightChaseIndex,
+    lockedSpotlightSeat,
   } = useOlympiaLightingState(state, serverNow);
 
   // Camera vision mixer state
@@ -126,13 +131,13 @@ export function OlympiaStudio3DScene({
     >
       {/* ── 1. THREE.JS R3F CANVAS ── */}
       <Canvas
-        camera={{ position: [0.0, 3.2, 7.8], fov: 46 }}
+        camera={{ position: [0.0, 3.2, 6.8], fov: 46 }}
         gl={{
           powerPreference: "high-performance",
           antialias: quality !== "LIGHT",
           alpha: false,
         }}
-        dpr={quality === "HIGH" ? [1, 2] : 1}
+        dpr={quality === "HIGH" ? [1, 1.5] : 1}
       >
         <CameraController
           camAngle={internalCam}
@@ -148,6 +153,11 @@ export function OlympiaStudio3DScene({
           stageFadeProgress={stageFadeProgress}
           audienceFadeProgress={audienceFadeProgress}
           quality={quality}
+          isVeDichDimmed={isVeDichDimmed}
+          activeMainContestantSeat={activeMainContestantSeat}
+          is5sBuzzerChasing={is5sBuzzerChasing}
+          spotlightChaseIndex={spotlightChaseIndex}
+          lockedSpotlightSeat={lockedSpotlightSeat}
         />
 
         <CentralLedWall
@@ -162,8 +172,9 @@ export function OlympiaStudio3DScene({
         />
 
         <LaurelWreathVitrine
-          position={[-2.4, 0, -4.8]}
+          position={[0.0, 0, 2.6]}
           quality={quality}
+          screenFadeProgress={screenFadeProgress}
         />
       </Canvas>
 

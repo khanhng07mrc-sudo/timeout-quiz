@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useEffect, useMemo } from "react";
-import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 interface CentralLedWallProps {
@@ -10,35 +9,84 @@ interface CentralLedWallProps {
 }
 
 /**
- * Generates the Central LED broadcast screen texture with the official
- * Olympia 2016 logo and yellow light-to-dark gradient typography.
+ * Creates a regular horizontal hexagon shape (flat top and bottom)
+ * with an optional inner hollow cutout for extruded framing.
  */
-function createLedScreenCanvas(
+function createHexagonShape(
+  outerW: number,
+  outerH: number,
+  innerW?: number,
+  innerH?: number
+): THREE.Shape {
+  const shape = new THREE.Shape();
+  // Horizontal hexagon (flat top & bottom):
+  // Vertices:
+  // (-w/4, h/2) -> (w/4, h/2) -> (w/2, 0) -> (w/4, -h/2) -> (-w/4, -h/2) -> (-w/2, 0)
+  shape.moveTo(-outerW / 4, outerH / 2);
+  shape.lineTo(outerW / 4, outerH / 2);
+  shape.lineTo(outerW / 2, 0);
+  shape.lineTo(outerW / 4, -outerH / 2);
+  shape.lineTo(-outerW / 4, -outerH / 2);
+  shape.lineTo(-outerW / 2, 0);
+  shape.closePath();
+
+  if (innerW && innerH) {
+    const hole = new THREE.Path();
+    hole.moveTo(-innerW / 4, innerH / 2);
+    hole.lineTo(innerW / 4, innerH / 2);
+    hole.lineTo(innerW / 2, 0);
+    hole.lineTo(innerW / 4, -innerH / 2);
+    hole.lineTo(-innerW / 4, -innerH / 2);
+    hole.lineTo(-innerW / 2, 0);
+    hole.closePath();
+    shape.holes.push(hole);
+  }
+
+  return shape;
+}
+
+/**
+ * Creates glowing border tube vertices for a horizontal hexagon
+ */
+function createHexagonBorderPoints(w: number, h: number): THREE.Vector3[] {
+  return [
+    new THREE.Vector3(-w / 4, h / 2, 0),
+    new THREE.Vector3(w / 4, h / 2, 0),
+    new THREE.Vector3(w / 2, 0, 0),
+    new THREE.Vector3(w / 4, -h / 2, 0),
+    new THREE.Vector3(-w / 4, -h / 2, 0),
+    new THREE.Vector3(-w / 2, 0, 0),
+    new THREE.Vector3(-w / 4, h / 2, 0),
+  ];
+}
+
+/**
+ * Pre-rendered Central LED broadcast screen texture with the official
+ * transparent Olympia 2016 logo and yellow light-to-dark gradient typography.
+ * Rendered ONCE or strictly when fadeProgress changes to avoid CPU lag.
+ */
+function renderLedScreenToCanvas(
+  targetCanvas: HTMLCanvasElement,
   logoImg: HTMLImageElement | null,
-  fadeProgress: number = 0,
-  animTime: number = 0
-): HTMLCanvasElement {
-  const width = 2048;
-  const height = 1152; // 16:9 aspect ratio
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  fadeProgress: number = 0
+): void {
+  const width = targetCanvas.width;
+  const height = targetCanvas.height;
+  const ctx = targetCanvas.getContext("2d");
+  if (!ctx) return;
 
   const cx = width / 2;
   const cy = height / 2;
 
-  // ── 1. BACKGROUND BROADCAST GRADIENT (Interpolating Blue -> Red) ──
-  // Blue base: #04091a -> #0a1f4d; Red competition: #1a0409 -> #4d0a15
-  const bgGrad = ctx.createRadialGradient(cx, cy * 0.95, 100, cx, cy, width * 0.75);
-  const r1 = Math.round(THREE.MathUtils.lerp(10, 80, fadeProgress));
-  const g1 = Math.round(THREE.MathUtils.lerp(31, 10, fadeProgress));
-  const b1 = Math.round(THREE.MathUtils.lerp(77, 20, fadeProgress));
+  // 1. Deep Broadcast Cosmic Gradient
+  const bgGrad = ctx.createRadialGradient(cx, cy * 0.9, 80, cx, cy, width * 0.72);
+  const r1 = Math.round(THREE.MathUtils.lerp(8, 75, fadeProgress));
+  const g1 = Math.round(THREE.MathUtils.lerp(28, 8, fadeProgress));
+  const b1 = Math.round(THREE.MathUtils.lerp(75, 18, fadeProgress));
 
-  const r0 = Math.round(THREE.MathUtils.lerp(4, 26, fadeProgress));
-  const g0 = Math.round(THREE.MathUtils.lerp(9, 4, fadeProgress));
-  const b0 = Math.round(THREE.MathUtils.lerp(26, 9, fadeProgress));
+  const r0 = Math.round(THREE.MathUtils.lerp(3, 22, fadeProgress));
+  const g0 = Math.round(THREE.MathUtils.lerp(7, 3, fadeProgress));
+  const b0 = Math.round(THREE.MathUtils.lerp(22, 7, fadeProgress));
 
   bgGrad.addColorStop(0, `rgb(${r1}, ${g1}, ${b1})`);
   bgGrad.addColorStop(0.65, `rgb(${r0}, ${g0}, ${b0})`);
@@ -47,17 +95,31 @@ function createLedScreenCanvas(
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, width, height);
 
-  // ── 2. HEXAGONAL CIRCUIT GRID & STUDIO ACCENTS ──
+  // 2. Cosmic Stardust Particles
+  ctx.fillStyle = "#ffffff";
+  const numStars = 140;
+  for (let i = 0; i < numStars; i++) {
+    const sx = (Math.sin(i * 997.1) * 0.5 + 0.5) * width;
+    const sy = (Math.cos(i * 443.7) * 0.5 + 0.5) * height;
+    const size = (i % 3) * 0.7 + 0.8;
+    const alpha = (Math.sin(i * 12.3) * 0.35 + 0.55);
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.arc(sx, sy, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1.0;
+
+  // 3. Central Hexagonal Grid Lines
   ctx.save();
   ctx.lineWidth = 1.5;
-  const hexRadius = 48;
+  const hexRadius = 42;
   const hexW = Math.sqrt(3) * hexRadius;
   const hexH = 2 * hexRadius;
-  const gridAlpha = 0.08 + Math.sin(animTime * 1.5) * 0.02;
 
   ctx.strokeStyle = fadeProgress > 0.5
-    ? `rgba(255, 60, 80, ${gridAlpha * 1.2})`
-    : `rgba(0, 210, 255, ${gridAlpha})`;
+    ? `rgba(255, 60, 80, 0.08)`
+    : `rgba(0, 210, 255, 0.08)`;
 
   for (let y = -hexH; y < height + hexH; y += hexH * 0.75) {
     const isOdd = Math.round(y / (hexH * 0.75)) % 2 !== 0;
@@ -77,21 +139,9 @@ function createLedScreenCanvas(
   }
   ctx.restore();
 
-  // ── 3. VIBRANT STAGE GLOW PULSES ──
-  const pulseR = THREE.MathUtils.lerp(0, 255, fadeProgress);
-  const pulseG = THREE.MathUtils.lerp(180, 40, fadeProgress);
-  const pulseB = THREE.MathUtils.lerp(255, 60, fadeProgress);
-  const glowGrad = ctx.createRadialGradient(cx, cy * 0.75, 40, cx, cy * 0.75, 620);
-  glowGrad.addColorStop(0, `rgba(${pulseR}, ${pulseG}, ${pulseB}, 0.22)`);
-  glowGrad.addColorStop(0.5, `rgba(${pulseR}, ${pulseG}, ${pulseB}, 0.06)`);
-  glowGrad.addColorStop(1, "transparent");
-  ctx.fillStyle = glowGrad;
-  ctx.fillRect(0, 0, width, height);
-
-  // ── 4. OFFICIAL OLYMPIA 2016 LOGO ──
-  // Logo is transparent webp: vòng nguyệt quế + nhân vật leo núi on transparent bg
-  const logoTargetH = 600; // tăng từ 460 → 600 để logo rõ hơn trên canvas 2048×1152
-  const logoTargetY = 120; // dịch lên trên một chút
+  // 4. Official Olympia 2016 Logo (Transparent WebP)
+  const logoTargetH = height * 0.46;
+  const logoTargetY = height * 0.12;
 
   if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
     const aspect = logoImg.naturalWidth / logoImg.naturalHeight;
@@ -99,54 +149,56 @@ function createLedScreenCanvas(
     const logoX = cx - logoW / 2;
 
     ctx.save();
-    // Subtle backdrop shadow behind logo
-    ctx.shadowColor = fadeProgress > 0.5 ? "rgba(255, 30, 60, 0.6)" : "rgba(0, 180, 255, 0.45)";
-    ctx.shadowBlur = 40;
+    ctx.shadowColor = fadeProgress > 0.5 ? "rgba(255, 40, 70, 0.65)" : "rgba(0, 210, 255, 0.55)";
+    ctx.shadowBlur = 35;
     ctx.drawImage(logoImg, logoX, logoTargetY, logoW, logoTargetH);
     ctx.restore();
   } else {
-    // Elegant fallback icon if image is still loading
     ctx.save();
-    ctx.font = '900 120px "Plus Jakarta Sans", sans-serif';
+    ctx.font = '900 96px "Plus Jakarta Sans", sans-serif';
     ctx.textAlign = "center";
     ctx.fillStyle = "#ffd700";
     ctx.shadowColor = "#ffb700";
-    ctx.shadowBlur = 30;
-    ctx.fillText("OLYMPIA", cx, logoTargetY + 280);
+    ctx.shadowBlur = 25;
+    ctx.fillText("OLYMPIA", cx, logoTargetY + 220);
     ctx.restore();
   }
 
-  // ── 5. YELLOW LIGHT-TO-DARK GRADIENT TEXT: "ĐƯỜNG LÊN ĐỈNH OLYMPIA" ──
-  const textY = logoTargetY + logoTargetH + 155;
+  // 5. Yellow Light-To-Dark Gradient Typography: "ĐƯỜNG LÊN ĐỈNH OLYMPIA"
+  const textY = logoTargetY + logoTargetH + height * 0.16;
   const textStr = "ĐƯỜNG LÊN ĐỈNH OLYMPIA";
 
   ctx.save();
-  // Broadcast font styling
-  ctx.font = '900 88px "Plus Jakarta Sans", "Montserrat", "Arial Black", sans-serif';
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  // Light-to-Dark Yellow/Gold Vertical Gradient
-  // Top: #fff899 (bright light yellow) -> Middle: #ffd700 (radiant golden) -> Bottom: #996500 (dark rich bronze/gold)
-  const textGrad = ctx.createLinearGradient(0, textY - 50, 0, textY + 50);
-  textGrad.addColorStop(0, "#fffbd0");   // Bright light yellow highlight
-  textGrad.addColorStop(0.28, "#ffea55"); // Vibrant golden yellow
-  textGrad.addColorStop(0.65, "#f59e0b"); // Rich broadcast amber gold
-  textGrad.addColorStop(1, "#854d0e");    // Deep dark golden bronze
+  const fontSize = Math.round(width * 0.048);
+  ctx.font = `900 ${fontSize}px "Plus Jakarta Sans", "Montserrat", "Arial Black", sans-serif`;
+  ctx.letterSpacing = "0.08em";
 
-  // Outer dark bevel stroke for high contrast
-  ctx.lineWidth = 14;
-  ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
-  ctx.lineJoin = "round";
+  const textGrad = ctx.createLinearGradient(0, textY - fontSize * 0.6, 0, textY + fontSize * 0.6);
+  textGrad.addColorStop(0.0, "#ffffff");
+  textGrad.addColorStop(0.2, "#fffbd0");
+  textGrad.addColorStop(0.5, "#ffd700");
+  textGrad.addColorStop(0.85, "#b45309");
+  textGrad.addColorStop(1.0, "#78350f");
+
+  // Outer dark drop shadow
+  ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 4;
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = "#1e1302";
   ctx.strokeText(textStr, cx, textY);
 
-  // Secondary soft golden outer halo
-  ctx.shadowColor = "rgba(255, 215, 0, 0.65)";
+  // Soft golden halo
+  ctx.shadowColor = "rgba(255, 215, 0, 0.7)";
   ctx.shadowBlur = 24;
   ctx.shadowOffsetY = 2;
 
   // Inner metallic stroke
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 3.5;
   ctx.strokeStyle = "#fffed4";
   ctx.strokeText(textStr, cx, textY);
 
@@ -154,92 +206,222 @@ function createLedScreenCanvas(
   ctx.fillStyle = textGrad;
   ctx.fillText(textStr, cx, textY);
 
-  // Subtle subtitle / decorative rules
+  // Subtitle
   ctx.shadowBlur = 0;
-  ctx.font = '800 24px "Plus Jakarta Sans", sans-serif';
+  ctx.font = `800 ${Math.round(fontSize * 0.32)}px "Plus Jakarta Sans", sans-serif`;
   ctx.letterSpacing = "0.45em";
-  ctx.fillStyle = fadeProgress > 0.5 ? "rgba(255, 180, 190, 0.75)" : "rgba(180, 225, 255, 0.75)";
-  ctx.fillText("VTV3 BROADCAST STUDIO SET", cx, textY + 85);
-
-  // Dual flanking decorative gold rules
-  const ruleW = 280;
-  const ruleY = textY + 85;
-  const ruleGradL = ctx.createLinearGradient(cx - 320 - ruleW, 0, cx - 320, 0);
-  ruleGradL.addColorStop(0, "transparent");
-  ruleGradL.addColorStop(1, "#ffd700");
-  ctx.strokeStyle = ruleGradL;
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.moveTo(cx - 320 - ruleW, ruleY);
-  ctx.lineTo(cx - 320, ruleY);
-  ctx.stroke();
-
-  const ruleGradR = ctx.createLinearGradient(cx + 320, 0, cx + 320 + ruleW, 0);
-  ruleGradR.addColorStop(0, "#ffd700");
-  ruleGradR.addColorStop(1, "transparent");
-  ctx.strokeStyle = ruleGradR;
-  ctx.beginPath();
-  ctx.moveTo(cx + 320, ruleY);
-  ctx.lineTo(cx + 320 + ruleW, ruleY);
-  ctx.stroke();
+  ctx.fillStyle = fadeProgress > 0.5 ? "rgba(255, 190, 200, 0.85)" : "rgba(180, 235, 255, 0.85)";
+  ctx.fillText("VTV3 BROADCAST STUDIO S14", cx, textY + fontSize * 0.75);
 
   ctx.restore();
+}
+
+/**
+ * Pre-rendered Math & Science Symbols Wall Texture (Stage Left)
+ */
+function createMathWallCanvas(fadeProgress: number = 0): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 768;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  // Background dark cyber blue/red
+  const r = Math.round(THREE.MathUtils.lerp(6, 45, fadeProgress));
+  const g = Math.round(THREE.MathUtils.lerp(18, 5, fadeProgress));
+  const b = Math.round(THREE.MathUtils.lerp(48, 12, fadeProgress));
+  ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+  ctx.fillRect(0, 0, 1024, 768);
+
+  // Diagonal tech grid lines
+  ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(255, 60, 80, 0.15)" : "rgba(0, 210, 255, 0.15)";
+  ctx.lineWidth = 2;
+  for (let i = -768; i < 1024 + 768; i += 60) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i + 768, 768);
+    ctx.stroke();
+  }
+
+  // Iconic Science & Math Formula Symbols (from real VTV3 photos):
+  // ∑, kg, µ, m², Δ, sin, cos, Ω, π, ∫, tan, λ, θ, f(x), lim, ∞
+  const symbols = [
+    { text: "∑", x: 120, y: 150, size: 72 },
+    { text: "kg", x: 260, y: 140, size: 48 },
+    { text: "µ", x: 400, y: 150, size: 54 },
+    { text: "m²", x: 550, y: 140, size: 48 },
+    { text: "Δ", x: 720, y: 150, size: 68 },
+    { text: "Ω", x: 880, y: 150, size: 64 },
+
+    { text: "sin", x: 160, y: 340, size: 46 },
+    { text: "cos", x: 320, y: 340, size: 46 },
+    { text: "π", x: 480, y: 350, size: 64 },
+    { text: "∫", x: 620, y: 360, size: 78 },
+    { text: "tan", x: 770, y: 340, size: 46 },
+    { text: "λ", x: 900, y: 350, size: 56 },
+
+    { text: "E=mc²", x: 200, y: 540, size: 48 },
+    { text: "lim", x: 380, y: 530, size: 46 },
+    { text: "θ", x: 530, y: 540, size: 54 },
+    { text: "f(x)", x: 680, y: 540, size: 48 },
+    { text: "∞", x: 840, y: 540, size: 62 },
+  ];
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  symbols.forEach((s) => {
+    ctx.save();
+    ctx.font = `900 ${s.size}px "Plus Jakarta Sans", "Georgia", serif`;
+    ctx.letterSpacing = "0.05em";
+
+    // Glow
+    ctx.shadowColor = fadeProgress > 0.5 ? "#ff2a4b" : "#00d4ff";
+    ctx.shadowBlur = 22;
+    ctx.fillStyle = fadeProgress > 0.5 ? "#ffffff" : "#e0f7ff";
+    ctx.fillText(s.text, s.x, s.y);
+    ctx.restore();
+  });
 
   return canvas;
 }
 
-export function CentralLedWall({ screenFadeProgress = 0, quality = "HIGH" }: CentralLedWallProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const textureRef = useRef<THREE.CanvasTexture | null>(null);
-  const logoImageRef = useRef<HTMLImageElement | null>(null);
-  const animTimeRef = useRef(0);
-  const lastDrawTimeRef = useRef(0);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+/**
+ * Single Extruded Hexagon Frame with Glowing Neon Rim
+ */
+function HexagonPortalFrame({
+  outerW,
+  outerH,
+  innerW,
+  innerH,
+  zPos,
+  neonColor,
+  depth = 0.35,
+}: {
+  outerW: number;
+  outerH: number;
+  innerW: number;
+  innerH: number;
+  zPos: number;
+  neonColor: THREE.Color;
+  depth?: number;
+}) {
+  const shape = useMemo(
+    () => createHexagonShape(outerW, outerH, innerW, innerH),
+    [outerW, outerH, innerW, innerH]
+  );
 
-  // Preload logo image — use absolute URL for Electron/Next.js production compatibility
+  const geometry = useMemo(
+    () =>
+      new THREE.ExtrudeGeometry(shape, {
+        depth,
+        bevelEnabled: true,
+        bevelSegments: 2,
+        steps: 1,
+        bevelSize: 0.04,
+        bevelThickness: 0.04,
+      }),
+    [shape, depth]
+  );
+
+  // Border line points for neon tube outline
+  const outerBorderPoints = useMemo(
+    () => createHexagonBorderPoints(outerW, outerH),
+    [outerW, outerH]
+  );
+
+  const innerBorderPoints = useMemo(
+    () => createHexagonBorderPoints(innerW, innerH),
+    [innerW, innerH]
+  );
+
+  const outerLineMesh = useMemo(() => {
+    const geom = new THREE.BufferGeometry().setFromPoints(outerBorderPoints);
+    const mat = new THREE.LineBasicMaterial({ color: neonColor, linewidth: 3 });
+    const line = new THREE.Line(geom, mat);
+    line.position.set(0, 0, depth + 0.05);
+    return line;
+  }, [outerBorderPoints, depth, neonColor]);
+
+  const innerLineMesh = useMemo(() => {
+    const geom = new THREE.BufferGeometry().setFromPoints(innerBorderPoints);
+    const mat = new THREE.LineBasicMaterial({ color: neonColor, linewidth: 2 });
+    const line = new THREE.Line(geom, mat);
+    line.position.set(0, 0, depth + 0.05);
+    return line;
+  }, [innerBorderPoints, depth, neonColor]);
+
+  return (
+    <group position={[0, 3.6, zPos]}>
+      {/* 3D Extruded Metallic Frame Body */}
+      <mesh geometry={geometry}>
+        <meshStandardMaterial
+          color="#0f172a"
+          metalness={0.92}
+          roughness={0.2}
+          envMapIntensity={1.4}
+        />
+      </mesh>
+
+      {/* Front Glowing Outer Hex Neon Rim */}
+      <primitive object={outerLineMesh} />
+
+      {/* Front Glowing Inner Hex Neon Rim */}
+      <primitive object={innerLineMesh} />
+    </group>
+  );
+}
+
+/**
+ * Central Studio Set:
+ * 1. 4-tier Hexagonal Infinity Tunnel Portal (Real 3D Extruded Geometry)
+ * 2. High-res Central LED Display with Logo & Gold Gradient Typography
+ * 3. Left Wing: Math & Science Symbols Wall (∑, π, ∫, Δ...)
+ * 4. Right Wing: Secondary Broadcast LED Screen & Side Tower
+ */
+export function CentralLedWall({
+  screenFadeProgress = 0,
+  quality = "HIGH",
+}: CentralLedWallProps) {
+  const logoImageRef = useRef<HTMLImageElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const textureRef = useRef<THREE.CanvasTexture | null>(null);
+  const lastFadeRef = useRef<number>(-1);
+
+  // Preload logo image
   useEffect(() => {
     if (typeof window === "undefined") return;
     const img = new Image();
     img.crossOrigin = "anonymous";
-    // Absolute URL ensures correct path in both browser and Electron (file:// + custom protocol)
     img.src = `${window.location.origin}/olympia/Olympia_logo_2016.webp`;
     img.onload = () => {
       logoImageRef.current = img;
-      if (canvasRef.current) {
-        updateCanvas(canvasRef.current, screenFadeProgress, 0);
+      if (canvasRef.current && textureRef.current) {
+        renderLedScreenToCanvas(canvasRef.current, img, screenFadeProgress);
+        textureRef.current.needsUpdate = true;
       }
     };
     img.onerror = () => {
-      // Fallback: try relative path if absolute fails (dev server)
       const fallback = new Image();
       fallback.crossOrigin = "anonymous";
       fallback.src = "/olympia/Olympia_logo_2016.webp";
       fallback.onload = () => {
         logoImageRef.current = fallback;
-        if (canvasRef.current) {
-          updateCanvas(canvasRef.current, screenFadeProgress, 0);
+        if (canvasRef.current && textureRef.current) {
+          renderLedScreenToCanvas(canvasRef.current, fallback, screenFadeProgress);
+          textureRef.current.needsUpdate = true;
         }
       };
     };
   }, []);
 
-  const updateCanvas = (canvas: HTMLCanvasElement, fade: number, time: number) => {
-    const freshCanvas = createLedScreenCanvas(logoImageRef.current, fade, time);
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(freshCanvas, 0, 0);
-    }
-    if (textureRef.current) {
-      textureRef.current.needsUpdate = true;
-    }
-  };
-
+  // Pre-allocated static canvas for Central LED
   const canvas = useMemo(() => {
     if (typeof document === "undefined") return null;
     const c = document.createElement("canvas");
-    c.width = quality === "LIGHT" ? 1024 : 2048;
-    c.height = quality === "LIGHT" ? 576 : 1152;
+    c.width = quality === "LIGHT" ? 1024 : 1920;
+    c.height = quality === "LIGHT" ? 576 : 1080;
+    renderLedScreenToCanvas(c, logoImageRef.current, screenFadeProgress);
     return c;
   }, [quality]);
 
@@ -257,131 +439,160 @@ export function CentralLedWall({ screenFadeProgress = 0, quality = "HIGH" }: Cen
     textureRef.current = texture;
   }, [canvas, texture]);
 
-  // Initial draw
+  // Update canvas only when screenFadeProgress changes meaningfully (> 0.04)
   useEffect(() => {
-    if (canvas) {
-      updateCanvas(canvas, screenFadeProgress, 0);
+    if (!canvasRef.current || !textureRef.current) return;
+    if (Math.abs(screenFadeProgress - lastFadeRef.current) > 0.04) {
+      lastFadeRef.current = screenFadeProgress;
+      renderLedScreenToCanvas(canvasRef.current, logoImageRef.current, screenFadeProgress);
+      textureRef.current.needsUpdate = true;
     }
-  }, [canvas, screenFadeProgress]);
+  }, [screenFadeProgress]);
 
-  // Dynamic animation updates (pulse & fade)
-  useFrame((_, delta) => {
-    animTimeRef.current += delta;
-    // Throttle redrawing: redraw every 80ms for 12.5 FPS texture animation (saves GPU/CPU)
-    if (animTimeRef.current - lastDrawTimeRef.current > 0.08) {
-      lastDrawTimeRef.current = animTimeRef.current;
-      if (canvasRef.current) {
-        updateCanvas(canvasRef.current, screenFadeProgress, animTimeRef.current);
-      }
-    }
-  });
-
-  const screenW = 12.0;
-  const screenH = 6.75; // 16:9 standard
-  const frameThick = 0.28;
-
-  // Emissive trim color based on fade
-  const trimColor = useMemo(() => {
-    const c = new THREE.Color("#00d4ff");
-    c.lerp(new THREE.Color("#ff2a4b"), screenFadeProgress);
+  // Dynamic Neon Color (Cyan -> Red)
+  const neonColor = useMemo(() => {
+    const c = new THREE.Color("#00e5ff");
+    c.lerp(new THREE.Color("#ff1a40"), screenFadeProgress);
     return c;
   }, [screenFadeProgress]);
 
+  // Math Wall Canvas & Texture (Stage Left)
+  const mathWallCanvas = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    return createMathWallCanvas(screenFadeProgress);
+  }, [screenFadeProgress]);
+
+  const mathWallTexture = useMemo(() => {
+    if (!mathWallCanvas) return null;
+    const tex = new THREE.CanvasTexture(mathWallCanvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }, [mathWallCanvas]);
+
   return (
-    <group position={[0, 4.25, -6.5]}>
-      {/* ── 1. MAIN 16:9 LED DISPLAY PLANE ── */}
-      <mesh ref={meshRef} position={[0, 0, 0.02]}>
-        <planeGeometry args={[screenW, screenH]} />
-        {texture ? (
-          <meshBasicMaterial map={texture} toneMapped={false} />
-        ) : (
-          <meshStandardMaterial color="#020817" roughness={0.2} metalness={0.9} />
-        )}
-      </mesh>
+    <group>
+      {/* ── 1. 4-TIER HEXAGONAL INFINITY TUNNEL PORTAL ── */}
+      {/* Layer 1 (Outermost Arch) */}
+      <HexagonPortalFrame
+        outerW={10.8}
+        outerH={7.2}
+        innerW={9.4}
+        innerH={6.2}
+        zPos={-4.6}
+        neonColor={neonColor}
+        depth={0.36}
+      />
 
-      {/* ── 2. TITANIUM BEZEL & METALLIC HOUSING ── */}
-      {/* Outer Titanium Bezel Frame */}
-      <mesh position={[0, 0, -0.08]}>
-        <boxGeometry args={[screenW + frameThick * 2, screenH + frameThick * 2, 0.24]} />
-        <meshStandardMaterial
-          color="#1e2430"
-          metalness={0.88}
-          roughness={0.22}
-          envMapIntensity={1.4}
-        />
-      </mesh>
+      {/* Layer 2 (Second Inward Arch) */}
+      <HexagonPortalFrame
+        outerW={9.4}
+        outerH={6.4}
+        innerW={8.0}
+        innerH={5.4}
+        zPos={-5.1}
+        neonColor={neonColor}
+        depth={0.34}
+      />
 
-      {/* Inner Bezel Chamfer Trim */}
-      <mesh position={[0, 0, -0.01]}>
-        <boxGeometry args={[screenW + 0.06, screenH + 0.06, 0.08]} />
-        <meshStandardMaterial color="#0b0e14" metalness={0.95} roughness={0.3} />
-      </mesh>
+      {/* Layer 3 (Third Inward Arch) */}
+      <HexagonPortalFrame
+        outerW={8.0}
+        outerH={5.4}
+        innerW={6.6}
+        innerH={4.4}
+        zPos={-5.6}
+        neonColor={neonColor}
+        depth={0.32}
+      />
 
-      {/* ── 3. GOLD & COLOR-REACTIVE NEON EDGE ACCENTS ── */}
-      {/* Top Edge Neon Strip */}
-      <mesh position={[0, screenH / 2 + 0.04, 0.04]}>
-        <boxGeometry args={[screenW + 0.2, 0.04, 0.04]} />
-        <meshBasicMaterial color={trimColor} />
-      </mesh>
+      {/* Layer 4 (Innermost Core Arch) */}
+      <HexagonPortalFrame
+        outerW={6.6}
+        outerH={4.4}
+        innerW={5.4}
+        innerH={3.5}
+        zPos={-6.1}
+        neonColor={neonColor}
+        depth={0.30}
+      />
 
-      {/* Bottom Edge Gold Trim Strip */}
-      <mesh position={[0, -screenH / 2 - 0.04, 0.04]}>
-        <boxGeometry args={[screenW + 0.2, 0.04, 0.04]} />
-        <meshStandardMaterial
-          color="#ffd700"
-          emissive="#ffd700"
-          emissiveIntensity={0.8}
-          metalness={0.9}
-          roughness={0.2}
-        />
-      </mesh>
+      {/* ── 2. CENTRAL BROADCAST LED BACKDROP DISPLAY ── */}
+      <group position={[0, 3.8, -6.45]}>
+        <mesh>
+          <planeGeometry args={[7.2, 4.3]} />
+          {texture ? (
+            <meshBasicMaterial map={texture} toneMapped={false} />
+          ) : (
+            <meshStandardMaterial color="#020817" roughness={0.2} metalness={0.9} />
+          )}
+        </mesh>
+        {/* LED Bezel Frame */}
+        <mesh position={[0, 0, -0.06]}>
+          <boxGeometry args={[7.4, 4.5, 0.12]} />
+          <meshStandardMaterial color="#0b0f19" metalness={0.9} roughness={0.2} />
+        </mesh>
+      </group>
 
-      {/* Left Edge Neon Strip */}
-      <mesh position={[-screenW / 2 - 0.04, 0, 0.04]}>
-        <boxGeometry args={[0.04, screenH + 0.1, 0.04]} />
-        <meshBasicMaterial color={trimColor} />
-      </mesh>
+      {/* ── 3. STAGE LEFT: MATH & SCIENCE SYMBOLS WALL ── */}
+      <group position={[-5.6, 3.5, -3.8]} rotation={[0, 0.42, 0]}>
+        {/* Backing Structure */}
+        <mesh position={[0, 0, -0.08]}>
+          <boxGeometry args={[4.8, 3.4, 0.16]} />
+          <meshStandardMaterial color="#090d18" metalness={0.9} roughness={0.25} />
+        </mesh>
+        {/* Illuminated Math Display Plane */}
+        <mesh position={[0, 0, 0.02]}>
+          <planeGeometry args={[4.7, 3.3]} />
+          {mathWallTexture ? (
+            <meshBasicMaterial map={mathWallTexture} toneMapped={false} />
+          ) : (
+            <meshStandardMaterial color="#040b1a" roughness={0.3} metalness={0.8} />
+          )}
+        </mesh>
+        {/* Glowing Outer Neon Frame Trim */}
+        <mesh position={[0, 1.7, 0.04]}>
+          <boxGeometry args={[4.8, 0.04, 0.04]} />
+          <meshBasicMaterial color={neonColor} />
+        </mesh>
+        <mesh position={[0, -1.7, 0.04]}>
+          <boxGeometry args={[4.8, 0.04, 0.04]} />
+          <meshBasicMaterial color={neonColor} />
+        </mesh>
+        <mesh position={[-2.4, 0, 0.04]}>
+          <boxGeometry args={[0.04, 3.4, 0.04]} />
+          <meshBasicMaterial color={neonColor} />
+        </mesh>
+        <mesh position={[2.4, 0, 0.04]}>
+          <boxGeometry args={[0.04, 3.4, 0.04]} />
+          <meshBasicMaterial color={neonColor} />
+        </mesh>
+      </group>
 
-      {/* Right Edge Neon Strip */}
-      <mesh position={[screenW / 2 + 0.04, 0, 0.04]}>
-        <boxGeometry args={[0.04, screenH + 0.1, 0.04]} />
-        <meshBasicMaterial color={trimColor} />
-      </mesh>
-
-      {/* ── 4. MULTI-TIERED STAGE PEDESTAL / BASE RISERS ── */}
-      {/* Tier 1: Top riser directly beneath screen */}
-      <mesh position={[0, -screenH / 2 - 0.35, -0.05]}>
-        <boxGeometry args={[screenW + 0.8, 0.45, 0.7]} />
-        <meshStandardMaterial color="#0e1320" metalness={0.85} roughness={0.25} />
-      </mesh>
-      {/* Tier 1 Glowing Edge Strip */}
-      <mesh position={[0, -screenH / 2 - 0.14, 0.31]}>
-        <boxGeometry args={[screenW + 0.75, 0.03, 0.03]} />
-        <meshBasicMaterial color={trimColor} />
-      </mesh>
-
-      {/* Tier 2: Mid riser */}
-      <mesh position={[0, -screenH / 2 - 0.75, -0.1]}>
-        <boxGeometry args={[screenW + 1.6, 0.4, 1.1]} />
-        <meshStandardMaterial color="#080c16" metalness={0.9} roughness={0.2} />
-      </mesh>
-
-      {/* Tier 3: Bottom wide base riser (anchors to stage floor) */}
-      <mesh position={[0, -screenH / 2 - 1.1, -0.15]}>
-        <boxGeometry args={[screenW + 2.5, 0.35, 1.6]} />
-        <meshStandardMaterial color="#050810" metalness={0.92} roughness={0.18} />
-      </mesh>
-      {/* Tier 3 Gold Base Trim */}
-      <mesh position={[0, -screenH / 2 - 0.94, 0.66]}>
-        <boxGeometry args={[screenW + 2.45, 0.03, 0.03]} />
-        <meshStandardMaterial
-          color="#ffd700"
-          emissive="#ffb700"
-          emissiveIntensity={0.6}
-          metalness={0.92}
-          roughness={0.15}
-        />
-      </mesh>
+      {/* ── 4. STAGE RIGHT: SECONDARY SCREEN & TOWER ── */}
+      <group position={[5.6, 4.2, -3.8]} rotation={[0, -0.42, 0]}>
+        {/* Secondary Display Screen */}
+        <mesh position={[0, 0, -0.06]}>
+          <boxGeometry args={[3.6, 2.3, 0.14]} />
+          <meshStandardMaterial color="#090d18" metalness={0.9} roughness={0.25} />
+        </mesh>
+        <mesh position={[0, 0, 0.02]}>
+          <planeGeometry args={[3.5, 2.2]} />
+          {texture ? (
+            <meshBasicMaterial map={texture} toneMapped={false} />
+          ) : (
+            <meshStandardMaterial color="#040b1a" roughness={0.3} metalness={0.8} />
+          )}
+        </mesh>
+        {/* Glowing Double Frame */}
+        <mesh position={[0, 1.15, 0.04]}>
+          <boxGeometry args={[3.6, 0.04, 0.04]} />
+          <meshBasicMaterial color={neonColor} />
+        </mesh>
+        <mesh position={[0, -1.15, 0.04]}>
+          <boxGeometry args={[3.6, 0.04, 0.04]} />
+          <meshBasicMaterial color={neonColor} />
+        </mesh>
+      </group>
     </group>
   );
 }

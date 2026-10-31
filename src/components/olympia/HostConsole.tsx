@@ -471,16 +471,16 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               {/* Camera Presets Selector */}
               <div className="grid grid-cols-5 sm:grid-cols-10 gap-1">
                 {[
-                  { id: 1, label: "CAM 1: Toàn Cảnh", short: "Toàn Cảnh" },
-                  { id: 2, label: "CAM 2: Bục TS", short: "Bục TS" },
-                  { id: 3, label: "CAM 3: Bục MC", short: "Bục MC" },
-                  { id: 4, label: "CAM 4: Nguyệt Quế", short: "Nguyệt Quế" },
-                  { id: 5, label: "CAM 5: Cận TS 1", short: "TS 1" },
-                  { id: 6, label: "CAM 6: Cận TS 2", short: "TS 2" },
-                  { id: 7, label: "CAM 7: Cận TS 3", short: "TS 3" },
-                  { id: 8, label: "CAM 8: Cận TS 4", short: "TS 4" },
-                  { id: 9, label: "CAM 9: Góc Cao", short: "Góc Cao" },
-                  { id: 10, label: "CAM 10: Màn LED", short: "Màn LED" },
+                  { id: 1, label: "CAM 1: Toàn Cảnh Sân Khấu", short: "Toàn Cảnh" },
+                  { id: 2, label: "CAM 2: Màn LED & Cổng Lục Giác", short: "Màn LED" },
+                  { id: 3, label: "CAM 3: Bục MC Dẫn Chương Trình", short: "Bục MC" },
+                  { id: 4, label: "CAM 4: Bục Danh Dự Vòng Nguyệt Quế", short: "Nguyệt Quế" },
+                  { id: 5, label: "CAM 5: Cận Cảnh TS 1 (Đỏ)", short: "TS 1 Đỏ" },
+                  { id: 6, label: "CAM 6: Cận Cảnh TS 2 (Lam)", short: "TS 2 Lam" },
+                  { id: 7, label: "CAM 7: Cận Cảnh TS 3 (Vàng)", short: "TS 3 Vàng" },
+                  { id: 8, label: "CAM 8: Cận Cảnh TS 4 (Lục)", short: "TS 4 Lục" },
+                  { id: 9, label: "CAM 9: Cẩu Quay Jib Toàn Khán Đài", short: "Cẩu Jib" },
+                  { id: 10, label: "CAM 10: Vách Ký Hiệu Khoa Học", short: "Khoa Học" },
                 ].map((c) => {
                   const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;
                   return (

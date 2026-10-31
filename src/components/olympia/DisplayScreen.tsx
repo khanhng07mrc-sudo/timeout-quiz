@@ -45,19 +45,21 @@ export default function DisplayScreen({ code }: { code: string }) {
   const isOverlayHidden = cameraState.isOverlayHidden;
 
   return (
-    <div className="fixed inset-0 w-full h-full min-h-screen overflow-hidden bg-black text-white flex flex-col select-none">
-      {/* ── 1. 3D BROADCAST STUDIO (ALWAYS FULL-SCREEN AT Z-0) ── */}
-      <div className="fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
-        <OlympiaStudio3DScene
-          state={state}
-          serverNow={serverNow}
-          activeCamera={cameraState.camAngle}
-          transitionMode={cameraState.transitionMode}
-          pushInProgress={cameraState.pushInProgress}
-          showDirectorBar={false}
-          allowPTZ={false}
-        />
-      </div>
+    <div className="fixed inset-0 w-full h-full min-h-screen overflow-hidden bg-gradient-to-b from-[#060818] via-[#090d24] to-[#040612] text-white flex flex-col select-none">
+      {/* ── 1. 3D BROADCAST STUDIO (ONLY RUNS WHEN PLAYING) ── */}
+      {state.stage === "playing" && (
+        <div className="fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
+          <OlympiaStudio3DScene
+            state={state}
+            serverNow={serverNow}
+            activeCamera={cameraState.camAngle}
+            transitionMode={cameraState.transitionMode}
+            pushInProgress={cameraState.pushInProgress}
+            showDirectorBar={false}
+            allowPTZ={false}
+          />
+        </div>
+      )}
 
       {/* ── 2. BROADCAST SCOREBOARD OVERLAY (Z-50) ── */}
       {state.showScoreboard && (
@@ -163,9 +165,12 @@ export default function DisplayScreen({ code }: { code: string }) {
         {/* In-Game Round Overlays */}
         {state.stage === "playing" && !state.banner && !isOverlayHidden && (
           isLowerThird ? (
-            /* ── LOWER-THIRD BROADCAST OVERLAY (1/3 BOTTOM) ── */
-            <div className="w-full px-3 pb-2 pt-1 pointer-events-auto flex flex-col justify-end max-h-[38vh] animate-fade-in">
-              <div className="w-full max-w-5xl mx-auto rounded-2xl bg-slate-950/92 backdrop-blur-md border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.8)] p-2 sm:p-3 overflow-hidden">
+            /* ── LOWER-THIRD BROADCAST OVERLAY (20 - 25% BOTTOM) ── */
+            <div className="w-full px-2 sm:px-4 pb-1 sm:pb-2 pt-0 pointer-events-auto flex flex-col justify-end z-20 animate-fade-in">
+              <div
+                className="w-full max-w-5xl mx-auto rounded-xl sm:rounded-2xl bg-slate-950/95 backdrop-blur-md border border-white/15 shadow-[0_6px_28px_rgba(0,0,0,0.85)] p-1 sm:p-2 flex flex-col justify-between"
+                style={{ minHeight: "105px", maxHeight: "25vh" }}
+              >
                 {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
                 {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} isLowerThird={true} />}
                 {state.currentRound === "tangToc" && <TangToc state={state} serverNow={serverNow} />}
@@ -265,11 +270,11 @@ function Podium({ state }: { state: OlympiaState }) {
 }
 
 function autoQuestionFontSize(text: string) {
-  const len = text.length;
-  if (len <= 45) return "text-2xl sm:text-3xl md:text-4xl leading-tight";
-  if (len <= 90) return "text-xl sm:text-2xl md:text-3xl leading-snug";
-  if (len <= 140) return "text-lg sm:text-xl md:text-2xl leading-snug";
-  return "text-base sm:text-lg md:text-xl leading-normal";
+  const len = text ? text.length : 0;
+  if (len <= 45) return "text-sm sm:text-base md:text-xl lg:text-2xl leading-snug";
+  if (len <= 85) return "text-xs sm:text-sm md:text-lg lg:text-xl leading-snug";
+  if (len <= 140) return "text-[11px] sm:text-xs md:text-base lg:text-lg leading-snug";
+  return "text-[10px] sm:text-[11px] md:text-sm lg:text-base leading-snug";
 }
 
 function DisplayTimerBar({ timer, serverNow }: { timer: any; serverNow: () => number }) {
@@ -349,12 +354,12 @@ function KhoiDong({ state, serverNow }: P) {
   const currentSoloSeat = isSolo ? (seg.seat ?? null) : null;
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col h-full min-h-0 py-1 gap-2">
+    <div className="w-full max-w-5xl mx-auto flex flex-col justify-between h-full min-h-0 py-0.5 gap-1">
       {/* ── SINGLE-LINE TOP BAR: Question number + 4 Contestant Shapes ── */}
       <div className="flex items-center justify-between gap-1.5 sm:gap-2 shrink-0 w-full">
         <div className="flex items-center gap-1.5 shrink-0">
           <span
-            className="px-2.5 py-1 rounded-xl text-xs sm:text-sm font-black whitespace-nowrap shadow-sm"
+            className="px-2 py-0.5 rounded-lg text-xs sm:text-sm font-black whitespace-nowrap shadow-sm"
             style={{
               background: "linear-gradient(90deg, rgba(245,158,11,0.25), rgba(239,68,68,0.25))",
               border: "1px solid rgba(245,158,11,0.45)",
@@ -364,7 +369,7 @@ function KhoiDong({ state, serverNow }: P) {
             Câu {qNum}{totalQ} · 10đ
           </span>
           {kd.current?.subject && (
-            <span className="hidden md:inline-flex px-2.5 py-1 rounded-xl bg-violet-500/20 border border-violet-400/30 text-violet-200 font-bold text-xs items-center gap-1 whitespace-nowrap">
+            <span className="hidden md:inline-flex px-2 py-0.5 rounded-lg bg-violet-500/20 border border-violet-400/30 text-violet-200 font-bold text-xs items-center gap-1 whitespace-nowrap">
               <span>📚</span>
               <span>{kd.current.subject}</span>
             </span>
@@ -382,7 +387,7 @@ function KhoiDong({ state, serverNow }: P) {
               return (
                 <div
                   key={s.id}
-                  className="rounded-lg border px-1.5 py-1 text-center transition-all animate-pulse shadow-[0_0_16px_#f59e0b] flex items-center justify-between min-w-0"
+                  className="rounded-lg border px-1.5 py-0.5 text-center transition-all animate-pulse shadow-[0_0_16px_#f59e0b] flex items-center justify-between min-w-0"
                   style={{
                     border: "1.5px solid #facc15",
                     borderLeft: "4px solid #facc15",
@@ -404,7 +409,7 @@ function KhoiDong({ state, serverNow }: P) {
               return (
                 <div
                   key={s.id}
-                  className="rounded-lg border px-1.5 py-1 text-center transition-all flex items-center justify-between min-w-0"
+                  className="rounded-lg border px-1.5 py-0.5 text-center transition-all flex items-center justify-between min-w-0"
                   style={{
                     border: `1.5px solid ${color}90`,
                     borderLeft: `4px solid ${color}`,
@@ -425,7 +430,7 @@ function KhoiDong({ state, serverNow }: P) {
             return (
               <div
                 key={s.id}
-                className="rounded-lg border px-1.5 py-1 text-center transition-all border-violet-500/20 bg-gradient-to-b from-white/10 to-white/[0.03] flex items-center justify-between min-w-0"
+                className="rounded-lg border px-1.5 py-0.5 text-center transition-all border-violet-500/20 bg-gradient-to-b from-white/10 to-white/[0.03] flex items-center justify-between min-w-0"
                 style={{ borderLeft: `3px solid ${color}` }}
               >
                 <span className="truncate font-medium text-[11px] sm:text-xs text-slate-300">
@@ -442,17 +447,17 @@ function KhoiDong({ state, serverNow }: P) {
 
       {/* Main question card */}
       <div
-        className="w-full relative rounded-2xl flex flex-col gap-2 overflow-hidden flex-1 min-h-0"
+        className="w-full relative rounded-xl sm:rounded-2xl flex flex-col justify-between flex-1 min-h-0"
         style={{
           background: "linear-gradient(160deg, rgba(26,13,63,0.95) 0%, rgba(15,7,40,0.98) 100%)",
           border: `1px solid ${seatColor}30`,
-          boxShadow: `0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.08)`,
-          padding: "clamp(10px, 1.5vw, 18px)",
+          boxShadow: `0 4px 20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)`,
+          padding: "4px 10px",
         }}
       >
         <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${seatColor}80, #ef4444aa, #7c3aedaa)` }} />
 
-        <div className="w-full flex-1 min-h-0 flex flex-col justify-center items-center py-1 overflow-hidden">
+        <div className="w-full flex-1 flex flex-col justify-center items-center py-0.5 min-h-[44px]">
           {kd.phase === "segmentDone" ? (
             <div className="text-center space-y-1 animate-fade-in">
               <div
@@ -466,7 +471,7 @@ function KhoiDong({ state, serverNow }: P) {
           ) : !kd.current ? (
             <div className="text-violet-400/50 text-base font-medium animate-pulse">Đang đợi câu hỏi…</div>
           ) : !kd.questionRevealed ? (
-            <div className="text-center py-2 space-y-1">
+            <div className="text-center py-1 space-y-1">
               <div
                 className="text-lg sm:text-xl font-black tracking-wider uppercase animate-pulse"
                 style={{ background: "linear-gradient(90deg,#fffbd0,#ffd700,#f59e0b)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
@@ -475,12 +480,12 @@ function KhoiDong({ state, serverNow }: P) {
               </div>
             </div>
           ) : (
-            <div className="w-full text-center space-y-2">
-              <div className={`font-black text-white text-center select-text leading-tight ${autoQuestionFontSize(kd.current.q)}`} style={{ textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}>
+            <div className="w-full text-center flex-1 flex flex-col items-center justify-center min-h-[44px]">
+              <div className={`font-black text-white text-center select-text leading-snug break-words ${autoQuestionFontSize(kd.current.q)}`} style={{ textShadow: "0 2px 10px rgba(0,0,0,0.7)" }}>
                 {kd.current.q}
               </div>
               {kd.current.media && (
-                <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-36 rounded-xl mx-auto border border-violet-500/20" />
+                <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-20 sm:max-h-28 rounded-xl mx-auto border border-violet-500/20 mt-1" />
               )}
             </div>
           )}
@@ -710,17 +715,29 @@ function VeDich({ state, serverNow }: P) {
   const owner = vd.order[vd.turnIdx];
   const cur = vd.current;
   return (
-    <div className="w-full max-w-5xl text-center space-y-3">
-      <div className="text-2xl font-black" style={{ color: SEAT_COLORS[owner] }}>
-        {seatName(state, owner)}
+    <div className="w-full max-w-5xl text-center space-y-1.5 flex flex-col justify-between h-full min-h-0 py-0.5">
+      <div className="flex items-center justify-center gap-2">
+        <span className="text-base sm:text-lg font-black" style={{ color: SEAT_COLORS[owner] }}>
+          {seatName(state, owner)}
+        </span>
+        {cur?.q.subject && (
+          <span className="px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-200 text-xs font-bold">
+            📚 {cur.q.subject} ({cur.points} điểm)
+          </span>
+        )}
+        {vd.hopeStarActive && (
+          <span className="text-xs sm:text-sm font-black text-amber-300 animate-pulse">⭐ NGÔI SAO HY VỌNG ⭐</span>
+        )}
       </div>
-      {vd.phase === "choosing" && <div className="text-xl text-violet-200/60">Đang chọn gói câu hỏi…</div>}
-      {vd.packages[owner] && (
-        <div className="flex justify-center gap-3">
+
+      {vd.phase === "choosing" && <div className="text-sm sm:text-base text-violet-200/60 font-medium">Đang chọn gói câu hỏi…</div>}
+
+      {vd.packages[owner] && !cur && (
+        <div className="flex justify-center gap-2">
           {vd.packages[owner].map((p, i) => (
             <div
               key={i}
-              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl flex items-center justify-center text-2xl sm:text-3xl font-black border transition-all ${
+              className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-lg sm:text-2xl font-black border transition-all ${
                 vd.qIdx === i
                   ? "text-slate-950 border-amber-300"
                   : "border-violet-500/30 bg-white/5 text-violet-200"
@@ -732,31 +749,26 @@ function VeDich({ state, serverNow }: P) {
           ))}
         </div>
       )}
+
       {cur && (
-        <>
-          {cur.q.subject && (
-            <div className="inline-block px-3 py-0.5 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-200 text-sm font-bold">
-              📚 {cur.q.subject} ({cur.points} điểm)
-            </div>
+        <div className="w-full flex-1 flex flex-col items-center justify-center min-h-[44px]">
+          <div className={`font-black select-text leading-snug break-words text-white ${autoQuestionFontSize(cur.q.q)}`}>{cur.q.q}</div>
+          {cur.q.media && (
+            <MediaView url={cur.q.media} type={cur.q.mediaType} className="max-h-20 sm:max-h-28 rounded-xl mx-auto border border-violet-500/20 mt-1" />
           )}
-          {vd.hopeStarActive && (
-            <div className="text-2xl font-black text-amber-300">⭐ NGÔI SAO HY VỌNG ⭐</div>
-          )}
-          <div className={`font-bold leading-tight select-text ${autoQuestionFontSize(cur.q.q)}`}>{cur.q.q}</div>
-          <MediaView url={cur.q.media} type={cur.q.mediaType} className="max-h-36 rounded-xl mx-auto" />
           
-          <div className="max-w-md mx-auto">
+          <div className="w-full max-w-md mx-auto mt-1">
             <Timer timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer} serverNow={serverNow} big />
           </div>
           {vd.phase === "stealing" && (
-            <div className="text-2xl sm:text-3xl font-black text-rose-400">
+            <div className="text-lg sm:text-xl font-black text-rose-400 animate-pulse mt-0.5">
               🚨 CƯỚP ĐIỂM {vd.steal?.buzzedSeat != null ? `— ${seatName(state, vd.steal.buzzedSeat)}` : ""}
             </div>
           )}
-        </>
+        </div>
       )}
       {vd.phase === "seatDone" && (
-        <div className="text-3xl font-black text-amber-300">Hoàn thành lượt thi</div>
+        <div className="text-xl sm:text-2xl font-black text-amber-300">Hoàn thành lượt thi</div>
       )}
     </div>
   );

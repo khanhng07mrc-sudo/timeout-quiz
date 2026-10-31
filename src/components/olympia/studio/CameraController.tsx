@@ -28,62 +28,62 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   1: {
     id: 1,
     label: "Toàn Cảnh",
-    pos: [0.0, 2.5, 8.4],
-    target: [0.0, 1.8, -2.8],
+    pos: [0.5, 3.0, 9.8],
+    target: [0.2, 1.8, -2.5],
   },
   2: {
     id: 2,
-    label: "Màn LED",
-    pos: [0.0, 3.2, 2.5],
-    target: [0.0, 3.6, -6.45],
+    label: "Màn LED Chữ Nhật",
+    pos: [4.2, 3.6, 2.0],
+    target: [8.2, 4.0, -1.8],
   },
   3: {
     id: 3,
-    label: "Bục MC",
-    pos: [0.0, 1.6, -0.6],
-    target: [0.0, 1.35, -2.8],
+    label: "Bục MC Trực Diện",
+    pos: [-0.4, 1.55, 0.0],
+    target: [1.4, 1.35, -2.8],
   },
   4: {
     id: 4,
     label: "Nguyệt Quế",
-    pos: [0.0, 1.25, 4.0],
-    target: [0.0, 0.9, 2.6],
+    pos: [2.8, 1.35, 2.4],
+    target: [2.8, 0.9, 0.6],
   },
   5: {
     id: 5,
     label: "Cận Cảnh TS 1",
-    pos: [-4.6, 1.35, -0.7],
-    target: [-5.8, 0.95, -2.4],
+    pos: [-2.67, 1.55, -1.47],
+    target: [-4.95, 1.35, -2.21],
   },
   6: {
     id: 6,
     label: "Cận Cảnh TS 2",
-    pos: [-3.5, 1.35, -1.2],
-    target: [-4.7, 0.95, -2.9],
+    pos: [-2.32, 1.55, -2.17],
+    target: [-4.31, 1.35, -3.51],
   },
   7: {
     id: 7,
     label: "Cận Cảnh TS 3",
-    pos: [-2.4, 1.35, -1.7],
-    target: [-3.6, 0.95, -3.4],
+    pos: [-1.80, 1.55, -2.74],
+    target: [-3.34, 1.35, -4.58],
   },
   8: {
     id: 8,
     label: "Cận Cảnh TS 4",
-    pos: [-1.3, 1.35, -2.1],
-    target: [-2.5, 0.95, -3.8],
+    pos: [-1.14, 1.55, -3.16],
+    target: [-2.12, 1.35, -5.35],
   },
   9: {
     id: 9,
     label: "Cẩu Quay Jib",
-    pos: [1.2, 3.2, 7.2],
-    target: [-4.2, 1.4, -2.6],
+    pos: [1.8, 4.2, 8.4],
+    target: [-3.0, 1.4, -2.4],
   },
   10: {
     id: 10,
     label: "Vách Khoa Học",
-    pos: [-3.4, 3.0, 0.5],
-    target: [-5.8, 3.4, -3.6],
+    pos: [-0.6, 2.5, 2.4],
+    target: [-5.4, 2.5, -3.2],
   },
 };
 
@@ -94,6 +94,8 @@ interface CameraControllerProps {
   ptzYaw?: number;
   ptzPitch?: number;
   ptzZoom?: number;
+  introStartedAt?: number | null;
+  serverNow?: () => number;
 }
 
 export function CameraController({
@@ -103,10 +105,12 @@ export function CameraController({
   ptzYaw = 0,
   ptzPitch = 0,
   ptzZoom = 1.0,
+  introStartedAt = null,
+  serverNow,
 }: CameraControllerProps) {
   const { camera } = useThree();
 
-  const currentPos = useRef(new THREE.Vector3(0, 3.2, 6.8));
+  const currentPos = useRef(new THREE.Vector3(0, 2.5, 8.4));
   const currentTarget = useRef(new THREE.Vector3(0, 1.8, -2.8));
 
   const targetPreset = OLYMPIA_CAM_PRESETS[camAngle] || OLYMPIA_CAM_PRESETS[1];
@@ -122,11 +126,38 @@ export function CameraController({
   }, [camAngle, transitionMode, targetPos, targetLookAt]);
 
   useFrame((_, delta) => {
-    // 1. Calculate push-in (dolly) towards target
+    // 0. Opening Sequence Camera Director:
+    // User Requirement: "khi mở đầu, zoom out từ góc quay bục MC (nơi chứa màn lục giác), lúc bắt đầu trường quay sẽ tối hẳn..."
+    if (introStartedAt) {
+      const now = serverNow ? serverNow() : Date.now();
+      const elapsedSec = (now - introStartedAt) / 1000;
+      if (elapsedSec < 20) {
+        const startPos = new THREE.Vector3(-0.4, 1.55, 0.0);
+        const startTarget = new THREE.Vector3(1.4, 1.35, -2.8);
+        const endPos = new THREE.Vector3(0.5, 3.0, 9.8);
+        const endTarget = new THREE.Vector3(0.2, 1.8, -2.5);
+
+        // 0s -> 3.5s: Close up straight-on on MC area / starry night hexagon
+        // 3.5s -> 16s: Smooth dolly zoom out to wide CAM 1
+        // 16s -> 20s: Settle at CAM 1
+        const t = Math.min(1.0, Math.max(0, (elapsedSec - 3.5) / 12.5));
+        const smoothT = t * t * (3 - 2 * t);
+
+        currentPos.current.lerpVectors(startPos, endPos, smoothT);
+        currentTarget.current.lerpVectors(startTarget, endTarget, smoothT);
+
+        camera.position.copy(currentPos.current);
+        camera.lookAt(currentTarget.current);
+        camera.updateProjectionMatrix();
+        return;
+      }
+    }
+
+    // 1. Calculate subtle broadcast push-in (dolly) towards target
     const effectivePos = targetPos.clone();
     if (pushInProgress > 0) {
       const dir = targetLookAt.clone().sub(targetPos).normalize();
-      effectivePos.addScaledVector(dir, pushInProgress * 1.5);
+      effectivePos.addScaledVector(dir, pushInProgress * 0.40);
     }
 
     // 2. Smooth interpolation or instant positioning

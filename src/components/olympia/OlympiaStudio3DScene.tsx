@@ -146,6 +146,8 @@ export function OlympiaStudio3DScene({
           ptzYaw={ptzYaw}
           ptzPitch={ptzPitch}
           ptzZoom={ptzZoom}
+          introStartedAt={state?.introTimer?.startedAt ?? null}
+          serverNow={serverNow}
         />
 
         <StudioLighting
@@ -158,9 +160,12 @@ export function OlympiaStudio3DScene({
           is5sBuzzerChasing={is5sBuzzerChasing}
           spotlightChaseIndex={spotlightChaseIndex}
           lockedSpotlightSeat={lockedSpotlightSeat}
+          introStartedAt={state?.introTimer?.startedAt ?? null}
+          serverNow={serverNow}
         />
 
         <CentralLedWall
+          state={state}
           screenFadeProgress={screenFadeProgress}
           quality={quality}
         />
@@ -169,10 +174,11 @@ export function OlympiaStudio3DScene({
           state={state}
           quality={quality}
           screenFadeProgress={screenFadeProgress}
+          serverNow={serverNow}
         />
 
         <LaurelWreathVitrine
-          position={[0.0, 0, 2.6]}
+          position={[2.8, 0, 0.6]}
           quality={quality}
           screenFadeProgress={screenFadeProgress}
         />

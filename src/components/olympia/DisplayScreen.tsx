@@ -16,6 +16,46 @@ const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
   ),
 });
 
+function hasActiveRoundContent(state: OlympiaState): boolean {
+  if (state.stage !== "playing" || !state.currentRound) return false;
+
+  switch (state.currentRound) {
+    case "khoiDong": {
+      const kd = state.khoiDong;
+      if (!kd || !kd.started) return false;
+      return Boolean((kd.questionRevealed && kd.current) || kd.phase === "segmentDone");
+    }
+    case "vcnv": {
+      const v = state.vcnv;
+      if (!v) return false;
+      return v.phase === "question" || v.phase === "answers";
+    }
+    case "tangToc": {
+      const tt = state.tangToc;
+      if (!tt) return false;
+      return tt.phase === "question" || tt.phase === "ranking" || tt.phase === "graded";
+    }
+    case "veDich": {
+      const vd = state.veDich;
+      if (!vd) return false;
+      return (
+        vd.phase === "choosing" ||
+        vd.phase === "packageReady" ||
+        vd.phase === "thinking" ||
+        vd.phase === "stealing" ||
+        vd.phase === "result"
+      );
+    }
+    case "cauHoiPhu": {
+      const chp = state.cauHoiPhu;
+      if (!chp) return false;
+      return chp.phase === "question" || chp.phase === "result";
+    }
+    default:
+      return false;
+  }
+}
+
 export default function DisplayScreen({ code }: { code: string }) {
   const { state, join, connected, serverNow } = useOlympiaSocket({ code, role: "display" });
   const [audioOn, setAudioOn] = useState(true);
@@ -163,7 +203,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         )}
 
         {/* In-Game Round Overlays */}
-        {state.stage === "playing" && !state.banner && !isOverlayHidden && (
+        {state.stage === "playing" && !state.banner && !isOverlayHidden && hasActiveRoundContent(state) && (
           isLowerThird ? (
             /* ── LOWER-THIRD BROADCAST OVERLAY (20 - 25% BOTTOM) ── */
             <div className="w-full px-2 sm:px-4 pb-1 sm:pb-2 pt-0 pointer-events-auto flex flex-col justify-end z-20 animate-fade-in">

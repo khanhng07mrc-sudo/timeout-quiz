@@ -13,17 +13,146 @@ interface StudioLightingProps {
   is5sBuzzerChasing?: boolean;
   spotlightChaseIndex?: number;
   lockedSpotlightSeat?: number | null;
+  introStartedAt?: number | null;
+  serverNow?: () => number;
 }
 
 const CONTESTANT_POSITIONS: Array<[number, number, number]> = [
-  [-5.8, 0, -2.4], // TS 1: Đỏ
-  [-4.7, 0, -2.9], // TS 2: Lam
-  [-3.6, 0, -3.4], // TS 3: Vàng
-  [-2.5, 0, -3.8], // TS 4: Lục
+  [-5.8, 0, -1.8], // TS 1: Đỏ
+  [-4.7, 0, -2.4], // TS 2: Lam
+  [-3.6, 0, -3.0], // TS 3: Vàng
+  [-2.5, 0, -3.6], // TS 4: Lục
 ];
 
 /**
- * High-specular PBR Studio Epoxy Floor with Raised Stage Platform & Glowing Tracks
+ * Official Olympia Laurel Wreath Canvas Decal on Central Stage Floor.
+ * Features:
+ * - VÒNG NGUYỆT QUẾ ONLY (No extra text, no mountain silhouette, pure wreath).
+ * - Symmetrical twin laurel branches in metallic gold (#ffd700) with glowing cyan rim (#00f0ff).
+ */
+function createFloorLaurelWreathCanvas(): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  const cx = 512;
+  const cy = 512;
+
+  ctx.clearRect(0, 0, 1024, 1024);
+
+  // Outer glowing cyan ring halo
+  ctx.save();
+  ctx.strokeStyle = "rgba(0, 240, 255, 0.75)";
+  ctx.lineWidth = 8;
+  ctx.shadowColor = "#00f0ff";
+  ctx.shadowBlur = 24;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 440, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Inner subtle gold ring
+  ctx.strokeStyle = "rgba(255, 215, 0, 0.65)";
+  ctx.lineWidth = 4;
+  ctx.shadowColor = "#ffd700";
+  ctx.shadowBlur = 14;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 410, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // Draw Laurel Wreath Leaves (VÒNG NGUYỆT QUẾ ONLY - Golden with Cyan Aura)
+  const leafCount = 18;
+  const wreathRadius = 320;
+
+  for (const side of [-1, 1]) {
+    ctx.save();
+    ctx.shadowColor = "#ffd700";
+    ctx.shadowBlur = 22;
+
+    for (let i = 0; i < leafCount; i++) {
+      const frac = i / (leafCount - 1);
+      const ang = Math.PI * 0.5 + side * (frac * Math.PI * 0.88);
+      const r = wreathRadius + Math.sin(frac * Math.PI) * 45;
+      const lx = cx + Math.cos(ang) * r;
+      const ly = cy + Math.sin(ang) * r;
+
+      const leafRot = ang + side * (Math.PI * 0.45 + frac * 0.2);
+      const leafScale = 24 + Math.sin(frac * Math.PI) * 16;
+
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(leafRot);
+
+      const leafGrad = ctx.createLinearGradient(-leafScale, 0, leafScale, 0);
+      leafGrad.addColorStop(0, "#fffbd0");
+      leafGrad.addColorStop(0.35, "#ffd700");
+      leafGrad.addColorStop(0.85, "#b45309");
+      leafGrad.addColorStop(1, "#38bdf8");
+
+      ctx.fillStyle = leafGrad;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, leafScale, leafScale * 0.42, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Leaf spine highlight
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-leafScale * 0.8, 0);
+      ctx.lineTo(leafScale * 0.8, 0);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // Stem ribbon at bottom
+    ctx.strokeStyle = "#ffd700";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.arc(cx, cy, wreathRadius, Math.PI * 0.5 - 0.25, Math.PI * 0.5 + 0.25);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  return canvas;
+}
+
+/**
+ * Creates 2D Annular Sector Shape for the Raised Contestant Dais
+ */
+function createAnnularSectorShape(
+  rIn: number,
+  rOut: number,
+  startAng: number,
+  endAng: number,
+  segments: number = 36
+): THREE.Shape {
+  const shape = new THREE.Shape();
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const a = startAng + t * (endAng - startAng);
+    const x = Math.cos(a) * rOut;
+    const y = Math.sin(a) * rOut;
+    if (i === 0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  }
+  for (let i = segments; i >= 0; i--) {
+    const t = i / segments;
+    const a = startAng + t * (endAng - startAng);
+    const x = Math.cos(a) * rIn;
+    const y = Math.sin(a) * rIn;
+    shape.lineTo(x, y);
+  }
+  shape.closePath();
+  return shape;
+}
+
+/**
+ * High-specular PBR Studio Epoxy Floor with Concentric Center Stage,
+ * Raised Contestant Platform (+8cm step with glowing rim), and Laurel Wreath Decal.
  */
 export function StudioFloor({
   stageFadeProgress = 0,
@@ -40,69 +169,125 @@ export function StudioFloor({
 
   const goldColor = new THREE.Color("#ffd700");
 
+  // Floor Laurel Wreath Canvas Texture
+  const wreathCanvas = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    return createFloorLaurelWreathCanvas();
+  }, []);
+
+  const wreathTexture = useMemo(() => {
+    if (!wreathCanvas) return null;
+    const tex = new THREE.CanvasTexture(wreathCanvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }, [wreathCanvas]);
+
+  // Raised Contestant Dais Extruded Geometry (Y = 0.22m, +8cm above stage Y=0.14m)
+  const daisGeometry = useMemo(() => {
+    const shape = createAnnularSectorShape(3.8, 6.8, 0.56 * Math.PI, 1.04 * Math.PI, 36);
+    return new THREE.ExtrudeGeometry(shape, {
+      depth: 0.22,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      steps: 1,
+      bevelSize: 0.03,
+      bevelThickness: 0.02,
+    });
+  }, []);
+
+  // Step-light points along the front edge of the contestant platform (r = 3.8m)
+  const stepLightPoints = useMemo(() => {
+    const pts: THREE.Vector3[] = [];
+    const count = 40;
+    const startAng = 0.56 * Math.PI;
+    const endAng = 1.04 * Math.PI;
+    for (let i = 0; i <= count; i++) {
+      const t = i / count;
+      const a = startAng + t * (endAng - startAng);
+      // In Three.js with rotation [-Math.PI/2, 0, 0]:
+      // shape (x, y) becomes world (x, z_world = -y)
+      const x = Math.cos(a) * 3.82;
+      const z = -Math.sin(a) * 3.82;
+      pts.push(new THREE.Vector3(x, 0.224, z - 0.6));
+    }
+    return pts;
+  }, []);
+
+  const stepLightLine = useMemo(() => {
+    const geom = new THREE.BufferGeometry().setFromPoints(stepLightPoints);
+    const mat = new THREE.LineBasicMaterial({ color: ringColor, linewidth: 3 });
+    return new THREE.Line(geom, mat);
+  }, [stepLightPoints, ringColor]);
+
   return (
     <group position={[0, -0.01, 0]}>
       {/* ── 1. MAIN GLOSSY BROADCAST FLOOR DISC ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[24, quality === "LIGHT" ? 32 : 64]} />
+        <circleGeometry args={[26, quality === "LIGHT" ? 32 : 64]} />
         <meshStandardMaterial
           color="#060e20"
-          roughness={0.16}
-          metalness={0.25}
+          roughness={0.15}
+          metalness={0.30}
           envMapIntensity={2.0}
         />
       </mesh>
 
-      {/* ── 2. RAISED STAGE DECK PLATFORM (Stage S14 Elevation) ── */}
-      <mesh position={[0, 0.05, -1.2]}>
-        <cylinderGeometry args={[9.2, 9.2, 0.1, quality === "LIGHT" ? 32 : 64]} />
+      {/* ── 2. CENTRAL CIRCULAR STAGE PLATFORM (Y = 0.14m, Radius 2.6m at [0, 0, -0.6]) ── */}
+      <mesh position={[0, 0.07, -0.6]}>
+        <cylinderGeometry args={[2.6, 2.7, 0.14, quality === "LIGHT" ? 32 : 64]} />
         <meshStandardMaterial
           color="#08142c"
-          roughness={0.18}
-          metalness={0.3}
+          roughness={0.14}
+          metalness={0.5}
         />
       </mesh>
 
-      {/* Stage Front Curved Apron Glowing Neon Border */}
-      <mesh position={[0, 0.102, -1.2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[9.16, 9.24, 64]} />
+      {/* Concentric Glowing Cyan & Gold Rings on Central Stage */}
+      <mesh position={[0, 0.142, -0.6]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[2.54, 2.62, 64]} />
         <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* ── 3. CONCENTRIC GLOWING RING TRACKS ON STAGE ── */}
-      {/* Inner Center Ring */}
-      <mesh position={[0, 0.103, -2.2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[3.8, 3.86, 64]} />
-        <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* Mid Arc Ring (Gold) */}
-      <mesh position={[0, 0.103, -2.2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[5.2, 5.27, 64]} />
+      <mesh position={[0, 0.142, -0.6]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.88, 1.95, 64]} />
         <meshBasicMaterial color={goldColor} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Outer Perimeter Ring */}
-      <mesh position={[0, 0.103, -2.2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[7.2, 7.28, 64]} />
+      <mesh position={[0, 0.142, -0.6]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.20, 1.26, 64]} />
         <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Radial Runway Accents */}
-      {[-0.6, -0.2, 0.2, 0.6].map((angle, idx) => (
-        <mesh
-          key={idx}
-          position={[
-            Math.sin(angle) * 5.6,
-            0.104,
-            -2.2 + Math.cos(angle) * 5.6,
-          ]}
-          rotation={[-Math.PI / 2, 0, -angle]}
-        >
-          <planeGeometry args={[0.04, 2.6]} />
-          <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} />
+      {/* ── 3. OFFICIAL OLYMPIA LAUREL WREATH FLOOR DECAL (VÒNG NGUYỆT QUẾ ONLY) ── */}
+      {wreathTexture && (
+        <mesh position={[0, 0.144, -0.6]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[2.2, 2.2]} />
+          <meshBasicMaterial
+            map={wreathTexture}
+            transparent
+            toneMapped={false}
+            polygonOffset
+            polygonOffsetFactor={-3}
+            polygonOffsetUnits={-3}
+          />
         </mesh>
-      ))}
+      )}
+
+      {/* ── 4. RAISED CONTESTANT DAIS PLATFORM (+8cm step, Y = 0.22m) ── */}
+      {/* Curved dais elevating contestant stations proudly above central stage */}
+      <group position={[0, 0, -0.6]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh geometry={daisGeometry}>
+          <meshStandardMaterial
+            color="#09142c"
+            metalness={0.65}
+            roughness={0.20}
+            envMapIntensity={1.8}
+          />
+        </mesh>
+      </group>
+
+      {/* Glowing Cyan LED Step-Light Strip along the curved front lip */}
+      <primitive object={stepLightLine} />
     </group>
   );
 }
@@ -257,7 +442,35 @@ export function StudioLighting({
   is5sBuzzerChasing = false,
   spotlightChaseIndex = 0,
   lockedSpotlightSeat = null,
+  introStartedAt = null,
+  serverNow,
 }: StudioLightingProps) {
+  // Opening sequence light progression:
+  // 0-4s: Pitch black (dimFactor = 0.04)
+  // 4-12s: Hexagon portal / MC illuminated (dimFactor = 0.22)
+  // 12-20s: Full studio wash lights turn on (dimFactor -> 1.0)
+  const now = serverNow ? serverNow() : Date.now();
+  let introDimFactor = 1.0;
+  let mcSpotIntensity = 6.0;
+
+  if (introStartedAt) {
+    const elapsedSec = Math.max(0, (now - introStartedAt) / 1000);
+    if (elapsedSec < 20) {
+      if (elapsedSec < 4) {
+        introDimFactor = 0.04;
+        mcSpotIntensity = 0.2;
+      } else if (elapsedSec < 12) {
+        introDimFactor = 0.22;
+        mcSpotIntensity = 7.5;
+      } else {
+        const washT = Math.min(1.0, (elapsedSec - 12) / 7.0);
+        const smoothWash = washT * washT * (3 - 2 * washT);
+        introDimFactor = 0.22 + 0.78 * smoothWash;
+        mcSpotIntensity = 6.0;
+      }
+    }
+  }
+
   // Screen Zone Down-Wash Color
   const screenWashColor = useMemo(() => {
     const c = new THREE.Color("#0a2663");
@@ -286,10 +499,10 @@ export function StudioLighting({
     return c;
   }, [audienceFadeProgress]);
 
-  // Ambient & Key Light Intensity Factors (Dimmed during Về Đích)
-  const ambientIntensity = isVeDichDimmed ? 0.35 : 1.45;
-  const keyIntensity = isVeDichDimmed ? 0.9 : 3.8;
-  const fillIntensity = isVeDichDimmed ? 0.45 : 2.4;
+  // Ambient & Key Light Intensity Factors (Dimmed during Về Đích & Opening)
+  const ambientIntensity = (isVeDichDimmed ? 0.35 : 1.45) * introDimFactor;
+  const keyIntensity = (isVeDichDimmed ? 0.9 : 3.8) * introDimFactor;
+  const fillIntensity = (isVeDichDimmed ? 0.45 : 2.4) * introDimFactor;
 
   return (
     <group>
@@ -297,7 +510,7 @@ export function StudioLighting({
       <ambientLight intensity={ambientIntensity} color="#e0f2fe" />
 
       {/* Screen Zone Overhead Downlight */}
-      <pointLight position={[0, 5.0, -4.5]} intensity={isVeDichDimmed ? 1.5 : 4.5} color={screenWashColor} distance={12} />
+      <pointLight position={[0, 5.0, -4.5]} intensity={(isVeDichDimmed ? 1.5 : 4.5) * introDimFactor} color={screenWashColor} distance={12} />
 
       {/* Main Directional Key Spotlight (Stage Center) */}
       <directionalLight
@@ -317,8 +530,30 @@ export function StudioLighting({
       {/* Front Broadcast Key Flood Light (Directly illuminates front of contestant podiums & MC desk) */}
       <directionalLight
         position={[0.0, 4.5, 8.0]}
-        intensity={isVeDichDimmed ? 0.7 : 3.5}
+        intensity={(isVeDichDimmed ? 0.7 : 3.5) * introDimFactor}
         color="#ffffff"
+      />
+
+      {/* Dedicated MC Desk / Hexagon Portal Front Spotlight (Bright Crisp Keylight) */}
+      <spotLight
+        position={[3.0, 6.8, 0.2]}
+        target-position={[1.9, 1.3, -2.6]}
+        intensity={mcSpotIntensity * 1.4}
+        color="#fffcf5"
+        angle={0.58}
+        penumbra={0.3}
+        distance={15}
+      />
+
+      {/* Broadcast Fill Light onto Contestant Podiums & Figures */}
+      <spotLight
+        position={[-4.0, 7.5, 1.8]}
+        target-position={[-4.2, 0.85, -2.9]}
+        intensity={7.0 * introDimFactor}
+        color="#e0f2fe"
+        angle={0.72}
+        penumbra={0.4}
+        distance={15}
       />
 
       {/* ── 2. STAGE BACK LIGHTS ── */}

@@ -1,13 +1,24 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
 import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
 import { MediaView, ScoreStrip, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
 
+const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
+  ssr: false,
+  loading: () => (
+    <div className="absolute inset-0 flex items-center justify-center bg-[#020510] text-amber-300 text-sm font-bold">
+      Đang tải Trường quay 3D…
+    </div>
+  ),
+});
+
 export default function DisplayScreen({ code }: { code: string }) {
   const { state, join, connected, serverNow } = useOlympiaSocket({ code, role: "display" });
   const [audioOn, setAudioOn] = useState(true);
+  const [show3DStudio, setShow3DStudio] = useState(false);
   useOlympiaAudio(state, join?.audioSeason, audioOn);
   // introRemainingMs not used for display anymore (canvas is infinite), kept for type safety
   const _introRemainingMs = useCountdown(state?.introTimer, serverNow); void _introRemainingMs;
@@ -81,6 +92,19 @@ export default function DisplayScreen({ code }: { code: string }) {
             </span>
           )}
           <button
+            type="button"
+            className={`px-2 py-1 border rounded-lg transition text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
+              show3DStudio
+                ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b]"
+                : "border-violet-400/30 hover:bg-violet-500/15 text-violet-200"
+            }`}
+            onClick={() => setShow3DStudio((v) => !v)}
+            title={show3DStudio ? "Chuyển về Giao diện 2D" : "Bật Trường quay 3D Olympia"}
+          >
+            <span>🎥</span>
+            <span>{show3DStudio ? "3D Studio" : "2D"}</span>
+          </button>
+          <button
             className="px-2 py-1 border border-violet-400/30 rounded-lg hover:bg-violet-500/15 transition text-xs"
             onClick={() => setAudioOn((v) => !v)}
           >
@@ -91,14 +115,23 @@ export default function DisplayScreen({ code }: { code: string }) {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden px-3 py-2 relative">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+        {show3DStudio && (
+          <div className="absolute inset-0 z-0 w-full h-full">
+            <OlympiaStudio3DScene state={state} serverNow={serverNow} />
+          </div>
+        )}
+        <div className={`flex-1 min-h-0 flex items-center justify-center overflow-hidden px-3 py-2 relative z-10 ${show3DStudio ? "pointer-events-none" : ""}`}>
           {/* Khi ở sảnh chờ: màn trống chỉ chứa hình nền trường quay chuẩn Olympia */}
-          {state.stage === "finished" && <Podium state={state} />}
+          {state.stage === "finished" && (
+            <div className="pointer-events-auto">
+              <Podium state={state} />
+            </div>
+          )}
 
           {/* Round banner: shown when NOT in canvas mode, and there's a banner */}
           {state.stage === "playing" && !state.introTimer && !state.showStageGraphics && state.banner && (
-            <div className="text-center animate-fade-in flex items-center justify-center h-full">
+            <div className="text-center animate-fade-in flex items-center justify-center h-full pointer-events-auto">
               <div
                 className="font-black tracking-[0.12em] uppercase animate-fade-in"
                 style={{
@@ -116,19 +149,19 @@ export default function DisplayScreen({ code }: { code: string }) {
           )}
 
           {state.stage === "playing" && !state.banner && !state.introTimer && !state.showStageGraphics && (
-            <>
+            <div className="w-full h-full flex items-center justify-center pointer-events-auto">
               {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
               {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} />}
               {state.currentRound === "tangToc" && <TangToc state={state} serverNow={serverNow} />}
               {state.currentRound === "veDich" && <VeDich state={state} serverNow={serverNow} />}
               {state.currentRound === "cauHoiPhu" && <Chp state={state} serverNow={serverNow} />}
-            </>
+            </div>
           )}
         </div>
 
         {/* Score strip (ở Khởi Động các ô tên/điểm đã được đẩy lên trên đầu cạnh câu hỏi) */}
         {state.stage !== "lobby" && state.currentRound !== "khoiDong" && (
-          <div className="shrink-0 px-2 pb-2">
+          <div className="shrink-0 px-2 pb-2 relative z-10 pointer-events-auto">
             <ScoreStrip state={state} large highlight={highlightSeats(state)} />
           </div>
         )}

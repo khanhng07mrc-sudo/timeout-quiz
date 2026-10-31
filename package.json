@@ -15,6 +15,7 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test:olympia": "esbuild src/lib/olympia/engine.test.ts --bundle --platform=node --target=node20 --outfile=scratch/olympia-test.cjs && node scratch/olympia-test.cjs",
+    "test:olympia-3d": "esbuild src/lib/olympia/olympia-3d-suite.test.ts --bundle --platform=node --target=node20 --outfile=scratch/olympia-3d-test.cjs && node scratch/olympia-3d-test.cjs",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",

@@ -625,7 +625,34 @@ export function StudioLighting({
         distance={22}
       />
 
-      {/* ── 5. STUDIO ENVIRONMENT GEOMETRY ── */}
+      {/* ── 5. FAUX VOLUMETRIC BROADCAST SPOTLIGHT CONES (Zero lag, 60 FPS, AdditiveBlending) ── */}
+      {/* Cone 1: Over Central Stage / MC Area */}
+      <mesh position={[0, 5.5, -0.6]} rotation={[0.08, 0, 0]}>
+        <cylinderGeometry args={[0.2, 3.2, 11, 24, 1, true]} />
+        <meshBasicMaterial
+          color="#dbeafe"
+          transparent
+          opacity={0.075}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Cone 2: Over Contestant Dais */}
+      <mesh position={[-4.1, 5.5, -2.7]} rotation={[0.06, 0, -0.08]}>
+        <cylinderGeometry args={[0.25, 4.2, 11, 24, 1, true]} />
+        <meshBasicMaterial
+          color="#cffafe"
+          transparent
+          opacity={0.065}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* ── 6. STUDIO ENVIRONMENT GEOMETRY ── */}
       <StudioFloor stageFadeProgress={stageFadeProgress} quality={quality} />
       <StudioWalls stageFadeProgress={stageFadeProgress} />
       <StudioCeilingRig />

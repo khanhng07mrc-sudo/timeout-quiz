@@ -28,7 +28,7 @@ function hasActiveRoundContent(state: OlympiaState): boolean {
     case "vcnv": {
       const v = state.vcnv;
       if (!v) return false;
-      return v.phase === "question" || v.phase === "answers";
+      return v.phase === "grid" || v.phase === "question" || v.phase === "answers";
     }
     case "tangToc": {
       const tt = state.tangToc;
@@ -81,7 +81,8 @@ export default function DisplayScreen({ code }: { code: string }) {
   }
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const isLowerThird = (state.overlayMode ?? "LOWER_THIRD") === "LOWER_THIRD";
+  const isRoundFullscreen = state.currentRound === "vcnv" || state.currentRound === "tangToc";
+  const isLowerThird = !isRoundFullscreen && (state.overlayMode ?? "LOWER_THIRD") === "LOWER_THIRD";
   const isOverlayHidden = cameraState.isOverlayHidden;
 
   return (
@@ -595,8 +596,8 @@ function Vcnv({ state, serverNow, isLowerThird }: P) {
   const isCenterRow = v.currentRow === 4;
   const isTimerRunning = v.timer?.startedAt != null;
 
-  // In lower-third mode while 15s timer runs: hide big mystery board so 3D camera transitions take center stage!
-  const showBoard = !isLowerThird || !isTimerRunning;
+  // In VCNV when 15s countdown runs, hide the crossword rows and puzzle pieces so only question prompt and answers show!
+  const showBoard = !isTimerRunning;
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-2">

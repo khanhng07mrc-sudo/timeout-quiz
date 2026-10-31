@@ -32,19 +32,15 @@ function createPodiumScoreCanvas(
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
-  const cyanBg = isBuzzed ? "#ff2a4b" : "#00e5ff";
-  const navyText = isBuzzed ? "#ffffff" : "#081636";
-  const borderColor = isBuzzed ? "#ff0033" : "#00d4ff";
+  // Unified broadcast color scheme: Cyan top 1/4, Deep Navy bottom 3/4 (Zero red indicator strips)
+  const cyanBg = "#00e5ff";
+  const navyText = "#081636";
+  const borderColor = isBuzzed ? "#00f0ff" : "#00d4ff";
 
   // 1. Bottom 3/4 Background (Y = 64 to 256)
   const bottomGrad = ctx.createLinearGradient(0, 64, 0, 256);
-  if (isBuzzed) {
-    bottomGrad.addColorStop(0, "#7f1d1d");
-    bottomGrad.addColorStop(1, "#38040a");
-  } else {
-    bottomGrad.addColorStop(0, "#0e1e42");
-    bottomGrad.addColorStop(1, "#030816");
-  }
+  bottomGrad.addColorStop(0, "#0e1e42");
+  bottomGrad.addColorStop(1, "#030816");
   ctx.fillStyle = bottomGrad;
   ctx.fillRect(0, 64, 512, 192);
 
@@ -62,7 +58,7 @@ function createPodiumScoreCanvas(
   ctx.fillText(displayName, 256, 33);
 
   // 4. Subtle separator line between top 1/4 and bottom 3/4
-  ctx.strokeStyle = isBuzzed ? "#ff0033" : "rgba(0, 229, 255, 0.45)";
+  ctx.strokeStyle = "rgba(0, 229, 255, 0.45)";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(0, 64);
@@ -74,13 +70,13 @@ function createPodiumScoreCanvas(
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#ffffff";
   ctx.font = '900 114px "Plus Jakarta Sans", "Montserrat", monospace';
-  ctx.shadowColor = isBuzzed ? "#ff0033" : "rgba(0, 212, 255, 0.45)";
+  ctx.shadowColor = "rgba(0, 212, 255, 0.45)";
   ctx.shadowBlur = 18;
   ctx.fillText(String(score), 256, 160);
   ctx.shadowBlur = 0;
 
   // 6. Outer Border & Glow
-  ctx.lineWidth = isBuzzed ? 10 : 6;
+  ctx.lineWidth = 6;
   ctx.strokeStyle = borderColor;
   ctx.strokeRect(3, 3, 506, 250);
 
@@ -267,12 +263,8 @@ function ContestantPodium({
     }
   });
 
-  const deskEdgeColor = useMemo(() => {
-    if (isBuzzed) return "#ff0033";
-    const c = new THREE.Color("#00f0ff");
-    c.lerp(new THREE.Color("#ff2a4b"), screenFadeProgress);
-    return c;
-  }, [isBuzzed, screenFadeProgress]);
+  // Fixed luminous cyan desk edge (zero red indication on round start)
+  const deskEdgeColor = "#00f0ff";
 
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
@@ -390,148 +382,153 @@ function ContestantPodium({
 }
 
 /**
- * Dedicated MC Desk on Stage Center-Right in front of Hexagon Arch
+ * Aerodynamic Faceted MC Lectern Console (Bục MC Khí Động Học Studio S14)
  * Oriented along -30° (-0.52 rad) facing Stage Center and Contestants.
  * Features:
- * - Geometric faceted lectern console in matte charcoal with silver trim.
- * - Circular Olympia RED CREST BADGE with golden laurel wreath and red halo.
- * - Slanted reading desk with cue card, laptop, and 2 gooseneck mics.
+ * - Tapered multi-faceted angular chassis in matte obsidian & brushed aluminum.
+ * - Winged side panels sweeping back at 20° angles.
+ * - Refined miniature golden laurel wreath medallion (d=0.16m) with subtle cyan LED underline.
+ * - Slanted reading console with dual gooseneck mics, cue card, and host laptop.
  */
 function CenterMcDesk({ screenFadeProgress = 0 }: { screenFadeProgress?: number }) {
-  const trimColor = useMemo(() => {
-    const c = new THREE.Color("#00e5ff");
-    c.lerp(new THREE.Color("#ff1a40"), screenFadeProgress);
-    return c;
-  }, [screenFadeProgress]);
+  const neonCyan = "#00f0ff";
 
   return (
     <group position={[1.6, 0.08, -3.2]} rotation={[0, -0.52, 0]}>
-      {/* Heavy Grounded Base Footing */}
+      {/* 1. Sleek Tapered Ground Plinth */}
       <mesh position={[0, 0.04, 0]}>
-        <boxGeometry args={[1.20, 0.08, 0.70]} />
-        <meshStandardMaterial color="#0b0f19" metalness={0.92} roughness={0.18} />
+        <boxGeometry args={[0.96, 0.08, 0.54]} />
+        <meshStandardMaterial color="#080c16" metalness={0.92} roughness={0.18} />
+      </mesh>
+      <mesh position={[0, 0.082, 0.27]}>
+        <boxGeometry args={[0.92, 0.015, 0.02]} />
+        <meshBasicMaterial color={neonCyan} />
       </mesh>
 
-      {/* Main Angular Lectern Body (Modern Faceted Charcoal Desk) */}
-      <mesh position={[0, 0.52, 0]}>
-        <boxGeometry args={[1.15, 0.92, 0.60]} />
+      {/* 2. Main Aerodynamic Center Facet (Tapered upward, tilted back) */}
+      <mesh position={[0, 0.54, 0.04]} rotation={[-0.08, 0, 0]}>
+        <cylinderGeometry args={[0.42, 0.48, 0.88, 6]} />
         <meshStandardMaterial
-          color="#1e293b"
-          metalness={0.7}
+          color="#161f30"
+          metalness={0.80}
           roughness={0.25}
-          envMapIntensity={1.5}
+          envMapIntensity={1.8}
         />
       </mesh>
 
-      {/* Sleek Brushed Silver Side Bevel Accents */}
-      <mesh position={[-0.58, 0.52, 0]}>
-        <boxGeometry args={[0.02, 0.92, 0.62]} />
-        <meshStandardMaterial color="#94a3b8" metalness={0.95} roughness={0.15} />
+      {/* Left Wing Facet (Angled back 22°) */}
+      <mesh position={[-0.44, 0.54, -0.06]} rotation={[-0.08, 0.38, 0]}>
+        <boxGeometry args={[0.26, 0.86, 0.38]} />
+        <meshStandardMaterial color="#0f172a" metalness={0.88} roughness={0.22} />
       </mesh>
-      <mesh position={[0.58, 0.52, 0]}>
-        <boxGeometry args={[0.02, 0.92, 0.62]} />
-        <meshStandardMaterial color="#94a3b8" metalness={0.95} roughness={0.15} />
-      </mesh>
-
-      {/* ── OFFICIAL OLYMPIA RED CREST BADGE ON FRONT OF LECTERN ── */}
-      {/* Red Circular Crest Disc */}
-      <mesh position={[0, 0.58, 0.31]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.22, 0.22, 0.02, 32]} />
-        <meshStandardMaterial
-          color="#dc2626"
-          roughness={0.2}
-          metalness={0.3}
-          emissive="#dc2626"
-          emissiveIntensity={0.65}
-        />
+      <mesh position={[-0.57, 0.54, 0.12]} rotation={[-0.08, 0.38, 0]}>
+        <boxGeometry args={[0.02, 0.86, 0.02]} />
+        <meshBasicMaterial color={neonCyan} />
       </mesh>
 
-      {/* Golden Laurel Wreath Ring on Crest */}
-      <mesh position={[0, 0.58, 0.325]}>
-        <torusGeometry args={[0.15, 0.016, 16, 32]} />
-        <meshStandardMaterial
-          color="#ffd700"
-          metalness={0.96}
-          roughness={0.12}
-          emissive="#ffd700"
-          emissiveIntensity={0.8}
-        />
+      {/* Right Wing Facet (Angled back -22°) */}
+      <mesh position={[0.44, 0.54, -0.06]} rotation={[-0.08, -0.38, 0]}>
+        <boxGeometry args={[0.26, 0.86, 0.38]} />
+        <meshStandardMaterial color="#0f172a" metalness={0.88} roughness={0.22} />
+      </mesh>
+      <mesh position={[0.57, 0.54, 0.12]} rotation={[-0.08, -0.38, 0]}>
+        <boxGeometry args={[0.02, 0.86, 0.02]} />
+        <meshBasicMaterial color={neonCyan} />
       </mesh>
 
-      {/* Soft Red Glowing Halo around Crest */}
-      <mesh position={[0, 0.58, 0.305]}>
-        <ringGeometry args={[0.21, 0.25, 32]} />
-        <meshBasicMaterial color="#ff0033" side={THREE.DoubleSide} />
+      {/* 3. Refined Miniature Olympia Medal Medallion (Replaces the crude bullseye) */}
+      <group position={[0, 0.62, 0.28]} rotation={[-0.08, 0, 0]}>
+        {/* Dark Graphite Medallion Base Plate */}
+        <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.10, 0.10, 0.012, 32]} />
+          <meshStandardMaterial color="#0b1120" metalness={0.92} roughness={0.2} />
+        </mesh>
+        {/* Golden Laurel Wreath Medallion Ring */}
+        <mesh position={[0, 0, 0.008]}>
+          <torusGeometry args={[0.075, 0.010, 16, 32]} />
+          <meshStandardMaterial
+            color="#ffd700"
+            metalness={0.96}
+            roughness={0.12}
+            emissive="#ffd700"
+            emissiveIntensity={0.65}
+          />
+        </mesh>
+        {/* Subtle Ruby Center Accent */}
+        <mesh position={[0, 0, 0.006]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.045, 0.045, 0.008, 24]} />
+          <meshStandardMaterial
+            color="#b91c1c"
+            metalness={0.4}
+            roughness={0.2}
+            emissive="#991b1b"
+            emissiveIntensity={0.4}
+          />
+        </mesh>
+        {/* Horizontal Cyan LED Accent Slit under Medallion */}
+        <mesh position={[0, -0.15, 0.004]}>
+          <boxGeometry args={[0.42, 0.014, 0.01]} />
+          <meshBasicMaterial color={neonCyan} />
+        </mesh>
+      </group>
+
+      {/* 4. Slanted Reading Console Surface */}
+      <mesh position={[0, 1.01, -0.02]} rotation={[-0.20, 0, 0]}>
+        <boxGeometry args={[1.08, 0.04, 0.58]} />
+        <meshStandardMaterial color="#080c14" metalness={0.94} roughness={0.16} />
+      </mesh>
+      {/* Edge Trim */}
+      <mesh position={[0, 1.025, 0.26]} rotation={[-0.20, 0, 0]}>
+        <boxGeometry args={[1.06, 0.015, 0.015]} />
+        <meshBasicMaterial color={neonCyan} />
       </mesh>
 
-      {/* Edge Neon Accent Trim */}
-      <mesh position={[0, 0.08, 0.35]}>
-        <boxGeometry args={[1.08, 0.02, 0.02]} />
-        <meshBasicMaterial color={trimColor} />
+      {/* Host Cue Card */}
+      <mesh position={[-0.20, 1.05, 0.02]} rotation={[-0.20, 0, 0.04]}>
+        <boxGeometry args={[0.30, 0.006, 0.20]} />
+        <meshStandardMaterial color="#f8fafc" roughness={0.3} />
       </mesh>
 
-      {/* Slanted Top Reading Desk */}
-      <mesh position={[0, 1.02, -0.04]} rotation={[-0.22, 0, 0]}>
-        <boxGeometry args={[1.18, 0.06, 0.66]} />
-        <meshStandardMaterial color="#080c14" metalness={0.92} roughness={0.18} />
-      </mesh>
-
-      {/* Olympia Cue Card (White card with gold seal) */}
-      <mesh position={[-0.22, 1.06, -0.02]} rotation={[-0.22, 0, 0.04]}>
-        <boxGeometry args={[0.34, 0.008, 0.24]} />
-        <meshStandardMaterial color="#f8fafc" roughness={0.4} />
-      </mesh>
-      <mesh position={[-0.30, 1.07, -0.08]} rotation={[-0.22, 0, 0.04]}>
-        <cylinderGeometry args={[0.024, 0.024, 0.01, 16]} />
-        <meshStandardMaterial
-          color="#ffd700"
-          metalness={0.95}
-          roughness={0.15}
-          emissive="#ffd700"
-          emissiveIntensity={0.3}
-        />
-      </mesh>
-
-      {/* Mini Laptop / Screen on Desk */}
-      <mesh position={[0.18, 1.07, -0.04]} rotation={[-0.22, 0, 0]}>
-        <boxGeometry args={[0.42, 0.015, 0.28]} />
-        <meshStandardMaterial color="#0284c7" metalness={0.8} roughness={0.2} emissive="#0077b6" emissiveIntensity={0.3} />
+      {/* Host Laptop / Control Tablet */}
+      <mesh position={[0.20, 1.05, 0.0]} rotation={[-0.20, 0, 0]}>
+        <boxGeometry args={[0.38, 0.012, 0.26]} />
+        <meshStandardMaterial color="#0284c7" metalness={0.8} roughness={0.2} emissive="#0077b6" emissiveIntensity={0.25} />
       </mesh>
 
       {/* Dual Gooseneck Microphones */}
-      <group position={[0.42, 1.05, 0.12]}>
+      <group position={[0.38, 1.04, 0.14]}>
         <mesh position={[0, 0.015, 0]}>
-          <cylinderGeometry args={[0.022, 0.026, 0.03, 16]} />
+          <cylinderGeometry args={[0.018, 0.022, 0.025, 16]} />
           <meshStandardMaterial color="#1e2430" metalness={0.95} roughness={0.15} />
         </mesh>
         <mesh position={[0, 0.12, -0.02]} rotation={[0.25, 0, 0]}>
-          <cylinderGeometry args={[0.006, 0.006, 0.22, 12]} />
+          <cylinderGeometry args={[0.005, 0.005, 0.22, 12]} />
           <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.2} />
         </mesh>
-        <mesh position={[0, 0.27, -0.09]} rotation={[-0.4, 0, 0]}>
-          <cylinderGeometry args={[0.006, 0.006, 0.14, 12]} />
+        <mesh position={[0, 0.26, -0.08]} rotation={[-0.4, 0, 0]}>
+          <cylinderGeometry args={[0.005, 0.005, 0.12, 12]} />
           <meshStandardMaterial color="#64748b" metalness={0.85} roughness={0.3} />
         </mesh>
-        <mesh position={[0, 0.32, -0.14]} rotation={[-0.4, 0, 0]}>
-          <sphereGeometry args={[0.018, 16, 16]} />
+        <mesh position={[0, 0.31, -0.13]} rotation={[-0.4, 0, 0]}>
+          <sphereGeometry args={[0.015, 16, 16]} />
           <meshStandardMaterial color="#0f172a" roughness={0.8} />
         </mesh>
       </group>
-      <group position={[-0.42, 1.05, 0.12]}>
+      <group position={[-0.38, 1.04, 0.14]}>
         <mesh position={[0, 0.015, 0]}>
-          <cylinderGeometry args={[0.022, 0.026, 0.03, 16]} />
+          <cylinderGeometry args={[0.018, 0.022, 0.025, 16]} />
           <meshStandardMaterial color="#1e2430" metalness={0.95} roughness={0.15} />
         </mesh>
         <mesh position={[0, 0.12, -0.02]} rotation={[0.25, 0, 0]}>
-          <cylinderGeometry args={[0.006, 0.006, 0.22, 12]} />
+          <cylinderGeometry args={[0.005, 0.005, 0.22, 12]} />
           <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.2} />
         </mesh>
-        <mesh position={[0, 0.27, -0.09]} rotation={[-0.4, 0, 0]}>
-          <cylinderGeometry args={[0.006, 0.006, 0.14, 12]} />
+        <mesh position={[0, 0.26, -0.08]} rotation={[-0.4, 0, 0]}>
+          <cylinderGeometry args={[0.005, 0.005, 0.12, 12]} />
           <meshStandardMaterial color="#64748b" metalness={0.85} roughness={0.3} />
         </mesh>
-        <mesh position={[0, 0.32, -0.14]} rotation={[-0.4, 0, 0]}>
-          <sphereGeometry args={[0.018, 16, 16]} />
+        <mesh position={[0, 0.31, -0.13]} rotation={[-0.4, 0, 0]}>
+          <sphereGeometry args={[0.015, 16, 16]} />
           <meshStandardMaterial color="#0f172a" roughness={0.8} />
         </mesh>
       </group>

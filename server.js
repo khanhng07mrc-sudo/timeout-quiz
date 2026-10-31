@@ -26125,6 +26125,10 @@ var OlympiaGame = class _OlympiaGame {
         st.overlayMode = a.mode || (st.overlayMode === "FULLSCREEN" ? "LOWER_THIRD" : "FULLSCREEN");
         return OK;
       }
+      case "rightScreen:setMode": {
+        st.rightScreenMode = a.mode || "auto";
+        return OK;
+      }
       case "score:set": {
         const id = num("seat");
         const s = this.seat(id);

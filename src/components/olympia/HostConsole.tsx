@@ -501,6 +501,39 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                   );
                 })}
               </div>
+
+              {/* Right LED Screen Mode Selector */}
+              <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t border-cyan-500/20 text-[11px]">
+                <span className="text-cyan-300 font-bold flex items-center gap-1">
+                  <span>🖥️</span>
+                  <span>Màn hình phải (Right Screen):</span>
+                </span>
+                <div className="flex items-center gap-1">
+                  {[
+                    { id: "auto", label: "Tự động" },
+                    { id: "roundTitle", label: "Tên phần thi" },
+                    { id: "logo", label: "Logo Olympia" },
+                    { id: "question", label: "Câu hỏi" },
+                    { id: "scoreboard", label: "Bảng điểm" },
+                  ].map((m) => {
+                    const active = (state.rightScreenMode || "auto") === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => call("rightScreen:setMode", { mode: m.id })}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                          active
+                            ? "bg-cyan-500 text-slate-950 border-cyan-300 shadow-[0_0_8px_rgba(0,240,255,0.6)] font-black"
+                            : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* ROUND-SPECIFIC CONTROL DECK */}

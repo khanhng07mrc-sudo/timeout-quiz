@@ -638,6 +638,10 @@ export class OlympiaGame {
         st.overlayMode = (a.mode as "LOWER_THIRD" | "FULLSCREEN") || (st.overlayMode === "FULLSCREEN" ? "LOWER_THIRD" : "FULLSCREEN");
         return OK;
       }
+      case "rightScreen:setMode": {
+        st.rightScreenMode = (a.mode as any) || "auto";
+        return OK;
+      }
       case "score:set": {
         const id = num("seat");
         const s = this.seat(id);

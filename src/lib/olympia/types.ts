@@ -553,6 +553,8 @@ export interface OlympiaState {
   studioCameraManual?: boolean;
   /** Display overlay mode: "LOWER_THIRD" (1/3 bottom question overlay) or "FULLSCREEN" (centered 2D modal overlay) */
   overlayMode?: "LOWER_THIRD" | "FULLSCREEN";
+  /** Right LED screen content mode: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" */
+  rightScreenMode?: "auto" | "logo" | "roundTitle" | "question" | "scoreboard";
 }
 
 export type HostAction = { type: string; [k: string]: unknown };

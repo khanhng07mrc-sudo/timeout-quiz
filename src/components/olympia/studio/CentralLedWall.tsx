@@ -143,9 +143,283 @@ function createStarryNightCanvas(): HTMLCanvasElement {
   return canvas;
 }
 
+function questionPromptAvailable(state?: OlympiaState | null): boolean {
+  if (!state) return false;
+  if (state.currentRound === "khoiDong") return Boolean(state.khoiDong?.current?.q);
+  if (state.currentRound === "vcnv") return Boolean(state.vcnv?.currentRow != null && state.vcnv.currentRow >= 0);
+  if (state.currentRound === "tangToc") return Boolean(state.tangToc?.qIdx != null && state.tangToc.qIdx >= 0);
+  if (state.currentRound === "veDich") return Boolean(state.veDich?.current?.q?.q);
+  return false;
+}
+
+function renderOlympiaLogoToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  cx: number,
+  cy: number,
+  logoImg: HTMLImageElement | null,
+  fadeProgress: number = 0
+): void {
+  const logoTargetH = height * 0.46;
+  const logoTargetY = height * 0.12;
+
+  if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
+    const aspect = logoImg.naturalWidth / logoImg.naturalHeight;
+    const logoW = logoTargetH * aspect;
+    const logoX = cx - logoW / 2;
+
+    ctx.save();
+    ctx.shadowColor = fadeProgress > 0.5 ? "rgba(255, 40, 70, 0.65)" : "rgba(0, 210, 255, 0.55)";
+    ctx.shadowBlur = 35;
+    ctx.drawImage(logoImg, logoX, logoTargetY, logoW, logoTargetH);
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.font = '900 96px "Plus Jakarta Sans", sans-serif';
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffd700";
+    ctx.shadowColor = "#ffb700";
+    ctx.shadowBlur = 25;
+    ctx.fillText("OLYMPIA", cx, logoTargetY + 220);
+    ctx.restore();
+  }
+
+  // Yellow Light-To-Dark Metallic Gradient Typography: "ĐƯỜNG LÊN ĐỈNH OLYMPIA"
+  const textY = logoTargetY + logoTargetH + height * 0.16;
+  const textStr = "ĐƯỜNG LÊN ĐỈNH OLYMPIA";
+
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const fontSize = Math.round(width * 0.046);
+  ctx.font = `900 ${fontSize}px "Plus Jakarta Sans", "Montserrat", "Arial Black", sans-serif`;
+  ctx.letterSpacing = "0.08em";
+
+  const textGrad = ctx.createLinearGradient(0, textY - fontSize * 0.6, 0, textY + fontSize * 0.6);
+  textGrad.addColorStop(0.0, "#ffffff");
+  textGrad.addColorStop(0.2, "#fffbd0");
+  textGrad.addColorStop(0.5, "#ffd700");
+  textGrad.addColorStop(0.85, "#b45309");
+  textGrad.addColorStop(1.0, "#78350f");
+
+  ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 4;
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = "#1e1302";
+  ctx.strokeText(textStr, cx, textY);
+
+  ctx.shadowColor = "rgba(255, 215, 0, 0.7)";
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 2;
+
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = "#fffed4";
+  ctx.strokeText(textStr, cx, textY);
+
+  ctx.fillStyle = textGrad;
+  ctx.fillText(textStr, cx, textY);
+
+  ctx.shadowBlur = 0;
+  ctx.font = `800 ${Math.round(fontSize * 0.32)}px "Plus Jakarta Sans", sans-serif`;
+  ctx.letterSpacing = "0.45em";
+  ctx.fillStyle = fadeProgress > 0.5 ? "rgba(255, 190, 200, 0.85)" : "rgba(180, 235, 255, 0.85)";
+  ctx.fillText("VTV3 BROADCAST STUDIO S14", cx, textY + fontSize * 0.75);
+
+  ctx.restore();
+}
+
+/**
+ * Render Large Centered Round Title Card on 3D Right Screen
+ * Features:
+ * - All uppercase (VIẾT HOA TOÀN BỘ)
+ * - 1 line for KHỞI ĐỘNG, TĂNG TỐC, VỀ ĐÍCH, CÂU HỎI PHỤ
+ * - Exactly 2 lines for VCNV:
+ *     VƯỢT
+ *     CHƯỚNG NGẠI VẬT
+ * - Bold metallic gold & radiant cyan halo centered in the frame
+ */
+function renderRoundTitleToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  round?: string | null,
+  fadeProgress: number = 0
+): void {
+  const cx = width / 2;
+  const cy = height / 2;
+
+  let titleLine1 = "ĐƯỜNG LÊN ĐỈNH OLYMPIA";
+  let titleLine2: string | null = null;
+
+  if (round === "khoiDong") {
+    titleLine1 = "KHỞI ĐỘNG";
+  } else if (round === "vcnv") {
+    titleLine1 = "VƯỢT";
+    titleLine2 = "CHƯỚNG NGẠI VẬT";
+  } else if (round === "tangToc") {
+    titleLine1 = "TĂNG TỐC";
+  } else if (round === "veDich") {
+    titleLine1 = "VỀ ĐÍCH";
+  } else if (round === "cauHoiPhu") {
+    titleLine1 = "CÂU HỎI PHỤ";
+  }
+
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const fontSize = titleLine2 ? Math.round(width * 0.082) : Math.round(width * 0.096);
+  ctx.font = `900 ${fontSize}px "Plus Jakarta Sans", "Montserrat", sans-serif`;
+  ctx.letterSpacing = "0.08em";
+
+  // Gold to amber metallic gradient
+  const textGrad = ctx.createLinearGradient(0, cy - fontSize, 0, cy + fontSize);
+  textGrad.addColorStop(0.0, "#ffffff");
+  textGrad.addColorStop(0.2, "#fffbd0");
+  textGrad.addColorStop(0.5, "#ffd700");
+  textGrad.addColorStop(0.85, "#b45309");
+  textGrad.addColorStop(1.0, "#78350f");
+
+  // Deep dark drop shadow
+  ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 6;
+  ctx.lineWidth = 14;
+  ctx.strokeStyle = "#160e02";
+
+  if (titleLine2) {
+    const y1 = cy - fontSize * 0.65;
+    const y2 = cy + fontSize * 0.65;
+
+    // Outer dark stroke
+    ctx.strokeText(titleLine1, cx, y1);
+    ctx.strokeText(titleLine2, cx, y2);
+
+    // Cyan-gold radiant halo
+    ctx.shadowColor = fadeProgress > 0.5 ? "rgba(255, 40, 70, 0.85)" : "rgba(0, 229, 255, 0.85)";
+    ctx.shadowBlur = 32;
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#fffed4";
+    ctx.strokeText(titleLine1, cx, y1);
+    ctx.strokeText(titleLine2, cx, y2);
+
+    ctx.fillStyle = textGrad;
+    ctx.fillText(titleLine1, cx, y1);
+    ctx.fillText(titleLine2, cx, y2);
+  } else {
+    // 1 single line centered
+    ctx.strokeText(titleLine1, cx, cy);
+
+    // Cyan-gold radiant halo
+    ctx.shadowColor = fadeProgress > 0.5 ? "rgba(255, 40, 70, 0.85)" : "rgba(0, 229, 255, 0.85)";
+    ctx.shadowBlur = 32;
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#fffed4";
+    ctx.strokeText(titleLine1, cx, cy);
+
+    ctx.fillStyle = textGrad;
+    ctx.fillText(titleLine1, cx, cy);
+  }
+
+  // Subtitle banner under title
+  ctx.shadowBlur = 0;
+  ctx.font = `800 ${Math.round(fontSize * 0.22)}px "Plus Jakarta Sans", sans-serif`;
+  ctx.letterSpacing = "0.45em";
+  ctx.fillStyle = fadeProgress > 0.5 ? "rgba(255, 190, 200, 0.85)" : "rgba(180, 235, 255, 0.85)";
+  const subY = titleLine2 ? cy + fontSize * 1.35 : cy + fontSize * 0.95;
+  ctx.fillText("VTV3 BROADCAST STUDIO S14", cx, subY);
+
+  ctx.restore();
+}
+
+/**
+ * Render Live 4-Contestant Scoreboard on 3D Right Screen
+ */
+function renderScoreboardToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  seats?: any[],
+  fadeProgress: number = 0
+): void {
+  const cx = width / 2;
+  const bannerH = height * 0.16;
+
+  ctx.save();
+  const bannerGrad = ctx.createLinearGradient(0, 0, width, 0);
+  bannerGrad.addColorStop(0, "rgba(0, 180, 255, 0.15)");
+  bannerGrad.addColorStop(0.5, "rgba(0, 220, 255, 0.45)");
+  bannerGrad.addColorStop(1, "rgba(0, 180, 255, 0.15)");
+  ctx.fillStyle = bannerGrad;
+  ctx.fillRect(0, 15, width, bannerH);
+
+  ctx.strokeStyle = fadeProgress > 0.5 ? "#ff2a4b" : "#00e5ff";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(30, 15, width - 60, bannerH);
+
+  ctx.font = '900 46px "Plus Jakarta Sans", sans-serif';
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = fadeProgress > 0.5 ? "#ff2a4b" : "#00f0ff";
+  ctx.shadowBlur = 18;
+  ctx.fillText("BẢNG ĐIỂM THÍ SINH", cx, 15 + bannerH / 2);
+  ctx.restore();
+
+  const seatColors = ["#ef4444", "#3b82f6", "#eab308", "#10b981"];
+  const startY = height * 0.25;
+  const cardH = height * 0.15;
+  const cardGap = height * 0.03;
+  const cardW = width * 0.88;
+  const cardX = (width - cardW) / 2;
+
+  const validSeats = (seats && seats.length > 0) ? seats.slice(0, 4) : [
+    { id: 0, name: "Thí sinh 1", score: 0 },
+    { id: 1, name: "Thí sinh 2", score: 0 },
+    { id: 2, name: "Thí sinh 3", score: 0 },
+    { id: 3, name: "Thí sinh 4", score: 0 },
+  ];
+
+  validSeats.forEach((s: any, idx: number) => {
+    const y = startY + idx * (cardH + cardGap);
+    const col = seatColors[idx % 4];
+
+    ctx.save();
+    ctx.fillStyle = "rgba(10, 18, 40, 0.9)";
+    ctx.fillRect(cardX, y, cardW, cardH);
+
+    ctx.fillStyle = col;
+    ctx.fillRect(cardX, y, 14, cardH);
+
+    ctx.strokeStyle = "rgba(0, 229, 255, 0.4)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cardX, y, cardW, cardH);
+
+    ctx.font = '800 36px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgba(0,0,0,0.8)";
+    ctx.shadowBlur = 8;
+    ctx.fillText(s.name, cardX + 32, y + cardH / 2);
+
+    ctx.font = '900 44px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#ffd700";
+    ctx.textAlign = "right";
+    ctx.shadowColor = "#f59e0b";
+    ctx.shadowBlur = 12;
+    ctx.fillText(`${s.score ?? 0}`, cardX + cardW - 32, y + cardH / 2);
+
+    ctx.restore();
+  });
+}
+
 /**
  * Pre-rendered Rectangular Secondary LED Display (Stage Right, facing Contestants)
- * Shows either the official Olympia 2016 logo (idle/intro) or the active round / question.
+ * Shows either the official Olympia 2016 logo, round title card, or active round question.
  */
 function renderLedScreenToCanvas(
   targetCanvas: HTMLCanvasElement,
@@ -192,6 +466,24 @@ function renderLedScreenToCanvas(
     ctx.fill();
   }
   ctx.globalAlpha = 1.0;
+
+  // 3. Right Screen Projection Mode
+  const screenMode = (state as any)?.rightScreenMode || "auto";
+
+  if (screenMode === "roundTitle" || (screenMode === "auto" && state?.currentRound && !questionPromptAvailable(state))) {
+    renderRoundTitleToCanvas(ctx, width, height, state?.currentRound, fadeProgress);
+    return;
+  }
+
+  if (screenMode === "logo") {
+    renderOlympiaLogoToCanvas(ctx, width, height, cx, cy, logoImg, fadeProgress);
+    return;
+  }
+
+  if (screenMode === "scoreboard") {
+    renderScoreboardToCanvas(ctx, width, height, state?.seats, fadeProgress);
+    return;
+  }
 
   // 3. Check for Active Round Question Content
   let roundTitle: string | null = null;
@@ -853,11 +1145,11 @@ export function CentralLedWall({
       </group>
 
       {/* ── 3. STAGE LEFT: CURVED SCIENCE & MATH FORMULA WALL (ELEVATED) ── */}
-      {/* Concentric arc at R=7.6m from [0, 0, -0.6]. Bottom at Y=1.35m, Top at Y=3.75m (height 2.4m) */}
+      {/* Concentric arc at R=7.6m from [0, 0, -0.6]. Spanning 207° to 300° (1.15π to 1.67π) strictly on Stage Left */}
       <group position={[0, 2.55, -0.6]}>
         <mesh rotation={[0, 0, 0]}>
           <cylinderGeometry
-            args={[7.6, 7.6, 2.4, quality === "LIGHT" ? 32 : 64, 1, true, 0.60 * Math.PI, 0.44 * Math.PI]}
+            args={[7.6, 7.6, 2.4, quality === "LIGHT" ? 32 : 64, 1, true, 1.15 * Math.PI, 0.52 * Math.PI]}
           />
           {formulaWallTexture ? (
             <meshBasicMaterial
@@ -873,10 +1165,10 @@ export function CentralLedWall({
         </mesh>
       </group>
 
-      {/* Underneath Dark Base Wall (Y = 0 to 1.35m at R = 7.62m) */}
+      {/* Underneath Dark Base Wall (Y = 0 to 1.35m at R = 7.62m) on Stage Left */}
       <mesh position={[0, 0.675, -0.6]}>
         <cylinderGeometry
-          args={[7.62, 7.62, 1.35, quality === "LIGHT" ? 32 : 64, 1, true, 0.58 * Math.PI, 0.48 * Math.PI]}
+          args={[7.62, 7.62, 1.35, quality === "LIGHT" ? 32 : 64, 1, true, 1.15 * Math.PI, 0.52 * Math.PI]}
         />
         <meshStandardMaterial color="#040d22" side={THREE.BackSide} roughness={0.35} metalness={0.7} />
       </mesh>
@@ -885,7 +1177,7 @@ export function CentralLedWall({
       {[0.35, 0.70, 1.05].map((h, idx) => (
         <mesh key={`neon-wire-${idx}`} position={[0, h, -0.6]}>
           <cylinderGeometry
-            args={[7.58, 7.58, 0.035, 64, 1, true, 0.59 * Math.PI, 0.46 * Math.PI]}
+            args={[7.58, 7.58, 0.035, 64, 1, true, 1.15 * Math.PI, 0.52 * Math.PI]}
           />
           <meshBasicMaterial color={neonColor} side={THREE.DoubleSide} />
         </mesh>

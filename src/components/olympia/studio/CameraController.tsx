@@ -28,8 +28,8 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   1: {
     id: 1,
     label: "Toàn Cảnh",
-    pos: [0.5, 3.0, 9.8],
-    target: [0.2, 1.8, -2.5],
+    pos: [0.8, 3.6, 11.8],
+    target: [0.8, 1.8, -2.4],
   },
   2: {
     id: 2,
@@ -134,8 +134,8 @@ export function CameraController({
       if (elapsedSec < 20) {
         const startPos = new THREE.Vector3(-0.4, 1.55, 0.0);
         const startTarget = new THREE.Vector3(1.4, 1.35, -2.8);
-        const endPos = new THREE.Vector3(0.5, 3.0, 9.8);
-        const endTarget = new THREE.Vector3(0.2, 1.8, -2.5);
+        const endPos = new THREE.Vector3(0.8, 3.6, 11.8);
+        const endTarget = new THREE.Vector3(0.8, 1.8, -2.4);
 
         // 0s -> 3.5s: Close up straight-on on MC area / starry night hexagon
         // 3.5s -> 16s: Smooth dolly zoom out to wide CAM 1

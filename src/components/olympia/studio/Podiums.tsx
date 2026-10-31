@@ -24,7 +24,8 @@ function createPodiumScoreCanvas(
   name: string,
   score: number,
   seatId: number,
-  isBuzzed: boolean
+  isBuzzed: boolean,
+  isRed: boolean = false
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
@@ -32,33 +33,34 @@ function createPodiumScoreCanvas(
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
-  // Unified broadcast color scheme: Cyan top 1/4, Deep Navy bottom 3/4 (Zero red indicator strips)
-  const cyanBg = "#00e5ff";
-  const navyText = "#081636";
-  const borderColor = isBuzzed ? "#00f0ff" : "#00d4ff";
+  // Dynamic broadcast color scheme: Cyan/Blue in calm/idle, Vibrant Crimson Red in countdown/tension/buzz
+  const headerBg = isRed ? "#ff2a4b" : "#00e5ff";
+  const headerText = isRed ? "#ffffff" : "#081636";
+  const borderColor = isRed ? "#ff2a4b" : (isBuzzed ? "#00f0ff" : "#00d4ff");
+  const glowColor = isRed ? "rgba(255, 42, 75, 0.65)" : "rgba(0, 212, 255, 0.45)";
 
   // 1. Bottom 3/4 Background (Y = 64 to 256)
   const bottomGrad = ctx.createLinearGradient(0, 64, 0, 256);
-  bottomGrad.addColorStop(0, "#0e1e42");
-  bottomGrad.addColorStop(1, "#030816");
+  bottomGrad.addColorStop(0, isRed ? "#2d0812" : "#0e1e42");
+  bottomGrad.addColorStop(1, isRed ? "#0f0205" : "#030816");
   ctx.fillStyle = bottomGrad;
   ctx.fillRect(0, 64, 512, 192);
 
   // 2. Top 1/4 Background (Y = 0 to 64)
-  ctx.fillStyle = cyanBg;
+  ctx.fillStyle = headerBg;
   ctx.fillRect(0, 0, 512, 64);
 
-  // 3. Top 1/4 Contestant Name (Deep Navy Text)
+  // 3. Top 1/4 Contestant Name
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = navyText;
+  ctx.fillStyle = headerText;
   ctx.font = '900 32px "Plus Jakarta Sans", "Montserrat", sans-serif';
   ctx.letterSpacing = "0.04em";
   const displayName = (name || `Thí sinh ${seatId + 1}`).toUpperCase();
   ctx.fillText(displayName, 256, 33);
 
   // 4. Subtle separator line between top 1/4 and bottom 3/4
-  ctx.strokeStyle = "rgba(0, 229, 255, 0.45)";
+  ctx.strokeStyle = isRed ? "rgba(255, 42, 75, 0.5)" : "rgba(0, 229, 255, 0.45)";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(0, 64);
@@ -70,7 +72,7 @@ function createPodiumScoreCanvas(
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#ffffff";
   ctx.font = '900 114px "Plus Jakarta Sans", "Montserrat", monospace';
-  ctx.shadowColor = "rgba(0, 212, 255, 0.45)";
+  ctx.shadowColor = glowColor;
   ctx.shadowBlur = 18;
   ctx.fillText(String(score), 256, 160);
   ctx.shadowBlur = 0;
@@ -91,19 +93,21 @@ function ContestantScoreDisplay({
   score,
   seatId,
   isBuzzed,
+  isRed = false,
 }: {
   name: string;
   score: number;
   seatId: number;
   isBuzzed: boolean;
+  isRed?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
 
   const canvas = useMemo(() => {
     if (typeof document === "undefined") return null;
-    return createPodiumScoreCanvas(name, score, seatId, isBuzzed);
-  }, [name, score, seatId, isBuzzed]);
+    return createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed);
+  }, [name, score, seatId, isBuzzed, isRed]);
 
   const texture = useMemo(() => {
     if (!canvas) return null;
@@ -121,7 +125,7 @@ function ContestantScoreDisplay({
 
   useEffect(() => {
     if (canvasRef.current && textureRef.current) {
-      const fresh = createPodiumScoreCanvas(name, score, seatId, isBuzzed);
+      const fresh = createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed);
       const ctx = canvasRef.current.getContext("2d");
       if (ctx) {
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
@@ -129,7 +133,7 @@ function ContestantScoreDisplay({
       }
       textureRef.current.needsUpdate = true;
     }
-  }, [name, score, seatId, isBuzzed]);
+  }, [name, score, seatId, isBuzzed, isRed]);
 
   return (
     <mesh position={[0, 0.48, 0.435]} rotation={[-0.12, 0, 0]}>
@@ -263,8 +267,8 @@ function ContestantPodium({
     }
   });
 
-  // Fixed luminous cyan desk edge (zero red indication on round start)
-  const deskEdgeColor = "#00f0ff";
+  // Dynamic Red Mode when tension/countdown starts or when buzzed
+  const isRed = (screenFadeProgress ?? 0) > 0.5 || isBuzzed;
 
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
@@ -302,25 +306,20 @@ function ContestantPodium({
         <meshStandardMaterial color="#050810" metalness={0.95} roughness={0.15} />
       </mesh>
 
-      {/* Front Dynamic Score Screen (Inset flush into the cavity) */}
+      {/* Front Dynamic Score Screen (Inset flush into the cavity, switching Blue <-> Red) */}
       <ContestantScoreDisplay
         name={name}
         score={score}
         seatId={seatId}
         isBuzzed={isBuzzed}
+        isRed={isRed}
       />
 
-      {/* ── 3. DESK SURFACE & TOUCH TABLET ── */}
-      {/* Slanted Top Desk Surface */}
+      {/* ── 3. DESK SURFACE & TOUCH TABLET (Zero stripes, clean sculptural white desk) ── */}
+      {/* Slanted Top Desk Surface (Clean Sculptural White Enamel matching real studio photo) */}
       <mesh position={[0, 0.94, -0.04]} rotation={[-0.18, 0, 0]}>
         <boxGeometry args={[1.18, 0.06, 0.90]} />
-        <meshStandardMaterial color="#0a0d16" metalness={0.92} roughness={0.18} />
-      </mesh>
-
-      {/* Desk Glowing Edge Light Strip */}
-      <mesh position={[0, 0.965, 0.40]} rotation={[-0.18, 0, 0]}>
-        <boxGeometry args={[1.16, 0.02, 0.02]} />
-        <meshBasicMaterial color={deskEdgeColor} />
+        <meshStandardMaterial color="#f8fafc" metalness={0.15} roughness={0.25} />
       </mesh>
 
       {/* Contestant Touch Screen Tablet on Desk */}

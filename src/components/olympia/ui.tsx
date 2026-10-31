@@ -78,6 +78,110 @@ export function Timer({
   );
 }
 
+/**
+ * Iconic Olympia Circular Radial Dial Timer (Đồng hồ đếm ngược vòng tròn phát sóng)
+ * Features:
+ * - 360-degree SVG radial countdown arc strokeDashoffset.
+ * - Multi-layer concentric glowing neon rings with metal bezel.
+ * - Dynamic color transitions: Cyan (#00f0ff) -> Amber (#f59e0b) -> Crimson Red (#ef4444) when <= 5s.
+ * - High-legibility broadcast monospace countdown seconds at the center.
+ */
+export function CircularTimer({
+  timer,
+  serverNow,
+  size = 150,
+  strokeWidth = 10,
+}: {
+  timer: TimerState | null | undefined;
+  serverNow: () => number;
+  size?: number;
+  strokeWidth?: number;
+}) {
+  const ms = useCountdown(timer, serverNow);
+  const total = timer?.totalMs || 1;
+  const pct = Math.max(0, Math.min(1, ms / total));
+  const secs = (ms / 1000).toFixed(ms < 10000 ? 1 : 0);
+  const running = timer?.startedAt != null;
+  const low = ms <= 5000 && ms > 0;
+
+  const radius = (size - strokeWidth * 2) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - (running ? pct : 1));
+
+  const strokeColor = low
+    ? "#ef4444"
+    : running
+    ? "#f59e0b"
+    : "#00e5ff";
+
+  const glowShadow = low
+    ? "drop-shadow(0 0 16px rgba(239,68,68,0.85))"
+    : running
+    ? "drop-shadow(0 0 14px rgba(245,158,11,0.75))"
+    : "drop-shadow(0 0 12px rgba(0,229,255,0.65))";
+
+  return (
+    <div
+      className="relative flex items-center justify-center select-none"
+      style={{ width: size, height: size, filter: glowShadow }}
+    >
+      <svg width={size} height={size} className="transform -rotate-90">
+        {/* Background Track Circle */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="rgba(15, 23, 42, 0.85)"
+          strokeWidth={strokeWidth}
+          fill="rgba(5, 10, 25, 0.75)"
+        />
+        {/* Decorative Inner Metal Ring */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius - strokeWidth}
+          stroke="rgba(255, 255, 255, 0.12)"
+          strokeWidth={1.5}
+          fill="none"
+        />
+        {/* Active Animated Radial Arc */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={strokeColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          fill="none"
+          className="transition-[stroke-dashoffset] duration-100 ease-linear"
+        />
+      </svg>
+      {/* Centered Monospace Countdown Text */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span
+          className={`font-mono font-black tabular-nums tracking-tighter leading-none ${
+            size > 130 ? "text-4xl sm:text-5xl" : "text-3xl"
+          }`}
+          style={{
+            color: low ? "#fca5a5" : running ? "#fef08a" : "#e0f2fe",
+            textShadow: low
+              ? "0 0 16px rgba(239,68,68,0.9)"
+              : "0 0 12px rgba(245,158,11,0.8)",
+          }}
+        >
+          {secs}
+          <span className="text-xl sm:text-2xl font-bold ml-0.5">s</span>
+        </span>
+        <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-cyan-300/80 mt-0.5">
+          {low ? "HẾT GIỜ" : "THỜI GIAN"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function ScoreStrip({
   state,
   highlight,

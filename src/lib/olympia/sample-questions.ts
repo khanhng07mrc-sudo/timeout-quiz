@@ -5,310 +5,1219 @@ import { autoTagOlympiaSet } from "./ai-classifier";
  * Raw comprehensive Olympia Question Set (96 Khởi Động questions across 6 zones & 11 subjects,
  * full VCNV with mystery image & center question, 4 Tăng Tốc with timed clueImages,
  * 27 Về Đích questions balanced 9x10đ / 9x20đ / 9x30đ across KHTN-KHXH-HBC, and 6 Câu Hỏi Phụ).
+ * Guaranteed 100% zero-duplicate questions across all rounds and unique distinct answers.
  */
 const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
-  id: "olympia_preset_standard_full",
-  name: "Đề thi Olympia 25–26 toàn tập (113 câu Khởi động · 27 câu Về đích)",
-  description:
-    "Kho đề Olympia chuẩn đa lĩnh vực (tham khảo Form test Olympia 25 & O22–O26): 80 câu Khởi động riêng (8 thí sinh × 10 câu) + 33 câu Khởi động chung (11 lĩnh vực × 3 câu), VCNV 5 mảnh ghép (ảnh bí ẩn nội bộ), 4 câu Tăng tốc kèm ảnh & video nội bộ, 27 câu Về đích cân bằng KHTN - KHXH - Hiểu biết chung và 6 Câu hỏi phụ.",
-  balancedRandom: true,
-  khoiDong: {
-    solo: {
+  "id": "olympia_preset_standard_full",
+  "name": "Đề thi Olympia 25–26 toàn tập (113 câu Khởi động · 27 câu Về đích)",
+  "description": "Kho đề Olympia chuẩn đa lĩnh vực (tham khảo Form test Olympia 25 & O22–O26): 80 câu Khởi động riêng (8 thí sinh × 10 câu) + 33 câu Khởi động chung (11 lĩnh vực × 3 câu), VCNV 5 mảnh ghép (ảnh bí ẩn nội bộ), 4 câu Tăng tốc kèm ảnh & video nội bộ, 27 câu Về đích cân bằng KHTN - KHXH - Hiểu biết chung và 6 Câu hỏi phụ.",
+  "balancedRandom": true,
+  "khoiDong": {
+    "solo": {
       "1": [
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Số nguyên tố chẵn duy nhất là số nào?", a: "2" },
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Trong hệ nhị phân, số thập phân 5 được biểu diễn như thế nào?", a: "101" },
-        { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Đơn vị đo cường độ dòng điện trong hệ SI là gì?", a: "Ampe" },
-        { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Kim loại nào tồn tại ở trạng thái lỏng ở điều kiện nhiệt độ và áp suất phòng?", a: "Thủy ngân" },
-        { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Tác phẩm 'Dế Mèn phiêu lưu ký' là của nhà văn nào?", a: "Tô Hoài" },
-        { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Ai là người đọc bản Tuyên ngôn Độc lập ngày 2/9/1945 tại Quảng trường Ba Đình?", a: "Hồ Chí Minh" },
-        { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Một đội bóng đá tiêu chuẩn thi đấu trên sân gồm bao nhiêu cầu thủ?", a: "11" },
-        { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Bức họa nàng Mona Lisa là kiệt tác của danh họa nào?", a: "Leonardo da Vinci" },
-        { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the past tense of the verb 'go'?", a: "Went" },
-        { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Đuôi tên miền quốc gia cấp cao nhất của Việt Nam trên Internet là gì?", a: ".vn" },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Số nguyên tố chẵn duy nhất là số nào?",
+          "a": "2"
+        },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Trong hệ nhị phân, số thập phân 5 được biểu diễn như thế nào?",
+          "a": "101"
+        },
+        {
+          "subject": "Lý",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Đơn vị đo cường độ dòng điện trong hệ SI là gì?",
+          "a": "Ampe"
+        },
+        {
+          "subject": "Hóa",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Kim loại nào tồn tại ở trạng thái lỏng ở điều kiện nhiệt độ và áp suất phòng?",
+          "a": "Thủy ngân"
+        },
+        {
+          "subject": "Văn",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Tác phẩm 'Dế Mèn phiêu lưu ký' là của nhà văn nào?",
+          "a": "Tô Hoài"
+        },
+        {
+          "subject": "Sử",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Ai là người đọc bản Tuyên ngôn Độc lập ngày 2/9/1945 tại Quảng trường Ba Đình?",
+          "a": "Hồ Chí Minh"
+        },
+        {
+          "subject": "Thể thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Một đội bóng đá tiêu chuẩn thi đấu trên sân gồm bao nhiêu cầu thủ?",
+          "a": "11"
+        },
+        {
+          "subject": "Nghệ thuật",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Bức họa nàng Mona Lisa là kiệt tác của danh họa nào?",
+          "a": "Leonardo da Vinci"
+        },
+        {
+          "subject": "Tiếng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "What is the past tense of the verb 'go'?",
+          "a": "Went"
+        },
+        {
+          "subject": "Lĩnh vực khác",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "Đuôi tên miền quốc gia cấp cao nhất của Việt Nam trên Internet là gì?",
+          "a": ".vn"
+        }
       ],
       "2": [
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Tổng ba góc trong một tam giác phẳng bằng bao nhiêu độ?", a: "180" },
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Đa giác đều nào có số đường chéo bằng đúng số cạnh của nó?", a: "Ngũ giác đều" },
-        { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Quá trình cây xanh tổng hợp chất hữu cơ nhờ ánh sáng mặt trời gọi là gì?", a: "Quang hợp" },
-        { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Gia tốc trọng trường tại mặt đất xấp xỉ bao nhiêu m/s²?", a: "9,8" },
-        { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Dãy núi nào là ranh giới tự nhiên giữa châu Âu và châu Á?", a: "Dãy Ural" },
-        { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Tác giả của bài thơ 'Sóng' (1967) là nữ thi sĩ nào?", a: "Xuân Quỳnh" },
-        { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Thế vận hội Olympic mùa hè được tổ chức mấy năm một lần?", a: "4" },
-        { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Nhạc cụ truyền thống đàn bầu của Việt Nam có mấy dây?", a: "1" },
-        { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "Từ nào còn thiếu trong thành ngữ tiếng Anh: 'It's raining cats and ...'?", a: "Dogs" },
-        { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Biển báo giao thông hình tam giác đều, viền đỏ, nền vàng dùng để chỉ nhóm biển báo gì?", a: "Biển báo nguy hiểm" },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Tổng ba góc trong một tam giác phẳng bằng bao nhiêu độ?",
+          "a": "180"
+        },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Đa giác đều nào có số đường chéo bằng đúng số cạnh của nó?",
+          "a": "Ngũ giác đều"
+        },
+        {
+          "subject": "Sinh",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Quá trình cây xanh tổng hợp chất hữu cơ nhờ ánh sáng mặt trời gọi là gì?",
+          "a": "Quang hợp"
+        },
+        {
+          "subject": "Lý",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Gia tốc trọng trường tại mặt đất xấp xỉ bao nhiêu m/s²?",
+          "a": "9,8"
+        },
+        {
+          "subject": "Địa",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Dãy núi nào là ranh giới tự nhiên giữa châu Âu và châu Á?",
+          "a": "Dãy Ural"
+        },
+        {
+          "subject": "Văn",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Tác giả của bài thơ 'Sóng' (1967) là nữ thi sĩ nào?",
+          "a": "Xuân Quỳnh"
+        },
+        {
+          "subject": "Thể thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Kỳ Thế vận hội Olympic mùa hè hiện đại đầu tiên được tổ chức vào năm nào tại Athens (Hy Lạp)?",
+          "a": "1896"
+        },
+        {
+          "subject": "Nghệ thuật",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Nhạc cụ truyền thống đàn bầu của Việt Nam có mấy dây?",
+          "a": "1"
+        },
+        {
+          "subject": "Tiếng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "Từ nào còn thiếu trong thành ngữ tiếng Anh: 'It's raining cats and ...'?",
+          "a": "Dogs"
+        },
+        {
+          "subject": "Lĩnh vực khác",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "Biển báo giao thông hình tam giác đều, viền đỏ, nền vàng dùng để chỉ nhóm biển báo gì?",
+          "a": "Biển báo nguy hiểm"
+        }
       ],
       "3": [
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Căn bậc hai số học của 81 bằng bao nhiêu?", a: "9" },
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Nhà toán học nào được cho là người đã có công hợp nhất đại số và hình học Euclide?", a: "René Descartes" },
-        { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Nguyên tố hoá học nhẹ nhất trong bảng tuần hoàn là gì?", a: "Hydro" },
-        { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Tuyến nội tiết nào lớn nhất trong cơ thể người, nằm ở vùng cổ và có hình con bướm?", a: "Tuyến giáp" },
-        { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Chiến thắng Điện Biên Phủ lừng lẫy năm châu diễn ra vào năm nào?", a: "1954" },
-        { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Sông Mê Kông chảy qua lãnh thổ của bao nhiêu quốc gia trước khi đổ ra Biển Đông?", a: "6" },
-        { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Khuông nhạc tiêu chuẩn gồm có mấy dòng kẻ ngang song song?", a: "5" },
-        { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Kình ngư Nguyễn Thị Ánh Viên sinh ra ở tỉnh/thành phố nào?", a: "Cần Thơ" },
-        { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "Which planet is known as the Red Planet?", a: "Mars" },
-        { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Chữ O trong công nghệ màn hình OLED là viết tắt của từ tiếng Anh nào?", a: "Organic" },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Căn bậc hai số học của 81 bằng bao nhiêu?",
+          "a": "9"
+        },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Nhà toán học nào được cho là người đã có công hợp nhất đại số và hình học Euclide?",
+          "a": "René Descartes"
+        },
+        {
+          "subject": "Hóa",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Nguyên tố hoá học nhẹ nhất trong bảng tuần hoàn là gì?",
+          "a": "Hydro"
+        },
+        {
+          "subject": "Sinh",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Tuyến nội tiết nào lớn nhất trong cơ thể người, nằm ở vùng cổ và có hình con bướm?",
+          "a": "Tuyến giáp"
+        },
+        {
+          "subject": "Sử",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Chiến thắng Điện Biên Phủ lừng lẫy năm châu diễn ra vào năm nào?",
+          "a": "1954"
+        },
+        {
+          "subject": "Địa",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Dòng sông dài nhất chảy hoàn toàn trên lãnh thổ Việt Nam là con sông nào?",
+          "a": "Sông Đồng Nai"
+        },
+        {
+          "subject": "Nghệ thuật",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Nốt nhạc nào có giá trị trường độ bằng một nửa nốt đen trong hệ thống ký hiệu âm nhạc phương Tây?",
+          "a": "Nốt móc đơn"
+        },
+        {
+          "subject": "Thể thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Kình ngư Nguyễn Thị Ánh Viên sinh ra ở tỉnh/thành phố nào?",
+          "a": "Cần Thơ"
+        },
+        {
+          "subject": "Tiếng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "Which planet is known as the Red Planet?",
+          "a": "Mars"
+        },
+        {
+          "subject": "Lĩnh vực khác",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "Chữ O trong công nghệ màn hình OLED là viết tắt của từ tiếng Anh nào?",
+          "a": "Organic"
+        }
       ],
       "4": [
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Một hình lập phương có tất cả bao nhiêu mặt?", a: "6" },
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Những số nguyên nào có bình phương bằng tổng của số liền trước và số liền sau nó?", a: "0 và 2" },
-        { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Kim loại nào có khả năng dẫn điện tốt nhất ở điều kiện thường?", a: "Bạc" },
-        { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "ADN có cấu trúc không gian gồm mấy mạch полиnuclêôtit xoắn kép?", a: "2" },
-        { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Đại thi hào Nguyễn Du nổi tiếng nhất với kiệt tác truyện thơ Nôm nào?", a: "Truyện Kiều" },
-        { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Vị vua nào đã ban Chiếu dời đô từ Hoa Lư về Thăng Long năm 1010?", a: "Lý Thái Tổ" },
-        { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Bàn cờ vua tiêu chuẩn gồm tất cả bao nhiêu ô vuông?", a: "64" },
-        { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Ai là tác giả của ca khúc 'Tiến quân ca' (Quốc ca Việt Nam)?", a: "Văn Cao" },
-        { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "In telecommunications, the letter G in 3G, 4G, 5G stands for what word?", a: "Generation" },
-        { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Loài hoa nào được tôn vinh là Quốc hoa của Việt Nam?", a: "Hoa sen" },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Một hình lập phương có tất cả bao nhiêu mặt?",
+          "a": "6"
+        },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Những số nguyên nào có bình phương bằng tổng của số liền trước và số liền sau nó?",
+          "a": "0 và 2"
+        },
+        {
+          "subject": "Hóa",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Kim loại nào có khả năng dẫn điện tốt nhất ở điều kiện thường?",
+          "a": "Bạc"
+        },
+        {
+          "subject": "Sinh",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Bốn loại bazơ nitơ cấu tạo nên phân tử ADN gồm Ađênin, Timin, Guanin và loại nào?",
+          "a": "Xitôzin (Cytosine / C)"
+        },
+        {
+          "subject": "Văn",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Đại thi hào Nguyễn Du nổi tiếng nhất với kiệt tác truyện thơ Nôm nào?",
+          "a": "Truyện Kiều"
+        },
+        {
+          "subject": "Sử",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Vị vua nào đã ban Chiếu dời đô từ Hoa Lư về Thăng Long năm 1010?",
+          "a": "Lý Thái Tổ"
+        },
+        {
+          "subject": "Thể thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Bàn cờ vua tiêu chuẩn gồm tất cả bao nhiêu ô vuông?",
+          "a": "64"
+        },
+        {
+          "subject": "Nghệ thuật",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Ai là tác giả của ca khúc 'Tiến quân ca' (Quốc ca Việt Nam)?",
+          "a": "Văn Cao"
+        },
+        {
+          "subject": "Tiếng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "In telecommunications, the letter G in 3G, 4G, 5G stands for what word?",
+          "a": "Generation"
+        },
+        {
+          "subject": "Lĩnh vực khác",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "Loài hoa nào được tôn vinh là Quốc hoa của Việt Nam?",
+          "a": "Hoa sen"
+        }
       ],
       "5": [
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Trong một tam giác vuông, cạnh đối diện với góc vuông được gọi là cạnh gì?", a: "Cạnh huyền" },
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Hằng số Pi (π) làm tròn đến chữ số thập phân thứ hai bằng bao nhiêu?", a: "3,14" },
-        { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Hiện tượng lệch hướng chuyển động của vật thể do sự tự quay của Trái Đất gọi là hiệu ứng gì?", a: "Coriolis" },
-        { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Trong bảng tuần hoàn Mendeleev, hai chữ cái không xuất hiện trong kí hiệu hóa học là J và chữ nào?", a: "Q" },
-        { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Quốc gia nào có đường bờ biển dài nhất thế giới?", a: "Canada" },
-        { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Cuộc khởi nghĩa Hai Bà Trưng nổ ra vào năm nào sau Công nguyên?", a: "Năm 40" },
-        { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Bức tranh sơn dầu 'Thiếu nữ bên hoa huệ' là tác phẩm nổi tiếng của họa sĩ nào?", a: "Tô Ngọc Vân" },
-        { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Võ sĩ huyền thoại Muhammad Ali thi đấu ở môn thể thao nào?", a: "Quyền Anh" },
-        { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "How many goals are there in the United Nations Millennium Development Goals?", a: "8" },
-        { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Mạng xã hội TikTok có nguồn gốc xuất phát từ quốc gia nào?", a: "Trung Quốc" },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Trong một tam giác vuông, cạnh đối diện với góc vuông được gọi là cạnh gì?",
+          "a": "Cạnh huyền"
+        },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Hằng số Pi (π) làm tròn đến chữ số thập phân thứ hai bằng bao nhiêu?",
+          "a": "3,14"
+        },
+        {
+          "subject": "Lý",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Hiện tượng lệch hướng chuyển động của vật thể do sự tự quay của Trái Đất gọi là hiệu ứng gì?",
+          "a": "Coriolis"
+        },
+        {
+          "subject": "Hóa",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Trong bảng tuần hoàn Mendeleev, hai chữ cái không xuất hiện trong kí hiệu hóa học là J và chữ nào?",
+          "a": "Q"
+        },
+        {
+          "subject": "Địa",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Quốc gia nào có đường bờ biển dài nhất thế giới?",
+          "a": "Canada"
+        },
+        {
+          "subject": "Sử",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Cuộc khởi nghĩa Hai Bà Trưng nổ ra vào năm nào sau Công nguyên?",
+          "a": "Năm 40"
+        },
+        {
+          "subject": "Nghệ thuật",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Bức tranh sơn dầu 'Thiếu nữ bên hoa huệ' là tác phẩm nổi tiếng của họa sĩ nào?",
+          "a": "Tô Ngọc Vân"
+        },
+        {
+          "subject": "Thể thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Võ sĩ huyền thoại Muhammad Ali thi đấu ở môn thể thao nào?",
+          "a": "Quyền Anh"
+        },
+        {
+          "subject": "Tiếng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "How many goals are there in the United Nations Millennium Development Goals?",
+          "a": "8"
+        },
+        {
+          "subject": "Lĩnh vực khác",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "Mạng xã hội TikTok có nguồn gốc xuất phát từ quốc gia nào?",
+          "a": "Trung Quốc"
+        }
       ],
       "6": [
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Cột mốc ngã ba biên giới Việt Nam - Lào - Campuchia ở Kon Tum có dạng lăng trụ đứng đáy là hình gì?", a: "Tam giác" },
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Phép tính nhân một số thực với chính nó được gọi là phép tính gì?", a: "Bình phương" },
-        { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Loài động vật có vú nào lớn nhất còn sinh sống trên Trái Đất hiện nay?", a: "Cá voi xanh" },
-        { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Chất khí nào là nguyên nhân chính gây ra hiện tượng mưa axit trong tự nhiên?", a: "SO2" },
-        { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Tập thơ 'Nhật ký trong tù' của Chủ tịch Hồ Chí Minh được viết nguyên bản bằng chữ gì?", a: "Chữ Hán" },
-        { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Hiện nay miền Nam nước ta có 10 tỉnh đều có một huyện mang cùng tên là huyện gì?", a: "Châu Thành" },
-        { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Thẻ vàng trong bóng đá được sử dụng chính thức lần đầu tại kỳ World Cup năm nào?", a: "1970" },
-        { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Lễ hội Lim với làn điệu dân ca Quan họ là lễ hội truyền thống của tỉnh nào?", a: "Bắc Ninh" },
-        { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "In Vietnam, which rare forest animal is known as the 'Asian unicorn'?", a: "Saola" },
-        { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Các trạm thu phí không dừng ETC ở nước ta sử dụng loại sóng gì để nhận diện thẻ e-Tag?", a: "Sóng vô tuyến" },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Cột mốc ngã ba biên giới Việt Nam - Lào - Campuchia ở Kon Tum có dạng lăng trụ đứng đáy là hình gì?",
+          "a": "Tam giác"
+        },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Phép tính nhân một số thực với chính nó được gọi là phép tính gì?",
+          "a": "Bình phương"
+        },
+        {
+          "subject": "Sinh",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Loài động vật có vú nào lớn nhất còn sinh sống trên Trái Đất hiện nay?",
+          "a": "Cá voi xanh"
+        },
+        {
+          "subject": "Hóa",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Chất khí nào là nguyên nhân chính gây ra hiện tượng mưa axit trong tự nhiên?",
+          "a": "SO2"
+        },
+        {
+          "subject": "Văn",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Tập thơ 'Nhật ký trong tù' của Chủ tịch Hồ Chí Minh được viết nguyên bản bằng chữ gì?",
+          "a": "Chữ Hán"
+        },
+        {
+          "subject": "Địa",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Hiện nay miền Nam nước ta có 10 tỉnh đều có một huyện mang cùng tên là huyện gì?",
+          "a": "Châu Thành"
+        },
+        {
+          "subject": "Thể thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Thẻ vàng trong bóng đá được sử dụng chính thức lần đầu tại kỳ World Cup năm nào?",
+          "a": "1970"
+        },
+        {
+          "subject": "Nghệ thuật",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Lễ hội Lim với làn điệu dân ca Quan họ là lễ hội truyền thống của tỉnh nào?",
+          "a": "Bắc Ninh"
+        },
+        {
+          "subject": "Tiếng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "In Vietnam, which rare forest animal is known as the 'Asian unicorn'?",
+          "a": "Saola"
+        },
+        {
+          "subject": "Lĩnh vực khác",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "Các trạm thu phí không dừng ETC ở nước ta sử dụng loại sóng gì để nhận diện thẻ e-Tag?",
+          "a": "Sóng vô tuyến"
+        }
       ],
       "7": [
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Trong toán học, tập hợp các số thực lớn hơn 0 được gọi là số gì?", a: "Số dương" },
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Ước chung lớn nhất của hai số nguyên tố cùng nhau bằng bao nhiêu?", a: "1" },
-        { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Khí cụ chuyên dụng nào trong khí tượng học dùng để đo vận tốc gió?", a: "Phong kế" },
-        { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Vitamin D có vai trò chính giúp cơ thể người hấp thụ khoáng chất nào cho xương?", a: "Canxi" },
-        { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Bản Hiến pháp đầu tiên của nước Việt Nam Dân chủ Cộng hòa được thông qua vào năm nào?", a: "1946" },
-        { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Vườn quốc gia nào nằm trên dãy Trường Sơn thuộc tỉnh Quảng Bình được UNESCO công nhận là Di sản thiên nhiên thế giới?", a: "Phong Nha - Kẻ Bàng" },
-        { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Môn võ cổ truyền Vovinam (Việt Võ Đạo) do võ sư nào sáng lập năm 1938?", a: "Nguyễn Lộc" },
-        { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Nghệ sĩ dương cầm Việt Nam nào từng giành giải Nhất cuộc thi Piano quốc tế Chopin năm 1980?", a: "Đặng Thái Sơn" },
-        { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the capital city of Australia?", a: "Canberra" },
-        { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Trong thần thoại Hy Lạp, vị thần nào cai quản thế giới ngầm (địa ngục)?", a: "Hades" },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Trong toán học, tập hợp các số thực lớn hơn 0 được gọi là số gì?",
+          "a": "Số dương"
+        },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Tích của tất cả các số nguyên tố nhỏ hơn 10 bằng bao nhiêu?",
+          "a": "210"
+        },
+        {
+          "subject": "Lý",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Khí cụ chuyên dụng nào trong khí tượng học dùng để đo vận tốc gió?",
+          "a": "Phong kế"
+        },
+        {
+          "subject": "Sinh",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Vitamin D có vai trò chính giúp cơ thể người hấp thụ khoáng chất nào cho xương?",
+          "a": "Canxi"
+        },
+        {
+          "subject": "Sử",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Bản Hiến pháp đầu tiên của nước Việt Nam Dân chủ Cộng hòa được thông qua vào năm nào?",
+          "a": "1946"
+        },
+        {
+          "subject": "Địa",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Vườn quốc gia nào nằm trên dãy Trường Sơn thuộc tỉnh Quảng Bình được UNESCO công nhận là Di sản thiên nhiên thế giới?",
+          "a": "Phong Nha - Kẻ Bàng"
+        },
+        {
+          "subject": "Thể thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Môn võ cổ truyền Vovinam (Việt Võ Đạo) do võ sư nào sáng lập năm 1938?",
+          "a": "Nguyễn Lộc"
+        },
+        {
+          "subject": "Nghệ thuật",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Nghệ sĩ dương cầm Việt Nam nào từng giành giải Nhất cuộc thi Piano quốc tế Chopin năm 1980?",
+          "a": "Đặng Thái Sơn"
+        },
+        {
+          "subject": "Tiếng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "What is the capital city of Australia?",
+          "a": "Canberra"
+        },
+        {
+          "subject": "Lĩnh vực khác",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "Trong thần thoại Hy Lạp, vị thần nào cai quản thế giới ngầm (địa ngục)?",
+          "a": "Hades"
+        }
       ],
       "8": [
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Một khối Rubik tiêu chuẩn 3x3x3 có tất cả bao nhiêu mặt?", a: "6" },
-        { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Chữ cái đầu tiên trong bảng chữ cái Hy Lạp là chữ gì?", a: "Alpha" },
-        { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Pin sạc trên điện thoại di động ngày nay (LIB) hoạt động dựa vào sự di chuyển của ion kim loại nào?", a: "Lithium" },
-        { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Loài bạch tuộc có tất cả bao nhiêu trái tim trong cơ thể?", a: "3" },
-        { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Trong thơ Lưu Quang Vũ, điều gì 'rung rinh nhịp đập trái tim người / Như tiếng sáo như dây đàn máu nhỏ'?", a: "Tiếng Việt" },
-        { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Vị tướng nào dưới thời chúa Nguyễn đã xác lập chủ quyền tại vùng đất Gia Định - Đồng Nai vào năm 1698?", a: "Nguyễn Hữu Cảnh" },
-        { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Ai là tay vợt nam đầu tiên của Việt Nam lọt vào Top 300 thế giới trên bảng xếp hạng ATP?", a: "Lý Hoàng Nam" },
-        { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Tác giả của bộ truyện tranh nổi tiếng 'Doraemon' là họa sĩ người Nhật nào?", a: "Fujiko F. Fujio" },
-        { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the opposite word of 'ancient' in English?", a: "Modern" },
-        { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Vệ tinh nhân tạo đầu tiên của nhân loại được Liên Xô phóng lên quỹ đạo năm 1957 có tên là gì?", a: "Sputnik 1" },
-      ],
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Một hình lập phương có tất cả bao nhiêu đường chéo chính nối hai đỉnh đối diện nhau qua tâm?",
+          "a": "4 đường chéo chính"
+        },
+        {
+          "subject": "Toán",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Chữ cái đầu tiên trong bảng chữ cái Hy Lạp là chữ gì?",
+          "a": "Alpha"
+        },
+        {
+          "subject": "Hóa",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Pin sạc trên điện thoại di động ngày nay (LIB) hoạt động dựa vào sự di chuyển của ion kim loại nào?",
+          "a": "Lithium"
+        },
+        {
+          "subject": "Sinh",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Loài bạch tuộc có tất cả bao nhiêu trái tim trong cơ thể?",
+          "a": "3"
+        },
+        {
+          "subject": "Văn",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Trong thơ Lưu Quang Vũ, điều gì 'rung rinh nhịp đập trái tim người / Như tiếng sáo như dây đàn máu nhỏ'?",
+          "a": "Tiếng Việt"
+        },
+        {
+          "subject": "Sử",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Vị tướng nào dưới thời chúa Nguyễn đã xác lập chủ quyền tại vùng đất Gia Định - Đồng Nai vào năm 1698?",
+          "a": "Nguyễn Hữu Cảnh"
+        },
+        {
+          "subject": "Thể thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Ai là tay vợt nam đầu tiên của Việt Nam lọt vào Top 300 thế giới trên bảng xếp hạng ATP?",
+          "a": "Lý Hoàng Nam"
+        },
+        {
+          "subject": "Nghệ thuật",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Tác giả của bộ truyện tranh nổi tiếng 'Doraemon' là họa sĩ người Nhật nào?",
+          "a": "Fujiko F. Fujio"
+        },
+        {
+          "subject": "Tiếng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "What is the opposite word of 'ancient' in English?",
+          "a": "Modern"
+        },
+        {
+          "subject": "Lĩnh vực khác",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "Vệ tinh nhân tạo đầu tiên của nhân loại được Liên Xô phóng lên quỹ đạo năm 1957 có tên là gì?",
+          "a": "Sputnik 1"
+        }
+      ]
     },
-    shared: [
-      // 1. Toán (3 câu)
-      { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Trong hình học phẳng Euclid, tổng ba góc trong một hình tam giác luôn bằng bao nhiêu độ?", a: "180" },
-      { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Số nguyên tố chẵn duy nhất trong tập hợp các số tự nhiên là số nào?", a: "2" },
-      { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Hình đa giác đều có 6 cạnh bằng nhau và 6 góc bằng nhau được gọi là hình gì?", a: "Lục giác đều" },
-
-      // 2. Lý (3 câu)
-      { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Trọng lượng của một vật trên bề mặt Mặt Trăng bằng khoảng một phần mấy trọng lượng của nó trên Trái Đất?", a: "1/6" },
-      { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Loại điốt phát sáng nào được sử dụng phổ biến nhất trên màn hình trường quay S14?", a: "LED" },
-      { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Vận tốc truyền ánh sáng trong môi trường chân không xấp xỉ bằng bao nhiêu nghìn km/s?", a: "300" },
-
-      // 3. Hóa (3 câu)
-      { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Trong hóa học, dung dịch có độ pH = 7 ở nhiệt độ 25°C mang tính chất gì?", a: "Trung tính" },
-      { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Kim loại nào ở thể lỏng ở điều kiện nhiệt độ phòng tiêu chuẩn (thường dùng trong nhiệt kế y tế)?", a: "Thủy ngân" },
-      { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Khí gas sinh học (biogas) có thành phần chính là hợp chất hydrocacbon nào?", a: "Methane (hoặc CH4)" },
-
-      // 4. Sinh (3 câu)
-      { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Cơ quan tiêu hóa dài nhất trong hệ tiêu hóa của cơ thể người trưởng thành là gì?", a: "Ruột non" },
-      { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Nhóm máu nào được gọi là nhóm máu chuyên cho trong hệ thống nhóm máu ABO?", a: "Nhóm O" },
-      { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Bào quan nào trong tế bào thực vật chứa chất diệp lục giúp thực hiện quá trình quang hợp?", a: "Lục lạp" },
-
-      // 5. Văn (3 câu)
-      { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Ai là tác giả của áng thiên cổ hùng văn 'Bình Ngô đại cáo'?", a: "Nguyễn Trãi" },
-      { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Tác phẩm Truyện Kiều của đại thi hào Nguyễn Du được sáng tác theo thể thơ dân tộc nào?", a: "Lục bát" },
-      { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Nhân vật Lão Hạc trong truyện ngắn cùng tên của Nam Cao nuôi một con chó cưng tên là gì?", a: "Cậu Vàng" },
-
-      // 6. Sử (3 câu)
-      { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Quân và dân vùng đất nào của TP. Hồ Chí Minh được phong tặng danh hiệu 'Đất thép thành đồng'?", a: "Củ Chi" },
-      { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Chiến thắng Điện Biên Phủ 'lừng lẫy năm châu, chấn động địa cầu' diễn ra vào năm nào?", a: "1954" },
-      { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Vị vua anh minh nào của triều Hậu Lê đã ban hành bộ luật Hồng Đức (Quốc triều hình luật)?", a: "Lê Thánh Tông" },
-
-      // 7. Địa (3 câu)
-      { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Quốc gia nào có diện tích tự nhiên lớn nhất thế giới hiện nay?", a: "Nga" },
-      { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Kênh đào Panama nối liền hai đại dương lớn nào trên thế giới?", a: "Thái Bình Dương và Đại Tây Dương" },
-      { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Đỉnh núi Fansipan – 'Nóc nhà Đông Dương' nằm trên dãy núi nào của Việt Nam?", a: "Hoàng Liên Sơn" },
-
-      // 8. Thể thao (3 câu)
-      { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Đội tuyển bóng đá quốc gia nào đã giành chức vô địch FIFA World Cup 2022 tại Qatar?", a: "Argentina" },
-      { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Biểu tượng của phong trào Thế vận hội Olympic quốc tế gồm bao nhiêu vòng tròn đan vào nhau?", a: "5" },
-      { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Cự ly chạy tiêu chuẩn của một chặng đua Marathon đường trường là bao nhiêu km?", a: "42,195 km" },
-
-      // 9. Nghệ thuật (3 câu)
-      { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Bức họa 'Mona Lisa' hiện đang được trưng bày cố định tại bảo tàng nghệ thuật nào của nước Pháp?", a: "Bảo tàng Louvre" },
-      { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Nhạc sĩ tài hoa nào là tác giả của bài hát 'Tiến quân ca' – Quốc ca Việt Nam?", a: "Văn Cao" },
-      { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Nhạc cụ truyền thống nào của Việt Nam chỉ có duy nhất một dây nhưng phát ra âm thanh biến hóa đặc sắc nhờ cần đàn?", a: "Đàn bầu (hoặc Độc huyền cầm)" },
-
-      // 10. Tiếng Anh (4 câu)
-      { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the official currency of the United Kingdom?", a: "Pound Sterling" },
-      { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "Which chemical element has the symbol 'Au' in the periodic table?", a: "Gold" },
-      { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What does the abbreviation 'CPU' stand for in computer science?", a: "Central Processing Unit" },
-      { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the capital city of Australia?", a: "Canberra" },
-
-      // 11. Lĩnh vực khác (4 câu)
-      { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Nhà khoa học nào được mệnh danh là Cha đẻ của khoa học máy tính và trí tuệ nhân tạo hiện đại?", a: "Alan Turing" },
-      { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Số điện thoại khẩn cấp gọi lực lượng Cảnh sát Phòng cháy chữa cháy và Cứu nạn cứu hộ tại Việt Nam là số nào?", a: "114" },
-      { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Tổ chức Giáo dục, Khoa học và Văn hóa của Liên Hợp Quốc viết tắt theo tiếng Anh là gì?", a: "UNESCO" },
-      { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Tổ chức Hàng không Dân dụng Quốc tế viết tắt theo tiếng Anh là gì?", a: "ICAO" },
-    ],
+    "shared": [
+      {
+        "subject": "Toán",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "q": "Tổng số đo các góc trong của một hình tứ giác lồi trên mặt phẳng Euclid luôn bằng bao nhiêu độ?",
+        "a": "360"
+      },
+      {
+        "subject": "Toán",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "q": "Số nguyên tố lớn nhất có hai chữ số trong tập hợp các số tự nhiên là số nào?",
+        "a": "97"
+      },
+      {
+        "subject": "Toán",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "q": "Hình đa giác đều có 6 cạnh bằng nhau và 6 góc bằng nhau được gọi là hình gì?",
+        "a": "Lục giác đều"
+      },
+      {
+        "subject": "Lý",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Trọng lượng của một vật trên bề mặt Mặt Trăng bằng khoảng một phần mấy trọng lượng của nó trên Trái Đất?",
+        "a": "1/6"
+      },
+      {
+        "subject": "Lý",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Loại điốt phát sáng nào được sử dụng phổ biến nhất trên màn hình trường quay S14?",
+        "a": "LED"
+      },
+      {
+        "subject": "Lý",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Vận tốc truyền ánh sáng trong môi trường chân không xấp xỉ bằng bao nhiêu nghìn km/s?",
+        "a": "300"
+      },
+      {
+        "subject": "Hóa",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Trong hóa học, dung dịch có độ pH = 7 ở nhiệt độ 25°C mang tính chất gì?",
+        "a": "Trung tính"
+      },
+      {
+        "subject": "Hóa",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Kim loại kiềm mềm nhất, có nhiệt độ nóng chảy thấp (28,5°C) và phản ứng mãnh liệt với nước có tên gọi là gì?",
+        "a": "Xesi (Caesium / Cs)"
+      },
+      {
+        "subject": "Hóa",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Khí gas sinh học (biogas) có thành phần chính là hợp chất hydrocacbon nào?",
+        "a": "Methane (hoặc CH4)"
+      },
+      {
+        "subject": "Sinh",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Cơ quan tiêu hóa dài nhất trong hệ tiêu hóa của cơ thể người trưởng thành là gì?",
+        "a": "Ruột non"
+      },
+      {
+        "subject": "Sinh",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Nhóm máu nào được gọi là nhóm máu chuyên cho trong hệ thống nhóm máu ABO?",
+        "a": "Nhóm O"
+      },
+      {
+        "subject": "Sinh",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Bào quan nào trong tế bào thực vật chứa chất diệp lục giúp thực hiện quá trình quang hợp?",
+        "a": "Lục lạp"
+      },
+      {
+        "subject": "Văn",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Ai là tác giả của áng thiên cổ hùng văn 'Bình Ngô đại cáo'?",
+        "a": "Nguyễn Trãi"
+      },
+      {
+        "subject": "Văn",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Tác phẩm Truyện Kiều của đại thi hào Nguyễn Du được sáng tác theo thể thơ dân tộc nào?",
+        "a": "Lục bát"
+      },
+      {
+        "subject": "Văn",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Nhân vật Lão Hạc trong truyện ngắn cùng tên của Nam Cao nuôi một con chó cưng tên là gì?",
+        "a": "Cậu Vàng"
+      },
+      {
+        "subject": "Sử",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Quân và dân vùng đất nào của TP. Hồ Chí Minh được phong tặng danh hiệu 'Đất thép thành đồng'?",
+        "a": "Củ Chi"
+      },
+      {
+        "subject": "Sử",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Chiến dịch Hồ Chí Minh lịch sử giải phóng hoàn toàn miền Nam, thống nhất non sông toàn thắng vào năm nào?",
+        "a": "1975"
+      },
+      {
+        "subject": "Sử",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Vị vua anh minh nào của triều Hậu Lê đã ban hành bộ luật Hồng Đức (Quốc triều hình luật)?",
+        "a": "Lê Thánh Tông"
+      },
+      {
+        "subject": "Địa",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Quốc gia nào có diện tích tự nhiên lớn nhất thế giới hiện nay?",
+        "a": "Nga"
+      },
+      {
+        "subject": "Địa",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Kênh đào Panama nối liền hai đại dương lớn nào trên thế giới?",
+        "a": "Thái Bình Dương và Đại Tây Dương"
+      },
+      {
+        "subject": "Địa",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Đỉnh núi Fansipan – 'Nóc nhà Đông Dương' nằm trên dãy núi nào của Việt Nam?",
+        "a": "Hoàng Liên Sơn"
+      },
+      {
+        "subject": "Thể thao",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Đội tuyển bóng đá quốc gia nào đã giành chức vô địch FIFA World Cup 2022 tại Qatar?",
+        "a": "Argentina"
+      },
+      {
+        "subject": "Thể thao",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Biểu tượng của phong trào Thế vận hội Olympic quốc tế gồm bao nhiêu vòng tròn đan vào nhau?",
+        "a": "5"
+      },
+      {
+        "subject": "Thể thao",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Cự ly chạy tiêu chuẩn của một chặng đua Marathon đường trường là bao nhiêu km?",
+        "a": "42,195 km"
+      },
+      {
+        "subject": "Nghệ thuật",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Bức tranh nổi tiếng 'Đêm đầy sao' (The Starry Night) là kiệt tác của danh họa người Hà Lan nào?",
+        "a": "Vincent van Gogh"
+      },
+      {
+        "subject": "Nghệ thuật",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Nhạc sĩ nào là tác giả của bản giao hưởng - ca khúc tráng lệ 'Người Hà Nội' sáng tác năm 1947?",
+        "a": "Nguyễn Đình Thi"
+      },
+      {
+        "subject": "Nghệ thuật",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Nhạc cụ gõ cổ xưa của đồng bào các dân tộc Tây Nguyên được làm từ các thanh đá tự nhiên gọi là đàn gì?",
+        "a": "Đàn đá"
+      },
+      {
+        "subject": "Tiếng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "What is the official currency of the United Kingdom?",
+        "a": "Pound Sterling"
+      },
+      {
+        "subject": "Tiếng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "Which chemical element has the symbol 'Au' in the periodic table?",
+        "a": "Gold"
+      },
+      {
+        "subject": "Tiếng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "What does the abbreviation 'CPU' stand for in computer science?",
+        "a": "Central Processing Unit"
+      },
+      {
+        "subject": "Tiếng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "What is the largest city and financial hub of Australia, famous for its iconic Opera House?",
+        "a": "Sydney"
+      },
+      {
+        "subject": "Lĩnh vực khác",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "q": "Nhà khoa học nào được mệnh danh là Cha đẻ của khoa học máy tính và trí tuệ nhân tạo hiện đại?",
+        "a": "Alan Turing"
+      },
+      {
+        "subject": "Lĩnh vực khác",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "q": "Số điện thoại khẩn cấp gọi lực lượng Cảnh sát Phòng cháy chữa cháy và Cứu nạn cứu hộ tại Việt Nam là số nào?",
+        "a": "114"
+      },
+      {
+        "subject": "Lĩnh vực khác",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "q": "Tổ chức Giáo dục, Khoa học và Văn hóa của Liên Hợp Quốc viết tắt theo tiếng Anh là gì?",
+        "a": "UNESCO"
+      },
+      {
+        "subject": "Lĩnh vực khác",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "q": "Tổ chức Hàng không Dân dụng Quốc tế viết tắt theo tiếng Anh là gì?",
+        "a": "ICAO"
+      }
+    ]
   },
-  vcnv: {
-    answer: "TIÊU LỆNH CHỮA CHÁY",
-    mysteryImage: "/olympia/media/vcnv_mystery.png",
-    rows: [
+  "vcnv": {
+    "answer": "TIÊU LỆNH CHỮA CHÁY",
+    "mysteryImage": "/olympia/media/vcnv_mystery.png",
+    "rows": [
       {
-        hint: "Hiện nay, Việt Nam có bao nhiêu tỉnh mà tên gọi bắt đầu bằng chữ cái N? (1 chữ số)",
-        answer: "4",
+        "hint": "Hiện nay, Việt Nam có bao nhiêu tỉnh mà tên gọi bắt đầu bằng chữ cái N? (1 chữ số)",
+        "answer": "4"
       },
       {
-        hint: "Theo Quyết định số 05/2020/QĐ-TTg, cấp ... lũ được phân thành ba cấp căn cứ vào độ lớn mực nước lũ và mức độ tác động đến an toàn đê điều (7 chữ cái).",
-        answer: "BÁO ĐỘNG",
+        "hint": "Theo Quyết định số 05/2020/QĐ-TTg, cấp ... lũ được phân thành ba cấp căn cứ vào độ lớn mực nước lũ và mức độ tác động đến an toàn đê điều (7 chữ cái).",
+        "answer": "BÁO ĐỘNG"
       },
       {
-        hint: "Từ nào còn thiếu trong hai câu thơ của Tản Đà: 'Non xanh đã biết hay chưa? / ... đi ra bể lại mưa về nguồn' (4 chữ cái)?",
-        answer: "NƯỚC",
+        "hint": "Từ nào còn thiếu trong hai câu thơ của Tản Đà: 'Non xanh đã biết hay chưa? / ... đi ra bể lại mưa về nguồn' (4 chữ cái)?",
+        "answer": "NƯỚC"
       },
       {
-        hint: "Trong mạng điện gia đình, aptomat là thiết bị tự động có chức năng thay thế cho cả cầu chì và thiết bị đóng ngắt điện nào (6 chữ cái)?",
-        answer: "CẦU DAO",
-      },
+        "hint": "Trong mạng điện gia đình, aptomat là thiết bị tự động có chức năng thay thế cho cả cầu chì và thiết bị đóng ngắt điện nào (6 chữ cái)?",
+        "answer": "CẦU DAO"
+      }
     ],
-    centerQuestion: {
-      q: "Câu hỏi số 5 (Ô trung tâm): Khi phát hiện hỏa hoạn, bước đầu tiên trong quy trình 4 bước xử lý khẩn cấp là hô hoán, báo động gấp cho mọi người xung quanh biết có sự cố gì?",
-      a: "CHÁY",
-    },
+    "centerQuestion": {
+      "q": "Câu hỏi số 5 (Ô trung tâm): Khi phát hiện hỏa hoạn, bước đầu tiên trong quy trình 4 bước xử lý khẩn cấp là hô hoán, báo động gấp cho mọi người xung quanh biết có sự cố gì?",
+      "a": "CHÁY"
+    }
   },
-  tangToc: [
+  "tangToc": [
     {
-      category: "iq",
-      q: "[Câu 1 — Tư duy IQ] Tìm số thích hợp điền vào dấu chấm hỏi trong quy luật dãy số: 2, 3, 5, 8, 13, 21, ?",
-      type: "image",
-      media: "/olympia/media/tangtoc_cau1_iq.png",
-      answer: "34",
-      duration: 20,
+      "category": "iq",
+      "q": "[Câu 1 — Tư duy IQ] Tìm số thích hợp điền vào dấu chấm hỏi trong quy luật dãy số: 2, 3, 5, 8, 13, 21, ?",
+      "type": "image",
+      "media": "/olympia/media/tangtoc_cau1_iq.png",
+      "answer": "34",
+      "duration": 20
     },
     {
-      category: "data",
-      q: "[Câu 2 — Dữ kiện mở dần] Đây là địa danh nào của Việt Nam? Quan sát các gợi ý xuất hiện theo thời gian để đưa ra câu trả lời chính xác.",
-      type: "image",
-      media: "/olympia/media/tangtoc_cau2_clue1.png",
-      answer: "Vịnh Hạ Long",
-      duration: 20,
-      clueImages: [
+      "category": "data",
+      "q": "[Câu 2 — Dữ kiện mở dần] Đây là địa danh nào của Việt Nam? Quan sát các gợi ý xuất hiện theo thời gian để đưa ra câu trả lời chính xác.",
+      "type": "image",
+      "media": "/olympia/media/tangtoc_cau2_clue1.png",
+      "answer": "Vịnh Hạ Long",
+      "duration": 20,
+      "clueImages": [
         {
-          atSecond: 0,
-          label: "Dữ kiện 1 (0s): Vịnh biển Đông Bắc diện tích hơn 1.500 km² với bờ biển dài 120 km",
-          url: "/olympia/media/tangtoc_cau2_clue1.png",
+          "atSecond": 0,
+          "label": "Dữ kiện 1 (0s): Vịnh biển Đông Bắc diện tích hơn 1.500 km² với bờ biển dài 120 km",
+          "url": "/olympia/media/tangtoc_cau2_clue1.png"
         },
         {
-          atSecond: 5,
-          label: "Dữ kiện 2 (5s): Sở hữu gần 2.000 hòn đảo đá vôi kỳ vĩ như Hòn Trống Mái, Đảo Ti Tốp",
-          url: "/olympia/media/tangtoc_cau2_clue2.png",
+          "atSecond": 5,
+          "label": "Dữ kiện 2 (5s): Sở hữu gần 2.000 hòn đảo đá vôi kỳ vĩ như Hòn Trống Mái, Đảo Ti Tốp",
+          "url": "/olympia/media/tangtoc_cau2_clue2.png"
         },
         {
-          atSecond: 10,
-          label: "Dữ kiện 3 (10s): Quần thể hang động thạch nhũ tráng lệ: Hang Sửng Sốt, Động Thiên Cung",
-          url: "/olympia/media/tangtoc_cau2_clue3.png",
+          "atSecond": 10,
+          "label": "Dữ kiện 3 (10s): Quần thể hang động thạch nhũ tráng lệ: Hang Sửng Sốt, Động Thiên Cung",
+          "url": "/olympia/media/tangtoc_cau2_clue3.png"
         },
         {
-          atSecond: 15,
-          label: "Dữ kiện 4 (15s): Được UNESCO công nhận là Di sản thiên nhiên thế giới vào các năm 1994 và 2000",
-          url: "/olympia/media/tangtoc_cau2_clue4.png",
-        },
-      ],
+          "atSecond": 15,
+          "label": "Dữ kiện 4 (15s): Được UNESCO công nhận là Di sản thiên nhiên thế giới vào các năm 1994 và 2000",
+          "url": "/olympia/media/tangtoc_cau2_clue4.png"
+        }
+      ]
     },
     {
-      category: "arrange",
-      q: "[Câu 3 — Sắp xếp 6 mảnh] Sắp xếp 6 thiên thể sau theo thứ tự khoảng cách từ gần Mặt Trời nhất đến xa Mặt Trời nhất: (1) Sao Hỏa, (2) Sao Thủy, (3) Sao Mộc, (4) Sao Kim, (5) Sao Thổ, (6) Trái Đất.",
-      type: "image",
-      media: "/olympia/media/tangtoc_cau3_arrange.png",
-      answer: "246135",
-      duration: 30,
+      "category": "arrange",
+      "q": "[Câu 3 — Sắp xếp 6 mảnh] Sắp xếp 6 thiên thể sau theo thứ tự khoảng cách từ gần Mặt Trời nhất đến xa Mặt Trời nhất: (1) Sao Hỏa, (2) Sao Thủy, (3) Sao Mộc, (4) Sao Kim, (5) Sao Thổ, (6) Trái Đất.",
+      "type": "image",
+      "media": "/olympia/media/tangtoc_cau3_arrange.png",
+      "answer": "246135",
+      "duration": 30
     },
     {
-      category: "data",
-      q: "[Câu 4 — Dữ kiện tổng hợp / Video] Đây là ai? Nhà vật lý, toán học vĩ đại người Anh (1643–1727), tác giả bộ sách 'Principia', người phát biểu 3 định luật chuyển động và định luật vạn vật hấp dẫn.",
-      type: "video",
-      media: "/olympia/media/tangtoc_cau4_video.webm",
-      answer: "Isaac Newton",
-      duration: 30,
-    },
+      "category": "data",
+      "q": "[Câu 4 — Dữ kiện tổng hợp / Video] Đây là ai? Nhà vật lý, toán học vĩ đại người Anh (1643–1727), tác giả bộ sách 'Principia', người phát biểu 3 định luật chuyển động và định luật vạn vật hấp dẫn.",
+      "type": "video",
+      "media": "/olympia/media/tangtoc_cau4_video.webm",
+      "answer": "Isaac Newton",
+      "duration": 30
+    }
   ],
-  veDich: {
+  "veDich": {
     "10": [
-      { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Chất khí nào trong không khí duy trì sự hô hấp của con người và sự cháy?", a: "Oxy", type: "theory" },
-      { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Vòi 1 chảy một mình 3 giờ đầy bể, vòi 2 chảy một mình 6 giờ đầy bể. Mở cả hai vòi cùng lúc thì sau mấy giờ đầy bể?", a: "2 giờ", type: "theory" },
-      { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Đơn vị đo tần số dao động (Hz) được đặt theo tên của nhà vật lý học người nước nào?", a: "Đức (Heinrich Hertz)", type: "theory" },
-      { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Sông Mê Kông chảy vào lãnh thổ Việt Nam đầu tiên qua địa phận của hai tỉnh biên giới nào?", a: "Đồng Tháp và An Giang", type: "theory" },
-      { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Ai là tác giả của tiểu thuyết hiện thực phê phán 'Tắt đèn' xuất bản năm 1939?", a: "Ngô Tất Tố", type: "theory" },
-      { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Nguyễn Tất Thành ra đi tìm đường cứu nước tại Bến cảng Nhà Rồng vào ngày 5/6 của năm nào?", a: "1911", type: "theory" },
-      { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Một cuộc chạy đua Marathon tiêu chuẩn quốc tế có cự ly chính xác là bao nhiêu km?", a: "42,195 km", type: "theory" },
-      { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Trong ký âm nhạc lý cơ bản, nốt nhạc nào đứng liền sau nốt Pha (F)?", a: "Nốt Son (G)", type: "theory" },
-      { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the largest and deepest of Earth's five oceanic divisions?", a: "Pacific Ocean", type: "theory" },
+      {
+        "subject": "Hóa",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Chất khí nào trong không khí duy trì sự hô hấp của con người và sự cháy?",
+        "a": "Oxy",
+        "type": "theory"
+      },
+      {
+        "subject": "Toán",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "q": "Vòi 1 chảy một mình 3 giờ đầy bể, vòi 2 chảy một mình 6 giờ đầy bể. Mở cả hai vòi cùng lúc thì sau mấy giờ đầy bể?",
+        "a": "2 giờ",
+        "type": "theory"
+      },
+      {
+        "subject": "Lý",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Đơn vị đo tần số dao động (Hz) được đặt theo tên của nhà vật lý học người nước nào?",
+        "a": "Đức (Heinrich Hertz)",
+        "type": "theory"
+      },
+      {
+        "subject": "Địa",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Sông Mê Kông chảy vào lãnh thổ Việt Nam đầu tiên qua địa phận của hai tỉnh biên giới nào?",
+        "a": "Đồng Tháp và An Giang",
+        "type": "theory"
+      },
+      {
+        "subject": "Văn",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Ai là tác giả của tiểu thuyết hiện thực phê phán 'Tắt đèn' xuất bản năm 1939?",
+        "a": "Ngô Tất Tố",
+        "type": "theory"
+      },
+      {
+        "subject": "Sử",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Nguyễn Tất Thành ra đi tìm đường cứu nước tại Bến cảng Nhà Rồng vào ngày 5/6 của năm nào?",
+        "a": "1911",
+        "type": "theory"
+      },
+      {
+        "subject": "Thể thao",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Trong môn bơi lội thi đấu Thế vận hội, có tất cả bao nhiêu kiểu bơi tiêu chuẩn được đưa vào tranh tài?",
+        "a": "4 kiểu bơi (Bơi bướm, bơi ngửa, bơi ếch, bơi tự do)",
+        "type": "theory"
+      },
+      {
+        "subject": "Nghệ thuật",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Trong ký âm nhạc lý cơ bản, nốt nhạc nào đứng liền sau nốt Pha (F)?",
+        "a": "Nốt Son (G)",
+        "type": "theory"
+      },
+      {
+        "subject": "Tiếng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "What is the largest and deepest of Earth's five oceanic divisions?",
+        "a": "Pacific Ocean",
+        "type": "theory"
+      }
     ],
     "20": [
-      { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Muối halogen nào (công thức KI) được dùng để bảo vệ tuyến giáp trước nguy cơ hấp thụ đồng vị iốt phóng xạ?", a: "Kali iotua (Potassium iodide)", type: "theory" },
-      { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Nhà toán học De Morgan sinh ở thế kỷ XIX từng đố: 'Tôi x tuổi vào năm x bình phương'. Ông sinh vào năm nào?", a: "1806 (43 tuổi vào năm 1849)", type: "theory" },
-      { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Nhờ có đồng thời hai tính chất vật lý đặc biệt nào mà vật liệu Indium Tin Oxide (ITO) được dùng làm màn hình cảm ứng điện thoại?", a: "Dẫn điện và trong suốt với ánh sáng", type: "practice" },
-      { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Tại bến cảng lịch sử nào thuộc tỉnh Cà Mau vào tháng 10/1962, chuyến tàu đầu tiên của 'Đoàn tàu không số' đã cập bến an toàn?", a: "Bến Vàm Lũng", type: "theory" },
-      { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Nhà văn Sương Nguyệt Minh đã ví hệ thống công trình nào trên thềm lục địa phía Nam như 'bông hoa hướng dương vàng rực đội nước vươn lên trời xanh'?", a: "Nhà giàn DK1", type: "theory" },
-      { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Tấm bản đồ cổ nào của triều Nguyễn vẽ khoảng năm 1838 có ghi rõ hai địa danh 'Hoàng Sa' và 'Vạn Lý Trường Sa' thuộc lãnh thổ Việt Nam?", a: "Đại Nam nhất thống toàn đồ", type: "theory" },
-      { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "If you rearrange the letters in the word 'CIFAIPC', you get the name of an ocean. What ocean is it?", a: "PACIFIC", type: "theory" },
-      { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Theo Tổ chức Sở hữu trí tuệ thế giới (WIPO), chỉ số đổi mới sáng tạo toàn cầu được viết tắt bằng 3 chữ cái tiếng Anh là gì?", a: "GII (Global Innovation Index)", type: "theory" },
-      { subject: "Nghệ thuật", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Di sản Nhã nhạc cung đình Huế được UNESCO ghi danh là Kiệt tác truyền khẩu và phi vật thể của nhân loại vào năm nào?", a: "2003", type: "theory" },
+      {
+        "subject": "Hóa",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Muối halogen nào (công thức KI) được dùng để bảo vệ tuyến giáp trước nguy cơ hấp thụ đồng vị iốt phóng xạ?",
+        "a": "Kali iotua (Potassium iodide)",
+        "type": "theory"
+      },
+      {
+        "subject": "Toán",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "q": "Nhà toán học De Morgan sinh ở thế kỷ XIX từng đố: 'Tôi x tuổi vào năm x bình phương'. Ông sinh vào năm nào?",
+        "a": "1806 (43 tuổi vào năm 1849)",
+        "type": "theory"
+      },
+      {
+        "subject": "Lý",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Nhờ có đồng thời hai tính chất vật lý đặc biệt nào mà vật liệu Indium Tin Oxide (ITO) được dùng làm màn hình cảm ứng điện thoại?",
+        "a": "Dẫn điện và trong suốt với ánh sáng",
+        "type": "practice"
+      },
+      {
+        "subject": "Sử",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Tại bến cảng lịch sử nào thuộc tỉnh Cà Mau vào tháng 10/1962, chuyến tàu đầu tiên của 'Đoàn tàu không số' đã cập bến an toàn?",
+        "a": "Bến Vàm Lũng",
+        "type": "theory"
+      },
+      {
+        "subject": "Văn",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Nhà văn Sương Nguyệt Minh đã ví hệ thống công trình nào trên thềm lục địa phía Nam như 'bông hoa hướng dương vàng rực đội nước vươn lên trời xanh'?",
+        "a": "Nhà giàn DK1",
+        "type": "theory"
+      },
+      {
+        "subject": "Địa",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Tấm bản đồ cổ nào của triều Nguyễn vẽ khoảng năm 1838 có ghi rõ hai địa danh 'Hoàng Sa' và 'Vạn Lý Trường Sa' thuộc lãnh thổ Việt Nam?",
+        "a": "Đại Nam nhất thống toàn đồ",
+        "type": "theory"
+      },
+      {
+        "subject": "Tiếng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "If you rearrange the letters in the word 'CIFAIPC', you get the name of an ocean. What ocean is it?",
+        "a": "PACIFIC",
+        "type": "theory"
+      },
+      {
+        "subject": "Lĩnh vực khác",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "q": "Theo Tổ chức Sở hữu trí tuệ thế giới (WIPO), chỉ số đổi mới sáng tạo toàn cầu được viết tắt bằng 3 chữ cái tiếng Anh là gì?",
+        "a": "GII (Global Innovation Index)",
+        "type": "theory"
+      },
+      {
+        "subject": "Nghệ thuật",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Di sản Nhã nhạc cung đình Huế được UNESCO ghi danh là Kiệt tác truyền khẩu và phi vật thể của nhân loại vào năm nào?",
+        "a": "2003",
+        "type": "theory"
+      }
     ],
     "30": [
-      { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Màu xanh lam quý hiếm của viên kim cương 'The De Beers Blue' được tạo nên bởi sự hiện diện của nguyên tố hóa học nào trong mạng tinh thể cacbon?", a: "Bo (Boron)", type: "theory" },
-      { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Một hệ thống gồm 8 đèn. Mỗi đèn sáng xanh 2 phút rồi chuyển sang đỏ 2 phút. Đèn 1 bật xanh lúc 0s, cứ sau 10s đèn tiếp theo bật xanh. Trong 3 phút đầu, cả 8 đèn cùng sáng xanh trong bao nhiêu giây?", a: "50 giây", type: "theory" },
-      { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Bào quan nào bên trong tế bào nhân thực ngoài nhân tế bào có chứa hệ phân tử ADN mạch vòng riêng biệt và có khả năng tự nhân đôi ở động vật?", a: "Ti thể", type: "practice" },
-      { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Câu ca dao lịch sử: 'Chu tri rành rành / Cái đanh nổ lửa / Con ngựa đứt cương / Ba vương tập đế' nhắc đến ba vị vua nào của triều Nguyễn trong biến cố Tứ nguyệt tam vương?", a: "Dục Đức, Hiệp Hòa, Kiến Phúc", type: "theory" },
-      { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Trong tiểu thuyết 'Tắt đèn' của nhà văn Ngô Tất Tố, nhân vật 'Chị Dậu' trước khi lấy anh Nguyễn Văn Dậu có tên khai sinh thật là gì?", a: "Lê Thị Đào", type: "theory" },
-      { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Dòng hải lưu lạnh chảy dọc bờ biển phía tây khu vực Nam Mỹ, mang lại nguồn cá cơm phong phú cho Peru và Chile có tên quốc tế là gì?", a: "Hải lưu Humboldt (hoặc hải lưu Peru)", type: "theory" },
-      { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Vệ tinh tự nhiên lớn nhất của Sao Mộc và cũng là vệ tinh tự nhiên lớn nhất trong toàn bộ Hệ Mặt Trời mang tên gì?", a: "Ganymede", type: "theory" },
-      { subject: "Tiếng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What English word starting with the letter 'P' refers to the phenomenon where plants convert light energy into chemical energy?", a: "Photosynthesis", type: "theory" },
-      { subject: "Thể thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Vận động viên bắn súng Hoàng Xuân Vinh đã giành tấm Huy chương Vàng lịch sử đầu tiên cho đoàn thể thao Việt Nam tại Thế vận hội Olympic mùa hè năm 2016 ở thành phố nào?", a: "Rio de Janeiro (Brazil)", type: "theory" },
+      {
+        "subject": "Hóa",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Màu xanh lam quý hiếm của viên kim cương 'The De Beers Blue' được tạo nên bởi sự hiện diện của nguyên tố hóa học nào trong mạng tinh thể cacbon?",
+        "a": "Bo (Boron)",
+        "type": "theory"
+      },
+      {
+        "subject": "Toán",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "q": "Một hệ thống gồm 8 đèn. Mỗi đèn sáng xanh 2 phút rồi chuyển sang đỏ 2 phút. Đèn 1 bật xanh lúc 0s, cứ sau 10s đèn tiếp theo bật xanh. Trong 3 phút đầu, cả 8 đèn cùng sáng xanh trong bao nhiêu giây?",
+        "a": "50 giây",
+        "type": "theory"
+      },
+      {
+        "subject": "Sinh",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Bào quan nào bên trong tế bào nhân thực ngoài nhân tế bào có chứa hệ phân tử ADN mạch vòng riêng biệt và có khả năng tự nhân đôi ở động vật?",
+        "a": "Ti thể",
+        "type": "practice"
+      },
+      {
+        "subject": "Sử",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Câu ca dao lịch sử: 'Chu tri rành rành / Cái đanh nổ lửa / Con ngựa đứt cương / Ba vương tập đế' nhắc đến ba vị vua nào của triều Nguyễn trong biến cố Tứ nguyệt tam vương?",
+        "a": "Dục Đức, Hiệp Hòa, Kiến Phúc",
+        "type": "theory"
+      },
+      {
+        "subject": "Văn",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Trong tiểu thuyết 'Tắt đèn' của nhà văn Ngô Tất Tố, nhân vật 'Chị Dậu' trước khi lấy anh Nguyễn Văn Dậu có tên khai sinh thật là gì?",
+        "a": "Lê Thị Đào",
+        "type": "theory"
+      },
+      {
+        "subject": "Địa",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Dòng hải lưu lạnh chảy dọc bờ biển phía tây khu vực Nam Mỹ, mang lại nguồn cá cơm phong phú cho Peru và Chile có tên quốc tế là gì?",
+        "a": "Hải lưu Humboldt (hoặc hải lưu Peru)",
+        "type": "theory"
+      },
+      {
+        "subject": "Lĩnh vực khác",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "q": "Vệ tinh tự nhiên lớn nhất của Sao Mộc và cũng là vệ tinh tự nhiên lớn nhất trong toàn bộ Hệ Mặt Trời mang tên gì?",
+        "a": "Ganymede",
+        "type": "theory"
+      },
+      {
+        "subject": "Tiếng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "What English word starting with the letter 'P' refers to the phenomenon where plants convert light energy into chemical energy?",
+        "a": "Photosynthesis",
+        "type": "theory"
+      },
+      {
+        "subject": "Thể thao",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Vận động viên bắn súng Hoàng Xuân Vinh đã giành tấm Huy chương Vàng lịch sử đầu tiên cho đoàn thể thao Việt Nam tại Thế vận hội Olympic mùa hè năm 2016 ở thành phố nào?",
+        "a": "Rio de Janeiro (Brazil)",
+        "type": "theory"
+      }
     ],
     "40": [
-      { subject: "Lý", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Hạt cơ bản nào được tiên đoán bởi nhà vật lý Peter Higgs năm 1964 và được xác nhận tại máy gia tốc LHC (CERN) năm 2012?", a: "Boson Higgs", type: "theory" },
-      { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Hội nghị thành lập Đảng Cộng sản Việt Nam đầu năm 1930 do Nguyễn Ái Quốc chủ trì diễn ra tại bán đảo nào thuộc Hương Cảng (Trung Quốc)?", a: "Cửu Long", type: "theory" },
-    ],
+      {
+        "subject": "Lý",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Hạt cơ bản nào được tiên đoán bởi nhà vật lý Peter Higgs năm 1964 và được xác nhận tại máy gia tốc LHC (CERN) năm 2012?",
+        "a": "Boson Higgs",
+        "type": "theory"
+      },
+      {
+        "subject": "Sử",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Hội nghị thành lập Đảng Cộng sản Việt Nam đầu năm 1930 do Nguyễn Ái Quốc chủ trì diễn ra tại bán đảo nào thuộc Hương Cảng (Trung Quốc)?",
+        "a": "Cửu Long",
+        "type": "theory"
+      }
+    ]
   },
-  cauHoiPhu: [
-    { subject: "Sử", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Triều đại phong kiến nào tồn tại lâu dài nhất trong lịch sử chế độ quân chủ Việt Nam (kéo dài 356 năm)?", a: "Nhà Hậu Lê" },
-    { subject: "Hóa", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Kim loại nào có nhiệt độ nóng chảy cao nhất trong tất cả các kim loại nguyên chất (3.422°C), thường dùng làm dây tóc bóng đèn?", a: "Vonfram (Tungsten / W)" },
-    { subject: "Địa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Quốc gia nào có số lượng múi giờ nhiều nhất thế giới (tính cả các vùng lãnh thổ hải ngoại)?", a: "Pháp" },
-    { subject: "Toán", kdZone: "MATH_IT", vdZone: "KHTN", q: "Một năm thế kỷ (kết thúc bằng hai chữ số 00) chỉ là năm nhuận khi nó chia hết cho số tự nhiên nào?", a: "400" },
-    { subject: "Văn", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Bài thơ 'Tây Tiến' của nhà thơ Quang Dũng được sáng tác vào năm nào tại Phù Lưu Chanh?", a: "1948" },
-    { subject: "Lĩnh vực khác", kdZone: "GENERAL", vdZone: "HBC", q: "Trụ sở chính của Tổ chức Giáo dục, Khoa học và Văn hóa Liên Hợp Quốc (UNESCO) đặt tại thành phố nào?", a: "Paris (Pháp)" },
-  ],
+  "cauHoiPhu": [
+    {
+      "subject": "Sử",
+      "kdZone": "SOCIAL_SCI",
+      "vdZone": "KHXH",
+      "q": "Triều đại phong kiến nào tồn tại lâu dài nhất trong lịch sử chế độ quân chủ Việt Nam (kéo dài 356 năm)?",
+      "a": "Nhà Hậu Lê"
+    },
+    {
+      "subject": "Hóa",
+      "kdZone": "NATURAL_SCI",
+      "vdZone": "KHTN",
+      "q": "Kim loại nào có nhiệt độ nóng chảy cao nhất trong tất cả các kim loại nguyên chất (3.422°C), thường dùng làm dây tóc bóng đèn?",
+      "a": "Vonfram (Tungsten / W)"
+    },
+    {
+      "subject": "Địa",
+      "kdZone": "SOCIAL_SCI",
+      "vdZone": "KHXH",
+      "q": "Quốc gia nào có số lượng múi giờ nhiều nhất thế giới (tính cả các vùng lãnh thổ hải ngoại)?",
+      "a": "Pháp"
+    },
+    {
+      "subject": "Toán",
+      "kdZone": "MATH_IT",
+      "vdZone": "KHTN",
+      "q": "Một năm thế kỷ (kết thúc bằng hai chữ số 00) chỉ là năm nhuận khi nó chia hết cho số tự nhiên nào?",
+      "a": "400"
+    },
+    {
+      "subject": "Văn",
+      "kdZone": "SOCIAL_SCI",
+      "vdZone": "KHXH",
+      "q": "Bài thơ 'Tây Tiến' của nhà thơ Quang Dũng được sáng tác vào năm nào tại Phù Lưu Chanh?",
+      "a": "1948"
+    },
+    {
+      "subject": "Lĩnh vực khác",
+      "kdZone": "GENERAL",
+      "vdZone": "HBC",
+      "q": "Trụ sở chính của Tổ chức Giáo dục, Khoa học và Văn hóa Liên Hợp Quốc (UNESCO) đặt tại thành phố nào?",
+      "a": "Paris (Pháp)"
+    }
+  ]
 };
 
 export const SAMPLE_QUESTION_SET: OlympiaQuestionSet = autoTagOlympiaSet(RAW_SAMPLE_QUESTION_SET, false);
 
 /**
  * Bộ đề Olympia Chuyên đề Đấu thầu Nhà nước & Gói thầu 01TB-BA Thủy điện Tích năng Bác Ái
- * Khởi động 36 câu (4 thí sinh x 6 câu + 12 câu chung)
- * VCNV 5 mảnh ghép (Từ khóa: ẮC QUY NƯỚC)
- * 4 câu Tăng tốc (10s, 20s, 30s, 40s)
- * 14 câu Về đích (10đ, 20đ, 30đ) & 3 câu hỏi phụ
+ * Khởi động 80 câu riêng (8 thí sinh x 10 câu) + 16 câu chung
+ * VCNV 5 mảnh ghép (Từ khóa: ẮC QUY NƯỚC) và bộ dự phòng
+ * 8 câu Tăng tốc (bộ chính + dự phòng)
+ * 48 câu Về đích (16 câu 10đ, 12 câu 20đ, 12 câu 30đ, 8 câu 40đ) và 6 câu hỏi phụ.
+ * Guaranteed 100% zero-duplicate questions across all rounds and unique distinct answers.
  */
 const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
   "id": "olympia_preset_dauthau_bacai",
@@ -320,8 +1229,8 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
     "solo": {
       "1": [
         {
-          "q": "Mục tiêu tối thượng của đấu thầu có phải chỉ đơn thuần là chọn nhà thầu đưa ra giá thấp nhất hay không?",
-          "a": "Không",
+          "q": "Mục tiêu cốt lõi của hoạt động đấu thầu mua sắm công là tối ưu hóa yếu tố nào xuyên suốt thời gian vận hành dự án?",
+          "a": "Chi phí vòng đời (LCC)",
           "subject": "Lý luận đấu thầu",
           "kdZone": "SOCIAL_SCI",
           "vdZone": "KHXH"
@@ -506,8 +1415,8 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
           "vdZone": "KHXH"
         },
         {
-          "q": "Dạng năng lượng cơ học được tích trữ trong khối nước ở hồ trên do chênh lệch độ cao gọi là gì?",
-          "a": "Thế năng",
+          "q": "Đại lượng vật lý đặc trưng cho khả năng sinh công của dòng nước qua tua-bin trong một đơn vị thời gian được gọi là gì?",
+          "a": "Công suất cơ học",
           "subject": "Vật lý",
           "kdZone": "NATURAL_SCI",
           "vdZone": "KHTN"
@@ -536,11 +1445,11 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
       ],
       "4": [
         {
-          "q": "Tập đoàn công nghệ cơ khí của Đức đứng đầu liên danh trúng thầu gói 01TB-BA mang tên gì?",
-          "a": "Voith Hydro",
-          "subject": "Nhà thầu",
-          "kdZone": "GENERAL",
-          "vdZone": "HBC"
+          "q": "Quốc gia châu Âu nào là nơi đặt trụ sở tập đoàn công nghệ năng lượng Voith Hydro, đơn vị đứng đầu liên danh cung cấp thiết bị chính gói 01TB-BA?",
+          "a": "Cộng hòa Liên bang Đức (Đức)",
+          "subject": "Địa lý kinh tế",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
         },
         {
           "q": "Tổng công suất thiết kế của toàn bộ 4 tổ máy Thủy điện Bác Ái là bao nhiêu MW?",
@@ -1009,9 +1918,9 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "KHXH"
       },
       {
-        "q": "Tài liệu do bên mời thầu ban hành nêu rõ các yêu cầu về năng lực, tiêu chuẩn kỹ thuật và hướng dẫn lập hồ sơ dự thầu viết tắt là gì?",
-        "a": "HSMT (Hồ sơ mời thầu)",
-        "subject": "Thuật ngữ đấu thầu",
+        "q": "Văn bản pháp lý do người có thẩm quyền ký ban hành để chính thức công nhận đơn vị trúng thầu được gọi là Quyết định phê duyệt gì?",
+        "a": "Kết quả lựa chọn nhà thầu (KQLCNT)",
+        "subject": "Luật Đấu thầu",
         "kdZone": "SOCIAL_SCI",
         "vdZone": "KHXH"
       },
@@ -1120,8 +2029,8 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
   },
   "tangToc": [
     {
-      "q": "Hình thức lựa chọn nhà thầu nào được Luật Đấu thầu số 90/2025/QH15 quy định là hình thức mặc định, áp dụng không hạn chế số lượng nhà thầu tham dự?",
-      "answer": "ĐẤU THẦU RỘNG RÃI",
+      "q": "[Câu 1 — Nhận diện hình thức] Hình thức lựa chọn nhà thầu có sự tham gia của các nhà thầu nước ngoài và nhà thầu trong nước theo quy định của Luật Đấu thầu được gọi là gì?",
+      "answer": "Đấu thầu quốc tế",
       "duration": 10,
       "type": "image",
       "category": "iq"
@@ -1179,10 +2088,12 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
   "veDich": {
     "10": [
       {
-        "q": "Theo Luật Đấu thầu số 90/2025/QH15, quy trình tổ chức thực hiện đấu thầu chuẩn hóa gồm bao nhiêu bước liên tục?",
-        "a": "7 bước",
-        "type": "theory",
-        "vdZone": "KHXH"
+        "q": "Trong quy trình 7 bước tổ chức đấu thầu chuẩn hóa, bước đầu tiên mang tính pháp lý tiên quyết để bên mời thầu làm căn cứ triển khai phát hành hồ sơ mời thầu là bước gì?",
+        "a": "Phê duyệt Kế hoạch lựa chọn nhà thầu (KHLCNT)",
+        "subject": "Luật Đấu thầu",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "type": "theory"
       },
       {
         "q": "Ngày 26 tháng 10 năm 2026 đã diễn ra sự kiện pháp lý quan trọng nào đối với Gói thầu số 01TB-BA Thủy điện Bác Ái?",
@@ -1191,16 +2102,20 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "KHXH"
       },
       {
-        "q": "Nhà máy Thủy điện Tích năng Bác Ái gồm 4 tổ máy với tổng công suất 1.200 MW. Hỏi công suất định mức của mỗi tổ máy là bao nhiêu MW?",
-        "a": "300 MW",
-        "type": "theory",
-        "vdZone": "KHTN"
+        "q": "Tổng công suất lắp đặt định mức của toàn bộ 4 tổ máy tại Nhà máy Thủy điện Tích năng Bác Ái khi hoàn thành là bao nhiêu MW?",
+        "a": "1.200 MW",
+        "subject": "Dự án Bác Ái",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "type": "theory"
       },
       {
-        "q": "Gói thầu cung cấp dịch vụ vận chuyển, vệ sinh công nghiệp, bảo dưỡng cơ khí thuộc nhóm dịch vụ nào: Dịch vụ phi tư vấn, hay Dịch vụ tư vấn?",
-        "a": "Dịch vụ phi tư vấn",
-        "type": "theory",
-        "vdZone": "KHXH"
+        "q": "Trong quản lý dự án xây dựng, tài liệu do chủ đầu tư ban hành xác định phạm vi, quy mô công việc và yêu cầu kỹ thuật đối với dịch vụ tư vấn được viết tắt là gì (tương đương TOR)?",
+        "a": "Điều khoản tham chiếu (TOR)",
+        "subject": "Quản lý dự án",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "type": "theory"
       },
       {
         "q": "Theo tài liệu nghiên cứu chuyên đề về quản lý dự án, văn bản pháp luật cao nhất điều chỉnh hoạt động đấu thầu được viện dẫn có số hiệu đầy đủ là gì?",
@@ -1227,10 +2142,12 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "KHTN"
       },
       {
-        "q": "Theo mô hình chính quyền địa phương 2 cấp (chỉ gồm cấp tỉnh và cấp xã/phường), Nhà máy Thủy điện Tích năng Bác Ái đặt tại xã Phước Hòa trực thuộc tỉnh nào?",
-        "a": "Khánh Hòa",
-        "type": "theory",
-        "vdZone": "KHXH"
+        "q": "Hồ dưới của Thủy điện Bác Ái (hồ Sông Cái) là công trình đầu mối tích trữ nước thuộc đại dự án thủy lợi trọng điểm nào của vùng khô hạn Nam Trung Bộ?",
+        "a": "Hệ thống thủy lợi Tân Mỹ",
+        "subject": "Dự án Bác Ái",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "type": "theory"
       },
       {
         "q": "Tên chính thức của gói thầu số 01TB-BA thuộc dự án Thủy điện Bác Ái là Cung cấp thiết bị gì?",
@@ -1239,16 +2156,20 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "HBC"
       },
       {
-        "q": "Hình thức lựa chọn nhà thầu mặc định, không hạn chế số lượng nhà thầu tham dự theo Luật Đấu thầu là gì?",
-        "a": "Đấu thầu rộng rãi",
-        "type": "theory",
-        "vdZone": "KHXH"
+        "q": "Hình thức lựa chọn nhà thầu áp dụng cho gói thầu mua sắm hàng hóa thông dụng, có sẵn trên thị trường với giá trị gói thầu nhỏ dưới hạn mức luật định được gọi là gì?",
+        "a": "Chào hàng cạnh tranh",
+        "subject": "Luật Đấu thầu",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "type": "theory"
       },
       {
-        "q": "Thời gian thực hiện hợp đồng Gói thầu số 01TB-BA kể từ ngày có hiệu lực kéo dài bao nhiêu tháng?",
-        "a": "51 tháng",
-        "type": "theory",
-        "vdZone": "KHTN"
+        "q": "Loại hợp đồng áp dụng chính thức cho Gói thầu số 01TB-BA cung cấp thiết bị cơ điện Thủy điện Tích năng Bác Ái theo hồ sơ mời thầu là loại hợp đồng nào?",
+        "a": "Hợp đồng trọn gói",
+        "subject": "Dự án Bác Ái",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "type": "theory"
       },
       {
         "q": "Nguyên tắc đấu thầu tối ưu hóa chi phí vòng đời tài sản trong tiếng Anh được viết tắt là gì?",
@@ -1257,16 +2178,20 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "HBC"
       },
       {
-        "q": "Hệ thống giám sát, điều khiển và thu thập dữ liệu trung tâm của nhà máy điện viết tắt là gì?",
-        "a": "SCADA",
-        "type": "theory",
-        "vdZone": "KHTN"
+        "q": "Thiết bị điều khiển logic khả trình được dùng rộng rãi để tự động hóa quy trình đóng cắt van và điều khiển tổ máy phát điện viết tắt là gì?",
+        "a": "PLC (Programmable Logic Controller)",
+        "subject": "Tự động hóa",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "type": "theory"
       },
       {
-        "q": "Bộ mẫu điều kiện hợp đồng quốc tế chuẩn do Hiệp hội Kỹ sư Tư vấn Quốc tế phát hành có tên viết tắt là gì?",
-        "a": "FIDIC",
-        "type": "theory",
-        "vdZone": "KHXH"
+        "q": "Trong bộ điều kiện hợp đồng quốc tế FIDIC, mẫu hợp đồng thiết kế, cung cấp thiết bị và thi công xây dựng trọn gói (EPC / Turnkey) thường được nhận diện bởi cuốn sách có bìa màu gì?",
+        "a": "Sách Bạc (Silver Book)",
+        "subject": "Hợp đồng quốc tế",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "type": "theory"
       },
       {
         "q": "Mục tiêu cốt lõi của bước Mở thầu trong quy trình tổ chức đấu thầu là gì?",
@@ -1283,10 +2208,12 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
         "vdZone": "KHXH"
       },
       {
-        "q": "Thời gian thực hiện hợp đồng gói thầu 01TB-BA là 51 tháng. Hãy quy đổi thời gian này ra số năm (viết dưới dạng số thập phân)?",
-        "a": "4,25 năm",
-        "type": "practice",
-        "vdZone": "KHTN"
+        "q": "Nhà máy Thủy điện Tích năng Bác Ái có 4 tổ máy 300 MW (tổng 1.200 MW). Nếu cả 4 tổ máy phát điện hết công suất định mức liên tục trong 6 giờ chu kỳ cao điểm, tổng sản lượng điện năng phát lên lưới quốc gia là bao nhiêu triệu kWh?",
+        "a": "7,2 triệu kWh",
+        "subject": "Dự án Bác Ái",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "type": "practice"
       },
       {
         "q": "Dự toán gói thầu 01TB-BA là 4.548,081 tỷ đồng, tổng mức đầu tư dự án Bác Ái là 21.101,468 tỷ đồng. Gói thầu cơ điện chiếm tỷ trọng làm tròn 2 chữ số thập phân là ... % tổng mức đầu tư?",
@@ -1476,8 +2403,11 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
   },
   "cauHoiPhu": [
     {
-      "q": "Hiệp hội quốc tế các kỹ sư tư vấn, đơn vị phát hành các mẫu hợp đồng xây lắp và thiết bị phổ biến thế giới có tên viết tắt là gì?",
-      "a": "FIDIC"
+      "q": "Bộ quy tắc thương mại quốc tế chuẩn hóa do Phòng Thương mại Quốc tế (ICC) phát hành quy định trách nhiệm giao nhận hàng hóa viết tắt là gì?",
+      "a": "Incoterms",
+      "subject": "Thương mại quốc tế",
+      "kdZone": "GENERAL",
+      "vdZone": "HBC"
     },
     {
       "q": "Theo Quy hoạch điện VIII, nguồn năng lượng nào có tính biến thiên mạnh cần Thủy điện tích năng Bác Ái bù đắp công suất nhiều nhất?",
@@ -1492,8 +2422,11 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
       "a": "Độ chênh cao (Cột nước / Head)"
     },
     {
-      "q": "Số bước chuẩn hóa trong quy trình tổ chức thực hiện đấu thầu theo Luật Đấu thầu số 90/2025/QH15 là mấy bước?",
-      "a": "7 bước"
+      "q": "Thời gian có hiệu lực tối thiểu của bảo đảm dự thầu được quy định bằng thời gian có hiệu lực của hồ sơ dự thầu cộng thêm bao nhiêu ngày?",
+      "a": "30 ngày",
+      "subject": "Luật Đấu thầu",
+      "kdZone": "SOCIAL_SCI",
+      "vdZone": "KHXH"
     },
     {
       "q": "Theo mô hình tổ chức chính quyền địa phương 2 cấp, Nhà máy Thủy điện Tích năng Bác Ái được xây dựng tại đơn vị hành chính cấp cơ sở nào của tỉnh Khánh Hòa?",

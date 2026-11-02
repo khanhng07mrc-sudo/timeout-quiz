@@ -1881,6 +1881,49 @@ export class OlympiaGame {
     const useBalanced = this.config.balancedRandom !== false && qs.balancedRandom !== false;
     if (useBalanced) {
       const usedSet = new Set<string>(vd.usedKeys ?? []);
+      const norm = (s?: string) => (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
+
+      // Ensure zero duplicates across ALL rounds (Khởi Động, VCNV, Tăng Tốc, and previous Về Đích turns)
+      if (this.state.khoiDong) {
+        const kd = this.state.khoiDong;
+        if (kd.seatQueues) {
+          for (const qList of Object.values(kd.seatQueues)) {
+            for (const item of qList) {
+              if (item?.q) {
+                usedSet.add(item.q);
+                usedSet.add(norm(item.q));
+                if (item.a) usedSet.add(`ans:${norm(item.a)}`);
+              }
+            }
+          }
+        }
+        if (kd.sharedQueue) {
+          for (const item of kd.sharedQueue) {
+            if (item?.q) {
+              usedSet.add(item.q);
+              usedSet.add(norm(item.q));
+              if (item.a) usedSet.add(`ans:${norm(item.a)}`);
+            }
+          }
+        }
+      }
+      if (qs.vcnv) {
+        for (const row of qs.vcnv.rows ?? []) {
+          if (row.hint) { usedSet.add(row.hint); usedSet.add(norm(row.hint)); }
+          if (row.answer) usedSet.add(`ans:${norm(row.answer)}`);
+        }
+        if (qs.vcnv.centerQuestion) {
+          usedSet.add(qs.vcnv.centerQuestion.q);
+          usedSet.add(norm(qs.vcnv.centerQuestion.q));
+          usedSet.add(`ans:${norm(qs.vcnv.centerQuestion.a)}`);
+        }
+      }
+      for (const t of qs.tangToc ?? []) {
+        if (t.q) { usedSet.add(t.q); usedSet.add(norm(t.q)); }
+        const ans = t.answer || (t as any).a;
+        if (ans) usedSet.add(`ans:${norm(ans)}`);
+      }
+
       const pkg = pickBalancedVeDichPackage(qs.veDich, points, usedSet, vd.turnIdx);
       vd.usedKeys = [...usedSet];
       return pkg;

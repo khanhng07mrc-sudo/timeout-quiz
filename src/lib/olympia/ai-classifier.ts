@@ -812,111 +812,141 @@ function shuffleWithRng<T>(items: T[], rng: () => number = Math.random): T[] {
  * - Prioritizes unused questions (`!q.used`) first before falling back to used questions.
  * - `sharedQueue`: shared pool ordered in balanced 6-zone cycles.
  */
+function normKey(s?: string): string {
+  return (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
+}
+
 export function buildBalancedKhoiDongQueues(
   khoiDong: OlympiaQuestionSet["khoiDong"],
   activeSeatIds: number[],
   questionsPerSeat = 12,
   rng: () => number = Math.random
 ): { seatQueues: Record<number, QA[]>; sharedQueue: QA[] } {
-  const allRaw: QA[] = [
-    ...Object.values(khoiDong.solo ?? {}).flat(),
-    ...(khoiDong.shared ?? []),
-  ];
+  const rawSolo: QA[] = Object.values(khoiDong.solo ?? {}).flat();
+  const rawShared: QA[] = khoiDong.shared ?? [];
+  const allRaw: QA[] = [...rawSolo, ...rawShared];
 
-  // Deduplicate by question text while tagging
   const seen = new Set<string>();
+  const taggedSolo: QA[] = [];
+  const taggedShared: QA[] = [];
   const taggedPool: QA[] = [];
-  for (const item of allRaw) {
-    if (!item || !item.q) continue;
-    const key = item.q.trim().toLowerCase();
+
+  for (const item of rawSolo) {
+    if (!item?.q) continue;
+    const key = normKey(item.q);
     if (seen.has(key)) continue;
     seen.add(key);
-    taggedPool.push(tagQAWithAI(item, false));
+    const tagged = tagQAWithAI(item, false);
+    taggedSolo.push(tagged);
+    taggedPool.push(tagged);
   }
 
-  // Group into 6 Khởi Động zones, placing unused (!q.used) questions BEFORE used questions
-  const byZone: Record<KdZoneId, QA[]> = {
-    MATH_IT: [],
-    NATURAL_SCI: [],
-    SOCIAL_SCI: [],
-    ARTS_SPORTS: [],
-    FOREIGN_LANG: [],
-    GENERAL: [],
-  };
-  for (const q of taggedPool) {
-    const z = q.kdZone ?? "GENERAL";
-    byZone[z].push(q);
+  for (const item of rawShared) {
+    if (!item?.q) continue;
+    const key = normKey(item.q);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const tagged = tagQAWithAI(item, false);
+    taggedShared.push(tagged);
+    taggedPool.push(tagged);
   }
+
+  // Group into 6 Khởi Động zones
+  const byZoneSolo: Record<KdZoneId, QA[]> = {
+    MATH_IT: [], NATURAL_SCI: [], SOCIAL_SCI: [], ARTS_SPORTS: [], FOREIGN_LANG: [], GENERAL: [],
+  };
+  const byZoneShared: Record<KdZoneId, QA[]> = {
+    MATH_IT: [], NATURAL_SCI: [], SOCIAL_SCI: [], ARTS_SPORTS: [], FOREIGN_LANG: [], GENERAL: [],
+  };
+  const byZoneAll: Record<KdZoneId, QA[]> = {
+    MATH_IT: [], NATURAL_SCI: [], SOCIAL_SCI: [], ARTS_SPORTS: [], FOREIGN_LANG: [], GENERAL: [],
+  };
+
+  for (const q of taggedSolo) byZoneSolo[q.kdZone ?? "GENERAL"].push(q);
+  for (const q of taggedShared) byZoneShared[q.kdZone ?? "GENERAL"].push(q);
+  for (const q of taggedPool) byZoneAll[q.kdZone ?? "GENERAL"].push(q);
+
   for (const z of KD_ZONE_IDS) {
-    const unused = shuffleWithRng(byZone[z].filter((q) => !q.used), rng);
-    const alreadyUsed = shuffleWithRng(byZone[z].filter((q) => q.used), rng);
-    byZone[z] = [...unused, ...alreadyUsed];
+    byZoneSolo[z] = [
+      ...shuffleWithRng(byZoneSolo[z].filter((q) => !q.used), rng),
+      ...shuffleWithRng(byZoneSolo[z].filter((q) => q.used), rng),
+    ];
+    byZoneShared[z] = [
+      ...shuffleWithRng(byZoneShared[z].filter((q) => !q.used), rng),
+      ...shuffleWithRng(byZoneShared[z].filter((q) => q.used), rng),
+    ];
+    byZoneAll[z] = [
+      ...shuffleWithRng(byZoneAll[z].filter((q) => !q.used), rng),
+      ...shuffleWithRng(byZoneAll[z].filter((q) => q.used), rng),
+    ];
   }
 
-  const zoneCursors: Record<KdZoneId, number> = {
-    MATH_IT: 0,
-    NATURAL_SCI: 0,
-    SOCIAL_SCI: 0,
-    ARTS_SPORTS: 0,
-    FOREIGN_LANG: 0,
-    GENERAL: 0,
-  };
-  let fallbackCursor = 0;
-  const fallbackPool = [
-    ...shuffleWithRng(taggedPool.filter((q) => !q.used), rng),
-    ...shuffleWithRng(taggedPool.filter((q) => q.used), rng),
-  ];
+  // Global tracking across ALL contestants and shared round to guarantee ZERO duplicate questions
+  const globalUsedQuestions = new Set<string>();
+  const globalUsedAnswers = new Set<string>();
 
-  const drawFromZone = (zone: KdZoneId, usedInSeat: Set<string>): QA | null => {
-    const bucket = byZone[zone];
-    if (bucket.length > 0) {
-      for (let attempt = 0; attempt < bucket.length; attempt++) {
-        const idx = (zoneCursors[zone] + attempt) % bucket.length;
-        const candidate = bucket[idx];
-        if (!usedInSeat.has(candidate.q)) {
-          zoneCursors[zone] = idx + 1;
-          usedInSeat.add(candidate.q);
-          return candidate;
-        }
+  const drawCandidate = (buckets: QA[], fallbackList: QA[]): QA | null => {
+    // 1. Fresh Q and fresh A globally
+    for (const c of buckets) {
+      const qKey = normKey(c.q);
+      const aKey = normKey(c.a);
+      if (!globalUsedQuestions.has(qKey) && (!aKey || !globalUsedAnswers.has(aKey))) {
+        globalUsedQuestions.add(qKey);
+        if (aKey) globalUsedAnswers.add(aKey);
+        return c;
       }
-      const pick = bucket[zoneCursors[zone] % bucket.length];
-      zoneCursors[zone] += 1;
-      return pick;
     }
-    if (fallbackPool.length === 0) return null;
-    const pick = fallbackPool[fallbackCursor % fallbackPool.length];
-    fallbackCursor += 1;
-    return { ...pick, kdZone: zone };
+    // 2. Fresh Q globally
+    for (const c of buckets) {
+      const qKey = normKey(c.q);
+      const aKey = normKey(c.a);
+      if (!globalUsedQuestions.has(qKey)) {
+        globalUsedQuestions.add(qKey);
+        if (aKey) globalUsedAnswers.add(aKey);
+        return c;
+      }
+    }
+    // 3. Fallback from fallbackList with fresh Q
+    for (const c of fallbackList) {
+      const qKey = normKey(c.q);
+      const aKey = normKey(c.a);
+      if (!globalUsedQuestions.has(qKey)) {
+        globalUsedQuestions.add(qKey);
+        if (aKey) globalUsedAnswers.add(aKey);
+        return c;
+      }
+    }
+    // 4. If all unique questions exhausted in bank, pick candidate with least recent usage
+    return buckets[0] ?? fallbackList[0] ?? null;
   };
 
-  const targetLen = Math.max(questionsPerSeat, 18);
-  const cycles = Math.ceil(targetLen / KD_ZONE_IDS.length);
   const seatQueues: Record<number, QA[]> = {};
+  const targetLen = Math.max(questionsPerSeat, 10);
+  const cycles = Math.ceil(targetLen / KD_ZONE_IDS.length);
 
   for (const seatId of activeSeatIds) {
     const queue: QA[] = [];
-    const usedInSeat = new Set<string>();
     for (let c = 0; c < cycles; c++) {
       const cycleZones = shuffleWithRng(KD_ZONE_IDS, rng);
       for (const z of cycleZones) {
         if (queue.length >= targetLen) break;
-        const picked = drawFromZone(z, usedInSeat);
+        const picked = drawCandidate(byZoneSolo[z], byZoneAll[z]);
         if (picked) queue.push(picked);
       }
     }
     seatQueues[seatId] = queue;
   }
 
-  // Build balanced sharedQueue in 6-zone cycles as well
+  // Shared Queue: draws from shared pool first, guaranteed NOT to duplicate questions from solo seats
   const sharedQueue: QA[] = [];
-  const usedInShared = new Set<string>();
-  const sharedTarget = Math.max(36, activeSeatIds.length * 9, taggedPool.length);
+  const sharedTarget = Math.max(18, activeSeatIds.length * 3);
   const sharedCycles = Math.ceil(sharedTarget / KD_ZONE_IDS.length);
+
   for (let c = 0; c < sharedCycles; c++) {
     const cycleZones = shuffleWithRng(KD_ZONE_IDS, rng);
     for (const z of cycleZones) {
       if (sharedQueue.length >= sharedTarget) break;
-      const picked = drawFromZone(z, usedInShared);
+      const picked = drawCandidate(byZoneShared[z], byZoneAll[z]);
       if (picked) sharedQueue.push(picked);
     }
   }
@@ -926,9 +956,6 @@ export function buildBalancedKhoiDongQueues(
 
 /**
  * Stratified Fair Draw for Vòng Về Đích:
- * Picks questions for a contestant's chosen point package (e.g. [20, 20, 30] or [10, 10, 20, 20])
- * so that the package covers all 3 macro-zones (`KHTN`, `KHXH`, `HBC`) without repeating used questions,
- * strictly prioritizing questions not marked `used: true` in the bank.
  */
 export function pickBalancedVeDichPackage(
   veDichPool: OlympiaQuestionSet["veDich"],
@@ -962,8 +989,13 @@ export function pickBalancedVeDichPackage(
       continue;
     }
 
-    const freshPool = rawBucket.filter((q) => !q.used && !usedKeys.has(`${p}:${q.q}`));
-    const unplayedInMatchPool = rawBucket.filter((q) => !usedKeys.has(`${p}:${q.q}`));
+    const isUnused = (q: VeDichQuestion) => {
+      const qKey = normKey(q.q);
+      return !usedKeys.has(`${p}:${q.q}`) && !usedKeys.has(qKey) && !usedKeys.has(q.q);
+    };
+
+    const freshPool = rawBucket.filter((q) => !q.used && isUnused(q));
+    const unplayedInMatchPool = rawBucket.filter((q) => isUnused(q));
     const activePool = freshPool.length > 0 ? freshPool : unplayedInMatchPool.length > 0 ? unplayedInMatchPool : rawBucket;
 
     const zonesInPkg = new Set(result.map((r) => r.q.vdZone));
@@ -977,8 +1009,20 @@ export function pickBalancedVeDichPackage(
           ? inUnseenZone
           : activePool;
 
-    const picked = candidatePool[Math.floor(rng() * candidatePool.length)];
+    // Prioritize candidates whose answer has not been used in the match
+    const freshAnswerCandidates = candidatePool.filter((q) => {
+      const aKey = normKey(q.a);
+      return aKey && !usedKeys.has(`ans:${aKey}`);
+    });
+    const finalPool = freshAnswerCandidates.length > 0 ? freshAnswerCandidates : candidatePool;
+
+    const picked = finalPool[Math.floor(rng() * finalPool.length)];
     usedKeys.add(`${p}:${picked.q}`);
+    usedKeys.add(normKey(picked.q));
+    usedKeys.add(picked.q);
+    if (picked.a) {
+      usedKeys.add(`ans:${normKey(picked.a)}`);
+    }
     result.push({ points: p, q: picked });
   }
 

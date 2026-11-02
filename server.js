@@ -24845,21 +24845,36 @@ function shuffleWithRng(items, rng = Math.random) {
   }
   return arr;
 }
+function normKey(s) {
+  return (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
+}
 function buildBalancedKhoiDongQueues(khoiDong, activeSeatIds, questionsPerSeat = 12, rng = Math.random) {
-  const allRaw = [
-    ...Object.values(khoiDong.solo ?? {}).flat(),
-    ...khoiDong.shared ?? []
-  ];
+  const rawSolo = Object.values(khoiDong.solo ?? {}).flat();
+  const rawShared = khoiDong.shared ?? [];
+  const allRaw = [...rawSolo, ...rawShared];
   const seen = /* @__PURE__ */ new Set();
+  const taggedSolo = [];
+  const taggedShared = [];
   const taggedPool = [];
-  for (const item of allRaw) {
-    if (!item || !item.q) continue;
-    const key = item.q.trim().toLowerCase();
+  for (const item of rawSolo) {
+    if (!item?.q) continue;
+    const key = normKey(item.q);
     if (seen.has(key)) continue;
     seen.add(key);
-    taggedPool.push(tagQAWithAI(item, false));
+    const tagged = tagQAWithAI(item, false);
+    taggedSolo.push(tagged);
+    taggedPool.push(tagged);
   }
-  const byZone = {
+  for (const item of rawShared) {
+    if (!item?.q) continue;
+    const key = normKey(item.q);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const tagged = tagQAWithAI(item, false);
+    taggedShared.push(tagged);
+    taggedPool.push(tagged);
+  }
+  const byZoneSolo = {
     MATH_IT: [],
     NATURAL_SCI: [],
     SOCIAL_SCI: [],
@@ -24867,74 +24882,94 @@ function buildBalancedKhoiDongQueues(khoiDong, activeSeatIds, questionsPerSeat =
     FOREIGN_LANG: [],
     GENERAL: []
   };
-  for (const q of taggedPool) {
-    const z = q.kdZone ?? "GENERAL";
-    byZone[z].push(q);
-  }
+  const byZoneShared = {
+    MATH_IT: [],
+    NATURAL_SCI: [],
+    SOCIAL_SCI: [],
+    ARTS_SPORTS: [],
+    FOREIGN_LANG: [],
+    GENERAL: []
+  };
+  const byZoneAll = {
+    MATH_IT: [],
+    NATURAL_SCI: [],
+    SOCIAL_SCI: [],
+    ARTS_SPORTS: [],
+    FOREIGN_LANG: [],
+    GENERAL: []
+  };
+  for (const q of taggedSolo) byZoneSolo[q.kdZone ?? "GENERAL"].push(q);
+  for (const q of taggedShared) byZoneShared[q.kdZone ?? "GENERAL"].push(q);
+  for (const q of taggedPool) byZoneAll[q.kdZone ?? "GENERAL"].push(q);
   for (const z of KD_ZONES) {
-    const unused = shuffleWithRng(byZone[z].filter((q) => !q.used), rng);
-    const alreadyUsed = shuffleWithRng(byZone[z].filter((q) => q.used), rng);
-    byZone[z] = [...unused, ...alreadyUsed];
+    byZoneSolo[z] = [
+      ...shuffleWithRng(byZoneSolo[z].filter((q) => !q.used), rng),
+      ...shuffleWithRng(byZoneSolo[z].filter((q) => q.used), rng)
+    ];
+    byZoneShared[z] = [
+      ...shuffleWithRng(byZoneShared[z].filter((q) => !q.used), rng),
+      ...shuffleWithRng(byZoneShared[z].filter((q) => q.used), rng)
+    ];
+    byZoneAll[z] = [
+      ...shuffleWithRng(byZoneAll[z].filter((q) => !q.used), rng),
+      ...shuffleWithRng(byZoneAll[z].filter((q) => q.used), rng)
+    ];
   }
-  const zoneCursors = {
-    MATH_IT: 0,
-    NATURAL_SCI: 0,
-    SOCIAL_SCI: 0,
-    ARTS_SPORTS: 0,
-    FOREIGN_LANG: 0,
-    GENERAL: 0
-  };
-  let fallbackCursor = 0;
-  const fallbackPool = [
-    ...shuffleWithRng(taggedPool.filter((q) => !q.used), rng),
-    ...shuffleWithRng(taggedPool.filter((q) => q.used), rng)
-  ];
-  const drawFromZone = (zone, usedInSeat) => {
-    const bucket = byZone[zone];
-    if (bucket.length > 0) {
-      for (let attempt = 0; attempt < bucket.length; attempt++) {
-        const idx = (zoneCursors[zone] + attempt) % bucket.length;
-        const candidate = bucket[idx];
-        if (!usedInSeat.has(candidate.q)) {
-          zoneCursors[zone] = idx + 1;
-          usedInSeat.add(candidate.q);
-          return candidate;
-        }
+  const globalUsedQuestions = /* @__PURE__ */ new Set();
+  const globalUsedAnswers = /* @__PURE__ */ new Set();
+  const drawCandidate = (buckets, fallbackList) => {
+    for (const c of buckets) {
+      const qKey = normKey(c.q);
+      const aKey = normKey(c.a);
+      if (!globalUsedQuestions.has(qKey) && (!aKey || !globalUsedAnswers.has(aKey))) {
+        globalUsedQuestions.add(qKey);
+        if (aKey) globalUsedAnswers.add(aKey);
+        return c;
       }
-      const pick2 = bucket[zoneCursors[zone] % bucket.length];
-      zoneCursors[zone] += 1;
-      return pick2;
     }
-    if (fallbackPool.length === 0) return null;
-    const pick = fallbackPool[fallbackCursor % fallbackPool.length];
-    fallbackCursor += 1;
-    return { ...pick, kdZone: zone };
+    for (const c of buckets) {
+      const qKey = normKey(c.q);
+      const aKey = normKey(c.a);
+      if (!globalUsedQuestions.has(qKey)) {
+        globalUsedQuestions.add(qKey);
+        if (aKey) globalUsedAnswers.add(aKey);
+        return c;
+      }
+    }
+    for (const c of fallbackList) {
+      const qKey = normKey(c.q);
+      const aKey = normKey(c.a);
+      if (!globalUsedQuestions.has(qKey)) {
+        globalUsedQuestions.add(qKey);
+        if (aKey) globalUsedAnswers.add(aKey);
+        return c;
+      }
+    }
+    return buckets[0] ?? fallbackList[0] ?? null;
   };
-  const targetLen = Math.max(questionsPerSeat, 18);
-  const cycles = Math.ceil(targetLen / KD_ZONES.length);
   const seatQueues = {};
+  const targetLen = Math.max(questionsPerSeat, 10);
+  const cycles = Math.ceil(targetLen / KD_ZONES.length);
   for (const seatId of activeSeatIds) {
     const queue = [];
-    const usedInSeat = /* @__PURE__ */ new Set();
     for (let c = 0; c < cycles; c++) {
       const cycleZones = shuffleWithRng(KD_ZONES, rng);
       for (const z of cycleZones) {
         if (queue.length >= targetLen) break;
-        const picked = drawFromZone(z, usedInSeat);
+        const picked = drawCandidate(byZoneSolo[z], byZoneAll[z]);
         if (picked) queue.push(picked);
       }
     }
     seatQueues[seatId] = queue;
   }
   const sharedQueue = [];
-  const usedInShared = /* @__PURE__ */ new Set();
-  const sharedTarget = Math.max(36, activeSeatIds.length * 9, taggedPool.length);
+  const sharedTarget = Math.max(18, activeSeatIds.length * 3);
   const sharedCycles = Math.ceil(sharedTarget / KD_ZONES.length);
   for (let c = 0; c < sharedCycles; c++) {
     const cycleZones = shuffleWithRng(KD_ZONES, rng);
     for (const z of cycleZones) {
       if (sharedQueue.length >= sharedTarget) break;
-      const picked = drawFromZone(z, usedInShared);
+      const picked = drawCandidate(byZoneShared[z], byZoneAll[z]);
       if (picked) sharedQueue.push(picked);
     }
   }
@@ -24962,15 +24997,29 @@ function pickBalancedVeDichPackage(veDichPool, pointsList, usedKeys, seatTurnIdx
       });
       continue;
     }
-    const freshPool = rawBucket.filter((q) => !q.used && !usedKeys.has(`${p}:${q.q}`));
-    const unplayedInMatchPool = rawBucket.filter((q) => !usedKeys.has(`${p}:${q.q}`));
+    const isUnused = (q) => {
+      const qKey = normKey(q.q);
+      return !usedKeys.has(`${p}:${q.q}`) && !usedKeys.has(qKey) && !usedKeys.has(q.q);
+    };
+    const freshPool = rawBucket.filter((q) => !q.used && isUnused(q));
+    const unplayedInMatchPool = rawBucket.filter((q) => isUnused(q));
     const activePool = freshPool.length > 0 ? freshPool : unplayedInMatchPool.length > 0 ? unplayedInMatchPool : rawBucket;
     const zonesInPkg = new Set(result.map((r) => r.q.vdZone));
     const inDesiredZone = activePool.filter((q) => q.vdZone === desiredZone);
     const inUnseenZone = activePool.filter((q) => q.vdZone && !zonesInPkg.has(q.vdZone));
     const candidatePool = inDesiredZone.length > 0 ? inDesiredZone : inUnseenZone.length > 0 ? inUnseenZone : activePool;
-    const picked = candidatePool[Math.floor(rng() * candidatePool.length)];
+    const freshAnswerCandidates = candidatePool.filter((q) => {
+      const aKey = normKey(q.a);
+      return aKey && !usedKeys.has(`ans:${aKey}`);
+    });
+    const finalPool = freshAnswerCandidates.length > 0 ? freshAnswerCandidates : candidatePool;
+    const picked = finalPool[Math.floor(rng() * finalPool.length)];
     usedKeys.add(`${p}:${picked.q}`);
+    usedKeys.add(normKey(picked.q));
+    usedKeys.add(picked.q);
+    if (picked.a) {
+      usedKeys.add(`ans:${normKey(picked.a)}`);
+    }
     result.push({ points: p, q: picked });
   }
   return result;
@@ -24978,286 +25027,1204 @@ function pickBalancedVeDichPackage(veDichPool, pointsList, usedKeys, seatTurnIdx
 
 // src/lib/olympia/sample-questions.ts
 var RAW_SAMPLE_QUESTION_SET = {
-  id: "olympia_preset_standard_full",
-  name: "\u0110\u1EC1 thi Olympia 25\u201326 to\xE0n t\u1EADp (113 c\xE2u Kh\u1EDFi \u0111\u1ED9ng \xB7 27 c\xE2u V\u1EC1 \u0111\xEDch)",
-  description: "Kho \u0111\u1EC1 Olympia chu\u1EA9n \u0111a l\u0129nh v\u1EF1c (tham kh\u1EA3o Form test Olympia 25 & O22\u2013O26): 80 c\xE2u Kh\u1EDFi \u0111\u1ED9ng ri\xEAng (8 th\xED sinh \xD7 10 c\xE2u) + 33 c\xE2u Kh\u1EDFi \u0111\u1ED9ng chung (11 l\u0129nh v\u1EF1c \xD7 3 c\xE2u), VCNV 5 m\u1EA3nh gh\xE9p (\u1EA3nh b\xED \u1EA9n n\u1ED9i b\u1ED9), 4 c\xE2u T\u0103ng t\u1ED1c k\xE8m \u1EA3nh & video n\u1ED9i b\u1ED9, 27 c\xE2u V\u1EC1 \u0111\xEDch c\xE2n b\u1EB1ng KHTN - KHXH - Hi\u1EC3u bi\u1EBFt chung v\xE0 6 C\xE2u h\u1ECFi ph\u1EE5.",
-  balancedRandom: true,
-  khoiDong: {
-    solo: {
+  "id": "olympia_preset_standard_full",
+  "name": "\u0110\u1EC1 thi Olympia 25\u201326 to\xE0n t\u1EADp (113 c\xE2u Kh\u1EDFi \u0111\u1ED9ng \xB7 27 c\xE2u V\u1EC1 \u0111\xEDch)",
+  "description": "Kho \u0111\u1EC1 Olympia chu\u1EA9n \u0111a l\u0129nh v\u1EF1c (tham kh\u1EA3o Form test Olympia 25 & O22\u2013O26): 80 c\xE2u Kh\u1EDFi \u0111\u1ED9ng ri\xEAng (8 th\xED sinh \xD7 10 c\xE2u) + 33 c\xE2u Kh\u1EDFi \u0111\u1ED9ng chung (11 l\u0129nh v\u1EF1c \xD7 3 c\xE2u), VCNV 5 m\u1EA3nh gh\xE9p (\u1EA3nh b\xED \u1EA9n n\u1ED9i b\u1ED9), 4 c\xE2u T\u0103ng t\u1ED1c k\xE8m \u1EA3nh & video n\u1ED9i b\u1ED9, 27 c\xE2u V\u1EC1 \u0111\xEDch c\xE2n b\u1EB1ng KHTN - KHXH - Hi\u1EC3u bi\u1EBFt chung v\xE0 6 C\xE2u h\u1ECFi ph\u1EE5.",
+  "balancedRandom": true,
+  "khoiDong": {
+    "solo": {
       "1": [
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "S\u1ED1 nguy\xEAn t\u1ED1 ch\u1EB5n duy nh\u1EA5t l\xE0 s\u1ED1 n\xE0o?", a: "2" },
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "Trong h\u1EC7 nh\u1ECB ph\xE2n, s\u1ED1 th\u1EADp ph\xE2n 5 \u0111\u01B0\u1EE3c bi\u1EC3u di\u1EC5n nh\u01B0 th\u1EBF n\xE0o?", a: "101" },
-        { subject: "L\xFD", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "\u0110\u01A1n v\u1ECB \u0111o c\u01B0\u1EDDng \u0111\u1ED9 d\xF2ng \u0111i\u1EC7n trong h\u1EC7 SI l\xE0 g\xEC?", a: "Ampe" },
-        { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Kim lo\u1EA1i n\xE0o t\u1ED3n t\u1EA1i \u1EDF tr\u1EA1ng th\xE1i l\u1ECFng \u1EDF \u0111i\u1EC1u ki\u1EC7n nhi\u1EC7t \u0111\u1ED9 v\xE0 \xE1p su\u1EA5t ph\xF2ng?", a: "Th\u1EE7y ng\xE2n" },
-        { subject: "V\u0103n", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "T\xE1c ph\u1EA9m 'D\u1EBF M\xE8n phi\xEAu l\u01B0u k\xFD' l\xE0 c\u1EE7a nh\xE0 v\u0103n n\xE0o?", a: "T\xF4 Ho\xE0i" },
-        { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Ai l\xE0 ng\u01B0\u1EDDi \u0111\u1ECDc b\u1EA3n Tuy\xEAn ng\xF4n \u0110\u1ED9c l\u1EADp ng\xE0y 2/9/1945 t\u1EA1i Qu\u1EA3ng tr\u01B0\u1EDDng Ba \u0110\xECnh?", a: "H\u1ED3 Ch\xED Minh" },
-        { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "M\u1ED9t \u0111\u1ED9i b\xF3ng \u0111\xE1 ti\xEAu chu\u1EA9n thi \u0111\u1EA5u tr\xEAn s\xE2n g\u1ED3m bao nhi\xEAu c\u1EA7u th\u1EE7?", a: "11" },
-        { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "B\u1EE9c h\u1ECDa n\xE0ng Mona Lisa l\xE0 ki\u1EC7t t\xE1c c\u1EE7a danh h\u1ECDa n\xE0o?", a: "Leonardo da Vinci" },
-        { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the past tense of the verb 'go'?", a: "Went" },
-        { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "\u0110u\xF4i t\xEAn mi\u1EC1n qu\u1ED1c gia c\u1EA5p cao nh\u1EA5t c\u1EE7a Vi\u1EC7t Nam tr\xEAn Internet l\xE0 g\xEC?", a: ".vn" }
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "S\u1ED1 nguy\xEAn t\u1ED1 ch\u1EB5n duy nh\u1EA5t l\xE0 s\u1ED1 n\xE0o?",
+          "a": "2"
+        },
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Trong h\u1EC7 nh\u1ECB ph\xE2n, s\u1ED1 th\u1EADp ph\xE2n 5 \u0111\u01B0\u1EE3c bi\u1EC3u di\u1EC5n nh\u01B0 th\u1EBF n\xE0o?",
+          "a": "101"
+        },
+        {
+          "subject": "L\xFD",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "\u0110\u01A1n v\u1ECB \u0111o c\u01B0\u1EDDng \u0111\u1ED9 d\xF2ng \u0111i\u1EC7n trong h\u1EC7 SI l\xE0 g\xEC?",
+          "a": "Ampe"
+        },
+        {
+          "subject": "H\xF3a",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Kim lo\u1EA1i n\xE0o t\u1ED3n t\u1EA1i \u1EDF tr\u1EA1ng th\xE1i l\u1ECFng \u1EDF \u0111i\u1EC1u ki\u1EC7n nhi\u1EC7t \u0111\u1ED9 v\xE0 \xE1p su\u1EA5t ph\xF2ng?",
+          "a": "Th\u1EE7y ng\xE2n"
+        },
+        {
+          "subject": "V\u0103n",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "T\xE1c ph\u1EA9m 'D\u1EBF M\xE8n phi\xEAu l\u01B0u k\xFD' l\xE0 c\u1EE7a nh\xE0 v\u0103n n\xE0o?",
+          "a": "T\xF4 Ho\xE0i"
+        },
+        {
+          "subject": "S\u1EED",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Ai l\xE0 ng\u01B0\u1EDDi \u0111\u1ECDc b\u1EA3n Tuy\xEAn ng\xF4n \u0110\u1ED9c l\u1EADp ng\xE0y 2/9/1945 t\u1EA1i Qu\u1EA3ng tr\u01B0\u1EDDng Ba \u0110\xECnh?",
+          "a": "H\u1ED3 Ch\xED Minh"
+        },
+        {
+          "subject": "Th\u1EC3 thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "M\u1ED9t \u0111\u1ED9i b\xF3ng \u0111\xE1 ti\xEAu chu\u1EA9n thi \u0111\u1EA5u tr\xEAn s\xE2n g\u1ED3m bao nhi\xEAu c\u1EA7u th\u1EE7?",
+          "a": "11"
+        },
+        {
+          "subject": "Ngh\u1EC7 thu\u1EADt",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "B\u1EE9c h\u1ECDa n\xE0ng Mona Lisa l\xE0 ki\u1EC7t t\xE1c c\u1EE7a danh h\u1ECDa n\xE0o?",
+          "a": "Leonardo da Vinci"
+        },
+        {
+          "subject": "Ti\u1EBFng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "What is the past tense of the verb 'go'?",
+          "a": "Went"
+        },
+        {
+          "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "\u0110u\xF4i t\xEAn mi\u1EC1n qu\u1ED1c gia c\u1EA5p cao nh\u1EA5t c\u1EE7a Vi\u1EC7t Nam tr\xEAn Internet l\xE0 g\xEC?",
+          "a": ".vn"
+        }
       ],
       "2": [
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "T\u1ED5ng ba g\xF3c trong m\u1ED9t tam gi\xE1c ph\u1EB3ng b\u1EB1ng bao nhi\xEAu \u0111\u1ED9?", a: "180" },
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "\u0110a gi\xE1c \u0111\u1EC1u n\xE0o c\xF3 s\u1ED1 \u0111\u01B0\u1EDDng ch\xE9o b\u1EB1ng \u0111\xFAng s\u1ED1 c\u1EA1nh c\u1EE7a n\xF3?", a: "Ng\u0169 gi\xE1c \u0111\u1EC1u" },
-        { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Qu\xE1 tr\xECnh c\xE2y xanh t\u1ED5ng h\u1EE3p ch\u1EA5t h\u1EEFu c\u01A1 nh\u1EDD \xE1nh s\xE1ng m\u1EB7t tr\u1EDDi g\u1ECDi l\xE0 g\xEC?", a: "Quang h\u1EE3p" },
-        { subject: "L\xFD", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Gia t\u1ED1c tr\u1ECDng tr\u01B0\u1EDDng t\u1EA1i m\u1EB7t \u0111\u1EA5t x\u1EA5p x\u1EC9 bao nhi\xEAu m/s\xB2?", a: "9,8" },
-        { subject: "\u0110\u1ECBa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "D\xE3y n\xFAi n\xE0o l\xE0 ranh gi\u1EDBi t\u1EF1 nhi\xEAn gi\u1EEFa ch\xE2u \xC2u v\xE0 ch\xE2u \xC1?", a: "D\xE3y Ural" },
-        { subject: "V\u0103n", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "T\xE1c gi\u1EA3 c\u1EE7a b\xE0i th\u01A1 'S\xF3ng' (1967) l\xE0 n\u1EEF thi s\u0129 n\xE0o?", a: "Xu\xE2n Qu\u1EF3nh" },
-        { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Th\u1EBF v\u1EADn h\u1ED9i Olympic m\xF9a h\xE8 \u0111\u01B0\u1EE3c t\u1ED5 ch\u1EE9c m\u1EA5y n\u0103m m\u1ED9t l\u1EA7n?", a: "4" },
-        { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Nh\u1EA1c c\u1EE5 truy\u1EC1n th\u1ED1ng \u0111\xE0n b\u1EA7u c\u1EE7a Vi\u1EC7t Nam c\xF3 m\u1EA5y d\xE2y?", a: "1" },
-        { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "T\u1EEB n\xE0o c\xF2n thi\u1EBFu trong th\xE0nh ng\u1EEF ti\u1EBFng Anh: 'It's raining cats and ...'?", a: "Dogs" },
-        { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "Bi\u1EC3n b\xE1o giao th\xF4ng h\xECnh tam gi\xE1c \u0111\u1EC1u, vi\u1EC1n \u0111\u1ECF, n\u1EC1n v\xE0ng d\xF9ng \u0111\u1EC3 ch\u1EC9 nh\xF3m bi\u1EC3n b\xE1o g\xEC?", a: "Bi\u1EC3n b\xE1o nguy hi\u1EC3m" }
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "T\u1ED5ng ba g\xF3c trong m\u1ED9t tam gi\xE1c ph\u1EB3ng b\u1EB1ng bao nhi\xEAu \u0111\u1ED9?",
+          "a": "180"
+        },
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "\u0110a gi\xE1c \u0111\u1EC1u n\xE0o c\xF3 s\u1ED1 \u0111\u01B0\u1EDDng ch\xE9o b\u1EB1ng \u0111\xFAng s\u1ED1 c\u1EA1nh c\u1EE7a n\xF3?",
+          "a": "Ng\u0169 gi\xE1c \u0111\u1EC1u"
+        },
+        {
+          "subject": "Sinh",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Qu\xE1 tr\xECnh c\xE2y xanh t\u1ED5ng h\u1EE3p ch\u1EA5t h\u1EEFu c\u01A1 nh\u1EDD \xE1nh s\xE1ng m\u1EB7t tr\u1EDDi g\u1ECDi l\xE0 g\xEC?",
+          "a": "Quang h\u1EE3p"
+        },
+        {
+          "subject": "L\xFD",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Gia t\u1ED1c tr\u1ECDng tr\u01B0\u1EDDng t\u1EA1i m\u1EB7t \u0111\u1EA5t x\u1EA5p x\u1EC9 bao nhi\xEAu m/s\xB2?",
+          "a": "9,8"
+        },
+        {
+          "subject": "\u0110\u1ECBa",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "D\xE3y n\xFAi n\xE0o l\xE0 ranh gi\u1EDBi t\u1EF1 nhi\xEAn gi\u1EEFa ch\xE2u \xC2u v\xE0 ch\xE2u \xC1?",
+          "a": "D\xE3y Ural"
+        },
+        {
+          "subject": "V\u0103n",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "T\xE1c gi\u1EA3 c\u1EE7a b\xE0i th\u01A1 'S\xF3ng' (1967) l\xE0 n\u1EEF thi s\u0129 n\xE0o?",
+          "a": "Xu\xE2n Qu\u1EF3nh"
+        },
+        {
+          "subject": "Th\u1EC3 thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "K\u1EF3 Th\u1EBF v\u1EADn h\u1ED9i Olympic m\xF9a h\xE8 hi\u1EC7n \u0111\u1EA1i \u0111\u1EA7u ti\xEAn \u0111\u01B0\u1EE3c t\u1ED5 ch\u1EE9c v\xE0o n\u0103m n\xE0o t\u1EA1i Athens (Hy L\u1EA1p)?",
+          "a": "1896"
+        },
+        {
+          "subject": "Ngh\u1EC7 thu\u1EADt",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Nh\u1EA1c c\u1EE5 truy\u1EC1n th\u1ED1ng \u0111\xE0n b\u1EA7u c\u1EE7a Vi\u1EC7t Nam c\xF3 m\u1EA5y d\xE2y?",
+          "a": "1"
+        },
+        {
+          "subject": "Ti\u1EBFng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "T\u1EEB n\xE0o c\xF2n thi\u1EBFu trong th\xE0nh ng\u1EEF ti\u1EBFng Anh: 'It's raining cats and ...'?",
+          "a": "Dogs"
+        },
+        {
+          "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "Bi\u1EC3n b\xE1o giao th\xF4ng h\xECnh tam gi\xE1c \u0111\u1EC1u, vi\u1EC1n \u0111\u1ECF, n\u1EC1n v\xE0ng d\xF9ng \u0111\u1EC3 ch\u1EC9 nh\xF3m bi\u1EC3n b\xE1o g\xEC?",
+          "a": "Bi\u1EC3n b\xE1o nguy hi\u1EC3m"
+        }
       ],
       "3": [
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "C\u0103n b\u1EADc hai s\u1ED1 h\u1ECDc c\u1EE7a 81 b\u1EB1ng bao nhi\xEAu?", a: "9" },
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "Nh\xE0 to\xE1n h\u1ECDc n\xE0o \u0111\u01B0\u1EE3c cho l\xE0 ng\u01B0\u1EDDi \u0111\xE3 c\xF3 c\xF4ng h\u1EE3p nh\u1EA5t \u0111\u1EA1i s\u1ED1 v\xE0 h\xECnh h\u1ECDc Euclide?", a: "Ren\xE9 Descartes" },
-        { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Nguy\xEAn t\u1ED1 ho\xE1 h\u1ECDc nh\u1EB9 nh\u1EA5t trong b\u1EA3ng tu\u1EA7n ho\xE0n l\xE0 g\xEC?", a: "Hydro" },
-        { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Tuy\u1EBFn n\u1ED9i ti\u1EBFt n\xE0o l\u1EDBn nh\u1EA5t trong c\u01A1 th\u1EC3 ng\u01B0\u1EDDi, n\u1EB1m \u1EDF v\xF9ng c\u1ED5 v\xE0 c\xF3 h\xECnh con b\u01B0\u1EDBm?", a: "Tuy\u1EBFn gi\xE1p" },
-        { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Chi\u1EBFn th\u1EAFng \u0110i\u1EC7n Bi\xEAn Ph\u1EE7 l\u1EEBng l\u1EABy n\u0103m ch\xE2u di\u1EC5n ra v\xE0o n\u0103m n\xE0o?", a: "1954" },
-        { subject: "\u0110\u1ECBa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "S\xF4ng M\xEA K\xF4ng ch\u1EA3y qua l\xE3nh th\u1ED5 c\u1EE7a bao nhi\xEAu qu\u1ED1c gia tr\u01B0\u1EDBc khi \u0111\u1ED5 ra Bi\u1EC3n \u0110\xF4ng?", a: "6" },
-        { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Khu\xF4ng nh\u1EA1c ti\xEAu chu\u1EA9n g\u1ED3m c\xF3 m\u1EA5y d\xF2ng k\u1EBB ngang song song?", a: "5" },
-        { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "K\xECnh ng\u01B0 Nguy\u1EC5n Th\u1ECB \xC1nh Vi\xEAn sinh ra \u1EDF t\u1EC9nh/th\xE0nh ph\u1ED1 n\xE0o?", a: "C\u1EA7n Th\u01A1" },
-        { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "Which planet is known as the Red Planet?", a: "Mars" },
-        { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "Ch\u1EEF O trong c\xF4ng ngh\u1EC7 m\xE0n h\xECnh OLED l\xE0 vi\u1EBFt t\u1EAFt c\u1EE7a t\u1EEB ti\u1EBFng Anh n\xE0o?", a: "Organic" }
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "C\u0103n b\u1EADc hai s\u1ED1 h\u1ECDc c\u1EE7a 81 b\u1EB1ng bao nhi\xEAu?",
+          "a": "9"
+        },
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Nh\xE0 to\xE1n h\u1ECDc n\xE0o \u0111\u01B0\u1EE3c cho l\xE0 ng\u01B0\u1EDDi \u0111\xE3 c\xF3 c\xF4ng h\u1EE3p nh\u1EA5t \u0111\u1EA1i s\u1ED1 v\xE0 h\xECnh h\u1ECDc Euclide?",
+          "a": "Ren\xE9 Descartes"
+        },
+        {
+          "subject": "H\xF3a",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Nguy\xEAn t\u1ED1 ho\xE1 h\u1ECDc nh\u1EB9 nh\u1EA5t trong b\u1EA3ng tu\u1EA7n ho\xE0n l\xE0 g\xEC?",
+          "a": "Hydro"
+        },
+        {
+          "subject": "Sinh",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Tuy\u1EBFn n\u1ED9i ti\u1EBFt n\xE0o l\u1EDBn nh\u1EA5t trong c\u01A1 th\u1EC3 ng\u01B0\u1EDDi, n\u1EB1m \u1EDF v\xF9ng c\u1ED5 v\xE0 c\xF3 h\xECnh con b\u01B0\u1EDBm?",
+          "a": "Tuy\u1EBFn gi\xE1p"
+        },
+        {
+          "subject": "S\u1EED",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Chi\u1EBFn th\u1EAFng \u0110i\u1EC7n Bi\xEAn Ph\u1EE7 l\u1EEBng l\u1EABy n\u0103m ch\xE2u di\u1EC5n ra v\xE0o n\u0103m n\xE0o?",
+          "a": "1954"
+        },
+        {
+          "subject": "\u0110\u1ECBa",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "D\xF2ng s\xF4ng d\xE0i nh\u1EA5t ch\u1EA3y ho\xE0n to\xE0n tr\xEAn l\xE3nh th\u1ED5 Vi\u1EC7t Nam l\xE0 con s\xF4ng n\xE0o?",
+          "a": "S\xF4ng \u0110\u1ED3ng Nai"
+        },
+        {
+          "subject": "Ngh\u1EC7 thu\u1EADt",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "N\u1ED1t nh\u1EA1c n\xE0o c\xF3 gi\xE1 tr\u1ECB tr\u01B0\u1EDDng \u0111\u1ED9 b\u1EB1ng m\u1ED9t n\u1EEDa n\u1ED1t \u0111en trong h\u1EC7 th\u1ED1ng k\xFD hi\u1EC7u \xE2m nh\u1EA1c ph\u01B0\u01A1ng T\xE2y?",
+          "a": "N\u1ED1t m\xF3c \u0111\u01A1n"
+        },
+        {
+          "subject": "Th\u1EC3 thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "K\xECnh ng\u01B0 Nguy\u1EC5n Th\u1ECB \xC1nh Vi\xEAn sinh ra \u1EDF t\u1EC9nh/th\xE0nh ph\u1ED1 n\xE0o?",
+          "a": "C\u1EA7n Th\u01A1"
+        },
+        {
+          "subject": "Ti\u1EBFng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "Which planet is known as the Red Planet?",
+          "a": "Mars"
+        },
+        {
+          "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "Ch\u1EEF O trong c\xF4ng ngh\u1EC7 m\xE0n h\xECnh OLED l\xE0 vi\u1EBFt t\u1EAFt c\u1EE7a t\u1EEB ti\u1EBFng Anh n\xE0o?",
+          "a": "Organic"
+        }
       ],
       "4": [
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "M\u1ED9t h\xECnh l\u1EADp ph\u01B0\u01A1ng c\xF3 t\u1EA5t c\u1EA3 bao nhi\xEAu m\u1EB7t?", a: "6" },
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "Nh\u1EEFng s\u1ED1 nguy\xEAn n\xE0o c\xF3 b\xECnh ph\u01B0\u01A1ng b\u1EB1ng t\u1ED5ng c\u1EE7a s\u1ED1 li\u1EC1n tr\u01B0\u1EDBc v\xE0 s\u1ED1 li\u1EC1n sau n\xF3?", a: "0 v\xE0 2" },
-        { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Kim lo\u1EA1i n\xE0o c\xF3 kh\u1EA3 n\u0103ng d\u1EABn \u0111i\u1EC7n t\u1ED1t nh\u1EA5t \u1EDF \u0111i\u1EC1u ki\u1EC7n th\u01B0\u1EDDng?", a: "B\u1EA1c" },
-        { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "ADN c\xF3 c\u1EA5u tr\xFAc kh\xF4ng gian g\u1ED3m m\u1EA5y m\u1EA1ch \u043F\u043E\u043B\u0438nucl\xEA\xF4tit xo\u1EAFn k\xE9p?", a: "2" },
-        { subject: "V\u0103n", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "\u0110\u1EA1i thi h\xE0o Nguy\u1EC5n Du n\u1ED5i ti\u1EBFng nh\u1EA5t v\u1EDBi ki\u1EC7t t\xE1c truy\u1EC7n th\u01A1 N\xF4m n\xE0o?", a: "Truy\u1EC7n Ki\u1EC1u" },
-        { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "V\u1ECB vua n\xE0o \u0111\xE3 ban Chi\u1EBFu d\u1EDDi \u0111\xF4 t\u1EEB Hoa L\u01B0 v\u1EC1 Th\u0103ng Long n\u0103m 1010?", a: "L\xFD Th\xE1i T\u1ED5" },
-        { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "B\xE0n c\u1EDD vua ti\xEAu chu\u1EA9n g\u1ED3m t\u1EA5t c\u1EA3 bao nhi\xEAu \xF4 vu\xF4ng?", a: "64" },
-        { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Ai l\xE0 t\xE1c gi\u1EA3 c\u1EE7a ca kh\xFAc 'Ti\u1EBFn qu\xE2n ca' (Qu\u1ED1c ca Vi\u1EC7t Nam)?", a: "V\u0103n Cao" },
-        { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "In telecommunications, the letter G in 3G, 4G, 5G stands for what word?", a: "Generation" },
-        { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "Lo\xE0i hoa n\xE0o \u0111\u01B0\u1EE3c t\xF4n vinh l\xE0 Qu\u1ED1c hoa c\u1EE7a Vi\u1EC7t Nam?", a: "Hoa sen" }
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "M\u1ED9t h\xECnh l\u1EADp ph\u01B0\u01A1ng c\xF3 t\u1EA5t c\u1EA3 bao nhi\xEAu m\u1EB7t?",
+          "a": "6"
+        },
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Nh\u1EEFng s\u1ED1 nguy\xEAn n\xE0o c\xF3 b\xECnh ph\u01B0\u01A1ng b\u1EB1ng t\u1ED5ng c\u1EE7a s\u1ED1 li\u1EC1n tr\u01B0\u1EDBc v\xE0 s\u1ED1 li\u1EC1n sau n\xF3?",
+          "a": "0 v\xE0 2"
+        },
+        {
+          "subject": "H\xF3a",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Kim lo\u1EA1i n\xE0o c\xF3 kh\u1EA3 n\u0103ng d\u1EABn \u0111i\u1EC7n t\u1ED1t nh\u1EA5t \u1EDF \u0111i\u1EC1u ki\u1EC7n th\u01B0\u1EDDng?",
+          "a": "B\u1EA1c"
+        },
+        {
+          "subject": "Sinh",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "B\u1ED1n lo\u1EA1i baz\u01A1 nit\u01A1 c\u1EA5u t\u1EA1o n\xEAn ph\xE2n t\u1EED ADN g\u1ED3m A\u0111\xEAnin, Timin, Guanin v\xE0 lo\u1EA1i n\xE0o?",
+          "a": "Xit\xF4zin (Cytosine / C)"
+        },
+        {
+          "subject": "V\u0103n",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "\u0110\u1EA1i thi h\xE0o Nguy\u1EC5n Du n\u1ED5i ti\u1EBFng nh\u1EA5t v\u1EDBi ki\u1EC7t t\xE1c truy\u1EC7n th\u01A1 N\xF4m n\xE0o?",
+          "a": "Truy\u1EC7n Ki\u1EC1u"
+        },
+        {
+          "subject": "S\u1EED",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "V\u1ECB vua n\xE0o \u0111\xE3 ban Chi\u1EBFu d\u1EDDi \u0111\xF4 t\u1EEB Hoa L\u01B0 v\u1EC1 Th\u0103ng Long n\u0103m 1010?",
+          "a": "L\xFD Th\xE1i T\u1ED5"
+        },
+        {
+          "subject": "Th\u1EC3 thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "B\xE0n c\u1EDD vua ti\xEAu chu\u1EA9n g\u1ED3m t\u1EA5t c\u1EA3 bao nhi\xEAu \xF4 vu\xF4ng?",
+          "a": "64"
+        },
+        {
+          "subject": "Ngh\u1EC7 thu\u1EADt",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Ai l\xE0 t\xE1c gi\u1EA3 c\u1EE7a ca kh\xFAc 'Ti\u1EBFn qu\xE2n ca' (Qu\u1ED1c ca Vi\u1EC7t Nam)?",
+          "a": "V\u0103n Cao"
+        },
+        {
+          "subject": "Ti\u1EBFng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "In telecommunications, the letter G in 3G, 4G, 5G stands for what word?",
+          "a": "Generation"
+        },
+        {
+          "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "Lo\xE0i hoa n\xE0o \u0111\u01B0\u1EE3c t\xF4n vinh l\xE0 Qu\u1ED1c hoa c\u1EE7a Vi\u1EC7t Nam?",
+          "a": "Hoa sen"
+        }
       ],
       "5": [
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "Trong m\u1ED9t tam gi\xE1c vu\xF4ng, c\u1EA1nh \u0111\u1ED1i di\u1EC7n v\u1EDBi g\xF3c vu\xF4ng \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 c\u1EA1nh g\xEC?", a: "C\u1EA1nh huy\u1EC1n" },
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "H\u1EB1ng s\u1ED1 Pi (\u03C0) l\xE0m tr\xF2n \u0111\u1EBFn ch\u1EEF s\u1ED1 th\u1EADp ph\xE2n th\u1EE9 hai b\u1EB1ng bao nhi\xEAu?", a: "3,14" },
-        { subject: "L\xFD", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Hi\u1EC7n t\u01B0\u1EE3ng l\u1EC7ch h\u01B0\u1EDBng chuy\u1EC3n \u0111\u1ED9ng c\u1EE7a v\u1EADt th\u1EC3 do s\u1EF1 t\u1EF1 quay c\u1EE7a Tr\xE1i \u0110\u1EA5t g\u1ECDi l\xE0 hi\u1EC7u \u1EE9ng g\xEC?", a: "Coriolis" },
-        { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Trong b\u1EA3ng tu\u1EA7n ho\xE0n Mendeleev, hai ch\u1EEF c\xE1i kh\xF4ng xu\u1EA5t hi\u1EC7n trong k\xED hi\u1EC7u h\xF3a h\u1ECDc l\xE0 J v\xE0 ch\u1EEF n\xE0o?", a: "Q" },
-        { subject: "\u0110\u1ECBa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Qu\u1ED1c gia n\xE0o c\xF3 \u0111\u01B0\u1EDDng b\u1EDD bi\u1EC3n d\xE0i nh\u1EA5t th\u1EBF gi\u1EDBi?", a: "Canada" },
-        { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Cu\u1ED9c kh\u1EDFi ngh\u0129a Hai B\xE0 Tr\u01B0ng n\u1ED5 ra v\xE0o n\u0103m n\xE0o sau C\xF4ng nguy\xEAn?", a: "N\u0103m 40" },
-        { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "B\u1EE9c tranh s\u01A1n d\u1EA7u 'Thi\u1EBFu n\u1EEF b\xEAn hoa hu\u1EC7' l\xE0 t\xE1c ph\u1EA9m n\u1ED5i ti\u1EBFng c\u1EE7a h\u1ECDa s\u0129 n\xE0o?", a: "T\xF4 Ng\u1ECDc V\xE2n" },
-        { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "V\xF5 s\u0129 huy\u1EC1n tho\u1EA1i Muhammad Ali thi \u0111\u1EA5u \u1EDF m\xF4n th\u1EC3 thao n\xE0o?", a: "Quy\u1EC1n Anh" },
-        { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "How many goals are there in the United Nations Millennium Development Goals?", a: "8" },
-        { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "M\u1EA1ng x\xE3 h\u1ED9i TikTok c\xF3 ngu\u1ED3n g\u1ED1c xu\u1EA5t ph\xE1t t\u1EEB qu\u1ED1c gia n\xE0o?", a: "Trung Qu\u1ED1c" }
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Trong m\u1ED9t tam gi\xE1c vu\xF4ng, c\u1EA1nh \u0111\u1ED1i di\u1EC7n v\u1EDBi g\xF3c vu\xF4ng \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 c\u1EA1nh g\xEC?",
+          "a": "C\u1EA1nh huy\u1EC1n"
+        },
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "H\u1EB1ng s\u1ED1 Pi (\u03C0) l\xE0m tr\xF2n \u0111\u1EBFn ch\u1EEF s\u1ED1 th\u1EADp ph\xE2n th\u1EE9 hai b\u1EB1ng bao nhi\xEAu?",
+          "a": "3,14"
+        },
+        {
+          "subject": "L\xFD",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Hi\u1EC7n t\u01B0\u1EE3ng l\u1EC7ch h\u01B0\u1EDBng chuy\u1EC3n \u0111\u1ED9ng c\u1EE7a v\u1EADt th\u1EC3 do s\u1EF1 t\u1EF1 quay c\u1EE7a Tr\xE1i \u0110\u1EA5t g\u1ECDi l\xE0 hi\u1EC7u \u1EE9ng g\xEC?",
+          "a": "Coriolis"
+        },
+        {
+          "subject": "H\xF3a",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Trong b\u1EA3ng tu\u1EA7n ho\xE0n Mendeleev, hai ch\u1EEF c\xE1i kh\xF4ng xu\u1EA5t hi\u1EC7n trong k\xED hi\u1EC7u h\xF3a h\u1ECDc l\xE0 J v\xE0 ch\u1EEF n\xE0o?",
+          "a": "Q"
+        },
+        {
+          "subject": "\u0110\u1ECBa",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Qu\u1ED1c gia n\xE0o c\xF3 \u0111\u01B0\u1EDDng b\u1EDD bi\u1EC3n d\xE0i nh\u1EA5t th\u1EBF gi\u1EDBi?",
+          "a": "Canada"
+        },
+        {
+          "subject": "S\u1EED",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Cu\u1ED9c kh\u1EDFi ngh\u0129a Hai B\xE0 Tr\u01B0ng n\u1ED5 ra v\xE0o n\u0103m n\xE0o sau C\xF4ng nguy\xEAn?",
+          "a": "N\u0103m 40"
+        },
+        {
+          "subject": "Ngh\u1EC7 thu\u1EADt",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "B\u1EE9c tranh s\u01A1n d\u1EA7u 'Thi\u1EBFu n\u1EEF b\xEAn hoa hu\u1EC7' l\xE0 t\xE1c ph\u1EA9m n\u1ED5i ti\u1EBFng c\u1EE7a h\u1ECDa s\u0129 n\xE0o?",
+          "a": "T\xF4 Ng\u1ECDc V\xE2n"
+        },
+        {
+          "subject": "Th\u1EC3 thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "V\xF5 s\u0129 huy\u1EC1n tho\u1EA1i Muhammad Ali thi \u0111\u1EA5u \u1EDF m\xF4n th\u1EC3 thao n\xE0o?",
+          "a": "Quy\u1EC1n Anh"
+        },
+        {
+          "subject": "Ti\u1EBFng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "How many goals are there in the United Nations Millennium Development Goals?",
+          "a": "8"
+        },
+        {
+          "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "M\u1EA1ng x\xE3 h\u1ED9i TikTok c\xF3 ngu\u1ED3n g\u1ED1c xu\u1EA5t ph\xE1t t\u1EEB qu\u1ED1c gia n\xE0o?",
+          "a": "Trung Qu\u1ED1c"
+        }
       ],
       "6": [
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "C\u1ED9t m\u1ED1c ng\xE3 ba bi\xEAn gi\u1EDBi Vi\u1EC7t Nam - L\xE0o - Campuchia \u1EDF Kon Tum c\xF3 d\u1EA1ng l\u0103ng tr\u1EE5 \u0111\u1EE9ng \u0111\xE1y l\xE0 h\xECnh g\xEC?", a: "Tam gi\xE1c" },
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "Ph\xE9p t\xEDnh nh\xE2n m\u1ED9t s\u1ED1 th\u1EF1c v\u1EDBi ch\xEDnh n\xF3 \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 ph\xE9p t\xEDnh g\xEC?", a: "B\xECnh ph\u01B0\u01A1ng" },
-        { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Lo\xE0i \u0111\u1ED9ng v\u1EADt c\xF3 v\xFA n\xE0o l\u1EDBn nh\u1EA5t c\xF2n sinh s\u1ED1ng tr\xEAn Tr\xE1i \u0110\u1EA5t hi\u1EC7n nay?", a: "C\xE1 voi xanh" },
-        { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Ch\u1EA5t kh\xED n\xE0o l\xE0 nguy\xEAn nh\xE2n ch\xEDnh g\xE2y ra hi\u1EC7n t\u01B0\u1EE3ng m\u01B0a axit trong t\u1EF1 nhi\xEAn?", a: "SO2" },
-        { subject: "V\u0103n", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "T\u1EADp th\u01A1 'Nh\u1EADt k\xFD trong t\xF9' c\u1EE7a Ch\u1EE7 t\u1ECBch H\u1ED3 Ch\xED Minh \u0111\u01B0\u1EE3c vi\u1EBFt nguy\xEAn b\u1EA3n b\u1EB1ng ch\u1EEF g\xEC?", a: "Ch\u1EEF H\xE1n" },
-        { subject: "\u0110\u1ECBa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Hi\u1EC7n nay mi\u1EC1n Nam n\u01B0\u1EDBc ta c\xF3 10 t\u1EC9nh \u0111\u1EC1u c\xF3 m\u1ED9t huy\u1EC7n mang c\xF9ng t\xEAn l\xE0 huy\u1EC7n g\xEC?", a: "Ch\xE2u Th\xE0nh" },
-        { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Th\u1EBB v\xE0ng trong b\xF3ng \u0111\xE1 \u0111\u01B0\u1EE3c s\u1EED d\u1EE5ng ch\xEDnh th\u1EE9c l\u1EA7n \u0111\u1EA7u t\u1EA1i k\u1EF3 World Cup n\u0103m n\xE0o?", a: "1970" },
-        { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "L\u1EC5 h\u1ED9i Lim v\u1EDBi l\xE0n \u0111i\u1EC7u d\xE2n ca Quan h\u1ECD l\xE0 l\u1EC5 h\u1ED9i truy\u1EC1n th\u1ED1ng c\u1EE7a t\u1EC9nh n\xE0o?", a: "B\u1EAFc Ninh" },
-        { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "In Vietnam, which rare forest animal is known as the 'Asian unicorn'?", a: "Saola" },
-        { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "C\xE1c tr\u1EA1m thu ph\xED kh\xF4ng d\u1EEBng ETC \u1EDF n\u01B0\u1EDBc ta s\u1EED d\u1EE5ng lo\u1EA1i s\xF3ng g\xEC \u0111\u1EC3 nh\u1EADn di\u1EC7n th\u1EBB e-Tag?", a: "S\xF3ng v\xF4 tuy\u1EBFn" }
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "C\u1ED9t m\u1ED1c ng\xE3 ba bi\xEAn gi\u1EDBi Vi\u1EC7t Nam - L\xE0o - Campuchia \u1EDF Kon Tum c\xF3 d\u1EA1ng l\u0103ng tr\u1EE5 \u0111\u1EE9ng \u0111\xE1y l\xE0 h\xECnh g\xEC?",
+          "a": "Tam gi\xE1c"
+        },
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Ph\xE9p t\xEDnh nh\xE2n m\u1ED9t s\u1ED1 th\u1EF1c v\u1EDBi ch\xEDnh n\xF3 \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 ph\xE9p t\xEDnh g\xEC?",
+          "a": "B\xECnh ph\u01B0\u01A1ng"
+        },
+        {
+          "subject": "Sinh",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Lo\xE0i \u0111\u1ED9ng v\u1EADt c\xF3 v\xFA n\xE0o l\u1EDBn nh\u1EA5t c\xF2n sinh s\u1ED1ng tr\xEAn Tr\xE1i \u0110\u1EA5t hi\u1EC7n nay?",
+          "a": "C\xE1 voi xanh"
+        },
+        {
+          "subject": "H\xF3a",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Ch\u1EA5t kh\xED n\xE0o l\xE0 nguy\xEAn nh\xE2n ch\xEDnh g\xE2y ra hi\u1EC7n t\u01B0\u1EE3ng m\u01B0a axit trong t\u1EF1 nhi\xEAn?",
+          "a": "SO2"
+        },
+        {
+          "subject": "V\u0103n",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "T\u1EADp th\u01A1 'Nh\u1EADt k\xFD trong t\xF9' c\u1EE7a Ch\u1EE7 t\u1ECBch H\u1ED3 Ch\xED Minh \u0111\u01B0\u1EE3c vi\u1EBFt nguy\xEAn b\u1EA3n b\u1EB1ng ch\u1EEF g\xEC?",
+          "a": "Ch\u1EEF H\xE1n"
+        },
+        {
+          "subject": "\u0110\u1ECBa",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Hi\u1EC7n nay mi\u1EC1n Nam n\u01B0\u1EDBc ta c\xF3 10 t\u1EC9nh \u0111\u1EC1u c\xF3 m\u1ED9t huy\u1EC7n mang c\xF9ng t\xEAn l\xE0 huy\u1EC7n g\xEC?",
+          "a": "Ch\xE2u Th\xE0nh"
+        },
+        {
+          "subject": "Th\u1EC3 thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Th\u1EBB v\xE0ng trong b\xF3ng \u0111\xE1 \u0111\u01B0\u1EE3c s\u1EED d\u1EE5ng ch\xEDnh th\u1EE9c l\u1EA7n \u0111\u1EA7u t\u1EA1i k\u1EF3 World Cup n\u0103m n\xE0o?",
+          "a": "1970"
+        },
+        {
+          "subject": "Ngh\u1EC7 thu\u1EADt",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "L\u1EC5 h\u1ED9i Lim v\u1EDBi l\xE0n \u0111i\u1EC7u d\xE2n ca Quan h\u1ECD l\xE0 l\u1EC5 h\u1ED9i truy\u1EC1n th\u1ED1ng c\u1EE7a t\u1EC9nh n\xE0o?",
+          "a": "B\u1EAFc Ninh"
+        },
+        {
+          "subject": "Ti\u1EBFng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "In Vietnam, which rare forest animal is known as the 'Asian unicorn'?",
+          "a": "Saola"
+        },
+        {
+          "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "C\xE1c tr\u1EA1m thu ph\xED kh\xF4ng d\u1EEBng ETC \u1EDF n\u01B0\u1EDBc ta s\u1EED d\u1EE5ng lo\u1EA1i s\xF3ng g\xEC \u0111\u1EC3 nh\u1EADn di\u1EC7n th\u1EBB e-Tag?",
+          "a": "S\xF3ng v\xF4 tuy\u1EBFn"
+        }
       ],
       "7": [
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "Trong to\xE1n h\u1ECDc, t\u1EADp h\u1EE3p c\xE1c s\u1ED1 th\u1EF1c l\u1EDBn h\u01A1n 0 \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 s\u1ED1 g\xEC?", a: "S\u1ED1 d\u01B0\u01A1ng" },
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "\u01AF\u1EDBc chung l\u1EDBn nh\u1EA5t c\u1EE7a hai s\u1ED1 nguy\xEAn t\u1ED1 c\xF9ng nhau b\u1EB1ng bao nhi\xEAu?", a: "1" },
-        { subject: "L\xFD", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Kh\xED c\u1EE5 chuy\xEAn d\u1EE5ng n\xE0o trong kh\xED t\u01B0\u1EE3ng h\u1ECDc d\xF9ng \u0111\u1EC3 \u0111o v\u1EADn t\u1ED1c gi\xF3?", a: "Phong k\u1EBF" },
-        { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Vitamin D c\xF3 vai tr\xF2 ch\xEDnh gi\xFAp c\u01A1 th\u1EC3 ng\u01B0\u1EDDi h\u1EA5p th\u1EE5 kho\xE1ng ch\u1EA5t n\xE0o cho x\u01B0\u01A1ng?", a: "Canxi" },
-        { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "B\u1EA3n Hi\u1EBFn ph\xE1p \u0111\u1EA7u ti\xEAn c\u1EE7a n\u01B0\u1EDBc Vi\u1EC7t Nam D\xE2n ch\u1EE7 C\u1ED9ng h\xF2a \u0111\u01B0\u1EE3c th\xF4ng qua v\xE0o n\u0103m n\xE0o?", a: "1946" },
-        { subject: "\u0110\u1ECBa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "V\u01B0\u1EDDn qu\u1ED1c gia n\xE0o n\u1EB1m tr\xEAn d\xE3y Tr\u01B0\u1EDDng S\u01A1n thu\u1ED9c t\u1EC9nh Qu\u1EA3ng B\xECnh \u0111\u01B0\u1EE3c UNESCO c\xF4ng nh\u1EADn l\xE0 Di s\u1EA3n thi\xEAn nhi\xEAn th\u1EBF gi\u1EDBi?", a: "Phong Nha - K\u1EBB B\xE0ng" },
-        { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "M\xF4n v\xF5 c\u1ED5 truy\u1EC1n Vovinam (Vi\u1EC7t V\xF5 \u0110\u1EA1o) do v\xF5 s\u01B0 n\xE0o s\xE1ng l\u1EADp n\u0103m 1938?", a: "Nguy\u1EC5n L\u1ED9c" },
-        { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Ngh\u1EC7 s\u0129 d\u01B0\u01A1ng c\u1EA7m Vi\u1EC7t Nam n\xE0o t\u1EEBng gi\xE0nh gi\u1EA3i Nh\u1EA5t cu\u1ED9c thi Piano qu\u1ED1c t\u1EBF Chopin n\u0103m 1980?", a: "\u0110\u1EB7ng Th\xE1i S\u01A1n" },
-        { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the capital city of Australia?", a: "Canberra" },
-        { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "Trong th\u1EA7n tho\u1EA1i Hy L\u1EA1p, v\u1ECB th\u1EA7n n\xE0o cai qu\u1EA3n th\u1EBF gi\u1EDBi ng\u1EA7m (\u0111\u1ECBa ng\u1EE5c)?", a: "Hades" }
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Trong to\xE1n h\u1ECDc, t\u1EADp h\u1EE3p c\xE1c s\u1ED1 th\u1EF1c l\u1EDBn h\u01A1n 0 \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 s\u1ED1 g\xEC?",
+          "a": "S\u1ED1 d\u01B0\u01A1ng"
+        },
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "T\xEDch c\u1EE7a t\u1EA5t c\u1EA3 c\xE1c s\u1ED1 nguy\xEAn t\u1ED1 nh\u1ECF h\u01A1n 10 b\u1EB1ng bao nhi\xEAu?",
+          "a": "210"
+        },
+        {
+          "subject": "L\xFD",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Kh\xED c\u1EE5 chuy\xEAn d\u1EE5ng n\xE0o trong kh\xED t\u01B0\u1EE3ng h\u1ECDc d\xF9ng \u0111\u1EC3 \u0111o v\u1EADn t\u1ED1c gi\xF3?",
+          "a": "Phong k\u1EBF"
+        },
+        {
+          "subject": "Sinh",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Vitamin D c\xF3 vai tr\xF2 ch\xEDnh gi\xFAp c\u01A1 th\u1EC3 ng\u01B0\u1EDDi h\u1EA5p th\u1EE5 kho\xE1ng ch\u1EA5t n\xE0o cho x\u01B0\u01A1ng?",
+          "a": "Canxi"
+        },
+        {
+          "subject": "S\u1EED",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "B\u1EA3n Hi\u1EBFn ph\xE1p \u0111\u1EA7u ti\xEAn c\u1EE7a n\u01B0\u1EDBc Vi\u1EC7t Nam D\xE2n ch\u1EE7 C\u1ED9ng h\xF2a \u0111\u01B0\u1EE3c th\xF4ng qua v\xE0o n\u0103m n\xE0o?",
+          "a": "1946"
+        },
+        {
+          "subject": "\u0110\u1ECBa",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "V\u01B0\u1EDDn qu\u1ED1c gia n\xE0o n\u1EB1m tr\xEAn d\xE3y Tr\u01B0\u1EDDng S\u01A1n thu\u1ED9c t\u1EC9nh Qu\u1EA3ng B\xECnh \u0111\u01B0\u1EE3c UNESCO c\xF4ng nh\u1EADn l\xE0 Di s\u1EA3n thi\xEAn nhi\xEAn th\u1EBF gi\u1EDBi?",
+          "a": "Phong Nha - K\u1EBB B\xE0ng"
+        },
+        {
+          "subject": "Th\u1EC3 thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "M\xF4n v\xF5 c\u1ED5 truy\u1EC1n Vovinam (Vi\u1EC7t V\xF5 \u0110\u1EA1o) do v\xF5 s\u01B0 n\xE0o s\xE1ng l\u1EADp n\u0103m 1938?",
+          "a": "Nguy\u1EC5n L\u1ED9c"
+        },
+        {
+          "subject": "Ngh\u1EC7 thu\u1EADt",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Ngh\u1EC7 s\u0129 d\u01B0\u01A1ng c\u1EA7m Vi\u1EC7t Nam n\xE0o t\u1EEBng gi\xE0nh gi\u1EA3i Nh\u1EA5t cu\u1ED9c thi Piano qu\u1ED1c t\u1EBF Chopin n\u0103m 1980?",
+          "a": "\u0110\u1EB7ng Th\xE1i S\u01A1n"
+        },
+        {
+          "subject": "Ti\u1EBFng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "What is the capital city of Australia?",
+          "a": "Canberra"
+        },
+        {
+          "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "Trong th\u1EA7n tho\u1EA1i Hy L\u1EA1p, v\u1ECB th\u1EA7n n\xE0o cai qu\u1EA3n th\u1EBF gi\u1EDBi ng\u1EA7m (\u0111\u1ECBa ng\u1EE5c)?",
+          "a": "Hades"
+        }
       ],
       "8": [
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "M\u1ED9t kh\u1ED1i Rubik ti\xEAu chu\u1EA9n 3x3x3 c\xF3 t\u1EA5t c\u1EA3 bao nhi\xEAu m\u1EB7t?", a: "6" },
-        { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "Ch\u1EEF c\xE1i \u0111\u1EA7u ti\xEAn trong b\u1EA3ng ch\u1EEF c\xE1i Hy L\u1EA1p l\xE0 ch\u1EEF g\xEC?", a: "Alpha" },
-        { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Pin s\u1EA1c tr\xEAn \u0111i\u1EC7n tho\u1EA1i di \u0111\u1ED9ng ng\xE0y nay (LIB) ho\u1EA1t \u0111\u1ED9ng d\u1EF1a v\xE0o s\u1EF1 di chuy\u1EC3n c\u1EE7a ion kim lo\u1EA1i n\xE0o?", a: "Lithium" },
-        { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Lo\xE0i b\u1EA1ch tu\u1ED9c c\xF3 t\u1EA5t c\u1EA3 bao nhi\xEAu tr\xE1i tim trong c\u01A1 th\u1EC3?", a: "3" },
-        { subject: "V\u0103n", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Trong th\u01A1 L\u01B0u Quang V\u0169, \u0111i\u1EC1u g\xEC 'rung rinh nh\u1ECBp \u0111\u1EADp tr\xE1i tim ng\u01B0\u1EDDi / Nh\u01B0 ti\u1EBFng s\xE1o nh\u01B0 d\xE2y \u0111\xE0n m\xE1u nh\u1ECF'?", a: "Ti\u1EBFng Vi\u1EC7t" },
-        { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "V\u1ECB t\u01B0\u1EDBng n\xE0o d\u01B0\u1EDBi th\u1EDDi ch\xFAa Nguy\u1EC5n \u0111\xE3 x\xE1c l\u1EADp ch\u1EE7 quy\u1EC1n t\u1EA1i v\xF9ng \u0111\u1EA5t Gia \u0110\u1ECBnh - \u0110\u1ED3ng Nai v\xE0o n\u0103m 1698?", a: "Nguy\u1EC5n H\u1EEFu C\u1EA3nh" },
-        { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Ai l\xE0 tay v\u1EE3t nam \u0111\u1EA7u ti\xEAn c\u1EE7a Vi\u1EC7t Nam l\u1ECDt v\xE0o Top 300 th\u1EBF gi\u1EDBi tr\xEAn b\u1EA3ng x\u1EBFp h\u1EA1ng ATP?", a: "L\xFD Ho\xE0ng Nam" },
-        { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "T\xE1c gi\u1EA3 c\u1EE7a b\u1ED9 truy\u1EC7n tranh n\u1ED5i ti\u1EBFng 'Doraemon' l\xE0 h\u1ECDa s\u0129 ng\u01B0\u1EDDi Nh\u1EADt n\xE0o?", a: "Fujiko F. Fujio" },
-        { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the opposite word of 'ancient' in English?", a: "Modern" },
-        { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "V\u1EC7 tinh nh\xE2n t\u1EA1o \u0111\u1EA7u ti\xEAn c\u1EE7a nh\xE2n lo\u1EA1i \u0111\u01B0\u1EE3c Li\xEAn X\xF4 ph\xF3ng l\xEAn qu\u1EF9 \u0111\u1EA1o n\u0103m 1957 c\xF3 t\xEAn l\xE0 g\xEC?", a: "Sputnik 1" }
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "M\u1ED9t h\xECnh l\u1EADp ph\u01B0\u01A1ng c\xF3 t\u1EA5t c\u1EA3 bao nhi\xEAu \u0111\u01B0\u1EDDng ch\xE9o ch\xEDnh n\u1ED1i hai \u0111\u1EC9nh \u0111\u1ED1i di\u1EC7n nhau qua t\xE2m?",
+          "a": "4 \u0111\u01B0\u1EDDng ch\xE9o ch\xEDnh"
+        },
+        {
+          "subject": "To\xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN",
+          "q": "Ch\u1EEF c\xE1i \u0111\u1EA7u ti\xEAn trong b\u1EA3ng ch\u1EEF c\xE1i Hy L\u1EA1p l\xE0 ch\u1EEF g\xEC?",
+          "a": "Alpha"
+        },
+        {
+          "subject": "H\xF3a",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Pin s\u1EA1c tr\xEAn \u0111i\u1EC7n tho\u1EA1i di \u0111\u1ED9ng ng\xE0y nay (LIB) ho\u1EA1t \u0111\u1ED9ng d\u1EF1a v\xE0o s\u1EF1 di chuy\u1EC3n c\u1EE7a ion kim lo\u1EA1i n\xE0o?",
+          "a": "Lithium"
+        },
+        {
+          "subject": "Sinh",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN",
+          "q": "Lo\xE0i b\u1EA1ch tu\u1ED9c c\xF3 t\u1EA5t c\u1EA3 bao nhi\xEAu tr\xE1i tim trong c\u01A1 th\u1EC3?",
+          "a": "3"
+        },
+        {
+          "subject": "V\u0103n",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "Trong th\u01A1 L\u01B0u Quang V\u0169, \u0111i\u1EC1u g\xEC 'rung rinh nh\u1ECBp \u0111\u1EADp tr\xE1i tim ng\u01B0\u1EDDi / Nh\u01B0 ti\u1EBFng s\xE1o nh\u01B0 d\xE2y \u0111\xE0n m\xE1u nh\u1ECF'?",
+          "a": "Ti\u1EBFng Vi\u1EC7t"
+        },
+        {
+          "subject": "S\u1EED",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH",
+          "q": "V\u1ECB t\u01B0\u1EDBng n\xE0o d\u01B0\u1EDBi th\u1EDDi ch\xFAa Nguy\u1EC5n \u0111\xE3 x\xE1c l\u1EADp ch\u1EE7 quy\u1EC1n t\u1EA1i v\xF9ng \u0111\u1EA5t Gia \u0110\u1ECBnh - \u0110\u1ED3ng Nai v\xE0o n\u0103m 1698?",
+          "a": "Nguy\u1EC5n H\u1EEFu C\u1EA3nh"
+        },
+        {
+          "subject": "Th\u1EC3 thao",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "Ai l\xE0 tay v\u1EE3t nam \u0111\u1EA7u ti\xEAn c\u1EE7a Vi\u1EC7t Nam l\u1ECDt v\xE0o Top 300 th\u1EBF gi\u1EDBi tr\xEAn b\u1EA3ng x\u1EBFp h\u1EA1ng ATP?",
+          "a": "L\xFD Ho\xE0ng Nam"
+        },
+        {
+          "subject": "Ngh\u1EC7 thu\u1EADt",
+          "kdZone": "ARTS_SPORTS",
+          "vdZone": "HBC",
+          "q": "T\xE1c gi\u1EA3 c\u1EE7a b\u1ED9 truy\u1EC7n tranh n\u1ED5i ti\u1EBFng 'Doraemon' l\xE0 h\u1ECDa s\u0129 ng\u01B0\u1EDDi Nh\u1EADt n\xE0o?",
+          "a": "Fujiko F. Fujio"
+        },
+        {
+          "subject": "Ti\u1EBFng Anh",
+          "kdZone": "FOREIGN_LANG",
+          "vdZone": "HBC",
+          "q": "What is the opposite word of 'ancient' in English?",
+          "a": "Modern"
+        },
+        {
+          "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC",
+          "q": "V\u1EC7 tinh nh\xE2n t\u1EA1o \u0111\u1EA7u ti\xEAn c\u1EE7a nh\xE2n lo\u1EA1i \u0111\u01B0\u1EE3c Li\xEAn X\xF4 ph\xF3ng l\xEAn qu\u1EF9 \u0111\u1EA1o n\u0103m 1957 c\xF3 t\xEAn l\xE0 g\xEC?",
+          "a": "Sputnik 1"
+        }
       ]
     },
-    shared: [
-      // 1. Toán (3 câu)
-      { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "Trong h\xECnh h\u1ECDc ph\u1EB3ng Euclid, t\u1ED5ng ba g\xF3c trong m\u1ED9t h\xECnh tam gi\xE1c lu\xF4n b\u1EB1ng bao nhi\xEAu \u0111\u1ED9?", a: "180" },
-      { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "S\u1ED1 nguy\xEAn t\u1ED1 ch\u1EB5n duy nh\u1EA5t trong t\u1EADp h\u1EE3p c\xE1c s\u1ED1 t\u1EF1 nhi\xEAn l\xE0 s\u1ED1 n\xE0o?", a: "2" },
-      { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "H\xECnh \u0111a gi\xE1c \u0111\u1EC1u c\xF3 6 c\u1EA1nh b\u1EB1ng nhau v\xE0 6 g\xF3c b\u1EB1ng nhau \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 h\xECnh g\xEC?", a: "L\u1EE5c gi\xE1c \u0111\u1EC1u" },
-      // 2. Lý (3 câu)
-      { subject: "L\xFD", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Tr\u1ECDng l\u01B0\u1EE3ng c\u1EE7a m\u1ED9t v\u1EADt tr\xEAn b\u1EC1 m\u1EB7t M\u1EB7t Tr\u0103ng b\u1EB1ng kho\u1EA3ng m\u1ED9t ph\u1EA7n m\u1EA5y tr\u1ECDng l\u01B0\u1EE3ng c\u1EE7a n\xF3 tr\xEAn Tr\xE1i \u0110\u1EA5t?", a: "1/6" },
-      { subject: "L\xFD", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Lo\u1EA1i \u0111i\u1ED1t ph\xE1t s\xE1ng n\xE0o \u0111\u01B0\u1EE3c s\u1EED d\u1EE5ng ph\u1ED5 bi\u1EBFn nh\u1EA5t tr\xEAn m\xE0n h\xECnh tr\u01B0\u1EDDng quay S14?", a: "LED" },
-      { subject: "L\xFD", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "V\u1EADn t\u1ED1c truy\u1EC1n \xE1nh s\xE1ng trong m\xF4i tr\u01B0\u1EDDng ch\xE2n kh\xF4ng x\u1EA5p x\u1EC9 b\u1EB1ng bao nhi\xEAu ngh\xECn km/s?", a: "300" },
-      // 3. Hóa (3 câu)
-      { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Trong h\xF3a h\u1ECDc, dung d\u1ECBch c\xF3 \u0111\u1ED9 pH = 7 \u1EDF nhi\u1EC7t \u0111\u1ED9 25\xB0C mang t\xEDnh ch\u1EA5t g\xEC?", a: "Trung t\xEDnh" },
-      { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Kim lo\u1EA1i n\xE0o \u1EDF th\u1EC3 l\u1ECFng \u1EDF \u0111i\u1EC1u ki\u1EC7n nhi\u1EC7t \u0111\u1ED9 ph\xF2ng ti\xEAu chu\u1EA9n (th\u01B0\u1EDDng d\xF9ng trong nhi\u1EC7t k\u1EBF y t\u1EBF)?", a: "Th\u1EE7y ng\xE2n" },
-      { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Kh\xED gas sinh h\u1ECDc (biogas) c\xF3 th\xE0nh ph\u1EA7n ch\xEDnh l\xE0 h\u1EE3p ch\u1EA5t hydrocacbon n\xE0o?", a: "Methane (ho\u1EB7c CH4)" },
-      // 4. Sinh (3 câu)
-      { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "C\u01A1 quan ti\xEAu h\xF3a d\xE0i nh\u1EA5t trong h\u1EC7 ti\xEAu h\xF3a c\u1EE7a c\u01A1 th\u1EC3 ng\u01B0\u1EDDi tr\u01B0\u1EDFng th\xE0nh l\xE0 g\xEC?", a: "Ru\u1ED9t non" },
-      { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Nh\xF3m m\xE1u n\xE0o \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 nh\xF3m m\xE1u chuy\xEAn cho trong h\u1EC7 th\u1ED1ng nh\xF3m m\xE1u ABO?", a: "Nh\xF3m O" },
-      { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "B\xE0o quan n\xE0o trong t\u1EBF b\xE0o th\u1EF1c v\u1EADt ch\u1EE9a ch\u1EA5t di\u1EC7p l\u1EE5c gi\xFAp th\u1EF1c hi\u1EC7n qu\xE1 tr\xECnh quang h\u1EE3p?", a: "L\u1EE5c l\u1EA1p" },
-      // 5. Văn (3 câu)
-      { subject: "V\u0103n", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Ai l\xE0 t\xE1c gi\u1EA3 c\u1EE7a \xE1ng thi\xEAn c\u1ED5 h\xF9ng v\u0103n 'B\xECnh Ng\xF4 \u0111\u1EA1i c\xE1o'?", a: "Nguy\u1EC5n Tr\xE3i" },
-      { subject: "V\u0103n", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "T\xE1c ph\u1EA9m Truy\u1EC7n Ki\u1EC1u c\u1EE7a \u0111\u1EA1i thi h\xE0o Nguy\u1EC5n Du \u0111\u01B0\u1EE3c s\xE1ng t\xE1c theo th\u1EC3 th\u01A1 d\xE2n t\u1ED9c n\xE0o?", a: "L\u1EE5c b\xE1t" },
-      { subject: "V\u0103n", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Nh\xE2n v\u1EADt L\xE3o H\u1EA1c trong truy\u1EC7n ng\u1EAFn c\xF9ng t\xEAn c\u1EE7a Nam Cao nu\xF4i m\u1ED9t con ch\xF3 c\u01B0ng t\xEAn l\xE0 g\xEC?", a: "C\u1EADu V\xE0ng" },
-      // 6. Sử (3 câu)
-      { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Qu\xE2n v\xE0 d\xE2n v\xF9ng \u0111\u1EA5t n\xE0o c\u1EE7a TP. H\u1ED3 Ch\xED Minh \u0111\u01B0\u1EE3c phong t\u1EB7ng danh hi\u1EC7u '\u0110\u1EA5t th\xE9p th\xE0nh \u0111\u1ED3ng'?", a: "C\u1EE7 Chi" },
-      { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Chi\u1EBFn th\u1EAFng \u0110i\u1EC7n Bi\xEAn Ph\u1EE7 'l\u1EEBng l\u1EABy n\u0103m ch\xE2u, ch\u1EA5n \u0111\u1ED9ng \u0111\u1ECBa c\u1EA7u' di\u1EC5n ra v\xE0o n\u0103m n\xE0o?", a: "1954" },
-      { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "V\u1ECB vua anh minh n\xE0o c\u1EE7a tri\u1EC1u H\u1EADu L\xEA \u0111\xE3 ban h\xE0nh b\u1ED9 lu\u1EADt H\u1ED3ng \u0110\u1EE9c (Qu\u1ED1c tri\u1EC1u h\xECnh lu\u1EADt)?", a: "L\xEA Th\xE1nh T\xF4ng" },
-      // 7. Địa (3 câu)
-      { subject: "\u0110\u1ECBa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Qu\u1ED1c gia n\xE0o c\xF3 di\u1EC7n t\xEDch t\u1EF1 nhi\xEAn l\u1EDBn nh\u1EA5t th\u1EBF gi\u1EDBi hi\u1EC7n nay?", a: "Nga" },
-      { subject: "\u0110\u1ECBa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "K\xEAnh \u0111\xE0o Panama n\u1ED1i li\u1EC1n hai \u0111\u1EA1i d\u01B0\u01A1ng l\u1EDBn n\xE0o tr\xEAn th\u1EBF gi\u1EDBi?", a: "Th\xE1i B\xECnh D\u01B0\u01A1ng v\xE0 \u0110\u1EA1i T\xE2y D\u01B0\u01A1ng" },
-      { subject: "\u0110\u1ECBa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "\u0110\u1EC9nh n\xFAi Fansipan \u2013 'N\xF3c nh\xE0 \u0110\xF4ng D\u01B0\u01A1ng' n\u1EB1m tr\xEAn d\xE3y n\xFAi n\xE0o c\u1EE7a Vi\u1EC7t Nam?", a: "Ho\xE0ng Li\xEAn S\u01A1n" },
-      // 8. Thể thao (3 câu)
-      { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "\u0110\u1ED9i tuy\u1EC3n b\xF3ng \u0111\xE1 qu\u1ED1c gia n\xE0o \u0111\xE3 gi\xE0nh ch\u1EE9c v\xF4 \u0111\u1ECBch FIFA World Cup 2022 t\u1EA1i Qatar?", a: "Argentina" },
-      { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Bi\u1EC3u t\u01B0\u1EE3ng c\u1EE7a phong tr\xE0o Th\u1EBF v\u1EADn h\u1ED9i Olympic qu\u1ED1c t\u1EBF g\u1ED3m bao nhi\xEAu v\xF2ng tr\xF2n \u0111an v\xE0o nhau?", a: "5" },
-      { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "C\u1EF1 ly ch\u1EA1y ti\xEAu chu\u1EA9n c\u1EE7a m\u1ED9t ch\u1EB7ng \u0111ua Marathon \u0111\u01B0\u1EDDng tr\u01B0\u1EDDng l\xE0 bao nhi\xEAu km?", a: "42,195 km" },
-      // 9. Nghệ thuật (3 câu)
-      { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "B\u1EE9c h\u1ECDa 'Mona Lisa' hi\u1EC7n \u0111ang \u0111\u01B0\u1EE3c tr\u01B0ng b\xE0y c\u1ED1 \u0111\u1ECBnh t\u1EA1i b\u1EA3o t\xE0ng ngh\u1EC7 thu\u1EADt n\xE0o c\u1EE7a n\u01B0\u1EDBc Ph\xE1p?", a: "B\u1EA3o t\xE0ng Louvre" },
-      { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Nh\u1EA1c s\u0129 t\xE0i hoa n\xE0o l\xE0 t\xE1c gi\u1EA3 c\u1EE7a b\xE0i h\xE1t 'Ti\u1EBFn qu\xE2n ca' \u2013 Qu\u1ED1c ca Vi\u1EC7t Nam?", a: "V\u0103n Cao" },
-      { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Nh\u1EA1c c\u1EE5 truy\u1EC1n th\u1ED1ng n\xE0o c\u1EE7a Vi\u1EC7t Nam ch\u1EC9 c\xF3 duy nh\u1EA5t m\u1ED9t d\xE2y nh\u01B0ng ph\xE1t ra \xE2m thanh bi\u1EBFn h\xF3a \u0111\u1EB7c s\u1EAFc nh\u1EDD c\u1EA7n \u0111\xE0n?", a: "\u0110\xE0n b\u1EA7u (ho\u1EB7c \u0110\u1ED9c huy\u1EC1n c\u1EA7m)" },
-      // 10. Tiếng Anh (4 câu)
-      { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the official currency of the United Kingdom?", a: "Pound Sterling" },
-      { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "Which chemical element has the symbol 'Au' in the periodic table?", a: "Gold" },
-      { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What does the abbreviation 'CPU' stand for in computer science?", a: "Central Processing Unit" },
-      { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the capital city of Australia?", a: "Canberra" },
-      // 11. Lĩnh vực khác (4 câu)
-      { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "Nh\xE0 khoa h\u1ECDc n\xE0o \u0111\u01B0\u1EE3c m\u1EC7nh danh l\xE0 Cha \u0111\u1EBB c\u1EE7a khoa h\u1ECDc m\xE1y t\xEDnh v\xE0 tr\xED tu\u1EC7 nh\xE2n t\u1EA1o hi\u1EC7n \u0111\u1EA1i?", a: "Alan Turing" },
-      { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "S\u1ED1 \u0111i\u1EC7n tho\u1EA1i kh\u1EA9n c\u1EA5p g\u1ECDi l\u1EF1c l\u01B0\u1EE3ng C\u1EA3nh s\xE1t Ph\xF2ng ch\xE1y ch\u1EEFa ch\xE1y v\xE0 C\u1EE9u n\u1EA1n c\u1EE9u h\u1ED9 t\u1EA1i Vi\u1EC7t Nam l\xE0 s\u1ED1 n\xE0o?", a: "114" },
-      { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "T\u1ED5 ch\u1EE9c Gi\xE1o d\u1EE5c, Khoa h\u1ECDc v\xE0 V\u0103n h\xF3a c\u1EE7a Li\xEAn H\u1EE3p Qu\u1ED1c vi\u1EBFt t\u1EAFt theo ti\u1EBFng Anh l\xE0 g\xEC?", a: "UNESCO" },
-      { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "T\u1ED5 ch\u1EE9c H\xE0ng kh\xF4ng D\xE2n d\u1EE5ng Qu\u1ED1c t\u1EBF vi\u1EBFt t\u1EAFt theo ti\u1EBFng Anh l\xE0 g\xEC?", a: "ICAO" }
+    "shared": [
+      {
+        "subject": "To\xE1n",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "q": "T\u1ED5ng s\u1ED1 \u0111o c\xE1c g\xF3c trong c\u1EE7a m\u1ED9t h\xECnh t\u1EE9 gi\xE1c l\u1ED3i tr\xEAn m\u1EB7t ph\u1EB3ng Euclid lu\xF4n b\u1EB1ng bao nhi\xEAu \u0111\u1ED9?",
+        "a": "360"
+      },
+      {
+        "subject": "To\xE1n",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "q": "S\u1ED1 nguy\xEAn t\u1ED1 l\u1EDBn nh\u1EA5t c\xF3 hai ch\u1EEF s\u1ED1 trong t\u1EADp h\u1EE3p c\xE1c s\u1ED1 t\u1EF1 nhi\xEAn l\xE0 s\u1ED1 n\xE0o?",
+        "a": "97"
+      },
+      {
+        "subject": "To\xE1n",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "q": "H\xECnh \u0111a gi\xE1c \u0111\u1EC1u c\xF3 6 c\u1EA1nh b\u1EB1ng nhau v\xE0 6 g\xF3c b\u1EB1ng nhau \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 h\xECnh g\xEC?",
+        "a": "L\u1EE5c gi\xE1c \u0111\u1EC1u"
+      },
+      {
+        "subject": "L\xFD",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Tr\u1ECDng l\u01B0\u1EE3ng c\u1EE7a m\u1ED9t v\u1EADt tr\xEAn b\u1EC1 m\u1EB7t M\u1EB7t Tr\u0103ng b\u1EB1ng kho\u1EA3ng m\u1ED9t ph\u1EA7n m\u1EA5y tr\u1ECDng l\u01B0\u1EE3ng c\u1EE7a n\xF3 tr\xEAn Tr\xE1i \u0110\u1EA5t?",
+        "a": "1/6"
+      },
+      {
+        "subject": "L\xFD",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Lo\u1EA1i \u0111i\u1ED1t ph\xE1t s\xE1ng n\xE0o \u0111\u01B0\u1EE3c s\u1EED d\u1EE5ng ph\u1ED5 bi\u1EBFn nh\u1EA5t tr\xEAn m\xE0n h\xECnh tr\u01B0\u1EDDng quay S14?",
+        "a": "LED"
+      },
+      {
+        "subject": "L\xFD",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "V\u1EADn t\u1ED1c truy\u1EC1n \xE1nh s\xE1ng trong m\xF4i tr\u01B0\u1EDDng ch\xE2n kh\xF4ng x\u1EA5p x\u1EC9 b\u1EB1ng bao nhi\xEAu ngh\xECn km/s?",
+        "a": "300"
+      },
+      {
+        "subject": "H\xF3a",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Trong h\xF3a h\u1ECDc, dung d\u1ECBch c\xF3 \u0111\u1ED9 pH = 7 \u1EDF nhi\u1EC7t \u0111\u1ED9 25\xB0C mang t\xEDnh ch\u1EA5t g\xEC?",
+        "a": "Trung t\xEDnh"
+      },
+      {
+        "subject": "H\xF3a",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Kim lo\u1EA1i ki\u1EC1m m\u1EC1m nh\u1EA5t, c\xF3 nhi\u1EC7t \u0111\u1ED9 n\xF3ng ch\u1EA3y th\u1EA5p (28,5\xB0C) v\xE0 ph\u1EA3n \u1EE9ng m\xE3nh li\u1EC7t v\u1EDBi n\u01B0\u1EDBc c\xF3 t\xEAn g\u1ECDi l\xE0 g\xEC?",
+        "a": "Xesi (Caesium / Cs)"
+      },
+      {
+        "subject": "H\xF3a",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Kh\xED gas sinh h\u1ECDc (biogas) c\xF3 th\xE0nh ph\u1EA7n ch\xEDnh l\xE0 h\u1EE3p ch\u1EA5t hydrocacbon n\xE0o?",
+        "a": "Methane (ho\u1EB7c CH4)"
+      },
+      {
+        "subject": "Sinh",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "C\u01A1 quan ti\xEAu h\xF3a d\xE0i nh\u1EA5t trong h\u1EC7 ti\xEAu h\xF3a c\u1EE7a c\u01A1 th\u1EC3 ng\u01B0\u1EDDi tr\u01B0\u1EDFng th\xE0nh l\xE0 g\xEC?",
+        "a": "Ru\u1ED9t non"
+      },
+      {
+        "subject": "Sinh",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Nh\xF3m m\xE1u n\xE0o \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 nh\xF3m m\xE1u chuy\xEAn cho trong h\u1EC7 th\u1ED1ng nh\xF3m m\xE1u ABO?",
+        "a": "Nh\xF3m O"
+      },
+      {
+        "subject": "Sinh",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "B\xE0o quan n\xE0o trong t\u1EBF b\xE0o th\u1EF1c v\u1EADt ch\u1EE9a ch\u1EA5t di\u1EC7p l\u1EE5c gi\xFAp th\u1EF1c hi\u1EC7n qu\xE1 tr\xECnh quang h\u1EE3p?",
+        "a": "L\u1EE5c l\u1EA1p"
+      },
+      {
+        "subject": "V\u0103n",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Ai l\xE0 t\xE1c gi\u1EA3 c\u1EE7a \xE1ng thi\xEAn c\u1ED5 h\xF9ng v\u0103n 'B\xECnh Ng\xF4 \u0111\u1EA1i c\xE1o'?",
+        "a": "Nguy\u1EC5n Tr\xE3i"
+      },
+      {
+        "subject": "V\u0103n",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "T\xE1c ph\u1EA9m Truy\u1EC7n Ki\u1EC1u c\u1EE7a \u0111\u1EA1i thi h\xE0o Nguy\u1EC5n Du \u0111\u01B0\u1EE3c s\xE1ng t\xE1c theo th\u1EC3 th\u01A1 d\xE2n t\u1ED9c n\xE0o?",
+        "a": "L\u1EE5c b\xE1t"
+      },
+      {
+        "subject": "V\u0103n",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Nh\xE2n v\u1EADt L\xE3o H\u1EA1c trong truy\u1EC7n ng\u1EAFn c\xF9ng t\xEAn c\u1EE7a Nam Cao nu\xF4i m\u1ED9t con ch\xF3 c\u01B0ng t\xEAn l\xE0 g\xEC?",
+        "a": "C\u1EADu V\xE0ng"
+      },
+      {
+        "subject": "S\u1EED",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Qu\xE2n v\xE0 d\xE2n v\xF9ng \u0111\u1EA5t n\xE0o c\u1EE7a TP. H\u1ED3 Ch\xED Minh \u0111\u01B0\u1EE3c phong t\u1EB7ng danh hi\u1EC7u '\u0110\u1EA5t th\xE9p th\xE0nh \u0111\u1ED3ng'?",
+        "a": "C\u1EE7 Chi"
+      },
+      {
+        "subject": "S\u1EED",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Chi\u1EBFn d\u1ECBch H\u1ED3 Ch\xED Minh l\u1ECBch s\u1EED gi\u1EA3i ph\xF3ng ho\xE0n to\xE0n mi\u1EC1n Nam, th\u1ED1ng nh\u1EA5t non s\xF4ng to\xE0n th\u1EAFng v\xE0o n\u0103m n\xE0o?",
+        "a": "1975"
+      },
+      {
+        "subject": "S\u1EED",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "V\u1ECB vua anh minh n\xE0o c\u1EE7a tri\u1EC1u H\u1EADu L\xEA \u0111\xE3 ban h\xE0nh b\u1ED9 lu\u1EADt H\u1ED3ng \u0110\u1EE9c (Qu\u1ED1c tri\u1EC1u h\xECnh lu\u1EADt)?",
+        "a": "L\xEA Th\xE1nh T\xF4ng"
+      },
+      {
+        "subject": "\u0110\u1ECBa",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Qu\u1ED1c gia n\xE0o c\xF3 di\u1EC7n t\xEDch t\u1EF1 nhi\xEAn l\u1EDBn nh\u1EA5t th\u1EBF gi\u1EDBi hi\u1EC7n nay?",
+        "a": "Nga"
+      },
+      {
+        "subject": "\u0110\u1ECBa",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "K\xEAnh \u0111\xE0o Panama n\u1ED1i li\u1EC1n hai \u0111\u1EA1i d\u01B0\u01A1ng l\u1EDBn n\xE0o tr\xEAn th\u1EBF gi\u1EDBi?",
+        "a": "Th\xE1i B\xECnh D\u01B0\u01A1ng v\xE0 \u0110\u1EA1i T\xE2y D\u01B0\u01A1ng"
+      },
+      {
+        "subject": "\u0110\u1ECBa",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "\u0110\u1EC9nh n\xFAi Fansipan \u2013 'N\xF3c nh\xE0 \u0110\xF4ng D\u01B0\u01A1ng' n\u1EB1m tr\xEAn d\xE3y n\xFAi n\xE0o c\u1EE7a Vi\u1EC7t Nam?",
+        "a": "Ho\xE0ng Li\xEAn S\u01A1n"
+      },
+      {
+        "subject": "Th\u1EC3 thao",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "\u0110\u1ED9i tuy\u1EC3n b\xF3ng \u0111\xE1 qu\u1ED1c gia n\xE0o \u0111\xE3 gi\xE0nh ch\u1EE9c v\xF4 \u0111\u1ECBch FIFA World Cup 2022 t\u1EA1i Qatar?",
+        "a": "Argentina"
+      },
+      {
+        "subject": "Th\u1EC3 thao",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Bi\u1EC3u t\u01B0\u1EE3ng c\u1EE7a phong tr\xE0o Th\u1EBF v\u1EADn h\u1ED9i Olympic qu\u1ED1c t\u1EBF g\u1ED3m bao nhi\xEAu v\xF2ng tr\xF2n \u0111an v\xE0o nhau?",
+        "a": "5"
+      },
+      {
+        "subject": "Th\u1EC3 thao",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "C\u1EF1 ly ch\u1EA1y ti\xEAu chu\u1EA9n c\u1EE7a m\u1ED9t ch\u1EB7ng \u0111ua Marathon \u0111\u01B0\u1EDDng tr\u01B0\u1EDDng l\xE0 bao nhi\xEAu km?",
+        "a": "42,195 km"
+      },
+      {
+        "subject": "Ngh\u1EC7 thu\u1EADt",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "B\u1EE9c tranh n\u1ED5i ti\u1EBFng '\u0110\xEAm \u0111\u1EA7y sao' (The Starry Night) l\xE0 ki\u1EC7t t\xE1c c\u1EE7a danh h\u1ECDa ng\u01B0\u1EDDi H\xE0 Lan n\xE0o?",
+        "a": "Vincent van Gogh"
+      },
+      {
+        "subject": "Ngh\u1EC7 thu\u1EADt",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Nh\u1EA1c s\u0129 n\xE0o l\xE0 t\xE1c gi\u1EA3 c\u1EE7a b\u1EA3n giao h\u01B0\u1EDFng - ca kh\xFAc tr\xE1ng l\u1EC7 'Ng\u01B0\u1EDDi H\xE0 N\u1ED9i' s\xE1ng t\xE1c n\u0103m 1947?",
+        "a": "Nguy\u1EC5n \u0110\xECnh Thi"
+      },
+      {
+        "subject": "Ngh\u1EC7 thu\u1EADt",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Nh\u1EA1c c\u1EE5 g\xF5 c\u1ED5 x\u01B0a c\u1EE7a \u0111\u1ED3ng b\xE0o c\xE1c d\xE2n t\u1ED9c T\xE2y Nguy\xEAn \u0111\u01B0\u1EE3c l\xE0m t\u1EEB c\xE1c thanh \u0111\xE1 t\u1EF1 nhi\xEAn g\u1ECDi l\xE0 \u0111\xE0n g\xEC?",
+        "a": "\u0110\xE0n \u0111\xE1"
+      },
+      {
+        "subject": "Ti\u1EBFng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "What is the official currency of the United Kingdom?",
+        "a": "Pound Sterling"
+      },
+      {
+        "subject": "Ti\u1EBFng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "Which chemical element has the symbol 'Au' in the periodic table?",
+        "a": "Gold"
+      },
+      {
+        "subject": "Ti\u1EBFng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "What does the abbreviation 'CPU' stand for in computer science?",
+        "a": "Central Processing Unit"
+      },
+      {
+        "subject": "Ti\u1EBFng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "What is the largest city and financial hub of Australia, famous for its iconic Opera House?",
+        "a": "Sydney"
+      },
+      {
+        "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "q": "Nh\xE0 khoa h\u1ECDc n\xE0o \u0111\u01B0\u1EE3c m\u1EC7nh danh l\xE0 Cha \u0111\u1EBB c\u1EE7a khoa h\u1ECDc m\xE1y t\xEDnh v\xE0 tr\xED tu\u1EC7 nh\xE2n t\u1EA1o hi\u1EC7n \u0111\u1EA1i?",
+        "a": "Alan Turing"
+      },
+      {
+        "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "q": "S\u1ED1 \u0111i\u1EC7n tho\u1EA1i kh\u1EA9n c\u1EA5p g\u1ECDi l\u1EF1c l\u01B0\u1EE3ng C\u1EA3nh s\xE1t Ph\xF2ng ch\xE1y ch\u1EEFa ch\xE1y v\xE0 C\u1EE9u n\u1EA1n c\u1EE9u h\u1ED9 t\u1EA1i Vi\u1EC7t Nam l\xE0 s\u1ED1 n\xE0o?",
+        "a": "114"
+      },
+      {
+        "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "q": "T\u1ED5 ch\u1EE9c Gi\xE1o d\u1EE5c, Khoa h\u1ECDc v\xE0 V\u0103n h\xF3a c\u1EE7a Li\xEAn H\u1EE3p Qu\u1ED1c vi\u1EBFt t\u1EAFt theo ti\u1EBFng Anh l\xE0 g\xEC?",
+        "a": "UNESCO"
+      },
+      {
+        "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "q": "T\u1ED5 ch\u1EE9c H\xE0ng kh\xF4ng D\xE2n d\u1EE5ng Qu\u1ED1c t\u1EBF vi\u1EBFt t\u1EAFt theo ti\u1EBFng Anh l\xE0 g\xEC?",
+        "a": "ICAO"
+      }
     ]
   },
-  vcnv: {
-    answer: "TI\xCAU L\u1EC6NH CH\u1EEEA CH\xC1Y",
-    mysteryImage: "/olympia/media/vcnv_mystery.png",
-    rows: [
+  "vcnv": {
+    "answer": "TI\xCAU L\u1EC6NH CH\u1EEEA CH\xC1Y",
+    "mysteryImage": "/olympia/media/vcnv_mystery.png",
+    "rows": [
       {
-        hint: "Hi\u1EC7n nay, Vi\u1EC7t Nam c\xF3 bao nhi\xEAu t\u1EC9nh m\xE0 t\xEAn g\u1ECDi b\u1EAFt \u0111\u1EA7u b\u1EB1ng ch\u1EEF c\xE1i N? (1 ch\u1EEF s\u1ED1)",
-        answer: "4"
+        "hint": "Hi\u1EC7n nay, Vi\u1EC7t Nam c\xF3 bao nhi\xEAu t\u1EC9nh m\xE0 t\xEAn g\u1ECDi b\u1EAFt \u0111\u1EA7u b\u1EB1ng ch\u1EEF c\xE1i N? (1 ch\u1EEF s\u1ED1)",
+        "answer": "4"
       },
       {
-        hint: "Theo Quy\u1EBFt \u0111\u1ECBnh s\u1ED1 05/2020/Q\u0110-TTg, c\u1EA5p ... l\u0169 \u0111\u01B0\u1EE3c ph\xE2n th\xE0nh ba c\u1EA5p c\u0103n c\u1EE9 v\xE0o \u0111\u1ED9 l\u1EDBn m\u1EF1c n\u01B0\u1EDBc l\u0169 v\xE0 m\u1EE9c \u0111\u1ED9 t\xE1c \u0111\u1ED9ng \u0111\u1EBFn an to\xE0n \u0111\xEA \u0111i\u1EC1u (7 ch\u1EEF c\xE1i).",
-        answer: "B\xC1O \u0110\u1ED8NG"
+        "hint": "Theo Quy\u1EBFt \u0111\u1ECBnh s\u1ED1 05/2020/Q\u0110-TTg, c\u1EA5p ... l\u0169 \u0111\u01B0\u1EE3c ph\xE2n th\xE0nh ba c\u1EA5p c\u0103n c\u1EE9 v\xE0o \u0111\u1ED9 l\u1EDBn m\u1EF1c n\u01B0\u1EDBc l\u0169 v\xE0 m\u1EE9c \u0111\u1ED9 t\xE1c \u0111\u1ED9ng \u0111\u1EBFn an to\xE0n \u0111\xEA \u0111i\u1EC1u (7 ch\u1EEF c\xE1i).",
+        "answer": "B\xC1O \u0110\u1ED8NG"
       },
       {
-        hint: "T\u1EEB n\xE0o c\xF2n thi\u1EBFu trong hai c\xE2u th\u01A1 c\u1EE7a T\u1EA3n \u0110\xE0: 'Non xanh \u0111\xE3 bi\u1EBFt hay ch\u01B0a? / ... \u0111i ra b\u1EC3 l\u1EA1i m\u01B0a v\u1EC1 ngu\u1ED3n' (4 ch\u1EEF c\xE1i)?",
-        answer: "N\u01AF\u1EDAC"
+        "hint": "T\u1EEB n\xE0o c\xF2n thi\u1EBFu trong hai c\xE2u th\u01A1 c\u1EE7a T\u1EA3n \u0110\xE0: 'Non xanh \u0111\xE3 bi\u1EBFt hay ch\u01B0a? / ... \u0111i ra b\u1EC3 l\u1EA1i m\u01B0a v\u1EC1 ngu\u1ED3n' (4 ch\u1EEF c\xE1i)?",
+        "answer": "N\u01AF\u1EDAC"
       },
       {
-        hint: "Trong m\u1EA1ng \u0111i\u1EC7n gia \u0111\xECnh, aptomat l\xE0 thi\u1EBFt b\u1ECB t\u1EF1 \u0111\u1ED9ng c\xF3 ch\u1EE9c n\u0103ng thay th\u1EBF cho c\u1EA3 c\u1EA7u ch\xEC v\xE0 thi\u1EBFt b\u1ECB \u0111\xF3ng ng\u1EAFt \u0111i\u1EC7n n\xE0o (6 ch\u1EEF c\xE1i)?",
-        answer: "C\u1EA6U DAO"
+        "hint": "Trong m\u1EA1ng \u0111i\u1EC7n gia \u0111\xECnh, aptomat l\xE0 thi\u1EBFt b\u1ECB t\u1EF1 \u0111\u1ED9ng c\xF3 ch\u1EE9c n\u0103ng thay th\u1EBF cho c\u1EA3 c\u1EA7u ch\xEC v\xE0 thi\u1EBFt b\u1ECB \u0111\xF3ng ng\u1EAFt \u0111i\u1EC7n n\xE0o (6 ch\u1EEF c\xE1i)?",
+        "answer": "C\u1EA6U DAO"
       }
     ],
-    centerQuestion: {
-      q: "C\xE2u h\u1ECFi s\u1ED1 5 (\xD4 trung t\xE2m): Khi ph\xE1t hi\u1EC7n h\u1ECFa ho\u1EA1n, b\u01B0\u1EDBc \u0111\u1EA7u ti\xEAn trong quy tr\xECnh 4 b\u01B0\u1EDBc x\u1EED l\xFD kh\u1EA9n c\u1EA5p l\xE0 h\xF4 ho\xE1n, b\xE1o \u0111\u1ED9ng g\u1EA5p cho m\u1ECDi ng\u01B0\u1EDDi xung quanh bi\u1EBFt c\xF3 s\u1EF1 c\u1ED1 g\xEC?",
-      a: "CH\xC1Y"
+    "centerQuestion": {
+      "q": "C\xE2u h\u1ECFi s\u1ED1 5 (\xD4 trung t\xE2m): Khi ph\xE1t hi\u1EC7n h\u1ECFa ho\u1EA1n, b\u01B0\u1EDBc \u0111\u1EA7u ti\xEAn trong quy tr\xECnh 4 b\u01B0\u1EDBc x\u1EED l\xFD kh\u1EA9n c\u1EA5p l\xE0 h\xF4 ho\xE1n, b\xE1o \u0111\u1ED9ng g\u1EA5p cho m\u1ECDi ng\u01B0\u1EDDi xung quanh bi\u1EBFt c\xF3 s\u1EF1 c\u1ED1 g\xEC?",
+      "a": "CH\xC1Y"
     }
   },
-  tangToc: [
+  "tangToc": [
     {
-      category: "iq",
-      q: "[C\xE2u 1 \u2014 T\u01B0 duy IQ] T\xECm s\u1ED1 th\xEDch h\u1EE3p \u0111i\u1EC1n v\xE0o d\u1EA5u ch\u1EA5m h\u1ECFi trong quy lu\u1EADt d\xE3y s\u1ED1: 2, 3, 5, 8, 13, 21, ?",
-      type: "image",
-      media: "/olympia/media/tangtoc_cau1_iq.png",
-      answer: "34",
-      duration: 20
+      "category": "iq",
+      "q": "[C\xE2u 1 \u2014 T\u01B0 duy IQ] T\xECm s\u1ED1 th\xEDch h\u1EE3p \u0111i\u1EC1n v\xE0o d\u1EA5u ch\u1EA5m h\u1ECFi trong quy lu\u1EADt d\xE3y s\u1ED1: 2, 3, 5, 8, 13, 21, ?",
+      "type": "image",
+      "media": "/olympia/media/tangtoc_cau1_iq.png",
+      "answer": "34",
+      "duration": 20
     },
     {
-      category: "data",
-      q: "[C\xE2u 2 \u2014 D\u1EEF ki\u1EC7n m\u1EDF d\u1EA7n] \u0110\xE2y l\xE0 \u0111\u1ECBa danh n\xE0o c\u1EE7a Vi\u1EC7t Nam? Quan s\xE1t c\xE1c g\u1EE3i \xFD xu\u1EA5t hi\u1EC7n theo th\u1EDDi gian \u0111\u1EC3 \u0111\u01B0a ra c\xE2u tr\u1EA3 l\u1EDDi ch\xEDnh x\xE1c.",
-      type: "image",
-      media: "/olympia/media/tangtoc_cau2_clue1.png",
-      answer: "V\u1ECBnh H\u1EA1 Long",
-      duration: 20,
-      clueImages: [
+      "category": "data",
+      "q": "[C\xE2u 2 \u2014 D\u1EEF ki\u1EC7n m\u1EDF d\u1EA7n] \u0110\xE2y l\xE0 \u0111\u1ECBa danh n\xE0o c\u1EE7a Vi\u1EC7t Nam? Quan s\xE1t c\xE1c g\u1EE3i \xFD xu\u1EA5t hi\u1EC7n theo th\u1EDDi gian \u0111\u1EC3 \u0111\u01B0a ra c\xE2u tr\u1EA3 l\u1EDDi ch\xEDnh x\xE1c.",
+      "type": "image",
+      "media": "/olympia/media/tangtoc_cau2_clue1.png",
+      "answer": "V\u1ECBnh H\u1EA1 Long",
+      "duration": 20,
+      "clueImages": [
         {
-          atSecond: 0,
-          label: "D\u1EEF ki\u1EC7n 1 (0s): V\u1ECBnh bi\u1EC3n \u0110\xF4ng B\u1EAFc di\u1EC7n t\xEDch h\u01A1n 1.500 km\xB2 v\u1EDBi b\u1EDD bi\u1EC3n d\xE0i 120 km",
-          url: "/olympia/media/tangtoc_cau2_clue1.png"
+          "atSecond": 0,
+          "label": "D\u1EEF ki\u1EC7n 1 (0s): V\u1ECBnh bi\u1EC3n \u0110\xF4ng B\u1EAFc di\u1EC7n t\xEDch h\u01A1n 1.500 km\xB2 v\u1EDBi b\u1EDD bi\u1EC3n d\xE0i 120 km",
+          "url": "/olympia/media/tangtoc_cau2_clue1.png"
         },
         {
-          atSecond: 5,
-          label: "D\u1EEF ki\u1EC7n 2 (5s): S\u1EDF h\u1EEFu g\u1EA7n 2.000 h\xF2n \u0111\u1EA3o \u0111\xE1 v\xF4i k\u1EF3 v\u0129 nh\u01B0 H\xF2n Tr\u1ED1ng M\xE1i, \u0110\u1EA3o Ti T\u1ED1p",
-          url: "/olympia/media/tangtoc_cau2_clue2.png"
+          "atSecond": 5,
+          "label": "D\u1EEF ki\u1EC7n 2 (5s): S\u1EDF h\u1EEFu g\u1EA7n 2.000 h\xF2n \u0111\u1EA3o \u0111\xE1 v\xF4i k\u1EF3 v\u0129 nh\u01B0 H\xF2n Tr\u1ED1ng M\xE1i, \u0110\u1EA3o Ti T\u1ED1p",
+          "url": "/olympia/media/tangtoc_cau2_clue2.png"
         },
         {
-          atSecond: 10,
-          label: "D\u1EEF ki\u1EC7n 3 (10s): Qu\u1EA7n th\u1EC3 hang \u0111\u1ED9ng th\u1EA1ch nh\u0169 tr\xE1ng l\u1EC7: Hang S\u1EEDng S\u1ED1t, \u0110\u1ED9ng Thi\xEAn Cung",
-          url: "/olympia/media/tangtoc_cau2_clue3.png"
+          "atSecond": 10,
+          "label": "D\u1EEF ki\u1EC7n 3 (10s): Qu\u1EA7n th\u1EC3 hang \u0111\u1ED9ng th\u1EA1ch nh\u0169 tr\xE1ng l\u1EC7: Hang S\u1EEDng S\u1ED1t, \u0110\u1ED9ng Thi\xEAn Cung",
+          "url": "/olympia/media/tangtoc_cau2_clue3.png"
         },
         {
-          atSecond: 15,
-          label: "D\u1EEF ki\u1EC7n 4 (15s): \u0110\u01B0\u1EE3c UNESCO c\xF4ng nh\u1EADn l\xE0 Di s\u1EA3n thi\xEAn nhi\xEAn th\u1EBF gi\u1EDBi v\xE0o c\xE1c n\u0103m 1994 v\xE0 2000",
-          url: "/olympia/media/tangtoc_cau2_clue4.png"
+          "atSecond": 15,
+          "label": "D\u1EEF ki\u1EC7n 4 (15s): \u0110\u01B0\u1EE3c UNESCO c\xF4ng nh\u1EADn l\xE0 Di s\u1EA3n thi\xEAn nhi\xEAn th\u1EBF gi\u1EDBi v\xE0o c\xE1c n\u0103m 1994 v\xE0 2000",
+          "url": "/olympia/media/tangtoc_cau2_clue4.png"
         }
       ]
     },
     {
-      category: "arrange",
-      q: "[C\xE2u 3 \u2014 S\u1EAFp x\u1EBFp 6 m\u1EA3nh] S\u1EAFp x\u1EBFp 6 thi\xEAn th\u1EC3 sau theo th\u1EE9 t\u1EF1 kho\u1EA3ng c\xE1ch t\u1EEB g\u1EA7n M\u1EB7t Tr\u1EDDi nh\u1EA5t \u0111\u1EBFn xa M\u1EB7t Tr\u1EDDi nh\u1EA5t: (1) Sao H\u1ECFa, (2) Sao Th\u1EE7y, (3) Sao M\u1ED9c, (4) Sao Kim, (5) Sao Th\u1ED5, (6) Tr\xE1i \u0110\u1EA5t.",
-      type: "image",
-      media: "/olympia/media/tangtoc_cau3_arrange.png",
-      answer: "246135",
-      duration: 30
+      "category": "arrange",
+      "q": "[C\xE2u 3 \u2014 S\u1EAFp x\u1EBFp 6 m\u1EA3nh] S\u1EAFp x\u1EBFp 6 thi\xEAn th\u1EC3 sau theo th\u1EE9 t\u1EF1 kho\u1EA3ng c\xE1ch t\u1EEB g\u1EA7n M\u1EB7t Tr\u1EDDi nh\u1EA5t \u0111\u1EBFn xa M\u1EB7t Tr\u1EDDi nh\u1EA5t: (1) Sao H\u1ECFa, (2) Sao Th\u1EE7y, (3) Sao M\u1ED9c, (4) Sao Kim, (5) Sao Th\u1ED5, (6) Tr\xE1i \u0110\u1EA5t.",
+      "type": "image",
+      "media": "/olympia/media/tangtoc_cau3_arrange.png",
+      "answer": "246135",
+      "duration": 30
     },
     {
-      category: "data",
-      q: "[C\xE2u 4 \u2014 D\u1EEF ki\u1EC7n t\u1ED5ng h\u1EE3p / Video] \u0110\xE2y l\xE0 ai? Nh\xE0 v\u1EADt l\xFD, to\xE1n h\u1ECDc v\u0129 \u0111\u1EA1i ng\u01B0\u1EDDi Anh (1643\u20131727), t\xE1c gi\u1EA3 b\u1ED9 s\xE1ch 'Principia', ng\u01B0\u1EDDi ph\xE1t bi\u1EC3u 3 \u0111\u1ECBnh lu\u1EADt chuy\u1EC3n \u0111\u1ED9ng v\xE0 \u0111\u1ECBnh lu\u1EADt v\u1EA1n v\u1EADt h\u1EA5p d\u1EABn.",
-      type: "video",
-      media: "/olympia/media/tangtoc_cau4_video.webm",
-      answer: "Isaac Newton",
-      duration: 30
+      "category": "data",
+      "q": "[C\xE2u 4 \u2014 D\u1EEF ki\u1EC7n t\u1ED5ng h\u1EE3p / Video] \u0110\xE2y l\xE0 ai? Nh\xE0 v\u1EADt l\xFD, to\xE1n h\u1ECDc v\u0129 \u0111\u1EA1i ng\u01B0\u1EDDi Anh (1643\u20131727), t\xE1c gi\u1EA3 b\u1ED9 s\xE1ch 'Principia', ng\u01B0\u1EDDi ph\xE1t bi\u1EC3u 3 \u0111\u1ECBnh lu\u1EADt chuy\u1EC3n \u0111\u1ED9ng v\xE0 \u0111\u1ECBnh lu\u1EADt v\u1EA1n v\u1EADt h\u1EA5p d\u1EABn.",
+      "type": "video",
+      "media": "/olympia/media/tangtoc_cau4_video.webm",
+      "answer": "Isaac Newton",
+      "duration": 30
     }
   ],
-  veDich: {
+  "veDich": {
     "10": [
-      { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Ch\u1EA5t kh\xED n\xE0o trong kh\xF4ng kh\xED duy tr\xEC s\u1EF1 h\xF4 h\u1EA5p c\u1EE7a con ng\u01B0\u1EDDi v\xE0 s\u1EF1 ch\xE1y?", a: "Oxy", type: "theory" },
-      { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "V\xF2i 1 ch\u1EA3y m\u1ED9t m\xECnh 3 gi\u1EDD \u0111\u1EA7y b\u1EC3, v\xF2i 2 ch\u1EA3y m\u1ED9t m\xECnh 6 gi\u1EDD \u0111\u1EA7y b\u1EC3. M\u1EDF c\u1EA3 hai v\xF2i c\xF9ng l\xFAc th\xEC sau m\u1EA5y gi\u1EDD \u0111\u1EA7y b\u1EC3?", a: "2 gi\u1EDD", type: "theory" },
-      { subject: "L\xFD", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "\u0110\u01A1n v\u1ECB \u0111o t\u1EA7n s\u1ED1 dao \u0111\u1ED9ng (Hz) \u0111\u01B0\u1EE3c \u0111\u1EB7t theo t\xEAn c\u1EE7a nh\xE0 v\u1EADt l\xFD h\u1ECDc ng\u01B0\u1EDDi n\u01B0\u1EDBc n\xE0o?", a: "\u0110\u1EE9c (Heinrich Hertz)", type: "theory" },
-      { subject: "\u0110\u1ECBa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "S\xF4ng M\xEA K\xF4ng ch\u1EA3y v\xE0o l\xE3nh th\u1ED5 Vi\u1EC7t Nam \u0111\u1EA7u ti\xEAn qua \u0111\u1ECBa ph\u1EADn c\u1EE7a hai t\u1EC9nh bi\xEAn gi\u1EDBi n\xE0o?", a: "\u0110\u1ED3ng Th\xE1p v\xE0 An Giang", type: "theory" },
-      { subject: "V\u0103n", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Ai l\xE0 t\xE1c gi\u1EA3 c\u1EE7a ti\u1EC3u thuy\u1EBFt hi\u1EC7n th\u1EF1c ph\xEA ph\xE1n 'T\u1EAFt \u0111\xE8n' xu\u1EA5t b\u1EA3n n\u0103m 1939?", a: "Ng\xF4 T\u1EA5t T\u1ED1", type: "theory" },
-      { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Nguy\u1EC5n T\u1EA5t Th\xE0nh ra \u0111i t\xECm \u0111\u01B0\u1EDDng c\u1EE9u n\u01B0\u1EDBc t\u1EA1i B\u1EBFn c\u1EA3ng Nh\xE0 R\u1ED3ng v\xE0o ng\xE0y 5/6 c\u1EE7a n\u0103m n\xE0o?", a: "1911", type: "theory" },
-      { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "M\u1ED9t cu\u1ED9c ch\u1EA1y \u0111ua Marathon ti\xEAu chu\u1EA9n qu\u1ED1c t\u1EBF c\xF3 c\u1EF1 ly ch\xEDnh x\xE1c l\xE0 bao nhi\xEAu km?", a: "42,195 km", type: "theory" },
-      { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Trong k\xFD \xE2m nh\u1EA1c l\xFD c\u01A1 b\u1EA3n, n\u1ED1t nh\u1EA1c n\xE0o \u0111\u1EE9ng li\u1EC1n sau n\u1ED1t Pha (F)?", a: "N\u1ED1t Son (G)", type: "theory" },
-      { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What is the largest and deepest of Earth's five oceanic divisions?", a: "Pacific Ocean", type: "theory" }
+      {
+        "subject": "H\xF3a",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Ch\u1EA5t kh\xED n\xE0o trong kh\xF4ng kh\xED duy tr\xEC s\u1EF1 h\xF4 h\u1EA5p c\u1EE7a con ng\u01B0\u1EDDi v\xE0 s\u1EF1 ch\xE1y?",
+        "a": "Oxy",
+        "type": "theory"
+      },
+      {
+        "subject": "To\xE1n",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "q": "V\xF2i 1 ch\u1EA3y m\u1ED9t m\xECnh 3 gi\u1EDD \u0111\u1EA7y b\u1EC3, v\xF2i 2 ch\u1EA3y m\u1ED9t m\xECnh 6 gi\u1EDD \u0111\u1EA7y b\u1EC3. M\u1EDF c\u1EA3 hai v\xF2i c\xF9ng l\xFAc th\xEC sau m\u1EA5y gi\u1EDD \u0111\u1EA7y b\u1EC3?",
+        "a": "2 gi\u1EDD",
+        "type": "theory"
+      },
+      {
+        "subject": "L\xFD",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "\u0110\u01A1n v\u1ECB \u0111o t\u1EA7n s\u1ED1 dao \u0111\u1ED9ng (Hz) \u0111\u01B0\u1EE3c \u0111\u1EB7t theo t\xEAn c\u1EE7a nh\xE0 v\u1EADt l\xFD h\u1ECDc ng\u01B0\u1EDDi n\u01B0\u1EDBc n\xE0o?",
+        "a": "\u0110\u1EE9c (Heinrich Hertz)",
+        "type": "theory"
+      },
+      {
+        "subject": "\u0110\u1ECBa",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "S\xF4ng M\xEA K\xF4ng ch\u1EA3y v\xE0o l\xE3nh th\u1ED5 Vi\u1EC7t Nam \u0111\u1EA7u ti\xEAn qua \u0111\u1ECBa ph\u1EADn c\u1EE7a hai t\u1EC9nh bi\xEAn gi\u1EDBi n\xE0o?",
+        "a": "\u0110\u1ED3ng Th\xE1p v\xE0 An Giang",
+        "type": "theory"
+      },
+      {
+        "subject": "V\u0103n",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Ai l\xE0 t\xE1c gi\u1EA3 c\u1EE7a ti\u1EC3u thuy\u1EBFt hi\u1EC7n th\u1EF1c ph\xEA ph\xE1n 'T\u1EAFt \u0111\xE8n' xu\u1EA5t b\u1EA3n n\u0103m 1939?",
+        "a": "Ng\xF4 T\u1EA5t T\u1ED1",
+        "type": "theory"
+      },
+      {
+        "subject": "S\u1EED",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Nguy\u1EC5n T\u1EA5t Th\xE0nh ra \u0111i t\xECm \u0111\u01B0\u1EDDng c\u1EE9u n\u01B0\u1EDBc t\u1EA1i B\u1EBFn c\u1EA3ng Nh\xE0 R\u1ED3ng v\xE0o ng\xE0y 5/6 c\u1EE7a n\u0103m n\xE0o?",
+        "a": "1911",
+        "type": "theory"
+      },
+      {
+        "subject": "Th\u1EC3 thao",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Trong m\xF4n b\u01A1i l\u1ED9i thi \u0111\u1EA5u Th\u1EBF v\u1EADn h\u1ED9i, c\xF3 t\u1EA5t c\u1EA3 bao nhi\xEAu ki\u1EC3u b\u01A1i ti\xEAu chu\u1EA9n \u0111\u01B0\u1EE3c \u0111\u01B0a v\xE0o tranh t\xE0i?",
+        "a": "4 ki\u1EC3u b\u01A1i (B\u01A1i b\u01B0\u1EDBm, b\u01A1i ng\u1EEDa, b\u01A1i \u1EBFch, b\u01A1i t\u1EF1 do)",
+        "type": "theory"
+      },
+      {
+        "subject": "Ngh\u1EC7 thu\u1EADt",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Trong k\xFD \xE2m nh\u1EA1c l\xFD c\u01A1 b\u1EA3n, n\u1ED1t nh\u1EA1c n\xE0o \u0111\u1EE9ng li\u1EC1n sau n\u1ED1t Pha (F)?",
+        "a": "N\u1ED1t Son (G)",
+        "type": "theory"
+      },
+      {
+        "subject": "Ti\u1EBFng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "What is the largest and deepest of Earth's five oceanic divisions?",
+        "a": "Pacific Ocean",
+        "type": "theory"
+      }
     ],
     "20": [
-      { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Mu\u1ED1i halogen n\xE0o (c\xF4ng th\u1EE9c KI) \u0111\u01B0\u1EE3c d\xF9ng \u0111\u1EC3 b\u1EA3o v\u1EC7 tuy\u1EBFn gi\xE1p tr\u01B0\u1EDBc nguy c\u01A1 h\u1EA5p th\u1EE5 \u0111\u1ED3ng v\u1ECB i\u1ED1t ph\xF3ng x\u1EA1?", a: "Kali iotua (Potassium iodide)", type: "theory" },
-      { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "Nh\xE0 to\xE1n h\u1ECDc De Morgan sinh \u1EDF th\u1EBF k\u1EF7 XIX t\u1EEBng \u0111\u1ED1: 'T\xF4i x tu\u1ED5i v\xE0o n\u0103m x b\xECnh ph\u01B0\u01A1ng'. \xD4ng sinh v\xE0o n\u0103m n\xE0o?", a: "1806 (43 tu\u1ED5i v\xE0o n\u0103m 1849)", type: "theory" },
-      { subject: "L\xFD", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Nh\u1EDD c\xF3 \u0111\u1ED3ng th\u1EDDi hai t\xEDnh ch\u1EA5t v\u1EADt l\xFD \u0111\u1EB7c bi\u1EC7t n\xE0o m\xE0 v\u1EADt li\u1EC7u Indium Tin Oxide (ITO) \u0111\u01B0\u1EE3c d\xF9ng l\xE0m m\xE0n h\xECnh c\u1EA3m \u1EE9ng \u0111i\u1EC7n tho\u1EA1i?", a: "D\u1EABn \u0111i\u1EC7n v\xE0 trong su\u1ED1t v\u1EDBi \xE1nh s\xE1ng", type: "practice" },
-      { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "T\u1EA1i b\u1EBFn c\u1EA3ng l\u1ECBch s\u1EED n\xE0o thu\u1ED9c t\u1EC9nh C\xE0 Mau v\xE0o th\xE1ng 10/1962, chuy\u1EBFn t\xE0u \u0111\u1EA7u ti\xEAn c\u1EE7a '\u0110o\xE0n t\xE0u kh\xF4ng s\u1ED1' \u0111\xE3 c\u1EADp b\u1EBFn an to\xE0n?", a: "B\u1EBFn V\xE0m L\u0169ng", type: "theory" },
-      { subject: "V\u0103n", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Nh\xE0 v\u0103n S\u01B0\u01A1ng Nguy\u1EC7t Minh \u0111\xE3 v\xED h\u1EC7 th\u1ED1ng c\xF4ng tr\xECnh n\xE0o tr\xEAn th\u1EC1m l\u1EE5c \u0111\u1ECBa ph\xEDa Nam nh\u01B0 'b\xF4ng hoa h\u01B0\u1EDBng d\u01B0\u01A1ng v\xE0ng r\u1EF1c \u0111\u1ED9i n\u01B0\u1EDBc v\u01B0\u01A1n l\xEAn tr\u1EDDi xanh'?", a: "Nh\xE0 gi\xE0n DK1", type: "theory" },
-      { subject: "\u0110\u1ECBa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "T\u1EA5m b\u1EA3n \u0111\u1ED3 c\u1ED5 n\xE0o c\u1EE7a tri\u1EC1u Nguy\u1EC5n v\u1EBD kho\u1EA3ng n\u0103m 1838 c\xF3 ghi r\xF5 hai \u0111\u1ECBa danh 'Ho\xE0ng Sa' v\xE0 'V\u1EA1n L\xFD Tr\u01B0\u1EDDng Sa' thu\u1ED9c l\xE3nh th\u1ED5 Vi\u1EC7t Nam?", a: "\u0110\u1EA1i Nam nh\u1EA5t th\u1ED1ng to\xE0n \u0111\u1ED3", type: "theory" },
-      { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "If you rearrange the letters in the word 'CIFAIPC', you get the name of an ocean. What ocean is it?", a: "PACIFIC", type: "theory" },
-      { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "Theo T\u1ED5 ch\u1EE9c S\u1EDF h\u1EEFu tr\xED tu\u1EC7 th\u1EBF gi\u1EDBi (WIPO), ch\u1EC9 s\u1ED1 \u0111\u1ED5i m\u1EDBi s\xE1ng t\u1EA1o to\xE0n c\u1EA7u \u0111\u01B0\u1EE3c vi\u1EBFt t\u1EAFt b\u1EB1ng 3 ch\u1EEF c\xE1i ti\u1EBFng Anh l\xE0 g\xEC?", a: "GII (Global Innovation Index)", type: "theory" },
-      { subject: "Ngh\u1EC7 thu\u1EADt", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "Di s\u1EA3n Nh\xE3 nh\u1EA1c cung \u0111\xECnh Hu\u1EBF \u0111\u01B0\u1EE3c UNESCO ghi danh l\xE0 Ki\u1EC7t t\xE1c truy\u1EC1n kh\u1EA9u v\xE0 phi v\u1EADt th\u1EC3 c\u1EE7a nh\xE2n lo\u1EA1i v\xE0o n\u0103m n\xE0o?", a: "2003", type: "theory" }
+      {
+        "subject": "H\xF3a",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Mu\u1ED1i halogen n\xE0o (c\xF4ng th\u1EE9c KI) \u0111\u01B0\u1EE3c d\xF9ng \u0111\u1EC3 b\u1EA3o v\u1EC7 tuy\u1EBFn gi\xE1p tr\u01B0\u1EDBc nguy c\u01A1 h\u1EA5p th\u1EE5 \u0111\u1ED3ng v\u1ECB i\u1ED1t ph\xF3ng x\u1EA1?",
+        "a": "Kali iotua (Potassium iodide)",
+        "type": "theory"
+      },
+      {
+        "subject": "To\xE1n",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "q": "Nh\xE0 to\xE1n h\u1ECDc De Morgan sinh \u1EDF th\u1EBF k\u1EF7 XIX t\u1EEBng \u0111\u1ED1: 'T\xF4i x tu\u1ED5i v\xE0o n\u0103m x b\xECnh ph\u01B0\u01A1ng'. \xD4ng sinh v\xE0o n\u0103m n\xE0o?",
+        "a": "1806 (43 tu\u1ED5i v\xE0o n\u0103m 1849)",
+        "type": "theory"
+      },
+      {
+        "subject": "L\xFD",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "Nh\u1EDD c\xF3 \u0111\u1ED3ng th\u1EDDi hai t\xEDnh ch\u1EA5t v\u1EADt l\xFD \u0111\u1EB7c bi\u1EC7t n\xE0o m\xE0 v\u1EADt li\u1EC7u Indium Tin Oxide (ITO) \u0111\u01B0\u1EE3c d\xF9ng l\xE0m m\xE0n h\xECnh c\u1EA3m \u1EE9ng \u0111i\u1EC7n tho\u1EA1i?",
+        "a": "D\u1EABn \u0111i\u1EC7n v\xE0 trong su\u1ED1t v\u1EDBi \xE1nh s\xE1ng",
+        "type": "practice"
+      },
+      {
+        "subject": "S\u1EED",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "T\u1EA1i b\u1EBFn c\u1EA3ng l\u1ECBch s\u1EED n\xE0o thu\u1ED9c t\u1EC9nh C\xE0 Mau v\xE0o th\xE1ng 10/1962, chuy\u1EBFn t\xE0u \u0111\u1EA7u ti\xEAn c\u1EE7a '\u0110o\xE0n t\xE0u kh\xF4ng s\u1ED1' \u0111\xE3 c\u1EADp b\u1EBFn an to\xE0n?",
+        "a": "B\u1EBFn V\xE0m L\u0169ng",
+        "type": "theory"
+      },
+      {
+        "subject": "V\u0103n",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Nh\xE0 v\u0103n S\u01B0\u01A1ng Nguy\u1EC7t Minh \u0111\xE3 v\xED h\u1EC7 th\u1ED1ng c\xF4ng tr\xECnh n\xE0o tr\xEAn th\u1EC1m l\u1EE5c \u0111\u1ECBa ph\xEDa Nam nh\u01B0 'b\xF4ng hoa h\u01B0\u1EDBng d\u01B0\u01A1ng v\xE0ng r\u1EF1c \u0111\u1ED9i n\u01B0\u1EDBc v\u01B0\u01A1n l\xEAn tr\u1EDDi xanh'?",
+        "a": "Nh\xE0 gi\xE0n DK1",
+        "type": "theory"
+      },
+      {
+        "subject": "\u0110\u1ECBa",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "T\u1EA5m b\u1EA3n \u0111\u1ED3 c\u1ED5 n\xE0o c\u1EE7a tri\u1EC1u Nguy\u1EC5n v\u1EBD kho\u1EA3ng n\u0103m 1838 c\xF3 ghi r\xF5 hai \u0111\u1ECBa danh 'Ho\xE0ng Sa' v\xE0 'V\u1EA1n L\xFD Tr\u01B0\u1EDDng Sa' thu\u1ED9c l\xE3nh th\u1ED5 Vi\u1EC7t Nam?",
+        "a": "\u0110\u1EA1i Nam nh\u1EA5t th\u1ED1ng to\xE0n \u0111\u1ED3",
+        "type": "theory"
+      },
+      {
+        "subject": "Ti\u1EBFng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "If you rearrange the letters in the word 'CIFAIPC', you get the name of an ocean. What ocean is it?",
+        "a": "PACIFIC",
+        "type": "theory"
+      },
+      {
+        "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "q": "Theo T\u1ED5 ch\u1EE9c S\u1EDF h\u1EEFu tr\xED tu\u1EC7 th\u1EBF gi\u1EDBi (WIPO), ch\u1EC9 s\u1ED1 \u0111\u1ED5i m\u1EDBi s\xE1ng t\u1EA1o to\xE0n c\u1EA7u \u0111\u01B0\u1EE3c vi\u1EBFt t\u1EAFt b\u1EB1ng 3 ch\u1EEF c\xE1i ti\u1EBFng Anh l\xE0 g\xEC?",
+        "a": "GII (Global Innovation Index)",
+        "type": "theory"
+      },
+      {
+        "subject": "Ngh\u1EC7 thu\u1EADt",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "Di s\u1EA3n Nh\xE3 nh\u1EA1c cung \u0111\xECnh Hu\u1EBF \u0111\u01B0\u1EE3c UNESCO ghi danh l\xE0 Ki\u1EC7t t\xE1c truy\u1EC1n kh\u1EA9u v\xE0 phi v\u1EADt th\u1EC3 c\u1EE7a nh\xE2n lo\u1EA1i v\xE0o n\u0103m n\xE0o?",
+        "a": "2003",
+        "type": "theory"
+      }
     ],
     "30": [
-      { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "M\xE0u xanh lam qu\xFD hi\u1EBFm c\u1EE7a vi\xEAn kim c\u01B0\u01A1ng 'The De Beers Blue' \u0111\u01B0\u1EE3c t\u1EA1o n\xEAn b\u1EDFi s\u1EF1 hi\u1EC7n di\u1EC7n c\u1EE7a nguy\xEAn t\u1ED1 h\xF3a h\u1ECDc n\xE0o trong m\u1EA1ng tinh th\u1EC3 cacbon?", a: "Bo (Boron)", type: "theory" },
-      { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "M\u1ED9t h\u1EC7 th\u1ED1ng g\u1ED3m 8 \u0111\xE8n. M\u1ED7i \u0111\xE8n s\xE1ng xanh 2 ph\xFAt r\u1ED3i chuy\u1EC3n sang \u0111\u1ECF 2 ph\xFAt. \u0110\xE8n 1 b\u1EADt xanh l\xFAc 0s, c\u1EE9 sau 10s \u0111\xE8n ti\u1EBFp theo b\u1EADt xanh. Trong 3 ph\xFAt \u0111\u1EA7u, c\u1EA3 8 \u0111\xE8n c\xF9ng s\xE1ng xanh trong bao nhi\xEAu gi\xE2y?", a: "50 gi\xE2y", type: "theory" },
-      { subject: "Sinh", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "B\xE0o quan n\xE0o b\xEAn trong t\u1EBF b\xE0o nh\xE2n th\u1EF1c ngo\xE0i nh\xE2n t\u1EBF b\xE0o c\xF3 ch\u1EE9a h\u1EC7 ph\xE2n t\u1EED ADN m\u1EA1ch v\xF2ng ri\xEAng bi\u1EC7t v\xE0 c\xF3 kh\u1EA3 n\u0103ng t\u1EF1 nh\xE2n \u0111\xF4i \u1EDF \u0111\u1ED9ng v\u1EADt?", a: "Ti th\u1EC3", type: "practice" },
-      { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "C\xE2u ca dao l\u1ECBch s\u1EED: 'Chu tri r\xE0nh r\xE0nh / C\xE1i \u0111anh n\u1ED5 l\u1EEDa / Con ng\u1EF1a \u0111\u1EE9t c\u01B0\u01A1ng / Ba v\u01B0\u01A1ng t\u1EADp \u0111\u1EBF' nh\u1EAFc \u0111\u1EBFn ba v\u1ECB vua n\xE0o c\u1EE7a tri\u1EC1u Nguy\u1EC5n trong bi\u1EBFn c\u1ED1 T\u1EE9 nguy\u1EC7t tam v\u01B0\u01A1ng?", a: "D\u1EE5c \u0110\u1EE9c, Hi\u1EC7p H\xF2a, Ki\u1EBFn Ph\xFAc", type: "theory" },
-      { subject: "V\u0103n", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Trong ti\u1EC3u thuy\u1EBFt 'T\u1EAFt \u0111\xE8n' c\u1EE7a nh\xE0 v\u0103n Ng\xF4 T\u1EA5t T\u1ED1, nh\xE2n v\u1EADt 'Ch\u1ECB D\u1EADu' tr\u01B0\u1EDBc khi l\u1EA5y anh Nguy\u1EC5n V\u0103n D\u1EADu c\xF3 t\xEAn khai sinh th\u1EADt l\xE0 g\xEC?", a: "L\xEA Th\u1ECB \u0110\xE0o", type: "theory" },
-      { subject: "\u0110\u1ECBa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "D\xF2ng h\u1EA3i l\u01B0u l\u1EA1nh ch\u1EA3y d\u1ECDc b\u1EDD bi\u1EC3n ph\xEDa t\xE2y khu v\u1EF1c Nam M\u1EF9, mang l\u1EA1i ngu\u1ED3n c\xE1 c\u01A1m phong ph\xFA cho Peru v\xE0 Chile c\xF3 t\xEAn qu\u1ED1c t\u1EBF l\xE0 g\xEC?", a: "H\u1EA3i l\u01B0u Humboldt (ho\u1EB7c h\u1EA3i l\u01B0u Peru)", type: "theory" },
-      { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "V\u1EC7 tinh t\u1EF1 nhi\xEAn l\u1EDBn nh\u1EA5t c\u1EE7a Sao M\u1ED9c v\xE0 c\u0169ng l\xE0 v\u1EC7 tinh t\u1EF1 nhi\xEAn l\u1EDBn nh\u1EA5t trong to\xE0n b\u1ED9 H\u1EC7 M\u1EB7t Tr\u1EDDi mang t\xEAn g\xEC?", a: "Ganymede", type: "theory" },
-      { subject: "Ti\u1EBFng Anh", kdZone: "FOREIGN_LANG", vdZone: "HBC", q: "What English word starting with the letter 'P' refers to the phenomenon where plants convert light energy into chemical energy?", a: "Photosynthesis", type: "theory" },
-      { subject: "Th\u1EC3 thao", kdZone: "ARTS_SPORTS", vdZone: "HBC", q: "V\u1EADn \u0111\u1ED9ng vi\xEAn b\u1EAFn s\xFAng Ho\xE0ng Xu\xE2n Vinh \u0111\xE3 gi\xE0nh t\u1EA5m Huy ch\u01B0\u01A1ng V\xE0ng l\u1ECBch s\u1EED \u0111\u1EA7u ti\xEAn cho \u0111o\xE0n th\u1EC3 thao Vi\u1EC7t Nam t\u1EA1i Th\u1EBF v\u1EADn h\u1ED9i Olympic m\xF9a h\xE8 n\u0103m 2016 \u1EDF th\xE0nh ph\u1ED1 n\xE0o?", a: "Rio de Janeiro (Brazil)", type: "theory" }
+      {
+        "subject": "H\xF3a",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "M\xE0u xanh lam qu\xFD hi\u1EBFm c\u1EE7a vi\xEAn kim c\u01B0\u01A1ng 'The De Beers Blue' \u0111\u01B0\u1EE3c t\u1EA1o n\xEAn b\u1EDFi s\u1EF1 hi\u1EC7n di\u1EC7n c\u1EE7a nguy\xEAn t\u1ED1 h\xF3a h\u1ECDc n\xE0o trong m\u1EA1ng tinh th\u1EC3 cacbon?",
+        "a": "Bo (Boron)",
+        "type": "theory"
+      },
+      {
+        "subject": "To\xE1n",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "q": "M\u1ED9t h\u1EC7 th\u1ED1ng g\u1ED3m 8 \u0111\xE8n. M\u1ED7i \u0111\xE8n s\xE1ng xanh 2 ph\xFAt r\u1ED3i chuy\u1EC3n sang \u0111\u1ECF 2 ph\xFAt. \u0110\xE8n 1 b\u1EADt xanh l\xFAc 0s, c\u1EE9 sau 10s \u0111\xE8n ti\u1EBFp theo b\u1EADt xanh. Trong 3 ph\xFAt \u0111\u1EA7u, c\u1EA3 8 \u0111\xE8n c\xF9ng s\xE1ng xanh trong bao nhi\xEAu gi\xE2y?",
+        "a": "50 gi\xE2y",
+        "type": "theory"
+      },
+      {
+        "subject": "Sinh",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "B\xE0o quan n\xE0o b\xEAn trong t\u1EBF b\xE0o nh\xE2n th\u1EF1c ngo\xE0i nh\xE2n t\u1EBF b\xE0o c\xF3 ch\u1EE9a h\u1EC7 ph\xE2n t\u1EED ADN m\u1EA1ch v\xF2ng ri\xEAng bi\u1EC7t v\xE0 c\xF3 kh\u1EA3 n\u0103ng t\u1EF1 nh\xE2n \u0111\xF4i \u1EDF \u0111\u1ED9ng v\u1EADt?",
+        "a": "Ti th\u1EC3",
+        "type": "practice"
+      },
+      {
+        "subject": "S\u1EED",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "C\xE2u ca dao l\u1ECBch s\u1EED: 'Chu tri r\xE0nh r\xE0nh / C\xE1i \u0111anh n\u1ED5 l\u1EEDa / Con ng\u1EF1a \u0111\u1EE9t c\u01B0\u01A1ng / Ba v\u01B0\u01A1ng t\u1EADp \u0111\u1EBF' nh\u1EAFc \u0111\u1EBFn ba v\u1ECB vua n\xE0o c\u1EE7a tri\u1EC1u Nguy\u1EC5n trong bi\u1EBFn c\u1ED1 T\u1EE9 nguy\u1EC7t tam v\u01B0\u01A1ng?",
+        "a": "D\u1EE5c \u0110\u1EE9c, Hi\u1EC7p H\xF2a, Ki\u1EBFn Ph\xFAc",
+        "type": "theory"
+      },
+      {
+        "subject": "V\u0103n",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "Trong ti\u1EC3u thuy\u1EBFt 'T\u1EAFt \u0111\xE8n' c\u1EE7a nh\xE0 v\u0103n Ng\xF4 T\u1EA5t T\u1ED1, nh\xE2n v\u1EADt 'Ch\u1ECB D\u1EADu' tr\u01B0\u1EDBc khi l\u1EA5y anh Nguy\u1EC5n V\u0103n D\u1EADu c\xF3 t\xEAn khai sinh th\u1EADt l\xE0 g\xEC?",
+        "a": "L\xEA Th\u1ECB \u0110\xE0o",
+        "type": "theory"
+      },
+      {
+        "subject": "\u0110\u1ECBa",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "D\xF2ng h\u1EA3i l\u01B0u l\u1EA1nh ch\u1EA3y d\u1ECDc b\u1EDD bi\u1EC3n ph\xEDa t\xE2y khu v\u1EF1c Nam M\u1EF9, mang l\u1EA1i ngu\u1ED3n c\xE1 c\u01A1m phong ph\xFA cho Peru v\xE0 Chile c\xF3 t\xEAn qu\u1ED1c t\u1EBF l\xE0 g\xEC?",
+        "a": "H\u1EA3i l\u01B0u Humboldt (ho\u1EB7c h\u1EA3i l\u01B0u Peru)",
+        "type": "theory"
+      },
+      {
+        "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "q": "V\u1EC7 tinh t\u1EF1 nhi\xEAn l\u1EDBn nh\u1EA5t c\u1EE7a Sao M\u1ED9c v\xE0 c\u0169ng l\xE0 v\u1EC7 tinh t\u1EF1 nhi\xEAn l\u1EDBn nh\u1EA5t trong to\xE0n b\u1ED9 H\u1EC7 M\u1EB7t Tr\u1EDDi mang t\xEAn g\xEC?",
+        "a": "Ganymede",
+        "type": "theory"
+      },
+      {
+        "subject": "Ti\u1EBFng Anh",
+        "kdZone": "FOREIGN_LANG",
+        "vdZone": "HBC",
+        "q": "What English word starting with the letter 'P' refers to the phenomenon where plants convert light energy into chemical energy?",
+        "a": "Photosynthesis",
+        "type": "theory"
+      },
+      {
+        "subject": "Th\u1EC3 thao",
+        "kdZone": "ARTS_SPORTS",
+        "vdZone": "HBC",
+        "q": "V\u1EADn \u0111\u1ED9ng vi\xEAn b\u1EAFn s\xFAng Ho\xE0ng Xu\xE2n Vinh \u0111\xE3 gi\xE0nh t\u1EA5m Huy ch\u01B0\u01A1ng V\xE0ng l\u1ECBch s\u1EED \u0111\u1EA7u ti\xEAn cho \u0111o\xE0n th\u1EC3 thao Vi\u1EC7t Nam t\u1EA1i Th\u1EBF v\u1EADn h\u1ED9i Olympic m\xF9a h\xE8 n\u0103m 2016 \u1EDF th\xE0nh ph\u1ED1 n\xE0o?",
+        "a": "Rio de Janeiro (Brazil)",
+        "type": "theory"
+      }
     ],
     "40": [
-      { subject: "L\xFD", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "H\u1EA1t c\u01A1 b\u1EA3n n\xE0o \u0111\u01B0\u1EE3c ti\xEAn \u0111o\xE1n b\u1EDFi nh\xE0 v\u1EADt l\xFD Peter Higgs n\u0103m 1964 v\xE0 \u0111\u01B0\u1EE3c x\xE1c nh\u1EADn t\u1EA1i m\xE1y gia t\u1ED1c LHC (CERN) n\u0103m 2012?", a: "Boson Higgs", type: "theory" },
-      { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "H\u1ED9i ngh\u1ECB th\xE0nh l\u1EADp \u0110\u1EA3ng C\u1ED9ng s\u1EA3n Vi\u1EC7t Nam \u0111\u1EA7u n\u0103m 1930 do Nguy\u1EC5n \xC1i Qu\u1ED1c ch\u1EE7 tr\xEC di\u1EC5n ra t\u1EA1i b\xE1n \u0111\u1EA3o n\xE0o thu\u1ED9c H\u01B0\u01A1ng C\u1EA3ng (Trung Qu\u1ED1c)?", a: "C\u1EEDu Long", type: "theory" }
+      {
+        "subject": "L\xFD",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN",
+        "q": "H\u1EA1t c\u01A1 b\u1EA3n n\xE0o \u0111\u01B0\u1EE3c ti\xEAn \u0111o\xE1n b\u1EDFi nh\xE0 v\u1EADt l\xFD Peter Higgs n\u0103m 1964 v\xE0 \u0111\u01B0\u1EE3c x\xE1c nh\u1EADn t\u1EA1i m\xE1y gia t\u1ED1c LHC (CERN) n\u0103m 2012?",
+        "a": "Boson Higgs",
+        "type": "theory"
+      },
+      {
+        "subject": "S\u1EED",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "q": "H\u1ED9i ngh\u1ECB th\xE0nh l\u1EADp \u0110\u1EA3ng C\u1ED9ng s\u1EA3n Vi\u1EC7t Nam \u0111\u1EA7u n\u0103m 1930 do Nguy\u1EC5n \xC1i Qu\u1ED1c ch\u1EE7 tr\xEC di\u1EC5n ra t\u1EA1i b\xE1n \u0111\u1EA3o n\xE0o thu\u1ED9c H\u01B0\u01A1ng C\u1EA3ng (Trung Qu\u1ED1c)?",
+        "a": "C\u1EEDu Long",
+        "type": "theory"
+      }
     ]
   },
-  cauHoiPhu: [
-    { subject: "S\u1EED", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Tri\u1EC1u \u0111\u1EA1i phong ki\u1EBFn n\xE0o t\u1ED3n t\u1EA1i l\xE2u d\xE0i nh\u1EA5t trong l\u1ECBch s\u1EED ch\u1EBF \u0111\u1ED9 qu\xE2n ch\u1EE7 Vi\u1EC7t Nam (k\xE9o d\xE0i 356 n\u0103m)?", a: "Nh\xE0 H\u1EADu L\xEA" },
-    { subject: "H\xF3a", kdZone: "NATURAL_SCI", vdZone: "KHTN", q: "Kim lo\u1EA1i n\xE0o c\xF3 nhi\u1EC7t \u0111\u1ED9 n\xF3ng ch\u1EA3y cao nh\u1EA5t trong t\u1EA5t c\u1EA3 c\xE1c kim lo\u1EA1i nguy\xEAn ch\u1EA5t (3.422\xB0C), th\u01B0\u1EDDng d\xF9ng l\xE0m d\xE2y t\xF3c b\xF3ng \u0111\xE8n?", a: "Vonfram (Tungsten / W)" },
-    { subject: "\u0110\u1ECBa", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "Qu\u1ED1c gia n\xE0o c\xF3 s\u1ED1 l\u01B0\u1EE3ng m\xFAi gi\u1EDD nhi\u1EC1u nh\u1EA5t th\u1EBF gi\u1EDBi (t\xEDnh c\u1EA3 c\xE1c v\xF9ng l\xE3nh th\u1ED5 h\u1EA3i ngo\u1EA1i)?", a: "Ph\xE1p" },
-    { subject: "To\xE1n", kdZone: "MATH_IT", vdZone: "KHTN", q: "M\u1ED9t n\u0103m th\u1EBF k\u1EF7 (k\u1EBFt th\xFAc b\u1EB1ng hai ch\u1EEF s\u1ED1 00) ch\u1EC9 l\xE0 n\u0103m nhu\u1EADn khi n\xF3 chia h\u1EBFt cho s\u1ED1 t\u1EF1 nhi\xEAn n\xE0o?", a: "400" },
-    { subject: "V\u0103n", kdZone: "SOCIAL_SCI", vdZone: "KHXH", q: "B\xE0i th\u01A1 'T\xE2y Ti\u1EBFn' c\u1EE7a nh\xE0 th\u01A1 Quang D\u0169ng \u0111\u01B0\u1EE3c s\xE1ng t\xE1c v\xE0o n\u0103m n\xE0o t\u1EA1i Ph\xF9 L\u01B0u Chanh?", a: "1948" },
-    { subject: "L\u0129nh v\u1EF1c kh\xE1c", kdZone: "GENERAL", vdZone: "HBC", q: "Tr\u1EE5 s\u1EDF ch\xEDnh c\u1EE7a T\u1ED5 ch\u1EE9c Gi\xE1o d\u1EE5c, Khoa h\u1ECDc v\xE0 V\u0103n h\xF3a Li\xEAn H\u1EE3p Qu\u1ED1c (UNESCO) \u0111\u1EB7t t\u1EA1i th\xE0nh ph\u1ED1 n\xE0o?", a: "Paris (Ph\xE1p)" }
+  "cauHoiPhu": [
+    {
+      "subject": "S\u1EED",
+      "kdZone": "SOCIAL_SCI",
+      "vdZone": "KHXH",
+      "q": "Tri\u1EC1u \u0111\u1EA1i phong ki\u1EBFn n\xE0o t\u1ED3n t\u1EA1i l\xE2u d\xE0i nh\u1EA5t trong l\u1ECBch s\u1EED ch\u1EBF \u0111\u1ED9 qu\xE2n ch\u1EE7 Vi\u1EC7t Nam (k\xE9o d\xE0i 356 n\u0103m)?",
+      "a": "Nh\xE0 H\u1EADu L\xEA"
+    },
+    {
+      "subject": "H\xF3a",
+      "kdZone": "NATURAL_SCI",
+      "vdZone": "KHTN",
+      "q": "Kim lo\u1EA1i n\xE0o c\xF3 nhi\u1EC7t \u0111\u1ED9 n\xF3ng ch\u1EA3y cao nh\u1EA5t trong t\u1EA5t c\u1EA3 c\xE1c kim lo\u1EA1i nguy\xEAn ch\u1EA5t (3.422\xB0C), th\u01B0\u1EDDng d\xF9ng l\xE0m d\xE2y t\xF3c b\xF3ng \u0111\xE8n?",
+      "a": "Vonfram (Tungsten / W)"
+    },
+    {
+      "subject": "\u0110\u1ECBa",
+      "kdZone": "SOCIAL_SCI",
+      "vdZone": "KHXH",
+      "q": "Qu\u1ED1c gia n\xE0o c\xF3 s\u1ED1 l\u01B0\u1EE3ng m\xFAi gi\u1EDD nhi\u1EC1u nh\u1EA5t th\u1EBF gi\u1EDBi (t\xEDnh c\u1EA3 c\xE1c v\xF9ng l\xE3nh th\u1ED5 h\u1EA3i ngo\u1EA1i)?",
+      "a": "Ph\xE1p"
+    },
+    {
+      "subject": "To\xE1n",
+      "kdZone": "MATH_IT",
+      "vdZone": "KHTN",
+      "q": "M\u1ED9t n\u0103m th\u1EBF k\u1EF7 (k\u1EBFt th\xFAc b\u1EB1ng hai ch\u1EEF s\u1ED1 00) ch\u1EC9 l\xE0 n\u0103m nhu\u1EADn khi n\xF3 chia h\u1EBFt cho s\u1ED1 t\u1EF1 nhi\xEAn n\xE0o?",
+      "a": "400"
+    },
+    {
+      "subject": "V\u0103n",
+      "kdZone": "SOCIAL_SCI",
+      "vdZone": "KHXH",
+      "q": "B\xE0i th\u01A1 'T\xE2y Ti\u1EBFn' c\u1EE7a nh\xE0 th\u01A1 Quang D\u0169ng \u0111\u01B0\u1EE3c s\xE1ng t\xE1c v\xE0o n\u0103m n\xE0o t\u1EA1i Ph\xF9 L\u01B0u Chanh?",
+      "a": "1948"
+    },
+    {
+      "subject": "L\u0129nh v\u1EF1c kh\xE1c",
+      "kdZone": "GENERAL",
+      "vdZone": "HBC",
+      "q": "Tr\u1EE5 s\u1EDF ch\xEDnh c\u1EE7a T\u1ED5 ch\u1EE9c Gi\xE1o d\u1EE5c, Khoa h\u1ECDc v\xE0 V\u0103n h\xF3a Li\xEAn H\u1EE3p Qu\u1ED1c (UNESCO) \u0111\u1EB7t t\u1EA1i th\xE0nh ph\u1ED1 n\xE0o?",
+      "a": "Paris (Ph\xE1p)"
+    }
   ]
 };
 var SAMPLE_QUESTION_SET = autoTagOlympiaSet(RAW_SAMPLE_QUESTION_SET, false);
@@ -25271,8 +26238,8 @@ var RAW_BAC_AI_QUESTION_SET = {
     "solo": {
       "1": [
         {
-          "q": "M\u1EE5c ti\xEAu t\u1ED1i th\u01B0\u1EE3ng c\u1EE7a \u0111\u1EA5u th\u1EA7u c\xF3 ph\u1EA3i ch\u1EC9 \u0111\u01A1n thu\u1EA7n l\xE0 ch\u1ECDn nh\xE0 th\u1EA7u \u0111\u01B0a ra gi\xE1 th\u1EA5p nh\u1EA5t hay kh\xF4ng?",
-          "a": "Kh\xF4ng",
+          "q": "M\u1EE5c ti\xEAu c\u1ED1t l\xF5i c\u1EE7a ho\u1EA1t \u0111\u1ED9ng \u0111\u1EA5u th\u1EA7u mua s\u1EAFm c\xF4ng l\xE0 t\u1ED1i \u01B0u h\xF3a y\u1EBFu t\u1ED1 n\xE0o xuy\xEAn su\u1ED1t th\u1EDDi gian v\u1EADn h\xE0nh d\u1EF1 \xE1n?",
+          "a": "Chi ph\xED v\xF2ng \u0111\u1EDDi (LCC)",
           "subject": "L\xFD lu\u1EADn \u0111\u1EA5u th\u1EA7u",
           "kdZone": "SOCIAL_SCI",
           "vdZone": "KHXH"
@@ -25457,8 +26424,8 @@ var RAW_BAC_AI_QUESTION_SET = {
           "vdZone": "KHXH"
         },
         {
-          "q": "D\u1EA1ng n\u0103ng l\u01B0\u1EE3ng c\u01A1 h\u1ECDc \u0111\u01B0\u1EE3c t\xEDch tr\u1EEF trong kh\u1ED1i n\u01B0\u1EDBc \u1EDF h\u1ED3 tr\xEAn do ch\xEAnh l\u1EC7ch \u0111\u1ED9 cao g\u1ECDi l\xE0 g\xEC?",
-          "a": "Th\u1EBF n\u0103ng",
+          "q": "\u0110\u1EA1i l\u01B0\u1EE3ng v\u1EADt l\xFD \u0111\u1EB7c tr\u01B0ng cho kh\u1EA3 n\u0103ng sinh c\xF4ng c\u1EE7a d\xF2ng n\u01B0\u1EDBc qua tua-bin trong m\u1ED9t \u0111\u01A1n v\u1ECB th\u1EDDi gian \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 g\xEC?",
+          "a": "C\xF4ng su\u1EA5t c\u01A1 h\u1ECDc",
           "subject": "V\u1EADt l\xFD",
           "kdZone": "NATURAL_SCI",
           "vdZone": "KHTN"
@@ -25487,11 +26454,11 @@ var RAW_BAC_AI_QUESTION_SET = {
       ],
       "4": [
         {
-          "q": "T\u1EADp \u0111o\xE0n c\xF4ng ngh\u1EC7 c\u01A1 kh\xED c\u1EE7a \u0110\u1EE9c \u0111\u1EE9ng \u0111\u1EA7u li\xEAn danh tr\xFAng th\u1EA7u g\xF3i 01TB-BA mang t\xEAn g\xEC?",
-          "a": "Voith Hydro",
-          "subject": "Nh\xE0 th\u1EA7u",
-          "kdZone": "GENERAL",
-          "vdZone": "HBC"
+          "q": "Qu\u1ED1c gia ch\xE2u \xC2u n\xE0o l\xE0 n\u01A1i \u0111\u1EB7t tr\u1EE5 s\u1EDF t\u1EADp \u0111o\xE0n c\xF4ng ngh\u1EC7 n\u0103ng l\u01B0\u1EE3ng Voith Hydro, \u0111\u01A1n v\u1ECB \u0111\u1EE9ng \u0111\u1EA7u li\xEAn danh cung c\u1EA5p thi\u1EBFt b\u1ECB ch\xEDnh g\xF3i 01TB-BA?",
+          "a": "C\u1ED9ng h\xF2a Li\xEAn bang \u0110\u1EE9c (\u0110\u1EE9c)",
+          "subject": "\u0110\u1ECBa l\xFD kinh t\u1EBF",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
         },
         {
           "q": "T\u1ED5ng c\xF4ng su\u1EA5t thi\u1EBFt k\u1EBF c\u1EE7a to\xE0n b\u1ED9 4 t\u1ED5 m\xE1y Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i l\xE0 bao nhi\xEAu MW?",
@@ -25960,9 +26927,9 @@ var RAW_BAC_AI_QUESTION_SET = {
         "vdZone": "KHXH"
       },
       {
-        "q": "T\xE0i li\u1EC7u do b\xEAn m\u1EDDi th\u1EA7u ban h\xE0nh n\xEAu r\xF5 c\xE1c y\xEAu c\u1EA7u v\u1EC1 n\u0103ng l\u1EF1c, ti\xEAu chu\u1EA9n k\u1EF9 thu\u1EADt v\xE0 h\u01B0\u1EDBng d\u1EABn l\u1EADp h\u1ED3 s\u01A1 d\u1EF1 th\u1EA7u vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
-        "a": "HSMT (H\u1ED3 s\u01A1 m\u1EDDi th\u1EA7u)",
-        "subject": "Thu\u1EADt ng\u1EEF \u0111\u1EA5u th\u1EA7u",
+        "q": "V\u0103n b\u1EA3n ph\xE1p l\xFD do ng\u01B0\u1EDDi c\xF3 th\u1EA9m quy\u1EC1n k\xFD ban h\xE0nh \u0111\u1EC3 ch\xEDnh th\u1EE9c c\xF4ng nh\u1EADn \u0111\u01A1n v\u1ECB tr\xFAng th\u1EA7u \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 Quy\u1EBFt \u0111\u1ECBnh ph\xEA duy\u1EC7t g\xEC?",
+        "a": "K\u1EBFt qu\u1EA3 l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u (KQLCNT)",
+        "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
         "kdZone": "SOCIAL_SCI",
         "vdZone": "KHXH"
       },
@@ -26071,8 +27038,8 @@ var RAW_BAC_AI_QUESTION_SET = {
   },
   "tangToc": [
     {
-      "q": "H\xECnh th\u1EE9c l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u n\xE0o \u0111\u01B0\u1EE3c Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15 quy \u0111\u1ECBnh l\xE0 h\xECnh th\u1EE9c m\u1EB7c \u0111\u1ECBnh, \xE1p d\u1EE5ng kh\xF4ng h\u1EA1n ch\u1EBF s\u1ED1 l\u01B0\u1EE3ng nh\xE0 th\u1EA7u tham d\u1EF1?",
-      "answer": "\u0110\u1EA4U TH\u1EA6U R\u1ED8NG R\xC3I",
+      "q": "[C\xE2u 1 \u2014 Nh\u1EADn di\u1EC7n h\xECnh th\u1EE9c] H\xECnh th\u1EE9c l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u c\xF3 s\u1EF1 tham gia c\u1EE7a c\xE1c nh\xE0 th\u1EA7u n\u01B0\u1EDBc ngo\xE0i v\xE0 nh\xE0 th\u1EA7u trong n\u01B0\u1EDBc theo quy \u0111\u1ECBnh c\u1EE7a Lu\u1EADt \u0110\u1EA5u th\u1EA7u \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 g\xEC?",
+      "answer": "\u0110\u1EA5u th\u1EA7u qu\u1ED1c t\u1EBF",
       "duration": 10,
       "type": "image",
       "category": "iq"
@@ -26130,10 +27097,12 @@ var RAW_BAC_AI_QUESTION_SET = {
   "veDich": {
     "10": [
       {
-        "q": "Theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15, quy tr\xECnh t\u1ED5 ch\u1EE9c th\u1EF1c hi\u1EC7n \u0111\u1EA5u th\u1EA7u chu\u1EA9n h\xF3a g\u1ED3m bao nhi\xEAu b\u01B0\u1EDBc li\xEAn t\u1EE5c?",
-        "a": "7 b\u01B0\u1EDBc",
-        "type": "theory",
-        "vdZone": "KHXH"
+        "q": "Trong quy tr\xECnh 7 b\u01B0\u1EDBc t\u1ED5 ch\u1EE9c \u0111\u1EA5u th\u1EA7u chu\u1EA9n h\xF3a, b\u01B0\u1EDBc \u0111\u1EA7u ti\xEAn mang t\xEDnh ph\xE1p l\xFD ti\xEAn quy\u1EBFt \u0111\u1EC3 b\xEAn m\u1EDDi th\u1EA7u l\xE0m c\u0103n c\u1EE9 tri\u1EC3n khai ph\xE1t h\xE0nh h\u1ED3 s\u01A1 m\u1EDDi th\u1EA7u l\xE0 b\u01B0\u1EDBc g\xEC?",
+        "a": "Ph\xEA duy\u1EC7t K\u1EBF ho\u1EA1ch l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u (KHLCNT)",
+        "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "type": "theory"
       },
       {
         "q": "Ng\xE0y 26 th\xE1ng 10 n\u0103m 2026 \u0111\xE3 di\u1EC5n ra s\u1EF1 ki\u1EC7n ph\xE1p l\xFD quan tr\u1ECDng n\xE0o \u0111\u1ED1i v\u1EDBi G\xF3i th\u1EA7u s\u1ED1 01TB-BA Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i?",
@@ -26142,16 +27111,20 @@ var RAW_BAC_AI_QUESTION_SET = {
         "vdZone": "KHXH"
       },
       {
-        "q": "Nh\xE0 m\xE1y Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i g\u1ED3m 4 t\u1ED5 m\xE1y v\u1EDBi t\u1ED5ng c\xF4ng su\u1EA5t 1.200 MW. H\u1ECFi c\xF4ng su\u1EA5t \u0111\u1ECBnh m\u1EE9c c\u1EE7a m\u1ED7i t\u1ED5 m\xE1y l\xE0 bao nhi\xEAu MW?",
-        "a": "300 MW",
-        "type": "theory",
-        "vdZone": "KHTN"
+        "q": "T\u1ED5ng c\xF4ng su\u1EA5t l\u1EAFp \u0111\u1EB7t \u0111\u1ECBnh m\u1EE9c c\u1EE7a to\xE0n b\u1ED9 4 t\u1ED5 m\xE1y t\u1EA1i Nh\xE0 m\xE1y Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i khi ho\xE0n th\xE0nh l\xE0 bao nhi\xEAu MW?",
+        "a": "1.200 MW",
+        "subject": "D\u1EF1 \xE1n B\xE1c \xC1i",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "type": "theory"
       },
       {
-        "q": "G\xF3i th\u1EA7u cung c\u1EA5p d\u1ECBch v\u1EE5 v\u1EADn chuy\u1EC3n, v\u1EC7 sinh c\xF4ng nghi\u1EC7p, b\u1EA3o d\u01B0\u1EE1ng c\u01A1 kh\xED thu\u1ED9c nh\xF3m d\u1ECBch v\u1EE5 n\xE0o: D\u1ECBch v\u1EE5 phi t\u01B0 v\u1EA5n, hay D\u1ECBch v\u1EE5 t\u01B0 v\u1EA5n?",
-        "a": "D\u1ECBch v\u1EE5 phi t\u01B0 v\u1EA5n",
-        "type": "theory",
-        "vdZone": "KHXH"
+        "q": "Trong qu\u1EA3n l\xFD d\u1EF1 \xE1n x\xE2y d\u1EF1ng, t\xE0i li\u1EC7u do ch\u1EE7 \u0111\u1EA7u t\u01B0 ban h\xE0nh x\xE1c \u0111\u1ECBnh ph\u1EA1m vi, quy m\xF4 c\xF4ng vi\u1EC7c v\xE0 y\xEAu c\u1EA7u k\u1EF9 thu\u1EADt \u0111\u1ED1i v\u1EDBi d\u1ECBch v\u1EE5 t\u01B0 v\u1EA5n \u0111\u01B0\u1EE3c vi\u1EBFt t\u1EAFt l\xE0 g\xEC (t\u01B0\u01A1ng \u0111\u01B0\u01A1ng TOR)?",
+        "a": "\u0110i\u1EC1u kho\u1EA3n tham chi\u1EBFu (TOR)",
+        "subject": "Qu\u1EA3n l\xFD d\u1EF1 \xE1n",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "type": "theory"
       },
       {
         "q": "Theo t\xE0i li\u1EC7u nghi\xEAn c\u1EE9u chuy\xEAn \u0111\u1EC1 v\u1EC1 qu\u1EA3n l\xFD d\u1EF1 \xE1n, v\u0103n b\u1EA3n ph\xE1p lu\u1EADt cao nh\u1EA5t \u0111i\u1EC1u ch\u1EC9nh ho\u1EA1t \u0111\u1ED9ng \u0111\u1EA5u th\u1EA7u \u0111\u01B0\u1EE3c vi\u1EC7n d\u1EABn c\xF3 s\u1ED1 hi\u1EC7u \u0111\u1EA7y \u0111\u1EE7 l\xE0 g\xEC?",
@@ -26178,10 +27151,12 @@ var RAW_BAC_AI_QUESTION_SET = {
         "vdZone": "KHTN"
       },
       {
-        "q": "Theo m\xF4 h\xECnh ch\xEDnh quy\u1EC1n \u0111\u1ECBa ph\u01B0\u01A1ng 2 c\u1EA5p (ch\u1EC9 g\u1ED3m c\u1EA5p t\u1EC9nh v\xE0 c\u1EA5p x\xE3/ph\u01B0\u1EDDng), Nh\xE0 m\xE1y Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i \u0111\u1EB7t t\u1EA1i x\xE3 Ph\u01B0\u1EDBc H\xF2a tr\u1EF1c thu\u1ED9c t\u1EC9nh n\xE0o?",
-        "a": "Kh\xE1nh H\xF2a",
-        "type": "theory",
-        "vdZone": "KHXH"
+        "q": "H\u1ED3 d\u01B0\u1EDBi c\u1EE7a Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i (h\u1ED3 S\xF4ng C\xE1i) l\xE0 c\xF4ng tr\xECnh \u0111\u1EA7u m\u1ED1i t\xEDch tr\u1EEF n\u01B0\u1EDBc thu\u1ED9c \u0111\u1EA1i d\u1EF1 \xE1n th\u1EE7y l\u1EE3i tr\u1ECDng \u0111i\u1EC3m n\xE0o c\u1EE7a v\xF9ng kh\xF4 h\u1EA1n Nam Trung B\u1ED9?",
+        "a": "H\u1EC7 th\u1ED1ng th\u1EE7y l\u1EE3i T\xE2n M\u1EF9",
+        "subject": "D\u1EF1 \xE1n B\xE1c \xC1i",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "type": "theory"
       },
       {
         "q": "T\xEAn ch\xEDnh th\u1EE9c c\u1EE7a g\xF3i th\u1EA7u s\u1ED1 01TB-BA thu\u1ED9c d\u1EF1 \xE1n Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i l\xE0 Cung c\u1EA5p thi\u1EBFt b\u1ECB g\xEC?",
@@ -26190,16 +27165,20 @@ var RAW_BAC_AI_QUESTION_SET = {
         "vdZone": "HBC"
       },
       {
-        "q": "H\xECnh th\u1EE9c l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u m\u1EB7c \u0111\u1ECBnh, kh\xF4ng h\u1EA1n ch\u1EBF s\u1ED1 l\u01B0\u1EE3ng nh\xE0 th\u1EA7u tham d\u1EF1 theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u l\xE0 g\xEC?",
-        "a": "\u0110\u1EA5u th\u1EA7u r\u1ED9ng r\xE3i",
-        "type": "theory",
-        "vdZone": "KHXH"
+        "q": "H\xECnh th\u1EE9c l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u \xE1p d\u1EE5ng cho g\xF3i th\u1EA7u mua s\u1EAFm h\xE0ng h\xF3a th\xF4ng d\u1EE5ng, c\xF3 s\u1EB5n tr\xEAn th\u1ECB tr\u01B0\u1EDDng v\u1EDBi gi\xE1 tr\u1ECB g\xF3i th\u1EA7u nh\u1ECF d\u01B0\u1EDBi h\u1EA1n m\u1EE9c lu\u1EADt \u0111\u1ECBnh \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 g\xEC?",
+        "a": "Ch\xE0o h\xE0ng c\u1EA1nh tranh",
+        "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "type": "theory"
       },
       {
-        "q": "Th\u1EDDi gian th\u1EF1c hi\u1EC7n h\u1EE3p \u0111\u1ED3ng G\xF3i th\u1EA7u s\u1ED1 01TB-BA k\u1EC3 t\u1EEB ng\xE0y c\xF3 hi\u1EC7u l\u1EF1c k\xE9o d\xE0i bao nhi\xEAu th\xE1ng?",
-        "a": "51 th\xE1ng",
-        "type": "theory",
-        "vdZone": "KHTN"
+        "q": "Lo\u1EA1i h\u1EE3p \u0111\u1ED3ng \xE1p d\u1EE5ng ch\xEDnh th\u1EE9c cho G\xF3i th\u1EA7u s\u1ED1 01TB-BA cung c\u1EA5p thi\u1EBFt b\u1ECB c\u01A1 \u0111i\u1EC7n Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i theo h\u1ED3 s\u01A1 m\u1EDDi th\u1EA7u l\xE0 lo\u1EA1i h\u1EE3p \u0111\u1ED3ng n\xE0o?",
+        "a": "H\u1EE3p \u0111\u1ED3ng tr\u1ECDn g\xF3i",
+        "subject": "D\u1EF1 \xE1n B\xE1c \xC1i",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH",
+        "type": "theory"
       },
       {
         "q": "Nguy\xEAn t\u1EAFc \u0111\u1EA5u th\u1EA7u t\u1ED1i \u01B0u h\xF3a chi ph\xED v\xF2ng \u0111\u1EDDi t\xE0i s\u1EA3n trong ti\u1EBFng Anh \u0111\u01B0\u1EE3c vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
@@ -26208,16 +27187,20 @@ var RAW_BAC_AI_QUESTION_SET = {
         "vdZone": "HBC"
       },
       {
-        "q": "H\u1EC7 th\u1ED1ng gi\xE1m s\xE1t, \u0111i\u1EC1u khi\u1EC3n v\xE0 thu th\u1EADp d\u1EEF li\u1EC7u trung t\xE2m c\u1EE7a nh\xE0 m\xE1y \u0111i\u1EC7n vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
-        "a": "SCADA",
-        "type": "theory",
-        "vdZone": "KHTN"
+        "q": "Thi\u1EBFt b\u1ECB \u0111i\u1EC1u khi\u1EC3n logic kh\u1EA3 tr\xECnh \u0111\u01B0\u1EE3c d\xF9ng r\u1ED9ng r\xE3i \u0111\u1EC3 t\u1EF1 \u0111\u1ED9ng h\xF3a quy tr\xECnh \u0111\xF3ng c\u1EAFt van v\xE0 \u0111i\u1EC1u khi\u1EC3n t\u1ED5 m\xE1y ph\xE1t \u0111i\u1EC7n vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+        "a": "PLC (Programmable Logic Controller)",
+        "subject": "T\u1EF1 \u0111\u1ED9ng h\xF3a",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "type": "theory"
       },
       {
-        "q": "B\u1ED9 m\u1EABu \u0111i\u1EC1u ki\u1EC7n h\u1EE3p \u0111\u1ED3ng qu\u1ED1c t\u1EBF chu\u1EA9n do Hi\u1EC7p h\u1ED9i K\u1EF9 s\u01B0 T\u01B0 v\u1EA5n Qu\u1ED1c t\u1EBF ph\xE1t h\xE0nh c\xF3 t\xEAn vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
-        "a": "FIDIC",
-        "type": "theory",
-        "vdZone": "KHXH"
+        "q": "Trong b\u1ED9 \u0111i\u1EC1u ki\u1EC7n h\u1EE3p \u0111\u1ED3ng qu\u1ED1c t\u1EBF FIDIC, m\u1EABu h\u1EE3p \u0111\u1ED3ng thi\u1EBFt k\u1EBF, cung c\u1EA5p thi\u1EBFt b\u1ECB v\xE0 thi c\xF4ng x\xE2y d\u1EF1ng tr\u1ECDn g\xF3i (EPC / Turnkey) th\u01B0\u1EDDng \u0111\u01B0\u1EE3c nh\u1EADn di\u1EC7n b\u1EDFi cu\u1ED1n s\xE1ch c\xF3 b\xECa m\xE0u g\xEC?",
+        "a": "S\xE1ch B\u1EA1c (Silver Book)",
+        "subject": "H\u1EE3p \u0111\u1ED3ng qu\u1ED1c t\u1EBF",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC",
+        "type": "theory"
       },
       {
         "q": "M\u1EE5c ti\xEAu c\u1ED1t l\xF5i c\u1EE7a b\u01B0\u1EDBc M\u1EDF th\u1EA7u trong quy tr\xECnh t\u1ED5 ch\u1EE9c \u0111\u1EA5u th\u1EA7u l\xE0 g\xEC?",
@@ -26234,10 +27217,12 @@ var RAW_BAC_AI_QUESTION_SET = {
         "vdZone": "KHXH"
       },
       {
-        "q": "Th\u1EDDi gian th\u1EF1c hi\u1EC7n h\u1EE3p \u0111\u1ED3ng g\xF3i th\u1EA7u 01TB-BA l\xE0 51 th\xE1ng. H\xE3y quy \u0111\u1ED5i th\u1EDDi gian n\xE0y ra s\u1ED1 n\u0103m (vi\u1EBFt d\u01B0\u1EDBi d\u1EA1ng s\u1ED1 th\u1EADp ph\xE2n)?",
-        "a": "4,25 n\u0103m",
-        "type": "practice",
-        "vdZone": "KHTN"
+        "q": "Nh\xE0 m\xE1y Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i c\xF3 4 t\u1ED5 m\xE1y 300 MW (t\u1ED5ng 1.200 MW). N\u1EBFu c\u1EA3 4 t\u1ED5 m\xE1y ph\xE1t \u0111i\u1EC7n h\u1EBFt c\xF4ng su\u1EA5t \u0111\u1ECBnh m\u1EE9c li\xEAn t\u1EE5c trong 6 gi\u1EDD chu k\u1EF3 cao \u0111i\u1EC3m, t\u1ED5ng s\u1EA3n l\u01B0\u1EE3ng \u0111i\u1EC7n n\u0103ng ph\xE1t l\xEAn l\u01B0\u1EDBi qu\u1ED1c gia l\xE0 bao nhi\xEAu tri\u1EC7u kWh?",
+        "a": "7,2 tri\u1EC7u kWh",
+        "subject": "D\u1EF1 \xE1n B\xE1c \xC1i",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN",
+        "type": "practice"
       },
       {
         "q": "D\u1EF1 to\xE1n g\xF3i th\u1EA7u 01TB-BA l\xE0 4.548,081 t\u1EF7 \u0111\u1ED3ng, t\u1ED5ng m\u1EE9c \u0111\u1EA7u t\u01B0 d\u1EF1 \xE1n B\xE1c \xC1i l\xE0 21.101,468 t\u1EF7 \u0111\u1ED3ng. G\xF3i th\u1EA7u c\u01A1 \u0111i\u1EC7n chi\u1EBFm t\u1EF7 tr\u1ECDng l\xE0m tr\xF2n 2 ch\u1EEF s\u1ED1 th\u1EADp ph\xE2n l\xE0 ... % t\u1ED5ng m\u1EE9c \u0111\u1EA7u t\u01B0?",
@@ -26427,8 +27412,11 @@ var RAW_BAC_AI_QUESTION_SET = {
   },
   "cauHoiPhu": [
     {
-      "q": "Hi\u1EC7p h\u1ED9i qu\u1ED1c t\u1EBF c\xE1c k\u1EF9 s\u01B0 t\u01B0 v\u1EA5n, \u0111\u01A1n v\u1ECB ph\xE1t h\xE0nh c\xE1c m\u1EABu h\u1EE3p \u0111\u1ED3ng x\xE2y l\u1EAFp v\xE0 thi\u1EBFt b\u1ECB ph\u1ED5 bi\u1EBFn th\u1EBF gi\u1EDBi c\xF3 t\xEAn vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
-      "a": "FIDIC"
+      "q": "B\u1ED9 quy t\u1EAFc th\u01B0\u01A1ng m\u1EA1i qu\u1ED1c t\u1EBF chu\u1EA9n h\xF3a do Ph\xF2ng Th\u01B0\u01A1ng m\u1EA1i Qu\u1ED1c t\u1EBF (ICC) ph\xE1t h\xE0nh quy \u0111\u1ECBnh tr\xE1ch nhi\u1EC7m giao nh\u1EADn h\xE0ng h\xF3a vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+      "a": "Incoterms",
+      "subject": "Th\u01B0\u01A1ng m\u1EA1i qu\u1ED1c t\u1EBF",
+      "kdZone": "GENERAL",
+      "vdZone": "HBC"
     },
     {
       "q": "Theo Quy ho\u1EA1ch \u0111i\u1EC7n VIII, ngu\u1ED3n n\u0103ng l\u01B0\u1EE3ng n\xE0o c\xF3 t\xEDnh bi\u1EBFn thi\xEAn m\u1EA1nh c\u1EA7n Th\u1EE7y \u0111i\u1EC7n t\xEDch n\u0103ng B\xE1c \xC1i b\xF9 \u0111\u1EAFp c\xF4ng su\u1EA5t nhi\u1EC1u nh\u1EA5t?",
@@ -26443,8 +27431,11 @@ var RAW_BAC_AI_QUESTION_SET = {
       "a": "\u0110\u1ED9 ch\xEAnh cao (C\u1ED9t n\u01B0\u1EDBc / Head)"
     },
     {
-      "q": "S\u1ED1 b\u01B0\u1EDBc chu\u1EA9n h\xF3a trong quy tr\xECnh t\u1ED5 ch\u1EE9c th\u1EF1c hi\u1EC7n \u0111\u1EA5u th\u1EA7u theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15 l\xE0 m\u1EA5y b\u01B0\u1EDBc?",
-      "a": "7 b\u01B0\u1EDBc"
+      "q": "Th\u1EDDi gian c\xF3 hi\u1EC7u l\u1EF1c t\u1ED1i thi\u1EC3u c\u1EE7a b\u1EA3o \u0111\u1EA3m d\u1EF1 th\u1EA7u \u0111\u01B0\u1EE3c quy \u0111\u1ECBnh b\u1EB1ng th\u1EDDi gian c\xF3 hi\u1EC7u l\u1EF1c c\u1EE7a h\u1ED3 s\u01A1 d\u1EF1 th\u1EA7u c\u1ED9ng th\xEAm bao nhi\xEAu ng\xE0y?",
+      "a": "30 ng\xE0y",
+      "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+      "kdZone": "SOCIAL_SCI",
+      "vdZone": "KHXH"
     },
     {
       "q": "Theo m\xF4 h\xECnh t\u1ED5 ch\u1EE9c ch\xEDnh quy\u1EC1n \u0111\u1ECBa ph\u01B0\u01A1ng 2 c\u1EA5p, Nh\xE0 m\xE1y Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i \u0111\u01B0\u1EE3c x\xE2y d\u1EF1ng t\u1EA1i \u0111\u01A1n v\u1ECB h\xE0nh ch\xEDnh c\u1EA5p c\u01A1 s\u1EDF n\xE0o c\u1EE7a t\u1EC9nh Kh\xE1nh H\xF2a?",
@@ -28518,6 +29509,52 @@ var OlympiaGame = class _OlympiaGame {
     const useBalanced = this.config.balancedRandom !== false && qs.balancedRandom !== false;
     if (useBalanced) {
       const usedSet = new Set(vd.usedKeys ?? []);
+      const norm = (s) => (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
+      if (this.state.khoiDong) {
+        const kd = this.state.khoiDong;
+        if (kd.seatQueues) {
+          for (const qList of Object.values(kd.seatQueues)) {
+            for (const item of qList) {
+              if (item?.q) {
+                usedSet.add(item.q);
+                usedSet.add(norm(item.q));
+                if (item.a) usedSet.add(`ans:${norm(item.a)}`);
+              }
+            }
+          }
+        }
+        if (kd.sharedQueue) {
+          for (const item of kd.sharedQueue) {
+            if (item?.q) {
+              usedSet.add(item.q);
+              usedSet.add(norm(item.q));
+              if (item.a) usedSet.add(`ans:${norm(item.a)}`);
+            }
+          }
+        }
+      }
+      if (qs.vcnv) {
+        for (const row of qs.vcnv.rows ?? []) {
+          if (row.hint) {
+            usedSet.add(row.hint);
+            usedSet.add(norm(row.hint));
+          }
+          if (row.answer) usedSet.add(`ans:${norm(row.answer)}`);
+        }
+        if (qs.vcnv.centerQuestion) {
+          usedSet.add(qs.vcnv.centerQuestion.q);
+          usedSet.add(norm(qs.vcnv.centerQuestion.q));
+          usedSet.add(`ans:${norm(qs.vcnv.centerQuestion.a)}`);
+        }
+      }
+      for (const t of qs.tangToc ?? []) {
+        if (t.q) {
+          usedSet.add(t.q);
+          usedSet.add(norm(t.q));
+        }
+        const ans = t.answer || t.a;
+        if (ans) usedSet.add(`ans:${norm(ans)}`);
+      }
       const pkg = pickBalancedVeDichPackage(qs.veDich, points, usedSet, vd.turnIdx);
       vd.usedKeys = [...usedSet];
       return pkg;

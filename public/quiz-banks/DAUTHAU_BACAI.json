@@ -250,19 +250,29 @@
     "isTieBreaker": false
   },
   {
-    "type": "TRUE_FALSE",
-    "content": "Theo mô hình tổ chức chính quyền địa phương 2 cấp (cấp tỉnh và cấp xã/phường), Dự án Nhà máy Thủy điện Tích năng Bác Ái được xây dựng tại xã Phước Hòa, trực thuộc tỉnh Khánh Hòa.",
+    "type": "single_choice",
+    "content": "Theo mô hình phân cấp hành chính địa phương 2 cấp, Dự án Nhà máy Thủy điện Tích năng Bác Ái được xây dựng trên địa bàn xã Phước Hòa trực thuộc tỉnh nào?",
     "points": 10,
     "timeLimit": 15,
     "options": [
       {
-        "id": "true",
-        "text": "Đúng (True)",
+        "id": "a",
+        "text": "Khánh Hòa",
         "isCorrect": true
       },
       {
-        "id": "false",
-        "text": "Sai (False)",
+        "id": "b",
+        "text": "Lâm Đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "c",
+        "text": "Đắk Lắk",
+        "isCorrect": false
+      },
+      {
+        "id": "d",
+        "text": "Bình Thuận",
         "isCorrect": false
       }
     ],
@@ -331,19 +341,19 @@
   },
   {
     "type": "TRUE_FALSE",
-    "content": "Phương thức Một giai đoạn hai túi hồ sơ ngăn chặn triệt để hiện tượng 'lấy giá rẻ để lấn át chất lượng', bảo đảm thiết bị đáp ứng tuyệt đối tiêu chuẩn an toàn kỹ thuật.",
+    "content": "Phương thức đấu thầu Một giai đoạn hai túi hồ sơ (1G2T) cho phép bên mời thầu mở đồng thời cả hồ sơ đề xuất kỹ thuật và hồ sơ đề xuất tài chính ngay tại thời điểm đóng thầu.",
     "points": 20,
     "timeLimit": 20,
     "options": [
       {
         "id": "true",
         "text": "Đúng (True)",
-        "isCorrect": true
+        "isCorrect": false
       },
       {
         "id": "false",
-        "text": "Sai (False)",
-        "isCorrect": false
+        "text": "Sai (False) — Phải mở và đánh giá đề xuất kỹ thuật trước; chỉ nhà thầu đạt yêu cầu kỹ thuật mới được mở đề xuất tài chính",
+        "isCorrect": true
       }
     ],
     "hint": "Hạn chế việc giá thấp tác động không phù hợp đến đánh giá kỹ thuật.",
@@ -694,19 +704,29 @@
     "isTieBreaker": false
   },
   {
-    "type": "TRUE_FALSE",
-    "content": "Trong các gói thầu mua sắm thiết bị cơ điện công nghệ cao như 01TB-BA, thị trường quốc tế mang đặc tính độc quyền nhóm (Oligopoly) với rào cản gia nhập công nghệ cực cao.",
+    "type": "single_choice",
+    "content": "Thị trường quốc tế về chế tạo thiết bị cơ điện công nghệ cao cột nước lớn như gói thầu 01TB-BA mang cấu trúc thị trường nào?",
     "points": 20,
     "timeLimit": 20,
     "options": [
       {
-        "id": "true",
-        "text": "Đúng (True)",
+        "id": "a",
+        "text": "Độc quyền nhóm (Oligopoly) với rào cản công nghệ cực lớn",
         "isCorrect": true
       },
       {
-        "id": "false",
-        "text": "Sai (False)",
+        "id": "b",
+        "text": "Cạnh tranh hoàn hảo (Perfect Competition)",
+        "isCorrect": false
+      },
+      {
+        "id": "c",
+        "text": "Độc quyền tự nhiên của một doanh nghiệp duy nhất (Pure Monopoly)",
+        "isCorrect": false
+      },
+      {
+        "id": "d",
+        "text": "Cạnh tranh độc quyền phân tán quy mô nhỏ",
         "isCorrect": false
       }
     ],

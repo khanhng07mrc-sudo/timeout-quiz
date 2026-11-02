@@ -6,7 +6,8 @@ import { OlympiaGame } from "./engine";
 
 import { RULESETS, cnvPointsFor, tangTocTierPoints } from "./rulesets";
 
-import { SAMPLE_QUESTION_SET } from "./sample-questions";
+import { SAMPLE_QUESTION_SET, BAC_AI_QUESTION_SET } from "./sample-questions";
+import { buildBalancedKhoiDongQueues } from "./ai-classifier";
 
 import type { OlympiaConfig, RoundId, RulesetId } from "./types";
 
@@ -1409,5 +1410,168 @@ test("sequential contestant entrance: skip immediately stops and clears entrance
   assert.equal(g.state.cue?.kind, "stop");
 });
 
+
+test("SAMPLE_QUESTION_SET & BAC_AI_QUESTION_SET: zero duplicate questions across all rounds", () => {
+  const norm = (s?: string) => (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
+
+  for (const [setName, qSet] of [["SAMPLE", SAMPLE_QUESTION_SET], ["BAC_AI", BAC_AI_QUESTION_SET]] as const) {
+    const seenQs = new Map<string, string>();
+    const allList: { round: string; q: string }[] = [];
+
+    for (const [s, qList] of Object.entries(qSet.khoiDong.solo ?? {})) {
+      for (const item of qList) allList.push({ round: `KD_solo_${s}`, q: item.q });
+    }
+    for (const item of qSet.khoiDong.shared ?? []) {
+      allList.push({ round: "KD_shared", q: item.q });
+    }
+    for (const row of qSet.vcnv.rows ?? []) {
+      allList.push({ round: "VCNV", q: row.hint ?? "" });
+    }
+    if (qSet.vcnv.centerQuestion) {
+      allList.push({ round: "VCNV_center", q: qSet.vcnv.centerQuestion.q ?? "" });
+    }
+    for (const t of qSet.tangToc ?? []) {
+      allList.push({ round: "TangToc", q: t.q ?? "" });
+    }
+    for (const [tier, qList] of Object.entries(qSet.veDich ?? {})) {
+      for (const item of qList) allList.push({ round: `VeDich_${tier}`, q: item.q });
+    }
+    for (const item of qSet.cauHoiPhu ?? []) {
+      allList.push({ round: "CauHoiPhu", q: item.q });
+    }
+
+    for (const item of allList) {
+      const k = norm(item.q);
+      if (!k) continue;
+      if (seenQs.has(k)) {
+        assert.fail(`[${setName}] Duplicate question found in ${item.round}: "${item.q}" (previously seen in ${seenQs.get(k)})`);
+      }
+      seenQs.set(k, item.round);
+    }
+  }
+});
+
+test("SAMPLE_QUESTION_SET & BAC_AI_QUESTION_SET: strictly zero repeated answers across all rounds", () => {
+  const norm = (s?: string) => (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
+
+  for (const [setName, qSet] of [["SAMPLE", SAMPLE_QUESTION_SET], ["BAC_AI", BAC_AI_QUESTION_SET]] as const) {
+    const seenAns = new Map<string, { round: string; q: string; a: string }>();
+
+    const check = (round: string, q: string, a?: string) => {
+      const k = norm(a);
+      if (!k) return;
+      if (seenAns.has(k)) {
+        const prev = seenAns.get(k)!;
+        assert.fail(`[${setName}] Repeated answer "${a}" in ${round} ("${q}") - previously used in ${prev.round} ("${prev.q}")`);
+      }
+      seenAns.set(k, { round, q, a: a! });
+    };
+
+    for (const [s, qList] of Object.entries(qSet.khoiDong.solo ?? {})) {
+      for (const item of qList) check(`KD_solo_${s}`, item.q, item.a);
+    }
+    for (const item of qSet.khoiDong.shared ?? []) {
+      check("KD_shared", item.q, item.a);
+    }
+    for (const row of qSet.vcnv.rows ?? []) {
+      check("VCNV", row.hint ?? "", row.answer);
+    }
+    if (qSet.vcnv.centerQuestion) {
+      check("VCNV_center", qSet.vcnv.centerQuestion.q ?? "", qSet.vcnv.centerQuestion.a);
+    }
+    for (const t of qSet.tangToc ?? []) {
+      check("TangToc", t.q ?? "", t.answer || (t as any).a);
+    }
+    for (const [tier, qList] of Object.entries(qSet.veDich ?? {})) {
+      for (const item of qList) check(`VeDich_${tier}`, item.q, item.a);
+    }
+    for (const item of qSet.cauHoiPhu ?? []) {
+      check("CauHoiPhu", item.q, item.a);
+    }
+  }
+});
+
+test("buildBalancedKhoiDongQueues: zero duplicate questions between contestants and shared queue", () => {
+  const norm = (s?: string) => (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
+  const seats = [0, 1, 2, 3];
+  const balanced = buildBalancedKhoiDongQueues(SAMPLE_QUESTION_SET.khoiDong, seats, 10);
+
+  const seatSeen = new Map<string, number>();
+  for (const seatId of seats) {
+    const queue = balanced.seatQueues[seatId] ?? [];
+    for (const q of queue) {
+      const k = norm(q.q);
+      if (seatSeen.has(k)) {
+        assert.fail(`Question "${q.q}" assigned to seat ${seatId} was already assigned to seat ${seatSeen.get(k)}`);
+      }
+      seatSeen.set(k, seatId);
+    }
+  }
+
+  // Ensure sharedQueue does NOT contain any question from the solo seats
+  for (const q of balanced.sharedQueue ?? []) {
+    const k = norm(q.q);
+    if (seatSeen.has(k)) {
+      assert.fail(`Shared question "${q.q}" was already asked in solo seat ${seatSeen.get(k)}`);
+    }
+  }
+});
+
+test("Olympia match simulation: Về Đích packages never duplicate questions from earlier rounds", () => {
+  const norm = (s?: string) => (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
+  const g = game("O26", ["khoiDong", "vcnv", "tangToc", "veDich"], 4, {
+    questionSet: SAMPLE_QUESTION_SET,
+    balancedRandom: true,
+  });
+
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  g.joinSeat("TS3", "k3");
+  g.joinSeat("TS4", "k4");
+
+  // Start game and advance to Về Đích
+  act(g, "game:start");
+  act(g, "round:force", { round: "veDich" });
+  const st = g.state;
+  assert.equal(st.currentRound, "veDich");
+
+  // Contestant 1 picks [20, 20, 30]
+  act(g, "vd:choosePackage", { points: [20, 20, 30] });
+  const pkg1 = st.veDich!.packages[0] ?? [];
+  assert.equal(pkg1.length, 3);
+
+  // Contestant 2 picks [20, 30, 30]
+  st.veDich!.turnIdx = 1;
+  st.veDich!.phase = "choosing";
+  act(g, "vd:choosePackage", { points: [20, 30, 30] });
+  const pkg2 = st.veDich!.packages[1] ?? [];
+  assert.equal(pkg2.length, 3);
+
+  // Collect all questions from earlier rounds
+  const earlierQuestions = new Set<string>();
+  for (const qList of Object.values(st.khoiDong?.seatQueues ?? {})) {
+    for (const item of qList) if (item?.q) earlierQuestions.add(norm(item.q));
+  }
+  for (const item of st.khoiDong?.sharedQueue ?? []) {
+    if (item?.q) earlierQuestions.add(norm(item.q));
+  }
+  for (const r of SAMPLE_QUESTION_SET.vcnv.rows ?? []) {
+    if (r.hint) earlierQuestions.add(norm(r.hint));
+  }
+  for (const t of SAMPLE_QUESTION_SET.tangToc ?? []) {
+    if (t.q) earlierQuestions.add(norm(t.q));
+  }
+
+  // Assert no package question duplicates earlier questions or each other
+  const chosenInVd = new Set<string>();
+  for (const item of [...pkg1, ...pkg2]) {
+    const k = norm(item.q.q);
+    assert.ok(!earlierQuestions.has(k), `Về Đích question "${item.q.q}" duplicated an earlier round question!`);
+    assert.ok(!chosenInVd.has(k), `Về Đích question "${item.q.q}" duplicated across contestant packages!`);
+    chosenInVd.add(k);
+  }
+});
+
 console.log(`${passed} tests passed`);
+
 

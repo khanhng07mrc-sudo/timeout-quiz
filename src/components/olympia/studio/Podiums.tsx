@@ -235,18 +235,68 @@ function ContestantFigure({ seatId }: { seatId: number }) {
 
   return (
     <group position={[0, 0, -0.42]}>
-      {/* Head & Hair */}
+      {/* ── Head & Hair ── */}
+      {/* Face & Head Sphere */}
       <mesh position={[0, 1.58, 0]}>
-        <sphereGeometry args={[0.084, 20, 20]} />
+        <sphereGeometry args={[0.088, 20, 20]} />
         <meshStandardMaterial color="#fed7aa" roughness={0.6} />
       </mesh>
-      <mesh position={[0, 1.62, -0.015]}>
-        <sphereGeometry args={[0.090, 20, 20]} />
+      {/* Hair Cap (Top & Back) */}
+      <mesh position={[0, 1.63, -0.025]}>
+        <sphereGeometry args={[0.085, 20, 20]} />
         <meshStandardMaterial color="#1e1b18" roughness={0.8} />
       </mesh>
-      <mesh position={[0.03, 1.64, 0.04]}>
-        <boxGeometry args={[0.08, 0.03, 0.06]} />
+      {/* Front Hairline Fringe */}
+      <mesh position={[0, 1.64, 0.04]}>
+        <boxGeometry args={[0.11, 0.03, 0.05]} />
         <meshStandardMaterial color="#1e1b18" roughness={0.8} />
+      </mesh>
+
+      {/* ── Facial Features (Facing +Z towards stage & camera) ── */}
+      {/* Left & Right Eyes */}
+      <mesh position={[-0.032, 1.58, 0.082]}>
+        <sphereGeometry args={[0.009, 12, 12]} />
+        <meshStandardMaterial color="#0f172a" roughness={0.3} />
+      </mesh>
+      <mesh position={[0.032, 1.58, 0.082]}>
+        <sphereGeometry args={[0.009, 12, 12]} />
+        <meshStandardMaterial color="#0f172a" roughness={0.3} />
+      </mesh>
+      {/* Eyebrows */}
+      <mesh position={[-0.032, 1.61, 0.084]}>
+        <boxGeometry args={[0.026, 0.006, 0.006]} />
+        <meshStandardMaterial color="#1e1b18" roughness={0.8} />
+      </mesh>
+      <mesh position={[0.032, 1.61, 0.084]}>
+        <boxGeometry args={[0.026, 0.006, 0.006]} />
+        <meshStandardMaterial color="#1e1b18" roughness={0.8} />
+      </mesh>
+      {/* Student Glasses: Thin Dark Frame */}
+      <mesh position={[-0.032, 1.58, 0.088]}>
+        <boxGeometry args={[0.032, 0.022, 0.006]} />
+        <meshStandardMaterial color="#1e293b" metalness={0.7} roughness={0.3} />
+      </mesh>
+      <mesh position={[0.032, 1.58, 0.088]}>
+        <boxGeometry args={[0.032, 0.022, 0.006]} />
+        <meshStandardMaterial color="#1e293b" metalness={0.7} roughness={0.3} />
+      </mesh>
+      <mesh position={[0, 1.585, 0.089]}>
+        <boxGeometry args={[0.016, 0.005, 0.005]} />
+        <meshStandardMaterial color="#1e293b" metalness={0.7} roughness={0.3} />
+      </mesh>
+      {/* Smile / Mouth */}
+      <mesh position={[0, 1.535, 0.084]}>
+        <boxGeometry args={[0.024, 0.006, 0.006]} />
+        <meshStandardMaterial color="#be123c" roughness={0.4} />
+      </mesh>
+      {/* Left & Right Ears */}
+      <mesh position={[-0.088, 1.58, 0]}>
+        <sphereGeometry args={[0.018, 10, 10]} />
+        <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+      </mesh>
+      <mesh position={[0.088, 1.58, 0]}>
+        <sphereGeometry args={[0.018, 10, 10]} />
+        <meshStandardMaterial color="#fed7aa" roughness={0.6} />
       </mesh>
 
       {/* Neck */}
@@ -804,20 +854,22 @@ function McPresenters({
       }
     }
 
-    // Khánh Vy (Female MC): Steps from behind arch to broadcast mark [3.48, 0.14, -7.15] (strictly BEHIND the desk)
+    // Khánh Vy (Female MC): Steps in from the Stage Right Wing [5.80, 0.14, -7.05] to broadcast mark [3.48, 0.14, -7.15] (never walks through screen)
     if (kvRef.current) {
-      const targetX = THREE.MathUtils.lerp(4.20, 3.48, walkProgress);
-      const targetZ = THREE.MathUtils.lerp(-9.95, -7.15, walkProgress);
+      const targetX = THREE.MathUtils.lerp(5.80, 3.48, walkProgress);
+      const targetZ = THREE.MathUtils.lerp(-7.05, -7.15, walkProgress);
       const bob = Math.sin(walkProgress * Math.PI * 6) * (walkProgress > 0 && walkProgress < 1 ? 0.025 : 0);
       kvRef.current.position.set(targetX, 0.14 + bob, targetZ);
+      kvRef.current.rotation.y = THREE.MathUtils.lerp(-0.65, -0.25, walkProgress);
     }
 
-    // Ngọc Huy (Male MC): Steps from behind arch to broadcast mark [2.79, 0.14, -7.32] (strictly BEHIND the desk)
+    // Ngọc Huy (Male MC): Steps in from the Stage Left Wing [0.60, 0.14, -7.15] to broadcast mark [2.79, 0.14, -7.32] (never walks through screen)
     if (nhRef.current) {
-      const targetX = THREE.MathUtils.lerp(3.50, 2.79, walkProgress);
-      const targetZ = THREE.MathUtils.lerp(-10.13, -7.32, walkProgress);
+      const targetX = THREE.MathUtils.lerp(0.60, 2.79, walkProgress);
+      const targetZ = THREE.MathUtils.lerp(-7.15, -7.32, walkProgress);
       const bob = Math.sin(walkProgress * Math.PI * 6 + Math.PI) * (walkProgress > 0 && walkProgress < 1 ? 0.025 : 0);
       nhRef.current.position.set(targetX, 0.14 + bob, targetZ);
+      nhRef.current.rotation.y = THREE.MathUtils.lerp(0.50, -0.25, walkProgress);
     }
   });
 

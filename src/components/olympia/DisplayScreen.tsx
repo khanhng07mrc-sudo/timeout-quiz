@@ -430,14 +430,8 @@ function KhoiDong({ state, serverNow }: P) {
               color: "#fbbf24",
             }}
           >
-            Câu {qNum}{totalQ} · 10đ
+            Câu {qNum}{totalQ}
           </span>
-          {kd.current?.subject && (
-            <span className="hidden md:inline-flex px-2 py-0.5 rounded-lg bg-violet-500/20 border border-violet-400/30 text-violet-200 font-bold text-xs items-center gap-1 whitespace-nowrap">
-              <span>📚</span>
-              <span>{kd.current.subject}</span>
-            </span>
-          )}
         </div>
 
         {/* 4 Contestant Shapes (Tên & Điểm trên cùng 1 hàng duy nhất) */}
@@ -517,7 +511,7 @@ function KhoiDong({ state, serverNow }: P) {
             ? "ĐANG ĐỢI CÂU HỎI"
             : !kd.questionRevealed
             ? "SẴN SÀNG THI ĐẤU"
-            : `CÂU ${qNum}${totalQ} · 10Đ ${kd.current.subject ? `· 📚 ${kd.current.subject}` : ""}`
+            : `CÂU ${qNum}${totalQ}`
         }
         questionText={
           kd.phase === "segmentDone"

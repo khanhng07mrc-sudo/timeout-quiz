@@ -140,26 +140,61 @@ export function useOlympiaCameraState(
         };
       }
 
-      // During question:
-      // USER REQUIREMENT: "zoom vào bục thí sinh đang trả lời, duy trì zoom trong khi đang ở câu hỏi nhưng tốc độ chậm hơn và có điểm dừng"
-      if (kd.phase === "question") {
-        const seg = kd.segments?.[kd.segIdx];
-        const isSolo = seg?.kind === "solo";
+      const seg = kd.segments?.[kd.segIdx];
+      const isSolo = seg?.kind === "solo";
 
+      // Turn Intro / Before first question revealed:
+      if (kd.phase === "intro" || (isSolo && kd.qIdx < 0) || (isSolo && !kd.questionRevealed && kd.qIdx === 0)) {
+        if (isSolo) {
+          // Camera bắt đầu từ góc thấp bên trái sau Vòng Nguyệt Quế (CAM 14)
+          return {
+            camAngle: 14,
+            transitionMode: "MORPH",
+            isOverlayHidden: false,
+            pushInProgress: 0.1,
+          };
+        } else {
+          // Lượt chung: Giữ camera toàn cảnh 4 bục thí sinh căn giữa (CAM 10)
+          return {
+            camAngle: 10,
+            transitionMode: "MORPH",
+            isOverlayHidden: false,
+            pushInProgress: 0,
+          };
+        }
+      }
+
+      // During question:
+      if (kd.phase === "question") {
         if (isSolo) {
           const seatId = seg?.seat ?? 0;
-          // Calculate push-in progress (0.0 -> 1.0 capped) based on timer elapsed
+          const validSeat = typeof seatId === "number" && seatId >= 0 && seatId < 4;
+          const targetCam = validSeat ? 5 + seatId : 1;
+
+          // Check if we are at the beginning of the turn / first question (e.g. within 2.5s)
+          const startedAt = kd.timer?.startedAt;
+          const elapsed = startedAt ? (now - startedAt) / 1000 : 999;
+
+          // If question 0 and in first 2.5s: glide up from CAM 14 into CAM 5+seatId
+          if (kd.qIdx === 0 && elapsed < 2.5) {
+            return {
+              camAngle: targetCam,
+              transitionMode: "MORPH",
+              isOverlayHidden: false,
+              pushInProgress: (elapsed / 2.5) * 0.25,
+            };
+          }
+
           let push = 0;
           if (kd.timer?.startedAt) {
             const duration = kd.timer.totalMs || 5000;
-            const elapsed = (now - kd.timer.startedAt) / duration;
-            push = Math.min(1.0, Math.max(0, elapsed * 1.1));
+            const el = (now - kd.timer.startedAt) / duration;
+            push = Math.min(1.0, Math.max(0, el * 1.0));
           }
 
-          const validSeat = typeof seatId === "number" && seatId >= 0 && seatId < 4;
           return {
-            camAngle: validSeat ? 5 + seatId : 1,
-            transitionMode: "CUT",
+            camAngle: targetCam,
+            transitionMode: kd.qIdx === 0 ? "MORPH" : "CUT",
             isOverlayHidden: false,
             pushInProgress: push,
           };
@@ -171,12 +206,12 @@ export function useOlympiaCameraState(
               camAngle: 5 + Math.min(3, Math.max(0, kd.buzzedSeat)),
               transitionMode: "CUT",
               isOverlayHidden: false,
-              pushInProgress: 0.25,
+              pushInProgress: 0.20,
             };
           }
-          // Chưa ai bấm chuông -> Quay toàn cảnh (CAM 1) thấy trọn cả 4 thí sinh hồi hộp chờ bấm chuông
+          // Chưa ai bấm chuông -> Quay toàn cảnh 4 bục thí sinh (CAM 10) căn giữa, thấy trọn cả 4 thí sinh
           return {
-            camAngle: 1,
+            camAngle: 10,
             transitionMode: "MORPH",
             isOverlayHidden: false,
             pushInProgress: 0.1,
@@ -184,9 +219,28 @@ export function useOlympiaCameraState(
         }
       }
 
-      // Idle / between questions: CAM 1 Toàn Cảnh S14 chuẩn TV (Rộng rãi, thoáng đãng, thấy trọn vẹn sàn tròn, cổng lục giác đứng)
+      // Idle / between questions / turn done:
+      if (kd.phase === "segmentDone") {
+        return {
+          camAngle: 1, // Toàn cảnh trường quay S14
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+
+      if (isSolo) {
+        const seatId = seg?.seat ?? 0;
+        return {
+          camAngle: 5 + Math.min(3, Math.max(0, seatId)),
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+
       return {
-        camAngle: 1,
+        camAngle: 10,
         transitionMode: "MORPH",
         isOverlayHidden: false,
         pushInProgress: 0,

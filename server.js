@@ -28078,6 +28078,7 @@ var OlympiaGame = class _OlympiaGame {
     if (active.length === 0) return fail("Ch\u01B0a c\xF3 th\xED sinh n\xE0o trong ph\xF2ng");
     st.introTimer = null;
     st.showStageGraphics = false;
+    st.studioCameraManual = false;
     st.currentRound = round;
     st.roundStatus[round] = "active";
     st.banner = ROUND_LABELS[round];

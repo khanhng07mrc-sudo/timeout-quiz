@@ -2849,17 +2849,20 @@ export function StudioLighting({
 
   if (introStartedAt) {
     const elapsedSec = Math.max(0, (now - introStartedAt) / 1000);
-    if (elapsedSec < 15) {
-      if (elapsedSec < 8.5) {
-        // Waves 1, 2, 3: Intense portal glow & focused stage spotlighting (no pitch black)
-        introDimFactor = 0.55;
-        mcSpotIntensity = 8.5;
-      } else {
-        // Grand Reveal (8.5s - 14.5s): Smooth transition to full studio wash illumination
-        const washT = Math.min(1.0, (elapsedSec - 8.5) / 5.5);
+    if (elapsedSec < 16) {
+      if (elapsedSec < 2.5) {
+        // 0.0s - 2.5s: Studio starts in dramatic darkness, only glowing neon tubes and LED logos illuminate
+        introDimFactor = 0.05;
+        mcSpotIntensity = 0.5;
+      } else if (elapsedSec < 9.5) {
+        // 2.5s - 9.5s: Smooth gradual illumination as MCs step in from the wings
+        const washT = (elapsedSec - 2.5) / 7.0;
         const smoothWash = washT * washT * (3 - 2 * washT);
-        introDimFactor = 0.55 + 0.45 * smoothWash;
-        mcSpotIntensity = 8.5 - 2.5 * smoothWash;
+        introDimFactor = 0.05 + 0.95 * smoothWash;
+        mcSpotIntensity = 0.5 + 5.5 * smoothWash;
+      } else {
+        introDimFactor = 1.0;
+        mcSpotIntensity = 6.0;
       }
     }
   }

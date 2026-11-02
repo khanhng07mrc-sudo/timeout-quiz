@@ -589,7 +589,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                   { id: 7, label: "CAM 7: Cận Cảnh TS 3", short: "TS 3" },
                   { id: 8, label: "CAM 8: Cận Cảnh TS 4", short: "TS 4" },
                   { id: 9, label: "CAM 9: Cẩu Quay Jib Toàn Khán Đài", short: "Cẩu Jib" },
-                  { id: 10, label: "CAM 10: Vách Ký Hiệu Khoa Học", short: "Khoa Học" },
+                  { id: 10, label: "CAM 10: Toàn Cảnh Bục Thí Sinh", short: "Bục TS" },
                 ].map((c) => {
                   const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;
                   return (

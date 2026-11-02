@@ -1877,10 +1877,10 @@ function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement 
  * 3D Solid Volumetric Neon Hexagon Frame
  * Made of 6 interconnected solid neon rods with radiant emissive glow (eliminates WebGL 1px line limits).
  */
-const HEX_TIER1_OUTER = computeGroundedHexagonVertices(4.80, 5.20, 2.80);
-const HEX_TIER1_INNER = offsetGroundedContour(HEX_TIER1_OUTER, 0.32);
+const HEX_TIER1_OUTER = computeGroundedHexagonVertices(6.40, 5.00, 3.80);
+const HEX_TIER1_INNER = offsetGroundedContour(HEX_TIER1_OUTER, 0.36);
 const HEX_TIER2_OUTER = HEX_TIER1_INNER;
-const HEX_TIER2_INNER = offsetGroundedContour(HEX_TIER2_OUTER, 0.30);
+const HEX_TIER2_INNER = offsetGroundedContour(HEX_TIER2_OUTER, 0.32);
 const HEX_TIER3_OUTER = HEX_TIER2_INNER;
 const HEX_TIER3_INNER = offsetGroundedContour(HEX_TIER3_OUTER, 0.28);
 

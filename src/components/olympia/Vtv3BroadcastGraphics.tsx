@@ -354,9 +354,11 @@ export function Vtv3ChalkboardQuestionFrame({
         {/* Bottom: Integrated Progress Timer Bar with Glowing Red Pearl */}
         <div className="relative z-10 w-full px-4 pb-2.5 pt-0.5 flex items-center gap-3">
           {/* Digital Timer Clock Display (e.g. 09:22 or 15s) */}
-          <div className="px-2.5 py-0.5 rounded-lg bg-black/75 border border-amber-500/40 font-mono font-black text-xs sm:text-sm text-amber-300 tabular-nums shrink-0 shadow-inner">
-            {isRunning ? `${remainingSec}s` : "OLYMPIA"}
-          </div>
+          {(isRunning || remainingSec > 0) && (
+            <div className="px-2.5 py-0.5 rounded-lg bg-black/75 border border-amber-500/40 font-mono font-black text-xs sm:text-sm text-amber-300 tabular-nums shrink-0 shadow-inner">
+              {remainingSec}s
+            </div>
+          )}
 
           {/* Horizontal Progress Track */}
           <div className="flex-1 relative h-2.5 rounded-full bg-slate-950/80 border border-amber-600/50 overflow-visible shadow-inner flex items-center">
@@ -714,11 +716,11 @@ export function TangTocQuestionGraphic({
         </div>
 
         {/* Digital Clock Box at Bottom-Left */}
-        <div className="absolute -bottom-4 left-4 z-20 px-3 py-1 rounded-lg bg-black/80 border border-amber-500/50 font-mono font-black text-sm text-amber-300 shadow-md">
-          {tt.timer?.startedAt != null
-            ? `${Math.max(0, Math.ceil((tt.timer.remainingMs - (serverNow() - tt.timer.startedAt)) / 1000))}s`
-            : "OLYMPIA"}
-        </div>
+        {tt.timer?.startedAt != null && (
+          <div className="absolute -bottom-4 left-4 z-20 px-3 py-1 rounded-lg bg-black/80 border border-amber-500/50 font-mono font-black text-sm text-amber-300 shadow-md">
+            {`${Math.max(0, Math.ceil((tt.timer.remainingMs - (serverNow() - tt.timer.startedAt)) / 1000))}s`}
+          </div>
+        )}
       </div>
     </div>
   );

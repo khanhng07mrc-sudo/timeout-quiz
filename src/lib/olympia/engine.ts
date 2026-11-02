@@ -386,6 +386,7 @@ export class OlympiaGame {
     // Clear intro animation when any round begins
     st.introTimer = null;
     st.showStageGraphics = false;
+    st.studioCameraManual = false;
     st.currentRound = round;
     st.roundStatus[round] = "active";
     st.banner = ROUND_LABELS[round];

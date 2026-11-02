@@ -48,7 +48,8 @@ const port = parseInt(process.env.PORT ?? "3000", 10);
 
 console.log(`[Server Boot] Mode: ${dev ? "DEVELOPMENT (Turbopack JIT)" : "PRODUCTION (Precompiled Static Chunks)"} | Port: ${port}`);
 
-const app = next({ dev, hostname, port });
+import path from "path";
+const app = next({ dev, hostname, port, dir: path.resolve(__dirname) });
 const handle = app.getRequestHandler();
 
 app.prepare().then(async () => {

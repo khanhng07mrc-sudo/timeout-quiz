@@ -50,7 +50,7 @@ export function OlympiaStudio3DScene({
 
   // Camera vision mixer state
   const [internalCam, setInternalCam] = useState<number>(activeCamera);
-  const [internalTransitionMode, setInternalTransitionMode] = useState<"CUT" | "MORPH">("CUT");
+  const [internalTransitionMode, setInternalTransitionMode] = useState<"CUT" | "MORPH">("MORPH");
   const transitionMode = propTransitionMode || internalTransitionMode;
   const [quality, setQuality] = useState<"HIGH" | "MEDIUM" | "LIGHT">("HIGH");
 
@@ -162,6 +162,9 @@ export function OlympiaStudio3DScene({
           lockedSpotlightSeat={lockedSpotlightSeat}
           introStartedAt={state?.introTimer?.startedAt ?? null}
           serverNow={serverNow}
+          camAngle={internalCam}
+          ptzZoom={ptzZoom}
+          pushInProgress={pushInProgress}
         />
 
         <CentralLedWall
@@ -178,7 +181,7 @@ export function OlympiaStudio3DScene({
         />
 
         <LaurelWreathVitrine
-          position={[2.8, 0, 0.6]}
+          position={[1.8, 0.18, 2.6]}
           quality={quality}
           screenFadeProgress={screenFadeProgress}
         />

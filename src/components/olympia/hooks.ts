@@ -95,7 +95,7 @@ export const isCountdownTrack = (sound: string): boolean =>
   /(?:10s_tick|15s_tick|20s_tick|30s_tick|40s_tick|5s_steal|20s_practice|30s_practice|40s_practice|60s_practice|60s|30s|90s)$/.test(sound);
 
 export const isLoopingBgm = (sound: string): boolean =>
-  /kd_bgm_[123]$/.test(sound) || /loop/.test(sound);
+  /kd_bgm_[123]$/.test(sound) || /loop/.test(sound) || sound.includes("contest_intro");
 
 /** Plays server "cue" events. Missing files fall back to O26, then fail silently. */
 export function useOlympiaAudio(
@@ -150,9 +150,41 @@ export function useOlympiaAudio(
     }
   }, []);
 
-  const stopBgm = useCallback(() => {
-    killAllBgmAudio();
-  }, [killAllBgmAudio]);
+  const fadeOutAndStopBgm = useCallback(
+    (durationMs: number = 1200) => {
+      const toFade = Array.from(activeBgmSet.current);
+      if (bgm.current && !toFade.includes(bgm.current)) toFade.push(bgm.current);
+      if (toFade.length === 0) return;
+
+      const steps = 20;
+      const stepMs = Math.max(15, Math.floor(durationMs / steps));
+      let step = 0;
+      const timer = setInterval(() => {
+        step++;
+        const factor = Math.max(0, 1 - step / steps);
+        toFade.forEach((a) => {
+          try {
+            a.volume = a.volume * factor;
+          } catch {}
+        });
+        if (step >= steps) {
+          clearInterval(timer);
+          activeFadeTimers.current.delete(timer);
+          killAllBgmAudio();
+        }
+      }, stepMs);
+      activeFadeTimers.current.add(timer);
+    },
+    [killAllBgmAudio]
+  );
+
+  const stopBgm = useCallback(
+    (immediate: boolean = false) => {
+      if (immediate) killAllBgmAudio();
+      else fadeOutAndStopBgm(1200);
+    },
+    [killAllBgmAudio, fadeOutAndStopBgm]
+  );
 
   /** Crossfade to a new BGM element. Với Countdown audio thì phát ngay lập tức không fade-in từ 0. */
   const crossfadeToBgm = useCallback((newAudio: HTMLAudioElement, durationMs: number, immediate: boolean = false) => {
@@ -365,6 +397,33 @@ export function useOlympiaAudio(
           else alt.play().catch(() => {});
         }
       };
+
+      const setupContestIntroCrossfadeLoop = (audioElem: HTMLAudioElement) => {
+        const CROSSFADE_WINDOW = 2.5;
+        let crossfadeTriggered = false;
+        const checkCrossfade = () => {
+          if (crossfadeTriggered) return;
+          if (
+            audioElem.duration &&
+            audioElem.duration > 0 &&
+            audioElem.duration - audioElem.currentTime <= CROSSFADE_WINDOW
+          ) {
+            crossfadeTriggered = true;
+            audioElem.removeEventListener("timeupdate", checkCrossfade);
+            const nextAudio = new Audio(soundUrl);
+            nextAudio.volume = 0;
+            connectPanner(nextAudio);
+            registerActive(nextAudio);
+            setupContestIntroCrossfadeLoop(nextAudio);
+            crossfadeToBgm(nextAudio, CROSSFADE_WINDOW * 1000, false);
+          }
+        };
+        audioElem.addEventListener("timeupdate", checkCrossfade);
+      };
+
+      if (cue.sound.includes("contest_intro")) {
+        setupContestIntroCrossfadeLoop(a);
+      }
 
       if (isBgmCue) {
         crossfadeToBgm(a, BGM_CROSSFADE_MS, isCountdown);

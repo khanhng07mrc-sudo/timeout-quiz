@@ -6,6 +6,16 @@ import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
 import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
 import { CircularTimer, MediaView, ScoreStrip, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
 import { useOlympiaCameraState } from "./studio/useOlympiaCamera";
+import {
+  Vtv3ChalkboardBackdrop,
+  Vtv3ChalkboardQuestionFrame,
+  VcnvCountdownGraphic,
+  VcnvAnswerRevealGraphic,
+  TangTocQuestionGraphic,
+  TangTocRankedAnswersGraphic,
+  GlossyBlackDomeButton,
+  BlueSquareNumberBadge,
+} from "./Vtv3BroadcastGraphics";
 
 const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
   ssr: false,
@@ -28,7 +38,7 @@ function hasActiveRoundContent(state: OlympiaState): boolean {
     case "vcnv": {
       const v = state.vcnv;
       if (!v) return false;
-      return v.phase === "grid" || v.phase === "question" || v.phase === "answers";
+      return v.phase === "grid" || v.phase === "question" || v.phase === "answers" || Boolean(v.answersRevealed);
     }
     case "tangToc": {
       const tt = state.tangToc;
@@ -81,14 +91,27 @@ export default function DisplayScreen({ code }: { code: string }) {
   }
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const isRoundFullscreen = state.currentRound === "vcnv" || state.currentRound === "tangToc";
-  const isLowerThird = !isRoundFullscreen && (state.overlayMode ?? "LOWER_THIRD") === "LOWER_THIRD";
+  const isVcnvReveal = state.currentRound === "vcnv" && Boolean(state.vcnv?.answersRevealed);
+  const isTangTocReveal =
+    state.currentRound === "tangToc" &&
+    (state.tangToc?.phase === "ranking" || state.tangToc?.phase === "graded");
+  const isTangTocQuestion = state.currentRound === "tangToc" && state.tangToc?.phase === "question";
+  const isVcnvFullscreen = state.currentRound === "vcnv" && state.overlayMode === "FULLSCREEN";
+
+  const showFullscreen =
+    isVcnvReveal ||
+    isTangTocReveal ||
+    isTangTocQuestion ||
+    isVcnvFullscreen ||
+    (state.overlayMode === "FULLSCREEN" && state.currentRound !== "khoiDong" && state.currentRound !== "veDich");
+
+  const isLowerThird = !showFullscreen;
   const isOverlayHidden = cameraState.isOverlayHidden;
 
   return (
     <div className="fixed inset-0 w-full h-full min-h-screen overflow-hidden bg-gradient-to-b from-[#060818] via-[#090d24] to-[#040612] text-white flex flex-col select-none">
-      {/* ── 1. 3D BROADCAST STUDIO (ONLY RUNS WHEN PLAYING) ── */}
-      {state.stage === "playing" && (
+      {/* ── 1. 3D BROADCAST STUDIO (RUNS WHEN PLAYING OR ENTRANCE SEQUENCE IS ACTIVE) ── */}
+      {(state.stage === "playing" || Boolean(state.entranceState?.active)) && (
         <div className="fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
           <OlympiaStudio3DScene
             state={state}
@@ -119,11 +142,18 @@ export default function DisplayScreen({ code }: { code: string }) {
             {activeSeats(state).map((s) => (
               <div
                 key={s.id}
-                className="rounded-2xl border p-5 text-center flex flex-col items-center gap-2 bg-gradient-to-b from-white/5 to-white/[0.02] backdrop-blur shadow-xl"
-                style={{ borderColor: SEAT_COLORS[s.id], boxShadow: `0 0 20px ${SEAT_COLORS[s.id]}30` }}
+                className="rounded-2xl border border-cyan-500/35 p-5 text-center flex flex-col items-center gap-2 bg-gradient-to-b from-[#091536]/90 to-slate-950/90 backdrop-blur shadow-[0_4px_24px_rgba(0,0,0,0.6)]"
               >
-                <span className="text-base font-bold truncate max-w-full text-violet-200">{s.name}</span>
-                <span className="text-5xl font-black drop-shadow" style={{ color: SEAT_COLORS[s.id] }}>
+                <div className="w-9 h-9 rounded-full border-2 border-cyan-400 bg-cyan-500/20 flex items-center justify-center font-black text-sm text-cyan-300">
+                  {s.id + 1}
+                </div>
+                <span className="text-base font-bold truncate max-w-full text-slate-100">{s.name}</span>
+                {s.school && (
+                  <span className="text-xs text-amber-300 font-medium truncate max-w-full bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                    {s.school}
+                  </span>
+                )}
+                <span className="text-5xl font-black drop-shadow text-amber-300">
                   {s.score}
                 </span>
               </div>
@@ -186,7 +216,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       {/* ── 5. GAME STAGE LAYERS (Z-20) ── */}
       <div className="flex-1 min-h-0 relative z-20 flex flex-col justify-end overflow-hidden">
         {/* Sảnh chờ / Lobby */}
-        {state.stage === "lobby" && (
+        {state.stage === "lobby" && !state.entranceState?.active && (
           <div className="absolute inset-0 flex items-center justify-center p-4 z-20 pointer-events-auto animate-fade-in">
             <div className="bg-slate-950/80 backdrop-blur-md rounded-3xl border border-white/15 p-6 shadow-2xl max-w-3xl w-full">
               <Lobby state={state} code={code} origin={origin} />
@@ -208,10 +238,7 @@ export default function DisplayScreen({ code }: { code: string }) {
           isLowerThird ? (
             /* ── LOWER-THIRD BROADCAST OVERLAY (20 - 25% BOTTOM) ── */
             <div className="w-full px-2 sm:px-6 pb-2 pt-0 pointer-events-auto flex flex-col justify-end z-20 animate-fade-in">
-              <div
-                className="w-full max-w-6xl mx-auto rounded-2xl bg-slate-950/95 backdrop-blur-md border border-white/20 shadow-[0_6px_28px_rgba(0,0,0,0.85)] p-2 sm:p-3 flex flex-col justify-between"
-                style={{ minHeight: "115px", maxHeight: "25vh" }}
-              >
+              <div className="w-full max-w-6xl mx-auto flex flex-col justify-end">
                 {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
                 {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} isLowerThird={true} />}
                 {state.currentRound === "tangToc" && <TangToc state={state} serverNow={serverNow} />}
@@ -220,15 +247,13 @@ export default function DisplayScreen({ code }: { code: string }) {
               </div>
             </div>
           ) : (
-            /* ── FULLSCREEN CENTERED OVERLAY (EXPANSIVE BROADCAST SCALE 96VW) ── */
-            <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-6 bg-[#030612]/85 backdrop-blur-md pointer-events-auto animate-fade-in z-30">
-              <div className="w-full max-w-[96vw] lg:max-w-7xl h-full max-h-[94vh] flex items-center justify-center">
-                {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
-                {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} isLowerThird={false} />}
-                {state.currentRound === "tangToc" && <TangToc state={state} serverNow={serverNow} />}
-                {state.currentRound === "veDich" && <VeDich state={state} serverNow={serverNow} />}
-                {state.currentRound === "cauHoiPhu" && <Chp state={state} serverNow={serverNow} />}
-              </div>
+            /* ── FULLSCREEN BROADCAST OVERLAY (AUTHENTIC VTV3 GRAPHICS) ── */
+            <div className="absolute inset-0 pointer-events-auto animate-fade-in z-30 flex items-center justify-center">
+              {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
+              {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} isLowerThird={false} />}
+              {state.currentRound === "tangToc" && <TangToc state={state} serverNow={serverNow} />}
+              {state.currentRound === "veDich" && <VeDich state={state} serverNow={serverNow} />}
+              {state.currentRound === "cauHoiPhu" && <Chp state={state} serverNow={serverNow} />}
             </div>
           )
         )}
@@ -312,10 +337,10 @@ function Podium({ state }: { state: OlympiaState }) {
 
 function autoQuestionFontSize(text: string) {
   const len = text ? text.length : 0;
-  if (len <= 45) return "text-sm sm:text-base md:text-xl lg:text-2xl leading-snug";
-  if (len <= 85) return "text-xs sm:text-sm md:text-lg lg:text-xl leading-snug";
-  if (len <= 140) return "text-[11px] sm:text-xs md:text-base lg:text-lg leading-snug";
-  return "text-[10px] sm:text-[11px] md:text-sm lg:text-base leading-snug";
+  if (len <= 45) return "text-xl sm:text-2xl md:text-3xl lg:text-4xl leading-relaxed font-black";
+  if (len <= 85) return "text-lg sm:text-xl md:text-2xl lg:text-3xl leading-relaxed font-black";
+  if (len <= 140) return "text-base sm:text-lg md:text-xl lg:text-2xl leading-normal font-extrabold";
+  return "text-sm sm:text-base md:text-lg lg:text-xl leading-normal font-bold";
 }
 
 function DisplayTimerBar({ timer, serverNow }: { timer: any; serverNow: () => number }) {
@@ -422,13 +447,12 @@ function KhoiDong({ state, serverNow }: P) {
           {seats.map((s) => {
             const isBuzzed = currentBuzzedSeat != null && currentBuzzedSeat === s.id;
             const isSoloTurn = !isBuzzed && currentSoloSeat != null && currentSoloSeat === s.id;
-            const color = SEAT_COLORS[s.id] || "#38bdf8";
 
             if (isBuzzed) {
               return (
                 <div
                   key={s.id}
-                  className="rounded-lg border px-1.5 py-0.5 text-center transition-all animate-pulse shadow-[0_0_16px_#f59e0b] flex items-center justify-between min-w-0"
+                  className="rounded-lg border px-2 py-0.5 text-center transition-all animate-pulse shadow-[0_0_16px_#f59e0b] flex items-center justify-between min-w-0"
                   style={{
                     border: "1.5px solid #facc15",
                     borderLeft: "4px solid #facc15",
@@ -450,18 +474,18 @@ function KhoiDong({ state, serverNow }: P) {
               return (
                 <div
                   key={s.id}
-                  className="rounded-lg border px-1.5 py-0.5 text-center transition-all flex items-center justify-between min-w-0"
+                  className="rounded-lg border px-2 py-0.5 text-center transition-all flex items-center justify-between min-w-0"
                   style={{
-                    border: `1.5px solid ${color}90`,
-                    borderLeft: `4px solid ${color}`,
-                    background: `linear-gradient(180deg, ${color}45 0%, ${color}20 100%)`,
-                    boxShadow: `0 0 14px ${color}50, inset 0 0 8px ${color}30`,
+                    border: "1.5px solid #00f0ff",
+                    borderLeft: "4px solid #00f0ff",
+                    background: "linear-gradient(180deg, rgba(0, 240, 255, 0.35) 0%, rgba(2, 6, 23, 0.85) 100%)",
+                    boxShadow: "0 0 14px rgba(0, 240, 255, 0.4), inset 0 0 8px rgba(0, 240, 255, 0.2)",
                   }}
                 >
-                  <span className="truncate font-black text-[11px] sm:text-xs text-white">
+                  <span className="truncate font-black text-[11px] sm:text-xs text-cyan-200">
                     {s.name}
                   </span>
-                  <span className="font-black tabular-nums text-xs sm:text-sm ml-1" style={{ color, textShadow: `0 0 8px ${color}` }}>
+                  <span className="font-black tabular-nums text-xs sm:text-sm text-cyan-300 ml-1" style={{ textShadow: "0 0 8px #00f0ff" }}>
                     {s.score}
                   </span>
                 </div>
@@ -471,13 +495,13 @@ function KhoiDong({ state, serverNow }: P) {
             return (
               <div
                 key={s.id}
-                className="rounded-lg border px-1.5 py-0.5 text-center transition-all border-violet-500/20 bg-gradient-to-b from-white/10 to-white/[0.03] flex items-center justify-between min-w-0"
-                style={{ borderLeft: `3px solid ${color}` }}
+                className="rounded-lg border px-2 py-0.5 text-center transition-all border-cyan-500/25 bg-slate-950/80 flex items-center justify-between min-w-0 shadow-sm"
+                style={{ borderLeft: "3px solid #00e5ff" }}
               >
-                <span className="truncate font-medium text-[11px] sm:text-xs text-slate-300">
+                <span className="truncate font-medium text-[11px] sm:text-xs text-slate-200">
                   {s.name}
                 </span>
-                <span className="font-bold tabular-nums text-xs sm:text-sm text-slate-200 ml-1">
+                <span className="font-bold tabular-nums text-xs sm:text-sm text-amber-300 ml-1">
                   {s.score}
                 </span>
               </div>
@@ -486,87 +510,49 @@ function KhoiDong({ state, serverNow }: P) {
         </div>
       </div>
 
-      {/* Main question card */}
-      <div
-        className="w-full relative rounded-xl sm:rounded-2xl flex flex-col justify-between flex-1 min-h-0"
-        style={{
-          background: "linear-gradient(160deg, rgba(26,13,63,0.95) 0%, rgba(15,7,40,0.98) 100%)",
-          border: `1px solid ${seatColor}30`,
-          boxShadow: `0 4px 20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)`,
-          padding: "4px 10px",
-        }}
+      {/* Main question card: Authentic VTV3 Chalkboard Question Frame */}
+      <Vtv3ChalkboardQuestionFrame
+        headerBadge={
+          kd.phase === "segmentDone"
+            ? "KẾT THÚC LƯỢT THI"
+            : !kd.current
+            ? "ĐANG ĐỢI CÂU HỎI"
+            : !kd.questionRevealed
+            ? "SẴN SÀNG THI ĐẤU"
+            : `CÂU ${qNum}${totalQ} · 10Đ ${kd.current.subject ? `· 📚 ${kd.current.subject}` : ""}`
+        }
+        questionText={
+          kd.phase === "segmentDone"
+            ? "KẾT THÚC LƯỢT THI — Chuẩn bị sang phần thi tiếp theo"
+            : !kd.questionRevealed
+            ? "SẴN SÀNG THI ĐẤU"
+            : kd.current?.q
+        }
+        mediaElement={
+          kd.current?.media ? (
+            <MediaView
+              url={kd.current.media}
+              type={kd.current.mediaType}
+              className="max-h-20 sm:max-h-24 rounded-lg mx-auto mt-1"
+            />
+          ) : null
+        }
+        timer={kd.timer}
+        serverNow={serverNow}
       >
-        <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${seatColor}80, #ef4444aa, #7c3aedaa)` }} />
-
-        <div className="w-full flex-1 flex flex-col justify-center items-center py-0.5 min-h-[44px]">
-          {kd.phase === "segmentDone" ? (
-            <div className="text-center space-y-1 animate-fade-in">
-              <div
-                className="text-2xl sm:text-3xl font-black"
-                style={{ background: "linear-gradient(90deg,#fffbd0,#ffd700,#f59e0b)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
-              >
-                KẾT THÚC LƯỢT THI
-              </div>
-              <div className="text-xs text-violet-300/60">Chuẩn bị sang phần thi tiếp theo…</div>
-            </div>
-          ) : !kd.current ? (
-            <div className="text-violet-400/50 text-base font-medium animate-pulse">Đang đợi câu hỏi…</div>
-          ) : !kd.questionRevealed ? (
-            <div className="text-center py-1 space-y-1">
-              <div
-                className="text-lg sm:text-xl font-black tracking-wider uppercase animate-pulse"
-                style={{ background: "linear-gradient(90deg,#fffbd0,#ffd700,#f59e0b)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
-              >
-                SẴN SÀNG THI ĐẤU
-              </div>
-            </div>
-          ) : (
-            <div className="w-full text-center flex-1 flex flex-col items-center justify-center min-h-[44px]">
-              <div className={`font-black text-white text-center select-text leading-snug break-words ${autoQuestionFontSize(kd.current.q)}`} style={{ textShadow: "0 2px 10px rgba(0,0,0,0.7)" }}>
-                {kd.current.q}
-              </div>
-              {kd.current.media && (
-                <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-20 sm:max-h-28 rounded-xl mx-auto border border-violet-500/20 mt-1" />
-              )}
-            </div>
-          )}
-
-          {kd.buzzUnlockAt && kd.buzzUnlockAt > serverNow() && (
-            <div className="mt-1 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black animate-pulse bg-amber-500/15 border border-amber-400/50 text-amber-300">
-              <span>🔒 Chuông mở sau:</span>
-              <span className="font-mono">{Math.max(1, Math.ceil((kd.buzzUnlockAt - serverNow()) / 1000))}s</span>
-            </div>
-          )}
-
-          {kd.buzzedSeat != null && (
-            <div className="mt-1 inline-flex items-center gap-1.5 px-4 py-1 rounded-xl font-black text-sm sm:text-base text-slate-950 animate-bounce"
-              style={{ background: "linear-gradient(90deg,#f59e0b,#ef4444)", boxShadow: "0 0 20px rgba(245,158,11,0.6)" }}>
-              <span>🔔</span>
-              <span>{seatName(state, kd.buzzedSeat)}</span>
-            </div>
-          )}
-        </div>
-
-        {(() => {
-          const isO22OrBefore = state.rulesetId === "O22" || /^O(1[3-9]|2[0-2])$/.test(state.rulesetId);
-          if (isO22OrBefore) {
-            if (!kd.globalTimer) return null;
-            return (
-              <div className="shrink-0 pt-1 border-t border-violet-500/15">
-                <DisplayTimerBar timer={kd.globalTimer} serverNow={serverNow} />
-              </div>
-            );
-          }
-          if (kd.timer && kd.timer.startedAt != null) {
-            return (
-              <div className="shrink-0 pt-1 border-t border-violet-500/15">
-                <DisplayTimerBar timer={kd.timer} serverNow={serverNow} />
-              </div>
-            );
-          }
-          return null;
-        })()}
-      </div>
+        {kd.buzzedSeat != null && (
+          <div
+            className="mt-1 inline-flex items-center gap-1.5 px-4 py-1 rounded-xl font-black text-sm text-slate-950 animate-bounce"
+            style={{
+              background: "linear-gradient(90deg,#f59e0b,#ef4444)",
+              boxShadow: "0 0 20px rgba(245,158,11,0.6)",
+            }}
+          >
+            <span>🔔</span>
+            <span>{seatName(state, kd.buzzedSeat)}</span>
+          </div>
+        )}
+      </Vtv3ChalkboardQuestionFrame>
 
       {kd.phase === "result" && kd.current?.a && (
         <div
@@ -592,151 +578,123 @@ function KhoiDong({ state, serverNow }: P) {
 
 function Vcnv({ state, serverNow, isLowerThird }: P) {
   const v = state.vcnv!;
-  const cur = v.currentRow >= 0 && v.currentRow < 4 ? v.rows[v.currentRow] : null;
-  const isCenterRow = v.currentRow === 4;
+  if (!v) return null;
+
+  // 1. Candidate Answers Revealed -> Fullscreen VTV3 Vertical Brass Rail Layout (Image 3)
+  if (v.answersRevealed) {
+    return <VcnvAnswerRevealGraphic state={state} />;
+  }
+
+  // 2. 15-second Countdown / Question Phase
   const isTimerRunning = v.timer?.startedAt != null;
+  if (isTimerRunning || v.phase === "question") {
+    if (!isLowerThird) {
+      // Fullscreen Broadcast View (Image 1): 4 rows of 3D dome buttons in upper half + Question box in bottom 1/3
+      return <VcnvCountdownGraphic state={state} serverNow={serverNow} />;
+    }
+    // Lower-Third Camera Overlay View (Image 2): Question banner in bottom 1/3
+    const curIdx = v.currentRow;
+    const isCenter = curIdx === 4;
+    const curRow = curIdx >= 0 && curIdx < 4 ? v.rows[curIdx] : null;
+    const questionHint = isCenter ? v.centerQuestion?.q : curRow?.hint;
 
-  // In VCNV when 15s countdown runs, hide the crossword rows and puzzle pieces so only question prompt and answers show!
-  const showBoard = !isTimerRunning;
+    return (
+      <div className="w-full flex flex-col justify-end animate-fade-in">
+        <Vtv3ChalkboardQuestionFrame
+          headerBadge={
+            isCenter
+              ? "⭐ Ô TRUNG TÂM"
+              : curRow
+              ? `HÀNG NGANG SỐ ${curIdx + 1} · ${curRow.answer.replace(/\s/g, "").length} CHỮ CÁI`
+              : "VƯỢT CHƯỚNG NGẠI VẬT"
+          }
+          questionText={questionHint || "Đang đợi câu hỏi…"}
+          timer={v.timer}
+          serverNow={serverNow}
+        />
+      </div>
+    );
+  }
 
+  // 3. Grid Selection / Review Phase: Crossword Puzzle Board + 4 Clue Rows
   return (
     <div className="w-full max-w-[94vw] lg:max-w-6xl mx-auto flex flex-col justify-between py-2 sm:py-4 gap-3 sm:gap-4 animate-fade-in">
-      {showBoard && (
-        <>
-          <div className="relative mx-auto rounded-2xl overflow-hidden border-2 border-cyan-500/30 bg-[#0d0728] shadow-[0_0_35px_rgba(0,180,255,0.25)] aspect-[16/7] w-full max-h-[38vh]">
-            {v.mysteryImage && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={v.mysteryImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
-            )}
-            <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
-              {v.rows.map((_r, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center justify-center border border-violet-900 transition-all duration-700 ${v.piecesRevealed[i] ? "opacity-0" : "bg-violet-950/95 opacity-100"}`}
-                >
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-amber-300/80 bg-slate-950/80 flex items-center justify-center text-3xl sm:text-4xl font-black text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.5)]">
-                    {i + 1}
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* Mystery image grid */}
+      <div className="relative mx-auto rounded-2xl overflow-hidden border-2 border-amber-400/50 bg-[#0d0728] shadow-[0_0_35px_rgba(245,158,11,0.25)] aspect-[16/7] w-full max-h-[38vh]">
+        {v.mysteryImage && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={v.mysteryImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        )}
+        <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
+          {v.rows.map((_r, i) => (
             <div
-              className={`absolute inset-1/4 rounded-2xl border-2 flex items-center justify-center transition-all duration-700 ${
-                v.piecesRevealed[4] ? "opacity-0 pointer-events-none" : "opacity-100"
+              key={i}
+              className={`flex items-center justify-center border border-amber-900/60 transition-all duration-700 ${
+                v.piecesRevealed[i] ? "opacity-0" : "bg-slate-950/95 opacity-100"
               }`}
-              style={{ background: "rgba(10,5,28,0.95)", borderColor: "rgba(245,158,11,0.7)", color: "#fbbf24", boxShadow: "0 0 25px rgba(245,158,11,0.4)" }}
             >
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-2xl sm:text-3xl">⭐</span>
-                <span className="text-lg sm:text-2xl font-black uppercase tracking-wider">Ô Trung Tâm</span>
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-amber-300/80 bg-slate-900/90 flex items-center justify-center text-3xl sm:text-4xl font-black text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.5)]">
+                {i + 1}
               </div>
-            </div>
-          </div>
-
-          <div className="space-y-1.5 w-full">
-            {v.rows.map((r, i) => (
-              <div
-                key={i}
-                className={`flex items-center gap-3 sm:gap-4 rounded-xl px-3 sm:px-4 py-2 border text-base sm:text-lg transition-all ${
-                  v.currentRow === i
-                    ? "border-amber-400/80 bg-amber-500/15 shadow-[0_0_16px_rgba(245,158,11,0.3)]"
-                    : "border-cyan-500/20 bg-slate-950/60"
-                }`}
-              >
-                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 border-amber-400 bg-amber-500/20 flex items-center justify-center font-black text-base sm:text-lg text-amber-300 shadow-[0_0_10px_#f59e0b] shrink-0">
-                  {i + 1}
-                </div>
-                <span className="flex-1 font-bold">
-                  {r.opened || (v.answersRevealed && v.currentRow === i) ? (
-                    <b className="tracking-widest text-amber-200 text-lg sm:text-xl">{r.answer}</b>
-                  ) : v.currentRow === i ? (
-                    <span className="text-white">{r.hint}</span>
-                  ) : (
-                    <span className="tracking-widest text-slate-400">••••••••••</span>
-                  )}
-                </span>
-                {r.wrong && <span className="text-rose-400 text-xl font-black">✘</span>}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Row question during 15s timer */}
-      {(cur || isCenterRow) && (
-        <div className="space-y-3 sm:space-y-4 text-center animate-fade-in w-full">
-          {/* Top Bar with Circular Badge */}
-          <div className="flex items-center justify-center gap-2.5 sm:gap-3 shrink-0">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 border-amber-400 bg-gradient-to-br from-amber-400/30 to-amber-600/30 flex items-center justify-center font-black text-xl sm:text-2xl text-amber-300 shadow-[0_0_18px_#f59e0b]">
-              {isCenterRow ? "⭐" : v.currentRow + 1}
-            </div>
-            <div className="text-base sm:text-2xl font-black text-amber-300 uppercase tracking-widest drop-shadow-[0_2px_8px_rgba(245,158,11,0.6)]">
-              {isCenterRow ? "CÂU HỎI Ô TRUNG TÂM" : `HÀNG NGANG SỐ ${v.currentRow + 1} · ${cur?.answer.replace(/\s/g, "").length} CHỮ CÁI`}
-            </div>
-          </div>
-
-          {/* Grand Expansive Question Container */}
-          <div className="w-full rounded-2xl sm:rounded-3xl p-5 sm:p-8 border-2 border-cyan-400/40 bg-gradient-to-b from-[#091536]/95 via-[#04091c]/95 to-[#020510]/95 shadow-[0_0_40px_rgba(0,210,255,0.3)] flex flex-col items-center justify-center min-h-[140px] sm:min-h-[180px]">
-            <div className="text-2xl sm:text-4xl md:text-5xl font-black text-white text-center leading-snug drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] max-w-5xl">
-              {isCenterRow ? v.centerQuestion?.q : cur?.hint}
-            </div>
-          </div>
-
-          {/* Centered Large Circular Radial Dial Timer (150px) */}
-          <div className="flex items-center justify-center my-1 sm:my-2">
-            <CircularTimer timer={v.timer} serverNow={serverNow} size={150} strokeWidth={11} />
-          </div>
-
-          {/* 4 Contestant Circles (Ô Tròn Thí Sinh) */}
-          <div className="grid grid-cols-4 gap-2 sm:gap-4 w-full max-w-4xl mx-auto">
-            {activeSeats(state).map((s) => {
-              const hasBuzzed = v.bells.some((b) => b.seat === s.id);
-              const col = SEAT_COLORS[s.id] || "#38bdf8";
-              return (
-                <div
-                  key={s.id}
-                  className={`rounded-2xl p-2 sm:p-3 border flex flex-col items-center gap-1.5 transition-all ${
-                    hasBuzzed
-                      ? "border-amber-400 bg-amber-500/20 shadow-[0_0_20px_#f59e0b] animate-bounce"
-                      : "border-white/10 bg-slate-900/60"
-                  }`}
-                >
-                  <div
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 flex items-center justify-center font-black text-sm sm:text-base"
-                    style={{ borderColor: col, background: `${col}25`, color: col, boxShadow: `0 0 12px ${col}60` }}
-                  >
-                    {hasBuzzed ? "🔔" : (s.id + 1)}
-                  </div>
-                  <span className="font-bold text-xs sm:text-sm text-slate-200 truncate max-w-full">{s.name}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Candidate Answers Revealed */}
-      {v.answersRevealed && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full max-w-5xl mx-auto animate-fade-in">
-          {activeSeats(state).map((s) => (
-            <div
-              key={s.id}
-              className="rounded-2xl bg-[#091536]/90 border border-cyan-500/30 p-3 sm:p-4 text-center shadow-xl flex flex-col items-center gap-1.5"
-            >
-              <div
-                className="w-10 h-10 rounded-full border-2 flex items-center justify-center font-black text-sm"
-                style={{ borderColor: SEAT_COLORS[s.id], color: SEAT_COLORS[s.id] }}
-              >
-                {s.id + 1}
-              </div>
-              <div className="text-xs sm:text-sm font-bold truncate max-w-full" style={{ color: SEAT_COLORS[s.id] }}>
-                {s.name}
-              </div>
-              <div className="text-base sm:text-xl font-black text-amber-200 mt-1">{v.answers[s.id]?.text || "—"}</div>
             </div>
           ))}
         </div>
-      )}
+        <div
+          className={`absolute inset-1/4 rounded-2xl border-2 flex items-center justify-center transition-all duration-700 ${
+            v.piecesRevealed[4] ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
+          style={{
+            background: "rgba(10,5,28,0.95)",
+            borderColor: "rgba(245,158,11,0.7)",
+            color: "#fbbf24",
+            boxShadow: "0 0 25px rgba(245,158,11,0.4)",
+          }}
+        >
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-2xl sm:text-3xl">⭐</span>
+            <span className="text-lg sm:text-2xl font-black uppercase tracking-wider">Ô Trung Tâm</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4 Clue Rows with 3D Glossy Dome Letter Buttons */}
+      <div className="space-y-2 w-full max-w-4xl mx-auto">
+        {v.rows.map((r, i) => {
+          const cleanAns = (r.answer || "").replace(/\s+/g, "");
+          const count = cleanAns.length || 7;
+          const letters = cleanAns.split("");
+
+          return (
+            <div
+              key={i}
+              className={`flex items-center justify-between rounded-xl px-4 py-2 border transition-all ${
+                v.currentRow === i
+                  ? "border-amber-400 bg-amber-500/15 shadow-[0_0_20px_rgba(245,158,11,0.35)]"
+                  : "border-slate-700/60 bg-slate-950/70"
+              }`}
+            >
+              <div className="flex items-center gap-2 sm:gap-3">
+                <BlueSquareNumberBadge number={i + 1} isActive={v.currentRow === i} />
+                <div className="flex items-center gap-1 sm:gap-2">
+                  {Array.from({ length: count }).map((_, cIdx) => (
+                    <GlossyBlackDomeButton
+                      key={cIdx}
+                      letter={letters[cIdx]}
+                      isOpened={r.opened}
+                      isCurrentRow={v.currentRow === i}
+                    />
+                  ))}
+                </div>
+              </div>
+              {r.opened ? (
+                <span className="font-black text-amber-300 text-base sm:text-lg tracking-widest">{r.answer}</span>
+              ) : (
+                <span className="text-xs sm:text-sm text-slate-400 font-bold">{count} chữ cái</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       {v.bells.length > 0 && (
         <div className="text-center text-xl sm:text-2xl text-amber-300 font-black animate-pulse drop-shadow-[0_0_15px_#f59e0b]">
@@ -755,135 +713,30 @@ function Vcnv({ state, serverNow, isLowerThird }: P) {
 
 function TangToc({ state, serverNow }: P) {
   const tt = state.tangToc!;
-  const q = tt.questions[tt.qIdx];
-  if (tt.phase === "idle") return null;
+  if (!tt || tt.phase === "idle") return null;
 
-  return (
-    <div className="w-full max-w-[94vw] lg:max-w-6xl mx-auto flex flex-col justify-between py-2 sm:py-4 gap-3 sm:gap-4 text-center animate-fade-in">
-      {/* ── TOP BAR: Circular Question Number Badge + Point Tier Circles ── */}
-      <div className="flex items-center justify-between gap-3 w-full border-b border-cyan-500/25 pb-2">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 border-amber-400 bg-amber-500/20 flex items-center justify-center font-black text-xl sm:text-2xl text-amber-300 shadow-[0_0_18px_#f59e0b]">
-            {tt.qIdx + 1}
-          </div>
-          <div className="text-left">
-            <div className="text-base sm:text-xl font-black text-white uppercase tracking-wider">
-              TĂNG TỐC — CÂU HỎI SỐ {tt.qIdx + 1} / {tt.questions.length}
-            </div>
-            <div className="text-xs text-cyan-300/80 font-bold">Thời gian tối đa: {q?.type === "video" ? "30s" : "20s - 40s"}</div>
-          </div>
-        </div>
+  // 1. Candidate Answers Revealed -> Fullscreen VTV3 Vertical Brass Rail Ranked Layout (Image 5)
+  if (tt.phase === "ranking" || tt.phase === "graded") {
+    return <TangTocRankedAnswersGraphic state={state} />;
+  }
 
-        {/* 4 Circular Point Step Badges (40đ - 30đ - 20đ - 10đ) */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {[40, 30, 20, 10].map((pts) => (
-            <div
-              key={pts}
-              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-amber-400/60 bg-amber-500/15 flex items-center justify-center font-mono font-black text-xs sm:text-sm text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
-            >
-              {pts}đ
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── EXPANSIVE MEDIA / CLUE IMAGE CONTAINER ── */}
-      {q && (
-        <div className="space-y-3 w-full">
-          {q.q && (
-            <div className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-snug drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] max-w-5xl mx-auto">
-              {q.q}
-            </div>
-          )}
-
-          {q.clueImages && q.clueImages.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full max-w-6xl mx-auto">
-              {q.clueImages.map((cl, idx) => (
-                <div key={idx} className="rounded-2xl overflow-hidden border-2 border-cyan-500/30 bg-[#091536]/80 p-1.5 shadow-xl">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={cl.url} alt={cl.label || `Gợi ý ${idx + 1}`} className="w-full h-40 sm:h-56 object-cover rounded-xl" />
-                  <div className="text-xs sm:text-sm text-amber-300 font-black mt-2">
-                    {cl.label || `Dữ kiện ${idx + 1}`} ({cl.atSec}s)
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            q.media && (
-              <MediaView url={q.media} type={q.type} className="max-h-[46vh] w-auto mx-auto rounded-2xl border-2 border-cyan-500/30 shadow-2xl" />
-            )
-          )}
-        </div>
-      )}
-
-      {/* ── CENTERED LARGE CIRCULAR RADIAL DIAL TIMER (150px) ── */}
-      {tt.phase === "question" && (
-        <div className="flex items-center justify-center my-2 sm:my-3">
-          <CircularTimer timer={tt.timer} serverNow={serverNow} size={150} strokeWidth={11} />
-        </div>
-      )}
-
-      {/* ── RANKED ANSWER RESULTS WITH CIRCULAR BADGES ── */}
-      {(tt.phase === "ranking" || tt.phase === "graded") && (
-        <div className="space-y-2.5 max-w-3xl mx-auto w-full animate-fade-in">
-          {tt.correctAnswer && (
-            <div className="text-2xl sm:text-4xl font-black text-emerald-300 uppercase tracking-wider py-1 drop-shadow-[0_0_15px_#10b981]">
-              ✔ ĐÁP ÁN: {tt.correctAnswer}
-            </div>
-          )}
-          {tt.ranking.map((r, i) => {
-            const col = SEAT_COLORS[r.seat] || "#38bdf8";
-            return (
-              <div
-                key={r.seat}
-                className={`flex items-center gap-3 sm:gap-4 rounded-2xl px-4 py-2.5 text-base sm:text-lg border transition shadow-xl ${
-                  r.wrong
-                    ? "border-rose-500/50 bg-rose-950/40"
-                    : "border-cyan-500/30 bg-[#091536]/85"
-                }`}
-              >
-                {/* Circular Rank Badge */}
-                <div
-                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border-2 flex items-center justify-center font-black text-base sm:text-lg shrink-0 shadow-md"
-                  style={{ borderColor: col, color: col, background: `${col}20` }}
-                >
-                  {i + 1}
-                </div>
-                <b style={{ color: col }} className="w-36 text-left truncate text-base sm:text-lg">
-                  {seatName(state, r.seat)}
-                </b>
-                <span className="flex-1 text-left font-bold text-white text-base sm:text-xl">
-                  {r.noAnswer ? "—" : r.answer}
-                </span>
-                <span className="tabular-nums font-mono text-xs sm:text-sm text-cyan-300/80">
-                  {r.noAnswer ? "" : `${(r.ms / 1000).toFixed(2)}s`}
-                </span>
-                {r.points ? (
-                  <span className="px-2.5 py-1 rounded-xl bg-amber-500/20 border border-amber-400 text-amber-300 font-black text-sm sm:text-base shadow-[0_0_10px_#f59e0b]">
-                    +{r.points}
-                  </span>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+  // 2. Question Clue Frame -> Fullscreen VTV3 Ornate Gold Picture Frame (Image 4 & Prompt Attachment)
+  return <TangTocQuestionGraphic state={state} serverNow={serverNow} />;
 }
 
 function VeDich({ state, serverNow }: P) {
   const vd = state.veDich!;
   const owner = vd.order[vd.turnIdx];
   const cur = vd.current;
+
   return (
-    <div className="w-full max-w-5xl text-center space-y-1.5 flex flex-col justify-between h-full min-h-0 py-0.5">
-      <div className="flex items-center justify-center gap-2">
-        <span className="text-base sm:text-lg font-black" style={{ color: SEAT_COLORS[owner] }}>
+    <div className="w-full max-w-5xl mx-auto flex flex-col justify-end animate-fade-in">
+      <div className="flex items-center justify-center gap-2 mb-1">
+        <span className="text-sm sm:text-base font-black text-amber-300 drop-shadow">
           {seatName(state, owner)}
         </span>
         {cur?.q.subject && (
-          <span className="px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-200 text-xs font-bold">
+          <span className="px-2.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-200 text-xs font-bold">
             📚 {cur.q.subject} ({cur.points} điểm)
           </span>
         )}
@@ -892,19 +745,23 @@ function VeDich({ state, serverNow }: P) {
         )}
       </div>
 
-      {vd.phase === "choosing" && <div className="text-sm sm:text-base text-violet-200/60 font-medium">Đang chọn gói câu hỏi…</div>}
+      {vd.phase === "choosing" && (
+        <div className="text-center py-4 bg-slate-950/80 rounded-2xl border border-white/10 p-4">
+          <div className="text-base sm:text-lg text-amber-300 font-bold">Đang chọn gói câu hỏi…</div>
+        </div>
+      )}
 
       {vd.packages[owner] && !cur && (
-        <div className="flex justify-center gap-2">
+        <div className="flex justify-center gap-3 py-3">
           {vd.packages[owner].map((p, i) => (
             <div
               key={i}
-              className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-lg sm:text-2xl font-black border transition-all ${
+              className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-xl sm:text-2xl font-black border transition-all ${
                 vd.qIdx === i
-                  ? "text-slate-950 border-amber-300"
+                  ? "text-slate-950 border-amber-300 shadow-[0_0_20px_#f59e0b]"
                   : "border-violet-500/30 bg-white/5 text-violet-200"
               }`}
-              style={vd.qIdx === i ? { background: "linear-gradient(135deg,#f59e0b,#ef4444)", boxShadow: "0 0 20px rgba(245,158,11,0.5)" } : {}}
+              style={vd.qIdx === i ? { background: "linear-gradient(135deg,#f59e0b,#ef4444)" } : {}}
             >
               {p.points}
             </div>
@@ -913,24 +770,35 @@ function VeDich({ state, serverNow }: P) {
       )}
 
       {cur && (
-        <div className="w-full flex-1 flex flex-col items-center justify-center min-h-[44px]">
-          <div className={`font-black select-text leading-snug break-words text-white ${autoQuestionFontSize(cur.q.q)}`}>{cur.q.q}</div>
-          {cur.q.media && (
-            <MediaView url={cur.q.media} type={cur.q.mediaType} className="max-h-20 sm:max-h-28 rounded-xl mx-auto border border-violet-500/20 mt-1" />
-          )}
-          
-          <div className="w-full max-w-md mx-auto mt-1">
-            <Timer timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer} serverNow={serverNow} big />
-          </div>
+        <Vtv3ChalkboardQuestionFrame
+          headerBadge={`${seatName(state, owner)} · ${cur.q.subject || "VỀ ĐÍCH"} (${cur.points} điểm) ${
+            vd.hopeStarActive ? "⭐ NGÔI SAO HY VỌNG" : ""
+          }`}
+          questionText={cur.q.q}
+          mediaElement={
+            cur.q.media ? (
+              <MediaView
+                url={cur.q.media}
+                type={cur.q.mediaType}
+                className="max-h-20 sm:max-h-24 rounded-xl mx-auto border border-violet-500/20 mt-1"
+              />
+            ) : null
+          }
+          timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer}
+          serverNow={serverNow}
+        >
           {vd.phase === "stealing" && (
-            <div className="text-lg sm:text-xl font-black text-rose-400 animate-pulse mt-0.5">
+            <div className="text-base sm:text-lg font-black text-rose-400 animate-pulse mt-1">
               🚨 CƯỚP ĐIỂM {vd.steal?.buzzedSeat != null ? `— ${seatName(state, vd.steal.buzzedSeat)}` : ""}
             </div>
           )}
-        </div>
+        </Vtv3ChalkboardQuestionFrame>
       )}
+
       {vd.phase === "seatDone" && (
-        <div className="text-xl sm:text-2xl font-black text-amber-300">Hoàn thành lượt thi</div>
+        <div className="text-center py-3 text-xl font-black text-amber-300 bg-slate-950/80 rounded-2xl border border-white/10">
+          Hoàn thành lượt thi
+        </div>
       )}
     </div>
   );
@@ -940,23 +808,28 @@ function Chp({ state, serverNow }: P) {
   const cp = state.cauHoiPhu!;
   const q = cp.questions[cp.qIdx];
   return (
-    <div className="max-w-5xl mx-auto text-center space-y-3 w-full">
-      <div className="text-base text-amber-300 font-bold">
+    <div className="max-w-5xl mx-auto text-center space-y-2 w-full animate-fade-in">
+      <div className="text-sm font-bold text-amber-300">
         Câu hỏi phụ — {cp.tied.map((i) => seatName(state, i)).join(" · ")}
       </div>
-      {q && cp.phase !== "idle" && (
-        <div className={`font-bold leading-tight select-text ${autoQuestionFontSize(q.q)}`}>{q.q}</div>
+      {q && (
+        <Vtv3ChalkboardQuestionFrame
+          headerBadge="CÂU HỎI PHỤ"
+          questionText={q.q}
+          timer={cp.timer}
+          serverNow={serverNow}
+        />
       )}
       {cp.phase === "result" && q?.a && (
-        <div className="text-3xl text-emerald-300 font-bold">Đáp án: {q.a}</div>
+        <div className="text-2xl font-black text-emerald-300 mt-2">✔ Đáp án: {q.a}</div>
       )}
       {cp.buzzedSeat != null && (
-        <div className="text-3xl font-black text-amber-300">🔔 {seatName(state, cp.buzzedSeat)}</div>
+        <div className="text-2xl font-black text-amber-300 mt-2">🔔 {seatName(state, cp.buzzedSeat)}</div>
       )}
       {cp.winner != null && (
-        <div className="text-4xl font-black text-emerald-300">🏆 {seatName(state, cp.winner)}</div>
+        <div className="text-3xl font-black text-emerald-300 mt-2">🏆 {seatName(state, cp.winner)}</div>
       )}
-      <div className="max-w-md mx-auto">
+      <div className="max-w-md mx-auto mt-1">
         <Timer timer={cp.timer} serverNow={serverNow} big />
       </div>
     </div>

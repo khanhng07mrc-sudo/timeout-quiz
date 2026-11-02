@@ -179,57 +179,38 @@ export function LaurelWreathVitrine({
 
   return (
     <group position={position}>
-      {/* ── 1. PRISTINE WHITE CIRCULAR TIERED DAIS (As seen in VTV3 Photo 2) ── */}
-      {/* Lower White Stepped Plinth */}
-      <mesh position={[0, 0.03, 0]}>
-        <cylinderGeometry args={[0.55, 0.62, 0.06, 36]} />
-        <meshStandardMaterial color="#f8fafc" roughness={0.15} metalness={0.2} />
-      </mesh>
-
-      {/* Glowing LED Base Ring */}
-      <mesh position={[0, 0.062, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.52, 0.58, 36]} />
-        <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* Upper White Platform */}
-      <mesh position={[0, 0.09, 0]}>
-        <cylinderGeometry args={[0.46, 0.52, 0.06, 36]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.12} metalness={0.3} />
-      </mesh>
-
-      {/* ── 2. WHITE MARBLE DISPLAY PEDESTAL COLUMN ── */}
-      {/* Column Base Ring */}
-      <mesh position={[0, 0.14, 0]}>
-        <cylinderGeometry args={[0.18, 0.22, 0.04, 24]} />
-        <meshStandardMaterial color="#e2e8f0" metalness={0.6} roughness={0.2} />
+      {/* ── 1. WHITE MARBLE DISPLAY PEDESTAL COLUMN (Sits directly on the unified dais lobe) ── */}
+      {/* Column Base Plinth */}
+      <mesh position={[0, 0.02, 0]}>
+        <cylinderGeometry args={[0.20, 0.24, 0.04, 32]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.15} metalness={0.3} />
       </mesh>
 
       {/* Gold Accent Ring */}
-      <mesh position={[0, 0.165, 0]}>
-        <cylinderGeometry args={[0.17, 0.17, 0.012, 24]} />
+      <mesh position={[0, 0.045, 0]}>
+        <cylinderGeometry args={[0.19, 0.19, 0.012, 32]} />
         <meshStandardMaterial
           color="#ffd700"
           metalness={0.95}
           roughness={0.15}
           emissive="#ffd700"
-          emissiveIntensity={0.4}
+          emissiveIntensity={0.45}
         />
       </mesh>
 
       {/* Main Fluted Pillar */}
-      <mesh position={[0, 0.365, 0]}>
-        <cylinderGeometry args={[0.14, 0.16, 0.40, 24]} />
+      <mesh position={[0, 0.245, 0]}>
+        <cylinderGeometry args={[0.15, 0.17, 0.40, 32]} />
         <meshStandardMaterial
-          color="#f1f5f9"
-          metalness={0.4}
-          roughness={0.22}
+          color="#f8fafc"
+          metalness={0.35}
+          roughness={0.20}
         />
       </mesh>
 
       {/* Gold Trim Ring at Column Top */}
-      <mesh position={[0, 0.575, 0]}>
-        <cylinderGeometry args={[0.17, 0.17, 0.015, 24]} />
+      <mesh position={[0, 0.455, 0]}>
+        <cylinderGeometry args={[0.18, 0.18, 0.015, 32]} />
         <meshStandardMaterial
           color="#ffd700"
           metalness={0.95}
@@ -240,13 +221,13 @@ export function LaurelWreathVitrine({
       </mesh>
 
       {/* Column Capital / Top Plinth */}
-      <mesh position={[0, 0.595, 0]}>
-        <cylinderGeometry args={[0.20, 0.16, 0.045, 24]} />
-        <meshStandardMaterial color="#ffffff" metalness={0.5} roughness={0.2} />
+      <mesh position={[0, 0.475, 0]}>
+        <cylinderGeometry args={[0.20, 0.16, 0.045, 32]} />
+        <meshStandardMaterial color="#ffffff" metalness={0.4} roughness={0.2} />
       </mesh>
 
-      {/* ── 3. ROYAL CRIMSON VELVET DISPLAY PILLOW ── */}
-      <group position={[0, 0.635, 0]}>
+      {/* ── 2. ROYAL CRIMSON VELVET DISPLAY PILLOW ── */}
+      <group position={[0, 0.515, 0]}>
         <mesh position={[0, 0, 0]}>
           <cylinderGeometry args={[0.18, 0.20, 0.05, 32]} />
           <meshStandardMaterial color="#880e28" roughness={0.7} metalness={0.1} />
@@ -263,13 +244,13 @@ export function LaurelWreathVitrine({
         </mesh>
       </group>
 
-      {/* ── 4. ROTATING GOLDEN LAUREL WREATH ── */}
-      <group position={[0, 0.74, 0]}>
+      {/* ── 3. ROTATING GOLDEN LAUREL WREATH ── */}
+      <group position={[0, 0.62, 0]}>
         <LaurelWreathMesh />
       </group>
 
-      {/* ── 5. CRYSTAL CLOCHE (GLASS DISPLAY DOME) ── */}
-      <group position={[0, 0.66, 0]}>
+      {/* ── 4. CRYSTAL CLOCHE (GLASS DISPLAY DOME) ── */}
+      <group position={[0, 0.54, 0]}>
         <mesh position={[0, 0.18, 0]}>
           <cylinderGeometry args={[0.19, 0.19, 0.36, 32, 1, true]} />
           <meshPhysicalMaterial
@@ -298,15 +279,15 @@ export function LaurelWreathVitrine({
         </mesh>
       </group>
 
-      {/* ── 6. DEDICATED WARM GOLD SPOTLIGHT ── */}
+      {/* ── 5. DEDICATED WARM GOLD SPOTLIGHT ── */}
       <spotLight
-        position={[0, 6.0, 0]}
-        target-position={[0, 0.74, 0]}
-        color="#fff0b3"
-        intensity={8.5}
-        angle={0.35}
-        penumbra={0.4}
-        distance={10}
+        position={[0, 5.5, 0]}
+        target-position={[0, 0.62, 0]}
+        color="#fffbeb"
+        intensity={4.2}
+        angle={0.45}
+        penumbra={0.85}
+        distance={9}
       />
     </group>
   );

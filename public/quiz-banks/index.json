@@ -70,5 +70,14 @@
     "totalQuestions": 45,
     "lecturer": "Lê Quỳnh Liên",
     "tieBreakerCount": 3
+  },
+  {
+    "code": "DAUTHAU_BACAI",
+    "title": "Đấu thầu Gói thầu 01TB-BA - Thủy điện Bác Ái (Nhóm 9)",
+    "description": "Lý luận đấu thầu theo Luật 90/2025/QH15, phân tích thực tiễn gói thầu 01TB-BA Thủy điện tích năng Bác Ái (4.500 tỷ), nguyên tắc Value for Money và bài toán kinh tế dự án",
+    "file": "/quiz-banks/DAUTHAU_BACAI.json",
+    "totalQuestions": 40,
+    "lecturer": "Nhóm 9 - QLDA",
+    "tieBreakerCount": 3
   }
 ]

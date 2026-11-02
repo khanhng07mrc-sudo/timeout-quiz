@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import type { OlympiaState, OlympiaTranscriptEntry, QA, QuestionSet, VeDichQuestion } from "./types";
-import { SAMPLE_QUESTION_SET } from "./sample-questions";
+import { SAMPLE_QUESTION_SET, BAC_AI_QUESTION_SET } from "./sample-questions";
 import { autoTagEntireOlympiaSet, KD_ZONES, VD_ZONES } from "./ai-classifier";
 import { exportOlympiaSetToSheets } from "./excel-import";
 
@@ -23,7 +23,19 @@ function cloneSet(set: QuestionSet): QuestionSet {
 
 export function getPresetOlympiaBanks(): OlympiaBankItem[] {
   const taggedSample = autoTagEntireOlympiaSet(cloneSet(SAMPLE_QUESTION_SET), false);
+  const taggedBacAi = autoTagEntireOlympiaSet(cloneSet(BAC_AI_QUESTION_SET), false);
   return [
+    {
+      id: "olympia_preset_dauthau_bacai",
+      name: "Đấu thầu Gói thầu 01TB-BA - Thủy điện Tích năng Bác Ái",
+      description:
+        "Kho đề Olympia chuyên đề: Cơ sở lý luận Đấu thầu Nhà nước theo Luật 90/2025/QH15 & Thực tiễn Gói thầu 01TB-BA Thủy điện tích năng Bác Ái (Khởi động 36 câu, VCNV từ khóa 'ẮC QUY NƯỚC', Tăng tốc 4 câu, Về đích 14 câu và 3 Câu hỏi phụ).",
+      seasonHint: "O13 – O26 (2–8 thí sinh)",
+      createdAt: "2026-11-02T00:00:00.000Z",
+      updatedAt: "2026-11-02T00:00:00.000Z",
+      isPreset: true,
+      set: taggedBacAi,
+    },
     {
       id: "olympia_preset_o25_o26_full",
       name: "Đề Thi Olympia 25–26 Toàn Tập (96 Câu Khởi Động · 27 Câu Về Đích)",
@@ -52,9 +64,9 @@ export function getOlympiaBanks(): OlympiaBankItem[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
       return presets;
     }
-    const hasPreset = parsed.some((b) => b.id === "olympia_preset_o25_o26_full");
-    if (!hasPreset) {
-      const merged = [...presets, ...parsed];
+    const missingPresets = presets.filter((p) => !parsed.some((b) => b.id === p.id));
+    if (missingPresets.length > 0) {
+      const merged = [...presets, ...parsed.filter((b) => !presets.some((p) => p.id === b.id))];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
       return merged;
     }

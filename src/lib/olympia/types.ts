@@ -177,6 +177,12 @@ export interface OlympiaQuestionSet {
     rows: VcnvRowDef[];
     centerQuestion?: QA;
   };
+  vcnvBackup?: {
+    mysteryImage?: string;
+    answer: string;
+    rows: VcnvRowDef[];
+    centerQuestion?: QA;
+  };
   tangToc: TangTocQuestion[];
   veDich: Record<string, VeDichQuestion[]>; // "10" | "20" | "30" | "40"
   cauHoiPhu: QA[];
@@ -253,9 +259,25 @@ export interface TimerState {
 export interface Seat {
   id: number; // 0..7
   name: string;
+  school?: string; // Tên trường THPT / Tên đội
   playerKey: string | null; // reconnect token owner
   connected: boolean;
   score: number;
+}
+
+export type ContestantGestureType =
+  | "wave_single"
+  | "fist_pump"
+  | "hand_on_heart_bow"
+  | "wave_double"
+  | "heart_pose";
+
+export interface ContestantEntranceState {
+  active: boolean;
+  startedAt: number;
+  currentSeatIdx: number;       // Thí sinh đang thực hiện đi xuống (0..N-1)
+  seatStartedAt: number;        // Timestamp bắt đầu lượt của thí sinh hiện tại
+  seatGestures: ContestantGestureType[]; // Mảng động tác ngẫu nhiên được bốc cho từng thí sinh
 }
 
 export interface Cue {
@@ -374,6 +396,7 @@ export interface VcnvState {
   piecesRevealed: boolean[];
   solvedBy: number | null;
   rowResults: Record<number, number[]>; // rowIdx (0..4) -> seats awarded
+  revealedCorrectAnswer?: boolean;
 }
 
 export interface TangTocRankingItem {
@@ -396,6 +419,7 @@ export interface TangTocState {
   ranking: TangTocRankingItem[];
   questions: TangTocQuestion[];
   correctAnswer?: string;
+  revealedCorrectAnswer?: boolean;
 }
 
 export interface VeDichState {
@@ -524,6 +548,7 @@ export interface OlympiaState {
   currentRound: RoundId | null;
   roundStatus: Record<RoundId, RoundStatus>;
   banner: string | null; // section title screen
+  entranceState?: ContestantEntranceState | null; // Hoạt cảnh thí sinh chào sân (từ sau cổng vòm xuống cầu thang)
   introTimer?: TimerState | null; // opening show intro countdown timer (5s)
   showScoreboard?: boolean; // toggle full scoreboard overlay on DisplayScreen
   waitingBgm?: boolean; // whether waiting BGM is active
@@ -553,8 +578,8 @@ export interface OlympiaState {
   studioCameraManual?: boolean;
   /** Display overlay mode: "LOWER_THIRD" (1/3 bottom question overlay) or "FULLSCREEN" (centered 2D modal overlay) */
   overlayMode?: "LOWER_THIRD" | "FULLSCREEN";
-  /** Right LED screen content mode: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" */
-  rightScreenMode?: "auto" | "logo" | "roundTitle" | "question" | "scoreboard";
+  /** Right LED screen content mode: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" | "roundGraphics" */
+  rightScreenMode?: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" | "roundGraphics";
 }
 
 export type HostAction = { type: string; [k: string]: unknown };

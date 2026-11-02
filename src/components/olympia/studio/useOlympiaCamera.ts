@@ -49,6 +49,41 @@ export function useOlympiaCameraState(
     }
 
     const now = getNow();
+
+    // 1.5. Sequential Contestant Entrance Cinematic Sequence (Manual Trigger by Host/MC with Skip)
+    if (state.entranceState?.active) {
+      const currentSeat = state.entranceState.currentSeatIdx ?? 0;
+      const seatStart = state.entranceState.seatStartedAt || state.entranceState.startedAt || now;
+      const seatElapsedSec = Math.max(0, (now - seatStart) / 1000);
+
+      // Phase A (0.0s -> 2.5s): Cam 13 (Portal Arches & Mountain focus as contestant emerges)
+      if (seatElapsedSec < 2.5) {
+        return {
+          camAngle: 13,
+          transitionMode: currentSeat === 0 ? "CUT" : "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+      // Phase B (2.5s -> 7.2s): Cam 11 (Grandstand staircase tracking & Bục Giữa signature gesture)
+      if (seatElapsedSec < 7.2) {
+        return {
+          camAngle: 11,
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+      // Phase C (7.2s -> 11.5s): Cam (5 + k) (Spotlight contestant k walking to podium, illuminated scoreboard & arrival)
+      const validCam = 5 + Math.min(3, Math.max(0, currentSeat));
+      return {
+        camAngle: validCam,
+        transitionMode: "MORPH",
+        isOverlayHidden: false,
+        pushInProgress: 0,
+      };
+    }
+
     const round = state.currentRound;
 
     // 2. Stage transitions (Lobby / Finished)
@@ -119,12 +154,13 @@ export function useOlympiaCameraState(
         };
       }
 
-      // Idle / between questions
+      // Idle / between questions: Iconic Low-Angle Hero Shot (Góc Thấp Khởi Động per Image 4)
+      // Tilts up from left of Laurel Vitrine across the stage with smooth physical camera motion
       return {
-        camAngle: 2, // Bục thí sinh
-        transitionMode: "CUT",
+        camAngle: 14,
+        transitionMode: "MORPH",
         isOverlayHidden: false,
-        pushInProgress: 0,
+        pushInProgress: 0.15,
       };
     }
 

@@ -301,6 +301,53 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
           </div>
 
           <div className="pt-1.5 border-t border-white/10 space-y-1">
+            {/* Entrance Sequence Toggle / Step / Skip Controls (Manual Trigger by Host/MC) */}
+            {state.entranceState?.active ? (
+              <div className="space-y-1 bg-amber-950/40 border border-amber-400/40 rounded p-1">
+                <div className="flex items-center justify-between text-[10px] font-bold text-amber-200 px-0.5">
+                  <span>TS {(state.entranceState.currentSeatIdx ?? 0) + 1}/{state.seats.length || 4}</span>
+                  <span className="text-[9px] text-amber-300">
+                    {(() => {
+                      const g = state.entranceState.seatGestures?.[state.entranceState.currentSeatIdx ?? 0];
+                      if (g === "fist_pump") return "✊ Quyết tâm";
+                      if (g === "hand_on_heart_bow") return "🙇 Cúi chào";
+                      if (g === "wave_double") return "🙌 Vẫy 2 tay";
+                      if (g === "heart_pose") return "🫶 Bắn tim";
+                      return "👋 Vẫy tay";
+                    })()}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => call("entrance:next")}
+                    className="w-full text-center px-1 py-1 rounded text-[10px] font-bold bg-emerald-600/30 border border-emerald-400 text-emerald-200 hover:bg-emerald-600/45 cursor-pointer truncate shadow"
+                    title="Chuyển ngay sang thí sinh tiếp theo"
+                  >
+                    <span>Tiếp Theo ⏭️</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => call("entrance:skip")}
+                    className="w-full text-center px-1 py-1 rounded text-[10px] font-bold bg-red-600/30 border border-red-400 text-red-200 hover:bg-red-600/45 cursor-pointer truncate shadow"
+                    title="Dừng hoạt cảnh chào sân ngay lập tức"
+                  >
+                    <span>Bỏ Qua ⏩</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => call("entrance:start")}
+                className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-sky-300 bg-sky-950/40 border border-sky-500/30 hover:bg-sky-500/20 flex items-center gap-1 cursor-pointer truncate"
+                title="Bắt đầu hoạt cảnh từng thí sinh bước từ cổng vòm xuống bục"
+              >
+                <span>🚶</span>
+                <span className="truncate">Chào Sân Thí Sinh</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => call("scoreboard:toggle")}
@@ -442,6 +489,52 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 <span>{state.overlayMode === "FULLSCREEN" ? "🔲" : "📺"}</span>
                 <span className="truncate">{state.overlayMode === "FULLSCREEN" ? "Toàn Màn" : "1/3 Dưới"}</span>
               </button>
+            </div>
+
+            {/* ── MÀN HÌNH LED PHẢI SÂN KHẤU (STAGE RIGHT SCREEN CONTROLLER) ── */}
+            <div className="rounded-xl border border-violet-500/30 bg-[#090d1e]/95 p-2 shadow-xl flex flex-col gap-1.5 backdrop-blur-md">
+              <div className="flex items-center justify-between text-[11px] font-bold">
+                <div className="flex items-center gap-1.5 text-violet-300">
+                  <span className="text-xs">🖥️</span>
+                  <span className="uppercase tracking-wider font-black text-white">MÀN HÌNH PHẢI SÂN KHẤU</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-violet-950/80 text-violet-300 border border-violet-700/50">
+                    {state.rightScreenMode === "roundGraphics"
+                      ? "Đồ hoạ vòng thi"
+                      : state.rightScreenMode === "roundTitle"
+                      ? "Tên phần thi"
+                      : state.rightScreenMode === "scoreboard"
+                      ? "Bảng điểm"
+                      : state.rightScreenMode === "logo"
+                      ? "Logo Olympia"
+                      : "Tự động"}
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-5 gap-1">
+                {[
+                  { id: "auto", label: "Tự Động" },
+                  { id: "roundGraphics", label: "Đồ Hoạ Vòng" },
+                  { id: "roundTitle", label: "Tên Phần Thi" },
+                  { id: "scoreboard", label: "Bảng Điểm" },
+                  { id: "logo", label: "Logo Nguyệt Quế" },
+                ].map((m) => {
+                  const isActive = (state.rightScreenMode ?? "auto") === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => call("rightScreen:setMode", { mode: m.id })}
+                      className={`px-1.5 py-1 rounded text-[10px] font-black border transition truncate cursor-pointer ${
+                        isActive
+                          ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b]"
+                          : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* ── BÀN ĐẠO DIỄN HÌNH ẢNH TRƯỜNG QUAY 3D (BROADCAST VISION MIXER) ── */}
@@ -660,27 +753,59 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               style={{ borderLeft: `4px solid ${SEAT_COLORS[s.id] || "#38bdf8"}` }}
             >
               <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-bold truncate text-slate-300">
-                  {s.name || `TS ${idx + 1}`}
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    defaultValue={s.name || `TS ${idx + 1}`}
+                    key={`host_name_${s.id}_${s.name}`}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                    }}
+                    onBlur={(e) => {
+                      const val = e.target.value.trim();
+                      if (val && val !== s.name) {
+                        call("seat:rename", { seat: s.id, name: val, school: s.school });
+                      }
+                    }}
+                    className="text-[11px] font-bold text-slate-200 bg-transparent border-b border-transparent hover:border-white/20 focus:border-cyan-400 focus:outline-none w-20 truncate"
+                    title="Nhấp để đổi tên thí sinh"
+                  />
+                  <input
+                    type="number"
+                    defaultValue={s.score}
+                    key={`host_score_${s.id}_${s.score}`}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        (e.target as HTMLInputElement).blur();
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val) && val !== s.score) {
+                        call("score:set", { seat: s.id, score: val });
+                      }
+                    }}
+                    className="w-14 px-1 py-0.5 rounded bg-black/40 border border-white/20 text-sm sm:text-base font-black leading-none focus:outline-none focus:border-amber-400 ml-auto"
+                    style={{ color: SEAT_COLORS[s.id] || "#38bdf8" }}
+                    title="Gõ điểm trực tiếp (Enter để lưu)"
+                  />
                 </div>
                 <input
-                  type="number"
-                  defaultValue={s.score}
-                  key={`host_score_${s.id}_${s.score}`}
+                  type="text"
+                  defaultValue={s.school || ""}
+                  key={`host_school_${s.id}_${s.school || ""}`}
+                  placeholder="Trường THPT..."
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      (e.target as HTMLInputElement).blur();
-                    }
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                   }}
                   onBlur={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    if (!isNaN(val) && val !== s.score) {
-                      call("score:set", { seat: s.id, score: val });
+                    const val = e.target.value.trim();
+                    if (val !== (s.school || "")) {
+                      call("seat:setSchool", { seat: s.id, school: val });
                     }
                   }}
-                  className="w-16 px-1 py-0.5 rounded bg-black/40 border border-white/20 text-base sm:text-lg font-black leading-none focus:outline-none focus:border-amber-400"
-                  style={{ color: SEAT_COLORS[s.id] || "#38bdf8" }}
-                  title="Gõ điểm trực tiếp (Enter để lưu)"
+                  className="w-full text-[10px] px-1 py-0.5 rounded bg-black/40 border border-white/10 text-amber-300 placeholder:text-slate-500 mt-0.5 focus:outline-none focus:border-amber-400"
+                  title="Nhập tên trường THPT / Tỉnh đại diện"
                 />
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -1107,7 +1232,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             ⏳ Đếm 15s (Space)
           </button>
 
-          <div className="grid grid-cols-3 gap-1">
+          <div className="grid grid-cols-4 gap-1">
             <button
               type="button"
               onClick={() => call("vcnv:timer")}
@@ -1121,6 +1246,17 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
               className="py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-[11px] font-black text-white"
             >
               👁 Hiện ĐA (R)
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vcnv:revealCorrect")}
+              className={`py-1 rounded text-[11px] font-black ${
+                state.vcnv?.revealedCorrectAnswer
+                  ? "bg-emerald-600 text-white"
+                  : "bg-amber-600 hover:bg-amber-500 text-white"
+              }`}
+            >
+              ⭐ {state.vcnv?.revealedCorrectAnswer ? "Đã hiện" : "Hiện Đ/A đúng"}
             </button>
             <button
               type="button"
@@ -1293,7 +1429,7 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
           <span>Bắt đầu đếm giờ (Space)</span>
         </button>
 
-        <div className="w-full grid grid-cols-2 gap-1.5">
+        <div className="w-full grid grid-cols-3 gap-1.5">
           <button
             type="button"
             onClick={() => call("tt:revealAndGrade")}
@@ -1301,6 +1437,18 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
           >
             <span>✔</span>
             <span>Hiện ĐA thí sinh (R)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => call("tt:revealCorrect")}
+            className={`py-2 rounded-lg text-xs font-black shadow cursor-pointer flex items-center justify-center gap-1 ${
+              state.tangToc?.revealedCorrectAnswer
+                ? "bg-amber-500 text-slate-950 font-black"
+                : "bg-amber-600 hover:bg-amber-500 text-white"
+            }`}
+          >
+            <span>⭐</span>
+            <span>{state.tangToc?.revealedCorrectAnswer ? "Đã hiện ĐA đúng" : "Hiện ĐA đúng (MC)"}</span>
           </button>
           <button
             type="button"

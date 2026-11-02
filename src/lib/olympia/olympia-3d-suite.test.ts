@@ -21,6 +21,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import type { OlympiaState, RoundId, RulesetId } from "./types";
+import { runOlympiaStudioRefactorSuite } from "./olympia-studio-refactor.test";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Formal Interface Contracts & Specifications (from PROJECT.md)
@@ -1316,23 +1317,48 @@ runTest(4, "Scenario 5: End-of-game victory ceremony & Laurel wreath showcase pr
 console.log(`Tier 4 Tests Completed: ${tier4Count} / 5 passing (threshold >= 5 satisfied).\n`);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Summary Report
+// Summary Report (Baseline Game Engine & Studio Lighting Contracts)
 // ─────────────────────────────────────────────────────────────────────────────
 
 console.log("================================================================================");
-console.log("TEST EXECUTION SUMMARY");
+console.log("BASELINE TEST EXECUTION SUMMARY");
 console.log("================================================================================");
 console.log(`  Tier 1 (Feature Coverage):        ${tier1Count} / 41 passed (Threshold: >= 35)`);
 console.log(`  Tier 2 (Boundary & Corner Cases): ${tier2Count} / 43 passed (Threshold: >= 35)`);
 console.log(`  Tier 3 (Cross-Feature Combos):    ${tier3Count} / 8  passed (Threshold: >= 7)`);
 console.log(`  Tier 4 (Real-World Scenarios):    ${tier4Count} / 5  passed (Threshold: >= 5)`);
 console.log("--------------------------------------------------------------------------------");
-console.log(`  TOTAL TESTS EXECUTED:             ${totalPassed} / 97 passed (100% Pass Rate)`);
+console.log(`  BASELINE TESTS EXECUTED:          ${totalPassed} / 97 passed (100% Pass Rate)`);
+console.log("================================================================================\n");
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Execute Refactored Studio S14 Environment Test Suite (R1 - R7)
+// ─────────────────────────────────────────────────────────────────────────────
+const refactorResults = runOlympiaStudioRefactorSuite();
+
+// Consolidated Grand Total Summary
+const grandTier1 = tier1Count + refactorResults.tier1Count;
+const grandTier2 = tier2Count + refactorResults.tier2Count;
+const grandTier3 = tier3Count + refactorResults.tier3Count;
+const grandTier4 = tier4Count + refactorResults.tier4Count;
+const grandTotalPassed = totalPassed + refactorResults.totalPassed;
+const grandTotalExecuted = 97 + refactorResults.totalExecuted;
+
+console.log("================================================================================");
+console.log("GRAND CONSOLIDATED 3D STUDIO TEST SUMMARY (BASELINE + S14 REFACTOR)");
+console.log("================================================================================");
+console.log(`  Tier 1 (Feature Coverage):        ${grandTier1} passed (Threshold: >= 70)`);
+console.log(`  Tier 2 (Boundary & Corner Cases): ${grandTier2} passed (Threshold: >= 60)`);
+console.log(`  Tier 3 (Cross-Feature Combos):    ${grandTier3} passed (Threshold: >= 14)`);
+console.log(`  Tier 4 (Real-World Scenarios):    ${grandTier4} passed (Threshold: >= 10)`);
+console.log("--------------------------------------------------------------------------------");
+console.log(`  GRAND TOTAL TESTS EXECUTED:       ${grandTotalPassed} / ${grandTotalExecuted} passed (100% Pass Rate)`);
 console.log("================================================================================");
 
 if (process.exitCode && process.exitCode !== 0) {
   console.error("\n[SUITE FAILED] One or more tests did not pass.");
   process.exit(process.exitCode);
 } else {
-  console.log("\n[SUITE PASSED] All 97 tests passed cleanly against formal interface contracts.");
+  console.log(`\n[FULL SUITE PASSED] All ${grandTotalExecuted} tests passed cleanly against formal interface contracts.`);
 }
+

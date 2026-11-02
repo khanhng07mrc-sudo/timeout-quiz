@@ -52,10 +52,10 @@ async function loadGame(code: string): Promise<GameEntry | null> {
           questionSet: SAMPLE_QUESTION_SET,
           seatCount: 4,
           teams: [
-            { name: "Đội Đỏ" },
-            { name: "Đội Lam" },
-            { name: "Đội Vàng" },
-            { name: "Đội Lục" },
+            { name: "Thí sinh 1" },
+            { name: "Thí sinh 2" },
+            { name: "Thí sinh 3" },
+            { name: "Thí sinh 4" },
           ],
         };
         const game = new OlympiaGame(code, defaultCfg);

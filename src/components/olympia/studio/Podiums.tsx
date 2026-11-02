@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useMemo, useEffect } from "react";
+import React, { useRef, useMemo, useEffect, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { OlympiaState } from "@/lib/olympia/types";
@@ -25,13 +25,81 @@ function createPodiumScoreCanvas(
   score: number,
   seatId: number,
   isBuzzed: boolean,
-  isRed: boolean = false
+  isRed: boolean = false,
+  school?: string,
+  isEntrancePhase: boolean = false
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
   canvas.height = 256;
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
+
+  if (isEntrancePhase) {
+    // ── ENTRANCE / INTRO BROADCAST DISPLAY MODE ──
+    // Top 30% (Y = 0 to 76): Deep Sapphire/Cyan Bar with Contestant Name
+    const topGrad = ctx.createLinearGradient(0, 0, 512, 76);
+    topGrad.addColorStop(0, "#0284c7");
+    topGrad.addColorStop(1, "#0369a1");
+    ctx.fillStyle = topGrad;
+    ctx.fillRect(0, 0, 512, 76);
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = '900 28px "Plus Jakarta Sans", "Montserrat", sans-serif';
+    ctx.letterSpacing = "0.05em";
+    const displayName = (name || `THÍ SINH ${seatId + 1}`).toUpperCase();
+    ctx.fillText(displayName, 256, 38);
+
+    // Separator line
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, 76);
+    ctx.lineTo(512, 76);
+    ctx.stroke();
+
+    // Bottom 70% (Y = 76 to 256): Deep Midnight Blue with School / Team Name
+    const bottomGrad = ctx.createLinearGradient(0, 76, 0, 256);
+    bottomGrad.addColorStop(0, "#08142c");
+    bottomGrad.addColorStop(1, "#020713");
+    ctx.fillStyle = bottomGrad;
+    ctx.fillRect(0, 76, 512, 180);
+
+    // Small Gold Sub-label
+    ctx.font = '700 15px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "rgba(254, 240, 138, 0.75)";
+    ctx.letterSpacing = "0.15em";
+    ctx.fillText("TRƯỜNG THPT / ĐỘI", 256, 108);
+
+    // School Name in Radiant Warm Gold
+    ctx.fillStyle = "#fef08a";
+    ctx.shadowColor = "rgba(254, 240, 138, 0.6)";
+    ctx.shadowBlur = 12;
+
+    const schoolText = (school || "ĐƯỜNG LÊN ĐỈNH OLYMPIA").toUpperCase();
+    if (schoolText.length > 22) {
+      ctx.font = '900 25px "Plus Jakarta Sans", sans-serif';
+      const words = schoolText.split(" ");
+      const mid = Math.ceil(words.length / 2);
+      const line1 = words.slice(0, mid).join(" ");
+      const line2 = words.slice(mid).join(" ");
+      ctx.fillText(line1, 256, 146);
+      ctx.fillText(line2, 256, 186);
+    } else {
+      ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(schoolText, 256, 162);
+    }
+    ctx.shadowBlur = 0;
+
+    // Outer Border & Glow
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = "#38bdf8";
+    ctx.strokeRect(3, 3, 506, 250);
+
+    return canvas;
+  }
 
   // Dynamic broadcast color scheme: Cyan/Blue in calm/idle, Vibrant Crimson Red in countdown/tension/buzz
   const headerBg = isRed ? "#ff2a4b" : "#00e5ff";
@@ -94,20 +162,24 @@ function ContestantScoreDisplay({
   seatId,
   isBuzzed,
   isRed = false,
+  school,
+  isEntrancePhase = false,
 }: {
   name: string;
   score: number;
   seatId: number;
   isBuzzed: boolean;
   isRed?: boolean;
+  school?: string;
+  isEntrancePhase?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
 
   const canvas = useMemo(() => {
     if (typeof document === "undefined") return null;
-    return createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed);
-  }, [name, score, seatId, isBuzzed, isRed]);
+    return createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed, school, isEntrancePhase);
+  }, [name, score, seatId, isBuzzed, isRed, school, isEntrancePhase]);
 
   const texture = useMemo(() => {
     if (!canvas) return null;
@@ -125,7 +197,7 @@ function ContestantScoreDisplay({
 
   useEffect(() => {
     if (canvasRef.current && textureRef.current) {
-      const fresh = createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed);
+      const fresh = createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed, school, isEntrancePhase);
       const ctx = canvasRef.current.getContext("2d");
       if (ctx) {
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
@@ -133,11 +205,11 @@ function ContestantScoreDisplay({
       }
       textureRef.current.needsUpdate = true;
     }
-  }, [name, score, seatId, isBuzzed, isRed]);
+  }, [name, score, seatId, isBuzzed, isRed, school, isEntrancePhase]);
 
   return (
-    <mesh position={[0, 0.48, 0.435]} rotation={[-0.12, 0, 0]}>
-      <planeGeometry args={[0.96, 0.46]} />
+    <mesh position={[0, 0.54, 0.382]} rotation={[-0.02, 0, 0]} renderOrder={6}>
+      <planeGeometry args={[0.76, 0.28]} />
       {texture ? (
         <meshBasicMaterial
           map={texture}
@@ -155,58 +227,111 @@ function ContestantScoreDisplay({
 
 /**
  * Stylized 3D Contestant Humanoid standing behind podium
+ * Official Olympia White Polo Uniform, natural standing posture (arms at sides, clean desk).
  */
 function ContestantFigure({ seatId }: { seatId: number }) {
-  const shirtColors = ["#ef4444", "#3b82f6", "#eab308", "#22c55e"];
-  const shirtColor = shirtColors[seatId % shirtColors.length];
+  // All contestants wear the official white Olympia polo uniform
+  const shirtColor = "#f8fafc";
 
   return (
     <group position={[0, 0, -0.42]}>
-      {/* Head */}
+      {/* Head & Hair */}
       <mesh position={[0, 1.58, 0]}>
-        <sphereGeometry args={[0.082, 20, 20]} />
+        <sphereGeometry args={[0.084, 20, 20]} />
         <meshStandardMaterial color="#fed7aa" roughness={0.6} />
       </mesh>
-      {/* Hair */}
-      <mesh position={[0, 1.62, -0.02]}>
-        <sphereGeometry args={[0.088, 20, 20]} />
+      <mesh position={[0, 1.62, -0.015]}>
+        <sphereGeometry args={[0.090, 20, 20]} />
         <meshStandardMaterial color="#1e1b18" roughness={0.8} />
       </mesh>
-      {/* Contestant Team Polo Shirt */}
-      <mesh position={[0, 1.25, 0]}>
-        <cylinderGeometry args={[0.13, 0.16, 0.45, 16]} />
-        <meshStandardMaterial color={shirtColor} roughness={0.5} />
+      <mesh position={[0.03, 1.64, 0.04]}>
+        <boxGeometry args={[0.08, 0.03, 0.06]} />
+        <meshStandardMaterial color="#1e1b18" roughness={0.8} />
       </mesh>
-      {/* White Polo Collar Accent */}
-      <mesh position={[0, 1.48, 0.04]} rotation={[0.3, 0, 0]}>
-        <boxGeometry args={[0.14, 0.04, 0.08]} />
+
+      {/* Neck */}
+      <mesh position={[0, 1.48, 0]}>
+        <cylinderGeometry args={[0.040, 0.044, 0.08, 14]} />
+        <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+      </mesh>
+
+      {/* Contestant Official White Polo Shirt */}
+      <mesh position={[0, 1.34, 0]}>
+        <cylinderGeometry args={[0.165, 0.145, 0.26, 16]} />
+        <meshStandardMaterial color={shirtColor} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 1.46, 0.04]} rotation={[0.25, 0, 0]}>
+        <boxGeometry args={[0.14, 0.035, 0.07]} />
         <meshStandardMaterial color="#ffffff" roughness={0.3} />
       </mesh>
-      {/* Left Arm Resting forward near desk */}
-      <mesh position={[-0.20, 1.18, 0.18]} rotation={[0.45, 0, -0.15]}>
-        <cylinderGeometry args={[0.035, 0.030, 0.40, 12]} />
-        <meshStandardMaterial color={shirtColor} roughness={0.5} />
+      <mesh position={[0, 1.40, 0.09]}>
+        <boxGeometry args={[0.03, 0.08, 0.01]} />
+        <meshStandardMaterial color="#e2e8f0" roughness={0.3} />
       </mesh>
-      <mesh position={[-0.22, 0.98, 0.32]}>
-        <sphereGeometry args={[0.032, 12, 12]} />
+
+      {/* Subtle Cyan Olympia Chest Badge */}
+      <mesh position={[0.07, 1.35, 0.11]} rotation={[0.1, 0, 0]}>
+        <boxGeometry args={[0.035, 0.022, 0.008]} />
+        <meshBasicMaterial color="#00e5ff" />
+      </mesh>
+
+      {/* Lower Torso / Waist */}
+      <mesh position={[0, 1.11, 0]}>
+        <cylinderGeometry args={[0.142, 0.150, 0.22, 16]} />
+        <meshStandardMaterial color={shirtColor} roughness={0.4} />
+      </mesh>
+
+      {/* Belt */}
+      <mesh position={[0, 0.98, 0]}>
+        <boxGeometry args={[0.31, 0.04, 0.19]} />
+        <meshStandardMaterial color="#1e293b" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 0.98, 0.096]}>
+        <boxGeometry args={[0.04, 0.03, 0.01]} />
+        <meshStandardMaterial color="#f59e0b" metalness={0.8} roughness={0.2} />
+      </mesh>
+
+      {/* Left Arm Resting naturally at side */}
+      <mesh position={[-0.19, 1.25, 0]} rotation={[0.06, 0, -0.06]}>
+        <cylinderGeometry args={[0.038, 0.032, 0.22, 12]} />
+        <meshStandardMaterial color={shirtColor} roughness={0.4} />
+      </mesh>
+      <mesh position={[-0.20, 1.05, 0]}>
+        <cylinderGeometry args={[0.030, 0.026, 0.20, 12]} />
         <meshStandardMaterial color="#fed7aa" roughness={0.6} />
       </mesh>
-      {/* Right Arm Hovering near buzzer */}
-      <mesh position={[0.20, 1.18, 0.18]} rotation={[0.45, 0, 0.15]}>
-        <cylinderGeometry args={[0.035, 0.030, 0.40, 12]} />
-        <meshStandardMaterial color={shirtColor} roughness={0.5} />
-      </mesh>
-      <mesh position={[0.22, 0.98, 0.32]}>
-        <sphereGeometry args={[0.032, 12, 12]} />
+      <mesh position={[-0.20, 0.93, 0]}>
+        <sphereGeometry args={[0.026, 12, 12]} />
         <meshStandardMaterial color="#fed7aa" roughness={0.6} />
       </mesh>
-      {/* Trousers */}
-      <mesh position={[-0.08, 0.52, 0]}>
-        <cylinderGeometry args={[0.055, 0.048, 0.94, 12]} />
+
+      {/* Right Arm Resting naturally at side */}
+      <mesh position={[0.19, 1.25, 0]} rotation={[0.06, 0, 0.06]}>
+        <cylinderGeometry args={[0.038, 0.032, 0.22, 12]} />
+        <meshStandardMaterial color={shirtColor} roughness={0.4} />
+      </mesh>
+      <mesh position={[0.20, 1.05, 0]}>
+        <cylinderGeometry args={[0.030, 0.026, 0.20, 12]} />
+        <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+      </mesh>
+      <mesh position={[0.20, 0.93, 0]}>
+        <sphereGeometry args={[0.026, 12, 12]} />
+        <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+      </mesh>
+
+      {/* Pelvis */}
+      <mesh position={[0, 0.91, 0]}>
+        <boxGeometry args={[0.29, 0.10, 0.18]} />
         <meshStandardMaterial color="#0f172a" roughness={0.8} />
       </mesh>
-      <mesh position={[0.08, 0.52, 0]}>
-        <cylinderGeometry args={[0.055, 0.048, 0.94, 12]} />
+
+      {/* Trousers */}
+      <mesh position={[-0.085, 0.50, 0]}>
+        <cylinderGeometry args={[0.054, 0.042, 0.74, 12]} />
+        <meshStandardMaterial color="#0f172a" roughness={0.8} />
+      </mesh>
+      <mesh position={[0.085, 0.50, 0]}>
+        <cylinderGeometry args={[0.054, 0.042, 0.74, 12]} />
         <meshStandardMaterial color="#0f172a" roughness={0.8} />
       </mesh>
     </group>
@@ -217,6 +342,12 @@ function ContestantFigure({ seatId }: { seatId: number }) {
  * Single Contestant Podium with Grounded Architectural Plinth Footing,
  * Flush Recessed Scoreboard, Slanted Desk Surface, and Palm-Sized Buzzer.
  */
+/**
+ * Contestant Podium Matching Authentic VTV3 S14 Studio (Image 2):
+ * - Modern tapered architectural kiosk with crisp white pearl chamfered borders.
+ * - Distinct RECESSED DARK HORIZONTAL DISPLAY NICHE (hốc chữ nhật khoét chìm màu đen) housing the scoreboard.
+ * - Slanted dark graphite desk surface with inset touchscreen tablet and compact palm-sized buzzer.
+ */
 function ContestantPodium({
   seatId,
   name,
@@ -225,6 +356,9 @@ function ContestantPodium({
   rotationY,
   isBuzzed,
   screenFadeProgress = 0,
+  school,
+  isEntrancePhase = false,
+  showFigure = true,
 }: {
   seatId: number;
   name: string;
@@ -233,6 +367,9 @@ function ContestantPodium({
   rotationY: number;
   isBuzzed: boolean;
   screenFadeProgress?: number;
+  school?: string;
+  isEntrancePhase?: boolean;
+  showFigure?: boolean;
 }) {
   const buzzerDomeRef = useRef<THREE.Mesh>(null);
   const haloRef = useRef<THREE.Mesh>(null);
@@ -273,69 +410,92 @@ function ContestantPodium({
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
       {/* ── 1. ARCHITECTURAL PLINTH BASE (Chân bục vững chắc tiếp đất Y=0) ── */}
-      {/* Heavy Grounded Base Plinth Footing */}
       <mesh position={[0, 0.04, 0]}>
-        <boxGeometry args={[1.22, 0.08, 0.90]} />
-        <meshStandardMaterial color="#1e293b" metalness={0.88} roughness={0.2} />
+        <boxGeometry args={[1.20, 0.08, 0.88]} />
+        <meshStandardMaterial color="#0f172a" metalness={0.92} roughness={0.18} />
       </mesh>
-      {/* Recessed Plinth Reveal Strip */}
-      <mesh position={[0, 0.09, 0]}>
-        <boxGeometry args={[1.12, 0.04, 0.82]} />
-        <meshStandardMaterial color="#0f172a" metalness={0.92} roughness={0.15} />
-      </mesh>
-      {/* Grounded Cyan Neon Edge Trim */}
-      <mesh position={[0, 0.082, 0.45]}>
-        <boxGeometry args={[1.20, 0.015, 0.02]} />
+      <mesh position={[0, 0.082, 0.44]}>
+        <boxGeometry args={[1.18, 0.015, 0.02]} />
         <meshBasicMaterial color="#00e5ff" />
       </mesh>
 
-      {/* ── 2. MAIN KIOSK BODY (Brilliant White Modern Faceted Enamel) ── */}
-      <mesh position={[0, 0.52, 0]}>
-        <boxGeometry args={[1.14, 0.78, 0.80]} />
+      {/* ── 2. MAIN KIOSK BODY (White Pearl Studio Enamel - Image 2) ── */}
+      {/* Lower Apron: Stops at Y = 0.32m, strictly below the dark grey panel and score screen */}
+      <mesh position={[0, 0.20, 0.02]}>
+        <boxGeometry args={[1.06, 0.24, 0.74]} />
         <meshStandardMaterial
           color="#f8fafc"
-          metalness={0.15}
-          roughness={0.25}
-          envMapIntensity={1.5}
+          metalness={0.40}
+          roughness={0.18}
+          envMapIntensity={1.8}
         />
       </mesh>
 
-      {/* Front Recessed Cavity Frame (Black Inset LCD housing) */}
-      <mesh position={[0, 0.48, 0.418]} rotation={[-0.12, 0, 0]}>
-        <boxGeometry args={[1.00, 0.50, 0.02]} />
-        <meshStandardMaterial color="#050810" metalness={0.95} roughness={0.15} />
+      {/* Left Outer Chamfered Wing Pillar */}
+      <mesh position={[-0.49, 0.54, 0.02]}>
+        <boxGeometry args={[0.08, 0.44, 0.74]} />
+        <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
+      </mesh>
+      {/* Right Outer Chamfered Wing Pillar */}
+      <mesh position={[0.49, 0.54, 0.02]}>
+        <boxGeometry args={[0.08, 0.44, 0.74]} />
+        <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
       </mesh>
 
-      {/* Front Dynamic Score Screen (Inset flush into the cavity, switching Blue <-> Red) */}
+      {/* Upper Fascia Header Bar (White Enamel - Starts at Y = 0.76m, well above score screen) */}
+      <mesh position={[0, 0.83, 0.02]}>
+        <boxGeometry args={[1.06, 0.14, 0.74]} />
+        <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
+      </mesh>
+
+      {/* ── 3. TẤM CHỮ NHẬT XÁM THẪM & HỐC MÀN HÌNH (Dark Grey Rectangular Panel with Padding) ── */}
+      {/* Dark Grey Charcoal Rectangular Panel (0.90m x 0.42m x 0.04m at center Y = 0.54m, Z = 0.36m) */}
+      <mesh position={[0, 0.54, 0.36]}>
+        <boxGeometry args={[0.90, 0.42, 0.04]} />
+        <meshStandardMaterial color="#1e293b" roughness={0.35} metalness={0.80} />
+      </mesh>
+      {/* Top Niche Lip Accent */}
+      <mesh position={[0, 0.745, 0.382]}>
+        <boxGeometry args={[0.90, 0.012, 0.015]} />
+        <meshBasicMaterial color={isRed ? "#ff2a4b" : "#00f0ff"} />
+      </mesh>
+      {/* Bottom Niche Lip Accent */}
+      <mesh position={[0, 0.335, 0.382]}>
+        <boxGeometry args={[0.90, 0.012, 0.015]} />
+        <meshBasicMaterial color={isRed ? "#ff2a4b" : "#00f0ff"} />
+      </mesh>
+
+      {/* Front Dynamic Score Screen (Inset flush on dark grey panel with 7cm left/right and 7cm top/bottom padding) */}
       <ContestantScoreDisplay
         name={name}
         score={score}
         seatId={seatId}
         isBuzzed={isBuzzed}
         isRed={isRed}
+        school={school}
+        isEntrancePhase={isEntrancePhase}
       />
 
-      {/* ── 3. DESK SURFACE & TOUCH TABLET (Zero stripes, clean sculptural white desk) ── */}
-      {/* Slanted Top Desk Surface (Clean Sculptural White Enamel matching real studio photo) */}
-      <mesh position={[0, 0.94, -0.04]} rotation={[-0.18, 0, 0]}>
-        <boxGeometry args={[1.18, 0.06, 0.90]} />
-        <meshStandardMaterial color="#f8fafc" metalness={0.15} roughness={0.25} />
+      {/* ── 4. RECESSED GRAPHITE DESK SURFACE & TOUCH TABLET ── */}
+      <mesh position={[0, 0.915, -0.04]} rotation={[-0.18, 0, 0]}>
+        <boxGeometry args={[1.10, 0.02, 0.76]} />
+        <meshStandardMaterial color="#0b1120" metalness={0.85} roughness={0.35} />
       </mesh>
 
-      {/* Contestant Touch Screen Tablet on Desk */}
-      <mesh position={[0, 0.985, -0.06]} rotation={[-0.18, 0, 0]}>
-        <boxGeometry args={[0.54, 0.015, 0.36]} />
+      {/* Contestant Touch Screen Tablet Inset Flush on Desk */}
+      <mesh position={[0, 0.928, -0.06]} rotation={[-0.18, 0, 0]}>
+        <boxGeometry args={[0.54, 0.012, 0.36]} />
         <meshStandardMaterial
-          color="#061226"
-          roughness={0.1}
-          metalness={0.8}
+          color="#040d1e"
+          roughness={0.12}
+          metalness={0.85}
           emissive="#0077b6"
           emissiveIntensity={0.25}
         />
       </mesh>
 
-      {/* ── 4. CHROME DOME BUZZER SYSTEM (Compact Palm-Sized r=0.035m) ── */}
-      <group position={[0.34, 1.01, 0.14]}>
+      {/* ── 5. CHROME DOME BUZZER SYSTEM (Compact Palm-Sized r=0.035m) ── */}
+      <group position={[0.34, 0.945, 0.12]}>
         {/* Desk Halo Glow Ring (Lights up red when buzzed) */}
         <mesh ref={haloRef} position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.045, 0.075, 32]} />
@@ -374,8 +534,8 @@ function ContestantPodium({
         )}
       </group>
 
-      {/* ── 5. 3D CONTESTANT FIGURE STANDING BEHIND PODIUM ── */}
-      <ContestantFigure seatId={seatId} />
+      {/* ── 6. 3D CONTESTANT FIGURE STANDING BEHIND PODIUM (Hidden during walking entrance) ── */}
+      {showFigure && <ContestantFigure seatId={seatId} />}
     </group>
   );
 }
@@ -389,113 +549,187 @@ function ContestantPodium({
  * - Refined miniature golden laurel wreath medallion (d=0.16m) with subtle cyan LED underline.
  * - Slanted reading console with dual gooseneck mics, cue card, and host laptop.
  */
+/**
+ * Origami Faceted Geometric Hourglass MC Desk (Image 1):
+ * - Iconic faceted diamond polygon wings in pearl silver & dark obsidian.
+ * - Central 16:9 landscape LED screen displaying official Olympia21Newlogo.webp.
+ * - Deep setback at Z = -6.40m, opening up over 5.5m of reflective studio floor.
+ * - MC Presenters Khánh Vy & Ngọc Huy standing strictly behind the desk at Z = -7.00m.
+ */
 function CenterMcDesk({ screenFadeProgress = 0 }: { screenFadeProgress?: number }) {
   const neonCyan = "#00f0ff";
+  const neonColor = screenFadeProgress > 0.5 ? "#ff2a4b" : neonCyan;
+
+  // Load official Olympia 21 New Logo for the 16:9 front display
+  const [mcLogoTex, setMcLogoTex] = useState<THREE.Texture | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      "/brand/Olympia21Newlogo.webp",
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.needsUpdate = true;
+        setMcLogoTex(tex);
+      },
+      undefined,
+      () => {
+        loader.load("/olympia/Olympia21Newlogo.webp", (fallback) => {
+          fallback.colorSpace = THREE.SRGBColorSpace;
+          fallback.needsUpdate = true;
+          setMcLogoTex(fallback);
+        });
+      }
+    );
+  }, []);
 
   return (
-    <group position={[1.6, 0.08, -3.2]} rotation={[0, -0.52, 0]}>
-      {/* 1. Sleek Tapered Ground Plinth */}
+    <group position={[3.00, 0.08, -6.70]} rotation={[0, -0.25, 0]}>
+      {/* 1. Sleek Tapered Ground Plinth Base */}
       <mesh position={[0, 0.04, 0]}>
-        <boxGeometry args={[0.96, 0.08, 0.54]} />
-        <meshStandardMaterial color="#080c16" metalness={0.92} roughness={0.18} />
+        <boxGeometry args={[1.36, 0.08, 0.62]} />
+        <meshStandardMaterial color="#050812" metalness={0.94} roughness={0.16} />
       </mesh>
-      <mesh position={[0, 0.082, 0.27]}>
-        <boxGeometry args={[0.92, 0.015, 0.02]} />
-        <meshBasicMaterial color={neonCyan} />
+      <mesh position={[0, 0.082, 0.31]}>
+        <boxGeometry args={[1.32, 0.015, 0.02]} />
+        <meshBasicMaterial color={neonColor} />
       </mesh>
 
-      {/* 2. Main Aerodynamic Center Facet (Tapered upward, tilted back) */}
-      <mesh position={[0, 0.54, 0.04]} rotation={[-0.08, 0, 0]}>
-        <cylinderGeometry args={[0.42, 0.48, 0.88, 6]} />
+      {/* 2. Central Core Chassis behind the Screen */}
+      <mesh position={[0, 0.50, 0]}>
+        <boxGeometry args={[1.06, 0.86, 0.50]} />
+        <meshStandardMaterial color="#090f1d" metalness={0.90} roughness={0.20} />
+      </mesh>
+
+      {/* ── 3. CENTRAL 16:9 DISPLAY SCREEN WITH OLYMPIA21 NEW LOGO (Image 1) ── */}
+      <group position={[0, 0.54, 0.26]}>
+        {/* Outer Silver Beveled Chamfer Frame (Ratio 16:9) */}
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[0.96, 0.58, 0.04]} />
+          <meshStandardMaterial color="#e2e8f0" metalness={0.92} roughness={0.15} />
+        </mesh>
+        {/* Thin Neon Inner Border */}
+        <mesh position={[0, 0, 0.022]}>
+          <boxGeometry args={[0.92, 0.54, 0.005]} />
+          <meshBasicMaterial color={neonColor} />
+        </mesh>
+        {/* 16:9 Screen Surface Displaying Olympia21Newlogo.webp */}
+        <mesh position={[0, 0, 0.026]}>
+          <planeGeometry args={[0.88, 0.50]} />
+          {mcLogoTex ? (
+            <meshBasicMaterial map={mcLogoTex} toneMapped={false} />
+          ) : (
+            <meshStandardMaterial
+              color="#991b1b"
+              emissive="#7f1d1d"
+              emissiveIntensity={0.65}
+              roughness={0.2}
+            />
+          )}
+        </mesh>
+      </group>
+
+      {/* ── 4. SLEEK SYMMETRICAL SIDE WINGS (Clean Chamfered Obsidian Wings) ── */}
+      {/* Left Symmetrical Wing Chamfer (Dark Obsidian Lacquer) */}
+      <mesh position={[-0.56, 0.50, 0]} rotation={[0, 0.15, 0]}>
+        <boxGeometry args={[0.08, 0.80, 0.46]} />
         <meshStandardMaterial
-          color="#161f30"
-          metalness={0.80}
+          color="#0b1220"
+          metalness={0.20}
           roughness={0.25}
           envMapIntensity={1.8}
         />
       </mesh>
 
-      {/* Left Wing Facet (Angled back 22°) */}
-      <mesh position={[-0.44, 0.54, -0.06]} rotation={[-0.08, 0.38, 0]}>
-        <boxGeometry args={[0.26, 0.86, 0.38]} />
-        <meshStandardMaterial color="#0f172a" metalness={0.88} roughness={0.22} />
-      </mesh>
-      <mesh position={[-0.57, 0.54, 0.12]} rotation={[-0.08, 0.38, 0]}>
-        <boxGeometry args={[0.02, 0.86, 0.02]} />
-        <meshBasicMaterial color={neonCyan} />
-      </mesh>
-
-      {/* Right Wing Facet (Angled back -22°) */}
-      <mesh position={[0.44, 0.54, -0.06]} rotation={[-0.08, -0.38, 0]}>
-        <boxGeometry args={[0.26, 0.86, 0.38]} />
-        <meshStandardMaterial color="#0f172a" metalness={0.88} roughness={0.22} />
-      </mesh>
-      <mesh position={[0.57, 0.54, 0.12]} rotation={[-0.08, -0.38, 0]}>
-        <boxGeometry args={[0.02, 0.86, 0.02]} />
-        <meshBasicMaterial color={neonCyan} />
+      {/* Right Symmetrical Wing Chamfer (Dark Obsidian Lacquer) */}
+      <mesh position={[0.56, 0.50, 0]} rotation={[0, -0.15, 0]}>
+        <boxGeometry args={[0.08, 0.80, 0.46]} />
+        <meshStandardMaterial
+          color="#0b1220"
+          metalness={0.20}
+          roughness={0.25}
+          envMapIntensity={1.8}
+        />
       </mesh>
 
-      {/* 3. Refined Miniature Olympia Medal Medallion (Replaces the crude bullseye) */}
-      <group position={[0, 0.62, 0.28]} rotation={[-0.08, 0, 0]}>
-        {/* Dark Graphite Medallion Base Plate */}
-        <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.10, 0.10, 0.012, 32]} />
-          <meshStandardMaterial color="#0b1120" metalness={0.92} roughness={0.2} />
+      {/* ── 5. TOP EXECUTIVE CONSOLE DECK & CONTROLS (Y = 0.95m) ── */}
+      <mesh position={[0, 0.94, -0.01]}>
+        <boxGeometry args={[1.52, 0.04, 0.62]} />
+        <meshStandardMaterial color="#0b1220" metalness={0.92} roughness={0.22} />
+      </mesh>
+      <mesh position={[0, 0.962, 0.30]}>
+        <boxGeometry args={[1.50, 0.016, 0.016]} />
+        <meshBasicMaterial color={neonColor} />
+      </mesh>
+
+      {/* Front Privacy Shroud */}
+      <mesh position={[0, 1.05, 0.30]} rotation={[-0.10, 0, 0]}>
+        <boxGeometry args={[1.48, 0.18, 0.03]} />
+        <meshStandardMaterial color="#0f172a" metalness={0.90} roughness={0.20} />
+      </mesh>
+      <mesh position={[0, 1.14, 0.29]} rotation={[-0.10, 0, 0]}>
+        <boxGeometry args={[1.46, 0.015, 0.015]} />
+        <meshBasicMaterial color={neonColor} />
+      </mesh>
+
+      {/* Dual Recessed Laptops Facing MCs at -Z */}
+      <group position={[-0.32, 0.96, 0.02]}>
+        <mesh position={[0, 0.008, 0]}>
+          <boxGeometry args={[0.34, 0.012, 0.24]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.88} roughness={0.25} />
         </mesh>
-        {/* Golden Laurel Wreath Medallion Ring */}
-        <mesh position={[0, 0, 0.008]}>
-          <torusGeometry args={[0.075, 0.010, 16, 32]} />
-          <meshStandardMaterial
-            color="#ffd700"
-            metalness={0.96}
-            roughness={0.12}
-            emissive="#ffd700"
-            emissiveIntensity={0.65}
-          />
-        </mesh>
-        {/* Subtle Ruby Center Accent */}
-        <mesh position={[0, 0, 0.006]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.045, 0.045, 0.008, 24]} />
-          <meshStandardMaterial
-            color="#b91c1c"
-            metalness={0.4}
-            roughness={0.2}
-            emissive="#991b1b"
-            emissiveIntensity={0.4}
-          />
-        </mesh>
-        {/* Horizontal Cyan LED Accent Slit under Medallion */}
-        <mesh position={[0, -0.15, 0.004]}>
-          <boxGeometry args={[0.42, 0.014, 0.01]} />
-          <meshBasicMaterial color={neonCyan} />
-        </mesh>
+        <group position={[0, 0.014, 0.11]} rotation={[-0.45, 0, 0]}>
+          <mesh position={[0, 0.10, 0]}>
+            <boxGeometry args={[0.34, 0.20, 0.012]} />
+            <meshStandardMaterial color="#0f172a" metalness={0.92} roughness={0.2} />
+          </mesh>
+          <mesh position={[0, 0.10, -0.008]}>
+            <planeGeometry args={[0.32, 0.18]} />
+            <meshStandardMaterial
+              color="#0284c7"
+              emissive="#0284c7"
+              emissiveIntensity={0.45}
+              roughness={0.2}
+            />
+          </mesh>
+        </group>
       </group>
 
-      {/* 4. Slanted Reading Console Surface */}
-      <mesh position={[0, 1.01, -0.02]} rotation={[-0.20, 0, 0]}>
-        <boxGeometry args={[1.08, 0.04, 0.58]} />
-        <meshStandardMaterial color="#080c14" metalness={0.94} roughness={0.16} />
-      </mesh>
-      {/* Edge Trim */}
-      <mesh position={[0, 1.025, 0.26]} rotation={[-0.20, 0, 0]}>
-        <boxGeometry args={[1.06, 0.015, 0.015]} />
-        <meshBasicMaterial color={neonCyan} />
-      </mesh>
+      <group position={[0.32, 0.96, 0.02]}>
+        <mesh position={[0, 0.008, 0]}>
+          <boxGeometry args={[0.34, 0.012, 0.24]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.88} roughness={0.25} />
+        </mesh>
+        <group position={[0, 0.014, 0.11]} rotation={[-0.45, 0, 0]}>
+          <mesh position={[0, 0.10, 0]}>
+            <boxGeometry args={[0.34, 0.20, 0.012]} />
+            <meshStandardMaterial color="#0f172a" metalness={0.92} roughness={0.2} />
+          </mesh>
+          <mesh position={[0, 0.10, -0.008]}>
+            <planeGeometry args={[0.32, 0.18]} />
+            <meshStandardMaterial
+              color="#0284c7"
+              emissive="#0284c7"
+              emissiveIntensity={0.45}
+              roughness={0.2}
+            />
+          </mesh>
+        </group>
+      </group>
 
-      {/* Host Cue Card */}
-      <mesh position={[-0.20, 1.05, 0.02]} rotation={[-0.20, 0, 0.04]}>
-        <boxGeometry args={[0.30, 0.006, 0.20]} />
+      {/* Dual Cue Cards */}
+      <mesh position={[-0.32, 0.97, -0.16]} rotation={[0.25, 0, 0]}>
+        <boxGeometry args={[0.22, 0.008, 0.15]} />
+        <meshStandardMaterial color="#f8fafc" roughness={0.3} />
+      </mesh>
+      <mesh position={[0.32, 0.97, -0.16]} rotation={[0.25, 0, 0]}>
+        <boxGeometry args={[0.22, 0.008, 0.15]} />
         <meshStandardMaterial color="#f8fafc" roughness={0.3} />
       </mesh>
 
-      {/* Host Laptop / Control Tablet */}
-      <mesh position={[0.20, 1.05, 0.0]} rotation={[-0.20, 0, 0]}>
-        <boxGeometry args={[0.38, 0.012, 0.26]} />
-        <meshStandardMaterial color="#0284c7" metalness={0.8} roughness={0.2} emissive="#0077b6" emissiveIntensity={0.25} />
-      </mesh>
-
-      {/* Dual Gooseneck Microphones */}
-      <group position={[0.38, 1.04, 0.14]}>
+      {/* Dual Gooseneck Mics */}
+      <group position={[-0.56, 0.96, 0.18]}>
         <mesh position={[0, 0.015, 0]}>
           <cylinderGeometry args={[0.018, 0.022, 0.025, 16]} />
           <meshStandardMaterial color="#1e2430" metalness={0.95} roughness={0.15} />
@@ -513,7 +747,8 @@ function CenterMcDesk({ screenFadeProgress = 0 }: { screenFadeProgress?: number 
           <meshStandardMaterial color="#0f172a" roughness={0.8} />
         </mesh>
       </group>
-      <group position={[-0.38, 1.04, 0.14]}>
+
+      <group position={[0.56, 0.96, 0.18]}>
         <mesh position={[0, 0.015, 0]}>
           <cylinderGeometry args={[0.018, 0.022, 0.025, 16]} />
           <meshStandardMaterial color="#1e2430" metalness={0.95} roughness={0.15} />
@@ -569,18 +804,18 @@ function McPresenters({
       }
     }
 
-    // Khánh Vy (Female MC): Steps from behind arch [2.4, 0.14, -4.0] to broadcast mark [1.8, 0.14, -2.5]
+    // Khánh Vy (Female MC): Steps from behind arch to broadcast mark [3.48, 0.14, -7.15] (strictly BEHIND the desk)
     if (kvRef.current) {
-      const targetX = THREE.MathUtils.lerp(2.4, 1.8, walkProgress);
-      const targetZ = THREE.MathUtils.lerp(-4.0, -2.5, walkProgress);
+      const targetX = THREE.MathUtils.lerp(4.20, 3.48, walkProgress);
+      const targetZ = THREE.MathUtils.lerp(-9.95, -7.15, walkProgress);
       const bob = Math.sin(walkProgress * Math.PI * 6) * (walkProgress > 0 && walkProgress < 1 ? 0.025 : 0);
       kvRef.current.position.set(targetX, 0.14 + bob, targetZ);
     }
 
-    // Ngọc Huy (Male MC): Steps from behind arch [1.4, 0.14, -4.0] to broadcast mark [1.1, 0.14, -2.5]
+    // Ngọc Huy (Male MC): Steps from behind arch to broadcast mark [2.79, 0.14, -7.32] (strictly BEHIND the desk)
     if (nhRef.current) {
-      const targetX = THREE.MathUtils.lerp(1.4, 1.1, walkProgress);
-      const targetZ = THREE.MathUtils.lerp(-4.0, -2.5, walkProgress);
+      const targetX = THREE.MathUtils.lerp(3.50, 2.79, walkProgress);
+      const targetZ = THREE.MathUtils.lerp(-10.13, -7.32, walkProgress);
       const bob = Math.sin(walkProgress * Math.PI * 6 + Math.PI) * (walkProgress > 0 && walkProgress < 1 ? 0.025 : 0);
       nhRef.current.position.set(targetX, 0.14 + bob, targetZ);
     }
@@ -589,7 +824,7 @@ function McPresenters({
   return (
     <group>
       {/* ── KHÁNH VY (Female Presenter) ── */}
-      <group ref={kvRef} position={[1.8, 0.14, -2.5]} rotation={[0, -0.52, 0]}>
+      <group ref={kvRef} position={[3.48, 0.14, -7.15]} rotation={[0, -0.25, 0]}>
         {/* Head */}
         <mesh position={[0, 1.58, 0]}>
           <sphereGeometry args={[0.082, 24, 24]} />
@@ -684,7 +919,7 @@ function McPresenters({
       </group>
 
       {/* ── NGỌC HUY (Male Presenter) ── */}
-      <group ref={nhRef} position={[1.1, 0.14, -2.5]} rotation={[0, -0.52, 0]}>
+      <group ref={nhRef} position={[2.79, 0.14, -7.32]} rotation={[0, -0.25, 0]}>
         {/* Head */}
         <mesh position={[0, 1.68, 0]}>
           <sphereGeometry args={[0.088, 24, 24]} />
@@ -762,6 +997,382 @@ function McPresenters({
 }
 
 /**
+ * Cinematic 3D Contestant Entrance Walk Sequence:
+ * Each contestant emerges one-by-one through the Portal Arches on the upper plinth (Z ≈ 12.8m -> 11.9m),
+ * descends the upper grandstand staircase (Z: 11.9m -> 10.2m, Y: 1.97m -> 0.96m),
+ * pauses at mid-stairs to perform their unique signature greeting gesture (wave, fist pump, polite bow, double wave, heart pose),
+ * descends the lower staircase to the dais (Z: 10.2m -> 6.0m), and walks to their assigned podium desk.
+ */
+function ContestantEntranceWalkingFigures({
+  state,
+  contestantConfigs,
+  serverNow,
+}: {
+  state: OlympiaState;
+  contestantConfigs: Array<{
+    seatId: number;
+    pos: [number, number, number];
+    rotY: number;
+  }>;
+  serverNow?: () => number;
+}) {
+  const figureRef = useRef<THREE.Group>(null);
+  const upperBodyRef = useRef<THREE.Group>(null);
+  const rightArmRef = useRef<THREE.Group>(null);
+  const rightForearmRef = useRef<THREE.Group>(null);
+  const leftArmRef = useRef<THREE.Group>(null);
+  const leftForearmRef = useRef<THREE.Group>(null);
+  const rightThighRef = useRef<THREE.Group>(null);
+  const rightKneeRef = useRef<THREE.Group>(null);
+  const leftThighRef = useRef<THREE.Group>(null);
+  const leftKneeRef = useRef<THREE.Group>(null);
+
+  const currentSeat = state.entranceState?.currentSeatIdx ?? 0;
+  const seatStart = state.entranceState?.seatStartedAt || state.entranceState?.startedAt || Date.now();
+  const getNow = serverNow || (() => Date.now());
+
+  useFrame(() => {
+    const g = figureRef.current;
+    if (!g) return;
+
+    const targetCfg = contestantConfigs[currentSeat] || contestantConfigs[0];
+    const deskRotY = targetCfg ? targetCfg.rotY : 0;
+    const deskX = targetCfg ? targetCfg.pos[0] - Math.sin(deskRotY) * 0.42 : -3.0;
+    const deskY = targetCfg ? targetCfg.pos[1] : 0.22;
+    const deskZ = targetCfg ? targetCfg.pos[2] - Math.cos(deskRotY) * 0.42 : -3.5;
+
+    const startX = 0;
+    const startY = 1.84;
+    const startZ = 12.80;
+
+    const now = getNow();
+    const t = Math.max(0, (now - seatStart) / 1000);
+
+    const gesture = state.entranceState?.seatGestures?.[currentSeat] || "wave_single";
+
+    let curX = startX;
+    let curY = startY;
+    let curZ = startZ;
+    let curRotY = Math.PI; // Facing towards camera (-Z)
+    let isWalking = true;
+    let isGesturing = false;
+
+    // 0.0s -> 1.0s: Clean 1-second pause with EMPTY STAIRS before contestant emerges ("thí sinh kế tiếp bước ra sau khoảng 1s")
+    if (t < 1.0) {
+      g.visible = false;
+      curX = startX;
+      curY = startY;
+      curZ = startZ;
+      isWalking = false;
+    } else if (t < 2.5) {
+      // Phase 1 (1.0 -> 2.5s): Steps out from behind portal arches onto top plinth
+      g.visible = true;
+      const p = (t - 1.0) / 1.5;
+      curX = startX;
+      curY = startY;
+      curZ = THREE.MathUtils.lerp(startZ, 11.90, p);
+      curRotY = Math.PI;
+    } else if (t < 4.8) {
+      // Phase 2 (2.5 -> 4.8s): Walks down upper stairs to mid-stairs landing platform ("Bục Giữa")
+      g.visible = true;
+      const p = (t - 2.5) / 2.3;
+      curX = 0;
+      curY = THREE.MathUtils.lerp(1.84, 0.92, p);
+      curZ = THREE.MathUtils.lerp(11.90, 10.20, p);
+      curRotY = Math.PI;
+    } else if (t < 7.0) {
+      // Phase 3 (4.8 -> 7.0s): Stands firmly on Bục Giữa & performs signature gesture (2.2s)
+      g.visible = true;
+      curX = 0;
+      curY = 0.92;
+      curZ = 10.20;
+      curRotY = Math.PI;
+      isWalking = false;
+      isGesturing = true;
+    } else if (t < 9.0) {
+      // Phase 4 (7.0 -> 9.0s): Walks down lower stairs to studio dais floor ("rồi họ xuống")
+      g.visible = true;
+      const p = (t - 7.0) / 2.0;
+      curX = 0;
+      curY = THREE.MathUtils.lerp(0.92, 0.22, p);
+      curZ = THREE.MathUtils.lerp(10.20, 6.20, p);
+      curRotY = Math.PI;
+    } else if (t < 10.5) {
+      // Phase 5 (9.0 -> 10.5s): Fans out across dais to assigned podium desk
+      g.visible = true;
+      const p = (t - 9.0) / 1.5;
+      const easeP = p * p * (3 - 2 * p); // Smooth ease-in-out
+      curX = THREE.MathUtils.lerp(0, deskX, easeP);
+      curY = 0.22;
+      curZ = THREE.MathUtils.lerp(6.20, deskZ, easeP);
+      curRotY = THREE.MathUtils.lerp(Math.PI, deskRotY, easeP);
+    } else {
+      // Phase 6 (10.5 -> 11.5s): Arrived and standing proudly behind desk.
+      g.visible = true;
+      curX = deskX;
+      curY = deskY;
+      curZ = deskZ;
+      curRotY = deskRotY;
+      isWalking = false;
+      isGesturing = false;
+    }
+
+    // Natural walking bounce
+    const bounce = isWalking ? Math.abs(Math.sin((t - 1.0) * 6.5)) * 0.02 : 0;
+    g.position.set(curX, curY + bounce, curZ);
+    g.rotation.y = curRotY;
+
+    // Kinematic limb references
+    const lThigh = leftThighRef.current;
+    const rThigh = rightThighRef.current;
+    const lKnee = leftKneeRef.current;
+    const rKnee = rightKneeRef.current;
+    const lArm = leftArmRef.current;
+    const lForearm = leftForearmRef.current;
+    const rArm = rightArmRef.current;
+    const rForearm = rightForearmRef.current;
+    const ub = upperBodyRef.current;
+
+    if (isWalking) {
+      const walkCycle = (t - 1.0) * 6.5;
+      const swing = Math.sin(walkCycle) * 0.28;
+
+      // Legs with natural knee bending
+      if (lThigh) lThigh.rotation.x = swing;
+      if (rThigh) rThigh.rotation.x = -swing;
+      if (lKnee) lKnee.rotation.x = Math.max(0, -swing * 0.85);
+      if (rKnee) rKnee.rotation.x = Math.max(0, swing * 0.85);
+
+      // Arms swing in anti-phase with natural elbow bend
+      if (lArm) lArm.rotation.set(-swing * 0.65, 0, -0.05);
+      if (lForearm) lForearm.rotation.set(0.12 + Math.abs(swing) * 0.2, 0, 0);
+      if (rArm) rArm.rotation.set(swing * 0.65, 0, 0.05);
+      if (rForearm) rForearm.rotation.set(0.12 + Math.abs(swing) * 0.2, 0, 0);
+
+      // Subtle forward torso cadence
+      if (ub) ub.rotation.set(0.03, Math.sin(walkCycle) * 0.025, 0);
+    } else if (isGesturing) {
+      if (lThigh) lThigh.rotation.x = 0;
+      if (rThigh) rThigh.rotation.x = 0;
+      if (lKnee) lKnee.rotation.x = 0;
+      if (rKnee) rKnee.rotation.x = 0;
+
+      const gt = t - 4.8; // gesture elapsed (0.0 -> 2.2s)
+      switch (gesture) {
+        case "fist_pump": {
+          // Confident determination fist pump with articulated elbow
+          if (ub) ub.rotation.set(0.02, 0, 0);
+          if (lArm) lArm.rotation.set(0.15, 0, -0.12);
+          if (lForearm) lForearm.rotation.set(0.25, 0, 0);
+          const pump = Math.sin(gt * 7) * 0.12;
+          if (rArm) rArm.rotation.set(0.85 + pump * 0.5, 0.1, 0.2);
+          if (rForearm) rForearm.rotation.set(1.35 + pump, 0, 0);
+          break;
+        }
+        case "hand_on_heart_bow": {
+          // Respectful traditional bow with right hand flat over heart
+          const p = Math.min(1, Math.max(0, gt / 2.2));
+          const bow = Math.sin(p * Math.PI) * 0.21;
+          if (ub) ub.rotation.set(bow, 0, 0);
+          if (lArm) lArm.rotation.set(0.05, 0, -0.05);
+          if (lForearm) lForearm.rotation.set(0.05, 0, 0);
+          if (rArm) rArm.rotation.set(0.65, 0.25, -0.4);
+          if (rForearm) rForearm.rotation.set(0.85, 0.35, -0.55);
+          break;
+        }
+        case "wave_double": {
+          // Both arms raised comfortably waving to both grandstand wings
+          if (ub) ub.rotation.set(0, 0, 0);
+          const wave = Math.sin(gt * 5.5) * 0.22;
+          if (rArm) rArm.rotation.set(0.5, 0, 0.52);
+          if (rForearm) rForearm.rotation.set(0.55, 0, 0.35 + wave);
+          if (lArm) lArm.rotation.set(0.5, 0, -0.52);
+          if (lForearm) lForearm.rotation.set(0.55, 0, -(0.35 + Math.sin(gt * 5.5 + 0.4) * 0.22));
+          break;
+        }
+        case "heart_pose": {
+          // Hands joined forming heart pose at chest center with gentle nod
+          const nod = Math.sin(Math.min(1, gt / 2.2) * Math.PI) * 0.10;
+          if (ub) ub.rotation.set(nod, 0, 0);
+          if (rArm) rArm.rotation.set(0.65, 0.2, -0.35);
+          if (rForearm) rForearm.rotation.set(0.85, 0.3, -0.5);
+          if (lArm) lArm.rotation.set(0.65, -0.2, 0.35);
+          if (lForearm) lForearm.rotation.set(0.85, -0.3, 0.5);
+          break;
+        }
+        case "wave_single":
+        default: {
+          // Natural right-hand wave to audience with polite head nod
+          const nod = Math.sin(gt * 2.5) * 0.04;
+          if (ub) ub.rotation.set(nod, 0, 0);
+          if (lArm) lArm.rotation.set(0.05, 0, -0.05);
+          if (lForearm) lForearm.rotation.set(0.05, 0, 0);
+          if (rArm) rArm.rotation.set(0.55, 0, 0.35);
+          if (rForearm) {
+            const wave = Math.sin(gt * 5.5) * 0.24;
+            rForearm.rotation.set(0.65, 0, 0.3 + wave);
+          }
+          break;
+        }
+      }
+    } else {
+      // Standing poised behind desk
+      if (lThigh) lThigh.rotation.x = 0;
+      if (rThigh) rThigh.rotation.x = 0;
+      if (lKnee) lKnee.rotation.x = 0;
+      if (rKnee) rKnee.rotation.x = 0;
+      if (lArm) lArm.rotation.set(0.06, 0, -0.06);
+      if (lForearm) lForearm.rotation.set(0.05, 0, 0);
+      if (rArm) rArm.rotation.set(0.06, 0, 0.06);
+      if (rForearm) rForearm.rotation.set(0.05, 0, 0);
+      if (ub) ub.rotation.set(0, 0, 0);
+    }
+  });
+
+  return (
+    <group ref={figureRef}>
+      <group position={[0, 0, 0]}>
+        {/* Upper Body (Head + Torso + Arms) */}
+        <group ref={upperBodyRef}>
+          {/* Head & Hair */}
+          <mesh position={[0, 1.58, 0]}>
+            <sphereGeometry args={[0.088, 20, 20]} />
+            <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+          </mesh>
+          <mesh position={[0, 1.62, -0.015]}>
+            <sphereGeometry args={[0.094, 20, 20]} />
+            <meshStandardMaterial color="#1e1b18" roughness={0.8} />
+          </mesh>
+          <mesh position={[0.03, 1.64, 0.04]}>
+            <boxGeometry args={[0.08, 0.03, 0.06]} />
+            <meshStandardMaterial color="#1e1b18" roughness={0.8} />
+          </mesh>
+
+          {/* Neck */}
+          <mesh position={[0, 1.48, 0]}>
+            <cylinderGeometry args={[0.042, 0.046, 0.08, 14]} />
+            <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+          </mesh>
+
+          {/* Torso Polo Shirt */}
+          <mesh position={[0, 1.32, 0]}>
+            <cylinderGeometry args={[0.18, 0.155, 0.30, 16]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.4} />
+          </mesh>
+          <mesh position={[0, 1.45, 0.04]} rotation={[0.25, 0, 0]}>
+            <boxGeometry args={[0.15, 0.035, 0.08]} />
+            <meshStandardMaterial color="#ffffff" roughness={0.3} />
+          </mesh>
+          <mesh position={[0, 1.38, 0.10]}>
+            <boxGeometry args={[0.03, 0.09, 0.01]} />
+            <meshStandardMaterial color="#e2e8f0" roughness={0.3} />
+          </mesh>
+          {/* Olympia Badge */}
+          <mesh position={[0.08, 1.34, 0.12]} rotation={[0.1, 0, 0]}>
+            <boxGeometry args={[0.038, 0.024, 0.008]} />
+            <meshBasicMaterial color="#00e5ff" />
+          </mesh>
+
+          {/* Lower Torso / Waist */}
+          <mesh position={[0, 1.07, 0]}>
+            <cylinderGeometry args={[0.15, 0.16, 0.24, 16]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.4} />
+          </mesh>
+
+          {/* Belt */}
+          <mesh position={[0, 0.93, 0]}>
+            <boxGeometry args={[0.32, 0.04, 0.20]} />
+            <meshStandardMaterial color="#1e293b" roughness={0.8} />
+          </mesh>
+          <mesh position={[0, 0.93, 0.102]}>
+            <boxGeometry args={[0.045, 0.03, 0.01]} />
+            <meshStandardMaterial color="#f59e0b" metalness={0.8} roughness={0.2} />
+          </mesh>
+
+          {/* Left Arm (Articulated shoulder + elbow) */}
+          <group ref={leftArmRef} position={[-0.20, 1.34, 0]}>
+            <mesh position={[0, -0.10, 0]}>
+              <cylinderGeometry args={[0.042, 0.036, 0.20, 12]} />
+              <meshStandardMaterial color="#f8fafc" roughness={0.4} />
+            </mesh>
+            <group ref={leftForearmRef} position={[0, -0.20, 0]}>
+              <mesh position={[0, -0.10, 0]}>
+                <cylinderGeometry args={[0.034, 0.028, 0.20, 12]} />
+                <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+              </mesh>
+              <mesh position={[0, -0.21, 0]}>
+                <sphereGeometry args={[0.028, 12, 12]} />
+                <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+              </mesh>
+            </group>
+          </group>
+
+          {/* Right Arm (Articulated shoulder + elbow) */}
+          <group ref={rightArmRef} position={[0.20, 1.34, 0]}>
+            <mesh position={[0, -0.10, 0]}>
+              <cylinderGeometry args={[0.042, 0.036, 0.20, 12]} />
+              <meshStandardMaterial color="#f8fafc" roughness={0.4} />
+            </mesh>
+            <group ref={rightForearmRef} position={[0, -0.20, 0]}>
+              <mesh position={[0, -0.10, 0]}>
+                <cylinderGeometry args={[0.034, 0.028, 0.20, 12]} />
+                <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+              </mesh>
+              <mesh position={[0, -0.21, 0]}>
+                <sphereGeometry args={[0.028, 12, 12]} />
+                <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+              </mesh>
+            </group>
+          </group>
+        </group>
+
+        {/* Pelvis */}
+        <mesh position={[0, 0.86, 0]}>
+          <boxGeometry args={[0.30, 0.12, 0.19]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.8} />
+        </mesh>
+
+        {/* Lower Body: Left Leg (Articulated Hip + Knee + Shoe) */}
+        <group ref={leftThighRef} position={[-0.09, 0.78, 0]}>
+          <mesh position={[0, -0.18, 0]}>
+            <cylinderGeometry args={[0.058, 0.048, 0.36, 12]} />
+            <meshStandardMaterial color="#0f172a" roughness={0.8} />
+          </mesh>
+          <group ref={leftKneeRef} position={[0, -0.36, 0]}>
+            <mesh position={[0, -0.18, 0]}>
+              <cylinderGeometry args={[0.048, 0.040, 0.36, 12]} />
+              <meshStandardMaterial color="#0f172a" roughness={0.8} />
+            </mesh>
+            <mesh position={[0, -0.37, 0.03]}>
+              <boxGeometry args={[0.08, 0.05, 0.17]} />
+              <meshStandardMaterial color="#020617" roughness={0.3} />
+            </mesh>
+          </group>
+        </group>
+
+        {/* Lower Body: Right Leg (Articulated Hip + Knee + Shoe) */}
+        <group ref={rightThighRef} position={[0.09, 0.78, 0]}>
+          <mesh position={[0, -0.18, 0]}>
+            <cylinderGeometry args={[0.058, 0.048, 0.36, 12]} />
+            <meshStandardMaterial color="#0f172a" roughness={0.8} />
+          </mesh>
+          <group ref={rightKneeRef} position={[0, -0.36, 0]}>
+            <mesh position={[0, -0.18, 0]}>
+              <cylinderGeometry args={[0.048, 0.040, 0.36, 12]} />
+              <meshStandardMaterial color="#0f172a" roughness={0.8} />
+            </mesh>
+            <mesh position={[0, -0.37, 0.03]}>
+              <boxGeometry args={[0.08, 0.05, 0.17]} />
+              <meshStandardMaterial color="#020617" roughness={0.3} />
+            </mesh>
+          </group>
+        </group>
+      </group>
+    </group>
+  );
+}
+
+/**
  * Podiums Assembly:
  * 1. Center-Right MC Desk + 2 MC Presenters
  * 2. N Contestant Podiums along the Concentric Left-Wing Arc (R=5.2m from [0, 0, -0.6])
@@ -773,9 +1384,9 @@ export function Podiums({
   screenFadeProgress = 0,
   serverNow,
 }: PodiumsProps) {
-  const activeCount = state?.seats?.length ? Math.min(8, Math.max(2, state.seats.length)) : 4;
+  const activeCount = state?.seats?.length ? Math.min(8, Math.max(1, state.seats.length)) : 4;
 
-  // Exact concentric circular arc positioning: R = 5.2m from center C(0, 0, -0.6)
+  // Exact concentric circular arc positioning: R = 6.5m from center C(0, 0, -0.5)
   // Base elevation: Y = 0.22m on top of the raised dais
   const contestantConfigs = useMemo(() => {
     const configs: Array<{
@@ -784,22 +1395,21 @@ export function Podiums({
       rotY: number;
     }> = [];
 
-    const radius = 5.2;
-    const startPhi = 0.314; // 18° in radians
-    const endPhi = 1.152;   // 66° in radians
+    const radius = 6.6;
+    const startPhi = activeCount > 4 ? 0.26 : 0.38; // 15° or 21.8°
+    const endPhi = activeCount > 4 ? 1.31 : 1.13;   // 75° or 64.7°
 
     for (let i = 0; i < activeCount; i++) {
-      const frac = activeCount === 1 ? 0 : i / (activeCount - 1);
+      const frac = activeCount === 1 ? 0.5 : i / (activeCount - 1);
       const phi = startPhi + frac * (endPhi - startPhi);
 
       // In Three.js:
       // X = -R * cos(phi) (Stage Left)
-      // Z = -0.6 - R * sin(phi) (Upstage Left)
+      // Z = -0.5 - R * sin(phi) (Upstage Left)
       const x = -radius * Math.cos(phi);
-      const z = -0.6 - radius * Math.sin(phi);
+      const z = -0.5 - radius * Math.sin(phi);
 
-      // Facing normal points from (x, z) to (0, -0.6):
-      // Delta X = +R*cos(phi), Delta Z = +R*sin(phi)
+      // Facing normal points from (x, z) to (0, -0.5):
       // Rotation around Y to point normal:
       const rotY = Math.PI / 2 - phi;
 
@@ -813,6 +1423,9 @@ export function Podiums({
     return configs;
   }, [activeCount]);
 
+  const isEntranceActive = Boolean(state?.entranceState?.active);
+  const currentEntranceSeat = state?.entranceState?.currentSeatIdx ?? 0;
+
   return (
     <group>
       {/* Center-Right MC Desk in front of Hexagon Arch (Facing Center at -30°) */}
@@ -821,12 +1434,27 @@ export function Podiums({
       {/* 2 Animated MC Presenters (Khánh Vy & Ngọc Huy) */}
       <McPresenters state={state} serverNow={serverNow} />
 
+      {/* Contestant Entrance Walking Figures when entrance animation is active */}
+      {isEntranceActive && (
+        <ContestantEntranceWalkingFigures
+          state={state!}
+          contestantConfigs={contestantConfigs}
+          serverNow={serverNow}
+        />
+      )}
+
       {/* N Contestant Arc Podiums on Raised Dais */}
       {contestantConfigs.map((cfg) => {
         const seat = state?.seats?.[cfg.seatId];
         const name = seat?.name || `Thí sinh ${cfg.seatId + 1}`;
         const score = seat?.score ?? 0;
+        const school = seat?.school;
         const isBuzzed = isSeatBuzzedIn3D(cfg.seatId, state);
+
+        const isEntrancePhase = isEntranceActive
+          ? cfg.seatId <= currentEntranceSeat
+          : Boolean(state?.stage === "lobby");
+        const showFigure = !isEntranceActive || cfg.seatId < currentEntranceSeat;
 
         return (
           <ContestantPodium
@@ -834,6 +1462,9 @@ export function Podiums({
             seatId={cfg.seatId}
             name={name}
             score={score}
+            school={school}
+            isEntrancePhase={isEntrancePhase}
+            showFigure={showFigure}
             position={cfg.pos}
             rotationY={cfg.rotY}
             isBuzzed={isBuzzed}

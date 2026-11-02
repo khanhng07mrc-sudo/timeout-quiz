@@ -276,7 +276,7 @@ export function ScoreStrip({
           );
         }
 
-        // 2. Với đội đang chơi ở O13 - 21 và lượt riêng O24 - 26: hiện nền đúng màu sắc chỉ thị như viền bên trái
+        // 2. Thí sinh đang có lượt thi đấu riêng (Solo): viền sáng Cyan rực rỡ
         if (isSoloTurn) {
           return (
             <div
@@ -285,24 +285,23 @@ export function ScoreStrip({
                 s.connected ? "" : "opacity-50"
               }`}
               style={{
-                border: `1.5px solid ${color}80`,
-                borderLeft: `5px solid ${color}`,
-                background: `linear-gradient(180deg, ${color}35 0%, ${color}12 100%)`,
-                boxShadow: `0 0 18px ${color}40, inset 0 0 10px ${color}20`,
+                border: "1.5px solid #00f0ff",
+                borderLeft: "5px solid #00f0ff",
+                background: "linear-gradient(180deg, rgba(0, 240, 255, 0.28) 0%, rgba(2, 6, 23, 0.85) 100%)",
+                boxShadow: "0 0 18px rgba(0, 240, 255, 0.35), inset 0 0 10px rgba(0, 240, 255, 0.15)",
               }}
             >
               <div
                 className={`truncate font-bold leading-tight ${
                   large ? "text-xs sm:text-sm" : "text-[10px] sm:text-xs"
-                } text-white drop-shadow`}
+                } text-cyan-200 drop-shadow`}
               >
                 {s.name}
               </div>
               <div
                 className={`font-black tabular-nums leading-tight ${
                   large ? "text-xl sm:text-3xl" : "text-base sm:text-xl"
-                }`}
-                style={{ color, textShadow: `0 0 12px ${color}80` }}
+                } text-cyan-300 drop-shadow-[0_0_12px_rgba(0,240,255,0.7)]`}
               >
                 {s.score}
               </div>
@@ -310,27 +309,26 @@ export function ScoreStrip({
           );
         }
 
-        // 3. Đội bình thường: nền tối nhẹ, chỉ có viền trái mang màu sắc chỉ thị
+        // 3. Trạng thái bình thường: Unified broadcast card (Cyan/Navy/Gold) không phân loại màu đội
         return (
           <div
             key={s.id}
-            className={`rounded-xl border px-2 py-1.5 text-center transition-all border-violet-500/20 bg-gradient-to-b from-white/5 to-white/[0.02] ${
+            className={`rounded-xl border px-2 py-1.5 text-center transition-all border-cyan-500/25 bg-slate-950/80 shadow-[0_2px_10px_rgba(0,0,0,0.5)] ${
               s.connected ? "" : "opacity-50"
             }`}
-            style={{ borderLeft: `4px solid ${color}` }}
+            style={{ borderLeft: "4px solid #00e5ff" }}
           >
             <div
               className={`truncate font-semibold leading-tight ${
                 large ? "text-xs sm:text-sm" : "text-[10px] sm:text-xs"
-              } text-violet-200/80`}
+              } text-slate-200`}
             >
               {s.name}
             </div>
             <div
               className={`font-black tabular-nums leading-tight ${
                 large ? "text-xl sm:text-3xl" : "text-base sm:text-xl"
-              }`}
-              style={{ color }}
+              } text-amber-300 drop-shadow`}
             >
               {s.score}
             </div>

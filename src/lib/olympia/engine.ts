@@ -7,6 +7,7 @@ import {
   ROUND_ORDER,
   ROUND_LABELS,
   type CauHoiPhuState,
+  type ContestantGestureType,
   type HostAction,
   type KdSegmentDef,
   type KhoiDongState,
@@ -237,6 +238,26 @@ export class OlympiaGame {
       }
       this.touch(now);
       return true;
+    }
+
+    // Auto-advance sequential contestant entrance (11.5s per contestant: 1.0s clean empty-stairs pause + 9.5s walk/gesture/arrival + 1.0s desk spotlight)
+    if (st.entranceState && st.entranceState.active) {
+      const elapsedForSeat = now - st.entranceState.seatStartedAt;
+      if (elapsedForSeat >= 11500) {
+        const activeCount = Math.max(1, st.seats.length);
+        const nextIdx = st.entranceState.currentSeatIdx + 1;
+        if (nextIdx < activeCount) {
+          st.entranceState.currentSeatIdx = nextIdx;
+          st.entranceState.seatStartedAt = now;
+          this.touch(now);
+          return true;
+        } else {
+          st.entranceState = null;
+          this.cue("6_NhacKhac/contest_intro", "stop");
+          this.touch(now);
+          return true;
+        }
+      }
     }
     let changed = false;
     const expired = (t: TimerState | null | undefined) =>
@@ -715,6 +736,59 @@ export class OlympiaGame {
         const s = this.seat(num("seat"));
         if (!s) return fail("Ghế không hợp lệ");
         s.name = String(a.name || "").slice(0, 30);
+        if (a.school !== undefined) {
+          s.school = String(a.school || "").slice(0, 60);
+        }
+        return OK;
+      }
+      case "seat:setSchool": {
+        const s = this.seat(num("seat"));
+        if (!s) return fail("Ghế không hợp lệ");
+        s.school = String(a.school || "").slice(0, 60);
+        return OK;
+      }
+      case "entrance:start": {
+        const ALL_GESTURES: ContestantGestureType[] = [
+          "wave_single",
+          "fist_pump",
+          "hand_on_heart_bow",
+          "wave_double",
+          "heart_pose",
+        ];
+        const activeCount = Math.max(1, st.seats.length);
+        const shuffled = [...ALL_GESTURES].sort(() => Math.random() - 0.5);
+        const seatGestures: ContestantGestureType[] = [];
+        for (let i = 0; i < activeCount; i++) {
+          seatGestures.push(shuffled[i % shuffled.length]);
+        }
+
+        st.studioCameraManual = false;
+        st.entranceState = {
+          active: true,
+          startedAt: now,
+          currentSeatIdx: 0,
+          seatStartedAt: now,
+          seatGestures,
+        };
+        this.cue("6_NhacKhac/contest_intro", "bgm");
+        return OK;
+      }
+      case "entrance:next": {
+        if (!st.entranceState || !st.entranceState.active) return OK;
+        const activeCount = Math.max(1, st.seats.length);
+        const nextIdx = st.entranceState.currentSeatIdx + 1;
+        if (nextIdx < activeCount) {
+          st.entranceState.currentSeatIdx = nextIdx;
+          st.entranceState.seatStartedAt = now;
+        } else {
+          st.entranceState = null;
+          this.cue("6_NhacKhac/contest_intro", "stop");
+        }
+        return OK;
+      }
+      case "entrance:skip": {
+        st.entranceState = null;
+        this.cue("6_NhacKhac/contest_intro", "stop");
         return OK;
       }
       case "game:reset": {
@@ -1353,6 +1427,7 @@ export class OlympiaGame {
           resetTimer(v.timer, rs.vcnv.rowTimerMs);
           v.answers = {};
           v.answersRevealed = false;
+          v.revealedCorrectAnswer = false;
           v.bells = [];
           v.centerWrong = false;
           this.cue("2_VuotChuongNgaiVat/choose_row");
@@ -1364,6 +1439,7 @@ export class OlympiaGame {
         resetTimer(v.timer, rs.vcnv.rowTimerMs);
         v.answers = {};
         v.answersRevealed = false;
+        v.revealedCorrectAnswer = false;
         v.bells = [];
         v.rows[i].wrong = false;
         this.cue("2_VuotChuongNgaiVat/choose_row");
@@ -1382,8 +1458,13 @@ export class OlympiaGame {
         if (row < 0) return fail("Chưa chọn hàng");
         pauseTimer(v.timer, now);
         v.answersRevealed = true;
+        v.revealedCorrectAnswer = false;
         v.phase = "answers";
         this.cue("2_VuotChuongNgaiVat/reveal_answers");
+        return OK;
+      }
+      case "vcnv:revealCorrect": {
+        v.revealedCorrectAnswer = true;
         return OK;
       }
       case "vcnv:correct": {
@@ -1665,6 +1746,7 @@ export class OlympiaGame {
         tt.submissions = {};
         tt.ranking = [];
         tt.correctAnswer = undefined;
+        tt.revealedCorrectAnswer = false;
         tt.timer = mkTimer(rs.timers[Math.min(tt.qIdx, rs.timers.length - 1)]);
         this.cue("", "stop");
         return OK;
@@ -1677,6 +1759,7 @@ export class OlympiaGame {
           this.recordOpenedQuestion(q.q || q.answer);
         }
         tt.phase = "question";
+        tt.revealedCorrectAnswer = false;
         this.cue("3_TangToc/show_question");
         return OK;
       }
@@ -1714,8 +1797,13 @@ export class OlympiaGame {
             return x.ms - y.ms || x.seat - y.seat;
           });
         tt.correctAnswer = q?.answer;
+        tt.revealedCorrectAnswer = false;
         tt.phase = "ranking";
         this.cue("3_TangToc/show_answer");
+        return OK;
+      }
+      case "tt:revealCorrect": {
+        tt.revealedCorrectAnswer = true;
         return OK;
       }
       case "tt:grade": {

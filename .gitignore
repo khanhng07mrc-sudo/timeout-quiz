@@ -48,3 +48,12 @@ dist-app/
 # scratch
 scratch/
 release/
+
+/*.png
+.agents/teamwork/auditor*
+.agents/teamwork/challenger*
+.agents/teamwork/explorer*
+.agents/teamwork/reviewer*
+.agents/teamwork/test_writer*
+.agents/teamwork/victory*
+.agents/teamwork/worker*

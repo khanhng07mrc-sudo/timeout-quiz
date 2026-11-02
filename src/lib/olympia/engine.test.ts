@@ -1,4 +1,4 @@
-﻿// Run: npm run test:olympia   (bundles with esbuild, runs with node:assert)
+// Run: npm run test:olympia   (bundles with esbuild, runs with node:assert)
 
 import assert from "node:assert/strict";
 
@@ -1322,6 +1322,91 @@ test("KhoiDong TS2 timer and audio runs properly when question 1 is opened", () 
   assert.equal(g.state.khoiDong!.questionRevealed, true);
   assert.equal(g.state.khoiDong!.globalTimer?.startedAt, 12500);
   assert.equal(g.state.cue?.sound, "1_KhoiDong/60s");
+});
+
+
+test("seat:setSchool assigns school name to seat", () => {
+  const g = game("O21", ["khoiDong"], 4);
+  g.joinSeat("Nguyễn An", "k1");
+  const res = g.hostAction({ type: "seat:setSchool", seat: 0, school: "THPT Chuyên Hà Nội - Amsterdam" }, 1000);
+  assert.equal(res.ok, true);
+  assert.equal(g.state.seats[0].school, "THPT Chuyên Hà Nội - Amsterdam");
+});
+
+test("sequential contestant entrance: start, manual next, gesture assignment, and completion", () => {
+  const g = game("O21", ["khoiDong"], 4, { seatCount: 4 });
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  g.joinSeat("TS3", "k3");
+  g.joinSeat("TS4", "k4");
+
+  const resStart = g.hostAction({ type: "entrance:start" }, 1000);
+  assert.equal(resStart.ok, true);
+  assert.ok(g.state.entranceState != null);
+  assert.equal(g.state.entranceState!.active, true);
+  assert.equal(g.state.entranceState!.currentSeatIdx, 0);
+  assert.equal(g.state.entranceState!.seatStartedAt, 1000);
+  assert.equal(g.state.entranceState!.seatGestures?.length, 4);
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
+  assert.equal(g.state.cue?.kind, "bgm");
+
+  const resNext1 = g.hostAction({ type: "entrance:next" }, 2500);
+  assert.equal(resNext1.ok, true);
+  assert.equal(g.state.entranceState!.currentSeatIdx, 1);
+  assert.equal(g.state.entranceState!.seatStartedAt, 2500);
+
+  g.hostAction({ type: "entrance:next" }, 3000);
+  assert.equal(g.state.entranceState!.currentSeatIdx, 2);
+  g.hostAction({ type: "entrance:next" }, 3500);
+  assert.equal(g.state.entranceState!.currentSeatIdx, 3);
+
+  const resFinish = g.hostAction({ type: "entrance:next" }, 4000);
+  assert.equal(resFinish.ok, true);
+  assert.equal(g.state.entranceState, null);
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
+  assert.equal(g.state.cue?.kind, "stop");
+});
+
+test("sequential contestant entrance: auto-advances at 11500ms per contestant (1s pause + 9.5s walk/gesture + 1s spotlight)", () => {
+  const g = game("O21", ["khoiDong"], 4, { seatCount: 4 });
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  g.joinSeat("TS3", "k3");
+  g.joinSeat("TS4", "k4");
+
+  g.hostAction({ type: "entrance:start" }, 10000);
+  assert.equal(g.state.entranceState!.currentSeatIdx, 0);
+
+  g.tick(21499);
+  assert.equal(g.state.entranceState!.currentSeatIdx, 0);
+
+  g.tick(21500);
+  assert.equal(g.state.entranceState!.currentSeatIdx, 1);
+  assert.equal(g.state.entranceState!.seatStartedAt, 21500);
+
+  g.tick(33000);
+  assert.equal(g.state.entranceState!.currentSeatIdx, 2);
+
+  g.tick(44500);
+  assert.equal(g.state.entranceState!.currentSeatIdx, 3);
+
+  g.tick(56000);
+  assert.equal(g.state.entranceState, null);
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
+  assert.equal(g.state.cue?.kind, "stop");
+});
+
+test("sequential contestant entrance: skip immediately stops and clears entrance state", () => {
+  const g = game("O21", ["khoiDong"], 4);
+  g.joinSeat("TS1", "k1");
+  g.hostAction({ type: "entrance:start" }, 5000);
+  assert.ok(g.state.entranceState != null);
+
+  const resSkip = g.hostAction({ type: "entrance:skip" }, 6000);
+  assert.equal(resSkip.ok, true);
+  assert.equal(g.state.entranceState, null);
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
+  assert.equal(g.state.cue?.kind, "stop");
 });
 
 console.log(`${passed} tests passed`);

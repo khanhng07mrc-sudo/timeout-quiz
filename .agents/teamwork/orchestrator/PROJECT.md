@@ -1,124 +1,57 @@
-# Project: 3D Đường lên đỉnh Olympia Studio Set Environment for Timeout Quiz
+# Project: Đường lên đỉnh Olympia S14 Broadcast Studio Refactoring
 
 ## Architecture
-
-The 3D Đường lên đỉnh Olympia Studio is an interactive, high-performance WebGL environment built using React Three Fiber (`@react-three/fiber` v9.8.2) and Three.js (v0.186.1) inside Next.js 16 (React 19). It inherits the broadcast-grade architectural patterns established in `WheelStudio3DScene.tsx` (Magic Wheel / CNKD studio).
-
-### Core Components
-1. **`OlympiaStudio3DScene.tsx`** (`src/components/olympia/OlympiaStudio3DScene.tsx`):
-   - Root 3D canvas and studio environment.
-   - R3F Canvas with responsive camera controller (10 broadcast camera presets, 0ms hard cut, smooth jib transitions, FOV auto-adaptation).
-   - Studio floor with dark high-specular PBR epoxy finish and glowing ring tracks.
-   - Dual-track lighting rig: Ambient, Directional Key, Shadow Spotlight, Specular Downlight, Wash Spots, Rim Lights.
-   - 3-Cluster Staggered Lighting Controller (Screen Zone -> Stage Back Zone -> Audience Zone).
-2. **Studio Staging & Podiums**:
-   - **Central LED Wall**: 16:9 (`12.0m x 6.75m`), titanium framing, gold neon trim, tiered pedestal. Dynamic HTML5 CanvasTexture rendering the official Olympia 2016 WebP logo and golden light-to-dark gradient text "ĐƯỜNG LÊN ĐỈNH OLYMPIA".
-   - **1 MC Podium**: Independent lectern at Stage Left (`X = -4.5m, Z = -2.0m`), angled 40° inward, with microphone, cue card, and dedicated key spotlight.
-   - **4 Contestant Podiums**: Curved arc array (`X = -1.8m, 0.0m, +1.8m, +3.6m`, `Z = -2.5m` to `-3.1m`), featuring individual score screens, touch tablets, and chrome dome buzzers.
-   - **Laurel Wreath (Vòng nguyệt quế) Showcase**: Dedicated vitrine at Stage Left-Center (`X = -2.4m, Z = -4.8m`), octagonal marble pedestal, velvet pillow, crystal cloche, rotating golden laurel wreath mesh, and focused overhead spotlight.
-3. **Lighting Automation & Multi-Zone Fade Engine**:
-   - Master State: Sapphire Blue (`#0a2663`) base vs Fiery Red (`#d90429`) competition.
-   - Staggered timing: Inner LED screen fades first ($t=0.0s$, duration $0.9s$), followed by Stage Back ($t=0.5s$, duration $1.2s$) and Audience amphitheater ($t=0.7s$, duration $1.2s$).
-   - Round triggers:
-     - Khởi động: Turns Red on `kd.started === true`; reverts to Blue on `kd:finishTurn` / segment finish.
-     - VCNV & Tăng tốc: Turns Red after 2.5s timer running delay; reverts to Blue upon answer reveal / grid return.
-     - Về đích: Turns Red on contestant `onStage` / package selection through turn finish; reverts to Blue on finish.
-4. **Contestant Buzzer Reaction System**:
-   - Chrome base with dome button, scaling $1.15\times$, red emissive intensity 9.0, dual pointLights (intensity 14.0/10.0), and desk halo.
-   - Khởi động, Về đích, Câu hỏi phụ: Any buzzed seat lights up Red.
-   - Vượt chướng ngại vật: Strictly the fastest buzzer (`v.bells[0]?.seat === seatId`) lights up Red. Subsequent buzzers remain unlit.
-5. **UI & Sound Integration**:
-   - Seamless toggle and embedding in `src/components/olympia/DisplayScreen.tsx` with dynamic import (`ssr: false`).
-   - Integrated camera selector bar, PTZ orbit controls, and audio cue synchronization.
-
----
+- **Environment**: Next.js 14, React Three Fiber, Three.js, Tailwind CSS, TypeScript.
+- **Scene Hierarchy**:
+  - `OlympiaStudio3DScene.tsx`: Main canvas manager, ambient atmosphere, round state props.
+  - `StudioLighting.tsx`: Lighting rigs, studio trusses, grandstand amphitheater, cyclorama backdrop, 4-layer portal arches, mountain landscape, and sponsor fixtures.
+  - `CentralLedWall.tsx`: Front stage hexagonal tunnel portal, 16:9 stage right screen, formula wall.
+  - `CameraController.tsx`: Studio broadcast camera orbits and presets (Cam 1–13).
+  - `AudienceAmphitheater`: Tiered audience seating grandstand ($Z = 0$ to $3.4\text{m}$, top landing plinth at $Z = 3.4\text{m}$ to $5.16\text{m}$), holding:
+    - Cylindrical curved cyclorama at apex $Z = 5.20\text{m}$, center $Z_c = -17.30\text{m}$, radius $R = 22.50\text{m}$, height $8.50\text{m}$, span $84^\circ$.
+    - Procedural 3D low-poly mountain landscape `StudioMountainLandscape` at plinth base $Y = 1.96\text{m}$, $Z = 4.60\text{m}$.
+    - Concentric 4-layer portal arches at $Z = 3.60\text{m} - 3.66\text{m}$.
+    - Anchored Quizorra lightbox and Olympia medallion with vertical structural steel columns grounded on the top plinth deck at $Y = 1.97\text{m}$.
 
 ## Feature Inventory
-
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| F1 | Brand Asset & Media Setup | Copy `Olympia_logo_2016.webp` safely to `public/olympia/Olympia_logo_2016.webp` (R4 compliant). | M1 | R1, R4 |
-| F2 | Central LED Screen & Typography | 16:9 central display with high contrast, Olympia 2016 logo, and yellow light-to-dark gradient text "ĐƯỜNG LÊN ĐỈNH OLYMPIA". | M2 | R1 |
-| F3 | Studio Staging & Podiums Geometry | 1 MC podium, 4 Contestant arc podiums, floor epoxy & lighting ring tracks, and Laurel Wreath showcase pedestal. | M2 | R1 |
-| F4 | Staggered Lighting & Round Automation | Blue base vs Red competition lighting with multi-zone staggered fade (screen first, stage & audience after) triggered by round states. | M3 | R2 |
-| F5 | Buzzer Reaction Logic & Visual FX | Chrome dome buzzer FX; all-buzzer red glow for Khởi động/Về đích/Phụ vs fastest-only red glow for VCNV. | M3 | R3 |
-| F6 | UI Integration & Camera Director Dock | Dynamic import into `DisplayScreen.tsx`, 3D toggle, 10 broadcast camera presets, and responsive FOV handling. | M4 | R1, AC |
-| F7 | E2E Testing Suite & Visual Verification | Automated unit and integration verification for lighting transitions, buzzer contracts, and 3D scene rendering. | E2E | AC |
-
----
-
-## Code Layout
-
-- Implementation Files:
-  - `src/components/olympia/OlympiaStudio3DScene.tsx` (Main 3D Scene entry point)
-  - `src/components/olympia/studio/CentralLedWall.tsx` (Central LED display, logo & gradient text canvas)
-  - `src/components/olympia/studio/Podiums.tsx` (1 MC podium, 4 Contestant podiums with buzzers)
-  - `src/components/olympia/studio/LaurelWreathVitrine.tsx` (Laurel wreath pedestal & showcase)
-  - `src/components/olympia/studio/StudioLighting.tsx` (Lighting rig & multi-zone staggered fade controller)
-  - `src/components/olympia/studio/CameraController.tsx` (Broadcast camera presets & auto FOV)
-  - `src/components/olympia/studio/useOlympiaLightingState.ts` (Lighting & buzzer state mapping hook)
-  - `src/components/olympia/DisplayScreen.tsx` (Integration point for 3D studio toggle)
-- Asset Files:
-  - `public/olympia/Olympia_logo_2016.webp` (Copied from Downloads)
-- Test Files:
-  - `src/lib/olympia/olympia-3d-suite.test.ts` (Comprehensive 97-test 4-tier E2E test suite)
-  - `src/lib/olympia/lighting-buzzer.test.ts` (Unit/integration test for lighting and buzzer rules)
-
----
+| 1 | F1. Cylindrical Cyclorama (R1) | True curved cylindrical cyclorama ($R=22.5\text{m}, \text{span}=84^\circ, H=8.5\text{m}, Z_{\text{apex}}=5.20\text{m}$) replacing flat wall, enclosing audience with curved neon trims. | M1 | Survey E1 |
+| 2 | F2. Sapphire Sunset Sky & Symbols (R1) | Sapphire sunset cosmic sky texture with 8 subtle scholarship symbols (~16% opacity watermark) and star constellation filaments. | M1 | Survey E1 |
+| 3 | F3. 4-Layer Portal Arches (R5) | Concentric arches: Arc 1 warm ivory (width $0.22\text{m}$), Arc 2 dark spacer (width $0.08\text{m}$), Arc 3 glossy black lacquer (width $0.38\text{m}$, largest), Arc 4 warm ivory reaching $5.20\text{m}$ (tallest, $\theta_{\text{top}}=40^\circ$). | M1 | Survey E1 |
+| 4 | F4. 3D Rugged Digital Mountain (R3) | Procedural 3D low-poly crystalline mountain `StudioMountainLandscape` at $Z=4.60\text{m}, Y=1.96\text{m}$, sharp chiaroscuro shading, `EdgesGeometry` wireframe, and constellation vertex nodes. | M2 | Survey E2 |
+| 5 | F5. Luminous Canyon Pass (R2) | Organic S-curve recessed canyon pass with feathered alpha gradient shader (zero hard lines, zero ice tent/waterfall cave hole defect). | M2 | Survey E2 |
+| 6 | F6. Summit Beacon & Victory Flag (R4) | Lighthouse beacon tower with soft multi-tier gaussian bloom halo, slender silver flagpole, and translucent cyan/white pennant ("lá cờ chìm") waving right; real-time summit point light. | M2 | Survey E3 |
+| 7 | F7. Anchored Stanchion Legs (R6) | Continuous plinth deck at $Y=1.97\text{m}$ with cyan neon bead; dual heavy structural steel columns with welded top brackets and bolted baseplates seated solidly on plinth for Quizorra and Olympia boards. | M3 | Survey E3 |
+| 8 | F8. Cam 13 & Verification Pipeline | Cam 13 preset in `CameraController.tsx` + automated multi-angle screenshot capture script `scratch/verify_backdrop_and_fixtures.js` for Cam 11, 12, 3, 13 at $1920\times 1080$. | M3 | Survey E3 |
+| 9 | F9. Regression Guard & File Safety (R7) | Maintain 100% pass on 3D test suite (`npm run test:olympia-3d`), zero file deletion outside project, preserve existing project assets. | M4 | Survey E3 |
 
 ## Milestones
-
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Asset Provisioning & Setup | Copy `Olympia_logo_2016.webp` to `public/olympia/` without touching Downloads (R4). Verify accessibility. | none | DONE |
-| M2 | 3D Studio Architecture & Staging | Implement Central LED screen with logo & gradient text, 1 MC podium, 4 contestant podiums, and Laurel wreath vitrine. | M1 | DONE |
-| M3 | Dynamic Lighting & Buzzer System | Implement Blue vs Red lighting transitions, multi-zone staggered fade, and round buzzer reaction logic. | M2 | DONE |
-| M4 | UI Integration & Broadcast Cameras | Integrate 3D studio into `DisplayScreen.tsx`, add camera director dock, and responsive FOV handling. | M3 | DONE |
-| M5 | Final E2E Verification & Audit | Execute automated test suite, visual walkthrough, audit verification, and finalize handoff. | M4, E2E | DONE |
-
----
+| M1 | Backdrop Cyclorama & 4-Layer Arches | F1, F2, F3 in `StudioLighting.tsx` | None | DONE |
+| M2 | Mountain Landscape, Canyon & Beacon/Flag | F4, F5, F6 in `StudioLighting.tsx` | M1 | DONE |
+| M3 | Anchored Stanchions, Cam 13 & Pipeline | F7, F8 in `StudioLighting.tsx`, `CameraController.tsx`, `scratch/` | M1, M2 | DONE |
+| M4 | E2E Tests, Visual Capture & Final Gate | F9 in test suite, visual capture execution & comparison vs ref | M1, M2, M3 | DONE |
 
 ## Interface Contracts
+### Cyclorama ↔ Amphitheater
+- Placement: Cylinder origin at $(0, 4.05, -17.30)$, radius $22.50\text{m}$.
+- Apex touches $Z = 5.20\text{m}$, flanks wrap forward to $Z = -0.58\text{m}$ at $X = \pm 15.06\text{m}$.
+- Neon trims: Top at $Y = 8.28\text{m}$, Base at $Y = -0.18\text{m}$.
 
-### Game State $\rightarrow$ 3D Studio Props Contract
-```typescript
-export interface OlympiaStudio3DSceneProps {
-  state: OlympiaState;
-  activeCamera?: string;
-  onCameraChange?: (cam: string) => void;
-  quality?: "HIGH" | "MEDIUM" | "LIGHT";
-  debugMode?: boolean;
-}
-```
+### Portal Arches ↔ Mountain Framing
+- Arc 4 top tips: $X = \pm 0.763\text{m}$, $Y = 5.191\text{m} \approx 5.20\text{m}$ (gap $1.526\text{m}$).
+- Mountain apex: $X = 0.00\text{m}$, $Y = 4.38\text{m}$ (world $Y = 1.96 + 2.42 = 4.38\text{m}$).
+- Beacon tower sits at $Y = 4.38\text{m} - 4.65\text{m}$, flagpole rises to $Y = 4.96\text{m}$, directly framed within the Arc 4 crown opening.
 
-### Lighting State Contract
-```typescript
-export type LightingMode = "BLUE" | "RED";
+### Plinth ↔ Logo Stanchions
+- Plinth top deck: $Y = 1.97\text{m}$, $Z \in [3.38\text{m}, 5.16\text{m}]$, width $13.2\text{m}$ ($X \in [-6.6\text{m}, +6.6\text{m}]$).
+- Quizorra stanchion bases: $X = 3.35\text{m}$ and $4.85\text{m}$, baseplate bottom at $Y = 1.97\text{m}$.
+- Olympia medallion stanchion bases: $X = -4.55\text{m}$ and $-3.65\text{m}$, baseplate bottom at $Y = 1.97\text{m}$.
 
-export interface StudioLightingState {
-  targetMode: LightingMode;
-  screenFadeProgress: number; // 0.0 (Blue) to 1.0 (Red), t_delay = 0.0s
-  stageFadeProgress: number;  // 0.0 (Blue) to 1.0 (Red), t_delay = 0.5s
-  audienceFadeProgress: number;// 0.0 (Blue) to 1.0 (Red), t_delay = 0.7s
-}
-```
-
-### Buzzer Reaction Contract
-```typescript
-export function isSeatBuzzedIn3D(seatId: number, state: OlympiaState | null | undefined): boolean {
-  if (!state) return false;
-  switch (state.currentRound) {
-    case "khoiDong":
-      return state.khoiDong?.buzzedSeat === seatId;
-    case "vcnv":
-      // Strictly the fastest (first) bell rings red:
-      return state.vcnv?.bells?.[0]?.seat === seatId;
-    case "veDich":
-      return state.veDich?.steal?.buzzedSeat === seatId;
-    case "cauHoiPhu":
-      return state.cauHoiPhu?.buzzedSeat === seatId;
-    default:
-      return false;
-  }
-}
-```
+## Code Layout
+- `src/components/olympia/studio/StudioLighting.tsx`: Cyclorama, Arches, MountainLandscape, Summit Beacon & Flag, Plinth & Stanchions.
+- `src/components/olympia/studio/CameraController.tsx`: Camera presets (Cam 1–13).
+- `src/lib/olympia/olympia-3d-suite.test.ts`: Automated test assertions (171/171 passing).
+- `scratch/verify_backdrop_and_fixtures.js`: Automated visual capture script.

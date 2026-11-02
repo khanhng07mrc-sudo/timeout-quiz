@@ -25261,6 +25261,1198 @@ var RAW_SAMPLE_QUESTION_SET = {
   ]
 };
 var SAMPLE_QUESTION_SET = autoTagOlympiaSet(RAW_SAMPLE_QUESTION_SET, false);
+var RAW_BAC_AI_QUESTION_SET = {
+  "id": "olympia_preset_dauthau_bacai",
+  "name": "\u0110\u1EA5u th\u1EA7u G\xF3i th\u1EA7u 01TB-BA - Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i (To\xE0n di\u1EC7n)",
+  "description": "Kho \u0111\u1EC1 Olympia quy m\xF4 to\xE0n di\u1EC7n chuy\xEAn \u0111\u1EC1 \u0110\u1EA5u th\u1EA7u Nh\xE0 n\u01B0\u1EDBc & Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i: 80 c\xE2u Kh\u1EDFi \u0111\u1ED9ng ri\xEAng (8 th\xED sinh x 10 c\xE2u) + 16 c\xE2u Kh\u1EDFi \u0111\u1ED9ng chung, VCNV b\u1ED9 ch\xEDnh ('\u1EAEC QUY N\u01AF\u1EDAC') v\xE0 b\u1ED9 d\u1EF1 ph\xF2ng ('CHI PH\xCD V\xD2NG \u0110\u1EDCI'), 8 c\xE2u T\u0103ng t\u1ED1c (b\u1ED9 ch\xEDnh + d\u1EF1 ph\xF2ng), 48 c\xE2u V\u1EC1 \u0111\xEDch (16 c\xE2u 10\u0111, 12 c\xE2u 20\u0111, 12 c\xE2u 30\u0111, 8 c\xE2u 40\u0111) v\xE0 6 c\xE2u h\u1ECFi ph\u1EE5.",
+  "targetRuleset": "O26",
+  "balancedRandom": true,
+  "khoiDong": {
+    "solo": {
+      "1": [
+        {
+          "q": "M\u1EE5c ti\xEAu t\u1ED1i th\u01B0\u1EE3ng c\u1EE7a \u0111\u1EA5u th\u1EA7u c\xF3 ph\u1EA3i ch\u1EC9 \u0111\u01A1n thu\u1EA7n l\xE0 ch\u1ECDn nh\xE0 th\u1EA7u \u0111\u01B0a ra gi\xE1 th\u1EA5p nh\u1EA5t hay kh\xF4ng?",
+          "a": "Kh\xF4ng",
+          "subject": "L\xFD lu\u1EADn \u0111\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "T\xEAn vi\u1EBFt t\u1EAFt c\u1EE7a T\u1EADp \u0111o\xE0n \u0110i\u1EC7n l\u1EF1c Vi\u1EC7t Nam, \u0111\u01A1n v\u1ECB l\xE0m ch\u1EE7 \u0111\u1EA7u t\u01B0 d\u1EF1 \xE1n B\xE1c \xC1i l\xE0 g\xEC?",
+          "a": "EVN",
+          "subject": "Qu\u1EA3n l\xFD d\u1EF1 \xE1n",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC"
+        },
+        {
+          "q": "G\xF3i th\u1EA7u mua s\u1EAFm m\xE1y vi t\xEDnh, b\xE0n gh\u1EBF cho v\u0103n ph\xF2ng thu\u1ED9c lo\u1EA1i g\xF3i th\u1EA7u n\xE0o theo b\u1EA3n ch\u1EA5t s\u1EA3n ph\u1EA9m?",
+          "a": "Mua s\u1EAFm h\xE0ng h\xF3a",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "B\u1ED1n nguy\xEAn t\u1EAFc c\u0103n b\u1EA3n c\u1EE7a ho\u1EA1t \u0111\u1ED9ng \u0111\u1EA5u th\u1EA7u theo lu\u1EADt \u0111\u1ECBnh g\u1ED3m C\u1EA1nh tranh, C\xF4ng b\u1EB1ng, Minh b\u1EA1ch v\xE0 nguy\xEAn t\u1EAFc n\xE0o sau \u0111\xE2y: Hi\u1EC7u qu\u1EA3 kinh t\u1EBF, \u01AFu ti\xEAn n\u1ED9i \u0111\u1ECBa, hay L\u1EE3i nhu\u1EADn t\u1ED1i \u0111a?",
+          "a": "Hi\u1EC7u qu\u1EA3 kinh t\u1EBF",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "H\xECnh th\u1EE9c l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u m\u1EB7c \u0111\u1ECBnh, kh\xF4ng h\u1EA1n ch\u1EBF s\u1ED1 l\u01B0\u1EE3ng nh\xE0 th\u1EA7u tham d\u1EF1 theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u l\xE0 g\xEC?",
+          "a": "\u0110\u1EA5u th\u1EA7u r\u1ED9ng r\xE3i",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Trong h\u1EC7 \u0111\u01A1n v\u1ECB qu\u1ED1c t\u1EBF SI, \u0111\u01A1n v\u1ECB \u0111o c\xF4ng su\u1EA5t l\xE0 g\xEC?",
+          "a": "O\xE1t (W / Watt)",
+          "subject": "V\u1EADt l\xFD",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "Theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15, quy tr\xECnh t\u1ED5 ch\u1EE9c th\u1EF1c hi\u1EC7n \u0111\u1EA5u th\u1EA7u chu\u1EA9n h\xF3a g\u1ED3m bao nhi\xEAu b\u01B0\u1EDBc li\xEAn t\u1EE5c?",
+          "a": "7 b\u01B0\u1EDBc",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "H\xE0nh vi th\xF4ng \u0111\u1ED3ng gi\u1EEFa c\xE1c nh\xE0 th\u1EA7u \u0111\u1EC3 n\xE2ng kh\u1ED1ng gi\xE1 ho\u1EB7c ph\xE2n chia g\xF3i th\u1EA7u l\xE0 h\xE0nh vi b\u1ECB c\u1EA5m g\u1ECDi l\xE0 g\xEC?",
+          "a": "Th\xF4ng th\u1EA7u",
+          "subject": "Ph\xE1p lu\u1EADt \u0111\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Nh\xE0 th\u1EA7u n\u1ED9p chung h\u1ED3 s\u01A1 \u0111\u1EC1 xu\u1EA5t k\u1EF9 thu\u1EADt v\xE0 \u0111\u1EC1 xu\u1EA5t t\xE0i ch\xEDnh trong c\xF9ng m\u1ED9t t\xFAi h\u1ED3 s\u01A1 l\xE0 ph\u01B0\u01A1ng th\u1EE9c g\xEC?",
+          "a": "M\u1ED9t giai \u0111o\u1EA1n m\u1ED9t t\xFAi h\u1ED3 s\u01A1 (1G1T)",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "T\xE0i li\u1EC7u ph\xE1p l\xFD cao nh\u1EA5t \u0111i\u1EC1u ch\u1EC9nh ho\u1EA1t \u0111\u1ED9ng \u0111\u1EA5u th\u1EA7u s\u1EED d\u1EE5ng v\u1ED1n nh\xE0 n\u01B0\u1EDBc t\u1EA1i Vi\u1EC7t Nam l\xE0 g\xEC?",
+          "a": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        }
+      ],
+      "2": [
+        {
+          "q": "\u0110\u01A1n v\u1ECB n\xE0o tr\u1EF1c ti\u1EBFp \u0111\u01B0\u1EE3c EVN giao l\xE0m \u0111\u1EA1i di\u1EC7n ch\u1EE7 \u0111\u1EA7u t\u01B0 qu\u1EA3n l\xFD v\xE0 \u0111i\u1EC1u h\xE0nh d\u1EF1 \xE1n Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i?",
+          "a": "Ban Qu\u1EA3n l\xFD D\u1EF1 \xE1n \u0110i\u1EC7n 3 (Ban QLDA \u0110i\u1EC7n 3)",
+          "subject": "Qu\u1EA3n l\xFD d\u1EF1 \xE1n",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC"
+        },
+        {
+          "q": "Nh\xE0 m\xE1y Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i \u0111\u01B0\u1EE3c thi\u1EBFt k\u1EBF bao g\u1ED3m t\u1EA5t c\u1EA3 bao nhi\xEAu t\u1ED5 m\xE1y?",
+          "a": "4 t\u1ED5 m\xE1y",
+          "subject": "D\u1EF1 \xE1n B\xE1c \xC1i",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "H\xECnh th\u1EE9c l\u1EF1a ch\u1ECDn tr\u1EF1c ti\u1EBFp nh\xE0 th\u1EA7u trong tr\u01B0\u1EDDng h\u1EE3p c\u1EA5p b\xE1ch do thi\xEAn tai, d\u1ECBch b\u1EC7nh ho\u1EB7c b\xED m\u1EADt nh\xE0 n\u01B0\u1EDBc l\xE0 g\xEC?",
+          "a": "Ch\u1EC9 \u0111\u1ECBnh th\u1EA7u",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Ph\u01B0\u01A1ng th\u1EE9c \u0111\u1EA5u th\u1EA7u m\xE0 nh\xE0 th\u1EA7u n\u1ED9p ri\xEAng h\u1ED3 s\u01A1 \u0111\u1EC1 xu\u1EA5t k\u1EF9 thu\u1EADt v\xE0 h\u1ED3 s\u01A1 \u0111\u1EC1 xu\u1EA5t t\xE0i ch\xEDnh \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 g\xEC?",
+          "a": "M\u1ED9t giai \u0111o\u1EA1n hai t\xFAi h\u1ED3 s\u01A1 (1G2T)",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "G\xF3i th\u1EA7u kh\u1EA3o s\xE1t, l\u1EADp thi\u1EBFt k\u1EBF chi ti\u1EBFt, th\u1EA9m tra v\xE0 gi\xE1m s\xE1t thi c\xF4ng thu\u1ED9c nh\xF3m g\xF3i th\u1EA7u d\u1ECBch v\u1EE5 g\xEC?",
+          "a": "D\u1ECBch v\u1EE5 t\u01B0 v\u1EA5n",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "C\xF4ng su\u1EA5t thi\u1EBFt k\u1EBF \u0111\u1ECBnh m\u1EE9c c\u1EE7a m\u1ED7i t\u1ED5 m\xE1y trong t\u1ED5ng s\u1ED1 4 t\u1ED5 m\xE1y t\u1EA1i Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i l\xE0 bao nhi\xEAu MW?",
+          "a": "300 MW",
+          "subject": "D\u1EF1 \xE1n B\xE1c \xC1i",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "\u0110\u01A1n v\u1ECB \u0111o \u0111i\u1EC7n th\u1EBF v\xE0 su\u1EA5t \u0111i\u1EC7n \u0111\u1ED9ng trong h\u1EC7 SI mang t\xEAn nh\xE0 b\xE1c h\u1ECDc Alessandro Volta l\xE0 g\xEC?",
+          "a": "V\xF4n (Volt / V)",
+          "subject": "V\u1EADt l\xFD",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "H\xECnh th\u1EE9c \u0111\u1EA5u th\u1EA7u ch\u1EC9 m\u1EDDi m\u1ED9t s\u1ED1 nh\xE0 th\u1EA7u c\xF3 n\u0103ng l\u1EF1c k\u1EF9 thu\u1EADt cao tham d\u1EF1 g\u1ECDi l\xE0 g\xEC?",
+          "a": "\u0110\u1EA5u th\u1EA7u h\u1EA1n ch\u1EBF",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "T\xE0i li\u1EC7u do b\xEAn m\u1EDDi th\u1EA7u l\u1EADp quy \u0111\u1ECBnh ti\xEAu chu\u1EA9n k\u1EF9 thu\u1EADt, n\u0103ng l\u1EF1c v\xE0 h\u01B0\u1EDBng d\u1EABn n\u1ED9p th\u1EA7u vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+          "a": "HSMT (H\u1ED3 s\u01A1 m\u1EDDi th\u1EA7u)",
+          "subject": "Thu\u1EADt ng\u1EEF \u0111\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "G\xF3i th\u1EA7u cung c\u1EA5p thi\u1EBFt b\u1ECB c\u01A1 \u0111i\u1EC7n ch\xEDnh c\u1EE7a Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i c\xF3 m\xE3 k\xFD hi\u1EC7u l\xE0 g\xEC?",
+          "a": "G\xF3i th\u1EA7u 01TB-BA",
+          "subject": "G\xF3i th\u1EA7u 01TB-BA",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC"
+        }
+      ],
+      "3": [
+        {
+          "q": "Theo m\xF4 h\xECnh t\u1ED5 ch\u1EE9c ch\xEDnh quy\u1EC1n \u0111\u1ECBa ph\u01B0\u01A1ng 2 c\u1EA5p, Nh\xE0 m\xE1y Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i x\xE2y d\u1EF1ng t\u1EA1i x\xE3 Ph\u01B0\u1EDBc H\xF2a tr\u1EF1c thu\u1ED9c t\u1EC9nh n\xE0o?",
+          "a": "Kh\xE1nh H\xF2a",
+          "subject": "\u0110\u1ECBa l\xFD d\u1EF1 \xE1n",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Th\u1EDDi gian th\u1EF1c hi\u1EC7n h\u1EE3p \u0111\u1ED3ng G\xF3i th\u1EA7u s\u1ED1 01TB-BA k\u1EC3 t\u1EEB ng\xE0y c\xF3 hi\u1EC7u l\u1EF1c k\xE9o d\xE0i bao nhi\xEAu th\xE1ng?",
+          "a": "51 th\xE1ng",
+          "subject": "G\xF3i th\u1EA7u 01TB-BA",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "Bi\u1EC7n ph\xE1p t\xE0i ch\xEDnh m\xE0 nh\xE0 th\u1EA7u ph\u1EA3i n\u1ED9p \u0111\u1EC3 \u0111\u1EA3m b\u1EA3o tr\xE1ch nhi\u1EC7m kh\xF4ng r\xFAt h\u1ED3 s\u01A1 sau khi m\u1EDF th\u1EA7u g\u1ECDi l\xE0 b\u1EA3o \u0111\u1EA3m g\xEC?",
+          "a": "B\u1EA3o \u0111\u1EA3m d\u1EF1 th\u1EA7u (B\u1EA3o l\xE3nh d\u1EF1 th\u1EA7u)",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Tua-bin c\u01A1 \u0111i\u1EC7n ch\xEDnh t\u1EA1i Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i c\xF3 kh\u1EA3 n\u0103ng ho\u1EA1t \u0111\u1ED9ng lu\xE2n phi\xEAn gi\u1EEFa 2 ch\u1EBF \u0111\u1ED9 c\u01A1 b\u1EA3n n\xE0o?",
+          "a": "B\u01A1m v\xE0 ph\xE1t (b\u01A1m - ph\xE1t \u0111i\u1EC7n)",
+          "subject": "K\u1EF9 thu\u1EADt c\u01A1 \u0111i\u1EC7n",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "Khi nh\xE0 th\u1EA7u trong n\u01B0\u1EDBc ch\u01B0a \u0111\u1EE7 n\u0103ng l\u1EF1c s\u1EA3n xu\u1EA5t tua-bin c\xF4ng su\u1EA5t l\u1EDBn, ch\u1EE7 \u0111\u1EA7u t\u01B0 \xE1p d\u1EE5ng \u0111\u1EA5u th\u1EA7u trong n\u01B0\u1EDBc hay qu\u1ED1c t\u1EBF?",
+          "a": "Qu\u1ED1c t\u1EBF (\u0110\u1EA5u th\u1EA7u r\u1ED9ng r\xE3i qu\u1ED1c t\u1EBF)",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Trong tr\u01B0\u1EDDng h\u1EE3p nh\xE0 th\u1EA7u c\u1ED1 t\xECnh t\u1EEB ch\u1ED1i ho\xE0n thi\u1EC7n ho\u1EB7c k\xFD h\u1EE3p \u0111\u1ED3ng sau khi tr\xFAng th\u1EA7u, kho\u1EA3n ti\u1EC1n n\xE0o s\u1EBD b\u1ECB t\u1ECBch thu?",
+          "a": "B\u1EA3o l\xE3nh d\u1EF1 th\u1EA7u (Ti\u1EC1n b\u1EA3o \u0111\u1EA3m d\u1EF1 th\u1EA7u)",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "D\u1EA1ng n\u0103ng l\u01B0\u1EE3ng c\u01A1 h\u1ECDc \u0111\u01B0\u1EE3c t\xEDch tr\u1EEF trong kh\u1ED1i n\u01B0\u1EDBc \u1EDF h\u1ED3 tr\xEAn do ch\xEAnh l\u1EC7ch \u0111\u1ED9 cao g\u1ECDi l\xE0 g\xEC?",
+          "a": "Th\u1EBF n\u0103ng",
+          "subject": "V\u1EADt l\xFD",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "H\u1ED3 n\u01B0\u1EDBc t\u1EF1 nhi\xEAn ti\u1EBFp nh\u1EADn n\u01B0\u1EDBc x\u1EA3 ph\xE1t \u0111i\u1EC7n v\xE0 c\u1EA5p n\u01B0\u1EDBc b\u01A1m c\u1EE7a Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i l\xE0 h\u1ED3 g\xEC?",
+          "a": "H\u1ED3 S\xF4ng C\xE1i",
+          "subject": "\u0110\u1ECBa l\xFD - D\u1EF1 \xE1n",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "N\u1EC1n t\u1EA3ng c\xF4ng ngh\u1EC7 b\u1EAFt bu\u1ED9c \xE1p d\u1EE5ng cho c\xE1c h\xECnh th\u1EE9c \u0111\u1EA5u th\u1EA7u ph\u1ED5 bi\u1EBFn hi\u1EC7n nay l\xE0 \u0111\u1EA5u th\u1EA7u qua \u0111\xE2u?",
+          "a": "Qua m\u1EA1ng (M\u1EA1ng \u0111\u1EA5u th\u1EA7u qu\u1ED1c gia)",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Ba ti\xEAu ch\xED ph\xE2n lo\u1EA1i g\xF3i th\u1EA7u ph\u1EE5c v\u1EE5 qu\u1EA3n l\xFD d\u1EF1 \xE1n g\u1ED3m quy m\xF4, b\u1EA3n ch\u1EA5t s\u1EA3n ph\u1EA9m v\xE0 ti\xEAu ch\xED n\xE0o: M\u1EE9c \u0111\u1ED9 ph\u1EE9c t\u1EA1p, Ngu\u1ED3n v\u1ED1n vay, hay \u0110\u1ECBa b\xE0n x\xE2y d\u1EF1ng?",
+          "a": "M\u1EE9c \u0111\u1ED9 ph\u1EE9c t\u1EA1p",
+          "subject": "Qu\u1EA3n l\xFD d\u1EF1 \xE1n",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        }
+      ],
+      "4": [
+        {
+          "q": "T\u1EADp \u0111o\xE0n c\xF4ng ngh\u1EC7 c\u01A1 kh\xED c\u1EE7a \u0110\u1EE9c \u0111\u1EE9ng \u0111\u1EA7u li\xEAn danh tr\xFAng th\u1EA7u g\xF3i 01TB-BA mang t\xEAn g\xEC?",
+          "a": "Voith Hydro",
+          "subject": "Nh\xE0 th\u1EA7u",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC"
+        },
+        {
+          "q": "T\u1ED5ng c\xF4ng su\u1EA5t thi\u1EBFt k\u1EBF c\u1EE7a to\xE0n b\u1ED9 4 t\u1ED5 m\xE1y Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i l\xE0 bao nhi\xEAu MW?",
+          "a": "1.200 MW (1200)",
+          "subject": "D\u1EF1 \xE1n B\xE1c \xC1i",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "Vi\u1EC7c nh\xE0 th\u1EA7u chuy\u1EC3n nh\u01B0\u1EE3ng cho nh\xE0 th\u1EA7u kh\xE1c ph\u1EA7n c\xF4ng vi\u1EC7c v\u01B0\u1EE3t m\u1EE9c quy \u0111\u1ECBnh trong HSMT l\xE0 h\xE0nh vi vi ph\u1EA1m g\xEC?",
+          "a": "Chuy\u1EC3n nh\u01B0\u1EE3ng th\u1EA7u tr\xE1i ph\xE9p (B\xE1n th\u1EA7u)",
+          "subject": "Ph\xE1p lu\u1EADt \u0111\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Ph\u01B0\u01A1ng th\u1EE9c \u0111\u1EA5u th\u1EA7u \xE1p d\u1EE5ng cho g\xF3i th\u1EA7u c\xF3 y\xEAu c\u1EA7u k\u1EF9 thu\u1EADt c\xF4ng ngh\u1EC7 m\u1EDBi, ch\u01B0a th\u1EC3 x\xE1c \u0111\u1ECBnh chi ti\u1EBFt ngay t\u1EEB \u0111\u1EA7u g\u1ECDi l\xE0 g\xEC?",
+          "a": "Hai giai \u0111o\u1EA1n",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "G\xF3i th\u1EA7u cung c\u1EA5p d\u1ECBch v\u1EE5 v\u1EADn chuy\u1EC3n thi\u1EBFt b\u1ECB, b\u1EA3o tr\xEC \u0111\u1ECBnh k\u1EF3, b\u1EA3o hi\u1EC3m c\xF4ng tr\xECnh thu\u1ED9c nh\xF3m d\u1ECBch v\u1EE5 g\xEC?",
+          "a": "D\u1ECBch v\u1EE5 phi t\u01B0 v\u1EA5n",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "H\u1ED3 s\u01A1 do nh\xE0 th\u1EA7u chu\u1EA9n b\u1ECB v\xE0 n\u1ED9p cho b\xEAn m\u1EDDi th\u1EA7u theo y\xEAu c\u1EA7u c\u1EE7a HSMT \u0111\u01B0\u1EE3c vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+          "a": "HSDT (H\u1ED3 s\u01A1 d\u1EF1 th\u1EA7u)",
+          "subject": "Thu\u1EADt ng\u1EEF \u0111\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Ti\xEAu chu\u1EA9n qu\u1ED1c t\u1EBF c\u1EE7a \u1EE6y ban K\u1EF9 thu\u1EADt \u0110i\u1EC7n Qu\u1ED1c t\u1EBF \xE1p d\u1EE5ng cho thi\u1EBFt b\u1ECB c\u01A1 \u0111i\u1EC7n g\xF3i 01TB-BA l\xE0 ti\xEAu chu\u1EA9n n\xE0o: IEC, ISO, hay ASTM?",
+          "a": "IEC",
+          "subject": "Ti\xEAu chu\u1EA9n k\u1EF9 thu\u1EADt",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "M\u1EABu \u0111i\u1EC1u ki\u1EC7n h\u1EE3p \u0111\u1ED3ng qu\u1ED1c t\u1EBF chu\u1EA9n do Hi\u1EC7p h\u1ED9i K\u1EF9 s\u01B0 T\u01B0 v\u1EA5n Qu\u1ED1c t\u1EBF ph\xE1t h\xE0nh \xE1p d\u1EE5ng cho g\xF3i 01TB-BA vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+          "a": "FIDIC",
+          "subject": "H\u1EE3p \u0111\u1ED3ng qu\u1ED1c t\u1EBF",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Khi nh\xE0 th\u1EA7u c\u1EA7n l\xE0m r\xF5 HSMT, v\u0103n b\u1EA3n y\xEAu c\u1EA7u ph\u1EA3i \u0111\u01B0\u1EE3c g\u1EEDi \u0111\u1EBFn b\xEAn m\u1EDDi th\u1EA7u tr\u01B0\u1EDBc th\u1EDDi \u0111i\u1EC3m n\xE0o: \u0110\xF3ng th\u1EA7u, M\u1EDF th\u1EA7u, hay Ph\xEA duy\u1EC7t k\u1EBFt qu\u1EA3?",
+          "a": "\u0110\xF3ng th\u1EA7u (Th\u1EDDi \u0111i\u1EC3m \u0111\xF3ng th\u1EA7u)",
+          "subject": "Quy tr\xECnh \u0111\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Quy ho\u1EA1ch ph\xE1t tri\u1EC3n \u0111i\u1EC7n l\u1EF1c qu\u1ED1c gia \u0111\u1ECBnh h\u01B0\u1EDBng vai tr\xF2 ph\u1EE7 \u0111\u1EC9nh c\u1EE7a Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i l\xE0 Quy ho\u1EA1ch \u0111i\u1EC7n m\u1EA5y?",
+          "a": "Quy ho\u1EA1ch \u0111i\u1EC7n VIII (Quy ho\u1EA1ch \u0111i\u1EC7n 8)",
+          "subject": "Ch\xEDnh s\xE1ch n\u0103ng l\u01B0\u1EE3ng",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        }
+      ],
+      "5": [
+        {
+          "q": "\u0110\u1ED1i t\xE1c k\u1EF9 thu\u1EADt Trung Qu\u1ED1c trong li\xEAn danh tr\xFAng th\u1EA7u c\xF9ng Voith Hydro l\xE0 t\u1EADp \u0111o\xE0n n\xE0o?",
+          "a": "Powerchina (Powerchina Zhongnan)",
+          "subject": "Nh\xE0 th\u1EA7u",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC"
+        },
+        {
+          "q": "Trong li\xEAn danh nh\xE0 th\u1EA7u tham d\u1EF1 g\xF3i 01TB-BA, c\xE1c th\xE0nh vi\xEAn li\xEAn danh ph\u1EA3i ch\u1ECBu tr\xE1ch nhi\u1EC7m nh\u01B0 th\u1EBF n\xE0o tr\u01B0\u1EDBc ch\u1EE7 \u0111\u1EA7u t\u01B0: Tr\xE1ch nhi\u1EC7m li\xEAn \u0111\u1EDBi, hay Tr\xE1ch nhi\u1EC7m ri\xEAng r\u1EBD?",
+          "a": "Tr\xE1ch nhi\u1EC7m li\xEAn \u0111\u1EDBi (Li\xEAn \u0111\u1EDBi)",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "B\u01B0\u1EDBc ki\u1EC3m tra \u0111\u1ED9c l\u1EADp t\xEDnh h\u1EE3p ph\xE1p, t\xEDnh \u0111\xFAng \u0111\u1EAFn c\u1EE7a k\u1EBFt qu\u1EA3 l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u tr\u01B0\u1EDBc khi ph\xEA duy\u1EC7t g\u1ECDi l\xE0 b\u01B0\u1EDBc g\xEC?",
+          "a": "Th\u1EA9m \u0111\u1ECBnh k\u1EBFt qu\u1EA3 (Th\u1EA9m \u0111\u1ECBnh)",
+          "subject": "Quy tr\xECnh \u0111\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "H\u1EC7 th\u1ED1ng gi\xE1m s\xE1t, \u0111i\u1EC1u khi\u1EC3n t\u1EF1 \u0111\u1ED9ng h\xF3a v\xE0 thu th\u1EADp d\u1EEF li\u1EC7u trung t\xE2m c\u1EE7a nh\xE0 m\xE1y \u0111i\u1EC7n vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+          "a": "SCADA",
+          "subject": "C\xF4ng ngh\u1EC7 th\xF4ng tin",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "Trong th\u01B0\u01A1ng th\u1EA3o h\u1EE3p \u0111\u1ED3ng, b\xEAn m\u1EDDi th\u1EA7u v\xE0 nh\xE0 th\u1EA7u tuy\u1EC7t \u0111\u1ED1i KH\xD4NG \u0111\u01B0\u1EE3c ph\xE9p thay \u0111\u1ED5i n\u1ED9i dung n\xE0o sau \u0111\xE2y: Gi\xE1 d\u1EF1 th\u1EA7u, K\u1EBF ho\u1EA1ch huy \u0111\u1ED9ng nh\xE2n s\u1EF1, hay Ti\u1EBFn \u0111\u1ED9 thi c\xF4ng chi ti\u1EBFt?",
+          "a": "Gi\xE1 d\u1EF1 th\u1EA7u (ho\u1EB7c Gi\xE1 d\u1EF1 th\u1EA7u v\xE0 c\xE1c ti\xEAu chu\u1EA9n k\u1EF9 thu\u1EADt \u0111\xE3 \u0111\u1EA1t)",
+          "subject": "Th\u01B0\u01A1ng th\u1EA3o h\u1EE3p \u0111\u1ED3ng",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "H\xECnh th\u1EE9c mua s\u1EAFm tr\u1EF1c ti\u1EBFp ch\u1EC9 \u0111\u01B0\u1EE3c \xE1p d\u1EE5ng khi k\xFD h\u1EE3p \u0111\u1ED3ng v\u1EDBi nh\xE0 th\u1EA7u \u0111\xE3 tr\xFAng th\u1EA7u g\xF3i th\u1EA7u n\xE0o tr\u01B0\u1EDBc \u0111\xF3?",
+          "a": "G\xF3i th\u1EA7u t\u01B0\u01A1ng t\u1EF1",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "C\u01A1 quan l\u1EADp ph\xE1p cao nh\u1EA5t ban h\xE0nh Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15 l\xE0 c\u01A1 quan n\xE0o?",
+          "a": "Qu\u1ED1c h\u1ED9i",
+          "subject": "Ph\xE1p lu\u1EADt",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Chi\u1EC1u quay c\u1EE7a m\xE1y ph\xE1t - \u0111\u1ED9ng c\u01A1 khi nh\xE0 m\xE1y B\xE1c \xC1i v\u1EADn h\xE0nh \u1EDF ch\u1EBF \u0111\u1ED9 b\u01A1m n\u01B0\u1EDBc c\xF3 gi\u1ED1ng chi\u1EC1u ph\xE1t \u0111i\u1EC7n kh\xF4ng?",
+          "a": "Kh\xF4ng (\u0110\u1EA3o chi\u1EC1u quay)",
+          "subject": "K\u1EF9 thu\u1EADt c\u01A1 \u0111i\u1EC7n",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "Bi\u1EC7n ph\xE1p t\xE0i ch\xEDnh m\xE0 nh\xE0 th\u1EA7u tr\xFAng th\u1EA7u n\u1ED9p \u0111\u1EC3 \u0111\u1EA3m b\u1EA3o th\u1EF1c hi\u1EC7n \u0111\xFAng c\xE1c cam k\u1EBFt h\u1EE3p \u0111\u1ED3ng g\u1ECDi l\xE0 g\xEC?",
+          "a": "B\u1EA3o \u0111\u1EA3m th\u1EF1c hi\u1EC7n h\u1EE3p \u0111\u1ED3ng (B\u1EA3o l\xE3nh th\u1EF1c hi\u1EC7n h\u1EE3p \u0111\u1ED3ng)",
+          "subject": "Qu\u1EA3n l\xFD h\u1EE3p \u0111\u1ED3ng",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Th\u1EDDi gian th\u1EF1c hi\u1EC7n h\u1EE3p \u0111\u1ED3ng 51 th\xE1ng c\u1EE7a g\xF3i 01TB-BA t\u01B0\u01A1ng \u0111\u01B0\u01A1ng v\u1EDBi bao nhi\xEAu n\u0103m?",
+          "a": "4,25 n\u0103m",
+          "subject": "Ti\u1EBFn \u0111\u1ED9 d\u1EF1 \xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN"
+        }
+      ],
+      "6": [
+        {
+          "q": "T\u1ED5 ch\u1EE9c \u0111\u1ED9c l\u1EADp \u0111\u01B0\u1EE3c thu\xEA \u0111\u1EC3 gi\xE1m s\xE1t ch\u1EA5t l\u01B0\u1EE3ng v\xE0 ki\u1EC3m tra th\u1EED nghi\u1EC7m t\u1EA1i x\u01B0\u1EDFng ch\u1EBF t\u1EA1o n\u01B0\u1EDBc ngo\xE0i g\u1ECDi l\xE0 ki\u1EC3m \u0111\u1ECBnh g\xEC?",
+          "a": "Ki\u1EC3m \u0111\u1ECBnh \u0111\u1ED9c l\u1EADp (B\xEAn th\u1EE9 ba / Third-party inspection)",
+          "subject": "Qu\u1EA3n tr\u1ECB ch\u1EA5t l\u01B0\u1EE3ng",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC"
+        },
+        {
+          "q": "C\u1EA5u tr\xFAc th\u1ECB tr\u01B0\u1EDDng ch\u1EC9 c\xF3 m\u1ED9t v\xE0i t\u1EADp \u0111o\xE0n l\u1EDBn to\xE0n c\u1EA7u n\u1EAFm gi\u1EEF c\xF4ng ngh\u1EC7 ngu\u1ED3n \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 g\xEC?",
+          "a": "\u0110\u1ED9c quy\u1EC1n nh\xF3m (Oligopoly)",
+          "subject": "Kinh t\u1EBF h\u1ECDc",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "\u0110\u01B0\u1EDDng d\xE0i nh\u1EA5t xuy\xEAn su\u1ED1t s\u01A1 \u0111\u1ED3 m\u1EA1ng quy\u1EBFt \u0111\u1ECBnh t\u1ED5ng th\u1EDDi gian ho\xE0n th\xE0nh d\u1EF1 \xE1n \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 \u0111\u01B0\u1EDDng g\xEC?",
+          "a": "\u0110\u01B0\u1EDDng g\u0103ng (Critical path)",
+          "subject": "Qu\u1EA3n l\xFD d\u1EF1 \xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "H\xECnh th\u1EE9c ch\u1EE7 \u0111\u1EA7u t\u01B0 tr\u1EF1c ti\u1EBFp huy \u0111\u1ED9ng nh\xE2n l\u1EF1c, thi\u1EBFt b\u1ECB c\u1EE7a m\xECnh \u0111\u1EC3 tri\u1EC3n khai g\xF3i th\u1EA7u khi \u0111\u1EE7 n\u0103ng l\u1EF1c g\u1ECDi l\xE0 h\xECnh th\u1EE9c g\xEC: T\u1EF1 th\u1EF1c hi\u1EC7n, Ch\u1EC9 \u0111\u1ECBnh th\u1EA7u, hay Mua s\u1EAFm tr\u1EF1c ti\u1EBFp?",
+          "a": "T\u1EF1 th\u1EF1c hi\u1EC7n",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "B\u01B0\u1EDBc s\u1ED1 2 trong quy tr\xECnh 7 b\u01B0\u1EDBc t\u1ED5 ch\u1EE9c th\u1EF1c hi\u1EC7n \u0111\u1EA5u th\u1EA7u l\xE0 b\u01B0\u1EDBc g\xEC?",
+          "a": "M\u1EDDi th\u1EA7u",
+          "subject": "Quy tr\xECnh \u0111\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "G\xF3i th\u1EA7u thi c\xF4ng x\xE2y d\u1EF1ng \u0111\u1EADp, h\u1EA7m d\u1EABn d\xF2ng v\xE0 gian m\xE1y ng\u1EA7m thu\u1ED9c nh\xF3m g\xF3i th\u1EA7u g\xEC theo b\u1EA3n ch\u1EA5t?",
+          "a": "G\xF3i th\u1EA7u x\xE2y l\u1EAFp",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Ch\u1EE9c n\u0103ng ph\u1EE7 \u0111\u1EC9nh bi\u1EC3u \u0111\u1ED3 ph\u1EE5 t\u1EA3i c\u1EE7a B\xE1c \xC1i \u0111\u01B0\u1EE3c k\xEDch ho\u1EA1t v\xE0o gi\u1EDD cao \u0111i\u1EC3m hay th\u1EA5p \u0111i\u1EC3m c\u1EE7a h\u1EC7 th\u1ED1ng \u0111i\u1EC7n?",
+          "a": "Gi\u1EDD cao \u0111i\u1EC3m",
+          "subject": "V\u1EADn h\xE0nh h\u1EC7 th\u1ED1ng \u0111i\u1EC7n",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC"
+        },
+        {
+          "q": "N\u1EBFu ch\u1EC9 s\u1ED1 hi\u1EC7u su\u1EA5t chi ph\xED CPI = EV / AC > 1 trong ph\u01B0\u01A1ng ph\xE1p EVM, d\u1EF1 \xE1n \u0111ang ti\u1EBFt ki\u1EC7m chi ph\xED hay v\u01B0\u1EE3t ng\xE2n s\xE1ch?",
+          "a": "Ti\u1EBFt ki\u1EC7m chi ph\xED (D\u01B0\u1EDBi ng\xE2n s\xE1ch)",
+          "subject": "Qu\u1EA3n tr\u1ECB chi ph\xED",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "Vi\u1EC7c b\xEAn m\u1EDDi th\u1EA7u c\u1ED1 t\xECnh \u0111\u01B0a ra c\xE1c ti\xEAu chu\u1EA9n k\u1EF9 thu\u1EADt ch\u1EC9 m\u1ED9t h\xE3ng s\u1EA3n xu\u1EA5t \u0111\xE1p \u1EE9ng \u0111\u01B0\u1EE3c l\xE0 h\xE0nh vi vi ph\u1EA1m g\xEC?",
+          "a": "C\xE0i c\u1EAFm ti\xEAu ch\xED \u0111\u1ED9c quy\u1EC1n (H\u1EA1n ch\u1EBF c\u1EA1nh tranh)",
+          "subject": "Ph\xE1p lu\u1EADt \u0111\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "H\u1EE3p \u0111\u1ED3ng FIDIC V\xE0ng (Yellow Book) l\xE0 h\u1EE3p \u0111\u1ED3ng m\xE0 nh\xE0 th\u1EA7u ch\u1ECBu tr\xE1ch nhi\u1EC7m cho c\u1EA3 hai kh\xE2u: Thi\u1EBFt k\u1EBF v\xE0 kh\xE2u g\xEC?",
+          "a": "Thi c\xF4ng (Thi\u1EBFt k\u1EBF v\xE0 thi c\xF4ng / Design-Build)",
+          "subject": "H\u1EE3p \u0111\u1ED3ng qu\u1ED1c t\u1EBF",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        }
+      ],
+      "7": [
+        {
+          "q": "Theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u, hai ph\u01B0\u01A1ng ph\xE1p \u0111\xE1nh gi\xE1 v\u1EC1 m\u1EB7t k\u1EF9 thu\u1EADt ph\u1ED5 bi\u1EBFn nh\u1EA5t l\xE0 ph\u01B0\u01A1ng ph\xE1p \u0110\u1EA1t/Kh\xF4ng \u0111\u1EA1t v\xE0 ph\u01B0\u01A1ng ph\xE1p n\xE0o: Ch\u1EA5m \u0111i\u1EC3m b\u1EB1ng thang \u0111i\u1EC3m, hay B\u1ED1c th\u0103m ng\u1EABu nhi\xEAn?",
+          "a": "Ch\u1EA5m \u0111i\u1EC3m b\u1EB1ng thang \u0111i\u1EC3m (Ph\u01B0\u01A1ng ph\xE1p ch\u1EA5m \u0111i\u1EC3m)",
+          "subject": "\u0110\xE1nh gi\xE1 h\u1ED3 s\u01A1",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "G\xF3i th\u1EA7u c\xF3 quy m\xF4 t\xE0i ch\xEDnh l\u1EDBn, ph\u1EA1m vi c\xF4ng vi\u1EC7c r\u1ED9ng \u0111\xF2i h\u1ECFi n\u0103ng l\u1EF1c k\u1EF9 thu\u1EADt v\xE0 t\xE0i ch\xEDnh cao g\u1ECDi l\xE0 g\xF3i th\u1EA7u g\xEC?",
+          "a": "G\xF3i th\u1EA7u quy m\xF4 l\u1EDBn",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "M\u1EE5c ti\xEAu c\u1ED1t l\xF5i c\u1EE7a vi\u1EC7c m\u1EDF t\xFAi k\u1EF9 thu\u1EADt tr\u01B0\u1EDBc t\xFAi t\xE0i ch\xEDnh trong ph\u01B0\u01A1ng th\u1EE9c 1G2T l\xE0 g\xEC?",
+          "a": "\u0110\u1EA3m b\u1EA3o ch\u1EA5t l\u01B0\u1EE3ng k\u1EF9 thu\u1EADt (Ng\u0103n gi\xE1 r\u1EBB l\u1EA5n \xE1t k\u1EF9 thu\u1EADt)",
+          "subject": "Ph\u01B0\u01A1ng th\u1EE9c \u0111\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Thi\u1EBFt b\u1ECB van c\u01A1 kh\xED an to\xE0n d\xF9ng \u0111\u1EC3 ng\u0103n d\xF2ng n\u01B0\u1EDBc \xE1p l\u1EF1c cao b\u1EA3o v\u1EC7 bu\u1ED3ng xo\u1EAFn tua-bin g\u1ECDi l\xE0 van g\xEC?",
+          "a": "Van c\u1EA7u / Van bi",
+          "subject": "K\u1EF9 thu\u1EADt th\u1EE7y l\u1EF1c",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "Khi c\xF3 ki\u1EBFn ngh\u1ECB v\u1EC1 k\u1EBFt qu\u1EA3 l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u, nh\xE0 th\u1EA7u ph\u1EA3i g\u1EEDi \u0111\u01A1n ki\u1EBFn ngh\u1ECB \u0111\u1EA7u ti\xEAn \u0111\u1EBFn c\u1EA5p n\xE0o: Ch\u1EE7 \u0111\u1EA7u t\u01B0, Tr\u1ECDng t\xE0i th\u01B0\u01A1ng m\u1EA1i, hay T\xF2a \xE1n nh\xE2n d\xE2n?",
+          "a": "Ch\u1EE7 \u0111\u1EA7u t\u01B0 (B\xEAn m\u1EDDi th\u1EA7u / Ch\u1EE7 \u0111\u1EA7u t\u01B0)",
+          "subject": "Gi\u1EA3i quy\u1EBFt ki\u1EBFn ngh\u1ECB",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "H\xECnh th\u1EE9c giao nhi\u1EC7m v\u1EE5 cung \u1EE9ng d\u1ECBch v\u1EE5 c\xF4ng \xEDch cho \u0111\u01A1n v\u1ECB s\u1EF1 nghi\u1EC7p c\xF4ng l\u1EADp th\u1EF1c hi\u1EC7n g\u1ECDi l\xE0 g\xEC?",
+          "a": "\u0110\u1EB7t h\xE0ng",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Nh\xE0 m\xE1y th\u1EE7y \u0111i\u1EC7n t\xEDch n\u0103ng ho\u1EA1t \u0111\u1ED9ng t\xEDch l\u0169y v\xE0 ho\xE0n tr\u1EA3 n\u0103ng l\u01B0\u1EE3ng cho h\u1EC7 th\u1ED1ng \u0111i\u1EC7n gi\u1ED1ng nh\u01B0 thi\u1EBFt b\u1ECB t\xEDch \u0111i\u1EC7n n\xE0o?",
+          "a": "\u1EAEc quy (\u1EAEc quy n\u01B0\u1EDBc / Pin s\u1EA1c)",
+          "subject": "Khoa h\u1ECDc c\xF4ng ngh\u1EC7",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC"
+        },
+        {
+          "q": "Hi\u1EC7n t\u01B0\u1EE3ng t\u0103ng \xE1p l\u1EF1c \u0111\u1ED9t ng\u1ED9t trong \u0111\u01B0\u1EDDng \u1ED1ng d\u1EABn n\u01B0\u1EDBc k\xEDn khi \u0111\xF3ng van kh\u1EA9n c\u1EA5p \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 hi\u1EC7n t\u01B0\u1EE3ng g\xEC?",
+          "a": "B\xFAa n\u01B0\u1EDBc (Water Hammer)",
+          "subject": "K\u1EF9 thu\u1EADt th\u1EE7y l\u1EF1c",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "Trong tr\u01B0\u1EDDng h\u1EE3p nh\xE0 th\u1EA7u t\u1EEB ch\u1ED1i gia h\u1EA1n hi\u1EC7u l\u1EF1c HSDT khi b\xEAn m\u1EDDi th\u1EA7u y\xEAu c\u1EA7u, kho\u1EA3n ti\u1EC1n b\u1EA3o \u0111\u1EA3m d\u1EF1 th\u1EA7u s\u1EBD \u0111\u01B0\u1EE3c: Ho\xE0n tr\u1EA3 l\u1EA1i cho nh\xE0 th\u1EA7u, hay T\u1ECBch thu sung c\xF4ng qu\u1EF9?",
+          "a": "Ho\xE0n tr\u1EA3 l\u1EA1i cho nh\xE0 th\u1EA7u",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "M\u1ED9t t\u1ED5 m\xE1y 300 MW ch\u1EA1y h\u1EBFt c\xF4ng su\u1EA5t trong 2 gi\u1EDD li\xEAn t\u1EE5c s\u1EBD ph\xE1t ra s\u1EA3n l\u01B0\u1EE3ng \u0111i\u1EC7n n\u0103ng l\xE0 bao nhi\xEAu MWh?",
+          "a": "600 MWh (300 * 2 = 600)",
+          "subject": "V\u1EADt l\xFD - N\u0103ng l\u01B0\u1EE3ng",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN"
+        }
+      ],
+      "8": [
+        {
+          "q": "Trong ph\u01B0\u01A1ng th\u1EE9c 1G2T, nh\u1EEFng nh\xE0 th\u1EA7u kh\xF4ng v\u01B0\u1EE3t qua b\u01B0\u1EDBc \u0111\xE1nh gi\xE1 k\u1EF9 thu\u1EADt c\xF3 \u0111\u01B0\u1EE3c m\u1EDF t\xFAi t\xE0i ch\xEDnh hay kh\xF4ng?",
+          "a": "Kh\xF4ng",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "\u0110i\u1EC1u ki\u1EC7n t\u1EF1 nhi\xEAn ti\xEAn quy\u1EBFt v\u1EC1 \u0111\u1ECBa h\xECnh \u0111\u1EC3 x\xE2y d\u1EF1ng th\u1EE7y \u0111i\u1EC7n t\xEDch n\u0103ng hi\u1EC7u qu\u1EA3 l\xE0 s\u1EF1 ch\xEAnh l\u1EC7ch l\u1EDBn v\u1EC1 y\u1EBFu t\u1ED1 g\xEC gi\u1EEFa 2 h\u1ED3?",
+          "a": "\u0110\u1ED9 cao (C\u1ED9t n\u01B0\u1EDBc / \u0110\u1ED9 ch\xEAnh cao)",
+          "subject": "\u0110\u1ECBa l\xFD k\u1EF9 thu\u1EADt",
+          "kdZone": "NATURAL_SCI",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "H\xECnh th\u1EE9c \u0111\xE0m ph\xE1n gi\xE1 theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15 \u0111\u01B0\u1EE3c \xE1p d\u1EE5ng ch\u1EE7 y\u1EBFu cho nh\xF3m h\xE0ng h\xF3a n\xE0o sau \u0111\xE2y: Thu\u1ED1c v\xE0 thi\u1EBFt b\u1ECB y t\u1EBF \u0111\u1EB7c th\xF9, V\u1EADt li\u1EC7u x\xE2y d\u1EF1ng th\xF4ng th\u01B0\u1EDDng, hay Xe \xF4 t\xF4 c\xF4ng v\u1EE5?",
+          "a": "Thu\u1ED1c v\xE0 thi\u1EBFt b\u1ECB y t\u1EBF \u0111\u1EB7c th\xF9",
+          "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "B\u01B0\u1EDBc l\xE0m vi\u1EC7c gi\u1EEFa ch\u1EE7 \u0111\u1EA7u t\u01B0 v\xE0 nh\xE0 th\u1EA7u x\u1EBFp h\u1EA1ng th\u1EE9 nh\u1EA5t \u0111\u1EC3 r\xE0 so\xE1t, th\u1ED1ng nh\u1EA5t d\u1EF1 th\u1EA3o h\u1EE3p \u0111\u1ED3ng tr\u01B0\u1EDBc khi k\xFD k\u1EBFt g\u1ECDi l\xE0: Ho\xE0n thi\u1EC7n h\u1EE3p \u0111\u1ED3ng, Th\u1EA9m \u0111\u1ECBnh k\u1EBFt qu\u1EA3, hay M\u1EDF th\u1EA7u?",
+          "a": "Ho\xE0n thi\u1EC7n h\u1EE3p \u0111\u1ED3ng (Th\u01B0\u01A1ng th\u1EA3o, ho\xE0n thi\u1EC7n h\u1EE3p \u0111\u1ED3ng)",
+          "subject": "Qu\u1EA3n l\xFD h\u1EE3p \u0111\u1ED3ng",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "V\xE0o gi\u1EDD th\u1EA5p \u0111i\u1EC3m ban \u0111\xEAm, Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i b\u01A1m n\u01B0\u1EDBc l\xEAn h\u1ED3 tr\xEAn gi\xFAp gi\u1EA3i quy\u1EBFt t\xECnh tr\u1EA1ng c\u1EAFt gi\u1EA3m c\xF4ng su\u1EA5t c\u1EE7a ngu\u1ED3n n\u0103ng l\u01B0\u1EE3ng n\xE0o?",
+          "a": "N\u0103ng l\u01B0\u1EE3ng t\xE1i t\u1EA1o (\u0110i\u1EC7n gi\xF3, \u0111i\u1EC7n m\u1EB7t tr\u1EDDi)",
+          "subject": "N\u0103ng l\u01B0\u1EE3ng t\xE1i t\u1EA1o",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC"
+        },
+        {
+          "q": "Nguy\xEAn t\u1EAFc ph\xE2n b\u1ED5 chi ph\xED v\xE0 \u0111\xE1nh gi\xE1 hi\u1EC7u qu\u1EA3 d\u1EF1 \xE1n d\u1EF1a tr\xEAn to\xE0n b\u1ED9 chu k\u1EF3 s\u1ED1ng c\u1EE7a thi\u1EBFt b\u1ECB g\u1ECDi l\xE0 g\xEC trong qu\u1EA3n tr\u1ECB?",
+          "a": "Chi ph\xED v\xF2ng \u0111\u1EDDi (Life-Cycle Cost / Value for Money)",
+          "subject": "Kinh t\u1EBF d\u1EF1 \xE1n",
+          "kdZone": "MATH_IT",
+          "vdZone": "KHTN"
+        },
+        {
+          "q": "B\u01B0\u1EDBc s\u1ED1 7, b\u01B0\u1EDBc cu\u1ED1i c\xF9ng trong quy tr\xECnh 7 b\u01B0\u1EDBc t\u1ED5 ch\u1EE9c th\u1EF1c hi\u1EC7n \u0111\u1EA5u th\u1EA7u l\xE0 b\u01B0\u1EDBc g\xEC?",
+          "a": "C\xF4ng b\u1ED1 k\u1EBFt qu\u1EA3 v\xE0 k\xFD k\u1EBFt h\u1EE3p \u0111\u1ED3ng",
+          "subject": "Quy tr\xECnh \u0111\u1EA5u th\u1EA7u",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        },
+        {
+          "q": "Th\xE1ch th\u1EE9c logistics l\u1EDBn nh\u1EA5t khi v\u1EADn chuy\u1EC3n m\xE1y ph\xE1t v\xE0 b\xE1nh c\xF4ng t\xE1c tua-bin n\u1EB7ng h\xE0ng tr\u0103m t\u1EA5n qua \u0111\xE8o d\u1ED1c Kh\xE1nh H\xF2a l\xE0 g\xEC?",
+          "a": "H\xE0ng si\xEAu tr\u01B0\u1EDDng si\xEAu tr\u1ECDng",
+          "subject": "Logistics d\u1EF1 \xE1n",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC"
+        },
+        {
+          "q": "M\u1EE5c ti\xEAu cam k\u1EBFt c\u1EE7a Vi\u1EC7t Nam t\u1EA1i COP26 \u0111\u01B0a m\u1EE9c ph\xE1t th\u1EA3i kh\xED nh\xE0 k\xEDnh r\xF2ng v\u1EC1 0 v\xE0o n\u0103m 2050 g\u1ECDi l\xE0 g\xEC?",
+          "a": "Net Zero",
+          "subject": "M\xF4i tr\u01B0\u1EDDng",
+          "kdZone": "GENERAL",
+          "vdZone": "HBC"
+        },
+        {
+          "q": "Th\u1EDDi h\u1EA1n t\u1ED1i \u0111a \u0111\u1EC3 ch\u1EE7 \u0111\u1EA7u t\u01B0 c\xF3 v\u0103n b\u1EA3n tr\u1EA3 l\u1EDDi ki\u1EBFn ngh\u1ECB c\u1EE7a nh\xE0 th\u1EA7u v\u1EC1 k\u1EBFt qu\u1EA3 l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u theo lu\u1EADt l\xE0 bao nhi\xEAu ng\xE0y?",
+          "a": "15 ng\xE0y",
+          "subject": "Gi\u1EA3i quy\u1EBFt ki\u1EBFn ngh\u1ECB",
+          "kdZone": "SOCIAL_SCI",
+          "vdZone": "KHXH"
+        }
+      ]
+    },
+    "shared": [
+      {
+        "q": "Trong ph\u01B0\u01A1ng th\u1EE9c M\u1ED9t giai \u0111o\u1EA1n hai t\xFAi h\u1ED3 s\u01A1, t\xFAi h\u1ED3 s\u01A1 n\xE0o b\u1EAFt bu\u1ED9c ph\u1EA3i \u0111\u01B0\u1EE3c m\u1EDF v\xE0 \u0111\xE1nh gi\xE1 \u0111\u1EA1t y\xEAu c\u1EA7u tr\u01B0\u1EDBc: H\u1ED3 s\u01A1 \u0111\u1EC1 xu\u1EA5t k\u1EF9 thu\u1EADt, hay H\u1ED3 s\u01A1 \u0111\u1EC1 xu\u1EA5t t\xE0i ch\xEDnh?",
+        "a": "H\u1ED3 s\u01A1 \u0111\u1EC1 xu\u1EA5t k\u1EF9 thu\u1EADt",
+        "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Ba l\u1EDBp ki\u1EC3m so\xE1t \u0111\u1ED9c l\u1EADp (Control Points) trong quy tr\xECnh \u0111\xE1nh gi\xE1 x\xE9t th\u1EA7u g\u1ED3m nh\u1EEFng c\u1EA5p n\xE0o?",
+        "a": "T\u1ED5 chuy\xEAn gia, H\u1ED9i \u0111\u1ED3ng x\xE9t th\u1EA7u v\xE0 C\u01A1 quan th\u1EA9m \u0111\u1ECBnh",
+        "subject": "Qu\u1EA3n tr\u1ECB d\u1EF1 \xE1n",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC"
+      },
+      {
+        "q": "T\u1EF7 l\u1EC7 ti\u1EBFt ki\u1EC7m \u0111\u1EA5u th\u1EA7u \u0111\u01B0\u1EE3c t\xEDnh b\u1EB1ng c\xF4ng th\u1EE9c n\xE0o?",
+        "a": "(D\u1EF1 to\xE1n - Gi\xE1 tr\xFAng th\u1EA7u) / D\u1EF1 to\xE1n * 100%",
+        "subject": "Kinh t\u1EBF \u0111\u1EA5u th\u1EA7u",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "T\u1EA1i sao th\u1ECB tr\u01B0\u1EDDng tua-bin b\u01A1m t\xEDch n\u0103ng c\xF4ng su\u1EA5t l\u1EDBn l\u1EA1i mang t\xEDnh ch\u1EA5t \u0111\u1ED9c quy\u1EC1n nh\xF3m (Oligopoly)?",
+        "a": "Do r\xE0o c\u1EA3n c\xF4ng ngh\u1EC7 l\xF5i v\xE0 b\u1EA3n quy\u1EC1n s\xE1ng ch\u1EBF ph\u1EE9c t\u1EA1p",
+        "subject": "Kinh t\u1EBF h\u1ECDc",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "M\u1EABu h\u1EE3p \u0111\u1ED3ng qu\u1ED1c t\u1EBF chu\u1EA9n n\xE0o c\u1EE7a FIDIC th\u01B0\u1EDDng \xE1p d\u1EE5ng cho g\xF3i th\u1EA7u thi\u1EBFt k\u1EBF, cung c\u1EA5p v\xE0 l\u1EAFp \u0111\u1EB7t thi\u1EBFt b\u1ECB c\u01A1 \u0111i\u1EC7n nh\xE0 m\xE1y \u0111i\u1EC7n?",
+        "a": "FIDIC V\xE0ng (Yellow Book) ho\u1EB7c FIDIC B\u1EA1c (Silver Book)",
+        "subject": "H\u1EE3p \u0111\u1ED3ng qu\u1ED1c t\u1EBF",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "H\u1EA1ng m\u1EE5c thi c\xF4ng n\xE0o c\u1EE7a d\u1EF1 \xE1n B\xE1c \xC1i c\xF3 nguy c\u01A1 ch\u1EADm ti\u1EBFn \u0111\u1ED9 cao nh\u1EA5t l\xE0m \u1EA3nh h\u01B0\u1EDFng \u0111\u1EBFn th\u1EDDi gian l\u1EAFp \u0111\u1EB7t thi\u1EBFt b\u1ECB c\u01A1 \u0111i\u1EC7n?",
+        "a": "\u0110\xE0o h\u1EA7m d\u1EABn n\u01B0\u1EDBc v\xE0 gian m\xE1y ng\u1EA7m",
+        "subject": "Qu\u1EA3n l\xFD r\u1EE7i ro",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC"
+      },
+      {
+        "q": "Vi\u1EC7c b\u1EAFt bu\u1ED9c m\u1EDF th\u1EA7u qua m\u1EA1ng nh\u1EB1m tri\u1EC7t ti\xEAu nguy c\u01A1 gian l\u1EADn g\xEC trong \u0111\u1EA5u th\u1EA7u truy\u1EC1n th\u1ED1ng?",
+        "a": "Tr\xE1o \u0111\u1ED5i h\u1ED3 s\u01A1, th\xF4ng th\u1EA7u v\xE0 can thi\u1EC7p th\u1EE7 c\xF4ng",
+        "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "C\xF4ng su\u1EA5t 1.200 MW c\u1EE7a Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i t\u01B0\u01A1ng \u0111\u01B0\u01A1ng bao nhi\xEAu Gigawatt?",
+        "a": "1,2 GW",
+        "subject": "V\u1EADt l\xFD",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "T\u1EA1i sao trong th\u1ECB tr\u01B0\u1EDDng c\xF4ng ngh\u1EC7 ngu\u1ED3n \u0111\u1ED9c quy\u1EC1n nh\xF3m, bi\xEAn \u0111\u1ED9 gi\u1EA3m gi\xE1 th\u1EA7u th\u01B0\u1EDDng r\u1EA5t h\u1EB9p?",
+        "a": "V\xEC gi\xE1 th\xE0nh ph\u1EA7n l\u1EDBn c\u1EA5u th\xE0nh t\u1EEB chi ph\xED nghi\xEAn c\u1EE9u v\xE0 b\u1EA3n quy\u1EC1n c\xF4ng ngh\u1EC7 \u0111\u1ED9c quy\u1EC1n",
+        "subject": "Kinh t\u1EBF \u0111\u1EA5u th\u1EA7u",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "Ch\u1EE9c n\u0103ng \u0111i\u1EC1u t\u1EA7n c\u1EE7a Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i c\xF3 vai tr\xF2 gi\u1EEF \u1ED5n \u0111\u1ECBnh th\xF4ng s\u1ED1 n\xE0o c\u1EE7a d\xF2ng \u0111i\u1EC7n xoay chi\u1EC1u qu\u1ED1c gia?",
+        "a": "T\u1EA7n s\u1ED1 (50 Hz)",
+        "subject": "K\u1EF9 thu\u1EADt \u0111i\u1EC7n",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "Sau khi k\u1EBFt qu\u1EA3 l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u \u0111\u01B0\u1EE3c ng\u01B0\u1EDDi c\xF3 th\u1EA9m quy\u1EC1n ph\xEA duy\u1EC7t, ch\u1EE7 \u0111\u1EA7u t\u01B0 ph\u1EA3i ho\xE0n th\xE0nh b\u01B0\u1EDBc k\xFD h\u1EE3p \u0111\u1ED3ng trong b\u01B0\u1EDBc th\u1EE9 m\u1EA5y?",
+        "a": "B\u01B0\u1EDBc 7",
+        "subject": "Quy tr\xECnh \u0111\u1EA5u th\u1EA7u",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Ti\xEAu chu\u1EA9n qu\u1ED1c t\u1EBF c\u1EE7a Vi\u1EC7n K\u1EF9 s\u01B0 \u0110i\u1EC7n v\xE0 \u0110i\u1EC7n t\u1EED v\u1EC1 thi\u1EBFt b\u1ECB \u0111i\u1EC7n v\xE0 t\u1EF1 \u0111\u1ED9ng h\xF3a vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+        "a": "IEEE",
+        "subject": "Ti\xEAu chu\u1EA9n k\u1EF9 thu\u1EADt",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "Th\u1EDDi h\u1EA1n th\u1EF1c hi\u1EC7n h\u1EE3p \u0111\u1ED3ng 51 th\xE1ng c\u1EE7a g\xF3i 01TB-BA b\u1EAFt \u0111\u1EA7u c\xF3 hi\u1EC7u l\u1EF1c t\xEDnh t\u1EEB m\u1ED1c th\u1EDDi gian n\xE0o?",
+        "a": "Ng\xE0y h\u1EE3p \u0111\u1ED3ng c\xF3 hi\u1EC7u l\u1EF1c (ho\u1EB7c ng\xE0y kh\u1EDFi c\xF4ng quy \u0111\u1ECBnh trong h\u1EE3p \u0111\u1ED3ng)",
+        "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Trong tam gi\xE1c r\xE0ng bu\u1ED9c d\u1EF1 \xE1n, vi\u1EC7c v\u1EADn chuy\u1EC3n thi\u1EBFt b\u1ECB c\u01A1 \u0111i\u1EC7n ch\u1EADm tr\u1EC5 qua \u0111\xE8o d\u1ED1c s\u1EBD tr\u1EF1c ti\u1EBFp \u0111e d\u1ECDa y\u1EBFu t\u1ED1 n\xE0o: Ti\u1EBFn \u0111\u1ED9 (Th\u1EDDi gian), Ph\u1EA1m vi, hay Ng\xE2n s\xE1ch ban \u0111\u1EA7u?",
+        "a": "Ti\u1EBFn \u0111\u1ED9 (Th\u1EDDi gian)",
+        "subject": "Qu\u1EA3n l\xFD d\u1EF1 \xE1n",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC"
+      },
+      {
+        "q": "Nguy\xEAn t\u1EAFc Value for Money trong \u0111\u1EA5u th\u1EA7u qu\u1ED1c t\u1EBF y\xEAu c\u1EA7u \u0111\xE1nh gi\xE1 chi ph\xED d\u1EF1 \xE1n theo chu k\u1EF3 n\xE0o: To\xE0n b\u1ED9 v\xF2ng \u0111\u1EDDi t\xE0i s\u1EA3n (Life-Cycle Cost), hay Ch\u1EC9 t\xEDnh gi\xE1 mua ban \u0111\u1EA7u?",
+        "a": "To\xE0n b\u1ED9 v\xF2ng \u0111\u1EDDi t\xE0i s\u1EA3n (Life-Cycle Cost)",
+        "subject": "Kinh t\u1EBF d\u1EF1 \xE1n",
+        "kdZone": "MATH_IT",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "Kho\u1EA3n ti\u1EC1n m\xE0 nh\xE0 th\u1EA7u ph\u1EA3i n\u1ED9p \u0111\u1EC3 \u0111\u1EA3m b\u1EA3o ngh\u0129a v\u1EE5 s\u1EEDa ch\u1EEFa h\u01B0 h\u1ECFng ph\xE1t sinh trong th\u1EDDi gian b\u1EA3o h\xE0nh c\xF4ng tr\xECnh g\u1ECDi l\xE0 g\xEC?",
+        "a": "B\u1EA3o \u0111\u1EA3m b\u1EA3o h\xE0nh (B\u1EA3o l\xE3nh b\u1EA3o h\xE0nh)",
+        "subject": "Qu\u1EA3n l\xFD h\u1EE3p \u0111\u1ED3ng",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "T\xE0i li\u1EC7u do b\xEAn m\u1EDDi th\u1EA7u ban h\xE0nh n\xEAu r\xF5 c\xE1c y\xEAu c\u1EA7u v\u1EC1 n\u0103ng l\u1EF1c, ti\xEAu chu\u1EA9n k\u1EF9 thu\u1EADt v\xE0 h\u01B0\u1EDBng d\u1EABn l\u1EADp h\u1ED3 s\u01A1 d\u1EF1 th\u1EA7u vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+        "a": "HSMT (H\u1ED3 s\u01A1 m\u1EDDi th\u1EA7u)",
+        "subject": "Thu\u1EADt ng\u1EEF \u0111\u1EA5u th\u1EA7u",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Hi\u1EC7n t\u01B0\u1EE3ng dao \u0111\u1ED9ng \xE1p l\u1EF1c l\u1EDBn v\xE0 ch\u1EA5n \u0111\u1ED9ng d\xF2ng ch\u1EA3y khi tua-bin chuy\u1EC3n \u0111\u1ED5i \u0111\u1ED9t ng\u1ED9t gi\u1EEFa ch\u1EBF \u0111\u1ED9 b\u01A1m v\xE0 ph\xE1t \u0111i\u1EC7n \u0111\u01B0\u1EE3c g\u1ECDi l\xE0: Qu\xE1 \u0111\u1ED9 th\u1EE7y l\u1EF1c, S\u1EF1 c\u1ED1 ng\u1EAFn m\u1EA1ch, hay X\xE2m th\u1EF1c c\xE1nh tua-bin?",
+        "a": "Qu\xE1 \u0111\u1ED9 th\u1EE7y l\u1EF1c",
+        "subject": "K\u1EF9 thu\u1EADt c\u01A1 \u0111i\u1EC7n",
+        "kdZone": "NATURAL_SCI",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "Theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15, gi\xE1 tr\u1ECB b\u1EA3o l\xE3nh d\u1EF1 th\u1EA7u \u0111\u1ED1i v\u1EDBi g\xF3i th\u1EA7u quy m\xF4 l\u1EDBn \u0111\u01B0\u1EE3c quy \u0111\u1ECBnh t\u1EEB ... \u0111\u1EBFn ... ph\u1EA7n tr\u0103m gi\xE1 g\xF3i th\u1EA7u?",
+        "a": "1 \u0111\u1EBFn 3 (t\u1EEB 1% \u0111\u1EBFn 3%)",
+        "subject": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "C\u1EA5p c\xF3 th\u1EA9m quy\u1EC1n ph\xEA duy\u1EC7t k\u1EBF ho\u1EA1ch l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u \u0111\u1ED1i v\u1EDBi d\u1EF1 \xE1n do EVN l\xE0m ch\u1EE7 \u0111\u1EA7u t\u01B0 l\xE0 c\u01A1 quan n\xE0o?",
+        "a": "H\u1ED9i \u0111\u1ED3ng Th\xE0nh vi\xEAn EVN (H\u0110TV EVN)",
+        "subject": "Qu\u1EA3n l\xFD d\u1EF1 \xE1n",
+        "kdZone": "GENERAL",
+        "vdZone": "HBC"
+      },
+      {
+        "q": "Th\u1EDDi \u0111i\u1EC3m \u0111\xF3ng th\u1EA7u v\xE0 m\u1EDF th\u1EA7u c\xF4ng khai g\xF3i 01TB-BA di\u1EC5n ra v\xE0o ng\xE0y m\u1EA5y trong th\xE1ng 2 n\u0103m 2026?",
+        "a": "Ng\xE0y 23 (23/02/2026)",
+        "subject": "M\u1ED1c s\u1EF1 ki\u1EC7n",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Nh\xF3m chuy\xEAn gia \u0111\u01B0\u1EE3c b\xEAn m\u1EDDi th\u1EA7u th\xE0nh l\u1EADp \u0111\u1EC3 tr\u1EF1c ti\u1EBFp ch\u1EA5m \u0111i\u1EC3m v\xE0 l\u1EADp b\xE1o c\xE1o \u0111\xE1nh gi\xE1 HSDT g\u1ECDi l\xE0 g\xEC?",
+        "a": "T\u1ED5 chuy\xEAn gia \u0111\u1EA5u th\u1EA7u",
+        "subject": "Quy tr\xECnh \u0111\u1EA5u th\u1EA7u",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "V\u0103n b\u1EA3n th\u1ECFa thu\u1EADn ph\xE1p l\xFD gi\u1EEFa c\xE1c nh\xE0 th\u1EA7u \u0111\u1ED9c l\u1EADp \u0111\u1EC3 c\xF9ng tham gia n\u1ED9p m\u1ED9t h\u1ED3 s\u01A1 d\u1EF1 th\u1EA7u g\u1ECDi l\xE0 th\u1ECFa thu\u1EADn g\xEC?",
+        "a": "Th\u1ECFa thu\u1EADn li\xEAn danh",
+        "subject": "Thu\u1EADt ng\u1EEF \u0111\u1EA5u th\u1EA7u",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Theo th\xF4ng l\u1EC7 h\u1EE3p \u0111\u1ED3ng FIDIC qu\u1ED1c t\u1EBF, n\u1EBFu c\xE1c b\xEAn kh\xF4ng h\xF2a gi\u1EA3i \u0111\u01B0\u1EE3c sau ph\xE1n quy\u1EBFt c\u1EE7a Ban Ph\xE2n x\u1EED tranh ch\u1EA5p DAB, tranh ch\u1EA5p s\u1EBD \u0111\u01B0\u1EE3c chuy\u1EC3n \u0111\u1EBFn c\u01A1 quan n\xE0o: Tr\u1ECDng t\xE0i qu\u1ED1c t\u1EBF, hay H\u1ED9i \u0111\u1ED3ng Nh\xE2n d\xE2n t\u1EC9nh?",
+        "a": "Tr\u1ECDng t\xE0i qu\u1ED1c t\u1EBF",
+        "subject": "Ph\xE1p lu\u1EADt h\u1EE3p \u0111\u1ED3ng",
+        "kdZone": "SOCIAL_SCI",
+        "vdZone": "KHXH"
+      }
+    ]
+  },
+  "vcnv": {
+    "answer": "\u1EAEC QUY N\u01AF\u1EDAC",
+    "mysteryImage": "/olympia/media/bac_ai_pumped_storage.jpg",
+    "rows": [
+      {
+        "hint": "N\u0103m 1800, nh\xE0 v\u1EADt l\xFD ng\u01B0\u1EDDi \xDD n\xE0o \u0111\xE3 ch\u1EBF t\u1EA1o th\xE0nh c\xF4ng ngu\u1ED3n \u0111i\u1EC7n h\xF3a h\u1ECDc \u0111\u1EA7u ti\xEAn trong l\u1ECBch s\u1EED t\u1EEB c\xE1c \u0111\u0129a \u0111\u1ED3ng v\xE0 k\u1EBDm x\u1EBFp ch\u1ED3ng l\xEAn nhau, v\xE0 t\xEAn \xF4ng \u0111\u01B0\u1EE3c \u0111\u1EB7t cho \u0111\u01A1n v\u1ECB hi\u1EC7u \u0111i\u1EC7n th\u1EBF? (5 ch\u1EEF c\xE1i)",
+        "answer": "VOLTA"
+      },
+      {
+        "hint": "Trong V\u1EADt l\xFD c\u01A1 h\u1ECDc, d\u1EA1ng n\u0103ng l\u01B0\u1EE3ng d\u1EF1 tr\u1EEF c\u1EE7a m\u1ED9t v\u1EADt c\xF3 kh\u1ED1i l\u01B0\u1EE3ng m khi \u0111\u01B0\u1EE3c \u0111\u01B0a l\xEAn \u0111\u1ED9 cao h so v\u1EDBi m\u1ED1c t\xEDnh trong tr\u01B0\u1EDDng tr\u1ECDng l\u1EF1c Tr\xE1i \u0110\u1EA5t (Wt = mgh) \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 g\xEC? (7 ch\u1EEF c\xE1i)",
+        "answer": "TH\u1EBE N\u0102NG"
+      },
+      {
+        "hint": "Trong H\xF3a h\u1ECDc, nh\u1EEFng ph\u1EA3n \u1EE9ng c\xF3 th\u1EC3 di\u1EC5n ra \u0111\u1ED3ng th\u1EDDi theo c\u1EA3 hai chi\u1EC1u ng\u01B0\u1EE3c nhau trong c\xF9ng m\u1ED9t \u0111i\u1EC1u ki\u1EC7n (k\xFD hi\u1EC7u b\u1EB1ng m\u0169i t\xEAn \u21CC) \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 ph\u1EA3n \u1EE9ng ... (9 ch\u1EEF c\xE1i)",
+        "answer": "THU\u1EACN NGH\u1ECACH"
+      },
+      {
+        "hint": "M\u1ED9t b\xECnh \u1EAFc quy ch\xEC - axit ti\xEAu chu\u1EA9n d\xF9ng \u0111\u1EC3 kh\u1EDFi \u0111\u1ED9ng \xF4 t\xF4 con th\xF4ng th\u01B0\u1EDDng \u0111\u01B0\u1EE3c gh\xE9p n\u1ED1i ti\u1EBFp t\u1EEB 6 ng\u0103n \u0111\u01A1n (m\u1ED7i ng\u0103n c\xF3 su\u1EA5t \u0111i\u1EC7n \u0111\u1ED9ng 2 V\xF4n). H\u1ECFi hi\u1EC7u \u0111i\u1EC7n th\u1EBF \u0111\u1ECBnh m\u1EE9c c\u1EE7a b\xECnh \u1EAFc quy n\xE0y l\xE0 bao nhi\xEAu V\xF4n? (2 ch\u1EEF s\u1ED1)",
+        "answer": "12"
+      }
+    ],
+    "centerQuestion": {
+      "q": "Hai qu\xE1 tr\xECnh c\u01A1 b\u1EA3n l\u1EB7p \u0111i l\u1EB7p l\u1EA1i trong su\u1ED1t chu k\u1EF3 l\xE0m vi\u1EC7c c\u1EE7a m\u1ED9t vi\xEAn pin s\u1EA1c ho\u1EB7c h\u1EC7 th\u1ED1ng t\xEDch n\u0103ng \u0111\u01B0\u1EE3c g\u1ECDi ng\u1EAFn g\u1ECDn l\xE0 chu tr\xECnh ... (5 ch\u1EEF c\xE1i)",
+      "a": "N\u1EA0P X\u1EA2 (Ch\u1EA5p nh\u1EADn S\u1EA0C X\u1EA2 ho\u1EB7c T\xCDCH X\u1EA2)"
+    }
+  },
+  "vcnvBackup": {
+    "answer": "CHI PH\xCD V\xD2NG \u0110\u1EDCI",
+    "mysteryImage": "/olympia/media/life_cycle_cost_chart.jpg",
+    "rows": [
+      {
+        "hint": "V\u0103n b\u1EA3n x\xE1c \u0111\u1ECBnh to\xE0n b\u1ED9 chi ph\xED d\u1EF1 ki\u1EBFn c\u1EA7n thi\u1EBFt \u0111\u1EC3 ho\xE0n th\xE0nh g\xF3i th\u1EA7u tr\u01B0\u1EDBc khi t\u1ED5 ch\u1EE9c \u0111\u1EA5u th\u1EA7u g\u1ECDi l\xE0 ... (6 ch\u1EEF c\xE1i)",
+        "answer": "D\u1EF0 TO\xC1N"
+      },
+      {
+        "hint": "Ho\u1EA1t \u0111\u1ED9ng ki\u1EC3m tra, s\u1EEDa ch\u1EEFa v\xE0 thay th\u1EBF \u0111\u1ECBnh k\u1EF3 ph\u1EE5 t\xF9ng \u0111\u1EC3 duy tr\xEC kh\u1EA3 n\u0103ng ho\u1EA1t \u0111\u1ED9ng li\xEAn t\u1EE5c c\u1EE7a thi\u1EBFt b\u1ECB trong su\u1ED1t 40 n\u0103m v\u1EADn h\xE0nh g\u1ECDi l\xE0 ... (7 ch\u1EEF c\xE1i)",
+        "answer": "B\u1EA2O D\u01AF\u1EE0NG"
+      },
+      {
+        "hint": "T\u1EF7 s\u1ED1 gi\u1EEFa n\u0103ng l\u01B0\u1EE3ng h\u1EEFu \xEDch thu \u0111\u01B0\u1EE3c so v\u1EDBi t\u1ED5ng n\u0103ng l\u01B0\u1EE3ng ti\xEAu hao trong chu tr\xECnh v\u1EADn h\xE0nh m\xE1y m\xF3c g\u1ECDi l\xE0 ... (8 ch\u1EEF c\xE1i)",
+        "answer": "HI\u1EC6U SU\u1EA4T"
+      },
+      {
+        "hint": "Kho\u1EA3n ch\xEAnh l\u1EC7ch d\u01B0\u01A1ng gi\u1EEFa gi\xE1 d\u1EF1 to\xE1n \u0111\u01B0\u1EE3c duy\u1EC7t v\xE0 gi\xE1 tr\xFAng th\u1EA7u sau \u0111\xE0m ph\xE1n (85 t\u1EF7 \u0111\u1ED3ng) th\u1EC3 hi\u1EC7n ch\u1EC9 ti\xEAu ... trong \u0111\u1EA5u th\u1EA7u? (8 ch\u1EEF c\xE1i)",
+        "answer": "TI\u1EBET KI\u1EC6M"
+      }
+    ],
+    "centerQuestion": {
+      "q": "Kho\u1EA3ng th\u1EDDi gian t\u1EEB l\xFAc mua s\u1EAFm, khai th\xE1c v\u1EADn h\xE0nh cho \u0111\u1EBFn khi thanh l\xFD to\xE0n b\u1ED9 t\xE0i s\u1EA3n c\xF4ng tr\xECnh \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 chu k\u1EF3 ... (7 ch\u1EEF c\xE1i)",
+      "a": "V\xD2NG \u0110\u1EDCI"
+    }
+  },
+  "tangToc": [
+    {
+      "q": "H\xECnh th\u1EE9c l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u n\xE0o \u0111\u01B0\u1EE3c Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15 quy \u0111\u1ECBnh l\xE0 h\xECnh th\u1EE9c m\u1EB7c \u0111\u1ECBnh, \xE1p d\u1EE5ng kh\xF4ng h\u1EA1n ch\u1EBF s\u1ED1 l\u01B0\u1EE3ng nh\xE0 th\u1EA7u tham d\u1EF1?",
+      "answer": "\u0110\u1EA4U TH\u1EA6U R\u1ED8NG R\xC3I",
+      "duration": 10,
+      "type": "image",
+      "category": "iq"
+    },
+    {
+      "q": "\u0110\xE2y l\xE0 t\xEAn t\u1EADp \u0111o\xE0n n\xE0o? D\u1EEF ki\u1EC7n 1: T\u1EADp \u0111o\xE0n c\u01A1 kh\xED n\u0103ng l\u01B0\u1EE3ng h\xE0ng \u0111\u1EA7u c\u1EE7a \u0110\u1EE9c. D\u1EEF ki\u1EC7n 2: C\xF3 c\u01A1 s\u1EDF ch\u1EBF t\u1EA1o l\u1EDBn t\u1EA1i Th\u01B0\u1EE3ng H\u1EA3i. D\u1EEF ki\u1EC7n 3: Chuy\xEAn ch\u1EBF t\u1EA1o tua-bin c\u1ED9t n\u01B0\u1EDBc cao. D\u1EEF ki\u1EC7n 4: \u0110\u1EE9ng \u0111\u1EA7u li\xEAn danh tr\xFAng th\u1EA7u g\xF3i 01TB-BA B\xE1c \xC1i.",
+      "answer": "VOITH HYDRO",
+      "duration": 20,
+      "type": "image",
+      "category": "data"
+    },
+    {
+      "q": "H\xE3y s\u1EAFp x\u1EBFp c\xE1c m\u1ED1c th\u1EDDi gian \u0111\u1EA5u th\u1EA7u g\xF3i 01TB-BA theo tr\xECnh t\u1EF1 tr\u01B0\u1EDBc sau: (1) \u0110\xF3ng v\xE0 m\u1EDF th\u1EA7u c\xF4ng khai (23/02/2026), (2) Ph\xE1t h\xE0nh H\u1ED3 s\u01A1 m\u1EDDi th\u1EA7u (15/10/2025), (3) EVN ch\xEDnh th\u1EE9c k\xFD h\u1EE3p \u0111\u1ED3ng (26/10/2026), (4) Ph\xEA duy\u1EC7t k\u1EBFt qu\u1EA3 tr\xFAng th\u1EA7u (21/10/2026).",
+      "answer": "2-1-4-3",
+      "duration": 30,
+      "type": "image",
+      "category": "arrange"
+    },
+    {
+      "q": "G\xF3i th\u1EA7u 01TB-BA c\xF3 gi\xE1 d\u1EF1 to\xE1n l\xE0 4.548,081 t\u1EF7 \u0111\u1ED3ng v\xE0 gi\xE1 tr\xFAng th\u1EA7u l\xE0 4.462,603 t\u1EF7 \u0111\u1ED3ng. H\xE3y t\xEDnh s\u1ED1 ti\u1EC1n ti\u1EBFt ki\u1EC7m tuy\u1EC7t \u0111\u1ED1i m\xE0 EVN \u0111\u1EA1t \u0111\u01B0\u1EE3c qua \u0111\u1EA5u th\u1EA7u l\xE0 bao nhi\xEAu t\u1EF7 \u0111\u1ED3ng?",
+      "answer": "85,478 T\u1EF6 \u0110\u1ED2NG (85.478)",
+      "duration": 40,
+      "type": "image",
+      "category": "data"
+    },
+    {
+      "q": "(D\u1EF0 PH\xD2NG) Theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15, quy tr\xECnh t\u1ED5 ch\u1EE9c th\u1EF1c hi\u1EC7n \u0111\u1EA5u th\u1EA7u chu\u1EA9n h\xF3a g\u1ED3m bao nhi\xEAu b\u01B0\u1EDBc li\xEAn t\u1EE5c?",
+      "answer": "7 B\u01AF\u1EDAC (7)",
+      "duration": 10,
+      "type": "image",
+      "category": "iq"
+    },
+    {
+      "q": "(D\u1EF0 PH\xD2NG) \u0110\xE2y l\xE0 c\xF4ng tr\xECnh n\xE0o? D\u1EEF ki\u1EC7n 1: \u0110\u1EB7t t\u1EA1i t\u1EC9nh Kh\xE1nh H\xF2a. D\u1EEF ki\u1EC7n 2: T\u1ED5ng m\u1EE9c \u0111\u1EA7u t\u01B0 h\u01A1n 21.100 t\u1EF7 \u0111\u1ED3ng. D\u1EEF ki\u1EC7n 3: T\u1ED5ng c\xF4ng su\u1EA5t 1.200 MW. D\u1EEF ki\u1EC7n 4: Nh\xE0 m\xE1y th\u1EE7y \u0111i\u1EC7n t\xEDch n\u0103ng \u0111\u1EA7u ti\xEAn c\u1EE7a Vi\u1EC7t Nam.",
+      "answer": "TH\u1EE6Y \u0110I\u1EC6N T\xCDCH N\u0102NG B\xC1C \xC1I (B\xC1C \xC1I)",
+      "duration": 20,
+      "type": "image",
+      "category": "data"
+    },
+    {
+      "q": "(D\u1EF0 PH\xD2NG) H\xE3y s\u1EAFp x\u1EBFp c\xE1c b\u01B0\u1EDBc trong ph\u01B0\u01A1ng th\u1EE9c \u0111\u1EA5u th\u1EA7u M\u1ED9t giai \u0111o\u1EA1n hai t\xFAi h\u1ED3 s\u01A1 theo th\u1EE9 t\u1EF1 quy \u0111\u1ECBnh: (1) M\u1EDF t\xFAi \u0111\u1EC1 xu\u1EA5t t\xE0i ch\xEDnh, (2) \u0110\xE1nh gi\xE1 h\u1ED3 s\u01A1 \u0111\u1EC1 xu\u1EA5t k\u1EF9 thu\u1EADt, (3) M\u1EDF t\xFAi \u0111\u1EC1 xu\u1EA5t k\u1EF9 thu\u1EADt, (4) Ph\xEA duy\u1EC7t k\u1EBFt qu\u1EA3 tr\xFAng th\u1EA7u.",
+      "answer": "3-2-1-4",
+      "duration": 30,
+      "type": "image",
+      "category": "arrange"
+    },
+    {
+      "q": "(D\u1EF0 PH\xD2NG) G\xF3i th\u1EA7u 01TB-BA c\xF3 d\u1EF1 to\xE1n 4.548,081 t\u1EF7 \u0111\u1ED3ng v\xE0 ti\u1EBFt ki\u1EC7m \u0111\u01B0\u1EE3c 85,478 t\u1EF7 \u0111\u1ED3ng. H\xE3y t\xEDnh t\u1EF7 l\u1EC7 ph\u1EA7n tr\u0103m ti\u1EBFt ki\u1EC7m so v\u1EDBi gi\xE1 d\u1EF1 to\xE1n (l\xE0m tr\xF2n 2 ch\u1EEF s\u1ED1 th\u1EADp ph\xE2n)?",
+      "answer": "1,88% (1.88)",
+      "duration": 40,
+      "type": "image",
+      "category": "data"
+    }
+  ],
+  "veDich": {
+    "10": [
+      {
+        "q": "Theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15, quy tr\xECnh t\u1ED5 ch\u1EE9c th\u1EF1c hi\u1EC7n \u0111\u1EA5u th\u1EA7u chu\u1EA9n h\xF3a g\u1ED3m bao nhi\xEAu b\u01B0\u1EDBc li\xEAn t\u1EE5c?",
+        "a": "7 b\u01B0\u1EDBc",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Ng\xE0y 26 th\xE1ng 10 n\u0103m 2026 \u0111\xE3 di\u1EC5n ra s\u1EF1 ki\u1EC7n ph\xE1p l\xFD quan tr\u1ECDng n\xE0o \u0111\u1ED1i v\u1EDBi G\xF3i th\u1EA7u s\u1ED1 01TB-BA Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i?",
+        "a": "K\xFD k\u1EBFt h\u1EE3p \u0111\u1ED3ng",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Nh\xE0 m\xE1y Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i g\u1ED3m 4 t\u1ED5 m\xE1y v\u1EDBi t\u1ED5ng c\xF4ng su\u1EA5t 1.200 MW. H\u1ECFi c\xF4ng su\u1EA5t \u0111\u1ECBnh m\u1EE9c c\u1EE7a m\u1ED7i t\u1ED5 m\xE1y l\xE0 bao nhi\xEAu MW?",
+        "a": "300 MW",
+        "type": "theory",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "G\xF3i th\u1EA7u cung c\u1EA5p d\u1ECBch v\u1EE5 v\u1EADn chuy\u1EC3n, v\u1EC7 sinh c\xF4ng nghi\u1EC7p, b\u1EA3o d\u01B0\u1EE1ng c\u01A1 kh\xED thu\u1ED9c nh\xF3m d\u1ECBch v\u1EE5 n\xE0o: D\u1ECBch v\u1EE5 phi t\u01B0 v\u1EA5n, hay D\u1ECBch v\u1EE5 t\u01B0 v\u1EA5n?",
+        "a": "D\u1ECBch v\u1EE5 phi t\u01B0 v\u1EA5n",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Theo t\xE0i li\u1EC7u nghi\xEAn c\u1EE9u chuy\xEAn \u0111\u1EC1 v\u1EC1 qu\u1EA3n l\xFD d\u1EF1 \xE1n, v\u0103n b\u1EA3n ph\xE1p lu\u1EADt cao nh\u1EA5t \u0111i\u1EC1u ch\u1EC9nh ho\u1EA1t \u0111\u1ED9ng \u0111\u1EA5u th\u1EA7u \u0111\u01B0\u1EE3c vi\u1EC7n d\u1EABn c\xF3 s\u1ED1 hi\u1EC7u \u0111\u1EA7y \u0111\u1EE7 l\xE0 g\xEC?",
+        "a": "Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Ch\u1EE7 \u0111\u1EA7u t\u01B0 ch\u1ECBu tr\xE1ch nhi\u1EC7m to\xE0n di\u1EC7n v\u1EC1 hi\u1EC7u qu\u1EA3 D\u1EF1 \xE1n Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i l\xE0 t\u1EADp \u0111o\xE0n n\xE0o?",
+        "a": "T\u1EADp \u0111o\xE0n \u0110i\u1EC7n l\u1EF1c Vi\u1EC7t Nam (EVN)",
+        "type": "theory",
+        "vdZone": "HBC"
+      },
+      {
+        "q": "Ban Qu\u1EA3n l\xFD D\u1EF1 \xE1n n\xE0o tr\u1EF1c ti\u1EBFp \u0111\u01B0\u1EE3c EVN giao \u0111\u1EA1i di\u1EC7n qu\u1EA3n l\xFD d\u1EF1 \xE1n Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i: Ban QLDA \u0110i\u1EC7n 1, Ban QLDA \u0110i\u1EC7n 2, hay Ban QLDA \u0110i\u1EC7n 3?",
+        "a": "Ban QLDA \u0110i\u1EC7n 3 (Ban Qu\u1EA3n l\xFD D\u1EF1 \xE1n \u0110i\u1EC7n 3)",
+        "type": "theory",
+        "vdZone": "HBC"
+      },
+      {
+        "q": "Trong quy chu\u1EA9n th\u1EED nghi\u1EC7m thi\u1EBFt b\u1ECB c\u01A1 \u0111i\u1EC7n, vi\u1EC7c ch\u1EA1y th\u1EED nghi\u1EC7m li\xEAn t\u1EE5c kh\xF4ng t\u1EA3i v\xE0 c\xF3 t\u1EA3i c\u1EE7a t\u1ED5 m\xE1y tr\u01B0\u1EDBc khi b\xE0n giao th\u01B0\u01A1ng m\u1EA1i th\u01B0\u1EDDng k\xE9o d\xE0i bao nhi\xEAu gi\u1EDD?",
+        "a": "72 gi\u1EDD",
+        "type": "theory",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "Theo m\xF4 h\xECnh ch\xEDnh quy\u1EC1n \u0111\u1ECBa ph\u01B0\u01A1ng 2 c\u1EA5p (ch\u1EC9 g\u1ED3m c\u1EA5p t\u1EC9nh v\xE0 c\u1EA5p x\xE3/ph\u01B0\u1EDDng), Nh\xE0 m\xE1y Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i \u0111\u1EB7t t\u1EA1i x\xE3 Ph\u01B0\u1EDBc H\xF2a tr\u1EF1c thu\u1ED9c t\u1EC9nh n\xE0o?",
+        "a": "Kh\xE1nh H\xF2a",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "T\xEAn ch\xEDnh th\u1EE9c c\u1EE7a g\xF3i th\u1EA7u s\u1ED1 01TB-BA thu\u1ED9c d\u1EF1 \xE1n Th\u1EE7y \u0111i\u1EC7n B\xE1c \xC1i l\xE0 Cung c\u1EA5p thi\u1EBFt b\u1ECB g\xEC?",
+        "a": "Thi\u1EBFt b\u1ECB c\u01A1 \u0111i\u1EC7n",
+        "type": "theory",
+        "vdZone": "HBC"
+      },
+      {
+        "q": "H\xECnh th\u1EE9c l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u m\u1EB7c \u0111\u1ECBnh, kh\xF4ng h\u1EA1n ch\u1EBF s\u1ED1 l\u01B0\u1EE3ng nh\xE0 th\u1EA7u tham d\u1EF1 theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u l\xE0 g\xEC?",
+        "a": "\u0110\u1EA5u th\u1EA7u r\u1ED9ng r\xE3i",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Th\u1EDDi gian th\u1EF1c hi\u1EC7n h\u1EE3p \u0111\u1ED3ng G\xF3i th\u1EA7u s\u1ED1 01TB-BA k\u1EC3 t\u1EEB ng\xE0y c\xF3 hi\u1EC7u l\u1EF1c k\xE9o d\xE0i bao nhi\xEAu th\xE1ng?",
+        "a": "51 th\xE1ng",
+        "type": "theory",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "Nguy\xEAn t\u1EAFc \u0111\u1EA5u th\u1EA7u t\u1ED1i \u01B0u h\xF3a chi ph\xED v\xF2ng \u0111\u1EDDi t\xE0i s\u1EA3n trong ti\u1EBFng Anh \u0111\u01B0\u1EE3c vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+        "a": "Value for Money (VfM)",
+        "type": "theory",
+        "vdZone": "HBC"
+      },
+      {
+        "q": "H\u1EC7 th\u1ED1ng gi\xE1m s\xE1t, \u0111i\u1EC1u khi\u1EC3n v\xE0 thu th\u1EADp d\u1EEF li\u1EC7u trung t\xE2m c\u1EE7a nh\xE0 m\xE1y \u0111i\u1EC7n vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+        "a": "SCADA",
+        "type": "theory",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "B\u1ED9 m\u1EABu \u0111i\u1EC1u ki\u1EC7n h\u1EE3p \u0111\u1ED3ng qu\u1ED1c t\u1EBF chu\u1EA9n do Hi\u1EC7p h\u1ED9i K\u1EF9 s\u01B0 T\u01B0 v\u1EA5n Qu\u1ED1c t\u1EBF ph\xE1t h\xE0nh c\xF3 t\xEAn vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+        "a": "FIDIC",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "M\u1EE5c ti\xEAu c\u1ED1t l\xF5i c\u1EE7a b\u01B0\u1EDBc M\u1EDF th\u1EA7u trong quy tr\xECnh t\u1ED5 ch\u1EE9c \u0111\u1EA5u th\u1EA7u l\xE0 g\xEC?",
+        "a": "B\u1EA3o \u0111\u1EA3m t\xEDnh c\xF4ng khai, minh b\u1EA1ch v\xE0 ghi nh\u1EADn c\xE1c th\xF4ng tin c\u01A1 b\u1EA3n c\u1EE7a c\xE1c HSDT n\u1ED9p \u0111\xFAng h\u1EA1n. [Barem ch\u1EA5m \u0111i\u1EC3m: Th\xED sinh n\xEAu \u0111\u01B0\u1EE3c \xFD C\xF4ng khai/Minh b\u1EA1ch v\xE0 Ghi nh\u1EADn/M\u1EDF c\xF4ng khai c\xE1c \u0111\u1EC1 xu\u1EA5t]",
+        "type": "theory",
+        "vdZone": "KHXH"
+      }
+    ],
+    "20": [
+      {
+        "q": "T\u1EA1i sao trong g\xF3i th\u1EA7u thi\u1EBFt b\u1ECB c\u01A1 \u0111i\u1EC7n c\xF4ng ngh\u1EC7 cao 01TB-BA, ch\u1EE7 \u0111\u1EA7u t\u01B0 EVN \xE1p d\u1EE5ng ph\u01B0\u01A1ng th\u1EE9c M\u1ED9t giai \u0111o\u1EA1n hai t\xFAi h\u1ED3 s\u01A1 m\xE0 kh\xF4ng \xE1p d\u1EE5ng m\u1ED9t t\xFAi h\u1ED3 s\u01A1?",
+        "a": "\u0110\u1EC3 t\xE1ch bi\u1EC7t \u0111\xE1nh gi\xE1 k\u1EF9 thu\u1EADt v\u1EDBi gi\xE1 d\u1EF1 th\u1EA7u, ng\u0103n ch\u1EB7n vi\u1EC7c nh\xE0 th\u1EA7u ch\xE0o gi\xE1 th\u1EA5p l\u1EA5n \xE1t ch\u1EA5t l\u01B0\u1EE3ng k\u1EF9 thu\u1EADt",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Th\u1EDDi gian th\u1EF1c hi\u1EC7n h\u1EE3p \u0111\u1ED3ng g\xF3i th\u1EA7u 01TB-BA l\xE0 51 th\xE1ng. H\xE3y quy \u0111\u1ED5i th\u1EDDi gian n\xE0y ra s\u1ED1 n\u0103m (vi\u1EBFt d\u01B0\u1EDBi d\u1EA1ng s\u1ED1 th\u1EADp ph\xE2n)?",
+        "a": "4,25 n\u0103m",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "D\u1EF1 to\xE1n g\xF3i th\u1EA7u 01TB-BA l\xE0 4.548,081 t\u1EF7 \u0111\u1ED3ng, t\u1ED5ng m\u1EE9c \u0111\u1EA7u t\u01B0 d\u1EF1 \xE1n B\xE1c \xC1i l\xE0 21.101,468 t\u1EF7 \u0111\u1ED3ng. G\xF3i th\u1EA7u c\u01A1 \u0111i\u1EC7n chi\u1EBFm t\u1EF7 tr\u1ECDng l\xE0m tr\xF2n 2 ch\u1EEF s\u1ED1 th\u1EADp ph\xE2n l\xE0 ... % t\u1ED5ng m\u1EE9c \u0111\u1EA7u t\u01B0?",
+        "a": "21,55%",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "Khi nh\xE0 m\xE1y B\xE1c \xC1i ti\xEAu th\u1EE5 20 tri\u1EC7u kWh \u0111i\u1EC7n \u1EDF ch\u1EBF \u0111\u1ED9 b\u01A1m t\xEDch n\u0103ng ban \u0111\xEAm, n\u1EBFu hi\u1EC7u su\u1EA5t chu tr\xECnh k\xE9p l\xE0 75% th\xEC l\u01B0\u1EE3ng \u0111i\u1EC7n n\u0103ng ph\xE1t ra l\xFAc cao \u0111i\u1EC3m l\xE0 bao nhi\xEAu tri\u1EC7u kWh?",
+        "a": "15 tri\u1EC7u kWh",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "Trong qu\u1EA3n l\xFD d\u1EF1 \xE1n hi\u1EC7n \u0111\u1EA1i, thu\u1EADt ng\u1EEF vi\u1EBFt t\u1EAFt LCC l\xE0 g\xEC v\xE0 c\xF3 vai tr\xF2 nh\u01B0 th\u1EBF n\xE0o khi \u0111\xE1nh gi\xE1 hi\u1EC7u qu\u1EA3 kinh t\u1EBF g\xF3i th\u1EA7u thi\u1EBFt b\u1ECB?",
+        "a": "Life-Cycle Cost (Chi ph\xED v\xF2ng \u0111\u1EDDi t\xE0i s\u1EA3n), d\xF9ng \u0111\u1EC3 t\u1ED1i \u01B0u h\xF3a t\u1ED5ng chi ph\xED mua s\u1EAFm, v\u1EADn h\xE0nh, b\u1EA3o d\u01B0\u1EE1ng trong to\xE0n b\u1ED9 th\u1EDDi gian s\u1EED d\u1EE5ng",
+        "type": "theory",
+        "vdZone": "HBC"
+      },
+      {
+        "q": "H\xE3y n\xEAu 2 r\u1EE7i ro hi\u1EC7n tr\u01B0\u1EDDng l\u1EDBn nh\u1EA5t \u0111e d\u1ECDa \u0111\u1EBFn ti\u1EBFn \u0111\u1ED9 v\xE0 an to\xE0n thi\u1EBFt b\u1ECB c\u1EE7a g\xF3i th\u1EA7u 01TB-BA t\u1EA1i t\u1EC9nh Kh\xE1nh H\xF2a?",
+        "a": "R\u1EE7i ro v\u1EADn chuy\u1EC3n logistics si\xEAu tr\u01B0\u1EDDng si\xEAu tr\u1ECDng qua \u0111\xE8o d\u1ED1c v\xE0 r\u1EE7i ro ch\u1EADm ti\u1EBFn \u0111\u1ED9 \u0111\xE0o h\u1EA7m gian m\xE1y ng\u1EA7m",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Th\u1EBF n\xE0o l\xE0 th\u1ECB tr\u01B0\u1EDDng \u0111\u1ED9c quy\u1EC1n nh\xF3m (Oligopoly) trong cung \u1EE9ng thi\u1EBFt b\u1ECB th\u1EE7y \u0111i\u1EC7n t\xEDch n\u0103ng qu\u1ED1c t\u1EBF?",
+        "a": "Th\u1ECB tr\u01B0\u1EDDng ch\u1EC9 c\xF3 m\u1ED9t v\xE0i t\u1EADp \u0111o\xE0n h\xE0ng \u0111\u1EA7u th\u1EBF gi\u1EDBi \u0111\u1EE7 b\xED quy\u1EBFt c\xF4ng ngh\u1EC7 tua-bin \u0111\u1EA3o chi\u1EC1u c\u1ED9t n\u01B0\u1EDBc cao, t\u1EA1o r\xE0o c\u1EA3n gia nh\u1EADp c\u1EF1c l\u1EDBn",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Khi \u0111\xE1nh gi\xE1 v\xE0 qu\u1EA3n l\xFD th\u1EF1c hi\u1EC7n g\xF3i 01TB-BA, vai tr\xF2 c\u1EE7a \u0111\u01A1n v\u1ECB ki\u1EC3m \u0111\u1ECBnh \u0111\u1ED9c l\u1EADp (Third-party inspection) t\u1EA1i c\xE1c nh\xE0 m\xE1y ch\u1EBF t\u1EA1o \u1EDF Th\u01B0\u1EE3ng H\u1EA3i l\xE0 g\xEC?",
+        "a": "Gi\xE1m s\xE1t, ki\u1EC3m tra \u0111\u1ED9c l\u1EADp quy tr\xECnh \u0111\xFAc r\xE8n v\xE0 th\u1EED nghi\u1EC7m xu\u1EA5t x\u01B0\u1EDFng t\u1EA1i x\u01B0\u1EDFng ch\u1EBF t\u1EA1o n\u01B0\u1EDBc ngo\xE0i tr\u01B0\u1EDBc khi giao h\xE0ng. [Barem ch\u1EA5m \u0111i\u1EC3m: Th\xED sinh n\xEAu \u0111\u01B0\u1EE3c \xFD Gi\xE1m s\xE1t quy tr\xECnh ch\u1EBF t\u1EA1o/\u0111\xFAc r\xE8n ho\u1EB7c Ki\u1EC3m \u0111\u1ECBnh ch\u1EA5t l\u01B0\u1EE3ng xu\u1EA5t x\u01B0\u1EDFng t\u1EA1i x\u01B0\u1EDFng n\u01B0\u1EDBc ngo\xE0i]",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "G\xF3i th\u1EA7u 01TB-BA c\xF3 gi\xE1 tr\xFAng th\u1EA7u 4.462,603 t\u1EF7 \u0111\u1ED3ng v\xE0 d\u1EF1 to\xE1n 4.548,081 t\u1EF7 \u0111\u1ED3ng. H\xE3y t\xEDnh s\u1ED1 ti\u1EC1n ti\u1EBFt ki\u1EC7m tuy\u1EC7t \u0111\u1ED1i m\xE0 EVN \u0111\u1EA1t \u0111\u01B0\u1EE3c?",
+        "a": "85,478 t\u1EF7 \u0111\u1ED3ng",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "T\u1EA1i sao vi\u1EC7c \u0111\u1EA5u th\u1EA7u c\xE1c g\xF3i th\u1EA7u ph\u1ED5 bi\u1EBFn hi\u1EC7n nay b\u1EAFt bu\u1ED9c th\u1EF1c hi\u1EC7n qua H\u1EC7 th\u1ED1ng m\u1EA1ng \u0111\u1EA5u th\u1EA7u qu\u1ED1c gia?",
+        "a": "Nh\u1EB1m t\u0103ng t\xEDnh minh b\u1EA1ch, gi\u1EA3m chi ph\xED h\xE0nh ch\xEDnh, ng\u0103n ch\u1EB7n ti\xEAu c\u1EF1c th\xF4ng th\u1EA7u v\xE0 t\u1EA1o thu\u1EADn l\u1EE3i cho gi\xE1m s\xE1t x\xE3 h\u1ED9i",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Theo Quy ho\u1EA1ch \u0111i\u1EC7n VIII, Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i \u0111\xF3ng vai tr\xF2 g\xEC trong vi\u1EC7c t\xEDch h\u1EE3p n\u0103ng l\u01B0\u1EE3ng t\xE1i t\u1EA1o?",
+        "a": "T\xEDch tr\u1EEF \u0111i\u1EC7n n\u0103ng d\u01B0 th\u1EEBa t\u1EEB \u0111i\u1EC7n gi\xF3 v\xE0 m\u1EB7t tr\u1EDDi l\xFAc th\u1EA5p \u0111i\u1EC3m, x\u1EA3 ph\xE1t \u0111i\u1EC7n \u0111i\u1EC1u t\u1EA7n v\xE0 ph\u1EE7 \u0111\u1EC9nh l\xFAc cao \u0111i\u1EC3m",
+        "type": "theory",
+        "vdZone": "HBC"
+      },
+      {
+        "q": "\u0110i\u1EC1u ki\u1EC7n ti\xEAn quy\u1EBFt \u0111\u1EC3 h\u1ED3 s\u01A1 \u0111\u1EC1 xu\u1EA5t t\xE0i ch\xEDnh c\u1EE7a m\u1ED9t nh\xE0 th\u1EA7u \u0111\u01B0\u1EE3c m\u1EDF v\xE0 \u0111\xE1nh gi\xE1 trong ph\u01B0\u01A1ng th\u1EE9c 1G2T l\xE0 g\xEC?",
+        "a": "H\u1ED3 s\u01A1 \u0111\u1EC1 xu\u1EA5t k\u1EF9 thu\u1EADt ph\u1EA3i \u0111\u01B0\u1EE3c \u0111\xE1nh gi\xE1 \u0111\u1EA1t y\xEAu c\u1EA7u theo c\xE1c ti\xEAu chu\u1EA9n quy \u0111\u1ECBnh trong HSMT",
+        "type": "theory",
+        "vdZone": "KHXH"
+      }
+    ],
+    "30": [
+      {
+        "q": "M\u1ED9t ch\u1EE7 \u0111\u1EA7u t\u01B0 \u0111\xE1nh gi\xE1 ph\u01B0\u01A1ng \xE1n nh\xE0 th\u1EA7u theo c\xF4ng th\u1EE9c \u0111i\u1EC3m t\u1ED5ng h\u1EE3p: 0,7 \u0111i\u1EC3m K\u1EF9 thu\u1EADt + 0,3 \u0111i\u1EC3m T\xE0i ch\xEDnh. N\u1EBFu nh\xE0 th\u1EA7u A \u0111\u1EA1t 90 \u0111i\u1EC3m k\u1EF9 thu\u1EADt v\xE0 80 \u0111i\u1EC3m t\xE0i ch\xEDnh, h\xE3y t\xEDnh \u0111i\u1EC3m t\u1ED5ng h\u1EE3p c\u1EE7a nh\xE0 th\u1EA7u A?",
+        "a": "87 \u0111i\u1EC3m (0,7 * 90 + 0,3 * 80 = 63 + 24 = 87)",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "G\xF3i th\u1EA7u 01TB-BA c\xF3 gi\xE1 tr\xFAng th\u1EA7u 4.462,603 t\u1EF7 \u0111\u1ED3ng, ti\u1EBFt ki\u1EC7m 85,478 t\u1EF7 \u0111\u1ED3ng so v\u1EDBi d\u1EF1 to\xE1n. T\u1EF7 l\u1EC7 ph\u1EA7n tr\u0103m ti\u1EBFt ki\u1EC7m c\u1EE7a g\xF3i th\u1EA7u khi l\xE0m tr\xF2n 2 ch\u1EEF s\u1ED1 th\u1EADp ph\xE2n l\xE0 ... %?",
+        "a": "1,88%",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "T\u1EA1i sao trong \u0111\u1EA5u th\u1EA7u thi\u1EBFt b\u1ECB c\xF4ng ngh\u1EC7 ngu\u1ED3n \u0111\u1ED9c quy\u1EC1n nh\xF3m, t\u1EF7 l\u1EC7 ti\u1EBFt ki\u1EC7m th\u1EA5p (1,88%) v\u1EABn \u0111\u01B0\u1EE3c \u0111\xE1nh gi\xE1 l\xE0 th\xE0nh c\xF4ng l\u1EDBn v\xE0 tu\xE2n th\u1EE7 \u0111\xFAng nguy\xEAn t\u1EAFc Value for Money?",
+        "a": "V\xEC bi\xEAn \u0111\u1ED9 gi\u1EA3m gi\xE1 c\xF4ng ngh\u1EC7 l\xF5i r\u1EA5t h\u1EB9p; m\u1EE5c ti\xEAu cao nh\u1EA5t l\xE0 mua \u0111\u01B0\u1EE3c thi\u1EBFt b\u1ECB an to\xE0n, \u0111\u1ED9 tin c\u1EADy cao, t\u1ED1i \u01B0u chi ph\xED v\u1EADn h\xE0nh b\u1EA3o d\u01B0\u1EE1ng 40 n\u0103m ch\u1EE9 kh\xF4ng ph\u1EA3i ch\u1EA1y \u0111ua h\u1EA1 gi\xE1 ban \u0111\u1EA7u",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Ph\u01B0\u01A1ng \xE1n thi\u1EBFt b\u1ECB X c\xF3 gi\xE1 mua 4.462 t\u1EF7, chi ph\xED b\u1EA3o d\u01B0\u1EE1ng 40 n\u0103m l\xE0 1.200 t\u1EF7, t\u1ED5n th\u1EA5t hi\u1EC7u su\u1EA5t l\xE0 180 t\u1EF7. Ph\u01B0\u01A1ng \xE1n Y c\xF3 gi\xE1 mua 4.400 t\u1EF7, chi ph\xED b\u1EA3o d\u01B0\u1EE1ng 1.350 t\u1EF7, t\u1ED5n th\u1EA5t hi\u1EC7u su\u1EA5t 250 t\u1EF7. Theo ti\xEAu ch\xED Chi ph\xED v\xF2ng \u0111\u1EDDi (LCC), ph\u01B0\u01A1ng \xE1n n\xE0o t\u1ED1i \u01B0u h\u01A1n v\xE0 ti\u1EBFt ki\u1EC7m h\u01A1n bao nhi\xEAu t\u1EF7 \u0111\u1ED3ng?",
+        "a": "Ph\u01B0\u01A1ng \xE1n X t\u1ED1i \u01B0u h\u01A1n, ti\u1EBFt ki\u1EC7m h\u01A1n 158 t\u1EF7 \u0111\u1ED3ng (LCC_X = 5.842 t\u1EF7 vs LCC_Y = 6.000 t\u1EF7)",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "T\u1EA1i sao G\xF3i th\u1EA7u 01TB-BA \u0111\u01B0\u1EE3c x\xE1c \u0111\u1ECBnh l\xE0 g\xF3i th\u1EA7u n\u1EB1m tr\xEAn '\u0111\u01B0\u1EDDng g\u0103ng' (Critical Path) quy\u1EBFt \u0111\u1ECBnh to\xE0n b\u1ED9 ti\u1EBFn \u0111\u1ED9 d\u1EF1 \xE1n B\xE1c \xC1i?",
+        "a": "V\xEC chu k\u1EF3 ch\u1EBF t\u1EA1o, v\u1EADn chuy\u1EC3n v\xE0 l\u1EAFp \u0111\u1EB7t thi\u1EBFt b\u1ECB k\xE9o d\xE0i t\u1EDBi 51 th\xE1ng; b\u1EA5t k\u1EF3 s\u1EF1 ch\u1EADm tr\u1EC5 n\xE0o c\u1EE7a g\xF3i n\xE0y \u0111\u1EC1u tr\u1EF1c ti\u1EBFp l\xE0m l\xF9i m\u1ED1c ph\xE1t \u0111i\u1EC7n th\u01B0\u01A1ng m\u1EA1i c\u1EE7a to\xE0n b\u1ED9 d\u1EF1 \xE1n 21.100 t\u1EF7",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "H\xE3y n\xEAu c\xE1c gi\u1EA3i ph\xE1p qu\u1EA3n tr\u1ECB r\u1EE7i ro bi\u1EBFn \u0111\u1ED9ng t\u1EF7 gi\xE1 v\xE0 gi\xE1 kim lo\u1EA1i trong chu k\u1EF3 th\u1EF1c hi\u1EC7n h\u1EE3p \u0111\u1ED3ng 51 th\xE1ng?",
+        "a": "\xC1p d\u1EE5ng m\u1EABu h\u1EE3p \u0111\u1ED3ng qu\u1ED1c t\u1EBF FIDIC v\u1EDBi c\xF4ng th\u1EE9c \u0111i\u1EC1u ch\u1EC9nh gi\xE1 r\xF5 r\xE0ng, th\u1ECFa thu\u1EADn \u0111\u1ED3ng ti\u1EC1n thanh to\xE1n v\xE0 s\u1EED d\u1EE5ng c\xF4ng c\u1EE5 t\xE0i ch\xEDnh ph\xE1i sinh",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Ch\u1EA5m \u0111i\u1EC3m theo ph\u01B0\u01A1ng th\u1EE9c 1G2T: \u0110i\u1EC3m t\u1ED5ng h\u1EE3p = 0,8 \u0111i\u1EC3m K\u1EF9 thu\u1EADt + 0,2 \u0111i\u1EC3m T\xE0i ch\xEDnh. Nh\xE0 th\u1EA7u B \u0111\u1EA1t 95 \u0111i\u1EC3m K\u1EF9 thu\u1EADt v\xE0 70 \u0111i\u1EC3m T\xE0i ch\xEDnh. T\xEDnh \u0111i\u1EC3m t\u1ED5ng h\u1EE3p c\u1EE7a nh\xE0 th\u1EA7u B?",
+        "a": "90 \u0111i\u1EC3m (0,8 * 95 + 0,2 * 70 = 76 + 14 = 90)",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "T\xECnh hu\u1ED1ng: Gian m\xE1y ng\u1EA7m b\u1ECB ch\u1EADm ti\u1EBFn \u0111\u1ED9 6 th\xE1ng trong khi thi\u1EBFt b\u1ECB c\u01A1 \u0111i\u1EC7n v\u1EC1 \u0111\xFAng h\u1EA1n 51 th\xE1ng. Ch\u1EE7 \u0111\u1EA7u t\u01B0 EVN x\u1EED l\xFD gi\u1EA3i ph\xE1p n\xE0o t\u1ED1i \u01B0u nh\u1EA5t theo FIDIC?",
+        "a": "B\u1ED1 tr\xED kho b\u1EA3o qu\u1EA3n chuy\xEAn d\u1EE5ng ki\u1EC3m so\xE1t nhi\u1EC7t \u1EA9m t\u1EA1i c\u1EA3ng/hi\u1EC7n tr\u01B0\u1EDDng, \u0111\xE0m ph\xE1n gia h\u1EA1n b\u1EA3o hi\u1EC3m l\u01B0u kho v\xE0 chia nh\u1ECF ti\u1EBFn \u0111\u1ED9 l\u1EAFp \u0111\u1EB7t cu\u1ED1n chi\u1EBFu theo t\u1EEBng t\u1ED5 m\xE1y",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "T\u1EA1i sao EVN kh\xF4ng \xE1p d\u1EE5ng h\xECnh th\u1EE9c Ch\xE0o h\xE0ng c\u1EA1nh tranh hay Ch\u1EC9 \u0111\u1ECBnh th\u1EA7u cho G\xF3i th\u1EA7u 01TB-BA?",
+        "a": "Do quy m\xF4 h\u01A1n 4.500 t\u1EF7 v\u01B0\u1EE3t xa h\u1EA1n m\u1EE9c ch\xE0o h\xE0ng c\u1EA1nh tranh; t\xEDnh ch\u1EA5t k\u1EF9 thu\u1EADt cao \u0111\u1ED9c quy\u1EC1n qu\u1ED1c t\u1EBF \u0111\xF2i h\u1ECFi \u0111\u1EA5u th\u1EA7u r\u1ED9ng r\xE3i qu\u1ED1c t\u1EBF \u0111\u1EC3 \u0111\u1EA3m b\u1EA3o t\xEDnh c\u1EA1nh tranh v\xE0 minh b\u1EA1ch",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Ph\xE2n t\xEDch c\u01A1 ch\u1EBF t\xE1ch bi\u1EC7t \u0111\xE1nh gi\xE1 k\u1EF9 thu\u1EADt v\xE0 t\xE0i ch\xEDnh trong ph\u01B0\u01A1ng th\u1EE9c 1G2T gi\xFAp b\u1EA3o v\u1EC7 an to\xE0n h\u1EC7 th\u1ED1ng \u0111i\u1EC7n qu\u1ED1c gia nh\u01B0 th\u1EBF n\xE0o?",
+        "a": "Lo\u1EA1i b\u1ECF ho\xE0n to\xE0n c\xE1c nh\xE0 th\u1EA7u ch\xE0o gi\xE1 r\u1EBB nh\u01B0ng thi\u1EBFt b\u1ECB kh\xF4ng \u0111\u1EA1t chu\u1EA9n k\u1EF9 thu\u1EADt; ng\u0103n ng\u1EEBa nguy c\u01A1 s\u1EF1 c\u1ED1 d\u1EEBng m\xE1y ho\u1EB7c r\xE3 l\u01B0\u1EDBi \u0111i\u1EC7n qu\u1ED1c gia. [Barem ch\u1EA5m \u0111i\u1EC3m: N\xEAu \u0111\u01B0\u1EE3c \xFD Lo\u1EA1i b\u1ECF th\u1EA7u gi\xE1 r\u1EBB k\xE9m ch\u1EA5t l\u01B0\u1EE3ng v\xE0 B\u1EA3o \u0111\u1EA3m an to\xE0n v\u1EADn h\xE0nh/ch\u1EA5t l\u01B0\u1EE3ng thi\u1EBFt b\u1ECB]",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "M\u1ED9t t\u1ED5 m\xE1y 300 MW c\u1EE7a B\xE1c \xC1i v\u1EADn h\xE0nh ph\xE1t \u0111i\u1EC7n h\u1EBFt c\xF4ng su\u1EA5t li\xEAn t\u1EE5c trong 6 gi\u1EDD cao \u0111i\u1EC3m s\u1EBD t\u1EA1o ra s\u1EA3n l\u01B0\u1EE3ng \u0111i\u1EC7n n\u0103ng h\xF2a l\u01B0\u1EDBi l\xE0 bao nhi\xEAu MWh?",
+        "a": "1.800 MWh (300 MW * 6 h = 1.800 MWh)",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "H\xE3y ph\xE2n t\xEDch b\xE0i h\u1ECDc kinh nghi\u1EC7m t\u1EEB g\xF3i 01TB-BA v\u1EC1 kh\u1EA3o s\xE1t tuy\u1EBFn \u0111\u01B0\u1EDDng v\u1EADn chuy\u1EC3n logistics si\xEAu tr\u01B0\u1EDDng si\xEAu tr\u1ECDng t\u1EA1i Kh\xE1nh H\xF2a?",
+        "a": "C\u1EA7n kh\u1EA3o s\xE1t chi ti\u1EBFt b\xE1n k\xEDnh cong, \u0111\u1ED9 d\u1ED1c \u0111\xE8o v\xE0 t\u1EA3i tr\u1ECDng c\u1EA7u c\u1ED1ng t\u1EEB c\u1EA3ng bi\u1EC3n v\xE0o c\xF4ng tr\xECnh tr\u01B0\u1EDBc khi m\u1EDDi th\u1EA7u \u0111\u1EC3 l\u1EADp ph\u01B0\u01A1ng \xE1n gia c\u1ED1 v\xE0 tr\xE1nh t\u1EAFc ngh\u1EBDn",
+        "type": "theory",
+        "vdZone": "KHXH"
+      }
+    ],
+    "40": [
+      {
+        "q": "Ch\u1EE7 \u0111\u1EA7u t\u01B0 \u0111\xE1nh gi\xE1 3 ph\u01B0\u01A1ng \xE1n tua-bin: Ph\u01B0\u01A1ng \xE1n 1 (mua 4.462 t\u1EF7, OPEX 40 n\u0103m 1.150 t\u1EF7, t\u1ED5n th\u1EA5t hi\u1EC7u su\u1EA5t 160 t\u1EF7); Ph\u01B0\u01A1ng \xE1n 2 (mua 4.410 t\u1EF7, OPEX 1.300 t\u1EF7, t\u1ED5n th\u1EA5t 240 t\u1EF7); Ph\u01B0\u01A1ng \xE1n 3 (mua 4.500 t\u1EF7, OPEX 1.050 t\u1EF7, t\u1ED5n th\u1EA5t 120 t\u1EF7). H\xE3y t\xEDnh LCC c\u1EE7a c\u1EA3 3 ph\u01B0\u01A1ng \xE1n v\xE0 x\xE1c \u0111\u1ECBnh ph\u01B0\u01A1ng \xE1n t\u1ED1i \u01B0u nh\u1EA5t ti\u1EBFt ki\u1EC7m h\u01A1n ph\u01B0\u01A1ng \xE1n gi\xE1 r\u1EBB nh\u1EA5t (PA2) bao nhi\xEAu t\u1EF7 \u0111\u1ED3ng?",
+        "a": "Ph\u01B0\u01A1ng \xE1n 3 t\u1ED1i \u01B0u nh\u1EA5t (LCC3 = 5.670 t\u1EF7), ti\u1EBFt ki\u1EC7m h\u01A1n Ph\u01B0\u01A1ng \xE1n 2 (LCC2 = 5.950 t\u1EF7) l\xE0 280 t\u1EF7 \u0111\u1ED3ng (LCC1 = 5.772 t\u1EF7)",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "G\xF3i th\u1EA7u 01TB-BA c\xF3 th\u1EDDi gian 51 th\xE1ng. N\u1EBFu chi ph\xED th\xFAc \u0111\u1EA9y bi\u1EC7n ph\xE1p thi c\xF4ng \u0111\u1EC3 \u0111\u01B0a t\u1ED5 m\xE1y 1 ph\xE1t \u0111i\u1EC7n s\u1EDBm 90 ng\xE0y l\xE0 45 t\u1EF7 \u0111\u1ED3ng, nh\u01B0ng vi\u1EC7c ph\xE1t \u0111i\u1EC7n s\u1EDBm gi\xFAp EVN gi\u1EA3m chi ph\xED ch\u1EA1y d\u1EA7u 1,2 t\u1EF7 \u0111\u1ED3ng m\u1ED7i ng\xE0y. H\u1ECFi ch\u1EE7 \u0111\u1EA7u t\u01B0 c\xF3 n\xEAn th\xFAc \u0111\u1EA9y ti\u1EBFn \u0111\u1ED9 kh\xF4ng v\xE0 l\u1EE3i \xEDch kinh t\u1EBF thu\u1EA7n thu \u0111\u01B0\u1EE3c l\xE0 bao nhi\xEAu t\u1EF7 \u0111\u1ED3ng?",
+        "a": "N\xEAn th\xFAc \u0111\u1EA9y; L\u1EE3i \xEDch kinh t\u1EBF thu\u1EA7n l\xE0 63 t\u1EF7 \u0111\u1ED3ng (L\u1EE3i \xEDch = 90 * 1,2 = 108 t\u1EF7; L\u1EE3i \xEDch thu\u1EA7n = 108 - 45 = 63 t\u1EF7 \u0111\u1ED3ng)",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "Nh\xE0 m\xE1y B\xE1c \xC1i b\u01A1m n\u01B0\u1EDBc ban \u0111\xEAm v\u1EDBi gi\xE1 \u0111i\u1EC7n mua v\xE0o 1.000 VN\u0110/kWh, ti\xEAu th\u1EE5 10 tri\u1EC7u kWh. Hi\u1EC7u su\u1EA5t chu tr\xECnh k\xE9p \u0111\u1EA1t 80%. Ban ng\xE0y x\u1EA3 n\u01B0\u1EDBc ph\xE1t \u0111i\u1EC7n v\xE0o gi\u1EDD cao \u0111i\u1EC3m b\xE1n v\u1EDBi gi\xE1 3.200 VN\u0110/kWh. H\xE3y t\xEDnh l\u1EE3i nhu\u1EADn g\u1ED9p (ch\xEAnh l\u1EC7ch doanh thu ph\xE1t \u0111i\u1EC7n tr\u1EEB chi ph\xED mua \u0111i\u1EC7n b\u01A1m) c\u1EE7a chu tr\xECnh trong ng\xE0y \u0111\xF3 l\xE0 bao nhi\xEAu tri\u1EC7u \u0111\u1ED3ng?",
+        "a": "15.600 tri\u1EC7u \u0111\u1ED3ng (15,6 t\u1EF7 \u0111\u1ED3ng) [Chi ph\xED b\u01A1m: 10 t\u1EF7; Doanh thu ph\xE1t: 8 tri\u1EC7u kWh * 3.200 = 25,6 t\u1EF7; L\u1EE3i nhu\u1EADn g\u1ED9p: 25,6 - 10 = 15,6 t\u1EF7]",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "Trong qu\xE1 tr\xECnh l\u1EAFp \u0111\u1EB7t thi\u1EBFt b\u1ECB, nh\xE0 th\u1EA7u khi\u1EBFu n\u1EA1i y\xEAu c\u1EA7u b\u1ED3i th\u01B0\u1EDDng 150 t\u1EF7 \u0111\u1ED3ng do m\u1EB7t b\u1EB1ng ng\u1EA7m ch\u1EADm b\xE0n giao. Theo m\u1EABu h\u1EE3p \u0111\u1ED3ng FIDIC, tr\xECnh t\u1EF1 4 b\u01B0\u1EDBc gi\u1EA3i quy\u1EBFt tranh ch\u1EA5p n\xE0y di\u1EC5n ra nh\u01B0 th\u1EBF n\xE0o?",
+        "a": "(1) Nh\xE0 th\u1EA7u g\u1EEDi Th\xF4ng b\xE1o khi\u1EBFu n\u1EA1i (Claim) -> (2) K\u1EF9 s\u01B0 t\u01B0 v\u1EA5n (The Engineer) ra quy\u1EBFt \u0111\u1ECBnh -> (3) Ban Ph\xE2n x\u1EED tranh ch\u1EA5p (DAB) \u0111\u01B0a ra ph\xE1n quy\u1EBFt -> (4) Tr\u1ECDng t\xE0i qu\u1ED1c t\u1EBF (Arbitration). [Barem ch\u1EA5m \u0111i\u1EC3m: Th\xED sinh n\xEAu \u0111\xFAng tr\xECnh t\u1EF1 qua K\u1EF9 s\u01B0 t\u01B0 v\u1EA5n, Ban DAB v\xE0 Tr\u1ECDng t\xE0i qu\u1ED1c t\u1EBF]",
+        "type": "practice",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Theo ph\u01B0\u01A1ng ph\xE1p Gi\xE1 \u0111\xE1nh gi\xE1 (Evaluated Price): Nh\xE0 th\u1EA7u 1 ch\xE0o gi\xE1 4.462 t\u1EF7, th\u01B0\u1EDFng ti\u1EBFn \u0111\u1ED9 s\u1EDBm -30 t\u1EF7, b\u1EA3o h\xE0nh m\u1EDF r\u1ED9ng -15 t\u1EF7. Nh\xE0 th\u1EA7u 2 ch\xE0o gi\xE1 4.430 t\u1EF7, b\u1ECB c\u1ED9ng ph\u1EA1t hi\u1EC7u su\u1EA5t th\u1EA5p +80 t\u1EF7. H\xE3y t\xEDnh Gi\xE1 \u0111\xE1nh gi\xE1 c\u1EE7a t\u1EEBng nh\xE0 th\u1EA7u v\xE0 cho bi\u1EBFt nh\xE0 th\u1EA7u n\xE0o x\u1EBFp th\u1EE9 nh\u1EA5t?",
+        "a": "Nh\xE0 th\u1EA7u 1 x\u1EBFp th\u1EE9 nh\u1EA5t v\u1EDBi Gi\xE1 \u0111\xE1nh gi\xE1 l\xE0 4.417 t\u1EF7 \u0111\u1ED3ng (Nh\xE0 th\u1EA7u 2 c\xF3 Gi\xE1 \u0111\xE1nh gi\xE1 l\xE0 4.510 t\u1EF7 \u0111\u1ED3ng, Nh\xE0 th\u1EA7u 1 th\u1EA5p h\u01A1n 93 t\u1EF7 \u0111\u1ED3ng)",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "D\u1EF1 \xE1n B\xE1c \xC1i c\xF3 t\u1ED5ng m\u1EE9c \u0111\u1EA7u t\u01B0 21.101,468 t\u1EF7 \u0111\u1ED3ng. G\xF3i th\u1EA7u 01TB-BA c\xF3 gi\xE1 tr\xFAng th\u1EA7u 4.462,603 t\u1EF7 \u0111\u1ED3ng \u0111\u01B0\u1EE3c t\xE0i tr\u1EE3 80% t\u1EEB v\u1ED1n vay n\u01B0\u1EDBc ngo\xE0i v\xE0 20% t\u1EEB ngu\u1ED3n v\u1ED1n \u0111\u1ED1i \u1EE9ng t\u1EF1 c\xF3 c\u1EE7a EVN. H\xE3y t\xEDnh s\u1ED1 v\u1ED1n \u0111\u1ED1i \u1EE9ng ch\xEDnh x\xE1c m\xE0 EVN ph\u1EA3i b\u1ECF ra cho ri\xEAng g\xF3i th\u1EA7u 01TB-BA?",
+        "a": "892,52 t\u1EF7 \u0111\u1ED3ng (4.462,603 * 20% = 892,5206 t\u1EF7 \u0111\u1ED3ng)",
+        "type": "practice",
+        "vdZone": "KHTN"
+      },
+      {
+        "q": "Trong \u0111\u1EA5u th\u1EA7u qu\u1ED1c t\u1EBF quy m\xF4 l\u1EDBn, c\xE1c d\u1EA5u hi\u1EC7u b\u1EA5t th\u01B0\u1EDDng n\xE0o trong H\u1ED3 s\u01A1 d\u1EF1 th\u1EA7u cho th\u1EA5y nguy c\u01A1 th\xF4ng \u0111\u1ED3ng, d\xE0n x\u1EBFp th\u1EA7u gi\u1EEFa c\xE1c li\xEAn danh d\u1EF1 th\u1EA7u?",
+        "a": "Gi\xE1 d\u1EF1 th\u1EA7u ch\xEAnh l\u1EC7ch nhau theo m\u1ED9t t\u1EF7 l\u1EC7 ph\u1EA7n tr\u0103m c\u1ED1 \u0111\u1ECBnh b\u1EA5t th\u01B0\u1EDDng; h\u1ED3 s\u01A1 c\xF3 c\xF9ng l\u1ED7i ch\xEDnh t\u1EA3, c\xF9ng m\u1EABu format v\u0103n b\u1EA3n ho\u1EB7c c\xF9ng \u0111\u1ECBa ch\u1EC9 IP; c\xF3 nh\xE0 th\u1EA7u b\u1ECF gi\xE1 th\u1EA7u cao b\u1EA5t h\u1EE3p l\xFD \u0111\u1EC3 nh\u01B0\u1EDDng quy\u1EC1n th\u1EAFng cho nh\xE0 th\u1EA7u \u0111\u01B0\u1EE3c ch\u1EC9 \u0111\u1ECBnh tr\u01B0\u1EDBc",
+        "type": "theory",
+        "vdZone": "KHXH"
+      },
+      {
+        "q": "Nh\xE0 m\xE1y B\xE1c \xC1i c\xF4ng su\u1EA5t 1.200 MW v\u1EADn h\xE0nh thay th\u1EBF nhi\u1EC7t \u0111i\u1EC7n than c\xF3 h\u1EC7 s\u1ED1 ph\xE1t th\u1EA3i 0,9 kg CO2/kWh. N\u1EBFu trong m\u1ED9t n\u0103m, nh\xE0 m\xE1y ph\xE1t \u0111i\u1EC7n ph\u1EE7 \u0111\u1EC9nh 2.500 gi\u1EDD v\u1EDBi c\xF4ng su\u1EA5t trung b\xECnh 800 MW, h\u1ECFi l\u01B0\u1EE3ng ph\xE1t th\u1EA3i CO2 gi\u1EA3m thi\u1EC3u \u0111\u01B0\u1EE3c trong n\u0103m \u0111\xF3 l\xE0 bao nhi\xEAu t\u1EA5n?",
+        "a": "1.800.000 t\u1EA5n CO2 (1,8 tri\u1EC7u t\u1EA5n) [S\u1EA3n l\u01B0\u1EE3ng: 800.000 kW * 2.500 h = 2 t\u1EF7 kWh; Gi\u1EA3m ph\xE1t th\u1EA3i: 2 t\u1EF7 * 0,9 kg = 1,8 t\u1EF7 kg = 1,8 tri\u1EC7u t\u1EA5n CO2]",
+        "type": "practice",
+        "vdZone": "KHTN"
+      }
+    ]
+  },
+  "cauHoiPhu": [
+    {
+      "q": "Hi\u1EC7p h\u1ED9i qu\u1ED1c t\u1EBF c\xE1c k\u1EF9 s\u01B0 t\u01B0 v\u1EA5n, \u0111\u01A1n v\u1ECB ph\xE1t h\xE0nh c\xE1c m\u1EABu h\u1EE3p \u0111\u1ED3ng x\xE2y l\u1EAFp v\xE0 thi\u1EBFt b\u1ECB ph\u1ED5 bi\u1EBFn th\u1EBF gi\u1EDBi c\xF3 t\xEAn vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
+      "a": "FIDIC"
+    },
+    {
+      "q": "Theo Quy ho\u1EA1ch \u0111i\u1EC7n VIII, ngu\u1ED3n n\u0103ng l\u01B0\u1EE3ng n\xE0o c\xF3 t\xEDnh bi\u1EBFn thi\xEAn m\u1EA1nh c\u1EA7n Th\u1EE7y \u0111i\u1EC7n t\xEDch n\u0103ng B\xE1c \xC1i b\xF9 \u0111\u1EAFp c\xF4ng su\u1EA5t nhi\u1EC1u nh\u1EA5t?",
+      "a": "N\u0103ng l\u01B0\u1EE3ng t\xE1i t\u1EA1o (\u0110i\u1EC7n m\u1EB7t tr\u1EDDi v\xE0 \u0111i\u1EC7n gi\xF3)"
+    },
+    {
+      "q": "Vi\u1EC7c \u0111\xE1nh gi\xE1 h\u1ED3 s\u01A1 d\u1EF1 th\u1EA7u qua t\u1ED5 chuy\xEAn gia, h\u1ED9i \u0111\u1ED3ng x\xE9t th\u1EA7u v\xE0 c\u01A1 quan th\u1EA9m \u0111\u1ECBnh \u0111\u1ED9c l\u1EADp \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 thi\u1EBFt l\u1EADp c\xE1c \u0111i\u1EC3m g\xEC trong ki\u1EC3m so\xE1t n\u1ED9i b\u1ED9?",
+      "a": "\u0110i\u1EC3m ki\u1EC3m so\xE1t (Control Points)"
+    },
+    {
+      "q": "Th\xF4ng s\u1ED1 ch\xEAnh l\u1EC7ch \u0111\u1ED9 cao gi\u1EEFa h\u1ED3 tr\xEAn v\xE0 h\u1ED3 d\u01B0\u1EDBi quy\u1EBFt \u0111\u1ECBnh tr\u1EF1c ti\u1EBFp \xE1p l\u1EF1c n\u01B0\u1EDBc v\xE0 c\xF4ng su\u1EA5t ph\xE1t c\u1EE7a tua-bin g\u1ECDi l\xE0 g\xEC?",
+      "a": "\u0110\u1ED9 ch\xEAnh cao (C\u1ED9t n\u01B0\u1EDBc / Head)"
+    },
+    {
+      "q": "S\u1ED1 b\u01B0\u1EDBc chu\u1EA9n h\xF3a trong quy tr\xECnh t\u1ED5 ch\u1EE9c th\u1EF1c hi\u1EC7n \u0111\u1EA5u th\u1EA7u theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15 l\xE0 m\u1EA5y b\u01B0\u1EDBc?",
+      "a": "7 b\u01B0\u1EDBc"
+    },
+    {
+      "q": "Theo m\xF4 h\xECnh t\u1ED5 ch\u1EE9c ch\xEDnh quy\u1EC1n \u0111\u1ECBa ph\u01B0\u01A1ng 2 c\u1EA5p, Nh\xE0 m\xE1y Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i \u0111\u01B0\u1EE3c x\xE2y d\u1EF1ng t\u1EA1i \u0111\u01A1n v\u1ECB h\xE0nh ch\xEDnh c\u1EA5p c\u01A1 s\u1EDF n\xE0o c\u1EE7a t\u1EC9nh Kh\xE1nh H\xF2a?",
+      "a": "X\xE3 Ph\u01B0\u1EDBc H\xF2a (Ph\u01B0\u1EDBc H\xF2a)"
+    }
+  ]
+};
+var BAC_AI_QUESTION_SET = autoTagOlympiaSet(RAW_BAC_AI_QUESTION_SET, false);
 
 // src/lib/olympia/rulesets.ts
 var solo60s12q = (seatCount) => Array.from({ length: seatCount }, (_, i) => ({
@@ -25762,6 +26954,24 @@ var OlympiaGame = class _OlympiaGame {
       this.touch(now);
       return true;
     }
+    if (st.entranceState && st.entranceState.active) {
+      const elapsedForSeat = now - st.entranceState.seatStartedAt;
+      if (elapsedForSeat >= 11500) {
+        const activeCount = Math.max(1, st.seats.length);
+        const nextIdx = st.entranceState.currentSeatIdx + 1;
+        if (nextIdx < activeCount) {
+          st.entranceState.currentSeatIdx = nextIdx;
+          st.entranceState.seatStartedAt = now;
+          this.touch(now);
+          return true;
+        } else {
+          st.entranceState = null;
+          this.cue("6_NhacKhac/contest_intro", "stop");
+          this.touch(now);
+          return true;
+        }
+      }
+    }
     let changed = false;
     const expired = (t) => !!t && timerRunning(t) && timerRemaining(t, now) <= 0;
     const fin = (t) => {
@@ -26203,6 +27413,58 @@ var OlympiaGame = class _OlympiaGame {
         const s = this.seat(num("seat"));
         if (!s) return fail("Gh\u1EBF kh\xF4ng h\u1EE3p l\u1EC7");
         s.name = String(a.name || "").slice(0, 30);
+        if (a.school !== void 0) {
+          s.school = String(a.school || "").slice(0, 60);
+        }
+        return OK;
+      }
+      case "seat:setSchool": {
+        const s = this.seat(num("seat"));
+        if (!s) return fail("Gh\u1EBF kh\xF4ng h\u1EE3p l\u1EC7");
+        s.school = String(a.school || "").slice(0, 60);
+        return OK;
+      }
+      case "entrance:start": {
+        const ALL_GESTURES = [
+          "wave_single",
+          "fist_pump",
+          "hand_on_heart_bow",
+          "wave_double",
+          "heart_pose"
+        ];
+        const activeCount = Math.max(1, st.seats.length);
+        const shuffled = [...ALL_GESTURES].sort(() => Math.random() - 0.5);
+        const seatGestures = [];
+        for (let i = 0; i < activeCount; i++) {
+          seatGestures.push(shuffled[i % shuffled.length]);
+        }
+        st.studioCameraManual = false;
+        st.entranceState = {
+          active: true,
+          startedAt: now,
+          currentSeatIdx: 0,
+          seatStartedAt: now,
+          seatGestures
+        };
+        this.cue("6_NhacKhac/contest_intro", "bgm");
+        return OK;
+      }
+      case "entrance:next": {
+        if (!st.entranceState || !st.entranceState.active) return OK;
+        const activeCount = Math.max(1, st.seats.length);
+        const nextIdx = st.entranceState.currentSeatIdx + 1;
+        if (nextIdx < activeCount) {
+          st.entranceState.currentSeatIdx = nextIdx;
+          st.entranceState.seatStartedAt = now;
+        } else {
+          st.entranceState = null;
+          this.cue("6_NhacKhac/contest_intro", "stop");
+        }
+        return OK;
+      }
+      case "entrance:skip": {
+        st.entranceState = null;
+        this.cue("6_NhacKhac/contest_intro", "stop");
         return OK;
       }
       case "game:reset": {
@@ -26813,6 +28075,7 @@ var OlympiaGame = class _OlympiaGame {
           resetTimer(v.timer, rs.vcnv.rowTimerMs);
           v.answers = {};
           v.answersRevealed = false;
+          v.revealedCorrectAnswer = false;
           v.bells = [];
           v.centerWrong = false;
           this.cue("2_VuotChuongNgaiVat/choose_row");
@@ -26824,6 +28087,7 @@ var OlympiaGame = class _OlympiaGame {
         resetTimer(v.timer, rs.vcnv.rowTimerMs);
         v.answers = {};
         v.answersRevealed = false;
+        v.revealedCorrectAnswer = false;
         v.bells = [];
         v.rows[i].wrong = false;
         this.cue("2_VuotChuongNgaiVat/choose_row");
@@ -26842,8 +28106,13 @@ var OlympiaGame = class _OlympiaGame {
         if (row < 0) return fail("Ch\u01B0a ch\u1ECDn h\xE0ng");
         pauseTimer(v.timer, now);
         v.answersRevealed = true;
+        v.revealedCorrectAnswer = false;
         v.phase = "answers";
         this.cue("2_VuotChuongNgaiVat/reveal_answers");
+        return OK;
+      }
+      case "vcnv:revealCorrect": {
+        v.revealedCorrectAnswer = true;
         return OK;
       }
       case "vcnv:correct": {
@@ -27118,6 +28387,7 @@ var OlympiaGame = class _OlympiaGame {
         tt.submissions = {};
         tt.ranking = [];
         tt.correctAnswer = void 0;
+        tt.revealedCorrectAnswer = false;
         tt.timer = mkTimer(rs.timers[Math.min(tt.qIdx, rs.timers.length - 1)]);
         this.cue("", "stop");
         return OK;
@@ -27130,6 +28400,7 @@ var OlympiaGame = class _OlympiaGame {
           this.recordOpenedQuestion(q.q || q.answer);
         }
         tt.phase = "question";
+        tt.revealedCorrectAnswer = false;
         this.cue("3_TangToc/show_question");
         return OK;
       }
@@ -27165,8 +28436,13 @@ var OlympiaGame = class _OlympiaGame {
           return x.ms - y.ms || x.seat - y.seat;
         });
         tt.correctAnswer = q?.answer;
+        tt.revealedCorrectAnswer = false;
         tt.phase = "ranking";
         this.cue("3_TangToc/show_answer");
+        return OK;
+      }
+      case "tt:revealCorrect": {
+        tt.revealedCorrectAnswer = true;
         return OK;
       }
       case "tt:grade": {
@@ -27969,10 +29245,10 @@ async function loadGame(code) {
           questionSet: SAMPLE_QUESTION_SET,
           seatCount: 4,
           teams: [
-            { name: "\u0110\u1ED9i \u0110\u1ECF" },
-            { name: "\u0110\u1ED9i Lam" },
-            { name: "\u0110\u1ED9i V\xE0ng" },
-            { name: "\u0110\u1ED9i L\u1EE5c" }
+            { name: "Th\xED sinh 1" },
+            { name: "Th\xED sinh 2" },
+            { name: "Th\xED sinh 3" },
+            { name: "Th\xED sinh 4" }
           ]
         };
         const game2 = new OlympiaGame(code, defaultCfg);
@@ -28262,6 +29538,7 @@ async function cleanupStaleRooms(options = {}) {
 }
 
 // server.ts
+var import_path = __toESM(require("path"));
 async function ensureDatabaseSchema() {
   try {
     const modes = [
@@ -28310,7 +29587,7 @@ var dev = process.env.NODE_ENV === "development";
 var hostname = process.env.HOSTNAME || "0.0.0.0";
 var port = parseInt(process.env.PORT ?? "3000", 10);
 console.log(`[Server Boot] Mode: ${dev ? "DEVELOPMENT (Turbopack JIT)" : "PRODUCTION (Precompiled Static Chunks)"} | Port: ${port}`);
-var app = (0, import_next.default)({ dev, hostname, port });
+var app = (0, import_next.default)({ dev, hostname, port, dir: import_path.default.resolve(__dirname) });
 var handle = app.getRequestHandler();
 app.prepare().then(async () => {
   const httpServer = (0, import_http.createServer)(async (req, res) => {

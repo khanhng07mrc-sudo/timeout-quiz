@@ -2024,10 +2024,13 @@ export class OlympiaGame {
         return OK;
       }
       case "vd:onStage": {
+        vd.onStage = true;
         this.cue("4_VeDich/on_stage");
         return OK;
       }
       case "vd:finishTurn": {
+        vd.onStage = false;
+        vd.phase = "seatDone";
         this.cue("4_VeDich/finish_turn");
         return OK;
       }

@@ -29,7 +29,7 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     id: 1,
     label: "Toàn Cảnh",
     pos: [0.0, 4.4, 12.8],
-    target: [0.0, 1.8, -3.2],
+    target: [0.2, 1.8, -3.5],
   },
   2: {
     id: 2,
@@ -53,26 +53,26 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   5: {
     id: 5,
     label: "Cận Cảnh TS 1",
-    pos: [-4.4, 1.35, -1.9],
-    target: [-6.13, 0.85, -2.95],
+    pos: [-4.2, 1.55, -1.75],
+    target: [-6.30, 1.50, -2.40],
   },
   6: {
     id: 6,
     label: "Cận Cảnh TS 2",
-    pos: [-3.5, 1.55, -2.2],
-    target: [-6.05, 1.25, -3.13],
+    pos: [-3.8, 1.55, -2.45],
+    target: [-6.00, 1.50, -3.35],
   },
   7: {
     id: 7,
     label: "Cận Cảnh TS 3",
-    pos: [-3.2, 1.55, -3.0],
-    target: [-5.59, 1.25, -4.01],
+    pos: [-3.3, 1.55, -3.20],
+    target: [-5.55, 1.50, -4.20],
   },
   8: {
     id: 8,
     label: "Cận Cảnh TS 4",
-    pos: [-2.8, 1.55, -3.8],
-    target: [-5.01, 1.25, -4.80],
+    pos: [-2.7, 1.55, -3.85],
+    target: [-4.98, 1.50, -4.95],
   },
   9: {
     id: 9,
@@ -172,27 +172,57 @@ export function CameraController({
       camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 6.0, delta);
     }
     // 0. Opening Sequence Camera Director:
-    // User Requirement: "khi mở đầu, zoom out từ góc quay bục MC (nơi chứa màn lục giác), lúc bắt đầu trường quay sẽ tối hẳn..."
+    // User Requirement: "không chỉ có animation, mà phải có hiệu ứng zoom lên từng lượt nữa (hiệu ứng này chỉ có khi mở đầu)"
+    // 3-Wave Zoom Waves directed straight through the standing hexagonal portal, then cinematic dolly pull-out to CAM 1 (Wide Master Shot)
     if (introStartedAt) {
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = (now - introStartedAt) / 1000;
-      if (elapsedSec < 20) {
-        const startPos = new THREE.Vector3(-0.4, 1.55, 0.0);
-        const startTarget = new THREE.Vector3(1.4, 1.35, -2.8);
-        const endPos = new THREE.Vector3(0.8, 3.6, 11.8);
-        const endTarget = new THREE.Vector3(0.8, 1.8, -2.4);
+      if (elapsedSec < 15) {
+        const portalTarget = new THREE.Vector3(3.48, 2.3, -8.59);
+        const cam1Pos = new THREE.Vector3(0.0, 4.4, 12.8);
+        const cam1Target = new THREE.Vector3(0.2, 1.8, -3.5);
 
-        // 0s -> 3.5s: Close up straight-on on MC area / starry night hexagon
-        // 3.5s -> 16s: Smooth dolly zoom out to wide CAM 1
-        // 16s -> 20s: Settle at CAM 1
-        const t = Math.min(1.0, Math.max(0, (elapsedSec - 3.5) / 12.5));
-        const smoothT = t * t * (3 - 2 * t);
+        let curPos: THREE.Vector3;
+        let curTarget: THREE.Vector3;
 
-        currentPos.current.lerpVectors(startPos, endPos, smoothT);
-        currentTarget.current.lerpVectors(startTarget, endTarget, smoothT);
+        if (elapsedSec < 2.5) {
+          // Wave 1 (0.0s - 2.5s): Quick surge from mid-distance towards hexagonal arch
+          const t = elapsedSec / 2.5;
+          const surge = Math.sin(t * Math.PI);
+          const pStart = new THREE.Vector3(2.1, 2.8, 1.5);
+          const pDeep = new THREE.Vector3(2.7, 1.9, -4.2);
+          curPos = new THREE.Vector3().lerpVectors(pStart, pDeep, surge);
+          curTarget = portalTarget.clone();
+        } else if (elapsedSec < 5.5) {
+          // Wave 2 (2.5s - 5.5s): Second surge penetrating deeper past the MC lectern
+          const t = (elapsedSec - 2.5) / 3.0;
+          const surge = Math.sin(t * Math.PI);
+          const pStart = new THREE.Vector3(2.4, 2.2, -2.5);
+          const pDeep = new THREE.Vector3(3.1, 1.7, -6.6);
+          curPos = new THREE.Vector3().lerpVectors(pStart, pDeep, surge);
+          curTarget = portalTarget.clone();
+        } else if (elapsedSec < 8.5) {
+          // Wave 3 (5.5s - 8.5s): Climax surge punching right into the inner portal & golden Olympia logo
+          const t = (elapsedSec - 5.5) / 3.0;
+          const surge = Math.sin(t * Math.PI * 0.5);
+          const pStart = new THREE.Vector3(2.8, 1.9, -4.8);
+          const pDeep = new THREE.Vector3(3.38, 2.1, -7.8);
+          curPos = new THREE.Vector3().lerpVectors(pStart, pDeep, surge);
+          curTarget = portalTarget.clone();
+        } else {
+          // Grand Reveal Pull-back (8.5s - 14.5s): Cinematic pull-back from deep portal out to CAM 1
+          const t = Math.min(1.0, (elapsedSec - 8.5) / 5.5);
+          const smoothT = t * t * (3 - 2 * t);
+          const pStart = new THREE.Vector3(3.38, 2.1, -7.8);
+          curPos = new THREE.Vector3().lerpVectors(pStart, cam1Pos, smoothT);
+          curTarget = new THREE.Vector3().lerpVectors(portalTarget, cam1Target, smoothT);
+        }
 
-        camera.position.copy(currentPos.current);
-        camera.lookAt(currentTarget.current);
+        currentPos.current.copy(curPos);
+        currentTarget.current.copy(curTarget);
+
+        camera.position.copy(curPos);
+        camera.lookAt(curTarget);
         camera.updateProjectionMatrix();
         return;
       }

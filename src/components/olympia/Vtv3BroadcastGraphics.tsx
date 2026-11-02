@@ -236,10 +236,10 @@ export function RedConnectionRivet() {
  */
 function clampQuestionFont(text: string) {
   const len = text ? text.length : 0;
-  if (len <= 50) return "text-xl sm:text-2xl md:text-3xl font-black";
-  if (len <= 90) return "text-lg sm:text-xl md:text-2xl font-black";
-  if (len <= 140) return "text-base sm:text-lg md:text-xl font-bold";
-  return "text-sm sm:text-base md:text-lg font-bold";
+  if (len <= 50) return "text-sm sm:text-xl md:text-2xl lg:text-3xl font-black";
+  if (len <= 90) return "text-xs sm:text-lg md:text-xl lg:text-2xl font-black";
+  if (len <= 140) return "text-xs sm:text-base md:text-lg lg:text-xl font-bold";
+  return "text-[11px] sm:text-sm md:text-base lg:text-lg font-bold";
 }
 
 /**
@@ -308,11 +308,11 @@ export function Vtv3ChalkboardQuestionFrame({
 
       {/* ── 2. Chalkboard Question Banner (Fixed height 185-215px) ── */}
       <div
-        className="relative w-full z-10 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl"
+        className="relative w-full z-10 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl transition-all"
         style={{
-          minHeight: "180px",
-          maxHeight: "220px",
-          height: "25vh",
+          minHeight: "clamp(100px, 18vh, 180px)",
+          maxHeight: "clamp(150px, 28vh, 230px)",
+          height: "auto",
           background: "linear-gradient(175deg, #101c2e 0%, #0b1320 60%, #070d16 100%)",
           border: "3.5px solid #d4af37",
           boxShadow:
@@ -336,10 +336,10 @@ export function Vtv3ChalkboardQuestionFrame({
         </div>
 
         {/* Center: Question Prompt Text */}
-        <div className="relative z-10 flex-1 px-8 sm:px-12 py-3 flex flex-col items-center justify-center text-center">
+        <div className="relative z-10 flex-1 px-4 sm:px-8 md:px-12 py-2 sm:py-3 flex flex-col items-center justify-center text-center">
           {questionText ? (
             <div
-              className={`text-white font-black leading-snug drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] max-w-4xl select-text ${clampQuestionFont(
+              className={`text-white font-black leading-normal pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] max-w-4xl select-text ${clampQuestionFont(
                 questionText
               )}`}
             >

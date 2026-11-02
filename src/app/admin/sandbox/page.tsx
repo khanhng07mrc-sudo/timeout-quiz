@@ -378,21 +378,21 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       }
     } catch {}
     return [
-      { name: "Đội Đỏ", color: "#ef4444" },
-      { name: "Đội Lam", color: "#3b82f6" },
-      { name: "Đội Vàng", color: "#eab308" },
-      { name: "Đội Lục", color: "#10b981" },
+      { name: "Thí sinh 1", color: "#38bdf8" },
+      { name: "Thí sinh 2", color: "#38bdf8" },
+      { name: "Thí sinh 3", color: "#38bdf8" },
+      { name: "Thí sinh 4", color: "#38bdf8" },
     ];
   });
 
   const handleSetSandboxTeamCount = (count: number) => {
     const clamped = Math.max(2, Math.min(8, count));
-    const palette = ["#ef4444", "#3b82f6", "#eab308", "#10b981", "#a855f7", "#ec4899", "#06b6d4", "#f97316"];
+    const palette = ["#38bdf8", "#38bdf8", "#38bdf8", "#38bdf8", "#38bdf8", "#38bdf8", "#38bdf8", "#38bdf8"];
     let updated = [...sandboxCustomTeams];
     if (clamped > updated.length) {
       for (let i = updated.length; i < clamped; i++) {
         updated.push({
-          name: `Đội ${i + 1}`,
+          name: `Thí sinh ${i + 1}`,
           color: palette[i % palette.length],
         });
       }
@@ -1724,10 +1724,10 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       points: normalizeToThreeLevels(q.points || 10),
     }));
     const activeCustomTeams = sandboxCustomTeams.length >= 2 ? sandboxCustomTeams : [
-      { name: "Đội Đỏ", color: "#ef4444" },
-      { name: "Đội Lam", color: "#3b82f6" },
-      { name: "Đội Vàng", color: "#eab308" },
-      { name: "Đội Lục", color: "#10b981" },
+      { name: "Thí sinh 1", color: "#38bdf8" },
+      { name: "Thí sinh 2", color: "#38bdf8" },
+      { name: "Thí sinh 3", color: "#38bdf8" },
+      { name: "Thí sinh 4", color: "#38bdf8" },
     ];
     const numTeams = activeCustomTeams.length;
 
@@ -12024,20 +12024,17 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                 })}
               </div>
 
-              {/* Iframe Thí sinh: Pre-render sẵn các tab thí sinh để chuyển đổi tức thì 0ms không tải lại */}
+              {/* Iframe Thí sinh: Chỉ render thí sinh đang được chọn để tiết kiệm CPU/RAM và triệt tiêu giật lag */}
               <div className="flex-1 min-h-0 bg-[#0f0f1a] relative">
-                {Array.from({ length: Math.min(8, Math.max(2, sandboxCustomTeams.length || 4)) }, (_, sIdx) => {
-                  const tName = sandboxCustomTeams[sIdx]?.name || `Thí sinh ${sIdx + 1}`;
-                  return (
-                    <iframe
-                      key={sIdx}
-                      src={`/olympia/play/${code}?seat=${sIdx}&name=${encodeURIComponent(tName)}`}
-                      allow="autoplay; camera; microphone"
-                      title={`Player Viewport ${sIdx}`}
-                      className={sIdx === olympiaActiveSeat ? "w-full h-full border-0 absolute inset-0" : "hidden"}
-                    />
-                  );
-                })}
+                <iframe
+                  key={olympiaActiveSeat}
+                  src={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(
+                    sandboxCustomTeams[olympiaActiveSeat]?.name || `Thí sinh ${olympiaActiveSeat + 1}`
+                  )}`}
+                  allow="autoplay; camera; microphone"
+                  title={`Player Viewport ${olympiaActiveSeat}`}
+                  className="w-full h-full border-0 absolute inset-0"
+                />
               </div>
             </div>
           </div>

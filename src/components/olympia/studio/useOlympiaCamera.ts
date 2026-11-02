@@ -105,6 +105,16 @@ export function useOlympiaCameraState(
       };
     }
 
+    // MC/Host manual trigger: Bật Đồ hoạ trường quay 3D / Hexagonal bất kỳ lúc nào
+    if (state.showStageGraphics) {
+      return {
+        camAngle: 1, // CAM 1 Toàn Cảnh S14
+        transitionMode: "MORPH",
+        isOverlayHidden: true, // Tạm ẩn overlay để thưởng thức trọn vẹn trường quay 3D
+        pushInProgress: 0,
+      };
+    }
+
     // Opening show intro
     if (state.introTimer) {
       return {
@@ -135,32 +145,51 @@ export function useOlympiaCameraState(
       if (kd.phase === "question") {
         const seg = kd.segments?.[kd.segIdx];
         const isSolo = seg?.kind === "solo";
-        const seatId = isSolo ? (seg?.seat ?? 0) : (kd.buzzedSeat ?? 0);
 
-        // Calculate push-in progress (0.0 -> 1.0 capped) based on timer elapsed
-        let push = 0;
-        if (kd.timer?.startedAt) {
-          const duration = kd.timer.totalMs || 5000;
-          const elapsed = (now - kd.timer.startedAt) / duration;
-          push = Math.min(1.0, Math.max(0, elapsed * 1.1));
+        if (isSolo) {
+          const seatId = seg?.seat ?? 0;
+          // Calculate push-in progress (0.0 -> 1.0 capped) based on timer elapsed
+          let push = 0;
+          if (kd.timer?.startedAt) {
+            const duration = kd.timer.totalMs || 5000;
+            const elapsed = (now - kd.timer.startedAt) / duration;
+            push = Math.min(1.0, Math.max(0, elapsed * 1.1));
+          }
+
+          const validSeat = typeof seatId === "number" && seatId >= 0 && seatId < 4;
+          return {
+            camAngle: validSeat ? 5 + seatId : 1,
+            transitionMode: "CUT",
+            isOverlayHidden: false,
+            pushInProgress: push,
+          };
+        } else {
+          // Shared question round:
+          if (kd.buzzedSeat != null) {
+            // Thí sinh đã bấm chuông giành quyền -> Cắt ngay lập tức vào cận cảnh thí sinh đó
+            return {
+              camAngle: 5 + Math.min(3, Math.max(0, kd.buzzedSeat)),
+              transitionMode: "CUT",
+              isOverlayHidden: false,
+              pushInProgress: 0.25,
+            };
+          }
+          // Chưa ai bấm chuông -> Quay toàn cảnh (CAM 1) thấy trọn cả 4 thí sinh hồi hộp chờ bấm chuông
+          return {
+            camAngle: 1,
+            transitionMode: "MORPH",
+            isOverlayHidden: false,
+            pushInProgress: 0.1,
+          };
         }
-
-        const validSeat = typeof seatId === "number" && seatId >= 0 && seatId < 4;
-        return {
-          camAngle: validSeat ? 5 + seatId : 2,
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: push,
-        };
       }
 
-      // Idle / between questions: Iconic Low-Angle Hero Shot (Góc Thấp Khởi Động per Image 4)
-      // Tilts up from left of Laurel Vitrine across the stage with smooth physical camera motion
+      // Idle / between questions: CAM 1 Toàn Cảnh S14 chuẩn TV (Rộng rãi, thoáng đãng, thấy trọn vẹn sàn tròn, cổng lục giác đứng)
       return {
-        camAngle: 14,
+        camAngle: 1,
         transitionMode: "MORPH",
         isOverlayHidden: false,
-        pushInProgress: 0.15,
+        pushInProgress: 0,
       };
     }
 

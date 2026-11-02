@@ -427,6 +427,7 @@ export interface VeDichState {
   turnIdx: number;
   playedSeats?: number[];
   phase: "idle" | "choosing" | "packageReady" | "thinking" | "stealing" | "result" | "seatDone";
+  onStage?: boolean;
   packages: Record<number, { points: number; q: VeDichQuestion }[]>;
   qIdx: number;
   current: { points: number; q: VeDichQuestion } | null;

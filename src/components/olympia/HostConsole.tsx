@@ -90,6 +90,9 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       } else if (e.key === "b" || e.key === "B") {
         e.preventDefault();
         call("scoreboard:toggle");
+      } else if (e.key === "h" || e.key === "H") {
+        e.preventDefault();
+        call("studio:toggle");
       } else if (e.key === "n" || e.key === "N") {
         e.preventDefault();
         if (state?.currentRound === "khoiDong") call("kd:next");
@@ -450,8 +453,8 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               )}
             </div>
 
-            {/* Utility Bar: NỀN CHỜ (W), BẢNG ĐIỂM (B) & CHẾ ĐỘ HIỂN THỊ */}
-            <div className="grid grid-cols-3 gap-1.5">
+            {/* Utility Bar: NỀN CHỜ (W), BẢNG ĐIỂM (B), TRƯỜNG QUAY 3D (H) & CHẾ ĐỘ HIỂN THỊ */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               <button
                 type="button"
                 onClick={() => call("bgm:waiting")}
@@ -475,6 +478,19 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               >
                 <span>📊</span>
                 <span>BẢNG ĐIỂM (B)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => call("studio:toggle")}
+                className={`py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition ${
+                  state.showStageGraphics
+                    ? "bg-cyan-500/35 border-cyan-300 text-cyan-100 shadow-[0_0_15px_rgba(34,211,238,0.4)] ring-1 ring-cyan-400"
+                    : "bg-cyan-500/10 border-cyan-500/20 text-cyan-300 hover:bg-cyan-500/20"
+                }`}
+                title="Bật/Tắt chế độ toàn cảnh trường quay 3D & Cổng lục giác (Phím H)"
+              >
+                <span>💎</span>
+                <span className="truncate">{state.showStageGraphics ? "TRƯỜNG QUAY 3D: BẬT" : "TRƯỜNG QUAY 3D (H)"}</span>
               </button>
               <button
                 type="button"
@@ -568,10 +584,10 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                   { id: 2, label: "CAM 2: Màn LED & Cổng Lục Giác", short: "Màn LED" },
                   { id: 3, label: "CAM 3: Bục MC Dẫn Chương Trình", short: "Bục MC" },
                   { id: 4, label: "CAM 4: Bục Danh Dự Vòng Nguyệt Quế", short: "Nguyệt Quế" },
-                  { id: 5, label: "CAM 5: Cận Cảnh TS 1 (Đỏ)", short: "TS 1 Đỏ" },
-                  { id: 6, label: "CAM 6: Cận Cảnh TS 2 (Lam)", short: "TS 2 Lam" },
-                  { id: 7, label: "CAM 7: Cận Cảnh TS 3 (Vàng)", short: "TS 3 Vàng" },
-                  { id: 8, label: "CAM 8: Cận Cảnh TS 4 (Lục)", short: "TS 4 Lục" },
+                  { id: 5, label: "CAM 5: Cận Cảnh TS 1", short: "TS 1" },
+                  { id: 6, label: "CAM 6: Cận Cảnh TS 2", short: "TS 2" },
+                  { id: 7, label: "CAM 7: Cận Cảnh TS 3", short: "TS 3" },
+                  { id: 8, label: "CAM 8: Cận Cảnh TS 4", short: "TS 4" },
                   { id: 9, label: "CAM 9: Cẩu Quay Jib Toàn Khán Đài", short: "Cẩu Jib" },
                   { id: 10, label: "CAM 10: Vách Ký Hiệu Khoa Học", short: "Khoa Học" },
                 ].map((c) => {
@@ -749,47 +765,26 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
           {seats.slice(0, 4).map((s, idx) => (
             <div
               key={s.id}
-              className="rounded-lg border bg-gradient-to-b from-violet-900/30 to-violet-950/30 px-2 py-1 flex items-center justify-between gap-1 relative overflow-hidden shadow"
-              style={{ borderLeft: `4px solid ${SEAT_COLORS[s.id] || "#38bdf8"}` }}
+              className="rounded-lg border border-cyan-500/25 bg-slate-900/95 px-2 py-1 flex items-center justify-between gap-1.5 relative overflow-hidden shadow"
+              style={{ borderLeft: "3.5px solid #00e5ff" }}
             >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1">
-                  <input
-                    type="text"
-                    defaultValue={s.name || `TS ${idx + 1}`}
-                    key={`host_name_${s.id}_${s.name}`}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                    }}
-                    onBlur={(e) => {
-                      const val = e.target.value.trim();
-                      if (val && val !== s.name) {
-                        call("seat:rename", { seat: s.id, name: val, school: s.school });
-                      }
-                    }}
-                    className="text-[11px] font-bold text-slate-200 bg-transparent border-b border-transparent hover:border-white/20 focus:border-cyan-400 focus:outline-none w-20 truncate"
-                    title="Nhấp để đổi tên thí sinh"
-                  />
-                  <input
-                    type="number"
-                    defaultValue={s.score}
-                    key={`host_score_${s.id}_${s.score}`}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        (e.target as HTMLInputElement).blur();
-                      }
-                    }}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      if (!isNaN(val) && val !== s.score) {
-                        call("score:set", { seat: s.id, score: val });
-                      }
-                    }}
-                    className="w-14 px-1 py-0.5 rounded bg-black/40 border border-white/20 text-sm sm:text-base font-black leading-none focus:outline-none focus:border-amber-400 ml-auto"
-                    style={{ color: SEAT_COLORS[s.id] || "#38bdf8" }}
-                    title="Gõ điểm trực tiếp (Enter để lưu)"
-                  />
-                </div>
+              <div className="min-w-0 flex-1 flex flex-col justify-center">
+                <input
+                  type="text"
+                  defaultValue={s.name || `TS ${idx + 1}`}
+                  key={`host_name_${s.id}_${s.name}`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value.trim();
+                    if (val && val !== s.name) {
+                      call("seat:rename", { seat: s.id, name: val, school: s.school });
+                    }
+                  }}
+                  className="text-[11px] font-black text-slate-100 bg-transparent border-b border-transparent hover:border-white/20 focus:border-cyan-400 focus:outline-none w-full truncate leading-normal"
+                  title="Nhấp để đổi tên thí sinh"
+                />
                 <input
                   type="text"
                   defaultValue={s.school || ""}
@@ -804,27 +799,47 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                       call("seat:setSchool", { seat: s.id, school: val });
                     }
                   }}
-                  className="w-full text-[10px] px-1 py-0.5 rounded bg-black/40 border border-white/10 text-amber-300 placeholder:text-slate-500 mt-0.5 focus:outline-none focus:border-amber-400"
+                  className="w-full text-[9px] px-1 py-0.5 rounded bg-black/40 border border-white/10 text-amber-300 placeholder:text-slate-500 focus:outline-none focus:border-amber-400 leading-normal"
                   title="Nhập tên trường THPT / Tỉnh đại diện"
                 />
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => call("score:adjust", { seat: s.id, delta: -10 })}
-                  className="w-5 h-5 rounded bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 text-rose-300 text-xs font-bold cursor-pointer flex items-center justify-center"
-                  title="Trừ 10 điểm"
-                >
-                  -
-                </button>
-                <button
-                  type="button"
-                  onClick={() => call("score:adjust", { seat: s.id, delta: 10 })}
-                  className="w-5 h-5 rounded bg-emerald-500/20 border border-emerald-500/40 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold cursor-pointer flex items-center justify-center"
-                  title="Cộng 10 điểm"
-                >
-                  +
-                </button>
+              <div className="flex flex-col items-end gap-0.5 shrink-0">
+                <input
+                  type="number"
+                  defaultValue={s.score}
+                  key={`host_score_${s.id}_${s.score}`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val) && val !== s.score) {
+                      call("score:set", { seat: s.id, score: val });
+                    }
+                  }}
+                  className="w-12 px-1 py-0.5 rounded bg-black/50 border border-amber-400/30 text-amber-300 text-center text-xs sm:text-sm font-black leading-tight focus:outline-none focus:border-amber-400"
+                  title="Gõ điểm trực tiếp (Enter để lưu)"
+                />
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => call("score:adjust", { seat: s.id, delta: -10 })}
+                    className="w-5 h-4 rounded bg-rose-500/25 border border-rose-500/40 hover:bg-rose-500/40 text-rose-300 text-[10px] font-black cursor-pointer flex items-center justify-center transition"
+                    title="Trừ 10 điểm"
+                  >
+                    -
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => call("score:adjust", { seat: s.id, delta: 10 })}
+                    className="w-5 h-4 rounded bg-emerald-500/25 border border-emerald-500/40 hover:bg-emerald-500/40 text-emerald-300 text-[10px] font-black cursor-pointer flex items-center justify-center transition"
+                    title="Cộng 10 điểm"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
           ))}

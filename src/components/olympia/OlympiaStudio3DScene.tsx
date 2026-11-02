@@ -134,10 +134,12 @@ export function OlympiaStudio3DScene({
         camera={{ position: [0.0, 3.2, 6.8], fov: 46 }}
         gl={{
           powerPreference: "high-performance",
-          antialias: quality !== "LIGHT",
+          antialias: false,
           alpha: false,
+          stencil: false,
+          depth: true,
         }}
-        dpr={quality === "HIGH" ? [1, 1.5] : 1}
+        dpr={quality === "HIGH" ? [1, 1.25] : 1}
       >
         <CameraController
           camAngle={internalCam}

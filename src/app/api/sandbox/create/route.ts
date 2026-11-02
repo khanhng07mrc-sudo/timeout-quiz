@@ -66,10 +66,10 @@ const DEFAULT_SANDBOX_CONFIG = {
 };
 
 const DEFAULT_TEAMS = [
-  { name: "Đội Đỏ", color: "#ef4444" },
-  { name: "Đội Lam", color: "#3b82f6" },
-  { name: "Đội Vàng", color: "#eab308" },
-  { name: "Đội Lục", color: "#10b981" },
+  { name: "Thí sinh 1", color: "#38bdf8" },
+  { name: "Thí sinh 2", color: "#38bdf8" },
+  { name: "Thí sinh 3", color: "#38bdf8" },
+  { name: "Thí sinh 4", color: "#38bdf8" },
 ];
 
 export async function POST(req: NextRequest) {

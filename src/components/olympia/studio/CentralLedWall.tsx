@@ -20,17 +20,19 @@ interface CentralLedWallProps {
  * 5 boundary segments: floor-left, left-knuckle, top-left, top-right, right-knuckle, floor-right.
  */
 export function computeGroundedHexagonVertices(w: number, h: number, baseW: number): [number, number][] {
-  const yMid = h / 2;
+  // Vertical Standing Hexagon (Đường lên đỉnh Olympia S22-S26 Studio S14):
+  // Slender, tall vertical aspect ratio (H >= W). Flat top, flat bottom resting on floor (Y = 0).
+  const yMid = h * 0.46; // Knuckles at 46% height
   const w2 = w / 2;
-  const w4 = w / 4;
-  const b2 = baseW / 2;
+  const topW2 = (w * 0.46) / 2; // Flat top width
+  const b2 = baseW / 2; // Base width on stage floor
   return [
     [-b2, 0],       // 0: floor bottom-left
     [b2, 0],        // 1: floor bottom-right
-    [w2, yMid],     // 2: right knuckle (strictly on horizontal line Y = H/2)
-    [w4, h],        // 3: top-right corner
-    [-w4, h],       // 4: top-left corner
-    [-w2, yMid],    // 5: left knuckle (strictly on horizontal line Y = H/2)
+    [w2, yMid],     // 2: right knuckle
+    [topW2, h],     // 3: top-right corner
+    [-topW2, h],    // 4: top-left corner
+    [-w2, yMid],    // 5: left knuckle
   ];
 }
 
@@ -237,12 +239,14 @@ function renderBinaryMatrixGrid(
  * Pre-rendered Starry Night & Binary Matrix Backdrop for the Hexagon Portal.
  * Pure deep midnight cosmos with glowing digital 0/1 matrix and stardust glints.
  */
-function createStarryNightCanvas(fadeProgress: number = 0, seedOffset: number = 0): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 768;
+function renderStarryNightToCanvas(
+  canvas: HTMLCanvasElement,
+  logoImg?: HTMLImageElement | null,
+  fadeProgress: number = 0,
+  seedOffset: number = 0
+): void {
   const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  if (!ctx) return;
 
   const w = canvas.width;
   const h = canvas.height;
@@ -338,6 +342,77 @@ function createStarryNightCanvas(fadeProgress: number = 0, seedOffset: number = 
     ctx.restore();
   }
 
+  // 6. OFFICIAL OLYMPIA LOGO AT CENTER OF THE PORTAL
+  const logoTargetH = h * 0.38;
+  const logoTargetY = cy - logoTargetH * 0.54;
+
+  if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
+    const aspect = logoImg.naturalWidth / logoImg.naturalHeight;
+    const logoW = logoTargetH * aspect;
+    const logoX = cx - logoW / 2;
+
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 240, 255, 0.8)";
+    ctx.shadowBlur = 36;
+    ctx.drawImage(logoImg, logoX, logoTargetY, logoW, logoTargetH);
+    ctx.restore();
+  } else {
+    // Crisp Vector Laurel & Golden Starburst
+    ctx.save();
+    ctx.strokeStyle = "#ffd700";
+    ctx.lineWidth = 5;
+    ctx.shadowColor = "#ffb700";
+    ctx.shadowBlur = 24;
+    ctx.beginPath();
+    ctx.arc(cx, logoTargetY + logoTargetH * 0.42, logoTargetH * 0.36, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.font = '900 56px "Plus Jakarta Sans", sans-serif';
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffd700";
+    ctx.fillText("OLYMPIA", cx, logoTargetY + logoTargetH * 0.48);
+    ctx.restore();
+  }
+
+  // 7. "ĐƯỜNG LÊN ĐỈNH OLYMPIA" Metallic Typography below Logo
+  const textY = logoTargetY + logoTargetH + 28;
+  const textStr = "ĐƯỜNG LÊN ĐỈNH OLYMPIA";
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = '900 34px "Plus Jakarta Sans", "Montserrat", sans-serif';
+  ctx.letterSpacing = "0.08em";
+
+  ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 4;
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = "#1e1302";
+  ctx.strokeText(textStr, cx, textY);
+
+  ctx.shadowColor = "rgba(255, 215, 0, 0.8)";
+  ctx.shadowBlur = 20;
+  ctx.shadowOffsetY = 2;
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#fffed4";
+  ctx.strokeText(textStr, cx, textY);
+
+  const textGrad = ctx.createLinearGradient(0, textY - 18, 0, textY + 18);
+  textGrad.addColorStop(0.0, "#ffffff");
+  textGrad.addColorStop(0.2, "#fffbd0");
+  textGrad.addColorStop(0.5, "#ffd700");
+  textGrad.addColorStop(0.85, "#b45309");
+  textGrad.addColorStop(1.0, "#78350f");
+  ctx.fillStyle = textGrad;
+  ctx.fillText(textStr, cx, textY);
+  ctx.restore();
+}
+
+function createStarryNightCanvas(logoImg?: HTMLImageElement | null, fadeProgress: number = 0, seedOffset: number = 0): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 768;
+  renderStarryNightToCanvas(canvas, logoImg, fadeProgress, seedOffset);
   return canvas;
 }
 
@@ -1802,10 +1877,12 @@ function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement 
  * 3D Solid Volumetric Neon Hexagon Frame
  * Made of 6 interconnected solid neon rods with radiant emissive glow (eliminates WebGL 1px line limits).
  */
-const HEX_TIER1_OUTER = computeGroundedHexagonVertices(5.20, 4.60, 3.60);
-const HEX_TIER1_INNER = offsetGroundedContour(HEX_TIER1_OUTER, 0.38);
+const HEX_TIER1_OUTER = computeGroundedHexagonVertices(4.80, 5.20, 2.80);
+const HEX_TIER1_INNER = offsetGroundedContour(HEX_TIER1_OUTER, 0.32);
 const HEX_TIER2_OUTER = HEX_TIER1_INNER;
-const HEX_TIER2_INNER = offsetGroundedContour(HEX_TIER2_OUTER, 0.38);
+const HEX_TIER2_INNER = offsetGroundedContour(HEX_TIER2_OUTER, 0.30);
+const HEX_TIER3_OUTER = HEX_TIER2_INNER;
+const HEX_TIER3_INNER = offsetGroundedContour(HEX_TIER3_OUTER, 0.28);
 
 /**
  * Solid 3D Glowing Neon Tube running along the 5 grounded arch edges (excluding floor line)
@@ -1980,6 +2057,8 @@ export function CentralLedWall({
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
   const totemCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const totemTextureRef = useRef<THREE.CanvasTexture | null>(null);
+  const starryCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const starryTextureRef = useRef<THREE.CanvasTexture | null>(null);
   const lastFadeRef = useRef<number>(-1);
 
   // Preload Olympia 2016 logo
@@ -1998,6 +2077,10 @@ export function CentralLedWall({
         renderVerticalTotemToCanvas(totemCanvasRef.current, state, screenFadeProgress);
         totemTextureRef.current.needsUpdate = true;
       }
+      if (starryCanvasRef.current && starryTextureRef.current) {
+        renderStarryNightToCanvas(starryCanvasRef.current, img, screenFadeProgress);
+        starryTextureRef.current.needsUpdate = true;
+      }
     };
     img.onerror = () => {
       const fallback = new Image();
@@ -2012,6 +2095,10 @@ export function CentralLedWall({
         if (totemCanvasRef.current && totemTextureRef.current) {
           renderVerticalTotemToCanvas(totemCanvasRef.current, state, screenFadeProgress);
           totemTextureRef.current.needsUpdate = true;
+        }
+        if (starryCanvasRef.current && starryTextureRef.current) {
+          renderStarryNightToCanvas(starryCanvasRef.current, fallback, screenFadeProgress);
+          starryTextureRef.current.needsUpdate = true;
         }
       };
     };
@@ -2161,9 +2248,9 @@ export function CentralLedWall({
   // Normalized UV coordinates to map starry texture seamlessly across the shape with ZERO vertical stripes
   const solidGroundedHexagonGeometry = useMemo(() => {
     const shape = new THREE.Shape();
-    shape.moveTo(HEX_TIER1_INNER[0][0], HEX_TIER1_INNER[0][1]);
-    for (let i = 1; i < HEX_TIER1_INNER.length; i++) {
-      shape.lineTo(HEX_TIER1_INNER[i][0], HEX_TIER1_INNER[i][1]);
+    shape.moveTo(HEX_TIER3_INNER[0][0], HEX_TIER3_INNER[0][1]);
+    for (let i = 1; i < HEX_TIER3_INNER.length; i++) {
+      shape.lineTo(HEX_TIER3_INNER[i][0], HEX_TIER3_INNER[i][1]);
     }
     shape.closePath();
     const geom = new THREE.ShapeGeometry(shape);
@@ -2188,56 +2275,73 @@ export function CentralLedWall({
 
   return (
     <group>
-      {/* ── 1. STAGE CENTER-RIGHT: GRAND GROUNDED CONCENTRIC HEXAGONAL PORTAL (S14 2-TIER REDESIGN) ── */}
+      {/* ── 1. STAGE CENTER-RIGHT: GRAND GROUNDED CONCENTRIC HEXAGONAL PORTAL (3-TIER STEPPED S14 REDESIGN) ── */}
       {/* Đặt tại [3.48, 0, -8.59], rotation [0, -0.25, 0] đồng trục 100% với Bục MC và CAM 3 */}
-      {/* CHỈ CÓ 2 VIỀN (Tier 1 & Tier 2) lồng nhau nhưng CÙNG NẰM TRÊN MỘT LỚP (Z = 0, depth 0.20m) */}
-      {/* Màn hình LED vũ trụ đặt lùi sâu Z = -1.50m, chừa hành lang lối đi thực thụ cho 2 MC bước ra */}
+      {/* 3 VIỀN (Tier 1, Tier 2, Tier 3) lồng giật cấp theo chiều sâu Z để tạo hiệu ứng đường hầm 3D portal chân thực */}
       <group position={[3.48, 0, -8.59]} rotation={[0, -0.25, 0]}>
-        {/* Tier 1 (Viền ngoài cùng): 5.20m x 4.60m, uniform 38cm thickness tại Z = 0 */}
+        {/* Tier 1 (Viền ngoài cùng): 4.80m x 5.20m tại Z = 0 */}
         <CutBottomHexagonArch
           outerPts={HEX_TIER1_OUTER}
           innerPts={HEX_TIER1_INNER}
-          outerW={5.20}
-          outerH={4.60}
-          innerW={4.35}
-          innerH={4.20}
+          outerW={4.80}
+          outerH={5.20}
+          innerW={4.16}
+          innerH={4.58}
           neonColor={neonColor}
-          depth={0.20}
+          depth={0.18}
           showOuterNeon={true}
           showInnerNeon={true}
         />
 
-        {/* Tier 2 (Viền trong cùng - LỒNG KHÍT VÀO TIER 1 VÀ CÙNG NẰM TRÊN MỘT LỚP Z = 0): uniform 38cm thickness */}
-        <CutBottomHexagonArch
-          outerPts={HEX_TIER2_OUTER}
-          innerPts={HEX_TIER2_INNER}
-          outerW={4.35}
-          outerH={4.20}
-          innerW={3.60}
-          innerH={3.45}
-          neonColor={neonColor}
-          depth={0.20}
-          showOuterNeon={false}
-          showInnerNeon={true}
-        />
+        {/* Tier 2 (Viền giữa - lùi Z = -0.25m): 4.16m x 4.58m */}
+        <group position={[0, 0, -0.25]}>
+          <CutBottomHexagonArch
+            outerPts={HEX_TIER2_OUTER}
+            innerPts={HEX_TIER2_INNER}
+            outerW={4.16}
+            outerH={4.58}
+            innerW={3.56}
+            innerH={3.98}
+            neonColor={neonColor}
+            depth={0.18}
+            showOuterNeon={true}
+            showInnerNeon={true}
+          />
+        </group>
 
-        {/* Hành lang sàn catwalk phát sáng nối giữa Cổng vòm (Z=0) và Màn LED (Z=-1.50m) để MC bước ra */}
-        <mesh position={[0, 0.02, -0.75]}>
-          <boxGeometry args={[2.50, 0.04, 1.50]} />
+        {/* Tier 3 (Viền trong cùng - lùi Z = -0.50m): 3.56m x 3.98m */}
+        <group position={[0, 0, -0.50]}>
+          <CutBottomHexagonArch
+            outerPts={HEX_TIER3_OUTER}
+            innerPts={HEX_TIER3_INNER}
+            outerW={3.56}
+            outerH={3.98}
+            innerW={3.00}
+            innerH={3.42}
+            neonColor={neonColor}
+            depth={0.18}
+            showOuterNeon={true}
+            showInnerNeon={true}
+          />
+        </group>
+
+        {/* Hành lang sàn catwalk phát sáng nối giữa Cổng vòm (Z=0) và Màn LED (Z=-1.25m) để MC bước ra */}
+        <mesh position={[0, 0.02, -0.65]}>
+          <boxGeometry args={[2.50, 0.04, 1.30]} />
           <meshStandardMaterial color="#01030a" metalness={0.05} roughness={0.08} />
         </mesh>
         {/* Đèn chỉ dẫn neon hai bên mép lối đi của MC */}
-        <mesh position={[-1.25, 0.042, -0.75]}>
-          <boxGeometry args={[0.02, 0.015, 1.50]} />
+        <mesh position={[-1.25, 0.042, -0.65]}>
+          <boxGeometry args={[0.02, 0.015, 1.30]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
-        <mesh position={[1.25, 0.042, -0.75]}>
-          <boxGeometry args={[0.02, 0.015, 1.50]} />
+        <mesh position={[1.25, 0.042, -0.65]}>
+          <boxGeometry args={[0.02, 0.015, 1.30]} />
           <meshBasicMaterial color={neonColor} />
         </mesh>
 
-        {/* Màn hình LED vũ trụ bên trong lùi sâu Z = -1.50m (Chừa khoảng cách cho MC bước ra) */}
-        <mesh position={[0, 0, -1.50]}>
+        {/* Màn hình LED vũ trụ bên trong lùi sâu Z = -1.25m mang logo Olympia vàng kim rực rỡ */}
+        <mesh position={[0, 0, -1.25]}>
           <primitive object={solidGroundedHexagonGeometry} attach="geometry" />
           {starryTexture ? (
             <meshBasicMaterial map={starryTexture} toneMapped={false} side={THREE.DoubleSide} />

@@ -71,7 +71,7 @@ function createPodiumScoreCanvas(
     ctx.font = '700 15px "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = "rgba(254, 240, 138, 0.75)";
     ctx.letterSpacing = "0.15em";
-    ctx.fillText("TRƯỜNG THPT / ĐỘI", 256, 108);
+    ctx.fillText("TRƯỜNG THPT", 256, 108);
 
     // School Name in Radiant Warm Gold
     ctx.fillStyle = "#fef08a";

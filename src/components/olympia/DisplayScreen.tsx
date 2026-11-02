@@ -110,20 +110,18 @@ export default function DisplayScreen({ code }: { code: string }) {
 
   return (
     <div className="fixed inset-0 w-full h-full min-h-screen overflow-hidden bg-gradient-to-b from-[#060818] via-[#090d24] to-[#040612] text-white flex flex-col select-none">
-      {/* ── 1. 3D BROADCAST STUDIO (RUNS WHEN PLAYING OR ENTRANCE SEQUENCE IS ACTIVE) ── */}
-      {(state.stage === "playing" || Boolean(state.entranceState?.active)) && (
-        <div className="fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
-          <OlympiaStudio3DScene
-            state={state}
-            serverNow={serverNow}
-            activeCamera={cameraState.camAngle}
-            transitionMode={cameraState.transitionMode}
-            pushInProgress={cameraState.pushInProgress}
-            showDirectorBar={false}
-            allowPTZ={false}
-          />
-        </div>
-      )}
+      {/* ── 1. 3D BROADCAST STUDIO (ALWAYS ACTIVE IN BACKGROUND) ── */}
+      <div className="fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
+        <OlympiaStudio3DScene
+          state={state}
+          serverNow={serverNow}
+          activeCamera={cameraState.camAngle}
+          transitionMode={cameraState.transitionMode}
+          pushInProgress={cameraState.pushInProgress}
+          showDirectorBar={false}
+          allowPTZ={false}
+        />
+      </div>
 
       {/* ── 2. BROADCAST SCOREBOARD OVERLAY (Z-50) ── */}
       {state.showScoreboard && (
@@ -459,11 +457,11 @@ function KhoiDong({ state, serverNow }: P) {
                     background: "linear-gradient(180deg, rgba(245, 158, 11, 0.45) 0%, rgba(217, 119, 6, 0.25) 100%)",
                   }}
                 >
-                  <span className="truncate font-black text-[11px] sm:text-xs text-amber-200 flex items-center gap-0.5">
+                  <span className="truncate font-black text-[11px] sm:text-xs text-amber-200 flex items-center gap-0.5 leading-normal pt-0.5">
                     <span>🔔</span>
                     <span>{s.name}</span>
                   </span>
-                  <span className="font-black tabular-nums text-xs sm:text-sm text-amber-300 ml-1">
+                  <span className="font-black tabular-nums text-xs sm:text-sm text-amber-300 ml-1 leading-normal pt-0.5">
                     {s.score}
                   </span>
                 </div>
@@ -482,10 +480,10 @@ function KhoiDong({ state, serverNow }: P) {
                     boxShadow: "0 0 14px rgba(0, 240, 255, 0.4), inset 0 0 8px rgba(0, 240, 255, 0.2)",
                   }}
                 >
-                  <span className="truncate font-black text-[11px] sm:text-xs text-cyan-200">
+                  <span className="truncate font-black text-[11px] sm:text-xs text-cyan-200 leading-normal pt-0.5">
                     {s.name}
                   </span>
-                  <span className="font-black tabular-nums text-xs sm:text-sm text-cyan-300 ml-1" style={{ textShadow: "0 0 8px #00f0ff" }}>
+                  <span className="font-black tabular-nums text-xs sm:text-sm text-cyan-300 ml-1 leading-normal pt-0.5" style={{ textShadow: "0 0 8px #00f0ff" }}>
                     {s.score}
                   </span>
                 </div>
@@ -498,10 +496,10 @@ function KhoiDong({ state, serverNow }: P) {
                 className="rounded-lg border px-2 py-0.5 text-center transition-all border-cyan-500/25 bg-slate-950/80 flex items-center justify-between min-w-0 shadow-sm"
                 style={{ borderLeft: "3px solid #00e5ff" }}
               >
-                <span className="truncate font-medium text-[11px] sm:text-xs text-slate-200">
+                <span className="truncate font-medium text-[11px] sm:text-xs text-slate-200 leading-normal pt-0.5">
                   {s.name}
                 </span>
-                <span className="font-bold tabular-nums text-xs sm:text-sm text-amber-300 ml-1">
+                <span className="font-bold tabular-nums text-xs sm:text-sm text-amber-300 ml-1 leading-normal pt-0.5">
                   {s.score}
                 </span>
               </div>

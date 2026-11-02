@@ -614,14 +614,14 @@ export function StudioFloor({
 
   return (
     <group position={[0, -0.01, 0]}>
-      {/* ── 1. MAIN GLOSSY PIANO BLACK BROADCAST FLOOR DISC (MICA/ACRYLIC) ── */}
+      {/* ── 1. MAIN GLOSSY MIDNIGHT SAPPHIRE BROADCAST FLOOR DISC (MICA/ACRYLIC) ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[26, quality === "LIGHT" ? 32 : 64]} />
         <meshStandardMaterial
-          color="#010206"
-          roughness={0.08}
-          metalness={0.04}
-          envMapIntensity={2.0}
+          color="#030818"
+          roughness={0.09}
+          metalness={0.12}
+          envMapIntensity={2.8}
         />
       </mesh>
 
@@ -2849,18 +2849,17 @@ export function StudioLighting({
 
   if (introStartedAt) {
     const elapsedSec = Math.max(0, (now - introStartedAt) / 1000);
-    if (elapsedSec < 20) {
-      if (elapsedSec < 4) {
-        introDimFactor = 0.04;
-        mcSpotIntensity = 0.2;
-      } else if (elapsedSec < 12) {
-        introDimFactor = 0.22;
-        mcSpotIntensity = 7.5;
+    if (elapsedSec < 15) {
+      if (elapsedSec < 8.5) {
+        // Waves 1, 2, 3: Intense portal glow & focused stage spotlighting (no pitch black)
+        introDimFactor = 0.55;
+        mcSpotIntensity = 8.5;
       } else {
-        const washT = Math.min(1.0, (elapsedSec - 12) / 7.0);
+        // Grand Reveal (8.5s - 14.5s): Smooth transition to full studio wash illumination
+        const washT = Math.min(1.0, (elapsedSec - 8.5) / 5.5);
         const smoothWash = washT * washT * (3 - 2 * washT);
-        introDimFactor = 0.22 + 0.78 * smoothWash;
-        mcSpotIntensity = 6.0;
+        introDimFactor = 0.55 + 0.45 * smoothWash;
+        mcSpotIntensity = 8.5 - 2.5 * smoothWash;
       }
     }
   }

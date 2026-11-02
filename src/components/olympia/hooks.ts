@@ -95,7 +95,7 @@ export const isCountdownTrack = (sound: string): boolean =>
   /(?:10s_tick|15s_tick|20s_tick|30s_tick|40s_tick|5s_steal|20s_practice|30s_practice|40s_practice|60s_practice|60s|30s|90s)$/.test(sound);
 
 export const isLoopingBgm = (sound: string): boolean =>
-  /kd_bgm_[123]$/.test(sound) || /loop/.test(sound) || sound.includes("contest_intro");
+  /kd_bgm_[12]$/.test(sound) || /loop/.test(sound) || sound.includes("contest_intro");
 
 /** Plays server "cue" events. Missing files fall back to O26, then fail silently. */
 export function useOlympiaAudio(

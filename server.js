@@ -27780,6 +27780,57 @@ var resetTimer = (t, ms) => {
 function normalizeAnswer(s) {
   return (s || "").normalize("NFC").toLowerCase().replace(/[.,;:!?'"“”‘’()\-_]/g, " ").replace(/\s+/g, " ").trim();
 }
+function parseVcnvAnswer(raw) {
+  if (!raw) return { primary: "", acceptedAnswers: [] };
+  const trimmed = raw.trim();
+  const parenMatch = trimmed.match(/^([^()]+)\s*\(([^()]+)\)\s*$/);
+  let primary = trimmed;
+  const candidates = [];
+  if (parenMatch) {
+    primary = parenMatch[1].trim();
+    let note = parenMatch[2].trim();
+    note = note.replace(/^(chấp nhận cả|chấp nhận|hoặc|đáp án khác|đồng nghĩa)[:\s]*/i, "");
+    const parts = note.split(/\s*(?:hoặc|hay|,|;|\/)\s*/i);
+    for (const p of parts) {
+      const c = p.trim();
+      if (c && c.toLowerCase() !== primary.toLowerCase()) {
+        candidates.push(c);
+      }
+    }
+  } else if (trimmed.includes("/")) {
+    const parts = trimmed.split(/\s*\/\s*/);
+    primary = parts[0].trim();
+    for (let i = 1; i < parts.length; i++) {
+      const c = parts[i].trim();
+      if (c) candidates.push(c);
+    }
+  }
+  const primaryCharLen = primary.replace(/\s+/g, "").length;
+  const validAlternates = candidates.filter((cand) => {
+    const candLen = cand.replace(/\s+/g, "").length;
+    return candLen === primaryCharLen;
+  });
+  return { primary, acceptedAnswers: validAlternates };
+}
+function getVcnvValidAnswerSet(rawOrPrimary, extraAccepted) {
+  const parsed = parseVcnvAnswer(rawOrPrimary);
+  const primary = parsed.primary || rawOrPrimary;
+  const charLength = primary.replace(/\s+/g, "").length;
+  const combined = [
+    primary,
+    ...extraAccepted ?? [],
+    ...parsed.acceptedAnswers
+  ];
+  const validNorms = /* @__PURE__ */ new Set();
+  for (const ans of combined) {
+    if (!ans) continue;
+    if (ans.replace(/\s+/g, "").length === charLength) {
+      const norm = normalizeAnswer(ans);
+      if (norm) validNorms.add(norm);
+    }
+  }
+  return { primary, validNorms, charLength };
+}
 var OK = { ok: true };
 var fail = (error) => ({ ok: false, error });
 var emptyRoundStatus = () => ({
@@ -29109,11 +29160,13 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "vcnv:correct": {
         if (row < 0) return fail("Ch\u01B0a ch\u1ECDn h\xE0ng");
-        const answerText = row === 4 ? v.centerQuestion?.a ?? v.keyword : v.rows[row]?.answer ?? "";
+        const curRowDef = row === 4 ? v.centerQuestion : v.rows[row];
+        const rawAnswerText = row === 4 ? v.centerQuestion?.a ?? v.keyword : v.rows[row]?.answer ?? "";
+        const { primary, validNorms } = getVcnvValidAnswerSet(rawAnswerText, curRowDef?.acceptedAnswers);
+        const answerText = primary;
         const qText = row === 4 ? v.centerQuestion?.q ?? "C\xE2u h\u1ECFi s\u1ED1 5 (\xD4 trung t\xE2m)" : v.rows[row]?.hint ?? "";
-        const target = normalizeAnswer(answerText);
         const given = Array.isArray(a.seatIds) ? a.seatIds.map(Number) : this.activeSeatIds.filter(
-          (id) => !v.eliminatedSeats.includes(id) && normalizeAnswer(v.answers[id]?.text ?? "") === target && target !== ""
+          (id) => !v.eliminatedSeats.includes(id) && validNorms.has(normalizeAnswer(v.answers[id]?.text ?? ""))
         );
         const awarded = given.filter((id) => this.seat(id));
         const changes = {};

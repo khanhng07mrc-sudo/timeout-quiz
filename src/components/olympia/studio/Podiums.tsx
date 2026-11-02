@@ -834,8 +834,12 @@ function McPresenters({
 }) {
   const kvRef = useRef<THREE.Group>(null);
   const nhRef = useRef<THREE.Group>(null);
+  const kvLeftLegRef = useRef<THREE.Group>(null);
+  const kvRightLegRef = useRef<THREE.Group>(null);
+  const nhLeftLegRef = useRef<THREE.Group>(null);
+  const nhRightLegRef = useRef<THREE.Group>(null);
 
-  // Compute walk-out animation progress (0.0: behind arch -> 1.0: beside MC desk)
+  // Compute walk-out animation progress (0.0: behind arch doors -> 1.0: beside MC desk)
   useFrame(() => {
     const isIntro = Boolean(state?.introTimer);
     const now = serverNow ? serverNow() : Date.now();
@@ -846,30 +850,54 @@ function McPresenters({
       const elapsed = Math.max(0, now - startedAt);
       if (elapsed < 3500) {
         walkProgress = 0.0;
-      } else if (elapsed > 10000) {
+      } else if (elapsed > 10500) {
         walkProgress = 1.0;
       } else {
-        const raw = (elapsed - 3500) / 6500;
+        const raw = (elapsed - 3500) / 7000;
         walkProgress = raw * raw * (3 - 2 * raw); // Smoothstep
       }
     }
 
-    // Khánh Vy (Female MC): Steps in from the Stage Right Wing [5.80, 0.14, -7.05] to broadcast mark [3.48, 0.14, -7.15] (never walks through screen)
+    const isWalking = walkProgress > 0 && walkProgress < 1;
+    const stride = isWalking ? Math.sin(walkProgress * Math.PI * 14) * 0.35 : 0;
+    const bounce = isWalking ? Math.abs(Math.sin(walkProgress * Math.PI * 14)) * 0.03 : 0;
+
+    // Khánh Vy (Female MC): Bước từ phía sau bên phải cánh cửa vòm [5.35, 0.14, -8.95]
+    // bước qua mép cửa ra tiền cảnh và tiến vào sau bục MC [3.48, 0.14, -7.15]
     if (kvRef.current) {
-      const targetX = THREE.MathUtils.lerp(5.80, 3.48, walkProgress);
-      const targetZ = THREE.MathUtils.lerp(-7.05, -7.15, walkProgress);
-      const bob = Math.sin(walkProgress * Math.PI * 6) * (walkProgress > 0 && walkProgress < 1 ? 0.025 : 0);
-      kvRef.current.position.set(targetX, 0.14 + bob, targetZ);
-      kvRef.current.rotation.y = THREE.MathUtils.lerp(-0.65, -0.25, walkProgress);
+      const u = 1 - walkProgress;
+      const targetX = u * u * 5.35 + 2 * u * walkProgress * 4.35 + walkProgress * walkProgress * 3.48;
+      const targetZ = u * u * -8.95 + 2 * u * walkProgress * -8.05 + walkProgress * walkProgress * -7.15;
+      kvRef.current.position.set(targetX, 0.14 + bounce, targetZ);
+
+      const tanX = 2 * u * (4.35 - 5.35) + 2 * walkProgress * (3.48 - 4.35);
+      const tanZ = 2 * u * (-8.05 - -8.95) + 2 * walkProgress * (-7.15 - -8.05);
+      const walkRot = Math.atan2(-tanX, -tanZ);
+      kvRef.current.rotation.y = THREE.MathUtils.lerp(walkRot, -0.25, walkProgress * walkProgress);
     }
 
-    // Ngọc Huy (Male MC): Steps in from the Stage Left Wing [0.60, 0.14, -7.15] to broadcast mark [2.79, 0.14, -7.32] (never walks through screen)
+    // Ngọc Huy (Male MC): Bước từ phía sau bên trái cánh cửa vòm [1.35, 0.14, -8.95]
+    // bước qua mép cửa ra tiền cảnh và tiến vào sau bục MC [2.79, 0.14, -7.32]
     if (nhRef.current) {
-      const targetX = THREE.MathUtils.lerp(0.60, 2.79, walkProgress);
-      const targetZ = THREE.MathUtils.lerp(-7.15, -7.32, walkProgress);
-      const bob = Math.sin(walkProgress * Math.PI * 6 + Math.PI) * (walkProgress > 0 && walkProgress < 1 ? 0.025 : 0);
-      nhRef.current.position.set(targetX, 0.14 + bob, targetZ);
-      nhRef.current.rotation.y = THREE.MathUtils.lerp(0.50, -0.25, walkProgress);
+      const u = 1 - walkProgress;
+      const targetX = u * u * 1.35 + 2 * u * walkProgress * 2.05 + walkProgress * walkProgress * 2.79;
+      const targetZ = u * u * -8.95 + 2 * u * walkProgress * -8.10 + walkProgress * walkProgress * -7.32;
+      nhRef.current.position.set(targetX, 0.14 + bounce, targetZ);
+
+      const tanX = 2 * u * (2.05 - 1.35) + 2 * walkProgress * (2.79 - 2.05);
+      const tanZ = 2 * u * (-8.10 - -8.95) + 2 * walkProgress * (-7.32 - -8.10);
+      const walkRot = Math.atan2(-tanX, -tanZ);
+      nhRef.current.rotation.y = THREE.MathUtils.lerp(walkRot, -0.25, walkProgress * walkProgress);
+    }
+
+    // Leg stride swing
+    if (kvLeftLegRef.current && kvRightLegRef.current) {
+      kvLeftLegRef.current.rotation.x = stride;
+      kvRightLegRef.current.rotation.x = -stride;
+    }
+    if (nhLeftLegRef.current && nhRightLegRef.current) {
+      nhLeftLegRef.current.rotation.x = -stride;
+      nhRightLegRef.current.rotation.x = stride;
     }
   });
 
@@ -883,59 +911,132 @@ function McPresenters({
           <meshStandardMaterial color="#fed7aa" roughness={0.55} />
         </mesh>
         {/* Styled Dark Brunette Hair with Shoulder Flow */}
-        <mesh position={[0, 1.61, -0.02]}>
-          <sphereGeometry args={[0.090, 24, 24]} />
+        <mesh position={[0, 1.62, -0.02]}>
+          <sphereGeometry args={[0.088, 24, 24]} />
           <meshStandardMaterial color="#2d1b00" roughness={0.8} />
         </mesh>
-        <mesh position={[0, 1.50, -0.05]}>
+        <mesh position={[0, 1.51, -0.05]}>
           <cylinderGeometry args={[0.08, 0.11, 0.22, 16]} />
           <meshStandardMaterial color="#2d1b00" roughness={0.8} />
         </mesh>
-        {/* Round Eyeglasses Frame (Khánh Vy trademark) */}
-        <group position={[0, 1.58, 0.08]}>
-          <mesh position={[-0.032, 0, 0]}>
-            <ringGeometry args={[0.016, 0.020, 16]} />
-            <meshBasicMaterial color="#1e293b" side={THREE.DoubleSide} />
-          </mesh>
-          <mesh position={[0.032, 0, 0]}>
-            <ringGeometry args={[0.016, 0.020, 16]} />
-            <meshBasicMaterial color="#1e293b" side={THREE.DoubleSide} />
-          </mesh>
-          <mesh position={[0, 0, 0]}>
-            <boxGeometry args={[0.02, 0.003, 0.003]} />
-            <meshBasicMaterial color="#1e293b" />
-          </mesh>
-        </group>
-        {/* Neck */}
-        <mesh position={[0, 1.48, 0]}>
-          <cylinderGeometry args={[0.035, 0.038, 0.06, 12]} />
+        {/* Side swept fringe */}
+        <mesh position={[0.02, 1.63, 0.045]} rotation={[0.1, 0, -0.15]}>
+          <boxGeometry args={[0.09, 0.03, 0.04]} />
+          <meshStandardMaterial color="#2d1b00" roughness={0.8} />
+        </mesh>
+
+        {/* ── Natural Expressive Face ── */}
+        {/* Almond Eyes with Pupils */}
+        <mesh position={[-0.028, 1.58, 0.078]}>
+          <sphereGeometry args={[0.0075, 12, 12]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.2} />
+        </mesh>
+        <mesh position={[0.028, 1.58, 0.078]}>
+          <sphereGeometry args={[0.0075, 12, 12]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.2} />
+        </mesh>
+        {/* Soft Eyebrows */}
+        <mesh position={[-0.028, 1.605, 0.080]} rotation={[0, 0, 0.05]}>
+          <boxGeometry args={[0.024, 0.005, 0.004]} />
+          <meshStandardMaterial color="#2d1b00" roughness={0.8} />
+        </mesh>
+        <mesh position={[0.028, 1.605, 0.080]} rotation={[0, 0, -0.05]}>
+          <boxGeometry args={[0.024, 0.005, 0.004]} />
+          <meshStandardMaterial color="#2d1b00" roughness={0.8} />
+        </mesh>
+        {/* Nose Tip */}
+        <mesh position={[0, 1.558, 0.084]}>
+          <sphereGeometry args={[0.006, 10, 10]} />
           <meshStandardMaterial color="#fed7aa" roughness={0.55} />
         </mesh>
-        {/* Crisp White Blouse with Collar */}
-        <mesh position={[0, 1.30, 0]}>
-          <cylinderGeometry args={[0.11, 0.13, 0.32, 16]} />
+        {/* Smiling Lips */}
+        <mesh position={[0, 1.530, 0.080]}>
+          <boxGeometry args={[0.022, 0.006, 0.005]} />
+          <meshStandardMaterial color="#e11d48" roughness={0.4} />
+        </mesh>
+
+        {/* Delicate Stylish Round/Oval Spectacles Frame */}
+        <group position={[0, 1.58, 0.084]}>
+          <mesh position={[-0.028, 0, 0]}>
+            <ringGeometry args={[0.013, 0.016, 20]} />
+            <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.2} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0.028, 0, 0]}>
+            <ringGeometry args={[0.013, 0.016, 20]} />
+            <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.2} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0, 0.002, 0]}>
+            <boxGeometry args={[0.016, 0.003, 0.003]} />
+            <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.2} />
+          </mesh>
+        </group>
+
+        {/* Neck */}
+        <mesh position={[0, 1.48, 0]}>
+          <cylinderGeometry args={[0.034, 0.038, 0.07, 14]} />
+          <meshStandardMaterial color="#fed7aa" roughness={0.55} />
+        </mesh>
+
+        {/* ── Seamless Anatomical Torso & Shoulders ── */}
+        {/* Shoulder Yoke (Bridges neck and arms seamlessly, eliminating air gaps) */}
+        <mesh position={[0, 1.42, 0]}>
+          <boxGeometry args={[0.34, 0.06, 0.16]} />
           <meshStandardMaterial color="#f8fafc" roughness={0.3} />
         </mesh>
-        {/* Burgundy Necktie */}
-        <mesh position={[0, 1.30, 0.115]} rotation={[0.08, 0, 0]}>
-          <boxGeometry args={[0.045, 0.22, 0.01]} />
-          <meshStandardMaterial color="#7f1d1d" roughness={0.4} />
-        </mesh>
-        {/* Left Arm holding White Cue Card */}
-        <mesh position={[-0.18, 1.28, 0.08]} rotation={[0.5, 0, -0.2]}>
-          <cylinderGeometry args={[0.035, 0.030, 0.36, 12]} />
+        {/* Crisp White Broadcast Blouse */}
+        <mesh position={[0, 1.32, 0]}>
+          <cylinderGeometry args={[0.13, 0.11, 0.18, 16]} />
           <meshStandardMaterial color="#f8fafc" roughness={0.3} />
         </mesh>
-        <mesh position={[-0.16, 1.14, 0.24]} rotation={[0.2, -0.3, 0]}>
-          <boxGeometry args={[0.18, 0.008, 0.12]} />
+        <mesh position={[0, 1.20, 0]}>
+          <cylinderGeometry args={[0.11, 0.13, 0.16, 16]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.3} />
+        </mesh>
+        {/* Ribbon Tie */}
+        <mesh position={[0, 1.33, 0.105]} rotation={[0.08, 0, 0]}>
+          <boxGeometry args={[0.040, 0.18, 0.01]} />
+          <meshStandardMaterial color="#991b1b" roughness={0.4} />
+        </mesh>
+
+        {/* ── Seamless Left Arm holding Cue Card ── */}
+        <mesh position={[-0.16, 1.32, 0.02]} rotation={[0.35, 0, -0.15]}>
+          <cylinderGeometry args={[0.036, 0.032, 0.22, 12]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.3} />
+        </mesh>
+        <mesh position={[-0.15, 1.18, 0.12]} rotation={[0.60, 0.20, -0.10]}>
+          <cylinderGeometry args={[0.030, 0.026, 0.22, 12]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.3} />
+        </mesh>
+        {/* Hand */}
+        <mesh position={[-0.14, 1.10, 0.22]}>
+          <sphereGeometry args={[0.022, 12, 12]} />
+          <meshStandardMaterial color="#fed7aa" roughness={0.55} />
+        </mesh>
+        {/* Cue Card */}
+        <mesh position={[-0.14, 1.14, 0.24]} rotation={[0.25, -0.20, 0.10]}>
+          <boxGeometry args={[0.18, 0.005, 0.12]} />
           <meshStandardMaterial color="#ffffff" roughness={0.2} />
         </mesh>
-        {/* Right Arm holding Wireless Mic */}
-        <mesh position={[0.18, 1.28, 0.08]} rotation={[0.6, 0, 0.2]}>
-          <cylinderGeometry args={[0.035, 0.030, 0.36, 12]} />
+        <mesh position={[-0.14, 1.14, 0.242]} rotation={[0.25, -0.20, 0.10]}>
+          <boxGeometry args={[0.16, 0.006, 0.02]} />
+          <meshBasicMaterial color="#f59e0b" />
+        </mesh>
+
+        {/* ── Seamless Right Arm holding Microphone ── */}
+        <mesh position={[0.16, 1.32, 0.02]} rotation={[0.45, 0, 0.15]}>
+          <cylinderGeometry args={[0.036, 0.032, 0.22, 12]} />
           <meshStandardMaterial color="#f8fafc" roughness={0.3} />
         </mesh>
-        <group position={[0.16, 1.36, 0.26]} rotation={[-0.3, 0, 0]}>
+        <mesh position={[0.15, 1.22, 0.14]} rotation={[0.75, -0.20, 0.10]}>
+          <cylinderGeometry args={[0.030, 0.026, 0.20, 12]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.3} />
+        </mesh>
+        {/* Hand holding Mic */}
+        <mesh position={[0.14, 1.28, 0.22]}>
+          <sphereGeometry args={[0.022, 12, 12]} />
+          <meshStandardMaterial color="#fed7aa" roughness={0.55} />
+        </mesh>
+        <group position={[0.14, 1.32, 0.25]} rotation={[-0.3, 0, 0]}>
           <mesh>
             <cylinderGeometry args={[0.009, 0.007, 0.12, 12]} />
             <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
@@ -945,29 +1046,34 @@ function McPresenters({
             <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.3} />
           </mesh>
         </group>
+
         {/* Flared Warm Beige Pleated Midi Skirt */}
         <mesh position={[0, 0.90, 0]}>
-          <cylinderGeometry args={[0.12, 0.24, 0.50, 20]} />
+          <cylinderGeometry args={[0.12, 0.24, 0.46, 20]} />
           <meshStandardMaterial color="#d4b996" roughness={0.7} />
         </mesh>
-        {/* Legs in natural tone */}
-        <mesh position={[-0.07, 0.42, 0]}>
-          <cylinderGeometry args={[0.038, 0.032, 0.52, 12]} />
-          <meshStandardMaterial color="#fed7aa" roughness={0.6} />
-        </mesh>
-        <mesh position={[0.07, 0.42, 0]}>
-          <cylinderGeometry args={[0.038, 0.032, 0.52, 12]} />
-          <meshStandardMaterial color="#fed7aa" roughness={0.6} />
-        </mesh>
-        {/* Black Heels */}
-        <mesh position={[-0.07, 0.06, 0.02]}>
-          <boxGeometry args={[0.05, 0.06, 0.11]} />
-          <meshStandardMaterial color="#0f172a" roughness={0.2} metalness={0.8} />
-        </mesh>
-        <mesh position={[0.07, 0.06, 0.02]}>
-          <boxGeometry args={[0.05, 0.06, 0.11]} />
-          <meshStandardMaterial color="#0f172a" roughness={0.2} metalness={0.8} />
-        </mesh>
+
+        {/* Left & Right Walking Legs */}
+        <group ref={kvLeftLegRef} position={[-0.07, 0.68, 0]}>
+          <mesh position={[0, -0.28, 0]}>
+            <cylinderGeometry args={[0.038, 0.032, 0.52, 12]} />
+            <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+          </mesh>
+          <mesh position={[0, -0.62, 0.02]}>
+            <boxGeometry args={[0.05, 0.06, 0.11]} />
+            <meshStandardMaterial color="#0f172a" roughness={0.2} metalness={0.8} />
+          </mesh>
+        </group>
+        <group ref={kvRightLegRef} position={[0.07, 0.68, 0]}>
+          <mesh position={[0, -0.28, 0]}>
+            <cylinderGeometry args={[0.038, 0.032, 0.52, 12]} />
+            <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+          </mesh>
+          <mesh position={[0, -0.62, 0.02]}>
+            <boxGeometry args={[0.05, 0.06, 0.11]} />
+            <meshStandardMaterial color="#0f172a" roughness={0.2} metalness={0.8} />
+          </mesh>
+        </group>
       </group>
 
       {/* ── NGỌC HUY (Male Presenter) ── */}
@@ -978,35 +1084,87 @@ function McPresenters({
           <meshStandardMaterial color="#fed7aa" roughness={0.55} />
         </mesh>
         {/* Modern Dark Side-Part Hair */}
-        <mesh position={[0, 1.72, -0.01]}>
-          <sphereGeometry args={[0.094, 24, 24]} />
+        <mesh position={[0, 1.72, -0.015]}>
+          <sphereGeometry args={[0.092, 24, 24]} />
           <meshStandardMaterial color="#1a1816" roughness={0.75} />
         </mesh>
-        <mesh position={[0.04, 1.74, 0.03]}>
+        <mesh position={[0.03, 1.74, 0.03]}>
           <boxGeometry args={[0.09, 0.04, 0.08]} />
           <meshStandardMaterial color="#1a1816" roughness={0.75} />
         </mesh>
-        {/* Neck */}
-        <mesh position={[0, 1.56, 0]}>
-          <cylinderGeometry args={[0.042, 0.045, 0.08, 12]} />
+
+        {/* ── Natural Expressive Face ── */}
+        <mesh position={[-0.030, 1.68, 0.082]}>
+          <sphereGeometry args={[0.008, 12, 12]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.2} />
+        </mesh>
+        <mesh position={[0.030, 1.68, 0.082]}>
+          <sphereGeometry args={[0.008, 12, 12]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.2} />
+        </mesh>
+        <mesh position={[-0.030, 1.71, 0.084]}>
+          <boxGeometry args={[0.026, 0.006, 0.004]} />
+          <meshStandardMaterial color="#1a1816" roughness={0.8} />
+        </mesh>
+        <mesh position={[0.030, 1.71, 0.084]}>
+          <boxGeometry args={[0.026, 0.006, 0.004]} />
+          <meshStandardMaterial color="#1a1816" roughness={0.8} />
+        </mesh>
+        <mesh position={[0, 1.655, 0.088]}>
+          <boxGeometry args={[0.014, 0.024, 0.01]} />
           <meshStandardMaterial color="#fed7aa" roughness={0.55} />
         </mesh>
-        {/* Cream Casual Zippered Jacket over White Shirt */}
-        <mesh position={[0, 1.34, 0]}>
-          <cylinderGeometry args={[0.15, 0.16, 0.40, 16]} />
-          <meshStandardMaterial color="#ded9ce" roughness={0.6} />
+        <mesh position={[0, 1.625, 0.084]}>
+          <boxGeometry args={[0.024, 0.006, 0.005]} />
+          <meshStandardMaterial color="#991b1b" roughness={0.4} />
         </mesh>
-        {/* Collar & Inner Shirt V */}
-        <mesh position={[0, 1.50, 0.12]} rotation={[0.2, 0, 0]}>
-          <boxGeometry args={[0.12, 0.06, 0.02]} />
+
+        {/* Neck */}
+        <mesh position={[0, 1.56, 0]}>
+          <cylinderGeometry args={[0.042, 0.046, 0.08, 14]} />
+          <meshStandardMaterial color="#fed7aa" roughness={0.55} />
+        </mesh>
+
+        {/* ── Seamless Tailored Host Suit Blazer & Shoulders ── */}
+        {/* Shoulder Yoke (Broad masculine suit shoulders bridging seamlessly) */}
+        <mesh position={[0, 1.48, 0]}>
+          <boxGeometry args={[0.42, 0.08, 0.20]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.5} />
+        </mesh>
+        {/* White Dress Shirt V & Necktie */}
+        <mesh position={[0, 1.46, 0.09]}>
+          <boxGeometry args={[0.10, 0.10, 0.04]} />
           <meshStandardMaterial color="#ffffff" roughness={0.3} />
         </mesh>
-        {/* Left Arm with Wireless Mic up near chest */}
-        <mesh position={[-0.22, 1.35, 0.10]} rotation={[0.6, 0, -0.25]}>
-          <cylinderGeometry args={[0.042, 0.038, 0.40, 12]} />
-          <meshStandardMaterial color="#ded9ce" roughness={0.6} />
+        <mesh position={[0, 1.42, 0.11]} rotation={[0.05, 0, 0]}>
+          <boxGeometry args={[0.032, 0.16, 0.01]} />
+          <meshStandardMaterial color="#991b1b" roughness={0.4} />
         </mesh>
-        <group position={[-0.18, 1.45, 0.28]} rotation={[-0.4, 0, 0]}>
+        {/* Suit Jacket Body */}
+        <mesh position={[0, 1.34, 0]}>
+          <cylinderGeometry args={[0.16, 0.155, 0.26, 16]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 1.18, 0]}>
+          <cylinderGeometry args={[0.155, 0.165, 0.22, 16]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.5} />
+        </mesh>
+
+        {/* ── Seamless Left Arm holding Microphone ── */}
+        <mesh position={[-0.20, 1.36, 0.03]} rotation={[0.55, 0, -0.15]}>
+          <cylinderGeometry args={[0.042, 0.036, 0.24, 12]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.5} />
+        </mesh>
+        <mesh position={[-0.18, 1.28, 0.14]} rotation={[0.85, 0.20, -0.10]}>
+          <cylinderGeometry args={[0.034, 0.030, 0.22, 12]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.5} />
+        </mesh>
+        {/* Hand holding Mic */}
+        <mesh position={[-0.15, 1.35, 0.23]}>
+          <sphereGeometry args={[0.024, 12, 12]} />
+          <meshStandardMaterial color="#fed7aa" roughness={0.55} />
+        </mesh>
+        <group position={[-0.15, 1.40, 0.26]} rotation={[-0.4, 0, 0]}>
           <mesh>
             <cylinderGeometry args={[0.010, 0.008, 0.12, 12]} />
             <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
@@ -1016,45 +1174,56 @@ function McPresenters({
             <meshStandardMaterial color="#475569" metalness={0.8} roughness={0.3} />
           </mesh>
         </group>
-        {/* Right Arm relaxed holding Host Tablet */}
-        <mesh position={[0.22, 1.30, 0.06]} rotation={[0.2, 0, 0.2]}>
-          <cylinderGeometry args={[0.042, 0.038, 0.40, 12]} />
-          <meshStandardMaterial color="#ded9ce" roughness={0.6} />
+
+        {/* ── Seamless Right Arm holding Host Tablet ── */}
+        <mesh position={[0.20, 1.34, 0.02]} rotation={[0.25, 0, 0.12]}>
+          <cylinderGeometry args={[0.042, 0.036, 0.24, 12]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.5} />
         </mesh>
-        <mesh position={[0.25, 1.12, 0.14]} rotation={[0.3, -0.2, 0]}>
-          <boxGeometry args={[0.16, 0.01, 0.22]} />
+        <mesh position={[0.22, 1.18, 0.12]} rotation={[0.45, -0.15, 0.10]}>
+          <cylinderGeometry args={[0.034, 0.030, 0.22, 12]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.5} />
+        </mesh>
+        {/* Hand */}
+        <mesh position={[0.22, 1.12, 0.20]}>
+          <sphereGeometry args={[0.024, 12, 12]} />
+          <meshStandardMaterial color="#fed7aa" roughness={0.55} />
+        </mesh>
+        {/* Host Tablet */}
+        <mesh position={[0.23, 1.14, 0.22]} rotation={[0.35, -0.20, 0]}>
+          <boxGeometry args={[0.18, 0.008, 0.24]} />
           <meshStandardMaterial color="#0284c7" metalness={0.8} roughness={0.2} />
         </mesh>
-        {/* Trousers */}
-        <mesh position={[-0.09, 0.56, 0]}>
-          <cylinderGeometry args={[0.065, 0.052, 0.96, 12]} />
-          <meshStandardMaterial color="#0f172a" roughness={0.8} />
+        <mesh position={[0.23, 1.145, 0.22]} rotation={[0.35, -0.20, 0]}>
+          <boxGeometry args={[0.16, 0.009, 0.22]} />
+          <meshBasicMaterial color="#38bdf8" />
         </mesh>
-        <mesh position={[0.09, 0.56, 0]}>
-          <cylinderGeometry args={[0.065, 0.052, 0.96, 12]} />
-          <meshStandardMaterial color="#0f172a" roughness={0.8} />
-        </mesh>
-        {/* Shoes */}
-        <mesh position={[-0.09, 0.04, 0.03]}>
-          <boxGeometry args={[0.065, 0.05, 0.13]} />
-          <meshStandardMaterial color="#020617" roughness={0.3} />
-        </mesh>
-        <mesh position={[0.09, 0.04, 0.03]}>
-          <boxGeometry args={[0.065, 0.05, 0.13]} />
-          <meshStandardMaterial color="#020617" roughness={0.3} />
-        </mesh>
+
+        {/* Tailored Suit Trousers & Walking Legs */}
+        <group ref={nhLeftLegRef} position={[-0.09, 0.90, 0]}>
+          <mesh position={[0, -0.42, 0]}>
+            <cylinderGeometry args={[0.065, 0.052, 0.86, 12]} />
+            <meshStandardMaterial color="#0f172a" roughness={0.8} />
+          </mesh>
+          <mesh position={[0, -0.86, 0.03]}>
+            <boxGeometry args={[0.065, 0.05, 0.13]} />
+            <meshStandardMaterial color="#020617" roughness={0.3} />
+          </mesh>
+        </group>
+        <group ref={nhRightLegRef} position={[0.09, 0.90, 0]}>
+          <mesh position={[0, -0.42, 0]}>
+            <cylinderGeometry args={[0.065, 0.052, 0.86, 12]} />
+            <meshStandardMaterial color="#0f172a" roughness={0.8} />
+          </mesh>
+          <mesh position={[0, -0.86, 0.03]}>
+            <boxGeometry args={[0.065, 0.05, 0.13]} />
+            <meshStandardMaterial color="#020617" roughness={0.3} />
+          </mesh>
+        </group>
       </group>
     </group>
   );
 }
-
-/**
- * Cinematic 3D Contestant Entrance Walk Sequence:
- * Each contestant emerges one-by-one through the Portal Arches on the upper plinth (Z ≈ 12.8m -> 11.9m),
- * descends the upper grandstand staircase (Z: 11.9m -> 10.2m, Y: 1.97m -> 0.96m),
- * pauses at mid-stairs to perform their unique signature greeting gesture (wave, fist pump, polite bow, double wave, heart pose),
- * descends the lower staircase to the dais (Z: 10.2m -> 6.0m), and walks to their assigned podium desk.
- */
 function ContestantEntranceWalkingFigures({
   state,
   contestantConfigs,

@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import type { OlympiaState, Seat, TimerState } from "@/lib/olympia/types";
+import { parseVcnvAnswer } from "@/lib/olympia/engine";
 import { activeSeats, seatName, SEAT_COLORS } from "./ui";
 
 /**
@@ -401,6 +402,89 @@ export function Vtv3ChalkboardQuestionFrame({
  * - Displays golden bold letter if opened, or blank dark dome if hidden.
  * ─────────────────────────────────────────────────────────────────────────────
  */
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * AUTHENTIC VTV3 3D GLOSSY BLUE DOME BUTTON
+ * As seen in the official VTV3 broadcast layout:
+ * - Spherical glossy dome with sky-blue specular glare at top-left.
+ * - Deep royal blue body with metallic rim.
+ * - Displays white bold letter when revealed.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function GlossyBlueDomeButton({
+  letter,
+  isOpened = false,
+  isCurrentRow = false,
+  isWrong = false,
+}: {
+  letter?: string;
+  isOpened?: boolean;
+  isCurrentRow?: boolean;
+  isWrong?: boolean;
+}) {
+  return (
+    <div
+      className={`relative w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 lg:w-11 lg:h-11 rounded-full flex items-center justify-center transition-all duration-300 shrink-0 ${
+        isCurrentRow
+          ? "ring-2 ring-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.8)] scale-105"
+          : "shadow-[0_4px_10px_rgba(0,0,0,0.65)]"
+      }`}
+      style={{
+        background: isWrong
+          ? "radial-gradient(circle at 35% 30%, #b91c1c 0%, #7f1d1d 50%, #450a0a 100%)"
+          : "radial-gradient(circle at 35% 30%, #93c5fd 0%, #38bdf8 25%, #0284c7 55%, #03487f 80%, #02203d 100%)",
+        border: "1.5px solid rgba(224, 242, 254, 0.85)",
+        boxShadow:
+          "0 4px 10px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.7), inset 0 -2px 4px rgba(0,0,0,0.8)",
+      }}
+    >
+      {/* Specular White Glint Spot at top-left for ultra-glossy 3D glass illusion */}
+      <div className="absolute top-1 left-1.5 w-2 h-1.5 sm:w-2.5 sm:h-2 rounded-full bg-white/80 blur-[0.3px] pointer-events-none" />
+
+      {/* Letter text when opened */}
+      {isOpened && letter ? (
+        <span className="font-black text-sm sm:text-lg md:text-xl uppercase tracking-wider text-white select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+          {letter}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * 3D Beveled Square Row Number Badge on the right of each row (1..4)
+ */
+export function Vtv3RowNumberBadge({
+  number,
+  isActive = false,
+  isOpened = false,
+}: {
+  number: number;
+  isActive?: boolean;
+  isOpened?: boolean;
+}) {
+  return (
+    <div
+      className={`relative w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg flex items-center justify-center font-black text-sm sm:text-base md:text-lg text-white select-none transition-all duration-300 shadow-lg shrink-0 ${
+        isActive
+          ? "ring-2 ring-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.85)] scale-105"
+          : "border border-cyan-400/40"
+      }`}
+      style={{
+        background: isActive
+          ? "linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #075985 100%)"
+          : isOpened
+          ? "linear-gradient(135deg, #0f766e 0%, #115e59 50%, #134e4a 100%)"
+          : "linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #172554 100%)",
+        boxShadow: "inset 0 1px 2px rgba(255,255,255,0.45), 0 4px 8px rgba(0,0,0,0.6)",
+      }}
+    >
+      {number}
+    </div>
+  );
+}
+
 export function GlossyBlackDomeButton({
   letter,
   isOpened = false,
@@ -497,54 +581,277 @@ export function VcnvCountdownGraphic({
   const curRow = curIdx >= 0 && curIdx < 4 ? v.rows[curIdx] : null;
   const questionHint = isCenter ? v.centerQuestion?.q : curRow?.hint;
 
+  // Keyword character count (excluding spaces)
+  const cleanKeyword = (v.keyword || "").replace(/\s+/g, "");
+  const keywordLen = cleanKeyword.length || 13;
+
+  // Countdown timer metrics
+  const timer = v.timer;
+  const [now, setNow] = useState(serverNow);
+  useEffect(() => {
+    if (!timer || timer.startedAt == null) return;
+    let active = true;
+    const loop = () => {
+      if (!active) return;
+      setNow(serverNow());
+      requestAnimationFrame(loop);
+    };
+    const id = requestAnimationFrame(loop);
+    return () => {
+      active = false;
+      cancelAnimationFrame(id);
+    };
+  }, [timer?.startedAt, timer?.remainingMs, serverNow]);
+
+  let remainingSec = 15;
+  if (timer && timer.startedAt != null) {
+    const elapsed = Math.max(0, now - timer.startedAt);
+    const remMs = Math.max(0, timer.remainingMs - elapsed);
+    remainingSec = Math.ceil(remMs / 1000);
+  }
+
+  // Piece mapping in VTV3 layout:
+  // Top-Left: Piece 0 (Row 1, label "1")
+  // Top-Right: Piece 1 (Row 2, label "2")
+  // Bottom-Left: Piece 3 (Row 4, label "4")
+  // Bottom-Right: Piece 2 (Row 3, label "3")
+  const QUAD_PIECES = [
+    { index: 0, label: "1", pos: "top-0 left-0" },
+    { index: 1, label: "2", pos: "top-0 right-0" },
+    { index: 3, label: "4", pos: "bottom-0 left-0" },
+    { index: 2, label: "3", pos: "bottom-0 right-0" },
+  ];
+
   return (
-    <div className="absolute inset-0 flex flex-col justify-between py-6 px-4 z-20 pointer-events-auto">
-      {/* Chalkboard Backdrop */}
-      <Vtv3ChalkboardBackdrop />
-
-      {/* ── UPPER AREA: 4 ROWS OF 3D GLOSSY BLACK DOME BUTTONS (IMAGE 1) ── */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center gap-3 sm:gap-4 max-w-5xl mx-auto w-full">
-        {v.rows.map((row, rIdx) => {
-          const isCurrent = curIdx === rIdx;
-          const cleanAns = (row.answer || "").replace(/\s+/g, "");
-          const letterCount = cleanAns.length || 7;
-          const letters = cleanAns.split("");
-
-          return (
-            <div key={rIdx} className="flex items-center justify-center gap-2 sm:gap-3 w-full animate-fade-in">
-              {/* Row Letters as 3D Glossy Dome Buttons */}
-              <div className="flex items-center justify-center gap-1.5 sm:gap-2.5">
-                {Array.from({ length: letterCount }).map((_, cIdx) => (
-                  <GlossyBlackDomeButton
-                    key={cIdx}
-                    letter={letters[cIdx]}
-                    isOpened={row.opened}
-                    isCurrentRow={isCurrent}
-                  />
-                ))}
-              </div>
-
-              {/* 3D Blue Square Row Number Badge on Right */}
-              <BlueSquareNumberBadge number={rIdx + 1} isActive={isCurrent} />
-            </div>
-          );
-        })}
+    <div className="absolute inset-0 z-20 pointer-events-auto flex flex-col p-3 sm:p-5 md:p-6 overflow-hidden">
+      {/* ── Solid Royal Blue Broadcast Masks (Solid everywhere EXCEPT the bottom-right 3D studio window) ── */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        {/* Top half solid royal blue with halftone pattern */}
+        <div className="absolute top-0 left-0 right-0 h-[52%] bg-[#061e47] border-b border-cyan-500/20" />
+        {/* Bottom-left solid royal blue */}
+        <div className="absolute bottom-0 left-0 w-[50.5%] h-[48%] bg-[#061e47] border-r border-cyan-500/20" />
+        {/* Faint circular halftone pattern on left */}
+        <div
+          className="absolute inset-0 opacity-15"
+          style={{
+            backgroundImage: "radial-gradient(#38bdf8 1.5px, transparent 1.5px)",
+            backgroundSize: "24px 24px",
+            maskImage: "linear-gradient(to right, black 0%, black 40%, transparent 70%)",
+            WebkitMaskImage: "linear-gradient(to right, black 0%, black 40%, transparent 70%)",
+          }}
+        />
       </div>
 
-      {/* ── LOWER AREA: VTV3 CHALKBOARD QUESTION BANNER IN BOTTOM 1/3 (IMAGE 1 & 2) ── */}
-      <div className="relative z-20 shrink-0 w-full mb-2">
-        <Vtv3ChalkboardQuestionFrame
-          headerBadge={
-            isCenter
-              ? "⭐ Ô TRUNG TÂM"
-              : curRow
-              ? `HÀNG NGANG SỐ ${curIdx + 1} · ${curRow.answer.replace(/\s/g, "").length} CHỮ CÁI`
-              : "VƯỢT CHƯỚNG NGẠI VẬT"
-          }
-          questionText={questionHint || "Đang đợi câu hỏi…"}
-          timer={v.timer}
-          serverNow={serverNow}
-        />
+      {/* ── Top-Left VTV3 Brand Header ── */}
+      <div className="absolute top-3 left-6 z-30 flex items-center gap-2">
+        <span className="text-xl sm:text-2xl font-black italic tracking-tighter text-red-600 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+          VTV<span className="text-green-500">3</span>
+        </span>
+      </div>
+
+      {/* ── 4-QUADRANT GRID LAYOUT (2 Columns x 2 Rows) ── */}
+      <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 md:gap-5 w-full h-full max-w-[98vw] max-h-[96vh] mx-auto mt-4 sm:mt-6">
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            QUADRANT 1: TOP-LEFT (MYSTERY PUZZLE GRID: 1, 2, 4, 3 + CENTER)
+           ═══════════════════════════════════════════════════════════════════ */}
+        <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/60 shadow-[0_0_25px_rgba(6,182,212,0.3)] bg-[#071739] flex items-center justify-center">
+          {/* Mystery image behind */}
+          {v.mysteryImage && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={v.mysteryImage}
+              alt="Chướng ngại vật"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+
+          {/* 4 Quadrants */}
+          <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
+            {QUAD_PIECES.map((piece) => {
+              const isRevealed = v.piecesRevealed[piece.index];
+              return (
+                <div
+                  key={piece.index}
+                  className={`relative flex items-center justify-center border border-cyan-500/30 transition-opacity duration-700 ${
+                    isRevealed ? "opacity-0 pointer-events-none" : "bg-[#0b1b3d] opacity-100"
+                  }`}
+                >
+                  <span className="text-4xl sm:text-6xl md:text-7xl font-black text-white select-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]">
+                    {piece.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Center Tile (Ô Trung Tâm) */}
+          <div
+            className={`absolute w-[44%] h-[40%] rounded-xl border-2 border-cyan-400/80 shadow-[0_0_20px_rgba(6,182,212,0.5)] flex items-center justify-center transition-all duration-700 z-10 ${
+              v.piecesRevealed[4] ? "opacity-0 pointer-events-none" : "bg-[#071739] opacity-100"
+            }`}
+          >
+            <div className="flex flex-col items-center justify-center gap-1">
+              <span className="text-2xl sm:text-3xl text-amber-300 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]">⭐</span>
+              <span className="text-xs sm:text-sm md:text-base font-black uppercase text-cyan-200 tracking-wider">
+                Ô Trung Tâm
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            QUADRANT 2: TOP-RIGHT (ROWS BOARD WITH 3D GLOSSY BLUE DOMES)
+           ═══════════════════════════════════════════════════════════════════ */}
+        <div
+          className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/60 shadow-[0_0_25px_rgba(6,182,212,0.3)] bg-gradient-to-br from-[#071a3d] via-[#05132d] to-[#030c1d] flex flex-col justify-between p-3 sm:p-4 md:p-5"
+          style={{
+            clipPath: "polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%)",
+          }}
+        >
+          {/* Top Chamfer Accent Border */}
+          <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none border-t-2 border-r-2 border-cyan-300" />
+
+          {/* Header Badge: CHƯỚNG NGẠI VẬT CÓ X CHỮ CÁI */}
+          <div className="flex items-center justify-center w-full pt-1 pb-2">
+            <div className="px-5 sm:px-8 py-1.5 sm:py-2 rounded-full border-2 border-cyan-400/80 bg-gradient-to-r from-cyan-950 via-[#0a2e66] to-cyan-950 shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center">
+              <span className="font-black text-xs sm:text-sm md:text-base uppercase tracking-wider text-cyan-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                CHƯỚNG NGẠI VẬT CÓ {keywordLen} CHỮ CÁI
+              </span>
+            </div>
+          </div>
+
+          {/* 4 Rows of 3D Glossy Blue Dome Buttons */}
+          <div className="flex-1 flex flex-col justify-around py-1 w-full max-w-full">
+            {v.rows.map((row, rIdx) => {
+              const isCurrent = curIdx === rIdx;
+              const cleanAns = parseVcnvAnswer(row.answer || "").primary.replace(/\s+/g, "");
+              const letterCount = row.letterCount || cleanAns.length || 7;
+              const letters = cleanAns.split("");
+
+              return (
+                <div
+                  key={rIdx}
+                  className={`flex items-center justify-between gap-2 px-2 sm:px-4 py-1.5 rounded-xl transition-all duration-300 ${
+                    isCurrent
+                      ? "bg-cyan-500/15 border border-cyan-400/60 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                      : "border border-transparent"
+                  }`}
+                >
+                  {/* Dome Buttons */}
+                  <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
+                    {Array.from({ length: letterCount }).map((_, cIdx) => (
+                      <GlossyBlueDomeButton
+                        key={cIdx}
+                        letter={letters[cIdx]}
+                        isOpened={row.opened}
+                        isCurrentRow={isCurrent}
+                        isWrong={row.wrong}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Row Number Badge (1..4) */}
+                  <Vtv3RowNumberBadge
+                    number={rIdx + 1}
+                    isActive={isCurrent}
+                    isOpened={row.opened}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            QUADRANT 3: BOTTOM-LEFT (QUESTION FRAME + 15S TIMER AT BOTTOM-LEFT)
+           ═══════════════════════════════════════════════════════════════════ */}
+        <div
+          className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-gradient-to-br from-[#061838] via-[#041026] to-[#020914] flex flex-col justify-between p-4 sm:p-5 md:p-6"
+          style={{
+            clipPath: "polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 24px 100%, 0 calc(100% - 24px))",
+          }}
+        >
+          {/* Top Chamfer Accent */}
+          <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none border-t-2 border-r-2 border-cyan-300" />
+          {/* Bottom Chamfer Accent */}
+          <div className="absolute bottom-0 left-0 w-8 h-8 pointer-events-none border-b-2 border-l-2 border-cyan-300" />
+
+          {/* Header Row: Row Name (NO "X CHỮ CÁI") */}
+          <div className="flex items-center justify-between w-full border-b border-cyan-500/30 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse" />
+              <span className="font-black text-xs sm:text-sm md:text-base uppercase tracking-widest text-cyan-300">
+                {isCenter ? "⭐ Ô TRUNG TÂM" : curRow ? `HÀNG NGANG SỐ ${curIdx + 1}` : "VƯỢT CHƯỚNG NGẠI VẬT"}
+              </span>
+            </div>
+          </div>
+
+          {/* Question Text Body */}
+          <div className="flex-1 flex items-center justify-center py-2 px-2 text-center overflow-y-auto">
+            <p className="font-extrabold text-base sm:text-xl md:text-2xl lg:text-3xl text-white leading-relaxed select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+              {questionHint || "Đang chờ chọn hàng ngang…"}
+            </p>
+          </div>
+
+          {/* Bottom Row: Timer Box at Bottom-Left Corner (VTV3 Authenticity: 13:17) */}
+          <div className="flex items-center justify-between pt-2 border-t border-cyan-500/30">
+            <div className="flex items-center gap-2 bg-black/80 border border-cyan-400/80 px-3 py-1 rounded-md shadow-[0_0_12px_rgba(6,182,212,0.4)]">
+              <span className="text-[10px] sm:text-xs font-black text-cyan-400 uppercase tracking-wider">
+                THỜI GIAN
+              </span>
+              <span className={`font-mono font-black text-base sm:text-xl ${
+                remainingSec <= 5 ? "text-red-400 animate-pulse" : "text-cyan-200"
+              }`}>
+                {remainingSec < 10 ? `0${remainingSec}` : remainingSec}s
+              </span>
+            </div>
+
+            {/* Hint / Status on Right */}
+            <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider">
+              {v.timer?.startedAt != null ? "Đang tính giờ 15s" : "Chưa bấm giờ"}
+            </span>
+          </div>
+        </div>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            QUADRANT 4: BOTTOM-RIGHT (DIRECT 3D STUDIO CAMERA WINDOW)
+           ═══════════════════════════════════════════════════════════════════ */}
+        <div
+          className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-transparent flex flex-col justify-between"
+          style={{
+            clipPath: "polygon(24px 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%, 0 24px)",
+          }}
+        >
+          {/* Inner Vignette / Broadcast Camera Overlay */}
+          <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_25px_rgba(0,0,0,0.7)] border border-white/10 rounded-2xl" />
+
+          {/* Studio HUD Badges */}
+          <div className="relative z-10 flex items-center justify-between p-3 pointer-events-none">
+            <div className="flex items-center gap-2 bg-red-600/90 text-white px-2 py-0.5 rounded text-[10px] font-black tracking-wider uppercase shadow">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+              TRỰC TIẾP
+            </div>
+            <div className="bg-black/70 border border-cyan-400/60 text-cyan-300 px-2 py-0.5 rounded text-[10px] font-black tracking-wider uppercase">
+              TRƯỜNG QUAY S14
+            </div>
+          </div>
+
+          {/* Bottom Candidate Quick Score Strip inside Studio Window */}
+          <div className="relative z-10 flex items-center justify-around bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 border-t border-cyan-500/20">
+            {activeSeats(state).map((seat) => (
+              <div key={seat.id} className="flex flex-col items-center">
+                <span className="text-[9px] sm:text-[10px] text-slate-300 font-bold uppercase truncate max-w-[70px]">
+                  {seat.name}
+                </span>
+                <span className="text-xs sm:text-sm font-black text-amber-300 drop-shadow">
+                  {seat.score}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>
     </div>
   );
@@ -552,10 +859,7 @@ export function VcnvCountdownGraphic({
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
- * COMPONENT 3: VCNV ANSWER REVEAL GRAPHIC (Image 3)
- * - Central vertical brass rail.
- * - 4 staggered capsule plaques with red connection rivets, white contestant capsules,
- *   dark slate capsule bodies, and bold uppercase white answer text.
+ * COMPONENT 3: VCNV ANSWER REVEAL GRAPHIC
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {

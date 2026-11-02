@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
+import { parseVcnvAnswer } from "@/lib/olympia/engine";
 import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
 import { CircularTimer, MediaView, ScoreStrip, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
 import { useOlympiaCameraState } from "./studio/useOlympiaCamera";
@@ -96,7 +97,7 @@ export default function DisplayScreen({ code }: { code: string }) {
     state.currentRound === "tangToc" &&
     (state.tangToc?.phase === "ranking" || state.tangToc?.phase === "graded");
   const isTangTocQuestion = state.currentRound === "tangToc" && state.tangToc?.phase === "question";
-  const isVcnvFullscreen = state.currentRound === "vcnv" && state.overlayMode === "FULLSCREEN";
+  const isVcnvFullscreen = state.currentRound === "vcnv";
 
   const showFullscreen =
     isVcnvReveal ||
@@ -568,7 +569,7 @@ function KhoiDong({ state, serverNow }: P) {
   );
 }
 
-function Vcnv({ state, serverNow, isLowerThird }: P) {
+function Vcnv({ state, serverNow }: P) {
   const v = state.vcnv!;
   if (!v) return null;
 
@@ -577,130 +578,8 @@ function Vcnv({ state, serverNow, isLowerThird }: P) {
     return <VcnvAnswerRevealGraphic state={state} />;
   }
 
-  // 2. 15-second Countdown / Question Phase
-  const isTimerRunning = v.timer?.startedAt != null;
-  if (isTimerRunning || v.phase === "question") {
-    if (!isLowerThird) {
-      // Fullscreen Broadcast View (Image 1): 4 rows of 3D dome buttons in upper half + Question box in bottom 1/3
-      return <VcnvCountdownGraphic state={state} serverNow={serverNow} />;
-    }
-    // Lower-Third Camera Overlay View (Image 2): Question banner in bottom 1/3
-    const curIdx = v.currentRow;
-    const isCenter = curIdx === 4;
-    const curRow = curIdx >= 0 && curIdx < 4 ? v.rows[curIdx] : null;
-    const questionHint = isCenter ? v.centerQuestion?.q : curRow?.hint;
-
-    return (
-      <div className="w-full flex flex-col justify-end animate-fade-in">
-        <Vtv3ChalkboardQuestionFrame
-          headerBadge={
-            isCenter
-              ? "⭐ Ô TRUNG TÂM"
-              : curRow
-              ? `HÀNG NGANG SỐ ${curIdx + 1} · ${curRow.answer.replace(/\s/g, "").length} CHỮ CÁI`
-              : "VƯỢT CHƯỚNG NGẠI VẬT"
-          }
-          questionText={questionHint || "Đang đợi câu hỏi…"}
-          timer={v.timer}
-          serverNow={serverNow}
-        />
-      </div>
-    );
-  }
-
-  // 3. Grid Selection / Review Phase: Crossword Puzzle Board + 4 Clue Rows
-  return (
-    <div className="w-full max-w-[94vw] lg:max-w-6xl mx-auto flex flex-col justify-between py-2 sm:py-4 gap-3 sm:gap-4 animate-fade-in">
-      {/* Mystery image grid */}
-      <div className="relative mx-auto rounded-2xl overflow-hidden border-2 border-amber-400/50 bg-[#0d0728] shadow-[0_0_35px_rgba(245,158,11,0.25)] aspect-[16/7] w-full max-h-[38vh]">
-        {v.mysteryImage && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={v.mysteryImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        )}
-        <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
-          {v.rows.map((_r, i) => (
-            <div
-              key={i}
-              className={`flex items-center justify-center border border-amber-900/60 transition-all duration-700 ${
-                v.piecesRevealed[i] ? "opacity-0" : "bg-slate-950/95 opacity-100"
-              }`}
-            >
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-amber-300/80 bg-slate-900/90 flex items-center justify-center text-3xl sm:text-4xl font-black text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.5)]">
-                {i + 1}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div
-          className={`absolute inset-1/4 rounded-2xl border-2 flex items-center justify-center transition-all duration-700 ${
-            v.piecesRevealed[4] ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
-          style={{
-            background: "rgba(10,5,28,0.95)",
-            borderColor: "rgba(245,158,11,0.7)",
-            color: "#fbbf24",
-            boxShadow: "0 0 25px rgba(245,158,11,0.4)",
-          }}
-        >
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-2xl sm:text-3xl">⭐</span>
-            <span className="text-lg sm:text-2xl font-black uppercase tracking-wider">Ô Trung Tâm</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 4 Clue Rows with 3D Glossy Dome Letter Buttons */}
-      <div className="space-y-2 w-full max-w-4xl mx-auto">
-        {v.rows.map((r, i) => {
-          const cleanAns = (r.answer || "").replace(/\s+/g, "");
-          const count = cleanAns.length || 7;
-          const letters = cleanAns.split("");
-
-          return (
-            <div
-              key={i}
-              className={`flex items-center justify-between rounded-xl px-4 py-2 border transition-all ${
-                v.currentRow === i
-                  ? "border-amber-400 bg-amber-500/15 shadow-[0_0_20px_rgba(245,158,11,0.35)]"
-                  : "border-slate-700/60 bg-slate-950/70"
-              }`}
-            >
-              <div className="flex items-center gap-2 sm:gap-3">
-                <BlueSquareNumberBadge number={i + 1} isActive={v.currentRow === i} />
-                <div className="flex items-center gap-1 sm:gap-2">
-                  {Array.from({ length: count }).map((_, cIdx) => (
-                    <GlossyBlackDomeButton
-                      key={cIdx}
-                      letter={letters[cIdx]}
-                      isOpened={r.opened}
-                      isCurrentRow={v.currentRow === i}
-                    />
-                  ))}
-                </div>
-              </div>
-              {r.opened ? (
-                <span className="font-black text-amber-300 text-base sm:text-lg tracking-widest">{r.answer}</span>
-              ) : (
-                <span className="text-xs sm:text-sm text-slate-400 font-bold">{count} chữ cái</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {v.bells.length > 0 && (
-        <div className="text-center text-xl sm:text-2xl text-amber-300 font-black animate-pulse drop-shadow-[0_0_15px_#f59e0b]">
-          🔔 {v.bells.map((b) => seatName(state, b.seat)).join(" → ")}
-        </div>
-      )}
-
-      {v.solvedBy != null && (
-        <div className="text-center text-3xl sm:text-5xl font-black text-emerald-300 drop-shadow-[0_0_25px_#10b981]">
-          🎉 {seatName(state, v.solvedBy)} GIẢI ĐƯỢC CHƯỚNG NGẠI VẬT!
-        </div>
-      )}
-    </div>
-  );
+  // 2. Authentic VTV3 4-Quadrant Broadcast Layout (Grid, Question & 15s Countdown Phases)
+  return <VcnvCountdownGraphic state={state} serverNow={serverNow} />;
 }
 
 function TangToc({ state, serverNow }: P) {

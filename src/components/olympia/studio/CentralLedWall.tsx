@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useMemo } from "react";
 import * as THREE from "three";
 import type { OlympiaState } from "@/lib/olympia/types";
+import { parseVcnvAnswer } from "@/lib/olympia/engine";
 
 interface CentralLedWallProps {
   state?: OlympiaState | null;
@@ -949,7 +950,7 @@ function renderRoundGraphicsToCanvas(
     state.vcnv.rows.forEach((r: any, rIdx: number) => {
       const y = startY + rIdx * (rowH + gapY);
       const isCur = state.vcnv?.currentRow === rIdx;
-      const count = (r.answer || "       ").replace(/\s/g, "").length || 7;
+      const count = parseVcnvAnswer(r.answer || "       ").primary.replace(/\s/g, "").length || 7;
       const btnR = 24;
       const btnGap = 12;
       const totalW = count * (btnR * 2 + btnGap);

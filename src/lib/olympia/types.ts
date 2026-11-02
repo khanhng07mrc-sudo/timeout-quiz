@@ -108,6 +108,8 @@ export const VD_ZONE_SHORT_LABELS: Record<VdZoneId, string> = {
 export interface QA {
   q: string;
   a: string;
+  /** optional list of alternate accepted answers/synonyms */
+  acceptedAnswers?: string[];
   /** optional subject/category label (e.g. Toán, Lý, Hóa, Sinh, Văn, Sử, Địa, Thể thao, Nghệ thuật, Lĩnh vực khác, Tiếng Anh) */
   subject?: string;
   /** 1 of 6 Khởi Động zones */
@@ -154,6 +156,10 @@ export interface TangTocQuestion {
 export interface VcnvRowDef {
   hint: string;
   answer: string;
+  /** Character count of the primary keyword */
+  letterCount?: number;
+  /** optional list of alternate accepted answers/synonyms (must match character length) */
+  acceptedAnswers?: string[];
   media?: string;
   mediaType?: "image" | "video" | "audio";
   used?: boolean;

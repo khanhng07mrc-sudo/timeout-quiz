@@ -11,6 +11,7 @@ import type {
   VeDichQuestion,
 } from "./types";
 import { autoTagOlympiaSet, tagQAWithAI } from "./ai-classifier";
+import { parseVcnvAnswer } from "./engine";
 
 type Row = Record<string, unknown>;
 

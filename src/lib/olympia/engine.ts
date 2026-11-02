@@ -57,6 +57,81 @@ export function normalizeAnswer(s: string): string {
     .trim();
 }
 
+/**
+ * Parses raw VCNV answer text, separating the primary keyword from candidate synonyms
+ * (e.g. "NẠP XẢ (Chấp nhận SẠC XẢ hoặc TÍCH XẢ)").
+ * Enforces the two VCNV rules:
+ * 1. Must be an absolute synonym / replacement keyword.
+ * 2. Character length (excluding spaces) must EXACTLY equal the primary keyword length.
+ */
+export function parseVcnvAnswer(raw: string): { primary: string; acceptedAnswers: string[] } {
+  if (!raw) return { primary: "", acceptedAnswers: [] };
+  const trimmed = raw.trim();
+  const parenMatch = trimmed.match(/^([^()]+)\s*\(([^()]+)\)\s*$/);
+  let primary = trimmed;
+  const candidates: string[] = [];
+
+  if (parenMatch) {
+    primary = parenMatch[1].trim();
+    let note = parenMatch[2].trim();
+    note = note.replace(/^(chấp nhận cả|chấp nhận|hoặc|đáp án khác|đồng nghĩa)[:\s]*/i, "");
+    const parts = note.split(/\s*(?:hoặc|hay|,|;|\/)\s*/i);
+    for (const p of parts) {
+      const c = p.trim();
+      if (c && c.toLowerCase() !== primary.toLowerCase()) {
+        candidates.push(c);
+      }
+    }
+  } else if (trimmed.includes("/")) {
+    const parts = trimmed.split(/\s*\/\s*/);
+    primary = parts[0].trim();
+    for (let i = 1; i < parts.length; i++) {
+      const c = parts[i].trim();
+      if (c) candidates.push(c);
+    }
+  }
+
+  const primaryCharLen = primary.replace(/\s+/g, "").length;
+  const validAlternates = candidates.filter((cand) => {
+    const candLen = cand.replace(/\s+/g, "").length;
+    return candLen === primaryCharLen;
+  });
+
+  return { primary, acceptedAnswers: validAlternates };
+}
+
+/**
+ * Returns a set of normalized valid answers for a VCNV row or center question,
+ * guaranteeing all accepted answers have the EXACT same non-space character length as primary.
+ */
+export function getVcnvValidAnswerSet(
+  rawOrPrimary: string,
+  extraAccepted?: string[]
+): { primary: string; validNorms: Set<string>; charLength: number } {
+  const parsed = parseVcnvAnswer(rawOrPrimary);
+  const primary = parsed.primary || rawOrPrimary;
+  const charLength = primary.replace(/\s+/g, "").length;
+
+  const combined = [
+    primary,
+    ...(extraAccepted ?? []),
+    ...parsed.acceptedAnswers,
+  ];
+
+  const validNorms = new Set<string>();
+  for (const ans of combined) {
+    if (!ans) continue;
+    // Strict Condition 2: Exact character length equality
+    if (ans.replace(/\s+/g, "").length === charLength) {
+      const norm = normalizeAnswer(ans);
+      if (norm) validNorms.add(norm);
+    }
+  }
+
+  return { primary, validNorms, charLength };
+}
+
+
 export type ActionResult = { ok: true } | { ok: false; error: string };
 const OK: ActionResult = { ok: true };
 const fail = (error: string): ActionResult => ({ ok: false, error });
@@ -1470,16 +1545,17 @@ export class OlympiaGame {
       }
       case "vcnv:correct": {
         if (row < 0) return fail("Chưa chọn hàng");
-        const answerText = row === 4 ? (v.centerQuestion?.a ?? v.keyword) : (v.rows[row]?.answer ?? "");
+        const curRowDef = row === 4 ? v.centerQuestion : v.rows[row];
+        const rawAnswerText = row === 4 ? (v.centerQuestion?.a ?? v.keyword) : (v.rows[row]?.answer ?? "");
+        const { primary, validNorms } = getVcnvValidAnswerSet(rawAnswerText, curRowDef?.acceptedAnswers);
+        const answerText = primary;
         const qText = row === 4 ? (v.centerQuestion?.q ?? "Câu hỏi số 5 (Ô trung tâm)") : (v.rows[row]?.hint ?? "");
-        const target = normalizeAnswer(answerText);
         const given = Array.isArray(a.seatIds)
           ? (a.seatIds as number[]).map(Number)
           : this.activeSeatIds.filter(
               (id) =>
                 !v.eliminatedSeats.includes(id) &&
-                normalizeAnswer(v.answers[id]?.text ?? "") === target &&
-                target !== ""
+                validNorms.has(normalizeAnswer(v.answers[id]?.text ?? ""))
             );
         const awarded = given.filter((id) => this.seat(id));
         const changes: Record<number, number> = {};

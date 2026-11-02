@@ -52,38 +52,18 @@ export function useOlympiaCameraState(
 
     // 1.5. Sequential Contestant Entrance Cinematic Sequence (Manual Trigger by Host/MC with Skip)
     if (state.entranceState?.active) {
-      const currentSeat = state.entranceState.currentSeatIdx ?? 0;
-      const seatStart = state.entranceState.seatStartedAt || state.entranceState.startedAt || now;
-      const seatElapsedSec = Math.max(0, (now - seatStart) / 1000);
+      // User Requirement: "về phần giới thiệu thí sinh sẽ lia camera từ bục đầu tiên cho tới bục cuối cùng bên phải, phụ thuộc số thí sinh thực"
+      const activeCount = Math.max(1, state.seats.length);
+      const currentSeat = Math.min(activeCount - 1, Math.max(0, state.entranceState.currentSeatIdx ?? 0));
+      const targetCam = 5 + Math.min(3, currentSeat);
 
-      // Phase A (0.0s -> 2.5s): Cam 13 (Portal Arches & Mountain focus as contestant emerges)
-      if (seatElapsedSec < 2.5) {
-        return {
-          camAngle: 13,
-          transitionMode: currentSeat === 0 ? "CUT" : "MORPH",
-          isOverlayHidden: false,
-          pushInProgress: 0,
-        };
-      }
-      // Phase B (2.5s -> 7.2s): Cam 11 (Grandstand staircase tracking & Bục Giữa signature gesture)
-      if (seatElapsedSec < 7.2) {
-        return {
-          camAngle: 11,
-          transitionMode: "MORPH",
-          isOverlayHidden: false,
-          pushInProgress: 0,
-        };
-      }
-      // Phase C (7.2s -> 11.5s): Cam (5 + k) (Spotlight contestant k walking to podium, illuminated scoreboard & arrival)
-      const validCam = 5 + Math.min(3, Math.max(0, currentSeat));
       return {
-        camAngle: validCam,
+        camAngle: targetCam,
         transitionMode: "MORPH",
         isOverlayHidden: false,
-        pushInProgress: 0,
+        pushInProgress: 0.15,
       };
     }
-
     const round = state.currentRound;
 
     // 2. Stage transitions (Lobby / Finished)
@@ -274,7 +254,7 @@ export function useOlympiaCameraState(
       if (!isTimerRunning || v.phase !== "question") {
         // Row selecting / grid phase
         return {
-          camAngle: 1, // Toàn cảnh
+          camAngle: 10, // Toàn cảnh
           transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0,
@@ -283,11 +263,11 @@ export function useOlympiaCameraState(
 
       const elapsed = Math.max(0, (now - startedAt) / 1000);
 
-      // First 4s: Toàn cảnh wide + zoom nhẹ về khu vực thí sinh
+      // First 4s: Toàn cảnh bục thí sinh
       if (elapsed < 4.0) {
         const push = Math.min(1.0, elapsed / 4.0);
         return {
-          camAngle: 1,
+          camAngle: 10,
           transitionMode: "MORPH",
           isOverlayHidden: false,
           pushInProgress: push * 0.4,

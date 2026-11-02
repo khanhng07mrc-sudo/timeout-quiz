@@ -171,36 +171,36 @@ export function CameraController({
       const pushFov = pushInProgress > 0 ? opticalFov * (1.0 - pushInProgress * 0.12) : opticalFov;
       camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 6.0, delta);
     }
-    // 0. Opening Sequence Camera Director (Continuous Majestic Dolly Pull-Back, No Oscillating Zooms):
-    // Starts close-up on MC Lectern & glowing Hexagonal Portal in the dark, then smoothly dollies back to CAM 1 as lights rise
+    // 0. Opening Sequence Camera Director:
+    // Starts from WIDE far away in darkness, then smoothly DOLLIES IN towards the MC lectern as lights rise and MCs step out
     if (introStartedAt) {
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = (now - introStartedAt) / 1000;
       if (elapsedSec < 16) {
-        const mcClosePos = new THREE.Vector3(2.50, 1.65, -3.40);
-        const mcCloseTarget = new THREE.Vector3(3.15, 1.45, -7.00);
         const cam1Pos = new THREE.Vector3(0.0, 4.4, 12.8);
         const cam1Target = new THREE.Vector3(0.0, 1.8, -3.2);
+        const mcClosePos = new THREE.Vector3(3.10, 1.65, -3.40);
+        const mcCloseTarget = new THREE.Vector3(3.15, 1.45, -7.10);
 
         let curPos: THREE.Vector3;
         let curTarget: THREE.Vector3;
 
         if (elapsedSec < 3.0) {
-          // Phase 1 (0.0s - 3.0s): Atmospheric close focus on MC podium & neon contour in darkness
-          curPos = mcClosePos.clone();
-          curTarget = mcCloseTarget.clone();
-        } else if (elapsedSec < 10.0) {
-          // Phase 2 (3.0s - 10.0s): Continuous, majestic one-directional dolly pull-out as MCs walk out & lights brighten
-          const t = (elapsedSec - 3.0) / 7.0;
-          const smoothT = t * t * (3 - 2 * t);
-          curPos = new THREE.Vector3().lerpVectors(mcClosePos, cam1Pos, smoothT);
-          curTarget = new THREE.Vector3().lerpVectors(mcCloseTarget, cam1Target, smoothT);
-        } else {
-          // Phase 3 (10.0s - 16.0s): Settle gracefully at Wide CAM 1 with subtle television live presence
-          const t = Math.min(1.0, (elapsedSec - 10.0) / 6.0);
-          const breathe = Math.sin(t * Math.PI * 0.8) * 0.05;
-          curPos = new THREE.Vector3(cam1Pos.x, cam1Pos.y + breathe, cam1Pos.z);
+          // Phase 1 (0.0s - 3.0s): Atmospheric wide view from distance in dramatic darkness
+          curPos = cam1Pos.clone();
           curTarget = cam1Target.clone();
+        } else if (elapsedSec < 11.0) {
+          // Phase 2 (3.0s - 11.0s): Continuous, majestic one-directional DOLLY IN towards MC Lectern as MCs step in from behind arch posts
+          const t = (elapsedSec - 3.0) / 8.0;
+          const smoothT = t * t * (3 - 2 * t);
+          curPos = new THREE.Vector3().lerpVectors(cam1Pos, mcClosePos, smoothT);
+          curTarget = new THREE.Vector3().lerpVectors(cam1Target, mcCloseTarget, smoothT);
+        } else {
+          // Phase 3 (11.0s - 16.0s): Hold gracefully at MC podium close-up, ready to greet viewers
+          const t = Math.min(1.0, (elapsedSec - 11.0) / 5.0);
+          const breathe = Math.sin(t * Math.PI * 0.8) * 0.02;
+          curPos = new THREE.Vector3(mcClosePos.x, mcClosePos.y + breathe, mcClosePos.z);
+          curTarget = mcCloseTarget.clone();
         }
 
         currentPos.current.copy(curPos);

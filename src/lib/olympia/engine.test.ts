@@ -1575,3 +1575,51 @@ test("Olympia match simulation: Về Đích packages never duplicate questions f
 console.log(`${passed} tests passed`);
 
 
+
+test("VCNV: only accepts alternate answer if it is a valid synonym AND matches exact character length of primary keyword", () => {
+  const g = game("O26", ["vcnv"], 4);
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  g.joinSeat("TS3", "k3");
+  g.joinSeat("TS4", "k4");
+  g.hostAction({ type: "game:start" }, 1000);
+  g.hostAction({ type: "round:force", round: "vcnv" }, 2000);
+
+  // Set row 0 answer to "NẠP XẢ" with alternates "SẠC XẢ" (5 chars) and "TÍCH XẢ" (6 chars)
+  // "NẠP XẢ" has 5 characters (excluding space).
+  g.state.vcnv!.rows[0].answer = "NẠP XẢ";
+  g.state.vcnv!.rows[0].acceptedAnswers = ["SẠC XẢ", "TÍCH XẢ"];
+
+  g.hostAction({ type: "vcnv:selectRow", row: 0 }, 3000);
+  g.hostAction({ type: "vcnv:openQuestion" }, 4000);
+  g.hostAction({ type: "vcnv:timer" }, 4500);
+
+  // Seat 0 submits primary answer "Nạp xả" (5 chars) -> CORRECT
+  g.playerAnswer(0, "Nạp xả", 5000);
+  // Seat 1 submits synonym "Sạc xả" (5 chars, exact length match) -> CORRECT
+  g.playerAnswer(1, "Sạc xả", 5100);
+  // Seat 2 submits alternate "Tích xả" (6 chars, length mismatch 6 != 5) -> WRONG
+  g.playerAnswer(2, "Tích xả", 5200);
+  // Seat 3 submits random word "Xả" (2 chars) -> WRONG
+  g.playerAnswer(3, "Xả", 5300);
+
+  const initialScoreTS1 = g.state.seats[0].score;
+  const initialScoreTS2 = g.state.seats[1].score;
+  const initialScoreTS3 = g.state.seats[2].score;
+  const initialScoreTS4 = g.state.seats[3].score;
+
+  // Reveal answers & grade the question
+  g.hostAction({ type: "vcnv:reveal" }, 5500);
+  const res = g.hostAction({ type: "vcnv:correct" }, 6000);
+  assert.equal(res.ok, true);
+
+  // TS1 and TS2 should get +10 points (rowPoints)
+  assert.equal(g.state.seats[0].score, initialScoreTS1 + 10);
+  assert.equal(g.state.seats[1].score, initialScoreTS2 + 10);
+  // TS3 and TS4 should get 0 points
+  assert.equal(g.state.seats[2].score, initialScoreTS3);
+  assert.equal(g.state.seats[3].score, initialScoreTS4);
+
+  // Verify row results contains exactly TS1 and TS2 (ids 0 and 1)
+  assert.deepEqual(g.state.vcnv!.rowResults[0], [0, 1]);
+});

@@ -2039,8 +2039,31 @@ export class OlympiaGame {
         let correct: number[];
         if (Array.isArray(a.correctSeats)) correct = (a.correctSeats as number[]).map(Number);
         else {
-          const target = normalizeAnswer(tt.correctAnswer ?? "");
-          correct = tt.ranking.filter((r) => !r.noAnswer && normalizeAnswer(r.answer) === target).map((r) => r.seat);
+          const rawTarget = tt.correctAnswer ?? "";
+          const targetCandidates = new Set<string>();
+          rawTarget
+            .split(/[/|()]/)
+            .map((s) => normalizeAnswer(s))
+            .filter(Boolean)
+            .forEach((s) => {
+              targetCandidates.add(s);
+              targetCandidates.add(s.replace(/\s+/g, ""));
+              targetCandidates.add(s.replace(/[-]/g, ""));
+            });
+
+          correct = tt.ranking
+            .filter((r) => {
+              if (r.noAnswer) return false;
+              const ansNorm = normalizeAnswer(r.answer);
+              const ansNoSpace = ansNorm.replace(/\s+/g, "");
+              const ansNoHyphen = ansNorm.replace(/[-]/g, "");
+              return (
+                targetCandidates.has(ansNorm) ||
+                targetCandidates.has(ansNoSpace) ||
+                targetCandidates.has(ansNoHyphen)
+              );
+            })
+            .map((r) => r.seat);
         }
         const tierTable = tangTocTierPoints(this.activeSeatIds.length);
         const valid = tt.ranking.filter((r) => correct.includes(r.seat) && !r.noAnswer);

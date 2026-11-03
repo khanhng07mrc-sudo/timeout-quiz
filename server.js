@@ -104893,53 +104893,31 @@ var RAW_BAC_AI_QUESTION_SET = {
   "tangToc": [
     {
       "q": "\u0110\xE2y l\xE0 h\xECnh th\u1EE9c l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u n\xE0o?",
-      "answer": "\u0110\u1EA4U TH\u1EA6U QU\u1ED0C T\u1EBE",
+      "answer": "\u0110\u1EA4U TH\u1EA6U QU\u1ED0C T\u1EBE (DAU THAU QUOC TE)",
       "type": "image",
       "media": "/olympia/media/bac_ai_tt_cau1.png",
       "category": "iq",
       "duration": 10
     },
     {
-      "q": "\u0110\xE2y l\xE0 t\u1EADp \u0111o\xE0n n\xE0o?",
-      "answer": "VOITH HYDRO",
+      "q": "H\xE3y s\u1EAFp x\u1EBFp c\xE1c s\u1EF1 ki\u1EC7n sau v\u1EDBi m\u1ED1c th\u1EDDi gian t\u01B0\u01A1ng \u1EE9ng.",
+      "answer": "BADC (B-A-D-C / B A D C)",
       "type": "image",
       "media": "/olympia/media/bac_ai_tt_cau2.png",
-      "category": "data",
-      "duration": 20,
-      "clueImages": [
-        {
-          "atSecond": 0,
-          "label": "D\u1EEF ki\u1EC7n 1 (0s): T\u1EADp \u0111o\xE0n c\u01A1 kh\xED CHLB \u0110\u1EE9c th\xE0nh l\u1EADp n\u0103m 1867",
-          "url": "/olympia/media/bac_ai_tt_cau2_clue1.png"
-        },
-        {
-          "atSecond": 5,
-          "label": "D\u1EEF ki\u1EC7n 2 (5s): C\u01A1 s\u1EDF ch\u1EBF t\u1EA1o thi\u1EBFt b\u1ECB th\u1EE7y \u0111i\u1EC7n l\u1EDBn t\u1EA1i Th\u01B0\u1EE3ng H\u1EA3i",
-          "url": "/olympia/media/bac_ai_tt_cau2_clue2.png"
-        },
-        {
-          "atSecond": 10,
-          "label": "D\u1EEF ki\u1EC7n 3 (10s): Chuy\xEAn ch\u1EBF t\u1EA1o tua-bin c\u1ED9t n\u01B0\u1EDBc cao (>500m)",
-          "url": "/olympia/media/bac_ai_tt_cau2_clue3.png"
-        },
-        {
-          "atSecond": 15,
-          "label": "D\u1EEF ki\u1EC7n 4 (15s): \u0110\u1EE9ng \u0111\u1EA7u Li\xEAn danh tr\xFAng th\u1EA7u G\xF3i 01TB-BA B\xE1c \xC1i",
-          "url": "/olympia/media/bac_ai_tt_cau2_clue4.png"
-        }
-      ]
+      "category": "arrange",
+      "duration": 20
     },
     {
-      "q": "S\u1EAFp x\u1EBFp c\xE1c m\u1ED1c th\u1EDDi gian sau theo th\u1EE9 t\u1EF1 di\u1EC5n ra t\u1EEB tr\u01B0\u1EDBc \u0111\u1EBFn sau:",
-      "answer": "2-1-4-3",
+      "q": "D\u1EF1a v\xE0o h\xECnh v\u1EBD, h\xE3y t\xECm m\u1ED9t m\u1EADt m\xE3 g\u1ED3m 10 k\xFD t\u1EF1.",
+      "answer": "TH\u1EE6Y \u0110I\u1EC6N (THU\u1EF6 \u0110I\u1EC6N)",
       "type": "image",
       "media": "/olympia/media/bac_ai_tt_cau3.png",
-      "category": "arrange",
+      "category": "iq",
       "duration": 30
     },
     {
       "q": "\u0110\xE2y l\xE0 thi\u1EBFt b\u1ECB g\xEC?",
-      "answer": "TUA-BIN B\u01A0M",
+      "answer": "M\xC1Y PH\xC1T \u0110I\u1EC6N (MAY PHAT DIEN)",
       "type": "image",
       "media": "/olympia/media/bac_ai_tt_cau4.png",
       "category": "data",
@@ -107545,8 +107523,20 @@ var OlympiaGame = class _OlympiaGame {
         let correct;
         if (Array.isArray(a.correctSeats)) correct = a.correctSeats.map(Number);
         else {
-          const target = normalizeAnswer(tt.correctAnswer ?? "");
-          correct = tt.ranking.filter((r) => !r.noAnswer && normalizeAnswer(r.answer) === target).map((r) => r.seat);
+          const rawTarget = tt.correctAnswer ?? "";
+          const targetCandidates = /* @__PURE__ */ new Set();
+          rawTarget.split(/[/|()]/).map((s) => normalizeAnswer(s)).filter(Boolean).forEach((s) => {
+            targetCandidates.add(s);
+            targetCandidates.add(s.replace(/\s+/g, ""));
+            targetCandidates.add(s.replace(/[-]/g, ""));
+          });
+          correct = tt.ranking.filter((r) => {
+            if (r.noAnswer) return false;
+            const ansNorm = normalizeAnswer(r.answer);
+            const ansNoSpace = ansNorm.replace(/\s+/g, "");
+            const ansNoHyphen = ansNorm.replace(/[-]/g, "");
+            return targetCandidates.has(ansNorm) || targetCandidates.has(ansNoSpace) || targetCandidates.has(ansNoHyphen);
+          }).map((r) => r.seat);
         }
         const tierTable = tangTocTierPoints(this.activeSeatIds.length);
         const valid = tt.ranking.filter((r) => correct.includes(r.seat) && !r.noAnswer);

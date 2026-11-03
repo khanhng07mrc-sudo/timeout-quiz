@@ -809,53 +809,31 @@
   "tangToc": [
     {
       "q": "Đây là hình thức lựa chọn nhà thầu nào?",
-      "answer": "ĐẤU THẦU QUỐC TẾ",
+      "answer": "ĐẤU THẦU QUỐC TẾ (DAU THAU QUOC TE)",
       "type": "image",
       "media": "/olympia/media/bac_ai_tt_cau1.png",
       "category": "iq",
       "duration": 10
     },
     {
-      "q": "Đây là tập đoàn nào?",
-      "answer": "VOITH HYDRO",
+      "q": "Hãy sắp xếp các sự kiện sau với mốc thời gian tương ứng.",
+      "answer": "BADC (B-A-D-C / B A D C)",
       "type": "image",
       "media": "/olympia/media/bac_ai_tt_cau2.png",
-      "category": "data",
-      "duration": 20,
-      "clueImages": [
-        {
-          "atSecond": 0,
-          "label": "Dữ kiện 1 (0s): Tập đoàn cơ khí CHLB Đức thành lập năm 1867",
-          "url": "/olympia/media/bac_ai_tt_cau2_clue1.png"
-        },
-        {
-          "atSecond": 5,
-          "label": "Dữ kiện 2 (5s): Cơ sở chế tạo thiết bị thủy điện lớn tại Thượng Hải",
-          "url": "/olympia/media/bac_ai_tt_cau2_clue2.png"
-        },
-        {
-          "atSecond": 10,
-          "label": "Dữ kiện 3 (10s): Chuyên chế tạo tua-bin cột nước cao (>500m)",
-          "url": "/olympia/media/bac_ai_tt_cau2_clue3.png"
-        },
-        {
-          "atSecond": 15,
-          "label": "Dữ kiện 4 (15s): Đứng đầu Liên danh trúng thầu Gói 01TB-BA Bác Ái",
-          "url": "/olympia/media/bac_ai_tt_cau2_clue4.png"
-        }
-      ]
+      "category": "arrange",
+      "duration": 20
     },
     {
-      "q": "Sắp xếp các mốc thời gian sau theo thứ tự diễn ra từ trước đến sau:",
-      "answer": "2-1-4-3",
+      "q": "Dựa vào hình vẽ, hãy tìm một mật mã gồm 10 ký tự.",
+      "answer": "THỦY ĐIỆN (THUỶ ĐIỆN)",
       "type": "image",
       "media": "/olympia/media/bac_ai_tt_cau3.png",
-      "category": "arrange",
+      "category": "iq",
       "duration": 30
     },
     {
       "q": "Đây là thiết bị gì?",
-      "answer": "TUA-BIN BƠM",
+      "answer": "MÁY PHÁT ĐIỆN (MAY PHAT DIEN)",
       "type": "image",
       "media": "/olympia/media/bac_ai_tt_cau4.png",
       "category": "data",

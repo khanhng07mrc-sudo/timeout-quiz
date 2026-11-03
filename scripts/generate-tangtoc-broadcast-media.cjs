@@ -7,34 +7,24 @@ if (!fs.existsSync(mediaDir)) {
   fs.mkdirSync(mediaDir, { recursive: true });
 }
 
-function svgWrapper(title, subtitle, contentSvg) {
-  const safeTitle = title.toUpperCase().replace(/&/g, "&amp;");
-  const safeSubtitle = subtitle.replace(/&/g, "&amp;");
-  const safeContent = contentSvg.replace(/&(?!(amp|lt|gt|quot|apos);)/gi, "&amp;");
+// Full 1280x720 clean broadcast canvas without headers, titles, or watermarks
+function canvasWrapper(contentSvg) {
   return `
   <svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#050b1a"/>
-        <stop offset="35%" stop-color="#0b1b3a"/>
-        <stop offset="75%" stop-color="#0d2b5c"/>
-        <stop offset="100%" stop-color="#0284c7"/>
+        <stop offset="0%" stop-color="#040816"/>
+        <stop offset="40%" stop-color="#0a1936"/>
+        <stop offset="80%" stop-color="#0b244d"/>
+        <stop offset="100%" stop-color="#035388"/>
       </linearGradient>
       <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stop-color="#fef08a"/>
         <stop offset="50%" stop-color="#eab308"/>
         <stop offset="100%" stop-color="#ca8a04"/>
       </linearGradient>
-      <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stop-color="#111827" stop-opacity="0.95"/>
-        <stop offset="100%" stop-color="#030712" stop-opacity="0.98"/>
-      </linearGradient>
-      <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#00f0ff"/>
-        <stop offset="100%" stop-color="#3b82f6"/>
-      </linearGradient>
       <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-        <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.7"/>
+        <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.65"/>
       </filter>
       <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
         <feGaussianBlur stdDeviation="8" result="blur"/>
@@ -45,381 +35,441 @@ function svgWrapper(title, subtitle, contentSvg) {
     <!-- Background -->
     <rect width="1280" height="720" fill="url(#bgGrad)"/>
 
-    <!-- Geometric Broadcast Tech Grid -->
-    <g opacity="0.08" stroke="#38bdf8" stroke-width="1">
+    <!-- Subtle Tech Grid Lines -->
+    <g opacity="0.05" stroke="#38bdf8" stroke-width="1">
       ${Array.from({ length: 13 }, (_, i) => `<line x1="${i * 100}" y1="0" x2="${i * 100}" y2="720"/>`).join("")}
       ${Array.from({ length: 8 }, (_, i) => `<line x1="0" y1="${i * 90}" x2="1280" y2="${i * 90}"/>`).join("")}
     </g>
 
-    <!-- Circular Ambient Glows -->
-    <circle cx="200" cy="180" r="160" fill="#0284c7" opacity="0.15" filter="url(#glow)"/>
-    <circle cx="1080" cy="540" r="180" fill="#6366f1" opacity="0.15" filter="url(#glow)"/>
-
-    <!-- Top Broadcast Header -->
-    <rect x="140" y="22" width="1000" height="68" rx="18" fill="#0b1329" stroke="url(#goldGrad)" stroke-width="3" filter="url(#shadow)"/>
-    <text x="640" y="52" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="24" fill="url(#goldGrad)" text-anchor="middle" letter-spacing="3">
-      ${safeTitle}
-    </text>
-    <text x="640" y="74" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#93c5fd" text-anchor="middle" letter-spacing="1.5">
-      ${safeSubtitle}
-    </text>
-
-    <!-- Main Content Frame -->
-    <rect x="70" y="104" width="1140" height="574" rx="22" fill="url(#cardGrad)" stroke="#1e293b" stroke-width="2.5" filter="url(#shadow)"/>
-
-    <!-- Inner Content -->
-    ${safeContent}
-
-    <!-- Bottom Olympia Broadcast Watermark -->
-    <rect x="90" y="642" width="230" height="24" rx="6" fill="#0369a1" opacity="0.85"/>
-    <text x="205" y="658" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="11" fill="#ffffff" text-anchor="middle" letter-spacing="1.2">
-      ĐƯỜNG LÊN ĐỈNH OLYMPIA 26
-    </text>
+    <!-- Visual Content Only (Full-bleed stage) -->
+    ${contentSvg}
   </svg>
   `;
 }
 
-// ── 1. bac_ai_tt_cau1.png (Đấu thầu quốc tế) ─────────────────────────────────
-const tt1Svg = svgWrapper(
-  "TĂNG TỐC · CÂU 1 (NHẬN DIỆN HÌNH THỨC)",
-  "HÌNH THỨC LỰA CHỌN NHÀ THẦU CÓ SỰ THAM GIA CỦA CẢ NHÀ THẦU TRONG VÀ NGOÀI NƯỚC",
-  `
-  <g transform="translate(100, 130)">
-    <!-- Central Prompt Banner -->
-    <rect x="40" y="15" width="1000" height="70" rx="14" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
-    <text x="540" y="45" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="18" fill="#e0f2fe" text-anchor="middle">
-      ĐÂY LÀ HÌNH THỨC LỰA CHỌN NHÀ THẦU NÀO THEO LUẬT ĐẤU THẦU?
-    </text>
-    <text x="540" y="68" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="14" fill="#38bdf8" text-anchor="middle">
-      Áp dụng cho gói thầu công nghệ cao như Gói 01TB-BA Thủy điện Bác Ái
-    </text>
+// ── 1. bac_ai_tt_cau1.png (Câu 1: Nhận diện Đấu thầu quốc tế - Chỉ hình ảnh) ──
+const tt1Svg = canvasWrapper(`
+  <g transform="translate(60, 40)">
+    <rect width="1160" height="640" rx="20" fill="#0b172d" stroke="#1e293b" stroke-width="2.5" filter="url(#shadow)"/>
 
-    <!-- Flow Diagram: International & Domestic Bidders -->
-    <g transform="translate(60, 115)">
-      <!-- Left Box: Domestic -->
-      <rect x="0" y="20" width="300" height="180" rx="16" fill="#064e3b" stroke="#10b981" stroke-width="3" filter="url(#shadow)"/>
-      <circle cx="150" cy="65" r="30" fill="#059669"/>
-      <text x="150" y="73" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="28" fill="#ffffff" text-anchor="middle">🇻🇳</text>
-      <text x="150" y="125" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="18" fill="#34d399" text-anchor="middle">NHÀ THẦU TRONG NƯỚC</text>
-      <text x="150" y="155" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#a7f3d0" text-anchor="middle">Doanh nghiệp Việt Nam tham dự</text>
+    <!-- Left Pod: Domestic Contractors -->
+    <g transform="translate(60, 60)">
+      <rect width="360" height="340" rx="20" fill="#064e3b" stroke="#10b981" stroke-width="3" filter="url(#shadow)"/>
+      <circle cx="180" cy="110" r="54" fill="#059669"/>
+      <text x="180" y="128" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="52" fill="#ffffff" text-anchor="middle">🇻🇳</text>
+      <text x="180" y="215" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="24" fill="#34d399" text-anchor="middle">NHÀ THẦU TRONG NƯỚC</text>
+      <text x="180" y="250" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="16" fill="#a7f3d0" text-anchor="middle">Doanh nghiệp Việt Nam tham dự</text>
+      <rect x="50" y="275" width="260" height="36" rx="8" fill="#047857"/>
+      <text x="180" y="298" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="14" fill="#ecfdf5" text-anchor="middle">XÂY DỰNG · LẮP ĐẶT · VẬT TƯ</text>
+    </g>
 
-      <!-- Center Plus / Combination Symbol -->
-      <circle cx="365" cy="110" r="26" fill="#1e293b" stroke="#eab308" stroke-width="2.5"/>
-      <text x="365" y="119" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="28" fill="#facc15" text-anchor="middle">+</text>
+    <!-- Center Plus Symbol -->
+    <g transform="translate(480, 200)">
+      <circle cx="50" cy="50" r="42" fill="#1e293b" stroke="#eab308" stroke-width="4" filter="url(#shadow)"/>
+      <text x="50" y="66" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="52" fill="#facc15" text-anchor="middle">+</text>
+    </g>
 
-      <!-- Right Box: Foreign -->
-      <rect x="430" y="20" width="300" height="180" rx="16" fill="#1e1b4b" stroke="#818cf8" stroke-width="3" filter="url(#shadow)"/>
-      <circle cx="580" cy="65" r="30" fill="#4f46e5"/>
-      <text x="580" y="73" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="28" fill="#ffffff" text-anchor="middle">🌐</text>
-      <text x="580" y="125" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="18" fill="#a5b4fc" text-anchor="middle">NHÀ THẦU NƯỚC NGOÀI</text>
-      <text x="580" y="155" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#c7d2fe" text-anchor="middle">Đức, Áo, Trung Quốc, Nhật Bản...</text>
+    <!-- Right Pod: Foreign Contractors -->
+    <g transform="translate(640, 60)">
+      <rect width="360" height="340" rx="20" fill="#1e1b4b" stroke="#818cf8" stroke-width="3" filter="url(#shadow)"/>
+      <circle cx="180" cy="110" r="54" fill="#4f46e5"/>
+      <text x="180" y="128" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="52" fill="#ffffff" text-anchor="middle">🌐</text>
+      <text x="180" y="215" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="24" fill="#a5b4fc" text-anchor="middle">NHÀ THẦU NƯỚC NGOÀI</text>
+      <text x="180" y="250" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="16" fill="#c7d2fe" text-anchor="middle">CHLB Đức, Áo, Trung Quốc...</text>
+      <rect x="50" y="275" width="260" height="36" rx="8" fill="#4338ca"/>
+      <text x="180" y="298" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="14" fill="#e0e7ff" text-anchor="middle">CHẾ TẠO TUA-BIN · CƠ ĐIỆN</text>
+    </g>
 
-      <!-- Arrow Down to Target Box -->
-      <path d="M 365 145 L 365 240" stroke="#f59e0b" stroke-width="8" stroke-linecap="round"/>
-      <polygon points="350,235 380,235 365,260" fill="#f59e0b"/>
+    <!-- Connecting Arrow -->
+    <path d="M 530 300 L 530 420" stroke="#f59e0b" stroke-width="8" stroke-linecap="round"/>
+    <polygon points="515,415 545,415 530,445" fill="#f59e0b"/>
 
-      <!-- Target Box with Question Mark -->
-      <rect x="180" y="270" width="370" height="95" rx="18" fill="#0f172a" stroke="#eab308" stroke-width="3.5" filter="url(#glow)"/>
-      <text x="365" y="310" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="15" fill="#fef08a" text-anchor="middle" letter-spacing="1">
-        HÌNH THỨC ĐẤU THẦU
+    <!-- Bottom Result Box -->
+    <g transform="translate(280, 455)">
+      <rect width="500" height="135" rx="20" fill="#071120" stroke="url(#goldGrad)" stroke-width="3.5" filter="url(#glow)"/>
+      <text x="250" y="42" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="16" fill="#fef08a" text-anchor="middle" letter-spacing="2">
+        HÌNH THỨC LỰA CHỌN NHÀ THẦU
       </text>
-      <text x="365" y="348" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="34" fill="#ffffff" text-anchor="middle" letter-spacing="6">
+      <text x="250" y="96" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="44" fill="#ffffff" text-anchor="middle" letter-spacing="8">
         ? ? ? ? ? ? ? ?
       </text>
-    </g>
-
-    <!-- Side Features Checklist -->
-    <g transform="translate(860, 135)">
-      <rect width="180" height="270" rx="14" fill="#0f172a" stroke="#334155" stroke-width="2"/>
-      <text x="90" y="32" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="13" fill="#93c5fd" text-anchor="middle">ĐẶC ĐIỂM CỐT LÕI</text>
-      <line x1="20" y1="45" x2="160" y2="45" stroke="#334155" stroke-width="1.5"/>
-      <text x="15" y="75" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="12" fill="#cbd5e1">• Cạnh tranh rộng rãi</text>
-      <text x="15" y="105" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="12" fill="#cbd5e1">• Phát hành HSMT quốc tế</text>
-      <text x="15" y="135" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="12" fill="#cbd5e1">• Ngôn ngữ tiếng Anh</text>
-      <text x="15" y="165" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="12" fill="#cbd5e1">• Tiêu chuẩn FIDIC</text>
-      <text x="15" y="195" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="12" fill="#cbd5e1">• Chuyển giao công nghệ</text>
-      <rect x="20" y="225" width="140" height="30" rx="8" fill="#0284c7"/>
-      <text x="90" y="245" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="11" fill="#ffffff" text-anchor="middle">14 CHỮ CÁI</text>
+      <text x="250" y="122" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#38bdf8" text-anchor="middle">
+        14 CHỮ CÁI · TIÊU CHUẨN FIDIC QUỐC TẾ
+      </text>
     </g>
   </g>
-  `
-);
+`);
 
-// ── 2. Helper for Clues in Question 2 (Voith Hydro) ──────────────────────────
-function makeTt2Svg(activeClueCount = 4) {
-  const c1Active = activeClueCount >= 1;
-  const c2Active = activeClueCount >= 2;
-  const c3Active = activeClueCount >= 3;
-  const c4Active = activeClueCount >= 4;
+// ── 2. bac_ai_tt_cau2.png (Câu 2: Sắp xếp theo trục thời gian chuẩn Ảnh 3) ──
+const tt2Svg = canvasWrapper(`
+  <g transform="translate(60, 30)">
+    <rect width="1160" height="660" rx="20" fill="#1b212c" stroke="#475569" stroke-width="3" filter="url(#shadow)"/>
 
-  return svgWrapper(
-    "TĂNG TỐC · CÂU 2 (DỮ KIỆN MỞ DẦN)",
-    "ĐÂY LÀ TẬP ĐOÀN CƠ KHÍ NĂNG LƯỢNG NÀO?",
-    `
-    <g transform="translate(100, 130)">
-      <!-- Quadrant 1: Clue 1 (Germany) -->
-      <g transform="translate(30, 20)">
-        <rect width="480" height="190" rx="16" fill="${c1Active ? "#0f2347" : "#0f172a"}" stroke="${c1Active ? "#38bdf8" : "#334155"}" stroke-width="${c1Active ? 3 : 1.5}" filter="url(#shadow)"/>
-        <rect x="20" y="18" width="140" height="32" rx="8" fill="${c1Active ? "#0284c7" : "#334155"}"/>
-        <text x="90" y="40" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="14" fill="#ffffff" text-anchor="middle">DỮ KIỆN 1 (0s)</text>
-        ${c1Active ? `
-          <text x="25" y="85" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#ffffff">Tập đoàn cơ khí CHLB Đức 🇩🇪</text>
-          <text x="25" y="118" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="15" fill="#bae6fd">• Thành lập năm 1867 tại Heidenheim</text>
-          <text x="25" y="148" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="15" fill="#bae6fd">• Hơn 150 năm dẫn đầu công nghệ thủy điện toàn cầu</text>
-        ` : `
-          <text x="240" y="115" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="26" fill="#475569" text-anchor="middle">🔒 ĐANG KHÓA</text>
-        `}
+    <!-- ── TOP HORIZONTAL TIMELINE BAR (1 - 2 - 3 - 4) LIKE IMAGE 3 ── -->
+    <g transform="translate(60, 50)">
+      <rect x="90" y="40" width="860" height="20" rx="10" fill="#334155"/>
+
+      <!-- Node 1: 15/10/2025 -->
+      <g transform="translate(90, 0)">
+        <text x="0" y="0" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="32" fill="#cbd5e1" text-anchor="middle">1</text>
+        <circle cx="0" cy="50" r="46" fill="#ea580c" stroke="#fed7aa" stroke-width="4.5" filter="url(#shadow)"/>
+        <text x="0" y="56" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="16" fill="#ffffff" text-anchor="middle">15/10/2025</text>
       </g>
 
-      <!-- Quadrant 2: Clue 2 (Shanghai) -->
-      <g transform="translate(560, 20)">
-        <rect width="480" height="190" rx="16" fill="${c2Active ? "#241442" : "#0f172a"}" stroke="${c2Active ? "#a855f7" : "#334155"}" stroke-width="${c2Active ? 3 : 1.5}" filter="url(#shadow)"/>
-        <rect x="20" y="18" width="140" height="32" rx="8" fill="${c2Active ? "#7c3aed" : "#334155"}"/>
-        <text x="90" y="40" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="14" fill="#ffffff" text-anchor="middle">DỮ KIỆN 2 (5s)</text>
-        ${c2Active ? `
-          <text x="25" y="85" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#ffffff">Nhà máy chế tạo Thượng Hải 🏭</text>
-          <text x="25" y="118" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="15" fill="#e9d5ff">• Cơ sở sản xuất thiết bị thủy lực hiện đại bậc nhất</text>
-          <text x="25" y="148" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="15" fill="#e9d5ff">• Năng lực đúc cánh tua-bin nguyên khối siêu trường</text>
-        ` : `
-          <text x="240" y="115" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="26" fill="#475569" text-anchor="middle">🔒 ĐANG KHÓA (5s)</text>
-        `}
+      <!-- Connecting Seg 1-2 -->
+      <rect x="90" y="43" width="286" height="14" fill="#38bdf8"/>
+
+      <!-- Node 2: 23/02/2026 -->
+      <g transform="translate(376, 0)">
+        <text x="0" y="0" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="32" fill="#cbd5e1" text-anchor="middle">2</text>
+        <circle cx="0" cy="50" r="46" fill="#0284c7" stroke="#bae6fd" stroke-width="4.5" filter="url(#shadow)"/>
+        <text x="0" y="56" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="16" fill="#ffffff" text-anchor="middle">23/02/2026</text>
       </g>
 
-      <!-- Quadrant 3: Clue 3 (High Head Pump-Turbine) -->
-      <g transform="translate(30, 240)">
-        <rect width="480" height="190" rx="16" fill="${c3Active ? "#381128" : "#0f172a"}" stroke="${c3Active ? "#ec4899" : "#334155"}" stroke-width="${c3Active ? 3 : 1.5}" filter="url(#shadow)"/>
-        <rect x="20" y="18" width="140" height="32" rx="8" fill="${c3Active ? "#db2777" : "#334155"}"/>
-        <text x="90" y="40" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="14" fill="#ffffff" text-anchor="middle">DỮ KIỆN 3 (10s)</text>
-        ${c3Active ? `
-          <text x="25" y="85" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#ffffff">Tua-bin Bơm - Cột Áp Cao ⚙️</text>
-          <text x="25" y="118" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="15" fill="#fbcfe8">• Chuyên gia chế tạo tua-bin tích năng cột nước > 500m</text>
-          <text x="25" y="148" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="15" fill="#fbcfe8">• Cung cấp thiết bị cho các siêu dự án thế giới</text>
-        ` : `
-          <text x="240" y="115" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="26" fill="#475569" text-anchor="middle">🔒 ĐANG KHÓA (10s)</text>
-        `}
+      <!-- Connecting Seg 2-3 -->
+      <rect x="376" y="43" width="286" height="14" fill="#22c55e"/>
+
+      <!-- Node 3: 21/10/2026 -->
+      <g transform="translate(662, 0)">
+        <text x="0" y="0" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="32" fill="#cbd5e1" text-anchor="middle">3</text>
+        <circle cx="0" cy="50" r="46" fill="#16a34a" stroke="#bbf7d0" stroke-width="4.5" filter="url(#shadow)"/>
+        <text x="0" y="56" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="16" fill="#ffffff" text-anchor="middle">21/10/2026</text>
       </g>
 
-      <!-- Quadrant 4: Clue 4 (Bac Ai Winner) -->
-      <g transform="translate(560, 240)">
-        <rect width="480" height="190" rx="16" fill="${c4Active ? "#362208" : "#0f172a"}" stroke="${c4Active ? "#eab308" : "#334155"}" stroke-width="${c4Active ? 3.5 : 1.5}" filter="url(#shadow)"/>
-        <rect x="20" y="18" width="140" height="32" rx="8" fill="${c4Active ? "#ca8a04" : "#334155"}"/>
-        <text x="90" y="40" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="14" fill="#ffffff" text-anchor="middle">DỮ KIỆN 4 (15s)</text>
-        ${c4Active ? `
-          <text x="25" y="85" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#fef08a">Trúng thầu Gói 01TB-BA Bác Ái 🏆</text>
-          <text x="25" y="118" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="15" fill="#fef9c3">• Đứng đầu Liên danh trúng thầu 4.462,603 tỷ đồng</text>
-          <text x="25" y="148" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="15" fill="#fef9c3">• Cung cấp toàn bộ 4 tổ máy Tua-bin Bơm 1.200 MW</text>
-        ` : `
-          <text x="240" y="115" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="26" fill="#475569" text-anchor="middle">🔒 ĐANG KHÓA (15s)</text>
-        `}
-      </g>
+      <!-- Connecting Seg 3-4 -->
+      <rect x="662" y="43" width="286" height="14" fill="#d97706"/>
 
-      <!-- Center Logo Silhouette / Question Badge -->
-      <g transform="translate(500, 205)">
-        <circle cx="50" cy="50" r="42" fill="#0b1329" stroke="url(#goldGrad)" stroke-width="3" filter="url(#glow)"/>
-        <text x="50" y="62" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="36" fill="url(#goldGrad)" text-anchor="middle">?</text>
+      <!-- Node 4: 26/10/2026 -->
+      <g transform="translate(948, 0)">
+        <text x="0" y="0" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="32" fill="#cbd5e1" text-anchor="middle">4</text>
+        <circle cx="0" cy="50" r="46" fill="#d97706" stroke="#fef08a" stroke-width="4.5" filter="url(#shadow)"/>
+        <text x="0" y="56" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="16" fill="#ffffff" text-anchor="middle">26/10/2026</text>
       </g>
     </g>
-    `
-  );
-}
 
-// ── 3. bac_ai_tt_cau3.png (Sắp xếp 2 - 1 - 4 - 3) ───────────────────────────
-const tt3Svg = svgWrapper(
-  "TĂNG TỐC · CÂU 3 (SẮP XẾP THEO TRÌNH TỰ THỜI GIAN)",
-  "SẮP XẾP CÁC MỐC THỜI GIAN ĐẤU THẦU GÓI 01TB-BA THEO TRÌNH TỰ TỪ TRƯỚC ĐẾN SAU",
-  `
-  <g transform="translate(100, 130)">
-    <!-- Subtitle instruction -->
-    <rect x="40" y="10" width="1000" height="50" rx="12" fill="#0f172a" stroke="#334155" stroke-width="2"/>
-    <text x="540" y="42" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="16" fill="#fde047" text-anchor="middle">
-      HÃY SẮP XẾP 4 MỐC THỜI GIAN SAU THEO THỨ TỰ DIỄN RA TỪ TRƯỚC ĐẾN SAU:
+    <!-- ── 4 PINNED EVENT CARDS A, B, C, D (NO DATES ON CARDS) ── -->
+    <g transform="translate(45, 195)">
+      <!-- Card A -->
+      <g transform="translate(0, 0)">
+        <rect x="115" y="-14" width="18" height="36" rx="9" fill="none" stroke="#e2e8f0" stroke-width="4.5"/>
+        <rect width="248" height="390" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" filter="url(#shadow)"/>
+        <rect x="24" y="24" width="200" height="150" rx="8" fill="#e2e8f0"/>
+        <text x="124" y="105" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="64" text-anchor="middle">📂</text>
+        <text x="124" y="152" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="13" fill="#475569" text-anchor="middle">HỒ SƠ MỜI THẦU</text>
+        <text x="124" y="220" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#0f172a" text-anchor="middle">Đóng &amp; mở thầu</text>
+        <text x="124" y="250" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#0f172a" text-anchor="middle">công khai</text>
+        <text x="124" y="288" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#64748b" text-anchor="middle">Mở túi hồ sơ kỹ thuật</text>
+        <rect x="89" y="325" width="70" height="42" rx="8" fill="#0f172a"/>
+        <text x="124" y="356" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="30" fill="#ffffff" text-anchor="middle">A</text>
+      </g>
+
+      <!-- Card B -->
+      <g transform="translate(274, 0)">
+        <rect x="115" y="-14" width="18" height="36" rx="9" fill="none" stroke="#e2e8f0" stroke-width="4.5"/>
+        <rect width="248" height="390" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" filter="url(#shadow)"/>
+        <rect x="24" y="24" width="200" height="150" rx="8" fill="#e2e8f0"/>
+        <text x="124" y="105" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="64" text-anchor="middle">📢</text>
+        <text x="124" y="152" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="13" fill="#475569" text-anchor="middle">THÔNG BÁO MỜI THẦU</text>
+        <text x="124" y="220" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#0f172a" text-anchor="middle">Phát hành</text>
+        <text x="124" y="250" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#0f172a" text-anchor="middle">Hồ sơ mời thầu</text>
+        <text x="124" y="288" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#64748b" text-anchor="middle">Đăng tải Hệ thống mạng QG</text>
+        <rect x="89" y="325" width="70" height="42" rx="8" fill="#0f172a"/>
+        <text x="124" y="356" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="30" fill="#ffffff" text-anchor="middle">B</text>
+      </g>
+
+      <!-- Card C -->
+      <g transform="translate(548, 0)">
+        <rect x="115" y="-14" width="18" height="36" rx="9" fill="none" stroke="#e2e8f0" stroke-width="4.5"/>
+        <rect width="248" height="390" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" filter="url(#shadow)"/>
+        <rect x="24" y="24" width="200" height="150" rx="8" fill="#e2e8f0"/>
+        <text x="124" y="105" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="64" text-anchor="middle">✒️</text>
+        <text x="124" y="152" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="13" fill="#475569" text-anchor="middle">HỢP ĐỒNG GÓI 01TB-BA</text>
+        <text x="124" y="220" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#0f172a" text-anchor="middle">EVN chính thức</text>
+        <text x="124" y="250" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#0f172a" text-anchor="middle">ký hợp đồng</text>
+        <text x="124" y="288" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#64748b" text-anchor="middle">Ký kết cùng Liên danh</text>
+        <rect x="89" y="325" width="70" height="42" rx="8" fill="#0f172a"/>
+        <text x="124" y="356" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="30" fill="#ffffff" text-anchor="middle">C</text>
+      </g>
+
+      <!-- Card D -->
+      <g transform="translate(822, 0)">
+        <rect x="115" y="-14" width="18" height="36" rx="9" fill="none" stroke="#e2e8f0" stroke-width="4.5"/>
+        <rect width="248" height="390" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" filter="url(#shadow)"/>
+        <rect x="24" y="24" width="200" height="150" rx="8" fill="#e2e8f0"/>
+        <text x="124" y="105" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="64" text-anchor="middle">🏆</text>
+        <text x="124" y="152" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="13" fill="#475569" text-anchor="middle">QUYẾT ĐỊNH TRÚNG THẦU</text>
+        <text x="124" y="220" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#0f172a" text-anchor="middle">Phê duyệt kết quả</text>
+        <text x="124" y="250" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#0f172a" text-anchor="middle">trúng thầu</text>
+        <text x="124" y="288" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#64748b" text-anchor="middle">Quyết định của HĐTV EVN</text>
+        <rect x="89" y="325" width="70" height="42" rx="8" fill="#0f172a"/>
+        <text x="124" y="356" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="30" fill="#ffffff" text-anchor="middle">D</text>
+      </g>
+    </g>
+  </g>
+`);
+
+// ── 3. bac_ai_tt_cau3.png (Câu 3: Logic ma trận giải mật mã Telex chuẩn Ảnh 2) ──
+// Target Word: THỦY ĐIỆN (Telex: T - H - U - Y - S - D - D - I - E - N) = 10 characters
+const matrixData = [
+  // Row 0
+  [
+    { char: "A", bg: "#86efac" }, // Green
+    { char: "F", bg: "#f472b6" }, // Pink
+    { char: "C", bg: "#fde047" }, // Yellow
+    { char: "7", bg: "#cbd5e1" }, // Grey
+    { char: "D", bg: "#86efac" }, // [Slot 6: D] Green
+    { char: "I", bg: "#fdba74" }, // [Slot 8: I] Orange
+  ],
+  // Row 1
+  [
+    { char: "K", bg: "#cbd5e1" },
+    { char: "B", bg: "#fde047" },
+    { char: "H", bg: "#f472b6" }, // [Slot 2: H] Pink
+    { char: "3", bg: "#86efac" },
+    { char: "N", bg: "#38bdf8" }, // [Slot 10: N] Sky
+    { char: "E", bg: "#f472b6" }, // [Slot 9: E] Pink
+  ],
+  // Row 2
+  [
+    { char: "G", bg: "#38bdf8" },
+    { char: "D", bg: "#fde047" }, // [Slot 7: D] Yellow
+    { char: "0", bg: "#fdba74" },
+    { char: "M", bg: "#38bdf8" },
+    { char: "J", bg: "#38bdf8" },
+    { char: "O", bg: "#fdba74" },
+  ],
+  // Row 3
+  [
+    { char: "9", bg: "#fdba74" },
+    { char: "U", bg: "#38bdf8" }, // [Slot 3: U] Sky
+    { char: "Q", bg: "#fde047" },
+    { char: "1", bg: "#cbd5e1" },
+    { char: "S", bg: "#86efac" }, // [Slot 5: S] Green
+    { char: "X", bg: "#fdba74" },
+  ],
+  // Row 4
+  [
+    { char: "Z", bg: "#cbd5e1" },
+    { char: "P", bg: "#f472b6" },
+    { char: "2", bg: "#fdba74" },
+    { char: "R", bg: "#86efac" },
+    { char: "8", bg: "#fde047" },
+    { char: "T", bg: "#38bdf8" }, // [Slot 1: T] Sky
+  ],
+  // Row 5
+  [
+    { char: "V", bg: "#fde047" },
+    { char: "5", bg: "#86efac" },
+    { char: "W", bg: "#f472b6" },
+    { char: "4", bg: "#38bdf8" },
+    { char: "Y", bg: "#f472b6" }, // [Slot 4: Y] Pink
+    { char: "6", bg: "#f472b6" },
+  ],
+];
+
+// 10 bottom slots corresponding to T H U Y S D D I E N
+const bottomSlots = [
+  { bg: "#38bdf8", border: "#ef4444" }, // 1: T (Sky, Red border)
+  { bg: "#f472b6", border: "#ef4444" }, // 2: H (Pink, Red border)
+  { bg: "#38bdf8", border: "#ef4444" }, // 3: U (Sky, Red border)
+  { bg: "#f472b6", border: "#ef4444" }, // 4: Y (Pink, Red border)
+  { bg: "#86efac", border: "#ef4444" }, // 5: S (Green, Red border)
+  { bg: "#86efac", border: "#ef4444" }, // 6: D (Green, Red border)
+  { bg: "#fde047", border: "#ef4444" }, // 7: D (Yellow, Red border)
+  { bg: "#fdba74", border: "#ef4444" }, // 8: I (Orange, Red border)
+  { bg: "#f472b6", border: "#ef4444" }, // 9: E (Pink, Red border)
+  { bg: "#38bdf8", border: "#ef4444" }, // 10: N (Sky, Red border)
+];
+
+const cellSize = 68;
+const gridStartX = 436;
+const gridStartY = 45;
+
+const tt3Svg = canvasWrapper(`
+  <g transform="translate(0, 0)">
+    <!-- ── 6x6 COLORED PUZZLE MATRIX (EXACT STYLING OF IMAGE 2) ── -->
+    <g transform="translate(${gridStartX}, ${gridStartY})">
+      <!-- Matrix Cells -->
+      ${matrixData
+        .map((row, r) =>
+          row
+            .map((cell, c) => {
+              const x = c * cellSize;
+              const y = r * cellSize;
+              return `
+              <rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" 
+                    fill="${cell.bg}" stroke="#ffffff" stroke-width="1.5"/>
+              <text x="${x + cellSize / 2}" y="${y + cellSize / 2 + 10}" 
+                    font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="28" 
+                    fill="#0f172a" text-anchor="middle">${cell.char}</text>
+            `;
+            })
+            .join("")
+        )
+        .join("")}
+
+      <!-- Red Crosshair Partition Axes (Like Image 2) -->
+      <line x1="${3 * cellSize}" y1="0" x2="${3 * cellSize}" y2="${6 * cellSize}" 
+            stroke="#ef4444" stroke-width="6"/>
+      <line x1="0" y1="${3 * cellSize}" x2="${6 * cellSize}" y2="${3 * cellSize}" 
+            stroke="#ef4444" stroke-width="6"/>
+
+      <!-- Matrix Outer Border -->
+      <rect x="0" y="0" width="${6 * cellSize}" height="${6 * cellSize}" 
+            fill="none" stroke="#ef4444" stroke-width="5"/>
+    </g>
+
+    <!-- Note: Sử dụng kiểu gõ Telex -->
+    <text x="640" y="495" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#facc15" text-anchor="middle">
+      <tspan fill="#facc15" text-decoration="underline">Lưu ý:</tspan> Sử dụng kiểu gõ Telex
     </text>
 
-    <!-- 4 Clear Numbered Cards -->
-    <g transform="translate(40, 80)">
-      <!-- Box 1 -->
-      <g transform="translate(0, 0)">
-        <rect width="480" height="180" rx="16" fill="#0f172a" stroke="#38bdf8" stroke-width="3" filter="url(#shadow)"/>
-        <circle cx="55" cy="50" r="28" fill="#0284c7"/>
-        <text x="55" y="60" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="28" fill="#ffffff" text-anchor="middle">1</text>
-        <text x="105" y="55" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#38bdf8">ĐÓNG & MỞ THẦU CÔNG KHAI</text>
-        
-        <rect x="35" y="90" width="410" height="65" rx="10" fill="#0284c7" opacity="0.2"/>
-        <text x="240" y="132" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="34" fill="#ffffff" text-anchor="middle" letter-spacing="2">
-          23 / 02 / 2026
-        </text>
-      </g>
-
-      <!-- Box 2 -->
-      <g transform="translate(520, 0)">
-        <rect width="480" height="180" rx="16" fill="#0f172a" stroke="#f59e0b" stroke-width="3" filter="url(#shadow)"/>
-        <circle cx="55" cy="50" r="28" fill="#d97706"/>
-        <text x="55" y="60" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="28" fill="#ffffff" text-anchor="middle">2</text>
-        <text x="105" y="55" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#f59e0b">PHÁT HÀNH HỒ SƠ MỜI THẦU</text>
-        
-        <rect x="35" y="90" width="410" height="65" rx="10" fill="#d97706" opacity="0.2"/>
-        <text x="240" y="132" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="34" fill="#ffffff" text-anchor="middle" letter-spacing="2">
-          15 / 10 / 2025
-        </text>
-      </g>
-
-      <!-- Box 3 -->
-      <g transform="translate(0, 210)">
-        <rect width="480" height="180" rx="16" fill="#0f172a" stroke="#10b981" stroke-width="3" filter="url(#shadow)"/>
-        <circle cx="55" cy="50" r="28" fill="#059669"/>
-        <text x="55" y="60" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="28" fill="#ffffff" text-anchor="middle">3</text>
-        <text x="105" y="55" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#10b981">CHÍNH THỨC KÝ HỢP ĐỒNG</text>
-        
-        <rect x="35" y="90" width="410" height="65" rx="10" fill="#059669" opacity="0.2"/>
-        <text x="240" y="132" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="34" fill="#ffffff" text-anchor="middle" letter-spacing="2">
-          26 / 10 / 2026
-        </text>
-      </g>
-
-      <!-- Box 4 -->
-      <g transform="translate(520, 210)">
-        <rect width="480" height="180" rx="16" fill="#0f172a" stroke="#ec4899" stroke-width="3" filter="url(#shadow)"/>
-        <circle cx="55" cy="50" r="28" fill="#db2777"/>
-        <text x="55" y="60" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="28" fill="#ffffff" text-anchor="middle">4</text>
-        <text x="105" y="55" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="20" fill="#ec4899">PHÊ DUYỆT KẾT QUẢ TRÚNG THẦU</text>
-        
-        <rect x="35" y="90" width="410" height="65" rx="10" fill="#db2777" opacity="0.2"/>
-        <text x="240" y="132" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="34" fill="#ffffff" text-anchor="middle" letter-spacing="2">
-          21 / 10 / 2026
-        </text>
-      </g>
-    </g>
-
-    <!-- Bottom Instruction Guide -->
-    <g transform="translate(260, 485)">
-      <rect width="560" height="36" rx="10" fill="#0284c7" opacity="0.3" stroke="#38bdf8" stroke-width="1.5"/>
-      <text x="280" y="24" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="14" fill="#38bdf8" text-anchor="middle">
-        Nhập đáp án gồm 4 chữ số viết liền (ví dụ: 1234) hoặc ngăn cách bằng gạch nối
-      </text>
+    <!-- ── 10 DECODING SLOTS AT BOTTOM (LIKE IMAGE 2) ── -->
+    <g transform="translate(195, 530)">
+      <!-- Black Panel Tray -->
+      <rect x="-20" y="0" width="930" height="115" rx="18" fill="#091122" stroke="#334155" stroke-width="2.5" filter="url(#shadow)"/>
+      
+      <!-- 10 Colored Boxes -->
+      ${bottomSlots
+        .map((slot, i) => {
+          const x = i * 88 + 15;
+          return `
+          <g transform="translate(${x}, 18)">
+            <!-- Outer Slot Frame with Red Border -->
+            <rect width="68" height="66" rx="10" fill="${slot.bg}" stroke="${slot.border}" stroke-width="4.5" filter="url(#shadow)"/>
+            <!-- Slot Index -->
+            <text x="34" y="86" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="13" fill="#94a3b8" text-anchor="middle">${i + 1}</text>
+          </g>
+        `;
+        })
+        .join("")}
     </g>
   </g>
-  `
-);
+`);
 
-// ── 4. bac_ai_tt_cau4.png (Tua-bin bơm / Pump-Turbine) ──────────────────────
-const tt4Svg = svgWrapper(
-  "TĂNG TỐC · CÂU 4 (NHẬN DIỆN THIẾT BỊ / VIDEO)",
-  "THIẾT BỊ CƠ ĐIỆN CHÍNH GÓI THẦU 01TB-BA · NHÀ MÁY THỦY ĐIỆN TÍCH NĂNG BÁC ÁI",
-  `
-  <g transform="translate(90, 120)">
+// ── 4. bac_ai_tt_cau4.png (Câu 4: MÁY PHÁT ĐIỆN - Sơ đồ Stator / Rotor / Máy phát 300 MW) ──
+const tt4Svg = canvasWrapper(`
+  <g transform="translate(60, 40)">
     <!-- Main Left Technical Diagram Card -->
-    <rect x="20" y="10" width="680" height="510" rx="18" fill="#0a1226" stroke="#38bdf8" stroke-width="2.5" filter="url(#shadow)"/>
+    <rect x="0" y="0" width="740" height="640" rx="20" fill="#091124" stroke="#38bdf8" stroke-width="2.5" filter="url(#shadow)"/>
     
-    <!-- Schematic Diagram of Reversible Pump-Turbine -->
-    <g transform="translate(60, 35)">
-      <!-- Outer Spiral Casing (Vỏ xoắn ốc) -->
-      <path d="M 120 220 C 120 100, 320 60, 440 120 C 540 170, 560 300, 480 380 C 400 440, 240 440, 170 380 L 70 410 L 70 330 L 140 330" 
-            fill="#0f2347" stroke="#38bdf8" stroke-width="6" stroke-linejoin="round"/>
-      <text x="500" y="130" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="12" fill="#7dd3fc">VỎ XOẮN ỐC (SPIRAL CASING)</text>
+    <!-- Schematic Diagram of Motor-Generator (Máy phát điện 300 MW) -->
+    <g transform="translate(80, 50)">
+      <!-- Outer Stator Frame & Core (Khung & Lõi Stator) -->
+      <circle cx="290" cy="270" r="230" fill="#0f172a" stroke="#475569" stroke-width="8"/>
+      <circle cx="290" cy="270" r="215" fill="#1e293b" stroke="#38bdf8" stroke-width="5"/>
 
-      <!-- Center Shaft (Trục máy) -->
-      <rect x="285" y="20" width="30" height="150" fill="#94a3b8" stroke="#ffffff" stroke-width="2"/>
-      <text x="300" y="15" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="11" fill="#cbd5e1" text-anchor="middle">TRỤC NỐI MÁY PHÁT</text>
+      <!-- Stator Windings (Cuộn dây Stator 18 kV - 24 cuộn dây màu cam đồng) -->
+      ${Array.from({ length: 24 }, (_, i) => {
+        const angle = (i * 15 * Math.PI) / 180;
+        const x = 290 + Math.cos(angle) * 195;
+        const y = 270 + Math.sin(angle) * 195;
+        return `
+        <rect x="${x - 9}" y="${y - 9}" width="18" height="18" rx="4" fill="#ea580c" stroke="#fed7aa" stroke-width="1.5"/>
+      `;
+      }).join("")}
 
-      <!-- Runner Chamber & Rotor Blades (Cánh bánh xe công tác) -->
-      <circle cx="300" cy="250" r="110" fill="#0369a1" stroke="#e0f2fe" stroke-width="4"/>
-      
-      <!-- Impeller Blades -->
-      ${[0, 45, 90, 135, 180, 225, 270, 315].map(deg => `
-        <path d="M 300 250 Q ${300 + Math.cos(deg * Math.PI / 180) * 80 + 20} ${250 + Math.sin(deg * Math.PI / 180) * 80} ${300 + Math.cos((deg + 30) * Math.PI / 180) * 105} ${250 + Math.sin((deg + 30) * Math.PI / 180) * 105}" 
-              stroke="#facc15" stroke-width="5" fill="none" stroke-linecap="round"/>
-      `).join("")}
+      <!-- Air Gap (Khe hở không khí từ thông) -->
+      <circle cx="290" cy="270" r="172" fill="#0c4a6e" stroke="#38bdf8" stroke-width="2" stroke-dasharray="6,4"/>
 
-      <!-- Center Hub -->
-      <circle cx="300" cy="250" r="35" fill="#f59e0b" stroke="#ffffff" stroke-width="3"/>
-      <circle cx="300" cy="250" r="12" fill="#ffffff"/>
+      <!-- Rotor Poles (Cực từ Rotor - 12 cực từ Nam & Bắc luân phiên) -->
+      ${Array.from({ length: 12 }, (_, i) => {
+        const angle = (i * 30 * Math.PI) / 180;
+        const x = 290 + Math.cos(angle) * 135;
+        const y = 270 + Math.sin(angle) * 135;
+        const isNorth = i % 2 === 0;
+        return `
+        <g transform="translate(${x}, ${y}) rotate(${i * 30 + 90})">
+          <rect x="-16" y="-22" width="32" height="44" rx="6" 
+                fill="${isNorth ? "#ef4444" : "#3b82f6"}" stroke="#ffffff" stroke-width="1.5"/>
+          <text x="0" y="7" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="18" 
+                fill="#ffffff" text-anchor="middle">${isNorth ? "N" : "S"}</text>
+        </g>
+      `;
+      }).join("")}
 
-      <!-- Water Flow Direction Arrows (Reversible Dual-Mode) -->
-      <g stroke="#22c55e" stroke-width="3" fill="none" stroke-linecap="round">
-        <path d="M 230 180 A 90 90 0 0 1 370 180" marker-end="url(#arrow)"/>
-        <text x="300" y="210" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="12" fill="#4ade80" text-anchor="middle">CHẾ ĐỘ PHÁT ĐIỆN ➔</text>
+      <!-- Center Shaft & Spider (Trục rotor và nan hoa) -->
+      <circle cx="290" cy="270" r="85" fill="#1e293b" stroke="#94a3b8" stroke-width="4"/>
+      <circle cx="290" cy="270" r="42" fill="#64748b" stroke="#ffffff" stroke-width="3"/>
+      <circle cx="290" cy="270" r="18" fill="#0f172a"/>
+
+      <!-- Magnetic Flux Rotation Arrows (Từ trường quay 50 Hz) -->
+      <g stroke="#facc15" stroke-width="4" fill="none" stroke-linecap="round">
+        <path d="M 230 140 A 150 150 0 0 1 350 140"/>
+        <polygon points="340,130 365,140 345,155" fill="#facc15"/>
+        <text x="290" y="115" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="14" fill="#facc15" text-anchor="middle">
+          TỪ TRƯỜNG QUAY (ROTATING FIELD)
+        </text>
       </g>
-      <g stroke="#f43f5e" stroke-width="3" fill="none" stroke-linecap="round">
-        <path d="M 370 320 A 90 90 0 0 1 230 320" marker-end="url(#arrow)"/>
-        <text x="300" y="310" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="12" fill="#fb7185" text-anchor="middle">⬅ CHẾ ĐỘ BƠM NƯỚC</text>
-      </g>
 
-      <!-- Draft Tube (Ống hút xả) -->
-      <path d="M 240 360 L 220 440 L 380 440 L 360 360 Z" fill="#0c4a6e" stroke="#38bdf8" stroke-width="3"/>
-      <text x="300" y="420" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="13" fill="#bae6fd" text-anchor="middle">ỐNG XẢ / HÚT NƯỚC (DRAFT TUBE)</text>
+      <!-- Labels -->
+      <text x="290" y="275" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="13" fill="#ffffff" text-anchor="middle">
+        TRỤC MÁY
+      </text>
+      <text x="290" y="525" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="15" fill="#38bdf8" text-anchor="middle">
+        STATOR &amp; ROTOR MÁY PHÁT 300 MW (18 kV)
+      </text>
     </g>
 
-    <!-- Right Side Information & Clue Card -->
-    <g transform="translate(720, 10)">
-      <rect width="360" height="510" rx="18" fill="#0f172a" stroke="#eab308" stroke-width="2.5" filter="url(#shadow)"/>
+    <!-- Right Side Information Card -->
+    <g transform="translate(770, 0)">
+      <rect width="390" height="640" rx="20" fill="#0f172a" stroke="#eab308" stroke-width="2.5" filter="url(#shadow)"/>
       
       <!-- Top Badge -->
-      <rect x="25" y="24" width="310" height="42" rx="10" fill="#854d0e"/>
-      <text x="180" y="51" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="16" fill="#fef08a" text-anchor="middle">
-        CÂU HỎI NHẬN DIỆN THIẾT BỊ
-      </text>
-
-      <text x="180" y="100" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="22" fill="#ffffff" text-anchor="middle">
-        ĐÂY LÀ THIẾT BỊ GÌ?
+      <rect x="30" y="35" width="330" height="48" rx="12" fill="#854d0e"/>
+      <text x="195" y="66" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="16" fill="#fef08a" text-anchor="middle">
+        THÔNG SỐ CƠ ĐIỆN GÓI 01TB-BA
       </text>
 
       <!-- Key Specifications List -->
-      <g transform="translate(25, 125)">
-        <rect width="310" height="70" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
-        <text x="20" y="28" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="12" fill="#38bdf8">TÍNH NĂNG ĐẶC THÙ</text>
-        <text x="20" y="52" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="15" fill="#f8fafc">Thuận nghịch (2 chiều quay)</text>
+      <g transform="translate(30, 110)">
+        <rect width="330" height="85" rx="14" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+        <text x="20" y="32" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="13" fill="#38bdf8">LOẠI THIẾT BỊ</text>
+        <text x="20" y="60" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="16" fill="#f8fafc">Máy phát - Động cơ đồng bộ</text>
       </g>
 
-      <g transform="translate(25, 205)">
-        <rect width="310" height="70" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
-        <text x="20" y="28" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="12" fill="#38bdf8">CÔNG SUẤT ĐỊNH MỨC</text>
-        <text x="20" y="52" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="15" fill="#f8fafc">4 tổ máy × 300 MW = 1.200 MW</text>
+      <g transform="translate(30, 215)">
+        <rect width="330" height="85" rx="14" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+        <text x="20" y="32" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="13" fill="#38bdf8">CÔNG SUẤT ĐỊNH MỨC</text>
+        <text x="20" y="60" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="17" fill="#f8fafc">4 tổ máy × 300 MW = 1.200 MW</text>
       </g>
 
-      <g transform="translate(25, 285)">
-        <rect width="310" height="70" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
-        <text x="20" y="28" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="12" fill="#38bdf8">NGUYÊN LÝ HOẠT ĐỘNG</text>
-        <text x="20" y="50" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#cbd5e1">• Giờ thấp điểm: Hoạt động như BƠM</text>
-        <text x="20" y="66" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#cbd5e1">• Giờ cao điểm: Quay như TUA-BIN</text>
+      <g transform="translate(30, 320)">
+        <rect width="330" height="95" rx="14" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+        <text x="20" y="32" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="13" fill="#38bdf8">NGUYÊN LÝ HOẠT ĐỘNG</text>
+        <text x="20" y="58" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13.5" fill="#cbd5e1">• Cảm ứng điện từ (Michael Faraday)</text>
+        <text x="20" y="80" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13.5" fill="#cbd5e1">• Biến đổi Cơ năng ➔ Điện năng</text>
       </g>
 
-      <!-- Big Mystery Answer Box -->
-      <g transform="translate(25, 375)">
-        <rect width="310" height="105" rx="16" fill="#111827" stroke="url(#goldGrad)" stroke-width="3" filter="url(#glow)"/>
-        <text x="155" y="32" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="12" fill="#fef08a" text-anchor="middle" letter-spacing="1">
-          TỪ KHÓA ĐÁP ÁN (10 CHỮ CÁI)
-        </text>
-        <text x="155" y="72" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="24" fill="#ffffff" text-anchor="middle" letter-spacing="4">
-          TUA-BIN BƠM
-        </text>
-        <text x="155" y="94" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="11" fill="#93c5fd" text-anchor="middle">
-          (Pump-Turbine / Tua-bin Thủy Lực)
-        </text>
+      <g transform="translate(30, 435)">
+        <rect width="330" height="85" rx="14" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+        <text x="20" y="32" font-family="'Segoe UI', Arial, sans-serif" font-weight="800" font-size="13" fill="#38bdf8">ĐIỆN ÁP &amp; TẦN SỐ</text>
+        <text x="20" y="60" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="17" fill="#f8fafc">18 kV · 3 Pha · 50 Hz</text>
       </g>
+
+      <rect x="30" y="545" width="330" height="55" rx="14" fill="#0284c7"/>
+      <text x="195" y="579" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="16" fill="#ffffff" text-anchor="middle">
+        GỒM 3 TỪ (12 CHỮ CÁI)
+      </text>
     </g>
   </g>
-  `
-);
+`);
 
 const tasks = [
   { name: "bac_ai_tt_cau1.png", svg: tt1Svg },
-  { name: "bac_ai_tt_cau2.png", svg: makeTt2Svg(4) },
-  { name: "bac_ai_tt_cau2_clue1.png", svg: makeTt2Svg(1) },
-  { name: "bac_ai_tt_cau2_clue2.png", svg: makeTt2Svg(2) },
-  { name: "bac_ai_tt_cau2_clue3.png", svg: makeTt2Svg(3) },
-  { name: "bac_ai_tt_cau2_clue4.png", svg: makeTt2Svg(4) },
+  { name: "bac_ai_tt_cau2.png", svg: tt2Svg },
   { name: "bac_ai_tt_cau3.png", svg: tt3Svg },
   { name: "bac_ai_tt_cau4.png", svg: tt4Svg },
 ];
 
 async function run() {
-  console.log("Generating broadcast graphic images for Tang Toc...");
+  console.log("Generating 4 clean broadcast images without headers or watermarks...");
   for (const t of tasks) {
     const outPath = path.join(mediaDir, t.name);
     await sharp(Buffer.from(t.svg)).png().toFile(outPath);
-    console.log("Generated:", t.name);
+    console.log("Generated clean image:", t.name);
   }
-  console.log("All Tang Toc media images successfully generated!");
+  console.log("All 4 clean Tang Toc images successfully generated!");
 }
 
 run().catch((err) => {

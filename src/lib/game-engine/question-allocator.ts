@@ -1,4 +1,4 @@
-import { GameMode } from "@/types";
+import { GameMode, calculateStandardTimeLimit } from "@/types";
 
 export interface QuestionAllocationBreakdown {
   easyCount: number;
@@ -42,7 +42,7 @@ export interface AllocationResult {
   };
 }
 
-export type AllocationStrategy = "ORIGINAL_POINTS" | "BLOOM_BALANCED";
+export type AllocationStrategy = "ORIGINAL_POINTS" | "BLOOM_BALANCED" | "SHUFFLE_RANDOM";
 
 export interface QuestionAllocationParams {
   questions: any[];
@@ -412,18 +412,26 @@ export function allocateQuestionsForMatch(params: QuestionAllocationParams): All
     const diff = q.allocatedDiff || classifyQuestionDifficulty(q);
     const standardPoints = normalizePointsToLevel(diff);
     const standardBloom = diff === "HARD" ? "ANALYZE" : diff === "MEDIUM" ? "APPLY" : "REMEMBER";
+    const effPoints = allocationStrategy === "BLOOM_BALANCED"
+      ? standardPoints
+      : (q.points !== undefined && q.points !== null ? q.points : standardPoints);
+    const itemCount = Array.isArray(q.pairs) ? q.pairs.length : (Array.isArray(q.options) ? q.options.length : 4);
+    const stdTime = calculateStandardTimeLimit(effPoints, q.type, itemCount);
 
     return {
       ...q,
       order: idx + 1,
-      points: allocationStrategy === "BLOOM_BALANCED"
-        ? standardPoints
-        : (q.points !== undefined && q.points !== null ? q.points : standardPoints),
+      points: effPoints,
       bloomLevel: allocationStrategy === "BLOOM_BALANCED"
         ? standardBloom
         : (q.bloomLevel || standardBloom),
+      timeLimit: q.timeLimit && Number(q.timeLimit) > 0 ? Number(q.timeLimit) : stdTime,
     };
   });
+
+  if (allocationStrategy === "SHUFFLE_RANDOM") {
+    allocatedQuestions = shuffle(allocatedQuestions).map((q, idx) => ({ ...q, order: idx + 1 }));
+  }
 
   // 7. Thống kê tỷ lệ phân bổ
   const finalEasy = allocatedQuestions.filter((q) => q.points <= 10).length;

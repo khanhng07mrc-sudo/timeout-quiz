@@ -71,11 +71,10 @@ var DEFAULT_OFFLINE_BANK = {
   },
   "questions": [
     {
-      "id": "q_off_1",
       "type": "MC_SINGLE",
       "content": "Trong quy tr\xECnh l\u1EADp k\u1EBF ho\u1EA1ch kinh doanh ti\xEAu chu\u1EA9n, b\u01B0\u1EDBc \u0111\u1EA7u ti\xEAn mang t\xEDnh n\u1EC1n t\u1EA3ng quy\u1EBFt \u0111\u1ECBnh h\u01B0\u1EDBng \u0111i l\xE0 g\xEC?",
       "points": 10,
-      "timeLimit": 15,
+      "timeLimit": 10,
       "options": [
         {
           "id": "A",
@@ -99,14 +98,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "C\u1EA7n th\u1EA5u hi\u1EC3u b\u1ED1i c\u1EA3nh th\u1ECB tr\u01B0\u1EDDng, \u0111i\u1EC3m m\u1EA1nh/y\u1EBFu tr\u01B0\u1EDBc khi \u0111\u1ECBnh h\xECnh m\u1EE5c ti\xEAu.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_1"
     },
     {
-      "id": "q_off_2",
       "type": "MC_SINGLE",
       "content": "Theo ti\xEAu ch\xED SMART, ch\u1EEF 'M' trong m\u1ED9t m\u1EE5c ti\xEAu k\u1EBF ho\u1EA1ch hi\u1EC7u qu\u1EA3 \u0111\u1EA1i di\u1EC7n cho \u0111\u1EB7c t\xEDnh n\xE0o?",
       "points": 10,
-      "timeLimit": 15,
+      "timeLimit": 10,
       "options": [
         {
           "id": "A",
@@ -130,14 +129,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "M\u1EE5c ti\xEAu ph\u1EA3i g\u1EAFn li\u1EC1n v\u1EDBi ch\u1EC9 s\u1ED1 \u0111\u1ECBnh l\u01B0\u1EE3ng c\u1EE5 th\u1EC3 \u0111\u1EC3 ki\u1EC3m tra k\u1EBFt qu\u1EA3.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_2"
     },
     {
-      "id": "q_off_3",
       "type": "MC_MULTI",
       "content": "Ph\u01B0\u01A1ng ph\xE1p d\u1EF1 b\xE1o \u0111\u1ECBnh t\xEDnh n\xE0o d\u01B0\u1EDBi \u0111\xE2y thu th\u1EADp \xFD ki\u1EBFn chuy\xEAn gia qua nhi\u1EC1u v\xF2ng \u1EA9n danh v\xE0 ph\u1EA3n h\u1ED3i t\u1ED5ng h\u1EE3p nh\u1EB1m \u0111\u1EA1t \u0111\u01B0\u1EE3c s\u1EF1 \u0111\u1ED3ng thu\u1EADn cao?",
       "points": 10,
-      "timeLimit": 15,
+      "timeLimit": 10,
       "options": [
         {
           "id": "A",
@@ -161,14 +160,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "Hai ph\u01B0\u01A1ng \xE1n \u0111\u1ECBnh t\xEDnh d\u1EF1a tr\xEAn tr\xED tu\u1EC7 t\u1EADp th\u1EC3 chuy\xEAn gia m\xE0 kh\xF4ng c\u1EA7n h\u1ECDp m\u1EB7t tr\u1EF1c ti\u1EBFp.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_3"
     },
     {
-      "id": "q_off_4",
       "type": "MC_SINGLE",
       "content": "Ph\u01B0\u01A1ng ph\xE1p l\u1EADp ng\xE2n s\xE1ch n\xE0o y\xEAu c\u1EA7u m\u1ECDi kho\u1EA3n chi ph\xED \u0111\u1EC1u ph\u1EA3i \u0111\u01B0\u1EE3c gi\u1EA3i tr\xECnh v\xE0 ch\u1EE9ng minh l\u1EA1i t\u1EEB \u0111\u1EA7u cho m\u1ED7i k\u1EF3 k\u1EBF ho\u1EA1ch m\u1EDBi, b\u1EA5t k\u1EC3 ng\xE2n s\xE1ch k\u1EF3 tr\u01B0\u1EDBc l\xE0 bao nhi\xEAu?",
       "points": 10,
-      "timeLimit": 15,
+      "timeLimit": 10,
       "options": [
         {
           "id": "A",
@@ -192,14 +191,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "B\u1EAFt \u0111\u1EA7u m\u1ED7i chu k\u1EF3 t\u1EEB con s\u1ED1 0 \u0111\u1EC3 lo\u1EA1i tr\u1EEB c\xE1c kho\u1EA3n l\xE3ng ph\xED t\u1ED3n d\u01B0 c\u1EE7a qu\xE1 kh\u1EE9.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_4"
     },
     {
-      "id": "q_off_5",
       "type": "TRUE_FALSE",
       "content": "K\u1EBF ho\u1EA1ch chi\u1EBFn l\u01B0\u1EE3c th\u01B0\u1EDDng c\xF3 t\u1EA7m nh\xECn d\xE0i h\u1EA1n (t\u1EEB 3 \u0111\u1EBFn 5 n\u0103m tr\u1EDF l\xEAn), do nh\xE0 qu\u1EA3n tr\u1ECB c\u1EA5p cao ph\xEA duy\u1EC7t v\xE0 t\u1EADp trung v\xE0o c\xE1c m\u1EE5c ti\xEAu t\u1ED5ng th\u1EC3 c\u1EE7a to\xE0n t\u1ED5 ch\u1EE9c.",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "options": [
         {
           "id": "true",
@@ -213,24 +212,24 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "Ph\xE2n bi\u1EC7t k\u1EBF ho\u1EA1ch chi\u1EBFn l\u01B0\u1EE3c d\xE0i h\u1EA1n v\u1EDBi k\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p ng\u1EAFn h\u1EA1n ph\u1EE5c v\u1EE5 c\xF4ng vi\u1EC7c h\xE0ng ng\xE0y.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_5"
     },
     {
-      "id": "q_off_6",
       "type": "FILL_BLANK",
       "content": "Ph\u01B0\u01A1ng ph\xE1p qu\u1EA3n l\xFD theo m\u1EE5c ti\xEAu ph\u1ED5 bi\u1EBFn trong l\u1EADp k\u1EBF ho\u1EA1ch, n\u01A1i c\u1EA5p tr\xEAn v\xE0 c\u1EA5p d\u01B0\u1EDBi c\xF9ng th\u1ED1ng nh\u1EA5t x\xE1c \u0111\u1ECBnh m\u1EE5c ti\xEAu v\xE0 ti\xEAu chu\u1EA9n \u0111\xE1nh gi\xE1, vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
       "answer": "MBO",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "hint": "Vi\u1EBFt t\u1EAFt c\u1EE7a 3 ch\u1EEF c\xE1i ti\u1EBFng Anh: Management by Objectives.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_6"
     },
     {
-      "id": "q_off_7",
       "type": "MC_SINGLE",
       "content": "Trong ma tr\u1EADn SWOT, vi\u1EC7c k\u1EBFt h\u1EE3p gi\u1EEFa '\u0110i\u1EC3m m\u1EA1nh b\xEAn trong' (Strengths) v\xE0 'C\u01A1 h\u1ED9i b\xEAn ngo\xE0i' (Opportunities) s\u1EBD h\xECnh th\xE0nh n\xEAn chi\u1EBFn l\u01B0\u1EE3c n\xE0o?",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "options": [
         {
           "id": "A",
@@ -254,14 +253,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "S\u1EED d\u1EE5ng \u01B0u th\u1EBF n\u1ED9i l\u1EF1c \u0111\u1EC3 n\u1EAFm b\u1EAFt th\u1EDDi c\u01A1 v\xE0ng t\u1EEB th\u1ECB tr\u01B0\u1EDDng.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_7"
     },
     {
-      "id": "q_off_8",
       "type": "TRUE_FALSE",
       "content": "K\u1EBF ho\u1EA1ch d\u1EF1 ph\xF2ng (Contingency plan) l\xE0 b\u1EA3n k\u1EBF ho\u1EA1ch ch\u1EC9 \u0111\u01B0\u1EE3c k\xEDch ho\u1EA1t khi c\xE1c s\u1EF1 c\u1ED1 ho\u1EB7c k\u1ECBch b\u1EA3n r\u1EE7i ro b\u1EA5t kh\u1EA3 kh\xE1ng \u0111\xE3 \u0111\u01B0\u1EE3c d\u1EF1 b\xE1o tr\u01B0\u1EDBc x\u1EA3y ra.",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "options": [
         {
           "id": "true",
@@ -275,14 +274,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "K\u1EBF ho\u1EA1ch Ph\u01B0\u01A1ng \xE1n B (Plan B) ph\xF2ng khi ho\xE0n c\u1EA3nh m\xF4i tr\u01B0\u1EDDng bi\u1EBFn \u0111\u1ED9ng l\u1EDBn.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_8"
     },
     {
-      "id": "q_off_9",
       "type": "MC_SINGLE",
       "content": "Trong ma tr\u1EADn BCG, \u0111\u01A1n v\u1ECB kinh doanh chi\u1EBFn l\u01B0\u1EE3c (SBU) c\xF3 th\u1ECB ph\u1EA7n t\u01B0\u01A1ng \u0111\u1ED1i cao nh\u01B0ng ho\u1EA1t \u0111\u1ED9ng trong ng\xE0nh c\xF3 t\u1ED1c \u0111\u1ED9 t\u0103ng tr\u01B0\u1EDFng th\u1EA5p \u0111\u01B0\u1EE3c x\u1EBFp v\xE0o \xF4 n\xE0o?",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "options": [
         {
           "id": "A",
@@ -306,14 +305,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "T\u1EA1o ra d\xF2ng ti\u1EC1n d\u1ED3i d\xE0o \u0111\u1EC3 nu\xF4i d\u01B0\u1EE1ng c\xE1c m\u1EA3ng kinh doanh kh\xE1c m\xE0 kh\xF4ng c\u1EA7n t\xE1i \u0111\u1EA7u t\u01B0 l\u1EDBn.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_9"
     },
     {
-      "id": "q_off_10",
       "type": "MC_SINGLE",
       "content": "T\xECnh hu\u1ED1ng: M\u1ED9t doanh nghi\u1EC7p b\xE1n l\u1EBB x\xE2y d\u1EF1ng b\u1EA3n k\u1EBF ho\u1EA1ch m\u1EDF r\u1ED9ng chu\u1ED7i c\u1EEDa h\xE0ng chi ti\u1EBFt trong 2 n\u0103m. Tuy nhi\xEAn sau 6 th\xE1ng th\u1EF1c hi\u1EC7n, doanh s\u1ED1 s\u1EE5t gi\u1EA3m m\u1EA1nh do xu\u1EA5t hi\u1EC7n xu h\u01B0\u1EDBng mua s\u1EAFm tr\u1EF1c tuy\u1EBFn t\u0103ng v\u1ECDt b\u1EA5t ng\u1EDD v\xE0 chi ph\xED m\u1EB7t b\u1EB1ng t\u0103ng cao. Y\u1EBFu t\u1ED1 c\u1ED1t l\xF5i n\xE0o khi\u1EBFn b\u1EA3n k\u1EBF ho\u1EA1ch tr\xEAn th\u1EA5t b\u1EA1i?",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "options": [
         {
           "id": "A",
@@ -337,14 +336,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "T\xEDnh linh ho\u1EA1t v\xE0 kh\u1EA3 n\u0103ng th\xEDch \u1EE9ng v\u1EDBi bi\u1EBFn \u0111\u1ED9ng m\xF4i tr\u01B0\u1EDDng l\xE0 y\u1EBFu t\u1ED1 s\u1ED1ng c\xF2n c\u1EE7a l\u1EADp k\u1EBF ho\u1EA1ch.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_10"
     },
     {
-      "id": "q_off_11",
       "type": "MC_SINGLE",
       "content": "Trong ma tr\u1EADn ph\xE2n t\xEDch SWOT, chi\u1EBFn l\u01B0\u1EE3c WO (Weaknesses - Opportunities) h\u01B0\u1EDBng \u0111\u1EBFn m\u1EE5c ti\xEAu h\xE0nh \u0111\u1ED9ng n\xE0o?",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "options": [
         {
           "id": "A",
@@ -368,14 +367,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "WO l\xE0 chi\u1EBFn l\u01B0\u1EE3c c\u1EA3i thi\u1EC7n \u0111i\u1EC3m y\u1EBFu b\u1EB1ng c\xE1ch \u0111\xF3n \u0111\u1EA7u c\u01A1 h\u1ED9i m\u1EDF ra tr\xEAn th\u1ECB tr\u01B0\u1EDDng.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_11"
     },
     {
-      "id": "q_off_12",
       "type": "MC_SINGLE",
       "content": "Trong ma tr\u1EADn danh m\u1EE5c \u0111\u1EA7u t\u01B0 BCG c\u1EE7a Boston Consulting Group, \u0111\u01A1n v\u1ECB kinh doanh chi\u1EBFn l\u01B0\u1EE3c (SBU) c\xF3 th\u1ECB ph\u1EA7n t\u01B0\u01A1ng \u0111\u1ED1i cao trong m\u1ED9t ng\xE0nh c\xF3 t\u1ED1c \u0111\u1ED9 t\u0103ng tr\u01B0\u1EDFng th\u1EA5p \u0111\u01B0\u1EE3c x\u1EBFp v\xE0o \xF4 n\xE0o?",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "options": [
         {
           "id": "A",
@@ -399,14 +398,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "B\xF2 s\u1EEFa sinh ra d\xF2ng ti\u1EC1n m\u1EB7t d\u1ED3i d\xE0o m\xE0 kh\xF4ng \u0111\xF2i h\u1ECFi t\xE1i \u0111\u1EA7u t\u01B0 v\u1ED1n qu\xE1 nhi\u1EC1u.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_12"
     },
     {
-      "id": "q_off_13",
       "type": "TRUE_FALSE",
       "content": "K\u1EBF ho\u1EA1ch d\u1EF1 ph\xF2ng (Contingency Planning) l\xE0 vi\u1EC7c x\xE1c \u0111\u1ECBnh tr\u01B0\u1EDBc c\xE1c ph\u01B0\u01A1ng \xE1n h\xE0nh \u0111\u1ED9ng thay th\u1EBF kh\u1EA3 d\u0129 khi x\u1EA3y ra nh\u1EEFng bi\u1EBFn c\u1ED1 b\u1EA5t ng\u1EDD l\xE0m gi\xE1n \u0111o\u1EA1n k\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p ban \u0111\u1EA7u.",
       "points": 30,
-      "timeLimit": 30,
+      "timeLimit": 20,
       "options": [
         {
           "id": "true",
@@ -420,14 +419,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "K\u1EBF ho\u1EA1ch B/C gi\xFAp doanh nghi\u1EC7p ch\u1EE7 \u0111\u1ED9ng \u1EE9ng ph\xF3 r\u1EE7i ro \u0111\u1EE9t g\xE3y ho\u1EA1t \u0111\u1ED9ng.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_13"
     },
     {
-      "id": "q_off_14",
       "type": "MC_SINGLE",
       "content": "Trong ph\u01B0\u01A1ng ph\xE1p d\u1EF1 b\xE1o san b\u1EB1ng m\u0169 (Exponential Smoothing), tr\u1ECDng s\u1ED1 l\u1EDBn nh\u1EA5t \u0111\u01B0\u1EE3c g\xE1n cho \u0111\u1EA1i l\u01B0\u1EE3ng n\xE0o?",
       "points": 30,
-      "timeLimit": 30,
+      "timeLimit": 20,
       "options": [
         {
           "id": "A",
@@ -451,14 +450,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "C\xE1c quan s\xE1t c\xE0ng m\u1EDBi c\xE0ng ch\u1EE9a nhi\u1EC1u th\xF4ng tin c\u1EADp nh\u1EADt n\xEAn nh\u1EADn tr\u1ECDng s\u1ED1 m\u0169 cao nh\u1EA5t.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_14"
     },
     {
-      "id": "q_off_15",
       "type": "MC_SINGLE",
       "content": "Trong ma tr\u1EADn 9 \xF4 GE-McKinsey d\xF9ng \u0111\u1EC3 l\u1EADp k\u1EBF ho\u1EA1ch danh m\u1EE5c kinh doanh, hai tr\u1EE5c \u0111\xE1nh gi\xE1 bao g\u1ED3m nh\u1EEFng y\u1EBFu t\u1ED1 n\xE0o?",
       "points": 30,
-      "timeLimit": 30,
+      "timeLimit": 20,
       "options": [
         {
           "id": "A",
@@ -482,14 +481,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "GE-McKinsey l\xE0 b\u01B0\u1EDBc ph\xE1t tri\u1EC3n \u0111a chi\u1EC1u to\xE0n di\u1EC7n h\u01A1n so v\u1EDBi ma tr\u1EADn 4 \xF4 c\u1EE7a BCG.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_15"
     },
     {
-      "id": "q_off_16",
       "type": "MC_MULTI",
       "content": "Theo m\xF4 h\xECnh 5 \xE1p l\u1EF1c c\u1EA1nh tranh c\u1EE7a Michael Porter (Five Forces), nh\u1EEFng y\u1EBFu t\u1ED1 n\xE0o quy\u1EBFt \u0111\u1ECBnh m\u1EE9c \u0111\u1ED9 h\u1EA5p d\u1EABn v\xE0 t\u1EF7 su\u1EA5t sinh l\u1EDDi c\u1EE7a ng\xE0nh?",
       "points": 30,
-      "timeLimit": 30,
+      "timeLimit": 20,
       "options": [
         {
           "id": "A",
@@ -513,14 +512,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "C\u1EA3 5 l\u1EF1c l\u01B0\u1EE3ng n\xE0y t\u1EA1o n\xEAn c\u1EA5u tr\xFAc c\u1EA1nh tranh to\xE0n di\u1EC7n c\u1EE7a m\u1ED9t ng\xE0nh kinh doanh.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_16"
     },
     {
-      "id": "q_off_17",
       "type": "MC_SINGLE",
       "content": "Chi\u1EBFn l\u01B0\u1EE3c 'T\xEDch h\u1EE3p ng\u01B0\u1EE3c v\u1EC1 ph\xEDa sau' (Backward Vertical Integration) trong ho\u1EA1ch \u0111\u1ECBnh chi\u1EBFn l\u01B0\u1EE3c kinh doanh c\xF3 ngh\u0129a l\xE0 g\xEC?",
       "points": 30,
-      "timeLimit": 30,
+      "timeLimit": 20,
       "options": [
         {
           "id": "A",
@@ -544,14 +543,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "\u0110i ng\u01B0\u1EE3c v\u1EC1 ngu\u1ED3n cung \u1EE9ng \u0111\u1EC3 ch\u1EE7 \u0111\u1ED9ng gi\xE1 th\xE0nh v\xE0 chu\u1ED7i cung \u1EE9ng v\u1EADt t\u01B0.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_17"
     },
     {
-      "id": "q_off_18",
       "type": "TRUE_FALSE",
       "content": "Ph\u01B0\u01A1ng ph\xE1p Qu\u1EA3n tr\u1ECB theo m\u1EE5c ti\xEAu (MBO - Management by Objectives) l\xE0 qu\xE1 tr\xECnh trong \u0111\xF3 m\u1EE5c ti\xEAu do T\u1ED5ng gi\xE1m \u0111\u1ED1c \u0111\u01A1n ph\u01B0\u01A1ng \u1EA5n \u0111\u1ECBnh v\xE0 \xE1p \u0111\u1EB7t ho\xE0n to\xE0n t\u1EEB tr\xEAn xu\u1ED1ng m\xE0 kh\xF4ng c\u1EA7n th\u1EA3o lu\u1EADn v\u1EDBi c\u1EA5p d\u01B0\u1EDBi.",
       "points": 30,
-      "timeLimit": 30,
+      "timeLimit": 20,
       "options": [
         {
           "id": "true",
@@ -565,14 +564,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "B\u1EA3n ch\u1EA5t c\u1ED1t l\xF5i c\u1EE7a MBO l\xE0 s\u1EF1 tham gia hi\u1EC7p th\u01B0\u01A1ng c\xF9ng x\xE1c l\u1EADp m\u1EE5c ti\xEAu gi\u1EEFa c\u1EA5p tr\xEAn v\xE0 c\u1EA5p d\u01B0\u1EDBi.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_18"
     },
     {
-      "id": "q_off_19",
       "type": "MC_SINGLE",
       "content": "Ph\u01B0\u01A1ng ph\xE1p l\u1EADp k\u1EBF ho\u1EA1ch theo k\u1ECBch b\u1EA3n (Scenario Planning) ph\xE1t huy gi\xE1 tr\u1ECB cao nh\u1EA5t trong \u0111i\u1EC1u ki\u1EC7n m\xF4i tr\u01B0\u1EDDng n\xE0o?",
       "points": 30,
-      "timeLimit": 30,
+      "timeLimit": 20,
       "options": [
         {
           "id": "A",
@@ -596,14 +595,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "K\u1ECBch b\u1EA3n gi\xFAp chu\u1EA9n b\u1ECB cho nhi\u1EC1u t\u01B0\u01A1ng lai kh\u1EA3 d\u0129 kh\xE1c nhau (k\u1ECBch b\u1EA3n l\u1EA1c quan, c\u01A1 s\u1EDF, bi quan).",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_19"
     },
     {
-      "id": "q_off_20",
       "type": "MC_SINGLE",
       "content": "M\u1ED9t t\u1EADp \u0111o\xE0n b\xE1n l\u1EBB \u0111i\u1EC7n m\xE1y l\u1EADp k\u1EBF ho\u1EA1ch m\u1EDF th\xEAm 30 si\xEAu th\u1ECB m\u1EDBi trong n\u0103m t\xE0i ch\xEDnh. Khi ph\xE2n t\xEDch ng\xE2n s\xE1ch d\u1EF1 \xE1n v\u1ED1n \u0111\u1EA7u t\u01B0 (CapEx), ch\u1EC9 s\u1ED1 t\xE0i ch\xEDnh n\xE0o cho bi\u1EBFt t\u1EF7 su\u1EA5t sinh l\u1EDDi th\u1EF1c t\u1EBF l\xE0m cho Gi\xE1 tr\u1ECB hi\u1EC7n gi\xE1 thu\u1EA7n (NPV) c\u1EE7a d\u1EF1 \xE1n b\u1EB1ng \u0111\xFAng 0?",
       "points": 30,
-      "timeLimit": 30,
+      "timeLimit": 20,
       "options": [
         {
           "id": "A",
@@ -627,14 +626,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "IRR l\xE0 t\u1EF7 l\u1EC7 chi\u1EBFt kh\u1EA5u m\xE0 t\u1EA1i \u0111\xF3 NPV = 0; n\u1EBFu IRR > chi ph\xED s\u1EED d\u1EE5ng v\u1ED1n WACC th\xEC d\u1EF1 \xE1n \u0111\xE1ng gi\xE1 \u0111\u1EC3 \u0111\u1EA7u t\u01B0.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_20"
     },
     {
-      "id": "q_off_21",
       "type": "MC_SINGLE",
       "content": "M\u1ED9t doanh nghi\u1EC7p d\u1EF1 b\xE1o nhu c\u1EA7u s\u1EA3n ph\u1EA9m cho th\xE1ng 4 b\u1EB1ng ph\u01B0\u01A1ng ph\xE1p San b\u1EB1ng m\u0169 gi\u1EA3n \u0111\u01A1n v\u1EDBi h\u1EC7 s\u1ED1 san b\u1EB1ng alpha = 0.3. Nhu c\u1EA7u th\u1EF1c t\u1EBF th\xE1ng 3 l\xE0 1.200 s\u1EA3n ph\u1EA9m, d\u1EF1 b\xE1o th\xE1ng 3 tr\u01B0\u1EDBc \u0111\xF3 l\xE0 1.100 s\u1EA3n ph\u1EA9m. D\u1EF1 b\xE1o nhu c\u1EA7u b\xE1n h\xE0ng cho th\xE1ng 4 l\xE0 bao nhi\xEAu s\u1EA3n ph\u1EA9m?",
       "points": 40,
-      "timeLimit": 60,
+      "timeLimit": 30,
       "options": [
         {
           "id": "A",
@@ -658,14 +657,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "F4 = F3 + alpha * (A3 - F3) = 1.100 + 0.3 * (1.200 - 1.100) = 1.100 + 30 = 1.130 s\u1EA3n ph\u1EA9m.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_21"
     },
     {
-      "id": "q_off_22",
       "type": "MC_SINGLE",
       "content": "D\u1EF1 \xE1n \u0111\u1EA7u t\u01B0 m\u1EDF r\u1ED9ng c\u1EE7a c\xF4ng ty c\xF3 v\u1ED1n \u0111\u1EA7u t\u01B0 ban \u0111\u1EA7u 1.000 tri\u1EC7u \u0111\u1ED3ng t\u1EA1i n\u0103m 0. D\xF2ng ti\u1EC1n thu\u1EA7n h\xE0ng n\u0103m thu v\u1EC1 trong 3 n\u0103m l\u1EA7n l\u01B0\u1EE3t l\xE0 400 tri\u1EC7u (n\u0103m 1), 500 tri\u1EC7u (n\u0103m 2), v\xE0 600 tri\u1EC7u (n\u0103m 3). T\u1EF7 l\u1EC7 chi\u1EBFt kh\u1EA5u chi ph\xED v\u1ED1n r = 10%. Gi\xE1 tr\u1ECB hi\u1EC7n gi\xE1 thu\u1EA7n (NPV) c\u1EE7a d\u1EF1 \xE1n n\xE0y x\u1EA5p x\u1EC9 b\u1EB1ng bao nhi\xEAu?",
       "points": 40,
-      "timeLimit": 60,
+      "timeLimit": 30,
       "options": [
         {
           "id": "A",
@@ -689,14 +688,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "PV = 400/1.1 + 500/(1.1^2) + 600/(1.1^3) = 363.64 + 413.22 + 450.79 = 1.227.65 tri\u1EC7u. NPV = 1.227.65 - 1.000 = +227.65 tri\u1EC7u \u0111\u1ED3ng.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_22"
     },
     {
-      "id": "q_off_23",
       "type": "MATCHING",
       "content": "H\xE3y gh\xE9p \u0111\xFAng 4 \xF4 trong Ma tr\u1EADn ph\xE2n t\xEDch danh m\u1EE5c \u0111\u1EA7u t\u01B0 BCG v\u1EDBi \u0111\u1ECBnh h\u01B0\u1EDBng chi\u1EBFn l\u01B0\u1EE3c t\u01B0\u01A1ng \u1EE9ng:",
       "points": 40,
-      "timeLimit": 60,
+      "timeLimit": 30,
       "pairs": [
         {
           "id": "p1",
@@ -742,14 +741,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "Ma tr\u1EADn BCG c\u1ED5 \u0111i\u1EC3n c\u1EE7a Boston Consulting Group.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_23"
     },
     {
-      "id": "q_off_24",
       "type": "DRAG_DROP",
       "content": "H\xE3y s\u1EAFp x\u1EBFp \u0111\xFAng th\u1EE9 t\u1EF1 c\xE1c b\u01B0\u1EDBc trong quy tr\xECnh l\u1EADp k\u1EBF ho\u1EA1ch kinh doanh chi\u1EBFn l\u01B0\u1EE3c to\xE0n di\u1EC7n:",
       "points": 40,
-      "timeLimit": 60,
+      "timeLimit": 38,
       "options": [
         {
           "id": "STEP_1",
@@ -778,14 +777,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "S\u1EE9 m\u1EC7nh -> Ph\xE2n t\xEDch m\xF4i tr\u01B0\u1EDDng -> L\u1EF1a ch\u1ECDn chi\u1EBFn l\u01B0\u1EE3c -> K\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p -> \u0110o l\u01B0\u1EDDng ki\u1EC3m so\xE1t.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_24"
     },
     {
-      "id": "q_off_25",
       "type": "MC_SINGLE",
       "content": "[C\xC2U H\u1ECEI PH\u1EE4 - L\u1EACP K\u1EBE HO\u1EA0CH] Ch\u1EEF 'R' trong nguy\xEAn t\u1EAFc thi\u1EBFt l\u1EADp m\u1EE5c ti\xEAu SMART \u0111\u1EA1i di\u1EC7n cho ti\xEAu ch\xED n\xE0o?",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "isTieBreaker": true,
       "options": [
         {
@@ -809,14 +808,14 @@ var DEFAULT_OFFLINE_BANK = {
           "isCorrect": false
         }
       ],
-      "hint": "M\u1EE5c ti\xEAu ph\u1EA3i g\u1EAFn li\u1EC1n v\u1EDBi t\u1EA7m nh\xECn chi\u1EBFn l\u01B0\u1EE3c v\xE0 c\xF3 t\xEDnh kh\u1EA3 thi th\u1EF1c t\u1EBF."
+      "hint": "M\u1EE5c ti\xEAu ph\u1EA3i g\u1EAFn li\u1EC1n v\u1EDBi t\u1EA7m nh\xECn chi\u1EBFn l\u01B0\u1EE3c v\xE0 c\xF3 t\xEDnh kh\u1EA3 thi th\u1EF1c t\u1EBF.",
+      "id": "q_off_25"
     },
     {
-      "id": "q_off_26",
       "type": "MC_SINGLE",
       "content": "[C\xC2U H\u1ECEI PH\u1EE4 - L\u1EACP K\u1EBE HO\u1EA0CH] Trong ma tr\u1EADn BCG, \u0111\u01A1n v\u1ECB kinh doanh chi\u1EBFn l\u01B0\u1EE3c (SBU) c\xF3 th\u1ECB ph\u1EA7n cao trong m\u1ED9t ng\xE0nh t\u0103ng tr\u01B0\u1EDFng ch\u1EADm \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 g\xEC?",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "isTieBreaker": true,
       "options": [
         {
@@ -840,14 +839,14 @@ var DEFAULT_OFFLINE_BANK = {
           "isCorrect": false
         }
       ],
-      "hint": "\u0110\u01A1n v\u1ECB mang l\u1EA1i d\xF2ng ti\u1EC1n d\u1ED3i d\xE0o \u0111\u1EC3 t\xE0i tr\u1EE3 cho c\xE1c \u0111\u01A1n v\u1ECB kinh doanh kh\xE1c."
+      "hint": "\u0110\u01A1n v\u1ECB mang l\u1EA1i d\xF2ng ti\u1EC1n d\u1ED3i d\xE0o \u0111\u1EC3 t\xE0i tr\u1EE3 cho c\xE1c \u0111\u01A1n v\u1ECB kinh doanh kh\xE1c.",
+      "id": "q_off_26"
     },
     {
-      "id": "q_off_27",
       "type": "MC_SINGLE",
       "content": "[C\xC2U H\u1ECEI PH\u1EE4 - L\u1EACP K\u1EBE HO\u1EA0CH] Trong ph\xE2n t\xEDch PESTEL, y\u1EBFu t\u1ED1 n\xE0o kh\u1EA3o s\xE1t v\u1EC1 bi\u1EBFn \u0111\u1ED9ng t\u1EF7 gi\xE1, l\xE3i su\u1EA5t v\xE0 l\u1EA1m ph\xE1t?",
       "points": 30,
-      "timeLimit": 30,
+      "timeLimit": 20,
       "isTieBreaker": true,
       "options": [
         {
@@ -871,14 +870,14 @@ var DEFAULT_OFFLINE_BANK = {
           "isCorrect": false
         }
       ],
-      "hint": "Ch\u1EEF E \u0111\u1EA7u ti\xEAn trong t\u1EEB vi\u1EBFt t\u1EAFt PESTEL."
+      "hint": "Ch\u1EEF E \u0111\u1EA7u ti\xEAn trong t\u1EEB vi\u1EBFt t\u1EAFt PESTEL.",
+      "id": "q_off_27"
     },
     {
-      "id": "q_off_28",
       "type": "MC_SINGLE",
       "content": "Trong m\xF4 h\xECnh l\u1EADp k\u1EBF ho\u1EA1ch kinh doanh 5W1H, ch\u1EEF 'W' \u0111\u1EA1i di\u1EC7n cho c\xE2u h\u1ECFi 'T\u1EA1i sao ph\u1EA3i th\u1EF1c hi\u1EC7n m\u1EE5c ti\xEAu n\xE0y?' l\xE0 t\u1EEB n\xE0o?",
       "points": 10,
-      "timeLimit": 15,
+      "timeLimit": 10,
       "options": [
         {
           "id": "A",
@@ -902,14 +901,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "Why x\xE1c \u0111\u1ECBnh l\xFD do, m\u1EE5c \u0111\xEDch c\u1ED1t l\xF5i v\xE0 \xFD ngh\u0129a c\u1EE7a k\u1EBF ho\u1EA1ch.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_28"
     },
     {
-      "id": "q_off_29",
       "type": "TRUE_FALSE",
       "content": "K\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p (Operational Planning) th\u01B0\u1EDDng c\xF3 t\u1EA7m nh\xECn d\xE0i h\u1EA1n t\u1EEB 5 \u0111\u1EBFn 10 n\u0103m v\xE0 do H\u1ED9i \u0111\u1ED3ng Qu\u1EA3n tr\u1ECB ban h\xE0nh.",
       "points": 10,
-      "timeLimit": 15,
+      "timeLimit": 10,
       "options": [
         {
           "id": "A",
@@ -923,24 +922,24 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "K\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p mang t\xEDnh ng\u1EAFn h\u1EA1n (d\u01B0\u1EDBi 1 n\u0103m), g\u1EAFn v\u1EDBi ho\u1EA1t \u0111\u1ED9ng h\xE0ng ng\xE0y c\u1EE7a c\u1EA5p c\u01A1 s\u1EDF.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_29"
     },
     {
-      "id": "q_off_30",
       "type": "FILL_BLANK",
       "content": "M\xF4 h\xECnh qu\u1EA3n tr\u1ECB m\u1EE5c ti\xEAu hi\u1EC7n \u0111\u1EA1i \u0111\u01B0\u1EE3c Google v\xE0 Intel \xE1p d\u1EE5ng ph\u1ED5 bi\u1EBFn, bao g\u1ED3m M\u1EE5c ti\xEAu (Objectives) v\xE0 C\xE1c k\u1EBFt qu\u1EA3 then ch\u1ED1t, vi\u1EBFt t\u1EAFt l\xE0 g\xEC?",
       "answer": "OKR",
       "points": 10,
-      "timeLimit": 15,
+      "timeLimit": 10,
       "hint": "Vi\u1EBFt t\u1EAFt c\u1EE7a 3 ch\u1EEF c\xE1i ti\u1EBFng Anh: Objectives and Key Results.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_30"
     },
     {
-      "id": "q_off_31",
       "type": "MC_SINGLE",
       "content": "Trong chu tr\xECnh c\u1EA3i ti\u1EBFn li\xEAn t\u1EE5c PDCA c\u1EE7a Deming, ch\u1EEF 'C' \u0111\u1EA1i di\u1EC7n cho h\xE0nh \u0111\u1ED9ng n\xE0o?",
       "points": 10,
-      "timeLimit": 15,
+      "timeLimit": 10,
       "options": [
         {
           "id": "A",
@@ -964,14 +963,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "PDCA = Plan - Do - Check - Act.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_31"
     },
     {
-      "id": "q_off_32",
       "type": "MC_SINGLE",
       "content": "Lo\u1EA1i k\u1EBF ho\u1EA1ch n\xE0o d\u01B0\u1EDBi \u0111\xE2y quy \u0111\u1ECBnh chu\u1ED7i c\xE1c h\xE0nh \u0111\u1ED9ng b\u1EAFt bu\u1ED9c ph\u1EA3i th\u1EF1c hi\u1EC7n theo tr\xECnh t\u1EF1 th\u1EDDi gian c\u1EE5 th\u1EC3 \u0111\u1EC3 ho\xE0n th\xE0nh m\u1ED9t c\xF4ng vi\u1EC7c?",
       "points": 10,
-      "timeLimit": 15,
+      "timeLimit": 10,
       "options": [
         {
           "id": "A",
@@ -995,14 +994,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "Quy tr\xECnh \u0111\u1ECBnh r\xF5 t\u1EEBng b\u01B0\u1EDBc 1, 2, 3... theo tr\xECnh t\u1EF1 tr\u01B0\u1EDBc sau.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_32"
     },
     {
-      "id": "q_off_33",
       "type": "TRUE_FALSE",
       "content": "Trong ma tr\u1EADn SWOT, C\u01A1 h\u1ED9i (Opportunities) v\xE0 Th\xE1ch th\u1EE9c (Threats) ph\u1EA3n \xE1nh c\xE1c nh\xE2n t\u1ED1 thu\u1ED9c m\xF4i tr\u01B0\u1EDDng b\xEAn ngo\xE0i c\u1EE7a t\u1ED5 ch\u1EE9c.",
       "points": 10,
-      "timeLimit": 15,
+      "timeLimit": 10,
       "options": [
         {
           "id": "A",
@@ -1016,14 +1015,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "\u0110i\u1EC3m m\u1EA1nh/y\u1EBFu thu\u1ED9c n\u1ED9i b\u1ED9, c\u01A1 h\u1ED9i/th\xE1ch th\u1EE9c \u0111\u1EBFn t\u1EEB m\xF4i tr\u01B0\u1EDDng b\xEAn ngo\xE0i.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_33"
     },
     {
-      "id": "q_off_34",
       "type": "MC_MULTI",
       "content": "Trong c\xE1c ph\xE1t bi\u1EC3u d\u01B0\u1EDBi \u0111\xE2y v\u1EC1 Ma tr\u1EADn m\u1EDF r\u1ED9ng s\u1EA3n ph\u1EA9m / th\u1ECB tr\u01B0\u1EDDng c\u1EE7a Ansoff, nh\u1EEFng ph\xE1t bi\u1EC3u n\xE0o l\xE0 \u0110\xDANG?",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "options": [
         {
           "id": "A",
@@ -1047,24 +1046,24 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "Ph\xE1t tri\u1EC3n th\u1ECB tr\u01B0\u1EDDng l\xE0 b\xE1n s\u1EA3n ph\u1EA9m hi\u1EC7n c\xF3 v\xE0o c\xE1c th\u1ECB tr\u01B0\u1EDDng ho\u1EB7c ph\xE2n kh\xFAc kh\xE1ch h\xE0ng m\u1EDBi.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_34"
     },
     {
-      "id": "q_off_35",
       "type": "FILL_BLANK",
       "content": "Ph\u01B0\u01A1ng ph\xE1p l\u1EADp ng\xE2n s\xE1ch y\xEAu c\u1EA7u ng\u01B0\u1EDDi qu\u1EA3n l\xFD ph\u1EA3i gi\u1EA3i tr\xECnh v\xE0 ch\u1EE9ng minh l\u1EA1i to\xE0n b\u1ED9 c\xE1c kho\u1EA3n chi ti\xEAu t\u1EEB con s\u1ED1 0 cho m\u1ED7i k\u1EF3 l\u1EADp k\u1EBF ho\u1EA1ch m\u1EDBi \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 ng\xE2n s\xE1ch g\xEC? (Ghi t\xEAn ti\u1EBFng Anh 3 ch\u1EEF c\xE1i)",
       "answer": "ZBB",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "hint": "Vi\u1EBFt t\u1EAFt c\u1EE7a Zero-Based Budgeting (Ng\xE2n s\xE1ch d\u1EF1a tr\xEAn s\u1ED1 kh\xF4ng).",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_35"
     },
     {
-      "id": "q_off_36",
       "type": "MC_SINGLE",
       "content": "S\u1EF1 kh\xE1c bi\u1EC7t c\u1ED1t l\xF5i gi\u1EEFa K\u1EBF ho\u1EA1ch chi\u1EBFn l\u01B0\u1EE3c (Strategic Plan) v\xE0 K\u1EBF ho\u1EA1ch t\xE1c nghi\u1EC7p (Operational Plan) \u0111\u01B0\u1EE3c th\u1EC3 hi\u1EC7n ch\xEDnh x\xE1c \u1EDF ph\xE1t bi\u1EC3u n\xE0o?",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "options": [
         {
           "id": "A",
@@ -1088,14 +1087,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "Chi\u1EBFn l\u01B0\u1EE3c: D\xE0i h\u1EA1n, to\xE0n di\u1EC7n, c\u1EA5p cao. T\xE1c nghi\u1EC7p: Ng\u1EAFn h\u1EA1n, c\u1EE5 th\u1EC3, c\u1EA5p c\u01A1 s\u1EDF.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_36"
     },
     {
-      "id": "q_off_37",
       "type": "MC_SINGLE",
       "content": "M\u1ED9t doanh nghi\u1EC7p c\xF3 chi ph\xED c\u1ED1 \u0111\u1ECBnh (FC) = 200 tri\u1EC7u \u0111\u1ED3ng/th\xE1ng. Gi\xE1 b\xE1n m\u1ED9t s\u1EA3n ph\u1EA9m P = 50.000 \u0111\u1ED3ng, chi ph\xED bi\u1EBFn \u0111\u1ED5i tr\xEAn m\u1ED7i s\u1EA3n ph\u1EA9m VC = 30.000 \u0111\u1ED3ng. S\u1EA3n l\u01B0\u1EE3ng h\xF2a v\u1ED1n (BEP) c\u1EE7a doanh nghi\u1EC7p l\xE0 bao nhi\xEAu?",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "options": [
         {
           "id": "A",
@@ -1119,14 +1118,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "Q_h\xF2a v\u1ED1n = FC / (P - VC) = 200.000.000 / (50.000 - 30.000) = 10.000 s\u1EA3n ph\u1EA9m.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_37"
     },
     {
-      "id": "q_off_38",
       "type": "TRUE_FALSE",
       "content": "Ph\u01B0\u01A1ng ph\xE1p chuy\xEAn gia Delphi trong d\u1EF1 b\xE1o l\u1EADp k\u1EBF ho\u1EA1ch cho ph\xE9p c\xE1c chuy\xEAn gia tranh lu\u1EADn tr\u1EF1c ti\u1EBFp m\u1EB7t \u0111\u1ED1i m\u1EB7t \u0111\u1EC3 \u0111\u1EA1t \u0111\u01B0\u1EE3c \u0111\u1ED3ng thu\u1EADn nhanh nh\u1EA5t.",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "options": [
         {
           "id": "A",
@@ -1140,14 +1139,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "Ph\u01B0\u01A1ng ph\xE1p Delphi gi\u1EEF \u1EA9n danh ho\xE0n to\xE0n gi\u1EEFa c\xE1c chuy\xEAn gia qua c\xE1c v\xF2ng g\u1EEDi phi\u1EBFu kh\u1EA3o s\xE1t \u0111\u1EC3 tr\xE1nh hi\u1EC7u \u1EE9ng t\xE2m l\xFD b\u1EA7y \u0111\xE0n.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_38"
     },
     {
-      "id": "q_off_39",
       "type": "MC_SINGLE",
       "content": "Theo m\xF4 h\xECnh 5 l\u1EF1c l\u01B0\u1EE3ng c\u1EA1nh tranh c\u1EE7a Michael Porter, r\xE0o c\u1EA3n gia nh\u1EADp ng\xE0nh CAO s\u1EBD d\u1EABn \u0111\u1EBFn h\u1EC7 qu\u1EA3 n\xE0o \u0111\u1ED1i v\u1EDBi c\xE1c doanh nghi\u1EC7p hi\u1EC7n t\u1EA1i trong ng\xE0nh?",
       "points": 20,
-      "timeLimit": 20,
+      "timeLimit": 15,
       "options": [
         {
           "id": "A",
@@ -1171,14 +1170,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "R\xE0o c\u1EA3n cao ng\u0103n c\xE1c \u0111\u1ED1i th\u1EE7 ti\u1EC1m t\xE0ng m\u1EDBi b\u01B0\u1EDBc v\xE0o th\u1ECB tr\u01B0\u1EDDng, b\u1EA3o v\u1EC7 th\u1ECB ph\u1EA7n doanh nghi\u1EC7p hi\u1EC7n t\u1EA1i.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_39"
     },
     {
-      "id": "q_off_40",
       "type": "MC_MULTI",
       "content": "Trong c\xE1c ph\xE1t bi\u1EC3u d\u01B0\u1EDBi \u0111\xE2y v\u1EC1 k\u1EF9 thu\u1EADt ph\xE2n t\xEDch ma tr\u1EADn SWOT k\u1EBFt h\u1EE3p, nh\u1EEFng c\u1EB7p chi\u1EBFn l\u01B0\u1EE3c n\xE0o \u0111\u01B0\u1EE3c x\xE1c \u0111\u1ECBnh CH\xCDNH X\xC1C?",
       "points": 30,
-      "timeLimit": 30,
+      "timeLimit": 20,
       "options": [
         {
           "id": "A",
@@ -1202,14 +1201,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "Chi\u1EBFn l\u01B0\u1EE3c W-T l\xE0 chi\u1EBFn l\u01B0\u1EE3c ph\xF2ng th\u1EE7 t\u1ED1i thi\u1EC3u h\xF3a \u0111i\u1EC3m y\u1EBFu v\xE0 n\xE9 tr\xE1nh nguy c\u01A1 de d\u1ECDa.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_40"
     },
     {
-      "id": "q_off_41",
       "type": "MC_SINGLE",
       "content": "L\xFD do quan tr\u1ECDng nh\u1EA5t khi\u1EBFn K\u1EBF ho\u1EA1ch cu\u1ED1n chi\u1EBFu (Rolling Plan / Rolling Forecast) \u01B0u vi\u1EC7t h\u01A1n K\u1EBF ho\u1EA1ch c\u1ED1 \u0111\u1ECBnh h\xE0ng n\u0103m trong m\xF4i tr\u01B0\u1EDDng VUCA l\xE0 g\xEC?",
       "points": 30,
-      "timeLimit": 25,
+      "timeLimit": 20,
       "options": [
         {
           "id": "A",
@@ -1233,14 +1232,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "Rolling plan li\xEAn t\u1EE5c m\u1EDF r\u1ED9ng t\u1EA7m nh\xECn v\u1EC1 ph\xEDa tr\u01B0\u1EDBc, t\u0103ng t\xEDnh linh ho\u1EA1t v\xE0 kh\u1EA3 n\u0103ng \u1EE9ng bi\u1EBFn.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_41"
     },
     {
-      "id": "q_off_42",
       "type": "MATCHING",
       "content": "H\xE3y gh\xE9p \u0111\xFAng t\u1EEBng c\xF4ng c\u1EE5 ho\u1EA1ch \u0111\u1ECBnh chi\u1EBFn l\u01B0\u1EE3c v\u1EDBi m\u1EE5c \u0111\xEDch \u1EE9ng d\u1EE5ng ch\u1EE7 \u0111\u1EA1o c\u1EE7a n\xF3:",
       "points": 30,
-      "timeLimit": 40,
+      "timeLimit": 20,
       "pairs": [
         {
           "id": "p1",
@@ -1286,14 +1285,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "M\u1ED7i ma tr\u1EADn v\xE0 khung l\xFD thuy\u1EBFt ph\u1EE5c v\u1EE5 m\u1ED9t g\xF3c nh\xECn ph\xE2n t\xEDch chi\u1EBFn l\u01B0\u1EE3c ri\xEAng bi\u1EC7t.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_42"
     },
     {
-      "id": "q_off_43",
       "type": "DRAG_DROP",
       "content": "H\xE3y s\u1EAFp x\u1EBFp \u0111\xFAng tr\xECnh t\u1EF1 c\xE1c b\u01B0\u1EDBc th\u1EF1c hi\u1EC7n k\u1EF9 thu\u1EADt D\u1EF1 b\xE1o theo ph\u01B0\u01A1ng ph\xE1p San b\u1EB1ng h\xE0m m\u0169 b\u1EADc nh\u1EA5t:",
       "points": 30,
-      "timeLimit": 35,
+      "timeLimit": 25,
       "options": [
         {
           "id": "STEP_1",
@@ -1322,14 +1321,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "S\u1ED1 li\u1EC7u l\u1ECBch s\u1EED -> Gi\xE1 tr\u1ECB ban \u0111\u1EA7u -> Ch\u1ECDn alpha -> T\xEDnh d\u1EF1 b\xE1o -> \u0110o sai s\u1ED1.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_43"
     },
     {
-      "id": "q_off_44",
       "type": "MATCHING",
       "content": "H\xE3y gh\xE9p \u0111\xFAng c\xE1c ch\u1EC9 s\u1ED1 th\u1EA9m \u0111\u1ECBnh hi\u1EC7u qu\u1EA3 t\xE0i ch\xEDnh c\u1EE7a d\u1EF1 \xE1n \u0111\u1EA7u t\u01B0 trong k\u1EBF ho\u1EA1ch d\xE0i h\u1EA1n v\u1EDBi ti\xEAu chu\u1EA9n ch\u1EA5p thu\u1EADn t\u01B0\u01A1ng \u1EE9ng:",
       "points": 40,
-      "timeLimit": 60,
+      "timeLimit": 30,
       "pairs": [
         {
           "id": "p1",
@@ -1375,14 +1374,14 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "NPV > 0, IRR > r, PI > 1 l\xE0 b\u1ED9 3 quy t\u1EAFc quy\u1EBFt \u0111\u1ECBnh \u0111\u1EA7u t\u01B0 kinh \u0111i\u1EC3n.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_44"
     },
     {
-      "id": "q_off_45",
       "type": "DRAG_DROP",
       "content": "H\xE3y s\u1EAFp x\u1EBFp \u0111\xFAng th\u1EE9 t\u1EF1 c\xE1c giai \u0111o\u1EA1n c\u1EE7a quy tr\xECnh Qu\u1EA3n tr\u1ECB R\u1EE7i ro trong l\u1EADp k\u1EBF ho\u1EA1ch chi\u1EBFn l\u01B0\u1EE3c theo chu\u1EA9n ISO 31000:",
       "points": 40,
-      "timeLimit": 60,
+      "timeLimit": 38,
       "options": [
         {
           "id": "STEP_1",
@@ -1411,7 +1410,8 @@ var DEFAULT_OFFLINE_BANK = {
         }
       ],
       "hint": "B\u1ED1i c\u1EA3nh -> Nh\u1EADn di\u1EC7n -> Ph\xE2n t\xEDch -> \u0110\xE1nh gi\xE1 x\u1EBFp h\u1EA1ng -> K\u1EBF ho\u1EA1ch \u1EE9ng ph\xF3.",
-      "isTieBreaker": false
+      "isTieBreaker": false,
+      "id": "q_off_45"
     }
   ]
 };
@@ -2520,10 +2520,24 @@ function getBloomLevelFromPoints(points, explicitLevel) {
 }
 function quantizeOlympiaTimeLimit(points = 10, _explicitTimeLimit) {
   void _explicitTimeLimit;
-  if (points <= 10) return 15;
-  if (points <= 20) return 20;
-  if (points <= 30) return 30;
-  return 60;
+  if (points <= 10) return 10;
+  if (points <= 20) return 15;
+  if (points <= 30) return 20;
+  return 30;
+}
+function calculateStandardTimeLimit(points = 10, type, itemCount) {
+  const normPoints = points <= 10 ? 10 : points <= 20 ? 20 : points <= 30 ? 30 : 40;
+  const isOrderingOrMatching = Boolean(type && ["ORDERING", "MATCHING", "DRAG_DROP"].includes(type));
+  if (isOrderingOrMatching && itemCount && itemCount > 0) {
+    if (normPoints === 10) return Math.max(5, Math.round(2.5 * itemCount));
+    if (normPoints === 20) return Math.max(8, Math.round(3.75 * itemCount));
+    if (normPoints === 30) return Math.max(10, Math.round(5 * itemCount));
+    return Math.max(15, Math.round(7.5 * itemCount));
+  }
+  if (normPoints === 10) return 10;
+  if (normPoints === 20) return 15;
+  if (normPoints === 30) return 20;
+  return 30;
 }
 function getBuzzedAnswerTimeLimit(question, overridePoints) {
   if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
@@ -2547,10 +2561,11 @@ function getBuzzedAnswerTimeLimit(question, overridePoints) {
 }
 function getStandardQuestionTimeLimit(question, overridePoints) {
   const effPoints = overridePoints !== void 0 ? overridePoints : question.points ?? 10;
-  if (effPoints <= 10) return 15;
-  if (effPoints <= 20) return 20;
-  if (effPoints <= 30) return 30;
-  return 60;
+  const pairsArr = Array.isArray(question.pairs) ? question.pairs : void 0;
+  const itemsArr = Array.isArray(question.items) ? question.items : void 0;
+  const optionsArr = Array.isArray(question.options) ? question.options : void 0;
+  const itemCount = pairsArr?.length || itemsArr?.length || optionsArr?.length;
+  return calculateStandardTimeLimit(effPoints, question.type, itemCount);
 }
 
 // src/lib/game-engine/magic-wheel.ts
@@ -11187,13 +11202,20 @@ function allocateQuestionsForMatch(params) {
     const diff = q.allocatedDiff || classifyQuestionDifficulty(q);
     const standardPoints = normalizePointsToLevel(diff);
     const standardBloom = diff === "HARD" ? "ANALYZE" : diff === "MEDIUM" ? "APPLY" : "REMEMBER";
+    const effPoints = allocationStrategy === "BLOOM_BALANCED" ? standardPoints : q.points !== void 0 && q.points !== null ? q.points : standardPoints;
+    const itemCount = Array.isArray(q.pairs) ? q.pairs.length : Array.isArray(q.options) ? q.options.length : 4;
+    const stdTime = calculateStandardTimeLimit(effPoints, q.type, itemCount);
     return {
       ...q,
       order: idx + 1,
-      points: allocationStrategy === "BLOOM_BALANCED" ? standardPoints : q.points !== void 0 && q.points !== null ? q.points : standardPoints,
-      bloomLevel: allocationStrategy === "BLOOM_BALANCED" ? standardBloom : q.bloomLevel || standardBloom
+      points: effPoints,
+      bloomLevel: allocationStrategy === "BLOOM_BALANCED" ? standardBloom : q.bloomLevel || standardBloom,
+      timeLimit: q.timeLimit && Number(q.timeLimit) > 0 ? Number(q.timeLimit) : stdTime
     };
   });
+  if (allocationStrategy === "SHUFFLE_RANDOM") {
+    allocatedQuestions = shuffle(allocatedQuestions).map((q, idx) => ({ ...q, order: idx + 1 }));
+  }
   const finalEasy = allocatedQuestions.filter((q) => q.points <= 10).length;
   const finalMed = allocatedQuestions.filter((q) => q.points === 20).length;
   const finalHard = allocatedQuestions.filter((q) => q.points >= 30).length;

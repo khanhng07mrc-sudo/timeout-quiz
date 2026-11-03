@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
+import QuizBankPreviewModal from "@/components/admin/QuizBankPreviewModal";
 import PowerupIcon from "@/components/ui/PowerupIcon";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import SystemIcon from "@/components/ui/SystemIcon";
@@ -265,7 +266,8 @@ export default function CreateRoomPage() {
   // Match Question Allocation
   const [isCustomQuestionCount, setIsCustomQuestionCount] = useState(false);
   const [matchMaxQuestions, setMatchMaxQuestions] = useState(12);
-  const [questionAllocationStrategy, setQuestionAllocationStrategy] = useState<"ORIGINAL_POINTS" | "BLOOM_BALANCED">("ORIGINAL_POINTS");
+  const [questionAllocationStrategy, setQuestionAllocationStrategy] = useState<"ORIGINAL_POINTS" | "BLOOM_BALANCED" | "SHUFFLE_RANDOM">("ORIGINAL_POINTS");
+  const [previewAllocatedModal, setPreviewAllocatedModal] = useState<any | null>(null);
 
   // Layout switcher states
   const [modeLayout, setModeLayout] = useState<"GRID" | "LIST" | "COMPACT">("GRID");
@@ -658,6 +660,14 @@ export default function CreateRoomPage() {
                 <QuizBankQuickSummary
                   bankId={quizBankId}
                   onClear={() => setQuizBankId("")}
+                  preloadedBank={
+                    quizBanks.find((b) => b.id === quizBankId)
+                      ? {
+                          ...quizBanks.find((b) => b.id === quizBankId)!,
+                          questions: bankQuestions.length > 0 ? bankQuestions : undefined,
+                        }
+                      : null
+                  }
                 />
               </div>
             )}
@@ -1038,52 +1048,125 @@ export default function CreateRoomPage() {
 
               return (
                 <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3.5">
-                  {/* Allocation Strategy Toggles */}
-                  <div className="space-y-1.5 pb-2 border-b border-white/10">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-200 flex items-center gap-1.5">
-                        <span>⚙️</span> Chiến lược phân bổ độ khó & điểm số:
-                      </span>
-                      <span className="text-[11px] font-mono text-cyan-300">
-                        {questionAllocationStrategy === "ORIGINAL_POINTS" ? "Ưu tiên điểm gốc" : "Bloom Gameshow"}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setQuestionAllocationStrategy("ORIGINAL_POINTS")}
-                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                          questionAllocationStrategy === "ORIGINAL_POINTS"
-                            ? "bg-purple-600/25 border-purple-400 text-white shadow-sm ring-1 ring-purple-400/40"
-                            : "glass border-white/10 text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 font-bold text-xs text-purple-300 mb-0.5">
-                          <span>🎯</span> Ưu tiên độ khó gốc trong đề
-                        </div>
-                        <p className="text-[10px] text-slate-400 leading-relaxed">
-                          Bảo toàn trọn vẹn điểm số và mức Bloom gốc từ đề thi. Hệ thống chỉ phân vòng mà không sửa điểm câu hỏi.
-                        </p>
-                      </button>
+                  {/* Context-Aware Allocation Strategy Toggles */}
+                  {(() => {
+                    const isIndependentScoringMode = ["WAGER", "DICE_RACE", "MAGIC_WHEEL", "OLYMPIA"].includes(mode);
 
-                      <button
-                        type="button"
-                        onClick={() => setQuestionAllocationStrategy("BLOOM_BALANCED")}
-                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                          questionAllocationStrategy === "BLOOM_BALANCED"
-                            ? "bg-indigo-600/25 border-indigo-400 text-white shadow-sm ring-1 ring-indigo-400/40"
-                            : "glass border-white/10 text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 font-bold text-xs text-indigo-300 mb-0.5">
-                          <span>⚖️</span> Tự động cân bằng Bloom
+                    if (isIndependentScoringMode) {
+                      const isShuffle = questionAllocationStrategy === "SHUFFLE_RANDOM";
+                      let modeNotice = "";
+                      if (mode === "WAGER") modeNotice = "💰 Điểm số trận đấu do thí sinh/đội tự cược (10đ – 100đ / Tất tay) trước mỗi câu hỏi, không phụ thuộc vào điểm tĩnh của đề thi.";
+                      else if (mode === "DICE_RACE") modeNotice = "🎲 Điểm số tính bằng số bước tiến trên sa bàn 3D (1–6 nút xúc xắc). Trả lời đúng mở quyền tung xúc xắc.";
+                      else if (mode === "MAGIC_WHEEL") modeNotice = "🎡 Điểm số do kim vòng quay quyết định (100đ – 1000đ / Mất lượt / Nhân đôi).";
+                      else if (mode === "OLYMPIA") modeNotice = "⚡ Điểm số từng phần cố định tuyệt đối theo luật gameshow VTV3 (Khởi động 10đ, Tăng tốc 40/30/20/10, Về đích 20/30/40).";
+
+                      return (
+                        <div className="space-y-2 pb-2.5 border-b border-white/10">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-slate-200 flex items-center gap-1.5">
+                              <span>🎯</span> Thứ tự xuất hiện câu hỏi theo vòng đấu:
+                            </span>
+                            <span className="text-[11px] font-mono text-cyan-300">
+                              {isShuffle ? "Trộn ngẫu nhiên" : "Leo thang theo vòng"}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setQuestionAllocationStrategy("ORIGINAL_POINTS")}
+                              className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                                !isShuffle
+                                  ? "bg-purple-600/25 border-purple-400 text-white shadow-sm ring-1 ring-purple-400/40"
+                                  : "glass border-white/10 text-slate-400 hover:text-white"
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 font-bold text-xs text-purple-300 mb-0.5">
+                                <span>📈</span> Độ khó leo thang (Dễ → Khó)
+                              </div>
+                              <p className="text-[10px] text-slate-400 leading-relaxed">
+                                Sắp xếp thử thách tăng dần từ Khởi động (Dễ) → Tăng tốc (TB) → Về đích (Khó).
+                              </p>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setQuestionAllocationStrategy("SHUFFLE_RANDOM")}
+                              className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                                isShuffle
+                                  ? "bg-indigo-600/25 border-indigo-400 text-white shadow-sm ring-1 ring-indigo-400/40"
+                                  : "glass border-white/10 text-slate-400 hover:text-white"
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 font-bold text-xs text-indigo-300 mb-0.5">
+                                <span>🎲</span> Trộn ngẫu nhiên (Shuffle)
+                              </div>
+                              <p className="text-[10px] text-slate-400 leading-relaxed">
+                                Xáo trộn ngẫu nhiên mọi câu hỏi, thử thách xuất hiện bất ngờ không báo trước độ khó.
+                              </p>
+                            </button>
+                          </div>
+                          {modeNotice && (
+                            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-200 flex items-center gap-2">
+                              <span>ℹ️</span>
+                              <span>{modeNotice}</span>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-[10px] text-slate-400 leading-relaxed">
-                          Chuẩn hóa điểm số về 10đ / 20đ / 30đ theo thang Bloom Gameshow (~30% Dễ, ~37% TB, ~33% Khó).
-                        </p>
-                      </button>
-                    </div>
-                  </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2 pb-2.5 border-b border-white/10">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-slate-200 flex items-center gap-1.5">
+                            <span>⚙️</span> Chiến lược phân bổ độ khó & điểm số:
+                          </span>
+                          <span className="text-[11px] font-mono text-cyan-300">
+                            {questionAllocationStrategy === "ORIGINAL_POINTS" ? "Ưu tiên điểm gốc" : "Bloom Gameshow"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setQuestionAllocationStrategy("ORIGINAL_POINTS")}
+                            className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                              questionAllocationStrategy === "ORIGINAL_POINTS"
+                                ? "bg-purple-600/25 border-purple-400 text-white shadow-sm ring-1 ring-purple-400/40"
+                                : "glass border-white/10 text-slate-400 hover:text-white"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 font-bold text-xs text-purple-300 mb-0.5">
+                              <span>🎯</span> Ưu tiên độ khó gốc trong đề
+                            </div>
+                            <p className="text-[10px] text-slate-400 leading-relaxed">
+                              Bảo toàn trọn vẹn điểm số và mức Bloom gốc từ đề thi. Hệ thống chỉ phân vòng mà không sửa điểm câu hỏi.
+                            </p>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setQuestionAllocationStrategy("BLOOM_BALANCED")}
+                            className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                              questionAllocationStrategy === "BLOOM_BALANCED"
+                                ? "bg-indigo-600/25 border-indigo-400 text-white shadow-sm ring-1 ring-indigo-400/40"
+                                : "glass border-white/10 text-slate-400 hover:text-white"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 font-bold text-xs text-indigo-300 mb-0.5">
+                              <span>⚖️</span> Tự động cân bằng Bloom
+                            </div>
+                            <p className="text-[10px] text-slate-400 leading-relaxed">
+                              Chuẩn hóa điểm số về 10đ / 20đ / 30đ theo thang Bloom Gameshow (~30% Dễ, ~37% TB, ~33% Khó).
+                            </p>
+                          </button>
+                        </div>
+                        <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/25 text-[11px] text-indigo-200 flex items-center gap-2">
+                          <span>📊</span>
+                          <span>Điểm câu hỏi sẽ trực tiếp cộng dồn vào bảng xếp hạng của thí sinh / đội.</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Header & Target Count */}
                   <div className="flex items-center justify-between text-xs">
@@ -1143,6 +1226,32 @@ export default function CreateRoomPage() {
                       </div>
                       <div className="text-[9px] text-purple-400/80">Về đích</div>
                     </div>
+                  </div>
+
+                  {/* Standard Time Limit Notice & Question Preview Action */}
+                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-white/10 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+                    <div className="space-y-0.5">
+                      <div className="font-bold text-slate-200 flex items-center gap-1.5">
+                        <span>⏱️</span>
+                        <span>Quy ước thời gian suy nghĩ chuẩn:</span>
+                      </div>
+                      <p className="text-[10.5px] text-slate-400">
+                        10s (câu 10đ) · 15s (câu 20đ) · 20s (câu 30đ) · 30s (câu 40đ) · Sắp xếp/Nối: 2.5s–7.5s × số dữ kiện
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setPreviewAllocatedModal({
+                        id: quizBankId || "match_preview",
+                        title: `Danh sách ${allocResult.allocatedQuestions.length} câu hỏi thi đấu dự kiến`,
+                        description: `Chế độ ${GAME_MODES.find((m) => m.value === mode)?.label} · ${questionAllocationStrategy === "SHUFFLE_RANDOM" ? "Trộn ngẫu nhiên" : "Thứ tự leo thang"}`,
+                        questions: allocResult.allocatedQuestions,
+                      })}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 transition shadow cursor-pointer shrink-0"
+                    >
+                      <span>👁️</span> Xem trước {totalQuestions} câu thi đấu
+                    </button>
                   </div>
 
                   {/* Bank Surplus Advisory */}
@@ -2728,6 +2837,13 @@ export default function CreateRoomPage() {
         isOpen={showRulesModal}
         onClose={() => setShowRulesModal(false)}
       />
+
+      {previewAllocatedModal && (
+        <QuizBankPreviewModal
+          bank={previewAllocatedModal}
+          onClose={() => setPreviewAllocatedModal(null)}
+        />
+      )}
     </div>
   );
 }

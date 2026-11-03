@@ -3,7 +3,7 @@
     "type": "MC_SINGLE",
     "content": "Bản chất cốt lõi của hoạt động đấu thầu trong quản lý dự án nhà nước là gì?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -33,7 +33,7 @@
     "type": "MC_SINGLE",
     "content": "Đối với Chủ đầu tư và chủ dự án, hoạt động đấu thầu mang lại vai trò quan trọng nhất nào sau đây?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -63,7 +63,7 @@
     "type": "TRUE_FALSE",
     "content": "Đấu thầu chỉ mang lại lợi ích cho chủ đầu tư, không tạo cơ hội tiếp cận dự án hay thúc đẩy cải thiện công nghệ cho các nhà thầu.",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "true",
@@ -83,7 +83,7 @@
     "type": "MC_SINGLE",
     "content": "Ba tiêu chí cơ bản để phân loại gói thầu phục vụ phân tích và quản lý dự án là gì?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -113,7 +113,7 @@
     "type": "MC_SINGLE",
     "content": "Gói thầu cung cấp thiết bị máy móc, tua-bin, máy phát và vật tư công nghệ thuộc nhóm gói thầu nào theo bản chất sản phẩm?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -143,7 +143,7 @@
     "type": "MC_SINGLE",
     "content": "Theo Luật Đấu thầu số 90/2025/QH15, hình thức lựa chọn nhà thầu nào là hình thức mặc định, không hạn chế số lượng nhà thầu tham dự?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -173,7 +173,7 @@
     "type": "TRUE_FALSE",
     "content": "Theo quy định hiện hành, các hình thức đấu thầu phổ biến như đấu thầu rộng rãi, hạn chế hay chào hàng cạnh tranh hiện nay bắt buộc thực hiện qua mạng.",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "true",
@@ -193,7 +193,7 @@
     "type": "MC_SINGLE",
     "content": "Chủ đầu tư chịu trách nhiệm toàn diện về hiệu quả đầu tư Dự án Nhà máy Thủy điện Tích năng Bác Ái là đơn vị nào?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -223,7 +223,7 @@
     "type": "MC_SINGLE",
     "content": "Cơ quan trực tiếp thực hiện chức năng đại diện chủ đầu tư EVN, điều phối các gói thầu và giám sát chất lượng hiện trường dự án Bác Ái là đơn vị nào?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -253,7 +253,7 @@
     "type": "MC_SINGLE",
     "content": "Theo mô hình phân cấp hành chính địa phương 2 cấp, Dự án Nhà máy Thủy điện Tích năng Bác Ái được xây dựng trên địa bàn xã Phước Hòa trực thuộc tỉnh nào?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "a",
@@ -283,7 +283,7 @@
     "type": "MC_SINGLE",
     "content": "Phương thức đấu thầu 'Một giai đoạn một túi hồ sơ' (1G1T) phù hợp nhất với loại gói thầu nào?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -313,7 +313,7 @@
     "type": "MC_SINGLE",
     "content": "Điểm cốt lõi trong cơ chế vận hành của phương thức 'Một giai đoạn hai túi hồ sơ' (1G2T) là gì?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -343,7 +343,7 @@
     "type": "TRUE_FALSE",
     "content": "Phương thức đấu thầu Một giai đoạn hai túi hồ sơ (1G2T) cho phép bên mời thầu mở đồng thời cả hồ sơ đề xuất kỹ thuật và hồ sơ đề xuất tài chính ngay tại thời điểm đóng thầu.",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -363,7 +363,7 @@
     "type": "MC_SINGLE",
     "content": "Tổng mức đầu tư được phê duyệt của Dự án Nhà máy Thủy điện Tích năng Bác Ái là bao nhiêu?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -393,7 +393,7 @@
     "type": "MC_SINGLE",
     "content": "Nhà máy Thủy điện Tích năng Bác Ái có tổng công suất thiết kế là bao nhiêu và gồm mấy tổ máy?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -423,7 +423,7 @@
     "type": "MC_MULTI",
     "content": "Theo Quy hoạch điện VIII, Thủy điện Tích năng Bác Ái đóng những vai trò then chốt nào trong hệ thống điện quốc gia? (Chọn các phương án đúng)",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -453,7 +453,7 @@
     "type": "MC_SINGLE",
     "content": "Tên chính thức và dự toán của Gói thầu số 01TB-BA thuộc dự án Thủy điện Tích năng Bác Ái là gì?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -483,7 +483,7 @@
     "type": "MC_SINGLE",
     "content": "Yêu cầu kỹ thuật đặc thù và khắt khe nhất của thiết bị cơ điện chính trong gói 01TB-BA là gì?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -513,7 +513,7 @@
     "type": "MC_SINGLE",
     "content": "Căn cứ thực tiễn để EVN áp dụng hình thức 'Đấu thầu rộng rãi quốc tế' cho gói thầu 01TB-BA là gì?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -543,7 +543,7 @@
     "type": "MC_SINGLE",
     "content": "Đơn vị nào đã trúng thầu Gói thầu số 01TB-BA theo quyết định phê duyệt ngày 21/10/2026?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -573,7 +573,7 @@
     "type": "MC_SINGLE",
     "content": "Thời gian thực hiện hợp đồng Gói thầu số 01TB-BA là bao nhiêu tháng?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -603,7 +603,7 @@
     "type": "MATCHING",
     "content": "Hãy ghép đúng 4 hình thức lựa chọn nhà thầu theo Luật Đấu thầu 90/2025/QH15 với đặc trưng tương ứng:",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "pairs": [
       {
         "id": "p1",
@@ -655,7 +655,7 @@
     "type": "MATCHING",
     "content": "Hãy ghép đúng 4 bước trong quy trình tổ chức đấu thầu với mục tiêu cốt lõi tương ứng:",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "pairs": [
       {
         "id": "p1",
@@ -707,7 +707,7 @@
     "type": "MC_SINGLE",
     "content": "Thị trường quốc tế về chế tạo thiết bị cơ điện công nghệ cao cột nước lớn như gói thầu 01TB-BA mang cấu trúc thị trường nào?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "a",
@@ -737,7 +737,7 @@
     "type": "MC_MULTI",
     "content": "Khi xây dựng Hồ sơ mời thầu (HSMT) gói 01TB-BA, bên mời thầu phải tuân thủ các nguyên tắc kiểm soát nào? (Chọn các phương án đúng)",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -768,7 +768,7 @@
     "content": "Dự toán gói thầu 01TB-BA là 4.548,081 tỷ đồng, giá trúng thầu là 4.462,603 tỷ đồng. Giá trị tuyệt đối tiết kiệm được qua đấu thầu là ... tỷ đồng (nhập số thập phân có 3 chữ số sau dấu chấm, ví dụ: 85.478):",
     "answer": "85.478 | 85,478 | 85.478 tỷ | 85.478 tỷ đồng | 85,478 tỷ | 85,478 tỷ đồng",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "hint": "Lấy Dự toán trừ Giá hợp đồng: 4548.081 - 4462.603 = ?",
     "isTieBreaker": false
   },
@@ -777,7 +777,7 @@
     "content": "Với dự toán 4.548,081 tỷ đồng và số tiền tiết kiệm 85,478 tỷ đồng, tỷ lệ tiết kiệm của gói thầu 01TB-BA so với giá dự toán khi làm tròn 2 chữ số thập phân là ... % (ví dụ: 1.88):",
     "answer": "1.88 | 1,88 | 1.88% | 1,88%",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "hint": "(85.478 / 4548.081) * 100 = ?",
     "isTieBreaker": false
   },
@@ -786,7 +786,7 @@
     "content": "Dự toán gói thầu 01TB-BA là 4.548,081 tỷ đồng, tổng mức đầu tư dự án Bác Ái là 21.101,468 tỷ đồng. Gói thầu này chiếm tỷ trọng khi làm tròn 2 chữ số thập phân là ... % tổng mức đầu tư (ví dụ: 21.55):",
     "answer": "21.55 | 21,55 | 21.55% | 21,55%",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "hint": "(4548.081 / 21101.468) * 100 = ?",
     "isTieBreaker": false
   },
@@ -794,7 +794,7 @@
     "type": "MC_SINGLE",
     "content": "Nhà máy Bác Ái có 4 tổ máy tổng công suất 1.200 MW. Trong giờ thấp điểm đêm, nhà máy bơm nước tích năng tiêu thụ 12 triệu kWh điện. Biết hiệu suất chu trình kép đạt 75%, hỏi lượng điện phát ra hòa lưới lúc cao điểm là bao nhiêu?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -824,7 +824,7 @@
     "type": "DRAG_DROP",
     "content": "Hãy sắp xếp đúng trình tự 7 bước trong quy trình tổ chức thực hiện đấu thầu theo quy định pháp luật:",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 35,
     "options": [
       {
         "id": "STEP_1",
@@ -869,7 +869,7 @@
     "type": "MATCHING",
     "content": "Hãy ghép nối 4 mốc thời gian thực tế của Gói thầu 01TB-BA với sự kiện tương ứng:",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "pairs": [
       {
         "id": "p1",
@@ -921,7 +921,7 @@
     "type": "MC_SINGLE",
     "content": "Tại sao tỷ lệ tiết kiệm 1,88% (~85,478 tỷ đồng) ở gói 01TB-BA không bị coi là thấp mà vẫn phản ánh sự thành công lớn trong đàm phán của EVN?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -951,7 +951,7 @@
     "type": "MC_SINGLE",
     "content": "Trong quản trị dự án hiện đại, nguyên tắc 'Giá trị đồng tiền' (Value for Money) trong đấu thầu thiết bị cơ điện công nghệ cao được hiểu là gì?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -981,7 +981,7 @@
     "type": "MC_SINGLE",
     "content": "Tại sao Gói thầu 01TB-BA được xác định là gói thầu nằm trên 'đường găng' (Critical Path) quyết định sự thành bại của Dự án Thủy điện Bác Ái?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -1011,7 +1011,7 @@
     "type": "MATCHING",
     "content": "Hãy ghép đúng 4 rủi ro thực tiễn của gói thầu 01TB-BA với giải pháp quản trị tương ứng:",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "pairs": [
       {
         "id": "p1",
@@ -1064,7 +1064,7 @@
     "content": "Chủ đầu tư đánh giá 2 phương án: Phương án A (mua 4.462 tỷ, bảo dưỡng 1.200 tỷ, tổn thất 180 tỷ); Phương án B (mua 4.420 tỷ, bảo dưỡng 1.350 tỷ, tổn thất 250 tỷ). Theo tiêu chí Chi phí vòng đời (LCC), Phương án A giúp tiết kiệm hơn Phương án B tổng chi phí vòng đời là ... tỷ đồng:",
     "answer": "178 | 178 tỷ | 178 tỷ đồng",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "hint": "LCC_A = 4462 + 1200 + 180 = 5842 tỷ. LCC_B = 4420 + 1350 + 250 = 6020 tỷ. Tiết kiệm = 6020 - 5842 = ?",
     "isTieBreaker": false
   },
@@ -1073,7 +1073,7 @@
     "content": "HSMT quy định Điểm tổng hợp: D_TH = 0,7 * D_KT + 0,3 * D_TC. Nhà thầu X đạt điểm kỹ thuật D_KT = 92 và điểm tài chính D_TC = 85. Điểm tổng hợp D_TH của nhà thầu X là ... điểm (ví dụ: 89.9):",
     "answer": "89.9 | 89,9 | 89.9 điểm | 89,9 điểm",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "hint": "D_TH = 0.7 * 92 + 0.3 * 85 = 64.4 + 25.5 = ?",
     "isTieBreaker": false
   },
@@ -1081,7 +1081,7 @@
     "type": "MC_SINGLE",
     "content": "Tình huống: Do điều kiện địa chất phức tạp, công tác đào hầm và gian máy ngầm bị chậm tiến độ 6 tháng, trong khi nhà máy nước ngoài đã chế tạo xong tổ máy đúng theo mốc 51 tháng. Theo thực tiễn quản trị hợp đồng FIDIC, giải pháp nào chủ động và tối ưu nhất cho EVN?",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -1111,7 +1111,7 @@
     "type": "MC_MULTI",
     "content": "Việc EVN tổ chức đấu thầu rộng rãi quốc tế và áp dụng phương thức một giai đoạn hai túi hồ sơ cho gói 01TB-BA mang lại những giá trị cốt lõi nào cho ngành điện và nền kinh tế? (Chọn tất cả các phương án đúng)",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -1142,7 +1142,7 @@
     "content": "Nhà thầu hoàn thành lắp đặt và đưa tổ máy số 1 vào vận hành sớm hơn kế hoạch 60 ngày, giúp tiết kiệm chi phí chạy dầu trung bình 1,5 tỷ đồng mỗi ngày. Tổng giá trị kinh tế trực tiếp đem lại cho EVN là ... tỷ đồng:",
     "answer": "90 | 90 tỷ | 90 tỷ đồng",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "hint": "Tổng tiết kiệm = 60 ngày * 1.5 tỷ đồng/ngày = ?",
     "isTieBreaker": false
   }

@@ -42,11 +42,10 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
   },
   "questions": [
     {
-        "id": "q_off_1",
         "type": "MC_SINGLE",
         "content": "Trong quy trình lập kế hoạch kinh doanh tiêu chuẩn, bước đầu tiên mang tính nền tảng quyết định hướng đi là gì?",
         "points": 10,
-        "timeLimit": 15,
+        "timeLimit": 10,
         "options": [
             {
                 "id": "A",
@@ -70,14 +69,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Cần thấu hiểu bối cảnh thị trường, điểm mạnh/yếu trước khi định hình mục tiêu.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_1"
     },
     {
-        "id": "q_off_2",
         "type": "MC_SINGLE",
         "content": "Theo tiêu chí SMART, chữ 'M' trong một mục tiêu kế hoạch hiệu quả đại diện cho đặc tính nào?",
         "points": 10,
-        "timeLimit": 15,
+        "timeLimit": 10,
         "options": [
             {
                 "id": "A",
@@ -101,14 +100,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Mục tiêu phải gắn liền với chỉ số định lượng cụ thể để kiểm tra kết quả.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_2"
     },
     {
-        "id": "q_off_3",
         "type": "MC_MULTI",
         "content": "Phương pháp dự báo định tính nào dưới đây thu thập ý kiến chuyên gia qua nhiều vòng ẩn danh và phản hồi tổng hợp nhằm đạt được sự đồng thuận cao?",
         "points": 10,
-        "timeLimit": 15,
+        "timeLimit": 10,
         "options": [
             {
                 "id": "A",
@@ -132,14 +131,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Hai phương án định tính dựa trên trí tuệ tập thể chuyên gia mà không cần họp mặt trực tiếp.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_3"
     },
     {
-        "id": "q_off_4",
         "type": "MC_SINGLE",
         "content": "Phương pháp lập ngân sách nào yêu cầu mọi khoản chi phí đều phải được giải trình và chứng minh lại từ đầu cho mỗi kỳ kế hoạch mới, bất kể ngân sách kỳ trước là bao nhiêu?",
         "points": 10,
-        "timeLimit": 15,
+        "timeLimit": 10,
         "options": [
             {
                 "id": "A",
@@ -163,14 +162,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Bắt đầu mỗi chu kỳ từ con số 0 để loại trừ các khoản lãng phí tồn dư của quá khứ.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_4"
     },
     {
-        "id": "q_off_5",
         "type": "TRUE_FALSE",
         "content": "Kế hoạch chiến lược thường có tầm nhìn dài hạn (từ 3 đến 5 năm trở lên), do nhà quản trị cấp cao phê duyệt và tập trung vào các mục tiêu tổng thể của toàn tổ chức.",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "options": [
             {
                 "id": "true",
@@ -184,24 +183,24 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Phân biệt kế hoạch chiến lược dài hạn với kế hoạch tác nghiệp ngắn hạn phục vụ công việc hàng ngày.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_5"
     },
     {
-        "id": "q_off_6",
         "type": "FILL_BLANK",
         "content": "Phương pháp quản lý theo mục tiêu phổ biến trong lập kế hoạch, nơi cấp trên và cấp dưới cùng thống nhất xác định mục tiêu và tiêu chuẩn đánh giá, viết tắt là gì?",
         "answer": "MBO",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "hint": "Viết tắt của 3 chữ cái tiếng Anh: Management by Objectives.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_6"
     },
     {
-        "id": "q_off_7",
         "type": "MC_SINGLE",
         "content": "Trong ma trận SWOT, việc kết hợp giữa 'Điểm mạnh bên trong' (Strengths) và 'Cơ hội bên ngoài' (Opportunities) sẽ hình thành nên chiến lược nào?",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "options": [
             {
                 "id": "A",
@@ -225,14 +224,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Sử dụng ưu thế nội lực để nắm bắt thời cơ vàng từ thị trường.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_7"
     },
     {
-        "id": "q_off_8",
         "type": "TRUE_FALSE",
         "content": "Kế hoạch dự phòng (Contingency plan) là bản kế hoạch chỉ được kích hoạt khi các sự cố hoặc kịch bản rủi ro bất khả kháng đã được dự báo trước xảy ra.",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "options": [
             {
                 "id": "true",
@@ -246,14 +245,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Kế hoạch Phương án B (Plan B) phòng khi hoàn cảnh môi trường biến động lớn.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_8"
     },
     {
-        "id": "q_off_9",
         "type": "MC_SINGLE",
         "content": "Trong ma trận BCG, đơn vị kinh doanh chiến lược (SBU) có thị phần tương đối cao nhưng hoạt động trong ngành có tốc độ tăng trưởng thấp được xếp vào ô nào?",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "options": [
             {
                 "id": "A",
@@ -277,14 +276,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Tạo ra dòng tiền dồi dào để nuôi dưỡng các mảng kinh doanh khác mà không cần tái đầu tư lớn.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_9"
     },
     {
-        "id": "q_off_10",
         "type": "MC_SINGLE",
         "content": "Tình huống: Một doanh nghiệp bán lẻ xây dựng bản kế hoạch mở rộng chuỗi cửa hàng chi tiết trong 2 năm. Tuy nhiên sau 6 tháng thực hiện, doanh số sụt giảm mạnh do xuất hiện xu hướng mua sắm trực tuyến tăng vọt bất ngờ và chi phí mặt bằng tăng cao. Yếu tố cốt lõi nào khiến bản kế hoạch trên thất bại?",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "options": [
             {
                 "id": "A",
@@ -308,14 +307,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Tính linh hoạt và khả năng thích ứng với biến động môi trường là yếu tố sống còn của lập kế hoạch.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_10"
     },
     {
-        "id": "q_off_11",
         "type": "MC_SINGLE",
         "content": "Trong ma trận phân tích SWOT, chiến lược WO (Weaknesses - Opportunities) hướng đến mục tiêu hành động nào?",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "options": [
             {
                 "id": "A",
@@ -339,14 +338,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "WO là chiến lược cải thiện điểm yếu bằng cách đón đầu cơ hội mở ra trên thị trường.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_11"
     },
     {
-        "id": "q_off_12",
         "type": "MC_SINGLE",
         "content": "Trong ma trận danh mục đầu tư BCG của Boston Consulting Group, đơn vị kinh doanh chiến lược (SBU) có thị phần tương đối cao trong một ngành có tốc độ tăng trưởng thấp được xếp vào ô nào?",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "options": [
             {
                 "id": "A",
@@ -370,14 +369,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Bò sữa sinh ra dòng tiền mặt dồi dào mà không đòi hỏi tái đầu tư vốn quá nhiều.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_12"
     },
     {
-        "id": "q_off_13",
         "type": "TRUE_FALSE",
         "content": "Kế hoạch dự phòng (Contingency Planning) là việc xác định trước các phương án hành động thay thế khả dĩ khi xảy ra những biến cố bất ngờ làm gián đoạn kế hoạch tác nghiệp ban đầu.",
         "points": 30,
-        "timeLimit": 30,
+        "timeLimit": 20,
         "options": [
             {
                 "id": "true",
@@ -391,14 +390,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Kế hoạch B/C giúp doanh nghiệp chủ động ứng phó rủi ro đứt gãy hoạt động.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_13"
     },
     {
-        "id": "q_off_14",
         "type": "MC_SINGLE",
         "content": "Trong phương pháp dự báo san bằng mũ (Exponential Smoothing), trọng số lớn nhất được gán cho đại lượng nào?",
         "points": 30,
-        "timeLimit": 30,
+        "timeLimit": 20,
         "options": [
             {
                 "id": "A",
@@ -422,14 +421,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Các quan sát càng mới càng chứa nhiều thông tin cập nhật nên nhận trọng số mũ cao nhất.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_14"
     },
     {
-        "id": "q_off_15",
         "type": "MC_SINGLE",
         "content": "Trong ma trận 9 ô GE-McKinsey dùng để lập kế hoạch danh mục kinh doanh, hai trục đánh giá bao gồm những yếu tố nào?",
         "points": 30,
-        "timeLimit": 30,
+        "timeLimit": 20,
         "options": [
             {
                 "id": "A",
@@ -453,14 +452,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "GE-McKinsey là bước phát triển đa chiều toàn diện hơn so với ma trận 4 ô của BCG.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_15"
     },
     {
-        "id": "q_off_16",
         "type": "MC_MULTI",
         "content": "Theo mô hình 5 áp lực cạnh tranh của Michael Porter (Five Forces), những yếu tố nào quyết định mức độ hấp dẫn và tỷ suất sinh lời của ngành?",
         "points": 30,
-        "timeLimit": 30,
+        "timeLimit": 20,
         "options": [
             {
                 "id": "A",
@@ -484,14 +483,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Cả 5 lực lượng này tạo nên cấu trúc cạnh tranh toàn diện của một ngành kinh doanh.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_16"
     },
     {
-        "id": "q_off_17",
         "type": "MC_SINGLE",
         "content": "Chiến lược 'Tích hợp ngược về phía sau' (Backward Vertical Integration) trong hoạch định chiến lược kinh doanh có nghĩa là gì?",
         "points": 30,
-        "timeLimit": 30,
+        "timeLimit": 20,
         "options": [
             {
                 "id": "A",
@@ -515,14 +514,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Đi ngược về nguồn cung ứng để chủ động giá thành và chuỗi cung ứng vật tư.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_17"
     },
     {
-        "id": "q_off_18",
         "type": "TRUE_FALSE",
         "content": "Phương pháp Quản trị theo mục tiêu (MBO - Management by Objectives) là quá trình trong đó mục tiêu do Tổng giám đốc đơn phương ấn định và áp đặt hoàn toàn từ trên xuống mà không cần thảo luận với cấp dưới.",
         "points": 30,
-        "timeLimit": 30,
+        "timeLimit": 20,
         "options": [
             {
                 "id": "true",
@@ -536,14 +535,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Bản chất cốt lõi của MBO là sự tham gia hiệp thương cùng xác lập mục tiêu giữa cấp trên và cấp dưới.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_18"
     },
     {
-        "id": "q_off_19",
         "type": "MC_SINGLE",
         "content": "Phương pháp lập kế hoạch theo kịch bản (Scenario Planning) phát huy giá trị cao nhất trong điều kiện môi trường nào?",
         "points": 30,
-        "timeLimit": 30,
+        "timeLimit": 20,
         "options": [
             {
                 "id": "A",
@@ -567,14 +566,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Kịch bản giúp chuẩn bị cho nhiều tương lai khả dĩ khác nhau (kịch bản lạc quan, cơ sở, bi quan).",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_19"
     },
     {
-        "id": "q_off_20",
         "type": "MC_SINGLE",
         "content": "Một tập đoàn bán lẻ điện máy lập kế hoạch mở thêm 30 siêu thị mới trong năm tài chính. Khi phân tích ngân sách dự án vốn đầu tư (CapEx), chỉ số tài chính nào cho biết tỷ suất sinh lời thực tế làm cho Giá trị hiện giá thuần (NPV) của dự án bằng đúng 0?",
         "points": 30,
-        "timeLimit": 30,
+        "timeLimit": 20,
         "options": [
             {
                 "id": "A",
@@ -598,14 +597,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "IRR là tỷ lệ chiết khấu mà tại đó NPV = 0; nếu IRR > chi phí sử dụng vốn WACC thì dự án đáng giá để đầu tư.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_20"
     },
     {
-        "id": "q_off_21",
         "type": "MC_SINGLE",
         "content": "Một doanh nghiệp dự báo nhu cầu sản phẩm cho tháng 4 bằng phương pháp San bằng mũ giản đơn với hệ số san bằng alpha = 0.3. Nhu cầu thực tế tháng 3 là 1.200 sản phẩm, dự báo tháng 3 trước đó là 1.100 sản phẩm. Dự báo nhu cầu bán hàng cho tháng 4 là bao nhiêu sản phẩm?",
         "points": 40,
-        "timeLimit": 60,
+        "timeLimit": 30,
         "options": [
             {
                 "id": "A",
@@ -629,14 +628,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "F4 = F3 + alpha * (A3 - F3) = 1.100 + 0.3 * (1.200 - 1.100) = 1.100 + 30 = 1.130 sản phẩm.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_21"
     },
     {
-        "id": "q_off_22",
         "type": "MC_SINGLE",
         "content": "Dự án đầu tư mở rộng của công ty có vốn đầu tư ban đầu 1.000 triệu đồng tại năm 0. Dòng tiền thuần hàng năm thu về trong 3 năm lần lượt là 400 triệu (năm 1), 500 triệu (năm 2), và 600 triệu (năm 3). Tỷ lệ chiết khấu chi phí vốn r = 10%. Giá trị hiện giá thuần (NPV) của dự án này xấp xỉ bằng bao nhiêu?",
         "points": 40,
-        "timeLimit": 60,
+        "timeLimit": 30,
         "options": [
             {
                 "id": "A",
@@ -660,14 +659,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "PV = 400/1.1 + 500/(1.1^2) + 600/(1.1^3) = 363.64 + 413.22 + 450.79 = 1.227.65 triệu. NPV = 1.227.65 - 1.000 = +227.65 triệu đồng.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_22"
     },
     {
-        "id": "q_off_23",
         "type": "MATCHING",
         "content": "Hãy ghép đúng 4 ô trong Ma trận phân tích danh mục đầu tư BCG với định hướng chiến lược tương ứng:",
         "points": 40,
-        "timeLimit": 60,
+        "timeLimit": 30,
         "pairs": [
             {
                 "id": "p1",
@@ -713,14 +712,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Ma trận BCG cổ điển của Boston Consulting Group.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_23"
     },
     {
-        "id": "q_off_24",
         "type": "DRAG_DROP",
         "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình lập kế hoạch kinh doanh chiến lược toàn diện:",
         "points": 40,
-        "timeLimit": 60,
+        "timeLimit": 38,
         "options": [
             {
                 "id": "STEP_1",
@@ -749,14 +748,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Sứ mệnh -> Phân tích môi trường -> Lựa chọn chiến lược -> Kế hoạch tác nghiệp -> Đo lường kiểm soát.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_24"
     },
     {
-        "id": "q_off_25",
         "type": "MC_SINGLE",
         "content": "[CÂU HỎI PHỤ - LẬP KẾ HOẠCH] Chữ 'R' trong nguyên tắc thiết lập mục tiêu SMART đại diện cho tiêu chí nào?",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "isTieBreaker": true,
         "options": [
             {
@@ -780,14 +779,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
                 "isCorrect": false
             }
         ],
-        "hint": "Mục tiêu phải gắn liền với tầm nhìn chiến lược và có tính khả thi thực tế."
+        "hint": "Mục tiêu phải gắn liền với tầm nhìn chiến lược và có tính khả thi thực tế.",
+        "id": "q_off_25"
     },
     {
-        "id": "q_off_26",
         "type": "MC_SINGLE",
         "content": "[CÂU HỎI PHỤ - LẬP KẾ HOẠCH] Trong ma trận BCG, đơn vị kinh doanh chiến lược (SBU) có thị phần cao trong một ngành tăng trưởng chậm được gọi là gì?",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "isTieBreaker": true,
         "options": [
             {
@@ -811,14 +810,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
                 "isCorrect": false
             }
         ],
-        "hint": "Đơn vị mang lại dòng tiền dồi dào để tài trợ cho các đơn vị kinh doanh khác."
+        "hint": "Đơn vị mang lại dòng tiền dồi dào để tài trợ cho các đơn vị kinh doanh khác.",
+        "id": "q_off_26"
     },
     {
-        "id": "q_off_27",
         "type": "MC_SINGLE",
         "content": "[CÂU HỎI PHỤ - LẬP KẾ HOẠCH] Trong phân tích PESTEL, yếu tố nào khảo sát về biến động tỷ giá, lãi suất và lạm phát?",
         "points": 30,
-        "timeLimit": 30,
+        "timeLimit": 20,
         "isTieBreaker": true,
         "options": [
             {
@@ -842,14 +841,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
                 "isCorrect": false
             }
         ],
-        "hint": "Chữ E đầu tiên trong từ viết tắt PESTEL."
+        "hint": "Chữ E đầu tiên trong từ viết tắt PESTEL.",
+        "id": "q_off_27"
     },
     {
-        "id": "q_off_28",
         "type": "MC_SINGLE",
         "content": "Trong mô hình lập kế hoạch kinh doanh 5W1H, chữ 'W' đại diện cho câu hỏi 'Tại sao phải thực hiện mục tiêu này?' là từ nào?",
         "points": 10,
-        "timeLimit": 15,
+        "timeLimit": 10,
         "options": [
             {
                 "id": "A",
@@ -873,14 +872,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Why xác định lý do, mục đích cốt lõi và ý nghĩa của kế hoạch.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_28"
     },
     {
-        "id": "q_off_29",
         "type": "TRUE_FALSE",
         "content": "Kế hoạch tác nghiệp (Operational Planning) thường có tầm nhìn dài hạn từ 5 đến 10 năm và do Hội đồng Quản trị ban hành.",
         "points": 10,
-        "timeLimit": 15,
+        "timeLimit": 10,
         "options": [
             {
                 "id": "A",
@@ -894,24 +893,24 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Kế hoạch tác nghiệp mang tính ngắn hạn (dưới 1 năm), gắn với hoạt động hàng ngày của cấp cơ sở.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_29"
     },
     {
-        "id": "q_off_30",
         "type": "FILL_BLANK",
         "content": "Mô hình quản trị mục tiêu hiện đại được Google và Intel áp dụng phổ biến, bao gồm Mục tiêu (Objectives) và Các kết quả then chốt, viết tắt là gì?",
         "answer": "OKR",
         "points": 10,
-        "timeLimit": 15,
+        "timeLimit": 10,
         "hint": "Viết tắt của 3 chữ cái tiếng Anh: Objectives and Key Results.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_30"
     },
     {
-        "id": "q_off_31",
         "type": "MC_SINGLE",
         "content": "Trong chu trình cải tiến liên tục PDCA của Deming, chữ 'C' đại diện cho hành động nào?",
         "points": 10,
-        "timeLimit": 15,
+        "timeLimit": 10,
         "options": [
             {
                 "id": "A",
@@ -935,14 +934,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "PDCA = Plan - Do - Check - Act.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_31"
     },
     {
-        "id": "q_off_32",
         "type": "MC_SINGLE",
         "content": "Loại kế hoạch nào dưới đây quy định chuỗi các hành động bắt buộc phải thực hiện theo trình tự thời gian cụ thể để hoàn thành một công việc?",
         "points": 10,
-        "timeLimit": 15,
+        "timeLimit": 10,
         "options": [
             {
                 "id": "A",
@@ -966,14 +965,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Quy trình định rõ từng bước 1, 2, 3... theo trình tự trước sau.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_32"
     },
     {
-        "id": "q_off_33",
         "type": "TRUE_FALSE",
         "content": "Trong ma trận SWOT, Cơ hội (Opportunities) và Thách thức (Threats) phản ánh các nhân tố thuộc môi trường bên ngoài của tổ chức.",
         "points": 10,
-        "timeLimit": 15,
+        "timeLimit": 10,
         "options": [
             {
                 "id": "A",
@@ -987,14 +986,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Điểm mạnh/yếu thuộc nội bộ, cơ hội/thách thức đến từ môi trường bên ngoài.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_33"
     },
     {
-        "id": "q_off_34",
         "type": "MC_MULTI",
         "content": "Trong các phát biểu dưới đây về Ma trận mở rộng sản phẩm / thị trường của Ansoff, những phát biểu nào là ĐÚNG?",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "options": [
             {
                 "id": "A",
@@ -1018,24 +1017,24 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Phát triển thị trường là bán sản phẩm hiện có vào các thị trường hoặc phân khúc khách hàng mới.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_34"
     },
     {
-        "id": "q_off_35",
         "type": "FILL_BLANK",
         "content": "Phương pháp lập ngân sách yêu cầu người quản lý phải giải trình và chứng minh lại toàn bộ các khoản chi tiêu từ con số 0 cho mỗi kỳ lập kế hoạch mới được gọi là ngân sách gì? (Ghi tên tiếng Anh 3 chữ cái)",
         "answer": "ZBB",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "hint": "Viết tắt của Zero-Based Budgeting (Ngân sách dựa trên số không).",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_35"
     },
     {
-        "id": "q_off_36",
         "type": "MC_SINGLE",
         "content": "Sự khác biệt cốt lõi giữa Kế hoạch chiến lược (Strategic Plan) và Kế hoạch tác nghiệp (Operational Plan) được thể hiện chính xác ở phát biểu nào?",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "options": [
             {
                 "id": "A",
@@ -1059,14 +1058,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Chiến lược: Dài hạn, toàn diện, cấp cao. Tác nghiệp: Ngắn hạn, cụ thể, cấp cơ sở.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_36"
     },
     {
-        "id": "q_off_37",
         "type": "MC_SINGLE",
         "content": "Một doanh nghiệp có chi phí cố định (FC) = 200 triệu đồng/tháng. Giá bán một sản phẩm P = 50.000 đồng, chi phí biến đổi trên mỗi sản phẩm VC = 30.000 đồng. Sản lượng hòa vốn (BEP) của doanh nghiệp là bao nhiêu?",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "options": [
             {
                 "id": "A",
@@ -1090,14 +1089,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Q_hòa vốn = FC / (P - VC) = 200.000.000 / (50.000 - 30.000) = 10.000 sản phẩm.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_37"
     },
     {
-        "id": "q_off_38",
         "type": "TRUE_FALSE",
         "content": "Phương pháp chuyên gia Delphi trong dự báo lập kế hoạch cho phép các chuyên gia tranh luận trực tiếp mặt đối mặt để đạt được đồng thuận nhanh nhất.",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "options": [
             {
                 "id": "A",
@@ -1111,14 +1110,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Phương pháp Delphi giữ ẩn danh hoàn toàn giữa các chuyên gia qua các vòng gửi phiếu khảo sát để tránh hiệu ứng tâm lý bầy đàn.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_38"
     },
     {
-        "id": "q_off_39",
         "type": "MC_SINGLE",
         "content": "Theo mô hình 5 lực lượng cạnh tranh của Michael Porter, rào cản gia nhập ngành CAO sẽ dẫn đến hệ quả nào đối với các doanh nghiệp hiện tại trong ngành?",
         "points": 20,
-        "timeLimit": 20,
+        "timeLimit": 15,
         "options": [
             {
                 "id": "A",
@@ -1142,14 +1141,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Rào cản cao ngăn các đối thủ tiềm tàng mới bước vào thị trường, bảo vệ thị phần doanh nghiệp hiện tại.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_39"
     },
     {
-        "id": "q_off_40",
         "type": "MC_MULTI",
         "content": "Trong các phát biểu dưới đây về kỹ thuật phân tích ma trận SWOT kết hợp, những cặp chiến lược nào được xác định CHÍNH XÁC?",
         "points": 30,
-        "timeLimit": 30,
+        "timeLimit": 20,
         "options": [
             {
                 "id": "A",
@@ -1173,14 +1172,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Chiến lược W-T là chiến lược phòng thủ tối thiểu hóa điểm yếu và né tránh nguy cơ de dọa.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_40"
     },
     {
-        "id": "q_off_41",
         "type": "MC_SINGLE",
         "content": "Lý do quan trọng nhất khiến Kế hoạch cuốn chiếu (Rolling Plan / Rolling Forecast) ưu việt hơn Kế hoạch cố định hàng năm trong môi trường VUCA là gì?",
         "points": 30,
-        "timeLimit": 25,
+        "timeLimit": 20,
         "options": [
             {
                 "id": "A",
@@ -1204,14 +1203,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Rolling plan liên tục mở rộng tầm nhìn về phía trước, tăng tính linh hoạt và khả năng ứng biến.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_41"
     },
     {
-        "id": "q_off_42",
         "type": "MATCHING",
         "content": "Hãy ghép đúng từng công cụ hoạch định chiến lược với mục đích ứng dụng chủ đạo của nó:",
         "points": 30,
-        "timeLimit": 40,
+        "timeLimit": 20,
         "pairs": [
             {
                 "id": "p1",
@@ -1257,14 +1256,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Mỗi ma trận và khung lý thuyết phục vụ một góc nhìn phân tích chiến lược riêng biệt.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_42"
     },
     {
-        "id": "q_off_43",
         "type": "DRAG_DROP",
         "content": "Hãy sắp xếp đúng trình tự các bước thực hiện kỹ thuật Dự báo theo phương pháp San bằng hàm mũ bậc nhất:",
         "points": 30,
-        "timeLimit": 35,
+        "timeLimit": 25,
         "options": [
             {
                 "id": "STEP_1",
@@ -1293,14 +1292,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Số liệu lịch sử -> Giá trị ban đầu -> Chọn alpha -> Tính dự báo -> Đo sai số.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_43"
     },
     {
-        "id": "q_off_44",
         "type": "MATCHING",
         "content": "Hãy ghép đúng các chỉ số thẩm định hiệu quả tài chính của dự án đầu tư trong kế hoạch dài hạn với tiêu chuẩn chấp thuận tương ứng:",
         "points": 40,
-        "timeLimit": 60,
+        "timeLimit": 30,
         "pairs": [
             {
                 "id": "p1",
@@ -1346,14 +1345,14 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "NPV > 0, IRR > r, PI > 1 là bộ 3 quy tắc quyết định đầu tư kinh điển.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_44"
     },
     {
-        "id": "q_off_45",
         "type": "DRAG_DROP",
         "content": "Hãy sắp xếp đúng thứ tự các giai đoạn của quy trình Quản trị Rủi ro trong lập kế hoạch chiến lược theo chuẩn ISO 31000:",
         "points": 40,
-        "timeLimit": 60,
+        "timeLimit": 38,
         "options": [
             {
                 "id": "STEP_1",
@@ -1382,7 +1381,8 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
             }
         ],
         "hint": "Bối cảnh -> Nhận diện -> Phân tích -> Đánh giá xếp hạng -> Kế hoạch ứng phó.",
-        "isTieBreaker": false
+        "isTieBreaker": false,
+        "id": "q_off_45"
     }
 ]
 };

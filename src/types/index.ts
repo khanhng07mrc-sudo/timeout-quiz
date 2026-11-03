@@ -519,10 +519,45 @@ export function getBloomLevelFromPoints(points: number, explicitLevel?: string):
  */
 export function quantizeOlympiaTimeLimit(points: number = 10, _explicitTimeLimit?: number): number {
   void _explicitTimeLimit;
-  if (points <= 10) return 15;
-  if (points <= 20) return 20;
-  if (points <= 30) return 30;
-  return 60;
+  if (points <= 10) return 10;
+  if (points <= 20) return 15;
+  if (points <= 30) return 20;
+  return 30;
+}
+
+/**
+ * Chuẩn hóa thời gian trả lời chuẩn cho tất cả các dạng câu hỏi:
+ * - Đa số dạng câu hỏi thông thường:
+ *   + 10 điểm: 10s
+ *   + 20 điểm: 15s
+ *   + 30 điểm: 20s
+ *   + 40 điểm: 30s
+ * - Câu hỏi sắp xếp / nối dữ kiện (ORDERING, MATCHING, DRAG_DROP):
+ *   X = số lượng dữ kiện (items / pairs)
+ *   + 10 điểm: Math.round(2.5 * X) (s)
+ *   + 20 điểm: Math.round(3.75 * X) (s)
+ *   + 30 điểm: Math.round(5.0 * X) (s)
+ *   + 40 điểm: Math.round(7.5 * X) (s)
+ */
+export function calculateStandardTimeLimit(
+  points: number = 10,
+  type?: string,
+  itemCount?: number
+): number {
+  const normPoints = points <= 10 ? 10 : points <= 20 ? 20 : points <= 30 ? 30 : 40;
+  const isOrderingOrMatching = Boolean(type && ["ORDERING", "MATCHING", "DRAG_DROP"].includes(type));
+
+  if (isOrderingOrMatching && itemCount && itemCount > 0) {
+    if (normPoints === 10) return Math.max(5, Math.round(2.5 * itemCount));
+    if (normPoints === 20) return Math.max(8, Math.round(3.75 * itemCount));
+    if (normPoints === 30) return Math.max(10, Math.round(5.0 * itemCount));
+    return Math.max(15, Math.round(7.5 * itemCount));
+  }
+
+  if (normPoints === 10) return 10;
+  if (normPoints === 20) return 15;
+  if (normPoints === 30) return 20;
+  return 30;
 }
 
 /**
@@ -575,14 +610,15 @@ export function getBuzzedAnswerTimeLimit(
  * - 40 điểm -> 60 giây (bài toán tính toán phức tạp, đa số liệu)
  */
 export function getStandardQuestionTimeLimit(
-  question: { type?: QuestionType; points?: number; timeLimit?: number; bloomLevel?: BloomLevel },
+  question: { type?: QuestionType; points?: number; timeLimit?: number; bloomLevel?: BloomLevel; pairs?: any; items?: any; options?: any },
   overridePoints?: number
 ): number {
   const effPoints = overridePoints !== undefined ? overridePoints : (question.points ?? 10);
-  if (effPoints <= 10) return 15;
-  if (effPoints <= 20) return 20;
-  if (effPoints <= 30) return 30;
-  return 60;
+  const pairsArr = Array.isArray(question.pairs) ? question.pairs : undefined;
+  const itemsArr = Array.isArray(question.items) ? question.items : undefined;
+  const optionsArr = Array.isArray(question.options) ? question.options : undefined;
+  const itemCount = pairsArr?.length || itemsArr?.length || optionsArr?.length;
+  return calculateStandardTimeLimit(effPoints, question.type, itemCount);
 }
 
 

@@ -3,7 +3,7 @@
     "type": "MC_SINGLE",
     "content": "Trong quy trình chuẩn khai phá dữ liệu công nghiệp CRISP-DM, giai đoạn nào chiếm trung bình từ 60% đến 80% thời gian của một dự án phân tích dữ liệu?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -33,7 +33,7 @@
     "type": "MC_SINGLE",
     "content": "Bài toán nào dưới đây thuộc nhóm 'Học có giám sát' (Supervised Learning) với nhãn mục tiêu dạng phân loại (Classification)?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -63,7 +63,7 @@
     "type": "MC_MULTI",
     "content": "Để đánh giá hiệu năng của một mô hình bài toán Phân loại (Classification) khi tập dữ liệu bị mất cân bằng lớp nghiêm trọng (Imbalanced Data), những chỉ số nào dưới đây đáng tin cậy hơn độ chính xác thông thường (Accuracy)?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -93,7 +93,7 @@
     "type": "MC_SINGLE",
     "content": "Hiện tượng 'Quá khớp' (Overfitting) trong mô hình máy học xảy ra khi:",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -124,7 +124,7 @@
     "content": "Trong thuật toán phân cụm K-Means, phương pháp phổ biến nhất để lựa chọn số cụm K tối ưu dựa trên đồ thị suy giảm của tổng bình phương khoảng cách nội cụm (WCSS) được gọi là phương pháp đường gì?",
     "answer": "Khuỷu tay",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "hint": "Tiếng Anh là Elbow Method (Điểm gấp khúc như cùi chỏ / khuỷu tay).",
     "isTieBreaker": false
   },
@@ -132,7 +132,7 @@
     "type": "TRUE_FALSE",
     "content": "Hệ số xác định R-squared (R²) trong mô hình hồi quy tuyến tính luôn nằm trong khoảng từ -1 đến +1.",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -152,7 +152,7 @@
     "type": "MC_SINGLE",
     "content": "Khi dữ liệu có phân phối lệch nhiều và xuất hiện các điểm ngoại lai (Outliers) cực đoan, giá trị đại diện hướng tâm nào nên được ưu tiên sử dụng để điền khuyết thiếu thay cho giá trị trung bình (Mean)?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -182,7 +182,7 @@
     "type": "TRUE_FALSE",
     "content": "Kỹ thuật K-Fold Cross-Validation giúp đánh giá độ ổn định và giảm thiểu nguy cơ phụ thuộc vào việc chia ngẫu nhiên tập dữ liệu Train/Test.",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -202,7 +202,7 @@
     "type": "MC_SINGLE",
     "content": "Tiêu chí nào thường được sử dụng trong thuật toán Cây quyết định (Decision Tree - CART) để đo lường mức độ tinh khiết (Purity) khi phân nhánh?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -232,7 +232,7 @@
     "type": "MC_SINGLE",
     "content": "Tình huống: Một ngân hàng xây dựng mô hình máy học phát hiện giao dịch gian lận thẻ tín dụng. Do giao dịch gian lận chỉ chiếm 0.1% tổng số (mất cân bằng dữ liệu nghiêm trọng - Imbalanced Data), một mô hình 'ngây thơ' luôn dự đoán 'Không gian lận' vẫn đạt độ chính xác Accuracy = 99.9% nhưng bỏ sót 100% các vụ lừa đảo. Nhóm khoa học dữ liệu nên ưu tiên dùng chỉ số nào để đánh giá mô hình?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -262,7 +262,7 @@
     "type": "MC_SINGLE",
     "content": "Trong mô hình hồi quy tuyến tính cổ điển OLS, hệ số phóng đại phương sai VIF (Variance Inflation Factor) của một biến độc lập vượt quá 10 là dấu hiệu cảnh báo khuyết tật gì?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -292,7 +292,7 @@
     "type": "MC_SINGLE",
     "content": "Để kiểm định hiện tượng Tự tương quan bậc 1 (Autocorrelation) trong phần dư của mô hình hồi quy chuỗi thời gian, đại lượng thống kê nào được sử dụng phổ biến nhất?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -322,7 +322,7 @@
     "type": "MC_SINGLE",
     "content": "Trong thuật toán phân cụm K-Means, phương pháp trực quan đồ thị nào thường được sử dụng phổ biến nhất để xác định số lượng cụm K tối ưu?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -352,7 +352,7 @@
     "type": "MC_SINGLE",
     "content": "Kỹ thuật Giảm chiều dữ liệu Phân tích thành phần chính (PCA) tìm kiếm các trục tọa độ mới nhằm mục tiêu tối ưu hóa điều gì?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -382,7 +382,7 @@
     "type": "MC_SINGLE",
     "content": "Kỹ thuật Kiểm định chéo K-Fold (K-Fold Cross-Validation) có mục đích chính là gì trong quy trình học máy?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -412,7 +412,7 @@
     "type": "MC_MULTI",
     "content": "Những phương pháp tiền xử lý nào dưới đây thường được áp dụng để phát hiện và xử lý giá trị ngoại lai (Outliers)?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -442,7 +442,7 @@
     "type": "TRUE_FALSE",
     "content": "Phương pháp chuẩn hóa Min-Max Scaling biến đổi dữ liệu về khoảng giá trị cố định [0, 1], trong khi Standard Scaling đưa biến về phân phối có giá trị trung bình bằng 0 và độ lệch chuẩn bằng 1.",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "true",
@@ -462,7 +462,7 @@
     "type": "MC_SINGLE",
     "content": "Trong mô hình hồi quy Logistic, hàm số toán học nào có vai trò ánh xạ giá trị đầu ra tuyến tính thành xác suất nằm trong khoảng (0, 1)?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -492,7 +492,7 @@
     "type": "MC_SINGLE",
     "content": "Trong bài toán phát hiện giao dịch gian lận ngân hàng, chỉ số Độ nhạy (Recall) đo lường điều gì?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -522,7 +522,7 @@
     "type": "MC_SINGLE",
     "content": "Một sàn thương mại điện tử muốn phân nhóm 500.000 khách hàng thành các phân khúc tiếp thị đặc thù dựa trên 3 tiêu chí: Độ mới giao dịch (Recency), Tần suất mua hàng (Frequency) và Tổng chi tiêu (Monetary). Do dữ liệu khách hàng chưa có nhãn phân loại sẵn trước, thuật toán học máy nào là lựa chọn phù hợp nhất?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -552,7 +552,7 @@
     "type": "MC_SINGLE",
     "content": "Mô hình phân loại nhị phân phát hiện gian lận tín dụng được đánh giá trên tập kiểm thử 1.000 giao dịch. Ma trận nhầm lẫn (Confusion Matrix) cho kết quả: Dương tính thật (TP) = 80, Âm tính giả (FN) = 20, Dương tính giả (FP) = 40, Âm tính thật (TN) = 860. Hãy tính Độ chính xác Precision và Độ nhạy Recall của mô hình đối với lớp gian lận:",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -582,7 +582,7 @@
     "type": "MC_SINGLE",
     "content": "Trong một bài toán phân tích chuỗi thời gian doanh thu bán lẻ, chuỗi số liệu Y_t có phương trình tự hồi quy AR(1): Y_t = 20 + 0.6 * Y_{t-1} + e_t. Biết doanh thu quan sát được tại thời điểm t = 100 là Y_{100} = 60 triệu đồng. Dự báo điểm giá trị doanh thu tại thời điểm t = 102 (sau 2 bước) là bao nhiêu?",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -612,7 +612,7 @@
     "type": "MATCHING",
     "content": "Hãy ghép đúng từng kỹ thuật Học máy phổ biến với bài toán kinh tế kinh doanh phù hợp nhất:",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "pairs": [
       {
         "id": "p1",
@@ -664,7 +664,7 @@
     "type": "DRAG_DROP",
     "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình chuẩn Khoa học Dữ liệu CRISP-DM:",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 45,
     "options": [
       {
         "id": "STEP_1",
@@ -704,7 +704,7 @@
     "type": "MC_SINGLE",
     "content": "[CÂU HỎI PHỤ - KHOA HỌC DỮ LIỆU] Thuật toán phân cụm K-Means thuộc nhóm học máy (Machine Learning) nào?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "isTieBreaker": true,
     "options": [
       {
@@ -734,7 +734,7 @@
     "type": "MC_SINGLE",
     "content": "[CÂU HỎI PHỤ - KHOA HỌC DỮ LIỆU] Hiện tượng mô hình hoạt động quá xuất sắc trên tập huấn luyện (Train) nhưng lại kém trên tập kiểm thử (Test) được gọi là gì?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "isTieBreaker": true,
     "options": [
       {
@@ -764,7 +764,7 @@
     "type": "MC_SINGLE",
     "content": "[CÂU HỎI PHỤ - KHOA HỌC DỮ LIỆU] Trong mô hình hồi quy Logistic, hàm số nào được dùng để nén giá trị đầu ra về khoảng xác suất (0, 1)?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "isTieBreaker": true,
     "options": [
       {
@@ -794,7 +794,7 @@
     "type": "MC_SINGLE",
     "content": "Trong quy trình chuẩn CRISP-DM của khoa học dữ liệu, bước đầu tiên mang tính quyết định định hình bài toán là gì?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -824,7 +824,7 @@
     "type": "TRUE_FALSE",
     "content": "Hồi quy tuyến tính (Linear Regression) là một thuật toán thuộc nhóm Học không giám sát (Unsupervised Learning).",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -845,7 +845,7 @@
     "content": "Thuật toán học máy kinh điển dùng để phân cụm khách hàng dựa trên khoảng cách Euclide đến K tâm cụm có tên là gì?",
     "answer": "K-Means",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "hint": "Tên thuật toán ghép từ chữ cái K và chữ Means (trung bình).",
     "isTieBreaker": false
   },
@@ -853,7 +853,7 @@
     "type": "MC_SINGLE",
     "content": "Chỉ số nào dưới đây thường được dùng để đánh giá mức độ tương quan tuyến tính giữa hai biến định lượng liên tục?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -883,7 +883,7 @@
     "type": "MC_SINGLE",
     "content": "Trong thư viện Scikit-Learn của Python, hàm nào được sử dụng để chia ngẫu nhiên tập dữ liệu thành tập huấn luyện (train) và kiểm thử (test)?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -913,7 +913,7 @@
     "type": "TRUE_FALSE",
     "content": "Đồ thị ROC biểu diễn mối quan hệ giữa Tỷ lệ dương tính thật (TPR / Recall) và Tỷ lệ dương tính giả (FPR) ở các ngưỡng phân loại khác nhau.",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -933,7 +933,7 @@
     "type": "MC_MULTI",
     "content": "Khi dữ liệu có hiện tượng mất cân bằng mẫu nghiêm trọng (ví dụ 99% khách hàng bình thường, chỉ 1% gian lận thẻ tín dụng), những chỉ số nào dưới đây ĐÁNG TIN CẬY để đánh giá mô hình hơn chỉ số Accuracy?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -964,7 +964,7 @@
     "content": "Hiện tượng mô hình học máy đạt độ chính xác cực cao trên tập huấn luyện (Train) nhưng lại có sai số rất lớn trên tập dữ liệu kiểm thử (Test) được gọi là hiện tượng gì?",
     "answer": "Overfitting",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "hint": "Tiếng Anh là Overfitting (Quá khớp dữ liệu).",
     "isTieBreaker": false
   },
@@ -972,7 +972,7 @@
     "type": "MC_SINGLE",
     "content": "Trong bài toán phân loại nhị phân (Binary Classification), sự khác biệt căn bản giữa hai chỉ số Precision (Độ chính xác) và Recall (Độ thu hồi) là gì?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -1002,7 +1002,7 @@
     "type": "MC_SINGLE",
     "content": "Kỹ thuật mã hóa biến định danh danh mục (Categorical) không có thứ bậc (như Quốc gia, Ngành nghề) thành các cột nhị phân 0/1 được gọi là gì?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -1032,7 +1032,7 @@
     "type": "TRUE_FALSE",
     "content": "Trong kỹ thuật kiểm định chéo K-Fold Cross Validation (với K=5), dữ liệu được chia làm 5 phần bằng nhau, mô hình sẽ được huấn luyện và đánh giá lặp lại đúng 5 lần.",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -1052,7 +1052,7 @@
     "type": "MC_SINGLE",
     "content": "Chỉ số VIF (Variance Inflation Factor) vượt quá ngưỡng nào thường là dấu hiệu cảnh báo hiện tượng đa cộng tuyến nghiêm trọng trong mô hình hồi quy OLS?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -1082,7 +1082,7 @@
     "type": "MC_MULTI",
     "content": "Trong các phát biểu dưới đây về thuật toán Cây quyết định (Decision Tree), những phát biểu nào là ĐÚNG?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -1112,7 +1112,7 @@
     "type": "MC_SINGLE",
     "content": "Mối quan hệ đánh đổi (Trade-off) giữa Bias (Độ chệch) và Variance (Phương sai) trong học máy chỉ ra quy luật nào dưới đây?",
     "points": 30,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -1142,7 +1142,7 @@
     "type": "MATCHING",
     "content": "Hãy ghép đúng từng giải thuật học máy với họ thuật toán tương ứng:",
     "points": 30,
-    "timeLimit": 40,
+    "timeLimit": 20,
     "pairs": [
       {
         "id": "p1",
@@ -1194,7 +1194,7 @@
     "type": "DRAG_DROP",
     "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình Xây dựng và Triển khai mô hình Học máy Machine Learning tiêu chuẩn:",
     "points": 30,
-    "timeLimit": 35,
+    "timeLimit": 25,
     "options": [
       {
         "id": "STEP_1",
@@ -1229,7 +1229,7 @@
     "type": "MATCHING",
     "content": "Hãy ghép đúng các ma trận nhầm lẫn (Confusion Matrix) với công thức tính chỉ số đánh giá tương ứng:",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "pairs": [
       {
         "id": "p1",
@@ -1281,7 +1281,7 @@
     "type": "DRAG_DROP",
     "content": "Hãy sắp xếp đúng thứ tự các bước toán học trong thuật toán Phân tích thành phần chính (PCA) để giảm chiều dữ liệu:",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 38,
     "options": [
       {
         "id": "STEP_1",

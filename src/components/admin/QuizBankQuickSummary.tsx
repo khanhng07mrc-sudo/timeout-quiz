@@ -7,16 +7,60 @@ interface Props {
   bankId: string;
   onClear?: () => void;
   showClearButton?: boolean;
+  preloadedBank?: {
+    id: string;
+    title: string;
+    description?: string;
+    _count?: { questions: number };
+    questions?: any[];
+  } | null;
 }
 
-export default function QuizBankQuickSummary({ bankId, onClear, showClearButton = true }: Props) {
-  const [bank, setBank] = useState<QuizBankDetail | null>(null);
-  const [loading, setLoading] = useState(false);
+// In-memory cache for loaded banks across component re-renders
+const bankCache = new Map<string, QuizBankDetail>();
+
+export default function QuizBankQuickSummary({
+  bankId,
+  onClear,
+  showClearButton = true,
+  preloadedBank,
+}: Props) {
+  const [bank, setBank] = useState<QuizBankDetail | null>(() => {
+    if (!bankId) return null;
+    if (bankCache.has(bankId)) return bankCache.get(bankId)!;
+    if (preloadedBank && preloadedBank.id === bankId && preloadedBank.questions && preloadedBank.questions.length > 0) {
+      return preloadedBank as QuizBankDetail;
+    }
+    return null;
+  });
+
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (!bankId) return false;
+    return !bankCache.has(bankId) && (!preloadedBank?.questions || preloadedBank.questions.length === 0);
+  });
+
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     if (!bankId) {
       setBank(null);
+      setLoading(false);
+      return;
+    }
+
+    // 1. Check in-memory cache first (instant 0ms)
+    if (bankCache.has(bankId)) {
+      setBank(bankCache.get(bankId)!);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Check preloadedBank props
+    if (preloadedBank && preloadedBank.id === bankId && preloadedBank.questions && preloadedBank.questions.length > 0) {
+      const fullBank = preloadedBank as QuizBankDetail;
+      bankCache.set(bankId, fullBank);
+      setBank(fullBank);
+      setLoading(false);
       return;
     }
 
@@ -27,6 +71,7 @@ export default function QuizBankQuickSummary({ bankId, onClear, showClearButton 
       .then((res) => res.json())
       .then((data) => {
         if (isMounted && data.bank) {
+          bankCache.set(bankId, data.bank);
           setBank(data.bank);
         }
       })
@@ -38,15 +83,35 @@ export default function QuizBankQuickSummary({ bankId, onClear, showClearButton 
     return () => {
       isMounted = false;
     };
-  }, [bankId]);
+  }, [bankId, preloadedBank]);
 
   if (!bankId) return null;
 
-  if (loading) {
+  // If loading and no cache exists yet, render an instant non-blocking preview skeleton using preloaded title if available
+  if (loading && !bank) {
+    const title = preloadedBank?.title || "Bộ đề đã chọn";
+    const qCount = preloadedBank?._count?.questions ?? preloadedBank?.questions?.length;
+
     return (
-      <div className="p-4 rounded-2xl border border-border/80 bg-[#151728]/60 text-xs text-muted-foreground flex items-center gap-2 animate-pulse">
-        <span className="animate-spin text-purple-400">⚡</span>
-        Đang tải thông tin xem trước bộ đề...
+      <div className="p-3.5 rounded-2xl border border-purple-500/30 bg-purple-950/20 text-xs text-slate-300 flex items-center justify-between gap-3 animate-pulse">
+        <div className="flex items-center gap-2">
+          <span className="text-purple-400">📚</span>
+          <div>
+            <p className="font-bold text-sm text-white">{title}</p>
+            <p className="text-[11px] text-purple-300">
+              {qCount ? `${qCount} câu hỏi · Đang chuẩn bị dữ liệu thi đấu...` : "Đang chuẩn bị dữ liệu thi đấu..."}
+            </p>
+          </div>
+        </div>
+        {showClearButton && onClear && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="px-2.5 py-1 rounded-lg border border-white/10 hover:bg-white/10 text-slate-400 text-xs"
+          >
+            ✕ Bỏ chọn
+          </button>
+        )}
       </div>
     );
   }
@@ -142,6 +207,16 @@ export default function QuizBankQuickSummary({ bankId, onClear, showClearButton 
             {countByType["FILL_BLANK"] && (
               <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-muted/30 text-muted-foreground border border-border">
                 {countByType["FILL_BLANK"]} Điền từ
+              </span>
+            )}
+            {countByType["MATCHING"] && (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-muted/30 text-muted-foreground border border-border">
+                {countByType["MATCHING"]} Nối cặp
+              </span>
+            )}
+            {countByType["DRAG_DROP"] && (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-muted/30 text-muted-foreground border border-border">
+                {countByType["DRAG_DROP"]} Sắp xếp/Kéo thả
               </span>
             )}
             {countByType["ESSAY"] && (

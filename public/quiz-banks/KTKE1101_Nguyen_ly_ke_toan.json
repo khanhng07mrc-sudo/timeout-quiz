@@ -3,7 +3,7 @@
     "type": "MC_SINGLE",
     "content": "Phương trình kế toán cơ bản thể hiện mối quan hệ bất biến trên Bảng cân đối kế toán là:",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -33,7 +33,7 @@
     "type": "MC_SINGLE",
     "content": "Theo nguyên tắc 'Cơ sở dồn tích' (Accrual Basis), doanh thu bán hàng được ghi nhận vào thời điểm nào?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -63,7 +63,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp mua nguyên vật liệu nhập kho trị giá 50 triệu đồng, chưa thanh toán cho người bán. Nghiệp vụ này sẽ làm thay đổi cấu trúc bảng cân đối kế toán như thế nào?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -94,7 +94,7 @@
     "content": "Trong quy ước kế toán ghi sổ kép đối với các tài khoản phản ánh Tài sản (loại 1, 2) và Chi phí (loại 6): Số tiền phát sinh TĂNG sẽ được ghi vào bên nào (Nợ hay Có)?",
     "answer": "Nợ",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "hint": "Tài sản tăng ghi bên Nợ (Debit), giảm ghi bên Có (Credit).",
     "isTieBreaker": false
   },
@@ -102,7 +102,7 @@
     "type": "MC_MULTI",
     "content": "Những báo cáo nào dưới đây thuộc Hệ thống Báo cáo Tài chính bắt buộc hàng năm của doanh nghiệp?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -132,7 +132,7 @@
     "type": "TRUE_FALSE",
     "content": "Trong điều kiện giá cả nguyên vật liệu trên thị trường có xu hướng tăng liên tục qua các đợt nhập, phương pháp tính giá xuất kho FIFO (Nhập trước - Xuất trước) sẽ cho ra Giá vốn hàng bán thấp hơn và Lợi nhuận gộp cao hơn so với phương pháp Bình quân gia quyền.",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -152,7 +152,7 @@
     "type": "MC_SINGLE",
     "content": "Khoản tiền mà khách hàng đã thanh toán trước cho dịch vụ mà doanh nghiệp chưa cung cấp (chẳng hạn khách trả trước tiền thuê văn phòng 1 năm) được kế toán phân loại vào đâu?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -182,7 +182,7 @@
     "type": "TRUE_FALSE",
     "content": "Bảng cân đối kế toán phản ánh tình hình tài sản và nguồn vốn của doanh nghiệp trong suốt một thời kỳ (ví dụ cả một năm hoặc quý).",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -202,7 +202,7 @@
     "type": "MC_SINGLE",
     "content": "Nguyên tắc 'Thận trọng' (Prudence/Conservatism) trong kế toán đòi hỏi người làm kế toán phải ứng xử thế nào khi lập báo cáo tài chính?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -232,7 +232,7 @@
     "type": "MC_SINGLE",
     "content": "Trong thực tế, một doanh nghiệp có Báo cáo kết quả kinh doanh đạt mức 'Lợi nhuận dương rất cao' nhưng vẫn có thể rơi vào tình trạng mất khả năng thanh toán và phá sản chủ yếu là do nguyên nhân nào?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -262,7 +262,7 @@
     "type": "MC_SINGLE",
     "content": "Phương trình kế toán mở rộng phản ánh đúng đắn mối quan hệ giữa các thành phần tài chính trong doanh nghiệp là gì?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -292,7 +292,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp mua một lô máy móc thiết bị phục vụ sản xuất trị giá 300 triệu đồng, chưa thanh toán cho nhà cung cấp. Nghiệp vụ này làm biến động Bảng cân đối kế toán như thế nào?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -322,7 +322,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp trả trước tiền thuê văn phòng 1 năm trị giá 120 triệu đồng bằng tiền chuyển khoản. Tại thời điểm chi tiền, khoản chi này được phân loại là gì?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -352,7 +352,7 @@
     "type": "MC_SINGLE",
     "content": "Báo cáo Lưu chuyển tiền tệ (Cash Flow Statement) phân loại các luồng tiền thu - chi thành 3 hoạt động căn bản nào?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -382,7 +382,7 @@
     "type": "MC_SINGLE",
     "content": "Khoản mục 'Lợi nhuận sau thuế chưa phân phối' được trình bày ở phần nào trên Bảng cân đối kế toán?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -412,7 +412,7 @@
     "type": "MC_MULTI",
     "content": "Những nghiệp vụ kinh tế nào dưới đây chỉ làm thay đổi cơ cấu bên trong của Tài sản mà KHÔNG làm thay đổi tổng quy mô tài sản của doanh nghiệp?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -442,7 +442,7 @@
     "type": "TRUE_FALSE",
     "content": "Nếu Bảng cân đối thử (Trial Balance) có Tổng số dư Nợ bằng đúng Tổng số dư Có, điều này chứng minh chắc chắn 100% rằng sổ sách kế toán hoàn toàn không có bất kỳ lỗi sai sót nào.",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "true",
@@ -462,7 +462,7 @@
     "type": "MC_SINGLE",
     "content": "Nguyên tắc 'Thận trọng' (Prudence / Conservatism) trong kế toán quy định việc ghi nhận doanh thu và chi phí như thế nào?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -492,7 +492,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp mua một xe tải chở hàng có nguyên giá 600 triệu đồng, thời gian sử dụng ước tính là 5 năm, giá trị thanh lý ước tính bằng 0. Theo phương pháp khấu hao đường thẳng, mức trích khấu hao hàng tháng là bao nhiêu?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -522,7 +522,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp xuất kho một lô hàng hóa có giá vốn là 80 triệu đồng bán cho khách hàng với giá bán chưa thuế là 120 triệu đồng (thuế GTGT phương pháp khấu trừ 10%), khách hàng chưa thanh toán tiền hàng. Kế toán phản ánh giá vốn và doanh thu của nghiệp vụ này như thế nào?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -552,7 +552,7 @@
     "type": "MC_SINGLE",
     "content": "Công ty ABC áp dụng phương pháp kê khai thường xuyên, tính thuế GTGT khấu trừ 10%. Đầu tháng tồn kho 100 sản phẩm X giá 50.000đ/sp. Ngày 05: Nhập kho 200 sp giá mua chưa thuế 52.000đ/sp, chi phí vận chuyển bốc dỡ 1.000đ/sp. Ngày 15: Xuất bán 250 sp giá bán chưa thuế 80.000đ/sp. Theo phương pháp Bình quân gia quyền liên hoàn sau mỗi lần nhập, Giá vốn hàng bán của lô hàng xuất ngày 15 và Lợi nhuận gộp lần lượt là bao nhiêu?",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -582,7 +582,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp mua một dây chuyền sản xuất ngày 01/01/N với giá mua chưa thuế 1.200 triệu đồng, chi phí lắp đặt chạy thử 60 triệu đồng. Thời gian sử dụng ước tính 5 năm, giá trị thanh lý ước tính thu hồi bằng 0. Doanh nghiệp áp dụng phương pháp khấu hao theo số dư giảm dần có điều chỉnh (hệ số điều chỉnh t = 2.0). Mức khấu hao năm thứ 2 của dây chuyền này là bao nhiêu?",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -612,7 +612,7 @@
     "type": "MATCHING",
     "content": "Hãy ghép đúng từng nguyên tắc kế toán với bản chất cốt lõi của nó trong việc lập Báo cáo tài chính:",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "pairs": [
       {
         "id": "p1",
@@ -664,7 +664,7 @@
     "type": "DRAG_DROP",
     "content": "Hãy sắp xếp đúng trình tự luân chuyển chứng từ và ghi sổ kế toán theo hình thức Nhật ký chung:",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "options": [
       {
         "id": "STEP_1",
@@ -694,7 +694,7 @@
     "type": "MC_SINGLE",
     "content": "[CÂU HỎI PHỤ - NGUYÊN LÝ KẾ TOÁN] Phương trình kế toán cơ bản luôn được duy trì cân bằng là gì?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "isTieBreaker": true,
     "options": [
       {
@@ -724,7 +724,7 @@
     "type": "MC_SINGLE",
     "content": "[CÂU HỎI PHỤ - NGUYÊN LÝ KẾ TOÁN] Nguyên tắc kế toán dồn tích (Accrual Basis) quy định doanh thu và chi phí phải được ghi nhận vào thời điểm nào?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "isTieBreaker": true,
     "options": [
       {
@@ -754,7 +754,7 @@
     "type": "MC_SINGLE",
     "content": "[CÂU HỎI PHỤ - NGUYÊN LÝ KẾ TOÁN] Báo cáo tài chính nào phản ánh tổng hợp tình hình Tài sản, Nợ phải trả và Vốn chủ sở hữu tại một thời điểm nhất định?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "isTieBreaker": true,
     "options": [
       {
@@ -784,7 +784,7 @@
     "type": "MC_SINGLE",
     "content": "Theo nguyên tắc Giá gốc (Historical Cost), giá trị của tài sản cố định mua về được ghi nhận trên sổ sách kế toán theo:",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -814,7 +814,7 @@
     "type": "TRUE_FALSE",
     "content": "Nguyên tắc Cơ sở dồn tích (Accrual Basis) yêu cầu doanh thu và chi phí phải được ghi nhận tại thời điểm phát sinh thực tế, không căn cứ vào thời điểm thực tế thu hoặc chi tiền.",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -835,7 +835,7 @@
     "content": "Báo cáo tài chính phản ánh tổng quát tình hình tài sản, nợ phải trả và nguồn vốn chủ sở hữu của doanh nghiệp tại một THỜI ĐIỂM nhất định là Bảng ...",
     "answer": "cân đối kế toán",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "hint": "Báo cáo này mang tính chất thời điểm (Snapshot), thể hiện phương trình Tài sản = Nợ phải trả + Vốn chủ sở hữu.",
     "isTieBreaker": false
   },
@@ -843,7 +843,7 @@
     "type": "MC_SINGLE",
     "content": "Khi doanh nghiệp rút tiền gửi ngân hàng về nhập quỹ tiền mặt 50 triệu đồng, kết cấu tài sản và nguồn vốn của doanh nghiệp biến động như thế nào?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -873,7 +873,7 @@
     "type": "MC_SINGLE",
     "content": "Khoản mục nào dưới đây thuộc nhóm Nợ phải trả ngắn hạn trên Bảng cân đối kế toán?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -903,7 +903,7 @@
     "type": "TRUE_FALSE",
     "content": "Tài khoản phản ánh Nguồn vốn (loại 3, 4) và Doanh thu (loại 5, 7) có số dư thông thường nằm ở bên Nợ.",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -923,7 +923,7 @@
     "type": "MC_SINGLE",
     "content": "Phát biểu nào dưới đây phản ánh CHÍNH XÁC sự khác biệt cốt lõi giữa Phương pháp Kê khai thường xuyên và Phương pháp Kiểm kê định kỳ trong kế toán hàng tồn kho?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -953,7 +953,7 @@
     "type": "MC_MULTI",
     "content": "Theo Chuẩn mực Kế toán Việt Nam (VAS), những trường hợp nào dưới đây yêu cầu kế toán viên phải thực hiện bút toán điều chỉnh (Adjusting Entries) vào cuối kỳ kế toán?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -983,7 +983,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp mua một thiết bị văn phòng nguyên giá 120 triệu đồng, thời gian sử dụng hữu ích ước tính 5 năm, giá trị thanh lý ước tính bằng 0. Theo phương pháp khấu hao đường thẳng, mức trích khấu hao hàng tháng là bao nhiêu?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -1014,7 +1014,7 @@
     "content": "Báo cáo tài chính phản ánh luồng tiền vào và luồng tiền ra phân loại theo 3 hoạt động: Hoạt động kinh doanh, Hoạt động đầu tư và Hoạt động tài chính là Báo cáo ...",
     "answer": "lưu chuyển tiền tệ",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "hint": "Báo cáo này giải thích sự biến động của tiền và tương đương tiền trong kỳ báo cáo (Cash Flow Statement).",
     "isTieBreaker": false
   },
@@ -1022,7 +1022,7 @@
     "type": "MC_SINGLE",
     "content": "Nguyên tắc Thận trọng (Prudence / Conservatism) trong kế toán quy định việc lập các khoản dự phòng phải đảm bảo yêu cầu nào?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -1052,7 +1052,7 @@
     "type": "TRUE_FALSE",
     "content": "Tài khoản 214 (Hao mòn tài sản cố định) là tài khoản điều chỉnh giảm tài sản, có kết cấu ngược với tài khoản tài sản thông thường (phát sinh tăng ghi bên Có, số dư cuối kỳ bên Có).",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -1072,7 +1072,7 @@
     "type": "MC_MULTI",
     "content": "Theo Chuẩn mực Kế toán (VAS), việc tuân thủ nguyên tắc Phù hợp (Matching Principle) đòi hỏi kế toán viên phải thực hiện những yêu cầu nào dưới đây?",
     "points": 30,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -1102,7 +1102,7 @@
     "type": "MATCHING",
     "content": "Hãy ghép đúng từng phương pháp tính giá trị hàng tồn kho xuất kho với đặc trưng nổi bật của nó:",
     "points": 30,
-    "timeLimit": 35,
+    "timeLimit": 20,
     "pairs": [
       {
         "id": "p1",
@@ -1154,7 +1154,7 @@
     "type": "MC_MULTI",
     "content": "Khi lập Bảng cân đối số phát sinh (Trial Balance), những lỗi sai sót kế toán nào dưới đây KHÔNG làm mất cân đối tổng số phát sinh Nợ và tổng số phát sinh Có?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -1184,7 +1184,7 @@
     "type": "DRAG_DROP",
     "content": "Hãy sắp xếp đúng trình tự các bước trong Chu trình kế toán (Accounting Cycle) tại một doanh nghiệp trong một kỳ kế toán:",
     "points": 30,
-    "timeLimit": 35,
+    "timeLimit": 25,
     "options": [
       {
         "id": "STEP_1",
@@ -1219,7 +1219,7 @@
     "type": "MC_SINGLE",
     "content": "Đầu kỳ doanh nghiệp có: Tổng Tài sản = 800 triệu, Nợ phải trả = 300 triệu. Trong kỳ, doanh nghiệp đạt doanh thu 400 triệu, chi phí kinh doanh 280 triệu (chưa tính thuế TNDN 20%), đồng thời chủ sở hữu rút vốn 50 triệu và góp thêm vốn 80 triệu. Cuối kỳ, nợ phải trả tăng thêm 40 triệu. Tổng Tài sản cuối kỳ của doanh nghiệp là bao nhiêu?",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -1249,7 +1249,7 @@
     "type": "DRAG_DROP",
     "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình kiểm kê và xử lý chênh lệch hàng tồn kho phát hiện thiếu hụt cuối kỳ kế toán:",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 38,
     "options": [
       {
         "id": "STEP_1",

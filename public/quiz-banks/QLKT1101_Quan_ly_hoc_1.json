@@ -3,7 +3,7 @@
     "type": "MC_SINGLE",
     "content": "Theo Henry Fayol, nguyên tắc nào yêu cầu mỗi nhân viên chỉ nên nhận mệnh lệnh từ một người cấp trên duy nhất?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -33,7 +33,7 @@
     "type": "MC_SINGLE",
     "content": "Trong các chức năng quản lý cơ bản, chức năng nào đóng vai trò 'kim chỉ nam', định hướng mục tiêu và phương thức đạt được mục tiêu cho tổ chức?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -63,7 +63,7 @@
     "type": "MC_MULTI",
     "content": "Theo Thuyết Hai nhân tố của Frederick Herzberg, những yếu tố nào dưới đây thuộc nhóm 'Yếu tố động viên' (Motivators) tạo ra sự thỏa mãn thực sự trong công việc?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -93,7 +93,7 @@
     "type": "TRUE_FALSE",
     "content": "Khi tầm hạn quản trị (Span of control) của nhà quản lý càng rộng, cơ cấu tổ chức của doanh nghiệp sẽ có xu hướng càng nhiều tầng nấc trung gian (cơ cấu hình tháp cao).",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "true",
@@ -113,7 +113,7 @@
     "type": "MC_SINGLE",
     "content": "Loại hình kiểm soát nào được thực hiện TRƯỚC KHI hoạt động thực tế bắt đầu nhằm ngăn chặn sai lệch từ khâu chuẩn bị nguồn lực?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -144,7 +144,7 @@
     "content": "Tác giả được coi là 'Cha đẻ của thuyết quản lý theo khoa học' với nguyên tắc định mức lao động và trả lương theo sản phẩm là ai? (Ghi họ của tác giả)",
     "answer": "Taylor",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "hint": "Tên đầy đủ là Frederick Winslow Taylor.",
     "isTieBreaker": false
   },
@@ -152,7 +152,7 @@
     "type": "MC_SINGLE",
     "content": "Theo Henry Mintzberg, vai trò nào dưới đây KHÔNG thuộc nhóm vai trò 'Quan hệ với con người' (Interpersonal roles) của nhà quản lý?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -182,7 +182,7 @@
     "type": "MC_SINGLE",
     "content": "Trong phong cách lãnh đạo theo mô hình Kurt Lewin, phong cách nào phát huy tối đa tính sáng tạo và trách nhiệm của nhân viên có trình độ chuyên môn cao?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -212,7 +212,7 @@
     "type": "TRUE_FALSE",
     "content": "Kỹ năng tư duy (Conceptual skills) có vai trò và tỷ trọng quan trọng nhất đối với nhà quản trị cấp cơ sở (tổ trưởng, trưởng ca) so với nhà quản trị cấp cao.",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -232,7 +232,7 @@
     "type": "MC_SINGLE",
     "content": "Một doanh nghiệp sản xuất ra các sản phẩm đạt tiêu chuẩn kỹ thuật cao với chi phí tối thiểu nhưng sản phẩm đó thị trường hoàn toàn không có nhu cầu tiêu thụ. Tình huống này phản ánh doanh nghiệp đang ở trạng thái nào?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -262,7 +262,7 @@
     "type": "MC_SINGLE",
     "content": "Trường phái quản trị khoa học của Frederick Winslow Taylor tập trung chủ yếu vào cấp độ quản trị nào trong doanh nghiệp?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -292,7 +292,7 @@
     "type": "MC_MULTI",
     "content": "Theo Max Weber, một tổ chức quan liêu bàn giấy lý tưởng (Bureaucracy) cần sở hữu những đặc trưng cơ bản nào?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -322,7 +322,7 @@
     "type": "TRUE_FALSE",
     "content": "Cơ cấu tổ chức kiểu Ma trận (Matrix Structure) vi phạm nguyên tắc 'Thống nhất chỉ huy' của Henry Fayol vì một nhân viên có thể chịu sự giám sát của hai người quản lý cùng lúc.",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "true",
@@ -342,7 +342,7 @@
     "type": "MC_SINGLE",
     "content": "Khi doanh nghiệp hoạt động trong môi trường kinh doanh có độ bất định cao và công nghệ biến đổi nhanh chóng, mô hình tổ chức nào thường mang lại tính linh hoạt và thích ứng cao nhất?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -372,7 +372,7 @@
     "type": "MC_SINGLE",
     "content": "Bước đầu tiên có tính quyết định trong quy trình ra quyết định quản trị hợp lý là gì?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -402,7 +402,7 @@
     "type": "MC_MULTI",
     "content": "Kỹ thuật động não (Brainstorming) khi áp dụng trong ra quyết định nhóm đòi hỏi tuân thủ những nguyên tắc cốt lõi nào?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -432,7 +432,7 @@
     "type": "MC_SINGLE",
     "content": "Kỹ thuật Delphi trong ra quyết định và dự báo nhóm có đặc điểm nổi bật nào dưới đây?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -462,7 +462,7 @@
     "type": "TRUE_FALSE",
     "content": "Điểm hòa vốn (Break-even point) là mức sản lượng tại đó Tổng doanh thu vừa đủ bù đắp Tổng chi phí (cả định phí và biến phí), và Lợi nhuận của doanh nghiệp bằng 0.",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "true",
@@ -482,7 +482,7 @@
     "type": "MC_SINGLE",
     "content": "Theo nghiên cứu của Henry Mintzberg, vai trò 'Người phát ngôn' (Spokesperson) và 'Người giám sát thông tin' (Monitor) của nhà quản trị thuộc nhóm vai trò nào?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -512,7 +512,7 @@
     "type": "MC_SINGLE",
     "content": "Một công ty công nghệ phát hiện một lỗ hổng bảo mật nghiêm trọng trong sản phẩm vừa xuất xưởng. Tổng giám đốc ngay lập tức ra lệnh thu hồi sản phẩm toàn cầu và xin lỗi công khai, chấp nhận sụt giảm 20% lợi nhuận ngắn hạn để bảo vệ an toàn dữ liệu khách hàng. Quyết định này thể hiện quan điểm đạo đức quản trị nào?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -542,7 +542,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp sản xuất kinh doanh sản phẩm A có đơn giá bán 50.000đ/sp, biến phí đơn vị là 30.000đ/sp. Tổng định phí hoạt động hàng năm của doanh nghiệp là 600 triệu đồng. Sản lượng hòa vốn và Doanh thu hòa vốn hàng năm của doanh nghiệp là bao nhiêu?",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -572,7 +572,7 @@
     "type": "MC_SINGLE",
     "content": "Một nhà quản trị cần lựa chọn giữa hai phương án đầu tư công nghệ trong điều kiện bất định. Phương án 1 có lợi nhuận trong 3 kịch bản thị trường (Tốt, Trung bình, Xấu) là [100, 50, -20] triệu. Phương án 2 có lợi nhuận là [80, 60, 10] triệu. Theo tiêu chuẩn Maximin (Cực đại hóa mức tối thiểu - quan điểm thận trọng bi quan của Wald), nhà quản trị sẽ chọn phương án nào và giá trị lợi nhuận đảm bảo là bao nhiêu?",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -602,7 +602,7 @@
     "type": "MATCHING",
     "content": "Hãy ghép đúng 4 trường phái quản trị kinh điển với luận điểm lý thuyết cốt lõi của họ:",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "pairs": [
       {
         "id": "p1",
@@ -654,7 +654,7 @@
     "type": "DRAG_DROP",
     "content": "Hãy sắp xếp đúng trình tự 5 nấc thang nhu cầu con người từ thấp đến cao theo Tháp nhu cầu Maslow:",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 38,
     "options": [
       {
         "id": "STEP_1",
@@ -689,7 +689,7 @@
     "type": "MC_SINGLE",
     "content": "[CÂU HỎI PHỤ - QUẢN LÝ HỌC] Ai được coi là 'Cha đẻ của Thuyết Quản trị Khoa học' (Scientific Management)?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "isTieBreaker": true,
     "options": [
       {
@@ -719,7 +719,7 @@
     "type": "MC_SINGLE",
     "content": "[CÂU HỎI PHỤ - QUẢN LÝ HỌC] Trong Tháp nhu cầu của Abraham Maslow, nhu cầu nào nằm ở đỉnh cao nhất?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "isTieBreaker": true,
     "options": [
       {
@@ -749,7 +749,7 @@
     "type": "MC_SINGLE",
     "content": "[CÂU HỎI PHỤ - QUẢN LÝ HỌC] Hiệu ứng Hawthorne nổi tiếng chứng minh yếu tố nào có tác động quyết định đến năng suất lao động của công nhân?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "isTieBreaker": true,
     "options": [
       {
@@ -779,7 +779,7 @@
     "type": "MC_SINGLE",
     "content": "Bốn chức năng cơ bản bất biến cấu thành chu trình quản lý (POLC) theo lý thuyết quản trị học kinh điển bao gồm:",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -809,7 +809,7 @@
     "type": "TRUE_FALSE",
     "content": "Theo Henry Mintzberg, nhà quản trị cấp cao thường dành tỷ trọng thời gian nhiều nhất cho vai trò quan hệ giữa con người với con người (Interpersonal roles) và vai trò ra quyết định (Decisional roles).",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -830,7 +830,7 @@
     "content": "Số lượng cấp dưới trực tiếp mà một nhà quản trị có thể giám sát và điều hành một cách hiệu quả nhất được gọi là ... quản trị (Span of Control).",
     "answer": "tầm hạn",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "hint": "Tầm hạn quản trị (hay tầm kiểm soát / quy mô quản lý).",
     "isTieBreaker": false
   },
@@ -838,7 +838,7 @@
     "type": "MC_SINGLE",
     "content": "Ai được tôn vinh là 'Cha đẻ của Thuyết quản lý khoa học' (Scientific Management) với trọng tâm là chuẩn hóa thao tác và định mức thời gian lao động?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -868,7 +868,7 @@
     "type": "MC_SINGLE",
     "content": "Theo Tháp nhu cầu của Abraham Maslow, nhu cầu nào nằm ở đỉnh cao nhất của bậc thang phát triển tâm lý con người?",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -898,7 +898,7 @@
     "type": "TRUE_FALSE",
     "content": "Cơ cấu tổ chức kiểu Ma trận (Matrix Structure) tuân thủ tuyệt đối nguyên tắc 'Thống nhất chỉ huy' (Mỗi nhân viên chỉ có duy nhất một cấp trên trực tiếp).",
     "points": 10,
-    "timeLimit": 15,
+    "timeLimit": 10,
     "options": [
       {
         "id": "A",
@@ -918,7 +918,7 @@
     "type": "MC_SINGLE",
     "content": "Theo học thuyết của Douglas McGregor, sự khác biệt căn bản trong giả định về bản chất con người giữa Thuyết X và Thuyết Y là gì?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -948,7 +948,7 @@
     "type": "MC_MULTI",
     "content": "Theo thuyết Hai yếu tố (Two-Factor Theory) của Frederick Herzberg, những yếu tố nào dưới đây thuộc nhóm 'Yếu tố động viên' (Motivators) thực sự thúc đẩy sự thỏa mãn và hiệu suất vượt trội?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -979,7 +979,7 @@
     "content": "Quá trình một nhà quản trị giao phó quyền hạn, trách nhiệm và nguồn lực cho cấp dưới để thực hiện một công việc cụ thể được gọi là sự ... quyền (Delegation of Authority).",
     "answer": "ủy",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "hint": "Ủy quyền (hoặc Phân quyền).",
     "isTieBreaker": false
   },
@@ -987,7 +987,7 @@
     "type": "MC_SINGLE",
     "content": "Theo Mô hình Lãnh đạo Tình huống của Hersey & Blanchard, khi nhân viên ở mức độ sẵn sàng thấp (R1: Chưa có năng lực và thiếu tự tin/thiếu nhiệt tình), phong cách lãnh đạo phù hợp nhất là:",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -1017,7 +1017,7 @@
     "type": "TRUE_FALSE",
     "content": "Văn hóa doanh nghiệp mạnh (Strong Corporate Culture) là tập hợp các giá trị, niềm tin và chuẩn mực cốt lõi được chia sẻ rộng rãi, giúp định hình hành vi và gắn kết các thành viên mà không cần quá nhiều quy chế hành chính cứng nhắc.",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -1037,7 +1037,7 @@
     "type": "MC_SINGLE",
     "content": "Theo Thuyết Kỳ vọng của Victor Vroom, Động lực làm việc (Motivation) là tích số của ba nhân tố nào dưới đây?",
     "points": 20,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -1067,7 +1067,7 @@
     "type": "MC_SINGLE",
     "content": "Đặc trưng nổi bật phân biệt phong cách Lãnh đạo chuyển đổi (Transformational Leadership) với Lãnh đạo giao dịch (Transactional Leadership) là gì?",
     "points": 30,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -1097,7 +1097,7 @@
     "type": "MATCHING",
     "content": "Hãy ghép đúng từng nhà lý thuyết quản trị học kinh điển với đóng góp học thuyết mang tính cách mạng của họ:",
     "points": 30,
-    "timeLimit": 35,
+    "timeLimit": 20,
     "pairs": [
       {
         "id": "p1",
@@ -1149,7 +1149,7 @@
     "type": "MC_MULTI",
     "content": "Theo Thuyết Công bằng của John Stacey Adams (Equity Theory), khi nhân viên nhận thức rằng tỷ lệ giữa [Đầu vào của mình / Phần thưởng nhận được] THẤP HƠN so với đồng nghiệp cùng vị trí, họ sẽ có xu hướng phản ứng bằng cách nào?",
     "points": 30,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -1179,7 +1179,7 @@
     "type": "DRAG_DROP",
     "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình Ra quyết định quản trị hợp lý (Rational Decision-Making Model):",
     "points": 30,
-    "timeLimit": 35,
+    "timeLimit": 25,
     "options": [
       {
         "id": "STEP_1",
@@ -1214,7 +1214,7 @@
     "type": "MC_SINGLE",
     "content": "Một doanh nghiệp công nghệ hoạt động trong môi trường VUCA (Biến động nhanh, Bất định cao, Phức tạp và Mơ hồ). Doanh nghiệp muốn tối ưu hóa sự phối hợp đa chức năng để phát triển sản phẩm mới thần tốc, đồng thời vẫn duy trì chiều sâu chuyên môn kỹ thuật. Mô hình cơ cấu tổ chức nào dưới đây là sự lựa chọn tối ưu nhất?",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -1244,7 +1244,7 @@
     "type": "DRAG_DROP",
     "content": "Hãy sắp xếp đúng thứ tự 5 giai đoạn phát triển nhóm (Group Development Stages) theo mô hình kinh điển của Bruce Tuckman:",
     "points": 40,
-    "timeLimit": 60,
+    "timeLimit": 38,
     "options": [
       {
         "id": "STEP_1",

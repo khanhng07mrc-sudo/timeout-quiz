@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import type { OlympiaState, Seat, TimerState } from "@/lib/olympia/types";
-import { parseVcnvAnswer } from "@/lib/olympia/engine";
+import { parseVcnvAnswer, cleanVcnvWord } from "@/lib/olympia/engine";
 import { activeSeats, seatName, SEAT_COLORS } from "./ui";
 
 /**
@@ -581,8 +581,8 @@ export function VcnvCountdownGraphic({
   const curRow = curIdx >= 0 && curIdx < 4 ? v.rows[curIdx] : null;
   const questionHint = isCenter ? v.centerQuestion?.q : curRow?.hint;
 
-  // Keyword character count (excluding spaces)
-  const cleanKeyword = (v.keyword || "").replace(/\s+/g, "");
+  // Keyword character count (excluding spaces, bracket notes)
+  const cleanKeyword = cleanVcnvWord(v.keyword || "");
   const keywordLen = cleanKeyword.length || 13;
 
   // Countdown timer metrics
@@ -604,11 +604,13 @@ export function VcnvCountdownGraphic({
   }, [timer?.startedAt, timer?.remainingMs, serverNow]);
 
   let remainingSec = 15;
+  let remainingMs = 15000;
   if (timer && timer.startedAt != null) {
     const elapsed = Math.max(0, now - timer.startedAt);
-    const remMs = Math.max(0, timer.remainingMs - elapsed);
-    remainingSec = Math.ceil(remMs / 1000);
+    remainingMs = Math.max(0, timer.remainingMs - elapsed);
+    remainingSec = Math.ceil(remainingMs / 1000);
   }
+  const progressPercent = timer && timer.startedAt != null ? Math.max(0, Math.min(100, (remainingMs / 15000) * 100)) : 100;
 
   // Piece mapping in VTV3 layout:
   // Top-Left: Piece 0 (Row 1, label "1")
@@ -616,21 +618,21 @@ export function VcnvCountdownGraphic({
   // Bottom-Left: Piece 3 (Row 4, label "4")
   // Bottom-Right: Piece 2 (Row 3, label "3")
   const QUAD_PIECES = [
-    { index: 0, label: "1", pos: "top-0 left-0" },
-    { index: 1, label: "2", pos: "top-0 right-0" },
-    { index: 3, label: "4", pos: "bottom-0 left-0" },
-    { index: 2, label: "3", pos: "bottom-0 right-0" },
+    { index: 0, label: "1" },
+    { index: 1, label: "2" },
+    { index: 3, label: "4" },
+    { index: 2, label: "3" },
   ];
+
+  const hasBell = v.bells && v.bells.length > 0;
+  const fastestBell = hasBell ? v.bells[0] : null;
 
   return (
     <div className="absolute inset-0 z-20 pointer-events-auto flex flex-col p-3 sm:p-5 md:p-6 overflow-hidden">
-      {/* ── Solid Royal Blue Broadcast Masks (Solid everywhere EXCEPT the bottom-right 3D studio window) ── */}
+      {/* ── Solid Royal Blue Broadcast Masks (Cutout for Bottom-Right 3D Studio) ── */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        {/* Top half solid royal blue with halftone pattern */}
         <div className="absolute top-0 left-0 right-0 h-[52%] bg-[#061e47] border-b border-cyan-500/20" />
-        {/* Bottom-left solid royal blue */}
         <div className="absolute bottom-0 left-0 w-[50.5%] h-[48%] bg-[#061e47] border-r border-cyan-500/20" />
-        {/* Faint circular halftone pattern on left */}
         <div
           className="absolute inset-0 opacity-15"
           style={{
@@ -642,18 +644,11 @@ export function VcnvCountdownGraphic({
         />
       </div>
 
-      {/* ── Top-Left VTV3 Brand Header ── */}
-      <div className="absolute top-3 left-6 z-30 flex items-center gap-2">
-        <span className="text-xl sm:text-2xl font-black italic tracking-tighter text-red-600 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-          VTV<span className="text-green-500">3</span>
-        </span>
-      </div>
-
       {/* ── 4-QUADRANT GRID LAYOUT (2 Columns x 2 Rows) ── */}
-      <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 md:gap-5 w-full h-full max-w-[98vw] max-h-[96vh] mx-auto mt-4 sm:mt-6">
+      <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 md:gap-5 w-full h-full max-w-[98vw] max-h-[96vh] mx-auto">
 
         {/* ═══════════════════════════════════════════════════════════════════
-            QUADRANT 1: TOP-LEFT (MYSTERY PUZZLE GRID: 1, 2, 4, 3 + CENTER)
+            QUADRANT 1: TOP-LEFT (MYSTERY PUZZLE GRID: 1, 2, 4, 3 + CENTER 5)
            ═══════════════════════════════════════════════════════════════════ */}
         <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/60 shadow-[0_0_25px_rgba(6,182,212,0.3)] bg-[#071739] flex items-center justify-center">
           {/* Mystery image behind */}
@@ -666,7 +661,7 @@ export function VcnvCountdownGraphic({
             />
           )}
 
-          {/* 4 Quadrants */}
+          {/* 4 Corner Quadrants (1, 2, 4, 3) */}
           <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
             {QUAD_PIECES.map((piece) => {
               const isRevealed = v.piecesRevealed[piece.index];
@@ -685,18 +680,23 @@ export function VcnvCountdownGraphic({
             })}
           </div>
 
-          {/* Center Tile (Ô Trung Tâm) */}
+          {/* Center Tile: Bold Number 5 with Glow when Selected */}
           <div
-            className={`absolute w-[44%] h-[40%] rounded-xl border-2 border-cyan-400/80 shadow-[0_0_20px_rgba(6,182,212,0.5)] flex items-center justify-center transition-all duration-700 z-10 ${
-              v.piecesRevealed[4] ? "opacity-0 pointer-events-none" : "bg-[#071739] opacity-100"
+            className={`absolute w-[44%] h-[40%] rounded-xl border-2 flex items-center justify-center transition-all duration-700 z-10 ${
+              v.piecesRevealed[4]
+                ? "opacity-0 pointer-events-none"
+                : isCenter
+                ? "bg-gradient-to-br from-[#0c2866] to-[#04153a] border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.85)] animate-pulse opacity-100 ring-2 ring-amber-300/70"
+                : "bg-[#071739] border-cyan-400/80 shadow-[0_0_20px_rgba(6,182,212,0.5)] opacity-100"
             }`}
           >
-            <div className="flex flex-col items-center justify-center gap-1">
-              <span className="text-2xl sm:text-3xl text-amber-300 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]">⭐</span>
-              <span className="text-xs sm:text-sm md:text-base font-black uppercase text-cyan-200 tracking-wider">
-                Ô Trung Tâm
-              </span>
-            </div>
+            <span
+              className={`text-4xl sm:text-6xl md:text-7xl font-black select-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] ${
+                isCenter ? "text-amber-300" : "text-white"
+              }`}
+            >
+              5
+            </span>
           </div>
         </div>
 
@@ -725,7 +725,7 @@ export function VcnvCountdownGraphic({
           <div className="flex-1 flex flex-col justify-around py-1 w-full max-w-full">
             {v.rows.map((row, rIdx) => {
               const isCurrent = curIdx === rIdx;
-              const cleanAns = parseVcnvAnswer(row.answer || "").primary.replace(/\s+/g, "");
+              const cleanAns = cleanVcnvWord(row.answer || "");
               const letterCount = row.letterCount || cleanAns.length || 7;
               const letters = cleanAns.split("");
 
@@ -734,7 +734,7 @@ export function VcnvCountdownGraphic({
                   key={rIdx}
                   className={`flex items-center justify-between gap-2 px-2 sm:px-4 py-1.5 rounded-xl transition-all duration-300 ${
                     isCurrent
-                      ? "bg-cyan-500/15 border border-cyan-400/60 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                      ? "bg-cyan-500/20 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.5)] scale-[1.01]"
                       : "border border-transparent"
                   }`}
                 >
@@ -764,7 +764,7 @@ export function VcnvCountdownGraphic({
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════
-            QUADRANT 3: BOTTOM-LEFT (QUESTION FRAME + 15S TIMER AT BOTTOM-LEFT)
+            QUADRANT 3: BOTTOM-LEFT (QUESTION FRAME TOP-LEFT + BOTTOM PROGRESS BAR)
            ═══════════════════════════════════════════════════════════════════ */}
         <div
           className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-gradient-to-br from-[#061838] via-[#041026] to-[#020914] flex flex-col justify-between p-4 sm:p-5 md:p-6"
@@ -772,50 +772,46 @@ export function VcnvCountdownGraphic({
             clipPath: "polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 24px 100%, 0 calc(100% - 24px))",
           }}
         >
-          {/* Top Chamfer Accent */}
+          {/* Chamfer Accents */}
           <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none border-t-2 border-r-2 border-cyan-300" />
-          {/* Bottom Chamfer Accent */}
           <div className="absolute bottom-0 left-0 w-8 h-8 pointer-events-none border-b-2 border-l-2 border-cyan-300" />
 
-          {/* Header Row: Row Name (NO "X CHỮ CÁI") */}
-          <div className="flex items-center justify-between w-full border-b border-cyan-500/30 pb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse" />
-              <span className="font-black text-xs sm:text-sm md:text-base uppercase tracking-widest text-cyan-300">
-                {isCenter ? "⭐ Ô TRUNG TÂM" : curRow ? `HÀNG NGANG SỐ ${curIdx + 1}` : "VƯỢT CHƯỚNG NGẠI VẬT"}
-              </span>
-            </div>
-          </div>
-
-          {/* Question Text Body */}
-          <div className="flex-1 flex items-center justify-center py-2 px-2 text-center overflow-y-auto">
+          {/* Question Text Body: Aligned Top-Left without clutter */}
+          <div className="flex-1 flex flex-col items-start justify-start py-2 px-1 text-left overflow-y-auto">
             <p className="font-extrabold text-base sm:text-xl md:text-2xl lg:text-3xl text-white leading-relaxed select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
               {questionHint || "Đang chờ chọn hàng ngang…"}
             </p>
           </div>
 
-          {/* Bottom Row: Timer Box at Bottom-Left Corner (VTV3 Authenticity: 13:17) */}
-          <div className="flex items-center justify-between pt-2 border-t border-cyan-500/30">
-            <div className="flex items-center gap-2 bg-black/80 border border-cyan-400/80 px-3 py-1 rounded-md shadow-[0_0_12px_rgba(6,182,212,0.4)]">
-              <span className="text-[10px] sm:text-xs font-black text-cyan-400 uppercase tracking-wider">
-                THỜI GIAN
+          {/* Integrated Sleek Progress Bar across bottom */}
+          <div className="w-full flex flex-col gap-1.5 pt-2">
+            <div className="w-full h-2.5 rounded-full bg-slate-950/80 border border-cyan-500/30 overflow-hidden p-0.5 shadow-inner">
+              <div
+                className={`h-full rounded-full transition-all duration-100 ${
+                  remainingSec <= 5
+                    ? "bg-gradient-to-r from-red-600 to-amber-500 shadow-[0_0_12px_#ef4444]"
+                    : "bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 shadow-[0_0_10px_#38bdf8]"
+                }`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[10px] sm:text-xs font-mono font-bold text-slate-400 uppercase">
+                {timer?.startedAt != null ? "15s" : ""}
               </span>
-              <span className={`font-mono font-black text-base sm:text-xl ${
-                remainingSec <= 5 ? "text-red-400 animate-pulse" : "text-cyan-200"
-              }`}>
+              <span
+                className={`text-xs sm:text-sm font-mono font-black tabular-nums ${
+                  remainingSec <= 5 ? "text-red-400 animate-pulse" : "text-cyan-300"
+                }`}
+              >
                 {remainingSec < 10 ? `0${remainingSec}` : remainingSec}s
               </span>
             </div>
-
-            {/* Hint / Status on Right */}
-            <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider">
-              {v.timer?.startedAt != null ? "Đang tính giờ 15s" : "Chưa bấm giờ"}
-            </span>
           </div>
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════
-            QUADRANT 4: BOTTOM-RIGHT (DIRECT 3D STUDIO CAMERA WINDOW)
+            QUADRANT 4: BOTTOM-RIGHT (3D STUDIO CAMERA WINDOW + BELL NOTIFIER)
            ═══════════════════════════════════════════════════════════════════ */}
         <div
           className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-transparent flex flex-col justify-between"
@@ -826,19 +822,18 @@ export function VcnvCountdownGraphic({
           {/* Inner Vignette / Broadcast Camera Overlay */}
           <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_25px_rgba(0,0,0,0.7)] border border-white/10 rounded-2xl" />
 
-          {/* Studio HUD Badges */}
-          <div className="relative z-10 flex items-center justify-between p-3 pointer-events-none">
-            <div className="flex items-center gap-2 bg-red-600/90 text-white px-2 py-0.5 rounded text-[10px] font-black tracking-wider uppercase shadow">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-              TRỰC TIẾP
+          {/* Bell Notification Banner when someone rings bell */}
+          {hasBell && (
+            <div className="relative z-20 mx-3 mt-3 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600/95 via-yellow-500/95 to-amber-600/95 border-2 border-yellow-200 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(234,179,8,0.8)] animate-bounce">
+              <span className="text-base sm:text-lg">🔔</span>
+              <span className="uppercase tracking-wide truncate">
+                {(fastestBell ? (state.seats[fastestBell.seat]?.name || `Thí sinh ${fastestBell.seat + 1}`) : "Thí sinh")} BẤM CHUÔNG XIN TRẢ LỜI CNV!
+              </span>
             </div>
-            <div className="bg-black/70 border border-cyan-400/60 text-cyan-300 px-2 py-0.5 rounded text-[10px] font-black tracking-wider uppercase">
-              TRƯỜNG QUAY S14
-            </div>
-          </div>
+          )}
 
           {/* Bottom Candidate Quick Score Strip inside Studio Window */}
-          <div className="relative z-10 flex items-center justify-around bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 border-t border-cyan-500/20">
+          <div className="mt-auto relative z-10 flex items-center justify-around bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 border-t border-cyan-500/20">
             {activeSeats(state).map((seat) => (
               <div key={seat.id} className="flex flex-col items-center">
                 <span className="text-[9px] sm:text-[10px] text-slate-300 font-bold uppercase truncate max-w-[70px]">
@@ -857,11 +852,6 @@ export function VcnvCountdownGraphic({
   );
 }
 
-/**
- * ─────────────────────────────────────────────────────────────────────────────
- * COMPONENT 3: VCNV ANSWER REVEAL GRAPHIC
- * ─────────────────────────────────────────────────────────────────────────────
- */
 export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
   const v = state.vcnv!;
   const seats = activeSeats(state);

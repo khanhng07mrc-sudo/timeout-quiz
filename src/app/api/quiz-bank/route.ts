@@ -138,8 +138,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const isAdmin = user?.role === "ADMIN" || user?.userId === "master-admin";
   const banks = await prisma.quizBank.findMany({
-    where: effectiveOwnerId
+    where: (isAdmin && !queryOwnerId)
+      ? undefined // Admin sees ALL banks in database!
+      : effectiveOwnerId
       ? {
           OR: [
             { ownerId: effectiveOwnerId },

@@ -64,6 +64,20 @@ export function normalizeAnswer(s: string): string {
  * 1. Must be an absolute synonym / replacement keyword.
  * 2. Character length (excluding spaces) must EXACTLY equal the primary keyword length.
  */
+/**
+ * Cleans a VCNV row or keyword answer per user rule:
+ * 1. Strips any parenthetical note e.g. (...) or [...] or {...}
+ * 2. Removes all whitespace (\s)
+ * 3. Strips forbidden bracket characters: '(', ')', '[', ']', '{', '}'
+ * 4. Preserves ALL other characters (letters, digits, punctuation/special characters).
+ */
+export function cleanVcnvWord(raw: string): string {
+  if (!raw) return "";
+  const idx = raw.search(/[\(\[\{]/);
+  const primary = idx !== -1 ? raw.slice(0, idx).trim() : raw.trim();
+  return primary.replace(/[\s\(\)\[\]\{\}]/g, "");
+}
+
 export function parseVcnvAnswer(raw: string): { primary: string; acceptedAnswers: string[] } {
   if (!raw) return { primary: "", acceptedAnswers: [] };
   const trimmed = raw.trim();
@@ -91,9 +105,9 @@ export function parseVcnvAnswer(raw: string): { primary: string; acceptedAnswers
     }
   }
 
-  const primaryCharLen = primary.replace(/\s+/g, "").length;
+  const primaryCharLen = cleanVcnvWord(primary).length;
   const validAlternates = candidates.filter((cand) => {
-    const candLen = cand.replace(/\s+/g, "").length;
+    const candLen = cleanVcnvWord(cand).length;
     return candLen === primaryCharLen;
   });
 
@@ -110,7 +124,7 @@ export function getVcnvValidAnswerSet(
 ): { primary: string; validNorms: Set<string>; charLength: number } {
   const parsed = parseVcnvAnswer(rawOrPrimary);
   const primary = parsed.primary || rawOrPrimary;
-  const charLength = primary.replace(/\s+/g, "").length;
+  const charLength = cleanVcnvWord(primary).length;
 
   const combined = [
     primary,
@@ -122,7 +136,7 @@ export function getVcnvValidAnswerSet(
   for (const ans of combined) {
     if (!ans) continue;
     // Strict Condition 2: Exact character length equality
-    if (ans.replace(/\s+/g, "").length === charLength) {
+    if (cleanVcnvWord(ans).length === charLength) {
       const norm = normalizeAnswer(ans);
       if (norm) validNorms.add(norm);
     }

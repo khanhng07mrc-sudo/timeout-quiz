@@ -27780,6 +27780,12 @@ var resetTimer = (t, ms) => {
 function normalizeAnswer(s) {
   return (s || "").normalize("NFC").toLowerCase().replace(/[.,;:!?'"“”‘’()\-_]/g, " ").replace(/\s+/g, " ").trim();
 }
+function cleanVcnvWord(raw) {
+  if (!raw) return "";
+  const idx = raw.search(/[\(\[\{]/);
+  const primary = idx !== -1 ? raw.slice(0, idx).trim() : raw.trim();
+  return primary.replace(/[\s\(\)\[\]\{\}]/g, "");
+}
 function parseVcnvAnswer(raw) {
   if (!raw) return { primary: "", acceptedAnswers: [] };
   const trimmed = raw.trim();
@@ -27805,9 +27811,9 @@ function parseVcnvAnswer(raw) {
       if (c) candidates.push(c);
     }
   }
-  const primaryCharLen = primary.replace(/\s+/g, "").length;
+  const primaryCharLen = cleanVcnvWord(primary).length;
   const validAlternates = candidates.filter((cand) => {
-    const candLen = cand.replace(/\s+/g, "").length;
+    const candLen = cleanVcnvWord(cand).length;
     return candLen === primaryCharLen;
   });
   return { primary, acceptedAnswers: validAlternates };
@@ -27815,7 +27821,7 @@ function parseVcnvAnswer(raw) {
 function getVcnvValidAnswerSet(rawOrPrimary, extraAccepted) {
   const parsed = parseVcnvAnswer(rawOrPrimary);
   const primary = parsed.primary || rawOrPrimary;
-  const charLength = primary.replace(/\s+/g, "").length;
+  const charLength = cleanVcnvWord(primary).length;
   const combined = [
     primary,
     ...extraAccepted ?? [],
@@ -27824,7 +27830,7 @@ function getVcnvValidAnswerSet(rawOrPrimary, extraAccepted) {
   const validNorms = /* @__PURE__ */ new Set();
   for (const ans of combined) {
     if (!ans) continue;
-    if (ans.replace(/\s+/g, "").length === charLength) {
+    if (cleanVcnvWord(ans).length === charLength) {
       const norm = normalizeAnswer(ans);
       if (norm) validNorms.add(norm);
     }

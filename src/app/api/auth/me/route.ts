@@ -8,12 +8,21 @@ export async function GET(req: NextRequest) {
 
     if (userSession) {
       if (userSession.userId === "master-admin") {
+        const primaryAdmin = await prisma.user.findFirst({
+          where: { role: "ADMIN" },
+          orderBy: { createdAt: "asc" },
+        });
         return NextResponse.json({
           authenticated: true,
-          user: {
+          user: primaryAdmin ? {
+            id: primaryAdmin.id,
+            name: primaryAdmin.name,
+            email: primaryAdmin.email,
+            role: "ADMIN",
+          } : {
             id: "master-admin",
-            name: "Quản trị viên cấp cao",
-            email: "admin@quizorra.com",
+            name: "Nguyễn Gia Khánh",
+            email: "channelngktv@gmail.com",
             role: "ADMIN",
           },
         });
@@ -55,12 +64,21 @@ export async function GET(req: NextRequest) {
     if (cookieHeader) {
       const matchAdmin = cookieHeader.match(/(?:^|;\s*)admin_token=([^;]+)/);
       if (matchAdmin && matchAdmin[1] && verifyAdminToken(decodeURIComponent(matchAdmin[1]))) {
+        const primaryAdmin = await prisma.user.findFirst({
+          where: { role: "ADMIN" },
+          orderBy: { createdAt: "asc" },
+        });
         return NextResponse.json({
           authenticated: true,
-          user: {
+          user: primaryAdmin ? {
+            id: primaryAdmin.id,
+            name: primaryAdmin.name,
+            email: primaryAdmin.email,
+            role: "ADMIN",
+          } : {
             id: "master-admin",
-            name: "Quản trị viên cấp cao",
-            email: "admin@quizorra.com",
+            name: "Nguyễn Gia Khánh",
+            email: "channelngktv@gmail.com",
             role: "ADMIN",
           },
         });

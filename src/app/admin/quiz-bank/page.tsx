@@ -473,7 +473,7 @@ export default function QuizBankPage() {
   const fetchBanks = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/quiz-bank?ownerId=demo-host-id", { headers: getAuthHeaders() });
+      const res = await fetch("/api/quiz-bank", { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         if (data.banks) {

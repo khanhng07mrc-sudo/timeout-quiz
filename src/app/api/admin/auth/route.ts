@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
       token,
       user: {
         id: "master-admin",
-        name: "Quản trị viên cấp cao",
-        email: "admin@quizorra.com",
+        name: "Nguyễn Gia Khánh",
+        email: "channelngktv@gmail.com",
         role: "ADMIN",
       },
       message: "Xác thực Quản trị viên thành công",

@@ -275,6 +275,23 @@ export function useOlympiaAudio(
     }
   }, []);
 
+  // Tự động khôi phục BGM mượt mà khi quay lại tab, không khởi động lại bài hát
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && enabled) {
+        if (bgm.current && bgm.current.paused && !bgm.current.ended) {
+          bgm.current.play().catch(() => {});
+        }
+        if (audioCtxRef.current && audioCtxRef.current.state === "suspended") {
+          audioCtxRef.current.resume().catch(() => {});
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [enabled]);
+
   useEffect(() => {
     const cue = state?.cue;
     if (!cue) return;

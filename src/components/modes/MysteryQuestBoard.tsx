@@ -2222,7 +2222,7 @@ export default function MysteryQuestBoard({
             {/* Global SVG ClipPath for realistic door shape: arched top, pointed shield bottom */}
             <DoorClipPathDefinition />
 
-            <div className="grid grid-cols-4 gap-2 sm:gap-3.5 max-w-2xl sm:max-w-3xl md:max-w-4xl mx-auto py-2">
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-3 w-full max-w-full sm:max-w-3xl md:max-w-4xl mx-auto py-1.5">
               {tiles.map((tile) => {
                 const effectiveSelectedDoorIds = hasLocalDoorActionRef.current
                   ? optimisticSelectedDoorIds
@@ -2332,7 +2332,7 @@ export default function MysteryQuestBoard({
                         ))
                       }
                       style={{ clipPath: "url(#realisticDoorClip)" }}
-                      className={`relative aspect-[3/4] max-h-[17vh] sm:max-h-[21vh] p-1 sm:p-2 flex flex-col items-center justify-between transition-all duration-300 overflow-hidden ${
+                      className={`relative ${isDisplay ? "aspect-[3/4] max-h-[17vh] sm:max-h-[21vh]" : "h-[74px] sm:h-[88px] min-h-[70px] max-h-[96px] w-full"} p-1 sm:p-2 flex flex-col items-center justify-between transition-all duration-300 overflow-hidden ${
                         isPenaltySurvivalMode
                           ? osPhase === "STAGE_2_PICK"
                             ? isSelected
@@ -3929,7 +3929,7 @@ export default function MysteryQuestBoard({
           const shouldDimBoard = Boolean(memoryPairsState?.promptSecondChance);
 
           return (
-            <div className={`grid grid-cols-4 gap-2 sm:gap-2.5 max-w-xl mx-auto py-1 transition-opacity duration-300 ${
+            <div className={`grid grid-cols-4 gap-1.5 sm:gap-2.5 w-full max-w-full sm:max-w-2xl mx-auto py-1 transition-opacity duration-300 ${
               shouldDimBoard ? "opacity-40 pointer-events-none grayscale-30" : ""
             }`}>
               {tiles.map((tile) => {
@@ -3963,7 +3963,7 @@ export default function MysteryQuestBoard({
                       type="button"
                       onClick={() => handleTileClick(tile)}
                       disabled={isTileDisabled}
-                      className={`relative aspect-[4/3] max-h-[10.5vh] sm:max-h-[12.5vh] rounded-xl p-1.5 flex flex-col items-center justify-between border-2 transition-all duration-300 ${
+                      className={`relative ${isDisplay ? "aspect-[4/3] max-h-[12.5vh]" : "h-[50px] sm:h-[60px] min-h-[46px] max-h-[62px] w-full"} rounded-xl p-1 sm:p-1.5 flex flex-col items-center justify-between border-2 transition-all duration-300 ${
                         !isTileDisabled
                           ? tile.isPeeked
                             ? "bg-gradient-to-b from-indigo-900/90 to-slate-950 border-emerald-400/80 ring-2 ring-emerald-400/40 hover:scale-102 shadow-xl group cursor-pointer"
@@ -3974,7 +3974,7 @@ export default function MysteryQuestBoard({
                       }`}
                     >
                       <div className="w-full flex items-center justify-between">
-                        <span className="w-4 h-4 rounded-full bg-black/60 border border-white/20 text-[9px] font-black text-white flex items-center justify-center font-mono">
+                        <span className="w-4 h-4 rounded-full bg-black/60 border border-white/20 text-[9px] font-black text-white flex items-center justify-center font-mono shrink-0">
                           #{tile.id}
                         </span>
                         {isAlreadyAttemptedPair ? (
@@ -3988,12 +3988,11 @@ export default function MysteryQuestBoard({
                         ) : null}
                       </div>
 
-                      <div className={`text-xl sm:text-2xl my-auto transition-transform duration-300 drop-shadow-md ${isAlreadyAttemptedPair ? "opacity-30 grayscale" : "group-hover:scale-110"}`}>
-                        🃏
-                      </div>
-
-                      <div className="w-full text-center">
-                        <span className={`text-[9px] sm:text-[10px] font-black block truncate ${isAlreadyAttemptedPair ? "text-rose-400/70" : "text-white"}`}>
+                      <div className="w-full flex items-center justify-center gap-1.5 min-w-0 my-auto">
+                        <span className={`text-base sm:text-lg shrink-0 transition-transform duration-300 drop-shadow-md ${isAlreadyAttemptedPair ? "opacity-30 grayscale" : "group-hover:scale-110"}`}>
+                          🃏
+                        </span>
+                        <span className={`text-[10px] sm:text-xs font-black truncate ${isAlreadyAttemptedPair ? "text-rose-400/70" : "text-white"}`}>
                           {isAlreadyAttemptedPair ? "ĐÃ THỬ" : tile.label}
                         </span>
                       </div>
@@ -4007,7 +4006,7 @@ export default function MysteryQuestBoard({
                 return (
                   <div
                     key={tile.id}
-                    className={`relative aspect-[4/3] max-h-[10.5vh] sm:max-h-[12.5vh] rounded-xl p-1.5 flex flex-col items-center justify-between border-2 shadow-2xl transition-all duration-200 ${
+                    className={`relative ${isDisplay ? "aspect-[4/3] max-h-[12.5vh]" : "h-[50px] sm:h-[60px] min-h-[46px] max-h-[62px] w-full"} rounded-xl p-1 sm:p-1.5 flex flex-col items-center justify-between border-2 shadow-2xl transition-all duration-200 ${
                       isMatched ? "ring-2 ring-yellow-400 scale-102 z-10" : ""
                     } ${
                       isEscapeSafe
@@ -4064,35 +4063,36 @@ export default function MysteryQuestBoard({
                       </span>
                     </div>
 
-                  <div className="my-auto text-center drop-shadow-xl flex items-center justify-center">
-                    <MinigameSvgIcon nameOrEmoji={tile.icon} className="w-7 h-7 sm:w-9 sm:h-9" />
-                  </div>
-
-                  <div className="w-full text-center">
-                    <p className="text-[9px] sm:text-[10px] font-black text-white leading-tight truncate">
-                      {tile.storyTitle}
-                    </p>
-                    <p
-                      className={`text-[9px] sm:text-[10px] font-black font-mono mt-0.2 ${
-                        isEscapeSafe
-                          ? "text-emerald-300"
+                  <div className={`w-full drop-shadow-xl ${isDisplay ? "my-auto text-center flex flex-col items-center" : "my-auto flex items-center justify-center gap-1.5 min-w-0"}`}>
+                    <div className="shrink-0 flex items-center justify-center">
+                      <MinigameSvgIcon nameOrEmoji={tile.icon} className={isDisplay ? "w-7 h-7 sm:w-9 sm:h-9" : "w-5 h-5 sm:w-6 sm:h-6"} />
+                    </div>
+                    <div className={`${isDisplay ? "w-full text-center" : "min-w-0 text-left flex flex-col justify-center"}`}>
+                      <p className="text-[9px] sm:text-[10px] font-black text-white leading-tight truncate">
+                        {tile.storyTitle}
+                      </p>
+                      <p
+                        className={`text-[8.5px] sm:text-[9.5px] font-black font-mono leading-none ${
+                          isEscapeSafe
+                            ? "text-emerald-300"
+                            : isBomb
+                            ? "text-red-400"
+                            : isSteal
+                            ? "text-rose-300"
+                            : "text-amber-300"
+                        }`}
+                      >
+                        {isEscapeSafe
+                          ? "0đ (Thoát)"
                           : isBomb
-                          ? "text-red-400"
+                          ? (tile.type === "BOMB_SMOKE" || tile.pairKey === "PAIR_TRAP" || tile.deltaPoints === 0)
+                            ? (tile.deltaPoints && tile.deltaPoints < 0 ? `${tile.deltaPoints}đ` : "0đ (Mất câu)")
+                            : `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ`
                           : isSteal
-                          ? "text-rose-300"
-                          : "text-amber-300"
-                      }`}
-                    >
-                      {isEscapeSafe
-                        ? "0đ (Thoát Hiểm)"
-                        : isBomb
-                        ? (tile.type === "BOMB_SMOKE" || tile.pairKey === "PAIR_TRAP" || tile.deltaPoints === 0)
-                          ? (tile.deltaPoints && tile.deltaPoints < 0 ? `${tile.deltaPoints}đ` : "0đ (Mất câu)")
-                          : `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ`
-                        : isSteal
-                        ? `Cướp +${tile.deltaPoints}đ`
-                        : `+${tile.deltaPoints}đ`}
-                    </p>
+                          ? `Cướp +${tile.deltaPoints}đ`
+                          : `+${tile.deltaPoints}đ`}
+                      </p>
+                    </div>
                   </div>
                 </div>
               );

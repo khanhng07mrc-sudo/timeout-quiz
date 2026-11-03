@@ -759,6 +759,7 @@ export interface TeamState {
   shieldCount: number;
   cards: PowerupCard[];
   playerCount: number;
+  pin?: string; // Mã PIN bảo mật 4 số tùy chọn cho đội
   hearts?: number; // Số trái tim phòng thủ trong Mystery Quest (Math.round(turnsPerTeam / 3))
   bailoutsRemaining?: number;
   streak?: number;
@@ -1632,6 +1633,7 @@ export interface RoomState {
   diceRaceState?: DiceRaceState;
   wagerState?: WagerState;
   mysteryQuestState?: MysteryQuestState;
+  teamsLocked?: boolean; // Khóa không cho thí sinh tự ý đổi đội
 }
 
 export interface ActiveBoost {
@@ -2013,7 +2015,9 @@ export interface ClientToServerEvents {
   "admin:join": (code: string, callback?: (result: { success: boolean; roomState?: RoomState; error?: string }) => void) => void;
   "admin:kick:player": (payload: { playerId: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:clean:offline": (callback?: (result: { success: boolean; count?: number; error?: string }) => void) => void;
-  "player:select:team": (payload: { teamId: string; playerId?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
+  "player:select:team": (payload: { teamId: string; playerId?: string; pin?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
+  "admin:teams:toggle_lock": (payload?: { code?: string }, callback?: (result: { success: boolean; teamsLocked?: boolean; error?: string }) => void) => void;
+  "admin:player:reassign_team": (payload: { playerId: string; targetTeamId?: string | null; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "display:join": (code: string) => void;
   // New Mode Client Events
   "game:grid:select": (payload: { cellId: number }) => void;

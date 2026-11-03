@@ -122,6 +122,10 @@ class SoundManager {
         if (wheelCtx && wheelCtx.state === "suspended") {
           wheelCtx.resume().catch(() => {});
         }
+        // Seamlessly resume active BGM if suspended while tab was backgrounded, without restarting
+        if (this.currentMusicAudio && this.currentMusicAudio.paused && !this.currentMusicAudio.ended && !this.isMuted) {
+          this.currentMusicAudio.play().catch(() => {});
+        }
         // Finalize any fade intervals that were throttled while in background
         this.activeFadeMap.forEach((intervalId, audio) => {
           clearInterval(intervalId);
@@ -407,12 +411,15 @@ class SoundManager {
     //    - Do not restart if already playing the lobby music.
     if (this.currentMusicType === type) {
       if (type === "QUESTION") {
-        if (this.currentMusicAudio && !this.currentMusicAudio.paused && !this.currentMusicAudio.ended) {
+        if (this.currentMusicAudio && !this.currentMusicAudio.ended) {
           if (questionId && this.currentPlayingQuestionId && questionId !== this.currentPlayingQuestionId) {
             // Explicit different question ID -> Proceed below to restart for the new question
           } else {
             // Same question or redundant sync event -> Keep playing uninterrupted
             if (questionId && !this.currentPlayingQuestionId) this.currentPlayingQuestionId = questionId;
+            if (this.currentMusicAudio.paused) {
+              this.currentMusicAudio.play().catch(() => {});
+            }
             return;
           }
         }

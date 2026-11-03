@@ -8,6 +8,7 @@ interface RoomQRCodeModalProps {
   onClose: () => void;
   roomCode: string;
   roomTitle?: string;
+  teams?: Array<{ id: string; name: string; color: string; pin?: string }>;
 }
 
 export default function RoomQRCodeModal({
@@ -15,18 +16,24 @@ export default function RoomQRCodeModal({
   onClose,
   roomCode,
   roomTitle,
+  teams = [],
 }: RoomQRCodeModalProps) {
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [joinUrl, setJoinUrl] = useState("");
+
+  const activeTeam = teams.find((t) => t.id === selectedTeamId) || null;
 
   useEffect(() => {
     if (!isOpen || !roomCode) return;
 
     try {
       const origin = typeof window !== "undefined" ? window.location.origin : "https://quizorra.app";
-      const url = `${origin}/play?pin=${roomCode}`;
+      const url = selectedTeamId
+        ? `${origin}/play/${roomCode}?teamId=${selectedTeamId}`
+        : `${origin}/play?pin=${roomCode}`;
       setJoinUrl(url);
 
       QRCode.toDataURL(url, {
@@ -43,7 +50,7 @@ export default function RoomQRCodeModal({
     } catch (e) {
       console.error(e);
     }
-  }, [isOpen, roomCode]);
+  }, [isOpen, roomCode, selectedTeamId]);
 
   if (!isOpen) return null;
 
@@ -114,14 +121,52 @@ export default function RoomQRCodeModal({
             </span>
           </div>
           <h3 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
-            Quét mã QR để Tham Gia Phòng
+            {activeTeam ? `Mã QR Vào Thẳng ${activeTeam.name}` : "Quét mã QR để Tham Gia Phòng"}
           </h3>
-          {Boolean(roomTitle) && typeof roomTitle === "string" && (
-            <p className="text-xs sm:text-sm text-slate-400 font-medium truncate max-w-sm mx-auto">
-              {roomTitle}
+          {activeTeam ? (
+            <p className="text-xs sm:text-sm font-bold text-slate-300">
+              Quét mã này sẽ tự động gắn thí sinh vào <span style={{ color: activeTeam.color }}>{activeTeam.name}</span>
             </p>
+          ) : (
+            Boolean(roomTitle) && typeof roomTitle === "string" && (
+              <p className="text-xs sm:text-sm text-slate-400 font-medium truncate max-w-sm mx-auto">
+                {roomTitle}
+              </p>
+            )
           )}
         </div>
+
+        {/* Team Specific QR Selector */}
+        {teams.length > 0 && (
+          <div className="flex flex-wrap items-center justify-center gap-1.5 p-1 rounded-2xl bg-white/5 border border-white/10 max-w-md mx-auto">
+            <button
+              type="button"
+              onClick={() => setSelectedTeamId(null)}
+              className={`px-2.5 py-1 rounded-xl text-xs font-bold transition ${
+                selectedTeamId === null
+                  ? "bg-cyan-600 text-white shadow"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Toàn phòng
+            </button>
+            {teams.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setSelectedTeamId(t.id)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                  selectedTeamId === t.id
+                    ? "bg-purple-600 text-white shadow ring-1 ring-white/30"
+                    : "text-slate-300 hover:text-white bg-black/40"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ background: t.color }} />
+                <span>{t.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* QR Code Container */}
         <div className="p-4 sm:p-6 bg-white rounded-3xl shadow-2xl mx-auto inline-block">

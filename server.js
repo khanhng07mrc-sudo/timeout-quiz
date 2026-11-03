@@ -13898,7 +13898,7 @@ function registerSocketHandlers(io2) {
         callback?.({ success: false, error: err?.message ? `L\u1ED7i k\u1EBFt n\u1ED1i m\xE1y ch\u1EE7 (${err.message})` : "L\u1ED7i k\u1EBFt n\u1ED1i m\xE1y ch\u1EE7" });
       }
     });
-    socket.on("player:select:team", async ({ teamId, playerId: clientPlayerId }, callback) => {
+    socket.on("player:select:team", async ({ teamId, playerId: clientPlayerId, pin }, callback) => {
       try {
         const playerId = clientPlayerId || playerSockets.get(socket.id);
         if (!playerId) {
@@ -13912,6 +13912,10 @@ function registerSocketHandlers(io2) {
         if (!player || !player.room) {
           return callback?.({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y th\xED sinh trong ph\xF2ng n\xE0y" });
         }
+        const cachedRoom = roomCache.get(player.room.id);
+        if (cachedRoom?.teamsLocked) {
+          return callback?.({ success: false, error: "\u0110\u1ED9i h\xECnh \u0111\xE3 \u0111\u01B0\u1EE3c Host kh\xF3a, kh\xF4ng th\u1EC3 t\u1EF1 \xFD \u0111\u1ED5i \u0111\u1ED9i!" });
+        }
         socket.join(`room:${player.room.code}`);
         socket.join(`room:${player.room.code}:players`);
         const team = await prisma.team.findFirst({
@@ -13919,6 +13923,10 @@ function registerSocketHandlers(io2) {
         });
         if (!team) {
           return callback?.({ success: false, error: "\u0110\u1ED9i kh\xF4ng t\u1ED3n t\u1EA1i trong ph\xF2ng n\xE0y" });
+        }
+        const teamConfigPin = player.room.config?.teamPins?.[teamId];
+        if (teamConfigPin && String(teamConfigPin).trim() !== String(pin || "").trim()) {
+          return callback?.({ success: false, error: "M\xE3 PIN c\u1EE7a \u0111\u1ED9i kh\xF4ng ch\xEDnh x\xE1c!" });
         }
         await prisma.player.update({
           where: { id: playerId },
@@ -16064,6 +16072,37 @@ function registerSocketHandlers(io2) {
       const room = await getAdminRoom(socket);
       if (!room) return;
       io2.to(`room:${room.code}`).emit("game:buzz:closed");
+    });
+    socket.on("admin:teams:toggle_lock", async ({ code } = {}, callback) => {
+      try {
+        const room = await getAdminRoom(socket, code);
+        if (!room) return callback?.({ success: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n Admin" });
+        const cur = roomCache.get(room.id) || {};
+        const newLocked = !cur.teamsLocked;
+        roomCache.set(room.id, { ...cur, teamsLocked: newLocked });
+        const state = await buildRoomState(room.id);
+        io2.to(`room:${room.code}`).emit("room:state", state);
+        callback?.({ success: true, teamsLocked: newLocked });
+      } catch (err) {
+        callback?.({ success: false, error: err?.message || "L\u1ED7i khi kh\xF3a \u0111\u1ED9i h\xECnh" });
+      }
+    });
+    socket.on("admin:player:reassign_team", async ({ playerId, targetTeamId, code }, callback) => {
+      try {
+        const room = await getAdminRoom(socket, code);
+        if (!room) return callback?.({ success: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n Admin" });
+        const player = await prisma.player.findFirst({ where: { id: playerId, roomId: room.id } });
+        if (!player) return callback?.({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y th\xED sinh" });
+        await prisma.player.update({
+          where: { id: playerId },
+          data: { teamId: targetTeamId || null }
+        });
+        const state = await buildRoomState(room.id);
+        io2.to(`room:${room.code}`).emit("room:state", state);
+        callback?.({ success: true });
+      } catch (err) {
+        callback?.({ success: false, error: err?.message || "L\u1ED7i khi chuy\u1EC3n \u0111\u1ED9i" });
+      }
     });
     socket.on("admin:kick:player", async ({ playerId }, callback) => {
       try {
@@ -23948,7 +23987,8 @@ async function buildRoomState(roomId) {
     gridCaroState: roomGridCaros.get(room.id),
     diceRaceState: roomDiceRaces.get(room.id),
     wagerState: roomWagers.get(room.id),
-    mysteryQuestState: roomMysteryQuests.get(room.id)
+    mysteryQuestState: roomMysteryQuests.get(room.id),
+    teamsLocked: Boolean(cachedRoom?.teamsLocked)
   };
 }
 function buildQuestionState(q, extra) {

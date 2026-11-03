@@ -2352,7 +2352,7 @@ export function registerSocketHandlers(io: IO) {
     });
 
     // ── Player Select Team ───────────────────────────────────────────────────
-    socket.on("player:select:team", async ({ teamId, playerId: clientPlayerId }, callback) => {
+    socket.on("player:select:team", async ({ teamId, playerId: clientPlayerId, pin }, callback) => {
       try {
         const playerId = clientPlayerId || playerSockets.get(socket.id);
         if (!playerId) {
@@ -2370,6 +2370,11 @@ export function registerSocketHandlers(io: IO) {
           return callback?.({ success: false, error: "Không tìm thấy thí sinh trong phòng này" });
         }
 
+        const cachedRoom = roomCache.get(player.room.id);
+        if (cachedRoom?.teamsLocked) {
+          return callback?.({ success: false, error: "Đội hình đã được Host khóa, không thể tự ý đổi đội!" });
+        }
+
         // Re-join socket to rooms in case of transport upgrade or reconnect
         socket.join(`room:${player.room.code}`);
         socket.join(`room:${player.room.code}:players`);
@@ -2379,6 +2384,11 @@ export function registerSocketHandlers(io: IO) {
         });
         if (!team) {
           return callback?.({ success: false, error: "Đội không tồn tại trong phòng này" });
+        }
+
+        const teamConfigPin = (player.room.config as any)?.teamPins?.[teamId];
+        if (teamConfigPin && String(teamConfigPin).trim() !== String(pin || "").trim()) {
+          return callback?.({ success: false, error: "Mã PIN của đội không chính xác!" });
         }
 
         await prisma.player.update({
@@ -4903,6 +4913,41 @@ export function registerSocketHandlers(io: IO) {
       const room = await getAdminRoom(socket);
       if (!room) return;
       io.to(`room:${room.code}`).emit("game:buzz:closed");
+    });
+
+    // ── Admin: Toggle Teams Lock ─────────────────────────────────────────────
+    socket.on("admin:teams:toggle_lock", async ({ code }: { code?: string } = {}, callback?: (res: any) => void) => {
+      try {
+        const room = await getAdminRoom(socket, code);
+        if (!room) return callback?.({ success: false, error: "Không có quyền Admin" });
+        const cur = roomCache.get(room.id) || {};
+        const newLocked = !cur.teamsLocked;
+        roomCache.set(room.id, { ...cur, teamsLocked: newLocked });
+        const state = await buildRoomState(room.id);
+        io.to(`room:${room.code}`).emit("room:state", state);
+        callback?.({ success: true, teamsLocked: newLocked });
+      } catch (err: any) {
+        callback?.({ success: false, error: err?.message || "Lỗi khi khóa đội hình" });
+      }
+    });
+
+    // ── Admin: Reassign Player Team ───────────────────────────────────────────
+    socket.on("admin:player:reassign_team", async ({ playerId, targetTeamId, code }: { playerId: string; targetTeamId?: string | null; code?: string }, callback?: (res: any) => void) => {
+      try {
+        const room = await getAdminRoom(socket, code);
+        if (!room) return callback?.({ success: false, error: "Không có quyền Admin" });
+        const player = await prisma.player.findFirst({ where: { id: playerId, roomId: room.id } });
+        if (!player) return callback?.({ success: false, error: "Không tìm thấy thí sinh" });
+        await prisma.player.update({
+          where: { id: playerId },
+          data: { teamId: targetTeamId || null },
+        });
+        const state = await buildRoomState(room.id);
+        io.to(`room:${room.code}`).emit("room:state", state);
+        callback?.({ success: true });
+      } catch (err: any) {
+        callback?.({ success: false, error: err?.message || "Lỗi khi chuyển đội" });
+      }
     });
 
     // ── Admin: Kick Player ───────────────────────────────────────────────────
@@ -14315,6 +14360,7 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
     diceRaceState: roomDiceRaces.get(room.id),
     wagerState: roomWagers.get(room.id),
     mysteryQuestState: roomMysteryQuests.get(room.id),
+    teamsLocked: Boolean(cachedRoom?.teamsLocked),
   };
 }
 

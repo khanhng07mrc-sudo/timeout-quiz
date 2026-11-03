@@ -314,7 +314,8 @@ export default function DisplayPage() {
               p.currentQuestion.endsAt > Date.now()
             );
             const activeMode = p.roomState?.mode || roomState?.mode;
-            if (isTimerRunning && activeMode !== "BUZZ" && activeMode !== "MAGIC_WHEEL") {
+            const isMysteryBoardPhase = activeMode === "MYSTERY_QUEST" && (p.roomState?.mysteryQuestState?.phase !== "QUESTION_ACTIVE");
+            if (isTimerRunning && activeMode !== "BUZZ" && activeMode !== "MAGIC_WHEEL" && !isMysteryBoardPhase) {
               soundManager.playQuestionMusic(p.currentQuestion.timeLimit, p.currentQuestion.question?.id);
             }
           } else {

@@ -1465,7 +1465,7 @@ export default function PlayPage() {
     }
   };
 
-  const handleSelectTeam = (teamId: string) => {
+  const handleSelectTeam = (teamId: string, pin?: string) => {
     const currentPid = playerIdRef.current || playerId;
     myTeamIdRef.current = teamId;
     setSelectedTeamId(teamId);
@@ -1484,7 +1484,7 @@ export default function PlayPage() {
     });
 
     if (socketRef.current?.connected) {
-      socketRef.current?.emit("player:select:team", { teamId, playerId: currentPid }, (res) => {
+      socketRef.current?.emit("player:select:team", { teamId, playerId: currentPid, pin }, (res) => {
         if (res?.error) {
           setErrorMessage(res.error);
           setTimeout(() => setErrorMessage(null), 5000);
@@ -1496,6 +1496,7 @@ export default function PlayPage() {
         action: "select_team",
         teamId,
         playerId: currentPid,
+        pin,
       }, "*");
     }
   };

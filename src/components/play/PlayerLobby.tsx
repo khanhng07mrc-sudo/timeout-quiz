@@ -9,18 +9,35 @@ interface Props {
   roomState: RoomState;
   playerId: string;
   selectedTeamId?: string | null;
-  onSelectTeam?: (teamId: string) => void;
+  onSelectTeam?: (teamId: string, pin?: string) => void;
   errorMessage?: string | null;
 }
 
 export default function PlayerLobby({ roomState, playerId, selectedTeamId, onSelectTeam, errorMessage }: Props) {
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [pendingTeam, setPendingTeam] = useState<import("@/types").TeamState | null>(null);
+  const [teamPinInput, setTeamPinInput] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+
   const me = roomState.players.find((p) => p.id === playerId);
   const effectiveTeamId = selectedTeamId || me?.teamId || null;
   const myTeam = effectiveTeamId ? roomState.teams.find((t) => t.id === effectiveTeamId) : null;
   const isTeamMode = roomState.teamMode === "TEAM";
+  const isTeamsLocked = Boolean(roomState.teamsLocked);
 
   const { mainTitle, badgeText } = formatRoomTitle(roomState?.name, roomState?.mode);
+
+  const handleConfirmTeam = () => {
+    if (!pendingTeam) return;
+    if (pendingTeam.pin && teamPinInput.trim() !== pendingTeam.pin.trim()) {
+      setPinError("Mã PIN của đội không chính xác!");
+      return;
+    }
+    onSelectTeam?.(pendingTeam.id, teamPinInput.trim() || undefined);
+    setPendingTeam(null);
+    setTeamPinInput("");
+    setPinError(null);
+  };
 
   return (
     <div className="h-screen max-h-screen overflow-hidden flex flex-col p-3 sm:p-4 max-w-lg mx-auto w-full animate-loaded-reveal">
@@ -55,6 +72,12 @@ export default function PlayerLobby({ roomState, playerId, selectedTeamId, onSel
 
       {/* Identity / Team Status Banner (Compact) */}
       <div className="shrink-0 mb-2.5">
+        {isTeamsLocked && (
+          <div className="w-full mb-2 p-2 rounded-xl bg-purple-950/70 border border-purple-500/40 text-purple-200 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+            <span>🔒</span>
+            <span>Đội hình đã được Host khóa. Vui lòng liên hệ MC nếu bạn cần đổi đội.</span>
+          </div>
+        )}
         {isTeamMode ? (
           myTeam ? (
             <div
@@ -134,10 +157,18 @@ export default function PlayerLobby({ roomState, playerId, selectedTeamId, onSel
                       <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-green-500/25 text-green-300 border border-green-500/40 shrink-0">
                         ✓ Đội của bạn
                       </span>
+                    ) : isTeamsLocked ? (
+                      <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-800/80 text-slate-400 border border-white/10 shrink-0 flex items-center gap-1">
+                        🔒 Đã khóa
+                      </span>
                     ) : (
                       <button
                         type="button"
-                        onClick={() => onSelectTeam?.(team.id)}
+                        onClick={() => {
+                          setPendingTeam(team);
+                          setTeamPinInput("");
+                          setPinError(null);
+                        }}
                         className="px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white shadow shrink-0 cursor-pointer active:scale-95 transition"
                       >
                         {myTeam ? "Chuyển sang" : "Vào đội"}
@@ -208,6 +239,103 @@ export default function PlayerLobby({ roomState, playerId, selectedTeamId, onSel
           Mã phòng: <span className="font-mono font-bold text-cyan-300">{roomState.code}</span>
         </div>
       </div>
+
+      {/* Team Confirmation & PIN Modal */}
+      {pendingTeam && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm rounded-2xl glass border border-white/20 p-5 space-y-4 shadow-2xl bg-gradient-to-b from-[#1a1333] to-[#0c0d18]">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center font-black text-white text-base shadow"
+                style={{ background: pendingTeam.color }}
+              >
+                {pendingTeam.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white">Xác nhận gia nhập</h3>
+                <p className="text-sm font-bold truncate" style={{ color: pendingTeam.color }}>
+                  {pendingTeam.name}
+                </p>
+              </div>
+            </div>
+
+            {/* Existing Members Preview */}
+            <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-1.5">
+              <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold block">
+                Thành viên hiện tại:
+              </span>
+              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto scrollbar-thin">
+                {(() => {
+                  const currentMembers = roomState.players.filter(
+                    (p) => p.teamId === pendingTeam.id || (p.id === playerId && effectiveTeamId === pendingTeam.id)
+                  );
+                  if (currentMembers.length === 0) {
+                    return <span className="text-xs text-slate-400 italic">Chưa có ai. Bạn sẽ là người đầu tiên!</span>;
+                  }
+                  return currentMembers.map((m) => (
+                    <span
+                      key={m.id}
+                      className="px-2 py-0.5 rounded text-xs font-semibold bg-white/10 text-slate-200"
+                    >
+                      {m.name}
+                      {m.id === playerId ? " (bạn)" : ""}
+                    </span>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            {/* Optional PIN Input */}
+            {pendingTeam.pin && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-amber-300 flex items-center gap-1">
+                  <span>🔐</span>
+                  <span>Đội này yêu cầu mã PIN:</span>
+                </label>
+                <input
+                  type="password"
+                  maxLength={6}
+                  value={teamPinInput}
+                  onChange={(e) => {
+                    setTeamPinInput(e.target.value);
+                    if (pinError) setPinError(null);
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleConfirmTeam()}
+                  placeholder="Nhập mã PIN đội..."
+                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-amber-400/50 text-white font-mono text-center tracking-widest text-lg outline-none focus:border-amber-400"
+                />
+              </div>
+            )}
+
+            {pinError && (
+              <p className="text-xs font-bold text-rose-400 text-center animate-bounce-in">
+                ⚠️ {pinError}
+              </p>
+            )}
+
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingTeam(null);
+                  setTeamPinInput("");
+                  setPinError(null);
+                }}
+                className="flex-1 py-2 rounded-xl text-xs font-bold glass hover:bg-white/10 text-slate-300 border border-white/10 transition"
+              >
+                Chọn lại
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmTeam}
+                className="flex-1 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-lg transition active:scale-95"
+              >
+                Xác nhận vào đội
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rules Modal */}
       <GameModeRulesModal

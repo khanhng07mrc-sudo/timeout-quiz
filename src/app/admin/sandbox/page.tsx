@@ -4642,6 +4642,10 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       } else if (action === "wager_submit") {
         processOfflineWager(targetTeamId, Number(e.data.amount) || 10);
       } else if (action === "select_team") {
+        if (roomStateRef.current?.teamsLocked) {
+          addLog("⚠️ Thí sinh không thể đổi đội vì Quản trò đã khóa phân đội!");
+          return;
+        }
         setRoomState((prev) => {
           if (!prev) return prev;
           const currentPid = e.data.playerId || "p_you";
@@ -10038,10 +10042,30 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     type="button"
                     onClick={() => setShowQRModal(true)}
                     className="px-2 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold flex items-center gap-1 transition cursor-pointer"
-                    title="Phóng to mã QR phòng cho thí sinh quét"
+                    title="Phóng to mã QR phòng cho thí sinh quét (hỗ trợ mã theo từng đội)"
                   >
                     <span>⛶</span>
                     <span>Mã QR</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextLocked = !roomState?.teamsLocked;
+                      setRoomState((prev) => (prev ? { ...prev, teamsLocked: nextLocked } : prev));
+                      if (adminSocketRef.current?.connected) {
+                        adminSocketRef.current.emit("admin:teams:toggle_lock", { code });
+                      }
+                      syncToIframes({ roomState: { ...(roomStateRef.current || {}), teamsLocked: nextLocked } });
+                      addLog(nextLocked ? "🔒 Quản trò đã KHÓA phân đội thí sinh" : "🔓 Quản trò đã MỞ KHÓA phân đội thí sinh");
+                    }}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition cursor-pointer border ${
+                      roomState?.teamsLocked
+                        ? "bg-amber-500/30 text-amber-300 border-amber-500/50 shadow"
+                        : "bg-white/5 hover:bg-white/10 text-slate-300 border-white/20"
+                    }`}
+                    title={roomState?.teamsLocked ? "Đội hình đang bị KHÓA. Bấm để mở cho thí sinh đổi đội" : "Bấm để KHÓA không cho thí sinh tự ý đổi đội"}
+                  >
+                    <span>{roomState?.teamsLocked ? "🔒 Khóa đội: BẬT" : "🔓 Khóa đội: TẮT"}</span>
                   </button>
                   <span className="text-purple-300 font-bold hidden sm:inline-flex items-center gap-1.5 text-[11px]">
                     <GameModeIcon mode={roomState?.mode || selectedMode} className="w-3.5 h-3.5 drop-shadow-sm" />
@@ -12928,6 +12952,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
         onClose={() => setShowQRModal(false)}
         roomCode={code}
         roomTitle={(roomState as any)?.title || (roomState as any)?.name || "Phòng Sandbox"}
+        teams={roomState?.teams}
       />
 
       {/* ── Debug Card Grant Modal ────────────────────────────────────────── */}

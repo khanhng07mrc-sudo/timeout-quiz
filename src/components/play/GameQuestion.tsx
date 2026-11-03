@@ -706,7 +706,7 @@ export default function GameQuestion({
                 </div>
                 <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full max-w-md">
                   {([10, 20, 30] as const).map((pts) => {
-                    const secs = pts === 10 ? 10 : pts === 20 ? 15 : 20;
+                    const secs = pts === 10 ? 15 : pts === 20 ? 20 : 30;
                     return (
                       <button
                         key={pts}

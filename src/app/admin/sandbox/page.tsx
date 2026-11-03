@@ -1326,7 +1326,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     });
     sock.on("game:bounceback:points_selected", (payload) => {
       const pts = payload.points as (10 | 20 | 30);
-      const ptsTimeLimit = payload.timeLimit ?? (pts === 10 ? 10 : pts === 20 ? 15 : 20);
+      const ptsTimeLimit = payload.timeLimit ?? (pts === 10 ? 15 : pts === 20 ? 20 : 30);
       const effectiveEndsAt = payload.endsAt ?? (Date.now() + ptsTimeLimit * 1000);
       setCurrentQuestion((prev) =>
         prev
@@ -2112,7 +2112,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
   };
 
   const handleOfflineBouncebackPointsPicked = (pts: 10 | 20 | 30) => {
-    const ptsTimeLimit = pts === 10 ? 10 : pts === 20 ? 15 : 20;
+    const ptsTimeLimit = pts === 10 ? 15 : pts === 20 ? 20 : 30;
     if (offlineTimerRef.current) {
       clearInterval(offlineTimerRef.current);
       offlineTimerRef.current = null;

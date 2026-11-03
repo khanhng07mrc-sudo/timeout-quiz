@@ -221,7 +221,7 @@ export default function QuizBankPage() {
   const [qType, setQType] = useState("MC_SINGLE");
   const [qContent, setQContent] = useState("");
   const [qPoints, setQPoints] = useState(10);
-  const [qTimeLimit, setQTimeLimit] = useState(10);
+  const [qTimeLimit, setQTimeLimit] = useState(15);
   const [qHint, setQHint] = useState("");
   const [qAnswer, setQAnswer] = useState("");
   const [qRound, setQRound] = useState(1);
@@ -271,7 +271,7 @@ export default function QuizBankPage() {
   const [editQType, setEditQType] = useState("MC_SINGLE");
   const [editQContent, setEditQContent] = useState("");
   const [editQPoints, setEditQPoints] = useState(10);
-  const [editQTimeLimit, setEditQTimeLimit] = useState(10);
+  const [editQTimeLimit, setEditQTimeLimit] = useState(15);
   const [editQHint, setEditQHint] = useState("");
   const [editQAnswer, setEditQAnswer] = useState("");
   const [editQRound, setEditQRound] = useState(1);
@@ -2728,10 +2728,10 @@ export default function QuizBankPage() {
                 </label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {[
-                    { pts: 10, time: 10, label: "10đ", sub: "10s" },
-                    { pts: 20, time: 15, label: "20đ", sub: "15s" },
-                    { pts: 30, time: 20, label: "30đ", sub: "20s" },
-                    { pts: 40, time: 30, label: "40đ", sub: "30s" },
+                    { pts: 10, time: 15, label: "10đ", sub: "15s" },
+                    { pts: 20, time: 20, label: "20đ", sub: "20s" },
+                    { pts: 30, time: 30, label: "30đ", sub: "30s" },
+                    { pts: 40, time: 60, label: "40đ", sub: "60s" },
                   ].map((lvl) => {
                     const isSelected = qPoints === lvl.pts;
                     return (
@@ -3979,10 +3979,10 @@ export default function QuizBankPage() {
                 </label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {[
-                    { pts: 10, time: 10, label: "10đ", sub: "10s" },
-                    { pts: 20, time: 15, label: "20đ", sub: "15s" },
-                    { pts: 30, time: 20, label: "30đ", sub: "20s" },
-                    { pts: 40, time: 30, label: "40đ", sub: "30s" },
+                    { pts: 10, time: 15, label: "10đ", sub: "15s" },
+                    { pts: 20, time: 20, label: "20đ", sub: "20s" },
+                    { pts: 30, time: 30, label: "30đ", sub: "30s" },
+                    { pts: 40, time: 60, label: "40đ", sub: "60s" },
                   ].map((lvl) => {
                     const isSelected = editQPoints === lvl.pts;
                     return (
@@ -5758,7 +5758,7 @@ export default function QuizBankPage() {
                               const pts = Number(e.target.value) as 10 | 20 | 30 | 40;
                               handleUpdatePreviewItem(qIdx, {
                                 points: pts,
-                                timeLimit: pts === 40 ? 30 : pts === 30 ? 20 : pts === 20 ? 15 : 10,
+                                timeLimit: pts === 40 ? 60 : pts === 30 ? 30 : pts === 20 ? 20 : 15,
                               });
                             }}
                             className="px-1.5 py-0.5 rounded glass border border-white/20 text-amber-300 font-bold bg-[#151728]"

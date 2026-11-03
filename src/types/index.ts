@@ -519,25 +519,25 @@ export function getBloomLevelFromPoints(points: number, explicitLevel?: string):
  */
 export function quantizeOlympiaTimeLimit(points: number = 10, _explicitTimeLimit?: number): number {
   void _explicitTimeLimit;
-  if (points <= 10) return 10;
-  if (points <= 20) return 15;
-  if (points <= 30) return 20;
-  return 30;
+  if (points <= 10) return 15;
+  if (points <= 20) return 20;
+  if (points <= 30) return 30;
+  return 60;
 }
 
 /**
  * Chuẩn hóa thời gian trả lời chuẩn cho tất cả các dạng câu hỏi:
  * - Đa số dạng câu hỏi thông thường:
- *   + 10 điểm: 10s
- *   + 20 điểm: 15s
- *   + 30 điểm: 20s
- *   + 40 điểm: 30s
+ *   + 10 điểm: 15s
+ *   + 20 điểm: 20s
+ *   + 30 điểm: 30s
+ *   + 40 điểm: 60s
  * - Câu hỏi sắp xếp / nối dữ kiện (ORDERING, MATCHING, DRAG_DROP):
  *   X = số lượng dữ kiện (items / pairs)
- *   + 10 điểm: Math.round(2.5 * X) (s)
- *   + 20 điểm: Math.round(3.75 * X) (s)
- *   + 30 điểm: Math.round(5.0 * X) (s)
- *   + 40 điểm: Math.round(7.5 * X) (s)
+ *   + 10 điểm: Math.max(10, Math.round(2.5 * X)) (s)
+ *   + 20 điểm: Math.max(15, Math.round(3.75 * X)) (s)
+ *   + 30 điểm: Math.max(20, Math.round(5.0 * X)) (s)
+ *   + 40 điểm: Math.max(30, Math.round(7.5 * X)) (s)
  */
 export function calculateStandardTimeLimit(
   points: number = 10,
@@ -548,16 +548,16 @@ export function calculateStandardTimeLimit(
   const isOrderingOrMatching = Boolean(type && ["ORDERING", "MATCHING", "DRAG_DROP"].includes(type));
 
   if (isOrderingOrMatching && itemCount && itemCount > 0) {
-    if (normPoints === 10) return Math.max(5, Math.round(2.5 * itemCount));
-    if (normPoints === 20) return Math.max(8, Math.round(3.75 * itemCount));
-    if (normPoints === 30) return Math.max(10, Math.round(5.0 * itemCount));
-    return Math.max(15, Math.round(7.5 * itemCount));
+    if (normPoints === 10) return Math.max(10, Math.round(2.5 * itemCount));
+    if (normPoints === 20) return Math.max(15, Math.round(3.75 * itemCount));
+    if (normPoints === 30) return Math.max(20, Math.round(5.0 * itemCount));
+    return Math.max(30, Math.round(7.5 * itemCount));
   }
 
-  if (normPoints === 10) return 10;
-  if (normPoints === 20) return 15;
-  if (normPoints === 30) return 20;
-  return 30;
+  if (normPoints === 10) return 15;
+  if (normPoints === 20) return 20;
+  if (normPoints === 30) return 30;
+  return 60;
 }
 
 /**

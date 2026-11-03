@@ -1,1149 +1,1149 @@
 [
-  {
-    "type": "MC_SINGLE",
-    "content": "Bản chất cốt lõi của hoạt động đấu thầu trong quản lý dự án nhà nước là gì?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Lựa chọn đơn vị đưa ra mức giá dự thầu thấp nhất bằng mọi giá",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Cơ chế lựa chọn đơn vị thực hiện dựa trên các tiêu chí công khai, có thể kiểm tra và đánh giá toàn diện",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Chỉ định trực tiếp doanh nghiệp quen thuộc để rút ngắn thủ tục",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Phân chia đều công việc cho tất cả các nhà thầu nộp hồ sơ",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Đấu thầu không đơn thuần là chọn nhà thầu đưa ra mức giá thấp nhất.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Đối với Chủ đầu tư và chủ dự án, hoạt động đấu thầu mang lại vai trò quan trọng nhất nào sau đây?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Nâng cao hiệu quả sử dụng vốn, kiểm soát tiến độ, chất lượng và hạn chế rủi ro thông đồng",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Chuyển giao 100% trách nhiệm pháp lý dự án cho cơ quan quản lý nhà nước",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Miễn trừ nghĩa vụ giám sát thi công tại hiện trường",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Tự động hóa hoàn toàn quy trình giải ngân vốn đầu tư công",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Giúp so sánh giá với chất lượng, giải pháp kỹ thuật và giảm nguy cơ thiên vị.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "TRUE_FALSE",
-    "content": "Đấu thầu chỉ mang lại lợi ích cho chủ đầu tư, không tạo cơ hội tiếp cận dự án hay thúc đẩy cải thiện công nghệ cho các nhà thầu.",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "true",
-        "text": "Đúng (True)",
-        "isCorrect": false
-      },
-      {
-        "id": "false",
-        "text": "Sai (False)",
-        "isCorrect": true
-      }
-    ],
-    "hint": "Cạnh tranh khuyến khích nhà thầu nâng cao công nghệ, chất lượng nhân sự và phương pháp thi công.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Ba tiêu chí cơ bản để phân loại gói thầu phục vụ phân tích và quản lý dự án là gì?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Theo nguồn vốn, thời gian thực hiện, và địa bàn triển khai",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Theo quy mô, mức độ phức tạp, và bản chất sản phẩm cần mua",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Theo loại hợp đồng, số lượng nhà thầu, và tỷ lệ tạm ứng",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Theo cấp công trình, chủ sở hữu, và hình thức bảo lãnh",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Xem xét quy mô (nhỏ/lớn), độ phức tạp (ít/phức tạp), và bản chất (xây lắp, hàng hóa, tư vấn, phi tư vấn).",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Gói thầu cung cấp thiết bị máy móc, tua-bin, máy phát và vật tư công nghệ thuộc nhóm gói thầu nào theo bản chất sản phẩm?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Gói thầu xây lắp",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Gói thầu dịch vụ tư vấn",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Gói thầu mua sắm hàng hóa",
-        "isCorrect": true
-      },
-      {
-        "id": "D",
-        "text": "Gói thầu dịch vụ phi tư vấn",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Cung cấp thiết bị, máy móc, vật tư hoặc hàng hóa khác.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Theo Luật Đấu thầu số 90/2025/QH15, hình thức lựa chọn nhà thầu nào là hình thức mặc định, không hạn chế số lượng nhà thầu tham dự?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Đấu thầu hạn chế",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Chào hàng cạnh tranh",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Chỉ định thầu",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Đấu thầu rộng rãi",
-        "isCorrect": true
-      }
-    ],
-    "hint": "Không hạn chế số lượng nhà thầu tham dự, là hình thức mặc định theo luật.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "TRUE_FALSE",
-    "content": "Theo quy định hiện hành, các hình thức đấu thầu phổ biến như đấu thầu rộng rãi, hạn chế hay chào hàng cạnh tranh hiện nay bắt buộc thực hiện qua mạng.",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "true",
-        "text": "Đúng (True)",
-        "isCorrect": true
-      },
-      {
-        "id": "false",
-        "text": "Sai (False)",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Thực hiện qua Hệ thống mạng đấu thầu quốc gia theo Luật Đấu thầu số 90/2025/QH15.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Chủ đầu tư chịu trách nhiệm toàn diện về hiệu quả đầu tư Dự án Nhà máy Thủy điện Tích năng Bác Ái là đơn vị nào?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Tập đoàn Dầu khí Việt Nam (PVN)",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Tập đoàn Điện lực Việt Nam (EVN)",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Tổng công ty Truyền tải điện Quốc gia (EVNNPT)",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Bộ Công Thương",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Tập đoàn chịu trách nhiệm an ninh cung cấp điện và định hướng nguồn điện quốc gia.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Cơ quan trực tiếp thực hiện chức năng đại diện chủ đầu tư EVN, điều phối các gói thầu và giám sát chất lượng hiện trường dự án Bác Ái là đơn vị nào?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Ban Quản lý Dự án Điện 1",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Ban Quản lý Dự án Điện 2",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Ban Quản lý Dự án Điện 3 (Ban QLDA Điện 3)",
-        "isCorrect": true
-      },
-      {
-        "id": "D",
-        "text": "Công ty Thủy điện Trị An",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Đại diện chủ đầu tư quản lý, điều hành dự án Thủy điện Tích năng Bác Ái.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Theo mô hình phân cấp hành chính địa phương 2 cấp, Dự án Nhà máy Thủy điện Tích năng Bác Ái được xây dựng trên địa bàn xã Phước Hòa trực thuộc tỉnh nào?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "a",
-        "text": "Khánh Hòa",
-        "isCorrect": true
-      },
-      {
-        "id": "b",
-        "text": "Lâm Đồng",
-        "isCorrect": false
-      },
-      {
-        "id": "c",
-        "text": "Đắk Lắk",
-        "isCorrect": false
-      },
-      {
-        "id": "d",
-        "text": "Bình Thuận",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Theo mô hình chính quyền địa phương 2 cấp, dự án đặt tại xã Phước Hòa, trực thuộc tỉnh Khánh Hòa.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Phương thức đấu thầu 'Một giai đoạn một túi hồ sơ' (1G1T) phù hợp nhất với loại gói thầu nào?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Gói thầu công nghệ cao phức tạp chưa từng có tiền lệ",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Gói thầu mua sắm, xây lắp thông dụng, yêu cầu kỹ thuật tương đối rõ ràng",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Gói thầu cần làm rõ thiết kế công nghệ qua nhiều bước đàm phán",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Gói thầu dịch vụ tư vấn lập báo cáo khả thi cấp đặc biệt",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Quy trình nộp kỹ thuật và tài chính chung một túi, thuận tiện đánh giá nhanh.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Điểm cốt lõi trong cơ chế vận hành của phương thức 'Một giai đoạn hai túi hồ sơ' (1G2T) là gì?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Mở đồng thời cả hồ sơ kỹ thuật và hồ sơ tài chính tại thời điểm mở thầu",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Nhà thầu nộp riêng hồ sơ đề xuất kỹ thuật và tài chính; hồ sơ kỹ thuật được mở và đánh giá trước, chỉ nhà thầu đạt kỹ thuật mới được mở hồ sơ tài chính",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Chỉ mở hồ sơ tài chính để xếp hạng giá trước, sau đó mới kiểm tra hồ sơ kỹ thuật của người có giá thấp nhất",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Nhà thầu được nộp lại báo giá tài chính sau khi đã biết kết quả chấm điểm kỹ thuật",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Giúp tách biệt việc đánh giá chất lượng kỹ thuật với giá dự thầu.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "TRUE_FALSE",
-    "content": "Phương thức đấu thầu Một giai đoạn hai túi hồ sơ (1G2T) cho phép bên mời thầu mở đồng thời cả hồ sơ đề xuất kỹ thuật và hồ sơ đề xuất tài chính ngay tại thời điểm đóng thầu.",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "true",
-        "text": "Đúng (True)",
-        "isCorrect": false
-      },
-      {
-        "id": "false",
-        "text": "Sai (False) — Phải mở và đánh giá đề xuất kỹ thuật trước; chỉ nhà thầu đạt yêu cầu kỹ thuật mới được mở đề xuất tài chính",
-        "isCorrect": true
-      }
-    ],
-    "hint": "Hạn chế việc giá thấp tác động không phù hợp đến đánh giá kỹ thuật.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Tổng mức đầu tư được phê duyệt của Dự án Nhà máy Thủy điện Tích năng Bác Ái là bao nhiêu?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "4.548,081 tỷ đồng",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "12.000,000 tỷ đồng",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "21.101,468 tỷ đồng (hơn 21.100 tỷ đồng)",
-        "isCorrect": true
-      },
-      {
-        "id": "D",
-        "text": "35.200,500 tỷ đồng",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Quy mô vốn hơn 21.100 tỷ đồng, là dự án năng lượng trọng điểm.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Nhà máy Thủy điện Tích năng Bác Ái có tổng công suất thiết kế là bao nhiêu và gồm mấy tổ máy?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Tổng công suất 600 MW, gồm 2 tổ máy (mỗi tổ máy 300 MW)",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Tổng công suất 1.200 MW, gồm 4 tổ máy (mỗi tổ máy 300 MW)",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Tổng công suất 1.200 MW, gồm 6 tổ máy (mỗi tổ máy 200 MW)",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Tổng công suất 2.400 MW, gồm 4 tổ máy (mỗi tổ máy 600 MW)",
-        "isCorrect": false
-      }
-    ],
-    "hint": "1.200 MW chia đều cho 4 tổ máy đảo chiều.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_MULTI",
-    "content": "Theo Quy hoạch điện VIII, Thủy điện Tích năng Bác Ái đóng những vai trò then chốt nào trong hệ thống điện quốc gia? (Chọn các phương án đúng)",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Phủ đỉnh biểu đồ phụ tải giờ cao điểm",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Điều tần và bù công suất phản kháng cho lưới điện",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Tích trữ điện năng dư thừa từ năng lượng tái tạo (điện gió, mặt trời) lúc thấp điểm",
-        "isCorrect": true
-      },
-      {
-        "id": "D",
-        "text": "Cung cấp nguồn than và khí đốt dự trữ quốc gia",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Đóng vai trò xương sống trong tích trữ năng lượng và điều tần hệ thống.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Tên chính thức và dự toán của Gói thầu số 01TB-BA thuộc dự án Thủy điện Tích năng Bác Ái là gì?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Gói thầu số 01TB-BA: Thi công xây lắp đập và hầm ngầm; dự toán 21.101 tỷ đồng",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Gói thầu số 01TB-BA: Cung cấp thiết bị cơ điện; dự toán 4.548,081 tỷ đồng",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Gói thầu số 01TB-BA: Tư vấn thiết kế chi tiết; dự toán 85,478 tỷ đồng",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Gói thầu số 01TB-BA: Cung cấp trạm biến áp 500kV; dự toán 4.462 tỷ đồng",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Gói thầu cung cấp thiết bị cơ điện với dự toán hơn 4.500 tỷ đồng.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Yêu cầu kỹ thuật đặc thù và khắt khe nhất của thiết bị cơ điện chính trong gói 01TB-BA là gì?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Chỉ quay một chiều cố định với tốc độ chậm",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Tua-bin bơm và máy phát đảo chiều phải thay đổi chiều quay luân phiên liên tục giữa chế độ bơm tích nước và phát điện với độ chính xác cơ khí tuyệt đối",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Sử dụng vật liệu composite thông thường để giảm giá thành",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Hoạt động bằng nguồn năng lượng diesel phụ trợ",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Công nghệ tua-bin bơm kép và máy phát - động cơ đảo chiều.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Căn cứ thực tiễn để EVN áp dụng hình thức 'Đấu thầu rộng rãi quốc tế' cho gói thầu 01TB-BA là gì?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Nhà tài trợ ODA bắt buộc chỉ định thầu cho một quốc gia",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Các nhà thầu trong nước chưa đủ năng lực sản xuất, chế tạo thiết bị cơ điện thủy điện tích năng công suất lớn 1.200 MW",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Để tiết kiệm thời gian chuẩn bị hồ sơ mời thầu",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Do gói thầu có quy mô tài chính dưới 100 tỷ đồng",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Thị trường nội địa chưa tự chủ được công nghệ tua-bin đảo chiều cột nước cao.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Đơn vị nào đã trúng thầu Gói thầu số 01TB-BA theo quyết định phê duyệt ngày 21/10/2026?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Tập đoàn Xây dựng Hòa Bình và Coteccons",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Liên danh Voith Hydro Shanghai Ltd. và Powerchina Zhongnan Engineering Corporation Limited",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Tập đoàn General Electric (GE) và Alstom",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Tập đoàn Toshiba Energy Systems và Andritz Hydro",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Liên danh giữa đơn vị của Đức/Trung Quốc và đối tác kỹ thuật Trung Quốc.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Thời gian thực hiện hợp đồng Gói thầu số 01TB-BA là bao nhiêu tháng?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "24 tháng",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "36 tháng",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "51 tháng",
-        "isCorrect": true
-      },
-      {
-        "id": "D",
-        "text": "72 tháng",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Kéo dài 51 tháng (tương đương 4,25 năm).",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MATCHING",
-    "content": "Hãy ghép đúng 4 hình thức lựa chọn nhà thầu theo Luật Đấu thầu 90/2025/QH15 với đặc trưng tương ứng:",
-    "points": 20,
-    "timeLimit": 15,
-    "pairs": [
-      {
-        "id": "p1",
-        "left": "Chào hàng cạnh tranh",
-        "right": "Gói thầu giá trị nhỏ, kỹ thuật đơn giản và hàng hóa thông dụng trên thị trường"
-      },
-      {
-        "id": "p2",
-        "left": "Mua sắm trực tiếp",
-        "right": "Ký hợp đồng với nhà thầu đã trúng thầu gói thầu tương tự trước đó đáp ứng đủ điều kiện"
-      },
-      {
-        "id": "p3",
-        "left": "Chỉ định thầu",
-        "right": "Lựa chọn trực tiếp nhà thầu cho trường hợp cấp bách, bí mật nhà nước hoặc điều kiện đặc thù"
-      },
-      {
-        "id": "p4",
-        "left": "Tự thực hiện",
-        "right": "Chủ đầu tư trực tiếp huy động lực lượng, thiết bị của mình để triển khai khi đủ năng lực"
-      }
-    ],
-    "options": [
-      {
-        "id": "A",
-        "text": "p1 - Hàng hóa thông dụng; p2 - Nhà thầu trúng gói tương tự; p3 - Cấp bách/bí mật; p4 - Chủ đầu tư trực tiếp làm",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "p1 - Cấp bách; p2 - Chủ đầu tư trực tiếp; p3 - Hàng hóa thông dụng; p4 - Nhà thầu trúng trước đó",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "p1 - Chủ đầu tư trực tiếp; p2 - Hàng hóa thông dụng; p3 - Nhà thầu trúng trước đó; p4 - Cấp bách",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "p1 - Nhà thầu trúng trước đó; p2 - Cấp bách; p3 - Chủ đầu tư trực tiếp; p4 - Hàng hóa thông dụng",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Các hình thức lựa chọn nhà thầu phổ biến theo Luật Đấu thầu.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MATCHING",
-    "content": "Hãy ghép đúng 4 bước trong quy trình tổ chức đấu thầu với mục tiêu cốt lõi tương ứng:",
-    "points": 20,
-    "timeLimit": 15,
-    "pairs": [
-      {
-        "id": "p1",
-        "left": "Bước 1: Chuẩn bị đấu thầu",
-        "right": "Xác định rõ cần mua gì, yêu cầu ra sao và lựa chọn nhà thầu theo cơ chế nào"
-      },
-      {
-        "id": "p2",
-        "left": "Bước 4: Mở thầu",
-        "right": "Bảo đảm tính công khai, minh bạch và tạo cơ sở dữ liệu cho bước đánh giá hồ sơ"
-      },
-      {
-        "id": "p3",
-        "left": "Bước 5: Đánh giá hồ sơ dự thầu",
-        "right": "Xác định nhà thầu đáp ứng yêu cầu kỹ thuật và có đề xuất tài chính phù hợp nhất"
-      },
-      {
-        "id": "p4",
-        "left": "Bước 7: Công bố & ký hợp đồng",
-        "right": "Chính thức hóa quan hệ pháp lý thực hiện gói thầu, làm căn cứ quản lý tiến độ, chi phí"
-      }
-    ],
-    "options": [
-      {
-        "id": "A",
-        "text": "1 - Xác định cần mua gì; 4 - Công khai mở thầu; 5 - Đánh giá đáp ứng; 7 - Chính thức hóa quan hệ pháp lý",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "1 - Đánh giá đáp ứng; 4 - Chính thức hóa; 5 - Xác định cần mua; 7 - Công khai mở thầu",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "1 - Công khai mở thầu; 4 - Xác định cần mua; 5 - Chính thức hóa; 7 - Đánh giá đáp ứng",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "1 - Chính thức hóa; 4 - Đánh giá đáp ứng; 5 - Công khai mở thầu; 7 - Xác định cần mua",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Quy trình 7 bước liên tục từ chuẩn bị đến ký hợp đồng.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Thị trường quốc tế về chế tạo thiết bị cơ điện công nghệ cao cột nước lớn như gói thầu 01TB-BA mang cấu trúc thị trường nào?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "a",
-        "text": "Độc quyền nhóm (Oligopoly) với rào cản công nghệ cực lớn",
-        "isCorrect": true
-      },
-      {
-        "id": "b",
-        "text": "Cạnh tranh hoàn hảo (Perfect Competition)",
-        "isCorrect": false
-      },
-      {
-        "id": "c",
-        "text": "Độc quyền tự nhiên của một doanh nghiệp duy nhất (Pure Monopoly)",
-        "isCorrect": false
-      },
-      {
-        "id": "d",
-        "text": "Cạnh tranh độc quyền phân tán quy mô nhỏ",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Chỉ một số ít tập đoàn hàng đầu thế giới sở hữu bí quyết công nghệ tua-bin đảo chiều.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_MULTI",
-    "content": "Khi xây dựng Hồ sơ mời thầu (HSMT) gói 01TB-BA, bên mời thầu phải tuân thủ các nguyên tắc kiểm soát nào? (Chọn các phương án đúng)",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Căn cứ tiêu chuẩn kỹ thuật quốc tế (IEC, IEEE) và quy chuẩn Việt Nam",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Đảm bảo tính kiểm chứng, tuyệt đối không cài cắm thông số độc quyền của riêng một hãng",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Yêu cầu năng lực tài chính và kinh nghiệm tương xứng với quy mô 4.500 tỷ đồng",
-        "isCorrect": true
-      },
-      {
-        "id": "D",
-        "text": "Cài cắm thương hiệu cụ thể để loại bỏ các nhà thầu cạnh tranh",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Xây dựng tiêu chí khách quan để tạo sự cạnh tranh lành mạnh.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "FILL_BLANK",
-    "content": "Dự toán gói thầu 01TB-BA là 4.548,081 tỷ đồng, giá trúng thầu là 4.462,603 tỷ đồng. Giá trị tuyệt đối tiết kiệm được qua đấu thầu là ... tỷ đồng (nhập số thập phân có 3 chữ số sau dấu chấm, ví dụ: 85.478):",
-    "answer": "85.478 | 85,478 | 85.478 tỷ | 85.478 tỷ đồng | 85,478 tỷ | 85,478 tỷ đồng",
-    "points": 30,
-    "timeLimit": 20,
-    "hint": "Lấy Dự toán trừ Giá hợp đồng: 4548.081 - 4462.603 = ?",
-    "isTieBreaker": false
-  },
-  {
-    "type": "FILL_BLANK",
-    "content": "Với dự toán 4.548,081 tỷ đồng và số tiền tiết kiệm 85,478 tỷ đồng, tỷ lệ tiết kiệm của gói thầu 01TB-BA so với giá dự toán khi làm tròn 2 chữ số thập phân là ... % (ví dụ: 1.88):",
-    "answer": "1.88 | 1,88 | 1.88% | 1,88%",
-    "points": 30,
-    "timeLimit": 20,
-    "hint": "(85.478 / 4548.081) * 100 = ?",
-    "isTieBreaker": false
-  },
-  {
-    "type": "FILL_BLANK",
-    "content": "Dự toán gói thầu 01TB-BA là 4.548,081 tỷ đồng, tổng mức đầu tư dự án Bác Ái là 21.101,468 tỷ đồng. Gói thầu này chiếm tỷ trọng khi làm tròn 2 chữ số thập phân là ... % tổng mức đầu tư (ví dụ: 21.55):",
-    "answer": "21.55 | 21,55 | 21.55% | 21,55%",
-    "points": 30,
-    "timeLimit": 20,
-    "hint": "(4548.081 / 21101.468) * 100 = ?",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Nhà máy Bác Ái có 4 tổ máy tổng công suất 1.200 MW. Trong giờ thấp điểm đêm, nhà máy bơm nước tích năng tiêu thụ 12 triệu kWh điện. Biết hiệu suất chu trình kép đạt 75%, hỏi lượng điện phát ra hòa lưới lúc cao điểm là bao nhiêu?",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "8,0 triệu kWh",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "9,0 triệu kWh",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "10,5 triệu kWh",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "12,0 triệu kWh",
-        "isCorrect": false
-      }
-    ],
-    "hint": "E_phát = E_bơm * 75% = 12 * 0.75 = 9.0 triệu kWh.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "DRAG_DROP",
-    "content": "Hãy sắp xếp đúng trình tự 7 bước trong quy trình tổ chức thực hiện đấu thầu theo quy định pháp luật:",
-    "points": 30,
-    "timeLimit": 35,
-    "options": [
-      {
-        "id": "STEP_1",
-        "text": "Bước 1: Chuẩn bị đấu thầu (Lập & duyệt KHLCNT, HSMT)",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_2",
-        "text": "Bước 2: Mời thầu (Đăng tải thông báo & phát hành HSMT)",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_3",
-        "text": "Bước 3: Tiếp nhận hồ sơ dự thầu (HSDT)",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_4",
-        "text": "Bước 4: Mở thầu",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_5",
-        "text": "Bước 5: Đánh giá HSDT và thương thảo hợp đồng",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_6",
-        "text": "Bước 6: Trình duyệt, thẩm định và phê duyệt kết quả",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_7",
-        "text": "Bước 7: Công bố kết quả và hoàn thiện, ký kết hợp đồng",
-        "isCorrect": true
-      }
-    ],
-    "hint": "Chuẩn bị -> Mời thầu -> Tiếp nhận -> Mở thầu -> Đánh giá -> Phê duyệt -> Ký hợp đồng.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MATCHING",
-    "content": "Hãy ghép nối 4 mốc thời gian thực tế của Gói thầu 01TB-BA với sự kiện tương ứng:",
-    "points": 30,
-    "timeLimit": 20,
-    "pairs": [
-      {
-        "id": "p1",
-        "left": "15/10/2025",
-        "right": "Phát hành Hồ sơ mời thầu (HSMT) rộng rãi quốc tế"
-      },
-      {
-        "id": "p2",
-        "left": "23/02/2026",
-        "right": "Thời điểm đóng thầu và mở thầu công khai"
-      },
-      {
-        "id": "p3",
-        "left": "21/10/2026",
-        "right": "Phê duyệt kết quả lựa chọn nhà thầu trúng thầu"
-      },
-      {
-        "id": "p4",
-        "left": "26/10/2026",
-        "right": "EVN chính thức ký kết hợp đồng với liên danh trúng thầu"
-      }
-    ],
-    "options": [
-      {
-        "id": "A",
-        "text": "15/10/2025: Phát hành HSMT; 23/02/2026: Đóng/Mở thầu; 21/10/2026: Phê duyệt kết quả; 26/10/2026: Ký hợp đồng",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "15/10/2025: Đóng/Mở thầu; 23/02/2026: Phát hành HSMT; 21/10/2026: Ký hợp đồng; 26/10/2026: Phê duyệt kết quả",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "15/10/2025: Ký hợp đồng; 23/02/2026: Phê duyệt kết quả; 21/10/2026: Phát hành HSMT; 26/10/2026: Đóng/Mở thầu",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "15/10/2025: Phê duyệt kết quả; 23/02/2026: Ký hợp đồng; 21/10/2026: Đóng/Mở thầu; 26/10/2026: Phát hành HSMT",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Tiến trình diễn ra từ tháng 10/2025 đến tháng 10/2026.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Tại sao tỷ lệ tiết kiệm 1,88% (~85,478 tỷ đồng) ở gói 01TB-BA không bị coi là thấp mà vẫn phản ánh sự thành công lớn trong đàm phán của EVN?",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Do chủ đầu tư không quan tâm đến giá mà chỉ quan tâm đến xuất xứ",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Do đặc thù thị trường oligopoly công nghệ cao, biên độ giảm giá rất hẹp vì giá thành cấu thành chủ yếu từ công nghệ lõi và bản quyền sáng chế",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Do nhà thầu đã chủ động giảm giá 50% trước khi nộp hồ sơ",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Do pháp luật quy định tỷ lệ tiết kiệm đấu thầu không được vượt quá 2%",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Thị trường độc quyền nhóm có biên độ thương thảo giá rất hạn hẹp.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Trong quản trị dự án hiện đại, nguyên tắc 'Giá trị đồng tiền' (Value for Money) trong đấu thầu thiết bị cơ điện công nghệ cao được hiểu là gì?",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Luôn chọn đơn vị có giá mua thiết bị ban đầu thấp nhất để cắt giảm ngân sách",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Tối ưu hóa tổng chi phí trong toàn bộ vòng đời tài sản (Life-Cycle Cost), bao gồm chi phí mua, vận hành, bảo dưỡng và độ tin cậy tránh sự cố dừng máy",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Mua thiết bị có công nghệ đắt nhất hiện có trên thế giới",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Đàm phán để nhà thầu cung cấp miễn phí toàn bộ vật tư trong 51 tháng",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Cân nhắc toàn diện chi phí đầu tư, vận hành lâu dài và hiệu suất chuyển đổi.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Tại sao Gói thầu 01TB-BA được xác định là gói thầu nằm trên 'đường găng' (Critical Path) quyết định sự thành bại của Dự án Thủy điện Bác Ái?",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Do gói thầu có giá trị nhỏ nhất trong dự án",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Do thời gian thực hiện kéo dài 51 tháng; nếu việc chế tạo, vận chuyển hay lắp đặt thiết bị bị chậm, toàn bộ mốc phát điện của dự án sẽ bị trễ tương ứng",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Do gói thầu chỉ được triển khai sau khi tất cả các hạng mục khác đã hoàn thành",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Do có sự tham gia của nhiều nhà thầu phụ trong nước",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Bất kỳ sự chậm trễ nào trên đường găng đều làm trễ tiến độ toàn bộ dự án.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MATCHING",
-    "content": "Hãy ghép đúng 4 rủi ro thực tiễn của gói thầu 01TB-BA với giải pháp quản trị tương ứng:",
-    "points": 30,
-    "timeLimit": 20,
-    "pairs": [
-      {
-        "id": "p1",
-        "left": "Rủi ro độc quyền công nghệ nguồn",
-        "right": "Xây dựng tiêu chí HSMT theo tiêu chuẩn quốc tế IEC/IEEE, không cài cắm thông số riêng"
-      },
-      {
-        "id": "p2",
-        "left": "Rủi ro logistics siêu trường siêu trọng",
-        "right": "Khảo sát kỹ tuyến đèo dốc từ cảng biển vào công trình Khánh Hòa và mua bảo hiểm vận tải"
-      },
-      {
-        "id": "p3",
-        "left": "Rủi ro bất định chất lượng xưởng nước ngoài",
-        "right": "Thuê tổ chức kiểm định độc lập quốc tế (Third-party inspection) giám sát thử nghiệm"
-      },
-      {
-        "id": "p4",
-        "left": "Rủi ro biến động giá/tỷ giá 51 tháng",
-        "right": "Áp dụng điều kiện hợp đồng quốc tế FIDIC với cơ chế điều chỉnh giá minh bạch"
-      }
-    ],
-    "options": [
-      {
-        "id": "A",
-        "text": "Độc quyền -> Chuẩn IEC/IEEE; Logistics -> Khảo sát đèo dốc; Xưởng nước ngoài -> Kiểm định độc lập; Tỷ giá 51 tháng -> Hợp đồng FIDIC",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Độc quyền -> Hợp đồng FIDIC; Logistics -> Kiểm định độc lập; Xưởng nước ngoài -> Chuẩn IEC/IEEE; Tỷ giá 51 tháng -> Khảo sát đèo dốc",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Độc quyền -> Khảo sát đèo dốc; Logistics -> Hợp đồng FIDIC; Xưởng nước ngoài -> Chuẩn IEC/IEEE; Tỷ giá 51 tháng -> Kiểm định độc lập",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Độc quyền -> Kiểm định độc lập; Logistics -> Chuẩn IEC/IEEE; Xưởng nước ngoài -> Hợp đồng FIDIC; Tỷ giá 51 tháng -> Khảo sát đèo dốc",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Các giải pháp quản trị rủi ro chuyên sâu trong quản lý dự án.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "FILL_BLANK",
-    "content": "Chủ đầu tư đánh giá 2 phương án: Phương án A (mua 4.462 tỷ, bảo dưỡng 1.200 tỷ, tổn thất 180 tỷ); Phương án B (mua 4.420 tỷ, bảo dưỡng 1.350 tỷ, tổn thất 250 tỷ). Theo tiêu chí Chi phí vòng đời (LCC), Phương án A giúp tiết kiệm hơn Phương án B tổng chi phí vòng đời là ... tỷ đồng:",
-    "answer": "178 | 178 tỷ | 178 tỷ đồng",
-    "points": 40,
-    "timeLimit": 30,
-    "hint": "LCC_A = 4462 + 1200 + 180 = 5842 tỷ. LCC_B = 4420 + 1350 + 250 = 6020 tỷ. Tiết kiệm = 6020 - 5842 = ?",
-    "isTieBreaker": false
-  },
-  {
-    "type": "FILL_BLANK",
-    "content": "HSMT quy định Điểm tổng hợp: D_TH = 0,7 * D_KT + 0,3 * D_TC. Nhà thầu X đạt điểm kỹ thuật D_KT = 92 và điểm tài chính D_TC = 85. Điểm tổng hợp D_TH của nhà thầu X là ... điểm (ví dụ: 89.9):",
-    "answer": "89.9 | 89,9 | 89.9 điểm | 89,9 điểm",
-    "points": 40,
-    "timeLimit": 30,
-    "hint": "D_TH = 0.7 * 92 + 0.3 * 85 = 64.4 + 25.5 = ?",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Tình huống: Do điều kiện địa chất phức tạp, công tác đào hầm và gian máy ngầm bị chậm tiến độ 6 tháng, trong khi nhà máy nước ngoài đã chế tạo xong tổ máy đúng theo mốc 51 tháng. Theo thực tiễn quản trị hợp đồng FIDIC, giải pháp nào chủ động và tối ưu nhất cho EVN?",
-    "points": 40,
-    "timeLimit": 30,
-    "options": [
-      {
-        "id": "A",
-        "text": "Hủy bỏ hợp đồng với nhà thầu quốc tế để tránh bị phạt lưu kho",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Bố trí kho bãi bảo quản chuyên dụng đạt chuẩn kiểm soát nhiệt ẩm tại cảng/hiện trường, đàm phán gia hạn bảo hiểm và chia nhỏ tiến độ lắp đặt cuốn chiếu theo từng tổ máy",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Để thiết bị ngoài trời tại công trường miền núi chờ đến khi hoàn thành gian máy ngầm",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Yêu cầu nhà thầu nước ngoài chịu toàn bộ chi phí lưu bãi mà không cần thỏa thuận bổ sung",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Quản trị rủi ro giao diện giữa công trình ngầm và thiết bị cơ điện.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_MULTI",
-    "content": "Việc EVN tổ chức đấu thầu rộng rãi quốc tế và áp dụng phương thức một giai đoạn hai túi hồ sơ cho gói 01TB-BA mang lại những giá trị cốt lõi nào cho ngành điện và nền kinh tế? (Chọn tất cả các phương án đúng)",
-    "points": 40,
-    "timeLimit": 30,
-    "options": [
-      {
-        "id": "A",
-        "text": "Tiếp cận công nghệ tua-bin bơm cột nước cao hàng đầu thế giới, tối ưu hóa hiệu suất chuyển đổi năng lượng",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Tuân thủ nghiêm ngặt nguyên tắc cạnh tranh, công bằng, minh bạch của pháp luật đấu thầu Việt Nam",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Triệt tiêu rủi ro chọn nhà thầu giá rẻ yếu kém kỹ thuật, đảm bảo an toàn tuyệt đối cho hệ thống điện quốc gia",
-        "isCorrect": true
-      },
-      {
-        "id": "D",
-        "text": "Tạo cơ hội tiếp thu kinh nghiệm quản trị dự án quốc tế và chuyển giao kỹ thuật cho kỹ sư Việt Nam",
-        "isCorrect": true
-      }
-    ],
-    "hint": "Cả 4 giá trị: Công nghệ, Pháp lý, An toàn vận hành, và Nâng cao năng lực quốc gia.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "FILL_BLANK",
-    "content": "Nhà thầu hoàn thành lắp đặt và đưa tổ máy số 1 vào vận hành sớm hơn kế hoạch 60 ngày, giúp tiết kiệm chi phí chạy dầu trung bình 1,5 tỷ đồng mỗi ngày. Tổng giá trị kinh tế trực tiếp đem lại cho EVN là ... tỷ đồng:",
-    "answer": "90 | 90 tỷ | 90 tỷ đồng",
-    "points": 40,
-    "timeLimit": 30,
-    "hint": "Tổng tiết kiệm = 60 ngày * 1.5 tỷ đồng/ngày = ?",
-    "isTieBreaker": false
-  }
+    {
+        "type": "MC_SINGLE",
+        "content": "Bản chất cốt lõi của hoạt động đấu thầu trong quản lý dự án nhà nước là gì?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Lựa chọn đơn vị đưa ra mức giá dự thầu thấp nhất bằng mọi giá",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Cơ chế lựa chọn đơn vị thực hiện dựa trên các tiêu chí công khai, có thể kiểm tra và đánh giá toàn diện",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Chỉ định trực tiếp doanh nghiệp quen thuộc để rút ngắn thủ tục",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Phân chia đều công việc cho tất cả các nhà thầu nộp hồ sơ",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Đấu thầu không đơn thuần là chọn nhà thầu đưa ra mức giá thấp nhất.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Đối với Chủ đầu tư và chủ dự án, hoạt động đấu thầu mang lại vai trò quan trọng nhất nào sau đây?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Nâng cao hiệu quả sử dụng vốn, kiểm soát tiến độ, chất lượng và hạn chế rủi ro thông đồng",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Chuyển giao 100% trách nhiệm pháp lý dự án cho cơ quan quản lý nhà nước",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Miễn trừ nghĩa vụ giám sát thi công tại hiện trường",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Tự động hóa hoàn toàn quy trình giải ngân vốn đầu tư công",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Giúp so sánh giá với chất lượng, giải pháp kỹ thuật và giảm nguy cơ thiên vị.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "TRUE_FALSE",
+        "content": "Đấu thầu chỉ mang lại lợi ích cho chủ đầu tư, không tạo cơ hội tiếp cận dự án hay thúc đẩy cải thiện công nghệ cho các nhà thầu.",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "true",
+                "text": "Đúng (True)",
+                "isCorrect": false
+            },
+            {
+                "id": "false",
+                "text": "Sai (False)",
+                "isCorrect": true
+            }
+        ],
+        "hint": "Cạnh tranh khuyến khích nhà thầu nâng cao công nghệ, chất lượng nhân sự và phương pháp thi công.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Ba tiêu chí cơ bản để phân loại gói thầu phục vụ phân tích và quản lý dự án là gì?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Theo nguồn vốn, thời gian thực hiện, và địa bàn triển khai",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Theo quy mô, mức độ phức tạp, và bản chất sản phẩm cần mua",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Theo loại hợp đồng, số lượng nhà thầu, và tỷ lệ tạm ứng",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Theo cấp công trình, chủ sở hữu, và hình thức bảo lãnh",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Xem xét quy mô (nhỏ/lớn), độ phức tạp (ít/phức tạp), và bản chất (xây lắp, hàng hóa, tư vấn, phi tư vấn).",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Gói thầu cung cấp thiết bị máy móc, tua-bin, máy phát và vật tư công nghệ thuộc nhóm gói thầu nào theo bản chất sản phẩm?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Gói thầu xây lắp",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Gói thầu dịch vụ tư vấn",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Gói thầu mua sắm hàng hóa",
+                "isCorrect": true
+            },
+            {
+                "id": "D",
+                "text": "Gói thầu dịch vụ phi tư vấn",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Cung cấp thiết bị, máy móc, vật tư hoặc hàng hóa khác.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Theo Luật Đấu thầu số 90/2025/QH15, hình thức lựa chọn nhà thầu nào là hình thức mặc định, không hạn chế số lượng nhà thầu tham dự?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Đấu thầu hạn chế",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Chào hàng cạnh tranh",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Chỉ định thầu",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Đấu thầu rộng rãi",
+                "isCorrect": true
+            }
+        ],
+        "hint": "Không hạn chế số lượng nhà thầu tham dự, là hình thức mặc định theo luật.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "TRUE_FALSE",
+        "content": "Theo quy định hiện hành, các hình thức đấu thầu phổ biến như đấu thầu rộng rãi, hạn chế hay chào hàng cạnh tranh hiện nay bắt buộc thực hiện qua mạng.",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "true",
+                "text": "Đúng (True)",
+                "isCorrect": true
+            },
+            {
+                "id": "false",
+                "text": "Sai (False)",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Thực hiện qua Hệ thống mạng đấu thầu quốc gia theo Luật Đấu thầu số 90/2025/QH15.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Chủ đầu tư chịu trách nhiệm toàn diện về hiệu quả đầu tư Dự án Nhà máy Thủy điện Tích năng Bác Ái là đơn vị nào?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Tập đoàn Dầu khí Việt Nam (PVN)",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Tập đoàn Điện lực Việt Nam (EVN)",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Tổng công ty Truyền tải điện Quốc gia (EVNNPT)",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Bộ Công Thương",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Tập đoàn chịu trách nhiệm an ninh cung cấp điện và định hướng nguồn điện quốc gia.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Cơ quan trực tiếp thực hiện chức năng đại diện chủ đầu tư EVN, điều phối các gói thầu và giám sát chất lượng hiện trường dự án Bác Ái là đơn vị nào?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Ban Quản lý Dự án Điện 1",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Ban Quản lý Dự án Điện 2",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Ban Quản lý Dự án Điện 3 (Ban QLDA Điện 3)",
+                "isCorrect": true
+            },
+            {
+                "id": "D",
+                "text": "Công ty Thủy điện Trị An",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Đại diện chủ đầu tư quản lý, điều hành dự án Thủy điện Tích năng Bác Ái.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Theo mô hình phân cấp hành chính địa phương 2 cấp, Dự án Nhà máy Thủy điện Tích năng Bác Ái được xây dựng trên địa bàn xã Phước Hòa trực thuộc tỉnh nào?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "a",
+                "text": "Khánh Hòa",
+                "isCorrect": true
+            },
+            {
+                "id": "b",
+                "text": "Lâm Đồng",
+                "isCorrect": false
+            },
+            {
+                "id": "c",
+                "text": "Đắk Lắk",
+                "isCorrect": false
+            },
+            {
+                "id": "d",
+                "text": "Bình Thuận",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Theo mô hình chính quyền địa phương 2 cấp, dự án đặt tại xã Phước Hòa, trực thuộc tỉnh Khánh Hòa.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Phương thức đấu thầu 'Một giai đoạn một túi hồ sơ' (1G1T) phù hợp nhất với loại gói thầu nào?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Gói thầu công nghệ cao phức tạp chưa từng có tiền lệ",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Gói thầu mua sắm, xây lắp thông dụng, yêu cầu kỹ thuật tương đối rõ ràng",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Gói thầu cần làm rõ thiết kế công nghệ qua nhiều bước đàm phán",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Gói thầu dịch vụ tư vấn lập báo cáo khả thi cấp đặc biệt",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Quy trình nộp kỹ thuật và tài chính chung một túi, thuận tiện đánh giá nhanh.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Điểm cốt lõi trong cơ chế vận hành của phương thức 'Một giai đoạn hai túi hồ sơ' (1G2T) là gì?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Mở đồng thời cả hồ sơ kỹ thuật và hồ sơ tài chính tại thời điểm mở thầu",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Nhà thầu nộp riêng hồ sơ đề xuất kỹ thuật và tài chính; hồ sơ kỹ thuật được mở và đánh giá trước, chỉ nhà thầu đạt kỹ thuật mới được mở hồ sơ tài chính",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Chỉ mở hồ sơ tài chính để xếp hạng giá trước, sau đó mới kiểm tra hồ sơ kỹ thuật của người có giá thấp nhất",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Nhà thầu được nộp lại báo giá tài chính sau khi đã biết kết quả chấm điểm kỹ thuật",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Giúp tách biệt việc đánh giá chất lượng kỹ thuật với giá dự thầu.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "TRUE_FALSE",
+        "content": "Phương thức đấu thầu Một giai đoạn hai túi hồ sơ (1G2T) cho phép bên mời thầu mở đồng thời cả hồ sơ đề xuất kỹ thuật và hồ sơ đề xuất tài chính ngay tại thời điểm đóng thầu.",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "true",
+                "text": "Đúng (True)",
+                "isCorrect": false
+            },
+            {
+                "id": "false",
+                "text": "Sai (False) — Phải mở và đánh giá đề xuất kỹ thuật trước; chỉ nhà thầu đạt yêu cầu kỹ thuật mới được mở đề xuất tài chính",
+                "isCorrect": true
+            }
+        ],
+        "hint": "Hạn chế việc giá thấp tác động không phù hợp đến đánh giá kỹ thuật.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Tổng mức đầu tư được phê duyệt của Dự án Nhà máy Thủy điện Tích năng Bác Ái là bao nhiêu?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "4.548,081 tỷ đồng",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "12.000,000 tỷ đồng",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "21.101,468 tỷ đồng (hơn 21.100 tỷ đồng)",
+                "isCorrect": true
+            },
+            {
+                "id": "D",
+                "text": "35.200,500 tỷ đồng",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Quy mô vốn hơn 21.100 tỷ đồng, là dự án năng lượng trọng điểm.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Nhà máy Thủy điện Tích năng Bác Ái có tổng công suất thiết kế là bao nhiêu và gồm mấy tổ máy?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Tổng công suất 600 MW, gồm 2 tổ máy (mỗi tổ máy 300 MW)",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Tổng công suất 1.200 MW, gồm 4 tổ máy (mỗi tổ máy 300 MW)",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Tổng công suất 1.200 MW, gồm 6 tổ máy (mỗi tổ máy 200 MW)",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Tổng công suất 2.400 MW, gồm 4 tổ máy (mỗi tổ máy 600 MW)",
+                "isCorrect": false
+            }
+        ],
+        "hint": "1.200 MW chia đều cho 4 tổ máy đảo chiều.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_MULTI",
+        "content": "Theo Quy hoạch điện VIII, Thủy điện Tích năng Bác Ái đóng những vai trò then chốt nào trong hệ thống điện quốc gia? (Chọn các phương án đúng)",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Phủ đỉnh biểu đồ phụ tải giờ cao điểm",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Điều tần và bù công suất phản kháng cho lưới điện",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Tích trữ điện năng dư thừa từ năng lượng tái tạo (điện gió, mặt trời) lúc thấp điểm",
+                "isCorrect": true
+            },
+            {
+                "id": "D",
+                "text": "Cung cấp nguồn than và khí đốt dự trữ quốc gia",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Đóng vai trò xương sống trong tích trữ năng lượng và điều tần hệ thống.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Tên chính thức và dự toán của Gói thầu số 01TB-BA thuộc dự án Thủy điện Tích năng Bác Ái là gì?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Gói thầu số 01TB-BA: Thi công xây lắp đập và hầm ngầm; dự toán 21.101 tỷ đồng",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Gói thầu số 01TB-BA: Cung cấp thiết bị cơ điện; dự toán 4.548,081 tỷ đồng",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Gói thầu số 01TB-BA: Tư vấn thiết kế chi tiết; dự toán 85,478 tỷ đồng",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Gói thầu số 01TB-BA: Cung cấp trạm biến áp 500kV; dự toán 4.462 tỷ đồng",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Gói thầu cung cấp thiết bị cơ điện với dự toán hơn 4.500 tỷ đồng.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Yêu cầu kỹ thuật đặc thù và khắt khe nhất của thiết bị cơ điện chính trong gói 01TB-BA là gì?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Chỉ quay một chiều cố định với tốc độ chậm",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Tua-bin bơm và máy phát đảo chiều phải thay đổi chiều quay luân phiên liên tục giữa chế độ bơm tích nước và phát điện với độ chính xác cơ khí tuyệt đối",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Sử dụng vật liệu composite thông thường để giảm giá thành",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Hoạt động bằng nguồn năng lượng diesel phụ trợ",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Công nghệ tua-bin bơm kép và máy phát - động cơ đảo chiều.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Căn cứ thực tiễn để EVN áp dụng hình thức 'Đấu thầu rộng rãi quốc tế' cho gói thầu 01TB-BA là gì?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Nhà tài trợ ODA bắt buộc chỉ định thầu cho một quốc gia",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Các nhà thầu trong nước chưa đủ năng lực sản xuất, chế tạo thiết bị cơ điện thủy điện tích năng công suất lớn 1.200 MW",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Để tiết kiệm thời gian chuẩn bị hồ sơ mời thầu",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Do gói thầu có quy mô tài chính dưới 100 tỷ đồng",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Thị trường nội địa chưa tự chủ được công nghệ tua-bin đảo chiều cột nước cao.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Đơn vị nào đã trúng thầu Gói thầu số 01TB-BA theo quyết định phê duyệt ngày 21/10/2026?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Tập đoàn Xây dựng Hòa Bình và Coteccons",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Liên danh Voith Hydro Shanghai Ltd. và Powerchina Zhongnan Engineering Corporation Limited",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Tập đoàn General Electric (GE) và Alstom",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Tập đoàn Toshiba Energy Systems và Andritz Hydro",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Liên danh giữa đơn vị của Đức/Trung Quốc và đối tác kỹ thuật Trung Quốc.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Thời gian thực hiện hợp đồng Gói thầu số 01TB-BA là bao nhiêu tháng?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "24 tháng",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "36 tháng",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "51 tháng",
+                "isCorrect": true
+            },
+            {
+                "id": "D",
+                "text": "72 tháng",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Kéo dài 51 tháng (tương đương 4,25 năm).",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MATCHING",
+        "content": "Hãy ghép đúng 4 hình thức lựa chọn nhà thầu theo Luật Đấu thầu 90/2025/QH15 với đặc trưng tương ứng:",
+        "points": 20,
+        "timeLimit": 15,
+        "pairs": [
+            {
+                "id": "p1",
+                "left": "Chào hàng cạnh tranh",
+                "right": "Gói thầu giá trị nhỏ, kỹ thuật đơn giản và hàng hóa thông dụng trên thị trường"
+            },
+            {
+                "id": "p2",
+                "left": "Mua sắm trực tiếp",
+                "right": "Ký hợp đồng với nhà thầu đã trúng thầu gói thầu tương tự trước đó đáp ứng đủ điều kiện"
+            },
+            {
+                "id": "p3",
+                "left": "Chỉ định thầu",
+                "right": "Lựa chọn trực tiếp nhà thầu cho trường hợp cấp bách, bí mật nhà nước hoặc điều kiện đặc thù"
+            },
+            {
+                "id": "p4",
+                "left": "Tự thực hiện",
+                "right": "Chủ đầu tư trực tiếp huy động lực lượng, thiết bị của mình để triển khai khi đủ năng lực"
+            }
+        ],
+        "options": [
+            {
+                "id": "A",
+                "text": "p1 - Hàng hóa thông dụng; p2 - Nhà thầu trúng gói tương tự; p3 - Cấp bách/bí mật; p4 - Chủ đầu tư trực tiếp làm",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "p1 - Cấp bách; p2 - Chủ đầu tư trực tiếp; p3 - Hàng hóa thông dụng; p4 - Nhà thầu trúng trước đó",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "p1 - Chủ đầu tư trực tiếp; p2 - Hàng hóa thông dụng; p3 - Nhà thầu trúng trước đó; p4 - Cấp bách",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "p1 - Nhà thầu trúng trước đó; p2 - Cấp bách; p3 - Chủ đầu tư trực tiếp; p4 - Hàng hóa thông dụng",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Các hình thức lựa chọn nhà thầu phổ biến theo Luật Đấu thầu.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MATCHING",
+        "content": "Hãy ghép đúng 4 bước trong quy trình tổ chức đấu thầu với mục tiêu cốt lõi tương ứng:",
+        "points": 20,
+        "timeLimit": 15,
+        "pairs": [
+            {
+                "id": "p1",
+                "left": "Bước 1: Chuẩn bị đấu thầu",
+                "right": "Xác định rõ cần mua gì, yêu cầu ra sao và lựa chọn nhà thầu theo cơ chế nào"
+            },
+            {
+                "id": "p2",
+                "left": "Bước 4: Mở thầu",
+                "right": "Bảo đảm tính công khai, minh bạch và tạo cơ sở dữ liệu cho bước đánh giá hồ sơ"
+            },
+            {
+                "id": "p3",
+                "left": "Bước 5: Đánh giá hồ sơ dự thầu",
+                "right": "Xác định nhà thầu đáp ứng yêu cầu kỹ thuật và có đề xuất tài chính phù hợp nhất"
+            },
+            {
+                "id": "p4",
+                "left": "Bước 7: Công bố & ký hợp đồng",
+                "right": "Chính thức hóa quan hệ pháp lý thực hiện gói thầu, làm căn cứ quản lý tiến độ, chi phí"
+            }
+        ],
+        "options": [
+            {
+                "id": "A",
+                "text": "1 - Xác định cần mua gì; 4 - Công khai mở thầu; 5 - Đánh giá đáp ứng; 7 - Chính thức hóa quan hệ pháp lý",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "1 - Đánh giá đáp ứng; 4 - Chính thức hóa; 5 - Xác định cần mua; 7 - Công khai mở thầu",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "1 - Công khai mở thầu; 4 - Xác định cần mua; 5 - Chính thức hóa; 7 - Đánh giá đáp ứng",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "1 - Chính thức hóa; 4 - Đánh giá đáp ứng; 5 - Công khai mở thầu; 7 - Xác định cần mua",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Quy trình 7 bước liên tục từ chuẩn bị đến ký hợp đồng.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Thị trường quốc tế về chế tạo thiết bị cơ điện công nghệ cao cột nước lớn như gói thầu 01TB-BA mang cấu trúc thị trường nào?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "a",
+                "text": "Độc quyền nhóm (Oligopoly) với rào cản công nghệ cực lớn",
+                "isCorrect": true
+            },
+            {
+                "id": "b",
+                "text": "Cạnh tranh hoàn hảo (Perfect Competition)",
+                "isCorrect": false
+            },
+            {
+                "id": "c",
+                "text": "Độc quyền tự nhiên của một doanh nghiệp duy nhất (Pure Monopoly)",
+                "isCorrect": false
+            },
+            {
+                "id": "d",
+                "text": "Cạnh tranh độc quyền phân tán quy mô nhỏ",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Chỉ một số ít tập đoàn hàng đầu thế giới sở hữu bí quyết công nghệ tua-bin đảo chiều.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_MULTI",
+        "content": "Khi xây dựng Hồ sơ mời thầu (HSMT) gói 01TB-BA, bên mời thầu phải tuân thủ các nguyên tắc kiểm soát nào? (Chọn các phương án đúng)",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Căn cứ tiêu chuẩn kỹ thuật quốc tế (IEC, IEEE) và quy chuẩn Việt Nam",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Đảm bảo tính kiểm chứng, tuyệt đối không cài cắm thông số độc quyền của riêng một hãng",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Yêu cầu năng lực tài chính và kinh nghiệm tương xứng với quy mô 4.500 tỷ đồng",
+                "isCorrect": true
+            },
+            {
+                "id": "D",
+                "text": "Cài cắm thương hiệu cụ thể để loại bỏ các nhà thầu cạnh tranh",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Xây dựng tiêu chí khách quan để tạo sự cạnh tranh lành mạnh.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "FILL_BLANK",
+        "content": "Dự toán gói thầu 01TB-BA là 4.548,081 tỷ đồng, giá trúng thầu là 4.462,603 tỷ đồng. Giá trị tuyệt đối tiết kiệm được qua đấu thầu là ... tỷ đồng (nhập số thập phân có 3 chữ số sau dấu chấm, ví dụ: 85.478):",
+        "answer": "85.478 | 85,478 | 85.478 tỷ | 85.478 tỷ đồng | 85,478 tỷ | 85,478 tỷ đồng",
+        "points": 30,
+        "timeLimit": 30,
+        "hint": "Lấy Dự toán trừ Giá hợp đồng: 4548.081 - 4462.603 = ?",
+        "isTieBreaker": false
+    },
+    {
+        "type": "FILL_BLANK",
+        "content": "Với dự toán 4.548,081 tỷ đồng và số tiền tiết kiệm 85,478 tỷ đồng, tỷ lệ tiết kiệm của gói thầu 01TB-BA so với giá dự toán khi làm tròn 2 chữ số thập phân là ... % (ví dụ: 1.88):",
+        "answer": "1.88 | 1,88 | 1.88% | 1,88%",
+        "points": 30,
+        "timeLimit": 30,
+        "hint": "(85.478 / 4548.081) * 100 = ?",
+        "isTieBreaker": false
+    },
+    {
+        "type": "FILL_BLANK",
+        "content": "Dự toán gói thầu 01TB-BA là 4.548,081 tỷ đồng, tổng mức đầu tư dự án Bác Ái là 21.101,468 tỷ đồng. Gói thầu này chiếm tỷ trọng khi làm tròn 2 chữ số thập phân là ... % tổng mức đầu tư (ví dụ: 21.55):",
+        "answer": "21.55 | 21,55 | 21.55% | 21,55%",
+        "points": 30,
+        "timeLimit": 30,
+        "hint": "(4548.081 / 21101.468) * 100 = ?",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Nhà máy Bác Ái có 4 tổ máy tổng công suất 1.200 MW. Trong giờ thấp điểm đêm, nhà máy bơm nước tích năng tiêu thụ 12 triệu kWh điện. Biết hiệu suất chu trình kép đạt 75%, hỏi lượng điện phát ra hòa lưới lúc cao điểm là bao nhiêu?",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "8,0 triệu kWh",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "9,0 triệu kWh",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "10,5 triệu kWh",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "12,0 triệu kWh",
+                "isCorrect": false
+            }
+        ],
+        "hint": "E_phát = E_bơm * 75% = 12 * 0.75 = 9.0 triệu kWh.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "DRAG_DROP",
+        "content": "Hãy sắp xếp đúng trình tự 7 bước trong quy trình tổ chức thực hiện đấu thầu theo quy định pháp luật:",
+        "points": 30,
+        "timeLimit": 35,
+        "options": [
+            {
+                "id": "STEP_1",
+                "text": "Bước 1: Chuẩn bị đấu thầu (Lập & duyệt KHLCNT, HSMT)",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_2",
+                "text": "Bước 2: Mời thầu (Đăng tải thông báo & phát hành HSMT)",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_3",
+                "text": "Bước 3: Tiếp nhận hồ sơ dự thầu (HSDT)",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_4",
+                "text": "Bước 4: Mở thầu",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_5",
+                "text": "Bước 5: Đánh giá HSDT và thương thảo hợp đồng",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_6",
+                "text": "Bước 6: Trình duyệt, thẩm định và phê duyệt kết quả",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_7",
+                "text": "Bước 7: Công bố kết quả và hoàn thiện, ký kết hợp đồng",
+                "isCorrect": true
+            }
+        ],
+        "hint": "Chuẩn bị -> Mời thầu -> Tiếp nhận -> Mở thầu -> Đánh giá -> Phê duyệt -> Ký hợp đồng.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MATCHING",
+        "content": "Hãy ghép nối 4 mốc thời gian thực tế của Gói thầu 01TB-BA với sự kiện tương ứng:",
+        "points": 30,
+        "timeLimit": 20,
+        "pairs": [
+            {
+                "id": "p1",
+                "left": "15/10/2025",
+                "right": "Phát hành Hồ sơ mời thầu (HSMT) rộng rãi quốc tế"
+            },
+            {
+                "id": "p2",
+                "left": "23/02/2026",
+                "right": "Thời điểm đóng thầu và mở thầu công khai"
+            },
+            {
+                "id": "p3",
+                "left": "21/10/2026",
+                "right": "Phê duyệt kết quả lựa chọn nhà thầu trúng thầu"
+            },
+            {
+                "id": "p4",
+                "left": "26/10/2026",
+                "right": "EVN chính thức ký kết hợp đồng với liên danh trúng thầu"
+            }
+        ],
+        "options": [
+            {
+                "id": "A",
+                "text": "15/10/2025: Phát hành HSMT; 23/02/2026: Đóng/Mở thầu; 21/10/2026: Phê duyệt kết quả; 26/10/2026: Ký hợp đồng",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "15/10/2025: Đóng/Mở thầu; 23/02/2026: Phát hành HSMT; 21/10/2026: Ký hợp đồng; 26/10/2026: Phê duyệt kết quả",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "15/10/2025: Ký hợp đồng; 23/02/2026: Phê duyệt kết quả; 21/10/2026: Phát hành HSMT; 26/10/2026: Đóng/Mở thầu",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "15/10/2025: Phê duyệt kết quả; 23/02/2026: Ký hợp đồng; 21/10/2026: Đóng/Mở thầu; 26/10/2026: Phát hành HSMT",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Tiến trình diễn ra từ tháng 10/2025 đến tháng 10/2026.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Tại sao tỷ lệ tiết kiệm 1,88% (~85,478 tỷ đồng) ở gói 01TB-BA không bị coi là thấp mà vẫn phản ánh sự thành công lớn trong đàm phán của EVN?",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "Do chủ đầu tư không quan tâm đến giá mà chỉ quan tâm đến xuất xứ",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Do đặc thù thị trường oligopoly công nghệ cao, biên độ giảm giá rất hẹp vì giá thành cấu thành chủ yếu từ công nghệ lõi và bản quyền sáng chế",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Do nhà thầu đã chủ động giảm giá 50% trước khi nộp hồ sơ",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Do pháp luật quy định tỷ lệ tiết kiệm đấu thầu không được vượt quá 2%",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Thị trường độc quyền nhóm có biên độ thương thảo giá rất hạn hẹp.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Trong quản trị dự án hiện đại, nguyên tắc 'Giá trị đồng tiền' (Value for Money) trong đấu thầu thiết bị cơ điện công nghệ cao được hiểu là gì?",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "Luôn chọn đơn vị có giá mua thiết bị ban đầu thấp nhất để cắt giảm ngân sách",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Tối ưu hóa tổng chi phí trong toàn bộ vòng đời tài sản (Life-Cycle Cost), bao gồm chi phí mua, vận hành, bảo dưỡng và độ tin cậy tránh sự cố dừng máy",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Mua thiết bị có công nghệ đắt nhất hiện có trên thế giới",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Đàm phán để nhà thầu cung cấp miễn phí toàn bộ vật tư trong 51 tháng",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Cân nhắc toàn diện chi phí đầu tư, vận hành lâu dài và hiệu suất chuyển đổi.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Tại sao Gói thầu 01TB-BA được xác định là gói thầu nằm trên 'đường găng' (Critical Path) quyết định sự thành bại của Dự án Thủy điện Bác Ái?",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "Do gói thầu có giá trị nhỏ nhất trong dự án",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Do thời gian thực hiện kéo dài 51 tháng; nếu việc chế tạo, vận chuyển hay lắp đặt thiết bị bị chậm, toàn bộ mốc phát điện của dự án sẽ bị trễ tương ứng",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Do gói thầu chỉ được triển khai sau khi tất cả các hạng mục khác đã hoàn thành",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Do có sự tham gia của nhiều nhà thầu phụ trong nước",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Bất kỳ sự chậm trễ nào trên đường găng đều làm trễ tiến độ toàn bộ dự án.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MATCHING",
+        "content": "Hãy ghép đúng 4 rủi ro thực tiễn của gói thầu 01TB-BA với giải pháp quản trị tương ứng:",
+        "points": 30,
+        "timeLimit": 20,
+        "pairs": [
+            {
+                "id": "p1",
+                "left": "Rủi ro độc quyền công nghệ nguồn",
+                "right": "Xây dựng tiêu chí HSMT theo tiêu chuẩn quốc tế IEC/IEEE, không cài cắm thông số riêng"
+            },
+            {
+                "id": "p2",
+                "left": "Rủi ro logistics siêu trường siêu trọng",
+                "right": "Khảo sát kỹ tuyến đèo dốc từ cảng biển vào công trình Khánh Hòa và mua bảo hiểm vận tải"
+            },
+            {
+                "id": "p3",
+                "left": "Rủi ro bất định chất lượng xưởng nước ngoài",
+                "right": "Thuê tổ chức kiểm định độc lập quốc tế (Third-party inspection) giám sát thử nghiệm"
+            },
+            {
+                "id": "p4",
+                "left": "Rủi ro biến động giá/tỷ giá 51 tháng",
+                "right": "Áp dụng điều kiện hợp đồng quốc tế FIDIC với cơ chế điều chỉnh giá minh bạch"
+            }
+        ],
+        "options": [
+            {
+                "id": "A",
+                "text": "Độc quyền -> Chuẩn IEC/IEEE; Logistics -> Khảo sát đèo dốc; Xưởng nước ngoài -> Kiểm định độc lập; Tỷ giá 51 tháng -> Hợp đồng FIDIC",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Độc quyền -> Hợp đồng FIDIC; Logistics -> Kiểm định độc lập; Xưởng nước ngoài -> Chuẩn IEC/IEEE; Tỷ giá 51 tháng -> Khảo sát đèo dốc",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Độc quyền -> Khảo sát đèo dốc; Logistics -> Hợp đồng FIDIC; Xưởng nước ngoài -> Chuẩn IEC/IEEE; Tỷ giá 51 tháng -> Kiểm định độc lập",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Độc quyền -> Kiểm định độc lập; Logistics -> Chuẩn IEC/IEEE; Xưởng nước ngoài -> Hợp đồng FIDIC; Tỷ giá 51 tháng -> Khảo sát đèo dốc",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Các giải pháp quản trị rủi ro chuyên sâu trong quản lý dự án.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "FILL_BLANK",
+        "content": "Chủ đầu tư đánh giá 2 phương án: Phương án A (mua 4.462 tỷ, bảo dưỡng 1.200 tỷ, tổn thất 180 tỷ); Phương án B (mua 4.420 tỷ, bảo dưỡng 1.350 tỷ, tổn thất 250 tỷ). Theo tiêu chí Chi phí vòng đời (LCC), Phương án A giúp tiết kiệm hơn Phương án B tổng chi phí vòng đời là ... tỷ đồng:",
+        "answer": "178 | 178 tỷ | 178 tỷ đồng",
+        "points": 40,
+        "timeLimit": 60,
+        "hint": "LCC_A = 4462 + 1200 + 180 = 5842 tỷ. LCC_B = 4420 + 1350 + 250 = 6020 tỷ. Tiết kiệm = 6020 - 5842 = ?",
+        "isTieBreaker": false
+    },
+    {
+        "type": "FILL_BLANK",
+        "content": "HSMT quy định Điểm tổng hợp: D_TH = 0,7 * D_KT + 0,3 * D_TC. Nhà thầu X đạt điểm kỹ thuật D_KT = 92 và điểm tài chính D_TC = 85. Điểm tổng hợp D_TH của nhà thầu X là ... điểm (ví dụ: 89.9):",
+        "answer": "89.9 | 89,9 | 89.9 điểm | 89,9 điểm",
+        "points": 40,
+        "timeLimit": 60,
+        "hint": "D_TH = 0.7 * 92 + 0.3 * 85 = 64.4 + 25.5 = ?",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Tình huống: Do điều kiện địa chất phức tạp, công tác đào hầm và gian máy ngầm bị chậm tiến độ 6 tháng, trong khi nhà máy nước ngoài đã chế tạo xong tổ máy đúng theo mốc 51 tháng. Theo thực tiễn quản trị hợp đồng FIDIC, giải pháp nào chủ động và tối ưu nhất cho EVN?",
+        "points": 40,
+        "timeLimit": 60,
+        "options": [
+            {
+                "id": "A",
+                "text": "Hủy bỏ hợp đồng với nhà thầu quốc tế để tránh bị phạt lưu kho",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Bố trí kho bãi bảo quản chuyên dụng đạt chuẩn kiểm soát nhiệt ẩm tại cảng/hiện trường, đàm phán gia hạn bảo hiểm và chia nhỏ tiến độ lắp đặt cuốn chiếu theo từng tổ máy",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Để thiết bị ngoài trời tại công trường miền núi chờ đến khi hoàn thành gian máy ngầm",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Yêu cầu nhà thầu nước ngoài chịu toàn bộ chi phí lưu bãi mà không cần thỏa thuận bổ sung",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Quản trị rủi ro giao diện giữa công trình ngầm và thiết bị cơ điện.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_MULTI",
+        "content": "Việc EVN tổ chức đấu thầu rộng rãi quốc tế và áp dụng phương thức một giai đoạn hai túi hồ sơ cho gói 01TB-BA mang lại những giá trị cốt lõi nào cho ngành điện và nền kinh tế? (Chọn tất cả các phương án đúng)",
+        "points": 40,
+        "timeLimit": 60,
+        "options": [
+            {
+                "id": "A",
+                "text": "Tiếp cận công nghệ tua-bin bơm cột nước cao hàng đầu thế giới, tối ưu hóa hiệu suất chuyển đổi năng lượng",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Tuân thủ nghiêm ngặt nguyên tắc cạnh tranh, công bằng, minh bạch của pháp luật đấu thầu Việt Nam",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Triệt tiêu rủi ro chọn nhà thầu giá rẻ yếu kém kỹ thuật, đảm bảo an toàn tuyệt đối cho hệ thống điện quốc gia",
+                "isCorrect": true
+            },
+            {
+                "id": "D",
+                "text": "Tạo cơ hội tiếp thu kinh nghiệm quản trị dự án quốc tế và chuyển giao kỹ thuật cho kỹ sư Việt Nam",
+                "isCorrect": true
+            }
+        ],
+        "hint": "Cả 4 giá trị: Công nghệ, Pháp lý, An toàn vận hành, và Nâng cao năng lực quốc gia.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "FILL_BLANK",
+        "content": "Nhà thầu hoàn thành lắp đặt và đưa tổ máy số 1 vào vận hành sớm hơn kế hoạch 60 ngày, giúp tiết kiệm chi phí chạy dầu trung bình 1,5 tỷ đồng mỗi ngày. Tổng giá trị kinh tế trực tiếp đem lại cho EVN là ... tỷ đồng:",
+        "answer": "90 | 90 tỷ | 90 tỷ đồng",
+        "points": 40,
+        "timeLimit": 60,
+        "hint": "Tổng tiết kiệm = 60 ngày * 1.5 tỷ đồng/ngày = ?",
+        "isTieBreaker": false
+    }
 ]

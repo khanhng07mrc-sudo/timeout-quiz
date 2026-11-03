@@ -1,1273 +1,1273 @@
 [
-  {
-    "type": "MC_SINGLE",
-    "content": "Theo lý thuyết kinh tế đô thị, động lực căn bản hàng đầu thúc đẩy sự hình thành và phát triển của các đô thị tập trung là gì?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Tính kinh tế nhờ tập tụ",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Sự dư thừa diện tích đất nông nghiệp ở nông thôn",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Quy định bắt buộc về hộ khẩu hành chính",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Chi phí xây dựng cầu đường ở đô thị rẻ hơn nông thôn",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Lợi ích doanh nghiệp và người lao động có được khi ở gần nhau: chia sẻ nguồn cung, khớp nối việc làm và lan tỏa tri thức. (Agglomeration Economies)",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Trong Mô hình thành phố đơn tâm (Monocentric City Model) của William Alonso, đường Giá thầu địa tô (Bid-rent curve) của khu vực thương mại dịch vụ có đặc điểm nào so với khu vực nhà ở dân cư?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Độ dốc thoải hơn và có giá thầu thấp hơn ở khu trung tâm CBD",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Độ dốc dốc hơn nhiều và sẵn sàng trả giá đất cao nhất tại vị trí lõi trung tâm CBD",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Hoàn toàn song song với trục hoành khoảng cách",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Luôn nằm dưới đường giá thầu của đất nông nghiệp ngoại thành",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Khu thương mại hưởng lợi lớn nhất từ mật độ khách hàng tại trung tâm, nên sẵn sàng trả giá thuê đất đắt đỏ nhất.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_MULTI",
-    "content": "Dưới góc độ kinh tế học, tại sao hiện tượng ùn tắc giao thông giờ cao điểm tại các đô thị lớn được coi là một thất bại thị trường?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Do hạ tầng cầu đường luôn quá hẹp so với quy chuẩn thiết kế kỹ thuật",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Do người lái xe không phải trả chi phí làm chậm trễ người tham gia giao thông",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Do giá xăng dầu quá rẻ nên kích thích người dân mua sắm phương tiện cá nhân",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Do hệ thống đèn tín hiệu giao thông vận hành thiếu đồng bộ tại các nút giao",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Phân tích theo ngoại ứng tiêu cực và bi kịch của tài sản công (Tragedy of the Commons). - thời gian của mình",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Giải pháp kinh tế thị trường được các nhà kinh tế đô thị đánh giá là hiệu quả nhất để giải quyết nạn kẹt xe tại lõi trung tâm (như Singapore hoặc London đang áp dụng) là gì?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Cấm hoàn toàn việc lưu thông của người dân vào ban ngày",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Thu phí ùn tắc giao thông giờ cao điểm",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Mở rộng lòng đường vô hạn định",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Miễn phí toàn bộ xăng dầu trong nội thành",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Áp một mức phí phản ánh đúng chi phí ngoại ứng tiêu cực mà xe cộ gây ra trong giờ cao điểm. (Congestion Pricing)",
-    "isTieBreaker": false
-  },
-  {
-    "type": "FILL_BLANK",
-    "content": "Khu vực tập trung mật độ cao các hoạt động tài chính, ngân hàng, văn phòng thương mại nằm tại trung tâm của thành phố được viết tắt là gì? (3 chữ cái tiếng Anh)",
-    "answer": "CBD",
-    "points": 20,
-    "timeLimit": 15,
-    "hint": "Viết tắt của cụm từ Central Business District.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "TRUE_FALSE",
-    "content": "Nghịch lý Braess trong giao thông đô thị chỉ ra rằng việc xây thêm một tuyến đường mới đôi khi có thể làm tăng tổng thời gian di chuyển của tất cả các phương tiện thay vì giảm ùn tắc.",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "true",
-        "text": "Đúng (True)",
-        "isCorrect": true
-      },
-      {
-        "id": "false",
-        "text": "Sai (False)",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Khi mỗi cá nhân tự tối ưu hành trình ích kỷ của mình, cân bằng Nash mới có thể kém hiệu quả hơn cân bằng cũ.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "TRUE_FALSE",
-    "content": "Chính sách kiểm soát giá trần thuê nhà ở đô thị (Rent Control) trong dài hạn sẽ khuyến khích các nhà đầu tư tư nhân xây dựng thêm nhiều nhà ở giá rẻ cho người nghèo.",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "true",
-        "text": "Đúng (True)",
-        "isCorrect": false
-      },
-      {
-        "id": "false",
-        "text": "Sai (False)",
-        "isCorrect": true
-      }
-    ],
-    "hint": "Giá trần thấp hơn giá thị trường làm giảm tỷ suất sinh lời, khiến chủ nhà giảm đầu tư và thu hẹp nguồn cung nhà cho thuê.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Mô hình phát triển đô thị định hướng giao thông công cộng, tập trung mật độ cao quanh các nhà ga metro hoặc xe buýt nhanh được gọi là gì?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Mô hình đô thị vệ tinh khép kín",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Mô hình TOD (Transit-Oriented Development)",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Mô hình dàn trải đô thị (Urban Sprawl)",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Mô hình đô thị dải ven biển",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Quy hoạch nhà ở, thương mại và dịch vụ trong bán kính đi bộ 500m - 800m quanh các trạm trung chuyển giao thông công cộng.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Quy mô đô thị tối ưu (Optimal City Size) đạt được tại điểm mà:",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Khi quy mô dân số đô thị đạt mức tuyệt đối do chính quyền trung ương ấn định",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Khi Lợi ích biên từ tính kinh tế tập tụ bằng Chi phí biên từ sự đông đúc quá tải",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Khi diện tích đất tự nhiên dành cho phát triển công nghiệp hoàn toàn cạn kiệt",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Khi tỷ lệ thất nghiệp trong toàn bộ khu vực đô thị giảm xuống mức 0% tuyệt đối",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Nguyên lý tối ưu hóa biên cơ bản trong kinh tế học: mở rộng quy mô đến khi lợi ích tăng thêm bằng chi phí tăng thêm. (MB = MC)",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Tình huống: Một chính quyền thành phố mở rộng vùng ven bằng việc phê duyệt ồ ạt các khu nhà ở phân tán mật độ thấp cách xa trung tâm. Sau 5 năm, ngân sách thành phố thâm hụt nặng nề do phải kéo dài mạng lưới cấp thoát nước và đường xá, trong khi người dân chịu chi phí xăng dầu tăng vọt và kẹt xe nghiêm trọng do bắt buộc phải dùng xe cá nhân đi làm. Hiện tượng này minh chứng cho tác động tiêu cực của:",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Làm giảm giá trị bất động sản tại toàn bộ các khu vực vùng lõi đô thị lịch sử",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Đội chi phí hạ tầng công ích và gia tăng ngoại ứng tiêu cực giao thông môi trường",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Triệt tiêu hoàn toàn nhu cầu sử dụng phương tiện giao thông công cộng sức chở lớn",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Khiến tỷ trọng lao động trong ngành nông nghiệp ven đô tăng vọt bất thường",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Phát triển dàn trải mật độ thấp ra ngoại vi làm gia tăng đột biến chi phí hạ tầng và phát thải xe cá nhân.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Khái niệm 'Tính kinh tế tập tụ' (Agglomeration Economies) giải thích xu hướng tập trung các doanh nghiệp tại đô thị. Ba nguồn động lực ngoại ứng theo phân tích của Alfred Marshall bao gồm những yếu tố nào?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Khí hậu ôn hòa, tài nguyên khoáng sản phong phú và quỹ đất phát triển dồi dào",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Chia sẻ nhà cung ứng chuyên biệt, hồ lao động tập trung và lan tỏa tri thức",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Chính sách ưu đãi thuế quan đặc biệt và nguồn vốn tín dụng ngân hàng giá rẻ",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Hệ thống cảng biển nước sâu và mạng lưới đường hàng không quốc tế dày đặc",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Marshallian Externalities: Sharing (chia sẻ nhà cung cấp), Matching (khớp cung cầu lao động), Learning (lan tỏa tri thức). (Knowledge spillover)",
-    "isTieBreaker": false
-  },
-  {
-    "type": "TRUE_FALSE",
-    "content": "Theo mô hình địa tô Alonso, các doanh nghiệp dịch vụ tài chính thương mại có khả năng trả tiền thuê đất cao nhất tại lõi trung tâm CBD do độ nhạy cảm cao với vị trí tiếp cận đối tác và khách hàng.",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "true",
-        "text": "Đúng (True)",
-        "isCorrect": true
-      },
-      {
-        "id": "false",
-        "text": "Sai (False)",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Đường giá thầu của thương mại dịch vụ dốc nhất nên chiếm lĩnh vùng lõi trung tâm CBD.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Hiện tượng 'Tràn lan đô thị' (Urban Sprawl) có đặc trưng không gian và xã hội nổi bật nào?",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Khu vực trung tâm đô thị ngày càng tập trung các tòa nhà chọc trời mật độ cao",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Đô thị dàn trải mật độ thấp ra vùng ven, gây phân mảnh đất và phụ thuộc xe hơi",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Dân cư ồ ạt rời bỏ vùng ven để chuyển vào sinh sống trong các căn hộ chung cư",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Tất cả các khu công nghiệp chuyển dịch ra khỏi phạm vi ranh giới hành chính",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Urban Sprawl làm tốn kém chi phí kéo dài hạ tầng công cộng và gia tăng phát thải ô nhiễm.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Quy định phân vùng quy hoạch sử dụng đất (Zoning Regulations) trong quản lý đô thị nhằm giải quyết vấn đề gì?",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Ấn định mức giá bán bất động sản sàn tối đa để hỗ trợ người thu nhập thấp",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Ngăn chặn ngoại ứng tiêu cực giữa các loại hình sử dụng đất không tương thích",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Bắt buộc các doanh nghiệp tư nhân phải đầu tư xây dựng công viên công cộng",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Tập trung hóa quyền sở hữu đất đai vào các tập đoàn bất động sản lớn",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Zoning phân tách không gian công nghiệp ô nhiễm ra khỏi không gian sinh sống và nghỉ dưỡng. (như nhà máy xả thải đặt cạnh khu dân cư)",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Hiện tượng 'Chỉnh trang đô thị' (Gentrification) khi cải tạo các khu vực nhà ở cũ thường mang lại mặt trái xã hội nào cần lưu ý?",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Cư dân địa phương được bồi thường thỏa đáng và chuyển lên tầng lớp trung lưu",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Giá nhà đất tăng vọt khiến cư dân thu nhập thấp bị đẩy bật ra khỏi nơi ở cũ",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Tỷ lệ tội phạm và tệ nạn xã hội tại khu vực cải tạo tăng cao mất kiểm soát",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Chính quyền địa phương phải gánh chịu khoản nợ công khổng lồ từ cải tạo",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Gentrification nâng cấp diện mạo đô thị nhưng có thể làm trầm trọng thêm bất bình đẳng không gian. (Displacement)",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_MULTI",
-    "content": "Khi quy mô dân số đô thị phát triển vượt qua ngưỡng tối ưu, những yếu tố 'Phi kinh tế tập tụ' (Diseconomies of Agglomeration) nào sẽ bắt đầu xuất hiện?",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Tình trạng ùn tắc giao thông và ô nhiễm môi trường không khí gia tăng nghiêm trọng",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Giá đất đai và chi phí thuê nhà ở tăng vọt vượt khả năng chi trả của đại bộ phận người lao động",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Áp lực quá tải nặng nề lên hạ tầng trường học, bệnh viện và dịch vụ công",
-        "isCorrect": true
-      },
-      {
-        "id": "D",
-        "text": "Tất cả người dân đều được nhận lương miễn phí từ chính phủ",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Lợi thế quy mô chuyển thành bất lợi quy mô khi chi phí ngoại ứng tiêu cực vượt qua lợi ích chia sẻ.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "TRUE_FALSE",
-    "content": "Quy luật Quy mô - Thứ bậc đô thị (Rank-Size Rule hay Zipf's Law) phát biểu rằng dân số của thành phố xếp hạng thứ r xấp xỉ bằng dân số của thành phố lớn nhất chia cho r (Pr = P1 / r).",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "true",
-        "text": "Đúng (True)",
-        "isCorrect": true
-      },
-      {
-        "id": "false",
-        "text": "Sai (False)",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Quy luật thực nghiệm nổi tiếng phản ánh hệ thống phân tầng thứ bậc đô thị cân bằng.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Hiện tượng 'Ngoại vi hóa người nghèo' (Suburbanization of Poverty) trong cấu trúc không gian đô thị hiện đại phản ánh điều gì?",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Người nghèo có xu hướng ưa chuộng không gian sống yên tĩnh và trong lành hơn",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Do giá nhà đất tại lõi đô thị tăng vọt vượt quá khả năng chi trả của họ",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Do các cơ sở dịch vụ giáo dục và y tế chất lượng cao tập trung ở vùng ngoại ô",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Do chính quyền áp đặt hạn ngạch cư trú nghiêm ngặt đối với khu vực trung tâm",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Trái ngược với thế kỷ trước, người giàu chiếm giữ lõi trung tâm tiện ích, người nghèo dạt ra vùng ven thiếu hạ tầng.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Chính sách 'Thu hồi giá trị gia tăng từ đất' (Land Value Capture - LVC) cho phép chính quyền đô thị thực hiện giải pháp nào?",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Bán đấu giá toàn bộ quỹ đất công cho các tập đoàn phát triển bất động sản",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Thu hồi phần địa tô đất đai tăng vọt quanh hạ tầng để tái đầu tư dự án",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Tăng thuế thu nhập cá nhân đối với người dân sử dụng dịch vụ metro thường xuyên",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Vay vốn ODA từ các tổ chức quốc tế với lãi suất thương mại thông thường",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Giá trị đất tăng lên do ngân sách đầu tư hạ tầng công cộng cần được tái thu hồi phục vụ cộng đồng. - như Metro",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Một siêu đô thị 10 triệu dân đang đối mặt với bài toán tắc đường nghiêm trọng. Thay vì chi 2 tỷ USD để xây thêm 2 tầng cầu cạn trên cao, các chuyên gia kinh tế đô thị khuyến nghị áp dụng hệ thống Thu phí chống ùn tắc thông minh kết hợp dành làn ưu tiên độc quyền cho xe buýt nhanh BRT. Lý do kinh tế học sâu xa nào ủng hộ khuyến nghị này?",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Cầu cạn sẽ phá vỡ cảnh quan đô thị và làm giảm giá trị bất động sản lân cận",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Kích thích nhu cầu cảm ứng, hút thêm phương tiện và dồn tắc nghẽn về nút giao",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Chi phí bảo trì vận hành cầu cạn hàng năm quá đắt đỏ so với ngân sách thành phố",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Cầu cạn không cho phép các phương tiện giao thông công cộng lưu thông qua lại",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Nội hóa chi phí ngoại ứng kẹt xe và thúc đẩy phương thức công cộng hiệu quả hơn việc tiếp tục chạy đua xây thêm làn cho xe cá nhân. - Induced demand",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Theo mô hình địa tô đơn tâm monocentric của Alonso, chi phí đi lại hàng năm là t = 50.000 đồng/km/năm. Một hộ gia đình sử dụng diện tích đất ở q = 100 m2. Giá thuê đất tại ranh giới ngoài cùng đô thị (cách trung tâm CBD x_b = 20 km) là r(x_b) = 500.000 đồng/m2/năm. Hãy tính giá thuê đất tại trung tâm đô thị CBD (x = 0) theo điều kiện cân bằng địa tô:",
-    "points": 40,
-    "timeLimit": 30,
-    "options": [
-      {
-        "id": "A",
-        "text": "510.000 đồng/m2/năm",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "1.500.000 đồng/m2/năm",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "750.000 đồng/m2/năm",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "600.000 đồng/m2/năm",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Độ dốc đường địa tô Alonso: dr/dx = -t/q = -50.000 / 100 = -500 đồng/m2/km. Chênh lệch địa tô từ CBD ra biên = 500 * 20 = 10.000 đồng/m2. Do đó giá thuê tại CBD: r(0) = r(20) + 10.000 = 500.000 + 10.000 = 510.000 đồng/m2/năm.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Theo Quy luật Thứ bậc - Quy mô đô thị (Zipf's Law: P_r = P_1 / r), một quốc gia có đô thị lớn nhất (thủ đô) với dân số 8.000.000 người. Theo quy luật này, tổng dân số ước tính của đô thị lớn thứ 2 và đô thị lớn thứ 4 của quốc gia đó là bao nhiêu?",
-    "points": 40,
-    "timeLimit": 30,
-    "options": [
-      {
-        "id": "A",
-        "text": "6.000.000 người",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "4.000.000 người",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "5.500.000 người",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "7.000.000 người",
-        "isCorrect": false
-      }
-    ],
-    "hint": "P_2 = 8.000.000 / 2 = 4.000.000 người. P_4 = 8.000.000 / 4 = 2.000.000 người. Tổng P_2 + P_4 = 4.000.000 + 2.000.000 = 6.000.000 người.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MATCHING",
-    "content": "Hãy ghép đúng từng mô hình cấu trúc không gian đô thị kinh điển với tác giả sáng lập:",
-    "points": 40,
-    "timeLimit": 30,
-    "pairs": [
-      {
-        "id": "p1",
-        "left": "Mô hình Đồng tâm (Concentric Zone Model)",
-        "right": "Ernest Burgess (1925) - Đô thị mở rộng thành các vành đai đồng tâm từ CBD"
-      },
-      {
-        "id": "p2",
-        "left": "Mô hình Hình rẻ quạt (Sector Model)",
-        "right": "Homer Hoyt (1939) - Các khu chức năng phát triển dọc theo hành lang giao thông"
-      },
-      {
-        "id": "p3",
-        "left": "Mô hình Đa nhân (Multiple Nuclei Model)",
-        "right": "Harris & Ullman (1945) - Đô thị phát triển quanh nhiều trung tâm vệ tinh"
-      },
-      {
-        "id": "p4",
-        "left": "Mô hình Địa tô vị trí (Bid-Rent Model)",
-        "right": "William Alonso (1964) - Cân bằng giữa giá đất và chi phí di chuyển"
-      }
-    ],
-    "options": [
-      {
-        "id": "A",
-        "text": "1-A, 2-B, 3-C, 4-D",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "1-B, 2-A, 3-D, 4-C",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "1-C, 2-D, 3-A, 4-B",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "1-D, 2-C, 3-B, 4-A",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Các mô hình hình thái học đô thị kinh điển của trường phái Chicago và Kinh tế đô thị.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "DRAG_DROP",
-    "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình đầu tư và phát triển Đô thị theo định hướng giao thông công cộng (TOD):",
-    "points": 40,
-    "timeLimit": 38,
-    "options": [
-      {
-        "id": "STEP_1",
-        "text": "Quy hoạch hành lang đường sắt đô thị (Metro) hoặc BRT",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_2",
-        "text": "Khoanh vùng phát triển TOD bán kính 500m - 800m quanh nhà ga",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_3",
-        "text": "Tăng hệ số sử dụng đất (FAR) và cho phép hỗn hợp đa chức năng",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_4",
-        "text": "Đấu giá quỹ đất và áp dụng chính sách Thu hồi giá trị gia tăng từ đất (LVC)",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_5",
-        "text": "Hoàn thiện hạ tầng đi bộ, xe đạp kết nối giao thông chặng cuối",
-        "isCorrect": true
-      }
-    ],
-    "hint": "Quy hoạch Metro -> Khoanh vùng TOD -> Tăng FAR -> Thu hồi giá trị gia tăng -> Kết nối chặng cuối.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "[CÂU HỎI PHỤ - KINH TẾ ĐÔ THỊ] Mô hình 'Thành phố đơn tâm' (Monocentric City Model) kinh điển của kinh tế đô thị gắn liền với tên tuổi của nhà kinh tế học nào?",
-    "points": 20,
-    "timeLimit": 15,
-    "isTieBreaker": true,
-    "options": [
-      {
-        "id": "A",
-        "text": "William Alonso",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Paul Krugman",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Alfred Marshall",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "David Ricardo",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Phát triển lý thuyết giá thầu địa tô (Bid-rent function) dựa trên khoảng cách tới trung tâm CBD."
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "[CÂU HỎI PHỤ - KINH TẾ ĐÔ THỊ] Khái niệm mô hình TOD (Transit-Oriented Development) trong quy hoạch đô thị nhấn mạnh phát triển xoay quanh yếu tố nào?",
-    "points": 20,
-    "timeLimit": 15,
-    "isTieBreaker": true,
-    "options": [
-      {
-        "id": "A",
-        "text": "Các khu bảo tồn thiên nhiên và công viên sinh thái quốc gia",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Các đầu mối giao thông công cộng sức chở lớn như ga metro, BRT",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Các khu công nghiệp chế xuất nặng xa trung tâm đô thị",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Các khu dân cư biệt thự biệt lập khép kín có cổng bảo vệ",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Đô thị nén kết nối mật độ cao trong bán kính đi bộ quanh nhà ga đường sắt đô thị. (Metro, BRT)"
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "[CÂU HỎI PHỤ - KINH TẾ ĐÔ THỊ] Chính sách thu phí tắc nghẽn giao thông (Congestion Pricing) dựa trên nguyên lý kinh tế học nào?",
-    "points": 30,
-    "timeLimit": 20,
-    "isTieBreaker": true,
-    "options": [
-      {
-        "id": "A",
-        "text": "Phạt hành chính các chủ phương tiện không tuân thủ làn đường quy định",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Nội hóa chi phí ngoại ứng tiêu cực bằng công cụ điều tiết giá thị trường",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Hỗ trợ tài chính trực tiếp cho các nhà sản xuất xe buýt công cộng nội địa",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Khống chế số lượng xe ô tô đăng ký mới hàng năm tại các đô thị lớn",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Mỗi phương tiện gia nhập dòng xe gây thêm chậm trễ cho người khác mà không phải tự trả chi phí đó."
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Trong kinh tế học đô thị, khái niệm 'Tính kinh tế do tích tụ' (Agglomeration Economies) giải thích nguyên nhân nào dưới đây?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Tại sao các doanh nghiệp và người lao động có xu hướng tập trung mật độ cao tại các đô thị",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Tại sao chính phủ cần phân tán toàn bộ dân số về các vùng nông thôn hẻo lánh",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Tại sao chi phí sinh hoạt tại các đô thị nhỏ luôn cao hơn các siêu đô thị",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Tại sao các khu công nghiệp nặng luôn được đặt ở trung tâm khu dân cư",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Tích tụ tạo ra lợi ích chia sẻ cơ sở hạ tầng, thị trường lao động dồi dào và lan tỏa tri thức.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "TRUE_FALSE",
-    "content": "Theo mô hình thành phố đơn tâm (Monocentric City Model) của Alonso, giá đất và địa tô có xu hướng giảm dần khi khoảng cách từ vị trí khu đất đến khu trung tâm thương mại (CBD) tăng lên.",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Đúng",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Sai",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Đường độ dốc địa tô (Bid-Rent Gradient) dốc xuống khi đi xa trung tâm do chi phí đi lại (commuting cost) tăng lên.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "FILL_BLANK",
-    "content": "Mô hình phát triển đô thị lấy đầu mối giao thông công cộng sức chứa lớn (đường sắt đô thị, BRT) làm trung tâm quy hoạch bán kính đi bộ 500m - 800m được viết tắt là ...",
-    "answer": "TOD",
-    "points": 10,
-    "timeLimit": 10,
-    "hint": "Transit-Oriented Development (Phát triển đô thị định hướng giao thông công cộng).",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Hiện tượng tắc nghẽn giao thông đô thị được xem là một ví dụ kinh điển về loại thất bại thị trường nào?",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Ngoại ứng tiêu cực (Negative Externality)",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Thông tin bất đối xứng hoàn hảo",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Độc quyền tự nhiên của phương tiện cá nhân",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Hàng hóa công cộng thuần túy không cạnh tranh",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Người tham gia giao thông áp đặt thêm chi phí chậm trễ và ô nhiễm lên những người khác mà không phải trả tiền cho sự chậm trễ đó.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Chỉ số Hệ số sử dụng đất (Floor Area Ratio - FAR) trong quy hoạch đô thị được định nghĩa là:",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Tỷ lệ giữa tổng diện tích sàn xây dựng của công trình so với tổng diện tích lô đất",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Tỷ lệ diện tích xây dựng tầng trệt so với diện tích đất",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Số lượng cư dân tối đa được phép sinh sống trên một mét vuông đất",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Tỷ lệ diện tích cây xanh công viên trên tổng diện tích dự án",
-        "isCorrect": false
-      }
-    ],
-    "hint": "FAR = Tổng diện tích sàn tất cả các tầng / Diện tích khu đất.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "TRUE_FALSE",
-    "content": "Quy luật 'Kích cầu giao thông' (Induced Demand) chỉ ra rằng việc mở rộng thêm làn đường cho xe cá nhân sẽ giải quyết triệt để vấn đề ùn tắc giao thông đô thị trong dài hạn.",
-    "points": 10,
-    "timeLimit": 10,
-    "options": [
-      {
-        "id": "A",
-        "text": "Đúng",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Sai",
-        "isCorrect": true
-      }
-    ],
-    "hint": "Nghịch lý giao thông: Mở rộng đường làm giảm chi phí đi lại tạm thời, từ đó kích thích thêm nhiều xe cá nhân mới đổ ra đường, gây tắc nghẽn trở lại.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Điểm khác biệt căn bản giữa 'Tính kinh tế do địa phương hóa' (Localization economies) và 'Tính kinh tế do đô thị hóa' (Urbanization economies) là gì?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Localization economies phát sinh từ sự tập trung của các doanh nghiệp trong CÙNG MỘT NGÀNH; Urbanization economies phát sinh từ SỰ ĐA DẠNG HÓA của nhiều ngành nghề khác nhau trong một đô thị lớn",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Localization economies chỉ xuất hiện ở các thành phố biển; Urbanization economies chỉ xuất hiện ở vùng núi",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Urbanization economies là ngoại ứng tiêu cực còn Localization economies luôn là ngoại ứng tích cực",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Hai khái niệm này hoàn toàn đồng nghĩa và có thể thay thế cho nhau trong mọi hoàn cảnh",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Localization: cùng ngành tập trung (Cụm ngành Marshall). Urbanization: đa dạng ngành bổ trợ nhau (Đô thị Jane Jacobs).",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_MULTI",
-    "content": "Những biện pháp kinh tế nào dưới đây được áp dụng để quản lý nhu cầu giao thông đô thị (TDM) nhằm giảm ùn tắc và khí thải?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Thu phí tắc nghẽn giao thông khu vực trung tâm (Congestion Pricing)",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Tăng giá vé trông giữ xe ô tô theo giờ tại lõi đô thị (Parking Pricing)",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Áp thuế tiêu thụ đặc biệt và phí bảo vệ môi trường đối với nhiên liệu hóa thạch",
-        "isCorrect": true
-      },
-      {
-        "id": "D",
-        "text": "Miễn phí toàn bộ chỗ đỗ xe ô tô cá nhân tại các trục đường chính",
-        "isCorrect": false
-      }
-    ],
-    "hint": "TDM dùng công cụ giá để nội hóa chi phí ngoại ứng tiêu cực của phương tiện cơ giới cá nhân.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "FILL_BLANK",
-    "content": "Hiện tượng thành phố phát triển lan tỏa phân tán mật độ thấp ra vùng ngoại ô, phụ thuộc nặng nề vào xe hơi cá nhân và làm mất đất nông nghiệp được gọi là Sự ... đô thị (Urban Sprawl).",
-    "answer": "mở rộng",
-    "points": 20,
-    "timeLimit": 15,
-    "hint": "Urban Sprawl (Đô thị hóa phân tán / Mở rộng đô thị quá mức / Vết dầu loang).",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Chính sách kiểm soát trần giá thuê nhà ở (Rent Control) tại các đô thị lớn thường dẫn đến hệ quả kinh tế tiêu cực nào theo phân tích thị trường?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Gây ra sự thiếu hụt nguồn cung nhà cho thuê và làm giảm chất lượng bảo trì nhà ở",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Làm gia tăng đột biến nguồn cung căn hộ cao cấp cho thuê",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Xóa bỏ hoàn toàn thị trường chợ đen về dịch vụ nhà trọ",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Thúc đẩy các nhà đầu tư tư nhân xây dựng thêm nhiều dự án chung cư giá rẻ",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Áp trần giá thấp hơn giá cân bằng làm giảm động lực xây dựng và bảo trì của chủ nhà, tạo tình trạng thiếu hụt (Shortage).",
-    "isTieBreaker": false
-  },
-  {
-    "type": "TRUE_FALSE",
-    "content": "Công cụ Thu hồi giá trị gia tăng từ đất (Land Value Capture - LVC) cho phép chính quyền địa phương thu lại một phần giá trị địa tô tăng thêm do nhà nước đầu tư hạ tầng công cộng để tái tài trợ cho ngân sách.",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Đúng",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Sai",
-        "isCorrect": false
-      }
-    ],
-    "hint": "LVC biến sự gia tăng giá đất quanh nhà ga, cầu đường công cộng thành nguồn thu công bằng để phát triển đô thị tiếp diễn.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Theo định luật Zipf về quy mô đô thị (Rank-Size Rule), nếu thành phố lớn nhất của một quốc gia có dân số 10 triệu người, thì thành phố lớn thứ 4 sẽ có dân số ước tính là bao nhiêu?",
-    "points": 20,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "2,5 triệu người",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "5,0 triệu người",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "1,25 triệu người",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "4,0 triệu người",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Quy luật Rank-Size: P_r = P_1 / r. Với r = 4: P_4 = 10 triệu / 4 = 2,5 triệu người.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Theo nguyên lý Thuế Pigou trong kinh tế học đô thị, mức phí tắc nghẽn giao thông tối ưu xã hội phải được xác định bằng khoảng cách nào dưới đây?",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Bằng đúng khoảng cách chênh lệch giữa Chi phí xã hội biên (MSC) và Chi phí cá nhân biên (MPC) tại lưu lượng giao thông tối ưu",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Bằng tổng chi phí xây dựng một tuyến đường cao tốc trên cao chia đều cho toàn bộ dân cư thành phố",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Bằng giá trị thị trường của chiếc xe ô tô đắt nhất lưu thông qua trạm thu phí",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Bằng mức lương tối thiểu vùng theo giờ của người lao động phổ thông",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Mức phí tắc nghẽn tối ưu xã hội = Ngoại ứng biên tiêu cực (MEC) = MSC - MPC.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MATCHING",
-    "content": "Hãy ghép đúng từng mô hình hình thái cấu trúc đô thị kinh điển với tác giả sáng lập và đặc trưng không gian:",
-    "points": 30,
-    "timeLimit": 20,
-    "pairs": [
-      {
-        "id": "p1",
-        "left": "Mô hình Đồng tâm (Concentric Zone Model)",
-        "right": "Ernest Burgess (1925): Đô thị phát triển thành 5 vành đai đồng tâm từ CBD tỏa ra ngoài"
-      },
-      {
-        "id": "p2",
-        "left": "Mô hình Hình nêm / Cánh quạt (Sector Model)",
-        "right": "Homer Hoyt (1939): Các khu chức năng phát triển dọc theo các trục hành lang giao thông hướng tâm"
-      },
-      {
-        "id": "p3",
-        "left": "Mô hình Đa tâm (Multiple Nuclei Model)",
-        "right": "Harris & Ullman (1945): Đô thị mở rộng quanh nhiều cực hạt nhân trung tâm chuyên biệt"
-      },
-      {
-        "id": "p4",
-        "left": "Mô hình Thành phố Vườn (Garden City)",
-        "right": "Ebenezer Howard (1898): Kết hợp ưu điểm thành phố và nông thôn, bao quanh bởi vành đai xanh"
-      }
-    ],
-    "options": [
-      {
-        "id": "A",
-        "text": "1-A, 2-B, 3-C, 4-D",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "1-B, 2-A, 3-D, 4-C",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "1-C, 2-D, 3-A, 4-B",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "1-D, 2-C, 3-B, 4-A",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Burgess (Đồng tâm), Hoyt (Hình nêm theo trục giao thông), Harris-Ullman (Đa cực tâm), Howard (Thành phố vườn).",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_MULTI",
-    "content": "Những rào cản và thách thức kinh tế chủ yếu trong việc phát triển các dự án Nhà ở xã hội (Social Housing) tại các siêu đô thị như Hà Nội và TP.HCM bao gồm:",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Chi phí bồi thường giải phóng mặt bằng và quỹ đất sạch ở khu vực có hạ tầng tốt quá cao",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "Định mức khống chế tỷ suất lợi nhuận tối đa 10% chưa đủ sức hấp dẫn các tập đoàn bất động sản lớn",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Thủ tục pháp lý thẩm định đối tượng mua và phê duyệt giá bán kéo dài nhiều năm",
-        "isCorrect": true
-      },
-      {
-        "id": "D",
-        "text": "Nhu cầu mua nhà ở xã hội của người thu nhập thấp tại đô thị hiện nay gần như bằng 0",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Chi phí đất, biên lợi nhuận bị khống chế 10%, và rào cản hành chính là 3 trở ngại lớn nhất.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "DRAG_DROP",
-    "content": "Hãy sắp xếp đúng thứ tự các giai đoạn của quá trình Đô thị hóa theo chu kỳ không gian đô thị (Urban Lifecycle):",
-    "points": 30,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "STEP_1",
-        "text": "Đô thị hóa tập trung (Urbanization): Dân cư ồ ạt đổ dồn từ nông thôn vào lõi trung tâm thành phố",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_2",
-        "text": "Ngoại vi hóa (Suburbanization): Tầng lớp trung lưu di chuyển ra sinh sống tại các vành đai ngoại ô",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_3",
-        "text": "Phản đô thị hóa (Counter-urbanization): Dân số lõi trung tâm sụt giảm mạnh, di chuyển về các đô thị nhỏ",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_4",
-        "text": "Tái đô thị hóa (Re-urbanization): Cải tạo chỉnh trang lõi đô thị cũ, thu hút cư dân trẻ quay trở lại",
-        "isCorrect": true
-      }
-    ],
-    "hint": "Urbanization -> Suburbanization -> Counter-urbanization -> Re-urbanization.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Một hộ gia đình có thu nhập Y = 30 triệu đồng/tháng. Chi phí đi lại hàng tháng từ nơi ở về trung tâm CBD là T(d) = 1,2 triệu đồng x d (với d là khoảng cách tính bằng km). Giá thuê nhà trên 1m2 tại khoảng cách d là R(d). Nếu hộ gia đình thuê căn hộ diện tích cố định 60m2 và chi 18 triệu đồng cho các hàng hóa tiêu dùng khác. Phương trình đường giá thuê nhà sẵn sàng trả (Bid-Rent Function) của hộ gia đình theo khoảng cách d là:",
-    "points": 40,
-    "timeLimit": 30,
-    "options": [
-      {
-        "id": "A",
-        "text": "R(d) = 200.000 - 20.000 x d (đồng/m2/tháng)",
-        "isCorrect": true
-      },
-      {
-        "id": "B",
-        "text": "R(d) = 300.000 - 15.000 x d (đồng/m2/tháng)",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "R(d) = 150.000 - 10.000 x d (đồng/m2/tháng)",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "R(d) = 250.000 - 25.000 x d (đồng/m2/tháng)",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Ngân sách còn lại cho nhà ở = Y - Tiêu dùng khác - Chi phí đi lại = 30tr - 18tr - 1,2tr*d = 12tr - 1,2tr*d. Giá thuê trên 1m2 = (12.000.000 - 1.200.000*d) / 60 = 200.000 - 20.000*d đồng/m2.",
-    "isTieBreaker": false
-  },
-  {
-    "type": "DRAG_DROP",
-    "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình lập dự án Tái thiết đô thị tích hợp (Integrated Urban Regeneration Project):",
-    "points": 40,
-    "timeLimit": 38,
-    "options": [
-      {
-        "id": "STEP_1",
-        "text": "Khảo sát hiện trạng di sản, môi trường, xã hội và cộng đồng dân cư khu vực xuống cấp",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_2",
-        "text": "Tham vấn cộng đồng đa bên và xác định tầm nhìn tái thiết kinh tế - không gian",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_3",
-        "text": "Xây dựng phương án tài chính hỗn hợp (PPP, trái phiếu đô thị, đấu giá quyền phát triển)",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_4",
-        "text": "Triển khai tái định cư tại chỗ và nâng cấp hạ tầng khung (giao thông, thoát nước, không gian công cộng)",
-        "isCorrect": true
-      },
-      {
-        "id": "STEP_5",
-        "text": "Khai thác vận hành không gian thương mại dịch vụ và đánh giá tác động kinh tế - xã hội sau dự án",
-        "isCorrect": true
-      }
-    ],
-    "hint": "Khảo sát hiện trạng -> Tham vấn cộng đồng -> Phương án tài chính -> Tái định cư & Thi công hạ tầng -> Vận hành & Đánh giá.",
-    "isTieBreaker": false
-  }
+    {
+        "type": "MC_SINGLE",
+        "content": "Theo lý thuyết kinh tế đô thị, động lực căn bản hàng đầu thúc đẩy sự hình thành và phát triển của các đô thị tập trung là gì?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Tính kinh tế nhờ tập tụ",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Sự dư thừa diện tích đất nông nghiệp ở nông thôn",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Quy định bắt buộc về hộ khẩu hành chính",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Chi phí xây dựng cầu đường ở đô thị rẻ hơn nông thôn",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Lợi ích doanh nghiệp và người lao động có được khi ở gần nhau: chia sẻ nguồn cung, khớp nối việc làm và lan tỏa tri thức. (Agglomeration Economies)",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Trong Mô hình thành phố đơn tâm (Monocentric City Model) của William Alonso, đường Giá thầu địa tô (Bid-rent curve) của khu vực thương mại dịch vụ có đặc điểm nào so với khu vực nhà ở dân cư?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Độ dốc thoải hơn và có giá thầu thấp hơn ở khu trung tâm CBD",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Độ dốc dốc hơn nhiều và sẵn sàng trả giá đất cao nhất tại vị trí lõi trung tâm CBD",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Hoàn toàn song song với trục hoành khoảng cách",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Luôn nằm dưới đường giá thầu của đất nông nghiệp ngoại thành",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Khu thương mại hưởng lợi lớn nhất từ mật độ khách hàng tại trung tâm, nên sẵn sàng trả giá thuê đất đắt đỏ nhất.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_MULTI",
+        "content": "Dưới góc độ kinh tế học, tại sao hiện tượng ùn tắc giao thông giờ cao điểm tại các đô thị lớn được coi là một thất bại thị trường?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Do hạ tầng cầu đường luôn quá hẹp so với quy chuẩn thiết kế kỹ thuật",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Do người lái xe không phải trả chi phí làm chậm trễ người tham gia giao thông",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Do giá xăng dầu quá rẻ nên kích thích người dân mua sắm phương tiện cá nhân",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Do hệ thống đèn tín hiệu giao thông vận hành thiếu đồng bộ tại các nút giao",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Phân tích theo ngoại ứng tiêu cực và bi kịch của tài sản công (Tragedy of the Commons). - thời gian của mình",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Giải pháp kinh tế thị trường được các nhà kinh tế đô thị đánh giá là hiệu quả nhất để giải quyết nạn kẹt xe tại lõi trung tâm (như Singapore hoặc London đang áp dụng) là gì?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Cấm hoàn toàn việc lưu thông của người dân vào ban ngày",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Thu phí ùn tắc giao thông giờ cao điểm",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Mở rộng lòng đường vô hạn định",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Miễn phí toàn bộ xăng dầu trong nội thành",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Áp một mức phí phản ánh đúng chi phí ngoại ứng tiêu cực mà xe cộ gây ra trong giờ cao điểm. (Congestion Pricing)",
+        "isTieBreaker": false
+    },
+    {
+        "type": "FILL_BLANK",
+        "content": "Khu vực tập trung mật độ cao các hoạt động tài chính, ngân hàng, văn phòng thương mại nằm tại trung tâm của thành phố được viết tắt là gì? (3 chữ cái tiếng Anh)",
+        "answer": "CBD",
+        "points": 20,
+        "timeLimit": 20,
+        "hint": "Viết tắt của cụm từ Central Business District.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "TRUE_FALSE",
+        "content": "Nghịch lý Braess trong giao thông đô thị chỉ ra rằng việc xây thêm một tuyến đường mới đôi khi có thể làm tăng tổng thời gian di chuyển của tất cả các phương tiện thay vì giảm ùn tắc.",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "true",
+                "text": "Đúng (True)",
+                "isCorrect": true
+            },
+            {
+                "id": "false",
+                "text": "Sai (False)",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Khi mỗi cá nhân tự tối ưu hành trình ích kỷ của mình, cân bằng Nash mới có thể kém hiệu quả hơn cân bằng cũ.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "TRUE_FALSE",
+        "content": "Chính sách kiểm soát giá trần thuê nhà ở đô thị (Rent Control) trong dài hạn sẽ khuyến khích các nhà đầu tư tư nhân xây dựng thêm nhiều nhà ở giá rẻ cho người nghèo.",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "true",
+                "text": "Đúng (True)",
+                "isCorrect": false
+            },
+            {
+                "id": "false",
+                "text": "Sai (False)",
+                "isCorrect": true
+            }
+        ],
+        "hint": "Giá trần thấp hơn giá thị trường làm giảm tỷ suất sinh lời, khiến chủ nhà giảm đầu tư và thu hẹp nguồn cung nhà cho thuê.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Mô hình phát triển đô thị định hướng giao thông công cộng, tập trung mật độ cao quanh các nhà ga metro hoặc xe buýt nhanh được gọi là gì?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Mô hình đô thị vệ tinh khép kín",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Mô hình TOD (Transit-Oriented Development)",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Mô hình dàn trải đô thị (Urban Sprawl)",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Mô hình đô thị dải ven biển",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Quy hoạch nhà ở, thương mại và dịch vụ trong bán kính đi bộ 500m - 800m quanh các trạm trung chuyển giao thông công cộng.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Quy mô đô thị tối ưu (Optimal City Size) đạt được tại điểm mà:",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Khi quy mô dân số đô thị đạt mức tuyệt đối do chính quyền trung ương ấn định",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Khi Lợi ích biên từ tính kinh tế tập tụ bằng Chi phí biên từ sự đông đúc quá tải",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Khi diện tích đất tự nhiên dành cho phát triển công nghiệp hoàn toàn cạn kiệt",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Khi tỷ lệ thất nghiệp trong toàn bộ khu vực đô thị giảm xuống mức 0% tuyệt đối",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Nguyên lý tối ưu hóa biên cơ bản trong kinh tế học: mở rộng quy mô đến khi lợi ích tăng thêm bằng chi phí tăng thêm. (MB = MC)",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Tình huống: Một chính quyền thành phố mở rộng vùng ven bằng việc phê duyệt ồ ạt các khu nhà ở phân tán mật độ thấp cách xa trung tâm. Sau 5 năm, ngân sách thành phố thâm hụt nặng nề do phải kéo dài mạng lưới cấp thoát nước và đường xá, trong khi người dân chịu chi phí xăng dầu tăng vọt và kẹt xe nghiêm trọng do bắt buộc phải dùng xe cá nhân đi làm. Hiện tượng này minh chứng cho tác động tiêu cực của:",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Làm giảm giá trị bất động sản tại toàn bộ các khu vực vùng lõi đô thị lịch sử",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Đội chi phí hạ tầng công ích và gia tăng ngoại ứng tiêu cực giao thông môi trường",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Triệt tiêu hoàn toàn nhu cầu sử dụng phương tiện giao thông công cộng sức chở lớn",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Khiến tỷ trọng lao động trong ngành nông nghiệp ven đô tăng vọt bất thường",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Phát triển dàn trải mật độ thấp ra ngoại vi làm gia tăng đột biến chi phí hạ tầng và phát thải xe cá nhân.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Khái niệm 'Tính kinh tế tập tụ' (Agglomeration Economies) giải thích xu hướng tập trung các doanh nghiệp tại đô thị. Ba nguồn động lực ngoại ứng theo phân tích của Alfred Marshall bao gồm những yếu tố nào?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Khí hậu ôn hòa, tài nguyên khoáng sản phong phú và quỹ đất phát triển dồi dào",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Chia sẻ nhà cung ứng chuyên biệt, hồ lao động tập trung và lan tỏa tri thức",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Chính sách ưu đãi thuế quan đặc biệt và nguồn vốn tín dụng ngân hàng giá rẻ",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Hệ thống cảng biển nước sâu và mạng lưới đường hàng không quốc tế dày đặc",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Marshallian Externalities: Sharing (chia sẻ nhà cung cấp), Matching (khớp cung cầu lao động), Learning (lan tỏa tri thức). (Knowledge spillover)",
+        "isTieBreaker": false
+    },
+    {
+        "type": "TRUE_FALSE",
+        "content": "Theo mô hình địa tô Alonso, các doanh nghiệp dịch vụ tài chính thương mại có khả năng trả tiền thuê đất cao nhất tại lõi trung tâm CBD do độ nhạy cảm cao với vị trí tiếp cận đối tác và khách hàng.",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "true",
+                "text": "Đúng (True)",
+                "isCorrect": true
+            },
+            {
+                "id": "false",
+                "text": "Sai (False)",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Đường giá thầu của thương mại dịch vụ dốc nhất nên chiếm lĩnh vùng lõi trung tâm CBD.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Hiện tượng 'Tràn lan đô thị' (Urban Sprawl) có đặc trưng không gian và xã hội nổi bật nào?",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "Khu vực trung tâm đô thị ngày càng tập trung các tòa nhà chọc trời mật độ cao",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Đô thị dàn trải mật độ thấp ra vùng ven, gây phân mảnh đất và phụ thuộc xe hơi",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Dân cư ồ ạt rời bỏ vùng ven để chuyển vào sinh sống trong các căn hộ chung cư",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Tất cả các khu công nghiệp chuyển dịch ra khỏi phạm vi ranh giới hành chính",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Urban Sprawl làm tốn kém chi phí kéo dài hạ tầng công cộng và gia tăng phát thải ô nhiễm.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Quy định phân vùng quy hoạch sử dụng đất (Zoning Regulations) trong quản lý đô thị nhằm giải quyết vấn đề gì?",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "Ấn định mức giá bán bất động sản sàn tối đa để hỗ trợ người thu nhập thấp",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Ngăn chặn ngoại ứng tiêu cực giữa các loại hình sử dụng đất không tương thích",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Bắt buộc các doanh nghiệp tư nhân phải đầu tư xây dựng công viên công cộng",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Tập trung hóa quyền sở hữu đất đai vào các tập đoàn bất động sản lớn",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Zoning phân tách không gian công nghiệp ô nhiễm ra khỏi không gian sinh sống và nghỉ dưỡng. (như nhà máy xả thải đặt cạnh khu dân cư)",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Hiện tượng 'Chỉnh trang đô thị' (Gentrification) khi cải tạo các khu vực nhà ở cũ thường mang lại mặt trái xã hội nào cần lưu ý?",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "Cư dân địa phương được bồi thường thỏa đáng và chuyển lên tầng lớp trung lưu",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Giá nhà đất tăng vọt khiến cư dân thu nhập thấp bị đẩy bật ra khỏi nơi ở cũ",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Tỷ lệ tội phạm và tệ nạn xã hội tại khu vực cải tạo tăng cao mất kiểm soát",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Chính quyền địa phương phải gánh chịu khoản nợ công khổng lồ từ cải tạo",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Gentrification nâng cấp diện mạo đô thị nhưng có thể làm trầm trọng thêm bất bình đẳng không gian. (Displacement)",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_MULTI",
+        "content": "Khi quy mô dân số đô thị phát triển vượt qua ngưỡng tối ưu, những yếu tố 'Phi kinh tế tập tụ' (Diseconomies of Agglomeration) nào sẽ bắt đầu xuất hiện?",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "Tình trạng ùn tắc giao thông và ô nhiễm môi trường không khí gia tăng nghiêm trọng",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Giá đất đai và chi phí thuê nhà ở tăng vọt vượt khả năng chi trả của đại bộ phận người lao động",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Áp lực quá tải nặng nề lên hạ tầng trường học, bệnh viện và dịch vụ công",
+                "isCorrect": true
+            },
+            {
+                "id": "D",
+                "text": "Tất cả người dân đều được nhận lương miễn phí từ chính phủ",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Lợi thế quy mô chuyển thành bất lợi quy mô khi chi phí ngoại ứng tiêu cực vượt qua lợi ích chia sẻ.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "TRUE_FALSE",
+        "content": "Quy luật Quy mô - Thứ bậc đô thị (Rank-Size Rule hay Zipf's Law) phát biểu rằng dân số của thành phố xếp hạng thứ r xấp xỉ bằng dân số của thành phố lớn nhất chia cho r (Pr = P1 / r).",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "true",
+                "text": "Đúng (True)",
+                "isCorrect": true
+            },
+            {
+                "id": "false",
+                "text": "Sai (False)",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Quy luật thực nghiệm nổi tiếng phản ánh hệ thống phân tầng thứ bậc đô thị cân bằng.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Hiện tượng 'Ngoại vi hóa người nghèo' (Suburbanization of Poverty) trong cấu trúc không gian đô thị hiện đại phản ánh điều gì?",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "Người nghèo có xu hướng ưa chuộng không gian sống yên tĩnh và trong lành hơn",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Do giá nhà đất tại lõi đô thị tăng vọt vượt quá khả năng chi trả của họ",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Do các cơ sở dịch vụ giáo dục và y tế chất lượng cao tập trung ở vùng ngoại ô",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Do chính quyền áp đặt hạn ngạch cư trú nghiêm ngặt đối với khu vực trung tâm",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Trái ngược với thế kỷ trước, người giàu chiếm giữ lõi trung tâm tiện ích, người nghèo dạt ra vùng ven thiếu hạ tầng.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Chính sách 'Thu hồi giá trị gia tăng từ đất' (Land Value Capture - LVC) cho phép chính quyền đô thị thực hiện giải pháp nào?",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "Bán đấu giá toàn bộ quỹ đất công cho các tập đoàn phát triển bất động sản",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Thu hồi phần địa tô đất đai tăng vọt quanh hạ tầng để tái đầu tư dự án",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Tăng thuế thu nhập cá nhân đối với người dân sử dụng dịch vụ metro thường xuyên",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Vay vốn ODA từ các tổ chức quốc tế với lãi suất thương mại thông thường",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Giá trị đất tăng lên do ngân sách đầu tư hạ tầng công cộng cần được tái thu hồi phục vụ cộng đồng. - như Metro",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Một siêu đô thị 10 triệu dân đang đối mặt với bài toán tắc đường nghiêm trọng. Thay vì chi 2 tỷ USD để xây thêm 2 tầng cầu cạn trên cao, các chuyên gia kinh tế đô thị khuyến nghị áp dụng hệ thống Thu phí chống ùn tắc thông minh kết hợp dành làn ưu tiên độc quyền cho xe buýt nhanh BRT. Lý do kinh tế học sâu xa nào ủng hộ khuyến nghị này?",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "Cầu cạn sẽ phá vỡ cảnh quan đô thị và làm giảm giá trị bất động sản lân cận",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Kích thích nhu cầu cảm ứng, hút thêm phương tiện và dồn tắc nghẽn về nút giao",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Chi phí bảo trì vận hành cầu cạn hàng năm quá đắt đỏ so với ngân sách thành phố",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Cầu cạn không cho phép các phương tiện giao thông công cộng lưu thông qua lại",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Nội hóa chi phí ngoại ứng kẹt xe và thúc đẩy phương thức công cộng hiệu quả hơn việc tiếp tục chạy đua xây thêm làn cho xe cá nhân. - Induced demand",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Theo mô hình địa tô đơn tâm monocentric của Alonso, chi phí đi lại hàng năm là t = 50.000 đồng/km/năm. Một hộ gia đình sử dụng diện tích đất ở q = 100 m2. Giá thuê đất tại ranh giới ngoài cùng đô thị (cách trung tâm CBD x_b = 20 km) là r(x_b) = 500.000 đồng/m2/năm. Hãy tính giá thuê đất tại trung tâm đô thị CBD (x = 0) theo điều kiện cân bằng địa tô:",
+        "points": 40,
+        "timeLimit": 60,
+        "options": [
+            {
+                "id": "A",
+                "text": "510.000 đồng/m2/năm",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "1.500.000 đồng/m2/năm",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "750.000 đồng/m2/năm",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "600.000 đồng/m2/năm",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Độ dốc đường địa tô Alonso: dr/dx = -t/q = -50.000 / 100 = -500 đồng/m2/km. Chênh lệch địa tô từ CBD ra biên = 500 * 20 = 10.000 đồng/m2. Do đó giá thuê tại CBD: r(0) = r(20) + 10.000 = 500.000 + 10.000 = 510.000 đồng/m2/năm.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Theo Quy luật Thứ bậc - Quy mô đô thị (Zipf's Law: P_r = P_1 / r), một quốc gia có đô thị lớn nhất (thủ đô) với dân số 8.000.000 người. Theo quy luật này, tổng dân số ước tính của đô thị lớn thứ 2 và đô thị lớn thứ 4 của quốc gia đó là bao nhiêu?",
+        "points": 40,
+        "timeLimit": 60,
+        "options": [
+            {
+                "id": "A",
+                "text": "6.000.000 người",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "4.000.000 người",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "5.500.000 người",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "7.000.000 người",
+                "isCorrect": false
+            }
+        ],
+        "hint": "P_2 = 8.000.000 / 2 = 4.000.000 người. P_4 = 8.000.000 / 4 = 2.000.000 người. Tổng P_2 + P_4 = 4.000.000 + 2.000.000 = 6.000.000 người.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MATCHING",
+        "content": "Hãy ghép đúng từng mô hình cấu trúc không gian đô thị kinh điển với tác giả sáng lập:",
+        "points": 40,
+        "timeLimit": 30,
+        "pairs": [
+            {
+                "id": "p1",
+                "left": "Mô hình Đồng tâm (Concentric Zone Model)",
+                "right": "Ernest Burgess (1925) - Đô thị mở rộng thành các vành đai đồng tâm từ CBD"
+            },
+            {
+                "id": "p2",
+                "left": "Mô hình Hình rẻ quạt (Sector Model)",
+                "right": "Homer Hoyt (1939) - Các khu chức năng phát triển dọc theo hành lang giao thông"
+            },
+            {
+                "id": "p3",
+                "left": "Mô hình Đa nhân (Multiple Nuclei Model)",
+                "right": "Harris & Ullman (1945) - Đô thị phát triển quanh nhiều trung tâm vệ tinh"
+            },
+            {
+                "id": "p4",
+                "left": "Mô hình Địa tô vị trí (Bid-Rent Model)",
+                "right": "William Alonso (1964) - Cân bằng giữa giá đất và chi phí di chuyển"
+            }
+        ],
+        "options": [
+            {
+                "id": "A",
+                "text": "1-A, 2-B, 3-C, 4-D",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "1-B, 2-A, 3-D, 4-C",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "1-C, 2-D, 3-A, 4-B",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "1-D, 2-C, 3-B, 4-A",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Các mô hình hình thái học đô thị kinh điển của trường phái Chicago và Kinh tế đô thị.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "DRAG_DROP",
+        "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình đầu tư và phát triển Đô thị theo định hướng giao thông công cộng (TOD):",
+        "points": 40,
+        "timeLimit": 38,
+        "options": [
+            {
+                "id": "STEP_1",
+                "text": "Quy hoạch hành lang đường sắt đô thị (Metro) hoặc BRT",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_2",
+                "text": "Khoanh vùng phát triển TOD bán kính 500m - 800m quanh nhà ga",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_3",
+                "text": "Tăng hệ số sử dụng đất (FAR) và cho phép hỗn hợp đa chức năng",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_4",
+                "text": "Đấu giá quỹ đất và áp dụng chính sách Thu hồi giá trị gia tăng từ đất (LVC)",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_5",
+                "text": "Hoàn thiện hạ tầng đi bộ, xe đạp kết nối giao thông chặng cuối",
+                "isCorrect": true
+            }
+        ],
+        "hint": "Quy hoạch Metro -> Khoanh vùng TOD -> Tăng FAR -> Thu hồi giá trị gia tăng -> Kết nối chặng cuối.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "[CÂU HỎI PHỤ - KINH TẾ ĐÔ THỊ] Mô hình 'Thành phố đơn tâm' (Monocentric City Model) kinh điển của kinh tế đô thị gắn liền với tên tuổi của nhà kinh tế học nào?",
+        "points": 20,
+        "timeLimit": 20,
+        "isTieBreaker": true,
+        "options": [
+            {
+                "id": "A",
+                "text": "William Alonso",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Paul Krugman",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Alfred Marshall",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "David Ricardo",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Phát triển lý thuyết giá thầu địa tô (Bid-rent function) dựa trên khoảng cách tới trung tâm CBD."
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "[CÂU HỎI PHỤ - KINH TẾ ĐÔ THỊ] Khái niệm mô hình TOD (Transit-Oriented Development) trong quy hoạch đô thị nhấn mạnh phát triển xoay quanh yếu tố nào?",
+        "points": 20,
+        "timeLimit": 20,
+        "isTieBreaker": true,
+        "options": [
+            {
+                "id": "A",
+                "text": "Các khu bảo tồn thiên nhiên và công viên sinh thái quốc gia",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Các đầu mối giao thông công cộng sức chở lớn như ga metro, BRT",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Các khu công nghiệp chế xuất nặng xa trung tâm đô thị",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Các khu dân cư biệt thự biệt lập khép kín có cổng bảo vệ",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Đô thị nén kết nối mật độ cao trong bán kính đi bộ quanh nhà ga đường sắt đô thị. (Metro, BRT)"
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "[CÂU HỎI PHỤ - KINH TẾ ĐÔ THỊ] Chính sách thu phí tắc nghẽn giao thông (Congestion Pricing) dựa trên nguyên lý kinh tế học nào?",
+        "points": 30,
+        "timeLimit": 30,
+        "isTieBreaker": true,
+        "options": [
+            {
+                "id": "A",
+                "text": "Phạt hành chính các chủ phương tiện không tuân thủ làn đường quy định",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Nội hóa chi phí ngoại ứng tiêu cực bằng công cụ điều tiết giá thị trường",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Hỗ trợ tài chính trực tiếp cho các nhà sản xuất xe buýt công cộng nội địa",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Khống chế số lượng xe ô tô đăng ký mới hàng năm tại các đô thị lớn",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Mỗi phương tiện gia nhập dòng xe gây thêm chậm trễ cho người khác mà không phải tự trả chi phí đó."
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Trong kinh tế học đô thị, khái niệm 'Tính kinh tế do tích tụ' (Agglomeration Economies) giải thích nguyên nhân nào dưới đây?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Tại sao các doanh nghiệp và người lao động có xu hướng tập trung mật độ cao tại các đô thị",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Tại sao chính phủ cần phân tán toàn bộ dân số về các vùng nông thôn hẻo lánh",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Tại sao chi phí sinh hoạt tại các đô thị nhỏ luôn cao hơn các siêu đô thị",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Tại sao các khu công nghiệp nặng luôn được đặt ở trung tâm khu dân cư",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Tích tụ tạo ra lợi ích chia sẻ cơ sở hạ tầng, thị trường lao động dồi dào và lan tỏa tri thức.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "TRUE_FALSE",
+        "content": "Theo mô hình thành phố đơn tâm (Monocentric City Model) của Alonso, giá đất và địa tô có xu hướng giảm dần khi khoảng cách từ vị trí khu đất đến khu trung tâm thương mại (CBD) tăng lên.",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Đúng",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Sai",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Đường độ dốc địa tô (Bid-Rent Gradient) dốc xuống khi đi xa trung tâm do chi phí đi lại (commuting cost) tăng lên.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "FILL_BLANK",
+        "content": "Mô hình phát triển đô thị lấy đầu mối giao thông công cộng sức chứa lớn (đường sắt đô thị, BRT) làm trung tâm quy hoạch bán kính đi bộ 500m - 800m được viết tắt là ...",
+        "answer": "TOD",
+        "points": 10,
+        "timeLimit": 15,
+        "hint": "Transit-Oriented Development (Phát triển đô thị định hướng giao thông công cộng).",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Hiện tượng tắc nghẽn giao thông đô thị được xem là một ví dụ kinh điển về loại thất bại thị trường nào?",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Ngoại ứng tiêu cực (Negative Externality)",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Thông tin bất đối xứng hoàn hảo",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Độc quyền tự nhiên của phương tiện cá nhân",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Hàng hóa công cộng thuần túy không cạnh tranh",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Người tham gia giao thông áp đặt thêm chi phí chậm trễ và ô nhiễm lên những người khác mà không phải trả tiền cho sự chậm trễ đó.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Chỉ số Hệ số sử dụng đất (Floor Area Ratio - FAR) trong quy hoạch đô thị được định nghĩa là:",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Tỷ lệ giữa tổng diện tích sàn xây dựng của công trình so với tổng diện tích lô đất",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Tỷ lệ diện tích xây dựng tầng trệt so với diện tích đất",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Số lượng cư dân tối đa được phép sinh sống trên một mét vuông đất",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Tỷ lệ diện tích cây xanh công viên trên tổng diện tích dự án",
+                "isCorrect": false
+            }
+        ],
+        "hint": "FAR = Tổng diện tích sàn tất cả các tầng / Diện tích khu đất.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "TRUE_FALSE",
+        "content": "Quy luật 'Kích cầu giao thông' (Induced Demand) chỉ ra rằng việc mở rộng thêm làn đường cho xe cá nhân sẽ giải quyết triệt để vấn đề ùn tắc giao thông đô thị trong dài hạn.",
+        "points": 10,
+        "timeLimit": 15,
+        "options": [
+            {
+                "id": "A",
+                "text": "Đúng",
+                "isCorrect": false
+            },
+            {
+                "id": "B",
+                "text": "Sai",
+                "isCorrect": true
+            }
+        ],
+        "hint": "Nghịch lý giao thông: Mở rộng đường làm giảm chi phí đi lại tạm thời, từ đó kích thích thêm nhiều xe cá nhân mới đổ ra đường, gây tắc nghẽn trở lại.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Điểm khác biệt căn bản giữa 'Tính kinh tế do địa phương hóa' (Localization economies) và 'Tính kinh tế do đô thị hóa' (Urbanization economies) là gì?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Localization economies phát sinh từ sự tập trung của các doanh nghiệp trong CÙNG MỘT NGÀNH; Urbanization economies phát sinh từ SỰ ĐA DẠNG HÓA của nhiều ngành nghề khác nhau trong một đô thị lớn",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Localization economies chỉ xuất hiện ở các thành phố biển; Urbanization economies chỉ xuất hiện ở vùng núi",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Urbanization economies là ngoại ứng tiêu cực còn Localization economies luôn là ngoại ứng tích cực",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Hai khái niệm này hoàn toàn đồng nghĩa và có thể thay thế cho nhau trong mọi hoàn cảnh",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Localization: cùng ngành tập trung (Cụm ngành Marshall). Urbanization: đa dạng ngành bổ trợ nhau (Đô thị Jane Jacobs).",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_MULTI",
+        "content": "Những biện pháp kinh tế nào dưới đây được áp dụng để quản lý nhu cầu giao thông đô thị (TDM) nhằm giảm ùn tắc và khí thải?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Thu phí tắc nghẽn giao thông khu vực trung tâm (Congestion Pricing)",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Tăng giá vé trông giữ xe ô tô theo giờ tại lõi đô thị (Parking Pricing)",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Áp thuế tiêu thụ đặc biệt và phí bảo vệ môi trường đối với nhiên liệu hóa thạch",
+                "isCorrect": true
+            },
+            {
+                "id": "D",
+                "text": "Miễn phí toàn bộ chỗ đỗ xe ô tô cá nhân tại các trục đường chính",
+                "isCorrect": false
+            }
+        ],
+        "hint": "TDM dùng công cụ giá để nội hóa chi phí ngoại ứng tiêu cực của phương tiện cơ giới cá nhân.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "FILL_BLANK",
+        "content": "Hiện tượng thành phố phát triển lan tỏa phân tán mật độ thấp ra vùng ngoại ô, phụ thuộc nặng nề vào xe hơi cá nhân và làm mất đất nông nghiệp được gọi là Sự ... đô thị (Urban Sprawl).",
+        "answer": "mở rộng",
+        "points": 20,
+        "timeLimit": 20,
+        "hint": "Urban Sprawl (Đô thị hóa phân tán / Mở rộng đô thị quá mức / Vết dầu loang).",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Chính sách kiểm soát trần giá thuê nhà ở (Rent Control) tại các đô thị lớn thường dẫn đến hệ quả kinh tế tiêu cực nào theo phân tích thị trường?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Gây ra sự thiếu hụt nguồn cung nhà cho thuê và làm giảm chất lượng bảo trì nhà ở",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Làm gia tăng đột biến nguồn cung căn hộ cao cấp cho thuê",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Xóa bỏ hoàn toàn thị trường chợ đen về dịch vụ nhà trọ",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Thúc đẩy các nhà đầu tư tư nhân xây dựng thêm nhiều dự án chung cư giá rẻ",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Áp trần giá thấp hơn giá cân bằng làm giảm động lực xây dựng và bảo trì của chủ nhà, tạo tình trạng thiếu hụt (Shortage).",
+        "isTieBreaker": false
+    },
+    {
+        "type": "TRUE_FALSE",
+        "content": "Công cụ Thu hồi giá trị gia tăng từ đất (Land Value Capture - LVC) cho phép chính quyền địa phương thu lại một phần giá trị địa tô tăng thêm do nhà nước đầu tư hạ tầng công cộng để tái tài trợ cho ngân sách.",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Đúng",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Sai",
+                "isCorrect": false
+            }
+        ],
+        "hint": "LVC biến sự gia tăng giá đất quanh nhà ga, cầu đường công cộng thành nguồn thu công bằng để phát triển đô thị tiếp diễn.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Theo định luật Zipf về quy mô đô thị (Rank-Size Rule), nếu thành phố lớn nhất của một quốc gia có dân số 10 triệu người, thì thành phố lớn thứ 4 sẽ có dân số ước tính là bao nhiêu?",
+        "points": 20,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "2,5 triệu người",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "5,0 triệu người",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "1,25 triệu người",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "4,0 triệu người",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Quy luật Rank-Size: P_r = P_1 / r. Với r = 4: P_4 = 10 triệu / 4 = 2,5 triệu người.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Theo nguyên lý Thuế Pigou trong kinh tế học đô thị, mức phí tắc nghẽn giao thông tối ưu xã hội phải được xác định bằng khoảng cách nào dưới đây?",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "Bằng đúng khoảng cách chênh lệch giữa Chi phí xã hội biên (MSC) và Chi phí cá nhân biên (MPC) tại lưu lượng giao thông tối ưu",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Bằng tổng chi phí xây dựng một tuyến đường cao tốc trên cao chia đều cho toàn bộ dân cư thành phố",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Bằng giá trị thị trường của chiếc xe ô tô đắt nhất lưu thông qua trạm thu phí",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Bằng mức lương tối thiểu vùng theo giờ của người lao động phổ thông",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Mức phí tắc nghẽn tối ưu xã hội = Ngoại ứng biên tiêu cực (MEC) = MSC - MPC.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MATCHING",
+        "content": "Hãy ghép đúng từng mô hình hình thái cấu trúc đô thị kinh điển với tác giả sáng lập và đặc trưng không gian:",
+        "points": 30,
+        "timeLimit": 20,
+        "pairs": [
+            {
+                "id": "p1",
+                "left": "Mô hình Đồng tâm (Concentric Zone Model)",
+                "right": "Ernest Burgess (1925): Đô thị phát triển thành 5 vành đai đồng tâm từ CBD tỏa ra ngoài"
+            },
+            {
+                "id": "p2",
+                "left": "Mô hình Hình nêm / Cánh quạt (Sector Model)",
+                "right": "Homer Hoyt (1939): Các khu chức năng phát triển dọc theo các trục hành lang giao thông hướng tâm"
+            },
+            {
+                "id": "p3",
+                "left": "Mô hình Đa tâm (Multiple Nuclei Model)",
+                "right": "Harris & Ullman (1945): Đô thị mở rộng quanh nhiều cực hạt nhân trung tâm chuyên biệt"
+            },
+            {
+                "id": "p4",
+                "left": "Mô hình Thành phố Vườn (Garden City)",
+                "right": "Ebenezer Howard (1898): Kết hợp ưu điểm thành phố và nông thôn, bao quanh bởi vành đai xanh"
+            }
+        ],
+        "options": [
+            {
+                "id": "A",
+                "text": "1-A, 2-B, 3-C, 4-D",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "1-B, 2-A, 3-D, 4-C",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "1-C, 2-D, 3-A, 4-B",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "1-D, 2-C, 3-B, 4-A",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Burgess (Đồng tâm), Hoyt (Hình nêm theo trục giao thông), Harris-Ullman (Đa cực tâm), Howard (Thành phố vườn).",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_MULTI",
+        "content": "Những rào cản và thách thức kinh tế chủ yếu trong việc phát triển các dự án Nhà ở xã hội (Social Housing) tại các siêu đô thị như Hà Nội và TP.HCM bao gồm:",
+        "points": 30,
+        "timeLimit": 30,
+        "options": [
+            {
+                "id": "A",
+                "text": "Chi phí bồi thường giải phóng mặt bằng và quỹ đất sạch ở khu vực có hạ tầng tốt quá cao",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Định mức khống chế tỷ suất lợi nhuận tối đa 10% chưa đủ sức hấp dẫn các tập đoàn bất động sản lớn",
+                "isCorrect": true
+            },
+            {
+                "id": "C",
+                "text": "Thủ tục pháp lý thẩm định đối tượng mua và phê duyệt giá bán kéo dài nhiều năm",
+                "isCorrect": true
+            },
+            {
+                "id": "D",
+                "text": "Nhu cầu mua nhà ở xã hội của người thu nhập thấp tại đô thị hiện nay gần như bằng 0",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Chi phí đất, biên lợi nhuận bị khống chế 10%, và rào cản hành chính là 3 trở ngại lớn nhất.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "DRAG_DROP",
+        "content": "Hãy sắp xếp đúng thứ tự các giai đoạn của quá trình Đô thị hóa theo chu kỳ không gian đô thị (Urban Lifecycle):",
+        "points": 30,
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "STEP_1",
+                "text": "Đô thị hóa tập trung (Urbanization): Dân cư ồ ạt đổ dồn từ nông thôn vào lõi trung tâm thành phố",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_2",
+                "text": "Ngoại vi hóa (Suburbanization): Tầng lớp trung lưu di chuyển ra sinh sống tại các vành đai ngoại ô",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_3",
+                "text": "Phản đô thị hóa (Counter-urbanization): Dân số lõi trung tâm sụt giảm mạnh, di chuyển về các đô thị nhỏ",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_4",
+                "text": "Tái đô thị hóa (Re-urbanization): Cải tạo chỉnh trang lõi đô thị cũ, thu hút cư dân trẻ quay trở lại",
+                "isCorrect": true
+            }
+        ],
+        "hint": "Urbanization -> Suburbanization -> Counter-urbanization -> Re-urbanization.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "MC_SINGLE",
+        "content": "Một hộ gia đình có thu nhập Y = 30 triệu đồng/tháng. Chi phí đi lại hàng tháng từ nơi ở về trung tâm CBD là T(d) = 1,2 triệu đồng x d (với d là khoảng cách tính bằng km). Giá thuê nhà trên 1m2 tại khoảng cách d là R(d). Nếu hộ gia đình thuê căn hộ diện tích cố định 60m2 và chi 18 triệu đồng cho các hàng hóa tiêu dùng khác. Phương trình đường giá thuê nhà sẵn sàng trả (Bid-Rent Function) của hộ gia đình theo khoảng cách d là:",
+        "points": 40,
+        "timeLimit": 60,
+        "options": [
+            {
+                "id": "A",
+                "text": "R(d) = 200.000 - 20.000 x d (đồng/m2/tháng)",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "R(d) = 300.000 - 15.000 x d (đồng/m2/tháng)",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "R(d) = 150.000 - 10.000 x d (đồng/m2/tháng)",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "R(d) = 250.000 - 25.000 x d (đồng/m2/tháng)",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Ngân sách còn lại cho nhà ở = Y - Tiêu dùng khác - Chi phí đi lại = 30tr - 18tr - 1,2tr*d = 12tr - 1,2tr*d. Giá thuê trên 1m2 = (12.000.000 - 1.200.000*d) / 60 = 200.000 - 20.000*d đồng/m2.",
+        "isTieBreaker": false
+    },
+    {
+        "type": "DRAG_DROP",
+        "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình lập dự án Tái thiết đô thị tích hợp (Integrated Urban Regeneration Project):",
+        "points": 40,
+        "timeLimit": 38,
+        "options": [
+            {
+                "id": "STEP_1",
+                "text": "Khảo sát hiện trạng di sản, môi trường, xã hội và cộng đồng dân cư khu vực xuống cấp",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_2",
+                "text": "Tham vấn cộng đồng đa bên và xác định tầm nhìn tái thiết kinh tế - không gian",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_3",
+                "text": "Xây dựng phương án tài chính hỗn hợp (PPP, trái phiếu đô thị, đấu giá quyền phát triển)",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_4",
+                "text": "Triển khai tái định cư tại chỗ và nâng cấp hạ tầng khung (giao thông, thoát nước, không gian công cộng)",
+                "isCorrect": true
+            },
+            {
+                "id": "STEP_5",
+                "text": "Khai thác vận hành không gian thương mại dịch vụ và đánh giá tác động kinh tế - xã hội sau dự án",
+                "isCorrect": true
+            }
+        ],
+        "hint": "Khảo sát hiện trạng -> Tham vấn cộng đồng -> Phương án tài chính -> Tái định cư & Thi công hạ tầng -> Vận hành & Đánh giá.",
+        "isTieBreaker": false
+    }
 ]

@@ -5,16 +5,15 @@ import path from "path";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Bắt đầu nạp dữ liệu câu hỏi mẫu cho 8 môn học...");
+  console.log("🌱 Bắt đầu nạp dữ liệu câu hỏi mẫu chuẩn hóa...");
 
-  // 1. Tạo User Host mặc định nếu chưa có
+  // 1. Tạo hoặc cập nhật User Quản trị viên chính chủ (channelngktv@gmail.com)
   const host = await prisma.user.upsert({
-    where: { email: "demo-host@timeoutquiz.com" },
-    update: {},
+    where: { email: "channelngktv@gmail.com" },
+    update: { role: "ADMIN" },
     create: {
-      id: "demo-host-id",
-      email: "demo-host@timeoutquiz.com",
-      name: "Nguyễn Gia Khánh (Host)",
+      email: "channelngktv@gmail.com",
+      name: "Nguyễn Gia Khánh",
       role: "ADMIN",
     },
   });
@@ -34,7 +33,7 @@ async function main() {
       bank = await prisma.quizBank.create({
         data: {
           title: item.title,
-          description: `${item.description} (GV: ${item.lecturer})`,
+          description: `${item.description} (GV/Tác giả: ${item.lecturer})`,
           isPublic: true,
           ownerId: host.id,
         },
@@ -61,7 +60,7 @@ async function main() {
         await prisma.question.create({
           data: {
             quizBankId: bank.id,
-            type: q.type,
+            type: q.type === "single_choice" ? "MC_SINGLE" : (q.type || "MC_SINGLE"),
             content: q.content,
             options: q.options || undefined,
             pairs: q.pairs || undefined,
@@ -78,7 +77,7 @@ async function main() {
     }
   }
 
-  console.log("🎉 Hoàn tất nạp dữ liệu mẫu 8 môn học thành công!");
+  console.log("🎉 Hoàn tất nạp dữ liệu mẫu tất cả bộ đề thành công!");
 }
 
 main()

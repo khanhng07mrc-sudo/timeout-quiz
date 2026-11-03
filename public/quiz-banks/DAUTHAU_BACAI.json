@@ -250,7 +250,7 @@
     "isTieBreaker": false
   },
   {
-    "type": "single_choice",
+    "type": "MC_SINGLE",
     "content": "Theo mô hình phân cấp hành chính địa phương 2 cấp, Dự án Nhà máy Thủy điện Tích năng Bác Ái được xây dựng trên địa bàn xã Phước Hòa trực thuộc tỉnh nào?",
     "points": 10,
     "timeLimit": 15,
@@ -704,7 +704,7 @@
     "isTieBreaker": false
   },
   {
-    "type": "single_choice",
+    "type": "MC_SINGLE",
     "content": "Thị trường quốc tế về chế tạo thiết bị cơ điện công nghệ cao cột nước lớn như gói thầu 01TB-BA mang cấu trúc thị trường nào?",
     "points": 20,
     "timeLimit": 20,

@@ -130,6 +130,86 @@ export async function GET(req: NextRequest) {
           });
         }
       }
+      // Auto-seed standard course and bidding banks from public/quiz-banks/index.json
+      try {
+        const fs = await import("fs");
+        const path = await import("path");
+        const manifestPath = path.join(process.cwd(), "public", "quiz-banks", "index.json");
+        if (fs.existsSync(manifestPath)) {
+          const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+          const adminUser = await prisma.user.findFirst({
+            where: { email: "channelngktv@gmail.com" },
+          });
+          const seedOwnerId = adminUser ? adminUser.id : "demo-host-id";
+
+          for (const item of manifest) {
+            const qFile = path.join(process.cwd(), "public", item.file);
+            if (!fs.existsSync(qFile)) continue;
+            const qData = JSON.parse(fs.readFileSync(qFile, "utf-8"));
+            const targetLen = qData.length;
+
+            const existing = await prisma.quizBank.findFirst({
+              where: {
+                OR: [
+                  { title: item.title },
+                  { title: { contains: item.code } }
+                ]
+              },
+              include: { _count: { select: { questions: true } } }
+            });
+
+            if (!existing) {
+              await prisma.quizBank.create({
+                data: {
+                  title: item.title,
+                  description: `${item.description} (GV/Tác giả: ${item.lecturer || 'Nhóm 9 - QLDA'})`,
+                  isPublic: true,
+                  ownerId: seedOwnerId,
+                  questions: {
+                    create: qData.map((q: any, i: number) => ({
+                      type: q.type === "single_choice" ? "MC_SINGLE" : (q.type || "MC_SINGLE"),
+                      content: sanitizeInput(q.content, 2000),
+                      options: q.options || undefined,
+                      pairs: q.pairs || undefined,
+                      answer: q.answer ? sanitizeInput(q.answer, 500) : null,
+                      points: q.points || 10,
+                      timeLimit: q.timeLimit || 20,
+                      hint: q.hint ? sanitizeInput(q.hint, 500) : null,
+                      order: i,
+                      isTieBreaker: Boolean(q.isTieBreaker),
+                    })),
+                  },
+                },
+              });
+            } else if ((existing._count?.questions ?? 0) < targetLen) {
+              await prisma.question.deleteMany({ where: { quizBankId: existing.id } });
+              await prisma.quizBank.update({
+                where: { id: existing.id },
+                data: {
+                  ownerId: seedOwnerId,
+                  questions: {
+                    create: qData.map((q: any, i: number) => ({
+                      type: q.type === "single_choice" ? "MC_SINGLE" : (q.type || "MC_SINGLE"),
+                      content: sanitizeInput(q.content, 2000),
+                      options: q.options || undefined,
+                      pairs: q.pairs || undefined,
+                      answer: q.answer ? sanitizeInput(q.answer, 500) : null,
+                      points: q.points || 10,
+                      timeLimit: q.timeLimit || 20,
+                      hint: q.hint ? sanitizeInput(q.hint, 500) : null,
+                      order: i,
+                      isTieBreaker: Boolean(q.isTieBreaker),
+                    })),
+                  },
+                },
+              });
+            }
+          }
+        }
+      } catch (courseSeedErr) {
+        console.warn("[GET /api/quiz-bank] Standard banks auto-seed warning:", courseSeedErr);
+      }
+
       isPresetsSeeded = true;
     } catch (seedErr) {
       console.warn("[GET /api/quiz-bank] Auto-seed presets warning:", seedErr);

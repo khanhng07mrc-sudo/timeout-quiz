@@ -425,6 +425,11 @@ export function useOlympiaAudio(
         setupContestIntroCrossfadeLoop(a);
       }
 
+      if (cue.kind === "sound" && (cue.sound.includes("start_round") || cue.sound.includes("open_question") || cue.sound.includes("ready"))) {
+        // USER REQUIREMENT: Khi chuyển vòng hoặc mở câu hỏi, crossfade tắt ngay âm thanh intro/chào thí sinh trong 1s
+        fadeOutAndStopBgm(1000);
+      }
+
       if (isBgmCue) {
         crossfadeToBgm(a, BGM_CROSSFADE_MS, isCountdown);
       } else {

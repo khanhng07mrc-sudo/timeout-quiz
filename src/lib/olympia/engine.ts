@@ -2191,9 +2191,19 @@ export class OlympiaGame {
           this.recordOpenedQuestion(vd.current.q.q);
         }
         vd.phase = "thinking";
-        vd.timer = mkTimer(rs.thinkMs[String(vd.current.points)] ?? 15000);
+        let thinkDuration = rs.thinkMs[String(vd.current.points)] ?? 15000;
+        // USER REQUIREMENT: Thời gian trả lời các câu sắp xếp/nối cột sẽ có thời gian là 3x số dữ kiện (10đ), 4x (20đ), 6x (30đ), 10x (40đ)
+        const qType = (vd.current.q as any)?.type || (vd.current.q as any)?.questionType;
+        if (qType === "arrange" || qType === "match") {
+          const itemsCount = (vd.current.q as any)?.items?.length || 5;
+          const mult = vd.current.points === 10 ? 3 : vd.current.points === 20 ? 4 : vd.current.points === 30 ? 6 : 10;
+          thinkDuration = mult * itemsCount * 1000;
+        }
+        vd.timer = mkTimer(thinkDuration);
         vd.steal = null;
-        vd.hopeStarActive = false;
+        // USER REQUIREMENT: Giữ nguyên Ngôi sao hy vọng nếu thí sinh đã đặt trước khi hiện câu hỏi
+        const preStar = vd.hopeStarActive;
+        vd.hopeStarActive = preStar;
         vd.deductedOnSteal = false;
         vd.lastVerdict = null;
         if (st.showStageGraphics) st.showStageGraphics = false;
@@ -2211,7 +2221,9 @@ export class OlympiaGame {
         return OK;
       }
       case "vd:hopeStar": {
-        if (!cur || vd.phase !== "thinking") return fail("Chỉ dùng Ngôi sao hy vọng khi câu hỏi đang diễn ra");
+        // USER REQUIREMENT: Đặt Ngôi sao hy vọng trước khi hiện câu hỏi kế tiếp hoặc trong lúc suy nghĩ
+        const canStar = vd.phase === "thinking" || vd.phase === "packageReady" || vd.phase === "choosing" || vd.phase === "result";
+        if (!canStar) return fail("Không thể dùng Ngôi sao hy vọng lúc này");
         if (vd.hopeStarUsed.includes(owner)) return fail("Thí sinh đã dùng Ngôi sao hy vọng");
         vd.hopeStarUsed.push(owner);
         vd.hopeStarActive = true;

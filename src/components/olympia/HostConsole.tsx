@@ -346,8 +346,8 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-sky-300 bg-sky-950/40 border border-sky-500/30 hover:bg-sky-500/20 flex items-center gap-1 cursor-pointer truncate"
                 title="Bắt đầu hoạt cảnh từng thí sinh bước từ cổng vòm xuống bục"
               >
-                <span>🚶</span>
-                <span className="truncate">Chào Sân Thí Sinh</span>
+                <span>👥</span>
+                <span className="truncate">Chào & Giới thiệu thí sinh</span>
               </button>
             )}
 

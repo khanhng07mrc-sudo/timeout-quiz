@@ -10247,6 +10247,17 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       <span>Bắt đầu trận đấu Olympia</span>
                     </button>
                   )}
+                  {olympiaState?.stage === "playing" && (
+                    <button
+                      type="button"
+                      onClick={() => sendOlympiaAction("entrance:start")}
+                      className="px-3 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/50 text-sky-200 text-xs font-black shadow flex items-center gap-1.5 cursor-pointer transition"
+                      title="Chào & Giới thiệu 4 thí sinh bước ra sân khấu"
+                    >
+                      <span>👥</span>
+                      <span>Chào & Giới thiệu thí sinh</span>
+                    </button>
+                  )}
                   {olympiaState?.stage === "playing" && olympiaState.introTimer && (
                     <button
                       type="button"

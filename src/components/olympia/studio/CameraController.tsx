@@ -28,8 +28,8 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   1: {
     id: 1,
     label: "Toàn Cảnh",
-    pos: [0.0, 4.4, 12.8],
-    target: [0.2, 1.8, -3.5],
+    pos: [0.0, 4.4, 13.0],
+    target: [-0.6, 1.8, -3.8],
   },
   2: {
     id: 2,
@@ -154,7 +154,7 @@ export function CameraController({
   useFrame((_, delta) => {
     // 0. True Optical Zoom & Adaptive FOV Calculation
     if (camera instanceof THREE.PerspectiveCamera) {
-      const baseFov = 46;
+      const baseFov = 43;
       const aspect = size.width / Math.max(1, size.height);
       const targetAspect = 16 / 9;
       let calculatedFov = baseFov;

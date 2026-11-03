@@ -343,70 +343,8 @@ function renderStarryNightToCanvas(
     ctx.restore();
   }
 
-  // 6. OFFICIAL OLYMPIA LOGO AT CENTER OF THE PORTAL
-  const logoTargetH = h * 0.38;
-  const logoTargetY = cy - logoTargetH * 0.54;
-
-  if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
-    const aspect = logoImg.naturalWidth / logoImg.naturalHeight;
-    const logoW = logoTargetH * aspect;
-    const logoX = cx - logoW / 2;
-
-    ctx.save();
-    ctx.shadowColor = "rgba(0, 240, 255, 0.8)";
-    ctx.shadowBlur = 36;
-    ctx.drawImage(logoImg, logoX, logoTargetY, logoW, logoTargetH);
-    ctx.restore();
-  } else {
-    // Crisp Vector Laurel & Golden Starburst
-    ctx.save();
-    ctx.strokeStyle = "#ffd700";
-    ctx.lineWidth = 5;
-    ctx.shadowColor = "#ffb700";
-    ctx.shadowBlur = 24;
-    ctx.beginPath();
-    ctx.arc(cx, logoTargetY + logoTargetH * 0.42, logoTargetH * 0.36, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.font = '900 56px "Plus Jakarta Sans", sans-serif';
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#ffd700";
-    ctx.fillText("OLYMPIA", cx, logoTargetY + logoTargetH * 0.48);
-    ctx.restore();
-  }
-
-  // 7. "ĐƯỜNG LÊN ĐỈNH OLYMPIA" Metallic Typography below Logo
-  const textY = logoTargetY + logoTargetH + 28;
-  const textStr = "ĐƯỜNG LÊN ĐỈNH OLYMPIA";
-  ctx.save();
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = '900 34px "Plus Jakarta Sans", "Montserrat", sans-serif';
-  ctx.letterSpacing = "0.08em";
-
-  ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
-  ctx.shadowBlur = 14;
-  ctx.shadowOffsetY = 4;
-  ctx.lineWidth = 8;
-  ctx.strokeStyle = "#1e1302";
-  ctx.strokeText(textStr, cx, textY);
-
-  ctx.shadowColor = "rgba(255, 215, 0, 0.8)";
-  ctx.shadowBlur = 20;
-  ctx.shadowOffsetY = 2;
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "#fffed4";
-  ctx.strokeText(textStr, cx, textY);
-
-  const textGrad = ctx.createLinearGradient(0, textY - 18, 0, textY + 18);
-  textGrad.addColorStop(0.0, "#ffffff");
-  textGrad.addColorStop(0.2, "#fffbd0");
-  textGrad.addColorStop(0.5, "#ffd700");
-  textGrad.addColorStop(0.85, "#b45309");
-  textGrad.addColorStop(1.0, "#78350f");
-  ctx.fillStyle = textGrad;
-  ctx.fillText(textStr, cx, textY);
-  ctx.restore();
+  // NOTE: Theo yêu cầu người dùng, bỏ logo Olympia và dòng chữ ở màn lục giác lùi sâu sau MC,
+  // giữ trọn vẹn nền cosmos viễn tưởng và tinh vân công nghệ cao.
 }
 
 function createStarryNightCanvas(logoImg?: HTMLImageElement | null, fadeProgress: number = 0, seedOffset: number = 0): HTMLCanvasElement {
@@ -2455,9 +2393,9 @@ export function CentralLedWall({
       </group>
 
       {/* ── 3. STAGE FAR-RIGHT: VERTICAL TOTEM ARCHITECTURAL SLAT PILLAR (HƯỚNG VỀ PHÍA KHÁN GIẢ) ── */}
-      {/* Lùi về phía cánh phải giáp khán đài tại X = 10.4m, Z = 0.2m, hạ độ cao xuống Y = 1.18m */}
-      {/* Giúp ở các góc máy không có khán giả (CAM 1, CAM 3, CAM 4) totem được ẩn hoàn toàn ngoài khung hình, không bị lộ */}
-      <group position={[10.4, 1.18, 0.2]} rotation={[0, -0.26, 0]}>
+      {/* Đã dời xa hẳn sang góc phải phía sau khán đài tại X = 13.0m, Z = 4.5m, hạ độ cao xuống Y = 1.18m */}
+      {/* Giúp ở góc máy toàn cảnh (CAM 1), totem hoàn toàn nằm ngoài rìa phải khung hình, chỉ hiện 3 màn hình sân khấu chính */}
+      <group position={[13.0, 1.18, 4.5]} rotation={[0, -0.45, 0]}>
         {/* Base Pedestal Plinth (tiếp đất Y=0) */}
         <mesh position={[0, -1.14, 0]}>
           <boxGeometry args={[1.40, 0.08, 0.40]} />

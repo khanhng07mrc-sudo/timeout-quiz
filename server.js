@@ -29811,9 +29811,17 @@ var OlympiaGame = class _OlympiaGame {
           this.recordOpenedQuestion(vd.current.q.q);
         }
         vd.phase = "thinking";
-        vd.timer = mkTimer(rs.thinkMs[String(vd.current.points)] ?? 15e3);
+        let thinkDuration = rs.thinkMs[String(vd.current.points)] ?? 15e3;
+        const qType = vd.current.q?.type || vd.current.q?.questionType;
+        if (qType === "arrange" || qType === "match") {
+          const itemsCount = vd.current.q?.items?.length || 5;
+          const mult = vd.current.points === 10 ? 3 : vd.current.points === 20 ? 4 : vd.current.points === 30 ? 6 : 10;
+          thinkDuration = mult * itemsCount * 1e3;
+        }
+        vd.timer = mkTimer(thinkDuration);
         vd.steal = null;
-        vd.hopeStarActive = false;
+        const preStar = vd.hopeStarActive;
+        vd.hopeStarActive = preStar;
         vd.deductedOnSteal = false;
         vd.lastVerdict = null;
         if (st.showStageGraphics) st.showStageGraphics = false;
@@ -29831,7 +29839,8 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "vd:hopeStar": {
-        if (!cur || vd.phase !== "thinking") return fail("Ch\u1EC9 d\xF9ng Ng\xF4i sao hy v\u1ECDng khi c\xE2u h\u1ECFi \u0111ang di\u1EC5n ra");
+        const canStar = vd.phase === "thinking" || vd.phase === "packageReady" || vd.phase === "choosing" || vd.phase === "result";
+        if (!canStar) return fail("Kh\xF4ng th\u1EC3 d\xF9ng Ng\xF4i sao hy v\u1ECDng l\xFAc n\xE0y");
         if (vd.hopeStarUsed.includes(owner)) return fail("Th\xED sinh \u0111\xE3 d\xF9ng Ng\xF4i sao hy v\u1ECDng");
         vd.hopeStarUsed.push(owner);
         vd.hopeStarActive = true;

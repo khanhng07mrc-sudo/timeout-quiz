@@ -34,7 +34,8 @@ function hasActiveRoundContent(state: OlympiaState): boolean {
     case "khoiDong": {
       const kd = state.khoiDong;
       if (!kd || !kd.started) return false;
-      return Boolean((kd.questionRevealed && kd.current) || kd.phase === "segmentDone");
+      // USER REQUIREMENT: Đồ hoạ xuất hiện ngay sau 3.5s bắt đầu, để lại hộp câu hỏi trống
+      return true;
     }
     case "vcnv": {
       const v = state.vcnv;
@@ -236,7 +237,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         {state.stage === "playing" && !state.banner && !isOverlayHidden && hasActiveRoundContent(state) && (
           isLowerThird ? (
             /* ── LOWER-THIRD BROADCAST OVERLAY (20 - 25% BOTTOM) ── */
-            <div className="w-full px-2 sm:px-6 pb-2 pt-0 pointer-events-auto flex flex-col justify-end z-20">
+            <div className="w-full px-2 sm:px-6 pb-3 pt-1 pointer-events-auto flex flex-col justify-end z-20">
               <div className="w-full max-w-6xl mx-auto flex flex-col justify-end">
                 {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
                 {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} isLowerThird={true} />}
@@ -259,7 +260,7 @@ export default function DisplayScreen({ code }: { code: string }) {
 
         {/* Score strip at bottom when not in Khởi Động and not hidden */}
         {state.stage !== "lobby" && state.currentRound !== "khoiDong" && !isOverlayHidden && isLowerThird && (
-          <div className="shrink-0 px-2 pb-1 relative z-20 pointer-events-auto">
+          <div className="shrink-0 px-2 py-2 relative z-20 pointer-events-auto">
             <ScoreStrip state={state} large highlight={highlightSeats(state)} />
           </div>
         )}
@@ -419,7 +420,7 @@ function KhoiDong({ state, serverNow }: P) {
   const currentSoloSeat = isSolo ? (seg.seat ?? null) : null;
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col justify-between h-full min-h-0 py-0.5 gap-1">
+    <div className="w-full max-w-5xl mx-auto flex flex-col justify-between h-full min-h-0 py-2 gap-2">
       {/* ── SINGLE-LINE TOP BAR: Question number + 4 Contestant Shapes ── */}
       <div className="flex items-center justify-between gap-1.5 sm:gap-2 shrink-0 w-full">
         <div className="flex items-center gap-1.5 shrink-0">
@@ -445,7 +446,7 @@ function KhoiDong({ state, serverNow }: P) {
               return (
                 <div
                   key={s.id}
-                  className="rounded-lg border px-2 py-0.5 text-center transition-all animate-pulse shadow-[0_0_16px_#f59e0b] flex items-center justify-between min-w-0"
+                  className="rounded-xl border px-2.5 py-1 text-center transition-all animate-pulse my-0.5 shadow-[0_0_16px_#f59e0b] flex items-center justify-between min-w-0"
                   style={{
                     border: "1.5px solid #facc15",
                     borderLeft: "4px solid #facc15",
@@ -467,7 +468,7 @@ function KhoiDong({ state, serverNow }: P) {
               return (
                 <div
                   key={s.id}
-                  className="rounded-lg border px-2 py-0.5 text-center transition-all flex items-center justify-between min-w-0"
+                  className="rounded-xl border px-2.5 py-1 text-center transition-all flex items-center justify-between min-w-0 my-0.5"
                   style={{
                     border: "1.5px solid #00f0ff",
                     borderLeft: "4px solid #00f0ff",
@@ -488,7 +489,7 @@ function KhoiDong({ state, serverNow }: P) {
             return (
               <div
                 key={s.id}
-                className="rounded-lg border px-2 py-0.5 text-center transition-all border-cyan-500/25 bg-slate-950/80 flex items-center justify-between min-w-0 shadow-sm"
+                className="rounded-xl border px-2.5 py-1 text-center transition-all border-cyan-500/25 bg-slate-950/80 flex items-center justify-between min-w-0 shadow-sm my-0.5"
                 style={{ borderLeft: "3px solid #00e5ff" }}
               >
                 <span className="truncate font-medium text-[11px] sm:text-xs text-slate-200 leading-normal pt-0.5">

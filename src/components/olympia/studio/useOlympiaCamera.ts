@@ -23,6 +23,8 @@ export function useOlympiaCameraState(
 
   const lastRoundRef = useRef<string | null>(null);
   const roundEnteredAtRef = useRef<number>(Date.now());
+  const lastPhaseRef = useRef<string | null>(null);
+  const phaseEnteredAtRef = useRef<number>(Date.now());
 
   useEffect(() => {
     if (state?.currentRound && state.currentRound !== lastRoundRef.current) {
@@ -30,6 +32,13 @@ export function useOlympiaCameraState(
       roundEnteredAtRef.current = Date.now();
     }
   }, [state?.currentRound]);
+  useEffect(() => {
+    const curPhase = state?.khoiDong?.phase || state?.veDich?.phase || "";
+    if (curPhase && curPhase !== lastPhaseRef.current) {
+      lastPhaseRef.current = curPhase;
+      phaseEnteredAtRef.current = Date.now();
+    }
+  }, [state?.khoiDong?.phase, state?.veDich?.phase]);
 
   // 100ms ticker for smooth timer-driven camera transitions (e.g. VCNV 15s round robin & push-in)
   useEffect(() => {
@@ -170,22 +179,13 @@ export function useOlympiaCameraState(
       }
 
       // 3.4. Khi đồ hoạ câu hỏi hiện lên (trống nội dung / sẵn sàng):
-      // USER REQUIREMENT: "sau đó (từ khi đồ hoạ câu hỏi hiện lên, trống nội dung) từ camera chiếu tất cả thí sinh, hệ thống sẽ zoom in về vị trí của thí sinh dự thi"
-      if (kd.qIdx === 0 && !kd.questionRevealed) {
-        const timeSinceCooldown = kd.startCooldownUntil ? (now - kd.startCooldownUntil) / 1000 : 999;
-        if (timeSinceCooldown < 1.8) {
-          return {
-            camAngle: 10, // Camera chiếu tất cả 4 thí sinh
-            transitionMode: "MORPH",
-            isOverlayHidden: false,
-            pushInProgress: 0,
-          };
-        }
+      // USER REQUIREMENT: "sau 3.5s nhấn bắt đầu, cut ngay từ góc toàn cảnh sang góc các thí sinh, tránh giật lag vô cớ"
+      if (!kd.questionRevealed) {
         return {
-          camAngle: targetContestantCam, // Zoom in về vị trí của thí sinh dự thi
-          transitionMode: "MORPH",
+          camAngle: targetContestantCam, // CUT dứt khoát sang thí sinh dự thi
+          transitionMode: "CUT",
           isOverlayHidden: false,
-          pushInProgress: 0.1,
+          pushInProgress: 0,
         };
       }
 
@@ -226,13 +226,27 @@ export function useOlympiaCameraState(
         }
       }
 
-      // Idle / between questions / turn done:
+      // 3.6. Sau khi nhấn Kết thúc lượt (sau một lượt khởi động riêng):
+      // USER REQUIREMENT: "sau khi nhấn kết thúc lượt (sau một lượt khởi động riêng), hệ thống cut ngay sang góc quay thí sinh đó, zoom in nhẹ, rồi cut sang zoom out camera toàn cảnh"
       if (kd.phase === "segmentDone") {
+        const segDoneElapsed = Math.max(0, (now - phaseEnteredAtRef.current) / 1000);
+        if (segDoneElapsed < 2.5) {
+          // Giai đoạn 1 (0 - 2.5s): CUT ngay sang góc quay thí sinh đó, zoom in nhẹ
+          const pushIn = Math.min(1.0, segDoneElapsed / 2.5) * 0.15;
+          return {
+            camAngle: targetContestantCam,
+            transitionMode: "CUT",
+            isOverlayHidden: false,
+            pushInProgress: pushIn,
+          };
+        }
+        // Giai đoạn 2 (2.5s - 5.5s): CUT sang toàn cảnh 3 màn hình chính và zoom out nhẹ
+        const zoomOutProgress = Math.max(0, 1.0 - (segDoneElapsed - 2.5) / 3.0) * 0.15;
         return {
-          camAngle: 1, // Toàn cảnh trường quay S14
-          transitionMode: "MORPH",
+          camAngle: 1,
+          transitionMode: "CUT",
           isOverlayHidden: false,
-          pushInProgress: 0,
+          pushInProgress: zoomOutProgress,
         };
       }
 

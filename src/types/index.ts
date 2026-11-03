@@ -2108,6 +2108,23 @@ export interface ClientToServerEvents {
   "admin:teams:set_initial_scores": (payload: { defaultScore?: number; teamScores?: Record<string, number>; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:team:update_score": (payload: { teamId: string; score: number; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:room:update_config": (payload: { key: string; value: any; code?: string }) => void;
+  "admin:room:update_teams_and_questions": (
+    payload: {
+      code?: string;
+      teams: Array<{ id?: string; name: string; color: string }>;
+      matchMaxQuestions: number;
+      allocationStrategy?: "SHUFFLE_RANDOM" | "ASCENDING" | "ORIGINAL_POINTS" | "BLOOM_BALANCED";
+      customDifficultyDistribution?: {
+        easyRounds?: number;
+        mediumRounds?: number;
+        hardRounds?: number;
+        easyCount?: number;
+        mediumCount?: number;
+        hardCount?: number;
+      };
+    },
+    callback?: (result: { success: boolean; error?: string }) => void
+  ) => void;
   // Mystery Quest Client Events
   "game:mystery:choose_action": (payload: { action: "TAKE_BASE_POINTS" | "PLAY_MINIGAME" }) => void;
   "admin:mystery:choose_action": (payload: { action: "TAKE_BASE_POINTS" | "PLAY_MINIGAME"; code?: string }) => void;

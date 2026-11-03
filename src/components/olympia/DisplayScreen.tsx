@@ -117,13 +117,6 @@ function ContestantIntroChyron({ state }: { state: OlympiaState }) {
             </span>
           </div>
         </div>
-
-        {/* Olympia Laurel Badge */}
-        <div className="hidden sm:flex items-center justify-center px-4 border-l border-white/10 shrink-0 bg-white/5">
-          <span className="text-xs font-black tracking-widest text-amber-300 uppercase">
-            OLYMPIA
-          </span>
-        </div>
       </div>
     </div>
   );

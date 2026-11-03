@@ -709,6 +709,8 @@ export class OlympiaGame {
         return OK;
       }
       case "round:next":
+        st.studioCameraManual = false;
+        st.studioCamera = undefined;
         if (st.stage !== "playing") return fail("Trận chưa bắt đầu");
         return this.nextRound(now);
       case "round:finish":
@@ -864,7 +866,6 @@ export class OlympiaGame {
           seatStartedAt: now,
           seatGestures,
         };
-        this.cue("6_NhacKhac/contest_intro", "bgm");
         this.cue("6_NhacKhac/contestant_intro", "sound");
         return OK;
       }
@@ -883,7 +884,7 @@ export class OlympiaGame {
       }
       case "entrance:skip": {
         st.entranceState = null;
-        this.cue("6_NhacKhac/contest_intro", "stop");
+          this.cue("6_NhacKhac/contest_intro", "stop");
         return OK;
       }
       case "game:reset": {
@@ -977,6 +978,8 @@ export class OlympiaGame {
 
     switch (type) {
       case "kd:next": {
+        st.studioCameraManual = false;
+        st.studioCamera = undefined;
         if (kd.startCooldownUntil && now < kd.startCooldownUntil) {
           return fail("Vui lòng đợi đồ hoạ mở xong (3.5s)");
         }

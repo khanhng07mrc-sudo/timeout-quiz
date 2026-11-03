@@ -46,7 +46,8 @@ const BASE_GAME_MODES: Array<{
 ];
 
 function getGameModes(lang: Language = "vi") {
-  return BASE_GAME_MODES.map((m) => {
+  // Mode TOURNAMENT tạm thời được ẩn khỏi danh sách lựa chọn trên UI
+  return BASE_GAME_MODES.filter((m) => m.value !== "TOURNAMENT").map((m) => {
     const loc = getLocalizedModeMeta(m.value, lang);
     return {
       value: m.value,
@@ -2335,11 +2336,29 @@ export default function CreateRoomPage() {
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h2 className="text-xl font-bold">Đội tham gia ({teams.length} đội)</h2>
             <div className="flex items-center gap-2">
-              <button onClick={addTeam} disabled={teams.length >= 20} className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-medium text-xs sm:text-sm disabled:opacity-50">
+              <button
+                onClick={addTeam}
+                disabled={(mode === "OLYMPIA" || mode === "MAGIC_WHEEL") ? teams.length >= 8 : teams.length >= (bankQuestions?.length || 24)}
+                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-medium text-xs sm:text-sm disabled:opacity-50"
+              >
                 + Thêm đội
               </button>
             </div>
           </div>
+
+          {(mode === "OLYMPIA" || mode === "MAGIC_WHEEL") && (
+            <div className="p-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs flex items-center gap-2">
+              <span>ℹ️</span>
+              <span>Chế độ {mode === "OLYMPIA" ? "Olympia" : "Vòng quay trí tuệ"} giới hạn cố định từ 2 đến 8 đội/thí sinh.</span>
+            </div>
+          )}
+
+          {teams.length > 8 && mode !== "CLASSIC" && mode !== "OLYMPIA" && mode !== "MAGIC_WHEEL" && (
+            <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
+              <span>⚠️</span>
+              <span>Hệ thống không khuyến khích quá 8 đội để đảm bảo thời lượng trận đấu và trải nghiệm tốt nhất.</span>
+            </div>
+          )}
 
           {/* Quick preset selector: Số đội: 2 3 4 5 6 7 8 */}
           <div className="glass rounded-xl px-3 py-2 border border-white/10 flex items-center justify-between flex-wrap gap-2 bg-[#121424]">

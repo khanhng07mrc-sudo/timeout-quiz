@@ -3963,7 +3963,7 @@ export default function MysteryQuestBoard({
                       type="button"
                       onClick={() => handleTileClick(tile)}
                       disabled={isTileDisabled}
-                      className={`relative ${isDisplay ? "aspect-[4/3] max-h-[12.5vh]" : "h-[50px] sm:h-[60px] min-h-[46px] max-h-[62px] w-full"} rounded-xl p-1 sm:p-1.5 flex flex-col items-center justify-between border-2 transition-all duration-300 ${
+                      className={`relative ${isDisplay ? "aspect-[4/3] max-h-[12.5vh]" : "min-h-[58px] sm:min-h-[66px] w-full"} rounded-xl p-1 sm:p-1.5 flex flex-col items-center justify-between border-2 transition-all duration-300 ${
                         !isTileDisabled
                           ? tile.isPeeked
                             ? "bg-gradient-to-b from-indigo-900/90 to-slate-950 border-emerald-400/80 ring-2 ring-emerald-400/40 hover:scale-102 shadow-xl group cursor-pointer"
@@ -4006,7 +4006,7 @@ export default function MysteryQuestBoard({
                 return (
                   <div
                     key={tile.id}
-                    className={`relative ${isDisplay ? "aspect-[4/3] max-h-[12.5vh]" : "h-[50px] sm:h-[60px] min-h-[46px] max-h-[62px] w-full"} rounded-xl p-1 sm:p-1.5 flex flex-col items-center justify-between border-2 shadow-2xl transition-all duration-200 ${
+                    className={`relative ${isDisplay ? "aspect-[4/3] max-h-[12.5vh]" : "min-h-[58px] sm:min-h-[66px] w-full"} rounded-xl p-1 sm:p-1.5 flex flex-col items-center justify-between border-2 shadow-2xl transition-all duration-200 ${
                       isMatched ? "ring-2 ring-yellow-400 scale-102 z-10" : ""
                     } ${
                       isEscapeSafe

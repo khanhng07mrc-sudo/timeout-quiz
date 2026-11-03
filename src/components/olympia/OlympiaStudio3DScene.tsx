@@ -143,6 +143,7 @@ export function OlympiaStudio3DScene({
       >
         <CameraController
           camAngle={internalCam}
+          totalSeats={state?.seats?.length || 4}
           transitionMode={transitionMode}
           pushInProgress={pushInProgress}
           ptzYaw={ptzYaw}

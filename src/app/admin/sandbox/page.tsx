@@ -215,7 +215,8 @@ export interface AvailableModeItem {
 }
 
 function getAvailableModes(lang: Language = "vi"): AvailableModeItem[] {
-  return BASE_AVAILABLE_MODES.map((m) => {
+  // Mode TOURNAMENT tạm thời được ẩn khỏi danh sách lựa chọn trên UI
+  return BASE_AVAILABLE_MODES.filter((m) => m.mode !== "TOURNAMENT").map((m) => {
     const loc = getLocalizedModeMeta(m.mode, lang);
     return {
       ...m,
@@ -11526,6 +11527,20 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                 ))}
               </div>
             </div>
+
+            {(selectedMode === "OLYMPIA" || selectedMode === "MAGIC_WHEEL") && (
+              <div className="p-2 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs flex items-center gap-2">
+                <span>ℹ️</span>
+                <span>Chế độ {selectedMode === "OLYMPIA" ? "Olympia" : "Vòng quay trí tuệ"} giới hạn cố định từ 2 đến 8 đội/thí sinh.</span>
+              </div>
+            )}
+
+            {sandboxCustomTeams.length > 8 && selectedMode !== "CLASSIC" && selectedMode !== "OLYMPIA" && selectedMode !== "MAGIC_WHEEL" && (
+              <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
+                <span>⚠️</span>
+                <span>Hệ thống không khuyến khích quá 8 đội để đảm bảo thời lượng trận đấu và trải nghiệm tốt nhất.</span>
+              </div>
+            )}
 
             {/* Editable Team Names List */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">

@@ -11212,6 +11212,127 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("room:state", roomState);
     });
 
+    socket.on("admin:room:update_teams_and_questions", async (payload: any, callback?: any) => {
+      try {
+        const room = await getAdminRoom(socket, payload?.code);
+        if (!room) {
+          callback?.({ success: false, error: "Không tìm thấy phòng thi đấu" });
+          return;
+        }
+
+        if (room.status !== "LOBBY") {
+          callback?.({ success: false, error: "Chỉ có thể thay đổi số đội khi đang ở Sảnh chờ trước khi bắt đầu trận đấu" });
+          return;
+        }
+
+        const newTeamsData = Array.isArray(payload?.teams) ? payload.teams : [];
+        const T = newTeamsData.length;
+        if (T < 1) {
+          callback?.({ success: false, error: "Số đội tối thiểu là 1" });
+          return;
+        }
+
+        if ((room.mode === "OLYMPIA" || room.mode === "MAGIC_WHEEL") && (T < 2 || T > 8)) {
+          callback?.({ success: false, error: `Chế độ ${room.mode === "OLYMPIA" ? "Olympia" : "Vòng quay trí tuệ"} chỉ cho phép từ 2 đến 8 đội/thí sinh!` });
+          return;
+        }
+
+        const questions = await getRoomQuestions(room.id);
+        const bankTotal = questions.filter((q: any) => !q.isTieBreaker).length || questions.length || 1;
+        const isTurnBased = ["MYSTERY_QUEST", "WAGER", "BOUNCEBACK", "DICE_RACE", "GRID_CARO"].includes(room.mode);
+
+        if (isTurnBased && T > bankTotal) {
+          callback?.({ success: false, error: `Số đội (${T}) không được vượt quá tổng số câu hỏi trong bộ đề (${bankTotal} câu)!` });
+          return;
+        }
+
+        // Validate and snap question count Q
+        let Q = Number(payload?.matchMaxQuestions) || bankTotal;
+        if (isTurnBased) {
+          const maxQ = Math.max(T, Math.floor(bankTotal / T) * T);
+          const turns = Math.max(1, Math.round(Q / T));
+          Q = Math.min(maxQ, turns * T);
+        } else {
+          Q = Math.max(1, Math.min(bankTotal, Q));
+        }
+
+        // Update Teams in Database
+        const existingTeams = await prisma.team.findMany({
+          where: { roomId: room.id },
+          include: { players: true },
+          orderBy: { createdAt: "asc" },
+        });
+
+        // 1. If decreasing teams: unassign players in removed teams and delete teams
+        if (T < existingTeams.length) {
+          const removedTeams = existingTeams.slice(T);
+          const removedIds = removedTeams.map((t) => t.id);
+          await prisma.player.updateMany({
+            where: { teamId: { in: removedIds } },
+            data: { teamId: null },
+          });
+          await prisma.team.deleteMany({
+            where: { id: { in: removedIds } },
+          });
+        }
+
+        // 2. Update retained teams
+        for (let i = 0; i < Math.min(T, existingTeams.length); i++) {
+          const tInfo = newTeamsData[i];
+          const nameToUse = sanitizePlayerName(tInfo?.name || `Đội ${i + 1}`);
+          const colorToUse = tInfo?.color || existingTeams[i].color || "#38bdf8";
+          await prisma.team.update({
+            where: { id: existingTeams[i].id },
+            data: { name: nameToUse, color: colorToUse },
+          });
+        }
+
+        // 3. If adding new teams
+        if (T > existingTeams.length) {
+          const initialScore = room.mode === "DICE_RACE" ? 1 : Math.max(0, Number((room.config as any)?.initialTeamScore) || 0);
+          for (let i = existingTeams.length; i < T; i++) {
+            const tInfo = newTeamsData[i];
+            const nameToUse = sanitizePlayerName(tInfo?.name || `Đội ${i + 1}`);
+            const colorToUse = tInfo?.color || "#38bdf8";
+            await prisma.team.create({
+              data: {
+                roomId: room.id,
+                name: nameToUse,
+                color: colorToUse,
+                score: initialScore,
+              },
+            });
+          }
+        }
+
+        // 4. Update room config
+        const config = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+        config.matchMaxQuestions = Q;
+        if (payload?.allocationStrategy) {
+          config.allocationStrategy = payload.allocationStrategy;
+        }
+        if (payload?.customDifficultyDistribution) {
+          config.customDifficultyDistribution = payload.customDifficultyDistribution;
+        }
+        const derived = calculateModeDerivedConfig(room.mode as any, Q, T);
+        Object.assign(config, derived);
+
+        await prisma.room.update({
+          where: { id: room.id },
+          data: { config },
+        });
+        room.config = config;
+        roomCache.set(room.id, room);
+
+        const roomState = await buildRoomState(room.id);
+        io.to(`room:${room.code}`).emit("room:state", roomState);
+        callback?.({ success: true });
+      } catch (err: any) {
+        console.error("[admin:room:update_teams_and_questions]", err);
+        callback?.({ success: false, error: err?.message || "Lỗi khi cập nhật danh sách đội và câu hỏi" });
+      }
+    });
+
     socket.on("admin:timer:set", async ({ seconds, code }: { seconds: number; code?: string }) => {
       const room = await getAdminRoom(socket, code);
       if (!room) return;
@@ -13003,7 +13124,15 @@ async function advanceGridToBoard(io: IO, roomId: string, roomCode: string) {
     gridState.currentTurnTeamName = room.teams[nextIdx].name;
   }
 
-  const isMatchOver = gridState.turnsCompleted >= gridState.maxTurns || gridState.cells.every((c) => c.isCompleted);
+  const isRoundComplete = gridState.turnsCompleted % numTeams === 0;
+  const isTimeLimitReached = gridState.turnsCompleted >= gridState.maxTurns;
+  const allCellsDone = gridState.cells.every((c) => c.isCompleted);
+
+  if (allCellsDone || isTimeLimitReached || gridState.caroAchievedTeams.length > 0) {
+    (gridState as any).matchFinishing = true;
+  }
+
+  const isMatchOver = (gridState as any).matchFinishing && isRoundComplete;
 
   if (isMatchOver) {
     const ended = await safelyFinishGame({ io, room });

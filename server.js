@@ -11029,12 +11029,15 @@ function calculateModeDerivedConfig(mode, targetCount, teamsCount = 4, options) 
       const cols = rows;
       const totalCells = rows * cols;
       const roundsPerTeam = Math.max(1, Math.floor(qCount / safeTeams));
+      const adjustedTotal = roundsPerTeam * safeTeams;
       return {
-        matchMaxQuestions: qCount,
-        gridMaxQuestions: qCount,
+        matchMaxQuestions: adjustedTotal,
+        gridMaxQuestions: adjustedTotal,
         gridRoundsPerTeam: roundsPerTeam,
+        roundsOrCycles: roundsPerTeam,
+        questionsPerUnit: 1,
         suggestedGrid: { rows, cols, totalCells },
-        descriptionVi: `G\u1EE3i \xFD b\xE0n c\u1EDD ma tr\u1EADn ${rows}\xD7${cols} (${totalCells} \xF4 s\u1ED1) g\u1EAFn c\u1EE9ng 10\u0111/20\u0111/30\u0111, t\u01B0\u01A1ng \u1EE9ng kho\u1EA3ng ${roundsPerTeam} l\u01B0\u1EE3t ch\u1ECDn/\u0111\u1ED9i.`
+        descriptionVi: `Ma tr\u1EADn ${rows}\xD7${cols} v\u1EDBi ${roundsPerTeam} v\xF2ng thi \u0111\u1EA5u (${roundsPerTeam} l\u01B0\u1EE3t/\u0111\u1ED9i \xD7 ${safeTeams} \u0111\u1ED9i = ${adjustedTotal} c\xE2u). C\xE1c \u0111\u1ED9i tr\u1EA3 l\u1EDDi s\u1ED1 c\xE2u b\u1EB1ng nhau!`
       };
     }
     case "TOURNAMENT": {
@@ -11100,7 +11103,7 @@ function allocateQuestionsForMatch(params) {
   const shuffledEasy = shuffle(easyPool);
   const shuffledMed = shuffle(medPool);
   const shuffledHard = shuffle(hardPool);
-  const isTurnBasedMode = mode === "MYSTERY_QUEST" || mode === "BOUNCEBACK" || mode === "WAGER" || mode === "DICE_RACE";
+  const isTurnBasedMode = mode === "MYSTERY_QUEST" || mode === "BOUNCEBACK" || mode === "WAGER" || mode === "DICE_RACE" || mode === "GRID_CARO";
   let allocatedQuestions = [];
   const pickedIds = /* @__PURE__ */ new Set();
   const drawFromPool = (desiredDiff) => {
@@ -11146,10 +11149,69 @@ function allocateQuestionsForMatch(params) {
     } else if (mode === "DICE_RACE") {
       questionsPerRound = safeTeams;
       roundsCount = Math.max(1, Math.floor(effectiveTotal / safeTeams));
+    } else if (mode === "GRID_CARO") {
+      questionsPerRound = safeTeams;
+      roundsCount = derived.gridRoundsPerTeam || Math.max(1, Math.floor(effectiveTotal / safeTeams));
+    }
+    const customDist = options?.customDifficultyDistribution;
+    let roundSchedule = [];
+    if (customDist) {
+      const maxEasyRounds = Math.floor(easyPool.length / questionsPerRound);
+      const maxMedRounds = Math.floor(medPool.length / questionsPerRound);
+      const maxHardRounds = Math.floor(hardPool.length / questionsPerRound);
+      const reqEasyRounds = customDist.easyRounds ?? Math.floor((customDist.easyCount || 0) / questionsPerRound);
+      const reqMedRounds = customDist.mediumRounds ?? Math.floor((customDist.mediumCount || 0) / questionsPerRound);
+      const reqHardRounds = customDist.hardRounds ?? Math.floor((customDist.hardCount || 0) / questionsPerRound);
+      const safeEasyRounds = Math.min(maxEasyRounds, Math.max(0, reqEasyRounds));
+      const safeMedRounds = Math.min(maxMedRounds, Math.max(0, reqMedRounds));
+      const safeHardRounds = Math.min(maxHardRounds, Math.max(0, reqHardRounds));
+      if (safeEasyRounds + safeMedRounds + safeHardRounds > 0) {
+        for (let i = 0; i < safeEasyRounds; i++) roundSchedule.push("EASY");
+        for (let i = 0; i < safeMedRounds; i++) roundSchedule.push("MEDIUM");
+        for (let i = 0; i < safeHardRounds; i++) roundSchedule.push("HARD");
+      }
+    } else if (allocationStrategy === "SHUFFLE_RANDOM") {
+      const availablePools = [];
+      const maxE = Math.floor(easyPool.length / questionsPerRound);
+      const maxM = Math.floor(medPool.length / questionsPerRound);
+      const maxH = Math.floor(hardPool.length / questionsPerRound);
+      if (maxE > 0) availablePools.push({ diff: "EASY", maxRounds: maxE });
+      if (maxM > 0) availablePools.push({ diff: "MEDIUM", maxRounds: maxM });
+      if (maxH > 0) availablePools.push({ diff: "HARD", maxRounds: maxH });
+      if (availablePools.length > 0) {
+        const poolAllocatedRounds = { EASY: 0, MEDIUM: 0, HARD: 0 };
+        let remainingRoundsToAssign = roundsCount;
+        if (remainingRoundsToAssign >= availablePools.length) {
+          for (const p of availablePools) {
+            poolAllocatedRounds[p.diff] = 1;
+            remainingRoundsToAssign--;
+          }
+        }
+        while (remainingRoundsToAssign > 0) {
+          const eligible = availablePools.filter((p) => poolAllocatedRounds[p.diff] < p.maxRounds);
+          if (eligible.length === 0) break;
+          for (const p of eligible) {
+            if (remainingRoundsToAssign <= 0) break;
+            poolAllocatedRounds[p.diff]++;
+            remainingRoundsToAssign--;
+          }
+        }
+        for (const p of availablePools) {
+          const count = poolAllocatedRounds[p.diff] || 0;
+          for (let i = 0; i < count; i++) {
+            roundSchedule.push(p.diff);
+          }
+        }
+      }
+    }
+    if (roundSchedule.length === 0) {
+      for (let r = 0; r < roundsCount; r++) {
+        roundSchedule.push(getRoundTargetDifficulty(r, roundsCount));
+      }
     }
     const roundAllocatedQuestions = [];
-    for (let r = 0; r < roundsCount; r++) {
-      const roundDiff = getRoundTargetDifficulty(r, roundsCount);
+    for (let r = 0; r < roundSchedule.length; r++) {
+      const roundDiff = roundSchedule[r];
       const targetPoints = normalizePointsToLevel(roundDiff);
       const targetBloom = roundDiff === "HARD" ? "ANALYZE" : roundDiff === "MEDIUM" ? "APPLY" : "REMEMBER";
       for (let qIdx = 0; qIdx < questionsPerRound; qIdx++) {
@@ -21379,6 +21441,107 @@ function registerSocketHandlers(io2) {
       const roomState = await buildRoomState(room.id);
       io2.to(`room:${room.code}`).emit("room:state", roomState);
     });
+    socket.on("admin:room:update_teams_and_questions", async (payload, callback) => {
+      try {
+        const room = await getAdminRoom(socket, payload?.code);
+        if (!room) {
+          callback?.({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y ph\xF2ng thi \u0111\u1EA5u" });
+          return;
+        }
+        if (room.status !== "LOBBY") {
+          callback?.({ success: false, error: "Ch\u1EC9 c\xF3 th\u1EC3 thay \u0111\u1ED5i s\u1ED1 \u0111\u1ED9i khi \u0111ang \u1EDF S\u1EA3nh ch\u1EDD tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u tr\u1EADn \u0111\u1EA5u" });
+          return;
+        }
+        const newTeamsData = Array.isArray(payload?.teams) ? payload.teams : [];
+        const T = newTeamsData.length;
+        if (T < 1) {
+          callback?.({ success: false, error: "S\u1ED1 \u0111\u1ED9i t\u1ED1i thi\u1EC3u l\xE0 1" });
+          return;
+        }
+        if ((room.mode === "OLYMPIA" || room.mode === "MAGIC_WHEEL") && (T < 2 || T > 8)) {
+          callback?.({ success: false, error: `Ch\u1EBF \u0111\u1ED9 ${room.mode === "OLYMPIA" ? "Olympia" : "V\xF2ng quay tr\xED tu\u1EC7"} ch\u1EC9 cho ph\xE9p t\u1EEB 2 \u0111\u1EBFn 8 \u0111\u1ED9i/th\xED sinh!` });
+          return;
+        }
+        const questions = await getRoomQuestions(room.id);
+        const bankTotal = questions.filter((q) => !q.isTieBreaker).length || questions.length || 1;
+        const isTurnBased = ["MYSTERY_QUEST", "WAGER", "BOUNCEBACK", "DICE_RACE", "GRID_CARO"].includes(room.mode);
+        if (isTurnBased && T > bankTotal) {
+          callback?.({ success: false, error: `S\u1ED1 \u0111\u1ED9i (${T}) kh\xF4ng \u0111\u01B0\u1EE3c v\u01B0\u1EE3t qu\xE1 t\u1ED5ng s\u1ED1 c\xE2u h\u1ECFi trong b\u1ED9 \u0111\u1EC1 (${bankTotal} c\xE2u)!` });
+          return;
+        }
+        let Q = Number(payload?.matchMaxQuestions) || bankTotal;
+        if (isTurnBased) {
+          const maxQ = Math.max(T, Math.floor(bankTotal / T) * T);
+          const turns = Math.max(1, Math.round(Q / T));
+          Q = Math.min(maxQ, turns * T);
+        } else {
+          Q = Math.max(1, Math.min(bankTotal, Q));
+        }
+        const existingTeams = await prisma.team.findMany({
+          where: { roomId: room.id },
+          include: { players: true },
+          orderBy: { createdAt: "asc" }
+        });
+        if (T < existingTeams.length) {
+          const removedTeams = existingTeams.slice(T);
+          const removedIds = removedTeams.map((t) => t.id);
+          await prisma.player.updateMany({
+            where: { teamId: { in: removedIds } },
+            data: { teamId: null }
+          });
+          await prisma.team.deleteMany({
+            where: { id: { in: removedIds } }
+          });
+        }
+        for (let i = 0; i < Math.min(T, existingTeams.length); i++) {
+          const tInfo = newTeamsData[i];
+          const nameToUse = sanitizePlayerName(tInfo?.name || `\u0110\u1ED9i ${i + 1}`);
+          const colorToUse = tInfo?.color || existingTeams[i].color || "#38bdf8";
+          await prisma.team.update({
+            where: { id: existingTeams[i].id },
+            data: { name: nameToUse, color: colorToUse }
+          });
+        }
+        if (T > existingTeams.length) {
+          const initialScore = room.mode === "DICE_RACE" ? 1 : Math.max(0, Number(room.config?.initialTeamScore) || 0);
+          for (let i = existingTeams.length; i < T; i++) {
+            const tInfo = newTeamsData[i];
+            const nameToUse = sanitizePlayerName(tInfo?.name || `\u0110\u1ED9i ${i + 1}`);
+            const colorToUse = tInfo?.color || "#38bdf8";
+            await prisma.team.create({
+              data: {
+                roomId: room.id,
+                name: nameToUse,
+                color: colorToUse,
+                score: initialScore
+              }
+            });
+          }
+        }
+        const config = typeof room.config === "object" && room.config !== null ? room.config : {};
+        config.matchMaxQuestions = Q;
+        if (payload?.allocationStrategy) {
+          config.allocationStrategy = payload.allocationStrategy;
+        }
+        if (payload?.customDifficultyDistribution) {
+          config.customDifficultyDistribution = payload.customDifficultyDistribution;
+        }
+        const derived = calculateModeDerivedConfig(room.mode, Q, T);
+        Object.assign(config, derived);
+        await prisma.room.update({
+          where: { id: room.id },
+          data: { config }
+        });
+        room.config = config;
+        roomCache.set(room.id, room);
+        const roomState = await buildRoomState(room.id);
+        io2.to(`room:${room.code}`).emit("room:state", roomState);
+        callback?.({ success: true });
+      } catch (err) {
+        console.error("[admin:room:update_teams_and_questions]", err);
+        callback?.({ success: false, error: err?.message || "L\u1ED7i khi c\u1EADp nh\u1EADt danh s\xE1ch \u0111\u1ED9i v\xE0 c\xE2u h\u1ECFi" });
+      }
+    });
     socket.on("admin:timer:set", async ({ seconds, code }) => {
       const room = await getAdminRoom(socket, code);
       if (!room) return;
@@ -22875,7 +23038,13 @@ async function advanceGridToBoard(io2, roomId, roomCode) {
     gridState.currentTurnTeamId = room.teams[nextIdx].id;
     gridState.currentTurnTeamName = room.teams[nextIdx].name;
   }
-  const isMatchOver = gridState.turnsCompleted >= gridState.maxTurns || gridState.cells.every((c) => c.isCompleted);
+  const isRoundComplete = gridState.turnsCompleted % numTeams === 0;
+  const isTimeLimitReached = gridState.turnsCompleted >= gridState.maxTurns;
+  const allCellsDone = gridState.cells.every((c) => c.isCompleted);
+  if (allCellsDone || isTimeLimitReached || gridState.caroAchievedTeams.length > 0) {
+    gridState.matchFinishing = true;
+  }
+  const isMatchOver = gridState.matchFinishing && isRoundComplete;
   if (isMatchOver) {
     const ended = await safelyFinishGame({ io: io2, room });
     if (!ended) return;
@@ -28412,6 +28581,8 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "round:next":
+        st.studioCameraManual = false;
+        st.studioCamera = void 0;
         if (st.stage !== "playing") return fail("Tr\u1EADn ch\u01B0a b\u1EAFt \u0111\u1EA7u");
         return this.nextRound(now);
       case "round:finish":
@@ -28562,7 +28733,6 @@ var OlympiaGame = class _OlympiaGame {
           seatStartedAt: now,
           seatGestures
         };
-        this.cue("6_NhacKhac/contest_intro", "bgm");
         this.cue("6_NhacKhac/contestant_intro", "sound");
         return OK;
       }
@@ -28671,6 +28841,8 @@ var OlympiaGame = class _OlympiaGame {
     const rs = this.ruleset.khoiDong;
     switch (type) {
       case "kd:next": {
+        st.studioCameraManual = false;
+        st.studioCamera = void 0;
         if (kd.startCooldownUntil && now < kd.startCooldownUntil) {
           return fail("Vui l\xF2ng \u0111\u1EE3i \u0111\u1ED3 ho\u1EA1 m\u1EDF xong (3.5s)");
         }

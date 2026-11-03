@@ -24,6 +24,38 @@ export interface CameraPreset {
  * - CAM 9: Cẩu Quay Toàn Cảnh (Jib Crane High-Angle)
  * - CAM 10: Vách Ký Hiệu Khoa Học
  */
+export function getContestantCameraPreset(seatId: number, totalSeats: number = 4): CameraPreset {
+  const activeCount = Math.min(8, Math.max(1, totalSeats));
+  const radius = 6.6;
+  const startPhi = activeCount > 4 ? 0.26 : 0.38;
+  const endPhi = activeCount > 4 ? 1.31 : 1.13;
+  const frac = activeCount === 1 ? 0.5 : seatId / (activeCount - 1);
+  const phi = startPhi + frac * (endPhi - startPhi);
+
+  const px = -radius * Math.cos(phi);
+  const pz = -0.5 - radius * Math.sin(phi);
+
+  const nx = Math.cos(phi);
+  const nz = Math.sin(phi);
+
+  // Distance from camera to podium (2.45m for direct medium close-up, perfectly centered on podium & contestant)
+  const dist = 2.45;
+  const camX = +(px + dist * nx).toFixed(3);
+  const camY = 1.34;
+  const camZ = +(pz + dist * nz).toFixed(3);
+
+  const targetX = +px.toFixed(3);
+  const targetY = 1.25;
+  const targetZ = +pz.toFixed(3);
+
+  return {
+    id: 5 + seatId,
+    label: `Cận Cảnh TS ${seatId + 1}`,
+    pos: [camX, camY, camZ],
+    target: [targetX, targetY, targetZ],
+  };
+}
+
 export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   1: {
     id: 1,
@@ -50,34 +82,10 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     pos: [0.2, 1.65, 5.6],
     target: [1.8, 0.75, 2.6],
   },
-  5: {
-    id: 5,
-    label: "Cận Cảnh TS 1",
-    // 100% Coaxial Direct Front-Facing Camera into Contestant 1 & Podium
-    pos: [-3.80, 1.38, -1.74],
-    target: [-6.28, 1.15, -2.54],
-  },
-  6: {
-    id: 6,
-    label: "Cận Cảnh TS 2",
-    // 100% Coaxial Direct Front-Facing Camera into Contestant 2 & Podium
-    pos: [-3.24, 1.38, -2.85],
-    target: [-5.34, 1.15, -4.38],
-  },
-  7: {
-    id: 7,
-    label: "Cận Cảnh TS 3",
-    // 100% Coaxial Direct Front-Facing Camera into Contestant 3 & Podium
-    pos: [-2.35, 1.38, -3.74],
-    target: [-3.88, 1.15, -5.84],
-  },
-  8: {
-    id: 8,
-    label: "Cận Cảnh TS 4",
-    // 100% Coaxial Direct Front-Facing Camera into Contestant 4 & Podium
-    pos: [-1.24, 1.38, -4.30],
-    target: [-2.04, 1.15, -6.78],
-  },
+  5: getContestantCameraPreset(0, 4),
+  6: getContestantCameraPreset(1, 4),
+  7: getContestantCameraPreset(2, 4),
+  8: getContestantCameraPreset(3, 4),
   9: {
     id: 9,
     label: "Cẩu Quay Jib",
@@ -118,6 +126,7 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
 };
 
 interface CameraControllerProps {
+  totalSeats?: number;
   camAngle: number;
   transitionMode?: "CUT" | "MORPH";
   pushInProgress?: number;
@@ -130,6 +139,7 @@ interface CameraControllerProps {
 
 export function CameraController({
   camAngle = 1,
+  totalSeats = 4,
   transitionMode = "CUT",
   pushInProgress = 0,
   ptzYaw = 0,
@@ -143,7 +153,11 @@ export function CameraController({
   const currentPos = useRef(new THREE.Vector3(0, 2.5, 8.4));
   const currentTarget = useRef(new THREE.Vector3(0, 1.8, -2.8));
 
-  const targetPreset = OLYMPIA_CAM_PRESETS[camAngle] || OLYMPIA_CAM_PRESETS[1];
+  const effectiveTotalSeats = totalSeats || 4;
+  const isContestantCam = camAngle >= 5 && camAngle < 5 + effectiveTotalSeats;
+  const targetPreset = isContestantCam
+    ? getContestantCameraPreset(camAngle - 5, effectiveTotalSeats)
+    : (OLYMPIA_CAM_PRESETS[camAngle] || OLYMPIA_CAM_PRESETS[1]);
   const targetPos = useMemo(() => new THREE.Vector3(...targetPreset.pos), [targetPreset]);
   const targetLookAt = useMemo(() => new THREE.Vector3(...targetPreset.target), [targetPreset]);
 

@@ -51,6 +51,14 @@ export interface QuestionAllocationParams {
   teamsCount?: number;
   allocationStrategy?: AllocationStrategy;
   options?: {
+    customDifficultyDistribution?: {
+      easyRounds?: number;
+      mediumRounds?: number;
+      hardRounds?: number;
+      easyCount?: number;
+      mediumCount?: number;
+      hardCount?: number;
+    };
     eliminationStages?: number;
     bouncebackQuestionsPerTurn?: number;
     tournamentQuestionsPerMatch?: number;
@@ -171,12 +179,15 @@ export function calculateModeDerivedConfig(
       const cols = rows;
       const totalCells = rows * cols;
       const roundsPerTeam = Math.max(1, Math.floor(qCount / safeTeams));
+      const adjustedTotal = roundsPerTeam * safeTeams;
       return {
-        matchMaxQuestions: qCount,
-        gridMaxQuestions: qCount,
+        matchMaxQuestions: adjustedTotal,
+        gridMaxQuestions: adjustedTotal,
         gridRoundsPerTeam: roundsPerTeam,
+        roundsOrCycles: roundsPerTeam,
+        questionsPerUnit: 1,
         suggestedGrid: { rows, cols, totalCells },
-        descriptionVi: `Gợi ý bàn cờ ma trận ${rows}×${cols} (${totalCells} ô số) gắn cứng 10đ/20đ/30đ, tương ứng khoảng ${roundsPerTeam} lượt chọn/đội.`,
+        descriptionVi: `Ma trận ${rows}×${cols} với ${roundsPerTeam} vòng thi đấu (${roundsPerTeam} lượt/đội × ${safeTeams} đội = ${adjustedTotal} câu). Các đội trả lời số câu bằng nhau!`,
       };
     }
     case "TOURNAMENT": {
@@ -227,6 +238,55 @@ export function calculateModeDerivedConfig(
  * 3. Hỗ trợ kho đề có dư (Surplus): Tự động trộn ngẫu nhiên từ kho để mỗi trận đấu đều mới mẻ,
  *    không bị lặp lại câu hỏi.
  */
+
+/**
+ * Thống kê số câu hỏi theo độ khó và tính số vòng tối đa khả dụng theo số đội.
+ * Quy tắc: Nếu số câu hỏi của một mức ít hơn số đội (< teams), mức đó bị vô hiệu hóa (disabled).
+ */
+export function getDifficultyPoolSummary(questions: any[], teamsCount: number) {
+  const safeTeams = Math.max(1, teamsCount);
+  let easyCount = 0;
+  let medCount = 0;
+  let hardCount = 0;
+
+  for (const q of questions) {
+    if (q.isTieBreaker) continue;
+    const diff = classifyQuestionDifficulty(q);
+    if (diff === "EASY") easyCount++;
+    else if (diff === "MEDIUM") medCount++;
+    else hardCount++;
+  }
+
+  const maxEasyRounds = Math.floor(easyCount / safeTeams);
+  const maxMedRounds = Math.floor(medCount / safeTeams);
+  const maxHardRounds = Math.floor(hardCount / safeTeams);
+
+  return {
+    safeTeams,
+    easy: {
+      count: easyCount,
+      maxRounds: maxEasyRounds,
+      maxQuestions: maxEasyRounds * safeTeams,
+      isAllowed: maxEasyRounds > 0,
+      disabledReason: maxEasyRounds === 0 ? `Đề chỉ có ${easyCount}/${safeTeams} câu Dễ (không đủ chia cho ${safeTeams} đội)` : undefined,
+    },
+    medium: {
+      count: medCount,
+      maxRounds: maxMedRounds,
+      maxQuestions: maxMedRounds * safeTeams,
+      isAllowed: maxMedRounds > 0,
+      disabledReason: maxMedRounds === 0 ? `Đề chỉ có ${medCount}/${safeTeams} câu TB (không đủ chia cho ${safeTeams} đội)` : undefined,
+    },
+    hard: {
+      count: hardCount,
+      maxRounds: maxHardRounds,
+      maxQuestions: maxHardRounds * safeTeams,
+      isAllowed: maxHardRounds > 0,
+      disabledReason: maxHardRounds === 0 ? `Đề chỉ có ${hardCount}/${safeTeams} câu Khó (không đủ chia cho ${safeTeams} đội)` : undefined,
+    },
+  };
+}
+
 export function allocateQuestionsForMatch(params: QuestionAllocationParams): AllocationResult {
   const { questions, mode, targetCount, teamsCount = 4, allocationStrategy = "ORIGINAL_POINTS", options } = params;
   // Loại trừ các câu hỏi phụ (Tie-breaker) ra khỏi danh sách câu hỏi phân bổ của trận đấu chính
@@ -265,7 +325,7 @@ export function allocateQuestionsForMatch(params: QuestionAllocationParams): All
   const shuffledMed = shuffle(medPool);
   const shuffledHard = shuffle(hardPool);
 
-  const isTurnBasedMode = mode === "MYSTERY_QUEST" || mode === "BOUNCEBACK" || mode === "WAGER" || mode === "DICE_RACE";
+  const isTurnBasedMode = mode === "MYSTERY_QUEST" || mode === "BOUNCEBACK" || mode === "WAGER" || mode === "DICE_RACE" || mode === "GRID_CARO";
 
   let allocatedQuestions: any[] = [];
   const pickedIds = new Set<string>();
@@ -307,10 +367,6 @@ export function allocateQuestionsForMatch(params: QuestionAllocationParams): All
   };
 
   if (isTurnBasedMode && safeTeams > 1) {
-    // ── ĐỐI VỚI CÁC CHẾ ĐỘ THI ĐẤU THEO LƯỢT / VÒNG ──────────────────────────────
-    // NGUYÊN TẮC VÀNG: "Mỗi đội chơi một độ khó giống nhau ở mỗi vòng"
-    // Mỗi vòng gồm đúng `questionsPerRound` câu hỏi (1 câu cho mỗi đội trong vòng đó).
-    // Tất cả các câu hỏi trong cùng một vòng đấu PHẢI CÓ CÙNG ĐỘ KHÓ & THANG ĐIỂM!
     let questionsPerRound = safeTeams;
     let roundsCount = 1;
 
@@ -327,12 +383,91 @@ export function allocateQuestionsForMatch(params: QuestionAllocationParams): All
     } else if (mode === "DICE_RACE") {
       questionsPerRound = safeTeams;
       roundsCount = Math.max(1, Math.floor(effectiveTotal / safeTeams));
+    } else if (mode === "GRID_CARO") {
+      questionsPerRound = safeTeams;
+      roundsCount = derived.gridRoundsPerTeam || Math.max(1, Math.floor(effectiveTotal / safeTeams));
+    }
+
+    // Kiểm tra cấu hình số vòng tùy chỉnh của Host hoặc chiến lược SHUFFLE_RANDOM
+    const customDist = options?.customDifficultyDistribution;
+    let roundSchedule: Array<"EASY" | "MEDIUM" | "HARD"> = [];
+
+    if (customDist) {
+      const maxEasyRounds = Math.floor(easyPool.length / questionsPerRound);
+      const maxMedRounds = Math.floor(medPool.length / questionsPerRound);
+      const maxHardRounds = Math.floor(hardPool.length / questionsPerRound);
+
+      const reqEasyRounds = customDist.easyRounds ?? Math.floor((customDist.easyCount || 0) / questionsPerRound);
+      const reqMedRounds = customDist.mediumRounds ?? Math.floor((customDist.mediumCount || 0) / questionsPerRound);
+      const reqHardRounds = customDist.hardRounds ?? Math.floor((customDist.hardCount || 0) / questionsPerRound);
+
+      // Ràng buộc nghiêm ngặt: nếu số câu có sẵn < questionsPerRound thì ép về 0 (khóa, không cho chọn)
+      const safeEasyRounds = Math.min(maxEasyRounds, Math.max(0, reqEasyRounds));
+      const safeMedRounds = Math.min(maxMedRounds, Math.max(0, reqMedRounds));
+      const safeHardRounds = Math.min(maxHardRounds, Math.max(0, reqHardRounds));
+
+      if (safeEasyRounds + safeMedRounds + safeHardRounds > 0) {
+        // Xếp theo đúng thứ tự leo thang: Toàn bộ Easy -> Toàn bộ Medium -> Toàn bộ Hard
+        for (let i = 0; i < safeEasyRounds; i++) roundSchedule.push("EASY");
+        for (let i = 0; i < safeMedRounds; i++) roundSchedule.push("MEDIUM");
+        for (let i = 0; i < safeHardRounds; i++) roundSchedule.push("HARD");
+      }
+    } else if (allocationStrategy === "SHUFFLE_RANDOM") {
+      // Chiến lược Trộn Ngẫu Nhiên:
+      // Phân chia đều số vòng (roundsCount) cho các mức độ khó có sẵn (>= questionsPerRound).
+      // Tuyệt đối không bỏ sót bất kỳ mức độ khó nào có sẵn trong bộ đề!
+      const availablePools: Array<{ diff: "EASY" | "MEDIUM" | "HARD"; maxRounds: number }> = [];
+      const maxE = Math.floor(easyPool.length / questionsPerRound);
+      const maxM = Math.floor(medPool.length / questionsPerRound);
+      const maxH = Math.floor(hardPool.length / questionsPerRound);
+
+      if (maxE > 0) availablePools.push({ diff: "EASY", maxRounds: maxE });
+      if (maxM > 0) availablePools.push({ diff: "MEDIUM", maxRounds: maxM });
+      if (maxH > 0) availablePools.push({ diff: "HARD", maxRounds: maxH });
+
+      if (availablePools.length > 0) {
+        const poolAllocatedRounds: Record<string, number> = { EASY: 0, MEDIUM: 0, HARD: 0 };
+        let remainingRoundsToAssign = roundsCount;
+
+        // Bước 1: Bảo đảm không bỏ sót mức nào có sẵn (mỗi mức >= 1 vòng nếu roundsCount đủ)
+        if (remainingRoundsToAssign >= availablePools.length) {
+          for (const p of availablePools) {
+            poolAllocatedRounds[p.diff] = 1;
+            remainingRoundsToAssign--;
+          }
+        }
+
+        // Bước 2: Chia đều các vòng còn lại cho các mức có sẵn chưa đạt trần maxRounds
+        while (remainingRoundsToAssign > 0) {
+          const eligible = availablePools.filter((p) => poolAllocatedRounds[p.diff] < p.maxRounds);
+          if (eligible.length === 0) break;
+          for (const p of eligible) {
+            if (remainingRoundsToAssign <= 0) break;
+            poolAllocatedRounds[p.diff]++;
+            remainingRoundsToAssign--;
+          }
+        }
+
+        // Tạo danh sách roundSchedule
+        for (const p of availablePools) {
+          const count = poolAllocatedRounds[p.diff] || 0;
+          for (let i = 0; i < count; i++) {
+            roundSchedule.push(p.diff);
+          }
+        }
+      }
+    }
+
+    if (roundSchedule.length === 0) {
+      for (let r = 0; r < roundsCount; r++) {
+        roundSchedule.push(getRoundTargetDifficulty(r, roundsCount));
+      }
     }
 
     const roundAllocatedQuestions: any[] = [];
 
-    for (let r = 0; r < roundsCount; r++) {
-      const roundDiff = getRoundTargetDifficulty(r, roundsCount);
+    for (let r = 0; r < roundSchedule.length; r++) {
+      const roundDiff = roundSchedule[r];
       const targetPoints = normalizePointsToLevel(roundDiff);
       const targetBloom = roundDiff === "HARD" ? "ANALYZE" : roundDiff === "MEDIUM" ? "APPLY" : "REMEMBER";
 
@@ -344,9 +479,6 @@ export function allocateQuestionsForMatch(params: QuestionAllocationParams): All
         let finalBloom = targetBloom;
 
         if (allocationStrategy === "ORIGINAL_POINTS") {
-          // Ở chiến lược giữ nguyên điểm gốc: nếu câu hỏi đã có điểm và nằm trong độ khó của vòng,
-          // giữ điểm gốc của đề. Tuy nhiên để đảm bảo tính công bằng tuyệt đối giữa các đội trong cùng 1 vòng,
-          // gán mức điểm chuẩn chung của vòng đấu nếu các câu trong đề có điểm chênh lệch.
           finalPoints = rawQ.points !== undefined && rawQ.points !== null ? rawQ.points : targetPoints;
           finalBloom = rawQ.bloomLevel || targetBloom;
         }

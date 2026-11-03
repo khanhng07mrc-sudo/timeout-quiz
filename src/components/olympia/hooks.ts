@@ -95,7 +95,7 @@ export const isCountdownTrack = (sound: string): boolean =>
   /(?:10s_tick|15s_tick|20s_tick|30s_tick|40s_tick|5s_steal|20s_practice|30s_practice|40s_practice|60s_practice|60s|30s|90s)$/.test(sound);
 
 export const isLoopingBgm = (sound: string): boolean =>
-  /kd_bgm_[12]$/.test(sound) || /loop/.test(sound) || sound.includes("contest_intro");
+  /kd_bgm_[12]$/.test(sound) || /loop/.test(sound);
 
 /** Plays server "cue" events. Missing files fall back to O26, then fail silently. */
 export function useOlympiaAudio(
@@ -414,33 +414,6 @@ export function useOlympiaAudio(
           else alt.play().catch(() => {});
         }
       };
-
-      const setupContestIntroCrossfadeLoop = (audioElem: HTMLAudioElement) => {
-        const CROSSFADE_WINDOW = 2.5;
-        let crossfadeTriggered = false;
-        const checkCrossfade = () => {
-          if (crossfadeTriggered) return;
-          if (
-            audioElem.duration &&
-            audioElem.duration > 0 &&
-            audioElem.duration - audioElem.currentTime <= CROSSFADE_WINDOW
-          ) {
-            crossfadeTriggered = true;
-            audioElem.removeEventListener("timeupdate", checkCrossfade);
-            const nextAudio = new Audio(soundUrl);
-            nextAudio.volume = 0;
-            connectPanner(nextAudio);
-            registerActive(nextAudio);
-            setupContestIntroCrossfadeLoop(nextAudio);
-            crossfadeToBgm(nextAudio, CROSSFADE_WINDOW * 1000, false);
-          }
-        };
-        audioElem.addEventListener("timeupdate", checkCrossfade);
-      };
-
-      if (cue.sound.includes("contest_intro")) {
-        setupContestIntroCrossfadeLoop(a);
-      }
 
       if (cue.kind === "sound" && (cue.sound.includes("start_round") || cue.sound.includes("open_question") || cue.sound.includes("ready"))) {
         // USER REQUIREMENT: Khi chuyển vòng hoặc mở câu hỏi, crossfade tắt ngay âm thanh intro/chào thí sinh trong 1s

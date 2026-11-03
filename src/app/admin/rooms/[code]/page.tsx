@@ -98,6 +98,60 @@ export default function AdminRoomPage() {
 
   // Starting scores configuration in Lobby
   const [allTeamsInitialScore, setAllTeamsInitialScore] = useState<number>(0);
+
+  // Team & Questions configuration in Lobby
+  const [showTeamConfigModal, setShowTeamConfigModal] = useState(false);
+  const [editingTeams, setEditingTeams] = useState<Array<{ id?: string; name: string; color: string }>>([]);
+  const [editingQCount, setEditingQCount] = useState<number>(12);
+  const [editingStrategy, setEditingStrategy] = useState<"SHUFFLE_RANDOM" | "ASCENDING">("SHUFFLE_RANDOM");
+  const [isSavingTeams, setIsSavingTeams] = useState(false);
+
+  const handleOpenTeamConfig = () => {
+    if (!roomState) return;
+    const currentTeams = roomState.teams && roomState.teams.length > 0
+      ? roomState.teams.map((t) => ({ id: t.id, name: t.name, color: t.color }))
+      : [
+          { name: "Đội 1", color: "#38bdf8" },
+          { name: "Đội 2", color: "#ec4899" },
+          { name: "Đội 3", color: "#eab308" },
+          { name: "Đội 4", color: "#10b981" },
+        ];
+    setEditingTeams(currentTeams);
+    const bankTotal = currentBankInfo?.questionsCount || 20;
+    const isTurnBased = ["MYSTERY_QUEST", "WAGER", "BOUNCEBACK", "DICE_RACE", "GRID_CARO"].includes(roomState.mode);
+    let q = (roomState.config as any)?.matchMaxQuestions || bankTotal;
+    if (isTurnBased) {
+      const T = Math.max(1, currentTeams.length);
+      const maxQ = Math.max(T, Math.floor(bankTotal / T) * T);
+      const turns = Math.max(1, Math.round(q / T));
+      q = Math.min(maxQ, turns * T);
+    }
+    setEditingQCount(q);
+    setEditingStrategy((roomState.config as any)?.allocationStrategy || "SHUFFLE_RANDOM");
+    setShowTeamConfigModal(true);
+  };
+
+  const handleSaveTeamConfig = () => {
+    if (!socketRef.current || !code) return;
+    setIsSavingTeams(true);
+    socketRef.current.emit(
+      "admin:room:update_teams_and_questions",
+      {
+        code,
+        teams: editingTeams,
+        matchMaxQuestions: editingQCount,
+        allocationStrategy: editingStrategy,
+      },
+      (res: any) => {
+        setIsSavingTeams(false);
+        if (res && res.success) {
+          setShowTeamConfigModal(false);
+        } else {
+          alert(res?.error || "Lỗi khi cập nhật cấu hình đội thi");
+        }
+      }
+    );
+  };
   const [editingTeamScores, setEditingTeamScores] = useState<Record<string, number>>({});
   const [savingInitialScores, setSavingInitialScores] = useState(false);
 
@@ -1071,6 +1125,34 @@ export default function AdminRoomPage() {
               bankId={currentBankInfo.id}
               showClearButton={false}
             />
+          )}
+
+          {/* Lobby Team & Questions Config Card */}
+          {roomState?.teamMode === "TEAM" && (
+            <div className="glass rounded-2xl p-5 border border-purple-500/30 bg-purple-950/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">👥</span>
+                  <h3 className="font-bold text-base text-white">Cấu hình Đội thi đấu & Số câu hỏi</h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/25 text-purple-300 border border-purple-500/40">
+                    {roomState.teams?.length || 0} đội · {(roomState.config as any)?.matchMaxQuestions || currentBankInfo?.questionsCount || 0} câu
+                  </span>
+                </div>
+                <p className="text-sm text-slate-300">
+                  {["MYSTERY_QUEST", "WAGER", "BOUNCEBACK", "DICE_RACE", "GRID_CARO"].includes(roomState.mode)
+                    ? `Chế độ ${roomState.mode} yêu cầu số câu hỏi là bội số của số đội (mỗi đội thi đấu số lượt bằng nhau).`
+                    : "Tùy chỉnh số lượng đội, tên đội và số lượng câu hỏi thi đấu cho phòng này."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenTeamConfig}
+                className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg cursor-pointer whitespace-nowrap"
+              >
+                <span>⚙️</span>
+                <span>Cấu hình Đội & Số câu</span>
+              </button>
+            </div>
           )}
 
           {/* Lobby Initial Starting Score Setting */}
@@ -3032,6 +3114,242 @@ export default function AdminRoomPage() {
           </div>
         </div>
       )}
-    </div>
+    
+      {/* ── Modal: Cấu hình Đội thi đấu & Số câu hỏi tại Sảnh Chờ (LOBBY) ── */}
+      {showTeamConfigModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="glass rounded-3xl p-6 sm:p-7 border border-white/20 bg-[#121424]/95 max-w-2xl w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl">⚙️</span>
+                <div>
+                  <h3 className="text-lg font-black text-white">Cấu hình Đội thi & Số câu hỏi</h3>
+                  <p className="text-xs text-slate-400">Điều chỉnh số đội và phân bổ câu hỏi ngay tại Sảnh chờ mà không mất mã PIN</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTeamConfigModal(false)}
+                className="w-8 h-8 rounded-full glass border border-white/10 flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quick team count selector */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs font-bold text-slate-300">Số lượng đội thi:</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[2, 3, 4, 5, 6, 7, 8].map((cnt) => (
+                    <button
+                      key={cnt}
+                      type="button"
+                      onClick={() => {
+                        const palette = ["#38bdf8", "#ec4899", "#eab308", "#10b981", "#8b5cf6", "#f97316", "#06b6d4", "#f43f5e"];
+                        const next = Array.from({ length: cnt }, (_, idx) => ({
+                          id: editingTeams[idx]?.id,
+                          name: editingTeams[idx]?.name || `Đội ${idx + 1}`,
+                          color: editingTeams[idx]?.color || palette[idx % palette.length],
+                        }));
+                        setEditingTeams(next);
+                        if (["MYSTERY_QUEST", "WAGER", "BOUNCEBACK", "DICE_RACE", "GRID_CARO"].includes(roomState?.mode || "")) {
+                          const bankTotal = currentBankInfo?.questionsCount || 20;
+                          const maxQ = Math.max(cnt, Math.floor(bankTotal / cnt) * cnt);
+                          const turns = Math.max(1, Math.round(editingQCount / cnt));
+                          setEditingQCount(Math.min(maxQ, turns * cnt));
+                        }
+                      }}
+                      className={`w-8 h-8 rounded-lg text-xs font-bold border transition flex items-center justify-center cursor-pointer ${
+                        editingTeams.length === cnt
+                          ? "bg-purple-500/30 border-purple-400 text-purple-200 ring-2 ring-purple-400/50"
+                          : "glass border-white/10 text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      {cnt}
+                    </button>
+                  ))}
+                  {/* Plus / Minus Buttons for Flexible Team Count */}
+                  {roomState?.mode !== "OLYMPIA" && roomState?.mode !== "MAGIC_WHEEL" && (
+                    <div className="flex items-center gap-1 ml-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editingTeams.length <= 2) return;
+                          const next = editingTeams.slice(0, editingTeams.length - 1);
+                          setEditingTeams(next);
+                          const cnt = next.length;
+                          if (["MYSTERY_QUEST", "WAGER", "BOUNCEBACK", "DICE_RACE", "GRID_CARO"].includes(roomState?.mode || "")) {
+                            const bankTotal = currentBankInfo?.questionsCount || 20;
+                            const maxQ = Math.max(cnt, Math.floor(bankTotal / cnt) * cnt);
+                            const turns = Math.max(1, Math.round(editingQCount / cnt));
+                            setEditingQCount(Math.min(maxQ, turns * cnt));
+                          }
+                        }}
+                        disabled={editingTeams.length <= 2}
+                        className="w-8 h-8 rounded-lg glass border border-white/10 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30"
+                      >
+                        -
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const palette = ["#38bdf8", "#ec4899", "#eab308", "#10b981", "#8b5cf6", "#f97316", "#06b6d4", "#f43f5e"];
+                          const next = [...editingTeams, { name: `Đội ${editingTeams.length + 1}`, color: palette[editingTeams.length % palette.length] }];
+                          setEditingTeams(next);
+                          const cnt = next.length;
+                          if (["MYSTERY_QUEST", "WAGER", "BOUNCEBACK", "DICE_RACE", "GRID_CARO"].includes(roomState?.mode || "")) {
+                            const bankTotal = currentBankInfo?.questionsCount || 20;
+                            const maxQ = Math.max(cnt, Math.floor(bankTotal / cnt) * cnt);
+                            const turns = Math.max(1, Math.round(editingQCount / cnt));
+                            setEditingQCount(Math.min(maxQ, turns * cnt));
+                          }
+                        }}
+                        className="w-8 h-8 rounded-lg glass border border-white/10 text-xs font-bold text-purple-300 hover:text-white"
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {(roomState?.mode === "OLYMPIA" || roomState?.mode === "MAGIC_WHEEL") && (
+                <div className="p-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs flex items-center gap-2">
+                  <span>ℹ️</span>
+                  <span>Chế độ {roomState.mode === "OLYMPIA" ? "Olympia" : "Vòng quay trí tuệ"} giới hạn cố định từ 2 đến 8 đội/thí sinh.</span>
+                </div>
+              )}
+
+              {editingTeams.length > 8 && roomState?.mode !== "CLASSIC" && roomState?.mode !== "OLYMPIA" && roomState?.mode !== "MAGIC_WHEEL" && (
+                <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>Hệ thống không khuyến khích quá 8 đội để đảm bảo thời lượng trận đấu và trải nghiệm tốt nhất.</span>
+                </div>
+              )}
+            </div>
+
+            {/* Editable Team List */}
+            <div className="space-y-2 max-h-48 overflow-y-auto no-scrollbar p-1">
+              {editingTeams.map((t, idx) => (
+                <div key={idx} className="flex items-center gap-2 p-2 rounded-xl bg-black/40 border border-white/10">
+                  <input
+                    type="color"
+                    value={t.color}
+                    onChange={(e) => {
+                      const next = [...editingTeams];
+                      next[idx] = { ...next[idx], color: e.target.value };
+                      setEditingTeams(next);
+                    }}
+                    className="w-7 h-7 rounded-lg cursor-pointer border-none bg-transparent shrink-0"
+                  />
+                  <input
+                    type="text"
+                    value={t.name}
+                    onChange={(e) => {
+                      const next = [...editingTeams];
+                      next[idx] = { ...next[idx], name: e.target.value };
+                      setEditingTeams(next);
+                    }}
+                    className="flex-1 bg-transparent text-xs font-bold text-white focus:outline-none focus:ring-1 focus:ring-purple-400 rounded px-2 py-1"
+                    placeholder={`Đội ${idx + 1}`}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Questions count configuration */}
+            <div className="space-y-3 pt-2 border-t border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-300">Số câu hỏi thi đấu:</span>
+                <span className="font-mono text-xs font-bold text-purple-300">
+                  {editingQCount} câu {["MYSTERY_QUEST", "WAGER", "BOUNCEBACK", "DICE_RACE", "GRID_CARO"].includes(roomState?.mode || "") ? `(${Math.floor(editingQCount / Math.max(1, editingTeams.length))} lượt/đội)` : ""}
+                </span>
+              </div>
+
+              {["MYSTERY_QUEST", "WAGER", "BOUNCEBACK", "DICE_RACE", "GRID_CARO"].includes(roomState?.mode || "") ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="range"
+                      min={editingTeams.length}
+                      max={Math.max(editingTeams.length, Math.floor((currentBankInfo?.questionsCount || 20) / editingTeams.length) * editingTeams.length)}
+                      step={editingTeams.length}
+                      value={editingQCount}
+                      onChange={(e) => setEditingQCount(Number(e.target.value))}
+                      className="flex-1 accent-purple-500 cursor-pointer"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Bắt buộc là bội số của {editingTeams.length} đội (tối đa {Math.floor((currentBankInfo?.questionsCount || 20) / editingTeams.length) * editingTeams.length} câu theo bộ đề).
+                  </p>
+                </div>
+              ) : (
+                <input
+                  type="number"
+                  min={1}
+                  max={currentBankInfo?.questionsCount || 50}
+                  value={editingQCount}
+                  onChange={(e) => setEditingQCount(Math.max(1, Number(e.target.value)))}
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs font-bold text-white focus:outline-none focus:ring-1 focus:ring-purple-400"
+                />
+              )}
+
+              {/* Strategy selector */}
+              {["MYSTERY_QUEST", "WAGER", "BOUNCEBACK", "DICE_RACE", "GRID_CARO"].includes(roomState?.mode || "") && (
+                <div className="space-y-1 pt-1">
+                  <span className="text-xs font-bold text-slate-300">Chiến lược phân bổ độ khó:</span>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditingStrategy("SHUFFLE_RANDOM")}
+                      className={`p-2 rounded-xl border text-left transition cursor-pointer ${
+                        editingStrategy === "SHUFFLE_RANDOM"
+                          ? "bg-purple-500/20 border-purple-400 text-purple-200"
+                          : "glass border-white/10 text-slate-400"
+                      }`}
+                    >
+                      <div className="font-bold text-xs">🎲 Trộn ngẫu nhiên</div>
+                      <div className="text-[10px] text-slate-400">Chia đều các mức độ khó có sẵn, xáo trộn câu hỏi</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingStrategy("ASCENDING")}
+                      className={`p-2 rounded-xl border text-left transition cursor-pointer ${
+                        editingStrategy === "ASCENDING"
+                          ? "bg-purple-500/20 border-purple-400 text-purple-200"
+                          : "glass border-white/10 text-slate-400"
+                      }`}
+                    >
+                      <div className="font-bold text-xs">📈 Độ khó leo thang</div>
+                      <div className="text-[10px] text-slate-400">Vòng Dễ ➔ Vòng Trung bình ➔ Vòng Khó</div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setShowTeamConfigModal(false)}
+                className="px-4 py-2 rounded-xl glass border border-white/10 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTeamConfig}
+                disabled={isSavingTeams}
+                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition shadow-lg flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isSavingTeams ? <span>Đang lưu...</span> : <span>Lưu cấu hình</span>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+</div>
   );
 }

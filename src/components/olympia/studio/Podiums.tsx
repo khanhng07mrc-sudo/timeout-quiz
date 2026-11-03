@@ -94,9 +94,9 @@ function createPodiumScoreCanvas(
     ctx.shadowBlur = 0;
 
     // Outer Border & Glow
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 4;
     ctx.strokeStyle = "#38bdf8";
-    ctx.strokeRect(3, 3, 506, 250);
+    ctx.strokeRect(2, 2, 508, 252);
 
     return canvas;
   }
@@ -146,9 +146,9 @@ function createPodiumScoreCanvas(
   ctx.shadowBlur = 0;
 
   // 6. Outer Border & Glow
-  ctx.lineWidth = 6;
+  ctx.lineWidth = 4;
   ctx.strokeStyle = borderColor;
-  ctx.strokeRect(3, 3, 506, 250);
+  ctx.strokeRect(2, 2, 508, 252);
 
   return canvas;
 }
@@ -208,8 +208,8 @@ function ContestantScoreDisplay({
   }, [name, score, seatId, isBuzzed, isRed, school, isEntrancePhase]);
 
   return (
-    <mesh position={[0, 0.54, 0.382]} rotation={[-0.02, 0, 0]} renderOrder={6}>
-      <planeGeometry args={[0.76, 0.28]} />
+    <mesh position={[0, 0.54, 0.385]} rotation={[0, 0, 0]} renderOrder={6}>
+      <planeGeometry args={[0.76, 0.36]} />
       {texture ? (
         <meshBasicMaterial
           map={texture}
@@ -1655,14 +1655,7 @@ export function Podiums({
       {/* 2 Animated MC Presenters (Khánh Vy & Ngọc Huy) */}
       <McPresenters state={state} serverNow={serverNow} />
 
-      {/* Contestant Entrance Walking Figures when entrance animation is active */}
-      {isEntranceActive && (
-        <ContestantEntranceWalkingFigures
-          state={state!}
-          contestantConfigs={contestantConfigs}
-          serverNow={serverNow}
-        />
-      )}
+      {/* Contestants ALWAYS stand permanently at their podiums from the beginning (User Requirement: no walking entrance) */}
 
       {/* N Contestant Arc Podiums on Raised Dais */}
       {contestantConfigs.map((cfg) => {
@@ -1675,7 +1668,8 @@ export function Podiums({
         const isEntrancePhase = isEntranceActive
           ? cfg.seatId <= currentEntranceSeat
           : Boolean(state?.stage === "lobby");
-        const showFigure = !isEntranceActive || cfg.seatId < currentEntranceSeat;
+        // Always show the 3D contestant humanoid standing proudly at their podium
+        const showFigure = true;
 
         return (
           <ContestantPodium

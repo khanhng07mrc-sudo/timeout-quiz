@@ -53,26 +53,30 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   5: {
     id: 5,
     label: "Cận Cảnh TS 1",
-    pos: [-4.06, 1.52, -2.12],
-    target: [-6.52, 1.42, -3.10],
+    // 100% Coaxial Direct Front-Facing Camera into Contestant 1 & Podium
+    pos: [-3.80, 1.38, -1.74],
+    target: [-6.28, 1.15, -2.54],
   },
   6: {
     id: 6,
     label: "Cận Cảnh TS 2",
-    pos: [-3.53, 1.52, -3.07],
-    target: [-5.67, 1.42, -4.64],
+    // 100% Coaxial Direct Front-Facing Camera into Contestant 2 & Podium
+    pos: [-3.24, 1.38, -2.85],
+    target: [-5.34, 1.15, -4.38],
   },
   7: {
     id: 7,
     label: "Cận Cảnh TS 3",
-    pos: [-2.78, 1.52, -3.87],
-    target: [-4.47, 1.42, -5.91],
+    // 100% Coaxial Direct Front-Facing Camera into Contestant 3 & Podium
+    pos: [-2.35, 1.38, -3.74],
+    target: [-3.88, 1.15, -5.84],
   },
   8: {
     id: 8,
     label: "Cận Cảnh TS 4",
-    pos: [-1.86, 1.52, -4.45],
-    target: [-3.00, 1.42, -6.85],
+    // 100% Coaxial Direct Front-Facing Camera into Contestant 4 & Podium
+    pos: [-1.24, 1.38, -4.30],
+    target: [-2.04, 1.15, -6.78],
   },
   9: {
     id: 9,

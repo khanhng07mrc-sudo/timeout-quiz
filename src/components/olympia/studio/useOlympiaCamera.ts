@@ -78,9 +78,9 @@ export function useOlympiaCameraState(
 
       return {
         camAngle: targetCam,
-        transitionMode: "MORPH",
+        transitionMode: "CUT",
         isOverlayHidden: false,
-        pushInProgress: 0.15,
+        pushInProgress: 0.05,
       };
     }
     const round = state.currentRound;

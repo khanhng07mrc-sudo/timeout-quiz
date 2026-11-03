@@ -1348,8 +1348,8 @@ test("sequential contestant entrance: start, manual next, gesture assignment, an
   assert.equal(g.state.entranceState!.currentSeatIdx, 0);
   assert.equal(g.state.entranceState!.seatStartedAt, 1000);
   assert.equal(g.state.entranceState!.seatGestures?.length, 4);
-  assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
-  assert.equal(g.state.cue?.kind, "bgm");
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/contestant_intro");
+  assert.equal(g.state.cue?.kind, "sound");
 
   const resNext1 = g.hostAction({ type: "entrance:next" }, 2500);
   assert.equal(resNext1.ok, true);

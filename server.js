@@ -28523,6 +28523,7 @@ var OlympiaGame = class _OlympiaGame {
           seatGestures
         };
         this.cue("6_NhacKhac/contest_intro", "bgm");
+        this.cue("6_NhacKhac/contestant_intro", "sound");
         return OK;
       }
       case "entrance:next": {

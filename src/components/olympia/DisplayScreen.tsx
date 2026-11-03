@@ -68,6 +68,67 @@ function hasActiveRoundContent(state: OlympiaState): boolean {
   }
 }
 
+
+function ContestantIntroChyron({ state }: { state: OlympiaState }) {
+  if (!state.entranceState?.active) return null;
+  const currentIdx = Math.min(
+    Math.max(0, state.entranceState.currentSeatIdx ?? 0),
+    Math.max(0, state.seats.length - 1)
+  );
+  const currentSeat = state.seats[currentIdx];
+  if (!currentSeat) return null;
+
+  const seatName = (currentSeat.name || `Thí sinh ${currentIdx + 1}`).toUpperCase();
+  const seatSchool = currentSeat.school?.trim() || "Trường THPT";
+  const seatNumber = currentIdx + 1;
+  const seatColor = SEAT_COLORS[currentIdx] || "#00f0ff";
+
+  return (
+    <div className="absolute bottom-6 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none animate-fade-in">
+      <div className="w-full max-w-2xl rounded-2xl border border-white/20 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl bg-gradient-to-r from-slate-950/95 via-[#0b1636]/95 to-slate-950/95 overflow-hidden flex items-stretch">
+        {/* Seat Number Tag */}
+        <div
+          className="w-16 sm:w-20 shrink-0 flex flex-col items-center justify-center font-black border-r border-white/10"
+          style={{ background: `linear-gradient(135deg, ${seatColor}33, ${seatColor}11)` }}
+        >
+          <span className="text-[10px] sm:text-xs text-slate-300 uppercase tracking-widest">Vị trí</span>
+          <span className="text-2xl sm:text-3xl font-black" style={{ color: seatColor }}>
+            {seatNumber}
+          </span>
+        </div>
+
+        {/* Contestant Name & School */}
+        <div className="flex-1 py-3 px-4 sm:px-6 flex flex-col justify-center min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-amber-400 text-sm sm:text-base">👑</span>
+            <h3
+              className="text-lg sm:text-2xl font-black tracking-wide truncate text-white"
+              style={{
+                textShadow: "0 2px 8px rgba(0,0,0,0.8)",
+              }}
+            >
+              {seatName}
+            </h3>
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-cyan-300 font-bold text-xs sm:text-sm tracking-wide truncate flex items-center gap-1.5">
+              <span>🏫</span>
+              <span>{seatSchool}</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Olympia Laurel Badge */}
+        <div className="hidden sm:flex items-center justify-center px-4 border-l border-white/10 shrink-0 bg-white/5">
+          <span className="text-xs font-black tracking-widest text-amber-300 uppercase">
+            OLYMPIA
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DisplayScreen({ code }: { code: string }) {
   const { state, join, connected, serverNow } = useOlympiaSocket({ code, role: "display" });
   const [audioOn, setAudioOn] = useState(true);
@@ -111,7 +172,7 @@ export default function DisplayScreen({ code }: { code: string }) {
   const isOverlayHidden = cameraState.isOverlayHidden;
 
   return (
-    <div className="fixed inset-0 w-full h-full min-h-screen overflow-hidden bg-gradient-to-b from-[#060818] via-[#090d24] to-[#040612] text-white flex flex-col select-none">
+    <div className="fixed inset-0 w-full h-full max-h-full overflow-hidden bg-gradient-to-b from-[#060818] via-[#090d24] to-[#040612] text-white flex flex-col select-none">
       {/* ── 1. 3D BROADCAST STUDIO (ALWAYS ACTIVE IN BACKGROUND) ── */}
       <div className="fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
         <OlympiaStudio3DScene
@@ -195,6 +256,9 @@ export default function DisplayScreen({ code }: { code: string }) {
       </div>
 
       {/* ── 4. BROADCAST STAGE BANNER (Z-40) ── */}
+      {/* ── 4.5. BROADCAST CONTESTANT INTRO LOWER-THIRD CHYRON (Z-40) ── */}
+      {state.entranceState?.active && <ContestantIntroChyron state={state} />}
+
       {state.stage === "playing" && state.banner && (
         <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-auto animate-fade-in bg-black/40 backdrop-blur-sm">
           <div

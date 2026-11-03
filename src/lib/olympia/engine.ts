@@ -563,6 +563,10 @@ export class OlympiaGame {
           submissions: {},
           ranking: [],
           questions: qs.tangToc.slice(0, 4),
+          backupQuestions:
+            qs.tangTocBackup && qs.tangTocBackup.length > 0
+              ? qs.tangTocBackup
+              : qs.tangToc.slice(4, 8),
         };
         break;
       }
@@ -1852,6 +1856,23 @@ export class OlympiaGame {
         tt.phase = "question";
         tt.revealedCorrectAnswer = false;
         this.cue("3_TangToc/show_question");
+        return OK;
+      }
+      case "tt:swapBackup": {
+        if (tt.qIdx < 0 || tt.qIdx >= tt.questions.length) return fail("Chưa chọn câu hỏi để thay thế");
+        const backups = tt.backupQuestions || [];
+        const backupQ = backups[tt.qIdx] || backups[0];
+        if (!backupQ) return fail("Không có câu hỏi dự phòng khả dụng");
+        tt.questions[tt.qIdx] = { ...backupQ, used: true };
+        tt.isBackupQuestion = true;
+        tt.phase = "question";
+        tt.submissions = {};
+        tt.ranking = [];
+        tt.correctAnswer = undefined;
+        tt.revealedCorrectAnswer = false;
+        tt.timer = mkTimer(rs.timers[Math.min(tt.qIdx, rs.timers.length - 1)]);
+        this.cue("3_TangToc/show_question");
+        this.logMsg(`Host đã tráo câu hỏi dự phòng thay thế cho câu Tăng tốc ${tt.qIdx + 1}`);
         return OK;
       }
       case "tt:timer": {

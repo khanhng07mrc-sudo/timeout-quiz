@@ -6,7 +6,7 @@ import * as XLSX from "xlsx";
 import { RULESETS, RULESET_LIST, RULESET_YEAR_BUTTONS } from "@/lib/olympia/rulesets";
 import { SAMPLE_QUESTION_SET } from "@/lib/olympia/sample-questions";
 import { analyzeSetInventoryAndThresholds } from "@/lib/olympia/ai-classifier";
-import { getOlympiaBanks, type OlympiaBankItem } from "@/lib/olympia/olympia-storage";
+import { getOlympiaBanks, downloadOlympiaSetExcel, type OlympiaBankItem } from "@/lib/olympia/olympia-storage";
 import OlympiaQuestionStudioModal from "@/components/olympia/OlympiaQuestionStudioModal";
 import {
   applyMediaMap,
@@ -125,68 +125,7 @@ export default function CreateOlympiaPage() {
   };
 
   const downloadSampleExcel = () => {
-    const wb = XLSX.utils.book_new();
-    const soloRows: Record<string, unknown>[] = [];
-    for (const [seat, list] of Object.entries(SAMPLE_QUESTION_SET.khoiDong.solo)) {
-      for (const q of list) soloRows.push({ ThiSinh: Number(seat), CauHoi: q.q, DapAn: q.a, Media: q.media ?? "" });
-    }
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(soloRows), "KhoiDong Rieng");
-    XLSX.utils.book_append_sheet(
-      wb,
-      XLSX.utils.json_to_sheet(
-        SAMPLE_QUESTION_SET.khoiDong.shared.map((q) => ({ CauHoi: q.q, DapAn: q.a, Media: q.media ?? "" }))
-      ),
-      "KhoiDong Chung"
-    );
-    XLSX.utils.book_append_sheet(
-      wb,
-      XLSX.utils.json_to_sheet(
-        SAMPLE_QUESTION_SET.vcnv.rows.map((r, i) => ({
-          Hang: i + 1,
-          GoiY: r.hint,
-          DapAn: r.answer,
-          Media: r.media ?? "",
-          DapAnCNV: i === 0 ? SAMPLE_QUESTION_SET.vcnv.answer : "",
-          CauHoiTrungTam: i === 0 ? SAMPLE_QUESTION_SET.vcnv.centerQuestion?.q ?? "" : "",
-          DapAnTrungTam: i === 0 ? SAMPLE_QUESTION_SET.vcnv.centerQuestion?.a ?? "" : "",
-          MediaTrungTam: i === 0 ? SAMPLE_QUESTION_SET.vcnv.mysteryImage ?? "" : "",
-        }))
-      ),
-      "VCNV"
-    );
-    XLSX.utils.book_append_sheet(
-      wb,
-      XLSX.utils.json_to_sheet(
-        SAMPLE_QUESTION_SET.tangToc.map((t) => ({
-          CauHoi: t.q ?? "",
-          File: t.media ?? "",
-          ThoiGian: t.duration ?? 20,
-          DapAn: t.answer,
-        }))
-      ),
-      "TangToc"
-    );
-    const vdRows: Record<string, unknown>[] = [];
-    for (const [pts, list] of Object.entries(SAMPLE_QUESTION_SET.veDich)) {
-      for (const q of list) {
-        vdRows.push({
-          MucDiem: Number(pts),
-          LoaiCauHoi: q.type === "practice" ? "Thực hành" : "Lý thuyết",
-          CauHoi: q.q,
-          DapAn: q.a,
-          Media: q.media ?? "",
-        });
-      }
-    }
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vdRows), "VeDich");
-    XLSX.utils.book_append_sheet(
-      wb,
-      XLSX.utils.json_to_sheet(
-        SAMPLE_QUESTION_SET.cauHoiPhu.map((q) => ({ CauHoi: q.q, DapAn: q.a, Media: q.media ?? "" }))
-      ),
-      "CauPhu"
-    );
-    XLSX.writeFile(wb, "CauHoi_Olympia_Mau.xlsx");
+    downloadOlympiaSetExcel(SAMPLE_QUESTION_SET, "CauHoi_Olympia_Mau.xlsx");
   };
 
   const finalSet = applyMediaMap(questionSet, mediaMap);

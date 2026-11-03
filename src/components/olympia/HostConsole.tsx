@@ -1438,6 +1438,20 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
 
         <button
           type="button"
+          onClick={() => {
+            if (window.confirm("Bạn có chắc chắn muốn ĐỔI CÂU DỰ PHÒNG thay thế cho câu Tăng Tốc này? (Dùng khi gặp sự cố kỹ thuật lộ đáp án)")) {
+              call("tt:swapBackup");
+            }
+          }}
+          className="w-full py-1.5 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 text-xs font-bold border border-amber-500/40 shadow flex items-center justify-center gap-1.5 cursor-pointer"
+          title="Tráo câu hỏi dự phòng khẩn cấp khi hệ thống gặp lỗi"
+        >
+          <span>🔄</span>
+          <span>Đổi câu dự phòng (Khẩn cấp)</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => call("tt:timer")}
           className="w-full py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-black shadow-lg shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
         >

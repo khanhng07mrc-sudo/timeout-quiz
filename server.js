@@ -27010,7 +27010,7 @@ var RAW_BAC_AI_QUESTION_SET = {
   },
   "vcnv": {
     "answer": "\u1EAEC QUY N\u01AF\u1EDAC",
-    "mysteryImage": "/olympia/media/bac_ai_pumped_storage.jpg",
+    "mysteryImage": "/olympia/media/bac_ai_cnv_mystery.png",
     "rows": [
       {
         "hint": "N\u0103m 1800, nh\xE0 v\u1EADt l\xFD ng\u01B0\u1EDDi \xDD n\xE0o \u0111\xE3 ch\u1EBF t\u1EA1o th\xE0nh c\xF4ng ngu\u1ED3n \u0111i\u1EC7n h\xF3a h\u1ECDc \u0111\u1EA7u ti\xEAn trong l\u1ECBch s\u1EED t\u1EEB c\xE1c \u0111\u0129a \u0111\u1ED3ng v\xE0 k\u1EBDm x\u1EBFp ch\u1ED3ng l\xEAn nhau, v\xE0 t\xEAn \xF4ng \u0111\u01B0\u1EE3c \u0111\u1EB7t cho \u0111\u01A1n v\u1ECB hi\u1EC7u \u0111i\u1EC7n th\u1EBF? (5 ch\u1EEF c\xE1i)",
@@ -27062,59 +27062,61 @@ var RAW_BAC_AI_QUESTION_SET = {
   },
   "tangToc": [
     {
-      "q": "[C\xE2u 1 \u2014 Nh\u1EADn di\u1EC7n h\xECnh th\u1EE9c] H\xECnh th\u1EE9c l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u c\xF3 s\u1EF1 tham gia c\u1EE7a c\xE1c nh\xE0 th\u1EA7u n\u01B0\u1EDBc ngo\xE0i v\xE0 nh\xE0 th\u1EA7u trong n\u01B0\u1EDBc theo quy \u0111\u1ECBnh c\u1EE7a Lu\u1EADt \u0110\u1EA5u th\u1EA7u \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 g\xEC?",
-      "answer": "\u0110\u1EA5u th\u1EA7u qu\u1ED1c t\u1EBF",
-      "duration": 10,
+      "q": "H\xECnh th\u1EE9c l\u1EF1a ch\u1ECDn nh\xE0 th\u1EA7u c\xF3 s\u1EF1 tham gia c\u1EE7a c\xE1c nh\xE0 th\u1EA7u n\u01B0\u1EDBc ngo\xE0i v\xE0 nh\xE0 th\u1EA7u trong n\u01B0\u1EDBc theo quy \u0111\u1ECBnh c\u1EE7a Lu\u1EADt \u0110\u1EA5u th\u1EA7u \u0111\u01B0\u1EE3c g\u1ECDi l\xE0 g\xEC?",
+      "answer": "\u0110\u1EA4U TH\u1EA6U QU\u1ED0C T\u1EBE",
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_cau1.png",
       "category": "iq"
     },
     {
       "q": "\u0110\xE2y l\xE0 t\xEAn t\u1EADp \u0111o\xE0n n\xE0o? D\u1EEF ki\u1EC7n 1: T\u1EADp \u0111o\xE0n c\u01A1 kh\xED n\u0103ng l\u01B0\u1EE3ng h\xE0ng \u0111\u1EA7u c\u1EE7a \u0110\u1EE9c. D\u1EEF ki\u1EC7n 2: C\xF3 c\u01A1 s\u1EDF ch\u1EBF t\u1EA1o l\u1EDBn t\u1EA1i Th\u01B0\u1EE3ng H\u1EA3i. D\u1EEF ki\u1EC7n 3: Chuy\xEAn ch\u1EBF t\u1EA1o tua-bin c\u1ED9t n\u01B0\u1EDBc cao. D\u1EEF ki\u1EC7n 4: \u0110\u1EE9ng \u0111\u1EA7u li\xEAn danh tr\xFAng th\u1EA7u g\xF3i 01TB-BA B\xE1c \xC1i.",
       "answer": "VOITH HYDRO",
-      "duration": 20,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_cau2.png",
       "category": "data"
     },
     {
       "q": "H\xE3y s\u1EAFp x\u1EBFp c\xE1c m\u1ED1c th\u1EDDi gian \u0111\u1EA5u th\u1EA7u g\xF3i 01TB-BA theo tr\xECnh t\u1EF1 tr\u01B0\u1EDBc sau: (1) \u0110\xF3ng v\xE0 m\u1EDF th\u1EA7u c\xF4ng khai (23/02/2026), (2) Ph\xE1t h\xE0nh H\u1ED3 s\u01A1 m\u1EDDi th\u1EA7u (15/10/2025), (3) EVN ch\xEDnh th\u1EE9c k\xFD h\u1EE3p \u0111\u1ED3ng (26/10/2026), (4) Ph\xEA duy\u1EC7t k\u1EBFt qu\u1EA3 tr\xFAng th\u1EA7u (21/10/2026).",
       "answer": "2-1-4-3",
-      "duration": 30,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_cau3.png",
       "category": "arrange"
     },
     {
       "q": "G\xF3i th\u1EA7u 01TB-BA c\xF3 gi\xE1 d\u1EF1 to\xE1n l\xE0 4.548,081 t\u1EF7 \u0111\u1ED3ng v\xE0 gi\xE1 tr\xFAng th\u1EA7u l\xE0 4.462,603 t\u1EF7 \u0111\u1ED3ng. H\xE3y t\xEDnh s\u1ED1 ti\u1EC1n ti\u1EBFt ki\u1EC7m tuy\u1EC7t \u0111\u1ED1i m\xE0 EVN \u0111\u1EA1t \u0111\u01B0\u1EE3c qua \u0111\u1EA5u th\u1EA7u l\xE0 bao nhi\xEAu t\u1EF7 \u0111\u1ED3ng?",
       "answer": "85,478 T\u1EF6 \u0110\u1ED2NG (85.478)",
-      "duration": 40,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_cau4.png",
       "category": "data"
-    },
+    }
+  ],
+  "tangTocBackup": [
     {
-      "q": "(D\u1EF0 PH\xD2NG) Theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15, quy tr\xECnh t\u1ED5 ch\u1EE9c th\u1EF1c hi\u1EC7n \u0111\u1EA5u th\u1EA7u chu\u1EA9n h\xF3a g\u1ED3m bao nhi\xEAu b\u01B0\u1EDBc li\xEAn t\u1EE5c?",
+      "q": "Theo Lu\u1EADt \u0110\u1EA5u th\u1EA7u s\u1ED1 90/2025/QH15, quy tr\xECnh t\u1ED5 ch\u1EE9c th\u1EF1c hi\u1EC7n \u0111\u1EA5u th\u1EA7u chu\u1EA9n h\xF3a g\u1ED3m bao nhi\xEAu b\u01B0\u1EDBc li\xEAn t\u1EE5c?",
       "answer": "7 B\u01AF\u1EDAC (7)",
-      "duration": 10,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_dp_cau1.png",
       "category": "iq"
     },
     {
-      "q": "(D\u1EF0 PH\xD2NG) \u0110\xE2y l\xE0 c\xF4ng tr\xECnh n\xE0o? D\u1EEF ki\u1EC7n 1: \u0110\u1EB7t t\u1EA1i t\u1EC9nh Kh\xE1nh H\xF2a. D\u1EEF ki\u1EC7n 2: T\u1ED5ng m\u1EE9c \u0111\u1EA7u t\u01B0 h\u01A1n 21.100 t\u1EF7 \u0111\u1ED3ng. D\u1EEF ki\u1EC7n 3: T\u1ED5ng c\xF4ng su\u1EA5t 1.200 MW. D\u1EEF ki\u1EC7n 4: Nh\xE0 m\xE1y th\u1EE7y \u0111i\u1EC7n t\xEDch n\u0103ng \u0111\u1EA7u ti\xEAn c\u1EE7a Vi\u1EC7t Nam.",
+      "q": "\u0110\xE2y l\xE0 c\xF4ng tr\xECnh n\xE0o? D\u1EEF ki\u1EC7n 1: \u0110\u1EB7t t\u1EA1i t\u1EC9nh Kh\xE1nh H\xF2a. D\u1EEF ki\u1EC7n 2: T\u1ED5ng m\u1EE9c \u0111\u1EA7u t\u01B0 h\u01A1n 21.100 t\u1EF7 \u0111\u1ED3ng. D\u1EEF ki\u1EC7n 3: T\u1ED5ng c\xF4ng su\u1EA5t 1.200 MW. D\u1EEF ki\u1EC7n 4: Nh\xE0 m\xE1y th\u1EE7y \u0111i\u1EC7n t\xEDch n\u0103ng \u0111\u1EA7u ti\xEAn c\u1EE7a Vi\u1EC7t Nam.",
       "answer": "TH\u1EE6Y \u0110I\u1EC6N T\xCDCH N\u0102NG B\xC1C \xC1I (B\xC1C \xC1I)",
-      "duration": 20,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_dp_cau2.png",
       "category": "data"
     },
     {
-      "q": "(D\u1EF0 PH\xD2NG) H\xE3y s\u1EAFp x\u1EBFp c\xE1c b\u01B0\u1EDBc trong ph\u01B0\u01A1ng th\u1EE9c \u0111\u1EA5u th\u1EA7u M\u1ED9t giai \u0111o\u1EA1n hai t\xFAi h\u1ED3 s\u01A1 theo th\u1EE9 t\u1EF1 quy \u0111\u1ECBnh: (1) M\u1EDF t\xFAi \u0111\u1EC1 xu\u1EA5t t\xE0i ch\xEDnh, (2) \u0110\xE1nh gi\xE1 h\u1ED3 s\u01A1 \u0111\u1EC1 xu\u1EA5t k\u1EF9 thu\u1EADt, (3) M\u1EDF t\xFAi \u0111\u1EC1 xu\u1EA5t k\u1EF9 thu\u1EADt, (4) Ph\xEA duy\u1EC7t k\u1EBFt qu\u1EA3 tr\xFAng th\u1EA7u.",
+      "q": "H\xE3y s\u1EAFp x\u1EBFp c\xE1c b\u01B0\u1EDBc trong ph\u01B0\u01A1ng th\u1EE9c \u0111\u1EA5u th\u1EA7u M\u1ED9t giai \u0111o\u1EA1n hai t\xFAi h\u1ED3 s\u01A1 theo th\u1EE9 t\u1EF1 quy \u0111\u1ECBnh: (1) M\u1EDF t\xFAi \u0111\u1EC1 xu\u1EA5t t\xE0i ch\xEDnh, (2) \u0110\xE1nh gi\xE1 h\u1ED3 s\u01A1 \u0111\u1EC1 xu\u1EA5t k\u1EF9 thu\u1EADt, (3) M\u1EDF t\xFAi \u0111\u1EC1 xu\u1EA5t k\u1EF9 thu\u1EADt, (4) Ph\xEA duy\u1EC7t k\u1EBFt qu\u1EA3 tr\xFAng th\u1EA7u.",
       "answer": "3-2-1-4",
-      "duration": 30,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_dp_cau3.png",
       "category": "arrange"
     },
     {
-      "q": "(D\u1EF0 PH\xD2NG) G\xF3i th\u1EA7u 01TB-BA c\xF3 d\u1EF1 to\xE1n 4.548,081 t\u1EF7 \u0111\u1ED3ng v\xE0 ti\u1EBFt ki\u1EC7m \u0111\u01B0\u1EE3c 85,478 t\u1EF7 \u0111\u1ED3ng. H\xE3y t\xEDnh t\u1EF7 l\u1EC7 ph\u1EA7n tr\u0103m ti\u1EBFt ki\u1EC7m so v\u1EDBi gi\xE1 d\u1EF1 to\xE1n (l\xE0m tr\xF2n 2 ch\u1EEF s\u1ED1 th\u1EADp ph\xE2n)?",
+      "q": "G\xF3i th\u1EA7u 01TB-BA c\xF3 d\u1EF1 to\xE1n 4.548,081 t\u1EF7 \u0111\u1ED3ng v\xE0 ti\u1EBFt ki\u1EC7m \u0111\u01B0\u1EE3c 85,478 t\u1EF7 \u0111\u1ED3ng. H\xE3y t\xEDnh t\u1EF7 l\u1EC7 ph\u1EA7n tr\u0103m ti\u1EBFt ki\u1EC7m so v\u1EDBi gi\xE1 d\u1EF1 to\xE1n (l\xE0m tr\xF2n 2 ch\u1EEF s\u1ED1 th\u1EADp ph\xE2n)?",
       "answer": "1,88% (1.88)",
-      "duration": 40,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_dp_cau4.png",
       "category": "data"
     }
   ],
@@ -28235,7 +28237,8 @@ var OlympiaGame = class _OlympiaGame {
           timer: mkTimer(this.ruleset.tangToc.timers[0]),
           submissions: {},
           ranking: [],
-          questions: qs.tangToc.slice(0, 4)
+          questions: qs.tangToc.slice(0, 4),
+          backupQuestions: qs.tangTocBackup && qs.tangTocBackup.length > 0 ? qs.tangTocBackup : qs.tangToc.slice(4, 8)
         };
         break;
       }
@@ -29477,6 +29480,23 @@ var OlympiaGame = class _OlympiaGame {
         tt.phase = "question";
         tt.revealedCorrectAnswer = false;
         this.cue("3_TangToc/show_question");
+        return OK;
+      }
+      case "tt:swapBackup": {
+        if (tt.qIdx < 0 || tt.qIdx >= tt.questions.length) return fail("Ch\u01B0a ch\u1ECDn c\xE2u h\u1ECFi \u0111\u1EC3 thay th\u1EBF");
+        const backups = tt.backupQuestions || [];
+        const backupQ = backups[tt.qIdx] || backups[0];
+        if (!backupQ) return fail("Kh\xF4ng c\xF3 c\xE2u h\u1ECFi d\u1EF1 ph\xF2ng kh\u1EA3 d\u1EE5ng");
+        tt.questions[tt.qIdx] = { ...backupQ, used: true };
+        tt.isBackupQuestion = true;
+        tt.phase = "question";
+        tt.submissions = {};
+        tt.ranking = [];
+        tt.correctAnswer = void 0;
+        tt.revealedCorrectAnswer = false;
+        tt.timer = mkTimer(rs.timers[Math.min(tt.qIdx, rs.timers.length - 1)]);
+        this.cue("3_TangToc/show_question");
+        this.logMsg(`Host \u0111\xE3 tr\xE1o c\xE2u h\u1ECFi d\u1EF1 ph\xF2ng thay th\u1EBF cho c\xE2u T\u0103ng t\u1ED1c ${tt.qIdx + 1}`);
         return OK;
       }
       case "tt:timer": {

@@ -279,13 +279,30 @@ export function mergeOlympiaSets(base: QuestionSet, extra: QuestionSet): Questio
 
 export async function downloadOlympiaSetExcel(set: QuestionSet, filename = "KhoDe_Olympia.xlsx"): Promise<void> {
   if (typeof window === "undefined") return;
-  const sheets = exportOlympiaSetToSheets(set);
+  try {
+    const wb = await buildStyledOlympiaExcelWorkbook(set);
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.warn("ExcelJS styled export fallback to SheetJS:", err);
+    const sheets = exportOlympiaSetToSheets(set);
   const wb = XLSX.utils.book_new();
   for (const [sheetName, rows] of Object.entries(sheets)) {
     const ws = XLSX.utils.json_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
   }
-  XLSX.writeFile(wb, filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`);
+    XLSX.writeFile(wb, filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`);
+  }
 }
 
 export function downloadOlympiaSetJson(set: QuestionSet, filename = "KhoDe_Olympia.json"): void {

@@ -2029,8 +2029,8 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
   },
   "tangToc": [
       {
-          "q": "Hình thức lựa chọn nhà thầu nào được Luật Đấu thầu số 90/2025/QH15 quy định là hình thức mặc định, áp dụng không hạn chế số lượng nhà thầu tham dự?",
-          "answer": "ĐẤU THẦU RỘNG RÃI",
+          "q": "Hình thức lựa chọn nhà thầu có sự tham gia của các nhà thầu nước ngoài và nhà thầu trong nước theo quy định của Luật Đấu thầu được gọi là gì?",
+          "answer": "ĐẤU THẦU QUỐC TẾ",
           "type": "image",
           "media": "/olympia/media/bac_ai_tt_cau1.png",
           "category": "iq"

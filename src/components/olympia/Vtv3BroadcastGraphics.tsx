@@ -940,6 +940,24 @@ export function TangTocQuestionGraphic({
 }) {
   const tt = state.tangToc!;
   const q = tt.questions[tt.qIdx];
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const isVideo =
+    q?.type === "video" ||
+    (Boolean(q?.media) && /\.(mp4|webm|mov|m4v|ogv|mpeg)$/i.test(q?.media || ""));
+  const isTiming = tt.timer?.startedAt != null;
+
+  useEffect(() => {
+    if (!videoRef.current || !isVideo) return;
+    if (isTiming) {
+      videoRef.current.play().catch(() => {});
+    } else {
+      videoRef.current.pause();
+      if (tt.phase === "idle" || tt.phase === "question") {
+        videoRef.current.currentTime = 0;
+      }
+    }
+  }, [isTiming, isVideo, tt.phase]);
 
   return (
     <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-8 z-20 pointer-events-auto">
@@ -997,6 +1015,14 @@ export function TangTocQuestionGraphic({
                 );
               })}
             </div>
+          ) : isVideo && q?.media ? (
+            <video
+              ref={videoRef}
+              src={q.media}
+              playsInline
+              preload="auto"
+              className="max-h-[50vh] w-auto mx-auto rounded-lg shadow-xl object-contain"
+            />
           ) : q?.media ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

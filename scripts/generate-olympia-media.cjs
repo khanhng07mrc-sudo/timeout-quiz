@@ -141,21 +141,21 @@ const cnvSvg = svgWrapper(
   `
 );
 
-// 2. bac_ai_tt_cau1.png (Đấu thầu rộng rãi)
+// 2. bac_ai_tt_cau1.png (Đấu thầu quốc tế)
 const tt1Svg = svgWrapper(
   "TĂNG TỐC · CÂU 1 (IQ & NHẬN DIỆN)",
-  "HÌNH THỨC LỰA CHỌN NHÀ THẦU MẶC ĐỊNH THEO LUẬT ĐẤU THẦU 90/2025/QH15",
+  "HÌNH THỨC LỰA CHỌN NHÀ THẦU CÓ SỰ THAM GIA CỦA NHÀ THẦU NƯỚC NGOÀI",
   `
   <g transform="translate(140, 150)">
     <!-- Option A -->
     <rect x="0" y="0" width="460" height="190" rx="16" fill="#064e3b" stroke="#10b981" stroke-width="3"/>
     <circle cx="50" cy="50" r="26" fill="#10b981"/>
     <text x="50" y="58" font-family="Arial" font-weight="900" font-size="24" fill="#ffffff" text-anchor="middle">A</text>
-    <text x="96" y="56" font-family="Arial" font-weight="900" font-size="22" fill="#34d399">ĐẤU THẦU RỘNG RÃI</text>
-    <text x="30" y="110" font-family="Arial" font-weight="700" font-size="14" fill="#ffffff">• Không hạn chế số lượng nhà thầu tham dự</text>
-    <text x="30" y="140" font-family="Arial" font-weight="700" font-size="14" fill="#a7f3d0">• Hình thức cơ bản, mặc định và minh bạch nhất</text>
+    <text x="96" y="56" font-family="Arial" font-weight="900" font-size="22" fill="#34d399">ĐẤU THẦU QUỐC TẾ</text>
+    <text x="30" y="110" font-family="Arial" font-weight="700" font-size="14" fill="#ffffff">• Nhà thầu nước ngoài và trong nước cùng tham dự</text>
+    <text x="30" y="140" font-family="Arial" font-weight="700" font-size="14" fill="#a7f3d0">• Áp dụng cho các gói thầu công nghệ cao phức tạp</text>
     <rect x="28" y="154" width="220" height="22" rx="6" fill="#047857"/>
-    <text x="138" y="169" font-family="Arial" font-weight="800" font-size="11" fill="#ecfdf5" text-anchor="middle">HÌNH THỨC CHUẨN MỰC</text>
+    <text x="138" y="169" font-family="Arial" font-weight="800" font-size="11" fill="#ecfdf5" text-anchor="middle">GÓI THẦU 01TB-BA</text>
 
     <!-- Option B -->
     <rect x="540" y="0" width="460" height="190" rx="16" fill="#1e293b" stroke="#475569" stroke-width="2"/>

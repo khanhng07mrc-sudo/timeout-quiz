@@ -209,7 +209,7 @@ const tt2Svg = canvasWrapper(`
 `);
 
 // ── 3. bac_ai_tt_cau3.png (Câu 3: Logic ma trận giải mật mã Telex chuẩn Olympia) ──
-// Target Word: THỦY ĐIỆN (Telex: T - H - U - Y - S - D - D - I - E - N) = 10 characters
+// Target Word: THỦY ĐIỆN (Telex: T - H - U - Y - R - D - D - I - E - N) = 10 characters
 const matrixData = [
   // Row 0
   [
@@ -244,7 +244,7 @@ const matrixData = [
     { char: "U", bg: "#38bdf8" }, // Q3 [Slot 3: U] Sky
     { char: "Q", bg: "#fde047" }, // Q3 Yellow
     { char: "1", bg: "#cbd5e1" }, // Q4 Grey
-    { char: "S", bg: "#86efac" }, // Q4 [Slot 5: S] Green
+    { char: "R", bg: "#86efac" }, // Q4 [Slot 5: R] Green
     { char: "X", bg: "#fdba74" }, // Q4 Orange
   ],
   // Row 4
@@ -252,7 +252,7 @@ const matrixData = [
     { char: "Z", bg: "#cbd5e1" }, // Q3 Grey
     { char: "P", bg: "#f472b6" }, // Q3 Pink
     { char: "2", bg: "#fdba74" }, // Q3 Orange
-    { char: "R", bg: "#fde047" }, // Q4 Yellow
+    { char: "S", bg: "#fde047" }, // Q4 Yellow
     { char: "8", bg: "#fdba74" }, // Q4 Orange
     { char: "T", bg: "#38bdf8" }, // Q4 [Slot 1: T] Sky
   ],
@@ -267,7 +267,7 @@ const matrixData = [
   ],
 ];
 
-// 10 bottom slots corresponding to T H U Y S D D I E N
+// 10 bottom slots corresponding to T H U Y R D D I E N
 // Quadrant logic:
 // Q1 (Trái trên): viền đỏ Bên phải & Bên dưới
 // Q2 (Phải trên): viền đỏ Bên trái & Bên dưới
@@ -278,7 +278,7 @@ const bottomSlots = [
   { q: 1, bg: "#f472b6" }, // 2: H (Q1: Right + Bottom, Pink)
   { q: 3, bg: "#38bdf8" }, // 3: U (Q3: Right + Top, Sky)
   { q: 4, bg: "#f472b6" }, // 4: Y (Q4: Left + Top, Pink)
-  { q: 4, bg: "#86efac" }, // 5: S (Q4: Left + Top, Green)
+  { q: 4, bg: "#86efac" }, // 5: R (Q4: Left + Top, Green)
   { q: 2, bg: "#86efac" }, // 6: D (Q2: Left + Bottom, Green)
   { q: 1, bg: "#fde047" }, // 7: D (Q1: Right + Bottom, Yellow)
   { q: 2, bg: "#fdba74" }, // 8: I (Q2: Left + Bottom, Orange)

@@ -236,7 +236,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         {state.stage === "playing" && !state.banner && !isOverlayHidden && hasActiveRoundContent(state) && (
           isLowerThird ? (
             /* ── LOWER-THIRD BROADCAST OVERLAY (20 - 25% BOTTOM) ── */
-            <div className="w-full px-2 sm:px-6 pb-2 pt-0 pointer-events-auto flex flex-col justify-end z-20 animate-fade-in">
+            <div className="w-full px-2 sm:px-6 pb-2 pt-0 pointer-events-auto flex flex-col justify-end z-20">
               <div className="w-full max-w-6xl mx-auto flex flex-col justify-end">
                 {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
                 {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} isLowerThird={true} />}
@@ -247,7 +247,7 @@ export default function DisplayScreen({ code }: { code: string }) {
             </div>
           ) : (
             /* ── FULLSCREEN BROADCAST OVERLAY (AUTHENTIC VTV3 GRAPHICS) ── */
-            <div className="absolute inset-0 pointer-events-auto animate-fade-in z-30 flex items-center justify-center">
+            <div className="absolute inset-0 pointer-events-auto z-30 flex items-center justify-center">
               {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
               {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} isLowerThird={false} />}
               {state.currentRound === "tangToc" && <TangToc state={state} serverNow={serverNow} />}
@@ -503,67 +503,70 @@ function KhoiDong({ state, serverNow }: P) {
         </div>
       </div>
 
-      {/* Main question card: Authentic VTV3 Chalkboard Question Frame */}
-      <Vtv3ChalkboardQuestionFrame
-        headerBadge={
-          kd.phase === "segmentDone"
-            ? "KẾT THÚC LƯỢT THI"
-            : !kd.current
-            ? "ĐANG ĐỢI CÂU HỎI"
-            : !kd.questionRevealed
-            ? "SẴN SÀNG THI ĐẤU"
-            : `CÂU ${qNum}${totalQ}`
-        }
-        questionText={
-          kd.phase === "segmentDone"
-            ? "KẾT THÚC LƯỢT THI — Chuẩn bị sang phần thi tiếp theo"
-            : !kd.questionRevealed
-            ? "SẴN SÀNG THI ĐẤU"
-            : kd.current?.q
-        }
-        mediaElement={
-          kd.current?.media ? (
-            <MediaView
-              url={kd.current.media}
-              type={kd.current.mediaType}
-              className="max-h-20 sm:max-h-24 rounded-lg mx-auto mt-1"
-            />
-          ) : null
-        }
-        timer={kd.timer}
-        serverNow={serverNow}
-      >
-        {kd.buzzedSeat != null && (
-          <div
-            className="mt-1 inline-flex items-center gap-1.5 px-4 py-1 rounded-xl font-black text-sm text-slate-950 animate-bounce"
-            style={{
-              background: "linear-gradient(90deg,#f59e0b,#ef4444)",
-              boxShadow: "0 0 20px rgba(245,158,11,0.6)",
-            }}
-          >
-            <span>🔔</span>
-            <span>{seatName(state, kd.buzzedSeat)}</span>
-          </div>
-        )}
-      </Vtv3ChalkboardQuestionFrame>
-
-      {kd.phase === "result" && kd.current?.a && (
+      {/* Main question card / Result answer overlay:
+          USER REQUIREMENT: Khi nhấn đúng/sai, hệ thống chuyển sang bục MC và chỉ hiện đáp án Khởi động,
+          đồ hoạ câu hỏi tạm gác. Sau khi nhấn câu tiếp, chuyển lại về thí sinh và hiện lại đồ hoạ câu hỏi (không fade).
+          USER REQUIREMENT: Xoá nhãn CÂU 1/6 thứ hai (bỏ cái dưới đi). */}
+      {kd.phase === "result" && kd.current?.a ? (
         <div
-          className="w-full shrink-0 rounded-xl px-4 py-2 flex items-center justify-center gap-2 animate-fade-in shadow-xl backdrop-blur-md"
+          className="w-full shrink-0 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 shadow-2xl backdrop-blur-md"
           style={{
             background: "linear-gradient(135deg, rgba(6, 78, 59, 0.95) 0%, rgba(4, 120, 87, 0.9) 100%)",
-            border: "1.5px solid #10b981",
-            boxShadow: "0 0 20px rgba(16, 185, 129, 0.4)",
+            border: "2px solid #10b981",
+            boxShadow: "0 0 30px rgba(16, 185, 129, 0.5)",
           }}
         >
-          <span className="text-emerald-300 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center gap-1.5">
+          <span className="text-emerald-300 font-black text-sm sm:text-base uppercase tracking-wider flex items-center gap-2">
             <span>✔</span>
             <span>ĐÁP ÁN:</span>
           </span>
-          <span className="text-white font-black text-base sm:text-xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+          <span className="text-white font-black text-lg sm:text-2xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
             {kd.current.a}
           </span>
         </div>
+      ) : (
+        <Vtv3ChalkboardQuestionFrame
+          headerBadge={
+            kd.phase === "segmentDone"
+              ? "KẾT THÚC LƯỢT THI"
+              : !kd.current
+              ? "ĐANG ĐỢI CÂU HỎI"
+              : !kd.questionRevealed
+              ? "SẴN SÀNG THI ĐẤU"
+              : null // Bỏ CÂU 1/6 dưới đây per user request
+          }
+          questionText={
+            kd.phase === "segmentDone"
+              ? "KẾT THÚC LƯỢT THI — Chuẩn bị sang phần thi tiếp theo"
+              : !kd.questionRevealed
+              ? "SẴN SÀNG THI ĐẤU"
+              : kd.current?.q
+          }
+          mediaElement={
+            kd.current?.media ? (
+              <MediaView
+                url={kd.current.media}
+                type={kd.current.mediaType}
+                className="max-h-20 sm:max-h-24 rounded-lg mx-auto mt-1"
+              />
+            ) : null
+          }
+          timer={kd.timer}
+          serverNow={serverNow}
+        >
+          {kd.buzzedSeat != null && (
+            <div
+              className="mt-1 inline-flex items-center gap-1.5 px-4 py-1 rounded-xl font-black text-sm text-slate-950 animate-bounce"
+              style={{
+                background: "linear-gradient(90deg,#f59e0b,#ef4444)",
+                boxShadow: "0 0 20px rgba(245,158,11,0.6)",
+              }}
+            >
+              <span>🔔</span>
+              <span>{seatName(state, kd.buzzedSeat)}</span>
+            </div>
+          )}
+        </Vtv3ChalkboardQuestionFrame>
       )}
     </div>
   );
@@ -601,7 +604,7 @@ function VeDich({ state, serverNow }: P) {
   const cur = vd.current;
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col justify-end animate-fade-in">
+    <div className="w-full max-w-5xl mx-auto flex flex-col justify-end">
       <div className="flex items-center justify-center gap-2 mb-1">
         <span className="text-sm sm:text-base font-black text-amber-300 drop-shadow">
           {seatName(state, owner)}
@@ -640,7 +643,31 @@ function VeDich({ state, serverNow }: P) {
         </div>
       )}
 
-      {cur && (
+      {vd.phase === "result" && cur?.q.a ? (
+        <div
+          className="w-full shrink-0 rounded-2xl px-6 py-4 flex flex-col items-center justify-center gap-1.5 shadow-2xl backdrop-blur-md"
+          style={{
+            background: "linear-gradient(135deg, rgba(6, 78, 59, 0.95) 0%, rgba(4, 120, 87, 0.9) 100%)",
+            border: "2px solid #10b981",
+            boxShadow: "0 0 30px rgba(16, 185, 129, 0.5)",
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-emerald-300 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center gap-1.5">
+              <span>✔</span>
+              <span>ĐÁP ÁN VỀ ĐÍCH:</span>
+            </span>
+            <span className="text-white font-black text-base sm:text-xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+              {cur.q.a}
+            </span>
+          </div>
+          {cur.points && (
+            <div className="text-[11px] sm:text-xs font-bold text-emerald-200">
+              Điểm câu hỏi: {cur.points} điểm {vd.hopeStarActive ? "⭐ NGÔI SAO HY VỌNG" : ""}
+            </div>
+          )}
+        </div>
+      ) : cur ? (
         <Vtv3ChalkboardQuestionFrame
           headerBadge={`${seatName(state, owner)} · ${cur.q.subject || "VỀ ĐÍCH"} (${cur.points} điểm) ${
             vd.hopeStarActive ? "⭐ NGÔI SAO HY VỌNG" : ""
@@ -664,7 +691,7 @@ function VeDich({ state, serverNow }: P) {
             </div>
           )}
         </Vtv3ChalkboardQuestionFrame>
-      )}
+      ) : null}
 
       {vd.phase === "seatDone" && (
         <div className="text-center py-3 text-xl font-black text-amber-300 bg-slate-950/80 rounded-2xl border border-white/10">

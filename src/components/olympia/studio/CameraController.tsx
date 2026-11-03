@@ -168,7 +168,9 @@ export function CameraController({
 
       // True Optical Zoom: Narrow/widen field of view (focal length change)
       const opticalFov = calculatedFov / Math.max(0.25, ptzZoom);
-      const pushFov = pushInProgress > 0 ? opticalFov * (1.0 - pushInProgress * 0.12) : opticalFov;
+      // Zoom smooth 100% -> 115% based on pushInProgress (0.0 to 1.0)
+      const zoomFactor = 1.0 + Math.max(0, Math.min(1.0, pushInProgress)) * 0.15;
+      const pushFov = opticalFov / zoomFactor;
       camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 6.0, delta);
     }
     // 0. Opening Sequence Camera Director:

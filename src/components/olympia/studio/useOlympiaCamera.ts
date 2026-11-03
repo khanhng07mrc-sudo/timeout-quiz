@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import type { OlympiaState } from "@/lib/olympia/types";
 
 export interface OlympiaCameraState {
@@ -20,6 +20,16 @@ export function useOlympiaCameraState(
 ): OlympiaCameraState {
   const getNow = serverNow || (() => Date.now());
   const [tick, setTick] = useState(0);
+
+  const lastRoundRef = useRef<string | null>(null);
+  const roundEnteredAtRef = useRef<number>(Date.now());
+
+  useEffect(() => {
+    if (state?.currentRound && state.currentRound !== lastRoundRef.current) {
+      lastRoundRef.current = state.currentRound;
+      roundEnteredAtRef.current = Date.now();
+    }
+  }, [state?.currentRound]);
 
   // 100ms ticker for smooth timer-driven camera transitions (e.g. VCNV 15s round robin & push-in)
   useEffect(() => {
@@ -109,79 +119,97 @@ export function useOlympiaCameraState(
     if (round === "khoiDong" && state.khoiDong) {
       const kd = state.khoiDong;
 
-      // When Right/Wrong is pressed:
-      // USER REQUIREMENT: "Khi nhấn đúng/sai, đồ hoạ đè lên trường quay tạm ẩn và chuyển qua góc MC"
+      // 3.1. Khi nhấn Đúng / Sai:
+      // USER REQUIREMENT: "mỗi khi nhấn đúng/sai, hệ thống chuyển sang góc quay thẳng bục MC và chỉ hiện đáp án Khởi động, đồ hoạ câu hỏi tạm gác"
       if (kd.phase === "result" || kd.lastVerdict != null) {
         return {
-          camAngle: 3, // Bục MC
+          camAngle: 3, // Góc quay thẳng bục MC
           transitionMode: "CUT",
-          isOverlayHidden: true, // Tạm ẩn đồ hoạ 1/3 dưới
+          isOverlayHidden: false, // Hiển thị thanh đáp án trên màn hình
           pushInProgress: 0,
         };
       }
 
       const seg = kd.segments?.[kd.segIdx];
       const isSolo = seg?.kind === "solo";
+      const seatId = isSolo ? (seg?.seat ?? 0) : (kd.buzzedSeat ?? 0);
+      const validSeat = typeof seatId === "number" && seatId >= 0 && seatId < 4;
+      const targetContestantCam = validSeat ? 5 + seatId : 1;
 
-      // Turn Intro / Before first question revealed:
-      if (kd.phase === "intro" || (isSolo && kd.qIdx < 0) || (isSolo && !kd.questionRevealed && kd.qIdx === 0)) {
-        if (isSolo) {
-          // Camera bắt đầu từ góc thấp bên trái sau Vòng Nguyệt Quế (CAM 14)
+      // 3.2. Khi chưa nhấn Bắt đầu (hết intro Khởi động):
+      // USER REQUIREMENT: "cơ mà hết intro Khởi động, nó chưa tự zoom in bục MC, sau đó quay toàn cảnh"
+      if (!kd.started && (kd.phase === "intro" || kd.qIdx < 0)) {
+        const introElapsed = Math.max(0, (now - roundEnteredAtRef.current) / 1000);
+        if (introElapsed < 2.5) {
           return {
-            camAngle: 14,
+            camAngle: 3, // Zoom in bục MC
             transitionMode: "MORPH",
             isOverlayHidden: false,
-            pushInProgress: 0.1,
+            pushInProgress: Math.min(1.0, introElapsed / 2.5),
           };
-        } else {
-          // Lượt chung: Giữ camera toàn cảnh 4 bục thí sinh căn giữa (CAM 10)
+        }
+        return {
+          camAngle: 1, // Quay toàn cảnh
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+
+      // 3.3. Khi nhấn Bắt đầu (trong 3.5s đầu):
+      // USER REQUIREMENT: "khi nhấn Bắt đầu, hệ thống tự đi từ bên trái dưới vòng nguyệt quế đi ra toàn cảnh trong 3,5s đầu"
+      if (kd.startCooldownUntil && now < kd.startCooldownUntil) {
+        const remainingCooldown = (kd.startCooldownUntil - now) / 1000;
+        const elapsedCooldown = Math.max(0, 3.5 - remainingCooldown);
+        return {
+          camAngle: elapsedCooldown < 1.0 ? 14 : 1, // Đi từ CAM 14 (dưới nguyệt quế) ra CAM 1 (toàn cảnh)
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+
+      // 3.4. Khi đồ hoạ câu hỏi hiện lên (trống nội dung / sẵn sàng):
+      // USER REQUIREMENT: "sau đó (từ khi đồ hoạ câu hỏi hiện lên, trống nội dung) từ camera chiếu tất cả thí sinh, hệ thống sẽ zoom in về vị trí của thí sinh dự thi"
+      if (kd.qIdx === 0 && !kd.questionRevealed) {
+        const timeSinceCooldown = kd.startCooldownUntil ? (now - kd.startCooldownUntil) / 1000 : 999;
+        if (timeSinceCooldown < 1.8) {
           return {
-            camAngle: 10,
+            camAngle: 10, // Camera chiếu tất cả 4 thí sinh
             transitionMode: "MORPH",
             isOverlayHidden: false,
             pushInProgress: 0,
           };
         }
+        return {
+          camAngle: targetContestantCam, // Zoom in về vị trí của thí sinh dự thi
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0.1,
+        };
       }
 
-      // During question:
+      // 3.5. Trong mỗi câu hỏi:
+      // USER REQUIREMENT: "và ở mỗi câu hỏi, hệ thống tiếp tục zoom smooth trong vòng 5s từ 100% lên 115%"
+      // USER REQUIREMENT: "sau khi nhấn câu tiếp, chuyển lại về thí sinh và zoom smooth tiếp, và hiện lại đồ hoạ câu hỏi (không có hiệu ứng fade nữa)"
       if (kd.phase === "question") {
         if (isSolo) {
-          const seatId = seg?.seat ?? 0;
-          const validSeat = typeof seatId === "number" && seatId >= 0 && seatId < 4;
-          const targetCam = validSeat ? 5 + seatId : 1;
-
-          // Check if we are at the beginning of the turn / first question (e.g. within 2.5s)
-          const startedAt = kd.timer?.startedAt;
-          const elapsed = startedAt ? (now - startedAt) / 1000 : 999;
-
-          // If question 0 and in first 2.5s: glide up from CAM 14 into CAM 5+seatId
-          if (kd.qIdx === 0 && elapsed < 2.5) {
-            return {
-              camAngle: targetCam,
-              transitionMode: "MORPH",
-              isOverlayHidden: false,
-              pushInProgress: (elapsed / 2.5) * 0.25,
-            };
-          }
-
           let push = 0;
           if (kd.timer?.startedAt) {
             const duration = kd.timer.totalMs || 5000;
-            const el = (now - kd.timer.startedAt) / duration;
-            push = Math.min(1.0, Math.max(0, el * 1.0));
+            const elapsed = Math.max(0, now - kd.timer.startedAt);
+            push = Math.min(1.0, elapsed / duration);
           }
 
           return {
-            camAngle: targetCam,
+            camAngle: targetContestantCam,
             transitionMode: kd.qIdx === 0 ? "MORPH" : "CUT",
             isOverlayHidden: false,
-            pushInProgress: push,
+            pushInProgress: push, // Zoom smooth 100% -> 115%
           };
         } else {
-          // Shared question round:
+          // Lượt chung:
           if (kd.buzzedSeat != null) {
-            // Thí sinh đã bấm chuông giành quyền -> Cắt ngay lập tức vào cận cảnh thí sinh đó
             return {
               camAngle: 5 + Math.min(3, Math.max(0, kd.buzzedSeat)),
               transitionMode: "CUT",
@@ -189,7 +217,6 @@ export function useOlympiaCameraState(
               pushInProgress: 0.20,
             };
           }
-          // Chưa ai bấm chuông -> Quay toàn cảnh 4 bục thí sinh (CAM 10) căn giữa, thấy trọn cả 4 thí sinh
           return {
             camAngle: 10,
             transitionMode: "MORPH",
@@ -210,9 +237,8 @@ export function useOlympiaCameraState(
       }
 
       if (isSolo) {
-        const seatId = seg?.seat ?? 0;
         return {
-          camAngle: 5 + Math.min(3, Math.max(0, seatId)),
+          camAngle: targetContestantCam,
           transitionMode: "MORPH",
           isOverlayHidden: false,
           pushInProgress: 0,
@@ -306,64 +332,79 @@ export function useOlympiaCameraState(
     if (round === "veDich" && state.veDich) {
       const vd = state.veDich;
       const owner = vd.order?.[vd.turnIdx] ?? 0;
+      const targetOwnerCam = 5 + Math.min(3, Math.max(0, owner));
 
-      // If someone steals the turn:
-      if (vd.steal?.buzzedSeat != null) {
-        const stealSeat = vd.steal.buzzedSeat;
+      // 6.1. Khi Đúng / Sai:
+      // USER REQUIREMENT: Cắt ngay sang góc thẳng bục MC (CAM 3), tạm gác khung câu hỏi, hiện đồ hoạ đáp án
+      if (vd.phase === "result") {
         return {
-          camAngle: 5 + Math.min(3, stealSeat),
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: 0.2,
-        };
-      }
-
-      // During 5s bell stealing countdown (nobody buzzed yet):
-      if (vd.phase === "stealing") {
-        return {
-          camAngle: 9, // Jib Crane High-Angle Wide
-          transitionMode: "MORPH",
-          isOverlayHidden: false,
-          pushInProgress: 0.2,
-        };
-      }
-
-      // During thinking / result:
-      if (vd.phase === "thinking" || vd.phase === "result") {
-        const startedAt = vd.timer?.startedAt || now;
-        const elapsed = Math.max(0, (now - startedAt) / 1000);
-
-        // First 3.5s: Góc cao overhead / cẩu quay (CAM 9)
-        if (elapsed < 3.5) {
-          return {
-            camAngle: 9,
-            transitionMode: "MORPH",
-            isOverlayHidden: false,
-            pushInProgress: (elapsed / 3.5) * 0.5,
-          };
-        }
-
-        // Then: Thu trực diện mặt thí sinh chính (CAM 5 + owner) and slow zoom
-        const push = Math.min(1.0, (elapsed - 3.5) / 10.0);
-        return {
-          camAngle: 5 + Math.min(3, owner),
-          transitionMode: "MORPH",
-          isOverlayHidden: false,
-          pushInProgress: push * 0.6,
-        };
-      }
-
-      if (vd.phase === "choosing" || vd.phase === "packageReady") {
-        return {
-          camAngle: 5 + Math.min(3, owner),
+          camAngle: 3, // Bục MC
           transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0,
         };
       }
 
+      // 6.2. Khi mở chuông cướp điểm (5s stealing):
+      // USER REQUIREMENT: Cắt sang góc toàn cảnh 4 bục (CAM 10); khi có người bấm chuông: Cắt ngay vào thí sinh cướp chuông
+      if (vd.phase === "stealing") {
+        if (vd.steal?.buzzedSeat != null) {
+          const stealSeat = vd.steal.buzzedSeat;
+          return {
+            camAngle: 5 + Math.min(3, Math.max(0, stealSeat)),
+            transitionMode: "CUT",
+            isOverlayHidden: false,
+            pushInProgress: 0.2,
+          };
+        }
+        return {
+          camAngle: 10, // Toàn cảnh 4 bục thí sinh
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+
+      // 6.3. Giai đoạn thí sinh bước lên sân khấu:
+      // USER REQUIREMENT: "Giai đoạn thí sinh bước lên sân khấu, cam sẽ quay từ khu vực nửa bên trái sân khấu zoom out nhẹ ra toàn cảnh. Khi chốt gói thì phải hiển thị ở góc quay thí sinh, đổi linh hoạt giữa bục MC và khu vực thí sinh chính"
+      if (vd.phase === "choosing") {
+        return {
+          camAngle: 14, // Khu vực nửa bên trái sân khấu dưới vòng nguyệt quế
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+
+      if (vd.phase === "packageReady") {
+        return {
+          camAngle: targetOwnerCam, // Góc quay thí sinh chính
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+
+      // 6.4. Trong thời gian suy nghĩ câu hỏi Về Đích:
+      // USER REQUIREMENT: "Trong thời gian suy nghĩ: Camera cận thí sinh chính và zoom smooth chậm vào mặt thí sinh."
+      if (vd.phase === "thinking") {
+        let push = 0;
+        if (vd.timer?.startedAt) {
+          const duration = vd.timer.totalMs || 20000;
+          const elapsed = Math.max(0, now - vd.timer.startedAt);
+          push = Math.min(1.0, elapsed / duration);
+        }
+
+        return {
+          camAngle: targetOwnerCam,
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: push, // Zoom smooth chậm từ 100% lên 115%
+        };
+      }
+
       return {
-        camAngle: 1,
+        camAngle: targetOwnerCam,
         transitionMode: "CUT",
         isOverlayHidden: false,
         pushInProgress: 0,

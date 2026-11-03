@@ -2528,11 +2528,13 @@ function quantizeOlympiaTimeLimit(points = 10, _explicitTimeLimit) {
 function calculateStandardTimeLimit(points = 10, type, itemCount) {
   const normPoints = points <= 10 ? 10 : points <= 20 ? 20 : points <= 30 ? 30 : 40;
   const isOrderingOrMatching = Boolean(type && ["ORDERING", "MATCHING", "DRAG_DROP"].includes(type));
-  if (isOrderingOrMatching && itemCount && itemCount > 0) {
-    if (normPoints === 10) return Math.max(10, Math.round(2.5 * itemCount));
-    if (normPoints === 20) return Math.max(15, Math.round(3.75 * itemCount));
-    if (normPoints === 30) return Math.max(20, Math.round(5 * itemCount));
-    return Math.max(30, Math.round(7.5 * itemCount));
+  if (isOrderingOrMatching) {
+    const defaultCount = normPoints === 40 ? 6 : 5;
+    const count = itemCount !== void 0 && itemCount > 0 ? Math.max(2, Math.min(10, itemCount)) : defaultCount;
+    if (normPoints === 10) return 3 * count;
+    if (normPoints === 20) return 4 * count;
+    if (normPoints === 30) return 6 * count;
+    return 10 * count;
   }
   if (normPoints === 10) return 15;
   if (normPoints === 20) return 20;

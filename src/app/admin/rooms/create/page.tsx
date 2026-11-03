@@ -1236,7 +1236,7 @@ export default function CreateRoomPage() {
                         <span>Quy ước thời gian suy nghĩ chuẩn:</span>
                       </div>
                       <p className="text-[10.5px] text-slate-400">
-                        15s (câu 10đ) · 20s (câu 20đ) · 30s (câu 30đ) · 60s (câu 40đ) · Sắp xếp/Nối: 2.5s–7.5s × số dữ kiện
+                        15s (câu 10đ) · 20s (câu 20đ) · 30s (câu 30đ) · 60s (câu 40đ) · Sắp xếp/Nối: 3s–10s × số dữ kiện (2–10 dữ kiện)
                       </p>
                     </div>
 

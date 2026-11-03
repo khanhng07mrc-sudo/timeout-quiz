@@ -303,7 +303,7 @@ export function Vtv3ChalkboardQuestionFrame({
   }
 
   return (
-    <div className="relative w-full max-w-5xl lg:max-w-6xl mx-auto flex items-center justify-center animate-fade-in pointer-events-auto">
+    <div className="relative w-full max-w-5xl lg:max-w-6xl mx-auto flex items-center justify-center pointer-events-auto">
       {/* ── 1. Horizontal Brass Rod (Passing behind) ── */}
       <HorizontalBrassRod />
 
@@ -325,16 +325,18 @@ export function Vtv3ChalkboardQuestionFrame({
         {/* Subtle chalkboard SVG background inside box */}
         <Vtv3ChalkboardBackdrop className="opacity-30" />
 
-        {/* Top-Left Glowing Red Indicator Rivet */}
-        <div className="absolute top-2.5 left-3 z-20 flex items-center gap-2">
-          <div
-            className="w-4 h-4 rounded-full border border-white shadow-[0_0_10px_#ef4444]"
-            style={{
-              background: "radial-gradient(circle at 35% 30%, #f87171 0%, #dc2626 50%, #7f1d1d 100%)",
-            }}
-          />
-          {headerBadge && <div className="text-xs font-black text-amber-300 drop-shadow">{headerBadge}</div>}
-        </div>
+        {/* Top-Left Glowing Red Indicator Rivet with Header Badge */}
+        {headerBadge && (
+          <div className="absolute top-2.5 left-3 z-20 flex items-center gap-2">
+            <div
+              className="w-4 h-4 rounded-full border border-white shadow-[0_0_10px_#ef4444]"
+              style={{
+                background: "radial-gradient(circle at 35% 30%, #f87171 0%, #dc2626 50%, #7f1d1d 100%)",
+              }}
+            />
+            <div className="text-xs font-black text-amber-300 drop-shadow">{headerBadge}</div>
+          </div>
+        )}
 
         {/* Center: Question Prompt Text */}
         <div className="relative z-10 flex-1 px-4 sm:px-8 md:px-12 py-2 sm:py-3 flex flex-col items-center justify-center text-center">

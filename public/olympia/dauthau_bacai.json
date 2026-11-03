@@ -756,7 +756,7 @@
   },
   "vcnv": {
     "answer": "ẮC QUY NƯỚC",
-    "mysteryImage": "/olympia/media/bac_ai_pumped_storage.jpg",
+    "mysteryImage": "/olympia/media/bac_ai_cnv_mystery.png",
     "rows": [
       {
         "hint": "Năm 1800, nhà vật lý người Ý nào đã chế tạo thành công nguồn điện hóa học đầu tiên trong lịch sử từ các đĩa đồng và kẽm xếp chồng lên nhau, và tên ông được đặt cho đơn vị hiệu điện thế? (5 chữ cái)",
@@ -810,57 +810,59 @@
     {
       "q": "Hình thức lựa chọn nhà thầu nào được Luật Đấu thầu số 90/2025/QH15 quy định là hình thức mặc định, áp dụng không hạn chế số lượng nhà thầu tham dự?",
       "answer": "ĐẤU THẦU RỘNG RÃI",
-      "duration": 10,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_cau1.png",
       "category": "iq"
     },
     {
       "q": "Đây là tên tập đoàn nào? Dữ kiện 1: Tập đoàn cơ khí năng lượng hàng đầu của Đức. Dữ kiện 2: Có cơ sở chế tạo lớn tại Thượng Hải. Dữ kiện 3: Chuyên chế tạo tua-bin cột nước cao. Dữ kiện 4: Đứng đầu liên danh trúng thầu gói 01TB-BA Bác Ái.",
       "answer": "VOITH HYDRO",
-      "duration": 20,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_cau2.png",
       "category": "data"
     },
     {
       "q": "Hãy sắp xếp các mốc thời gian đấu thầu gói 01TB-BA theo trình tự trước sau: (1) Đóng và mở thầu công khai (23/02/2026), (2) Phát hành Hồ sơ mời thầu (15/10/2025), (3) EVN chính thức ký hợp đồng (26/10/2026), (4) Phê duyệt kết quả trúng thầu (21/10/2026).",
       "answer": "2-1-4-3",
-      "duration": 30,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_cau3.png",
       "category": "arrange"
     },
     {
       "q": "Gói thầu 01TB-BA có giá dự toán là 4.548,081 tỷ đồng và giá trúng thầu là 4.462,603 tỷ đồng. Hãy tính số tiền tiết kiệm tuyệt đối mà EVN đạt được qua đấu thầu là bao nhiêu tỷ đồng?",
       "answer": "85,478 TỶ ĐỒNG (85.478)",
-      "duration": 40,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_cau4.png",
       "category": "data"
-    },
+    }
+  ],
+  "tangTocBackup": [
     {
-      "q": "(DỰ PHÒNG) Theo Luật Đấu thầu số 90/2025/QH15, quy trình tổ chức thực hiện đấu thầu chuẩn hóa gồm bao nhiêu bước liên tục?",
+      "q": "Theo Luật Đấu thầu số 90/2025/QH15, quy trình tổ chức thực hiện đấu thầu chuẩn hóa gồm bao nhiêu bước liên tục?",
       "answer": "7 BƯỚC (7)",
-      "duration": 10,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_dp_cau1.png",
       "category": "iq"
     },
     {
-      "q": "(DỰ PHÒNG) Đây là công trình nào? Dữ kiện 1: Đặt tại tỉnh Khánh Hòa. Dữ kiện 2: Tổng mức đầu tư hơn 21.100 tỷ đồng. Dữ kiện 3: Tổng công suất 1.200 MW. Dữ kiện 4: Nhà máy thủy điện tích năng đầu tiên của Việt Nam.",
+      "q": "Đây là công trình nào? Dữ kiện 1: Đặt tại tỉnh Khánh Hòa. Dữ kiện 2: Tổng mức đầu tư hơn 21.100 tỷ đồng. Dữ kiện 3: Tổng công suất 1.200 MW. Dữ kiện 4: Nhà máy thủy điện tích năng đầu tiên của Việt Nam.",
       "answer": "THỦY ĐIỆN TÍCH NĂNG BÁC ÁI (BÁC ÁI)",
-      "duration": 20,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_dp_cau2.png",
       "category": "data"
     },
     {
-      "q": "(DỰ PHÒNG) Hãy sắp xếp các bước trong phương thức đấu thầu Một giai đoạn hai túi hồ sơ theo thứ tự quy định: (1) Mở túi đề xuất tài chính, (2) Đánh giá hồ sơ đề xuất kỹ thuật, (3) Mở túi đề xuất kỹ thuật, (4) Phê duyệt kết quả trúng thầu.",
+      "q": "Hãy sắp xếp các bước trong phương thức đấu thầu Một giai đoạn hai túi hồ sơ theo thứ tự quy định: (1) Mở túi đề xuất tài chính, (2) Đánh giá hồ sơ đề xuất kỹ thuật, (3) Mở túi đề xuất kỹ thuật, (4) Phê duyệt kết quả trúng thầu.",
       "answer": "3-2-1-4",
-      "duration": 30,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_dp_cau3.png",
       "category": "arrange"
     },
     {
-      "q": "(DỰ PHÒNG) Gói thầu 01TB-BA có dự toán 4.548,081 tỷ đồng và tiết kiệm được 85,478 tỷ đồng. Hãy tính tỷ lệ phần trăm tiết kiệm so với giá dự toán (làm tròn 2 chữ số thập phân)?",
+      "q": "Gói thầu 01TB-BA có dự toán 4.548,081 tỷ đồng và tiết kiệm được 85,478 tỷ đồng. Hãy tính tỷ lệ phần trăm tiết kiệm so với giá dự toán (làm tròn 2 chữ số thập phân)?",
       "answer": "1,88% (1.88)",
-      "duration": 40,
       "type": "image",
+      "media": "/olympia/media/bac_ai_tt_dp_cau4.png",
       "category": "data"
     }
   ],

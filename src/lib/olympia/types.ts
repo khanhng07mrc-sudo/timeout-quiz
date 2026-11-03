@@ -190,6 +190,7 @@ export interface OlympiaQuestionSet {
     centerQuestion?: QA;
   };
   tangToc: TangTocQuestion[];
+  tangTocBackup?: TangTocQuestion[];
   veDich: Record<string, VeDichQuestion[]>; // "10" | "20" | "30" | "40"
   cauHoiPhu: QA[];
 }
@@ -424,6 +425,8 @@ export interface TangTocState {
   submissions: Record<number, TangTocSubmissionRecord>;
   ranking: TangTocRankingItem[];
   questions: TangTocQuestion[];
+  backupQuestions?: TangTocQuestion[];
+  isBackupQuestion?: boolean;
   correctAnswer?: string;
   revealedCorrectAnswer?: boolean;
 }

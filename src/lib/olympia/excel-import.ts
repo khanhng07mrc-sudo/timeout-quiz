@@ -49,10 +49,10 @@ function qa(r: Row): QA | null {
   const q = str(r.cauhoi ?? r.question ?? r.q);
   const a = str(r.dapan ?? r.answer ?? r.a);
   if (!q && !a) return null;
-  const media = str(r.media ?? r.file ?? r.link);
+  const media = str(r.media ?? r.file ?? r.link ?? r.tep ?? r.tepdinhkem ?? r.hinhanh);
   const subject = str(r.linhvuc ?? r.mon ?? r.subject ?? r.chude);
-  const kdZone = str(r.phanvungkd ?? r.kdzone) as KdZoneId | "";
-  const vdZone = str(r.phanvungvd ?? r.vdzone) as VdZoneId | "";
+  const kdZone = str(r.phanvung ?? r.phanvungkd ?? r.kdzone) as KdZoneId | "";
+  const vdZone = str(r.phanvung ?? r.phanvungvd ?? r.vdzone) as VdZoneId | "";
   const used = boolVal(r.dadung ?? r.used ?? r.trangthai);
   return tagQAWithAI(
     {
@@ -83,6 +83,7 @@ export function emptyQuestionSet(name = "Bộ đề mới"): OlympiaQuestionSet 
     },
     vcnv: { answer: "", rows: [] },
     tangToc: [],
+    tangTocBackup: [],
     veDich: { "10": [], "20": [], "30": [], "40": [] },
     cauHoiPhu: [],
   };
@@ -194,7 +195,7 @@ export function parseSheets(sheets: Record<string, Row[]>, name = "Bộ đề Ex
           ...(media ? { media, mediaType: detectMediaType(media) } : {}),
         });
       }
-      if (str(r.dapancnv) && !set.vcnv.answer) set.vcnv.answer = str(r.dapancnv);
+      if (str(r.dapancnv ?? r.tukhoacnv) && !set.vcnv.answer) set.vcnv.answer = str(r.dapancnv ?? r.tukhoacnv);
       if (str(r.cauhoitrungtam) && !set.vcnv.centerQuestion) {
         const m = str(r.mediatrungtam);
         set.vcnv.centerQuestion = {
@@ -203,7 +204,7 @@ export function parseSheets(sheets: Record<string, Row[]>, name = "Bộ đề Ex
           ...(m ? { media: m, mediaType: detectMediaType(m) } : {}),
         };
       }
-      if (str(r.mediatrungtam) && !set.vcnv.mysteryImage) set.vcnv.mysteryImage = str(r.mediatrungtam);
+      if (str(r.anhchuongngaivat ?? r.mediatrungtam ?? r.mysteryimage) && !set.vcnv.mysteryImage) set.vcnv.mysteryImage = str(r.anhchuongngaivat ?? r.mediatrungtam ?? r.mysteryimage);
     }
     set.vcnv.rows = rows.slice(0, 4);
     if (!set.vcnv.answer) {
@@ -212,35 +213,56 @@ export function parseSheets(sheets: Record<string, Row[]>, name = "Bộ đề Ex
     if (set.vcnv.rows.length < 4) warnings.push(`VCNV: chỉ có ${set.vcnv.rows.length}/4 hàng ngang.`);
   } else warnings.push("Thiếu sheet “VCNV”.");
 
+  const parseTangTocItem = (r: Row): TangTocQuestion | null => {
+    const media = str(r.file ?? r.media ?? r.tep ?? r.tepdinhkem);
+    const answer = str(r.dapan ?? r.answer ?? r.a);
+    let qText = str(r.cauhoi ?? r.question ?? r.q);
+    if (!media && !answer && !qText) return null;
+    qText = qText.replace(/^\s*\((dự phòng|du phong)\)\s*/i, "").trim();
+    const catRaw = strip(str(r.loaicauhoi ?? r.category ?? r.phanloai));
+    const category: "iq" | "data" | "arrange" | undefined =
+      catRaw.includes("sapxep") || catRaw === "arrange"
+        ? "arrange"
+        : catRaw.includes("dukien") || catRaw === "data"
+          ? "data"
+          : catRaw.includes("iq")
+            ? "iq"
+            : undefined;
+    const clueImages = parseClueImagesString(str(r.anhgoiy ?? r.clueimages));
+    return {
+      answer,
+      duration: Number(r.thoigian) || undefined,
+      ...(qText ? { q: qText } : {}),
+      ...(category ? { category } : {}),
+      ...(clueImages ? { clueImages } : {}),
+      ...(boolVal(r.dadung ?? r.used) ? { used: true } : {}),
+      ...(media ? { media, type: detectMediaType(media) } : {}),
+    };
+  };
+
   const tt = find("tangtoc");
   if (tt) {
+    const allItems: TangTocQuestion[] = [];
     for (const r of tt) {
-      const media = str(r.file) || str(r.media);
-      const answer = str(r.dapan);
-      if (!media && !answer && !str(r.cauhoi)) continue;
-      const catRaw = strip(str(r.loaicauhoi ?? r.category ?? r.phanloai));
-      const category: "iq" | "data" | "arrange" | undefined =
-        catRaw.includes("sapxep") || catRaw === "arrange"
-          ? "arrange"
-          : catRaw.includes("dukien") || catRaw === "data"
-            ? "data"
-            : catRaw.includes("iq")
-              ? "iq"
-              : undefined;
-      const clueImages = parseClueImagesString(str(r.anhgoiy ?? r.clueimages));
-      const item: TangTocQuestion = {
-        answer,
-        duration: Number(r.thoigian) || undefined,
-        ...(str(r.cauhoi) ? { q: str(r.cauhoi) } : {}),
-        ...(category ? { category } : {}),
-        ...(clueImages ? { clueImages } : {}),
-        ...(boolVal(r.dadung ?? r.used) ? { used: true } : {}),
-        ...(media ? { media, type: detectMediaType(media) } : {}),
-      };
-      set.tangToc.push(item);
+      const item = parseTangTocItem(r);
+      if (item) allItems.push(item);
     }
-    if (set.tangToc.length !== 4) warnings.push(`Tăng Tốc: có ${set.tangToc.length} câu (chuẩn là 4).`);
+    set.tangToc = allItems.slice(0, 4);
+    if (allItems.length > 4) {
+      set.tangTocBackup = allItems.slice(4, 8);
+    }
+    if (set.tangToc.length !== 4) warnings.push(`Tăng Tốc: có ${set.tangToc.length} câu chính (chuẩn là 4).`);
   } else warnings.push("Thiếu sheet “TangToc”.");
+
+  const ttBackup = find("tangtocduphong", "tangtocbackup", "tangtocdp");
+  if (ttBackup) {
+    const backupItems: TangTocQuestion[] = [];
+    for (const r of ttBackup) {
+      const item = parseTangTocItem(r);
+      if (item) backupItems.push(item);
+    }
+    set.tangTocBackup = backupItems.slice(0, 4);
+  }
 
   const vd = find("vedich");
   if (vd) {
@@ -375,84 +397,96 @@ export function exportOlympiaSetToSheets(set: OlympiaQuestionSet): Record<string
     const list = tagged.khoiDong.solo[String(s)] ?? [];
     for (const q of list) {
       soloRows.push({
-        ThiSinh: s,
-        LinhVuc: q.subject ?? "",
-        PhanVungKD: q.kdZone ?? "",
-        CauHoi: q.q,
-        DapAn: q.a,
-        Media: q.media ?? "",
-        DaDung: q.used ? "Đã dùng" : "",
+        "Thí sinh": s,
+        "Lĩnh vực": q.subject ?? "",
+        "Phân vùng": q.kdZone ?? "",
+        "Câu hỏi": q.q,
+        "Đáp án": q.a,
+        "File": q.media ?? "",
+        "Đã dùng": q.used ? "Đã dùng" : "",
       });
     }
   }
 
   const sharedRows = (tagged.khoiDong.shared ?? []).map((q) => ({
-    LinhVuc: q.subject ?? "",
-    PhanVungKD: q.kdZone ?? "",
-    CauHoi: q.q,
-    DapAn: q.a,
-    Media: q.media ?? "",
-    DaDung: q.used ? "Đã dùng" : "",
+    "Lĩnh vực": q.subject ?? "",
+    "Phân vùng": q.kdZone ?? "",
+    "Câu hỏi": q.q,
+    "Đáp án": q.a,
+    "File": q.media ?? "",
+    "Đã dùng": q.used ? "Đã dùng" : "",
   }));
 
   const vcnvRows = Array.from({ length: 4 }, (_, i) => {
     const r = tagged.vcnv.rows[i];
     return {
-      Hang: i + 1,
-      GoiY: r?.hint ?? "",
-      DapAn: r?.answer ?? "",
-      Media: r?.media ?? "",
-      DapAnCNV: i === 0 ? tagged.vcnv.answer : "",
-      CauHoiTrungTam: i === 0 ? (tagged.vcnv.centerQuestion?.q ?? "") : "",
-      DapAnTrungTam: i === 0 ? (tagged.vcnv.centerQuestion?.a ?? "") : "",
-      MediaTrungTam: i === 0 ? (tagged.vcnv.mysteryImage ?? "") : "",
-      DaDung: r?.used ? "Đã dùng" : "",
+      "Hàng": i + 1,
+      "Gợi ý": r?.hint ?? "",
+      "Đáp án": r?.answer ?? "",
+      "File": r?.media ?? "",
+      "Từ khóa CNV": i === 0 ? tagged.vcnv.answer : "",
+      "Ảnh Chướng ngại vật": i === 0 ? (tagged.vcnv.mysteryImage ?? "") : "",
+      "Câu hỏi trung tâm": i === 0 ? (tagged.vcnv.centerQuestion?.q ?? "") : "",
+      "Đáp án trung tâm": i === 0 ? (tagged.vcnv.centerQuestion?.a ?? "") : "",
+      "Đã dùng": r?.used ? "Đã dùng" : "",
     };
   });
 
-  const tangTocRows = (tagged.tangToc ?? []).map((t, i) => ({
-    CauSo: i + 1,
-    LoaiCauHoi: t.category ?? (i === 0 ? "iq" : i === 2 ? "arrange" : "data"),
-    CauHoi: t.q ?? "",
-    File: t.media ?? "",
-    AnhGoiY: t.clueImages && t.clueImages.length > 0 ? JSON.stringify(t.clueImages) : "",
-    ThoiGian: t.duration ?? 30,
-    DapAn: t.answer,
-    DaDung: t.used ? "Đã dùng" : "",
+  const tangTocRows = (tagged.tangToc ?? []).slice(0, 4).map((t, i) => ({
+    "Câu số": i + 1,
+    "Loại câu hỏi": t.category ?? (i === 0 ? "iq" : i === 2 ? "arrange" : "data"),
+    "Câu hỏi": t.q ?? "",
+    "File": t.media ?? "",
+    "Đáp án": t.answer,
+    "Đã dùng": t.used ? "Đã dùng" : "",
+  }));
+
+  const backupList = (tagged.tangTocBackup && tagged.tangTocBackup.length > 0)
+    ? tagged.tangTocBackup
+    : (tagged.tangToc ?? []).slice(4, 8);
+
+  const tangTocDpRows = backupList.map((t, i) => ({
+    "Câu số": i + 1,
+    "Loại câu hỏi": t.category ?? (i === 0 ? "iq" : i === 2 ? "arrange" : "data"),
+    "Câu hỏi": (t.q ?? "").replace(/^\s*\((dự phòng|du phong)\)\s*/i, "").trim(),
+    "File": t.media ?? "",
+    "Đáp án": t.answer,
+    "Đã dùng": t.used ? "Đã dùng" : "",
   }));
 
   const veDichRows: Record<string, unknown>[] = [];
   for (const pts of ["10", "20", "30", "40"]) {
     for (const q of tagged.veDich[pts] ?? []) {
       veDichRows.push({
-        MucDiem: Number(pts),
-        PhanVungVD: q.vdZone ?? "",
-        LinhVuc: q.subject ?? "",
-        LoaiCauHoi: q.type === "practice" ? "Thực hành" : "Lý thuyết",
-        CauHoi: q.q,
-        DapAn: q.a,
-        Media: q.media ?? "",
-        DaDung: q.used ? "Đã dùng" : "",
+        "Mức điểm": Number(pts),
+        "Lĩnh vực": q.subject ?? "",
+        "Phân vùng": q.vdZone ?? "",
+        "Loại câu hỏi": q.type === "practice" ? "Thực hành" : "Lý thuyết",
+        "Câu hỏi": q.q,
+        "Đáp án": q.a,
+        "File": q.media ?? "",
+        "Đã dùng": q.used ? "Đã dùng" : "",
       });
     }
   }
 
   const chpRows = (tagged.cauHoiPhu ?? []).map((q) => ({
-    LinhVuc: q.subject ?? "",
-    PhanVungVD: q.vdZone ?? "",
-    CauHoi: q.q,
-    DapAn: q.a,
-    Media: q.media ?? "",
-    DaDung: q.used ? "Đã dùng" : "",
+    "Lĩnh vực": q.subject ?? "",
+    "Phân vùng": q.vdZone ?? "",
+    "Câu hỏi": q.q,
+    "Đáp án": q.a,
+    "File": q.media ?? "",
+    "Đã dùng": q.used ? "Đã dùng" : "",
   }));
 
   return {
     "KhoiDong Rieng": soloRows,
     "KhoiDong Chung": sharedRows,
-    VCNV: vcnvRows,
-    TangToc: tangTocRows,
-    VeDich: veDichRows,
-    CauPhu: chpRows,
+    "VCNV": vcnvRows,
+    "TangToc": tangTocRows,
+    "TangToc_DuPhong": tangTocDpRows,
+    "VeDich": veDichRows,
+    "CauPhu": chpRows,
   };
 }
 

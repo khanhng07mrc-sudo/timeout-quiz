@@ -3,6 +3,7 @@ import type { OlympiaState, OlympiaTranscriptEntry, QA, QuestionSet, VeDichQuest
 import { SAMPLE_QUESTION_SET, BAC_AI_QUESTION_SET } from "./sample-questions";
 import { autoTagEntireOlympiaSet, KD_ZONES, VD_ZONES } from "./ai-classifier";
 import { exportOlympiaSetToSheets } from "./excel-import";
+import { buildStyledOlympiaExcelWorkbook } from "./excel-styler";
 
 export interface OlympiaBankItem {
   id: string;
@@ -276,7 +277,7 @@ export function mergeOlympiaSets(base: QuestionSet, extra: QuestionSet): Questio
   return autoTagEntireOlympiaSet(next, false);
 }
 
-export function downloadOlympiaSetExcel(set: QuestionSet, filename = "KhoDe_Olympia.xlsx"): void {
+export async function downloadOlympiaSetExcel(set: QuestionSet, filename = "KhoDe_Olympia.xlsx"): Promise<void> {
   if (typeof window === "undefined") return;
   const sheets = exportOlympiaSetToSheets(set);
   const wb = XLSX.utils.book_new();

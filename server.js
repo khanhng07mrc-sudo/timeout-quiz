@@ -104918,8 +104918,8 @@ var RAW_BAC_AI_QUESTION_SET = {
     {
       "q": "\u0110\xE2y l\xE0 thi\u1EBFt b\u1ECB g\xEC?",
       "answer": "M\xC1Y PH\xC1T \u0110I\u1EC6N (MAY PHAT DIEN)",
-      "type": "image",
-      "media": "/olympia/media/bac_ai_tt_cau4.png",
+      "type": "video",
+      "media": "/olympia/media/CAU4.mp4",
       "category": "data",
       "duration": 40
     }

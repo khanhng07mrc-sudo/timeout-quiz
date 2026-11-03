@@ -321,14 +321,24 @@ export function ScoreStrip({
   );
 }
 
+export function resolveMediaUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  if (/^[a-zA-Z]:[\\/]/i.test(url) || (!url.startsWith("/") && !url.startsWith("http") && !url.startsWith("data:"))) {
+    const filename = url.split(/[\\/]/).pop();
+    if (filename) return `/olympia/media/${filename}`;
+  }
+  return url;
+}
+
 export function MediaView({ url, type, className }: { url?: string; type?: string; className?: string }) {
-  if (!url) return null;
-  const isVideo = type === "video" || /\.(mp4|webm|mov|ogg)$/i.test(url);
+  const resolved = resolveMediaUrl(url);
+  if (!resolved) return null;
+  const isVideo = type === "video" || /\.(mp4|webm|mov|ogg)$/i.test(resolved);
   return isVideo ? (
-    <video src={url} controls playsInline className={className ?? "max-h-[45vh] rounded-xl mx-auto"} />
+    <video src={resolved} controls playsInline className={className ?? "max-h-[45vh] rounded-xl mx-auto"} />
   ) : (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={url} alt="" className={className ?? "max-h-[45vh] rounded-xl mx-auto object-contain"} />
+    <img src={resolved} alt="" className={className ?? "max-h-[45vh] rounded-xl mx-auto object-contain"} />
   );
 }
 

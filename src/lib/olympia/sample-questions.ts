@@ -2055,8 +2055,8 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
       {
           "q": "Đây là thiết bị gì?",
           "answer": "MÁY PHÁT ĐIỆN (MAY PHAT DIEN)",
-          "type": "image",
-          "media": "/olympia/media/bac_ai_tt_cau4.png",
+          "type": "video",
+          "media": "/olympia/media/CAU4.mp4",
           "category": "data",
           "duration": 40
       }

@@ -208,86 +208,110 @@ const tt2Svg = canvasWrapper(`
   </g>
 `);
 
-// ── 3. bac_ai_tt_cau3.png (Câu 3: Logic ma trận giải mật mã Telex chuẩn Ảnh 2) ──
+// ── 3. bac_ai_tt_cau3.png (Câu 3: Logic ma trận giải mật mã Telex chuẩn Olympia) ──
 // Target Word: THỦY ĐIỆN (Telex: T - H - U - Y - S - D - D - I - E - N) = 10 characters
 const matrixData = [
   // Row 0
   [
-    { char: "A", bg: "#86efac" }, // Green
-    { char: "F", bg: "#f472b6" }, // Pink
-    { char: "C", bg: "#fde047" }, // Yellow
-    { char: "7", bg: "#cbd5e1" }, // Grey
-    { char: "D", bg: "#86efac" }, // [Slot 6: D] Green
-    { char: "I", bg: "#fdba74" }, // [Slot 8: I] Orange
+    { char: "A", bg: "#86efac" }, // Q1 Green
+    { char: "F", bg: "#38bdf8" }, // Q1 Sky
+    { char: "C", bg: "#fdba74" }, // Q1 Orange
+    { char: "7", bg: "#cbd5e1" }, // Q2 Grey
+    { char: "D", bg: "#86efac" }, // Q2 [Slot 6: D] Green
+    { char: "I", bg: "#fdba74" }, // Q2 [Slot 8: I] Orange
   ],
   // Row 1
   [
-    { char: "K", bg: "#cbd5e1" },
-    { char: "B", bg: "#fde047" },
-    { char: "H", bg: "#f472b6" }, // [Slot 2: H] Pink
-    { char: "3", bg: "#86efac" },
-    { char: "N", bg: "#38bdf8" }, // [Slot 10: N] Sky
-    { char: "E", bg: "#f472b6" }, // [Slot 9: E] Pink
+    { char: "K", bg: "#cbd5e1" }, // Q1 Grey
+    { char: "B", bg: "#86efac" }, // Q1 Green
+    { char: "H", bg: "#f472b6" }, // Q1 [Slot 2: H] Pink
+    { char: "3", bg: "#fde047" }, // Q2 Yellow
+    { char: "N", bg: "#38bdf8" }, // Q2 [Slot 10: N] Sky
+    { char: "E", bg: "#f472b6" }, // Q2 [Slot 9: E] Pink
   ],
   // Row 2
   [
-    { char: "G", bg: "#38bdf8" },
-    { char: "D", bg: "#fde047" }, // [Slot 7: D] Yellow
-    { char: "0", bg: "#fdba74" },
-    { char: "M", bg: "#38bdf8" },
-    { char: "J", bg: "#38bdf8" },
-    { char: "O", bg: "#fdba74" },
+    { char: "G", bg: "#38bdf8" }, // Q1 Sky
+    { char: "D", bg: "#fde047" }, // Q1 [Slot 7: D] Yellow
+    { char: "0", bg: "#fdba74" }, // Q1 Orange
+    { char: "M", bg: "#fde047" }, // Q2 Yellow
+    { char: "J", bg: "#cbd5e1" }, // Q2 Grey
+    { char: "O", bg: "#fde047" }, // Q2 Yellow
   ],
   // Row 3
   [
-    { char: "9", bg: "#fdba74" },
-    { char: "U", bg: "#38bdf8" }, // [Slot 3: U] Sky
-    { char: "Q", bg: "#fde047" },
-    { char: "1", bg: "#cbd5e1" },
-    { char: "S", bg: "#86efac" }, // [Slot 5: S] Green
-    { char: "X", bg: "#fdba74" },
+    { char: "9", bg: "#fdba74" }, // Q3 Orange
+    { char: "U", bg: "#38bdf8" }, // Q3 [Slot 3: U] Sky
+    { char: "Q", bg: "#fde047" }, // Q3 Yellow
+    { char: "1", bg: "#cbd5e1" }, // Q4 Grey
+    { char: "S", bg: "#86efac" }, // Q4 [Slot 5: S] Green
+    { char: "X", bg: "#fdba74" }, // Q4 Orange
   ],
   // Row 4
   [
-    { char: "Z", bg: "#cbd5e1" },
-    { char: "P", bg: "#f472b6" },
-    { char: "2", bg: "#fdba74" },
-    { char: "R", bg: "#86efac" },
-    { char: "8", bg: "#fde047" },
-    { char: "T", bg: "#38bdf8" }, // [Slot 1: T] Sky
+    { char: "Z", bg: "#cbd5e1" }, // Q3 Grey
+    { char: "P", bg: "#f472b6" }, // Q3 Pink
+    { char: "2", bg: "#fdba74" }, // Q3 Orange
+    { char: "R", bg: "#fde047" }, // Q4 Yellow
+    { char: "8", bg: "#fdba74" }, // Q4 Orange
+    { char: "T", bg: "#38bdf8" }, // Q4 [Slot 1: T] Sky
   ],
   // Row 5
   [
-    { char: "V", bg: "#fde047" },
-    { char: "5", bg: "#86efac" },
-    { char: "W", bg: "#f472b6" },
-    { char: "4", bg: "#38bdf8" },
-    { char: "Y", bg: "#f472b6" }, // [Slot 4: Y] Pink
-    { char: "6", bg: "#f472b6" },
+    { char: "V", bg: "#fde047" }, // Q3 Yellow
+    { char: "5", bg: "#86efac" }, // Q3 Green
+    { char: "W", bg: "#f472b6" }, // Q3 Pink
+    { char: "4", bg: "#cbd5e1" }, // Q4 Grey
+    { char: "Y", bg: "#f472b6" }, // Q4 [Slot 4: Y] Pink
+    { char: "6", bg: "#fde047" }, // Q4 Yellow
   ],
 ];
 
 // 10 bottom slots corresponding to T H U Y S D D I E N
+// Quadrant logic:
+// Q1 (Trái trên): viền đỏ Bên phải & Bên dưới
+// Q2 (Phải trên): viền đỏ Bên trái & Bên dưới
+// Q3 (Trái dưới): viền đỏ Bên phải & Bên trên
+// Q4 (Phải dưới): viền đỏ Bên trái & Bên trên
 const bottomSlots = [
-  { bg: "#38bdf8", border: "#ef4444" }, // 1: T (Sky, Red border)
-  { bg: "#f472b6", border: "#ef4444" }, // 2: H (Pink, Red border)
-  { bg: "#38bdf8", border: "#ef4444" }, // 3: U (Sky, Red border)
-  { bg: "#f472b6", border: "#ef4444" }, // 4: Y (Pink, Red border)
-  { bg: "#86efac", border: "#ef4444" }, // 5: S (Green, Red border)
-  { bg: "#86efac", border: "#ef4444" }, // 6: D (Green, Red border)
-  { bg: "#fde047", border: "#ef4444" }, // 7: D (Yellow, Red border)
-  { bg: "#fdba74", border: "#ef4444" }, // 8: I (Orange, Red border)
-  { bg: "#f472b6", border: "#ef4444" }, // 9: E (Pink, Red border)
-  { bg: "#38bdf8", border: "#ef4444" }, // 10: N (Sky, Red border)
+  { q: 4, bg: "#38bdf8" }, // 1: T (Q4: Left + Top, Sky)
+  { q: 1, bg: "#f472b6" }, // 2: H (Q1: Right + Bottom, Pink)
+  { q: 3, bg: "#38bdf8" }, // 3: U (Q3: Right + Top, Sky)
+  { q: 4, bg: "#f472b6" }, // 4: Y (Q4: Left + Top, Pink)
+  { q: 4, bg: "#86efac" }, // 5: S (Q4: Left + Top, Green)
+  { q: 2, bg: "#86efac" }, // 6: D (Q2: Left + Bottom, Green)
+  { q: 1, bg: "#fde047" }, // 7: D (Q1: Right + Bottom, Yellow)
+  { q: 2, bg: "#fdba74" }, // 8: I (Q2: Left + Bottom, Orange)
+  { q: 2, bg: "#f472b6" }, // 9: E (Q2: Left + Bottom, Pink)
+  { q: 2, bg: "#38bdf8" }, // 10: N (Q2: Left + Bottom, Sky)
 ];
 
 const cellSize = 68;
 const gridStartX = 436;
 const gridStartY = 45;
 
+function renderSlotBorder(q, w, h) {
+  const redStroke = "#ff0033";
+  const strokeW = 7;
+  if (q === 1) {
+    // Q1 (Trái trên): Viền đỏ sáng bên phải và bên dưới
+    return `<path d="M ${w} 0 L ${w} ${h} L 0 ${h}" stroke="${redStroke}" stroke-width="${strokeW}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  } else if (q === 2) {
+    // Q2 (Phải trên): Viền đỏ sáng bên trái và bên dưới
+    return `<path d="M 0 0 L 0 ${h} L ${w} ${h}" stroke="${redStroke}" stroke-width="${strokeW}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  } else if (q === 3) {
+    // Q3 (Trái dưới): Viền đỏ sáng bên phải và bên trên
+    return `<path d="M ${w} ${h} L ${w} 0 L 0 0" stroke="${redStroke}" stroke-width="${strokeW}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  } else if (q === 4) {
+    // Q4 (Phải dưới): Viền đỏ sáng bên trái và bên trên
+    return `<path d="M 0 ${h} L 0 0 L ${w} 0" stroke="${redStroke}" stroke-width="${strokeW}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  return "";
+}
+
 const tt3Svg = canvasWrapper(`
   <g transform="translate(0, 0)">
-    <!-- ── 6x6 COLORED PUZZLE MATRIX (EXACT STYLING OF IMAGE 2) ── -->
+    <!-- ── 6x6 COLORED PUZZLE MATRIX (CHỈ CÓ DẤU CỘNG ĐỎ SÁNG Ở GIỮA, KHÔNG CÓ VIỀN NGOÀI) ── -->
     <g transform="translate(${gridStartX}, ${gridStartY})">
       <!-- Matrix Cells -->
       ${matrixData
@@ -308,15 +332,11 @@ const tt3Svg = canvasWrapper(`
         )
         .join("")}
 
-      <!-- Red Crosshair Partition Axes (Like Image 2) -->
+      <!-- Red Crosshair Partition Axes (CHỈ CÓ DẤU CỘNG ĐỎ NÉT DÀY, SÁNG RỰC #ff0033) -->
       <line x1="${3 * cellSize}" y1="0" x2="${3 * cellSize}" y2="${6 * cellSize}" 
-            stroke="#ef4444" stroke-width="6"/>
+            stroke="#ff0033" stroke-width="8" stroke-linecap="square"/>
       <line x1="0" y1="${3 * cellSize}" x2="${6 * cellSize}" y2="${3 * cellSize}" 
-            stroke="#ef4444" stroke-width="6"/>
-
-      <!-- Matrix Outer Border -->
-      <rect x="0" y="0" width="${6 * cellSize}" height="${6 * cellSize}" 
-            fill="none" stroke="#ef4444" stroke-width="5"/>
+            stroke="#ff0033" stroke-width="8" stroke-linecap="square"/>
     </g>
 
     <!-- Note: Sử dụng kiểu gõ Telex -->
@@ -324,19 +344,25 @@ const tt3Svg = canvasWrapper(`
       <tspan fill="#facc15" text-decoration="underline">Lưu ý:</tspan> Sử dụng kiểu gõ Telex
     </text>
 
-    <!-- ── 10 DECODING SLOTS AT BOTTOM (LIKE IMAGE 2) ── -->
+    <!-- ── 10 DECODING SLOTS AT BOTTOM (VIỀN ĐỎ 2 CẠNH CHỮ L ĐỊNH VỊ GÓC PHẦN TƯ) ── -->
     <g transform="translate(195, 530)">
       <!-- Black Panel Tray -->
       <rect x="-20" y="0" width="930" height="115" rx="18" fill="#091122" stroke="#334155" stroke-width="2.5" filter="url(#shadow)"/>
       
-      <!-- 10 Colored Boxes -->
+      <!-- 10 Colored Boxes with 2-sided Red Border -->
       ${bottomSlots
         .map((slot, i) => {
           const x = i * 88 + 15;
+          const boxW = 68;
+          const boxH = 66;
           return `
           <g transform="translate(${x}, 18)">
-            <!-- Outer Slot Frame with Red Border -->
-            <rect width="68" height="66" rx="10" fill="${slot.bg}" stroke="${slot.border}" stroke-width="4.5" filter="url(#shadow)"/>
+            <!-- Inner Colored Box Body -->
+            <rect width="${boxW}" height="${boxH}" rx="8" fill="${slot.bg}"/>
+            
+            <!-- Red L-shaped border indicating Quadrant -->
+            ${renderSlotBorder(slot.q, boxW, boxH)}
+            
             <!-- Slot Index -->
             <text x="34" y="86" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="13" fill="#94a3b8" text-anchor="middle">${i + 1}</text>
           </g>

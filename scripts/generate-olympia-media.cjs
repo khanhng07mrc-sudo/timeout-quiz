@@ -431,7 +431,7 @@ const ttDp4Svg = svgWrapper(
 );
 
 const tasks = [
-  { name: "bac_ai_cnv_mystery.png", svg: cnvSvg },
+  // bac_ai_cnv_mystery.png is preserved from user document Acquynuoc.png (14MB)
   { name: "bac_ai_tt_cau1.png", svg: tt1Svg },
   { name: "bac_ai_tt_cau2.png", svg: tt2Svg },
   { name: "bac_ai_tt_cau3.png", svg: tt3Svg },

@@ -197,16 +197,6 @@ export function ScoreStrip({
 }) {
   const seats = activeSeats(state);
   const count = seats.length;
-  const cols =
-    count === 2
-      ? "grid-cols-2 max-w-md mx-auto"
-      : count === 3
-      ? "grid-cols-3 max-w-xl mx-auto"
-      : count === 4
-      ? "grid-cols-4 max-w-3xl mx-auto"
-      : count <= 6
-      ? "grid-cols-3 sm:grid-cols-6 max-w-4xl mx-auto"
-      : "grid-cols-4 sm:grid-cols-8 w-full";
 
   // Xác định thí sinh bấm chuông (chỉ highlight sáng ô khi bấm chuông)
   const currentBuzzedSeat =
@@ -237,38 +227,38 @@ export function ScoreStrip({
       : null;
 
   return (
-    <div className={`grid ${cols} gap-1.5 sm:gap-2 w-full`}>
+    <div className="flex items-center justify-center gap-1 sm:gap-2 flex-nowrap w-full max-w-full overflow-hidden px-1">
       {seats.map((s) => {
         const isBuzzed = currentBuzzedSeat != null && currentBuzzedSeat === s.id;
         const isSoloTurn = !isBuzzed && currentSoloSeat != null && currentSoloSeat === s.id;
         const color = SEAT_COLORS[s.id] || "#38bdf8";
+
+        // Dynamic compact font scaling based on candidate count so it never wraps
+        const nameClass = count > 5 ? "text-[9px] sm:text-[10px]" : count > 4 ? "text-[10px] sm:text-xs" : large ? "text-xs sm:text-sm" : "text-[10px] sm:text-xs";
+        const scoreClass = count > 5 ? "text-sm sm:text-base" : count > 4 ? "text-base sm:text-lg" : large ? "text-lg sm:text-2xl" : "text-base sm:text-xl";
 
         // 1. Khi có thí sinh bấm chuông: highlight sáng rực rỡ màu chuông amber
         if (isBuzzed) {
           return (
             <div
               key={s.id}
-              className={`rounded-xl border px-2 py-1.5 text-center transition-all scale-[1.05] animate-pulse shadow-[0_0_24px_#f59e0b] ${
+              className={`flex-1 min-w-0 max-w-[150px] rounded-xl border px-1.5 py-1 text-center transition-all scale-[1.03] animate-pulse shadow-[0_0_20px_#f59e0b] ${
                 s.connected ? "" : "opacity-50"
               }`}
               style={{
                 border: "2px solid #facc15",
                 background: "linear-gradient(180deg, rgba(245, 158, 11, 0.45) 0%, rgba(217, 119, 6, 0.25) 100%)",
-                borderLeft: "5px solid #facc15",
+                borderLeft: "4px solid #facc15",
               }}
             >
               <div
-                className={`truncate font-black leading-tight ${
-                  large ? "text-xs sm:text-sm" : "text-[10px] sm:text-xs"
-                } text-amber-200 flex items-center justify-center gap-1`}
+                className={`truncate font-black leading-tight ${nameClass} text-amber-200 flex items-center justify-center gap-0.5`}
               >
                 <span>🔔</span>
-                <span>{s.name}</span>
+                <span className="truncate">{s.name}</span>
               </div>
               <div
-                className={`font-black tabular-nums leading-tight ${
-                  large ? "text-xl sm:text-3xl" : "text-base sm:text-xl"
-                } text-amber-300 drop-shadow`}
+                className={`font-black tabular-nums leading-tight ${scoreClass} text-amber-300 drop-shadow`}
               >
                 {s.score}
               </div>
@@ -281,27 +271,23 @@ export function ScoreStrip({
           return (
             <div
               key={s.id}
-              className={`rounded-xl border px-2 py-1.5 text-center transition-all scale-[1.02] ${
+              className={`flex-1 min-w-0 max-w-[150px] rounded-xl border px-1.5 py-1 text-center transition-all scale-[1.02] ${
                 s.connected ? "" : "opacity-50"
               }`}
               style={{
                 border: "1.5px solid #00f0ff",
-                borderLeft: "5px solid #00f0ff",
+                borderLeft: "4px solid #00f0ff",
                 background: "linear-gradient(180deg, rgba(0, 240, 255, 0.28) 0%, rgba(2, 6, 23, 0.85) 100%)",
-                boxShadow: "0 0 18px rgba(0, 240, 255, 0.35), inset 0 0 10px rgba(0, 240, 255, 0.15)",
+                boxShadow: "0 0 16px rgba(0, 240, 255, 0.35), inset 0 0 8px rgba(0, 240, 255, 0.15)",
               }}
             >
               <div
-                className={`truncate font-bold leading-tight ${
-                  large ? "text-xs sm:text-sm" : "text-[10px] sm:text-xs"
-                } text-cyan-200 drop-shadow`}
+                className={`truncate font-bold leading-tight ${nameClass} text-cyan-200 drop-shadow`}
               >
                 {s.name}
               </div>
               <div
-                className={`font-black tabular-nums leading-tight ${
-                  large ? "text-xl sm:text-3xl" : "text-base sm:text-xl"
-                } text-cyan-300 drop-shadow-[0_0_12px_rgba(0,240,255,0.7)]`}
+                className={`font-black tabular-nums leading-tight ${scoreClass} text-cyan-300 drop-shadow-[0_0_12px_rgba(0,240,255,0.7)]`}
               >
                 {s.score}
               </div>
@@ -313,22 +299,18 @@ export function ScoreStrip({
         return (
           <div
             key={s.id}
-            className={`rounded-xl border px-2 py-1.5 text-center transition-all border-cyan-500/25 bg-slate-950/80 shadow-[0_2px_10px_rgba(0,0,0,0.5)] ${
+            className={`flex-1 min-w-0 max-w-[150px] rounded-xl border px-1.5 py-1 text-center transition-all border-cyan-500/25 bg-slate-950/80 shadow-[0_2px_10px_rgba(0,0,0,0.5)] ${
               s.connected ? "" : "opacity-50"
             }`}
-            style={{ borderLeft: "4px solid #00e5ff" }}
+            style={{ borderLeft: `3.5px solid ${color}` }}
           >
             <div
-              className={`truncate font-semibold leading-tight ${
-                large ? "text-xs sm:text-sm" : "text-[10px] sm:text-xs"
-              } text-slate-200`}
+              className={`truncate font-semibold leading-tight ${nameClass} text-slate-200`}
             >
               {s.name}
             </div>
             <div
-              className={`font-black tabular-nums leading-tight ${
-                large ? "text-xl sm:text-3xl" : "text-base sm:text-xl"
-              } text-amber-300 drop-shadow`}
+              className={`font-black tabular-nums leading-tight ${scoreClass} text-amber-300 drop-shadow`}
             >
               {s.score}
             </div>

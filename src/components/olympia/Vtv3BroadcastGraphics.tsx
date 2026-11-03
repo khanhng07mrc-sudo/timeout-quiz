@@ -705,15 +705,7 @@ export function VcnvCountdownGraphic({
         {/* ═══════════════════════════════════════════════════════════════════
             QUADRANT 2: TOP-RIGHT (ROWS BOARD WITH 3D GLOSSY BLUE DOMES)
            ═══════════════════════════════════════════════════════════════════ */}
-        <div
-          className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/60 shadow-[0_0_25px_rgba(6,182,212,0.3)] bg-gradient-to-br from-[#071a3d] via-[#05132d] to-[#030c1d] flex flex-col justify-between p-3 sm:p-4 md:p-5"
-          style={{
-            clipPath: "polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%)",
-          }}
-        >
-          {/* Top Chamfer Accent Border */}
-          <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none border-t-2 border-r-2 border-cyan-300" />
-
+        <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/60 shadow-[0_0_25px_rgba(6,182,212,0.3)] bg-gradient-to-br from-[#071a3d] via-[#05132d] to-[#030c1d] flex flex-col justify-between p-3 sm:p-4 md:p-5">
           {/* Header Badge: CHƯỚNG NGẠI VẬT CÓ X CHỮ CÁI */}
           <div className="flex items-center justify-center w-full pt-1 pb-2">
             <div className="px-5 sm:px-8 py-1.5 sm:py-2 rounded-full border-2 border-cyan-400/80 bg-gradient-to-r from-cyan-950 via-[#0a2e66] to-cyan-950 shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center">
@@ -768,21 +760,38 @@ export function VcnvCountdownGraphic({
         {/* ═══════════════════════════════════════════════════════════════════
             QUADRANT 3: BOTTOM-LEFT (QUESTION FRAME TOP-LEFT + BOTTOM PROGRESS BAR)
            ═══════════════════════════════════════════════════════════════════ */}
-        <div
-          className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-gradient-to-br from-[#061838] via-[#041026] to-[#020914] flex flex-col justify-between p-4 sm:p-5 md:p-6"
-          style={{
-            clipPath: "polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 24px 100%, 0 calc(100% - 24px))",
-          }}
-        >
-          {/* Chamfer Accents */}
-          <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none border-t-2 border-r-2 border-cyan-300" />
-          <div className="absolute bottom-0 left-0 w-8 h-8 pointer-events-none border-b-2 border-l-2 border-cyan-300" />
-
-          {/* Question Text Body: Aligned Top-Left without clutter */}
-          <div className="flex-1 flex flex-col items-start justify-start py-2 px-1 text-left overflow-y-auto">
-            <p className="font-extrabold text-base sm:text-xl md:text-2xl lg:text-3xl text-white leading-relaxed select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-              {questionHint || "Đang chờ chọn hàng ngang…"}
-            </p>
+        <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-gradient-to-br from-[#061838] via-[#041026] to-[#020914] flex flex-col justify-between p-4 sm:p-5 md:p-6">
+          {/* Question Text Body / Selecting Announcement */}
+          <div className="flex-1 flex flex-col items-start justify-start py-2 px-1 text-left overflow-hidden">
+            {v.phase === "selecting" ? (
+              <div className="w-full flex flex-col items-center justify-center h-full text-center gap-2">
+                <div className="px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 text-xs sm:text-sm font-bold uppercase tracking-wider animate-pulse">
+                  Đang chọn hàng ngang
+                </div>
+                <div className="text-xl sm:text-2xl md:text-3xl font-black text-amber-300 drop-shadow-[0_2px_8px_rgba(245,158,11,0.5)]">
+                  {isCenter
+                    ? "Ô TRUNG TÂM"
+                    : `HÀNG NGANG SỐ ${curIdx + 1} (${curRow?.letterCount || cleanVcnvWord(curRow?.answer || "").length} CHỮ CÁI)`}
+                </div>
+                <div className="text-xs sm:text-sm text-slate-300 font-medium">
+                  Chờ MC nhấn &quot;Mở Câu Hỏi&quot; để hiển thị nội dung...
+                </div>
+              </div>
+            ) : (
+              <p
+                className={`font-extrabold text-white leading-relaxed select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+                  (questionHint || "").length > 180
+                    ? "text-xs sm:text-sm md:text-base leading-snug"
+                    : (questionHint || "").length > 120
+                    ? "text-sm sm:text-base md:text-lg leading-normal"
+                    : (questionHint || "").length > 70
+                    ? "text-base sm:text-lg md:text-xl leading-relaxed"
+                    : "text-lg sm:text-xl md:text-2xl lg:text-3xl leading-relaxed"
+                }`}
+              >
+                {questionHint || "Đang chờ mở câu hỏi…"}
+              </p>
+            )}
           </div>
 
           {/* Integrated Sleek Progress Bar across bottom */}
@@ -809,18 +818,36 @@ export function VcnvCountdownGraphic({
                 {remainingSec < 10 ? `0${remainingSec}` : remainingSec}s
               </span>
             </div>
+
+            {/* Tín hiệu trả lời: Hình chữ nhật bo góc màu đỏ, nằm dưới thanh thời gian (chỉ hiện tên thí sinh, thứ tự từ trái sang phải) */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-1 min-h-[26px]">
+              {(() => {
+                const answered = Object.entries(v.answers || {})
+                  .filter(([_, ans]) => ans && Boolean(ans.text && ans.text.trim()))
+                  .sort((a, b) => (a[1].at || a[1].ms || 0) - (b[1].at || b[1].ms || 0))
+                  .map(([sId]) => Number(sId));
+
+                if (answered.length === 0) return null;
+                return answered.map((seatId) => {
+                  const s = state.seats[seatId];
+                  return (
+                    <div
+                      key={seatId}
+                      className="bg-gradient-to-r from-red-600 to-rose-600 rounded-lg px-2.5 py-1 text-white font-bold text-xs shadow-md border border-red-400 animate-fade-in"
+                    >
+                      {s?.name || `Thí sinh ${seatId + 1}`}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
           </div>
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════
             QUADRANT 4: BOTTOM-RIGHT (3D STUDIO CAMERA WINDOW + BELL NOTIFIER)
            ═══════════════════════════════════════════════════════════════════ */}
-        <div
-          className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-transparent flex flex-col justify-between"
-          style={{
-            clipPath: "polygon(24px 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%, 0 24px)",
-          }}
-        >
+        <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-transparent flex flex-col justify-between">
           {/* Inner Vignette / Broadcast Camera Overlay */}
           <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_25px_rgba(0,0,0,0.7)] border border-white/10 rounded-2xl" />
 
@@ -896,7 +923,7 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
 
                   {/* Main Capsule Body */}
                   <div
-                    className="h-16 sm:h-20 min-w-[260px] sm:min-w-[360px] max-w-[420px] px-8 rounded-full flex items-center justify-center shadow-2xl"
+                    className="h-16 sm:h-20 w-full max-w-[42vw] md:max-w-md px-4 sm:px-6 rounded-full flex items-center justify-center shadow-2xl overflow-hidden"
                     style={{
                       background:
                         "linear-gradient(180deg, #1e293b 0%, #0f172a 50%, #060a12 100%)",
@@ -907,7 +934,7 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
                         "0 10px 30px rgba(0,0,0,0.85), inset 0 2px 4px rgba(255,255,255,0.3)",
                     }}
                   >
-                    <span className="font-black text-xl sm:text-3xl text-white tracking-widest uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] truncate max-w-full">
+                    <span className="font-black text-xl sm:text-3xl text-white tracking-widest uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] truncate max-w-full block text-center">
                       {answerText}
                     </span>
                   </div>
@@ -1084,7 +1111,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
           const answerText = item.noAnswer ? "" : item.answer;
 
           return (
-            <div key={item.seat} className="relative flex items-center w-full max-w-3xl animate-fade-in my-1">
+            <div key={item.seat} className="relative flex items-center w-full max-w-[92vw] md:max-w-3xl animate-fade-in my-1 px-2">
               {/* Central connection rivet pinned directly on vertical rail */}
               <div className="absolute left-1/2 -translate-x-1/2 z-30">
                 <RedConnectionRivet />
@@ -1106,15 +1133,15 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                 }}
               >
                 {/* Contestant Name */}
-                <div className="flex items-center gap-2 z-10 w-48">
-                  <span className="font-bold text-sm sm:text-lg text-slate-100 truncate">
+                <div className="flex items-center gap-2 z-10 w-36 sm:w-48 shrink-0 overflow-hidden">
+                  <span className="font-bold text-sm sm:text-lg text-slate-100 truncate block max-w-full">
                     {seat?.name || `Thí sinh ${item.seat + 1}`}
                   </span>
                 </div>
 
                 {/* Uppercase Answer (Empty string if no answer, no dash) */}
-                <div className="flex-1 text-center z-10 px-4">
-                  <span className="font-black text-xl sm:text-3xl text-white tracking-widest uppercase drop-shadow">
+                <div className="flex-1 min-w-0 text-center z-10 px-4 overflow-hidden">
+                  <span className="font-black text-xl sm:text-3xl text-white tracking-widest uppercase drop-shadow truncate block max-w-full">
                     {answerText}
                   </span>
                 </div>
@@ -1130,6 +1157,104 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * COMPONENT 6: TỔNG KẾT ĐIỂM (LOWER-THIRD CHYRON & FULLSCREEN)
+ * - Lower-Third Chyron: Ranks contestants from lowest to highest.
+ * - Displays Rank/Position, Name, School/City, and Score with golden neon styling.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function SummaryLowerThirdGraphic({ state }: { state: OlympiaState }) {
+  const sm = state.summaryState;
+  if (!sm || !sm.active || sm.orderedSeats.length === 0) return null;
+
+  const curSeatId = sm.orderedSeats[sm.currentIndex] ?? sm.orderedSeats[0];
+  const curSeat = state.seats[curSeatId];
+  if (!curSeat) return null;
+
+  const total = sm.orderedSeats.length;
+  const ranks = sm.orderedSeats.map((seatId) => {
+    const myScore = state.seats[seatId]?.score ?? 0;
+    const higherCount = sm.orderedSeats.filter(
+      (otherId) => (state.seats[otherId]?.score ?? 0) > myScore
+    ).length;
+    return higherCount + 1;
+  });
+  const curRank = ranks[sm.currentIndex] ?? (total - sm.currentIndex);
+  const maxScore = Math.max(...sm.orderedSeats.map((sId) => state.seats[sId]?.score ?? 0));
+  const isLeader = curSeat.score === maxScore && (maxScore > 0 || sm.currentIndex === total - 1);
+
+  if (sm.isFullscreen) {
+    return (
+      <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in pointer-events-auto">
+        <div className="relative w-full max-w-2xl rounded-3xl p-8 border-2 border-amber-400/80 bg-gradient-to-b from-[#131b3b] via-[#0b1026] to-[#060814] shadow-[0_0_50px_rgba(245,158,11,0.5)] flex flex-col items-center text-center gap-4">
+          <div className="px-6 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-sm uppercase tracking-widest shadow-lg">
+            {isLeader ? "👑 DẪN ĐẦU ĐOÀN LEO NÚI" : `TỔNG KẾT ĐIỂM (HẠNG #${curRank})`}
+          </div>
+          <div className="text-3xl sm:text-5xl font-black text-white tracking-wide uppercase drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]">
+            {curSeat.name}
+          </div>
+          {curSeat.school && (
+            <div className="text-base sm:text-lg text-cyan-200 font-semibold flex items-center gap-2">
+              <span>🏫</span>
+              <span>{curSeat.school}</span>
+            </div>
+          )}
+          <div className="text-5xl sm:text-7xl font-black text-amber-300 font-mono tracking-tight drop-shadow-[0_0_20px_rgba(252,211,77,0.7)] pt-2">
+            {curSeat.score} <span className="text-2xl sm:text-3xl font-sans text-amber-200/80">điểm</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-4xl px-4 animate-slide-in-up pointer-events-auto">
+      <div
+        className="rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 border-2 shadow-[0_10px_40px_rgba(0,0,0,0.85)]"
+        style={{
+          background: isLeader
+            ? "linear-gradient(90deg, rgba(20,15,5,0.96) 0%, rgba(45,30,8,0.96) 50%, rgba(20,15,5,0.96) 100%)"
+            : "linear-gradient(90deg, rgba(6,15,35,0.96) 0%, rgba(12,28,68,0.96) 50%, rgba(6,15,35,0.96) 100%)",
+          borderColor: isLeader ? "#f59e0b" : "#38bdf8",
+          boxShadow: isLeader
+            ? "0 0 35px rgba(245,158,11,0.5), inset 0 1px 2px rgba(255,255,255,0.3)"
+            : "0 0 30px rgba(56,189,248,0.4), inset 0 1px 2px rgba(255,255,255,0.2)",
+        }}
+      >
+        {/* Left: Position Badge */}
+        <div className="flex flex-col items-center justify-center px-4 py-2 rounded-xl bg-black/50 border border-white/10 shrink-0">
+          <span className="text-xs uppercase font-bold text-slate-400">Vị trí</span>
+          <span className="text-2xl sm:text-3xl font-black text-amber-400 font-mono">
+            {isLeader ? "👑 1" : `#${curRank}`}
+          </span>
+        </div>
+
+        {/* Center: Contestant Name & School */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <div className="text-xl sm:text-3xl font-black text-white uppercase tracking-wider truncate drop-shadow">
+            {curSeat.name}
+          </div>
+          <div className="text-xs sm:text-sm text-cyan-200/90 font-medium truncate flex items-center gap-1.5 mt-0.5">
+            <span>🏫</span>
+            <span>{curSeat.school || "Thí sinh"}</span>
+          </div>
+        </div>
+
+        {/* Right: Score Numerals */}
+        <div className="flex flex-col items-end justify-center shrink-0 pl-2">
+          <div className="text-3xl sm:text-5xl font-black text-amber-300 font-mono tabular-nums drop-shadow-[0_0_15px_rgba(252,211,77,0.6)]">
+            {curSeat.score}
+          </div>
+          <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-amber-200/70">
+            ĐIỂM
+          </span>
+        </div>
       </div>
     </div>
   );

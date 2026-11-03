@@ -73,7 +73,9 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
         else if (state?.currentRound === "cauHoiPhu") call("chp:wrong");
       } else if (e.key === "w" || e.key === "W") {
         e.preventDefault();
-        call("bgm:waiting");
+        if (state?.currentRound === "vcnv") call("vcnv:blank");
+        else if (state?.currentRound === "tangToc") call("tt:blank");
+        else call("bgm:waiting");
       } else if (e.key === "r" || e.key === "R") {
         e.preventDefault();
         if (state?.currentRound === "vcnv") call("vcnv:reveal");
@@ -89,7 +91,11 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
         if (state?.currentRound === "veDich") call("vd:hopeStar");
       } else if (e.key === "b" || e.key === "B") {
         e.preventDefault();
-        call("scoreboard:toggle");
+        if (state?.summaryState?.active) {
+          call("summary:stop");
+        } else {
+          call("summary:start");
+        }
       } else if (e.key === "h" || e.key === "H") {
         e.preventDefault();
         call("studio:toggle");
@@ -107,7 +113,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [state?.currentRound]);
+  }, [state?.currentRound, state?.summaryState?.active]);
 
   // Calculate current timer countdown for right-hand status widget with live useCountdown
   const activeTimer = useMemo(() => {
@@ -249,7 +255,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             </div>
           </div>
           <div className="w-full aspect-video max-h-[260px] bg-black rounded-lg overflow-hidden border border-white/10">
-            <iframe src={`/olympia/display/${code}`} className="w-full h-full border-0" title="Mini Display" />
+            <iframe src={`/olympia/display/${code}?mute=1`} className="w-full h-full border-0" title="Mini Display" />
           </div>
         </div>
       )}
@@ -469,15 +475,22 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               </button>
               <button
                 type="button"
-                onClick={() => call("scoreboard:toggle")}
+                onClick={() => {
+                  if (state.summaryState?.active) {
+                    call("summary:stop");
+                  } else {
+                    call("summary:start");
+                  }
+                }}
                 className={`py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition ${
-                  state.showScoreboard
-                    ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_15px_rgba(56,189,248,0.3)]"
+                  state.summaryState?.active
+                    ? "bg-amber-500/30 border-amber-400 text-amber-200 shadow-[0_0_15px_rgba(251,191,36,0.3)] animate-pulse"
                     : "bg-violet-500/10 border-violet-500/20 text-violet-300 hover:bg-violet-500/20"
                 }`}
+                title="Tổng kết điểm số các thí sinh từ thấp đến cao (Phím B)"
               >
-                <span>📊</span>
-                <span>BẢNG ĐIỂM (B)</span>
+                <span>🏆</span>
+                <span>{state.summaryState?.active ? "DỪNG TỔNG KẾT (B)" : "TỔNG KẾT ĐIỂM (B)"}</span>
               </button>
               <button
                 type="button"
@@ -506,6 +519,74 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 <span className="truncate">{state.overlayMode === "FULLSCREEN" ? "Toàn Màn" : "1/3 Dưới"}</span>
               </button>
             </div>
+
+            {/* Summary Controls Toolbar when Summary is active */}
+            {state.summaryState?.active && (
+              <div className="rounded-xl border border-amber-500/60 bg-gradient-to-r from-amber-950/80 via-slate-950/95 to-amber-950/80 p-2.5 shadow-xl flex flex-wrap items-center justify-between gap-2 backdrop-blur-md animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-400 font-black text-xs uppercase tracking-wider flex items-center gap-1">
+                    <span>🏆</span> TỔNG KẾT ĐIỂM:
+                  </span>
+                  <span className="text-[11px] font-bold text-amber-200 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+                    Thí sinh {state.summaryState.currentIndex + 1}/{state.summaryState.orderedSeats.length}
+                    {state.seats[state.summaryState.orderedSeats[state.summaryState.currentIndex]] && (
+                      <span className="ml-1 text-white font-black">
+                        ({state.seats[state.summaryState.orderedSeats[state.summaryState.currentIndex]].name} - {state.seats[state.summaryState.orderedSeats[state.summaryState.currentIndex]].score}đ)
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {state.summaryState.isAuto ? "⏱ Tự động 3.5s" : "✋ Thủ công"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => call("summary:prev")}
+                    className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/20 cursor-pointer"
+                    title="Thí sinh trước"
+                  >
+                    ◀ Trước
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => call("summary:next")}
+                    className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/20 cursor-pointer"
+                    title="Thí sinh tiếp theo"
+                  >
+                    ▶ Tiếp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => call("summary:toggleAuto")}
+                    className={`px-2 py-1 rounded text-xs font-bold border transition cursor-pointer ${
+                      state.summaryState.isAuto
+                        ? "bg-amber-600/40 text-amber-200 border-amber-500/60"
+                        : "bg-emerald-600/40 text-emerald-200 border-emerald-500/60"
+                    }`}
+                    title="Tạm dừng / Bật tự động chuyển thí sinh sau 3.5s"
+                  >
+                    {state.summaryState.isAuto ? "⏸ Tạm dừng" : "▶ Tiếp tục"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => call("summary:toggleFullscreen")}
+                    className="px-2 py-1 rounded bg-purple-600/40 hover:bg-purple-600/60 text-purple-200 text-xs font-bold border border-purple-500/50 cursor-pointer"
+                    title="Chuyển chế độ Toàn Màn / 1/3 Dưới"
+                  >
+                    {state.summaryState.isFullscreen ? "📺 1/3 Dưới" : "⛶ Toàn màn"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => call("summary:stop")}
+                    className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-xs font-black text-white shadow cursor-pointer"
+                    title="Kết thúc tổng kết điểm và quay về toàn cảnh CAM 10"
+                  >
+                    🏁 Về toàn cảnh
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* ── MÀN HÌNH LED PHẢI SÂN KHẤU (STAGE RIGHT SCREEN CONTROLLER) ── */}
             <div className="rounded-xl border border-violet-500/30 bg-[#090d1e]/95 p-2 shadow-xl flex flex-col gap-1.5 backdrop-blur-md">
@@ -578,7 +659,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               </div>
 
               {/* Camera Presets Selector */}
-              <div className="grid grid-cols-5 sm:grid-cols-10 gap-1">
+              <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-14 gap-1">
                 {[
                   { id: 1, label: "CAM 1: Toàn Cảnh Sân Khấu", short: "Toàn Cảnh" },
                   { id: 2, label: "CAM 2: Màn LED & Cổng Lục Giác", short: "Màn LED" },
@@ -588,6 +669,13 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                   { id: 6, label: "CAM 6: Cận Cảnh TS 2", short: "TS 2" },
                   { id: 7, label: "CAM 7: Cận Cảnh TS 3", short: "TS 3" },
                   { id: 8, label: "CAM 8: Cận Cảnh TS 4", short: "TS 4" },
+                  ...(seats.length > 4
+                    ? seats.slice(4).map((s, idx) => ({
+                        id: 11 + idx,
+                        label: `CAM ${11 + idx}: Cận Cảnh TS ${5 + idx} (${s.name || `TS ${5 + idx}`})`,
+                        short: `TS ${5 + idx}`,
+                      }))
+                    : []),
                   { id: 9, label: "CAM 9: Cẩu Quay Jib Toàn Khán Đài", short: "Cẩu Jib" },
                   { id: 10, label: "CAM 10: Toàn Cảnh Bục Thí Sinh", short: "Bục TS" },
                 ].map((c) => {
@@ -759,14 +847,18 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
         )}
       </div>
 
-      {/* ── BOTTOM BAR: 4 CONTESTANT CARDS COMPACT (ZERO-SCROLL) ── */}
+      {/* ── BOTTOM BAR: CONTESTANT CARDS COMPACT (ZERO-SCROLL) ── */}
       <footer className="border-t border-violet-500/15 bg-black/25 px-2 py-1 shrink-0">
-        <div className="grid grid-cols-4 gap-1.5">
-          {seats.slice(0, 4).map((s, idx) => (
+        <div className={`grid gap-1.5 ${
+          seats.length <= 4 ? "grid-cols-2 sm:grid-cols-4" :
+          seats.length <= 6 ? "grid-cols-3 sm:grid-cols-6" :
+          "grid-cols-4 sm:grid-cols-8"
+        }`}>
+          {seats.map((s, idx) => (
             <div
               key={s.id}
               className="rounded-lg border border-cyan-500/25 bg-slate-900/95 px-2 py-1 flex items-center justify-between gap-1.5 relative overflow-hidden shadow"
-              style={{ borderLeft: "3.5px solid #00e5ff" }}
+              style={{ borderLeft: `3.5px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}` }}
             >
               <div className="min-w-0 flex-1 flex flex-col justify-center">
                 <input
@@ -960,9 +1052,9 @@ function KhoiDongDeck({
           </div>
         )}
 
-        {/* Contestant TS1..TS4 Buttons */}
-        <div className="flex items-center gap-1">
-          {[0, 1, 2, 3].map((sId) => {
+        {/* Contestant TS1..TSN Buttons */}
+        <div className="flex items-center gap-1 flex-wrap">
+          {state.seats.map((_, sId) => {
             const isCur = isSolo && seg.seat === sId;
             return (
               <button
@@ -1250,7 +1342,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
           <div className="grid grid-cols-4 gap-1">
             <button
               type="button"
-              onClick={() => call("vcnv:timer")}
+              onClick={() => call("vcnv:blank")}
               className="py-1 rounded bg-white/10 hover:bg-white/15 text-[11px] font-bold text-slate-300"
             >
               Nền chờ ĐA
@@ -1343,8 +1435,8 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
 
           <div className="space-y-1">
             <span className="text-[11px] text-slate-400 font-bold">Thí sinh bấm chuông:</span>
-            <div className="grid grid-cols-2 gap-1">
-              {seats.slice(0, 4).map((s) => {
+            <div className={`grid gap-1 ${seats.length <= 4 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
+              {seats.map((s) => {
                 const buzzed = v.bells?.some((b) => b.seat === s.id);
                 return (
                   <button
@@ -1503,10 +1595,10 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
       <div className="space-y-2">
         <button
           type="button"
-          onClick={() => call("bgm:waiting")}
+          onClick={() => call("tt:blank")}
           className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold border border-white/10 cursor-pointer"
         >
-          Nền chờ đáp án
+          Nền chờ đáp án (W)
         </button>
         <button
           type="button"
@@ -1559,6 +1651,27 @@ function VeDichDeck({
         {/* Left: Khởi tạo lượt thi, Lên sân khấu/Trở về, Mở chọn gói đồ họa, Xác nhận gói */}
         <div className="space-y-1.5">
           <div className="text-xs font-bold text-slate-400 uppercase">Khởi tạo lượt thi</div>
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[10px] text-slate-400 font-bold">Thí sinh:</span>
+            {vd.order.map((id) => {
+              const isCur = id === vd.order[vd.turnIdx];
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => call("vd:setSeat", { seat: id })}
+                  className={`px-2 py-0.5 rounded text-xs font-black border transition cursor-pointer ${
+                    isCur
+                      ? "bg-amber-400 text-slate-950 border-amber-300 shadow font-black"
+                      : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                  }`}
+                  title={`Chọn ${seatName(state, id)} lên sân khấu`}
+                >
+                  TS{id + 1}
+                </button>
+              );
+            })}
+          </div>
           <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
@@ -1847,8 +1960,8 @@ function CauHoiPhuDeck({ state, call, seats }: { state: OlympiaState; call: Call
       {/* Left: CHỌN THÍ SINH DỰ THI */}
       <div className="space-y-1.5">
         <div className="text-xs font-bold text-slate-400 uppercase">CHỌN THÍ SINH</div>
-        <div className="grid grid-cols-2 gap-1.5">
-          {seats.slice(0, 4).map((s) => {
+        <div className={`grid gap-1.5 ${seats.length <= 4 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
+          {seats.map((s) => {
             const checked = selectedSeats.includes(s.id);
             return (
               <label

@@ -392,7 +392,7 @@ export interface VcnvState {
   centerOpened?: boolean;
   centerWrong?: boolean;
   currentRow: number; // -1 none, 0..3 row, 4 = center question (#5)
-  phase: "grid" | "question" | "answers" | "done";
+  phase: "grid" | "selecting" | "question" | "waitingAnswer" | "answers" | "done";
   timer: TimerState;
   answers: Record<number, VcnvAnswerRecord>;
   answersRevealed: boolean;
@@ -590,6 +590,17 @@ export interface OlympiaState {
   overlayMode?: "LOWER_THIRD" | "FULLSCREEN";
   /** Right LED screen content mode: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" | "roundGraphics" */
   rightScreenMode?: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" | "roundGraphics";
+  /** State for the lower-third sequence summarizing contestant points from lowest to highest */
+  summaryState?: OlympiaSummaryState | null;
+}
+
+export interface OlympiaSummaryState {
+  active: boolean;
+  currentIndex: number;
+  orderedSeats: number[];
+  isAuto: boolean;
+  isFullscreen?: boolean;
+  lastAdvanceAt?: number;
 }
 
 export type HostAction = { type: string; [k: string]: unknown };

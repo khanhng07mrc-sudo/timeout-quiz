@@ -11,6 +11,18 @@ export interface OlympiaCameraState {
 }
 
 /**
+ * Maps seat index (0..N-1) to camera preset:
+ * Seats 0..3 -> CAM 5..8 (TS 1..4)
+ * Seats 4..7 -> CAM 11..14 (TS 5..8)
+ */
+export function getCameraForSeat(seatId: number, totalSeats: number = 4): number {
+  if (seatId < 0) return 1;
+  const count = Math.max(1, totalSeats);
+  const clamped = Math.min(count - 1, seatId);
+  return clamped < 4 ? 5 + clamped : 11 + (clamped - 4);
+}
+
+/**
  * Auto-camera logic for Olympia 3D Broadcast Studio.
  * Computes camera angles, cuts/morphs, dolly pushes, and overlay suppression based on round state.
  */
@@ -68,13 +80,27 @@ export function useOlympiaCameraState(
     }
 
     const now = getNow();
+    const activeCount = Math.max(1, state.seats.length);
+
+    // 1.4. Olympia Final Summary Sequence: focus directly on the highlighted contestant (CAM 5..8 or CAM 11..14)
+    if (state.summaryState?.active) {
+      const idx = state.summaryState.currentIndex ?? 0;
+      const ordered = state.summaryState.orderedSeats ?? [];
+      const currentSeat = ordered[idx] ?? idx;
+      const targetCam = getCameraForSeat(currentSeat, activeCount);
+      return {
+        camAngle: targetCam,
+        transitionMode: "CUT",
+        isOverlayHidden: false,
+        pushInProgress: 0.1,
+      };
+    }
 
     // 1.5. Sequential Contestant Entrance Cinematic Sequence (Manual Trigger by Host/MC with Skip)
     if (state.entranceState?.active) {
       // User Requirement: "về phần giới thiệu thí sinh sẽ lia camera từ bục đầu tiên cho tới bục cuối cùng bên phải, phụ thuộc số thí sinh thực"
-      const activeCount = Math.max(1, state.seats.length);
       const currentSeat = Math.min(activeCount - 1, Math.max(0, state.entranceState.currentSeatIdx ?? 0));
-      const targetCam = 5 + Math.min(3, currentSeat);
+      const targetCam = getCameraForSeat(currentSeat, activeCount);
 
       return {
         camAngle: targetCam,
@@ -142,8 +168,8 @@ export function useOlympiaCameraState(
       const seg = kd.segments?.[kd.segIdx];
       const isSolo = seg?.kind === "solo";
       const seatId = isSolo ? (seg?.seat ?? 0) : (kd.buzzedSeat ?? 0);
-      const validSeat = typeof seatId === "number" && seatId >= 0 && seatId < 4;
-      const targetContestantCam = validSeat ? 5 + seatId : 1;
+      const validSeat = typeof seatId === "number" && seatId >= 0 && seatId < activeCount;
+      const targetContestantCam = validSeat ? getCameraForSeat(seatId, activeCount) : 1;
 
       // 3.2. Khi chưa nhấn Bắt đầu (hết intro Khởi động):
       // USER REQUIREMENT: "cơ mà hết intro Khởi động, nó chưa tự zoom in bục MC, sau đó quay toàn cảnh"
@@ -211,7 +237,7 @@ export function useOlympiaCameraState(
           // Lượt chung:
           if (kd.buzzedSeat != null) {
             return {
-              camAngle: 5 + Math.min(3, Math.max(0, kd.buzzedSeat)),
+              camAngle: getCameraForSeat(kd.buzzedSeat, activeCount),
               transitionMode: "CUT",
               isOverlayHidden: false,
               pushInProgress: 0.20,
@@ -274,9 +300,9 @@ export function useOlympiaCameraState(
       // If someone rang the obstacle bell:
       if (v.bells && v.bells.length > 0) {
         const fastestSeat = v.bells[0].seat;
-        if (fastestSeat >= 0 && fastestSeat < 4) {
+        if (fastestSeat >= 0 && fastestSeat < activeCount) {
           return {
-            camAngle: 5 + fastestSeat,
+            camAngle: getCameraForSeat(fastestSeat, activeCount),
             transitionMode: "CUT",
             isOverlayHidden: false,
             pushInProgress: 0.2,
@@ -284,50 +310,36 @@ export function useOlympiaCameraState(
         }
       }
 
-      // USER REQUIREMENT:
-      // "Ở VCNV: Bảng ô chữ, background full màn và đồ hoạ câu hỏi hiện toàn màn hình sau khi MC/host chọn hàng ngang,
-      // cho tới khi bắt đầu 15s, bảng ô chữ, background full màn ẩn đi, trong 4s đầu, hiện góc quay toàn cảnh và zoom nhẹ về khu vực thí sinh,
-      // trong 11s còn lại và vài giây sau khi hết giờ, hệ thống tự động chuyển camera giữa các đội/thí sinh đảm bảo mỗi người phải có trên màn hình ít nhất 1 lần"
+      // Camera VCNV: Idle/pre-15s defaults to CAM 10 (wide) or CAM 3 (MC).
+      // Only during 15s timer does it cycle contestants every 3.5s; returns to CAM 10 afterwards.
       const startedAt = v.timer?.startedAt;
       const isTimerRunning = startedAt != null;
+      const elapsed = startedAt ? Math.max(0, (now - startedAt) / 1000) : 0;
 
-      if (!isTimerRunning || v.phase !== "question") {
-        // Row selecting / grid phase
+      if (isTimerRunning && elapsed <= 15.0) {
+        const cycleSeat = Math.floor(elapsed / 3.5) % activeCount;
         return {
-          camAngle: 10, // Toàn cảnh
+          camAngle: getCameraForSeat(cycleSeat, activeCount),
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: 0.1,
+        };
+      }
+
+      if (v.phase === "selecting") {
+        return {
+          camAngle: 3, // Bục MC
           transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0,
         };
       }
 
-      const elapsed = Math.max(0, (now - startedAt) / 1000);
-
-      // First 4s: Toàn cảnh bục thí sinh
-      if (elapsed < 4.0) {
-        const push = Math.min(1.0, elapsed / 4.0);
-        return {
-          camAngle: 10,
-          transitionMode: "MORPH",
-          isOverlayHidden: false,
-          pushInProgress: push * 0.4,
-        };
-      }
-
-      // Remaining 11s (4s -> 15s) and 3s after time-up (until ~18s):
-      // Cycle through all active contestant seats
-      const activeSeats = state.seats.filter((s) => s.name);
-      const count = Math.max(1, activeSeats.length);
-      const timeWindow = 14.0; // 14s total cycle window
-      const perSeat = timeWindow / count;
-      const cycleIdx = Math.floor((elapsed - 4.0) / perSeat) % count;
-      const targetSeat = activeSeats[cycleIdx]?.id ?? cycleIdx;
-
       return {
-        camAngle: 5 + Math.min(3, targetSeat),
+        camAngle: 10, // Toàn cảnh
         transitionMode: "CUT",
         isOverlayHidden: false,
-        pushInProgress: 0.15,
+        pushInProgress: 0,
       };
     }
 
@@ -346,7 +358,7 @@ export function useOlympiaCameraState(
     if (round === "veDich" && state.veDich) {
       const vd = state.veDich;
       const owner = vd.order?.[vd.turnIdx] ?? 0;
-      const targetOwnerCam = 5 + Math.min(3, Math.max(0, owner));
+      const targetOwnerCam = getCameraForSeat(owner, activeCount);
 
       // 6.1. Khi Đúng / Sai:
       // USER REQUIREMENT: Cắt ngay sang góc thẳng bục MC (CAM 3), tạm gác khung câu hỏi, hiện đồ hoạ đáp án
@@ -365,7 +377,7 @@ export function useOlympiaCameraState(
         if (vd.steal?.buzzedSeat != null) {
           const stealSeat = vd.steal.buzzedSeat;
           return {
-            camAngle: 5 + Math.min(3, Math.max(0, stealSeat)),
+            camAngle: getCameraForSeat(stealSeat, activeCount),
             transitionMode: "CUT",
             isOverlayHidden: false,
             pushInProgress: 0.2,
@@ -428,9 +440,9 @@ export function useOlympiaCameraState(
     // ── 7. CÂU HỎI PHỤ ───────────────────────────────────────────────────────
     if (round === "cauHoiPhu" && state.cauHoiPhu) {
       const chp = state.cauHoiPhu;
-      if (chp.buzzedSeat != null && chp.buzzedSeat >= 0 && chp.buzzedSeat < 4) {
+      if (chp.buzzedSeat != null && chp.buzzedSeat >= 0 && chp.buzzedSeat < activeCount) {
         return {
-          camAngle: 5 + chp.buzzedSeat,
+          camAngle: getCameraForSeat(chp.buzzedSeat, activeCount),
           transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0.3,

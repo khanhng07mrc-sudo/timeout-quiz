@@ -1,4 +1,5 @@
-import { SAMPLE_QUESTION_SET } from "./sample-questions";
+import { SAMPLE_QUESTION_SET, BAC_AI_QUESTION_SET } from "./sample-questions";
+import { getPresetOlympiaBanks } from "./olympia-storage";
 // Olympia socket layer: isolated "/olympia" namespace — does not touch the existing room handlers.
 import type { Server as SocketIOServer, Socket } from "socket.io";
 import { prisma } from "../prisma";
@@ -34,11 +35,11 @@ async function loadGame(code: string): Promise<GameEntry | null> {
   if (pending) return pending;
 
   const p = (async () => {
-    let room: { id: string; mode: string; config: unknown; hostKey: string | null } | null = null;
+    let room: { id: string; mode: string; config: unknown; hostKey: string | null; quizBankId?: string | null } | null = null;
     try {
       room = await prisma.room.findUnique({
         where: { code },
-        select: { id: true, mode: true, config: true, hostKey: true },
+        select: { id: true, mode: true, config: true, hostKey: true, quizBankId: true },
       });
     } catch {
       // Prisma offline or DATABASE_URL not set
@@ -76,6 +77,22 @@ async function loadGame(code: string): Promise<GameEntry | null> {
     const cfg = (room.config && typeof room.config === "object" ? room.config : {}) as Record<string, unknown>;
     const olympia = cfg.olympia as OlympiaConfig | undefined;
     if (!olympia) return null;
+    const bankId = String(room?.quizBankId || (cfg as any)?.quizBankId || "");
+    const bankTitle = String((cfg as any)?.customBankTitle || (cfg as any)?.quizBankTitle || "").toLowerCase();
+    if (
+      bankId === "olympia_preset_dauthau_bacai" ||
+      bankTitle.includes("bác ái") ||
+      bankTitle.includes("bac ai") ||
+      bankTitle.includes("đấu thầu") ||
+      bankTitle.includes("dau thau") ||
+      bankId.includes("bacai") ||
+      bankId.includes("dauthau")
+    ) {
+      olympia.questionSet = BAC_AI_QUESTION_SET;
+    } else if (!olympia.questionSet) {
+      const preset = getPresetOlympiaBanks().find((b) => b.id === bankId);
+      olympia.questionSet = preset ? preset.set : SAMPLE_QUESTION_SET;
+    }
     const game = new OlympiaGame(code, olympia);
     const snap = cfg.olympiaSnapshot as OlympiaState | undefined;
     if (snap && snap.code === code) {
@@ -214,6 +231,27 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
       const res = entry.game.hostAction(action as never, Date.now());
       ack?.(res);
       if (res.ok) broadcast(info.code);
+    });
+
+    socket.on("olympia:change_quiz_bank", (payload: { questionSet?: any; quizBankId?: string }, ack?: (r: { ok: boolean; error?: string }) => void) => {
+      const entry = withEntry();
+      if (!entry || !info || info.role !== "host") return ack?.({ ok: false, error: "Không có quyền" });
+      let newSet = payload.questionSet;
+      if (!newSet && payload.quizBankId) {
+        if (payload.quizBankId === "olympia_preset_dauthau_bacai" || payload.quizBankId.includes("bacai")) {
+          newSet = BAC_AI_QUESTION_SET;
+        } else {
+          const preset = getPresetOlympiaBanks().find((b) => b.id === payload.quizBankId);
+          if (preset) newSet = preset.set;
+        }
+      }
+      if (newSet) {
+        entry.game.setQuestionSet(newSet);
+        broadcast(info.code);
+        ack?.({ ok: true });
+      } else {
+        ack?.({ ok: false, error: "Không tìm thấy bộ đề" });
+      }
     });
 
     socket.on("buzz", (_p: unknown, ack?: (r: { ok: boolean; error?: string }) => void) => {

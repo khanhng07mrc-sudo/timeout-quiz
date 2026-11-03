@@ -7,7 +7,7 @@ import { getDefaultAllowedPowerupsForMode, distributeCategorizedCardsToTeams } f
 import { calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
 import { ensureQuizBankExists } from "@/lib/quiz-bank-seeder";
-import { SAMPLE_QUESTION_SET } from "@/lib/olympia/sample-questions";
+import { SAMPLE_QUESTION_SET, BAC_AI_QUESTION_SET } from "@/lib/olympia/sample-questions";
 
 const DEFAULT_SANDBOX_CONFIG = {
   powerupEnabled: true,
@@ -191,10 +191,30 @@ export async function POST(req: NextRequest) {
     sandboxConfig.maxTeams = teamCount;
 
     if (mode === "OLYMPIA") {
+      let qSet = body.config?.olympia?.questionSet;
+      const bankId = String(quizBankId || body.quizBankId || "");
+      const bankTitle = String(customQuizBankTitle || body.quizBankTitle || "").toLowerCase();
+
+      if (!qSet) {
+        if (
+          bankId === "olympia_preset_dauthau_bacai" ||
+          bankTitle.includes("bác ái") ||
+          bankTitle.includes("bac ai") ||
+          bankTitle.includes("đấu thầu") ||
+          bankTitle.includes("dau thau") ||
+          bankId.includes("bacai") ||
+          bankId.includes("dauthau")
+        ) {
+          qSet = BAC_AI_QUESTION_SET;
+        } else {
+          qSet = SAMPLE_QUESTION_SET;
+        }
+      }
+
       (sandboxConfig as any).olympia = {
         rulesetId: body.config?.olympia?.rulesetId || "O26",
         rounds: body.config?.olympia?.rounds || ["khoiDong", "vcnv", "tangToc", "veDich"],
-        questionSet: body.config?.olympia?.questionSet || SAMPLE_QUESTION_SET,
+        questionSet: qSet,
         seatCount: teamCount,
         teams: inputTeams,
         playIntroOnCreate: body.config?.olympia?.playIntroOnCreate !== false,

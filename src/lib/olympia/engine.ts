@@ -1,4 +1,5 @@
 // Olympia game engine — pure state machine (no sockets, no I/O). Fully unit-testable.
+import { SAMPLE_QUESTION_SET } from "./sample-questions";
 import { RULESETS, cnvPointsFor, tangTocTierPoints, turnsO22 } from "./rulesets";
 import { buildBalancedKhoiDongQueues, pickBalancedVeDichPackage, tagQAWithAI } from "./ai-classifier";
 import {
@@ -13,6 +14,7 @@ import {
   type KhoiDongState,
   type O22Quarter,
   type OlympiaConfig,
+  type OlympiaQuestionSet,
   type OlympiaRuleset,
   type OlympiaState,
   type OlympiaTranscriptEntry,
@@ -170,6 +172,9 @@ export class OlympiaGame {
 
   constructor(code: string, config: OlympiaConfig, now = Date.now()) {
     this.config = config;
+    if (!this.config.questionSet) {
+      this.config.questionSet = SAMPLE_QUESTION_SET;
+    }
     this.ruleset = RULESETS[config.rulesetId] ?? RULESETS.O26;
     const rounds = sortRounds(config.rounds);
     const seatCount = config.seatCount
@@ -348,6 +353,29 @@ export class OlympiaGame {
         }
       }
     }
+
+    // Auto-advance summary sequence (3.5s per contestant)
+    if (st.summaryState && st.summaryState.active && st.summaryState.isAuto) {
+      const elapsed = now - (st.summaryState.lastAdvanceAt ?? now);
+      if (elapsed >= 3500) {
+        const nextIdx = st.summaryState.currentIndex + 1;
+        if (nextIdx < st.summaryState.orderedSeats.length) {
+          st.summaryState.currentIndex = nextIdx;
+          st.summaryState.lastAdvanceAt = now;
+          const nextSeat = st.summaryState.orderedSeats[nextIdx];
+          st.studioCamera = 5 + nextSeat;
+          this.touch(now);
+          return true;
+        } else {
+          st.summaryState.active = false;
+          st.studioCamera = 10;
+          this.cue("", "stop");
+          this.touch(now);
+          return true;
+        }
+      }
+    }
+
     let changed = false;
     const expired = (t: TimerState | null | undefined) =>
       !!t && timerRunning(t) && timerRemaining(t, now) <= 0;
@@ -919,6 +947,73 @@ export class OlympiaGame {
           this.cue("", "stop");
         }
         return OK;
+      case "summary:start": {
+        const isAuto = a.isAuto !== false && a.auto !== false;
+        // Sort active seats: score ascending. Tie break: seatId ascending
+        const orderedSeats = [...this.activeSeatIds].sort((x, y) => {
+          const sx = this.seat(x)?.score ?? 0;
+          const sy = this.seat(y)?.score ?? 0;
+          if (sx !== sy) return sx - sy;
+          return x - y;
+        });
+        if (orderedSeats.length === 0) return fail("Không có thí sinh");
+        st.showScoreboard = false;
+        st.summaryState = {
+          active: true,
+          currentIndex: 0,
+          orderedSeats,
+          isAuto,
+          isFullscreen: Boolean(a.isFullscreen),
+          lastAdvanceAt: now,
+        };
+        this.cue("6_NhacKhac/summary", "bgm");
+        const firstSeat = orderedSeats[0];
+        st.studioCamera = 5 + firstSeat;
+        return OK;
+      }
+      case "summary:next": {
+        if (!st.summaryState || !st.summaryState.active) return fail("Chưa bắt đầu tổng kết điểm");
+        const nextIdx = st.summaryState.currentIndex + 1;
+        if (nextIdx < st.summaryState.orderedSeats.length) {
+          st.summaryState.currentIndex = nextIdx;
+          st.summaryState.lastAdvanceAt = now;
+          const nextSeat = st.summaryState.orderedSeats[nextIdx];
+          st.studioCamera = 5 + nextSeat;
+        } else {
+          st.summaryState.active = false;
+          st.studioCamera = 10;
+          this.cue("", "stop");
+        }
+        return OK;
+      }
+      case "summary:prev": {
+        if (!st.summaryState || !st.summaryState.active) return fail("Chưa bắt đầu tổng kết điểm");
+        const prevIdx = Math.max(0, st.summaryState.currentIndex - 1);
+        st.summaryState.currentIndex = prevIdx;
+        st.summaryState.lastAdvanceAt = now;
+        const prevSeat = st.summaryState.orderedSeats[prevIdx];
+        st.studioCamera = 5 + prevSeat;
+        return OK;
+      }
+      case "summary:toggleAuto": {
+        if (!st.summaryState || !st.summaryState.active) return fail("Chưa bắt đầu tổng kết điểm");
+        st.summaryState.isAuto = !st.summaryState.isAuto;
+        st.summaryState.lastAdvanceAt = now;
+        return OK;
+      }
+      case "summary:toggleFullscreen": {
+        if (!st.summaryState || !st.summaryState.active) return fail("Chưa bắt đầu tổng kết điểm");
+        st.summaryState.isFullscreen = !st.summaryState.isFullscreen;
+        return OK;
+      }
+      case "summary:stop": {
+        if (st.summaryState) {
+          st.summaryState.active = false;
+        }
+        st.studioCamera = 10;
+        this.cue("", "stop");
+        return OK;
+      }
     }
 
     if (st.banner) st.banner = null;
@@ -1501,8 +1596,7 @@ export class OlympiaGame {
         return OK;
       }
       case "vcnv:blank": {
-        v.phase = "question";
-        this.cue("6_NhacKhac/blank_space");
+        v.phase = "waitingAnswer";
         return OK;
       }
       case "vcnv:revealRowText": {
@@ -1521,7 +1615,7 @@ export class OlympiaGame {
             v.centerQuestion = { q: "Câu hỏi gợi ý cuối cùng tại ô trung tâm", a: v.keyword };
           }
           v.currentRow = 4;
-          v.phase = "question";
+          v.phase = "selecting";
           resetTimer(v.timer, rs.vcnv.rowTimerMs);
           v.answers = {};
           v.answersRevealed = false;
@@ -1533,7 +1627,7 @@ export class OlympiaGame {
         }
         if (v.rows[i].opened) return fail("Hàng này đã mở");
         v.currentRow = i;
-        v.phase = "question";
+        v.phase = "selecting";
         resetTimer(v.timer, rs.vcnv.rowTimerMs);
         v.answers = {};
         v.answersRevealed = false;
@@ -1547,6 +1641,7 @@ export class OlympiaGame {
         if (row < 0) return fail("Chưa chọn hàng");
         if (timerRunning(v.timer)) pauseTimer(v.timer, now);
         else {
+          v.phase = "question";
           startTimer(v.timer, now);
           this.cue("2_VuotChuongNgaiVat/15s_tick", "bgm");
         }
@@ -1586,10 +1681,26 @@ export class OlympiaGame {
           changes[id] = rs.vcnv.rowPoints;
         });
         v.rowResults[row] = awarded;
-        if (row === 4) v.centerWrong = false;
-        else if (v.rows[row]) {
-          v.rows[row].wrong = false;
-          v.rows[row].used = true;
+        if (awarded.length > 0) {
+          if (row === 4) {
+            v.centerOpened = true;
+            v.piecesRevealed[4] = true;
+            v.centerWrong = false;
+          } else if (v.rows[row]) {
+            if (!v.rows[row].opened) {
+              v.rows[row].opened = true;
+              v.piecesRevealed[row] = true;
+              v.openedCount += 1;
+            }
+            v.rows[row].wrong = false;
+            v.rows[row].used = true;
+          }
+        } else {
+          if (row === 4) v.centerWrong = false;
+          else if (v.rows[row]) {
+            v.rows[row].wrong = false;
+            v.rows[row].used = true;
+          }
         }
         this.recordOpenedQuestion(qText);
         const orderedSeats = [...this.activeSeatIds].sort((x, y) => {
@@ -1630,8 +1741,8 @@ export class OlympiaGame {
           verdict: "correct",
           scoreChanges: changes,
         });
-        v.phase = "answers";
-        v.answersRevealed = true;
+        v.phase = "grid";
+        v.answersRevealed = false;
         pauseTimer(v.timer, now);
         this.cue("2_VuotChuongNgaiVat/correct");
         return OK;
@@ -1684,22 +1795,23 @@ export class OlympiaGame {
           verdict: "wrong",
           scoreChanges: {},
         });
-        v.phase = "answers";
-        v.answersRevealed = true;
+        v.phase = "grid";
+        v.answersRevealed = false;
         pauseTimer(v.timer, now);
         this.cue("2_VuotChuongNgaiVat/wrong");
         return OK;
       }
       case "vcnv:revealTile": {
         const i = a.row != null ? Number(a.row) : row;
-        if (!(i >= 0 && i <= 4)) return fail("Chưa chọn hàng");
-        if (i === 4) {
-          v.centerOpened = true;
-          v.piecesRevealed[4] = true;
-        } else if (!v.rows[i].opened) {
-          v.rows[i].opened = true;
-          v.piecesRevealed[i] = true;
-          v.openedCount += 1;
+        if (i >= 0 && i <= 4) {
+          if (i === 4) {
+            v.centerOpened = true;
+            v.piecesRevealed[4] = true;
+          } else if (!v.rows[i].opened) {
+            v.rows[i].opened = true;
+            v.piecesRevealed[i] = true;
+            v.openedCount += 1;
+          }
         }
         v.currentRow = -1;
         v.phase = "grid";
@@ -1827,7 +1939,6 @@ export class OlympiaGame {
       }
       case "tt:blank": {
         tt.phase = "idle";
-        this.cue("6_NhacKhac/blank_space");
         return OK;
       }
       case "tt:revealAndGrade": {
@@ -2688,6 +2799,34 @@ export class OlympiaGame {
     return this.setPackage(points, now);
   }
 
+  setQuestionSet(newSet: OlympiaQuestionSet): void {
+    this.config.questionSet = newSet;
+    const qs = newSet;
+    const st = this.state;
+    // Update VCNV if round exists
+    if (st.vcnv) {
+      st.vcnv.keyword = qs.vcnv.answer;
+      st.vcnv.mysteryImage = qs.vcnv.mysteryImage;
+      st.vcnv.centerQuestion = qs.vcnv.centerQuestion;
+      st.vcnv.rows.forEach((r, i) => {
+        if (!r.opened) {
+          r.hint = qs.vcnv.rows[i]?.hint ?? r.hint;
+          r.answer = qs.vcnv.rows[i]?.answer ?? r.answer;
+          r.letterCount = qs.vcnv.rows[i]?.letterCount ?? r.letterCount;
+        }
+      });
+    }
+    // Update Tang Toc questions if round exists
+    if (st.tangToc) {
+      st.tangToc.questions = qs.tangToc.slice(0, 4);
+      st.tangToc.backupQuestions =
+        qs.tangTocBackup && qs.tangTocBackup.length > 0
+          ? qs.tangTocBackup
+          : qs.tangToc.slice(4, 8);
+    }
+    this.touch(Date.now());
+  }
+
   // ── views ──
   /** Redacted snapshot for a given audience. */
   view(role: "host" | "display" | "player", seatId?: number): OlympiaState {
@@ -2706,11 +2845,36 @@ export class OlympiaGame {
       if (s.khoiDong.current && s.khoiDong.phase !== "result") delete (s.khoiDong.current as { a?: string }).a;
     }
     if (s.vcnv) {
+      if (s.vcnv.phase === "selecting") {
+        s.vcnv.rows.forEach((r, i) => {
+          if (s.vcnv!.currentRow === i) {
+            r.hint = "";
+          }
+        });
+        if (s.vcnv.currentRow === 4 && s.vcnv.centerQuestion) {
+          s.vcnv.centerQuestion = { ...s.vcnv.centerQuestion, q: "" };
+        }
+      }
       s.vcnv.rows.forEach((r, i) => {
         if (!r.opened && !(s.vcnv!.answersRevealed && s.vcnv!.currentRow === i)) r.answer = "";
       });
       if (s.vcnv.solvedBy == null && s.vcnv.phase !== "done") s.vcnv.keyword = s.vcnv.keyword.replace(/[^\s]/g, "•");
-      if (!s.vcnv.answersRevealed) s.vcnv.answers = keepSelf(s.vcnv.answers);
+      if (!s.vcnv.answersRevealed) {
+        if (role === "display") {
+          const redacted: Record<number, any> = {};
+          for (const [sId, ans] of Object.entries(s.vcnv.answers)) {
+            if (ans && ans.text && ans.text.trim()) {
+              redacted[Number(sId)] = {
+                ...ans,
+                text: "•",
+              };
+            }
+          }
+          s.vcnv.answers = redacted;
+        } else {
+          s.vcnv.answers = keepSelf(s.vcnv.answers);
+        }
+      }
       if (s.vcnv.centerQuestion) {
         if (s.vcnv.currentRow === 4 || s.vcnv.centerOpened || s.vcnv.solvedBy != null || s.vcnv.phase === "done") {
           const showCenterAns = s.vcnv.centerOpened || (s.vcnv.currentRow === 4 && s.vcnv.answersRevealed) || s.vcnv.solvedBy != null || s.vcnv.phase === "done";
@@ -2733,7 +2897,17 @@ export class OlympiaGame {
         q: i === s.tangToc!.qIdx && s.tangToc!.phase !== "idle" ? q.q : undefined,
       }));
       if (s.tangToc.phase === "question" || s.tangToc.phase === "idle") {
-        s.tangToc.submissions = keepSelf(s.tangToc.submissions);
+        if (role === "display") {
+          const redacted: Record<number, any> = {};
+          for (const [sId, sub] of Object.entries(s.tangToc.submissions)) {
+            if (sub && sub.answer && sub.answer.trim()) {
+              redacted[Number(sId)] = { ...sub, answer: "•" };
+            }
+          }
+          s.tangToc.submissions = redacted;
+        } else {
+          s.tangToc.submissions = keepSelf(s.tangToc.submissions);
+        }
       }
     }
     if (s.veDich) {

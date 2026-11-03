@@ -16,6 +16,7 @@ import {
   TangTocRankedAnswersGraphic,
   GlossyBlackDomeButton,
   BlueSquareNumberBadge,
+  SummaryLowerThirdGraphic,
 } from "./Vtv3BroadcastGraphics";
 
 const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
@@ -40,7 +41,7 @@ function hasActiveRoundContent(state: OlympiaState): boolean {
     case "vcnv": {
       const v = state.vcnv;
       if (!v) return false;
-      return v.phase === "grid" || v.phase === "question" || v.phase === "answers" || Boolean(v.answersRevealed);
+      return v.phase === "grid" || v.phase === "selecting" || v.phase === "question" || v.phase === "answers" || Boolean(v.answersRevealed);
     }
     case "tangToc": {
       const tt = state.tangToc;
@@ -124,7 +125,11 @@ function ContestantIntroChyron({ state }: { state: OlympiaState }) {
 
 export default function DisplayScreen({ code }: { code: string }) {
   const { state, join, connected, serverNow } = useOlympiaSocket({ code, role: "display" });
-  const [audioOn, setAudioOn] = useState(true);
+  const isMutedParam =
+    typeof window !== "undefined" &&
+    (new URLSearchParams(window.location.search).get("mute") === "1" ||
+      new URLSearchParams(window.location.search).get("audio") === "0");
+  const [audioOn, setAudioOn] = useState(!isMutedParam);
   useOlympiaAudio(state, join?.audioSeason, audioOn);
 
   // Auto-camera and question overlay visibility state
@@ -149,10 +154,9 @@ export default function DisplayScreen({ code }: { code: string }) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const isVcnvReveal = state.currentRound === "vcnv" && Boolean(state.vcnv?.answersRevealed);
   const isTangTocReveal =
-    state.currentRound === "tangToc" &&
-    (state.tangToc?.phase === "ranking" || state.tangToc?.phase === "graded");
-  const isTangTocQuestion = state.currentRound === "tangToc" && state.tangToc?.phase === "question";
-  const isVcnvFullscreen = state.currentRound === "vcnv";
+    state.currentRound === "tangToc" && state.tangToc?.phase === "ranking";
+  const isTangTocQuestion = state.currentRound === "tangToc" && (state.tangToc?.phase === "question" || state.tangToc?.phase === "graded");
+  const isVcnvFullscreen = state.currentRound === "vcnv" && state.vcnv?.phase !== "waitingAnswer";
 
   const showFullscreen =
     isVcnvReveal ||
@@ -315,9 +319,12 @@ export default function DisplayScreen({ code }: { code: string }) {
           )
         )}
 
-        {/* Score strip at bottom when not in Khởi Động and not hidden */}
-        {state.stage !== "lobby" && state.currentRound !== "khoiDong" && !isOverlayHidden && isLowerThird && (
-          <div className="shrink-0 px-2 py-2 relative z-20 pointer-events-auto">
+        {/* ── 6. SUMMARY LOWER-THIRD / FULLSCREEN GRAPHIC ── */}
+        {state.summaryState?.active && <SummaryLowerThirdGraphic state={state} />}
+
+        {/* ── 7. PERSISTENT GLOBAL SCORE STRIP (ALWAYS VISIBLE WHEN NOT IN SUMMARY) ── */}
+        {state.stage !== "lobby" && !isOverlayHidden && !state.summaryState?.active && (
+          <div className="shrink-0 px-2 py-1.5 relative z-40 pointer-events-auto bg-black/60 backdrop-blur-sm border-t border-cyan-500/20">
             <ScoreStrip state={state} large highlight={highlightSeats(state)} />
           </div>
         )}
@@ -648,7 +655,7 @@ function TangToc({ state, serverNow }: P) {
   if (!tt || tt.phase === "idle") return null;
 
   // 1. Candidate Answers Revealed -> Fullscreen VTV3 Vertical Brass Rail Ranked Layout (Image 5)
-  if (tt.phase === "ranking" || tt.phase === "graded") {
+  if (tt.phase === "ranking") {
     return <TangTocRankedAnswersGraphic state={state} />;
   }
 

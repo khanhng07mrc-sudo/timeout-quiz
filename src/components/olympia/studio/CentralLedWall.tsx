@@ -809,7 +809,7 @@ function renderRoundGraphicsToCanvas(
   }
 
   // 2. TĂNG TỐC Ranking Revealed -> Vertical Brass Rail with 4 Ranked Plaques
-  if (round === "tangToc" && (state.tangToc?.phase === "ranking" || state.tangToc?.phase === "graded")) {
+  if (round === "tangToc" && state.tangToc?.phase === "ranking") {
     ctx.save();
     ctx.font = '900 44px "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = "#ffd700";

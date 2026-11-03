@@ -132,27 +132,305 @@ function BuzzButton({ enabled, onPress, label = "BẤM CHUÔNG" }: { enabled: bo
   );
 }
 
-function AnswerBox({ enabled, emit, event = "answer", placeholder }: { enabled: boolean; emit: Emit; event?: string; placeholder?: string }) {
+function AnswerBox({
+  enabled,
+  emit,
+  event = "answer",
+  placeholder,
+  resetKey,
+}: {
+  enabled: boolean;
+  emit: Emit;
+  event?: string;
+  placeholder?: string;
+  resetKey?: string | number;
+}) {
   const [text, setText] = useState("");
+  const [lastSubmitted, setLastSubmitted] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    setText("");
+    setLastSubmitted(null);
+    setMsg("");
+  }, [resetKey]);
+
   const send = async () => {
-    const r = await emit(event, { text });
-    setMsg(r.ok ? "✔ Đã gửi" : r.error || "Lỗi");
+    if (!text.trim()) return;
+    const submittedText = text.trim();
+    setText("");
+    setLastSubmitted(submittedText);
+    const r = await emit(event, { text: submittedText });
+    setMsg(r.ok ? "✔ Đã gửi" : r.error || "Lỗi khi gửi");
   };
+
   return (
-    <div className="space-y-2">
+    <div className="w-full space-y-2 select-text">
       <input
+        type="text"
         value={text}
         disabled={!enabled}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && enabled && send()}
         placeholder={placeholder ?? "Nhập đáp án…"}
-        className="w-full rounded-xl bg-slate-800 border border-white/20 px-4 py-4 text-2xl outline-none focus:border-sky-400 disabled:opacity-50"
+        className="w-full rounded-xl bg-slate-800 border-2 border-white/20 px-4 py-3 sm:py-4 text-xl sm:text-2xl text-white outline-none focus:border-sky-400 disabled:opacity-50 select-text"
+        autoComplete="off"
+        spellCheck="false"
       />
-      <button disabled={!enabled} onClick={send} className="w-full rounded-xl bg-sky-500 text-slate-950 font-black text-xl py-3 disabled:opacity-40">
+      <button
+        type="button"
+        disabled={!enabled}
+        onClick={send}
+        className="w-full rounded-xl bg-sky-500 hover:bg-sky-400 active:scale-[0.99] transition text-slate-950 font-black text-lg sm:text-xl py-2.5 sm:py-3 disabled:opacity-40 cursor-pointer shadow-md"
+      >
         GỬI
       </button>
-      {msg && <div className="text-center text-sm text-slate-300">{msg}</div>}
+      {lastSubmitted && (
+        <div className="text-center text-sm sm:text-base font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 rounded-lg py-1 px-2 select-text">
+          Đáp án gần nhất: <span className="text-white font-extrabold underline">{lastSubmitted}</span>
+        </div>
+      )}
+      {msg && <div className="text-center text-xs sm:text-sm text-slate-300">{msg}</div>}
+    </div>
+  );
+}
+
+function VcnvPlayerScreen({
+  state,
+  seatId,
+  emit,
+  serverNow,
+}: {
+  state: OlympiaState;
+  seatId: number;
+  emit: Emit;
+  serverNow: () => number;
+}) {
+  const v = state.vcnv!;
+  const running = v.timer.startedAt != null;
+  const out = v.eliminatedSeats.includes(seatId);
+  const [tab, setTab] = useState<"question" | "pieces">("question");
+
+  useEffect(() => {
+    if (v.phase === "question") {
+      setTab("question");
+    } else if (v.phase === "grid" || v.phase === "done") {
+      setTab("pieces");
+    }
+  }, [v.phase]);
+
+  const hasBuzzed = v.bells.some((b) => b.seat === seatId);
+
+  return (
+    <div className="w-full h-full flex flex-col justify-between max-w-lg mx-auto gap-2 py-1 select-none">
+      {/* 2 Tabs Header */}
+      <div className="grid grid-cols-2 gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => setTab("question")}
+          className={`py-2 px-3 rounded-xl font-black text-xs sm:text-sm border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+            tab === "question"
+              ? "bg-cyan-500 text-slate-950 border-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.5)]"
+              : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+          }`}
+        >
+          <span>❓</span>
+          <span className="truncate">Câu hỏi hàng ngang</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("pieces")}
+          className={`py-2 px-3 rounded-xl font-black text-xs sm:text-sm border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+            tab === "pieces"
+              ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.5)]"
+              : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+          }`}
+        >
+          <span>🧩</span>
+          <span className="truncate">Miếng ghép / CNV</span>
+        </button>
+      </div>
+
+      {tab === "question" ? (
+        <div className="flex-1 flex flex-col justify-between items-center gap-2 min-h-0 overflow-y-auto no-scrollbar w-full">
+          {/* Question / Status Container */}
+          <div className="w-full rounded-2xl bg-white/5 border border-white/10 p-3 sm:p-4 text-center shadow-inner flex flex-col items-center justify-center min-h-[90px] max-h-[160px] overflow-y-auto no-scrollbar">
+            {v.currentRow < 0 ? (
+              <div className="text-slate-400 text-sm font-semibold animate-pulse">
+                Quản trò đang chuẩn bị chọn hàng ngang…
+              </div>
+            ) : v.phase === "selecting" ? (
+              <div className="space-y-1">
+                <div className="text-amber-300 text-base sm:text-lg font-black uppercase tracking-wider animate-pulse">
+                  {v.currentRow < 4 ? `HÀNG NGANG SỐ ${v.currentRow + 1}` : "⭐ Ô TRUNG TÂM"}
+                </div>
+                <div className="text-slate-300 text-xs sm:text-sm">
+                  Đã chọn. Đang đợi MC đọc và mở câu hỏi…
+                </div>
+              </div>
+            ) : v.currentRow < 4 ? (
+              <div className="space-y-1">
+                <div className="text-sky-300 text-xs sm:text-sm font-black uppercase tracking-wider">
+                  Hàng {v.currentRow + 1} ({v.rows[v.currentRow]?.letterCount || v.rows[v.currentRow]?.answer?.length || "?"} chữ cái)
+                </div>
+                <div className="text-white text-base sm:text-lg font-bold leading-relaxed select-text">
+                  {v.rows[v.currentRow]?.hint || "Đang tải câu hỏi…"}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <div className="text-amber-400 text-xs sm:text-sm font-black uppercase tracking-wider">
+                  ⭐ Ô TRUNG TÂM
+                </div>
+                <div className="text-white text-base sm:text-lg font-bold leading-relaxed select-text">
+                  {v.centerQuestion?.q || "Đang tải câu hỏi trung tâm…"}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Timer timer={v.timer} serverNow={serverNow} />
+
+          {/* Answer Box */}
+          <div className="w-full">
+            <AnswerBox
+              enabled={running && !out && (v.phase === "question" || v.phase === "waitingAnswer") && v.currentRow >= 0 && v.currentRow <= 4}
+              emit={emit}
+              placeholder="Nhập đáp án hàng ngang…"
+              resetKey={`${v.currentRow}`}
+            />
+          </div>
+
+          {/* Buzz Button */}
+          <div className="shrink-0 flex flex-col items-center gap-1">
+            <BuzzButton
+              enabled={!out && v.phase !== "done" && !hasBuzzed}
+              onPress={() => emit("buzz")}
+              label="CHƯỚNG NGẠI VẬT"
+            />
+            {hasBuzzed && (
+              <div className="text-amber-300 text-xs sm:text-sm font-black animate-pulse">
+                🔔 Bạn đã bấm chuông trả lời Chướng Ngại Vật!
+              </div>
+            )}
+            {out && (
+              <div className="text-rose-400 text-xs sm:text-sm font-bold text-center">
+                Bạn đã bị loại khỏi lượt đoán Chướng ngại vật
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Tab 2: Pieces and CNV Overview */
+        <div className="flex-1 flex flex-col justify-between items-center gap-2 min-h-0 overflow-y-auto no-scrollbar w-full">
+          {/* Keyword Info Banner */}
+          <div className="w-full rounded-2xl bg-gradient-to-r from-amber-950/40 via-purple-950/50 to-amber-950/40 border border-amber-500/30 p-2.5 sm:p-3 text-center shadow-md">
+            <div className="text-[11px] font-black uppercase tracking-widest text-amber-300">
+              TỪ KHÓA CHƯỚNG NGẠI VẬT
+            </div>
+            <div className="text-xl sm:text-2xl font-black font-mono tracking-widest text-white my-1 select-text">
+              {v.keyword || "••••••••"}
+            </div>
+            <div className="text-xs text-amber-200/80 font-medium">
+              Gồm {v.keyword.replace(/\s+/g, "").length} chữ cái
+            </div>
+          </div>
+
+          {/* 4 Quadrants + Center Grid */}
+          <div className="w-full max-w-sm aspect-video sm:aspect-[4/3] rounded-2xl bg-slate-900/90 border-2 border-white/20 p-2 relative grid grid-cols-2 grid-rows-2 gap-2 shadow-2xl overflow-hidden">
+            {/* Quadrant 1: Row 1 */}
+            <div
+              className={`rounded-xl p-2 flex flex-col items-center justify-center text-center border transition ${
+                v.piecesRevealed[0]
+                  ? "bg-emerald-900/60 border-emerald-400 text-white shadow-inner"
+                  : "bg-slate-800/80 border-slate-700 text-slate-400"
+              }`}
+            >
+              <span className="text-xs font-black uppercase text-amber-300">Mảnh 1 (Hàng 1)</span>
+              <span className="text-xs sm:text-sm font-bold mt-1 line-clamp-2">
+                {v.rows[0]?.opened ? v.rows[0].answer : v.piecesRevealed[0] ? "ĐÃ MỞ" : "🔒 Khóa"}
+              </span>
+            </div>
+
+            {/* Quadrant 2: Row 2 */}
+            <div
+              className={`rounded-xl p-2 flex flex-col items-center justify-center text-center border transition ${
+                v.piecesRevealed[1]
+                  ? "bg-emerald-900/60 border-emerald-400 text-white shadow-inner"
+                  : "bg-slate-800/80 border-slate-700 text-slate-400"
+              }`}
+            >
+              <span className="text-xs font-black uppercase text-amber-300">Mảnh 2 (Hàng 2)</span>
+              <span className="text-xs sm:text-sm font-bold mt-1 line-clamp-2">
+                {v.rows[1]?.opened ? v.rows[1].answer : v.piecesRevealed[1] ? "ĐÃ MỞ" : "🔒 Khóa"}
+              </span>
+            </div>
+
+            {/* Quadrant 4: Row 4 (Bottom-Left) */}
+            <div
+              className={`rounded-xl p-2 flex flex-col items-center justify-center text-center border transition ${
+                v.piecesRevealed[2]
+                  ? "bg-emerald-900/60 border-emerald-400 text-white shadow-inner"
+                  : "bg-slate-800/80 border-slate-700 text-slate-400"
+              }`}
+            >
+              <span className="text-xs font-black uppercase text-amber-300">Mảnh 4 (Hàng 4)</span>
+              <span className="text-xs sm:text-sm font-bold mt-1 line-clamp-2">
+                {v.rows[3]?.opened ? v.rows[3].answer : v.piecesRevealed[2] ? "ĐÃ MỞ" : "🔒 Khóa"}
+              </span>
+            </div>
+
+            {/* Quadrant 3: Row 3 (Bottom-Right) */}
+            <div
+              className={`rounded-xl p-2 flex flex-col items-center justify-center text-center border transition ${
+                v.piecesRevealed[3]
+                  ? "bg-emerald-900/60 border-emerald-400 text-white shadow-inner"
+                  : "bg-slate-800/80 border-slate-700 text-slate-400"
+              }`}
+            >
+              <span className="text-xs font-black uppercase text-amber-300">Mảnh 3 (Hàng 3)</span>
+              <span className="text-xs sm:text-sm font-bold mt-1 line-clamp-2">
+                {v.rows[2]?.opened ? v.rows[2].answer : v.piecesRevealed[3] ? "ĐÃ MỞ" : "🔒 Khóa"}
+              </span>
+            </div>
+
+            {/* Center Piece 5 */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div
+                className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex flex-col items-center justify-center text-center border-2 shadow-2xl p-1 pointer-events-auto transition ${
+                  v.piecesRevealed[4] || v.centerOpened
+                    ? "bg-amber-600/90 border-amber-300 text-white"
+                    : "bg-slate-950/90 border-violet-500/50 text-slate-400"
+                }`}
+              >
+                <span className="text-[10px] font-black uppercase text-yellow-300">⭐ Ô 5</span>
+                <span className="text-[11px] font-bold">
+                  {v.centerOpened ? "ĐÃ MỞ" : v.piecesRevealed[4] ? "ĐÃ MỞ" : "Trung tâm"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Buzzer in Tab 2 */}
+          <div className="shrink-0 flex flex-col items-center gap-1">
+            <BuzzButton
+              enabled={!out && v.phase !== "done" && !hasBuzzed}
+              onPress={() => emit("buzz")}
+              label="BẤM CHUÔNG CNV"
+            />
+            {hasBuzzed && (
+              <div className="text-amber-300 text-xs sm:text-sm font-black animate-pulse">
+                🔔 Bạn đã bấm chuông trả lời Chướng Ngại Vật!
+              </div>
+            )}
+            {out && (
+              <div className="text-rose-400 text-xs sm:text-sm font-bold text-center">
+                Bạn đã bị loại khỏi lượt đoán Chướng ngại vật
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -237,30 +515,28 @@ function Round({ state, seatId, emit, serverNow }: { state: OlympiaState; seatId
       );
     }
     case "vcnv": {
-      const v = state.vcnv!;
-      const running = v.timer.startedAt != null;
-      const out = v.eliminatedSeats.includes(seatId);
-      return (
-        <>
-          {v.currentRow >= 0 && v.currentRow < 4 && <div className="text-center text-xl">Hàng {v.currentRow + 1}: {v.rows[v.currentRow].hint}</div>}
-          {v.currentRow === 4 && v.centerQuestion && <div className="text-center text-xl text-amber-300">⭐ Ô Trung Tâm: {v.centerQuestion.q}</div>}
-          <Timer timer={v.timer} serverNow={serverNow} />
-          <AnswerBox enabled={running && !out && v.currentRow >= 0 && v.currentRow <= 4} emit={emit} />
-          <BuzzButton enabled={!out && v.phase !== "done" && !v.bells.some((b) => b.seat === seatId)} onPress={() => emit("buzz")} label="CHƯỚNG NGẠI VẬT" />
-          {out && <Center>Bạn đã bị loại khỏi lượt đoán chướng ngại vật</Center>}
-        </>
-      );
+      return <VcnvPlayerScreen state={state} seatId={seatId} emit={emit} serverNow={serverNow} />;
     }
     case "tangToc": {
       const tt = state.tangToc!;
       const q = tt.questions[tt.qIdx];
       return (
-        <>
-          {q?.q && tt.phase !== "idle" && <div className="text-center text-xl">{q.q}</div>}
+        <div className="w-full h-full flex flex-col items-center justify-between gap-2 max-w-lg mx-auto py-1">
+          <div className="w-full flex-1 min-h-[70px] max-h-[120px] rounded-2xl bg-white/5 border border-white/10 p-3 flex flex-col items-center justify-center text-center shadow-inner overflow-y-auto no-scrollbar">
+            {q?.q && tt.phase !== "idle" ? (
+              <div className="text-white text-base sm:text-lg font-bold select-text">{q.q}</div>
+            ) : (
+              <div className="text-slate-400 text-sm animate-pulse">Theo dõi hình ảnh trên màn hình chiếu</div>
+            )}
+          </div>
           <Timer timer={tt.timer} serverNow={serverNow} />
-          <AnswerBox enabled={tt.phase === "question" && tt.timer.startedAt != null} emit={emit} />
-          <Center>Xem ảnh/video trên màn hình chiếu.</Center>
-        </>
+          <AnswerBox
+            enabled={tt.phase === "question" && tt.timer.startedAt != null}
+            emit={emit}
+            resetKey={tt.qIdx}
+          />
+          <div className="text-slate-400 text-xs text-center">Xem ảnh/video chi tiết trên màn hình chiếu</div>
+        </div>
       );
     }
     case "veDich": {

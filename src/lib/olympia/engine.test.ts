@@ -1623,3 +1623,109 @@ test("VCNV: only accepts alternate answer if it is a valid synonym AND matches e
   // Verify row results contains exactly TS1 and TS2 (ids 0 and 1)
   assert.deepEqual(g.state.vcnv!.rowResults[0], [0, 1]);
 });
+
+test("VCNV selecting, openQuestion, blank, auto-grid on correct/wrong & Summary lifecycle", () => {
+  const g = game("O26", ["vcnv"], 4);
+  act(g, "game:start");
+
+  // 1. Select row -> phase is selecting, hint is hidden from display & player
+  act(g, "vcnv:selectRow", { row: 1 });
+  assert.equal(g.state.vcnv!.phase, "selecting");
+  assert.equal(g.view("display").vcnv!.rows[1].hint, "");
+  assert.equal(g.view("player", 0).vcnv!.rows[1].hint, "");
+  assert.ok(g.view("host").vcnv!.rows[1].hint.length > 0, "host can read hint");
+
+  // 2. Open question -> phase is question, hint is revealed
+  act(g, "vcnv:openQuestion");
+  assert.equal(g.state.vcnv!.phase, "question");
+  assert.ok(g.view("display").vcnv!.rows[1].hint.length > 0);
+  assert.ok(g.view("player", 0).vcnv!.rows[1].hint.length > 0);
+
+  // 3. Blank wait background -> phase is waitingAnswer
+  act(g, "vcnv:blank");
+  assert.equal(g.state.vcnv!.phase, "waitingAnswer");
+
+  // 4. Timer starts -> phase is question
+  act(g, "vcnv:timer", {}, 1000);
+  assert.equal(g.state.vcnv!.phase, "question");
+
+  // Player answers: verify display role gets redacted answer text ('•') but preserves presence for answer badges
+  g.playerAnswer(0, SAMPLE_QUESTION_SET.vcnv.rows[1].answer, 2000);
+  const dispBeforeReveal = g.view("display");
+  assert.ok(dispBeforeReveal.vcnv!.answers[0]);
+  assert.equal(dispBeforeReveal.vcnv!.answers[0].text, "•"); // redacted from screen viewers before reveal
+  assert.equal(dispBeforeReveal.vcnv!.answers[0].at, 2000); // timestamp preserved for chronological ordering
+
+  act(g, "vcnv:reveal", {}, 3000);
+  act(g, "vcnv:correct", {}, 4000);
+  assert.equal(g.state.vcnv!.phase, "grid");
+  assert.equal(g.state.vcnv!.rows[1].opened, true);
+  assert.equal(g.state.vcnv!.piecesRevealed[1], true);
+
+  // 5. Test setQuestionSet with BAC_AI_QUESTION_SET
+  g.setQuestionSet(BAC_AI_QUESTION_SET);
+  assert.equal(g.state.vcnv!.keyword, "ẮC QUY NƯỚC");
+
+  // 6. Test Summary Lifecycle
+  // Setup scores: TS1: 50, TS2: 20, TS3: 80, TS4: 20
+  g.state.seats[0].score = 50;
+  g.state.seats[1].score = 20;
+  g.state.seats[2].score = 80;
+  g.state.seats[3].score = 20;
+
+  act(g, "summary:start", { isAuto: true }, 10000);
+  const sm = g.state.summaryState!;
+  assert.ok(sm.active);
+  // Lowest to highest, tie-break by seatId: TS2 (id 1, 20đ), TS4 (id 3, 20đ), TS1 (id 0, 50đ), TS3 (id 2, 80đ)
+  assert.deepEqual(sm.orderedSeats, [1, 3, 0, 2]);
+  assert.equal(sm.currentIndex, 0);
+  assert.equal(g.state.studioCamera, 5 + 1); // CAM 6 for TS2
+
+  // Advance 3.5s on tick -> TS4
+  g.tick(13500);
+  assert.equal(g.state.summaryState!.currentIndex, 1);
+  assert.equal(g.state.studioCamera, 5 + 3); // CAM 8 for TS4
+
+  // Advance 3.5s on tick -> TS1
+  g.tick(17000);
+  assert.equal(g.state.summaryState!.currentIndex, 2);
+  assert.equal(g.state.studioCamera, 5 + 0); // CAM 5 for TS1
+
+  // Advance 3.5s on tick -> TS3 (leader)
+  g.tick(20500);
+  assert.equal(g.state.summaryState!.currentIndex, 3);
+  assert.equal(g.state.studioCamera, 5 + 2); // CAM 7 for TS3
+
+  // Advance 3.5s on tick -> Concludes summary, returns to CAM 10 and stops BGM
+  g.tick(24000);
+  assert.equal(g.state.summaryState?.active, false);
+  assert.equal(g.state.studioCamera, 10);
+  assert.equal(g.state.cue?.sound, "");
+
+  // 7. Test Tang Toc blank, redaction, and grading
+  const gTT = game("O26", ["tangToc"], 4);
+  act(gTT, "game:start");
+  act(gTT, "tt:selectQuestion", { qIdx: 0 });
+  act(gTT, "tt:show");
+  assert.equal(gTT.state.tangToc!.phase, "question");
+  act(gTT, "tt:timer", {}, 1000);
+  gTT.playerAnswer(0, "HÀ NỘI", 2000);
+
+  // Display view during question has redacted answer
+  const ttDisp = gTT.view("display");
+  assert.ok(ttDisp.tangToc!.submissions[0]);
+  assert.equal(ttDisp.tangToc!.submissions[0].answer, "•");
+
+  // tt:blank sets idle without playing sound
+  act(gTT, "tt:blank");
+  assert.equal(gTT.state.tangToc!.phase, "idle");
+
+  // Reveal ranking
+  act(gTT, "tt:reveal");
+  assert.equal(gTT.state.tangToc!.phase, "ranking");
+
+  // Grade: awards points and sets phase to graded
+  act(gTT, "tt:grade");
+  assert.equal(gTT.state.tangToc!.phase, "graded");
+});
+

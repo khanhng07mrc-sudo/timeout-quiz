@@ -230,30 +230,31 @@ function ContestantScoreDisplay({
  * Official Olympia White Polo Uniform, natural standing posture (arms at sides, clean desk).
  */
 interface ContestantStyleConfig {
+  gender: "female" | "male";
   skinTone: string;
   hairColor: string;
-  hairStyle: "side_part" | "textured_crop" | "wavy_volume" | "neat_fade" | "undercut" | "stylish_bob" | "classic_quiff" | "layered_fringe";
+  hairStyle: "ponytail" | "side_part" | "stylish_bob" | "textured_crop" | "layered_fringe" | "neat_fade" | "wavy_volume" | "undercut";
   hasGlasses: boolean;
   glassesColor?: string;
 }
 
 const CONTESTANT_STYLES: ContestantStyleConfig[] = [
-  // Seat 0 (Cam 5): Modern neat side-part, warm ivory skin, smart student glasses
-  { skinTone: "#fbd5b5", hairColor: "#1a1614", hairStyle: "side_part", hasGlasses: true, glassesColor: "#1e293b" },
-  // Seat 1 (Cam 6): Textured crop, golden beige skin, sharp athletic look
-  { skinTone: "#f5cbb0", hairColor: "#221c17", hairStyle: "textured_crop", hasGlasses: false },
-  // Seat 2 (Cam 7): Wavy volume hair, radiant warm skin, stylish thin metallic frames
-  { skinTone: "#fae0cd", hairColor: "#171412", hairStyle: "wavy_volume", hasGlasses: true, glassesColor: "#334155" },
-  // Seat 3 (Cam 8): Classic clean fade, warm tan skin, confident student look
-  { skinTone: "#eec3a2", hairColor: "#1f1a16", hairStyle: "neat_fade", hasGlasses: false },
-  // Seat 4 (TS 5): Layered fringe, soft ivory tone
-  { skinTone: "#fae3d2", hairColor: "#26201a", hairStyle: "layered_fringe", hasGlasses: false },
-  // Seat 5 (TS 6): Classic quiff, natural tone, glasses
-  { skinTone: "#f3c7a8", hairColor: "#1b1713", hairStyle: "classic_quiff", hasGlasses: true, glassesColor: "#0f172a" },
-  // Seat 6 (TS 7): Stylish bob cut, bright tone
-  { skinTone: "#fbe6d6", hairColor: "#201a15", hairStyle: "stylish_bob", hasGlasses: false },
-  // Seat 7 (TS 8): Clean undercut, warm olive tone
-  { skinTone: "#ebbe9b", hairColor: "#191512", hairStyle: "undercut", hasGlasses: false },
+  // Seat 0 (TS 1 / Cam 5): Nữ sinh thanh lịch đeo kính (giống Ảnh 2), da trắng hồng ấm #f3ceb3, tóc buộc thanh tú
+  { gender: "female", skinTone: "#f3ceb3", hairColor: "#171412", hairStyle: "ponytail", hasGlasses: true, glassesColor: "#334155" },
+  // Seat 1 (TS 2 / Cam 6): Nam sinh tóc gọn gàng năng động (giống Ảnh 3), da vàng ấm tự nhiên #e8be99
+  { gender: "male", skinTone: "#e8be99", hairColor: "#1a1614", hairStyle: "side_part", hasGlasses: false },
+  // Seat 2 (TS 3 / Cam 7): Nữ sinh tóc ngắn cá tính thanh thoát, da vàng sáng tự nhiên #dfb088
+  { gender: "female", skinTone: "#dfb088", hairColor: "#1f1a16", hairStyle: "stylish_bob", hasGlasses: false },
+  // Seat 3 (TS 4 / Cam 8): Nam sinh thư sinh đeo kính trí thức, da mật ong ấm #d9a67a
+  { gender: "male", skinTone: "#d9a67a", hairColor: "#181412", hairStyle: "textured_crop", hasGlasses: true, glassesColor: "#1e293b" },
+  // Seat 4 (TS 5 / Cam 11): Nữ sinh tóc mái thưa buông nhẹ, da trắng hồng ấm #f3ceb3
+  { gender: "female", skinTone: "#f3ceb3", hairColor: "#201a15", hairStyle: "layered_fringe", hasGlasses: false },
+  // Seat 5 (TS 6 / Cam 12): Nam sinh tóc cắt gọn gàng, da ấm tự nhiên #cfa075
+  { gender: "male", skinTone: "#cfa075", hairColor: "#171412", hairStyle: "neat_fade", hasGlasses: false },
+  // Seat 6 (TS 7 / Cam 13): Nữ sinh đeo kính gọng mảnh thanh lịch, tóc gợn sóng nhẹ, da ấm #e8be99
+  { gender: "female", skinTone: "#e8be99", hairColor: "#1c1815", hairStyle: "wavy_volume", hasGlasses: true, glassesColor: "#475569" },
+  // Seat 7 (TS 8 / Cam 14): Nam sinh phong thái tự tin, da vàng ấm #dfb088
+  { gender: "male", skinTone: "#dfb088", hairColor: "#191512", hairStyle: "undercut", hasGlasses: false },
 ];
 
 function ContestantFigure({ seatId }: { seatId: number }) {
@@ -265,18 +266,18 @@ function ContestantFigure({ seatId }: { seatId: number }) {
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
     if (chestRef.current) {
-      // Subtle vertical breathing oscillation (2.5mm amplitude)
-      chestRef.current.position.y = Math.sin(t * 1.8 + seatId * 1.2) * 0.0025;
+      // Subtle vertical breathing oscillation (2mm amplitude)
+      chestRef.current.position.y = Math.sin(t * 1.8 + seatId * 1.2) * 0.002;
       chestRef.current.scale.set(
-        1 + Math.sin(t * 1.8 + seatId) * 0.006,
+        1 + Math.sin(t * 1.8 + seatId) * 0.005,
         1,
-        1 + Math.sin(t * 1.8 + seatId) * 0.006
+        1 + Math.sin(t * 1.8 + seatId) * 0.005
       );
     }
     if (headRef.current) {
       // Gentle micro-tilt so the character feels attentive and alive
-      headRef.current.rotation.x = Math.sin(t * 1.1 + seatId) * 0.008;
-      headRef.current.rotation.y = Math.cos(t * 0.8 + seatId * 1.4) * 0.012;
+      headRef.current.rotation.x = Math.sin(t * 1.1 + seatId) * 0.006;
+      headRef.current.rotation.y = Math.cos(t * 0.8 + seatId * 1.4) * 0.010;
     }
   });
 
@@ -288,298 +289,361 @@ function ContestantFigure({ seatId }: { seatId: number }) {
   return (
     <group position={[0, 0, -0.42]}>
       {/* ── LOWER BODY & TROUSERS ── */}
-      <mesh position={[-0.082, 0.48, 0]}>
-        <cylinderGeometry args={[0.048, 0.040, 0.76, 16]} />
+      <mesh position={[-0.068, 0.48, 0]}>
+        <cylinderGeometry args={[0.040, 0.034, 0.76, 16]} />
         <meshStandardMaterial color={trouserColor} roughness={0.8} />
       </mesh>
-      <mesh position={[0.082, 0.48, 0]}>
-        <cylinderGeometry args={[0.048, 0.040, 0.76, 16]} />
+      <mesh position={[0.068, 0.48, 0]}>
+        <cylinderGeometry args={[0.040, 0.034, 0.76, 16]} />
         <meshStandardMaterial color={trouserColor} roughness={0.8} />
       </mesh>
       <mesh position={[0, 0.88, 0]}>
-        <boxGeometry args={[0.27, 0.12, 0.17]} />
+        <boxGeometry args={[0.24, 0.12, 0.15]} />
         <meshStandardMaterial color={trouserColor} roughness={0.8} />
       </mesh>
 
       {/* Belt & Gold Buckle */}
       <mesh position={[0, 0.95, 0]}>
-        <boxGeometry args={[0.29, 0.035, 0.18]} />
+        <boxGeometry args={[0.25, 0.032, 0.16]} />
         <meshStandardMaterial color="#1e293b" roughness={0.8} />
       </mesh>
-      <mesh position={[0, 0.95, 0.092]}>
-        <boxGeometry args={[0.036, 0.026, 0.008]} />
+      <mesh position={[0, 0.95, 0.082]}>
+        <boxGeometry args={[0.032, 0.024, 0.008]} />
         <meshStandardMaterial color="#f59e0b" metalness={0.8} roughness={0.2} />
       </mesh>
 
-      {/* ── UPPER BODY (Breathing Chest & Polo Shirt) ── */}
+      {/* ── UPPER BODY (Breathing Chest & Slender Vietnamese Student Polo) ── */}
       <group ref={chestRef}>
-        {/* Waist & Mid-torso (Tapered athletic student silhouette) */}
+        {/* Waist & Mid-torso (Slender Vietnamese student silhouette, 0.22m) */}
         <mesh position={[0, 1.08, 0]}>
-          <boxGeometry args={[0.28, 0.22, 0.17]} />
+          <boxGeometry args={[0.22, 0.20, 0.14]} />
           <meshStandardMaterial color={shirtColor} roughness={0.4} />
         </mesh>
 
-        {/* Upper Chest & Broad Shoulders (0.38m span) */}
+        {/* Upper Chest (Slender 0.28m, down from bulky 0.36m) */}
         <mesh position={[0, 1.28, 0]}>
-          <boxGeometry args={[0.36, 0.24, 0.19]} />
+          <boxGeometry args={[0.28, 0.22, 0.16]} />
           <meshStandardMaterial color={shirtColor} roughness={0.4} />
         </mesh>
-        {/* Clavicle / Shoulder Slope Form */}
+        {/* Clavicle / Shoulder Slope Form (Compact 0.26m width) */}
         <mesh position={[0, 1.39, 0]}>
-          <boxGeometry args={[0.34, 0.08, 0.17]} />
+          <boxGeometry args={[0.26, 0.07, 0.15]} />
           <meshStandardMaterial color={shirtColor} roughness={0.4} />
         </mesh>
 
         {/* ── 3D FOLDED POLO COLLAR & PLACKET ── */}
         {/* Left Lapel (Angled 3D Fold) */}
-        <mesh position={[-0.065, 1.44, 0.085]} rotation={[0.28, -0.15, -0.22]}>
-          <boxGeometry args={[0.075, 0.045, 0.012]} />
+        <mesh position={[-0.052, 1.43, 0.075]} rotation={[0.28, -0.15, -0.22]}>
+          <boxGeometry args={[0.065, 0.040, 0.010]} />
           <meshStandardMaterial color={collarColor} roughness={0.3} />
         </mesh>
         {/* Right Lapel (Angled 3D Fold) */}
-        <mesh position={[0.065, 1.44, 0.085]} rotation={[0.28, 0.15, 0.22]}>
-          <boxGeometry args={[0.075, 0.045, 0.012]} />
+        <mesh position={[0.052, 1.43, 0.075]} rotation={[0.28, 0.15, 0.22]}>
+          <boxGeometry args={[0.065, 0.040, 0.010]} />
           <meshStandardMaterial color={collarColor} roughness={0.3} />
         </mesh>
         {/* Collar Back Band */}
-        <mesh position={[0, 1.465, -0.05]} rotation={[-0.15, 0, 0]}>
-          <boxGeometry args={[0.16, 0.038, 0.018]} />
+        <mesh position={[0, 1.455, -0.04]} rotation={[-0.15, 0, 0]}>
+          <boxGeometry args={[0.13, 0.032, 0.016]} />
           <meshStandardMaterial color={collarColor} roughness={0.3} />
         </mesh>
         {/* Front Central Placket */}
-        <mesh position={[0, 1.35, 0.098]}>
-          <boxGeometry args={[0.032, 0.12, 0.008]} />
+        <mesh position={[0, 1.34, 0.082]}>
+          <boxGeometry args={[0.026, 0.11, 0.007]} />
           <meshStandardMaterial color={placketColor} roughness={0.3} />
         </mesh>
-        {/* Pearl Buttons (Top & Bottom on Placket) */}
-        <mesh position={[0, 1.38, 0.103]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.004, 0.004, 0.004, 10]} />
+        {/* Pearl Buttons */}
+        <mesh position={[0, 1.37, 0.087]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.0035, 0.0035, 0.004, 10]} />
           <meshStandardMaterial color="#f8fafc" roughness={0.2} metalness={0.4} />
         </mesh>
-        <mesh position={[0, 1.33, 0.103]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.004, 0.004, 0.004, 10]} />
+        <mesh position={[0, 1.32, 0.087]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.0035, 0.0035, 0.004, 10]} />
           <meshStandardMaterial color="#f8fafc" roughness={0.2} metalness={0.4} />
         </mesh>
 
         {/* Golden Laurel Branch Chest Badge (Left Breast) */}
-        <mesh position={[-0.09, 1.33, 0.10]}>
-          <boxGeometry args={[0.032, 0.024, 0.006]} />
+        <mesh position={[-0.075, 1.32, 0.085]}>
+          <boxGeometry args={[0.028, 0.020, 0.005]} />
           <meshStandardMaterial color="#f59e0b" metalness={0.7} roughness={0.2} />
         </mesh>
-        <mesh position={[-0.09, 1.33, 0.104]}>
-          <sphereGeometry args={[0.007, 10, 10]} />
+        <mesh position={[-0.075, 1.32, 0.088]}>
+          <sphereGeometry args={[0.006, 10, 10]} />
           <meshBasicMaterial color="#fef08a" />
         </mesh>
 
-        {/* ── SHORT SLEEVES & CUFFS ── */}
+        {/* ── SHORT SLEEVES & CUFFS (Snug fitting student biceps) ── */}
         {/* Left Sleeve */}
-        <mesh position={[-0.20, 1.32, 0.02]} rotation={[0.15, 0, -0.18]}>
-          <cylinderGeometry args={[0.052, 0.048, 0.14, 14]} />
+        <mesh position={[-0.15, 1.31, 0.02]} rotation={[0.15, 0, -0.16]}>
+          <cylinderGeometry args={[0.040, 0.036, 0.13, 14]} />
           <meshStandardMaterial color={shirtColor} roughness={0.4} />
         </mesh>
         {/* Left Sleeve Cuff Fold */}
-        <mesh position={[-0.215, 1.24, 0.03]} rotation={[0.15, 0, -0.18]}>
-          <cylinderGeometry args={[0.054, 0.054, 0.025, 14]} />
+        <mesh position={[-0.16, 1.24, 0.03]} rotation={[0.15, 0, -0.16]}>
+          <cylinderGeometry args={[0.042, 0.042, 0.022, 14]} />
           <meshStandardMaterial color="#ffffff" roughness={0.3} />
         </mesh>
 
         {/* Right Sleeve */}
-        <mesh position={[0.20, 1.32, 0.02]} rotation={[0.15, 0, 0.18]}>
-          <cylinderGeometry args={[0.052, 0.048, 0.14, 14]} />
+        <mesh position={[0.15, 1.31, 0.02]} rotation={[0.15, 0, 0.16]}>
+          <cylinderGeometry args={[0.040, 0.036, 0.13, 14]} />
           <meshStandardMaterial color={shirtColor} roughness={0.4} />
         </mesh>
         {/* Right Sleeve Cuff Fold */}
-        <mesh position={[0.215, 1.24, 0.03]} rotation={[0.15, 0, 0.18]}>
-          <cylinderGeometry args={[0.054, 0.054, 0.025, 14]} />
+        <mesh position={[0.16, 1.24, 0.03]} rotation={[0.15, 0, 0.16]}>
+          <cylinderGeometry args={[0.042, 0.042, 0.022, 14]} />
           <meshStandardMaterial color="#ffffff" roughness={0.3} />
         </mesh>
 
-        {/* ── ARMS & HANDS (Focused Student Posture Forward Toward Desk & Buzzer) ── */}
-        {/* Left Forearm angled forward toward desk */}
-        <mesh position={[-0.20, 1.10, 0.12]} rotation={[0.75, -0.18, -0.12]}>
-          <cylinderGeometry args={[0.034, 0.028, 0.22, 12]} />
+        {/* ── ARMS & HANDS (Naturally placed on podium desk next to buzzer) ── */}
+        {/* Left Forearm */}
+        <mesh position={[-0.15, 1.10, 0.12]} rotation={[0.75, -0.15, -0.10]}>
+          <cylinderGeometry args={[0.028, 0.024, 0.22, 12]} />
           <meshStandardMaterial color={style.skinTone} roughness={0.6} />
         </mesh>
-        {/* Left Hand resting naturally near buzzer/desk */}
-        <mesh position={[-0.17, 1.00, 0.22]} rotation={[0.1, -0.2, 0]}>
-          <boxGeometry args={[0.052, 0.022, 0.065]} />
+        {/* Left Hand */}
+        <mesh position={[-0.13, 1.00, 0.22]} rotation={[0.1, -0.15, 0]}>
+          <boxGeometry args={[0.042, 0.018, 0.055]} />
           <meshStandardMaterial color={style.skinTone} roughness={0.6} />
         </mesh>
 
-        {/* Right Forearm angled forward toward desk */}
-        <mesh position={[0.20, 1.10, 0.12]} rotation={[0.75, 0.18, 0.12]}>
-          <cylinderGeometry args={[0.034, 0.028, 0.22, 12]} />
+        {/* Right Forearm */}
+        <mesh position={[0.15, 1.10, 0.12]} rotation={[0.75, 0.15, 0.10]}>
+          <cylinderGeometry args={[0.028, 0.024, 0.22, 12]} />
           <meshStandardMaterial color={style.skinTone} roughness={0.6} />
         </mesh>
-        {/* Right Hand resting naturally on/near buzzer/desk */}
-        <mesh position={[0.17, 1.00, 0.22]} rotation={[0.1, 0.2, 0]}>
-          <boxGeometry args={[0.052, 0.022, 0.065]} />
+        {/* Right Hand */}
+        <mesh position={[0.13, 1.00, 0.22]} rotation={[0.1, 0.15, 0]}>
+          <boxGeometry args={[0.042, 0.018, 0.055]} />
           <meshStandardMaterial color={style.skinTone} roughness={0.6} />
         </mesh>
       </group>
 
-      {/* ── HEAD & NECK ── */}
+      {/* ── HEAD & SLENDER NECK ── */}
       <group ref={headRef}>
-        {/* Anatomical Neck */}
-        <mesh position={[0, 1.48, 0.015]}>
-          <cylinderGeometry args={[0.040, 0.048, 0.10, 16]} />
+        {/* Slender Neck (radius 0.032m) */}
+        <mesh position={[0, 1.47, 0.015]}>
+          <cylinderGeometry args={[0.032, 0.038, 0.09, 16]} />
           <meshStandardMaterial color={style.skinTone} roughness={0.6} />
         </mesh>
 
-        {/* Head Cranial Vault (Oval Anatomical Proportions) */}
-        <mesh position={[0, 1.60, 0.01]}>
-          <sphereGeometry args={[0.084, 22, 22]} />
+        {/* Head Cranial Vault */}
+        <mesh position={[0, 1.58, 0.01]}>
+          <sphereGeometry args={[0.076, 22, 22]} />
           <meshStandardMaterial color={style.skinTone} roughness={0.55} />
         </mesh>
         {/* Sculpted Jaw & Chin Definition */}
-        <mesh position={[0, 1.54, 0.04]} rotation={[0.25, 0, 0]}>
-          <boxGeometry args={[0.076, 0.065, 0.075]} />
+        <mesh position={[0, 1.52, 0.035]} rotation={[0.25, 0, 0]}>
+          <boxGeometry args={[0.068, 0.058, 0.068]} />
           <meshStandardMaterial color={style.skinTone} roughness={0.55} />
         </mesh>
-        <mesh position={[0, 1.515, 0.062]}>
-          <sphereGeometry args={[0.022, 12, 12]} />
+        <mesh position={[0, 1.495, 0.055]}>
+          <sphereGeometry args={[0.018, 12, 12]} />
           <meshStandardMaterial color={style.skinTone} roughness={0.55} />
         </mesh>
 
         {/* Left & Right Ears */}
-        <mesh position={[-0.086, 1.58, 0.005]}>
-          <boxGeometry args={[0.012, 0.032, 0.022]} />
+        <mesh position={[-0.078, 1.56, 0.005]}>
+          <boxGeometry args={[0.010, 0.028, 0.018]} />
           <meshStandardMaterial color={style.skinTone} roughness={0.6} />
         </mesh>
-        <mesh position={[0.086, 1.58, 0.005]}>
-          <boxGeometry args={[0.012, 0.032, 0.022]} />
+        <mesh position={[0.078, 1.56, 0.005]}>
+          <boxGeometry args={[0.010, 0.028, 0.018]} />
           <meshStandardMaterial color={style.skinTone} roughness={0.6} />
         </mesh>
 
-        {/* Eyes (Focused expression) */}
-        <mesh position={[-0.030, 1.58, 0.084]}>
-          <sphereGeometry args={[0.008, 12, 12]} />
+        {/* Eyes (Focused, alert student look) */}
+        <mesh position={[-0.026, 1.56, 0.075]}>
+          <sphereGeometry args={[0.007, 12, 12]} />
           <meshStandardMaterial color="#0f172a" roughness={0.2} />
         </mesh>
-        <mesh position={[0.030, 1.58, 0.084]}>
-          <sphereGeometry args={[0.008, 12, 12]} />
+        <mesh position={[0.026, 1.56, 0.075]}>
+          <sphereGeometry args={[0.007, 12, 12]} />
           <meshStandardMaterial color="#0f172a" roughness={0.2} />
         </mesh>
         {/* Eyebrows */}
-        <mesh position={[-0.030, 1.605, 0.086]} rotation={[0, 0, 0.08]}>
-          <boxGeometry args={[0.026, 0.005, 0.006]} />
+        <mesh position={[-0.026, 1.585, 0.077]} rotation={[0, 0, 0.08]}>
+          <boxGeometry args={[0.024, 0.004, 0.005]} />
           <meshStandardMaterial color={style.hairColor} roughness={0.8} />
         </mesh>
-        <mesh position={[0.030, 1.605, 0.086]} rotation={[0, 0, -0.08]}>
-          <boxGeometry args={[0.026, 0.005, 0.006]} />
+        <mesh position={[0.026, 1.585, 0.077]} rotation={[0, 0, -0.08]}>
+          <boxGeometry args={[0.024, 0.004, 0.005]} />
           <meshStandardMaterial color={style.hairColor} roughness={0.8} />
         </mesh>
         {/* Confident Smile */}
-        <mesh position={[0, 1.535, 0.082]}>
-          <boxGeometry args={[0.026, 0.006, 0.006]} />
+        <mesh position={[0, 1.515, 0.073]}>
+          <boxGeometry args={[0.022, 0.005, 0.005]} />
           <meshStandardMaterial color="#9f1239" roughness={0.4} />
         </mesh>
 
         {/* Student Glasses (For seats with hasGlasses) */}
         {style.hasGlasses && (
-          <group position={[0, 1.58, 0.090]}>
+          <group position={[0, 1.56, 0.080]}>
             {/* Left Frame */}
-            <mesh position={[-0.030, 0, 0]}>
-              <boxGeometry args={[0.032, 0.022, 0.005]} />
+            <mesh position={[-0.026, 0, 0]}>
+              <boxGeometry args={[0.028, 0.020, 0.004]} />
               <meshStandardMaterial color={style.glassesColor || "#1e293b"} metalness={0.7} roughness={0.2} />
             </mesh>
             {/* Right Frame */}
-            <mesh position={[0.030, 0, 0]}>
-              <boxGeometry args={[0.032, 0.022, 0.005]} />
+            <mesh position={[0.026, 0, 0]}>
+              <boxGeometry args={[0.028, 0.020, 0.004]} />
               <meshStandardMaterial color={style.glassesColor || "#1e293b"} metalness={0.7} roughness={0.2} />
             </mesh>
             {/* Nose Bridge */}
-            <mesh position={[0, 0.004, 0]}>
-              <boxGeometry args={[0.015, 0.004, 0.004]} />
+            <mesh position={[0, 0.003, 0]}>
+              <boxGeometry args={[0.012, 0.003, 0.003]} />
               <meshStandardMaterial color={style.glassesColor || "#1e293b"} metalness={0.7} roughness={0.2} />
             </mesh>
             {/* Temple arms */}
-            <mesh position={[-0.052, 0, -0.045]} rotation={[0, 0.15, 0]}>
-              <boxGeometry args={[0.004, 0.004, 0.08]} />
+            <mesh position={[-0.046, 0, -0.04]} rotation={[0, 0.15, 0]}>
+              <boxGeometry args={[0.003, 0.003, 0.07]} />
               <meshStandardMaterial color={style.glassesColor || "#1e293b"} metalness={0.7} roughness={0.2} />
             </mesh>
-            <mesh position={[0.052, 0, -0.045]} rotation={[0, -0.15, 0]}>
-              <boxGeometry args={[0.004, 0.004, 0.08]} />
+            <mesh position={[0.046, 0, -0.04]} rotation={[0, -0.15, 0]}>
+              <boxGeometry args={[0.003, 0.003, 0.07]} />
               <meshStandardMaterial color={style.glassesColor || "#1e293b"} metalness={0.7} roughness={0.2} />
             </mesh>
           </group>
         )}
 
-        {/* ── DIVERSE 3D HAIRSTYLES ── */}
+        {/* ── DIVERSE VIETNAMESE STUDENT HAIRSTYLES ── */}
         {/* Hair Cap Base */}
-        <mesh position={[0, 1.635, -0.015]}>
-          <sphereGeometry args={[0.088, 20, 20]} />
+        <mesh position={[0, 1.615, -0.015]}>
+          <sphereGeometry args={[0.080, 20, 20]} />
           <meshStandardMaterial color={style.hairColor} roughness={0.7} />
         </mesh>
-        {/* Hairstyle Specific Sculpting */}
-        {style.hairStyle === "side_part" && (
+
+        {/* Ponytail: Nữ sinh thanh lịch đeo kính (Ảnh 2) */}
+        {style.hairStyle === "ponytail" && (
           <group>
-            <mesh position={[-0.02, 1.67, 0.03]} rotation={[0.1, -0.1, -0.15]}>
-              <boxGeometry args={[0.10, 0.035, 0.08]} />
-              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
-            </mesh>
-            <mesh position={[0.05, 1.65, 0.03]} rotation={[0.1, 0.1, 0.35]}>
-              <boxGeometry args={[0.06, 0.025, 0.07]} />
-              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
-            </mesh>
-          </group>
-        )}
-        {style.hairStyle === "textured_crop" && (
-          <group>
-            <mesh position={[0, 1.68, 0.02]}>
-              <boxGeometry args={[0.11, 0.04, 0.09]} />
-              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
-            </mesh>
-            <mesh position={[0, 1.65, 0.06]}>
+            {/* Front soft bangs */}
+            <mesh position={[0, 1.64, 0.05]}>
               <boxGeometry args={[0.09, 0.025, 0.04]} />
               <meshStandardMaterial color={style.hairColor} roughness={0.7} />
             </mesh>
+            {/* Soft hair strands framing cheeks */}
+            <mesh position={[-0.068, 1.53, 0.02]}>
+              <boxGeometry args={[0.020, 0.12, 0.06]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+            <mesh position={[0.068, 1.53, 0.02]}>
+              <boxGeometry args={[0.020, 0.12, 0.06]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+            {/* Ponytail tie knot */}
+            <mesh position={[0, 1.60, -0.08]}>
+              <sphereGeometry args={[0.025, 12, 12]} />
+              <meshStandardMaterial color="#1e293b" roughness={0.5} />
+            </mesh>
+            {/* Ponytail hair cascade */}
+            <mesh position={[0, 1.50, -0.10]} rotation={[0.15, 0, 0]}>
+              <cylinderGeometry args={[0.028, 0.018, 0.18, 12]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
           </group>
         )}
-        {style.hairStyle === "wavy_volume" && (
+
+        {/* Side Part: Nam sinh gọn gàng năng động (Ảnh 3) */}
+        {style.hairStyle === "side_part" && (
           <group>
-            <mesh position={[0, 1.69, 0.01]} rotation={[-0.05, 0, 0]}>
-              <boxGeometry args={[0.13, 0.05, 0.11]} />
+            <mesh position={[-0.02, 1.65, 0.03]} rotation={[0.1, -0.1, -0.15]}>
+              <boxGeometry args={[0.09, 0.030, 0.07]} />
               <meshStandardMaterial color={style.hairColor} roughness={0.7} />
             </mesh>
-            <mesh position={[-0.06, 1.63, 0.03]}>
-              <boxGeometry args={[0.04, 0.08, 0.06]} />
-              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
-            </mesh>
-            <mesh position={[0.06, 1.63, 0.03]}>
-              <boxGeometry args={[0.04, 0.08, 0.06]} />
+            <mesh position={[0.04, 1.63, 0.03]} rotation={[0.1, 0.1, 0.35]}>
+              <boxGeometry args={[0.05, 0.022, 0.06]} />
               <meshStandardMaterial color={style.hairColor} roughness={0.7} />
             </mesh>
           </group>
         )}
+
+        {/* Textured Crop: Nam sinh */}
+        {style.hairStyle === "textured_crop" && (
+          <group>
+            <mesh position={[0, 1.66, 0.02]}>
+              <boxGeometry args={[0.095, 0.035, 0.08]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+            <mesh position={[0, 1.63, 0.05]}>
+              <boxGeometry args={[0.08, 0.022, 0.035]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+          </group>
+        )}
+
+        {/* Stylish Bob: Nữ sinh tóc ngắn cá tính */}
+        {style.hairStyle === "stylish_bob" && (
+          <group>
+            <mesh position={[0, 1.64, 0.05]}>
+              <boxGeometry args={[0.095, 0.025, 0.04]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+            <mesh position={[-0.068, 1.52, 0.02]}>
+              <boxGeometry args={[0.025, 0.14, 0.07]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+            <mesh position={[0.068, 1.52, 0.02]}>
+              <boxGeometry args={[0.025, 0.14, 0.07]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+            <mesh position={[0, 1.52, -0.06]}>
+              <boxGeometry args={[0.11, 0.14, 0.04]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+          </group>
+        )}
+
+        {/* Layered Fringe: Nữ sinh mái thưa */}
+        {style.hairStyle === "layered_fringe" && (
+          <group>
+            <mesh position={[0, 1.64, 0.045]}>
+              <boxGeometry args={[0.095, 0.025, 0.035]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+            <mesh position={[-0.065, 1.54, 0.02]}>
+              <boxGeometry args={[0.025, 0.12, 0.06]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+            <mesh position={[0.065, 1.54, 0.02]}>
+              <boxGeometry args={[0.025, 0.12, 0.06]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+          </group>
+        )}
+
+        {/* Neat Fade: Nam sinh */}
         {style.hairStyle === "neat_fade" && (
           <group>
-            <mesh position={[0, 1.67, 0.01]}>
-              <boxGeometry args={[0.10, 0.03, 0.09]} />
+            <mesh position={[0, 1.65, 0.01]}>
+              <boxGeometry args={[0.09, 0.025, 0.08]} />
               <meshStandardMaterial color={style.hairColor} roughness={0.7} />
             </mesh>
           </group>
         )}
-        {(style.hairStyle === "undercut" || style.hairStyle === "classic_quiff") && (
+
+        {/* Wavy Volume: Nữ sinh tóc gợn sóng */}
+        {style.hairStyle === "wavy_volume" && (
           <group>
-            <mesh position={[0, 1.69, 0.03]} rotation={[0.2, 0, 0]}>
-              <boxGeometry args={[0.10, 0.045, 0.09]} />
+            <mesh position={[0, 1.66, 0.01]} rotation={[-0.05, 0, 0]}>
+              <boxGeometry args={[0.11, 0.04, 0.09]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+            <mesh position={[-0.065, 1.54, 0.02]}>
+              <boxGeometry args={[0.03, 0.13, 0.06]} />
+              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
+            </mesh>
+            <mesh position={[0.065, 1.54, 0.02]}>
+              <boxGeometry args={[0.03, 0.13, 0.06]} />
               <meshStandardMaterial color={style.hairColor} roughness={0.7} />
             </mesh>
           </group>
         )}
-        {(style.hairStyle === "stylish_bob" || style.hairStyle === "layered_fringe") && (
+
+        {/* Undercut: Nam sinh */}
+        {style.hairStyle === "undercut" && (
           <group>
-            <mesh position={[0, 1.66, 0.05]}>
-              <boxGeometry args={[0.11, 0.03, 0.04]} />
-              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
-            </mesh>
-            <mesh position={[-0.07, 1.58, 0.02]}>
-              <boxGeometry args={[0.035, 0.10, 0.08]} />
-              <meshStandardMaterial color={style.hairColor} roughness={0.7} />
-            </mesh>
-            <mesh position={[0.07, 1.58, 0.02]}>
-              <boxGeometry args={[0.035, 0.10, 0.08]} />
+            <mesh position={[0, 1.66, 0.025]} rotation={[0.2, 0, 0]}>
+              <boxGeometry args={[0.09, 0.035, 0.08]} />
               <meshStandardMaterial color={style.hairColor} roughness={0.7} />
             </mesh>
           </group>
@@ -1450,6 +1514,7 @@ function ContestantEntranceWalkingFigures({
   const leftKneeRef = useRef<THREE.Group>(null);
 
   const currentSeat = state.entranceState?.currentSeatIdx ?? 0;
+  const style = CONTESTANT_STYLES[currentSeat % CONTESTANT_STYLES.length];
   const seatStart = state.entranceState?.seatStartedAt || state.entranceState?.startedAt || Date.now();
   const getNow = serverNow || (() => Date.now());
 
@@ -1659,21 +1724,21 @@ function ContestantEntranceWalkingFigures({
           {/* Head & Hair */}
           <mesh position={[0, 1.58, 0]}>
             <sphereGeometry args={[0.088, 20, 20]} />
-            <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+            <meshStandardMaterial color={style.skinTone} roughness={0.6} />
           </mesh>
           <mesh position={[0, 1.62, -0.015]}>
             <sphereGeometry args={[0.094, 20, 20]} />
-            <meshStandardMaterial color="#1e1b18" roughness={0.8} />
+            <meshStandardMaterial color={style.hairColor} roughness={0.8} />
           </mesh>
           <mesh position={[0.03, 1.64, 0.04]}>
             <boxGeometry args={[0.08, 0.03, 0.06]} />
-            <meshStandardMaterial color="#1e1b18" roughness={0.8} />
+            <meshStandardMaterial color={style.hairColor} roughness={0.8} />
           </mesh>
 
           {/* Neck */}
           <mesh position={[0, 1.48, 0]}>
             <cylinderGeometry args={[0.042, 0.046, 0.08, 14]} />
-            <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+            <meshStandardMaterial color={style.skinTone} roughness={0.6} />
           </mesh>
 
           {/* Torso Polo Shirt */}
@@ -1720,11 +1785,11 @@ function ContestantEntranceWalkingFigures({
             <group ref={leftForearmRef} position={[0, -0.20, 0]}>
               <mesh position={[0, -0.10, 0]}>
                 <cylinderGeometry args={[0.034, 0.028, 0.20, 12]} />
-                <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+                <meshStandardMaterial color={style.skinTone} roughness={0.6} />
               </mesh>
               <mesh position={[0, -0.21, 0]}>
                 <sphereGeometry args={[0.028, 12, 12]} />
-                <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+                <meshStandardMaterial color={style.skinTone} roughness={0.6} />
               </mesh>
             </group>
           </group>
@@ -1738,11 +1803,11 @@ function ContestantEntranceWalkingFigures({
             <group ref={rightForearmRef} position={[0, -0.20, 0]}>
               <mesh position={[0, -0.10, 0]}>
                 <cylinderGeometry args={[0.034, 0.028, 0.20, 12]} />
-                <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+                <meshStandardMaterial color={style.skinTone} roughness={0.6} />
               </mesh>
               <mesh position={[0, -0.21, 0]}>
                 <sphereGeometry args={[0.028, 12, 12]} />
-                <meshStandardMaterial color="#fed7aa" roughness={0.6} />
+                <meshStandardMaterial color={style.skinTone} roughness={0.6} />
               </mesh>
             </group>
           </group>

@@ -154,9 +154,14 @@ export function CameraController({
   const currentTarget = useRef(new THREE.Vector3(0, 1.8, -2.8));
 
   const effectiveTotalSeats = totalSeats || 4;
-  const isContestantCam = camAngle >= 5 && camAngle < 5 + effectiveTotalSeats;
+  const isContestantCam =
+    (camAngle >= 5 && camAngle <= 8 && camAngle - 5 < effectiveTotalSeats) ||
+    (effectiveTotalSeats > 4 && camAngle >= 11 && camAngle < 11 + (effectiveTotalSeats - 4));
   const targetPreset = isContestantCam
-    ? getContestantCameraPreset(camAngle - 5, effectiveTotalSeats)
+    ? getContestantCameraPreset(
+        camAngle >= 11 ? camAngle - 11 + 4 : camAngle - 5,
+        effectiveTotalSeats
+      )
     : (OLYMPIA_CAM_PRESETS[camAngle] || OLYMPIA_CAM_PRESETS[1]);
   const targetPos = useMemo(() => new THREE.Vector3(...targetPreset.pos), [targetPreset]);
   const targetLookAt = useMemo(() => new THREE.Vector3(...targetPreset.target), [targetPreset]);

@@ -36,7 +36,7 @@ import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
 import OlympiaSandboxStudio from "@/components/olympia/OlympiaSandboxStudio";
 import HostConsole from "@/components/olympia/HostConsole";
 import { ROUND_LABELS, type OlympiaState, type RulesetId } from "@/lib/olympia/types";
-import { getOlympiaBanks } from "@/lib/olympia/olympia-storage";
+import { getOlympiaBanks, getPresetOlympiaBanks } from "@/lib/olympia/olympia-storage";
 import { RULESET_YEAR_BUTTONS, RULESETS } from "@/lib/olympia/rulesets";
 import {
   generateMagicWheelSectors,
@@ -2891,6 +2891,17 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
           adminSocketRef.current.emit("admin:room:change_quiz_bank" as any, { 
             quizBankId: bankId || null,
             localBank: selectedBank || undefined,
+          });
+        }
+        if (olympiaSocketRef.current) {
+          let oSet = (selectedBank as any)?.set;
+          if (!oSet && bankId) {
+            const p = getPresetOlympiaBanks().find((b) => b.id === bankId);
+            if (p) oSet = p.set;
+          }
+          olympiaSocketRef.current.emit("olympia:change_quiz_bank", {
+            quizBankId: bankId || null,
+            questionSet: oSet,
           });
         }
 
@@ -6866,6 +6877,11 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const selectedBank = compatibleBanks.find((b) => b.id === selectedBankId);
+      let olympiaQuestionSet = (selectedBank as any)?.set;
+      if (!olympiaQuestionSet && selectedBankId) {
+        const preset = getPresetOlympiaBanks().find((b) => b.id === selectedBankId);
+        if (preset) olympiaQuestionSet = preset.set;
+      }
       const chosenBankTitle = modeToUse === "OLYMPIA"
         ? (selectedBank?.title || `Đề Thi Olympia (${olympiaRulesetId})`)
         : selectedBank?.title;
@@ -6882,6 +6898,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
             olympia: {
               rulesetId: olympiaRulesetId,
               playIntroOnCreate: sandboxPlayIntroOnCreate,
+              questionSet: olympiaQuestionSet,
             }
           } : {
             playIntroOnCreate: sandboxPlayIntroOnCreate,

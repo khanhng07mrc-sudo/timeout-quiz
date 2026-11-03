@@ -2029,32 +2029,58 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
   },
   "tangToc": [
       {
-          "q": "Hình thức lựa chọn nhà thầu có sự tham gia của các nhà thầu nước ngoài và nhà thầu trong nước theo quy định của Luật Đấu thầu được gọi là gì?",
+          "q": "Đây là hình thức lựa chọn nhà thầu nào?",
           "answer": "ĐẤU THẦU QUỐC TẾ",
           "type": "image",
           "media": "/olympia/media/bac_ai_tt_cau1.png",
-          "category": "iq"
+          "category": "iq",
+          "duration": 10
       },
       {
-          "q": "Đây là tên tập đoàn nào? Dữ kiện 1: Tập đoàn cơ khí năng lượng hàng đầu của Đức. Dữ kiện 2: Có cơ sở chế tạo lớn tại Thượng Hải. Dữ kiện 3: Chuyên chế tạo tua-bin cột nước cao. Dữ kiện 4: Đứng đầu liên danh trúng thầu gói 01TB-BA Bác Ái.",
+          "q": "Đây là tập đoàn nào?",
           "answer": "VOITH HYDRO",
           "type": "image",
           "media": "/olympia/media/bac_ai_tt_cau2.png",
-          "category": "data"
+          "category": "data",
+          "duration": 20,
+          "clueImages": [
+            {
+              "atSecond": 0,
+              "label": "Dữ kiện 1 (0s): Tập đoàn cơ khí CHLB Đức thành lập năm 1867",
+              "url": "/olympia/media/bac_ai_tt_cau2_clue1.png"
+            },
+            {
+              "atSecond": 5,
+              "label": "Dữ kiện 2 (5s): Cơ sở chế tạo thiết bị thủy điện lớn tại Thượng Hải",
+              "url": "/olympia/media/bac_ai_tt_cau2_clue2.png"
+            },
+            {
+              "atSecond": 10,
+              "label": "Dữ kiện 3 (10s): Chuyên chế tạo tua-bin cột nước cao (>500m)",
+              "url": "/olympia/media/bac_ai_tt_cau2_clue3.png"
+            },
+            {
+              "atSecond": 15,
+              "label": "Dữ kiện 4 (15s): Đứng đầu Liên danh trúng thầu Gói 01TB-BA Bác Ái",
+              "url": "/olympia/media/bac_ai_tt_cau2_clue4.png"
+            }
+          ]
       },
       {
-          "q": "Hãy sắp xếp các mốc thời gian đấu thầu gói 01TB-BA theo trình tự trước sau: (1) Đóng và mở thầu công khai (23/02/2026), (2) Phát hành Hồ sơ mời thầu (15/10/2025), (3) EVN chính thức ký hợp đồng (26/10/2026), (4) Phê duyệt kết quả trúng thầu (21/10/2026).",
+          "q": "Sắp xếp các mốc thời gian sau theo thứ tự diễn ra từ trước đến sau:",
           "answer": "2-1-4-3",
           "type": "image",
           "media": "/olympia/media/bac_ai_tt_cau3.png",
-          "category": "arrange"
+          "category": "arrange",
+          "duration": 30
       },
       {
-          "q": "Gói thầu 01TB-BA có giá dự toán là 4.548,081 tỷ đồng và giá trúng thầu là 4.462,603 tỷ đồng. Hãy tính số tiền tiết kiệm tuyệt đối mà EVN đạt được qua đấu thầu là bao nhiêu tỷ đồng?",
-          "answer": "85,478 TỶ ĐỒNG (85.478)",
+          "q": "Đây là thiết bị gì?",
+          "answer": "TUA-BIN BƠM",
           "type": "image",
           "media": "/olympia/media/bac_ai_tt_cau4.png",
-          "category": "data"
+          "category": "data",
+          "duration": 40
       }
   ],
   "tangTocBackup": [

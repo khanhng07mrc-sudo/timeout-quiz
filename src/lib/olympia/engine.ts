@@ -1,7 +1,7 @@
 // Olympia game engine — pure state machine (no sockets, no I/O). Fully unit-testable.
 import { SAMPLE_QUESTION_SET } from "./sample-questions";
 import { RULESETS, cnvPointsFor, tangTocTierPoints, turnsO22 } from "./rulesets";
-import { buildBalancedKhoiDongQueues, pickBalancedVeDichPackage, tagQAWithAI } from "./ai-classifier";
+import { buildBalancedKhoiDongQueues, pickBalancedVeDichPackage, tagQAWithAI, normKey } from "./ai-classifier";
 import {
   KHOI_DONG_SUBJECTS,
   MAX_SEATS,
@@ -2355,10 +2355,10 @@ export class OlympiaGame {
 
   private allocatePackage(vd: VeDichState, points: number[]) {
     const qs = this.config.questionSet;
+    const norm = (s?: string) => normKey(s);
     const useBalanced = this.config.balancedRandom !== false && qs.balancedRandom !== false;
     if (useBalanced) {
       const usedSet = new Set<string>(vd.usedKeys ?? []);
-      const norm = (s?: string) => (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
 
       // Ensure zero duplicates across ALL rounds (Khởi Động, VCNV, Tăng Tốc, and previous Về Đích turns)
       if (this.state.khoiDong) {
@@ -2426,13 +2426,26 @@ export class OlympiaGame {
       return pkg;
     }
     const pool = qs.veDich;
+    const fallbackUsedSet = new Set<string>([
+      ...(this.state.openedQuestionKeys ?? []).map((k) => norm(k)),
+      ...(this.state.openedQuestionKeys ?? []),
+      ...(vd.usedKeys ?? []),
+    ]);
     return points.map((p) => {
       const key = String(p);
       const list = pool[key] ?? [];
-      const ptr = vd.pointers[key] ?? 0;
+      let ptr = vd.pointers[key] ?? 0;
+      while (ptr < list.length) {
+        const item = list[ptr];
+        const isUsed = item?.q && (fallbackUsedSet.has(item.q) || fallbackUsedSet.has(norm(item.q)));
+        if (!isUsed) break;
+        ptr++;
+      }
       const raw: VeDichQuestion = list[ptr] ?? { q: "Câu hỏi dự phòng", a: "Đáp án", type: "theory" };
       const q = tagQAWithAI(raw, false);
       vd.pointers[key] = ptr + 1;
+      fallbackUsedSet.add(q.q);
+      fallbackUsedSet.add(norm(q.q));
       return { points: p, q };
     });
   }

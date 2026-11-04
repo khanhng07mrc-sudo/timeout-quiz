@@ -575,12 +575,13 @@ function KhoiDong({ state, serverNow }: P) {
   const qNum = Math.max(1, kd.qIdx + 1);
   const questionBadge = `Câu ${qNum}${totalQ}`;
 
-  if (!kd.started || kd.phase === "segmentDone" || !kd.questionRevealed || !kd.current) {
+  if (!kd.started || kd.phase === "segmentDone" || kd.phase === "intro") {
     return null;
   }
 
   const currentBuzzedSeat = kd.buzzedSeat;
   const currentSoloSeat = isSolo ? (seg.seat ?? null) : null;
+  const hasRevealedQ = Boolean(kd.questionRevealed && kd.current);
 
   return (
     <div className="w-full max-w-6xl mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
@@ -618,13 +619,13 @@ function KhoiDong({ state, serverNow }: P) {
             activeSeatId={currentSoloSeat}
             buzzedSeatId={currentBuzzedSeat}
             lockedSeats={kd.lockedSeats}
-            questionNumberBadge={questionBadge}
+            questionNumberBadge={hasRevealedQ ? questionBadge : "CHỜ CÂU HỎI"}
           />
           <Vtv3ChalkboardQuestionFrame
             headerBadge={null}
-            questionText={kd.current?.q}
+            questionText={hasRevealedQ ? kd.current?.q : ""}
             mediaElement={
-              kd.current?.media ? (
+              hasRevealedQ && kd.current?.media ? (
                 <MediaView
                   url={kd.current.media}
                   type={kd.current.mediaType}
@@ -632,7 +633,7 @@ function KhoiDong({ state, serverNow }: P) {
                 />
               ) : null
             }
-            timer={kd.timer}
+            timer={hasRevealedQ ? kd.timer : null}
             serverNow={serverNow}
           />
         </div>
@@ -643,11 +644,11 @@ function KhoiDong({ state, serverNow }: P) {
           activeSeatId={currentSoloSeat}
           buzzedSeatId={currentBuzzedSeat}
           lockedSeats={kd.lockedSeats}
-          questionNumberBadge={questionBadge}
-          headerBadge={kd.current?.subject ? `${kd.current.subject.toUpperCase()}` : null}
-          questionText={kd.current?.q}
+          questionNumberBadge={hasRevealedQ ? questionBadge : "CHỜ CÂU HỎI"}
+          headerBadge={hasRevealedQ && kd.current?.subject ? `${kd.current.subject.toUpperCase()}` : null}
+          questionText={hasRevealedQ ? kd.current?.q : ""}
           mediaElement={
-            kd.current?.media ? (
+            hasRevealedQ && kd.current?.media ? (
               <MediaView
                 url={kd.current.media}
                 type={kd.current.mediaType}
@@ -655,7 +656,7 @@ function KhoiDong({ state, serverNow }: P) {
               />
             ) : null
           }
-          timer={kd.timer}
+          timer={hasRevealedQ ? kd.timer : null}
           showScoreTab={true}
         />
       )}
@@ -696,10 +697,17 @@ function VeDich({ state, serverNow }: P) {
 
   if (vd.phase === "seatDone") return null;
 
+  const pkgTimer = state.vdPackageTimer;
+  const isChoosing = vd.phase === "choosing";
+  const hasPkg = Boolean(vd.packages[owner]);
+  const isPackageIntroTime = Boolean(
+    hasPkg && !cur && pkgTimer?.startedAt && serverNow() - pkgTimer.startedAt < 2000
+  );
+
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col justify-end">
-      {/* When choosing package or package confirmed before opening a question: show slanted hexagonal package grid */}
-      {(vd.phase === "choosing" || (vd.packages[owner] && !cur)) && (
+      {/* While choosing package or during the first 2s after confirmation: show slanted hexagonal package grid */}
+      {(isChoosing || isPackageIntroTime) && (
         <VeDichSlantedGridGraphic state={state} />
       )}
 
@@ -727,15 +735,19 @@ function VeDich({ state, serverNow }: P) {
             </div>
           )}
         </div>
-      ) : cur ? (
+      ) : cur || (hasPkg && !isPackageIntroTime) ? (
         state.themeMode === "o26_classic" ? (
           <Vtv3ChalkboardQuestionFrame
-            headerBadge={`${seatName(state, owner)} · ${cur.q.subject || "VỀ ĐÍCH"} (${cur.points} điểm) ${
-              vd.hopeStarActive ? "⭐ NGÔI SAO HY VỌNG" : ""
-            }`}
-            questionText={cur.q.q}
+            headerBadge={
+              cur
+                ? `${seatName(state, owner)} · ${cur.q.subject || "VỀ ĐÍCH"} (${cur.points} điểm) ${
+                    vd.hopeStarActive ? "⭐ NGÔI SAO HY VỌNG" : ""
+                  }`
+                : `${seatName(state, owner)} · VỀ ĐÍCH`
+            }
+            questionText={cur?.q.q || ""}
             mediaElement={
-              cur.q.media ? (
+              cur?.q.media ? (
                 <MediaView
                   url={cur.q.media}
                   type={cur.q.mediaType}
@@ -743,7 +755,7 @@ function VeDich({ state, serverNow }: P) {
                 />
               ) : null
             }
-            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer}
+            timer={cur ? (vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer) : null}
             serverNow={serverNow}
           >
             {vd.phase === "stealing" && (
@@ -758,12 +770,21 @@ function VeDich({ state, serverNow }: P) {
             serverNow={serverNow}
             activeSeatId={owner}
             buzzedSeatId={vd.steal?.buzzedSeat ?? null}
-            headerBadge={`${cur.q.subject || "VỀ ĐÍCH"} · ${cur.points} ĐIỂM${
-              vd.hopeStarActive ? " ⭐ NGÔI SAO HY VỌNG" : ""
-            }`}
-            questionText={cur.q.q}
+            questionNumberBadge={
+              cur
+                ? `Câu ${vd.qIdx + 1}/${vd.packages[owner]?.length || 3}`
+                : `Câu ${Math.max(1, vd.qIdx + 1)}/${vd.packages[owner]?.length || 3}`
+            }
+            headerBadge={
+              cur
+                ? `${cur.q.subject || "VỀ ĐÍCH"} · ${cur.points} ĐIỂM${
+                    vd.hopeStarActive ? " ⭐ NGÔI SAO HY VỌNG" : ""
+                  }`
+                : "VỀ ĐÍCH"
+            }
+            questionText={cur?.q.q || ""}
             mediaElement={
-              cur.q.media ? (
+              cur?.q.media ? (
                 <MediaView
                   url={cur.q.media}
                   type={cur.q.mediaType}
@@ -771,9 +792,16 @@ function VeDich({ state, serverNow }: P) {
                 />
               ) : null
             }
-            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer}
+            timer={cur ? (vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer) : null}
+            hopeStarActive={vd.hopeStarActive}
             showScoreTab={true}
-          />
+          >
+            {vd.phase === "stealing" && (
+              <div className="text-sm sm:text-base font-black text-rose-400 animate-pulse">
+                🚨 CƯỚP ĐIỂM {vd.steal?.buzzedSeat != null ? `— ${seatName(state, vd.steal.buzzedSeat)}` : ""}
+              </div>
+            )}
+          </EconovaLowerThirdV3>
         )
       ) : null}
     </div>

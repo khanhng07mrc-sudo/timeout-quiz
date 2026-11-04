@@ -107803,10 +107803,10 @@ var OlympiaGame = class _OlympiaGame {
   }
   allocatePackage(vd, points) {
     const qs = this.config.questionSet;
+    const norm = (s) => normKey(s);
     const useBalanced = this.config.balancedRandom !== false && qs.balancedRandom !== false;
     if (useBalanced) {
       const usedSet = new Set(vd.usedKeys ?? []);
-      const norm = (s) => (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
       if (this.state.khoiDong) {
         const kd = this.state.khoiDong;
         if (kd.seatQueues) {
@@ -107874,13 +107874,26 @@ var OlympiaGame = class _OlympiaGame {
       return pkg;
     }
     const pool = qs.veDich;
+    const fallbackUsedSet = /* @__PURE__ */ new Set([
+      ...(this.state.openedQuestionKeys ?? []).map((k) => norm(k)),
+      ...this.state.openedQuestionKeys ?? [],
+      ...vd.usedKeys ?? []
+    ]);
     return points.map((p) => {
       const key = String(p);
       const list = pool[key] ?? [];
-      const ptr = vd.pointers[key] ?? 0;
+      let ptr = vd.pointers[key] ?? 0;
+      while (ptr < list.length) {
+        const item = list[ptr];
+        const isUsed = item?.q && (fallbackUsedSet.has(item.q) || fallbackUsedSet.has(norm(item.q)));
+        if (!isUsed) break;
+        ptr++;
+      }
       const raw = list[ptr] ?? { q: "C\xE2u h\u1ECFi d\u1EF1 ph\xF2ng", a: "\u0110\xE1p \xE1n", type: "theory" };
       const q = tagQAWithAI(raw, false);
       vd.pointers[key] = ptr + 1;
+      fallbackUsedSet.add(q.q);
+      fallbackUsedSet.add(norm(q.q));
       return { points: p, q };
     });
   }

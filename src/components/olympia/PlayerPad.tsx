@@ -1000,42 +1000,71 @@ function CircularBuzzer3D({
   subLabel?: string;
 }) {
   const lastFiredRef = useRef<number>(0);
+  const [pressedLocal, setPressedLocal] = useState(false);
+
   const fireOnce = () => {
     if (!enabled) return;
     const now = Date.now();
-    if (now - lastFiredRef.current < 300) return;
+    if (now - lastFiredRef.current < 250) return;
     lastFiredRef.current = now;
+    setPressedLocal(true);
+    setTimeout(() => setPressedLocal(false), 180);
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.12);
+      }
+    } catch {}
     onPress();
   };
 
   return (
-    <div className="flex items-center justify-center gap-4 sm:gap-6">
-      <button
-        type="button"
-        disabled={!enabled}
-        onPointerDown={(e) => {
-          if (!enabled) return;
-          e.preventDefault();
-          fireOnce();
-        }}
-        onClick={fireOnce}
-        className={`w-32 h-32 sm:w-36 sm:h-36 rounded-full font-black text-xs sm:text-sm uppercase tracking-wider border-4 sm:border-[6px] flex flex-col items-center justify-center gap-1 transition transform active:scale-95 cursor-pointer shrink-0 ${
-          enabled
-            ? "bg-gradient-to-b from-red-500 via-red-600 to-rose-800 border-amber-300 text-white shadow-[0_0_35px_rgba(239,68,68,0.8),inset_0_4px_12px_rgba(255,255,255,0.4)] animate-pulse"
-            : "bg-slate-800/90 border-slate-700 text-slate-400 cursor-not-allowed opacity-70 shadow-inner"
-        }`}
-      >
-        <span className="text-2xl sm:text-3xl">🔔</span>
-        <span className="px-2 text-center leading-tight">{label}</span>
-      </button>
-      {subLabel && (
-        <div className="text-left max-w-[200px] sm:max-w-xs">
-          <div className={`text-xs sm:text-sm font-black uppercase ${enabled ? "text-amber-300" : "text-slate-400"}`}>
-            {label}
-          </div>
-          <div className="text-[11px] sm:text-xs text-slate-300 mt-0.5">{subLabel}</div>
-        </div>
-      )}
+    <div className="relative flex flex-col items-center justify-center w-full max-w-sm mx-auto select-none">
+      {/* ── Fixed Button Container: perfectly centered at all times ── */}
+      <div className="relative flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 shrink-0">
+        <button
+          type="button"
+          disabled={!enabled}
+          onPointerDown={(e) => {
+            if (!enabled) return;
+            e.preventDefault();
+            fireOnce();
+          }}
+          onClick={fireOnce}
+          className={`w-full h-full rounded-full font-black text-xs sm:text-sm uppercase tracking-wider border-4 sm:border-[5px] flex flex-col items-center justify-center gap-1 transition-transform duration-75 cursor-pointer shrink-0 ${
+            pressedLocal ? "scale-90 brightness-125" : "active:scale-95"
+          } ${
+            enabled
+              ? "bg-gradient-to-b from-red-500 via-red-600 to-rose-800 border-amber-300 text-white shadow-[0_0_35px_rgba(239,68,68,0.8),inset_0_4px_12px_rgba(255,255,255,0.4)] animate-pulse"
+              : "bg-slate-800/90 border-slate-700 text-slate-400 cursor-not-allowed opacity-70 shadow-inner"
+          }`}
+        >
+          <span className="text-xl sm:text-2xl">🔔</span>
+          <span className="px-2 text-center leading-tight truncate max-w-[110px]">{label}</span>
+        </button>
+      </div>
+
+      {/* ── Fixed Bottom SubLabel: constant height so button never shifts ── */}
+      <div className="h-6 mt-1.5 flex items-center justify-center text-center px-2 w-full overflow-hidden">
+        <span
+          className={`text-[11px] sm:text-xs font-semibold leading-tight truncate max-w-[320px] ${
+            enabled ? "text-amber-300" : "text-slate-400"
+          }`}
+        >
+          {subLabel || " "}
+        </span>
+      </div>
     </div>
   );
 }

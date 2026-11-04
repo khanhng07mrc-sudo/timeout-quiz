@@ -812,7 +812,7 @@ function shuffleWithRng<T>(items: T[], rng: () => number = Math.random): T[] {
  * - Prioritizes unused questions (`!q.used`) first before falling back to used questions.
  * - `sharedQueue`: shared pool ordered in balanced 6-zone cycles.
  */
-function normKey(s?: string): string {
+export function normKey(s?: string): string {
   return (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
 }
 

@@ -1646,53 +1646,140 @@ export function EconovaContestantScoreTabBar({
   buzzedSeatId,
   lockedSeats = [],
   questionNumberBadge,
+  roundType = "KHOI_DONG",
 }: {
   state: OlympiaState;
   activeSeatId?: number | null;
   buzzedSeatId?: number | null;
   lockedSeats?: number[];
   questionNumberBadge?: string | null;
+  roundType?: "KHOI_DONG" | "VE_DICH";
 }) {
   const seats = activeSeats(state);
   const n = seats.length;
   if (n === 0) return null;
 
+  const isVeDich = roundType === "VE_DICH";
+  const pBoxSlant = 12; // Slant offset in pixels matching S * (topH / gH)
+  const skewDeg = 16.7; // atan(12 / 40) in degrees
+
   return (
-    <div className="relative w-full h-[42px] sm:h-[46px] flex items-center bg-[#051433]/90 border-b border-cyan-400/30 overflow-hidden select-none">
+    <div className="relative w-full h-[38px] sm:h-[42px] flex items-center overflow-visible select-none z-20">
+      <style>{`
+        @keyframes buzz-flash-v3 {
+          from {
+            box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.4), 0 0 15px rgba(255, 0, 0, 0.6);
+          }
+          to {
+            box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.6), 0 0 30px rgba(255, 0, 0, 1.0);
+            background: linear-gradient(135deg, #ff5c5c 0%, #d60000 100%);
+          }
+        }
+        .v3-tab-poly {
+          position: relative;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.25s ease;
+          box-sizing: border-box;
+        }
+        .v3-tab-buzzed {
+          animation: buzz-flash-v3 0.3s infinite alternate;
+          z-index: 15 !important;
+        }
+      `}</style>
+
       {seats.map((seat, idx) => {
         const isBuzzed = buzzedSeatId === seat.id;
         const isActive = activeSeatId === seat.id;
         const isLocked = lockedSeats.includes(seat.id);
 
-        let bg = "transparent";
-        let textClass = "text-slate-200";
+        // Shape determination:
+        // In Ve Dich: ALL slots are parallelograms (bounded by forward slash / separators)
+        // In Khoi Dong: slots 0..n-2 are parallelograms; the final slot n-1 is an isosceles trapezoid
+        // whose right edge matches the backward inward slant \ of the right navy arrow
+        const isLastSlotKhoiDong = !isVeDich && idx === n - 1;
 
-        if (isBuzzed || isActive) {
-          bg = "linear-gradient(90deg, #e74c3c 0%, #c0392b 100%)";
+        const clipPathStyle = isLastSlotKhoiDong
+          ? `polygon(${pBoxSlant}px 0, calc(100% - ${pBoxSlant}px) 0, 100% 100%, 0 100%)`
+          : `polygon(${pBoxSlant}px 0, 100% 0, calc(100% - ${pBoxSlant}px) 100%, 0 100%)`;
+
+        let bg = "rgba(5, 20, 51, 0.75)";
+        let textClass = "text-slate-200";
+        let shadow = "none";
+        let extraClasses = "";
+
+        if (isBuzzed) {
+          bg = "linear-gradient(135deg, #ff3838 0%, #b30000 100%)";
           textClass = "text-white font-black drop-shadow-md";
+          extraClasses = "v3-tab-buzzed";
+        } else if (isActive) {
+          if (isVeDich) {
+            bg = "linear-gradient(135deg, #00cfff 0%, #0072ff 100%)";
+            textClass = "text-white font-black drop-shadow-md";
+            shadow = "inset 0 0 12px rgba(0, 207, 255, 0.6), 0 0 20px rgba(0, 114, 255, 0.5)";
+          } else {
+            bg = "linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)";
+            textClass = "text-white font-black drop-shadow-md";
+            shadow = "inset 0 0 12px rgba(255, 255, 255, 0.3), 0 0 20px rgba(231, 76, 60, 0.6)";
+          }
         } else if (isLocked) {
-          bg = "rgba(0, 0, 0, 0.5)";
-          textClass = "text-slate-400";
+          bg = "rgba(0, 0, 0, 0.6)";
+          textClass = "text-slate-500 line-through";
         }
+
+        // Content formatting rule:
+        // In Ve Dich: active team shows pure Name; inactive teams show Name (Score)
+        // In Khoi Dong: all teams show Name (Score)
+        const displayText =
+          isVeDich && isActive ? seat.name : `${seat.name} (${seat.score})`;
 
         return (
           <React.Fragment key={seat.id}>
             <div
-              className={`flex-1 h-full flex items-center justify-center px-2 transition-all duration-300 ${
-                isBuzzed || isActive ? "animate-pulse" : ""
-              }`}
-              style={{ background: bg }}
+              className={`v3-tab-poly flex-1 ${extraClasses}`}
+              style={{
+                clipPath: clipPathStyle,
+                marginLeft: idx === 0 ? "0px" : `-${pBoxSlant}px`,
+                background: bg,
+                boxShadow: shadow,
+                borderTop: "1px solid rgba(0, 207, 255, 0.3)",
+                borderBottom: "1px solid rgba(0, 207, 255, 0.3)",
+                zIndex: isBuzzed ? 15 : isActive ? 12 : 5,
+              }}
             >
-              <span className={`text-xs sm:text-sm font-bold uppercase truncate ${textClass}`}>
-                <span className="opacity-80 mr-1.5">{idx + 1}.</span>
-                <span>{seat.name}</span>
-                <span className="ml-2 font-mono font-black text-amber-300">
-                  {seat.score}
-                </span>
+              <span
+                className={`text-[12px] sm:text-[14px] font-black uppercase tracking-wider truncate px-3 ${textClass}`}
+                style={{
+                  display: "inline-block",
+                  textShadow:
+                    isBuzzed || isActive
+                      ? "0 2px 8px rgba(0,0,0,0.9)"
+                      : "0 1px 3px rgba(0,0,0,0.8)",
+                }}
+              >
+                {displayText}
               </span>
             </div>
+
+            {/* Authentic Econova Slanted Rounded Pill Separator */}
             {idx < n - 1 && (
-              <div className="w-[1px] h-4/6 bg-cyan-400/40 transform -skew-x-12 shrink-0" />
+              <div
+                className="pointer-events-none shrink-0"
+                style={{
+                  width: "3.5px",
+                  height: "75%",
+                  background: "#ffffff",
+                  borderRadius: "99px",
+                  transformOrigin: "bottom center",
+                  transform: `skewX(-${skewDeg}deg)`,
+                  zIndex: 20,
+                  boxShadow: "0 0 8px rgba(0, 207, 255, 0.8), 0 0 2px #fff",
+                  marginLeft: "-1.75px",
+                  marginRight: "-1.75px",
+                }}
+              />
             )}
           </React.Fragment>
         );
@@ -1917,6 +2004,7 @@ export function EconovaLowerThirdV3({
                 buzzedSeatId={buzzedSeatId}
                 lockedSeats={lockedSeats}
                 questionNumberBadge={questionNumberBadge}
+                roundType={isVeDich ? "VE_DICH" : "KHOI_DONG"}
               />
             )}
 

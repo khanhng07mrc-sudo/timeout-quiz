@@ -228,6 +228,19 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
     socket.on("action", (action: { type: string }, ack?: (r: { ok: boolean; error?: string }) => void) => {
       const entry = withEntry();
       if (!entry || !info || info.role !== "host") return ack?.({ ok: false, error: "Không có quyền" });
+      if (action.type === "seat:kick") {
+        const seatId = Number((action as any).seat);
+        for (const [sockId, cInfo] of entry.clients.entries()) {
+          if (cInfo.role === "player" && cInfo.seatId === seatId) {
+            const clientSock = nsp.sockets.get(sockId);
+            if (clientSock) {
+              clientSock.emit("kicked", { message: "Bạn đã bị Quản trò mời ra khỏi phòng thi." });
+              clientSock.leave(`olympia:${info.code}:player:${seatId}`);
+            }
+            entry.clients.delete(sockId);
+          }
+        }
+      }
       const res = entry.game.hostAction(action as never, Date.now());
       ack?.(res);
       if (res.ok) broadcast(info.code);

@@ -8,6 +8,8 @@ import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
 import OlympiaAudioManagerDrawer from "./OlympiaAudioManagerDrawer";
 import OlympiaRulesWikipediaModal from "./OlympiaRulesWikipediaModal";
 import OlympiaMatchReportModal from "./OlympiaMatchReportModal";
+import RoomQRCodeModal from "@/components/room/RoomQRCodeModal";
+import QRCode from "qrcode";
 import { MediaView, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
 
 type Call = (type: string, extra?: Record<string, unknown>) => Promise<{ ok: boolean; error?: string }>;
@@ -34,6 +36,27 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
   const [showScoreModal, setShowScoreModal] = useState(false);
   const [manualSeat, setManualSeat] = useState<number>(0);
   const [manualDelta, setManualDelta] = useState<number>(10);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [kickCandidate, setKickCandidate] = useState<Seat | null>(null);
+  const [editingSeatId, setEditingSeatId] = useState<number | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedPin, setCopiedPin] = useState(false);
+  const [lobbyQrDataUrl, setLobbyQrDataUrl] = useState<string>("");
+
+  const joinUrl = typeof window !== "undefined" ? `${window.location.origin}/olympia/play/${code}` : "";
+
+  useEffect(() => {
+    if (!code) return;
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://quizorra.app";
+    QRCode.toDataURL(`${origin}/olympia/play/${code}`, {
+      width: 240,
+      margin: 2,
+      color: { dark: "#080a16", light: "#ffffff" },
+      errorCorrectionLevel: "M",
+    })
+      .then(setLobbyQrDataUrl)
+      .catch(() => {});
+  }, [code]);
 
   // HostConsole: Audio is strictly played by Display only
   useOlympiaAudio(state, join?.audioSeason, false);
@@ -196,8 +219,54 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
           </span>
         </div>
 
-        {/* Right: Audio Manager, Mute, Toggle Sidebar, Connection & PIN */}
+        {/* Right: Audio Manager, Mute, Toggle Sidebar, Connection, PIN & QR */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowQrModal(true)}
+            className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xs shadow cursor-pointer flex items-center gap-1.5 shrink-0"
+            title="Mở Mã QR để thí sinh quét tham gia trận đấu"
+          >
+            <span>📱</span>
+            <span>Mã QR</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const url = typeof window !== "undefined" ? `${window.location.origin}/olympia/play/${code}` : "";
+              if (url && navigator?.clipboard?.writeText) {
+                navigator.clipboard.writeText(url);
+                setCopiedLink(true);
+                setTimeout(() => setCopiedLink(false), 2000);
+              }
+            }}
+            className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs shadow cursor-pointer flex items-center gap-1 shrink-0"
+            title="Sao chép link thí sinh"
+          >
+            <span>📋</span>
+            <span>{copiedLink ? "✓ Đã chép link!" : "Copy link"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (navigator?.clipboard?.writeText) {
+                navigator.clipboard.writeText(code);
+                setCopiedPin(true);
+                setTimeout(() => setCopiedPin(false), 2000);
+              }
+            }}
+            className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 font-mono font-black text-xs cursor-pointer flex items-center gap-1.5 shrink-0"
+            title="Nhấp để chép mã PIN phòng"
+          >
+            <span className={connected ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+              {connected ? "🟢" : "🔴"}
+            </span>
+            <span>PIN: {code}</span>
+            {copiedPin && <span className="text-[10px] text-emerald-400 font-sans font-bold">✓ Đã chép!</span>}
+          </button>
+
           <button
             type="button"
             onClick={() => setShowAudioDrawer(true)}
@@ -232,13 +301,6 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             <span>⌨️</span>
             <span className="hidden lg:inline">{rightSidebarOpen ? "Thu gọn cột" : "Phím tắt"}</span>
           </button>
-
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-300 pl-1.5 border-l border-white/10 shrink-0">
-            <span className={connected ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-              {connected ? "🟢" : "🔴"}
-            </span>
-            <span className="font-mono text-amber-300 font-bold text-[11px]">PIN: {code}</span>
-          </div>
         </div>
       </header>
 
@@ -756,15 +818,177 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               )}
               {curRound === "cauHoiPhu" && <CauHoiPhuDeck state={state} call={call} seats={seats} />}
               {!curRound && (
-                <div className="py-6 text-center space-y-2">
-                  <div className="text-violet-400/70 text-xs">Trận đấu chưa bắt đầu hoặc đang ở phòng chờ.</div>
-                  <button
-                    type="button"
-                    onClick={() => call("game:start")}
-                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-red-500 to-violet-600 hover:from-amber-400 hover:to-violet-500 text-white font-black text-xs shadow-lg shadow-amber-500/30 cursor-pointer animate-pulse"
-                  >
-                    ▶ BẮT ĐẦU TRẬN ĐẤU OLYMPIA
-                  </button>
+                <div className="py-4 px-3 max-w-4xl mx-auto space-y-4 animate-fade-in">
+                  {/* Top Join & QR Banner */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-violet-950/60 via-slate-900/80 to-blue-950/60 border border-violet-500/30 shadow-2xl backdrop-blur-md flex flex-col md:flex-row items-center justify-between gap-4">
+                    {/* Left Info */}
+                    <div className="space-y-2 text-center md:text-left flex-1 min-w-0">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500/20 border border-violet-400/40 text-violet-300 text-xs font-bold uppercase tracking-wider">
+                        <span>🏔️</span>
+                        <span>Sảnh Chờ Thi Đấu Olympia</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">Mã PIN Tham Gia Phòng:</div>
+                        <div className="flex items-center justify-center md:justify-start gap-2">
+                          <span
+                            onClick={() => {
+                              if (navigator?.clipboard?.writeText) {
+                                navigator.clipboard.writeText(code);
+                                setCopiedPin(true);
+                                setTimeout(() => setCopiedPin(false), 2000);
+                              }
+                            }}
+                            className="font-mono text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-200 tracking-widest cursor-pointer hover:scale-105 transition"
+                            title="Nhấp để sao chép mã PIN"
+                          >
+                            {code}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (navigator?.clipboard?.writeText) {
+                                navigator.clipboard.writeText(code);
+                                setCopiedPin(true);
+                                setTimeout(() => setCopiedPin(false), 2000);
+                              }
+                            }}
+                            className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs text-amber-300 font-bold border border-amber-400/30 cursor-pointer"
+                          >
+                            {copiedPin ? "✓ Đã chép PIN!" : "📋 Chép PIN"}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="text-xs text-slate-300 flex items-center justify-center md:justify-start gap-2 flex-wrap">
+                        <span className="text-slate-400">Link thí sinh:</span>
+                        <code className="text-cyan-300 font-mono text-[11px] bg-black/40 px-2 py-0.5 rounded border border-cyan-500/30 truncate max-w-[260px] sm:max-w-xs">
+                          {typeof window !== "undefined" ? `${window.location.origin}/olympia/play/${code}` : `/olympia/play/${code}`}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = typeof window !== "undefined" ? `${window.location.origin}/olympia/play/${code}` : "";
+                            if (url && navigator?.clipboard?.writeText) {
+                              navigator.clipboard.writeText(url);
+                              setCopiedLink(true);
+                              setTimeout(() => setCopiedLink(false), 2000);
+                            }
+                          }}
+                          className="px-2 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[11px] font-bold border border-cyan-400/40 cursor-pointer"
+                        >
+                          {copiedLink ? "✓ Đã chép link!" : "📋 Chép Link"}
+                        </button>
+                      </div>
+                      <div className="pt-1 flex items-center justify-center md:justify-start gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowQrModal(true)}
+                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xs shadow-lg shadow-cyan-900/40 flex items-center gap-1.5 cursor-pointer transition active:scale-95"
+                        >
+                          <span>📱</span>
+                          <span>Phóng to Mã QR Toàn Màn Hình</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Right: QR Code Preview */}
+                    {lobbyQrDataUrl && (
+                      <div
+                        onClick={() => setShowQrModal(true)}
+                        className="p-2.5 bg-white rounded-2xl shadow-xl cursor-pointer hover:scale-105 transition shrink-0 group relative"
+                        title="Nhấp để phóng to toàn màn hình"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={lobbyQrDataUrl}
+                          alt={`QR ${code}`}
+                          className="w-28 h-28 sm:w-32 sm:h-32 rounded-lg block"
+                        />
+                        <div className="absolute inset-0 bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold">
+                          🔍 Phóng to
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Contestant List & Kick Guidance */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-300 px-1">
+                      <span className="flex items-center gap-2">
+                        <span>👥 DANH SÁCH THÍ SINH VÀO PHÒNG:</span>
+                        <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                          {state.seats.filter((s) => s.name).length}/{state.seats.length} Đã vào
+                        </span>
+                      </span>
+                      <span className="text-[11px] text-rose-400 font-semibold italic">
+                        * Nhấp vào tên thí sinh bất kỳ để kick khỏi phòng
+                      </span>
+                    </div>
+
+                    <div className={`grid gap-2 ${
+                      state.seats.length <= 4 ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-4" :
+                      state.seats.length <= 6 ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-6" :
+                      "grid-cols-2 sm:grid-cols-4 md:grid-cols-8"
+                    }`}>
+                      {state.seats.map((s, idx) => (
+                        <div
+                          key={s.id}
+                          className={`rounded-xl border p-2.5 transition flex flex-col justify-between gap-2 relative overflow-hidden ${
+                            s.name
+                              ? "bg-slate-900/90 border-cyan-500/40 shadow-lg shadow-cyan-950/40"
+                              : "bg-white/[0.02] border-white/10 border-dashed"
+                          }`}
+                          style={{
+                            borderTop: `3px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}`
+                          }}
+                        >
+                          <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold">
+                            <span>TS {idx + 1}</span>
+                            <span className={s.connected ? "text-emerald-400" : "text-slate-500"}>
+                              {s.connected ? "🟢 Online" : s.name ? "🔴 Offline" : "⚪ Trống"}
+                            </span>
+                          </div>
+
+                          {s.name ? (
+                            <button
+                              type="button"
+                              onClick={() => setKickCandidate(s)}
+                              className="w-full text-left p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/30 hover:border-rose-500/60 transition group cursor-pointer"
+                              title="Nhấp vào tên để kick thí sinh khỏi phòng"
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-black text-xs sm:text-sm text-white group-hover:text-rose-200 truncate">
+                                  {s.name}
+                                </span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-600/40 text-rose-300 font-bold border border-rose-500/40 group-hover:bg-rose-600 group-hover:text-white transition shrink-0">
+                                  🚫 Kick
+                                </span>
+                              </div>
+                              {s.school && (
+                                <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                                  {s.school}
+                                </div>
+                              )}
+                            </button>
+                          ) : (
+                            <div className="py-2 text-center text-xs text-slate-500 italic">
+                              Đang chờ thí sinh...
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Start Match CTA */}
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => call("game:start")}
+                      className="px-8 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-red-500 to-violet-600 hover:from-amber-400 hover:to-violet-500 text-white font-black text-sm shadow-xl shadow-amber-500/30 cursor-pointer animate-pulse transition transform hover:scale-105 active:scale-95"
+                    >
+                      ▶ BẮT ĐẦU TRẬN ĐẤU OLYMPIA
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -850,91 +1074,134 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       {/* ── BOTTOM BAR: CONTESTANT CARDS COMPACT (ZERO-SCROLL) ── */}
       <footer className="border-t border-violet-500/15 bg-black/25 px-2 py-1 shrink-0">
         <div className={`grid gap-1.5 ${
-          seats.length <= 4 ? "grid-cols-2 sm:grid-cols-4" :
-          seats.length <= 6 ? "grid-cols-3 sm:grid-cols-6" :
+          state.seats.length <= 4 ? "grid-cols-2 sm:grid-cols-4" :
+          state.seats.length <= 6 ? "grid-cols-3 sm:grid-cols-6" :
           "grid-cols-4 sm:grid-cols-8"
         }`}>
-          {seats.map((s, idx) => (
-            <div
-              key={s.id}
-              className="rounded-lg border border-cyan-500/25 bg-slate-900/95 px-2 py-1 flex items-center justify-between gap-1.5 relative overflow-hidden shadow"
-              style={{ borderLeft: `3.5px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}` }}
-            >
-              <div className="min-w-0 flex-1 flex flex-col justify-center">
-                <input
-                  type="text"
-                  defaultValue={s.name || `TS ${idx + 1}`}
-                  key={`host_name_${s.id}_${s.name}`}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                  }}
-                  onBlur={(e) => {
-                    const val = e.target.value.trim();
-                    if (val && val !== s.name) {
-                      call("seat:rename", { seat: s.id, name: val, school: s.school });
-                    }
-                  }}
-                  className="text-[11px] font-black text-slate-100 bg-transparent border-b border-transparent hover:border-white/20 focus:border-cyan-400 focus:outline-none w-full truncate leading-normal"
-                  title="Nhấp để đổi tên thí sinh"
-                />
-                <input
-                  type="text"
-                  defaultValue={s.school || ""}
-                  key={`host_school_${s.id}_${s.school || ""}`}
-                  placeholder="Trường THPT..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                  }}
-                  onBlur={(e) => {
-                    const val = e.target.value.trim();
-                    if (val !== (s.school || "")) {
-                      call("seat:setSchool", { seat: s.id, school: val });
-                    }
-                  }}
-                  className="w-full text-[9px] px-1 py-0.5 rounded bg-black/40 border border-white/10 text-amber-300 placeholder:text-slate-500 focus:outline-none focus:border-amber-400 leading-normal"
-                  title="Nhập tên trường THPT / Tỉnh đại diện"
-                />
-              </div>
-              <div className="flex flex-col items-end gap-0.5 shrink-0">
-                <input
-                  type="number"
-                  defaultValue={s.score}
-                  key={`host_score_${s.id}_${s.score}`}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      (e.target as HTMLInputElement).blur();
-                    }
-                  }}
-                  onBlur={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    if (!isNaN(val) && val !== s.score) {
-                      call("score:set", { seat: s.id, score: val });
-                    }
-                  }}
-                  className="w-12 px-1 py-0.5 rounded bg-black/50 border border-amber-400/30 text-amber-300 text-center text-xs sm:text-sm font-black leading-tight focus:outline-none focus:border-amber-400"
-                  title="Gõ điểm trực tiếp (Enter để lưu)"
-                />
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => call("score:adjust", { seat: s.id, delta: -10 })}
-                    className="w-5 h-4 rounded bg-rose-500/25 border border-rose-500/40 hover:bg-rose-500/40 text-rose-300 text-[10px] font-black cursor-pointer flex items-center justify-center transition"
-                    title="Trừ 10 điểm"
-                  >
-                    -
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => call("score:adjust", { seat: s.id, delta: 10 })}
-                    className="w-5 h-4 rounded bg-emerald-500/25 border border-emerald-500/40 hover:bg-emerald-500/40 text-emerald-300 text-[10px] font-black cursor-pointer flex items-center justify-center transition"
-                    title="Cộng 10 điểm"
-                  >
-                    +
-                  </button>
+          {state.seats.map((s, idx) => {
+            const isEditing = editingSeatId === s.id;
+            return (
+              <div
+                key={s.id}
+                className="rounded-lg border border-cyan-500/25 bg-slate-900/95 px-2 py-1 flex items-center justify-between gap-1.5 relative overflow-hidden shadow"
+                style={{ borderLeft: `3.5px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}` }}
+              >
+                <div className="min-w-0 flex-1 flex flex-col justify-center">
+                  {s.name ? (
+                    isEditing ? (
+                      <input
+                        type="text"
+                        defaultValue={s.name}
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const val = (e.target as HTMLInputElement).value.trim();
+                            if (val && val !== s.name) call("seat:rename", { seat: s.id, name: val, school: s.school });
+                            setEditingSeatId(null);
+                          } else if (e.key === "Escape") {
+                            setEditingSeatId(null);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          if (val && val !== s.name) call("seat:rename", { seat: s.id, name: val, school: s.school });
+                          setEditingSeatId(null);
+                        }}
+                        className="text-[11px] font-black text-slate-100 bg-black/50 border border-cyan-400 rounded px-1 py-0.5 focus:outline-none w-full"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-1 group/name">
+                        <button
+                          type="button"
+                          onClick={() => setKickCandidate(s)}
+                          className="text-[11px] font-black text-slate-100 hover:text-rose-300 hover:bg-rose-500/20 px-1 py-0.5 rounded transition flex items-center gap-1 truncate text-left cursor-pointer group-hover/name:border group-hover/name:border-rose-500/30"
+                          title="Nhấp vào tên để kick thí sinh khỏi phòng"
+                        >
+                          <span className={s.connected ? "text-emerald-400 text-[10px]" : "text-slate-500 text-[10px]"}>●</span>
+                          <span className="truncate">{s.name}</span>
+                          <span className="text-[10px] text-rose-400 opacity-0 group-hover/name:opacity-100 transition shrink-0">🚫</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingSeatId(s.id)}
+                          className="text-[10px] text-slate-500 hover:text-amber-300 opacity-40 hover:opacity-100 transition shrink-0 p-0.5"
+                          title="Đổi tên"
+                        >
+                          ✏️
+                        </button>
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-[11px] font-semibold text-slate-500 italic flex items-center gap-1">
+                      <span>Ghế {idx + 1} (Trống)</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditingSeatId(s.id)}
+                        className="text-[9px] text-cyan-400 hover:underline not-italic cursor-pointer"
+                      >
+                        + gán tên
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    type="text"
+                    defaultValue={s.school || ""}
+                    key={`host_school_${s.id}_${s.school || ""}`}
+                    placeholder="Trường THPT..."
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                    }}
+                    onBlur={(e) => {
+                      const val = e.target.value.trim();
+                      if (val !== (s.school || "")) {
+                        call("seat:setSchool", { seat: s.id, school: val });
+                      }
+                    }}
+                    className="w-full text-[9px] px-1 py-0.5 rounded bg-black/40 border border-white/10 text-amber-300 placeholder:text-slate-500 focus:outline-none focus:border-amber-400 leading-normal"
+                    title="Nhập tên trường THPT / Tỉnh đại diện"
+                  />
+                </div>
+                <div className="flex flex-col items-end gap-0.5 shrink-0">
+                  <input
+                    type="number"
+                    defaultValue={s.score}
+                    key={`host_score_${s.id}_${s.score}`}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        (e.target as HTMLInputElement).blur();
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val) && val !== s.score) {
+                        call("score:set", { seat: s.id, score: val });
+                      }
+                    }}
+                    className="w-12 px-1 py-0.5 rounded bg-black/50 border border-amber-400/30 text-amber-300 text-center text-xs sm:text-sm font-black leading-tight focus:outline-none focus:border-amber-400"
+                    title="Gõ điểm trực tiếp (Enter để lưu)"
+                  />
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => call("score:adjust", { seat: s.id, delta: -10 })}
+                      className="w-5 h-4 rounded bg-rose-500/25 border border-rose-500/40 hover:bg-rose-500/40 text-rose-300 text-[10px] font-black cursor-pointer flex items-center justify-center transition"
+                      title="Trừ 10 điểm"
+                    >
+                      -
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => call("score:adjust", { seat: s.id, delta: 10 })}
+                      className="w-5 h-4 rounded bg-emerald-500/25 border border-emerald-500/40 hover:bg-emerald-500/40 text-emerald-300 text-[10px] font-black cursor-pointer flex items-center justify-center transition"
+                      title="Cộng 10 điểm"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </footer>
 
@@ -999,6 +1266,58 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       <OlympiaTranscriptModal open={showTranscript} onClose={() => setShowTranscript(false)} state={state} />
       <OlympiaRulesWikipediaModal open={showRules} onClose={() => setShowRules(false)} initialSeason={state.rulesetId} />
       <OlympiaMatchReportModal open={showReport} onClose={() => setShowReport(false)} state={state} />
+
+      {/* QR Code Modal */}
+      <RoomQRCodeModal
+        isOpen={showQrModal}
+        onClose={() => setShowQrModal(false)}
+        roomCode={code}
+        roomTitle="Đường lên đỉnh Olympia"
+        customJoinUrl={joinUrl}
+      />
+
+      {/* Kick Contestant Confirmation Modal */}
+      {kickCandidate && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in select-none">
+          <div className="rounded-2xl border border-rose-500/40 bg-slate-900 p-5 w-full max-w-sm space-y-4 shadow-2xl shadow-rose-950/60 animate-scale-up text-center">
+            <div className="w-14 h-14 rounded-full bg-rose-500/20 border-2 border-rose-500/50 flex items-center justify-center text-2xl mx-auto text-rose-400">
+              🚫
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-base font-black text-white">Xác nhận Kick Thí Sinh</h3>
+              <p className="text-xs text-slate-300">
+                Bạn có chắc chắn muốn mời thí sinh{" "}
+                <b className="text-rose-400 font-bold">{kickCandidate.name}</b> (Ghế {kickCandidate.id + 1}) ra khỏi phòng thi?
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Ghế này sẽ được giải phóng ngay lập tức để thí sinh khác có thể vào thay thế.
+              </p>
+            </div>
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setKickCandidate(null)}
+                className="flex-1 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 font-bold text-xs transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const target = kickCandidate;
+                  setKickCandidate(null);
+                  if (target) {
+                    await call("seat:kick", { seat: target.id });
+                  }
+                }}
+                className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs shadow-lg shadow-rose-900/50 transition cursor-pointer"
+              >
+                🚫 Xác nhận Kick
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -20,8 +20,9 @@ export default function GlobalNavigationToolbar() {
   // (/admin/sandbox và /display đã có nút Cài đặt & Pháp lý chuyên biệt ở góc dưới bên trái)
   const isSandbox = pathname?.startsWith("/admin/sandbox");
   const isDisplay = pathname?.startsWith("/display");
+  const isOlympia = pathname?.startsWith("/olympia");
 
-  if (isInsideIframe || isSandbox || isDisplay) return null;
+  if (isInsideIframe || isSandbox || isDisplay || isOlympia) return null;
 
   return (
     <>

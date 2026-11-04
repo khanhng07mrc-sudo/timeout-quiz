@@ -854,8 +854,17 @@ export class OlympiaGame {
         }
         return OK;
       }
-        this.kickSeat(num("seat"));
+      case "seat:kick": {
+        const id = num("seat");
+        const sName = this.seatName(id);
+        this.kickSeat(id);
+        if (st.khoiDong && st.khoiDong.buzzedSeat === id) st.khoiDong.buzzedSeat = null;
+        if (st.veDich?.steal && st.veDich.steal.buzzedSeat === id) st.veDich.steal.buzzedSeat = null;
+        if (st.cauHoiPhu && st.cauHoiPhu.buzzedSeat === id) st.cauHoiPhu.buzzedSeat = null;
+        if (st.vcnv?.bells) st.vcnv.bells = st.vcnv.bells.filter((b) => b.seat !== id);
+        this.logMsg(`Quản trò đã mời ${sName || `Ghế ${id + 1}`} ra khỏi phòng`);
         return OK;
+      }
       case "seat:rename": {
         const s = this.seat(num("seat"));
         if (!s) return fail("Ghế không hợp lệ");

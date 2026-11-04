@@ -27,6 +27,7 @@ export function useOlympiaSocket({ code, role, hostKey, name, token, enabled = t
   const [state, setState] = useState<OlympiaState | null>(null);
   const [join, setJoin] = useState<JoinInfo | null>(null);
   const [connected, setConnected] = useState(false);
+  const [kickedMessage, setKickedMessage] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const offsetRef = useRef(0);
   const versionRef = useRef(-1);
@@ -50,6 +51,9 @@ export function useOlympiaSocket({ code, role, hostKey, name, token, enabled = t
       doJoin();
     });
     socket.on("disconnect", () => setConnected(false));
+    socket.on("kicked", (data: { message?: string }) => {
+      setKickedMessage(data?.message || "Bạn đã bị Quản trò mời ra khỏi phòng thi.");
+    });
     socket.on("state", (s: OlympiaState) => {
       versionRef.current = s.version;
       setState(s);
@@ -71,7 +75,7 @@ export function useOlympiaSocket({ code, role, hostKey, name, token, enabled = t
   );
 
   const serverNow = useCallback(() => Date.now() + offsetRef.current, []);
-  return { state, join, connected, emit, serverNow };
+  return { state, join, connected, emit, serverNow, kickedMessage };
 }
 
 /** Remaining ms for a server timer, ticking locally. */

@@ -26,7 +26,8 @@ export default function PlayerPad({
     setName(sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || "");
   }, [initialName, initialSeat]);
 
-  const { state, join, connected, emit, serverNow } = useOlympiaSocket({
+  const [inputName, setInputName] = useState("");
+  const { state, join, connected, emit, serverNow, kickedMessage } = useOlympiaSocket({
     code,
     role: "player",
     name: name ?? "",
@@ -35,7 +36,92 @@ export default function PlayerPad({
   });
   const introRem = useCountdown(state?.introTimer, serverNow); void introRem; // kept for type compat
 
-  if (name === null) return null;
+  if (kickedMessage) {
+    return (
+      <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#1a0505] via-[#2d0a0a] to-[#0a0202] text-white p-6 flex flex-col items-center justify-center gap-6 text-center select-none">
+        <div className="w-20 h-20 rounded-full bg-rose-500/20 border-2 border-rose-500/50 flex items-center justify-center text-4xl shadow-xl shadow-rose-950/50">
+          🚫
+        </div>
+        <div className="space-y-2 max-w-md">
+          <h2 className="text-xl sm:text-2xl font-black text-rose-300">ĐÃ RỜI PHÒNG THI</h2>
+          <p className="text-sm text-slate-300">{kickedMessage}</p>
+        </div>
+        <div className="flex flex-wrap gap-3 justify-center">
+          <a
+            href="/"
+            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/20 transition cursor-pointer"
+          >
+            ← Về trang chủ
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                sessionStorage.removeItem("playerName");
+                localStorage.removeItem("playerName");
+                window.location.href = `/play?pin=${code}`;
+              }
+            }}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-sm shadow-lg shadow-cyan-900/50 transition cursor-pointer"
+          >
+            🔄 Tham gia lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!name) {
+    return (
+      <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#080d24] via-[#0e173b] to-[#040714] text-white p-6 flex flex-col items-center justify-center select-none">
+        <div className="w-full max-w-sm rounded-3xl bg-slate-900/95 border border-cyan-500/40 p-6 sm:p-8 space-y-5 shadow-2xl backdrop-blur-xl text-center">
+          <div className="text-4xl">🏔️</div>
+          <div className="space-y-1">
+            <h2 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-400">
+              ĐƯỜNG LÊN ĐỈNH OLYMPIA
+            </h2>
+            <p className="text-xs text-slate-400">
+              Phòng thi PIN: <b className="text-cyan-400 font-mono text-sm tracking-widest">{code}</b>
+            </p>
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const trimmed = inputName.trim();
+              if (trimmed) {
+                sessionStorage.setItem("playerName", trimmed);
+                localStorage.setItem("playerName", trimmed);
+                setName(trimmed);
+              }
+            }}
+            className="space-y-4 text-left"
+          >
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5">Họ và tên thí sinh:</label>
+              <input
+                type="text"
+                autoFocus
+                required
+                maxLength={30}
+                value={inputName}
+                onChange={(e) => setInputName(e.target.value)}
+                placeholder="Nhập tên của bạn..."
+                className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/20 text-white font-bold placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 text-sm"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={!inputName.trim()}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 via-red-500 to-violet-600 hover:from-amber-400 hover:to-violet-500 text-white font-black text-sm shadow-lg shadow-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition transform active:scale-95"
+            >
+              🚀 VÀO PHÒNG THI
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   if (join && !join.ok) {
     return (
       <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#080d24] via-[#0e173b] to-[#040714] text-white p-6 flex flex-col items-center justify-center gap-4">

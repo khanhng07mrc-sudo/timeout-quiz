@@ -106356,28 +106356,36 @@ var OlympiaGame = class _OlympiaGame {
         });
         return OK;
       }
-      case "system:setO22Quarter":
-        {
-          const q = Number(a.quarter);
-          if (q === 1 || q === 2 || q === 3) {
-            st.o22Quarter = q;
-            if (this.ruleset.id === "O22") {
-              const kd = st.khoiDong;
-              if (kd && (kd.phase === "intro" || kd.qIdx < 0)) {
-                const segs = turnsO22(q);
-                kd.segments = segs;
-                if (kd.segIdx < segs.length) {
-                  const curSeg = segs[kd.segIdx];
-                  kd.timer = mkTimer(curSeg.perQuestionMs);
-                  kd.globalTimer = curSeg.globalMs ? mkTimer(curSeg.globalMs) : null;
-                }
+      case "system:setO22Quarter": {
+        const q = Number(a.quarter);
+        if (q === 1 || q === 2 || q === 3) {
+          st.o22Quarter = q;
+          if (this.ruleset.id === "O22") {
+            const kd = st.khoiDong;
+            if (kd && (kd.phase === "intro" || kd.qIdx < 0)) {
+              const segs = turnsO22(q);
+              kd.segments = segs;
+              if (kd.segIdx < segs.length) {
+                const curSeg = segs[kd.segIdx];
+                kd.timer = mkTimer(curSeg.perQuestionMs);
+                kd.globalTimer = curSeg.globalMs ? mkTimer(curSeg.globalMs) : null;
               }
             }
           }
-          return OK;
         }
-        this.kickSeat(num("seat"));
         return OK;
+      }
+      case "seat:kick": {
+        const id = num("seat");
+        const sName = this.seatName(id);
+        this.kickSeat(id);
+        if (st.khoiDong && st.khoiDong.buzzedSeat === id) st.khoiDong.buzzedSeat = null;
+        if (st.veDich?.steal && st.veDich.steal.buzzedSeat === id) st.veDich.steal.buzzedSeat = null;
+        if (st.cauHoiPhu && st.cauHoiPhu.buzzedSeat === id) st.cauHoiPhu.buzzedSeat = null;
+        if (st.vcnv?.bells) st.vcnv.bells = st.vcnv.bells.filter((b) => b.seat !== id);
+        this.logMsg(`Qu\u1EA3n tr\xF2 \u0111\xE3 m\u1EDDi ${sName || `Gh\u1EBF ${id + 1}`} ra kh\u1ECFi ph\xF2ng`);
+        return OK;
+      }
       case "seat:rename": {
         const s = this.seat(num("seat"));
         if (!s) return fail("Gh\u1EBF kh\xF4ng h\u1EE3p l\u1EC7");
@@ -108597,6 +108605,19 @@ function registerOlympiaSocket(io2) {
     socket.on("action", (action, ack) => {
       const entry = withEntry();
       if (!entry || !info || info.role !== "host") return ack?.({ ok: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n" });
+      if (action.type === "seat:kick") {
+        const seatId = Number(action.seat);
+        for (const [sockId, cInfo] of entry.clients.entries()) {
+          if (cInfo.role === "player" && cInfo.seatId === seatId) {
+            const clientSock = nsp.sockets.get(sockId);
+            if (clientSock) {
+              clientSock.emit("kicked", { message: "B\u1EA1n \u0111\xE3 b\u1ECB Qu\u1EA3n tr\xF2 m\u1EDDi ra kh\u1ECFi ph\xF2ng thi." });
+              clientSock.leave(`olympia:${info.code}:player:${seatId}`);
+            }
+            entry.clients.delete(sockId);
+          }
+        }
+      }
       const res = entry.game.hostAction(action, Date.now());
       ack?.(res);
       if (res.ok) broadcast(info.code);

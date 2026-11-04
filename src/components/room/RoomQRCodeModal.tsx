@@ -9,6 +9,7 @@ interface RoomQRCodeModalProps {
   roomCode: string;
   roomTitle?: string;
   teams?: Array<{ id: string; name: string; color: string; pin?: string }>;
+  customJoinUrl?: string;
 }
 
 export default function RoomQRCodeModal({
@@ -17,6 +18,7 @@ export default function RoomQRCodeModal({
   roomCode,
   roomTitle,
   teams = [],
+  customJoinUrl,
 }: RoomQRCodeModalProps) {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
@@ -31,9 +33,10 @@ export default function RoomQRCodeModal({
 
     try {
       const origin = typeof window !== "undefined" ? window.location.origin : "https://quizorra.app";
-      const url = selectedTeamId
+      const defaultUrl = selectedTeamId
         ? `${origin}/play/${roomCode}?teamId=${selectedTeamId}`
         : `${origin}/play?pin=${roomCode}`;
+      const url = customJoinUrl || defaultUrl;
       setJoinUrl(url);
 
       QRCode.toDataURL(url, {
@@ -50,7 +53,7 @@ export default function RoomQRCodeModal({
     } catch (e) {
       console.error(e);
     }
-  }, [isOpen, roomCode, selectedTeamId]);
+  }, [isOpen, roomCode, selectedTeamId, customJoinUrl]);
 
   if (!isOpen) return null;
 

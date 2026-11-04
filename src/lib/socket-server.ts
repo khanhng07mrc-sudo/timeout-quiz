@@ -15,13 +15,14 @@ export function initSocketServer(
 
   io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents>(httpServer, {
     cors: {
-      origin: (origin, callback) => {
+      origin: (_origin, callback) => {
         callback(null, true);
       },
       methods: ["GET", "POST"],
       credentials: true,
     },
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
+    maxHttpBufferSize: 50 * 1024 * 1024, // 50MB for base64 mystery images & media banks
     pingTimeout: 20000,
     pingInterval: 10000,
     perMessageDeflate: false,

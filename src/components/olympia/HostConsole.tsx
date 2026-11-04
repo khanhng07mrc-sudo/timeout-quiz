@@ -102,7 +102,10 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       } else if (e.key === "r" || e.key === "R") {
         e.preventDefault();
         if (state?.currentRound === "vcnv") call("vcnv:reveal");
-        else if (state?.currentRound === "tangToc") call("tt:revealAndGrade");
+        else if (state?.currentRound === "tangToc") call("tt:reveal");
+      } else if (e.key === "g" || e.key === "G") {
+        e.preventDefault();
+        if (state?.currentRound === "tangToc") call("tt:grade");
       } else if (e.key === "c" || e.key === "C") {
         e.preventDefault();
         if (state?.currentRound === "khoiDong") call("kd:buzzer");
@@ -219,16 +222,61 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
           </span>
         </div>
 
-        {/* Right: Audio Manager, Mute, Toggle Sidebar, Connection, PIN & QR */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Right: Theme Switcher, Buzzer Test, Audio Manager, Mute, Toggle Sidebar, Connection, PIN & QR */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-wrap justify-end">
+          {/* Dual-Theme Broadcast Switcher */}
+          <button
+            type="button"
+            onClick={() =>
+              call("theme:set", {
+                themeMode: state.themeMode === "o26_classic" ? "v3_arrow" : "o26_classic",
+              })
+            }
+            className={`px-2 py-1 rounded-lg font-black text-[11px] border shadow cursor-pointer flex items-center gap-1 shrink-0 transition ${
+              state.themeMode === "o26_classic"
+                ? "bg-amber-500/25 border-amber-400 text-amber-200"
+                : "bg-red-600/30 border-red-400 text-red-100"
+            }`}
+            title="Chuyển đổi giao diện đồ họa Màn chiếu (Mũi Tên V3 vs O26 Cổ Điển VTV3)"
+          >
+            <span>🎨</span>
+            <span>{state.themeMode === "o26_classic" ? "Theme: O26 Cổ Điển" : "Theme: Mũi Tên V3"}</span>
+          </button>
+
+          {/* Buzzer Test Mode Toggle */}
+          <button
+            type="button"
+            onClick={() => call("bell:toggleTest")}
+            className={`px-2 py-1 rounded-lg font-black text-[11px] border shadow cursor-pointer flex items-center gap-1 shrink-0 transition ${
+              state.bellTestMode
+                ? "bg-amber-400 text-slate-950 border-amber-200 animate-pulse"
+                : "bg-white/10 hover:bg-white/20 border-white/20 text-amber-300"
+            }`}
+            title="Bật/Tắt chế độ cho thí sinh bấm thử chuông mà không khóa quyền thi đấu"
+          >
+            <span>🔔</span>
+            <span>{state.bellTestMode ? "Đang Test Chuông" : "Test Chuông"}</span>
+          </button>
+
+          {state.bellTestMode && (
+            <button
+              type="button"
+              onClick={() => call("bell:clearTest")}
+              className="px-2 py-1 rounded-lg bg-rose-600/40 hover:bg-rose-600/60 border border-rose-400 text-white font-bold text-[11px] cursor-pointer shrink-0"
+              title="Xóa danh sách test chuông để thử lại"
+            >
+              🧹 Reset Chuông
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setShowQrModal(true)}
-            className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xs shadow cursor-pointer flex items-center gap-1.5 shrink-0"
+            className="px-2 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-[11px] shadow cursor-pointer flex items-center gap-1 shrink-0"
             title="Mở Mã QR để thí sinh quét tham gia trận đấu"
           >
             <span>📱</span>
-            <span>Mã QR</span>
+            <span className="hidden sm:inline">Mã QR</span>
           </button>
 
           <button
@@ -323,6 +371,43 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       )}
 
       {err && <div className="bg-rose-500/20 border-b border-rose-500/50 px-3 py-1.5 text-rose-200 text-xs">⚠️ {err}</div>}
+
+      {/* Bell Test Mode Live Log Banner */}
+      {state.bellTestMode && (
+        <div className="bg-amber-500/20 border-b border-amber-400/50 px-3 py-1.5 flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-black text-amber-300 uppercase">🔔 CHẾ ĐỘ THỬ CHUÔNG ĐANG BẬT:</span>
+            {state.bellTestLogs && state.bellTestLogs.length > 0 ? (
+              state.bellTestLogs.map((log) => (
+                <span
+                  key={log.seat}
+                  className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-[11px]"
+                >
+                  #{log.order} {seatName(state, log.seat)}
+                </span>
+              ))
+            ) : (
+              <span className="text-slate-300 italic">Đang chờ thí sinh bấm thử chuông…</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => call("bell:clearTest")}
+              className="px-2 py-0.5 rounded bg-white/15 hover:bg-white/25 text-white font-bold text-[11px] cursor-pointer"
+            >
+              🧹 Xóa thử lại
+            </button>
+            <button
+              type="button"
+              onClick={() => call("bell:toggleTest")}
+              className="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-black text-[11px] cursor-pointer"
+            >
+              ✕ Tắt chế độ thử
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── MAIN 3-COLUMN WORKSPACE ── */}
       <div className="flex-1 flex overflow-hidden min-h-0">
@@ -650,53 +735,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               </div>
             )}
 
-            {/* ── MÀN HÌNH LED PHẢI SÂN KHẤU (STAGE RIGHT SCREEN CONTROLLER) ── */}
-            <div className="rounded-xl border border-violet-500/30 bg-[#090d1e]/95 p-2 shadow-xl flex flex-col gap-1.5 backdrop-blur-md">
-              <div className="flex items-center justify-between text-[11px] font-bold">
-                <div className="flex items-center gap-1.5 text-violet-300">
-                  <span className="text-xs">🖥️</span>
-                  <span className="uppercase tracking-wider font-black text-white">MÀN HÌNH PHẢI SÂN KHẤU</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-violet-950/80 text-violet-300 border border-violet-700/50">
-                    {state.rightScreenMode === "roundGraphics"
-                      ? "Đồ hoạ vòng thi"
-                      : state.rightScreenMode === "roundTitle"
-                      ? "Tên phần thi"
-                      : state.rightScreenMode === "scoreboard"
-                      ? "Bảng điểm"
-                      : state.rightScreenMode === "logo"
-                      ? "Logo Olympia"
-                      : "Tự động"}
-                  </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-5 gap-1">
-                {[
-                  { id: "auto", label: "Tự Động" },
-                  { id: "roundGraphics", label: "Đồ Hoạ Vòng" },
-                  { id: "roundTitle", label: "Tên Phần Thi" },
-                  { id: "scoreboard", label: "Bảng Điểm" },
-                  { id: "logo", label: "Logo Nguyệt Quế" },
-                ].map((m) => {
-                  const isActive = (state.rightScreenMode ?? "auto") === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => call("rightScreen:setMode", { mode: m.id })}
-                      className={`px-1.5 py-1 rounded text-[10px] font-black border transition truncate cursor-pointer ${
-                        isActive
-                          ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b]"
-                          : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* ── BÀN ĐẠO DIỄN HÌNH ẢNH TRƯỜNG QUAY 3D (BROADCAST VISION MIXER) ── */}
+            {/* ── BÀN ĐẠO DIỄN HÌNH ẢNH TRƯỜNG QUAY 3D & MÀN HÌNH PHẢI (COMPACT VISION MIXER) ── */}
             <div className="rounded-xl border border-cyan-500/30 bg-[#090d1e]/95 p-2 shadow-xl flex flex-col gap-1.5 backdrop-blur-md">
               <div className="flex items-center justify-between text-[11px] font-bold">
                 <div className="flex items-center gap-1.5 text-cyan-300">
@@ -1583,19 +1622,122 @@ function KhoiDongDeck({
 // ───────────────────────────────────────────────────────────
 function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; seats: Seat[] }) {
   const v = state.vcnv!;
-  const [selectedCnvSeat, setSelectedCnvSeat] = useState<number>(0);
+  const [selectedCnvSeat, setSelectedCnvSeat] = useState<number>(v.bells?.[0]?.seat ?? 0);
+
+  // Auto-select the fastest CNV bell seat whenever someone buzzes so MC never grades the wrong team
+  useEffect(() => {
+    if (v.bells && v.bells.length > 0) {
+      setSelectedCnvSeat(v.bells[0].seat);
+    }
+  }, [v.bells]);
+
+  const kwLen = v.keywordLength ?? (v.keyword ? v.keyword.replace(/\s+/g, "").length : 0);
 
   return (
     <div className="space-y-2.5">
       {/* Banner status: Phase & Số lượng chữ cái */}
-      <div className="flex items-center justify-between text-xs text-slate-300 px-1 border-b border-white/10 pb-1.5">
+      <div className="flex items-center justify-between text-xs text-slate-300 px-1 border-b border-white/10 pb-1.5 flex-wrap gap-2">
         <span>
-          Phase: <b className="text-cyan-300">{v.phase === "grid" ? "Lưới từ khóa" : v.phase === "question" ? "Câu hỏi hàng ngang" : "Lật đáp án"}</b>
-          {" · "}Hàng chọn: <b className="text-yellow-300">{v.currentRow >= 0 ? (v.currentRow === 4 ? "Trung tâm" : `Hàng ${v.currentRow + 1}`) : "—"}</b>
+          Phase:{" "}
+          <b className="text-cyan-300">
+            {v.phase === "grid" ? "Lưới từ khóa" : v.phase === "question" ? "Câu hỏi hàng ngang" : "Lật đáp án"}
+          </b>
+          {" · "}Hàng chọn:{" "}
+          <b className="text-yellow-300">
+            {v.currentRow >= 0 ? (v.currentRow === 4 ? "Trung tâm" : `Hàng ${v.currentRow + 1}`) : "—"}
+          </b>
         </span>
         <span className="text-amber-300 font-bold">
-          Số lượng chữ cái Chướng ngại vật: {v.keyword ? v.keyword.replace(/\s+/g, "").length : 0}
+          Từ khóa CNV: <b className="text-white">{v.keyword || "—"}</b> ({kwLen} chữ cái)
         </span>
+      </div>
+
+      {/* LIVE CONTESTANT ANSWERS & PER-SEAT VCNV LOCK MONITOR */}
+      <div className="rounded-xl bg-black/45 border border-cyan-500/30 p-2 space-y-1.5">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="font-black text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span>📋</span>
+            <span>ĐÁP ÁN HÀNG NGANG TRỰC TIẾP & QUYỀN CHƠI VCNV</span>
+          </span>
+          {v.eliminatedSeats.length > 0 && (
+            <button
+              type="button"
+              onClick={() => call("vcnv:unlockAllSeats")}
+              className="px-2 py-0.5 rounded bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-400/50 text-emerald-200 font-bold text-[10px] cursor-pointer"
+              title="Mở khóa quyền chơi VCNV cho tất cả thí sinh"
+            >
+              🔓 Mở khóa tất cả ({v.eliminatedSeats.length} đang khóa)
+            </button>
+          )}
+        </div>
+        <div className={`grid gap-1.5 ${seats.length <= 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-6"}`}>
+          {seats.map((s) => {
+            const ans = v.answers?.[s.id];
+            const isLocked = v.eliminatedSeats.includes(s.id);
+            const bellIdx = v.bells?.findIndex((b) => b.seat === s.id) ?? -1;
+            const hasBell = bellIdx >= 0;
+
+            return (
+              <div
+                key={s.id}
+                className={`rounded-lg p-1.5 border flex flex-col justify-between gap-1 ${
+                  hasBell
+                    ? "bg-amber-950/60 border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
+                    : isLocked
+                    ? "bg-rose-950/35 border-rose-500/40"
+                    : "bg-slate-900/90 border-white/10"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1 text-[11px]">
+                  <span className="font-black text-slate-200 truncate">
+                    TS{s.id + 1} · {s.name || `Ghế ${s.id + 1}`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => call("vcnv:toggleLockSeat", { seat: s.id })}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-black border cursor-pointer shrink-0 transition ${
+                      isLocked
+                        ? "bg-rose-600 hover:bg-emerald-600 text-white border-rose-300"
+                        : "bg-emerald-950/80 hover:bg-rose-900/60 text-emerald-300 border-emerald-500/40"
+                    }`}
+                    title={isLocked ? "Nhấn để MỞ LẠI quyền chơi VCNV cho thí sinh này" : "Nhấn để khóa quyền chơi VCNV"}
+                  >
+                    {isLocked ? "🔒 Mở lại" : "🟢 Đang chơi"}
+                  </button>
+                </div>
+
+                {/* Live Typed Answer */}
+                <div className="rounded bg-black/50 border border-white/10 px-2 py-1 min-h-[26px] flex items-center justify-between gap-1">
+                  {ans?.text ? (
+                    <>
+                      <span className="font-black text-xs text-amber-300 uppercase truncate select-text" title={ans.text}>
+                        {ans.text}
+                      </span>
+                      <span className="text-[10px] font-mono text-cyan-300 shrink-0">
+                        {((ans.ms ?? 0) / 1000).toFixed(2)}s
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-[10px] text-slate-500 italic">Chưa gửi ĐA</span>
+                  )}
+                </div>
+
+                {ans?.previousText && (
+                  <div className="text-[9px] text-slate-400 truncate">
+                    Trước đó: {ans.previousText} ({((ans.previousMs || 0) / 1000).toFixed(2)}s)
+                  </div>
+                )}
+
+                {hasBell && (
+                  <div className="text-[10px] font-black text-amber-300 bg-amber-500/20 border border-amber-400/40 rounded px-1.5 py-0.5 flex items-center justify-between">
+                    <span>🔔 Chuông CNV #{bellIdx + 1}</span>
+                    <span>(Đã tự dừng chơi)</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1609,31 +1751,37 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             <span>⭐</span>
             <span>Mở Các Hàng Ngang</span>
           </button>
-          {[0, 1, 2, 3].map((rIdx) => (
-            <button
-              key={rIdx}
-              type="button"
-              onClick={() => call("vcnv:selectRow", { row: rIdx })}
-              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${
-                v.currentRow === rIdx
-                  ? "bg-yellow-400/20 border-yellow-400 text-yellow-200"
-                  : v.rows[rIdx]?.opened
+          {[0, 1, 2, 3].map((rIdx) => {
+            const lc = v.rows[rIdx]?.letterCount || v.rows[rIdx]?.answer?.length || "?";
+            return (
+              <button
+                key={rIdx}
+                type="button"
+                onClick={() => call("vcnv:selectRow", { row: rIdx })}
+                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold border transition flex items-center justify-between cursor-pointer ${
+                  v.currentRow === rIdx
+                    ? "bg-yellow-400/20 border-yellow-400 text-yellow-200"
+                    : v.rows[rIdx]?.opened
                     ? "bg-white/5 border-white/10 text-slate-500"
                     : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
-              }`}
-            >
-              Hàng {rIdx + 1} {v.rows[rIdx]?.opened ? "✓" : ""}
-            </button>
-          ))}
+                }`}
+              >
+                <span>
+                  Hàng {rIdx + 1} ({lc} ký tự) {v.rows[rIdx]?.opened ? "✓" : ""}
+                </span>
+                <span className="text-[10px] text-amber-300/80 truncate max-w-[90px]">{v.rows[rIdx]?.answer}</span>
+              </button>
+            );
+          })}
           <button
             type="button"
             onClick={() => call("vcnv:selectRow", { row: 4 })}
-            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${
+            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
               v.currentRow === 4
                 ? "bg-yellow-400/20 border-yellow-400 text-yellow-200"
                 : v.centerOpened
-                  ? "bg-white/5 border-white/10 text-slate-500"
-                  : "bg-amber-500/10 border-amber-400/30 text-amber-300 hover:bg-amber-500/20"
+                ? "bg-white/5 border-white/10 text-slate-500"
+                : "bg-amber-500/10 border-amber-400/30 text-amber-300 hover:bg-amber-500/20"
             }`}
           >
             Trung Tâm {v.centerOpened ? "✓" : ""}
@@ -1662,21 +1810,21 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             <button
               type="button"
               onClick={() => call("vcnv:blank")}
-              className="py-1 rounded bg-white/10 hover:bg-white/15 text-[11px] font-bold text-slate-300"
+              className="py-1 rounded bg-white/10 hover:bg-white/15 text-[11px] font-bold text-slate-300 cursor-pointer"
             >
               Nền chờ ĐA
             </button>
             <button
               type="button"
               onClick={() => call("vcnv:reveal")}
-              className="py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-[11px] font-black text-white"
+              className="py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-[11px] font-black text-white cursor-pointer"
             >
               👁 Hiện ĐA (R)
             </button>
             <button
               type="button"
               onClick={() => call("vcnv:revealCorrect")}
-              className={`py-1 rounded text-[11px] font-black ${
+              className={`py-1 rounded text-[11px] font-black cursor-pointer ${
                 state.vcnv?.revealedCorrectAnswer
                   ? "bg-emerald-600 text-white"
                   : "bg-amber-600 hover:bg-amber-500 text-white"
@@ -1687,7 +1835,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             <button
               type="button"
               onClick={() => call("vcnv:blank")}
-              className="py-1 rounded bg-white/5 hover:bg-white/10 text-[11px] text-slate-400"
+              className="py-1 rounded bg-white/5 hover:bg-white/10 text-[11px] text-slate-400 cursor-pointer"
             >
               ○ Ẩn
             </button>
@@ -1697,21 +1845,21 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             <button
               type="button"
               onClick={() => call("vcnv:correct")}
-              className="py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-[11px] font-black text-white"
+              className="py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-[11px] font-black text-white cursor-pointer"
             >
               ✔ Cộng điểm HN
             </button>
             <button
               type="button"
               onClick={() => call("vcnv:wrong")}
-              className="py-1.5 rounded bg-rose-600 hover:bg-rose-500 text-[11px] font-black text-white"
+              className="py-1.5 rounded bg-rose-600 hover:bg-rose-500 text-[11px] font-black text-white cursor-pointer"
             >
               ✘ Sai / Không ĐA
             </button>
             <button
               type="button"
               onClick={() => call("vcnv:blank")}
-              className="py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-[11px] font-bold text-slate-300"
+              className="py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-[11px] font-bold text-slate-300 cursor-pointer"
             >
               ■ Ô TRỐNG
             </button>
@@ -1721,14 +1869,14 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             <button
               type="button"
               onClick={() => call("vcnv:revealTile")}
-              className="py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold"
+              className="py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold cursor-pointer"
             >
               🧩 Lật mở miếng ghép
             </button>
             <button
               type="button"
               onClick={() => call("vcnv:revealRowText")}
-              className="py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold"
+              className="py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold cursor-pointer"
             >
               Tiết lộ đáp án HN
             </button>
@@ -1737,40 +1885,30 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
 
         {/* Right: Chướng Ngại Vật bell & CNV grading */}
         <div className="space-y-2 border-l border-white/10 pl-2.5">
-          <button
-            type="button"
-            className="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black shadow flex items-center justify-center gap-1 cursor-pointer"
-          >
-            <span>🔔</span>
-            <span>Chuông CNV (C)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => call("vcnv:clearBells")}
-            className="w-full py-1 rounded bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold"
-          >
-            🔕 Tắt tín hiệu CNV
-          </button>
+          <div className="rounded-lg bg-amber-500/15 border border-amber-400/40 px-2.5 py-1.5 text-[11px] text-amber-200 font-bold">
+            🔔 Thí sinh bấm chuông CNV sẽ <b>tự động dừng phần chơi VCNV</b> ngay trên máy thí sinh. Nếu bấm nhầm, nhấn <b>🔓 Mở lại</b> ở bảng trên!
+          </div>
 
           <div className="space-y-1">
-            <span className="text-[11px] text-slate-400 font-bold">Thí sinh bấm chuông:</span>
+            <span className="text-[11px] text-slate-400 font-bold">Chọn thí sinh chấm CNV (Mặc định người bấm đầu):</span>
             <div className={`grid gap-1 ${seats.length <= 4 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
               {seats.map((s) => {
-                const buzzed = v.bells?.some((b) => b.seat === s.id);
+                const bellOrder = v.bells?.findIndex((b) => b.seat === s.id) ?? -1;
+                const buzzed = bellOrder >= 0;
                 return (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => setSelectedCnvSeat(s.id)}
-                    className={`px-1.5 py-1 rounded text-xs font-bold border text-left truncate ${
+                    className={`px-2 py-1 rounded text-xs font-bold border text-left truncate cursor-pointer ${
                       selectedCnvSeat === s.id
-                        ? "bg-amber-500/20 border-amber-400 text-amber-200"
+                        ? "bg-amber-500/30 border-amber-300 text-amber-100 ring-1 ring-amber-400"
                         : buzzed
-                          ? "bg-yellow-400/30 border-yellow-400 text-yellow-300 animate-pulse"
-                          : "bg-white/5 border-white/10 text-slate-400"
+                        ? "bg-yellow-400/30 border-yellow-400 text-yellow-300 animate-pulse"
+                        : "bg-white/5 border-white/10 text-slate-400"
                     }`}
                   >
-                    TS{s.id + 1} {buzzed ? "🔔" : ""}
+                    TS{s.id + 1} {buzzed ? `🔔#${bellOrder + 1}` : ""}
                   </button>
                 );
               })}
@@ -1780,27 +1918,38 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
           <div className="grid grid-cols-2 gap-1.5 pt-1">
             <button
               type="button"
-              onClick={() => call("vcnv:correctCNV", { seat: selectedCnvSeat })}
-              className="py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black"
+              onClick={() => call("vcnv:correctCNV", { seat: v.bells?.[0]?.seat ?? selectedCnvSeat })}
+              className="py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow cursor-pointer"
+              title="Cộng điểm CNV và mở toàn bộ Chướng ngại vật"
             >
-              ✔ CNV Đúng
+              ✔ CNV Đúng (+Điểm)
             </button>
             <button
               type="button"
-              onClick={() => call("vcnv:wrongCNV", { seat: selectedCnvSeat })}
-              className="py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black"
+              onClick={() => call("vcnv:wrongCNV", { seat: v.bells?.[0]?.seat ?? selectedCnvSeat })}
+              className="py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow cursor-pointer"
+              title="Phát âm thanh trả lời sai CNV và xóa chuông người vừa trả lời"
             >
-              ✘ CNV Sai
+              ✘ CNV Sai (Phát âm sai)
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => call("vcnv:revealAll")}
-            className="w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold border border-white/10"
-          >
-            Mở Toàn Bộ Miếng Ghép
-          </button>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => call("vcnv:clearBells")}
+              className="py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold cursor-pointer"
+            >
+              🔕 Xóa tín hiệu chuông
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vcnv:revealAll")}
+              className="py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold border border-white/10 cursor-pointer"
+            >
+              Mở Toàn Bộ CNV
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1812,120 +1961,195 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
 // ───────────────────────────────────────────────────────────
 function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
   const tt = state.tangToc!;
+  const seats = activeSeats(state);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-      {/* Left: Danh Sách Câu 1..4 (BẢNG ÁN) */}
-      <div className="space-y-1.5">
-        <div className="text-xs font-bold text-slate-400 uppercase">BẢNG ÁN / CÂU HỎI</div>
-        {[0, 1, 2, 3].map((idx) => {
-          const isCur = tt.qIdx === idx;
-          const label = idx === 3 ? "Câu 4 (Video)" : `Câu ${idx + 1} (Ảnh)`;
-          return (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => call("tt:selectQuestion", { qIdx: idx })}
-              className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
-                isCur ? "bg-cyan-600/30 border-cyan-400 text-cyan-200" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
+    <div className="space-y-2.5">
+      {/* LIVE CONTESTANT SUBMISSIONS MONITOR */}
+      <div className="rounded-xl bg-black/45 border border-cyan-500/30 p-2 space-y-1.5">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="font-black text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span>⚡</span>
+            <span>ĐÁP ÁN & THỜI GIAN TĂNG TỐC TRỰC TIẾP CỦA THÍ SINH</span>
+          </span>
+          <span className="text-slate-400 text-[10px]">
+            Đã gửi: {Object.keys(tt.submissions || {}).length}/{seats.length} thí sinh
+          </span>
+        </div>
+        <div className={`grid gap-1.5 ${seats.length <= 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-6"}`}>
+          {seats.map((s) => {
+            const sub = tt.submissions?.[s.id];
+            const rankEntry = tt.ranking?.find((r) => r.seat === s.id);
+            return (
+              <div
+                key={s.id}
+                className={`rounded-lg p-1.5 border flex flex-col justify-between gap-1 ${
+                  (rankEntry?.points ?? 0) > 0
+                    ? "bg-emerald-950/60 border-emerald-400"
+                    : rankEntry && (rankEntry.points ?? 0) === 0 && tt.phase === "graded"
+                    ? "bg-rose-950/40 border-rose-500/40"
+                    : sub?.answer
+                    ? "bg-slate-900 border-cyan-500/40"
+                    : "bg-slate-900/70 border-white/10"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1 text-[11px]">
+                  <span className="font-black text-slate-200 truncate">
+                    TS{s.id + 1} · {s.name || `Ghế ${s.id + 1}`}
+                  </span>
+                  {sub && (
+                    <span className="px-1.5 py-0.2 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 font-mono font-black text-[10px] shrink-0">
+                      {(sub.ms / 1000).toFixed(2)}s
+                    </span>
+                  )}
+                </div>
+                <div className="rounded bg-black/50 border border-white/10 px-2 py-1 min-h-[26px] flex items-center justify-between gap-1">
+                  {sub?.answer ? (
+                    <span className="font-black text-xs text-white uppercase truncate select-text" title={sub.answer}>
+                      {sub.answer}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-500 italic">Chưa gửi ĐA</span>
+                  )}
+                  {rankEntry?.points ? (
+                    <span className="text-[10px] font-black text-emerald-400 shrink-0">+{rankEntry.points}đ</span>
+                  ) : null}
+                </div>
+                {sub?.previousAnswer && (
+                  <div className="text-[9px] text-slate-400 truncate">
+                    Trước đó: {sub.previousAnswer} ({((sub.previousMs || 0) / 1000).toFixed(2)}s)
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Center: Controls */}
-      <div className="space-y-2 flex flex-col items-center">
-        <button
-          type="button"
-          onClick={() => call("tt:show")}
-          className="w-full py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
-        >
-          <span>▶</span>
-          <span>Hiện Câu Hỏi</span>
-        </button>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+        {/* Left: Danh Sách Câu 1..4 (BẢNG ÁN) */}
+        <div className="space-y-1.5">
+          <div className="text-xs font-bold text-slate-400 uppercase">BẢNG ÁN / CÂU HỎI</div>
+          {[0, 1, 2, 3].map((idx) => {
+            const isCur = tt.qIdx === idx;
+            const secs = [10, 20, 30, 40][idx] || 30;
+            const label = idx === 3 ? `Câu 4 (${secs}s - Video/Ảnh)` : `Câu ${idx + 1} (${secs}s)`;
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => call("tt:selectQuestion", { qIdx: idx })}
+                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                  isCur
+                    ? "bg-cyan-600/30 border-cyan-400 text-cyan-200"
+                    : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            if (window.confirm("Bạn có chắc chắn muốn ĐỔI CÂU DỰ PHÒNG thay thế cho câu Tăng Tốc này? (Dùng khi gặp sự cố kỹ thuật lộ đáp án)")) {
-              call("tt:swapBackup");
-            }
-          }}
-          className="w-full py-1.5 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 text-xs font-bold border border-amber-500/40 shadow flex items-center justify-center gap-1.5 cursor-pointer"
-          title="Tráo câu hỏi dự phòng khẩn cấp khi hệ thống gặp lỗi"
-        >
-          <span>🔄</span>
-          <span>Đổi câu dự phòng (Khẩn cấp)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => call("tt:timer")}
-          className="w-full py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-black shadow-lg shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
-        >
-          <span>Bắt đầu đếm giờ (Space)</span>
-        </button>
-
-        <div className="w-full grid grid-cols-3 gap-1.5">
+        {/* Center: Controls */}
+        <div className="space-y-2 flex flex-col items-center">
           <button
             type="button"
-            onClick={() => call("tt:revealAndGrade")}
-            className="py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow cursor-pointer flex items-center justify-center gap-1"
+            onClick={() => call("tt:show")}
+            className="w-full py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
           >
-            <span>✔</span>
-            <span>Hiện ĐA thí sinh (R)</span>
+            <span>▶</span>
+            <span>Hiện Câu Hỏi</span>
           </button>
+
           <button
             type="button"
-            onClick={() => call("tt:revealCorrect")}
-            className={`py-2 rounded-lg text-xs font-black shadow cursor-pointer flex items-center justify-center gap-1 ${
-              state.tangToc?.revealedCorrectAnswer
-                ? "bg-amber-500 text-slate-950 font-black"
-                : "bg-amber-600 hover:bg-amber-500 text-white"
-            }`}
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Bạn có chắc chắn muốn ĐỔI CÂU DỰ PHÒNG thay thế cho câu Tăng Tốc này? (Dùng khi gặp sự cố kỹ thuật lộ đáp án)"
+                )
+              ) {
+                call("tt:swapBackup");
+              }
+            }}
+            className="w-full py-1.5 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 text-xs font-bold border border-amber-500/40 shadow flex items-center justify-center gap-1.5 cursor-pointer"
+            title="Tráo câu hỏi dự phòng khẩn cấp khi hệ thống gặp lỗi"
           >
-            <span>⭐</span>
-            <span>{state.tangToc?.revealedCorrectAnswer ? "Đã hiện ĐA đúng" : "Hiện ĐA đúng (MC)"}</span>
+            <span>🔄</span>
+            <span>Đổi câu dự phòng (Khẩn cấp)</span>
           </button>
+
           <button
             type="button"
-            onClick={() => call("tt:blank")}
-            className="py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow cursor-pointer flex items-center justify-center gap-1"
+            onClick={() => call("tt:timer")}
+            className="w-full py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-black shadow-lg shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
           >
-            <span>■</span>
-            <span>Ô Trống</span>
+            <span>Bắt đầu đếm giờ (Space)</span>
+          </button>
+
+          {/* 3-Step Independent Reveal & Grade Controls */}
+          <div className="w-full grid grid-cols-3 gap-1.5">
+            <button
+              type="button"
+              onClick={() => call("tt:reveal")}
+              className="py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-black shadow cursor-pointer flex items-center justify-center gap-1"
+              title="Bước 1: Chỉ hiện đáp án & thời gian của 4 thí sinh"
+            >
+              <span>👁</span>
+              <span>Hiện ĐA TS (R)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => call("tt:revealCorrect")}
+              className={`py-2 rounded-lg text-[11px] font-black shadow cursor-pointer flex items-center justify-center gap-1 ${
+                state.tangToc?.revealedCorrectAnswer
+                  ? "bg-amber-400 text-slate-950 font-black"
+                  : "bg-amber-600 hover:bg-amber-500 text-white"
+              }`}
+              title="Bước 2: Hiện đáp án đúng của chương trình"
+            >
+              <span>⭐</span>
+              <span>{state.tangToc?.revealedCorrectAnswer ? "Đã hiện ĐA" : "Hiện ĐA Đúng"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => call("tt:grade")}
+              className="py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black shadow cursor-pointer flex items-center justify-center gap-1"
+              title="Bước 3: Chấm điểm tự động (+40/+30/+20/+10) và giữ nguyên bảng xếp hạng"
+            >
+              <span>✔</span>
+              <span>Chấm Điểm (Enter)</span>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => call("tt:next")}
+            className="w-full py-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+          >
+            <span>Câu tiếp (N)</span>
+            <span>⏭</span>
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => call("tt:next")}
-          className="w-full py-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
-        >
-          <span>Câu tiếp (N)</span>
-          <span>⏭</span>
-        </button>
-      </div>
-
-      {/* Right: Nền chờ đáp án */}
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={() => call("tt:blank")}
-          className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold border border-white/10 cursor-pointer"
-        >
-          Nền chờ đáp án (W)
-        </button>
-        <button
-          type="button"
-          onClick={() => call("audio:stop_bgm")}
-          className="w-full py-2 rounded-xl bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer"
-        >
-          Dừng nhạc nền
-        </button>
+        {/* Right: Nền chờ đáp án & Ô Trống */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => call("tt:blank")}
+            className="w-full py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold border border-white/10 cursor-pointer"
+          >
+            Nền chờ đáp án / Ẩn (W)
+          </button>
+          <button
+            type="button"
+            onClick={() => call("audio:stop_bgm")}
+            className="w-full py-2 rounded-xl bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer"
+          >
+            Dừng nhạc nền
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1948,21 +2172,19 @@ function VeDichDeck({
   const vd = state.veDich!;
   const isO22 = state.rulesetId === "O22";
   const isO22Q1 = isO22 && o22Quarter === 1;
+  const rs = RULESETS[state.rulesetId]?.veDich || RULESETS.O26.veDich;
+  const allowedPointOptions = isO22Q1 ? [20, 40] : rs.pointOptions;
 
-  const [pkgQ1, setPkgQ1] = useState<number>(20);
-  const [pkgQ2, setPkgQ2] = useState<number>(isO22Q1 ? 40 : 20);
-  const [pkgQ3, setPkgQ3] = useState<number>(20);
+  const [pkgQ1, setPkgQ1] = useState<number>(allowedPointOptions[0] ?? 20);
+  const [pkgQ2, setPkgQ2] = useState<number>(isO22Q1 ? 40 : allowedPointOptions[0] ?? 20);
+  const [pkgQ3, setPkgQ3] = useState<number>(allowedPointOptions[0] ?? 20);
 
   useEffect(() => {
-    if (isO22Q1) {
-      if (pkgQ1 !== 20 && pkgQ1 !== 40) setPkgQ1(20);
-      if (pkgQ2 !== 20 && pkgQ2 !== 40) setPkgQ2(40);
-    } else if (isO22) {
-      if (pkgQ1 !== 20 && pkgQ1 !== 30) setPkgQ1(20);
-      if (pkgQ2 !== 20 && pkgQ2 !== 30) setPkgQ2(20);
-      if (pkgQ3 !== 20 && pkgQ3 !== 30) setPkgQ3(30);
-    }
-  }, [isO22Q1, isO22]);
+    const opts = isO22Q1 ? [20, 40] : rs.pointOptions;
+    if (!opts.includes(pkgQ1)) setPkgQ1(opts[0] ?? 20);
+    if (!opts.includes(pkgQ2)) setPkgQ2(isO22Q1 ? 40 : opts[0] ?? 20);
+    if (!opts.includes(pkgQ3)) setPkgQ3(opts[opts.length - 1] ?? 30);
+  }, [isO22Q1, state.rulesetId, rs.pointOptions, pkgQ1, pkgQ2, pkgQ3]);
 
   return (
     <div className="space-y-2.5">
@@ -1995,14 +2217,14 @@ function VeDichDeck({
             <button
               type="button"
               onClick={() => call("vd:onStage")}
-              className="py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow"
+              className="py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow cursor-pointer"
             >
               Lên sân khấu
             </button>
             <button
               type="button"
               onClick={() => call("vd:finishTurn")}
-              className="py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow"
+              className="py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow cursor-pointer"
             >
               Trở về vị trí
             </button>
@@ -2055,16 +2277,18 @@ function VeDichDeck({
           <button
             type="button"
             onClick={() => call("vd:showPackageGraphic")}
-            className="w-full py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow"
+            className="w-full py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow cursor-pointer"
           >
             🎨 Mở bảng chọn gói đồ họa
           </button>
 
-          {/* Gói Câu Hỏi Dropdowns (Quý 1: 2 câu 20/40đ; Quý 2-3: 3 câu 20/30đ) */}
+          {/* Gói Câu Hỏi Dropdowns strictly filtered by ruleset pointOptions */}
           <div className="space-y-1 bg-[#162032] p-2 rounded-lg border border-white/5">
             <div className="flex items-center justify-between text-[11px] font-bold text-amber-300">
-              <span>GÓI CÂU HỎI</span>
-              {isO22Q1 && <span className="text-[10px] text-amber-400 font-normal">Quý 1: 2 câu (20đ, 40đ)</span>}
+              <span>GÓI CÂU HỎI ({state.rulesetId})</span>
+              <span className="text-[10px] text-amber-400 font-normal">
+                Mức điểm: {allowedPointOptions.map((p) => `${p}đ`).join(" / ")}
+              </span>
             </div>
             {isO22Q1 ? (
               <div className="grid grid-cols-2 gap-1.5">
@@ -2075,8 +2299,11 @@ function VeDichDeck({
                     onChange={(e) => setPkgQ1(Number(e.target.value))}
                     className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
                   >
-                    <option value={20}>20đ</option>
-                    <option value={40}>40đ (30s)</option>
+                    {allowedPointOptions.map((pt) => (
+                      <option key={pt} value={pt}>
+                        {pt}đ
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -2086,8 +2313,11 @@ function VeDichDeck({
                     onChange={(e) => setPkgQ2(Number(e.target.value))}
                     className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
                   >
-                    <option value={20}>20đ</option>
-                    <option value={40}>40đ (30s)</option>
+                    {allowedPointOptions.map((pt) => (
+                      <option key={pt} value={pt}>
+                        {pt}đ
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -2100,10 +2330,11 @@ function VeDichDeck({
                     onChange={(e) => setPkgQ1(Number(e.target.value))}
                     className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
                   >
-                    {!isO22 && <option value={10}>10đ</option>}
-                    <option value={20}>20đ</option>
-                    <option value={30}>30đ</option>
-                    {!isO22 && <option value={40}>40đ</option>}
+                    {allowedPointOptions.map((pt) => (
+                      <option key={pt} value={pt}>
+                        {pt}đ
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -2113,10 +2344,11 @@ function VeDichDeck({
                     onChange={(e) => setPkgQ2(Number(e.target.value))}
                     className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
                   >
-                    {!isO22 && <option value={10}>10đ</option>}
-                    <option value={20}>20đ</option>
-                    <option value={30}>30đ</option>
-                    {!isO22 && <option value={40}>40đ</option>}
+                    {allowedPointOptions.map((pt) => (
+                      <option key={pt} value={pt}>
+                        {pt}đ
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -2126,10 +2358,11 @@ function VeDichDeck({
                     onChange={(e) => setPkgQ3(Number(e.target.value))}
                     className="w-full bg-black/40 border border-white/20 rounded p-1 text-xs text-white"
                   >
-                    {!isO22 && <option value={10}>10đ</option>}
-                    <option value={20}>20đ</option>
-                    <option value={30}>30đ</option>
-                    {!isO22 && <option value={40}>40đ</option>}
+                    {allowedPointOptions.map((pt) => (
+                      <option key={pt} value={pt}>
+                        {pt}đ
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -2169,14 +2402,14 @@ function VeDichDeck({
             <button
               type="button"
               onClick={() => call("vd:timer")}
-              className="py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow uppercase"
+              className="py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow uppercase cursor-pointer"
             >
               Tính Giờ Thi (Space)
             </button>
             <button
               type="button"
               onClick={() => call("vd:practiceTimer")}
-              className="py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow uppercase"
+              className="py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow uppercase cursor-pointer"
             >
               Tính Giờ Thực Hành
             </button>
@@ -2186,30 +2419,32 @@ function VeDichDeck({
             <button
               type="button"
               onClick={() => call("vd:correct")}
-              className="py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow"
+              className="py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black shadow cursor-pointer"
             >
               ✔ ĐÚNG (Enter)
             </button>
             <button
               type="button"
-              onClick={() => call("vd:wrong")}
-              className="py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow"
+              onClick={() => call("vd:openSteal")}
+              className="py-1.5 rounded-lg bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-[11px] font-black shadow cursor-pointer"
+              title="Trả lời sai & Mở ngay 5s cướp điểm (Giữ ẩn đáp án)"
             >
-              ✘ SAI (Bksp)
+              ✘ SAI & MỞ CƯỚP 5S
             </button>
             <button
               type="button"
-              onClick={() => call("vd:blank")}
-              className="py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold shadow"
+              onClick={() => call("vd:wrong")}
+              className="py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-rose-200 text-[11px] font-bold shadow cursor-pointer"
+              title="Trả lời sai và hiện đáp án ngay (không mở cướp)"
             >
-              ■ Ô TRỐNG
+              ✘ Sai (Hiện ĐA)
             </button>
           </div>
 
           <button
             type="button"
             onClick={() => call("vd:startQuestion")}
-            className="w-full py-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white text-xs font-black shadow uppercase"
+            className="w-full py-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white text-xs font-black shadow uppercase cursor-pointer"
           >
             <span>Câu tiếp (N)</span>
             <span>⏭</span>
@@ -2218,18 +2453,28 @@ function VeDichDeck({
 
         {/* Right / Steal Controls */}
         <div className="space-y-2 flex flex-col justify-between">
-          <button
-            type="button"
-            onClick={() => call("vd:openSteal")}
-            className={`w-full py-3 rounded-xl font-black text-xs border shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase ${
-              vd.steal?.open
-                ? "bg-amber-500 border-amber-400 text-black shadow-amber-500/30 animate-pulse"
-                : "bg-amber-500/10 border-amber-400/30 text-amber-300 hover:bg-amber-500/20"
-            }`}
-          >
-            <span>🔔</span>
-            <span>Mở Cướp 5s (C)</span>
-          </button>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => call("vd:openSteal")}
+              className={`py-2.5 rounded-xl font-black text-xs border shadow flex items-center justify-center gap-1 cursor-pointer uppercase ${
+                vd.steal?.open
+                  ? "bg-amber-500 border-amber-400 text-black shadow-amber-500/30 animate-pulse"
+                  : "bg-amber-500/10 border-amber-400/30 text-amber-300 hover:bg-amber-500/20"
+              }`}
+            >
+              <span>🔔</span>
+              <span>Mở Cướp 5s (C)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => call("vd:closeSteal")}
+              className="py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-slate-200 font-bold text-xs cursor-pointer"
+              title="Đóng thời gian cướp điểm và hiện đáp án"
+            >
+              ⏹ Đóng Cướp / Hiện ĐA
+            </button>
+          </div>
 
           {vd.steal?.buzzedSeat != null && (
             <div className="bg-yellow-400/10 border border-yellow-400/30 p-2 rounded-lg text-center space-y-1.5">
@@ -2239,28 +2484,37 @@ function VeDichDeck({
                 <button
                   type="button"
                   onClick={() => call("vd:correctSteal")}
-                  className="py-1 rounded bg-emerald-600 text-white text-xs font-bold"
+                  className="py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer"
                 >
-                  ✔ Đúng
+                  ✔ Cướp Đúng
                 </button>
                 <button
                   type="button"
                   onClick={() => call("vd:wrongSteal")}
-                  className="py-1 rounded bg-rose-600 text-white text-xs font-bold"
+                  className="py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer"
                 >
-                  ✘ Sai
+                  ✘ Cướp Sai
                 </button>
               </div>
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => call("audio:stop_bgm")}
-            className="w-full py-2 rounded-xl bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer"
-          >
-            Dừng nhạc nền
-          </button>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => call("vd:blank")}
+              className="py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold cursor-pointer"
+            >
+              ■ Ô Trống
+            </button>
+            <button
+              type="button"
+              onClick={() => call("audio:stop_bgm")}
+              className="py-2 rounded-xl bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer"
+            >
+              Dừng nhạc nền
+            </button>
+          </div>
         </div>
       </div>
     </div>

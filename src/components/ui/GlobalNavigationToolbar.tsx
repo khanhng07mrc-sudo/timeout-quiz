@@ -16,18 +16,22 @@ export default function GlobalNavigationToolbar() {
     }
   }, []);
 
-  // Tuyệt đối không hiển thị đè trong iframe hoặc các trang có thanh điều khiển chuyên biệt
-  // (/admin/sandbox và /display đã có nút Cài đặt & Pháp lý chuyên biệt ở góc dưới bên trái)
+  // Tuyệt đối không hiển thị đè trong iframe hoặc các màn hình phòng thi / điều khiển
   const isSandbox = pathname?.startsWith("/admin/sandbox");
   const isDisplay = pathname?.startsWith("/display");
   const isOlympia = pathname?.startsWith("/olympia");
+  const isHost = pathname?.startsWith("/host");
+  const isPlay = pathname?.startsWith("/play");
+  const isRoom = pathname?.startsWith("/room");
 
-  if (isInsideIframe || isSandbox || isDisplay || isOlympia) return null;
+  if (!pathname || isInsideIframe || isSandbox || isDisplay || isOlympia || isHost || isPlay || isRoom) {
+    return null;
+  }
 
   return (
     <>
-      {/* Top-Right Compact Actions */}
-      <div className="fixed top-3 right-4 z-40 print:hidden select-none flex items-center gap-2">
+      {/* Bottom-Left Compact Actions — never overlaps top-right headers, timers, or text */}
+      <div className="fixed bottom-3 left-3 z-30 print:hidden select-none flex items-center gap-2 opacity-85 hover:opacity-100 transition-opacity">
         <button
           type="button"
           onClick={() => setIsSettingsOpen(true)}

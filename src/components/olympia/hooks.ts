@@ -12,6 +12,7 @@ export interface JoinInfo {
   seatId?: number;
   audioSeason?: string;
   rulesetId?: string;
+  state?: OlympiaState;
 }
 
 interface Options {
@@ -24,45 +25,124 @@ interface Options {
 }
 
 export function useOlympiaSocket({ code, role, hostKey, name, token, enabled = true }: Options) {
-  const [state, setState] = useState<OlympiaState | null>(null);
-  const [join, setJoin] = useState<JoinInfo | null>(null);
+  const cacheKeyState = `olympia_state_${code}_${role}`;
+  const cacheKeyJoin = `olympia_join_${code}_${role}`;
+
+  const [state, setState] = useState<OlympiaState | null>(() => {
+    if (typeof window === "undefined" || !code) return null;
+    try {
+      const raw = sessionStorage.getItem(cacheKeyState);
+      if (raw) {
+        const parsed = JSON.parse(raw) as OlympiaState;
+        if (parsed && parsed.code === code) return parsed;
+      }
+    } catch {}
+    return null;
+  });
+
+  const [join, setJoin] = useState<JoinInfo | null>(() => {
+    if (typeof window === "undefined" || !code) return null;
+    try {
+      const raw = sessionStorage.getItem(cacheKeyJoin);
+      if (raw) {
+        const parsed = JSON.parse(raw) as JoinInfo;
+        if (parsed && parsed.ok) return parsed;
+      }
+    } catch {}
+    return null;
+  });
+
   const [connected, setConnected] = useState(false);
   const [kickedMessage, setKickedMessage] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const offsetRef = useRef(0);
   const versionRef = useRef(-1);
+  const joinedRef = useRef(false);
+
+  const persistState = useCallback(
+    (s: OlympiaState) => {
+      setState(s);
+      if (typeof window !== "undefined" && code) {
+        try {
+          sessionStorage.setItem(cacheKeyState, JSON.stringify(s));
+        } catch {}
+      }
+    },
+    [cacheKeyState, code]
+  );
 
   useEffect(() => {
     if (!enabled || !code) return;
-    const socket = io("/olympia", { transports: ["websocket", "polling"], reconnection: true });
+    joinedRef.current = false;
+    const socket = io("/olympia", {
+      transports: ["polling", "websocket"],
+      reconnection: true,
+      reconnectionDelay: 300,
+      reconnectionDelayMax: 1500,
+      timeout: 8000,
+    });
     socketRef.current = socket;
 
     const doJoin = () => {
-      versionRef.current = -1;
+      if (!socket.connected) return;
       const t0 = Date.now();
       socket.emit("time:sync", t0, (r: { serverTime: number }) => {
         const t1 = Date.now();
         offsetRef.current = r.serverTime + (t1 - t0) / 2 - t1;
       });
-      socket.emit("join", { code, role, key: hostKey, name, token }, (res: JoinInfo) => setJoin(res));
+      socket.emit("join", { code, role, key: hostKey, name, token }, (res: JoinInfo) => {
+        if (!res) return;
+        joinedRef.current = true;
+        const { state: initialState, ...joinMeta } = res;
+        setJoin(joinMeta);
+        if (typeof window !== "undefined" && joinMeta.ok) {
+          try {
+            sessionStorage.setItem(cacheKeyJoin, JSON.stringify(joinMeta));
+          } catch {}
+        }
+        if (initialState) {
+          versionRef.current = initialState.version;
+          persistState(initialState);
+        }
+      });
     };
+
     socket.on("connect", () => {
       setConnected(true);
+      joinedRef.current = false;
       doJoin();
     });
-    socket.on("disconnect", () => setConnected(false));
+    socket.on("disconnect", () => {
+      setConnected(false);
+      joinedRef.current = false;
+    });
     socket.on("kicked", (data: { message?: string }) => {
       setKickedMessage(data?.message || "Bạn đã bị Quản trò mời ra khỏi phòng thi.");
     });
     socket.on("state", (s: OlympiaState) => {
+      joinedRef.current = true;
       versionRef.current = s.version;
-      setState(s);
+      persistState(s);
     });
+
+    if (socket.connected) {
+      setConnected(true);
+      doJoin();
+    }
+
+    // Fast auto-retry if join ack hasn't arrived within 1.5s while connected
+    const retryTimer = setInterval(() => {
+      if (socket.connected && !joinedRef.current) {
+        doJoin();
+      }
+    }, 1500);
+
     return () => {
+      clearInterval(retryTimer);
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [code, role, hostKey, name, token, enabled]);
+  }, [code, role, hostKey, name, token, enabled, cacheKeyJoin, persistState]);
 
   const emit = useCallback(
     (event: string, payload?: unknown): Promise<{ ok: boolean; error?: string }> =>

@@ -603,11 +603,20 @@ test("Khởi Động shared: O22 2s lock, O23+ 5s lock, early manual unlock, tim
 
 
 
-  // Admin grades wrong -> timer stops, score -5, phase result, buzzer does NOT re-buzz
+  // Admin grades wrong -> timer stops, score deducted by 5 (clamped >= 0), phase result, buzzer does NOT re-buzz
+
+  g.state.seats[1].score = 10;
 
   act(g, "kd:wrong", {}, 2500);
 
-  assert.equal(g.state.seats[1].score, -5);
+  assert.equal(g.state.seats[1].score, 5);
+
+  // If score is 0, deduction clamps at 0 (no negative score)
+  g.state.seats[1].score = 0;
+  g.state.khoiDong!.phase = "question";
+  g.state.khoiDong!.buzzedSeat = 1;
+  act(g, "kd:wrong", {}, 2600);
+  assert.equal(g.state.seats[1].score, 0, "Score floor clamped at 0");
 
   assert.equal(g.state.khoiDong!.phase, "result");
 
@@ -749,9 +758,9 @@ test("Về Đích: correct, wrong+steal, hope star", () => {
 
   act(g, "vd:wrong");
 
-  act(g, "vd:openSteal", {}, 0); // star deducts 30
+  act(g, "vd:openSteal", {}, 0); // star deducts 30 from 20, clamped at 0
 
-  assert.equal(g.state.seats[0].score, -10);
+  assert.equal(g.state.seats[0].score, 0);
 
   assert.ok(g.playerBuzz(1, 100).ok);
 
@@ -759,7 +768,7 @@ test("Về Đích: correct, wrong+steal, hope star", () => {
 
   assert.equal(g.state.seats[1].score, 30);
 
-  assert.equal(g.state.seats[0].score, -10, "owner not deducted twice");
+  assert.equal(g.state.seats[0].score, 0, "owner not deducted twice and clamped at 0");
 
   assert.ok(!g.hostAction({ type: "vd:hopeStar" }, 0).ok);
 
@@ -1047,9 +1056,11 @@ test("O22 Quý 3 - CKN: Khởi động 60s-60s-90s, sai trừ 5đ không khóa c
 
   assert.ok(g.playerBuzz(0, 3100).ok);
 
+  g.state.seats[0].score = 15;
+
   act(g, "kd:wrong", {}, 3200);
 
-  assert.equal(g.state.seats[0].score, -5, "Q3 deducts 5 points on wrong answer");
+  assert.equal(g.state.seats[0].score, 10, "Q3 deducts 5 points on wrong answer");
 
   assert.deepEqual(kd.nextLockedSeats, [], "Seat 0 is NOT locked out of next question in Q3");
 
@@ -1089,7 +1100,7 @@ test("O22 dynamic quarter switch via system:setO22Quarter", () => {
 
 
 
-test("score:set manually sets candidate score directly", () => {
+test("score:set manually sets candidate score directly and clamps >= 0", () => {
 
   const g = game("O26", ["khoiDong"], 2);
 
@@ -1103,7 +1114,7 @@ test("score:set manually sets candidate score directly", () => {
 
   act(g, "score:set", { seat: 1, score: -20 });
 
-  assert.equal(g.state.seats[1].score, -20);
+  assert.equal(g.state.seats[1].score, 0, "score:set clamps negative scores at 0");
 
 });
 
@@ -1728,4 +1739,71 @@ test("VCNV selecting, openQuestion, blank, auto-grid on correct/wrong & Summary 
   act(gTT, "tt:grade");
   assert.equal(gTT.state.tangToc!.phase, "graded");
 });
+
+test("VCNV immediate self-lock on bell press, manual per-seat unlock, letterCount preservation & bellTestMode", () => {
+  const g = game("O26", ["vcnv"], 4);
+  act(g, "game:start");
+
+  // 1. Verify exact letterCount and keywordLength are preserved in display view even when answers are hidden
+  const disp = g.view("display");
+  assert.equal(disp.vcnv!.keywordLength, SAMPLE_QUESTION_SET.vcnv.answer.replace(/\s+/g, "").length);
+  SAMPLE_QUESTION_SET.vcnv.rows.forEach((r, idx) => {
+    assert.equal(disp.vcnv!.rows[idx].letterCount, r.answer.replace(/\s+/g, "").length);
+    assert.equal(disp.vcnv!.rows[idx].answer, "");
+  });
+
+  // 2. Test bellTestMode: buzzing in test mode records test logs without locking VCNV seat
+  act(g, "bell:toggleTest");
+  assert.equal(g.state.bellTestMode, true);
+  assert.ok(g.playerBuzz(2, 1000).ok);
+  assert.equal(g.state.bellTestLogs?.length, 1);
+  assert.equal(g.state.bellTestLogs![0].seat, 2);
+  assert.deepEqual(g.state.vcnv!.eliminatedSeats, [], "Test buzz does NOT lock contestant in VCNV");
+  act(g, "bell:clearTest");
+  assert.equal(g.state.bellTestLogs?.length, 0);
+  act(g, "bell:toggleTest");
+  assert.equal(g.state.bellTestMode, false);
+
+  // 3. Real VCNV bell press immediately locks that contestant's VCNV play
+  assert.ok(g.playerBuzz(1, 2000).ok);
+  assert.deepEqual(g.state.vcnv!.eliminatedSeats, [1], "Pressing CNV bell immediately locks seat 1");
+  assert.equal(g.state.vcnv!.bells[0].seat, 1);
+  // Seat 1 cannot submit row answers while locked
+  act(g, "vcnv:selectRow", { row: 0 });
+  act(g, "vcnv:timer", {}, 2500);
+  assert.equal(g.playerAnswer(1, "ABC", 3000).ok, false, "Locked seat cannot submit row answers");
+
+  // 4. Wrong CNV plays wrong sound and clears bell without needing seat selection
+  act(g, "vcnv:wrongCNV", {}, 3500);
+  assert.equal(g.state.vcnv!.bells.length, 0, "Bell removed after wrongCNV");
+  assert.deepEqual(g.state.vcnv!.eliminatedSeats, [1], "Seat 1 remains locked");
+  assert.equal(g.state.cue?.sound, "2_VuotChuongNgaiVat/cnv_wrong");
+
+  // 5. MC manually unlocks seat 1 via vcnv:toggleLockSeat
+  act(g, "vcnv:toggleLockSeat", { seat: 1 }, 3600);
+  assert.deepEqual(g.state.vcnv!.eliminatedSeats, [], "Seat 1 unlocked manually by MC");
+  assert.equal(g.playerAnswer(1, "ABC", 3700).ok, true, "Unlocked seat 1 can now submit row answers again");
+});
+
+test("Khởi động end-of-segment and end-of-round immediately turns off question graphic (started=false, questionRevealed=false)", () => {
+  const g = game("O26", ["khoiDong"], 2);
+  act(g, "game:start");
+  // Jump to Shared segment (index 2 for 2 seats)
+  act(g, "kd:selectSegment", { kind: "shared" }, 1000);
+  act(g, "kd:start", {}, 1000);
+  g.tick(5000);
+  act(g, "kd:next", {}, 5100);
+  assert.equal(g.state.khoiDong!.started, true);
+  assert.equal(g.state.khoiDong!.questionRevealed, true);
+
+  // Finish the shared turn (last segment of Khởi Động)
+  act(g, "kd:finishTurn", {}, 6000);
+  assert.equal(g.state.khoiDong!.phase, "segmentDone");
+  assert.equal(g.state.khoiDong!.started, false, "kd.started must be false when round/segment finishes");
+  assert.equal(g.state.khoiDong!.questionRevealed, false, "kd.questionRevealed must be false when round/segment finishes");
+  assert.equal(g.state.khoiDong!.current, null);
+  assert.equal(g.state.roundStatus.khoiDong, "done");
+});
+
+
 

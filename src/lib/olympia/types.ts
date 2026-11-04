@@ -404,6 +404,7 @@ export interface VcnvState {
   solvedBy: number | null;
   rowResults: Record<number, number[]>; // rowIdx (0..4) -> seats awarded
   revealedCorrectAnswer?: boolean;
+  keywordLength?: number;
 }
 
 export interface TangTocRankingItem {
@@ -588,6 +589,11 @@ export interface OlympiaState {
   studioCameraManual?: boolean;
   /** Display overlay mode: "LOWER_THIRD" (1/3 bottom question overlay) or "FULLSCREEN" (centered 2D modal overlay) */
   overlayMode?: "LOWER_THIRD" | "FULLSCREEN";
+  /** Broadcast Theme: "v3_arrow" (Econova Chevron Arrow Lower-Third) or "o26_classic" (Authentic VTV3 Chalkboard) */
+  themeMode?: "v3_arrow" | "o26_classic";
+  /** Buzzer test mode across rounds with buzzers */
+  bellTestMode?: boolean;
+  bellTestLogs?: { seat: number; at: number; order: number }[];
   /** Right LED screen content mode: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" | "roundGraphics" */
   rightScreenMode?: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" | "roundGraphics";
   /** State for the lower-third sequence summarizing contestant points from lowest to highest */

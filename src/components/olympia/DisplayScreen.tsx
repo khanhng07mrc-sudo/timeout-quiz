@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
+import { RULESETS } from "@/lib/olympia/rulesets";
 import { parseVcnvAnswer } from "@/lib/olympia/engine";
 import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
 import { CircularTimer, MediaView, ScoreStrip, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
@@ -17,6 +18,8 @@ import {
   GlossyBlackDomeButton,
   BlueSquareNumberBadge,
   SummaryLowerThirdGraphic,
+  EconovaLowerThirdV3,
+  VeDichSlantedGridGraphic,
 } from "./Vtv3BroadcastGraphics";
 
 const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
@@ -29,13 +32,19 @@ const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
 });
 
 function hasActiveRoundContent(state: OlympiaState): boolean {
-  if (state.stage !== "playing" || !state.currentRound) return false;
+  if (
+    state.stage !== "playing" ||
+    !state.currentRound ||
+    state.summaryState?.active ||
+    state.roundStatus[state.currentRound] === "done"
+  ) {
+    return false;
+  }
 
   switch (state.currentRound) {
     case "khoiDong": {
       const kd = state.khoiDong;
-      if (!kd || !kd.started) return false;
-      // USER REQUIREMENT: Đồ hoạ xuất hiện ngay sau 3.5s bắt đầu, để lại hộp câu hỏi trống
+      if (!kd || !kd.started || kd.phase === "segmentDone" || kd.phase === "intro") return false;
       return true;
     }
     case "vcnv": {
@@ -50,7 +59,7 @@ function hasActiveRoundContent(state: OlympiaState): boolean {
     }
     case "veDich": {
       const vd = state.veDich;
-      if (!vd) return false;
+      if (!vd || vd.phase === "seatDone") return false;
       return (
         vd.phase === "choosing" ||
         vd.phase === "packageReady" ||
@@ -154,8 +163,9 @@ export default function DisplayScreen({ code }: { code: string }) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const isVcnvReveal = state.currentRound === "vcnv" && Boolean(state.vcnv?.answersRevealed);
   const isTangTocReveal =
-    state.currentRound === "tangToc" && state.tangToc?.phase === "ranking";
-  const isTangTocQuestion = state.currentRound === "tangToc" && (state.tangToc?.phase === "question" || state.tangToc?.phase === "graded");
+    state.currentRound === "tangToc" &&
+    (state.tangToc?.phase === "ranking" || state.tangToc?.phase === "graded");
+  const isTangTocQuestion = state.currentRound === "tangToc" && state.tangToc?.phase === "question";
   const isVcnvFullscreen = state.currentRound === "vcnv" && state.vcnv?.phase !== "waitingAnswer";
 
   const showFullscreen =
@@ -295,7 +305,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         )}
 
         {/* In-Game Round Overlays */}
-        {state.stage === "playing" && !state.banner && !isOverlayHidden && hasActiveRoundContent(state) && (
+        {state.stage === "playing" && !state.banner && !isOverlayHidden && !state.summaryState?.active && hasActiveRoundContent(state) && (
           isLowerThird ? (
             /* ── LOWER-THIRD BROADCAST OVERLAY (20 - 25% BOTTOM) ── */
             <div className="w-full px-2 sm:px-6 pb-3 pt-1 pointer-events-auto flex flex-col justify-end z-20">
@@ -475,7 +485,7 @@ function KhoiDong({ state, serverNow }: P) {
   const totalQ = seg.questions > 100 ? "" : `/${seg.questions}`;
   const qNum = Math.max(1, kd.qIdx + 1);
 
-  if (!kd.started || (!kd.questionRevealed && kd.phase !== "segmentDone") || (!kd.current && kd.phase !== "segmentDone")) {
+  if (!kd.started || kd.phase === "segmentDone" || !kd.questionRevealed || !kd.current) {
     return null;
   }
 
@@ -568,10 +578,7 @@ function KhoiDong({ state, serverNow }: P) {
         </div>
       </div>
 
-      {/* Main question card / Result answer overlay:
-          USER REQUIREMENT: Khi nhấn đúng/sai, hệ thống chuyển sang bục MC và chỉ hiện đáp án Khởi động,
-          đồ hoạ câu hỏi tạm gác. Sau khi nhấn câu tiếp, chuyển lại về thí sinh và hiện lại đồ hoạ câu hỏi (không fade).
-          USER REQUIREMENT: Xoá nhãn CÂU 1/6 thứ hai (bỏ cái dưới đi). */}
+      {/* Main question card / Result answer overlay */}
       {kd.phase === "result" && kd.current?.a ? (
         <div
           className="w-full shrink-0 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 shadow-2xl backdrop-blur-md"
@@ -589,24 +596,10 @@ function KhoiDong({ state, serverNow }: P) {
             {kd.current.a}
           </span>
         </div>
-      ) : (
+      ) : state.themeMode === "o26_classic" ? (
         <Vtv3ChalkboardQuestionFrame
-          headerBadge={
-            kd.phase === "segmentDone"
-              ? "KẾT THÚC LƯỢT THI"
-              : !kd.current
-              ? "ĐANG ĐỢI CÂU HỎI"
-              : !kd.questionRevealed
-              ? "SẴN SÀNG THI ĐẤU"
-              : null // Bỏ CÂU 1/6 dưới đây per user request
-          }
-          questionText={
-            kd.phase === "segmentDone"
-              ? "KẾT THÚC LƯỢT THI — Chuẩn bị sang phần thi tiếp theo"
-              : !kd.questionRevealed
-              ? "SẴN SÀNG THI ĐẤU"
-              : kd.current?.q
-          }
+          headerBadge={null}
+          questionText={kd.current?.q}
           mediaElement={
             kd.current?.media ? (
               <MediaView
@@ -632,6 +625,37 @@ function KhoiDong({ state, serverNow }: P) {
             </div>
           )}
         </Vtv3ChalkboardQuestionFrame>
+      ) : (
+        <EconovaLowerThirdV3
+          state={state}
+          serverNow={serverNow}
+          headerBadge={kd.current?.subject ? `${kd.current.subject.toUpperCase()}` : null}
+          questionText={kd.current?.q}
+          mediaElement={
+            kd.current?.media ? (
+              <MediaView
+                url={kd.current.media}
+                type={kd.current.mediaType}
+                className="max-h-20 sm:max-h-24 rounded-lg mx-auto mt-1"
+              />
+            ) : null
+          }
+          timer={kd.timer}
+          showScoreTab={false}
+        >
+          {kd.buzzedSeat != null && (
+            <div
+              className="mt-1 inline-flex items-center gap-1.5 px-4 py-1 rounded-xl font-black text-sm text-slate-950 animate-bounce"
+              style={{
+                background: "linear-gradient(90deg,#f59e0b,#ef4444)",
+                boxShadow: "0 0 20px rgba(245,158,11,0.6)",
+              }}
+            >
+              <span>🔔</span>
+              <span>{seatName(state, kd.buzzedSeat)}</span>
+            </div>
+          )}
+        </EconovaLowerThirdV3>
       )}
     </div>
   );
@@ -654,12 +678,12 @@ function TangToc({ state, serverNow }: P) {
   const tt = state.tangToc!;
   if (!tt || tt.phase === "idle") return null;
 
-  // 1. Candidate Answers Revealed -> Fullscreen VTV3 Vertical Brass Rail Ranked Layout (Image 5)
-  if (tt.phase === "ranking") {
+  // 1. Candidate Answers Revealed & Graded -> Fullscreen Ranked Layout
+  if (tt.phase === "ranking" || tt.phase === "graded") {
     return <TangTocRankedAnswersGraphic state={state} />;
   }
 
-  // 2. Question Clue Frame -> Fullscreen VTV3 Ornate Gold Picture Frame (Image 4 & Prompt Attachment)
+  // 2. Question Clue Frame -> Fullscreen Frame
   return <TangTocQuestionGraphic state={state} serverNow={serverNow} />;
 }
 
@@ -668,44 +692,13 @@ function VeDich({ state, serverNow }: P) {
   const owner = vd.order[vd.turnIdx];
   const cur = vd.current;
 
+  if (vd.phase === "seatDone") return null;
+
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col justify-end">
-      <div className="flex items-center justify-center gap-2 mb-1">
-        <span className="text-sm sm:text-base font-black text-amber-300 drop-shadow">
-          {seatName(state, owner)}
-        </span>
-        {cur?.q.subject && (
-          <span className="px-2.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-200 text-xs font-bold">
-            📚 {cur.q.subject} ({cur.points} điểm)
-          </span>
-        )}
-        {vd.hopeStarActive && (
-          <span className="text-xs sm:text-sm font-black text-amber-300 animate-pulse">⭐ NGÔI SAO HY VỌNG ⭐</span>
-        )}
-      </div>
-
-      {vd.phase === "choosing" && (
-        <div className="text-center py-4 bg-slate-950/80 rounded-2xl border border-white/10 p-4">
-          <div className="text-base sm:text-lg text-amber-300 font-bold">Đang chọn gói câu hỏi…</div>
-        </div>
-      )}
-
-      {vd.packages[owner] && !cur && (
-        <div className="flex justify-center gap-3 py-3">
-          {vd.packages[owner].map((p, i) => (
-            <div
-              key={i}
-              className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-xl sm:text-2xl font-black border transition-all ${
-                vd.qIdx === i
-                  ? "text-slate-950 border-amber-300 shadow-[0_0_20px_#f59e0b]"
-                  : "border-violet-500/30 bg-white/5 text-violet-200"
-              }`}
-              style={vd.qIdx === i ? { background: "linear-gradient(135deg,#f59e0b,#ef4444)" } : {}}
-            >
-              {p.points}
-            </div>
-          ))}
-        </div>
+      {/* When choosing package or package confirmed before opening a question: show slanted hexagonal package grid */}
+      {(vd.phase === "choosing" || (vd.packages[owner] && !cur)) && (
+        <VeDichSlantedGridGraphic state={state} />
       )}
 
       {vd.phase === "result" && cur?.q.a ? (
@@ -733,36 +726,59 @@ function VeDich({ state, serverNow }: P) {
           )}
         </div>
       ) : cur ? (
-        <Vtv3ChalkboardQuestionFrame
-          headerBadge={`${seatName(state, owner)} · ${cur.q.subject || "VỀ ĐÍCH"} (${cur.points} điểm) ${
-            vd.hopeStarActive ? "⭐ NGÔI SAO HY VỌNG" : ""
-          }`}
-          questionText={cur.q.q}
-          mediaElement={
-            cur.q.media ? (
-              <MediaView
-                url={cur.q.media}
-                type={cur.q.mediaType}
-                className="max-h-20 sm:max-h-24 rounded-xl mx-auto border border-violet-500/20 mt-1"
-              />
-            ) : null
-          }
-          timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer}
-          serverNow={serverNow}
-        >
-          {vd.phase === "stealing" && (
-            <div className="text-base sm:text-lg font-black text-rose-400 animate-pulse mt-1">
-              🚨 CƯỚP ĐIỂM {vd.steal?.buzzedSeat != null ? `— ${seatName(state, vd.steal.buzzedSeat)}` : ""}
-            </div>
-          )}
-        </Vtv3ChalkboardQuestionFrame>
+        state.themeMode === "o26_classic" ? (
+          <Vtv3ChalkboardQuestionFrame
+            headerBadge={`${seatName(state, owner)} · ${cur.q.subject || "VỀ ĐÍCH"} (${cur.points} điểm) ${
+              vd.hopeStarActive ? "⭐ NGÔI SAO HY VỌNG" : ""
+            }`}
+            questionText={cur.q.q}
+            mediaElement={
+              cur.q.media ? (
+                <MediaView
+                  url={cur.q.media}
+                  type={cur.q.mediaType}
+                  className="max-h-20 sm:max-h-24 rounded-xl mx-auto border border-violet-500/20 mt-1"
+                />
+              ) : null
+            }
+            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer}
+            serverNow={serverNow}
+          >
+            {vd.phase === "stealing" && (
+              <div className="text-base sm:text-lg font-black text-rose-400 animate-pulse mt-1">
+                🚨 CƯỚP ĐIỂM {vd.steal?.buzzedSeat != null ? `— ${seatName(state, vd.steal.buzzedSeat)}` : ""}
+              </div>
+            )}
+          </Vtv3ChalkboardQuestionFrame>
+        ) : (
+          <EconovaLowerThirdV3
+            state={state}
+            serverNow={serverNow}
+            activeSeatId={vd.steal?.buzzedSeat ?? owner}
+            headerBadge={`${cur.q.subject || "VỀ ĐÍCH"} · ${cur.points} ĐIỂM${
+              vd.hopeStarActive ? " ⭐ NGÔI SAO HY VỌNG" : ""
+            }`}
+            questionText={cur.q.q}
+            mediaElement={
+              cur.q.media ? (
+                <MediaView
+                  url={cur.q.media}
+                  type={cur.q.mediaType}
+                  className="max-h-20 sm:max-h-24 rounded-xl mx-auto border border-violet-500/20 mt-1"
+                />
+              ) : null
+            }
+            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer}
+            showScoreTab={true}
+          >
+            {vd.phase === "stealing" && (
+              <div className="text-base sm:text-lg font-black text-rose-400 animate-pulse mt-1">
+                🚨 CƯỚP ĐIỂM {vd.steal?.buzzedSeat != null ? `— ${seatName(state, vd.steal.buzzedSeat)}` : ""}
+              </div>
+            )}
+          </EconovaLowerThirdV3>
+        )
       ) : null}
-
-      {vd.phase === "seatDone" && (
-        <div className="text-center py-3 text-xl font-black text-amber-300 bg-slate-950/80 rounded-2xl border border-white/10">
-          Hoàn thành lượt thi
-        </div>
-      )}
     </div>
   );
 }
@@ -776,12 +792,24 @@ function Chp({ state, serverNow }: P) {
         Câu hỏi phụ — {cp.tied.map((i) => seatName(state, i)).join(" · ")}
       </div>
       {q && (
-        <Vtv3ChalkboardQuestionFrame
-          headerBadge="CÂU HỎI PHỤ"
-          questionText={q.q}
-          timer={cp.timer}
-          serverNow={serverNow}
-        />
+        state.themeMode === "o26_classic" ? (
+          <Vtv3ChalkboardQuestionFrame
+            headerBadge="CÂU HỎI PHỤ"
+            questionText={q.q}
+            timer={cp.timer}
+            serverNow={serverNow}
+          />
+        ) : (
+          <EconovaLowerThirdV3
+            state={state}
+            serverNow={serverNow}
+            activeSeatId={cp.buzzedSeat}
+            headerBadge="CÂU HỎI PHỤ"
+            questionText={q.q}
+            timer={cp.timer}
+            showScoreTab={true}
+          />
+        )
       )}
       {cp.phase === "result" && q?.a && (
         <div className="text-2xl font-black text-emerald-300 mt-2">✔ Đáp án: {q.a}</div>
@@ -792,9 +820,6 @@ function Chp({ state, serverNow }: P) {
       {cp.winner != null && (
         <div className="text-3xl font-black text-emerald-300 mt-2">🏆 {seatName(state, cp.winner)}</div>
       )}
-      <div className="max-w-md mx-auto mt-1">
-        <Timer timer={cp.timer} serverNow={serverNow} big />
-      </div>
     </div>
   );
 }

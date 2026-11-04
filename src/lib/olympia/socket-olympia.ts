@@ -145,14 +145,19 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
     const entry = games.get(code);
     if (!entry) return;
     const g = entry.game;
-    const hostView = g.view("host");
-    const displayView = g.view("display");
+    const rooms = nsp.adapter.rooms;
 
-    // Native Socket.IO room broadcast for 100% reliable multi-window / separate-tab synchronization
-    nsp.to(`olympia:${code}:host`).emit("state", hostView);
-    nsp.to(`olympia:${code}:display`).emit("state", displayView);
+    // Native Socket.IO room broadcast — only serialize views for rooms with active sockets
+    if ((rooms.get(`olympia:${code}:host`)?.size ?? 0) > 0) {
+      nsp.to(`olympia:${code}:host`).emit("state", g.view("host"));
+    }
+    if ((rooms.get(`olympia:${code}:display`)?.size ?? 0) > 0) {
+      nsp.to(`olympia:${code}:display`).emit("state", g.view("display"));
+    }
     for (let s = 0; s < 8; s++) {
-      nsp.to(`olympia:${code}:player:${s}`).emit("state", g.view("player", s));
+      if ((rooms.get(`olympia:${code}:player:${s}`)?.size ?? 0) > 0) {
+        nsp.to(`olympia:${code}:player:${s}`).emit("state", g.view("player", s));
+      }
     }
     scheduleSave(entry);
   }
@@ -207,6 +212,7 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
           if (role === "display") await socket.join(`olympia:${code}:display`);
           if (role === "player" && seatId != null) await socket.join(`olympia:${code}:player:${seatId}`);
           entry.game.touch(Date.now());
+          const initialView = entry.game.view(role, seatId);
           ack?.({
             ok: true,
             seatId,
@@ -214,8 +220,12 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
             rulesetId: entry.game.state.rulesetId,
             audioSeason: entry.game.ruleset.audioSeason,
             rounds: entry.game.state.rounds,
+            state: initialView,
           });
-          broadcast(code);
+          socket.emit("state", initialView);
+          if (role === "player") {
+            broadcast(code);
+          }
         } catch (e) {
           console.error("[Olympia] join error", e);
           ack?.({ ok: false, error: "Lỗi máy chủ" });

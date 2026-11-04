@@ -688,10 +688,34 @@ export function VcnvCountdownGraphic({
   }, [timer?.startedAt, timer?.remainingMs, timer?.totalMs, isV3Arrow, serverNow]);
 
   const QUAD_PIECES = [
-    { index: 0, label: "1" },
-    { index: 1, label: "2" },
-    { index: 3, label: "4" },
-    { index: 2, label: "3" },
+    {
+      index: 0,
+      label: "1",
+      clipPath: "polygon(0% 0%, 100% 0%, 100% 64%, 64% 64%, 64% 100%, 0% 100%)",
+      svgPoints: "0.5,0.5 99.5,0.5 99.5,64 64,64 64,99.5 0.5,99.5",
+      labelPos: "left-[33%] top-[33%]",
+    },
+    {
+      index: 1,
+      label: "2",
+      clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 36% 100%, 36% 64%, 0% 64%)",
+      svgPoints: "0.5,0.5 99.5,0.5 99.5,99.5 36,99.5 36,64 0.5,64",
+      labelPos: "left-[67%] top-[33%]",
+    },
+    {
+      index: 3,
+      label: "4",
+      clipPath: "polygon(0% 0%, 64% 0%, 64% 36%, 100% 36%, 100% 100%, 0% 100%)",
+      svgPoints: "0.5,0.5 64,0.5 64,36 99.5,36 99.5,99.5 0.5,99.5",
+      labelPos: "left-[33%] top-[67%]",
+    },
+    {
+      index: 2,
+      label: "3",
+      clipPath: "polygon(36% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 36%, 36% 36%)",
+      svgPoints: "36,0.5 99.5,0.5 99.5,99.5 0.5,99.5 0.5,36 36,36",
+      labelPos: "left-[67%] top-[67%]",
+    },
   ];
 
   const hasBell = v.bells && v.bells.length > 0;
@@ -725,18 +749,41 @@ export function VcnvCountdownGraphic({
             />
           )}
 
-          {/* 4 Corner Quadrants (1, 2, 4, 3) */}
+          {/* 4 L-Shaped Corner Quadrants (1, 2, 4, 3) — Zero Overlap with Center Piece 5 */}
           <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
             {QUAD_PIECES.map((piece) => {
               const isRevealed = v.piecesRevealed[piece.index];
+              const isSelectedPiece = curIdx === piece.index;
               return (
                 <div
                   key={piece.index}
-                  className={`relative flex items-center justify-center border border-cyan-500/30 transition-opacity duration-700 ${
-                    isRevealed ? "opacity-0 pointer-events-none" : "bg-[#0b1b3d] opacity-100"
+                  className={`relative transition-all duration-700 ${
+                    isRevealed
+                      ? "opacity-0 pointer-events-none"
+                      : isSelectedPiece
+                      ? "bg-gradient-to-br from-[#0f3178] to-[#081d4a] opacity-100"
+                      : "bg-[#0b1b3d] opacity-100"
                   }`}
+                  style={{ clipPath: piece.clipPath }}
                 >
-                  <span className="text-4xl sm:text-6xl md:text-7xl font-black text-white select-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]">
+                  <svg
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                    className="absolute inset-0 w-full h-full pointer-events-none"
+                  >
+                    <polygon
+                      points={piece.svgPoints}
+                      fill="none"
+                      stroke={isSelectedPiece ? "#fbbf24" : "rgba(34, 211, 238, 0.45)"}
+                      strokeWidth={isSelectedPiece ? "2.2" : "1.2"}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+                  <span
+                    className={`absolute -translate-x-1/2 -translate-y-1/2 ${piece.labelPos} text-3xl sm:text-5xl md:text-6xl font-black select-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${
+                      isSelectedPiece ? "text-amber-300" : "text-white"
+                    }`}
+                  >
                     {piece.label}
                   </span>
                 </div>
@@ -744,18 +791,18 @@ export function VcnvCountdownGraphic({
             })}
           </div>
 
-          {/* Center Tile: Bold Number 5 with Glow when Selected */}
+          {/* Center Tile (Piece 5): Fits flush into the 36% x 36% center cutout without overlapping pieces 1-4 */}
           <div
-            className={`absolute w-[44%] h-[40%] rounded-xl border-2 flex items-center justify-center transition-all duration-700 z-10 ${
+            className={`absolute left-[32%] top-[32%] w-[36%] h-[36%] border-2 flex items-center justify-center transition-all duration-700 z-10 ${
               v.piecesRevealed[4]
                 ? "opacity-0 pointer-events-none"
                 : isCenter
                 ? "bg-gradient-to-br from-[#0c2866] to-[#04153a] border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.85)] animate-pulse opacity-100 ring-2 ring-amber-300/70"
-                : "bg-[#071739] border-cyan-400/80 shadow-[0_0_20px_rgba(6,182,212,0.5)] opacity-100"
+                : "bg-[#071739] border-cyan-400/80 shadow-[0_0_16px_rgba(6,182,212,0.4)] opacity-100"
             }`}
           >
             <span
-              className={`text-4xl sm:text-6xl md:text-7xl font-black select-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] ${
+              className={`text-3xl sm:text-5xl md:text-6xl font-black select-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${
                 isCenter ? "text-amber-300" : "text-white"
               }`}
             >

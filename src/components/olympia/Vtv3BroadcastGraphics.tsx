@@ -1433,7 +1433,7 @@ export function SummaryLowerThirdGraphic({ state }: { state: OlympiaState }) {
     return (
       <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in pointer-events-auto">
         <div className="relative w-full max-w-2xl rounded-3xl p-8 border-2 border-amber-400/80 bg-gradient-to-b from-[#131b3b] via-[#0b1026] to-[#060814] shadow-[0_0_50px_rgba(245,158,11,0.5)] flex flex-col items-center text-center gap-4">
-          <div className="px-6 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-sm uppercase tracking-widest shadow-lg">
+          <div className="px-6 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-sm uppercase tracking-wider shadow-lg">
             {isLeader ? "👑 DẪN ĐẦU ĐOÀN LEO NÚI" : "TỔNG KẾT ĐIỂM"}
           </div>
           <div className="text-3xl sm:text-5xl font-black text-white tracking-wide uppercase drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]">
@@ -1447,6 +1447,55 @@ export function SummaryLowerThirdGraphic({ state }: { state: OlympiaState }) {
           )}
           <div className="text-5xl sm:text-7xl font-black text-amber-300 font-mono tracking-tight drop-shadow-[0_0_20px_rgba(252,211,77,0.7)] pt-2">
             {curSeat.score} <span className="text-2xl sm:text-3xl font-sans text-amber-200/80">điểm</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const isV3 = state.themeMode !== "o26_classic";
+
+  if (isV3) {
+    return (
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-4xl px-4 animate-slide-in-up pointer-events-auto">
+        <div
+          className="relative rounded-xl p-4 sm:p-5 flex items-center justify-between gap-4 border-2 border-cyan-400/80 shadow-[0_10px_40px_rgba(0,0,0,0.95)]"
+          style={{
+            clipPath: "polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%)",
+            background: isLeader
+              ? "linear-gradient(90deg, #091a3e 0%, #17326b 50%, #091a3e 100%)"
+              : "linear-gradient(90deg, #06112a 0%, #0e2454 50%, #06112a 100%)",
+            boxShadow: isLeader
+              ? "0 0 35px rgba(46,230,255,0.6), inset 0 1px 2px rgba(255,255,255,0.4)"
+              : "0 0 30px rgba(14,165,233,0.4), inset 0 1px 2px rgba(255,255,255,0.2)",
+          }}
+        >
+          {/* Left: Medal or Crown */}
+          <div className="flex items-center justify-center w-12 sm:w-16 h-12 sm:h-16 rounded-xl bg-black/40 border border-cyan-400/30 shrink-0 ml-2">
+            <span className="text-2xl sm:text-4xl">
+              {curRank === 1 ? "🥇" : curRank === 2 ? "🥈" : curRank === 3 ? "🥉" : "🎖️"}
+            </span>
+          </div>
+
+          {/* Center: Contestant Name & School */}
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
+            <div className="text-xl sm:text-3xl font-black text-white uppercase tracking-wider truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+              {curSeat.name}
+            </div>
+            <div className="text-xs sm:text-sm text-cyan-200/90 font-medium truncate flex items-center gap-1.5 mt-0.5">
+              <span>🏫</span>
+              <span>{curSeat.school || "Thí sinh"}</span>
+            </div>
+          </div>
+
+          {/* Right: Score Numerals */}
+          <div className="flex flex-col items-end justify-center shrink-0 pr-4">
+            <div className="text-3xl sm:text-5xl font-black text-amber-300 font-mono tabular-nums drop-shadow-[0_0_15px_rgba(252,211,77,0.7)]">
+              {curSeat.score}
+            </div>
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-amber-200/70">
+              ĐIỂM
+            </span>
           </div>
         </div>
       </div>
@@ -1525,54 +1574,53 @@ export function EconovaContestantScoreTabBar({
 }) {
   const seats = activeSeats(state);
   return (
-    <div className="flex items-stretch w-full h-[32px] sm:h-[36px] bg-[#08203f] flex-0 shrink-0 border-b border-cyan-400/40 relative z-10 overflow-hidden">
+    <div className="flex items-stretch w-full h-[34px] sm:h-[38px] bg-[#04122e]/95 flex-0 shrink-0 border-b border-cyan-400/40 relative z-10 overflow-hidden">
       {questionNumberBadge && (
-        <div className="shrink-0 px-2.5 sm:px-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-[11px] sm:text-xs md:text-sm uppercase tracking-wider flex items-center justify-center whitespace-nowrap shadow-md">
+        <div className="shrink-0 px-3 sm:px-5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center whitespace-nowrap shadow-md">
           {questionNumberBadge}
         </div>
       )}
-      <div
-        className="flex-1 flex flex-row items-stretch min-w-0"
-      >
+      <div className="flex-1 flex flex-row items-stretch min-w-0">
         {seats.map((s, idx) => {
           const isBuzzed = buzzedSeatId != null && buzzedSeatId === s.id;
           const isCurrent = !isBuzzed && activeSeatId != null && activeSeatId === s.id;
           const isLocked = lockedSeats.includes(s.id);
           const isLast = idx === seats.length - 1;
           return (
-            <div
-              key={s.id}
-              className={`flex-1 relative flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-2 text-center text-xs sm:text-sm tracking-wide uppercase transition-all duration-200 select-none ${
-                isBuzzed
-                  ? "bg-[#ef4444] text-white font-black shadow-[0_0_15px_rgba(239,68,68,0.85)] z-20 animate-pulse"
-                  : isCurrent
-                  ? "bg-[#2ee6ff] text-[#08203f] font-black z-10 shadow-[0_0_12px_rgba(46,230,255,0.7)]"
-                  : isLocked
-                  ? "bg-slate-900/90 text-slate-500 line-through font-semibold"
-                  : "text-slate-100 font-bold hover:bg-white/5"
-              }`}
-            >
-              {isBuzzed && <span className="text-xs">🔔</span>}
-              <span className="truncate max-w-[90px] sm:max-w-[140px] md:max-w-none">{s.name}</span>
-              <span
-                className={`text-[10px] sm:text-xs font-mono font-black px-1.5 py-0.2 rounded ${
+            <React.Fragment key={s.id}>
+              <div
+                className={`flex-1 relative flex items-center justify-center gap-1.5 sm:gap-3 px-2 text-center text-xs sm:text-sm tracking-wide uppercase transition-all duration-200 select-none ${
                   isBuzzed
-                    ? "bg-black/30 text-amber-200"
+                    ? "bg-gradient-to-r from-red-600 to-rose-600 text-white font-black shadow-[0_0_15px_rgba(239,68,68,0.9)] z-20 animate-pulse"
                     : isCurrent
-                    ? "bg-[#08203f]/25 text-[#08203f]"
-                    : "bg-black/40 text-cyan-300"
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black z-10 shadow-[0_0_15px_rgba(37,99,235,0.8)]"
+                    : isLocked
+                    ? "bg-slate-900/90 text-slate-500 line-through font-semibold opacity-40"
+                    : "text-slate-100 font-bold hover:bg-white/5"
                 }`}
               >
-                {s.score}
-              </span>
-              {/* Slanted divider skewX(-20deg) matching Econova V3 */}
+                {isBuzzed && <span className="text-xs">🔔</span>}
+                <span className="truncate max-w-[100px] sm:max-w-[160px] md:max-w-none">
+                  {idx + 1}. {s.name}
+                </span>
+                <span
+                  className={`text-xs sm:text-sm font-mono font-black px-1.5 py-0.5 rounded ${
+                    isBuzzed
+                      ? "bg-black/40 text-amber-200"
+                      : isCurrent
+                      ? "bg-black/30 text-cyan-200"
+                      : "bg-black/40 text-cyan-300"
+                  }`}
+                >
+                  {s.score}
+                </span>
+              </div>
               {!isLast && (
-                <div
-                  className="absolute right-0 top-0 bottom-0 w-[2px] bg-[#1fd1ff] pointer-events-none z-30"
-                  style={{ transform: "skewX(-20deg)" }}
-                />
+                <div className="flex items-center justify-center px-1 text-slate-400/80 font-bold select-none text-xs sm:text-sm">
+                  /
+                </div>
               )}
-            </div>
+            </React.Fragment>
           );
         })}
       </div>
@@ -1670,6 +1718,7 @@ export function EconovaLowerThirdV3({
     };
   }, [timer?.startedAt, timer?.remainingMs, timer?.totalMs, serverNow]);
 
+  const hasActiveTimer = Boolean(timer && timer.startedAt != null);
   const isFs = overlayMode === "FULLSCREEN";
   const strLen = typeof questionText === "string" ? questionText.length : 60;
   const fontSizeClass = isFs
@@ -1697,17 +1746,17 @@ export function EconovaLowerThirdV3({
       {/* ── Keyframes Style for Authentic Econova V3 Animations ── */}
       <style>{`
         .v3-root-box {
-          --target-w: min(1200px, 94vw);
-          --box-height: 180px;
+          --target-w: min(1240px, 95vw);
+          --box-height: ${hasActiveTimer ? "185px" : "155px"};
         }
         @media (min-width: 640px) {
           .v3-root-box {
-            --box-height: 195px;
+            --box-height: ${hasActiveTimer ? "195px" : "165px"};
           }
         }
         @media (min-width: 1024px) {
           .v3-root-box {
-            --box-height: 205px;
+            --box-height: ${hasActiveTimer ? "205px" : "175px"};
           }
         }
 
@@ -1856,55 +1905,54 @@ export function EconovaLowerThirdV3({
           {/* Specular glass reflection */}
           <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 via-white/5 to-transparent pointer-events-none z-10" />
 
-          {/* Center Content Wrapper */}
-          <div className="v3-content-wrap w-full h-full flex flex-row items-stretch relative z-10">
-            {/* Left Column */}
-            <div className="flex-1 flex flex-col min-w-0 relative justify-between">
-              {/* Contestant Score Tab Bar */}
-              {showScoreTab && (
-                <EconovaContestantScoreTabBar
-                  state={state}
-                  activeSeatId={activeSeatId}
-                  buzzedSeatId={buzzedSeatId}
-                  lockedSeats={lockedSeats}
-                  questionNumberBadge={questionNumberBadge}
-                />
-              )}
+          {/* Center Content Wrapper: Unified Single Full-Width Chamber (Loại bỏ cụm điểm phải) */}
+          <div className="v3-content-wrap w-full h-full flex flex-col justify-between relative z-10 overflow-hidden">
+            {/* Contestant Score Tab Bar */}
+            {showScoreTab && (
+              <EconovaContestantScoreTabBar
+                state={state}
+                activeSeatId={activeSeatId}
+                buzzedSeatId={buzzedSeatId}
+                lockedSeats={lockedSeats}
+                questionNumberBadge={questionNumberBadge}
+              />
+            )}
 
-              {/* Question Text Area */}
-              <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-1.5 sm:py-2 min-h-0">
-                {hopeStarActive && (
-                  <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400/25 border border-amber-300 text-amber-300 text-[10px] sm:text-xs font-black uppercase tracking-wider w-fit mb-1 animate-pulse">
-                    <span>⭐</span>
-                    <span>Ngôi Sao Hy Vọng</span>
-                  </div>
-                )}
-                <div
-                  className={`font-semibold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] leading-snug ${fontSizeClass}`}
-                >
-                  {questionText || (
-                    <span className="text-slate-400/80 italic font-normal text-sm sm:text-base md:text-lg">
-                      Đang đợi câu hỏi...
-                    </span>
-                  )}
+            {/* Question Text Area */}
+            <div className="flex-1 flex flex-col justify-center items-center text-center px-6 sm:px-12 py-2 min-h-0 relative">
+              {hopeStarActive && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-500/30 to-yellow-500/30 border border-amber-300 text-amber-300 text-xs sm:text-sm font-black uppercase tracking-wider mb-1.5 shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse">
+                  <span>⭐</span>
+                  <span>Ngôi Sao Hy Vọng</span>
                 </div>
-
-                {mediaElement && <div className="mt-1">{mediaElement}</div>}
-                {children && <div className="mt-1">{children}</div>}
-
-                {answerText && (
-                  <div className="mt-1 pt-1 border-t border-cyan-400/30 flex items-center gap-2 text-emerald-300 font-black text-xs sm:text-sm animate-fade-in">
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400 text-[10px] uppercase tracking-wider">
-                      ĐÁP ÁN
-                    </span>
-                    <span>{answerText}</span>
-                  </div>
+              )}
+              <div
+                className={`font-semibold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] max-w-4xl mx-auto ${fontSizeClass}`}
+              >
+                {questionText || (
+                  <span className="text-slate-400/80 italic font-normal text-sm sm:text-base md:text-lg">
+                    Đang đợi câu hỏi...
+                  </span>
                 )}
               </div>
 
-              {/* Bottom Time Bar Tray with Inverted Trapezoid & Red Circular Playhead */}
+              {mediaElement && <div className="mt-1">{mediaElement}</div>}
+              {children && <div className="mt-1">{children}</div>}
+
+              {answerText && (
+                <div className="mt-1 pt-1 border-t border-cyan-400/30 flex items-center gap-2 text-emerald-300 font-black text-xs sm:text-sm animate-fade-in">
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400 text-[10px] uppercase tracking-wider">
+                    ĐÁP ÁN
+                  </span>
+                  <span>{answerText}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Time Bar Tray: Only rendered when timer is active! */}
+            {hasActiveTimer && (
               <div
-                className="h-[18px] sm:h-[22px] mb-2 mx-4 sm:mx-6 relative flex-shrink-0 rounded"
+                className="h-[18px] sm:h-[22px] mb-2 mx-6 sm:mx-12 relative flex-shrink-0 rounded"
                 style={{
                   transform: "skewX(-11.6deg)",
                   background: "linear-gradient(90deg, #d1d5db, #9ca3af)",
@@ -1926,40 +1974,7 @@ export function EconovaLowerThirdV3({
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Full Height Diagonal Separator skewX(-11.6deg) */}
-            <div
-              className="w-[2px] bg-[#d1d5db] shrink-0 pointer-events-none"
-              style={{ transform: "skewX(-11.6deg)" }}
-            />
-
-            {/* Right Column: Big Score & Question Badge */}
-            <div className="w-[130px] sm:w-[170px] md:w-[210px] flex flex-col bg-[#05164d] shrink-0">
-              <div
-                className="flex-1 flex items-center justify-center bg-gradient-to-b from-[#1d4ed8] to-[#1e40af] text-white"
-                style={{ clipPath: "polygon(20px 0, 100% 0, 100% 100%, 0 100%)" }}
-              >
-                <div
-                  className="font-black text-3xl sm:text-4xl md:text-5xl text-white drop-shadow-[0_0_12px_rgba(46,230,255,0.7)]"
-                  style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
-                >
-                  {displayScore}
-                </div>
-              </div>
-              <div className="w-full h-[2px] bg-[#d1d5db]" />
-              <div
-                className="min-h-[34px] sm:min-h-[40px] flex items-center justify-center bg-[#0d2360] px-2 text-center"
-                style={{ transform: "skewX(-11.6deg)" }}
-              >
-                <span
-                  className="font-bold text-[11px] sm:text-xs md:text-sm uppercase tracking-wider text-cyan-300 truncate"
-                  style={{ transform: "skewX(11.6deg)" }}
-                >
-                  {resolvedBadge}
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -2015,9 +2030,24 @@ export function VeDichSlantedGridGraphic({
   const resolvedSelected =
     selectedPoints ?? (vd?.packages[resolvedOwnerId] ? vd.packages[resolvedOwnerId].map((p) => p.points) : undefined);
   const isO22Q1 = state.rulesetId === "O22" && (state.o22Quarter ?? 1) === 1;
-  const defaultCols = isO22Q1 ? 2 : 3;
-  const defaultRows = isO22Q1 ? [20, 40] : [20, 30];
-  const cols = resolvedSelected && resolvedSelected.length > 0 ? resolvedSelected.length : defaultCols;
+  const isPreset = state.rulesetId >= "O13" && state.rulesetId <= "O19";
+  const isO20O21 = state.rulesetId === "O20" || state.rulesetId === "O21";
+
+  // Dynamic rows & columns based on active ruleset
+  let defaultRows = [20, 30];
+  let defaultCols = 3;
+  if (isPreset) {
+    defaultRows = [0]; // Single row displaying the preset packages
+    defaultCols = 3;
+  } else if (isO20O21) {
+    defaultRows = [10, 20, 30];
+    defaultCols = 3;
+  } else if (isO22Q1) {
+    defaultRows = [20, 40];
+    defaultCols = 2;
+  }
+
+  const cols = isPreset ? 3 : (resolvedSelected && resolvedSelected.length > 0 ? resolvedSelected.length : defaultCols);
   const rows = pointOptions && pointOptions.length > 0 ? pointOptions : defaultRows;
   const isV3Arrow = state.themeMode !== "o26_classic";
 
@@ -2085,17 +2115,17 @@ export function VeDichSlantedGridGraphic({
           >
             {/* Slanted Rows x Columns Grid */}
             <div className="flex flex-col divide-y-[3px] divide-slate-300/80 -skew-x-12">
-              {rows.map((ptValue) => (
+              {isPreset ? (
                 <div
-                  key={ptValue}
                   className="grid divide-x-[3px] divide-slate-300/80"
-                  style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+                  style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
                 >
-                  {Array.from({ length: cols }).map((_, colIdx) => {
-                    const isSelected = resolvedSelected?.[colIdx] === ptValue;
+                  {[40, 60, 80].map((pkgVal) => {
+                    const totalSelected = resolvedSelected?.reduce((a, b) => a + b, 0);
+                    const isSelected = totalSelected === pkgVal;
                     return (
                       <div
-                        key={colIdx}
+                        key={pkgVal}
                         className="h-16 sm:h-22 flex items-center justify-center transition-all duration-300 relative overflow-hidden"
                         style={{
                           background: isSelected
@@ -2107,13 +2137,43 @@ export function VeDichSlantedGridGraphic({
                         }}
                       >
                         <span className="skew-x-12 font-black text-3xl sm:text-5xl text-white tracking-tight select-none drop-shadow-[0_3px_6px_rgba(0,0,0,0.75)]">
-                          {ptValue}
+                          {pkgVal}
                         </span>
                       </div>
                     );
                   })}
                 </div>
-              ))}
+              ) : (
+                rows.map((ptValue) => (
+                  <div
+                    key={ptValue}
+                    className="grid divide-x-[3px] divide-slate-300/80"
+                    style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+                  >
+                    {Array.from({ length: cols }).map((_, colIdx) => {
+                      const isSelected = resolvedSelected?.[colIdx] === ptValue;
+                      return (
+                        <div
+                          key={colIdx}
+                          className="h-16 sm:h-22 flex items-center justify-center transition-all duration-300 relative overflow-hidden"
+                          style={{
+                            background: isSelected
+                              ? "linear-gradient(90deg, #881337 0%, #be123c 35%, #e11d48 75%, #f43f5e 100%)"
+                              : "linear-gradient(180deg, #0a2654 0%, #071b3e 100%)",
+                            boxShadow: isSelected
+                              ? "inset 0 0 25px rgba(255,255,255,0.25)"
+                              : "inset 0 0 15px rgba(0,0,0,0.45)",
+                          }}
+                        >
+                          <span className="skew-x-12 font-black text-3xl sm:text-5xl text-white tracking-tight select-none drop-shadow-[0_3px_6px_rgba(0,0,0,0.75)]">
+                            {ptValue}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

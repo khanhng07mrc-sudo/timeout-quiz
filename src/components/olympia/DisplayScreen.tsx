@@ -643,7 +643,7 @@ function KhoiDong({ state, serverNow }: P) {
                 />
               ) : null
             }
-            timer={hasRevealedQ ? kd.timer : null}
+            timer={hasRevealedQ && state.rulesetId < "O23" ? kd.timer : null}
             serverNow={serverNow}
           />
         </div>
@@ -666,7 +666,7 @@ function KhoiDong({ state, serverNow }: P) {
               />
             ) : null
           }
-          timer={hasRevealedQ ? kd.timer : null}
+          timer={hasRevealedQ && state.rulesetId < "O23" ? kd.timer : null}
           showScoreTab={true}
           runAnim={!hasRevealedQ}
         />

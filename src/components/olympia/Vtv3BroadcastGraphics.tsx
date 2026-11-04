@@ -1003,6 +1003,186 @@ export function VcnvCountdownGraphic({
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTHENTIC ECONOVA V3 UNIFIED GEOMETRY ENGINE (script5.js)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ZigzagShape {
+  bgPts: [number, number][];
+  alnPts: [number, number][];
+  arnPts: [number, number][];
+  alcPts: [number, number][];
+  arcPts: [number, number][];
+  slope: number;
+  midY: number;
+}
+
+export function toPoly(pts: [number, number][]): string {
+  return pts.map((p) => `${p[0]}px ${p[1]}px`).join(", ");
+}
+
+export function toSvgPath(pts: [number, number][]): string {
+  return "M " + pts.map((p) => `${p[0]},${p[1]}`).join(" L ") + " Z";
+}
+
+export function genZigzagShape(
+  W: number,
+  H: number,
+  S: number,
+  thick: number,
+  cThick: number,
+  startX = 0
+): ZigzagShape {
+  const L = startX;
+  const R = startX + W;
+  const midY = H / 2;
+  const pS = S / 2;
+  const slope = S / H;
+
+  const bgPts: [number, number][] = [
+    [L + pS, 0],
+    [R - pS, 0],
+    [R, midY],
+    [R - pS, H],
+    [L + pS, H],
+    [L, midY],
+  ];
+
+  const lnPts: [number, number][] = [
+    [L + pS - thick, 0],
+    [L + pS, 0],
+    [L, midY],
+    [L + pS, H],
+    [L + pS - thick, H],
+    [L - thick, midY],
+  ];
+
+  const rnPts: [number, number][] = [
+    [R - pS, 0],
+    [R - pS + thick, 0],
+    [R + thick, midY],
+    [R - pS + thick, H],
+    [R - pS, H],
+    [R, midY],
+  ];
+
+  const y1 = H * 0.125;
+  const y2 = H * 0.875;
+  const cShift = slope * (midY - y1);
+
+  const lcPts: [number, number][] = [
+    [L - thick - cThick + cShift, y1],
+    [L - thick + cShift, y1],
+    [L - thick, midY],
+    [L - thick + cShift, y2],
+    [L - thick - cThick + cShift, y2],
+    [L - thick - cThick, midY],
+  ];
+
+  const rcPts: [number, number][] = [
+    [R + thick - cShift, y1],
+    [R + thick + cThick - cShift, y1],
+    [R + thick + cThick, midY],
+    [R + thick + cThick - cShift, y2],
+    [R + thick - cShift, y2],
+    [R + thick, midY],
+  ];
+
+  return { bgPts, alnPts: lnPts, arnPts: rnPts, alcPts: lcPts, arcPts: rcPts, slope, midY };
+}
+
+export interface GridCell {
+  pts: [number, number][];
+  r: number;
+  col: number;
+  ptsValue: number;
+  cx: number;
+  cy: number;
+}
+
+export function genVeDichGridCells(
+  W: number,
+  H: number,
+  S: number,
+  numCols: number,
+  ptsTypes: number[],
+  startX = 0
+): GridCell[] {
+  const L = startX;
+  const R = startX + W;
+  const midY = H / 2;
+  const pS = S / 2;
+  const numRows = ptsTypes.length;
+  const rowH = H / numRows;
+
+  const getL0 = (y: number) =>
+    y <= midY ? L + pS - (pS / midY) * y : L + (pS / midY) * (y - midY);
+  const getL3 = (y: number) =>
+    y <= midY ? R - pS + (pS / midY) * y : R - (pS / midY) * (y - midY);
+
+  const colW = W / numCols;
+  const cells: GridCell[] = [];
+
+  for (let r = 0; r < numRows; r++) {
+    const y1 = r * rowH;
+    const y2 = (r + 1) * rowH;
+    const containsMidY = y1 < midY && y2 >= midY;
+
+    for (let col = 0; col < numCols; col++) {
+      const getLeft = (y: number) => {
+        if (col === 0) return getL0(y);
+        return getL0(y) + col * colW;
+      };
+      const getRight = (y: number) => {
+        if (col === numCols - 1) return getL3(y);
+        return getL0(y) + (col + 1) * colW;
+      };
+
+      let pts: [number, number][];
+      if (containsMidY) {
+        pts = [
+          [getLeft(y1), y1],
+          [getRight(y1), y1],
+          [getRight(midY), midY],
+          [getRight(y2), y2],
+          [getLeft(y2), y2],
+          [getLeft(midY), midY],
+        ];
+      } else {
+        pts = [
+          [getLeft(y1), y1],
+          [getRight(y1), y1],
+          [getRight(y2), y2],
+          [getLeft(y2), y2],
+        ];
+      }
+
+      const xs = pts.map((p) => p[0]);
+      const ys = pts.map((p) => p[1]);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+
+      cells.push({
+        pts,
+        r,
+        col,
+        ptsValue: ptsTypes[r],
+        cx,
+        cy,
+      });
+    }
+  }
+
+  return cells;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DELIVERABLE 2: VCNV ANSWER REVEAL GRAPHIC (ATTACHMENT 2)
+// ─────────────────────────────────────────────────────────────────────────────
 export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
   const v = state.vcnv!;
   const seats = activeSeats(state);
@@ -1010,45 +1190,64 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
 
   if (isV3Arrow) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#06152d]/95 backdrop-blur-md">
-        <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-4 py-6">
-          <div className="px-6 py-1.5 rounded-full bg-cyan-500/20 border border-cyan-400 text-cyan-200 font-black text-xs sm:text-sm uppercase tracking-widest">
-            ĐÁP ÁN HÀNG NGANG CỦA THÍ SINH
+      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040e24]/90 backdrop-blur-md animate-fade-in select-none">
+        <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-4 py-4">
+          {/* Header pill */}
+          <div className="px-6 py-1.5 rounded-full bg-[#08203f]/90 border border-cyan-400/80 text-cyan-200 font-black text-xs sm:text-sm uppercase tracking-widest shadow-lg">
+            ĐÁP ÁN HÀNG NGANG CỦA CÁC THÍ SINH
           </div>
-          {seats.map((seat) => {
-            const answerText = v.answers[seat.id]?.text || "";
-            return (
-              <div
-                key={seat.id}
-                className="relative w-full max-w-3xl h-16 sm:h-20 flex items-center shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-fade-in"
-                style={{
-                  background: "linear-gradient(90deg, #08203f 0%, #0d2c54 70%, #15457a 100%)",
-                  borderLeft: "5px solid #2ee6ff",
-                  clipPath: "polygon(0 0, calc(100% - 28px) 0, 100% 50%, calc(100% - 28px) 100%, 0 100%)",
-                }}
-              >
-                {/* Left Contestant Name Block */}
+
+          {/* 4 Contestant Rows Stacked Vertically */}
+          <div className="w-full max-w-3xl flex flex-col gap-3">
+            {seats.map((seat) => {
+              const answerText = v.answers[seat.id]?.text || "";
+              return (
                 <div
-                  className="h-full w-44 sm:w-56 px-4 flex items-center justify-center shrink-0"
+                  key={seat.id}
+                  className="relative w-full h-14 sm:h-16 flex items-center shadow-[0_8px_25px_rgba(0,0,0,0.85)] overflow-hidden"
                   style={{
-                    background: "linear-gradient(90deg, #1fd1ff 0%, #0ea5e9 100%)",
-                    clipPath: "polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%)",
+                    background: "#051433",
+                    clipPath: "polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%)",
+                    borderLeft: "4px solid #00cfff",
                   }}
                 >
-                  <span className="font-black text-sm sm:text-base text-[#08203f] uppercase tracking-wider truncate">
-                    {seat.name}
-                  </span>
-                </div>
+                  {/* Left Column (~45%): Dark Navy with Contestant Name */}
+                  <div
+                    className="h-full w-[45%] px-4 sm:px-6 flex items-center shrink-0 relative"
+                    style={{
+                      background: "linear-gradient(90deg, #051433 0%, #0d2c54 100%)",
+                      clipPath: "polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%)",
+                    }}
+                  >
+                    <span className="font-black text-sm sm:text-base text-white uppercase tracking-wider truncate drop-shadow-md">
+                      {seat.name}
+                    </span>
+                  </div>
 
-                {/* Center Answer Text (Fixed & Unobstructed) */}
-                <div className="flex-1 min-w-0 px-6 text-center overflow-hidden">
-                  <span className="font-black text-xl sm:text-3xl text-white tracking-widest uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] truncate block">
-                    {answerText}
-                  </span>
+                  {/* Right Column (~55%): Electric Blue Gradient with Uppercase Answer */}
+                  <div
+                    className="h-full flex-1 -ml-4 px-6 flex items-center justify-center text-center relative"
+                    style={{
+                      background: "linear-gradient(90deg, #09408f 0%, #0072ff 100%)",
+                    }}
+                  >
+                    <span className="font-black text-lg sm:text-2xl text-white tracking-widest uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] truncate block">
+                      {answerText || "—"}
+                    </span>
+                  </div>
+
+                  {/* Cyan Arrow Cap on Right Wing */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-6 pointer-events-none"
+                    style={{
+                      background: "linear-gradient(90deg, transparent 0%, #00cfff 100%)",
+                      clipPath: "polygon(0 0, 100% 50%, 0 100%)",
+                    }}
+                  />
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -1056,58 +1255,23 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
 
   return (
     <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto">
-      {/* Full chalkboard backdrop */}
       <Vtv3ChalkboardBackdrop />
-
-      {/* ── Central Vertical Brass Column ── */}
-      <CentralVerticalBrassRail />
-
-      {/* ── 4 Staggered Horizontal Capsule Plaques (Fixed Dimensions, No Overlapping Badges) ── */}
-      <div className="relative z-10 w-full max-w-5xl flex flex-col justify-center gap-5 py-6 scale-[0.88] sm:scale-100 origin-center">
-        {seats.map((seat, idx) => {
-          const isRight = idx % 2 === 0; // 0 & 2 on Right, 1 & 3 on Left
+      <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-4 py-6">
+        <div className="px-6 py-1.5 rounded-full bg-slate-900/90 border border-amber-400 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest">
+          ĐÁP ÁN HÀNG NGANG CỦA THÍ SINH
+        </div>
+        {seats.map((seat) => {
           const answerText = v.answers[seat.id]?.text || "";
-
           return (
             <div
               key={seat.id}
-              className="relative flex items-center w-full h-[68px] sm:h-[76px] animate-fade-in"
+              className="relative w-full max-w-3xl h-16 sm:h-20 flex items-center shadow-2xl rounded-2xl border-2 border-amber-400/80 bg-slate-900/90 overflow-hidden"
             >
-              {/* Connection Rivet pinned directly on central vertical rail */}
-              <div className="absolute left-1/2 -translate-x-1/2 z-30">
-                <RedConnectionRivet />
+              <div className="h-full w-48 sm:w-60 px-4 bg-amber-400 text-slate-950 flex items-center justify-center font-black text-sm sm:text-base uppercase tracking-wider truncate">
+                {seat.name}
               </div>
-
-              {/* Capsule Plaque extending left or right from central rod with FIXED width/height */}
-              <div
-                className={`w-1/2 flex items-center ${
-                  isRight ? "ml-auto pl-5 justify-start" : "mr-auto pr-5 justify-end"
-                }`}
-              >
-                <div
-                  className="w-[360px] sm:w-[430px] h-[64px] sm:h-[72px] px-4 sm:px-6 rounded-full flex items-center justify-between gap-3 shadow-2xl overflow-hidden shrink-0"
-                  style={{
-                    background:
-                      "linear-gradient(180deg, #1e293b 0%, #0f172a 50%, #060a12 100%)",
-                    border: "2.5px solid rgba(203, 213, 225, 0.85)",
-                    outline: "2px solid rgba(100, 116, 139, 0.6)",
-                    outlineOffset: "-5px",
-                    boxShadow:
-                      "0 10px 30px rgba(0,0,0,0.85), inset 0 2px 4px rgba(255,255,255,0.3)",
-                  }}
-                >
-                  {/* Integrated Contestant Name Pill inside Left of Capsule (Never overlaps row above) */}
-                  <div className="px-3 py-1 rounded-full bg-slate-100 border border-slate-300 text-slate-900 font-black text-xs sm:text-sm tracking-wide uppercase shadow shrink-0 max-w-[140px] truncate">
-                    {seat.name}
-                  </div>
-
-                  {/* Center/Right Answer Text */}
-                  <div className="flex-1 min-w-0 text-center overflow-hidden">
-                    <span className="font-black text-lg sm:text-2xl text-white tracking-widest uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] truncate block">
-                      {answerText}
-                    </span>
-                  </div>
-                </div>
+              <div className="flex-1 px-6 text-center text-white font-black text-xl sm:text-3xl uppercase tracking-widest truncate">
+                {answerText}
               </div>
             </div>
           );
@@ -1116,17 +1280,6 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
     </div>
   );
 }
-
-/**
- * ─────────────────────────────────────────────────────────────────────────────
- * COMPONENT 4: TĂNG TỐC QUESTION PICTURE FRAME (Image 4 & User Attachment)
- * - Mounted on horizontal brass rod.
- * - Top attached header plaque: Dark bronze/slate with question prompt.
- * - Ornate gold picture frame with heavy gold metallic border.
- * - Inside: 2x3 grid of puzzle pieces (A, B, C, D, E, F) or clue media.
- * - Bottom left: digital clock box.
- * ─────────────────────────────────────────────────────────────────────────────
- */
 export function TangTocQuestionGraphic({
   state,
   serverNow,
@@ -1247,77 +1400,90 @@ export function TangTocQuestionGraphic({
  * COMPONENT 5: TĂNG TỐC RANKED ANSWERS REVEAL (Supports Both V3 Arrow & O26 Classic)
  * ─────────────────────────────────────────────────────────────────────────────
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DELIVERABLE 3: TĂNG TỐC RANKED ANSWERS GRAPHIC (ATTACHMENT 3)
+// ─────────────────────────────────────────────────────────────────────────────
 export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) {
   const tt = state.tangToc!;
   const isV3Arrow = state.themeMode !== "o26_classic";
 
   if (isV3Arrow) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#06152d]/95 backdrop-blur-md">
-        {tt.correctAnswer && Boolean(tt.revealedCorrectAnswer) && (
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 px-8 py-2.5 rounded-2xl bg-emerald-950/95 border-2 border-emerald-400 text-emerald-300 font-black text-lg sm:text-2xl shadow-[0_0_30px_rgba(16,185,129,0.6)] animate-fade-in">
-            ✔ ĐÁP ÁN: {tt.correctAnswer}
+      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040e24]/90 backdrop-blur-md animate-fade-in select-none">
+        <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-4 py-4">
+          {/* Header pill */}
+          <div className="px-6 py-1.5 rounded-full bg-[#08203f]/90 border border-cyan-400/80 text-cyan-200 font-black text-xs sm:text-sm uppercase tracking-widest shadow-lg">
+            ĐÁP ÁN & THỜI GIAN TRẢ LỜI CỦA THÍ SINH
           </div>
-        )}
 
-        <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-4 py-8 scale-[0.9] sm:scale-100 origin-center">
-          {tt.ranking.map((item, idx) => {
-            const seat = state.seats[item.seat];
-            const sec = item.noAnswer ? "0.00" : (item.ms / 1000).toFixed(2);
-            const answerText = item.noAnswer ? "" : item.answer;
-            const awardedPts = tt.phase === "graded" && item.points ? item.points : 0;
+          {/* 4 Contestant Rows with 3 Columns Stacked Vertically */}
+          <div className="w-full max-w-3xl flex flex-col gap-3">
+            {tt.ranking.map((item) => {
+              const seat = state.seats[item.seat];
+              const sec = item.noAnswer ? "0.00" : (item.ms / 1000).toFixed(2);
+              const answerText = item.noAnswer ? "" : item.answer;
 
-            return (
-              <div
-                key={item.seat}
-                className="relative flex items-center w-full max-w-3xl h-16 sm:h-20 shadow-[0_12px_35px_rgba(0,0,0,0.85)] animate-fade-in"
-                style={{
-                  background: item.wrong
-                    ? "linear-gradient(90deg, #3b1116 0%, #5c1922 70%, #7f1d1d 100%)"
-                    : "linear-gradient(90deg, #08203f 0%, #0d2c54 70%, #15457a 100%)",
-                  borderLeft: item.wrong ? "5px solid #ef4444" : "5px solid #2ee6ff",
-                  clipPath: "polygon(0 0, calc(100% - 28px) 0, 100% 50%, calc(100% - 28px) 100%, 0 100%)",
-                }}
-              >
-                {/* Left Contestant Name Block */}
+              return (
                 <div
-                  className="h-full w-44 sm:w-56 px-4 flex items-center gap-2 shrink-0"
+                  key={item.seat}
+                  className="relative w-full h-14 sm:h-16 flex items-center shadow-[0_8px_25px_rgba(0,0,0,0.85)] overflow-hidden"
                   style={{
-                    background: item.wrong
-                      ? "linear-gradient(90deg, #ef4444 0%, #b91c1c 100%)"
-                      : "linear-gradient(90deg, #1fd1ff 0%, #0ea5e9 100%)",
-                    clipPath: "polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%)",
+                    background: "#051433",
+                    clipPath: "polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%)",
+                    borderLeft: "4px solid #00cfff",
                   }}
                 >
-                  <span className="px-1.5 py-0.5 rounded bg-black/25 text-white font-black text-xs">
-                    #{idx + 1}
-                  </span>
-                  <span className="font-black text-sm sm:text-base text-[#051329] uppercase tracking-wider truncate">
-                    {seat?.name || `Thí sinh ${item.seat + 1}`}
-                  </span>
-                </div>
-
-                {/* Center Answer Text (100% Unobstructed) */}
-                <div className="flex-1 min-w-0 px-4 text-center overflow-hidden">
-                  <span className="font-black text-xl sm:text-3xl text-white tracking-widest uppercase drop-shadow truncate block">
-                    {answerText}
-                  </span>
-                </div>
-
-                {/* Right Chevron Tip: Response Time & Points */}
-                <div className="flex items-center gap-2 pr-8 pl-3 shrink-0">
-                  {awardedPts > 0 && (
-                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500 text-slate-950 font-black text-xs sm:text-sm shadow">
-                      +{awardedPts}
+                  {/* Column 1 (~35%): Contestant Name (Dark Navy) */}
+                  <div
+                    className="h-full w-[35%] px-4 sm:px-6 flex items-center shrink-0 relative"
+                    style={{
+                      background: "linear-gradient(90deg, #051433 0%, #0d2c54 100%)",
+                      clipPath: "polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%)",
+                    }}
+                  >
+                    <span className="font-black text-sm sm:text-base text-white uppercase tracking-wider truncate drop-shadow-md">
+                      {seat?.name || `Thí sinh ${item.seat + 1}`}
                     </span>
-                  )}
-                  <div className="px-4 py-1.5 rounded-lg bg-[#051329]/90 border border-cyan-400/60 font-mono font-black text-sm sm:text-lg text-[#2ee6ff] tabular-nums shadow-inner">
-                    {sec}
                   </div>
+
+                  {/* Column 2 (~45%): Contestant Answer (Electric Blue Gradient) */}
+                  <div
+                    className="h-full w-[45%] -ml-4 px-4 flex items-center justify-center text-center relative"
+                    style={{
+                      background: "linear-gradient(90deg, #09408f 0%, #0072ff 100%)",
+                      clipPath: "polygon(16px 0, 100% 0, calc(100% - 16px) 100%, 0 100%)",
+                    }}
+                  >
+                    <span className="font-black text-lg sm:text-2xl text-white tracking-widest uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] truncate block">
+                      {answerText || "—"}
+                    </span>
+                  </div>
+
+                  {/* Column 3 (~20%): Enter Time (Dark Navy Cap) */}
+                  <div
+                    className="h-full flex-1 -ml-4 px-4 pr-8 flex items-center justify-center text-center relative"
+                    style={{
+                      background: "linear-gradient(90deg, #08203f 0%, #051433 100%)",
+                    }}
+                  >
+                    <span className="font-black font-mono text-base sm:text-xl text-cyan-300 tracking-wider drop-shadow-md">
+                      {item.noAnswer ? "—" : `${sec}s`}
+                    </span>
+                  </div>
+
+                  {/* Cyan Arrow Cap on Right Wing */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-6 pointer-events-none"
+                    style={{
+                      background: "linear-gradient(90deg, transparent 0%, #00cfff 100%)",
+                      clipPath: "polygon(0 0, 100% 50%, 0 100%)",
+                    }}
+                  />
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -1325,20 +1491,8 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
 
   return (
     <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto">
-      {/* Chalkboard backdrop */}
       <Vtv3ChalkboardBackdrop />
-
-      {/* Central Vertical Brass Rail */}
       <CentralVerticalBrassRail />
-
-      {/* Correct answer banner at top - Only displayed when MC clicks "Hiện Đáp Án Đúng" */}
-      {tt.correctAnswer && Boolean(tt.revealedCorrectAnswer) && (
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 px-8 py-2.5 rounded-2xl bg-emerald-950/95 border-2 border-emerald-400 text-emerald-300 font-black text-lg sm:text-2xl shadow-[0_0_30px_rgba(16,185,129,0.6)] animate-fade-in">
-          ✔ ĐÁP ÁN: {tt.correctAnswer}
-        </div>
-      )}
-
-      {/* 4 Vertically Stacked Capsule Plaques (Fixed Dimensions, Rivet moved off center text!) */}
       <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-4 py-8 scale-[0.88] sm:scale-100 origin-center">
         {tt.ranking.map((item) => {
           const seat = state.seats[item.seat];
@@ -1348,12 +1502,9 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
 
           return (
             <div key={item.seat} className="relative flex items-center w-full max-w-[92vw] md:max-w-3xl h-16 sm:h-20 animate-fade-in my-1 px-2">
-              {/* Connection Rivet mounted at left anchor (NEVER overlapping center answer text) */}
               <div className="absolute left-4 z-30">
                 <RedConnectionRivet />
               </div>
-
-              {/* Main Capsule Plaque (Fixed Dimensions) */}
               <div
                 className="w-full rounded-full h-16 sm:h-20 pl-10 pr-6 sm:pr-8 flex items-center justify-between shadow-2xl relative overflow-hidden"
                 style={{
@@ -1363,26 +1514,18 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                   border: item.wrong
                     ? "2.5px solid #ef4444"
                     : "2.5px solid rgba(203, 213, 225, 0.85)",
-                  boxShadow: item.wrong
-                    ? "0 10px 30px rgba(239,68,68,0.4)"
-                    : "0 10px 30px rgba(0,0,0,0.85), inset 0 2px 4px rgba(255,255,255,0.3)",
                 }}
               >
-                {/* Contestant Name */}
                 <div className="flex items-center gap-2 z-10 w-36 sm:w-48 shrink-0 overflow-hidden">
                   <span className="font-bold text-sm sm:text-lg text-slate-100 truncate block max-w-full">
                     {seat?.name || `Thí sinh ${item.seat + 1}`}
                   </span>
                 </div>
-
-                {/* Uppercase Answer (100% unobstructed center space) */}
                 <div className="flex-1 min-w-0 text-center z-10 px-4 overflow-hidden">
                   <span className="font-black text-xl sm:text-3xl text-white tracking-widest uppercase drop-shadow truncate block max-w-full">
                     {answerText}
                   </span>
                 </div>
-
-                {/* Response Time Pill & Awarded Points */}
                 <div className="flex items-center gap-2 z-10 shrink-0">
                   {awardedPts > 0 && (
                     <span className="px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-black text-xs sm:text-sm shadow">
@@ -1402,163 +1545,106 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
   );
 }
 
-/**
- * ─────────────────────────────────────────────────────────────────────────────
- * COMPONENT 6: TỔNG KẾT ĐIỂM (LOWER-THIRD CHYRON & FULLSCREEN)
- * - Lower-Third Chyron: Ranks contestants from lowest to highest.
- * - Displays Rank/Position, Name, School/City, and Score with golden neon styling.
- * ─────────────────────────────────────────────────────────────────────────────
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// DELIVERABLE 5: TỔNG KẾT ĐIỂM SUMMARY SCOREBOARD BANNER (1000x268 BANNER)
+// ─────────────────────────────────────────────────────────────────────────────
 export function SummaryLowerThirdGraphic({ state }: { state: OlympiaState }) {
   const sm = state.summaryState;
   if (!sm || !sm.active || sm.orderedSeats.length === 0) return null;
 
-  const curSeatId = sm.orderedSeats[sm.currentIndex] ?? sm.orderedSeats[0];
-  const curSeat = state.seats[curSeatId];
-  if (!curSeat) return null;
-
-  const total = sm.orderedSeats.length;
-  const ranks = sm.orderedSeats.map((seatId) => {
-    const myScore = state.seats[seatId]?.score ?? 0;
-    const higherCount = sm.orderedSeats.filter(
-      (otherId) => (state.seats[otherId]?.score ?? 0) > myScore
-    ).length;
-    return higherCount + 1;
+  const sorted = [...sm.orderedSeats].sort((a, b) => {
+    return (state.seats[b]?.score ?? 0) - (state.seats[a]?.score ?? 0);
   });
-  const curRank = ranks[sm.currentIndex] ?? (total - sm.currentIndex);
-  const maxScore = Math.max(...sm.orderedSeats.map((sId) => state.seats[sId]?.score ?? 0));
-  const isLeader = curSeat.score === maxScore && (maxScore > 0 || sm.currentIndex === total - 1);
 
-  if (sm.isFullscreen) {
-    return (
-      <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in pointer-events-auto">
-        <div className="relative w-full max-w-2xl rounded-3xl p-8 border-2 border-amber-400/80 bg-gradient-to-b from-[#131b3b] via-[#0b1026] to-[#060814] shadow-[0_0_50px_rgba(245,158,11,0.5)] flex flex-col items-center text-center gap-4">
-          <div className="px-6 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-sm uppercase tracking-wider shadow-lg">
-            {isLeader ? "👑 DẪN ĐẦU ĐOÀN LEO NÚI" : "TỔNG KẾT ĐIỂM"}
-          </div>
-          <div className="text-3xl sm:text-5xl font-black text-white tracking-wide uppercase drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]">
-            {curSeat.name}
-          </div>
-          {curSeat.school && (
-            <div className="text-base sm:text-lg text-cyan-200 font-semibold flex items-center gap-2">
-              <span>🏫</span>
-              <span>{curSeat.school}</span>
-            </div>
-          )}
-          <div className="text-5xl sm:text-7xl font-black text-amber-300 font-mono tracking-tight drop-shadow-[0_0_20px_rgba(252,211,77,0.7)] pt-2">
-            {curSeat.score} <span className="text-2xl sm:text-3xl font-sans text-amber-200/80">điểm</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const isV3 = state.themeMode !== "o26_classic";
-
-  if (isV3) {
-    return (
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-4xl px-4 animate-slide-in-up pointer-events-auto">
-        <div
-          className="relative rounded-xl p-4 sm:p-5 flex items-center justify-between gap-4 border-2 border-cyan-400/80 shadow-[0_10px_40px_rgba(0,0,0,0.95)]"
-          style={{
-            clipPath: "polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%)",
-            background: isLeader
-              ? "linear-gradient(90deg, #091a3e 0%, #17326b 50%, #091a3e 100%)"
-              : "linear-gradient(90deg, #06112a 0%, #0e2454 50%, #06112a 100%)",
-            boxShadow: isLeader
-              ? "0 0 35px rgba(46,230,255,0.6), inset 0 1px 2px rgba(255,255,255,0.4)"
-              : "0 0 30px rgba(14,165,233,0.4), inset 0 1px 2px rgba(255,255,255,0.2)",
-          }}
-        >
-          {/* Left: Medal or Crown */}
-          <div className="flex items-center justify-center w-12 sm:w-16 h-12 sm:h-16 rounded-xl bg-black/40 border border-cyan-400/30 shrink-0 ml-2">
-            <span className="text-2xl sm:text-4xl">
-              {curRank === 1 ? "🥇" : curRank === 2 ? "🥈" : curRank === 3 ? "🥉" : "🎖️"}
-            </span>
-          </div>
-
-          {/* Center: Contestant Name & School */}
-          <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <div className="text-xl sm:text-3xl font-black text-white uppercase tracking-wider truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-              {curSeat.name}
-            </div>
-            <div className="text-xs sm:text-sm text-cyan-200/90 font-medium truncate flex items-center gap-1.5 mt-0.5">
-              <span>🏫</span>
-              <span>{curSeat.school || "Thí sinh"}</span>
-            </div>
-          </div>
-
-          {/* Right: Score Numerals */}
-          <div className="flex flex-col items-end justify-center shrink-0 pr-4">
-            <div className="text-3xl sm:text-5xl font-black text-amber-300 font-mono tabular-nums drop-shadow-[0_0_15px_rgba(252,211,77,0.7)]">
-              {curSeat.score}
-            </div>
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-amber-200/70">
-              ĐIỂM
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const medals = [
+    { label: "Quán quân", icon: "🥇", color: "#fbbf24" },
+    { label: "Á quân", icon: "🥈", color: "#94a3b8" },
+    { label: "Hạng ba", icon: "🥉", color: "#f97316" },
+    { label: "Hạng tư", icon: "🎖️", color: "#38bdf8" },
+  ];
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-4xl px-4 animate-slide-in-up pointer-events-auto">
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-[#040e24]/85 backdrop-blur-md animate-fade-in pointer-events-auto select-none">
+      {/* 1000x268 Authentic Banner Frame */}
       <div
-        className="rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 border-2 shadow-[0_10px_40px_rgba(0,0,0,0.85)]"
+        className="relative w-full max-w-[1000px] h-[268px] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden border border-cyan-400/40"
         style={{
-          background: isLeader
-            ? "linear-gradient(90deg, rgba(20,15,5,0.96) 0%, rgba(45,30,8,0.96) 50%, rgba(20,15,5,0.96) 100%)"
-            : "linear-gradient(90deg, rgba(6,15,35,0.96) 0%, rgba(12,28,68,0.96) 50%, rgba(6,15,35,0.96) 100%)",
-          borderColor: isLeader ? "#f59e0b" : "#38bdf8",
-          boxShadow: isLeader
-            ? "0 0 35px rgba(245,158,11,0.5), inset 0 1px 2px rgba(255,255,255,0.3)"
-            : "0 0 30px rgba(56,189,248,0.4), inset 0 1px 2px rgba(255,255,255,0.2)",
+          background: "linear-gradient(180deg, #081e4a 0%, #051433 45%, #030b1e 100%)",
         }}
       >
-        {/* Left: Leader Crown (không hiển thị số thứ hạng #) */}
-        {isLeader && (
-          <div className="flex flex-col items-center justify-center px-4 py-2 rounded-xl bg-black/50 border border-white/10 shrink-0">
-            <span className="text-3xl sm:text-4xl">👑</span>
-          </div>
-        )}
+        {/* Authentic Background Graphic if available */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-90 bg-cover bg-center"
+          style={{ backgroundImage: "url('/olympia/v3_assets/scoreboard_total_bar.webp')" }}
+        />
 
-        {/* Center: Contestant Name & School */}
-        <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <div className="text-xl sm:text-3xl font-black text-white uppercase tracking-wider truncate drop-shadow">
-            {curSeat.name}
-          </div>
-          <div className="text-xs sm:text-sm text-cyan-200/90 font-medium truncate flex items-center gap-1.5 mt-0.5">
-            <span>🏫</span>
-            <span>{curSeat.school || "Thí sinh"}</span>
-          </div>
+        {/* Top Shelf: Title Banner */}
+        <div className="relative z-10 w-full h-[52px] flex items-center justify-center bg-gradient-to-r from-blue-900/60 via-[#103b99]/80 to-blue-900/60 border-b border-cyan-300/30">
+          <span className="font-black text-xl sm:text-2xl text-white tracking-[0.25em] uppercase drop-shadow-[0_2px_10px_rgba(0,195,255,0.8)]">
+            TỔNG KẾT ĐIỂM
+          </span>
         </div>
 
-        {/* Right: Score Numerals */}
-        <div className="flex flex-col items-end justify-center shrink-0 pl-2">
-          <div className="text-3xl sm:text-5xl font-black text-amber-300 font-mono tabular-nums drop-shadow-[0_0_15px_rgba(252,211,77,0.6)]">
-            {curSeat.score}
-          </div>
-          <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-amber-200/70">
-            ĐIỂM
-          </span>
+        {/* Main Chamber: 4 Contestant Columns */}
+        <div className="relative z-10 flex-1 grid grid-cols-4 divide-x divide-cyan-400/20 px-4 py-3 items-center">
+          {sorted.map((seatId, idx) => {
+            const seat = state.seats[seatId];
+            if (!seat) return null;
+            const medal = medals[idx] || medals[3];
+            const isRevealed = idx <= (sm.currentIndex ?? 3);
+
+            return (
+              <div
+                key={seatId}
+                className={`h-full flex flex-col items-center justify-between text-center px-2 py-1 transition-all duration-500 ${
+                  isRevealed ? "opacity-100 scale-100" : "opacity-30 scale-95"
+                }`}
+              >
+                {/* Medal / Rank Badge */}
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/80 border border-white/20 shadow-md">
+                  <span className="text-base sm:text-lg">{medal.icon}</span>
+                  <span
+                    className="font-black text-xs sm:text-sm uppercase tracking-wider"
+                    style={{ color: medal.color }}
+                  >
+                    {medal.label}
+                  </span>
+                </div>
+
+                {/* Contestant Name */}
+                <div className="w-full flex flex-col items-center">
+                  <span className="font-black text-sm sm:text-base text-white uppercase tracking-wider truncate w-full drop-shadow-md">
+                    {seat.name}
+                  </span>
+                  {seat.school && (
+                    <span className="text-[10px] sm:text-xs text-cyan-200/80 truncate w-full mt-0.5">
+                      {seat.school}
+                    </span>
+                  )}
+                </div>
+
+                {/* Score */}
+                <div className="flex items-baseline justify-center gap-1">
+                  <span
+                    className="font-black font-mono text-3xl sm:text-4xl tracking-tight drop-shadow-[0_0_15px_rgba(251,191,36,0.6)]"
+                    style={{ color: idx === 0 ? "#fbbf24" : "#ffffff" }}
+                  >
+                    {seat.score}
+                  </span>
+                  <span className="text-xs font-bold text-slate-300">điểm</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
 
-/**
- * ─────────────────────────────────────────────────────────────────────────────
- * REUSABLE UNIFIED CONTESTANT SCORE TAB BAR (Khởi Động, Về Đích, Câu Hỏi Phụ)
- * ─────────────────────────────────────────────────────────────────────────────
- */
-/**
- * ─────────────────────────────────────────────────────────────────────────────
- * REUSABLE UNIFIED CONTESTANT SCORE TAB BAR (Khởi Động, Về Đích, Câu Hỏi Phụ)
- * Faithful to Econova V3 specification with slanted skewX(-20deg) dividers
- * ─────────────────────────────────────────────────────────────────────────────
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// DELIVERABLE 1 & 4B: ECONOVA CONTESTANT SCORE TAB BAR (ATTACHMENT 1, 8, 9)
+// ─────────────────────────────────────────────────────────────────────────────
 export function EconovaContestantScoreTabBar({
   state,
   activeSeatId,
@@ -1573,68 +1659,56 @@ export function EconovaContestantScoreTabBar({
   questionNumberBadge?: string | null;
 }) {
   const seats = activeSeats(state);
+  const n = seats.length;
+  if (n === 0) return null;
+
   return (
-    <div className="flex items-stretch w-full h-[34px] sm:h-[38px] bg-[#04122e]/95 flex-0 shrink-0 border-b border-cyan-400/40 relative z-10 overflow-hidden">
-      {questionNumberBadge && (
-        <div className="shrink-0 px-3 sm:px-5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center whitespace-nowrap shadow-md">
-          {questionNumberBadge}
-        </div>
-      )}
-      <div className="flex-1 flex flex-row items-stretch min-w-0">
-        {seats.map((s, idx) => {
-          const isBuzzed = buzzedSeatId != null && buzzedSeatId === s.id;
-          const isCurrent = !isBuzzed && activeSeatId != null && activeSeatId === s.id;
-          const isLocked = lockedSeats.includes(s.id);
-          const isLast = idx === seats.length - 1;
-          return (
-            <React.Fragment key={s.id}>
-              <div
-                className={`flex-1 relative flex items-center justify-center gap-1.5 sm:gap-3 px-2 text-center text-xs sm:text-sm tracking-wide uppercase transition-all duration-200 select-none ${
-                  isBuzzed
-                    ? "bg-gradient-to-r from-red-600 to-rose-600 text-white font-black shadow-[0_0_15px_rgba(239,68,68,0.9)] z-20 animate-pulse"
-                    : isCurrent
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black z-10 shadow-[0_0_15px_rgba(37,99,235,0.8)]"
-                    : isLocked
-                    ? "bg-slate-900/90 text-slate-500 line-through font-semibold opacity-40"
-                    : "text-slate-100 font-bold hover:bg-white/5"
-                }`}
-              >
-                {isBuzzed && <span className="text-xs">🔔</span>}
-                <span className="truncate max-w-[100px] sm:max-w-[160px] md:max-w-none">
-                  {idx + 1}. {s.name}
+    <div className="relative w-full h-[42px] sm:h-[46px] flex items-center bg-[#051433]/90 border-b border-cyan-400/30 overflow-hidden select-none">
+      {seats.map((seat, idx) => {
+        const isBuzzed = buzzedSeatId === seat.id;
+        const isActive = activeSeatId === seat.id;
+        const isLocked = lockedSeats.includes(seat.id);
+
+        let bg = "transparent";
+        let textClass = "text-slate-200";
+
+        if (isBuzzed || isActive) {
+          bg = "linear-gradient(90deg, #e74c3c 0%, #c0392b 100%)";
+          textClass = "text-white font-black drop-shadow-md";
+        } else if (isLocked) {
+          bg = "rgba(0, 0, 0, 0.5)";
+          textClass = "text-slate-400";
+        }
+
+        return (
+          <React.Fragment key={seat.id}>
+            <div
+              className={`flex-1 h-full flex items-center justify-center px-2 transition-all duration-300 ${
+                isBuzzed || isActive ? "animate-pulse" : ""
+              }`}
+              style={{ background: bg }}
+            >
+              <span className={`text-xs sm:text-sm font-bold uppercase truncate ${textClass}`}>
+                <span className="opacity-80 mr-1.5">{idx + 1}.</span>
+                <span>{seat.name}</span>
+                <span className="ml-2 font-mono font-black text-amber-300">
+                  {seat.score}
                 </span>
-                <span
-                  className={`text-xs sm:text-sm font-mono font-black px-1.5 py-0.5 rounded ${
-                    isBuzzed
-                      ? "bg-black/40 text-amber-200"
-                      : isCurrent
-                      ? "bg-black/30 text-cyan-200"
-                      : "bg-black/40 text-cyan-300"
-                  }`}
-                >
-                  {s.score}
-                </span>
-              </div>
-              {!isLast && (
-                <div className="flex items-center justify-center px-1 text-slate-400/80 font-bold select-none text-xs sm:text-sm">
-                  /
-                </div>
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
+              </span>
+            </div>
+            {idx < n - 1 && (
+              <div className="w-[1px] h-4/6 bg-cyan-400/40 transform -skew-x-12 shrink-0" />
+            )}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 }
 
-/**
- * ─────────────────────────────────────────────────────────────────────────────
- * COMPONENT 7: ECONOVA LOWER-THIRD V3 ARROW GRAPHIC (Khởi Động, Về Đích, Câu Hỏi Phụ)
- * Exact geometry, 3-layer arrow clusters (L1, L2, L3), keyframe animations,
- * slanted dividers, and 52px cyan score number from Econova Show V3 specification
- * ─────────────────────────────────────────────────────────────────────────────
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// DELIVERABLE 1 & 4B: LOWER-THIRD QUESTION BAR (FAITHFUL TO ECONOVA V3 & OLYMPIA 26)
+// ─────────────────────────────────────────────────────────────────────────────
 export function EconovaLowerThirdV3({
   state,
   categoryBadge,
@@ -1677,10 +1751,14 @@ export function EconovaLowerThirdV3({
   const fillRef = useRef<HTMLDivElement>(null);
   const resolvedBadge = categoryBadge ?? headerBadge ?? "OLYMPIA";
 
-  // Score to display in big glowing number: active contestant's score or buzzed seat score
   const targetSeatId = buzzedSeatId ?? activeSeatId;
   const activeSeat = targetSeatId != null ? state.seats[targetSeatId] : null;
   const displayScore = activeSeat ? activeSeat.score : 0;
+
+  const hasActiveTimer = Boolean(timer && timer.startedAt != null);
+  const isVeDich = state.currentRound === "veDich";
+  const vd = state.veDich;
+  const currentPkg = vd && vd.packages[activeSeatId ?? 0];
 
   useEffect(() => {
     if (!timer || timer.startedAt == null) {
@@ -1703,7 +1781,7 @@ export function EconovaLowerThirdV3({
         fillRef.current.style.background =
           pct <= 25
             ? "linear-gradient(90deg, #dc2626, #ef4444)"
-            : "linear-gradient(90deg, #b02a45, #ef4444)";
+            : "linear-gradient(90deg, #0284c7, #38bdf8)";
       }
 
       if (rem > 0) {
@@ -1718,7 +1796,6 @@ export function EconovaLowerThirdV3({
     };
   }, [timer?.startedAt, timer?.remainingMs, timer?.totalMs, serverNow]);
 
-  const hasActiveTimer = Boolean(timer && timer.startedAt != null);
   const isFs = overlayMode === "FULLSCREEN";
   const strLen = typeof questionText === "string" ? questionText.length : 60;
   const fontSizeClass = isFs
@@ -1735,6 +1812,16 @@ export function EconovaLowerThirdV3({
     ? "text-base sm:text-lg md:text-xl leading-normal"
     : "text-lg sm:text-xl md:text-2xl leading-relaxed";
 
+  // Unified Econova Geometry coordinates
+  const W = 1200;
+  const H = hasActiveTimer ? 210 : 180;
+  const S = 90;
+  const thick = 32;
+  const cThick = 24;
+  const startX = 60;
+  const shapes = genZigzagShape(W, H, S, thick, cThick, startX);
+  const totalSvgW = W + 120;
+
   return (
     <div
       className={
@@ -1743,276 +1830,145 @@ export function EconovaLowerThirdV3({
           : "w-full max-w-[1360px] mx-auto px-2 sm:px-4 pb-2 sm:pb-3 pt-1 z-20 pointer-events-auto"
       }
     >
-      {/* ── Keyframes Style for Authentic Econova V3 Animations ── */}
-      <style>{`
-        .v3-root-box {
-          --target-w: min(1240px, 95vw);
-          --box-height: ${hasActiveTimer ? "185px" : "155px"};
-        }
-        @media (min-width: 640px) {
-          .v3-root-box {
-            --box-height: ${hasActiveTimer ? "195px" : "165px"};
-          }
-        }
-        @media (min-width: 1024px) {
-          .v3-root-box {
-            --box-height: ${hasActiveTimer ? "205px" : "175px"};
-          }
-        }
-
-        /* RIGHT ARROWS (Pointing >) WITH ZOOM IN FROM 0.1 */
-        @keyframes right-cyan-g1 {
-          0%  { transform: translateX(-50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-          1%  { opacity: 0.3; }
-          25% { transform: translateX(31.5px) scale(1); opacity: 0.3; animation-timing-function: linear; }
-          35% { transform: translateX(31.5px) scale(1); opacity: 0.3; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-          100%{ transform: translateX(calc(var(--target-w)/2 + 11.5px)) scale(1); opacity: 0.3; }
-        }
-        @keyframes right-cyan-g2 {
-          0%  { transform: translateX(-50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-          5.1%   { opacity: 0.65; }
-          30% { transform: translateX(31.5px) scale(1); opacity: 0.65; animation-timing-function: linear; }
-          40% { transform: translateX(31.5px) scale(1); opacity: 0.65; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-          100%{ transform: translateX(calc(var(--target-w)/2 + 11.5px)) scale(1); opacity: 0.65; }
-        }
-        @keyframes right-cyan-l3 {
-          0%  { transform: translateX(-50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-          10.1%   { opacity: 1; }
-          35% { transform: translateX(31.5px) scale(1); opacity: 1; animation-timing-function: linear; }
-          45% { transform: translateX(31.5px) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-          100%{ transform: translateX(calc(var(--target-w)/2 + 11.5px)) scale(1); opacity: 1; }
-        }
-        @keyframes right-navy {
-          0%  { transform: translateX(-50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-          10.1%   { opacity: 1; }
-          35% { transform: translateX(2px) scale(1); opacity: 1; animation-timing-function: linear; }
-          45% { transform: translateX(2px) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-          100%{ transform: translateX(calc(var(--target-w)/2 - 18px)) scale(1); opacity: 1; }
-        }
-
-        /* LEFT ARROWS (Pointing <) */
-        @keyframes left-cyan-g1 {
-          0%  { transform: translateX(50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-          1%  { opacity: 0.3; }
-          25% { transform: translateX(-31.5px) scale(1); opacity: 0.3; animation-timing-function: linear; }
-          35% { transform: translateX(-31.5px) scale(1); opacity: 0.3; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-          100%{ transform: translateX(calc(var(--target-w)/-2 - 11.5px)) scale(1); opacity: 0.3; }
-        }
-        @keyframes left-cyan-g2 {
-          0%  { transform: translateX(50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-          5.1%   { opacity: 0.65; }
-          30% { transform: translateX(-31.5px) scale(1); opacity: 0.65; animation-timing-function: linear; }
-          40% { transform: translateX(-31.5px) scale(1); opacity: 0.65; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-          100%{ transform: translateX(calc(var(--target-w)/-2 - 11.5px)) scale(1); opacity: 0.65; }
-        }
-        @keyframes left-cyan-l3 {
-          0%  { transform: translateX(50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-          10.1%   { opacity: 1; }
-          35% { transform: translateX(-31.5px) scale(1); opacity: 1; animation-timing-function: linear; }
-          45% { transform: translateX(-31.5px) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-          100%{ transform: translateX(calc(var(--target-w)/-2 - 11.5px)) scale(1); opacity: 1; }
-        }
-        @keyframes left-navy {
-          0%  { transform: translateX(50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-          10.1%   { opacity: 1; }
-          35% { transform: translateX(-2px) scale(1); opacity: 1; animation-timing-function: linear; }
-          45% { transform: translateX(-2px) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-          100%{ transform: translateX(calc(var(--target-w)/-2 + 18px)) scale(1); opacity: 1; }
-        }
-
-        /* CENTER BOX EXPANSION */
-        @keyframes center-expand-full {
-          0%, 44.9% { width: 90px; opacity: 0; }
-          45%       { width: 90px; opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-          100%      { width: var(--target-w); opacity: 1; }
-        }
-
-        /* QUESTION CONTENT FADE IN AT 70% OF TIMELINE */
-        @keyframes content-fade {
-          0%, 70% { opacity: 0; }
-          100%    { opacity: 1; }
-        }
-
-        /* ANIMATED TRIGGER CLASSES */
-        .v3-run-anim .v3-right-navy   { animation: right-navy 2.5s forwards; }
-        .v3-run-anim .v3-right-cyan-l3{ animation: right-cyan-l3 2.5s forwards; }
-        .v3-run-anim .v3-right-cyan-g2{ animation: right-cyan-g2 2.5s forwards; }
-        .v3-run-anim .v3-right-cyan-g1{ animation: right-cyan-g1 2.5s forwards; }
-
-        .v3-run-anim .v3-left-navy    { animation: left-navy 2.5s forwards; }
-        .v3-run-anim .v3-left-cyan-l3 { animation: left-cyan-l3 2.5s forwards; }
-        .v3-run-anim .v3-left-cyan-g2 { animation: left-cyan-g2 2.5s forwards; }
-        .v3-run-anim .v3-left-cyan-g1 { animation: left-cyan-g1 2.5s forwards; }
-
-        .v3-run-anim .v3-center-box   { animation: center-expand-full 2.5s forwards; }
-        .v3-run-anim .v3-content-wrap { animation: content-fade 2.5s forwards; }
-
-        /* STATIC FINAL POSITIONS (WHEN NOT RUNNING ANIMATION) */
-        .v3-static .v3-right-navy   { transform: translateX(calc(var(--target-w)/2 - 18px)) scale(1); opacity: 1; }
-        .v3-static .v3-right-cyan-l3{ transform: translateX(calc(var(--target-w)/2 + 11.5px)) scale(1); opacity: 1; }
-        .v3-static .v3-right-cyan-g2{ transform: translateX(calc(var(--target-w)/2 + 11.5px)) scale(1); opacity: 0.65; }
-        .v3-static .v3-right-cyan-g1{ transform: translateX(calc(var(--target-w)/2 + 11.5px)) scale(1); opacity: 0.3; }
-
-        .v3-static .v3-left-navy    { transform: translateX(calc(var(--target-w)/-2 + 18px)) scale(1); opacity: 1; }
-        .v3-static .v3-left-cyan-l3 { transform: translateX(calc(var(--target-w)/-2 - 11.5px)) scale(1); opacity: 1; }
-        .v3-static .v3-left-cyan-g2 { transform: translateX(calc(var(--target-w)/-2 - 11.5px)) scale(1); opacity: 0.65; }
-        .v3-static .v3-left-cyan-g1 { transform: translateX(calc(var(--target-w)/-2 - 11.5px)) scale(1); opacity: 0.3; }
-
-        .v3-static .v3-center-box   { width: var(--target-w); opacity: 1; }
-        .v3-static .v3-content-wrap { opacity: 1; }
-      `}</style>
-
       {extraTopBanner && <div className="mb-2 w-full max-w-5xl mx-auto">{extraTopBanner}</div>}
 
-      {/* ── MAIN LOWER-THIRD V3 CONTAINER (FAITHFUL TO ECONOVA V3 & OLYMPIA 26) ── */}
-      <div
-        className={`v3-root-box relative w-full h-[180px] sm:h-[195px] lg:h-[205px] mx-auto select-none overflow-visible ${
-          runAnim ? "v3-run-anim" : "v3-static"
-        }`}
-      >
-        {/* ── LEFT CHEVRON ARROWS CLUSTER (Docking at Left Edge) ── */}
-        <div className="arrow-cyan ghost-l1 v3-left-cyan-g1" style={{ position: "absolute", left: "50%", width: 33, height: "75%", top: "12.5%", zIndex: 1, pointerEvents: "none" }}>
-          <svg viewBox="0 0 32 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-            <polygon points="13.5,0 32,0 18.5,50 32,100 13.5,100 0,50" fill="#00cfff" />
-          </svg>
-        </div>
-        <div className="arrow-cyan ghost-l2 v3-left-cyan-g2" style={{ position: "absolute", left: "50%", width: 33, height: "75%", top: "12.5%", zIndex: 2, pointerEvents: "none" }}>
-          <svg viewBox="0 0 32 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-            <polygon points="13.5,0 32,0 18.5,50 32,100 13.5,100 0,50" fill="#00cfff" />
-          </svg>
-        </div>
-        <div className="arrow-cyan l3 v3-left-cyan-l3" style={{ position: "absolute", left: "50%", width: 33, height: "75%", top: "12.5%", zIndex: 3, pointerEvents: "none" }}>
-          <svg viewBox="0 0 32 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-            <polygon points="13.5,0 32,0 18.5,50 32,100 13.5,100 0,50" fill="#00cfff" />
-          </svg>
-        </div>
-        <div className="arrow-navy v3-left-navy" style={{ position: "absolute", left: "50%", width: 44, height: "100%", top: 0, zIndex: 6, pointerEvents: "none" }}>
-          <svg viewBox="0 0 43 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-            <polygon points="18,0 43,0 25,50 43,100 18,100 0,50" fill="#05164d" stroke="#d1d5db" strokeWidth="3" vectorEffect="non-scaling-stroke" />
-          </svg>
-        </div>
+      {/* Main Container */}
+      <div className="relative w-full max-w-[1280px] h-[180px] sm:h-[195px] lg:h-[205px] mx-auto select-none overflow-visible">
+        {/* SVG Stencil Layer for Pixel-Perfect Chevron Wings and Strokes */}
+        <svg
+          viewBox={`0 0 ${totalSvgW} ${H}`}
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible"
+        >
+          <defs>
+            <linearGradient id="mainChamberGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#0a226b" />
+              <stop offset="45%" stopColor="#05164d" />
+              <stop offset="100%" stopColor="#030d30" />
+            </linearGradient>
+            <linearGradient id="cyanWingGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#00b4ff" />
+              <stop offset="100%" stopColor="#0072ff" />
+            </linearGradient>
+          </defs>
 
-        {/* ── CENTER EXPANDING QUESTION BOX ── */}
+          {/* Left Cyan Arrow Wing */}
+          <path d={toSvgPath(shapes.alcPts)} fill="url(#cyanWingGrad)" stroke="#fff" strokeWidth="2" />
+          {/* Left Navy Chevron */}
+          <path d={toSvgPath(shapes.alnPts)} fill="#051433" stroke="#fff" strokeWidth="2" />
+
+          {/* Center Hexagonal Chamber Fill & Border */}
+          <path d={toSvgPath(shapes.bgPts)} fill="url(#mainChamberGrad)" stroke="#fff" strokeWidth="2.5" />
+
+          {/* Right Navy Chevron */}
+          <path d={toSvgPath(shapes.arnPts)} fill="#051433" stroke="#fff" strokeWidth="2" />
+          {/* Right Cyan Arrow Wing */}
+          <path d={toSvgPath(shapes.arcPts)} fill="url(#cyanWingGrad)" stroke="#fff" strokeWidth="2" />
+        </svg>
+
+        {/* Content Box (Clipped to Match Center Hexagon) */}
         <div
-          className="v3-center-box absolute top-0 left-1/2 -translate-x-1/2 h-full z-10 shadow-[0_16px_50px_rgba(0,0,0,0.85)] overflow-hidden"
+          className="absolute inset-0 w-full h-full z-10 flex flex-col justify-between overflow-hidden"
           style={{
-            clipPath: "polygon(18px 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 18px 100%, 0 50%)",
-            borderTop: "3px solid #d1d5db",
-            borderBottom: "3px solid #d1d5db",
-            background: "linear-gradient(180deg, #0a226b 0%, #05164d 45%, #030d30 100%)",
+            clipPath: `polygon(${shapes.bgPts[0][0] / totalSvgW * 100}% 0%, ${shapes.bgPts[1][0] / totalSvgW * 100}% 0%, ${shapes.bgPts[2][0] / totalSvgW * 100}% 50%, ${shapes.bgPts[3][0] / totalSvgW * 100}% 100%, ${shapes.bgPts[4][0] / totalSvgW * 100}% 100%, ${shapes.bgPts[5][0] / totalSvgW * 100}% 50%)`,
           }}
         >
           {/* Specular glass reflection */}
-          <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 via-white/5 to-transparent pointer-events-none z-10" />
+          <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/15 via-white/5 to-transparent pointer-events-none z-10" />
 
-          {/* Center Content Wrapper: Unified Single Full-Width Chamber (Loại bỏ cụm điểm phải) */}
-          <div className="v3-content-wrap w-full h-full flex flex-col justify-between relative z-10 overflow-hidden">
-            {/* Contestant Score Tab Bar */}
-            {showScoreTab && (
-              <EconovaContestantScoreTabBar
-                state={state}
-                activeSeatId={activeSeatId}
-                buzzedSeatId={buzzedSeatId}
-                lockedSeats={lockedSeats}
-                questionNumberBadge={questionNumberBadge}
-              />
-            )}
+          {/* Top Contestant Tabs */}
+          {showScoreTab && (
+            <EconovaContestantScoreTabBar
+              state={state}
+              activeSeatId={activeSeatId}
+              buzzedSeatId={buzzedSeatId}
+              lockedSeats={lockedSeats}
+              questionNumberBadge={questionNumberBadge}
+            />
+          )}
 
-            {/* Question Text Area */}
-            <div className="flex-1 flex flex-col justify-center items-center text-center px-6 sm:px-12 py-2 min-h-0 relative">
-              {hopeStarActive && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-500/30 to-yellow-500/30 border border-amber-300 text-amber-300 text-xs sm:text-sm font-black uppercase tracking-wider mb-1.5 shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse">
-                  <span>⭐</span>
-                  <span>Ngôi Sao Hy Vọng</span>
+          {/* Main Question Chamber (With Authentic Econova Right Cluster for Về Đích) */}
+          <div className="flex-1 flex min-h-0 relative z-10 px-6 sm:px-10 py-1.5 items-center">
+            {/* Left Question Area */}
+            <div className={`flex-1 min-w-0 pr-4 flex flex-col justify-center ${isVeDich ? "border-r border-cyan-400/30" : ""}`}>
+              {questionText ? (
+                <div className={`font-black text-white text-center tracking-normal ${fontSizeClass} drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)] max-h-full overflow-y-auto`}>
+                  {questionText}
+                </div>
+              ) : (
+                <div className="text-slate-400 italic text-center font-semibold text-sm">
+                  Đang chuẩn bị câu hỏi...
                 </div>
               )}
-              <div
-                className={`font-semibold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] max-w-4xl mx-auto ${fontSizeClass}`}
-              >
-                {questionText || (
-                  <span className="text-slate-400/80 italic font-normal text-sm sm:text-base md:text-lg">
-                    Đang đợi câu hỏi...
-                  </span>
-                )}
-              </div>
-
-              {mediaElement && <div className="mt-1">{mediaElement}</div>}
-              {children && <div className="mt-1">{children}</div>}
-
               {answerText && (
-                <div className="mt-1 pt-1 border-t border-cyan-400/30 flex items-center gap-2 text-emerald-300 font-black text-xs sm:text-sm animate-fade-in">
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400 text-[10px] uppercase tracking-wider">
-                    ĐÁP ÁN
+                <div className="mt-2 text-center">
+                  <span className="px-4 py-1 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-200 font-black text-sm uppercase tracking-wider">
+                    {answerText}
                   </span>
-                  <span>{answerText}</span>
                 </div>
               )}
+              {children}
             </div>
 
-            {/* Bottom Time Bar Tray: Only rendered when timer is active! */}
-            {hasActiveTimer && (
-              <div
-                className="h-[18px] sm:h-[22px] mb-2 mx-6 sm:mx-12 relative flex-shrink-0 rounded"
-                style={{
-                  transform: "skewX(-11.6deg)",
-                  background: "linear-gradient(90deg, #d1d5db, #9ca3af)",
-                }}
-              >
-                <div className="absolute inset-y-[4px] sm:inset-y-[5px] inset-x-2 bg-black/70 rounded-full overflow-hidden">
-                  <div
-                    ref={fillRef}
-                    className="h-full rounded-full relative will-change-[width]"
-                    style={{
-                      width: "100%",
-                      background: "linear-gradient(90deg, #b02a45, #ef4444)",
-                    }}
-                  >
-                    <div
-                      className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-[#ef4444] shadow-[0_0_8px_#ef4444]"
-                      style={{ transform: "translateY(-50%) skewX(11.6deg)" }}
-                    />
-                  </div>
+            {/* Authentic Econova Về Đích Right Cluster: Big Score + 3 Question Point Boxes */}
+            {isVeDich && (
+              <div className="w-48 sm:w-60 h-full flex flex-col justify-between items-center pl-4 shrink-0">
+                {/* Upper Chamber: Big Score Number */}
+                <div className="flex-1 flex items-center justify-center relative">
+                  <span className="font-black font-mono text-4xl sm:text-5xl text-white tracking-tight drop-shadow-[0_0_20px_rgba(56,189,248,0.8)]">
+                    {displayScore}
+                  </span>
+                  {hopeStarActive && (
+                    <span className="absolute -top-1 -right-4 text-2xl animate-spin-slow">
+                      ⭐
+                    </span>
+                  )}
+                </div>
+
+                {/* Lower Chamber: 3 Question Point Boxes (e.g. 10 / 20 / 40) */}
+                <div className="w-full flex items-center justify-center gap-1.5 pt-1">
+                  {(currentPkg || [{ points: 10 }, { points: 20 }, { points: 40 }]).map((q, idx) => {
+                    const isCurQ = (vd?.qIdx ?? 0) === idx;
+                    const isPlayed = (vd?.qIdx ?? 0) > idx;
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex-1 h-7 sm:h-8 flex items-center justify-center rounded font-black text-xs sm:text-sm uppercase tracking-tight transition-all duration-300 ${
+                          isCurQ
+                            ? "bg-gradient-to-r from-red-600 to-rose-700 text-white shadow-[0_0_15px_rgba(239,68,68,0.8)] animate-pulse"
+                            : isPlayed
+                            ? "bg-black/60 text-slate-500"
+                            : "bg-black/40 text-slate-300"
+                        }`}
+                      >
+                        {q.points}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
           </div>
-        </div>
 
-        {/* ── RIGHT CHEVRON ARROWS CLUSTER (Docking at Right Edge) ── */}
-        <div className="arrow-navy v3-right-navy" style={{ position: "absolute", left: "50%", width: 44, height: "100%", top: 0, zIndex: 6, pointerEvents: "none" }}>
-          <svg viewBox="0 0 43 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-            <polygon points="0,0 25,0 43,50 25,100 0,100 18,50" fill="#05164d" stroke="#d1d5db" strokeWidth="3" vectorEffect="non-scaling-stroke" />
-          </svg>
-        </div>
-        <div className="arrow-cyan l3 v3-right-cyan-l3" style={{ position: "absolute", left: "50%", width: 33, height: "75%", top: "12.5%", zIndex: 3, pointerEvents: "none" }}>
-          <svg viewBox="0 0 32 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-            <polygon points="0,0 18.5,0 32,50 18.5,100 0,100 13.5,50" fill="#00cfff" />
-          </svg>
-        </div>
-        <div className="arrow-cyan ghost-l2 v3-right-cyan-g2" style={{ position: "absolute", left: "50%", width: 33, height: "75%", top: "12.5%", zIndex: 2, pointerEvents: "none" }}>
-          <svg viewBox="0 0 32 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-            <polygon points="0,0 18.5,0 32,50 18.5,100 0,100 13.5,50" fill="#00cfff" />
-          </svg>
-        </div>
-        <div className="arrow-cyan ghost-l1 v3-right-cyan-g1" style={{ position: "absolute", left: "50%", width: 33, height: "75%", top: "12.5%", zIndex: 1, pointerEvents: "none" }}>
-          <svg viewBox="0 0 32 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-            <polygon points="0,0 18.5,0 32,50 18.5,100 0,100 13.5,50" fill="#00cfff" />
-          </svg>
+          {/* Bottom Timer Bar (Only rendered when timer is active!) */}
+          {hasActiveTimer && (
+            <div className="w-full h-3 sm:h-3.5 bg-slate-200/90 relative overflow-hidden border-t border-slate-300/80">
+              <div
+                ref={fillRef}
+                className="h-full bg-gradient-to-r from-sky-600 to-cyan-400 transition-all duration-100 ease-linear"
+                style={{ width: "100%" }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-/**
- * ─────────────────────────────────────────────────────────────────────────────
- * COMPONENT 8: VỀ ĐÍCH SLANTED HEXAGONAL PACKAGE GRID (Matches Reference Image)
- * - Displays the 3-column slanted package grid (e.g. 20 / 30 rows x 3 columns).
- * - Selected cells in each column light up in glowing Crimson Red (#e11d48).
- * - Unselected cells remain Deep Navy (#0c2a55).
- * - Supports both V3 Arrow (Slanted Hexagonal Grid) and O26 Classic.
- * ─────────────────────────────────────────────────────────────────────────────
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// DELIVERABLE 4A: VỀ ĐÍCH SLANTED PACKAGE GRID GRAPHIC (ATTACHMENT 5)
+// ─────────────────────────────────────────────────────────────────────────────
 export function VeDichSlantedGridGraphic({
   state,
   ownerSeatId,
@@ -2033,11 +1989,11 @@ export function VeDichSlantedGridGraphic({
   const isPreset = state.rulesetId >= "O13" && state.rulesetId <= "O19";
   const isO20O21 = state.rulesetId === "O20" || state.rulesetId === "O21";
 
-  // Dynamic rows & columns based on active ruleset
-  let defaultRows = [20, 30];
+  // Dynamic rows based on active ruleset
+  let defaultRows = [10, 20, 40];
   let defaultCols = 3;
   if (isPreset) {
-    defaultRows = [0]; // Single row displaying the preset packages
+    defaultRows = [40, 60, 80]; // single row of 3 preset packages
     defaultCols = 3;
   } else if (isO20O21) {
     defaultRows = [10, 20, 30];
@@ -2047,9 +2003,21 @@ export function VeDichSlantedGridGraphic({
     defaultCols = 2;
   }
 
-  const cols = isPreset ? 3 : (resolvedSelected && resolvedSelected.length > 0 ? resolvedSelected.length : defaultCols);
   const rows = pointOptions && pointOptions.length > 0 ? pointOptions : defaultRows;
+  const cols = defaultCols;
   const isV3Arrow = state.themeMode !== "o26_classic";
+
+  // Geometric coordinates
+  const W = 1080;
+  const H = 360;
+  const S = 90;
+  const thick = 36;
+  const cThick = 28;
+  const startX = 60;
+  const totalSvgW = W + 120;
+
+  const shapes = genZigzagShape(W, H, S, thick, cThick, startX);
+  const cells = genVeDichGridCells(W, H, S, cols, rows, startX);
 
   if (!isV3Arrow) {
     return (
@@ -2065,7 +2033,7 @@ export function VeDichSlantedGridGraphic({
               return (
                 <div
                   key={cIdx}
-                  className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl border-4 border-amber-400 bg-gradient-to-b from-slate-800 to-slate-950 flex flex-col items-center justify-center shadow-[0_15px_35px_rgba(0,0,0,0.85)]"
+                  className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl border-4 border-amber-400 bg-gradient-to-b from-slate-800 to-slate-950 flex flex-col items-center justify-center shadow-2xl"
                 >
                   <span className="text-xs font-bold text-slate-400 uppercase">Câu {cIdx + 1}</span>
                   <span className="text-4xl sm:text-5xl font-black text-amber-300 font-mono mt-1">
@@ -2081,114 +2049,89 @@ export function VeDichSlantedGridGraphic({
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 py-4 z-20 pointer-events-auto animate-fade-in flex flex-col items-center gap-3">
+    <div className="w-full max-w-5xl mx-auto px-4 py-4 z-20 pointer-events-auto animate-fade-in flex flex-col items-center gap-3 select-none">
       {/* Contestant Header Pill */}
-      <div className="px-6 py-1.5 rounded-full bg-[#08203f]/95 border border-cyan-400/70 text-cyan-200 font-black text-xs sm:text-sm uppercase tracking-widest shadow-lg">
+      <div className="px-6 py-1.5 rounded-full bg-[#08203f]/95 border border-cyan-400/80 text-cyan-200 font-black text-xs sm:text-sm uppercase tracking-widest shadow-lg">
         LỰA CHỌN GÓI CÂU HỎI — {owner?.name || `THÍ SINH ${resolvedOwnerId + 1}`}
       </div>
 
-      {/* Main Hexagonal Frame with Left/Right Cyan Chevron Wings */}
-      <div className="relative w-full max-w-3xl flex items-center justify-center py-2">
-        {/* Left Cyan Wing (<) */}
-        <div
-          className="w-7 sm:w-10 h-28 sm:h-36 -mr-3 z-0 shrink-0"
-          style={{
-            background: "linear-gradient(180deg, #00b4ff 0%, #0077ff 100%)",
-            clipPath: "polygon(100% 0, 45% 0, 0 50%, 45% 100%, 100% 100%, 60% 50%)",
-            boxShadow: "0 0 20px rgba(0,180,255,0.7)",
-          }}
-        />
-
-        {/* Outer Silver/Navy Hexagonal Bezel */}
-        <div
-          className="relative z-10 w-full p-1.5 sm:p-2 shadow-[0_15px_45px_rgba(0,0,0,0.9)]"
-          style={{
-            background: "linear-gradient(180deg, #e2e8f0 0%, #94a3b8 50%, #cbd5e1 100%)",
-            clipPath: "polygon(24px 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 24px 100%, 0 50%)",
-          }}
+      {/* Main Hexagonal Grid Chamber: 100% Full Interior Coverage */}
+      <div className="relative w-full max-w-4xl h-[280px] sm:h-[340px] flex items-center justify-center">
+        <svg
+          viewBox={`0 0 ${totalSvgW} ${H}`}
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible"
         >
-          <div
-            className="w-full bg-[#071f46] px-6 sm:px-10 py-2 overflow-hidden relative"
-            style={{
-              clipPath: "polygon(21px 0, calc(100% - 21px) 0, 100% 50%, calc(100% - 21px) 100%, 21px 100%, 0 50%)",
-            }}
-          >
-            {/* Slanted Rows x Columns Grid */}
-            <div className="flex flex-col divide-y-[3px] divide-slate-300/80 -skew-x-12">
-              {isPreset ? (
-                <div
-                  className="grid divide-x-[3px] divide-slate-300/80"
-                  style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
-                >
-                  {[40, 60, 80].map((pkgVal) => {
-                    const totalSelected = resolvedSelected?.reduce((a, b) => a + b, 0);
-                    const isSelected = totalSelected === pkgVal;
-                    return (
-                      <div
-                        key={pkgVal}
-                        className="h-16 sm:h-22 flex items-center justify-center transition-all duration-300 relative overflow-hidden"
-                        style={{
-                          background: isSelected
-                            ? "linear-gradient(90deg, #881337 0%, #be123c 35%, #e11d48 75%, #f43f5e 100%)"
-                            : "linear-gradient(180deg, #0a2654 0%, #071b3e 100%)",
-                          boxShadow: isSelected
-                            ? "inset 0 0 25px rgba(255,255,255,0.25)"
-                            : "inset 0 0 15px rgba(0,0,0,0.45)",
-                        }}
-                      >
-                        <span className="skew-x-12 font-black text-3xl sm:text-5xl text-white tracking-tight select-none drop-shadow-[0_3px_6px_rgba(0,0,0,0.75)]">
-                          {pkgVal}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                rows.map((ptValue) => (
-                  <div
-                    key={ptValue}
-                    className="grid divide-x-[3px] divide-slate-300/80"
-                    style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-                  >
-                    {Array.from({ length: cols }).map((_, colIdx) => {
-                      const isSelected = resolvedSelected?.[colIdx] === ptValue;
-                      return (
-                        <div
-                          key={colIdx}
-                          className="h-16 sm:h-22 flex items-center justify-center transition-all duration-300 relative overflow-hidden"
-                          style={{
-                            background: isSelected
-                              ? "linear-gradient(90deg, #881337 0%, #be123c 35%, #e11d48 75%, #f43f5e 100%)"
-                              : "linear-gradient(180deg, #0a2654 0%, #071b3e 100%)",
-                            boxShadow: isSelected
-                              ? "inset 0 0 25px rgba(255,255,255,0.25)"
-                              : "inset 0 0 15px rgba(0,0,0,0.45)",
-                          }}
-                        >
-                          <span className="skew-x-12 font-black text-3xl sm:text-5xl text-white tracking-tight select-none drop-shadow-[0_3px_6px_rgba(0,0,0,0.75)]">
-                            {ptValue}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+          <defs>
+            <linearGradient id="gridCyanWingGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#00b4ff" />
+              <stop offset="100%" stopColor="#0072ff" />
+            </linearGradient>
+            <linearGradient id="activeCellGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#e74c3c" />
+              <stop offset="100%" stopColor="#c0392b" />
+            </linearGradient>
+            <linearGradient id="inactiveCellGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#0a2654" />
+              <stop offset="100%" stopColor="#051433" />
+            </linearGradient>
+          </defs>
 
-        {/* Right Cyan Wing (>) */}
-        <div
-          className="w-7 sm:w-10 h-28 sm:h-36 -ml-3 z-0 shrink-0"
-          style={{
-            background: "linear-gradient(180deg, #00b4ff 0%, #0077ff 100%)",
-            clipPath: "polygon(0 0, 55% 0, 100% 50%, 55% 100%, 0 100%, 40% 50%)",
-            boxShadow: "0 0 20px rgba(0,180,255,0.7)",
-          }}
-        />
+          {/* Left Cyan Arrow Wing */}
+          <path d={toSvgPath(shapes.alcPts)} fill="url(#gridCyanWingGrad)" stroke="#fff" strokeWidth="2" />
+          {/* Left Navy Chevron */}
+          <path d={toSvgPath(shapes.alnPts)} fill="#051433" stroke="#fff" strokeWidth="2" />
+
+          {/* Grid Cells (Full Coverage of Hexagon Interior) */}
+          {cells.map((cell, idx) => {
+            const isSelected = resolvedSelected?.[cell.col] === cell.ptsValue;
+            return (
+              <path
+                key={idx}
+                d={toSvgPath(cell.pts)}
+                fill={isSelected ? "url(#activeCellGrad)" : "url(#inactiveCellGrad)"}
+                stroke="rgba(255,255,255,0.45)"
+                strokeWidth="2.5"
+                className="transition-all duration-300 pointer-events-auto"
+              />
+            );
+          })}
+
+          {/* Outer Hexagon Chamber Stroke */}
+          <path d={toSvgPath(shapes.bgPts)} fill="none" stroke="#fff" strokeWidth="3" />
+
+          {/* Right Navy Chevron */}
+          <path d={toSvgPath(shapes.arnPts)} fill="#051433" stroke="#fff" strokeWidth="2" />
+          {/* Right Cyan Arrow Wing */}
+          <path d={toSvgPath(shapes.arcPts)} fill="url(#gridCyanWingGrad)" stroke="#fff" strokeWidth="2" />
+        </svg>
+
+        {/* Text Labels Overlay Aligned to Exact Cell Centroids (cx, cy) */}
+        <div className="absolute inset-0 w-full h-full pointer-events-none">
+          {cells.map((cell, idx) => {
+            const isSelected = resolvedSelected?.[cell.col] === cell.ptsValue;
+            const leftPct = (cell.cx / totalSvgW) * 100;
+            const topPct = (cell.cy / H) * 100;
+
+            return (
+              <div
+                key={idx}
+                className="absolute flex flex-col items-center justify-center -translate-x-1/2 -translate-y-1/2"
+                style={{ left: `${leftPct}%`, top: `${topPct}%` }}
+              >
+                <span className="font-black text-3xl sm:text-5xl text-white tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
+                  {cell.ptsValue}
+                </span>
+                {isSelected && (
+                  <span className="mt-1 px-2.5 py-0.5 rounded bg-black/60 border border-cyan-400 text-[10px] sm:text-xs font-black text-cyan-300 uppercase tracking-wider">
+                    Câu {cell.col + 1}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
-

@@ -269,17 +269,16 @@ export default function PlayPage() {
 
     let savedPlayerId = isSandboxParam
       ? (paramPlayerId || `sb_${code}_t0`)
-      : (paramPlayerId || sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey));
+      : (paramPlayerId || sessionStorage.getItem(storageKey));
     if (!savedPlayerId) {
       savedPlayerId = paramTeamIndex !== null && paramTeamIndex !== undefined
         ? `sb_${code}_t0`
         : `p_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     }
     sessionStorage.setItem(storageKey, savedPlayerId);
-    localStorage.setItem(storageKey, savedPlayerId);
     playerIdRef.current = savedPlayerId;
     setPlayerId(savedPlayerId);
-    const playerName = paramName || sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || "Thí sinh";
+    const playerName = paramName || sessionStorage.getItem("playerName") || "Thí sinh";
 
     const handlePostMessage = (e: MessageEvent) => {
       if (e.data?.type === "SWITCH_ACTIVE_TEAM") {
@@ -612,7 +611,7 @@ export default function PlayPage() {
         retryJoinTimerRef.current = null;
       }
       const currentPid = playerIdRef.current || savedPlayerId;
-      const currentName = paramName || sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || playerName;
+      const currentName = paramName || sessionStorage.getItem("playerName") || playerName;
       const savedPasscode = searchParams?.get("passcode") || (typeof window !== "undefined" ? sessionStorage.getItem(`room_passcode_${code}`) : null) || undefined;
 
       socket.emit("room:join", {
@@ -623,18 +622,20 @@ export default function PlayPage() {
         passcode: savedPasscode,
       }, (result) => {
         if (result.success) {
+          if (result.roomState?.mode === "OLYMPIA" && typeof window !== "undefined") {
+            window.location.replace(`/olympia/play/${code}`);
+            return;
+          }
           setErrorMessage(null);
           setIsReconnecting(false);
           const finalId = result.playerId || currentPid;
           playerIdRef.current = finalId;
           setPlayerId(finalId);
           sessionStorage.setItem(storageKey, finalId);
-          localStorage.setItem(storageKey, finalId);
           setRoomState(result.roomState ?? null);
           const p = result.roomState?.players.find((pl) => pl.id === finalId);
           if (p?.name) {
             sessionStorage.setItem("playerName", p.name);
-            localStorage.setItem("playerName", p.name);
           }
           const initialTeamId = isSandboxRef.current
             ? (myTeamIdRef.current || p?.teamId || result.roomState?.teams?.[0]?.id)
@@ -728,6 +729,10 @@ export default function PlayPage() {
     });
 
     socket.on("room:state", (state) => {
+      if (state?.mode === "OLYMPIA" && typeof window !== "undefined") {
+        window.location.replace(`/olympia/play/${code}`);
+        return;
+      }
       const currentPid = playerIdRef.current || savedPlayerId;
       const curTeam = myTeamIdRef.current || paramTeamId || (isSandboxRef.current ? state?.teams?.[0]?.id : "");
       const rawPlayer = state?.players?.find((pl) => pl.id === currentPid);

@@ -454,6 +454,10 @@ export default function DisplayPage() {
     });
 
     socket.on("room:state", (state) => {
+      if (state.mode === "OLYMPIA" && typeof window !== "undefined") {
+        window.location.replace(`/olympia/display/${code}`);
+        return;
+      }
       setRoomState(state);
       if (state.status === "LOBBY") {
         if (!matchStartingRef.current) {

@@ -27,15 +27,20 @@ export default function HomePage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/rooms/${pin.trim()}/validate`);
+      const cleanPin = pin.trim();
+      const res = await fetch(`/api/rooms/${cleanPin}/validate`);
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(t.playerPortal.errorNotFound);
+        setError(data?.error || t.playerPortal.errorNotFound);
         setLoading(false);
         return;
       }
       sessionStorage.setItem("playerName", name.trim());
-      localStorage.setItem("playerName", name.trim());
-      navigateWithPortal(`/play/${pin.trim()}`, t.playerPortal.title);
+      if (data?.room?.mode === "OLYMPIA") {
+        navigateWithPortal(`/olympia/play/${cleanPin}`, t.playerPortal.title);
+      } else {
+        navigateWithPortal(`/play/${cleanPin}`, t.playerPortal.title);
+      }
     } catch {
       setError(t.playerPortal.errorConnection);
       setLoading(false);

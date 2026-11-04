@@ -51,10 +51,8 @@ function PlayContent() {
       }
 
       sessionStorage.setItem("playerName", name.trim());
-      localStorage.setItem("playerName", name.trim());
       if (passcode.trim()) {
         sessionStorage.setItem(`room_passcode_${pin.trim()}`, passcode.trim());
-        localStorage.setItem(`room_passcode_${pin.trim()}`, passcode.trim());
       }
       if (data.room?.mode === "OLYMPIA") {
         router.push(`/olympia/play/${pin.trim()}`);

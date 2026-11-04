@@ -25,7 +25,7 @@ export default function PlayerPad({
 
   useEffect(() => {
     if (initialName || initialSeat !== undefined) return;
-    setName(sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || "");
+    setName(sessionStorage.getItem("playerName") || "");
   }, [initialName, initialSeat]);
 
   const [inputName, setInputName] = useState("");
@@ -165,7 +165,6 @@ export default function PlayerPad({
               const trimmed = inputName.trim();
               if (trimmed) {
                 sessionStorage.setItem("playerName", trimmed);
-                localStorage.setItem("playerName", trimmed);
                 setName(trimmed);
               }
             }}

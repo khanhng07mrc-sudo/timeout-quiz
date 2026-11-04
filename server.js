@@ -105866,8 +105866,19 @@ var OlympiaGame = class _OlympiaGame {
         return target.id;
       }
     }
+    const normName = (name || "").trim().toLowerCase();
+    if (normName) {
+      const byAssignedName = this.state.seats.find(
+        (s) => !s.playerKey && s.name.trim().toLowerCase() === normName
+      );
+      if (byAssignedName) {
+        byAssignedName.playerKey = playerKey;
+        byAssignedName.connected = true;
+        return byAssignedName.id;
+      }
+    }
     if (this.state.stage !== "lobby") return -1;
-    const free = this.state.seats.find((s) => !s.name);
+    const free = this.state.seats.find((s) => !s.name) ?? this.state.seats.find((s) => !s.playerKey);
     if (!free) return -1;
     free.name = name;
     free.playerKey = playerKey;

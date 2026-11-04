@@ -535,10 +535,12 @@ export function useOlympiaAudio(
 export function useStableToken(): string {
   return useMemo(() => {
     if (typeof window === "undefined") return "";
-    let t = localStorage.getItem("olympia_player_token");
+    // Use sessionStorage so each browser tab gets its own unique contestant token (allowing multi-tab testing on 1 machine)
+    // while still persisting across F5 page reloads within the same tab.
+    let t = sessionStorage.getItem("olympia_player_token");
     if (!t) {
       t = (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 60);
-      localStorage.setItem("olympia_player_token", t);
+      sessionStorage.setItem("olympia_player_token", t);
     }
     return t;
   }, []);

@@ -183,7 +183,9 @@ export async function POST(req: NextRequest) {
       attempts++;
     }
 
-    const inviteUrl = generateInviteUrl(code);
+    const inviteUrl = targetMode === "OLYMPIA"
+      ? `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/olympia/play/${code}`
+      : generateInviteUrl(code);
     const hostKey = generateHostKey();
 
     const initialTeamScore = (mode ?? "CLASSIC") === "DICE_RACE" ? 1 : Math.max(0, Number(mergedConfig.initialTeamScore) || 0);

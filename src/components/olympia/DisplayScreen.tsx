@@ -22,6 +22,7 @@ import {
   EconovaLowerThirdV3,
   VeDichSlantedGridGraphic,
 } from "./Vtv3BroadcastGraphics";
+import { isTtsEnabled, setTtsEnabled, speakTTS, cancelTTS } from "@/lib/olympia/tts";
 
 const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
   ssr: false,
@@ -97,7 +98,7 @@ function ContestantIntroChyron({ state }: { state: OlympiaState }) {
   if (!currentSeat) return null;
 
   const seatName = (currentSeat.name || `Thí sinh ${currentIdx + 1}`).toUpperCase();
-  const seatSchool = currentSeat.school?.trim() || "Trường THPT";
+  const seatSchool = currentSeat.school?.trim();
   const seatNumber = currentIdx + 1;
   const seatColor = SEAT_COLORS[currentIdx] || "#00f0ff";
 
@@ -128,12 +129,14 @@ function ContestantIntroChyron({ state }: { state: OlympiaState }) {
               {seatName}
             </h3>
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-cyan-300 font-bold text-xs sm:text-sm tracking-wide truncate flex items-center gap-1.5">
-              <span>🏫</span>
-              <span>{seatSchool}</span>
-            </span>
-          </div>
+          {seatSchool && (
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-cyan-300 font-bold text-xs sm:text-sm tracking-wide truncate flex items-center gap-1.5">
+                <span>🏫</span>
+                <span>{seatSchool}</span>
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -147,10 +150,57 @@ export default function DisplayScreen({ code }: { code: string }) {
     (new URLSearchParams(window.location.search).get("mute") === "1" ||
       new URLSearchParams(window.location.search).get("audio") === "0");
   const [audioOn, setAudioOn] = useState(!isMutedParam);
+  const [ttsActive, setTtsActive] = useState<boolean>(() => isTtsEnabled());
   useOlympiaAudio(state, join?.audioSeason, audioOn);
 
   // Auto-camera and question overlay visibility state
   const cameraState = useOlympiaCameraState(state, serverNow);
+
+  // Automated Vietnamese TTS question reading
+  const lastQuestionRef = useRef<string>("");
+  useEffect(() => {
+    if (!state || !ttsActive) return;
+    let currentQ = "";
+    if (state.currentRound === "khoiDong" && state.khoiDong?.started && state.khoiDong.current?.q) {
+      currentQ = state.khoiDong.current.q;
+    } else if (state.currentRound === "vcnv" && state.vcnv?.phase === "waitingAnswer") {
+      const curIdx = state.vcnv.currentRow;
+      const isCenter = curIdx === 4;
+      currentQ = isCenter ? (state.vcnv.centerQuestion?.q || "") : (state.vcnv.rows[curIdx]?.hint || "");
+    } else if (state.currentRound === "tangToc" && state.tangToc?.phase === "question") {
+      const tt = state.tangToc;
+      currentQ = tt.questions[tt.qIdx]?.q || "";
+    } else if (
+      state.currentRound === "veDich" &&
+      state.veDich?.current?.q?.q &&
+      (state.veDich.phase === "thinking" || state.veDich.phase === "stealing")
+    ) {
+      currentQ = state.veDich.current.q.q;
+    } else if (state.currentRound === "cauHoiPhu" && state.cauHoiPhu?.phase === "question") {
+      const cp = state.cauHoiPhu;
+      currentQ = cp.questions[cp.qIdx]?.q || "";
+    }
+
+    if (currentQ && currentQ !== lastQuestionRef.current) {
+      lastQuestionRef.current = currentQ;
+      speakTTS(currentQ);
+    } else if (!currentQ) {
+      lastQuestionRef.current = "";
+      cancelTTS();
+    }
+  }, [
+    ttsActive,
+    state?.currentRound,
+    state?.khoiDong?.current?.q,
+    state?.vcnv?.phase,
+    state?.vcnv?.currentRow,
+    state?.tangToc?.phase,
+    state?.tangToc?.qIdx,
+    state?.veDich?.phase,
+    state?.veDich?.current?.q?.q,
+    state?.cauHoiPhu?.phase,
+    state?.cauHoiPhu?.qIdx,
+  ]);
 
   if (join && !join.ok) {
     return (
@@ -256,6 +306,24 @@ export default function DisplayScreen({ code }: { code: string }) {
               {ROUND_LABELS[state.currentRound]}
             </span>
           )}
+          <button
+            type="button"
+            className={`px-2 py-1 border rounded-lg transition text-xs cursor-pointer flex items-center gap-1 ${
+              ttsActive
+                ? "border-cyan-400/50 bg-cyan-500/20 text-cyan-200 shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                : "border-white/10 text-slate-400 hover:bg-white/5"
+            }`}
+            onClick={() => {
+              const next = !ttsActive;
+              setTtsActive(next);
+              setTtsEnabled(next);
+              if (!next) cancelTTS();
+            }}
+            title="Bật/Tắt đọc câu hỏi tự động (TTS tiếng Việt)"
+          >
+            <span>🎙️</span>
+            <span className="hidden sm:inline">{ttsActive ? "TTS" : "TẮT"}</span>
+          </button>
           <button
             type="button"
             className="px-2 py-1 border border-violet-400/30 rounded-lg hover:bg-violet-500/15 transition text-xs cursor-pointer"

@@ -42,10 +42,11 @@ const CONTESTANT_POSITIONS: Array<[number, number, number]> = [
  */
 function createFloorLaurelWreathCanvas(): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
-  canvas.width = 2048;
-  canvas.height = 2048;
+  canvas.width = 1024;
+  canvas.height = 1024;
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
+  ctx.scale(0.5, 0.5);
 
   const cx = 1024;
   const cy = 1024;
@@ -794,10 +795,11 @@ export function StudioFloor({
  */
 function createStudioCycGradientCanvas(): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
-  canvas.width = 2048;
-  canvas.height = 512;
+  canvas.width = 512;
+  canvas.height = 128;
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
+  ctx.scale(0.25, 0.25);
 
   // 1. Vertical linear gradient from floor up to ceiling - dark sapphire to void
   const vGrad = ctx.createLinearGradient(0, 512, 0, 0);
@@ -931,13 +933,14 @@ function createBannerCanvas(text: string, bgColor: string, textColor: string): H
  */
 function createAudienceBackdropCanvas(): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
-  canvas.width = 4096;
-  canvas.height = 1024;
+  canvas.width = 2048;
+  canvas.height = 512;
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
+  ctx.scale(0.5, 0.5);
 
-  const w = canvas.width;
-  const h = canvas.height;
+  const w = 4096;
+  const h = 1024;
 
   // Deep royal sapphire background gradient (ultra-wide 4:1 panorama)
   const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
@@ -2048,8 +2051,10 @@ export function StudioMountainLandscape({
  */
 export function AudienceAmphitheater({
   audienceFadeProgress = 0,
+  quality = "HIGH",
 }: {
   audienceFadeProgress?: number;
+  quality?: "HIGH" | "MEDIUM" | "LIGHT";
 }) {
   const rowCount = 7;
   const seatsPerRow = 16; // 8 on Left wing, 8 on Right wing, tightly packed shoulder-to-shoulder (Image 2)
@@ -2459,8 +2464,9 @@ export function AudienceAmphitheater({
               </mesh>
             )}
 
-            {/* Audience Members Seated in Left & Right Banks (Tight 0.52m spacing per Image 2) */}
-            {Array.from({ length: seatsPerRow }).map((_, sIdx) => {
+            {/* Audience Members Seated in Left & Right Banks (Streamlined for silky 60 FPS performance) */}
+            {quality !== "LIGHT" && Array.from({ length: seatsPerRow }).map((_, sIdx) => {
+              if (quality === "MEDIUM" && sIdx % 2 !== 0) return null;
               const isLeft = sIdx < 8;
               const sOffset = isLeft
                 ? 1.05 + (7 - sIdx) * 0.52
@@ -2477,27 +2483,19 @@ export function AudienceAmphitheater({
               // 35% Crisp white student shirts with dark trim, 25% School blue, 20% Dark navy/black polos, 10% Burgundy, 10% Amber/Green
               const uniformHash = (rIdx * 7 + sIdx * 11) % 20;
               let shirtMat = whiteShirtMat;
-              let trimMat = whiteShirtCollarMat;
               if (uniformHash < 7) {
                 shirtMat = whiteShirtMat;
-                trimMat = whiteShirtCollarMat;
               } else if (uniformHash < 12) {
                 shirtMat = blueUniformMat;
-                trimMat = darkPoloMat;
               } else if (uniformHash < 16) {
                 shirtMat = darkPoloMat;
-                trimMat = whiteShirtMat;
               } else if (uniformHash < 18) {
                 shirtMat = burgundyMat;
-                trimMat = whiteShirtMat;
               } else if (uniformHash === 18) {
                 shirtMat = amberMat;
-                trimMat = darkPoloMat;
               } else {
                 shirtMat = greenMat;
-                trimMat = whiteShirtMat;
               }
-              const isFemale = (rIdx + sIdx) % 3 === 1;
               const audienceSkin = (rIdx * 3 + sIdx) % 5 === 0 ? skinTanMat : skinMat;
               const hairMat = ((rIdx * 2 + sIdx) % 3 === 0) ? hairBrownMat : hairDarkMat;
 
@@ -2507,6 +2505,7 @@ export function AudienceAmphitheater({
                   position={[sOffset, rowY, jitterZ]}
                   rotation={[0, Math.PI + rotY, 0]}
                 >
+                  {/* Streamlined Chair: Back + Seat Base */}
                   <mesh position={[0, 0.40, -0.18]}>
                     <boxGeometry args={[0.44, 0.50, 0.07]} />
                     <primitive object={chairMat} attach="material" />
@@ -2515,79 +2514,28 @@ export function AudienceAmphitheater({
                     <boxGeometry args={[0.44, 0.06, 0.38]} />
                     <primitive object={chairMat} attach="material" />
                   </mesh>
-                  <mesh position={[-0.23, 0.27, 0]}>
-                    <boxGeometry args={[0.035, 0.04, 0.30]} />
-                    <primitive object={chairMat} attach="material" />
-                  </mesh>
-                  <mesh position={[0.23, 0.27, 0]}>
-                    <boxGeometry args={[0.035, 0.04, 0.30]} />
-                    <primitive object={chairMat} attach="material" />
+
+                  {/* Seated Spectator Torso */}
+                  <mesh position={[0, 0.42, -0.02]}>
+                    <boxGeometry args={[0.34, 0.36, 0.20]} />
+                    <primitive object={shirtMat} attach="material" />
                   </mesh>
 
+                  {/* Spectator Lap / Legs */}
                   <mesh position={[0, 0.18, 0.08]}>
-                    <boxGeometry args={[0.26, 0.09, 0.30]} />
+                    <boxGeometry args={[0.28, 0.09, 0.26]} />
                     <meshStandardMaterial color="#0f172a" roughness={0.8} />
                   </mesh>
 
-                  <mesh position={[0, 0.33, -0.04]}>
-                    <cylinderGeometry args={[0.12, 0.10, 0.26, 12]} />
-                    <primitive object={shirtMat} attach="material" />
-                  </mesh>
-                  <mesh position={[0, 0.48, -0.04]}>
-                    <boxGeometry args={[0.32, 0.11, 0.16]} />
-                    <primitive object={shirtMat} attach="material" />
-                  </mesh>
-                  <mesh position={[0, 0.54, 0.04]} rotation={[0.25, 0, 0]}>
-                    <boxGeometry args={[0.11, 0.04, 0.04]} />
-                    <primitive object={trimMat} attach="material" />
-                  </mesh>
-
-                  <mesh position={[-0.17, 0.36, 0.04]} rotation={[0.4, 0, -0.15]}>
-                    <cylinderGeometry args={[0.036, 0.030, 0.28, 10]} />
-                    <primitive object={shirtMat} attach="material" />
-                  </mesh>
-                  <mesh position={[0.17, 0.36, 0.04]} rotation={[0.4, 0, 0.15]}>
-                    <cylinderGeometry args={[0.036, 0.030, 0.28, 10]} />
-                    <primitive object={shirtMat} attach="material" />
-                  </mesh>
-                  <mesh position={[-0.16, 0.21, 0.14]}>
-                    <sphereGeometry args={[0.028, 10, 10]} />
-                    <primitive object={audienceSkin} attach="material" />
-                  </mesh>
-                  <mesh position={[0.16, 0.21, 0.14]}>
-                    <sphereGeometry args={[0.028, 10, 10]} />
-                    <primitive object={audienceSkin} attach="material" />
-                  </mesh>
-
-                  <mesh position={[0, 0.58, -0.03]}>
-                    <cylinderGeometry args={[0.034, 0.040, 0.07, 10]} />
-                    <primitive object={audienceSkin} attach="material" />
-                  </mesh>
-
+                  {/* Spectator Head & Hair */}
                   <mesh position={[0, 0.67, -0.02]}>
-                    <sphereGeometry args={[0.072, 14, 14]} />
+                    <sphereGeometry args={[0.072, 10, 10]} />
                     <primitive object={audienceSkin} attach="material" />
                   </mesh>
-                  <mesh position={[0, 0.71, -0.04]}>
-                    <sphereGeometry args={[0.078, 14, 14]} />
+                  <mesh position={[0, 0.72, -0.03]}>
+                    <sphereGeometry args={[0.078, 10, 10]} />
                     <primitive object={hairMat} attach="material" />
                   </mesh>
-                  <mesh position={[0, 0.73, 0.02]}>
-                    <boxGeometry args={[0.10, 0.04, 0.06]} />
-                    <primitive object={hairMat} attach="material" />
-                  </mesh>
-                  {isFemale && (
-                    <group>
-                      <mesh position={[-0.06, 0.62, -0.03]}>
-                        <cylinderGeometry args={[0.025, 0.02, 0.18, 8]} />
-                        <primitive object={hairMat} attach="material" />
-                      </mesh>
-                      <mesh position={[0.06, 0.62, -0.03]}>
-                        <cylinderGeometry args={[0.025, 0.02, 0.18, 8]} />
-                        <primitive object={hairMat} attach="material" />
-                      </mesh>
-                    </group>
-                  )}
                 </group>
               );
             })}
@@ -3025,7 +2973,7 @@ export function StudioLighting({
       <StudioFloor stageFadeProgress={stageFadeProgress} quality={quality} />
       <StudioWalls stageFadeProgress={stageFadeProgress} />
       <StudioCeilingRig />
-      <AudienceAmphitheater audienceFadeProgress={audienceFadeProgress} />
+      <AudienceAmphitheater audienceFadeProgress={audienceFadeProgress} quality={quality} />
       <BroadcastCameras camAngle={camAngle} ptzZoom={ptzZoom} pushInProgress={pushInProgress} />
     </group>
   );

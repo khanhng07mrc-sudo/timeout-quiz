@@ -11,6 +11,7 @@ import OlympiaMatchReportModal from "./OlympiaMatchReportModal";
 import RoomQRCodeModal from "@/components/room/RoomQRCodeModal";
 import QRCode from "qrcode";
 import { MediaView, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
+import { isTtsEnabled, setTtsEnabled, speakTTS, cancelTTS } from "@/lib/olympia/tts";
 
 type Call = (type: string, extra?: Record<string, unknown>) => Promise<{ ok: boolean; error?: string }>;
 type SN = () => number;
@@ -20,6 +21,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
   const [err, setErr] = useState("");
   // Auto-enabled by default so Host Console plays all game sounds like the real desktop software
   const [audioOn, setAudioOn] = useState(true);
+  const [ttsActive, setTtsActive] = useState<boolean>(() => isTtsEnabled());
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [o22Quarter, setO22Quarter] = useState<O22Quarter>(1);
 
@@ -330,6 +332,29 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
           >
             <span>🎵 AUDIO</span>
             <span className="px-1.5 py-0.2 rounded-full bg-black/40 text-[10px] text-yellow-300">22</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const next = !ttsActive;
+              setTtsActive(next);
+              setTtsEnabled(next);
+              if (next) {
+                speakTTS("Bật chế độ đọc câu hỏi");
+              } else {
+                cancelTTS();
+              }
+            }}
+            className={`px-2 py-1 rounded text-xs font-bold cursor-pointer border shrink-0 transition flex items-center gap-1 ${
+              ttsActive
+                ? "bg-cyan-600/30 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
+                : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+            }`}
+            title="Bật/Tắt chế độ đọc câu hỏi tự động (TTS tiếng Việt)"
+          >
+            <span>🎙️</span>
+            <span className="hidden sm:inline">{ttsActive ? "TTS: BẬT" : "TTS: TẮT"}</span>
           </button>
 
           <button

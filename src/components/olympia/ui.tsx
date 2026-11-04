@@ -335,10 +335,16 @@ export function MediaView({ url, type, className }: { url?: string; type?: strin
   if (!resolved) return null;
   const isVideo = type === "video" || /\.(mp4|webm|mov|ogg)$/i.test(resolved);
   return isVideo ? (
-    <video src={resolved} controls playsInline className={className ?? "max-h-[45vh] rounded-xl mx-auto"} />
+    <video
+      src={resolved}
+      controls
+      playsInline
+      autoPlay
+      className={className ?? "max-h-[45vh] rounded-xl mx-auto shadow-2xl"}
+    />
   ) : (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={resolved} alt="" className={className ?? "max-h-[45vh] rounded-xl mx-auto object-contain"} />
+    <img src={resolved} alt="" className={className ?? "max-h-[45vh] rounded-xl mx-auto object-contain shadow-2xl"} />
   );
 }
 

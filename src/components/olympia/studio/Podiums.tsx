@@ -67,31 +67,47 @@ function createPodiumScoreCanvas(
     ctx.fillStyle = bottomGrad;
     ctx.fillRect(0, 76, 512, 180);
 
-    // Small Gold Sub-label
-    ctx.font = '700 15px "Plus Jakarta Sans", sans-serif';
-    ctx.fillStyle = "rgba(254, 240, 138, 0.75)";
-    ctx.letterSpacing = "0.15em";
-    ctx.fillText("TRƯỜNG THPT", 256, 108);
+    const hasSchool = Boolean(school && school.trim());
+    if (hasSchool) {
+      // Small Gold Sub-label
+      ctx.font = '700 15px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "rgba(254, 240, 138, 0.75)";
+      ctx.letterSpacing = "0.15em";
+      ctx.fillText("TRƯỜNG THPT", 256, 108);
 
-    // School Name in Radiant Warm Gold
-    ctx.fillStyle = "#fef08a";
-    ctx.shadowColor = "rgba(254, 240, 138, 0.6)";
-    ctx.shadowBlur = 12;
+      // School Name in Radiant Warm Gold
+      ctx.fillStyle = "#fef08a";
+      ctx.shadowColor = "rgba(254, 240, 138, 0.6)";
+      ctx.shadowBlur = 12;
 
-    const schoolText = (school || "ĐƯỜNG LÊN ĐỈNH OLYMPIA").toUpperCase();
-    if (schoolText.length > 22) {
-      ctx.font = '900 25px "Plus Jakarta Sans", sans-serif';
-      const words = schoolText.split(" ");
-      const mid = Math.ceil(words.length / 2);
-      const line1 = words.slice(0, mid).join(" ");
-      const line2 = words.slice(mid).join(" ");
-      ctx.fillText(line1, 256, 146);
-      ctx.fillText(line2, 256, 186);
+      const schoolText = school!.trim().toUpperCase();
+      if (schoolText.length > 22) {
+        ctx.font = '900 25px "Plus Jakarta Sans", sans-serif';
+        const words = schoolText.split(" ");
+        const mid = Math.ceil(words.length / 2);
+        const line1 = words.slice(0, mid).join(" ");
+        const line2 = words.slice(mid).join(" ");
+        ctx.fillText(line1, 256, 146);
+        ctx.fillText(line2, 256, 186);
+      } else {
+        ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
+        ctx.fillText(schoolText, 256, 162);
+      }
+      ctx.shadowBlur = 0;
     } else {
-      ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(schoolText, 256, 162);
+      // Thí sinh chưa nhập tên trường: Ẩn chữ TRƯỜNG THPT và ĐƯỜNG LÊN ĐỈNH OLYMPIA để tránh hiểu nhầm
+      ctx.fillStyle = "rgba(56, 189, 248, 0.75)";
+      ctx.font = '800 15px "Plus Jakarta Sans", sans-serif';
+      ctx.letterSpacing = "0.2em";
+      ctx.fillText("VỊ TRÍ THI ĐẤU", 256, 115);
+
+      ctx.fillStyle = "#38bdf8";
+      ctx.shadowColor = "rgba(56, 189, 248, 0.6)";
+      ctx.shadowBlur = 12;
+      ctx.font = '900 36px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(`VỊ TRÍ 0${seatId + 1}`, 256, 165);
+      ctx.shadowBlur = 0;
     }
-    ctx.shadowBlur = 0;
 
     // Outer Border & Glow
     ctx.lineWidth = 4;

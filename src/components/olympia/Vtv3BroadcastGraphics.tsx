@@ -1504,6 +1504,12 @@ export function SummaryLowerThirdGraphic({ state }: { state: OlympiaState }) {
  * REUSABLE UNIFIED CONTESTANT SCORE TAB BAR (Khởi Động, Về Đích, Câu Hỏi Phụ)
  * ─────────────────────────────────────────────────────────────────────────────
  */
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * REUSABLE UNIFIED CONTESTANT SCORE TAB BAR (Khởi Động, Về Đích, Câu Hỏi Phụ)
+ * Faithful to Econova V3 specification with slanted skewX(-20deg) dividers
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 export function EconovaContestantScoreTabBar({
   state,
   activeSeatId,
@@ -1519,46 +1525,53 @@ export function EconovaContestantScoreTabBar({
 }) {
   const seats = activeSeats(state);
   return (
-    <div className="flex items-stretch w-full bg-[#091a32] border-t border-cyan-400/30">
+    <div className="flex items-stretch w-full h-[32px] sm:h-[36px] bg-[#08203f] flex-0 shrink-0 border-b border-cyan-400/40 relative z-10 overflow-hidden">
       {questionNumberBadge && (
-        <div className="shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-amber-500/30 to-red-500/30 border-r border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm md:text-base uppercase tracking-wider flex items-center justify-center whitespace-nowrap">
+        <div className="shrink-0 px-2.5 sm:px-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-[11px] sm:text-xs md:text-sm uppercase tracking-wider flex items-center justify-center whitespace-nowrap shadow-md">
           {questionNumberBadge}
         </div>
       )}
       <div
-        className="flex-1 grid gap-0.5 min-w-0"
-        style={{ gridTemplateColumns: `repeat(${Math.max(1, seats.length)}, minmax(0, 1fr))` }}
+        className="flex-1 flex flex-row items-stretch min-w-0"
       >
-        {seats.map((s) => {
+        {seats.map((s, idx) => {
           const isBuzzed = buzzedSeatId != null && buzzedSeatId === s.id;
           const isCurrent = !isBuzzed && activeSeatId != null && activeSeatId === s.id;
           const isLocked = lockedSeats.includes(s.id);
+          const isLast = idx === seats.length - 1;
           return (
             <div
               key={s.id}
-              className={`px-3 py-1.5 sm:py-2 text-center font-extrabold text-xs sm:text-sm md:text-base tracking-wide uppercase transition-all flex items-center justify-center gap-1.5 truncate ${
+              className={`flex-1 relative flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-2 text-center text-xs sm:text-sm tracking-wide uppercase transition-all duration-200 select-none ${
                 isBuzzed
-                  ? "bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.85)] font-black animate-pulse"
+                  ? "bg-[#ef4444] text-white font-black shadow-[0_0_15px_rgba(239,68,68,0.85)] z-20 animate-pulse"
                   : isCurrent
-                  ? "bg-gradient-to-r from-[#1fd1ff] to-[#3be8ff] text-[#051329] shadow-[0_0_16px_rgba(46,230,255,0.65)] font-black"
+                  ? "bg-[#2ee6ff] text-[#08203f] font-black z-10 shadow-[0_0_12px_rgba(46,230,255,0.7)]"
                   : isLocked
-                  ? "bg-slate-900/90 text-slate-500 line-through"
-                  : "bg-[#0d2240] text-slate-200/85"
+                  ? "bg-slate-900/90 text-slate-500 line-through font-semibold"
+                  : "text-slate-100 font-bold hover:bg-white/5"
               }`}
             >
-              {isBuzzed && <span>🔔</span>}
-              <span className="truncate">{s.name}</span>
+              {isBuzzed && <span className="text-xs">🔔</span>}
+              <span className="truncate max-w-[90px] sm:max-w-[140px] md:max-w-none">{s.name}</span>
               <span
-                className={`text-[11px] sm:text-xs font-mono px-1.5 py-0.2 rounded ${
+                className={`text-[10px] sm:text-xs font-mono font-black px-1.5 py-0.2 rounded ${
                   isBuzzed
-                    ? "bg-black/30 text-amber-200 font-black"
+                    ? "bg-black/30 text-amber-200"
                     : isCurrent
-                    ? "bg-black/20 text-slate-950 font-black"
+                    ? "bg-[#08203f]/25 text-[#08203f]"
                     : "bg-black/40 text-cyan-300"
                 }`}
               >
                 {s.score}
               </span>
+              {/* Slanted divider skewX(-20deg) matching Econova V3 */}
+              {!isLast && (
+                <div
+                  className="absolute right-0 top-0 bottom-0 w-[2px] bg-[#1fd1ff] pointer-events-none z-30"
+                  style={{ transform: "skewX(-20deg)" }}
+                />
+              )}
             </div>
           );
         })}
@@ -1569,10 +1582,9 @@ export function EconovaContestantScoreTabBar({
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
- * COMPONENT 7: ECONOVA LOWER-THIRD V3 ARROW (Khởi Động, Về Đích, Câu Hỏi Phụ)
- * - Layer 1: Contestant Name Strip (4 seats, active/buzzed seat highlighted in glowing cyan/red)
- * - Layer 2: Chevron Arrow Question Box + Category/Round Badge
- * - Layer 3: Direct-DOM 60 FPS Timer Progress Bar
+ * COMPONENT 7: ECONOVA LOWER-THIRD V3 ARROW GRAPHIC (Khởi Động, Về Đích, Câu Hỏi Phụ)
+ * Exact geometry, 3-layer arrow clusters (L1, L2, L3), keyframe animations,
+ * slanted dividers, and 52px cyan score number from Econova Show V3 specification
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export function EconovaLowerThirdV3({
@@ -1614,6 +1626,11 @@ export function EconovaLowerThirdV3({
 }) {
   const fillRef = useRef<HTMLDivElement>(null);
   const resolvedBadge = categoryBadge ?? headerBadge ?? "OLYMPIA";
+
+  // Score to display in big glowing number: active contestant's score or buzzed seat score
+  const targetSeatId = buzzedSeatId ?? activeSeatId;
+  const activeSeat = targetSeatId != null ? state.seats[targetSeatId] : null;
+  const displayScore = activeSeat ? activeSeat.score : 0;
 
   useEffect(() => {
     if (!timer || timer.startedAt == null) {
@@ -1672,79 +1689,222 @@ export function EconovaLowerThirdV3({
       className={
         isFs
           ? "absolute inset-0 z-30 flex flex-col items-center justify-center p-4 sm:p-8 bg-[#051126]/90 backdrop-blur-md pointer-events-auto"
-          : "w-full max-w-6xl mx-auto px-3 sm:px-6 pb-2 sm:pb-3 pt-1 z-20 pointer-events-auto"
+          : "w-full max-w-[1360px] mx-auto px-2 sm:px-4 pb-2 sm:pb-3 pt-1 z-20 pointer-events-auto"
       }
     >
+      {/* ── Keyframes Style for Authentic Econova V3 Animations ── */}
+      <style>{`
+        @keyframes econovaBoxOpen {
+          0% { opacity: 0; transform: scaleY(0.7); }
+          30% { opacity: 1; transform: scaleY(1); }
+          100% { opacity: 1; transform: scaleY(1); }
+        }
+        @keyframes flyLeftCluster {
+          0% { transform: translateX(200px); opacity: 0; }
+          40% { transform: translateX(0); opacity: 1; }
+          100% { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes flyRightCluster {
+          0% { transform: translateX(-200px); opacity: 0; }
+          40% { transform: translateX(0); opacity: 1; }
+          100% { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes whipL1_left {
+          0%, 40% { transform: translateX(0); }
+          60% { transform: translateX(-90px); }
+          100% { transform: translateX(0); }
+        }
+        @keyframes whipL2_left {
+          0%, 40% { transform: translateX(0); }
+          65% { transform: translateX(-45px); }
+          100% { transform: translateX(0); }
+        }
+        @keyframes whipL1_right {
+          0%, 40% { transform: translateX(0); }
+          60% { transform: translateX(90px); }
+          100% { transform: translateX(0); }
+        }
+        @keyframes whipL2_right {
+          0%, 40% { transform: translateX(0); }
+          65% { transform: translateX(45px); }
+          100% { transform: translateX(0); }
+        }
+      `}</style>
+
       {extraTopBanner && <div className="mb-2 w-full max-w-5xl mx-auto">{extraTopBanner}</div>}
 
-      <div className="w-full max-w-6xl mx-auto flex flex-col shadow-[0_14px_40px_rgba(0,0,0,0.85)]">
-        {/* LAYER 1: 4 Contestant Tabs */}
-        {showScoreTab && (
-          <EconovaContestantScoreTabBar
-            state={state}
-            activeSeatId={activeSeatId}
-            buzzedSeatId={buzzedSeatId}
-            lockedSeats={lockedSeats}
-            questionNumberBadge={questionNumberBadge}
-          />
-        )}
-
-        {/* LAYER 2: Main Chevron Question Bar + Category Block */}
-        <div className="grid grid-cols-[1fr_140px] sm:grid-cols-[1fr_210px] items-stretch bg-[#07182f] border-y border-cyan-400/40 relative">
-          {/* Question Chevron Box */}
-          <div
-            className={`relative px-5 sm:px-8 flex flex-col justify-center ${
-              isFs ? "min-h-[220px] sm:min-h-[280px] py-6" : "min-h-[96px] sm:min-h-[118px] py-3"
-            }`}
+      {/* ── MAIN LOWER-THIRD V3 CONTAINER ── */}
+      <div className="relative flex flex-row items-stretch justify-center w-full max-w-[1280px] mx-auto min-h-[125px] sm:min-h-[145px] shadow-[0_16px_50px_rgba(0,0,0,0.85)]">
+        {/* ── LEFT ARROW CLUSTER (3 LAYERS L1, L2, L3) ── */}
+        <div
+          className="relative w-[70px] sm:w-[130px] md:w-[170px] shrink-0 overflow-visible pointer-events-none select-none"
+          style={{ animation: "flyLeftCluster 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}
+        >
+          {/* Layer L1 (Outer Whip) */}
+          <svg
+            className="absolute top-0 left-0 w-full h-full"
+            viewBox="0 0 220 150"
+            preserveAspectRatio="none"
             style={{
-              background: "linear-gradient(90deg, #08203f 0%, #0d2c54 70%, #15457a 100%)",
-              borderLeft: "5px solid #2ee6ff",
-              clipPath: "polygon(0 0, calc(100% - 26px) 0, 100% 50%, calc(100% - 26px) 100%, 0 100%)",
+              zIndex: 1,
+              opacity: 0.35,
+              animation: "whipL1_left 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards",
             }}
           >
-            {hopeStarActive && (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-300 text-amber-300 text-[10px] sm:text-xs font-black uppercase tracking-wider w-fit mb-1 animate-pulse">
-                <span>⭐</span>
-                <span>Ngôi Sao Hy Vọng</span>
-              </div>
-            )}
+            <polygon points="0,75 100,0 220,0 220,150 100,150" fill="#0d2c54" />
+            <polygon points="40,75 118,18.75 220,18.75 220,131.25 118,131.25" fill="#2ee6ff" />
+          </svg>
+          {/* Layer L2 (Mid Whip) */}
+          <svg
+            className="absolute top-0 left-0 w-full h-full"
+            viewBox="0 0 220 150"
+            preserveAspectRatio="none"
+            style={{
+              zIndex: 2,
+              opacity: 0.65,
+              animation: "whipL2_left 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+            }}
+          >
+            <polygon points="0,75 100,0 220,0 220,150 100,150" fill="#0d2c54" />
+            <polygon points="40,75 118,18.75 220,18.75 220,131.25 118,131.25" fill="#2ee6ff" />
+          </svg>
+          {/* Layer L3 (Solid Foreground) */}
+          <svg
+            className="absolute top-0 left-0 w-full h-full"
+            viewBox="0 0 220 150"
+            preserveAspectRatio="none"
+            style={{ zIndex: 3, opacity: 1.0 }}
+          >
+            <polygon points="0,75 100,0 220,0 220,150 100,150" fill="#0d2c54" />
+            <polygon points="40,75 118,18.75 220,18.75 220,131.25 118,131.25" fill="#2ee6ff" />
+          </svg>
+        </div>
 
-            <div className={`font-bold text-white select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] pr-4 ${fontSizeClass}`}>
-              {questionText}
+        {/* ── CENTER QUESTION BOX ── */}
+        <div
+          className="flex-1 min-w-0 bg-[#0d2c54] flex flex-col justify-between relative z-10 border-y-2 border-cyan-400/50"
+          style={{ animation: "econovaBoxOpen 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}
+        >
+          {/* Top Scoreboard Strip with Contestant Tabs */}
+          {showScoreTab && (
+            <EconovaContestantScoreTabBar
+              state={state}
+              activeSeatId={activeSeatId}
+              buzzedSeatId={buzzedSeatId}
+              lockedSeats={lockedSeats}
+              questionNumberBadge={questionNumberBadge}
+            />
+          )}
+
+          {/* Center Area: Question Text + Slanted Divider + Score/Category Block */}
+          <div className="flex-1 flex flex-row items-center justify-between px-3 sm:px-6 py-2 min-h-0">
+            {/* Question Body */}
+            <div className="flex-1 min-w-0 pr-2 sm:pr-4 flex flex-col justify-center">
+              {hopeStarActive && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-300 text-amber-300 text-[10px] sm:text-xs font-black uppercase tracking-wider w-fit mb-1 animate-pulse">
+                  <span>⭐</span>
+                  <span>Ngôi Sao Hy Vọng</span>
+                </div>
+              )}
+
+              <div
+                className={`font-semibold text-white select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] leading-snug ${fontSizeClass}`}
+              >
+                {questionText}
+              </div>
+
+              {mediaElement && <div className="mt-1">{mediaElement}</div>}
+              {children && <div className="mt-1">{children}</div>}
+
+              {answerText && (
+                <div className="mt-1.5 pt-1 border-t border-cyan-400/30 flex items-center gap-2 text-emerald-300 font-black text-xs sm:text-base animate-fade-in">
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400 text-[10px] uppercase tracking-wider">
+                    ĐÁP ÁN
+                  </span>
+                  <span>{answerText}</span>
+                </div>
+              )}
             </div>
 
-            {mediaElement && <div className="mt-1">{mediaElement}</div>}
-            {children && <div className="mt-1">{children}</div>}
+            {/* Slanted Cyan Divider skewX(-12deg) matching Econova V3 */}
+            <div
+              className="w-[3px] h-[55px] sm:h-[70px] bg-[#1fd1ff] shadow-[0_0_8px_rgba(46,230,255,0.8)] shrink-0 mx-2 sm:mx-4 pointer-events-none"
+              style={{ transform: "skewX(-12deg)" }}
+            />
 
-            {answerText && (
-              <div className="mt-2 pt-1.5 border-t border-cyan-400/30 flex items-center gap-2 text-emerald-300 font-black text-sm sm:text-lg animate-fade-in">
-                <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400 text-[10px] sm:text-xs uppercase tracking-wider">
-                  ĐÁP ÁN
-                </span>
-                <span>{answerText}</span>
+            {/* Score & Category Block */}
+            <div className="shrink-0 flex flex-col items-center justify-center min-w-[70px] sm:min-w-[110px]">
+              <div
+                className="font-black text-[#2ee6ff] leading-none drop-shadow-[0_0_12px_rgba(46,230,255,0.7)] text-3xl sm:text-4xl md:text-5xl"
+                style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+              >
+                {displayScore}
               </div>
-            )}
+              <div className="flex flex-row items-center gap-1 sm:gap-1.5 mt-1.5 flex-wrap justify-center">
+                <span className="bg-[#08203f] text-[#2ee6ff] text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded border border-[#2ee6ff]/60 uppercase tracking-wide">
+                  {resolvedBadge}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Right Category / Point Block */}
-          <div className="flex flex-col items-center justify-center px-3 py-2 text-center bg-gradient-to-b from-[#0b2548] to-[#06152b] border-l border-cyan-400/30">
-            <span className="font-black text-xs sm:text-base md:text-lg text-[#2ee6ff] uppercase tracking-wider leading-tight drop-shadow-[0_0_10px_rgba(46,230,255,0.4)]">
-              {resolvedBadge}
-            </span>
+          {/* Bottom Time Bar with Direct-DOM 60 FPS Fill */}
+          <div className="h-[7px] sm:h-[9px] w-full bg-[#08203f] relative overflow-hidden flex-0 shrink-0">
+            <div
+              ref={fillRef}
+              className="absolute left-0 top-0 bottom-0 will-change-[width]"
+              style={{
+                width: "100%",
+                background: "linear-gradient(90deg, #1fd1ff, #2ee6ff)",
+                boxShadow: "0 0 10px rgba(46,230,255,0.7)",
+              }}
+            />
           </div>
         </div>
 
-        {/* LAYER 3: Bottom Direct-DOM Progress Bar */}
-        <div className="h-2.5 w-full bg-[#061426] overflow-hidden border-b border-cyan-500/40">
-          <div
-            ref={fillRef}
-            className="h-full will-change-[width]"
+        {/* ── RIGHT ARROW CLUSTER (3 LAYERS L1, L2, L3) ── */}
+        <div
+          className="relative w-[70px] sm:w-[130px] md:w-[170px] shrink-0 overflow-visible pointer-events-none select-none"
+          style={{ animation: "flyRightCluster 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}
+        >
+          {/* Layer L1 (Outer Whip) */}
+          <svg
+            className="absolute top-0 left-0 w-full h-full"
+            viewBox="0 0 220 150"
+            preserveAspectRatio="none"
             style={{
-              width: "100%",
-              background: "linear-gradient(90deg, #1fd1ff, #2ee6ff)",
-              boxShadow: "0 0 12px rgba(46,230,255,0.7)",
+              zIndex: 1,
+              opacity: 0.35,
+              animation: "whipL1_right 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards",
             }}
-          />
+          >
+            <polygon points="220,75 120,0 0,0 0,150 120,150" fill="#0d2c54" />
+            <polygon points="180,75 102,18.75 0,18.75 0,131.25 102,131.25" fill="#2ee6ff" />
+          </svg>
+          {/* Layer L2 (Mid Whip) */}
+          <svg
+            className="absolute top-0 left-0 w-full h-full"
+            viewBox="0 0 220 150"
+            preserveAspectRatio="none"
+            style={{
+              zIndex: 2,
+              opacity: 0.65,
+              animation: "whipL2_right 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+            }}
+          >
+            <polygon points="220,75 120,0 0,0 0,150 120,150" fill="#0d2c54" />
+            <polygon points="180,75 102,18.75 0,18.75 0,131.25 102,131.25" fill="#2ee6ff" />
+          </svg>
+          {/* Layer L3 (Solid Foreground) */}
+          <svg
+            className="absolute top-0 left-0 w-full h-full"
+            viewBox="0 0 220 150"
+            preserveAspectRatio="none"
+            style={{ zIndex: 3, opacity: 1.0 }}
+          >
+            <polygon points="220,75 120,0 0,0 0,150 120,150" fill="#0d2c54" />
+            <polygon points="180,75 102,18.75 0,18.75 0,131.25 102,131.25" fill="#2ee6ff" />
+          </svg>
         </div>
       </div>
     </div>

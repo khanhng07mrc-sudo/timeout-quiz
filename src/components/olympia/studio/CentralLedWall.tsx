@@ -1417,10 +1417,11 @@ function renderVerticalTotemToCanvas(
  */
 function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
-  canvas.width = 2048;
-  canvas.height = 768;
+  canvas.width = 1024;
+  canvas.height = 384;
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
+  ctx.scale(0.5, 0.5);
 
   const w = 2048;
   const h = 768;

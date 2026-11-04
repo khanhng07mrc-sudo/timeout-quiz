@@ -49,10 +49,11 @@ export function OlympiaStudio3DScene({
   } = useOlympiaLightingState(state, serverNow);
 
   // Camera vision mixer state
+  const isIframe = typeof window !== "undefined" && window.self !== window.top;
   const [internalCam, setInternalCam] = useState<number>(activeCamera);
   const [internalTransitionMode, setInternalTransitionMode] = useState<"CUT" | "MORPH">("MORPH");
   const transitionMode = propTransitionMode || internalTransitionMode;
-  const [quality, setQuality] = useState<"HIGH" | "MEDIUM" | "LIGHT">("HIGH");
+  const [quality, setQuality] = useState<"HIGH" | "MEDIUM" | "LIGHT">(isIframe ? "MEDIUM" : "HIGH");
 
   // PTZ interactive controls
   const [ptzYaw, setPtzYaw] = useState(0);
@@ -139,7 +140,7 @@ export function OlympiaStudio3DScene({
           stencil: false,
           depth: true,
         }}
-        dpr={quality === "HIGH" ? [1, 1.25] : 1}
+        dpr={isIframe ? 1 : quality === "HIGH" ? Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 1.25) : 1}
       >
         <CameraController
           camAngle={internalCam}

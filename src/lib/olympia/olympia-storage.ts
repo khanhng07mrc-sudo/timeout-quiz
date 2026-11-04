@@ -16,7 +16,7 @@ export interface OlympiaBankItem {
   set: QuestionSet;
 }
 
-const STORAGE_KEY = "timeout_quiz_olympia_banks_v1";
+const STORAGE_KEY = "timeout_quiz_olympia_banks_v2";
 
 function cloneSet(set: QuestionSet): QuestionSet {
   return JSON.parse(JSON.stringify(set));
@@ -65,13 +65,37 @@ export function getOlympiaBanks(): OlympiaBankItem[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
       return presets;
     }
-    const missingPresets = presets.filter((p) => !parsed.some((b) => b.id === p.id));
-    if (missingPresets.length > 0) {
-      const merged = [...presets, ...parsed.filter((b) => !presets.some((p) => p.id === b.id))];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-      return merged;
-    }
-    return parsed;
+    const bacAiPreset = presets.find((p) => p.id === "olympia_preset_dauthau_bacai");
+    const updated = parsed.map((item) => {
+      const matchingPreset = presets.find((p) => p.id === item.id);
+      if (matchingPreset) {
+        return {
+          ...item,
+          ...matchingPreset,
+          set: matchingPreset.set,
+        };
+      }
+      if (bacAiPreset && (item.id.includes("bacai") || (item.name && item.name.includes("01TB-BA")))) {
+        return {
+          ...item,
+          set: {
+            ...item.set,
+            tangToc: JSON.parse(JSON.stringify(bacAiPreset.set.tangToc)),
+            vcnv: {
+              ...item.set.vcnv,
+              answer: bacAiPreset.set.vcnv.answer,
+              mysteryImage: bacAiPreset.set.vcnv.mysteryImage,
+            },
+          },
+        };
+      }
+      return item;
+    });
+
+    const missingPresets = presets.filter((p) => !updated.some((b) => b.id === p.id));
+    const merged = [...missingPresets, ...updated];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    return merged;
   } catch {
     return presets;
   }

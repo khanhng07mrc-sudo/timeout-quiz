@@ -209,34 +209,34 @@ const tt2Svg = canvasWrapper(`
 `);
 
 // ── 3. bac_ai_tt_cau3.png (Câu 3: Logic ma trận giải mật mã Telex chuẩn Olympia) ──
-// Target Word: THỦY ĐIỆN (Telex: T - H - U - Y - R - D - D - I - E - N) = 10 characters
+// Target Word: THỦY ĐIỆN (Telex: T - H - U - Y - R - D - D - I - E - E - J - N) = 12 characters
 const matrixData = [
   // Row 0
   [
-    { char: "A", bg: "#86efac" }, // Q1 Green
-    { char: "F", bg: "#38bdf8" }, // Q1 Sky
-    { char: "C", bg: "#fdba74" }, // Q1 Orange
+    { char: "A", bg: "#38bdf8" }, // Q1 Sky
+    { char: "F", bg: "#fdba74" }, // Q1 Orange
+    { char: "C", bg: "#cbd5e1" }, // Q1 Grey
     { char: "7", bg: "#cbd5e1" }, // Q2 Grey
     { char: "D", bg: "#86efac" }, // Q2 [Slot 6: D] Green
     { char: "I", bg: "#fdba74" }, // Q2 [Slot 8: I] Orange
   ],
   // Row 1
   [
-    { char: "K", bg: "#cbd5e1" }, // Q1 Grey
-    { char: "B", bg: "#86efac" }, // Q1 Green
+    { char: "K", bg: "#fdba74" }, // Q1 Orange
+    { char: "E", bg: "#86efac" }, // Q1 [Slot 10: E] Green
     { char: "H", bg: "#f472b6" }, // Q1 [Slot 2: H] Pink
     { char: "3", bg: "#fde047" }, // Q2 Yellow
-    { char: "N", bg: "#38bdf8" }, // Q2 [Slot 10: N] Sky
+    { char: "B", bg: "#38bdf8" }, // Q2 Sky
     { char: "E", bg: "#f472b6" }, // Q2 [Slot 9: E] Pink
   ],
   // Row 2
   [
     { char: "G", bg: "#38bdf8" }, // Q1 Sky
     { char: "D", bg: "#fde047" }, // Q1 [Slot 7: D] Yellow
-    { char: "0", bg: "#fdba74" }, // Q1 Orange
+    { char: "0", bg: "#cbd5e1" }, // Q1 Grey
     { char: "M", bg: "#fde047" }, // Q2 Yellow
-    { char: "J", bg: "#cbd5e1" }, // Q2 Grey
-    { char: "O", bg: "#fde047" }, // Q2 Yellow
+    { char: "L", bg: "#cbd5e1" }, // Q2 Grey
+    { char: "O", bg: "#38bdf8" }, // Q2 Sky
   ],
   // Row 3
   [
@@ -250,7 +250,7 @@ const matrixData = [
   // Row 4
   [
     { char: "Z", bg: "#cbd5e1" }, // Q3 Grey
-    { char: "P", bg: "#f472b6" }, // Q3 Pink
+    { char: "J", bg: "#f472b6" }, // Q3 [Slot 11: J] Pink
     { char: "2", bg: "#fdba74" }, // Q3 Orange
     { char: "S", bg: "#fde047" }, // Q4 Yellow
     { char: "8", bg: "#fdba74" }, // Q4 Orange
@@ -259,15 +259,15 @@ const matrixData = [
   // Row 5
   [
     { char: "V", bg: "#fde047" }, // Q3 Yellow
-    { char: "5", bg: "#86efac" }, // Q3 Green
-    { char: "W", bg: "#f472b6" }, // Q3 Pink
+    { char: "N", bg: "#86efac" }, // Q3 [Slot 12: N] Green
+    { char: "W", bg: "#cbd5e1" }, // Q3 Grey
     { char: "4", bg: "#cbd5e1" }, // Q4 Grey
     { char: "Y", bg: "#f472b6" }, // Q4 [Slot 4: Y] Pink
     { char: "6", bg: "#fde047" }, // Q4 Yellow
   ],
 ];
 
-// 10 bottom slots corresponding to T H U Y R D D I E N
+// 12 bottom slots corresponding to T H U Y R D D I E E J N
 // Quadrant logic:
 // Q1 (Trái trên): viền đỏ Bên phải & Bên dưới
 // Q2 (Phải trên): viền đỏ Bên trái & Bên dưới
@@ -283,7 +283,9 @@ const bottomSlots = [
   { q: 1, bg: "#fde047" }, // 7: D (Q1: Right + Bottom, Yellow)
   { q: 2, bg: "#fdba74" }, // 8: I (Q2: Left + Bottom, Orange)
   { q: 2, bg: "#f472b6" }, // 9: E (Q2: Left + Bottom, Pink)
-  { q: 2, bg: "#38bdf8" }, // 10: N (Q2: Left + Bottom, Sky)
+  { q: 1, bg: "#86efac" }, // 10: E (Q1: Right + Bottom, Green)
+  { q: 3, bg: "#f472b6" }, // 11: J (Q3: Right + Top, Pink)
+  { q: 3, bg: "#86efac" }, // 12: N (Q3: Right + Top, Green)
 ];
 
 const cellSize = 68;
@@ -344,19 +346,19 @@ const tt3Svg = canvasWrapper(`
       <tspan fill="#facc15" text-decoration="underline">Lưu ý:</tspan> Sử dụng kiểu gõ Telex
     </text>
 
-    <!-- ── 10 DECODING SLOTS AT BOTTOM (VIỀN ĐỎ 2 CẠNH CHỮ L ĐỊNH VỊ GÓC PHẦN TƯ) ── -->
-    <g transform="translate(195, 530)">
+    <!-- ── 12 DECODING SLOTS AT BOTTOM (VIỀN ĐỎ 2 CẠNH CHỮ L ĐỊNH VỊ GÓC PHẦN TƯ) ── -->
+    <g transform="translate(150, 530)">
       <!-- Black Panel Tray -->
-      <rect x="-20" y="0" width="930" height="115" rx="18" fill="#091122" stroke="#334155" stroke-width="2.5" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="980" height="115" rx="18" fill="#091122" stroke="#334155" stroke-width="2.5" filter="url(#shadow)"/>
       
-      <!-- 10 Colored Boxes with 2-sided Red Border -->
+      <!-- 12 Colored Boxes with 2-sided Red Border -->
       ${bottomSlots
         .map((slot, i) => {
-          const x = i * 88 + 15;
-          const boxW = 68;
-          const boxH = 66;
+          const boxW = 58;
+          const boxH = 58;
+          const x = 54 + i * 74;
           return `
-          <g transform="translate(${x}, 18)">
+          <g transform="translate(${x}, 20)">
             <!-- Inner Colored Box Body -->
             <rect width="${boxW}" height="${boxH}" rx="8" fill="${slot.bg}"/>
             
@@ -364,7 +366,7 @@ const tt3Svg = canvasWrapper(`
             ${renderSlotBorder(slot.q, boxW, boxH)}
             
             <!-- Slot Index -->
-            <text x="34" y="86" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="13" fill="#94a3b8" text-anchor="middle">${i + 1}</text>
+            <text x="${boxW / 2}" y="${boxH + 22}" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="13" fill="#94a3b8" text-anchor="middle">${i + 1}</text>
           </g>
         `;
         })

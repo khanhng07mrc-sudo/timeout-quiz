@@ -2045,7 +2045,7 @@ const RAW_BAC_AI_QUESTION_SET: OlympiaQuestionSet = {
           "duration": 20
       },
       {
-          "q": "Dựa vào hình vẽ, hãy tìm một mật mã gồm 10 ký tự.",
+          "q": "Dựa vào hình vẽ, hãy tìm một mật mã gồm 12 ký tự.",
           "answer": "THỦY ĐIỆN (THUỶ ĐIỆN)",
           "type": "image",
           "media": "/olympia/media/bac_ai_tt_cau3.png",

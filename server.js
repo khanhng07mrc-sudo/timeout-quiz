@@ -104908,7 +104908,7 @@ var RAW_BAC_AI_QUESTION_SET = {
       "duration": 20
     },
     {
-      "q": "D\u1EF1a v\xE0o h\xECnh v\u1EBD, h\xE3y t\xECm m\u1ED9t m\u1EADt m\xE3 g\u1ED3m 10 k\xFD t\u1EF1.",
+      "q": "D\u1EF1a v\xE0o h\xECnh v\u1EBD, h\xE3y t\xECm m\u1ED9t m\u1EADt m\xE3 g\u1ED3m 12 k\xFD t\u1EF1.",
       "answer": "TH\u1EE6Y \u0110I\u1EC6N (THU\u1EF6 \u0110I\u1EC6N)",
       "type": "image",
       "media": "/olympia/media/bac_ai_tt_cau3.png",

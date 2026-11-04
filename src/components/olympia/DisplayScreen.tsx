@@ -51,7 +51,14 @@ function hasActiveRoundContent(state: OlympiaState): boolean {
     case "vcnv": {
       const v = state.vcnv;
       if (!v) return false;
-      return v.phase === "grid" || v.phase === "selecting" || v.phase === "question" || v.phase === "answers" || Boolean(v.answersRevealed);
+      return (
+        v.phase === "grid" ||
+        v.phase === "selecting" ||
+        v.phase === "question" ||
+        v.phase === "answers" ||
+        v.phase === "done" ||
+        Boolean(v.answersRevealed)
+      );
     }
     case "tangToc": {
       const tt = state.tangToc;
@@ -277,7 +284,14 @@ export default function DisplayScreen({ code }: { code: string }) {
               filter: "drop-shadow(0 0 30px rgba(251,191,36,0.6))",
             }}
           >
-            {state.banner}
+            {state.currentRound === "vcnv" && state.banner === ROUND_LABELS.vcnv ? (
+              <>
+                <span className="block">VƯỢT</span>
+                <span className="block">CHƯỚNG NGẠI VẬT</span>
+              </>
+            ) : (
+              state.banner
+            )}
           </div>
         </div>
       )}

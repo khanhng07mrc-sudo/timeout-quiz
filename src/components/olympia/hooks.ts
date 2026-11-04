@@ -181,6 +181,9 @@ export const isCountdownTrack = (sound: string): boolean =>
 export const isLoopingBgm = (sound: string): boolean =>
   /kd_bgm_[12]$/.test(sound) || /loop/.test(sound);
 
+export const isIntroOrMusicTrack = (sound: string): boolean =>
+  /(?:show_intro|contest_intro|contestant_intro|ending_music|summary|prize_award)$/.test(sound);
+
 /** Plays server "cue" events. Missing files fall back to O26, then fail silently. */
 export function useOlympiaAudio(
   state: OlympiaState | null,
@@ -271,81 +274,114 @@ export function useOlympiaAudio(
   );
 
   /** Crossfade to a new BGM element. Với Countdown audio thì phát ngay lập tức không fade-in từ 0. */
-  const crossfadeToBgm = useCallback((newAudio: HTMLAudioElement, durationMs: number, immediate: boolean = false) => {
-    const old = bgm.current;
-    // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại; nếu đã kết thúc hoặc pause thì reset và phát lại
-    if (old && old.src === newAudio.src) {
-      if (old.paused) {
-        if (old.ended) old.currentTime = 0;
-        old.play().catch(() => {});
+  const crossfadeToBgm = useCallback(
+    (
+      newAudio: HTMLAudioElement,
+      durationMs: number,
+      immediate: boolean = false,
+      fadeOldOnly: boolean = false
+    ) => {
+      const old = bgm.current;
+      // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại; nếu đã kết thúc hoặc pause thì reset và phát lại
+      if (old && old.src === newAudio.src) {
+        if (old.paused) {
+          if (old.ended) old.currentTime = 0;
+          old.play().catch(() => {});
+        }
+        return;
       }
-      return;
-    }
 
-    // Dừng dứt điểm các track nhạc cũ trước đó nếu đang fade dở dang
-    activeBgmSet.current.forEach((a) => {
-      if (a !== old && a !== newAudio) {
-        try { a.pause(); a.currentTime = 0; a.src = ""; } catch {}
-        activeBgmSet.current.delete(a);
-      }
-    });
+      // Dừng dứt điểm các track nhạc cũ trước đó nếu đang fade dở dang
+      activeBgmSet.current.forEach((a) => {
+        if (a !== old && a !== newAudio) {
+          try {
+            a.pause();
+            a.currentTime = 0;
+            a.src = "";
+          } catch {}
+          activeBgmSet.current.delete(a);
+        }
+      });
 
-    activeBgmSet.current.add(newAudio);
-    bgm.current = newAudio;
+      activeBgmSet.current.add(newAudio);
+      bgm.current = newAudio;
 
-    const targetVol = 0.85;
+      const targetVol = 0.85;
 
-    if (immediate) {
-      // Countdown track: ngắt ngay track nhạc cũ và phát âm lượng đầy đủ ngay lập tức
-      if (old && !old.paused) {
-        try { old.pause(); old.currentTime = 0; old.src = ""; } catch {}
-        activeBgmSet.current.delete(old);
-      }
-      newAudio.volume = targetVol;
-      newAudio.play().catch(() => {});
-      return;
-    }
-
-    newAudio.volume = 0;
-    newAudio.play().catch(() => {});
-
-    if (old && !old.paused) {
-      activeBgmSet.current.add(old);
-      const steps = 20;
-      const stepMs = Math.max(15, Math.floor(durationMs / steps));
-      const startVol = old.volume;
-      const volStep = startVol / steps;
-      let step = 0;
-      const fadeTimer = setInterval(() => {
-        step++;
-        const newVol = Math.max(0, startVol - volStep * step);
-        try { old.volume = newVol; } catch {}
-        if (step >= steps || newVol <= 0 || !activeBgmSet.current.has(old)) {
-          clearInterval(fadeTimer);
-          activeFadeTimers.current.delete(fadeTimer);
-          try { old.pause(); old.currentTime = 0; old.src = ""; } catch {}
+      if (immediate) {
+        // Countdown track: ngắt ngay track nhạc cũ và phát âm lượng đầy đủ ngay lập tức
+        if (old && !old.paused) {
+          try {
+            old.pause();
+            old.currentTime = 0;
+            old.src = "";
+          } catch {}
           activeBgmSet.current.delete(old);
         }
-      }, stepMs);
-      activeFadeTimers.current.add(fadeTimer);
-    }
-
-    // Fade in new audio (dành riêng cho nhạc nền ambient)
-    const steps = 20;
-    const stepMs = Math.max(15, Math.floor(durationMs / steps));
-    const volStep = targetVol / steps;
-    let step = 0;
-    const fadeInTimer = setInterval(() => {
-      step++;
-      const newVol = Math.min(targetVol, volStep * step);
-      try { newAudio.volume = newVol; } catch {}
-      if (step >= steps || newVol >= targetVol || bgm.current !== newAudio || !activeBgmSet.current.has(newAudio)) {
-        clearInterval(fadeInTimer);
-        activeFadeTimers.current.delete(fadeInTimer);
+        newAudio.volume = targetVol;
+        newAudio.play().catch(() => {});
+        return;
       }
-    }, stepMs);
-    activeFadeTimers.current.add(fadeInTimer);
-  }, []);
+
+      newAudio.volume = fadeOldOnly ? targetVol : 0;
+      newAudio.play().catch(() => {});
+
+      if (old && !old.paused) {
+        activeBgmSet.current.add(old);
+        const steps = 20;
+        const stepMs = Math.max(15, Math.floor(durationMs / steps));
+        const startVol = old.volume;
+        const volStep = startVol / steps;
+        let step = 0;
+        const fadeTimer = setInterval(() => {
+          step++;
+          const newVol = Math.max(0, startVol - volStep * step);
+          try {
+            old.volume = newVol;
+          } catch {}
+          if (step >= steps || newVol <= 0 || !activeBgmSet.current.has(old)) {
+            clearInterval(fadeTimer);
+            activeFadeTimers.current.delete(fadeTimer);
+            try {
+              old.pause();
+              old.currentTime = 0;
+              old.src = "";
+            } catch {}
+            activeBgmSet.current.delete(old);
+          }
+        }, stepMs);
+        activeFadeTimers.current.add(fadeTimer);
+      }
+
+      if (fadeOldOnly) {
+        return;
+      }
+
+      // Fade in new audio (dành riêng cho nhạc nền ambient)
+      const steps = 20;
+      const stepMs = Math.max(15, Math.floor(durationMs / steps));
+      const volStep = targetVol / steps;
+      let step = 0;
+      const fadeInTimer = setInterval(() => {
+        step++;
+        const newVol = Math.min(targetVol, volStep * step);
+        try {
+          newAudio.volume = newVol;
+        } catch {}
+        if (
+          step >= steps ||
+          newVol >= targetVol ||
+          bgm.current !== newAudio ||
+          !activeBgmSet.current.has(newAudio)
+        ) {
+          clearInterval(fadeInTimer);
+          activeFadeTimers.current.delete(fadeInTimer);
+        }
+      }, stepMs);
+      activeFadeTimers.current.add(fadeInTimer);
+    },
+    []
+  );
 
   const pauseBgm = useCallback(() => {
     if (bgm.current && !bgm.current.paused) {
@@ -430,7 +466,8 @@ export function useOlympiaAudio(
 
     const season = audioSeason || "O26";
     const currentChannel = cue.pan || channel || (typeof window !== "undefined" ? (localStorage.getItem("olympia_audio_channel") as any) || "both" : "both");
-    const isBgmCue = cue.kind === "bgm";
+    const isIntroTrack = isIntroOrMusicTrack(cue.sound);
+    const isBgmCue = cue.kind === "bgm" || isIntroTrack;
     const isCountdown = isCountdownTrack(cue.sound);
     const looping = isBgmCue && !isCountdown && isLoopingBgm(cue.sound);
 
@@ -469,7 +506,7 @@ export function useOlympiaAudio(
       const isOpenQuestion = cue.sound.includes("open_question");
       const defaultSfxVol = isOpenQuestion ? 0.95 : 0.85;
       a.loop = looping;
-      a.volume = (isBgmCue && !isCountdown) ? 0 : defaultSfxVol;
+      a.volume = (isBgmCue && !isCountdown && !isIntroTrack) ? 0 : defaultSfxVol;
       connectPanner(a);
       registerActive(a);
 
@@ -477,11 +514,11 @@ export function useOlympiaAudio(
         if (currentChannel !== "both" && soundUrl !== `/olympia-audio/${s}/${cue.sound}.mp3`) {
           const std = new Audio(`/olympia-audio/${s}/${cue.sound}.mp3`);
           std.loop = looping;
-          std.volume = (isBgmCue && !isCountdown) ? 0 : defaultSfxVol;
+          std.volume = (isBgmCue && !isCountdown && !isIntroTrack) ? 0 : defaultSfxVol;
           connectPanner(std);
           registerActive(std);
           if (isBgmCue) {
-            crossfadeToBgm(std, BGM_CROSSFADE_MS, isCountdown);
+            crossfadeToBgm(std, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
           } else {
             std.volume = defaultSfxVol;
             std.play().catch(() => {});
@@ -494,7 +531,7 @@ export function useOlympiaAudio(
           const altSound = cue.sound.replace(/tick_(?:10|40)s/, "tick_20s");
           const alt = new Audio(`/olympia-audio/${s}/${altSound}.mp3`);
           registerActive(alt);
-          if (isBgmCue) crossfadeToBgm(alt, BGM_CROSSFADE_MS, isCountdown);
+          if (isBgmCue) crossfadeToBgm(alt, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
           else alt.play().catch(() => {});
         }
       };
@@ -505,31 +542,52 @@ export function useOlympiaAudio(
       }
 
       if (isBgmCue) {
-        crossfadeToBgm(a, BGM_CROSSFADE_MS, isCountdown);
+        crossfadeToBgm(a, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
       } else {
         a.volume = defaultSfxVol;
         a.play().catch(() => {});
       }
     };
     play(season, true);
-  }, [state?.cue, audioSeason, enabled, channel, stopBgm, pauseBgm, resumeBgm, getAudioContext, crossfadeToBgm]);
+  }, [state?.cue, audioSeason, enabled, channel, stopBgm, pauseBgm, resumeBgm, getAudioContext, crossfadeToBgm, fadeOutAndStopBgm]);
 
   useEffect(() => () => stopBgm(), [stopBgm]);
+
+  // Khi trận đấu đã bắt đầu (stage !== "lobby"), tự động crossfade tắt nhạc sảnh chờ show_intro nếu vẫn còn đang phát
+  useEffect(() => {
+    if (!state || state.stage === "lobby") return;
+    pendingShowIntroRef.current = false;
+    const hasLobbyIntroPlaying = Array.from(activeBgmSet.current).some(
+      (a) => a.src && a.src.includes("show_intro") && !a.paused
+    );
+    if (hasLobbyIntroPlaying && (!state.cue || state.cue.sound === "6_NhacKhac/show_intro")) {
+      fadeOutAndStopBgm(1000);
+    }
+  }, [state?.stage, state?.cue, fadeOutAndStopBgm]);
 
   // Retry show_intro khi audioSeason vừa arrive (fix race condition: state đến trước audioSeason)
   useEffect(() => {
     if (!audioSeason || !pendingShowIntroRef.current || !enabled) return;
     pendingShowIntroRef.current = false;
+    if (state?.stage && state.stage !== "lobby") return;
     const season = audioSeason;
     const tryPlay = (s: string) => {
       const a = new Audio(`/olympia-audio/${s}/6_NhacKhac/show_intro.mp3`);
       a.volume = 0.85;
-      a.play().catch(() => {
+      registerActiveFromIntro(a);
+      crossfadeToBgm(a, BGM_CROSSFADE_MS, false, true);
+      a.onerror = () => {
         if (s !== "O26") tryPlay("O26"); // fallback
-      });
+      };
+    };
+    const registerActiveFromIntro = (a: HTMLAudioElement) => {
+      activeAudioSet.current.add(a);
+      const cleanup = () => activeAudioSet.current.delete(a);
+      a.addEventListener("ended", cleanup, { once: true });
+      a.addEventListener("error", cleanup, { once: true });
     };
     tryPlay(season);
-  }, [audioSeason, enabled]);
+  }, [audioSeason, enabled, state?.stage, crossfadeToBgm]);
 }
 
 export function useStableToken(): string {

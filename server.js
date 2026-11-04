@@ -105826,6 +105826,44 @@ var OlympiaGame = class _OlympiaGame {
       this.state.openedQuestionKeys.push(clean);
     }
   }
+  /** Chuẩn hoá nội dung câu hỏi/đáp án để so sánh trùng lặp (bỏ dấu câu, khoảng trắng, chữ hoa). */
+  normQ(s) {
+    return (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
+  }
+  /**
+   * Tập hợp câu hỏi / đáp án ĐÃ MỞ trong trận (mọi vòng) + các câu đã được chiếm chỗ ở vòng khác.
+   * - openedQ / openedA: đã hiển thị cho khán giả → tuyệt đối không được lặp lại.
+   * - reservedQ: đã được xếp sẵn cho vòng khác (VCNV, Tăng Tốc, gói Về Đích đã bốc) → chỉ dùng khi hết lựa chọn.
+   */
+  duplicateGuard() {
+    const qs = this.config.questionSet;
+    const openedQ = new Set((this.state.openedQuestionKeys ?? []).map((k) => this.normQ(k)));
+    const openedA = /* @__PURE__ */ new Set();
+    const reservedQ = /* @__PURE__ */ new Set();
+    const scan = (text, ans) => {
+      if (!text) return;
+      if (openedQ.has(this.normQ(text))) {
+        const a = this.normQ(ans);
+        if (a) openedA.add(a);
+      }
+    };
+    for (const item of qs.khoiDong.shared ?? []) scan(item.q, item.a);
+    for (const list of Object.values(qs.khoiDong.solo ?? {})) for (const item of list) scan(item.q, item.a);
+    for (const list of Object.values(qs.veDich ?? {})) for (const item of list) scan(item.q, item.a);
+    for (const item of qs.cauHoiPhu ?? []) scan(item.q, item.a);
+    for (const t of qs.tangToc ?? []) scan(t.q, t.answer || t.a);
+    for (const t of qs.tangToc ?? []) if (t.q) reservedQ.add(this.normQ(t.q));
+    for (const row of qs.vcnv?.rows ?? []) if (row.hint) reservedQ.add(this.normQ(row.hint));
+    if (qs.vcnv?.centerQuestion?.q) reservedQ.add(this.normQ(qs.vcnv.centerQuestion.q));
+    const vd = this.state.veDich;
+    if (vd) {
+      for (const k of vd.usedKeys ?? []) if (!k.startsWith("ans:")) reservedQ.add(this.normQ(k));
+      for (const pkg of Object.values(vd.packages ?? {})) {
+        for (const p of pkg ?? []) if (p?.q?.q) reservedQ.add(this.normQ(p.q.q));
+      }
+    }
+    return { openedQ, openedA, reservedQ };
+  }
   cue(sound, kind = "sound", pan) {
     this.state.cueSeq += 1;
     this.state.cue = { id: this.state.cueSeq, sound, kind, pan };
@@ -105904,11 +105942,6 @@ var OlympiaGame = class _OlympiaGame {
     if (st.introTimer && !!st.introTimer && timerRunning(st.introTimer) && timerRemaining(st.introTimer, now) <= 0) {
       st.introTimer.remainingMs = 0;
       st.introTimer.startedAt = null;
-      st.introTimer = null;
-      st.banner = st.currentRound ? ROUND_LABELS[st.currentRound] : null;
-      if (st.currentRound === "khoiDong") {
-        this.cue("1_KhoiDong/start_round");
-      }
       this.touch(now);
       return true;
     }
@@ -106180,10 +106213,26 @@ var OlympiaGame = class _OlympiaGame {
         const tie = this.topTie();
         const tied = tie.length >= 2 ? tie : forced ? [...active] : [];
         if (tied.length < 2 && !forced) return fail("Kh\xF4ng c\xF3 th\xED sinh \u0111\u1ED3ng h\u1EA1ng");
-        const chpQuestions = [
-          ...qs.cauHoiPhu.filter((q) => !q.used),
-          ...qs.cauHoiPhu.filter((q) => q.used)
-        ].map((q) => tagQAWithAI(q, false));
+        const chpGuard = this.duplicateGuard();
+        const chpSeen = /* @__PURE__ */ new Set();
+        const chpAll = (qs.cauHoiPhu ?? []).filter((q) => {
+          if (!q?.q) return false;
+          const k = this.normQ(q.q);
+          if (chpSeen.has(k)) return false;
+          chpSeen.add(k);
+          return true;
+        });
+        const tierOf = (q) => {
+          const k = this.normQ(q.q);
+          const opened = chpGuard.openedQ.has(k);
+          if (opened) return 4;
+          const ansDup = Boolean(q.a && chpGuard.openedA.has(this.normQ(q.a)));
+          const reserved = chpGuard.reservedQ.has(k);
+          if (!ansDup && !reserved) return 1;
+          if (!reserved) return 2;
+          return 3;
+        };
+        const chpQuestions = [...chpAll].sort((x, y) => tierOf(x) - tierOf(y) || Number(Boolean(x.used)) - Number(Boolean(y.used))).map((q) => tagQAWithAI(q, false));
         st.cauHoiPhu = {
           tied,
           qIdx: -1,
@@ -106283,7 +106332,7 @@ var OlympiaGame = class _OlympiaGame {
         const res = this.nextRound(now);
         if (!res.ok) return res;
         st.banner = null;
-        st.introTimer = mkTimer(16e3);
+        st.introTimer = mkTimer(864e5);
         startTimer(st.introTimer, now);
         st.showStageGraphics = false;
         this.cue("6_NhacKhac/contest_intro");
@@ -106477,7 +106526,6 @@ var OlympiaGame = class _OlympiaGame {
         for (let i = 0; i < activeCount; i++) {
           seatGestures.push(shuffled[i % shuffled.length]);
         }
-        st.introTimer = null;
         st.studioCameraManual = false;
         st.entranceState = {
           active: true,
@@ -106619,17 +106667,49 @@ var OlympiaGame = class _OlympiaGame {
   // ───────────────────────── KHỞI ĐỘNG ─────────────────────────
   kdPoolQuestion(kd, seg) {
     const set = this.config.questionSet.khoiDong;
-    const opened = this.state.openedQuestionKeys || [];
+    const guard = this.duplicateGuard();
+    const isFresh = (c) => Boolean(c && c.q && !guard.openedQ.has(this.normQ(c.q)));
+    const isStrictFresh = (c) => isFresh(c) && !(c.a && guard.openedA.has(this.normQ(c.a)));
     const pickUnused = (list, startIdx) => {
       if (list.length === 0) return { item: null, nextIdx: startIdx };
-      for (let offset = 0; offset < list.length; offset++) {
-        const idx = (startIdx + offset) % list.length;
-        const cand = list[idx];
-        if (cand && cand.q && !opened.includes(cand.q.trim())) {
-          return { item: cand, nextIdx: startIdx + offset + 1 };
+      for (const test of [isStrictFresh, isFresh]) {
+        for (let offset = 0; offset < list.length; offset++) {
+          const idx = (startIdx + offset) % list.length;
+          const cand = list[idx];
+          if (test(cand)) return { item: cand, nextIdx: startIdx + offset + 1 };
         }
       }
-      return { item: list[startIdx % list.length] ?? null, nextIdx: startIdx + 1 };
+      return { item: null, nextIdx: startIdx };
+    };
+    const drawFromWholeBank = () => {
+      const all = [];
+      const seenKeys = /* @__PURE__ */ new Set();
+      const push = (c) => {
+        if (!c?.q) return;
+        const k = this.normQ(c.q);
+        if (seenKeys.has(k)) return;
+        seenKeys.add(k);
+        all.push(c);
+      };
+      for (const c of kd.sharedQueue ?? []) push(c);
+      for (const list of Object.values(kd.seatQueues ?? {})) for (const c of list) push(c);
+      for (const c of set.shared ?? []) push(c);
+      for (const list of Object.values(set.solo ?? {})) for (const c of list) push(c);
+      if (all.length === 0) return null;
+      const notReserved = (c) => !guard.reservedQ.has(this.normQ(c.q));
+      const tiers = [
+        (c) => isStrictFresh(c) && notReserved(c),
+        (c) => isFresh(c) && notReserved(c),
+        (c) => isStrictFresh(c),
+        (c) => isFresh(c)
+      ];
+      for (const tier of tiers) {
+        const candidates = all.filter(tier);
+        if (candidates.length > 0) {
+          return candidates[Math.floor(Math.random() * candidates.length)];
+        }
+      }
+      return all[Math.max(0, kd.poolCursor) % all.length] ?? null;
     };
     const attach = (item2) => {
       if (!item2) return null;
@@ -106643,31 +106723,31 @@ var OlympiaGame = class _OlympiaGame {
       const seatId = seg.seat;
       if (kd.seatQueues && kd.seatQueues[seatId] && kd.seatQueues[seatId].length > 0) {
         const qList = kd.seatQueues[seatId];
-        const { item: item3 } = pickUnused(qList, Math.max(0, kd.qIdx));
-        return attach(item3);
+        const { item: item2 } = pickUnused(qList, Math.max(0, kd.qIdx));
+        return attach(item2 ?? drawFromWholeBank());
       }
       const order = this.activeSeatIds.indexOf(seatId);
       const pool = set.solo[String(order + 1)] ?? set.shared;
-      if (kd.qIdx < pool.length) {
-        const { item: item3 } = pickUnused(pool, Math.max(0, kd.qIdx));
-        if (item3) return attach(item3);
-      }
-      const flatSolo = [...set.shared, ...Object.values(set.solo).flat()];
-      if (flatSolo.length === 0) return null;
-      const { item: item2, nextIdx: nextIdx2 } = pickUnused(flatSolo, kd.poolCursor);
-      kd.poolCursor = nextIdx2;
-      return attach(item2);
+      const { item: poolItem } = pickUnused(pool, Math.max(0, kd.qIdx));
+      if (poolItem) return attach(poolItem);
+      return attach(drawFromWholeBank());
     }
     if (kd.sharedQueue && kd.sharedQueue.length > 0) {
       const { item: item2, nextIdx: nextIdx2 } = pickUnused(kd.sharedQueue, kd.poolCursor);
-      kd.poolCursor = nextIdx2;
-      return attach(item2);
+      if (item2) {
+        kd.poolCursor = nextIdx2;
+        return attach(item2);
+      }
+      return attach(drawFromWholeBank());
     }
     const flat = [...set.shared, ...Object.values(set.solo).flat()];
     if (flat.length === 0) return null;
     const { item, nextIdx } = pickUnused(flat, kd.poolCursor);
-    kd.poolCursor = nextIdx;
-    return attach(item);
+    if (item) {
+      kd.poolCursor = nextIdx;
+      return attach(item);
+    }
+    return attach(drawFromWholeBank());
   }
   kdAction(type, a, now) {
     const st = this.state;
@@ -107191,7 +107271,7 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "vcnv:blank": {
-        v.phase = "waitingAnswer";
+        this.cue("6_NhacKhac/blank_space");
         return OK;
       }
       case "vcnv:revealRowText": {
@@ -107270,26 +107350,16 @@ var OlympiaGame = class _OlympiaGame {
           changes[id] = rs.vcnv.rowPoints;
         });
         v.rowResults[row] = awarded;
-        if (awarded.length > 0) {
-          if (row === 4) {
-            v.centerOpened = true;
-            v.piecesRevealed[4] = true;
-            v.centerWrong = false;
-          } else if (v.rows[row]) {
-            if (!v.rows[row].opened) {
-              v.rows[row].opened = true;
-              v.piecesRevealed[row] = true;
-              v.openedCount += 1;
-            }
-            v.rows[row].wrong = false;
-            v.rows[row].used = true;
+        if (row === 4) {
+          v.centerOpened = true;
+          v.centerWrong = false;
+        } else if (v.rows[row]) {
+          if (!v.rows[row].opened) {
+            v.rows[row].opened = true;
+            v.openedCount += 1;
           }
-        } else {
-          if (row === 4) v.centerWrong = false;
-          else if (v.rows[row]) {
-            v.rows[row].wrong = false;
-            v.rows[row].used = true;
-          }
+          v.rows[row].wrong = false;
+          v.rows[row].used = true;
         }
         this.recordOpenedQuestion(qText);
         const orderedSeats = [...this.activeSeatIds].sort((x, y) => {
@@ -107396,10 +107466,12 @@ var OlympiaGame = class _OlympiaGame {
           if (i === 4) {
             v.centerOpened = true;
             v.piecesRevealed[4] = true;
-          } else if (!v.rows[i].opened) {
-            v.rows[i].opened = true;
+          } else {
+            if (!v.rows[i].opened) {
+              v.rows[i].opened = true;
+              v.openedCount += 1;
+            }
             v.piecesRevealed[i] = true;
-            v.openedCount += 1;
           }
         }
         v.currentRow = -1;
@@ -107511,6 +107583,7 @@ var OlympiaGame = class _OlympiaGame {
         v.piecesRevealed[4] = true;
         v.bells = [];
         v.phase = "done";
+        this.cue("2_VuotChuongNgaiVat/cnv_correct");
         return OK;
       }
       case "vcnv:revealRowsOnly": {
@@ -107555,7 +107628,7 @@ var OlympiaGame = class _OlympiaGame {
         return fail("C\xE2u kh\xF4ng h\u1EE3p l\u1EC7");
       }
       case "tt:blank": {
-        tt.phase = "idle";
+        this.cue("6_NhacKhac/blank_space");
         return OK;
       }
       case "tt:revealAndGrade": {
@@ -107783,6 +107856,17 @@ var OlympiaGame = class _OlympiaGame {
         for (const k of this.state.openedQuestionKeys) {
           usedSet.add(k);
           usedSet.add(norm(k));
+        }
+      }
+      const vdGuard = this.duplicateGuard();
+      for (const a of vdGuard.openedA) usedSet.add(`ans:${a}`);
+      for (const pkg2 of Object.values(vd.packages ?? {})) {
+        for (const p of pkg2 ?? []) {
+          if (p?.q?.q) {
+            usedSet.add(p.q.q);
+            usedSet.add(norm(p.q.q));
+            if (p.q.a) usedSet.add(`ans:${norm(p.q.a)}`);
+          }
         }
       }
       const pkg = pickBalancedVeDichPackage(qs.veDich, points, usedSet, vd.turnIdx);

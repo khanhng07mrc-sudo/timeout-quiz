@@ -256,6 +256,48 @@ export class OlympiaGame {
       this.state.openedQuestionKeys.push(clean);
     }
   }
+  /** Chuẩn hoá nội dung câu hỏi/đáp án để so sánh trùng lặp (bỏ dấu câu, khoảng trắng, chữ hoa). */
+  private normQ(s?: string): string {
+    return (s ?? "").toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "").trim();
+  }
+
+  /**
+   * Tập hợp câu hỏi / đáp án ĐÃ MỞ trong trận (mọi vòng) + các câu đã được chiếm chỗ ở vòng khác.
+   * - openedQ / openedA: đã hiển thị cho khán giả → tuyệt đối không được lặp lại.
+   * - reservedQ: đã được xếp sẵn cho vòng khác (VCNV, Tăng Tốc, gói Về Đích đã bốc) → chỉ dùng khi hết lựa chọn.
+   */
+  private duplicateGuard(): { openedQ: Set<string>; openedA: Set<string>; reservedQ: Set<string> } {
+    const qs = this.config.questionSet;
+    const openedQ = new Set<string>((this.state.openedQuestionKeys ?? []).map((k) => this.normQ(k)));
+    const openedA = new Set<string>();
+    const reservedQ = new Set<string>();
+
+    const scan = (text?: string, ans?: string) => {
+      if (!text) return;
+      if (openedQ.has(this.normQ(text))) {
+        const a = this.normQ(ans);
+        if (a) openedA.add(a);
+      }
+    };
+    for (const item of qs.khoiDong.shared ?? []) scan(item.q, item.a);
+    for (const list of Object.values(qs.khoiDong.solo ?? {})) for (const item of list) scan(item.q, item.a);
+    for (const list of Object.values(qs.veDich ?? {})) for (const item of list) scan(item.q, item.a);
+    for (const item of qs.cauHoiPhu ?? []) scan(item.q, item.a);
+    for (const t of qs.tangToc ?? []) scan(t.q, (t as any).answer || (t as any).a);
+
+    for (const t of qs.tangToc ?? []) if (t.q) reservedQ.add(this.normQ(t.q));
+    for (const row of qs.vcnv?.rows ?? []) if (row.hint) reservedQ.add(this.normQ(row.hint));
+    if (qs.vcnv?.centerQuestion?.q) reservedQ.add(this.normQ(qs.vcnv.centerQuestion.q));
+    const vd = this.state.veDich;
+    if (vd) {
+      for (const k of vd.usedKeys ?? []) if (!k.startsWith("ans:")) reservedQ.add(this.normQ(k));
+      for (const pkg of Object.values(vd.packages ?? {})) {
+        for (const p of pkg ?? []) if (p?.q?.q) reservedQ.add(this.normQ(p.q.q));
+      }
+    }
+    return { openedQ, openedA, reservedQ };
+  }
+
   private cue(sound: string, kind: "sound" | "bgm" | "stop" | "pause_bgm" | "resume_bgm" = "sound", pan?: "both" | "left" | "right") {
     this.state.cueSeq += 1;
     this.state.cue = { id: this.state.cueSeq, sound, kind, pan };
@@ -338,11 +380,6 @@ export class OlympiaGame {
     if (st.introTimer && !!st.introTimer && timerRunning(st.introTimer) && timerRemaining(st.introTimer, now) <= 0) {
       st.introTimer.remainingMs = 0;
       st.introTimer.startedAt = null;
-      st.introTimer = null;
-      st.banner = st.currentRound ? ROUND_LABELS[st.currentRound] : null;
-      if (st.currentRound === "khoiDong") {
-        this.cue("1_KhoiDong/start_round");
-      }
       this.touch(now);
       return true;
     }
@@ -645,10 +682,30 @@ export class OlympiaGame {
         const tie = this.topTie();
         const tied = tie.length >= 2 ? tie : forced ? [...active] : [];
         if (tied.length < 2 && !forced) return fail("Không có thí sinh đồng hạng");
-        const chpQuestions = [
-          ...qs.cauHoiPhu.filter((q) => !q.used),
-          ...qs.cauHoiPhu.filter((q) => q.used),
-        ].map((q) => tagQAWithAI(q, false));
+        const chpGuard = this.duplicateGuard();
+        const chpSeen = new Set<string>();
+        const chpAll = (qs.cauHoiPhu ?? []).filter((q) => {
+          if (!q?.q) return false;
+          const k = this.normQ(q.q);
+          if (chpSeen.has(k)) return false; // trùng nội bộ ngân hàng CHP
+          chpSeen.add(k);
+          return true;
+        });
+        // Mức ưu tiên: (1) chưa mở & đáp án chưa lặp & chưa bị vòng khác chiếm → (2) chưa mở & chưa bị chiếm
+        // → (3) chưa mở → (4) buộc dùng lại (chỉ khi ngân hàng cạn)
+        const tierOf = (q: QA): number => {
+          const k = this.normQ(q.q);
+          const opened = chpGuard.openedQ.has(k);
+          if (opened) return 4;
+          const ansDup = Boolean(q.a && chpGuard.openedA.has(this.normQ(q.a)));
+          const reserved = chpGuard.reservedQ.has(k);
+          if (!ansDup && !reserved) return 1;
+          if (!reserved) return 2;
+          return 3;
+        };
+        const chpQuestions = [...chpAll]
+          .sort((x, y) => tierOf(x) - tierOf(y) || Number(Boolean(x.used)) - Number(Boolean(y.used)))
+          .map((q) => tagQAWithAI(q, false));
         st.cauHoiPhu = {
           tied,
           qIdx: -1,
@@ -755,8 +812,8 @@ export class OlympiaGame {
         const res = this.nextRound(now);
         if (!res.ok) return res;
         st.banner = null;
-        // introTimer chạy đúng 16s cho hoạt cảnh MC bước ra và zoom cận cảnh khai mạc
-        st.introTimer = mkTimer(16000);
+        // Giữ trạng thái intro/chào đầu cho tới khi Host chủ động chọn vòng thi (không tự nhảy sang Khởi Động)
+        st.introTimer = mkTimer(86400000);
         startTimer(st.introTimer, now);
         st.showStageGraphics = false;
         this.cue("6_NhacKhac/contest_intro");
@@ -956,7 +1013,6 @@ export class OlympiaGame {
           seatGestures.push(shuffled[i % shuffled.length]);
         }
 
-        st.introTimer = null;
         st.studioCameraManual = false;
         st.entranceState = {
           active: true,
@@ -1101,17 +1157,60 @@ export class OlympiaGame {
   // ───────────────────────── KHỞI ĐỘNG ─────────────────────────
   private kdPoolQuestion(kd: KhoiDongState, seg: KdSegmentDef): QA | null {
     const set = this.config.questionSet.khoiDong;
-    const opened = this.state.openedQuestionKeys || [];
+    const guard = this.duplicateGuard();
+    const isFresh = (c?: QA | null): c is QA => Boolean(c && c.q && !guard.openedQ.has(this.normQ(c.q)));
+    const isStrictFresh = (c?: QA | null): c is QA =>
+      isFresh(c) && !(c.a && guard.openedA.has(this.normQ(c.a)));
+
+    /** Chọn câu CHƯA MỞ trong danh sách (ưu tiên đáp án chưa lặp). Trả item=null nếu danh sách đã hết câu mới. */
     const pickUnused = (list: QA[], startIdx: number): { item: QA | null; nextIdx: number } => {
       if (list.length === 0) return { item: null, nextIdx: startIdx };
-      for (let offset = 0; offset < list.length; offset++) {
-        const idx = (startIdx + offset) % list.length;
-        const cand = list[idx];
-        if (cand && cand.q && !opened.includes(cand.q.trim())) {
-          return { item: cand, nextIdx: startIdx + offset + 1 };
+      for (const test of [isStrictFresh, isFresh]) {
+        for (let offset = 0; offset < list.length; offset++) {
+          const idx = (startIdx + offset) % list.length;
+          const cand = list[idx];
+          if (test(cand)) return { item: cand, nextIdx: startIdx + offset + 1 };
         }
       }
-      return { item: list[startIdx % list.length] ?? null, nextIdx: startIdx + 1 };
+      return { item: null, nextIdx: startIdx };
+    };
+
+    /**
+     * Khi hàng đợi riêng/chung đã cạn (ví dụ từ câu 13-14 trở đi): bốc từ TOÀN BỘ ngân hàng Khởi Động,
+     * ưu tiên câu chưa mở + chưa bị vòng khác xếp sẵn. Chỉ khi cả ngân hàng đã hết mới buộc phải lặp.
+     */
+    const drawFromWholeBank = (): QA | null => {
+      const all: QA[] = [];
+      const seenKeys = new Set<string>();
+      const push = (c?: QA | null) => {
+        if (!c?.q) return;
+        const k = this.normQ(c.q);
+        if (seenKeys.has(k)) return;
+        seenKeys.add(k);
+        all.push(c);
+      };
+      for (const c of kd.sharedQueue ?? []) push(c);
+      for (const list of Object.values(kd.seatQueues ?? {})) for (const c of list) push(c);
+      for (const c of set.shared ?? []) push(c);
+      for (const list of Object.values(set.solo ?? {})) for (const c of list) push(c);
+      if (all.length === 0) return null;
+
+      const notReserved = (c: QA) => !guard.reservedQ.has(this.normQ(c.q));
+      const tiers: Array<(c: QA) => boolean> = [
+        (c) => isStrictFresh(c) && notReserved(c),
+        (c) => isFresh(c) && notReserved(c),
+        (c) => isStrictFresh(c),
+        (c) => isFresh(c),
+      ];
+      // Chọn ngẫu nhiên trong tầng tốt nhất để phân bổ đều các lĩnh vực
+      for (const tier of tiers) {
+        const candidates = all.filter(tier);
+        if (candidates.length > 0) {
+          return candidates[Math.floor(Math.random() * candidates.length)];
+        }
+      }
+      // Ngân hàng đã dùng hết 100%: buộc phải lặp (hiếm) — chọn câu mở sớm nhất
+      return all[Math.max(0, kd.poolCursor) % all.length] ?? null;
     };
     const attach = (item: QA | null): QA | null => {
       if (!item) return null;
@@ -1126,30 +1225,30 @@ export class OlympiaGame {
       if (kd.seatQueues && kd.seatQueues[seatId] && kd.seatQueues[seatId].length > 0) {
         const qList = kd.seatQueues[seatId];
         const { item } = pickUnused(qList, Math.max(0, kd.qIdx));
-        return attach(item);
+        return attach(item ?? drawFromWholeBank());
       }
       const order = this.activeSeatIds.indexOf(seatId);
       const pool = set.solo[String(order + 1)] ?? set.shared;
-      if (kd.qIdx < pool.length) {
-        const { item } = pickUnused(pool, Math.max(0, kd.qIdx));
-        if (item) return attach(item);
-      }
-      const flatSolo = [...set.shared, ...Object.values(set.solo).flat()];
-      if (flatSolo.length === 0) return null;
-      const { item, nextIdx } = pickUnused(flatSolo, kd.poolCursor);
-      kd.poolCursor = nextIdx;
-      return attach(item);
+      const { item: poolItem } = pickUnused(pool, Math.max(0, kd.qIdx));
+      if (poolItem) return attach(poolItem);
+      return attach(drawFromWholeBank());
     }
     if (kd.sharedQueue && kd.sharedQueue.length > 0) {
       const { item, nextIdx } = pickUnused(kd.sharedQueue, kd.poolCursor);
-      kd.poolCursor = nextIdx;
-      return attach(item);
+      if (item) {
+        kd.poolCursor = nextIdx;
+        return attach(item);
+      }
+      return attach(drawFromWholeBank());
     }
     const flat = [...set.shared, ...Object.values(set.solo).flat()];
     if (flat.length === 0) return null;
     const { item, nextIdx } = pickUnused(flat, kd.poolCursor);
-    kd.poolCursor = nextIdx;
-    return attach(item);
+    if (item) {
+      kd.poolCursor = nextIdx;
+      return attach(item);
+    }
+    return attach(drawFromWholeBank());
   }
 
   private kdAction(type: string, a: HostAction, now: number): ActionResult {
@@ -1699,7 +1798,8 @@ export class OlympiaGame {
         return OK;
       }
       case "vcnv:blank": {
-        v.phase = "waitingAnswer";
+        // Ô trống: chỉ phát âm thanh, KHÔNG đổi phase/đồ hoạ/góc quay
+        this.cue("6_NhacKhac/blank_space");
         return OK;
       }
       case "vcnv:revealRowText": {
@@ -1782,26 +1882,18 @@ export class OlympiaGame {
           changes[id] = rs.vcnv.rowPoints;
         });
         v.rowResults[row] = awarded;
-        if (awarded.length > 0) {
-          if (row === 4) {
-            v.centerOpened = true;
-            v.piecesRevealed[4] = true;
-            v.centerWrong = false;
-          } else if (v.rows[row]) {
-            if (!v.rows[row].opened) {
-              v.rows[row].opened = true;
-              v.piecesRevealed[row] = true;
-              v.openedCount += 1;
-            }
-            v.rows[row].wrong = false;
-            v.rows[row].used = true;
+        // Host bấm "Cộng điểm hàng ngang" = xác nhận hàng đã giải xong:
+        // Mở chữ đáp án hàng ngang nhưng KHÔNG mở miếng ghép hình ảnh ngay (chờ Host bấm "Lật mở miếng ghép")
+        if (row === 4) {
+          v.centerOpened = true;
+          v.centerWrong = false;
+        } else if (v.rows[row]) {
+          if (!v.rows[row].opened) {
+            v.rows[row].opened = true;
+            v.openedCount += 1;
           }
-        } else {
-          if (row === 4) v.centerWrong = false;
-          else if (v.rows[row]) {
-            v.rows[row].wrong = false;
-            v.rows[row].used = true;
-          }
+          v.rows[row].wrong = false;
+          v.rows[row].used = true;
         }
         this.recordOpenedQuestion(qText);
         const orderedSeats = [...this.activeSeatIds].sort((x, y) => {
@@ -1908,10 +2000,12 @@ export class OlympiaGame {
           if (i === 4) {
             v.centerOpened = true;
             v.piecesRevealed[4] = true;
-          } else if (!v.rows[i].opened) {
-            v.rows[i].opened = true;
+          } else {
+            if (!v.rows[i].opened) {
+              v.rows[i].opened = true;
+              v.openedCount += 1;
+            }
             v.piecesRevealed[i] = true;
-            v.openedCount += 1;
           }
         }
         v.currentRow = -1;
@@ -2023,6 +2117,7 @@ export class OlympiaGame {
         v.piecesRevealed[4] = true;
         v.bells = [];
         v.phase = "done";
+        this.cue("2_VuotChuongNgaiVat/cnv_correct");
         return OK;
       }
       case "vcnv:revealRowsOnly": {
@@ -2069,7 +2164,8 @@ export class OlympiaGame {
         return fail("Câu không hợp lệ");
       }
       case "tt:blank": {
-        tt.phase = "idle";
+        // Ô trống: chỉ phát âm thanh, giữ nguyên phase/đồ hoạ/góc quay
+        this.cue("6_NhacKhac/blank_space");
         return OK;
       }
       case "tt:revealAndGrade": {
@@ -2309,6 +2405,19 @@ export class OlympiaGame {
         for (const k of this.state.openedQuestionKeys) {
           usedSet.add(k);
           usedSet.add(norm(k));
+        }
+      }
+      // Đáp án của mọi câu đã mở ở các vòng trước cũng không được lặp lại trong gói Về Đích
+      const vdGuard = this.duplicateGuard();
+      for (const a of vdGuard.openedA) usedSet.add(`ans:${a}`);
+      // Gói đã bốc cho các thí sinh khác trong Về Đích (chưa mở nhưng đã được chiếm chỗ)
+      for (const pkg of Object.values(vd.packages ?? {})) {
+        for (const p of pkg ?? []) {
+          if (p?.q?.q) {
+            usedSet.add(p.q.q);
+            usedSet.add(norm(p.q.q));
+            if (p.q.a) usedSet.add(`ans:${norm(p.q.a)}`);
+          }
         }
       }
 

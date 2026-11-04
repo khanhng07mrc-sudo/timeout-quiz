@@ -149,7 +149,7 @@ export function OlympiaStudio3DScene({
           ptzYaw={ptzYaw}
           ptzPitch={ptzPitch}
           ptzZoom={ptzZoom}
-          introStartedAt={state?.introTimer?.startedAt ?? null}
+          introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
           serverNow={serverNow}
         />
 
@@ -163,7 +163,7 @@ export function OlympiaStudio3DScene({
           is5sBuzzerChasing={is5sBuzzerChasing}
           spotlightChaseIndex={spotlightChaseIndex}
           lockedSpotlightSeat={lockedSpotlightSeat}
-          introStartedAt={state?.introTimer?.startedAt ?? null}
+          introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
           serverNow={serverNow}
           camAngle={internalCam}
           ptzZoom={ptzZoom}

@@ -183,7 +183,14 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
 
   const seats = activeSeats(state);
   const curRound = state.currentRound;
-  const curRoundName = curRound ? ROUND_LABELS[curRound] : "CHỜ BẮT ĐẦU";
+  const isIntroStage =
+    state.stage === "playing" &&
+    (Boolean(state.introTimer) || Boolean(state.entranceState?.active));
+  const curRoundName = isIntroStage
+    ? "CHÀO ĐẦU & GIỚI THIỆU"
+    : curRound
+      ? ROUND_LABELS[curRound]
+      : "CHỜ BẮT ĐẦU";
 
 
 
@@ -399,7 +406,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                   key={log.seat}
                   className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-[11px]"
                 >
-                  #{log.order} {seatName(state, log.seat)}
+                  Lượt {log.order}: {seatName(state, log.seat)}
                 </span>
               ))
             ) : (
@@ -434,7 +441,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
               id="khoiDong"
               label="Khởi Động"
               icon="⭐"
-              active={curRound === "khoiDong"}
+              active={!isIntroStage && curRound === "khoiDong"}
               done={state.roundStatus.khoiDong === "done"}
               onClick={() => call("round:force", { round: "khoiDong" })}
             />
@@ -852,7 +859,56 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
 
             {/* ROUND-SPECIFIC CONTROL DECK */}
             <div className="rounded-xl border border-violet-500/15 bg-gradient-to-b from-[#1a0d3f]/60 to-[#0f0728]/80 p-2 sm:p-2.5 shadow-xl backdrop-blur-sm">
-              {curRound === "khoiDong" && (
+              {isIntroStage && (
+                <div className="py-5 px-4 max-w-3xl mx-auto space-y-4 text-center animate-fade-in">
+                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-300 text-xs sm:text-sm font-black uppercase tracking-wider">
+                    <span>🎬</span>
+                    <span>ĐANG Ở PHẦN KHAI MẠC &amp; GIỚI THIỆU TRẬN ĐẤU</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto">
+                    Hệ thống đang phát hoạt cảnh mở đầu trên màn hình chiếu. Bạn có thể bấm giới thiệu từng thí sinh hoặc chủ động bấm vào vòng <b>Khởi Động</b> khi MC đã dẫn xong.
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                    {state.entranceState?.active ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => call("entrance:next")}
+                          className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm shadow-lg cursor-pointer transition"
+                        >
+                          ⏭️ Thí sinh tiếp theo ({(state.entranceState.currentSeatIdx ?? 0) + 1}/{state.seats.length || 4})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => call("entrance:skip")}
+                          className="px-4 py-2.5 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm shadow cursor-pointer transition"
+                        >
+                          ⏩ Kết thúc màn chào thí sinh
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => call("entrance:start")}
+                        className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs sm:text-sm shadow-lg cursor-pointer transition flex items-center gap-2"
+                      >
+                        <span>👥</span>
+                        <span>Chào &amp; Giới thiệu Thí sinh</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => call("round:force", { round: "khoiDong" })}
+                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:from-amber-400 hover:to-red-500 text-white font-black text-xs sm:text-sm shadow-xl cursor-pointer transition flex items-center gap-2"
+                    >
+                      <span>⭐</span>
+                      <span>Vào Vòng KHỞI ĐỘNG</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!isIntroStage && curRound === "khoiDong" && (
                 <KhoiDongDeck
                   state={state}
                   call={call}
@@ -1753,7 +1809,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
 
                 {hasBell && (
                   <div className="text-[10px] font-black text-amber-300 bg-amber-500/20 border border-amber-400/40 rounded px-1.5 py-0.5 flex items-center justify-between">
-                    <span>🔔 Chuông CNV #{bellIdx + 1}</span>
+                    <span>🔔 Đã bấm chuông CNV</span>
                     <span>(Đã tự dừng chơi)</span>
                   </div>
                 )}
@@ -1938,7 +1994,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                     }`}
                     title={buzzed ? `Chọn chấm CNV cho ${s.name}` : "Đội này chưa bấm chuông CNV (hoặc đã xóa tín hiệu)"}
                   >
-                    TS{s.id + 1} {buzzed ? `🔔#${bellOrder + 1}` : ""}
+                    TS{s.id + 1} {buzzed ? "🔔" : ""}
                   </button>
                 );
               })}

@@ -269,7 +269,7 @@ export default function PlayerPad({
           <div className="flex items-center gap-2 shrink-0">
             {state.bellTestMode && (
               <span className="px-2.5 py-0.5 rounded-full bg-amber-500/25 border border-amber-400 text-amber-300 text-[11px] sm:text-xs font-black animate-pulse">
-                🔔 CHẾ ĐỘ THỬ CHUÔNG {myTestLog ? `(Hạng #${myTestLog.order})` : ""}
+                🔔 CHẾ ĐỘ THỬ CHUÔNG {myTestLog ? `(Lượt ${myTestLog.order})` : ""}
               </span>
             )}
             <span className="text-[11px] sm:text-xs font-bold text-slate-400">
@@ -328,8 +328,7 @@ export default function PlayerPad({
                     {isLocked && <span className="text-xs text-rose-400">🔒</span>}
                   </div>
                 </div>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[10px] text-slate-400 font-semibold">#{s.id + 1}</span>
+                <div className="flex items-baseline justify-end">
                   <span
                     className={`text-lg sm:text-2xl font-black tabular-nums leading-none ${
                       isMe ? "text-white" : "text-amber-300"
@@ -458,7 +457,7 @@ function getSubRoundLabel(state: OlympiaState): string {
     case "cauHoiPhu": {
       const cp = state.cauHoiPhu;
       if (!cp) return "";
-      return `Câu hỏi phụ ${cp.qIdx >= 0 ? `#${cp.qIdx + 1}` : ""}`;
+      return `Câu hỏi phụ ${cp.qIdx >= 0 ? `${cp.qIdx + 1}` : ""}`;
     }
     default:
       return "";
@@ -750,7 +749,7 @@ function InteractionZone({
         <CircularBuzzer3D
           enabled={!myLog}
           onPress={triggerBuzz}
-          label={myLog ? `ĐÃ THỬ (#${myLog.order})` : "THỬ CHUÔNG"}
+          label={myLog ? `ĐÃ THỬ (${myLog.order})` : "THỬ CHUÔNG"}
           subLabel={myLog ? "Tín hiệu chuông tốt" : "Nhấn hoặc phím Space"}
         />
         <div className="hidden sm:flex flex-col gap-1 text-left max-w-xs">
@@ -760,7 +759,7 @@ function InteractionZone({
           </div>
           {myLog && (
             <div className="text-emerald-400 text-xs font-bold mt-1">
-              ✔ Máy chủ đã ghi nhận tín hiệu chuông của bạn (Thứ tự #{myLog.order}).
+              ✔ Máy chủ đã ghi nhận tín hiệu chuông của bạn (Lượt ${myLog.order}).
             </div>
           )}
         </div>

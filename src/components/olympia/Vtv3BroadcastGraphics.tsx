@@ -857,9 +857,6 @@ export function VcnvCountdownGraphic({
                       ))}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[11px] font-mono font-bold text-cyan-300/80 hidden sm:inline">
-                        ({letterCount})
-                      </span>
                       <Vtv3RowNumberBadge number={rIdx + 1} isActive={isCurrent} isOpened={row.opened} />
                     </div>
                   </div>
@@ -912,13 +909,25 @@ export function VcnvCountdownGraphic({
                   Đang chọn hàng ngang
                 </div>
                 <div className="text-xl sm:text-2xl md:text-3xl font-black text-amber-300 drop-shadow-[0_2px_8px_rgba(245,158,11,0.5)]">
-                  {isCenter
-                    ? "Ô TRUNG TÂM"
-                    : `HÀNG NGANG SỐ ${curIdx + 1} (${curRow?.letterCount || cleanVcnvWord(curRow?.answer || "").length} CHỮ CÁI)`}
+                  {isCenter ? "Ô TRUNG TÂM" : `HÀNG NGANG SỐ ${curIdx + 1}`}
                 </div>
                 <div className="text-xs sm:text-sm text-slate-300 font-medium">
                   Chờ MC nhấn &quot;Mở Câu Hỏi&quot; để hiển thị nội dung...
                 </div>
+              </div>
+            ) : v.phase === "done" ? (
+              <div className="w-full flex flex-col items-center justify-center h-full text-center gap-2 animate-fade-in">
+                <div className="px-4 py-1.5 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 text-xs sm:text-sm font-black uppercase tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+                  CHƯỚNG NGẠI VẬT ĐÃ ĐƯỢC GIẢI MÃ
+                </div>
+                <div className="text-2xl sm:text-4xl md:text-5xl font-black text-amber-300 tracking-wider drop-shadow-[0_4px_16px_rgba(245,158,11,0.8)]">
+                  {v.keyword || "—"}
+                </div>
+                {v.solvedBy != null && state.seats[v.solvedBy] && (
+                  <div className="text-sm sm:text-base text-cyan-200 font-bold">
+                    Chúc mừng thí sinh <span className="text-white font-black underline">{state.seats[v.solvedBy].name}</span>!
+                  </div>
+                )}
               </div>
             ) : (
               <p
@@ -948,9 +957,6 @@ export function VcnvCountdownGraphic({
                       key={`${b.seat}-${bIdx}`}
                       className="bg-gradient-to-r from-red-600 to-rose-600 rounded-lg px-3 py-1 text-white font-black text-xs sm:text-sm shadow-[0_0_15px_rgba(239,68,68,0.7)] border border-red-300 flex items-center gap-1.5 animate-fade-in"
                     >
-                      <span className="px-1.5 py-0.2 rounded bg-white text-red-700 font-black text-[10px]">
-                        #{bIdx + 1}
-                      </span>
                       <span>🔔 {s?.name || `Thí sinh ${b.seat + 1}`}</span>
                     </div>
                   );
@@ -1428,7 +1434,7 @@ export function SummaryLowerThirdGraphic({ state }: { state: OlympiaState }) {
       <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in pointer-events-auto">
         <div className="relative w-full max-w-2xl rounded-3xl p-8 border-2 border-amber-400/80 bg-gradient-to-b from-[#131b3b] via-[#0b1026] to-[#060814] shadow-[0_0_50px_rgba(245,158,11,0.5)] flex flex-col items-center text-center gap-4">
           <div className="px-6 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-sm uppercase tracking-widest shadow-lg">
-            {isLeader ? "👑 DẪN ĐẦU ĐOÀN LEO NÚI" : `TỔNG KẾT ĐIỂM (HẠNG #${curRank})`}
+            {isLeader ? "👑 DẪN ĐẦU ĐOÀN LEO NÚI" : "TỔNG KẾT ĐIỂM"}
           </div>
           <div className="text-3xl sm:text-5xl font-black text-white tracking-wide uppercase drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]">
             {curSeat.name}
@@ -1461,13 +1467,12 @@ export function SummaryLowerThirdGraphic({ state }: { state: OlympiaState }) {
             : "0 0 30px rgba(56,189,248,0.4), inset 0 1px 2px rgba(255,255,255,0.2)",
         }}
       >
-        {/* Left: Position Badge */}
-        <div className="flex flex-col items-center justify-center px-4 py-2 rounded-xl bg-black/50 border border-white/10 shrink-0">
-          <span className="text-xs uppercase font-bold text-slate-400">Vị trí</span>
-          <span className="text-2xl sm:text-3xl font-black text-amber-400 font-mono">
-            {isLeader ? "👑 1" : `#${curRank}`}
-          </span>
-        </div>
+        {/* Left: Leader Crown (không hiển thị số thứ hạng #) */}
+        {isLeader && (
+          <div className="flex flex-col items-center justify-center px-4 py-2 rounded-xl bg-black/50 border border-white/10 shrink-0">
+            <span className="text-3xl sm:text-4xl">👑</span>
+          </div>
+        )}
 
         {/* Center: Contestant Name & School */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">

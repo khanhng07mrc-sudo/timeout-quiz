@@ -1014,12 +1014,19 @@ function renderLedScreenToCanvas(
     return;
   }
 
-  if (screenMode === "roundTitle" || (screenMode === "auto" && state?.currentRound && !questionPromptAvailable(state))) {
+  if (
+    screenMode === "roundTitle" ||
+    (screenMode === "auto" &&
+      !state?.introTimer &&
+      !state?.entranceState?.active &&
+      state?.currentRound &&
+      !questionPromptAvailable(state))
+  ) {
     renderRoundTitleToCanvas(ctx, width, height, state?.currentRound, fadeProgress);
     return;
   }
 
-  if (screenMode === "logo") {
+  if (screenMode === "logo" || state?.introTimer || state?.entranceState?.active) {
     renderOlympiaLogoToCanvas(ctx, width, height, cx, cy, logoImg, fadeProgress);
     return;
   }

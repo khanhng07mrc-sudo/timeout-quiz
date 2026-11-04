@@ -1311,7 +1311,13 @@ test("game:start cues 6_NhacKhac/contest_intro instead of show_intro", () => {
   assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
   assert.equal(g.state.banner, null, "banner is null during intro canvas");
   assert.ok(g.state.introTimer != null, "introTimer active as canvas flag");
-  assert.equal(g.state.introTimer!.totalMs, 16000, "introTimer is 16s for opening intro sequence");
+  assert.ok(g.state.introTimer!.totalMs >= 60_000, "intro stays until host manually starts a round (no auto-jump)");
+  g.tick(1000 + 60_000);
+  assert.ok(g.state.introTimer != null, "intro does NOT auto-expire into Khởi Động");
+  assert.equal(g.state.banner, null, "no auto banner after waiting");
+  act(g, "round:force", { round: "khoiDong" }, 70_000);
+  assert.equal(g.state.introTimer, null, "intro cleared only when host starts the round");
+  assert.equal(g.state.cue?.sound, "1_KhoiDong/start_round", "start_round cue fires so client crossfades intro music out");
 });
 
 test("KhoiDong TS2 timer and audio runs properly when question 1 is opened", () => {
@@ -1658,9 +1664,9 @@ test("VCNV selecting, openQuestion, blank, auto-grid on correct/wrong & Summary 
   assert.ok(g.view("display").vcnv!.rows[1].hint.length > 0);
   assert.ok(g.view("player", 0).vcnv!.rows[1].hint.length > 0);
 
-  // 3. Blank wait background -> phase is waitingAnswer
+  // 3. Blank cue -> plays blank_space without disrupting phase
   act(g, "vcnv:blank");
-  assert.equal(g.state.vcnv!.phase, "waitingAnswer");
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/blank_space");
 
   // 4. Timer starts -> phase is question
   act(g, "vcnv:timer", {}, 1000);
@@ -1677,7 +1683,19 @@ test("VCNV selecting, openQuestion, blank, auto-grid on correct/wrong & Summary 
   act(g, "vcnv:correct", {}, 4000);
   assert.equal(g.state.vcnv!.phase, "grid");
   assert.equal(g.state.vcnv!.rows[1].opened, true);
+  // Piece is NOT revealed on row points (user requirement: "khi nhấn cộng điểm hàng ngang, miếng ghép cũng không được mở ngay")
+  assert.equal(g.state.vcnv!.piecesRevealed[1], false);
+
+  // MC clicks revealTile -> piece is revealed
+  act(g, "vcnv:revealTile", { row: 1 });
   assert.equal(g.state.vcnv!.piecesRevealed[1], true);
+  assert.equal(g.state.cue?.sound, "2_VuotChuongNgaiVat/reveal_puzzle_piece");
+
+  // Mở Toàn Bộ CNV -> all pieces and rows opened, sound played
+  act(g, "vcnv:revealAll");
+  assert.equal(g.state.vcnv!.phase, "done");
+  assert.deepEqual(g.state.vcnv!.piecesRevealed, [true, true, true, true, true]);
+  assert.equal(g.state.cue?.sound, "2_VuotChuongNgaiVat/cnv_correct");
 
   // 5. Test setQuestionSet with BAC_AI_QUESTION_SET
   g.setQuestionSet(BAC_AI_QUESTION_SET);
@@ -1733,9 +1751,9 @@ test("VCNV selecting, openQuestion, blank, auto-grid on correct/wrong & Summary 
   assert.ok(ttDisp.tangToc!.submissions[0]);
   assert.equal(ttDisp.tangToc!.submissions[0].answer, "•");
 
-  // tt:blank sets idle without playing sound
+  // tt:blank plays blank_space without resetting phase / camera
   act(gTT, "tt:blank");
-  assert.equal(gTT.state.tangToc!.phase, "idle");
+  assert.equal(gTT.state.cue?.sound, "6_NhacKhac/blank_space");
 
   // Reveal ranking
   act(gTT, "tt:reveal");
@@ -1832,6 +1850,44 @@ test("VCNV CNV grading strictly requires active bell signal and rejects cleared 
   // Seat 0 had bell cleared -> cannot be graded for CNV anymore
   const clearedRes = g.hostAction({ type: "vcnv:correctCNV", seat: 0 }, 1800);
   assert.equal(clearedRes.ok, false, "Seat whose bell was cleared cannot receive CNV points");
+});
+
+test("Khởi động: không bao giờ lặp câu hỏi khi vượt quá hàng đợi riêng (câu 13, 14, 15... )", () => {
+  const g = game("O20", ["khoiDong"], 2);
+  act(g, "game:start");
+  const seen = new Set<string>();
+  const norm = (s: string) => s.toLowerCase().replace(/[\s.,?!'"():;—–-]+/g, "");
+  for (let i = 0; i < 30; i++) {
+    act(g, "kd:next");
+    const cur = g.state.khoiDong!.current;
+    assert.ok(cur, `question ${i + 1} exists`);
+    const key = norm(cur!.q);
+    assert.ok(!seen.has(key), `câu ${i + 1} bị trùng: ${cur!.q}`);
+    seen.add(key);
+    act(g, "kd:correct");
+  }
+});
+
+test("Câu hỏi phụ: ưu tiên câu chưa mở ở các vòng trước, không lặp câu Khởi Động / Về Đích đã mở", () => {
+  const g = game("O26", ["khoiDong", "veDich"], 2);
+  act(g, "game:start");
+  const kdQ = g.state.khoiDong!;
+  act(g, "kd:next", {}, 1000);
+  const openedText = kdQ.current!.q;
+  // Ép một câu CHP trùng nội dung với câu KD đã mở và kiểm tra nó bị đẩy xuống cuối
+  const chpPool = g.config.questionSet.cauHoiPhu;
+  const dup = { q: openedText, a: kdQ.current!.a };
+  const backup = [...chpPool];
+  chpPool.unshift(dup as any);
+  try {
+    g.state.seats[0].score = 50;
+    g.state.seats[1].score = 50;
+    act(g, "round:force", { round: "cauHoiPhu" }, 2000);
+    const first = g.state.cauHoiPhu!.questions[0];
+    assert.notEqual(first.q, openedText, "CHP không mở đầu bằng câu đã hỏi ở vòng Khởi Động");
+  } finally {
+    chpPool.splice(0, chpPool.length, ...backup);
+  }
 });
 
 

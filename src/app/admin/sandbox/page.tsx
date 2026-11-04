@@ -89,6 +89,7 @@ import { getTargetTotalQuestions } from "@/lib/utils";
 import { normalizeToThreeLevels, getBasePointsForMode, calculateItemIRTMetrics } from "@/lib/game-engine/scoring";
 import { evaluateAnswerCorrectness } from "@/lib/game-engine/evaluator";
 import { getBroadTopic } from "@/lib/topics";
+import ScaledDisplayFrame from "@/components/olympia/ScaledDisplayFrame";
 import { getBloomLevelFromPoints } from "@/types";
 import {
   syncClockWithServer,
@@ -12009,11 +12010,10 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                 </div>
               </div>
               <div className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col">
-                <iframe
-                  ref={displayIframeRef}
+                <ScaledDisplayFrame
+                  iframeRef={displayIframeRef}
                   src={`/olympia/display/${code}`}
                   title="Display Viewport"
-                  className="w-full h-full border-0 bg-black"
                   allow="autoplay; camera; microphone; display-capture"
                 />
               </div>

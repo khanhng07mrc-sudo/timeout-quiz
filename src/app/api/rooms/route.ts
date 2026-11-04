@@ -290,15 +290,35 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!verifyAdminRequest(req)) {
+  const { searchParams } = new URL(req.url);
+  const isPublicDisplay = searchParams.get("public") === "1";
+
+  if (!isPublicDisplay && !verifyAdminRequest(req)) {
     return NextResponse.json({ error: "Yêu cầu quyền Quản trị viên (Unauthorized)" }, { status: 401 });
   }
 
   try {
-    const { searchParams } = new URL(req.url);
     const hostId = searchParams.get("hostId");
     const filter = (searchParams.get("filter") || searchParams.get("type") || "all").toLowerCase();
     const user = getCurrentUserFromRequest(req);
+
+    if (isPublicDisplay) {
+      const rooms = await prisma.room.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 16,
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          status: true,
+          mode: true,
+          teamMode: true,
+          createdAt: true,
+          _count: { select: { players: true, teams: true } },
+        },
+      });
+      return NextResponse.json({ rooms });
+    }
 
     const sandboxNameConditions = [
       { name: { startsWith: "[Sandbox]" } },

@@ -13,8 +13,9 @@ interface RoomSummary {
   mode: string;
   teamMode: string;
   createdAt: string;
-  teams: { id: string; name: string }[];
-  players: { id: string; name: string }[];
+  teams?: { id: string; name: string }[];
+  players?: { id: string; name: string }[];
+  _count?: { teams?: number; players?: number };
 }
 
 export default function DisplayIndexPage() {
@@ -26,7 +27,7 @@ export default function DisplayIndexPage() {
   const [loadingRooms, setLoadingRooms] = useState(true);
 
   useEffect(() => {
-    fetch("/api/rooms")
+    fetch("/api/rooms?public=1")
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => {
         if (data.rooms) {
@@ -60,11 +61,10 @@ export default function DisplayIndexPage() {
       const res = await fetch(`/api/rooms/${cleanPin}/validate`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError("Mã phòng không tồn tại hoặc phòng đã bị xóa");
-        setLoading(false);
+        router.push(`/olympia/display/${cleanPin}`);
         return;
       }
-      if (data.room?.mode === "OLYMPIA") {
+      if (data.room?.mode === "OLYMPIA" || data.isOlympia) {
         router.push(`/olympia/display/${cleanPin}`);
       } else {
         router.push(`/display/${cleanPin}`);
@@ -172,6 +172,12 @@ export default function DisplayIndexPage() {
                 const isPlaying = room.status === "PLAYING";
                 const isLobby = room.status === "LOBBY";
                 const isPaused = room.status === "PAUSED";
+                const displayHref =
+                  room.mode === "OLYMPIA" ? `/olympia/display/${room.code}` : `/display/${room.code}`;
+                const participantCount =
+                  room.teamMode === "TEAM"
+                    ? `${room._count?.teams ?? room.teams?.length ?? 0} đội`
+                    : `${room._count?.players ?? room.players?.length ?? 0} thí sinh`;
 
                 return (
                   <div
@@ -201,12 +207,12 @@ export default function DisplayIndexPage() {
                         {room.name}
                       </h3>
                       <p className="text-xs text-slate-400 mt-1">
-                        Chế độ: <strong>{room.mode}</strong> · {room.teamMode === "TEAM" ? `${room.teams.length} đội` : `${room.players.length} thí sinh`}
+                        Chế độ: <strong>{room.mode}</strong> · {participantCount}
                       </p>
                     </div>
 
                     <Link
-                      href={`/display/${room.code}`}
+                      href={displayHref}
                       target="_blank"
                       className="w-full py-2.5 rounded-xl bg-[#1c213d] hover:bg-cyan-600 text-cyan-300 hover:text-white font-bold text-sm text-center border border-[#2b3360] hover:border-cyan-500 transition-all flex items-center justify-center gap-2"
                     >

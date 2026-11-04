@@ -695,28 +695,22 @@ export function VcnvCountdownGraphic({
   ];
 
   const hasBell = v.bells && v.bells.length > 0;
-  const fastestBell = hasBell ? v.bells[0] : null;
-  const answeredCount = Object.values(v.answers || {}).filter((ans) => ans && Boolean(ans.text && ans.text.trim())).length;
 
   return (
-    <div className="absolute inset-0 z-20 pointer-events-auto flex flex-col p-3 sm:p-5 md:p-6 overflow-hidden">
-      {/* ── Solid Royal Blue Broadcast Masks (Cutout for Bottom-Right 3D Studio) ── */}
+    <div className="absolute inset-0 z-20 pointer-events-auto flex flex-col p-3 sm:p-5 md:p-6 overflow-hidden bg-[#061e47]">
+      {/* ── Background Subtle Broadcast Dot Pattern ── */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-[52%] bg-[#061e47] border-b border-cyan-500/20" />
-        <div className="absolute bottom-0 left-0 w-[50.5%] h-[48%] bg-[#061e47] border-r border-cyan-500/20" />
         <div
           className="absolute inset-0 opacity-15"
           style={{
             backgroundImage: "radial-gradient(#38bdf8 1.5px, transparent 1.5px)",
             backgroundSize: "24px 24px",
-            maskImage: "linear-gradient(to right, black 0%, black 40%, transparent 70%)",
-            WebkitMaskImage: "linear-gradient(to right, black 0%, black 40%, transparent 70%)",
           }}
         />
       </div>
 
       {/* ── 4-QUADRANT GRID LAYOUT (2 Columns x 2 Rows) ── */}
-      <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 md:gap-5 w-full h-full max-w-[98vw] max-h-[96vh] mx-auto">
+      <div className="relative z-10 grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 md:gap-5 w-full h-full">
 
         {/* ═══════════════════════════════════════════════════════════════════
             QUADRANT 1: TOP-LEFT (MYSTERY PUZZLE GRID: 1, 2, 4, 3 + CENTER 5)
@@ -896,16 +890,9 @@ export function VcnvCountdownGraphic({
             )}
           </div>
 
-          {/* Subtle Row Answer Count + CNV Bell Red Shapes */}
-          <div className="w-full flex flex-col gap-1.5 pt-1 pb-2">
-            {answeredCount > 0 && (
-              <div className="text-[11px] font-semibold text-cyan-300/80 px-1">
-                ✓ Đã nhận câu trả lời hàng ngang: {answeredCount}/{activeSeats(state).length} thí sinh
-              </div>
-            )}
-
-            {/* Tín hiệu bấm chuông CNV: Hình chữ nhật bo góc màu đỏ, hiển thị đúng thứ tự bấm chuông v.bells */}
-            {hasBell && (
+          {/* CNV Bell Red Shapes (Bottom-Left Only) */}
+          {hasBell && (
+            <div className="w-full flex flex-col gap-1.5 pt-1 pb-2">
               <div className="flex items-center gap-1.5 flex-wrap min-h-[28px]">
                 {v.bells.map((b, bIdx) => {
                   const s = state.seats[b.seat];
@@ -922,8 +909,8 @@ export function VcnvCountdownGraphic({
                   );
                 })}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Bottom Edge Timer Bar (Flush against bottom border for O26, or sleek bar for V3) */}
           <div className="w-full pb-0 m-0">
@@ -954,33 +941,9 @@ export function VcnvCountdownGraphic({
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════
-            QUADRANT 4: BOTTOM-RIGHT (3D STUDIO CAMERA WINDOW + SCORE STRIP)
+            QUADRANT 4: BOTTOM-RIGHT (3D STUDIO CAMERA WINDOW SLOT)
            ═══════════════════════════════════════════════════════════════════ */}
-        <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-transparent flex flex-col justify-between">
-          <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_25px_rgba(0,0,0,0.7)] border border-white/10 rounded-2xl" />
-
-          {hasBell && (
-            <div className="relative z-20 mx-3 mt-3 px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600/95 via-rose-600/95 to-red-600/95 border-2 border-red-200 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(239,68,68,0.8)] animate-pulse">
-              <span className="text-base sm:text-lg">🔔</span>
-              <span className="uppercase tracking-wide truncate">
-                {(fastestBell ? (state.seats[fastestBell.seat]?.name || `Thí sinh ${fastestBell.seat + 1}`) : "Thí sinh")} TÍN HIỆU CHUÔNG CNV (#1)
-              </span>
-            </div>
-          )}
-
-          <div className="mt-auto relative z-10 flex items-center justify-around bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 border-t border-cyan-500/20">
-            {activeSeats(state).map((seat) => (
-              <div key={seat.id} className="flex flex-col items-center">
-                <span className="text-[9px] sm:text-[10px] text-slate-300 font-bold uppercase truncate max-w-[70px]">
-                  {seat.name}
-                </span>
-                <span className="text-xs sm:text-sm font-black text-amber-300 drop-shadow">
-                  {seat.score}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <div className="relative w-full h-full rounded-2xl overflow-hidden pointer-events-none" />
 
       </div>
     </div>
@@ -1486,8 +1449,76 @@ export function SummaryLowerThirdGraphic({ state }: { state: OlympiaState }) {
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
+ * REUSABLE UNIFIED CONTESTANT SCORE TAB BAR (Khởi Động, Về Đích, Câu Hỏi Phụ)
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function EconovaContestantScoreTabBar({
+  state,
+  activeSeatId,
+  buzzedSeatId,
+  lockedSeats = [],
+  questionNumberBadge,
+}: {
+  state: OlympiaState;
+  activeSeatId?: number | null;
+  buzzedSeatId?: number | null;
+  lockedSeats?: number[];
+  questionNumberBadge?: string | null;
+}) {
+  const seats = activeSeats(state);
+  return (
+    <div className="flex items-stretch w-full bg-[#091a32] border-t border-cyan-400/30">
+      {questionNumberBadge && (
+        <div className="shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-amber-500/30 to-red-500/30 border-r border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm md:text-base uppercase tracking-wider flex items-center justify-center whitespace-nowrap">
+          {questionNumberBadge}
+        </div>
+      )}
+      <div
+        className="flex-1 grid gap-0.5 min-w-0"
+        style={{ gridTemplateColumns: `repeat(${Math.max(1, seats.length)}, minmax(0, 1fr))` }}
+      >
+        {seats.map((s) => {
+          const isBuzzed = buzzedSeatId != null && buzzedSeatId === s.id;
+          const isCurrent = !isBuzzed && activeSeatId != null && activeSeatId === s.id;
+          const isLocked = lockedSeats.includes(s.id);
+          return (
+            <div
+              key={s.id}
+              className={`px-3 py-1.5 sm:py-2 text-center font-extrabold text-xs sm:text-sm md:text-base tracking-wide uppercase transition-all flex items-center justify-center gap-1.5 truncate ${
+                isBuzzed
+                  ? "bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.85)] font-black animate-pulse"
+                  : isCurrent
+                  ? "bg-gradient-to-r from-[#1fd1ff] to-[#3be8ff] text-[#051329] shadow-[0_0_16px_rgba(46,230,255,0.65)] font-black"
+                  : isLocked
+                  ? "bg-slate-900/90 text-slate-500 line-through"
+                  : "bg-[#0d2240] text-slate-200/85"
+              }`}
+            >
+              {isBuzzed && <span>🔔</span>}
+              <span className="truncate">{s.name}</span>
+              <span
+                className={`text-[11px] sm:text-xs font-mono px-1.5 py-0.2 rounded ${
+                  isBuzzed
+                    ? "bg-black/30 text-amber-200 font-black"
+                    : isCurrent
+                    ? "bg-black/20 text-slate-950 font-black"
+                    : "bg-black/40 text-cyan-300"
+                }`}
+              >
+                {s.score}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
  * COMPONENT 7: ECONOVA LOWER-THIRD V3 ARROW (Khởi Động, Về Đích, Câu Hỏi Phụ)
- * - Layer 1: Contestant Name Strip (4 seats, active/buzzed seat highlighted in glowing cyan)
+ * - Layer 1: Contestant Name Strip (4 seats, active/buzzed seat highlighted in glowing cyan/red)
  * - Layer 2: Chevron Arrow Question Box + Category/Round Badge
  * - Layer 3: Direct-DOM 60 FPS Timer Progress Bar
  * ─────────────────────────────────────────────────────────────────────────────
@@ -1496,6 +1527,7 @@ export function EconovaLowerThirdV3({
   state,
   categoryBadge,
   headerBadge,
+  questionNumberBadge,
   questionText,
   answerText,
   mediaElement,
@@ -1513,6 +1545,7 @@ export function EconovaLowerThirdV3({
   state: OlympiaState;
   categoryBadge?: string | null;
   headerBadge?: string | null;
+  questionNumberBadge?: string | null;
   questionText?: string | React.ReactNode;
   answerText?: string | null;
   mediaElement?: React.ReactNode;
@@ -1527,7 +1560,6 @@ export function EconovaLowerThirdV3({
   showScoreTab?: boolean;
   children?: React.ReactNode;
 }) {
-  const seats = activeSeats(state);
   const fillRef = useRef<HTMLDivElement>(null);
   const resolvedBadge = categoryBadge ?? headerBadge ?? "OLYMPIA";
 
@@ -1596,40 +1628,13 @@ export function EconovaLowerThirdV3({
       <div className="w-full max-w-6xl mx-auto flex flex-col shadow-[0_14px_40px_rgba(0,0,0,0.85)]">
         {/* LAYER 1: 4 Contestant Tabs */}
         {showScoreTab && (
-          <div
-            className="grid gap-0.5 bg-[#091a32] border-t border-cyan-400/30"
-            style={{ gridTemplateColumns: `repeat(${Math.max(1, seats.length)}, minmax(0, 1fr))` }}
-          >
-            {seats.map((s) => {
-              const isBuzzed = buzzedSeatId === s.id;
-              const isCurrent = activeSeatId === s.id;
-              const isLocked = lockedSeats.includes(s.id);
-              return (
-                <div
-                  key={s.id}
-                  className={`px-3 py-1.5 sm:py-2 text-center font-extrabold text-xs sm:text-sm md:text-base tracking-wide uppercase transition-all flex items-center justify-center gap-1.5 truncate ${
-                    isBuzzed
-                      ? "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-slate-950 shadow-[0_0_20px_rgba(251,191,36,0.8)] font-black"
-                      : isCurrent
-                      ? "bg-gradient-to-r from-[#1fd1ff] to-[#3be8ff] text-[#051329] shadow-[0_0_16px_rgba(46,230,255,0.65)] font-black"
-                      : isLocked
-                      ? "bg-slate-900/90 text-slate-500 line-through"
-                      : "bg-[#0d2240] text-slate-200/85"
-                  }`}
-                >
-                  {isBuzzed && <span>🔔</span>}
-                  <span className="truncate">{s.name}</span>
-                  <span
-                    className={`text-[11px] sm:text-xs font-mono px-1.5 py-0.2 rounded ${
-                      isBuzzed || isCurrent ? "bg-black/20 text-slate-950 font-black" : "bg-black/40 text-cyan-300"
-                    }`}
-                  >
-                    {s.score}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          <EconovaContestantScoreTabBar
+            state={state}
+            activeSeatId={activeSeatId}
+            buzzedSeatId={buzzedSeatId}
+            lockedSeats={lockedSeats}
+            questionNumberBadge={questionNumberBadge}
+          />
         )}
 
         {/* LAYER 2: Main Chevron Question Bar + Category Block */}

@@ -22,17 +22,32 @@ export interface StudioLightingState {
  * - Vượt chướng ngại vật: Strictly the fastest (first) buzzer lights up Red. Subsequent buzzers remain unlit.
  */
 export function isSeatBuzzedIn3D(seatId: number, state: OlympiaState | null | undefined): boolean {
-  if (!state) return false;
+  if (!state || state.stage !== "playing") return false;
   switch (state.currentRound) {
     case "khoiDong":
-      return state.khoiDong?.buzzedSeat === seatId;
+      return (
+        state.khoiDong?.phase !== "segmentDone" &&
+        state.khoiDong?.phase !== "idle" &&
+        state.khoiDong?.buzzedSeat === seatId
+      );
     case "vcnv":
-      // Strictly the fastest (first) bell rings red:
-      return state.vcnv?.bells?.[0]?.seat === seatId;
+      // Strictly the fastest (first) bell rings red while VCNV is active:
+      return (
+        state.vcnv?.phase !== "done" &&
+        state.vcnv?.bells?.[0]?.seat === seatId
+      );
     case "veDich":
-      return state.veDich?.steal?.buzzedSeat === seatId;
+      return (
+        state.veDich?.phase !== "seatDone" &&
+        state.veDich?.phase !== "idle" &&
+        state.veDich?.steal?.buzzedSeat === seatId
+      );
     case "cauHoiPhu":
-      return state.cauHoiPhu?.buzzedSeat === seatId;
+      return (
+        state.cauHoiPhu?.phase !== "done" &&
+        state.cauHoiPhu?.phase !== "idle" &&
+        state.cauHoiPhu?.buzzedSeat === seatId
+      );
     default:
       return false;
   }

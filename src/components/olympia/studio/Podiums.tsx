@@ -719,8 +719,8 @@ function ContestantPodium({
     }
   });
 
-  // Dynamic Red Mode when tension/countdown starts or when buzzed
-  const isRed = (screenFadeProgress ?? 0) > 0.5 || isBuzzed;
+  // Bảng điểm bục thí sinh chỉ đổi sang màu đỏ khi thí sinh đó bấm chuông (không tự đổi màu theo trường quay)
+  const isRed = isBuzzed;
 
   return (
     <group position={position} rotation={[0, rotationY, 0]}>

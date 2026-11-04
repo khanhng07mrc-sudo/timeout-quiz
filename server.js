@@ -106210,8 +106210,19 @@ var OlympiaGame = class _OlympiaGame {
       st.khoiDong.questionRevealed = false;
       st.khoiDong.current = null;
       st.khoiDong.phase = "segmentDone";
+      st.khoiDong.buzzedSeat = null;
       st.khoiDong.buzzOpen = false;
       st.khoiDong.buzzUnlockAt = void 0;
+    }
+    if (st.vcnv) {
+      st.vcnv.bells = [];
+    }
+    if (st.veDich) {
+      st.veDich.steal = null;
+    }
+    if (st.cauHoiPhu) {
+      st.cauHoiPhu.buzzedSeat = null;
+      st.cauHoiPhu.buzzOpen = false;
     }
     if (!st.cue?.sound?.includes("finish_turn")) {
       this.cue("", "stop");
@@ -106272,7 +106283,7 @@ var OlympiaGame = class _OlympiaGame {
         const res = this.nextRound(now);
         if (!res.ok) return res;
         st.banner = null;
-        st.introTimer = mkTimer(864e5);
+        st.introTimer = mkTimer(16e3);
         startTimer(st.introTimer, now);
         st.showStageGraphics = false;
         this.cue("6_NhacKhac/contest_intro");
@@ -106466,6 +106477,7 @@ var OlympiaGame = class _OlympiaGame {
         for (let i = 0; i < activeCount; i++) {
           seatGestures.push(shuffled[i % shuffled.length]);
         }
+        st.introTimer = null;
         st.studioCameraManual = false;
         st.entranceState = {
           active: true,
@@ -106486,13 +106498,13 @@ var OlympiaGame = class _OlympiaGame {
           st.entranceState.seatStartedAt = now;
         } else {
           st.entranceState = null;
-          this.cue("6_NhacKhac/contest_intro", "stop");
+          this.cue("", "stop");
         }
         return OK;
       }
       case "entrance:skip": {
         st.entranceState = null;
-        this.cue("6_NhacKhac/contest_intro", "stop");
+        this.cue("", "stop");
         return OK;
       }
       case "game:reset": {
@@ -106536,6 +106548,7 @@ var OlympiaGame = class _OlympiaGame {
           return x - y;
         });
         if (orderedSeats.length === 0) return fail("Kh\xF4ng c\xF3 th\xED sinh");
+        st.introTimer = null;
         st.showScoreboard = false;
         st.summaryState = {
           active: true,
@@ -106595,6 +106608,7 @@ var OlympiaGame = class _OlympiaGame {
       }
     }
     if (st.banner) st.banner = null;
+    if (st.introTimer) st.introTimer = null;
     if (type.startsWith("kd:")) return this.kdAction(type, a, now);
     if (type.startsWith("vcnv:")) return this.vcnvAction(type, a, now);
     if (type.startsWith("tt:")) return this.ttAction(type, a, now);
@@ -106772,6 +106786,7 @@ var OlympiaGame = class _OlympiaGame {
           kd.started = false;
           kd.questionRevealed = false;
           kd.current = null;
+          kd.buzzedSeat = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = void 0;
           this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
@@ -106868,10 +106883,12 @@ var OlympiaGame = class _OlympiaGame {
         if (kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro" && kd.qIdx < seg.questions - 1) {
           return fail("L\u01B0\u1EE3t thi \u0111ang di\u1EC5n ra, kh\xF4ng th\u1EC3 nh\u1EA5n B\u1EAFt \u0111\u1EA7u l\u1EA1i!");
         }
+        st.introTimer = null;
         if (st.showStageGraphics) st.showStageGraphics = false;
         kd.phase = "question";
         kd.questionRevealed = false;
         kd.started = true;
+        kd.buzzedSeat = null;
         kd.startCooldownUntil = now + 3500;
         if (seg.globalMs) {
           kd.globalTimer = mkTimer(seg.globalMs);
@@ -106899,6 +106916,7 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "kd:blank": {
+        kd.buzzedSeat = null;
         kd.lastVerdict = null;
         this.cue("6_NhacKhac/blank_space");
         return OK;
@@ -106962,6 +106980,9 @@ var OlympiaGame = class _OlympiaGame {
         if (isLastSeg) {
           kd.phase = "segmentDone";
           kd.current = null;
+          kd.buzzedSeat = null;
+          kd.buzzOpen = false;
+          kd.buzzUnlockAt = void 0;
           this.finishRound(now);
           return OK;
         }
@@ -107144,7 +107165,7 @@ var OlympiaGame = class _OlympiaGame {
         if (isSolo) return fail("Kh\u1EDFi \u0111\u1ED9ng ri\xEAng kh\xF4ng c\xF3 chu\xF4ng");
         kd.buzzUnlockAt = void 0;
         kd.buzzOpen = !kd.buzzOpen;
-        if (kd.buzzOpen) kd.buzzedSeat = null;
+        kd.buzzedSeat = null;
         return OK;
       }
     }
@@ -107194,7 +107215,6 @@ var OlympiaGame = class _OlympiaGame {
           v.answers = {};
           v.answersRevealed = false;
           v.revealedCorrectAnswer = false;
-          v.bells = [];
           v.centerWrong = false;
           this.cue("2_VuotChuongNgaiVat/choose_row");
           return OK;
@@ -107206,7 +107226,6 @@ var OlympiaGame = class _OlympiaGame {
         v.answers = {};
         v.answersRevealed = false;
         v.revealedCorrectAnswer = false;
-        v.bells = [];
         v.rows[i].wrong = false;
         this.cue("2_VuotChuongNgaiVat/choose_row");
         return OK;
@@ -107393,6 +107412,9 @@ var OlympiaGame = class _OlympiaGame {
       case "vcnv:correctCNV": {
         const seat = a.seat != null ? Number(a.seat) : v.bells[0]?.seat ?? -1;
         if (!this.seat(seat)) return fail("Ch\u1ECDn th\xED sinh");
+        if (!v.bells.some((b) => b.seat === seat)) {
+          return fail("Ch\u1EC9 \u0111\u01B0\u1EE3c ch\u1EA5m CNV cho th\xED sinh \u0111ang c\xF3 t\xEDn hi\u1EC7u chu\xF4ng!");
+        }
         v.eliminatedSeats = v.eliminatedSeats.filter((id) => id !== seat);
         const pts = cnvPointsFor(rs, v.openedCount, Boolean(v.centerOpened));
         this.addScore(seat, pts);
@@ -107416,6 +107438,7 @@ var OlympiaGame = class _OlympiaGame {
         if (!buzzers.some((b) => b.seat === seat)) {
           buzzers.push({ order: buzzers.length + 1, seat, name: this.seatName(seat), verdict: "correct" });
         }
+        v.bells = [];
         this.pushTranscript({
           at: now,
           round: "vcnv",
@@ -107436,6 +107459,9 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "vcnv:wrongCNV": {
         const seat = a.seat != null ? Number(a.seat) : v.bells[0]?.seat ?? -1;
+        if (!this.seat(seat) || !v.bells.some((b) => b.seat === seat)) {
+          return fail("Ch\u1EC9 \u0111\u01B0\u1EE3c ch\u1EA5m CNV cho th\xED sinh \u0111ang c\xF3 t\xEDn hi\u1EC7u chu\xF4ng!");
+        }
         if (this.seat(seat)) {
           if (!v.eliminatedSeats.includes(seat)) v.eliminatedSeats.push(seat);
           v.bells = v.bells.filter((b) => b.seat !== seat);
@@ -107483,6 +107509,7 @@ var OlympiaGame = class _OlympiaGame {
         });
         v.centerOpened = true;
         v.piecesRevealed[4] = true;
+        v.bells = [];
         v.phase = "done";
         return OK;
       }
@@ -107871,6 +107898,7 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "vd:blank": {
         vd.lastVerdict = null;
+        if (vd.steal) vd.steal.buzzedSeat = null;
         this.cue("6_NhacKhac/blank_space");
         return OK;
       }
@@ -108043,6 +108071,7 @@ var OlympiaGame = class _OlympiaGame {
           pauseTimer(vd.steal.timer, now);
           vd.steal.timer.remainingMs = 0;
           vd.steal.open = false;
+          vd.steal.buzzedSeat = null;
         }
         vd.phase = "result";
         vd.lastVerdict = "noSteal";
@@ -108187,6 +108216,7 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "chp:buzzer": {
         cp.buzzOpen = !cp.buzzOpen;
+        cp.buzzedSeat = null;
         if (cp.buzzOpen) this.cue("5_CauHoiPhu/bell_ring");
         return OK;
       }
@@ -108335,7 +108365,7 @@ var OlympiaGame = class _OlympiaGame {
         const kd = st.khoiDong;
         if (!kd || kd.phase !== "question") return fail("Chu\xF4ng ch\u01B0a m\u1EDF");
         if (kd.segments[kd.segIdx].kind === "solo") return fail("Kh\u1EDFi \u0111\u1ED9ng ri\xEAng kh\xF4ng c\xF3 chu\xF4ng");
-        if (kd.buzzUnlockAt && now >= kd.buzzUnlockAt && !kd.buzzOpen && kd.buzzedSeat == null) {
+        if (kd.buzzUnlockAt && now + 250 >= kd.buzzUnlockAt && !kd.buzzOpen && kd.buzzedSeat == null) {
           kd.buzzOpen = true;
           kd.buzzUnlockAt = void 0;
         }

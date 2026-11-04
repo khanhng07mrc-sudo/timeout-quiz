@@ -41,14 +41,24 @@ export function useOlympiaCameraState(
   useEffect(() => {
     if (state?.currentRound && state.currentRound !== lastRoundRef.current) {
       lastRoundRef.current = state.currentRound;
-      roundEnteredAtRef.current = Date.now();
+      roundEnteredAtRef.current = getNow();
     }
   }, [state?.currentRound]);
+
+  const wasIntroOrEntranceRef = useRef<boolean>(false);
+  useEffect(() => {
+    const active = Boolean(state?.introTimer) || Boolean(state?.entranceState?.active);
+    if (wasIntroOrEntranceRef.current && !active) {
+      roundEnteredAtRef.current = getNow();
+    }
+    wasIntroOrEntranceRef.current = active;
+  }, [state?.introTimer, state?.entranceState?.active]);
+
   useEffect(() => {
     const curPhase = state?.khoiDong?.phase || state?.veDich?.phase || "";
     if (curPhase && curPhase !== lastPhaseRef.current) {
       lastPhaseRef.current = curPhase;
-      phaseEnteredAtRef.current = Date.now();
+      phaseEnteredAtRef.current = getNow();
     }
   }, [state?.khoiDong?.phase, state?.veDich?.phase]);
 
@@ -169,7 +179,9 @@ export function useOlympiaCameraState(
       const isSolo = seg?.kind === "solo";
       const seatId = isSolo ? (seg?.seat ?? 0) : (kd.buzzedSeat ?? 0);
       const validSeat = typeof seatId === "number" && seatId >= 0 && seatId < activeCount;
-      const targetContestantCam = validSeat ? getCameraForSeat(seatId, activeCount) : 1;
+      const targetContestantCam = isSolo
+        ? (validSeat ? getCameraForSeat(seatId, activeCount) : 1)
+        : (kd.buzzedSeat != null ? getCameraForSeat(kd.buzzedSeat, activeCount) : 10);
 
       // 3.2. Khi chưa nhấn Bắt đầu (hết intro Khởi động):
       // USER REQUIREMENT: "cơ mà hết intro Khởi động, nó chưa tự zoom in bục MC, sau đó quay toàn cảnh"
@@ -197,8 +209,8 @@ export function useOlympiaCameraState(
         const remainingCooldown = (kd.startCooldownUntil - now) / 1000;
         const elapsedCooldown = Math.max(0, 3.5 - remainingCooldown);
         return {
-          camAngle: elapsedCooldown < 1.0 ? 14 : 1, // Đi từ CAM 14 (dưới nguyệt quế) ra CAM 1 (toàn cảnh)
-          transitionMode: "MORPH",
+          camAngle: elapsedCooldown < 0.25 ? 14 : 1, // CUT về CAM 14 ở đầu lượt rồi dolly 1 chiều mượt mà ra CAM 1 (toàn cảnh)
+          transitionMode: elapsedCooldown < 0.25 ? "CUT" : "MORPH",
           isOverlayHidden: false,
           pushInProgress: 0,
         };

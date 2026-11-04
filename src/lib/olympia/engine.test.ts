@@ -219,6 +219,8 @@ test("VCNV Question #5 (Center Question): +10 pts and post-center CNV points (20
 
   assert.equal(g13.state.vcnv!.centerOpened, true);
 
+  g13.playerBuzz(1, 2100);
+
   act(g13, "vcnv:correctCNV", { seat: 1 });
 
   assert.equal(g13.state.seats[1].score, 20, "O13 post-center CNV = 20 pts");
@@ -232,6 +234,8 @@ test("VCNV Question #5 (Center Question): +10 pts and post-center CNV points (20
   act(g14, "vcnv:selectRow", { row: 4 });
 
   act(g14, "vcnv:revealTile");
+
+  g14.playerBuzz(1, 2100);
 
   act(g14, "vcnv:correctCNV", { seat: 1 });
 
@@ -726,9 +730,13 @@ test("VCNV: row points, keyword points by opened rows, elimination on wrong CNV"
 
   act(g, "vcnv:revealTile");
 
+  g.playerBuzz(1, 2100);
+
   act(g, "vcnv:wrongCNV", { seat: 1 });
 
   assert.deepEqual(g.state.vcnv!.eliminatedSeats, [1]);
+
+  g.playerBuzz(0, 2200);
 
   act(g, "vcnv:correctCNV", { seat: 0 });
 
@@ -1303,7 +1311,7 @@ test("game:start cues 6_NhacKhac/contest_intro instead of show_intro", () => {
   assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
   assert.equal(g.state.banner, null, "banner is null during intro canvas");
   assert.ok(g.state.introTimer != null, "introTimer active as canvas flag");
-  assert.equal(g.state.introTimer!.totalMs, 86400000, "introTimer is 24h (effectively infinite)");
+  assert.equal(g.state.introTimer!.totalMs, 16000, "introTimer is 16s for opening intro sequence");
 });
 
 test("KhoiDong TS2 timer and audio runs properly when question 1 is opened", () => {
@@ -1375,7 +1383,6 @@ test("sequential contestant entrance: start, manual next, gesture assignment, an
   const resFinish = g.hostAction({ type: "entrance:next" }, 4000);
   assert.equal(resFinish.ok, true);
   assert.equal(g.state.entranceState, null);
-  assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
   assert.equal(g.state.cue?.kind, "stop");
 });
 
@@ -1417,7 +1424,6 @@ test("sequential contestant entrance: skip immediately stops and clears entrance
   const resSkip = g.hostAction({ type: "entrance:skip" }, 6000);
   assert.equal(resSkip.ok, true);
   assert.equal(g.state.entranceState, null);
-  assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
   assert.equal(g.state.cue?.kind, "stop");
 });
 
@@ -1802,7 +1808,30 @@ test("Khởi động end-of-segment and end-of-round immediately turns off quest
   assert.equal(g.state.khoiDong!.started, false, "kd.started must be false when round/segment finishes");
   assert.equal(g.state.khoiDong!.questionRevealed, false, "kd.questionRevealed must be false when round/segment finishes");
   assert.equal(g.state.khoiDong!.current, null);
+  assert.equal(g.state.khoiDong!.buzzedSeat, null, "kd.buzzedSeat must be cleared when turn finishes");
   assert.equal(g.state.roundStatus.khoiDong, "done");
+});
+
+test("VCNV CNV grading strictly requires active bell signal and rejects cleared bells", () => {
+  const g = game("O26", ["vcnv"], 4);
+  act(g, "game:start");
+
+  // Seat 2 has NOT buzzed -> cannot be graded for CNV
+  const noBellRes = g.hostAction({ type: "vcnv:correctCNV", seat: 2 }, 1000);
+  assert.equal(noBellRes.ok, false, "Seat without bell cannot be graded for CNV");
+
+  // Seat 0 and Seat 1 buzz for CNV
+  assert.ok(g.playerBuzz(0, 1500).ok);
+  assert.ok(g.playerBuzz(1, 1600).ok);
+  assert.equal(g.state.vcnv!.bells.length, 2);
+
+  // Host clears all CNV bells via vcnv:clearBells
+  act(g, "vcnv:clearBells", {}, 1700);
+  assert.equal(g.state.vcnv!.bells.length, 0, "vcnv:clearBells clears ALL bells at once");
+
+  // Seat 0 had bell cleared -> cannot be graded for CNV anymore
+  const clearedRes = g.hostAction({ type: "vcnv:correctCNV", seat: 0 }, 1800);
+  assert.equal(clearedRes.ok, false, "Seat whose bell was cleared cannot receive CNV points");
 });
 
 

@@ -18,6 +18,7 @@ import {
   GlossyBlackDomeButton,
   BlueSquareNumberBadge,
   SummaryLowerThirdGraphic,
+  EconovaContestantScoreTabBar,
   EconovaLowerThirdV3,
   VeDichSlantedGridGraphic,
 } from "./Vtv3BroadcastGraphics";
@@ -177,22 +178,19 @@ export default function DisplayScreen({ code }: { code: string }) {
 
   const isLowerThird = !showFullscreen;
   const isOverlayHidden = cameraState.isOverlayHidden;
+  const activeRoundContent = hasActiveRoundContent(state);
+  const isVcnvQuadView =
+    state.stage === "playing" &&
+    !state.banner &&
+    !isOverlayHidden &&
+    !state.summaryState?.active &&
+    activeRoundContent &&
+    state.currentRound === "vcnv" &&
+    Boolean(state.vcnv) &&
+    !state.vcnv?.answersRevealed;
 
   return (
     <div className="fixed inset-0 w-full h-full max-h-full overflow-hidden bg-gradient-to-b from-[#060818] via-[#090d24] to-[#040612] text-white flex flex-col select-none">
-      {/* ── 1. 3D BROADCAST STUDIO (ALWAYS ACTIVE IN BACKGROUND) ── */}
-      <div className="fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
-        <OlympiaStudio3DScene
-          state={state}
-          serverNow={serverNow}
-          activeCamera={cameraState.camAngle}
-          transitionMode={cameraState.transitionMode}
-          pushInProgress={cameraState.pushInProgress}
-          showDirectorBar={false}
-          allowPTZ={false}
-        />
-      </div>
-
       {/* ── 2. BROADCAST SCOREBOARD OVERLAY (Z-50) ── */}
       {state.showScoreboard && (
         <div className="absolute inset-0 z-50 bg-[#0d0820]/95 flex flex-col items-center justify-center p-6 animate-fade-in backdrop-blur-md pointer-events-auto">
@@ -286,6 +284,25 @@ export default function DisplayScreen({ code }: { code: string }) {
 
       {/* ── 5. GAME STAGE LAYERS (Z-20) ── */}
       <div className="flex-1 min-h-0 relative z-20 flex flex-col justify-end overflow-hidden">
+        {/* ── 1. 3D BROADCAST STUDIO (FULLSCREEN OR VCNV BOTTOM-RIGHT QUADRANT WINDOW) ── */}
+        <div
+          className={
+            isVcnvQuadView
+              ? "absolute z-[35] rounded-2xl border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] overflow-hidden pointer-events-none top-[calc(50%+0.375rem)] left-[calc(50%+0.375rem)] right-3 bottom-3 sm:top-[calc(50%+0.5rem)] sm:left-[calc(50%+0.5rem)] sm:right-5 sm:bottom-5 md:top-[calc(50%+0.625rem)] md:left-[calc(50%+0.625rem)] md:right-6 md:bottom-6"
+              : "fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none"
+          }
+        >
+          <OlympiaStudio3DScene
+            state={state}
+            serverNow={serverNow}
+            activeCamera={cameraState.camAngle}
+            transitionMode={cameraState.transitionMode}
+            pushInProgress={cameraState.pushInProgress}
+            showDirectorBar={false}
+            allowPTZ={false}
+          />
+        </div>
+
         {/* Sảnh chờ / Lobby */}
         {state.stage === "lobby" && !state.entranceState?.active && (
           <div className="absolute inset-0 flex items-center justify-center p-4 z-20 pointer-events-auto animate-fade-in">
@@ -305,7 +322,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         )}
 
         {/* In-Game Round Overlays */}
-        {state.stage === "playing" && !state.banner && !isOverlayHidden && !state.summaryState?.active && hasActiveRoundContent(state) && (
+        {state.stage === "playing" && !state.banner && !isOverlayHidden && !state.summaryState?.active && activeRoundContent && (
           isLowerThird ? (
             /* ── LOWER-THIRD BROADCAST OVERLAY (20 - 25% BOTTOM) ── */
             <div className="w-full px-2 sm:px-6 pb-3 pt-1 pointer-events-auto flex flex-col justify-end z-20">
@@ -331,13 +348,6 @@ export default function DisplayScreen({ code }: { code: string }) {
 
         {/* ── 6. SUMMARY LOWER-THIRD / FULLSCREEN GRAPHIC ── */}
         {state.summaryState?.active && <SummaryLowerThirdGraphic state={state} />}
-
-        {/* ── 7. PERSISTENT GLOBAL SCORE STRIP (ALWAYS VISIBLE WHEN NOT IN SUMMARY) ── */}
-        {state.stage !== "lobby" && !isOverlayHidden && !state.summaryState?.active && (
-          <div className="shrink-0 px-2 py-1.5 relative z-40 pointer-events-auto bg-black/60 backdrop-blur-sm border-t border-cyan-500/20">
-            <ScoreStrip state={state} large highlight={highlightSeats(state)} />
-          </div>
-        )}
       </div>
     </div>
   );
@@ -478,157 +488,80 @@ function KhoiDong({ state, serverNow }: P) {
   const kd = state.khoiDong!;
   const seg = kd.segments[kd.segIdx];
   const isSolo = seg.kind === "solo";
-  const seatId = isSolo ? (seg.seat as number) : kd.buzzedSeat;
-  const currentSeat = seatId != null ? state.seats[seatId] : null;
-  const seatColor = (currentSeat && SEAT_COLORS[currentSeat.id]) || "#7c3aed";
 
   const totalQ = seg.questions > 100 ? "" : `/${seg.questions}`;
   const qNum = Math.max(1, kd.qIdx + 1);
+  const questionBadge = `Câu ${qNum}${totalQ}`;
 
   if (!kd.started || kd.phase === "segmentDone" || !kd.questionRevealed || !kd.current) {
     return null;
   }
 
-  const seats = activeSeats(state);
   const currentBuzzedSeat = kd.buzzedSeat;
   const currentSoloSeat = isSolo ? (seg.seat ?? null) : null;
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col justify-between h-full min-h-0 py-2 gap-2">
-      {/* ── SINGLE-LINE TOP BAR: Question number + 4 Contestant Shapes ── */}
-      <div className="flex items-center justify-between gap-1.5 sm:gap-2 shrink-0 w-full">
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span
-            className="px-2 py-0.5 rounded-lg text-xs sm:text-sm font-black whitespace-nowrap shadow-sm"
-            style={{
-              background: "linear-gradient(90deg, rgba(245,158,11,0.25), rgba(239,68,68,0.25))",
-              border: "1px solid rgba(245,158,11,0.45)",
-              color: "#fbbf24",
-            }}
-          >
-            Câu {qNum}{totalQ}
-          </span>
-        </div>
-
-        {/* 4 Contestant Shapes (Tên & Điểm trên cùng 1 hàng duy nhất) */}
-        <div className="flex-1 grid grid-cols-4 gap-1 sm:gap-1.5 min-w-0">
-          {seats.map((s) => {
-            const isBuzzed = currentBuzzedSeat != null && currentBuzzedSeat === s.id;
-            const isSoloTurn = !isBuzzed && currentSoloSeat != null && currentSoloSeat === s.id;
-
-            if (isBuzzed) {
-              return (
-                <div
-                  key={s.id}
-                  className="rounded-xl border px-2.5 py-1 text-center transition-all animate-pulse my-0.5 shadow-[0_0_16px_#f59e0b] flex items-center justify-between min-w-0"
-                  style={{
-                    border: "1.5px solid #facc15",
-                    borderLeft: "4px solid #facc15",
-                    background: "linear-gradient(180deg, rgba(245, 158, 11, 0.45) 0%, rgba(217, 119, 6, 0.25) 100%)",
-                  }}
-                >
-                  <span className="truncate font-black text-[11px] sm:text-xs text-amber-200 flex items-center gap-0.5 leading-normal pt-0.5">
-                    <span>🔔</span>
-                    <span>{s.name}</span>
-                  </span>
-                  <span className="font-black tabular-nums text-xs sm:text-sm text-amber-300 ml-1 leading-normal pt-0.5">
-                    {s.score}
-                  </span>
-                </div>
-              );
-            }
-
-            if (isSoloTurn) {
-              return (
-                <div
-                  key={s.id}
-                  className="rounded-xl border px-2.5 py-1 text-center transition-all flex items-center justify-between min-w-0 my-0.5"
-                  style={{
-                    border: "1.5px solid #00f0ff",
-                    borderLeft: "4px solid #00f0ff",
-                    background: "linear-gradient(180deg, rgba(0, 240, 255, 0.35) 0%, rgba(2, 6, 23, 0.85) 100%)",
-                    boxShadow: "0 0 14px rgba(0, 240, 255, 0.4), inset 0 0 8px rgba(0, 240, 255, 0.2)",
-                  }}
-                >
-                  <span className="truncate font-black text-[11px] sm:text-xs text-cyan-200 leading-normal pt-0.5">
-                    {s.name}
-                  </span>
-                  <span className="font-black tabular-nums text-xs sm:text-sm text-cyan-300 ml-1 leading-normal pt-0.5" style={{ textShadow: "0 0 8px #00f0ff" }}>
-                    {s.score}
-                  </span>
-                </div>
-              );
-            }
-
-            return (
-              <div
-                key={s.id}
-                className="rounded-xl border px-2.5 py-1 text-center transition-all border-cyan-500/25 bg-slate-950/80 flex items-center justify-between min-w-0 shadow-sm my-0.5"
-                style={{ borderLeft: "3px solid #00e5ff" }}
-              >
-                <span className="truncate font-medium text-[11px] sm:text-xs text-slate-200 leading-normal pt-0.5">
-                  {s.name}
-                </span>
-                <span className="font-bold tabular-nums text-xs sm:text-sm text-amber-300 ml-1 leading-normal pt-0.5">
-                  {s.score}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
+    <div className="w-full max-w-6xl mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
       {/* Main question card / Result answer overlay */}
       {kd.phase === "result" && kd.current?.a ? (
-        <div
-          className="w-full shrink-0 rounded-2xl px-6 py-4 flex items-center justify-center gap-3 shadow-2xl backdrop-blur-md"
-          style={{
-            background: "linear-gradient(135deg, rgba(6, 78, 59, 0.95) 0%, rgba(4, 120, 87, 0.9) 100%)",
-            border: "2px solid #10b981",
-            boxShadow: "0 0 30px rgba(16, 185, 129, 0.5)",
-          }}
-        >
-          <span className="text-emerald-300 font-black text-sm sm:text-base uppercase tracking-wider flex items-center gap-2">
-            <span>✔</span>
-            <span>ĐÁP ÁN:</span>
-          </span>
-          <span className="text-white font-black text-lg sm:text-2xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-            {kd.current.a}
-          </span>
+        <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 flex flex-col shadow-[0_14px_40px_rgba(0,0,0,0.85)]">
+          <EconovaContestantScoreTabBar
+            state={state}
+            activeSeatId={currentSoloSeat}
+            buzzedSeatId={currentBuzzedSeat}
+            lockedSeats={kd.lockedSeats}
+            questionNumberBadge={questionBadge}
+          />
+          <div
+            className="w-full shrink-0 px-6 py-4 flex items-center justify-center gap-3 shadow-2xl backdrop-blur-md"
+            style={{
+              background: "linear-gradient(135deg, rgba(6, 78, 59, 0.95) 0%, rgba(4, 120, 87, 0.9) 100%)",
+              border: "2px solid #10b981",
+              boxShadow: "0 0 30px rgba(16, 185, 129, 0.5)",
+            }}
+          >
+            <span className="text-emerald-300 font-black text-sm sm:text-base uppercase tracking-wider flex items-center gap-2">
+              <span>✔</span>
+              <span>ĐÁP ÁN:</span>
+            </span>
+            <span className="text-white font-black text-lg sm:text-2xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+              {kd.current.a}
+            </span>
+          </div>
         </div>
       ) : state.themeMode === "o26_classic" ? (
-        <Vtv3ChalkboardQuestionFrame
-          headerBadge={null}
-          questionText={kd.current?.q}
-          mediaElement={
-            kd.current?.media ? (
-              <MediaView
-                url={kd.current.media}
-                type={kd.current.mediaType}
-                className="max-h-20 sm:max-h-24 rounded-lg mx-auto mt-1"
-              />
-            ) : null
-          }
-          timer={kd.timer}
-          serverNow={serverNow}
-        >
-          {kd.buzzedSeat != null && (
-            <div
-              className="mt-1 inline-flex items-center gap-1.5 px-4 py-1 rounded-xl font-black text-sm text-slate-950 animate-bounce"
-              style={{
-                background: "linear-gradient(90deg,#f59e0b,#ef4444)",
-                boxShadow: "0 0 20px rgba(245,158,11,0.6)",
-              }}
-            >
-              <span>🔔</span>
-              <span>{seatName(state, kd.buzzedSeat)}</span>
-            </div>
-          )}
-        </Vtv3ChalkboardQuestionFrame>
+        <div className="w-full max-w-5xl mx-auto flex flex-col gap-1">
+          <EconovaContestantScoreTabBar
+            state={state}
+            activeSeatId={currentSoloSeat}
+            buzzedSeatId={currentBuzzedSeat}
+            lockedSeats={kd.lockedSeats}
+            questionNumberBadge={questionBadge}
+          />
+          <Vtv3ChalkboardQuestionFrame
+            headerBadge={null}
+            questionText={kd.current?.q}
+            mediaElement={
+              kd.current?.media ? (
+                <MediaView
+                  url={kd.current.media}
+                  type={kd.current.mediaType}
+                  className="max-h-20 sm:max-h-24 rounded-lg mx-auto mt-1"
+                />
+              ) : null
+            }
+            timer={kd.timer}
+            serverNow={serverNow}
+          />
+        </div>
       ) : (
         <EconovaLowerThirdV3
           state={state}
           serverNow={serverNow}
+          activeSeatId={currentSoloSeat}
+          buzzedSeatId={currentBuzzedSeat}
+          lockedSeats={kd.lockedSeats}
+          questionNumberBadge={questionBadge}
           headerBadge={kd.current?.subject ? `${kd.current.subject.toUpperCase()}` : null}
           questionText={kd.current?.q}
           mediaElement={
@@ -641,21 +574,8 @@ function KhoiDong({ state, serverNow }: P) {
             ) : null
           }
           timer={kd.timer}
-          showScoreTab={false}
-        >
-          {kd.buzzedSeat != null && (
-            <div
-              className="mt-1 inline-flex items-center gap-1.5 px-4 py-1 rounded-xl font-black text-sm text-slate-950 animate-bounce"
-              style={{
-                background: "linear-gradient(90deg,#f59e0b,#ef4444)",
-                boxShadow: "0 0 20px rgba(245,158,11,0.6)",
-              }}
-            >
-              <span>🔔</span>
-              <span>{seatName(state, kd.buzzedSeat)}</span>
-            </div>
-          )}
-        </EconovaLowerThirdV3>
+          showScoreTab={true}
+        />
       )}
     </div>
   );
@@ -754,7 +674,8 @@ function VeDich({ state, serverNow }: P) {
           <EconovaLowerThirdV3
             state={state}
             serverNow={serverNow}
-            activeSeatId={vd.steal?.buzzedSeat ?? owner}
+            activeSeatId={owner}
+            buzzedSeatId={vd.steal?.buzzedSeat ?? null}
             headerBadge={`${cur.q.subject || "VỀ ĐÍCH"} · ${cur.points} ĐIỂM${
               vd.hopeStarActive ? " ⭐ NGÔI SAO HY VỌNG" : ""
             }`}
@@ -770,13 +691,7 @@ function VeDich({ state, serverNow }: P) {
             }
             timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer}
             showScoreTab={true}
-          >
-            {vd.phase === "stealing" && (
-              <div className="text-base sm:text-lg font-black text-rose-400 animate-pulse mt-1">
-                🚨 CƯỚP ĐIỂM {vd.steal?.buzzedSeat != null ? `— ${seatName(state, vd.steal.buzzedSeat)}` : ""}
-              </div>
-            )}
-          </EconovaLowerThirdV3>
+          />
         )
       ) : null}
     </div>
@@ -793,17 +708,23 @@ function Chp({ state, serverNow }: P) {
       </div>
       {q && (
         state.themeMode === "o26_classic" ? (
-          <Vtv3ChalkboardQuestionFrame
-            headerBadge="CÂU HỎI PHỤ"
-            questionText={q.q}
-            timer={cp.timer}
-            serverNow={serverNow}
-          />
+          <div className="flex flex-col gap-1">
+            <EconovaContestantScoreTabBar
+              state={state}
+              buzzedSeatId={cp.buzzedSeat}
+            />
+            <Vtv3ChalkboardQuestionFrame
+              headerBadge="CÂU HỎI PHỤ"
+              questionText={q.q}
+              timer={cp.timer}
+              serverNow={serverNow}
+            />
+          </div>
         ) : (
           <EconovaLowerThirdV3
             state={state}
             serverNow={serverNow}
-            activeSeatId={cp.buzzedSeat}
+            buzzedSeatId={cp.buzzedSeat}
             headerBadge="CÂU HỎI PHỤ"
             questionText={q.q}
             timer={cp.timer}
@@ -813,9 +734,6 @@ function Chp({ state, serverNow }: P) {
       )}
       {cp.phase === "result" && q?.a && (
         <div className="text-2xl font-black text-emerald-300 mt-2">✔ Đáp án: {q.a}</div>
-      )}
-      {cp.buzzedSeat != null && (
-        <div className="text-2xl font-black text-amber-300 mt-2">🔔 {seatName(state, cp.buzzedSeat)}</div>
       )}
       {cp.winner != null && (
         <div className="text-3xl font-black text-emerald-300 mt-2">🏆 {seatName(state, cp.winner)}</div>

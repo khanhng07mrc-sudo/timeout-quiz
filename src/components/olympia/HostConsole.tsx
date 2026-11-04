@@ -352,20 +352,36 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
         </div>
       </header>
 
-      {/* Mini Display PIP Modal if enabled */}
+      {/* Floating 16:9 Picture-in-Picture (PiP) Display Preview */}
       {showMiniDisplay && (
-        <div className="bg-slate-900 border-b border-cyan-500/30 p-2 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between text-xs px-2 text-cyan-300 font-bold">
-            <span>📺 Xem trước Màn hình Chiếu (Display Screen)</span>
-            <div className="flex gap-2">
-              <a href={`/olympia/display/${code}`} target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">
+        <div className="fixed bottom-16 right-4 z-40 w-[320px] sm:w-[384px] rounded-xl bg-slate-950/95 border-2 border-cyan-400/60 shadow-[0_12px_40px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between text-[11px] px-2.5 py-1.5 bg-slate-900 border-b border-cyan-500/30 text-cyan-300 font-bold">
+            <span className="truncate">📺 PiP Màn hình Chiếu (16:9)</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href={`/olympia/display/${code}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sky-400 hover:underline"
+              >
                 Mở tab riêng ↗
               </a>
-              <button type="button" onClick={() => setShowMiniDisplay(false)} className="text-slate-400 hover:text-white">✕</button>
+              <button
+                type="button"
+                onClick={() => setShowMiniDisplay(false)}
+                className="text-slate-400 hover:text-white px-1 cursor-pointer"
+                title="Đóng cửa sổ xem trước"
+              >
+                ✕
+              </button>
             </div>
           </div>
-          <div className="w-full aspect-video max-h-[260px] bg-black rounded-lg overflow-hidden border border-white/10">
-            <iframe src={`/olympia/display/${code}?mute=1`} className="w-full h-full border-0" title="Mini Display" />
+          <div className="relative w-[320px] h-[180px] sm:w-[384px] sm:h-[216px] bg-black overflow-hidden">
+            <iframe
+              src={`/olympia/display/${code}?mute=1`}
+              className="w-[1280px] h-[720px] border-0 origin-top-left scale-[0.25] sm:scale-[0.3] pointer-events-none select-none"
+              title="Mini Display"
+            />
           </div>
         </div>
       )}
@@ -1622,14 +1638,21 @@ function KhoiDongDeck({
 // ───────────────────────────────────────────────────────────
 function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; seats: Seat[] }) {
   const v = state.vcnv!;
-  const [selectedCnvSeat, setSelectedCnvSeat] = useState<number>(v.bells?.[0]?.seat ?? 0);
+  const [selectedCnvSeat, setSelectedCnvSeat] = useState<number | null>(v.bells?.[0]?.seat ?? null);
 
-  // Auto-select the fastest CNV bell seat whenever someone buzzes so MC never grades the wrong team
+  // Strictly sync selectedCnvSeat with active v.bells: only contestants with an active CNV bell can be selected
   useEffect(() => {
-    if (v.bells && v.bells.length > 0) {
+    if (!v.bells || v.bells.length === 0) {
+      setSelectedCnvSeat(null);
+    } else if (selectedCnvSeat == null || !v.bells.some((b) => b.seat === selectedCnvSeat)) {
       setSelectedCnvSeat(v.bells[0].seat);
     }
-  }, [v.bells]);
+  }, [v.bells, selectedCnvSeat]);
+
+  const activeCnvSeat =
+    selectedCnvSeat != null && v.bells?.some((b) => b.seat === selectedCnvSeat)
+      ? selectedCnvSeat
+      : (v.bells?.[0]?.seat ?? null);
 
   const kwLen = v.keywordLength ?? (v.keyword ? v.keyword.replace(/\s+/g, "").length : 0);
 
@@ -1890,23 +1913,30 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
           </div>
 
           <div className="space-y-1">
-            <span className="text-[11px] text-slate-400 font-bold">Chọn thí sinh chấm CNV (Mặc định người bấm đầu):</span>
+            <span className="text-[11px] text-slate-400 font-bold">
+              Chọn thí sinh chấm CNV (Chỉ chọn được đội có tín hiệu chuông):
+            </span>
             <div className={`grid gap-1 ${seats.length <= 4 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
               {seats.map((s) => {
                 const bellOrder = v.bells?.findIndex((b) => b.seat === s.id) ?? -1;
                 const buzzed = bellOrder >= 0;
+                const isSelected = buzzed && activeCnvSeat === s.id;
                 return (
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => setSelectedCnvSeat(s.id)}
-                    className={`px-2 py-1 rounded text-xs font-bold border text-left truncate cursor-pointer ${
-                      selectedCnvSeat === s.id
-                        ? "bg-amber-500/30 border-amber-300 text-amber-100 ring-1 ring-amber-400"
+                    disabled={!buzzed}
+                    onClick={() => {
+                      if (buzzed) setSelectedCnvSeat(s.id);
+                    }}
+                    className={`px-2 py-1 rounded text-xs font-bold border text-left truncate transition ${
+                      isSelected
+                        ? "bg-amber-500/35 border-amber-300 text-amber-100 ring-1 ring-amber-400 cursor-pointer"
                         : buzzed
-                        ? "bg-yellow-400/30 border-yellow-400 text-yellow-300 animate-pulse"
-                        : "bg-white/5 border-white/10 text-slate-400"
+                        ? "bg-yellow-400/25 border-yellow-400 text-yellow-200 animate-pulse cursor-pointer hover:bg-yellow-400/35"
+                        : "bg-white/5 border-white/10 text-slate-500 opacity-40 cursor-not-allowed"
                     }`}
+                    title={buzzed ? `Chọn chấm CNV cho ${s.name}` : "Đội này chưa bấm chuông CNV (hoặc đã xóa tín hiệu)"}
                   >
                     TS{s.id + 1} {buzzed ? `🔔#${bellOrder + 1}` : ""}
                   </button>
@@ -1918,17 +1948,31 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
           <div className="grid grid-cols-2 gap-1.5 pt-1">
             <button
               type="button"
-              onClick={() => call("vcnv:correctCNV", { seat: v.bells?.[0]?.seat ?? selectedCnvSeat })}
-              className="py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow cursor-pointer"
-              title="Cộng điểm CNV và mở toàn bộ Chướng ngại vật"
+              disabled={activeCnvSeat == null}
+              onClick={() => {
+                if (activeCnvSeat != null) call("vcnv:correctCNV", { seat: activeCnvSeat });
+              }}
+              className={`py-2 rounded-lg text-white text-xs font-black shadow transition ${
+                activeCnvSeat != null
+                  ? "bg-emerald-600 hover:bg-emerald-500 cursor-pointer"
+                  : "bg-emerald-950/40 text-slate-500 border border-white/10 opacity-50 cursor-not-allowed"
+              }`}
+              title="Cộng điểm CNV cho đội đang chọn và mở toàn bộ Chướng ngại vật"
             >
               ✔ CNV Đúng (+Điểm)
             </button>
             <button
               type="button"
-              onClick={() => call("vcnv:wrongCNV", { seat: v.bells?.[0]?.seat ?? selectedCnvSeat })}
-              className="py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow cursor-pointer"
-              title="Phát âm thanh trả lời sai CNV và xóa chuông người vừa trả lời"
+              disabled={activeCnvSeat == null}
+              onClick={() => {
+                if (activeCnvSeat != null) call("vcnv:wrongCNV", { seat: activeCnvSeat });
+              }}
+              className={`py-2 rounded-lg text-white text-xs font-black shadow transition ${
+                activeCnvSeat != null
+                  ? "bg-rose-600 hover:bg-rose-500 cursor-pointer"
+                  : "bg-rose-950/40 text-slate-500 border border-white/10 opacity-50 cursor-not-allowed"
+              }`}
+              title="Phát âm thanh trả lời sai CNV và xóa chuông đội đang chọn"
             >
               ✘ CNV Sai (Phát âm sai)
             </button>
@@ -1937,8 +1981,14 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
           <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
+              disabled={!v.bells || v.bells.length === 0}
               onClick={() => call("vcnv:clearBells")}
-              className="py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold cursor-pointer"
+              className={`py-1.5 rounded-lg text-xs font-bold transition ${
+                v.bells && v.bells.length > 0
+                  ? "bg-white/10 hover:bg-white/15 text-slate-200 cursor-pointer"
+                  : "bg-white/5 text-slate-600 opacity-50 cursor-not-allowed"
+              }`}
+              title="Xóa toàn bộ tín hiệu chuông CNV hiện tại"
             >
               🔕 Xóa tín hiệu chuông
             </button>

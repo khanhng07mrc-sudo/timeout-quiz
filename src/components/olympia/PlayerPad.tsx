@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { RULESETS } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
 import { useCountdown, useOlympiaSocket, useStableToken } from "./hooks";
@@ -39,7 +39,7 @@ export default function PlayerPad({
   const introRem = useCountdown(state?.introTimer, serverNow);
   void introRem;
 
-  // Tick local clock every 100ms when Khởi Động buzzUnlockAt is active so 2s/5s unlock is instantaneous
+  // Tick local clock every 40ms when Khởi Động buzzUnlockAt is active so 2s/5s unlock is instantaneous
   const [, setUnlockTick] = useState(0);
   useEffect(() => {
     const unlockAt = state?.khoiDong?.buzzUnlockAt;
@@ -47,9 +47,18 @@ export default function PlayerPad({
     const id = setInterval(() => {
       setUnlockTick((t) => t + 1);
       if (serverNow() >= unlockAt) clearInterval(id);
-    }, 100);
+    }, 40);
     return () => clearInterval(id);
   }, [state?.khoiDong?.buzzUnlockAt, serverNow]);
+
+  const triggerBuzz = useCallback(async () => {
+    const res = await emit("buzz");
+    if (!res.ok && res.error?.includes("Chuông chưa mở")) {
+      setTimeout(() => {
+        emit("buzz").catch(() => {});
+      }, 120);
+    }
+  }, [emit]);
 
   const [vcnvTab, setVcnvTab] = useState<"question" | "pieces">("question");
   useEffect(() => {
@@ -103,13 +112,13 @@ export default function PlayerPad({
       if (e.code === "Space") {
         if (canPressMainBuzz()) {
           e.preventDefault();
-          emit("buzz");
+          triggerBuzz();
         }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [canPressMainBuzz, emit]);
+  }, [canPressMainBuzz, triggerBuzz]);
 
   if (kickedMessage) {
     return (
@@ -396,6 +405,7 @@ export default function PlayerPad({
           state={state}
           seatId={me.id}
           emit={emit}
+          triggerBuzz={triggerBuzz}
           serverNow={serverNow}
         />
       </div>
@@ -723,11 +733,13 @@ function InteractionZone({
   state,
   seatId,
   emit,
+  triggerBuzz,
   serverNow,
 }: {
   state: OlympiaState;
   seatId: number;
   emit: Emit;
+  triggerBuzz: () => void;
   serverNow: () => number;
 }) {
   // 1. Bell Test Mode overrides the bottom 30% zone so contestants can test their buzzer anytime
@@ -737,7 +749,7 @@ function InteractionZone({
       <div className="w-full h-full flex items-center justify-center gap-6">
         <CircularBuzzer3D
           enabled={!myLog}
-          onPress={() => emit("buzz")}
+          onPress={triggerBuzz}
           label={myLog ? `ĐÃ THỬ (#${myLog.order})` : "THỬ CHUÔNG"}
           subLabel={myLog ? "Tín hiệu chuông tốt" : "Nhấn hoặc phím Space"}
         />
@@ -816,7 +828,7 @@ function InteractionZone({
       return (
         <CircularBuzzer3D
           enabled={canBuzz}
-          onPress={() => emit("buzz")}
+          onPress={triggerBuzz}
           label={label}
           subLabel={subLabel}
         />
@@ -871,7 +883,15 @@ function InteractionZone({
             <button
               type="button"
               disabled={!canBuzzCnv}
-              onClick={() => emit("buzz")}
+              onPointerDown={(e) => {
+                if (!canBuzzCnv) return;
+                e.preventDefault();
+                triggerBuzz();
+              }}
+              onClick={() => {
+                if (!canBuzzCnv) return;
+                triggerBuzz();
+              }}
               className={`w-28 h-28 sm:w-32 sm:h-32 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider border-4 flex flex-col items-center justify-center gap-1 transition active:scale-95 cursor-pointer shadow-xl ${
                 canBuzzCnv
                   ? "bg-gradient-to-b from-amber-500 via-red-600 to-rose-700 border-amber-300 text-white shadow-[0_0_25px_rgba(239,68,68,0.65)]"
@@ -934,7 +954,7 @@ function InteractionZone({
       return (
         <CircularBuzzer3D
           enabled={canSteal}
-          onPress={() => emit("buzz")}
+          onPress={triggerBuzz}
           label={label}
           subLabel={subLabel}
         />
@@ -951,7 +971,7 @@ function InteractionZone({
       return (
         <CircularBuzzer3D
           enabled={canBuzz}
-          onPress={() => emit("buzz")}
+          onPress={triggerBuzz}
           label={!mine ? "NGOÀI NHÓM CHP" : alreadyBuzzed ? "ĐÃ BẤM CÂU NÀY" : "BẤM CHUÔNG"}
           subLabel={
             cp.buzzedSeat != null
@@ -980,12 +1000,26 @@ function CircularBuzzer3D({
   label: string;
   subLabel?: string;
 }) {
+  const lastFiredRef = useRef<number>(0);
+  const fireOnce = () => {
+    if (!enabled) return;
+    const now = Date.now();
+    if (now - lastFiredRef.current < 300) return;
+    lastFiredRef.current = now;
+    onPress();
+  };
+
   return (
     <div className="flex items-center justify-center gap-4 sm:gap-6">
       <button
         type="button"
         disabled={!enabled}
-        onClick={onPress}
+        onPointerDown={(e) => {
+          if (!enabled) return;
+          e.preventDefault();
+          fireOnce();
+        }}
+        onClick={fireOnce}
         className={`w-32 h-32 sm:w-36 sm:h-36 rounded-full font-black text-xs sm:text-sm uppercase tracking-wider border-4 sm:border-[6px] flex flex-col items-center justify-center gap-1 transition transform active:scale-95 cursor-pointer shrink-0 ${
           enabled
             ? "bg-gradient-to-b from-red-500 via-red-600 to-rose-800 border-amber-300 text-white shadow-[0_0_35px_rgba(239,68,68,0.8),inset_0_4px_12px_rgba(255,255,255,0.4)] animate-pulse"

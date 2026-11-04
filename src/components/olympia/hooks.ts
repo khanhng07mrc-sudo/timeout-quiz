@@ -75,7 +75,7 @@ export function useOlympiaSocket({ code, role, hostKey, name, token, enabled = t
     if (!enabled || !code) return;
     joinedRef.current = false;
     const socket = io("/olympia", {
-      transports: ["polling", "websocket"],
+      transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionDelay: 300,
       reconnectionDelayMax: 1500,

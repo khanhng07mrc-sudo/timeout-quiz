@@ -77654,13 +77654,15 @@ function initSocketServer(httpServer) {
   if (io) return io;
   io = new import_socket.Server(httpServer, {
     cors: {
-      origin: (origin, callback) => {
+      origin: (_origin, callback) => {
         callback(null, true);
       },
       methods: ["GET", "POST"],
       credentials: true
     },
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
+    maxHttpBufferSize: 50 * 1024 * 1024,
+    // 50MB for base64 mystery images & media banks
     pingTimeout: 2e4,
     pingInterval: 1e4,
     perMessageDeflate: false
@@ -105841,7 +105843,7 @@ var OlympiaGame = class _OlympiaGame {
   addScore(id, delta) {
     const s = this.seat(id);
     if (!s) return;
-    s.score += delta;
+    s.score = Math.max(0, s.score + delta);
     this.logMsg(`${s.name || "Gh\u1EBF " + (id + 1)} ${delta >= 0 ? "+" : ""}${delta}`);
   }
   // ── lobby ──
@@ -106092,17 +106094,22 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "vcnv": {
         const v = qs.vcnv;
-        const rows = Array.from({ length: 4 }, (_2, i) => ({
-          hint: v.rows[i]?.hint ?? "",
-          answer: v.rows[i]?.answer ?? "",
-          media: v.rows[i]?.media,
-          mediaType: v.rows[i]?.mediaType,
-          opened: false,
-          wrong: false
-        }));
+        const rows = Array.from({ length: 4 }, (_2, i) => {
+          const ans = v.rows[i]?.answer ?? "";
+          return {
+            hint: v.rows[i]?.hint ?? "",
+            answer: ans,
+            letterCount: v.rows[i]?.letterCount || cleanVcnvWord(ans).length,
+            media: v.rows[i]?.media,
+            mediaType: v.rows[i]?.mediaType,
+            opened: false,
+            wrong: false
+          };
+        });
         st.vcnv = {
           rows,
           keyword: v.answer,
+          keywordLength: cleanVcnvWord(v.answer || "").length,
           mysteryImage: v.mysteryImage,
           centerQuestion: v.centerQuestion,
           centerOpened: false,
@@ -106187,6 +106194,14 @@ var OlympiaGame = class _OlympiaGame {
     const st = this.state;
     if (st.currentRound) st.roundStatus[st.currentRound] = "done";
     st.banner = null;
+    if (st.khoiDong) {
+      st.khoiDong.started = false;
+      st.khoiDong.questionRevealed = false;
+      st.khoiDong.current = null;
+      st.khoiDong.phase = "segmentDone";
+      st.khoiDong.buzzOpen = false;
+      st.khoiDong.buzzUnlockAt = void 0;
+    }
     if (!st.cue?.sound?.includes("finish_turn")) {
       this.cue("", "stop");
     }
@@ -106312,7 +106327,7 @@ var OlympiaGame = class _OlympiaGame {
         const id = num("seat");
         const s = this.seat(id);
         if (!s) return fail("Gh\u1EBF kh\xF4ng h\u1EE3p l\u1EC7");
-        const newScore = Number(a.score);
+        const newScore = Math.max(0, Number(a.score));
         if (Number.isNaN(newScore)) return fail("\u0110i\u1EC3m s\u1ED1 kh\xF4ng h\u1EE3p l\u1EC7");
         const delta = newScore - s.score;
         s.score = newScore;
@@ -106372,6 +106387,31 @@ var OlympiaGame = class _OlympiaGame {
               }
             }
           }
+        }
+        return OK;
+      }
+      case "theme:set": {
+        const t = a.themeMode;
+        if (t === "v3_arrow" || t === "o26_classic") {
+          st.themeMode = t;
+          this.logMsg(`Chuy\u1EC3n theme sang: ${t === "v3_arrow" ? "M\u0169i T\xEAn V3" : "O26 VTV3 C\u1ED5 \u0110i\u1EC3n"}`);
+        }
+        return OK;
+      }
+      case "bell:toggleTest": {
+        st.bellTestMode = !st.bellTestMode;
+        st.bellTestLogs = [];
+        this.logMsg(st.bellTestMode ? "\u{1F514} \u0110\xE3 B\u1EACT ch\u1EBF \u0111\u1ED9 Test Chu\xF4ng" : "\u{1F515} \u0110\xE3 T\u1EAET ch\u1EBF \u0111\u1ED9 Test Chu\xF4ng");
+        return OK;
+      }
+      case "bell:clearTest": {
+        st.bellTestLogs = [];
+        if (st.khoiDong) st.khoiDong.buzzedSeat = null;
+        if (st.vcnv) st.vcnv.bells = [];
+        if (st.veDich?.steal) st.veDich.steal.buzzedSeat = null;
+        if (st.cauHoiPhu) {
+          st.cauHoiPhu.buzzedSeat = null;
+          st.cauHoiPhu.buzzedThisQuestion = [];
         }
         return OK;
       }
@@ -106554,9 +106594,21 @@ var OlympiaGame = class _OlympiaGame {
   // ───────────────────────── KHỞI ĐỘNG ─────────────────────────
   kdPoolQuestion(kd, seg) {
     const set = this.config.questionSet.khoiDong;
-    const attach = (item) => {
-      if (!item) return null;
-      const tagged = tagQAWithAI(item, false);
+    const opened = this.state.openedQuestionKeys || [];
+    const pickUnused = (list, startIdx) => {
+      if (list.length === 0) return { item: null, nextIdx: startIdx };
+      for (let offset = 0; offset < list.length; offset++) {
+        const idx = (startIdx + offset) % list.length;
+        const cand = list[idx];
+        if (cand && cand.q && !opened.includes(cand.q.trim())) {
+          return { item: cand, nextIdx: startIdx + offset + 1 };
+        }
+      }
+      return { item: list[startIdx % list.length] ?? null, nextIdx: startIdx + 1 };
+    };
+    const attach = (item2) => {
+      if (!item2) return null;
+      const tagged = tagQAWithAI(item2, false);
       return {
         ...tagged,
         subject: tagged.subject || KHOI_DONG_SUBJECTS[Math.max(0, kd.qIdx) % KHOI_DONG_SUBJECTS.length]
@@ -106566,27 +106618,31 @@ var OlympiaGame = class _OlympiaGame {
       const seatId = seg.seat;
       if (kd.seatQueues && kd.seatQueues[seatId] && kd.seatQueues[seatId].length > 0) {
         const qList = kd.seatQueues[seatId];
-        return attach(qList[kd.qIdx % qList.length] ?? null);
+        const { item: item3 } = pickUnused(qList, Math.max(0, kd.qIdx));
+        return attach(item3);
       }
       const order = this.activeSeatIds.indexOf(seatId);
       const pool = set.solo[String(order + 1)] ?? set.shared;
-      if (kd.qIdx < pool.length) return attach(pool[kd.qIdx] ?? null);
+      if (kd.qIdx < pool.length) {
+        const { item: item3 } = pickUnused(pool, Math.max(0, kd.qIdx));
+        if (item3) return attach(item3);
+      }
       const flatSolo = [...set.shared, ...Object.values(set.solo).flat()];
       if (flatSolo.length === 0) return null;
-      const item = flatSolo[kd.poolCursor % flatSolo.length];
-      kd.poolCursor += 1;
-      return attach(item);
+      const { item: item2, nextIdx: nextIdx2 } = pickUnused(flatSolo, kd.poolCursor);
+      kd.poolCursor = nextIdx2;
+      return attach(item2);
     }
     if (kd.sharedQueue && kd.sharedQueue.length > 0) {
-      const q2 = kd.sharedQueue[kd.poolCursor % kd.sharedQueue.length];
-      kd.poolCursor += 1;
-      return attach(q2);
+      const { item: item2, nextIdx: nextIdx2 } = pickUnused(kd.sharedQueue, kd.poolCursor);
+      kd.poolCursor = nextIdx2;
+      return attach(item2);
     }
     const flat = [...set.shared, ...Object.values(set.solo).flat()];
     if (flat.length === 0) return null;
-    const q = flat[kd.poolCursor % flat.length];
-    kd.poolCursor += 1;
-    return attach(q);
+    const { item, nextIdx } = pickUnused(flat, kd.poolCursor);
+    kd.poolCursor = nextIdx;
+    return attach(item);
   }
   kdAction(type, a, now) {
     const st = this.state;
@@ -106637,7 +106693,10 @@ var OlympiaGame = class _OlympiaGame {
         const isLastQ = kd.qIdx >= (seg.questions || 6) - 1;
         if (kd.started && kd.phase !== "intro" && (isTimeUp || isLastQ)) {
           kd.phase = "segmentDone";
+          kd.started = false;
+          kd.questionRevealed = false;
           kd.current = null;
+          kd.buzzedSeat = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = void 0;
           this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
@@ -106699,6 +106758,8 @@ var OlympiaGame = class _OlympiaGame {
         kd.qIdx += 1;
         if (kd.qIdx >= seg.questions) {
           kd.phase = "segmentDone";
+          kd.started = false;
+          kd.questionRevealed = false;
           kd.current = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = void 0;
@@ -106708,6 +106769,8 @@ var OlympiaGame = class _OlympiaGame {
         const q = this.kdPoolQuestion(kd, seg);
         if (!q) {
           kd.phase = "segmentDone";
+          kd.started = false;
+          kd.questionRevealed = false;
           kd.current = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = void 0;
@@ -107317,8 +107380,9 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "vcnv:correctCNV": {
-        const seat = Number(a.seat);
+        const seat = a.seat != null ? Number(a.seat) : v.bells[0]?.seat ?? -1;
         if (!this.seat(seat)) return fail("Ch\u1ECDn th\xED sinh");
+        v.eliminatedSeats = v.eliminatedSeats.filter((id) => id !== seat);
         const pts = cnvPointsFor(rs, v.openedCount, Boolean(v.centerOpened));
         this.addScore(seat, pts);
         v.solvedBy = seat;
@@ -107360,24 +107424,45 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "vcnv:wrongCNV": {
+        const seat = a.seat != null ? Number(a.seat) : v.bells[0]?.seat ?? -1;
+        if (this.seat(seat)) {
+          if (!v.eliminatedSeats.includes(seat)) v.eliminatedSeats.push(seat);
+          v.bells = v.bells.filter((b) => b.seat !== seat);
+          this.pushTranscript({
+            at: now,
+            round: "vcnv",
+            roundLabel: ROUND_LABELS.vcnv,
+            segmentLabel: "B\u1EA5m chu\xF4ng gi\u1EA3i Ch\u01B0\u1EDBng Ng\u1EA1i V\u1EADt (Sai)",
+            entryKind: "cnv_bell",
+            questionText: "T\u1EEB kh\xF3a Ch\u01B0\u1EDBng ng\u1EA1i v\u1EADt",
+            correctAnswer: v.keyword,
+            actorSeat: seat,
+            actorName: this.seatName(seat),
+            buzzerEvents: [{ order: 1, seat, name: this.seatName(seat), verdict: "wrong" }],
+            verdict: "wrong",
+            note: `${this.seatName(seat)} tr\u1EA3 l\u1EDDi sai CNV v\xE0 d\u1EEBng quy\u1EC1n ch\u01A1i VCNV.`
+          });
+        }
+        this.cue("2_VuotChuongNgaiVat/cnv_wrong");
+        return OK;
+      }
+      case "vcnv:toggleLockSeat": {
         const seat = Number(a.seat);
         if (!this.seat(seat)) return fail("Ch\u1ECDn th\xED sinh");
-        if (!v.eliminatedSeats.includes(seat)) v.eliminatedSeats.push(seat);
-        this.pushTranscript({
-          at: now,
-          round: "vcnv",
-          roundLabel: ROUND_LABELS.vcnv,
-          segmentLabel: "B\u1EA5m chu\xF4ng gi\u1EA3i Ch\u01B0\u1EDBng Ng\u1EA1i V\u1EADt (Sai)",
-          entryKind: "cnv_bell",
-          questionText: "T\u1EEB kh\xF3a Ch\u01B0\u1EDBng ng\u1EA1i v\u1EADt",
-          correctAnswer: v.keyword,
-          actorSeat: seat,
-          actorName: this.seatName(seat),
-          buzzerEvents: [{ order: 1, seat, name: this.seatName(seat), verdict: "wrong" }],
-          verdict: "wrong",
-          note: `${this.seatName(seat)} tr\u1EA3 l\u1EDDi sai CNV v\xE0 d\u1EEBng quy\u1EC1n ch\u01A1i VCNV.`
-        });
-        this.cue("2_VuotChuongNgaiVat/cnv_wrong");
+        if (v.eliminatedSeats.includes(seat)) {
+          v.eliminatedSeats = v.eliminatedSeats.filter((id) => id !== seat);
+          v.bells = v.bells.filter((b) => b.seat !== seat);
+          this.logMsg(`\u{1F513} \u0110\xE3 m\u1EDF l\u1EA1i quy\u1EC1n ch\u01A1i VCNV cho ${this.seatName(seat)}`);
+        } else {
+          v.eliminatedSeats.push(seat);
+          this.logMsg(`\u{1F512} \u0110\xE3 kh\xF3a quy\u1EC1n ch\u01A1i VCNV c\u1EE7a ${this.seatName(seat)}`);
+        }
+        return OK;
+      }
+      case "vcnv:unlockAllSeats": {
+        v.eliminatedSeats = [];
+        v.bells = [];
+        this.logMsg("\u{1F513} \u0110\xE3 m\u1EDF l\u1EA1i quy\u1EC1n ch\u01A1i VCNV cho t\u1EA5t c\u1EA3 th\xED sinh");
         return OK;
       }
       case "vcnv:revealAll": {
@@ -107656,6 +107741,12 @@ var OlympiaGame = class _OlympiaGame {
         const ans = t.answer || t.a;
         if (ans) usedSet.add(`ans:${norm(ans)}`);
       }
+      if (this.state.openedQuestionKeys) {
+        for (const k of this.state.openedQuestionKeys) {
+          usedSet.add(k);
+          usedSet.add(norm(k));
+        }
+      }
       const pkg = pickBalancedVeDichPackage(qs.veDich, points, usedSet, vd.turnIdx);
       vd.usedKeys = [...usedSet];
       return pkg;
@@ -107760,6 +107851,10 @@ var OlympiaGame = class _OlympiaGame {
       case "vd:finishTurn": {
         vd.onStage = false;
         vd.phase = "seatDone";
+        vd.hopeStarActive = false;
+        vd.deductedOnSteal = false;
+        vd.lastVerdict = null;
+        vd.steal = null;
         this.cue("4_VeDich/finish_turn");
         return OK;
       }
@@ -107785,6 +107880,10 @@ var OlympiaGame = class _OlympiaGame {
         vd.phase = vd.packages[vd.order[idx]] ? "packageReady" : "choosing";
         vd.qIdx = -1;
         vd.current = null;
+        vd.hopeStarActive = false;
+        vd.deductedOnSteal = false;
+        vd.lastVerdict = null;
+        vd.steal = null;
         this.cue("4_VeDich/on_stage");
         return OK;
       }
@@ -107923,7 +108022,21 @@ var OlympiaGame = class _OlympiaGame {
         startTimer(t, now);
         vd.steal = { timer: t, open: true, buzzedSeat: null };
         vd.phase = "stealing";
+        vd.lastVerdict = null;
         this.cue("4_VeDich/5s_steal", "bgm");
+        return OK;
+      }
+      case "vd:closeSteal": {
+        if (!cur) return fail("Kh\xF4ng c\xF3 c\xE2u h\u1ECFi");
+        if (vd.steal) {
+          pauseTimer(vd.steal.timer, now);
+          vd.steal.timer.remainingMs = 0;
+          vd.steal.open = false;
+        }
+        vd.phase = "result";
+        vd.lastVerdict = "noSteal";
+        vd.hopeStarActive = false;
+        this.cue("4_VeDich/wrong");
         return OK;
       }
       case "vd:correctSteal": {
@@ -108017,6 +108130,9 @@ var OlympiaGame = class _OlympiaGame {
         vd.qIdx = -1;
         vd.current = null;
         vd.steal = null;
+        vd.hopeStarActive = false;
+        vd.deductedOnSteal = false;
+        vd.lastVerdict = null;
         if (vd.turnIdx >= vd.order.length) {
           this.finishRound(now);
           return OK;
@@ -108187,12 +108303,32 @@ var OlympiaGame = class _OlympiaGame {
   playerBuzz(seatId, now) {
     const st = this.state;
     if (!this.seat(seatId)?.name) return fail("Gh\u1EBF tr\u1ED1ng");
+    if (st.bellTestMode) {
+      if (!st.bellTestLogs) st.bellTestLogs = [];
+      if (!st.bellTestLogs.some((b) => b.seat === seatId)) {
+        st.bellTestLogs.push({ seat: seatId, at: now, order: st.bellTestLogs.length + 1 });
+      }
+      const soundMap = {
+        khoiDong: "1_KhoiDong/bell_ring",
+        vcnv: "2_VuotChuongNgaiVat/bell_ring",
+        veDich: "4_VeDich/bell_ring",
+        cauHoiPhu: "5_CauHoiPhu/bell_ring"
+      };
+      this.cue(soundMap[st.currentRound || "khoiDong"] || "1_KhoiDong/bell_ring");
+      this.touch(now);
+      return OK;
+    }
     if (st.stage !== "playing") return fail("Ch\u01B0a trong tr\u1EADn");
     switch (st.currentRound) {
       case "khoiDong": {
         const kd = st.khoiDong;
-        if (!kd || kd.phase !== "question" || !kd.buzzOpen) return fail("Chu\xF4ng ch\u01B0a m\u1EDF");
+        if (!kd || kd.phase !== "question") return fail("Chu\xF4ng ch\u01B0a m\u1EDF");
         if (kd.segments[kd.segIdx].kind === "solo") return fail("Kh\u1EDFi \u0111\u1ED9ng ri\xEAng kh\xF4ng c\xF3 chu\xF4ng");
+        if (kd.buzzUnlockAt && now >= kd.buzzUnlockAt && !kd.buzzOpen && kd.buzzedSeat == null) {
+          kd.buzzOpen = true;
+          kd.buzzUnlockAt = void 0;
+        }
+        if (!kd.buzzOpen) return fail("Chu\xF4ng ch\u01B0a m\u1EDF");
         if (kd.lockedSeats.includes(seatId)) return fail("B\u1EA1n b\u1ECB kh\xF3a chu\xF4ng c\xE2u n\xE0y");
         if (kd.buzzedSeat != null) return fail("\u0110\xE3 c\xF3 ng\u01B0\u1EDDi b\u1EA5m");
         kd.buzzedSeat = seatId;
@@ -108207,6 +108343,9 @@ var OlympiaGame = class _OlympiaGame {
         if (v.eliminatedSeats.includes(seatId)) return fail("B\u1EA1n \u0111\xE3 b\u1ECB lo\u1EA1i kh\u1ECFi l\u01B0\u1EE3t \u0111o\xE1n CNV");
         if (v.bells.some((b) => b.seat === seatId)) return fail("B\u1EA1n \u0111\xE3 b\u1EA5m chu\xF4ng");
         v.bells.push({ seat: seatId, before: !v.answersRevealed });
+        if (!v.eliminatedSeats.includes(seatId)) {
+          v.eliminatedSeats.push(seatId);
+        }
         this.cue("2_VuotChuongNgaiVat/bell_ring");
         break;
       }
@@ -108297,13 +108436,15 @@ var OlympiaGame = class _OlympiaGame {
     const st = this.state;
     if (st.vcnv) {
       st.vcnv.keyword = qs.vcnv.answer;
+      st.vcnv.keywordLength = cleanVcnvWord(qs.vcnv.answer || "").length;
       st.vcnv.mysteryImage = qs.vcnv.mysteryImage;
       st.vcnv.centerQuestion = qs.vcnv.centerQuestion;
       st.vcnv.rows.forEach((r, i) => {
         if (!r.opened) {
+          const rowAns = qs.vcnv.rows[i]?.answer ?? r.answer;
           r.hint = qs.vcnv.rows[i]?.hint ?? r.hint;
-          r.answer = qs.vcnv.rows[i]?.answer ?? r.answer;
-          r.letterCount = qs.vcnv.rows[i]?.letterCount ?? r.letterCount;
+          r.answer = rowAns;
+          r.letterCount = qs.vcnv.rows[i]?.letterCount || cleanVcnvWord(rowAns).length || r.letterCount;
         }
       });
     }
@@ -108318,6 +108459,15 @@ var OlympiaGame = class _OlympiaGame {
   view(role, seatId) {
     const s = JSON.parse(JSON.stringify(this.state));
     s.now = Date.now();
+    if (s.vcnv) {
+      s.vcnv.keywordLength = s.vcnv.keywordLength || cleanVcnvWord(this.state.vcnv?.keyword || s.vcnv.keyword || "").length;
+      s.vcnv.rows.forEach((r, i) => {
+        if (!r.letterCount) {
+          const origAns = this.state.vcnv?.rows[i]?.answer || r.answer || "";
+          r.letterCount = cleanVcnvWord(origAns).length;
+        }
+      });
+    }
     if (role === "host") return s;
     const keepSelf = (rec) => {
       if (role !== "player" || seatId == null) return {};
@@ -108533,12 +108683,17 @@ function registerOlympiaSocket(io2) {
     const entry = games.get(code);
     if (!entry) return;
     const g = entry.game;
-    const hostView = g.view("host");
-    const displayView = g.view("display");
-    nsp.to(`olympia:${code}:host`).emit("state", hostView);
-    nsp.to(`olympia:${code}:display`).emit("state", displayView);
+    const rooms = nsp.adapter.rooms;
+    if ((rooms.get(`olympia:${code}:host`)?.size ?? 0) > 0) {
+      nsp.to(`olympia:${code}:host`).emit("state", g.view("host"));
+    }
+    if ((rooms.get(`olympia:${code}:display`)?.size ?? 0) > 0) {
+      nsp.to(`olympia:${code}:display`).emit("state", g.view("display"));
+    }
     for (let s = 0; s < 8; s++) {
-      nsp.to(`olympia:${code}:player:${s}`).emit("state", g.view("player", s));
+      if ((rooms.get(`olympia:${code}:player:${s}`)?.size ?? 0) > 0) {
+        nsp.to(`olympia:${code}:player:${s}`).emit("state", g.view("player", s));
+      }
     }
     scheduleSave(entry);
   }
@@ -108586,15 +108741,20 @@ function registerOlympiaSocket(io2) {
           if (role === "display") await socket.join(`olympia:${code}:display`);
           if (role === "player" && seatId != null) await socket.join(`olympia:${code}:player:${seatId}`);
           entry.game.touch(Date.now());
+          const initialView = entry.game.view(role, seatId);
           ack?.({
             ok: true,
             seatId,
             role,
             rulesetId: entry.game.state.rulesetId,
             audioSeason: entry.game.ruleset.audioSeason,
-            rounds: entry.game.state.rounds
+            rounds: entry.game.state.rounds,
+            state: initialView
           });
-          broadcast(code);
+          socket.emit("state", initialView);
+          if (role === "player") {
+            broadcast(code);
+          }
         } catch (e) {
           console.error("[Olympia] join error", e);
           ack?.({ ok: false, error: "L\u1ED7i m\xE1y ch\u1EE7" });

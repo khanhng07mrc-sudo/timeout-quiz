@@ -1604,6 +1604,7 @@ export function EconovaLowerThirdV3({
   overlayMode = "LOWER_THIRD",
   extraTopBanner,
   showScoreTab = true,
+  runAnim = true,
   children,
 }: {
   state: OlympiaState;
@@ -1622,6 +1623,7 @@ export function EconovaLowerThirdV3({
   overlayMode?: "LOWER_THIRD" | "FULLSCREEN";
   extraTopBanner?: React.ReactNode;
   showScoreTab?: boolean;
+  runAnim?: boolean;
   children?: React.ReactNode;
 }) {
   const fillRef = useRef<HTMLDivElement>(null);
@@ -1652,8 +1654,8 @@ export function EconovaLowerThirdV3({
         fillRef.current.style.width = `${pct}%`;
         fillRef.current.style.background =
           pct <= 25
-            ? "linear-gradient(90deg, #dc2626, #f59e0b)"
-            : "linear-gradient(90deg, #1fd1ff, #2ee6ff)";
+            ? "linear-gradient(90deg, #dc2626, #ef4444)"
+            : "linear-gradient(90deg, #b02a45, #ef4444)";
       }
 
       if (rem > 0) {
@@ -1694,216 +1696,292 @@ export function EconovaLowerThirdV3({
     >
       {/* ── Keyframes Style for Authentic Econova V3 Animations ── */}
       <style>{`
-        @keyframes econovaBoxOpen {
-          0% { opacity: 0; transform: scaleY(0.7); }
-          30% { opacity: 1; transform: scaleY(1); }
-          100% { opacity: 1; transform: scaleY(1); }
+        .v3-root-box {
+          --target-w: min(1200px, 94vw);
+          --box-height: 180px;
         }
-        @keyframes flyLeftCluster {
-          0% { transform: translateX(200px); opacity: 0; }
-          40% { transform: translateX(0); opacity: 1; }
-          100% { transform: translateX(0); opacity: 1; }
+        @media (min-width: 640px) {
+          .v3-root-box {
+            --box-height: 195px;
+          }
         }
-        @keyframes flyRightCluster {
-          0% { transform: translateX(-200px); opacity: 0; }
-          40% { transform: translateX(0); opacity: 1; }
-          100% { transform: translateX(0); opacity: 1; }
+        @media (min-width: 1024px) {
+          .v3-root-box {
+            --box-height: 205px;
+          }
         }
-        @keyframes whipL1_left {
-          0%, 40% { transform: translateX(0); }
-          60% { transform: translateX(-90px); }
-          100% { transform: translateX(0); }
+
+        /* RIGHT ARROWS (Pointing >) WITH ZOOM IN FROM 0.1 */
+        @keyframes right-cyan-g1 {
+          0%  { transform: translateX(-50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+          1%  { opacity: 0.3; }
+          25% { transform: translateX(31.5px) scale(1); opacity: 0.3; animation-timing-function: linear; }
+          35% { transform: translateX(31.5px) scale(1); opacity: 0.3; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+          100%{ transform: translateX(calc(var(--target-w)/2 + 11.5px)) scale(1); opacity: 0.3; }
         }
-        @keyframes whipL2_left {
-          0%, 40% { transform: translateX(0); }
-          65% { transform: translateX(-45px); }
-          100% { transform: translateX(0); }
+        @keyframes right-cyan-g2 {
+          0%  { transform: translateX(-50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+          5.1%   { opacity: 0.65; }
+          30% { transform: translateX(31.5px) scale(1); opacity: 0.65; animation-timing-function: linear; }
+          40% { transform: translateX(31.5px) scale(1); opacity: 0.65; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+          100%{ transform: translateX(calc(var(--target-w)/2 + 11.5px)) scale(1); opacity: 0.65; }
         }
-        @keyframes whipL1_right {
-          0%, 40% { transform: translateX(0); }
-          60% { transform: translateX(90px); }
-          100% { transform: translateX(0); }
+        @keyframes right-cyan-l3 {
+          0%  { transform: translateX(-50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+          10.1%   { opacity: 1; }
+          35% { transform: translateX(31.5px) scale(1); opacity: 1; animation-timing-function: linear; }
+          45% { transform: translateX(31.5px) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+          100%{ transform: translateX(calc(var(--target-w)/2 + 11.5px)) scale(1); opacity: 1; }
         }
-        @keyframes whipL2_right {
-          0%, 40% { transform: translateX(0); }
-          65% { transform: translateX(45px); }
-          100% { transform: translateX(0); }
+        @keyframes right-navy {
+          0%  { transform: translateX(-50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+          10.1%   { opacity: 1; }
+          35% { transform: translateX(2px) scale(1); opacity: 1; animation-timing-function: linear; }
+          45% { transform: translateX(2px) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+          100%{ transform: translateX(calc(var(--target-w)/2 - 18px)) scale(1); opacity: 1; }
         }
+
+        /* LEFT ARROWS (Pointing <) */
+        @keyframes left-cyan-g1 {
+          0%  { transform: translateX(50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+          1%  { opacity: 0.3; }
+          25% { transform: translateX(-31.5px) scale(1); opacity: 0.3; animation-timing-function: linear; }
+          35% { transform: translateX(-31.5px) scale(1); opacity: 0.3; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+          100%{ transform: translateX(calc(var(--target-w)/-2 - 11.5px)) scale(1); opacity: 0.3; }
+        }
+        @keyframes left-cyan-g2 {
+          0%  { transform: translateX(50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+          5.1%   { opacity: 0.65; }
+          30% { transform: translateX(-31.5px) scale(1); opacity: 0.65; animation-timing-function: linear; }
+          40% { transform: translateX(-31.5px) scale(1); opacity: 0.65; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+          100%{ transform: translateX(calc(var(--target-w)/-2 - 11.5px)) scale(1); opacity: 0.65; }
+        }
+        @keyframes left-cyan-l3 {
+          0%  { transform: translateX(50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+          10.1%   { opacity: 1; }
+          35% { transform: translateX(-31.5px) scale(1); opacity: 1; animation-timing-function: linear; }
+          45% { transform: translateX(-31.5px) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+          100%{ transform: translateX(calc(var(--target-w)/-2 - 11.5px)) scale(1); opacity: 1; }
+        }
+        @keyframes left-navy {
+          0%  { transform: translateX(50vw) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+          10.1%   { opacity: 1; }
+          35% { transform: translateX(-2px) scale(1); opacity: 1; animation-timing-function: linear; }
+          45% { transform: translateX(-2px) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+          100%{ transform: translateX(calc(var(--target-w)/-2 + 18px)) scale(1); opacity: 1; }
+        }
+
+        /* CENTER BOX EXPANSION */
+        @keyframes center-expand-full {
+          0%, 44.9% { width: 90px; opacity: 0; }
+          45%       { width: 90px; opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+          100%      { width: var(--target-w); opacity: 1; }
+        }
+
+        /* QUESTION CONTENT FADE IN AT 70% OF TIMELINE */
+        @keyframes content-fade {
+          0%, 70% { opacity: 0; }
+          100%    { opacity: 1; }
+        }
+
+        /* ANIMATED TRIGGER CLASSES */
+        .v3-run-anim .v3-right-navy   { animation: right-navy 2.5s forwards; }
+        .v3-run-anim .v3-right-cyan-l3{ animation: right-cyan-l3 2.5s forwards; }
+        .v3-run-anim .v3-right-cyan-g2{ animation: right-cyan-g2 2.5s forwards; }
+        .v3-run-anim .v3-right-cyan-g1{ animation: right-cyan-g1 2.5s forwards; }
+
+        .v3-run-anim .v3-left-navy    { animation: left-navy 2.5s forwards; }
+        .v3-run-anim .v3-left-cyan-l3 { animation: left-cyan-l3 2.5s forwards; }
+        .v3-run-anim .v3-left-cyan-g2 { animation: left-cyan-g2 2.5s forwards; }
+        .v3-run-anim .v3-left-cyan-g1 { animation: left-cyan-g1 2.5s forwards; }
+
+        .v3-run-anim .v3-center-box   { animation: center-expand-full 2.5s forwards; }
+        .v3-run-anim .v3-content-wrap { animation: content-fade 2.5s forwards; }
+
+        /* STATIC FINAL POSITIONS (WHEN NOT RUNNING ANIMATION) */
+        .v3-static .v3-right-navy   { transform: translateX(calc(var(--target-w)/2 - 18px)) scale(1); opacity: 1; }
+        .v3-static .v3-right-cyan-l3{ transform: translateX(calc(var(--target-w)/2 + 11.5px)) scale(1); opacity: 1; }
+        .v3-static .v3-right-cyan-g2{ transform: translateX(calc(var(--target-w)/2 + 11.5px)) scale(1); opacity: 0.65; }
+        .v3-static .v3-right-cyan-g1{ transform: translateX(calc(var(--target-w)/2 + 11.5px)) scale(1); opacity: 0.3; }
+
+        .v3-static .v3-left-navy    { transform: translateX(calc(var(--target-w)/-2 + 18px)) scale(1); opacity: 1; }
+        .v3-static .v3-left-cyan-l3 { transform: translateX(calc(var(--target-w)/-2 - 11.5px)) scale(1); opacity: 1; }
+        .v3-static .v3-left-cyan-g2 { transform: translateX(calc(var(--target-w)/-2 - 11.5px)) scale(1); opacity: 0.65; }
+        .v3-static .v3-left-cyan-g1 { transform: translateX(calc(var(--target-w)/-2 - 11.5px)) scale(1); opacity: 0.3; }
+
+        .v3-static .v3-center-box   { width: var(--target-w); opacity: 1; }
+        .v3-static .v3-content-wrap { opacity: 1; }
       `}</style>
 
       {extraTopBanner && <div className="mb-2 w-full max-w-5xl mx-auto">{extraTopBanner}</div>}
 
-      {/* ── MAIN LOWER-THIRD V3 CONTAINER ── */}
-      <div className="relative flex flex-row items-stretch justify-center w-full max-w-[1280px] mx-auto min-h-[125px] sm:min-h-[145px] shadow-[0_16px_50px_rgba(0,0,0,0.85)]">
-        {/* ── LEFT ARROW CLUSTER (3 LAYERS L1, L2, L3) ── */}
-        <div
-          className="relative w-[70px] sm:w-[130px] md:w-[170px] shrink-0 overflow-visible pointer-events-none select-none"
-          style={{ animation: "flyLeftCluster 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}
-        >
-          {/* Layer L1 (Outer Whip) */}
-          <svg
-            className="absolute top-0 left-0 w-full h-full"
-            viewBox="0 0 220 150"
-            preserveAspectRatio="none"
-            style={{
-              zIndex: 1,
-              opacity: 0.35,
-              animation: "whipL1_left 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-            }}
-          >
-            <polygon points="0,75 100,0 220,0 220,150 100,150" fill="#0d2c54" />
-            <polygon points="40,75 118,18.75 220,18.75 220,131.25 118,131.25" fill="#2ee6ff" />
+      {/* ── MAIN LOWER-THIRD V3 CONTAINER (FAITHFUL TO ECONOVA V3 & OLYMPIA 26) ── */}
+      <div
+        className={`v3-root-box relative w-full h-[180px] sm:h-[195px] lg:h-[205px] mx-auto select-none overflow-visible ${
+          runAnim ? "v3-run-anim" : "v3-static"
+        }`}
+      >
+        {/* ── LEFT CHEVRON ARROWS CLUSTER (Docking at Left Edge) ── */}
+        <div className="arrow-cyan ghost-l1 v3-left-cyan-g1" style={{ position: "absolute", left: "50%", width: 33, height: "75%", top: "12.5%", zIndex: 1, pointerEvents: "none" }}>
+          <svg viewBox="0 0 32 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+            <polygon points="13.5,0 32,0 18.5,50 32,100 13.5,100 0,50" fill="#00cfff" />
           </svg>
-          {/* Layer L2 (Mid Whip) */}
-          <svg
-            className="absolute top-0 left-0 w-full h-full"
-            viewBox="0 0 220 150"
-            preserveAspectRatio="none"
-            style={{
-              zIndex: 2,
-              opacity: 0.65,
-              animation: "whipL2_left 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-            }}
-          >
-            <polygon points="0,75 100,0 220,0 220,150 100,150" fill="#0d2c54" />
-            <polygon points="40,75 118,18.75 220,18.75 220,131.25 118,131.25" fill="#2ee6ff" />
+        </div>
+        <div className="arrow-cyan ghost-l2 v3-left-cyan-g2" style={{ position: "absolute", left: "50%", width: 33, height: "75%", top: "12.5%", zIndex: 2, pointerEvents: "none" }}>
+          <svg viewBox="0 0 32 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+            <polygon points="13.5,0 32,0 18.5,50 32,100 13.5,100 0,50" fill="#00cfff" />
           </svg>
-          {/* Layer L3 (Solid Foreground) */}
-          <svg
-            className="absolute top-0 left-0 w-full h-full"
-            viewBox="0 0 220 150"
-            preserveAspectRatio="none"
-            style={{ zIndex: 3, opacity: 1.0 }}
-          >
-            <polygon points="0,75 100,0 220,0 220,150 100,150" fill="#0d2c54" />
-            <polygon points="40,75 118,18.75 220,18.75 220,131.25 118,131.25" fill="#2ee6ff" />
+        </div>
+        <div className="arrow-cyan l3 v3-left-cyan-l3" style={{ position: "absolute", left: "50%", width: 33, height: "75%", top: "12.5%", zIndex: 3, pointerEvents: "none" }}>
+          <svg viewBox="0 0 32 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+            <polygon points="13.5,0 32,0 18.5,50 32,100 13.5,100 0,50" fill="#00cfff" />
+          </svg>
+        </div>
+        <div className="arrow-navy v3-left-navy" style={{ position: "absolute", left: "50%", width: 44, height: "100%", top: 0, zIndex: 6, pointerEvents: "none" }}>
+          <svg viewBox="0 0 43 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+            <polygon points="18,0 43,0 25,50 43,100 18,100 0,50" fill="#05164d" stroke="#d1d5db" strokeWidth="3" vectorEffect="non-scaling-stroke" />
           </svg>
         </div>
 
-        {/* ── CENTER QUESTION BOX ── */}
+        {/* ── CENTER EXPANDING QUESTION BOX ── */}
         <div
-          className="flex-1 min-w-0 bg-[#0d2c54] flex flex-col justify-between relative z-10 border-y-2 border-cyan-400/50"
-          style={{ animation: "econovaBoxOpen 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}
+          className="v3-center-box absolute top-0 left-1/2 -translate-x-1/2 h-full z-10 shadow-[0_16px_50px_rgba(0,0,0,0.85)] overflow-hidden"
+          style={{
+            clipPath: "polygon(18px 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 18px 100%, 0 50%)",
+            borderTop: "3px solid #d1d5db",
+            borderBottom: "3px solid #d1d5db",
+            background: "linear-gradient(180deg, #0a226b 0%, #05164d 45%, #030d30 100%)",
+          }}
         >
-          {/* Top Scoreboard Strip with Contestant Tabs */}
-          {showScoreTab && (
-            <EconovaContestantScoreTabBar
-              state={state}
-              activeSeatId={activeSeatId}
-              buzzedSeatId={buzzedSeatId}
-              lockedSeats={lockedSeats}
-              questionNumberBadge={questionNumberBadge}
-            />
-          )}
+          {/* Specular glass reflection */}
+          <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 via-white/5 to-transparent pointer-events-none z-10" />
 
-          {/* Center Area: Question Text + Slanted Divider + Score/Category Block */}
-          <div className="flex-1 flex flex-row items-center justify-between px-3 sm:px-6 py-2 min-h-0">
-            {/* Question Body */}
-            <div className="flex-1 min-w-0 pr-2 sm:pr-4 flex flex-col justify-center">
-              {hopeStarActive && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-300 text-amber-300 text-[10px] sm:text-xs font-black uppercase tracking-wider w-fit mb-1 animate-pulse">
-                  <span>⭐</span>
-                  <span>Ngôi Sao Hy Vọng</span>
-                </div>
+          {/* Center Content Wrapper */}
+          <div className="v3-content-wrap w-full h-full flex flex-row items-stretch relative z-10">
+            {/* Left Column */}
+            <div className="flex-1 flex flex-col min-w-0 relative justify-between">
+              {/* Contestant Score Tab Bar */}
+              {showScoreTab && (
+                <EconovaContestantScoreTabBar
+                  state={state}
+                  activeSeatId={activeSeatId}
+                  buzzedSeatId={buzzedSeatId}
+                  lockedSeats={lockedSeats}
+                  questionNumberBadge={questionNumberBadge}
+                />
               )}
 
-              <div
-                className={`font-semibold text-white select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] leading-snug ${fontSizeClass}`}
-              >
-                {questionText}
+              {/* Question Text Area */}
+              <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-1.5 sm:py-2 min-h-0">
+                {hopeStarActive && (
+                  <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400/25 border border-amber-300 text-amber-300 text-[10px] sm:text-xs font-black uppercase tracking-wider w-fit mb-1 animate-pulse">
+                    <span>⭐</span>
+                    <span>Ngôi Sao Hy Vọng</span>
+                  </div>
+                )}
+                <div
+                  className={`font-semibold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] leading-snug ${fontSizeClass}`}
+                >
+                  {questionText || (
+                    <span className="text-slate-400/80 italic font-normal text-sm sm:text-base md:text-lg">
+                      Đang đợi câu hỏi...
+                    </span>
+                  )}
+                </div>
+
+                {mediaElement && <div className="mt-1">{mediaElement}</div>}
+                {children && <div className="mt-1">{children}</div>}
+
+                {answerText && (
+                  <div className="mt-1 pt-1 border-t border-cyan-400/30 flex items-center gap-2 text-emerald-300 font-black text-xs sm:text-sm animate-fade-in">
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400 text-[10px] uppercase tracking-wider">
+                      ĐÁP ÁN
+                    </span>
+                    <span>{answerText}</span>
+                  </div>
+                )}
               </div>
 
-              {mediaElement && <div className="mt-1">{mediaElement}</div>}
-              {children && <div className="mt-1">{children}</div>}
-
-              {answerText && (
-                <div className="mt-1.5 pt-1 border-t border-cyan-400/30 flex items-center gap-2 text-emerald-300 font-black text-xs sm:text-base animate-fade-in">
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400 text-[10px] uppercase tracking-wider">
-                    ĐÁP ÁN
-                  </span>
-                  <span>{answerText}</span>
+              {/* Bottom Time Bar Tray with Inverted Trapezoid & Red Circular Playhead */}
+              <div
+                className="h-[18px] sm:h-[22px] mb-2 mx-4 sm:mx-6 relative flex-shrink-0 rounded"
+                style={{
+                  transform: "skewX(-11.6deg)",
+                  background: "linear-gradient(90deg, #d1d5db, #9ca3af)",
+                }}
+              >
+                <div className="absolute inset-y-[4px] sm:inset-y-[5px] inset-x-2 bg-black/70 rounded-full overflow-hidden">
+                  <div
+                    ref={fillRef}
+                    className="h-full rounded-full relative will-change-[width]"
+                    style={{
+                      width: "100%",
+                      background: "linear-gradient(90deg, #b02a45, #ef4444)",
+                    }}
+                  >
+                    <div
+                      className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-[#ef4444] shadow-[0_0_8px_#ef4444]"
+                      style={{ transform: "translateY(-50%) skewX(11.6deg)" }}
+                    />
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
 
-            {/* Slanted Cyan Divider skewX(-12deg) matching Econova V3 */}
+            {/* Full Height Diagonal Separator skewX(-11.6deg) */}
             <div
-              className="w-[3px] h-[55px] sm:h-[70px] bg-[#1fd1ff] shadow-[0_0_8px_rgba(46,230,255,0.8)] shrink-0 mx-2 sm:mx-4 pointer-events-none"
-              style={{ transform: "skewX(-12deg)" }}
+              className="w-[2px] bg-[#d1d5db] shrink-0 pointer-events-none"
+              style={{ transform: "skewX(-11.6deg)" }}
             />
 
-            {/* Score & Category Block */}
-            <div className="shrink-0 flex flex-col items-center justify-center min-w-[70px] sm:min-w-[110px]">
+            {/* Right Column: Big Score & Question Badge */}
+            <div className="w-[130px] sm:w-[170px] md:w-[210px] flex flex-col bg-[#05164d] shrink-0">
               <div
-                className="font-black text-[#2ee6ff] leading-none drop-shadow-[0_0_12px_rgba(46,230,255,0.7)] text-3xl sm:text-4xl md:text-5xl"
-                style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+                className="flex-1 flex items-center justify-center bg-gradient-to-b from-[#1d4ed8] to-[#1e40af] text-white"
+                style={{ clipPath: "polygon(20px 0, 100% 0, 100% 100%, 0 100%)" }}
               >
-                {displayScore}
+                <div
+                  className="font-black text-3xl sm:text-4xl md:text-5xl text-white drop-shadow-[0_0_12px_rgba(46,230,255,0.7)]"
+                  style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+                >
+                  {displayScore}
+                </div>
               </div>
-              <div className="flex flex-row items-center gap-1 sm:gap-1.5 mt-1.5 flex-wrap justify-center">
-                <span className="bg-[#08203f] text-[#2ee6ff] text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded border border-[#2ee6ff]/60 uppercase tracking-wide">
+              <div className="w-full h-[2px] bg-[#d1d5db]" />
+              <div
+                className="min-h-[34px] sm:min-h-[40px] flex items-center justify-center bg-[#0d2360] px-2 text-center"
+                style={{ transform: "skewX(-11.6deg)" }}
+              >
+                <span
+                  className="font-bold text-[11px] sm:text-xs md:text-sm uppercase tracking-wider text-cyan-300 truncate"
+                  style={{ transform: "skewX(11.6deg)" }}
+                >
                   {resolvedBadge}
                 </span>
               </div>
             </div>
           </div>
-
-          {/* Bottom Time Bar with Direct-DOM 60 FPS Fill */}
-          <div className="h-[7px] sm:h-[9px] w-full bg-[#08203f] relative overflow-hidden flex-0 shrink-0">
-            <div
-              ref={fillRef}
-              className="absolute left-0 top-0 bottom-0 will-change-[width]"
-              style={{
-                width: "100%",
-                background: "linear-gradient(90deg, #1fd1ff, #2ee6ff)",
-                boxShadow: "0 0 10px rgba(46,230,255,0.7)",
-              }}
-            />
-          </div>
         </div>
 
-        {/* ── RIGHT ARROW CLUSTER (3 LAYERS L1, L2, L3) ── */}
-        <div
-          className="relative w-[70px] sm:w-[130px] md:w-[170px] shrink-0 overflow-visible pointer-events-none select-none"
-          style={{ animation: "flyRightCluster 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}
-        >
-          {/* Layer L1 (Outer Whip) */}
-          <svg
-            className="absolute top-0 left-0 w-full h-full"
-            viewBox="0 0 220 150"
-            preserveAspectRatio="none"
-            style={{
-              zIndex: 1,
-              opacity: 0.35,
-              animation: "whipL1_right 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-            }}
-          >
-            <polygon points="220,75 120,0 0,0 0,150 120,150" fill="#0d2c54" />
-            <polygon points="180,75 102,18.75 0,18.75 0,131.25 102,131.25" fill="#2ee6ff" />
+        {/* ── RIGHT CHEVRON ARROWS CLUSTER (Docking at Right Edge) ── */}
+        <div className="arrow-navy v3-right-navy" style={{ position: "absolute", left: "50%", width: 44, height: "100%", top: 0, zIndex: 6, pointerEvents: "none" }}>
+          <svg viewBox="0 0 43 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+            <polygon points="0,0 25,0 43,50 25,100 0,100 18,50" fill="#05164d" stroke="#d1d5db" strokeWidth="3" vectorEffect="non-scaling-stroke" />
           </svg>
-          {/* Layer L2 (Mid Whip) */}
-          <svg
-            className="absolute top-0 left-0 w-full h-full"
-            viewBox="0 0 220 150"
-            preserveAspectRatio="none"
-            style={{
-              zIndex: 2,
-              opacity: 0.65,
-              animation: "whipL2_right 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-            }}
-          >
-            <polygon points="220,75 120,0 0,0 0,150 120,150" fill="#0d2c54" />
-            <polygon points="180,75 102,18.75 0,18.75 0,131.25 102,131.25" fill="#2ee6ff" />
+        </div>
+        <div className="arrow-cyan l3 v3-right-cyan-l3" style={{ position: "absolute", left: "50%", width: 33, height: "75%", top: "12.5%", zIndex: 3, pointerEvents: "none" }}>
+          <svg viewBox="0 0 32 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+            <polygon points="0,0 18.5,0 32,50 18.5,100 0,100 13.5,50" fill="#00cfff" />
           </svg>
-          {/* Layer L3 (Solid Foreground) */}
-          <svg
-            className="absolute top-0 left-0 w-full h-full"
-            viewBox="0 0 220 150"
-            preserveAspectRatio="none"
-            style={{ zIndex: 3, opacity: 1.0 }}
-          >
-            <polygon points="220,75 120,0 0,0 0,150 120,150" fill="#0d2c54" />
-            <polygon points="180,75 102,18.75 0,18.75 0,131.25 102,131.25" fill="#2ee6ff" />
+        </div>
+        <div className="arrow-cyan ghost-l2 v3-right-cyan-g2" style={{ position: "absolute", left: "50%", width: 33, height: "75%", top: "12.5%", zIndex: 2, pointerEvents: "none" }}>
+          <svg viewBox="0 0 32 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+            <polygon points="0,0 18.5,0 32,50 18.5,100 0,100 13.5,50" fill="#00cfff" />
+          </svg>
+        </div>
+        <div className="arrow-cyan ghost-l1 v3-right-cyan-g1" style={{ position: "absolute", left: "50%", width: 33, height: "75%", top: "12.5%", zIndex: 1, pointerEvents: "none" }}>
+          <svg viewBox="0 0 32 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+            <polygon points="0,0 18.5,0 32,50 18.5,100 0,100 13.5,50" fill="#00cfff" />
           </svg>
         </div>
       </div>

@@ -43,7 +43,46 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
   const [editingSeatId, setEditingSeatId] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPin, setCopiedPin] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [lobbyQrDataUrl, setLobbyQrDataUrl] = useState<string>("");
+
+  const isSandbox =
+    Boolean((state as any)?.isSandbox) ||
+    code.startsWith("sb_") ||
+    (typeof window !== "undefined" && window.location.pathname.includes("/sandbox"));
+
+  const handleDeleteRoom = async () => {
+    if (
+      !confirm(
+        `Xác nhận gỡ bỏ hoàn toàn phòng "${code}"?\n\nTất cả dữ liệu và kết nối của phòng này sẽ bị xóa khỏi hệ thống.`
+      )
+    ) {
+      return;
+    }
+    setDeleteLoading(true);
+    try {
+      const headers: Record<string, string> = {};
+      if (hostKey) headers["x-host-key"] = hostKey;
+      const adminPass = typeof window !== "undefined" ? localStorage.getItem("admin_password") || "" : "";
+      if (adminPass) headers["x-admin-password"] = adminPass;
+
+      const res = await fetch(`/api/rooms/${code}`, {
+        method: "DELETE",
+        headers,
+      });
+      if (res.ok) {
+        alert(`Đã gỡ phòng ${code} thành công.`);
+        window.location.href = "/admin/rooms";
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(`Lỗi khi gỡ phòng: ${data.error || res.statusText}`);
+      }
+    } catch (err: any) {
+      alert(`Lỗi kết nối khi gỡ phòng: ${err.message}`);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const joinUrl = typeof window !== "undefined" ? `${window.location.origin}/olympia/play/${code}` : "";
 
@@ -381,6 +420,20 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             <span>⌨️</span>
             <span className="hidden lg:inline">{rightSidebarOpen ? "Thu gọn cột" : "Phím tắt"}</span>
           </button>
+
+          {/* Gỡ phòng / Xóa phòng khi ở phòng thật */}
+          {!isSandbox && (
+            <button
+              type="button"
+              onClick={handleDeleteRoom}
+              disabled={deleteLoading}
+              className="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 border border-rose-500/50 text-rose-300 hover:text-white font-bold text-xs shadow cursor-pointer flex items-center gap-1 shrink-0 transition"
+              title="Xóa/Gỡ hoàn toàn phòng này khỏi hệ thống"
+            >
+              <span>🗑️</span>
+              <span>{deleteLoading ? "Đang gỡ..." : "Gỡ phòng"}</span>
+            </button>
+          )}
         </div>
       </header>
 

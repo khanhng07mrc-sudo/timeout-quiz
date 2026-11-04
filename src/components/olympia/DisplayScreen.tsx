@@ -161,7 +161,14 @@ export default function DisplayScreen({ code }: { code: string }) {
   useEffect(() => {
     if (!state || !ttsActive) return;
     let currentQ = "";
-    if (state.currentRound === "khoiDong" && state.khoiDong?.started && state.khoiDong.current?.q) {
+    if (
+      state.currentRound === "khoiDong" &&
+      state.khoiDong?.started &&
+      state.khoiDong?.questionRevealed &&
+      state.khoiDong.phase !== "intro" &&
+      state.khoiDong.phase !== "segmentDone" &&
+      state.khoiDong.current?.q
+    ) {
       currentQ = state.khoiDong.current.q;
     } else if (state.currentRound === "vcnv" && state.vcnv?.phase === "waitingAnswer") {
       const curIdx = state.vcnv.currentRow;
@@ -191,6 +198,9 @@ export default function DisplayScreen({ code }: { code: string }) {
   }, [
     ttsActive,
     state?.currentRound,
+    state?.khoiDong?.started,
+    state?.khoiDong?.questionRevealed,
+    state?.khoiDong?.phase,
     state?.khoiDong?.current?.q,
     state?.vcnv?.phase,
     state?.vcnv?.currentRow,
@@ -658,6 +668,7 @@ function KhoiDong({ state, serverNow }: P) {
           }
           timer={hasRevealedQ ? kd.timer : null}
           showScoreTab={true}
+          runAnim={!hasRevealedQ}
         />
       )}
     </div>
@@ -795,6 +806,7 @@ function VeDich({ state, serverNow }: P) {
             timer={cur ? (vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer) : null}
             hopeStarActive={vd.hopeStarActive}
             showScoreTab={true}
+            runAnim={!cur}
           >
             {vd.phase === "stealing" && (
               <div className="text-sm sm:text-base font-black text-rose-400 animate-pulse">

@@ -19,6 +19,8 @@ export default function PlayerPad({
 }) {
   const defaultToken = useStableToken();
   const token = initialSeat !== undefined ? `sandbox_${code}_seat_${initialSeat}` : defaultToken;
+  const [selectedSeat, setSelectedSeat] = useState<number>(initialSeat ?? 0);
+  const [school, setSchool] = useState<string>("");
   const [name, setName] = useState<string | null>(
     initialName || (initialSeat !== undefined ? `Thí sinh ${initialSeat + 1}` : null)
   );
@@ -34,7 +36,9 @@ export default function PlayerPad({
     role: "player",
     name: name ?? "",
     token,
-    enabled: name !== null && !!token,
+    seatId: initialSeat !== undefined ? initialSeat : selectedSeat,
+    school,
+    enabled: !!token,
   });
   const introRem = useCountdown(state?.introTimer, serverNow);
   void introRem;
@@ -156,9 +160,11 @@ export default function PlayerPad({
   }
 
   if (!name) {
+    const totalSeats = state?.seatCount || 4;
+
     return (
-      <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#080d24] via-[#0e173b] to-[#040714] text-white p-6 flex flex-col items-center justify-center select-none">
-        <div className="w-full max-w-sm rounded-3xl bg-slate-900/95 border border-cyan-500/40 p-6 sm:p-8 space-y-5 shadow-2xl backdrop-blur-xl text-center">
+      <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#080d24] via-[#0e173b] to-[#040714] text-white p-6 flex flex-col items-center justify-center select-none overflow-y-auto">
+        <div className="w-full max-w-md rounded-3xl bg-slate-900/95 border border-cyan-500/40 p-6 sm:p-8 space-y-5 shadow-2xl backdrop-blur-xl text-center my-auto">
           <div className="text-4xl">🏔️</div>
           <div className="space-y-1">
             <h2 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-400">
@@ -168,6 +174,7 @@ export default function PlayerPad({
               Phòng thi PIN: <b className="text-cyan-400 font-mono text-sm tracking-widest">{code}</b>
             </p>
           </div>
+
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -188,16 +195,71 @@ export default function PlayerPad({
                 maxLength={30}
                 value={inputName}
                 onChange={(e) => setInputName(e.target.value)}
-                placeholder="Nhập tên của bạn..."
+                placeholder="Nhập họ và tên..."
                 className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/20 text-white font-bold placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 text-sm"
               />
             </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1.5">Trường / Đơn vị (tùy chọn):</label>
+              <input
+                type="text"
+                maxLength={50}
+                value={school}
+                onChange={(e) => setSchool(e.target.value)}
+                placeholder="VD: THPT Chuyên Hà Nội - Amsterdam"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/20 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-cyan-400"
+              />
+            </div>
+
+            {/* Visual Seat Picker */}
+            <div className="space-y-2 pt-1">
+              <label className="block text-xs font-bold text-slate-300">
+                Chọn vị trí dự thi ({totalSeats} ghế):
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                {Array.from({ length: totalSeats }).map((_, idx) => {
+                  const seat = state?.seats?.[idx];
+                  const isOccupied = Boolean(seat?.approved && seat?.playerKey && seat.playerKey !== token);
+                  const isSelected = selectedSeat === idx;
+                  const color = SEAT_COLORS[idx % SEAT_COLORS.length] || "#0284c7";
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={isOccupied}
+                      onClick={() => setSelectedSeat(idx)}
+                      className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
+                        isOccupied
+                          ? "bg-slate-950/60 border-slate-800 opacity-50 cursor-not-allowed"
+                          : isSelected
+                          ? "bg-cyan-500/20 border-cyan-400 ring-2 ring-cyan-400/40 shadow-lg cursor-pointer"
+                          : "bg-slate-800/60 border-white/10 hover:border-white/30 cursor-pointer"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black uppercase tracking-wider" style={{ color }}>
+                          Vị trí {idx + 1}
+                        </span>
+                        {isOccupied && <span className="text-[10px] text-slate-500 font-bold">ĐÃ CÓ NGƯỜI</span>}
+                        {!isOccupied && isSelected && <span className="text-xs text-cyan-400">✓ Đang chọn</span>}
+                      </div>
+                      <div className="text-xs font-bold text-white truncate mt-1">
+                        {isOccupied ? seat?.name || "Đã duyệt" : "Còn trống"}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={!inputName.trim()}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 via-red-500 to-violet-600 hover:from-amber-400 hover:to-violet-500 text-white font-black text-sm shadow-lg shadow-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition transform active:scale-95"
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-red-500 to-violet-600 hover:from-amber-400 hover:to-violet-500 text-white font-black text-sm shadow-lg shadow-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition transform active:scale-95"
             >
-              🚀 VÀO PHÒNG THI
+              🚀 ĐĂNG KÝ VỊ TRÍ & VÀO PHÒNG
             </button>
           </form>
         </div>
@@ -215,6 +277,7 @@ export default function PlayerPad({
       </div>
     );
   }
+
   if (!state || join?.seatId == null) {
     return (
       <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#080d24] via-[#0e173b] to-[#040714] text-sky-200 flex items-center justify-center p-8 text-lg font-bold">
@@ -223,7 +286,85 @@ export default function PlayerPad({
     );
   }
 
-  const me = state.seats[join.seatId];
+  const mySeatId = join?.seatId ?? selectedSeat;
+  const me = state.seats[mySeatId];
+  const isApproved =
+    me?.approved === true ||
+    token.startsWith("sandbox_") ||
+    state.stage !== "lobby";
+
+  // Check if player is waiting for Host approval or was rejected
+  if (!isApproved) {
+    const isPending =
+      state.joinRequests?.some((r) => r.id === token) ||
+      (me?.playerKey === token && me?.approved === false);
+
+    if (!isPending && me?.playerKey !== token) {
+      return (
+        <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#1a0505] via-[#2d0a0a] to-[#0a0202] text-white p-6 flex flex-col items-center justify-center gap-6 text-center select-none animate-fade-in">
+          <div className="w-20 h-20 rounded-full bg-rose-500/20 border-2 border-rose-500/50 flex items-center justify-center text-4xl shadow-xl shadow-rose-950/50">
+            ⚠️
+          </div>
+          <div className="space-y-2 max-w-md">
+            <h2 className="text-xl sm:text-2xl font-black text-rose-300 uppercase">
+              YÊU CẦU ĐÃ BỊ TỪ CHỐI
+            </h2>
+            <p className="text-sm text-slate-300">
+              Host đã từ chối yêu cầu tham gia Vị trí {mySeatId + 1} của bạn. Vui lòng chọn lại vị trí khác hoặc đổi tên.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              sessionStorage.removeItem("playerName");
+              setName(null);
+            }}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-sm shadow-lg shadow-cyan-900/50 transition cursor-pointer"
+          >
+            🔄 Chọn lại vị trí khác
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#080d24] via-[#0e173b] to-[#040714] text-white p-6 flex flex-col items-center justify-center select-none animate-fade-in">
+        <div className="w-full max-w-md rounded-3xl bg-slate-900/95 border border-amber-400/40 p-8 space-y-6 shadow-2xl backdrop-blur-xl text-center">
+          <div className="relative inline-flex items-center justify-center">
+            <div className="w-20 h-20 rounded-full bg-amber-400/10 border-2 border-amber-400/60 flex items-center justify-center text-3xl animate-pulse">
+              ⏳
+            </div>
+            <div className="absolute inset-0 rounded-full border border-amber-400/30 animate-ping" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-400 uppercase tracking-wide">
+              ĐANG CHỜ PHÊ DUYỆT
+            </h2>
+            <p className="text-sm text-slate-300">
+              Xin chào <b className="text-amber-300">{name}</b>!
+            </p>
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-400/30 text-amber-200 text-xs sm:text-sm font-semibold">
+              Bạn đã đăng ký tham gia thi đấu tại <b>Vị trí {mySeatId + 1}</b>.
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Vui lòng đợi Quản trò (Host) phê duyệt danh sách chính thức để bắt đầu cuộc thi...
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              sessionStorage.removeItem("playerName");
+              setName(null);
+            }}
+            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-xs font-bold border border-white/20 transition cursor-pointer"
+          >
+            ← Chọn lại vị trí khác / Đổi tên
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const seats = activeSeats(state);
   const myTestLog = state.bellTestLogs?.find((b) => b.seat === me.id);
 

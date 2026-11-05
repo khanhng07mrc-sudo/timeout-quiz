@@ -307,7 +307,7 @@ export class OlympiaGame {
     if (this.state.log.length > 80) this.state.log.shift();
   }
   get activeSeatIds(): number[] {
-    return this.state.seats.filter((s) => s.name).map((s) => s.id);
+    return this.state.seats.filter((s) => s.name && s.approved !== false).map((s) => s.id);
   }
   private seat(id: number): Seat | undefined {
     return this.state.seats[id];
@@ -320,7 +320,66 @@ export class OlympiaGame {
   }
 
   // ── lobby ──
-  /** Reserve a seat for a player. Returns seat id, or -1 if the room is full. */
+  /** Player requests to reserve a specific seat. Returns seatId or -1 */
+  requestSeat(
+    name: string,
+    seatId: number,
+    playerKey: string,
+    school?: string
+  ): { ok: boolean; status?: "approved" | "pending"; seatId: number; error?: string } {
+    if (this.state.stage !== "lobby") {
+      return { ok: false, error: "Trận đấu đã bắt đầu, không thể đăng ký", seatId: -1 };
+    }
+    if (seatId < 0 || seatId >= this.state.seats.length) {
+      return { ok: false, error: "Vị trí ghế không hợp lệ", seatId: -1 };
+    }
+
+    const cleanName = (name || "").trim();
+    if (!cleanName) {
+      return { ok: false, error: "Vui lòng nhập họ và tên thí sinh", seatId: -1 };
+    }
+
+    const target = this.state.seats[seatId];
+    // If the seat is already occupied by another approved player
+    if (target.approved && target.playerKey && target.playerKey !== playerKey) {
+      return { ok: false, error: `Vị trí ${seatId + 1} đã có thí sinh được phê duyệt`, seatId: -1 };
+    }
+
+    // Sandbox seats or reconnection of already approved player
+    const sbPrefix = `sandbox_${this.state.code}_seat_`;
+    if (playerKey.startsWith(sbPrefix) || (target.playerKey === playerKey && target.approved)) {
+      target.name = cleanName;
+      if (school) target.school = school.trim();
+      target.playerKey = playerKey;
+      target.approved = true;
+      target.connected = true;
+      this.touch(Date.now());
+      return { ok: true, status: "approved", seatId };
+    }
+
+    // Normal player flow: create or update join request
+    if (!this.state.joinRequests) this.state.joinRequests = [];
+    this.state.joinRequests = this.state.joinRequests.filter((r) => r.id !== playerKey);
+    this.state.joinRequests.push({
+      id: playerKey,
+      name: cleanName,
+      school: school?.trim(),
+      seatId,
+      requestedAt: Date.now(),
+    });
+
+    // Mark seat temporarily as pending for this player
+    target.name = cleanName;
+    if (school) target.school = school.trim();
+    target.playerKey = playerKey;
+    target.approved = false;
+    target.connected = true;
+
+    this.touch(Date.now());
+    return { ok: true, status: "pending", seatId };
+  }
+
+  /** Reserve a seat for a player (supports backward compatibility and sandbox auto-join). */
   joinSeat(name: string, playerKey: string): number {
     const existing = this.state.seats.find((s) => s.playerKey === playerKey);
     if (existing) {
@@ -336,6 +395,7 @@ export class OlympiaGame {
         target.playerKey = playerKey;
         if (name) target.name = name;
         target.connected = true;
+        target.approved = true;
         return target.id;
       }
     }
@@ -347,6 +407,7 @@ export class OlympiaGame {
       if (byAssignedName) {
         byAssignedName.playerKey = playerKey;
         byAssignedName.connected = true;
+        byAssignedName.approved = true;
         return byAssignedName.id;
       }
     }
@@ -358,6 +419,8 @@ export class OlympiaGame {
     free.name = name;
     free.playerKey = playerKey;
     free.connected = true;
+    // For default join without host approval explicitly disabled, auto-approve if room allows
+    free.approved = true;
     return free.id;
   }
   setConnected(seatId: number, connected: boolean) {
@@ -367,10 +430,19 @@ export class OlympiaGame {
   kickSeat(id: number) {
     const s = this.seat(id);
     if (!s) return;
+    const oldKey = s.playerKey;
     s.name = "";
+    s.school = undefined;
     s.playerKey = null;
     s.connected = false;
+    s.approved = false;
     if (this.state.stage === "lobby") s.score = 0;
+    if (this.state.joinRequests) {
+      this.state.joinRequests = this.state.joinRequests.filter(
+        (r) => r.seatId !== id && (!oldKey || r.id !== oldKey)
+      );
+    }
+    this.touch(Date.now());
   }
 
   // ── tick (auto-expire timers) ──
@@ -799,12 +871,11 @@ export class OlympiaGame {
     switch (type) {
       case "game:start": {
         if (st.stage !== "lobby") return fail("Trận đã bắt đầu");
-        if (this.activeSeatIds.length === 0) {
-          const count = Math.min(8, Math.max(2, this.config.seatCount || 4));
-          for (let i = 0; i < count; i++) {
-            this.state.seats[i].name = `Thí sinh ${i + 1}`;
-            this.state.seats[i].connected = true;
-          }
+        const approvedSeats = this.state.seats.filter(
+          (s) => s.name && s.approved !== false && (s.playerKey || this.config.teams)
+        );
+        if (approvedSeats.length <= 1) {
+          return fail("Cần tối thiểu 2 thí sinh tham gia để bắt đầu cuộc thi");
         }
         st.stage = "playing";
         st.roundIdx = -1;
@@ -817,6 +888,134 @@ export class OlympiaGame {
         startTimer(st.introTimer, now);
         st.showStageGraphics = false;
         this.cue("6_NhacKhac/contest_intro");
+        return OK;
+      }
+      case "seat:approve": {
+        if (st.stage !== "lobby") return fail("Chỉ phê duyệt được ở sảnh chờ");
+        const requestId = a.requestId ? String(a.requestId) : undefined;
+        const seatId = a.seatId !== undefined ? Number(a.seatId) : undefined;
+
+        if (st.joinRequests && st.joinRequests.length > 0) {
+          const reqIdx = st.joinRequests.findIndex(
+            (r) => (requestId && r.id === requestId) || (seatId !== undefined && r.seatId === seatId)
+          );
+          if (reqIdx >= 0) {
+            const req = st.joinRequests[reqIdx];
+            st.joinRequests.splice(reqIdx, 1);
+            const target = st.seats[req.seatId];
+            target.name = req.name;
+            if (req.school) target.school = req.school;
+            target.playerKey = req.id;
+            target.approved = true;
+            target.connected = true;
+            this.logMsg(`Host đã phê duyệt ${req.name} vào Ghế ${req.seatId + 1}`);
+            return OK;
+          }
+        }
+
+        // Direct approval of an existing seat in lobby
+        if (seatId !== undefined && seatId >= 0 && seatId < st.seats.length) {
+          const s = st.seats[seatId];
+          if (s.name) {
+            s.approved = true;
+            s.connected = true;
+            this.logMsg(`Host đã phê duyệt ${s.name} vào Ghế ${seatId + 1}`);
+            return OK;
+          }
+        }
+        return fail("Không tìm thấy yêu cầu chờ duyệt");
+      }
+      case "seat:reject": {
+        if (st.stage !== "lobby") return fail("Chỉ thao tác được ở sảnh chờ");
+        const requestId = a.requestId ? String(a.requestId) : undefined;
+        const seatId = a.seatId !== undefined ? Number(a.seatId) : undefined;
+
+        if (st.joinRequests) {
+          const reqIdx = st.joinRequests.findIndex(
+            (r) => (requestId && r.id === requestId) || (seatId !== undefined && r.seatId === seatId)
+          );
+          if (reqIdx >= 0) {
+            const req = st.joinRequests[reqIdx];
+            st.joinRequests.splice(reqIdx, 1);
+            const target = st.seats[req.seatId];
+            if (target && target.playerKey === req.id && !target.approved) {
+              target.name = "";
+              target.school = undefined;
+              target.playerKey = null;
+              target.connected = false;
+              target.approved = false;
+            }
+            this.logMsg(`Host đã từ chối yêu cầu của ${req.name}`);
+            return OK;
+          }
+        }
+
+        if (seatId !== undefined && seatId >= 0 && seatId < st.seats.length) {
+          this.kickSeat(seatId);
+          return OK;
+        }
+        return fail("Không tìm thấy yêu cầu để từ chối");
+      }
+      case "seat:swap": {
+        if (st.stage !== "lobby") return fail("Chỉ có thể đổi vị trí trước khi trận đấu bắt đầu");
+        const seatA = Number(a.seatA);
+        const seatB = Number(a.seatB);
+        if (
+          isNaN(seatA) ||
+          isNaN(seatB) ||
+          seatA < 0 ||
+          seatA >= st.seats.length ||
+          seatB < 0 ||
+          seatB >= st.seats.length
+        ) {
+          return fail("Vị trí ghế không hợp lệ");
+        }
+        if (seatA === seatB) return OK;
+
+        const sA = st.seats[seatA];
+        const sB = st.seats[seatB];
+
+        const tmp = {
+          name: sA.name,
+          school: sA.school,
+          playerKey: sA.playerKey,
+          connected: sA.connected,
+          score: sA.score,
+          approved: sA.approved,
+        };
+
+        sA.name = sB.name;
+        sA.school = sB.school;
+        sA.playerKey = sB.playerKey;
+        sA.connected = sB.connected;
+        sA.score = sB.score;
+        sA.approved = sB.approved;
+
+        sB.name = tmp.name;
+        sB.school = tmp.school;
+        sB.playerKey = tmp.playerKey;
+        sB.connected = tmp.connected;
+        sB.score = tmp.score;
+        sB.approved = tmp.approved;
+
+        // Update joinRequests if any
+        if (st.joinRequests) {
+          for (const req of st.joinRequests) {
+            if (req.seatId === seatA) req.seatId = seatB;
+            else if (req.seatId === seatB) req.seatId = seatA;
+          }
+        }
+
+        this.logMsg(`Host đã hoán đổi vị trí giữa Ghế ${seatA + 1} và Ghế ${seatB + 1}`);
+        return OK;
+      }
+      case "seat:clear": {
+        if (st.stage !== "lobby") return fail("Chỉ thao tác được ở sảnh chờ");
+        const seatId = Number(a.seatId);
+        if (isNaN(seatId) || seatId < 0 || seatId >= st.seats.length) {
+          return fail("Ghế không hợp lệ");
+        }
+        this.kickSeat(seatId);
         return OK;
       }
       case "intro:skip": {

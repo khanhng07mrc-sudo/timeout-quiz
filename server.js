@@ -105873,7 +105873,7 @@ var OlympiaGame = class _OlympiaGame {
     if (this.state.log.length > 80) this.state.log.shift();
   }
   get activeSeatIds() {
-    return this.state.seats.filter((s) => s.name).map((s) => s.id);
+    return this.state.seats.filter((s) => s.name && s.approved !== false).map((s) => s.id);
   }
   seat(id) {
     return this.state.seats[id];
@@ -105885,7 +105885,50 @@ var OlympiaGame = class _OlympiaGame {
     this.logMsg(`${s.name || "Gh\u1EBF " + (id + 1)} ${delta >= 0 ? "+" : ""}${delta}`);
   }
   // ── lobby ──
-  /** Reserve a seat for a player. Returns seat id, or -1 if the room is full. */
+  /** Player requests to reserve a specific seat. Returns seatId or -1 */
+  requestSeat(name, seatId, playerKey, school) {
+    if (this.state.stage !== "lobby") {
+      return { ok: false, error: "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, kh\xF4ng th\u1EC3 \u0111\u0103ng k\xFD", seatId: -1 };
+    }
+    if (seatId < 0 || seatId >= this.state.seats.length) {
+      return { ok: false, error: "V\u1ECB tr\xED gh\u1EBF kh\xF4ng h\u1EE3p l\u1EC7", seatId: -1 };
+    }
+    const cleanName = (name || "").trim();
+    if (!cleanName) {
+      return { ok: false, error: "Vui l\xF2ng nh\u1EADp h\u1ECD v\xE0 t\xEAn th\xED sinh", seatId: -1 };
+    }
+    const target = this.state.seats[seatId];
+    if (target.approved && target.playerKey && target.playerKey !== playerKey) {
+      return { ok: false, error: `V\u1ECB tr\xED ${seatId + 1} \u0111\xE3 c\xF3 th\xED sinh \u0111\u01B0\u1EE3c ph\xEA duy\u1EC7t`, seatId: -1 };
+    }
+    const sbPrefix = `sandbox_${this.state.code}_seat_`;
+    if (playerKey.startsWith(sbPrefix) || target.playerKey === playerKey && target.approved) {
+      target.name = cleanName;
+      if (school) target.school = school.trim();
+      target.playerKey = playerKey;
+      target.approved = true;
+      target.connected = true;
+      this.touch(Date.now());
+      return { ok: true, status: "approved", seatId };
+    }
+    if (!this.state.joinRequests) this.state.joinRequests = [];
+    this.state.joinRequests = this.state.joinRequests.filter((r) => r.id !== playerKey);
+    this.state.joinRequests.push({
+      id: playerKey,
+      name: cleanName,
+      school: school?.trim(),
+      seatId,
+      requestedAt: Date.now()
+    });
+    target.name = cleanName;
+    if (school) target.school = school.trim();
+    target.playerKey = playerKey;
+    target.approved = false;
+    target.connected = true;
+    this.touch(Date.now());
+    return { ok: true, status: "pending", seatId };
+  }
+  /** Reserve a seat for a player (supports backward compatibility and sandbox auto-join). */
   joinSeat(name, playerKey) {
     const existing = this.state.seats.find((s) => s.playerKey === playerKey);
     if (existing) {
@@ -105901,6 +105944,7 @@ var OlympiaGame = class _OlympiaGame {
         target.playerKey = playerKey;
         if (name) target.name = name;
         target.connected = true;
+        target.approved = true;
         return target.id;
       }
     }
@@ -105912,6 +105956,7 @@ var OlympiaGame = class _OlympiaGame {
       if (byAssignedName) {
         byAssignedName.playerKey = playerKey;
         byAssignedName.connected = true;
+        byAssignedName.approved = true;
         return byAssignedName.id;
       }
     }
@@ -105921,6 +105966,7 @@ var OlympiaGame = class _OlympiaGame {
     free.name = name;
     free.playerKey = playerKey;
     free.connected = true;
+    free.approved = true;
     return free.id;
   }
   setConnected(seatId, connected) {
@@ -105930,10 +105976,19 @@ var OlympiaGame = class _OlympiaGame {
   kickSeat(id) {
     const s = this.seat(id);
     if (!s) return;
+    const oldKey = s.playerKey;
     s.name = "";
+    s.school = void 0;
     s.playerKey = null;
     s.connected = false;
+    s.approved = false;
     if (this.state.stage === "lobby") s.score = 0;
+    if (this.state.joinRequests) {
+      this.state.joinRequests = this.state.joinRequests.filter(
+        (r) => r.seatId !== id && (!oldKey || r.id !== oldKey)
+      );
+    }
+    this.touch(Date.now());
   }
   // ── tick (auto-expire timers) ──
   /** Returns true if state changed. */
@@ -106319,12 +106374,11 @@ var OlympiaGame = class _OlympiaGame {
     switch (type) {
       case "game:start": {
         if (st.stage !== "lobby") return fail("Tr\u1EADn \u0111\xE3 b\u1EAFt \u0111\u1EA7u");
-        if (this.activeSeatIds.length === 0) {
-          const count = Math.min(8, Math.max(2, this.config.seatCount || 4));
-          for (let i = 0; i < count; i++) {
-            this.state.seats[i].name = `Th\xED sinh ${i + 1}`;
-            this.state.seats[i].connected = true;
-          }
+        const approvedSeats = this.state.seats.filter(
+          (s) => s.name && s.approved !== false && (s.playerKey || this.config.teams)
+        );
+        if (approvedSeats.length <= 1) {
+          return fail("C\u1EA7n t\u1ED1i thi\u1EC3u 2 th\xED sinh tham gia \u0111\u1EC3 b\u1EAFt \u0111\u1EA7u cu\u1ED9c thi");
         }
         st.stage = "playing";
         st.roundIdx = -1;
@@ -106336,6 +106390,115 @@ var OlympiaGame = class _OlympiaGame {
         startTimer(st.introTimer, now);
         st.showStageGraphics = false;
         this.cue("6_NhacKhac/contest_intro");
+        return OK;
+      }
+      case "seat:approve": {
+        if (st.stage !== "lobby") return fail("Ch\u1EC9 ph\xEA duy\u1EC7t \u0111\u01B0\u1EE3c \u1EDF s\u1EA3nh ch\u1EDD");
+        const requestId = a.requestId ? String(a.requestId) : void 0;
+        const seatId = a.seatId !== void 0 ? Number(a.seatId) : void 0;
+        if (st.joinRequests && st.joinRequests.length > 0) {
+          const reqIdx = st.joinRequests.findIndex(
+            (r) => requestId && r.id === requestId || seatId !== void 0 && r.seatId === seatId
+          );
+          if (reqIdx >= 0) {
+            const req = st.joinRequests[reqIdx];
+            st.joinRequests.splice(reqIdx, 1);
+            const target = st.seats[req.seatId];
+            target.name = req.name;
+            if (req.school) target.school = req.school;
+            target.playerKey = req.id;
+            target.approved = true;
+            target.connected = true;
+            this.logMsg(`Host \u0111\xE3 ph\xEA duy\u1EC7t ${req.name} v\xE0o Gh\u1EBF ${req.seatId + 1}`);
+            return OK;
+          }
+        }
+        if (seatId !== void 0 && seatId >= 0 && seatId < st.seats.length) {
+          const s = st.seats[seatId];
+          if (s.name) {
+            s.approved = true;
+            s.connected = true;
+            this.logMsg(`Host \u0111\xE3 ph\xEA duy\u1EC7t ${s.name} v\xE0o Gh\u1EBF ${seatId + 1}`);
+            return OK;
+          }
+        }
+        return fail("Kh\xF4ng t\xECm th\u1EA5y y\xEAu c\u1EA7u ch\u1EDD duy\u1EC7t");
+      }
+      case "seat:reject": {
+        if (st.stage !== "lobby") return fail("Ch\u1EC9 thao t\xE1c \u0111\u01B0\u1EE3c \u1EDF s\u1EA3nh ch\u1EDD");
+        const requestId = a.requestId ? String(a.requestId) : void 0;
+        const seatId = a.seatId !== void 0 ? Number(a.seatId) : void 0;
+        if (st.joinRequests) {
+          const reqIdx = st.joinRequests.findIndex(
+            (r) => requestId && r.id === requestId || seatId !== void 0 && r.seatId === seatId
+          );
+          if (reqIdx >= 0) {
+            const req = st.joinRequests[reqIdx];
+            st.joinRequests.splice(reqIdx, 1);
+            const target = st.seats[req.seatId];
+            if (target && target.playerKey === req.id && !target.approved) {
+              target.name = "";
+              target.school = void 0;
+              target.playerKey = null;
+              target.connected = false;
+              target.approved = false;
+            }
+            this.logMsg(`Host \u0111\xE3 t\u1EEB ch\u1ED1i y\xEAu c\u1EA7u c\u1EE7a ${req.name}`);
+            return OK;
+          }
+        }
+        if (seatId !== void 0 && seatId >= 0 && seatId < st.seats.length) {
+          this.kickSeat(seatId);
+          return OK;
+        }
+        return fail("Kh\xF4ng t\xECm th\u1EA5y y\xEAu c\u1EA7u \u0111\u1EC3 t\u1EEB ch\u1ED1i");
+      }
+      case "seat:swap": {
+        if (st.stage !== "lobby") return fail("Ch\u1EC9 c\xF3 th\u1EC3 \u0111\u1ED5i v\u1ECB tr\xED tr\u01B0\u1EDBc khi tr\u1EADn \u0111\u1EA5u b\u1EAFt \u0111\u1EA7u");
+        const seatA = Number(a.seatA);
+        const seatB = Number(a.seatB);
+        if (isNaN(seatA) || isNaN(seatB) || seatA < 0 || seatA >= st.seats.length || seatB < 0 || seatB >= st.seats.length) {
+          return fail("V\u1ECB tr\xED gh\u1EBF kh\xF4ng h\u1EE3p l\u1EC7");
+        }
+        if (seatA === seatB) return OK;
+        const sA = st.seats[seatA];
+        const sB = st.seats[seatB];
+        const tmp = {
+          name: sA.name,
+          school: sA.school,
+          playerKey: sA.playerKey,
+          connected: sA.connected,
+          score: sA.score,
+          approved: sA.approved
+        };
+        sA.name = sB.name;
+        sA.school = sB.school;
+        sA.playerKey = sB.playerKey;
+        sA.connected = sB.connected;
+        sA.score = sB.score;
+        sA.approved = sB.approved;
+        sB.name = tmp.name;
+        sB.school = tmp.school;
+        sB.playerKey = tmp.playerKey;
+        sB.connected = tmp.connected;
+        sB.score = tmp.score;
+        sB.approved = tmp.approved;
+        if (st.joinRequests) {
+          for (const req of st.joinRequests) {
+            if (req.seatId === seatA) req.seatId = seatB;
+            else if (req.seatId === seatB) req.seatId = seatA;
+          }
+        }
+        this.logMsg(`Host \u0111\xE3 ho\xE1n \u0111\u1ED5i v\u1ECB tr\xED gi\u1EEFa Gh\u1EBF ${seatA + 1} v\xE0 Gh\u1EBF ${seatB + 1}`);
+        return OK;
+      }
+      case "seat:clear": {
+        if (st.stage !== "lobby") return fail("Ch\u1EC9 thao t\xE1c \u0111\u01B0\u1EE3c \u1EDF s\u1EA3nh ch\u1EDD");
+        const seatId = Number(a.seatId);
+        if (isNaN(seatId) || seatId < 0 || seatId >= st.seats.length) {
+          return fail("Gh\u1EBF kh\xF4ng h\u1EE3p l\u1EC7");
+        }
+        this.kickSeat(seatId);
         return OK;
       }
       case "intro:skip": {
@@ -108852,6 +109015,7 @@ function registerOlympiaSocket(io2) {
           const entry = await loadGame(code);
           if (!entry) return ack?.({ ok: false, error: "Ph\xF2ng Olympia kh\xF4ng t\u1ED3n t\u1EA1i" });
           let seatId;
+          let joinStatus = "approved";
           if (role === "host") {
             const isKeyMatch = entry.hostKey && payload.key === entry.hostKey;
             const isSandbox = payload.key === "sandbox" || payload.key === "admin" || entry.baseConfig?.sandbox || entry.roomId?.includes("sandbox");
@@ -108861,15 +109025,27 @@ function registerOlympiaSocket(io2) {
           } else if (role === "player") {
             const token = String(payload.token ?? "").slice(0, 80);
             const name = sanitizePlayerName(payload.name);
+            const reqSeat = payload.seatId !== void 0 && payload.seatId !== null ? Number(payload.seatId) : void 0;
             if (!token) return ack?.({ ok: false, error: "Thi\u1EBFu m\xE3 thi\u1EBFt b\u1ECB" });
             const existing = entry.game.state.seats.find((s) => s.playerKey === token);
             if (!existing && !name) return ack?.({ ok: false, error: "Vui l\xF2ng nh\u1EADp t\xEAn" });
-            seatId = entry.game.joinSeat(name || existing?.name || "", token);
-            if (seatId < 0) {
-              return ack?.({
-                ok: false,
-                error: entry.game.state.stage !== "lobby" ? "Tr\u1EADn \u0111\xE3 b\u1EAFt \u0111\u1EA7u" : "Ph\xF2ng \u0111\xE3 \u0111\u1EE7 8 th\xED sinh"
-              });
+            if (reqSeat !== void 0 && reqSeat >= 0 && reqSeat < entry.game.state.seats.length) {
+              const reqRes = entry.game.requestSeat(name || existing?.name || "", reqSeat, token, payload.school);
+              if (!reqRes.ok) {
+                return ack?.({ ok: false, error: reqRes.error || "Kh\xF4ng th\u1EC3 \u0111\u0103ng k\xFD v\u1ECB tr\xED n\xE0y" });
+              }
+              seatId = reqRes.seatId;
+              joinStatus = reqRes.status || "pending";
+            } else {
+              seatId = entry.game.joinSeat(name || existing?.name || "", token);
+              if (seatId < 0) {
+                return ack?.({
+                  ok: false,
+                  error: entry.game.state.stage !== "lobby" ? "Tr\u1EADn \u0111\xE3 b\u1EAFt \u0111\u1EA7u" : "Ph\xF2ng \u0111\xE3 \u0111\u1EE7 th\xED sinh"
+                });
+              }
+              const seat = entry.game.state.seats[seatId];
+              joinStatus = seat?.approved ? "approved" : "pending";
             }
           }
           info = { code, role, seatId };
@@ -108883,6 +109059,7 @@ function registerOlympiaSocket(io2) {
           ack?.({
             ok: true,
             seatId,
+            status: joinStatus,
             role,
             rulesetId: entry.game.state.rulesetId,
             audioSeason: entry.game.ruleset.audioSeason,

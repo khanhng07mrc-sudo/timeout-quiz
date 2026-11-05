@@ -1023,8 +1023,9 @@ import {
   type ArrowShell,
 } from "./v3Geometry";
 import { V3ArrowShell, V3ScaledStage, V3_COLORS } from "./V3ArrowShell";
+import { HopeStarBadge } from "./HopeStarBadge";
 
-export { toPoly, toSvgPath, genZigzagShape, genVeDichGridCells };
+export { toPoly, toSvgPath, genZigzagShape, genVeDichGridCells, HopeStarBadge };
 export type { ZigzagShape, GridCell, ArrowShell };
 
 /**
@@ -1523,27 +1524,88 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
  * Unified Arrow Frame, top title banner, progressive reveal of seats.
  * ─────────────────────────────────────────────────────────────────────────────
  */
-export function SummaryLowerThirdGraphic({ state }: { state: OlympiaState }) {
+export interface SummaryLowerThirdGraphicProps {
+  state: OlympiaState;
+  onNext?: () => void;
+  onPrev?: () => void;
+  onClose?: () => void;
+}
+
+export function SummaryLowerThirdGraphic({
+  state,
+  onNext,
+  onPrev,
+  onClose,
+}: SummaryLowerThirdGraphicProps) {
   const sm = state.summaryState;
   if (!sm || !sm.active || sm.orderedSeats.length === 0) return null;
 
+  // 1. Sort ascending by score (lowest to highest), tie-break by seatId ascending
   const sorted = [...sm.orderedSeats].sort((a, b) => {
-    return (state.seats[b]?.score ?? 0) - (state.seats[a]?.score ?? 0);
+    const sa = state.seats[a]?.score ?? 0;
+    const sb = state.seats[b]?.score ?? 0;
+    if (sa !== sb) return sa - sb;
+    return a - b;
   });
 
-  const medals = [
-    { label: "Quán quân", icon: "🥇", color: "#fbbf24" },
-    { label: "Á quân", icon: "🥈", color: "#94a3b8" },
-    { label: "Hạng ba", icon: "🥉", color: "#f97316" },
-    { label: "Hạng tư", icon: "🎖️", color: "#38bdf8" },
-  ];
+  const [localIdx, setLocalIdx] = useState(sm.currentIndex ?? 0);
+
+  useEffect(() => {
+    if (sm.currentIndex != null) {
+      setLocalIdx(sm.currentIndex);
+    }
+  }, [sm.currentIndex]);
+
+  const currentIdx = Math.min(localIdx, sorted.length - 1);
+  const currentSeatId = sorted[currentIdx];
+  const currentSeat = state.seats[currentSeatId];
+  const currentScore = currentSeat?.score ?? 0;
+  const currentName = currentSeat?.name || `THÍ SINH ${currentSeatId + 1}`;
+  const isLast = currentIdx >= sorted.length - 1;
+
+  const handleNext = () => {
+    if (onNext) {
+      onNext();
+    } else {
+      setLocalIdx((prev) => Math.min(prev + 1, sorted.length - 1));
+    }
+  };
+
+  const handlePrev = () => {
+    if (onPrev) {
+      onPrev();
+    } else {
+      setLocalIdx((prev) => Math.max(0, prev - 1));
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.code === "Space" || e.key === "ArrowRight") {
+        e.preventDefault();
+        handleNext();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handlePrev();
+      } else if (e.key === "Escape" && onClose) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleNext, handlePrev, onClose]);
 
   const W = 1000;
   const H = 268;
   const shell = buildArrowShell({ W, H, slantRatio: 0.15, thick: 28, cThick: 20 });
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-[#040e24]/85 backdrop-blur-md animate-fade-in pointer-events-auto select-none">
+    <div
+      className="absolute inset-0 z-50 flex flex-col items-center justify-center p-4 bg-[#040e24]/85 backdrop-blur-md animate-fade-in pointer-events-auto select-none cursor-pointer"
+      onClick={handleNext}
+    >
       <V3ScaledStage designW={shell.canvasW} designH={H}>
         <div className="relative w-full h-full shadow-[0_20px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden">
           {/* Authentic V3 Arrow Frame */}
@@ -1577,76 +1639,57 @@ export function SummaryLowerThirdGraphic({ state }: { state: OlympiaState }) {
             <path d={toSvgPath(shell.bgPts)} fill="url(#smBodyGrad)" stroke="#d1d5db" strokeWidth="2.5" />
           </svg>
 
-          {/* Top Shelf: Title Banner */}
+          {/* Dòng xanh phía trên: Hiện TÊN THÍ SINH ĐƠN NHẤT */}
           <div
-            className="relative z-10 w-full h-[52px] flex items-center justify-center border-b border-cyan-300/30"
+            className="relative z-10 w-full h-[64px] flex items-center justify-center border-b border-cyan-400/50 px-12"
             style={{
               clipPath: `polygon(${toPoly(shell.bgPts)})`,
-              background: "linear-gradient(90deg, rgba(8,30,74,0.8) 0%, rgba(16,59,153,0.9) 50%, rgba(8,30,74,0.8) 100%)",
+              background:
+                "linear-gradient(90deg, #07265a 0%, #0d47a1 20%, #00b4ff 50%, #0d47a1 80%, #07265a 100%)",
             }}
           >
-            <span className="font-black text-xl sm:text-2xl text-white tracking-[0.25em] uppercase drop-shadow-[0_2px_10px_rgba(0,195,255,0.8)]">
-              TỔNG KẾT ĐIỂM
+            <span className="font-black text-2xl sm:text-3xl text-white tracking-[0.2em] uppercase drop-shadow-[0_2px_10px_rgba(0,195,255,0.85)] truncate">
+              {currentName}
             </span>
           </div>
 
-          {/* Main Chamber: 4 Contestant Columns */}
+          {/* Khoang bên dưới: ĐIỂM SỐ (chỉ có số, không có từ gì kèm theo, cỡ cực lớn) */}
           <div
-            className="relative z-10 flex-1 grid grid-cols-4 divide-x divide-cyan-400/20 px-8 py-3 items-center"
+            className="relative z-10 flex-1 flex items-center justify-center"
             style={{ clipPath: `polygon(${toPoly(shell.bgPts)})` }}
           >
-            {sorted.map((seatId, idx) => {
-              const seat = state.seats[seatId];
-              if (!seat) return null;
-              const medal = medals[idx] || medals[3];
-              const isRevealed = idx <= (sm.currentIndex ?? 3);
-
-              return (
-                <div
-                  key={seatId}
-                  className={`h-full flex flex-col items-center justify-between text-center px-2 py-1 transition-all duration-500 ${
-                    isRevealed ? "opacity-100 scale-100" : "opacity-30 scale-95"
-                  }`}
-                >
-                  {/* Medal / Rank Badge */}
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/80 border border-white/20 shadow-md">
-                    <span className="text-base sm:text-lg">{medal.icon}</span>
-                    <span
-                      className="font-black text-xs sm:text-sm uppercase tracking-wider"
-                      style={{ color: medal.color }}
-                    >
-                      {medal.label}
-                    </span>
-                  </div>
-
-                  {/* Contestant Name */}
-                  <div className="w-full flex flex-col items-center">
-                    <span className="font-black text-sm sm:text-base text-white uppercase tracking-wider truncate w-full drop-shadow-md">
-                      {seat.name}
-                    </span>
-                    {seat.school && (
-                      <span className="text-[10px] sm:text-xs text-cyan-200/80 truncate w-full mt-0.5">
-                        {seat.school}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Score */}
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span
-                      className="font-black font-mono text-3xl sm:text-4xl tracking-tight drop-shadow-[0_0_15px_rgba(251,191,36,0.6)]"
-                      style={{ color: idx === 0 ? "#fbbf24" : "#ffffff" }}
-                    >
-                      {seat.score}
-                    </span>
-                    <span className="text-xs font-bold text-slate-300">điểm</span>
-                  </div>
-                </div>
-              );
-            })}
+            <span
+              key={`${currentSeatId}-${currentScore}`}
+              className="font-black font-mono text-[130px] sm:text-[150px] leading-none text-white tracking-tight animate-in zoom-in-75 duration-300"
+              style={{
+                filter:
+                  "drop-shadow(0 6px 20px rgba(0, 180, 255, 0.45)) drop-shadow(0 10px 30px rgba(0,0,0,0.95))",
+              }}
+            >
+              {currentScore}
+            </span>
           </div>
         </div>
       </V3ScaledStage>
+
+      {/* Host Controls & Status Pill below graphic */}
+      <div
+        className="mt-6 flex items-center gap-4 z-20"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 py-1.5 rounded-full bg-slate-900/90 border border-cyan-400/40 text-cyan-200 text-xs sm:text-sm font-bold tracking-wider shadow-lg">
+          Thí sinh {currentIdx + 1} / {sorted.length} (Bấm Space / Click để chuyển)
+        </div>
+        {onClose && isLast && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-1.5 rounded-full bg-red-600/90 hover:bg-red-500 border border-red-300 text-white text-xs sm:text-sm font-black uppercase tracking-wider shadow-xl transition-transform active:scale-95"
+          >
+            Đóng đồ họa (ESC)
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -1925,6 +1968,20 @@ export function EconovaLowerThirdV3({
 
       <div className="relative w-full flex items-center justify-center select-none">
         <V3ScaledStage designW={shell.canvasW} designH={H}>
+          {/* Authentic Floating Hope Star Badge at top-right of score cluster */}
+          {hopeStarActive && (
+            <div
+              className="absolute z-30 pointer-events-none transition-all duration-300 animate-in zoom-in-50"
+              style={{
+                top: -24,
+                right: 12,
+                filter: "drop-shadow(0 4px 14px rgba(0,0,0,0.9))",
+              }}
+            >
+              <HopeStarBadge size={76} />
+            </div>
+          )}
+
           {/* Master SVG Arrow Frame & Geometry */}
           <svg
             width={shell.canvasW}
@@ -2043,7 +2100,7 @@ export function EconovaLowerThirdV3({
 
                 {/* Big Score Display */}
                 <text
-                  x={(lt.clusterLine.x0 + shell.endX) / 2 - 10}
+                  x={(lt.clusterLine.x0 + shell.endX) / 2}
                   y={82}
                   textAnchor="middle"
                   fill="#fbbf24"
@@ -2055,18 +2112,6 @@ export function EconovaLowerThirdV3({
                 >
                   {displayScore}
                 </text>
-
-                {/* Hope Star Indicator */}
-                {hopeStarActive && (
-                  <text
-                    x={(lt.clusterLine.x0 + shell.endX) / 2 - 58}
-                    y={78}
-                    textAnchor="middle"
-                    fontSize="26"
-                  >
-                    ⭐
-                  </text>
-                )}
 
                 {/* Package strip at bottom */}
                 {packStrip &&
@@ -2237,25 +2282,27 @@ export function VeDichSlantedGridGraphic({
           >
             <defs>
               <linearGradient id="vdGridCyanWing" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#00b4ff" />
+                <stop offset="0%" stopColor="#00cfff" />
                 <stop offset="100%" stopColor="#0072ff" />
               </linearGradient>
               <linearGradient id="vdGridNavyCell" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#0b2559" />
-                <stop offset="100%" stopColor="#06153b" />
+                <stop offset="0%" stopColor="#1a385c" />
+                <stop offset="45%" stopColor="#102d4f" />
+                <stop offset="100%" stopColor="#062243" />
               </linearGradient>
               <linearGradient id="vdGridRedCell" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#d81b4e" />
-                <stop offset="100%" stopColor="#850024" />
+                <stop offset="0%" stopColor="#c51442" />
+                <stop offset="50%" stopColor="#a30d36" />
+                <stop offset="100%" stopColor="#7a0624" />
               </linearGradient>
             </defs>
 
             {/* Left cyan wing & navy chevron */}
             <path d={toSvgPath(shell.alcPts)} fill="url(#vdGridCyanWing)" stroke="#ffffff" strokeWidth="2" />
-            <path d={toSvgPath(shell.alnPts)} fill="#051433" stroke="#d1d5db" strokeWidth="2.5" />
+            <path d={toSvgPath(shell.alnPts)} fill="#051433" stroke="#c5d0db" strokeWidth="2.5" />
 
             {/* Right navy chevron & cyan wing */}
-            <path d={toSvgPath(shell.arnPts)} fill="#051433" stroke="#d1d5db" strokeWidth="2.5" />
+            <path d={toSvgPath(shell.arnPts)} fill="#051433" stroke="#c5d0db" strokeWidth="2.5" />
             <path d={toSvgPath(shell.arcPts)} fill="url(#vdGridCyanWing)" stroke="#ffffff" strokeWidth="2" />
 
             {/* Base Hexagon Background */}
@@ -2284,8 +2331,8 @@ export function VeDichSlantedGridGraphic({
                   y1={y}
                   x2={shell.edgeR(y)}
                   y2={y}
-                  stroke="#c8d6e5"
-                  strokeWidth="3"
+                  stroke="#c5d0db"
+                  strokeWidth="3.5"
                 />
               );
             })}
@@ -2300,14 +2347,14 @@ export function VeDichSlantedGridGraphic({
                   y1={0}
                   x2={xDiv(col, H)}
                   y2={H}
-                  stroke="#c8d6e5"
-                  strokeWidth="3"
+                  stroke="#c5d0db"
+                  strokeWidth="3.5"
                 />
               );
             })}
 
             {/* Outer Hexagon Chamber Stroke */}
-            <path d={toSvgPath(shell.bgPts)} fill="none" stroke="#d1d5db" strokeWidth="3" />
+            <path d={toSvgPath(shell.bgPts)} fill="none" stroke="#c5d0db" strokeWidth="3" />
 
             {/* Text Numbers at Centroids (Clean, bold white, exactly like Image 2) */}
             {cells.map((cell, idx) => {

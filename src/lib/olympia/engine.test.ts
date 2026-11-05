@@ -1890,5 +1890,73 @@ test("Câu hỏi phụ: ưu tiên câu chưa mở ở các vòng trước, khôn
   }
 });
 
+test("Tính chính danh: requestSeat, seat:approve, seat:reject và seat:swap", () => {
+  const cfg: OlympiaConfig = { rulesetId: "O26", rounds: ["khoiDong"], questionSet: SAMPLE_QUESTION_SET, seatCount: 4 };
+  const g = new OlympiaGame("AUTH_TEST", cfg, 0);
+
+  // 1. Thí sinh đăng ký Vị trí 2 (idx = 1)
+  const req1 = g.requestSeat("Nguyễn Văn A", 1, "token_a", "THPT Chuyên");
+  assert.equal(req1.ok, true);
+  assert.equal(req1.status, "pending");
+  assert.equal(g.state.seats[1].name, "Nguyễn Văn A");
+  assert.equal(g.state.seats[1].approved, false);
+  assert.equal(g.state.joinRequests?.length, 1);
+
+  // 2. Host phê duyệt Thí sinh A
+  const apr1 = g.hostAction({ type: "seat:approve", seatId: 1 }, 100);
+  assert.equal(apr1.ok, true);
+  assert.equal(g.state.seats[1].approved, true);
+  assert.equal(g.state.joinRequests?.length, 0);
+
+  // 3. Thí sinh B đăng ký Vị trí 3 (idx = 2) rồi bị từ chối
+  const req2 = g.requestSeat("Trần Thị B", 2, "token_b");
+  assert.equal(req2.ok, true);
+  assert.equal(g.state.seats[2].approved, false);
+  const rej = g.hostAction({ type: "seat:reject", seatId: 2 }, 200);
+  assert.equal(rej.ok, true);
+  assert.equal(g.state.seats[2].name, "");
+  assert.equal(g.state.seats[2].playerKey, null);
+
+  // 4. Thí sinh C đăng ký và được duyệt vào Vị trí 1 (idx = 0)
+  g.requestSeat("Lê Văn C", 0, "token_c");
+  g.hostAction({ type: "seat:approve", seatId: 0 }, 300);
+  assert.equal(g.state.seats[0].name, "Lê Văn C");
+  assert.equal(g.state.seats[0].approved, true);
+
+  // 5. Host hoán đổi vị trí giữa Ghế 0 và Ghế 1
+  g.state.seats[0].score = 10;
+  g.state.seats[1].score = 50;
+  const swp = g.hostAction({ type: "seat:swap", seatA: 0, seatB: 1 }, 400);
+  assert.equal(swp.ok, true);
+  assert.equal(g.state.seats[0].name, "Nguyễn Văn A");
+  assert.equal(g.state.seats[0].score, 50);
+  assert.equal(g.state.seats[1].name, "Lê Văn C");
+  assert.equal(g.state.seats[1].score, 10);
+});
+
+test("Bắt đầu trận đấu: Chặn khi <= 1 thí sinh, cho phép khi >= 2 thí sinh", () => {
+  const cfg: OlympiaConfig = { rulesetId: "O26", rounds: ["khoiDong"], questionSet: SAMPLE_QUESTION_SET, seatCount: 4 };
+  const g = new OlympiaGame("START_TEST", cfg, 0);
+
+  // Chưa có ai duyệt
+  const r0 = g.hostAction({ type: "game:start" }, 0);
+  assert.equal(r0.ok, false);
+  assert.ok(r0.error?.includes("tối thiểu 2 thí sinh"));
+
+  // Chỉ 1 người được duyệt
+  g.requestSeat("Thí sinh 1", 0, "token_1");
+  g.hostAction({ type: "seat:approve", seatId: 0 }, 100);
+  const r1 = g.hostAction({ type: "game:start" }, 200);
+  assert.equal(r1.ok, false);
+  assert.ok(r1.error?.includes("tối thiểu 2 thí sinh"));
+
+  // Người thứ 2 được duyệt -> Đủ điều kiện bắt đầu (>= 2)
+  g.requestSeat("Thí sinh 2", 1, "token_2");
+  g.hostAction({ type: "seat:approve", seatId: 1 }, 300);
+  const r2 = g.hostAction({ type: "game:start" }, 400);
+  assert.equal(r2.ok, true);
+  assert.equal(g.state.stage, "playing");
+});
+
 
 

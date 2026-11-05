@@ -172,7 +172,15 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
     socket.on(
       "join",
       async (
-        payload: { code?: string; role?: Role; key?: string; name?: string; token?: string },
+        payload: {
+          code?: string;
+          role?: Role;
+          key?: string;
+          name?: string;
+          token?: string;
+          seatId?: number;
+          school?: string;
+        },
         ack?: (r: Record<string, unknown>) => void
       ) => {
         try {
@@ -185,6 +193,7 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
           if (!entry) return ack?.({ ok: false, error: "Phòng Olympia không tồn tại" });
 
           let seatId: number | undefined;
+          let joinStatus: "approved" | "pending" = "approved";
           if (role === "host") {
             const isKeyMatch = entry.hostKey && payload.key === entry.hostKey;
             const isSandbox = payload.key === "sandbox" || payload.key === "admin" || (entry.baseConfig as any)?.sandbox || entry.roomId?.includes("sandbox");
@@ -194,15 +203,28 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
           } else if (role === "player") {
             const token = String(payload.token ?? "").slice(0, 80);
             const name = sanitizePlayerName(payload.name);
+            const reqSeat = payload.seatId !== undefined && payload.seatId !== null ? Number(payload.seatId) : undefined;
             if (!token) return ack?.({ ok: false, error: "Thiếu mã thiết bị" });
             const existing = entry.game.state.seats.find((s) => s.playerKey === token);
             if (!existing && !name) return ack?.({ ok: false, error: "Vui lòng nhập tên" });
-            seatId = entry.game.joinSeat(name || existing?.name || "", token);
-            if (seatId < 0) {
-              return ack?.({
-                ok: false,
-                error: entry.game.state.stage !== "lobby" ? "Trận đã bắt đầu" : "Phòng đã đủ 8 thí sinh",
-              });
+
+            if (reqSeat !== undefined && reqSeat >= 0 && reqSeat < entry.game.state.seats.length) {
+              const reqRes = entry.game.requestSeat(name || existing?.name || "", reqSeat, token, payload.school);
+              if (!reqRes.ok) {
+                return ack?.({ ok: false, error: reqRes.error || "Không thể đăng ký vị trí này" });
+              }
+              seatId = reqRes.seatId;
+              joinStatus = reqRes.status || "pending";
+            } else {
+              seatId = entry.game.joinSeat(name || existing?.name || "", token);
+              if (seatId < 0) {
+                return ack?.({
+                  ok: false,
+                  error: entry.game.state.stage !== "lobby" ? "Trận đã bắt đầu" : "Phòng đã đủ thí sinh",
+                });
+              }
+              const seat = entry.game.state.seats[seatId];
+              joinStatus = seat?.approved ? "approved" : "pending";
             }
           }
           info = { code, role, seatId };
@@ -216,6 +238,7 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
           ack?.({
             ok: true,
             seatId,
+            status: joinStatus,
             role,
             rulesetId: entry.game.state.rulesetId,
             audioSeason: entry.game.ruleset.audioSeason,

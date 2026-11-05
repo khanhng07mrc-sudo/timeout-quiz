@@ -270,6 +270,15 @@ export interface Seat {
   playerKey: string | null; // reconnect token owner
   connected: boolean;
   score: number;
+  approved?: boolean; // Đã được Host phê duyệt chính thức
+}
+
+export interface JoinRequest {
+  id: string; // playerKey / token
+  name: string;
+  school?: string;
+  seatId: number;
+  requestedAt: number;
 }
 
 export type ContestantGestureType =
@@ -553,6 +562,7 @@ export interface OlympiaState {
   stage: LobbyPhase;
   seatCount?: number;
   seats: Seat[];
+  joinRequests?: JoinRequest[]; // Yêu cầu đăng ký vị trí chờ Host phê duyệt
   /** index into `roundsPlan` */
   roundIdx: number;
   roundsPlan: RoundId[]; // rounds + cauHoiPhu at the end (played only on tie or when forced)

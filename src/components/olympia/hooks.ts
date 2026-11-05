@@ -10,6 +10,7 @@ export interface JoinInfo {
   ok: boolean;
   error?: string;
   seatId?: number;
+  status?: "approved" | "pending";
   audioSeason?: string;
   rulesetId?: string;
   state?: OlympiaState;
@@ -21,10 +22,21 @@ interface Options {
   hostKey?: string;
   name?: string;
   token?: string;
+  seatId?: number;
+  school?: string;
   enabled?: boolean;
 }
 
-export function useOlympiaSocket({ code, role, hostKey, name, token, enabled = true }: Options) {
+export function useOlympiaSocket({
+  code,
+  role,
+  hostKey,
+  name,
+  token,
+  seatId,
+  school,
+  enabled = true,
+}: Options) {
   const cacheKeyState = `olympia_state_${code}_${role}`;
   const cacheKeyJoin = `olympia_join_${code}_${role}`;
 
@@ -90,7 +102,7 @@ export function useOlympiaSocket({ code, role, hostKey, name, token, enabled = t
         const t1 = Date.now();
         offsetRef.current = r.serverTime + (t1 - t0) / 2 - t1;
       });
-      socket.emit("join", { code, role, key: hostKey, name, token }, (res: JoinInfo) => {
+      socket.emit("join", { code, role, key: hostKey, name, token, seatId, school }, (res: JoinInfo) => {
         if (!res) return;
         joinedRef.current = true;
         const { state: initialState, ...joinMeta } = res;
@@ -142,7 +154,7 @@ export function useOlympiaSocket({ code, role, hostKey, name, token, enabled = t
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [code, role, hostKey, name, token, enabled, cacheKeyJoin, persistState]);
+  }, [code, role, hostKey, name, token, seatId, school, enabled, cacheKeyJoin, persistState]);
 
   const emit = useCallback(
     (event: string, payload?: unknown): Promise<{ ok: boolean; error?: string }> =>

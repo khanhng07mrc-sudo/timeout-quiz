@@ -45,6 +45,29 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
   const [copiedPin, setCopiedPin] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [lobbyQrDataUrl, setLobbyQrDataUrl] = useState<string>("");
+  const [swapSourceSeat, setSwapSourceSeat] = useState<number | null>(null);
+  const [startBlockModal, setStartBlockModal] = useState(false);
+  const [startWarningStep, setStartWarningStep] = useState<0 | 1 | 2>(0);
+
+  const handleStartMatch = () => {
+    if (!state) return;
+    const approvedCount = state.seats.filter(
+      (s) => s.name && s.approved !== false && (s.playerKey || (state as any).teams)
+    ).length;
+    const numSeats = state.seatCount || 4;
+
+    if (approvedCount <= 1) {
+      setStartBlockModal(true);
+      return;
+    }
+
+    if (approvedCount < numSeats) {
+      setStartWarningStep(1);
+      return;
+    }
+
+    call("game:start");
+  };
 
   const isSandbox =
     Boolean((state as any)?.isSandbox) ||
@@ -1105,66 +1128,200 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                       <span className="flex items-center gap-2">
                         <span>👥 DANH SÁCH THÍ SINH VÀO PHÒNG:</span>
                         <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                          {state.seats.filter((s) => s.name).length}/{state.seats.length} Đã vào
+                          {state.seats.filter((s) => s.name && s.approved !== false).length}/{state.seats.length} Đã duyệt
                         </span>
                       </span>
-                      <span className="text-[11px] text-rose-400 font-semibold italic">
-                        * Nhấp vào tên thí sinh bất kỳ để kick khỏi phòng
+                      <span className="text-[11px] text-cyan-300 font-semibold">
+                        * Duyệt thí sinh và hoán đổi vị trí trước khi bắt đầu
                       </span>
                     </div>
+
+                    {/* Pending Join Requests Alert */}
+                    {state.joinRequests && state.joinRequests.length > 0 && (
+                      <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-400/50 shadow-xl space-y-2.5 animate-fade-in">
+                        <div className="flex items-center justify-between text-xs font-black text-amber-300 uppercase tracking-wider">
+                          <span className="flex items-center gap-1.5">
+                            <span className="animate-pulse">⏳</span>
+                            <span>Yêu cầu tham gia chờ Host phê duyệt ({state.joinRequests.length})</span>
+                          </span>
+                          <span className="text-[10px] text-amber-200/80 font-normal">Chỉ thí sinh được duyệt mới được tham gia thi đấu</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {state.joinRequests.map((req) => (
+                            <div
+                              key={req.id}
+                              className="p-2.5 rounded-xl bg-slate-900/95 border border-amber-400/40 flex items-center justify-between gap-2 shadow-md"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
+                                    Vị trí {req.seatId + 1}
+                                  </span>
+                                  <span className="font-bold text-xs text-white truncate">{req.name}</span>
+                                </div>
+                                {req.school && <div className="text-[10px] text-slate-400 truncate mt-0.5">{req.school}</div>}
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => call("seat:approve", { requestId: req.id, seatId: req.seatId })}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition active:scale-95 cursor-pointer"
+                                  title="Phê duyệt thí sinh vào vị trí này"
+                                >
+                                  ✓ Duyệt
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => call("seat:reject", { requestId: req.id, seatId: req.seatId })}
+                                  className="px-2.5 py-1 rounded-lg bg-rose-600/80 hover:bg-rose-600 text-white font-bold text-xs shadow transition active:scale-95 cursor-pointer"
+                                  title="Từ chối yêu cầu tham gia"
+                                >
+                                  ✕ Từ chối
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Swap mode indicator */}
+                    {swapSourceSeat !== null && (
+                      <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-400 text-amber-200 text-xs font-bold flex items-center justify-between animate-pulse">
+                        <span>⇄ Đang chọn vị trí hoán đổi với Vị trí {swapSourceSeat + 1}. Nhấp vào ghế thứ hai để hoàn tất!</span>
+                        <button
+                          type="button"
+                          onClick={() => setSwapSourceSeat(null)}
+                          className="px-2 py-0.5 rounded bg-black/40 hover:bg-black/60 text-white text-[10px] border border-white/20"
+                        >
+                          Hủy bỏ
+                        </button>
+                      </div>
+                    )}
 
                     <div className={`grid gap-2 ${
                       state.seats.length <= 4 ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-4" :
                       state.seats.length <= 6 ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-6" :
                       "grid-cols-2 sm:grid-cols-4 md:grid-cols-8"
                     }`}>
-                      {state.seats.map((s, idx) => (
-                        <div
-                          key={s.id}
-                          className={`rounded-xl border p-2.5 transition flex flex-col justify-between gap-2 relative overflow-hidden ${
-                            s.name
-                              ? "bg-slate-900/90 border-cyan-500/40 shadow-lg shadow-cyan-950/40"
-                              : "bg-white/[0.02] border-white/10 border-dashed"
-                          }`}
-                          style={{
-                            borderTop: `3px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}`
-                          }}
-                        >
-                          <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold">
-                            <span>TS {idx + 1}</span>
-                            <span className={s.connected ? "text-emerald-400" : "text-slate-500"}>
-                              {s.connected ? "🟢 Online" : s.name ? "🔴 Offline" : "⚪ Trống"}
-                            </span>
-                          </div>
+                      {state.seats.map((s, idx) => {
+                        const isPending = Boolean(s.name && s.approved === false);
+                        const isApproved = Boolean(s.name && s.approved !== false);
+                        const isSwapSelected = swapSourceSeat === s.id;
 
-                          {s.name ? (
-                            <button
-                              type="button"
-                              onClick={() => setKickCandidate(s)}
-                              className="w-full text-left p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/30 hover:border-rose-500/60 transition group cursor-pointer"
-                              title="Nhấp vào tên để kick thí sinh khỏi phòng"
-                            >
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="font-black text-xs sm:text-sm text-white group-hover:text-rose-200 truncate">
-                                  {s.name}
+                        return (
+                          <div
+                            key={s.id}
+                            className={`rounded-xl border p-2.5 transition flex flex-col justify-between gap-2 relative overflow-hidden ${
+                              isSwapSelected
+                                ? "bg-amber-500/20 border-amber-400 ring-2 ring-amber-400/50 shadow-xl"
+                                : isApproved
+                                ? "bg-slate-900/90 border-cyan-500/40 shadow-lg shadow-cyan-950/40"
+                                : isPending
+                                ? "bg-amber-950/40 border-amber-500/50 border-dashed"
+                                : "bg-white/[0.02] border-white/10 border-dashed"
+                            }`}
+                            style={{
+                              borderTop: `3px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}`
+                            }}
+                          >
+                            <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold">
+                              <span>Vị trí {idx + 1}</span>
+                              {isApproved && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30">
+                                  ✓ ĐÃ DUYỆT
                                 </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-600/40 text-rose-300 font-bold border border-rose-500/40 group-hover:bg-rose-600 group-hover:text-white transition shrink-0">
-                                  🚫 Kick
-                                </span>
-                              </div>
-                              {s.school && (
-                                <div className="text-[10px] text-slate-400 truncate mt-0.5">
-                                  {s.school}
-                                </div>
                               )}
-                            </button>
-                          ) : (
-                            <div className="py-2 text-center text-xs text-slate-500 italic">
-                              Đang chờ thí sinh...
+                              {isPending && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30">
+                                  ⏳ CHỜ DUYỆT
+                                </span>
+                              )}
+                              {!s.name && <span className="text-slate-500">⚪ Trống</span>}
                             </div>
-                          )}
-                        </div>
-                      ))}
+
+                            {s.name ? (
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-black text-xs sm:text-sm text-white truncate">
+                                    {s.name}
+                                  </span>
+                                  <span className={s.connected ? "text-emerald-400 text-[10px]" : "text-slate-500 text-[10px]"}>
+                                    {s.connected ? "🟢 Online" : "🔴 Offline"}
+                                  </span>
+                                </div>
+                                {s.school && (
+                                  <div className="text-[10px] text-slate-400 truncate">
+                                    {s.school}
+                                  </div>
+                                )}
+
+                                {/* Action buttons */}
+                                <div className="flex items-center gap-1 pt-1 border-t border-white/10">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (swapSourceSeat === null) {
+                                        setSwapSourceSeat(s.id);
+                                      } else if (swapSourceSeat === s.id) {
+                                        setSwapSourceSeat(null);
+                                      } else {
+                                        call("seat:swap", { seatA: swapSourceSeat, seatB: s.id });
+                                        setSwapSourceSeat(null);
+                                      }
+                                    }}
+                                    className={`flex-1 py-1 rounded text-[10px] font-bold border transition cursor-pointer text-center ${
+                                      isSwapSelected
+                                        ? "bg-amber-500 text-slate-950 border-amber-400 font-black animate-pulse"
+                                        : "bg-white/5 hover:bg-white/15 text-cyan-300 border-white/15"
+                                    }`}
+                                    title="Đổi vị trí thí sinh này với vị trí khác"
+                                  >
+                                    {isSwapSelected ? "Đang chọn..." : "⇄ Đổi vị trí"}
+                                  </button>
+                                  {isPending && (
+                                    <button
+                                      type="button"
+                                      onClick={() => call("seat:approve", { seatId: s.id })}
+                                      className="px-2 py-1 rounded text-[10px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow transition cursor-pointer"
+                                      title="Duyệt thí sinh này"
+                                    >
+                                      ✓ Duyệt
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setKickCandidate(s)}
+                                    className="px-1.5 py-1 rounded text-[10px] font-bold bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer"
+                                    title="Hủy thí sinh khỏi vị trí này"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                {swapSourceSeat !== null ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      call("seat:swap", { seatA: swapSourceSeat, seatB: s.id });
+                                      setSwapSourceSeat(null);
+                                    }}
+                                    className="w-full py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/60 text-amber-200 font-bold text-xs transition cursor-pointer text-center animate-pulse"
+                                  >
+                                    Chuyển tới đây ➔
+                                  </button>
+                                ) : (
+                                  <div className="py-2 text-center text-xs text-slate-500 italic">
+                                    Đang chờ thí sinh...
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -1172,7 +1329,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                   <div className="pt-2 text-center">
                     <button
                       type="button"
-                      onClick={() => call("game:start")}
+                      onClick={handleStartMatch}
                       className="px-8 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-red-500 to-violet-600 hover:from-amber-400 hover:to-violet-500 text-white font-black text-sm shadow-xl shadow-amber-500/30 cursor-pointer animate-pulse transition transform hover:scale-105 active:scale-95"
                     >
                       ▶ BẮT ĐẦU TRẬN ĐẤU OLYMPIA
@@ -1502,6 +1659,126 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs shadow-lg shadow-rose-900/50 transition cursor-pointer"
               >
                 🚫 Xác nhận Kick
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Start Game Block Modal (<= 1 Contestant) */}
+      {startBlockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-slate-900 border-2 border-rose-500/60 p-6 sm:p-8 space-y-5 shadow-2xl text-center">
+            <div className="w-16 h-16 rounded-full bg-rose-500/20 border-2 border-rose-500 flex items-center justify-center text-3xl mx-auto">
+              🚫
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-black text-rose-400 uppercase tracking-wide">
+                KHÔNG THỂ BẮT ĐẦU TRẬN ĐẤU
+              </h3>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Hiện tại chỉ có{" "}
+                <b className="text-rose-300 font-bold">
+                  {state.seats.filter((s) => s.name && s.approved !== false).length}
+                </b>{" "}
+                thí sinh tham gia trong phòng thi.
+              </p>
+              <p className="text-xs text-slate-400">
+                Cần tối thiểu <b>2 thí sinh</b> đã được phê duyệt để có thể bắt đầu cuộc thi!
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStartBlockModal(false)}
+              className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-white/20 transition cursor-pointer"
+            >
+              Đã hiểu
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Start Game Warning Step 1 */}
+      {startWarningStep === 1 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-slate-900 border-2 border-amber-400/60 p-6 sm:p-8 space-y-5 shadow-2xl text-center">
+            <div className="w-16 h-16 rounded-full bg-amber-400/20 border-2 border-amber-400 flex items-center justify-center text-3xl mx-auto animate-pulse">
+              ⚠️
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-black text-amber-300 uppercase tracking-wide">
+                CẢNH BÁO SỐ LƯỢNG THÍ SINH
+              </h3>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Phòng thi được cài đặt cho <b>{state.seatCount || 4} thí sinh</b>, nhưng hiện chỉ có{" "}
+                <b className="text-amber-300 font-bold">
+                  {state.seats.filter((s) => s.name && s.approved !== false).length} thí sinh
+                </b>{" "}
+                đã được phê duyệt vào vị trí.
+              </p>
+              <p className="text-xs text-amber-200/80 font-medium">
+                Bạn có muốn bắt đầu trận đấu ngay bây giờ không?
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setStartWarningStep(0)}
+                className="py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/20 transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={() => setStartWarningStep(2)}
+                className="py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm shadow-lg shadow-amber-500/30 transition cursor-pointer"
+              >
+                Có, tiếp tục ➔
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Start Game Final Confirmation Step 2 */}
+      {startWarningStep === 2 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-slate-900 border-2 border-red-500/80 p-6 sm:p-8 space-y-5 shadow-2xl text-center">
+            <div className="w-16 h-16 rounded-full bg-red-500/20 border-2 border-red-500 flex items-center justify-center text-3xl mx-auto">
+              🔔
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-black text-red-400 uppercase tracking-wide">
+                XÁC NHẬN LẦN CUỐI
+              </h3>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Xác nhận lần cuối: Bắt đầu trận đấu với{" "}
+                <b className="text-white font-black">
+                  {state.seats.filter((s) => s.name && s.approved !== false).length} thí sinh
+                </b>
+                ?
+              </p>
+              <p className="text-xs text-red-300/90 font-medium p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+                Các vị trí còn lại sẽ để trống trong suốt trận đấu và không thể bổ sung thêm người chơi sau khi bắt đầu.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setStartWarningStep(1)}
+                className="py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/20 transition cursor-pointer"
+              >
+                ← Quay lại
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStartWarningStep(0);
+                  call("game:start");
+                }}
+                className="py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-sm shadow-xl shadow-red-600/40 transition cursor-pointer"
+              >
+                🚀 XÁC NHẬN BẮT ĐẦU
               </button>
             </div>
           </div>

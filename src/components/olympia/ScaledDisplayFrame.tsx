@@ -16,6 +16,7 @@ export const ScaledDisplayFrame = React.memo(function ScaledDisplayFrame({
   iframeRef,
   className = "",
   onLoad,
+  isSandbox = false,
 }: {
   src: string;
   title?: string;
@@ -23,9 +24,17 @@ export const ScaledDisplayFrame = React.memo(function ScaledDisplayFrame({
   iframeRef?: React.RefObject<HTMLIFrameElement | null>;
   className?: string;
   onLoad?: () => void;
+  isSandbox?: boolean;
 }) {
   const boxRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(0.5);
+
+  const effectiveSrc = React.useMemo(() => {
+    if (!isSandbox) return src;
+    if (src.includes("perf=light") || src.includes("sandbox=1")) return src;
+    const sep = src.includes("?") ? "&" : "?";
+    return `${src}${sep}sandbox=1&perf=light`;
+  }, [src, isSandbox]);
 
   useEffect(() => {
     const el = boxRef.current;
@@ -57,7 +66,7 @@ export const ScaledDisplayFrame = React.memo(function ScaledDisplayFrame({
       >
         <iframe
           ref={iframeRef}
-          src={src}
+          src={effectiveSrc}
           title={title}
           allow={allow}
           onLoad={onLoad}

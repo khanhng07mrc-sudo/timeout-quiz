@@ -139,6 +139,25 @@ interface CameraControllerProps {
   serverNow?: () => number;
 }
 
+// Reusable scratch vectors hoisted outside useFrame to eliminate garbage collection sweeps in 60fps frame loop
+const _cam1Pos = new THREE.Vector3();
+const _cam1Target = new THREE.Vector3();
+const _mcClosePos = new THREE.Vector3();
+const _mcCloseTarget = new THREE.Vector3();
+const _curPos = new THREE.Vector3();
+const _curTarget = new THREE.Vector3();
+const _sweepStartPos = new THREE.Vector3();
+const _sweepStartTarget = new THREE.Vector3();
+const _sweepEndPos = new THREE.Vector3(0.00, 3.80, 11.80);
+const _sweepEndTarget = new THREE.Vector3(-0.60, 1.80, -3.80);
+const _effectivePos = new THREE.Vector3();
+const _dir = new THREE.Vector3();
+const _finalPos = new THREE.Vector3();
+const _offset = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _axisY = new THREE.Vector3(0, 1, 0);
+const _axisX = new THREE.Vector3(1, 0, 0);
+
 export function CameraController({
   camAngle = 1,
   totalSeats = 4,
@@ -205,38 +224,35 @@ export function CameraController({
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = (now - introStartedAt) / 1000;
 
-      const cam1Pos = new THREE.Vector3(...OLYMPIA_CAM_PRESETS[1].pos);
-      const cam1Target = new THREE.Vector3(...OLYMPIA_CAM_PRESETS[1].target);
-      const mcClosePos = new THREE.Vector3(...OLYMPIA_CAM_PRESETS[3].pos);
-      const mcCloseTarget = new THREE.Vector3(...OLYMPIA_CAM_PRESETS[3].target);
-
-      let curPos: THREE.Vector3;
-      let curTarget: THREE.Vector3;
+      _cam1Pos.set(...OLYMPIA_CAM_PRESETS[1].pos);
+      _cam1Target.set(...OLYMPIA_CAM_PRESETS[1].target);
+      _mcClosePos.set(...OLYMPIA_CAM_PRESETS[3].pos);
+      _mcCloseTarget.set(...OLYMPIA_CAM_PRESETS[3].target);
 
       if (elapsedSec < 3.0) {
         // Phase 1 (0.0s - 3.0s): Atmospheric wide view from distance in dramatic darkness
-        curPos = cam1Pos.clone();
-        curTarget = cam1Target.clone();
+        _curPos.copy(_cam1Pos);
+        _curTarget.copy(_cam1Target);
       } else if (elapsedSec < 11.0) {
         // Phase 2 (3.0s - 11.0s): Continuous, majestic one-directional DOLLY IN towards MC Lectern as MCs step in from behind arch posts
         const t = (elapsedSec - 3.0) / 8.0;
         const smoothT = t * t * (3 - 2 * t);
-        curPos = new THREE.Vector3().lerpVectors(cam1Pos, mcClosePos, smoothT);
-        curTarget = new THREE.Vector3().lerpVectors(cam1Target, mcCloseTarget, smoothT);
+        _curPos.lerpVectors(_cam1Pos, _mcClosePos, smoothT);
+        _curTarget.lerpVectors(_cam1Target, _mcCloseTarget, smoothT);
       } else {
         // Phase 3 (11.0s onwards): Steadily hold at MC podium close-up until intro finishes or transition to round begins
         const holdElapsed = elapsedSec - 11.0;
         const breatheY = Math.sin(holdElapsed * 0.75) * 0.012;
         const breatheX = Math.cos(holdElapsed * 0.45) * 0.008;
-        curPos = new THREE.Vector3(mcClosePos.x + breatheX, mcClosePos.y + breatheY, mcClosePos.z);
-        curTarget = mcCloseTarget.clone();
+        _curPos.set(_mcClosePos.x + breatheX, _mcClosePos.y + breatheY, _mcClosePos.z);
+        _curTarget.copy(_mcCloseTarget);
       }
 
-      currentPos.current.copy(curPos);
-      currentTarget.current.copy(curTarget);
+      currentPos.current.copy(_curPos);
+      currentTarget.current.copy(_curTarget);
 
-      camera.position.copy(curPos);
-      camera.lookAt(curTarget);
+      camera.position.copy(_curPos);
+      camera.lookAt(_curTarget);
       camera.updateProjectionMatrix();
       return;
     }
@@ -246,62 +262,60 @@ export function CameraController({
     if (kdStartCooldownUntil) {
       const now = serverNow ? serverNow() : Date.now();
       if (now < kdStartCooldownUntil) {
-        const sweepStartPos = new THREE.Vector3(...OLYMPIA_CAM_PRESETS[14].pos);
-        const sweepStartTarget = new THREE.Vector3(...OLYMPIA_CAM_PRESETS[14].target);
-        const sweepEndPos = new THREE.Vector3(0.00, 3.80, 11.80);
-        const sweepEndTarget = new THREE.Vector3(-0.60, 1.80, -3.80);
+        _sweepStartPos.set(...OLYMPIA_CAM_PRESETS[14].pos);
+        _sweepStartTarget.set(...OLYMPIA_CAM_PRESETS[14].target);
 
         const duration = 3500;
         const elapsed = Math.max(0, duration - (kdStartCooldownUntil - now));
         const t = Math.min(1.0, elapsed / duration);
         const smoothT = t * t * (3 - 2 * t);
 
-        const curPos = new THREE.Vector3().lerpVectors(sweepStartPos, sweepEndPos, smoothT);
-        const curTarget = new THREE.Vector3().lerpVectors(sweepStartTarget, sweepEndTarget, smoothT);
+        _curPos.lerpVectors(_sweepStartPos, _sweepEndPos, smoothT);
+        _curTarget.lerpVectors(_sweepStartTarget, _sweepEndTarget, smoothT);
 
-        currentPos.current.copy(curPos);
-        currentTarget.current.copy(curTarget);
+        currentPos.current.copy(_curPos);
+        currentTarget.current.copy(_curTarget);
 
-        camera.position.copy(curPos);
-        camera.lookAt(curTarget);
+        camera.position.copy(_curPos);
+        camera.lookAt(_curTarget);
         camera.updateProjectionMatrix();
         return;
       }
     }
 
     // 1. Calculate subtle broadcast push-in (dolly) towards target
-    const effectivePos = targetPos.clone();
+    _effectivePos.copy(targetPos);
     if (pushInProgress > 0) {
-      const dir = targetLookAt.clone().sub(targetPos).normalize();
-      effectivePos.addScaledVector(dir, pushInProgress * 0.40);
+      _dir.copy(targetLookAt).sub(targetPos).normalize();
+      _effectivePos.addScaledVector(_dir, pushInProgress * 0.40);
     }
 
     // 2. Smooth interpolation or instant positioning
     if (transitionMode === "CUT") {
-      currentPos.current.copy(effectivePos);
+      currentPos.current.copy(_effectivePos);
       currentTarget.current.copy(targetLookAt);
     } else {
       // Morph transition (smooth damp)
       const lerpSpeed = Math.min(1.0, delta * 3.8);
-      currentPos.current.lerp(effectivePos, lerpSpeed);
+      currentPos.current.lerp(_effectivePos, lerpSpeed);
       currentTarget.current.lerp(targetLookAt, lerpSpeed);
     }
 
     // 3. Apply PTZ Orbit offsets
-    const finalPos = currentPos.current.clone();
+    _finalPos.copy(currentPos.current);
     if (ptzYaw !== 0 || ptzPitch !== 0 || ptzZoom !== 1.0) {
-      const offset = finalPos.clone().sub(currentTarget.current);
+      _offset.copy(_finalPos).sub(currentTarget.current);
       // Orbit around target
-      offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), ptzYaw);
-      const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), ptzYaw);
-      offset.applyAxisAngle(right, ptzPitch);
+      _offset.applyAxisAngle(_axisY, ptzYaw);
+      _right.copy(_axisX).applyAxisAngle(_axisY, ptzYaw);
+      _offset.applyAxisAngle(_right, ptzPitch);
 
       // Apply Zoom scaling (FOV zoom or distance reduction)
-      offset.multiplyScalar(1.0 / ptzZoom);
-      finalPos.copy(currentTarget.current).add(offset);
+      _offset.multiplyScalar(1.0 / ptzZoom);
+      _finalPos.copy(currentTarget.current).add(_offset);
     }
 
-    camera.position.copy(finalPos);
+    camera.position.copy(_finalPos);
     camera.lookAt(currentTarget.current);
     camera.updateProjectionMatrix();
   });

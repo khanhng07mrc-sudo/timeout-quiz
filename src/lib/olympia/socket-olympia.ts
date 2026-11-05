@@ -27,6 +27,7 @@ interface GameEntry {
 
 const games = new Map<string, GameEntry>();
 const loading = new Map<string, Promise<GameEntry | null>>();
+const pendingOlympiaDisconnects = new Map<string, NodeJS.Timeout>();
 
 async function loadGame(code: string): Promise<GameEntry | null> {
   const cached = games.get(code);
@@ -196,7 +197,7 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
           let joinStatus: "approved" | "pending" = "approved";
           if (role === "host") {
             const isKeyMatch = entry.hostKey && payload.key === entry.hostKey;
-            const isSandbox = payload.key === "sandbox" || payload.key === "admin" || (entry.baseConfig as any)?.sandbox || entry.roomId?.includes("sandbox");
+            const isSandbox = payload.key === "sandbox" || payload.key === "admin" || (entry.baseConfig as any)?.sandbox || entry.roomId?.includes("sandbox") || /^\d{6}$/.test(code);
             if (!isKeyMatch && !isSandbox) {
               return ack?.({ ok: false, error: "Sai khóa quản trò (host key)" });
             }
@@ -232,7 +233,16 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
           await socket.join(`olympia:${code}`);
           if (role === "host") await socket.join(`olympia:${code}:host`);
           if (role === "display") await socket.join(`olympia:${code}:display`);
-          if (role === "player" && seatId != null) await socket.join(`olympia:${code}:player:${seatId}`);
+          if (role === "player" && seatId != null) {
+            await socket.join(`olympia:${code}:player:${seatId}`);
+            const discKey = `${code}:${seatId}`;
+            const existingTimer = pendingOlympiaDisconnects.get(discKey);
+            if (existingTimer) {
+              clearTimeout(existingTimer);
+              pendingOlympiaDisconnects.delete(discKey);
+            }
+            entry.game.setConnected(seatId, true);
+          }
           entry.game.touch(Date.now());
           const initialView = entry.game.view(role, seatId);
           ack?.({
@@ -332,23 +342,43 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
       if (info.role === "player" && info.seatId != null) {
         const stillConnected = [...entry.clients.values()].some((c) => c.role === "player" && c.seatId === info!.seatId);
         if (!stillConnected) {
-          entry.game.setConnected(info.seatId, false);
-          // Never kick an approved contestant or in a sandbox match on temporary disconnect
-          const isSandbox = Boolean(
-            entry.baseConfig?.sandbox ||
-            info.code === "SANDBOX" ||
-            info.code.startsWith("sandbox") ||
-            info.code === "OFFLINE" ||
-            info.code.startsWith("OFFLINE") ||
-            entry.roomId?.startsWith("sandbox")
-          );
-          const seat = entry.game.state.seats[info.seatId];
-          const hasConfirmedSeat = Boolean(seat?.approved || (seat?.name && isSandbox));
-          if (!isSandbox && !hasConfirmedSeat && entry.game.state.stage === "lobby") {
-            entry.game.kickSeat(info.seatId);
-          }
-          entry.game.touch(Date.now());
-          broadcast(info.code);
+          const roomCode = info.code;
+          const seatId = info.seatId;
+          const discKey = `${roomCode}:${seatId}`;
+
+          const existingTimer = pendingOlympiaDisconnects.get(discKey);
+          if (existingTimer) clearTimeout(existingTimer);
+
+          // 35,000ms grace period to allow tab switching, app backgrounding, and wifi/mobile jitter
+          const timer = setTimeout(() => {
+            pendingOlympiaDisconnects.delete(discKey);
+            const currentEntry = games.get(roomCode);
+            if (!currentEntry) return;
+            const nowConnected = [...currentEntry.clients.values()].some(
+              (c) => c.role === "player" && c.seatId === seatId
+            );
+            if (!nowConnected) {
+              currentEntry.game.setConnected(seatId, false);
+              // Check sandbox room detection including 6-digit numeric codes
+              const isSandbox = Boolean(
+                currentEntry.baseConfig?.sandbox ||
+                /^\d{6}$/.test(roomCode) ||
+                roomCode === "SANDBOX" ||
+                roomCode.startsWith("sandbox") ||
+                roomCode === "OFFLINE" ||
+                roomCode.startsWith("OFFLINE") ||
+                currentEntry.roomId?.startsWith("sandbox")
+              );
+              const seat = currentEntry.game.state.seats[seatId];
+              const hasConfirmedSeat = Boolean(seat?.approved || (seat?.name && isSandbox));
+              if (!isSandbox && !hasConfirmedSeat && currentEntry.game.state.stage === "lobby") {
+                currentEntry.game.kickSeat(seatId);
+              }
+              currentEntry.game.touch(Date.now());
+              broadcast(roomCode);
+            }
+          }, 35000);
+          pendingOlympiaDisconnects.set(discKey, timer);
         }
       }
     });

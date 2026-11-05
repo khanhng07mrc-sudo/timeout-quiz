@@ -492,10 +492,27 @@ function createQuizorraBadgeCanvas(): HTMLCanvasElement {
 
 function questionPromptAvailable(state?: OlympiaState | null): boolean {
   if (!state) return false;
-  if (state.currentRound === "khoiDong") return Boolean(state.khoiDong?.current?.q);
-  if (state.currentRound === "vcnv") return Boolean(state.vcnv?.currentRow != null && state.vcnv.currentRow >= 0);
-  if (state.currentRound === "tangToc") return Boolean(state.tangToc?.qIdx != null && state.tangToc.qIdx >= 0);
-  if (state.currentRound === "veDich") return Boolean(state.veDich?.current?.q?.q);
+  if (state.currentRound === "khoiDong") return Boolean(state.khoiDong?.questionRevealed && state.khoiDong?.current?.q);
+  if (state.currentRound === "vcnv") {
+    const v = state.vcnv;
+    if (!v) return false;
+    return Boolean(v.phase === "question" && v.currentRow >= 0);
+  }
+  if (state.currentRound === "tangToc") {
+    const tt = state.tangToc;
+    if (!tt) return false;
+    return Boolean(tt.phase === "question" && tt.qIdx >= 0);
+  }
+  if (state.currentRound === "veDich") {
+    const vd = state.veDich;
+    if (!vd) return false;
+    return Boolean((vd.phase === "packageReady" || vd.phase === "thinking" || vd.phase === "stealing") && vd.current?.q?.q);
+  }
+  if (state.currentRound === "cauHoiPhu") {
+    const cp = state.cauHoiPhu;
+    if (!cp) return false;
+    return Boolean(cp.phase === "question" && cp.questions?.[cp.qIdx]?.q);
+  }
   return false;
 }
 
@@ -1089,14 +1106,17 @@ function renderLedScreenToCanvas(
     return;
   }
 
-  // 3. Check for Active Round Question Content
+  // 3. Check for Active Round Question Content (strictly synchronized with lower-third reveal)
   let roundTitle: string | null = null;
   let questionPrompt: string | null = null;
 
-  if (state?.currentRound === "khoiDong" && state.khoiDong?.current?.q) {
+  if (state?.currentRound === "khoiDong" && state.khoiDong?.questionRevealed && state.khoiDong?.current?.q) {
     roundTitle = "KHỞI ĐỘNG";
     questionPrompt = state.khoiDong.current.q;
-  } else if (state?.currentRound === "vcnv") {
+  } else if (
+    state?.currentRound === "vcnv" &&
+    state.vcnv?.phase === "question"
+  ) {
     roundTitle = "VƯỢT CHƯỚNG NGẠI VẬT";
     const cur = state.vcnv?.currentRow ?? -1;
     if (cur >= 0 && cur < 4 && state.vcnv?.rows?.[cur]?.hint) {
@@ -1104,12 +1124,28 @@ function renderLedScreenToCanvas(
     } else if (cur === 4 && state.vcnv?.centerQuestion?.q) {
       questionPrompt = state.vcnv.centerQuestion.q;
     }
-  } else if (state?.currentRound === "tangToc" && state.tangToc?.qIdx != null && state.tangToc.qIdx >= 0) {
+  } else if (
+    state?.currentRound === "tangToc" &&
+    state.tangToc?.phase === "question" &&
+    state.tangToc.qIdx != null &&
+    state.tangToc.qIdx >= 0
+  ) {
     roundTitle = `TĂNG TỐC — CÂU ${state.tangToc.qIdx + 1}`;
     questionPrompt = state.tangToc.questions?.[state.tangToc.qIdx]?.q || null;
-  } else if (state?.currentRound === "veDich" && state.veDich?.current) {
+  } else if (
+    state?.currentRound === "veDich" &&
+    (state.veDich?.phase === "packageReady" || state.veDich?.phase === "thinking" || state.veDich?.phase === "stealing") &&
+    state.veDich?.current
+  ) {
     roundTitle = `VỀ ĐÍCH — ${state.veDich.current.points ?? 20} ĐIỂM`;
     questionPrompt = state.veDich.current.q?.q || null;
+  } else if (
+    state?.currentRound === "cauHoiPhu" &&
+    state.cauHoiPhu?.phase === "question" &&
+    state.cauHoiPhu.questions?.[state.cauHoiPhu.qIdx]?.q
+  ) {
+    roundTitle = "CÂU HỎI PHỤ";
+    questionPrompt = state.cauHoiPhu.questions[state.cauHoiPhu.qIdx].q;
   }
 
   if (roundTitle) {

@@ -149,13 +149,13 @@ export function OlympiaStudio3DScene({
       <Canvas
         camera={{ position: [0.0, 3.2, 6.8], fov: 46 }}
         gl={{
-          powerPreference: "high-performance",
+          powerPreference: isSandboxEnv || quality === "LIGHT" ? "low-power" : "high-performance",
           antialias: false,
           alpha: false,
           stencil: false,
           depth: true,
         }}
-        dpr={isSandboxEnv ? 0.6 : quality === "LIGHT" ? 0.6 : isIframe ? 0.75 : quality === "HIGH" ? Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 1.25) : 1}
+        dpr={isSandboxEnv ? 0.5 : quality === "LIGHT" ? 0.5 : isIframe ? 0.75 : quality === "HIGH" ? Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 1.25) : 1}
       >
         <CameraController
           camAngle={internalCam}

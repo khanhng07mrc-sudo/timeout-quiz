@@ -661,7 +661,7 @@ function KhoiDong({ state, serverNow }: P) {
                 />
               ) : null
             }
-            timer={hasRevealedQ && state.rulesetId < "O23" ? kd.timer : null}
+            timer={hasRevealedQ ? kd.timer : null}
             serverNow={serverNow}
           />
         </div>
@@ -684,7 +684,7 @@ function KhoiDong({ state, serverNow }: P) {
               />
             ) : null
           }
-          timer={hasRevealedQ && state.rulesetId < "O23" ? kd.timer : null}
+          timer={hasRevealedQ ? kd.timer : null}
           showScoreTab={true}
           runAnim={!hasRevealedQ}
         />
@@ -696,6 +696,13 @@ function KhoiDong({ state, serverNow }: P) {
 function Vcnv({ state, serverNow }: P) {
   const v = state.vcnv!;
   if (!v) return null;
+
+  // 0. Nền chờ ĐA (W): Hiển thị nền mờ trong suốt trên camera toàn cảnh thí sinh trước khi hiện đáp án
+  if (v.phase === "waitingAnswer") {
+    return (
+      <div className="absolute inset-0 bg-[#040e24]/75 backdrop-blur-sm animate-fade-in pointer-events-none" />
+    );
+  }
 
   // 1. Candidate Answers Revealed -> Fullscreen VTV3 Vertical Brass Rail Layout (Image 3)
   if (v.answersRevealed) {
@@ -709,6 +716,13 @@ function Vcnv({ state, serverNow }: P) {
 function TangToc({ state, serverNow }: P) {
   const tt = state.tangToc!;
   if (!tt || tt.phase === "idle") return null;
+
+  // 0. Nền chờ ĐA (W): Hiển thị nền mờ trong suốt trên camera toàn cảnh thí sinh trước khi hiện đáp án
+  if ((tt as any).phase === "waitingAnswer") {
+    return (
+      <div className="absolute inset-0 bg-[#040e24]/75 backdrop-blur-sm animate-fade-in pointer-events-none" />
+    );
+  }
 
   // 1. Candidate Answers Revealed & Graded -> Fullscreen Ranked Layout
   if (tt.phase === "ranking" || tt.phase === "graded") {

@@ -2068,6 +2068,7 @@ function KhoiDongDeck({
 function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; seats: Seat[] }) {
   const v = state.vcnv!;
   const [selectedCnvSeat, setSelectedCnvSeat] = useState<number | null>(v.bells?.[0]?.seat ?? null);
+  const [showClearBellsModal, setShowClearBellsModal] = useState(false);
 
   // Strictly sync selectedCnvSeat with active v.bells: only contestants with an active CNV bell can be selected
   useEffect(() => {
@@ -2082,6 +2083,9 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
     selectedCnvSeat != null && v.bells?.some((b) => b.seat === selectedCnvSeat)
       ? selectedCnvSeat
       : (v.bells?.[0]?.seat ?? null);
+
+  const activeSeatObj = activeCnvSeat != null ? state.seats[activeCnvSeat] : null;
+  const activeSeatName = activeSeatObj ? (activeSeatObj.name || `Thí sinh ${activeCnvSeat + 1}`) : "";
 
   const kwLen = v.keywordLength ?? (v.keyword ? v.keyword.replace(/\s+/g, "").length : 0);
 
@@ -2122,7 +2126,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             </button>
           )}
         </div>
-        <div className={`grid gap-1.5 ${seats.length <= 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-6"}`}>
+        <div className={`grid gap-2 ${seats.length <= 4 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"}`}>
           {seats.map((s) => {
             const ans = v.answers?.[s.id];
             const isLocked = v.eliminatedSeats.includes(s.id);
@@ -2132,7 +2136,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             return (
               <div
                 key={s.id}
-                className={`rounded-lg p-1.5 border flex flex-col justify-between gap-1 ${
+                className={`rounded-lg p-2 border flex flex-col justify-between gap-1.5 ${
                   hasBell
                     ? "bg-amber-950/60 border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
                     : isLocked
@@ -2141,7 +2145,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                 }`}
               >
                 <div className="flex items-center justify-between gap-1 text-[11px]">
-                  <span className="font-black text-slate-200 truncate">
+                  <span className="font-black text-slate-200 break-words leading-tight">
                     TS{s.id + 1} · {s.name || `Ghế ${s.id + 1}`}
                   </span>
                   <button
@@ -2159,10 +2163,10 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                 </div>
 
                 {/* Live Typed Answer */}
-                <div className="rounded bg-black/50 border border-white/10 px-2 py-1 min-h-[26px] flex items-center justify-between gap-1">
+                <div className="rounded bg-black/50 border border-white/10 px-2 py-1 min-h-[30px] flex items-center justify-between gap-1 flex-wrap">
                   {ans?.text ? (
                     <>
-                      <span className="font-black text-xs text-amber-300 uppercase truncate select-text" title={ans.text}>
+                      <span className="font-black text-xs text-amber-300 uppercase break-words select-text" title={ans.text}>
                         {ans.text}
                       </span>
                       <span className="text-[10px] font-mono text-cyan-300 shrink-0">
@@ -2175,7 +2179,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                 </div>
 
                 {ans?.previousText && (
-                  <div className="text-[9px] text-slate-400 truncate">
+                  <div className="text-[9px] text-slate-400 break-words">
                     Trước đó: {ans.previousText} ({((ans.previousMs || 0) / 1000).toFixed(2)}s)
                   </div>
                 )}
@@ -2341,37 +2345,82 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             🔔 Thí sinh bấm chuông CNV sẽ <b>tự động dừng phần chơi VCNV</b> ngay trên máy thí sinh. Nếu bấm nhầm, nhấn <b>🔓 Mở lại</b> ở bảng trên!
           </div>
 
-          <div className="space-y-1">
-            <span className="text-[11px] text-slate-400 font-bold">
-              Chọn thí sinh chấm CNV (Chỉ chọn được đội có tín hiệu chuông):
-            </span>
-            <div className={`grid gap-1 ${seats.length <= 4 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
-              {seats.map((s) => {
-                const bellOrder = v.bells?.findIndex((b) => b.seat === s.id) ?? -1;
-                const buzzed = bellOrder >= 0;
-                const isSelected = buzzed && activeCnvSeat === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    disabled={!buzzed}
-                    onClick={() => {
-                      if (buzzed) setSelectedCnvSeat(s.id);
-                    }}
-                    className={`px-2 py-1 rounded text-xs font-bold border text-left truncate transition ${
-                      isSelected
-                        ? "bg-amber-500/35 border-amber-300 text-amber-100 ring-1 ring-amber-400 cursor-pointer"
-                        : buzzed
-                        ? "bg-yellow-400/25 border-yellow-400 text-yellow-200 animate-pulse cursor-pointer hover:bg-yellow-400/35"
-                        : "bg-white/5 border-white/10 text-slate-500 opacity-40 cursor-not-allowed"
-                    }`}
-                    title={buzzed ? `Chọn chấm CNV cho ${s.name}` : "Đội này chưa bấm chuông CNV (hoặc đã xóa tín hiệu)"}
-                  >
-                    TS{s.id + 1} {buzzed ? "🔔" : ""}
-                  </button>
-                );
-              })}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold">
+              <span>Tín hiệu bấm chuông CNV (Thứ tự trước - sau):</span>
+              <span className="text-amber-300 font-mono text-[10px]">
+                {v.bells?.length || 0} tín hiệu
+              </span>
             </div>
+
+            {v.bells && v.bells.length > 0 ? (
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+                {v.bells.map((b, idx) => {
+                  const s = state.seats[b.seat];
+                  const isSelected = activeCnvSeat === b.seat;
+                  const isAfterWrong = Boolean(
+                    (v as any).lastJudgedWrongAt && b.atMs && b.atMs > (v as any).lastJudgedWrongAt
+                  );
+                  const wasJudgedWrong = Boolean((b as any).judgedWrong);
+                  const timeStr = b.atMs ? `${((b.atMs % 60000) / 1000).toFixed(2)}s` : `${idx + 1}`;
+
+                  return (
+                    <div
+                      key={`${b.seat}-${idx}`}
+                      onClick={() => setSelectedCnvSeat(b.seat)}
+                      className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition select-none ${
+                        isSelected
+                          ? "bg-amber-500/35 border-amber-300 text-amber-100 ring-2 ring-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
+                          : "bg-slate-900/80 border-white/10 hover:bg-slate-800 text-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-black text-xs flex items-center justify-center shrink-0">
+                          #{idx + 1}
+                        </span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-black text-xs break-words">
+                            TS{b.seat + 1} · {s?.name || `Ghế ${b.seat + 1}`}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            Chuông: {timeStr}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {wasJudgedWrong && (
+                          <span className="px-1.5 py-0.5 rounded bg-rose-500/20 border border-rose-500/40 text-rose-300 font-bold text-[10px]">
+                            Đã chấm Sai
+                          </span>
+                        )}
+                        {isAfterWrong && (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-200 font-bold text-[10px] animate-pulse">
+                            ⚠️ Bấm sau
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Bạn có chắc muốn tắt riêng tín hiệu chuông và LOẠI quyền chơi VCNV của ${s?.name || `TS${b.seat + 1}`}?`)) {
+                              call("vcnv:dismissBell", { seat: b.seat });
+                            }
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-rose-600 text-slate-300 hover:text-white text-[10px] font-bold"
+                          title="Tắt riêng tín hiệu này và loại TS này"
+                        >
+                          ✕ Tắt
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 text-slate-500 text-xs italic text-center">
+                Chưa có thí sinh nào bấm chuông CNV
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-1.5 pt-1">
@@ -2381,14 +2430,14 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
               onClick={() => {
                 if (activeCnvSeat != null) call("vcnv:correctCNV", { seat: activeCnvSeat });
               }}
-              className={`py-2 rounded-lg text-white text-xs font-black shadow transition ${
+              className={`py-2 px-1 rounded-lg text-white text-xs font-black shadow transition ${
                 activeCnvSeat != null
                   ? "bg-emerald-600 hover:bg-emerald-500 cursor-pointer"
                   : "bg-emerald-950/40 text-slate-500 border border-white/10 opacity-50 cursor-not-allowed"
               }`}
               title="Cộng điểm CNV cho đội đang chọn và mở toàn bộ Chướng ngại vật"
             >
-              ✔ CNV Đúng (+Điểm)
+              ✔ Chấm ĐÚNG: {activeSeatName || "TS"} (+Điểm)
             </button>
             <button
               type="button"
@@ -2396,14 +2445,14 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
               onClick={() => {
                 if (activeCnvSeat != null) call("vcnv:wrongCNV", { seat: activeCnvSeat });
               }}
-              className={`py-2 rounded-lg text-white text-xs font-black shadow transition ${
+              className={`py-2 px-1 rounded-lg text-white text-xs font-black shadow transition ${
                 activeCnvSeat != null
                   ? "bg-rose-600 hover:bg-rose-500 cursor-pointer"
                   : "bg-rose-950/40 text-slate-500 border border-white/10 opacity-50 cursor-not-allowed"
               }`}
-              title="Phát âm thanh trả lời sai CNV và xóa chuông đội đang chọn"
+              title="Phát âm thanh trả lời sai CNV (không tự tắt chuông các đội còn lại)"
             >
-              ✘ CNV Sai (Phát âm sai)
+              ✘ Chấm SAI (Phát âm): {activeSeatName || "TS"}
             </button>
           </div>
 
@@ -2411,15 +2460,15 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             <button
               type="button"
               disabled={!v.bells || v.bells.length === 0}
-              onClick={() => call("vcnv:clearBells")}
+              onClick={() => setShowClearBellsModal(true)}
               className={`py-1.5 rounded-lg text-xs font-bold transition ${
                 v.bells && v.bells.length > 0
-                  ? "bg-white/10 hover:bg-white/15 text-slate-200 cursor-pointer"
+                  ? "bg-rose-900/40 hover:bg-rose-800/60 text-rose-200 border border-rose-500/40 cursor-pointer"
                   : "bg-white/5 text-slate-600 opacity-50 cursor-not-allowed"
               }`}
-              title="Xóa toàn bộ tín hiệu chuông CNV hiện tại"
+              title="Tắt tín hiệu chuông và chốt loại quyền chơi VCNV"
             >
-              🔕 Xóa tín hiệu chuông
+              🔕 Tắt tín hiệu chuông ({v.bells?.length || 0})
             </button>
             <button
               type="button"
@@ -2429,6 +2478,65 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
               Mở Toàn Bộ CNV
             </button>
           </div>
+
+          {/* Modal Cảnh báo Tắt Tín Hiệu Chuông VCNV */}
+          {showClearBellsModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+              <div className="w-full max-w-md rounded-2xl bg-[#0b1528] border-2 border-rose-500/80 shadow-[0_0_30px_rgba(244,63,94,0.4)] p-5 space-y-4 text-white animate-fade-in">
+                <div className="flex items-center gap-3 text-rose-400">
+                  <span className="text-3xl">⚠️</span>
+                  <h3 className="text-lg font-black uppercase tracking-wide">CẢNH BÁO TẮT TÍN HIỆU CHUÔNG</h3>
+                </div>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Hành động này sẽ <b>TẮT toàn bộ tín hiệu chuông</b> và <b>CHÍNH THỨC LOẠI quyền chơi VCNV</b> của các thí sinh sau:
+                </p>
+                <div className="rounded-lg bg-black/50 border border-white/10 p-3 space-y-1.5 max-h-48 overflow-y-auto">
+                  {v.bells?.map((b, idx) => {
+                    const s = state.seats[b.seat];
+                    const isAfterWrong = Boolean(
+                      (v as any).lastJudgedWrongAt && b.atMs && b.atMs > (v as any).lastJudgedWrongAt
+                    );
+                    return (
+                      <div key={b.seat} className="flex items-center justify-between text-xs py-1 border-b border-white/5">
+                        <span className="font-bold text-amber-200">
+                          #{idx + 1}: TS{b.seat + 1} - {s?.name || `Ghế ${b.seat + 1}`}
+                        </span>
+                        {isAfterWrong ? (
+                          <span className="text-[10px] text-rose-400 font-bold bg-rose-500/20 px-1.5 py-0.5 rounded">
+                            ⚠️ Bấm sau lần Sai!
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400">Sẽ bị loại</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="text-xs text-amber-300/90 font-medium bg-amber-500/10 border border-amber-500/20 rounded p-2.5">
+                  💡 MC/Host chỉ tắt tín hiệu chuông sau khi các thí sinh bấm chuông đã trả lời sai và bạn muốn tiếp tục lật mở các hàng ngang khác.
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowClearBellsModal(false)}
+                    className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold cursor-pointer"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      call("vcnv:clearBells");
+                      setShowClearBellsModal(false);
+                    }}
+                    className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow cursor-pointer"
+                  >
+                    Xác nhận Tắt & Loại thí sinh
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -2455,14 +2563,14 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
             Đã gửi: {Object.keys(tt.submissions || {}).length}/{seats.length} thí sinh
           </span>
         </div>
-        <div className={`grid gap-1.5 ${seats.length <= 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-6"}`}>
+        <div className={`grid gap-2 ${seats.length <= 4 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"}`}>
           {seats.map((s) => {
             const sub = tt.submissions?.[s.id];
             const rankEntry = tt.ranking?.find((r) => r.seat === s.id);
             return (
               <div
                 key={s.id}
-                className={`rounded-lg p-1.5 border flex flex-col justify-between gap-1 ${
+                className={`rounded-lg p-2 border flex flex-col justify-between gap-1.5 ${
                   (rankEntry?.points ?? 0) > 0
                     ? "bg-emerald-950/60 border-emerald-400"
                     : rankEntry && (rankEntry.points ?? 0) === 0 && tt.phase === "graded"
@@ -2473,7 +2581,7 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
                 }`}
               >
                 <div className="flex items-center justify-between gap-1 text-[11px]">
-                  <span className="font-black text-slate-200 truncate">
+                  <span className="font-black text-slate-200 break-words leading-tight">
                     TS{s.id + 1} · {s.name || `Ghế ${s.id + 1}`}
                   </span>
                   {sub && (
@@ -2482,9 +2590,9 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
                     </span>
                   )}
                 </div>
-                <div className="rounded bg-black/50 border border-white/10 px-2 py-1 min-h-[26px] flex items-center justify-between gap-1">
+                <div className="rounded bg-black/50 border border-white/10 px-2 py-1 min-h-[30px] flex items-center justify-between gap-1 flex-wrap">
                   {sub?.answer ? (
-                    <span className="font-black text-xs text-white uppercase truncate select-text" title={sub.answer}>
+                    <span className="font-black text-xs text-white uppercase break-words select-text" title={sub.answer}>
                       {sub.answer}
                     </span>
                   ) : (
@@ -2495,7 +2603,7 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
                   ) : null}
                 </div>
                 {sub?.previousAnswer && (
-                  <div className="text-[9px] text-slate-400 truncate">
+                  <div className="text-[9px] text-slate-400 break-words">
                     Trước đó: {sub.previousAnswer} ({((sub.previousMs || 0) / 1000).toFixed(2)}s)
                   </div>
                 )}

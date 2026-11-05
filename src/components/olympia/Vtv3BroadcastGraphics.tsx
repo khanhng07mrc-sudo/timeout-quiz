@@ -458,27 +458,55 @@ export function GlossyBlueDomeButton({
   isCurrentRow?: boolean;
   isWrong?: boolean;
 }) {
+  // 4 Visual States:
+  // 1. Initial deep blue: !isOpened && !isWrong && !isCurrentRow
+  // 2. Currently selected row: isCurrentRow && !isOpened && !isWrong (pulsating amber ring)
+  // 3. Revealed/opened: isOpened (bright luminous cyan with white letter)
+  // 4. Sẫm màu khi không ai trả lời đúng: isWrong (darkened charcoal slate, no letter)
+  const isSelecting = isCurrentRow && !isOpened && !isWrong;
+
+  const bgGradient = isWrong
+    ? "radial-gradient(circle at 35% 30%, #374151 0%, #1f2937 55%, #111827 100%)"
+    : isOpened
+    ? "radial-gradient(circle at 35% 30%, #67e8f9 0%, #06b6d4 40%, #0891b2 75%, #164e63 100%)"
+    : isSelecting
+    ? "radial-gradient(circle at 35% 30%, #fef08a 0%, #f59e0b 45%, #b45309 80%, #78350f 100%)"
+    : "radial-gradient(circle at 35% 30%, #93c5fd 0%, #38bdf8 25%, #0284c7 55%, #03487f 80%, #02203d 100%)";
+
+  const borderColor = isWrong
+    ? "1.5px solid rgba(107, 114, 128, 0.4)"
+    : isOpened
+    ? "1.5px solid rgba(165, 243, 252, 0.95)"
+    : isSelecting
+    ? "2px solid rgba(254, 240, 138, 0.95)"
+    : "1.5px solid rgba(224, 242, 254, 0.85)";
+
   return (
     <div
       className={`relative w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 lg:w-11 lg:h-11 rounded-full flex items-center justify-center transition-all duration-300 shrink-0 ${
-        isCurrentRow
-          ? "ring-2 ring-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.8)] scale-105"
+        isSelecting
+          ? "ring-2 ring-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.9)] animate-pulse scale-105"
+          : isOpened
+          ? "shadow-[0_0_15px_rgba(6,182,212,0.6)]"
+          : isWrong
+          ? "shadow-[0_2px_4px_rgba(0,0,0,0.5)] opacity-60"
           : "shadow-[0_4px_10px_rgba(0,0,0,0.65)]"
       }`}
       style={{
-        background: isWrong
-          ? "radial-gradient(circle at 35% 30%, #b91c1c 0%, #7f1d1d 50%, #450a0a 100%)"
-          : "radial-gradient(circle at 35% 30%, #93c5fd 0%, #38bdf8 25%, #0284c7 55%, #03487f 80%, #02203d 100%)",
-        border: "1.5px solid rgba(224, 242, 254, 0.85)",
-        boxShadow:
-          "0 4px 10px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.7), inset 0 -2px 4px rgba(0,0,0,0.8)",
+        background: bgGradient,
+        border: borderColor,
+        boxShadow: isWrong
+          ? "inset 0 1px 2px rgba(0,0,0,0.5)"
+          : "0 4px 10px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.7), inset 0 -2px 4px rgba(0,0,0,0.8)",
       }}
     >
       {/* Specular White Glint Spot at top-left for ultra-glossy 3D glass illusion */}
-      <div className="absolute top-1 left-1.5 w-2 h-1.5 sm:w-2.5 sm:h-2 rounded-full bg-white/80 blur-[0.3px] pointer-events-none" />
+      {!isWrong && (
+        <div className="absolute top-1 left-1.5 w-2 h-1.5 sm:w-2.5 sm:h-2 rounded-full bg-white/80 blur-[0.3px] pointer-events-none" />
+      )}
 
-      {/* Letter text when opened */}
-      {isOpened && letter ? (
+      {/* Letter text when opened and not wrong */}
+      {isOpened && !isWrong && letter ? (
         <span className="font-black text-sm sm:text-lg md:text-xl uppercase tracking-wider text-white select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
           {letter}
         </span>
@@ -649,7 +677,7 @@ export function VcnvCountdownGraphic({
 
       if (fillRef.current) {
         if (isV3Arrow) {
-          fillRef.current.style.width = `${remPct}%`;
+          fillRef.current.style.width = `${elapsedPct}%`;
           fillRef.current.style.background =
             remSec <= 5
               ? "linear-gradient(90deg, #dc2626, #f59e0b)"
@@ -960,7 +988,7 @@ export function VcnvCountdownGraphic({
                 ref={fillRef}
                 className="h-full rounded-full will-change-[width]"
                 style={{
-                  width: isV3Arrow ? "100%" : "0%",
+                  width: "0%",
                   background: isV3Arrow
                     ? "linear-gradient(90deg, #1fd1ff, #2ee6ff)"
                     : "linear-gradient(90deg, #d97706, #f59e0b, #ef4444)",
@@ -1032,50 +1060,50 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
   const isV3Arrow = state.themeMode !== "o26_classic";
 
   if (isV3Arrow) {
-    const W = 820;
-    const H = 64;
-    const thick = 20;
-    const cThick = 16;
+    const W = 940;
+    const H = 72;
+    const thick = 22;
+    const cThick = 18;
     const pad = Math.round(cThick * 1.5);
     const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick, cThick, pad });
     const cols = buildRowColumns(shell, [48, 52]);
-    const dc = shell.canvasW / 2 - shell.startX;
+    const dc = shell.canvasW / 2 - shell.startX / 2;
 
     return (
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040e24]/90 backdrop-blur-md animate-fade-in select-none">
         <style>{`
           @keyframes v3-row-wing-l-g1 {
-            0% { transform: translateX(calc(var(--dc) * 0.95)) scale(0.6); opacity: 0; }
-            15% { opacity: 0.35; }
-            40% { transform: translateX(-24px) scale(1); opacity: 0.35; }
+            0% { transform: translateX(calc(var(--dc))); opacity: 0.35; }
+            15% { transform: translateX(calc(var(--dc))); opacity: 0.35; }
+            50% { transform: translateX(-24px); opacity: 0.35; }
             100% { transform: translateX(0); opacity: 0.35; }
           }
           @keyframes v3-row-wing-l-g2 {
-            0% { transform: translateX(calc(var(--dc) * 0.95)) scale(0.7); opacity: 0; }
-            15% { opacity: 0.65; }
-            40% { transform: translateX(-12px) scale(1); opacity: 0.65; }
+            0% { transform: translateX(calc(var(--dc))); opacity: 0.65; }
+            15% { transform: translateX(calc(var(--dc))); opacity: 0.65; }
+            50% { transform: translateX(-12px); opacity: 0.65; }
             100% { transform: translateX(0); opacity: 0.65; }
           }
           @keyframes v3-row-wing-l-l3 {
-            0% { transform: translateX(calc(var(--dc) * 0.95)); opacity: 0; }
-            15% { opacity: 1; }
+            0% { transform: translateX(calc(var(--dc))); opacity: 1; }
+            15% { transform: translateX(calc(var(--dc))); opacity: 1; }
             100% { transform: translateX(0); opacity: 1; }
           }
           @keyframes v3-row-wing-r-g1 {
-            0% { transform: translateX(calc(var(--dc) * -0.95)) scale(0.6); opacity: 0; }
-            15% { opacity: 0.35; }
-            40% { transform: translateX(24px) scale(1); opacity: 0.35; }
+            0% { transform: translateX(calc(var(--dc) * -1)); opacity: 0.35; }
+            15% { transform: translateX(calc(var(--dc) * -1)); opacity: 0.35; }
+            50% { transform: translateX(24px); opacity: 0.35; }
             100% { transform: translateX(0); opacity: 0.35; }
           }
           @keyframes v3-row-wing-r-g2 {
-            0% { transform: translateX(calc(var(--dc) * -0.95)) scale(0.7); opacity: 0; }
-            15% { opacity: 0.65; }
-            40% { transform: translateX(12px) scale(1); opacity: 0.65; }
+            0% { transform: translateX(calc(var(--dc) * -1)); opacity: 0.65; }
+            15% { transform: translateX(calc(var(--dc) * -1)); opacity: 0.65; }
+            50% { transform: translateX(12px); opacity: 0.65; }
             100% { transform: translateX(0); opacity: 0.65; }
           }
           @keyframes v3-row-wing-r-l3 {
-            0% { transform: translateX(calc(var(--dc) * -0.95)); opacity: 0; }
-            15% { opacity: 1; }
+            0% { transform: translateX(calc(var(--dc) * -1)); opacity: 1; }
+            15% { transform: translateX(calc(var(--dc) * -1)); opacity: 1; }
             100% { transform: translateX(0); opacity: 1; }
           }
           @keyframes v3-row-hex {
@@ -1113,7 +1141,7 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
           }
         `}</style>
         {/* Only pure graphic bars - Strictly no header pill text */}
-        <div className="w-full max-w-4xl flex flex-col gap-3.5 items-center justify-center py-2">
+        <div className="w-full max-w-5xl flex flex-col gap-4 items-center justify-center py-2">
           {seats.map((seat, idx) => {
             const answerText = v.answers?.[seat.id]?.text || "";
             const rowDelay = 0;
@@ -1122,7 +1150,7 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
             return (
               <div
                 key={seat.id}
-                className="w-full max-w-3xl flex items-center justify-center"
+                className="w-full max-w-4xl flex items-center justify-center"
                 style={{ ["--dc" as string]: `${dc}px` }}
               >
                 <V3ScaledStage designW={shell.canvasW} designH={H}>
@@ -1204,7 +1232,7 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
                         textAnchor="middle"
                         fill="#ffffff"
                         fontWeight="900"
-                        fontSize="22"
+                        fontSize="24"
                         letterSpacing="0.05em"
                         className="uppercase font-sans"
                         style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
@@ -1218,7 +1246,7 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
                         textAnchor="middle"
                         fill="#ffffff"
                         fontWeight="900"
-                        fontSize="22"
+                        fontSize="24"
                         letterSpacing="0.1em"
                         className="uppercase font-sans"
                         style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
@@ -1402,10 +1430,10 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
   const isV3Arrow = state.themeMode !== "o26_classic";
 
   if (isV3Arrow) {
-    const W = 880;
-    const H = 64;
-    const thick = 20;
-    const cThick = 16;
+    const W = 940;
+    const H = 72;
+    const thick = 22;
+    const cThick = 18;
     const pad = Math.round(cThick * 1.5);
     const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick, cThick, pad });
     const cols = buildRowColumns(shell, [38, 42, 20]);
@@ -1415,36 +1443,36 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040e24]/90 backdrop-blur-md animate-fade-in select-none">
         <style>{`
           @keyframes v3-tt-wing-l-g1 {
-            0% { transform: translateX(calc(var(--dc) * 0.95)) scale(0.6); opacity: 0; }
+            0% { transform: translateX(calc(var(--dc))) scale(0.6); opacity: 0; }
             15% { opacity: 0.35; }
             40% { transform: translateX(-24px) scale(1); opacity: 0.35; }
             100% { transform: translateX(0); opacity: 0.35; }
           }
           @keyframes v3-tt-wing-l-g2 {
-            0% { transform: translateX(calc(var(--dc) * 0.95)) scale(0.7); opacity: 0; }
+            0% { transform: translateX(calc(var(--dc))) scale(0.7); opacity: 0; }
             15% { opacity: 0.65; }
             40% { transform: translateX(-12px) scale(1); opacity: 0.65; }
             100% { transform: translateX(0); opacity: 0.65; }
           }
           @keyframes v3-tt-wing-l-l3 {
-            0% { transform: translateX(calc(var(--dc) * 0.95)); opacity: 0; }
+            0% { transform: translateX(calc(var(--dc))); opacity: 0; }
             15% { opacity: 1; }
             100% { transform: translateX(0); opacity: 1; }
           }
           @keyframes v3-tt-wing-r-g1 {
-            0% { transform: translateX(calc(var(--dc) * -0.95)) scale(0.6); opacity: 0; }
+            0% { transform: translateX(calc(var(--dc) * -1)) scale(0.6); opacity: 0; }
             15% { opacity: 0.35; }
             40% { transform: translateX(24px) scale(1); opacity: 0.35; }
             100% { transform: translateX(0); opacity: 0.35; }
           }
           @keyframes v3-tt-wing-r-g2 {
-            0% { transform: translateX(calc(var(--dc) * -0.95)) scale(0.7); opacity: 0; }
+            0% { transform: translateX(calc(var(--dc) * -1)) scale(0.7); opacity: 0; }
             15% { opacity: 0.65; }
             40% { transform: translateX(12px) scale(1); opacity: 0.65; }
             100% { transform: translateX(0); opacity: 0.65; }
           }
           @keyframes v3-tt-wing-r-l3 {
-            0% { transform: translateX(calc(var(--dc) * -0.95)); opacity: 0; }
+            0% { transform: translateX(calc(var(--dc) * -1)); opacity: 0; }
             15% { opacity: 1; }
             100% { transform: translateX(0); opacity: 1; }
           }
@@ -1483,7 +1511,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
           }
         `}</style>
         {/* Only pure graphic bars - Strictly no header pill text */}
-        <div className="w-full max-w-4xl flex flex-col gap-3.5 items-center justify-center py-2">
+        <div className="w-full max-w-5xl flex flex-col gap-4 items-center justify-center py-2">
           {(tt.ranking || []).map((item, idx) => {
             const seat = state.seats[item.seat];
             const sec = item.noAnswer ? "—" : (item.ms / 1000).toFixed(2);
@@ -1494,7 +1522,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             return (
               <div
                 key={item.seat}
-                className="w-full max-w-3xl flex items-center justify-center"
+                className="w-full max-w-4xl flex items-center justify-center"
                 style={{ ["--dc" as string]: `${dc}px` }}
               >
                 <V3ScaledStage designW={shell.canvasW} designH={H}>
@@ -1583,7 +1611,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                         textAnchor="middle"
                         fill="#ffffff"
                         fontWeight="900"
-                        fontSize="22"
+                        fontSize="24"
                         letterSpacing="0.05em"
                         className="uppercase font-sans"
                         style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
@@ -1597,7 +1625,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                         textAnchor="middle"
                         fill="#ffffff"
                         fontWeight="900"
-                        fontSize="22"
+                        fontSize="24"
                         letterSpacing="0.1em"
                         className="uppercase font-sans"
                         style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
@@ -1708,49 +1736,51 @@ export function V3SingleAnswerBar({
   hopeStarActive?: boolean;
   roundLabel?: string;
 }) {
-  const W = 880;
-  const H = 64;
+  const W = 920;
+  const H = 68;
   const thick = 20;
   const cThick = 16;
   const pad = Math.round(cThick * 1.5);
   const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick, cThick, pad });
-  const dc = shell.canvasW / 2 - shell.startX;
+  const dc = shell.canvasW / 2 - shell.startX / 2;
+  const fullText = points ? `${answerText} (${points}đ)` : answerText;
+  const fs = fullText.length > 45 ? "19" : fullText.length > 30 ? "22" : "25";
 
   return (
     <div className="w-full flex items-center justify-center p-2 select-none">
       <style>{`
         @keyframes v3-ans-wing-l-g1 {
-          0% { transform: translateX(calc(var(--dc) * 0.95)) scale(0.6); opacity: 0; }
-          15% { opacity: 0.35; }
-          40% { transform: translateX(-24px) scale(1); opacity: 0.35; }
+          0% { transform: translateX(calc(var(--dc))); opacity: 0.35; }
+          15% { transform: translateX(calc(var(--dc))); opacity: 0.35; }
+          50% { transform: translateX(-24px); opacity: 0.35; }
           100% { transform: translateX(0); opacity: 0.35; }
         }
         @keyframes v3-ans-wing-l-g2 {
-          0% { transform: translateX(calc(var(--dc) * 0.95)) scale(0.7); opacity: 0; }
-          15% { opacity: 0.65; }
-          40% { transform: translateX(-12px) scale(1); opacity: 0.65; }
+          0% { transform: translateX(calc(var(--dc))); opacity: 0.65; }
+          15% { transform: translateX(calc(var(--dc))); opacity: 0.65; }
+          50% { transform: translateX(-12px); opacity: 0.65; }
           100% { transform: translateX(0); opacity: 0.65; }
         }
         @keyframes v3-ans-wing-l-l3 {
-          0% { transform: translateX(calc(var(--dc) * 0.95)); opacity: 0; }
-          15% { opacity: 1; }
+          0% { transform: translateX(calc(var(--dc))); opacity: 1; }
+          15% { transform: translateX(calc(var(--dc))); opacity: 1; }
           100% { transform: translateX(0); opacity: 1; }
         }
         @keyframes v3-ans-wing-r-g1 {
-          0% { transform: translateX(calc(var(--dc) * -0.95)) scale(0.6); opacity: 0; }
-          15% { opacity: 0.35; }
-          40% { transform: translateX(24px) scale(1); opacity: 0.35; }
+          0% { transform: translateX(calc(var(--dc) * -1)); opacity: 0.35; }
+          15% { transform: translateX(calc(var(--dc) * -1)); opacity: 0.35; }
+          50% { transform: translateX(24px); opacity: 0.35; }
           100% { transform: translateX(0); opacity: 0.35; }
         }
         @keyframes v3-ans-wing-r-g2 {
-          0% { transform: translateX(calc(var(--dc) * -0.95)) scale(0.7); opacity: 0; }
-          15% { opacity: 0.65; }
-          40% { transform: translateX(12px) scale(1); opacity: 0.65; }
+          0% { transform: translateX(calc(var(--dc) * -1)); opacity: 0.65; }
+          15% { transform: translateX(calc(var(--dc) * -1)); opacity: 0.65; }
+          50% { transform: translateX(12px); opacity: 0.65; }
           100% { transform: translateX(0); opacity: 0.65; }
         }
         @keyframes v3-ans-wing-r-l3 {
-          0% { transform: translateX(calc(var(--dc) * -0.95)); opacity: 0; }
-          15% { opacity: 1; }
+          0% { transform: translateX(calc(var(--dc) * -1)); opacity: 1; }
+          15% { transform: translateX(calc(var(--dc) * -1)); opacity: 1; }
           100% { transform: translateX(0); opacity: 1; }
         }
         @keyframes v3-ans-hex {
@@ -1848,34 +1878,20 @@ export function V3SingleAnswerBar({
               <path d={toSvgPath(shell.bgPts)} fill="url(#v3SingleAnsBg)" stroke="#10b981" strokeWidth={2.5} />
             </g>
 
-            {/* Text Content (Fades in at 80% mark, 0.44s) */}
+            {/* Text Content (Pure white text centered across full bar, zero label collision) */}
             <g className="v3-ans-text">
               <text
-                x={shell.startX + (shell.endX - shell.startX) * 0.28}
-                y={shell.H / 2 + 7}
-                textAnchor="middle"
-                fill="#6ee7b7"
-                fontWeight="900"
-                fontSize="20"
-                letterSpacing="0.08em"
-                className="uppercase font-sans"
-                style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.8))" }}
-              >
-                ✔ {roundLabel}:
-              </text>
-              <text
-                x={shell.startX + (shell.endX - shell.startX) * 0.62}
+                x={shell.startX + (shell.endX - shell.startX) * 0.5}
                 y={shell.H / 2 + 8}
                 textAnchor="middle"
                 fill="#ffffff"
                 fontWeight="900"
-                fontSize="24"
+                fontSize={fs}
                 letterSpacing="0.05em"
                 className="uppercase font-sans"
-                style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
+                style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.95))" }}
               >
-                {answerText}
-                {points ? ` (${points}đ)` : ""}
+                {fullText}
               </text>
             </g>
           </svg>
@@ -1968,9 +1984,15 @@ export function SummaryLowerThirdGraphic({
   const H = 268;
   const shell = buildArrowShell({ W, H, slantRatio: 0.15, thick: 28, cThick: 20 });
 
+  const isFs = Boolean(sm.isFullscreen || state.overlayMode === "FULLSCREEN");
+
   return (
     <div
-      className="absolute inset-0 z-50 flex flex-col items-center justify-center p-4 bg-[#040e24]/85 backdrop-blur-md animate-fade-in pointer-events-auto select-none cursor-pointer"
+      className={
+        isFs
+          ? "absolute inset-0 z-50 flex flex-col items-center justify-center p-4 bg-[#040e24]/85 backdrop-blur-md animate-fade-in pointer-events-auto select-none cursor-pointer"
+          : "absolute inset-0 z-50 flex flex-col items-center justify-end pb-8 sm:pb-12 bg-transparent pointer-events-auto select-none cursor-pointer"
+      }
       onClick={handleNext}
     >
       <V3ScaledStage designW={shell.canvasW} designH={H}>
@@ -2274,10 +2296,12 @@ export function EconovaLowerThirdV3({
   const currentPkg = vd && vd.packages[activeSeatId ?? 0];
 
   const fillRef = useRef<HTMLDivElement>(null);
+  const [countdownSec, setCountdownSec] = useState<number | null>(null);
 
   useEffect(() => {
     if (!timer || timer.startedAt == null) {
       if (fillRef.current) fillRef.current.style.width = "100%";
+      setCountdownSec(null);
       return;
     }
 
@@ -2290,6 +2314,9 @@ export function EconovaLowerThirdV3({
       const elapsed = Math.max(0, serverNow() - (timer.startedAt ?? 0));
       const rem = Math.max(0, timer.remainingMs - elapsed);
       const pct = Math.max(0, Math.min(100, (rem / total) * 100));
+
+      const sec = Math.ceil(rem / 1000);
+      setCountdownSec(rem > 0 ? sec : null);
 
       if (fillRef.current) {
         fillRef.current.style.width = `${pct}%`;
@@ -2324,96 +2351,93 @@ export function EconovaLowerThirdV3({
   const qLeft = shell.startX + shell.pS + 12;
   const qRight = isVeDich && lt.clusterLine ? lt.clusterLine.x0 - 16 : shell.endX - shell.pS - 12;
   const qWidth = qRight - qLeft;
-  const dc = shell.canvasW / 2 - shell.startX;
+  const dc = shell.canvasW / 2 - shell.startX / 2;
 
   return (
     <div
       className={
         isFs
           ? "absolute inset-0 z-30 flex flex-col items-center justify-center p-4 sm:p-8 bg-[#051126]/90 backdrop-blur-md pointer-events-auto"
-          : "w-full max-w-[1200px] mx-auto px-2 sm:px-4 pb-2 sm:pb-3 pt-1 z-20 pointer-events-auto"
+          : "w-full max-w-[1200px] mx-auto px-2 sm:px-4 pb-2 sm:pb-3 pt-1 z-20 pointer-events-auto relative"
       }
     >
+      {countdownSec != null && countdownSec > 0 && (
+        <div className="absolute -top-12 sm:-top-16 left-1/2 -translate-x-1/2 z-40 pointer-events-none flex items-center justify-center animate-fade-in">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-red-500 to-rose-700 border-2 border-white shadow-[0_0_25px_rgba(239,68,68,0.95)] flex items-center justify-center text-white font-black text-2xl sm:text-3xl font-sans drop-shadow animate-pulse">
+            {countdownSec}
+          </div>
+        </div>
+      )}
+
       {extraTopBanner && <div className="mb-2 w-full max-w-5xl mx-auto">{extraTopBanner}</div>}
 
       <div className="relative w-full flex items-center justify-center select-none" style={{ ["--dc" as string]: `${dc}px` }}>
         <style>{`
-          /* --- ECONOVA LOWER THIRD 2.5s MASTER TIMELINE --- */
+          /* --- ECONOVA LOWER THIRD MASTER TIMELINE --- */
           /* Left direction keyframes (Pointing <) */
           @keyframes v3-eco-l-g1 {
-            0%   { transform: translateX(calc(var(--dc) * 0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-            1%   { opacity: 0.3; }
-            25%  { transform: translateX(calc(var(--dc) * 0.5 - 28px)) scale(1); opacity: 0.3; animation-timing-function: linear; }
-            35%  { transform: translateX(calc(var(--dc) * 0.5 - 28px)) scale(1); opacity: 0.3; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-            65%  { transform: translateX(-24px) scale(1); opacity: 0.3; }
-            100% { transform: translateX(0) scale(1); opacity: 0.3; }
+            0%   { transform: translateX(var(--dc)); opacity: 0.35; }
+            20%  { transform: translateX(var(--dc)); opacity: 0.35; }
+            65%  { transform: translateX(-24px); opacity: 0.35; }
+            100% { transform: translateX(0); opacity: 0.35; }
           }
           @keyframes v3-eco-l-g2 {
-            0%   { transform: translateX(calc(var(--dc) * 0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-            5.1% { opacity: 0.65; }
-            30%  { transform: translateX(calc(var(--dc) * 0.5 - 14px)) scale(1); opacity: 0.65; animation-timing-function: linear; }
-            40%  { transform: translateX(calc(var(--dc) * 0.5 - 14px)) scale(1); opacity: 0.65; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-            70%  { transform: translateX(-12px) scale(1); opacity: 0.65; }
-            100% { transform: translateX(0) scale(1); opacity: 0.65; }
+            0%   { transform: translateX(var(--dc)); opacity: 0.65; }
+            20%  { transform: translateX(var(--dc)); opacity: 0.65; }
+            70%  { transform: translateX(-12px); opacity: 0.65; }
+            100% { transform: translateX(0); opacity: 0.65; }
           }
           @keyframes v3-eco-l-l3 {
-            0%   { transform: translateX(calc(var(--dc) * 0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-            10.1%{ opacity: 1; }
-            35%  { transform: translateX(calc(var(--dc) * 0.5)) scale(1); opacity: 1; animation-timing-function: linear; }
-            45%  { transform: translateX(calc(var(--dc) * 0.5)) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-            100% { transform: translateX(0) scale(1); opacity: 1; }
+            0%   { transform: translateX(var(--dc)); opacity: 1; }
+            20%  { transform: translateX(var(--dc)); opacity: 1; }
+            75%  { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(0); opacity: 1; }
           }
           @keyframes v3-eco-l-navy {
-            0%   { transform: translateX(calc(var(--dc) * 0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-            10.1%{ opacity: 1; }
-            35%  { transform: translateX(calc(var(--dc) * 0.5)) scale(1); opacity: 1; animation-timing-function: linear; }
-            45%  { transform: translateX(calc(var(--dc) * 0.5)) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-            100% { transform: translateX(0) scale(1); opacity: 1; }
+            0%   { transform: translateX(var(--dc)); opacity: 1; }
+            20%  { transform: translateX(var(--dc)); opacity: 1; }
+            75%  { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(0); opacity: 1; }
           }
 
           /* Right direction keyframes (Pointing >) */
           @keyframes v3-eco-r-g1 {
-            0%   { transform: translateX(calc(var(--dc) * -0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-            1%   { opacity: 0.3; }
-            25%  { transform: translateX(calc(var(--dc) * -0.5 + 28px)) scale(1); opacity: 0.3; animation-timing-function: linear; }
-            35%  { transform: translateX(calc(var(--dc) * -0.5 + 28px)) scale(1); opacity: 0.3; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-            65%  { transform: translateX(24px) scale(1); opacity: 0.3; }
-            100% { transform: translateX(0) scale(1); opacity: 0.3; }
+            0%   { transform: translateX(calc(var(--dc) * -1)); opacity: 0.35; }
+            20%  { transform: translateX(calc(var(--dc) * -1)); opacity: 0.35; }
+            65%  { transform: translateX(24px); opacity: 0.35; }
+            100% { transform: translateX(0); opacity: 0.35; }
           }
           @keyframes v3-eco-r-g2 {
-            0%   { transform: translateX(calc(var(--dc) * -0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-            5.1% { opacity: 0.65; }
-            30%  { transform: translateX(calc(var(--dc) * -0.5 + 14px)) scale(1); opacity: 0.65; animation-timing-function: linear; }
-            40%  { transform: translateX(calc(var(--dc) * -0.5 + 14px)) scale(1); opacity: 0.65; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-            70%  { transform: translateX(12px) scale(1); opacity: 0.65; }
-            100% { transform: translateX(0) scale(1); opacity: 0.65; }
+            0%   { transform: translateX(calc(var(--dc) * -1)); opacity: 0.65; }
+            20%  { transform: translateX(calc(var(--dc) * -1)); opacity: 0.65; }
+            70%  { transform: translateX(12px); opacity: 0.65; }
+            100% { transform: translateX(0); opacity: 0.65; }
           }
           @keyframes v3-eco-r-l3 {
-            0%   { transform: translateX(calc(var(--dc) * -0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-            10.1%{ opacity: 1; }
-            35%  { transform: translateX(calc(var(--dc) * -0.5)) scale(1); opacity: 1; animation-timing-function: linear; }
-            45%  { transform: translateX(calc(var(--dc) * -0.5)) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-            100% { transform: translateX(0) scale(1); opacity: 1; }
+            0%   { transform: translateX(calc(var(--dc) * -1)); opacity: 1; }
+            20%  { transform: translateX(calc(var(--dc) * -1)); opacity: 1; }
+            75%  { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(0); opacity: 1; }
           }
           @keyframes v3-eco-r-navy {
-            0%   { transform: translateX(calc(var(--dc) * -0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-            10.1%{ opacity: 1; }
-            35%  { transform: translateX(calc(var(--dc) * -0.5)) scale(1); opacity: 1; animation-timing-function: linear; }
-            45%  { transform: translateX(calc(var(--dc) * -0.5)) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-            100% { transform: translateX(0) scale(1); opacity: 1; }
+            0%   { transform: translateX(calc(var(--dc) * -1)); opacity: 1; }
+            20%  { transform: translateX(calc(var(--dc) * -1)); opacity: 1; }
+            75%  { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(0); opacity: 1; }
           }
 
-          /* Hexagon Body Expand from 90px center at 45% (1.125s) to 100% */
+          /* Hexagon Body Expand from center at 20% to 75% */
           @keyframes v3-eco-hex-body {
-            0%, 44.9% { clip-path: inset(0 calc(50% - 45px) 0 calc(50% - 45px)); opacity: 0; }
-            45%       { clip-path: inset(0 calc(50% - 45px) 0 calc(50% - 45px)); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+            0%, 20%   { clip-path: inset(0 50% 0 50%); opacity: 0; }
+            21%       { clip-path: inset(0 50% 0 50%); opacity: 1; animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1); }
+            75%       { clip-path: inset(0 0% 0 0%); opacity: 1; }
             100%      { clip-path: inset(0 0% 0 0%); opacity: 1; }
           }
 
-          /* Content reveal: Hidden until 70% (1.75s), 80% opacity at 2.0s, full at 2.5s */
+          /* Content reveal: Hidden until 70%, 100% at 85% */
           @keyframes v3-eco-content-fade {
             0%, 70%  { opacity: 0; }
-            80%      { opacity: 0.8; }
+            85%      { opacity: 1; }
             100%     { opacity: 1; }
           }
 
@@ -2422,19 +2446,19 @@ export function EconovaLowerThirdV3({
             100%     { opacity: 1; transform: translateY(0); }
           }
 
-          /* Master Animation Classes: 2.5s duration */
-          .v3-anim-l-g1   { animation: v3-eco-l-g1 2.5s both; }
-          .v3-anim-l-g2   { animation: v3-eco-l-g2 2.5s both; }
-          .v3-anim-l-l3   { animation: v3-eco-l-l3 2.5s both; }
-          .v3-anim-l-navy { animation: v3-eco-l-navy 2.5s both; }
+          /* Master Animation Classes: 1.6s duration */
+          .v3-anim-l-g1   { animation: v3-eco-l-g1 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-l-g2   { animation: v3-eco-l-g2 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-l-l3   { animation: v3-eco-l-l3 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-l-navy { animation: v3-eco-l-navy 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
 
-          .v3-anim-r-g1   { animation: v3-eco-r-g1 2.5s both; }
-          .v3-anim-r-g2   { animation: v3-eco-r-g2 2.5s both; }
-          .v3-anim-r-l3   { animation: v3-eco-r-l3 2.5s both; }
-          .v3-anim-r-navy { animation: v3-eco-r-navy 2.5s both; }
+          .v3-anim-r-g1   { animation: v3-eco-r-g1 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-r-g2   { animation: v3-eco-r-g2 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-r-l3   { animation: v3-eco-r-l3 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-r-navy { animation: v3-eco-r-navy 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
 
-          .v3-anim-body   { animation: v3-eco-hex-body 2.5s both; }
-          .v3-anim-content{ animation: v3-eco-content-fade 2.5s ease-out both; }
+          .v3-anim-body   { animation: v3-eco-hex-body 1.6s both; }
+          .v3-anim-content{ animation: v3-eco-content-fade 1.6s ease-out both; }
           .v3-anim-swap   { animation: v3-eco-text-swap 0.35s ease-out both; }
         `}</style>
         <V3ScaledStage designW={shell.canvasW} designH={H}>

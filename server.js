@@ -106556,6 +106556,9 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "display:overlayMode": {
         st.overlayMode = a.mode || (st.overlayMode === "FULLSCREEN" ? "LOWER_THIRD" : "FULLSCREEN");
+        if (st.summaryState) {
+          st.summaryState.isFullscreen = st.overlayMode === "FULLSCREEN";
+        }
         return OK;
       }
       case "rightScreen:setMode": {
@@ -106771,7 +106774,7 @@ var OlympiaGame = class _OlympiaGame {
           currentIndex: 0,
           orderedSeats,
           isAuto,
-          isFullscreen: Boolean(a.isFullscreen),
+          isFullscreen: a.isFullscreen != null ? Boolean(a.isFullscreen) : st.overlayMode === "FULLSCREEN",
           lastAdvanceAt: now
         };
         this.cue("6_NhacKhac/summary", "bgm");
@@ -106812,6 +106815,7 @@ var OlympiaGame = class _OlympiaGame {
       case "summary:toggleFullscreen": {
         if (!st.summaryState || !st.summaryState.active) return fail("Ch\u01B0a b\u1EAFt \u0111\u1EA7u t\u1ED5ng k\u1EBFt \u0111i\u1EC3m");
         st.summaryState.isFullscreen = !st.summaryState.isFullscreen;
+        st.overlayMode = st.summaryState.isFullscreen ? "FULLSCREEN" : "LOWER_THIRD";
         return OK;
       }
       case "summary:stop": {
@@ -107329,7 +107333,32 @@ var OlympiaGame = class _OlympiaGame {
           return OK;
         }
         const who = kd.buzzedSeat;
-        if (who == null) return fail("Ch\u01B0a c\xF3 th\xED sinh n\xE0o b\u1EA5m chu\xF4ng");
+        if (who == null) {
+          pauseTimer(kd.timer, now);
+          kd.buzzedSeat = null;
+          kd.buzzOpen = false;
+          kd.buzzUnlockAt = void 0;
+          kd.phase = "result";
+          kd.lastVerdict = "wrong";
+          this.cue("1_KhoiDong/wrong");
+          this.pushTranscript({
+            at: now,
+            round: "khoiDong",
+            roundLabel: ROUND_LABELS.khoiDong,
+            segmentLabel: `${seg.label} \u2022 C\xE2u ${kd.qIdx + 1}`,
+            entryKind: "question",
+            questionText: kd.current?.q,
+            correctAnswer: kd.current?.a,
+            subject: kd.current?.subject,
+            kdZone: kd.current?.kdZone,
+            vdZone: kd.current?.vdZone,
+            mediaUrl: kd.current?.media,
+            selectedPoints: rs.correctPoints,
+            verdict: "wrong",
+            scoreChanges: {}
+          });
+          return OK;
+        }
         let penalty = rs.wrongPenalty;
         let lockout = rs.lockoutOnWrong;
         if (this.ruleset.id === "O22") {
@@ -107439,7 +107468,10 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "vcnv:blank": {
-        this.cue("6_NhacKhac/blank_space");
+        v.phase = "waitingAnswer";
+        v.answersRevealed = false;
+        st.studioCamera = 10;
+        st.studioCameraManual = true;
         return OK;
       }
       case "vcnv:revealRowText": {
@@ -107494,6 +107526,7 @@ var OlympiaGame = class _OlympiaGame {
         v.answersRevealed = true;
         v.revealedCorrectAnswer = false;
         v.phase = "answers";
+        st.studioCameraManual = false;
         this.cue("2_VuotChuongNgaiVat/reveal_answers");
         return OK;
       }
@@ -107698,28 +107731,38 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "vcnv:wrongCNV": {
+        const judgeTime = now;
+        v.lastJudgedWrongAt = judgeTime;
+        if (!v.bells || v.bells.length === 0) {
+          return fail("Kh\xF4ng c\xF3 th\xED sinh n\xE0o c\xF3 t\xEDn hi\u1EC7u chu\xF4ng!");
+        }
         const seat = a.seat != null ? Number(a.seat) : v.bells[0]?.seat ?? -1;
-        if (!this.seat(seat) || !v.bells.some((b) => b.seat === seat)) {
+        if (!this.seat(seat)) return fail("Ch\u1ECDn th\xED sinh");
+        if (!v.bells.some((b) => b.seat === seat)) {
           return fail("Ch\u1EC9 \u0111\u01B0\u1EE3c ch\u1EA5m CNV cho th\xED sinh \u0111ang c\xF3 t\xEDn hi\u1EC7u chu\xF4ng!");
         }
-        if (this.seat(seat)) {
-          if (!v.eliminatedSeats.includes(seat)) v.eliminatedSeats.push(seat);
-          v.bells = v.bells.filter((b) => b.seat !== seat);
-          this.pushTranscript({
-            at: now,
-            round: "vcnv",
-            roundLabel: ROUND_LABELS.vcnv,
-            segmentLabel: "B\u1EA5m chu\xF4ng gi\u1EA3i Ch\u01B0\u1EDBng Ng\u1EA1i V\u1EADt (Sai)",
-            entryKind: "cnv_bell",
-            questionText: "T\u1EEB kh\xF3a Ch\u01B0\u1EDBng ng\u1EA1i v\u1EADt",
-            correctAnswer: v.keyword,
-            actorSeat: seat,
-            actorName: this.seatName(seat),
-            buzzerEvents: [{ order: 1, seat, name: this.seatName(seat), verdict: "wrong" }],
-            verdict: "wrong",
-            note: `${this.seatName(seat)} tr\u1EA3 l\u1EDDi sai CNV v\xE0 d\u1EEBng quy\u1EC1n ch\u01A1i VCNV.`
-          });
+        const bell = v.bells.find((b) => b.seat === seat);
+        if (bell) {
+          bell.judgedWrong = true;
+          bell.judgedAt = judgeTime;
         }
+        const buzzers = [
+          { order: 1, seat, name: this.seatName(seat), verdict: "wrong" }
+        ];
+        this.pushTranscript({
+          at: now,
+          round: "vcnv",
+          roundLabel: ROUND_LABELS.vcnv,
+          segmentLabel: "B\u1EA5m chu\xF4ng gi\u1EA3i Ch\u01B0\u1EDBng Ng\u1EA1i V\u1EADt (Sai)",
+          entryKind: "cnv_bell",
+          questionText: "T\u1EEB kh\xF3a Ch\u01B0\u1EDBng ng\u1EA1i v\u1EADt",
+          correctAnswer: v.keyword,
+          actorSeat: seat,
+          actorName: this.seatName(seat),
+          buzzerEvents: buzzers,
+          verdict: "wrong",
+          note: `${this.seatName(seat)} tr\u1EA3 l\u1EDDi sai CNV.`
+        });
         this.cue("2_VuotChuongNgaiVat/cnv_wrong");
         return OK;
       }
@@ -107765,9 +107808,27 @@ var OlympiaGame = class _OlympiaGame {
         v.piecesRevealed = [true, true, true, true, true];
         return OK;
       }
-      case "vcnv:clearBells":
+      case "vcnv:clearBells": {
+        const bellsToClear = v.bells || [];
+        for (const b of bellsToClear) {
+          if (!v.eliminatedSeats.includes(b.seat)) {
+            v.eliminatedSeats.push(b.seat);
+          }
+        }
         v.bells = [];
+        this.logMsg("\u{1F515} \u0110\xE3 t\u1EAFt to\xE0n b\u1ED9 t\xEDn hi\u1EC7u chu\xF4ng v\xE0 ch\u1ED1t lo\u1EA1i quy\u1EC1n ch\u01A1i VCNV cho c\xE1c th\xED sinh \u0111\xE3 b\u1EA5m");
         return OK;
+      }
+      case "vcnv:dismissBell": {
+        const seat = Number(a.seat);
+        if (!this.seat(seat)) return fail("Ch\u1ECDn th\xED sinh");
+        if (!v.eliminatedSeats.includes(seat)) {
+          v.eliminatedSeats.push(seat);
+        }
+        v.bells = v.bells.filter((b) => b.seat !== seat);
+        this.logMsg(`\u{1F515} \u0110\xE3 t\u1EAFt t\xEDn hi\u1EC7u chu\xF4ng v\xE0 lo\u1EA1i quy\u1EC1n ch\u01A1i VCNV c\u1EE7a ${this.seatName(seat)}`);
+        return OK;
+      }
       case "vcnv:end":
         this.finishRound(now);
         return OK;
@@ -107796,7 +107857,9 @@ var OlympiaGame = class _OlympiaGame {
         return fail("C\xE2u kh\xF4ng h\u1EE3p l\u1EC7");
       }
       case "tt:blank": {
-        this.cue("6_NhacKhac/blank_space");
+        tt.phase = "waitingAnswer";
+        st.studioCamera = 10;
+        st.studioCameraManual = true;
         return OK;
       }
       case "tt:revealAndGrade": {
@@ -107862,6 +107925,7 @@ var OlympiaGame = class _OlympiaGame {
       case "tt:reveal": {
         if (tt.qIdx < 0) return fail("Ch\u01B0a c\xF3 c\xE2u h\u1ECFi");
         pauseTimer(tt.timer, now);
+        st.studioCameraManual = false;
         const q = tt.questions[tt.qIdx];
         tt.ranking = this.activeSeatIds.map((id) => {
           const sub = tt.submissions[id];
@@ -108648,10 +108712,7 @@ var OlympiaGame = class _OlympiaGame {
         if (!v || v.phase === "done") return fail("Kh\xF4ng th\u1EC3 b\u1EA5m chu\xF4ng");
         if (v.eliminatedSeats.includes(seatId)) return fail("B\u1EA1n \u0111\xE3 b\u1ECB lo\u1EA1i kh\u1ECFi l\u01B0\u1EE3t \u0111o\xE1n CNV");
         if (v.bells.some((b) => b.seat === seatId)) return fail("B\u1EA1n \u0111\xE3 b\u1EA5m chu\xF4ng");
-        v.bells.push({ seat: seatId, before: !v.answersRevealed });
-        if (!v.eliminatedSeats.includes(seatId)) {
-          v.eliminatedSeats.push(seatId);
-        }
+        v.bells.push({ seat: seatId, before: !v.answersRevealed, atMs: now, at: now });
         this.cue("2_VuotChuongNgaiVat/bell_ring");
         break;
       }
@@ -108693,7 +108754,9 @@ var OlympiaGame = class _OlympiaGame {
     if (st.currentRound === "vcnv" && st.vcnv) {
       const v = st.vcnv;
       if (v.currentRow < 0 || v.currentRow > 4) return fail("Ch\u01B0a m\u1EDF h\xE0ng ngang / \xF4 trung t\xE2m");
-      if (v.eliminatedSeats.includes(seatId)) return fail("B\u1EA1n \u0111\xE3 b\u1ECB lo\u1EA1i");
+      if (v.eliminatedSeats.includes(seatId) || v.bells.some((b) => b.seat === seatId)) {
+        return fail("B\u1EA1n \u0111\xE3 b\u1EA5m chu\xF4ng CNV ho\u1EB7c \u0111\xE3 b\u1ECB lo\u1EA1i");
+      }
       if (!timerRunning(v.timer) || timerRemaining(v.timer, now) <= 0) return fail("H\u1EBFt gi\u1EDD nh\u1EADp \u0111\xE1p \xE1n");
       const elapsed = Math.max(0, Math.round(v.timer.totalMs - timerRemaining(v.timer, now)));
       const prev = v.answers[seatId];
@@ -108886,6 +108949,7 @@ var OlympiaGame = class _OlympiaGame {
 // src/lib/olympia/socket-olympia.ts
 var games = /* @__PURE__ */ new Map();
 var loading = /* @__PURE__ */ new Map();
+var pendingOlympiaDisconnects = /* @__PURE__ */ new Map();
 async function loadGame(code) {
   const cached = games.get(code);
   if (cached) return cached;
@@ -109023,7 +109087,7 @@ function registerOlympiaSocket(io2) {
           let joinStatus = "approved";
           if (role === "host") {
             const isKeyMatch = entry.hostKey && payload.key === entry.hostKey;
-            const isSandbox = payload.key === "sandbox" || payload.key === "admin" || entry.baseConfig?.sandbox || entry.roomId?.includes("sandbox");
+            const isSandbox = payload.key === "sandbox" || payload.key === "admin" || entry.baseConfig?.sandbox || entry.roomId?.includes("sandbox") || /^\d{6}$/.test(code);
             if (!isKeyMatch && !isSandbox) {
               return ack?.({ ok: false, error: "Sai kh\xF3a qu\u1EA3n tr\xF2 (host key)" });
             }
@@ -109058,7 +109122,16 @@ function registerOlympiaSocket(io2) {
           await socket.join(`olympia:${code}`);
           if (role === "host") await socket.join(`olympia:${code}:host`);
           if (role === "display") await socket.join(`olympia:${code}:display`);
-          if (role === "player" && seatId != null) await socket.join(`olympia:${code}:player:${seatId}`);
+          if (role === "player" && seatId != null) {
+            await socket.join(`olympia:${code}:player:${seatId}`);
+            const discKey = `${code}:${seatId}`;
+            const existingTimer = pendingOlympiaDisconnects.get(discKey);
+            if (existingTimer) {
+              clearTimeout(existingTimer);
+              pendingOlympiaDisconnects.delete(discKey);
+            }
+            entry.game.setConnected(seatId, true);
+          }
           entry.game.touch(Date.now());
           const initialView = entry.game.view(role, seatId);
           ack?.({
@@ -109151,17 +109224,33 @@ function registerOlympiaSocket(io2) {
       if (info.role === "player" && info.seatId != null) {
         const stillConnected = [...entry.clients.values()].some((c) => c.role === "player" && c.seatId === info.seatId);
         if (!stillConnected) {
-          entry.game.setConnected(info.seatId, false);
-          const isSandbox = Boolean(
-            entry.baseConfig?.sandbox || info.code === "SANDBOX" || info.code.startsWith("sandbox") || info.code === "OFFLINE" || info.code.startsWith("OFFLINE") || entry.roomId?.startsWith("sandbox")
-          );
-          const seat = entry.game.state.seats[info.seatId];
-          const hasConfirmedSeat = Boolean(seat?.approved || seat?.name && isSandbox);
-          if (!isSandbox && !hasConfirmedSeat && entry.game.state.stage === "lobby") {
-            entry.game.kickSeat(info.seatId);
-          }
-          entry.game.touch(Date.now());
-          broadcast(info.code);
+          const roomCode = info.code;
+          const seatId = info.seatId;
+          const discKey = `${roomCode}:${seatId}`;
+          const existingTimer = pendingOlympiaDisconnects.get(discKey);
+          if (existingTimer) clearTimeout(existingTimer);
+          const timer = setTimeout(() => {
+            pendingOlympiaDisconnects.delete(discKey);
+            const currentEntry = games.get(roomCode);
+            if (!currentEntry) return;
+            const nowConnected = [...currentEntry.clients.values()].some(
+              (c) => c.role === "player" && c.seatId === seatId
+            );
+            if (!nowConnected) {
+              currentEntry.game.setConnected(seatId, false);
+              const isSandbox = Boolean(
+                currentEntry.baseConfig?.sandbox || /^\d{6}$/.test(roomCode) || roomCode === "SANDBOX" || roomCode.startsWith("sandbox") || roomCode === "OFFLINE" || roomCode.startsWith("OFFLINE") || currentEntry.roomId?.startsWith("sandbox")
+              );
+              const seat = currentEntry.game.state.seats[seatId];
+              const hasConfirmedSeat = Boolean(seat?.approved || seat?.name && isSandbox);
+              if (!isSandbox && !hasConfirmedSeat && currentEntry.game.state.stage === "lobby") {
+                currentEntry.game.kickSeat(seatId);
+              }
+              currentEntry.game.touch(Date.now());
+              broadcast(roomCode);
+            }
+          }, 35e3);
+          pendingOlympiaDisconnects.set(discKey, timer);
         }
       }
     });

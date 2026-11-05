@@ -1083,6 +1083,9 @@ export class OlympiaGame {
       case "display:overlayMode": {
         // Chuyển đổi giữa 1/3 DƯỚI (Lower-Third) và TOÀN MÀN (Fullscreen)
         st.overlayMode = (a.mode as "LOWER_THIRD" | "FULLSCREEN") || (st.overlayMode === "FULLSCREEN" ? "LOWER_THIRD" : "FULLSCREEN");
+        if (st.summaryState) {
+          st.summaryState.isFullscreen = st.overlayMode === "FULLSCREEN";
+        }
         return OK;
       }
       case "rightScreen:setMode": {
@@ -1300,7 +1303,7 @@ export class OlympiaGame {
           currentIndex: 0,
           orderedSeats,
           isAuto,
-          isFullscreen: Boolean(a.isFullscreen),
+          isFullscreen: a.isFullscreen != null ? Boolean(a.isFullscreen) : (st.overlayMode === "FULLSCREEN"),
           lastAdvanceAt: now,
         };
         this.cue("6_NhacKhac/summary", "bgm");
@@ -1341,6 +1344,7 @@ export class OlympiaGame {
       case "summary:toggleFullscreen": {
         if (!st.summaryState || !st.summaryState.active) return fail("Chưa bắt đầu tổng kết điểm");
         st.summaryState.isFullscreen = !st.summaryState.isFullscreen;
+        st.overlayMode = st.summaryState.isFullscreen ? "FULLSCREEN" : "LOWER_THIRD";
         return OK;
       }
       case "summary:stop": {
@@ -1895,7 +1899,32 @@ export class OlympiaGame {
           return OK;
         }
         const who = kd.buzzedSeat;
-        if (who == null) return fail("Chưa có thí sinh nào bấm chuông");
+        if (who == null) {
+          pauseTimer(kd.timer, now);
+          kd.buzzedSeat = null;
+          kd.buzzOpen = false;
+          kd.buzzUnlockAt = undefined;
+          kd.phase = "result";
+          kd.lastVerdict = "wrong";
+          this.cue("1_KhoiDong/wrong");
+          this.pushTranscript({
+            at: now,
+            round: "khoiDong",
+            roundLabel: ROUND_LABELS.khoiDong,
+            segmentLabel: `${seg.label} • Câu ${kd.qIdx + 1}`,
+            entryKind: "question",
+            questionText: kd.current?.q,
+            correctAnswer: kd.current?.a,
+            subject: kd.current?.subject,
+            kdZone: kd.current?.kdZone,
+            vdZone: kd.current?.vdZone,
+            mediaUrl: kd.current?.media,
+            selectedPoints: rs.correctPoints,
+            verdict: "wrong",
+            scoreChanges: {},
+          });
+          return OK;
+        }
         let penalty = rs.wrongPenalty;
         let lockout = rs.lockoutOnWrong;
         if (this.ruleset.id === "O22") {
@@ -2007,8 +2036,11 @@ export class OlympiaGame {
         return OK;
       }
       case "vcnv:blank": {
-        // Ô trống: chỉ phát âm thanh, KHÔNG đổi phase/đồ hoạ/góc quay
-        this.cue("6_NhacKhac/blank_space");
+        // Nền chờ ĐA (W): chuyển camera sang toàn cảnh thí sinh (CAM 10), hiển thị nền chờ mờ (tách biệt âm thanh ô trống)
+        v.phase = "waitingAnswer";
+        v.answersRevealed = false;
+        st.studioCamera = 10;
+        st.studioCameraManual = true;
         return OK;
       }
       case "vcnv:revealRowText": {
@@ -2063,6 +2095,7 @@ export class OlympiaGame {
         v.answersRevealed = true;
         v.revealedCorrectAnswer = false;
         v.phase = "answers";
+        st.studioCameraManual = false;
         this.cue("2_VuotChuongNgaiVat/reveal_answers");
         return OK;
       }
@@ -2273,28 +2306,44 @@ export class OlympiaGame {
         return OK;
       }
       case "vcnv:wrongCNV": {
+        const judgeTime = now;
+        (v as any).lastJudgedWrongAt = judgeTime;
+
+        if (!v.bells || v.bells.length === 0) {
+          return fail("Không có thí sinh nào có tín hiệu chuông!");
+        }
+
         const seat = a.seat != null ? Number(a.seat) : (v.bells[0]?.seat ?? -1);
-        if (!this.seat(seat) || !v.bells.some((b) => b.seat === seat)) {
+        if (!this.seat(seat)) return fail("Chọn thí sinh");
+        if (!v.bells.some((b) => b.seat === seat)) {
           return fail("Chỉ được chấm CNV cho thí sinh đang có tín hiệu chuông!");
         }
-        if (this.seat(seat)) {
-          if (!v.eliminatedSeats.includes(seat)) v.eliminatedSeats.push(seat);
-          v.bells = v.bells.filter((b) => b.seat !== seat);
-          this.pushTranscript({
-            at: now,
-            round: "vcnv",
-            roundLabel: ROUND_LABELS.vcnv,
-            segmentLabel: "Bấm chuông giải Chướng Ngại Vật (Sai)",
-            entryKind: "cnv_bell",
-            questionText: "Từ khóa Chướng ngại vật",
-            correctAnswer: v.keyword,
-            actorSeat: seat,
-            actorName: this.seatName(seat),
-            buzzerEvents: [{ order: 1, seat, name: this.seatName(seat), verdict: "wrong" }],
-            verdict: "wrong",
-            note: `${this.seatName(seat)} trả lời sai CNV và dừng quyền chơi VCNV.`,
-          });
+
+        // Đánh dấu chuông đã bị host chấm sai (không đưa ngay vào eliminatedSeats, không tự tắt chuông)
+        const bell = v.bells.find((b) => b.seat === seat);
+        if (bell) {
+          (bell as any).judgedWrong = true;
+          (bell as any).judgedAt = judgeTime;
         }
+
+        const buzzers: TranscriptBuzzerItem[] = [
+          { order: 1, seat, name: this.seatName(seat), verdict: "wrong" }
+        ];
+
+        this.pushTranscript({
+          at: now,
+          round: "vcnv",
+          roundLabel: ROUND_LABELS.vcnv,
+          segmentLabel: "Bấm chuông giải Chướng Ngại Vật (Sai)",
+          entryKind: "cnv_bell",
+          questionText: "Từ khóa Chướng ngại vật",
+          correctAnswer: v.keyword,
+          actorSeat: seat,
+          actorName: this.seatName(seat),
+          buzzerEvents: buzzers,
+          verdict: "wrong",
+          note: `${this.seatName(seat)} trả lời sai CNV.`,
+        });
         this.cue("2_VuotChuongNgaiVat/cnv_wrong");
         return OK;
       }
@@ -2340,9 +2389,28 @@ export class OlympiaGame {
         v.piecesRevealed = [true, true, true, true, true];
         return OK;
       }
-      case "vcnv:clearBells":
+      case "vcnv:clearBells": {
+        // Khi nhấn tắt tín hiệu thì các tín hiệu chuông này mới chính thức đưa vào v.eliminatedSeats
+        const bellsToClear = v.bells || [];
+        for (const b of bellsToClear) {
+          if (!v.eliminatedSeats.includes(b.seat)) {
+            v.eliminatedSeats.push(b.seat);
+          }
+        }
         v.bells = [];
+        this.logMsg("🔕 Đã tắt toàn bộ tín hiệu chuông và chốt loại quyền chơi VCNV cho các thí sinh đã bấm");
         return OK;
+      }
+      case "vcnv:dismissBell": {
+        const seat = Number(a.seat);
+        if (!this.seat(seat)) return fail("Chọn thí sinh");
+        if (!v.eliminatedSeats.includes(seat)) {
+          v.eliminatedSeats.push(seat);
+        }
+        v.bells = v.bells.filter((b) => b.seat !== seat);
+        this.logMsg(`🔕 Đã tắt tín hiệu chuông và loại quyền chơi VCNV của ${this.seatName(seat)}`);
+        return OK;
+      }
       case "vcnv:end":
         this.finishRound(now);
         return OK;
@@ -2373,8 +2441,10 @@ export class OlympiaGame {
         return fail("Câu không hợp lệ");
       }
       case "tt:blank": {
-        // Ô trống: chỉ phát âm thanh, giữ nguyên phase/đồ hoạ/góc quay
-        this.cue("6_NhacKhac/blank_space");
+        // Nền chờ ĐA (W): chuyển camera sang toàn cảnh thí sinh (CAM 10), hiển thị nền chờ mờ (tách biệt âm thanh ô trống)
+        (tt as any).phase = "waitingAnswer";
+        st.studioCamera = 10;
+        st.studioCameraManual = true;
         return OK;
       }
       case "tt:revealAndGrade": {
@@ -2440,6 +2510,7 @@ export class OlympiaGame {
       case "tt:reveal": {
         if (tt.qIdx < 0) return fail("Chưa có câu hỏi");
         pauseTimer(tt.timer, now);
+        st.studioCameraManual = false;
         const q = tt.questions[tt.qIdx];
         tt.ranking = this.activeSeatIds
           .map((id) => {
@@ -3254,11 +3325,7 @@ export class OlympiaGame {
         if (!v || v.phase === "done") return fail("Không thể bấm chuông");
         if (v.eliminatedSeats.includes(seatId)) return fail("Bạn đã bị loại khỏi lượt đoán CNV");
         if (v.bells.some((b) => b.seat === seatId)) return fail("Bạn đã bấm chuông");
-        v.bells.push({ seat: seatId, before: !v.answersRevealed });
-        // Mặc định trên máy thí sinh: đã bấm chuông CNV = dừng phần chơi VCNV ngay lập tức
-        if (!v.eliminatedSeats.includes(seatId)) {
-          v.eliminatedSeats.push(seatId);
-        }
+        v.bells.push({ seat: seatId, before: !v.answersRevealed, atMs: now, at: now } as any);
         this.cue("2_VuotChuongNgaiVat/bell_ring");
         break;
       }
@@ -3301,7 +3368,9 @@ export class OlympiaGame {
     if (st.currentRound === "vcnv" && st.vcnv) {
       const v = st.vcnv;
       if (v.currentRow < 0 || v.currentRow > 4) return fail("Chưa mở hàng ngang / ô trung tâm");
-      if (v.eliminatedSeats.includes(seatId)) return fail("Bạn đã bị loại");
+      if (v.eliminatedSeats.includes(seatId) || v.bells.some((b) => b.seat === seatId)) {
+        return fail("Bạn đã bấm chuông CNV hoặc đã bị loại");
+      }
       if (!timerRunning(v.timer) || timerRemaining(v.timer, now) <= 0) return fail("Hết giờ nhập đáp án");
       const elapsed = Math.max(0, Math.round(v.timer.totalMs - timerRemaining(v.timer, now)));
       const prev = v.answers[seatId];

@@ -12045,7 +12045,10 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   </Link>
                 </div>
               </div>
-              <div className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col">
+              <div
+                className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col"
+                onPointerDownCapture={forwardUnlock}
+              >
                 <ScaledDisplayFrame
                   iframeRef={displayIframeRef}
                   src={`/olympia/display/${code}?sandbox=1&perf=light&audio=1`}
@@ -12139,11 +12142,11 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       src={`/olympia/play/${code}?seat=${sIdx}&name=${encodeURIComponent(tName)}`}
                       allow="autoplay *; fullscreen *; camera; microphone; display-capture"
                       title={`Player Viewport ${sIdx}`}
-                      className={`w-full h-full border-0 absolute inset-0 ${
-                        isActive ? "visible pointer-events-auto z-10" : "invisible pointer-events-none z-0"
+                      className={`w-full h-full border-0 absolute inset-0 transition-opacity duration-150 ${
+                        isActive ? "opacity-100 pointer-events-auto z-10" : "opacity-0 pointer-events-none z-0"
                       }`}
                       style={{
-                        visibility: isActive ? "visible" : "hidden",
+                        opacity: isActive ? 1 : 0,
                         pointerEvents: isActive ? "auto" : "none",
                       }}
                     />
@@ -12213,7 +12216,10 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
               </div>
 
               {/* Viewport Content */}
-              <div className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col">
+              <div
+                className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col"
+                onPointerDownCapture={forwardUnlock}
+              >
                 <iframe
                     ref={displayIframeRef}
                     src={`/display/${code}?sandbox=1`}

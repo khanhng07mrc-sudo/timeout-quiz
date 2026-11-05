@@ -16,13 +16,13 @@ elif [ -s "/root/.nvm/nvm.sh" ]; then
   [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 fi
 
-echo "========================================="
-echo "   TIMEOUT QUIZ - VPS AUTO DEPLOY SCRIPT "
-echo "========================================="
+echo "=========================================================="
+echo "   QUIZORRA / TIMEOUT QUIZ - RESILIENT VPS DEPLOYMENT     "
+echo "=========================================================="
 
-# 1. Đồng bộ code mới nhất từ GitHub (Xử lý triệt để xung đột git & file tạm)
-echo "[1/6] Fetching and synchronizing latest code from origin/main..."
-git fetch origin main
+# 1. Cấu hình safe.directory và đồng bộ code từ GitHub
+echo "[1/7] Synchronizing git repository..."
+git config --global --add safe.directory "$SCRIPT_DIR" || true
 
 # Tự động stash hoặc loại bỏ thay đổi tạm trên VPS để tránh lỗi 'uncommitted changes'
 if [ -n "$(git status --porcelain)" ]; then
@@ -30,35 +30,43 @@ if [ -n "$(git status --porcelain)" ]; then
   git stash --include-untracked || true
 fi
 
-# Chuyển nhánh về main và reset chính xác về origin/main mới nhất
-git checkout -B main origin/main
-git reset --hard origin/main
+# Chuyển nhánh về main và fetch với thông báo hướng dẫn xác thực nếu lỗi
+git checkout -B main origin/main || git checkout main
 
+echo "  -> Fetching latest origin/main..."
+if ! git fetch origin main; then
+  echo "  ⚠️ Git fetch thất bại. Nếu cần Personal Access Token (PAT) hoặc SSH key, vui lòng chạy:"
+  echo "  git remote set-url origin https://<TOKEN>@github.com/khanhng07mrc-sudo/timeout-quiz.git"
+  exit 1
+fi
+
+git reset --hard origin/main
 CURRENT_COMMIT=$(git rev-parse --short HEAD)
 COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
 echo "  -> Đã đồng bộ mã nguồn về commit: $CURRENT_COMMIT ($COMMIT_MSG)"
 
-# Dọn sạch các file rác phát sinh nhưng giữ nguyên toàn bộ file biến môi trường và tài nguyên tải lên
+# Dọn sạch các file rác phát sinh nhưng giữ nguyên toàn bộ file biến môi trường và tài nguyên uploads
 git clean -fd -e ".env*" -e "public/uploads*"
 
 # 2. Cài đặt dependencies sạch (Có fallback nếu npm ci gặp sai lệch lockfile)
-echo "[2/6] Installing dependencies..."
+echo "[2/7] Installing dependencies..."
 npm ci --legacy-peer-deps || {
   echo "  -> 'npm ci' gặp cảnh báo lockfile, chuyển sang 'npm install --legacy-peer-deps'..."
   npm install --legacy-peer-deps
 }
 
-# 3. Tạo Prisma Client và chạy migration
-echo "[3/6] Syncing database schema with Prisma..."
+# 3. Tạo Prisma Client và đồng bộ CSDL
+echo "[3/7] Generating Prisma Client & syncing database..."
 npx prisma generate
 npx prisma migrate deploy || npx prisma db push --accept-data-loss || true
 
-# 4. Biên dịch Next.js và bundled server.js
-echo "[4/6] Building Next.js application & server.js..."
+# 4. Biên dịch Next.js và bundled server.js với giới hạn bộ nhớ 2-vCPU an toàn (tránh OOM)
+echo "[4/7] Compiling production build (2-vCPU memory optimized)..."
+export NODE_OPTIONS="--max-old-space-size=2048"
 npm run build
 
-# 5. Khởi động lại dịch vụ PM2
-echo "[5/6] Reloading PM2 service..."
+# 5. Khởi động lại dịch vụ PM2 với cập nhật biến môi trường (--update-env)
+echo "[5/7] Reloading PM2 process..."
 PM2_BIN="pm2"
 if ! command -v pm2 >/dev/null 2>&1; then
   if command -v npx >/dev/null 2>&1; then
@@ -66,17 +74,21 @@ if ! command -v pm2 >/dev/null 2>&1; then
   fi
 fi
 
-$PM2_BIN reload ecosystem.config.cjs || $PM2_BIN restart timeout-quiz || $PM2_BIN start ecosystem.config.cjs
+$PM2_BIN reload ecosystem.config.cjs --update-env || \
+$PM2_BIN restart timeout-quiz --update-env || \
+$PM2_BIN start ecosystem.config.cjs
+
 $PM2_BIN save
 
-# 6. Kiểm tra tình trạng hoạt động (Healthcheck)
-echo "[6/6] Verifying service health..."
+# 6. Kiểm tra tình trạng hoạt động nội bộ (Internal Healthcheck loop)
+echo "[6/7] Running local healthcheck..."
+sleep 3
 HEALTHY=false
-for i in $(seq 1 10); do
+for i in {1..12}; do
   if command -v curl >/dev/null 2>&1; then
     HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/api/health 2>/dev/null || true)
     if [ "$HTTP_STATUS" = "200" ]; then
-      echo "  -> ✅ Server health check: OK (HTTP 200 - sau ${i}s)"
+      echo "  -> ✅ Internal healthcheck: OK (HTTP 200 sau ${i}s)"
       HEALTHY=true
       break
     fi
@@ -88,7 +100,14 @@ if [ "$HEALTHY" = false ]; then
   echo "  -> ℹ️ Dịch vụ đang tiếp tục khởi động ngầm trong PM2."
 fi
 
-echo "========================================="
-echo "   ✅ DEPLOY THÀNH CÔNG LÊN VPS!         "
-echo "   Trang web: https://quizorra.ddns.net  "
-echo "========================================="
+# 7. Kiểm tra endpoint công khai (quizorra.ddns.net)
+echo "[7/7] Verifying public endpoint (quizorra.ddns.net)..."
+if command -v curl >/dev/null 2>&1; then
+  PUBLIC_STATUS=$(curl -s -k -o /dev/null -w "%{http_code}" https://quizorra.ddns.net/api/health 2>/dev/null || true)
+  echo "  -> Public status: HTTP $PUBLIC_STATUS"
+fi
+
+echo "=========================================================="
+echo "   ✅ DEPLOY THÀNH CÔNG CHO COMMIT: $CURRENT_COMMIT       "
+echo "   Sandbox Live: https://quizorra.ddns.net/admin/sandbox?code=463275"
+echo "=========================================================="

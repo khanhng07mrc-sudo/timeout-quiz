@@ -923,7 +923,7 @@ function InteractionZone({
           enabled={!myLog}
           onPress={triggerBuzz}
           label={myLog ? `ĐÃ THỬ (${myLog.order})` : "THỬ CHUÔNG"}
-          subLabel={myLog ? "Tín hiệu chuông tốt" : "Nhấn hoặc phím Space"}
+          subLabel={myLog ? "Tín hiệu chuông tốt" : "Nhấn Space hoặc chạm nút để bấm chuông"}
         />
         <div className="hidden sm:flex flex-col gap-1 text-left max-w-xs">
           <div className="text-amber-300 font-black text-sm uppercase">🔔 Chế độ kiểm tra chuông</div>
@@ -989,13 +989,9 @@ function InteractionZone({
       const subLabel =
         kd.buzzedSeat != null
           ? `🔔 ${seatName(state, kd.buzzedSeat)} giành quyền`
-          : isCountingDownUnlock
-          ? state.rulesetId === "O22"
-            ? "Luật O22: Mở chuông sau 2s"
-            : "Luật O23-O26: Mở chuông sau 5s"
           : canBuzz
-          ? "Nhấn hoặc phím Space"
-          : "Chờ mở chuông";
+          ? "Nhấn Space hoặc bấm nút ngay!"
+          : "Nhấn Space hoặc chạm nút để bấm chuông";
 
       return (
         <CircularBuzzer3D
@@ -1120,8 +1116,8 @@ function InteractionZone({
           : vd.steal?.buzzedSeat != null
           ? `🔔 ${seatName(state, vd.steal.buzzedSeat)} đã giành quyền trả lời`
           : canSteal
-          ? "Nhấn hoặc phím Space ngay!"
-          : "Chuông chỉ mở khi thí sinh trả lời sai";
+          ? "Nhấn Space hoặc bấm nút ngay!"
+          : "Nhấn Space hoặc chạm nút để bấm chuông";
 
       return (
         <CircularBuzzer3D
@@ -1149,8 +1145,8 @@ function InteractionZone({
             cp.buzzedSeat != null
               ? `🔔 ${seatName(state, cp.buzzedSeat)} đã bấm chuông`
               : canBuzz
-              ? "Nhấn hoặc phím Space"
-              : "Chờ mở chuông"
+              ? "Nhấn Space hoặc bấm nút ngay!"
+              : "Nhấn Space hoặc chạm nút để bấm chuông"
           }
         />
       );
@@ -1182,6 +1178,10 @@ function CircularBuzzer3D({
     lastFiredRef.current = now;
     setPressedLocal(true);
     setTimeout(() => setPressedLocal(false), 180);
+
+    // ZERO-LATENCY: Emit socket buzzer event immediately BEFORE any AudioContext processing
+    onPress();
+
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
@@ -1199,7 +1199,6 @@ function CircularBuzzer3D({
         osc.stop(ctx.currentTime + 0.12);
       }
     } catch {}
-    onPress();
   };
 
   return (
@@ -1224,14 +1223,14 @@ function CircularBuzzer3D({
           }`}
         >
           <span className="text-xl sm:text-2xl">🔔</span>
-          <span className="px-2 text-center leading-tight truncate max-w-[110px]">{label}</span>
+          <span className="px-1 text-center leading-tight text-[11px] sm:text-xs font-black break-words max-w-[120px]">{label}</span>
         </button>
       </div>
 
       {/* ── Fixed Bottom SubLabel: constant height so button never shifts ── */}
       <div className="h-6 mt-1.5 flex items-center justify-center text-center px-2 w-full overflow-hidden">
         <span
-          className={`text-[11px] sm:text-xs font-semibold leading-tight truncate max-w-[320px] ${
+          className={`text-[11px] sm:text-xs font-semibold leading-tight text-center max-w-[340px] ${
             enabled ? "text-amber-300" : "text-slate-400"
           }`}
         >

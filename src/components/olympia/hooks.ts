@@ -149,8 +149,31 @@ export function useOlympiaSocket({
       }
     }, 1500);
 
+    // Contestant session persistence: auto reconnect and re-announce presence when returning to tab
+    const handleResume = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        if (!socket.connected) {
+          socket.connect();
+        } else {
+          doJoin();
+        }
+      }
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleResume);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", handleResume);
+    }
+
     return () => {
       clearInterval(retryTimer);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleResume);
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", handleResume);
+      }
       socket.disconnect();
       socketRef.current = null;
     };
@@ -195,6 +218,10 @@ export const isLoopingBgm = (sound: string): boolean =>
 
 export const isIntroOrMusicTrack = (sound: string): boolean =>
   /(?:show_intro|contest_intro|contestant_intro|ending_music|summary|prize_award)$/.test(sound);
+
+if (typeof window !== "undefined") {
+  (window as any).__OLYMPIA_UNLOCK_AUDIO__ = (window as any).__OLYMPIA_UNLOCK_AUDIO__ || (() => {});
+}
 
 /** Plays server "cue" events. Missing files fall back to O26, then fail silently. */
 export function useOlympiaAudio(
@@ -349,7 +376,32 @@ export function useOlympiaAudio(
       }
 
       newAudio.volume = fadeOldOnly ? targetVol : 0;
-      newAudio.play().catch((err) => {
+      newAudio.play().then(() => {
+        if (!fadeOldOnly) {
+          // Fade in new audio (dành riêng cho nhạc nền ambient)
+          const steps = 20;
+          const stepMs = Math.max(15, Math.floor(durationMs / steps));
+          const volStep = targetVol / steps;
+          let step = 0;
+          const fadeInTimer = setInterval(() => {
+            step++;
+            const newVol = Math.min(targetVol, volStep * step);
+            try {
+              newAudio.volume = newVol;
+            } catch {}
+            if (
+              step >= steps ||
+              newVol >= targetVol ||
+              bgm.current !== newAudio ||
+              !activeBgmSet.current.has(newAudio)
+            ) {
+              clearInterval(fadeInTimer);
+              activeFadeTimers.current.delete(fadeInTimer);
+            }
+          }, stepMs);
+          activeFadeTimers.current.add(fadeInTimer);
+        }
+      }).catch((err) => {
         if (err && err.name === "NotAllowedError") {
           pendingCueRef.current = () => {
             if (newAudio.volume === 0) newAudio.volume = targetVol;
@@ -388,29 +440,6 @@ export function useOlympiaAudio(
       if (fadeOldOnly) {
         return;
       }
-
-      // Fade in new audio (dành riêng cho nhạc nền ambient)
-      const steps = 20;
-      const stepMs = Math.max(15, Math.floor(durationMs / steps));
-      const volStep = targetVol / steps;
-      let step = 0;
-      const fadeInTimer = setInterval(() => {
-        step++;
-        const newVol = Math.min(targetVol, volStep * step);
-        try {
-          newAudio.volume = newVol;
-        } catch {}
-        if (
-          step >= steps ||
-          newVol >= targetVol ||
-          bgm.current !== newAudio ||
-          !activeBgmSet.current.has(newAudio)
-        ) {
-          clearInterval(fadeInTimer);
-          activeFadeTimers.current.delete(fadeInTimer);
-        }
-      }, stepMs);
-      activeFadeTimers.current.add(fadeInTimer);
     },
     []
   );
@@ -444,14 +473,12 @@ export function useOlympiaAudio(
         source.start(0);
       } catch {}
     }
-    if (!isAudioUnlockedRef.current) {
-      isAudioUnlockedRef.current = true;
-      if (bgm.current && bgm.current.paused && !bgm.current.ended && !isBgmPausedExplicitlyRef.current) {
-        if (bgm.current.volume === 0) {
-          bgm.current.volume = 0.85;
-        }
-        bgm.current.play().catch(() => {});
+    isAudioUnlockedRef.current = true;
+    if (bgm.current && bgm.current.paused && !bgm.current.ended && !isBgmPausedExplicitlyRef.current) {
+      if (bgm.current.volume === 0) {
+        bgm.current.volume = 0.85;
       }
+      bgm.current.play().catch(() => {});
     }
     if (pendingCueRef.current) {
       const p = pendingCueRef.current;
@@ -461,6 +488,11 @@ export function useOlympiaAudio(
       } catch {}
     }
   }, [getAudioContext]);
+
+  // Synchronously attach global unlock method on window for immediate access
+  if (typeof window !== "undefined") {
+    (window as any).__OLYMPIA_UNLOCK_AUDIO__ = unlockAudio;
+  }
 
   // Expose global unlock method on window for direct same-origin invocations
   useEffect(() => {
@@ -534,6 +566,9 @@ export function useOlympiaAudio(
   useEffect(() => {
     const cue = state?.cue;
     if (!cue) return;
+    const isIntroTrackEarly = isIntroOrMusicTrack(cue.sound);
+    const isBgmCueEarly = cue.kind === "bgm" || isIntroTrackEarly;
+
     if (lastCue.current == null) {
       lastCue.current = cue.id;
       // Nếu là âm thanh mở đầu khi tạo phòng ở sảnh chờ (show_intro), cho phép phát đúng 1 lần duy nhất trên lần sync đầu tiên
@@ -544,14 +579,15 @@ export function useOlympiaAudio(
           return;
         }
         hasPlayedIntroLobbyRef.current = true;
+      } else if (isBgmCueEarly) {
+        // R1: Không bỏ qua BGM cues trên lần sync đầu tiên!
+        // Cho phép tiếp tục chạy xuống dưới để khởi tạo bgm.current và queue vào pendingCueRef.current
       } else {
-        return; // do not replay on first sync
+        return; // do not replay SFX on first sync
       }
     } else {
       if (cue.id === lastCue.current) {
-        const isIntro = isIntroOrMusicTrack(cue.sound);
-        const isBgm = cue.kind === "bgm" || isIntro;
-        if (enabled && isBgm && (!bgm.current || bgm.current.paused)) {
+        if (enabled && isBgmCueEarly && (!bgm.current || bgm.current.paused)) {
           // Cho phép phát tiếp BGM nếu vừa unmute hoặc vừa unlock audio
         } else {
           return;

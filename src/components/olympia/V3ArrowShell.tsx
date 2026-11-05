@@ -80,20 +80,21 @@ export const V3_COLORS = {
  */
 const SHELL_CSS = `
 @keyframes v3a-wing-l {
-  0%   { transform: translateX(var(--v3a-dc)); opacity: 0; }
-  14%  { opacity: 1; }
-  45%  { transform: translateX(var(--v3a-dc)); opacity: 1; }
+  0%   { transform: translateX(var(--v3a-dc-converge)); opacity: 1; }
+  28%  { transform: translateX(calc(var(--v3a-dc-converge) * 0.75)); opacity: 1; }
+  70%  { transform: translateX(-8px); opacity: 1; }
   100% { transform: translateX(0); opacity: 1; }
 }
 @keyframes v3a-wing-r {
-  0%   { transform: translateX(calc(var(--v3a-dc) * -1)); opacity: 0; }
-  14%  { opacity: 1; }
-  45%  { transform: translateX(calc(var(--v3a-dc) * -1)); opacity: 1; }
+  0%   { transform: translateX(calc(var(--v3a-dc-converge) * -1)); opacity: 1; }
+  28%  { transform: translateX(calc(var(--v3a-dc-converge) * -0.75)); opacity: 1; }
+  70%  { transform: translateX(8px); opacity: 1; }
   100% { transform: translateX(0); opacity: 1; }
 }
 @keyframes v3a-body {
-  0%, 44%  { clip-path: inset(0 calc(50% - 45px) 0 calc(50% - 45px)); opacity: 0; }
-  45%      { clip-path: inset(0 calc(50% - 45px) 0 calc(50% - 45px)); opacity: 1; }
+  0%, 25%  { clip-path: inset(0 50% 0 50%); opacity: 0; }
+  26%      { clip-path: inset(0 50% 0 50%); opacity: 1; }
+  75%      { clip-path: inset(0 0% 0 0%); opacity: 1; }
   100%     { clip-path: inset(0 0 0 0); opacity: 1; }
 }
 @keyframes v3a-content {
@@ -148,7 +149,11 @@ export function V3ArrowShell({
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const { canvasW, H } = shell;
   const hexPath = toSvgPath(shell.bgPts);
-  const cssVars = { ["--v3a-dc" as string]: `${canvasW / 2 - shell.cThick}px` } as React.CSSProperties;
+  const dcConverge = canvasW / 2 - shell.startX / 2;
+  const cssVars = {
+    ["--v3a-dc" as string]: `${canvasW / 2 - shell.cThick}px`,
+    ["--v3a-dc-converge" as string]: `${dcConverge}px`,
+  } as React.CSSProperties;
 
   return (
     <V3ScaledStage designW={canvasW} designH={H} maxScale={maxScale} className={className}>

@@ -734,6 +734,8 @@ test("VCNV: row points, keyword points by opened rows, elimination on wrong CNV"
 
   act(g, "vcnv:wrongCNV", { seat: 1 });
 
+  // Wrong CNV does not immediately eliminate seat 1 until bells are cleared
+  act(g, "vcnv:clearBells");
   assert.deepEqual(g.state.vcnv!.eliminatedSeats, [1]);
 
   g.playerBuzz(0, 2200);
@@ -1664,9 +1666,10 @@ test("VCNV selecting, openQuestion, blank, auto-grid on correct/wrong & Summary 
   assert.ok(g.view("display").vcnv!.rows[1].hint.length > 0);
   assert.ok(g.view("player", 0).vcnv!.rows[1].hint.length > 0);
 
-  // 3. Blank cue -> plays blank_space without disrupting phase
+  // 3. Blank -> sets waitingAnswer camera to 10
   act(g, "vcnv:blank");
-  assert.equal(g.state.cue?.sound, "6_NhacKhac/blank_space");
+  assert.equal(g.state.vcnv!.phase, "waitingAnswer");
+  assert.equal(g.state.studioCamera, 10);
 
   // 4. Timer starts -> phase is question
   act(g, "vcnv:timer", {}, 1000);
@@ -1751,9 +1754,10 @@ test("VCNV selecting, openQuestion, blank, auto-grid on correct/wrong & Summary 
   assert.ok(ttDisp.tangToc!.submissions[0]);
   assert.equal(ttDisp.tangToc!.submissions[0].answer, "•");
 
-  // tt:blank plays blank_space without resetting phase / camera
+  // tt:blank sets waitingAnswer without playing blank_space
   act(gTT, "tt:blank");
-  assert.equal(gTT.state.cue?.sound, "6_NhacKhac/blank_space");
+  assert.equal(gTT.state.tangToc!.phase, "waitingAnswer");
+  assert.equal(gTT.state.studioCamera, 10);
 
   // Reveal ranking
   act(gTT, "tt:reveal");
@@ -1788,22 +1792,27 @@ test("VCNV immediate self-lock on bell press, manual per-seat unlock, letterCoun
   act(g, "bell:toggleTest");
   assert.equal(g.state.bellTestMode, false);
 
-  // 3. Real VCNV bell press immediately locks that contestant's VCNV play
+  // 3. Real VCNV bell press places contestant into v.bells (locking buzzer and row typing)
   assert.ok(g.playerBuzz(1, 2000).ok);
-  assert.deepEqual(g.state.vcnv!.eliminatedSeats, [1], "Pressing CNV bell immediately locks seat 1");
   assert.equal(g.state.vcnv!.bells[0].seat, 1);
-  // Seat 1 cannot submit row answers while locked
+  // Seat 1 cannot submit row answers while having buzzed
   act(g, "vcnv:selectRow", { row: 0 });
   act(g, "vcnv:timer", {}, 2500);
-  assert.equal(g.playerAnswer(1, "ABC", 3000).ok, false, "Locked seat cannot submit row answers");
+  assert.equal(g.playerAnswer(1, "ABC", 3000).ok, false, "Seat with bell cannot submit row answers");
 
-  // 4. Wrong CNV plays wrong sound and clears bell without needing seat selection
+  // 4. Wrong CNV plays wrong sound, keeps bell in v.bells with judgedWrong flag
   act(g, "vcnv:wrongCNV", {}, 3500);
-  assert.equal(g.state.vcnv!.bells.length, 0, "Bell removed after wrongCNV");
-  assert.deepEqual(g.state.vcnv!.eliminatedSeats, [1], "Seat 1 remains locked");
   assert.equal(g.state.cue?.sound, "2_VuotChuongNgaiVat/cnv_wrong");
+  assert.equal(g.state.vcnv!.bells.length, 1);
+  assert.equal((g.state.vcnv!.bells[0] as any).judgedWrong, true);
+  assert.deepEqual(g.state.vcnv!.eliminatedSeats, [], "Not eliminated until bells are cleared");
 
-  // 5. MC manually unlocks seat 1 via vcnv:toggleLockSeat
+  // 5. Host clears bells: now seat 1 is officially eliminated
+  act(g, "vcnv:clearBells");
+  assert.equal(g.state.vcnv!.bells.length, 0);
+  assert.deepEqual(g.state.vcnv!.eliminatedSeats, [1], "Seat 1 eliminated upon clearBells");
+
+  // 6. MC manually unlocks seat 1 via vcnv:toggleLockSeat
   act(g, "vcnv:toggleLockSeat", { seat: 1 }, 3600);
   assert.deepEqual(g.state.vcnv!.eliminatedSeats, [], "Seat 1 unlocked manually by MC");
   assert.equal(g.playerAnswer(1, "ABC", 3700).ok, true, "Unlocked seat 1 can now submit row answers again");

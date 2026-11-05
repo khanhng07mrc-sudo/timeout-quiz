@@ -258,29 +258,167 @@ interface ContestantStyleConfig {
   glassesColor?: string;
 }
 
+/**
+ * Authentic East Asian warm peach skin material using MeshPhysicalMaterial.
+ * Features:
+ * - Warm peach base tones (#fae0cc / #f8d5b8 / #f2ceb0 / #eec29f).
+ * - Clearcoat (0.12) with 0.35 roughness for subtle forehead/bridge sheen.
+ * - Sheen (0.45) with warm peach-fuzz backscatter (#ffb499).
+ * - Warm subcutaneous capillary emissive glow (#3d1406 @ 0.08) that eliminates
+ *   grey/muddy shadow terminators under dark sapphire studio ambient lighting.
+ */
+function createWarmPeachSkinMaterial(color: string = "#fae0cc", roughness: number = 0.44): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness,
+    metalness: 0.0,
+    clearcoat: 0.12,
+    clearcoatRoughness: 0.35,
+    sheen: 0.45,
+    sheenColor: new THREE.Color("#ffb499"),
+    emissive: new THREE.Color("#3d1406"),
+    emissiveIntensity: 0.08,
+  });
+}
+
+/**
+ * 5-Element Expressive Anatomical Eye Assembly:
+ * 1. Sclera (Eyeball white #f8fafc)
+ * 2. Eyelid crease / epicanthic fold (#1a120c)
+ * 3. Vietnamese Deep Chocolate Iris (#22150e)
+ * 4. Deep Obsidian Pupil (#080504)
+ * 5. Specular Catchlight reflection (#ffffff) simulating studio key spotlight
+ */
+function ProceduralEye({
+  position = [0, 0, 0],
+  rotation = [0, 0, 0],
+  scale = 1.0,
+}: {
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number;
+}) {
+  return (
+    <group position={position} rotation={rotation} scale={scale}>
+      {/* 1. Sclera */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.0092, 16, 16]} />
+        <meshStandardMaterial color="#f8fafc" roughness={0.18} />
+      </mesh>
+      {/* 2. Eyelid Crease */}
+      <mesh position={[0, 0.0075, 0.004]}>
+        <boxGeometry args={[0.018, 0.003, 0.004]} />
+        <meshStandardMaterial color="#1a120c" roughness={0.4} />
+      </mesh>
+      {/* 3. Dark Chocolate Iris */}
+      <mesh position={[0, 0, 0.004]}>
+        <sphereGeometry args={[0.0058, 14, 14]} />
+        <meshStandardMaterial color="#22150e" roughness={0.22} />
+      </mesh>
+      {/* 4. Pupil */}
+      <mesh position={[0, 0, 0.0072]}>
+        <sphereGeometry args={[0.0030, 10, 10]} />
+        <meshStandardMaterial color="#080504" roughness={0.1} />
+      </mesh>
+      {/* 5. Specular Catchlight */}
+      <mesh position={[0.0018, 0.0022, 0.0088]}>
+        <sphereGeometry args={[0.0016, 8, 8]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+    </group>
+  );
+}
+
+/**
+ * Procedural Sculpted Hand:
+ * Sculpted palm base with opposable thumb and 4 articulated curved fingers.
+ * Modes: "rest" (resting on podium beside buzzer), "mic" (gripping mic),
+ * "card" (gripping cue card), "tablet" (holding host tablet).
+ */
+function SculptedHand({
+  position = [0, 0, 0],
+  rotation = [0, 0, 0],
+  skinMat,
+  isLeft = true,
+  mode = "rest",
+}: {
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  skinMat: THREE.Material;
+  isLeft?: boolean;
+  mode?: "rest" | "mic" | "card" | "tablet";
+}) {
+  const side = isLeft ? -1 : 1;
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Palm Base */}
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[0.040, 0.016, 0.045]} />
+        <primitive object={skinMat} attach="material" />
+      </mesh>
+      {/* Palm Knuckle Arch */}
+      <mesh position={[0, 0.004, 0.016]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.019, 0.019, 0.038, 10]} />
+        <primitive object={skinMat} attach="material" />
+      </mesh>
+      {/* Opposable Thumb */}
+      <group position={[side * 0.022, -0.002, -0.006]} rotation={[0.2, side * 0.45, side * -0.2]}>
+        <mesh position={[side * 0.008, 0, 0.010]} rotation={[0.3, 0, 0]}>
+          <cylinderGeometry args={[0.006, 0.007, 0.022, 8]} />
+          <primitive object={skinMat} attach="material" />
+        </mesh>
+        <mesh position={[side * 0.008, -0.004, 0.024]} rotation={[0.6, 0, 0]}>
+          <cylinderGeometry args={[0.005, 0.006, 0.018, 8]} />
+          <primitive object={skinMat} attach="material" />
+        </mesh>
+      </group>
+      {/* 4 Articulated Fingers */}
+      {[-0.014, -0.005, 0.005, 0.014].map((fX, fIdx) => {
+        const fingerLen = fIdx === 1 || fIdx === 2 ? 0.026 : 0.022;
+        const curlRot = mode === "mic" ? 1.2 : mode === "card" ? 0.35 : mode === "tablet" ? 0.4 : 0.18;
+        return (
+          <group key={fIdx} position={[fX, 0, 0.024]}>
+            {/* Proximal phalanx */}
+            <mesh position={[0, -0.003, fingerLen * 0.3]} rotation={[curlRot, 0, 0]}>
+              <cylinderGeometry args={[0.0048, 0.0052, fingerLen * 0.55, 8]} />
+              <primitive object={skinMat} attach="material" />
+            </mesh>
+            {/* Distal phalanx */}
+            <mesh position={[0, -0.010, fingerLen * 0.7]} rotation={[curlRot * 1.5, 0, 0]}>
+              <cylinderGeometry args={[0.0040, 0.0048, fingerLen * 0.50, 8]} />
+              <primitive object={skinMat} attach="material" />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 const CONTESTANT_STYLES: ContestantStyleConfig[] = [
-  // Seat 0 (TS 1 / Cam 5): Nữ sinh thanh lịch đeo kính (giống Ảnh 2), da trắng hồng ấm #f3ceb3, tóc buộc thanh tú
-  { gender: "female", skinTone: "#f3ceb3", hairColor: "#171412", hairStyle: "ponytail", hasGlasses: true, glassesColor: "#334155" },
-  // Seat 1 (TS 2 / Cam 6): Nam sinh tóc gọn gàng năng động (giống Ảnh 3), da vàng ấm tự nhiên #e8be99
-  { gender: "male", skinTone: "#e8be99", hairColor: "#1a1614", hairStyle: "side_part", hasGlasses: false },
-  // Seat 2 (TS 3 / Cam 7): Nữ sinh tóc ngắn cá tính thanh thoát, da vàng sáng tự nhiên #dfb088
-  { gender: "female", skinTone: "#dfb088", hairColor: "#1f1a16", hairStyle: "stylish_bob", hasGlasses: false },
-  // Seat 3 (TS 4 / Cam 8): Nam sinh thư sinh đeo kính trí thức, da mật ong ấm #d9a67a
-  { gender: "male", skinTone: "#d9a67a", hairColor: "#181412", hairStyle: "textured_crop", hasGlasses: true, glassesColor: "#1e293b" },
-  // Seat 4 (TS 5 / Cam 11): Nữ sinh tóc mái thưa buông nhẹ, da trắng hồng ấm #f3ceb3
-  { gender: "female", skinTone: "#f3ceb3", hairColor: "#201a15", hairStyle: "layered_fringe", hasGlasses: false },
-  // Seat 5 (TS 6 / Cam 12): Nam sinh tóc cắt gọn gàng, da ấm tự nhiên #cfa075
-  { gender: "male", skinTone: "#cfa075", hairColor: "#171412", hairStyle: "neat_fade", hasGlasses: false },
-  // Seat 6 (TS 7 / Cam 13): Nữ sinh đeo kính gọng mảnh thanh lịch, tóc gợn sóng nhẹ, da ấm #e8be99
-  { gender: "female", skinTone: "#e8be99", hairColor: "#1c1815", hairStyle: "wavy_volume", hasGlasses: true, glassesColor: "#475569" },
-  // Seat 7 (TS 8 / Cam 14): Nam sinh phong thái tự tin, da vàng ấm #dfb088
-  { gender: "male", skinTone: "#dfb088", hairColor: "#191512", hairStyle: "undercut", hasGlasses: false },
+  // Seat 0 (TS 1 / Cam 5): Nữ sinh thanh lịch đeo kính (giống Ảnh 2), da trắng hồng ấm #fae0cc, tóc buộc thanh tú
+  { gender: "female", skinTone: "#fae0cc", hairColor: "#171412", hairStyle: "ponytail", hasGlasses: true, glassesColor: "#334155" },
+  // Seat 1 (TS 2 / Cam 6): Nam sinh tóc gọn gàng năng động (giống Ảnh 3), da vàng ấm tự nhiên #f2ceb0
+  { gender: "male", skinTone: "#f2ceb0", hairColor: "#1a1614", hairStyle: "side_part", hasGlasses: false },
+  // Seat 2 (TS 3 / Cam 7): Nữ sinh tóc ngắn cá tính thanh thoát, da trắng sáng hồng #f8d5b8
+  { gender: "female", skinTone: "#f8d5b8", hairColor: "#1f1a16", hairStyle: "stylish_bob", hasGlasses: false },
+  // Seat 3 (TS 4 / Cam 8): Nam sinh thư sinh đeo kính trí thức, da mật ong ấm #eec29f
+  { gender: "male", skinTone: "#eec29f", hairColor: "#181412", hairStyle: "textured_crop", hasGlasses: true, glassesColor: "#1e293b" },
+  // Seat 4 (TS 5 / Cam 11): Nữ sinh tóc mái thưa buông nhẹ, da trắng hồng ấm #fae0cc
+  { gender: "female", skinTone: "#fae0cc", hairColor: "#201a15", hairStyle: "layered_fringe", hasGlasses: false },
+  // Seat 5 (TS 6 / Cam 12): Nam sinh tóc cắt gọn gàng, da ấm tự nhiên #f2ceb0
+  { gender: "male", skinTone: "#f2ceb0", hairColor: "#171412", hairStyle: "neat_fade", hasGlasses: false },
+  // Seat 6 (TS 7 / Cam 13): Nữ sinh đeo kính gọng mảnh thanh lịch, tóc gợn sóng nhẹ, da ấm #f8d5b8
+  { gender: "female", skinTone: "#f8d5b8", hairColor: "#1c1815", hairStyle: "wavy_volume", hasGlasses: true, glassesColor: "#475569" },
+  // Seat 7 (TS 8 / Cam 14): Nam sinh phong thái tự tin, da vàng ấm #f2ceb0
+  { gender: "male", skinTone: "#f2ceb0", hairColor: "#191512", hairStyle: "undercut", hasGlasses: false },
 ];
 
 function ContestantFigure({ seatId, quality }: { seatId: number; quality?: "HIGH" | "MEDIUM" | "LIGHT" }) {
   const style = CONTESTANT_STYLES[seatId % CONTESTANT_STYLES.length];
   const chestRef = useRef<THREE.Group>(null);
   const headRef = useRef<THREE.Group>(null);
+  const skinMat = useMemo(() => createWarmPeachSkinMaterial(style.skinTone), [style.skinTone]);
 
   // Micro-breathing & natural student idle posture via useFrame
   useFrame(({ clock }) => {
@@ -420,24 +558,30 @@ function ContestantFigure({ seatId, quality }: { seatId: number; quality?: "HIGH
         {/* Left Forearm */}
         <mesh position={[-0.15, 1.10, 0.12]} rotation={[0.75, -0.15, -0.10]}>
           <cylinderGeometry args={[0.028, 0.024, 0.22, 12]} />
-          <meshStandardMaterial color={style.skinTone} roughness={0.6} />
+          <primitive object={skinMat} attach="material" />
         </mesh>
-        {/* Left Hand */}
-        <mesh position={[-0.13, 1.00, 0.22]} rotation={[0.1, -0.15, 0]}>
-          <boxGeometry args={[0.042, 0.018, 0.055]} />
-          <meshStandardMaterial color={style.skinTone} roughness={0.6} />
-        </mesh>
+        {/* Left Hand: Sculpted palm & fingers resting flat / gently curled on desk */}
+        <SculptedHand
+          position={[-0.13, 1.00, 0.22]}
+          rotation={[0.1, -0.15, 0]}
+          skinMat={skinMat}
+          isLeft={true}
+          mode="rest"
+        />
 
         {/* Right Forearm */}
         <mesh position={[0.15, 1.10, 0.12]} rotation={[0.75, 0.15, 0.10]}>
           <cylinderGeometry args={[0.028, 0.024, 0.22, 12]} />
-          <meshStandardMaterial color={style.skinTone} roughness={0.6} />
+          <primitive object={skinMat} attach="material" />
         </mesh>
-        {/* Right Hand */}
-        <mesh position={[0.13, 1.00, 0.22]} rotation={[0.1, 0.15, 0]}>
-          <boxGeometry args={[0.042, 0.018, 0.055]} />
-          <meshStandardMaterial color={style.skinTone} roughness={0.6} />
-        </mesh>
+        {/* Right Hand: Sculpted palm & fingers poised naturally beside buzzer */}
+        <SculptedHand
+          position={[0.13, 1.00, 0.22]}
+          rotation={[0.1, 0.15, 0]}
+          skinMat={skinMat}
+          isLeft={false}
+          mode="rest"
+        />
       </group>
 
       {/* ── HEAD & SLENDER NECK ── */}
@@ -445,43 +589,43 @@ function ContestantFigure({ seatId, quality }: { seatId: number; quality?: "HIGH
         {/* Slender Neck (radius 0.032m) */}
         <mesh position={[0, 1.47, 0.015]}>
           <cylinderGeometry args={[0.032, 0.038, 0.09, 16]} />
-          <meshStandardMaterial color={style.skinTone} roughness={0.6} />
+          <primitive object={skinMat} attach="material" />
         </mesh>
 
         {/* Head Cranial Vault */}
         <mesh position={[0, 1.58, 0.01]}>
           <sphereGeometry args={[0.076, 22, 22]} />
-          <meshStandardMaterial color={style.skinTone} roughness={0.55} />
+          <primitive object={skinMat} attach="material" />
         </mesh>
         {/* Sculpted Jaw & Chin Definition */}
         <mesh position={[0, 1.52, 0.035]} rotation={[0.25, 0, 0]}>
           <boxGeometry args={[0.068, 0.058, 0.068]} />
-          <meshStandardMaterial color={style.skinTone} roughness={0.55} />
+          <primitive object={skinMat} attach="material" />
         </mesh>
         <mesh position={[0, 1.495, 0.055]}>
           <sphereGeometry args={[0.018, 12, 12]} />
-          <meshStandardMaterial color={style.skinTone} roughness={0.55} />
+          <primitive object={skinMat} attach="material" />
         </mesh>
 
         {/* Left & Right Ears */}
         <mesh position={[-0.078, 1.56, 0.005]}>
           <boxGeometry args={[0.010, 0.028, 0.018]} />
-          <meshStandardMaterial color={style.skinTone} roughness={0.6} />
+          <primitive object={skinMat} attach="material" />
         </mesh>
         <mesh position={[0.078, 1.56, 0.005]}>
           <boxGeometry args={[0.010, 0.028, 0.018]} />
-          <meshStandardMaterial color={style.skinTone} roughness={0.6} />
+          <primitive object={skinMat} attach="material" />
         </mesh>
 
-        {/* Eyes (Focused, alert student look) */}
-        <mesh position={[-0.026, 1.56, 0.075]}>
-          <sphereGeometry args={[0.007, 12, 12]} />
-          <meshStandardMaterial color="#0f172a" roughness={0.2} />
-        </mesh>
-        <mesh position={[0.026, 1.56, 0.075]}>
-          <sphereGeometry args={[0.007, 12, 12]} />
-          <meshStandardMaterial color="#0f172a" roughness={0.2} />
-        </mesh>
+        {/* 5-Element Expressive Anatomical Eyes */}
+        <ProceduralEye
+          position={[-0.026, 1.56, 0.075]}
+          scale={0.9}
+        />
+        <ProceduralEye
+          position={[0.026, 1.56, 0.075]}
+          scale={0.9}
+        />
         {/* Eyebrows */}
         <mesh position={[-0.026, 1.585, 0.077]} rotation={[0, 0, 0.08]}>
           <boxGeometry args={[0.024, 0.004, 0.005]} />
@@ -1141,12 +1285,19 @@ function McPresenters({
   const nhRef = useRef<THREE.Group>(null);
   const kvLeftLegRef = useRef<THREE.Group>(null);
   const kvRightLegRef = useRef<THREE.Group>(null);
+  const kvLeftKneeRef = useRef<THREE.Group>(null);
+  const kvRightKneeRef = useRef<THREE.Group>(null);
   const nhLeftLegRef = useRef<THREE.Group>(null);
   const nhRightLegRef = useRef<THREE.Group>(null);
+  const nhLeftKneeRef = useRef<THREE.Group>(null);
+  const nhRightKneeRef = useRef<THREE.Group>(null);
   const kvLeftArmRef = useRef<THREE.Group>(null);
   const kvRightArmRef = useRef<THREE.Group>(null);
   const nhLeftArmRef = useRef<THREE.Group>(null);
   const nhRightArmRef = useRef<THREE.Group>(null);
+
+  const kvSkinMat = useMemo(() => createWarmPeachSkinMaterial("#fae0cc"), []);
+  const nhSkinMat = useMemo(() => createWarmPeachSkinMaterial("#f2ceb0"), []);
 
   // Compute walk-out animation progress (0.0: backstage behind arch posts -> 1.0: behind MC desk)
   useFrame(() => {
@@ -1206,14 +1357,22 @@ function McPresenters({
       nhRef.current.rotation.y = THREE.MathUtils.lerp(walkRot, -0.25, walkProgress * walkProgress);
     }
 
-    // Leg stride swing
+    // Two-segment leg stride swing with natural knee flexion (eliminating stiffness & floor clipping)
     if (kvLeftLegRef.current && kvRightLegRef.current) {
       kvLeftLegRef.current.rotation.x = stride;
       kvRightLegRef.current.rotation.x = -stride;
     }
+    if (kvLeftKneeRef.current && kvRightKneeRef.current) {
+      kvLeftKneeRef.current.rotation.x = Math.max(0, -stride * 0.95);
+      kvRightKneeRef.current.rotation.x = Math.max(0, stride * 0.95);
+    }
     if (nhLeftLegRef.current && nhRightLegRef.current) {
       nhLeftLegRef.current.rotation.x = -stride;
       nhRightLegRef.current.rotation.x = stride;
+    }
+    if (nhLeftKneeRef.current && nhRightKneeRef.current) {
+      nhLeftKneeRef.current.rotation.x = Math.max(0, stride * 0.95);
+      nhRightKneeRef.current.rotation.x = Math.max(0, -stride * 0.95);
     }
 
     // Arm stride swing
@@ -1234,100 +1393,73 @@ function McPresenters({
         {/* Cranial Base & Head */}
         <mesh position={[0, 1.58, 0]}>
           <sphereGeometry args={[0.080, 24, 24]} />
-          <meshStandardMaterial color="#f5d0b8" roughness={0.55} />
+          <primitive object={kvSkinMat} attach="material" />
         </mesh>
         {/* Slender Feminine Jaw & Chin */}
         <mesh position={[0, 1.52, 0.015]} rotation={[0.20, 0, 0]}>
           <boxGeometry args={[0.066, 0.056, 0.066]} />
-          <meshStandardMaterial color="#f5d0b8" roughness={0.55} />
+          <primitive object={kvSkinMat} attach="material" />
         </mesh>
         <mesh position={[0, 1.485, 0.052]}>
           <sphereGeometry args={[0.018, 16, 16]} />
-          <meshStandardMaterial color="#f5d0b8" roughness={0.55} />
+          <primitive object={kvSkinMat} attach="material" />
         </mesh>
 
         {/* Delicate Ears */}
         <mesh position={[-0.074, 1.57, 0.005]} rotation={[0, -0.15, 0.05]}>
           <boxGeometry args={[0.012, 0.034, 0.018]} />
-          <meshStandardMaterial color="#f5d0b8" roughness={0.55} />
+          <primitive object={kvSkinMat} attach="material" />
         </mesh>
         <mesh position={[0.074, 1.57, 0.005]} rotation={[0, 0.15, -0.05]}>
           <boxGeometry args={[0.012, 0.034, 0.018]} />
-          <meshStandardMaterial color="#f5d0b8" roughness={0.55} />
+          <primitive object={kvSkinMat} attach="material" />
         </mesh>
 
         {/* Long Brunette Layered Hair with Shoulder-Flowing Locks */}
         <mesh position={[0, 1.60, -0.02]}>
           <sphereGeometry args={[0.088, 24, 24]} />
-          <meshStandardMaterial color="#2b1810" roughness={0.7} />
+          <meshStandardMaterial color="#2d1b00" roughness={0.7} />
         </mesh>
         <mesh position={[0, 1.48, -0.05]}>
           <cylinderGeometry args={[0.085, 0.115, 0.28, 16]} />
-          <meshStandardMaterial color="#2b1810" roughness={0.7} />
+          <meshStandardMaterial color="#2d1b00" roughness={0.7} />
         </mesh>
         {/* Parted Curtain Bangs */}
         <mesh position={[-0.035, 1.63, 0.045]} rotation={[0.12, 0.10, 0.20]}>
           <boxGeometry args={[0.055, 0.03, 0.035]} />
-          <meshStandardMaterial color="#2b1810" roughness={0.7} />
+          <meshStandardMaterial color="#2d1b00" roughness={0.7} />
         </mesh>
         <mesh position={[0.035, 1.63, 0.045]} rotation={[0.12, -0.10, -0.20]}>
           <boxGeometry args={[0.055, 0.03, 0.035]} />
-          <meshStandardMaterial color="#2b1810" roughness={0.7} />
+          <meshStandardMaterial color="#2d1b00" roughness={0.7} />
         </mesh>
         {/* Shoulder-Flowing Locks Cascading onto Chest (Broadcast Photo Match) */}
         <mesh position={[-0.085, 1.45, 0.045]} rotation={[0.25, 0.15, -0.18]}>
           <cylinderGeometry args={[0.024, 0.028, 0.18, 10]} />
-          <meshStandardMaterial color="#2b1810" roughness={0.7} />
+          <meshStandardMaterial color="#2d1b00" roughness={0.7} />
         </mesh>
         <mesh position={[-0.075, 1.33, 0.085]} rotation={[0.15, 0.05, -0.08]}>
           <cylinderGeometry args={[0.026, 0.016, 0.14, 10]} />
-          <meshStandardMaterial color="#2b1810" roughness={0.7} />
+          <meshStandardMaterial color="#2d1b00" roughness={0.7} />
         </mesh>
         <mesh position={[0.085, 1.45, 0.045]} rotation={[0.25, -0.15, 0.18]}>
           <cylinderGeometry args={[0.024, 0.028, 0.18, 10]} />
-          <meshStandardMaterial color="#2b1810" roughness={0.7} />
+          <meshStandardMaterial color="#2d1b00" roughness={0.7} />
         </mesh>
         <mesh position={[0.075, 1.33, 0.085]} rotation={[0.15, -0.05, 0.08]}>
           <cylinderGeometry args={[0.026, 0.016, 0.14, 10]} />
-          <meshStandardMaterial color="#2b1810" roughness={0.7} />
+          <meshStandardMaterial color="#2d1b00" roughness={0.7} />
         </mesh>
 
         {/* ── Expressive Radiant Facial Features ── */}
-        {/* Left Eye: Sclera, Eyelash contour, Chocolate Iris, Specular Catchlight */}
-        <mesh position={[-0.028, 1.585, 0.076]}>
-          <sphereGeometry args={[0.0085, 12, 12]} />
-          <meshStandardMaterial color="#f8fafc" roughness={0.2} />
-        </mesh>
-        <mesh position={[-0.028, 1.594, 0.079]}>
-          <boxGeometry args={[0.018, 0.003, 0.004]} />
-          <meshStandardMaterial color="#0f172a" roughness={0.3} />
-        </mesh>
-        <mesh position={[-0.028, 1.585, 0.082]}>
-          <sphereGeometry args={[0.0052, 12, 12]} />
-          <meshStandardMaterial color="#24160e" roughness={0.2} />
-        </mesh>
-        <mesh position={[-0.026, 1.588, 0.085]}>
-          <sphereGeometry args={[0.0016, 8, 8]} />
-          <meshBasicMaterial color="#ffffff" />
-        </mesh>
-
-        {/* Right Eye: Sclera, Eyelash contour, Chocolate Iris, Specular Catchlight */}
-        <mesh position={[0.028, 1.585, 0.076]}>
-          <sphereGeometry args={[0.0085, 12, 12]} />
-          <meshStandardMaterial color="#f8fafc" roughness={0.2} />
-        </mesh>
-        <mesh position={[0.028, 1.594, 0.079]}>
-          <boxGeometry args={[0.018, 0.003, 0.004]} />
-          <meshStandardMaterial color="#0f172a" roughness={0.3} />
-        </mesh>
-        <mesh position={[0.028, 1.585, 0.082]}>
-          <sphereGeometry args={[0.0052, 12, 12]} />
-          <meshStandardMaterial color="#24160e" roughness={0.2} />
-        </mesh>
-        <mesh position={[0.030, 1.588, 0.085]}>
-          <sphereGeometry args={[0.0016, 8, 8]} />
-          <meshBasicMaterial color="#ffffff" />
-        </mesh>
+        <ProceduralEye
+          position={[-0.028, 1.585, 0.076]}
+          scale={0.95}
+        />
+        <ProceduralEye
+          position={[0.028, 1.585, 0.076]}
+          scale={0.95}
+        />
 
         {/* Elegant Curved Eyebrows */}
         <mesh position={[-0.029, 1.608, 0.079]} rotation={[0, 0, 0.06]}>
@@ -1342,11 +1474,11 @@ function McPresenters({
         {/* Slender Nose & Tip */}
         <mesh position={[0, 1.565, 0.082]} rotation={[0.18, 0, 0]}>
           <cylinderGeometry args={[0.004, 0.007, 0.026, 8]} />
-          <meshStandardMaterial color="#f5d0b8" roughness={0.55} />
+          <primitive object={kvSkinMat} attach="material" />
         </mesh>
         <mesh position={[0, 1.545, 0.086]}>
           <sphereGeometry args={[0.0065, 10, 10]} />
-          <meshStandardMaterial color="#f5d0b8" roughness={0.55} />
+          <primitive object={kvSkinMat} attach="material" />
         </mesh>
 
         {/* Radiant Welcoming Smile */}
@@ -1359,7 +1491,7 @@ function McPresenters({
           <meshBasicMaterial color="#ffffff" />
         </mesh>
 
-        {/* Thin Metal-Frame Round/Oval Spectacles (Broadcast Photo Match) */}
+        {/* Thin Titanium Wireframe Round/Oval Spectacles (Broadcast Photo Match) */}
         <group position={[0, 1.585, 0.085]}>
           <mesh position={[-0.028, 0, 0]}>
             <ringGeometry args={[0.013, 0.0155, 24]} />
@@ -1386,7 +1518,7 @@ function McPresenters({
         {/* Neck */}
         <mesh position={[0, 1.465, 0]}>
           <cylinderGeometry args={[0.032, 0.036, 0.075, 14]} />
-          <meshStandardMaterial color="#f5d0b8" roughness={0.55} />
+          <primitive object={kvSkinMat} attach="material" />
         </mesh>
 
         {/* ── Upper Body: Crisp White Button-Down Long-Sleeve Dress Shirt (#f8fafc) ── */}

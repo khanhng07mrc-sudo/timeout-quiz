@@ -8,38 +8,47 @@ export async function GET(req: NextRequest) {
 
     if (userSession) {
       if (userSession.userId === "master-admin") {
-        const primaryAdmin = await prisma.user.findFirst({
-          where: { role: "ADMIN" },
-          orderBy: { createdAt: "asc" },
-        });
+        let primaryAdmin = null;
+        try {
+          primaryAdmin = await prisma.user.findFirst({
+            where: { role: "ADMIN" },
+            orderBy: { createdAt: "asc" },
+          });
+        } catch {}
+
         return NextResponse.json({
           authenticated: true,
-          user: primaryAdmin ? {
-            id: primaryAdmin.id,
-            name: primaryAdmin.name,
-            email: primaryAdmin.email,
-            role: "ADMIN",
-          } : {
-            id: "master-admin",
-            name: "Nguyễn Gia Khánh",
-            email: "channelngktv@gmail.com",
-            role: "ADMIN",
-          },
+          user: primaryAdmin
+            ? {
+                id: primaryAdmin.id,
+                name: primaryAdmin.name,
+                email: primaryAdmin.email,
+                role: "ADMIN",
+              }
+            : {
+                id: "master-admin",
+                name: "Nguyễn Gia Khánh",
+                email: "channelngktv@gmail.com",
+                role: "ADMIN",
+              },
         });
       }
 
-      // Fetch fresh user data from DB
-      const dbUser = await prisma.user.findUnique({
-        where: { id: userSession.userId },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          image: true,
-          createdAt: true,
-        },
-      });
+      // Try fetching fresh user data from DB, fallback to session data
+      let dbUser = null;
+      try {
+        dbUser = await prisma.user.findUnique({
+          where: { id: userSession.userId },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            image: true,
+            createdAt: true,
+          },
+        });
+      } catch {}
 
       if (dbUser) {
         return NextResponse.json({
@@ -64,23 +73,29 @@ export async function GET(req: NextRequest) {
     if (cookieHeader) {
       const matchAdmin = cookieHeader.match(/(?:^|;\s*)admin_token=([^;]+)/);
       if (matchAdmin && matchAdmin[1] && verifyAdminToken(decodeURIComponent(matchAdmin[1]))) {
-        const primaryAdmin = await prisma.user.findFirst({
-          where: { role: "ADMIN" },
-          orderBy: { createdAt: "asc" },
-        });
+        let primaryAdmin = null;
+        try {
+          primaryAdmin = await prisma.user.findFirst({
+            where: { role: "ADMIN" },
+            orderBy: { createdAt: "asc" },
+          });
+        } catch {}
+
         return NextResponse.json({
           authenticated: true,
-          user: primaryAdmin ? {
-            id: primaryAdmin.id,
-            name: primaryAdmin.name,
-            email: primaryAdmin.email,
-            role: "ADMIN",
-          } : {
-            id: "master-admin",
-            name: "Nguyễn Gia Khánh",
-            email: "channelngktv@gmail.com",
-            role: "ADMIN",
-          },
+          user: primaryAdmin
+            ? {
+                id: primaryAdmin.id,
+                name: primaryAdmin.name,
+                email: primaryAdmin.email,
+                role: "ADMIN",
+              }
+            : {
+                id: "master-admin",
+                name: "Nguyễn Gia Khánh",
+                email: "channelngktv@gmail.com",
+                role: "ADMIN",
+              },
         });
       }
     }

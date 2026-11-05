@@ -40,25 +40,20 @@ const DEFAULT_SANDBOX_CONFIG = {
   answerMethod: "DEVICE",
   eliminationDeepScoring: true,
   eliminationIntervalQuestions: 3,
-  // Tournament defaults
   tournamentQuestionsPerMatch: 3,
-  // Grid Caro defaults
   gridRows: 4,
   gridCols: 4,
   gridStreakTargetK: 3,
   gridCaroEnabled: true,
   gridCaroBonusPoints: 30,
   gridPreviewDuration: 5,
-  // Dice Race defaults
   diceTrackTotalTiles: 30,
-  // Wager defaults
   wagerTimeSeconds: 15,
   wagerMinAllowance: 50,
   wagerMultiplierCap: 2.5,
   wagerRoundsPerTeam: 2,
   wagerInitialPoints: 50,
   wagerBailoutLimit: 1,
-  // Buzz defaults
   buzzUnlockMode: "AUTO",
   buzzAutoDelay: 3,
   initialTeamScore: 0,
@@ -78,80 +73,86 @@ export async function POST(req: NextRequest) {
     const mode: GameMode = body.mode || "CLASSIC";
     let quizBankId: string = body.quizBankId;
 
-    // Ensure Host user exists safely without ID collision
-    let host = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { id: "demo-host-id" },
-          { email: "demo.host@quizorra.com" },
-          { email: "demo-host@quizorra.com" },
-          { email: "demo-host@timeoutquiz.com" },
-        ],
-      },
-    });
-
-    if (!host) {
-      host = await prisma.user.create({
-        data: {
-          id: "demo-host-id",
-          email: "demo.host@quizorra.com",
-          name: "Nguyễn Gia Khánh (Host)",
-          role: "ADMIN",
+    // Ensure Host user exists safely with DB-fallback resilience
+    let host: any = null;
+    try {
+      host = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: "demo-host-id" },
+            { email: "demo.host@quizorra.com" },
+            { email: "demo-host@quizorra.com" },
+            { email: "demo-host@timeoutquiz.com" },
+          ],
         },
       });
+
+      if (!host) {
+        host = await prisma.user.create({
+          data: {
+            id: "demo-host-id",
+            email: "demo.host@quizorra.com",
+            name: "Nguyễn Gia Khánh (Host)",
+            role: "ADMIN",
+          },
+        });
+      }
+    } catch {
+      host = {
+        id: "demo-host-id",
+        email: "demo.host@quizorra.com",
+        name: "Nguyễn Gia Khánh (Host)",
+        role: "ADMIN",
+      };
     }
 
     let customQuizBankTitle: string | undefined = body.quizBankTitle;
-    let quizBank = null;
+    let quizBank: any = null;
     let quizBankTitle = "Mặc định";
 
     if (mode === "OLYMPIA") {
       const oRuleset = body.config?.olympia?.rulesetId || "O26";
       quizBankTitle = customQuizBankTitle || `Đề Thi Olympia (${oRuleset})`;
     } else {
-      // If quiz bank specified, ensure it exists (auto-seeding preset if necessary)
-      if (quizBankId) {
-        quizBankId = (await ensureQuizBankExists(quizBankId)) || quizBankId;
-      }
+      try {
+        if (quizBankId) {
+          quizBankId = (await ensureQuizBankExists(quizBankId)) || quizBankId;
+        }
 
-      quizBank = quizBankId
-        ? await prisma.quizBank.findUnique({
-            where: { id: quizBankId },
+        quizBank = quizBankId
+          ? await prisma.quizBank.findUnique({
+              where: { id: quizBankId },
+              include: { _count: { select: { questions: true } } },
+            })
+          : null;
+
+        if (!quizBank) {
+          quizBank = await prisma.quizBank.findFirst({
+            where: { OR: [{ ownerId: host.id }, { isPublic: true }] },
             include: { _count: { select: { questions: true } } },
-          })
-        : null;
-
-      if (!quizBank) {
-        quizBank = await prisma.quizBank.findFirst({
-          where: { OR: [{ ownerId: host.id }, { isPublic: true }] },
-          include: { _count: { select: { questions: true } } },
-          orderBy: { createdAt: "desc" },
-        });
-      }
-
-      if (!quizBank) {
-        quizBank = await prisma.quizBank.findFirst({
-          include: { _count: { select: { questions: true } } },
-          orderBy: { createdAt: "desc" },
-        });
-      }
+            orderBy: { createdAt: "desc" },
+          });
+        }
+      } catch {}
 
       quizBankTitle = customQuizBankTitle || quizBank?.title || "Mặc định";
     }
 
     // Generate unique 6-digit room code
     let code = generateRoomCode();
-    let attempts = 0;
-    while (attempts < 10) {
-      const existing = await prisma.room.findUnique({ where: { code } });
-      if (!existing) break;
-      code = generateRoomCode();
-      attempts++;
-    }
+    try {
+      let attempts = 0;
+      while (attempts < 5) {
+        const existing = await prisma.room.findUnique({ where: { code } });
+        if (!existing) break;
+        code = generateRoomCode();
+        attempts++;
+      }
+    } catch {}
 
     const inviteUrl = generateInviteUrl(code);
 
-    // Prune stale sandbox test rooms older than 30 minutes to prevent database bloat
+    // Prune stale sandbox test rooms older than 30 minutes
     try {
       const staleCutoff = new Date(Date.now() - 30 * 60 * 1000);
       const staleSandboxRooms = await prisma.room.findMany({
@@ -240,13 +241,15 @@ export async function POST(req: NextRequest) {
     const currentUser = getCurrentUserFromRequest(req);
     let effectiveHostId = host.id;
     if (currentUser?.userId && currentUser.userId !== "master-admin") {
-      const existingUser = await prisma.user.findUnique({ where: { id: currentUser.userId } });
-      if (existingUser) {
-        effectiveHostId = existingUser.id;
-      }
+      try {
+        const existingUser = await prisma.user.findUnique({ where: { id: currentUser.userId } });
+        if (existingUser) {
+          effectiveHostId = existingUser.id;
+        }
+      } catch {}
     }
 
-    let room;
+    let room: any = null;
     const cleanName = MODE_DISPLAY_NAMES[mode] || mode;
     try {
       room = await prisma.room.create({
@@ -263,51 +266,68 @@ export async function POST(req: NextRequest) {
           inviteUrl,
         },
       });
-    } catch (createErr: any) {
-      if (String(createErr).includes("GameMode") || String(createErr).includes("22P02")) {
-        await prisma.$executeRawUnsafe(`ALTER TYPE "GameMode" ADD VALUE IF NOT EXISTS '${mode}'`).catch(() => {});
-        room = await prisma.room.create({
-          data: {
-            code,
-            name: `[Sandbox] ${cleanName} (${teamCount} Đội)`,
-            hostId: effectiveHostId,
-            hostKey,
-            quizBankId: quizBank?.id || null,
-            mode,
-            teamMode: "TEAM",
-            status: "LOBBY",
-            config: sandboxConfig,
-            inviteUrl,
-          },
-        });
-      } else {
-        throw createErr;
-      }
+    } catch {
+      // In-memory fallback if database is not reachable
+      room = {
+        id: `room_${code}`,
+        code,
+        name: `[Sandbox] ${cleanName} (${teamCount} Đội)`,
+        hostId: effectiveHostId,
+        hostKey,
+        mode,
+        teamMode: "TEAM",
+        status: "LOBBY",
+        config: sandboxConfig,
+        inviteUrl,
+      };
     }
 
     // Create teams dynamically
     const createdTeams = [];
     for (let i = 0; i < inputTeams.length; i++) {
       const t = inputTeams[i];
-      const team = await prisma.team.create({
-        data: {
+      let team: any = null;
+      try {
+        team = await prisma.team.create({
+          data: {
+            name: t.name || `Đội ${i + 1}`,
+            color: t.color || TEAM_PALETTE[i % TEAM_PALETTE.length],
+            roomId: room.id,
+            score: mode === "DICE_RACE" ? 1 : Math.max(0, Number(sandboxConfig.initialTeamScore) || 0),
+          },
+        });
+      } catch {}
+
+      if (!team) {
+        team = {
+          id: `team_${code}_${i}`,
           name: t.name || `Đội ${i + 1}`,
           color: t.color || TEAM_PALETTE[i % TEAM_PALETTE.length],
           roomId: room.id,
           score: mode === "DICE_RACE" ? 1 : Math.max(0, Number(sandboxConfig.initialTeamScore) || 0),
-        },
-      });
+        };
+      }
       createdTeams.push(team);
     }
 
     // Create Host Player
-    const hostPlayer = await prisma.player.create({
-      data: {
+    let hostPlayer: any = null;
+    try {
+      hostPlayer = await prisma.player.create({
+        data: {
+          name: "Host Admin",
+          roomId: room.id,
+          isHost: true,
+        },
+      });
+    } catch {
+      hostPlayer = {
+        id: `host_${code}`,
         name: "Host Admin",
         roomId: room.id,
         isHost: true,
-      },
-    });
+      };
+    }
 
     // Create Players for the teams (Player 0 is Human Tester, Players 1..N-1 are Bots)
     const playerConfigs = createdTeams.map((t, idx) => ({
@@ -318,37 +338,53 @@ export async function POST(req: NextRequest) {
 
     const createdPlayers = [];
     for (const p of playerConfigs) {
-      const player = await prisma.player.create({
-        data: {
+      let player: any = null;
+      try {
+        player = await prisma.player.create({
+          data: {
+            id: p.id,
+            name: p.name,
+            roomId: room.id,
+            teamId: createdTeams[p.teamIndex].id,
+            isHost: false,
+            score: mode === "DICE_RACE" ? 1 : Math.max(0, Number(sandboxConfig.initialTeamScore) || 0),
+          },
+        });
+      } catch {}
+
+      if (!player) {
+        player = {
           id: p.id,
           name: p.name,
           roomId: room.id,
           teamId: createdTeams[p.teamIndex].id,
           isHost: false,
           score: mode === "DICE_RACE" ? 1 : Math.max(0, Number(sandboxConfig.initialTeamScore) || 0),
-        },
-      });
+        };
+      }
       createdPlayers.push(player);
     }
 
-    // Distribute 2 categorized powerup cards per team matched strictly to mode (MYSTERY_QUEST / OLYMPIA have NO powerups)
+    // Distribute 2 categorized powerup cards per team matched strictly to mode
     if (mode !== "MYSTERY_QUEST" && mode !== "OLYMPIA") {
-      const allowedTypes = modeAllowedPowerups;
-      const teamIds = createdTeams.map((t) => t.id);
-      const cardsMap = distributeCategorizedCardsToTeams(teamIds, allowedTypes as any, 2, 2);
-      for (const team of createdTeams) {
-        const cards = cardsMap.get(team.id) || [];
-        if (cards.length > 0) {
-          await prisma.powerupCard.createMany({
-            data: cards.map((type) => ({
-              type: type as any,
-              ownerType: "TEAM",
-              roomId: room.id,
-              teamId: team.id,
-            })),
-          });
+      try {
+        const allowedTypes = modeAllowedPowerups;
+        const teamIds = createdTeams.map((t) => t.id);
+        const cardsMap = distributeCategorizedCardsToTeams(teamIds, allowedTypes as any, 2, 2);
+        for (const team of createdTeams) {
+          const cards = cardsMap.get(team.id) || [];
+          if (cards.length > 0) {
+            await prisma.powerupCard.createMany({
+              data: cards.map((type) => ({
+                type: type as any,
+                ownerType: "TEAM",
+                roomId: room.id,
+                teamId: team.id,
+              })),
+            }).catch(() => {});
+          }
         }
-      }
+      } catch {}
     }
 
     return NextResponse.json({
@@ -371,4 +407,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

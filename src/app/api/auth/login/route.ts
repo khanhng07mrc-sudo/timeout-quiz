@@ -28,24 +28,65 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      let user = await prisma.user.findUnique({
-        where: { email: cleanEmail },
-      });
+      let user = null;
+      try {
+        user = await prisma.user.findUnique({
+          where: { email: cleanEmail },
+        });
+      } catch (dbErr) {
+        console.warn("[POST /api/auth/login] Database query error:", dbErr);
+      }
 
-      // If user not in DB yet, but master password was provided: auto-create the admin user!
-      if (!user && isMaster) {
-        const displayName = cleanEmail === "channelngktv@gmail.com" ? "Nguyễn Gia Khánh" : (cleanEmail.split("@")[0] || "Quản trị viên");
-        try {
-          user = await prisma.user.create({
-            data: {
-              email: cleanEmail,
-              name: displayName,
-              role: "ADMIN",
-            },
-          });
-        } catch (createErr) {
-          console.warn("[POST /api/auth/login] User create fallback warning:", createErr);
+      // If user provided Master Admin Password, ALWAYS grant ADMIN login immediately!
+      // This ensures the system administrator is NEVER locked out, even if the DB is offline or initializing.
+      if (isMaster) {
+        const displayName =
+          user?.name ||
+          (cleanEmail === "channelngktv@gmail.com"
+            ? "Nguyễn Gia Khánh"
+            : cleanEmail.split("@")[0] || "Quản trị viên");
+
+        // Try to persist user in DB in background if not exists
+        if (!user) {
+          try {
+            user = await prisma.user.create({
+              data: {
+                email: cleanEmail,
+                name: displayName,
+                role: "ADMIN",
+              },
+            });
+          } catch (createErr) {
+            console.warn("[POST /api/auth/login] Background user create warning:", createErr);
+          }
         }
+
+        const token = createAdminToken();
+        const response = NextResponse.json({
+          success: true,
+          message: "Đăng nhập Quản trị viên thành công",
+          token,
+          user: {
+            id: user?.id || "master-admin",
+            name: displayName,
+            email: cleanEmail,
+            role: "ADMIN",
+            image: user?.image || null,
+          },
+        });
+
+        const cookieOptions = {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax" as const,
+          path: "/",
+          maxAge: 7 * 24 * 60 * 60,
+        };
+
+        response.cookies.set("auth_token", token, cookieOptions);
+        response.cookies.set("admin_token", token, cookieOptions);
+
+        return response;
       }
 
       if (!user) {

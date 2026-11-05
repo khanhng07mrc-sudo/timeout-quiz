@@ -211,6 +211,9 @@ export function useOlympiaAudio(
   const activeFadeTimers = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
   const activeAudioSet = useRef<Set<HTMLAudioElement>>(new Set());
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const pendingCueRef = useRef<(() => void) | null>(null);
+  const isAudioUnlockedRef = useRef(false);
+  const isBgmPausedExplicitlyRef = useRef(false);
 
   const getAudioContext = useCallback(() => {
     if (typeof window === "undefined") return null;
@@ -227,6 +230,8 @@ export function useOlympiaAudio(
 
   /** Dừng và dọn dẹp triệt để 100% tất cả BGM đang phát lẫn các bài hát đang fade-out ngầm */
   const killAllBgmAudio = useCallback(() => {
+    pendingCueRef.current = null;
+    isBgmPausedExplicitlyRef.current = false;
     activeFadeTimers.current.forEach((t) => clearInterval(t));
     activeFadeTimers.current.clear();
 
@@ -317,6 +322,7 @@ export function useOlympiaAudio(
 
       activeBgmSet.current.add(newAudio);
       bgm.current = newAudio;
+      isBgmPausedExplicitlyRef.current = false;
 
       const targetVol = 0.85;
 
@@ -331,12 +337,26 @@ export function useOlympiaAudio(
           activeBgmSet.current.delete(old);
         }
         newAudio.volume = targetVol;
-        newAudio.play().catch(() => {});
+        newAudio.play().catch((err) => {
+          if (err && err.name === "NotAllowedError") {
+            pendingCueRef.current = () => {
+              if (newAudio.volume === 0) newAudio.volume = targetVol;
+              newAudio.play().catch(() => {});
+            };
+          }
+        });
         return;
       }
 
       newAudio.volume = fadeOldOnly ? targetVol : 0;
-      newAudio.play().catch(() => {});
+      newAudio.play().catch((err) => {
+        if (err && err.name === "NotAllowedError") {
+          pendingCueRef.current = () => {
+            if (newAudio.volume === 0) newAudio.volume = targetVol;
+            newAudio.play().catch(() => {});
+          };
+        }
+      });
 
       if (old && !old.paused) {
         activeBgmSet.current.add(old);
@@ -396,12 +416,14 @@ export function useOlympiaAudio(
   );
 
   const pauseBgm = useCallback(() => {
+    isBgmPausedExplicitlyRef.current = true;
     if (bgm.current && !bgm.current.paused) {
       bgm.current.pause();
     }
   }, []);
 
   const resumeBgm = useCallback(() => {
+    isBgmPausedExplicitlyRef.current = false;
     if (bgm.current && bgm.current.paused) {
       bgm.current.play().catch(() => {});
     }
@@ -410,13 +432,42 @@ export function useOlympiaAudio(
   // Global unlock handler for browser autoplay policies & AudioContext resumption
   const unlockAudio = useCallback(() => {
     const ctx = getAudioContext();
-    if (ctx && ctx.state === "suspended") {
-      ctx.resume().catch(() => {});
+    if (ctx) {
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+      try {
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+      } catch {}
     }
-    if (bgm.current && bgm.current.paused && !bgm.current.ended) {
-      bgm.current.play().catch(() => {});
+    if (!isAudioUnlockedRef.current) {
+      isAudioUnlockedRef.current = true;
+      if (bgm.current && bgm.current.paused && !bgm.current.ended && !isBgmPausedExplicitlyRef.current) {
+        if (bgm.current.volume === 0) {
+          bgm.current.volume = 0.85;
+        }
+        bgm.current.play().catch(() => {});
+      }
+    }
+    if (pendingCueRef.current) {
+      const p = pendingCueRef.current;
+      pendingCueRef.current = null;
+      try {
+        p();
+      } catch {}
     }
   }, [getAudioContext]);
+
+  // Expose global unlock method on window for direct same-origin invocations
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__OLYMPIA_UNLOCK_AUDIO__ = unlockAudio;
+    }
+  }, [unlockAudio]);
 
   // Lắng nghe tín hiệu mở khóa từ parent window (UNLOCK_AUDIO) và tương tác người dùng
   useEffect(() => {
@@ -451,6 +502,7 @@ export function useOlympiaAudio(
   // Dừng toàn bộ âm thanh khi audio bị tắt (enabled = false)
   useEffect(() => {
     if (!enabled) {
+      pendingCueRef.current = null;
       stopBgm(true);
       activeAudioSet.current.forEach((a) => {
         try {
@@ -467,7 +519,7 @@ export function useOlympiaAudio(
     if (typeof document === "undefined") return;
     const handleVisibility = () => {
       if (document.visibilityState === "visible" && enabled) {
-        if (bgm.current && bgm.current.paused && !bgm.current.ended) {
+        if (bgm.current && bgm.current.paused && !bgm.current.ended && !isBgmPausedExplicitlyRef.current) {
           bgm.current.play().catch(() => {});
         }
         if (audioCtxRef.current && audioCtxRef.current.state === "suspended") {
@@ -511,6 +563,7 @@ export function useOlympiaAudio(
     if (!enabled) return;
 
     if (cue.kind === "stop" || !cue.sound) {
+      pendingCueRef.current = null;
       stopBgm();
       return;
     }
@@ -596,7 +649,14 @@ export function useOlympiaAudio(
             crossfadeToBgm(std, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
           } else {
             std.volume = defaultSfxVol;
-            std.play().catch(() => {});
+            std.play().catch((err) => {
+              if (err && err.name === "NotAllowedError") {
+                pendingCueRef.current = () => {
+                  std.currentTime = 0;
+                  std.play().catch(() => {});
+                };
+              }
+            });
           }
           return;
         }
@@ -607,7 +667,16 @@ export function useOlympiaAudio(
           const alt = new Audio(`/olympia-audio/${s}/${altSound}.mp3`);
           registerActive(alt);
           if (isBgmCue) crossfadeToBgm(alt, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
-          else alt.play().catch(() => {});
+          else {
+            alt.play().catch((err) => {
+              if (err && err.name === "NotAllowedError") {
+                pendingCueRef.current = () => {
+                  alt.currentTime = 0;
+                  alt.play().catch(() => {});
+                };
+              }
+            });
+          }
         }
       };
 
@@ -620,13 +689,23 @@ export function useOlympiaAudio(
         crossfadeToBgm(a, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
       } else {
         a.volume = defaultSfxVol;
-        a.play().catch(() => {});
+        a.play().catch((err) => {
+          if (err && err.name === "NotAllowedError") {
+            pendingCueRef.current = () => {
+              a.currentTime = 0;
+              a.play().catch(() => {});
+            };
+          }
+        });
       }
     };
     play(season, true);
   }, [state?.cue, state?.stage, audioSeason, enabled, channel, stopBgm, pauseBgm, resumeBgm, getAudioContext, crossfadeToBgm, fadeOutAndStopBgm]);
 
-  useEffect(() => () => stopBgm(), [stopBgm]);
+  useEffect(() => () => {
+    pendingCueRef.current = null;
+    stopBgm();
+  }, [stopBgm]);
 
   // Khi trận đấu đã bắt đầu (stage !== "lobby"), tự động crossfade tắt nhạc sảnh chờ show_intro nếu vẫn còn đang phát
   useEffect(() => {

@@ -64,6 +64,29 @@ export default function PlayerPad({
     }
   }, [emit]);
 
+  // Forward user interaction to parent to unlock display iframe audio in sandbox mode
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const notifyParentUnlock = () => {
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: "UNLOCK_AUDIO" }, "*");
+          if (typeof (window.parent as any).__OLYMPIA_FORWARD_UNLOCK__ === "function") {
+            (window.parent as any).__OLYMPIA_FORWARD_UNLOCK__();
+          }
+        }
+      } catch {}
+    };
+    window.addEventListener("pointerdown", notifyParentUnlock, { passive: true });
+    window.addEventListener("click", notifyParentUnlock, { passive: true });
+    window.addEventListener("keydown", notifyParentUnlock, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", notifyParentUnlock);
+      window.removeEventListener("click", notifyParentUnlock);
+      window.removeEventListener("keydown", notifyParentUnlock);
+    };
+  }, []);
+
   const [vcnvTab, setVcnvTab] = useState<"question" | "pieces">("question");
   useEffect(() => {
     if (state?.vcnv?.phase === "question") {

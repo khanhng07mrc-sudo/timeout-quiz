@@ -6820,19 +6820,41 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     return () => window.removeEventListener("message", handlePlayerAction);
   }, [isOfflineSandbox, currentQuestion, addLog, syncToIframes, activeTeamIndex, roomState?.teams, roomState?.config.answerSubmissionMode, selectedMode, processOfflineWager]);
 
+  const forwardUnlock = useCallback(() => {
+    try {
+      const win = displayIframeRef.current?.contentWindow as any;
+      if (win) {
+        if (typeof win.__OLYMPIA_UNLOCK_AUDIO__ === "function") {
+          win.__OLYMPIA_UNLOCK_AUDIO__();
+        }
+        win.postMessage({ type: "UNLOCK_AUDIO" }, "*");
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
-    const forwardUnlock = () => {
-      try {
-        displayIframeRef.current?.contentWindow?.postMessage({ type: "UNLOCK_AUDIO" }, "*");
-      } catch {}
+    if (typeof window !== "undefined") {
+      (window as any).__OLYMPIA_FORWARD_UNLOCK__ = forwardUnlock;
+    }
+  }, [forwardUnlock]);
+
+  useEffect(() => {
+    const handleMsg = (e: MessageEvent) => {
+      if (e.data?.type === "UNLOCK_AUDIO") {
+        forwardUnlock();
+      }
     };
-    window.addEventListener("pointerdown", forwardUnlock);
-    window.addEventListener("keydown", forwardUnlock);
+    window.addEventListener("message", handleMsg);
+    window.addEventListener("pointerdown", forwardUnlock, { passive: true });
+    window.addEventListener("keydown", forwardUnlock, { passive: true });
+    window.addEventListener("click", forwardUnlock, { passive: true });
     return () => {
+      window.removeEventListener("message", handleMsg);
       window.removeEventListener("pointerdown", forwardUnlock);
       window.removeEventListener("keydown", forwardUnlock);
+      window.removeEventListener("click", forwardUnlock);
     };
-  }, []);
+  }, [forwardUnlock]);
 
   // ── Helper lấy vị trí Logo 2D ở góc trên bên trái của thẻ Mode ────────────
   const getModeIconRect = (targetMode: GameMode) => {
@@ -12028,7 +12050,8 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   iframeRef={displayIframeRef}
                   src={`/olympia/display/${code}?sandbox=1&perf=light&audio=1`}
                   title="Display Viewport"
-                  allow="autoplay; camera; microphone; display-capture"
+                  allow="autoplay *; fullscreen *; camera; microphone; display-capture"
+                  onLoad={forwardUnlock}
                 />
               </div>
             </div>
@@ -12186,8 +12209,9 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     src={`/display/${code}?sandbox=1`}
                     title="Display Viewport"
                     className="w-full h-full border-0 bg-black"
-                    allow="autoplay; camera; microphone; display-capture"
+                    allow="autoplay *; fullscreen *; camera; microphone; display-capture"
                     onLoad={() => {
+                      forwardUnlock();
                       if (isOfflineSandbox) {
                         syncToIframes();
                       }

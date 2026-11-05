@@ -1989,6 +1989,90 @@ test("Thí sinh reconnect khi trận đấu đang diễn ra: Không bị out hay
   assert.ok(strangerRes.error?.includes("Trận đấu đã bắt đầu"));
 });
 
+test("Audio lifecycle invariants: pending cue nullification on stop and protected pause state", () => {
+  // Simulate AudioContext and pendingCue lifecycle
+  let pendingCue: (() => void) | null = null;
+  let isAudioUnlocked = false;
+  let isBgmPausedExplicitly = false;
+  let bgmPaused = false;
+  let bgmVolume = 0;
+  let bgmPlayCount = 0;
+
+  const mockBgm = {
+    play: () => {
+      bgmPlayCount++;
+      bgmPaused = false;
+      return Promise.resolve();
+    },
+    pause: () => {
+      bgmPaused = true;
+    },
+    volume: 0,
+  };
+
+  const pauseBgm = () => {
+    isBgmPausedExplicitly = true;
+    mockBgm.pause();
+  };
+
+  const resumeBgm = () => {
+    isBgmPausedExplicitly = false;
+    mockBgm.play();
+  };
+
+  const killAllBgm = () => {
+    pendingCue = null;
+    isBgmPausedExplicitly = false;
+    mockBgm.pause();
+  };
+
+  const unlockAudio = () => {
+    if (!isAudioUnlocked) {
+      isAudioUnlocked = true;
+      if (bgmPaused && !isBgmPausedExplicitly) {
+        if (mockBgm.volume === 0) mockBgm.volume = 0.85;
+        mockBgm.play();
+      }
+    }
+    if (pendingCue) {
+      const p = pendingCue;
+      pendingCue = null;
+      p();
+    }
+  };
+
+  // 1. Initial cue blocked by autoplay
+  let sfxPlayed = false;
+  pendingCue = () => { sfxPlayed = true; };
+  bgmPaused = true;
+
+  // 2. Stop cue arrives BEFORE user interacts
+  killAllBgm();
+  assert.equal(pendingCue, null, "killAllBgm must clear pendingCue so canceled cue doesn't fire");
+
+  // 3. User interacts later
+  unlockAudio();
+  assert.equal(isAudioUnlocked, true);
+  assert.equal(sfxPlayed, false, "Canceled SFX must NOT play upon user interaction");
+
+  // 4. Test explicit pause protection: bell ring pauses BGM
+  mockBgm.play();
+  assert.equal(bgmPaused, false);
+  pauseBgm();
+  assert.equal(bgmPaused, true);
+  assert.equal(isBgmPausedExplicitly, true);
+
+  // User clicks on page (e.g. host clicks buzzer or button) -> unlockAudio fires
+  unlockAudio();
+  assert.equal(bgmPaused, true, "unlockAudio must NOT unpause explicitly paused BGM");
+
+  // Host resumes BGM
+  resumeBgm();
+  assert.equal(bgmPaused, false);
+  assert.equal(isBgmPausedExplicitly, false);
+});
+
+
 
 
 

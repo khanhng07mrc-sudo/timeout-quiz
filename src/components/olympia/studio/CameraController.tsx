@@ -74,7 +74,7 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     label: "Bục MC & Cổng Lục Giác",
     // Coaxial Medium Close-Up: Perfectly frames MC Desk (laptop + 16:9 screen) & MCs (Khánh Vy & Ngọc Huy)
     pos: [2.50, 1.30, -4.50],
-    target: [3.05, 1.15, -6.85],
+    target: [3.00, 1.15, -6.70],
   },
   4: {
     id: 4,
@@ -121,7 +121,7 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     id: 14,
     label: "Góc Thấp Khởi Động",
     // Floor level left of Laurel Vitrine, tilting up across stage
-    pos: [-0.95, 0.40, 4.40],
+    pos: [-0.95, 0.40, 4.20],
     target: [-1.10, 1.65, -3.20],
   },
 };
@@ -205,10 +205,10 @@ export function CameraController({
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = (now - introStartedAt) / 1000;
 
-      const cam1Pos = new THREE.Vector3(0.0, 4.4, 12.8);
-      const cam1Target = new THREE.Vector3(0.0, 1.8, -3.2);
-      const mcClosePos = new THREE.Vector3(3.10, 1.65, -3.40);
-      const mcCloseTarget = new THREE.Vector3(3.15, 1.45, -7.10);
+      const cam1Pos = new THREE.Vector3(...OLYMPIA_CAM_PRESETS[1].pos);
+      const cam1Target = new THREE.Vector3(...OLYMPIA_CAM_PRESETS[1].target);
+      const mcClosePos = new THREE.Vector3(...OLYMPIA_CAM_PRESETS[3].pos);
+      const mcCloseTarget = new THREE.Vector3(...OLYMPIA_CAM_PRESETS[3].target);
 
       let curPos: THREE.Vector3;
       let curTarget: THREE.Vector3;
@@ -246,8 +246,8 @@ export function CameraController({
     if (kdStartCooldownUntil) {
       const now = serverNow ? serverNow() : Date.now();
       if (now < kdStartCooldownUntil) {
-        const sweepStartPos = new THREE.Vector3(-0.95, 0.40, 4.40);
-        const sweepStartTarget = new THREE.Vector3(-1.10, 1.65, -3.20);
+        const sweepStartPos = new THREE.Vector3(...OLYMPIA_CAM_PRESETS[14].pos);
+        const sweepStartTarget = new THREE.Vector3(...OLYMPIA_CAM_PRESETS[14].target);
         const sweepEndPos = new THREE.Vector3(0.00, 3.80, 11.80);
         const sweepEndTarget = new THREE.Vector3(-0.60, 1.80, -3.80);
 

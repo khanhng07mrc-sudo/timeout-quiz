@@ -12,15 +12,17 @@ const STAGE_H = 1080;
 export const ScaledDisplayFrame = React.memo(function ScaledDisplayFrame({
   src,
   title = "Display Viewport",
-  allow = "autoplay; camera; microphone; display-capture",
+  allow = "autoplay *; fullscreen *; camera; microphone; display-capture",
   iframeRef,
   className = "",
+  onLoad,
 }: {
   src: string;
   title?: string;
   allow?: string;
   iframeRef?: React.RefObject<HTMLIFrameElement | null>;
   className?: string;
+  onLoad?: () => void;
 }) {
   const boxRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(0.5);
@@ -49,18 +51,23 @@ export const ScaledDisplayFrame = React.memo(function ScaledDisplayFrame({
       ref={boxRef}
       className={`relative w-full h-full overflow-hidden bg-black flex items-center justify-center ${className}`}
     >
-      <div style={{ width: STAGE_W * scale, height: STAGE_H * scale }} className="relative shrink-0 overflow-hidden">
+      <div
+        style={{ width: STAGE_W * scale, height: STAGE_H * scale, willChange: "transform" }}
+        className="relative shrink-0 overflow-hidden"
+      >
         <iframe
           ref={iframeRef}
           src={src}
           title={title}
           allow={allow}
+          onLoad={onLoad}
           className="absolute top-0 left-0 border-0 bg-black"
           style={{
             width: STAGE_W,
             height: STAGE_H,
             transform: `scale(${scale})`,
             transformOrigin: "top left",
+            willChange: "transform",
           }}
         />
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
 import { RULESETS } from "@/lib/olympia/rulesets";
@@ -161,12 +161,26 @@ export default function DisplayScreen({ code }: { code: string }) {
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data?.type === "UNLOCK_AUDIO") {
-        setAudioOn(true);
+        if (!isExplicitMuteParam) {
+          setAudioOn(true);
+        }
+        if (typeof (window as any).__OLYMPIA_UNLOCK_AUDIO__ === "function") {
+          (window as any).__OLYMPIA_UNLOCK_AUDIO__();
+        }
       }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [isExplicitMuteParam]);
+
+  const handleUserUnlock = useCallback(() => {
+    if (typeof (window as any).__OLYMPIA_UNLOCK_AUDIO__ === "function") {
+      (window as any).__OLYMPIA_UNLOCK_AUDIO__();
+    }
+    if (!audioOn && !isExplicitMuteParam) {
+      setAudioOn(true);
+    }
+  }, [audioOn, isExplicitMuteParam]);
 
   useOlympiaAudio(state, join?.audioSeason, audioOn);
 
@@ -274,7 +288,11 @@ export default function DisplayScreen({ code }: { code: string }) {
     !state.vcnv?.answersRevealed;
 
   return (
-    <div className="fixed inset-0 w-full h-full max-h-full overflow-hidden bg-gradient-to-b from-[#060818] via-[#090d24] to-[#040612] text-white flex flex-col select-none">
+    <div
+      onPointerDown={handleUserUnlock}
+      onClick={handleUserUnlock}
+      className="fixed inset-0 w-full h-full max-h-full overflow-hidden bg-gradient-to-b from-[#060818] via-[#090d24] to-[#040612] text-white flex flex-col select-none"
+    >
       {/* ── 2. BROADCAST SCOREBOARD OVERLAY (Z-50) ── */}
       {state.showScoreboard && (
         <div className="absolute inset-0 z-50 bg-[#0d0820]/95 flex flex-col items-center justify-center p-6 animate-fade-in backdrop-blur-md pointer-events-auto">

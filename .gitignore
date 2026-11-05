@@ -49,6 +49,9 @@ dist-app/
 scratch/
 release/
 
+# user uploaded media
+public/uploads/
+
 /*.png
 .agents/teamwork/auditor*
 .agents/teamwork/challenger*

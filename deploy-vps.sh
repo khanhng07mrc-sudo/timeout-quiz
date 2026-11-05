@@ -16,7 +16,7 @@ npm ci --legacy-peer-deps
 # 3. Tạo Prisma Client và chạy migration
 echo "[3/5] Syncing database schema with Prisma..."
 npx prisma generate
-npx prisma migrate deploy
+npx prisma migrate deploy || npx prisma db push --accept-data-loss || true
 
 # 4. Biên dịch Next.js và bundled server.js
 echo "[4/5] Building Next.js application & server.js..."

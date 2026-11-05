@@ -12026,7 +12026,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
               <div className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col">
                 <ScaledDisplayFrame
                   iframeRef={displayIframeRef}
-                  src={`/olympia/display/${code}?sandbox=1&perf=light&mute=1`}
+                  src={`/olympia/display/${code}?sandbox=1&perf=light&audio=1`}
                   title="Display Viewport"
                   allow="autoplay; camera; microphone; display-capture"
                 />

@@ -72,9 +72,9 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   3: {
     id: 3,
     label: "Bục MC & Cổng Lục Giác",
-    // 100% Coaxial Direct Angle into MC Desk & Grounded Hexagon Arch (Perfect Centering)
-    pos: [2.10, 1.45, -3.16],
-    target: [3.00, 1.45, -6.70],
+    // Coaxial Medium Close-Up: Perfectly frames MC Desk (laptop + 16:9 screen) & MCs (Khánh Vy & Ngọc Huy)
+    pos: [2.50, 1.30, -4.50],
+    target: [3.05, 1.15, -6.85],
   },
   4: {
     id: 4,
@@ -204,41 +204,41 @@ export function CameraController({
     if (introStartedAt) {
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = (now - introStartedAt) / 1000;
-      if (elapsedSec < 16) {
-        const cam1Pos = new THREE.Vector3(0.0, 4.4, 12.8);
-        const cam1Target = new THREE.Vector3(0.0, 1.8, -3.2);
-        const mcClosePos = new THREE.Vector3(3.10, 1.65, -3.40);
-        const mcCloseTarget = new THREE.Vector3(3.15, 1.45, -7.10);
 
-        let curPos: THREE.Vector3;
-        let curTarget: THREE.Vector3;
+      const cam1Pos = new THREE.Vector3(0.0, 4.4, 12.8);
+      const cam1Target = new THREE.Vector3(0.0, 1.8, -3.2);
+      const mcClosePos = new THREE.Vector3(3.10, 1.65, -3.40);
+      const mcCloseTarget = new THREE.Vector3(3.15, 1.45, -7.10);
 
-        if (elapsedSec < 3.0) {
-          // Phase 1 (0.0s - 3.0s): Atmospheric wide view from distance in dramatic darkness
-          curPos = cam1Pos.clone();
-          curTarget = cam1Target.clone();
-        } else if (elapsedSec < 11.0) {
-          // Phase 2 (3.0s - 11.0s): Continuous, majestic one-directional DOLLY IN towards MC Lectern as MCs step in from behind arch posts
-          const t = (elapsedSec - 3.0) / 8.0;
-          const smoothT = t * t * (3 - 2 * t);
-          curPos = new THREE.Vector3().lerpVectors(cam1Pos, mcClosePos, smoothT);
-          curTarget = new THREE.Vector3().lerpVectors(cam1Target, mcCloseTarget, smoothT);
-        } else {
-          // Phase 3 (11.0s - 16.0s): Hold gracefully at MC podium close-up, ready to greet viewers
-          const t = Math.min(1.0, (elapsedSec - 11.0) / 5.0);
-          const breathe = Math.sin(t * Math.PI * 0.8) * 0.02;
-          curPos = new THREE.Vector3(mcClosePos.x, mcClosePos.y + breathe, mcClosePos.z);
-          curTarget = mcCloseTarget.clone();
-        }
+      let curPos: THREE.Vector3;
+      let curTarget: THREE.Vector3;
 
-        currentPos.current.copy(curPos);
-        currentTarget.current.copy(curTarget);
-
-        camera.position.copy(curPos);
-        camera.lookAt(curTarget);
-        camera.updateProjectionMatrix();
-        return;
+      if (elapsedSec < 3.0) {
+        // Phase 1 (0.0s - 3.0s): Atmospheric wide view from distance in dramatic darkness
+        curPos = cam1Pos.clone();
+        curTarget = cam1Target.clone();
+      } else if (elapsedSec < 11.0) {
+        // Phase 2 (3.0s - 11.0s): Continuous, majestic one-directional DOLLY IN towards MC Lectern as MCs step in from behind arch posts
+        const t = (elapsedSec - 3.0) / 8.0;
+        const smoothT = t * t * (3 - 2 * t);
+        curPos = new THREE.Vector3().lerpVectors(cam1Pos, mcClosePos, smoothT);
+        curTarget = new THREE.Vector3().lerpVectors(cam1Target, mcCloseTarget, smoothT);
+      } else {
+        // Phase 3 (11.0s onwards): Steadily hold at MC podium close-up until intro finishes or transition to round begins
+        const holdElapsed = elapsedSec - 11.0;
+        const breatheY = Math.sin(holdElapsed * 0.75) * 0.012;
+        const breatheX = Math.cos(holdElapsed * 0.45) * 0.008;
+        curPos = new THREE.Vector3(mcClosePos.x + breatheX, mcClosePos.y + breatheY, mcClosePos.z);
+        curTarget = mcCloseTarget.clone();
       }
+
+      currentPos.current.copy(curPos);
+      currentTarget.current.copy(curTarget);
+
+      camera.position.copy(curPos);
+      camera.lookAt(curTarget);
+      camera.updateProjectionMatrix();
+      return;
     }
 
     // 0.1. Khởi Động Turn Start Smooth Sweep Director:

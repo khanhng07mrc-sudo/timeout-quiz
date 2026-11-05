@@ -45,12 +45,16 @@ export function OlympiaStudio3DScene({
     screenFadeProgress,
     stageFadeProgress,
     audienceFadeProgress,
+    isIdle,
+    idleFadeProgress = 0,
     isVeDichDimmed,
     activeMainContestantSeat,
     is5sBuzzerChasing,
     spotlightChaseIndex,
     lockedSpotlightSeat,
   } = useOlympiaLightingState(state, serverNow);
+
+  const liveFactor = 1.0 - (idleFadeProgress ?? 0);
 
   // Camera vision mixer state
   const isIframe = typeof window !== "undefined" && window.self !== window.top;
@@ -170,6 +174,8 @@ export function OlympiaStudio3DScene({
           screenFadeProgress={screenFadeProgress}
           stageFadeProgress={stageFadeProgress}
           audienceFadeProgress={audienceFadeProgress}
+          isIdle={isIdle}
+          idleFadeProgress={idleFadeProgress}
           quality={quality}
           isVeDichDimmed={isVeDichDimmed}
           activeMainContestantSeat={activeMainContestantSeat}
@@ -187,6 +193,7 @@ export function OlympiaStudio3DScene({
           state={state}
           screenFadeProgress={screenFadeProgress}
           quality={quality}
+          liveFactor={liveFactor}
         />
 
         <Podiums
@@ -194,12 +201,14 @@ export function OlympiaStudio3DScene({
           quality={quality}
           screenFadeProgress={screenFadeProgress}
           serverNow={serverNow}
+          liveFactor={liveFactor}
         />
 
         <LaurelWreathVitrine
           position={[1.8, 0.18, 2.6]}
           quality={quality}
           screenFadeProgress={screenFadeProgress}
+          liveFactor={liveFactor}
         />
       </Canvas>
 

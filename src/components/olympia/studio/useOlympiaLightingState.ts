@@ -8,12 +8,32 @@ export interface StudioLightingState {
   screenFadeProgress: number;   // 0.0 (Blue) to 1.0 (Red), t_delay = 0.0s
   stageFadeProgress: number;    // 0.0 (Blue) to 1.0 (Red), t_delay = 0.5s
   audienceFadeProgress: number; // 0.0 (Blue) to 1.0 (Red), t_delay = 0.7s
+  // Pre-match Idle State (R4)
+  isIdle: boolean;
+  idleFadeProgress: number;     // 1.0 (Dark Pre-Match Idle) to 0.0 (Active Broadcast)
   // Về Đích Special Lighting Behaviors
   isVeDichDimmed: boolean;
   activeMainContestantSeat: number | null;
   is5sBuzzerChasing: boolean;
   spotlightChaseIndex: number;
   lockedSpotlightSeat: number | null;
+}
+
+/**
+ * Evaluates whether the studio is in the deep atmospheric pre-match idle state (R4).
+ * Returns true when in lobby, uninitialized, or before match intro & rounds commence.
+ */
+export function isPreMatchIdle(state: OlympiaState | null | undefined): boolean {
+  if (!state) return true;
+  if (state.stage === "lobby") return true;
+  if (state.stage === "finished") return false;
+  if (state.stage === "playing") {
+    // True prior to match opening / rounds:
+    if (!state.currentRound && !state.introTimer && !state.entranceState?.active) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -176,6 +196,24 @@ export function useOlympiaLightingState(
   const getNow = serverNow || (() => Date.now());
   const [currentMode, setCurrentMode] = useState<LightingMode>("BLUE");
 
+  // Pre-match idle state (R4)
+  const initialIdle = isPreMatchIdle(state);
+  const [isIdle, setIsIdle] = useState(initialIdle);
+  const [idleFadeVal, setIdleFadeVal] = useState(initialIdle ? 1.0 : 0.0);
+  const currentIdleValRef = useRef(initialIdle ? 1.0 : 0.0);
+
+  const idleTransitionRef = useRef<{
+    startTime: number;
+    fromVal: number;
+    targetVal: number;
+    targetIdle: boolean;
+  }>({
+    startTime: 0,
+    fromVal: initialIdle ? 1.0 : 0.0,
+    targetVal: initialIdle ? 1.0 : 0.0,
+    targetIdle: initialIdle,
+  });
+
   // Zone values: 0.0 (Blue) to 1.0 (Red)
   const [screenVal, setScreenVal] = useState(0);
   const [stageVal, setStageVal] = useState(0);
@@ -228,6 +266,18 @@ export function useOlympiaLightingState(
         tr.targetMode = target;
         setCurrentMode(target);
       }
+
+      // Check pre-match idle transitions
+      const targetIdle = isPreMatchIdle(state);
+      if (targetIdle !== idleTransitionRef.current.targetIdle) {
+        const perfNow = typeof performance !== "undefined" ? performance.now() : Date.now();
+        const itr = idleTransitionRef.current;
+        itr.startTime = perfNow;
+        itr.fromVal = currentIdleValRef.current;
+        itr.targetVal = targetIdle ? 1.0 : 0.0;
+        itr.targetIdle = targetIdle;
+        setIsIdle(targetIdle);
+      }
     };
 
     checkAndUpdate();
@@ -266,9 +316,18 @@ export function useOlympiaLightingState(
       setStageVal(st);
       setAudienceVal(a);
 
-      // Continue animating until all zones reach target
+      // Smooth Hermite fade for pre-match idle transition (1.2s duration)
+      const itr = idleTransitionRef.current;
+      const idleElapsedSec = itr.startTime > 0 ? (perfNow - itr.startTime) / 1000 : 999;
+      const rawIdleProgress = Math.min(1, Math.max(0, idleElapsedSec / 1.2));
+      const idleSmoothed = hermiteSmoothstep(rawIdleProgress);
+      const curIdle = itr.fromVal + (itr.targetVal - itr.fromVal) * idleSmoothed;
+      currentIdleValRef.current = curIdle;
+      setIdleFadeVal(curIdle);
+
+      // Continue animating until all zones and idle transitions reach target
       const maxTime = STAGGER_CONFIG.audience.delay + STAGGER_CONFIG.audience.duration;
-      if (elapsedSec < maxTime + 0.1) {
+      if (elapsedSec < maxTime + 0.1 || idleElapsedSec < 1.3) {
         animId = requestAnimationFrame(updateFades);
       }
     };
@@ -299,6 +358,8 @@ export function useOlympiaLightingState(
     screenFadeProgress: screenVal,
     stageFadeProgress: stageVal,
     audienceFadeProgress: audienceVal,
+    isIdle,
+    idleFadeProgress: idleFadeVal,
     isSeatBuzzed: (seatId: number) => isSeatBuzzedIn3D(seatId, state),
     isVeDichDimmed,
     activeMainContestantSeat,

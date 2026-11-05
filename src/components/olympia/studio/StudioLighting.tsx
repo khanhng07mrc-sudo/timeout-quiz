@@ -20,6 +20,9 @@ interface StudioLightingProps {
   camAngle?: number;
   ptzZoom?: number;
   pushInProgress?: number;
+  // Pre-match Idle State (R4)
+  isIdle?: boolean;
+  idleFadeProgress?: number;
 }
 
 const CONTESTANT_POSITIONS: Array<[number, number, number]> = [
@@ -411,15 +414,17 @@ function createUnifiedDaisShape(): {
 export function StudioFloor({
   stageFadeProgress = 0,
   quality = "HIGH",
+  liveFactor = 1.0,
 }: {
   stageFadeProgress?: number;
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
+  liveFactor?: number;
 }) {
   const ringColor = useMemo(() => {
-    const c = new THREE.Color("#00f0ff");
-    c.lerp(new THREE.Color("#ff1a40"), stageFadeProgress);
-    return c;
-  }, [stageFadeProgress]);
+    const baseColor = stageFadeProgress > 0.5 ? new THREE.Color("#ff1a40") : new THREE.Color("#00f0ff");
+    const darkDormant = new THREE.Color("#020712");
+    return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
+  }, [stageFadeProgress, liveFactor]);
 
   const goldColor = new THREE.Color("#ffd700");
 
@@ -666,7 +671,7 @@ export function StudioFloor({
       <pointLight
         position={[1.8, 0.35, 2.6]}
         color="#fef08a"
-        intensity={5.5}
+        intensity={THREE.MathUtils.lerp(0.3, 5.5, liveFactor)}
         distance={3.5}
       />
       {/* Soft Fill Broadcast Keylight from overhead (Wide diffused cone, zero harsh lines) */}
@@ -674,7 +679,7 @@ export function StudioFloor({
         position={[1.8, 7.5, 2.6]}
         target-position={[1.8, 0.80, 2.6]}
         color="#fff7ed"
-        intensity={3.5}
+        intensity={3.5 * liveFactor}
         distance={12}
         angle={0.48}
         penumbra={0.85}
@@ -744,7 +749,7 @@ export function StudioFloor({
       </mesh>
 
       {/* 5. Global Diffuse Overhead Fill Light for Left Contestant Cluster (Elevated at Y=5.8m to prevent pinpoint floor hot spots) */}
-      <pointLight position={[-4.2, 5.8, -2.8]} color="#00e5ff" intensity={4.5} distance={18} decay={1.8} />
+      <pointLight position={[-4.2, 5.8, -2.8]} color="#00e5ff" intensity={4.5 * liveFactor} distance={18} decay={1.8} />
 
       {/* ── 4C. STAGE-RIGHT RAISED PLATFORM & COVE LIGHTING (ĐÈN KHE TOÀN CỤC BÊN PHẢI) ── */}
       <group position={[0, 0, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -783,7 +788,7 @@ export function StudioFloor({
       </mesh>
 
       {/* Global Diffuse Overhead Fill Light for Right Stage Cluster (Elevated at Y=5.8m to prevent pinpoint floor hot spots) */}
-      <pointLight position={[4.2, 5.8, -2.8]} color="#00e5ff" intensity={4.5} distance={18} decay={1.8} />
+      <pointLight position={[4.2, 5.8, -2.8]} color="#00e5ff" intensity={4.5 * liveFactor} distance={18} decay={1.8} />
     </group>
   );
 }
@@ -827,14 +832,16 @@ function createStudioCycGradientCanvas(): HTMLCanvasElement {
  */
 export function StudioWalls({
   stageFadeProgress = 0,
+  liveFactor = 1.0,
 }: {
   stageFadeProgress?: number;
+  liveFactor?: number;
 }) {
   const wallLightColor = useMemo(() => {
-    const c = new THREE.Color("#00d4ff");
-    c.lerp(new THREE.Color("#ff1133"), stageFadeProgress);
-    return c;
-  }, [stageFadeProgress]);
+    const baseColor = stageFadeProgress > 0.5 ? new THREE.Color("#ff1133") : new THREE.Color("#00d4ff");
+    const darkDormant = new THREE.Color("#020712");
+    return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
+  }, [stageFadeProgress, liveFactor]);
 
   // 8 Parallel Horizontal Neon Bands from Y = 1.2m to 8.6m
   const horizontalBandHeights = useMemo(() => [1.2, 2.2, 3.2, 4.2, 5.3, 6.4, 7.5, 8.6], []);
@@ -2052,9 +2059,11 @@ export function StudioMountainLandscape({
 export function AudienceAmphitheater({
   audienceFadeProgress = 0,
   quality = "HIGH",
+  liveFactor = 1.0,
 }: {
   audienceFadeProgress?: number;
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
+  liveFactor?: number;
 }) {
   const rowCount = 7;
   const seatsPerRow = 16; // 8 on Left wing, 8 on Right wing, tightly packed shoulder-to-shoulder (Image 2)
@@ -2646,13 +2655,13 @@ export function AudienceAmphitheater({
 
         {/* Authentic Stage Lighting & Volumetric Portal Glow */}
         {/* Base Stage Warm Uplighting on Left & Right Arch Clusters */}
-        <pointLight position={[1.3, 2.05, 3.65]} intensity={25} color="#f59e0b" distance={5} decay={2} />
-        <pointLight position={[-1.3, 2.05, 3.65]} intensity={25} color="#f59e0b" distance={5} decay={2} />
-        <pointLight position={[0, 2.05, 3.65]} intensity={18} color="#fbbf24" distance={4} decay={2} />
+        <pointLight position={[1.3, 2.05, 3.65]} intensity={25 * liveFactor} color="#f59e0b" distance={5} decay={2} />
+        <pointLight position={[-1.3, 2.05, 3.65]} intensity={25 * liveFactor} color="#f59e0b" distance={5} decay={2} />
+        <pointLight position={[0, 2.05, 3.65]} intensity={18 * liveFactor} color="#fbbf24" distance={4} decay={2} />
         {/* Overhead Portal Wash Spotlight */}
-        <pointLight position={[0, 4.8, 3.4]} intensity={18} color="#fef3c7" distance={8} decay={2} />
+        <pointLight position={[0, 4.8, 3.4]} intensity={18 * liveFactor} color="#fef3c7" distance={8} decay={2} />
         {/* Portal Backlight Rim Glow (Atmospheric halo behind mountain summit, softened to prevent blinding glare) */}
-        <pointLight position={[0, 4.65, 5.00]} intensity={12} color="#bae6fd" distance={7} decay={2} />
+        <pointLight position={[0, 4.65, 5.00]} intensity={12 * liveFactor} color="#bae6fd" distance={7} decay={2} />
       </group>
 
       {/* ── OFFICIAL QUIZORRA SPONSOR 3D LIGHTBOX (Viewer's Left at X = +4.10m, Y = 3.45m, Z = 3.75m - FIXED POSITION) ── */}
@@ -2674,7 +2683,7 @@ export function AudienceAmphitheater({
             <meshBasicMaterial map={quizorraLogoTex} transparent={true} toneMapped={false} side={THREE.DoubleSide} />
           </mesh>
         )}
-        <pointLight position={[0, 0, -0.2]} intensity={14} color="#ffffff" distance={4} decay={2} />
+        <pointLight position={[0, 0, -0.2]} intensity={14 * liveFactor} color="#ffffff" distance={4} decay={2} />
 
         {/* TWO SOLID GROUNDED STRUCTURAL STEEL STANCHION LEGS ANCHORED INTO PLINTH DECK AT Y = 1.97m (R6) */}
         {/* Inner Stanchion at X = 3.35m (local X = -0.75m) */}
@@ -2720,7 +2729,7 @@ export function AudienceAmphitheater({
             <meshBasicMaterial map={olympia2020Tex} transparent={true} toneMapped={false} side={THREE.DoubleSide} />
           </mesh>
         )}
-        <pointLight position={[0, 0, -0.2]} intensity={8} color="#38bdf8" distance={4} decay={2} />
+        <pointLight position={[0, 0, -0.2]} intensity={8 * liveFactor} color="#38bdf8" distance={4} decay={2} />
 
         {/* TWO SOLID GROUNDED STRUCTURAL STEEL STANCHION LEGS ANCHORED INTO PLINTH DECK AT Y = 1.97m (R6) */}
         {/* Outer Stanchion at X = -4.55m (local X = -0.45m) */}
@@ -2753,11 +2762,11 @@ export function AudienceAmphitheater({
       </group>
 
       {/* Overhead & Front Stage-to-Audience Wash Spotlights (Controlled Contrast) */}
-      <pointLight position={[-4.5, 5.2, 1.8]} intensity={8} color="#38bdf8" distance={11} decay={2} />
-      <pointLight position={[4.5, 5.2, 1.8]} intensity={8} color="#38bdf8" distance={11} decay={2} />
-      <pointLight position={[0.0, 5.4, 2.2]} intensity={12} color="#ffffff" distance={12} decay={2} />
-      <pointLight position={[0.0, 3.4, -1.2]} intensity={10} color="#e0f2fe" distance={16} decay={1.5} />
-      <directionalLight position={[0.0, 5.8, -1.8]} intensity={0.8} color="#ffffff" />
+      <pointLight position={[-4.5, 5.2, 1.8]} intensity={8 * liveFactor} color="#38bdf8" distance={11} decay={2} />
+      <pointLight position={[4.5, 5.2, 1.8]} intensity={8 * liveFactor} color="#38bdf8" distance={11} decay={2} />
+      <pointLight position={[0.0, 5.4, 2.2]} intensity={12 * liveFactor} color="#ffffff" distance={12} decay={2} />
+      <pointLight position={[0.0, 3.4, -1.2]} intensity={10 * liveFactor} color="#e0f2fe" distance={16} decay={1.5} />
+      <directionalLight position={[0.0, 5.8, -1.8]} intensity={0.8 * liveFactor} color="#ffffff" />
     </group>
   );
 }
@@ -2782,6 +2791,8 @@ export function StudioLighting({
   camAngle = 1,
   ptzZoom = 1.0,
   pushInProgress = 0,
+  isIdle,
+  idleFadeProgress,
 }: StudioLightingProps) {
   const { scene } = useThree();
   if (typeof window !== "undefined") {
@@ -2815,6 +2826,30 @@ export function StudioLighting({
     }
   }
 
+  // Pre-match idle lighting fade evaluation (R4):
+  // When in pre-match standby (idleFadeProgress -> 1.0), all direct spotlights, key/fill lights,
+  // and stage wash lights are fully extinguished. Ambient light dims to 0.04 deep midnight sapphire (#081226)
+  // and screen downlight bounce to 0.6. Self-illuminated floor perimeter LED strips remain 100% luminous.
+  const effectiveIdleFade = useMemo(() => {
+    if (idleFadeProgress !== undefined) return idleFadeProgress;
+    if (isIdle !== undefined) return isIdle ? 1.0 : 0.0;
+    if (introStartedAt != null) {
+      const elapsedSec = Math.max(0, (now - introStartedAt) / 1000);
+      if (elapsedSec < 1.2) {
+        const t = elapsedSec / 1.2;
+        return 1.0 - t * t * (3 - 2 * t);
+      }
+      return 0.0;
+    }
+    if (isVeDichDimmed || screenFadeProgress > 0 || stageFadeProgress > 0 || audienceFadeProgress > 0) {
+      return 0.0;
+    }
+    return 1.0;
+  }, [idleFadeProgress, isIdle, introStartedAt, now, isVeDichDimmed, screenFadeProgress, stageFadeProgress, audienceFadeProgress]);
+
+  // Overall multiplier for active broadcast lighting
+  const liveFactor = (1.0 - effectiveIdleFade) * introDimFactor;
+
   // Screen Zone Down-Wash Color
   const screenWashColor = useMemo(() => {
     const c = new THREE.Color("#0a2663");
@@ -2844,17 +2879,31 @@ export function StudioLighting({
   }, [audienceFadeProgress]);
 
   // Ambient & Key Light Intensity Factors (Controlled Studio Contrast)
-  const ambientIntensity = (isVeDichDimmed ? 0.20 : 0.42) * introDimFactor;
-  const keyIntensity = (isVeDichDimmed ? 0.9 : 3.0) * introDimFactor;
-  const fillIntensity = (isVeDichDimmed ? 0.45 : 1.6) * introDimFactor;
+  // In idle state (effectiveIdleFade = 1.0), ambient dims to 0.04 deep midnight sapphire (#081226)
+  const targetAmbient = (isVeDichDimmed ? 0.20 : 0.42) * introDimFactor;
+  const ambientIntensity = THREE.MathUtils.lerp(0.04, targetAmbient, 1.0 - effectiveIdleFade);
+  const ambientColor = useMemo(() => {
+    const c = new THREE.Color("#081226");
+    c.lerp(new THREE.Color("#e0f2fe"), 1.0 - effectiveIdleFade);
+    return c;
+  }, [effectiveIdleFade]);
+
+  const keyIntensity = (isVeDichDimmed ? 0.9 : 3.0) * liveFactor;
+  const fillIntensity = (isVeDichDimmed ? 0.45 : 1.6) * liveFactor;
+  // Screen downlight bounce: 0.6 in idle, fading up to full broadcast intensity (3.2)
+  const screenBounceIntensity = THREE.MathUtils.lerp(
+    0.6,
+    (isVeDichDimmed ? 1.0 : 3.2) * introDimFactor,
+    1.0 - effectiveIdleFade
+  );
 
   return (
     <group>
       {/* ── 1. AMBIENT & BROADCAST KEY LIGHTS ── */}
-      <ambientLight intensity={ambientIntensity} color="#e0f2fe" />
+      <ambientLight intensity={ambientIntensity} color={ambientColor} />
 
-      {/* Screen Zone Overhead Downlight */}
-      <pointLight position={[0, 5.0, -4.5]} intensity={(isVeDichDimmed ? 1.0 : 3.2) * introDimFactor} color={screenWashColor} distance={12} />
+      {/* Screen Zone Overhead Downlight (Emits ambient screen bounce light onto reflective stage floor) */}
+      <pointLight position={[0, 5.0, -4.5]} intensity={screenBounceIntensity} color={screenWashColor} distance={12} />
 
       {/* Main Directional Key Spotlight (Stage Center) */}
       <directionalLight
@@ -2874,7 +2923,7 @@ export function StudioLighting({
       {/* Front Broadcast Key Flood Light (Directly illuminates front of contestant podiums & MC desk) */}
       <directionalLight
         position={[0.0, 4.5, 8.0]}
-        intensity={(isVeDichDimmed ? 0.4 : 1.6) * introDimFactor}
+        intensity={(isVeDichDimmed ? 0.4 : 1.6) * liveFactor}
         color="#ffffff"
       />
 
@@ -2882,7 +2931,7 @@ export function StudioLighting({
       <spotLight
         position={[3.0, 6.8, 0.2]}
         target-position={[1.9, 1.3, -2.6]}
-        intensity={mcSpotIntensity * 1.4}
+        intensity={mcSpotIntensity * 1.4 * (1.0 - effectiveIdleFade)}
         color="#fffcf5"
         angle={0.58}
         penumbra={0.3}
@@ -2893,7 +2942,7 @@ export function StudioLighting({
       <spotLight
         position={[-4.0, 7.5, 1.8]}
         target-position={[-4.2, 0.85, -2.9]}
-        intensity={6.0 * introDimFactor}
+        intensity={6.0 * liveFactor}
         color="#e0f2fe"
         angle={0.72}
         penumbra={0.4}
@@ -2904,7 +2953,7 @@ export function StudioLighting({
       <spotLight
         position={[-7.5, 8.5, -5.0]}
         target-position={[0, 3.0, -6.5]}
-        intensity={isVeDichDimmed ? 2.0 : 5.5}
+        intensity={(isVeDichDimmed ? 2.0 : 5.5) * liveFactor}
         color={stageBackColor}
         angle={0.65}
         penumbra={0.5}
@@ -2914,7 +2963,7 @@ export function StudioLighting({
       <spotLight
         position={[7.5, 8.5, -5.0]}
         target-position={[0, 3.0, -6.5]}
-        intensity={isVeDichDimmed ? 2.0 : 5.5}
+        intensity={(isVeDichDimmed ? 2.0 : 5.5) * liveFactor}
         color={stageBackColor}
         angle={0.65}
         penumbra={0.5}
@@ -2922,14 +2971,14 @@ export function StudioLighting({
       />
 
       {/* Broadcast Wing Cyc Wash Lights (Stage Left behind formula wall & Stage Right) */}
-      <pointLight position={[-6.5, 4.0, -3.5]} color={screenWashColor} intensity={isVeDichDimmed ? 0.8 : 2.5} distance={15} />
-      <pointLight position={[6.5, 4.0, -3.5]} color={screenWashColor} intensity={isVeDichDimmed ? 0.8 : 2.5} distance={15} />
-      <pointLight position={[0, 6.0, -6.0]} color={stageBackColor} intensity={isVeDichDimmed ? 1.0 : 3.0} distance={16} />
+      <pointLight position={[-6.5, 4.0, -3.5]} color={screenWashColor} intensity={THREE.MathUtils.lerp(0.3, isVeDichDimmed ? 0.8 : 2.5, 1.0 - effectiveIdleFade)} distance={15} />
+      <pointLight position={[6.5, 4.0, -3.5]} color={screenWashColor} intensity={THREE.MathUtils.lerp(0.3, isVeDichDimmed ? 0.8 : 2.5, 1.0 - effectiveIdleFade)} distance={15} />
+      <pointLight position={[0, 6.0, -6.0]} color={stageBackColor} intensity={THREE.MathUtils.lerp(0.3, isVeDichDimmed ? 1.0 : 3.0, 1.0 - effectiveIdleFade)} distance={16} />
 
       {/* Elevated Backdrop Halo Fill Lights (Elevated at Y=4.8m to prevent grazing specular floor dots) */}
-      <pointLight position={[-4.5, 4.8, -6.0]} intensity={1.2} color={stageRimColor} distance={12} />
-      <pointLight position={[4.5, 4.8, -6.0]} intensity={1.2} color={stageRimColor} distance={12} />
-      <pointLight position={[0.0, 4.8, -6.2]} intensity={1.4} color={stageRimColor} distance={12} />
+      <pointLight position={[-4.5, 4.8, -6.0]} intensity={1.2 * liveFactor} color={stageRimColor} distance={12} />
+      <pointLight position={[4.5, 4.8, -6.0]} intensity={1.2 * liveFactor} color={stageRimColor} distance={12} />
+      <pointLight position={[0.0, 4.8, -6.2]} intensity={1.4 * liveFactor} color={stageRimColor} distance={12} />
 
       {/* ── 3. VỀ ĐÍCH SPECIAL OVERHEAD SPOTLIGHTS (TS 1..4) ── */}
       {CONTESTANT_POSITIONS.map((pos, sIdx) => {
@@ -2962,7 +3011,7 @@ export function StudioLighting({
       <spotLight
         position={[0, 9.0, 4.0]}
         target-position={[0, 2.0, 12.0]}
-        intensity={isVeDichDimmed ? 1.5 : 4.5}
+        intensity={(isVeDichDimmed ? 1.5 : 4.5) * liveFactor}
         color={audienceWashColor}
         angle={0.8}
         penumbra={0.6}
@@ -2970,10 +3019,10 @@ export function StudioLighting({
       />
 
       {/* ── 6. STUDIO ENVIRONMENT GEOMETRY ── */}
-      <StudioFloor stageFadeProgress={stageFadeProgress} quality={quality} />
-      <StudioWalls stageFadeProgress={stageFadeProgress} />
+      <StudioFloor stageFadeProgress={stageFadeProgress} quality={quality} liveFactor={liveFactor} />
+      <StudioWalls stageFadeProgress={stageFadeProgress} liveFactor={liveFactor} />
       <StudioCeilingRig />
-      <AudienceAmphitheater audienceFadeProgress={audienceFadeProgress} quality={quality} />
+      <AudienceAmphitheater audienceFadeProgress={audienceFadeProgress} quality={quality} liveFactor={liveFactor} />
       <BroadcastCameras camAngle={camAngle} ptzZoom={ptzZoom} pushInProgress={pushInProgress} />
     </group>
   );

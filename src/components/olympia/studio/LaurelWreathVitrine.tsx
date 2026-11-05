@@ -8,6 +8,7 @@ interface LaurelWreathVitrineProps {
   position?: [number, number, number];
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
   screenFadeProgress?: number;
+  liveFactor?: number;
 }
 
 /**
@@ -170,6 +171,7 @@ export function LaurelWreathVitrine({
   position = [0.0, 0, 2.6],
   quality: _quality = "HIGH",
   screenFadeProgress = 0,
+  liveFactor = 1.0,
 }: LaurelWreathVitrineProps) {
   const ringColor = useMemo(() => {
     const c = new THREE.Color("#00e5ff");
@@ -284,7 +286,7 @@ export function LaurelWreathVitrine({
         position={[0, 5.5, 0]}
         target-position={[0, 0.62, 0]}
         color="#fffbeb"
-        intensity={4.2}
+        intensity={THREE.MathUtils.lerp(0.8, 4.2, liveFactor)}
         angle={0.45}
         penumbra={0.85}
         distance={9}

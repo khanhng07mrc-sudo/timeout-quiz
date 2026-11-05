@@ -46,7 +46,7 @@ async function loadGame(code: string): Promise<GameEntry | null> {
     }
 
     if (!room || room.mode !== ("OLYMPIA" as typeof room.mode)) {
-      if (code === "SANDBOX" || /^\d{6}$/.test(code) || code.startsWith("sandbox")) {
+      if (code === "SANDBOX" || code === "OFFLINE" || code.startsWith("OFFLINE") || /^\d{6}$/.test(code) || code.startsWith("sandbox")) {
         const defaultCfg: OlympiaConfig = {
           rulesetId: "O26",
           rounds: ["khoiDong", "vcnv", "tangToc", "veDich"],

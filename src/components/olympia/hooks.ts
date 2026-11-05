@@ -407,6 +407,61 @@ export function useOlympiaAudio(
     }
   }, []);
 
+  // Global unlock handler for browser autoplay policies & AudioContext resumption
+  const unlockAudio = useCallback(() => {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+    if (bgm.current && bgm.current.paused && !bgm.current.ended) {
+      bgm.current.play().catch(() => {});
+    }
+  }, [getAudioContext]);
+
+  // Lắng nghe tín hiệu mở khóa từ parent window (UNLOCK_AUDIO) và tương tác người dùng
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleMsg = (e: MessageEvent) => {
+      if (e.data?.type === "UNLOCK_AUDIO") {
+        unlockAudio();
+      }
+    };
+    const handleInteraction = () => {
+      unlockAudio();
+    };
+    window.addEventListener("message", handleMsg);
+    window.addEventListener("pointerdown", handleInteraction, { passive: true });
+    window.addEventListener("keydown", handleInteraction, { passive: true });
+    window.addEventListener("click", handleInteraction, { passive: true });
+    return () => {
+      window.removeEventListener("message", handleMsg);
+      window.removeEventListener("pointerdown", handleInteraction);
+      window.removeEventListener("keydown", handleInteraction);
+      window.removeEventListener("click", handleInteraction);
+    };
+  }, [unlockAudio]);
+
+  // Tự động khởi tạo AudioContext khi hook mount và enabled
+  useEffect(() => {
+    if (enabled) {
+      getAudioContext();
+    }
+  }, [enabled, getAudioContext]);
+
+  // Dừng toàn bộ âm thanh khi audio bị tắt (enabled = false)
+  useEffect(() => {
+    if (!enabled) {
+      stopBgm(true);
+      activeAudioSet.current.forEach((a) => {
+        try {
+          a.pause();
+          a.currentTime = 0;
+        } catch {}
+      });
+      activeAudioSet.current.clear();
+    }
+  }, [enabled, stopBgm]);
+
   // Tự động khôi phục BGM mượt mà khi quay lại tab, không khởi động lại bài hát
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -431,19 +486,27 @@ export function useOlympiaAudio(
       lastCue.current = cue.id;
       // Nếu là âm thanh mở đầu khi tạo phòng ở sảnh chờ (show_intro), cho phép phát đúng 1 lần duy nhất trên lần sync đầu tiên
       if (cue.sound === "6_NhacKhac/show_intro" && state.stage === "lobby" && !hasPlayedIntroLobbyRef.current) {
-        hasPlayedIntroLobbyRef.current = true;
-        if (!audioSeason) {
-          // audioSeason chưa đến (race condition) → đánh dấu chờ, sẽ phát khi audioSeason arrive
+        if (!enabled || !audioSeason) {
+          // audioSeason chưa đến hoặc audio chưa bật → đánh dấu chờ, sẽ phát khi đủ điều kiện
           pendingShowIntroRef.current = true;
           return;
         }
-        // audioSeason đã có, tiếp tục phát bình thường bên dưới
+        hasPlayedIntroLobbyRef.current = true;
       } else {
         return; // do not replay on first sync
       }
     } else {
-      if (cue.id === lastCue.current) return;
-      lastCue.current = cue.id;
+      if (cue.id === lastCue.current) {
+        const isIntro = isIntroOrMusicTrack(cue.sound);
+        const isBgm = cue.kind === "bgm" || isIntro;
+        if (enabled && isBgm && (!bgm.current || bgm.current.paused)) {
+          // Cho phép phát tiếp BGM nếu vừa unmute hoặc vừa unlock audio
+        } else {
+          return;
+        }
+      } else {
+        lastCue.current = cue.id;
+      }
     }
     if (!enabled) return;
 
@@ -487,7 +550,7 @@ export function useOlympiaAudio(
       // Khi phát cả 2 kênh (both) tiêu chuẩn, không gắn MediaElementSource để tránh lỗi AudioContext bị suspended do Autoplay
       if (currentChannel === "both") return;
       const ctx = getAudioContext();
-      if (ctx && ctx.state === "running" && ctx.createStereoPanner) {
+      if (ctx && ctx.createStereoPanner) {
         try {
           const source = ctx.createMediaElementSource(a);
           const panner = ctx.createStereoPanner();
@@ -561,7 +624,7 @@ export function useOlympiaAudio(
       }
     };
     play(season, true);
-  }, [state?.cue, audioSeason, enabled, channel, stopBgm, pauseBgm, resumeBgm, getAudioContext, crossfadeToBgm, fadeOutAndStopBgm]);
+  }, [state?.cue, state?.stage, audioSeason, enabled, channel, stopBgm, pauseBgm, resumeBgm, getAudioContext, crossfadeToBgm, fadeOutAndStopBgm]);
 
   useEffect(() => () => stopBgm(), [stopBgm]);
 
@@ -577,10 +640,11 @@ export function useOlympiaAudio(
     }
   }, [state?.stage, state?.cue, fadeOutAndStopBgm]);
 
-  // Retry show_intro khi audioSeason vừa arrive (fix race condition: state đến trước audioSeason)
+  // Retry show_intro khi audioSeason vừa arrive hoặc unmuting (fix race condition: state đến trước audioSeason)
   useEffect(() => {
     if (!audioSeason || !pendingShowIntroRef.current || !enabled) return;
     pendingShowIntroRef.current = false;
+    hasPlayedIntroLobbyRef.current = true;
     if (state?.stage && state.stage !== "lobby") return;
     const season = audioSeason;
     const tryPlay = (s: string) => {

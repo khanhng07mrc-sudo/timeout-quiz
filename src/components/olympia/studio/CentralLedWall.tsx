@@ -2,13 +2,16 @@
 
 import React, { useRef, useEffect, useMemo } from "react";
 import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
 import type { OlympiaState } from "@/lib/olympia/types";
 import { parseVcnvAnswer } from "@/lib/olympia/engine";
+import { isPreMatchIdle } from "./useOlympiaLightingState";
 
 interface CentralLedWallProps {
   state?: OlympiaState | null;
   screenFadeProgress?: number; // 0.0 (Sapphire Blue) -> 1.0 (Fiery Red)
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
+  liveFactor?: number;
 }
 
 /**
@@ -192,7 +195,8 @@ function renderBinaryMatrixGrid(
   w: number,
   h: number,
   fadeProgress: number = 0,
-  seedOffset: number = 0
+  seedOffset: number = 0,
+  timeSec: number = 0
 ): void {
   const cellSize = 22;
   const cols = Math.floor(w / cellSize);
@@ -209,15 +213,23 @@ function renderBinaryMatrixGrid(
     return seed / 4294967296;
   };
 
+  const timeStep = Math.floor(timeSec * 4.0); // 4 digital stream transitions per second
+
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const val = rnd() > 0.5 ? "1" : "0";
+      const colSpeed = 1 + (c % 3);
+      const rowOffset = Math.floor((timeSec * (10 + colSpeed * 4) + c * 3) / cellSize);
+      const effectiveRow = (r + rowOffset) % rows;
+
+      const digitSeed = (seed + c * 31 + effectiveRow * 17 + timeStep) % 100;
+      const val = digitSeed > 48 ? "1" : "0";
       const roll = rnd();
       const x = c * cellSize + cellSize / 2;
       const y = r * cellSize + cellSize / 2;
 
-      // ~32% of cells are brightly lit with glow
-      if (roll < 0.32) {
+      // ~32% of cells are brightly lit with glow + sinusoidal stream pulse
+      const glowPulse = Math.sin(timeSec * 2.5 + c * 0.35 + r * 0.2);
+      if (roll < 0.32 || (roll < 0.45 && glowPulse > 0.4)) {
         ctx.save();
         const isRed = roll < 0.10 || fadeProgress > 0.5;
         const color = isRed ? "#ff2a55" : roll < 0.22 ? "#00f0ff" : "#10b981";
@@ -960,7 +972,8 @@ function renderLedScreenToCanvas(
   targetCanvas: HTMLCanvasElement,
   logoImg: HTMLImageElement | null,
   fadeProgress: number = 0,
-  state?: OlympiaState | null
+  state?: OlympiaState | null,
+  timeSec: number = 0
 ): void {
   const width = targetCanvas.width;
   const height = targetCanvas.height;
@@ -976,25 +989,59 @@ function renderLedScreenToCanvas(
   const g1 = Math.round(THREE.MathUtils.lerp(28, 8, fadeProgress));
   const b1 = Math.round(THREE.MathUtils.lerp(75, 18, fadeProgress));
 
-  const r0 = Math.round(THREE.MathUtils.lerp(3, 22, fadeProgress));
-  const g0 = Math.round(THREE.MathUtils.lerp(7, 3, fadeProgress));
-  const b0 = Math.round(THREE.MathUtils.lerp(22, 7, fadeProgress));
+  const r0 = Math.round(THREE.MathUtils.lerp(2, 22, fadeProgress));
+  const g0 = Math.round(THREE.MathUtils.lerp(8, 3, fadeProgress));
+  const b0 = Math.round(THREE.MathUtils.lerp(26, 7, fadeProgress));
 
   bgGrad.addColorStop(0, `rgb(${r1}, ${g1}, ${b1})`);
   bgGrad.addColorStop(0.65, `rgb(${r0}, ${g0}, ${b0})`);
-  bgGrad.addColorStop(1, "#010206");
+  bgGrad.addColorStop(1, "#020b1e"); // Deep navy background
 
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Cosmic Stardust Particles
+  // 2. Dynamic Floating Glossy Scientific Symbols & Stardust Backdrop (R5)
+  const idleSymbols = [
+    { text: "∑", x: 0.16, y: 0.22, size: Math.round(width * 0.046) },
+    { text: "sin", x: 0.34, y: 0.16, size: Math.round(width * 0.034) },
+    { text: "m²", x: 0.66, y: 0.20, size: Math.round(width * 0.035) },
+    { text: "Δ", x: 0.84, y: 0.26, size: Math.round(width * 0.042) },
+    { text: "µ", x: 0.14, y: 0.75, size: Math.round(width * 0.038) },
+    { text: "kg", x: 0.32, y: 0.82, size: Math.round(width * 0.034) },
+    { text: "Ω", x: 0.68, y: 0.80, size: Math.round(width * 0.040) },
+    { text: "π", x: 0.86, y: 0.74, size: Math.round(width * 0.038) },
+    { text: "cos", x: 0.50, y: 0.14, size: Math.round(width * 0.032) },
+    { text: "ml", x: 0.50, y: 0.86, size: Math.round(width * 0.032) },
+  ];
+
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  idleSymbols.forEach((s, idx) => {
+    const driftX = (s.x * width) + Math.sin(timeSec * 0.6 + idx * 1.4) * 12;
+    const driftY = (s.y * height) + Math.cos(timeSec * 0.7 + idx * 1.1) * 9;
+    ctx.save();
+    ctx.translate(driftX, driftY);
+    ctx.font = `italic 900 ${s.size}px "Plus Jakarta Sans", sans-serif`;
+    ctx.shadowColor = fadeProgress > 0.5 ? "#ff1a40" : "#00f0ff";
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = fadeProgress > 0.5 ? "rgba(255, 60, 90, 0.28)" : "rgba(56, 189, 248, 0.28)";
+    ctx.fillText(s.text, 0, 0);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.lineWidth = 1.2;
+    ctx.strokeText(s.text, -0.6, -0.8);
+    ctx.restore();
+  });
+  ctx.restore();
+
+  // Cosmic Stardust Particles with dynamic breathing
   ctx.fillStyle = "#ffffff";
-  const numStars = 100;
+  const numStars = 80;
   for (let i = 0; i < numStars; i++) {
     const sx = (Math.sin(i * 997.1) * 0.5 + 0.5) * width;
     const sy = (Math.cos(i * 443.7) * 0.5 + 0.5) * height;
     const size = (i % 3) * 0.7 + 0.8;
-    const alpha = (Math.sin(i * 12.3) * 0.35 + 0.55);
+    const alpha = (Math.sin(i * 12.3 + timeSec * 1.8) * 0.35 + 0.55);
     ctx.globalAlpha = alpha;
     ctx.beginPath();
     ctx.arc(sx, sy, size, 0, Math.PI * 2);
@@ -1207,7 +1254,8 @@ function renderLedScreenToCanvas(
 function renderVerticalTotemToCanvas(
   canvas: HTMLCanvasElement,
   state?: OlympiaState | null,
-  fadeProgress: number = 0
+  fadeProgress: number = 0,
+  timeSec: number = 0
 ): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -1242,9 +1290,11 @@ function renderVerticalTotemToCanvas(
     { text: "hν", x: 470, y: 242, size: 36, rot: 0.08 },
   ];
 
-  topSymbols.forEach((s) => {
+  topSymbols.forEach((s, idx) => {
     ctx.save();
-    ctx.translate(s.x, s.y);
+    const curX = s.x + Math.sin(timeSec * 0.6 + idx * 1.3) * 4;
+    const curY = s.y + Math.cos(timeSec * 0.7 + idx * 1.1) * 4;
+    ctx.translate(curX, curY);
     ctx.rotate(s.rot);
     ctx.font = `italic 900 ${s.size}px "Plus Jakarta Sans", "Montserrat", sans-serif`;
     ctx.textAlign = "center";
@@ -1366,9 +1416,11 @@ function renderVerticalTotemToCanvas(
     { text: "dx", x: 470, y: 842, size: 36, rot: -0.05 },
   ];
 
-  bottomSymbols.forEach((s) => {
+  bottomSymbols.forEach((s, idx) => {
     ctx.save();
-    ctx.translate(s.x, s.y);
+    const curX = s.x + Math.sin(timeSec * 0.6 + idx * 1.3) * 4;
+    const curY = s.y + Math.cos(timeSec * 0.7 + idx * 1.1) * 4;
+    ctx.translate(curX, curY);
     ctx.rotate(s.rot);
     ctx.font = `italic 900 ${s.size}px "Plus Jakarta Sans", "Montserrat", sans-serif`;
     ctx.textAlign = "center";
@@ -1389,7 +1441,7 @@ function renderVerticalTotemToCanvas(
   ctx.fillStyle = fadeProgress > 0.5 ? "#ff2a4b" : "rgba(0, 240, 255, 0.85)";
   const barCount = 28;
   for (let b = 0; b < barCount; b++) {
-    const bh = 12 + Math.sin(b * 0.65) * 20 + Math.cos(b * 1.4) * 14;
+    const bh = 12 + Math.sin(b * 0.65 + timeSec * 4.0) * 20 + Math.cos(b * 1.4 - timeSec * 2.5) * 14;
     ctx.fillRect(70 + b * 16, 940 - bh, 10, bh);
   }
   ctx.font = '600 14px "Courier New", monospace';
@@ -1408,37 +1460,152 @@ function renderVerticalTotemToCanvas(
 }
 
 /**
- * Pre-rendered Curved Math & Science Symbols Wall Texture (Stage Left).
+ * Pre-rendered and dynamic Curved Math & Science Symbols Wall Texture (Stage Left).
  * Features:
  * - Stepped-up top profile with Quizorra sponsor badge on the top-left.
  * - Inward chevron / arrow notch on the right edge ("mũi tên lọt thỏm vô trong").
  * - Multi-layer concentric neon borders ("background kết hợp nhiều viền").
  * - All symbols rendered in 100% luminous electric cyan ("chữ xanh toàn tập").
+ * - Subtle sinusoidal floating drift motion x_i(t), y_i(t).
+ * - Traveling light pulses along the 4 neon rails at 320 px/s.
+ * - Periodic diagonal specular light sweeps across the screen at 240 px/s with starburst glints.
+ * - Animated Erlenmeyer flask with rising bubbles and science atom with orbiting electrons.
  */
-function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 384;
+
+interface FormulaSymbolSpec {
+  text: string;
+  x: number;
+  y: number;
+  size: number;
+  rot?: number;
+  driftAmpX: number;
+  driftAmpY: number;
+  driftFreqX: number;
+  driftFreqY: number;
+  driftPhaseX: number;
+  driftPhaseY: number;
+}
+
+const BASE_FORMULA_SYMBOLS = [
+  // Tier 1 (Upper zone, Y: 80 - 130)
+  { text: "∑", x: 100, y: 110, size: 68, rot: -0.02 },
+  { text: "ml", x: 210, y: 115, size: 44, rot: 0.02 },
+  { text: "kg", x: 320, y: 105, size: 48, rot: -0.01 },
+  { text: "µ", x: 430, y: 115, size: 52, rot: 0.02 },
+  { text: "Ψ", x: 550, y: 100, size: 58, rot: -0.02 },
+  { text: "m²", x: 670, y: 95, size: 46, rot: 0.01 },
+  { text: "sin", x: 790, y: 90, size: 46, rot: -0.01 },
+  { text: "Δ", x: 910, y: 85, size: 60, rot: 0.02 },
+  { text: "cos", x: 1030, y: 90, size: 46, rot: -0.01 },
+  { text: "Ω", x: 1150, y: 85, size: 56, rot: 0.02 },
+  { text: "π", x: 1270, y: 90, size: 54, rot: -0.02 },
+  { text: "∫", x: 1390, y: 80, size: 68, rot: 0.02 },
+  { text: "tan", x: 1510, y: 95, size: 46, rot: -0.01 },
+  { text: "E=mc²", x: 1650, y: 85, size: 44, rot: 0.02 },
+  { text: "∇", x: 1790, y: 85, size: 54, rot: -0.02 },
+  { text: "∮", x: 1900, y: 80, size: 64, rot: 0.01 },
+
+  // Tier 2 (Upper-mid zone, Y: 180 - 240)
+  { text: "λ", x: 120, y: 220, size: 54, rot: 0.02 },
+  { text: "lim", x: 240, y: 235, size: 46, rot: -0.02 },
+  { text: "θ", x: 360, y: 215, size: 52, rot: 0.02 },
+  { text: "f(x)", x: 480, y: 230, size: 48, rot: -0.02 },
+  { text: "∞", x: 610, y: 195, size: 62, rot: 0.03 },
+  { text: "√2", x: 730, y: 215, size: 50, rot: -0.01 },
+  { text: "hν", x: 850, y: 195, size: 48, rot: 0.02 },
+  { text: "log", x: 970, y: 220, size: 46, rot: -0.01 },
+  { text: "NaCl", x: 1090, y: 200, size: 48, rot: 0.01 },
+  { text: "α", x: 1210, y: 220, size: 52, rot: -0.02 },
+  { text: "β", x: 1330, y: 195, size: 52, rot: 0.02 },
+  { text: "γ", x: 1450, y: 220, size: 50, rot: -0.02 },
+  { text: "F=ma", x: 1580, y: 200, size: 46, rot: 0.02 },
+  { text: "∂x", x: 1710, y: 215, size: 48, rot: -0.01 },
+  { text: "ħ", x: 1830, y: 200, size: 54, rot: 0.02 },
+  { text: "ATP", x: 1930, y: 215, size: 42, rot: -0.01 },
+
+  // Tier 3 (Mid zone, Y: 310 - 370)
+  { text: "H₂O", x: 110, y: 340, size: 50, rot: -0.01 },
+  { text: "CO₂", x: 230, y: 355, size: 48, rot: 0.02 },
+  { text: "pH", x: 350, y: 330, size: 48, rot: -0.01 },
+  { text: "mol", x: 470, y: 350, size: 46, rot: 0.02 },
+  { text: "Hz", x: 590, y: 320, size: 50, rot: -0.02 },
+  { text: "Pa", x: 710, y: 345, size: 48, rot: 0.01 },
+  { text: "rad", x: 830, y: 320, size: 46, rot: -0.01 },
+  { text: "dx", x: 950, y: 350, size: 48, rot: 0.02 },
+  { text: "Δt", x: 1070, y: 325, size: 50, rot: -0.01 },
+  { text: "e", x: 1190, y: 345, size: 52, rot: 0.02 },
+  { text: "c", x: 1310, y: 320, size: 52, rot: -0.02 },
+  { text: "ρ", x: 1430, y: 345, size: 50, rot: 0.01 },
+  { text: "σ", x: 1550, y: 325, size: 50, rot: -0.01 },
+  { text: "O₂", x: 1670, y: 345, size: 48, rot: 0.02 },
+  { text: "CH₄", x: 1790, y: 325, size: 46, rot: -0.01 },
+  { text: "DNA", x: 1910, y: 345, size: 44, rot: 0.02 },
+
+  // Tier 4 (Lower-mid zone, Y: 450 - 510)
+  { text: "W", x: 130, y: 470, size: 52, rot: 0.02 },
+  { text: "V", x: 260, y: 490, size: 52, rot: -0.01 },
+  { text: "A", x: 390, y: 465, size: 52, rot: 0.02 },
+  { text: "T", x: 520, y: 490, size: 50, rot: -0.01 },
+  { text: "B", x: 650, y: 465, size: 52, rot: 0.02 },
+  { text: "K", x: 780, y: 485, size: 50, rot: -0.01 },
+  { text: "g", x: 910, y: 460, size: 50, rot: 0.01 },
+  { text: "F", x: 1040, y: 490, size: 52, rot: -0.02 },
+  { text: "m", x: 1170, y: 465, size: 50, rot: 0.02 },
+  { text: "s", x: 1300, y: 490, size: 50, rot: -0.01 },
+  { text: "C", x: 1420, y: 470, size: 52, rot: 0.02 },
+  { text: "Fe", x: 1540, y: 490, size: 48, rot: -0.01 },
+  { text: "Cu", x: 1660, y: 465, size: 48, rot: 0.02 },
+  { text: "Au", x: 1780, y: 490, size: 48, rot: -0.01 },
+  { text: "Ag", x: 1900, y: 470, size: 48, rot: 0.01 },
+
+  // Tier 5 (Lower zone, Y: 580 - 640)
+  { text: "eⁱᵖ+1=0", x: 180, y: 610, size: 40, rot: 0.01 },
+  { text: "H₂SO₄", x: 370, y: 625, size: 44, rot: -0.01 },
+  { text: "m/s²", x: 530, y: 605, size: 44, rot: 0.02 },
+  { text: "ω", x: 680, y: 625, size: 50, rot: -0.01 },
+  { text: "φ", x: 820, y: 605, size: 50, rot: 0.02 },
+  { text: "∏", x: 960, y: 625, size: 54, rot: -0.01 },
+  { text: "ln", x: 1100, y: 605, size: 46, rot: 0.01 },
+  { text: "cot", x: 1240, y: 625, size: 46, rot: -0.01 },
+  { text: "τ", x: 1380, y: 605, size: 50, rot: 0.01 },
+  { text: "mg", x: 1510, y: 625, size: 44, rot: -0.01 },
+  { text: "L", x: 1640, y: 605, size: 48, rot: 0.02 },
+  { text: "arcsin", x: 1790, y: 625, size: 42, rot: -0.01 },
+  { text: "N", x: 1920, y: 605, size: 50, rot: 0.02 },
+];
+
+const SYMBOL_KINEMATICS: FormulaSymbolSpec[] = BASE_FORMULA_SYMBOLS.map((s, idx) => {
+  const seedX = (idx * 17 + 5) % 100;
+  const seedY = (idx * 23 + 11) % 100;
+  return {
+    ...s,
+    driftAmpX: 2.2 + (seedX % 25) * 0.12,
+    driftAmpY: 1.8 + (seedY % 20) * 0.11,
+    driftFreqX: 0.45 + ((idx * 7) % 30) * 0.015,
+    driftFreqY: 0.40 + ((idx * 11) % 35) * 0.014,
+    driftPhaseX: (idx * 0.73) % (Math.PI * 2),
+    driftPhaseY: (idx * 1.17 + 1.2) % (Math.PI * 2),
+  };
+});
+
+export function renderDynamicCurvedFormulaCanvas(
+  canvas: HTMLCanvasElement,
+  timeSec: number = 0,
+  fadeProgress: number = 0,
+  quality: "HIGH" | "MEDIUM" | "LIGHT" = "HIGH"
+): void {
   const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  if (!ctx) return;
+
+  // Reset transform and clear completely to avoid compounding scales
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.scale(0.5, 0.5);
 
   const w = 2048;
   const h = 768;
 
-  // 1. Transparent Clear (to allow exact silhouette outline in Three.js)
-  ctx.clearRect(0, 0, w, h);
-
-  // 2. Define Polygon Contour Path with Stepped Top & Inward Chevron Notch (<)
-  // Polygon points:
-  // p0: Bottom-left (50, 740)
-  // p1: Left top lower tier (50, 140)
-  // p2: Step-up start (640, 140)
-  // p3: Step-up top (740, 40)
-  // p4: Upper top tier (1980, 40)
-  // p5: Inward chevron notch apex (1860, 390) -> Gentle 45° notch matching real studio
-  // p6: Bottom-right corner (1980, 740)
-  // Close to p0
+  // 1. Define Polygon Contour Path with Stepped Top & Inward Chevron Notch (<)
   function traceContour(offset: number = 0) {
     if (!ctx) return;
     ctx.beginPath();
@@ -1452,14 +1619,14 @@ function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement 
     ctx.closePath();
   }
 
-  // 3. Fill Wall Body with Deep Cyber-Blue Gradient
+  // 2. Fill Wall Body with Deep Cyber-Blue Gradient
   ctx.save();
   traceContour(0);
   ctx.clip();
 
-  const r = Math.round(THREE.MathUtils.lerp(6, 45, fadeProgress));
-  const g = Math.round(THREE.MathUtils.lerp(22, 6, fadeProgress));
-  const b = Math.round(THREE.MathUtils.lerp(56, 14, fadeProgress));
+  const r = Math.round(THREE.MathUtils.lerp(2, 45, fadeProgress));
+  const g = Math.round(THREE.MathUtils.lerp(11, 6, fadeProgress));
+  const b = Math.round(THREE.MathUtils.lerp(30, 14, fadeProgress));
   const bodyGrad = ctx.createLinearGradient(0, 40, w, 740);
   bodyGrad.addColorStop(0, `rgb(${r + 6}, ${g + 18}, ${b + 28})`);
   bodyGrad.addColorStop(0.5, `rgb(${r}, ${g}, ${b})`);
@@ -1467,19 +1634,46 @@ function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement 
   ctx.fillStyle = bodyGrad;
   ctx.fillRect(0, 0, w, h);
 
-  // 4 Glowing Neon Rails (Sloping upward gently from left to right across full screen)
-  // Always pure cyber cyan (#00f0ff) matching user requirement
+  // 3. Glowing Neon Rails with traveling light pulses at 320 px/s
+  const slope = 0.09;
+  const railYBase = [95, 140, 185, 230];
+
+  // Static rail tracks
   ctx.save();
   ctx.strokeStyle = "rgba(0, 240, 255, 0.85)";
   ctx.lineWidth = 4;
   ctx.shadowColor = "#00f0ff";
   ctx.shadowBlur = 18;
-  const slope = 0.09; // Rising slope: as X goes 0 -> 2048, Y rises upward in 3D (canvas Y decreases)
-  for (const yRail of [95, 140, 185, 230]) {
+  for (const yRail of railYBase) {
     ctx.beginPath();
     ctx.moveTo(80, yRail - (80 - 1000) * slope);
     ctx.lineTo(1940, yRail - (1940 - 1000) * slope);
     ctx.stroke();
+  }
+  ctx.restore();
+
+  // Traveling pulses along neon rails (320 px/s)
+  const pulseSpeed = 320;
+  const railLen = 1860;
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  for (let rIdx = 0; rIdx < railYBase.length; rIdx++) {
+    const yRail = railYBase[rIdx];
+    for (let pIdx = 0; pIdx < 2; pIdx++) {
+      const pulseOffset = (rIdx * 450 + pIdx * 930) % railLen;
+      const pulseX = 80 + ((timeSec * pulseSpeed + pulseOffset) % railLen);
+      const pulseY = yRail - (pulseX - 1000) * slope;
+
+      const pGrad = ctx.createRadialGradient(pulseX, pulseY, 0, pulseX, pulseY, 65);
+      pGrad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+      pGrad.addColorStop(0.25, "rgba(0, 240, 255, 0.85)");
+      pGrad.addColorStop(0.6, "rgba(56, 189, 248, 0.35)");
+      pGrad.addColorStop(1, "rgba(0, 240, 255, 0.0)");
+      ctx.fillStyle = pGrad;
+      ctx.beginPath();
+      ctx.arc(pulseX, pulseY, 65, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.restore();
 
@@ -1494,117 +1688,72 @@ function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement 
   }
 
   // Streaming high-tech binary matrix 0/1 grid with glowing cyan and red digits
-  renderBinaryMatrixGrid(ctx, w, h, fadeProgress, 0);
+  renderBinaryMatrixGrid(ctx, w, h, fadeProgress, timeSec);
 
-  // 4. "CHỮ XANH TOÀN TẬP" — ALL SCIENTIFIC SYMBOLS & UNITS IN PURE GLOSSY LUMINOUS CYAN (#00f0ff)
-  // High-density distribution (75+ symbols) across 5 balanced tiers with zero stretched UV gaps
-  // Leaning gently to the left (shear +0.18) and sloping upward from left to right (angle -0.055 rad)
-  const symbols = [
-    // Tier 1 (Upper zone, Y: 80 - 130)
-    { text: "∑", x: 100, y: 110, size: 68, rot: -0.02 },
-    { text: "ml", x: 210, y: 115, size: 44, rot: 0.02 },
-    { text: "kg", x: 320, y: 105, size: 48, rot: -0.01 },
-    { text: "µ", x: 430, y: 115, size: 52, rot: 0.02 },
-    { text: "Ψ", x: 550, y: 100, size: 58, rot: -0.02 },
-    { text: "m²", x: 670, y: 95, size: 46, rot: 0.01 },
-    { text: "sin", x: 790, y: 90, size: 46, rot: -0.01 },
-    { text: "Δ", x: 910, y: 85, size: 60, rot: 0.02 },
-    { text: "cos", x: 1030, y: 90, size: 46, rot: -0.01 },
-    { text: "Ω", x: 1150, y: 85, size: 56, rot: 0.02 },
-    { text: "π", x: 1270, y: 90, size: 54, rot: -0.02 },
-    { text: "∫", x: 1390, y: 80, size: 68, rot: 0.02 },
-    { text: "tan", x: 1510, y: 95, size: 46, rot: -0.01 },
-    { text: "E=mc²", x: 1650, y: 85, size: 44, rot: 0.02 },
-    { text: "∇", x: 1790, y: 85, size: 54, rot: -0.02 },
-    { text: "∮", x: 1900, y: 80, size: 64, rot: 0.01 },
+  // 4. Periodic diagonal specular light sweeps (240 px/s, every ~5s)
+  const sweepPeriod = 5.0;
+  const sweepSpeed = 240;
+  const sweepSpan = 2400;
+  const sweepX1 = ((timeSec * sweepSpeed) % sweepSpan) - 200;
+  const sweepX2 = (((timeSec + sweepPeriod) * sweepSpeed) % sweepSpan) - 200;
+  const activeSweeps = [sweepX1, sweepX2];
 
-    // Tier 2 (Upper-mid zone, Y: 180 - 240)
-    { text: "λ", x: 120, y: 220, size: 54, rot: 0.02 },
-    { text: "lim", x: 240, y: 235, size: 46, rot: -0.02 },
-    { text: "θ", x: 360, y: 215, size: 52, rot: 0.02 },
-    { text: "f(x)", x: 480, y: 230, size: 48, rot: -0.02 },
-    { text: "∞", x: 610, y: 195, size: 62, rot: 0.03 },
-    { text: "√2", x: 730, y: 215, size: 50, rot: -0.01 },
-    { text: "hν", x: 850, y: 195, size: 48, rot: 0.02 },
-    { text: "log", x: 970, y: 220, size: 46, rot: -0.01 },
-    { text: "NaCl", x: 1090, y: 200, size: 48, rot: 0.01 },
-    { text: "α", x: 1210, y: 220, size: 52, rot: -0.02 },
-    { text: "β", x: 1330, y: 195, size: 52, rot: 0.02 },
-    { text: "γ", x: 1450, y: 220, size: 50, rot: -0.02 },
-    { text: "F=ma", x: 1580, y: 200, size: 46, rot: 0.02 },
-    { text: "∂x", x: 1710, y: 215, size: 48, rot: -0.01 },
-    { text: "ħ", x: 1830, y: 200, size: 54, rot: 0.02 },
-    { text: "ATP", x: 1930, y: 215, size: 42, rot: -0.01 },
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  activeSweeps.forEach((sweepCenter) => {
+    if (sweepCenter > -350 && sweepCenter < w + 350) {
+      const sweepGrad = ctx.createLinearGradient(sweepCenter - 140, 200, sweepCenter + 140, 568);
+      sweepGrad.addColorStop(0.0, "rgba(0, 240, 255, 0.0)");
+      sweepGrad.addColorStop(0.35, "rgba(56, 189, 248, 0.06)");
+      sweepGrad.addColorStop(0.50, "rgba(255, 255, 255, 0.22)");
+      sweepGrad.addColorStop(0.65, "rgba(0, 240, 255, 0.10)");
+      sweepGrad.addColorStop(1.0, "rgba(0, 240, 255, 0.0)");
+      ctx.fillStyle = sweepGrad;
 
-    // Tier 3 (Mid zone, Y: 310 - 370)
-    { text: "H₂O", x: 110, y: 340, size: 50, rot: -0.01 },
-    { text: "CO₂", x: 230, y: 355, size: 48, rot: 0.02 },
-    { text: "pH", x: 350, y: 330, size: 48, rot: -0.01 },
-    { text: "mol", x: 470, y: 350, size: 46, rot: 0.02 },
-    { text: "Hz", x: 590, y: 320, size: 50, rot: -0.02 },
-    { text: "Pa", x: 710, y: 345, size: 48, rot: 0.01 },
-    { text: "rad", x: 830, y: 320, size: 46, rot: -0.01 },
-    { text: "dx", x: 950, y: 350, size: 48, rot: 0.02 },
-    { text: "Δt", x: 1070, y: 325, size: 50, rot: -0.01 },
-    { text: "e", x: 1190, y: 345, size: 52, rot: 0.02 },
-    { text: "c", x: 1310, y: 320, size: 52, rot: -0.02 },
-    { text: "ρ", x: 1430, y: 345, size: 50, rot: 0.01 },
-    { text: "σ", x: 1550, y: 325, size: 50, rot: -0.01 },
-    { text: "O₂", x: 1670, y: 345, size: 48, rot: 0.02 },
-    { text: "CH₄", x: 1790, y: 325, size: 46, rot: -0.01 },
-    { text: "DNA", x: 1910, y: 345, size: 44, rot: 0.02 },
+      const topX = sweepCenter - 384 * 0.36;
+      const botX = sweepCenter + 384 * 0.36;
+      ctx.beginPath();
+      ctx.moveTo(topX - 160, 0);
+      ctx.lineTo(topX + 160, 0);
+      ctx.lineTo(botX + 160, h);
+      ctx.lineTo(botX - 160, h);
+      ctx.closePath();
+      ctx.fill();
+    }
+  });
+  ctx.restore();
 
-    // Tier 4 (Lower-mid zone, Y: 450 - 510)
-    { text: "W", x: 130, y: 470, size: 52, rot: 0.02 },
-    { text: "V", x: 260, y: 490, size: 52, rot: -0.01 },
-    { text: "A", x: 390, y: 465, size: 52, rot: 0.02 },
-    { text: "T", x: 520, y: 490, size: 50, rot: -0.01 },
-    { text: "B", x: 650, y: 465, size: 52, rot: 0.02 },
-    { text: "K", x: 780, y: 485, size: 50, rot: -0.01 },
-    { text: "g", x: 910, y: 460, size: 50, rot: 0.01 },
-    { text: "F", x: 1040, y: 490, size: 52, rot: -0.02 },
-    { text: "m", x: 1170, y: 465, size: 50, rot: 0.02 },
-    { text: "s", x: 1300, y: 490, size: 50, rot: -0.01 },
-    { text: "C", x: 1420, y: 470, size: 52, rot: 0.02 },
-    { text: "Fe", x: 1540, y: 490, size: 48, rot: -0.01 },
-    { text: "Cu", x: 1660, y: 465, size: 48, rot: 0.02 },
-    { text: "Au", x: 1780, y: 490, size: 48, rot: -0.01 },
-    { text: "Ag", x: 1900, y: 470, size: 48, rot: 0.01 },
-
-    // Tier 5 (Lower zone, Y: 580 - 640)
-    { text: "eⁱᵖ+1=0", x: 180, y: 610, size: 40, rot: 0.01 },
-    { text: "H₂SO₄", x: 370, y: 625, size: 44, rot: -0.01 },
-    { text: "m/s²", x: 530, y: 605, size: 44, rot: 0.02 },
-    { text: "ω", x: 680, y: 625, size: 50, rot: -0.01 },
-    { text: "φ", x: 820, y: 605, size: 50, rot: 0.02 },
-    { text: "∏", x: 960, y: 625, size: 54, rot: -0.01 },
-    { text: "ln", x: 1100, y: 605, size: 46, rot: 0.01 },
-    { text: "cot", x: 1240, y: 625, size: 46, rot: -0.01 },
-    { text: "τ", x: 1380, y: 605, size: 50, rot: 0.01 },
-    { text: "mg", x: 1510, y: 625, size: 44, rot: -0.01 },
-    { text: "L", x: 1640, y: 605, size: 48, rot: 0.02 },
-    { text: "arcsin", x: 1790, y: 625, size: 42, rot: -0.01 },
-    { text: "N", x: 1920, y: 605, size: 50, rot: 0.02 },
-  ];
-
+  // 5. "CHỮ XANH TOÀN TẬP" — ALL SCIENTIFIC SYMBOLS & UNITS IN PURE GLOSSY LUMINOUS CYAN
+  // Dynamic floating sinusoidal drift and specular glints/flares
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  symbols.forEach((s) => {
+  SYMBOL_KINEMATICS.forEach((s) => {
+    const driftX = s.x + Math.sin(timeSec * s.driftFreqX + s.driftPhaseX) * s.driftAmpX;
+    const driftY = s.y + Math.cos(timeSec * s.driftFreqY + s.driftPhaseY) * s.driftAmpY;
+
+    // Distance to nearest specular sweep band
+    let minSweepDist = 9999;
+    activeSweeps.forEach((sweepCenter) => {
+      const lineX = sweepCenter + (driftY - 384) * 0.36;
+      const dist = Math.abs(driftX - lineX) / 1.063;
+      if (dist < minSweepDist) minSweepDist = dist;
+    });
+
+    let specBoost = 1.0;
+    if (minSweepDist < 160) {
+      specBoost = 1.0 + 1.25 * Math.exp(-(minSweepDist * minSweepDist) / (2 * 50 * 50));
+    }
+
     ctx.save();
-    // Upward slope from left to right: as x increases (left -> right), y in canvas decreases (rises in 3D)
-    const slopeY = -(s.x - 1000) * slope;
-    ctx.translate(s.x, s.y + slopeY);
-    // Counter-clockwise rotation matches rising slope angle from left to right
+    const slopeY = -(driftX - 1000) * slope;
+    ctx.translate(driftX, driftY + slopeY);
     ctx.rotate(-Math.atan(slope) + (s.rot || 0) * 0.1);
-    // Positive shear (+0.20) in down-Y canvas shifts top (y < 0) left, bottom (y > 0) right -> authentic gentle leftward lean (\)
     ctx.transform(1, 0, 0.20, 1, 0, 0);
-    // Modern bold non-italic font (eliminating the heavy rightward lean)
     ctx.font = `900 ${s.size}px "Plus Jakarta Sans", "Montserrat", "Arial Black", sans-serif`;
     ctx.letterSpacing = "0.06em";
-    ctx.letterSpacing = "0.06em";
 
-    // 1. Deep Ambient Occlusion Drop Shadow (High Contrast Definition)
+    // Ambient drop shadow
     ctx.save();
     ctx.shadowColor = "rgba(1, 10, 28, 0.95)";
     ctx.shadowBlur = 14;
@@ -1614,74 +1763,97 @@ function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement 
     ctx.fillText(s.text, 0, 0);
     ctx.restore();
 
-    // 2. Volumetric Cyan Radiant Back-Glow
+    // Volumetric radiant glow
     ctx.save();
-    ctx.shadowColor = fadeProgress > 0.5 ? "#ff1a40" : "#00f0ff";
-    ctx.shadowBlur = 24;
+    const glowBlur = Math.min(36, Math.round(24 * specBoost));
+    ctx.shadowColor = fadeProgress > 0.5 ? "#ff1a40" : (specBoost > 1.3 ? "#e0f2fe" : "#00f0ff");
+    ctx.shadowBlur = glowBlur;
     ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(255, 30, 70, 0.9)" : "rgba(0, 240, 255, 0.9)";
     ctx.lineWidth = 6;
     ctx.strokeText(s.text, 0, 0);
     ctx.restore();
 
-    // 3. Multi-Stop Mirror Metallic / Glossy Acrylic Gradient Fill
+    // Multi-stop mirror metallic / glossy acrylic gradient fill
     const symGrad = ctx.createLinearGradient(0, -s.size * 0.55, 0, s.size * 0.55);
     if (fadeProgress > 0.5) {
-      symGrad.addColorStop(0.0, "#ffffff"); // Pure white specular hot spot
+      symGrad.addColorStop(0.0, "#ffffff");
       symGrad.addColorStop(0.18, "#ffe4e6");
       symGrad.addColorStop(0.48, "#ff2a55");
-      symGrad.addColorStop(0.50, "#fb7185"); // Crisp horizon glint line
+      symGrad.addColorStop(0.50, "#fb7185");
       symGrad.addColorStop(0.52, "#e11d48");
       symGrad.addColorStop(1.0, "#4c0519");
     } else {
-      symGrad.addColorStop(0.0, "#ffffff"); // Pure white specular hot spot
-      symGrad.addColorStop(0.18, "#cffafe"); // Upper specular rim
-      symGrad.addColorStop(0.48, "#00f0ff"); // Luminous electric cyan
-      symGrad.addColorStop(0.50, "#7dd3fc"); // Crisp horizon glint line
-      symGrad.addColorStop(0.52, "#0284c7"); // Deep royal blue body
-      symGrad.addColorStop(1.0, "#082f49"); // Dark base
+      symGrad.addColorStop(0.0, "#ffffff");
+      symGrad.addColorStop(0.18, specBoost > 1.4 ? "#ffffff" : "#cffafe");
+      symGrad.addColorStop(0.48, specBoost > 1.4 ? "#38bdf8" : "#00f0ff");
+      symGrad.addColorStop(0.50, "#7dd3fc");
+      symGrad.addColorStop(0.52, "#0284c7");
+      symGrad.addColorStop(1.0, "#082f49");
     }
     ctx.fillStyle = symGrad;
     ctx.fillText(s.text, 0, 0);
 
-    // 4. Beveled Acrylic Top-Edge Gloss Glint (Crisp Specular Edge)
+    // Beveled acrylic top-edge gloss glint
     ctx.save();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.92)";
+    const glintAlpha = Math.min(1.0, 0.92 * specBoost);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${glintAlpha})`;
     ctx.lineWidth = 2.2;
     ctx.shadowColor = "#ffffff";
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 6 * specBoost;
     ctx.strokeText(s.text, -0.6, -1.2);
     ctx.restore();
+
+    // 4-Point diamond starburst flare on intense specular sheen (specBoost > 1.6)
+    if (specBoost > 1.6) {
+      const flareAlpha = Math.min(1.0, (specBoost - 1.6) * 1.6);
+      const flareSize = s.size * 0.55 * flareAlpha;
+      ctx.save();
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.92 * flareAlpha})`;
+      ctx.shadowColor = "#00f0ff";
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(0, -s.size * 0.35 - flareSize);
+      ctx.quadraticCurveTo(0, -s.size * 0.35, flareSize, -s.size * 0.35);
+      ctx.quadraticCurveTo(0, -s.size * 0.35, 0, -s.size * 0.35 + flareSize);
+      ctx.quadraticCurveTo(0, -s.size * 0.35, -flareSize, -s.size * 0.35);
+      ctx.quadraticCurveTo(0, -s.size * 0.35, 0, -s.size * 0.35 - flareSize);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
 
     ctx.restore();
   });
 
   // Vector Icon 1: Chemical Erlenmeyer Flask with Volumetric Glossy Liquid, Markings & Bubbles
+  const flaskDriftX = 330 + Math.sin(timeSec * 0.5) * 3;
+  const flaskDriftY = 205 + Math.cos(timeSec * 0.6) * 2;
   ctx.save();
   ctx.strokeStyle = "#00f0ff";
   ctx.lineWidth = 4.5;
   ctx.shadowColor = "#00f0ff";
   ctx.shadowBlur = 18;
   ctx.beginPath();
-  ctx.moveTo(330, 205);
-  ctx.lineTo(330, 222);
-  ctx.lineTo(312, 258);
-  ctx.lineTo(358, 258);
-  ctx.lineTo(340, 222);
-  ctx.lineTo(340, 205);
+  ctx.moveTo(flaskDriftX, flaskDriftY);
+  ctx.lineTo(flaskDriftX, flaskDriftY + 17);
+  ctx.lineTo(flaskDriftX - 18, flaskDriftY + 53);
+  ctx.lineTo(flaskDriftX + 28, flaskDriftY + 53);
+  ctx.lineTo(flaskDriftX + 10, flaskDriftY + 17);
+  ctx.lineTo(flaskDriftX + 10, flaskDriftY);
   ctx.closePath();
   ctx.stroke();
 
   // Flask Liquid with Volumetric Cyan Glow
-  const flaskGrad = ctx.createLinearGradient(0, 232, 0, 258);
+  const flaskGrad = ctx.createLinearGradient(0, flaskDriftY + 27, 0, flaskDriftY + 53);
   flaskGrad.addColorStop(0, "rgba(56, 189, 248, 0.40)");
   flaskGrad.addColorStop(0.5, "rgba(0, 240, 255, 0.75)");
   flaskGrad.addColorStop(1, "rgba(2, 132, 199, 0.90)");
   ctx.fillStyle = flaskGrad;
   ctx.beginPath();
-  ctx.moveTo(320, 235);
-  ctx.bezierCurveTo(326, 237, 344, 237, 350, 235);
-  ctx.lineTo(356, 256);
-  ctx.lineTo(314, 256);
+  ctx.moveTo(flaskDriftX - 10, flaskDriftY + 30);
+  ctx.bezierCurveTo(flaskDriftX - 4, flaskDriftY + 32, flaskDriftX + 14, flaskDriftY + 32, flaskDriftX + 20, flaskDriftY + 30);
+  ctx.lineTo(flaskDriftX + 26, flaskDriftY + 51);
+  ctx.lineTo(flaskDriftX - 16, flaskDriftY + 51);
   ctx.closePath();
   ctx.fill();
 
@@ -1689,19 +1861,28 @@ function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement 
   ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
   ctx.lineWidth = 1.8;
   ctx.shadowBlur = 0;
-  for (const markY of [240, 246, 252]) {
+  for (const markOffsetY of [35, 41, 47]) {
     ctx.beginPath();
-    ctx.moveTo(328, markY);
-    ctx.lineTo(334, markY);
+    ctx.moveTo(flaskDriftX - 2, flaskDriftY + markOffsetY);
+    ctx.lineTo(flaskDriftX + 4, flaskDriftY + markOffsetY);
     ctx.stroke();
   }
 
   // Rising bubbles in flask
   ctx.fillStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.arc(336, 245, 1.8, 0, Math.PI * 2);
-  ctx.arc(342, 251, 1.4, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.shadowColor = "#00f0ff";
+  ctx.shadowBlur = 4;
+  const bubbleSpeeds = [14, 18, 12, 16];
+  const bubbleXOffsets = [2, 10, -4, 16];
+  const bubbleRadii = [1.8, 1.4, 1.6, 1.2];
+  for (let b = 0; b < 4; b++) {
+    const bDist = (timeSec * bubbleSpeeds[b] + b * 7) % 20;
+    const bY = flaskDriftY + 51 - bDist;
+    const bX = flaskDriftX + bubbleXOffsets[b] + Math.sin(timeSec * 2.5 + b) * 1.2;
+    ctx.beginPath();
+    ctx.arc(bX, bY, bubbleRadii[b], 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // Flask Specular Highlight Reflection
   ctx.strokeStyle = "rgba(255, 255, 255, 0.92)";
@@ -1709,8 +1890,8 @@ function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement 
   ctx.shadowColor = "#ffffff";
   ctx.shadowBlur = 6;
   ctx.beginPath();
-  ctx.moveTo(318, 240);
-  ctx.lineTo(315, 254);
+  ctx.moveTo(flaskDriftX - 12, flaskDriftY + 35);
+  ctx.lineTo(flaskDriftX - 15, flaskDriftY + 49);
   ctx.stroke();
   ctx.restore();
 
@@ -1738,12 +1919,26 @@ function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement 
   ctx.ellipse(0, 0, 28, 11, -Math.PI * 0.20, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Orbiting electron particles
+  // Orbiting electron particles with dynamic motion
+  const eAng1 = timeSec * 3.4;
+  const ex1 = 28 * Math.cos(eAng1);
+  const ey1 = 11 * Math.sin(eAng1);
+  const rot1 = Math.PI * 0.20;
+  const rx1 = ex1 * Math.cos(rot1) - ey1 * Math.sin(rot1);
+  const ry1 = ex1 * Math.sin(rot1) + ey1 * Math.cos(rot1);
+
+  const eAng2 = -timeSec * 2.8 + 1.5;
+  const ex2 = 28 * Math.cos(eAng2);
+  const ey2 = 11 * Math.sin(eAng2);
+  const rot2 = -Math.PI * 0.20;
+  const rx2 = ex2 * Math.cos(rot2) - ey2 * Math.sin(rot2);
+  const ry2 = ex2 * Math.sin(rot2) + ey2 * Math.cos(rot2);
+
   ctx.fillStyle = "#38bdf8";
   ctx.shadowBlur = 8;
   ctx.beginPath();
-  ctx.arc(18, 12, 2.4, 0, Math.PI * 2);
-  ctx.arc(-20, 8, 2.4, 0, Math.PI * 2);
+  ctx.arc(rx1, ry1, 2.6, 0, Math.PI * 2);
+  ctx.arc(rx2, ry2, 2.6, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
@@ -1767,11 +1962,12 @@ function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement 
   ctx.closePath();
   ctx.stroke();
 
-  // Inner resonance aromatic ring
+  // Inner resonance aromatic ring (pulsing)
+  const ringRadius = 12 + Math.sin(timeSec * 2.2) * 0.8;
   ctx.strokeStyle = "rgba(56, 189, 248, 0.75)";
   ctx.lineWidth = 2.0;
   ctx.beginPath();
-  ctx.arc(0, 0, 12, 0, Math.PI * 2);
+  ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 
@@ -1792,8 +1988,8 @@ function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement 
 
   ctx.restore(); // Restore clip
 
-  // 5. MULTI-LAYER CONCENTRIC NEON BORDERS ("background kết hợp nhiều viền")
-  // Border 1: Outer Neon Track (Width 8, #00f0ff)
+  // 6. MULTI-LAYER CONCENTRIC NEON BORDERS ("background kết hợp nhiều viền")
+  // Border 1: Outer Neon Track (Width 7, #00f0ff)
   ctx.save();
   ctx.strokeStyle = fadeProgress > 0.5 ? "#ff2a4b" : "#00f0ff";
   ctx.lineWidth = 7;
@@ -1816,7 +2012,13 @@ function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement 
   traceContour(24);
   ctx.stroke();
   ctx.restore();
+}
 
+export function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 384;
+  renderDynamicCurvedFormulaCanvas(canvas, 0, fadeProgress, "HIGH");
   return canvas;
 }
 
@@ -1998,6 +2200,7 @@ export function CentralLedWall({
   state,
   screenFadeProgress = 0,
   quality = "HIGH",
+  liveFactor = 1.0,
 }: CentralLedWallProps) {
   const logoImageRef = useRef<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -2006,6 +2209,11 @@ export function CentralLedWall({
   const totemTextureRef = useRef<THREE.CanvasTexture | null>(null);
   const starryCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const starryTextureRef = useRef<THREE.CanvasTexture | null>(null);
+  const formulaWallCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const formulaWallTextureRef = useRef<THREE.CanvasTexture | null>(null);
+  const accumulatedTimeRef = useRef<number>(0);
+  const lastWallFrameRef = useRef<number>(0);
+  const lastScreenFrameRef = useRef<number>(0);
   const lastFadeRef = useRef<number>(-1);
 
   // Preload Olympia 2016 logo
@@ -2105,6 +2313,11 @@ export function CentralLedWall({
     return tex;
   }, [formulaWallCanvas]);
 
+  useEffect(() => {
+    formulaWallCanvasRef.current = formulaWallCanvas;
+    formulaWallTextureRef.current = formulaWallTexture;
+  }, [formulaWallCanvas, formulaWallTexture]);
+
   // Perforated White LED Dots Arch Texture (Images 3 & 4)
   const whiteDotsArchCanvas = useMemo(() => {
     if (typeof document === "undefined") return null;
@@ -2185,11 +2398,58 @@ export function CentralLedWall({
     state?.veDich?.current?.q?.q,
   ]);
 
+  // 30 FPS Dynamic Canvas Engine (Requirement R5)
+  // Drives smooth floating kinematics, 320 px/s rail pulses, 240 px/s specular sweeps, and idle screen graphics
+  useFrame((_, delta) => {
+    const dt = Math.min(delta, 0.1);
+    accumulatedTimeRef.current += dt;
+    const t = accumulatedTimeRef.current;
+
+    // 1. Throttle Curved Formula Wall redraw to ~30 FPS (interval >= 32ms)
+    if (t - lastWallFrameRef.current >= 0.032) {
+      lastWallFrameRef.current = t;
+      if (formulaWallCanvasRef.current && formulaWallTextureRef.current) {
+        renderDynamicCurvedFormulaCanvas(
+          formulaWallCanvasRef.current,
+          t,
+          screenFadeProgress,
+          quality
+        );
+        formulaWallTextureRef.current.needsUpdate = true;
+      }
+    }
+
+    // 2. Throttle Stage Right Screen & Vertical Totem in Idle Mode to ~20-25 FPS (interval >= 45ms)
+    const isIdle = isPreMatchIdle(state);
+    if (isIdle && t - lastScreenFrameRef.current >= 0.045) {
+      lastScreenFrameRef.current = t;
+      if (canvasRef.current && textureRef.current) {
+        renderLedScreenToCanvas(
+          canvasRef.current,
+          logoImageRef.current,
+          screenFadeProgress,
+          state,
+          t
+        );
+        textureRef.current.needsUpdate = true;
+      }
+      if (totemCanvasRef.current && totemTextureRef.current) {
+        renderVerticalTotemToCanvas(
+          totemCanvasRef.current,
+          state,
+          screenFadeProgress,
+          t
+        );
+        totemTextureRef.current.needsUpdate = true;
+      }
+    }
+  });
+
   const neonColor = useMemo(() => {
-    const c = new THREE.Color("#00f0ff");
-    c.lerp(new THREE.Color("#ff1a40"), screenFadeProgress);
-    return c;
-  }, [screenFadeProgress]);
+    const baseColor = screenFadeProgress > 0.5 ? new THREE.Color("#ff1a40") : new THREE.Color("#00f0ff");
+    const darkDormant = new THREE.Color("#020712");
+    return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
+  }, [screenFadeProgress, liveFactor]);
 
   // Solid Grounded Hexagon Geometry for Starry Portal Interior Backdrop at Y = 0
   // Normalized UV coordinates to map starry texture seamlessly across the shape with ZERO vertical stripes
@@ -2547,19 +2807,19 @@ export function CentralLedWall({
         {/* Sleek Rectangular Cyan Neon Border around Quizorra Lightbox (Clean Broadcast Trim) */}
         <mesh position={[0, 0.25, 0.066]}>
           <boxGeometry args={[1.56, 0.02, 0.02]} />
-          <meshBasicMaterial color="#00f0ff" toneMapped={false} />
+          <meshBasicMaterial color={neonColor} toneMapped={false} />
         </mesh>
         <mesh position={[0, -0.25, 0.066]}>
           <boxGeometry args={[1.56, 0.02, 0.02]} />
-          <meshBasicMaterial color="#00f0ff" toneMapped={false} />
+          <meshBasicMaterial color={neonColor} toneMapped={false} />
         </mesh>
         <mesh position={[-0.77, 0, 0.066]}>
           <boxGeometry args={[0.02, 0.50, 0.02]} />
-          <meshBasicMaterial color="#00f0ff" toneMapped={false} />
+          <meshBasicMaterial color={neonColor} toneMapped={false} />
         </mesh>
         <mesh position={[0.77, 0, 0.066]}>
           <boxGeometry args={[0.02, 0.50, 0.02]} />
-          <meshBasicMaterial color="#00f0ff" toneMapped={false} />
+          <meshBasicMaterial color={neonColor} toneMapped={false} />
         </mesh>
       </group>
     </group>

@@ -108901,7 +108901,7 @@ async function loadGame(code) {
     } catch {
     }
     if (!room || room.mode !== "OLYMPIA") {
-      if (code === "SANDBOX" || /^\d{6}$/.test(code) || code.startsWith("sandbox")) {
+      if (code === "SANDBOX" || code === "OFFLINE" || code.startsWith("OFFLINE") || /^\d{6}$/.test(code) || code.startsWith("sandbox")) {
         const defaultCfg = {
           rulesetId: "O26",
           rounds: ["khoiDong", "vcnv", "tangToc", "veDich"],

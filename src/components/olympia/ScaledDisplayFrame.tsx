@@ -12,7 +12,7 @@ const STAGE_H = 1080;
 export const ScaledDisplayFrame = React.memo(function ScaledDisplayFrame({
   src,
   title = "Display Viewport",
-  allow,
+  allow = "autoplay; camera; microphone; display-capture",
   iframeRef,
   className = "",
 }: {

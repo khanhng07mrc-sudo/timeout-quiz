@@ -146,18 +146,28 @@ function ContestantIntroChyron({ state }: { state: OlympiaState }) {
 
 export default function DisplayScreen({ code }: { code: string }) {
   const { state, join, connected, serverNow } = useOlympiaSocket({ code, role: "display" });
+  const isExplicitMuteParam =
+    typeof window !== "undefined" &&
+    (new URLSearchParams(window.location.search).get("mute") === "1" ||
+      new URLSearchParams(window.location.search).get("audio") === "0");
   const isSandboxParam =
     typeof window !== "undefined" &&
     (window.location.search.includes("sandbox=1") ||
       window.location.search.includes("perf=light") ||
       window.self !== window.top);
-  const isMutedParam =
-    typeof window !== "undefined" &&
-    (isSandboxParam ||
-      new URLSearchParams(window.location.search).get("mute") === "1" ||
-      new URLSearchParams(window.location.search).get("audio") === "0");
-  const [audioOn, setAudioOn] = useState(!isMutedParam);
+  const [audioOn, setAudioOn] = useState(!isExplicitMuteParam);
   const [ttsActive, setTtsActive] = useState<boolean>(() => (isSandboxParam ? false : isTtsEnabled()));
+
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === "UNLOCK_AUDIO") {
+        setAudioOn(true);
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
   useOlympiaAudio(state, join?.audioSeason, audioOn);
 
   // Auto-camera and question overlay visibility state

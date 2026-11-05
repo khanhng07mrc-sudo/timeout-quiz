@@ -57,3 +57,4 @@ release/
 .agents/teamwork/test_writer*
 .agents/teamwork/victory*
 .agents/teamwork/worker*
+.agents/

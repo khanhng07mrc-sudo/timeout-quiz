@@ -150,10 +150,10 @@ export function useOlympiaCameraState(
       };
     }
 
-    // Opening show intro
+    // Opening show intro: Align director target with MC Lectern (CAM 3)
     if (state.introTimer) {
       return {
-        camAngle: 1,
+        camAngle: 3,
         transitionMode: "MORPH",
         isOverlayHidden: false,
         pushInProgress: 0.3,

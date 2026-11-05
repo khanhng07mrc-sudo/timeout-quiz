@@ -27,13 +27,15 @@ function createPodiumScoreCanvas(
   isBuzzed: boolean,
   isRed: boolean = false,
   school?: string,
-  isEntrancePhase: boolean = false
+  isEntrancePhase: boolean = false,
+  targetCanvas?: HTMLCanvasElement
 ): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
+  const canvas = targetCanvas || (typeof document !== "undefined" ? document.createElement("canvas") : ({} as HTMLCanvasElement));
   canvas.width = 512;
   canvas.height = 256;
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext ? canvas.getContext("2d") : null;
   if (!ctx) return canvas;
+  ctx.clearRect(0, 0, 512, 256);
 
   if (isEntrancePhase) {
     // ── ENTRANCE / INTRO BROADCAST DISPLAY MODE ──
@@ -191,34 +193,35 @@ function ContestantScoreDisplay({
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
+  const [texture, setTexture] = useState<THREE.CanvasTexture | null>(null);
 
-  const canvas = useMemo(() => {
-    if (typeof document === "undefined") return null;
-    return createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed, school, isEntrancePhase);
-  }, [name, score, seatId, isBuzzed, isRed, school, isEntrancePhase]);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
 
-  const texture = useMemo(() => {
-    if (!canvas) return null;
+    // Single persistent canvas allocation
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 256;
+    createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed, school, isEntrancePhase, canvas);
+
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.needsUpdate = true;
-    return tex;
-  }, [canvas]);
 
-  useEffect(() => {
     canvasRef.current = canvas;
-    textureRef.current = texture;
-    if (texture) texture.needsUpdate = true;
-  }, [canvas, texture]);
+    textureRef.current = tex;
+    setTexture(tex);
+
+    return () => {
+      tex.dispose();
+      textureRef.current = null;
+      canvasRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (canvasRef.current && textureRef.current) {
-      const fresh = createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed, school, isEntrancePhase);
-      const ctx = canvasRef.current.getContext("2d");
-      if (ctx) {
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        ctx.drawImage(fresh, 0, 0);
-      }
+      createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed, school, isEntrancePhase, canvasRef.current);
       textureRef.current.needsUpdate = true;
     }
   }, [name, score, seatId, isBuzzed, isRed, school, isEntrancePhase]);
@@ -273,13 +276,14 @@ const CONTESTANT_STYLES: ContestantStyleConfig[] = [
   { gender: "male", skinTone: "#dfb088", hairColor: "#191512", hairStyle: "undercut", hasGlasses: false },
 ];
 
-function ContestantFigure({ seatId }: { seatId: number }) {
+function ContestantFigure({ seatId, quality }: { seatId: number; quality?: "HIGH" | "MEDIUM" | "LIGHT" }) {
   const style = CONTESTANT_STYLES[seatId % CONTESTANT_STYLES.length];
   const chestRef = useRef<THREE.Group>(null);
   const headRef = useRef<THREE.Group>(null);
 
   // Micro-breathing & natural student idle posture via useFrame
   useFrame(({ clock }) => {
+    if (quality === "LIGHT") return;
     const t = clock.getElapsedTime();
     if (chestRef.current) {
       // Subtle vertical breathing oscillation (2mm amplitude)
@@ -690,6 +694,7 @@ function ContestantPodium({
   school,
   isEntrancePhase = false,
   showFigure = true,
+  quality,
 }: {
   seatId: number;
   name: string;
@@ -701,6 +706,7 @@ function ContestantPodium({
   school?: string;
   isEntrancePhase?: boolean;
   showFigure?: boolean;
+  quality?: "HIGH" | "MEDIUM" | "LIGHT";
 }) {
   const buzzerDomeRef = useRef<THREE.Mesh>(null);
   const haloRef = useRef<THREE.Mesh>(null);
@@ -866,7 +872,7 @@ function ContestantPodium({
       </group>
 
       {/* ── 6. 3D CONTESTANT FIGURE STANDING BEHIND PODIUM (Hidden during walking entrance) ── */}
-      {showFigure && <ContestantFigure seatId={seatId} />}
+      {showFigure && <ContestantFigure seatId={seatId} quality={quality} />}
     </group>
   );
 }
@@ -1883,7 +1889,7 @@ function ContestantEntranceWalkingFigures({
  */
 export function Podiums({
   state,
-  quality: _quality = "HIGH",
+  quality = "HIGH",
   screenFadeProgress = 0,
   serverNow,
 }: PodiumsProps) {
@@ -1962,6 +1968,7 @@ export function Podiums({
             school={school}
             isEntrancePhase={isEntrancePhase}
             showFigure={showFigure}
+            quality={quality}
             position={cfg.pos}
             rotationY={cfg.rotY}
             isBuzzed={isBuzzed}

@@ -9,7 +9,7 @@ const STAGE_H = 1080;
  * Nhúng màn hình chiếu Olympia ở khung chuẩn Full HD 1920×1080 (16:9) rồi tự thu/phóng vừa khít khung chứa
  * (letterbox) — tránh việc iframe nhỏ bị nén/méo bố cục và sai breakpoint responsive.
  */
-export default function ScaledDisplayFrame({
+export const ScaledDisplayFrame = React.memo(function ScaledDisplayFrame({
   src,
   title = "Display Viewport",
   allow,
@@ -66,4 +66,6 @@ export default function ScaledDisplayFrame({
       </div>
     </div>
   );
-}
+});
+
+export default ScaledDisplayFrame;

@@ -413,11 +413,11 @@ export default function CreateRoomPage() {
           teams: teamMode === "TEAM" ? teams : [],
           config: {
             // OLYMPIA mode: powerupEnabled: false
-            powerupEnabled: mode === "OLYMPIA" ? false : mode === "MYSTERY_QUEST" ? false : powerupEnabled,
+            powerupEnabled: (mode === "MYSTERY_QUEST" || mode === "OLYMPIA") ? false : powerupEnabled,
             powerupOwnerType,
-            powerupCountShared: mode === "MYSTERY_QUEST" ? 0 : powerupCountShared,
-            powerupCountPerTeam: mode === "MYSTERY_QUEST" ? 0 : powerupCountPerTeam,
-            allowedPowerups: mode === "MYSTERY_QUEST" ? [] : (() => {
+            powerupCountShared: (mode === "MYSTERY_QUEST" || mode === "OLYMPIA") ? 0 : powerupCountShared,
+            powerupCountPerTeam: (mode === "MYSTERY_QUEST" || mode === "OLYMPIA") ? 0 : powerupCountPerTeam,
+            allowedPowerups: (mode === "MYSTERY_QUEST" || mode === "OLYMPIA") ? [] : (() => {
               const currentModeAllowed = getDefaultAllowedPowerupsForMode(mode as GameMode);
               const filtered = allowedPowerups.filter((p) => currentModeAllowed.includes(p as CardType));
               return filtered.length > 0 ? filtered : currentModeAllowed;
@@ -2416,14 +2416,35 @@ export default function CreateRoomPage() {
       {/* Step 3: Power-ups */}
       {step === 3 && (
         <div className="space-y-6">
-          {(mode === "MYSTERY_QUEST" || mode === "OLYMPIA") ? (
+          {mode === "OLYMPIA" ? (
+            <div className="p-6 rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-950/30 via-blue-950/20 to-slate-900/60 text-center space-y-4">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-3xl shadow-lg">
+                🏔️
+              </div>
+              <div className="max-w-xl mx-auto space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 border border-sky-500/40 text-sky-300 text-xs font-bold">
+                  <span>✨</span> Chế độ thi đấu chuẩn VTV3 không sử dụng Thẻ Hỗ Trợ
+                </div>
+                <h3 className="text-xl font-black text-white">Đường Lên Đỉnh Olympia: Không dùng Power-up</h3>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Các phần thi Khởi Động, Vượt Chướng Ngại Vật, Tăng Tốc và Về Đích tuân thủ luật thi đấu đối kháng kiến thức truyền thống, hoàn toàn không áp dụng cơ chế thẻ bổ trợ (Power-up).
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-black/40 border border-white/10 max-w-lg mx-auto text-left flex items-start gap-3">
+                <span className="text-xl shrink-0">ℹ️</span>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Toàn bộ thẻ bài hỗ trợ đã được tự động vô hiệu hoá cho chế độ này. Bạn có thể nhấn <strong>&ldquo;Tiếp theo&rdquo;</strong> để sang bước cài đặt điểm số và hoàn tất tạo phòng.
+                </p>
+              </div>
+            </div>
+          ) : mode === "MYSTERY_QUEST" ? (
             <div className="p-6 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-950/30 via-purple-950/20 to-slate-900/60 text-center space-y-4">
               <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-3xl shadow-lg">
                 🗝️
               </div>
               <div className="max-w-xl mx-auto space-y-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold">
-                  <span>✨</span> Mode duy nhất không sử dụng Thẻ Hỗ Trợ
+                  <span>✨</span> Chế độ không sử dụng Thẻ Hỗ Trợ
                 </div>
                 <h3 className="text-xl font-black text-white">Hành Trình Bí Ẩn: Không hỗ trợ Power-up</h3>
                 <p className="text-sm text-slate-300 leading-relaxed">

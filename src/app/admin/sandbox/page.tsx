@@ -578,26 +578,40 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
   const olympiaSocketRef = useRef<Socket | null>(null);
   const [olympiaState, setOlympiaState] = useState<OlympiaState | null>(null);
 
+  const olympiaHostKey = useMemo(() => {
+    return typeof window !== "undefined" ? localStorage.getItem(`host_key_${code}`) || "sandbox" : "sandbox";
+  }, [code]);
+
   useEffect(() => {
     if (effectiveActiveMode !== "OLYMPIA" || !code) return;
     const sock = io("/olympia", { transports: ["websocket", "polling"], reconnection: true });
     olympiaSocketRef.current = sock;
-    const key = typeof window !== "undefined" ? localStorage.getItem(`host_key_${code}`) || "sandbox" : "sandbox";
     sock.on("connect", () => {
-      sock.emit("join", { code, role: "host", key });
+      sock.emit("join", { code, role: "host", key: olympiaHostKey });
     });
     sock.on("state", (s: OlympiaState) => {
-      setOlympiaState(s);
+      setOlympiaState((prev) => {
+        if (
+          prev &&
+          prev.stage === s.stage &&
+          prev.currentRound === s.currentRound &&
+          prev.rulesetId === s.rulesetId &&
+          Boolean(prev.introTimer) === Boolean(s.introTimer)
+        ) {
+          return prev;
+        }
+        return s;
+      });
       // Tự động chuyển tab thí sinh theo đúng lượt chơi đơn (Khởi Động cá nhân, Về Đích)
       if (s.currentRound === "khoiDong" && s.khoiDong) {
         const seg = s.khoiDong.segments[s.khoiDong.segIdx];
         if (seg?.kind === "solo" && seg.seat != null) {
-          setOlympiaActiveSeat(seg.seat);
+          setOlympiaActiveSeat((prev) => (prev !== seg.seat ? seg.seat! : prev));
         }
       } else if (s.currentRound === "veDich" && s.veDich) {
         const targetSeat = s.veDich.order[s.veDich.turnIdx];
         if (targetSeat != null) {
-          setOlympiaActiveSeat(targetSeat);
+          setOlympiaActiveSeat((prev) => (prev !== targetSeat ? targetSeat : prev));
         }
       }
     });
@@ -605,7 +619,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       sock.disconnect();
       olympiaSocketRef.current = null;
     };
-  }, [effectiveActiveMode, code]);
+  }, [effectiveActiveMode, code, olympiaHostKey]);
 
   const sendOlympiaAction = useCallback((type: string, extra: Record<string, unknown> = {}) => {
     if (olympiaSocketRef.current) {
@@ -12116,7 +12130,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                 </span>
               </div>
               <a
-                href={`/olympia/host/${code}?key=${typeof window !== "undefined" ? localStorage.getItem(`host_key_${code}`) || "sandbox" : "sandbox"}`}
+                href={`/olympia/host/${code}?key=${olympiaHostKey}`}
                 target="_blank"
                 rel="noreferrer"
                 className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
@@ -12126,7 +12140,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
               </a>
             </div>
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              <HostConsole code={code} hostKey={typeof window !== "undefined" ? localStorage.getItem(`host_key_${code}`) || "sandbox" : "sandbox"} />
+              <HostConsole code={code} hostKey={olympiaHostKey} />
             </div>
           </div>
         </div>

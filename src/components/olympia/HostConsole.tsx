@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
-import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId, type Seat, type O22Quarter } from "@/lib/olympia/types";
+import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId, type Seat, type O22Quarter, type TimerState } from "@/lib/olympia/types";
 import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
 import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
 import OlympiaAudioManagerDrawer from "./OlympiaAudioManagerDrawer";
@@ -18,25 +18,28 @@ type Call = (type: string, extra?: Record<string, unknown>) => Promise<{ ok: boo
 type SN = () => number;
 
 
-export function ActiveTimerBadge({
+export const ActiveTimerBadge = React.memo(function ActiveTimerBadge({
+  timer,
   activeTimer,
   serverNow,
   className = "",
 }: {
-  activeTimer: any;
+  timer?: TimerState | null | undefined;
+  activeTimer?: TimerState | null | undefined;
   serverNow: () => number;
   className?: string;
 }) {
-  const badgeTimerMs = useCountdown(activeTimer, serverNow);
-  const text = activeTimer
-    ? activeTimer.startedAt != null || activeTimer.remainingMs > 0
-      ? `${Math.ceil(badgeTimerMs / 1000)}s`
-      : "0s"
+  const targetTimer = timer !== undefined ? timer : activeTimer;
+  const ms = useCountdown(targetTimer, serverNow);
+  const text = targetTimer
+    ? (targetTimer.startedAt != null || targetTimer.remainingMs > 0
+        ? `${Math.ceil(ms / 1000)}s`
+        : "0s")
     : "--";
   return <span className={className}>{text}</span>;
-}
+});
 
-export default function HostConsole({ code, hostKey }: { code: string; hostKey: string }) {
+export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { code: string; hostKey: string }) {
   const { state, join, connected, emit, serverNow } = useOlympiaSocket({ code, role: "host", hostKey });
   const [err, setErr] = useState("");
   // Auto-enabled by default so Host Console plays all game sounds like the real desktop software
@@ -717,7 +720,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 </span>
               </div>
               <div className="text-xl font-black font-mono text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]">
-                <ActiveTimerBadge activeTimer={activeTimer} serverNow={serverNow} />
+                <ActiveTimerBadge timer={activeTimer} serverNow={serverNow} />
               </div>
             </div>
 
@@ -1401,7 +1404,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Timer:</span>
-                  <b className="font-mono text-cyan-300"><ActiveTimerBadge activeTimer={activeTimer} serverNow={serverNow} /></b>
+                  <b className="font-mono text-cyan-300"><ActiveTimerBadge timer={activeTimer} serverNow={serverNow} /></b>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Buzzer:</span>
@@ -1801,7 +1804,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
       )}
     </div>
   );
-}
+});
 
 // ───────────────────────────────────────────────────────────
 // KHỞI ĐỘNG DECK (Image 1 reference)
@@ -3218,3 +3221,5 @@ function getExplanationText(st: OlympiaState): string {
   if (st.currentRound === "cauHoiPhu") return "Thời gian suy nghĩ: 15s";
   return "--";
 }
+
+export default HostConsole;

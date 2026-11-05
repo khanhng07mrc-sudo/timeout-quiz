@@ -105565,9 +105565,9 @@ var RULESETS = {
     vcnv: { rowPoints: 10, cnvPoints: CNV_O14_O22, rowTimerMs: 15e3 },
     tangToc: { timers: [1e4, 2e4, 3e4, 4e4] },
     veDich: {
-      questionsPerSeat: 3,
+      questionsPerSeat: 2,
       selectionMode: "customPoints",
-      pointOptions: [10, 20, 30],
+      pointOptions: [20, 40],
       thinkMs: THINK_MODERN,
       stealMs: 5e3,
       stealPenaltyDivisor: 2,
@@ -105590,7 +105590,7 @@ var RULESETS = {
     veDich: {
       questionsPerSeat: 3,
       selectionMode: "customPoints",
-      pointOptions: [10, 20, 30],
+      pointOptions: [20, 30],
       thinkMs: THINK_MODERN,
       stealMs: 5e3,
       stealPenaltyDivisor: 2,

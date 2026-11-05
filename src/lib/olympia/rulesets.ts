@@ -276,9 +276,9 @@ export const RULESETS: Record<RulesetId, OlympiaRuleset> = {
     vcnv: { rowPoints: 10, cnvPoints: CNV_O14_O22, rowTimerMs: 15000 },
     tangToc: { timers: [10000, 20000, 30000, 40000] },
     veDich: {
-      questionsPerSeat: 3,
+      questionsPerSeat: 2,
       selectionMode: "customPoints",
-      pointOptions: [10, 20, 30],
+      pointOptions: [20, 40],
       thinkMs: THINK_MODERN,
       stealMs: 5000,
       stealPenaltyDivisor: 2,
@@ -301,7 +301,7 @@ export const RULESETS: Record<RulesetId, OlympiaRuleset> = {
     veDich: {
       questionsPerSeat: 3,
       selectionMode: "customPoints",
-      pointOptions: [10, 20, 30],
+      pointOptions: [20, 30],
       thinkMs: THINK_MODERN,
       stealMs: 5000,
       stealPenaltyDivisor: 2,

@@ -204,13 +204,11 @@ export function useOlympiaCameraState(
       }
 
       // 3.3. Khi nhấn Bắt đầu (trong 3.5s đầu):
-      // USER REQUIREMENT: "khi nhấn Bắt đầu, hệ thống tự đi từ bên trái dưới vòng nguyệt quế đi ra toàn cảnh trong 3,5s đầu"
+      // Smooth continuous sweep from floor level left of Laurel Vitrine up towards stage/contestant
       if (kd.startCooldownUntil && now < kd.startCooldownUntil) {
-        const remainingCooldown = (kd.startCooldownUntil - now) / 1000;
-        const elapsedCooldown = Math.max(0, 3.5 - remainingCooldown);
         return {
-          camAngle: elapsedCooldown < 0.25 ? 14 : 1, // CUT về CAM 14 ở đầu lượt rồi dolly 1 chiều mượt mà ra CAM 1 (toàn cảnh)
-          transitionMode: elapsedCooldown < 0.25 ? "CUT" : "MORPH",
+          camAngle: 14,
+          transitionMode: "MORPH",
           isOverlayHidden: false,
           pushInProgress: 0,
         };

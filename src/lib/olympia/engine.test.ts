@@ -1958,5 +1958,37 @@ test("Bắt đầu trận đấu: Chặn khi <= 1 thí sinh, cho phép khi >= 2 
   assert.equal(g.state.stage, "playing");
 });
 
+test("Thí sinh reconnect khi trận đấu đang diễn ra: Không bị out hay báo lỗi 'Trận đấu đã bắt đầu'", () => {
+  const cfg: OlympiaConfig = { rulesetId: "O26", rounds: ["khoiDong"], questionSet: SAMPLE_QUESTION_SET, seatCount: 4 };
+  const g = new OlympiaGame("RECONNECT_TEST", cfg, 0);
+
+  g.requestSeat("Nguyễn An", 0, "token_an");
+  g.hostAction({ type: "seat:approve", seatId: 0 }, 100);
+  g.requestSeat("Trần Bình", 1, "token_binh");
+  g.hostAction({ type: "seat:approve", seatId: 1 }, 200);
+
+  // Bắt đầu trận đấu
+  const startRes = g.hostAction({ type: "game:start" }, 300);
+  assert.equal(startRes.ok, true);
+  assert.equal(g.state.stage, "playing");
+
+  // Giả lập Nguyễn An rớt mạng chớp nhoáng và socket kết nối lại với cùng token
+  const reconnectRes = g.requestSeat("Nguyễn An", 0, "token_an");
+  assert.equal(reconnectRes.ok, true, "Reconnect với token cũ phải thành công khi đang đấu");
+  assert.equal(reconnectRes.status, "approved");
+  assert.equal(g.state.seats[0].connected, true);
+
+  // Giả lập bot sandbox reconnect
+  const sbPrefix = `sandbox_${g.state.code}_seat_2`;
+  const sandboxRes = g.requestSeat("Bot Sandbox", 2, sbPrefix);
+  assert.equal(sandboxRes.ok, true, "Sandbox reconnect phải thành công khi đang đấu");
+
+  // Thí sinh lạ cố đăng ký vị trí mới khi trận đấu đã bắt đầu -> Phải bị chặn
+  const strangerRes = g.requestSeat("Người Lạ", 3, "token_stranger");
+  assert.equal(strangerRes.ok, false);
+  assert.ok(strangerRes.error?.includes("Trận đấu đã bắt đầu"));
+});
+
+
 
 

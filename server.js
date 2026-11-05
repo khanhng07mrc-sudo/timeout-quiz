@@ -105887,29 +105887,34 @@ var OlympiaGame = class _OlympiaGame {
   // ── lobby ──
   /** Player requests to reserve a specific seat. Returns seatId or -1 */
   requestSeat(name, seatId, playerKey, school) {
-    if (this.state.stage !== "lobby") {
-      return { ok: false, error: "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, kh\xF4ng th\u1EC3 \u0111\u0103ng k\xFD", seatId: -1 };
-    }
     if (seatId < 0 || seatId >= this.state.seats.length) {
       return { ok: false, error: "V\u1ECB tr\xED gh\u1EBF kh\xF4ng h\u1EE3p l\u1EC7", seatId: -1 };
     }
     const cleanName = (name || "").trim();
-    if (!cleanName) {
-      return { ok: false, error: "Vui l\xF2ng nh\u1EADp h\u1ECD v\xE0 t\xEAn th\xED sinh", seatId: -1 };
-    }
     const target = this.state.seats[seatId];
-    if (target.approved && target.playerKey && target.playerKey !== playerKey) {
-      return { ok: false, error: `V\u1ECB tr\xED ${seatId + 1} \u0111\xE3 c\xF3 th\xED sinh \u0111\u01B0\u1EE3c ph\xEA duy\u1EC7t`, seatId: -1 };
-    }
     const sbPrefix = `sandbox_${this.state.code}_seat_`;
-    if (playerKey.startsWith(sbPrefix) || target.playerKey === playerKey && target.approved) {
-      target.name = cleanName;
+    const isSamePlayer = Boolean(playerKey && target.playerKey === playerKey);
+    const isSandbox = Boolean(playerKey && playerKey.startsWith(sbPrefix));
+    const isApprovedMatching = Boolean(
+      target.approved && (isSamePlayer || cleanName && target.name.trim().toLowerCase() === cleanName.toLowerCase())
+    );
+    if (isSandbox || isSamePlayer || isApprovedMatching) {
+      if (cleanName) target.name = cleanName;
       if (school) target.school = school.trim();
       target.playerKey = playerKey;
       target.approved = true;
       target.connected = true;
       this.touch(Date.now());
       return { ok: true, status: "approved", seatId };
+    }
+    if (this.state.stage !== "lobby") {
+      return { ok: false, error: "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 b\u1EAFt \u0111\u1EA7u, kh\xF4ng th\u1EC3 \u0111\u0103ng k\xFD", seatId: -1 };
+    }
+    if (!cleanName) {
+      return { ok: false, error: "Vui l\xF2ng nh\u1EADp h\u1ECD v\xE0 t\xEAn th\xED sinh", seatId: -1 };
+    }
+    if (target.approved && target.playerKey && target.playerKey !== playerKey) {
+      return { ok: false, error: `V\u1ECB tr\xED ${seatId + 1} \u0111\xE3 c\xF3 th\xED sinh \u0111\u01B0\u1EE3c ph\xEA duy\u1EC7t`, seatId: -1 };
     }
     if (!this.state.joinRequests) this.state.joinRequests = [];
     this.state.joinRequests = this.state.joinRequests.filter((r) => r.id !== playerKey);

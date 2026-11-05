@@ -21,6 +21,7 @@ import {
   EconovaContestantScoreTabBar,
   EconovaLowerThirdV3,
   VeDichSlantedGridGraphic,
+  V3SingleAnswerBar,
 } from "./Vtv3BroadcastGraphics";
 import { isTtsEnabled, setTtsEnabled, speakTTS, cancelTTS } from "@/lib/olympia/tts";
 
@@ -597,30 +598,11 @@ function KhoiDong({ state, serverNow }: P) {
     <div className="w-full max-w-6xl mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
       {/* Main question card / Result answer overlay */}
       {kd.phase === "result" && kd.current?.a ? (
-        <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 flex flex-col shadow-[0_14px_40px_rgba(0,0,0,0.85)]">
-          <EconovaContestantScoreTabBar
-            state={state}
-            activeSeatId={currentSoloSeat}
-            buzzedSeatId={currentBuzzedSeat}
-            lockedSeats={kd.lockedSeats}
-            questionNumberBadge={questionBadge}
+        <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 flex flex-col justify-end">
+          <V3SingleAnswerBar
+            answerText={kd.current.a}
+            roundLabel="ĐÁP ÁN"
           />
-          <div
-            className="w-full shrink-0 px-6 py-4 flex items-center justify-center gap-3 shadow-2xl backdrop-blur-md"
-            style={{
-              background: "linear-gradient(135deg, rgba(6, 78, 59, 0.95) 0%, rgba(4, 120, 87, 0.9) 100%)",
-              border: "2px solid #10b981",
-              boxShadow: "0 0 30px rgba(16, 185, 129, 0.5)",
-            }}
-          >
-            <span className="text-emerald-300 font-black text-sm sm:text-base uppercase tracking-wider flex items-center gap-2">
-              <span>✔</span>
-              <span>ĐÁP ÁN:</span>
-            </span>
-            <span className="text-white font-black text-lg sm:text-2xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-              {kd.current.a}
-            </span>
-          </div>
         </div>
       ) : state.themeMode === "o26_classic" ? (
         <div className="w-full max-w-5xl mx-auto flex flex-col gap-1">
@@ -629,7 +611,7 @@ function KhoiDong({ state, serverNow }: P) {
             activeSeatId={currentSoloSeat}
             buzzedSeatId={currentBuzzedSeat}
             lockedSeats={kd.lockedSeats}
-            questionNumberBadge={hasRevealedQ ? questionBadge : "CHỜ CÂU HỎI"}
+            questionNumberBadge={hasRevealedQ ? questionBadge : null}
           />
           <Vtv3ChalkboardQuestionFrame
             headerBadge={null}
@@ -654,7 +636,7 @@ function KhoiDong({ state, serverNow }: P) {
           activeSeatId={currentSoloSeat}
           buzzedSeatId={currentBuzzedSeat}
           lockedSeats={kd.lockedSeats}
-          questionNumberBadge={hasRevealedQ ? questionBadge : "CHỜ CÂU HỎI"}
+          questionNumberBadge={hasRevealedQ ? questionBadge : null}
           headerBadge={hasRevealedQ && kd.current?.subject ? `${kd.current.subject.toUpperCase()}` : null}
           questionText={hasRevealedQ ? kd.current?.q : ""}
           mediaElement={
@@ -723,28 +705,13 @@ function VeDich({ state, serverNow }: P) {
       )}
 
       {vd.phase === "result" && cur?.q.a ? (
-        <div
-          className="w-full shrink-0 rounded-2xl px-6 py-4 flex flex-col items-center justify-center gap-1.5 shadow-2xl backdrop-blur-md"
-          style={{
-            background: "linear-gradient(135deg, rgba(6, 78, 59, 0.95) 0%, rgba(4, 120, 87, 0.9) 100%)",
-            border: "2px solid #10b981",
-            boxShadow: "0 0 30px rgba(16, 185, 129, 0.5)",
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-emerald-300 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center gap-1.5">
-              <span>✔</span>
-              <span>ĐÁP ÁN VỀ ĐÍCH:</span>
-            </span>
-            <span className="text-white font-black text-base sm:text-xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
-              {cur.q.a}
-            </span>
-          </div>
-          {cur.points && (
-            <div className="text-[11px] sm:text-xs font-bold text-emerald-200">
-              Điểm câu hỏi: {cur.points} điểm {vd.hopeStarActive ? "⭐ NGÔI SAO HY VỌNG" : ""}
-            </div>
-          )}
+        <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 flex flex-col justify-end">
+          <V3SingleAnswerBar
+            answerText={cur.q.a}
+            points={cur.points}
+            hopeStarActive={vd.hopeStarActive}
+            roundLabel="ĐÁP ÁN VỀ ĐÍCH"
+          />
         </div>
       ) : cur || (hasPkg && !isPackageIntroTime) ? (
         state.themeMode === "o26_classic" ? (

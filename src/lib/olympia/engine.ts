@@ -327,34 +327,44 @@ export class OlympiaGame {
     playerKey: string,
     school?: string
   ): { ok: boolean; status?: "approved" | "pending"; seatId: number; error?: string } {
-    if (this.state.stage !== "lobby") {
-      return { ok: false, error: "Trận đấu đã bắt đầu, không thể đăng ký", seatId: -1 };
-    }
     if (seatId < 0 || seatId >= this.state.seats.length) {
       return { ok: false, error: "Vị trí ghế không hợp lệ", seatId: -1 };
     }
 
     const cleanName = (name || "").trim();
-    if (!cleanName) {
-      return { ok: false, error: "Vui lòng nhập họ và tên thí sinh", seatId: -1 };
-    }
-
     const target = this.state.seats[seatId];
-    // If the seat is already occupied by another approved player
-    if (target.approved && target.playerKey && target.playerKey !== playerKey) {
-      return { ok: false, error: `Vị trí ${seatId + 1} đã có thí sinh được phê duyệt`, seatId: -1 };
-    }
-
-    // Sandbox seats or reconnection of already approved player
     const sbPrefix = `sandbox_${this.state.code}_seat_`;
-    if (playerKey.startsWith(sbPrefix) || (target.playerKey === playerKey && target.approved)) {
-      target.name = cleanName;
+
+    // 1. Reconnection Safeguard: Sandbox seats or reconnection of already approved player
+    const isSamePlayer = Boolean(playerKey && target.playerKey === playerKey);
+    const isSandbox = Boolean(playerKey && playerKey.startsWith(sbPrefix));
+    const isApprovedMatching = Boolean(
+      target.approved &&
+      (isSamePlayer || (cleanName && target.name.trim().toLowerCase() === cleanName.toLowerCase()))
+    );
+
+    if (isSandbox || isSamePlayer || isApprovedMatching) {
+      if (cleanName) target.name = cleanName;
       if (school) target.school = school.trim();
       target.playerKey = playerKey;
       target.approved = true;
       target.connected = true;
       this.touch(Date.now());
       return { ok: true, status: "approved", seatId };
+    }
+
+    // 2. Reject new registrations if stage is not lobby
+    if (this.state.stage !== "lobby") {
+      return { ok: false, error: "Trận đấu đã bắt đầu, không thể đăng ký", seatId: -1 };
+    }
+
+    if (!cleanName) {
+      return { ok: false, error: "Vui lòng nhập họ và tên thí sinh", seatId: -1 };
+    }
+
+    // If the seat is already occupied by another approved player
+    if (target.approved && target.playerKey && target.playerKey !== playerKey) {
+      return { ok: false, error: `Vị trí ${seatId + 1} đã có thí sinh được phê duyệt`, seatId: -1 };
     }
 
     // Normal player flow: create or update join request

@@ -95,8 +95,9 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   10: {
     id: 10,
     label: "Toàn Cảnh Bục Thí Sinh",
-    pos: [-0.20, 2.10, -0.65],
-    target: [-4.70, 1.30, -4.90],
+    // Expanded distance & elevated framing so all podiums (4 or 5) have generous margins without edge clipping
+    pos: [0.85, 2.45, 0.45],
+    target: [-4.40, 1.25, -4.60],
   },
   11: {
     id: 11,
@@ -119,9 +120,9 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   14: {
     id: 14,
     label: "Góc Thấp Khởi Động",
-    // Iconic Low-Angle Hero Shot per Image 4 (Floor level behind & left of Laurel Vitrine, tilting up across stage)
-    pos: [0.90, 0.42, 4.20],
-    target: [1.60, 1.80, -3.20],
+    // Floor level left of Laurel Vitrine, tilting up across stage
+    pos: [-0.95, 0.40, 4.40],
+    target: [-1.10, 1.65, -3.20],
   },
 };
 
@@ -134,6 +135,7 @@ interface CameraControllerProps {
   ptzPitch?: number;
   ptzZoom?: number;
   introStartedAt?: number | null;
+  kdStartCooldownUntil?: number | null;
   serverNow?: () => number;
 }
 
@@ -146,6 +148,7 @@ export function CameraController({
   ptzPitch = 0,
   ptzZoom = 1.0,
   introStartedAt = null,
+  kdStartCooldownUntil = null,
   serverNow,
 }: CameraControllerProps) {
   const { camera, size } = useThree();
@@ -227,6 +230,34 @@ export function CameraController({
           curPos = new THREE.Vector3(mcClosePos.x, mcClosePos.y + breathe, mcClosePos.z);
           curTarget = mcCloseTarget.clone();
         }
+
+        currentPos.current.copy(curPos);
+        currentTarget.current.copy(curTarget);
+
+        camera.position.copy(curPos);
+        camera.lookAt(curTarget);
+        camera.updateProjectionMatrix();
+        return;
+      }
+    }
+
+    // 0.1. Khởi Động Turn Start Smooth Sweep Director:
+    // Starts low from floor level bottom-left of Laurel Vitrine, gently elevating & sweeping up towards stage/contestant
+    if (kdStartCooldownUntil) {
+      const now = serverNow ? serverNow() : Date.now();
+      if (now < kdStartCooldownUntil) {
+        const sweepStartPos = new THREE.Vector3(-0.95, 0.40, 4.40);
+        const sweepStartTarget = new THREE.Vector3(-1.10, 1.65, -3.20);
+        const sweepEndPos = new THREE.Vector3(0.00, 3.80, 11.80);
+        const sweepEndTarget = new THREE.Vector3(-0.60, 1.80, -3.80);
+
+        const duration = 3500;
+        const elapsed = Math.max(0, duration - (kdStartCooldownUntil - now));
+        const t = Math.min(1.0, elapsed / duration);
+        const smoothT = t * t * (3 - 2 * t);
+
+        const curPos = new THREE.Vector3().lerpVectors(sweepStartPos, sweepEndPos, smoothT);
+        const curTarget = new THREE.Vector3().lerpVectors(sweepStartTarget, sweepEndTarget, smoothT);
 
         currentPos.current.copy(curPos);
         currentTarget.current.copy(curTarget);

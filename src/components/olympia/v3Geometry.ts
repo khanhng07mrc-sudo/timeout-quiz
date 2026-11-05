@@ -197,6 +197,8 @@ export interface ArrowShellSpec {
   thick?: number;
   /** Horizontal thickness of the cyan wing. Default 0.16 * H. */
   cThick?: number;
+  /** Extra canvas padding for multi-layer ghost wings. Default 0. */
+  pad?: number;
 }
 
 export interface ArrowShell extends ZigzagShape {
@@ -222,7 +224,8 @@ export function buildArrowShell(spec: ArrowShellSpec): ArrowShell {
   const S = (spec.slantRatio ?? V3_SLANT_RATIO) * H;
   const thick = spec.thick ?? Math.round(H * 0.21);
   const cThick = spec.cThick ?? Math.round(H * 0.16);
-  const startX = thick + cThick;
+  const pad = spec.pad ?? 0;
+  const startX = thick + cThick + pad;
   const z = genZigzagShape(W, H, S, thick, cThick, startX);
   const pS = S / 2;
   const mid = H / 2;

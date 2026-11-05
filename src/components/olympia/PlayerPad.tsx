@@ -270,10 +270,19 @@ export default function PlayerPad({
   if (join && !join.ok) {
     return (
       <div className="fixed inset-0 w-full h-full min-h-screen bg-gradient-to-b from-[#080d24] via-[#0e173b] to-[#040714] text-white p-6 flex flex-col items-center justify-center gap-4">
-        <div className="text-rose-300 text-lg text-center">{join.error}</div>
-        <a href="/play" className="underline text-sky-300">
-          ← Quay lại
-        </a>
+        <div className="text-rose-300 text-lg text-center font-bold">{join.error}</div>
+        <div className="flex items-center gap-4 mt-2">
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-sm shadow cursor-pointer transition"
+          >
+            🔄 Thử kết nối lại
+          </button>
+          <a href="/play" className="underline text-sky-300 text-sm">
+            ← Quay lại
+          </a>
+        </div>
       </div>
     );
   }

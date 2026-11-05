@@ -10,6 +10,7 @@ import OlympiaRulesWikipediaModal from "./OlympiaRulesWikipediaModal";
 import OlympiaMatchReportModal from "./OlympiaMatchReportModal";
 import RoomQRCodeModal from "@/components/room/RoomQRCodeModal";
 import QRCode from "qrcode";
+import ScaledDisplayFrame from "./ScaledDisplayFrame";
 import { MediaView, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
 import { isTtsEnabled, setTtsEnabled, speakTTS, cancelTTS } from "@/lib/olympia/tts";
 
@@ -485,9 +486,8 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             </div>
           </div>
           <div className="relative w-[320px] h-[180px] sm:w-[384px] sm:h-[216px] bg-black overflow-hidden">
-            <iframe
+            <ScaledDisplayFrame
               src={`/olympia/display/${code}?mute=1`}
-              className="w-[1280px] h-[720px] border-0 origin-top-left scale-[0.25] sm:scale-[0.3] pointer-events-none select-none"
               title="Mini Display"
             />
           </div>
@@ -709,7 +709,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
             {/* 1. Question Card Box (Fixed height for stability) */}
             <div className="rounded-xl border border-violet-500/25 bg-gradient-to-b from-[#1a0d3f]/90 to-[#0f0728]/95 p-2.5 shadow-md backdrop-blur-sm">
               <div className="text-xs md:text-sm font-semibold leading-relaxed min-h-[52px] max-h-[52px] overflow-y-auto no-scrollbar flex items-center">
-                {getQuestionText(state) || <span className="text-slate-400 italic">Đang đợi câu hỏi…</span>}
+                {getQuestionText(state) || <span className="text-slate-500 italic font-mono text-xs">(Trống)</span>}
               </div>
             </div>
 

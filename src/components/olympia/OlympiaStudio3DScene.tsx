@@ -151,6 +151,7 @@ export function OlympiaStudio3DScene({
           ptzPitch={ptzPitch}
           ptzZoom={ptzZoom}
           introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
+          kdStartCooldownUntil={state?.khoiDong?.startCooldownUntil ?? null}
           serverNow={serverNow}
         />
 

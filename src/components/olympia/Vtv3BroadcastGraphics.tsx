@@ -903,19 +903,7 @@ export function VcnvCountdownGraphic({
         <div className="relative w-full h-full rounded-2xl overflow-visible border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-gradient-to-br from-[#061838] via-[#041026] to-[#020914] flex flex-col justify-between p-4 sm:p-5 pb-0">
           {/* Question Text Body / Selecting Announcement */}
           <div className="flex-1 flex flex-col items-start justify-start py-1 px-1 text-left overflow-hidden">
-            {v.phase === "selecting" ? (
-              <div className="w-full flex flex-col items-center justify-center h-full text-center gap-2">
-                <div className="px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 text-xs sm:text-sm font-bold uppercase tracking-wider animate-pulse">
-                  Đang chọn hàng ngang
-                </div>
-                <div className="text-xl sm:text-2xl md:text-3xl font-black text-amber-300 drop-shadow-[0_2px_8px_rgba(245,158,11,0.5)]">
-                  {isCenter ? "Ô TRUNG TÂM" : `HÀNG NGANG SỐ ${curIdx + 1}`}
-                </div>
-                <div className="text-xs sm:text-sm text-slate-300 font-medium">
-                  Chờ MC nhấn &quot;Mở Câu Hỏi&quot; để hiển thị nội dung...
-                </div>
-              </div>
-            ) : v.phase === "done" ? (
+            {v.phase === "selecting" ? null : v.phase === "done" ? (
               <div className="w-full flex flex-col items-center justify-center h-full text-center gap-2 animate-fade-in">
                 <div className="px-4 py-1.5 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 text-xs sm:text-sm font-black uppercase tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.5)]">
                   CHƯỚNG NGẠI VẬT ĐÃ ĐƯỢC GIẢI MÃ
@@ -941,7 +929,7 @@ export function VcnvCountdownGraphic({
                     : "text-lg sm:text-xl md:text-2xl lg:text-3xl leading-relaxed"
                 }`}
               >
-                {questionHint || "Đang chờ mở câu hỏi…"}
+                {questionHint || ""}
               </p>
             )}
           </div>
@@ -1021,6 +1009,7 @@ import {
   type ZigzagShape,
   type GridCell,
   type ArrowShell,
+  type Pt,
 } from "./v3Geometry";
 import { V3ArrowShell, V3ScaledStage, V3_COLORS } from "./V3ArrowShell";
 import { HopeStarBadge } from "./HopeStarBadge";
@@ -1044,28 +1033,70 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
   if (isV3Arrow) {
     const W = 820;
     const H = 64;
-    const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick: 20, cThick: 16 });
+    const thick = 20;
+    const cThick = 16;
+    const pad = Math.round(cThick * 1.5);
+    const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick, cThick, pad });
     const cols = buildRowColumns(shell, [48, 52]);
+    const dc = shell.canvasW / 2 - shell.startX;
+
+    // 3 Layers of cyan wings on left (ghost 1, ghost 2, layer 3)
+    const l3Pts = shell.alcPts;
+    const l2Pts = shell.alcPts.map(([x, y]) => [x - cThick * 0.7, y] as Pt);
+    const l1Pts = shell.alcPts.map(([x, y]) => [x - cThick * 1.4, y] as Pt);
+
+    // 3 Layers of cyan wings on right (layer 3, ghost 2, ghost 1)
+    const r3Pts = shell.arcPts;
+    const r2Pts = shell.arcPts.map(([x, y]) => [x + cThick * 0.7, y] as Pt);
+    const r1Pts = shell.arcPts.map(([x, y]) => [x + cThick * 1.4, y] as Pt);
 
     return (
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040e24]/90 backdrop-blur-md animate-fade-in select-none">
         <style>{`
-          @keyframes vcnv-row-enter {
-            0% { opacity: 0; transform: translateY(-16px) scale(0.97); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
+          @keyframes v3-row-wing-l {
+            0% { transform: translateX(calc(var(--dc) * 0.95)); opacity: 0; }
+            15% { opacity: 1; }
+            100% { transform: translateX(0); opacity: 1; }
+          }
+          @keyframes v3-row-wing-r {
+            0% { transform: translateX(calc(var(--dc) * -0.95)); opacity: 0; }
+            15% { opacity: 1; }
+            100% { transform: translateX(0); opacity: 1; }
+          }
+          @keyframes v3-row-hex {
+            0% { clip-path: inset(0 50% 0 50%); opacity: 0; }
+            15% { opacity: 1; }
+            100% { clip-path: inset(0 0% 0 0%); opacity: 1; }
+          }
+          @keyframes v3-row-text {
+            0% { opacity: 0; transform: translateY(4px); }
+            100% { opacity: 1; transform: translateY(0); }
+          }
+          .v3-row-wing-l {
+            animation: v3-row-wing-l 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-row-wing-r {
+            animation: v3-row-wing-r 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-row-hex {
+            animation: v3-row-hex 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-row-text {
+            animation: v3-row-text 0.22s ease-out both;
           }
         `}</style>
         {/* Only pure graphic bars - Strictly no header pill text */}
         <div className="w-full max-w-4xl flex flex-col gap-3.5 items-center justify-center py-2">
           {seats.map((seat, idx) => {
             const answerText = v.answers[seat.id]?.text || "";
+            const rowDelay = idx * 0.18;
+            const textDelay = (rowDelay + 0.44).toFixed(3);
+
             return (
               <div
                 key={seat.id}
                 className="w-full max-w-3xl flex items-center justify-center"
-                style={{
-                  animation: `vcnv-row-enter 0.4s ease-out ${idx * 0.1}s both`,
-                }}
+                style={{ ["--dc" as string]: `${dc}px` }}
               >
                 <V3ScaledStage designW={shell.canvasW} designH={H}>
                   <svg
@@ -1089,64 +1120,77 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
                       </linearGradient>
                     </defs>
 
-                    {/* Left cyan wing & navy chevron */}
-                    <path d={toSvgPath(shell.alcPts)} fill={`url(#vcnvWing-${idx})`} />
-                    <path d={toSvgPath(shell.alnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
+                    {/* Left 3-layer cyan wings + navy chevron */}
+                    <g className="v3-row-wing-l" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(l1Pts)} fill={`url(#vcnvWing-${idx})`} opacity={0.35} />
+                      <path d={toSvgPath(l2Pts)} fill={`url(#vcnvWing-${idx})`} opacity={0.65} />
+                      <path d={toSvgPath(l3Pts)} fill={`url(#vcnvWing-${idx})`} opacity={1.0} />
+                      <path d={toSvgPath(shell.alnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
+                    </g>
 
-                    {/* Right navy chevron & cyan wing */}
-                    <path d={toSvgPath(shell.arnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
-                    <path d={toSvgPath(shell.arcPts)} fill={`url(#vcnvWing-${idx})`} />
+                    {/* Right navy chevron + 3-layer cyan wings */}
+                    <g className="v3-row-wing-r" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.arnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
+                      <path d={toSvgPath(r3Pts)} fill={`url(#vcnvWing-${idx})`} opacity={1.0} />
+                      <path d={toSvgPath(r2Pts)} fill={`url(#vcnvWing-${idx})`} opacity={0.65} />
+                      <path d={toSvgPath(r1Pts)} fill={`url(#vcnvWing-${idx})`} opacity={0.35} />
+                    </g>
 
-                    {/* Cell 0 (48%): Contestant Pure Name - No Seat Number Prefix */}
-                    <path d={toSvgPath(cols.cells[0].pts)} fill={`url(#vcnvName-${idx})`} />
+                    {/* Hexagon Body (Expands from center) */}
+                    <g className="v3-row-hex" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      {/* Cell 0 (48%): Contestant Pure Name - No Seat Number Prefix */}
+                      <path d={toSvgPath(cols.cells[0].pts)} fill={`url(#vcnvName-${idx})`} />
 
-                    {/* Cell 1 (52%): Contestant Answer - Uniform Font Size */}
-                    <path d={toSvgPath(cols.cells[1].pts)} fill={`url(#vcnvAns-${idx})`} />
+                      {/* Cell 1 (52%): Contestant Answer - Uniform Font Size */}
+                      <path d={toSvgPath(cols.cells[1].pts)} fill={`url(#vcnvAns-${idx})`} />
 
-                    {/* Slanted seam divider */}
-                    {cols.seams.map((s, sIdx) => (
-                      <line
-                        key={sIdx}
-                        x1={s.x0}
-                        y1={s.y0}
-                        x2={s.x1}
-                        y2={s.y1}
-                        stroke="#ffffff"
-                        strokeWidth={2.5}
-                      />
-                    ))}
+                      {/* Slanted seam divider */}
+                      {cols.seams.map((s, sIdx) => (
+                        <line
+                          key={sIdx}
+                          x1={s.x0}
+                          y1={s.y0}
+                          x2={s.x1}
+                          y2={s.y1}
+                          stroke="#ffffff"
+                          strokeWidth={2.5}
+                        />
+                      ))}
 
-                    {/* Hexagon outer border */}
-                    <path d={toSvgPath(shell.bgPts)} fill="none" stroke="#d1d5db" strokeWidth={2} />
+                      {/* Hexagon outer border */}
+                      <path d={toSvgPath(shell.bgPts)} fill="none" stroke="#d1d5db" strokeWidth={2} />
+                    </g>
 
-                    {/* Text Overlay */}
-                    <text
-                      x={cols.cells[0].cx}
-                      y={cols.cells[0].cy + 8}
-                      textAnchor="middle"
-                      fill="#ffffff"
-                      fontWeight="900"
-                      fontSize="22"
-                      letterSpacing="0.05em"
-                      className="uppercase font-sans"
-                      style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
-                    >
-                      {seat.name}
-                    </text>
+                    {/* Text Overlay: Fades in when row animation reaches ~80% */}
+                    <g className="v3-row-text" style={{ animationDelay: `${textDelay}s` }}>
+                      <text
+                        x={cols.cells[0].cx}
+                        y={cols.cells[0].cy + 8}
+                        textAnchor="middle"
+                        fill="#ffffff"
+                        fontWeight="900"
+                        fontSize="22"
+                        letterSpacing="0.05em"
+                        className="uppercase font-sans"
+                        style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
+                      >
+                        {seat.name}
+                      </text>
 
-                    <text
-                      x={cols.cells[1].cx}
-                      y={cols.cells[1].cy + 8}
-                      textAnchor="middle"
-                      fill="#ffffff"
-                      fontWeight="900"
-                      fontSize="22"
-                      letterSpacing="0.1em"
-                      className="uppercase font-sans"
-                      style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
-                    >
-                      {answerText || "—"}
-                    </text>
+                      <text
+                        x={cols.cells[1].cx}
+                        y={cols.cells[1].cy + 8}
+                        textAnchor="middle"
+                        fill="#ffffff"
+                        fontWeight="900"
+                        fontSize="22"
+                        letterSpacing="0.1em"
+                        className="uppercase font-sans"
+                        style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
+                      >
+                        {answerText || "—"}
+                      </text>
+                    </g>
                   </svg>
                 </V3ScaledStage>
               </div>
@@ -1324,15 +1368,56 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
   if (isV3Arrow) {
     const W = 880;
     const H = 64;
-    const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick: 20, cThick: 16 });
+    const thick = 20;
+    const cThick = 16;
+    const pad = Math.round(cThick * 1.5);
+    const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick, cThick, pad });
     const cols = buildRowColumns(shell, [38, 42, 20]);
+    const dc = shell.canvasW / 2 - shell.startX;
+
+    // 3 Layers of cyan wings on left (ghost 1, ghost 2, layer 3)
+    const l3Pts = shell.alcPts;
+    const l2Pts = shell.alcPts.map(([x, y]) => [x - cThick * 0.7, y] as Pt);
+    const l1Pts = shell.alcPts.map(([x, y]) => [x - cThick * 1.4, y] as Pt);
+
+    // 3 Layers of cyan wings on right (layer 3, ghost 2, ghost 1)
+    const r3Pts = shell.arcPts;
+    const r2Pts = shell.arcPts.map(([x, y]) => [x + cThick * 0.7, y] as Pt);
+    const r1Pts = shell.arcPts.map(([x, y]) => [x + cThick * 1.4, y] as Pt);
 
     return (
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040e24]/90 backdrop-blur-md animate-fade-in select-none">
         <style>{`
-          @keyframes tt-row-enter {
-            0% { opacity: 0; transform: translateY(-16px) scale(0.97); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
+          @keyframes v3-tt-wing-l {
+            0% { transform: translateX(calc(var(--dc) * 0.95)); opacity: 0; }
+            15% { opacity: 1; }
+            100% { transform: translateX(0); opacity: 1; }
+          }
+          @keyframes v3-tt-wing-r {
+            0% { transform: translateX(calc(var(--dc) * -0.95)); opacity: 0; }
+            15% { opacity: 1; }
+            100% { transform: translateX(0); opacity: 1; }
+          }
+          @keyframes v3-tt-hex {
+            0% { clip-path: inset(0 50% 0 50%); opacity: 0; }
+            15% { opacity: 1; }
+            100% { clip-path: inset(0 0% 0 0%); opacity: 1; }
+          }
+          @keyframes v3-tt-text {
+            0% { opacity: 0; transform: translateY(4px); }
+            100% { opacity: 1; transform: translateY(0); }
+          }
+          .v3-tt-wing-l {
+            animation: v3-tt-wing-l 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-tt-wing-r {
+            animation: v3-tt-wing-r 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-tt-hex {
+            animation: v3-tt-hex 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-tt-text {
+            animation: v3-tt-text 0.22s ease-out both;
           }
         `}</style>
         {/* Only pure graphic bars - Strictly no header pill text */}
@@ -1341,14 +1426,14 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             const seat = state.seats[item.seat];
             const sec = item.noAnswer ? "—" : (item.ms / 1000).toFixed(2);
             const answerText = item.noAnswer ? "" : item.answer;
+            const rowDelay = idx * 0.18;
+            const textDelay = (rowDelay + 0.44).toFixed(3);
 
             return (
               <div
                 key={item.seat}
                 className="w-full max-w-3xl flex items-center justify-center"
-                style={{
-                  animation: `tt-row-enter 0.4s ease-out ${idx * 0.1}s both`,
-                }}
+                style={{ ["--dc" as string]: `${dc}px` }}
               >
                 <V3ScaledStage designW={shell.canvasW} designH={H}>
                   <svg
@@ -1376,81 +1461,94 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                       </linearGradient>
                     </defs>
 
-                    {/* Left cyan wing & navy chevron */}
-                    <path d={toSvgPath(shell.alcPts)} fill={`url(#ttWing-${idx})`} />
-                    <path d={toSvgPath(shell.alnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
+                    {/* Left 3-layer cyan wings + navy chevron */}
+                    <g className="v3-tt-wing-l" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(l1Pts)} fill={`url(#ttWing-${idx})`} opacity={0.35} />
+                      <path d={toSvgPath(l2Pts)} fill={`url(#ttWing-${idx})`} opacity={0.65} />
+                      <path d={toSvgPath(l3Pts)} fill={`url(#ttWing-${idx})`} opacity={1.0} />
+                      <path d={toSvgPath(shell.alnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
+                    </g>
 
-                    {/* Right navy chevron & cyan wing */}
-                    <path d={toSvgPath(shell.arnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
-                    <path d={toSvgPath(shell.arcPts)} fill={`url(#ttWing-${idx})`} />
+                    {/* Right navy chevron + 3-layer cyan wings */}
+                    <g className="v3-tt-wing-r" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.arnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
+                      <path d={toSvgPath(r3Pts)} fill={`url(#ttWing-${idx})`} opacity={1.0} />
+                      <path d={toSvgPath(r2Pts)} fill={`url(#ttWing-${idx})`} opacity={0.65} />
+                      <path d={toSvgPath(r1Pts)} fill={`url(#ttWing-${idx})`} opacity={0.35} />
+                    </g>
 
-                    {/* Cell 0 (38%): Contestant Pure Name - No Seat Number Prefix */}
-                    <path d={toSvgPath(cols.cells[0].pts)} fill={`url(#ttName-${idx})`} />
+                    {/* Hexagon Body (Expands from center) */}
+                    <g className="v3-tt-hex" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      {/* Cell 0 (38%): Contestant Pure Name - No Seat Number Prefix */}
+                      <path d={toSvgPath(cols.cells[0].pts)} fill={`url(#ttName-${idx})`} />
 
-                    {/* Cell 1 (42%): Contestant Answer - Uniform Font Size */}
-                    <path d={toSvgPath(cols.cells[1].pts)} fill={`url(#ttAns-${idx})`} />
+                      {/* Cell 1 (42%): Contestant Answer - Uniform Font Size */}
+                      <path d={toSvgPath(cols.cells[1].pts)} fill={`url(#ttAns-${idx})`} />
 
-                    {/* Cell 2 (20%): Enter Time - Number Only, STRICTLY NO 's' SUFFIX */}
-                    <path d={toSvgPath(cols.cells[2].pts)} fill={`url(#ttTime-${idx})`} />
+                      {/* Cell 2 (20%): Enter Time - Number Only, STRICTLY NO 's' SUFFIX */}
+                      <path d={toSvgPath(cols.cells[2].pts)} fill={`url(#ttTime-${idx})`} />
 
-                    {/* Slanted seam dividers */}
-                    {cols.seams.map((s, sIdx) => (
-                      <line
-                        key={sIdx}
-                        x1={s.x0}
-                        y1={s.y0}
-                        x2={s.x1}
-                        y2={s.y1}
-                        stroke="#ffffff"
-                        strokeWidth={2.5}
-                      />
-                    ))}
+                      {/* Slanted seam dividers */}
+                      {cols.seams.map((s, sIdx) => (
+                        <line
+                          key={sIdx}
+                          x1={s.x0}
+                          y1={s.y0}
+                          x2={s.x1}
+                          y2={s.y1}
+                          stroke="#ffffff"
+                          strokeWidth={2.5}
+                        />
+                      ))}
 
-                    {/* Hexagon outer border */}
-                    <path d={toSvgPath(shell.bgPts)} fill="none" stroke="#d1d5db" strokeWidth={2} />
+                      {/* Hexagon outer border */}
+                      <path d={toSvgPath(shell.bgPts)} fill="none" stroke="#d1d5db" strokeWidth={2} />
+                    </g>
 
-                    {/* Text Overlays */}
-                    <text
-                      x={cols.cells[0].cx}
-                      y={cols.cells[0].cy + 8}
-                      textAnchor="middle"
-                      fill="#ffffff"
-                      fontWeight="900"
-                      fontSize="22"
-                      letterSpacing="0.05em"
-                      className="uppercase font-sans"
-                      style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
-                    >
-                      {seat?.name || `Thí sinh ${item.seat + 1}`}
-                    </text>
+                    {/* Text Overlays: Fades in when row reaches ~80% */}
+                    <g className="v3-tt-text" style={{ animationDelay: `${textDelay}s` }}>
+                      <text
+                        x={cols.cells[0].cx}
+                        y={cols.cells[0].cy + 8}
+                        textAnchor="middle"
+                        fill="#ffffff"
+                        fontWeight="900"
+                        fontSize="22"
+                        letterSpacing="0.05em"
+                        className="uppercase font-sans"
+                        style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
+                      >
+                        {seat?.name || `Thí sinh ${item.seat + 1}`}
+                      </text>
 
-                    <text
-                      x={cols.cells[1].cx}
-                      y={cols.cells[1].cy + 8}
-                      textAnchor="middle"
-                      fill="#ffffff"
-                      fontWeight="900"
-                      fontSize="22"
-                      letterSpacing="0.1em"
-                      className="uppercase font-sans"
-                      style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
-                    >
-                      {answerText || "—"}
-                    </text>
+                      <text
+                        x={cols.cells[1].cx}
+                        y={cols.cells[1].cy + 8}
+                        textAnchor="middle"
+                        fill="#ffffff"
+                        fontWeight="900"
+                        fontSize="22"
+                        letterSpacing="0.1em"
+                        className="uppercase font-sans"
+                        style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
+                      >
+                        {answerText || "—"}
+                      </text>
 
-                    <text
-                      x={cols.cells[2].cx}
-                      y={cols.cells[2].cy + 8}
-                      textAnchor="middle"
-                      fill="#67e8f9"
-                      fontWeight="900"
-                      fontSize="22"
-                      fontFamily="monospace"
-                      letterSpacing="0.05em"
-                      style={{ filter: "drop-shadow(0 2px 6px rgba(0,207,255,0.7))" }}
-                    >
-                      {sec}
-                    </text>
+                      <text
+                        x={cols.cells[2].cx}
+                        y={cols.cells[2].cy + 8}
+                        textAnchor="middle"
+                        fill="#67e8f9"
+                        fontWeight="900"
+                        fontSize="22"
+                        fontFamily="monospace"
+                        letterSpacing="0.05em"
+                        style={{ filter: "drop-shadow(0 2px 6px rgba(0,207,255,0.7))" }}
+                      >
+                        {sec}
+                      </text>
+                    </g>
                   </svg>
                 </V3ScaledStage>
               </div>
@@ -1499,20 +1597,185 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                     {answerText}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 z-10 shrink-0">
-                  {awardedPts > 0 && (
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-black text-xs sm:text-sm shadow">
+                {awardedPts > 0 && (
+                  <div className="shrink-0 z-10 pl-2">
+                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full font-black text-sm uppercase">
                       +{awardedPts}
                     </span>
-                  )}
-                  <div className="px-4 py-1.5 rounded-full bg-white border border-slate-300 shadow-md font-mono font-black text-sm sm:text-base text-amber-700 tabular-nums">
-                    {sec}
                   </div>
+                )}
+                <div className="shrink-0 z-10 pl-3 border-l border-white/20">
+                  <span className="font-mono text-cyan-300 font-black text-base sm:text-xl">
+                    {sec}s
+                  </span>
                 </div>
               </div>
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * AUTHENTIC ECONOVA V3 SINGLE ANSWER BAR
+ * - 3-layer cyan wings + navy chevrons on left & right.
+ * - Expanding hexagon center.
+ * - Text fades in at ~80% of entrance animation.
+ * - Strictly NO contestant score tab bar.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function V3SingleAnswerBar({
+  answerText,
+  points,
+  hopeStarActive = false,
+  roundLabel = "ĐÁP ÁN",
+}: {
+  answerText: string;
+  points?: number;
+  hopeStarActive?: boolean;
+  roundLabel?: string;
+}) {
+  const W = 880;
+  const H = 64;
+  const thick = 20;
+  const cThick = 16;
+  const pad = Math.round(cThick * 1.5);
+  const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick, cThick, pad });
+  const dc = shell.canvasW / 2 - shell.startX;
+
+  // 3 Layers of cyan wings on left
+  const l3Pts = shell.alcPts;
+  const l2Pts = shell.alcPts.map(([x, y]) => [x - cThick * 0.7, y] as Pt);
+  const l1Pts = shell.alcPts.map(([x, y]) => [x - cThick * 1.4, y] as Pt);
+
+  // 3 Layers of cyan wings on right
+  const r3Pts = shell.arcPts;
+  const r2Pts = shell.arcPts.map(([x, y]) => [x + cThick * 0.7, y] as Pt);
+  const r1Pts = shell.arcPts.map(([x, y]) => [x + cThick * 1.4, y] as Pt);
+
+  return (
+    <div className="w-full flex items-center justify-center p-2 select-none">
+      <style>{`
+        @keyframes v3-ans-wing-l {
+          0% { transform: translateX(calc(var(--dc) * 0.95)); opacity: 0; }
+          15% { opacity: 1; }
+          100% { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes v3-ans-wing-r {
+          0% { transform: translateX(calc(var(--dc) * -0.95)); opacity: 0; }
+          15% { opacity: 1; }
+          100% { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes v3-ans-hex {
+          0% { clip-path: inset(0 50% 0 50%); opacity: 0; }
+          15% { opacity: 1; }
+          100% { clip-path: inset(0 0% 0 0%); opacity: 1; }
+        }
+        @keyframes v3-ans-text {
+          0% { opacity: 0; transform: translateY(4px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .v3-ans-wing-l {
+          animation: v3-ans-wing-l 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        .v3-ans-wing-r {
+          animation: v3-ans-wing-r 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        .v3-ans-hex {
+          animation: v3-ans-hex 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        .v3-ans-text {
+          animation: v3-ans-text 0.22s ease-out 0.44s both;
+        }
+      `}</style>
+      <div className="w-full max-w-4xl flex items-center justify-center relative" style={{ ["--dc" as string]: `${dc}px` }}>
+        {hopeStarActive && (
+          <div
+            className="absolute z-30 pointer-events-none"
+            style={{
+              top: -24,
+              right: 20,
+              filter: "drop-shadow(0 4px 14px rgba(0,0,0,0.9))",
+            }}
+          >
+            <HopeStarBadge size={72} />
+          </div>
+        )}
+        <V3ScaledStage designW={shell.canvasW} designH={H}>
+          <svg
+            width={shell.canvasW}
+            height={H}
+            viewBox={`0 0 ${shell.canvasW} ${H}`}
+            className="overflow-visible"
+          >
+            <defs>
+              <linearGradient id="v3SingleAnsWing" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#00cfff" />
+                <stop offset="100%" stopColor="#0072ff" />
+              </linearGradient>
+              <linearGradient id="v3SingleAnsBg" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#064e3b" />
+                <stop offset="50%" stopColor="#047857" />
+                <stop offset="100%" stopColor="#065f46" />
+              </linearGradient>
+            </defs>
+
+            {/* Left 3-layer cyan wings + navy chevron */}
+            <g className="v3-ans-wing-l">
+              <path d={toSvgPath(l1Pts)} fill="url(#v3SingleAnsWing)" opacity={0.35} />
+              <path d={toSvgPath(l2Pts)} fill="url(#v3SingleAnsWing)" opacity={0.65} />
+              <path d={toSvgPath(l3Pts)} fill="url(#v3SingleAnsWing)" opacity={1.0} />
+              <path d={toSvgPath(shell.alnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
+            </g>
+
+            {/* Right navy chevron + 3-layer cyan wings */}
+            <g className="v3-ans-wing-r">
+              <path d={toSvgPath(shell.arnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
+              <path d={toSvgPath(r3Pts)} fill="url(#v3SingleAnsWing)" opacity={1.0} />
+              <path d={toSvgPath(r2Pts)} fill="url(#v3SingleAnsWing)" opacity={0.65} />
+              <path d={toSvgPath(r1Pts)} fill="url(#v3SingleAnsWing)" opacity={0.35} />
+            </g>
+
+            {/* Hexagon Body (Expands from center) */}
+            <g className="v3-ans-hex">
+              <path d={toSvgPath(shell.bgPts)} fill="url(#v3SingleAnsBg)" stroke="#10b981" strokeWidth={2.5} />
+            </g>
+
+            {/* Text Content (Fades in at 80% mark, 0.44s) */}
+            <g className="v3-ans-text">
+              <text
+                x={shell.startX + (shell.endX - shell.startX) * 0.28}
+                y={shell.H / 2 + 7}
+                textAnchor="middle"
+                fill="#6ee7b7"
+                fontWeight="900"
+                fontSize="20"
+                letterSpacing="0.08em"
+                className="uppercase font-sans"
+                style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.8))" }}
+              >
+                ✔ {roundLabel}:
+              </text>
+              <text
+                x={shell.startX + (shell.endX - shell.startX) * 0.62}
+                y={shell.H / 2 + 8}
+                textAnchor="middle"
+                fill="#ffffff"
+                fontWeight="900"
+                fontSize="24"
+                letterSpacing="0.05em"
+                className="uppercase font-sans"
+                style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
+              >
+                {answerText}
+                {points ? ` (${points}đ)` : ""}
+              </text>
+            </g>
+          </svg>
+        </V3ScaledStage>
       </div>
     </div>
   );
@@ -1892,7 +2155,9 @@ export function EconovaLowerThirdV3({
   const isVeDich = state.currentRound === "veDich";
   const W = 1000;
   const H = isVeDich ? 195 : 172;
-  const shell = buildArrowShell({ W, H, slantRatio: 0.3571 });
+  const cThick = Math.round(H * 0.16);
+  const pad = Math.round(cThick * 1.5);
+  const shell = buildArrowShell({ W, H, slantRatio: 0.3571, pad });
   const seats = activeSeats(state);
   const n = seats.length;
   const lt = buildLowerThirdLayout(shell, n, isVeDich ? "VE_DICH" : "KHOI_DONG", { tabH: 38 });
@@ -2014,12 +2279,16 @@ export function EconovaLowerThirdV3({
             </defs>
 
             {/* Left cyan wing & navy chevron */}
-            <path d={toSvgPath(shell.alcPts)} fill="url(#ltCyanWing)" />
+            <path d={toSvgPath(shell.alcPts.map(([x, y]) => [x - shell.cThick * 1.4, y] as Pt))} fill="url(#ltCyanWing)" opacity={0.35} />
+            <path d={toSvgPath(shell.alcPts.map(([x, y]) => [x - shell.cThick * 0.7, y] as Pt))} fill="url(#ltCyanWing)" opacity={0.65} />
+            <path d={toSvgPath(shell.alcPts)} fill="url(#ltCyanWing)" opacity={1.0} />
             <path d={toSvgPath(shell.alnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth="2" />
 
             {/* Right navy chevron & cyan wing */}
             <path d={toSvgPath(shell.arnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth="2" />
-            <path d={toSvgPath(shell.arcPts)} fill="url(#ltCyanWing)" />
+            <path d={toSvgPath(shell.arcPts)} fill="url(#ltCyanWing)" opacity={1.0} />
+            <path d={toSvgPath(shell.arcPts.map(([x, y]) => [x + shell.cThick * 0.7, y] as Pt))} fill="url(#ltCyanWing)" opacity={0.65} />
+            <path d={toSvgPath(shell.arcPts.map(([x, y]) => [x + shell.cThick * 1.4, y] as Pt))} fill="url(#ltCyanWing)" opacity={0.35} />
 
             {/* Hexagon Body Background */}
             <path d={toSvgPath(shell.bgPts)} fill="url(#ltBodyGrad)" stroke="#d1d5db" strokeWidth="2.5" />
@@ -2161,11 +2430,7 @@ export function EconovaLowerThirdV3({
               >
                 {questionText}
               </div>
-            ) : (
-              <div className="text-slate-400 italic text-left font-semibold text-sm pt-2">
-                Đang chờ câu hỏi...
-              </div>
-            )}
+            ) : null}
             {children}
           </div>
 

@@ -155,7 +155,7 @@ export function OlympiaStudio3DScene({
           stencil: false,
           depth: true,
         }}
-        dpr={isSandboxEnv ? 0.8 : quality === "LIGHT" ? 0.8 : isIframe ? 0.8 : quality === "HIGH" ? Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 1.25) : 1}
+        dpr={isSandboxEnv ? 0.6 : quality === "LIGHT" ? 0.6 : isIframe ? 0.75 : quality === "HIGH" ? Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 1.25) : 1}
       >
         <CameraController
           camAngle={internalCam}

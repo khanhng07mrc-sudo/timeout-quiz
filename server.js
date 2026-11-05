@@ -109152,7 +109152,14 @@ function registerOlympiaSocket(io2) {
         const stillConnected = [...entry.clients.values()].some((c) => c.role === "player" && c.seatId === info.seatId);
         if (!stillConnected) {
           entry.game.setConnected(info.seatId, false);
-          if (entry.game.state.stage === "lobby") entry.game.kickSeat(info.seatId);
+          const isSandbox = Boolean(
+            entry.baseConfig?.sandbox || info.code === "SANDBOX" || info.code.startsWith("sandbox") || info.code === "OFFLINE" || info.code.startsWith("OFFLINE") || entry.roomId?.startsWith("sandbox")
+          );
+          const seat = entry.game.state.seats[info.seatId];
+          const hasConfirmedSeat = Boolean(seat?.approved || seat?.name && isSandbox);
+          if (!isSandbox && !hasConfirmedSeat && entry.game.state.stage === "lobby") {
+            entry.game.kickSeat(info.seatId);
+          }
           entry.game.touch(Date.now());
           broadcast(info.code);
         }

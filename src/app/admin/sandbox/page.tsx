@@ -12128,17 +12128,27 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                 })}
               </div>
 
-              {/* Iframe Thí sinh: Chỉ render thí sinh đang được chọn để tiết kiệm CPU/RAM và triệt tiêu giật lag */}
+              {/* Iframe Thí sinh: Giữ kết nối ngầm toàn bộ các máy thí sinh, chuyển đổi mượt mà bằng CSS visibility */}
               <div className="flex-1 min-h-0 bg-[#0f0f1a] relative">
-                <iframe
-                  key={olympiaActiveSeat}
-                  src={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(
-                    sandboxCustomTeams[olympiaActiveSeat]?.name || `Thí sinh ${olympiaActiveSeat + 1}`
-                  )}`}
-                  allow="autoplay; camera; microphone"
-                  title={`Player Viewport ${olympiaActiveSeat}`}
-                  className="w-full h-full border-0 absolute inset-0"
-                />
+                {Array.from({ length: Math.min(8, Math.max(2, sandboxCustomTeams.length || 4)) }, (_, sIdx) => {
+                  const isActive = olympiaActiveSeat === sIdx;
+                  const tName = sandboxCustomTeams[sIdx]?.name || `Thí sinh ${sIdx + 1}`;
+                  return (
+                    <iframe
+                      key={sIdx}
+                      src={`/olympia/play/${code}?seat=${sIdx}&name=${encodeURIComponent(tName)}`}
+                      allow="autoplay *; fullscreen *; camera; microphone; display-capture"
+                      title={`Player Viewport ${sIdx}`}
+                      className={`w-full h-full border-0 absolute inset-0 ${
+                        isActive ? "visible pointer-events-auto z-10" : "invisible pointer-events-none z-0"
+                      }`}
+                      style={{
+                        visibility: isActive ? "visible" : "hidden",
+                        pointerEvents: isActive ? "auto" : "none",
+                      }}
+                    />
+                  );
+                })}
               </div>
             </div>
           </div>

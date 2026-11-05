@@ -196,14 +196,16 @@ function renderBinaryMatrixGrid(
   h: number,
   fadeProgress: number = 0,
   seedOffset: number = 0,
-  timeSec: number = 0
+  timeSec: number = 0,
+  quality: "HIGH" | "MEDIUM" | "LIGHT" = "HIGH"
 ): void {
-  const cellSize = 22;
+  const isLight = quality === "LIGHT";
+  const cellSize = isLight ? 44 : 22;
   const cols = Math.floor(w / cellSize);
   const rows = Math.floor(h / cellSize);
 
   ctx.save();
-  ctx.font = '700 12px "Courier New", monospace';
+  ctx.font = isLight ? '700 13px "Courier New", monospace' : '700 12px "Courier New", monospace';
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
@@ -213,7 +215,7 @@ function renderBinaryMatrixGrid(
     return seed / 4294967296;
   };
 
-  const timeStep = Math.floor(timeSec * 4.0); // 4 digital stream transitions per second
+  const timeStep = Math.floor(timeSec * (isLight ? 2.5 : 4.0)); // digital stream transitions per second
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -230,14 +232,18 @@ function renderBinaryMatrixGrid(
       // ~32% of cells are brightly lit with glow + sinusoidal stream pulse
       const glowPulse = Math.sin(timeSec * 2.5 + c * 0.35 + r * 0.2);
       if (roll < 0.32 || (roll < 0.45 && glowPulse > 0.4)) {
-        ctx.save();
         const isRed = roll < 0.10 || fadeProgress > 0.5;
         const color = isRed ? "#ff2a55" : roll < 0.22 ? "#00f0ff" : "#10b981";
         ctx.fillStyle = color;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 8;
-        ctx.fillText(val, x, y);
-        ctx.restore();
+        if (!isLight) {
+          ctx.save();
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 8;
+          ctx.fillText(val, x, y);
+          ctx.restore();
+        } else {
+          ctx.fillText(val, x, y);
+        }
       } else if (roll < 0.70) {
         // Faint ambient background numbers
         ctx.fillStyle = fadeProgress > 0.5 ? "rgba(255, 60, 90, 0.18)" : "rgba(0, 210, 255, 0.18)";
@@ -1688,7 +1694,7 @@ export function renderDynamicCurvedFormulaCanvas(
   }
 
   // Streaming high-tech binary matrix 0/1 grid with glowing cyan and red digits
-  renderBinaryMatrixGrid(ctx, w, h, fadeProgress, timeSec);
+  renderBinaryMatrixGrid(ctx, w, h, fadeProgress, 0, timeSec, quality);
 
   // 4. Periodic diagonal specular light sweeps (240 px/s, every ~5s)
   const sweepPeriod = 5.0;
@@ -2405,8 +2411,9 @@ export function CentralLedWall({
     accumulatedTimeRef.current += dt;
     const t = accumulatedTimeRef.current;
 
-    // 1. Throttle Curved Formula Wall redraw to ~30 FPS (interval >= 32ms)
-    if (t - lastWallFrameRef.current >= 0.032) {
+    // 1. Throttle Curved Formula Wall redraw (~30 FPS for High, ~14 FPS for Light / 2 vCPU)
+    const wallInterval = quality === "LIGHT" ? 0.075 : quality === "MEDIUM" ? 0.045 : 0.032;
+    if (t - lastWallFrameRef.current >= wallInterval) {
       lastWallFrameRef.current = t;
       if (formulaWallCanvasRef.current && formulaWallTextureRef.current) {
         renderDynamicCurvedFormulaCanvas(
@@ -2419,9 +2426,10 @@ export function CentralLedWall({
       }
     }
 
-    // 2. Throttle Stage Right Screen & Vertical Totem in Idle Mode to ~20-25 FPS (interval >= 45ms)
+    // 2. Throttle Stage Right Screen & Vertical Totem in Idle Mode (~20 FPS for High, ~10 FPS for Light)
     const isIdle = isPreMatchIdle(state);
-    if (isIdle && t - lastScreenFrameRef.current >= 0.045) {
+    const screenInterval = quality === "LIGHT" ? 0.090 : 0.045;
+    if (isIdle && t - lastScreenFrameRef.current >= screenInterval) {
       lastScreenFrameRef.current = t;
       if (canvasRef.current && textureRef.current) {
         renderLedScreenToCanvas(

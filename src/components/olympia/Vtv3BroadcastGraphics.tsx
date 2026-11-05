@@ -1026,7 +1026,8 @@ export type { ZigzagShape, GridCell, ArrowShell };
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
-  const v = state.vcnv!;
+  const v = state.vcnv;
+  if (!v) return null;
   const seats = activeSeats(state);
   const isV3Arrow = state.themeMode !== "o26_classic";
 
@@ -1040,25 +1041,39 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
     const cols = buildRowColumns(shell, [48, 52]);
     const dc = shell.canvasW / 2 - shell.startX;
 
-    // 3 Layers of cyan wings on left (ghost 1, ghost 2, layer 3)
-    const l3Pts = shell.alcPts;
-    const l2Pts = shell.alcPts.map(([x, y]) => [x - cThick * 0.7, y] as Pt);
-    const l1Pts = shell.alcPts.map(([x, y]) => [x - cThick * 1.4, y] as Pt);
-
-    // 3 Layers of cyan wings on right (layer 3, ghost 2, ghost 1)
-    const r3Pts = shell.arcPts;
-    const r2Pts = shell.arcPts.map(([x, y]) => [x + cThick * 0.7, y] as Pt);
-    const r1Pts = shell.arcPts.map(([x, y]) => [x + cThick * 1.4, y] as Pt);
-
     return (
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040e24]/90 backdrop-blur-md animate-fade-in select-none">
         <style>{`
-          @keyframes v3-row-wing-l {
+          @keyframes v3-row-wing-l-g1 {
+            0% { transform: translateX(calc(var(--dc) * 0.95)) scale(0.6); opacity: 0; }
+            15% { opacity: 0.35; }
+            40% { transform: translateX(-24px) scale(1); opacity: 0.35; }
+            100% { transform: translateX(0); opacity: 0.35; }
+          }
+          @keyframes v3-row-wing-l-g2 {
+            0% { transform: translateX(calc(var(--dc) * 0.95)) scale(0.7); opacity: 0; }
+            15% { opacity: 0.65; }
+            40% { transform: translateX(-12px) scale(1); opacity: 0.65; }
+            100% { transform: translateX(0); opacity: 0.65; }
+          }
+          @keyframes v3-row-wing-l-l3 {
             0% { transform: translateX(calc(var(--dc) * 0.95)); opacity: 0; }
             15% { opacity: 1; }
             100% { transform: translateX(0); opacity: 1; }
           }
-          @keyframes v3-row-wing-r {
+          @keyframes v3-row-wing-r-g1 {
+            0% { transform: translateX(calc(var(--dc) * -0.95)) scale(0.6); opacity: 0; }
+            15% { opacity: 0.35; }
+            40% { transform: translateX(24px) scale(1); opacity: 0.35; }
+            100% { transform: translateX(0); opacity: 0.35; }
+          }
+          @keyframes v3-row-wing-r-g2 {
+            0% { transform: translateX(calc(var(--dc) * -0.95)) scale(0.7); opacity: 0; }
+            15% { opacity: 0.65; }
+            40% { transform: translateX(12px) scale(1); opacity: 0.65; }
+            100% { transform: translateX(0); opacity: 0.65; }
+          }
+          @keyframes v3-row-wing-r-l3 {
             0% { transform: translateX(calc(var(--dc) * -0.95)); opacity: 0; }
             15% { opacity: 1; }
             100% { transform: translateX(0); opacity: 1; }
@@ -1072,11 +1087,23 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
             0% { opacity: 0; transform: translateY(4px); }
             100% { opacity: 1; transform: translateY(0); }
           }
-          .v3-row-wing-l {
-            animation: v3-row-wing-l 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          .v3-row-wing-l-g1 {
+            animation: v3-row-wing-l-g1 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
-          .v3-row-wing-r {
-            animation: v3-row-wing-r 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          .v3-row-wing-l-g2 {
+            animation: v3-row-wing-l-g2 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-row-wing-l-l3 {
+            animation: v3-row-wing-l-l3 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-row-wing-r-g1 {
+            animation: v3-row-wing-r-g1 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-row-wing-r-g2 {
+            animation: v3-row-wing-r-g2 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-row-wing-r-l3 {
+            animation: v3-row-wing-r-l3 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
           .v3-row-hex {
             animation: v3-row-hex 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -1088,9 +1115,9 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
         {/* Only pure graphic bars - Strictly no header pill text */}
         <div className="w-full max-w-4xl flex flex-col gap-3.5 items-center justify-center py-2">
           {seats.map((seat, idx) => {
-            const answerText = v.answers[seat.id]?.text || "";
-            const rowDelay = idx * 0.18;
-            const textDelay = (rowDelay + 0.44).toFixed(3);
+            const answerText = v.answers?.[seat.id]?.text || "";
+            const rowDelay = 0;
+            const textDelay = "0.440";
 
             return (
               <div
@@ -1107,8 +1134,8 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
                   >
                     <defs>
                       <linearGradient id={`vcnvWing-${idx}`} x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#00cfff" />
-                        <stop offset="100%" stopColor="#0072ff" />
+                        <stop offset="0%" stopColor="#1fd1ff" />
+                        <stop offset="100%" stopColor="#2ee6ff" />
                       </linearGradient>
                       <linearGradient id={`vcnvName-${idx}`} x1="0" y1="0" x2="1" y2="0">
                         <stop offset="0%" stopColor="#051433" />
@@ -1121,19 +1148,27 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
                     </defs>
 
                     {/* Left 3-layer cyan wings + navy chevron */}
-                    <g className="v3-row-wing-l" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
-                      <path d={toSvgPath(l1Pts)} fill={`url(#vcnvWing-${idx})`} opacity={0.35} />
-                      <path d={toSvgPath(l2Pts)} fill={`url(#vcnvWing-${idx})`} opacity={0.65} />
-                      <path d={toSvgPath(l3Pts)} fill={`url(#vcnvWing-${idx})`} opacity={1.0} />
-                      <path d={toSvgPath(shell.alnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
+                    <g className="v3-row-wing-l-g1" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.alcPts)} fill={`url(#vcnvWing-${idx})`} opacity={0.35} />
+                    </g>
+                    <g className="v3-row-wing-l-g2" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.alcPts)} fill={`url(#vcnvWing-${idx})`} opacity={0.65} />
+                    </g>
+                    <g className="v3-row-wing-l-l3" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.alcPts)} fill={`url(#vcnvWing-${idx})`} opacity={1.0} />
+                      <path d={toSvgPath(shell.alnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth={1.5} />
                     </g>
 
                     {/* Right navy chevron + 3-layer cyan wings */}
-                    <g className="v3-row-wing-r" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
-                      <path d={toSvgPath(shell.arnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
-                      <path d={toSvgPath(r3Pts)} fill={`url(#vcnvWing-${idx})`} opacity={1.0} />
-                      <path d={toSvgPath(r2Pts)} fill={`url(#vcnvWing-${idx})`} opacity={0.65} />
-                      <path d={toSvgPath(r1Pts)} fill={`url(#vcnvWing-${idx})`} opacity={0.35} />
+                    <g className="v3-row-wing-r-l3" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.arnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth={1.5} />
+                      <path d={toSvgPath(shell.arcPts)} fill={`url(#vcnvWing-${idx})`} opacity={1.0} />
+                    </g>
+                    <g className="v3-row-wing-r-g2" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.arcPts)} fill={`url(#vcnvWing-${idx})`} opacity={0.65} />
+                    </g>
+                    <g className="v3-row-wing-r-g1" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.arcPts)} fill={`url(#vcnvWing-${idx})`} opacity={0.35} />
                     </g>
 
                     {/* Hexagon Body (Expands from center) */}
@@ -1362,7 +1397,8 @@ export function TangTocQuestionGraphic({
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) {
-  const tt = state.tangToc!;
+  const tt = state.tangToc;
+  if (!tt) return null;
   const isV3Arrow = state.themeMode !== "o26_classic";
 
   if (isV3Arrow) {
@@ -1375,25 +1411,39 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
     const cols = buildRowColumns(shell, [38, 42, 20]);
     const dc = shell.canvasW / 2 - shell.startX;
 
-    // 3 Layers of cyan wings on left (ghost 1, ghost 2, layer 3)
-    const l3Pts = shell.alcPts;
-    const l2Pts = shell.alcPts.map(([x, y]) => [x - cThick * 0.7, y] as Pt);
-    const l1Pts = shell.alcPts.map(([x, y]) => [x - cThick * 1.4, y] as Pt);
-
-    // 3 Layers of cyan wings on right (layer 3, ghost 2, ghost 1)
-    const r3Pts = shell.arcPts;
-    const r2Pts = shell.arcPts.map(([x, y]) => [x + cThick * 0.7, y] as Pt);
-    const r1Pts = shell.arcPts.map(([x, y]) => [x + cThick * 1.4, y] as Pt);
-
     return (
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040e24]/90 backdrop-blur-md animate-fade-in select-none">
         <style>{`
-          @keyframes v3-tt-wing-l {
+          @keyframes v3-tt-wing-l-g1 {
+            0% { transform: translateX(calc(var(--dc) * 0.95)) scale(0.6); opacity: 0; }
+            15% { opacity: 0.35; }
+            40% { transform: translateX(-24px) scale(1); opacity: 0.35; }
+            100% { transform: translateX(0); opacity: 0.35; }
+          }
+          @keyframes v3-tt-wing-l-g2 {
+            0% { transform: translateX(calc(var(--dc) * 0.95)) scale(0.7); opacity: 0; }
+            15% { opacity: 0.65; }
+            40% { transform: translateX(-12px) scale(1); opacity: 0.65; }
+            100% { transform: translateX(0); opacity: 0.65; }
+          }
+          @keyframes v3-tt-wing-l-l3 {
             0% { transform: translateX(calc(var(--dc) * 0.95)); opacity: 0; }
             15% { opacity: 1; }
             100% { transform: translateX(0); opacity: 1; }
           }
-          @keyframes v3-tt-wing-r {
+          @keyframes v3-tt-wing-r-g1 {
+            0% { transform: translateX(calc(var(--dc) * -0.95)) scale(0.6); opacity: 0; }
+            15% { opacity: 0.35; }
+            40% { transform: translateX(24px) scale(1); opacity: 0.35; }
+            100% { transform: translateX(0); opacity: 0.35; }
+          }
+          @keyframes v3-tt-wing-r-g2 {
+            0% { transform: translateX(calc(var(--dc) * -0.95)) scale(0.7); opacity: 0; }
+            15% { opacity: 0.65; }
+            40% { transform: translateX(12px) scale(1); opacity: 0.65; }
+            100% { transform: translateX(0); opacity: 0.65; }
+          }
+          @keyframes v3-tt-wing-r-l3 {
             0% { transform: translateX(calc(var(--dc) * -0.95)); opacity: 0; }
             15% { opacity: 1; }
             100% { transform: translateX(0); opacity: 1; }
@@ -1407,11 +1457,23 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             0% { opacity: 0; transform: translateY(4px); }
             100% { opacity: 1; transform: translateY(0); }
           }
-          .v3-tt-wing-l {
-            animation: v3-tt-wing-l 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          .v3-tt-wing-l-g1 {
+            animation: v3-tt-wing-l-g1 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
-          .v3-tt-wing-r {
-            animation: v3-tt-wing-r 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          .v3-tt-wing-l-g2 {
+            animation: v3-tt-wing-l-g2 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-tt-wing-l-l3 {
+            animation: v3-tt-wing-l-l3 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-tt-wing-r-g1 {
+            animation: v3-tt-wing-r-g1 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-tt-wing-r-g2 {
+            animation: v3-tt-wing-r-g2 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .v3-tt-wing-r-l3 {
+            animation: v3-tt-wing-r-l3 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
           .v3-tt-hex {
             animation: v3-tt-hex 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -1422,12 +1484,12 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
         `}</style>
         {/* Only pure graphic bars - Strictly no header pill text */}
         <div className="w-full max-w-4xl flex flex-col gap-3.5 items-center justify-center py-2">
-          {tt.ranking.map((item, idx) => {
+          {(tt.ranking || []).map((item, idx) => {
             const seat = state.seats[item.seat];
             const sec = item.noAnswer ? "—" : (item.ms / 1000).toFixed(2);
-            const answerText = item.noAnswer ? "" : item.answer;
-            const rowDelay = idx * 0.18;
-            const textDelay = (rowDelay + 0.44).toFixed(3);
+            const answerText = item.noAnswer ? "" : (item.answer || "");
+            const rowDelay = 0;
+            const textDelay = "0.440";
 
             return (
               <div
@@ -1444,8 +1506,8 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                   >
                     <defs>
                       <linearGradient id={`ttWing-${idx}`} x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#00cfff" />
-                        <stop offset="100%" stopColor="#0072ff" />
+                        <stop offset="0%" stopColor="#1fd1ff" />
+                        <stop offset="100%" stopColor="#2ee6ff" />
                       </linearGradient>
                       <linearGradient id={`ttName-${idx}`} x1="0" y1="0" x2="1" y2="0">
                         <stop offset="0%" stopColor="#051433" />
@@ -1462,19 +1524,27 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                     </defs>
 
                     {/* Left 3-layer cyan wings + navy chevron */}
-                    <g className="v3-tt-wing-l" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
-                      <path d={toSvgPath(l1Pts)} fill={`url(#ttWing-${idx})`} opacity={0.35} />
-                      <path d={toSvgPath(l2Pts)} fill={`url(#ttWing-${idx})`} opacity={0.65} />
-                      <path d={toSvgPath(l3Pts)} fill={`url(#ttWing-${idx})`} opacity={1.0} />
-                      <path d={toSvgPath(shell.alnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
+                    <g className="v3-tt-wing-l-g1" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.alcPts)} fill={`url(#ttWing-${idx})`} opacity={0.35} />
+                    </g>
+                    <g className="v3-tt-wing-l-g2" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.alcPts)} fill={`url(#ttWing-${idx})`} opacity={0.65} />
+                    </g>
+                    <g className="v3-tt-wing-l-l3" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.alcPts)} fill={`url(#ttWing-${idx})`} opacity={1.0} />
+                      <path d={toSvgPath(shell.alnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth={1.5} />
                     </g>
 
                     {/* Right navy chevron + 3-layer cyan wings */}
-                    <g className="v3-tt-wing-r" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
-                      <path d={toSvgPath(shell.arnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
-                      <path d={toSvgPath(r3Pts)} fill={`url(#ttWing-${idx})`} opacity={1.0} />
-                      <path d={toSvgPath(r2Pts)} fill={`url(#ttWing-${idx})`} opacity={0.65} />
-                      <path d={toSvgPath(r1Pts)} fill={`url(#ttWing-${idx})`} opacity={0.35} />
+                    <g className="v3-tt-wing-r-l3" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.arnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth={1.5} />
+                      <path d={toSvgPath(shell.arcPts)} fill={`url(#ttWing-${idx})`} opacity={1.0} />
+                    </g>
+                    <g className="v3-tt-wing-r-g2" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.arcPts)} fill={`url(#ttWing-${idx})`} opacity={0.65} />
+                    </g>
+                    <g className="v3-tt-wing-r-g1" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                      <path d={toSvgPath(shell.arcPts)} fill={`url(#ttWing-${idx})`} opacity={0.35} />
                     </g>
 
                     {/* Hexagon Body (Expands from center) */}
@@ -1646,25 +1716,39 @@ export function V3SingleAnswerBar({
   const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick, cThick, pad });
   const dc = shell.canvasW / 2 - shell.startX;
 
-  // 3 Layers of cyan wings on left
-  const l3Pts = shell.alcPts;
-  const l2Pts = shell.alcPts.map(([x, y]) => [x - cThick * 0.7, y] as Pt);
-  const l1Pts = shell.alcPts.map(([x, y]) => [x - cThick * 1.4, y] as Pt);
-
-  // 3 Layers of cyan wings on right
-  const r3Pts = shell.arcPts;
-  const r2Pts = shell.arcPts.map(([x, y]) => [x + cThick * 0.7, y] as Pt);
-  const r1Pts = shell.arcPts.map(([x, y]) => [x + cThick * 1.4, y] as Pt);
-
   return (
     <div className="w-full flex items-center justify-center p-2 select-none">
       <style>{`
-        @keyframes v3-ans-wing-l {
+        @keyframes v3-ans-wing-l-g1 {
+          0% { transform: translateX(calc(var(--dc) * 0.95)) scale(0.6); opacity: 0; }
+          15% { opacity: 0.35; }
+          40% { transform: translateX(-24px) scale(1); opacity: 0.35; }
+          100% { transform: translateX(0); opacity: 0.35; }
+        }
+        @keyframes v3-ans-wing-l-g2 {
+          0% { transform: translateX(calc(var(--dc) * 0.95)) scale(0.7); opacity: 0; }
+          15% { opacity: 0.65; }
+          40% { transform: translateX(-12px) scale(1); opacity: 0.65; }
+          100% { transform: translateX(0); opacity: 0.65; }
+        }
+        @keyframes v3-ans-wing-l-l3 {
           0% { transform: translateX(calc(var(--dc) * 0.95)); opacity: 0; }
           15% { opacity: 1; }
           100% { transform: translateX(0); opacity: 1; }
         }
-        @keyframes v3-ans-wing-r {
+        @keyframes v3-ans-wing-r-g1 {
+          0% { transform: translateX(calc(var(--dc) * -0.95)) scale(0.6); opacity: 0; }
+          15% { opacity: 0.35; }
+          40% { transform: translateX(24px) scale(1); opacity: 0.35; }
+          100% { transform: translateX(0); opacity: 0.35; }
+        }
+        @keyframes v3-ans-wing-r-g2 {
+          0% { transform: translateX(calc(var(--dc) * -0.95)) scale(0.7); opacity: 0; }
+          15% { opacity: 0.65; }
+          40% { transform: translateX(12px) scale(1); opacity: 0.65; }
+          100% { transform: translateX(0); opacity: 0.65; }
+        }
+        @keyframes v3-ans-wing-r-l3 {
           0% { transform: translateX(calc(var(--dc) * -0.95)); opacity: 0; }
           15% { opacity: 1; }
           100% { transform: translateX(0); opacity: 1; }
@@ -1678,11 +1762,23 @@ export function V3SingleAnswerBar({
           0% { opacity: 0; transform: translateY(4px); }
           100% { opacity: 1; transform: translateY(0); }
         }
-        .v3-ans-wing-l {
-          animation: v3-ans-wing-l 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        .v3-ans-wing-l-g1 {
+          animation: v3-ans-wing-l-g1 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
-        .v3-ans-wing-r {
-          animation: v3-ans-wing-r 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        .v3-ans-wing-l-g2 {
+          animation: v3-ans-wing-l-g2 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        .v3-ans-wing-l-l3 {
+          animation: v3-ans-wing-l-l3 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        .v3-ans-wing-r-g1 {
+          animation: v3-ans-wing-r-g1 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        .v3-ans-wing-r-g2 {
+          animation: v3-ans-wing-r-g2 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        .v3-ans-wing-r-l3 {
+          animation: v3-ans-wing-r-l3 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
         .v3-ans-hex {
           animation: v3-ans-hex 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -1713,8 +1809,8 @@ export function V3SingleAnswerBar({
           >
             <defs>
               <linearGradient id="v3SingleAnsWing" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#00cfff" />
-                <stop offset="100%" stopColor="#0072ff" />
+                <stop offset="0%" stopColor="#1fd1ff" />
+                <stop offset="100%" stopColor="#2ee6ff" />
               </linearGradient>
               <linearGradient id="v3SingleAnsBg" x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0%" stopColor="#064e3b" />
@@ -1724,19 +1820,27 @@ export function V3SingleAnswerBar({
             </defs>
 
             {/* Left 3-layer cyan wings + navy chevron */}
-            <g className="v3-ans-wing-l">
-              <path d={toSvgPath(l1Pts)} fill="url(#v3SingleAnsWing)" opacity={0.35} />
-              <path d={toSvgPath(l2Pts)} fill="url(#v3SingleAnsWing)" opacity={0.65} />
-              <path d={toSvgPath(l3Pts)} fill="url(#v3SingleAnsWing)" opacity={1.0} />
-              <path d={toSvgPath(shell.alnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
+            <g className="v3-ans-wing-l-g1">
+              <path d={toSvgPath(shell.alcPts)} fill="url(#v3SingleAnsWing)" opacity={0.35} />
+            </g>
+            <g className="v3-ans-wing-l-g2">
+              <path d={toSvgPath(shell.alcPts)} fill="url(#v3SingleAnsWing)" opacity={0.65} />
+            </g>
+            <g className="v3-ans-wing-l-l3">
+              <path d={toSvgPath(shell.alcPts)} fill="url(#v3SingleAnsWing)" opacity={1.0} />
+              <path d={toSvgPath(shell.alnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth={1.5} />
             </g>
 
             {/* Right navy chevron + 3-layer cyan wings */}
-            <g className="v3-ans-wing-r">
-              <path d={toSvgPath(shell.arnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth={1.5} />
-              <path d={toSvgPath(r3Pts)} fill="url(#v3SingleAnsWing)" opacity={1.0} />
-              <path d={toSvgPath(r2Pts)} fill="url(#v3SingleAnsWing)" opacity={0.65} />
-              <path d={toSvgPath(r1Pts)} fill="url(#v3SingleAnsWing)" opacity={0.35} />
+            <g className="v3-ans-wing-r-l3">
+              <path d={toSvgPath(shell.arnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth={1.5} />
+              <path d={toSvgPath(shell.arcPts)} fill="url(#v3SingleAnsWing)" opacity={1.0} />
+            </g>
+            <g className="v3-ans-wing-r-g2">
+              <path d={toSvgPath(shell.arcPts)} fill="url(#v3SingleAnsWing)" opacity={0.65} />
+            </g>
+            <g className="v3-ans-wing-r-g1">
+              <path d={toSvgPath(shell.arcPts)} fill="url(#v3SingleAnsWing)" opacity={0.35} />
             </g>
 
             {/* Hexagon Body (Expands from center) */}
@@ -1880,8 +1984,8 @@ export function SummaryLowerThirdGraphic({
           >
             <defs>
               <linearGradient id="smCyanWing" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#00cfff" />
-                <stop offset="100%" stopColor="#0072ff" />
+                <stop offset="0%" stopColor="#1fd1ff" />
+                <stop offset="100%" stopColor="#2ee6ff" />
               </linearGradient>
               <linearGradient id="smBodyGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#081e4a" />
@@ -1892,10 +1996,10 @@ export function SummaryLowerThirdGraphic({
 
             {/* Left cyan wing & navy chevron */}
             <path d={toSvgPath(shell.alcPts)} fill="url(#smCyanWing)" stroke="#ffffff" strokeWidth="2" />
-            <path d={toSvgPath(shell.alnPts)} fill="#051433" stroke="#d1d5db" strokeWidth="2" />
+            <path d={toSvgPath(shell.alnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth="2" />
 
             {/* Right navy chevron & cyan wing */}
-            <path d={toSvgPath(shell.arnPts)} fill="#051433" stroke="#d1d5db" strokeWidth="2" />
+            <path d={toSvgPath(shell.arnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth="2" />
             <path d={toSvgPath(shell.arcPts)} fill="url(#smCyanWing)" stroke="#ffffff" strokeWidth="2" />
 
             {/* Hexagon Body */}
@@ -2220,6 +2324,7 @@ export function EconovaLowerThirdV3({
   const qLeft = shell.startX + shell.pS + 12;
   const qRight = isVeDich && lt.clusterLine ? lt.clusterLine.x0 - 16 : shell.endX - shell.pS - 12;
   const qWidth = qRight - qLeft;
+  const dc = shell.canvasW / 2 - shell.startX;
 
   return (
     <div
@@ -2231,7 +2336,107 @@ export function EconovaLowerThirdV3({
     >
       {extraTopBanner && <div className="mb-2 w-full max-w-5xl mx-auto">{extraTopBanner}</div>}
 
-      <div className="relative w-full flex items-center justify-center select-none">
+      <div className="relative w-full flex items-center justify-center select-none" style={{ ["--dc" as string]: `${dc}px` }}>
+        <style>{`
+          /* --- ECONOVA LOWER THIRD 2.5s MASTER TIMELINE --- */
+          /* Left direction keyframes (Pointing <) */
+          @keyframes v3-eco-l-g1 {
+            0%   { transform: translateX(calc(var(--dc) * 0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+            1%   { opacity: 0.3; }
+            25%  { transform: translateX(calc(var(--dc) * 0.5 - 28px)) scale(1); opacity: 0.3; animation-timing-function: linear; }
+            35%  { transform: translateX(calc(var(--dc) * 0.5 - 28px)) scale(1); opacity: 0.3; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+            65%  { transform: translateX(-24px) scale(1); opacity: 0.3; }
+            100% { transform: translateX(0) scale(1); opacity: 0.3; }
+          }
+          @keyframes v3-eco-l-g2 {
+            0%   { transform: translateX(calc(var(--dc) * 0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+            5.1% { opacity: 0.65; }
+            30%  { transform: translateX(calc(var(--dc) * 0.5 - 14px)) scale(1); opacity: 0.65; animation-timing-function: linear; }
+            40%  { transform: translateX(calc(var(--dc) * 0.5 - 14px)) scale(1); opacity: 0.65; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+            70%  { transform: translateX(-12px) scale(1); opacity: 0.65; }
+            100% { transform: translateX(0) scale(1); opacity: 0.65; }
+          }
+          @keyframes v3-eco-l-l3 {
+            0%   { transform: translateX(calc(var(--dc) * 0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+            10.1%{ opacity: 1; }
+            35%  { transform: translateX(calc(var(--dc) * 0.5)) scale(1); opacity: 1; animation-timing-function: linear; }
+            45%  { transform: translateX(calc(var(--dc) * 0.5)) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
+          }
+          @keyframes v3-eco-l-navy {
+            0%   { transform: translateX(calc(var(--dc) * 0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+            10.1%{ opacity: 1; }
+            35%  { transform: translateX(calc(var(--dc) * 0.5)) scale(1); opacity: 1; animation-timing-function: linear; }
+            45%  { transform: translateX(calc(var(--dc) * 0.5)) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
+          }
+
+          /* Right direction keyframes (Pointing >) */
+          @keyframes v3-eco-r-g1 {
+            0%   { transform: translateX(calc(var(--dc) * -0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+            1%   { opacity: 0.3; }
+            25%  { transform: translateX(calc(var(--dc) * -0.5 + 28px)) scale(1); opacity: 0.3; animation-timing-function: linear; }
+            35%  { transform: translateX(calc(var(--dc) * -0.5 + 28px)) scale(1); opacity: 0.3; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+            65%  { transform: translateX(24px) scale(1); opacity: 0.3; }
+            100% { transform: translateX(0) scale(1); opacity: 0.3; }
+          }
+          @keyframes v3-eco-r-g2 {
+            0%   { transform: translateX(calc(var(--dc) * -0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+            5.1% { opacity: 0.65; }
+            30%  { transform: translateX(calc(var(--dc) * -0.5 + 14px)) scale(1); opacity: 0.65; animation-timing-function: linear; }
+            40%  { transform: translateX(calc(var(--dc) * -0.5 + 14px)) scale(1); opacity: 0.65; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+            70%  { transform: translateX(12px) scale(1); opacity: 0.65; }
+            100% { transform: translateX(0) scale(1); opacity: 0.65; }
+          }
+          @keyframes v3-eco-r-l3 {
+            0%   { transform: translateX(calc(var(--dc) * -0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+            10.1%{ opacity: 1; }
+            35%  { transform: translateX(calc(var(--dc) * -0.5)) scale(1); opacity: 1; animation-timing-function: linear; }
+            45%  { transform: translateX(calc(var(--dc) * -0.5)) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
+          }
+          @keyframes v3-eco-r-navy {
+            0%   { transform: translateX(calc(var(--dc) * -0.95)) scale(0.1); opacity: 0; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+            10.1%{ opacity: 1; }
+            35%  { transform: translateX(calc(var(--dc) * -0.5)) scale(1); opacity: 1; animation-timing-function: linear; }
+            45%  { transform: translateX(calc(var(--dc) * -0.5)) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
+          }
+
+          /* Hexagon Body Expand from 90px center at 45% (1.125s) to 100% */
+          @keyframes v3-eco-hex-body {
+            0%, 44.9% { clip-path: inset(0 calc(50% - 45px) 0 calc(50% - 45px)); opacity: 0; }
+            45%       { clip-path: inset(0 calc(50% - 45px) 0 calc(50% - 45px)); opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+            100%      { clip-path: inset(0 0% 0 0%); opacity: 1; }
+          }
+
+          /* Content reveal: Hidden until 70% (1.75s), 80% opacity at 2.0s, full at 2.5s */
+          @keyframes v3-eco-content-fade {
+            0%, 70%  { opacity: 0; }
+            80%      { opacity: 0.8; }
+            100%     { opacity: 1; }
+          }
+
+          @keyframes v3-eco-text-swap {
+            0%       { opacity: 0; transform: translateY(4px); }
+            100%     { opacity: 1; transform: translateY(0); }
+          }
+
+          /* Master Animation Classes: 2.5s duration */
+          .v3-anim-l-g1   { animation: v3-eco-l-g1 2.5s both; }
+          .v3-anim-l-g2   { animation: v3-eco-l-g2 2.5s both; }
+          .v3-anim-l-l3   { animation: v3-eco-l-l3 2.5s both; }
+          .v3-anim-l-navy { animation: v3-eco-l-navy 2.5s both; }
+
+          .v3-anim-r-g1   { animation: v3-eco-r-g1 2.5s both; }
+          .v3-anim-r-g2   { animation: v3-eco-r-g2 2.5s both; }
+          .v3-anim-r-l3   { animation: v3-eco-r-l3 2.5s both; }
+          .v3-anim-r-navy { animation: v3-eco-r-navy 2.5s both; }
+
+          .v3-anim-body   { animation: v3-eco-hex-body 2.5s both; }
+          .v3-anim-content{ animation: v3-eco-content-fade 2.5s ease-out both; }
+          .v3-anim-swap   { animation: v3-eco-text-swap 0.35s ease-out both; }
+        `}</style>
         <V3ScaledStage designW={shell.canvasW} designH={H}>
           {/* Authentic Floating Hope Star Badge at top-right of score cluster */}
           {hopeStarActive && (
@@ -2256,8 +2461,8 @@ export function EconovaLowerThirdV3({
           >
             <defs>
               <linearGradient id="ltCyanWing" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#00cfff" />
-                <stop offset="100%" stopColor="#0072ff" />
+                <stop offset="0%" stopColor="#1fd1ff" />
+                <stop offset="100%" stopColor="#2ee6ff" />
               </linearGradient>
               <linearGradient id="ltBodyGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#0a226b" />
@@ -2269,8 +2474,8 @@ export function EconovaLowerThirdV3({
                 <stop offset="100%" stopColor="#c0392b" />
               </linearGradient>
               <linearGradient id="ltTabActiveVd" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#00cfff" />
-                <stop offset="100%" stopColor="#0072ff" />
+                <stop offset="0%" stopColor="#1fd1ff" />
+                <stop offset="100%" stopColor="#2ee6ff" />
               </linearGradient>
               <linearGradient id="ltTabBuzzed" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stopColor="#ff3838" />
@@ -2278,145 +2483,165 @@ export function EconovaLowerThirdV3({
               </linearGradient>
             </defs>
 
-            {/* Left cyan wing & navy chevron */}
-            <path d={toSvgPath(shell.alcPts.map(([x, y]) => [x - shell.cThick * 1.4, y] as Pt))} fill="url(#ltCyanWing)" opacity={0.35} />
-            <path d={toSvgPath(shell.alcPts.map(([x, y]) => [x - shell.cThick * 0.7, y] as Pt))} fill="url(#ltCyanWing)" opacity={0.65} />
-            <path d={toSvgPath(shell.alcPts)} fill="url(#ltCyanWing)" opacity={1.0} />
-            <path d={toSvgPath(shell.alnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth="2" />
+            {/* Left cyan wing & navy chevron with Econova motion cushion */}
+            <g className={runAnim ? "v3-anim-l-g1" : ""} opacity={runAnim ? undefined : 0.3}>
+              <path d={toSvgPath(shell.alcPts)} fill="url(#ltCyanWing)" />
+            </g>
+            <g className={runAnim ? "v3-anim-l-g2" : ""} opacity={runAnim ? undefined : 0.65}>
+              <path d={toSvgPath(shell.alcPts)} fill="url(#ltCyanWing)" />
+            </g>
+            <g className={runAnim ? "v3-anim-l-l3" : ""}>
+              <path d={toSvgPath(shell.alcPts)} fill="url(#ltCyanWing)" />
+            </g>
+            <g className={runAnim ? "v3-anim-l-navy" : ""}>
+              <path d={toSvgPath(shell.alnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth={2} />
+            </g>
 
-            {/* Right navy chevron & cyan wing */}
-            <path d={toSvgPath(shell.arnPts)} fill="#05164d" stroke="#d1d5db" strokeWidth="2" />
-            <path d={toSvgPath(shell.arcPts)} fill="url(#ltCyanWing)" opacity={1.0} />
-            <path d={toSvgPath(shell.arcPts.map(([x, y]) => [x + shell.cThick * 0.7, y] as Pt))} fill="url(#ltCyanWing)" opacity={0.65} />
-            <path d={toSvgPath(shell.arcPts.map(([x, y]) => [x + shell.cThick * 1.4, y] as Pt))} fill="url(#ltCyanWing)" opacity={0.35} />
+            {/* Right navy chevron & cyan wing with Econova motion cushion */}
+            <g className={runAnim ? "v3-anim-r-navy" : ""}>
+              <path d={toSvgPath(shell.arnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth={2} />
+            </g>
+            <g className={runAnim ? "v3-anim-r-l3" : ""}>
+              <path d={toSvgPath(shell.arcPts)} fill="url(#ltCyanWing)" />
+            </g>
+            <g className={runAnim ? "v3-anim-r-g2" : ""} opacity={runAnim ? undefined : 0.65}>
+              <path d={toSvgPath(shell.arcPts)} fill="url(#ltCyanWing)" />
+            </g>
+            <g className={runAnim ? "v3-anim-r-g1" : ""} opacity={runAnim ? undefined : 0.3}>
+              <path d={toSvgPath(shell.arcPts)} fill="url(#ltCyanWing)" />
+            </g>
 
-            {/* Hexagon Body Background */}
-            <path d={toSvgPath(shell.bgPts)} fill="url(#ltBodyGrad)" stroke="#d1d5db" strokeWidth="2.5" />
+            {/* Hexagon Body Background (Expands from center) */}
+            <g className={runAnim ? "v3-anim-body" : ""}>
+              <path d={toSvgPath(shell.bgPts)} fill="url(#ltBodyGrad)" stroke="#d1d5db" strokeWidth={2.5} />
 
-            {/* Top Shelf Contestant Tabs */}
-            {showScoreTab &&
-              lt.tabs.cells.map((tab) => {
-                const seat = seats[tab.i];
-                if (!seat) return null;
-                const isBuzzed = buzzedSeatId === seat.id;
-                const isActive = activeSeatId === seat.id;
-                const isLocked = lockedSeats.includes(seat.id);
+              {/* Top Shelf Contestant Tabs */}
+              {showScoreTab &&
+                lt.tabs.cells.map((tab) => {
+                  const seat = seats[tab.i];
+                  if (!seat) return null;
+                  const isBuzzed = buzzedSeatId === seat.id;
+                  const isActive = activeSeatId === seat.id;
+                  const isLocked = lockedSeats.includes(seat.id);
 
-                let fillUrl = "rgba(5, 20, 51, 0.75)";
-                if (isBuzzed) fillUrl = "url(#ltTabBuzzed)";
-                else if (isActive) fillUrl = isVeDich ? "url(#ltTabActiveVd)" : "url(#ltTabActiveKd)";
-                else if (isLocked) fillUrl = "rgba(0, 0, 0, 0.7)";
+                  let fillUrl = "rgba(5, 20, 51, 0.75)";
+                  if (isBuzzed) fillUrl = "url(#ltTabBuzzed)";
+                  else if (isActive) fillUrl = isVeDich ? "url(#ltTabActiveVd)" : "url(#ltTabActiveKd)";
+                  else if (isLocked) fillUrl = "rgba(0, 0, 0, 0.7)";
 
-                const displayText =
-                  isVeDich && isActive ? seat.name : `${seat.name} (${seat.score})`;
+                  const displayText =
+                    isVeDich && isActive ? seat.name : `${seat.name} (${seat.score})`;
 
-                return (
-                  <g key={seat.id} className={isBuzzed ? "v3a-buzz" : ""}>
-                    <path
-                      d={toSvgPath(tab.pts)}
-                      fill={fillUrl}
-                      stroke="rgba(0, 207, 255, 0.35)"
-                      strokeWidth="1"
-                    />
-                    <text
-                      x={tab.cx}
-                      y={tab.cy + 5}
-                      textAnchor="middle"
-                      fill={isLocked ? "#64748b" : "#ffffff"}
-                      fontWeight="900"
-                      fontSize="13"
-                      letterSpacing="0.05em"
-                      className="uppercase font-sans"
-                      style={{
-                        filter: isBuzzed || isActive ? "drop-shadow(0 2px 6px rgba(0,0,0,0.9))" : "none",
-                      }}
-                    >
-                      {displayText}
-                    </text>
-                  </g>
-                );
-              })}
+                  return (
+                    <g key={seat.id} className={isBuzzed ? "v3a-buzz" : ""}>
+                      <path
+                        d={toSvgPath(tab.pts)}
+                        fill={fillUrl}
+                        stroke="rgba(0, 207, 255, 0.35)"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={tab.cx}
+                        y={tab.cy + 5}
+                        textAnchor="middle"
+                        fill={isLocked ? "#64748b" : "#ffffff"}
+                        fontWeight="900"
+                        fontSize="13"
+                        letterSpacing="0.05em"
+                        className="uppercase font-sans"
+                        style={{
+                          filter: isBuzzed || isActive ? "drop-shadow(0 2px 6px rgba(0,0,0,0.9))" : "none",
+                        }}
+                      >
+                        {displayText}
+                      </text>
+                    </g>
+                  );
+                })}
 
-            {/* White slanted dividers between tabs */}
-            {showScoreTab &&
-              lt.tabs.seams.map((s, idx) => (
-                <line
-                  key={`tab-seam-${idx}`}
-                  x1={s.x0}
-                  y1={s.y0}
-                  x2={s.x1}
-                  y2={s.y1}
-                  stroke="#ffffff"
-                  strokeWidth="2.5"
-                />
-              ))}
+              {/* White slanted dividers between tabs */}
+              {showScoreTab &&
+                lt.tabs.seams.map((s, idx) => (
+                  <line
+                    key={`tab-seam-${idx}`}
+                    x1={s.x0}
+                    y1={s.y0}
+                    x2={s.x1}
+                    y2={s.y1}
+                    stroke="#ffffff"
+                    strokeWidth="2.5"
+                  />
+                ))}
 
-            {/* Về Đích Right Score Cluster */}
-            {isVeDich && lt.clusterPoly && lt.clusterLine && (
-              <g>
-                {/* Cluster chamber fill */}
-                <path d={toSvgPath(lt.clusterPoly)} fill="rgba(6, 24, 66, 0.85)" />
+              {/* Về Đích Right Score Cluster */}
+              {isVeDich && lt.clusterPoly && lt.clusterLine && (
+                <g>
+                  {/* Cluster chamber fill */}
+                  <path d={toSvgPath(lt.clusterPoly)} fill="rgba(6, 24, 66, 0.85)" />
 
-                {/* Cluster left slanted divider line */}
-                <line
-                  x1={lt.clusterLine.x0}
-                  y1={lt.clusterLine.y0}
-                  x2={lt.clusterLine.x1}
-                  y2={lt.clusterLine.y1}
-                  stroke="#ffffff"
-                  strokeWidth="2.5"
-                />
+                  {/* Cluster left slanted divider line */}
+                  <line
+                    x1={lt.clusterLine.x0}
+                    y1={lt.clusterLine.y0}
+                    x2={lt.clusterLine.x1}
+                    y2={lt.clusterLine.y1}
+                    stroke="#ffffff"
+                    strokeWidth="2.5"
+                  />
 
-                {/* Big Score Display */}
-                <text
-                  x={(lt.clusterLine.x0 + shell.endX) / 2}
-                  y={82}
-                  textAnchor="middle"
-                  fill="#fbbf24"
-                  fontWeight="900"
-                  fontSize="42"
-                  fontFamily="monospace"
-                  letterSpacing="-0.03em"
-                  style={{ filter: "drop-shadow(0 0 16px rgba(251,191,36,0.7))" }}
-                >
-                  {displayScore}
-                </text>
+                  {/* Big Score Display */}
+                  <text
+                    x={(lt.clusterLine.x0 + shell.endX) / 2}
+                    y={82}
+                    textAnchor="middle"
+                    fill="#fbbf24"
+                    fontWeight="900"
+                    fontSize="42"
+                    fontFamily="monospace"
+                    letterSpacing="-0.03em"
+                    style={{ filter: "drop-shadow(0 0 16px rgba(251,191,36,0.7))" }}
+                  >
+                    {displayScore}
+                  </text>
 
-                {/* Package strip at bottom */}
-                {packStrip &&
-                  packStrip.cells.map((cell, pIdx) => {
-                    const qPoints = currentPkg?.[pIdx]?.points ?? (pIdx === 0 ? 20 : 30);
-                    const isCurQ = vd?.qIdx === pIdx;
+                  {/* Package strip at bottom */}
+                  {packStrip &&
+                    packStrip.cells.map((cell, pIdx) => {
+                      const qPoints = currentPkg?.[pIdx]?.points ?? (pIdx === 0 ? 20 : 30);
+                      const isCurQ = vd?.qIdx === pIdx;
 
-                    return (
-                      <g key={`pack-${pIdx}`}>
-                        <path
-                          d={toSvgPath(cell.pts)}
-                          fill={isCurQ ? "#0284c7" : "rgba(5, 20, 51, 0.9)"}
-                          stroke="rgba(255,255,255,0.4)"
-                          strokeWidth="1"
-                        />
-                        <text
-                          x={cell.cx}
-                          y={cell.cy + 5}
-                          textAnchor="middle"
-                          fill={isCurQ ? "#ffffff" : "#cbd5e1"}
-                          fontWeight="900"
-                          fontSize="13"
-                          fontFamily="sans-serif"
-                        >
-                          {qPoints}
-                        </text>
-                      </g>
-                    );
-                  })}
-              </g>
-            )}
+                      return (
+                        <g key={`pack-${pIdx}`}>
+                          <path
+                            d={toSvgPath(cell.pts)}
+                            fill={isCurQ ? "#0284c7" : "rgba(5, 20, 51, 0.9)"}
+                            stroke="rgba(255,255,255,0.4)"
+                            strokeWidth="1"
+                          />
+                          <text
+                            x={cell.cx}
+                            y={cell.cy + 5}
+                            textAnchor="middle"
+                            fill={isCurQ ? "#ffffff" : "#cbd5e1"}
+                            fontWeight="900"
+                            fontSize="13"
+                            fontFamily="sans-serif"
+                          >
+                            {qPoints}
+                          </text>
+                        </g>
+                      );
+                    })}
+                </g>
+              )}
+            </g>
           </svg>
 
           {/* HTML Question Chamber: TOP-LEFT ALIGNED (items-start, text-left) */}
           <div
-            className="absolute flex flex-col justify-start items-start text-left z-20 overflow-hidden"
+            className={`absolute flex flex-col justify-start items-start text-left z-20 overflow-hidden ${
+              runAnim ? "v3-anim-content" : ""
+            }`}
             style={{
               left: qLeft,
               top: showScoreTab ? 44 : 14,
@@ -2426,7 +2651,8 @@ export function EconovaLowerThirdV3({
           >
             {questionText ? (
               <div
-                className={`font-extrabold text-white text-left tracking-normal ${fontSizeClass} drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] max-h-full overflow-y-auto w-full pt-1 pr-3`}
+                key={typeof questionText === "string" ? questionText.slice(0, 40) : undefined}
+                className={`font-extrabold text-white text-left tracking-normal ${fontSizeClass} drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] max-h-full overflow-y-auto w-full pt-1 pr-3 v3-anim-swap`}
               >
                 {questionText}
               </div>
@@ -2547,8 +2773,8 @@ export function VeDichSlantedGridGraphic({
           >
             <defs>
               <linearGradient id="vdGridCyanWing" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#00cfff" />
-                <stop offset="100%" stopColor="#0072ff" />
+                <stop offset="0%" stopColor="#1fd1ff" />
+                <stop offset="100%" stopColor="#2ee6ff" />
               </linearGradient>
               <linearGradient id="vdGridNavyCell" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#1a385c" />
@@ -2564,10 +2790,10 @@ export function VeDichSlantedGridGraphic({
 
             {/* Left cyan wing & navy chevron */}
             <path d={toSvgPath(shell.alcPts)} fill="url(#vdGridCyanWing)" stroke="#ffffff" strokeWidth="2" />
-            <path d={toSvgPath(shell.alnPts)} fill="#051433" stroke="#c5d0db" strokeWidth="2.5" />
+            <path d={toSvgPath(shell.alnPts)} fill="#0d2c54" stroke="#c5d0db" strokeWidth="2.5" />
 
             {/* Right navy chevron & cyan wing */}
-            <path d={toSvgPath(shell.arnPts)} fill="#051433" stroke="#c5d0db" strokeWidth="2.5" />
+            <path d={toSvgPath(shell.arnPts)} fill="#0d2c54" stroke="#c5d0db" strokeWidth="2.5" />
             <path d={toSvgPath(shell.arcPts)} fill="url(#vdGridCyanWing)" stroke="#ffffff" strokeWidth="2" />
 
             {/* Base Hexagon Background */}

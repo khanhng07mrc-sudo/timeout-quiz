@@ -327,7 +327,7 @@ export default function CreateRoomPage() {
       return;
     }
     setMode(newMode);
-    if (newMode === "MYSTERY_QUEST") {
+    if (newMode === "MYSTERY_QUEST" || newMode === "OLYMPIA") {
       setPowerupEnabled(false);
       setAllowedPowerups([]);
     } else {
@@ -412,7 +412,8 @@ export default function CreateRoomPage() {
           hostId: "demo-host-id", // In real app: from session
           teams: teamMode === "TEAM" ? teams : [],
           config: {
-            powerupEnabled: mode === "MYSTERY_QUEST" ? false : powerupEnabled,
+            // OLYMPIA mode: powerupEnabled: false
+            powerupEnabled: mode === "OLYMPIA" ? false : mode === "MYSTERY_QUEST" ? false : powerupEnabled,
             powerupOwnerType,
             powerupCountShared: mode === "MYSTERY_QUEST" ? 0 : powerupCountShared,
             powerupCountPerTeam: mode === "MYSTERY_QUEST" ? 0 : powerupCountPerTeam,
@@ -2415,7 +2416,7 @@ export default function CreateRoomPage() {
       {/* Step 3: Power-ups */}
       {step === 3 && (
         <div className="space-y-6">
-          {mode === "MYSTERY_QUEST" ? (
+          {(mode === "MYSTERY_QUEST" || mode === "OLYMPIA") ? (
             <div className="p-6 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-950/30 via-purple-950/20 to-slate-900/60 text-center space-y-4">
               <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-3xl shadow-lg">
                 🗝️

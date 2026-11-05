@@ -146,12 +146,18 @@ function ContestantIntroChyron({ state }: { state: OlympiaState }) {
 
 export default function DisplayScreen({ code }: { code: string }) {
   const { state, join, connected, serverNow } = useOlympiaSocket({ code, role: "display" });
+  const isSandboxParam =
+    typeof window !== "undefined" &&
+    (window.location.search.includes("sandbox=1") ||
+      window.location.search.includes("perf=light") ||
+      window.self !== window.top);
   const isMutedParam =
     typeof window !== "undefined" &&
-    (new URLSearchParams(window.location.search).get("mute") === "1" ||
+    (isSandboxParam ||
+      new URLSearchParams(window.location.search).get("mute") === "1" ||
       new URLSearchParams(window.location.search).get("audio") === "0");
   const [audioOn, setAudioOn] = useState(!isMutedParam);
-  const [ttsActive, setTtsActive] = useState<boolean>(() => isTtsEnabled());
+  const [ttsActive, setTtsActive] = useState<boolean>(() => (isSandboxParam ? false : isTtsEnabled()));
   useOlympiaAudio(state, join?.audioSeason, audioOn);
 
   // Auto-camera and question overlay visibility state
@@ -393,6 +399,8 @@ export default function DisplayScreen({ code }: { code: string }) {
             pushInProgress={cameraState.pushInProgress}
             showDirectorBar={false}
             allowPTZ={false}
+            defaultQuality={isSandboxParam ? "LIGHT" : undefined}
+            isSandbox={isSandboxParam}
           />
         </div>
 
@@ -597,10 +605,10 @@ function KhoiDong({ state, serverNow }: P) {
   return (
     <div className="w-full max-w-6xl mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
       {/* Main question card / Result answer overlay */}
-      {kd.phase === "result" && kd.current?.a ? (
+      {kd.phase === "result" ? (
         <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 flex flex-col justify-end">
           <V3SingleAnswerBar
-            answerText={kd.current.a}
+            answerText={kd.current?.a || "(Chưa có đáp án)"}
             roundLabel="ĐÁP ÁN"
           />
         </div>
@@ -700,15 +708,15 @@ function VeDich({ state, serverNow }: P) {
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col justify-end">
       {/* While choosing package or during the first 2s after confirmation: show slanted hexagonal package grid */}
-      {(isChoosing || isPackageIntroTime) && (
+      {vd.phase !== "result" && (isChoosing || isPackageIntroTime) && (
         <VeDichSlantedGridGraphic state={state} />
       )}
 
-      {vd.phase === "result" && cur?.q.a ? (
+      {vd.phase === "result" ? (
         <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 flex flex-col justify-end">
           <V3SingleAnswerBar
-            answerText={cur.q.a}
-            points={cur.points}
+            answerText={cur?.q?.a || "(Chưa có đáp án)"}
+            points={cur?.points}
             hopeStarActive={vd.hopeStarActive}
             roundLabel="ĐÁP ÁN VỀ ĐÍCH"
           />

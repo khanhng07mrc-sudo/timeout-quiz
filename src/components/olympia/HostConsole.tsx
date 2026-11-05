@@ -17,6 +17,25 @@ import { isTtsEnabled, setTtsEnabled, speakTTS, cancelTTS } from "@/lib/olympia/
 type Call = (type: string, extra?: Record<string, unknown>) => Promise<{ ok: boolean; error?: string }>;
 type SN = () => number;
 
+
+export function ActiveTimerBadge({
+  activeTimer,
+  serverNow,
+  className = "",
+}: {
+  activeTimer: any;
+  serverNow: () => number;
+  className?: string;
+}) {
+  const badgeTimerMs = useCountdown(activeTimer, serverNow);
+  const text = activeTimer
+    ? activeTimer.startedAt != null || activeTimer.remainingMs > 0
+      ? `${Math.ceil(badgeTimerMs / 1000)}s`
+      : "0s"
+    : "--";
+  return <span className={className}>{text}</span>;
+}
+
 export default function HostConsole({ code, hostKey }: { code: string; hostKey: string }) {
   const { state, join, connected, emit, serverNow } = useOlympiaSocket({ code, role: "host", hostKey });
   const [err, setErr] = useState("");
@@ -224,12 +243,8 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
     return null;
   }, [state]);
 
-  const activeTimerMs = useCountdown(activeTimer, serverNow);
-  const activeTimerSeconds = activeTimer
-    ? (activeTimer.startedAt != null || activeTimer.remainingMs > 0
-        ? `${Math.ceil(activeTimerMs / 1000)}s`
-        : "0s")
-    : "--";
+  // Timer countdown isolated to <ActiveTimerBadge /> leaf component to maintain 60fps and 0ms latency
+  const activeTimerSeconds = activeTimer ? "active" : "--";
 
   if (join && !join.ok) {
     return (
@@ -702,7 +717,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 </span>
               </div>
               <div className="text-xl font-black font-mono text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]">
-                {activeTimerSeconds}
+                <ActiveTimerBadge activeTimer={activeTimer} serverNow={serverNow} />
               </div>
             </div>
 
@@ -1386,7 +1401,7 @@ export default function HostConsole({ code, hostKey }: { code: string; hostKey: 
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Timer:</span>
-                  <b className="font-mono text-cyan-300">{activeTimerSeconds}</b>
+                  <b className="font-mono text-cyan-300"><ActiveTimerBadge activeTimer={activeTimer} serverNow={serverNow} /></b>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Buzzer:</span>

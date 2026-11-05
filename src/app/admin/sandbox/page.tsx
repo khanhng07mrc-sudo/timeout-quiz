@@ -12012,7 +12012,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
               <div className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col">
                 <ScaledDisplayFrame
                   iframeRef={displayIframeRef}
-                  src={`/olympia/display/${code}`}
+                  src={`/olympia/display/${code}?sandbox=1&perf=light&mute=1`}
                   title="Display Viewport"
                   allow="autoplay; camera; microphone; display-capture"
                 />
@@ -14323,31 +14323,33 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                         </div>
                       </div>
 
-                      {/* Powerup Card Lock / Unlock & Shuffle */}
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                        <span className="text-slate-300">Thẻ hỗ trợ</span>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleCards(!cardsLocked)}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                              cardsLocked
-                                ? "bg-red-500/30 border-red-400 text-red-300"
-                                : "glass border-white/20 text-slate-300 hover:text-white"
-                            }`}
-                          >
-                            {cardsLocked ? "🔒 Đã khóa" : "🔓 Mở"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleShuffleCards}
-                            className="px-2 py-0.5 rounded glass border border-white/20 text-slate-300 hover:text-white text-[10px] font-bold transition cursor-pointer"
-                            title="Xáo lại kho bài chia cho các đội"
-                          >
-                            🔀 Xáo bài
-                          </button>
+                      {/* Powerup Card Lock / Unlock & Shuffle (Not used in Olympia) */}
+                      {roomState?.mode !== "OLYMPIA" && selectedMode !== "OLYMPIA" && (
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                          <span className="text-slate-300">Thẻ hỗ trợ</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCards(!cardsLocked)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                cardsLocked
+                                  ? "bg-red-500/30 border-red-400 text-red-300"
+                                  : "glass border-white/20 text-slate-300 hover:text-white"
+                              }`}
+                            >
+                              {cardsLocked ? "🔒 Đã khóa" : "🔓 Mở"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleShuffleCards}
+                              className="px-2 py-0.5 rounded glass border border-white/20 text-slate-300 hover:text-white text-[10px] font-bold transition cursor-pointer"
+                              title="Xáo lại kho bài chia cho các đội"
+                            >
+                              🔀 Xáo bài
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Clean offline participants */}
                       <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">

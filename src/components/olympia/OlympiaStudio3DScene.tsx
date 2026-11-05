@@ -21,6 +21,8 @@ export interface OlympiaStudio3DSceneProps {
   serverNow?: () => number;
   allowPTZ?: boolean;
   showDirectorBar?: boolean;
+  defaultQuality?: "HIGH" | "MEDIUM" | "LIGHT";
+  isSandbox?: boolean;
 }
 
 export function OlympiaStudio3DScene({
@@ -34,6 +36,8 @@ export function OlympiaStudio3DScene({
   serverNow,
   allowPTZ = true,
   showDirectorBar = true,
+  defaultQuality,
+  isSandbox = false,
 }: OlympiaStudio3DSceneProps) {
   // Staggered multi-zone lighting state
   const {
@@ -50,10 +54,17 @@ export function OlympiaStudio3DScene({
 
   // Camera vision mixer state
   const isIframe = typeof window !== "undefined" && window.self !== window.top;
+  const isSandboxEnv =
+    isSandbox ||
+    (typeof window !== "undefined" &&
+      (window.location.search.includes("sandbox=1") ||
+        window.location.search.includes("perf=light")));
   const [internalCam, setInternalCam] = useState<number>(activeCamera);
   const [internalTransitionMode, setInternalTransitionMode] = useState<"CUT" | "MORPH">("MORPH");
   const transitionMode = propTransitionMode || internalTransitionMode;
-  const [quality, setQuality] = useState<"HIGH" | "MEDIUM" | "LIGHT">(isIframe ? "MEDIUM" : "HIGH");
+  const [quality, setQuality] = useState<"HIGH" | "MEDIUM" | "LIGHT">(
+    defaultQuality || (isSandboxEnv ? "LIGHT" : isIframe ? "MEDIUM" : "HIGH")
+  );
 
   // PTZ interactive controls
   const [ptzYaw, setPtzYaw] = useState(0);
@@ -140,7 +151,7 @@ export function OlympiaStudio3DScene({
           stencil: false,
           depth: true,
         }}
-        dpr={isIframe ? 1 : quality === "HIGH" ? Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 1.25) : 1}
+        dpr={isSandboxEnv ? 1 : isIframe ? 1 : quality === "HIGH" ? Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 1.25) : 1}
       >
         <CameraController
           camAngle={internalCam}

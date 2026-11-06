@@ -303,10 +303,11 @@ function createAnnularGlowGeometry(
     const rT = rIdx / rings;
     const r = rIn + rT * (rOut - rIn);
     // Peak under cove lip (rT = 1.0), fading smoothly outwards to the black floor (rT = 0.0)
+    // Neutral monochrome alpha mask so mesh material color dynamically tints the ribbon (Cyan/Red)
     const alpha = Math.pow(rT, 1.8);
-    const red = 0.0 * alpha;
-    const green = 0.92 * alpha;
-    const blue = 1.0 * alpha;
+    const red = alpha;
+    const green = alpha;
+    const blue = alpha;
 
     for (let sIdx = 0; sIdx <= segments; sIdx++) {
       const sT = sIdx / segments;
@@ -792,9 +793,10 @@ export function StudioFloor({
         <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} toneMapped={false} />
       </mesh>
 
-      {/* 4. Continuous Floor Wash Ribbon (Seamless unbroken global electric cyan light wash across entire arc) */}
+      {/* 4. Continuous Floor Wash Ribbon (Seamless unbroken global broadcast light wash across entire arc) */}
       <mesh geometry={coveLeftFloorGlowGeom}>
         <meshBasicMaterial
+          color={ringColor}
           vertexColors
           transparent
           blending={THREE.AdditiveBlending}
@@ -803,8 +805,8 @@ export function StudioFloor({
         />
       </mesh>
 
-      {/* 5. Global Diffuse Overhead Fill Light for Left Contestant Cluster (Elevated at Y=5.8m to prevent pinpoint floor hot spots) */}
-      <pointLight position={[-4.2, 5.8, -2.8]} color="#00e5ff" intensity={4.5 * liveFactor} distance={18} decay={1.8} />
+      {/* 5. Global Diffuse Overhead Fill Light for Left Contestant Cluster (Synchronized with stage lighting color) */}
+      <pointLight position={[-4.2, 5.8, -2.8]} color={ringColor} intensity={4.5 * liveFactor} distance={18} decay={1.8} />
 
       {/* ── 4C. STAGE-RIGHT RAISED PLATFORM & COVE LIGHTING (ĐÈN KHE TOÀN CỤC BÊN PHẢI) ── */}
       <group position={[0, 0, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -834,6 +836,7 @@ export function StudioFloor({
       {/* Continuous Floor Wash Ribbon on Right Side */}
       <mesh geometry={coveRightFloorGlowGeom}>
         <meshBasicMaterial
+          color={ringColor}
           vertexColors
           transparent
           blending={THREE.AdditiveBlending}
@@ -842,8 +845,8 @@ export function StudioFloor({
         />
       </mesh>
 
-      {/* Global Diffuse Overhead Fill Light for Right Stage Cluster (Elevated at Y=5.8m to prevent pinpoint floor hot spots) */}
-      <pointLight position={[4.2, 5.8, -2.8]} color="#00e5ff" intensity={4.5 * liveFactor} distance={18} decay={1.8} />
+      {/* Global Diffuse Overhead Fill Light for Right Stage Cluster (Synchronized with stage lighting color) */}
+      <pointLight position={[4.2, 5.8, -2.8]} color={ringColor} intensity={4.5 * liveFactor} distance={18} decay={1.8} />
     </group>
   );
 }

@@ -124,6 +124,13 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     pos: [-0.95, 0.40, 4.20],
     target: [-1.10, 1.65, -3.20],
   },
+  15: {
+    id: 15,
+    label: "Cận Cảnh Bục Về Đích",
+    // Broadcast Medium Close-up on VeDich Center Podium & Contestant
+    pos: [0.0, 1.38, 1.85],
+    target: [0.0, 1.25, -0.40],
+  },
 };
 
 interface CameraControllerProps {

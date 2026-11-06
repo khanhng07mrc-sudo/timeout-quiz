@@ -4,7 +4,7 @@ import React, { useRef, useMemo, useEffect, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { OlympiaState } from "@/lib/olympia/types";
-import { isSeatBuzzedIn3D } from "./useOlympiaLightingState";
+import { isSeatBuzzedIn3D, computeTargetLightingMode } from "./useOlympiaLightingState";
 
 interface PodiumsProps {
   state?: OlympiaState | null;
@@ -741,30 +741,57 @@ const CONTESTANT_STYLES: ContestantStyleConfig[] = [
   { gender: "male", skinTone: "#f2c396", hairColor: "#191512", hairStyle: "undercut", hasGlasses: false },
 ];
 
-export function ContestantFigure({ seatId, quality }: { seatId: number; quality?: "HIGH" | "MEDIUM" | "LIGHT" }) {
+export function ContestantFigure({
+  seatId,
+  quality,
+  position = [0, 0, -0.42],
+  isWalking = false,
+}: {
+  seatId: number;
+  quality?: "HIGH" | "MEDIUM" | "LIGHT";
+  position?: [number, number, number];
+  isWalking?: boolean;
+}) {
   const style = CONTESTANT_STYLES[seatId % CONTESTANT_STYLES.length];
   const chestRef = useRef<THREE.Group>(null);
   const headRef = useRef<THREE.Group>(null);
+  const leftLegRef = useRef<THREE.Group>(null);
+  const rightLegRef = useRef<THREE.Group>(null);
+  const leftArmRef = useRef<THREE.Group>(null);
+  const rightArmRef = useRef<THREE.Group>(null);
   const skinMat = useMemo(() => createWarmPeachSkinMaterial(style.skinTone), [style.skinTone]);
   const hairMat = useMemo(() => createHairMaterial(style.hairColor), [style.hairColor]);
 
-  // Micro-breathing & natural student idle posture via useFrame
+  // Micro-breathing & natural student idle posture / walking animation via useFrame
   useFrame(({ clock }) => {
     if (quality === "LIGHT") return;
     const t = clock.getElapsedTime();
-    if (chestRef.current) {
-      // Subtle vertical breathing oscillation (2mm amplitude)
-      chestRef.current.position.y = Math.sin(t * 1.8 + seatId * 1.2) * 0.002;
-      chestRef.current.scale.set(
-        1 + Math.sin(t * 1.8 + seatId) * 0.005,
-        1,
-        1 + Math.sin(t * 1.8 + seatId) * 0.005
-      );
-    }
-    if (headRef.current) {
-      // Gentle micro-tilt so the character feels attentive and alive
-      headRef.current.rotation.x = Math.sin(t * 1.1 + seatId) * 0.006;
-      headRef.current.rotation.y = Math.cos(t * 0.8 + seatId * 1.4) * 0.010;
+    if (isWalking) {
+      const stride = Math.sin(t * 8.0) * 0.35;
+      const armStride = Math.sin(t * 8.0) * 0.25;
+      if (leftLegRef.current) leftLegRef.current.rotation.x = stride;
+      if (rightLegRef.current) rightLegRef.current.rotation.x = -stride;
+      if (leftArmRef.current) leftArmRef.current.rotation.x = -armStride;
+      if (rightArmRef.current) rightArmRef.current.rotation.x = armStride;
+    } else {
+      if (leftLegRef.current) leftLegRef.current.rotation.x = 0;
+      if (rightLegRef.current) rightLegRef.current.rotation.x = 0;
+      if (leftArmRef.current) leftArmRef.current.rotation.x = 0;
+      if (rightArmRef.current) rightArmRef.current.rotation.x = 0;
+      if (chestRef.current) {
+        // Subtle vertical breathing oscillation (2mm amplitude)
+        chestRef.current.position.y = Math.sin(t * 1.8 + seatId * 1.2) * 0.002;
+        chestRef.current.scale.set(
+          1 + Math.sin(t * 1.8 + seatId) * 0.005,
+          1,
+          1 + Math.sin(t * 1.8 + seatId) * 0.005
+        );
+      }
+      if (headRef.current) {
+        // Gentle micro-tilt so the character feels attentive and alive
+        headRef.current.rotation.x = Math.sin(t * 1.1 + seatId) * 0.006;
+        headRef.current.rotation.y = Math.cos(t * 0.8 + seatId * 1.4) * 0.010;
+      }
     }
   });
 
@@ -774,16 +801,20 @@ export function ContestantFigure({ seatId, quality }: { seatId: number; quality?
   const trouserColor = "#0f172a";
 
   return (
-    <group position={[0, 0, -0.42]}>
+    <group position={position}>
       {/* ── LOWER BODY & TROUSERS (Slender, graceful Vietnamese student physique) ── */}
-      <mesh position={[-0.055, 0.49, 0]}>
-        <capsuleGeometry args={[0.028, 0.74, 8, 16]} />
-        <meshStandardMaterial color={trouserColor} roughness={0.8} />
-      </mesh>
-      <mesh position={[0.055, 0.49, 0]}>
-        <capsuleGeometry args={[0.028, 0.74, 8, 16]} />
-        <meshStandardMaterial color={trouserColor} roughness={0.8} />
-      </mesh>
+      <group ref={leftLegRef} position={[-0.055, 0.88, 0]}>
+        <mesh position={[0, -0.39, 0]}>
+          <capsuleGeometry args={[0.028, 0.74, 8, 16]} />
+          <meshStandardMaterial color={trouserColor} roughness={0.8} />
+        </mesh>
+      </group>
+      <group ref={rightLegRef} position={[0.055, 0.88, 0]}>
+        <mesh position={[0, -0.39, 0]}>
+          <capsuleGeometry args={[0.028, 0.74, 8, 16]} />
+          <meshStandardMaterial color={trouserColor} roughness={0.8} />
+        </mesh>
+      </group>
       <mesh position={[0, 0.88, 0]}>
         <boxGeometry args={[0.20, 0.12, 0.13]} />
         <meshStandardMaterial color={trouserColor} roughness={0.8} />
@@ -873,57 +904,60 @@ export function ContestantFigure({ seatId, quality }: { seatId: number; quality?
           <meshBasicMaterial color="#fef08a" />
         </mesh>
 
-        {/* ── SHORT SLEEVES, CUFFS & NATURAL HANGING ARMS ── */}
-        {/* Left Sleeve */}
-        <mesh position={[-0.125, 1.33, 0.01]} rotation={[0.04, 0, -0.06]}>
-          <capsuleGeometry args={[0.028, 0.09, 8, 14]} />
-          <meshStandardMaterial color={shirtColor} roughness={0.45} />
-        </mesh>
-        {/* Left Sleeve Ribbed Cuff */}
-        <mesh position={[-0.130, 1.25, 0.01]} rotation={[0.04, 0, -0.06]}>
-          <cylinderGeometry args={[0.030, 0.030, 0.016, 16]} />
-          <meshStandardMaterial color={collarColor} roughness={0.35} />
-        </mesh>
-
-        {/* Right Sleeve */}
-        <mesh position={[0.125, 1.33, 0.01]} rotation={[0.04, 0, 0.06]}>
-          <capsuleGeometry args={[0.028, 0.09, 8, 14]} />
-          <meshStandardMaterial color={shirtColor} roughness={0.45} />
-        </mesh>
-        {/* Right Sleeve Ribbed Cuff */}
-        <mesh position={[0.130, 1.25, 0.01]} rotation={[0.04, 0, 0.06]}>
-          <cylinderGeometry args={[0.030, 0.030, 0.016, 16]} />
-          <meshStandardMaterial color={collarColor} roughness={0.35} />
-        </mesh>
-
         {/* ── ARMS & HANDS (Natural dignified upright posture: hands relaxed alongside body) ── */}
-        {/* Left Forearm */}
-        <mesh position={[-0.134, 1.11, 0.01]} rotation={[0.06, 0, -0.04]}>
-          <capsuleGeometry args={[0.018, 0.17, 8, 12]} />
-          <primitive object={skinMat} attach="material" />
-        </mesh>
-        {/* Left Hand: Slender Vietnamese hand hanging naturally beside body */}
-        <VietnameseHand
-          position={[-0.138, 0.94, 0.01]}
-          rotation={[0, 0, -0.04]}
-          skinMat={skinMat}
-          isLeft={true}
-          mode="hang"
-        />
+        {/* Left Arm Group (pivoted at shoulder Y = 1.35m) */}
+        <group ref={leftArmRef} position={[-0.125, 1.35, 0.01]}>
+          {/* Left Sleeve */}
+          <mesh position={[0, -0.02, 0]} rotation={[0.04, 0, -0.06]}>
+            <capsuleGeometry args={[0.028, 0.09, 8, 14]} />
+            <meshStandardMaterial color={shirtColor} roughness={0.45} />
+          </mesh>
+          {/* Left Sleeve Ribbed Cuff */}
+          <mesh position={[-0.005, -0.10, 0]} rotation={[0.04, 0, -0.06]}>
+            <cylinderGeometry args={[0.030, 0.030, 0.016, 16]} />
+            <meshStandardMaterial color={collarColor} roughness={0.35} />
+          </mesh>
+          {/* Left Forearm */}
+          <mesh position={[-0.009, -0.24, 0]} rotation={[0.06, 0, -0.04]}>
+            <capsuleGeometry args={[0.018, 0.17, 8, 12]} />
+            <primitive object={skinMat} attach="material" />
+          </mesh>
+          {/* Left Hand: Slender Vietnamese hand hanging naturally beside body */}
+          <VietnameseHand
+            position={[-0.013, -0.41, 0]}
+            rotation={[0, 0, -0.04]}
+            skinMat={skinMat}
+            isLeft={true}
+            mode="hang"
+          />
+        </group>
 
-        {/* Right Forearm */}
-        <mesh position={[0.134, 1.11, 0.01]} rotation={[0.06, 0, 0.04]}>
-          <capsuleGeometry args={[0.018, 0.17, 8, 12]} />
-          <primitive object={skinMat} attach="material" />
-        </mesh>
-        {/* Right Hand: Slender Vietnamese hand hanging naturally beside body */}
-        <VietnameseHand
-          position={[0.138, 0.94, 0.01]}
-          rotation={[0, 0, 0.04]}
-          skinMat={skinMat}
-          isLeft={false}
-          mode="hang"
-        />
+        {/* Right Arm Group (pivoted at shoulder Y = 1.35m) */}
+        <group ref={rightArmRef} position={[0.125, 1.35, 0.01]}>
+          {/* Right Sleeve */}
+          <mesh position={[0, -0.02, 0]} rotation={[0.04, 0, 0.06]}>
+            <capsuleGeometry args={[0.028, 0.09, 8, 14]} />
+            <meshStandardMaterial color={shirtColor} roughness={0.45} />
+          </mesh>
+          {/* Right Sleeve Ribbed Cuff */}
+          <mesh position={[0.005, -0.10, 0]} rotation={[0.04, 0, 0.06]}>
+            <cylinderGeometry args={[0.030, 0.030, 0.016, 16]} />
+            <meshStandardMaterial color={collarColor} roughness={0.35} />
+          </mesh>
+          {/* Right Forearm */}
+          <mesh position={[0.009, -0.24, 0]} rotation={[0.06, 0, 0.04]}>
+            <capsuleGeometry args={[0.018, 0.17, 8, 12]} />
+            <primitive object={skinMat} attach="material" />
+          </mesh>
+          {/* Right Hand: Slender Vietnamese hand hanging naturally beside body */}
+          <VietnameseHand
+            position={[0.013, -0.41, 0]}
+            rotation={[0, 0, 0.04]}
+            skinMat={skinMat}
+            isLeft={false}
+            mode="hang"
+          />
+        </group>
       </group>
 
       {/* ── HEAD & SLENDER ANGLED NECK ── */}
@@ -3287,7 +3321,24 @@ function createStageLaurelWreathCanvas(): HTMLCanvasElement {
  * - Angled top console with buzzer button and control surface.
  * - Gooseneck broadcast microphone.
  */
-function VeDichCenterPodium() {
+/**
+ * VeDichCenterPodium:
+ * Standing console / podium for contestant in Round 4 (Về Đích),
+ * placed proudly in the center of the illuminated circular stage.
+ * Dynamic broadcast lighting:
+ * - When stage is RED (active answering / buzz / steal): illuminates in intense crimson red.
+ * - When stage is BLUE (choosing package / reviewing / idle): illuminates in official cyan/blue.
+ * Features:
+ * - Weighted chrome architectural pedestal base.
+ * - Sleek white/silver vertical column with dynamic glowing LED contour line.
+ * - Angled top console with buzzer button and control surface.
+ * - Gooseneck broadcast microphone.
+ */
+function VeDichCenterPodium({ isRed = false }: { isRed?: boolean }) {
+  const accentColor = isRed ? "#ef4444" : "#00f0ff";
+  const glowIntensity = isRed ? 1.4 : 0.8;
+  const buttonColor = isRed ? "#ef4444" : "#00f0ff";
+
   return (
     <group position={[0, 0, 0]}>
       {/* 1. Heavy Chrome Base Rim (Y = 0.015) */}
@@ -3295,10 +3346,10 @@ function VeDichCenterPodium() {
         <cylinderGeometry args={[0.26, 0.30, 0.030, 32]} />
         <meshStandardMaterial color="#cbd5e1" metalness={0.9} roughness={0.15} />
       </mesh>
-      {/* 2. Inner Red Accent Ring on Base */}
+      {/* 2. Inner Dynamic Accent Ring on Base (Red / Cyan based on stage state) */}
       <mesh position={[0, 0.032, 0]}>
         <cylinderGeometry args={[0.22, 0.22, 0.006, 32]} />
-        <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.6} />
+        <meshStandardMaterial color={accentColor} emissive={accentColor} emissiveIntensity={0.6 * glowIntensity} />
       </mesh>
 
       {/* 3. Sleek Architectural Column */}
@@ -3306,10 +3357,10 @@ function VeDichCenterPodium() {
         <cylinderGeometry args={[0.075, 0.11, 0.86, 24]} />
         <meshStandardMaterial color="#f8fafc" roughness={0.3} metalness={0.2} />
       </mesh>
-      {/* Front Glowing Red LED Ribbon along column */}
+      {/* Front Glowing Dynamic LED Ribbon along column */}
       <mesh position={[0, 0.46, 0.088]}>
         <boxGeometry args={[0.024, 0.82, 0.008]} />
-        <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={1.2} />
+        <meshStandardMaterial color={accentColor} emissive={accentColor} emissiveIntensity={1.2 * glowIntensity} />
       </mesh>
 
       {/* 4. Console Neck Joint */}
@@ -3319,7 +3370,7 @@ function VeDichCenterPodium() {
       </mesh>
 
       {/* 5. Angled Top Console tilted 16° towards contestant */}
-      <group position={[0, 0.93, 0.02]} rotation={[0.28, 0, 0]}>
+      <group position={[0, 0.93, -0.02]} rotation={[-0.28, 0, 0]}>
         {/* Main console body */}
         <mesh position={[0, 0, 0]}>
           <boxGeometry args={[0.34, 0.035, 0.24]} />
@@ -3330,16 +3381,16 @@ function VeDichCenterPodium() {
           <boxGeometry args={[0.30, 0.006, 0.20]} />
           <meshStandardMaterial color="#0f172a" roughness={0.5} />
         </mesh>
-        {/* Red Glowing Perimeter Trim */}
+        {/* Dynamic Glowing Perimeter Trim */}
         <mesh position={[0, 0.018, 0.11]}>
           <boxGeometry args={[0.32, 0.008, 0.006]} />
-          <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={1.5} />
+          <meshStandardMaterial color={accentColor} emissive={accentColor} emissiveIntensity={1.5 * glowIntensity} />
         </mesh>
 
         {/* Central Buzzer Button */}
         <mesh position={[0, 0.026, 0.04]}>
           <cylinderGeometry args={[0.035, 0.038, 0.014, 20]} />
-          <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.8} roughness={0.3} />
+          <meshStandardMaterial color={buttonColor} emissive={buttonColor} emissiveIntensity={0.8 * glowIntensity} roughness={0.3} />
         </mesh>
         {/* Buzzer Chrome Ring */}
         <mesh position={[0, 0.024, 0.04]}>
@@ -3348,12 +3399,12 @@ function VeDichCenterPodium() {
         </mesh>
 
         {/* Gooseneck Microphone stem */}
-        <mesh position={[-0.10, 0.08, -0.05]} rotation={[-0.4, 0.2, 0]}>
+        <mesh position={[-0.10, 0.08, 0.05]} rotation={[0.4, 0.2, 0]}>
           <cylinderGeometry args={[0.004, 0.004, 0.14, 10]} />
           <meshStandardMaterial color="#334155" metalness={0.9} roughness={0.2} />
         </mesh>
         {/* Microphone capsule */}
-        <mesh position={[-0.08, 0.15, -0.01]} rotation={[-0.4, 0.2, 0]}>
+        <mesh position={[-0.08, 0.15, 0.09]} rotation={[0.4, 0.2, 0]}>
           <capsuleGeometry args={[0.009, 0.025, 6, 10]} />
           <meshStandardMaterial color="#1e293b" roughness={0.4} />
         </mesh>
@@ -3363,28 +3414,183 @@ function VeDichCenterPodium() {
 }
 
 /**
+ * VeDichWalkingContestant:
+ * Animates the active contestant in Round 4 (Về Đích) walking smoothly from their home
+ * desk podium along the curved studio floor to the center stage podium (over ~3.8s).
+ * - During active question play / thinking: stands proudly at the center podium.
+ * - When their turn finishes (seatDone): walks smoothly back to their home desk.
+ * - All other 3 contestants remain permanently standing at their own desks!
+ */
+export function VeDichWalkingContestant({
+  seatId,
+  homePos,
+  homeRotY,
+  state,
+  serverNow,
+  quality,
+}: {
+  seatId: number;
+  homePos: [number, number, number];
+  homeRotY: number;
+  state?: OlympiaState | null;
+  serverNow?: () => number;
+  quality?: "HIGH" | "MEDIUM" | "LIGHT";
+}) {
+  const rootRef = useRef<THREE.Group>(null);
+  const [isWalking, setIsWalking] = useState(false);
+
+  // Track phase entry and turn timing
+  const lastStateRef = useRef<{ turnIdx: number; phase: string; startedAt: number }>({
+    turnIdx: -1,
+    phase: "",
+    startedAt: 0,
+  });
+
+  const targetCenterPos: [number, number, number] = [0.0, 0.188, -0.90];
+
+  useFrame(() => {
+    const vd = state?.veDich;
+    const curTurn = vd?.turnIdx ?? 0;
+    const curPhase = vd?.phase ?? "idle";
+    const now = serverNow ? serverNow() : Date.now();
+
+    if (curTurn !== lastStateRef.current.turnIdx || curPhase !== lastStateRef.current.phase) {
+      lastStateRef.current = {
+        turnIdx: curTurn,
+        phase: curPhase,
+        startedAt: now,
+      };
+    }
+
+    const elapsed = Math.max(0, now - lastStateRef.current.startedAt) / 1000;
+    const DURATION = 3.8;
+
+    let walkProgress = 1.0;
+    let walkingNow = false;
+    let isReturning = false;
+
+    if (curPhase === "seatDone") {
+      isReturning = true;
+      if (elapsed < DURATION) {
+        const raw = elapsed / DURATION;
+        walkProgress = 1.0 - raw * raw * (3 - 2 * raw);
+        walkingNow = true;
+      } else {
+        walkProgress = 0.0;
+        walkingNow = false;
+      }
+    } else if (curPhase !== "idle") {
+      if (elapsed < DURATION) {
+        const raw = elapsed / DURATION;
+        walkProgress = raw * raw * (3 - 2 * raw);
+        walkingNow = true;
+      } else {
+        walkProgress = 1.0;
+        walkingNow = false;
+      }
+    } else {
+      walkProgress = 0.0;
+      walkingNow = false;
+    }
+
+    if (isWalking !== walkingNow) {
+      setIsWalking(walkingNow);
+    }
+
+    // Trajectory Bézier Curve:
+    // P0: Desk standing position (behind desk)
+    const p0x = homePos[0] - 0.42 * Math.sin(homeRotY);
+    const p0y = 0.22;
+    const p0z = homePos[2] - 0.42 * Math.cos(homeRotY);
+
+    // P1: Stepping outward into aisle
+    const p1x = p0x + 0.85 * Math.cos(homeRotY - Math.PI / 2);
+    const p1y = 0.22;
+    const p1z = p0z + 0.85 * Math.sin(homeRotY - Math.PI / 2);
+
+    // P2: Smooth approach curve toward center dais
+    const p2x = -0.45;
+    const p2y = 0.20;
+    const p2z = -1.65;
+
+    // P3: Standing position behind center podium
+    const p3x = targetCenterPos[0];
+    const p3y = targetCenterPos[1];
+    const p3z = targetCenterPos[2];
+
+    const u = Math.max(0, Math.min(1.0, walkProgress));
+    const inv = 1 - u;
+    const w0 = inv * inv * inv;
+    const w1 = 3 * inv * inv * u;
+    const w2 = 3 * inv * u * u;
+    const w3 = u * u * u;
+
+    const curX = w0 * p0x + w1 * p1x + w2 * p2x + w3 * p3x;
+    const curY = w0 * p0y + w1 * p1y + w2 * p2y + w3 * p3y;
+    const curZ = w0 * p0z + w1 * p1z + w2 * p2z + w3 * p3z;
+
+    const dX = 3 * inv * inv * (p1x - p0x) + 6 * inv * u * (p2x - p1x) + 3 * u * u * (p3x - p2x);
+    const dZ = 3 * inv * inv * (p1z - p0z) + 6 * inv * u * (p2z - p1z) + 3 * u * u * (p3z - p2z);
+
+    let rotY = 0;
+    if (isReturning) {
+      const walkAngle = Math.atan2(-dX, -dZ);
+      if (u < 0.15) {
+        rotY = THREE.MathUtils.lerp(walkAngle, homeRotY, (0.15 - u) / 0.15);
+      } else {
+        rotY = THREE.MathUtils.lerp(0, walkAngle, Math.min(1.0, (1.0 - u) / 0.15));
+      }
+    } else {
+      const walkAngle = Math.atan2(dX, dZ);
+      if (u > 0.85) {
+        rotY = THREE.MathUtils.lerp(walkAngle, 0, (u - 0.85) / 0.15);
+      } else {
+        rotY = THREE.MathUtils.lerp(homeRotY, walkAngle, Math.min(1.0, u / 0.15));
+      }
+    }
+
+    const bounce = walkingNow ? Math.abs(Math.sin(u * Math.PI * 14)) * 0.024 : 0;
+
+    if (rootRef.current) {
+      rootRef.current.position.set(curX, curY + bounce, curZ);
+      rootRef.current.rotation.y = rotY;
+    }
+  });
+
+  return (
+    <group ref={rootRef} position={targetCenterPos}>
+      <ContestantFigure
+        seatId={seatId}
+        quality={quality}
+        position={[0, 0, 0]}
+        isWalking={isWalking}
+      />
+    </group>
+  );
+}
+
+/**
  * CenterFloorStage:
  * Dedicated Interactive Central Stage for Olympia 26:
  * - Concentric polished chrome outer rim (R = 2.25m).
- * - Multi-ring LED broadcast strips:
- *   - Outer LED border ring (R = 2.10m).
- *   - Accent neon ring (R = 1.80m) - shifting dynamically to dramatic RED in Về Đích!
- *   - Inner glow ring (R = 1.45m).
+ * - Multi-ring LED broadcast strips with dynamic BLUE / RED stage color transitions.
  * - Ultra-gloss dark reflective center floor disc (R = 1.40m, #030712).
  * - Horizontal Golden Laurel Wreath Floor Decal (R = 1.15m):
  *   - Rounds 1-3 (Khởi Động, VCNV, Tăng Tốc): Stationary with subtle breathing aura.
  *   - Round 4 (Về Đích): Continuously rotating in real-time at 0.35 rad/s!
  * - Entry Animation Effect (Tia sáng / Radiant light rays expanding outward from center on room entry).
- * - Về Đích Standing Center Podium (Bục đứng trung tâm cho thí sinh trả lời câu hỏi Về Đích).
+ * - Về Đích Standing Center Podium (Bục đứng trung tâm cho thí sinh trả lời câu hỏi Về Đích, đồng bộ đèn xanh/đỏ).
  */
 export function CenterFloorStage({
   state,
   screenFadeProgress = 0,
+  serverNow,
   quality = "HIGH",
   liveFactor = 1.0,
 }: {
   state?: OlympiaState | null;
   screenFadeProgress?: number;
+  serverNow?: () => number;
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
   liveFactor?: number;
 }) {
@@ -3394,6 +3600,15 @@ export function CenterFloorStage({
 
   const isVeDich = state?.currentRound === "veDich" || state?.roundsPlan?.[state?.roundIdx ?? 0] === "veDich";
   const isEntrance = state?.stage === "lobby" || Boolean(state?.entranceState?.active) || screenFadeProgress < 0.95;
+
+  // Real-time stage lighting state (BLUE vs RED across all rounds including Về Đích)
+  const nowMs = serverNow ? serverNow() : Date.now();
+  const lightingMode = computeTargetLightingMode(state, nowMs);
+  const isRed = lightingMode === "RED";
+
+  // Dynamic broadcast lighting colors matching real-time studio state:
+  const neonColor = isRed ? "#ef4444" : "#00f0ff";
+  const accentColor = isRed ? "#dc2626" : "#38bdf8";
 
   // Real-time animation loop
   useFrame((_, delta) => {
@@ -3459,10 +3674,6 @@ export function CenterFloorStage({
 
   const activeWreathTex = laurelTex || fallbackTex;
 
-  // Colors: shifts to vibrant red in Về Đích as per live reference photo 4
-  const neonColor = isVeDich ? "#ef4444" : "#00f0ff";
-  const accentColor = isVeDich ? "#f59e0b" : "#38bdf8";
-
   return (
     <group position={[0, 0.188, -0.5]}>
       {/* ── 1. CONCENTRIC STAGE ARCHITECTURE ── */}
@@ -3478,10 +3689,10 @@ export function CenterFloorStage({
         <meshBasicMaterial color={neonColor} toneMapped={false} />
       </mesh>
 
-      {/* Middle Accent Ring (R = 1.80m: shifts to RED in Về Đích) */}
+      {/* Middle Accent Ring (R = 1.80m: shifts dynamically with stage lighting) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]}>
         <ringGeometry args={[1.78, 1.84, 64]} />
-        <meshBasicMaterial color={isVeDich ? "#dc2626" : accentColor} toneMapped={false} />
+        <meshBasicMaterial color={accentColor} toneMapped={false} />
       </mesh>
 
       {/* Inner Subtle Neon Guide (R = 1.45m) */}
@@ -3554,8 +3765,8 @@ export function CenterFloorStage({
         )}
       </group>
 
-      {/* ── 4. BỤC ĐỨNG THÍ SINH Ở SÂN KHẤU VỀ ĐÍCH (Chỉ hiện khi vòng Về Đích) ── */}
-      {isVeDich && <VeDichCenterPodium />}
+      {/* ── 4. BỤC ĐỨNG THÍ SINH Ở SÂN KHẤU VỀ ĐÍCH (Chỉ hiện khi vòng Về Đích, đồng bộ màu đèn sân khấu) ── */}
+      {isVeDich && <VeDichCenterPodium isRed={isRed} />}
     </group>
   );
 }
@@ -3615,11 +3826,17 @@ export function Podiums({
   const isEntranceActive = Boolean(state?.entranceState?.active);
   const currentEntranceSeat = state?.entranceState?.currentSeatIdx ?? 0;
 
+  const isVeDich = state?.currentRound === "veDich" || state?.roundsPlan?.[state?.roundIdx ?? 0] === "veDich";
+  const vd = state?.veDich;
+  const activeSeat = vd ? (vd.order?.[vd.turnIdx] ?? 0) : 0;
+  const isVdActive = Boolean(isVeDich && vd?.phase && vd.phase !== "idle");
+
   return (
     <group>
-      {/* Central Interactive Stage Floor with Rotating Laurel Wreath & Về Đích Podium */}
+      {/* Central Interactive Stage Floor with Rotating Laurel Wreath & Dynamic Stage Lighting */}
       <CenterFloorStage
         state={state}
+        serverNow={serverNow}
         screenFadeProgress={screenFadeProgress}
         quality={quality}
         liveFactor={liveFactor}
@@ -3631,7 +3848,17 @@ export function Podiums({
       {/* 2 Animated MC Presenters (Khánh Vy & Ngọc Huy) */}
       <McPresenters state={state} serverNow={serverNow} />
 
-      {/* Contestants ALWAYS stand permanently at their podiums from the beginning (User Requirement: no walking entrance) */}
+      {/* VeDich Active Contestant (Walking from desk to center stage, standing at center podium, and walking back on seatDone) */}
+      {isVdActive && activeSeat != null && contestantConfigs[activeSeat] && (
+        <VeDichWalkingContestant
+          seatId={activeSeat}
+          homePos={contestantConfigs[activeSeat].pos}
+          homeRotY={contestantConfigs[activeSeat].rotY}
+          state={state}
+          serverNow={serverNow}
+          quality={quality}
+        />
+      )}
 
       {/* N Contestant Arc Podiums on Raised Dais */}
       {contestantConfigs.map((cfg) => {
@@ -3644,8 +3871,12 @@ export function Podiums({
         const isEntrancePhase = isEntranceActive
           ? cfg.seatId <= currentEntranceSeat
           : Boolean(state?.stage === "lobby");
-        // Always show the 3D contestant humanoid standing proudly at their podium
-        const showFigure = true;
+
+        // USER REQUIREMENT:
+        // "chỉ thí sinh hiện tại bước về lại bục bảng điểm, các thí sinh khác vẫn đứng đó tới khi thực sự bắt đầu chơi"
+        // The active contestant is on stage during Về Đích (except when idle); other contestants always stay at their desks!
+        const isThisContestantInVeDichTurn = isVdActive && cfg.seatId === activeSeat;
+        const showFigure = !isThisContestantInVeDichTurn;
 
         return (
           <ContestantPodium

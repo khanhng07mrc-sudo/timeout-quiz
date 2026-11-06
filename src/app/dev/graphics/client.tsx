@@ -38,6 +38,7 @@ export function DevGraphicsClient() {
     rulesetId,
     currentRound: "khoiDong",
     status: "in_progress",
+    stage: "playing",
     audioSeason: "O26",
     seats: [
       { id: 0, name: "Quang Minh", school: "THPT Chuyên Hà Nội - Amsterdam", score: 285, online: true },
@@ -363,20 +364,100 @@ export function DevGraphicsClient() {
             </div>
 
             <div
-              id="graphic-studio-3d-vedich"
-              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-rose-500/30 shadow-2xl"
+              id="graphic-studio-3d-vedich-blue"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-cyan-500/30 shadow-2xl"
             >
-              <div className="mb-2 text-xs font-black uppercase tracking-wider text-rose-300">
-                SÂN KHẤU VÒNG VỀ ĐÍCH (CAM 1: VÒNG NGUYỆT QUẾ XOAY, VÒNG ĐỎ VỀ ĐÍCH VÀ BỤC ĐỨNG TRUNG TÂM)
+              <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                SÂN KHẤU VÒNG VỀ ĐÍCH — TRẠNG THÁI XANH (CAM 1: ĐÈN KHE SÀN & BỤC GIỮA ĐỒNG BỘ CYAN)
               </div>
               <p className="text-xs text-slate-300 mb-4 text-center">
-                Vòng Về Đích: Vòng nguyệt quế xoay linh hoạt liên tục trên mặt sàn, vòng led sàn chuyển sang đỏ rực rỡ, xuất hiện chiếc bục đứng trung tâm để thí sinh đặt tay xử lý câu hỏi.
+                Về Đích trạng thái nhàn rỗi / chuẩn bị chọn gói: Toàn bộ đèn khe hắt sàn (cove ribbons), bục giữa và các vòng led chuyển sang màu xanh cyan đồng bộ cùng toàn bộ hệ thống đèn trường quay.
               </p>
               <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-white/10 shadow-inner bg-[#030712] relative">
                 <OlympiaStudio3DScene
-                  state={{ ...mockState, currentRound: "veDich", roundIdx: 3 }}
+                  state={{
+                    ...mockState,
+                    stage: "playing",
+                    currentRound: "veDich",
+                    roundIdx: 3,
+                    veDich: { phase: "idle", currentSeat: 0, package: [20, 20, 30] } as any,
+                  }}
                   serverNow={serverNow}
                   activeCamera={1}
+                  transitionMode="CUT"
+                  showDirectorBar={false}
+                  allowPTZ={false}
+                  defaultQuality="HIGH"
+                />
+              </div>
+            </div>
+
+            <div
+              id="graphic-studio-3d-vedich-red"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-rose-500/30 shadow-2xl"
+            >
+              <div className="mb-2 text-xs font-black uppercase tracking-wider text-rose-300">
+                SÂN KHẤU VÒNG VỀ ĐÍCH — TRẠNG THÁI ĐỎ & THÍ SINH TẠI BỤC GIỮA (CAM 1: TOÀN BỘ ĐÈN KHE & SÀN ĐỎ RỰC)
+              </div>
+              <p className="text-xs text-slate-300 mb-4 text-center">
+                Về Đích trạng thái trả lời / suy nghĩ: Thí sinh 1 đứng tại bục giữa trên vòng nguyệt quế xoay, các thí sinh khác đứng cố định tại bục bảng điểm; toàn bộ đèn khe sàn và bục giữa chuyển sang màu đỏ rực rỡ.
+              </p>
+              <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-white/10 shadow-inner bg-[#030712] relative">
+                <OlympiaStudio3DScene
+                  state={{
+                    ...mockState,
+                    stage: "playing",
+                    currentRound: "veDich",
+                    roundIdx: 3,
+                    veDich: {
+                      order: [0, 1, 2, 3],
+                      turnIdx: 0,
+                      phase: "thinking",
+                      currentSeat: 0,
+                      package: [20, 20, 30],
+                      currentQuestionIdx: 1,
+                      timer: { startedAt: Date.now() - 5000, totalMs: 20000, remainingMs: 15000 },
+                    } as any,
+                  }}
+                  serverNow={serverNow}
+                  activeCamera={1}
+                  transitionMode="CUT"
+                  showDirectorBar={false}
+                  allowPTZ={false}
+                  defaultQuality="HIGH"
+                />
+              </div>
+            </div>
+
+            <div
+              id="graphic-studio-3d-vedich-cam15"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-amber-500/30 shadow-2xl"
+            >
+              <div className="mb-2 text-xs font-black uppercase tracking-wider text-amber-300">
+                CẬN CẢNH BỤC GIỮA VỀ ĐÍCH — CAM 15 (TRUNG CẬN CHÍNH DIỆN THÍ SINH & BỤC ĐỨNG TRUNG TÂM)
+              </div>
+              <p className="text-xs text-slate-300 mb-4 text-center">
+                Góc quay CAM 15 chuẩn mực truyền hình: Khung hình trung cận chính diện thí sinh số 1 tại bục giữa, bắt trọn khuôn mặt Á Đông, trang phục polo học sinh, bảng điều khiển có viền LED động và vòng nguyệt quế vàng xoay bên dưới.
+              </p>
+              <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-white/10 shadow-inner bg-[#030712] relative">
+                <OlympiaStudio3DScene
+                  state={{
+                    ...mockState,
+                    stage: "playing",
+                    currentRound: "veDich",
+                    roundIdx: 3,
+                    veDich: {
+                      order: [0, 1, 2, 3],
+                      turnIdx: 0,
+                      phase: "thinking",
+                      currentSeat: 0,
+                      package: [20, 20, 30],
+                      currentQuestionIdx: 1,
+                      timer: { startedAt: Date.now() - 5000, totalMs: 20000, remainingMs: 15000 },
+                    } as any,
+                  }}
+                  serverNow={serverNow}
+                  activeCamera={15}
                   transitionMode="CUT"
                   showDirectorBar={false}
                   allowPTZ={false}

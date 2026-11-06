@@ -401,12 +401,12 @@ export function useOlympiaCameraState(
         };
       }
 
-      // 6.3. Giai đoạn thí sinh bước lên sân khấu:
-      // USER REQUIREMENT: "Giai đoạn thí sinh bước lên sân khấu, cam sẽ quay từ khu vực nửa bên trái sân khấu zoom out nhẹ ra toàn cảnh. Khi chốt gói thì phải hiển thị ở góc quay thí sinh, đổi linh hoạt giữa bục MC và khu vực thí sinh chính"
+      // 6.3. Giai đoạn thí sinh bước lên sân khấu & chọn gói:
+      // USER REQUIREMENT: Camera Dolly điện ảnh mượt lia theo bước chân thí sinh hướng về bục giữa (CAM 15)
       if (vd.phase === "choosing") {
         return {
-          camAngle: 14, // Khu vực nửa bên trái sân khấu dưới vòng nguyệt quế
-          transitionMode: "MORPH",
+          camAngle: 15, // Cận cảnh chính diện bục giữa Về Đích
+          transitionMode: "MORPH", // Smooth dolly tracking camera
           isOverlayHidden: false,
           pushInProgress: 0,
         };
@@ -414,7 +414,7 @@ export function useOlympiaCameraState(
 
       if (vd.phase === "packageReady") {
         return {
-          camAngle: targetOwnerCam, // Góc quay thí sinh chính
+          camAngle: 15, // Cận cảnh chính diện bục giữa Về Đích
           transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0,
@@ -422,7 +422,7 @@ export function useOlympiaCameraState(
       }
 
       // 6.4. Trong thời gian suy nghĩ câu hỏi Về Đích:
-      // USER REQUIREMENT: "Trong thời gian suy nghĩ: Camera cận thí sinh chính và zoom smooth chậm vào mặt thí sinh."
+      // USER REQUIREMENT: Camera cận chính diện thí sinh tại bục giữa (CAM 15) và zoom smooth chậm vào mặt thí sinh
       if (vd.phase === "thinking") {
         let push = 0;
         if (vd.timer?.startedAt) {
@@ -432,15 +432,25 @@ export function useOlympiaCameraState(
         }
 
         return {
-          camAngle: targetOwnerCam,
+          camAngle: 15, // Cận cảnh chính diện bục giữa Về Đích
           transitionMode: "MORPH",
           isOverlayHidden: false,
           pushInProgress: push, // Zoom smooth chậm từ 100% lên 115%
         };
       }
 
+      // 6.5. Hoàn thành lượt thi: Thí sinh bước về bục bảng điểm, camera toàn cảnh bao quát
+      if (vd.phase === "seatDone") {
+        return {
+          camAngle: 1, // Toàn cảnh sân khấu khi thí sinh bước về bục
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+
       return {
-        camAngle: targetOwnerCam,
+        camAngle: 15,
         transitionMode: "CUT",
         isOverlayHidden: false,
         pushInProgress: 0,

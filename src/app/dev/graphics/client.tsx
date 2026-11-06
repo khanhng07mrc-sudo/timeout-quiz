@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import type { OlympiaState } from "@/lib/olympia/types";
 import {
   EconovaLowerThirdV3,
@@ -9,6 +10,15 @@ import {
   VeDichSlantedGridGraphic,
   SummaryLowerThirdGraphic,
 } from "@/components/olympia/Vtv3BroadcastGraphics";
+
+const OlympiaStudio3DScene = dynamic(() => import("@/components/olympia/OlympiaStudio3DScene"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[540px] flex items-center justify-center bg-[#020510] text-cyan-300 font-bold">
+      Đang tải Trường quay 3D...
+    </div>
+  ),
+});
 
 export function DevGraphicsClient() {
   const [activeTab, setActiveTab] = useState<
@@ -198,7 +208,140 @@ export function DevGraphicsClient() {
 
       {/* Graphics Containers */}
       <div className="w-full max-w-6xl flex flex-col gap-12 items-center">
-        {/* Deliverable 1: Khởi Động Lower Third */}
+        {/* TIẾN TRÌNH KHỞI ĐỘNG CHUẨN XÁC 100% THEO YÊU CẦU */}
+        {(activeTab === "all" || activeTab === "kd") && (
+          <div className="w-full flex flex-col gap-6">
+            {/* Giai đoạn 2: t = 3.5s (Phát open_question ĐỒNG THỜI đồ hoạ bung mở ở Câu 0/6 ruột trống) */}
+            <div
+              id="stage-kd-35s"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-amber-400/40 shadow-2xl"
+            >
+              <div className="mb-2 text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+                GIAI ĐOẠN 2 (t = 3.5s): ÂM OPEN_QUESTION PHÁT + ĐỒ HOẠ HẠ 1/3 BUNG MỞ (CÂU 0/6, RUỘT TRỐNG)
+              </div>
+              <p className="text-xs text-slate-300 mb-4 text-center">
+                Khung đồ hoạ lục giác Econova unroll ở $t = 3.5s$ cùng lúc âm thanh open_question phát. Huy hiệu hiển thị <strong>Câu 0/6</strong> và ruột câu hỏi trống hoàn toàn.
+              </p>
+              <div className="w-full flex items-center justify-center min-h-[200px]">
+                {(() => {
+                  const stateStage2 = {
+                    ...mockState,
+                    khoiDong: {
+                      ...mockState.khoiDong,
+                      qIdx: -1,
+                      questionRevealed: false,
+                      current: null,
+                    },
+                  } as unknown as OlympiaState;
+                  return (
+                    <EconovaLowerThirdV3
+                      state={stateStage2}
+                      activeSeatId={0}
+                      questionNumberBadge="Câu 0/6"
+                      questionText=""
+                      serverNow={serverNow}
+                      runAnim={false}
+                    />
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Giai đoạn 3: Bấm CÂU TIẾP (Chuyển lên Câu 1/6, nạp câu hỏi 1 và phát BGM) */}
+            <div
+              id="stage-kd-q1"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-400/40 shadow-2xl"
+            >
+              <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+                GIAI ĐOẠN 3 (BẤM CÂU TIẾP LẦN 1): BỘ ĐẾM LÊN CÂU 1/6 + HIỆN NỘI DUNG CÂU 1 + PHÁT BGM KD_BGM_1
+              </div>
+              <p className="text-xs text-slate-300 mb-4 text-center">
+                Bộ đếm chuyển sang <strong>Câu 1/6</strong>, nội dung câu hỏi 1 hiển thị rõ nét chuẩn phát sóng truyền hình (94% viewport), âm thanh open_question phát và BGM bắt đầu.
+              </p>
+              <div className="w-full flex items-center justify-center min-h-[220px]">
+                {(() => {
+                  const stateStage3 = {
+                    ...mockState,
+                    khoiDong: {
+                      ...mockState.khoiDong,
+                      qIdx: 0,
+                      questionRevealed: true,
+                      current: {
+                        q: "Tài liệu do bên mời thầu lập quy định tiêu chuẩn kỹ thuật, năng lực và hướng dẫn nộp thầu viết tắt là gì?",
+                        a: "HSMT (Hồ sơ mời thầu)",
+                      },
+                    },
+                  } as unknown as OlympiaState;
+                  return (
+                    <EconovaLowerThirdV3
+                      state={stateStage3}
+                      activeSeatId={0}
+                      questionNumberBadge="Câu 1/6"
+                      questionText="Tài liệu do bên mời thầu lập quy định tiêu chuẩn kỹ thuật, năng lực và hướng dẫn nộp thầu viết tắt là gì?"
+                      serverNow={serverNow}
+                      runAnim={false}
+                    />
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Deliverable 3D: SÂN KHẤU TRƯỜNG QUAY 3D VÀ NHÂN VẬT Á ĐÔNG */}
+        {(activeTab === "all" || activeTab === "kd") && (
+          <div className="w-full flex flex-col gap-6">
+            <div
+              id="graphic-studio-3d"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-emerald-500/30 shadow-2xl"
+            >
+              <div className="mb-2 text-xs font-black uppercase tracking-wider text-emerald-300">
+                TRƯỜNG QUAY 3D STUDIO — GÓC CẬN CẢNH THÍ SINH 1 (CAM 5: THIẾT KẾ GIẢI PHẪU Á ĐÔNG MỀM MẠI)
+              </div>
+              <p className="text-xs text-slate-300 mb-4 text-center">
+                Cận cảnh thí sinh số 1 tại bục: Áo polo học sinh có chân cổ và nẹp cúc, cơ thang vai mềm mại, khuôn mặt Á Đông với sống mũi tự nhiên, khóe môi, mắt có chiều sâu và ánh sáng trường quay chân thực.
+              </p>
+              <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-white/10 shadow-inner bg-[#030712] relative">
+                <OlympiaStudio3DScene
+                  state={mockState}
+                  serverNow={serverNow}
+                  activeCamera={5}
+                  transitionMode="CUT"
+                  showDirectorBar={false}
+                  allowPTZ={false}
+                  defaultQuality="HIGH"
+                />
+              </div>
+            </div>
+
+            <div
+              id="graphic-studio-3d-mc"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-purple-500/30 shadow-2xl"
+            >
+              <div className="mb-2 text-xs font-black uppercase tracking-wider text-purple-300">
+                TRƯỜNG QUAY 3D STUDIO — GÓC CẬN BỤC 2 MC (CAM 3: KHÁNH VY & NGỌC HUY)
+              </div>
+              <p className="text-xs text-slate-300 mb-4 text-center">
+                Bục dẫn chương trình của MC Khánh Vy & Ngọc Huy: Vest truyền hình chuyên nghiệp, khuôn mặt biểu cảm tự nhiên, ánh sáng studio rạng rỡ.
+              </p>
+              <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-white/10 shadow-inner bg-[#030712] relative">
+                <OlympiaStudio3DScene
+                  state={mockState}
+                  serverNow={serverNow}
+                  activeCamera={3}
+                  transitionMode="CUT"
+                  showDirectorBar={false}
+                  allowPTZ={false}
+                  defaultQuality="HIGH"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Deliverable 1: Khởi Động Lower Third (Full View) */}
         {(activeTab === "all" || activeTab === "kd") && (
           <div
             id="graphic-khoidong"

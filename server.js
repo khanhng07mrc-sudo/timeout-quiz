@@ -105864,9 +105864,9 @@ var OlympiaGame = class _OlympiaGame {
     }
     return { openedQ, openedA, reservedQ };
   }
-  cue(sound, kind = "sound", pan) {
+  cue(sound, kind = "sound", pan, bgmSound) {
     this.state.cueSeq += 1;
-    this.state.cue = { id: this.state.cueSeq, sound, kind, pan };
+    this.state.cue = { id: this.state.cueSeq, sound, kind, pan, bgmSound };
   }
   logMsg(msg) {
     this.state.log.push(msg);
@@ -106054,27 +106054,6 @@ var OlympiaGame = class _OlympiaGame {
       st.kdIntroTimer = null;
       changed = true;
       if (st.khoiDong) {
-        const kd = st.khoiDong;
-        const seg = kd.segments[kd.segIdx];
-        if (kd.qIdx < 0) {
-          kd.qIdx = 0;
-          const q = this.kdPoolQuestion(kd, seg);
-          if (q) {
-            q.used = true;
-            this.recordOpenedQuestion(q.q);
-            kd.current = {
-              q: q.q,
-              a: q.a,
-              subject: q.subject,
-              kdZone: q.kdZone,
-              vdZone: q.vdZone,
-              media: q.media,
-              mediaType: q.mediaType
-            };
-          }
-        }
-        kd.phase = "question";
-        kd.questionRevealed = !seg.globalMs;
         this.cue("1_KhoiDong/open_question");
       }
     }
@@ -107041,7 +107020,7 @@ var OlympiaGame = class _OlympiaGame {
             }
           } else if (!kd.globalTimer) {
             kd.currentBgmTrack = "kd_bgm_1";
-            this.cue("1_KhoiDong/kd_bgm_1", "bgm");
+            this.cue("1_KhoiDong/open_question", "sound", void 0, "1_KhoiDong/kd_bgm_1");
           }
           return OK;
         }
@@ -107166,49 +107145,17 @@ var OlympiaGame = class _OlympiaGame {
         kd.phase = "question";
         kd.started = true;
         kd.buzzedSeat = null;
+        kd.questionRevealed = false;
+        kd.qIdx = -1;
+        kd.current = null;
+        kd.buzzOpen = false;
+        kd.buzzUnlockAt = void 0;
+        kd.currentBgmTrack = void 0;
+        st.kdIntroTimer = mkTimer(3500);
+        startTimer(st.kdIntroTimer, now);
+        kd.startCooldownUntil = now + 3500;
         if (seg.globalMs) {
-          kd.questionRevealed = false;
           kd.globalTimer = mkTimer(seg.globalMs);
-          kd.startCooldownUntil = now + 3500;
-          st.kdIntroTimer = mkTimer(3500);
-          startTimer(st.kdIntroTimer, now);
-        } else {
-          kd.questionRevealed = true;
-          kd.startCooldownUntil = now + 1200;
-          st.kdIntroTimer = null;
-        }
-        if (kd.qIdx < 0 || !kd.current) {
-          kd.qIdx = 0;
-          const q = this.kdPoolQuestion(kd, seg);
-          if (q) {
-            q.used = true;
-            this.recordOpenedQuestion(q.q);
-            kd.current = {
-              q: q.q,
-              a: q.a,
-              subject: q.subject,
-              kdZone: q.kdZone,
-              vdZone: q.vdZone,
-              media: q.media,
-              mediaType: q.mediaType
-            };
-          }
-        } else if (!seg.globalMs) {
-          kd.qIdx = 0;
-          this.recordOpenedQuestion(kd.current.q);
-        }
-        if (isSolo) {
-          kd.buzzOpen = false;
-          kd.buzzUnlockAt = void 0;
-        } else {
-          kd.buzzOpen = false;
-          const lockMs = this.ruleset.id === "O22" ? 2e3 : 5e3;
-          kd.buzzUnlockAt = now + lockMs;
-        }
-        const aSeason = this.ruleset.audioSeason;
-        if (aSeason !== "O13-21" && !(this.ruleset.id === "O22" && !isSolo)) {
-          kd.currentBgmTrack = "kd_bgm_1";
-          this.cue("1_KhoiDong/kd_bgm_1", "bgm");
         }
         this.cue("1_KhoiDong/ready");
         return OK;

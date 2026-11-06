@@ -717,8 +717,34 @@ export function useOlympiaAudio(
       };
 
       if (cue.kind === "sound" && (cue.sound.includes("start_round") || cue.sound.includes("open_question") || cue.sound.includes("ready"))) {
-        // USER REQUIREMENT: Khi chuyển vòng hoặc mở câu hỏi, crossfade tắt ngay âm thanh intro/chào thí sinh trong 1s
-        fadeOutAndStopBgm(1000);
+        // USER REQUIREMENT: Khi chuyển vòng hoặc mở câu hỏi, crossfade tắt ngay âm thanh intro/chào thí sinh trong 1s (chỉ tắt khi không kích hoạt bgmSound đồng thời)
+        if (!cue.bgmSound) {
+          fadeOutAndStopBgm(1000);
+        }
+      }
+
+      if (cue.bgmSound) {
+        const bgmTrack = cue.bgmSound;
+        let bgmUrl = `/olympia-audio/${season}/${bgmTrack}.mp3`;
+        if (currentChannel === "left") bgmUrl = `/olympia-audio/${season}/${bgmTrack}_left.mp3`;
+        else if (currentChannel === "right") bgmUrl = `/olympia-audio/${season}/${bgmTrack}_right.mp3`;
+
+        const bgmAudio = new Audio(bgmUrl);
+        bgmAudio.loop = isLoopingBgm(bgmTrack);
+        bgmAudio.volume = 0;
+        connectPanner(bgmAudio);
+        registerActive(bgmAudio);
+        bgmAudio.onerror = () => {
+          if (currentChannel !== "both" && bgmUrl !== `/olympia-audio/${season}/${bgmTrack}.mp3`) {
+            const stdBgm = new Audio(`/olympia-audio/${season}/${bgmTrack}.mp3`);
+            stdBgm.loop = isLoopingBgm(bgmTrack);
+            stdBgm.volume = 0;
+            connectPanner(stdBgm);
+            registerActive(stdBgm);
+            crossfadeToBgm(stdBgm, BGM_CROSSFADE_MS, false, false);
+          }
+        };
+        crossfadeToBgm(bgmAudio, BGM_CROSSFADE_MS, false, false);
       }
 
       if (isBgmCue) {

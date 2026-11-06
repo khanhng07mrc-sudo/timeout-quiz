@@ -11,7 +11,7 @@ import { toPoly, toSvgPath, type ArrowShell } from "./v3Geometry";
 export function V3ScaledStage({
   designW,
   designH,
-  maxScale = 1.15,
+  maxScale = 3.2,
   className = "",
   children,
 }: {
@@ -44,7 +44,7 @@ export function V3ScaledStage({
       style={{
         position: "relative",
         width: "100%",
-        maxWidth: designW * maxScale,
+        maxWidth: maxScale ? designW * maxScale : "100%",
         height: designH * scale,
         margin: "0 auto",
       }}

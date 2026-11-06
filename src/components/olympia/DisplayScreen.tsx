@@ -48,6 +48,9 @@ function hasActiveRoundContent(state: OlympiaState): boolean {
     case "khoiDong": {
       const kd = state.khoiDong;
       if (!kd || !kd.started || kd.phase === "segmentDone" || kd.phase === "intro") return false;
+      // Trong 3.5s đầu khi âm ready đang phát (kdIntroTimer đang chạy), đồ hoạ hạ 1/3 CHƯA HIỆN.
+      // Hết 3.5s, kdIntroTimer biến mất và âm open_question phát, đồ hoạ mới bung mở ở trạng thái Câu 0/6 ruột trống.
+      if (state.kdIntroTimer && (state.kdIntroTimer.remainingMs > 0 || state.kdIntroTimer.startedAt)) return false;
       return true;
     }
     case "vcnv": {
@@ -455,7 +458,7 @@ export default function DisplayScreen({ code }: { code: string }) {
           isLowerThird ? (
             /* ── LOWER-THIRD BROADCAST OVERLAY (20 - 25% BOTTOM) ── */
             <div className="w-full px-2 sm:px-6 pb-3 pt-1 pointer-events-auto flex flex-col justify-end z-20">
-              <div className="w-full max-w-6xl mx-auto flex flex-col justify-end">
+              <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end">
                 {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
                 {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} isLowerThird={true} />}
                 {state.currentRound === "tangToc" && <TangToc state={state} serverNow={serverNow} />}
@@ -631,23 +634,23 @@ function KhoiDong({ state, serverNow }: P) {
   const hasRevealedQ = Boolean(kd.questionRevealed && kd.current);
 
   return (
-    <div className="w-full max-w-6xl mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
+    <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
       {/* Main question card / Result answer overlay */}
       {kd.phase === "result" ? (
-        <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 flex flex-col justify-end">
+        <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto px-2 sm:px-4 flex flex-col justify-end">
           <V3SingleAnswerBar
             answerText={kd.current?.a || "(Chưa có đáp án)"}
             roundLabel="ĐÁP ÁN"
           />
         </div>
       ) : state.themeMode === "o26_classic" ? (
-        <div className="w-full max-w-5xl mx-auto flex flex-col gap-1">
+        <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col gap-1">
           <EconovaContestantScoreTabBar
             state={state}
             activeSeatId={currentSoloSeat}
             buzzedSeatId={currentBuzzedSeat}
             lockedSeats={kd.lockedSeats}
-            questionNumberBadge={hasRevealedQ ? questionBadge : null}
+            questionNumberBadge={kd.started ? (hasRevealedQ ? questionBadge : `Câu 0${totalQ}`) : null}
           />
           <Vtv3ChalkboardQuestionFrame
             headerBadge={null}
@@ -672,7 +675,7 @@ function KhoiDong({ state, serverNow }: P) {
           activeSeatId={currentSoloSeat}
           buzzedSeatId={currentBuzzedSeat}
           lockedSeats={kd.lockedSeats}
-          questionNumberBadge={hasRevealedQ ? questionBadge : null}
+          questionNumberBadge={kd.started ? (hasRevealedQ ? questionBadge : `Câu 0${totalQ}`) : null}
           headerBadge={hasRevealedQ && kd.current?.subject ? `${kd.current.subject.toUpperCase()}` : null}
           questionText={hasRevealedQ ? kd.current?.q : ""}
           mediaElement={
@@ -686,7 +689,7 @@ function KhoiDong({ state, serverNow }: P) {
           }
           timer={hasRevealedQ ? kd.timer : null}
           showScoreTab={true}
-          runAnim={kd.qIdx === 0}
+          runAnim={kd.started && kd.qIdx <= 0 && !hasRevealedQ}
         />
       )}
     </div>
@@ -748,14 +751,14 @@ function VeDich({ state, serverNow }: P) {
   );
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col justify-end">
+    <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end">
       {/* While choosing package or during the first 2s after confirmation: show slanted hexagonal package grid */}
       {vd.phase !== "result" && (isChoosing || isPackageIntroTime) && (
         <VeDichSlantedGridGraphic state={state} />
       )}
 
       {vd.phase === "result" ? (
-        <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 flex flex-col justify-end">
+        <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto px-2 sm:px-4 flex flex-col justify-end">
           <V3SingleAnswerBar
             answerText={cur?.q?.a || "(Chưa có đáp án)"}
             points={cur?.points}
@@ -841,7 +844,7 @@ function Chp({ state, serverNow }: P) {
   const cp = state.cauHoiPhu!;
   const q = cp.questions[cp.qIdx];
   return (
-    <div className="max-w-5xl mx-auto text-center space-y-2 w-full animate-fade-in">
+    <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto text-center space-y-2 animate-fade-in">
       <div className="text-sm font-bold text-amber-300">
         Câu hỏi phụ — {cp.tied.map((i) => seatName(state, i)).join(" · ")}
       </div>

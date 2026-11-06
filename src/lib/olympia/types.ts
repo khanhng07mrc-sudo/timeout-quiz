@@ -302,6 +302,7 @@ export interface Cue {
   sound: string;
   kind: "sound" | "bgm" | "stop" | "pause_bgm" | "resume_bgm";
   pan?: "both" | "left" | "right";
+  bgmSound?: string;
 }
 
 export interface OlympiaConfig {

@@ -696,7 +696,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-300">
                   {curRound === "khoiDong" && state.khoiDong
-                    ? `Câu ${Math.max(1, state.khoiDong.qIdx + 1)}/${state.khoiDong.segments[state.khoiDong.segIdx]?.questions ?? 6}`
+                    ? `Câu ${state.khoiDong.questionRevealed ? Math.max(1, state.khoiDong.qIdx + 1) : 0}/${state.khoiDong.segments[state.khoiDong.segIdx]?.questions ?? 6}`
                     : curRound === "vcnv" && state.vcnv
                       ? `Hàng ${state.vcnv.openedCount}/4`
                       : curRound === "tangToc" && state.tangToc
@@ -1886,6 +1886,13 @@ function KhoiDongDeck({
           })}
         </div>
 
+        {/* Question Counter Badge */}
+        <div className="flex items-center gap-1">
+          <span className="px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 font-bold border border-sky-400/30 text-xs">
+            {`Câu ${kd.questionRevealed ? Math.max(1, kd.qIdx + 1) : 0}/${seg?.questions ?? 6}`}
+          </span>
+        </div>
+
         {/* O22 Quarter Toggle (Quý 1 [30s] vs Quý 2 [60s] vs Quý 3-CKN [60s, -5đ]) */}
         {isO22 && (
           <div className="flex items-center gap-1 border-l border-white/10 pl-2">
@@ -1943,7 +1950,7 @@ function KhoiDongDeck({
             {/* ▶ BẮT ĐẦU */}
             {(() => {
               const seg = kd.segments[kd.segIdx];
-              const isLocked = kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro" && kd.qIdx >= 0 && kd.qIdx < (seg?.questions ?? 6) - 1;
+              const isLocked = kd.started && kd.phase !== "segmentDone" && kd.phase !== "intro";
               return (
                 <button
                   type="button"
@@ -1981,7 +1988,7 @@ function KhoiDongDeck({
                 disabled={inCooldown}
                 className={`py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-teal-400 hover:from-sky-400 hover:to-teal-300 text-slate-950 text-xs font-black shadow-lg shadow-sky-500/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider ${inCooldown ? "opacity-50 cursor-not-allowed" : ""}`}
               >
-                <span>{inCooldown ? `CÂU TIẾP (${cdSec}s)` : "CÂU TIẾP (N)"}</span>
+                <span>{inCooldown ? `CÂU TIẾP (${cdSec}s)` : (!kd.questionRevealed ? "CÂU TIẾP (MỞ CÂU 1)" : "CÂU TIẾP (N)")}</span>
                 <span>⏭</span>
               </button>
             )}

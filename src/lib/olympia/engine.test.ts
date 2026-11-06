@@ -1146,26 +1146,49 @@ test("system:setKdFinishTurnPan updates stereo panning for finish_turn sound", (
 
 
 
-test("kd:start plays ready, sets safety cooldown, and kd:next respects cooldown", () => {
+test("kd:start opens frame with 0/6 unrevealed and plays only ready; first kd:next reveals Q1 and cues open_question + bgm_1", () => {
   const g = game("O26", ["khoiDong"], 2);
   act(g, "game:start");
   act(g, "kd:start", {}, 1000);
 
+  // 1. At kd:start:
   assert.equal(g.state.khoiDong!.started, true);
-  assert.equal(g.state.khoiDong!.questionRevealed, true, "Question 1 revealed immediately upon kd:start");
-  assert.ok(g.state.khoiDong!.current?.q, "Question 1 loaded immediately upon kd:start");
-  assert.equal(g.state.khoiDong!.startCooldownUntil, 1000 + 1200);
+  assert.equal(g.state.khoiDong!.questionRevealed, false, "Question 1 remains hidden at kd:start");
+  assert.equal(g.state.khoiDong!.qIdx, -1, "Counter stays at -1 (0/6) at kd:start");
+  assert.equal(g.state.khoiDong!.current, null, "Question 1 content not loaded at kd:start");
+  assert.equal(g.state.cue!.sound, "1_KhoiDong/ready", "Plays only ready");
+  assert.notEqual(g.state.cue!.sound, "1_KhoiDong/open_question", "Strictly not open_question");
+  assert.notEqual(g.state.cue!.sound, "1_KhoiDong/kd_bgm_1", "Strictly not kd_bgm_1");
+  assert.equal(g.state.khoiDong!.startCooldownUntil, 1000 + 3500);
+  assert.equal(Boolean(g.state.kdIntroTimer), true, "kdIntroTimer running for 3500ms");
 
-  // Attempting kd:next during safety cooldown should fail
-  const rejected = g.hostAction({ type: "kd:next" }, 1500);
+  // 2. Reject kd:next during safety cooldown:
+  const rejected = g.hostAction({ type: "kd:next" }, 2500);
   assert.equal(rejected.ok, false);
   assert.ok(rejected.error && rejected.error.includes("đồ hoạ mở xong"));
 
-  // After cooldown expires, when host clicks kd:next, moves to question 2
-  const accepted = g.hostAction({ type: "kd:next" }, 3000);
+  // 3. At t = 4500ms, kdIntroTimer expires, cues open_question and unrolls lower-third (still at 0/6):
+  g.tick(4500);
+  assert.equal(g.state.kdIntroTimer, null, "kdIntroTimer expired");
+  assert.equal(g.state.cue!.sound, "1_KhoiDong/open_question", "open_question cued at t=3.5s when lower third opens");
+  assert.equal(g.state.khoiDong!.qIdx, -1, "still at 0/6");
+  assert.equal(g.state.khoiDong!.questionRevealed, false, "still not revealed");
+
+  // 4. First kd:next after cooldown reveals Q1 and starts BGM:
+  const accepted = g.hostAction({ type: "kd:next" }, 4600);
   assert.equal(accepted.ok, true);
-  assert.equal(g.state.khoiDong!.questionRevealed, true);
-  assert.equal(g.state.khoiDong!.timer.startedAt, null, "5s timer not started automatically on next");
+  assert.equal(g.state.khoiDong!.questionRevealed, true, "Q1 revealed");
+  assert.equal(g.state.khoiDong!.qIdx, 0, "Counter advances to 0 (1/6)");
+  assert.ok((g.state.khoiDong!.current as any)?.q, "Q1 content loaded");
+  assert.equal(g.state.khoiDong!.currentBgmTrack, "kd_bgm_1");
+  assert.equal(g.state.cue!.sound, "1_KhoiDong/open_question", "SFX open_question cued");
+  assert.equal(g.state.cue!.bgmSound, "1_KhoiDong/kd_bgm_1", "BGM kd_bgm_1 cued");
+  assert.equal(g.state.khoiDong!.timer.startedAt, null, "Timer does not auto-start");
+
+  // 4. Second kd:next moves to Question 2:
+  const nextQ = g.hostAction({ type: "kd:next" }, 8000);
+  assert.equal(nextQ.ok, true);
+  assert.equal(g.state.khoiDong!.qIdx, 1, "Counter advances to 1 (2/6)");
 });
 
 test("Khởi động BGM formula (kd_bgm_1, kd_bgm_2, kd_bgm_3) exact transition across solo and shared turns", () => {
@@ -1174,6 +1197,9 @@ test("Khởi động BGM formula (kd_bgm_1, kd_bgm_2, kd_bgm_3) exact transition
   const g6 = game("O26", ["khoiDong"], 4);
   act(g6, "game:start");
   act(g6, "kd:start", {}, 1000);
+  g6.tick(4500);
+  // Reveal Q1 via first kd:next after 3.5s cooldown
+  act(g6, "kd:next", {}, 4600);
   assert.equal(g6.state.khoiDong!.currentBgmTrack, "kd_bgm_1", "Q1 plays bgm_1");
 
   // Q2 (qIdx 1)
@@ -1208,6 +1234,9 @@ test("Khởi động BGM formula (kd_bgm_1, kd_bgm_2, kd_bgm_3) exact transition
   act(g15, "kd:selectSegment", { kind: "shared" }, 1000);
   assert.equal(g15.state.khoiDong!.segments[g15.state.khoiDong!.segIdx].questions, 15);
   act(g15, "kd:start", {}, 2000);
+  g15.tick(5500);
+  // Reveal Q1 via first kd:next after 3.5s cooldown
+  act(g15, "kd:next", {}, 6000);
   assert.equal(g15.state.khoiDong!.currentBgmTrack, "kd_bgm_1");
 
   // Advance to Q7 (qIdx 6): must still be bgm_1
@@ -1233,7 +1262,6 @@ test("Khởi động BGM formula (kd_bgm_1, kd_bgm_2, kd_bgm_3) exact transition
   act(g15, "kd:next", {}, 32000);
   assert.equal(g15.state.khoiDong!.qIdx, 14, "At Question 15");
   assert.equal(g15.state.khoiDong!.currentBgmTrack, "kd_bgm_3", "Q15 (câu cuối cùng) transitions to bgm_3");
-
 });
 
 

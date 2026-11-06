@@ -298,9 +298,14 @@ export class OlympiaGame {
     return { openedQ, openedA, reservedQ };
   }
 
-  private cue(sound: string, kind: "sound" | "bgm" | "stop" | "pause_bgm" | "resume_bgm" = "sound", pan?: "both" | "left" | "right") {
+  private cue(
+    sound: string,
+    kind: "sound" | "bgm" | "stop" | "pause_bgm" | "resume_bgm" = "sound",
+    pan?: "both" | "left" | "right",
+    bgmSound?: string
+  ) {
     this.state.cueSeq += 1;
-    this.state.cue = { id: this.state.cueSeq, sound, kind, pan };
+    this.state.cue = { id: this.state.cueSeq, sound, kind, pan, bgmSound };
   }
   private logMsg(msg: string) {
     this.state.log.push(msg);
@@ -521,27 +526,8 @@ export class OlympiaGame {
       st.kdIntroTimer = null;
       changed = true;
       if (st.khoiDong) {
-        const kd = st.khoiDong;
-        const seg = kd.segments[kd.segIdx];
-        if (kd.qIdx < 0) {
-          kd.qIdx = 0;
-          const q = this.kdPoolQuestion(kd, seg);
-          if (q) {
-            q.used = true;
-            this.recordOpenedQuestion(q.q);
-            kd.current = {
-              q: q.q,
-              a: q.a,
-              subject: q.subject,
-              kdZone: q.kdZone,
-              vdZone: q.vdZone,
-              media: q.media,
-              mediaType: q.mediaType,
-            };
-          }
-        }
-        kd.phase = "question";
-        kd.questionRevealed = !seg.globalMs; // O23+: Mở ngay câu 1 khi BẮT ĐẦU; O13-O22: Chờ kd:next để kích hoạt đồng hồ 60s
+        // Hết 3.5s của âm ready: phát âm thanh open_question ĐỒNG THỜI đồ hoạ hạ 1/3 bung mở.
+        // Vẫn ở Câu 0/6 (qIdx = -1), ruột câu hỏi trống (questionRevealed = false, current = null).
         this.cue("1_KhoiDong/open_question");
       }
     }
@@ -1592,7 +1578,7 @@ export class OlympiaGame {
             }
           } else if (!kd.globalTimer) {
             kd.currentBgmTrack = "kd_bgm_1";
-            this.cue("1_KhoiDong/kd_bgm_1", "bgm");
+            this.cue("1_KhoiDong/open_question", "sound", undefined, "1_KhoiDong/kd_bgm_1");
           }
           return OK;
         }
@@ -1732,56 +1718,24 @@ export class OlympiaGame {
         kd.phase = "question";
         kd.started = true;
         kd.buzzedSeat = null;
+        kd.questionRevealed = false;
+        kd.qIdx = -1;
+        kd.current = null;
+        kd.buzzOpen = false;
+        kd.buzzUnlockAt = undefined;
+        kd.currentBgmTrack = undefined;
+
+        // t = 0s: Bấm BẮT ĐẦU: Phát âm ready (đồ hoạ chưa hiện).
+        // Sau 3.5s (khi kdIntroTimer hết hạn): tick() sẽ phát open_question đồng thời đồ hoạ bung mở.
+        st.kdIntroTimer = mkTimer(3500);
+        startTimer(st.kdIntroTimer, now);
+        kd.startCooldownUntil = now + 3500;
+
         if (seg.globalMs) {
-          // O13-O22: Lượt 60s/30s/90s có đồng hồ tổng, chờ kd:next để mở câu 1 và kích hoạt đồng hồ
-          kd.questionRevealed = false;
           kd.globalTimer = mkTimer(seg.globalMs);
-          kd.startCooldownUntil = now + 3500;
-          st.kdIntroTimer = mkTimer(3500);
-          startTimer(st.kdIntroTimer, now);
-        } else {
-          // O23-O26: Mở ngay câu 1 khi BẮT ĐẦU, animation đồ hoạ chạy lập tức không delay
-          kd.questionRevealed = true;
-          kd.startCooldownUntil = now + 1200;
-          st.kdIntroTimer = null;
-        }
-        if (kd.qIdx < 0 || !kd.current) {
-          kd.qIdx = 0;
-          const q = this.kdPoolQuestion(kd, seg);
-          if (q) {
-            q.used = true;
-            this.recordOpenedQuestion(q.q);
-            kd.current = {
-              q: q.q,
-              a: q.a,
-              subject: q.subject,
-              kdZone: q.kdZone,
-              vdZone: q.vdZone,
-              media: q.media,
-              mediaType: q.mediaType,
-            };
-          }
-        } else if (!seg.globalMs) {
-          kd.qIdx = 0;
-          this.recordOpenedQuestion(kd.current.q);
-        }
-        if (isSolo) {
-          kd.buzzOpen = false;
-          kd.buzzUnlockAt = undefined;
-        } else {
-          // Shared KĐ: khóa chuông 2s (O22) hoặc 5s (O23+)
-          kd.buzzOpen = false;
-          const lockMs = (this.ruleset.id === "O22") ? 2000 : 5000;
-          kd.buzzUnlockAt = now + lockMs;
         }
 
-        const aSeason = this.ruleset.audioSeason;
-        if (aSeason !== "O13-21" && !(this.ruleset.id === "O22" && !isSolo)) {
-          kd.currentBgmTrack = "kd_bgm_1";
-          this.cue("1_KhoiDong/kd_bgm_1", "bgm");
-        }
-
-        // Nhấn Bắt đầu: mở đồ hoạ ngay lập tức và phát "ready"
+        // Nhấn Bắt đầu: phát strictly ONLY "ready", đồ hoạ hạ 1/3 chưa hiện trong 3.5s
         this.cue("1_KhoiDong/ready");
         return OK;
       }

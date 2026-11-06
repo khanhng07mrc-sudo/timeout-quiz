@@ -2280,13 +2280,13 @@ export function EconovaLowerThirdV3({
   const isFs = overlayMode === "FULLSCREEN";
   const isVeDich = state.currentRound === "veDich";
   const W = 1000;
-  const H = isVeDich ? 195 : 172;
+  const H = isVeDich ? 200 : 186;
   const cThick = Math.round(H * 0.16);
   const pad = Math.round(cThick * 1.5);
   const shell = buildArrowShell({ W, H, slantRatio: 0.3571, pad });
   const seats = activeSeats(state);
   const n = seats.length;
-  const lt = buildLowerThirdLayout(shell, n, isVeDich ? "VE_DICH" : "KHOI_DONG", { tabH: 38 });
+  const lt = buildLowerThirdLayout(shell, n, isVeDich ? "VE_DICH" : "KHOI_DONG", { tabH: 42 });
   const packStrip = isVeDich ? buildClusterPackStrip(shell, lt, 3, 36) : null;
 
   const targetSeatId = buzzedSeatId ?? activeSeatId;
@@ -2340,13 +2340,13 @@ export function EconovaLowerThirdV3({
 
   const strLen = typeof questionText === "string" ? questionText.length : 60;
   const fontSizeClass =
-    strLen > 240
-      ? "text-sm sm:text-base md:text-lg leading-snug"
+    strLen > 220
+      ? "text-[18px] sm:text-[19px] md:text-[20px] leading-normal font-bold"
       : strLen > 140
-      ? "text-base sm:text-lg md:text-xl leading-snug"
-      : strLen > 80
-      ? "text-lg sm:text-xl md:text-2xl leading-normal"
-      : "text-xl sm:text-2xl md:text-3xl leading-relaxed";
+      ? "text-[21px] sm:text-[22px] md:text-[23px] leading-snug font-extrabold"
+      : strLen > 75
+      ? "text-[24px] sm:text-[26px] md:text-[27px] leading-snug font-black"
+      : "text-[28px] sm:text-[31px] md:text-[33px] leading-snug font-black";
 
   const qLeft = shell.startX + shell.pS + 12;
   const qRight = isVeDich && lt.clusterLine ? lt.clusterLine.x0 - 16 : shell.endX - shell.pS - 12;
@@ -2358,7 +2358,7 @@ export function EconovaLowerThirdV3({
       className={
         isFs
           ? "absolute inset-0 z-30 flex flex-col items-center justify-center p-4 sm:p-8 bg-[#051126]/90 backdrop-blur-md pointer-events-auto"
-          : "w-full max-w-[1200px] mx-auto px-2 sm:px-4 pb-2 sm:pb-3 pt-1 z-20 pointer-events-auto relative"
+          : "w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto px-1 sm:px-2 pb-2 pt-1 z-20 pointer-events-auto relative"
       }
     >
       {countdownSec != null && countdownSec > 0 && (
@@ -2369,7 +2369,7 @@ export function EconovaLowerThirdV3({
         </div>
       )}
 
-      {extraTopBanner && <div className="mb-2 w-full max-w-5xl mx-auto">{extraTopBanner}</div>}
+      {extraTopBanner && <div className="mb-2 w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto">{extraTopBanner}</div>}
 
       <div className="relative w-full flex items-center justify-center select-none" style={{ ["--dc" as string]: `${dc}px` }}>
         <style>{`
@@ -2476,6 +2476,42 @@ export function EconovaLowerThirdV3({
             </div>
           )}
 
+          {/* Broadcast Question Counter Badge (0/6 .. 6/6) & Subject Header */}
+          {(questionNumberBadge || headerBadge) && (
+            <div
+              className={`absolute z-30 pointer-events-none flex items-center gap-2 select-none ${
+                runAnim ? "v3-anim-content" : ""
+              }`}
+              style={{
+                top: -26,
+                left: qLeft,
+              }}
+            >
+              {questionNumberBadge && (
+                <div
+                  className="px-3 py-0.5 rounded-t-lg font-black text-xs sm:text-sm tracking-widest uppercase flex items-center gap-1.5 shadow-[0_0_15px_rgba(251,191,36,0.5)] border-t border-x border-amber-300/60"
+                  style={{
+                    background: "linear-gradient(135deg, #091a42 0%, #061129 100%)",
+                    color: "#fbbf24",
+                  }}
+                >
+                  <span>🎯</span>
+                  <span>{questionNumberBadge}</span>
+                </div>
+              )}
+              {headerBadge && (
+                <div
+                  className="px-2.5 py-0.5 rounded-t-lg font-black text-xs sm:text-sm tracking-wider uppercase border-t border-x border-cyan-400/40 text-cyan-200"
+                  style={{
+                    background: "linear-gradient(135deg, #05264a 0%, #031427 100%)",
+                  }}
+                >
+                  {headerBadge}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Master SVG Arrow Frame & Geometry */}
           <svg
             width={shell.canvasW}
@@ -2566,12 +2602,12 @@ export function EconovaLowerThirdV3({
                       />
                       <text
                         x={tab.cx}
-                        y={tab.cy + 5}
+                        y={tab.cy + 6}
                         textAnchor="middle"
                         fill={isLocked ? "#64748b" : "#ffffff"}
                         fontWeight="900"
-                        fontSize="13"
-                        letterSpacing="0.05em"
+                        fontSize="16"
+                        letterSpacing="0.04em"
                         className="uppercase font-sans"
                         style={{
                           filter: isBuzzed || isActive ? "drop-shadow(0 2px 6px rgba(0,0,0,0.9))" : "none",
@@ -2668,19 +2704,20 @@ export function EconovaLowerThirdV3({
             }`}
             style={{
               left: qLeft,
-              top: showScoreTab ? 44 : 14,
+              top: showScoreTab ? 48 : 16,
               width: qWidth,
-              height: H - (showScoreTab ? 58 : 28),
+              height: H - (showScoreTab ? 62 : 30),
             }}
           >
             {questionText ? (
               <div
                 key={typeof questionText === "string" ? questionText.slice(0, 40) : undefined}
-                className={`font-extrabold text-white text-left tracking-normal ${fontSizeClass} drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] max-h-full overflow-y-auto w-full pt-1 pr-3 v3-anim-swap`}
+                className={`text-white text-left tracking-normal ${fontSizeClass} drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] max-h-full w-full pt-1 pr-3 v3-anim-swap select-none`}
               >
                 {questionText}
               </div>
             ) : null}
+            {mediaElement && <div className="mt-1">{mediaElement}</div>}
             {children}
           </div>
 

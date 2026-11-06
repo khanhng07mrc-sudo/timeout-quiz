@@ -75,39 +75,46 @@ export const V3_COLORS = {
 };
 
 /**
- * ECONOVA 2.0s master timeline (hexagon expands from the centre while the navy chevrons
- * and cyan wings glide out to the edges, content fades in last).
+ * ECONOVA 2.0s master timeline:
+ * 1. 0s -> 0.76s (0% -> 38%): 3-layer chevron arrows sweep in from opposite screen edges towards center.
+ * 2. 0.76s -> 0.88s (38% -> 44%): Arrows converge and touch tightly at the center.
+ * 3. 0.88s -> 1.7s (44% -> 85%): Hexagon body expands from center outwards while arrows glide to outer borders.
+ * 4. 1.7s -> 2.0s (85% -> 100%): Question content cleanly fades in.
  */
 const SHELL_CSS = `
 @keyframes v3a-wing-l {
-  0%   { transform: translateX(var(--v3a-dc-converge)); opacity: 1; }
-  28%  { transform: translateX(calc(var(--v3a-dc-converge) * 0.75)); opacity: 1; }
-  70%  { transform: translateX(-8px); opacity: 1; }
+  0%   { transform: translateX(calc(var(--v3a-dc-converge) - 550px)); opacity: 0; }
+  12%  { opacity: 1; }
+  38%  { transform: translateX(var(--v3a-dc-converge)); opacity: 1; }
+  44%  { transform: translateX(var(--v3a-dc-converge)); opacity: 1; }
+  78%  { transform: translateX(-8px); opacity: 1; }
   100% { transform: translateX(0); opacity: 1; }
 }
 @keyframes v3a-wing-r {
-  0%   { transform: translateX(calc(var(--v3a-dc-converge) * -1)); opacity: 1; }
-  28%  { transform: translateX(calc(var(--v3a-dc-converge) * -0.75)); opacity: 1; }
-  70%  { transform: translateX(8px); opacity: 1; }
+  0%   { transform: translateX(calc(var(--v3a-dc-converge) * -1 + 550px)); opacity: 0; }
+  12%  { opacity: 1; }
+  38%  { transform: translateX(calc(var(--v3a-dc-converge) * -1)); opacity: 1; }
+  44%  { transform: translateX(calc(var(--v3a-dc-converge) * -1)); opacity: 1; }
+  78%  { transform: translateX(8px); opacity: 1; }
   100% { transform: translateX(0); opacity: 1; }
 }
 @keyframes v3a-body {
-  0%, 25%  { clip-path: inset(0 50% 0 50%); opacity: 0; }
-  26%      { clip-path: inset(0 50% 0 50%); opacity: 1; }
-  75%      { clip-path: inset(0 0% 0 0%); opacity: 1; }
+  0%, 40%  { clip-path: inset(0 50% 0 50%); opacity: 0; }
+  41%      { clip-path: inset(0 50% 0 50%); opacity: 1; }
+  82%      { clip-path: inset(0 0% 0 0%); opacity: 1; }
   100%     { clip-path: inset(0 0 0 0); opacity: 1; }
 }
 @keyframes v3a-content {
-  0%, 65% { opacity: 0; }
+  0%, 75% { opacity: 0; }
   100%    { opacity: 1; }
 }
 @keyframes v3a-swap {
   0%   { opacity: 0; transform: translateY(6px); }
   100% { opacity: 1; transform: translateY(0); }
 }
-.v3a-run .v3a-l { animation: v3a-wing-l 2s forwards cubic-bezier(0.4, 0, 0.2, 1); }
-.v3a-run .v3a-r { animation: v3a-wing-r 2s forwards cubic-bezier(0.4, 0, 0.2, 1); }
-.v3a-run .v3a-body { animation: v3a-body 2s forwards cubic-bezier(0.4, 0, 0.2, 1); }
+.v3a-run .v3a-l { animation: v3a-wing-l 2s forwards cubic-bezier(0.2, 0.8, 0.2, 1); }
+.v3a-run .v3a-r { animation: v3a-wing-r 2s forwards cubic-bezier(0.2, 0.8, 0.2, 1); }
+.v3a-run .v3a-body { animation: v3a-body 2s forwards cubic-bezier(0.2, 0.8, 0.2, 1); }
 .v3a-run .v3a-content { animation: v3a-content 2s forwards; }
 .v3a-swap { animation: v3a-swap 0.45s ease-out both; }
 @keyframes v3a-buzz {
@@ -180,23 +187,45 @@ export function V3ArrowShell({
             </linearGradient>
           </defs>
           <g className="v3a-l">
-            <path d={toSvgPath(shell.alcPts)} fill={`url(#${uid}-cyan)`} />
+            {/* Layer 1: Radiant Cyan wing */}
+            <path d={toSvgPath(shell.alcPts)} fill={`url(#${uid}-cyan)`} filter={`drop-shadow(0 0 6px ${V3_COLORS.cyanA})`} />
+            {/* Layer 2: Deep Navy chevron core */}
             <path
               d={toSvgPath(shell.alnPts)}
-              fill={V3_COLORS.navy}
-              stroke={V3_COLORS.line}
-              strokeWidth={1.5}
+              fill={V3_COLORS.navyDeep}
+              stroke={V3_COLORS.navy}
+              strokeWidth={2}
               strokeLinejoin="miter"
+            />
+            {/* Layer 3: Crisp White/Silver accent outline */}
+            <path
+              d={toSvgPath(shell.alnPts)}
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth={1.2}
+              strokeLinejoin="miter"
+              opacity={0.9}
             />
           </g>
           <g className="v3a-r">
-            <path d={toSvgPath(shell.arcPts)} fill={`url(#${uid}-cyan-r)`} />
+            {/* Layer 1: Radiant Cyan wing */}
+            <path d={toSvgPath(shell.arcPts)} fill={`url(#${uid}-cyan-r)`} filter={`drop-shadow(0 0 6px ${V3_COLORS.cyanA})`} />
+            {/* Layer 2: Deep Navy chevron core */}
             <path
               d={toSvgPath(shell.arnPts)}
-              fill={V3_COLORS.navy}
-              stroke={V3_COLORS.line}
-              strokeWidth={1.5}
+              fill={V3_COLORS.navyDeep}
+              stroke={V3_COLORS.navy}
+              strokeWidth={2}
               strokeLinejoin="miter"
+            />
+            {/* Layer 3: Crisp White/Silver accent outline */}
+            <path
+              d={toSvgPath(shell.arnPts)}
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth={1.2}
+              strokeLinejoin="miter"
+              opacity={0.9}
             />
           </g>
         </svg>

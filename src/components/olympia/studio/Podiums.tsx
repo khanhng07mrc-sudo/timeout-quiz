@@ -502,12 +502,14 @@ function SculptedEar({
 function VietnameseHand({
   position = [0, 0, 0],
   rotation = [0, 0, 0],
+  scale = [1, 1, 1],
   skinMat,
   isLeft = true,
   mode = "hang",
 }: {
   position?: [number, number, number];
   rotation?: [number, number, number];
+  scale?: [number, number, number] | number;
   skinMat: THREE.Material;
   isLeft?: boolean;
   mode?: "hang" | "rest" | "mic" | "card" | "tablet";
@@ -533,7 +535,7 @@ function VietnameseHand({
   const fingerXs = [-0.009, -0.003, 0.003, 0.009];
 
   return (
-    <group position={position} rotation={rotation}>
+    <group position={position} rotation={rotation} scale={scale}>
       {/* 1. Delicate Tapered Wrist Transition (Smooth sleeve-to-hand bridge, no giant ball!) */}
       <mesh position={[0, -0.002, -0.008]} scale={[1.15, 0.75, 1.0]}>
         <cylinderGeometry args={[0.010, 0.012, 0.014, 12]} />
@@ -2049,73 +2051,75 @@ export function McPresenters({
         </mesh>
         {/* Left Arm holding Cue Card */}
         <group ref={kvLeftArmRef}>
-          <mesh position={[-0.16, 1.32, 0.02]} rotation={[0.35, 0, -0.15]}>
-            <capsuleGeometry args={[0.032, 0.14, 8, 12]} />
+          <mesh position={[-0.16, 1.32, 0.02]} rotation={[0.30, 0, -0.15]}>
+            <capsuleGeometry args={[0.024, 0.13, 8, 12]} />
             <meshStandardMaterial color="#be185d" roughness={0.35} />
           </mesh>
-          {/* Left Elbow Spherical Ball Joint Node (r=0.027) */}
-          <mesh position={[-0.155, 1.24, 0.07]}>
-            <sphereGeometry args={[0.027, 14, 14]} />
+          {/* Left Elbow Spherical Ball Joint Node (r=0.021) */}
+          <mesh position={[-0.155, 1.24, 0.05]}>
+            <sphereGeometry args={[0.021, 14, 14]} />
             <meshStandardMaterial color="#be185d" roughness={0.35} />
           </mesh>
-          <mesh position={[-0.15, 1.18, 0.12]} rotation={[0.60, 0.20, -0.10]}>
-            <capsuleGeometry args={[0.026, 0.14, 8, 12]} />
+          <mesh position={[-0.15, 1.18, 0.08]} rotation={[0.45, 0.20, -0.10]}>
+            <capsuleGeometry args={[0.020, 0.13, 8, 12]} />
             <meshStandardMaterial color="#be185d" roughness={0.35} />
           </mesh>
-          {/* Sculpted Hand holding Cue Card */}
+          {/* Slender Sculpted Hand holding Cue Card resting safely above desk */}
           <SculptedHand
-            position={[-0.14, 1.10, 0.22]}
+            position={[-0.14, 1.11, 0.10]}
             rotation={[0.2, -0.2, 0.1]}
+            scale={[0.76, 0.76, 0.76]}
             skinMat={kvSkinMat}
             isLeft={true}
             mode="card"
           />
           {/* Cue Card */}
-          <mesh position={[-0.14, 1.14, 0.24]} rotation={[0.25, -0.20, 0.10]}>
-            <boxGeometry args={[0.18, 0.005, 0.12]} />
+          <mesh position={[-0.14, 1.14, 0.11]} rotation={[0.25, -0.20, 0.10]}>
+            <boxGeometry args={[0.14, 0.004, 0.09]} />
             <meshStandardMaterial color="#ffffff" roughness={0.2} />
           </mesh>
-          <mesh position={[-0.14, 1.14, 0.242]} rotation={[0.25, -0.20, 0.10]}>
-            <boxGeometry args={[0.16, 0.006, 0.02]} />
+          <mesh position={[-0.14, 1.14, 0.112]} rotation={[0.25, -0.20, 0.10]}>
+            <boxGeometry args={[0.12, 0.005, 0.016]} />
             <meshBasicMaterial color="#f59e0b" />
           </mesh>
         </group>
 
-        {/* Right Shoulder Spherical Ball Joint Node (r=0.036) */}
+        {/* Right Shoulder Spherical Ball Joint Node (r=0.028) */}
         <mesh position={[0.16, 1.34, 0.02]}>
-          <sphereGeometry args={[0.036, 16, 16]} />
+          <sphereGeometry args={[0.028, 16, 16]} />
           <meshStandardMaterial color="#be185d" roughness={0.35} />
         </mesh>
         {/* Right Arm holding Microphone */}
         <group ref={kvRightArmRef}>
-          <mesh position={[0.16, 1.32, 0.02]} rotation={[0.45, 0, 0.15]}>
-            <capsuleGeometry args={[0.032, 0.14, 8, 12]} />
+          <mesh position={[0.16, 1.32, 0.02]} rotation={[0.35, 0, 0.15]}>
+            <capsuleGeometry args={[0.024, 0.13, 8, 12]} />
             <meshStandardMaterial color="#be185d" roughness={0.35} />
           </mesh>
-          {/* Right Elbow Spherical Ball Joint Node (r=0.027) */}
-          <mesh position={[0.155, 1.27, 0.08]}>
-            <sphereGeometry args={[0.027, 14, 14]} />
+          {/* Right Elbow Spherical Ball Joint Node (r=0.021) */}
+          <mesh position={[0.155, 1.27, 0.06]}>
+            <sphereGeometry args={[0.021, 14, 14]} />
             <meshStandardMaterial color="#be185d" roughness={0.35} />
           </mesh>
-          <mesh position={[0.15, 1.22, 0.14]} rotation={[0.75, -0.20, 0.10]}>
-            <capsuleGeometry args={[0.026, 0.14, 8, 12]} />
+          <mesh position={[0.15, 1.22, 0.09]} rotation={[0.55, -0.20, 0.10]}>
+            <capsuleGeometry args={[0.020, 0.13, 8, 12]} />
             <meshStandardMaterial color="#be185d" roughness={0.35} />
           </mesh>
-          {/* Sculpted Hand holding Microphone */}
+          {/* Slender Sculpted Hand holding Microphone */}
           <SculptedHand
-            position={[0.14, 1.28, 0.22]}
+            position={[0.14, 1.28, 0.11]}
             rotation={[-0.2, 0.2, -0.1]}
+            scale={[0.76, 0.76, 0.76]}
             skinMat={kvSkinMat}
             isLeft={false}
             mode="mic"
           />
-          <group position={[0.14, 1.32, 0.25]} rotation={[-0.3, 0, 0]}>
+          <group position={[0.14, 1.32, 0.12]} rotation={[-0.3, 0, 0]}>
             <mesh>
-              <cylinderGeometry args={[0.009, 0.007, 0.12, 12]} />
+              <cylinderGeometry args={[0.007, 0.005, 0.10, 12]} />
               <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
             </mesh>
-            <mesh position={[0, 0.07, 0]}>
-              <sphereGeometry args={[0.015, 16, 16]} />
+            <mesh position={[0, 0.06, 0]}>
+              <sphereGeometry args={[0.012, 16, 16]} />
               <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.3} />
             </mesh>
           </group>
@@ -2355,95 +2359,97 @@ export function McPresenters({
         </mesh>
 
         {/* ── ARMS WITH SPHERICAL BALL JOINT NODES & SCULPTED HANDS ── */}
-        {/* Left Shoulder Spherical Ball Joint Node (r=0.036) */}
+        {/* Left Shoulder Spherical Ball Joint Node (r=0.030) */}
         <mesh position={[-0.20, 1.36, 0.02]}>
-          <sphereGeometry args={[0.036, 16, 16]} />
+          <sphereGeometry args={[0.030, 16, 16]} />
           <meshStandardMaterial color="#1e293b" roughness={0.45} />
         </mesh>
         {/* Left Arm (holding Microphone) with Silver Wristwatch */}
         <group ref={nhLeftArmRef}>
-          <mesh position={[-0.20, 1.34, 0.03]} rotation={[0.45, 0, -0.15]}>
-            <capsuleGeometry args={[0.038, 0.16, 8, 12]} />
+          <mesh position={[-0.20, 1.34, 0.02]} rotation={[0.35, 0, -0.15]}>
+            <capsuleGeometry args={[0.028, 0.14, 8, 12]} />
             <meshStandardMaterial color="#1e293b" roughness={0.45} />
           </mesh>
-          {/* Left Elbow Spherical Ball Joint Node (r=0.027) */}
-          <mesh position={[-0.19, 1.28, 0.08]}>
-            <sphereGeometry args={[0.027, 14, 14]} />
+          {/* Left Elbow Spherical Ball Joint Node (r=0.022) */}
+          <mesh position={[-0.19, 1.28, 0.06]}>
+            <sphereGeometry args={[0.022, 14, 14]} />
             <meshStandardMaterial color="#1e293b" roughness={0.45} />
           </mesh>
-          <mesh position={[-0.18, 1.24, 0.14]} rotation={[0.75, 0.20, -0.10]}>
-            <capsuleGeometry args={[0.030, 0.14, 8, 12]} />
+          <mesh position={[-0.18, 1.24, 0.09]} rotation={[0.60, 0.20, -0.10]}>
+            <capsuleGeometry args={[0.024, 0.13, 8, 12]} />
             <meshStandardMaterial color="#1e293b" roughness={0.45} />
           </mesh>
           {/* Wrist Cuff */}
-          <mesh position={[-0.16, 1.30, 0.21]}>
-            <torusGeometry args={[0.032, 0.006, 8, 16]} />
+          <mesh position={[-0.16, 1.30, 0.11]}>
+            <torusGeometry args={[0.026, 0.005, 8, 16]} />
             <meshStandardMaterial color="#1e293b" roughness={0.45} />
           </mesh>
           {/* Silver Wristwatch on Left Wrist */}
-          <mesh position={[-0.16, 1.31, 0.21]} rotation={[0.6, 0.2, 0]}>
-            <cylinderGeometry args={[0.016, 0.016, 0.006, 16]} />
+          <mesh position={[-0.16, 1.31, 0.11]} rotation={[0.6, 0.2, 0]}>
+            <cylinderGeometry args={[0.013, 0.013, 0.005, 16]} />
             <meshStandardMaterial color="#e2e8f0" metalness={0.95} roughness={0.1} />
           </mesh>
-          <mesh position={[-0.16, 1.31, 0.21]} rotation={[0.6, 0.2, 0]}>
-            <torusGeometry args={[0.026, 0.004, 6, 16]} />
+          <mesh position={[-0.16, 1.31, 0.11]} rotation={[0.6, 0.2, 0]}>
+            <torusGeometry args={[0.022, 0.003, 6, 16]} />
             <meshStandardMaterial color="#1e293b" roughness={0.6} />
           </mesh>
-          {/* Sculpted Hand holding Microphone */}
+          {/* Slender Sculpted Hand holding Microphone */}
           <SculptedHand
-            position={[-0.15, 1.35, 0.23]}
+            position={[-0.15, 1.35, 0.12]}
             rotation={[-0.3, 0.1, 0]}
+            scale={[0.76, 0.76, 0.76]}
             skinMat={nhSkinMat}
             isLeft={true}
             mode="mic"
           />
-          <group position={[-0.15, 1.40, 0.26]} rotation={[-0.4, 0, 0]}>
+          <group position={[-0.15, 1.40, 0.13]} rotation={[-0.4, 0, 0]}>
             <mesh>
-              <cylinderGeometry args={[0.010, 0.008, 0.12, 12]} />
+              <cylinderGeometry args={[0.008, 0.006, 0.10, 12]} />
               <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
             </mesh>
-            <mesh position={[0, 0.07, 0]}>
-              <sphereGeometry args={[0.016, 16, 16]} />
+            <mesh position={[0, 0.06, 0]}>
+              <sphereGeometry args={[0.013, 16, 16]} />
               <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.3} />
             </mesh>
           </group>
         </group>
 
-        {/* Right Shoulder Spherical Ball Joint Node (r=0.036) */}
+        {/* Right Shoulder Spherical Ball Joint Node (r=0.030) */}
         <mesh position={[0.20, 1.36, 0.02]}>
-          <sphereGeometry args={[0.036, 16, 16]} />
+          <sphereGeometry args={[0.030, 16, 16]} />
           <meshStandardMaterial color="#1e293b" roughness={0.45} />
         </mesh>
         {/* Right Arm holding Host Tablet */}
         <group ref={nhRightArmRef}>
-          <mesh position={[0.20, 1.34, 0.02]} rotation={[0.25, 0, 0.12]}>
-            <capsuleGeometry args={[0.038, 0.16, 8, 12]} />
+          <mesh position={[0.20, 1.34, 0.02]} rotation={[0.22, 0, 0.12]}>
+            <capsuleGeometry args={[0.028, 0.14, 8, 12]} />
             <meshStandardMaterial color="#1e293b" roughness={0.45} />
           </mesh>
-          {/* Right Elbow Spherical Ball Joint Node (r=0.027) */}
-          <mesh position={[0.21, 1.24, 0.07]}>
-            <sphereGeometry args={[0.027, 14, 14]} />
+          {/* Right Elbow Spherical Ball Joint Node (r=0.022) */}
+          <mesh position={[0.21, 1.24, 0.05]}>
+            <sphereGeometry args={[0.022, 14, 14]} />
             <meshStandardMaterial color="#1e293b" roughness={0.45} />
           </mesh>
-          <mesh position={[0.22, 1.18, 0.12]} rotation={[0.45, -0.15, 0.10]}>
-            <capsuleGeometry args={[0.030, 0.14, 8, 12]} />
+          <mesh position={[0.22, 1.18, 0.07]} rotation={[0.35, -0.15, 0.10]}>
+            <capsuleGeometry args={[0.024, 0.13, 8, 12]} />
             <meshStandardMaterial color="#1e293b" roughness={0.45} />
           </mesh>
-          {/* Sculpted Hand holding Tablet */}
+          {/* Slender Sculpted Hand holding Tablet safely within desk boundary */}
           <SculptedHand
-            position={[0.22, 1.12, 0.20]}
+            position={[0.22, 1.12, 0.10]}
             rotation={[0.3, -0.2, 0]}
+            scale={[0.76, 0.76, 0.76]}
             skinMat={nhSkinMat}
             isLeft={false}
             mode="tablet"
           />
           {/* Host Tablet */}
-          <mesh position={[0.23, 1.14, 0.22]} rotation={[0.35, -0.20, 0]}>
-            <boxGeometry args={[0.18, 0.008, 0.24]} />
+          <mesh position={[0.23, 1.14, 0.11]} rotation={[0.35, -0.20, 0]}>
+            <boxGeometry args={[0.15, 0.006, 0.20]} />
             <meshStandardMaterial color="#0284c7" metalness={0.8} roughness={0.2} />
           </mesh>
-          <mesh position={[0.23, 1.145, 0.22]} rotation={[0.35, -0.20, 0]}>
-            <boxGeometry args={[0.16, 0.009, 0.22]} />
+          <mesh position={[0.23, 1.144, 0.11]} rotation={[0.35, -0.20, 0]}>
+            <boxGeometry args={[0.13, 0.007, 0.18]} />
             <meshBasicMaterial color="#38bdf8" />
           </mesh>
         </group>

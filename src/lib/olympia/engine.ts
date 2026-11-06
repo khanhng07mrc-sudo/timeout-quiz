@@ -1578,7 +1578,8 @@ export class OlympiaGame {
             }
           } else if (!kd.globalTimer) {
             kd.currentBgmTrack = "kd_bgm_1";
-            this.cue("1_KhoiDong/open_question", "sound", undefined, "1_KhoiDong/kd_bgm_1");
+            // Chỉ phát BGM, tuyệt đối không phát lại "1_KhoiDong/open_question" vì đã phát lúc bung mở đồ hoạ ở t=3.5s
+            this.cue("1_KhoiDong/kd_bgm_1", "bgm");
           }
           return OK;
         }

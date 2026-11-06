@@ -161,23 +161,48 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select") return;
 
+      const isIntro = state?.stage === "playing" && (Boolean(state.introTimer) || Boolean(state.entranceState?.active));
+      const notInGame = state?.stage !== "playing" || isIntro;
+
+      // When in lobby or intro stage, lock all game actions and scoring hotkeys!
+      if (notInGame) {
+        if (e.key === "f" || e.key === "F") {
+          e.preventDefault();
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+          else document.exitFullscreen().catch(() => {});
+        } else if (e.key === "h" || e.key === "H") {
+          e.preventDefault();
+          call("studio:toggle");
+        }
+        return; // Strictly suppress Space, Enter, Backspace, W, R, G, C, S, B, N
+      }
+
       if (e.code === "Space") {
         e.preventDefault();
-        if (state?.currentRound === "khoiDong") call("kd:timer");
+        if (state?.currentRound === "khoiDong") {
+          if (!state.khoiDong?.started || !state.khoiDong?.questionRevealed) return;
+          call("kd:timer");
+        }
         else if (state?.currentRound === "vcnv") call("vcnv:timer");
         else if (state?.currentRound === "tangToc") call("tt:timer");
         else if (state?.currentRound === "veDich") call("vd:timer");
         else if (state?.currentRound === "cauHoiPhu") call("chp:timer");
       } else if (e.key === "Enter") {
         e.preventDefault();
-        if (state?.currentRound === "khoiDong") call("kd:correct");
+        if (state?.currentRound === "khoiDong") {
+          if (!state.khoiDong?.started || !state.khoiDong?.questionRevealed) return;
+          call("kd:correct");
+        }
         else if (state?.currentRound === "vcnv") call("vcnv:correct");
         else if (state?.currentRound === "tangToc") call("tt:grade");
         else if (state?.currentRound === "veDich") call("vd:correct");
         else if (state?.currentRound === "cauHoiPhu") call("chp:correct");
       } else if (e.key === "Backspace") {
         e.preventDefault();
-        if (state?.currentRound === "khoiDong") call("kd:wrong");
+        if (state?.currentRound === "khoiDong") {
+          if (!state.khoiDong?.started || !state.khoiDong?.questionRevealed) return;
+          call("kd:wrong");
+        }
         else if (state?.currentRound === "vcnv") call("vcnv:wrong");
         else if (state?.currentRound === "veDich") call("vd:wrong");
         else if (state?.currentRound === "cauHoiPhu") call("chp:wrong");
@@ -214,7 +239,13 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
         call("studio:toggle");
       } else if (e.key === "n" || e.key === "N") {
         e.preventDefault();
-        if (state?.currentRound === "khoiDong") call("kd:next");
+        if (state?.currentRound === "khoiDong") {
+          const kd = state.khoiDong;
+          if (!kd?.started) return;
+          const now = serverNow ? serverNow() : Date.now();
+          if (kd.startCooldownUntil && now < kd.startCooldownUntil) return;
+          call("kd:next");
+        }
         else if (state?.currentRound === "tangToc") call("tt:next");
         else if (state?.currentRound === "veDich") call("vd:nextSeat");
         else if (state?.currentRound === "cauHoiPhu") call("chp:next");
@@ -226,13 +257,14 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [state?.currentRound, state?.summaryState?.active]);
+  }, [state?.currentRound, state?.summaryState?.active, state?.stage, state?.introTimer, state?.entranceState, state?.khoiDong]);
 
   // Calculate current timer countdown for right-hand status widget with live useCountdown
   const activeTimer = useMemo(() => {
-    if (!state) return null;
+    if (!state || state.stage !== "playing" || Boolean(state.introTimer) || Boolean(state.entranceState?.active)) return null;
     const curRound = state.currentRound;
     if (curRound === "khoiDong") {
+      if (!state.khoiDong?.started || !state.khoiDong?.questionRevealed) return null;
       return state.khoiDong?.globalTimer || state.khoiDong?.timer || null;
     } else if (curRound === "vcnv") {
       return state.vcnv?.timer || null;
@@ -615,23 +647,8 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                     })()}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <button
-                    type="button"
-                    onClick={() => call("entrance:next")}
-                    className="w-full text-center px-1 py-1 rounded text-[10px] font-bold bg-emerald-600/30 border border-emerald-400 text-emerald-200 hover:bg-emerald-600/45 cursor-pointer truncate shadow"
-                    title="Chuyển ngay sang thí sinh tiếp theo"
-                  >
-                    <span>Tiếp Theo ⏭️</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => call("entrance:skip")}
-                    className="w-full text-center px-1 py-1 rounded text-[10px] font-bold bg-red-600/30 border border-red-400 text-red-200 hover:bg-red-600/45 cursor-pointer truncate shadow"
-                    title="Dừng hoạt cảnh chào sân ngay lập tức"
-                  >
-                    <span>Bỏ Qua ⏩</span>
-                  </button>
+                <div className="text-[10px] text-amber-300/80 text-center py-0.5 bg-black/30 rounded border border-white/5 font-semibold">
+                  <span>🎬 Đang chào sân khấu</span>
                 </div>
               </div>
             ) : (
@@ -695,7 +712,9 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
             <div className="flex items-center justify-between text-xs px-1">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-300">
-                  {curRound === "khoiDong" && state.khoiDong
+                  {isIntroStage
+                    ? "Mở màn trận đấu"
+                    : curRound === "khoiDong" && state.khoiDong
                     ? `Câu ${state.khoiDong.questionRevealed ? Math.max(1, state.khoiDong.qIdx + 1) : 0}/${state.khoiDong.segments[state.khoiDong.segIdx]?.questions ?? 6}`
                     : curRound === "vcnv" && state.vcnv
                       ? `Hàng ${state.vcnv.openedCount}/4`
@@ -727,7 +746,20 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
             {/* 1. Question Card Box (Flexible dynamic height to show full question) */}
             <div className="rounded-xl border border-violet-500/25 bg-gradient-to-b from-[#1a0d3f]/90 to-[#0f0728]/95 p-3 shadow-md backdrop-blur-sm">
               <div className="text-xs md:text-sm font-semibold leading-relaxed min-h-[56px] max-h-[240px] overflow-y-auto pr-1 select-text break-words whitespace-pre-wrap">
-                {getQuestionText(state) || <span className="text-slate-500 italic font-mono text-xs">(Trống)</span>}
+                {getQuestionText(state) || (
+                  <div className="flex items-center gap-2 text-slate-400 italic text-xs py-1">
+                    <span className="text-amber-400 font-bold not-italic">🎬</span>
+                    <span>
+                      {isIntroStage || state.stage !== "playing"
+                        ? "Trận đấu đang ở phần Chào đầu & Giới thiệu thí sinh. Nội dung câu hỏi sẽ hiển thị khi chính thức bắt đầu thi."
+                        : curRound === "khoiDong" && !state.khoiDong?.started
+                        ? "Vòng Khởi Động: Nhấn [▶ BẮT ĐẦU] để khởi động lượt thi."
+                        : curRound === "khoiDong" && !state.khoiDong?.questionRevealed
+                        ? "Đang mở đồ hoạ (3.5s)... Nhấn [CÂU TIẾP] khi hết đếm lùi để mở câu 1."
+                        : "(Trống)"}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -990,19 +1022,38 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                   <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
                     {state.entranceState?.active ? (
                       <>
-                        <button
-                          type="button"
-                          onClick={() => call("entrance:next")}
-                          className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm shadow-lg cursor-pointer transition"
-                        >
-                          ⏭️ Thí sinh tiếp theo ({(state.entranceState.currentSeatIdx ?? 0) + 1}/{state.seats.length || 4})
-                        </button>
+                        {(() => {
+                          const curIdx = state.entranceState.currentSeatIdx ?? 0;
+                          const totalSeats = state.seats.length || 4;
+                          const isLastSeat = curIdx >= totalSeats - 1;
+
+                          if (!isLastSeat) {
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => call("entrance:next")}
+                                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm shadow-lg cursor-pointer transition flex items-center gap-1.5"
+                              >
+                                <span>⏭️</span>
+                                <span>Thí sinh tiếp theo ({curIdx + 2}/{totalSeats})</span>
+                              </button>
+                            );
+                          } else {
+                            return (
+                              <div className="px-4 py-2 rounded-xl bg-emerald-950/60 border border-emerald-400/50 text-emerald-200 text-xs sm:text-sm font-black flex items-center gap-2 shadow-inner">
+                                <span>✅</span>
+                                <span>Đã giới thiệu xong toàn bộ ({totalSeats}/{totalSeats}) thí sinh</span>
+                              </div>
+                            );
+                          }
+                        })()}
                         <button
                           type="button"
                           onClick={() => call("entrance:skip")}
-                          className="px-4 py-2.5 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm shadow cursor-pointer transition"
+                          className="px-4 py-2.5 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm shadow cursor-pointer transition flex items-center gap-1.5"
                         >
-                          ⏩ Kết thúc màn chào thí sinh
+                          <span>⏹</span>
+                          <span>Kết thúc màn chào thí sinh</span>
                         </button>
                       </>
                     ) : (
@@ -1944,6 +1995,7 @@ function KhoiDongDeck({
         const isTimeUp = Boolean(seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0);
         const isLastQ = kd.qIdx >= (seg.questions || 6) - 1;
         const canFinishTurn = kd.started && kd.phase !== "intro" && kd.phase !== "segmentDone" && (isTimeUp || isLastQ);
+        const isKdInGameDisabled = !kd.started || !kd.questionRevealed;
 
         return (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
@@ -1985,8 +2037,14 @@ function KhoiDongDeck({
               <button
                 type="button"
                 onClick={() => call("kd:next")}
-                disabled={inCooldown}
-                className={`py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-teal-400 hover:from-sky-400 hover:to-teal-300 text-slate-950 text-xs font-black shadow-lg shadow-sky-500/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider ${inCooldown ? "opacity-50 cursor-not-allowed" : ""}`}
+                disabled={!kd.started || inCooldown}
+                className={`py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-1.5 uppercase tracking-wider transition ${
+                  !kd.started
+                    ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5 opacity-40 pointer-events-none"
+                    : inCooldown
+                    ? "bg-gradient-to-r from-sky-500 to-teal-400 text-slate-950 opacity-50 cursor-not-allowed"
+                    : "bg-gradient-to-r from-sky-500 to-teal-400 hover:from-sky-400 hover:to-teal-300 text-slate-950 shadow-sky-500/20 cursor-pointer"
+                }`}
               >
                 <span>{inCooldown ? `CÂU TIẾP (${cdSec}s)` : (!kd.questionRevealed ? "CÂU TIẾP (MỞ CÂU 1)" : "CÂU TIẾP (N)")}</span>
                 <span>⏭</span>
@@ -1997,7 +2055,12 @@ function KhoiDongDeck({
             <button
               type="button"
               onClick={() => call("kd:timer")}
-              className="py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow-lg shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+              disabled={isKdInGameDisabled}
+              className={`py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-1.5 uppercase tracking-wider transition ${
+                isKdInGameDisabled
+                  ? "bg-purple-950/40 text-purple-600/40 border border-purple-900/20 cursor-not-allowed pointer-events-none opacity-40"
+                  : "bg-purple-700 hover:bg-purple-600 text-white cursor-pointer shadow-purple-600/20"
+              }`}
             >
               <span>⏱</span>
               <span>TÍNH GIỜ (Space)</span>
@@ -2013,7 +2076,12 @@ function KhoiDongDeck({
         <button
           type="button"
           onClick={() => call("kd:correct")}
-          className="py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow cursor-pointer flex items-center justify-center gap-1"
+          disabled={!kd.started || !kd.questionRevealed}
+          className={`py-2 rounded-xl text-xs font-black shadow flex items-center justify-center gap-1 transition ${
+            !kd.started || !kd.questionRevealed
+              ? "bg-emerald-950/40 text-emerald-600/40 border border-emerald-900/20 cursor-not-allowed pointer-events-none opacity-40"
+              : "bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer"
+          }`}
         >
           <span>✔</span>
           <span>ĐÚNG (Enter) [+10đ]</span>
@@ -2021,7 +2089,12 @@ function KhoiDongDeck({
         <button
           type="button"
           onClick={() => call("kd:wrong")}
-          className="py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow cursor-pointer flex items-center justify-center gap-1"
+          disabled={!kd.started || !kd.questionRevealed}
+          className={`py-2 rounded-xl text-xs font-black shadow flex items-center justify-center gap-1 transition ${
+            !kd.started || !kd.questionRevealed
+              ? "bg-rose-950/40 text-rose-600/40 border border-rose-900/20 cursor-not-allowed pointer-events-none opacity-40"
+              : "bg-rose-600 hover:bg-rose-500 text-white cursor-pointer"
+          }`}
         >
           <span>✘</span>
           <span>SAI (Bksp)</span>
@@ -2029,7 +2102,12 @@ function KhoiDongDeck({
         <button
           type="button"
           onClick={() => call("kd:blank")}
-          className="py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold shadow cursor-pointer flex items-center justify-center gap-1"
+          disabled={!kd.started || !kd.questionRevealed}
+          className={`py-2 rounded-xl text-xs font-bold shadow flex items-center justify-center gap-1 transition ${
+            !kd.started || !kd.questionRevealed
+              ? "bg-slate-900/40 text-slate-600 border border-white/5 cursor-not-allowed pointer-events-none opacity-40"
+              : "bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
+          }`}
         >
           <span>■</span>
           <span>Ô TRỐNG</span>
@@ -3323,7 +3401,30 @@ function HotkeyRow({ keyName, desc, color }: { keyName: string; desc: string; co
   );
 }
 
+function isQuestionRevealedToHost(st: OlympiaState): boolean {
+  if (st.stage !== "playing" || Boolean(st.introTimer) || Boolean(st.entranceState?.active)) {
+    return false;
+  }
+  if (st.currentRound === "khoiDong") {
+    return Boolean(st.khoiDong?.started && st.khoiDong?.questionRevealed);
+  }
+  if (st.currentRound === "vcnv") {
+    return Boolean(st.vcnv?.currentRow != null && st.vcnv.currentRow >= 0);
+  }
+  if (st.currentRound === "tangToc") {
+    return Boolean(st.tangToc && st.tangToc.qIdx >= 0);
+  }
+  if (st.currentRound === "veDich") {
+    return Boolean(st.veDich?.current);
+  }
+  if (st.currentRound === "cauHoiPhu") {
+    return Boolean(st.cauHoiPhu && st.cauHoiPhu.qIdx >= 0);
+  }
+  return false;
+}
+
 function getQuestionText(st: OlympiaState): string {
+  if (!isQuestionRevealedToHost(st)) return "";
   if (st.currentRound === "khoiDong") {
     return st.khoiDong?.current?.q || "";
   }
@@ -3345,6 +3446,7 @@ function getQuestionText(st: OlympiaState): string {
 }
 
 function getAnswerText(st: OlympiaState): string {
+  if (!isQuestionRevealedToHost(st)) return "";
   if (st.currentRound === "khoiDong") {
     return st.khoiDong?.current?.a || "";
   }
@@ -3366,6 +3468,7 @@ function getAnswerText(st: OlympiaState): string {
 }
 
 function getExplanationText(st: OlympiaState): string {
+  if (!isQuestionRevealedToHost(st)) return "";
   if (st.currentRound === "khoiDong") return st.khoiDong?.current?.subject || "--";
   if (st.currentRound === "vcnv") return `Từ khóa Chướng ngại vật: ${st.vcnv?.keyword || "--"}`;
   if (st.currentRound === "tangToc") return `Thời gian câu: ${st.tangToc ? [10, 20, 30, 40][st.tangToc.qIdx] || 20 : 20}s`;

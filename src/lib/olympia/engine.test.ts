@@ -1181,8 +1181,8 @@ test("kd:start opens frame with 0/6 unrevealed and plays only ready; first kd:ne
   assert.equal(g.state.khoiDong!.qIdx, 0, "Counter advances to 0 (1/6)");
   assert.ok((g.state.khoiDong!.current as any)?.q, "Q1 content loaded");
   assert.equal(g.state.khoiDong!.currentBgmTrack, "kd_bgm_1");
-  assert.equal(g.state.cue!.sound, "1_KhoiDong/open_question", "SFX open_question cued");
-  assert.equal(g.state.cue!.bgmSound, "1_KhoiDong/kd_bgm_1", "BGM kd_bgm_1 cued");
+  assert.equal(g.state.cue!.sound, "1_KhoiDong/kd_bgm_1", "BGM kd_bgm_1 started without duplicate open_question");
+  assert.equal(g.state.cue!.kind, "bgm");
   assert.equal(g.state.khoiDong!.timer.startedAt, null, "Timer does not auto-start");
 
   // 4. Second kd:next moves to Question 2:

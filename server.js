@@ -107020,7 +107020,7 @@ var OlympiaGame = class _OlympiaGame {
             }
           } else if (!kd.globalTimer) {
             kd.currentBgmTrack = "kd_bgm_1";
-            this.cue("1_KhoiDong/open_question", "sound", void 0, "1_KhoiDong/kd_bgm_1");
+            this.cue("1_KhoiDong/kd_bgm_1", "bgm");
           }
           return OK;
         }

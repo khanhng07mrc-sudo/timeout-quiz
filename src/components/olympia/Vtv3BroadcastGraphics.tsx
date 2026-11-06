@@ -2374,63 +2374,83 @@ export function EconovaLowerThirdV3({
       <div className="relative w-full flex items-center justify-center select-none" style={{ ["--dc" as string]: `${dc}px` }}>
         <style>{`
           /* --- ECONOVA LOWER THIRD MASTER TIMELINE --- */
-          /* Left direction keyframes (Pointing <) */
+          /* Left direction keyframes (Pointing <) - Fly from right (+50vw) across to center */
           @keyframes v3-eco-l-g1 {
-            0%   { transform: translateX(var(--dc)); opacity: 0.35; }
-            20%  { transform: translateX(var(--dc)); opacity: 0.35; }
-            65%  { transform: translateX(-24px); opacity: 0.35; }
-            100% { transform: translateX(0); opacity: 0.35; }
+            0%   { transform: translateX(calc(var(--dc) + 50vw)) scale(0.1); opacity: 0; }
+            1%   { opacity: 0.35; }
+            25%  { transform: translateX(calc(var(--dc) - 24px)) scale(1); opacity: 0.35; }
+            35%  { transform: translateX(var(--dc)) scale(1); opacity: 0.35; }
+            45%  { transform: translateX(var(--dc)) scale(1); opacity: 0.35; }
+            80%  { transform: translateX(0) scale(1); opacity: 0.35; }
+            100% { transform: translateX(0) scale(1); opacity: 0.35; }
           }
           @keyframes v3-eco-l-g2 {
-            0%   { transform: translateX(var(--dc)); opacity: 0.65; }
-            20%  { transform: translateX(var(--dc)); opacity: 0.65; }
-            70%  { transform: translateX(-12px); opacity: 0.65; }
-            100% { transform: translateX(0); opacity: 0.65; }
+            0%   { transform: translateX(calc(var(--dc) + 50vw)) scale(0.1); opacity: 0; }
+            5%   { opacity: 0.65; }
+            30%  { transform: translateX(calc(var(--dc) - 12px)) scale(1); opacity: 0.65; }
+            35%  { transform: translateX(var(--dc)) scale(1); opacity: 0.65; }
+            45%  { transform: translateX(var(--dc)) scale(1); opacity: 0.65; }
+            80%  { transform: translateX(0) scale(1); opacity: 0.65; }
+            100% { transform: translateX(0) scale(1); opacity: 0.65; }
           }
           @keyframes v3-eco-l-l3 {
-            0%   { transform: translateX(var(--dc)); opacity: 1; }
-            20%  { transform: translateX(var(--dc)); opacity: 1; }
-            75%  { transform: translateX(0); opacity: 1; }
-            100% { transform: translateX(0); opacity: 1; }
+            0%   { transform: translateX(calc(var(--dc) + 50vw)) scale(0.1); opacity: 0; }
+            10%  { opacity: 1; }
+            35%  { transform: translateX(var(--dc)) scale(1); opacity: 1; }
+            45%  { transform: translateX(var(--dc)) scale(1); opacity: 1; }
+            80%  { transform: translateX(0) scale(1); opacity: 1; }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
           }
           @keyframes v3-eco-l-navy {
-            0%   { transform: translateX(var(--dc)); opacity: 1; }
-            20%  { transform: translateX(var(--dc)); opacity: 1; }
-            75%  { transform: translateX(0); opacity: 1; }
-            100% { transform: translateX(0); opacity: 1; }
+            0%   { transform: translateX(calc(var(--dc) + 50vw)) scale(0.1); opacity: 0; }
+            10%  { opacity: 1; }
+            35%  { transform: translateX(var(--dc)) scale(1); opacity: 1; }
+            45%  { transform: translateX(var(--dc)) scale(1); opacity: 1; }
+            80%  { transform: translateX(0) scale(1); opacity: 1; }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
           }
 
-          /* Right direction keyframes (Pointing >) */
+          /* Right direction keyframes (Pointing >) - Fly from left (-50vw) across to center */
           @keyframes v3-eco-r-g1 {
-            0%   { transform: translateX(calc(var(--dc) * -1)); opacity: 0.35; }
-            20%  { transform: translateX(calc(var(--dc) * -1)); opacity: 0.35; }
-            65%  { transform: translateX(24px); opacity: 0.35; }
-            100% { transform: translateX(0); opacity: 0.35; }
+            0%   { transform: translateX(calc(var(--dc) * -1 - 50vw)) scale(0.1); opacity: 0; }
+            1%   { opacity: 0.35; }
+            25%  { transform: translateX(calc(var(--dc) * -1 + 24px)) scale(1); opacity: 0.35; }
+            35%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 0.35; }
+            45%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 0.35; }
+            80%  { transform: translateX(0) scale(1); opacity: 0.35; }
+            100% { transform: translateX(0) scale(1); opacity: 0.35; }
           }
           @keyframes v3-eco-r-g2 {
-            0%   { transform: translateX(calc(var(--dc) * -1)); opacity: 0.65; }
-            20%  { transform: translateX(calc(var(--dc) * -1)); opacity: 0.65; }
-            70%  { transform: translateX(12px); opacity: 0.65; }
-            100% { transform: translateX(0); opacity: 0.65; }
+            0%   { transform: translateX(calc(var(--dc) * -1 - 50vw)) scale(0.1); opacity: 0; }
+            5%   { opacity: 0.65; }
+            30%  { transform: translateX(calc(var(--dc) * -1 + 12px)) scale(1); opacity: 0.65; }
+            35%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 0.65; }
+            45%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 0.65; }
+            80%  { transform: translateX(0) scale(1); opacity: 0.65; }
+            100% { transform: translateX(0) scale(1); opacity: 0.65; }
           }
           @keyframes v3-eco-r-l3 {
-            0%   { transform: translateX(calc(var(--dc) * -1)); opacity: 1; }
-            20%  { transform: translateX(calc(var(--dc) * -1)); opacity: 1; }
-            75%  { transform: translateX(0); opacity: 1; }
-            100% { transform: translateX(0); opacity: 1; }
+            0%   { transform: translateX(calc(var(--dc) * -1 - 50vw)) scale(0.1); opacity: 0; }
+            10%  { opacity: 1; }
+            35%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 1; }
+            45%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 1; }
+            80%  { transform: translateX(0) scale(1); opacity: 1; }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
           }
           @keyframes v3-eco-r-navy {
-            0%   { transform: translateX(calc(var(--dc) * -1)); opacity: 1; }
-            20%  { transform: translateX(calc(var(--dc) * -1)); opacity: 1; }
-            75%  { transform: translateX(0); opacity: 1; }
-            100% { transform: translateX(0); opacity: 1; }
+            0%   { transform: translateX(calc(var(--dc) * -1 - 50vw)) scale(0.1); opacity: 0; }
+            10%  { opacity: 1; }
+            35%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 1; }
+            45%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 1; }
+            80%  { transform: translateX(0) scale(1); opacity: 1; }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
           }
 
-          /* Hexagon Body Expand from center at 20% to 75% */
+          /* Hexagon Body Expand from center at 45% to 80% */
           @keyframes v3-eco-hex-body {
-            0%, 20%   { clip-path: inset(0 50% 0 50%); opacity: 0; }
-            21%       { clip-path: inset(0 50% 0 50%); opacity: 1; animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1); }
-            75%       { clip-path: inset(0 0% 0 0%); opacity: 1; }
+            0%, 44.9% { clip-path: inset(0 50% 0 50%); opacity: 0; }
+            45%       { clip-path: inset(0 50% 0 50%); opacity: 1; animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1); }
+            80%       { clip-path: inset(0 0% 0 0%); opacity: 1; }
             100%      { clip-path: inset(0 0% 0 0%); opacity: 1; }
           }
 
@@ -2446,19 +2466,19 @@ export function EconovaLowerThirdV3({
             100%     { opacity: 1; transform: translateY(0); }
           }
 
-          /* Master Animation Classes: 1.6s duration */
-          .v3-anim-l-g1   { animation: v3-eco-l-g1 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
-          .v3-anim-l-g2   { animation: v3-eco-l-g2 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
-          .v3-anim-l-l3   { animation: v3-eco-l-l3 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
-          .v3-anim-l-navy { animation: v3-eco-l-navy 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
+          /* Master Animation Classes: 2.4s duration */
+          .v3-anim-l-g1   { animation: v3-eco-l-g1 2.4s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-l-g2   { animation: v3-eco-l-g2 2.4s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-l-l3   { animation: v3-eco-l-l3 2.4s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-l-navy { animation: v3-eco-l-navy 2.4s both cubic-bezier(0.25, 1, 0.5, 1); }
 
-          .v3-anim-r-g1   { animation: v3-eco-r-g1 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
-          .v3-anim-r-g2   { animation: v3-eco-r-g2 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
-          .v3-anim-r-l3   { animation: v3-eco-r-l3 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
-          .v3-anim-r-navy { animation: v3-eco-r-navy 1.6s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-r-g1   { animation: v3-eco-r-g1 2.4s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-r-g2   { animation: v3-eco-r-g2 2.4s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-r-l3   { animation: v3-eco-r-l3 2.4s both cubic-bezier(0.25, 1, 0.5, 1); }
+          .v3-anim-r-navy { animation: v3-eco-r-navy 2.4s both cubic-bezier(0.25, 1, 0.5, 1); }
 
-          .v3-anim-body   { animation: v3-eco-hex-body 1.6s both; }
-          .v3-anim-content{ animation: v3-eco-content-fade 1.6s ease-out both; }
+          .v3-anim-body   { animation: v3-eco-hex-body 2.4s both; }
+          .v3-anim-content{ animation: v3-eco-content-fade 2.4s ease-out both; }
           .v3-anim-swap   { animation: v3-eco-text-swap 0.35s ease-out both; }
         `}</style>
         <V3ScaledStage designW={shell.canvasW} designH={H}>

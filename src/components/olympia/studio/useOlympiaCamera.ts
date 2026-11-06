@@ -106,18 +106,46 @@ export function useOlympiaCameraState(
       };
     }
 
-    // 1.5. Sequential Contestant Entrance Cinematic Sequence (Manual Trigger by Host/MC with Skip)
+    // 1.5. Sequential Contestant Entrance Cinematic Sequence (Decision 8 Television Directing)
     if (state.entranceState?.active) {
-      // User Requirement: "về phần giới thiệu thí sinh sẽ lia camera từ bục đầu tiên cho tới bục cuối cùng bên phải, phụ thuộc số thí sinh thực"
       const currentSeat = Math.min(activeCount - 1, Math.max(0, state.entranceState.currentSeatIdx ?? 0));
       const targetCam = getCameraForSeat(currentSeat, activeCount);
+      const seatStart = state.entranceState.seatStartedAt || state.entranceState.startedAt || getNow();
+      const elapsedSec = Math.max(0, (getNow() - seatStart) / 1000);
 
-      return {
-        camAngle: targetCam,
-        transitionMode: "CUT",
-        isOverlayHidden: false,
-        pushInProgress: 0.05,
-      };
+      if (elapsedSec < 4.5) {
+        // Phase 1 (0.0s - 4.5s): Audience Grandstand & Arch Staircase view (CAM 11) as contestant emerges and descends stairs
+        return {
+          camAngle: 11,
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: 0.15,
+        };
+      } else if (elapsedSec < 7.5) {
+        // Phase 2 (4.5s - 7.5s): Mid-stairs Landing Platform (Bục Giữa) (CAM 12) capturing signature gesture
+        return {
+          camAngle: 12,
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0.35,
+        };
+      } else if (elapsedSec < 9.5) {
+        // Phase 3 (7.5s - 9.5s): Walks across dais to assigned podium (CAM 10 Toàn Cảnh Bục Thí Sinh)
+        return {
+          camAngle: 10,
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0.10,
+        };
+      } else {
+        // Phase 4 (9.5s onwards): Locks onto contestant close-up camera at podium
+        return {
+          camAngle: targetCam,
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0.05,
+        };
+      }
     }
     const round = state.currentRound;
 

@@ -107,7 +107,7 @@ function ContestantIntroChyron({ state }: { state: OlympiaState }) {
   const seatColor = SEAT_COLORS[currentIdx] || "#00f0ff";
 
   return (
-    <div className="absolute bottom-6 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none animate-fade-in">
+    <div className="absolute bottom-6 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none">
       <div className="w-full max-w-2xl rounded-2xl border border-white/20 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl bg-gradient-to-r from-slate-950/95 via-[#0b1636]/95 to-slate-950/95 overflow-hidden flex items-stretch">
         {/* Seat Number Tag */}
         <div

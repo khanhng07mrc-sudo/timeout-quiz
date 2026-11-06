@@ -106074,7 +106074,7 @@ var OlympiaGame = class _OlympiaGame {
           }
         }
         kd.phase = "question";
-        kd.questionRevealed = false;
+        kd.questionRevealed = !seg.globalMs;
         this.cue("1_KhoiDong/open_question");
       }
     }
@@ -107086,8 +107086,21 @@ var OlympiaGame = class _OlympiaGame {
         const aSeason = this.ruleset.audioSeason;
         if (aSeason !== "O13-21" && !(this.ruleset.id === "O22" && !isSolo)) {
           const totalQ = seg.questions || 6;
-          let bgmTrack = kd.qIdx <= 1 ? "kd_bgm_1" : kd.qIdx < totalQ - 1 ? "kd_bgm_2" : "kd_bgm_3";
+          const halfCeil = Math.ceil(totalQ / 2);
+          const bgm1EndQ = Math.max(1, halfCeil - 1);
+          const currentQNum = kd.qIdx + 1;
+          let bgmTrack;
+          if (currentQNum <= bgm1EndQ) {
+            bgmTrack = "kd_bgm_1";
+          } else if (currentQNum < totalQ) {
+            bgmTrack = "kd_bgm_2";
+          } else {
+            bgmTrack = "kd_bgm_3";
+          }
           if (kd.currentBgmTrack && bgmTrack !== kd.currentBgmTrack) {
+            kd.currentBgmTrack = bgmTrack;
+            this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+          } else if (!kd.currentBgmTrack) {
             kd.currentBgmTrack = bgmTrack;
             this.cue("1_KhoiDong/" + bgmTrack, "bgm");
           }
@@ -107138,7 +107151,7 @@ var OlympiaGame = class _OlympiaGame {
         st.introTimer = null;
         if (st.showStageGraphics) st.showStageGraphics = false;
         kd.phase = "question";
-        kd.questionRevealed = false;
+        kd.questionRevealed = !seg.globalMs;
         kd.started = true;
         kd.buzzedSeat = null;
         kd.startCooldownUntil = now + 3500;
@@ -107161,6 +107174,19 @@ var OlympiaGame = class _OlympiaGame {
               mediaType: q.mediaType
             };
           }
+        }
+        if (isSolo) {
+          kd.buzzOpen = false;
+          kd.buzzUnlockAt = void 0;
+        } else {
+          kd.buzzOpen = false;
+          const lockMs = this.ruleset.id === "O22" ? 2e3 : 5e3;
+          kd.buzzUnlockAt = now + lockMs;
+        }
+        const aSeason = this.ruleset.audioSeason;
+        if (aSeason !== "O13-21" && !(this.ruleset.id === "O22" && !isSolo)) {
+          kd.currentBgmTrack = "kd_bgm_1";
+          this.cue("1_KhoiDong/kd_bgm_1", "bgm");
         }
         st.kdIntroTimer = mkTimer(3500);
         startTimer(st.kdIntroTimer, now);

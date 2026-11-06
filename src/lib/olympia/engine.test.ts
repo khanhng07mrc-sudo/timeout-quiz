@@ -1155,48 +1155,92 @@ test("kd:start plays ready, sets 3.5s cooldown, and kd:next respects cooldown", 
   act(g, "kd:start", {}, 1000);
 
   assert.equal(g.state.khoiDong!.started, true);
-
+  assert.equal(g.state.khoiDong!.questionRevealed, true, "Question 1 revealed immediately upon kd:start");
+  assert.ok(g.state.khoiDong!.current?.q, "Question 1 loaded immediately upon kd:start");
   assert.equal(g.state.khoiDong!.startCooldownUntil, 1000 + 3500);
 
-  assert.equal(g.state.cue!.sound, "1_KhoiDong/ready");
-
-
-
   // Attempting kd:next during 3.5s cooldown should fail
-
   const rejected = g.hostAction({ type: "kd:next" }, 2000);
-
   assert.equal(rejected.ok, false);
-
   assert.ok(rejected.error && rejected.error.includes("3.5s"));
 
-
-
-  // After 3.5s cooldown expires, tick opens graphics and plays open_question (BGM not yet!)
-
+  // After 3.5s cooldown expires, tick opens graphics and plays open_question
   g.tick(1000 + 3500);
-
   assert.equal(g.state.khoiDong!.phase, "question");
-
   assert.equal(g.state.cue!.sound, "1_KhoiDong/open_question");
 
-
-
-  // When host clicks kd:next for the first time (transitioning from empty/question 0 to question 1):
-
-  // questionRevealed becomes true AND kd_bgm_1 starts playing!
-
+  // When host clicks kd:next, moves to question 2
   const accepted = g.hostAction({ type: "kd:next" }, 5000);
-
   assert.equal(accepted.ok, true);
-
   assert.equal(g.state.khoiDong!.questionRevealed, true);
-
-  assert.equal(g.state.cue!.sound, "1_KhoiDong/kd_bgm_1");
-
-  assert.equal(g.state.cue!.kind, "bgm");
-
   assert.equal(g.state.khoiDong!.timer.startedAt, null, "5s timer not started automatically on next");
+});
+
+test("Khởi động BGM formula (kd_bgm_1, kd_bgm_2, kd_bgm_3) exact transition across solo and shared turns", () => {
+  // Test 1: N = 6 questions (Solo turn) -> halfCeil = 3, bgm1EndQ = 2.
+  // Questions 1-2: bgm_1; Questions 3-5: bgm_2; Question 6: bgm_3.
+  const g6 = game("O26", ["khoiDong"], 4);
+  act(g6, "game:start");
+  act(g6, "kd:start", {}, 1000);
+  assert.equal(g6.state.khoiDong!.currentBgmTrack, "kd_bgm_1", "Q1 plays bgm_1");
+
+  // Q2 (qIdx 1)
+  act(g6, "kd:next", {}, 5000);
+  assert.equal(g6.state.khoiDong!.qIdx, 1);
+  assert.equal(g6.state.khoiDong!.currentBgmTrack, "kd_bgm_1", "Q2 still bgm_1");
+
+  // Q3 (qIdx 2): transition to bgm_2
+  act(g6, "kd:next", {}, 6000);
+  assert.equal(g6.state.khoiDong!.qIdx, 2);
+  assert.equal(g6.state.khoiDong!.currentBgmTrack, "kd_bgm_2", "Q3 transitions to bgm_2");
+
+  // Q4 (qIdx 3)
+  act(g6, "kd:next", {}, 7000);
+  assert.equal(g6.state.khoiDong!.currentBgmTrack, "kd_bgm_2", "Q4 still bgm_2");
+
+  // Q5 (qIdx 4 - áp chót)
+  act(g6, "kd:next", {}, 8000);
+  assert.equal(g6.state.khoiDong!.currentBgmTrack, "kd_bgm_2", "Q5 (áp chót) still bgm_2");
+
+  // Q6 (qIdx 5 - cuối cùng): transition to bgm_3
+  act(g6, "kd:next", {}, 9000);
+  assert.equal(g6.state.khoiDong!.qIdx, 5);
+  assert.equal(g6.state.khoiDong!.currentBgmTrack, "kd_bgm_3", "Q6 (cuối cùng) transitions to bgm_3");
+
+  // Test 2: N = 15 questions (Shared turn with 5 seats: 5 * 3 = 15)
+  // halfCeil = ceil(15 / 2) = 8, bgm1EndQ = 7.
+  // Questions 1-7: bgm_1; Questions 8-14: bgm_2; Question 15: bgm_3.
+  const g15 = game("O26", ["khoiDong"], 5);
+  act(g15, "game:start");
+  // Select shared segment (index 5 for 5 solo seats)
+  act(g15, "kd:selectSegment", { kind: "shared" }, 1000);
+  assert.equal(g15.state.khoiDong!.segments[g15.state.khoiDong!.segIdx].questions, 15);
+  act(g15, "kd:start", {}, 2000);
+  assert.equal(g15.state.khoiDong!.currentBgmTrack, "kd_bgm_1");
+
+  // Advance to Q7 (qIdx 6): must still be bgm_1
+  for (let q = 2; q <= 7; q++) {
+    act(g15, "kd:next", {}, 6000 + q * 1000);
+  }
+  assert.equal(g15.state.khoiDong!.qIdx, 6, "At Question 7");
+  assert.equal(g15.state.khoiDong!.currentBgmTrack, "kd_bgm_1", "Q7 is still bgm_1");
+
+  // Q8 (qIdx 7): transitions to bgm_2
+  act(g15, "kd:next", {}, 15000);
+  assert.equal(g15.state.khoiDong!.qIdx, 7, "At Question 8");
+  assert.equal(g15.state.khoiDong!.currentBgmTrack, "kd_bgm_2", "Q8 transitions to bgm_2");
+
+  // Advance to Q14 (qIdx 13 - áp chót): must still be bgm_2
+  for (let q = 9; q <= 14; q++) {
+    act(g15, "kd:next", {}, 15000 + q * 1000);
+  }
+  assert.equal(g15.state.khoiDong!.qIdx, 13, "At Question 14");
+  assert.equal(g15.state.khoiDong!.currentBgmTrack, "kd_bgm_2", "Q14 (áp chót) is still bgm_2");
+
+  // Q15 (qIdx 14 - câu cuối cùng): transitions to bgm_3
+  act(g15, "kd:next", {}, 32000);
+  assert.equal(g15.state.khoiDong!.qIdx, 14, "At Question 15");
+  assert.equal(g15.state.khoiDong!.currentBgmTrack, "kd_bgm_3", "Q15 (câu cuối cùng) transitions to bgm_3");
 
 });
 

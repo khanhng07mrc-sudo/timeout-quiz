@@ -1075,77 +1075,71 @@ function renderLedScreenToCanvas(
   // 3. Right Screen Projection Mode
   const screenMode = (state as any)?.rightScreenMode || "auto";
 
-  if (
-    screenMode === "roundGraphics" ||
-    (screenMode === "auto" &&
-      (state?.currentRound === "vcnv" || state?.currentRound === "tangToc"))
-  ) {
-    renderRoundGraphicsToCanvas(ctx, width, height, state, fadeProgress);
-    return;
-  }
-
-  if (
-    screenMode === "roundTitle" ||
-    (screenMode === "auto" &&
-      !state?.introTimer &&
-      !state?.entranceState?.active &&
-      state?.currentRound &&
-      !questionPromptAvailable(state))
-  ) {
-    renderRoundTitleToCanvas(ctx, width, height, state?.currentRound, fadeProgress);
-    return;
-  }
-
-  if (screenMode === "logo" || state?.introTimer || state?.entranceState?.active) {
-    renderOlympiaLogoToCanvas(ctx, width, height, cx, cy, logoImg, fadeProgress);
-    return;
-  }
-
+  // Explicit overrides from Host Console:
   if (screenMode === "scoreboard") {
     renderScoreboardToCanvas(ctx, width, height, state?.seats, fadeProgress);
     return;
   }
 
-  // 3. Check for Active Round Question Content (strictly synchronized with lower-third reveal)
+  if (screenMode === "logo") {
+    renderOlympiaLogoToCanvas(ctx, width, height, cx, cy, logoImg, fadeProgress);
+    return;
+  }
+
+  if (screenMode === "roundTitle") {
+    renderRoundTitleToCanvas(ctx, width, height, state?.currentRound, fadeProgress);
+    return;
+  }
+
+  if (screenMode === "roundGraphics") {
+    renderRoundGraphicsToCanvas(ctx, width, height, state, fadeProgress);
+    return;
+  }
+
+  // Auto mode during match intro or contestant entrance:
+  if (screenMode === "auto" && (state?.introTimer || state?.entranceState?.active)) {
+    renderOlympiaLogoToCanvas(ctx, width, height, cx, cy, logoImg, fadeProgress);
+    return;
+  }
+
+  // 4. Resolve Active Round Question Content (for "question" mode or "auto" with active question)
   let roundTitle: string | null = null;
   let questionPrompt: string | null = null;
 
-  if (state?.currentRound === "khoiDong" && state.khoiDong?.questionRevealed && state.khoiDong?.current?.q) {
-    roundTitle = "KHỞI ĐỘNG";
-    questionPrompt = state.khoiDong.current.q;
-  } else if (
-    state?.currentRound === "vcnv" &&
-    state.vcnv?.phase === "question"
-  ) {
-    roundTitle = "VƯỢT CHƯỚNG NGẠI VẬT";
-    const cur = state.vcnv?.currentRow ?? -1;
-    if (cur >= 0 && cur < 4 && state.vcnv?.rows?.[cur]?.hint) {
-      questionPrompt = state.vcnv.rows[cur].hint;
-    } else if (cur === 4 && state.vcnv?.centerQuestion?.q) {
-      questionPrompt = state.vcnv.centerQuestion.q;
+  if (state?.currentRound === "khoiDong" && state.khoiDong?.current?.q) {
+    if (screenMode === "question" || state.khoiDong.questionRevealed) {
+      roundTitle = "KHỞI ĐỘNG";
+      questionPrompt = state.khoiDong.current.q;
     }
-  } else if (
-    state?.currentRound === "tangToc" &&
-    state.tangToc?.phase === "question" &&
-    state.tangToc.qIdx != null &&
-    state.tangToc.qIdx >= 0
-  ) {
-    roundTitle = `TĂNG TỐC — CÂU ${state.tangToc.qIdx + 1}`;
-    questionPrompt = state.tangToc.questions?.[state.tangToc.qIdx]?.q || null;
-  } else if (
-    state?.currentRound === "veDich" &&
-    (state.veDich?.phase === "packageReady" || state.veDich?.phase === "thinking" || state.veDich?.phase === "stealing") &&
-    state.veDich?.current
-  ) {
-    roundTitle = `VỀ ĐÍCH — ${state.veDich.current.points ?? 20} ĐIỂM`;
-    questionPrompt = state.veDich.current.q?.q || null;
-  } else if (
-    state?.currentRound === "cauHoiPhu" &&
-    state.cauHoiPhu?.phase === "question" &&
-    state.cauHoiPhu.questions?.[state.cauHoiPhu.qIdx]?.q
-  ) {
-    roundTitle = "CÂU HỎI PHỤ";
-    questionPrompt = state.cauHoiPhu.questions[state.cauHoiPhu.qIdx].q;
+  } else if (state?.currentRound === "vcnv") {
+    const v = state.vcnv;
+    if (v && (screenMode === "question" || v.phase === "question")) {
+      roundTitle = "VƯỢT CHƯỚNG NGẠI VẬT";
+      const cur = v.currentRow ?? -1;
+      if (cur >= 0 && cur < 4 && v.rows?.[cur]?.hint) {
+        questionPrompt = v.rows[cur].hint;
+      } else if (cur === 4 && v.centerQuestion?.q) {
+        questionPrompt = v.centerQuestion.q;
+      }
+    }
+  } else if (state?.currentRound === "tangToc") {
+    const tt = state.tangToc;
+    if (tt && tt.qIdx != null && tt.qIdx >= 0 && (screenMode === "question" || tt.phase === "question")) {
+      roundTitle = `TĂNG TỐC — CÂU ${tt.qIdx + 1}`;
+      questionPrompt = tt.questions?.[tt.qIdx]?.q || null;
+    }
+  } else if (state?.currentRound === "veDich") {
+    const vd = state.veDich;
+    if (vd?.current && (screenMode === "question" || vd.phase === "packageReady" || vd.phase === "thinking" || vd.phase === "stealing")) {
+      roundTitle = `VỀ ĐÍCH — ${vd.current.points ?? 20} ĐIỂM`;
+      questionPrompt = vd.current.q?.q || null;
+    }
+  } else if (state?.currentRound === "cauHoiPhu") {
+    const cp = state.cauHoiPhu;
+    if (cp && cp.qIdx != null && cp.qIdx >= 0 && (screenMode === "question" || cp.phase === "question")) {
+      roundTitle = "CÂU HỎI PHỤ";
+      questionPrompt = cp.questions?.[cp.qIdx]?.q || null;
+    }
   }
 
   if (roundTitle) {
@@ -2433,11 +2427,22 @@ export function CentralLedWall({
   }, [
     fadeStep,
     state?.currentRound,
+    state?.rightScreenMode,
+    state?.introTimer,
+    state?.entranceState?.active,
+    state?.khoiDong?.questionRevealed,
+    state?.khoiDong?.started,
+    state?.khoiDong?.phase,
+    state?.khoiDong?.qIdx,
     state?.khoiDong?.current?.q,
     state?.vcnv?.phase,
     state?.vcnv?.currentRow,
+    state?.tangToc?.phase,
     state?.tangToc?.qIdx,
+    state?.veDich?.phase,
     state?.veDich?.current?.q?.q,
+    state?.cauHoiPhu?.phase,
+    state?.cauHoiPhu?.qIdx,
   ]);
 
   // 30 FPS Dynamic Canvas Engine (Requirement R5)

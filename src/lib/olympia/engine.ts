@@ -541,10 +541,8 @@ export class OlympiaGame {
           }
         }
         kd.phase = "question";
-        kd.questionRevealed = false; // Graphic frame is ready, question text waits for first "Câu tiếp" click
+        kd.questionRevealed = !seg.globalMs; // O23+: Mở ngay câu 1 khi BẮT ĐẦU; O13-O22: Chờ kd:next để kích hoạt đồng hồ 60s
         this.cue("1_KhoiDong/open_question");
-        // Sau 3.5s cooldown chỉ mở đồ hoạ và phát duy nhất open_question.
-        // Nhạc 60s (O13-O21), 30s/60s/90s (O22) hoặc kd_bgm_1 (O23-O26) CHỈ phát khi nhấn "Câu tiếp" lần đầu (mở câu 1)
       }
     }
 
@@ -1641,11 +1639,28 @@ export class OlympiaGame {
         const aSeason = this.ruleset.audioSeason;
         if (aSeason !== "O13-21" && !(this.ruleset.id === "O22" && !isSolo)) {
           const totalQ = seg.questions || 6;
-          // bgm_1 = câu 1-2 (qIdx 0-1), bgm_2 = câu 3-5 (qIdx 2-4), bgm_3 = câu 6 (qIdx 5+)
-          let bgmTrack: "kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3" =
-            kd.qIdx <= 1 ? "kd_bgm_1" : kd.qIdx < totalQ - 1 ? "kd_bgm_2" : "kd_bgm_3";
+          // Quy tắc chuyển nhạc nền chuẩn:
+          // kd_bgm_1: từ Câu 1 đến Câu (Math.ceil(totalQ / 2) - 1)
+          // kd_bgm_2: từ câu tiếp theo cho tới câu áp chót (totalQ - 1)
+          // kd_bgm_3: ở câu cuối cùng (totalQ)
+          const halfCeil = Math.ceil(totalQ / 2);
+          const bgm1EndQ = Math.max(1, halfCeil - 1); // 1-based question number
+          const currentQNum = kd.qIdx + 1; // 1-based question number
+
+          let bgmTrack: "kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3";
+          if (currentQNum <= bgm1EndQ) {
+            bgmTrack = "kd_bgm_1";
+          } else if (currentQNum < totalQ) {
+            bgmTrack = "kd_bgm_2";
+          } else {
+            bgmTrack = "kd_bgm_3";
+          }
+
           // Chỉ gửi cue mới khi track thực sự thay đổi và đã có track trước đó
           if (kd.currentBgmTrack && bgmTrack !== kd.currentBgmTrack) {
+            kd.currentBgmTrack = bgmTrack;
+            this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+          } else if (!kd.currentBgmTrack) {
             kd.currentBgmTrack = bgmTrack;
             this.cue("1_KhoiDong/" + bgmTrack, "bgm");
           }
@@ -1700,7 +1715,7 @@ export class OlympiaGame {
         st.introTimer = null;
         if (st.showStageGraphics) st.showStageGraphics = false;
         kd.phase = "question";
-        kd.questionRevealed = false;
+        kd.questionRevealed = !seg.globalMs;
         kd.started = true;
         kd.buzzedSeat = null;
         kd.startCooldownUntil = now + 3500;
@@ -1724,10 +1739,25 @@ export class OlympiaGame {
             };
           }
         }
+        if (isSolo) {
+          kd.buzzOpen = false;
+          kd.buzzUnlockAt = undefined;
+        } else {
+          // Shared KĐ: khóa chuông 2s (O22) hoặc 5s (O23+)
+          kd.buzzOpen = false;
+          const lockMs = (this.ruleset.id === "O22") ? 2000 : 5000;
+          kd.buzzUnlockAt = now + lockMs;
+        }
+
+        const aSeason = this.ruleset.audioSeason;
+        if (aSeason !== "O13-21" && !(this.ruleset.id === "O22" && !isSolo)) {
+          kd.currentBgmTrack = "kd_bgm_1";
+          this.cue("1_KhoiDong/kd_bgm_1", "bgm");
+        }
         st.kdIntroTimer = mkTimer(3500);
         startTimer(st.kdIntroTimer, now);
 
-        // Nhấn Bắt đầu: phát "ready" trước. Sau 3.5s đồ hoạ mở, tick() sẽ phát open_question + BGM
+        // Nhấn Bắt đầu: phát "ready" trước. Sau 3.5s đồ hoạ mở, tick() sẽ phát open_question
         this.cue("1_KhoiDong/ready");
         return OK;
       }

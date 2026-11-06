@@ -696,7 +696,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-300">
                   {curRound === "khoiDong" && state.khoiDong
-                    ? `Câu ${Math.max(0, state.khoiDong.qIdx + 1)}/${state.khoiDong.segments[state.khoiDong.segIdx]?.questions ?? 6}`
+                    ? `Câu ${Math.max(1, state.khoiDong.qIdx + 1)}/${state.khoiDong.segments[state.khoiDong.segIdx]?.questions ?? 6}`
                     : curRound === "vcnv" && state.vcnv
                       ? `Hàng ${state.vcnv.openedCount}/4`
                       : curRound === "tangToc" && state.tangToc
@@ -726,7 +726,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
 
             {/* 1. Question Card Box (Flexible dynamic height to show full question) */}
             <div className="rounded-xl border border-violet-500/25 bg-gradient-to-b from-[#1a0d3f]/90 to-[#0f0728]/95 p-3 shadow-md backdrop-blur-sm">
-              <div className="text-xs md:text-sm font-semibold leading-relaxed min-h-[56px] max-h-[140px] overflow-y-auto pr-1 select-text">
+              <div className="text-xs md:text-sm font-semibold leading-relaxed min-h-[56px] max-h-[240px] overflow-y-auto pr-1 select-text break-words whitespace-pre-wrap">
                 {getQuestionText(state) || <span className="text-slate-500 italic font-mono text-xs">(Trống)</span>}
               </div>
             </div>

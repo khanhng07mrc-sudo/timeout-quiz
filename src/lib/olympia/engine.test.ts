@@ -1146,31 +1146,23 @@ test("system:setKdFinishTurnPan updates stereo panning for finish_turn sound", (
 
 
 
-test("kd:start plays ready, sets 3.5s cooldown, and kd:next respects cooldown", () => {
-
+test("kd:start plays ready, sets safety cooldown, and kd:next respects cooldown", () => {
   const g = game("O26", ["khoiDong"], 2);
-
   act(g, "game:start");
-
   act(g, "kd:start", {}, 1000);
 
   assert.equal(g.state.khoiDong!.started, true);
   assert.equal(g.state.khoiDong!.questionRevealed, true, "Question 1 revealed immediately upon kd:start");
   assert.ok(g.state.khoiDong!.current?.q, "Question 1 loaded immediately upon kd:start");
-  assert.equal(g.state.khoiDong!.startCooldownUntil, 1000 + 3500);
+  assert.equal(g.state.khoiDong!.startCooldownUntil, 1000 + 1200);
 
-  // Attempting kd:next during 3.5s cooldown should fail
-  const rejected = g.hostAction({ type: "kd:next" }, 2000);
+  // Attempting kd:next during safety cooldown should fail
+  const rejected = g.hostAction({ type: "kd:next" }, 1500);
   assert.equal(rejected.ok, false);
-  assert.ok(rejected.error && rejected.error.includes("3.5s"));
+  assert.ok(rejected.error && rejected.error.includes("đồ hoạ mở xong"));
 
-  // After 3.5s cooldown expires, tick opens graphics and plays open_question
-  g.tick(1000 + 3500);
-  assert.equal(g.state.khoiDong!.phase, "question");
-  assert.equal(g.state.cue!.sound, "1_KhoiDong/open_question");
-
-  // When host clicks kd:next, moves to question 2
-  const accepted = g.hostAction({ type: "kd:next" }, 5000);
+  // After cooldown expires, when host clicks kd:next, moves to question 2
+  const accepted = g.hostAction({ type: "kd:next" }, 3000);
   assert.equal(accepted.ok, true);
   assert.equal(g.state.khoiDong!.questionRevealed, true);
   assert.equal(g.state.khoiDong!.timer.startedAt, null, "5s timer not started automatically on next");

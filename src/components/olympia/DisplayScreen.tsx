@@ -686,7 +686,7 @@ function KhoiDong({ state, serverNow }: P) {
           }
           timer={hasRevealedQ ? kd.timer : null}
           showScoreTab={true}
-          runAnim={!hasRevealedQ}
+          runAnim={kd.qIdx === 0}
         />
       )}
     </div>

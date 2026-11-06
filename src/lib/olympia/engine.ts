@@ -663,7 +663,7 @@ export class OlympiaGame {
         const balanced = useBalanced
           ? buildBalancedKhoiDongQueues(qs.khoiDong, active, maxSoloQuestions)
           : undefined;
-        st.khoiDong = {
+        const dummyKd: KhoiDongState = {
           segments: segs,
           segIdx: 0,
           qIdx: -1,
@@ -679,6 +679,21 @@ export class OlympiaGame {
           sharedQueue: balanced?.sharedQueue,
           current: null,
           lastVerdict: null,
+        };
+        const preQ = segs[0] && !segs[0].globalMs ? this.kdPoolQuestion(dummyKd, segs[0]) : null;
+        st.khoiDong = {
+          ...dummyKd,
+          current: preQ
+            ? {
+                q: preQ.q,
+                a: preQ.a,
+                subject: preQ.subject,
+                kdZone: preQ.kdZone,
+                vdZone: preQ.vdZone,
+                media: preQ.media,
+                mediaType: preQ.mediaType,
+              }
+            : null,
         };
         break;
       }
@@ -1715,14 +1730,22 @@ export class OlympiaGame {
         st.introTimer = null;
         if (st.showStageGraphics) st.showStageGraphics = false;
         kd.phase = "question";
-        kd.questionRevealed = !seg.globalMs;
         kd.started = true;
         kd.buzzedSeat = null;
-        kd.startCooldownUntil = now + 3500;
         if (seg.globalMs) {
+          // O13-O22: Lượt 60s/30s/90s có đồng hồ tổng, chờ kd:next để mở câu 1 và kích hoạt đồng hồ
+          kd.questionRevealed = false;
           kd.globalTimer = mkTimer(seg.globalMs);
+          kd.startCooldownUntil = now + 3500;
+          st.kdIntroTimer = mkTimer(3500);
+          startTimer(st.kdIntroTimer, now);
+        } else {
+          // O23-O26: Mở ngay câu 1 khi BẮT ĐẦU, animation đồ hoạ chạy lập tức không delay
+          kd.questionRevealed = true;
+          kd.startCooldownUntil = now + 1200;
+          st.kdIntroTimer = null;
         }
-        if (kd.qIdx < 0) {
+        if (kd.qIdx < 0 || !kd.current) {
           kd.qIdx = 0;
           const q = this.kdPoolQuestion(kd, seg);
           if (q) {
@@ -1738,6 +1761,9 @@ export class OlympiaGame {
               mediaType: q.mediaType,
             };
           }
+        } else if (!seg.globalMs) {
+          kd.qIdx = 0;
+          this.recordOpenedQuestion(kd.current.q);
         }
         if (isSolo) {
           kd.buzzOpen = false;
@@ -1754,10 +1780,8 @@ export class OlympiaGame {
           kd.currentBgmTrack = "kd_bgm_1";
           this.cue("1_KhoiDong/kd_bgm_1", "bgm");
         }
-        st.kdIntroTimer = mkTimer(3500);
-        startTimer(st.kdIntroTimer, now);
 
-        // Nhấn Bắt đầu: phát "ready" trước. Sau 3.5s đồ hoạ mở, tick() sẽ phát open_question
+        // Nhấn Bắt đầu: mở đồ hoạ ngay lập tức và phát "ready"
         this.cue("1_KhoiDong/ready");
         return OK;
       }
@@ -1782,7 +1806,6 @@ export class OlympiaGame {
           kd.phase = "intro";
           kd.questionRevealed = false;
           kd.started = false;
-          kd.current = null;
           kd.lastVerdict = null;
           const ns = kd.segments[idx];
           kd.timer = mkTimer(ns.perQuestionMs);
@@ -1792,6 +1815,22 @@ export class OlympiaGame {
           kd.buzzUnlockAt = undefined;
           kd.lockedSeats = [];
           kd.nextLockedSeats = [];
+          if (!ns.globalMs) {
+            const preQ = this.kdPoolQuestion(kd, ns);
+            kd.current = preQ
+              ? {
+                  q: preQ.q,
+                  a: preQ.a,
+                  subject: preQ.subject,
+                  kdZone: preQ.kdZone,
+                  vdZone: preQ.vdZone,
+                  media: preQ.media,
+                  mediaType: preQ.mediaType,
+                }
+              : null;
+          } else {
+            kd.current = null;
+          }
           if (ns.kind === "solo") {
             this.cue("1_KhoiDong/ready");
           }

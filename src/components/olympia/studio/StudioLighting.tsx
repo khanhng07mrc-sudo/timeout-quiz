@@ -2915,7 +2915,7 @@ export function StudioLighting({
     if (isVeDichDimmed || screenFadeProgress > 0 || stageFadeProgress > 0 || audienceFadeProgress > 0) {
       return 0.0;
     }
-    return 1.0;
+    return 0.4;
   }, [idleFadeProgress, isIdle, introStartedAt, now, isVeDichDimmed, screenFadeProgress, stageFadeProgress, audienceFadeProgress]);
 
   // Overall multiplier for active broadcast lighting
@@ -2950,46 +2950,46 @@ export function StudioLighting({
   }, [audienceFadeProgress]);
 
   // Ambient & Key Light Intensity Factors (Controlled Studio Contrast)
-  // Standby illumination baseline: ambient floor 0.18 (#0c1938 -> #e0f2fe), smoothly ramping to 1.0 on match start
-  const targetAmbient = (isVeDichDimmed ? 0.20 : 0.42) * introDimFactor;
-  const ambientIntensity = THREE.MathUtils.lerp(0.18, targetAmbient, liveFactor);
+  // Standby illumination baseline: ambient floor 0.35 (#223a66 -> #e0f2fe), smoothly ramping to 1.0 on match start
+  const targetAmbient = (isVeDichDimmed ? 0.22 : 0.45) * introDimFactor;
+  const ambientIntensity = THREE.MathUtils.lerp(0.35, targetAmbient, liveFactor);
   const ambientColor = useMemo(() => {
-    const c = new THREE.Color("#0c1938");
+    const c = new THREE.Color("#223a66");
     c.lerp(new THREE.Color("#e0f2fe"), liveFactor);
     return c;
   }, [liveFactor]);
 
-  const keyIntensity = (isVeDichDimmed ? 0.9 : 3.0) * liveFactor;
-  const fillIntensity = (isVeDichDimmed ? 0.45 : 1.6) * liveFactor;
-  // Screen downlight bounce: 0.6 in idle, fading up to full broadcast intensity (3.2)
+  const keyIntensity = (isVeDichDimmed ? 1.0 : 3.0) * THREE.MathUtils.lerp(0.4, 1.0, liveFactor);
+  const fillIntensity = (isVeDichDimmed ? 0.6 : 1.6) * THREE.MathUtils.lerp(0.4, 1.0, liveFactor);
+  // Screen downlight bounce: 0.8 in idle, fading up to full broadcast intensity (3.2)
   const screenBounceIntensity = THREE.MathUtils.lerp(
-    0.6,
+    0.8,
     (isVeDichDimmed ? 1.0 : 3.2) * introDimFactor,
     1.0 - effectiveIdleFade
   );
 
-  // Front Broadcast Key Flood Light intensity: 0.35 standby, 1.6 active
+  // Front Broadcast Key Flood Light intensity: 1.2 standby, 1.8 active
   const frontFloodIntensity = THREE.MathUtils.lerp(
-    0.35,
-    (isVeDichDimmed ? 0.6 : 1.6) * introDimFactor,
+    1.2,
+    (isVeDichDimmed ? 0.8 : 1.8) * introDimFactor,
     liveFactor
   );
 
   // MC Podiums 3-Point Stage Lighting Rig Intensities:
-  // - Key: match 8.5, standby 1.9
-  // - Fill: match 4.8, standby 1.1
-  // - Rim: match 3.2, standby 0.7
-  const mcKeyIntensity = THREE.MathUtils.lerp(1.9, 8.5 * (isVeDichDimmed ? 0.7 : 1.0), liveFactor);
-  const mcFillIntensity = THREE.MathUtils.lerp(1.1, 4.8 * (isVeDichDimmed ? 0.7 : 1.0), liveFactor);
-  const mcRimIntensity = THREE.MathUtils.lerp(0.7, 3.2 * (isVeDichDimmed ? 0.7 : 1.0), liveFactor);
+  // - Key: match 8.5, standby 4.5
+  // - Fill: match 4.8, standby 2.5
+  // - Rim: match 3.2, standby 1.5
+  const mcKeyIntensity = THREE.MathUtils.lerp(4.5, 8.5 * (isVeDichDimmed ? 0.7 : 1.0), liveFactor);
+  const mcFillIntensity = THREE.MathUtils.lerp(2.5, 4.8 * (isVeDichDimmed ? 0.7 : 1.0), liveFactor);
+  const mcRimIntensity = THREE.MathUtils.lerp(1.5, 3.2 * (isVeDichDimmed ? 0.7 : 1.0), liveFactor);
 
   // Contestant Podiums Balanced Stage Lighting Rig Intensities:
-  // - Sector 1 Key: match 7.5, standby 1.7
-  // - Sector 2 Key: match 7.5, standby 1.7
-  // - Arc Fill Flood: match 4.5, standby 1.0
-  const tsSec1Intensity = THREE.MathUtils.lerp(1.7, 7.5 * (isVeDichDimmed ? 0.6 : 1.0), liveFactor);
-  const tsSec2Intensity = THREE.MathUtils.lerp(1.7, 7.5 * (isVeDichDimmed ? 0.6 : 1.0), liveFactor);
-  const tsArcIntensity = THREE.MathUtils.lerp(1.0, 4.5 * (isVeDichDimmed ? 0.6 : 1.0), liveFactor);
+  // - Sector 1 Key: match 7.5, standby 4.0
+  // - Sector 2 Key: match 7.5, standby 4.0
+  // - Arc Fill Flood: match 4.5, standby 2.5
+  const tsSec1Intensity = THREE.MathUtils.lerp(4.0, 7.5 * (isVeDichDimmed ? 0.6 : 1.0), liveFactor);
+  const tsSec2Intensity = THREE.MathUtils.lerp(4.0, 7.5 * (isVeDichDimmed ? 0.6 : 1.0), liveFactor);
+  const tsArcIntensity = THREE.MathUtils.lerp(2.5, 4.5 * (isVeDichDimmed ? 0.6 : 1.0), liveFactor);
 
   return (
     <group>

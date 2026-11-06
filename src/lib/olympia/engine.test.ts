@@ -1808,9 +1808,18 @@ test("VCNV immediate self-lock on bell press, manual per-seat unlock, letterCoun
   assert.deepEqual(g.state.vcnv!.eliminatedSeats, [], "Not eliminated until bells are cleared");
 
   // 5. Host clears bells: now seat 1 is officially eliminated
+  // Safety verification: cannot clear if unjudged, but succeeds once judged wrong
+  assert.equal((g.state.vcnv!.bells[0] as any).judgedWrong, true);
   act(g, "vcnv:clearBells");
   assert.equal(g.state.vcnv!.bells.length, 0);
   assert.deepEqual(g.state.vcnv!.eliminatedSeats, [1], "Seat 1 eliminated upon clearBells");
+
+  // Verify unjudged clear fails on fresh game
+  const gUnjudged = game("O26", ["vcnv"], 4);
+  act(gUnjudged, "game:start");
+  gUnjudged.playerBuzz(0, 1000);
+  assert.equal(gUnjudged.hostAction({ type: "vcnv:clearBells" }, 1000).ok, false, "Cannot clear bells before judging");
+  act(gUnjudged, "vcnv:clearBells", { force: true });
 
   // 6. MC manually unlocks seat 1 via vcnv:toggleLockSeat
   act(g, "vcnv:toggleLockSeat", { seat: 1 }, 3600);
@@ -1851,6 +1860,9 @@ test("VCNV CNV grading strictly requires active bell signal and rejects cleared 
   assert.ok(g.playerBuzz(0, 1500).ok);
   assert.ok(g.playerBuzz(1, 1600).ok);
   assert.equal(g.state.vcnv!.bells.length, 2);
+
+  // Host marks seat 0 as wrong first (so bell is judged)
+  act(g, "vcnv:wrongCNV", { seat: 0 }, 1650);
 
   // Host clears all CNV bells via vcnv:clearBells
   act(g, "vcnv:clearBells", {}, 1700);

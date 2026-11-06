@@ -406,7 +406,7 @@ export interface VcnvState {
   answers: Record<number, VcnvAnswerRecord>;
   answersRevealed: boolean;
   /** seats that rang the keyword bell, in order */
-  bells: { seat: number; before: boolean; atMs?: number }[];
+  bells: { seat: number; before: boolean; atMs?: number; judgedWrong?: boolean }[];
   eliminatedSeats: number[];
   openedCount: number;
   piecesRevealed: boolean[];
@@ -414,6 +414,7 @@ export interface VcnvState {
   rowResults: Record<number, number[]>; // rowIdx (0..4) -> seats awarded
   revealedCorrectAnswer?: boolean;
   keywordLength?: number;
+  lastJudgedWrongAt?: number;
 }
 
 export interface TangTocRankingItem {

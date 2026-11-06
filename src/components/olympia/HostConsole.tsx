@@ -2456,87 +2456,116 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              type="button"
-              disabled={!v.bells || v.bells.length === 0}
-              onClick={() => setShowClearBellsModal(true)}
-              className={`py-1.5 rounded-lg text-xs font-bold transition ${
-                v.bells && v.bells.length > 0
-                  ? "bg-rose-900/40 hover:bg-rose-800/60 text-rose-200 border border-rose-500/40 cursor-pointer"
-                  : "bg-white/5 text-slate-600 opacity-50 cursor-not-allowed"
-              }`}
-              title="Tắt tín hiệu chuông và chốt loại quyền chơi VCNV"
-            >
-              🔕 Tắt tín hiệu chuông ({v.bells?.length || 0})
-            </button>
-            <button
-              type="button"
-              onClick={() => call("vcnv:revealAll")}
-              className="py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold border border-white/10 cursor-pointer"
-            >
-              Mở Toàn Bộ CNV
-            </button>
-          </div>
+          {(() => {
+            const hasJudged = Boolean(v.lastJudgedWrongAt || v.bells?.some((b) => b.judgedWrong));
+            const hasUnjudgedAfterWrong = Boolean(
+              v.lastJudgedWrongAt && v.bells?.some((b) => b.atMs && b.atMs > (v.lastJudgedWrongAt || 0) && !b.judgedWrong)
+            );
 
-          {/* Modal Cảnh báo Tắt Tín Hiệu Chuông VCNV */}
-          {showClearBellsModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-              <div className="w-full max-w-md rounded-2xl bg-[#0b1528] border-2 border-rose-500/80 shadow-[0_0_30px_rgba(244,63,94,0.4)] p-5 space-y-4 text-white animate-fade-in">
-                <div className="flex items-center gap-3 text-rose-400">
-                  <span className="text-3xl">⚠️</span>
-                  <h3 className="text-lg font-black uppercase tracking-wide">CẢNH BÁO TẮT TÍN HIỆU CHUÔNG</h3>
+            return (
+              <>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    disabled={!v.bells || v.bells.length === 0}
+                    onClick={() => setShowClearBellsModal(true)}
+                    className={`py-1.5 rounded-lg text-xs font-bold transition ${
+                      v.bells && v.bells.length > 0
+                        ? "bg-rose-900/40 hover:bg-rose-800/60 text-rose-200 border border-rose-500/40 cursor-pointer"
+                        : "bg-white/5 text-slate-600 opacity-50 cursor-not-allowed"
+                    }`}
+                    title={hasJudged ? "Tắt tín hiệu chuông và chốt loại quyền chơi VCNV" : "Chưa thể tắt: Chưa chốt Đúng hay Sai cho thí sinh có chuông!"}
+                  >
+                    🔕 Tắt tín hiệu chuông ({v.bells?.length || 0})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => call("vcnv:revealAll")}
+                    className="py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold border border-white/10 cursor-pointer"
+                  >
+                    Mở Toàn Bộ CNV
+                  </button>
                 </div>
-                <p className="text-sm text-slate-300 leading-relaxed">
-                  Hành động này sẽ <b>TẮT toàn bộ tín hiệu chuông</b> và <b>CHÍNH THỨC LOẠI quyền chơi VCNV</b> của các thí sinh sau:
-                </p>
-                <div className="rounded-lg bg-black/50 border border-white/10 p-3 space-y-1.5 max-h-48 overflow-y-auto">
-                  {v.bells?.map((b, idx) => {
-                    const s = state.seats[b.seat];
-                    const isAfterWrong = Boolean(
-                      (v as any).lastJudgedWrongAt && b.atMs && b.atMs > (v as any).lastJudgedWrongAt
-                    );
-                    return (
-                      <div key={b.seat} className="flex items-center justify-between text-xs py-1 border-b border-white/5">
-                        <span className="font-bold text-amber-200">
-                          #{idx + 1}: TS{b.seat + 1} - {s?.name || `Ghế ${b.seat + 1}`}
-                        </span>
-                        {isAfterWrong ? (
-                          <span className="text-[10px] text-rose-400 font-bold bg-rose-500/20 px-1.5 py-0.5 rounded">
-                            ⚠️ Bấm sau lần Sai!
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-400">Sẽ bị loại</span>
-                        )}
+
+                {/* Modal Cảnh báo Tắt Tín Hiệu Chuông VCNV */}
+                {showClearBellsModal && (
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md rounded-2xl bg-[#0b1528] border-2 border-rose-500/80 shadow-[0_0_30px_rgba(244,63,94,0.4)] p-5 space-y-4 text-white animate-fade-in">
+                      <div className="flex items-center gap-3 text-rose-400">
+                        <span className="text-3xl">⚠️</span>
+                        <h3 className="text-lg font-black uppercase tracking-wide">CẢNH BÁO TẮT TÍN HIỆU CHUÔNG</h3>
                       </div>
-                    );
-                  })}
-                </div>
-                <div className="text-xs text-amber-300/90 font-medium bg-amber-500/10 border border-amber-500/20 rounded p-2.5">
-                  💡 MC/Host chỉ tắt tín hiệu chuông sau khi các thí sinh bấm chuông đã trả lời sai và bạn muốn tiếp tục lật mở các hàng ngang khác.
-                </div>
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowClearBellsModal(false)}
-                    className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold cursor-pointer"
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      call("vcnv:clearBells");
-                      setShowClearBellsModal(false);
-                    }}
-                    className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow cursor-pointer"
-                  >
-                    Xác nhận Tắt & Loại thí sinh
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+                      <p className="text-sm text-slate-300 leading-relaxed">
+                        Hành động này sẽ <b>TẮT toàn bộ tín hiệu chuông</b> và <b>CHÍNH THỨC LOẠI quyền chơi VCNV</b> của các thí sinh sau:
+                      </p>
+                      <div className="rounded-lg bg-black/50 border border-white/10 p-3 space-y-1.5 max-h-48 overflow-y-auto">
+                        {v.bells?.map((b, idx) => {
+                          const s = state.seats[b.seat];
+                          const isAfterWrong = Boolean(
+                            v.lastJudgedWrongAt && b.atMs && b.atMs > v.lastJudgedWrongAt
+                          );
+                          return (
+                            <div key={b.seat} className="flex items-center justify-between text-xs py-1 border-b border-white/5">
+                              <span className="font-bold text-amber-200">
+                                #{idx + 1}: TS{b.seat + 1} - {s?.name || `Ghế ${b.seat + 1}`}
+                              </span>
+                              {isAfterWrong ? (
+                                <span className="text-[10px] text-rose-400 font-bold bg-rose-500/20 px-1.5 py-0.5 rounded">
+                                  ⚠️ Bấm sau lần Sai!
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-400">Sẽ bị loại</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {!hasJudged && (
+                        <div className="rounded-lg bg-amber-500/20 border border-amber-400/50 p-3 text-amber-200 text-xs font-bold leading-relaxed">
+                          ⛔ <b>CHƯA THỂ TẮT CHUÔNG:</b> Bạn chưa chốt Đúng hay Sai cho bất kỳ thí sinh nào có chuông. Vui lòng bấm <b>✘ Chấm SAI</b> (hoặc ✔ Chấm ĐÚNG) trước khi tắt chuông!
+                        </div>
+                      )}
+
+                      {hasJudged && hasUnjudgedAfterWrong && (
+                        <div className="rounded-lg bg-rose-500/25 border border-rose-400/60 p-3 text-rose-200 text-xs font-bold leading-relaxed animate-pulse">
+                          ⚠️ <b>CẢNH BÁO TẮT NHẦM:</b> Có thí sinh bấm chuông SAU thời điểm bạn vừa nhấn Chấm Sai gần nhất. Vui lòng kiểm tra kỹ trước khi xác nhận loại!
+                        </div>
+                      )}
+
+                      <div className="text-xs text-amber-300/90 font-medium bg-amber-500/10 border border-amber-500/20 rounded p-2.5">
+                        💡 MC/Host chỉ tắt tín hiệu chuông sau khi các thí sinh bấm chuông đã trả lời sai và bạn muốn tiếp tục lật mở các hàng ngang khác.
+                      </div>
+                      <div className="flex items-center justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowClearBellsModal(false)}
+                          className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold cursor-pointer"
+                        >
+                          Hủy bỏ
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!hasJudged}
+                          onClick={() => {
+                            call("vcnv:clearBells", { force: true });
+                            setShowClearBellsModal(false);
+                          }}
+                          className={`px-4 py-2 rounded-lg text-xs font-black shadow transition ${
+                            hasJudged
+                              ? "bg-rose-600 hover:bg-rose-500 text-white cursor-pointer"
+                              : "bg-rose-950/40 text-slate-500 border border-white/10 opacity-50 cursor-not-allowed"
+                          }`}
+                        >
+                          Xác nhận Tắt & Loại thí sinh
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>

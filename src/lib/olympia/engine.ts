@@ -2390,6 +2390,10 @@ export class OlympiaGame {
         return OK;
       }
       case "vcnv:clearBells": {
+        // Các tín hiệu không thể tắt khi bạn chưa chốt đúng hay sai
+        if (!v.lastJudgedWrongAt && !v.bells?.some((b) => b.judgedWrong) && !a.force) {
+          return fail("Chưa thể tắt tín hiệu chuông khi chưa chốt đúng hay sai cho thí sinh!");
+        }
         // Khi nhấn tắt tín hiệu thì các tín hiệu chuông này mới chính thức đưa vào v.eliminatedSeats
         const bellsToClear = v.bells || [];
         for (const b of bellsToClear) {

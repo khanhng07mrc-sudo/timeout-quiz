@@ -107809,6 +107809,9 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "vcnv:clearBells": {
+        if (!v.lastJudgedWrongAt && !v.bells?.some((b) => b.judgedWrong) && !a.force) {
+          return fail("Ch\u01B0a th\u1EC3 t\u1EAFt t\xEDn hi\u1EC7u chu\xF4ng khi ch\u01B0a ch\u1ED1t \u0111\xFAng hay sai cho th\xED sinh!");
+        }
         const bellsToClear = v.bells || [];
         for (const b of bellsToClear) {
           if (!v.eliminatedSeats.includes(b.seat)) {

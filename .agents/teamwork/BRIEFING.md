@@ -1,15 +1,15 @@
-# BRIEFING — 2026-11-05T16:29:00Z
+# BRIEFING — 2026-11-06T02:46:00Z
 
 ## Mission
-Orchestrate execution of complete studio enhancement plan (realistic 3D human models, audio & tab persistence, 2-vCPU performance, question sync, chevron animation, answer banner fix, VPS deployment) in D:\Timeout Quiz.
+Orchestrate redesign of authentic Vietnamese 3D human models (MCs Khánh Vy & Ngọc Huy, 4 contestants) and fix MC/contestant stage lighting during active match states in D:\Timeout Quiz.
 
 ## 🔒 My Identity
 - Archetype: sentinel
 - Working directory: D:/Timeout Quiz/.agents/teamwork
-- Orchestrator: 6f000e81-e387-4e7f-84d5-4e66178cc2c4 (teamwork_swe)
-- Victory Auditor: 8deaa8a7-a282-42b0-afba-d176bfef8d24 (teamwork_victory_auditor)
-- Active Orchestrator: e3d05c7b-be54-43b1-8a78-7b244d82b352 (teamwork_orchestrator)
-- Active Victory Auditor: TBD
+- Orchestrator: 08d8ee8d-2e18-414a-926d-210d93944a6b (teamwork_orchestrator, orchestrator_3)
+- Victory Auditor: d2fb1d01-3542-4d3e-b7d1-7d0d4818edb9 (teamwork_victory_auditor, victory_auditor_sentinel_2)
+- Cron 1 (Progress): 2b063eb9-8472-43a1-ab6d-0c150efd7723/task-30
+- Cron 2 (Liveness): 2b063eb9-8472-43a1-ab6d-0c150efd7723/task-31
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -25,17 +25,24 @@ Orchestrate execution of complete studio enhancement plan (realistic 3D human mo
 - Scope addition: R15–R20 HostConsole answer cards wrap, "Nền chờ ĐA" camera/backdrop without audio bug, scaled up VCNV/TT answer graphics (68-74px), 4 VCNV circle dot states, progressive 15s timer bar (0%->100%), and CNV Sai eliminating all buzzed contestants.
 - Scope addition: R21 CNV bell signals complete clearing upon CNV Sai, race condition guard (`lastJudgedWrongAt`), and no arbitrary clearing without verdict.
 - User Correction: CNV Sai eliminates ONLY the evaluated contestant seat; all other contestants who buzzed remain active in `v.bells` on Host Console for subsequent evaluation.
+- Approved Task Prompt Constraints:
+  - Route: General (`teamwork_orchestrator`)
+  - Strict workspace boundary: All modifications strictly stay in `D:\Timeout Quiz`. NEVER touch `D:\Olympia 26`.
+  - R1: Pre-execution git backup in `D:\Timeout Quiz`
+  - R2: Authentic Vietnamese 3D character models for MCs (Khánh Vy, Ngọc Huy) and 4 contestants (warm East Asian skin tones, hair, clothes, eliminate blocky/dark robot shapes)
+  - R3: Stage lighting for MC & contestant podiums (spotlights turn on during match start / active rounds)
+  - Verification: `npm run test:olympia`, `npm run test:olympia-3d`, `npm run type-check`, `npm run build`, and visual `/admin/sandbox`.
 
 ## User Context
-- **Last user request**: Urgent correction to R20/R21: CNV Sai eliminates only the evaluated seat, preserving other buzzed contestants.
+- **Last user request**: Approved task prompt received and confirmed.
 - **Pending clarifications**: none
-- **Delivered results**: None yet for this run.
+- **Delivered results**: Starting teamwork_orchestrator.
 
 ## Project Status
-- **Phase**: in progress
+- **Phase**: auditing
 
 ## Victory Audit Status
-- **Triggered**: no
+- **Triggered**: yes
 - **Verdict**: pending
 - **Retry count**: 0
 

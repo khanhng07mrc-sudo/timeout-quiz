@@ -277,3 +277,57 @@ All modifications, file creations, and edits must strictly stay within `D:\Timeo
 - Visual sandbox preview: `http://localhost:3000/admin/sandbox`
 - Live VPS sandbox URL: `https://quizorra.ddns.net/admin/sandbox?code=463275`
 - Reference photos: `media_1793877853393_1f21bf17.jpg`, `media_1793895222890_dd3c1772.png`, `media_1793895773041_197f2609.png`
+
+
+## Approved Task Prompt — 2026-11-06T02:46:00Z
+
+Use a full team of agents to redesign the 3D human models (MCs and contestants) with authentic Vietnamese appearance and fix stage lighting for MC and contestant podiums.
+
+Working directory: D:\Timeout Quiz
+Integrity mode: development
+
+## Reference Material
+- User screenshot showing dark podiums and mannequin figures: `media_1793932634375_ecb859bc.png`
+- MC & Contestant 3D components: `src/components/olympia/studio/Podiums.tsx`
+- Stage lighting components: `src/components/olympia/studio/StudioLighting.tsx`
+- Scene assembly: `src/components/olympia/OlympiaStudio3DScene.tsx`
+- Local preview URL: `http://localhost:3000/admin/sandbox`
+
+## Requirements
+
+### R1. Pre-Execution Backup
+Before modifying any files in `D:\Timeout Quiz`, create a complete git backup (commit, tag, or branch) of all current working files so that any changes can be cleanly inspected or rolled back.
+
+### R2. Authentic Vietnamese 3D Character Models for MCs and Contestants
+Replace the dark, blocky robot/mannequin meshes in `src/components/olympia/studio/Podiums.tsx` by combining external 3D humanoid models with custom refinements to fix the severely degraded original meshes:
+- MC Khánh Vy: Vietnamese female presenter with natural long dark hair, signature eyeglasses, elegant broadcast blazer/attire, and warm Vietnamese skin tone.
+- MC Ngọc Huy: Vietnamese male presenter with styled short dark hair, formal suit and necktie, and warm Vietnamese skin tone.
+- 4 Contestants: Vietnamese high school students with standard white collared shirts, Olympia laurel wreaths, and warm Vietnamese skin tones.
+- Completely eliminate black, grey, muddy, or robotic mannequin geometry and shading under all camera angles.
+
+### R3. Stage Lighting for MC and Contestant Podiums
+Fix stage lighting in `src/components/olympia/studio/StudioLighting.tsx` and related scene components so that when the match starts or during active competition rounds, balanced stage illumination (key light & fill light spotlights) automatically turns on and clearly illuminates the MC podium area and all 4 contestant podium areas.
+
+### R4. Strict Workspace Boundary Constraint
+All modifications, file creations, and edits must strictly stay within `D:\Timeout Quiz`. Under no circumstances modify, touch, or delete any files in `D:\Olympia 26` or anywhere outside `D:\Timeout Quiz`.
+
+## Acceptance Criteria
+
+### Pre-Execution Backup
+- [ ] A clean git backup (commit, tag, or branch) is created in `D:\Timeout Quiz` before modifying any files
+
+### 3D Character Models
+- [ ] Both MC figures (Khánh Vy & Ngọc Huy) and all 4 contestant figures display natural Vietnamese human anatomy and proportions, completely replacing blocky robotic shapes
+- [ ] Skin tones across all characters render with warm natural East Asian/Vietnamese tones without dark, black, or grey muddy artifacts under studio lighting
+- [ ] MC Khánh Vy features natural long dark hair, eyeglasses, and broadcast blazer
+- [ ] MC Ngọc Huy features styled short dark hair, formal suit, and necktie
+- [ ] Contestant figures wear white collared shirts and laurel wreaths
+
+### Studio Lighting
+- [ ] When the match starts or in active rounds, dedicated spotlights automatically illuminate the MC podium and contestant podiums clearly
+- [ ] Neither the MC area nor the contestant area remains dark or unlit during active match states
+
+### Verification & Workspace Integrity
+- [ ] Pass automated test suite: `npm run test:olympia`, `npm run test:olympia-3d`, `npm run type-check`, `npm run build`
+- [ ] Visual verification confirms character appearance and podium lighting in `/admin/sandbox`
+- [ ] No files in `D:\Olympia 26` or anywhere outside `D:\Timeout Quiz` are modified, added, or deleted

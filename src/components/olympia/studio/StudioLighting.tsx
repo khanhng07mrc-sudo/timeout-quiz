@@ -37,6 +37,60 @@ const CONTESTANT_POSITIONS: Array<[number, number, number]> = [
 ];
 
 /**
+ * TargetedSpotLight:
+ * Fixes Three.js / React Three Fiber `<spotLight>` target disconnection bug.
+ * Three.js requires `spotLight.target` to be mounted in the scene graph (`<primitive object={targetObj} />`)
+ * for its world matrix and orientation to be computed properly. Without this, spotlights default to (0,0,0).
+ */
+export interface TargetedSpotLightProps {
+  position: [number, number, number];
+  targetPosition: [number, number, number];
+  intensity: number;
+  color: THREE.Color | string;
+  angle?: number;
+  penumbra?: number;
+  distance?: number;
+  decay?: number;
+  castShadow?: boolean;
+}
+
+export function TargetedSpotLight({
+  position,
+  targetPosition,
+  intensity,
+  color,
+  angle = 0.52,
+  penumbra = 0.45,
+  distance = 15,
+  decay = 1.5,
+  castShadow = false,
+}: TargetedSpotLightProps) {
+  const targetObj = useMemo(() => {
+    const obj = new THREE.Object3D();
+    obj.position.set(targetPosition[0], targetPosition[1], targetPosition[2]);
+    obj.updateMatrixWorld();
+    return obj;
+  }, [targetPosition[0], targetPosition[1], targetPosition[2]]);
+
+  return (
+    <>
+      <primitive object={targetObj} />
+      <spotLight
+        position={position}
+        target={targetObj}
+        intensity={intensity}
+        color={color}
+        angle={angle}
+        penumbra={penumbra}
+        distance={distance}
+        decay={decay}
+        castShadow={castShadow}
+      />
+    </>
+  );
+}
+
+/**
  * Official Olympia Laurel Wreath Canvas Decal on Central Stage Floor.
  * Features:
  * - VÒNG NGUYỆT QUẾ ONLY (No extra text, pure wreath).
@@ -675,14 +729,15 @@ export function StudioFloor({
         distance={3.5}
       />
       {/* Soft Fill Broadcast Keylight from overhead (Wide diffused cone, zero harsh lines) */}
-      <spotLight
+      <TargetedSpotLight
         position={[1.8, 7.5, 2.6]}
-        target-position={[1.8, 0.80, 2.6]}
+        targetPosition={[1.8, 0.80, 2.6]}
         color="#fff7ed"
         intensity={3.5 * liveFactor}
         distance={12}
         angle={0.48}
         penumbra={0.85}
+        castShadow={false}
       />
 
       {/* ── 3. OFFICIAL OLYMPIA LAUREL WREATH FLOOR DECAL (VÒNG NGUYỆT QUẾ CHUẨN THIẾT KẾ 2016, D=2.3M) ── */}
@@ -2895,14 +2950,14 @@ export function StudioLighting({
   }, [audienceFadeProgress]);
 
   // Ambient & Key Light Intensity Factors (Controlled Studio Contrast)
-  // In idle state (effectiveIdleFade = 1.0), ambient dims to 0.04 deep midnight sapphire (#081226)
+  // Standby illumination baseline: ambient floor 0.18 (#0c1938 -> #e0f2fe), smoothly ramping to 1.0 on match start
   const targetAmbient = (isVeDichDimmed ? 0.20 : 0.42) * introDimFactor;
-  const ambientIntensity = THREE.MathUtils.lerp(0.04, targetAmbient, 1.0 - effectiveIdleFade);
+  const ambientIntensity = THREE.MathUtils.lerp(0.18, targetAmbient, liveFactor);
   const ambientColor = useMemo(() => {
-    const c = new THREE.Color("#081226");
-    c.lerp(new THREE.Color("#e0f2fe"), 1.0 - effectiveIdleFade);
+    const c = new THREE.Color("#0c1938");
+    c.lerp(new THREE.Color("#e0f2fe"), liveFactor);
     return c;
-  }, [effectiveIdleFade]);
+  }, [liveFactor]);
 
   const keyIntensity = (isVeDichDimmed ? 0.9 : 3.0) * liveFactor;
   const fillIntensity = (isVeDichDimmed ? 0.45 : 1.6) * liveFactor;
@@ -2912,6 +2967,29 @@ export function StudioLighting({
     (isVeDichDimmed ? 1.0 : 3.2) * introDimFactor,
     1.0 - effectiveIdleFade
   );
+
+  // Front Broadcast Key Flood Light intensity: 0.35 standby, 1.6 active
+  const frontFloodIntensity = THREE.MathUtils.lerp(
+    0.35,
+    (isVeDichDimmed ? 0.6 : 1.6) * introDimFactor,
+    liveFactor
+  );
+
+  // MC Podiums 3-Point Stage Lighting Rig Intensities:
+  // - Key: match 8.5, standby 1.9
+  // - Fill: match 4.8, standby 1.1
+  // - Rim: match 3.2, standby 0.7
+  const mcKeyIntensity = THREE.MathUtils.lerp(1.9, 8.5 * (isVeDichDimmed ? 0.7 : 1.0), liveFactor);
+  const mcFillIntensity = THREE.MathUtils.lerp(1.1, 4.8 * (isVeDichDimmed ? 0.7 : 1.0), liveFactor);
+  const mcRimIntensity = THREE.MathUtils.lerp(0.7, 3.2 * (isVeDichDimmed ? 0.7 : 1.0), liveFactor);
+
+  // Contestant Podiums Balanced Stage Lighting Rig Intensities:
+  // - Sector 1 Key: match 7.5, standby 1.7
+  // - Sector 2 Key: match 7.5, standby 1.7
+  // - Arc Fill Flood: match 4.5, standby 1.0
+  const tsSec1Intensity = THREE.MathUtils.lerp(1.7, 7.5 * (isVeDichDimmed ? 0.6 : 1.0), liveFactor);
+  const tsSec2Intensity = THREE.MathUtils.lerp(1.7, 7.5 * (isVeDichDimmed ? 0.6 : 1.0), liveFactor);
+  const tsArcIntensity = THREE.MathUtils.lerp(1.0, 4.5 * (isVeDichDimmed ? 0.6 : 1.0), liveFactor);
 
   return (
     <group>
@@ -2938,57 +3016,115 @@ export function StudioLighting({
         />
       )}
 
-      {/* Front Broadcast Key Flood Light (Directly illuminates front of contestant podiums & MC desk) */}
-      {quality !== "LIGHT" && (
-        <directionalLight
-          position={[0.0, 4.5, 8.0]}
-          intensity={(isVeDichDimmed ? 0.4 : 1.6) * liveFactor}
-          color="#ffffff"
-        />
-      )}
-
-      {/* Dedicated MC Desk / Hexagon Portal Front Spotlight (Bright Crisp Keylight) */}
-      <spotLight
-        position={[3.0, 6.8, 0.2]}
-        target-position={[1.9, 1.3, -2.6]}
-        intensity={mcSpotIntensity * 1.4 * (1.0 - effectiveIdleFade)}
-        color="#fffcf5"
-        angle={0.58}
-        penumbra={0.3}
-        distance={15}
+      {/* Front Broadcast Key Flood Light (Preserved in LIGHT mode so /admin/sandbox podiums are bright) */}
+      <directionalLight
+        position={[0.0, 5.5, 7.5]}
+        intensity={frontFloodIntensity}
+        color="#ffffff"
       />
 
-      {/* Broadcast Fill Light onto Contestant Podiums & Figures */}
-      <spotLight
-        position={[-4.0, 7.5, 1.8]}
-        target-position={[-4.2, 0.85, -2.9]}
-        intensity={6.0 * liveFactor}
+      {/* ── MC PODIUMS 3-POINT STAGE LIGHTING RIG ── */}
+      {/* MC Key Light: Warm quartz front key illuminating MC faces & wardrobe */}
+      <TargetedSpotLight
+        position={[4.60, 5.20, -3.40]}
+        targetPosition={[3.10, 1.35, -6.85]}
+        color="#fffaf0"
+        intensity={mcKeyIntensity}
+        angle={0.52}
+        penumbra={0.45}
+        distance={14}
+        decay={1.5}
+        castShadow={false}
+      />
+
+      {/* MC Fill Light: Soft blue-white cross fill to eliminate harsh facial shadows */}
+      <TargetedSpotLight
+        position={[1.40, 4.80, -3.60]}
+        targetPosition={[3.10, 1.35, -6.85]}
+        color="#f0f7ff"
+        intensity={mcFillIntensity}
+        angle={0.60}
+        penumbra={0.55}
+        distance={13}
+        decay={1.5}
+        castShadow={false}
+      />
+
+      {/* MC Back/Rim Light: Daylight separation rim delineating shoulders and hair from backdrop */}
+      <TargetedSpotLight
+        position={[3.10, 5.60, -8.80]}
+        targetPosition={[3.10, 1.45, -6.85]}
+        color="#f8fafc"
+        intensity={mcRimIntensity}
+        angle={0.45}
+        penumbra={0.50}
+        distance={10}
+        decay={1.8}
+        castShadow={false}
+      />
+
+      {/* ── CONTESTANT PODIUMS BALANCED STAGE LIGHTING RIG ── */}
+      {/* TS Sector 1 Key: Crisp keylight dedicated to TS 1 and TS 2 */}
+      <TargetedSpotLight
+        position={[-3.20, 5.80, 0.40]}
+        targetPosition={[-5.75, 1.25, -3.65]}
+        color="#fffcf5"
+        intensity={tsSec1Intensity}
+        angle={0.64}
+        penumbra={0.50}
+        distance={14}
+        decay={1.5}
+        castShadow={false}
+      />
+
+      {/* TS Sector 2 Key: Crisp keylight dedicated to TS 3 and TS 4 */}
+      <TargetedSpotLight
+        position={[-1.10, 5.80, -2.20]}
+        targetPosition={[-3.50, 1.25, -6.00]}
+        color="#fffcf5"
+        intensity={tsSec2Intensity}
+        angle={0.64}
+        penumbra={0.50}
+        distance={14}
+        decay={1.5}
+        castShadow={false}
+      />
+
+      {/* TS Arc Fill Flood: Soft sky-blue arc wash covering all 4 contestant podiums */}
+      <TargetedSpotLight
+        position={[-0.80, 5.20, 1.80]}
+        targetPosition={[-4.60, 1.10, -4.80]}
         color="#e0f2fe"
-        angle={0.72}
-        penumbra={0.4}
+        intensity={tsArcIntensity}
+        angle={0.78}
+        penumbra={0.60}
         distance={15}
+        decay={1.5}
+        castShadow={false}
       />
 
       {/* ── 2. STAGE BACK LIGHTS (Pruned in LIGHT mode) ── */}
       {quality !== "LIGHT" && (
         <>
-          <spotLight
+          <TargetedSpotLight
             position={[-7.5, 8.5, -5.0]}
-            target-position={[0, 3.0, -6.5]}
+            targetPosition={[0, 3.0, -6.5]}
             intensity={(isVeDichDimmed ? 2.0 : 5.5) * liveFactor}
             color={stageBackColor}
             angle={0.65}
             penumbra={0.5}
             distance={20}
+            castShadow={false}
           />
-          <spotLight
+          <TargetedSpotLight
             position={[7.5, 8.5, -5.0]}
-            target-position={[0, 3.0, -6.5]}
+            targetPosition={[0, 3.0, -6.5]}
             intensity={(isVeDichDimmed ? 2.0 : 5.5) * liveFactor}
             color={stageBackColor}
             angle={0.65}
             penumbra={0.5}
             distance={20}
+            castShadow={false}
           />
 
           {/* Broadcast Wing Cyc Wash Lights (Stage Left behind formula wall & Stage Right) */}
@@ -3017,29 +3153,31 @@ export function StudioLighting({
         if (!isLit) return null;
 
         return (
-          <spotLight
+          <TargetedSpotLight
             key={`ts-spot-${sIdx}`}
             position={[pos[0], 7.5, pos[2] + 0.8]}
-            target-position={[pos[0], 1.2, pos[2]]}
+            targetPosition={[pos[0], 1.2, pos[2]]}
             color={spotColor}
             intensity={spotIntensity}
             angle={0.4}
             penumbra={0.3}
             distance={11}
+            castShadow={false}
           />
         );
       })}
 
       {/* ── 4. AUDIENCE AMPHITHEATER LIGHTS (Pruned in LIGHT mode) ── */}
       {quality !== "LIGHT" && (
-        <spotLight
+        <TargetedSpotLight
           position={[0, 9.0, 4.0]}
-          target-position={[0, 2.0, 12.0]}
+          targetPosition={[0, 2.0, 12.0]}
           intensity={(isVeDichDimmed ? 1.5 : 4.5) * liveFactor}
           color={audienceWashColor}
           angle={0.8}
           penumbra={0.6}
           distance={22}
+          castShadow={false}
         />
       )}
 

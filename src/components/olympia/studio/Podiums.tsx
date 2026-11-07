@@ -1859,16 +1859,25 @@ export function CenterMcDesk({
   );
 }
 
-const KV_DESK_POS: [number, number, number] = [3.26, 0.14, -7.15];
-const NH_DESK_POS: [number, number, number] = [2.86, 0.14, -7.15];
-const KV_CENTER_POS: [number, number, number] = [0.38, 0.18, 0.00];
-const NH_CENTER_POS: [number, number, number] = [-0.38, 0.18, 0.00];
+export const KV_DESK_POS: [number, number, number] = [3.26, 0.14, -7.15];
+export const NH_DESK_POS: [number, number, number] = [2.86, 0.14, -7.15];
+export const KV_CENTER_POS: [number, number, number] = [0.38, 0.18, 0.00];
+export const NH_CENTER_POS: [number, number, number] = [-0.38, 0.18, 0.00];
+
+// MC Concealed Positions (Behind the Hexagonal Portal Screen Frames - R2)
+export const KV_CONCEAL_POS: [number, number, number] = [5.17, 0.14, -8.52];
+export const NH_CONCEAL_POS: [number, number, number] = [1.97, 0.14, -9.34];
+
+// Waypoint mid-points along lighted catwalk corridor
+export const KV_WAYPOINT: [number, number, number] = [4.20, 0.14, -7.80];
+export const NH_WAYPOINT: [number, number, number] = [2.40, 0.14, -8.25];
 
 /**
  * Animated 3D MC Presenters (Khánh Vy & Ngọc Huy):
- * - Idle / Lobby: Rest gracefully behind MC Desk at [3.38, 0.14, -7.15] and [2.80, 0.14, -7.25].
- * - Intro Opening: Walk forward to center circular stage [±0.38, 0.18, 0.00] framing broadcast lights & tech graphics.
- * - Contestant Introduction: Smoothly turn and walk back (~6.5s at ~1.15 m/s) to MC desk with natural human kinematics.
+ * - Idle / Lobby: Staged concealed behind the hexagonal screen frames [5.17, 0.14, -8.52] and [1.97, 0.14, -9.34].
+ * - Intro Opening: Step out along catwalk corridor (0.0s-3.2s) to desk, execute high-five greeting (3.2s-4.0s).
+ * - Host Mode: Poised elegantly behind desk during wide pan, vitrine reveal, and match rounds.
+ * - Contestant Introduction: Turn and walk back (~6.5s at ~1.15 m/s) to MC desk if entrance active.
  */
 export function McPresenters({
   state,
@@ -1915,6 +1924,8 @@ export function McPresenters({
     let nhRotY = -0.28;
     let isWalking = false;
     let walkPhase = 0;
+    let isGreeting = false;
+    let greetingBell = 0;
 
     if (isEntranceActive) {
       const entranceStart = state?.entranceState?.startedAt || now;
@@ -1976,65 +1987,78 @@ export function McPresenters({
       const introStart = introStartedAt || state?.introTimer?.startedAt || now;
       const elapsedIntro = Math.max(0, now - introStart);
 
-      if (elapsedIntro < 3000) {
-        kvPos = [...KV_DESK_POS];
-        nhPos = [...NH_DESK_POS];
-        kvRotY = -0.28;
-        nhRotY = -0.28;
-        isWalking = false;
-      } else if (elapsedIntro < 10000) {
-        const rawT = (elapsedIntro - 3000) / 7000;
-        const u = rawT * rawT * (3 - 2 * rawT);
+      if (elapsedIntro < 3200) {
+        // Phase 1 (0.0s -> 3.2s): Stepping out from behind the screen frames along catwalk corridor
+        const rawT = Math.min(1.0, elapsedIntro / 3200);
+        const u = rawT * rawT * (3 - 2 * rawT); // Smoothstep easing
 
         isWalking = true;
-        walkPhase = u * Math.PI * 15;
+        walkPhase = u * Math.PI * 7.5;
 
-        const kvMid = [(KV_DESK_POS[0] + KV_CENTER_POS[0]) / 2 + 0.20, 0.16, (KV_DESK_POS[2] + KV_CENTER_POS[2]) / 2];
-        const nhMid = [(NH_DESK_POS[0] + NH_CENTER_POS[0]) / 2 + 0.15, 0.16, (NH_DESK_POS[2] + NH_CENTER_POS[2]) / 2];
-
+        // Quadratic Bezier interpolation in world coordinates
         const w0 = (1 - u) * (1 - u);
         const w1 = 2 * (1 - u) * u;
         const w2 = u * u;
 
         kvPos = [
-          w0 * KV_DESK_POS[0] + w1 * kvMid[0] + w2 * KV_CENTER_POS[0],
-          w0 * KV_DESK_POS[1] + w1 * kvMid[1] + w2 * KV_CENTER_POS[1],
-          w0 * KV_DESK_POS[2] + w1 * kvMid[2] + w2 * KV_CENTER_POS[2],
+          w0 * KV_CONCEAL_POS[0] + w1 * KV_WAYPOINT[0] + w2 * KV_DESK_POS[0],
+          KV_DESK_POS[1],
+          w0 * KV_CONCEAL_POS[2] + w1 * KV_WAYPOINT[2] + w2 * KV_DESK_POS[2],
         ];
         nhPos = [
-          w0 * NH_DESK_POS[0] + w1 * nhMid[0] + w2 * NH_CENTER_POS[0],
-          w0 * NH_DESK_POS[1] + w1 * nhMid[1] + w2 * NH_CENTER_POS[1],
-          w0 * NH_DESK_POS[2] + w1 * nhMid[2] + w2 * NH_CENTER_POS[2],
+          w0 * NH_CONCEAL_POS[0] + w1 * NH_WAYPOINT[0] + w2 * NH_DESK_POS[0],
+          NH_DESK_POS[1],
+          w0 * NH_CONCEAL_POS[2] + w1 * NH_WAYPOINT[2] + w2 * NH_DESK_POS[2],
         ];
 
-        const kvTanX = 2 * (1 - u) * (kvMid[0] - KV_DESK_POS[0]) + 2 * u * (KV_CENTER_POS[0] - kvMid[0]);
-        const kvTanZ = 2 * (1 - u) * (kvMid[2] - KV_DESK_POS[2]) + 2 * u * (KV_CENTER_POS[2] - kvMid[2]);
-        const kvWalkAngle = Math.atan2(kvTanX, kvTanZ);
+        // Heading follows path tangent
+        const kvTanX = 2 * (1 - u) * (KV_WAYPOINT[0] - KV_CONCEAL_POS[0]) + 2 * u * (KV_DESK_POS[0] - KV_WAYPOINT[0]);
+        const kvTanZ = 2 * (1 - u) * (KV_WAYPOINT[2] - KV_CONCEAL_POS[2]) + 2 * u * (KV_DESK_POS[2] - KV_WAYPOINT[2]);
+        const kvAngle = Math.atan2(kvTanX, kvTanZ);
 
-        const nhTanX = 2 * (1 - u) * (nhMid[0] - NH_DESK_POS[0]) + 2 * u * (NH_CENTER_POS[0] - nhMid[0]);
-        const nhTanZ = 2 * (1 - u) * (nhMid[2] - NH_DESK_POS[2]) + 2 * u * (NH_CENTER_POS[2] - nhMid[2]);
-        const nhWalkAngle = Math.atan2(nhTanX, nhTanZ);
+        const nhTanX = 2 * (1 - u) * (NH_WAYPOINT[0] - NH_CONCEAL_POS[0]) + 2 * u * (NH_DESK_POS[0] - NH_WAYPOINT[0]);
+        const nhTanZ = 2 * (1 - u) * (NH_WAYPOINT[2] - NH_CONCEAL_POS[2]) + 2 * u * (NH_DESK_POS[2] - NH_WAYPOINT[2]);
+        const nhAngle = Math.atan2(nhTanX, nhTanZ);
 
-        if (u < 0.15) {
-          const turnT = u / 0.15;
-          kvRotY = THREE.MathUtils.lerp(-0.28, kvWalkAngle, turnT);
-          nhRotY = THREE.MathUtils.lerp(-0.28, nhWalkAngle, turnT);
-        } else if (u > 0.85) {
-          const settleT = (u - 0.85) / 0.15;
-          kvRotY = THREE.MathUtils.lerp(kvWalkAngle, 0.0, settleT);
-          nhRotY = THREE.MathUtils.lerp(nhWalkAngle, 0.0, settleT);
+        if (u < 0.20) {
+          kvRotY = THREE.MathUtils.lerp(-0.85, kvAngle, u / 0.20);
+          nhRotY = THREE.MathUtils.lerp(0.35, nhAngle, u / 0.20);
+        } else if (u > 0.80) {
+          const settleT = (u - 0.80) / 0.20;
+          kvRotY = THREE.MathUtils.lerp(kvAngle, -0.28, settleT);
+          nhRotY = THREE.MathUtils.lerp(nhAngle, -0.28, settleT);
         } else {
-          kvRotY = kvWalkAngle;
-          nhRotY = nhWalkAngle;
+          kvRotY = kvAngle;
+          nhRotY = nhAngle;
         }
+      } else if (elapsedIntro < 4000) {
+        // Phase 2 (3.2s -> 4.0s): Arrived at desk, natural high-five greeting between inner arms
+        kvPos = [...KV_DESK_POS];
+        nhPos = [...NH_DESK_POS];
+        isWalking = false;
+        isGreeting = true;
+
+        const greetT = (elapsedIntro - 3200) / 800; // 0.0 to 1.0
+        greetingBell = Math.sin(greetT * Math.PI);  // 0 -> 1 -> 0
+        kvRotY = -0.28 - 0.12 * greetingBell;
+        nhRotY = -0.28 + 0.12 * greetingBell;
       } else {
-        kvPos = [...KV_CENTER_POS];
-        nhPos = [...NH_CENTER_POS];
-        kvRotY = 0.0;
-        nhRotY = 0.0;
+        // Phase 3 (4.0s onwards): Steady desk hold during wide stage pan and vitrine reveal
+        kvPos = [...KV_DESK_POS];
+        nhPos = [...NH_DESK_POS];
+        kvRotY = -0.28;
+        nhRotY = -0.28;
         isWalking = false;
       }
+    } else if (isIdle && !introStartedAt) {
+      // Pre-match / idle lobby: MCs concealed behind screen frames
+      kvPos = [...KV_CONCEAL_POS];
+      nhPos = [...NH_CONCEAL_POS];
+      kvRotY = -0.85;
+      nhRotY = 0.35;
+      isWalking = false;
     } else {
+      // Regular match rounds / post-intro: MCs at desk
       kvPos = [...KV_DESK_POS];
       nhPos = [...NH_DESK_POS];
       kvRotY = -0.28;
@@ -2074,13 +2098,39 @@ export function McPresenters({
       nhRightKneeRef.current.rotation.x = Math.max(0, -stride * 0.95);
     }
 
-    if (kvLeftArmRef.current && kvRightArmRef.current) {
-      kvLeftArmRef.current.rotation.x = (isWalking ? -armStride * 0.25 : 0);
-      kvRightArmRef.current.rotation.x = (isWalking ? armStride * 0.25 : 0);
+    let kvLeftArmX = isWalking ? -armStride * 0.25 : 0;
+    let kvLeftArmZ = 0;
+    let kvRightArmX = isWalking ? armStride * 0.25 : 0;
+    let kvRightArmZ = 0;
+
+    let nhLeftArmX = isWalking ? armStride * 0.25 : 0;
+    let nhLeftArmZ = 0;
+    let nhRightArmX = isWalking ? -armStride * 0.25 : 0;
+    let nhRightArmZ = 0;
+
+    if (isGreeting) {
+      // High-five arm gesture on inner arms (NH Right Arm & KV Left Arm)
+      nhRightArmX = -1.25 * greetingBell;
+      nhRightArmZ = -0.45 * greetingBell;
+      kvLeftArmX = -1.25 * greetingBell;
+      kvLeftArmZ = 0.45 * greetingBell;
     }
-    if (nhLeftArmRef.current && nhRightArmRef.current) {
-      nhLeftArmRef.current.rotation.x = (isWalking ? armStride * 0.25 : 0);
-      nhRightArmRef.current.rotation.x = (isWalking ? -armStride * 0.25 : 0);
+
+    if (kvLeftArmRef.current) {
+      kvLeftArmRef.current.rotation.x = kvLeftArmX;
+      kvLeftArmRef.current.rotation.z = kvLeftArmZ;
+    }
+    if (kvRightArmRef.current) {
+      kvRightArmRef.current.rotation.x = kvRightArmX;
+      kvRightArmRef.current.rotation.z = kvRightArmZ;
+    }
+    if (nhLeftArmRef.current) {
+      nhLeftArmRef.current.rotation.x = nhLeftArmX;
+      nhLeftArmRef.current.rotation.z = nhLeftArmZ;
+    }
+    if (nhRightArmRef.current) {
+      nhRightArmRef.current.rotation.x = nhRightArmX;
+      nhRightArmRef.current.rotation.z = nhRightArmZ;
     }
   });
 
@@ -3251,16 +3301,22 @@ function CenterTechFloorGraphic({
   const corePulseRef = useRef<THREE.MeshBasicMaterial>(null);
   const rippleRef = useRef<THREE.Group>(null);
 
-  useFrame((_, delta) => {
+  useFrame((state) => {
+    const nowSec = serverNow ? serverNow() / 1000 : state.clock.getElapsedTime();
+    // Continuous deterministic clock-based modulo rotation [0, 2π) (F9)
+    const rotPrimary = (((nowSec * 0.65) % (Math.PI * 2)) + (Math.PI * 2)) % (Math.PI * 2);
+    const rotSecondary = (((-nowSec * 0.42) % (Math.PI * 2)) + (Math.PI * 2)) % (Math.PI * 2);
+
     if (primaryArcsRef.current) {
-      primaryArcsRef.current.rotation.z += delta * 0.90;
+      primaryArcsRef.current.rotation.z = rotPrimary;
     }
     if (secondaryArcsRef.current) {
-      secondaryArcsRef.current.rotation.z -= delta * 0.55;
+      secondaryArcsRef.current.rotation.z = rotSecondary;
     }
     const now = serverNow ? serverNow() : Date.now();
+    const effectiveOpacity = Math.max(0.35, opacity);
     if (corePulseRef.current) {
-      corePulseRef.current.opacity = (0.65 + 0.30 * Math.sin(now * 0.005)) * opacity;
+      corePulseRef.current.opacity = (0.65 + 0.30 * Math.sin(now * 0.005)) * effectiveOpacity;
     }
     if (rippleRef.current) {
       const cycle = ((now * 0.001) % 1.5) / 1.5;
@@ -3269,7 +3325,8 @@ function CenterTechFloorGraphic({
     }
   });
 
-  if (opacity <= 0.001) return null;
+  // Maintain ambient floor activity throughout match play instead of unmounting abruptly
+  const effectiveOpacity = Math.max(0.35, opacity);
 
   return (
     <group rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0036, 0]}>
@@ -3280,9 +3337,12 @@ function CenterTechFloorGraphic({
           ref={corePulseRef}
           color="#00f0ff"
           transparent
-          opacity={0.85 * opacity}
+          opacity={0.85 * effectiveOpacity}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
         />
       </mesh>
       <mesh renderOrder={9.45}>
@@ -3290,9 +3350,12 @@ function CenterTechFloorGraphic({
         <meshBasicMaterial
           color="#ffffff"
           transparent
-          opacity={0.95 * opacity}
+          opacity={0.95 * effectiveOpacity}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
         />
       </mesh>
 
@@ -3303,9 +3366,12 @@ function CenterTechFloorGraphic({
           <meshBasicMaterial
             color="#00f0ff"
             transparent
-            opacity={0.90 * opacity}
+            opacity={0.90 * effectiveOpacity}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -3314,9 +3380,12 @@ function CenterTechFloorGraphic({
           <meshBasicMaterial
             color="#00f0ff"
             transparent
-            opacity={0.90 * opacity}
+            opacity={0.90 * effectiveOpacity}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -3330,9 +3399,12 @@ function CenterTechFloorGraphic({
             <meshBasicMaterial
               color="#38bdf8"
               transparent
-              opacity={0.75 * opacity}
+              opacity={0.75 * effectiveOpacity}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-2}
+              polygonOffsetUnits={-2}
               side={THREE.DoubleSide}
             />
           </mesh>
@@ -3345,9 +3417,12 @@ function CenterTechFloorGraphic({
         <meshBasicMaterial
           color="#00f0ff"
           transparent
-          opacity={0.7 * opacity}
+          opacity={0.7 * effectiveOpacity}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
         />
       </mesh>
       <mesh renderOrder={9.3}>
@@ -3355,9 +3430,12 @@ function CenterTechFloorGraphic({
         <meshBasicMaterial
           color="#38bdf8"
           transparent
-          opacity={0.6 * opacity}
+          opacity={0.6 * effectiveOpacity}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
         />
       </mesh>
       <mesh renderOrder={9.3}>
@@ -3365,9 +3443,12 @@ function CenterTechFloorGraphic({
         <meshBasicMaterial
           color="#00f0ff"
           transparent
-          opacity={0.65 * opacity}
+          opacity={0.65 * effectiveOpacity}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
         />
       </mesh>
       <mesh renderOrder={9.3}>
@@ -3375,9 +3456,12 @@ function CenterTechFloorGraphic({
         <meshBasicMaterial
           color="#38bdf8"
           transparent
-          opacity={0.6 * opacity}
+          opacity={0.6 * effectiveOpacity}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
         />
       </mesh>
 
@@ -3388,9 +3472,12 @@ function CenterTechFloorGraphic({
           <meshBasicMaterial
             color="#67e8f9"
             transparent
-            opacity={0.45 * opacity}
+            opacity={0.45 * effectiveOpacity}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
           />
         </mesh>
       </group>
@@ -3417,6 +3504,7 @@ export function CenterFloorStage({
 }) {
   const wreathGroupRef = useRef<THREE.Group>(null);
   const entryBurstRef = useRef<THREE.Group>(null);
+  const outerLaserArcsRef = useRef<THREE.Group>(null);
   const [entryElapsed, setEntryElapsed] = useState(0);
 
   const isVeDich = state?.currentRound === "veDich" || state?.roundsPlan?.[state?.roundIdx ?? 0] === "veDich";
@@ -3461,7 +3549,13 @@ export function CenterFloorStage({
   const isEntrance = !isIdle && Boolean(state?.entranceState?.active);
 
   // Real-time animation loop
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
+    // Continuous monotonic modulo rotation [0, 2π) for outer cyan laser rings (F9)
+    const nowSec = serverNow ? serverNow() / 1000 : state.clock.getElapsedTime();
+    if (outerLaserArcsRef.current) {
+      outerLaserArcsRef.current.rotation.z = (((nowSec * 0.45) % (Math.PI * 2)) + (Math.PI * 2)) % (Math.PI * 2);
+    }
+
     // 1. Vòng nguyệt quế: xoay linh hoạt ở Về Đích, đứng im ở các vòng trước
     if (wreathGroupRef.current) {
       if (isVeDich) {
@@ -3526,29 +3620,59 @@ export function CenterFloorStage({
 
   return (
     <group position={[0, 0.188, -0.5]}>
-      {/* ── 1. CONCENTRIC STAGE ARCHITECTURE ── */}
+      {/* ── 1. CONCENTRIC STAGE ARCHITECTURE (Elevated Y >= 0.186m, Z-fighting eliminated) ── */}
       {/* Outer Polished Metallic Bezel (R = 2.25m) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
         <ringGeometry args={[2.22, 2.30, 64]} />
-        <meshStandardMaterial color="#cbd5e1" metalness={0.9} roughness={0.15} />
+        <meshStandardMaterial
+          color="#cbd5e1"
+          metalness={0.9}
+          roughness={0.15}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
       </mesh>
 
       {/* Outer LED Broadcast Strip (R = 2.10m) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]}>
         <ringGeometry args={[2.08, 2.14, 64]} />
-        <meshBasicMaterial color={neonColor} toneMapped={false} />
+        <meshBasicMaterial
+          color={neonColor}
+          toneMapped={false}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
       </mesh>
 
       {/* Middle Accent Ring (R = 1.80m: shifts dynamically with stage lighting) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]}>
         <ringGeometry args={[1.78, 1.84, 64]} />
-        <meshBasicMaterial color={accentColor} toneMapped={false} />
+        <meshBasicMaterial
+          color={accentColor}
+          toneMapped={false}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
       </mesh>
 
       {/* Inner Subtle Neon Guide (R = 1.45m) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0035, 0]}>
         <ringGeometry args={[1.42, 1.46, 64]} />
-        <meshBasicMaterial color={neonColor} toneMapped={false} transparent opacity={0.7} />
+        <meshBasicMaterial
+          color={neonColor}
+          toneMapped={false}
+          transparent
+          opacity={0.7}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
       </mesh>
 
       {/* Dark Ultra-Gloss Center Floor Disc (R = 1.40m, pure dark floor disc #020510) */}
@@ -3559,8 +3683,74 @@ export function CenterFloorStage({
           roughness={0.06}
           metalness={0.12}
           envMapIntensity={2.5}
+          polygonOffset
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
         />
       </mesh>
+
+      {/* ── 1B. CONTINUOUS ROTATING OUTER CYAN LASER ARCS (F9) ── */}
+      <group ref={outerLaserArcsRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0038, 0]}>
+        {/* Symmetrical Twin Opposing Laser Arcs on Outer Cyan Ring (R = 2.07m to 2.15m) */}
+        <mesh renderOrder={9.6}>
+          <ringGeometry args={[2.07, 2.15, 64, 1, 0, (80 * Math.PI) / 180]} />
+          <meshBasicMaterial
+            color={neonColor}
+            transparent
+            opacity={0.9}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+        <mesh rotation={[0, 0, Math.PI]} renderOrder={9.6}>
+          <ringGeometry args={[2.07, 2.15, 64, 1, 0, (80 * Math.PI) / 180]} />
+          <meshBasicMaterial
+            color={neonColor}
+            transparent
+            opacity={0.9}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Counter-aligned Opposing Laser Arcs on Middle Accent Ring (R = 1.77m to 1.85m) */}
+        <mesh rotation={[0, 0, Math.PI / 2]} renderOrder={9.6}>
+          <ringGeometry args={[1.77, 1.85, 64, 1, 0, (65 * Math.PI) / 180]} />
+          <meshBasicMaterial
+            color={accentColor}
+            transparent
+            opacity={0.85}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+        <mesh rotation={[0, 0, (3 * Math.PI) / 2]} renderOrder={9.6}>
+          <ringGeometry args={[1.77, 1.85, 64, 1, 0, (65 * Math.PI) / 180]} />
+          <meshBasicMaterial
+            color={accentColor}
+            transparent
+            opacity={0.85}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      </group>
 
       {/* ── 2A. 6-SECOND DYNAMIC TECH FLOOR GRAPHIC (BROADCAST REFERENCE) ── */}
       <CenterTechFloorGraphic opacity={techOpacity} serverNow={serverNow} />
@@ -3579,6 +3769,9 @@ export function CenterFloorStage({
                   transparent
                   opacity={0.35 * Math.max(0, 1 - (entryElapsed % 3.0) / 3.0)}
                   depthWrite={false}
+                  polygonOffset
+                  polygonOffsetFactor={-2}
+                  polygonOffsetUnits={-2}
                   blending={THREE.AdditiveBlending}
                 />
               </mesh>
@@ -3592,6 +3785,9 @@ export function CenterFloorStage({
               transparent
               opacity={0.5 * Math.max(0, 1 - (entryElapsed % 3.0) / 3.0)}
               depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-2}
+              polygonOffsetUnits={-2}
               blending={THREE.AdditiveBlending}
             />
           </mesh>
@@ -3615,6 +3811,9 @@ export function CenterFloorStage({
               opacity={laurelOpacity}
               depthWrite={false}
               toneMapped={false}
+              polygonOffset
+              polygonOffsetFactor={-2}
+              polygonOffsetUnits={-2}
             />
           </mesh>
         )}

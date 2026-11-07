@@ -157,6 +157,17 @@ const _mcClosePos = new THREE.Vector3();
 const _mcCloseTarget = new THREE.Vector3();
 const _curPos = new THREE.Vector3();
 const _curTarget = new THREE.Vector3();
+
+// Intro Sequence Waypoints (R1 Architecture)
+export const _mcTightPos = new THREE.Vector3(3.06, 1.62, -6.10);
+export const _mcTightTarget = new THREE.Vector3(3.06, 1.54, -7.15);
+export const _mcMediumPos = new THREE.Vector3(2.50, 2.20, -3.80);
+export const _mcMediumTarget = new THREE.Vector3(2.90, 1.35, -6.80);
+export const _wideStagePos = new THREE.Vector3(0.00, 4.40, 13.00);
+export const _wideStageTarget = new THREE.Vector3(-0.60, 1.80, -3.80);
+export const _centerStagePos = new THREE.Vector3(0.00, 1.95, 4.60);
+export const _centerStageTarget = new THREE.Vector3(0.00, 1.15, -0.30);
+
 const _sweepStartPos = new THREE.Vector3();
 const _sweepStartTarget = new THREE.Vector3();
 const _sweepEndPos = new THREE.Vector3(0.00, 3.80, 11.80);
@@ -233,32 +244,42 @@ export function CameraController({
         camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 6.0, delta);
       }
     }
-    // 0. Opening Sequence Camera Director:
-    // Starts from WIDE far away in darkness, then smoothly DOLLIES IN towards the center circular stage as lights rise and MCs step out
+    // 0. Opening Sequence Camera Director (R1 Intro Choreography & Timing):
+    // Phase 1 (0.0s - 4.0s): Starts directly facing MC podium zoomed in deep (desk completely out of frame),
+    //                       smoothly zooming out over 4s as the two MCs step out.
+    // Phase 2 (4.0s - 6.0s): Pans and follows MCs' exit trajectory for ~2s, settling at wide stage view (CAM 1).
+    // Phase 3 (6.0s - 10.0s): Smoothly transitions from wide stage view to the stage center.
+    // Phase 4 (10.0s onwards): Steadily holds at center stage with natural broadcast breathing.
     if (introStartedAt) {
       const now = serverNow ? serverNow() : Date.now();
-      const elapsedSec = (now - introStartedAt) / 1000;
+      const elapsedSec = Math.max(0, (now - introStartedAt) / 1000);
 
-      _cam1Pos.set(...OLYMPIA_CAM_PRESETS[1].pos);
-      _cam1Target.set(...OLYMPIA_CAM_PRESETS[1].target);
-      const _centerStagePos = new THREE.Vector3(0.00, 1.95, 4.60);
-      const _centerStageTarget = new THREE.Vector3(0.00, 1.15, -0.30);
+      _wideStagePos.set(...OLYMPIA_CAM_PRESETS[1].pos);
+      _wideStageTarget.set(...OLYMPIA_CAM_PRESETS[1].target);
 
-      if (elapsedSec < 3.0) {
-        // Phase 1 (0.0s - 3.0s): Atmospheric wide view from distance in dramatic darkness
-        _curPos.copy(_cam1Pos);
-        _curTarget.copy(_cam1Target);
-      } else if (elapsedSec < 10.0) {
-        // Phase 2 (3.0s - 10.0s): Continuous, majestic one-directional DOLLY IN towards center circular stage
-        const t = (elapsedSec - 3.0) / 7.0;
+      if (elapsedSec < 4.0) {
+        // Phase 1 (0.0s - 4.0s): Deep zoom facing MC podium, zooming out to medium-wide
+        const t = Math.min(1.0, elapsedSec / 4.0);
         const smoothT = t * t * (3 - 2 * t);
-        _curPos.lerpVectors(_cam1Pos, _centerStagePos, smoothT);
-        _curTarget.lerpVectors(_cam1Target, _centerStageTarget, smoothT);
+        _curPos.lerpVectors(_mcTightPos, _mcMediumPos, smoothT);
+        _curTarget.lerpVectors(_mcTightTarget, _mcMediumTarget, smoothT);
+      } else if (elapsedSec < 6.0) {
+        // Phase 2 (4.0s - 6.0s): Pan & follow MCs' exit trajectory, settling at wide view (CAM 1)
+        const t = Math.min(1.0, (elapsedSec - 4.0) / 2.0);
+        const smoothT = t * t * (3 - 2 * t);
+        _curPos.lerpVectors(_mcMediumPos, _wideStagePos, smoothT);
+        _curTarget.lerpVectors(_mcMediumTarget, _wideStageTarget, smoothT);
+      } else if (elapsedSec < 10.0) {
+        // Phase 3 (6.0s - 10.0s): Smooth transition from wide stage view to center stage
+        const t = Math.min(1.0, (elapsedSec - 6.0) / 4.0);
+        const smoothT = t * t * (3 - 2 * t);
+        _curPos.lerpVectors(_wideStagePos, _centerStagePos, smoothT);
+        _curTarget.lerpVectors(_wideStageTarget, _centerStageTarget, smoothT);
       } else {
-        // Phase 3 (10.0s onwards): Steadily hold at center circular stage framing MCs and rotating tech floor graphics
+        // Phase 4 (10.0s onwards): Steady center stage hold with subtle broadcast breathing
         const holdElapsed = elapsedSec - 10.0;
         const breatheY = Math.sin(holdElapsed * 0.75) * 0.012;
-        const breatheX = Math.cos(holdElapsed * 0.45) * 0.008;
+        const breatheX = Math.sin(holdElapsed * 0.45) * 0.008;
         _curPos.set(_centerStagePos.x + breatheX, _centerStagePos.y + breatheY, _centerStagePos.z);
         _curTarget.copy(_centerStageTarget);
       }

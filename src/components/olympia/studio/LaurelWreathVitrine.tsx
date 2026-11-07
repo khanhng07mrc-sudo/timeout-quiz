@@ -170,6 +170,36 @@ function LaurelWreathMesh() {
  * white marble pedestal column, and warm golden overhead spotlight.
  * Sized proportionally (~1.25m total height) so it never blocks the MC dais or portal.
  */
+export const VITRINE_CONCEAL_DEPTH = -1.25;
+export const VITRINE_REVEAL_START_SEC = 6.0;
+export const VITRINE_REVEAL_END_SEC = 9.8;
+export const VITRINE_REVEAL_DURATION_SEC = 3.8;
+
+export function calculateVitrineState(elapsedSec: number) {
+  if (elapsedSec < VITRINE_REVEAL_START_SEC) {
+    return {
+      isVisible: false,
+      elevatorRise: VITRINE_CONCEAL_DEPTH,
+      spotlightFactor: 0.0,
+    };
+  }
+  if (elapsedSec < VITRINE_REVEAL_END_SEC) {
+    const u = Math.min(1.0, Math.max(0.0, (elapsedSec - VITRINE_REVEAL_START_SEC) / VITRINE_REVEAL_DURATION_SEC));
+    // Perlin quintic smootherstep (C^2 continuous: zero jerk at departure and arrival)
+    const smoothU = u * u * u * (u * (u * 6 - 15) + 10);
+    return {
+      isVisible: true,
+      elevatorRise: (1.0 - smoothU) * VITRINE_CONCEAL_DEPTH,
+      spotlightFactor: u * u * (3 - 2 * u),
+    };
+  }
+  return {
+    isVisible: true,
+    elevatorRise: 0.0,
+    spotlightFactor: 1.0,
+  };
+}
+
 export function LaurelWreathVitrine({
   position = [0.0, 0, 2.6],
   quality: _quality = "HIGH",
@@ -183,37 +213,35 @@ export function LaurelWreathVitrine({
   const spotLightRef = useRef<THREE.SpotLight>(null);
 
   useFrame(() => {
-    let opacity = 1.0;
+    let elevatorRise = 0.0;
+    let spotlightFactor = 1.0;
+    let isVisible = true;
+
     if (isIdle && !introStartedAt) {
-      opacity = 0.0;
+      isVisible = false;
+      elevatorRise = VITRINE_CONCEAL_DEPTH;
+      spotlightFactor = 0.0;
     } else if (introStartedAt != null) {
       const now = serverNow ? serverNow() : Date.now();
-      const elapsedSec = (now - introStartedAt) / 1000;
-      if (elapsedSec < 6.0) {
-        opacity = 0.0;
-      } else if (elapsedSec < 6.8) {
-        const t = (elapsedSec - 6.0) / 0.8;
-        opacity = t * t * (3 - 2 * t);
-      } else {
-        opacity = 1.0;
-      }
+      const elapsedSec = Math.max(0, (now - introStartedAt) / 1000);
+      const state = calculateVitrineState(elapsedSec);
+      isVisible = state.isVisible;
+      elevatorRise = state.elevatorRise;
+      spotlightFactor = state.spotlightFactor;
     } else {
-      opacity = 1.0;
+      isVisible = true;
+      elevatorRise = 0.0;
+      spotlightFactor = 1.0;
     }
 
     if (groupRef.current) {
-      if (opacity <= 0.001) {
-        groupRef.current.visible = false;
-      } else {
-        groupRef.current.visible = true;
-        const elevatorRise = (1.0 - opacity) * (-0.12);
-        groupRef.current.position.set(position[0], position[1] + elevatorRise, position[2]);
-      }
+      groupRef.current.visible = isVisible;
+      groupRef.current.position.set(position[0], position[1] + elevatorRise, position[2]);
     }
 
     if (spotLightRef.current) {
       const baseIntensity = THREE.MathUtils.lerp(0.8, 4.2, liveFactor);
-      spotLightRef.current.intensity = opacity <= 0.001 ? 0 : baseIntensity * opacity;
+      spotLightRef.current.intensity = isVisible ? baseIntensity * spotlightFactor : 0.0;
     }
   });
 

@@ -485,11 +485,11 @@ export function StudioFloor({
     if (isIdle && !introStartedAt) return 0.0;
     if (introStartedAt != null) {
       const nowMs = serverNow ? serverNow() : Date.now();
-      const elapsedSec = (nowMs - introStartedAt) / 1000;
+      const elapsedSec = Math.max(0, (nowMs - introStartedAt) / 1000);
       if (elapsedSec < 6.0) return 0.0;
-      if (elapsedSec < 6.8) {
-        const t = (elapsedSec - 6.0) / 0.8;
-        return t * t * (3 - 2 * t);
+      if (elapsedSec < 9.8) {
+        const u = Math.min(1.0, Math.max(0.0, (elapsedSec - 6.0) / 3.8));
+        return u * u * (3 - 2 * u);
       }
       return 1.0;
     }
@@ -733,13 +733,27 @@ export function StudioFloor({
       </mesh>
 
       {/* Concentric Neon Rings on Main Stage Floor */}
-      <mesh position={[0, 0.183, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh position={[0, 0.186, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[2.55, 2.62, 64]} />
-        <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} />
+        <meshBasicMaterial
+          color={ringColor}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
       </mesh>
-      <mesh position={[0, 0.183, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh position={[0, 0.186, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[2.75, 2.80, 64]} />
-        <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} />
+        <meshBasicMaterial
+          color={ringColor}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
       </mesh>
 
       {/* ── 2B. LAUREL WREATH VITRINE PROTRUSION LIGHTING ── */}

@@ -3666,13 +3666,15 @@ export function CenterFloorStage({
   return (
     <group position={[0, 0.188, -0.5]}>
       {/* ── 0. 3D ELEVATED CYLINDRICAL DAIS WITH SOLID WHITE RISER SKIRT (VTV3 BROADCAST REQUIREMENT) ── */}
-      {/* Vertical Circular Skirt / Riser (H = 0.188m, R = 2.45m, Solid Satin White #ffffff) */}
+      {/* Vertical Circular Skirt / Riser (H = 0.188m, R = 2.45m, Soft Studio White with subtle blue/red light tint) */}
       <mesh position={[0, -0.094, 0]}>
         <cylinderGeometry args={[2.45, 2.45, 0.188, 128, 1, true]} />
         <meshStandardMaterial
-          color="#ffffff"
-          roughness={0.25}
-          metalness={0.10}
+          color="#b8c4d0"
+          emissive={neonColor}
+          emissiveIntensity={0.25}
+          roughness={0.45}
+          metalness={0.05}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -3714,10 +3716,12 @@ export function CenterFloorStage({
         />
       </mesh>
 
-      {/* Outer Segmented White Racetrack Markings (36 Radial White Dashes R = 2.24m to 2.38m) */}
+      {/* Outer Segmented White Racetrack Markings (36 Radial White Dashes R = 2.24m to 2.38m, non-glaring soft studio white) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0015, 0]} geometry={segmentedTrackGeom} renderOrder={9.3}>
         <meshBasicMaterial
-          color="#ffffff"
+          color="#cbd5e1"
+          transparent
+          opacity={0.85}
           side={THREE.DoubleSide}
           depthWrite={false}
           polygonOffset

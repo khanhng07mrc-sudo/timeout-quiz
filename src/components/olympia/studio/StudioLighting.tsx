@@ -718,12 +718,14 @@ export function StudioFloor({
             metalness={0.04}
             envMapIntensity={2.5}
           />
-          {/* Vertical riser skirt (Solid pure white studio fascia #ffffff) */}
+          {/* Vertical riser skirt (Soft studio off-white with dynamic blue/red broadcast emissive tint) */}
           <meshStandardMaterial
             attach="material-1"
-            color="#ffffff"
-            roughness={0.25}
-            metalness={0.10}
+            color="#b8c4d0"
+            emissive={ringColor}
+            emissiveIntensity={0.28}
+            roughness={0.45}
+            metalness={0.05}
           />
         </mesh>
       </group>
@@ -778,12 +780,14 @@ export function StudioFloor({
             roughness={0.09}
             envMapIntensity={1.8}
           />
-          {/* Vertical white riser skirt matching studio aesthetic */}
+          {/* Vertical white riser skirt (Lit by dynamic blue/red global cove lighting, soft non-glaring off-white) */}
           <meshStandardMaterial
             attach="material-1"
-            color="#ffffff"
-            roughness={0.25}
-            metalness={0.10}
+            color="#b8c4d0"
+            emissive={ringColor}
+            emissiveIntensity={0.35}
+            roughness={0.45}
+            metalness={0.05}
           />
         </mesh>
       </group>
@@ -804,18 +808,6 @@ export function StudioFloor({
         <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} toneMapped={false} />
       </mesh>
 
-      {/* 4. Continuous Floor Wash Ribbon (Seamless unbroken global broadcast light wash across entire arc) */}
-      <mesh geometry={coveLeftFloorGlowGeom}>
-        <meshBasicMaterial
-          color={ringColor}
-          vertexColors
-          transparent
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
-
       {/* 5. Global Diffuse Overhead Fill Light for Left Contestant Cluster (Synchronized with stage lighting color) */}
       <pointLight position={[-4.2, 5.8, -2.8]} color={ringColor} intensity={4.5 * liveFactor} distance={18} decay={1.8} />
 
@@ -830,12 +822,14 @@ export function StudioFloor({
             roughness={0.09}
             envMapIntensity={1.8}
           />
-          {/* Vertical white riser skirt */}
+          {/* Vertical white riser skirt (Lit by dynamic blue/red global cove lighting, soft non-glaring off-white) */}
           <meshStandardMaterial
             attach="material-1"
-            color="#ffffff"
-            roughness={0.25}
-            metalness={0.10}
+            color="#b8c4d0"
+            emissive={ringColor}
+            emissiveIntensity={0.35}
+            roughness={0.45}
+            metalness={0.05}
           />
         </mesh>
       </group>
@@ -851,18 +845,6 @@ export function StudioFloor({
 
       <mesh geometry={rightDaisCoveTrimGeom}>
         <meshStandardMaterial color="#0b1220" metalness={0.20} roughness={0.25} />
-      </mesh>
-
-      {/* Continuous Floor Wash Ribbon on Right Side */}
-      <mesh geometry={coveRightFloorGlowGeom}>
-        <meshBasicMaterial
-          color={ringColor}
-          vertexColors
-          transparent
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false}
-        />
       </mesh>
 
       {/* Global Diffuse Overhead Fill Light for Right Stage Cluster (Synchronized with stage lighting color) */}

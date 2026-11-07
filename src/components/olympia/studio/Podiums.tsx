@@ -1935,7 +1935,7 @@ export function McPresenters({
         const rawT = elapsedEntrance / 6500;
         const u = rawT * rawT * (3 - 2 * rawT);
 
-        isWalking = true;
+        isWalking = u > 0.02 && u < 0.98;
         walkPhase = u * Math.PI * 14;
 
         const kvMid = [(KV_CENTER_POS[0] + KV_DESK_POS[0]) / 2 + 0.20, 0.16, (KV_CENTER_POS[2] + KV_DESK_POS[2]) / 2];
@@ -3468,7 +3468,7 @@ function CenterTechFloorGraphic({
       {/* Expanding Ripple Pulse */}
       <group ref={rippleRef}>
         <mesh renderOrder={9.4}>
-          <ringGeometry args={[0.95, 1.0, 48]} />
+          <ringGeometry args={[0.95, 1.0, 96]} />
           <meshBasicMaterial
             color="#67e8f9"
             transparent
@@ -3483,6 +3483,48 @@ function CenterTechFloorGraphic({
       </group>
     </group>
   );
+}
+
+/**
+ * Procedural Segmented Circular Track Geometry (VTV3 Olympia Racetrack Dashes):
+ * Generates radial white dashes/ticks along the outer circumference of the center dais.
+ */
+function createSegmentedTrackGeometry(
+  innerR = 2.24,
+  outerR = 2.38,
+  count = 36,
+  dutyCycle = 0.65
+): THREE.BufferGeometry {
+  const geom = new THREE.BufferGeometry();
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const arcPerStep = (Math.PI * 2) / count;
+  const dashArc = arcPerStep * dutyCycle;
+
+  let vIdx = 0;
+  for (let i = 0; i < count; i++) {
+    const startA = i * arcPerStep;
+    const endA = startA + dashArc;
+    const steps = 4;
+    for (let s = 0; s <= steps; s++) {
+      const a = startA + (s / steps) * (endA - startA);
+      const cosA = Math.cos(a);
+      const sinA = Math.sin(a);
+      positions.push(innerR * cosA, innerR * sinA, 0);
+      positions.push(outerR * cosA, outerR * sinA, 0);
+    }
+    for (let s = 0; s < steps; s++) {
+      const b = vIdx + s * 2;
+      indices.push(b, b + 1, b + 2);
+      indices.push(b + 1, b + 3, b + 2);
+    }
+    vIdx += (steps + 1) * 2;
+  }
+
+  geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geom.setIndex(indices);
+  geom.computeVertexNormals();
+  return geom;
 }
 
 export function CenterFloorStage({
@@ -3618,12 +3660,76 @@ export function CenterFloorStage({
 
   const activeWreathTex = laurelTex || fallbackTex;
 
+  // Authentic VTV3 Olympia Segmented White Track Markings (36 radial dashes)
+  const segmentedTrackGeom = useMemo(() => createSegmentedTrackGeometry(2.24, 2.38, 36, 0.65), []);
+
   return (
     <group position={[0, 0.188, -0.5]}>
-      {/* ── 1. CONCENTRIC STAGE ARCHITECTURE (Elevated Y >= 0.186m, Z-fighting eliminated) ── */}
-      {/* Outer Polished Metallic Bezel (R = 2.25m) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
-        <ringGeometry args={[2.22, 2.30, 64]} />
+      {/* ── 0. 3D ELEVATED CYLINDRICAL DAIS WITH SOLID WHITE RISER SKIRT (VTV3 BROADCAST REQUIREMENT) ── */}
+      {/* Vertical Circular Skirt / Riser (H = 0.188m, R = 2.45m, Solid Satin White #ffffff) */}
+      <mesh position={[0, -0.094, 0]}>
+        <cylinderGeometry args={[2.45, 2.45, 0.188, 128, 1, true]} />
+        <meshStandardMaterial
+          color="#ffffff"
+          roughness={0.25}
+          metalness={0.10}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Ground-Level Neon Contour Ring at dais base (Y = -0.176m ~ ground Y = 0.012m) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.176, 0]}>
+        <ringGeometry args={[2.44, 2.48, 128]} />
+        <meshBasicMaterial
+          color={neonColor}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
+      </mesh>
+
+      {/* Upper Perimeter Neon Contour Ring at top rim (Y = -0.002m ~ dais upper edge) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.002, 0]}>
+        <ringGeometry args={[2.44, 2.48, 128]} />
+        <meshBasicMaterial
+          color={neonColor}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
+      </mesh>
+
+      {/* Elevated High-Gloss Stage Deck (Full 2.45m Top Disc, Deep Midnight #020617) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.000, 0]} renderOrder={9.1}>
+        <circleGeometry args={[2.45, 128]} />
+        <meshStandardMaterial
+          color="#020617"
+          roughness={0.07}
+          metalness={0.10}
+          envMapIntensity={2.8}
+        />
+      </mesh>
+
+      {/* Outer Segmented White Racetrack Markings (36 Radial White Dashes R = 2.24m to 2.38m) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0015, 0]} geometry={segmentedTrackGeom} renderOrder={9.3}>
+        <meshBasicMaterial
+          color="#ffffff"
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
+      </mesh>
+
+      {/* ── 1. CONCENTRIC STAGE ARCHITECTURE (High Resolution 128 Segments, Zero Moire / Sawtooth) ── */}
+      {/* Outer Polished Metallic Bezel (R = 2.16m to 2.22m) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]} renderOrder={9.4}>
+        <ringGeometry args={[2.16, 2.22, 128]} />
         <meshStandardMaterial
           color="#cbd5e1"
           metalness={0.9}
@@ -3634,9 +3740,9 @@ export function CenterFloorStage({
         />
       </mesh>
 
-      {/* Outer LED Broadcast Strip (R = 2.10m) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]}>
-        <ringGeometry args={[2.08, 2.14, 64]} />
+      {/* Primary Outer LED Broadcast Strip (R = 2.08m to 2.14m) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0025, 0]} renderOrder={9.45}>
+        <ringGeometry args={[2.08, 2.14, 128]} />
         <meshBasicMaterial
           color={neonColor}
           toneMapped={false}
@@ -3647,9 +3753,9 @@ export function CenterFloorStage({
         />
       </mesh>
 
-      {/* Middle Accent Ring (R = 1.80m: shifts dynamically with stage lighting) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]}>
-        <ringGeometry args={[1.78, 1.84, 64]} />
+      {/* Middle Accent Ring (R = 1.76m to 1.82m) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]} renderOrder={9.45}>
+        <ringGeometry args={[1.76, 1.82, 128]} />
         <meshBasicMaterial
           color={accentColor}
           toneMapped={false}
@@ -3660,14 +3766,14 @@ export function CenterFloorStage({
         />
       </mesh>
 
-      {/* Inner Subtle Neon Guide (R = 1.45m) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0035, 0]}>
-        <ringGeometry args={[1.42, 1.46, 64]} />
+      {/* Inner Subtle Neon Guide (R = 1.42m to 1.46m) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0035, 0]} renderOrder={9.45}>
+        <ringGeometry args={[1.42, 1.46, 128]} />
         <meshBasicMaterial
           color={neonColor}
           toneMapped={false}
           transparent
-          opacity={0.7}
+          opacity={0.75}
           depthWrite={false}
           polygonOffset
           polygonOffsetFactor={-2}
@@ -3676,8 +3782,8 @@ export function CenterFloorStage({
       </mesh>
 
       {/* Dark Ultra-Gloss Center Floor Disc (R = 1.40m, pure dark floor disc #020510) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]} renderOrder={9}>
-        <circleGeometry args={[1.40, 64]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]} renderOrder={9.5}>
+        <circleGeometry args={[1.40, 128]} />
         <meshStandardMaterial
           color="#020510"
           roughness={0.06}
@@ -3693,7 +3799,7 @@ export function CenterFloorStage({
       <group ref={outerLaserArcsRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0038, 0]}>
         {/* Symmetrical Twin Opposing Laser Arcs on Outer Cyan Ring (R = 2.07m to 2.15m) */}
         <mesh renderOrder={9.6}>
-          <ringGeometry args={[2.07, 2.15, 64, 1, 0, (80 * Math.PI) / 180]} />
+          <ringGeometry args={[2.07, 2.15, 128, 1, 0, (80 * Math.PI) / 180]} />
           <meshBasicMaterial
             color={neonColor}
             transparent
@@ -3707,7 +3813,7 @@ export function CenterFloorStage({
           />
         </mesh>
         <mesh rotation={[0, 0, Math.PI]} renderOrder={9.6}>
-          <ringGeometry args={[2.07, 2.15, 64, 1, 0, (80 * Math.PI) / 180]} />
+          <ringGeometry args={[2.07, 2.15, 128, 1, 0, (80 * Math.PI) / 180]} />
           <meshBasicMaterial
             color={neonColor}
             transparent
@@ -3723,7 +3829,7 @@ export function CenterFloorStage({
 
         {/* Counter-aligned Opposing Laser Arcs on Middle Accent Ring (R = 1.77m to 1.85m) */}
         <mesh rotation={[0, 0, Math.PI / 2]} renderOrder={9.6}>
-          <ringGeometry args={[1.77, 1.85, 64, 1, 0, (65 * Math.PI) / 180]} />
+          <ringGeometry args={[1.77, 1.85, 128, 1, 0, (65 * Math.PI) / 180]} />
           <meshBasicMaterial
             color={accentColor}
             transparent
@@ -3737,7 +3843,7 @@ export function CenterFloorStage({
           />
         </mesh>
         <mesh rotation={[0, 0, (3 * Math.PI) / 2]} renderOrder={9.6}>
-          <ringGeometry args={[1.77, 1.85, 64, 1, 0, (65 * Math.PI) / 180]} />
+          <ringGeometry args={[1.77, 1.85, 128, 1, 0, (65 * Math.PI) / 180]} />
           <meshBasicMaterial
             color={accentColor}
             transparent

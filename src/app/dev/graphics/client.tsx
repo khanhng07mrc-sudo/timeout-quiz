@@ -433,7 +433,14 @@ export function DevGraphicsClient() {
                     state={{
                       ...mockState,
                       stage: "playing",
-                      introTimer: { startedAt: Date.now() - 11000, totalMs: 15000, remainingMs: 4000 },
+                      entranceState: {
+                        active: true,
+                        startedAt: Date.now() + 999999999,
+                        currentSeatIdx: 0,
+                        seatStartedAt: Date.now(),
+                        seatGestures: [],
+                      },
+                      introTimer: undefined,
                     }}
                     serverNow={serverNow}
                     activeCamera={1}

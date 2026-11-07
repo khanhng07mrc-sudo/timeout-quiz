@@ -707,14 +707,23 @@ export function StudioFloor({
         />
       </mesh>
 
-      {/* ── 2. UNIFIED DAIS PLATFORM (Khối sàn liên tục duy nhất tích hợp cung cong lồi vươn về khán giả) ── */}
+      {/* ── 2. UNIFIED DAIS PLATFORM (Khối sàn nhô cao với thành đứng riser màu trắng chuẩn VTV3) ── */}
       <group position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <mesh geometry={unifiedDaisGeom}>
+          {/* Top & bottom faces (High-gloss dark midnight broadcast acrylic) */}
           <meshStandardMaterial
+            attach="material-0"
             color="#020510"
             roughness={0.07}
             metalness={0.04}
             envMapIntensity={2.5}
+          />
+          {/* Vertical riser skirt (Solid pure white studio fascia #ffffff) */}
+          <meshStandardMaterial
+            attach="material-1"
+            color="#ffffff"
+            roughness={0.25}
+            metalness={0.10}
           />
         </mesh>
       </group>
@@ -732,29 +741,8 @@ export function StudioFloor({
         <meshBasicMaterial color={ringColor} />
       </mesh>
 
-      {/* Concentric Neon Rings on Main Stage Floor */}
-      <mesh position={[0, 0.186, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[2.55, 2.62, 64]} />
-        <meshBasicMaterial
-          color={ringColor}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-          polygonOffset
-          polygonOffsetFactor={-2}
-          polygonOffsetUnits={-2}
-        />
-      </mesh>
-      <mesh position={[0, 0.186, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[2.75, 2.80, 64]} />
-        <meshBasicMaterial
-          color={ringColor}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-          polygonOffset
-          polygonOffsetFactor={-2}
-          polygonOffsetUnits={-2}
-        />
-      </mesh>
+      {/* Note: Center stage graphics, white dais riser skirt, segmented racetrack dashes, and concentric neon rings
+          are managed cleanly and exclusively by CenterFloorStage in Podiums.tsx to prevent z-fighting and depth-clipping. */}
 
       {/* ── 2B. LAUREL WREATH VITRINE PROTRUSION LIGHTING ── */}
       {/* Upward Floor Light illuminating Laurel Wreath Cloche from base plinth */}
@@ -778,15 +766,24 @@ export function StudioFloor({
 
       {/* Redundant lower floor laurel decal removed to prevent z-fighting and bleed-through. Official floor decal is managed exclusively by CenterFloorStage with full transition control. */}
 
-      {/* ── 4. RAISED CONTESTANT DAIS PLATFORM (+8cm step, Y = 0.22m) ── */}
+      {/* ── 4. RAISED CONTESTANT DAIS PLATFORM (+8cm step, Y = 0.22m, White Riser Skirt) ── */}
       {/* Curved dais elevating contestant stations proudly above central stage */}
       <group position={[0, 0, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
         <mesh geometry={daisGeometry}>
+          {/* Top & bottom surfaces */}
           <meshStandardMaterial
+            attach="material-0"
             color="#030718"
             metalness={0.05}
             roughness={0.09}
             envMapIntensity={1.8}
+          />
+          {/* Vertical white riser skirt matching studio aesthetic */}
+          <meshStandardMaterial
+            attach="material-1"
+            color="#ffffff"
+            roughness={0.25}
+            metalness={0.10}
           />
         </mesh>
       </group>
@@ -825,11 +822,20 @@ export function StudioFloor({
       {/* ── 4C. STAGE-RIGHT RAISED PLATFORM & COVE LIGHTING (ĐÈN KHE TOÀN CỤC BÊN PHẢI) ── */}
       <group position={[0, 0, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
         <mesh geometry={rightDaisGeometry}>
+          {/* Top & bottom surfaces */}
           <meshStandardMaterial
+            attach="material-0"
             color="#030718"
             metalness={0.05}
             roughness={0.09}
             envMapIntensity={1.8}
+          />
+          {/* Vertical white riser skirt */}
+          <meshStandardMaterial
+            attach="material-1"
+            color="#ffffff"
+            roughness={0.25}
+            metalness={0.10}
           />
         </mesh>
       </group>

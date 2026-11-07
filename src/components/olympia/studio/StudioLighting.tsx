@@ -284,6 +284,7 @@ function createAnnularSectorShape(
 
 /**
  * Creates continuous curved floor wash ribbon geometry with smooth radial falloff.
+ * Outward projection: rIn is the riser seam (peak alpha = 1.0), fading smoothly to rOut (alpha = 0.0).
  * Eliminates discrete pinpoint bulbs; creates unbroken global cove lighting across the entire cluster.
  */
 function createAnnularGlowGeometry(
@@ -291,7 +292,8 @@ function createAnnularGlowGeometry(
   rOut: number,
   startAng: number,
   endAng: number,
-  segments: number = 64
+  segments: number = 64,
+  yFloor: number = 0.005
 ): THREE.BufferGeometry {
   const geom = new THREE.BufferGeometry();
   const positions: number[] = [];
@@ -302,9 +304,10 @@ function createAnnularGlowGeometry(
   for (let rIdx = 0; rIdx <= rings; rIdx++) {
     const rT = rIdx / rings;
     const r = rIn + rT * (rOut - rIn);
-    // Peak under cove lip (rT = 1.0), fading smoothly outwards to the black floor (rT = 0.0)
+    // Peak under cove lip at r = rIn (rT = 0.0, alpha = 1.0),
+    // fading smoothly outwards to the dark floor at r = rOut (rT = 1.0, alpha = 0.0)
     // Neutral monochrome alpha mask so mesh material color dynamically tints the ribbon (Cyan/Red)
-    const alpha = Math.pow(rT, 1.8);
+    const alpha = Math.pow(Math.max(0, 1.0 - rT), 1.8);
     const red = alpha;
     const green = alpha;
     const blue = alpha;
@@ -313,7 +316,7 @@ function createAnnularGlowGeometry(
       const sT = sIdx / segments;
       const ang = startAng + sT * (endAng - startAng);
       const x = Math.cos(ang) * r;
-      const y = 0.005;
+      const y = yFloor;
       const z = -Math.sin(ang) * r - 0.5;
 
       positions.push(x, y, z);
@@ -460,11 +463,29 @@ function createUnifiedDaisShape(): {
 }
 
 /**
+ * Intermediate Circular Elevated Stage Tier Specification (Concentric Ring Architecture):
+ * - Height: 0.065m (stepped down from dais Y = 0.188m to floor Y = 0.000m)
+ * - Inner Radius: 2.45m, Outer Radius: 3.50m (unbroken 360-degree ring step)
+ * - Vertical Studio Pure White Riser Skirt (#f8fafc) with dynamic broadcast hue
+ * - High-Gloss Dark Obsidian Top Deck (#020510)
+ */
+export const STAGE_INTERMEDIATE_TIER_CONFIG = {
+  innerRadius: 2.45,
+  outerRadius: 3.50,
+  height: 0.065,
+  elevationY: 0.065,
+  center: [0.0, -0.5] as [number, number],
+  sweepAngle: 2 * Math.PI,
+  riserColor: "#f8fafc",
+  deckColor: "#020510",
+};
+
+/**
  * Stage Floor Architecture:
- * - High-Gloss Deep Navy Broadcast Floor Disc
- * - UNIFIED DAIS PLATFORM (Khối sàn liên tục duy nhất tích hợp cung cong lồi vươn về khán giả)
- * - Continuous glowing perimeter neon contour ribbon running along the entire boundary
- * - Official Olympia 2016 golden laurel wreath floor decal
+ * - High-Gloss Deep Obsidian Broadcast Floor Disc
+ * - Intermediate Circular Elevated Tier (H = 0.065m, R = 3.50m)
+ * - Cove floor wash ribbons with outward radial falloff
+ * - Dedicated Laurel Wreath Vitrine pedestal plinth (Y = 0.180m)
  */
 export function StudioFloor({
   stageFadeProgress = 0,
@@ -541,53 +562,56 @@ export function StudioFloor({
     return tex;
   }, [wreathCanvas]);
 
-  // Unified Dais Platform Shape & Perimeter Contours
-  const { shape: unifiedDaisShape, perimeterPoints: daisPerimeterPts, lobePoints: daisLobePts } = useMemo(
-    () => createUnifiedDaisShape(),
+  // ─────────────────────────────────────────────────────────────────────────
+  // INTERMEDIATE CIRCULAR ELEVATED TIER (R1 Broadcast Architecture)
+  // Height H = 0.065m (~1/3 dais 0.188m), concentric at [0, -0.5], Rin = 2.45m, Rout = 3.50m
+  // ─────────────────────────────────────────────────────────────────────────
+  const intermediateTierRiserGeom = useMemo(
+    () => new THREE.CylinderGeometry(3.50, 3.50, 0.065, 128, 1, true),
     []
   );
 
-  const unifiedDaisGeom = useMemo(
-    () =>
-      new THREE.ExtrudeGeometry(unifiedDaisShape, {
-        depth: 0.18,
-        bevelEnabled: true,
-        bevelSegments: 3,
-        steps: 1,
-        bevelSize: 0.03,
-        bevelThickness: 0.02,
-      }),
-    [unifiedDaisShape]
+  const intermediateTierDeckGeom = useMemo(
+    () => new THREE.RingGeometry(2.45, 3.50, 128),
+    []
   );
 
-  // 3D Tube Neon Contour Ribbon along the unified dais upper rim (Y = 0.185m)
-  const daisPerimeterTube = useMemo(() => {
-    const pts = daisPerimeterPts.map((p) => new THREE.Vector3(p.x, 0.185, p.z));
-    const curve = new THREE.CatmullRomCurve3(pts, true, "centripetal");
-    return new THREE.TubeGeometry(curve, 128, 0.025, 8, true);
-  }, [daisPerimeterPts]);
+  const intermediateTierRimTrimGeom = useMemo(
+    () => new THREE.RingGeometry(3.485, 3.515, 128),
+    []
+  );
 
-  // Lower Ground-Level Step-Light Tube (Y = 0.022m)
-  const daisBaseTube = useMemo(() => {
-    const pts = daisPerimeterPts.map((p) => new THREE.Vector3(p.x, 0.022, p.z));
-    const curve = new THREE.CatmullRomCurve3(pts, true, "centripetal");
-    return new THREE.TubeGeometry(curve, 128, 0.016, 8, true);
-  }, [daisPerimeterPts]);
+  const intermediateTierBaseTrimGeom = useMemo(
+    () => new THREE.RingGeometry(3.485, 3.515, 128),
+    []
+  );
 
-  // Intense 3D Tube specifically hugging the Protrusion Lobe (Y = 0.188m)
-  const daisLobeTube = useMemo(() => {
-    const pts = daisLobePts.map((p) => new THREE.Vector3(p.x, 0.188, p.z));
-    const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal");
-    return new THREE.TubeGeometry(curve, 48, 0.036, 8, false);
-  }, [daisLobePts]);
+  // Dedicated Laurel Wreath Vitrine Pedestal Plinth at [1.80, 0.09, 2.60] (Y = 0.180m top)
+  const vitrinePlinthGeom = useMemo(
+    () => new THREE.CylinderGeometry(0.55, 0.55, 0.18, 48),
+    []
+  );
+  const vitrinePlinthRimTrimGeom = useMemo(
+    () => new THREE.RingGeometry(0.535, 0.565, 48),
+    []
+  );
+  const vitrinePlinthBaseTrimGeom = useMemo(
+    () => new THREE.RingGeometry(0.535, 0.565, 48),
+    []
+  );
 
-  // 5 Embedded Floor Uplight Pucks along the Protrusion Lobe curve
-  const lobePuckPositions = useMemo(() => {
-    const indices = [4, 11, 18, 25, 32];
-    return indices
-      .filter((idx) => idx < daisLobePts.length)
-      .map((idx) => daisLobePts[idx]);
-  }, [daisLobePts]);
+  // Cove Floor Wash Ribbons (Outward projecting dynamic colored wash with 1.8 polynomial falloff)
+  // 1. Intermediate Tier Cove Wash: R = 3.50m -> 4.15m outward onto glossy floor
+  const coveIntermediateFloorGlowGeom = useMemo(
+    () => createAnnularGlowGeometry(3.50, 4.15, 0, Math.PI * 2, 64, 0.005),
+    []
+  );
+
+  // 2. Central Dais Cove Wash: R = 2.45m -> 2.85m outward onto intermediate deck
+  const coveCenterFloorGlowGeom = useMemo(
+    () => createAnnularGlowGeometry(2.45, 2.85, 0, Math.PI * 2, 64, 0.075),
+    []
+  );
 
   // Raised Contestant Dais Extruded Geometry (Y = 0.22m for 4 to 8 contestants)
   const daisGeometry = useMemo(() => {
@@ -633,7 +657,7 @@ export function StudioFloor({
 
   // Continuous Global Floor Cove Light Glow Ribbons (Unbroken luminous cyan sheets)
   const coveLeftFloorGlowGeom = useMemo(
-    () => createAnnularGlowGeometry(4.20, 5.25, 0.50 * Math.PI, 1.10 * Math.PI, 64),
+    () => createAnnularGlowGeometry(5.20, 4.20, 0.50 * Math.PI, 1.10 * Math.PI, 64, 0.005),
     []
   );
 
@@ -684,7 +708,7 @@ export function StudioFloor({
   }, [rightStepLightPoints]);
 
   const coveRightFloorGlowGeom = useMemo(
-    () => createAnnularGlowGeometry(4.20, 5.25, -0.08 * Math.PI, 0.48 * Math.PI, 64),
+    () => createAnnularGlowGeometry(5.20, 4.20, -0.08 * Math.PI, 0.48 * Math.PI, 64, 0.005),
     []
   );
 
@@ -696,51 +720,158 @@ export function StudioFloor({
 
   return (
     <group position={[0, -0.01, 0]}>
-      {/* ── 1. MAIN GLOSSY MIDNIGHT SAPPHIRE BROADCAST FLOOR DISC (MICA/ACRYLIC) ── */}
+      {/* ── 1. MAIN GLOSSY MIDNIGHT OBSIDIAN BROADCAST FLOOR DISC (MICA/ACRYLIC) ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[26, quality === "LIGHT" ? 32 : 64]} />
         <meshStandardMaterial
-          color="#030818"
-          roughness={0.09}
-          metalness={0.12}
+          color="#01040e"
+          roughness={0.06}
+          metalness={0.18}
           envMapIntensity={2.8}
         />
       </mesh>
 
-      {/* ── 2. UNIFIED DAIS PLATFORM (Khối sàn nhô cao với thành đứng riser màu trắng chuẩn VTV3) ── */}
-      <group position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <mesh geometry={unifiedDaisGeom}>
-          {/* Top & bottom faces (High-gloss dark midnight broadcast acrylic) */}
+      {/* ── 2. INTERMEDIATE CIRCULAR ELEVATED TIER (H = 0.065m, R = 3.50m, Concentric at [0, -0.5]) ── */}
+      <group position={[0, 0.01, -0.5]}>
+        {/* Vertical White Riser Skirt (Spans Y = 0.000m to 0.065m with dynamic broadcast hue) */}
+        <mesh position={[0, 0.0325, 0]}>
+          <primitive object={intermediateTierRiserGeom} attach="geometry" />
           <meshStandardMaterial
-            attach="material-0"
-            color="#020510"
-            roughness={0.07}
-            metalness={0.04}
-            envMapIntensity={2.5}
-          />
-          {/* Vertical riser skirt (Soft studio off-white with dynamic blue/red broadcast emissive tint) */}
-          <meshStandardMaterial
-            attach="material-1"
-            color="#b8c4d0"
+            color="#f8fafc"
             emissive={ringColor}
-            emissiveIntensity={0.28}
-            roughness={0.45}
+            emissiveIntensity={0.60}
+            roughness={0.20}
             metalness={0.05}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Top Deck Surface (Annular ring Rin = 2.45m to Rout = 3.50m at Y = 0.065m, High-gloss dark obsidian) */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.065, 0]}>
+          <primitive object={intermediateTierDeckGeom} attach="geometry" />
+          <meshStandardMaterial
+            color="#020510"
+            roughness={0.08}
+            metalness={0.10}
+            envMapIntensity={2.8}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Upper Rim Neon Contour Trim (Y = 0.0655m) */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0655, 0]}>
+          <primitive object={intermediateTierRimTrimGeom} attach="geometry" />
+          <meshBasicMaterial
+            color={ringColor}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+          />
+        </mesh>
+
+        {/* Lower Base Neon Contour Trim (Y = 0.008m) */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.008, 0]}>
+          <primitive object={intermediateTierBaseTrimGeom} attach="geometry" />
+          <meshBasicMaterial
+            color={ringColor}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
           />
         </mesh>
       </group>
 
-      {/* 3D Glowing Perimeter Neon Tube Ribbon (Upper Rim at Y = 0.185m) */}
-      <mesh geometry={daisPerimeterTube}>
-        <meshBasicMaterial color={ringColor} />
+      {/* ── 2B. LAUREL WREATH VITRINE PEDESTAL PLINTH (Base elevation Y = 0.18m for vitrine reveal contract) ── */}
+      <group position={[1.80, 0.01, 2.60]}>
+        <mesh position={[0, 0.09, 0]}>
+          <primitive object={vitrinePlinthGeom} attach="geometry" />
+          <meshStandardMaterial
+            attach="material-0"
+            color="#f8fafc"
+            emissive={ringColor}
+            emissiveIntensity={0.60}
+            roughness={0.20}
+            metalness={0.05}
+            side={THREE.DoubleSide}
+          />
+          <meshStandardMaterial
+            attach="material-1"
+            color="#020510"
+            roughness={0.08}
+            metalness={0.10}
+            envMapIntensity={2.8}
+          />
+          <meshStandardMaterial
+            attach="material-2"
+            color="#020510"
+            roughness={0.08}
+            metalness={0.10}
+            envMapIntensity={2.8}
+          />
+        </mesh>
+        {/* Plinth Upper Glowing Neon Trim (Y = 0.181m) */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.181, 0]}>
+          <primitive object={vitrinePlinthRimTrimGeom} attach="geometry" />
+          <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} depthWrite={false} polygonOffset polygonOffsetFactor={-2} />
+        </mesh>
+        {/* Plinth Base Neon Trim (Y = 0.008m) */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.008, 0]}>
+          <primitive object={vitrinePlinthBaseTrimGeom} attach="geometry" />
+          <meshBasicMaterial color={ringColor} side={THREE.DoubleSide} depthWrite={false} polygonOffset polygonOffsetFactor={-2} />
+        </mesh>
+      </group>
+
+      {/* ── 3. COVE FLOOR WASH RIBBONS ("ĐÈN PHÁT RA BÊN NGOÀI BỤC TRẮNG") ── */}
+      {/* 3A. Central Dais Cove Wash (R = 2.45m -> 2.85m outward onto intermediate tier deck) */}
+      <mesh geometry={coveCenterFloorGlowGeom}>
+        <meshBasicMaterial
+          color={ringColor}
+          vertexColors
+          transparent
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
       </mesh>
-      {/* 3D Lower Base Neon Tube (Y = 0.022m) */}
-      <mesh geometry={daisBaseTube}>
-        <meshBasicMaterial color={ringColor} />
+
+      {/* 3B. Intermediate Circular Tier Cove Wash (R = 3.50m -> 4.15m outward onto glossy floor) */}
+      <mesh geometry={coveIntermediateFloorGlowGeom}>
+        <meshBasicMaterial
+          color={ringColor}
+          vertexColors
+          transparent
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
       </mesh>
-      {/* Intense Glowing Neon Lip specifically along the Laurel Wreath Protrusion Lobe */}
-      <mesh geometry={daisLobeTube}>
-        <meshBasicMaterial color={ringColor} />
+
+      {/* 3C. Contestant Dais Cove Wash (R = 5.20m -> 4.20m projecting inward onto floor) */}
+      <mesh geometry={coveLeftFloorGlowGeom}>
+        <meshBasicMaterial
+          color={ringColor}
+          vertexColors
+          transparent
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* 3D. Stage-Right Platform Cove Wash (R = 5.20m -> 4.20m projecting inward onto floor) */}
+      <mesh geometry={coveRightFloorGlowGeom}>
+        <meshBasicMaterial
+          color={ringColor}
+          vertexColors
+          transparent
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
       </mesh>
 
       {/* Note: Center stage graphics, white dais riser skirt, segmented racetrack dashes, and concentric neon rings
@@ -780,13 +911,13 @@ export function StudioFloor({
             roughness={0.09}
             envMapIntensity={1.8}
           />
-          {/* Vertical white riser skirt (Lit by dynamic blue/red global cove lighting, soft non-glaring off-white) */}
+          {/* Vertical white riser skirt (Lit by dynamic blue/red global cove lighting, studio pure white) */}
           <meshStandardMaterial
             attach="material-1"
-            color="#b8c4d0"
+            color="#f8fafc"
             emissive={ringColor}
-            emissiveIntensity={0.35}
-            roughness={0.45}
+            emissiveIntensity={0.60}
+            roughness={0.20}
             metalness={0.05}
           />
         </mesh>
@@ -822,13 +953,13 @@ export function StudioFloor({
             roughness={0.09}
             envMapIntensity={1.8}
           />
-          {/* Vertical white riser skirt (Lit by dynamic blue/red global cove lighting, soft non-glaring off-white) */}
+          {/* Vertical white riser skirt (Lit by dynamic blue/red global cove lighting, studio pure white) */}
           <meshStandardMaterial
             attach="material-1"
-            color="#b8c4d0"
+            color="#f8fafc"
             emissive={ringColor}
-            emissiveIntensity={0.35}
-            roughness={0.45}
+            emissiveIntensity={0.60}
+            roughness={0.20}
             metalness={0.05}
           />
         </mesh>
@@ -2952,12 +3083,12 @@ export function StudioLighting({
   }, [audienceFadeProgress]);
 
   // Ambient & Key Light Intensity Factors (Controlled Studio Contrast)
-  // Standby illumination baseline: ambient floor 0.35 (#223a66 -> #e0f2fe), smoothly ramping to 1.0 on match start
-  const targetAmbient = (isVeDichDimmed ? 0.22 : 0.45) * introDimFactor;
-  const ambientIntensity = THREE.MathUtils.lerp(0.35, targetAmbient, liveFactor);
+  // Standby illumination baseline tuned to 0.24 - 0.28 (deep navy #162848) so the floor stays rich pitch black with mirror-like specular reflections
+  const targetAmbient = (isVeDichDimmed ? 0.18 : 0.26) * introDimFactor;
+  const ambientIntensity = THREE.MathUtils.lerp(0.25, targetAmbient, liveFactor);
   const ambientColor = useMemo(() => {
-    const c = new THREE.Color("#223a66");
-    c.lerp(new THREE.Color("#e0f2fe"), liveFactor);
+    const c = new THREE.Color("#162848");
+    c.lerp(new THREE.Color("#1e3a6a"), liveFactor);
     return c;
   }, [liveFactor]);
 

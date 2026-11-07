@@ -1495,14 +1495,13 @@ export function ContestantPodium({
     []
   );
 
-  // Smooth buzzer pop animation
+  // Smooth buzzer pop animation (zero-allocation per frame)
   useFrame((_, delta) => {
     if (buzzerDomeRef.current) {
       const targetScale = isBuzzed ? 1.15 : 1.0;
-      buzzerDomeRef.current.scale.lerp(
-        new THREE.Vector3(targetScale, targetScale, targetScale),
-        delta * 14
-      );
+      const curScale = buzzerDomeRef.current.scale.x;
+      const newScale = THREE.MathUtils.lerp(curScale, targetScale, delta * 14);
+      buzzerDomeRef.current.scale.setScalar(newScale);
     }
     if (haloRef.current) {
       const targetOpacity = isBuzzed ? 0.9 : 0.0;
@@ -1918,8 +1917,12 @@ export function McPresenters({
     const isIntro = Boolean(introStartedAt || state?.introTimer);
     const hasEntranceCompleted = Boolean(state?.entranceCompleted);
 
-    let kvPos: [number, number, number] = [...KV_DESK_POS];
-    let nhPos: [number, number, number] = [...NH_DESK_POS];
+    let kvX = KV_DESK_POS[0];
+    let kvY = KV_DESK_POS[1];
+    let kvZ = KV_DESK_POS[2];
+    let nhX = NH_DESK_POS[0];
+    let nhY = NH_DESK_POS[1];
+    let nhZ = NH_DESK_POS[2];
     let kvRotY = -0.28;
     let nhRotY = -0.28;
     let isWalking = false;
@@ -1938,30 +1941,31 @@ export function McPresenters({
         isWalking = u > 0.02 && u < 0.98;
         walkPhase = u * Math.PI * 14;
 
-        const kvMid = [(KV_CENTER_POS[0] + KV_DESK_POS[0]) / 2 + 0.20, 0.16, (KV_CENTER_POS[2] + KV_DESK_POS[2]) / 2];
-        const nhMid = [(NH_CENTER_POS[0] + NH_DESK_POS[0]) / 2 + 0.15, 0.16, (NH_CENTER_POS[2] + NH_DESK_POS[2]) / 2];
+        const kvMidX = (KV_CENTER_POS[0] + KV_DESK_POS[0]) / 2 + 0.20;
+        const kvMidY = 0.16;
+        const kvMidZ = (KV_CENTER_POS[2] + KV_DESK_POS[2]) / 2;
+        const nhMidX = (NH_CENTER_POS[0] + NH_DESK_POS[0]) / 2 + 0.15;
+        const nhMidY = 0.16;
+        const nhMidZ = (NH_CENTER_POS[2] + NH_DESK_POS[2]) / 2;
 
         const w0 = (1 - u) * (1 - u);
         const w1 = 2 * (1 - u) * u;
         const w2 = u * u;
 
-        kvPos = [
-          w0 * KV_CENTER_POS[0] + w1 * kvMid[0] + w2 * KV_DESK_POS[0],
-          w0 * KV_CENTER_POS[1] + w1 * kvMid[1] + w2 * KV_DESK_POS[1],
-          w0 * KV_CENTER_POS[2] + w1 * kvMid[2] + w2 * KV_DESK_POS[2],
-        ];
-        nhPos = [
-          w0 * NH_CENTER_POS[0] + w1 * nhMid[0] + w2 * NH_DESK_POS[0],
-          w0 * NH_CENTER_POS[1] + w1 * nhMid[1] + w2 * NH_DESK_POS[1],
-          w0 * NH_CENTER_POS[2] + w1 * nhMid[2] + w2 * NH_DESK_POS[2],
-        ];
+        kvX = w0 * KV_CENTER_POS[0] + w1 * kvMidX + w2 * KV_DESK_POS[0];
+        kvY = w0 * KV_CENTER_POS[1] + w1 * kvMidY + w2 * KV_DESK_POS[1];
+        kvZ = w0 * KV_CENTER_POS[2] + w1 * kvMidZ + w2 * KV_DESK_POS[2];
 
-        const kvTanX = 2 * (1 - u) * (kvMid[0] - KV_CENTER_POS[0]) + 2 * u * (KV_DESK_POS[0] - kvMid[0]);
-        const kvTanZ = 2 * (1 - u) * (kvMid[2] - KV_CENTER_POS[2]) + 2 * u * (KV_DESK_POS[2] - kvMid[2]);
+        nhX = w0 * NH_CENTER_POS[0] + w1 * nhMidX + w2 * NH_DESK_POS[0];
+        nhY = w0 * NH_CENTER_POS[1] + w1 * nhMidY + w2 * NH_DESK_POS[1];
+        nhZ = w0 * NH_CENTER_POS[2] + w1 * nhMidZ + w2 * NH_DESK_POS[2];
+
+        const kvTanX = 2 * (1 - u) * (kvMidX - KV_CENTER_POS[0]) + 2 * u * (KV_DESK_POS[0] - kvMidX);
+        const kvTanZ = 2 * (1 - u) * (kvMidZ - KV_CENTER_POS[2]) + 2 * u * (KV_DESK_POS[2] - kvMidZ);
         const kvWalkAngle = Math.atan2(kvTanX, kvTanZ);
 
-        const nhTanX = 2 * (1 - u) * (nhMid[0] - NH_CENTER_POS[0]) + 2 * u * (NH_DESK_POS[0] - nhMid[0]);
-        const nhTanZ = 2 * (1 - u) * (nhMid[2] - NH_CENTER_POS[2]) + 2 * u * (NH_DESK_POS[2] - nhMid[2]);
+        const nhTanX = 2 * (1 - u) * (nhMidX - NH_CENTER_POS[0]) + 2 * u * (NH_DESK_POS[0] - nhMidX);
+        const nhTanZ = 2 * (1 - u) * (nhMidZ - NH_CENTER_POS[2]) + 2 * u * (NH_DESK_POS[2] - nhMidZ);
         const nhWalkAngle = Math.atan2(nhTanX, nhTanZ);
 
         if (u < 0.15) {
@@ -1977,8 +1981,12 @@ export function McPresenters({
           nhRotY = nhWalkAngle;
         }
       } else {
-        kvPos = [...KV_DESK_POS];
-        nhPos = [...NH_DESK_POS];
+        kvX = KV_DESK_POS[0];
+        kvY = KV_DESK_POS[1];
+        kvZ = KV_DESK_POS[2];
+        nhX = NH_DESK_POS[0];
+        nhY = NH_DESK_POS[1];
+        nhZ = NH_DESK_POS[2];
         kvRotY = -0.28;
         nhRotY = -0.28;
         isWalking = false;
@@ -2000,16 +2008,13 @@ export function McPresenters({
         const w1 = 2 * (1 - u) * u;
         const w2 = u * u;
 
-        kvPos = [
-          w0 * KV_CONCEAL_POS[0] + w1 * KV_WAYPOINT[0] + w2 * KV_DESK_POS[0],
-          KV_DESK_POS[1],
-          w0 * KV_CONCEAL_POS[2] + w1 * KV_WAYPOINT[2] + w2 * KV_DESK_POS[2],
-        ];
-        nhPos = [
-          w0 * NH_CONCEAL_POS[0] + w1 * NH_WAYPOINT[0] + w2 * NH_DESK_POS[0],
-          NH_DESK_POS[1],
-          w0 * NH_CONCEAL_POS[2] + w1 * NH_WAYPOINT[2] + w2 * NH_DESK_POS[2],
-        ];
+        kvX = w0 * KV_CONCEAL_POS[0] + w1 * KV_WAYPOINT[0] + w2 * KV_DESK_POS[0];
+        kvY = KV_DESK_POS[1];
+        kvZ = w0 * KV_CONCEAL_POS[2] + w1 * KV_WAYPOINT[2] + w2 * KV_DESK_POS[2];
+
+        nhX = w0 * NH_CONCEAL_POS[0] + w1 * NH_WAYPOINT[0] + w2 * NH_DESK_POS[0];
+        nhY = NH_DESK_POS[1];
+        nhZ = w0 * NH_CONCEAL_POS[2] + w1 * NH_WAYPOINT[2] + w2 * NH_DESK_POS[2];
 
         // Heading follows path tangent
         const kvTanX = 2 * (1 - u) * (KV_WAYPOINT[0] - KV_CONCEAL_POS[0]) + 2 * u * (KV_DESK_POS[0] - KV_WAYPOINT[0]);
@@ -2033,8 +2038,12 @@ export function McPresenters({
         }
       } else if (elapsedIntro < 4000) {
         // Phase 2 (3.2s -> 4.0s): Arrived at desk, natural high-five greeting between inner arms
-        kvPos = [...KV_DESK_POS];
-        nhPos = [...NH_DESK_POS];
+        kvX = KV_DESK_POS[0];
+        kvY = KV_DESK_POS[1];
+        kvZ = KV_DESK_POS[2];
+        nhX = NH_DESK_POS[0];
+        nhY = NH_DESK_POS[1];
+        nhZ = NH_DESK_POS[2];
         isWalking = false;
         isGreeting = true;
 
@@ -2044,23 +2053,35 @@ export function McPresenters({
         nhRotY = -0.28 + 0.12 * greetingBell;
       } else {
         // Phase 3 (4.0s onwards): Steady desk hold during wide stage pan and vitrine reveal
-        kvPos = [...KV_DESK_POS];
-        nhPos = [...NH_DESK_POS];
+        kvX = KV_DESK_POS[0];
+        kvY = KV_DESK_POS[1];
+        kvZ = KV_DESK_POS[2];
+        nhX = NH_DESK_POS[0];
+        nhY = NH_DESK_POS[1];
+        nhZ = NH_DESK_POS[2];
         kvRotY = -0.28;
         nhRotY = -0.28;
         isWalking = false;
       }
     } else if (isIdle && !introStartedAt) {
       // Pre-match / idle lobby: MCs concealed behind screen frames
-      kvPos = [...KV_CONCEAL_POS];
-      nhPos = [...NH_CONCEAL_POS];
+      kvX = KV_CONCEAL_POS[0];
+      kvY = KV_CONCEAL_POS[1];
+      kvZ = KV_CONCEAL_POS[2];
+      nhX = NH_CONCEAL_POS[0];
+      nhY = NH_CONCEAL_POS[1];
+      nhZ = NH_CONCEAL_POS[2];
       kvRotY = -0.85;
       nhRotY = 0.35;
       isWalking = false;
     } else {
       // Regular match rounds / post-intro: MCs at desk
-      kvPos = [...KV_DESK_POS];
-      nhPos = [...NH_DESK_POS];
+      kvX = KV_DESK_POS[0];
+      kvY = KV_DESK_POS[1];
+      kvZ = KV_DESK_POS[2];
+      nhX = NH_DESK_POS[0];
+      nhY = NH_DESK_POS[1];
+      nhZ = NH_DESK_POS[2];
       kvRotY = -0.28;
       nhRotY = -0.28;
       isWalking = false;
@@ -2073,11 +2094,11 @@ export function McPresenters({
     const effectiveYOffset = isWalking ? bounce : idleBreathing;
 
     if (kvRef.current) {
-      kvRef.current.position.set(kvPos[0], kvPos[1] + effectiveYOffset, kvPos[2]);
+      kvRef.current.position.set(kvX, kvY + effectiveYOffset, kvZ);
       kvRef.current.rotation.y = kvRotY;
     }
     if (nhRef.current) {
-      nhRef.current.position.set(nhPos[0], nhPos[1] + effectiveYOffset, nhPos[2]);
+      nhRef.current.position.set(nhX, nhY + effectiveYOffset, nhZ);
       nhRef.current.rotation.y = nhRotY;
     }
 
@@ -3547,7 +3568,7 @@ export function CenterFloorStage({
   const wreathGroupRef = useRef<THREE.Group>(null);
   const entryBurstRef = useRef<THREE.Group>(null);
   const outerLaserArcsRef = useRef<THREE.Group>(null);
-  const [entryElapsed, setEntryElapsed] = useState(0);
+  const entryElapsedRef = useRef(0);
 
   const isVeDich = state?.currentRound === "veDich" || state?.roundsPlan?.[state?.roundIdx ?? 0] === "veDich";
 
@@ -3607,17 +3628,23 @@ export function CenterFloorStage({
       }
     }
 
-    // 2. Hiệu ứng bắt đầu (tia sáng / radiant glow burst khi bắt đầu vô phòng)
+    // 2. Hiệu ứng bắt đầu (tia sáng / radiant glow burst khi bắt đầu vô phòng - zero-allocation ref mutation)
     if (entryBurstRef.current) {
-      setEntryElapsed((prev) => {
-        const next = prev + delta;
-        const cycle = (next % 3.0) / 3.0; // 3-second gentle radiant cycle
-        if (entryBurstRef.current) {
-          const s = 0.4 + cycle * 1.8;
-          entryBurstRef.current.scale.set(s, s, s);
-          entryBurstRef.current.rotation.z += delta * 0.2;
+      entryElapsedRef.current += delta;
+      const cycle = (entryElapsedRef.current % 3.0) / 3.0; // 3-second gentle radiant cycle
+      const s = 0.4 + cycle * 1.8;
+      entryBurstRef.current.scale.set(s, s, s);
+      entryBurstRef.current.rotation.z += delta * 0.2;
+      const fade = Math.max(0, 1 - cycle);
+      entryBurstRef.current.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material) {
+          const mat = child.material as THREE.MeshBasicMaterial;
+          if (child.geometry instanceof THREE.RingGeometry) {
+            mat.opacity = 0.5 * fade;
+          } else {
+            mat.opacity = 0.35 * fade;
+          }
         }
-        return next;
       });
     }
   });
@@ -3670,10 +3697,10 @@ export function CenterFloorStage({
       <mesh position={[0, -0.094, 0]}>
         <cylinderGeometry args={[2.45, 2.45, 0.188, 128, 1, true]} />
         <meshStandardMaterial
-          color="#b8c4d0"
+          color="#f8fafc"
           emissive={neonColor}
-          emissiveIntensity={0.25}
-          roughness={0.45}
+          emissiveIntensity={0.60}
+          roughness={0.20}
           metalness={0.05}
           side={THREE.DoubleSide}
         />
@@ -3877,7 +3904,7 @@ export function CenterFloorStage({
                 <meshBasicMaterial
                   color="#38bdf8"
                   transparent
-                  opacity={0.35 * Math.max(0, 1 - (entryElapsed % 3.0) / 3.0)}
+                  opacity={0.35}
                   depthWrite={false}
                   polygonOffset
                   polygonOffsetFactor={-2}
@@ -3893,7 +3920,7 @@ export function CenterFloorStage({
             <meshBasicMaterial
               color="#67e8f9"
               transparent
-              opacity={0.5 * Math.max(0, 1 - (entryElapsed % 3.0) / 3.0)}
+              opacity={0.5}
               depthWrite={false}
               polygonOffset
               polygonOffsetFactor={-2}

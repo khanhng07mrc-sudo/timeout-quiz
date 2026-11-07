@@ -23,6 +23,7 @@ import path from "node:path";
 import type { OlympiaState, RoundId, RulesetId } from "./types";
 import { runOlympiaStudioRefactorSuite } from "./olympia-studio-refactor.test";
 import { runOlympiaIntroChoreographySuite } from "./olympia-intro-choreography.test";
+import { runOlympiaStageLightingPerfSuite } from "./olympia-stage-lighting-perf.test";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Formal Interface Contracts & Specifications (from PROJECT.md)
@@ -1342,21 +1343,26 @@ const refactorResults = runOlympiaStudioRefactorSuite();
 // ─────────────────────────────────────────────────────────────────────────────
 const introResults = runOlympiaIntroChoreographySuite();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Execute Intermediate Tier, Cove Floor Glow & 60fps Optimization Suite (F1 - F8)
+// ─────────────────────────────────────────────────────────────────────────────
+const stagePerfResults = runOlympiaStageLightingPerfSuite();
+
 // Consolidated Grand Total Summary across All Suites
-const grandTier1 = tier1Count + refactorResults.tier1Count + introResults.tier1Count;
-const grandTier2 = tier2Count + refactorResults.tier2Count + introResults.tier2Count;
-const grandTier3 = tier3Count + refactorResults.tier3Count + introResults.tier3Count;
-const grandTier4 = tier4Count + refactorResults.tier4Count + introResults.tier4Count;
-const grandTotalPassed = totalPassed + refactorResults.totalPassed + introResults.totalPassed;
-const grandTotalExecuted = 97 + refactorResults.totalExecuted + introResults.totalExecuted;
+const grandTier1 = tier1Count + refactorResults.tier1Count + introResults.tier1Count + stagePerfResults.tier1Count;
+const grandTier2 = tier2Count + refactorResults.tier2Count + introResults.tier2Count + stagePerfResults.tier2Count;
+const grandTier3 = tier3Count + refactorResults.tier3Count + introResults.tier3Count + stagePerfResults.tier3Count;
+const grandTier4 = tier4Count + refactorResults.tier4Count + introResults.tier4Count + stagePerfResults.tier4Count;
+const grandTotalPassed = totalPassed + refactorResults.totalPassed + introResults.totalPassed + stagePerfResults.totalPassed;
+const grandTotalExecuted = 97 + refactorResults.totalExecuted + introResults.totalExecuted + stagePerfResults.totalExecuted;
 
 console.log("================================================================================");
-console.log("GRAND CONSOLIDATED 3D STUDIO TEST SUMMARY (BASELINE + S14 + INTRO CHOREOGRAPHY)");
+console.log("GRAND CONSOLIDATED 3D STUDIO TEST SUMMARY (ALL 4 SUITES INCLUDED)");
 console.log("================================================================================");
-console.log(`  Tier 1 (Feature Coverage):        ${grandTier1} passed (Threshold: >= 115)`);
-console.log(`  Tier 2 (Boundary & Corner Cases): ${grandTier2} passed (Threshold: >= 90)`);
-console.log(`  Tier 3 (Cross-Feature Combos):    ${grandTier3} passed (Threshold: >= 24)`);
-console.log(`  Tier 4 (Real-World Scenarios):    ${grandTier4} passed (Threshold: >= 15)`);
+console.log(`  Tier 1 (Feature Coverage):        ${grandTier1} passed (Threshold: >= 150)`);
+console.log(`  Tier 2 (Boundary & Corner Cases): ${grandTier2} passed (Threshold: >= 115)`);
+console.log(`  Tier 3 (Cross-Feature Combos):    ${grandTier3} passed (Threshold: >= 31)`);
+console.log(`  Tier 4 (Real-World Scenarios):    ${grandTier4} passed (Threshold: >= 20)`);
 console.log("--------------------------------------------------------------------------------");
 console.log(`  GRAND TOTAL TESTS EXECUTED:       ${grandTotalPassed} / ${grandTotalExecuted} passed (100% Pass Rate)`);
 console.log("================================================================================");

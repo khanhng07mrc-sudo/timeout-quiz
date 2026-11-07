@@ -946,13 +946,18 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                   { id: 8, label: "CAM 8: Cận Cảnh TS 4", short: "TS 4" },
                   ...(seats.length > 4
                     ? seats.slice(4).map((s, idx) => ({
-                        id: 11 + idx,
-                        label: `CAM ${11 + idx}: Cận Cảnh TS ${5 + idx} (${s.name || `TS ${5 + idx}`})`,
+                        id: 25 + idx,
+                        label: `CAM ${25 + idx}: Cận Cảnh TS ${5 + idx} (${s.name || `TS ${5 + idx}`})`,
                         short: `TS ${5 + idx}`,
                       }))
                     : []),
                   { id: 9, label: "CAM 9: Cẩu Quay Jib Toàn Khán Đài", short: "Cẩu Jib" },
                   { id: 10, label: "CAM 10: Toàn Cảnh Bục Thí Sinh", short: "Bục TS" },
+                  { id: 11, label: "CAM 11: Cam Ẩn Trực Diện Chào Sân", short: "Trực Diện" },
+                  { id: 12, label: "CAM 12: Cam Chéo Khán Đài 3/4", short: "Chéo 3/4" },
+                  { id: 13, label: "CAM 13: Cổng Vòm & Đỉnh Núi", short: "Cổng Vòm" },
+                  { id: 14, label: "CAM 14: Góc Thấp Khởi Động", short: "Góc Thấp" },
+                  { id: 15, label: "CAM 15: Cận Bục Về Đích", short: "Về Đích" },
                 ].map((c) => {
                   const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;
                   return (

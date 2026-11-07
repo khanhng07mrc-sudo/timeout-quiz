@@ -13,13 +13,13 @@ export interface OlympiaCameraState {
 /**
  * Maps seat index (0..N-1) to camera preset:
  * Seats 0..3 -> CAM 5..8 (TS 1..4)
- * Seats 4..7 -> CAM 11..14 (TS 5..8)
+ * Seats 4..7 -> CAM 25..28 (TS 5..8: dải an toàn, không xung đột góc studio C11..C15)
  */
 export function getCameraForSeat(seatId: number, totalSeats: number = 4): number {
   if (seatId < 0) return 1;
   const count = Math.max(1, totalSeats);
   const clamped = Math.min(count - 1, seatId);
-  return clamped < 4 ? 5 + clamped : 11 + (clamped - 4);
+  return clamped < 4 ? 5 + clamped : 25 + (clamped - 4);
 }
 
 /**
@@ -114,36 +114,45 @@ export function useOlympiaCameraState(
       const elapsedSec = Math.max(0, (getNow() - seatStart) / 1000);
 
       if (elapsedSec < 4.5) {
-        // Phase 1 (0.0s - 4.5s): Audience Grandstand & Arch Staircase view (CAM 11) as contestant emerges and descends stairs
+        // Phase 1 (0.0s - 4.5s): Cam Ẩn Trực Diện Chào Sân (CAM 11) thẳng mặt thí sinh bước xuống bậc thang
         return {
           camAngle: 11,
           transitionMode: "CUT",
           isOverlayHidden: false,
-          pushInProgress: 0.15,
+          pushInProgress: 0.0,
         };
-      } else if (elapsedSec < 7.5) {
-        // Phase 2 (4.5s - 7.5s): Mid-stairs Landing Platform (Bục Giữa) (CAM 12) capturing signature gesture
+      } else if (elapsedSec < 6.5) {
+        // Phase 2 (4.5s - 6.5s): Thí sinh dừng trên Bục Giữa làm động tác chào/pose -> Giữ CAM 11 trực diện, push zoom quang học nhẹ (0.15)
+        const pushInProgress = Math.min(1.0, Math.max(0.0, (elapsedSec - 4.5) / 2.0));
+        return {
+          camAngle: 11,
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress,
+        };
+      } else if (elapsedSec < 8.0) {
+        // Phase 3 (6.5s - 8.0s, 1.5s): Cắt sang góc chéo nghệ thuật 3/4 (CAM 12) bao quát bục giữa & khán đài rực rỡ
         return {
           camAngle: 12,
-          transitionMode: "MORPH",
+          transitionMode: "CUT",
           isOverlayHidden: false,
-          pushInProgress: 0.35,
+          pushInProgress: 0.0,
         };
-      } else if (elapsedSec < 9.5) {
-        // Phase 3 (7.5s - 9.5s): Walks across dais to assigned podium (CAM 10 Toàn Cảnh Bục Thí Sinh)
+      } else if (elapsedSec < 10.5) {
+        // Phase 4 (8.0s - 10.5s): Cắt sang CAM 10 (Toàn Cảnh Bục Thí Sinh) khi thí sinh bước xuống sàn và đi về bàn đấu
         return {
           camAngle: 10,
-          transitionMode: "MORPH",
+          transitionMode: "CUT",
           isOverlayHidden: false,
-          pushInProgress: 0.10,
+          pushInProgress: 0.0,
         };
       } else {
-        // Phase 4 (9.5s onwards): Locks onto contestant close-up camera at podium
+        // Phase 5 (10.5s onwards): Cắt khóa cận cảnh vào bục của thí sinh đó
         return {
           camAngle: targetCam,
-          transitionMode: "MORPH",
+          transitionMode: "CUT",
           isOverlayHidden: false,
-          pushInProgress: 0.05,
+          pushInProgress: 0.0,
         };
       }
     }

@@ -1,52 +1,41 @@
-# BRIEFING — 2026-11-06T02:46:00Z
+# BRIEFING — 2026-11-07T03:52:00Z
 
 ## Mission
-Orchestrate redesign of authentic Vietnamese 3D human models (MCs Khánh Vy & Ngọc Huy, 4 contestants) and fix MC/contestant stage lighting during active match states in D:\Timeout Quiz.
+Sentinel oversight for orchestrator executing studio broadcast camera IDs re-planning, 5-phase TV cut entrance sequence, grandstand audience & AI cyclorama restoration, and realistic 3D human avatar replacement architecture.
 
 ## 🔒 My Identity
 - Archetype: sentinel
-- Working directory: D:/Timeout Quiz/.agents/teamwork
-- Orchestrator: 08d8ee8d-2e18-414a-926d-210d93944a6b (teamwork_orchestrator, orchestrator_3)
-- Victory Auditor: d2fb1d01-3542-4d3e-b7d1-7d0d4818edb9 (teamwork_victory_auditor, victory_auditor_sentinel_2)
-- Cron 1 (Progress): 2b063eb9-8472-43a1-ab6d-0c150efd7723/task-30
-- Cron 2 (Liveness): 2b063eb9-8472-43a1-ab6d-0c150efd7723/task-31
+- Working directory: d:\Timeout Quiz\.agents\teamwork\
+- Orchestrator: fdb1868c-d2b0-452b-9bf4-75b942137250
+- Victory Auditor: 9eacda0e-7b5f-4d8a-88a4-5cb07b9f7d0c
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
 - Victory Audit is MANDATORY before reporting completion
-- Route: SWE Light (teamwork_swe)
-- Strict boundary constraint: All modifications strictly in D:\Timeout Quiz; DO NOT touch D:\Olympia 26
-- Single self-contained fix; keep small and focused
-- Route: General (teamwork_orchestrator)
-- Multi-part studio enhancement: R1 (audio/persistence), R2 (2-vCPU perf), R3 (3D realistic MCs & contestants), R4 (question reveal sync), R5 (chevron arrows), R6 (remove "ĐÁP ÁN:" prefix), R7 (VPS deployment script)
-- Strict boundary: D:\Timeout Quiz only, strictly DO NOT touch D:\Olympia 26
-- Scope addition: R7-R9 buzzer non-blocking latency, label truncation removal, guidance text; R10 Khởi Động V3 countdown timer display; R11 host SAI (Bksp) on no buzz without error.
-- Scope addition: R12 Score Summary lower-third vs fullscreen mode toggle (bottom 1/3 position, transparent background, toggle fix).
-- Scope addition: R15–R20 HostConsole answer cards wrap, "Nền chờ ĐA" camera/backdrop without audio bug, scaled up VCNV/TT answer graphics (68-74px), 4 VCNV circle dot states, progressive 15s timer bar (0%->100%), and CNV Sai eliminating all buzzed contestants.
-- Scope addition: R21 CNV bell signals complete clearing upon CNV Sai, race condition guard (`lastJudgedWrongAt`), and no arbitrary clearing without verdict.
-- User Correction: CNV Sai eliminates ONLY the evaluated contestant seat; all other contestants who buzzed remain active in `v.bells` on Host Console for subsequent evaluation.
-- Approved Task Prompt Constraints:
-  - Route: General (`teamwork_orchestrator`)
-  - Strict workspace boundary: All modifications strictly stay in `D:\Timeout Quiz`. NEVER touch `D:\Olympia 26`.
-  - R1: Pre-execution git backup in `D:\Timeout Quiz`
-  - R2: Authentic Vietnamese 3D character models for MCs (Khánh Vy, Ngọc Huy) and 4 contestants (warm East Asian skin tones, hair, clothes, eliminate blocky/dark robot shapes)
-  - R3: Stage lighting for MC & contestant podiums (spotlights turn on during match start / active rounds)
-  - Verification: `npm run test:olympia`, `npm run test:olympia-3d`, `npm run type-check`, `npm run build`, and visual `/admin/sandbox`.
+- Strictly modify or delete code within `d:\Timeout Quiz\src` only. Do not modify or delete any files outside `src`.
+
+## Routing Decision
+- Path: General (`teamwork_orchestrator`)
+- Rationale: Multi-requirement software engineering task encompassing 3D graphics (React Three Fiber/Three.js), camera choreography, procedural kinematics, architectural plan updating, and automated screenshot verification.
 
 ## User Context
-- **Last user request**: Approved task prompt received and confirmed.
-- **Pending clarifications**: none
-- **Delivered results**: Starting teamwork_orchestrator.
+- **Last user request**: Approved task prompt received.
+- **Pending clarifications**: None
+- **Delivered results**: Implementation completed, verified, and post-victory audit confirmed.
 
 ## Project Status
-- **Phase**: auditing
+- **Phase**: complete
 
 ## Victory Audit Status
 - **Triggered**: yes
-- **Verdict**: pending
+- **Auditor Conv ID**: 9eacda0e-7b5f-4d8a-88a4-5cb07b9f7d0c
+- **Verdict**: VICTORY CONFIRMED
 - **Retry count**: 0
 
 ## Artifact Index
-- D:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user request
-
-
+- `C:\Users\khanh\.gemini\antigravity\brain\aac021ca-ce70-48a4-b3be-d09545e52c3f\plan_entrance_camera_and_audience_backdrop.md` — Updated master implementation plan artifact
+- `d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md` — Authoritative user request record
+- `d:\Timeout Quiz\.agents\teamwork\orchestrator_4\handoff.md` — Orchestrator handoff report
+- `d:\Timeout Quiz\.agents\teamwork\victory_auditor_sentinel_3\handoff.md` — Victory Auditor handoff report
+- `C:\Users\khanh\.gemini\antigravity\brain\aac021ca-ce70-48a4-b3be-d09545e52c3f\screenshots\` — 17 visual screenshot artifacts
+- `d:\Timeout Quiz\.agents\teamwork\handoff.md` — Sentinel final handoff report

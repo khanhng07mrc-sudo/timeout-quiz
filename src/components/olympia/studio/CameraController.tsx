@@ -49,7 +49,7 @@ export function getContestantCameraPreset(seatId: number, totalSeats: number = 4
   const targetZ = +pz.toFixed(3);
 
   return {
-    id: 5 + seatId,
+    id: seatId < 4 ? 5 + seatId : 25 + (seatId - 4),
     label: `Cận Cảnh TS ${seatId + 1}`,
     pos: [camX, camY, camZ],
     target: [targetX, targetY, targetZ],
@@ -101,15 +101,15 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   },
   11: {
     id: 11,
-    label: "Khán Đài Khán Giả",
-    pos: [0.0, 2.10, 3.60],
-    target: [0.0, 2.70, 12.30],
+    label: "Cam Ẩn Trực Diện Chào Sân",
+    pos: [0.0, 2.05, 6.20],
+    target: [0.0, 1.65, 10.50],
   },
   12: {
     id: 12,
-    label: "Khán Đài Góc Cao",
-    pos: [-1.8, 4.6, 3.8],
-    target: [0.0, 2.50, 12.1],
+    label: "Cam Chéo Khán Đài 3/4",
+    pos: [-2.80, 2.10, 6.50],
+    target: [0.0, 1.40, 10.20],
   },
   13: {
     id: 13,
@@ -131,6 +131,10 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     pos: [0.0, 1.38, 1.85],
     target: [0.0, 1.25, -0.40],
   },
+  25: getContestantCameraPreset(4, 8),
+  26: getContestantCameraPreset(5, 8),
+  27: getContestantCameraPreset(6, 8),
+  28: getContestantCameraPreset(7, 8),
 };
 
 interface CameraControllerProps {
@@ -184,12 +188,12 @@ export function CameraController({
 
   const effectiveTotalSeats = totalSeats || 4;
   const isContestantCam =
-    (camAngle >= 5 && camAngle <= 8 && camAngle - 5 < effectiveTotalSeats) ||
-    (effectiveTotalSeats > 4 && camAngle >= 11 && camAngle < 11 + (effectiveTotalSeats - 4));
+    (camAngle >= 5 && camAngle <= 8) ||
+    (camAngle >= 25 && camAngle <= 28);
   const targetPreset = isContestantCam
     ? getContestantCameraPreset(
-        camAngle >= 11 ? camAngle - 11 + 4 : camAngle - 5,
-        effectiveTotalSeats
+        camAngle >= 25 ? camAngle - 25 + 4 : camAngle - 5,
+        camAngle >= 25 ? Math.max(effectiveTotalSeats, 8) : effectiveTotalSeats
       )
     : (OLYMPIA_CAM_PRESETS[camAngle] || OLYMPIA_CAM_PRESETS[1]);
   const targetPos = useMemo(() => new THREE.Vector3(...targetPreset.pos), [targetPreset]);
@@ -223,7 +227,11 @@ export function CameraController({
       // Zoom smooth 100% -> 115% based on pushInProgress (0.0 to 1.0)
       const zoomFactor = 1.0 + Math.max(0, Math.min(1.0, pushInProgress)) * 0.15;
       const pushFov = opticalFov / zoomFactor;
-      camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 6.0, delta);
+      if (transitionMode === "CUT") {
+        camera.fov = Math.min(85, Math.max(12, pushFov));
+      } else {
+        camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 6.0, delta);
+      }
     }
     // 0. Opening Sequence Camera Director:
     // Starts from WIDE far away in darkness, then smoothly DOLLIES IN towards the MC lectern as lights rise and MCs step out

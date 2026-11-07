@@ -2578,8 +2578,8 @@ export function ContestantEntranceWalkingFigures({
       isGesturing = false;
     }
 
-    // Natural walking bounce
-    const bounce = isWalking ? Math.abs(Math.sin((t - 1.0) * 6.5)) * 0.02 : 0;
+    // Natural walking bounce (3.5cm)
+    const bounce = isWalking ? Math.abs(Math.sin((t - 1.0) * 6.5)) * 0.035 : 0;
     g.position.set(curX, curY + bounce, curZ);
     g.rotation.y = curRotY;
 
@@ -2596,22 +2596,22 @@ export function ContestantEntranceWalkingFigures({
 
     if (isWalking) {
       const walkCycle = (t - 1.0) * 6.5;
-      const swing = Math.sin(walkCycle) * 0.28;
+      const swing = Math.sin(walkCycle) * 0.52; // Natural human stride ~30 deg
 
-      // Legs with natural knee bending
+      // Legs with natural knee bending (hip swing ~30°, biological knee flexion up to 42° / 0.73 rad)
       if (lThigh) lThigh.rotation.x = swing;
       if (rThigh) rThigh.rotation.x = -swing;
-      if (lKnee) lKnee.rotation.x = Math.max(0, -swing * 0.85);
-      if (rKnee) rKnee.rotation.x = Math.max(0, swing * 0.85);
+      if (lKnee) lKnee.rotation.x = Math.max(0, -swing * 1.40); // Anatomical backward knee bend up to 42° (0.73 rad)
+      if (rKnee) rKnee.rotation.x = Math.max(0, swing * 1.40);
 
       // Arms swing in anti-phase with natural elbow bend
-      if (lArm) lArm.rotation.set(-swing * 0.65, 0, -0.05);
-      if (lForearm) lForearm.rotation.set(0.12 + Math.abs(swing) * 0.2, 0, 0);
-      if (rArm) rArm.rotation.set(swing * 0.65, 0, 0.05);
-      if (rForearm) rForearm.rotation.set(0.12 + Math.abs(swing) * 0.2, 0, 0);
+      if (lArm) lArm.rotation.set(-swing * 0.45, 0, -0.06);
+      if (lForearm) lForearm.rotation.set(0.22 + Math.abs(swing) * 0.25, 0, 0);
+      if (rArm) rArm.rotation.set(swing * 0.45, 0, 0.06);
+      if (rForearm) rForearm.rotation.set(0.22 + Math.abs(swing) * 0.25, 0, 0);
 
-      // Subtle forward torso cadence
-      if (ub) ub.rotation.set(0.03, Math.sin(walkCycle) * 0.025, 0);
+      // Subtle forward torso cadence and shoulder sway
+      if (ub) ub.rotation.set(0.04, Math.sin(walkCycle) * 0.035, 0);
     } else if (isGesturing) {
       if (lThigh) lThigh.rotation.x = 0;
       if (rThigh) rThigh.rotation.x = 0;

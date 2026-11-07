@@ -2186,7 +2186,7 @@ export function AudienceAmphitheater({
     return tex;
   }, [fallbackCanvas]);
 
-  const activeBackdropTex = fallbackTexture;
+  const activeBackdropTex = aiBackdropTex || fallbackTexture;
 
   const cycloramaGeometry = useMemo(() => createCylindricalCycloramaGeometry(22.5, 8.5, 1.46607657, 96, 16), []);
   const cycloramaTrimCurve = useMemo(() => new CylindricalTrimCurve(22.5, 1.46607657), []);
@@ -2532,7 +2532,8 @@ export function AudienceAmphitheater({
             )}
 
             {/* Audience Members Seated in Left & Right Banks (Streamlined for silky 60 FPS performance) */}
-            {quality !== "LIGHT" && Array.from({ length: seatsPerRow }).map((_, sIdx) => {
+            {Array.from({ length: seatsPerRow }).map((_, sIdx) => {
+              if (quality === "LIGHT" && sIdx % 3 !== 0) return null;
               if (quality === "MEDIUM" && sIdx % 2 !== 0) return null;
               const isLeft = sIdx < 8;
               const sOffset = isLeft
@@ -2613,25 +2614,21 @@ export function AudienceAmphitheater({
       {/* ── 5. AUTHENTIC VTV3 S14 CURVED CYLINDRICAL CYCLORAMA ENCLOSING AUDIENCE (R1) ── */}
       {/* Continuous curved cylindrical cyclorama: R = 22.50m, Span = 84°, Apex Z = 5.20m, Center Z_c = -17.30m, H = 8.50m */}
       {/* Set to FrontSide so it faces audience (+Z) and is backface culled when viewed from CAM 1 looking at stage (-Z) */}
-      {quality !== "LIGHT" && (
-        <>
-          <mesh position={[0, 4.05, -17.30]}>
-            <primitive object={cycloramaGeometry} attach="geometry" />
-            <meshBasicMaterial map={activeBackdropTex} toneMapped={false} side={THREE.FrontSide} />
-          </mesh>
+      <mesh position={[0, 4.05, -17.30]}>
+        <primitive object={cycloramaGeometry} attach="geometry" />
+        <meshBasicMaterial map={activeBackdropTex} toneMapped={false} side={THREE.FrontSide} />
+      </mesh>
 
-          {/* Top Curved Neon Header Trim (Y = 8.28m) */}
-          <mesh position={[0, 8.28, -17.30]}>
-            <tubeGeometry args={[cycloramaTrimCurve, 96, 0.02, 8, false]} />
-            <meshBasicMaterial color="#38bdf8" />
-          </mesh>
-          {/* Base Curved Neon Trim (Y = -0.18m) */}
-          <mesh position={[0, -0.18, -17.30]}>
-            <tubeGeometry args={[cycloramaTrimCurve, 96, 0.018, 8, false]} />
-            <meshBasicMaterial color="#38bdf8" />
-          </mesh>
-        </>
-      )}
+      {/* Top Curved Neon Header Trim (Y = 8.28m) */}
+      <mesh position={[0, 8.28, -17.30]}>
+        <tubeGeometry args={[cycloramaTrimCurve, 96, 0.02, 8, false]} />
+        <meshBasicMaterial color="#38bdf8" />
+      </mesh>
+      {/* Base Curved Neon Trim (Y = -0.18m) */}
+      <mesh position={[0, -0.18, -17.30]}>
+        <tubeGeometry args={[cycloramaTrimCurve, 96, 0.018, 8, false]} />
+        <meshBasicMaterial color="#38bdf8" />
+      </mesh>
 
       {/* ── TOP LANDING PLINTH BEHIND ROW 7: BASE FOR ARCHES, LOGO STANCHIONS & MOUNTAIN LANDSCAPE ── */}
       <mesh position={[0, 1.90, 4.28]}>
@@ -3170,28 +3167,24 @@ export function StudioLighting({
         );
       })}
 
-      {/* ── 4. AUDIENCE AMPHITHEATER LIGHTS (Pruned in LIGHT mode) ── */}
-      {quality !== "LIGHT" && (
-        <TargetedSpotLight
-          position={[0, 9.0, 4.0]}
-          targetPosition={[0, 2.0, 12.0]}
-          intensity={(isVeDichDimmed ? 1.5 : 4.5) * liveFactor}
-          color={audienceWashColor}
-          angle={0.8}
-          penumbra={0.6}
-          distance={22}
-          castShadow={false}
-        />
-      )}
+      {/* ── 4. AUDIENCE AMPHITHEATER LIGHTS ── */}
+      <TargetedSpotLight
+        position={[0, 9.0, 4.0]}
+        targetPosition={[0, 2.0, 12.0]}
+        intensity={(isVeDichDimmed ? 1.5 : 4.5) * liveFactor}
+        color={audienceWashColor}
+        angle={0.8}
+        penumbra={0.6}
+        distance={22}
+        castShadow={false}
+      />
 
       {/* ── 6. STUDIO ENVIRONMENT GEOMETRY ── */}
       <StudioFloor stageFadeProgress={stageFadeProgress} quality={quality} liveFactor={liveFactor} />
       <StudioWalls stageFadeProgress={stageFadeProgress} liveFactor={liveFactor} />
       <StudioCeilingRig />
       <AudienceAmphitheater audienceFadeProgress={audienceFadeProgress} quality={quality} liveFactor={liveFactor} />
-      {quality !== "LIGHT" && (
-        <BroadcastCameras camAngle={camAngle} ptzZoom={ptzZoom} pushInProgress={pushInProgress} />
-      )}
+      <BroadcastCameras camAngle={camAngle} ptzZoom={ptzZoom} pushInProgress={pushInProgress} />
     </group>
   );
 }

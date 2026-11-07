@@ -812,24 +812,32 @@ export function BroadcastCameras({
   // Right Pedestal Camera at [+6.20, 0.22, 7.80]:
   // Active when covering Cam 4 (Laurel Vitrine), Cam 10 (Science Wall), Cam 14 (Low-Angle Hero Shot), or contestant round shots
   const rightCamSpec: CameraTargetSpec = useMemo(() => {
-    if (camAngle >= 5 && camAngle <= 8) {
+    const activeCam = camAngle;
+    const isContestantActive = (activeCam >= 5 && activeCam <= 8) || (activeCam >= 25 && activeCam <= 28);
+    const isRightActive = activeCam === 10 || (activeCam >= 5 && activeCam <= 8) || (activeCam >= 25 && activeCam <= 28);
+
+    if (isContestantActive) {
       // Focus on the specific contestant podium
-      const seatIdx = camAngle - 5;
+      const seatIdx = activeCam >= 25 ? activeCam - 25 + 4 : activeCam - 5;
       const tsPositions: Array<[number, number, number]> = [
         [-6.38, 1.25, -2.20],
         [-6.05, 1.25, -3.13],
         [-5.59, 1.25, -4.01],
         [-5.01, 1.25, -4.80],
+        [-4.35, 1.25, -5.50],
+        [-3.65, 1.25, -6.10],
+        [-2.90, 1.25, -6.60],
+        [-2.10, 1.25, -7.00],
       ];
-      return { target: tsPositions[seatIdx] || [-5.59, 1.25, -3.5], isLive: true };
+      return { target: tsPositions[seatIdx] || [-5.59, 1.25, -3.5], isLive: isRightActive };
     }
-    if (camAngle === 4) {
+    if (activeCam === 4) {
       return { target: [1.8, 0.75, 2.6], isLive: true }; // Laurel Vitrine
     }
-    if (camAngle === 10) {
-      return { target: [-5.8, 2.5, -3.2], isLive: true }; // Science Wall
+    if (activeCam === 10) {
+      return { target: [-5.8, 2.5, -3.2], isLive: isRightActive }; // Science Wall
     }
-    if (camAngle === 14) {
+    if (activeCam === 14) {
       return { target: [1.60, 1.80, -3.20], isLive: true }; // Low-Angle Hero Shot across stage behind Laurel Vitrine
     }
     // Standby Ready Angle: Facing Contestant Arc

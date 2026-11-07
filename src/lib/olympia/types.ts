@@ -572,6 +572,7 @@ export interface OlympiaState {
   roundStatus: Record<RoundId, RoundStatus>;
   banner: string | null; // section title screen
   entranceState?: ContestantEntranceState | null; // Hoạt cảnh thí sinh chào sân (từ sau cổng vòm xuống cầu thang)
+  entranceCompleted?: boolean; // Đánh dấu đã hoàn thành hoạt cảnh chào sân (tất cả thí sinh đã bước xuống bục)
   introTimer?: TimerState | null; // opening show intro countdown timer (5s)
   showScoreboard?: boolean; // toggle full scoreboard overlay on DisplayScreen
   waitingBgm?: boolean; // whether waiting BGM is active

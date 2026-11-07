@@ -150,12 +150,12 @@ export function OlympiaStudio3DScene({
         camera={{ position: [0.0, 3.2, 6.8], fov: 46 }}
         gl={{
           powerPreference: isSandboxEnv || quality === "LIGHT" ? "low-power" : "high-performance",
-          antialias: false,
+          antialias: true,
           alpha: false,
           stencil: false,
           depth: true,
         }}
-        dpr={isSandboxEnv ? 0.5 : quality === "LIGHT" ? 0.5 : isIframe ? 0.75 : quality === "HIGH" ? Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 1.25) : 1}
+        dpr={isSandboxEnv ? 0.5 : quality === "LIGHT" ? 0.5 : isIframe ? 0.75 : quality === "HIGH" ? Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 2) : 1}
       >
         <CameraController
           camAngle={internalCam}
@@ -202,6 +202,8 @@ export function OlympiaStudio3DScene({
           screenFadeProgress={screenFadeProgress}
           serverNow={serverNow}
           liveFactor={liveFactor}
+          introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
+          isIdle={isIdle}
         />
 
         <LaurelWreathVitrine
@@ -209,6 +211,9 @@ export function OlympiaStudio3DScene({
           quality={quality}
           screenFadeProgress={screenFadeProgress}
           liveFactor={liveFactor}
+          introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
+          isIdle={isIdle}
+          serverNow={serverNow}
         />
       </Canvas>
 

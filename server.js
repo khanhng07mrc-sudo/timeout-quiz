@@ -105792,6 +105792,7 @@ var OlympiaGame = class _OlympiaGame {
       tangToc: null,
       veDich: null,
       cauHoiPhu: null,
+      entranceCompleted: false,
       cue: config.playIntroOnCreate !== false ? { id: 1, sound: "6_NhacKhac/show_intro", kind: "sound" } : null,
       cueSeq: config.playIntroOnCreate !== false ? 1 : 0,
       version: 0,
@@ -106017,6 +106018,7 @@ var OlympiaGame = class _OlympiaGame {
           return true;
         } else {
           st.entranceState = null;
+          st.entranceCompleted = true;
           this.cue("6_NhacKhac/contest_intro", "stop");
           this.touch(now);
           return true;
@@ -106378,6 +106380,7 @@ var OlympiaGame = class _OlympiaGame {
           return fail("C\u1EA7n t\u1ED1i thi\u1EC3u 2 th\xED sinh tham gia \u0111\u1EC3 b\u1EAFt \u0111\u1EA7u cu\u1ED9c thi");
         }
         st.stage = "playing";
+        st.entranceCompleted = false;
         st.roundIdx = -1;
         if (st.rounds.length === 0) return fail("Ch\u01B0a ch\u1ECDn v\xF2ng thi n\xE0o");
         const res = this.nextRound(now);
@@ -106709,12 +106712,14 @@ var OlympiaGame = class _OlympiaGame {
           st.entranceState.seatStartedAt = now;
         } else {
           st.entranceState = null;
+          st.entranceCompleted = true;
           this.cue("", "stop");
         }
         return OK;
       }
       case "entrance:skip": {
         st.entranceState = null;
+        st.entranceCompleted = true;
         this.cue("", "stop");
         return OK;
       }

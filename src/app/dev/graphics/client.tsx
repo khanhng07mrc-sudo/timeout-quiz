@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import type { OlympiaState } from "@/lib/olympia/types";
 import {
@@ -21,9 +21,20 @@ const OlympiaStudio3DScene = dynamic(() => import("@/components/olympia/OlympiaS
 });
 
 export function DevGraphicsClient() {
-  const [activeTab, setActiveTab] = useState<
-    "all" | "kd" | "vcnv" | "tt" | "vd-grid" | "vd-qbox" | "summary"
-  >("all");
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search).get("tab");
+      if (p) return p;
+    }
+    return "r6";
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search).get("tab");
+      if (p && p !== activeTab) setActiveTab(p);
+    }
+  }, [activeTab]);
   const [isBuzzed, setIsBuzzed] = useState(false);
   const [hopeStar, setHopeStar] = useState(true);
   const [rulesetId, setRulesetId] = useState<"O26" | "O20" | "O15">("O26");
@@ -135,6 +146,7 @@ export function DevGraphicsClient() {
           {(
             [
               ["all", "Tất cả"],
+              ["r6", "0. R6 Choreography"],
               ["kd", "1. Khởi Động"],
               ["vcnv", "2. VCNV"],
               ["tt", "3. Tăng Tốc"],
@@ -292,7 +304,7 @@ export function DevGraphicsClient() {
         )}
 
         {/* Deliverable 3D: SÂN KHẤU TRƯỜNG QUAY 3D VÀ NHÂN VẬT Á ĐÔNG */}
-        {(activeTab === "all" || activeTab === "kd") && (
+        {activeTab === "kd" && (
           <div className="w-full flex flex-col gap-6">
             <div
               id="graphic-studio-3d"
@@ -339,7 +351,168 @@ export function DevGraphicsClient() {
                 />
               </div>
             </div>
+          </div>
+        )}
 
+        {/* Deliverable R6: 3D STUDIO CHOREOGRAPHY VERIFICATION (R1 - R6) */}
+        {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-cam3" || activeTab === "r6-tech" || activeTab === "r6-mc-center" || activeTab === "r6-empty-podiums" || activeTab === "r6-name-school") && (
+          <div className="w-full flex flex-col gap-6">
+            {/* R6 Verification 1: Idle MC Framing (CAM 3, Tight MC Framing, Desk Excluded) */}
+            {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-cam3") && (
+              <div
+                id="screenshot-r6-cam3-mc-framing"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-purple-500/30 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-purple-300">
+                  R6.1: GÓC QUAY MC TIỀN TRẬN ĐẤU (CAM 3: TRUNG CẬN, KHÔNG DÍNH BÀN MC, TỈ LỆ 16:9 CHUẨN TRUYỀN HÌNH)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Khung hình CAM 3 tinh chỉnh [2.75, 1.50, -5.75] target [3.08, 1.45, -7.15], loại bỏ hoàn toàn mặt bàn ở Z=-6.70 khỏi đáy khung hình, giữ khoảng headroom tự nhiên.
+                </p>
+                <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-white/10 shadow-inner bg-[#030712] relative">
+                  <OlympiaStudio3DScene
+                    state={{
+                      ...mockState,
+                      stage: "lobby",
+                    }}
+                    serverNow={serverNow}
+                    activeCamera={3}
+                    transitionMode="CUT"
+                    showDirectorBar={false}
+                    allowPTZ={false}
+                    defaultQuality="HIGH"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* R6 Verification 2: 6s Rotating Tech Floor Animation */}
+            {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-tech") && (
+              <div
+                id="screenshot-r6-tech-floor-animation"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-cyan-500/30 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  R6.2: HOẠT HỌA SÀN CÔNG NGHỆ XOAY 6 GIÂY (CYAN LASER ARCS, TIA SÁNG SÀN & RADAR HUD RINGS)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Sàn trung tâm hiển thị đồ họa công nghệ xoay ngược chiều (t = 3.0s của intro), hiệu ứng laser cyan phát sáng, vitrine nguyệt quế và decal sàn ẩn hoàn toàn.
+                </p>
+                <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-white/10 shadow-inner bg-[#030712] relative">
+                  <OlympiaStudio3DScene
+                    state={{
+                      ...mockState,
+                      stage: "playing",
+                      introTimer: { startedAt: Date.now() - 3000, totalMs: 10000, remainingMs: 7000 },
+                    }}
+                    serverNow={serverNow}
+                    activeCamera={1}
+                    transitionMode="CUT"
+                    showDirectorBar={false}
+                    allowPTZ={false}
+                    defaultQuality="HIGH"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* R6 Verification 3: MCs at Center Stage */}
+            {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-mc-center") && (
+              <div
+                id="screenshot-r6-mc-center-stage"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-amber-500/30 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-amber-300">
+                  R6.3: HAI MC TIẾN RA SÂN KHẤU TRUNG TÂM ([0, 0.18, 0], KHÁNH VY & NGỌC HUY DẪN KHAI MẠC)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Hai MC bước ra vòng tròn sân khấu trung tâm tại tọa độ [±0.38, 0.18, 0], hướng chính diện ống kính máy quay đón chào khán giả truyền hình.
+                </p>
+                <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-white/10 shadow-inner bg-[#030712] relative">
+                  <OlympiaStudio3DScene
+                    state={{
+                      ...mockState,
+                      stage: "playing",
+                      introTimer: { startedAt: Date.now() - 11000, totalMs: 15000, remainingMs: 4000 },
+                    }}
+                    serverNow={serverNow}
+                    activeCamera={1}
+                    transitionMode="CUT"
+                    showDirectorBar={false}
+                    allowPTZ={false}
+                    defaultQuality="HIGH"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* R6 Verification 4: Empty Podiums Before Introduction */}
+            {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-empty-podiums") && (
+              <div
+                id="screenshot-r6-empty-podiums-pre-match"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-emerald-500/30 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-emerald-300">
+                  R6.4: BỤC THÍ SINH TRƯỚC KHI BẮT ĐẦU (GIAI ĐOẠN 1: TOÀN BỘ MÀN HÌNH BỤC HIỆN LOGO OLYMPIA)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Mới mở phòng (Lobby / Pre-match), cả 4 màn hình bục thí sinh chỉ hiển thị màn hình chờ có Logo Đường lên đỉnh Olympia, chưa hiện tên, trường hay điểm số.
+                </p>
+                <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-white/10 shadow-inner bg-[#030712] relative">
+                  <OlympiaStudio3DScene
+                    state={{
+                      ...mockState,
+                      stage: "lobby",
+                      entranceState: undefined,
+                      entranceCompleted: false,
+                    }}
+                    serverNow={serverNow}
+                    activeCamera={10}
+                    transitionMode="CUT"
+                    showDirectorBar={false}
+                    allowPTZ={false}
+                    defaultQuality="HIGH"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* R6 Verification 5: Contestant Arrived at Podium (Phase 2: Name + School) */}
+            {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-name-school") && (
+              <div
+                id="screenshot-r6-podium-name-school"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-indigo-500/30 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-indigo-300">
+                  R6.5: BẢNG ĐIỂM BỤC THÍ SINH GIAI ĐOẠN 2 (THÍ SINH ĐÃ TỚI BỤC - HIỆN TÊN + TRƯỜNG THPT)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Khi thí sinh bước tới vị trí bục của mình xong, bảng điểm chuyển sang giao diện Tên thí sinh + Tên trường THPT, giữ nguyên tới trước Khởi Động.
+                </p>
+                <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-white/10 shadow-inner bg-[#030712] relative">
+                  <OlympiaStudio3DScene
+                    state={{
+                      ...mockState,
+                      stage: "playing",
+                      currentRound: undefined as unknown as any,
+                      entranceCompleted: true,
+                    }}
+                    serverNow={serverNow}
+                    activeCamera={5}
+                    transitionMode="CUT"
+                    showDirectorBar={false}
+                    allowPTZ={false}
+                    defaultQuality="HIGH"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Deliverable 3D: SÂN KHẤU TRƯỜNG QUAY 3D VÀ NHÂN VẬT Á ĐÔNG (KD & VỀ ĐÍCH) */}
+        {activeTab === "kd" && (
+          <div className="w-full flex flex-col gap-6">
             <div
               id="graphic-studio-3d-stage"
               className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-cyan-500/30 shadow-2xl"

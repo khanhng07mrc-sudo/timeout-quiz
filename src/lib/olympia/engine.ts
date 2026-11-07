@@ -219,6 +219,7 @@ export class OlympiaGame {
       tangToc: null,
       veDich: null,
       cauHoiPhu: null,
+      entranceCompleted: false,
       cue: config.playIntroOnCreate !== false ? { id: 1, sound: "6_NhacKhac/show_intro", kind: "sound" } : null,
       cueSeq: config.playIntroOnCreate !== false ? 1 : 0,
       version: 0,
@@ -484,6 +485,7 @@ export class OlympiaGame {
           return true;
         } else {
           st.entranceState = null;
+          st.entranceCompleted = true;
           this.cue("6_NhacKhac/contest_intro", "stop");
           this.touch(now);
           return true;
@@ -887,6 +889,7 @@ export class OlympiaGame {
           return fail("Cần tối thiểu 2 thí sinh tham gia để bắt đầu cuộc thi");
         }
         st.stage = "playing";
+        st.entranceCompleted = false;
         st.roundIdx = -1;
         if (st.rounds.length === 0) return fail("Chưa chọn vòng thi nào");
         const res = this.nextRound(now);
@@ -1244,12 +1247,14 @@ export class OlympiaGame {
           st.entranceState.seatStartedAt = now;
         } else {
           st.entranceState = null;
+          st.entranceCompleted = true;
           this.cue("", "stop");
         }
         return OK;
       }
       case "entrance:skip": {
         st.entranceState = null;
+        st.entranceCompleted = true;
         this.cue("", "stop");
         return OK;
       }

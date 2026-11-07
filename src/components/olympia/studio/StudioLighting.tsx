@@ -470,11 +470,32 @@ export function StudioFloor({
   stageFadeProgress = 0,
   quality = "HIGH",
   liveFactor = 1.0,
+  introStartedAt = null,
+  isIdle = false,
+  serverNow,
 }: {
   stageFadeProgress?: number;
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
   liveFactor?: number;
+  introStartedAt?: number | null;
+  isIdle?: boolean;
+  serverNow?: () => number;
 }) {
+  const vitrineOpacity = useMemo(() => {
+    if (isIdle && !introStartedAt) return 0.0;
+    if (introStartedAt != null) {
+      const nowMs = serverNow ? serverNow() : Date.now();
+      const elapsedSec = (nowMs - introStartedAt) / 1000;
+      if (elapsedSec < 6.0) return 0.0;
+      if (elapsedSec < 6.8) {
+        const t = (elapsedSec - 6.0) / 0.8;
+        return t * t * (3 - 2 * t);
+      }
+      return 1.0;
+    }
+    return 1.0;
+  }, [isIdle, introStartedAt, serverNow]);
+
   const ringColor = useMemo(() => {
     const baseColor = stageFadeProgress > 0.5 ? new THREE.Color("#ff1a40") : new THREE.Color("#00f0ff");
     const darkDormant = new THREE.Color("#020712");
@@ -726,7 +747,7 @@ export function StudioFloor({
       <pointLight
         position={[1.8, 0.35, 2.6]}
         color="#fef08a"
-        intensity={THREE.MathUtils.lerp(0.3, 5.5, liveFactor)}
+        intensity={THREE.MathUtils.lerp(0.3, 5.5, liveFactor) * vitrineOpacity}
         distance={3.5}
       />
       {/* Soft Fill Broadcast Keylight from overhead (Wide diffused cone, zero harsh lines) */}
@@ -734,35 +755,14 @@ export function StudioFloor({
         position={[1.8, 7.5, 2.6]}
         targetPosition={[1.8, 0.80, 2.6]}
         color="#fff7ed"
-        intensity={3.5 * liveFactor}
+        intensity={3.5 * liveFactor * vitrineOpacity}
         distance={12}
         angle={0.48}
         penumbra={0.85}
         castShadow={false}
       />
 
-      {/* ── 3. OFFICIAL OLYMPIA LAUREL WREATH FLOOR DECAL (VÒNG NGUYỆT QUẾ CHUẨN THIẾT KẾ 2016, D=2.3M) ── */}
-      {laurelTexture ? (
-        <mesh position={[0, 0.185, -0.5]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={8}>
-          <planeGeometry args={[2.3, 2.3]} />
-          <meshBasicMaterial
-            map={laurelTexture}
-            transparent={true}
-            depthWrite={false}
-            toneMapped={false}
-          />
-        </mesh>
-      ) : wreathTexture ? (
-        <mesh position={[0, 0.185, -0.5]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={8}>
-          <circleGeometry args={[1.15, 64]} />
-          <meshBasicMaterial
-            map={wreathTexture}
-            transparent={true}
-            depthWrite={false}
-            toneMapped={false}
-          />
-        </mesh>
-      ) : null}
+      {/* Redundant lower floor laurel decal removed to prevent z-fighting and bleed-through. Official floor decal is managed exclusively by CenterFloorStage with full transition control. */}
 
       {/* ── 4. RAISED CONTESTANT DAIS PLATFORM (+8cm step, Y = 0.22m) ── */}
       {/* Curved dais elevating contestant stations proudly above central stage */}
@@ -3180,7 +3180,14 @@ export function StudioLighting({
       />
 
       {/* ── 6. STUDIO ENVIRONMENT GEOMETRY ── */}
-      <StudioFloor stageFadeProgress={stageFadeProgress} quality={quality} liveFactor={liveFactor} />
+      <StudioFloor
+        stageFadeProgress={stageFadeProgress}
+        quality={quality}
+        liveFactor={liveFactor}
+        introStartedAt={introStartedAt}
+        isIdle={isIdle}
+        serverNow={serverNow}
+      />
       <StudioWalls stageFadeProgress={stageFadeProgress} liveFactor={liveFactor} />
       <StudioCeilingRig />
       <AudienceAmphitheater audienceFadeProgress={audienceFadeProgress} quality={quality} liveFactor={liveFactor} />

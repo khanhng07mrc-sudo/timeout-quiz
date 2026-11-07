@@ -71,7 +71,7 @@ export function useOlympiaCameraState(
   return useMemo(() => {
     // Default fallback
     const defaultState: OlympiaCameraState = {
-      camAngle: 1,
+      camAngle: 3,
       transitionMode: "CUT",
       isOverlayHidden: false,
       pushInProgress: 0,
@@ -169,8 +169,9 @@ export function useOlympiaCameraState(
           pushInProgress: 0,
         };
       }
+      // Idle / Lobby / Pre-match: Frame MCs tightly with CAM 3
       return {
-        camAngle: 1,
+        camAngle: 3,
         transitionMode: "CUT",
         isOverlayHidden: false,
         pushInProgress: 0,

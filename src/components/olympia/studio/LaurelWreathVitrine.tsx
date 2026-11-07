@@ -9,6 +9,9 @@ interface LaurelWreathVitrineProps {
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
   screenFadeProgress?: number;
   liveFactor?: number;
+  introStartedAt?: number | null;
+  isIdle?: boolean;
+  serverNow?: () => number;
 }
 
 /**
@@ -172,7 +175,48 @@ export function LaurelWreathVitrine({
   quality: _quality = "HIGH",
   screenFadeProgress = 0,
   liveFactor = 1.0,
+  introStartedAt = null,
+  isIdle = false,
+  serverNow,
 }: LaurelWreathVitrineProps) {
+  const groupRef = useRef<THREE.Group>(null);
+  const spotLightRef = useRef<THREE.SpotLight>(null);
+
+  useFrame(() => {
+    let opacity = 1.0;
+    if (isIdle && !introStartedAt) {
+      opacity = 0.0;
+    } else if (introStartedAt != null) {
+      const now = serverNow ? serverNow() : Date.now();
+      const elapsedSec = (now - introStartedAt) / 1000;
+      if (elapsedSec < 6.0) {
+        opacity = 0.0;
+      } else if (elapsedSec < 6.8) {
+        const t = (elapsedSec - 6.0) / 0.8;
+        opacity = t * t * (3 - 2 * t);
+      } else {
+        opacity = 1.0;
+      }
+    } else {
+      opacity = 1.0;
+    }
+
+    if (groupRef.current) {
+      if (opacity <= 0.001) {
+        groupRef.current.visible = false;
+      } else {
+        groupRef.current.visible = true;
+        const elevatorRise = (1.0 - opacity) * (-0.12);
+        groupRef.current.position.set(position[0], position[1] + elevatorRise, position[2]);
+      }
+    }
+
+    if (spotLightRef.current) {
+      const baseIntensity = THREE.MathUtils.lerp(0.8, 4.2, liveFactor);
+      spotLightRef.current.intensity = opacity <= 0.001 ? 0 : baseIntensity * opacity;
+    }
+  });
+
   const ringColor = useMemo(() => {
     const c = new THREE.Color("#00e5ff");
     c.lerp(new THREE.Color("#ff1a40"), screenFadeProgress);
@@ -180,7 +224,7 @@ export function LaurelWreathVitrine({
   }, [screenFadeProgress]);
 
   return (
-    <group position={position}>
+    <group ref={groupRef} position={position}>
       {/* ── 1. WHITE MARBLE DISPLAY PEDESTAL COLUMN (Sits directly on the unified dais lobe) ── */}
       {/* Column Base Plinth */}
       <mesh position={[0, 0.02, 0]}>
@@ -283,6 +327,7 @@ export function LaurelWreathVitrine({
 
       {/* ── 5. DEDICATED WARM GOLD SPOTLIGHT ── */}
       <spotLight
+        ref={spotLightRef}
         position={[0, 5.5, 0]}
         target-position={[0, 0.62, 0]}
         color="#fffbeb"

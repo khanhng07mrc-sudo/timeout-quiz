@@ -72,9 +72,9 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   3: {
     id: 3,
     label: "Bục MC & Cổng Lục Giác",
-    // Coaxial Medium Close-Up: Perfectly frames MC Desk (laptop + 16:9 screen) & MCs (Khánh Vy & Ngọc Huy)
-    pos: [2.50, 1.30, -4.50],
-    target: [3.00, 1.15, -6.70],
+    // Tight Medium Close-up (Bust shot): MCs centered from mid-bust to top of head, balanced headroom, desk at Z = -6.70 completely excluded from frame
+    pos: [3.06, 1.62, -5.85],
+    target: [3.06, 1.54, -7.15],
   },
   4: {
     id: 4,
@@ -234,33 +234,33 @@ export function CameraController({
       }
     }
     // 0. Opening Sequence Camera Director:
-    // Starts from WIDE far away in darkness, then smoothly DOLLIES IN towards the MC lectern as lights rise and MCs step out
+    // Starts from WIDE far away in darkness, then smoothly DOLLIES IN towards the center circular stage as lights rise and MCs step out
     if (introStartedAt) {
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = (now - introStartedAt) / 1000;
 
       _cam1Pos.set(...OLYMPIA_CAM_PRESETS[1].pos);
       _cam1Target.set(...OLYMPIA_CAM_PRESETS[1].target);
-      _mcClosePos.set(...OLYMPIA_CAM_PRESETS[3].pos);
-      _mcCloseTarget.set(...OLYMPIA_CAM_PRESETS[3].target);
+      const _centerStagePos = new THREE.Vector3(0.00, 1.95, 4.60);
+      const _centerStageTarget = new THREE.Vector3(0.00, 1.15, -0.30);
 
       if (elapsedSec < 3.0) {
         // Phase 1 (0.0s - 3.0s): Atmospheric wide view from distance in dramatic darkness
         _curPos.copy(_cam1Pos);
         _curTarget.copy(_cam1Target);
-      } else if (elapsedSec < 11.0) {
-        // Phase 2 (3.0s - 11.0s): Continuous, majestic one-directional DOLLY IN towards MC Lectern as MCs step in from behind arch posts
-        const t = (elapsedSec - 3.0) / 8.0;
+      } else if (elapsedSec < 10.0) {
+        // Phase 2 (3.0s - 10.0s): Continuous, majestic one-directional DOLLY IN towards center circular stage
+        const t = (elapsedSec - 3.0) / 7.0;
         const smoothT = t * t * (3 - 2 * t);
-        _curPos.lerpVectors(_cam1Pos, _mcClosePos, smoothT);
-        _curTarget.lerpVectors(_cam1Target, _mcCloseTarget, smoothT);
+        _curPos.lerpVectors(_cam1Pos, _centerStagePos, smoothT);
+        _curTarget.lerpVectors(_cam1Target, _centerStageTarget, smoothT);
       } else {
-        // Phase 3 (11.0s onwards): Steadily hold at MC podium close-up until intro finishes or transition to round begins
-        const holdElapsed = elapsedSec - 11.0;
+        // Phase 3 (10.0s onwards): Steadily hold at center circular stage framing MCs and rotating tech floor graphics
+        const holdElapsed = elapsedSec - 10.0;
         const breatheY = Math.sin(holdElapsed * 0.75) * 0.012;
         const breatheX = Math.cos(holdElapsed * 0.45) * 0.008;
-        _curPos.set(_mcClosePos.x + breatheX, _mcClosePos.y + breatheY, _mcClosePos.z);
-        _curTarget.copy(_mcCloseTarget);
+        _curPos.set(_centerStagePos.x + breatheX, _centerStagePos.y + breatheY, _centerStagePos.z);
+        _curTarget.copy(_centerStageTarget);
       }
 
       currentPos.current.copy(_curPos);

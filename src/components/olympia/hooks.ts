@@ -326,10 +326,9 @@ export function useOlympiaAudio(
       fadeOldOnly: boolean = false
     ) => {
       const old = bgm.current;
-      // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại; nếu đã kết thúc hoặc pause thì reset và phát lại
+      // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại; nếu đã kết thúc hoặc pause thì duy trì không tự ý phát lại nếu đã kết thúc
       if (old && old.src === newAudio.src) {
-        if (old.paused) {
-          if (old.ended) old.currentTime = 0;
+        if (old.paused && !old.ended && !isBgmPausedExplicitlyRef.current) {
           old.play().catch(() => {});
         }
         return;
@@ -546,7 +545,7 @@ export function useOlympiaAudio(
     }
   }, [enabled, stopBgm]);
 
-  // Tự động khôi phục BGM mượt mà khi quay lại tab, không khởi động lại bài hát
+  // Tự động khôi phục BGM mượt mà khi quay lại tab / focus cửa sổ, không khởi động lại bài hát
   useEffect(() => {
     if (typeof document === "undefined") return;
     const handleVisibility = () => {
@@ -560,7 +559,11 @@ export function useOlympiaAudio(
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+    };
   }, [enabled]);
 
   useEffect(() => {
@@ -587,11 +590,12 @@ export function useOlympiaAudio(
       }
     } else {
       if (cue.id === lastCue.current) {
-        if (enabled && isBgmCueEarly && (!bgm.current || bgm.current.paused)) {
-          // Cho phép phát tiếp BGM nếu vừa unmute hoặc vừa unlock audio
-        } else {
-          return;
+        if (!bgm.current || bgm.current.ended) return;
+        if (isBgmPausedExplicitlyRef.current) return;
+        if (enabled && isBgmCueEarly && bgm.current && bgm.current.paused) {
+          bgm.current.play().catch(() => {});
         }
+        return;
       } else {
         lastCue.current = cue.id;
       }

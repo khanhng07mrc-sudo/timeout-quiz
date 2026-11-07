@@ -466,7 +466,7 @@ function createUnifiedDaisShape(): {
  * Intermediate Circular Elevated Stage Tier Specification (Concentric Ring Architecture):
  * - Height: 0.065m (stepped down from dais Y = 0.188m to floor Y = 0.000m)
  * - Inner Radius: 2.45m, Outer Radius: 3.50m (unbroken 360-degree ring step)
- * - Vertical Studio Pure White Riser Skirt (#f8fafc) with dynamic broadcast hue
+ * - Vertical Studio Dark Satin Riser Skirt (#0f172a) with dynamic broadcast hue
  * - High-Gloss Dark Obsidian Top Deck (#020510)
  */
 export const STAGE_INTERMEDIATE_TIER_CONFIG = {
@@ -476,7 +476,7 @@ export const STAGE_INTERMEDIATE_TIER_CONFIG = {
   elevationY: 0.065,
   center: [0.0, -0.5] as [number, number],
   sweepAngle: 2 * Math.PI,
-  riserColor: "#f8fafc",
+  riserColor: "#0f172a",
   deckColor: "#020510",
 };
 
@@ -733,15 +733,15 @@ export function StudioFloor({
 
       {/* ── 2. INTERMEDIATE CIRCULAR ELEVATED TIER (H = 0.065m, R = 3.50m, Concentric at [0, -0.5]) ── */}
       <group position={[0, 0.01, -0.5]}>
-        {/* Vertical White Riser Skirt (Spans Y = 0.000m to 0.065m with dynamic broadcast hue) */}
+        {/* Vertical Dark Satin Riser Skirt (Spans Y = 0.000m to 0.065m with dynamic broadcast hue) */}
         <mesh position={[0, 0.0325, 0]}>
           <primitive object={intermediateTierRiserGeom} attach="geometry" />
           <meshStandardMaterial
-            color="#f8fafc"
+            color="#0f172a"
             emissive={ringColor}
-            emissiveIntensity={0.60}
-            roughness={0.20}
-            metalness={0.05}
+            emissiveIntensity={0.15}
+            roughness={0.55}
+            metalness={0.20}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -791,11 +791,11 @@ export function StudioFloor({
           <primitive object={vitrinePlinthGeom} attach="geometry" />
           <meshStandardMaterial
             attach="material-0"
-            color="#f8fafc"
+            color="#0f172a"
             emissive={ringColor}
-            emissiveIntensity={0.60}
-            roughness={0.20}
-            metalness={0.05}
+            emissiveIntensity={0.15}
+            roughness={0.55}
+            metalness={0.20}
             side={THREE.DoubleSide}
           />
           <meshStandardMaterial
@@ -835,6 +835,9 @@ export function StudioFloor({
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           side={THREE.DoubleSide}
+          polygonOffset
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
         />
       </mesh>
 
@@ -911,14 +914,14 @@ export function StudioFloor({
             roughness={0.09}
             envMapIntensity={1.8}
           />
-          {/* Vertical white riser skirt (Lit by dynamic blue/red global cove lighting, studio pure white) */}
+          {/* Vertical dark satin riser skirt (Lit by dynamic blue/red global cove lighting, restrained broadcast look) */}
           <meshStandardMaterial
             attach="material-1"
-            color="#f8fafc"
+            color="#0f172a"
             emissive={ringColor}
-            emissiveIntensity={0.60}
-            roughness={0.20}
-            metalness={0.05}
+            emissiveIntensity={0.15}
+            roughness={0.55}
+            metalness={0.20}
           />
         </mesh>
       </group>
@@ -953,14 +956,14 @@ export function StudioFloor({
             roughness={0.09}
             envMapIntensity={1.8}
           />
-          {/* Vertical white riser skirt (Lit by dynamic blue/red global cove lighting, studio pure white) */}
+          {/* Vertical dark satin riser skirt (Lit by dynamic blue/red global cove lighting, restrained broadcast look) */}
           <meshStandardMaterial
             attach="material-1"
-            color="#f8fafc"
+            color="#0f172a"
             emissive={ringColor}
-            emissiveIntensity={0.60}
-            roughness={0.20}
-            metalness={0.05}
+            emissiveIntensity={0.15}
+            roughness={0.55}
+            metalness={0.20}
           />
         </mesh>
       </group>
@@ -3101,10 +3104,10 @@ export function StudioLighting({
     1.0 - effectiveIdleFade
   );
 
-  // Front Broadcast Key Flood Light intensity: 1.2 standby, 1.8 active
+  // Front Broadcast Key Flood Light intensity: restrained (0.60 standby, 0.85 active) to eliminate step specular burnout
   const frontFloodIntensity = THREE.MathUtils.lerp(
-    1.2,
-    (isVeDichDimmed ? 0.8 : 1.8) * introDimFactor,
+    0.60,
+    (isVeDichDimmed ? 0.45 : 0.85) * introDimFactor,
     liveFactor
   );
 
@@ -3187,7 +3190,7 @@ export function StudioLighting({
       <TargetedSpotLight
         position={[3.10, 5.60, -8.80]}
         targetPosition={[3.10, 1.45, -6.85]}
-        color="#f8fafc"
+        color="#ffffff"
         intensity={mcRimIntensity}
         angle={0.45}
         penumbra={0.50}

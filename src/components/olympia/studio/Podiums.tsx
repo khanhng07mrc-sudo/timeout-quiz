@@ -1864,8 +1864,8 @@ export const KV_CENTER_POS: [number, number, number] = [0.38, 0.18, 0.00];
 export const NH_CENTER_POS: [number, number, number] = [-0.38, 0.18, 0.00];
 
 // MC Concealed Positions (Behind the Hexagonal Portal Screen Frames - R2)
-export const KV_CONCEAL_POS: [number, number, number] = [5.17, 0.14, -8.52];
-export const NH_CONCEAL_POS: [number, number, number] = [1.97, 0.14, -9.34];
+export const KV_CONCEAL_POS: [number, number, number] = [6.02, 0.14, -8.82];
+export const NH_CONCEAL_POS: [number, number, number] = [1.36, 0.14, -10.01];
 
 // Waypoint mid-points along lighted catwalk corridor
 export const KV_WAYPOINT: [number, number, number] = [4.20, 0.14, -7.80];
@@ -1873,10 +1873,10 @@ export const NH_WAYPOINT: [number, number, number] = [2.40, 0.14, -8.25];
 
 /**
  * Animated 3D MC Presenters (Khánh Vy & Ngọc Huy):
- * - Idle / Lobby: Staged concealed behind the hexagonal screen frames [5.17, 0.14, -8.52] and [1.97, 0.14, -9.34].
- * - Intro Opening: Step out along catwalk corridor (0.0s-3.2s) to desk, execute high-five greeting (3.2s-4.0s).
- * - Host Mode: Poised elegantly behind desk during wide pan, vitrine reveal, and match rounds.
- * - Contestant Introduction: Turn and walk back (~6.5s at ~1.15 m/s) to MC desk if entrance active.
+ * - Idle / Lobby: Staged concealed behind the hexagonal screen frames [6.02, 0.14, -8.82] and [1.36, 0.14, -10.01].
+ * - Intro Opening: Step out along catwalk corridor (0.0s-3.2s) to center dais [0.38, 0.18, 0.00] & [-0.38, 0.18, 0.00], execute greeting (3.2s-4.0s).
+ * - Host Mode: Poised elegantly at center dais during greeting, then walk back to desk (exact 6.0s) on contestant entrance.
+ * - Match Rounds: Behind desk at [3.26, 0.14, -7.15] and [2.86, 0.14, -7.15].
  */
 export function McPresenters({
   state,
@@ -1934,8 +1934,8 @@ export function McPresenters({
       const entranceStart = state?.entranceState?.startedAt || now;
       const elapsedEntrance = Math.max(0, now - entranceStart);
 
-      if (elapsedEntrance < 6500) {
-        const rawT = elapsedEntrance / 6500;
+      if (elapsedEntrance < 6000) {
+        const rawT = elapsedEntrance / 6000;
         const u = rawT * rawT * (3 - 2 * rawT);
 
         isWalking = u > 0.02 && u < 0.98;
@@ -1996,7 +1996,7 @@ export function McPresenters({
       const elapsedIntro = Math.max(0, now - introStart);
 
       if (elapsedIntro < 3200) {
-        // Phase 1 (0.0s -> 3.2s): Stepping out from behind the screen frames along catwalk corridor
+        // Phase 1 (0.0s -> 3.2s): Stepping out from behind the screen frames along catwalk corridor to center dais
         const rawT = Math.min(1.0, elapsedIntro / 3200);
         const u = rawT * rawT * (3 - 2 * rawT); // Smoothstep easing
 
@@ -2008,21 +2008,21 @@ export function McPresenters({
         const w1 = 2 * (1 - u) * u;
         const w2 = u * u;
 
-        kvX = w0 * KV_CONCEAL_POS[0] + w1 * KV_WAYPOINT[0] + w2 * KV_DESK_POS[0];
-        kvY = KV_DESK_POS[1];
-        kvZ = w0 * KV_CONCEAL_POS[2] + w1 * KV_WAYPOINT[2] + w2 * KV_DESK_POS[2];
+        kvX = w0 * KV_CONCEAL_POS[0] + w1 * KV_WAYPOINT[0] + w2 * KV_CENTER_POS[0];
+        kvY = w0 * KV_CONCEAL_POS[1] + w1 * KV_WAYPOINT[1] + w2 * KV_CENTER_POS[1];
+        kvZ = w0 * KV_CONCEAL_POS[2] + w1 * KV_WAYPOINT[2] + w2 * KV_CENTER_POS[2];
 
-        nhX = w0 * NH_CONCEAL_POS[0] + w1 * NH_WAYPOINT[0] + w2 * NH_DESK_POS[0];
-        nhY = NH_DESK_POS[1];
-        nhZ = w0 * NH_CONCEAL_POS[2] + w1 * NH_WAYPOINT[2] + w2 * NH_DESK_POS[2];
+        nhX = w0 * NH_CONCEAL_POS[0] + w1 * NH_WAYPOINT[0] + w2 * NH_CENTER_POS[0];
+        nhY = w0 * NH_CONCEAL_POS[1] + w1 * NH_WAYPOINT[1] + w2 * NH_CENTER_POS[1];
+        nhZ = w0 * NH_CONCEAL_POS[2] + w1 * NH_WAYPOINT[2] + w2 * NH_CENTER_POS[2];
 
         // Heading follows path tangent
-        const kvTanX = 2 * (1 - u) * (KV_WAYPOINT[0] - KV_CONCEAL_POS[0]) + 2 * u * (KV_DESK_POS[0] - KV_WAYPOINT[0]);
-        const kvTanZ = 2 * (1 - u) * (KV_WAYPOINT[2] - KV_CONCEAL_POS[2]) + 2 * u * (KV_DESK_POS[2] - KV_WAYPOINT[2]);
+        const kvTanX = 2 * (1 - u) * (KV_WAYPOINT[0] - KV_CONCEAL_POS[0]) + 2 * u * (KV_CENTER_POS[0] - KV_WAYPOINT[0]);
+        const kvTanZ = 2 * (1 - u) * (KV_WAYPOINT[2] - KV_CONCEAL_POS[2]) + 2 * u * (KV_CENTER_POS[2] - KV_WAYPOINT[2]);
         const kvAngle = Math.atan2(kvTanX, kvTanZ);
 
-        const nhTanX = 2 * (1 - u) * (NH_WAYPOINT[0] - NH_CONCEAL_POS[0]) + 2 * u * (NH_DESK_POS[0] - NH_WAYPOINT[0]);
-        const nhTanZ = 2 * (1 - u) * (NH_WAYPOINT[2] - NH_CONCEAL_POS[2]) + 2 * u * (NH_DESK_POS[2] - NH_WAYPOINT[2]);
+        const nhTanX = 2 * (1 - u) * (NH_WAYPOINT[0] - NH_CONCEAL_POS[0]) + 2 * u * (NH_CENTER_POS[0] - NH_WAYPOINT[0]);
+        const nhTanZ = 2 * (1 - u) * (NH_WAYPOINT[2] - NH_CONCEAL_POS[2]) + 2 * u * (NH_CENTER_POS[2] - NH_WAYPOINT[2]);
         const nhAngle = Math.atan2(nhTanX, nhTanZ);
 
         if (u < 0.20) {
@@ -2030,37 +2030,37 @@ export function McPresenters({
           nhRotY = THREE.MathUtils.lerp(0.35, nhAngle, u / 0.20);
         } else if (u > 0.80) {
           const settleT = (u - 0.80) / 0.20;
-          kvRotY = THREE.MathUtils.lerp(kvAngle, -0.28, settleT);
-          nhRotY = THREE.MathUtils.lerp(nhAngle, -0.28, settleT);
+          kvRotY = THREE.MathUtils.lerp(kvAngle, 0.0, settleT);
+          nhRotY = THREE.MathUtils.lerp(nhAngle, 0.0, settleT);
         } else {
           kvRotY = kvAngle;
           nhRotY = nhAngle;
         }
       } else if (elapsedIntro < 4000) {
-        // Phase 2 (3.2s -> 4.0s): Arrived at desk, natural high-five greeting between inner arms
-        kvX = KV_DESK_POS[0];
-        kvY = KV_DESK_POS[1];
-        kvZ = KV_DESK_POS[2];
-        nhX = NH_DESK_POS[0];
-        nhY = NH_DESK_POS[1];
-        nhZ = NH_DESK_POS[2];
+        // Phase 2 (3.2s -> 4.0s): Arrived at center circular dais, opening greeting facing audience
+        kvX = KV_CENTER_POS[0];
+        kvY = KV_CENTER_POS[1];
+        kvZ = KV_CENTER_POS[2];
+        nhX = NH_CENTER_POS[0];
+        nhY = NH_CENTER_POS[1];
+        nhZ = NH_CENTER_POS[2];
         isWalking = false;
         isGreeting = true;
 
         const greetT = (elapsedIntro - 3200) / 800; // 0.0 to 1.0
         greetingBell = Math.sin(greetT * Math.PI);  // 0 -> 1 -> 0
-        kvRotY = -0.28 - 0.12 * greetingBell;
-        nhRotY = -0.28 + 0.12 * greetingBell;
+        kvRotY = 0.0 - 0.12 * greetingBell;
+        nhRotY = 0.0 + 0.12 * greetingBell;
       } else {
-        // Phase 3 (4.0s onwards): Steady desk hold during wide stage pan and vitrine reveal
-        kvX = KV_DESK_POS[0];
-        kvY = KV_DESK_POS[1];
-        kvZ = KV_DESK_POS[2];
-        nhX = NH_DESK_POS[0];
-        nhY = NH_DESK_POS[1];
-        nhZ = NH_DESK_POS[2];
-        kvRotY = -0.28;
-        nhRotY = -0.28;
+        // Phase 3 (4.0s onwards): Poised stance on center circular dais throughout pre-match greeting
+        kvX = KV_CENTER_POS[0];
+        kvY = KV_CENTER_POS[1];
+        kvZ = KV_CENTER_POS[2];
+        nhX = NH_CENTER_POS[0];
+        nhY = NH_CENTER_POS[1];
+        nhZ = NH_CENTER_POS[2];
+        kvRotY = 0.0;
+        nhRotY = 0.0;
         isWalking = false;
       }
     } else if (isIdle && !introStartedAt) {
@@ -3352,7 +3352,7 @@ function CenterTechFloorGraphic({
   return (
     <group rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0036, 0]}>
       {/* ── 1. GLOWING CYAN CORE DISC WITH WHITE CENTER ── */}
-      <mesh renderOrder={9.4}>
+      <mesh renderOrder={9.55}>
         <circleGeometry args={[0.36, 48]} />
         <meshBasicMaterial
           ref={corePulseRef}
@@ -3366,7 +3366,7 @@ function CenterTechFloorGraphic({
           polygonOffsetUnits={-2}
         />
       </mesh>
-      <mesh renderOrder={9.45}>
+      <mesh renderOrder={9.58}>
         <circleGeometry args={[0.12, 32]} />
         <meshBasicMaterial
           color="#ffffff"
@@ -3382,7 +3382,7 @@ function CenterTechFloorGraphic({
 
       {/* ── 2. PRIMARY OPPOSING ROTATING CYAN LASER ARCS (Clockwise) ── */}
       <group ref={primaryArcsRef}>
-        <mesh renderOrder={9.5}>
+        <mesh renderOrder={9.62}>
           <ringGeometry args={[0.72, 0.96, 48, 1, 0, (75 * Math.PI) / 180]} />
           <meshBasicMaterial
             color="#00f0ff"
@@ -3396,7 +3396,7 @@ function CenterTechFloorGraphic({
             side={THREE.DoubleSide}
           />
         </mesh>
-        <mesh rotation={[0, 0, Math.PI]} renderOrder={9.5}>
+        <mesh rotation={[0, 0, Math.PI]} renderOrder={9.62}>
           <ringGeometry args={[0.72, 0.96, 48, 1, 0, (75 * Math.PI) / 180]} />
           <meshBasicMaterial
             color="#00f0ff"
@@ -3415,7 +3415,7 @@ function CenterTechFloorGraphic({
       {/* ── 3. SECONDARY COUNTER-ROTATING CIRCUIT ARCS (Counter-Clockwise) ── */}
       <group ref={secondaryArcsRef}>
         {[0, 120, 240].map((deg) => (
-          <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]} renderOrder={9.5}>
+          <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]} renderOrder={9.63}>
             <ringGeometry args={[1.06, 1.22, 36, 1, 0, (55 * Math.PI) / 180]} />
             <meshBasicMaterial
               color="#38bdf8"
@@ -3433,7 +3433,7 @@ function CenterTechFloorGraphic({
       </group>
 
       {/* ── 4. CONCENTRIC HUD RADAR RINGS & EXPANDING RIPPLE ── */}
-      <mesh renderOrder={9.3}>
+      <mesh renderOrder={9.60}>
         <ringGeometry args={[0.44, 0.455, 64]} />
         <meshBasicMaterial
           color="#00f0ff"
@@ -3446,7 +3446,7 @@ function CenterTechFloorGraphic({
           polygonOffsetUnits={-2}
         />
       </mesh>
-      <mesh renderOrder={9.3}>
+      <mesh renderOrder={9.60}>
         <ringGeometry args={[0.65, 0.665, 64]} />
         <meshBasicMaterial
           color="#38bdf8"
@@ -3459,7 +3459,7 @@ function CenterTechFloorGraphic({
           polygonOffsetUnits={-2}
         />
       </mesh>
-      <mesh renderOrder={9.3}>
+      <mesh renderOrder={9.60}>
         <ringGeometry args={[1.02, 1.035, 64]} />
         <meshBasicMaterial
           color="#00f0ff"
@@ -3472,7 +3472,7 @@ function CenterTechFloorGraphic({
           polygonOffsetUnits={-2}
         />
       </mesh>
-      <mesh renderOrder={9.3}>
+      <mesh renderOrder={9.65}>
         <ringGeometry args={[1.27, 1.285, 64]} />
         <meshBasicMaterial
           color="#38bdf8"
@@ -3488,7 +3488,7 @@ function CenterTechFloorGraphic({
 
       {/* Expanding Ripple Pulse */}
       <group ref={rippleRef}>
-        <mesh renderOrder={9.4}>
+        <mesh renderOrder={9.59}>
           <ringGeometry args={[0.95, 1.0, 96]} />
           <meshBasicMaterial
             color="#67e8f9"
@@ -3692,16 +3692,16 @@ export function CenterFloorStage({
 
   return (
     <group position={[0, 0.188, -0.5]}>
-      {/* ── 0. 3D ELEVATED CYLINDRICAL DAIS WITH SOLID WHITE RISER SKIRT (VTV3 BROADCAST REQUIREMENT) ── */}
-      {/* Vertical Circular Skirt / Riser (H = 0.188m, R = 2.45m, Soft Studio White with subtle blue/red light tint) */}
+      {/* ── 0. 3D ELEVATED CYLINDRICAL DAIS WITH SOLID DARK SATIN RISER SKIRT (VTV3 BROADCAST REQUIREMENT) ── */}
+      {/* Vertical Circular Skirt / Riser (H = 0.188m, R = 2.45m, Dark Satin Lacquer #0f172a with restrained emissive 0.15) */}
       <mesh position={[0, -0.094, 0]}>
         <cylinderGeometry args={[2.45, 2.45, 0.188, 128, 1, true]} />
         <meshStandardMaterial
-          color="#f8fafc"
+          color="#0f172a"
           emissive={neonColor}
-          emissiveIntensity={0.60}
-          roughness={0.20}
-          metalness={0.05}
+          emissiveIntensity={0.15}
+          roughness={0.55}
+          metalness={0.20}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -3740,6 +3740,7 @@ export function CenterFloorStage({
           roughness={0.07}
           metalness={0.10}
           envMapIntensity={2.8}
+          depthWrite={true}
         />
       </mesh>
 
@@ -3759,12 +3760,13 @@ export function CenterFloorStage({
 
       {/* ── 1. CONCENTRIC STAGE ARCHITECTURE (High Resolution 128 Segments, Zero Moire / Sawtooth) ── */}
       {/* Outer Polished Metallic Bezel (R = 2.16m to 2.22m) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]} renderOrder={9.4}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0020, 0]} renderOrder={9.4}>
         <ringGeometry args={[2.16, 2.22, 128]} />
         <meshStandardMaterial
           color="#cbd5e1"
           metalness={0.9}
           roughness={0.15}
+          depthWrite={false}
           polygonOffset
           polygonOffsetFactor={-2}
           polygonOffsetUnits={-2}
@@ -3785,7 +3787,7 @@ export function CenterFloorStage({
       </mesh>
 
       {/* Middle Accent Ring (R = 1.76m to 1.82m) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]} renderOrder={9.45}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0025, 0]} renderOrder={9.35}>
         <ringGeometry args={[1.76, 1.82, 128]} />
         <meshBasicMaterial
           color={accentColor}
@@ -3798,7 +3800,7 @@ export function CenterFloorStage({
       </mesh>
 
       {/* Inner Subtle Neon Guide (R = 1.42m to 1.46m) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0035, 0]} renderOrder={9.45}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0030, 0]} renderOrder={9.38}>
         <ringGeometry args={[1.42, 1.46, 128]} />
         <meshBasicMaterial
           color={neonColor}
@@ -3813,16 +3815,17 @@ export function CenterFloorStage({
       </mesh>
 
       {/* Dark Ultra-Gloss Center Floor Disc (R = 1.40m, pure dark floor disc #020510) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]} renderOrder={9.5}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0015, 0]} renderOrder={9.2}>
         <circleGeometry args={[1.40, 128]} />
         <meshStandardMaterial
           color="#020510"
           roughness={0.06}
           metalness={0.12}
           envMapIntensity={2.5}
+          depthWrite={false}
           polygonOffset
-          polygonOffsetFactor={-1}
-          polygonOffsetUnits={-1}
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
         />
       </mesh>
 
@@ -3934,9 +3937,9 @@ export function CenterFloorStage({
       {/* ── 3. HORIZONTAL GOLDEN LAUREL WREATH (Nằm phẳng trên sàn, xoay ở Về Đích) ── */}
       <group
         ref={wreathGroupRef}
-        position={[0, 0.005, 0]}
+        position={[0, 0.0050, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
-        renderOrder={10}
+        renderOrder={10.0}
         visible={laurelOpacity > 0.001}
       >
         {activeWreathTex && (

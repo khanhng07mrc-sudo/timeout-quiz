@@ -1785,8 +1785,9 @@ export function renderDynamicCurvedFormulaCanvas(
     const slopeY = -(driftX - 1000) * slope;
     ctx.translate(driftX, driftY + slopeY);
     ctx.rotate(-Math.atan(slope) + (s.rot || 0) * 0.1);
-    ctx.transform(1, 0, 0.20, 1, 0, 0);
-    ctx.font = `900 ${s.size}px "Plus Jakarta Sans", "Montserrat", "Arial Black", sans-serif`;
+    ctx.transform(0.42, 0, 0.08, 1, 0, 0);
+    const scaledSize = Math.round(s.size * 0.85);
+    ctx.font = `italic 600 ${scaledSize}px "Cambria Math", "Times New Roman", "Plus Jakarta Sans", serif`;
     ctx.letterSpacing = "0.06em";
 
     // Ambient drop shadow
@@ -1801,11 +1802,11 @@ export function renderDynamicCurvedFormulaCanvas(
 
     // Volumetric radiant glow
     ctx.save();
-    const glowBlur = Math.min(36, Math.round(24 * specBoost));
+    const glowBlur = Math.min(24, Math.round(18 * specBoost));
     ctx.shadowColor = fadeProgress > 0.5 ? "#ff1a40" : (specBoost > 1.3 ? "#e0f2fe" : "#00f0ff");
     ctx.shadowBlur = glowBlur;
     ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(255, 30, 70, 0.9)" : "rgba(0, 240, 255, 0.9)";
-    ctx.lineWidth = 6;
+    ctx.lineWidth = Math.min(4, Math.round(3.5 * specBoost));
     ctx.strokeText(s.text, 0, 0);
     ctx.restore();
 
@@ -1865,31 +1866,33 @@ export function renderDynamicCurvedFormulaCanvas(
   const flaskDriftX = 330 + Math.sin(timeSec * 0.5) * 3;
   const flaskDriftY = 205 + Math.cos(timeSec * 0.6) * 2;
   ctx.save();
+  ctx.translate(flaskDriftX, flaskDriftY);
+  ctx.scale(0.42, 1.0);
   ctx.strokeStyle = "#00f0ff";
   ctx.lineWidth = 4.5;
   ctx.shadowColor = "#00f0ff";
   ctx.shadowBlur = 18;
   ctx.beginPath();
-  ctx.moveTo(flaskDriftX, flaskDriftY);
-  ctx.lineTo(flaskDriftX, flaskDriftY + 17);
-  ctx.lineTo(flaskDriftX - 18, flaskDriftY + 53);
-  ctx.lineTo(flaskDriftX + 28, flaskDriftY + 53);
-  ctx.lineTo(flaskDriftX + 10, flaskDriftY + 17);
-  ctx.lineTo(flaskDriftX + 10, flaskDriftY);
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, 17);
+  ctx.lineTo(-18, 53);
+  ctx.lineTo(28, 53);
+  ctx.lineTo(10, 17);
+  ctx.lineTo(10, 0);
   ctx.closePath();
   ctx.stroke();
 
   // Flask Liquid with Volumetric Cyan Glow
-  const flaskGrad = ctx.createLinearGradient(0, flaskDriftY + 27, 0, flaskDriftY + 53);
+  const flaskGrad = ctx.createLinearGradient(0, 27, 0, 53);
   flaskGrad.addColorStop(0, "rgba(56, 189, 248, 0.40)");
   flaskGrad.addColorStop(0.5, "rgba(0, 240, 255, 0.75)");
   flaskGrad.addColorStop(1, "rgba(2, 132, 199, 0.90)");
   ctx.fillStyle = flaskGrad;
   ctx.beginPath();
-  ctx.moveTo(flaskDriftX - 10, flaskDriftY + 30);
-  ctx.bezierCurveTo(flaskDriftX - 4, flaskDriftY + 32, flaskDriftX + 14, flaskDriftY + 32, flaskDriftX + 20, flaskDriftY + 30);
-  ctx.lineTo(flaskDriftX + 26, flaskDriftY + 51);
-  ctx.lineTo(flaskDriftX - 16, flaskDriftY + 51);
+  ctx.moveTo(-10, 30);
+  ctx.bezierCurveTo(-4, 32, 14, 32, 20, 30);
+  ctx.lineTo(26, 51);
+  ctx.lineTo(-16, 51);
   ctx.closePath();
   ctx.fill();
 
@@ -1899,8 +1902,8 @@ export function renderDynamicCurvedFormulaCanvas(
   ctx.shadowBlur = 0;
   for (const markOffsetY of [35, 41, 47]) {
     ctx.beginPath();
-    ctx.moveTo(flaskDriftX - 2, flaskDriftY + markOffsetY);
-    ctx.lineTo(flaskDriftX + 4, flaskDriftY + markOffsetY);
+    ctx.moveTo(-2, markOffsetY);
+    ctx.lineTo(4, markOffsetY);
     ctx.stroke();
   }
 
@@ -1913,8 +1916,8 @@ export function renderDynamicCurvedFormulaCanvas(
   const bubbleRadii = [1.8, 1.4, 1.6, 1.2];
   for (let b = 0; b < 4; b++) {
     const bDist = (timeSec * bubbleSpeeds[b] + b * 7) % 20;
-    const bY = flaskDriftY + 51 - bDist;
-    const bX = flaskDriftX + bubbleXOffsets[b] + Math.sin(timeSec * 2.5 + b) * 1.2;
+    const bY = 51 - bDist;
+    const bX = bubbleXOffsets[b] + Math.sin(timeSec * 2.5 + b) * 1.2;
     ctx.beginPath();
     ctx.arc(bX, bY, bubbleRadii[b], 0, Math.PI * 2);
     ctx.fill();
@@ -1926,14 +1929,15 @@ export function renderDynamicCurvedFormulaCanvas(
   ctx.shadowColor = "#ffffff";
   ctx.shadowBlur = 6;
   ctx.beginPath();
-  ctx.moveTo(flaskDriftX - 12, flaskDriftY + 35);
-  ctx.lineTo(flaskDriftX - 15, flaskDriftY + 49);
+  ctx.moveTo(-12, 35);
+  ctx.lineTo(-15, 49);
   ctx.stroke();
   ctx.restore();
 
   // Vector Icon 2: Science Atom with Nucleus and Orbiting Electron Tracks
   ctx.save();
   ctx.translate(880, 210);
+  ctx.scale(0.42, 1.0);
   ctx.shadowColor = "#00f0ff";
   ctx.shadowBlur = 18;
   ctx.strokeStyle = "rgba(0, 240, 255, 0.85)";
@@ -1981,6 +1985,7 @@ export function renderDynamicCurvedFormulaCanvas(
   // Vector Icon 3: Organic Chemistry Benzene Aromatic Ring
   ctx.save();
   ctx.translate(1420, 205);
+  ctx.scale(0.42, 1.0);
   ctx.shadowColor = "#00f0ff";
   ctx.shadowBlur = 16;
   ctx.strokeStyle = "#00f0ff";
@@ -2009,17 +2014,19 @@ export function renderDynamicCurvedFormulaCanvas(
 
   // Quizorra Sponsor Logo Badge on Top Left
   ctx.save();
+  ctx.translate(80, 55);
+  ctx.scale(0.42, 1.0);
   ctx.fillStyle = "#003b87";
-  ctx.fillRect(80, 55, 200, 65);
+  ctx.fillRect(0, 0, 200, 65);
   ctx.strokeStyle = "#00e5ff";
   ctx.lineWidth = 3;
-  ctx.strokeRect(80, 55, 200, 65);
+  ctx.strokeRect(0, 0, 200, 65);
 
   ctx.fillStyle = "#ffffff";
   ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
   ctx.shadowColor = "#00e5ff";
   ctx.shadowBlur = 8;
-  ctx.fillText("QUIZORRA", 180, 88);
+  ctx.fillText("QUIZORRA", 100, 33);
   ctx.restore();
 
   ctx.restore(); // Restore clip
@@ -2452,8 +2459,8 @@ export function CentralLedWall({
     accumulatedTimeRef.current += dt;
     const t = accumulatedTimeRef.current;
 
-    // 1. Throttle Curved Formula Wall redraw (~30 FPS for High, ~14 FPS for Light / 2 vCPU)
-    const wallInterval = quality === "LIGHT" ? 0.075 : quality === "MEDIUM" ? 0.045 : 0.032;
+    // 1. Throttle Curved Formula Wall redraw (<= 18 FPS, interval >= 0.055s)
+    const wallInterval = quality === "LIGHT" ? 0.080 : 0.055;
     if (t - lastWallFrameRef.current >= wallInterval) {
       lastWallFrameRef.current = t;
       if (formulaWallCanvasRef.current && formulaWallTextureRef.current) {
@@ -2467,9 +2474,9 @@ export function CentralLedWall({
       }
     }
 
-    // 2. Throttle Stage Right Screen & Vertical Totem in Idle Mode (~20 FPS for High, ~10 FPS for Light)
+    // 2. Throttle Stage Right Screen & Vertical Totem in Idle Mode (<= 5 FPS, interval >= 0.200s)
     const isIdle = isPreMatchIdle(state);
-    const screenInterval = quality === "LIGHT" ? 0.090 : 0.045;
+    const screenInterval = quality === "LIGHT" ? 0.250 : 0.200;
     if (isIdle && t - lastScreenFrameRef.current >= screenInterval) {
       lastScreenFrameRef.current = t;
       if (canvasRef.current && textureRef.current) {

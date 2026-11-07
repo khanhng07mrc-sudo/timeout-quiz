@@ -4,10 +4,10 @@
  *
  * Requirements Covered (F1 - F8 from PROJECT.md & ORIGINAL_REQUEST.md):
  * - F1: Intermediate Concentric Ring Geometry (R1) - Unbroken 360-deg circular ring step, Rin=2.45m, Rout=3.50m ([3.30m, 3.60m])
- * - F2: Stepped Height & Clean White Risers (R1) - Height H=0.065m in [0.060m, 0.070m] (~1/3 of dais 0.188m), #f8fafc satin risers
+ * - F2: Stepped Height & Dark Satin Risers (R1) - Height H=0.065m in [0.060m, 0.070m] (~1/3 of dais 0.188m), #0f172a satin risers
  * - F3: Vitrine Pedestal Compatibility (R1) - Dedicated plinth maintaining vitrine resting position Y=0.180m atop intermediate tier
  * - F4: Outward-Projecting Cove Floor Wash Ribbons (R2) - Additive vertex-alpha ribbons along riser bases with (1.0 - rT)^1.8 radial falloff
- * - F5: Vertical White Riser Dynamic Broadcast Hue (R2) - Risers radiate dynamic blue/red hue synchronized with active round lighting
+ * - F5: Vertical Dark Riser Dynamic Broadcast Hue (R2) - Risers radiate restrained dynamic blue/red hue synchronized with active round lighting
  * - F6: Mirror-Like Obsidian Floor Contrast (R2) - Dark obsidian #01040e, roughness 0.06, metalness 0.18, ambient lighting 0.24-0.28
  * - F7: 60fps Zero-Allocation Render Optimization (R3) - Zero setState in useFrame, zero per-frame Vector3/spreads, triangle/light budgets
  * - F8: Automated Test Suite Contract Verification (R4) - 100% pass on npm run test:olympia-3d, zero regression across all 4 tiers
@@ -35,10 +35,10 @@ export interface StageIntermediateTierSpec {
   outerRadius: number;      // 3.50m (in [3.30m, 3.60m], concentric step ring)
   center: [number, number]; // [0.0, -0.5] in world space
   sweepAngle: number;       // 2 * Math.PI (unbroken 360 degrees)
-  riserColor: string;       // "#f8fafc" (Studio Pure White)
-  riserRoughness: number;   // 0.20 (satin lacquer finish)
-  riserMetalness: number;   // 0.05
-  riserEmissiveIntensity: number; // 0.58 (in [0.50, 0.65])
+  riserColor: string;       // "#0f172a" (Studio Dark Charcoal Satin Finish)
+  riserRoughness: number;   // 0.55 (satin lacquer finish)
+  riserMetalness: number;   // 0.20
+  riserEmissiveIntensity: number; // 0.15 (restrained broadcast glow)
   deckColor: string;        // "#01040e" (deep midnight obsidian acrylic)
   deckRoughness: number;    // 0.08
   deckMetalness: number;    // 0.12
@@ -56,10 +56,10 @@ export const STAGE_INTERMEDIATE_TIER_CONTRACT: StageIntermediateTierSpec = {
   outerRadius: 3.50,
   center: [0.0, -0.5],
   sweepAngle: 2 * Math.PI,
-  riserColor: "#f8fafc",
-  riserRoughness: 0.20,
-  riserMetalness: 0.05,
-  riserEmissiveIntensity: 0.58,
+  riserColor: "#0f172a",
+  riserRoughness: 0.55,
+  riserMetalness: 0.20,
+  riserEmissiveIntensity: 0.15,
   deckColor: "#01040e",
   deckRoughness: 0.08,
   deckMetalness: 0.12,
@@ -145,7 +145,7 @@ export interface StageDynamicHueSpec {
     ambientIntensity: number; // 0.18 (in [0.16, 0.22])
     ambientColor: string;     // "#162848"
   };
-  minRiserEmissiveIntensity: number; // 0.50
+  minRiserEmissiveIntensity: number; // 0.10 (restrained corridor)
   floorMaterial: {
     color: string;            // "#01040e" (deep obsidian)
     roughness: number;        // 0.06 (specular mirror finish)
@@ -169,7 +169,7 @@ export const STAGE_DYNAMIC_HUE_CONTRACT: StageDynamicHueSpec = {
     ambientIntensity: 0.18,
     ambientColor: "#162848",
   },
-  minRiserEmissiveIntensity: 0.50,
+  minRiserEmissiveIntensity: 0.10,
   floorMaterial: {
     color: "#01040e",
     roughness: 0.06,
@@ -525,19 +525,19 @@ export function runOlympiaStageLightingPerfSuite(): StageSuiteResult {
     assert.equal(Number(drop.toFixed(3)), 0.065);
   });
 
-  runTest(1, "F2.5: Clean vertical riser color matches studio pure white #f8fafc", () => {
+  runTest(1, "F2.5: Restrained vertical riser color matches studio dark satin #0f172a", () => {
     const color = STAGE_INTERMEDIATE_TIER_CONTRACT.riserColor.toLowerCase();
-    assert.equal(color, "#f8fafc");
+    assert.equal(color, "#0f172a");
   });
 
-  runTest(1, "F2.6: Riser material has satin lacquer roughness 0.20", () => {
+  runTest(1, "F2.6: Riser material has satin lacquer roughness 0.55", () => {
     const r = STAGE_INTERMEDIATE_TIER_CONTRACT.riserRoughness;
-    assert.ok(r >= 0.18 && r <= 0.22, `Roughness ${r} not in [0.18, 0.22]`);
-    assert.equal(r, 0.20);
+    assert.ok(r >= 0.50 && r <= 0.60, `Roughness ${r} not in [0.50, 0.60]`);
+    assert.equal(r, 0.55);
   });
 
-  runTest(1, "F2.7: Riser material has subtle dielectric metalness 0.05", () => {
-    assert.equal(STAGE_INTERMEDIATE_TIER_CONTRACT.riserMetalness, 0.05);
+  runTest(1, "F2.7: Riser material has subtle metallic sheen 0.20", () => {
+    assert.equal(STAGE_INTERMEDIATE_TIER_CONTRACT.riserMetalness, 0.20);
   });
 
   // F3: Vitrine Pedestal Compatibility
@@ -640,20 +640,28 @@ export function runOlympiaStageLightingPerfSuite(): StageSuiteResult {
     assert.equal(red.washRibbonColor, "#ef4444");
   });
 
-  runTest(1, "F5.3: Riser emissive intensity 0.58 satisfies broadcast luminance threshold >= 0.50", () => {
+  runTest(1, "F5.3: Riser emissive intensity 0.15 satisfies restrained broadcast luminance threshold", () => {
     const intensity = STAGE_INTERMEDIATE_TIER_CONTRACT.riserEmissiveIntensity;
-    assert.ok(intensity >= 0.50 && intensity <= 0.65, `Intensity ${intensity} not in [0.50, 0.65]`);
+    assert.ok(intensity >= 0.10 && intensity <= 0.25, `Intensity ${intensity} not in [0.10, 0.25]`);
     assert.ok(intensity >= STAGE_DYNAMIC_HUE_CONTRACT.minRiserEmissiveIntensity);
   });
 
-  runTest(1, "F5.4: Riser radiant luminance in Blue mode exceeds 0.90 for prominent broadcast glow", () => {
-    const lum = evalRiserRadiantLuminance("#f8fafc", "#00f0ff", 0.58);
-    assert.ok(lum >= 0.90, `Radiant luminance ${lum} < 0.90`);
+  runTest(1, "F5.4: Riser radiant luminance in Blue mode is in restrained broadcast corridor [0.08, 0.20]", () => {
+    const lum = evalRiserRadiantLuminance(
+      STAGE_INTERMEDIATE_TIER_CONTRACT.riserColor,
+      "#00f0ff",
+      STAGE_INTERMEDIATE_TIER_CONTRACT.riserEmissiveIntensity
+    );
+    assert.ok(lum >= 0.08 && lum <= 0.20, `Radiant luminance ${lum} not in restrained corridor [0.08, 0.20]`);
   });
 
-  runTest(1, "F5.5: Riser radiant luminance in Red mode exceeds 0.85 for intense competition visual pop", () => {
-    const lum = evalRiserRadiantLuminance("#f8fafc", "#ef4444", 0.58);
-    assert.ok(lum >= 0.85, `Radiant luminance ${lum} < 0.85`);
+  runTest(1, "F5.5: Riser radiant luminance in Red mode is in restrained broadcast corridor [0.02, 0.10]", () => {
+    const lum = evalRiserRadiantLuminance(
+      STAGE_INTERMEDIATE_TIER_CONTRACT.riserColor,
+      "#ef4444",
+      STAGE_INTERMEDIATE_TIER_CONTRACT.riserEmissiveIntensity
+    );
+    assert.ok(lum >= 0.02 && lum <= 0.10, `Radiant luminance ${lum} not in restrained corridor [0.02, 0.10]`);
   });
 
   runTest(1, "F6.1: Main studio floor material uses deep obsidian black #01040e", () => {
@@ -686,9 +694,9 @@ export function runOlympiaStageLightingPerfSuite(): StageSuiteResult {
     assert.equal(amb, 0.18);
   });
 
-  runTest(1, "F6.6: Studio white risers against obsidian floor provide high broadcast contrast ratio >= 15:1", () => {
-    const contrast = evalContrastRatio("#f8fafc", "#01040e");
-    assert.ok(contrast >= 15.0, `Contrast ratio ${contrast} < 15.0`);
+  runTest(1, "F6.6: Saturated cyan cove slot ribbon against obsidian floor provides high broadcast contrast ratio >= 14:1", () => {
+    const contrast = evalContrastRatio(STAGE_DYNAMIC_HUE_CONTRACT.blueState.primaryHue, "#01040e");
+    assert.ok(contrast >= 14.0, `Contrast ratio ${contrast} < 14.0`);
   });
 
   // F7: 60fps Zero-Allocation Render Optimization Contracts
@@ -1091,11 +1099,16 @@ export function runOlympiaStageLightingPerfSuite(): StageSuiteResult {
     }
   });
 
-  runTest(4, "Scenario 6: Broadcast ambiance acceptance benchmark verifies high contrast against VTV3 Image 2", () => {
+  runTest(4, "Scenario 6: Broadcast ambiance acceptance benchmark verifies restrained dark satin risers with saturated cove contrast against VTV3 Image 2", () => {
     const riserColor = STAGE_INTERMEDIATE_TIER_CONTRACT.riserColor;
     const floorColor = STAGE_DYNAMIC_HUE_CONTRACT.floorMaterial.color;
-    const contrast = evalContrastRatio(riserColor, floorColor);
-    assert.ok(contrast >= 15.0, `Contrast ${contrast} must exceed 15:1 for crisp broadcast pop`);
+    const coveColor = STAGE_DYNAMIC_HUE_CONTRACT.blueState.primaryHue;
+    // Dark satin riser on obsidian floor maintains seamless restrained tone (contrast <= 1.5)
+    const riserContrast = evalContrastRatio(riserColor, floorColor);
+    assert.ok(riserContrast <= 1.5, `Riser contrast ${riserContrast} must be restrained`);
+    // Saturated cove ribbon provides high broadcast contrast pop >= 14:1
+    const coveContrast = evalContrastRatio(coveColor, floorColor);
+    assert.ok(coveContrast >= 14.0, `Cove contrast ${coveContrast} must exceed 14:1 for crisp broadcast pop`);
     assert.equal(STAGE_DYNAMIC_HUE_CONTRACT.floorMaterial.roughness, 0.06);
     assert.equal(STAGE_DYNAMIC_HUE_CONTRACT.floorMaterial.metalness, 0.18);
   });

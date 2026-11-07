@@ -24,6 +24,7 @@ import type { OlympiaState, RoundId, RulesetId } from "./types";
 import { runOlympiaStudioRefactorSuite } from "./olympia-studio-refactor.test";
 import { runOlympiaIntroChoreographySuite } from "./olympia-intro-choreography.test";
 import { runOlympiaStageLightingPerfSuite } from "./olympia-stage-lighting-perf.test";
+import { runOlympiaStageRefactorE2ESuite } from "./olympia-stage-refactor-e2e.test";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Formal Interface Contracts & Specifications (from PROJECT.md)
@@ -1348,16 +1349,21 @@ const introResults = runOlympiaIntroChoreographySuite();
 // ─────────────────────────────────────────────────────────────────────────────
 const stagePerfResults = runOlympiaStageLightingPerfSuite();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Execute 3D Broadcast Stage Refactor & Performance E2E Suite (F1 - F10, Tiers 1-4)
+// ─────────────────────────────────────────────────────────────────────────────
+const stageRefactorResults = runOlympiaStageRefactorE2ESuite();
+
 // Consolidated Grand Total Summary across All Suites
-const grandTier1 = tier1Count + refactorResults.tier1Count + introResults.tier1Count + stagePerfResults.tier1Count;
-const grandTier2 = tier2Count + refactorResults.tier2Count + introResults.tier2Count + stagePerfResults.tier2Count;
-const grandTier3 = tier3Count + refactorResults.tier3Count + introResults.tier3Count + stagePerfResults.tier3Count;
-const grandTier4 = tier4Count + refactorResults.tier4Count + introResults.tier4Count + stagePerfResults.tier4Count;
-const grandTotalPassed = totalPassed + refactorResults.totalPassed + introResults.totalPassed + stagePerfResults.totalPassed;
-const grandTotalExecuted = 97 + refactorResults.totalExecuted + introResults.totalExecuted + stagePerfResults.totalExecuted;
+const grandTier1 = tier1Count + refactorResults.tier1Count + introResults.tier1Count + stagePerfResults.tier1Count + stageRefactorResults.tier1Count;
+const grandTier2 = tier2Count + refactorResults.tier2Count + introResults.tier2Count + stagePerfResults.tier2Count + stageRefactorResults.tier2Count;
+const grandTier3 = tier3Count + refactorResults.tier3Count + introResults.tier3Count + stagePerfResults.tier3Count + stageRefactorResults.tier3Count;
+const grandTier4 = tier4Count + refactorResults.tier4Count + introResults.tier4Count + stagePerfResults.tier4Count + stageRefactorResults.tier4Count;
+const grandTotalPassed = totalPassed + refactorResults.totalPassed + introResults.totalPassed + stagePerfResults.totalPassed + stageRefactorResults.totalPassed;
+const grandTotalExecuted = 97 + refactorResults.totalExecuted + introResults.totalExecuted + stagePerfResults.totalExecuted + stageRefactorResults.totalExecuted;
 
 console.log("================================================================================");
-console.log("GRAND CONSOLIDATED 3D STUDIO TEST SUMMARY (ALL 4 SUITES INCLUDED)");
+console.log("GRAND CONSOLIDATED 3D STUDIO TEST SUMMARY (ALL 5 SUITES INCLUDED)");
 console.log("================================================================================");
 console.log(`  Tier 1 (Feature Coverage):        ${grandTier1} passed (Threshold: >= 150)`);
 console.log(`  Tier 2 (Boundary & Corner Cases): ${grandTier2} passed (Threshold: >= 115)`);

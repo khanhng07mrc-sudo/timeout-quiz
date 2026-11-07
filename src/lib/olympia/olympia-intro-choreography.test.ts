@@ -60,15 +60,19 @@ export const INTRO_CAMERA_CONTRACT = {
 };
 
 export const MC_STAGING_CONTRACT = {
-  kvConcealPos: [5.17, 0.14, -8.52] as [number, number, number],
-  nhConcealPos: [1.97, 0.14, -9.34] as [number, number, number],
+  kvConcealPos: [6.02, 0.14, -8.82] as [number, number, number],
+  nhConcealPos: [1.36, 0.14, -10.01] as [number, number, number],
   kvConcealRotY: -0.85,
   nhConcealRotY: 0.35,
   kvWaypoint: [4.20, 0.14, -7.80] as [number, number, number],
   nhWaypoint: [2.40, 0.14, -8.25] as [number, number, number],
+  kvCenterPos: [0.38, 0.18, 0.00] as [number, number, number],
+  nhCenterPos: [-0.38, 0.18, 0.00] as [number, number, number],
+  audienceFacingRotY: 0.0,
   kvDeskPos: [3.26, 0.14, -7.15] as [number, number, number],
   nhDeskPos: [2.86, 0.14, -7.15] as [number, number, number],
   deskFacingRotY: -0.28,
+  walkBackDurationMs: 6000,
   stepOutDurationMs: 3200,
   greetingDurationMs: 800,
   greetingStartMs: 3200,
@@ -255,24 +259,24 @@ export function evaluateMcStaging(
     const w2 = u * u;
 
     const kvPos: [number, number, number] = [
-      w0 * MC_STAGING_CONTRACT.kvConcealPos[0] + w1 * MC_STAGING_CONTRACT.kvWaypoint[0] + w2 * MC_STAGING_CONTRACT.kvDeskPos[0],
-      MC_STAGING_CONTRACT.kvDeskPos[1],
-      w0 * MC_STAGING_CONTRACT.kvConcealPos[2] + w1 * MC_STAGING_CONTRACT.kvWaypoint[2] + w2 * MC_STAGING_CONTRACT.kvDeskPos[2],
+      w0 * MC_STAGING_CONTRACT.kvConcealPos[0] + w1 * MC_STAGING_CONTRACT.kvWaypoint[0] + w2 * MC_STAGING_CONTRACT.kvCenterPos[0],
+      w0 * MC_STAGING_CONTRACT.kvConcealPos[1] + w1 * MC_STAGING_CONTRACT.kvWaypoint[1] + w2 * MC_STAGING_CONTRACT.kvCenterPos[1],
+      w0 * MC_STAGING_CONTRACT.kvConcealPos[2] + w1 * MC_STAGING_CONTRACT.kvWaypoint[2] + w2 * MC_STAGING_CONTRACT.kvCenterPos[2],
     ];
 
     const nhPos: [number, number, number] = [
-      w0 * MC_STAGING_CONTRACT.nhConcealPos[0] + w1 * MC_STAGING_CONTRACT.nhWaypoint[0] + w2 * MC_STAGING_CONTRACT.nhDeskPos[0],
-      MC_STAGING_CONTRACT.nhDeskPos[1],
-      w0 * MC_STAGING_CONTRACT.nhConcealPos[2] + w1 * MC_STAGING_CONTRACT.nhWaypoint[2] + w2 * MC_STAGING_CONTRACT.nhDeskPos[2],
+      w0 * MC_STAGING_CONTRACT.nhConcealPos[0] + w1 * MC_STAGING_CONTRACT.nhWaypoint[0] + w2 * MC_STAGING_CONTRACT.nhCenterPos[0],
+      w0 * MC_STAGING_CONTRACT.nhConcealPos[1] + w1 * MC_STAGING_CONTRACT.nhWaypoint[1] + w2 * MC_STAGING_CONTRACT.nhCenterPos[1],
+      w0 * MC_STAGING_CONTRACT.nhConcealPos[2] + w1 * MC_STAGING_CONTRACT.nhWaypoint[2] + w2 * MC_STAGING_CONTRACT.nhCenterPos[2],
     ];
 
     // Heading tangent
-    const kvTanX = 2 * (1 - u) * (MC_STAGING_CONTRACT.kvWaypoint[0] - MC_STAGING_CONTRACT.kvConcealPos[0]) + 2 * u * (MC_STAGING_CONTRACT.kvDeskPos[0] - MC_STAGING_CONTRACT.kvWaypoint[0]);
-    const kvTanZ = 2 * (1 - u) * (MC_STAGING_CONTRACT.kvWaypoint[2] - MC_STAGING_CONTRACT.kvConcealPos[2]) + 2 * u * (MC_STAGING_CONTRACT.kvDeskPos[2] - MC_STAGING_CONTRACT.kvWaypoint[2]);
+    const kvTanX = 2 * (1 - u) * (MC_STAGING_CONTRACT.kvWaypoint[0] - MC_STAGING_CONTRACT.kvConcealPos[0]) + 2 * u * (MC_STAGING_CONTRACT.kvCenterPos[0] - MC_STAGING_CONTRACT.kvWaypoint[0]);
+    const kvTanZ = 2 * (1 - u) * (MC_STAGING_CONTRACT.kvWaypoint[2] - MC_STAGING_CONTRACT.kvConcealPos[2]) + 2 * u * (MC_STAGING_CONTRACT.kvCenterPos[2] - MC_STAGING_CONTRACT.kvWaypoint[2]);
     const kvAngle = Math.atan2(kvTanX, kvTanZ);
 
-    const nhTanX = 2 * (1 - u) * (MC_STAGING_CONTRACT.nhWaypoint[0] - MC_STAGING_CONTRACT.nhConcealPos[0]) + 2 * u * (MC_STAGING_CONTRACT.nhDeskPos[0] - MC_STAGING_CONTRACT.nhWaypoint[0]);
-    const nhTanZ = 2 * (1 - u) * (MC_STAGING_CONTRACT.nhWaypoint[2] - MC_STAGING_CONTRACT.nhConcealPos[2]) + 2 * u * (MC_STAGING_CONTRACT.nhDeskPos[2] - MC_STAGING_CONTRACT.nhWaypoint[2]);
+    const nhTanX = 2 * (1 - u) * (MC_STAGING_CONTRACT.nhWaypoint[0] - MC_STAGING_CONTRACT.nhConcealPos[0]) + 2 * u * (MC_STAGING_CONTRACT.nhCenterPos[0] - MC_STAGING_CONTRACT.nhWaypoint[0]);
+    const nhTanZ = 2 * (1 - u) * (MC_STAGING_CONTRACT.nhWaypoint[2] - MC_STAGING_CONTRACT.nhConcealPos[2]) + 2 * u * (MC_STAGING_CONTRACT.nhCenterPos[2] - MC_STAGING_CONTRACT.nhWaypoint[2]);
     const nhAngle = Math.atan2(nhTanX, nhTanZ);
 
     let kvRotY = kvAngle;
@@ -283,8 +287,8 @@ export function evaluateMcStaging(
       nhRotY = MC_STAGING_CONTRACT.nhConcealRotY + (nhAngle - MC_STAGING_CONTRACT.nhConcealRotY) * turnT;
     } else if (u > 0.80) {
       const settleT = (u - 0.80) / 0.20;
-      kvRotY = kvAngle + (MC_STAGING_CONTRACT.deskFacingRotY - kvAngle) * settleT;
-      nhRotY = nhAngle + (MC_STAGING_CONTRACT.deskFacingRotY - nhAngle) * settleT;
+      kvRotY = kvAngle + (MC_STAGING_CONTRACT.audienceFacingRotY - kvAngle) * settleT;
+      nhRotY = nhAngle + (MC_STAGING_CONTRACT.audienceFacingRotY - nhAngle) * settleT;
     }
 
     return {
@@ -298,15 +302,15 @@ export function evaluateMcStaging(
       kvLeftArm: { rotX: 0, rotZ: 0 },
     };
   } else if (elapsed < MC_STAGING_CONTRACT.greetingEndMs) {
-    // Phase 2 (3.2s -> 4.0s): High-five / greeting gesture
+    // Phase 2 (3.2s -> 4.0s): High-five / greeting gesture facing audience on center circular dais
     const greetT = (elapsed - MC_STAGING_CONTRACT.greetingStartMs) / MC_STAGING_CONTRACT.greetingDurationMs;
     const bell = Math.sin(greetT * Math.PI);
 
     return {
-      kvPos: [...MC_STAGING_CONTRACT.kvDeskPos],
-      nhPos: [...MC_STAGING_CONTRACT.nhDeskPos],
-      kvRotY: MC_STAGING_CONTRACT.deskFacingRotY - 0.12 * bell,
-      nhRotY: MC_STAGING_CONTRACT.deskFacingRotY + 0.12 * bell,
+      kvPos: [...MC_STAGING_CONTRACT.kvCenterPos],
+      nhPos: [...MC_STAGING_CONTRACT.nhCenterPos],
+      kvRotY: MC_STAGING_CONTRACT.audienceFacingRotY - 0.12 * bell,
+      nhRotY: MC_STAGING_CONTRACT.audienceFacingRotY + 0.12 * bell,
       isWalking: false,
       gestureIntensity: bell,
       nhRightArm: {
@@ -319,16 +323,93 @@ export function evaluateMcStaging(
       },
     };
   } else {
-    // Phase 3 (4.0s onwards): Steady desk stance
+    // Phase 3 (4.0s onwards): Poised stance on center circular dais throughout pre-match greeting
+    return {
+      kvPos: [...MC_STAGING_CONTRACT.kvCenterPos],
+      nhPos: [...MC_STAGING_CONTRACT.nhCenterPos],
+      kvRotY: MC_STAGING_CONTRACT.audienceFacingRotY,
+      nhRotY: MC_STAGING_CONTRACT.audienceFacingRotY,
+      isWalking: false,
+      gestureIntensity: 0.0,
+      nhRightArm: { rotX: 0, rotZ: 0 },
+      kvLeftArm: { rotX: 0, rotZ: 0 },
+    };
+  }
+}
+
+/**
+ * Evaluates MC 6-second walk back from center circular dais to MC desk on contestant entrance.
+ */
+export function evaluateMcWalkBack(
+  elapsedEntranceMs: number,
+  durationMs: number = MC_STAGING_CONTRACT.walkBackDurationMs
+): {
+  kvPos: [number, number, number];
+  nhPos: [number, number, number];
+  kvRotY: number;
+  nhRotY: number;
+  isWalking: boolean;
+} {
+  const elapsed = Math.max(0, elapsedEntranceMs);
+  if (elapsed < durationMs) {
+    const rawT = elapsed / durationMs;
+    const u = rawT * rawT * (3 - 2 * rawT);
+
+    const isWalking = u > 0.02 && u < 0.98;
+
+    const kvMidX = (MC_STAGING_CONTRACT.kvCenterPos[0] + MC_STAGING_CONTRACT.kvDeskPos[0]) / 2 + 0.20;
+    const kvMidY = 0.16;
+    const kvMidZ = (MC_STAGING_CONTRACT.kvCenterPos[2] + MC_STAGING_CONTRACT.kvDeskPos[2]) / 2;
+    const nhMidX = (MC_STAGING_CONTRACT.nhCenterPos[0] + MC_STAGING_CONTRACT.nhDeskPos[0]) / 2 + 0.15;
+    const nhMidY = 0.16;
+    const nhMidZ = (MC_STAGING_CONTRACT.nhCenterPos[2] + MC_STAGING_CONTRACT.nhDeskPos[2]) / 2;
+
+    const w0 = (1 - u) * (1 - u);
+    const w1 = 2 * (1 - u) * u;
+    const w2 = u * u;
+
+    const kvX = w0 * MC_STAGING_CONTRACT.kvCenterPos[0] + w1 * kvMidX + w2 * MC_STAGING_CONTRACT.kvDeskPos[0];
+    const kvY = w0 * MC_STAGING_CONTRACT.kvCenterPos[1] + w1 * kvMidY + w2 * MC_STAGING_CONTRACT.kvDeskPos[1];
+    const kvZ = w0 * MC_STAGING_CONTRACT.kvCenterPos[2] + w1 * kvMidZ + w2 * MC_STAGING_CONTRACT.kvDeskPos[2];
+
+    const nhX = w0 * MC_STAGING_CONTRACT.nhCenterPos[0] + w1 * nhMidX + w2 * MC_STAGING_CONTRACT.nhDeskPos[0];
+    const nhY = w0 * MC_STAGING_CONTRACT.nhCenterPos[1] + w1 * nhMidY + w2 * MC_STAGING_CONTRACT.nhDeskPos[1];
+    const nhZ = w0 * MC_STAGING_CONTRACT.nhCenterPos[2] + w1 * nhMidZ + w2 * MC_STAGING_CONTRACT.nhDeskPos[2];
+
+    const kvTanX = 2 * (1 - u) * (kvMidX - MC_STAGING_CONTRACT.kvCenterPos[0]) + 2 * u * (MC_STAGING_CONTRACT.kvDeskPos[0] - kvMidX);
+    const kvTanZ = 2 * (1 - u) * (kvMidZ - MC_STAGING_CONTRACT.kvCenterPos[2]) + 2 * u * (MC_STAGING_CONTRACT.kvDeskPos[2] - kvMidZ);
+    const kvWalkAngle = Math.atan2(kvTanX, kvTanZ);
+
+    const nhTanX = 2 * (1 - u) * (nhMidX - MC_STAGING_CONTRACT.nhCenterPos[0]) + 2 * u * (MC_STAGING_CONTRACT.nhDeskPos[0] - nhMidX);
+    const nhTanZ = 2 * (1 - u) * (nhMidZ - MC_STAGING_CONTRACT.nhCenterPos[2]) + 2 * u * (MC_STAGING_CONTRACT.nhDeskPos[2] - nhMidZ);
+    const nhWalkAngle = Math.atan2(nhTanX, nhTanZ);
+
+    let kvRotY = kvWalkAngle;
+    let nhRotY = nhWalkAngle;
+    if (u < 0.15) {
+      const turnT = u / 0.15;
+      kvRotY = MC_STAGING_CONTRACT.audienceFacingRotY + (kvWalkAngle - MC_STAGING_CONTRACT.audienceFacingRotY) * turnT;
+      nhRotY = MC_STAGING_CONTRACT.audienceFacingRotY + (nhWalkAngle - MC_STAGING_CONTRACT.audienceFacingRotY) * turnT;
+    } else if (u > 0.85) {
+      const settleT = (u - 0.85) / 0.15;
+      kvRotY = kvWalkAngle + (MC_STAGING_CONTRACT.deskFacingRotY - kvWalkAngle) * settleT;
+      nhRotY = nhWalkAngle + (MC_STAGING_CONTRACT.deskFacingRotY - nhWalkAngle) * settleT;
+    }
+
+    return {
+      kvPos: [kvX, kvY, kvZ],
+      nhPos: [nhX, nhY, nhZ],
+      kvRotY,
+      nhRotY,
+      isWalking,
+    };
+  } else {
     return {
       kvPos: [...MC_STAGING_CONTRACT.kvDeskPos],
       nhPos: [...MC_STAGING_CONTRACT.nhDeskPos],
       kvRotY: MC_STAGING_CONTRACT.deskFacingRotY,
       nhRotY: MC_STAGING_CONTRACT.deskFacingRotY,
       isWalking: false,
-      gestureIntensity: 0.0,
-      nhRightArm: { rotX: 0, rotZ: 0 },
-      kvLeftArm: { rotX: 0, rotZ: 0 },
     };
   }
 }
@@ -591,23 +672,36 @@ export function runOlympiaIntroChoreographySuite(): {
   });
 
   // F5: MC Concealed Initial Staging
-  runTest(1, "F5.1", "Khánh Vy initial concealed position matches [5.17, 0.14, -8.52]", () => {
+  runTest(1, "F5.1", "Khánh Vy initial concealed position matches [6.02, 0.14, -8.82]", () => {
     const mc = evaluateMcStaging(0, true, null);
     assert.deepEqual(mc.kvPos, MC_STAGING_CONTRACT.kvConcealPos);
+    assert.deepEqual(mc.kvPos, [6.02, 0.14, -8.82]);
   });
 
-  runTest(1, "F5.2", "Ngọc Huy initial concealed position matches [1.97, 0.14, -9.34]", () => {
+  runTest(1, "F5.2", "Ngọc Huy initial concealed position matches [1.36, 0.14, -10.01]", () => {
     const mc = evaluateMcStaging(0, true, null);
     assert.deepEqual(mc.nhPos, MC_STAGING_CONTRACT.nhConcealPos);
+    assert.deepEqual(mc.nhPos, [1.36, 0.14, -10.01]);
   });
 
-  runTest(1, "F5.3", "Presenters are concealed behind the hexagonal portal pillars (|lx| = 1.65m > 1.50m inner arch)", () => {
-    // Proven by coaxial alignment: inner portal arch threshold width is 3.00m (half-width 1.50m)
-    // Concealed positions at local |lx| = 1.65m are safely behind solid titanium pillars
-    const kvLocalX = 1.65;
-    const nhLocalX = -1.65;
-    assert.ok(Math.abs(kvLocalX) > 1.50);
-    assert.ok(Math.abs(nhLocalX) > 1.50);
+  runTest(1, "F5.3", "Presenters are concealed behind Arch Tier 3 border slabs (|xLoc| >= 2.40m, zLoc ~= -0.85m)", () => {
+    const { kvConcealPos, nhConcealPos } = MC_STAGING_CONTRACT;
+    const cos = Math.cos(-0.25);
+    const sin = Math.sin(-0.25);
+    const kvDx = kvConcealPos[0] - 3.48;
+    const kvDz = kvConcealPos[2] - (-8.59);
+    const kvXLoc = kvDx * cos - kvDz * sin;
+    const kvZLoc = kvDx * sin + kvDz * cos;
+
+    const nhDx = nhConcealPos[0] - 3.48;
+    const nhDz = nhConcealPos[2] - (-8.59);
+    const nhXLoc = nhDx * cos - nhDz * sin;
+    const nhZLoc = nhDx * sin + nhDz * cos;
+
+    assert.ok(Math.abs(kvXLoc) >= 2.40, `Expected KV |xLoc| >= 2.40m, got ${Math.abs(kvXLoc)}`);
+    assert.ok(Math.abs(nhXLoc) >= 2.40, `Expected NH |xLoc| >= 2.40m, got ${Math.abs(nhXLoc)}`);
+    assert.ok(Math.abs(kvZLoc - (-0.85)) < 0.05, `Expected KV zLoc ~= -0.85m, got ${kvZLoc}`);
+    assert.ok(Math.abs(nhZLoc - (-0.85)) < 0.05, `Expected NH zLoc ~= -0.85m, got ${nhZLoc}`);
   });
 
   runTest(1, "F5.4", "Initial presenter orientations face inward towards the catwalk archway", () => {
@@ -616,20 +710,24 @@ export function runOlympiaIntroChoreographySuite(): {
     assert.equal(mc.nhRotY, MC_STAGING_CONTRACT.nhConcealRotY);
   });
 
-  // F6: MC Step-Out & Natural Greeting
+  // F6: MC Step-Out & Center Stage Staging with 6-Second Walk Back
   runTest(1, "F6.1", "Presenters actively walk along catwalk during 0.0s -> 3.2s", () => {
     const mc = evaluateMcStaging(1600);
     assert.equal(mc.isWalking, true);
     assert.equal(mc.gestureIntensity, 0.0);
   });
 
-  runTest(1, "F6.2", "Presenters arrive behind MC desk at t = 3.2s", () => {
+  runTest(1, "F6.2", "Presenters arrive at center circular dais at t = 3.2s ([0.38, 0.18, 0.00] & [-0.38, 0.18, 0.00])", () => {
     const mc = evaluateMcStaging(3200);
-    assert.ok(Math.abs(mc.kvPos[0] - MC_STAGING_CONTRACT.kvDeskPos[0]) < 1e-4);
-    assert.ok(Math.abs(mc.nhPos[0] - MC_STAGING_CONTRACT.nhDeskPos[0]) < 1e-4);
+    assert.ok(Math.abs(mc.kvPos[0] - MC_STAGING_CONTRACT.kvCenterPos[0]) < 1e-4);
+    assert.ok(Math.abs(mc.nhPos[0] - MC_STAGING_CONTRACT.nhCenterPos[0]) < 1e-4);
+    assert.ok(Math.abs(mc.kvPos[1] - MC_STAGING_CONTRACT.kvCenterPos[1]) < 1e-4);
+    assert.ok(Math.abs(mc.nhPos[1] - MC_STAGING_CONTRACT.nhCenterPos[1]) < 1e-4);
+    assert.ok(Math.abs(mc.kvPos[2] - MC_STAGING_CONTRACT.kvCenterPos[2]) < 1e-4);
+    assert.ok(Math.abs(mc.nhPos[2] - MC_STAGING_CONTRACT.nhCenterPos[2]) < 1e-4);
   });
 
-  runTest(1, "F6.3", "Presenters execute high-five greeting between 3.2s and 4.0s", () => {
+  runTest(1, "F6.3", "Presenters execute greeting gesture facing audience between 3.2s and 4.0s", () => {
     const mc = evaluateMcStaging(3600); // peak
     assert.equal(mc.isWalking, false);
     assert.ok(mc.gestureIntensity > 0.95, `Expected peak gesture intensity ~1.0, got ${mc.gestureIntensity}`);
@@ -647,13 +745,36 @@ export function runOlympiaIntroChoreographySuite(): {
     assert.ok(mc.kvLeftArm.rotZ > 0.3, `Expected shoulder abduction rotZ > 0.3 rad, got ${mc.kvLeftArm.rotZ}`);
   });
 
-  runTest(1, "F6.6", "Presenters return to neutral resting stance at desk by t = 4.0s", () => {
+  runTest(1, "F6.6", "Presenters hold poised stance on center circular dais facing audience (rotY = 0.0 rad) at t = 4.0s", () => {
     const mc = evaluateMcStaging(4000);
     assert.equal(mc.gestureIntensity, 0.0);
     assert.equal(mc.nhRightArm.rotX, 0);
     assert.equal(mc.kvLeftArm.rotX, 0);
-    assert.equal(mc.kvRotY, MC_STAGING_CONTRACT.deskFacingRotY);
-    assert.equal(mc.nhRotY, MC_STAGING_CONTRACT.deskFacingRotY);
+    assert.equal(mc.kvRotY, MC_STAGING_CONTRACT.audienceFacingRotY);
+    assert.equal(mc.nhRotY, MC_STAGING_CONTRACT.audienceFacingRotY);
+    assert.deepEqual(mc.kvPos, MC_STAGING_CONTRACT.kvCenterPos);
+    assert.deepEqual(mc.nhPos, MC_STAGING_CONTRACT.nhCenterPos);
+  });
+
+  runTest(1, "F6.7", "On contestant entrance, MCs turn and smoothly walk back from center circular dais to desk over exact 6000ms", () => {
+    const start = evaluateMcWalkBack(0);
+    assert.deepEqual(start.kvPos, MC_STAGING_CONTRACT.kvCenterPos);
+    assert.deepEqual(start.nhPos, MC_STAGING_CONTRACT.nhCenterPos);
+
+    const mid = evaluateMcWalkBack(3000);
+    assert.equal(mid.isWalking, true);
+
+    const end = evaluateMcWalkBack(6000);
+    assert.deepEqual(end.kvPos, MC_STAGING_CONTRACT.kvDeskPos);
+    assert.deepEqual(end.nhPos, MC_STAGING_CONTRACT.nhDeskPos);
+    assert.equal(end.isWalking, false);
+    assert.equal(end.kvRotY, MC_STAGING_CONTRACT.deskFacingRotY);
+    assert.equal(end.nhRotY, MC_STAGING_CONTRACT.deskFacingRotY);
+
+    const postEnd = evaluateMcWalkBack(7500);
+    assert.deepEqual(postEnd.kvPos, MC_STAGING_CONTRACT.kvDeskPos);
+    assert.deepEqual(postEnd.nhPos, MC_STAGING_CONTRACT.nhDeskPos);
+    assert.equal(postEnd.isWalking, false);
   });
 
   // F7: Laurel Wreath Vitrine Smooth Reveal
@@ -779,7 +900,7 @@ export function runOlympiaIntroChoreographySuite(): {
     assert.equal(INTRO_CAMERA_CONTRACT.verticalFovDeg, 43.0);
   });
 
-  console.log(`Tier 1 Tests Completed: ${tier1Count} / 46 passing (threshold >= 35 satisfied).\n`);
+  console.log(`Tier 1 Tests Completed: ${tier1Count} / 47 passing (threshold >= 35 satisfied).\n`);
 
   // ───────────────────────────────────────────────────────────────────────────
   // TIER 2: BOUNDARY & CORNER CASES (Timers, Angles, Skew, Aspects)
@@ -793,11 +914,11 @@ export function runOlympiaIntroChoreographySuite(): {
     assert.deepEqual(cam.pos, INTRO_CAMERA_CONTRACT.mcTightPos);
   });
 
-  runTest(2, "B1.2", "Exact boundary t = 3.2s: MC catwalk walk finishes, greeting starts", () => {
+  runTest(2, "B1.2", "Exact boundary t = 3.2s: MC catwalk walk finishes at center dais, greeting starts", () => {
     const mc = evaluateMcStaging(3200);
     assert.equal(mc.isWalking, false);
-    assert.deepEqual(mc.kvPos, MC_STAGING_CONTRACT.kvDeskPos);
-    assert.deepEqual(mc.nhPos, MC_STAGING_CONTRACT.nhDeskPos);
+    assert.deepEqual(mc.kvPos, MC_STAGING_CONTRACT.kvCenterPos);
+    assert.deepEqual(mc.nhPos, MC_STAGING_CONTRACT.nhCenterPos);
   });
 
   runTest(2, "B1.3", "Exact boundary t = 3.6s: High-five gesture reaches peak contact", () => {
@@ -1053,14 +1174,18 @@ export function runOlympiaIntroChoreographySuite(): {
     }
   });
 
-  runTest(3, "C7", "High-Five Spatial Contact: Ngọc Huy & Khánh Vy inner palms meet at Y ~= 1.44m, gap < 5cm", () => {
-    // Palm math from Explorer 2:
+  runTest(3, "C7", "Presenter Staging & Spacing: Inner palms meet at desk (< 5cm gap) and 0.76m separation on center dais", () => {
+    // Palm math from Explorer 2 at desk:
     // NH Palm X = 3.08, KV Palm X = 3.06 -> Delta X = 0.02m (2cm)
     // Contact elevation Y ~= 1.44m
-    const nhPalmX = 2.86 + 0.165 + 0.40 * Math.sin(0.45) * Math.cos(1.25);
-    const kvPalmX = 3.26 - 0.142 - 0.40 * Math.sin(0.45) * Math.cos(1.25);
+    const nhPalmX = MC_STAGING_CONTRACT.nhDeskPos[0] + 0.165 + 0.40 * Math.sin(0.45) * Math.cos(1.25);
+    const kvPalmX = MC_STAGING_CONTRACT.kvDeskPos[0] - 0.142 - 0.40 * Math.sin(0.45) * Math.cos(1.25);
     const gap = Math.abs(nhPalmX - kvPalmX);
     assert.ok(gap < 0.05, `Palm gap ${gap}m should be under 5cm`);
+
+    // Center circular dais symmetric separation
+    const centerSep = MC_STAGING_CONTRACT.kvCenterPos[0] - MC_STAGING_CONTRACT.nhCenterPos[0];
+    assert.equal(Number(centerSep.toFixed(2)), 0.76);
   });
 
   runTest(3, "C8", "Subterranean Vitrine Dome Clearance: Highest cloche point at t < 6s is at Y <= 0.03m", () => {
@@ -1114,10 +1239,12 @@ export function runOlympiaIntroChoreographySuite(): {
     const t36_mc = evaluateMcStaging(3600);
     assert.ok(t36_mc.gestureIntensity > 0.9);
 
-    // 5s: Camera panning across stage, MCs poised at desk
+    // 5s: Camera panning across stage, MCs poised at center circular dais
     const t5_cam = evaluateIntroCamera(5.0);
     const t5_mc = evaluateMcStaging(5000);
     assert.equal(t5_cam.phase, 2);
+    assert.deepEqual(t5_mc.kvPos, MC_STAGING_CONTRACT.kvCenterPos);
+    assert.deepEqual(t5_mc.nhPos, MC_STAGING_CONTRACT.nhCenterPos);
     assert.equal(t5_mc.isWalking, false);
 
     // 8s: Camera dollies to center stage, vitrine rising
@@ -1134,6 +1261,17 @@ export function runOlympiaIntroChoreographySuite(): {
     assert.equal(t11_cam.phase, 4);
     assert.equal(t11_v.elevationOffset, 0.0);
     assert.ok(t11_r.effectiveOpacity >= 0.35);
+
+    // Contestant entrance triggers: 6.0-second walk back from center circular dais to MC desk
+    const walkStart = evaluateMcWalkBack(0);
+    assert.deepEqual(walkStart.kvPos, MC_STAGING_CONTRACT.kvCenterPos);
+    assert.deepEqual(walkStart.nhPos, MC_STAGING_CONTRACT.nhCenterPos);
+    const walkMid = evaluateMcWalkBack(3000);
+    assert.equal(walkMid.isWalking, true);
+    const walkEnd = evaluateMcWalkBack(6000);
+    assert.deepEqual(walkEnd.kvPos, MC_STAGING_CONTRACT.kvDeskPos);
+    assert.deepEqual(walkEnd.nhPos, MC_STAGING_CONTRACT.nhDeskPos);
+    assert.equal(walkEnd.isWalking, false);
   });
 
   runTest(4, "Scenario 2", "Rapid Game Start & Skip: Fast-forward directly from t = 1s to t = 10s settles cleanly", () => {
@@ -1141,8 +1279,15 @@ export function runOlympiaIntroChoreographySuite(): {
     const mc = evaluateMcStaging(10000);
     const v = evaluateVitrineReveal(10.0);
     assert.equal(cam.phase, 4);
-    assert.deepEqual(mc.kvPos, MC_STAGING_CONTRACT.kvDeskPos);
+    assert.deepEqual(mc.kvPos, MC_STAGING_CONTRACT.kvCenterPos);
+    assert.deepEqual(mc.nhPos, MC_STAGING_CONTRACT.nhCenterPos);
     assert.equal(v.elevationOffset, 0.0);
+
+    // Fast-forward contestant entrance: 6.0s walk-back settles at desk
+    const mcPostEntrance = evaluateMcWalkBack(6000);
+    assert.deepEqual(mcPostEntrance.kvPos, MC_STAGING_CONTRACT.kvDeskPos);
+    assert.deepEqual(mcPostEntrance.nhPos, MC_STAGING_CONTRACT.nhDeskPos);
+    assert.equal(mcPostEntrance.isWalking, false);
   });
 
   runTest(4, "Scenario 3", "Camera Director Framing Quality: LookAt target never jumps discontinuously", () => {
@@ -1159,10 +1304,14 @@ export function runOlympiaIntroChoreographySuite(): {
     }
   });
 
-  runTest(4, "Scenario 4", "Broadcast Decorum: Presenter heading settles to exactly -0.28 rad facing stage center", () => {
+  runTest(4, "Scenario 4", "Broadcast Decorum: Presenter heading on center dais faces audience (0.0 rad), settling to desk angle (-0.28 rad) post walk-back", () => {
     const mc = evaluateMcStaging(4500);
-    assert.equal(mc.kvRotY, -0.28);
-    assert.equal(mc.nhRotY, -0.28);
+    assert.equal(mc.kvRotY, MC_STAGING_CONTRACT.audienceFacingRotY);
+    assert.equal(mc.nhRotY, MC_STAGING_CONTRACT.audienceFacingRotY);
+
+    const mcDesk = evaluateMcWalkBack(6000);
+    assert.equal(mcDesk.kvRotY, MC_STAGING_CONTRACT.deskFacingRotY);
+    assert.equal(mcDesk.nhRotY, MC_STAGING_CONTRACT.deskFacingRotY);
   });
 
   runTest(4, "Scenario 5", "Tournament Multi-Round Continuity: Floor rings maintain continuous rotation across rounds", () => {
@@ -1293,7 +1442,7 @@ export function runOlympiaIntroChoreographySuite(): {
   console.log("\n================================================================================");
   console.log("INTRO CHOREOGRAPHY & STAGE FLOOR TEST EXECUTION SUMMARY");
   console.log("================================================================================");
-  console.log(`  Tier 1 (Feature Coverage):        ${tier1Count} / 46 passed (Threshold: >= 35)`);
+  console.log(`  Tier 1 (Feature Coverage):        ${tier1Count} / 47 passed (Threshold: >= 35)`);
   console.log(`  Tier 2 (Boundary & Corner Cases): ${tier2Count} / 30 passed (Threshold: >= 25)`);
   console.log(`  Tier 3 (Cross-Feature Combos):    ${tier3Count} / 10 passed (Threshold: >= 7)`);
   console.log(`  Tier 4 (Real-World Scenarios):    ${tier4Count} / 6  passed (Threshold: >= 5)`);

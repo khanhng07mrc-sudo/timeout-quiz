@@ -24,12 +24,31 @@ export interface CameraPreset {
  * - CAM 9: Cẩu Quay Toàn Cảnh (Jib Crane High-Angle)
  * - CAM 10: Vách Ký Hiệu Khoa Học
  */
-export function getContestantCameraPreset(seatId: number, totalSeats: number = 4): CameraPreset {
+export function getContestantPodiumWorldPos(
+  seatId: number,
+  totalSeats: number = 4,
+  y: number = 0.22
+): [number, number, number] {
   const activeCount = Math.min(8, Math.max(1, totalSeats));
+  const clampedSeat = Math.min(activeCount - 1, Math.max(0, seatId));
   const radius = 6.6;
   const startPhi = activeCount > 4 ? 0.26 : 0.38;
   const endPhi = activeCount > 4 ? 1.31 : 1.13;
-  const frac = activeCount === 1 ? 0.5 : seatId / (activeCount - 1);
+  const frac = activeCount === 1 ? 0.5 : clampedSeat / (activeCount - 1);
+  const phi = startPhi + frac * (endPhi - startPhi);
+
+  const px = +(-radius * Math.cos(phi)).toFixed(3);
+  const pz = +(-0.5 - radius * Math.sin(phi)).toFixed(3);
+  return [px, y, pz];
+}
+
+export function getContestantCameraPreset(seatId: number, totalSeats: number = 4): CameraPreset {
+  const activeCount = Math.min(8, Math.max(1, totalSeats));
+  const clampedSeat = Math.min(activeCount - 1, Math.max(0, seatId));
+  const radius = 6.6;
+  const startPhi = activeCount > 4 ? 0.26 : 0.38;
+  const endPhi = activeCount > 4 ? 1.31 : 1.13;
+  const frac = activeCount === 1 ? 0.5 : clampedSeat / (activeCount - 1);
   const phi = startPhi + frac * (endPhi - startPhi);
 
   const px = -radius * Math.cos(phi);
@@ -49,8 +68,8 @@ export function getContestantCameraPreset(seatId: number, totalSeats: number = 4
   const targetZ = +pz.toFixed(3);
 
   return {
-    id: seatId < 4 ? 5 + seatId : 25 + (seatId - 4),
-    label: `Cận Cảnh TS ${seatId + 1}`,
+    id: clampedSeat < 4 ? 5 + clampedSeat : 25 + (clampedSeat - 4),
+    label: `Cận Cảnh TS ${clampedSeat + 1}`,
     pos: [camX, camY, camZ],
     target: [targetX, targetY, targetZ],
   };
@@ -72,9 +91,9 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   3: {
     id: 3,
     label: "Bục MC & Cổng Lục Giác",
-    // Tight Medium Close-up (Bust shot): MCs centered from mid-bust to top of head, balanced headroom, desk at Z = -6.70 completely excluded from frame
-    pos: [3.06, 1.62, -5.85],
-    target: [3.06, 1.54, -7.15],
+    // Coaxial straight-on along desk & portal normal (rotY = -0.25 rad), framing full MC desk + both MCs + 3-tier Hexagon Portal
+    pos: [2.30, 1.26, -3.94],
+    target: [3.12, 1.02, -7.16],
   },
   4: {
     id: 4,
@@ -147,6 +166,7 @@ interface CameraControllerProps {
   ptzZoom?: number;
   introStartedAt?: number | null;
   kdStartCooldownUntil?: number | null;
+  isIdleLobby?: boolean;
   serverNow?: () => number;
 }
 
@@ -158,11 +178,16 @@ const _mcCloseTarget = new THREE.Vector3();
 const _curPos = new THREE.Vector3();
 const _curTarget = new THREE.Vector3();
 
-// Intro Sequence Waypoints (R1 Architecture)
-export const _mcTightPos = new THREE.Vector3(3.06, 1.62, -6.10);
-export const _mcTightTarget = new THREE.Vector3(3.06, 1.54, -7.15);
-export const _mcMediumPos = new THREE.Vector3(2.50, 2.20, -3.80);
-export const _mcMediumTarget = new THREE.Vector3(2.90, 1.35, -6.80);
+// Intro Sequence Waypoints (Coaxial straight-on along rotY = -0.25 rad normal + 1:1 MC Dolly & Track)
+// _mcTightPos / _mcTightTarget: Coaxial deep zoom into Hexagon Portal so empty MC desk (top Y <= 1.26m) is >54cm below frustum
+export const _mcTightPos = new THREE.Vector3(2.98, 2.02, -6.65);
+export const _mcTightTarget = new THREE.Vector3(3.48, 2.18, -8.59);
+// _mcMediumPos / _mcMediumTarget: Coaxial wide-portal framing at t = 1.5s catching both MCs stepping outside left & right portal edges
+export const _mcMediumPos = new THREE.Vector3(1.95, 1.86, -2.50);
+export const _mcMediumTarget = new THREE.Vector3(3.32, 1.38, -7.90);
+// _introTrackMidPos / _introTrackMidTarget: Bezier control waypoint tracking the 1:1 midpoint of both MCs walking across stage floor
+export const _introTrackMidPos = new THREE.Vector3(0.95, 2.02, 1.65);
+export const _introTrackMidTarget = new THREE.Vector3(1.85, 1.24, -3.80);
 export const _wideStagePos = new THREE.Vector3(0.00, 4.40, 13.00);
 export const _wideStageTarget = new THREE.Vector3(-0.60, 1.80, -3.80);
 export const _centerStagePos = new THREE.Vector3(0.00, 1.95, 4.60);
@@ -190,6 +215,7 @@ export function CameraController({
   ptzZoom = 1.0,
   introStartedAt = null,
   kdStartCooldownUntil = null,
+  isIdleLobby = false,
   serverNow,
 }: CameraControllerProps) {
   const { camera, size } = useThree();
@@ -204,11 +230,17 @@ export function CameraController({
   const targetPreset = isContestantCam
     ? getContestantCameraPreset(
         camAngle >= 25 ? camAngle - 25 + 4 : camAngle - 5,
-        camAngle >= 25 ? Math.max(effectiveTotalSeats, 8) : effectiveTotalSeats
+        effectiveTotalSeats
       )
     : (OLYMPIA_CAM_PRESETS[camAngle] || OLYMPIA_CAM_PRESETS[1]);
-  const targetPos = useMemo(() => new THREE.Vector3(...targetPreset.pos), [targetPreset]);
-  const targetLookAt = useMemo(() => new THREE.Vector3(...targetPreset.target), [targetPreset]);
+  const targetPos = useMemo(
+    () => (isIdleLobby && camAngle === 3 ? _mcTightPos.clone() : new THREE.Vector3(...targetPreset.pos)),
+    [isIdleLobby, camAngle, targetPreset]
+  );
+  const targetLookAt = useMemo(
+    () => (isIdleLobby && camAngle === 3 ? _mcTightTarget.clone() : new THREE.Vector3(...targetPreset.target)),
+    [isIdleLobby, camAngle, targetPreset]
+  );
 
   // Handle instant cut on camera switch when mode is CUT
   useEffect(() => {
@@ -244,40 +276,43 @@ export function CameraController({
         camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 6.0, delta);
       }
     }
-    // 0. Opening Sequence Camera Director (R1 Intro Choreography & Timing):
-    // Phase 1 (0.0s - 4.0s): Starts directly facing MC podium zoomed in deep (desk completely out of frame),
-    //                       smoothly zooming out over 4s as the two MCs step out.
-    // Phase 2 (4.0s - 6.0s): Pans and follows MCs' exit trajectory for ~2s, settling at wide stage view (CAM 1).
-    // Phase 3 (6.0s - 10.0s): Smoothly transitions from wide stage view to the stage center.
-    // Phase 4 (10.0s onwards): Steadily holds at center stage with natural broadcast breathing.
+    // 0. Opening Sequence Camera Director (Coaxial Deep Portal Zoom -> 1:1 MC Dolly & Track -> Center Stage Hold):
+    // Phase 1 (0.0s - 1.5s): Starts coaxially zoomed deep into Hexagon Portal (desk >35cm below frame),
+    //                       smoothly dollying out along the -0.25 rad normal to frame both outer portal edges as MCs step out.
+    // Phase 2 (1.5s - 5.0s): Continuous 1:1 Quadratic Bezier dolly-back & pan-track following both MCs' midpoint
+    //                       across the stage floor, arriving smoothly at Center Circular Dais right as MCs greet (~5.0s).
+    // Phase 3 (5.0s onwards): Steadily holds coaxial front shot on Center Stage with natural broadcast breathing.
     if (introStartedAt) {
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = Math.max(0, (now - introStartedAt) / 1000);
 
-      _wideStagePos.set(...OLYMPIA_CAM_PRESETS[1].pos);
-      _wideStageTarget.set(...OLYMPIA_CAM_PRESETS[1].target);
-
-      if (elapsedSec < 4.0) {
-        // Phase 1 (0.0s - 4.0s): Deep zoom facing MC podium, zooming out to medium-wide
-        const t = Math.min(1.0, elapsedSec / 4.0);
+      if (elapsedSec < 1.5) {
+        // Phase 1 (0.0s - 1.5s): Coaxial deep portal zoom-out catching MCs emerging outside portal borders
+        const t = Math.min(1.0, elapsedSec / 1.5);
         const smoothT = t * t * (3 - 2 * t);
         _curPos.lerpVectors(_mcTightPos, _mcMediumPos, smoothT);
         _curTarget.lerpVectors(_mcTightTarget, _mcMediumTarget, smoothT);
-      } else if (elapsedSec < 6.0) {
-        // Phase 2 (4.0s - 6.0s): Pan & follow MCs' exit trajectory, settling at wide view (CAM 1)
-        const t = Math.min(1.0, (elapsedSec - 4.0) / 2.0);
-        const smoothT = t * t * (3 - 2 * t);
-        _curPos.lerpVectors(_mcMediumPos, _wideStagePos, smoothT);
-        _curTarget.lerpVectors(_mcMediumTarget, _wideStageTarget, smoothT);
-      } else if (elapsedSec < 10.0) {
-        // Phase 3 (6.0s - 10.0s): Smooth transition from wide stage view to center stage
-        const t = Math.min(1.0, (elapsedSec - 6.0) / 4.0);
-        const smoothT = t * t * (3 - 2 * t);
-        _curPos.lerpVectors(_wideStagePos, _centerStagePos, smoothT);
-        _curTarget.lerpVectors(_wideStageTarget, _centerStageTarget, smoothT);
+      } else if (elapsedSec < 5.0) {
+        // Phase 2 (1.5s - 5.0s): Continuous 1:1 Quadratic Bezier dolly-back & pan-track to Center Stage
+        const t = Math.min(1.0, (elapsedSec - 1.5) / 3.5);
+        const u = t * t * (3 - 2 * t);
+        const w0 = (1 - u) * (1 - u);
+        const w1 = 2 * (1 - u) * u;
+        const w2 = u * u;
+
+        _curPos.set(
+          w0 * _mcMediumPos.x + w1 * _introTrackMidPos.x + w2 * _centerStagePos.x,
+          w0 * _mcMediumPos.y + w1 * _introTrackMidPos.y + w2 * _centerStagePos.y,
+          w0 * _mcMediumPos.z + w1 * _introTrackMidPos.z + w2 * _centerStagePos.z
+        );
+        _curTarget.set(
+          w0 * _mcMediumTarget.x + w1 * _introTrackMidTarget.x + w2 * _centerStageTarget.x,
+          w0 * _mcMediumTarget.y + w1 * _introTrackMidTarget.y + w2 * _centerStageTarget.y,
+          w0 * _mcMediumTarget.z + w1 * _introTrackMidTarget.z + w2 * _centerStageTarget.z
+        );
       } else {
-        // Phase 4 (10.0s onwards): Steady center stage hold with subtle broadcast breathing
-        const holdElapsed = elapsedSec - 10.0;
+        // Phase 3 (5.0s onwards): Steady center stage hold with subtle broadcast breathing
+        const holdElapsed = elapsedSec - 5.0;
         const breatheY = Math.sin(holdElapsed * 0.75) * 0.012;
         const breatheX = Math.sin(holdElapsed * 0.45) * 0.008;
         _curPos.set(_centerStagePos.x + breatheX, _centerStagePos.y + breatheY, _centerStagePos.z);

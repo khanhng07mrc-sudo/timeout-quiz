@@ -4,6 +4,7 @@ import React, { useMemo } from "react";
 import * as THREE from "three";
 import { useThree } from "@react-three/fiber";
 import { BroadcastCameras } from "./BroadcastCameras";
+import { getContestantPodiumWorldPos } from "./CameraController";
 
 interface StudioLightingProps {
   screenFadeProgress?: number;
@@ -20,9 +21,11 @@ interface StudioLightingProps {
   camAngle?: number;
   ptzZoom?: number;
   pushInProgress?: number;
-  // Pre-match Idle State (R4)
+  // Pre-match Idle State & Grandstand Illumination
   isIdle?: boolean;
   idleFadeProgress?: number;
+  isGrandstandFullLit?: boolean;
+  totalSeats?: number;
 }
 
 const CONTESTANT_POSITIONS: Array<[number, number, number]> = [
@@ -2523,8 +2526,8 @@ export function AudienceAmphitheater({
   );
 
   const aisleLightColor = useMemo(() => {
-    const c = new THREE.Color("#0077b6");
-    c.lerp(new THREE.Color("#991b1b"), audienceFadeProgress);
+    const c = new THREE.Color("#0ea5e9");
+    c.lerp(new THREE.Color("#ef4444"), audienceFadeProgress);
     return c;
   }, [audienceFadeProgress]);
 
@@ -2971,7 +2974,6 @@ export function AudienceAmphitheater({
           <pointLight position={[4.5, 5.2, 1.8]} intensity={8 * liveFactor} color="#38bdf8" distance={11} decay={2} />
           <pointLight position={[0.0, 5.4, 2.2]} intensity={12 * liveFactor} color="#ffffff" distance={12} decay={2} />
           <pointLight position={[0.0, 3.4, -1.2]} intensity={10 * liveFactor} color="#e0f2fe" distance={16} decay={1.5} />
-          <directionalLight position={[0.0, 5.8, -1.8]} intensity={0.8 * liveFactor} color="#ffffff" />
         </>
       )}
     </group>
@@ -3000,6 +3002,8 @@ export function StudioLighting({
   pushInProgress = 0,
   isIdle,
   idleFadeProgress,
+  isGrandstandFullLit = false,
+  totalSeats = 4,
 }: StudioLightingProps) {
   const { scene } = useThree();
   if (typeof window !== "undefined") {
@@ -3078,12 +3082,40 @@ export function StudioLighting({
     return c;
   }, [stageFadeProgress]);
 
-  // Audience Wash Color
+  // Audience Wash & Front Key Colors (S14 Royal Broadcast Blue -> Dramatic Red, NEVER black!)
   const audienceWashColor = useMemo(() => {
-    const c = new THREE.Color("#05102a");
-    c.lerp(new THREE.Color("#7a0215"), audienceFadeProgress);
+    const c = new THREE.Color("#2563eb");
+    c.lerp(new THREE.Color("#dc2626"), audienceFadeProgress);
     return c;
   }, [audienceFadeProgress]);
+
+  const audienceFrontKeyColor = useMemo(() => {
+    const c = new THREE.Color("#dbeafe");
+    c.lerp(new THREE.Color("#fecdd3"), audienceFadeProgress * 0.65);
+    return c;
+  }, [audienceFadeProgress]);
+
+  // Grandstand Illumination Factor (R4):
+  // - Lobby idle: dim sapphire standby (0.08)
+  // - Opening MC greeting before Contestant Intro: moderate television blue wash (0.55)
+  // - Contestant Introduction & Competition Rounds (isGrandstandFullLit): 100% bright & clear (1.0, or 0.28 in VeDich dimmed)
+  const grandstandLightFactor = useMemo(() => {
+    if (isGrandstandFullLit) {
+      return isVeDichDimmed ? 0.28 : 1.0;
+    }
+    if (isIdle) {
+      return 0.08;
+    }
+    if (introStartedAt != null) {
+      return THREE.MathUtils.lerp(0.12, 0.55, liveFactor);
+    }
+    return THREE.MathUtils.lerp(0.12, isVeDichDimmed ? 0.28 : 1.0, liveFactor);
+  }, [isGrandstandFullLit, isVeDichDimmed, isIdle, introStartedAt, liveFactor]);
+
+  const dynamicContestantPositions = useMemo(() => {
+    const count = Math.min(8, Math.max(1, totalSeats || 4));
+    return Array.from({ length: count }, (_, idx) => getContestantPodiumWorldPos(idx, count, 0.22));
+  }, [totalSeats]);
 
   // Ambient & Key Light Intensity Factors (Controlled Studio Contrast)
   // Standby illumination baseline tuned to 0.24 - 0.28 (deep navy #162848) so the floor stays rich pitch black with mirror-like specular reflections
@@ -3275,8 +3307,8 @@ export function StudioLighting({
         </>
       )}
 
-      {/* ── 3. VỀ ĐÍCH SPECIAL OVERHEAD SPOTLIGHTS (TS 1..4) ── */}
-      {CONTESTANT_POSITIONS.map((pos, sIdx) => {
+      {/* ── 3. VỀ ĐÍCH SPECIAL OVERHEAD SPOTLIGHTS (Dynamic Contestant Arc Positions) ── */}
+      {dynamicContestantPositions.map((pos, sIdx) => {
         // Evaluate spotlight state for this seat
         const isLocked = lockedSpotlightSeat === sIdx;
         const isChased = is5sBuzzerChasing && spotlightChaseIndex === sIdx;
@@ -3303,15 +3335,27 @@ export function StudioLighting({
         );
       })}
 
-      {/* ── 4. AUDIENCE AMPHITHEATER LIGHTS ── */}
+      {/* ── 4. AUDIENCE AMPHITHEATER LIGHTS (Active across ALL quality modes including Sandbox LIGHT) ── */}
+      <TargetedSpotLight
+        position={[0, 7.2, 1.2]}
+        targetPosition={[0, 1.5, 10.6]}
+        intensity={9.5 * grandstandLightFactor}
+        color={audienceFrontKeyColor}
+        angle={0.95}
+        penumbra={0.55}
+        distance={24}
+        decay={1.05}
+        castShadow={false}
+      />
       <TargetedSpotLight
         position={[0, 9.0, 4.0]}
         targetPosition={[0, 2.0, 12.0]}
-        intensity={(isVeDichDimmed ? 1.5 : 4.5) * liveFactor}
+        intensity={6.0 * grandstandLightFactor}
         color={audienceWashColor}
-        angle={0.8}
+        angle={0.85}
         penumbra={0.6}
-        distance={22}
+        distance={24}
+        decay={1.15}
         castShadow={false}
       />
 
@@ -3326,8 +3370,17 @@ export function StudioLighting({
       />
       <StudioWalls stageFadeProgress={stageFadeProgress} liveFactor={liveFactor} />
       <StudioCeilingRig />
-      <AudienceAmphitheater audienceFadeProgress={audienceFadeProgress} quality={quality} liveFactor={liveFactor} />
-      <BroadcastCameras camAngle={camAngle} ptzZoom={ptzZoom} pushInProgress={pushInProgress} />
+      <AudienceAmphitheater
+        audienceFadeProgress={audienceFadeProgress}
+        quality={quality}
+        liveFactor={Math.max(liveFactor, grandstandLightFactor)}
+      />
+      <BroadcastCameras
+        camAngle={camAngle}
+        ptzZoom={ptzZoom}
+        pushInProgress={pushInProgress}
+        totalSeats={totalSeats}
+      />
     </group>
   );
 }

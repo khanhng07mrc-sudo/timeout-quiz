@@ -928,33 +928,55 @@ export function VcnvCountdownGraphic({
         {/* ═══════════════════════════════════════════════════════════════════
             QUADRANT 3: BOTTOM-LEFT (QUESTION FRAME + BOTTOM PROGRESS BAR + CNV BELL PILLS)
            ═══════════════════════════════════════════════════════════════════ */}
-        <div className="relative w-full h-full rounded-2xl overflow-visible border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-gradient-to-br from-[#061838] via-[#041026] to-[#020914] flex flex-col justify-between p-4 sm:p-5 pb-0">
+        <div className="relative w-full h-full rounded-2xl overflow-visible border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-gradient-to-br from-[#061838] via-[#041026] to-[#020914] flex flex-col justify-between p-5 sm:p-6 pb-0">
+          {/* Row / Center Header Pill + Live 15s Badge */}
+          {v.phase !== "selecting" && v.phase !== "done" && curIdx >= 0 && (
+            <div className="w-full flex items-center justify-between gap-3 pb-2 border-b border-cyan-400/25 shrink-0">
+              <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/60 shadow-[0_0_14px_rgba(6,182,212,0.28)]">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-300 shadow-[0_0_8px_#67e8f9]" />
+                <span className="font-black text-sm sm:text-base md:text-lg uppercase tracking-wider text-cyan-200">
+                  {isCenter
+                    ? "Ô TRUNG TÂM · GỢI Ý ĐẶC BIỆT"
+                    : `HÀNG NGANG SỐ ${curIdx + 1} · ${curRow?.letterCount || cleanVcnvWord(curRow?.answer || "").length} KÝ TỰ`}
+                </span>
+              </div>
+              {isV3Arrow && (
+                <span
+                  ref={secTextRef}
+                  className="px-3.5 py-0.5 rounded-lg bg-slate-950/90 border border-cyan-400/50 font-mono font-black text-base md:text-lg text-cyan-300 tracking-wider shadow-inner"
+                >
+                  15s
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Question Text Body / Selecting Announcement */}
-          <div className="flex-1 flex flex-col items-start justify-start py-1 px-1 text-left overflow-hidden">
+          <div className="flex-1 flex flex-col items-start justify-center py-3 px-2 text-left overflow-hidden">
             {v.phase === "selecting" ? null : v.phase === "done" ? (
-              <div className="w-full flex flex-col items-center justify-center h-full text-center gap-2 animate-fade-in">
-                <div className="px-4 py-1.5 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 text-xs sm:text-sm font-black uppercase tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+              <div className="w-full flex flex-col items-center justify-center h-full text-center gap-3 animate-fade-in">
+                <div className="px-5 py-1.5 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 text-sm sm:text-base font-black uppercase tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.5)]">
                   CHƯỚNG NGẠI VẬT ĐÃ ĐƯỢC GIẢI MÃ
                 </div>
-                <div className="text-2xl sm:text-4xl md:text-5xl font-black text-amber-300 tracking-wider drop-shadow-[0_4px_16px_rgba(245,158,11,0.8)]">
+                <div className="text-3xl sm:text-5xl md:text-6xl font-black text-amber-300 tracking-wider drop-shadow-[0_4px_16px_rgba(245,158,11,0.8)]">
                   {v.keyword || "—"}
                 </div>
                 {v.solvedBy != null && state.seats[v.solvedBy] && (
-                  <div className="text-sm sm:text-base text-cyan-200 font-bold">
+                  <div className="text-base sm:text-xl text-cyan-200 font-bold">
                     Chúc mừng thí sinh <span className="text-white font-black underline">{state.seats[v.solvedBy].name}</span>!
                   </div>
                 )}
               </div>
             ) : (
               <p
-                className={`font-extrabold text-white leading-relaxed select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
-                  (questionHint || "").length > 180
-                    ? "text-xs sm:text-sm md:text-base leading-snug"
-                    : (questionHint || "").length > 120
-                    ? "text-sm sm:text-base md:text-lg leading-normal"
-                    : (questionHint || "").length > 70
-                    ? "text-base sm:text-lg md:text-xl leading-relaxed"
-                    : "text-lg sm:text-xl md:text-2xl lg:text-3xl leading-relaxed"
+                className={`w-full font-extrabold text-white select-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.88)] ${
+                  (questionHint || "").length > 230
+                    ? "text-[23px] leading-[1.38]"
+                    : (questionHint || "").length > 165
+                    ? "text-[28px] leading-[1.36]"
+                    : (questionHint || "").length > 100
+                    ? "text-[33px] leading-[1.35]"
+                    : "text-[38px] leading-[1.32]"
                 }`}
               >
                 {questionHint || ""}
@@ -1060,14 +1082,19 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
   const isV3Arrow = state.themeMode !== "o26_classic";
 
   if (isV3Arrow) {
-    const W = 940;
-    const H = 72;
-    const thick = 22;
-    const cThick = 18;
+    const seatCount = Math.max(1, seats.length);
+    const W = 1420;
+    const H = seatCount <= 4 ? 110 : seatCount === 5 ? 96 : seatCount === 6 ? 84 : 74;
+    const thick = seatCount <= 5 ? 28 : 22;
+    const cThick = seatCount <= 5 ? 22 : 18;
     const pad = Math.round(cThick * 1.5);
-    const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick, cThick, pad });
-    const cols = buildRowColumns(shell, [48, 52]);
+    const shell = buildArrowShell({ W, H, slantRatio: 0.34, thick, cThick, pad });
+    const cols = buildRowColumns(shell, [44, 56]);
     const dc = shell.canvasW / 2 - shell.startX / 2;
+    const nameFontSize = seatCount <= 4 ? 34 : seatCount === 5 ? 32 : seatCount === 6 ? 28 : 25;
+    const ansFontSize = seatCount <= 4 ? 38 : seatCount === 5 ? 36 : seatCount === 6 ? 31 : 27;
+    const textBaselineOffset = Math.round(ansFontSize * 0.34);
+    const rowGapClass = seatCount <= 4 ? "gap-5" : seatCount === 5 ? "gap-4" : "gap-2.5";
 
     return (
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040e24]/90 backdrop-blur-md animate-fade-in select-none">
@@ -1140,8 +1167,8 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
             animation: v3-row-text 0.22s ease-out both;
           }
         `}</style>
-        {/* Only pure graphic bars - Strictly no header pill text */}
-        <div className="w-full max-w-5xl flex flex-col gap-4 items-center justify-center py-2">
+        {/* Only pure graphic bars - Expanded to ~86-88% broadcast viewport width */}
+        <div className={`w-[88%] max-w-[1640px] flex flex-col ${rowGapClass} items-center justify-center py-2`}>
           {seats.map((seat, idx) => {
             const answerText = v.answers?.[seat.id]?.text || "";
             const rowDelay = 0;
@@ -1150,7 +1177,7 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
             return (
               <div
                 key={seat.id}
-                className="w-full max-w-4xl flex items-center justify-center"
+                className="w-full flex items-center justify-center"
                 style={{ ["--dc" as string]: `${dc}px` }}
               >
                 <V3ScaledStage designW={shell.canvasW} designH={H}>
@@ -1228,11 +1255,11 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
                     <g className="v3-row-text" style={{ animationDelay: `${textDelay}s` }}>
                       <text
                         x={cols.cells[0].cx}
-                        y={cols.cells[0].cy + 8}
+                        y={cols.cells[0].cy + textBaselineOffset}
                         textAnchor="middle"
                         fill="#ffffff"
                         fontWeight="900"
-                        fontSize="24"
+                        fontSize={nameFontSize}
                         letterSpacing="0.05em"
                         className="uppercase font-sans"
                         style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
@@ -1242,12 +1269,12 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
 
                       <text
                         x={cols.cells[1].cx}
-                        y={cols.cells[1].cy + 8}
+                        y={cols.cells[1].cy + textBaselineOffset}
                         textAnchor="middle"
                         fill="#ffffff"
                         fontWeight="900"
-                        fontSize="24"
-                        letterSpacing="0.1em"
+                        fontSize={ansFontSize}
+                        letterSpacing="0.08em"
                         className="uppercase font-sans"
                         style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
                       >
@@ -1268,19 +1295,19 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto">
       <Vtv3ChalkboardBackdrop />
-      <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-4 py-6">
+      <div className="relative z-10 w-[88%] max-w-[1600px] flex flex-col items-center gap-4 py-6">
         {seats.map((seat) => {
           const answerText = v.answers[seat.id]?.text || "";
           return (
             <div
               key={seat.id}
-              className="relative w-full max-w-3xl h-16 sm:h-20 flex items-center shadow-2xl rounded-2xl border-2 border-amber-400/80 bg-slate-900/90 overflow-hidden"
+              className="relative w-full h-20 sm:h-24 flex items-center shadow-2xl rounded-2xl border-2 border-amber-400/80 bg-slate-900/90 overflow-hidden"
             >
-              <div className="h-full w-48 sm:w-60 px-4 bg-amber-400 text-slate-950 flex items-center justify-center font-black text-sm sm:text-base uppercase tracking-wider truncate">
+              <div className="h-full w-64 sm:w-80 px-6 bg-amber-400 text-slate-950 flex items-center justify-center font-black text-lg sm:text-2xl uppercase tracking-wider truncate">
                 {seat.name}
               </div>
-              <div className="flex-1 px-6 text-center text-white font-black text-xl sm:text-3xl uppercase tracking-widest truncate">
-                {answerText}
+              <div className="flex-1 px-8 text-center text-white font-black text-2xl sm:text-4xl uppercase tracking-widest truncate">
+                {answerText || "—"}
               </div>
             </div>
           );
@@ -1430,14 +1457,20 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
   const isV3Arrow = state.themeMode !== "o26_classic";
 
   if (isV3Arrow) {
-    const W = 940;
-    const H = 72;
-    const thick = 22;
-    const cThick = 18;
+    const rankCount = Math.max(1, (tt.ranking || []).length || activeSeats(state).length);
+    const W = 1420;
+    const H = rankCount <= 4 ? 110 : rankCount === 5 ? 96 : rankCount === 6 ? 84 : 74;
+    const thick = rankCount <= 5 ? 28 : 22;
+    const cThick = rankCount <= 5 ? 22 : 18;
     const pad = Math.round(cThick * 1.5);
-    const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick, cThick, pad });
-    const cols = buildRowColumns(shell, [38, 42, 20]);
+    const shell = buildArrowShell({ W, H, slantRatio: 0.34, thick, cThick, pad });
+    const cols = buildRowColumns(shell, [36, 46, 18]);
     const dc = shell.canvasW / 2 - shell.startX;
+    const nameFontSize = rankCount <= 4 ? 34 : rankCount === 5 ? 32 : rankCount === 6 ? 28 : 25;
+    const ansFontSize = rankCount <= 4 ? 38 : rankCount === 5 ? 36 : rankCount === 6 ? 31 : 27;
+    const timeFontSize = rankCount <= 4 ? 32 : rankCount === 5 ? 30 : rankCount === 6 ? 26 : 23;
+    const textBaselineOffset = Math.round(ansFontSize * 0.34);
+    const rowGapClass = rankCount <= 4 ? "gap-5" : rankCount === 5 ? "gap-4" : "gap-2.5";
 
     return (
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040e24]/90 backdrop-blur-md animate-fade-in select-none">
@@ -1510,8 +1543,8 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             animation: v3-tt-text 0.22s ease-out both;
           }
         `}</style>
-        {/* Only pure graphic bars - Strictly no header pill text */}
-        <div className="w-full max-w-5xl flex flex-col gap-4 items-center justify-center py-2">
+        {/* Only pure graphic bars - Expanded to ~86-88% broadcast viewport width */}
+        <div className={`w-[88%] max-w-[1640px] flex flex-col ${rowGapClass} items-center justify-center py-2`}>
           {(tt.ranking || []).map((item, idx) => {
             const seat = state.seats[item.seat];
             const sec = item.noAnswer ? "—" : (item.ms / 1000).toFixed(2);
@@ -1522,7 +1555,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             return (
               <div
                 key={item.seat}
-                className="w-full max-w-4xl flex items-center justify-center"
+                className="w-full flex items-center justify-center"
                 style={{ ["--dc" as string]: `${dc}px` }}
               >
                 <V3ScaledStage designW={shell.canvasW} designH={H}>
@@ -1607,11 +1640,11 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                     <g className="v3-tt-text" style={{ animationDelay: `${textDelay}s` }}>
                       <text
                         x={cols.cells[0].cx}
-                        y={cols.cells[0].cy + 8}
+                        y={cols.cells[0].cy + textBaselineOffset}
                         textAnchor="middle"
                         fill="#ffffff"
                         fontWeight="900"
-                        fontSize="24"
+                        fontSize={nameFontSize}
                         letterSpacing="0.05em"
                         className="uppercase font-sans"
                         style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
@@ -1621,12 +1654,12 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
 
                       <text
                         x={cols.cells[1].cx}
-                        y={cols.cells[1].cy + 8}
+                        y={cols.cells[1].cy + textBaselineOffset}
                         textAnchor="middle"
                         fill="#ffffff"
                         fontWeight="900"
-                        fontSize="24"
-                        letterSpacing="0.1em"
+                        fontSize={ansFontSize}
+                        letterSpacing="0.08em"
                         className="uppercase font-sans"
                         style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
                       >
@@ -1635,11 +1668,11 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
 
                       <text
                         x={cols.cells[2].cx}
-                        y={cols.cells[2].cy + 8}
+                        y={cols.cells[2].cy + textBaselineOffset}
                         textAnchor="middle"
                         fill="#67e8f9"
                         fontWeight="900"
-                        fontSize="22"
+                        fontSize={timeFontSize}
                         fontFamily="monospace"
                         letterSpacing="0.05em"
                         style={{ filter: "drop-shadow(0 2px 6px rgba(0,207,255,0.7))" }}
@@ -1662,7 +1695,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
     <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto">
       <Vtv3ChalkboardBackdrop />
       <CentralVerticalBrassRail />
-      <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-4 py-8 scale-[0.88] sm:scale-100 origin-center">
+      <div className="relative z-10 w-[88%] max-w-[1600px] flex flex-col items-center gap-4 py-8">
         {tt.ranking.map((item) => {
           const seat = state.seats[item.seat];
           const sec = item.noAnswer ? "0.00" : (item.ms / 1000).toFixed(2);
@@ -1670,12 +1703,12 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
           const awardedPts = tt.phase === "graded" && item.points ? item.points : 0;
 
           return (
-            <div key={item.seat} className="relative flex items-center w-full max-w-[92vw] md:max-w-3xl h-16 sm:h-20 animate-fade-in my-1 px-2">
+            <div key={item.seat} className="relative flex items-center w-full h-20 sm:h-24 animate-fade-in my-1 px-2">
               <div className="absolute left-4 z-30">
                 <RedConnectionRivet />
               </div>
               <div
-                className="w-full rounded-full h-16 sm:h-20 pl-10 pr-6 sm:pr-8 flex items-center justify-between shadow-2xl relative overflow-hidden"
+                className="w-full rounded-full h-20 sm:h-24 pl-12 pr-8 flex items-center justify-between shadow-2xl relative overflow-hidden"
                 style={{
                   background: item.wrong
                     ? "linear-gradient(180deg, #3b1116 0%, #1f080b 60%, #0d0305 100%)"
@@ -1685,25 +1718,25 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                     : "2.5px solid rgba(203, 213, 225, 0.85)",
                 }}
               >
-                <div className="flex items-center gap-2 z-10 w-36 sm:w-48 shrink-0 overflow-hidden">
-                  <span className="font-bold text-sm sm:text-lg text-slate-100 truncate block max-w-full">
+                <div className="flex items-center gap-2 z-10 w-56 sm:w-72 shrink-0 overflow-hidden">
+                  <span className="font-bold text-lg sm:text-2xl text-slate-100 truncate block max-w-full">
                     {seat?.name || `Thí sinh ${item.seat + 1}`}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0 text-center z-10 px-4 overflow-hidden">
-                  <span className="font-black text-xl sm:text-3xl text-white tracking-widest uppercase drop-shadow truncate block max-w-full">
-                    {answerText}
+                  <span className="font-black text-2xl sm:text-4xl text-white tracking-widest uppercase drop-shadow truncate block max-w-full">
+                    {answerText || "—"}
                   </span>
                 </div>
                 {awardedPts > 0 && (
                   <div className="shrink-0 z-10 pl-2">
-                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full font-black text-sm uppercase">
+                    <span className="px-4 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full font-black text-base uppercase">
                       +{awardedPts}
                     </span>
                   </div>
                 )}
-                <div className="shrink-0 z-10 pl-3 border-l border-white/20">
-                  <span className="font-mono text-cyan-300 font-black text-base sm:text-xl">
+                <div className="shrink-0 z-10 pl-4 border-l border-white/20">
+                  <span className="font-mono text-cyan-300 font-black text-xl sm:text-2xl">
                     {sec}s
                   </span>
                 </div>
@@ -1980,104 +2013,230 @@ export function SummaryLowerThirdGraphic({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleNext, handlePrev, onClose]);
 
-  const W = 1000;
-  const H = 268;
-  const shell = buildArrowShell({ W, H, slantRatio: 0.15, thick: 28, cThick: 20 });
-
   const isFs = Boolean(sm.isFullscreen || state.overlayMode === "FULLSCREEN");
+  const W = isFs ? 1120 : 1000;
+  const H = isFs ? 224 : 158;
+  const thick = Math.round(H * 0.21);
+  const cThick = Math.round(H * 0.16);
+  const pad = Math.round(cThick * 1.5);
+  const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick, cThick, pad });
+  const dcConverge = shell.canvasW / 2 - shell.startX / 2;
+  const stepPulseClassL =
+    currentIdx === 0 ? "" : currentIdx % 2 === 1 ? "sm-pulse-l-odd" : "sm-pulse-l-even";
+  const stepPulseClassR =
+    currentIdx === 0 ? "" : currentIdx % 2 === 1 ? "sm-pulse-r-odd" : "sm-pulse-r-even";
 
   return (
     <div
       className={
         isFs
-          ? "absolute inset-0 z-50 flex flex-col items-center justify-center p-4 bg-[#040e24]/85 backdrop-blur-md animate-fade-in pointer-events-auto select-none cursor-pointer"
-          : "absolute inset-0 z-50 flex flex-col items-center justify-end pb-8 sm:pb-12 bg-transparent pointer-events-auto select-none cursor-pointer"
+          ? "absolute inset-0 z-50 flex flex-col items-center justify-center p-6 bg-[#040e24]/88 backdrop-blur-md pointer-events-auto select-none cursor-pointer"
+          : "absolute inset-x-0 bottom-0 z-50 flex flex-col items-center justify-end pb-4 sm:pb-5 bg-transparent pointer-events-auto select-none cursor-pointer"
       }
       onClick={handleNext}
     >
-      <V3ScaledStage designW={shell.canvasW} designH={H}>
-        <div className="relative w-full h-full shadow-[0_20px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden">
-          {/* Authentic V3 Arrow Frame */}
+      <style>{`
+        /* Authentic Econova V3 3-layer arrow sweep-to-center & hexagon-expand on Summary open */
+        @keyframes sm-v3-wing-l-g1 {
+          0%   { transform: translateX(calc(var(--sm-dc) + 45vw)) scale(0.2); opacity: 0; }
+          3%   { opacity: 0.35; }
+          25%  { transform: translateX(calc(var(--sm-dc) - 24px)) scale(1); opacity: 0.35; }
+          35%  { transform: translateX(var(--sm-dc)) scale(1); opacity: 0.35; }
+          45%  { transform: translateX(var(--sm-dc)) scale(1); opacity: 0.35; }
+          78%  { transform: translateX(-14px) scale(1); opacity: 0.35; }
+          100% { transform: translateX(-8px) scale(1); opacity: 0.35; }
+        }
+        @keyframes sm-v3-wing-l-g2 {
+          0%   { transform: translateX(calc(var(--sm-dc) + 45vw)) scale(0.2); opacity: 0; }
+          6%   { opacity: 0.65; }
+          30%  { transform: translateX(calc(var(--sm-dc) - 12px)) scale(1); opacity: 0.65; }
+          35%  { transform: translateX(var(--sm-dc)) scale(1); opacity: 0.65; }
+          45%  { transform: translateX(var(--sm-dc)) scale(1); opacity: 0.65; }
+          78%  { transform: translateX(-7px) scale(1); opacity: 0.65; }
+          100% { transform: translateX(-4px) scale(1); opacity: 0.65; }
+        }
+        @keyframes sm-v3-wing-l-l3 {
+          0%   { transform: translateX(calc(var(--sm-dc) + 45vw)) scale(0.2); opacity: 0; }
+          10%  { opacity: 1; }
+          35%  { transform: translateX(var(--sm-dc)) scale(1); opacity: 1; }
+          45%  { transform: translateX(var(--sm-dc)) scale(1); opacity: 1; }
+          80%  { transform: translateX(0) scale(1); opacity: 1; }
+          100% { transform: translateX(0) scale(1); opacity: 1; }
+        }
+        @keyframes sm-v3-wing-r-g1 {
+          0%   { transform: translateX(calc(var(--sm-dc) * -1 - 45vw)) scale(0.2); opacity: 0; }
+          3%   { opacity: 0.35; }
+          25%  { transform: translateX(calc(var(--sm-dc) * -1 + 24px)) scale(1); opacity: 0.35; }
+          35%  { transform: translateX(calc(var(--sm-dc) * -1)) scale(1); opacity: 0.35; }
+          45%  { transform: translateX(calc(var(--sm-dc) * -1)) scale(1); opacity: 0.35; }
+          78%  { transform: translateX(14px) scale(1); opacity: 0.35; }
+          100% { transform: translateX(8px) scale(1); opacity: 0.35; }
+        }
+        @keyframes sm-v3-wing-r-g2 {
+          0%   { transform: translateX(calc(var(--sm-dc) * -1 - 45vw)) scale(0.2); opacity: 0; }
+          6%   { opacity: 0.65; }
+          30%  { transform: translateX(calc(var(--sm-dc) * -1 + 12px)) scale(1); opacity: 0.65; }
+          35%  { transform: translateX(calc(var(--sm-dc) * -1)) scale(1); opacity: 0.65; }
+          45%  { transform: translateX(calc(var(--sm-dc) * -1)) scale(1); opacity: 0.65; }
+          78%  { transform: translateX(7px) scale(1); opacity: 0.65; }
+          100% { transform: translateX(4px) scale(1); opacity: 0.65; }
+        }
+        @keyframes sm-v3-wing-r-l3 {
+          0%   { transform: translateX(calc(var(--sm-dc) * -1 - 45vw)) scale(0.2); opacity: 0; }
+          10%  { opacity: 1; }
+          35%  { transform: translateX(calc(var(--sm-dc) * -1)) scale(1); opacity: 1; }
+          45%  { transform: translateX(calc(var(--sm-dc) * -1)) scale(1); opacity: 1; }
+          80%  { transform: translateX(0) scale(1); opacity: 1; }
+          100% { transform: translateX(0) scale(1); opacity: 1; }
+        }
+        @keyframes sm-v3-hex {
+          0%, 44%  { clip-path: inset(0 50% 0 50%); opacity: 0; }
+          45%      { clip-path: inset(0 50% 0 50%); opacity: 1; }
+          82%      { clip-path: inset(0 0% 0 0%); opacity: 1; }
+          100%     { clip-path: inset(0 0% 0 0%); opacity: 1; }
+        }
+        @keyframes sm-v3-content-open {
+          0%, 68%  { opacity: 0; transform: translateY(6px); }
+          100%     { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes sm-v3-step-pulse-l-a {
+          0%   { transform: translateX(0); }
+          40%  { transform: translateX(-12px); }
+          100% { transform: translateX(0); }
+        }
+        @keyframes sm-v3-step-pulse-l-b {
+          0%   { transform: translateX(0); }
+          40%  { transform: translateX(-12px); }
+          100% { transform: translateX(0); }
+        }
+        @keyframes sm-v3-step-pulse-r-a {
+          0%   { transform: translateX(0); }
+          40%  { transform: translateX(12px); }
+          100% { transform: translateX(0); }
+        }
+        @keyframes sm-v3-step-pulse-r-b {
+          0%   { transform: translateX(0); }
+          40%  { transform: translateX(12px); }
+          100% { transform: translateX(0); }
+        }
+        @keyframes sm-v3-flip {
+          0%   { opacity: 0; transform: translateY(10px) scale(0.95); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .sm-wing-l-g1 { animation: sm-v3-wing-l-g1 1.05s cubic-bezier(0.25, 1, 0.5, 1) both; }
+        .sm-wing-l-g2 { animation: sm-v3-wing-l-g2 1.05s cubic-bezier(0.25, 1, 0.5, 1) both; }
+        .sm-wing-l-l3 { animation: sm-v3-wing-l-l3 1.05s cubic-bezier(0.25, 1, 0.5, 1) both; }
+        .sm-wing-r-g1 { animation: sm-v3-wing-r-g1 1.05s cubic-bezier(0.25, 1, 0.5, 1) both; }
+        .sm-wing-r-g2 { animation: sm-v3-wing-r-g2 1.05s cubic-bezier(0.25, 1, 0.5, 1) both; }
+        .sm-wing-r-l3 { animation: sm-v3-wing-r-l3 1.05s cubic-bezier(0.25, 1, 0.5, 1) both; }
+        .sm-hex-open  { animation: sm-v3-hex 1.05s cubic-bezier(0.25, 1, 0.5, 1) both; }
+        .sm-content-open { animation: sm-v3-content-open 1.05s ease-out both; }
+        .sm-pulse-l-odd  { animation: sm-v3-step-pulse-l-a 0.36s ease-out both; }
+        .sm-pulse-l-even { animation: sm-v3-step-pulse-l-b 0.36s ease-out both; }
+        .sm-pulse-r-odd  { animation: sm-v3-step-pulse-r-a 0.36s ease-out both; }
+        .sm-pulse-r-even { animation: sm-v3-step-pulse-r-b 0.36s ease-out both; }
+        .sm-flip-item { animation: sm-v3-flip 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+      `}</style>
+
+      <div
+        className={isFs ? "w-[78%] max-w-[1480px]" : "w-[68%] max-w-[1300px]"}
+        style={{ ["--sm-dc" as string]: `${dcConverge}px` }}
+      >
+        <V3ScaledStage designW={shell.canvasW} designH={H}>
+          {/* Authentic V3 3-Layer Arrow Fly-In + Hexagon Shell */}
           <svg
             width={shell.canvasW}
             height={H}
             viewBox={`0 0 ${shell.canvasW} ${H}`}
             className="absolute inset-0 overflow-visible pointer-events-none"
+            style={{ filter: "drop-shadow(0 14px 36px rgba(0,0,0,0.92))" }}
           >
             <defs>
-              <linearGradient id="smCyanWing" x1="0" y1="0" x2="1" y2="0">
+              <linearGradient id="smCyanWingL" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#1fd1ff" />
+                <stop offset="100%" stopColor="#2ee6ff" />
+              </linearGradient>
+              <linearGradient id="smCyanWingR" x1="1" y1="0" x2="0" y2="0">
                 <stop offset="0%" stopColor="#1fd1ff" />
                 <stop offset="100%" stopColor="#2ee6ff" />
               </linearGradient>
               <linearGradient id="smBodyGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#081e4a" />
-                <stop offset="45%" stopColor="#051433" />
-                <stop offset="100%" stopColor="#030b1e" />
+                <stop offset="0%" stopColor="#0a226b" />
+                <stop offset="45%" stopColor="#05164d" />
+                <stop offset="100%" stopColor="#030d30" />
               </linearGradient>
             </defs>
 
-            {/* Left cyan wing & navy chevron */}
-            <path d={toSvgPath(shell.alcPts)} fill="url(#smCyanWing)" stroke="#ffffff" strokeWidth="2" />
-            <path d={toSvgPath(shell.alnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth="2" />
+            {/* Left 3-layer cyan wings + navy chevron (stays mounted; outer group pulses on contestant advance) */}
+            <g className={stepPulseClassL}>
+              <g className="sm-wing-l-g1">
+                <path d={toSvgPath(shell.alcPts)} fill="url(#smCyanWingL)" />
+              </g>
+              <g className="sm-wing-l-g2">
+                <path d={toSvgPath(shell.alcPts)} fill="url(#smCyanWingL)" />
+              </g>
+              <g className="sm-wing-l-l3">
+                <path d={toSvgPath(shell.alcPts)} fill="url(#smCyanWingL)" />
+                <path d={toSvgPath(shell.alnPts)} fill="#0d2c54" stroke="#e2e8f0" strokeWidth={2} />
+              </g>
+            </g>
 
-            {/* Right navy chevron & cyan wing */}
-            <path d={toSvgPath(shell.arnPts)} fill="#0d2c54" stroke="#d1d5db" strokeWidth="2" />
-            <path d={toSvgPath(shell.arcPts)} fill="url(#smCyanWing)" stroke="#ffffff" strokeWidth="2" />
+            {/* Right navy chevron + 3-layer cyan wings */}
+            <g className={stepPulseClassR}>
+              <g className="sm-wing-r-g1">
+                <path d={toSvgPath(shell.arcPts)} fill="url(#smCyanWingR)" />
+              </g>
+              <g className="sm-wing-r-g2">
+                <path d={toSvgPath(shell.arcPts)} fill="url(#smCyanWingR)" />
+              </g>
+              <g className="sm-wing-r-l3">
+                <path d={toSvgPath(shell.arnPts)} fill="#0d2c54" stroke="#e2e8f0" strokeWidth={2} />
+                <path d={toSvgPath(shell.arcPts)} fill="url(#smCyanWingR)" />
+              </g>
+            </g>
 
-            {/* Hexagon Body */}
-            <path d={toSvgPath(shell.bgPts)} fill="url(#smBodyGrad)" stroke="#d1d5db" strokeWidth="2.5" />
+            {/* Hexagon Body (expands cleanly from center on initial open, stays open across contestants) */}
+            <g className="sm-hex-open">
+              <path d={toSvgPath(shell.bgPts)} fill="url(#smBodyGrad)" stroke="#e2e8f0" strokeWidth={2.2} />
+            </g>
           </svg>
 
-          {/* Dòng xanh phía trên: Hiện TÊN THÍ SINH ĐƠN NHẤT */}
+          {/* Clipped Hexagon Interior: Name Header + Score Value */}
           <div
-            className="relative z-10 w-full h-[64px] flex items-center justify-center border-b border-cyan-400/50 px-12"
-            style={{
-              clipPath: `polygon(${toPoly(shell.bgPts)})`,
-              background:
-                "linear-gradient(90deg, #07265a 0%, #0d47a1 20%, #00b4ff 50%, #0d47a1 80%, #07265a 100%)",
-            }}
-          >
-            <span className="font-black text-2xl sm:text-3xl text-white tracking-[0.2em] uppercase drop-shadow-[0_2px_10px_rgba(0,195,255,0.85)] truncate">
-              {currentName}
-            </span>
-          </div>
-
-          {/* Khoang bên dưới: ĐIỂM SỐ (chỉ có số, không có từ gì kèm theo, cỡ cực lớn) */}
-          <div
-            className="relative z-10 flex-1 flex items-center justify-center"
+            className="sm-hex-open sm-content-open relative z-10 w-full h-full flex flex-col overflow-hidden"
             style={{ clipPath: `polygon(${toPoly(shell.bgPts)})` }}
           >
-            <span
-              key={`${currentSeatId}-${currentScore}`}
-              className="font-black font-mono text-[130px] sm:text-[150px] leading-none text-white tracking-tight animate-in zoom-in-75 duration-300"
+            {/* Top Cyan-Royal Header Band: Contestant Name */}
+            <div
+              className={`w-full ${isFs ? "h-[58px]" : "h-[44px]"} flex items-center justify-center border-b border-cyan-300/55 px-16 shrink-0`}
               style={{
-                filter:
-                  "drop-shadow(0 6px 20px rgba(0, 180, 255, 0.45)) drop-shadow(0 10px 30px rgba(0,0,0,0.95))",
+                background:
+                  "linear-gradient(90deg, #07265a 0%, #0d47a1 22%, #00a8ff 50%, #0d47a1 78%, #07265a 100%)",
               }}
             >
-              {currentScore}
-            </span>
-          </div>
-        </div>
-      </V3ScaledStage>
+              <span
+                key={`name-${currentSeatId}-${currentName}`}
+                className={`sm-flip-item font-black ${isFs ? "text-[30px]" : "text-[24px]"} text-white tracking-[0.16em] uppercase drop-shadow-[0_2px_8px_rgba(0,195,255,0.85)] truncate`}
+              >
+                {currentName}
+              </span>
+            </div>
 
-      {/* Host Controls & Status Pill below graphic */}
-      <div
-        className="mt-6 flex items-center gap-4 z-20"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-5 py-1.5 rounded-full bg-slate-900/90 border border-cyan-400/40 text-cyan-200 text-xs sm:text-sm font-bold tracking-wider shadow-lg">
-          Thí sinh {currentIdx + 1} / {sorted.length} (Bấm Space / Click để chuyển)
-        </div>
-        {onClose && isLast && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-1.5 rounded-full bg-red-600/90 hover:bg-red-500 border border-red-300 text-white text-xs sm:text-sm font-black uppercase tracking-wider shadow-xl transition-transform active:scale-95"
-          >
-            Đóng đồ họa (ESC)
-          </button>
-        )}
+            {/* Lower Score Chamber: Pure Numeric Score */}
+            <div className="flex-1 flex items-center justify-center">
+              <span
+                key={`score-${currentSeatId}-${currentScore}`}
+                className={`sm-flip-item font-black font-mono ${isFs ? "text-[128px]" : "text-[88px]"} leading-none text-white tracking-tight`}
+                style={{
+                  filter:
+                    "drop-shadow(0 4px 16px rgba(0, 180, 255, 0.5)) drop-shadow(0 8px 22px rgba(0,0,0,0.95))",
+                }}
+              >
+                {currentScore}
+              </span>
+            </div>
+          </div>
+        </V3ScaledStage>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
-import { ROUND_LABELS, ROUND_ORDER, type OlympiaState, type RoundId, type Seat, type O22Quarter, type TimerState } from "@/lib/olympia/types";
+import { ROUND_LABELS, ROUND_ORDER, canStartScoreSummary, seatToStudioCamera, type OlympiaState, type RoundId, type Seat, type O22Quarter, type TimerState } from "@/lib/olympia/types";
 import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
 import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
 import OlympiaAudioManagerDrawer from "./OlympiaAudioManagerDrawer";
@@ -166,7 +166,11 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
 
       // When in lobby or intro stage, lock all game actions and scoring hotkeys!
       if (notInGame) {
-        if (e.key === "f" || e.key === "F") {
+        if ((e.key === "b" || e.key === "B") && state?.stage === "finished") {
+          e.preventDefault();
+          if (state.summaryState?.active) call("summary:stop");
+          else if (canStartScoreSummary(state)) call("summary:start");
+        } else if (e.key === "f" || e.key === "F") {
           e.preventDefault();
           if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
           else document.exitFullscreen().catch(() => {});
@@ -231,7 +235,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
         e.preventDefault();
         if (state?.summaryState?.active) {
           call("summary:stop");
-        } else {
+        } else if (canStartScoreSummary(state)) {
           call("summary:start");
         }
       } else if (e.key === "h" || e.key === "H") {
@@ -257,7 +261,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [state?.currentRound, state?.summaryState?.active, state?.stage, state?.introTimer, state?.entranceState, state?.khoiDong]);
+  }, [state, serverNow]);
 
   // Calculate current timer countdown for right-hand status widget with live useCountdown
   const activeTimer = useMemo(() => {
@@ -298,6 +302,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
 
   const seats = activeSeats(state);
   const curRound = state.currentRound;
+  const summaryAllowed = canStartScoreSummary(state);
   const isIntroStage =
     state.stage === "playing" &&
     (Boolean(state.introTimer) || Boolean(state.entranceState?.active));
@@ -667,10 +672,10 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
               type="button"
               onClick={() => call("scoreboard:toggle")}
               className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1 cursor-pointer truncate"
-              title="Mở Bảng Điểm (Phím B)"
+              title="Bật/Tắt Bảng Điểm Tĩnh"
             >
               <span>📊</span>
-              <span className="truncate">Điểm (B)</span>
+              <span className="truncate">Bảng điểm</span>
             </button>
             <button
               type="button"
@@ -796,19 +801,28 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
               </button>
               <button
                 type="button"
+                disabled={!state.summaryState?.active && !summaryAllowed}
                 onClick={() => {
                   if (state.summaryState?.active) {
                     call("summary:stop");
-                  } else {
+                  } else if (summaryAllowed) {
                     call("summary:start");
                   }
                 }}
-                className={`py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition ${
+                className={`py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${
                   state.summaryState?.active
-                    ? "bg-amber-500/30 border-amber-400 text-amber-200 shadow-[0_0_15px_rgba(251,191,36,0.3)] animate-pulse"
-                    : "bg-violet-500/10 border-violet-500/20 text-violet-300 hover:bg-violet-500/20"
+                    ? "bg-amber-500/30 border-amber-400 text-amber-200 shadow-[0_0_15px_rgba(251,191,36,0.3)] animate-pulse cursor-pointer"
+                    : summaryAllowed
+                    ? "bg-violet-500/15 border-violet-400/35 text-violet-200 hover:bg-violet-500/25 cursor-pointer"
+                    : "bg-slate-900/60 border-white/10 text-slate-500 opacity-45 cursor-not-allowed"
                 }`}
-                title="Tổng kết điểm số các thí sinh từ thấp đến cao (Phím B)"
+                title={
+                  state.summaryState?.active
+                    ? "Dừng tổng kết điểm và quay lại toàn cảnh (Phím B)"
+                    : summaryAllowed
+                    ? "Tổng kết điểm số các thí sinh từ thấp đến cao sau khi kết thúc phần thi (Phím B)"
+                    : "Chỉ mở Tổng kết điểm (Phím B) sau khi kết thúc hoàn toàn một phần thi"
+                }
               >
                 <span>🏆</span>
                 <span>{state.summaryState?.active ? "DỪNG TỔNG KẾT (B)" : "TỔNG KẾT ĐIỂM (B)"}</span>
@@ -916,7 +930,13 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                   <span className="text-xs">🎥</span>
                   <span className="uppercase tracking-wider font-black text-white">ĐẠO DIỄN TRƯỜNG QUAY 3D</span>
                   <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-700/50">
-                    {state.studioCameraManual ? `Góc C${state.studioCamera ?? 1}` : "Tự động theo vòng"}
+                    {state.studioCameraManual
+                      ? `Góc C${state.studioCamera ?? 1}`
+                      : state.summaryState?.active
+                        ? state.summaryState.isFullscreen
+                          ? "Tổng kết Toàn cảnh (C10)"
+                          : `Tổng kết TS ${(state.summaryState.orderedSeats[state.summaryState.currentIndex] ?? 0) + 1} (C${seatToStudioCamera(state.summaryState.orderedSeats[state.summaryState.currentIndex] ?? 0)})`
+                        : "Tự động theo vòng"}
                   </span>
                 </div>
                 <button
@@ -960,6 +980,13 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                   { id: 15, label: "CAM 15: Cận Bục Về Đích", short: "Về Đích" },
                 ].map((c) => {
                   const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;
+                  const summaryTargetCam =
+                    state.summaryState?.active && !state.studioCameraManual
+                      ? state.summaryState.isFullscreen
+                        ? 10
+                        : seatToStudioCamera(state.summaryState.orderedSeats[state.summaryState.currentIndex] ?? 0)
+                      : null;
+                  const isAutoSummaryCam = summaryTargetCam === c.id;
                   return (
                     <button
                       key={c.id}
@@ -969,7 +996,9 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                       className={`py-1 px-0.5 rounded text-[10px] font-bold transition flex flex-col items-center justify-center cursor-pointer border ${
                         isPinned
                           ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b] font-black"
-                          : "bg-white/5 hover:bg-white/15 text-slate-300 border-white/10 hover:border-cyan-400/40"
+                          : isAutoSummaryCam
+                            ? "bg-cyan-500/25 text-cyan-100 border-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.45)] font-black"
+                            : "bg-white/5 hover:bg-white/15 text-slate-300 border-white/10 hover:border-cyan-400/40"
                       }`}
                     >
                       <span className="text-[9px] opacity-75 font-mono">C{c.id}</span>
@@ -2226,7 +2255,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             </button>
           )}
         </div>
-        <div className={`grid gap-2 ${seats.length <= 4 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"}`}>
+        <div className="flex flex-col gap-1.5">
           {seats.map((s) => {
             const ans = v.answers?.[s.id];
             const isLocked = v.eliminatedSeats.includes(s.id);
@@ -2236,7 +2265,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             return (
               <div
                 key={s.id}
-                className={`rounded-lg p-2 border flex flex-col justify-between gap-1.5 ${
+                className={`rounded-lg px-2.5 py-1.5 border flex items-center justify-between gap-2 transition ${
                   hasBell
                     ? "bg-amber-950/60 border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
                     : isLocked
@@ -2244,52 +2273,66 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                     : "bg-slate-900/90 border-white/10"
                 }`}
               >
-                <div className="flex items-center justify-between gap-1 text-[11px]">
-                  <span className="font-black text-slate-200 break-words leading-tight">
-                    TS{s.id + 1} · {s.name || `Ghế ${s.id + 1}`}
+                {/* Contestant Badge & Name */}
+                <div className="w-32 sm:w-44 shrink-0 flex items-center gap-1.5 min-w-0">
+                  <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/35 text-cyan-200 font-mono font-black text-[10px] shrink-0">
+                    TS{s.id + 1}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => call("vcnv:toggleLockSeat", { seat: s.id })}
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-black border cursor-pointer shrink-0 transition ${
-                      isLocked
-                        ? "bg-rose-600 hover:bg-emerald-600 text-white border-rose-300"
-                        : "bg-emerald-950/80 hover:bg-rose-900/60 text-emerald-300 border-emerald-500/40"
-                    }`}
-                    title={isLocked ? "Nhấn để MỞ LẠI quyền chơi VCNV cho thí sinh này" : "Nhấn để khóa quyền chơi VCNV"}
+                  <span
+                    className="font-bold text-xs text-slate-100 truncate"
+                    title={s.name || `Ghế ${s.id + 1}`}
                   >
-                    {isLocked ? "🔒 Mở lại" : "🟢 Đang chơi"}
-                  </button>
+                    {s.name || `Ghế ${s.id + 1}`}
+                  </span>
                 </div>
 
-                {/* Live Typed Answer */}
-                <div className="rounded bg-black/50 border border-white/10 px-2 py-1 min-h-[30px] flex items-center justify-between gap-1 flex-wrap">
-                  {ans?.text ? (
-                    <>
-                      <span className="font-black text-xs text-amber-300 uppercase break-words select-text" title={ans.text}>
+                {/* Live Typed Answer + Previous History + Time */}
+                <div className="flex-1 min-w-0 rounded-md bg-black/55 border border-white/10 px-2.5 py-1 min-h-[30px] flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                    {ans?.text ? (
+                      <span
+                        className="font-black text-xs sm:text-[13px] text-amber-300 uppercase tracking-wide break-words select-text"
+                        title={ans.text}
+                      >
                         {ans.text}
                       </span>
-                      <span className="text-[10px] font-mono text-cyan-300 shrink-0">
-                        {((ans.ms ?? 0) / 1000).toFixed(2)}s
+                    ) : (
+                      <span className="text-[11px] text-slate-500 italic">Chưa gửi đáp án</span>
+                    )}
+                    {ans?.previousText && (
+                      <span className="text-[10px] text-slate-400 truncate">
+                        (Trước đó: {ans.previousText} · {((ans.previousMs || 0) / 1000).toFixed(2)}s)
                       </span>
-                    </>
-                  ) : (
-                    <span className="text-[10px] text-slate-500 italic">Chưa gửi ĐA</span>
+                    )}
+                  </div>
+                  {ans?.text && (
+                    <span className="px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-[10px] font-mono font-bold text-cyan-300 shrink-0 whitespace-nowrap">
+                      {((ans.ms ?? 0) / 1000).toFixed(2)}s
+                    </span>
                   )}
                 </div>
 
-                {ans?.previousText && (
-                  <div className="text-[9px] text-slate-400 break-words">
-                    Trước đó: {ans.previousText} ({((ans.previousMs || 0) / 1000).toFixed(2)}s)
+                {/* CNV Bell Status Pill */}
+                {hasBell && (
+                  <div className="px-2 py-0.5 rounded-md text-[10px] font-black text-amber-200 bg-amber-500/25 border border-amber-400/50 shrink-0 whitespace-nowrap flex items-center gap-1">
+                    <span>🔔 Chuông CNV #{bellIdx + 1}</span>
+                    <span className="hidden xl:inline text-amber-300/90">(Đã tự dừng)</span>
                   </div>
                 )}
 
-                {hasBell && (
-                  <div className="text-[10px] font-black text-amber-300 bg-amber-500/20 border border-amber-400/40 rounded px-1.5 py-0.5 flex items-center justify-between">
-                    <span>🔔 Đã bấm chuông CNV</span>
-                    <span>(Đã tự dừng chơi)</span>
-                  </div>
-                )}
+                {/* Lock / Unlock Action */}
+                <button
+                  type="button"
+                  onClick={() => call("vcnv:toggleLockSeat", { seat: s.id })}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-black border cursor-pointer shrink-0 whitespace-nowrap transition ${
+                    isLocked
+                      ? "bg-rose-600 hover:bg-emerald-600 text-white border-rose-300 shadow-sm"
+                      : "bg-emerald-950/80 hover:bg-rose-900/60 text-emerald-300 border-emerald-500/40"
+                  }`}
+                  title={isLocked ? "Nhấn để MỞ LẠI quyền chơi VCNV cho thí sinh này" : "Nhấn để khóa quyền chơi VCNV"}
+                >
+                  {isLocked ? "🔒 Mở lại" : "🟢 Đang chơi"}
+                </button>
               </div>
             );
           })}
@@ -2692,14 +2735,14 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
             Đã gửi: {Object.keys(tt.submissions || {}).length}/{seats.length} thí sinh
           </span>
         </div>
-        <div className={`grid gap-2 ${seats.length <= 4 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"}`}>
+        <div className="flex flex-col gap-1.5">
           {seats.map((s) => {
             const sub = tt.submissions?.[s.id];
             const rankEntry = tt.ranking?.find((r) => r.seat === s.id);
             return (
               <div
                 key={s.id}
-                className={`rounded-lg p-2 border flex flex-col justify-between gap-1.5 ${
+                className={`rounded-lg px-2.5 py-1.5 border flex items-center justify-between gap-2 transition ${
                   (rankEntry?.points ?? 0) > 0
                     ? "bg-emerald-950/60 border-emerald-400"
                     : rankEntry && (rankEntry.points ?? 0) === 0 && tt.phase === "graded"
@@ -2709,33 +2752,61 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
                     : "bg-slate-900/70 border-white/10"
                 }`}
               >
-                <div className="flex items-center justify-between gap-1 text-[11px]">
-                  <span className="font-black text-slate-200 break-words leading-tight">
-                    TS{s.id + 1} · {s.name || `Ghế ${s.id + 1}`}
+                {/* Contestant Badge & Name */}
+                <div className="w-32 sm:w-44 shrink-0 flex items-center gap-1.5 min-w-0">
+                  <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/35 text-cyan-200 font-mono font-black text-[10px] shrink-0">
+                    TS{s.id + 1}
                   </span>
-                  {sub && (
-                    <span className="px-1.5 py-0.2 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 font-mono font-black text-[10px] shrink-0">
+                  <span
+                    className="font-bold text-xs text-slate-100 truncate"
+                    title={s.name || `Ghế ${s.id + 1}`}
+                  >
+                    {s.name || `Ghế ${s.id + 1}`}
+                  </span>
+                </div>
+
+                {/* Live Answer + Edited History */}
+                <div className="flex-1 min-w-0 rounded-md bg-black/55 border border-white/10 px-2.5 py-1 min-h-[30px] flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                    {sub?.answer ? (
+                      <span
+                        className="font-black text-xs sm:text-[13px] text-white uppercase tracking-wide break-words select-text"
+                        title={sub.answer}
+                      >
+                        {sub.answer}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-slate-500 italic">Chưa gửi đáp án</span>
+                    )}
+                    {sub?.previousAnswer && (
+                      <span className="text-[10px] text-slate-400 truncate">
+                        (Trước đó: {sub.previousAnswer} · {((sub.previousMs || 0) / 1000).toFixed(2)}s)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Submission Timestamp & Graded Points */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {sub ? (
+                    <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/40 text-amber-300 font-mono font-black text-[11px] whitespace-nowrap">
                       {(sub.ms / 1000).toFixed(2)}s
                     </span>
-                  )}
-                </div>
-                <div className="rounded bg-black/50 border border-white/10 px-2 py-1 min-h-[30px] flex items-center justify-between gap-1 flex-wrap">
-                  {sub?.answer ? (
-                    <span className="font-black text-xs text-white uppercase break-words select-text" title={sub.answer}>
-                      {sub.answer}
-                    </span>
                   ) : (
-                    <span className="text-[10px] text-slate-500 italic">Chưa gửi ĐA</span>
+                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-slate-500 font-mono text-[10px] whitespace-nowrap">
+                      --
+                    </span>
                   )}
-                  {rankEntry?.points ? (
-                    <span className="text-[10px] font-black text-emerald-400 shrink-0">+{rankEntry.points}đ</span>
+                  {(rankEntry?.points ?? 0) > 0 ? (
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 border border-emerald-400/50 text-[11px] font-black text-emerald-300 whitespace-nowrap">
+                      +{rankEntry!.points}đ
+                    </span>
+                  ) : rankEntry && tt.phase === "graded" ? (
+                    <span className="px-2 py-0.5 rounded-md bg-rose-500/20 border border-rose-400/40 text-[10px] font-bold text-rose-300 whitespace-nowrap">
+                      0đ
+                    </span>
                   ) : null}
                 </div>
-                {sub?.previousAnswer && (
-                  <div className="text-[9px] text-slate-400 break-words">
-                    Trước đó: {sub.previousAnswer} ({((sub.previousMs || 0) / 1000).toFixed(2)}s)
-                  </div>
-                )}
               </div>
             );
           })}

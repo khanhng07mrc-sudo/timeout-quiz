@@ -70,14 +70,23 @@ export function useOlympiaSocket({
   const offsetRef = useRef(0);
   const versionRef = useRef(-1);
   const joinedRef = useRef(false);
+  const latestStateRef = useRef<OlympiaState | null>(null);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const persistState = useCallback(
     (s: OlympiaState) => {
+      latestStateRef.current = s;
       setState(s);
       if (typeof window !== "undefined" && code) {
-        try {
-          sessionStorage.setItem(cacheKeyState, JSON.stringify(s));
-        } catch {}
+        if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = setTimeout(() => {
+          persistTimerRef.current = null;
+          const snap = latestStateRef.current;
+          if (!snap) return;
+          try {
+            sessionStorage.setItem(cacheKeyState, JSON.stringify(snap));
+          } catch {}
+        }, 400);
       }
     },
     [cacheKeyState, code]
@@ -149,12 +158,14 @@ export function useOlympiaSocket({
       }
     }, 1500);
 
-    // Contestant session persistence: auto reconnect and re-announce presence when returning to tab
+    // Contestant session persistence: reconnect if disconnected, or finish join if not yet acknowledged.
+    // IMPORTANT: Do NOT re-emit `join` on routine iframe/window focus clicks when already connected & joined,
+    // otherwise clicking the buzzer button inside an iframe triggers a redundant state re-hydration hitch!
     const handleResume = () => {
       if (typeof document !== "undefined" && document.visibilityState === "visible") {
         if (!socket.connected) {
           socket.connect();
-        } else {
+        } else if (!joinedRef.current) {
           doJoin();
         }
       }
@@ -168,6 +179,15 @@ export function useOlympiaSocket({
 
     return () => {
       clearInterval(retryTimer);
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+        if (typeof window !== "undefined" && code && latestStateRef.current) {
+          try {
+            sessionStorage.setItem(cacheKeyState, JSON.stringify(latestStateRef.current));
+          } catch {}
+        }
+      }
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", handleResume);
       }
@@ -177,7 +197,7 @@ export function useOlympiaSocket({
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [code, role, hostKey, name, token, seatId, school, enabled, cacheKeyJoin, persistState]);
+  }, [code, role, hostKey, name, token, seatId, school, enabled, cacheKeyJoin, cacheKeyState, persistState]);
 
   const emit = useCallback(
     (event: string, payload?: unknown): Promise<{ ok: boolean; error?: string }> =>

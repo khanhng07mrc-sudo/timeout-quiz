@@ -1858,25 +1858,35 @@ export function CenterMcDesk({
   );
 }
 
-export const KV_DESK_POS: [number, number, number] = [3.26, 0.14, -7.15];
-export const NH_DESK_POS: [number, number, number] = [2.86, 0.14, -7.15];
+// Coaxial MC Desk Standing Positions aligned perpendicular to CenterMcDesk ([3.00, 0.08, -6.70], rotY = -0.25 rad)
+export const KV_DESK_POS: [number, number, number] = [3.35, 0.14, -7.11];
+export const NH_DESK_POS: [number, number, number] = [2.89, 0.14, -7.22];
+export const MC_DESK_ROT_Y = -0.25;
 export const KV_CENTER_POS: [number, number, number] = [0.38, 0.18, 0.00];
 export const NH_CENTER_POS: [number, number, number] = [-0.38, 0.18, 0.00];
 
-// MC Concealed Positions (Behind the Hexagonal Portal Screen Frames - R2)
+// MC Concealed Positions (Strictly behind Hexagonal Portal Tier 3 solid slabs: |xLoc| = 2.40m, zLoc = -0.85m)
 export const KV_CONCEAL_POS: [number, number, number] = [6.02, 0.14, -8.82];
 export const NH_CONCEAL_POS: [number, number, number] = [1.36, 0.14, -10.01];
 
-// Waypoint mid-points along lighted catwalk corridor
-export const KV_WAYPOINT: [number, number, number] = [4.20, 0.14, -7.80];
-export const NH_WAYPOINT: [number, number, number] = [2.40, 0.14, -8.25];
+// Lateral Step-Out Waypoints around OUTER Left/Right Edges of Hexagon Tier 1 (|xLoc| = 3.28m > 3.20m widest knuckle)
+export const KV_SIDE_CTRL_POS: [number, number, number] = [6.87, 0.14, -8.60];
+export const NH_SIDE_CTRL_POS: [number, number, number] = [0.51, 0.14, -10.22];
+export const KV_OUTER_SIDE_POS: [number, number, number] = [6.72, 0.14, -8.02];
+export const NH_OUTER_SIDE_POS: [number, number, number] = [0.36, 0.14, -9.64];
+export const KV_OUTER_FRONT_POS: [number, number, number] = [6.50, 0.14, -7.15];
+export const NH_OUTER_FRONT_POS: [number, number, number] = [0.14, 0.14, -8.77];
+
+// Smooth Forward Arc Control Waypoints curving around front of MC Desk onto Center Circular Dais
+export const KV_WAYPOINT: [number, number, number] = [5.15, 0.15, -3.65];
+export const NH_WAYPOINT: [number, number, number] = [-0.45, 0.15, -4.55];
 
 /**
  * Animated 3D MC Presenters (Khánh Vy & Ngọc Huy):
  * - Idle / Lobby: Staged concealed behind the hexagonal screen frames [6.02, 0.14, -8.82] and [1.36, 0.14, -10.01].
- * - Intro Opening: Step out along catwalk corridor (0.0s-3.2s) to center dais [0.38, 0.18, 0.00] & [-0.38, 0.18, 0.00], execute greeting (3.2s-4.0s).
+ * - Intro Opening: Step laterally past outer portal edges (|xLoc| = 3.28m, zero frame clipping) and curve smoothly to center dais (0.0s-4.8s), greeting (4.8s-5.6s).
  * - Host Mode: Poised elegantly at center dais during greeting, then walk back to desk (exact 6.0s) on contestant entrance.
- * - Match Rounds: Behind desk at [3.26, 0.14, -7.15] and [2.86, 0.14, -7.15].
+ * - Match Rounds: Coaxial behind desk at [3.35, 0.14, -7.11] and [2.89, 0.14, -7.22] facing -0.25 rad.
  */
 export function McPresenters({
   state,
@@ -1923,8 +1933,8 @@ export function McPresenters({
     let nhX = NH_DESK_POS[0];
     let nhY = NH_DESK_POS[1];
     let nhZ = NH_DESK_POS[2];
-    let kvRotY = -0.28;
-    let nhRotY = -0.28;
+    let kvRotY = MC_DESK_ROT_Y;
+    let nhRotY = MC_DESK_ROT_Y;
     let isWalking = false;
     let walkPhase = 0;
     let isGreeting = false;
@@ -1974,8 +1984,8 @@ export function McPresenters({
           nhRotY = THREE.MathUtils.lerp(0.0, nhWalkAngle, turnT);
         } else if (u > 0.85) {
           const settleT = (u - 0.85) / 0.15;
-          kvRotY = THREE.MathUtils.lerp(kvWalkAngle, -0.28, settleT);
-          nhRotY = THREE.MathUtils.lerp(nhWalkAngle, -0.28, settleT);
+          kvRotY = THREE.MathUtils.lerp(kvWalkAngle, MC_DESK_ROT_Y, settleT);
+          nhRotY = THREE.MathUtils.lerp(nhWalkAngle, MC_DESK_ROT_Y, settleT);
         } else {
           kvRotY = kvWalkAngle;
           nhRotY = nhWalkAngle;
@@ -1987,57 +1997,96 @@ export function McPresenters({
         nhX = NH_DESK_POS[0];
         nhY = NH_DESK_POS[1];
         nhZ = NH_DESK_POS[2];
-        kvRotY = -0.28;
-        nhRotY = -0.28;
+        kvRotY = MC_DESK_ROT_Y;
+        nhRotY = MC_DESK_ROT_Y;
         isWalking = false;
       }
     } else if (isIntro && !hasEntranceCompleted) {
       const introStart = introStartedAt || state?.introTimer?.startedAt || now;
       const elapsedIntro = Math.max(0, now - introStart);
 
-      if (elapsedIntro < 3200) {
-        // Phase 1 (0.0s -> 3.2s): Stepping out from behind the screen frames along catwalk corridor to center dais
-        const rawT = Math.min(1.0, elapsedIntro / 3200);
-        const u = rawT * rawT * (3 - 2 * rawT); // Smoothstep easing
+      if (elapsedIntro < 4800) {
+        // Phase 1 (0.0s -> 4.8s): C^1 smooth 3-segment trajectory stepping sideways past OUTER portal edges
+        // (|xLoc| = 3.28m > 3.20m widest Tier 1 knuckle -> zero portal frame clipping!) then curving to center dais
+        const rawT = Math.min(1.0, elapsedIntro / 4800);
+        const u = rawT * rawT * (3 - 2 * rawT); // Smoothstep easing across full walk
 
-        isWalking = true;
-        walkPhase = u * Math.PI * 7.5;
+        isWalking = u > 0.01 && u < 0.99;
+        walkPhase = u * Math.PI * 11.5;
 
-        // Quadratic Bezier interpolation in world coordinates
-        const w0 = (1 - u) * (1 - u);
-        const w1 = 2 * (1 - u) * u;
-        const w2 = u * u;
+        let kvTanX = 0;
+        let kvTanZ = 1;
+        let nhTanX = 0;
+        let nhTanZ = 1;
 
-        kvX = w0 * KV_CONCEAL_POS[0] + w1 * KV_WAYPOINT[0] + w2 * KV_CENTER_POS[0];
-        kvY = w0 * KV_CONCEAL_POS[1] + w1 * KV_WAYPOINT[1] + w2 * KV_CENTER_POS[1];
-        kvZ = w0 * KV_CONCEAL_POS[2] + w1 * KV_WAYPOINT[2] + w2 * KV_CENTER_POS[2];
+        if (u < 0.24) {
+          // Segment A (u: 0.00 -> 0.24): Step laterally behind Tier 3 out to |xLoc| = 3.28m
+          const s = u / 0.24;
+          const w0 = (1 - s) * (1 - s);
+          const w1 = 2 * (1 - s) * s;
+          const w2 = s * s;
 
-        nhX = w0 * NH_CONCEAL_POS[0] + w1 * NH_WAYPOINT[0] + w2 * NH_CENTER_POS[0];
-        nhY = w0 * NH_CONCEAL_POS[1] + w1 * NH_WAYPOINT[1] + w2 * NH_CENTER_POS[1];
-        nhZ = w0 * NH_CONCEAL_POS[2] + w1 * NH_WAYPOINT[2] + w2 * NH_CENTER_POS[2];
+          kvX = w0 * KV_CONCEAL_POS[0] + w1 * KV_SIDE_CTRL_POS[0] + w2 * KV_OUTER_SIDE_POS[0];
+          kvZ = w0 * KV_CONCEAL_POS[2] + w1 * KV_SIDE_CTRL_POS[2] + w2 * KV_OUTER_SIDE_POS[2];
+          nhX = w0 * NH_CONCEAL_POS[0] + w1 * NH_SIDE_CTRL_POS[0] + w2 * NH_OUTER_SIDE_POS[0];
+          nhZ = w0 * NH_CONCEAL_POS[2] + w1 * NH_SIDE_CTRL_POS[2] + w2 * NH_OUTER_SIDE_POS[2];
 
-        // Heading follows path tangent
-        const kvTanX = 2 * (1 - u) * (KV_WAYPOINT[0] - KV_CONCEAL_POS[0]) + 2 * u * (KV_CENTER_POS[0] - KV_WAYPOINT[0]);
-        const kvTanZ = 2 * (1 - u) * (KV_WAYPOINT[2] - KV_CONCEAL_POS[2]) + 2 * u * (KV_CENTER_POS[2] - KV_WAYPOINT[2]);
+          kvTanX = 2 * (1 - s) * (KV_SIDE_CTRL_POS[0] - KV_CONCEAL_POS[0]) + 2 * s * (KV_OUTER_SIDE_POS[0] - KV_SIDE_CTRL_POS[0]);
+          kvTanZ = 2 * (1 - s) * (KV_SIDE_CTRL_POS[2] - KV_CONCEAL_POS[2]) + 2 * s * (KV_OUTER_SIDE_POS[2] - KV_SIDE_CTRL_POS[2]);
+          nhTanX = 2 * (1 - s) * (NH_SIDE_CTRL_POS[0] - NH_CONCEAL_POS[0]) + 2 * s * (NH_OUTER_SIDE_POS[0] - NH_SIDE_CTRL_POS[0]);
+          nhTanZ = 2 * (1 - s) * (NH_SIDE_CTRL_POS[2] - NH_CONCEAL_POS[2]) + 2 * s * (NH_OUTER_SIDE_POS[2] - NH_SIDE_CTRL_POS[2]);
+        } else if (u < 0.44) {
+          // Segment B (u: 0.24 -> 0.44): Walk forward completely outside Tier 1 outer edges (|xLoc| = 3.28m)
+          const s = (u - 0.24) / 0.20;
+          kvX = KV_OUTER_SIDE_POS[0] + (KV_OUTER_FRONT_POS[0] - KV_OUTER_SIDE_POS[0]) * s;
+          kvZ = KV_OUTER_SIDE_POS[2] + (KV_OUTER_FRONT_POS[2] - KV_OUTER_SIDE_POS[2]) * s;
+          nhX = NH_OUTER_SIDE_POS[0] + (NH_OUTER_FRONT_POS[0] - NH_OUTER_SIDE_POS[0]) * s;
+          nhZ = NH_OUTER_SIDE_POS[2] + (NH_OUTER_FRONT_POS[2] - NH_OUTER_SIDE_POS[2]) * s;
+
+          kvTanX = KV_OUTER_FRONT_POS[0] - KV_OUTER_SIDE_POS[0];
+          kvTanZ = KV_OUTER_FRONT_POS[2] - KV_OUTER_SIDE_POS[2];
+          nhTanX = NH_OUTER_FRONT_POS[0] - NH_OUTER_SIDE_POS[0];
+          nhTanZ = NH_OUTER_FRONT_POS[2] - NH_OUTER_SIDE_POS[2];
+        } else {
+          // Segment C (u: 0.44 -> 1.00): Smooth forward arc in front of MC desk converging onto Center Circular Dais
+          const s = (u - 0.44) / 0.56;
+          const w0 = (1 - s) * (1 - s);
+          const w1 = 2 * (1 - s) * s;
+          const w2 = s * s;
+
+          kvX = w0 * KV_OUTER_FRONT_POS[0] + w1 * KV_WAYPOINT[0] + w2 * KV_CENTER_POS[0];
+          kvZ = w0 * KV_OUTER_FRONT_POS[2] + w1 * KV_WAYPOINT[2] + w2 * KV_CENTER_POS[2];
+          nhX = w0 * NH_OUTER_FRONT_POS[0] + w1 * NH_WAYPOINT[0] + w2 * NH_CENTER_POS[0];
+          nhZ = w0 * NH_OUTER_FRONT_POS[2] + w1 * NH_WAYPOINT[2] + w2 * NH_CENTER_POS[2];
+
+          kvTanX = 2 * (1 - s) * (KV_WAYPOINT[0] - KV_OUTER_FRONT_POS[0]) + 2 * s * (KV_CENTER_POS[0] - KV_WAYPOINT[0]);
+          kvTanZ = 2 * (1 - s) * (KV_WAYPOINT[2] - KV_OUTER_FRONT_POS[2]) + 2 * s * (KV_CENTER_POS[2] - KV_WAYPOINT[2]);
+          nhTanX = 2 * (1 - s) * (NH_WAYPOINT[0] - NH_OUTER_FRONT_POS[0]) + 2 * s * (NH_CENTER_POS[0] - NH_WAYPOINT[0]);
+          nhTanZ = 2 * (1 - s) * (NH_WAYPOINT[2] - NH_OUTER_FRONT_POS[2]) + 2 * s * (NH_CENTER_POS[2] - NH_WAYPOINT[2]);
+        }
+
+        // Smooth elevation step-up from studio floor (0.14m) onto center circular dais (0.18m)
+        const stepU = Math.max(0, Math.min(1, (u - 0.76) / 0.20));
+        const smoothStepU = stepU * stepU * (3 - 2 * stepU);
+        kvY = 0.14 + (KV_CENTER_POS[1] - 0.14) * smoothStepU;
+        nhY = 0.14 + (NH_CENTER_POS[1] - 0.14) * smoothStepU;
+
         const kvAngle = Math.atan2(kvTanX, kvTanZ);
-
-        const nhTanX = 2 * (1 - u) * (NH_WAYPOINT[0] - NH_CONCEAL_POS[0]) + 2 * u * (NH_CENTER_POS[0] - NH_WAYPOINT[0]);
-        const nhTanZ = 2 * (1 - u) * (NH_WAYPOINT[2] - NH_CONCEAL_POS[2]) + 2 * u * (NH_CENTER_POS[2] - NH_WAYPOINT[2]);
         const nhAngle = Math.atan2(nhTanX, nhTanZ);
 
-        if (u < 0.20) {
-          kvRotY = THREE.MathUtils.lerp(-0.85, kvAngle, u / 0.20);
-          nhRotY = THREE.MathUtils.lerp(0.35, nhAngle, u / 0.20);
-        } else if (u > 0.80) {
-          const settleT = (u - 0.80) / 0.20;
+        if (u < 0.12) {
+          kvRotY = THREE.MathUtils.lerp(0.85, kvAngle, u / 0.12);
+          nhRotY = THREE.MathUtils.lerp(-1.25, nhAngle, u / 0.12);
+        } else if (u > 0.84) {
+          const settleT = (u - 0.84) / 0.16;
           kvRotY = THREE.MathUtils.lerp(kvAngle, 0.0, settleT);
           nhRotY = THREE.MathUtils.lerp(nhAngle, 0.0, settleT);
         } else {
           kvRotY = kvAngle;
           nhRotY = nhAngle;
         }
-      } else if (elapsedIntro < 4000) {
-        // Phase 2 (3.2s -> 4.0s): Arrived at center circular dais, opening greeting facing audience
+      } else if (elapsedIntro < 5600) {
+        // Phase 2 (4.8s -> 5.6s): Arrived at center circular dais, opening greeting facing audience
         kvX = KV_CENTER_POS[0];
         kvY = KV_CENTER_POS[1];
         kvZ = KV_CENTER_POS[2];
@@ -2047,12 +2096,12 @@ export function McPresenters({
         isWalking = false;
         isGreeting = true;
 
-        const greetT = (elapsedIntro - 3200) / 800; // 0.0 to 1.0
+        const greetT = (elapsedIntro - 4800) / 800; // 0.0 to 1.0
         greetingBell = Math.sin(greetT * Math.PI);  // 0 -> 1 -> 0
         kvRotY = 0.0 - 0.12 * greetingBell;
         nhRotY = 0.0 + 0.12 * greetingBell;
       } else {
-        // Phase 3 (4.0s onwards): Poised stance on center circular dais throughout pre-match greeting
+        // Phase 3 (5.6s onwards): Poised stance on center circular dais throughout pre-match greeting
         kvX = KV_CENTER_POS[0];
         kvY = KV_CENTER_POS[1];
         kvZ = KV_CENTER_POS[2];
@@ -2071,19 +2120,19 @@ export function McPresenters({
       nhX = NH_CONCEAL_POS[0];
       nhY = NH_CONCEAL_POS[1];
       nhZ = NH_CONCEAL_POS[2];
-      kvRotY = -0.85;
-      nhRotY = 0.35;
+      kvRotY = 0.85;
+      nhRotY = -1.25;
       isWalking = false;
     } else {
-      // Regular match rounds / post-intro: MCs at desk
+      // Regular match rounds / post-intro: MCs coaxial behind desk
       kvX = KV_DESK_POS[0];
       kvY = KV_DESK_POS[1];
       kvZ = KV_DESK_POS[2];
       nhX = NH_DESK_POS[0];
       nhY = NH_DESK_POS[1];
       nhZ = NH_DESK_POS[2];
-      kvRotY = -0.28;
-      nhRotY = -0.28;
+      kvRotY = MC_DESK_ROT_Y;
+      nhRotY = MC_DESK_ROT_Y;
       isWalking = false;
     }
 
@@ -2158,7 +2207,7 @@ export function McPresenters({
   return (
     <group>
       {/* ── KHÁNH VY (Female Presenter - Stylized Realism VTV) ── */}
-      <group ref={kvRef} position={[3.26, 0.14, -7.15]} rotation={[0, -0.28, 0]}>
+      <group ref={kvRef} position={[3.35, 0.14, -7.11]} rotation={[0, -0.25, 0]}>
         {/* ── CRANIOFACIAL ANATOMY (Feminine Vietnamese Proportions: Smooth, graceful) ── */}
         {/* 1. Cranial Vault */}
         <mesh position={[0, 1.445, 0.000]} scale={[0.96, 1.02, 0.98]}>
@@ -2491,7 +2540,7 @@ export function McPresenters({
       </group>
 
       {/* ── NGỌC HUY (Male Presenter - Metallic Bronze Suit #b88a44) ── */}
-      <group ref={nhRef} position={[2.86, 0.14, -7.15]} rotation={[0, -0.28, 0]}>
+      <group ref={nhRef} position={[2.89, 0.14, -7.22]} rotation={[0, -0.25, 0]}>
         {/* ── CRANIOFACIAL ANATOMY (Masculine Vietnamese Proportions: Handsome, defined jaw) ── */}
         {/* 1. Cranial Vault */}
         <mesh position={[0, 1.515, 0.000]} scale={[0.96, 1.04, 1.00]}>
@@ -4021,6 +4070,31 @@ export function Podiums({
 
   const isEntranceActive = Boolean(state?.entranceState?.active);
   const currentEntranceSeat = state?.entranceState?.currentSeatIdx ?? 0;
+  const currentEntranceSeatStartedAt =
+    state?.entranceState?.seatStartedAt ?? state?.entranceState?.startedAt ?? null;
+
+  // Early Podium Scoreboard Transition (R5):
+  // Switch the active walking contestant's podium LED screen from "logo" to "name_school" at t = 8.5s
+  // right as they step off the bottom stair and walk across the stage floor towards their podium (2.0s before settling at 10.5s).
+  const [approachingSeatIdx, setApproachingSeatIdx] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isEntranceActive || currentEntranceSeatStartedAt == null) {
+      setApproachingSeatIdx(null);
+      return;
+    }
+    const now = serverNow ? serverNow() : Date.now();
+    const elapsedMs = Math.max(0, now - currentEntranceSeatStartedAt);
+    if (elapsedMs >= 8500) {
+      setApproachingSeatIdx(currentEntranceSeat);
+      return;
+    }
+    setApproachingSeatIdx(null);
+    const delayMs = Math.max(16, 8500 - elapsedMs);
+    const timerId = window.setTimeout(() => {
+      setApproachingSeatIdx(currentEntranceSeat);
+    }, delayMs);
+    return () => window.clearTimeout(timerId);
+  }, [isEntranceActive, currentEntranceSeat, currentEntranceSeatStartedAt, serverNow]);
 
   const isVeDich = state?.currentRound === "veDich" || state?.roundsPlan?.[state?.roundIdx ?? 0] === "veDich";
   const vd = state?.veDich;
@@ -4106,7 +4180,10 @@ export function Podiums({
         } else if (hasEntranceCompleted) {
           screenMode = "name_school";
         } else if (isEntranceActive) {
-          screenMode = cfg.seatId < currentEntranceSeat ? "name_school" : "logo";
+          const isCurrentApproaching =
+            cfg.seatId === currentEntranceSeat && approachingSeatIdx === currentEntranceSeat;
+          screenMode =
+            cfg.seatId < currentEntranceSeat || isCurrentApproaching ? "name_school" : "logo";
         } else {
           screenMode = "logo";
         }

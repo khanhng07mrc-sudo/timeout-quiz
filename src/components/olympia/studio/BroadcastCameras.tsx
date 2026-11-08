@@ -3,11 +3,13 @@
 import React, { useRef, useMemo } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+import { getContestantPodiumWorldPos } from "./CameraController";
 
 export interface BroadcastCamerasProps {
   camAngle?: number;
   ptzZoom?: number;
   pushInProgress?: number;
+  totalSeats?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -791,13 +793,14 @@ export function BroadcastCameras({
   camAngle = 1,
   ptzZoom = 1.0,
   pushInProgress = 0,
+  totalSeats = 4,
 }: BroadcastCamerasProps) {
   // Determine active on-air camera and targets
   // Left Pedestal Camera at [-6.20, 0.22, 7.80]:
   // Active when covering Cam 2 (LED Wall), Cam 3 (MC Desk), or Cam 11 (Audience/Stairs)
   const leftCamSpec: CameraTargetSpec = useMemo(() => {
     if (camAngle === 3) {
-      return { target: [3.00, 1.45, -6.70], isLive: true }; // Coaxial straight-on MC Desk & Grounded Hexagon Portal
+      return { target: [3.12, 1.02, -7.16], isLive: true }; // Coaxial straight-on MC Desk & Grounded Hexagon Portal
     }
     if (camAngle === 2) {
       return { target: [5.8, 3.2, -2.2], isLive: true }; // Main LED Wall
@@ -817,19 +820,10 @@ export function BroadcastCameras({
     const isRightActive = activeCam === 10 || (activeCam >= 5 && activeCam <= 8) || (activeCam >= 25 && activeCam <= 28);
 
     if (isContestantActive) {
-      // Focus on the specific contestant podium
+      // Focus directly on the exact contestant podium along the active totalSeats arc
       const seatIdx = activeCam >= 25 ? activeCam - 25 + 4 : activeCam - 5;
-      const tsPositions: Array<[number, number, number]> = [
-        [-6.38, 1.25, -2.20],
-        [-6.05, 1.25, -3.13],
-        [-5.59, 1.25, -4.01],
-        [-5.01, 1.25, -4.80],
-        [-4.35, 1.25, -5.50],
-        [-3.65, 1.25, -6.10],
-        [-2.90, 1.25, -6.60],
-        [-2.10, 1.25, -7.00],
-      ];
-      return { target: tsPositions[seatIdx] || [-5.59, 1.25, -3.5], isLive: isRightActive };
+      const targetPos = getContestantPodiumWorldPos(seatIdx, totalSeats || 4, 1.25);
+      return { target: targetPos, isLive: isRightActive };
     }
     if (activeCam === 4) {
       return { target: [1.8, 0.75, 2.6], isLive: true }; // Laurel Vitrine
@@ -842,7 +836,7 @@ export function BroadcastCameras({
     }
     // Standby Ready Angle: Facing Contestant Arc
     return { target: [-5.2, 1.4, -3.6], isLive: false };
-  }, [camAngle]);
+  }, [camAngle, totalSeats]);
 
   // Jib Crane at [-8.50, 0.22, 11.00] (Camera Pit in floor wing per real studio layout):
   // Active when Cam 9 is selected

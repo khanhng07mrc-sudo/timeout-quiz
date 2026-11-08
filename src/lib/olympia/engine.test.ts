@@ -9,7 +9,7 @@ import { RULESETS, cnvPointsFor, tangTocTierPoints } from "./rulesets";
 import { SAMPLE_QUESTION_SET, BAC_AI_QUESTION_SET } from "./sample-questions";
 import { buildBalancedKhoiDongQueues } from "./ai-classifier";
 
-import type { OlympiaConfig, RoundId, RulesetId } from "./types";
+import { canStartScoreSummary, seatToStudioCamera, type OlympiaConfig, type RoundId, type RulesetId } from "./types";
 
 
 
@@ -2156,6 +2156,88 @@ test("Audio lifecycle invariants: pending cue nullification on stop and protecte
   assert.equal(bgmPaused, false);
   assert.equal(isBgmPausedExplicitly, false);
 });
+
+test("Score Summary (R7): strictly blocked mid-round, allowed at end-of-round, maps TS 5..8 to CAM 25..28, and clears camera locks", () => {
+  // Verify seatToStudioCamera never collides with CAM 9..15
+  assert.equal(seatToStudioCamera(0), 5);
+  assert.equal(seatToStudioCamera(3), 8);
+  assert.equal(seatToStudioCamera(4), 25, "TS 5 must map to CAM 25, never CAM 9 (Jib)");
+  assert.equal(seatToStudioCamera(7), 28);
+
+  const g = game("O26", ["khoiDong", "vcnv", "tangToc", "veDich"], 5);
+  assert.equal(g.activeSeatIds.length, 5);
+
+  // 1. Blocked in lobby
+  assert.equal(canStartScoreSummary(g.state), false);
+  assert.equal(g.hostAction({ type: "summary:start" }, 100).ok, false);
+
+  // 2. Start match -> blocked during opening intro & mid-Khởi Động
+  act(g, "game:start", {}, 1000);
+  assert.equal(canStartScoreSummary(g.state), false, "Blocked during opening introTimer");
+  act(g, "intro:skip", {}, 1500);
+  assert.equal(canStartScoreSummary(g.state), false, "Blocked at start of Khởi Động before round finishes");
+
+  act(g, "kd:start", {}, 2000);
+  act(g, "kd:next", {}, 6000);
+  assert.equal(canStartScoreSummary(g.state), false, "Blocked mid-Khởi Động solo question");
+  assert.equal(g.hostAction({ type: "summary:start" }, 6500).ok, false);
+
+  // Pin manual camera mid-round -> playerBuzz in shared KD clears manual camera override
+  act(g, "studio:camera", { cam: 9 }, 7000);
+  assert.equal(g.state.studioCameraManual, true);
+
+  // Finish Khởi Động -> Summary becomes allowed!
+  act(g, "round:finish", {}, 8000);
+  assert.equal(g.state.studioCameraManual, false, "round:finish clears manual camera lock");
+  assert.equal(canStartScoreSummary(g.state), true, "Allowed once Khởi Động roundStatus is done");
+
+  // Give TS 5 highest score (65đ) so TS 5 is last in summary order
+  g.state.seats[0].score = 55;
+  g.state.seats[1].score = 45;
+  g.state.seats[2].score = 45;
+  g.state.seats[3].score = 60;
+  g.state.seats[4].score = 65;
+
+  act(g, "summary:start", { isAuto: true }, 9000);
+  assert.equal(g.state.summaryState?.active, true);
+  assert.equal(g.state.studioCameraManual, false, "summary:start must NOT set studioCameraManual=true");
+  assert.deepEqual(g.state.summaryState?.orderedSeats, [1, 2, 0, 3, 4]);
+  assert.equal(g.state.studioCamera, 6, "TS 2 -> CAM 6");
+
+  // Advance to TS 5 (index 4) -> must use CAM 25 (never CAM 9!)
+  g.tick(9000 + 3500); // idx 1 (TS 3)
+  g.tick(9000 + 7000); // idx 2 (TS 1)
+  g.tick(9000 + 10500); // idx 3 (TS 4)
+  g.tick(9000 + 14000); // idx 4 (TS 5)
+  assert.equal(g.state.summaryState?.currentIndex, 4);
+  assert.equal(g.state.studioCamera, 25, "TS 5 summary must target CAM 25, not CAM 9 Jib");
+
+  // Entering VCNV while summary is active auto-stops summaryState & resets camera
+  act(g, "round:force", { round: "vcnv" }, 25000);
+  assert.equal(g.state.summaryState?.active, false, "Entering next round auto-cancels active summaryState");
+  assert.equal(canStartScoreSummary(g.state), false, "Blocked mid-VCNV grid");
+
+  act(g, "vcnv:revealAll", {}, 26000);
+  assert.equal(canStartScoreSummary(g.state), true, "Allowed when VCNV phase === done");
+
+  // Entering Tăng Tốc: blocked on Q1..Q3 even after grading, allowed on Q4 graded
+  act(g, "round:force", { round: "tangToc" }, 27000);
+  assert.equal(canStartScoreSummary(g.state), false);
+  act(g, "tt:selectQuestion", { qIdx: 0 }, 27100);
+  act(g, "tt:show", {}, 27200);
+  act(g, "tt:reveal", {}, 27250);
+  act(g, "tt:grade", {}, 27300);
+  assert.equal(canStartScoreSummary(g.state), false, "Blocked after Q1 graded because Q2..Q4 remain");
+
+  act(g, "tt:selectQuestion", { qIdx: 3 }, 28000);
+  act(g, "tt:show", {}, 28100);
+  assert.equal(canStartScoreSummary(g.state), false, "Blocked while Q4 is still in question phase");
+  act(g, "tt:reveal", {}, 28150);
+  assert.equal(canStartScoreSummary(g.state), false, "Blocked while Q4 is in ranking/reveal before grading");
+  act(g, "tt:grade", {}, 28200);
+  assert.equal(canStartScoreSummary(g.state), true, "Allowed once final Tăng Tốc Q4 is graded");
+});
+
 
 
 

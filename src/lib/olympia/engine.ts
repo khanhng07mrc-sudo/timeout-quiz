@@ -7,6 +7,8 @@ import {
   MAX_SEATS,
   ROUND_ORDER,
   ROUND_LABELS,
+  canStartScoreSummary,
+  seatToStudioCamera,
   type CauHoiPhuState,
   type ContestantGestureType,
   type HostAction,
@@ -502,11 +504,12 @@ export class OlympiaGame {
           st.summaryState.currentIndex = nextIdx;
           st.summaryState.lastAdvanceAt = now;
           const nextSeat = st.summaryState.orderedSeats[nextIdx];
-          st.studioCamera = 5 + nextSeat;
+          st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(nextSeat);
           this.touch(now);
           return true;
         } else {
           st.summaryState.active = false;
+          st.studioCameraManual = false;
           st.studioCamera = 10;
           this.cue("", "stop");
           this.touch(now);
@@ -618,10 +621,12 @@ export class OlympiaGame {
     const qs = this.config.questionSet;
     const active = this.activeSeatIds;
     if (active.length === 0) return fail("Chưa có thí sinh nào trong phòng");
-    // Clear intro animation when any round begins
+    // Clear intro/summary animations and release any manual camera override when any round begins
     st.introTimer = null;
+    if (st.summaryState) st.summaryState.active = false;
     st.showStageGraphics = false;
     st.studioCameraManual = false;
+    st.studioCamera = undefined;
     st.currentRound = round;
     st.roundStatus[round] = "active";
     st.banner = ROUND_LABELS[round];
@@ -811,6 +816,8 @@ export class OlympiaGame {
     const st = this.state;
     if (st.currentRound) st.roundStatus[st.currentRound] = "done";
     st.banner = null;
+    st.studioCameraManual = false;
+    st.studioCamera = undefined;
     if (st.khoiDong) {
       st.khoiDong.started = false;
       st.khoiDong.questionRevealed = false;
@@ -1080,6 +1087,7 @@ export class OlympiaGame {
       case "studio:camera:auto": {
         // Reset về auto-camera
         st.studioCameraManual = false;
+        st.studioCamera = undefined;
         return OK;
       }
       case "display:overlayMode": {
@@ -1291,6 +1299,9 @@ export class OlympiaGame {
         }
         return OK;
       case "summary:start": {
+        if (!canStartScoreSummary(st)) {
+          return fail("Chỉ có thể mở Tổng kết điểm sau khi phần thi hiện tại đã kết thúc hoàn toàn!");
+        }
         const isAuto = a.isAuto !== false && a.auto !== false;
         // Sort active seats: score ascending. Tie break: seatId ascending
         const orderedSeats = [...this.activeSeatIds].sort((x, y) => {
@@ -1302,17 +1313,19 @@ export class OlympiaGame {
         if (orderedSeats.length === 0) return fail("Không có thí sinh");
         st.introTimer = null;
         st.showScoreboard = false;
+        st.studioCameraManual = false;
+        const isFullscreen = a.isFullscreen != null ? Boolean(a.isFullscreen) : (st.overlayMode === "FULLSCREEN");
         st.summaryState = {
           active: true,
           currentIndex: 0,
           orderedSeats,
           isAuto,
-          isFullscreen: a.isFullscreen != null ? Boolean(a.isFullscreen) : (st.overlayMode === "FULLSCREEN"),
+          isFullscreen,
           lastAdvanceAt: now,
         };
         this.cue("6_NhacKhac/summary", "bgm");
         const firstSeat = orderedSeats[0];
-        st.studioCamera = 5 + firstSeat;
+        st.studioCamera = isFullscreen ? 10 : seatToStudioCamera(firstSeat);
         return OK;
       }
       case "summary:next": {
@@ -1322,9 +1335,10 @@ export class OlympiaGame {
           st.summaryState.currentIndex = nextIdx;
           st.summaryState.lastAdvanceAt = now;
           const nextSeat = st.summaryState.orderedSeats[nextIdx];
-          st.studioCamera = 5 + nextSeat;
+          st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(nextSeat);
         } else {
           st.summaryState.active = false;
+          st.studioCameraManual = false;
           st.studioCamera = 10;
           this.cue("", "stop");
         }
@@ -1336,7 +1350,7 @@ export class OlympiaGame {
         st.summaryState.currentIndex = prevIdx;
         st.summaryState.lastAdvanceAt = now;
         const prevSeat = st.summaryState.orderedSeats[prevIdx];
-        st.studioCamera = 5 + prevSeat;
+        st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(prevSeat);
         return OK;
       }
       case "summary:toggleAuto": {
@@ -1349,12 +1363,15 @@ export class OlympiaGame {
         if (!st.summaryState || !st.summaryState.active) return fail("Chưa bắt đầu tổng kết điểm");
         st.summaryState.isFullscreen = !st.summaryState.isFullscreen;
         st.overlayMode = st.summaryState.isFullscreen ? "FULLSCREEN" : "LOWER_THIRD";
+        const curSeat = st.summaryState.orderedSeats[st.summaryState.currentIndex] ?? 0;
+        st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(curSeat);
         return OK;
       }
       case "summary:stop": {
         if (st.summaryState) {
           st.summaryState.active = false;
         }
+        st.studioCameraManual = false;
         st.studioCamera = 10;
         this.cue("", "stop");
         return OK;
@@ -1363,6 +1380,27 @@ export class OlympiaGame {
 
     if (st.banner) st.banner = null;
     if (st.introTimer) st.introTimer = null;
+    if (
+      type.startsWith("kd:") ||
+      type.startsWith("vcnv:") ||
+      type.startsWith("tt:") ||
+      type.startsWith("vd:") ||
+      type.startsWith("chp:")
+    ) {
+      if (st.summaryState?.active) {
+        st.summaryState.active = false;
+      }
+      const isUtilityOnly =
+        type === "kd:setBgm" ||
+        type === "kd:stopBgm" ||
+        type === "vcnv:toggleLockSeat" ||
+        type === "vcnv:unlockAllSeats" ||
+        type === "chp:selectSeats";
+      if (!isUtilityOnly && type !== "vcnv:blank" && type !== "tt:blank") {
+        st.studioCameraManual = false;
+        st.studioCamera = undefined;
+      }
+    }
     if (type.startsWith("kd:")) return this.kdAction(type, a, now);
     if (type.startsWith("vcnv:")) return this.vcnvAction(type, a, now);
     if (type.startsWith("tt:")) return this.ttAction(type, a, now);
@@ -3389,6 +3427,9 @@ export class OlympiaGame {
       default:
         return fail("Không thể bấm chuông lúc này");
     }
+    // Release any manual camera override immediately on valid player buzz so Auto-Director cuts straight to the buzzer winner
+    st.studioCameraManual = false;
+    st.studioCamera = undefined;
     this.touch(now);
     return OK;
   }

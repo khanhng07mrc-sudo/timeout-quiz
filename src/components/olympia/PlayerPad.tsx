@@ -8,6 +8,43 @@ import { Timer, MediaView, SEAT_COLORS, seatName, activeSeats } from "./ui";
 
 type Emit = (e: string, p?: unknown) => Promise<{ ok: boolean; error?: string }>;
 
+let sharedBuzzerAudioCtx: AudioContext | null = null;
+
+function warmBuzzerAudioContext() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!sharedBuzzerAudioCtx || sharedBuzzerAudioCtx.state === "closed") {
+      sharedBuzzerAudioCtx = new AudioCtx();
+    }
+    if (sharedBuzzerAudioCtx.state === "suspended") {
+      sharedBuzzerAudioCtx.resume().catch(() => {});
+    }
+  } catch {}
+}
+
+function playInstantBuzzerBeep() {
+  if (typeof window === "undefined") return;
+  try {
+    warmBuzzerAudioContext();
+    const ctx = sharedBuzzerAudioCtx;
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(880, t0);
+    osc.frequency.exponentialRampToValueAtTime(440, t0 + 0.11);
+    gain.gain.setValueAtTime(0.22, t0);
+    gain.gain.exponentialRampToValueAtTime(0.01, t0 + 0.11);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.11);
+  } catch {}
+}
+
 export default function PlayerPad({
   code,
   initialSeat,
@@ -55,19 +92,39 @@ export default function PlayerPad({
     return () => clearInterval(id);
   }, [state?.khoiDong?.buzzUnlockAt, serverNow]);
 
+  const lastBuzzEmitAtRef = useRef<number>(0);
+  const [optimisticBuzzPending, setOptimisticBuzzPending] = useState(false);
+
   const triggerBuzz = useCallback(async () => {
-    const res = await emit("buzz");
-    if (!res.ok && res.error?.includes("Chuông chưa mở")) {
-      setTimeout(() => {
-        emit("buzz").catch(() => {});
-      }, 120);
+    const nowLocal = performance.now();
+    if (nowLocal - lastBuzzEmitAtRef.current < 160) return;
+    lastBuzzEmitAtRef.current = nowLocal;
+    setOptimisticBuzzPending(true);
+    playInstantBuzzerBeep();
+
+    try {
+      const res = await emit("buzz");
+      if (!res.ok && res.error?.includes("Chuông chưa mở")) {
+        setTimeout(() => {
+          emit("buzz")
+            .catch(() => {})
+            .finally(() => setOptimisticBuzzPending(false));
+        }, 85);
+        return;
+      }
+    } finally {
+      setTimeout(() => setOptimisticBuzzPending(false), 260);
     }
   }, [emit]);
 
-  // Forward user interaction to parent to unlock display iframe audio in sandbox mode
+  // Forward first user interaction to parent to unlock display iframe audio in sandbox mode & pre-warm WebAudio
   useEffect(() => {
     if (typeof window === "undefined") return;
+    let unlocked = false;
     const notifyParentUnlock = () => {
+      if (unlocked) return;
+      unlocked = true;
+      warmBuzzerAudioContext();
       try {
         if (window.parent && window.parent !== window) {
           window.parent.postMessage({ type: "UNLOCK_AUDIO" }, "*");
@@ -77,12 +134,10 @@ export default function PlayerPad({
         }
       } catch {}
     };
-    window.addEventListener("pointerdown", notifyParentUnlock, { passive: true });
-    window.addEventListener("click", notifyParentUnlock, { passive: true });
-    window.addEventListener("keydown", notifyParentUnlock, { passive: true });
+    window.addEventListener("pointerdown", notifyParentUnlock, { once: true, passive: true });
+    window.addEventListener("keydown", notifyParentUnlock, { once: true, passive: true });
     return () => {
       window.removeEventListener("pointerdown", notifyParentUnlock);
-      window.removeEventListener("click", notifyParentUnlock);
       window.removeEventListener("keydown", notifyParentUnlock);
     };
   }, []);
@@ -98,11 +153,11 @@ export default function PlayerPad({
 
   const seatId = join?.seatId ?? -1;
 
-  // Compute buzzer availability for keyboard Space shortcut (with !e.repeat anti-spam)
+  // Compute buzzer availability for keyboard Space shortcut (with !e.repeat anti-spam & server +180ms unlock tolerance)
   const canPressMainBuzz = useCallback((): boolean => {
     if (!state || seatId < 0) return false;
     if (state.bellTestMode) return true;
-    if (state.stage !== "playing" || state.introTimer || state.banner) return false;
+    if (state.stage !== "playing" || state.introTimer) return false;
     const now = serverNow();
 
     switch (state.currentRound) {
@@ -112,8 +167,13 @@ export default function PlayerPad({
         const seg = kd.segments[kd.segIdx];
         if (!seg || seg.kind === "solo") return false;
         if (kd.lockedSeats.includes(seatId) || kd.buzzedSeat != null) return false;
-        if (kd.buzzUnlockAt && now < kd.buzzUnlockAt) return false;
-        return kd.buzzOpen || Boolean(kd.buzzUnlockAt && now >= kd.buzzUnlockAt);
+        if (kd.buzzUnlockAt && now + 180 < kd.buzzUnlockAt) return false;
+        return kd.buzzOpen || Boolean(kd.buzzUnlockAt && now + 180 >= kd.buzzUnlockAt);
+      }
+      case "vcnv": {
+        const v = state.vcnv;
+        if (!v || v.phase === "done") return false;
+        return !v.eliminatedSeats.includes(seatId) && !v.bells.some((b) => b.seat === seatId);
       }
       case "veDich": {
         const vd = state.veDich;
@@ -579,6 +639,7 @@ export default function PlayerPad({
           emit={emit}
           triggerBuzz={triggerBuzz}
           serverNow={serverNow}
+          optimisticBuzzPending={optimisticBuzzPending}
         />
       </div>
     </div>
@@ -907,12 +968,14 @@ function InteractionZone({
   emit,
   triggerBuzz,
   serverNow,
+  optimisticBuzzPending = false,
 }: {
   state: OlympiaState;
   seatId: number;
   emit: Emit;
   triggerBuzz: () => void;
   serverNow: () => number;
+  optimisticBuzzPending?: boolean;
 }) {
   // 1. Bell Test Mode overrides the bottom 30% zone so contestants can test their buzzer anytime
   if (state.bellTestMode) {
@@ -940,7 +1003,7 @@ function InteractionZone({
     );
   }
 
-  if (state.stage !== "playing" || state.introTimer || state.banner) {
+  if (state.stage !== "playing" || state.introTimer || state.entranceState?.active || !state.currentRound) {
     return (
       <div className="text-slate-500 text-sm font-bold uppercase tracking-wider">
         Khu vực tương tác sẽ mở khi phần thi bắt đầu
@@ -969,16 +1032,16 @@ function InteractionZone({
 
       const locked = kd.lockedSeats.includes(seatId);
       const unlockRemainingMs = kd.buzzUnlockAt ? Math.max(0, kd.buzzUnlockAt - now) : 0;
-      const isCountingDownUnlock = kd.phase === "question" && unlockRemainingMs > 0;
+      const isCountingDownUnlock = kd.phase === "question" && unlockRemainingMs > 180;
       const canBuzz =
         kd.phase === "question" &&
         !locked &&
         kd.buzzedSeat == null &&
         !isCountingDownUnlock &&
-        (kd.buzzOpen || Boolean(kd.buzzUnlockAt && now >= kd.buzzUnlockAt));
+        (kd.buzzOpen || Boolean(kd.buzzUnlockAt && now + 180 >= kd.buzzUnlockAt));
 
       const label =
-        kd.buzzedSeat === seatId
+        kd.buzzedSeat === seatId || (optimisticBuzzPending && kd.buzzedSeat == null)
           ? "ĐÃ BẤM CHUÔNG"
           : locked
           ? "ĐÃ KHÓA CÂU NÀY"
@@ -1173,32 +1236,14 @@ function CircularBuzzer3D({
 
   const fireOnce = () => {
     if (!enabled) return;
-    const now = Date.now();
-    if (now - lastFiredRef.current < 250) return;
+    const now = performance.now();
+    if (now - lastFiredRef.current < 160) return;
     lastFiredRef.current = now;
     setPressedLocal(true);
-    setTimeout(() => setPressedLocal(false), 180);
+    setTimeout(() => setPressedLocal(false), 160);
 
-    // ZERO-LATENCY: Emit socket buzzer event immediately BEFORE any AudioContext processing
+    // ZERO-LATENCY: Emit socket buzzer event + pre-warmed singleton beep immediately
     onPress();
-
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx) {
-        const ctx = new AudioCtx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.12);
-        gain.gain.setValueAtTime(0.25, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.12);
-      }
-    } catch {}
   };
 
   return (

@@ -1162,6 +1162,33 @@ export function runOlympiaStageRefactorE2ESuite(): StageRefactorTestResults {
     assert.ok(families.includes("Cambria Math"));
   });
 
+  runTest(4, "Scenario 6: R1-R10 Outer Portal MC Path, Coaxial CAM 3, Bright Grandstand, 8.5s Podium & Broadcast UI", () => {
+    // R1: Verify exported outer-edge portal waypoints clear outer portal knuckles (|xLoc| = 3.28m > 3.20m)
+    const kvSideLocal = worldToPortalLocal([6.72, 0.14, -8.02]);
+    const nhSideLocal = worldToPortalLocal([0.36, 0.14, -9.64]);
+    assert.ok(kvSideLocal.xLoc > 3.22, `KV lateral portal clearance must exceed 3.20m knuckle, got ${kvSideLocal.xLoc}`);
+    assert.ok(nhSideLocal.xLoc < -3.22, `NH lateral portal clearance must exceed -3.20m knuckle, got ${nhSideLocal.xLoc}`);
+
+    const kvClearLocal = worldToPortalLocal([6.50, 0.14, -7.15]);
+    const nhClearLocal = worldToPortalLocal([0.14, 0.14, -8.77]);
+    assert.ok(kvClearLocal.zLoc > 0.50, `KV forward portal clearance must pass front of Tier 1 (+0.50m), got ${kvClearLocal.zLoc}`);
+    assert.ok(nhClearLocal.zLoc > 0.50, `NH forward portal clearance must pass front of Tier 1 (+0.50m), got ${nhClearLocal.zLoc}`);
+
+    // Verify source invariants across Podiums, CameraController, StudioLighting, Vtv3BroadcastGraphics, HostConsole
+    const podiumSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/studio/Podiums.tsx"), "utf-8");
+    const camSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/studio/CameraController.tsx"), "utf-8");
+    const lightSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/studio/StudioLighting.tsx"), "utf-8");
+    const gfxSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/Vtv3BroadcastGraphics.tsx"), "utf-8");
+    const hostSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/HostConsole.tsx"), "utf-8");
+
+    assert.ok(podiumSrc.includes("8500"), "R5: Podiums.tsx must transition active contestant scoreboard to name_school at 8.5s");
+    assert.ok(camSrc.includes("[2.30, 1.26, -3.94]") && camSrc.includes("[3.12, 1.02, -7.16]"), "R3: CAM 3 must be coaxial frontal MC desk preset");
+    assert.ok(camSrc.includes("effectiveTotalSeats"), "R7: CameraController must pass effectiveTotalSeats for CAM 25..28");
+    assert.ok(lightSrc.includes("isGrandstandFullLit") && lightSrc.includes("TargetedSpotLight"), "R4: StudioLighting must illuminate grandstand via TargetedSpotLight");
+    assert.ok(gfxSrc.includes("w-[68%] max-w-[1300px]") && gfxSrc.includes("w-[88%] max-w-[1640px]"), "R8 & R9: Vtv3BroadcastGraphics must size SummaryLowerThird (68%) and VCNV/TT reveals (88%) accurately");
+    assert.ok(hostSrc.includes("canStartScoreSummary") && hostSrc.includes("flex flex-col gap-1.5"), "R7 & R10: HostConsole must guard Score Summary and stack VCNV/TT live monitors 1 row per contestant");
+  });
+
   console.log(`Tier 4 Tests Completed: ${tier4Count} / 5 passing (threshold >= 5 satisfied).\n`);
 
   // ───────────────────────────────────────────────────────────────────────────

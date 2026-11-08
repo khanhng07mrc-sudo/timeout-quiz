@@ -62,11 +62,25 @@ export function useOlympiaCameraState(
     }
   }, [state?.khoiDong?.phase, state?.veDich?.phase]);
 
-  // 100ms ticker for smooth timer-driven camera transitions (e.g. VCNV 15s round robin & push-in)
+  // Only run 100ms ticker when a time-varying camera transition is actively running (eliminates idle 10Hz re-renders)
+  const needsTimedCameraTicker = Boolean(
+    state?.entranceState?.active ||
+      state?.introTimer ||
+      (state?.currentRound === "khoiDong" &&
+        state?.khoiDong &&
+        (!state.khoiDong.started ||
+          Boolean(state.khoiDong.startCooldownUntil) ||
+          Boolean(state.khoiDong.timer?.startedAt) ||
+          state.khoiDong.phase === "segmentDone")) ||
+      (state?.currentRound === "vcnv" && Boolean(state?.vcnv?.timer?.startedAt)) ||
+      (state?.currentRound === "veDich" && Boolean(state?.veDich?.timer?.startedAt))
+  );
+
   useEffect(() => {
+    if (!needsTimedCameraTicker) return;
     const id = setInterval(() => setTick((t) => (t + 1) % 100000), 100);
     return () => clearInterval(id);
-  }, []);
+  }, [needsTimedCameraTicker]);
 
   return useMemo(() => {
     // Default fallback
@@ -79,21 +93,21 @@ export function useOlympiaCameraState(
 
     if (!state) return defaultState;
 
-    // 1. Host manual camera override
-    if (state.studioCameraManual && state.studioCamera != null) {
-      return {
-        camAngle: state.studioCamera,
-        transitionMode: "CUT",
-        isOverlayHidden: false,
-        pushInProgress: 0,
-      };
-    }
-
     const now = getNow();
     const activeCount = Math.max(1, state.seats.length);
 
-    // 1.4. Olympia Final Summary Sequence: focus directly on the highlighted contestant (CAM 5..8 or CAM 11..14)
+    // 1. Olympia End-of-Round Score Summary Sequence:
+    // Cleanly drives contestant close-ups (CAM 5..8 or CAM 25..28) or wide podium view (CAM 10 in fullscreen)
+    // unless the director explicitly clicks a manual camera button AFTER summary started.
     if (state.summaryState?.active) {
+      if (state.summaryState.isFullscreen) {
+        return {
+          camAngle: 10,
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
       const idx = state.summaryState.currentIndex ?? 0;
       const ordered = state.summaryState.orderedSeats ?? [];
       const currentSeat = ordered[idx] ?? idx;
@@ -102,7 +116,17 @@ export function useOlympiaCameraState(
         camAngle: targetCam,
         transitionMode: "CUT",
         isOverlayHidden: false,
-        pushInProgress: 0.1,
+        pushInProgress: 0.08,
+      };
+    }
+
+    // 1.2. Host manual camera override (pinned until next gameplay transition or "TỰ ĐỘNG")
+    if (state.studioCameraManual && state.studioCamera != null) {
+      return {
+        camAngle: state.studioCamera,
+        transitionMode: "CUT",
+        isOverlayHidden: false,
+        pushInProgress: 0,
       };
     }
 
@@ -519,9 +543,20 @@ export function useOlympiaCameraState(
     state,
     state?.stage,
     state?.currentRound,
+    state?.seats?.length,
     state?.studioCameraManual,
     state?.studioCamera,
+    state?.showStageGraphics,
     state?.introTimer,
+    state?.entranceState?.active,
+    state?.entranceState?.currentSeatIdx,
+    state?.entranceState?.seatStartedAt,
+    state?.summaryState?.active,
+    state?.summaryState?.currentIndex,
+    state?.summaryState?.isFullscreen,
+    state?.khoiDong?.started,
+    state?.khoiDong?.questionRevealed,
+    state?.khoiDong?.startCooldownUntil,
     state?.khoiDong?.phase,
     state?.khoiDong?.buzzedSeat,
     state?.khoiDong?.lastVerdict,

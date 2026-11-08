@@ -623,3 +623,62 @@ export interface OlympiaSummaryState {
 }
 
 export type HostAction = { type: string; [k: string]: unknown };
+
+/**
+ * Maps seat index (0..7) to 3D Studio Camera preset ID without colliding with C9..C15:
+ * - Seats 0..3 -> CAM 5..8 (TS 1..4)
+ * - Seats 4..7 -> CAM 25..28 (TS 5..8)
+ */
+export function seatToStudioCamera(seat: number): number {
+  const safe = Math.max(0, Math.floor(seat));
+  return safe < 4 ? 5 + safe : 25 + (safe - 4);
+}
+
+/**
+ * Determines whether End-of-Round / End-of-Match Score Summary (`Tổng kết điểm - Phím B`) is allowed.
+ * Strictly blocked during Lobby, Opening Intro, Contestant Entrance, and mid-round active gameplay
+ * to prevent state & contestant camera conflicts.
+ */
+export function canStartScoreSummary(st: OlympiaState | null | undefined): boolean {
+  if (!st) return false;
+  if (st.stage === "lobby") return false;
+  if (st.introTimer != null) return false;
+  if (st.entranceState?.active) return false;
+  if (st.stage === "finished") return true;
+  if (st.stage !== "playing" || !st.currentRound) return false;
+
+  const r = st.currentRound;
+  if (st.roundStatus?.[r] === "done") return true;
+
+  if (r === "vcnv" && st.vcnv?.phase === "done") return true;
+
+  if (
+    r === "tangToc" &&
+    st.tangToc != null &&
+    st.tangToc.questions.length > 0 &&
+    st.tangToc.qIdx >= st.tangToc.questions.length - 1 &&
+    st.tangToc.phase === "graded"
+  ) {
+    return true;
+  }
+
+  if (
+    r === "veDich" &&
+    st.veDich != null &&
+    st.veDich.order.length > 0 &&
+    st.veDich.turnIdx >= st.veDich.order.length - 1 &&
+    st.veDich.phase === "seatDone"
+  ) {
+    return true;
+  }
+
+  if (
+    r === "cauHoiPhu" &&
+    st.cauHoiPhu != null &&
+    (st.cauHoiPhu.phase === "done" || st.cauHoiPhu.winner != null)
+  ) {
+    return true;
+  }
+
+  return false;
+}

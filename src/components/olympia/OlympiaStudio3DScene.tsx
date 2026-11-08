@@ -55,6 +55,11 @@ export function OlympiaStudio3DScene({
   } = useOlympiaLightingState(state, serverNow);
 
   const liveFactor = 1.0 - (idleFadeProgress ?? 0);
+  const isGrandstandFullLit = Boolean(
+    state?.entranceState?.active ||
+      state?.entranceCompleted ||
+      (state?.stage === "playing" && !state?.introTimer && Boolean(state?.currentRound))
+  );
 
   // Camera vision mixer state
   const isIframe = typeof window !== "undefined" && window.self !== window.top;
@@ -167,6 +172,7 @@ export function OlympiaStudio3DScene({
           ptzZoom={ptzZoom}
           introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
           kdStartCooldownUntil={state?.khoiDong?.startCooldownUntil ?? null}
+          isIdleLobby={Boolean(isIdle && !state?.studioCameraManual)}
           serverNow={serverNow}
         />
 
@@ -176,6 +182,8 @@ export function OlympiaStudio3DScene({
           audienceFadeProgress={audienceFadeProgress}
           isIdle={isIdle}
           idleFadeProgress={idleFadeProgress}
+          isGrandstandFullLit={isGrandstandFullLit}
+          totalSeats={state?.seats?.length || 4}
           quality={quality}
           isVeDichDimmed={isVeDichDimmed}
           activeMainContestantSeat={activeMainContestantSeat}

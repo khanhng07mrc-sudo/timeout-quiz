@@ -48,17 +48,17 @@ async function loadGame(code: string): Promise<GameEntry | null> {
 
     if (!room || room.mode !== ("OLYMPIA" as typeof room.mode)) {
       if (code === "SANDBOX" || code === "OFFLINE" || code.startsWith("OFFLINE") || /^\d{6}$/.test(code) || code.startsWith("sandbox")) {
+        const seatMatch = /^sandbox([2-8])[_-]/i.exec(code);
+        const dynamicSeats = seatMatch ? Number(seatMatch[1]) : 4;
+        const useBacAi = code.toLowerCase().includes("bacai");
         const defaultCfg: OlympiaConfig = {
           rulesetId: "O26",
           rounds: ["khoiDong", "vcnv", "tangToc", "veDich"],
-          questionSet: SAMPLE_QUESTION_SET,
-          seatCount: 4,
-          teams: [
-            { name: "Thí sinh 1" },
-            { name: "Thí sinh 2" },
-            { name: "Thí sinh 3" },
-            { name: "Thí sinh 4" },
-          ],
+          questionSet: useBacAi ? BAC_AI_QUESTION_SET : SAMPLE_QUESTION_SET,
+          seatCount: dynamicSeats,
+          teams: Array.from({ length: dynamicSeats }, (_, idx) => ({
+            name: `Thí sinh ${idx + 1}`,
+          })),
         };
         const game = new OlympiaGame(code, defaultCfg);
         const entry: GameEntry = {

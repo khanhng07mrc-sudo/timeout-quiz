@@ -2535,6 +2535,9 @@ export function CentralLedWall({
   const activeCount = state?.seats?.length ? Math.min(8, Math.max(2, state.seats.length)) : 4;
   const wallSweepAng = activeCount > 4 ? 0.70 * Math.PI : 0.65 * Math.PI;
   const wallStartAng = 0.98 * Math.PI;
+  // Open a clean ~1.20m backstage wing corridor on the floor level between Left Base Wall and Hexagon Portal
+  const lowerWallStartAng = 1.02 * Math.PI;
+  const lowerWallSweepAng = wallSweepAng - 0.04 * Math.PI;
 
   return (
     <group>
@@ -2810,7 +2813,7 @@ export function CentralLedWall({
       {/* Underneath Dark Base Wall (Y = 0 to 1.35m at R = 8.62m) on Stage Left */}
       <mesh position={[0, 0.675, -0.5]}>
         <cylinderGeometry
-          args={[8.62, 8.62, 1.35, quality === "LIGHT" ? 32 : 64, 1, true, wallStartAng, wallSweepAng]}
+          args={[8.62, 8.62, 1.35, quality === "LIGHT" ? 32 : 64, 1, true, lowerWallStartAng, lowerWallSweepAng]}
         />
         <meshStandardMaterial color="#040d22" side={THREE.BackSide} roughness={0.35} metalness={0.7} />
       </mesh>
@@ -2819,7 +2822,7 @@ export function CentralLedWall({
       {[0.35, 0.70, 1.05].map((h, idx) => (
         <mesh key={`neon-wire-${idx}`} position={[0, h, -0.5]}>
           <cylinderGeometry
-            args={[8.58, 8.58, 0.035, 64, 1, true, wallStartAng, wallSweepAng]}
+            args={[8.58, 8.58, 0.035, 64, 1, true, lowerWallStartAng, lowerWallSweepAng]}
           />
           <meshBasicMaterial color={neonColor} side={THREE.DoubleSide} />
         </mesh>

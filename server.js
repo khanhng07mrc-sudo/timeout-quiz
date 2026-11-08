@@ -102416,6 +102416,31 @@ var KD_ZONES = [
   "GENERAL"
 ];
 var VD_ZONES = ["KHTN", "KHXH", "HBC"];
+function seatToStudioCamera(seat) {
+  const safe = Math.max(0, Math.floor(seat));
+  return safe < 4 ? 5 + safe : 25 + (safe - 4);
+}
+function canStartScoreSummary(st) {
+  if (!st) return false;
+  if (st.stage === "lobby") return false;
+  if (st.introTimer != null) return false;
+  if (st.entranceState?.active) return false;
+  if (st.stage === "finished") return true;
+  if (st.stage !== "playing" || !st.currentRound) return false;
+  const r = st.currentRound;
+  if (st.roundStatus?.[r] === "done") return true;
+  if (r === "vcnv" && st.vcnv?.phase === "done") return true;
+  if (r === "tangToc" && st.tangToc != null && st.tangToc.questions.length > 0 && st.tangToc.qIdx >= st.tangToc.questions.length - 1 && st.tangToc.phase === "graded") {
+    return true;
+  }
+  if (r === "veDich" && st.veDich != null && st.veDich.order.length > 0 && st.veDich.turnIdx >= st.veDich.order.length - 1 && st.veDich.phase === "seatDone") {
+    return true;
+  }
+  if (r === "cauHoiPhu" && st.cauHoiPhu != null && (st.cauHoiPhu.phase === "done" || st.cauHoiPhu.winner != null)) {
+    return true;
+  }
+  return false;
+}
 
 // src/lib/olympia/ai-classifier.ts
 var SUBJECT_TO_KD_ZONE = {
@@ -106033,11 +106058,12 @@ var OlympiaGame = class _OlympiaGame {
           st.summaryState.currentIndex = nextIdx;
           st.summaryState.lastAdvanceAt = now;
           const nextSeat = st.summaryState.orderedSeats[nextIdx];
-          st.studioCamera = 5 + nextSeat;
+          st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(nextSeat);
           this.touch(now);
           return true;
         } else {
           st.summaryState.active = false;
+          st.studioCameraManual = false;
           st.studioCamera = 10;
           this.cue("", "stop");
           this.touch(now);
@@ -106138,8 +106164,10 @@ var OlympiaGame = class _OlympiaGame {
     const active = this.activeSeatIds;
     if (active.length === 0) return fail("Ch\u01B0a c\xF3 th\xED sinh n\xE0o trong ph\xF2ng");
     st.introTimer = null;
+    if (st.summaryState) st.summaryState.active = false;
     st.showStageGraphics = false;
     st.studioCameraManual = false;
+    st.studioCamera = void 0;
     st.currentRound = round;
     st.roundStatus[round] = "active";
     st.banner = ROUND_LABELS[round];
@@ -106308,6 +106336,8 @@ var OlympiaGame = class _OlympiaGame {
     const st = this.state;
     if (st.currentRound) st.roundStatus[st.currentRound] = "done";
     st.banner = null;
+    st.studioCameraManual = false;
+    st.studioCamera = void 0;
     if (st.khoiDong) {
       st.khoiDong.started = false;
       st.khoiDong.questionRevealed = false;
@@ -106547,6 +106577,7 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "studio:camera:auto": {
         st.studioCameraManual = false;
+        st.studioCamera = void 0;
         return OK;
       }
       case "display:overlayMode": {
@@ -106756,6 +106787,9 @@ var OlympiaGame = class _OlympiaGame {
         }
         return OK;
       case "summary:start": {
+        if (!canStartScoreSummary(st)) {
+          return fail("Ch\u1EC9 c\xF3 th\u1EC3 m\u1EDF T\u1ED5ng k\u1EBFt \u0111i\u1EC3m sau khi ph\u1EA7n thi hi\u1EC7n t\u1EA1i \u0111\xE3 k\u1EBFt th\xFAc ho\xE0n to\xE0n!");
+        }
         const isAuto = a.isAuto !== false && a.auto !== false;
         const orderedSeats = [...this.activeSeatIds].sort((x, y) => {
           const sx = this.seat(x)?.score ?? 0;
@@ -106766,17 +106800,19 @@ var OlympiaGame = class _OlympiaGame {
         if (orderedSeats.length === 0) return fail("Kh\xF4ng c\xF3 th\xED sinh");
         st.introTimer = null;
         st.showScoreboard = false;
+        st.studioCameraManual = false;
+        const isFullscreen = a.isFullscreen != null ? Boolean(a.isFullscreen) : st.overlayMode === "FULLSCREEN";
         st.summaryState = {
           active: true,
           currentIndex: 0,
           orderedSeats,
           isAuto,
-          isFullscreen: a.isFullscreen != null ? Boolean(a.isFullscreen) : st.overlayMode === "FULLSCREEN",
+          isFullscreen,
           lastAdvanceAt: now
         };
         this.cue("6_NhacKhac/summary", "bgm");
         const firstSeat = orderedSeats[0];
-        st.studioCamera = 5 + firstSeat;
+        st.studioCamera = isFullscreen ? 10 : seatToStudioCamera(firstSeat);
         return OK;
       }
       case "summary:next": {
@@ -106786,9 +106822,10 @@ var OlympiaGame = class _OlympiaGame {
           st.summaryState.currentIndex = nextIdx;
           st.summaryState.lastAdvanceAt = now;
           const nextSeat = st.summaryState.orderedSeats[nextIdx];
-          st.studioCamera = 5 + nextSeat;
+          st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(nextSeat);
         } else {
           st.summaryState.active = false;
+          st.studioCameraManual = false;
           st.studioCamera = 10;
           this.cue("", "stop");
         }
@@ -106800,7 +106837,7 @@ var OlympiaGame = class _OlympiaGame {
         st.summaryState.currentIndex = prevIdx;
         st.summaryState.lastAdvanceAt = now;
         const prevSeat = st.summaryState.orderedSeats[prevIdx];
-        st.studioCamera = 5 + prevSeat;
+        st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(prevSeat);
         return OK;
       }
       case "summary:toggleAuto": {
@@ -106813,12 +106850,15 @@ var OlympiaGame = class _OlympiaGame {
         if (!st.summaryState || !st.summaryState.active) return fail("Ch\u01B0a b\u1EAFt \u0111\u1EA7u t\u1ED5ng k\u1EBFt \u0111i\u1EC3m");
         st.summaryState.isFullscreen = !st.summaryState.isFullscreen;
         st.overlayMode = st.summaryState.isFullscreen ? "FULLSCREEN" : "LOWER_THIRD";
+        const curSeat = st.summaryState.orderedSeats[st.summaryState.currentIndex] ?? 0;
+        st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(curSeat);
         return OK;
       }
       case "summary:stop": {
         if (st.summaryState) {
           st.summaryState.active = false;
         }
+        st.studioCameraManual = false;
         st.studioCamera = 10;
         this.cue("", "stop");
         return OK;
@@ -106826,6 +106866,16 @@ var OlympiaGame = class _OlympiaGame {
     }
     if (st.banner) st.banner = null;
     if (st.introTimer) st.introTimer = null;
+    if (type.startsWith("kd:") || type.startsWith("vcnv:") || type.startsWith("tt:") || type.startsWith("vd:") || type.startsWith("chp:")) {
+      if (st.summaryState?.active) {
+        st.summaryState.active = false;
+      }
+      const isUtilityOnly = type === "kd:setBgm" || type === "kd:stopBgm" || type === "vcnv:toggleLockSeat" || type === "vcnv:unlockAllSeats" || type === "chp:selectSeats";
+      if (!isUtilityOnly && type !== "vcnv:blank" && type !== "tt:blank") {
+        st.studioCameraManual = false;
+        st.studioCamera = void 0;
+      }
+    }
     if (type.startsWith("kd:")) return this.kdAction(type, a, now);
     if (type.startsWith("vcnv:")) return this.vcnvAction(type, a, now);
     if (type.startsWith("tt:")) return this.ttAction(type, a, now);
@@ -108757,6 +108807,8 @@ var OlympiaGame = class _OlympiaGame {
       default:
         return fail("Kh\xF4ng th\u1EC3 b\u1EA5m chu\xF4ng l\xFAc n\xE0y");
     }
+    st.studioCameraManual = false;
+    st.studioCamera = void 0;
     this.touch(now);
     return OK;
   }
@@ -108980,17 +109032,17 @@ async function loadGame(code) {
     }
     if (!room || room.mode !== "OLYMPIA") {
       if (code === "SANDBOX" || code === "OFFLINE" || code.startsWith("OFFLINE") || /^\d{6}$/.test(code) || code.startsWith("sandbox")) {
+        const seatMatch = /^sandbox([2-8])[_-]/i.exec(code);
+        const dynamicSeats = seatMatch ? Number(seatMatch[1]) : 4;
+        const useBacAi = code.toLowerCase().includes("bacai");
         const defaultCfg = {
           rulesetId: "O26",
           rounds: ["khoiDong", "vcnv", "tangToc", "veDich"],
-          questionSet: SAMPLE_QUESTION_SET,
-          seatCount: 4,
-          teams: [
-            { name: "Th\xED sinh 1" },
-            { name: "Th\xED sinh 2" },
-            { name: "Th\xED sinh 3" },
-            { name: "Th\xED sinh 4" }
-          ]
+          questionSet: useBacAi ? BAC_AI_QUESTION_SET : SAMPLE_QUESTION_SET,
+          seatCount: dynamicSeats,
+          teams: Array.from({ length: dynamicSeats }, (_2, idx) => ({
+            name: `Th\xED sinh ${idx + 1}`
+          }))
         };
         const game2 = new OlympiaGame(code, defaultCfg);
         const entry2 = {

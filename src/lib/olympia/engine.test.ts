@@ -1458,7 +1458,7 @@ test("sequential contestant entrance: start, manual next, gesture assignment, an
   assert.equal(g.state.cue?.kind, "stop");
 });
 
-test("sequential contestant entrance: auto-advances at 11500ms per contestant (1s pause + 9.5s walk/gesture + 1s spotlight)", () => {
+test("sequential contestant entrance: auto-advances at 6800ms per contestant (0.5s pause + 4.5s walk/gesture + 1.8s spotlight)", () => {
   const g = game("O21", ["khoiDong"], 4, { seatCount: 4 });
   g.joinSeat("TS1", "k1");
   g.joinSeat("TS2", "k2");
@@ -1468,20 +1468,20 @@ test("sequential contestant entrance: auto-advances at 11500ms per contestant (1
   g.hostAction({ type: "entrance:start" }, 10000);
   assert.equal(g.state.entranceState!.currentSeatIdx, 0);
 
-  g.tick(21499);
+  g.tick(16799);
   assert.equal(g.state.entranceState!.currentSeatIdx, 0);
 
-  g.tick(21500);
+  g.tick(16800);
   assert.equal(g.state.entranceState!.currentSeatIdx, 1);
-  assert.equal(g.state.entranceState!.seatStartedAt, 21500);
+  assert.equal(g.state.entranceState!.seatStartedAt, 16800);
 
-  g.tick(33000);
+  g.tick(23600);
   assert.equal(g.state.entranceState!.currentSeatIdx, 2);
 
-  g.tick(44500);
+  g.tick(30400);
   assert.equal(g.state.entranceState!.currentSeatIdx, 3);
 
-  g.tick(56000);
+  g.tick(37200);
   assert.equal(g.state.entranceState, null);
   assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
   assert.equal(g.state.cue?.kind, "stop");

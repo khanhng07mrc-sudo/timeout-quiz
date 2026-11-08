@@ -195,6 +195,7 @@ export function OlympiaStudio3DScene({
           camAngle={internalCam}
           ptzZoom={ptzZoom}
           pushInProgress={pushInProgress}
+          isEntranceActive={Boolean(state?.entranceState?.active)}
         />
 
         <CentralLedWall

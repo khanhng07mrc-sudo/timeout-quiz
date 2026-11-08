@@ -137,33 +137,33 @@ export function useOlympiaCameraState(
       const seatStart = state.entranceState.seatStartedAt || state.entranceState.startedAt || getNow();
       const elapsedSec = Math.max(0, (getNow() - seatStart) / 1000);
 
-      if (elapsedSec < 4.5) {
-        // Phase 1 (0.0s - 4.5s): Cam Ẩn Trực Diện Chào Sân (CAM 11) thẳng mặt thí sinh bước xuống bậc thang
+      if (elapsedSec < 2.0) {
+        // Phase 1 (0.0s - 2.0s): Cam Trực Diện Chào Sân (CAM 11) thẳng mặt thí sinh bước xuống bậc thang dứt khoát
         return {
           camAngle: 11,
           transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0.0,
         };
-      } else if (elapsedSec < 6.5) {
-        // Phase 2 (4.5s - 6.5s): Thí sinh dừng trên Bục Giữa làm động tác chào/pose -> Giữ CAM 11 trực diện, push zoom quang học nhẹ (0.15)
-        const pushInProgress = Math.min(1.0, Math.max(0.0, (elapsedSec - 4.5) / 2.0));
+      } else if (elapsedSec < 3.8) {
+        // Phase 2 (2.0s - 3.8s): Thí sinh dừng trên Bục Giữa làm động tác chào/pose -> Giữ CAM 11, push zoom quang học nhẹ (0.15)
+        const pushInProgress = Math.min(1.0, Math.max(0.0, (elapsedSec - 2.0) / 1.8));
         return {
           camAngle: 11,
           transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress,
         };
-      } else if (elapsedSec < 8.0) {
-        // Phase 3 (6.5s - 8.0s, 1.5s): Cắt sang góc chéo nghệ thuật 3/4 (CAM 12) bao quát bục giữa & khán đài rực rỡ
+      } else if (elapsedSec < 5.0) {
+        // Phase 3 (3.8s - 5.0s): Cắt sang góc chéo nghệ thuật 3/4 (CAM 12) bắt trọn bước đi xuống sàn và không gian khán đài
         return {
           camAngle: 12,
           transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0.0,
         };
-      } else if (elapsedSec < 10.5) {
-        // Phase 4 (8.0s - 10.5s): Cắt sang CAM 10 (Toàn Cảnh Bục Thí Sinh) khi thí sinh bước xuống sàn và đi về bàn đấu
+      } else if (elapsedSec < 6.2) {
+        // Phase 4 (5.0s - 6.2s): Cắt sang CAM 10 (Toàn Cảnh Bục Thí Sinh) khi thí sinh di chuyển về bàn đấu
         return {
           camAngle: 10,
           transitionMode: "CUT",
@@ -171,7 +171,7 @@ export function useOlympiaCameraState(
           pushInProgress: 0.0,
         };
       } else {
-        // Phase 5 (10.5s onwards): Cắt khóa cận cảnh vào bục của thí sinh đó
+        // Phase 5 (6.2s onwards): Cắt khóa cận cảnh vào bục của thí sinh đó
         return {
           camAngle: targetCam,
           transitionMode: "CUT",

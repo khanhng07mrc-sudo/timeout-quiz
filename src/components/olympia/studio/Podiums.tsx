@@ -2898,9 +2898,16 @@ export function ContestantEntranceWalkingFigures({
     const deskY = targetCfg ? targetCfg.pos[1] : 0.22;
     const deskZ = targetCfg ? targetCfg.pos[2] - Math.cos(deskRotY) * 0.42 : -3.5;
 
-    const startX = 0;
+    // Door side selection for contestants (alternating or seat-based):
+    // TS 1 (seat 0) & TS 3 (seat 2): emerge from Door Left (X = +1.15m, Z = 12.85m)
+    // TS 2 (seat 1) & TS 4 (seat 3) & TS 5 (seat 4): emerge from Door Right (X = -1.15m, Z = 12.85m)
+    const isDoorLeft = currentSeat % 2 === 0;
+    const doorX = isDoorLeft ? 1.15 : -1.15;
+    const doorZ = 12.85;
+
+    const startX = doorX;
     const startY = 1.84;
-    const startZ = 12.80;
+    const startZ = doorZ;
 
     const now = getNow();
     const t = Math.max(0, (now - seatStart) / 1000);
@@ -2911,56 +2918,58 @@ export function ContestantEntranceWalkingFigures({
     let curRotY = Math.PI; // Facing towards camera (-Z)
     let walkingNow = true;
 
-    // 0.0s -> 1.0s: Clean 1-second pause with EMPTY STAIRS before contestant emerges ("thí sinh kế tiếp bước ra sau khoảng 1s")
-    if (t < 1.0) {
+    // 0.0s -> 0.4s: Quick 0.4s pause before contestant emerges from behind side arch door
+    if (t < 0.4) {
       g.visible = false;
       curX = startX;
       curY = startY;
       curZ = startZ;
       walkingNow = false;
-    } else if (t < 2.5) {
-      // Phase 1 (1.0 -> 2.5s): Steps out from behind portal arches onto top plinth
+    } else if (t < 1.0) {
+      // Phase 1 (0.4 -> 1.0s): Steps out from behind side arch door, curving onto central aisle on top plinth
       g.visible = true;
-      const p = (t - 1.0) / 1.5;
-      curX = startX;
+      const p = (t - 0.4) / 0.6;
+      const smoothP = p * p * (3 - 2 * p);
+      curX = THREE.MathUtils.lerp(doorX, 0, smoothP);
       curY = startY;
-      curZ = THREE.MathUtils.lerp(startZ, 11.90, p);
-      curRotY = Math.PI;
-    } else if (t < 4.8) {
-      // Phase 2 (2.5 -> 4.8s): Walks down upper stairs to mid-stairs landing platform ("Bục Giữa")
+      curZ = THREE.MathUtils.lerp(doorZ, 11.90, smoothP);
+      // Subtle facing angle while stepping out from side door, turning to face forward
+      curRotY = THREE.MathUtils.lerp(isDoorLeft ? Math.PI - 0.35 : Math.PI + 0.35, Math.PI, smoothP);
+    } else if (t < 2.2) {
+      // Phase 2 (1.0 -> 2.2s): Walks down upper stairs swiftly & resolutely (1.2s) to mid-stairs landing platform ("Bục Giữa")
       g.visible = true;
-      const p = (t - 2.5) / 2.3;
+      const p = (t - 1.0) / 1.2;
       curX = 0;
       curY = THREE.MathUtils.lerp(1.84, 0.92, p);
       curZ = THREE.MathUtils.lerp(11.90, 10.20, p);
       curRotY = Math.PI;
-    } else if (t < 7.0) {
-      // Phase 3 (4.8 -> 7.0s): Stands firmly on Bục Giữa & performs signature gesture (2.2s)
+    } else if (t < 3.8) {
+      // Phase 3 (2.2 -> 3.8s): Stands firmly on Bục Giữa & performs signature gesture (1.6s)
       g.visible = true;
       curX = 0;
       curY = 0.92;
       curZ = 10.20;
       curRotY = Math.PI;
       walkingNow = false;
-    } else if (t < 9.0) {
-      // Phase 4 (7.0 -> 9.0s): Walks down lower stairs to studio dais floor ("rồi họ xuống")
+    } else if (t < 5.0) {
+      // Phase 4 (3.8 -> 5.0s): Walks down lower stairs to studio dais floor (1.2s)
       g.visible = true;
-      const p = (t - 7.0) / 2.0;
+      const p = (t - 3.8) / 1.2;
       curX = 0;
       curY = THREE.MathUtils.lerp(0.92, 0.22, p);
       curZ = THREE.MathUtils.lerp(10.20, 6.20, p);
       curRotY = Math.PI;
-    } else if (t < 10.5) {
-      // Phase 5 (9.0 -> 10.5s): Fans out across dais to assigned podium desk
+    } else if (t < 6.2) {
+      // Phase 5 (5.0 -> 6.2s): Fans out across dais to assigned podium desk (1.2s)
       g.visible = true;
-      const p = (t - 9.0) / 1.5;
+      const p = (t - 5.0) / 1.2;
       const easeP = p * p * (3 - 2 * p); // Smooth ease-in-out
       curX = THREE.MathUtils.lerp(0, deskX, easeP);
       curY = 0.22;
       curZ = THREE.MathUtils.lerp(6.20, deskZ, easeP);
       curRotY = THREE.MathUtils.lerp(Math.PI, deskRotY, easeP);
     } else {
-      // Phase 6 (10.5 -> 11.5s): Arrived and standing proudly behind desk.
+      // Phase 6 (6.2 -> 6.8s): Arrived and standing proudly behind desk.
       g.visible = true;
       curX = deskX;
       curY = deskY;
@@ -2973,8 +2982,8 @@ export function ContestantEntranceWalkingFigures({
       setIsWalking(walkingNow);
     }
 
-    // Natural walking bounce (3.5cm)
-    const bounce = walkingNow ? Math.abs(Math.sin((t - 1.0) * 6.5)) * 0.035 : 0;
+    // Natural energetic walking bounce (3.5cm) synced with brisk stride
+    const bounce = walkingNow ? Math.abs(Math.sin((t - 0.4) * 10.0)) * 0.035 : 0;
     g.position.set(curX, curY + bounce, curZ);
     g.rotation.y = curRotY;
   });
@@ -4074,8 +4083,8 @@ export function Podiums({
     state?.entranceState?.seatStartedAt ?? state?.entranceState?.startedAt ?? null;
 
   // Early Podium Scoreboard Transition (R5):
-  // Switch the active walking contestant's podium LED screen from "logo" to "name_school" at t = 8.5s
-  // right as they step off the bottom stair and walk across the stage floor towards their podium (2.0s before settling at 10.5s).
+  // Switch the active walking contestant's podium LED screen from "logo" to "name_school" at t = 5.2s
+  // right as they step off the bottom stair and fan out across the stage floor towards their podium.
   const [approachingSeatIdx, setApproachingSeatIdx] = useState<number | null>(null);
   useEffect(() => {
     if (!isEntranceActive || currentEntranceSeatStartedAt == null) {
@@ -4084,12 +4093,12 @@ export function Podiums({
     }
     const now = serverNow ? serverNow() : Date.now();
     const elapsedMs = Math.max(0, now - currentEntranceSeatStartedAt);
-    if (elapsedMs >= 8500) {
+    if (elapsedMs >= 5200) {
       setApproachingSeatIdx(currentEntranceSeat);
       return;
     }
     setApproachingSeatIdx(null);
-    const delayMs = Math.max(16, 8500 - elapsedMs);
+    const delayMs = Math.max(16, 5200 - elapsedMs);
     const timerId = window.setTimeout(() => {
       setApproachingSeatIdx(currentEntranceSeat);
     }, delayMs);

@@ -121,14 +121,16 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   11: {
     id: 11,
     label: "Cam Ẩn Trực Diện Chào Sân",
-    pos: [0.0, 2.05, 6.20],
-    target: [0.0, 1.65, 10.50],
+    // Heroic eye-level perspective looking up at descending contestant on central walkway
+    pos: [0.0, 1.70, 5.80],
+    target: [0.0, 1.35, 10.30],
   },
   12: {
     id: 12,
     label: "Cam Chéo Khán Đài 3/4",
-    pos: [-2.80, 2.10, 6.50],
-    target: [0.0, 1.40, 10.20],
+    // Dynamic 3/4 low-angle tracking shot separating contestant from grandstand spectators
+    pos: [-2.60, 1.65, 6.00],
+    target: [0.0, 1.25, 10.00],
   },
   13: {
     id: 13,

@@ -106033,7 +106033,7 @@ var OlympiaGame = class _OlympiaGame {
     }
     if (st.entranceState && st.entranceState.active) {
       const elapsedForSeat = now - st.entranceState.seatStartedAt;
-      if (elapsedForSeat >= 11500) {
+      if (elapsedForSeat >= 6800) {
         const activeCount = Math.max(1, st.seats.length);
         const nextIdx = st.entranceState.currentSeatIdx + 1;
         if (nextIdx < activeCount) {

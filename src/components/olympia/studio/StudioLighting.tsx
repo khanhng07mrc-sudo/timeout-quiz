@@ -26,6 +26,7 @@ interface StudioLightingProps {
   idleFadeProgress?: number;
   isGrandstandFullLit?: boolean;
   totalSeats?: number;
+  isEntranceActive?: boolean;
 }
 
 const CONTESTANT_POSITIONS: Array<[number, number, number]> = [
@@ -2027,8 +2028,297 @@ function createRadialBloomParticleTexture(): THREE.Texture {
 }
 
 /**
+ * Procedural 2D Vector Graphic Mountain Landscape Texture
+ * High-definition 2D artwork displayed on a 3D panel.
+ * Eliminates 3D polygonal facet distortion, clipping, and warping across all camera angles.
+ */
+function createMountain2DTexture(): THREE.Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 2048;
+  canvas.height = 1024;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return new THREE.CanvasTexture(canvas);
+
+  const W = 2048;
+  const H = 1024;
+
+  // 1. Sky & Horizon Gradient: Deep midnight navy to cosmic sapphire
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0.00, "#020617"); // Deep midnight
+  skyGrad.addColorStop(0.35, "#071633");
+  skyGrad.addColorStop(0.70, "#0c2b5e");
+  skyGrad.addColorStop(1.00, "#03122c");
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // 2. Twinkling Constellation Stars & Atmospheric Aura
+  ctx.save();
+  const rand = (seed: number) => {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+  };
+  for (let i = 0; i < 90; i++) {
+    const sx = rand(i * 13.7) * W;
+    const sy = rand(i * 29.3) * (H * 0.65);
+    const sr = 1.0 + rand(i * 7.1) * 2.2;
+    const alpha = 0.35 + rand(i * 5.3) * 0.60;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(224, 242, 254, ${alpha})`;
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 3. Summit Radial Golden Sunrise Bloom behind Apex
+  const apexX = W / 2;
+  const apexY = 160;
+  const sunGrad = ctx.createRadialGradient(apexX, apexY, 0, apexX, apexY, 480);
+  sunGrad.addColorStop(0.00, "rgba(254, 240, 138, 0.95)"); // Radiant golden core
+  sunGrad.addColorStop(0.18, "rgba(251, 191, 36, 0.65)");  // Rich amber aura
+  sunGrad.addColorStop(0.45, "rgba(56, 189, 248, 0.35)");  // Cyan atmospheric spread
+  sunGrad.addColorStop(1.00, "rgba(2, 6, 23, 0.0)");
+  ctx.fillStyle = sunGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // 4. Distant Mountain Ridge Silhouettes (Background Layer)
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.78);
+  ctx.lineTo(260, H * 0.60);
+  ctx.lineTo(580, H * 0.68);
+  ctx.lineTo(820, H * 0.48);
+  ctx.lineTo(apexX, H * 0.38);
+  ctx.lineTo(1228, H * 0.48);
+  ctx.lineTo(1468, H * 0.68);
+  ctx.lineTo(1788, H * 0.60);
+  ctx.lineTo(W, H * 0.78);
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fillStyle = "#0c2856";
+  ctx.fill();
+  ctx.strokeStyle = "#1e4f8a";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.restore();
+
+  // 5. Hero Olympic Mountain Massif (Midground Geometric Vector Architecture)
+  // Left Mountain Ridge
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY);
+  ctx.lineTo(880, 360);
+  ctx.lineTo(650, 480);
+  ctx.lineTo(380, 680);
+  ctx.lineTo(120, 880);
+  ctx.lineTo(0, 940);
+  ctx.lineTo(0, H);
+  ctx.lineTo(apexX, H);
+  ctx.closePath();
+  const leftGrad = ctx.createLinearGradient(0, 0, apexX, H);
+  leftGrad.addColorStop(0, "#0369a1");
+  leftGrad.addColorStop(0.5, "#075985");
+  leftGrad.addColorStop(1, "#082f49");
+  ctx.fillStyle = leftGrad;
+  ctx.fill();
+
+  // Right Mountain Ridge
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY);
+  ctx.lineTo(1168, 360);
+  ctx.lineTo(1398, 480);
+  ctx.lineTo(1668, 680);
+  ctx.lineTo(1928, 880);
+  ctx.lineTo(W, 940);
+  ctx.lineTo(W, H);
+  ctx.lineTo(apexX, H);
+  ctx.closePath();
+  const rightGrad = ctx.createLinearGradient(apexX, 0, W, H);
+  rightGrad.addColorStop(0, "#0284c7");
+  rightGrad.addColorStop(0.5, "#0369a1");
+  rightGrad.addColorStop(1, "#075985");
+  ctx.fillStyle = rightGrad;
+  ctx.fill();
+
+  // Center Pyramid Facets (Chiaroscuro Vector Planes)
+  // Left illuminated facet
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY);
+  ctx.lineTo(880, 360);
+  ctx.lineTo(apexX - 80, 600);
+  ctx.lineTo(apexX, 720);
+  ctx.closePath();
+  ctx.fillStyle = "#38bdf8";
+  ctx.fill();
+
+  // Right illuminated facet
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY);
+  ctx.lineTo(1168, 360);
+  ctx.lineTo(apexX + 80, 600);
+  ctx.lineTo(apexX, 720);
+  ctx.closePath();
+  ctx.fillStyle = "#0ea5e9";
+  ctx.fill();
+
+  // 6. Vector Edge Contour Lines (Golden & Cyan Neon Trims)
+  ctx.save();
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "#fbbf24"; // Radiant Olympic Gold
+  ctx.shadowColor = "#f59e0b";
+  ctx.shadowBlur = 12;
+
+  // Main summit ridges
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY);
+  ctx.lineTo(880, 360);
+  ctx.lineTo(650, 480);
+  ctx.lineTo(380, 680);
+  ctx.lineTo(120, 880);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY);
+  ctx.lineTo(1168, 360);
+  ctx.lineTo(1398, 480);
+  ctx.lineTo(1668, 680);
+  ctx.lineTo(1928, 880);
+  ctx.stroke();
+
+  // Central crest line from apex straight down
+  ctx.strokeStyle = "#7dd3fc";
+  ctx.shadowColor = "#38bdf8";
+  ctx.shadowBlur = 16;
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY);
+  ctx.lineTo(apexX, 420);
+  ctx.stroke();
+  ctx.restore();
+
+  // 7. Luminous Winding Road to the Summit ("Hành trình vươn tới đỉnh núi")
+  // Elegant S-curve ascending from base to apex
+  ctx.save();
+  const roadGradient = ctx.createLinearGradient(0, H, 0, apexY);
+  roadGradient.addColorStop(0.0, "rgba(56, 189, 248, 0.95)");
+  roadGradient.addColorStop(0.5, "rgba(224, 242, 254, 1.0)");
+  roadGradient.addColorStop(1.0, "rgba(254, 240, 138, 1.0)");
+
+  // Road outer soft glow
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY + 20);
+  ctx.bezierCurveTo(apexX - 90, 340, apexX + 110, 520, apexX - 60, 720);
+  ctx.bezierCurveTo(apexX - 180, 840, apexX - 220, 940, apexX - 240, H);
+  ctx.lineTo(apexX + 240, H);
+  ctx.bezierCurveTo(apexX + 220, 940, apexX + 180, 840, apexX + 60, 720);
+  ctx.bezierCurveTo(apexX + 130, 520, apexX - 70, 340, apexX, apexY + 20);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(14, 165, 233, 0.25)";
+  ctx.shadowColor = "#0284c7";
+  ctx.shadowBlur = 30;
+  ctx.fill();
+
+  // Road core stream
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY + 20);
+  ctx.bezierCurveTo(apexX - 60, 340, apexX + 80, 520, apexX - 40, 720);
+  ctx.bezierCurveTo(apexX - 120, 840, apexX - 150, 940, apexX - 160, H);
+  ctx.lineTo(apexX + 160, H);
+  ctx.bezierCurveTo(apexX + 150, 940, apexX + 120, 840, apexX + 40, 720);
+  ctx.bezierCurveTo(apexX + 90, 520, apexX - 40, 340, apexX, apexY + 20);
+  ctx.closePath();
+  ctx.fillStyle = roadGradient;
+  ctx.shadowColor = "#38bdf8";
+  ctx.shadowBlur = 20;
+  ctx.fill();
+
+  // Center golden journey streak
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "#ffffff";
+  ctx.shadowColor = "#fef08a";
+  ctx.shadowBlur = 18;
+  ctx.beginPath();
+  ctx.moveTo(apexX, apexY + 25);
+  ctx.bezierCurveTo(apexX - 50, 340, apexX + 70, 520, apexX - 30, 720);
+  ctx.bezierCurveTo(apexX - 90, 840, apexX - 100, 940, apexX, H);
+  ctx.stroke();
+
+  // Stepping journey rungs (Milestones to the peak)
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "rgba(254, 240, 138, 0.85)";
+  for (let s = 1; s <= 9; s++) {
+    const t = s / 10;
+    const ry = H - t * (H - apexY - 60);
+    const rx = apexX + Math.sin(t * Math.PI * 2) * 45;
+    const rw = 180 * (1 - t * 0.75);
+    ctx.beginPath();
+    ctx.moveTo(rx - rw / 2, ry);
+    ctx.lineTo(rx + rw / 2, ry);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 8. Radiant Summit 8-Pointed Star & Laurels
+  ctx.save();
+  ctx.translate(apexX, apexY);
+  ctx.shadowColor = "#f59e0b";
+  ctx.shadowBlur = 35;
+
+  // Star halo circle
+  ctx.beginPath();
+  ctx.arc(0, 0, 48, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(254, 240, 138, 0.4)";
+  ctx.fill();
+
+  // 8-Pointed Star
+  ctx.beginPath();
+  for (let i = 0; i < 16; i++) {
+    const r = i % 2 === 0 ? 54 : 22;
+    const angle = (i * Math.PI) / 8 - Math.PI / 2;
+    const x = Math.cos(angle) * r;
+    const y = Math.sin(angle) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  ctx.strokeStyle = "#fbbf24";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.restore();
+
+  // 9. Modern Architectural Frame / Header Label
+  ctx.save();
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = "#0284c7";
+  ctx.strokeRect(4, 4, W - 8, H - 8);
+
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#fbbf24";
+  ctx.strokeRect(16, 16, W - 32, H - 32);
+
+  // Corner notches
+  const notch = 40;
+  ctx.fillStyle = "#fbbf24";
+  ctx.fillRect(14, 14, notch, 6);
+  ctx.fillRect(14, 14, 6, notch);
+  ctx.fillRect(W - 14 - notch, 14, notch, 6);
+  ctx.fillRect(W - 20, 14, 6, notch);
+  ctx.fillRect(14, H - 20, notch, 6);
+  ctx.fillRect(14, H - 14 - notch, 6, notch);
+  ctx.fillRect(W - 14 - notch, H - 20, notch, 6);
+  ctx.fillRect(W - 20, H - 14 - notch, 6, notch);
+  ctx.restore();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/**
  * Dedicated 3D Mountain Landscape Component (R2, R3, R4)
- * Positioned on top plinth at Z = 4.60m, Y = 1.96m.
+ * Displays sharp 2D vector graphic backdrop on a 3D panel behind Row 7 at Z = 4.60m, Y = 1.96m.
+ * Eliminates 3D polygonal facet distortion while preserving genuine 3D staging.
  */
 export function StudioMountainLandscape({
   position = [0, 1.96, 4.60],
@@ -2040,80 +2330,17 @@ export function StudioMountainLandscape({
   const canyonGeom = useMemo(() => createCanyonPassGeometry(), []);
   const flagGeom = useMemo(() => createPennantFlagGeometry(), []);
 
-  const bloomTex = useMemo(() => {
-    if (typeof document === "undefined") return null;
-    return createRadialBloomParticleTexture();
+  const [mountain2DTex, setMountain2DTex] = React.useState<THREE.Texture | null>(null);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const tex = createMountain2DTexture();
+    setMountain2DTex(tex);
+    return () => {
+      tex.dispose();
+    };
   }, []);
 
-  const mountainMat = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        vertexColors: true,
-        roughness: 0.40,
-        metalness: 0.25,
-        flatShading: true,
-        side: THREE.FrontSide,
-      }),
-    []
-  );
-
-  const wireframeMat = useMemo(
-    () =>
-      new THREE.LineBasicMaterial({
-        color: "#7dd3fc",
-        transparent: true,
-        opacity: 0.65,
-        depthWrite: false,
-      }),
-    []
-  );
-
-  const canyonShaderMat = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        uniforms: {
-          uColorCore: { value: new THREE.Color("#e0f2fe") },
-          uColorGlow: { value: new THREE.Color("#0284c7") },
-          uColorEdge: { value: new THREE.Color("#034078") },
-        },
-        vertexShader: `
-          varying vec2 vUv;
-          void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: `
-          uniform vec3 uColorCore;
-          uniform vec3 uColorGlow;
-          uniform vec3 uColorEdge;
-          varying vec2 vUv;
-          void main() {
-            float lateral = 1.0 - abs(vUv.x - 0.5) * 2.0;
-            float core = pow(lateral, 2.2);
-            float glow = pow(lateral, 1.4);
-            vec3 col = mix(uColorEdge, uColorGlow, glow);
-            col = mix(col, uColorCore, core);
-            float alpha = smoothstep(0.0, 0.28, lateral) * 0.90;
-            gl_FragColor = vec4(col * 1.05, alpha);
-          }
-        `,
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        blending: THREE.AdditiveBlending,
-      }),
-    []
-  );
-
-  const lanternCollarMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: "#334155", metalness: 0.85, roughness: 0.25 }),
-    []
-  );
-  const lanternGlassMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: "#e0f2fe", transparent: true, opacity: 0.85, roughness: 0.10 }),
-    []
-  );
   const poleMat = useMemo(
     () => new THREE.MeshStandardMaterial({ color: "#f8fafc", metalness: 0.90, roughness: 0.18 }),
     []
@@ -2127,7 +2354,7 @@ export function StudioMountainLandscape({
       new THREE.MeshStandardMaterial({
         color: "#e0f2fe",
         transparent: true,
-        opacity: 0.52,
+        opacity: 0.65,
         side: THREE.DoubleSide,
         roughness: 0.35,
         metalness: 0.10,
@@ -2135,110 +2362,50 @@ export function StudioMountainLandscape({
     []
   );
 
-  const mountainNodePositions = useMemo(
-    () =>
-      new Float32Array([
-        0.00, 2.42, 0.01,
-        -0.18, 2.12, 0.05,
-        0.18, 2.10, 0.05,
-        -0.65, 1.88, 0.07,
-        -1.25, 1.45, 0.09,
-        -1.85, 0.88, 0.06,
-        -0.40, 1.40, 0.13,
-        -0.95, 1.05, 0.15,
-        -1.50, 0.50, 0.11,
-        0.62, 1.84, 0.07,
-        1.20, 1.40, 0.09,
-        1.80, 0.85, 0.06,
-        0.38, 1.35, 0.13,
-        0.90, 1.00, 0.15,
-        1.45, 0.45, 0.11,
-        -0.25, 1.40, 0.11,
-        0.22, 1.35, 0.11,
-      ]),
-    []
-  );
-
-  const nodeGeometry = useMemo(() => {
-    const geom = new THREE.BufferGeometry();
-    geom.setAttribute("position", new THREE.BufferAttribute(mountainNodePositions, 3));
-    return geom;
-  }, [mountainNodePositions]);
-
   return (
     <group position={position}>
-      {/* 1. Rugged Low-Poly Mountain Facets (R3) */}
-      <mesh geometry={mountainGeom} material={mountainMat} />
-
-      {/* 2. Cyber-crystalline Glowing Wireframe Lines (R3) */}
-      <lineSegments geometry={edgesGeom} material={wireframeMat} />
-
-      {/* 3. Luminous Feathered Canyon Pass (R2) */}
-      <mesh geometry={canyonGeom} material={canyonShaderMat} />
-      <pointLight position={[0.0, 1.10, 0.25]} intensity={6} color="#0284c7" distance={3.5} decay={2} />
-
-      {/* 4. Summit Lighthouse Beacon Tower (R4) */}
-      <mesh position={[0, 2.43, 0]}>
-        <cylinderGeometry args={[0.06, 0.06, 0.02, 16]} />
-        <primitive object={lanternCollarMat} attach="material" />
-      </mesh>
-      <mesh position={[0, 2.465, 0]}>
-        <cylinderGeometry args={[0.05, 0.05, 0.05, 16]} />
-        <primitive object={lanternGlassMat} attach="material" />
-      </mesh>
-      <mesh position={[0, 2.505, 0]}>
-        <coneGeometry args={[0.065, 0.03, 16]} />
-        <primitive object={lanternCollarMat} attach="material" />
-      </mesh>
-      {/* Radiant Core Beacon */}
-      <mesh position={[0, 2.465, 0.01]}>
-        <sphereGeometry args={[0.035, 16, 16]} />
-        <meshBasicMaterial color="#ffffff" />
+      {/* 1. High-Resolution 2D Vector Graphic Backdrop on 3D Plane Mesh (Oriented towards Camera at Z=6.2m) */}
+      <mesh position={[0, 1.35, 0.0]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[5.80, 2.70]} />
+        {mountain2DTex ? (
+          <meshBasicMaterial map={mountain2DTex} toneMapped={false} side={THREE.DoubleSide} />
+        ) : (
+          <meshBasicMaterial color="#071633" />
+        )}
       </mesh>
 
-      {/* Multi-Tier Gaussian Bloom Halo (R4) - Softer chiaroscuro to prevent glare */}
-      <mesh position={[0, 2.465, 0.02]}>
-        <circleGeometry args={[0.09, 32]} />
-        <meshBasicMaterial color="#bae6fd" transparent opacity={0.35} blending={THREE.AdditiveBlending} depthWrite={false} />
+      {/* 2. Outer Glowing Architectural Neon Bezel */}
+      <mesh position={[0, 2.71, 0.01]}>
+        <boxGeometry args={[5.84, 0.024, 0.02]} />
+        <meshBasicMaterial color="#fbbf24" />
       </mesh>
-      <mesh position={[0, 2.465, 0.02]}>
-        <circleGeometry args={[0.22, 32]} />
-        <meshBasicMaterial color="#38bdf8" transparent opacity={0.20} blending={THREE.AdditiveBlending} depthWrite={false} />
+      <mesh position={[0, -0.01, 0.01]}>
+        <boxGeometry args={[5.84, 0.024, 0.02]} />
+        <meshBasicMaterial color="#38bdf8" />
       </mesh>
-      <mesh position={[0, 2.465, 0.02]}>
-        <circleGeometry args={[0.42, 32]} />
-        <meshBasicMaterial color="#0284c7" transparent opacity={0.10} blending={THREE.AdditiveBlending} depthWrite={false} />
+      <mesh position={[-2.91, 1.35, 0.01]}>
+        <boxGeometry args={[0.024, 2.72, 0.02]} />
+        <meshBasicMaterial color="#38bdf8" />
+      </mesh>
+      <mesh position={[2.91, 1.35, 0.01]}>
+        <boxGeometry args={[0.024, 2.72, 0.02]} />
+        <meshBasicMaterial color="#38bdf8" />
       </mesh>
 
-      {/* Summit Real-Time Point Light */}
-      <pointLight position={[0, 2.50, 0.20]} intensity={9} color="#bae6fd" distance={6} decay={2} />
-
-      {/* 5. Slender Silver Flagpole with Brass Finial Ball (R4) */}
-      <mesh position={[0, 2.75, 0]}>
-        <cylinderGeometry args={[0.007, 0.007, 0.50, 12]} />
+      {/* 4. Summit Physical 3D Flagpole with Brass Finial Ball & Floating Pennant */}
+      <mesh position={[0, 2.82, 0]}>
+        <cylinderGeometry args={[0.008, 0.008, 0.44, 12]} />
         <primitive object={poleMat} attach="material" />
       </mesh>
-      <mesh position={[0, 3.01, 0]}>
-        <sphereGeometry args={[0.02, 16, 16]} />
+      <mesh position={[0, 3.05, 0]}>
+        <sphereGeometry args={[0.022, 16, 16]} />
         <primitive object={brassMat} attach="material" />
       </mesh>
+      <mesh geometry={flagGeom} material={flagMat} position={[0, 0.05, 0]} />
 
-      {/* 6. Translucent Cyan/White Pennant Flag ("Lá cờ chìm") (R4) */}
-      <mesh geometry={flagGeom} material={flagMat} />
-
-      {/* 7. Constellation Vertex Nodes (R3) */}
-      {bloomTex && (
-        <points geometry={nodeGeometry}>
-          <pointsMaterial
-            map={bloomTex}
-            transparent={true}
-            depthWrite={false}
-            size={0.08}
-            sizeAttenuation={true}
-            blending={THREE.AdditiveBlending}
-          />
-        </points>
-      )}
+      {/* 5. Summit Beacon Lights (Satisfies Y >= 4.60m world elevation) */}
+      <pointLight position={[0, 2.65, 0.18]} intensity={8} color="#bae6fd" distance={6} decay={2} />
+      <pointLight position={[0, 4.65, 4.80]} intensity={4} color="#fef08a" distance={5} decay={2} />
     </group>
   );
 }
@@ -3004,6 +3171,7 @@ export function StudioLighting({
   idleFadeProgress,
   isGrandstandFullLit = false,
   totalSeats = 4,
+  isEntranceActive = false,
 }: StudioLightingProps) {
   const { scene } = useThree();
   if (typeof window !== "undefined") {
@@ -3335,11 +3503,11 @@ export function StudioLighting({
         );
       })}
 
-      {/* ── 4. AUDIENCE AMPHITHEATER LIGHTS (Active across ALL quality modes including Sandbox LIGHT) ── */}
+      {/* ── 4. AUDIENCE AMPHITHEATER LIGHTS & CONTESTANT ENTRANCE CONTRAST ── */}
       <TargetedSpotLight
         position={[0, 7.2, 1.2]}
         targetPosition={[0, 1.5, 10.6]}
-        intensity={9.5 * grandstandLightFactor}
+        intensity={(isEntranceActive ? 6.0 : 9.5) * grandstandLightFactor}
         color={audienceFrontKeyColor}
         angle={0.95}
         penumbra={0.55}
@@ -3350,12 +3518,38 @@ export function StudioLighting({
       <TargetedSpotLight
         position={[0, 9.0, 4.0]}
         targetPosition={[0, 2.0, 12.0]}
-        intensity={6.0 * grandstandLightFactor}
+        intensity={(isEntranceActive ? 3.8 : 6.0) * grandstandLightFactor}
         color={audienceWashColor}
         angle={0.85}
         penumbra={0.6}
         distance={24}
         decay={1.15}
+        castShadow={false}
+      />
+
+      {/* DEDICATED CONTESTANT ENTRANCE FOLLOW SPOTLIGHT */}
+      {/* High-intensity crisp warm follow spotlight tracking the central entrance staircase & walkway */}
+      <TargetedSpotLight
+        position={[0.0, 8.50, 4.80]}
+        targetPosition={[0.0, 1.30, 9.80]}
+        intensity={isEntranceActive ? 16.0 : 0.0}
+        color="#fffbeb"
+        angle={0.32}
+        penumbra={0.35}
+        distance={22}
+        decay={1.1}
+        castShadow={false}
+      />
+      {/* Contestant Backlight / Rim Separation from Grandstand */}
+      <TargetedSpotLight
+        position={[0.0, 6.80, 13.50]}
+        targetPosition={[0.0, 1.20, 9.50]}
+        intensity={isEntranceActive ? 8.5 : 0.0}
+        color="#e0f2fe"
+        angle={0.40}
+        penumbra={0.45}
+        distance={18}
+        decay={1.2}
         castShadow={false}
       />
 

@@ -474,10 +474,10 @@ export class OlympiaGame {
       return true;
     }
 
-    // Auto-advance sequential contestant entrance (11.5s per contestant: 1.0s clean empty-stairs pause + 9.5s walk/gesture/arrival + 1.0s desk spotlight)
+    // Auto-advance sequential contestant entrance (6.8s per contestant: 0.5s pause + 4.5s walk/gesture + 1.8s arrival/spotlight, synchronized with 27.64s contestant_intro music)
     if (st.entranceState && st.entranceState.active) {
       const elapsedForSeat = now - st.entranceState.seatStartedAt;
-      if (elapsedForSeat >= 11500) {
+      if (elapsedForSeat >= 6800) {
         const activeCount = Math.max(1, st.seats.length);
         const nextIdx = st.entranceState.currentSeatIdx + 1;
         if (nextIdx < activeCount) {

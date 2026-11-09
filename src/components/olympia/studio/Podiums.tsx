@@ -2868,6 +2868,70 @@ export function McPresenters({
     </group>
   );
 }
+
+/**
+ * Calculates exact physical stair tread elevation for the contestant entrance walkway:
+ * - Top Plinth (Z >= 11.90m): Y = 1.84m (Door arch landing)
+ * - Upper Flight (6 steps, 10.70m <= Z < 11.90m): Y descends from 1.84m to 0.92m across discrete treads
+ * - Mid-Stairs Landing / Bục Giữa (9.70m <= Z < 10.70m): Y = 0.92m (Flat stage landing)
+ * - Lower Flight (6 steps, 8.50m <= Z < 9.70m): Y descends from 0.90m to 0.22m across discrete treads
+ * - Dais Floor (Z < 8.50m): Y = 0.22m (Flat studio floor - eliminates mid-air floating!)
+ */
+export function getGrandstandStairY(z: number): number {
+  if (z >= 11.90) return 1.84;
+  if (z < 8.50) return 0.22;
+  if (z >= 9.70 && z <= 10.70) return 0.92;
+
+  // Upper flight (6 steps descending from Z=11.90 to 10.70, step depth 0.20m)
+  if (z > 10.70) {
+    const upperTreads = [
+      { zMax: 11.90, zMin: 11.70, yTop: 1.84, yBottom: 1.687 },
+      { zMax: 11.70, zMin: 11.50, yTop: 1.687, yBottom: 1.533 },
+      { zMax: 11.50, zMin: 11.30, yTop: 1.533, yBottom: 1.380 },
+      { zMax: 11.30, zMin: 11.10, yTop: 1.380, yBottom: 1.227 },
+      { zMax: 11.10, zMin: 10.90, yTop: 1.227, yBottom: 1.073 },
+      { zMax: 10.90, zMin: 10.70, yTop: 1.073, yBottom: 0.920 },
+    ];
+    for (const step of upperTreads) {
+      if (z >= step.zMin && z <= step.zMax) {
+        const u = (step.zMax - z) / (step.zMax - step.zMin);
+        if (u < 0.60) {
+          return step.yTop;
+        } else {
+          const stepDownP = (u - 0.60) / 0.40;
+          const easeDown = stepDownP * stepDownP * (3 - 2 * stepDownP);
+          return THREE.MathUtils.lerp(step.yTop, step.yBottom, easeDown);
+        }
+      }
+    }
+    return 1.073;
+  }
+
+  // Lower flight (6 steps descending from Z=9.70 to 8.50, step depth 0.20m)
+  const lowerTreads = [
+    { zMax: 9.70, zMin: 9.50, yTop: 0.90, yBottom: 0.750 },
+    { zMax: 9.50, zMin: 9.30, yTop: 0.750, yBottom: 0.600 },
+    { zMax: 9.30, zMin: 9.10, yTop: 0.600, yBottom: 0.450 },
+    { zMax: 9.10, zMin: 8.90, yTop: 0.450, yBottom: 0.300 },
+    { zMax: 8.90, zMin: 8.70, yTop: 0.300, yBottom: 0.220 },
+    { zMax: 8.70, zMin: 8.50, yTop: 0.220, yBottom: 0.220 },
+  ];
+  for (const step of lowerTreads) {
+    if (z >= step.zMin && z <= step.zMax) {
+      const u = (step.zMax - z) / (step.zMax - step.zMin);
+      if (u < 0.60) {
+        return step.yTop;
+      } else {
+        const stepDownP = (u - 0.60) / 0.40;
+        const easeDown = stepDownP * stepDownP * (3 - 2 * stepDownP);
+        return THREE.MathUtils.lerp(step.yTop, step.yBottom, easeDown);
+      }
+    }
+  }
+
+  return 0.22;
+}
+
 export function ContestantEntranceWalkingFigures({
   state,
   contestantConfigs,
@@ -2936,12 +3000,12 @@ export function ContestantEntranceWalkingFigures({
       // Subtle facing angle while stepping out from side door, turning to face forward
       curRotY = THREE.MathUtils.lerp(isDoorLeft ? Math.PI - 0.35 : Math.PI + 0.35, Math.PI, smoothP);
     } else if (t < 2.2) {
-      // Phase 2 (1.0 -> 2.2s): Walks down upper stairs swiftly & resolutely (1.2s) to mid-stairs landing platform ("Bục Giữa")
+      // Phase 2 (1.0 -> 2.2s): Walks down upper stairs step by step (1.2s) to mid-stairs landing platform ("Bục Giữa")
       g.visible = true;
       const p = (t - 1.0) / 1.2;
       curX = 0;
-      curY = THREE.MathUtils.lerp(1.84, 0.92, p);
       curZ = THREE.MathUtils.lerp(11.90, 10.20, p);
+      curY = getGrandstandStairY(curZ);
       curRotY = Math.PI;
     } else if (t < 3.8) {
       // Phase 3 (2.2 -> 3.8s): Stands firmly on Bục Giữa & performs signature gesture (1.6s)
@@ -2952,12 +3016,12 @@ export function ContestantEntranceWalkingFigures({
       curRotY = Math.PI;
       walkingNow = false;
     } else if (t < 5.0) {
-      // Phase 4 (3.8 -> 5.0s): Walks down lower stairs to studio dais floor (1.2s)
+      // Phase 4 (3.8 -> 5.0s): Walks down lower stairs step by step to dais floor, then walks along floor (1.2s)
       g.visible = true;
       const p = (t - 3.8) / 1.2;
       curX = 0;
-      curY = THREE.MathUtils.lerp(0.92, 0.22, p);
       curZ = THREE.MathUtils.lerp(10.20, 6.20, p);
+      curY = getGrandstandStairY(curZ);
       curRotY = Math.PI;
     } else if (t < 6.2) {
       // Phase 5 (5.0 -> 6.2s): Fans out across dais to assigned podium desk (1.2s)
@@ -3606,6 +3670,121 @@ function createSegmentedTrackGeometry(
   return geom;
 }
 
+/**
+ * Dynamic Central Floor Intro Aperture Burst (0.0s - 7.0s VTV3 Broadcast Parity):
+ * - 0.0s - 1.5s: Handled by CenterFloorStage with Golden Laurel Wreath decal visible.
+ * - 1.5s - 3.5s: Radiant Fire Burst (intense red/orange/gold glowing core & 16 expanding rays).
+ * - 3.5s - 7.0s: Electric Cyan Bloom (color shifts into electric cyan, concentric aperture rings open).
+ * - 7.0s onwards: Steady cyan stage lighting.
+ */
+function CentralFloorIntroBurst({
+  elapsedSec,
+}: {
+  elapsedSec: number;
+}) {
+  if (elapsedSec < 1.5 || elapsedSec >= 7.0) return null;
+
+  const isFirePhase = elapsedSec < 3.5;
+  const fireT = isFirePhase ? (elapsedSec - 1.5) / 2.0 : 1.0;
+  const cyanT = isFirePhase ? 0 : Math.min(1.0, (elapsedSec - 3.5) / 3.5);
+
+  const coreColor = isFirePhase
+    ? (fireT < 0.5 ? "#ef4444" : "#f97316")
+    : (cyanT < 0.35 ? "#f59e0b" : "#00f0ff");
+
+  const rayColor = isFirePhase ? "#fbbf24" : (cyanT < 0.5 ? "#38bdf8" : "#00f0ff");
+
+  const coreRadius = isFirePhase
+    ? THREE.MathUtils.lerp(0.20, 0.75, fireT)
+    : THREE.MathUtils.lerp(0.75, 1.25, cyanT);
+
+  const burstIntensity = isFirePhase ? 1.0 : Math.max(0, 1.0 - cyanT);
+
+  return (
+    <group rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0042, 0]}>
+      {/* 1. Radiant Glowing Light Core Disc */}
+      <mesh renderOrder={9.7}>
+        <circleGeometry args={[coreRadius, 64]} />
+        <meshBasicMaterial
+          color={coreColor}
+          transparent
+          opacity={0.85 * (1 - cyanT * 0.45)}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
+      </mesh>
+
+      {/* 2. Intense White Hotspot at epicenter */}
+      <mesh renderOrder={9.75}>
+        <circleGeometry args={[coreRadius * 0.35, 32]} />
+        <meshBasicMaterial
+          color="#ffffff"
+          transparent
+          opacity={0.95 * burstIntensity}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
+      </mesh>
+
+      {/* 3. 16 Radiant Fire/Light Rays expanding outwards to the rim */}
+      {burstIntensity > 0.05 &&
+        [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5].map((deg) => (
+          <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]} renderOrder={9.72}>
+            <planeGeometry args={[0.08, 2.35]} />
+            <meshBasicMaterial
+              color={rayColor}
+              transparent
+              opacity={0.65 * burstIntensity}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-2}
+              polygonOffsetUnits={-2}
+            />
+          </mesh>
+        ))}
+
+      {/* 4. Expanding Aperture Concentric Rings (Cyan Bloom) */}
+      {cyanT > 0.08 && (
+        <group renderOrder={9.73}>
+          <mesh>
+            <ringGeometry args={[coreRadius * 0.58, coreRadius * 0.66, 64]} />
+            <meshBasicMaterial
+              color="#00f0ff"
+              transparent
+              opacity={0.82 * cyanT}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-2}
+              polygonOffsetUnits={-2}
+            />
+          </mesh>
+          <mesh>
+            <ringGeometry args={[coreRadius * 0.84, coreRadius * 0.92, 64]} />
+            <meshBasicMaterial
+              color="#38bdf8"
+              transparent
+              opacity={0.72 * cyanT}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-2}
+              polygonOffsetUnits={-2}
+            />
+          </mesh>
+        </group>
+      )}
+    </group>
+  );
+}
+
 export function CenterFloorStage({
   state,
   screenFadeProgress = 0,
@@ -3649,16 +3828,23 @@ export function CenterFloorStage({
     laurelOpacity = 0.0;
   } else if (introStartedAt != null) {
     const elapsedSec = (nowMs - introStartedAt) / 1000;
-    if (elapsedSec < 6.0) {
-      techOpacity = Math.min(1.0, elapsedSec / 0.3);
-      laurelOpacity = 0.0;
-    } else if (elapsedSec < 6.8) {
-      const t = (elapsedSec - 6.0) / 0.8;
-      const smoothFade = t * t * (3 - 2 * t);
-      techOpacity = 1.0 - smoothFade;
-      laurelOpacity = smoothFade;
-    } else {
+    if (elapsedSec < 1.5) {
+      // 0.0s - 1.5s: Calm dark floor disc with Golden Laurel Wreath (Image 1)
       techOpacity = 0.0;
+      laurelOpacity = 1.0;
+    } else if (elapsedSec < 3.5) {
+      // 1.5s - 3.5s: Radiant Fire Burst (Image 2 & 3)
+      const fireT = (elapsedSec - 1.5) / 2.0;
+      techOpacity = 1.0;
+      laurelOpacity = Math.max(0.35, 1.0 - fireT * 0.65);
+    } else if (elapsedSec < 7.0) {
+      // 3.5s - 7.0s: Color shift from fire to electric cyan with expanding aperture rings (Image 4)
+      const shiftT = (elapsedSec - 3.5) / 3.5;
+      techOpacity = 1.0;
+      laurelOpacity = Math.min(1.0, 0.35 + shiftT * 0.65);
+    } else {
+      // 7.0s onwards: Steady cyan broadcast lighting with laurel decal
+      techOpacity = 0.6;
       laurelOpacity = 1.0;
     }
   } else {
@@ -3952,6 +4138,11 @@ export function CenterFloorStage({
 
       {/* ── 2A. 6-SECOND DYNAMIC TECH FLOOR GRAPHIC (BROADCAST REFERENCE) ── */}
       <CenterTechFloorGraphic opacity={techOpacity} serverNow={serverNow} />
+
+      {/* ── 2A.1 CENTRAL FLOOR INTRO APERTURE BURST (0-7s VTV3 Footages: Gold Laurel -> Fire -> Cyan Bloom) ── */}
+      {introStartedAt != null && (
+        <CentralFloorIntroBurst elapsedSec={(nowMs - introStartedAt) / 1000} />
+      )}
 
       {/* ── 2B. ENTRY RADIANT LIGHT BURST EFFECT (Khi diễn ra màn chào sân) ── */}
       {isEntrance && (

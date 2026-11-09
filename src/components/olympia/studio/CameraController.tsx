@@ -195,6 +195,17 @@ export const _wideStageTarget = new THREE.Vector3(-0.60, 1.80, -3.80);
 export const _centerStagePos = new THREE.Vector3(0.00, 1.95, 4.60);
 export const _centerStageTarget = new THREE.Vector3(0.00, 1.15, -0.30);
 
+// Opening Low-Ground Crane Sweep Waypoints (0.0s - 7.0s, VTV3 Olympia Broadcast Parity):
+// Starts low to the ground looking slightly diagonal upwards across the central floor aperture disc
+export const _introLowGroundPos = new THREE.Vector3(-2.35, 0.48, 5.60);
+export const _introLowGroundTarget = new THREE.Vector3(0.00, 0.25, 0.60);
+// Elevates gently up to mid-ground over 7 seconds
+export const _introMidGroundPos = new THREE.Vector3(-1.70, 1.35, 4.75);
+export const _introMidGroundTarget = new THREE.Vector3(0.00, 0.90, 0.30);
+// Instant Hard Cut directly to Frontal Center MC medium shot at t = 7.0s (Image 5)
+export const _frontCenterMCPos = new THREE.Vector3(0.00, 1.35, 3.65);
+export const _frontCenterMCTarget = new THREE.Vector3(0.00, 1.25, 0.00);
+
 const _sweepStartPos = new THREE.Vector3();
 const _sweepStartTarget = new THREE.Vector3();
 const _sweepEndPos = new THREE.Vector3(0.00, 3.80, 11.80);
@@ -278,47 +289,29 @@ export function CameraController({
         camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 6.0, delta);
       }
     }
-    // 0. Opening Sequence Camera Director (Coaxial Deep Portal Zoom -> 1:1 MC Dolly & Track -> Center Stage Hold):
-    // Phase 1 (0.0s - 1.5s): Starts coaxially zoomed deep into Hexagon Portal (desk >35cm below frame),
-    //                       smoothly dollying out along the -0.25 rad normal to frame both outer portal edges as MCs step out.
-    // Phase 2 (1.5s - 5.0s): Continuous 1:1 Quadratic Bezier dolly-back & pan-track following both MCs' midpoint
-    //                       across the stage floor, arriving smoothly at Center Circular Dais right as MCs greet (~5.0s).
-    // Phase 3 (5.0s onwards): Steadily holds coaxial front shot on Center Stage with natural broadcast breathing.
+    // 0. Opening Sequence Camera Director (VTV3 Broadcast Parity):
+    // Phase 1 (0.0s - 7.0s): Low-ground crane sweep elevating diagonally across stage floor,
+    //                       capturing the radiant floor opening burst (0-1.5s golden laurel, 1.5-3.5s fire burst, 3.5-7.0s cyan bloom)
+    //                       (Preserves timeline references: elapsedSec < 4.0 and elapsedSec < 6.0)
+    // Phase 2 (7.0s onwards): Instant hard cut (0s transition) directly to Frontal Center MC medium shot
+    //                       with subtle broadcast breathing (Math.sin(holdElapsed * 0.45)).
     if (introStartedAt) {
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = Math.max(0, (now - introStartedAt) / 1000);
 
-      if (elapsedSec < 1.5) {
-        // Phase 1 (0.0s - 1.5s): Coaxial deep portal zoom-out catching MCs emerging outside portal borders
-        const t = Math.min(1.0, elapsedSec / 1.5);
+      if (elapsedSec < 7.0) {
+        // Low-ground sweeping crane shot: elevates gently over 7 seconds
+        const t = Math.min(1.0, elapsedSec / 7.0);
         const smoothT = t * t * (3 - 2 * t);
-        _curPos.lerpVectors(_mcTightPos, _mcMediumPos, smoothT);
-        _curTarget.lerpVectors(_mcTightTarget, _mcMediumTarget, smoothT);
-      } else if (elapsedSec < 5.0) {
-        // Phase 2 (1.5s - 5.0s): Continuous 1:1 Quadratic Bezier dolly-back & pan-track to Center Stage
-        const t = Math.min(1.0, (elapsedSec - 1.5) / 3.5);
-        const u = t * t * (3 - 2 * t);
-        const w0 = (1 - u) * (1 - u);
-        const w1 = 2 * (1 - u) * u;
-        const w2 = u * u;
-
-        _curPos.set(
-          w0 * _mcMediumPos.x + w1 * _introTrackMidPos.x + w2 * _centerStagePos.x,
-          w0 * _mcMediumPos.y + w1 * _introTrackMidPos.y + w2 * _centerStagePos.y,
-          w0 * _mcMediumPos.z + w1 * _introTrackMidPos.z + w2 * _centerStagePos.z
-        );
-        _curTarget.set(
-          w0 * _mcMediumTarget.x + w1 * _introTrackMidTarget.x + w2 * _centerStageTarget.x,
-          w0 * _mcMediumTarget.y + w1 * _introTrackMidTarget.y + w2 * _centerStageTarget.y,
-          w0 * _mcMediumTarget.z + w1 * _introTrackMidTarget.z + w2 * _centerStageTarget.z
-        );
+        _curPos.lerpVectors(_introLowGroundPos, _introMidGroundPos, smoothT);
+        _curTarget.lerpVectors(_introLowGroundTarget, _introMidGroundTarget, smoothT);
       } else {
-        // Phase 3 (5.0s onwards): Steady center stage hold with subtle broadcast breathing
-        const holdElapsed = elapsedSec - 5.0;
-        const breatheY = Math.sin(holdElapsed * 0.75) * 0.012;
+        // Instant hard cut (0s transition) at t = 7.0s to Frontal Center MC Medium Shot
+        const holdElapsed = elapsedSec - 7.0;
+        const breatheY = Math.sin(holdElapsed * 0.75) * 0.010;
         const breatheX = Math.sin(holdElapsed * 0.45) * 0.008;
-        _curPos.set(_centerStagePos.x + breatheX, _centerStagePos.y + breatheY, _centerStagePos.z);
-        _curTarget.copy(_centerStageTarget);
+        _curPos.set(_frontCenterMCPos.x + breatheX, _frontCenterMCPos.y + breatheY, _frontCenterMCPos.z);
+        _curTarget.set(_frontCenterMCTarget.x, _frontCenterMCTarget.y + breatheY * 0.5, _frontCenterMCTarget.z);
       }
 
       currentPos.current.copy(_curPos);

@@ -133,7 +133,11 @@ function scheduleSave(entry: GameEntry) {
       if (!entry.roomId.startsWith("sandbox")) {
         await prisma.room.update({ where: { id: entry.roomId }, data: data as never });
       }
-    } catch (e) {
+    } catch (e: any) {
+      // If room no longer exists in DB (e.g. deleted or expired), quietly skip to avoid stderr log noise
+      if (e?.code === "P2025" || e?.message?.includes("Record to update not found")) {
+        return;
+      }
       console.warn("[Olympia] snapshot save failed:", (e as Error).message);
     }
   }, 1500);

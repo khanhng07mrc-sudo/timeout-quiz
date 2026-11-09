@@ -55,6 +55,14 @@ const handle = app.getRequestHandler();
 app.prepare().then(async () => {
   const httpServer = createServer(async (req, res) => {
     try {
+      // Guard against external vulnerability scanners probing malformed Next-Action headers (e.g. Next-Action: "x")
+      const nextAction = req.headers["next-action"];
+      if (typeof nextAction === "string" && (nextAction === "x" || nextAction.length < 10)) {
+        res.statusCode = 400;
+        res.end("Bad Request");
+        return;
+      }
+
       const parsedUrl = parse(req.url!, true);
       await handle(req, res, parsedUrl);
     } catch (err) {

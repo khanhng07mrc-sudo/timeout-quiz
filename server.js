@@ -109115,6 +109115,9 @@ function scheduleSave(entry) {
         await prisma.room.update({ where: { id: entry.roomId }, data });
       }
     } catch (e) {
+      if (e?.code === "P2025" || e?.message?.includes("Record to update not found")) {
+        return;
+      }
       console.warn("[Olympia] snapshot save failed:", e.message);
     }
   }, 1500);
@@ -109488,6 +109491,12 @@ var handle = app.getRequestHandler();
 app.prepare().then(async () => {
   const httpServer = (0, import_http.createServer)(async (req, res) => {
     try {
+      const nextAction = req.headers["next-action"];
+      if (typeof nextAction === "string" && (nextAction === "x" || nextAction.length < 10)) {
+        res.statusCode = 400;
+        res.end("Bad Request");
+        return;
+      }
       const parsedUrl = (0, import_url.parse)(req.url, true);
       await handle(req, res, parsedUrl);
     } catch (err) {

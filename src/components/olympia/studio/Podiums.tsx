@@ -3658,12 +3658,61 @@ export function VeDichWalkingContestant({
  * Procedural Soft Glow & Volumetric Gradient Texture Helpers
  * Cached as singletons to ensure zero runtime GC overhead in 60fps frame loop
  */
-let _realisticBeamTex: THREE.CanvasTexture | null = null;
-function getRealisticBeamTexture(): THREE.CanvasTexture {
-  if (_realisticBeamTex) return _realisticBeamTex;
+/**
+ * Procedural Optical Flare & Low Ground Reflection Texture Helpers
+ * Cached as singletons to ensure zero runtime GC overhead in 60fps frame loop
+ */
+let _opticalFlareTex: THREE.CanvasTexture | null = null;
+function getRealisticOpticalFlareTexture(): THREE.CanvasTexture {
+  if (_opticalFlareTex) return _opticalFlareTex;
+  if (typeof document === "undefined") return new THREE.CanvasTexture({} as any);
+  const size = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    const cx = size / 2;
+    const cy = size / 2;
+    // 1. Broad Optical Flare Multi-stop Radial Gradient (Pure White Core -> Fiery Amber -> Crimson Ruby -> Transparent)
+    const radGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cx);
+    radGrad.addColorStop(0.00, "rgba(255, 255, 255, 1.0)");
+    radGrad.addColorStop(0.12, "rgba(255, 245, 230, 0.98)");
+    radGrad.addColorStop(0.25, "rgba(255, 80, 50, 0.95)");
+    radGrad.addColorStop(0.42, "rgba(239, 68, 68, 0.82)");
+    radGrad.addColorStop(0.65, "rgba(185, 28, 28, 0.42)");
+    radGrad.addColorStop(0.85, "rgba(127, 29, 29, 0.12)");
+    radGrad.addColorStop(1.00, "rgba(127, 29, 29, 0.0)");
+    ctx.fillStyle = radGrad;
+    ctx.fillRect(0, 0, size, size);
+
+    // 2. Subtle Horizontal Anamorphic Lens Flare Streak (Smooth Gaussian in both X and Y)
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1.0, 0.08); // Flatten vertically into a thin anamorphic streak
+    const streakGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, cx);
+    streakGrad.addColorStop(0.0, "rgba(255, 255, 255, 0.95)");
+    streakGrad.addColorStop(0.25, "rgba(255, 160, 120, 0.65)");
+    streakGrad.addColorStop(0.60, "rgba(255, 60, 60, 0.25)");
+    streakGrad.addColorStop(1.0, "rgba(255, 0, 0, 0.0)");
+    ctx.fillStyle = streakGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, cx, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  _opticalFlareTex = new THREE.CanvasTexture(canvas);
+  _opticalFlareTex.wrapS = THREE.ClampToEdgeWrapping;
+  _opticalFlareTex.wrapT = THREE.ClampToEdgeWrapping;
+  return _opticalFlareTex;
+}
+
+let _lowGroundReflectionTex: THREE.CanvasTexture | null = null;
+function getLowGroundReflectionTexture(): THREE.CanvasTexture {
+  if (_lowGroundReflectionTex) return _lowGroundReflectionTex;
   if (typeof document === "undefined") return new THREE.CanvasTexture({} as any);
   const width = 128;
-  const height = 256;
+  const height = 128;
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -3672,29 +3721,34 @@ function getRealisticBeamTexture(): THREE.CanvasTexture {
     const imgData = ctx.createImageData(width, height);
     const data = imgData.data;
     for (let y = 0; y < height; y++) {
-      // v = 0 at bottom (floor lens), 1 at top (~2.35m)
+      // v = 0 at bottom (floor contact), 1 at top (~0.50m)
       const v = (height - 1 - y) / (height - 1);
-      // Exponential stage light attenuation: Brightest at floor emitter, decaying smoothly to 0 by top
-      const vertAtten = Math.pow(Math.max(0, 1.0 - v), 1.75);
+      // Fast exponential decay: Intense right above floor, decaying sharply to zero before top
+      const vertAtten = Math.pow(Math.max(0, 1.0 - v), 2.8);
       for (let x = 0; x < width; x++) {
         const u = x / (width - 1);
-        const dx = (u - 0.5) * 2.0; // -1.0 to 1.0
-        // Horizontal Gaussian-like haze density: Dense core, soft feathered boundaries (anti-flat)
+        const dx = (u - 0.5) * 2.0;
+        // Horizontal Cosine Bell Profile (Anti-flat, smooth feathered boundaries)
         const horizHaze = Math.max(0, Math.cos(dx * (Math.PI * 0.5)));
-        const alphaVal = Math.round(255 * vertAtten * Math.pow(horizHaze, 1.6));
+        const alphaVal = Math.round(255 * vertAtten * Math.pow(horizHaze, 1.8));
         const idx = (y * width + x) * 4;
         data[idx] = 255;
-        data[idx + 1] = 255;
-        data[idx + 2] = 255;
+        data[idx + 1] = 235;
+        data[idx + 2] = 230;
         data[idx + 3] = alphaVal;
       }
     }
     ctx.putImageData(imgData, 0, 0);
   }
-  _realisticBeamTex = new THREE.CanvasTexture(canvas);
-  _realisticBeamTex.wrapS = THREE.ClampToEdgeWrapping;
-  _realisticBeamTex.wrapT = THREE.ClampToEdgeWrapping;
-  return _realisticBeamTex;
+  _lowGroundReflectionTex = new THREE.CanvasTexture(canvas);
+  _lowGroundReflectionTex.wrapS = THREE.ClampToEdgeWrapping;
+  _lowGroundReflectionTex.wrapT = THREE.ClampToEdgeWrapping;
+  return _lowGroundReflectionTex;
+}
+
+// Backwards-compatibility alias
+function getRealisticBeamTexture(): THREE.CanvasTexture {
+  return getLowGroundReflectionTexture();
 }
 
 let _softRadialGlowTex: THREE.CanvasTexture | null = null;
@@ -3843,7 +3897,7 @@ function CenterTechFloorGraphic({
       {/* ── 1. GLOWING CYAN CORE DISC WITH WHITE CENTER (Breathing Hologram - Broadcast Parity) ── */}
       <group ref={coreGroupRef} renderOrder={9.65}>
         <mesh renderOrder={9.65}>
-          <circleGeometry args={[0.85, 64]} />
+          <circleGeometry args={[0.78, 64]} />
           <meshBasicMaterial
             ref={corePulseRef}
             map={softGlowTex}
@@ -3858,11 +3912,11 @@ function CenterTechFloorGraphic({
           />
         </mesh>
         <mesh renderOrder={9.68}>
-          <circleGeometry args={[0.42, 48]} />
+          <circleGeometry args={[0.38, 48]} />
           <meshBasicMaterial
             ref={centerWhiteMatRef}
             map={softGlowTex}
-            color="#a5f3fc"
+            color="#e0faff"
             transparent
             opacity={0.80}
             blending={THREE.AdditiveBlending}
@@ -3874,11 +3928,11 @@ function CenterTechFloorGraphic({
         </mesh>
       </group>
 
-      {/* ── 2. 4 SYMMETRICAL QUADRANT CYAN ARCS (Multi-layer Organic Blending) ── */}
+      {/* ── 2. 4 SYMMETRICAL QUADRANT CYAN ARCS (Multi-layer Organic Blending - Image 5 & 6 Parity) ── */}
       <group ref={primaryArcsRef}>
         {[0, 90, 180, 270].map((deg, idx) => (
           <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]} renderOrder={9.72}>
-            <ringGeometry args={[0.72, 0.94, 36, 1, 0, (70 * Math.PI) / 180]} />
+            <ringGeometry args={[0.88, 1.34, 48, 1, 0, (72 * Math.PI) / 180]} />
             <meshBasicMaterial
               color={idx % 2 === 0 ? "#00f0ff" : "#38bdf8"}
               transparent
@@ -3898,7 +3952,7 @@ function CenterTechFloorGraphic({
       <group ref={secondaryArcsRef}>
         {[45, 165, 285].map((deg) => (
           <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]} renderOrder={9.73}>
-            <ringGeometry args={[1.08, 1.22, 36, 1, 0, (50 * Math.PI) / 180]} />
+            <ringGeometry args={[1.50, 1.62, 36, 1, 0, (48 * Math.PI) / 180]} />
             <meshBasicMaterial
               color="#38bdf8"
               transparent
@@ -3916,7 +3970,7 @@ function CenterTechFloorGraphic({
 
       {/* ── 4. CONCENTRIC HUD RADAR RINGS & EXPANDING RIPPLE WAVES ── */}
       <mesh renderOrder={9.70}>
-        <ringGeometry args={[0.52, 0.54, 64]} />
+        <ringGeometry args={[1.40, 1.44, 64]} />
         <meshBasicMaterial
           color="#00f0ff"
           transparent
@@ -3929,35 +3983,9 @@ function CenterTechFloorGraphic({
         />
       </mesh>
       <mesh renderOrder={9.70}>
-        <ringGeometry args={[0.66, 0.68, 64]} />
+        <ringGeometry args={[1.70, 1.74, 64]} />
         <meshBasicMaterial
-          color="#38bdf8"
-          transparent
-          opacity={0.55}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          polygonOffset
-          polygonOffsetFactor={-2}
-          polygonOffsetUnits={-2}
-        />
-      </mesh>
-      <mesh renderOrder={9.70}>
-        <ringGeometry args={[1.02, 1.04, 64]} />
-        <meshBasicMaterial
-          color="#00f0ff"
-          transparent
-          opacity={0.60}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          polygonOffset
-          polygonOffsetFactor={-2}
-          polygonOffsetUnits={-2}
-        />
-      </mesh>
-      <mesh renderOrder={9.75}>
-        <ringGeometry args={[1.26, 1.28, 64]} />
-        <meshBasicMaterial
-          color="#38bdf8"
+          color="#0284c7"
           transparent
           opacity={0.55}
           blending={THREE.AdditiveBlending}
@@ -3970,7 +3998,7 @@ function CenterTechFloorGraphic({
 
       {/* Expanding Ripple Wave 1 */}
       <mesh ref={ripple1Ref} renderOrder={9.69}>
-        <ringGeometry args={[0.92, 1.02, 96]} />
+        <ringGeometry args={[0.88, 1.34, 64]} />
         <meshBasicMaterial
           ref={ripple1MatRef}
           color="#67e8f9"
@@ -3987,7 +4015,7 @@ function CenterTechFloorGraphic({
 
       {/* Expanding Ripple Wave 2 */}
       <mesh ref={ripple2Ref} renderOrder={9.69}>
-        <ringGeometry args={[0.92, 1.02, 96]} />
+        <ringGeometry args={[0.88, 1.34, 64]} />
         <meshBasicMaterial
           ref={ripple2MatRef}
           color="#38bdf8"
@@ -4050,8 +4078,8 @@ function createSegmentedTrackGeometry(
 /**
  * Dynamic Central Floor Intro Effects (Broadcast Reference Parity):
  * 1. 0.0s - 3.0s: Outer laurel rim light beam transitioning from cyan (#00f0ff) to crimson red (#ef4444).
- * 2. 0.4s - 2.5s: 3D Realistic Volumetric Stage Moving-Head Beam (~2.35m height, cosine haze density, non-blinding floor lens bloom).
- * 3. 3.0s - 9.5s: Laurel wreath temporarily hidden; concentric tech circular sectors/rings displayed (Broadcast Reference Images 8 & 9).
+ * 2. 0.4s - 2.5s: Full Floor Optical Flare Burst (R = 2.15m covering dais) + Subtle Low Ground Reflection (~0.5m, narrowing upwards then cut).
+ * 3. 3.0s - 9.5s: Laurel wreath temporarily hidden; concentric tech circular sectors/rings displayed (Broadcast Reference Images 4 & 5).
  */
 function CentralFloorIntroBurst({
   introStartedAt,
@@ -4066,20 +4094,21 @@ function CentralFloorIntroBurst({
   const rimPulse1Ref = useRef<THREE.Mesh>(null);
   const rimPulse2Ref = useRef<THREE.Mesh>(null);
 
-  // Floor plane soft glow (2D flat on floor)
+  // Full-floor optical flare group & materials (2D on floor surface)
   const floorRedGroupRef = useRef<THREE.Group>(null);
   const floorRedBloomMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const floorWhiteCoreMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const floorRipple1MatRef = useRef<THREE.MeshBasicMaterial>(null);
   const floorRipple2MatRef = useRef<THREE.MeshBasicMaterial>(null);
 
-  // Volumetric 3D Light Column (standing vertical in 3D studio airspace)
+  // Low Ground Reflection Group (Strictly ~0.50m sitting on dais floor surface)
   const beamGroupRef = useRef<THREE.Group>(null);
   const beamCoreMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const beamPlasmaMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const beamAuraMatRef = useRef<THREE.MeshBasicMaterial>(null);
 
-  const beamTex = useMemo(() => getRealisticBeamTexture(), []);
+  const opticalFlareTex = useMemo(() => getRealisticOpticalFlareTexture(), []);
+  const reflectionTex = useMemo(() => getLowGroundReflectionTexture(), []);
   const softGlowTex = useMemo(() => getSoftRadialGlowTexture(), []);
 
   useFrame(() => {
@@ -4110,7 +4139,7 @@ function CentralFloorIntroBurst({
       }
     }
 
-    // 2. 0.4s - 2.5s: 3D VOLUMETRIC RED LIGHT BEAM PILLAR & FLOOR BLOOM
+    // 2. 0.4s - 2.5s: FULL FLOOR RED OPTICAL FLARE BURST & SUBTLE LOW GROUND REFLECTION
     const redActive = elapsedSec >= 0.4 && elapsedSec < 2.5;
     if (floorRedGroupRef.current) {
       floorRedGroupRef.current.visible = redActive;
@@ -4124,33 +4153,29 @@ function CentralFloorIntroBurst({
       // Smooth bell curve intensity: rises sharply, sustains, then dissolves
       const intensity = Math.sin(burstT * Math.PI);
 
-      // Floor bloom expansion & pulse
-      const floorScale = THREE.MathUtils.lerp(0.70, 1.40, Math.min(1.0, burstT * 1.5));
+      // Floor optical flare disc expansion: rapidly flares outwards (0.55 -> 1.05) covering whole dais disc
+      const flareScale = THREE.MathUtils.lerp(0.55, 1.05, Math.min(1.0, burstT * 1.6));
       if (floorRedGroupRef.current) {
-        floorRedGroupRef.current.scale.set(floorScale, floorScale, 1);
+        floorRedGroupRef.current.scale.set(flareScale, flareScale, 1);
       }
-      if (floorRedBloomMatRef.current) floorRedBloomMatRef.current.opacity = 0.82 * intensity;
-      if (floorWhiteCoreMatRef.current) floorWhiteCoreMatRef.current.opacity = 0.85 * intensity;
-      if (floorRipple1MatRef.current) floorRipple1MatRef.current.opacity = 0.70 * intensity;
-      if (floorRipple2MatRef.current) floorRipple2MatRef.current.opacity = 0.55 * intensity;
+      if (floorRedBloomMatRef.current) floorRedBloomMatRef.current.opacity = 0.98 * intensity;
+      if (floorWhiteCoreMatRef.current) floorWhiteCoreMatRef.current.opacity = 0.99 * intensity;
 
-      // Volumetric 3D Light Column Dynamics:
-      // Surges rapidly upwards from floor in first 0.35s (Y scale 0.1 -> 1.0)
-      const heightGrowth = Math.min(1.0, burstT * 4.0);
+      // Subtle Low Ground Reflection: Strictly ~0.50m height sitting right on dais surface, narrowing upwards
+      const heightGrowth = Math.min(1.0, burstT * 3.5);
       const heightScale = Math.sin(heightGrowth * Math.PI * 0.5); // ease out to 1.0
-      const radiusBreath = 1.0 + 0.05 * Math.sin(elapsedSec * 12.0);
+      const radiusBreath = 1.0 + 0.04 * Math.sin(elapsedSec * 12.0);
 
-      // Realistic Moving Head Beam: Stops beneath MC chest (~2.35m), zero glare on ceiling/screens
-      const maxBeamH = 2.35;
+      const maxReflectionH = 0.50; // Strictly ~0.5m (low reflection only, zero tall column)
       if (beamGroupRef.current) {
-        const actualH = maxBeamH * heightScale;
+        const actualH = maxReflectionH * heightScale;
         beamGroupRef.current.position.set(0, actualH / 2, 0);
         beamGroupRef.current.scale.set(radiusBreath, heightScale, radiusBreath);
       }
 
-      if (beamCoreMatRef.current) beamCoreMatRef.current.opacity = 0.72 * intensity;
-      if (beamPlasmaMatRef.current) beamPlasmaMatRef.current.opacity = 0.75 * intensity;
-      if (beamAuraMatRef.current) beamAuraMatRef.current.opacity = 0.45 * intensity;
+      if (beamCoreMatRef.current) beamCoreMatRef.current.opacity = 0.45 * intensity;
+      if (beamPlasmaMatRef.current) beamPlasmaMatRef.current.opacity = 0.35 * intensity;
+      if (beamAuraMatRef.current) beamAuraMatRef.current.opacity = 0.20 * intensity;
     }
   });
 
@@ -4204,17 +4229,17 @@ function CentralFloorIntroBurst({
         </mesh>
       </group>
 
-      {/* ── B. 0.4s - 2.5s: SOFT RADIAL FLOOR BLOOM (FLAT ON FLOOR SCREEN) ── */}
+      {/* ── B. 0.4s - 2.5s: FULL FLOOR RED OPTICAL FLARE BURST (IMAGE 2 VTV3 PARITY) ── */}
       <group ref={floorRedGroupRef} rotation={[-Math.PI / 2, 0, 0]} renderOrder={10.20}>
-        {/* Soft Radial Fiery Crimson Floor Bloom Disc */}
+        {/* Full-Floor Radiant Crimson Optical Flare Disc (R = 2.15m covering the dais screen) */}
         <mesh renderOrder={10.20}>
-          <circleGeometry args={[0.95, 48]} />
+          <circleGeometry args={[2.15, 64]} />
           <meshBasicMaterial
             ref={floorRedBloomMatRef}
-            map={softGlowTex}
-            color="#ff1a42"
+            map={opticalFlareTex}
+            color="#ff2a4b"
             transparent
-            opacity={0.82}
+            opacity={0.98}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             polygonOffset
@@ -4222,96 +4247,65 @@ function CentralFloorIntroBurst({
             polygonOffsetUnits={-2}
           />
         </mesh>
-        {/* Soft Focused Core Emitter (Non-blinding feathered bloom) */}
+        {/* Blinding White Core Optical Flare Center (Smooth Gaussian Falloff) */}
         <mesh renderOrder={10.25}>
-          <circleGeometry args={[0.35, 36]} />
+          <circleGeometry args={[0.55, 48]} />
           <meshBasicMaterial
             ref={floorWhiteCoreMatRef}
             map={softGlowTex}
-            color="#ffe4e6"
+            color="#ffffff"
             transparent
-            opacity={0.85}
+            opacity={0.99}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             polygonOffset
             polygonOffsetFactor={-2}
             polygonOffsetUnits={-2}
-          />
-        </mesh>
-        {/* Expanding Subtle Energy Ripples on Floor */}
-        <mesh renderOrder={10.22}>
-          <ringGeometry args={[0.65, 0.75, 64]} />
-          <meshBasicMaterial
-            ref={floorRipple1MatRef}
-            color="#ff4455"
-            transparent
-            opacity={0.70}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            polygonOffset
-            polygonOffsetFactor={-2}
-            polygonOffsetUnits={-2}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-        <mesh renderOrder={10.23}>
-          <ringGeometry args={[0.82, 0.92, 64]} />
-          <meshBasicMaterial
-            ref={floorRipple2MatRef}
-            color="#ff9933"
-            transparent
-            opacity={0.55}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            polygonOffset
-            polygonOffsetFactor={-2}
-            polygonOffsetUnits={-2}
-            side={THREE.DoubleSide}
           />
         </mesh>
       </group>
 
-      {/* ── C. 0.4s - 2.5s: 3D VOLUMETRIC LIGHT BEAM PILLAR (STANDING VERTICAL IN STUDIO AIRSPACE) ── */}
-      <group ref={beamGroupRef} position={[0, 1.175, 0]} renderOrder={10.50}>
-        {/* Layer 1: Concentrated Core Plasma Light Column (Converging floor lens to soft beam) */}
+      {/* ── C. 0.4s - 2.5s: SUBTLE LOW GROUND REFLECTION CONE (H ~0.5m, NARROWING UPWARDS THEN CUT) ── */}
+      <group ref={beamGroupRef} position={[0, 0.25, 0]} renderOrder={10.50}>
+        {/* Layer 1: Narrowing Inner Ground Glow (Rtop = 0.08m, Rbottom = 0.38m, H = 0.50m) */}
         <mesh renderOrder={10.55}>
-          <cylinderGeometry args={[0.22, 0.16, 2.35, 32, 1, true]} />
+          <cylinderGeometry args={[0.08, 0.38, 0.50, 32, 1, true]} />
           <meshBasicMaterial
             ref={beamCoreMatRef}
-            map={beamTex}
-            color="#ffffff"
-            transparent
-            opacity={0.72}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-
-        {/* Layer 2: Volumetric Haze Cone (Anti-flat cosine density, soft feathered edges) */}
-        <mesh renderOrder={10.52}>
-          <cylinderGeometry args={[0.62, 0.30, 2.35, 36, 1, true]} />
-          <meshBasicMaterial
-            ref={beamPlasmaMatRef}
-            map={beamTex}
-            color="#ff2a4b"
-            transparent
-            opacity={0.75}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-
-        {/* Layer 3: Ambient Atmospheric Fog Glow */}
-        <mesh renderOrder={10.50}>
-          <cylinderGeometry args={[0.85, 0.45, 2.35, 36, 1, true]} />
-          <meshBasicMaterial
-            ref={beamAuraMatRef}
-            map={beamTex}
-            color="#dc2626"
+            map={reflectionTex}
+            color="#ffccd5"
             transparent
             opacity={0.45}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Layer 2: Soft Atmospheric Ground Haze (Rtop = 0.18m, Rbottom = 0.65m, H = 0.50m) */}
+        <mesh renderOrder={10.52}>
+          <cylinderGeometry args={[0.18, 0.65, 0.50, 32, 1, true]} />
+          <meshBasicMaterial
+            ref={beamPlasmaMatRef}
+            map={reflectionTex}
+            color="#ff1a42"
+            transparent
+            opacity={0.35}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Layer 3: Faint Ambient Floor Reflection Cushion */}
+        <mesh renderOrder={10.50}>
+          <cylinderGeometry args={[0.28, 0.85, 0.50, 32, 1, true]} />
+          <meshBasicMaterial
+            ref={beamAuraMatRef}
+            map={reflectionTex}
+            color="#dc2626"
+            transparent
+            opacity={0.20}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             side={THREE.DoubleSide}
@@ -4376,9 +4370,7 @@ export function CenterFloorStage({
 
     // 2. Real-time 60 FPS Laurel Wreath Transition Timeline
     let curLaurelOpacity = 1.0;
-    if (isIdle && !introStartedAt) {
-      curLaurelOpacity = 0.0;
-    } else if (introStartedAt != null) {
+    if (introStartedAt != null) {
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = (now - introStartedAt) / 1000;
       if (elapsedSec < 3.0) {
@@ -4677,32 +4669,13 @@ export function CenterFloorStage({
       {/* ── 2B. ENTRY RADIANT LIGHT BURST EFFECT (Khi diễn ra màn chào sân) ── */}
       {isEntrance && (
         <group ref={entryBurstRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
-          {/* 12 Radiant Glowing Light Rays Expanding from Center */}
-          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
-            const rad = (deg * Math.PI) / 180;
-            return (
-              <mesh key={deg} rotation={[0, 0, rad]}>
-                <planeGeometry args={[0.06, 2.2]} />
-                <meshBasicMaterial
-                  color="#38bdf8"
-                  transparent
-                  opacity={0.35}
-                  depthWrite={false}
-                  polygonOffset
-                  polygonOffsetFactor={-2}
-                  polygonOffsetUnits={-2}
-                  blending={THREE.AdditiveBlending}
-                />
-              </mesh>
-            );
-          })}
-          {/* Expanding Radiant Core Ripple */}
+          {/* Expanding Radiant Core Ripple (Zero spokes/straight lines) */}
           <mesh>
-            <ringGeometry args={[0.1, 0.35, 32]} />
+            <ringGeometry args={[0.2, 0.45, 48]} />
             <meshBasicMaterial
-              color="#67e8f9"
+              color="#38bdf8"
               transparent
-              opacity={0.5}
+              opacity={0.4}
               depthWrite={false}
               polygonOffset
               polygonOffsetFactor={-2}

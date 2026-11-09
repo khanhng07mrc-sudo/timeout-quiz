@@ -38,6 +38,15 @@ import HostConsole from "@/components/olympia/HostConsole";
 import { ROUND_LABELS, type OlympiaState, type RulesetId } from "@/lib/olympia/types";
 import { getOlympiaBanks, getPresetOlympiaBanks } from "@/lib/olympia/olympia-storage";
 import { RULESET_YEAR_BUTTONS, RULESETS } from "@/lib/olympia/rulesets";
+
+const CANONICAL_RULESET_MAP: Record<string, string> = {
+  O27: "O26",
+  O25: "O24",
+  O19: "O15",
+  O18: "O15",
+  O17: "O15",
+  O16: "O15",
+};
 import {
   generateMagicWheelSectors,
   generateSpecialRoundWheelSectors,
@@ -10209,25 +10218,16 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
 
               {selectedMode === "OLYMPIA" && (
                 <select
-                  value={olympiaRulesetId}
-                  onChange={(e) => setOlympiaRulesetId(e.target.value)}
+                  value={RULESET_YEAR_BUTTONS.some((b) => b.id === olympiaRulesetId) ? olympiaRulesetId : (CANONICAL_RULESET_MAP[olympiaRulesetId] || "O26")}
+                  onChange={(e) => setOlympiaRulesetId(CANONICAL_RULESET_MAP[e.target.value] || e.target.value)}
                   className="px-2 py-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold text-xs focus:outline-none cursor-pointer"
-                  title="Chọn mùa / thể thức luật thi đấu Olympia"
+                  title="Chọn mùa / thể thức luật thi đấu Olympia (O13 - O27)"
                 >
-                  <option value="O26" className="bg-[#151728] text-white">Mùa O26 – O27 (Mới nhất)</option>
-                  <option value="O25" className="bg-[#151728] text-white">Mùa O25</option>
-                  <option value="O24" className="bg-[#151728] text-white">Mùa O24</option>
-                  <option value="O23" className="bg-[#151728] text-white">Mùa O23</option>
-                  <option value="O22" className="bg-[#151728] text-white">Mùa O22</option>
-                  <option value="O21" className="bg-[#151728] text-white">Mùa O21</option>
-                  <option value="O20" className="bg-[#151728] text-white">Mùa O20</option>
-                  <option value="O19" className="bg-[#151728] text-white">Mùa O19</option>
-                  <option value="O18" className="bg-[#151728] text-white">Mùa O18</option>
-                  <option value="O17" className="bg-[#151728] text-white">Mùa O17</option>
-                  <option value="O16" className="bg-[#151728] text-white">Mùa O16</option>
-                  <option value="O15" className="bg-[#151728] text-white">Mùa O15</option>
-                  <option value="O14" className="bg-[#151728] text-white">Mùa O14</option>
-                  <option value="O13" className="bg-[#151728] text-white">Mùa O13</option>
+                  {[...RULESET_YEAR_BUTTONS].reverse().map((btn) => (
+                    <option key={btn.id} value={btn.id} className="bg-[#151728] text-white">
+                      Mùa {btn.numberLabel} ({btn.fullTitle})
+                    </option>
+                  ))}
                 </select>
               )}
 
@@ -11647,12 +11647,12 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     <span className="hidden sm:inline">Mùa thi:</span>
                   </span>
                   <select
-                    value={olympiaRulesetId}
-                    onChange={(e) => setOlympiaRulesetId(e.target.value)}
+                    value={RULESET_YEAR_BUTTONS.some((b) => b.id === olympiaRulesetId) ? olympiaRulesetId : (CANONICAL_RULESET_MAP[olympiaRulesetId] || "O26")}
+                    onChange={(e) => setOlympiaRulesetId(CANONICAL_RULESET_MAP[e.target.value] || e.target.value)}
                     className="px-2.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/25 to-yellow-500/15 border-2 border-amber-400/60 text-amber-300 font-black text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer shadow-lg shadow-amber-500/20"
                     title="Chọn mùa / thể thức luật thi đấu Olympia (O13 - O27)"
                   >
-                    {RULESET_YEAR_BUTTONS.map((btn) => (
+                    {[...RULESET_YEAR_BUTTONS].reverse().map((btn) => (
                       <option key={btn.id} value={btn.id} className="bg-[#151728] text-white">
                         Mùa {btn.numberLabel} ({btn.fullTitle})
                       </option>
@@ -11882,12 +11882,12 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                             <span>Mùa giải:</span>
                           </span>
                           <select
-                            value={olympiaRulesetId}
-                            onChange={(e) => setOlympiaRulesetId(e.target.value)}
+                            value={RULESET_YEAR_BUTTONS.some((b) => b.id === olympiaRulesetId) ? olympiaRulesetId : (CANONICAL_RULESET_MAP[olympiaRulesetId] || "O26")}
+                            onChange={(e) => setOlympiaRulesetId(CANONICAL_RULESET_MAP[e.target.value] || e.target.value)}
                             className="px-2 py-1 rounded-lg bg-[#151728] border border-amber-400/50 text-amber-300 font-bold text-xs focus:outline-none cursor-pointer flex-1 min-w-0"
                             title="Chọn mùa thi Olympia"
                           >
-                            {RULESET_YEAR_BUTTONS.map((btn) => (
+                            {[...RULESET_YEAR_BUTTONS].reverse().map((btn) => (
                               <option key={btn.id} value={btn.id} className="bg-[#151728] text-white">
                                 {btn.fullTitle}
                               </option>

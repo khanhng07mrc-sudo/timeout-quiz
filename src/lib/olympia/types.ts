@@ -295,6 +295,7 @@ export interface ContestantEntranceState {
   currentSeatIdx: number;       // Thí sinh đang thực hiện đi xuống (0..N-1)
   seatStartedAt: number;        // Timestamp bắt đầu lượt của thí sinh hiện tại
   seatGestures: ContestantGestureType[]; // Mảng động tác ngẫu nhiên được bốc cho từng thí sinh
+  seatStartTimes?: number[];    // Mảng timestamp bắt đầu của từng thí sinh (hỗ trợ chuyển động gối đầu đan xen)
 }
 
 export interface Cue {
@@ -356,6 +357,8 @@ export interface KhoiDongState {
   lastVerdict: "correct" | "wrong" | null;
   /** Whether the question content has been revealed to viewers/players (false during ready/open_question prelude until first "Câu tiếp" click) */
   questionRevealed?: boolean;
+  questionRevealedAt?: number;
+  noBuzzWrongUnlockAt?: number;
   bgmMode?: "auto" | "manual";
   currentBgmTrack?: "kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3";
 }

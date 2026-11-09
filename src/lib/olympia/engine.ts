@@ -474,15 +474,21 @@ export class OlympiaGame {
       return true;
     }
 
-    // Auto-advance sequential contestant entrance (6.8s per contestant: 0.5s pause + 4.5s walk/gesture + 1.8s arrival/spotlight, synchronized with 27.64s contestant_intro music)
+    // Auto-advance contestant entrance (staggered 4.8s step per contestant, 6.8s total walk each)
     if (st.entranceState && st.entranceState.active) {
       const elapsedForSeat = now - st.entranceState.seatStartedAt;
-      if (elapsedForSeat >= 6800) {
-        const activeCount = Math.max(1, st.seats.length);
-        const nextIdx = st.entranceState.currentSeatIdx + 1;
-        if (nextIdx < activeCount) {
+      const activeCount = Math.max(1, st.seats.length);
+      const isLast = st.entranceState.currentSeatIdx >= activeCount - 1;
+      const advanceThreshold = isLast ? 6800 : 4800;
+      if (elapsedForSeat >= advanceThreshold) {
+        if (!isLast) {
+          const nextIdx = st.entranceState.currentSeatIdx + 1;
           st.entranceState.currentSeatIdx = nextIdx;
           st.entranceState.seatStartedAt = now;
+          if (!st.entranceState.seatStartTimes) {
+            st.entranceState.seatStartTimes = [st.entranceState.startedAt];
+          }
+          st.entranceState.seatStartTimes[nextIdx] = now;
           this.touch(now);
           return true;
         } else {
@@ -1244,6 +1250,7 @@ export class OlympiaGame {
           currentSeatIdx: 0,
           seatStartedAt: now,
           seatGestures,
+          seatStartTimes: [now],
         };
         this.cue("6_NhacKhac/contestant_intro", "sound");
         return OK;
@@ -1255,6 +1262,10 @@ export class OlympiaGame {
         if (nextIdx < activeCount) {
           st.entranceState.currentSeatIdx = nextIdx;
           st.entranceState.seatStartedAt = now;
+          if (!st.entranceState.seatStartTimes) {
+            st.entranceState.seatStartTimes = [st.entranceState.startedAt];
+          }
+          st.entranceState.seatStartTimes[nextIdx] = now;
         } else {
           st.entranceState = null;
           st.entranceCompleted = true;
@@ -1599,13 +1610,17 @@ export class OlympiaGame {
               };
             }
           }
+          kd.questionRevealedAt = now;
           if (isSolo) {
             kd.buzzOpen = false;
             kd.buzzUnlockAt = undefined;
+            kd.noBuzzWrongUnlockAt = undefined;
           } else {
             kd.buzzOpen = false;
             const lockMs = (this.ruleset.id === "O22") ? 2000 : 5000;
             kd.buzzUnlockAt = now + lockMs;
+            const wrongLockMs = (this.ruleset.id === "O22") ? 3000 : 5000;
+            kd.noBuzzWrongUnlockAt = now + wrongLockMs;
           }
           if (wasStarted && kd.globalTimer) {
             const rId = this.ruleset.id;
@@ -1674,14 +1689,18 @@ export class OlympiaGame {
         kd.nextLockedSeats = [];
         kd.lastVerdict = null;
 
+        kd.questionRevealedAt = now;
         if (isSolo) {
           kd.buzzOpen = false;
           kd.buzzUnlockAt = undefined;
+          kd.noBuzzWrongUnlockAt = undefined;
         } else {
           // Shared KĐ: locked 2s for O22, 5s for O23+
           kd.buzzOpen = false;
           const lockMs = (this.ruleset.id === "O22") ? 2000 : 5000;
           kd.buzzUnlockAt = now + lockMs;
+          const wrongLockMs = (this.ruleset.id === "O22") ? 3000 : 5000;
+          kd.noBuzzWrongUnlockAt = now + wrongLockMs;
         }
         const aSeason = this.ruleset.audioSeason;
         if (aSeason !== "O13-21" && !(this.ruleset.id === "O22" && !isSolo)) {
@@ -1769,6 +1788,7 @@ export class OlympiaGame {
         kd.current = null;
         kd.buzzOpen = false;
         kd.buzzUnlockAt = undefined;
+        kd.noBuzzWrongUnlockAt = undefined;
         kd.currentBgmTrack = undefined;
 
         // t = 0s: Bấm BẮT ĐẦU: Phát âm ready (đồ hoạ chưa hiện).
@@ -1884,6 +1904,7 @@ export class OlympiaGame {
         kd.buzzedSeat = null;
         kd.buzzOpen = false;
         kd.buzzUnlockAt = undefined;
+        kd.noBuzzWrongUnlockAt = undefined;
         kd.lockedSeats = [];
         kd.nextLockedSeats = [];
         kd.current = null;
@@ -1905,6 +1926,7 @@ export class OlympiaGame {
         }
         kd.buzzOpen = false;
         kd.buzzUnlockAt = undefined;
+        kd.noBuzzWrongUnlockAt = undefined;
         const buzzers: TranscriptBuzzerItem[] = [];
         if (!isSolo) {
           kd.lockedSeats.forEach((sId, idx) => {
@@ -1969,10 +1991,15 @@ export class OlympiaGame {
         }
         const who = kd.buzzedSeat;
         if (who == null) {
+          if (!isSolo && kd.noBuzzWrongUnlockAt && now < kd.noBuzzWrongUnlockAt) {
+            const sec = this.ruleset.id === "O22" ? 3 : 5;
+            return fail(`Không thể chấm sai khi chưa ai bấm chuông trong ${sec}s đầu!`);
+          }
           pauseTimer(kd.timer, now);
           kd.buzzedSeat = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = undefined;
+          kd.noBuzzWrongUnlockAt = undefined;
           kd.phase = "result";
           kd.lastVerdict = "wrong";
           this.cue("1_KhoiDong/wrong");
@@ -2013,6 +2040,7 @@ export class OlympiaGame {
         kd.buzzedSeat = null;
         kd.buzzOpen = false;
         kd.buzzUnlockAt = undefined;
+        kd.noBuzzWrongUnlockAt = undefined;
         kd.phase = "result";
         kd.lastVerdict = "wrong";
         this.cue("1_KhoiDong/wrong");
@@ -2052,6 +2080,7 @@ export class OlympiaGame {
         pauseTimer(kd.timer, now);
         kd.buzzOpen = false;
         kd.buzzUnlockAt = undefined;
+        kd.noBuzzWrongUnlockAt = undefined;
         kd.phase = "result";
         kd.lastVerdict = null;
         this.pushTranscript({
@@ -3380,7 +3409,7 @@ export class OlympiaGame {
         const kd = st.khoiDong;
         if (!kd || kd.phase !== "question") return fail("Chuông chưa mở");
         if (kd.segments[kd.segIdx].kind === "solo") return fail("Khởi động riêng không có chuông");
-        if (kd.buzzUnlockAt && now + 250 >= kd.buzzUnlockAt && !kd.buzzOpen && kd.buzzedSeat == null) {
+        if (kd.buzzUnlockAt && now + 350 >= kd.buzzUnlockAt && !kd.buzzOpen && kd.buzzedSeat == null) {
           kd.buzzOpen = true;
           kd.buzzUnlockAt = undefined;
         }

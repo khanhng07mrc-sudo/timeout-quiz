@@ -204,7 +204,14 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
       } else if (e.key === "Backspace") {
         e.preventDefault();
         if (state?.currentRound === "khoiDong") {
-          if (!state.khoiDong?.started || !state.khoiDong?.questionRevealed) return;
+          const kd = state.khoiDong;
+          if (!kd?.started || !kd?.questionRevealed) return;
+          const seg = kd.segments[kd.segIdx];
+          const isSolo = seg?.kind === "solo";
+          const now = serverNow ? serverNow() : Date.now();
+          if (!isSolo && kd.buzzedSeat == null && kd.noBuzzWrongUnlockAt && now < kd.noBuzzWrongUnlockAt) {
+            return;
+          }
           call("kd:wrong");
         }
         else if (state?.currentRound === "vcnv") call("vcnv:wrong");
@@ -262,6 +269,21 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [state, serverNow]);
+
+  // Tick every 100ms when Host "Sai" button lock countdown is active in shared Khởi Động
+  const [, setWrongLockTick] = useState(0);
+  useEffect(() => {
+    const unlockAt = state?.khoiDong?.noBuzzWrongUnlockAt;
+    if (!unlockAt) return;
+    const now = serverNow ? serverNow() : Date.now();
+    if (now >= unlockAt) return;
+    const interval = setInterval(() => {
+      setWrongLockTick((t) => t + 1);
+      const cur = serverNow ? serverNow() : Date.now();
+      if (cur >= unlockAt) clearInterval(interval);
+    }, 100);
+    return () => clearInterval(interval);
+  }, [state?.khoiDong?.noBuzzWrongUnlockAt, serverNow]);
 
   // Calculate current timer countdown for right-hand status widget with live useCountdown
   const activeTimer = useMemo(() => {
@@ -2106,47 +2128,66 @@ function KhoiDongDeck({
 
 
       {/* Row 3: Evaluation: Đúng (Enter) | Sai (Bksp) | Ô TRỐNG */}
-      <div className="grid grid-cols-3 gap-1.5">
-        <button
-          type="button"
-          onClick={() => call("kd:correct")}
-          disabled={!kd.started || !kd.questionRevealed}
-          className={`py-2 rounded-xl text-xs font-black shadow flex items-center justify-center gap-1 transition ${
-            !kd.started || !kd.questionRevealed
-              ? "bg-emerald-950/40 text-emerald-600/40 border border-emerald-900/20 cursor-not-allowed pointer-events-none opacity-40"
-              : "bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer"
-          }`}
-        >
-          <span>✔</span>
-          <span>ĐÚNG (Enter) [+10đ]</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => call("kd:wrong")}
-          disabled={!kd.started || !kd.questionRevealed}
-          className={`py-2 rounded-xl text-xs font-black shadow flex items-center justify-center gap-1 transition ${
-            !kd.started || !kd.questionRevealed
-              ? "bg-rose-950/40 text-rose-600/40 border border-rose-900/20 cursor-not-allowed pointer-events-none opacity-40"
-              : "bg-rose-600 hover:bg-rose-500 text-white cursor-pointer"
-          }`}
-        >
-          <span>✘</span>
-          <span>SAI (Bksp)</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => call("kd:blank")}
-          disabled={!kd.started || !kd.questionRevealed}
-          className={`py-2 rounded-xl text-xs font-bold shadow flex items-center justify-center gap-1 transition ${
-            !kd.started || !kd.questionRevealed
-              ? "bg-slate-900/40 text-slate-600 border border-white/5 cursor-not-allowed pointer-events-none opacity-40"
-              : "bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
-          }`}
-        >
-          <span>■</span>
-          <span>Ô TRỐNG</span>
-        </button>
-      </div>
+      {(() => {
+        const seg = kd.segments[kd.segIdx];
+        const isSolo = seg?.kind === "solo";
+        const now = serverNow ? serverNow() : Date.now();
+        const wrongUnlockRemMs = (!isSolo && kd.buzzedSeat == null && kd.noBuzzWrongUnlockAt)
+          ? Math.max(0, kd.noBuzzWrongUnlockAt - now)
+          : 0;
+        const isWrongLocked = wrongUnlockRemMs > 0;
+        const isWrongDisabled = !kd.started || !kd.questionRevealed || isWrongLocked;
+
+        return (
+          <div className="grid grid-cols-3 gap-1.5">
+            <button
+              type="button"
+              onClick={() => call("kd:correct")}
+              disabled={!kd.started || !kd.questionRevealed}
+              className={`py-2 rounded-xl text-xs font-black shadow flex items-center justify-center gap-1 transition ${
+                !kd.started || !kd.questionRevealed
+                  ? "bg-emerald-950/40 text-emerald-600/40 border border-emerald-900/20 cursor-not-allowed pointer-events-none opacity-40"
+                  : "bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer"
+              }`}
+            >
+              <span>✔</span>
+              <span>ĐÚNG (Enter) [+10đ]</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => call("kd:wrong")}
+              disabled={isWrongDisabled}
+              title={isWrongLocked ? `Khóa chấm sai trong ${(wrongUnlockRemMs / 1000).toFixed(1)}s đầu khi chưa có thí sinh bấm chuông` : "Chấm sai cho thí sinh"}
+              className={`py-2 rounded-xl text-xs font-black shadow flex items-center justify-center gap-1 transition ${
+                isWrongDisabled
+                  ? "bg-rose-950/40 text-rose-600/40 border border-rose-900/20 cursor-not-allowed pointer-events-none opacity-40"
+                  : "bg-rose-600 hover:bg-rose-500 text-white cursor-pointer"
+              }`}
+            >
+              <span>✘</span>
+              <span>SAI (Bksp)</span>
+              {isWrongLocked && (
+                <span className="text-[10px] px-1 py-0.2 rounded bg-black/40 text-amber-300 font-mono font-bold animate-pulse">
+                  {(wrongUnlockRemMs / 1000).toFixed(1)}s
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => call("kd:blank")}
+              disabled={!kd.started || !kd.questionRevealed}
+              className={`py-2 rounded-xl text-xs font-bold shadow flex items-center justify-center gap-1 transition ${
+                !kd.started || !kd.questionRevealed
+                  ? "bg-slate-900/40 text-slate-600 border border-white/5 cursor-not-allowed pointer-events-none opacity-40"
+                  : "bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
+              }`}
+            >
+              <span>■</span>
+              <span>Ô TRỐNG</span>
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Row 4: Auxiliary: Toggle Chuông (chỉ hiện khi có bấm chuông), Đổi BGM, Dừng BGM */}
       {(() => {

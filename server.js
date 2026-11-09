@@ -106039,12 +106039,18 @@ var OlympiaGame = class _OlympiaGame {
     }
     if (st.entranceState && st.entranceState.active) {
       const elapsedForSeat = now - st.entranceState.seatStartedAt;
-      if (elapsedForSeat >= 6800) {
-        const activeCount = Math.max(1, st.seats.length);
-        const nextIdx = st.entranceState.currentSeatIdx + 1;
-        if (nextIdx < activeCount) {
+      const activeCount = Math.max(1, st.seats.length);
+      const isLast = st.entranceState.currentSeatIdx >= activeCount - 1;
+      const advanceThreshold = isLast ? 6800 : 4800;
+      if (elapsedForSeat >= advanceThreshold) {
+        if (!isLast) {
+          const nextIdx = st.entranceState.currentSeatIdx + 1;
           st.entranceState.currentSeatIdx = nextIdx;
           st.entranceState.seatStartedAt = now;
+          if (!st.entranceState.seatStartTimes) {
+            st.entranceState.seatStartTimes = [st.entranceState.startedAt];
+          }
+          st.entranceState.seatStartTimes[nextIdx] = now;
           this.touch(now);
           return true;
         } else {
@@ -106737,7 +106743,8 @@ var OlympiaGame = class _OlympiaGame {
           startedAt: now,
           currentSeatIdx: 0,
           seatStartedAt: now,
-          seatGestures
+          seatGestures,
+          seatStartTimes: [now]
         };
         this.cue("6_NhacKhac/contestant_intro", "sound");
         return OK;
@@ -106749,6 +106756,10 @@ var OlympiaGame = class _OlympiaGame {
         if (nextIdx < activeCount) {
           st.entranceState.currentSeatIdx = nextIdx;
           st.entranceState.seatStartedAt = now;
+          if (!st.entranceState.seatStartTimes) {
+            st.entranceState.seatStartTimes = [st.entranceState.startedAt];
+          }
+          st.entranceState.seatStartTimes[nextIdx] = now;
         } else {
           st.entranceState = null;
           st.entranceCompleted = true;
@@ -107059,13 +107070,17 @@ var OlympiaGame = class _OlympiaGame {
               };
             }
           }
+          kd.questionRevealedAt = now;
           if (isSolo) {
             kd.buzzOpen = false;
             kd.buzzUnlockAt = void 0;
+            kd.noBuzzWrongUnlockAt = void 0;
           } else {
             kd.buzzOpen = false;
             const lockMs = this.ruleset.id === "O22" ? 2e3 : 5e3;
             kd.buzzUnlockAt = now + lockMs;
+            const wrongLockMs = this.ruleset.id === "O22" ? 3e3 : 5e3;
+            kd.noBuzzWrongUnlockAt = now + wrongLockMs;
           }
           if (wasStarted && kd.globalTimer) {
             const rId = this.ruleset.id;
@@ -107130,13 +107145,17 @@ var OlympiaGame = class _OlympiaGame {
         kd.lockedSeats = [...kd.nextLockedSeats];
         kd.nextLockedSeats = [];
         kd.lastVerdict = null;
+        kd.questionRevealedAt = now;
         if (isSolo) {
           kd.buzzOpen = false;
           kd.buzzUnlockAt = void 0;
+          kd.noBuzzWrongUnlockAt = void 0;
         } else {
           kd.buzzOpen = false;
           const lockMs = this.ruleset.id === "O22" ? 2e3 : 5e3;
           kd.buzzUnlockAt = now + lockMs;
+          const wrongLockMs = this.ruleset.id === "O22" ? 3e3 : 5e3;
+          kd.noBuzzWrongUnlockAt = now + wrongLockMs;
         }
         const aSeason = this.ruleset.audioSeason;
         if (aSeason !== "O13-21" && !(this.ruleset.id === "O22" && !isSolo)) {
@@ -107213,6 +107232,7 @@ var OlympiaGame = class _OlympiaGame {
         kd.current = null;
         kd.buzzOpen = false;
         kd.buzzUnlockAt = void 0;
+        kd.noBuzzWrongUnlockAt = void 0;
         kd.currentBgmTrack = void 0;
         st.kdIntroTimer = mkTimer(3500);
         startTimer(st.kdIntroTimer, now);
@@ -107318,6 +107338,7 @@ var OlympiaGame = class _OlympiaGame {
         kd.buzzedSeat = null;
         kd.buzzOpen = false;
         kd.buzzUnlockAt = void 0;
+        kd.noBuzzWrongUnlockAt = void 0;
         kd.lockedSeats = [];
         kd.nextLockedSeats = [];
         kd.current = null;
@@ -107339,6 +107360,7 @@ var OlympiaGame = class _OlympiaGame {
         }
         kd.buzzOpen = false;
         kd.buzzUnlockAt = void 0;
+        kd.noBuzzWrongUnlockAt = void 0;
         const buzzers = [];
         if (!isSolo) {
           kd.lockedSeats.forEach((sId, idx) => {
@@ -107403,10 +107425,15 @@ var OlympiaGame = class _OlympiaGame {
         }
         const who = kd.buzzedSeat;
         if (who == null) {
+          if (!isSolo && kd.noBuzzWrongUnlockAt && now < kd.noBuzzWrongUnlockAt) {
+            const sec = this.ruleset.id === "O22" ? 3 : 5;
+            return fail(`Kh\xF4ng th\u1EC3 ch\u1EA5m sai khi ch\u01B0a ai b\u1EA5m chu\xF4ng trong ${sec}s \u0111\u1EA7u!`);
+          }
           pauseTimer(kd.timer, now);
           kd.buzzedSeat = null;
           kd.buzzOpen = false;
           kd.buzzUnlockAt = void 0;
+          kd.noBuzzWrongUnlockAt = void 0;
           kd.phase = "result";
           kd.lastVerdict = "wrong";
           this.cue("1_KhoiDong/wrong");
@@ -107447,6 +107474,7 @@ var OlympiaGame = class _OlympiaGame {
         kd.buzzedSeat = null;
         kd.buzzOpen = false;
         kd.buzzUnlockAt = void 0;
+        kd.noBuzzWrongUnlockAt = void 0;
         kd.phase = "result";
         kd.lastVerdict = "wrong";
         this.cue("1_KhoiDong/wrong");
@@ -107486,6 +107514,7 @@ var OlympiaGame = class _OlympiaGame {
         pauseTimer(kd.timer, now);
         kd.buzzOpen = false;
         kd.buzzUnlockAt = void 0;
+        kd.noBuzzWrongUnlockAt = void 0;
         kd.phase = "result";
         kd.lastVerdict = null;
         this.pushTranscript({
@@ -108766,7 +108795,7 @@ var OlympiaGame = class _OlympiaGame {
         const kd = st.khoiDong;
         if (!kd || kd.phase !== "question") return fail("Chu\xF4ng ch\u01B0a m\u1EDF");
         if (kd.segments[kd.segIdx].kind === "solo") return fail("Kh\u1EDFi \u0111\u1ED9ng ri\xEAng kh\xF4ng c\xF3 chu\xF4ng");
-        if (kd.buzzUnlockAt && now + 250 >= kd.buzzUnlockAt && !kd.buzzOpen && kd.buzzedSeat == null) {
+        if (kd.buzzUnlockAt && now + 350 >= kd.buzzUnlockAt && !kd.buzzOpen && kd.buzzedSeat == null) {
           kd.buzzOpen = true;
           kd.buzzUnlockAt = void 0;
         }

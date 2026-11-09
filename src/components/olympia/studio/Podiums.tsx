@@ -3136,17 +3136,19 @@ export function getGrandstandStairY(z: number): number {
   return 0.22;
 }
 
-export function ContestantEntranceWalkingFigures({
-  state,
-  contestantConfigs,
+function SingleContestantEntranceWalkingFigure({
+  seatId,
+  seatStart,
+  targetCfg,
   serverNow,
 }: {
-  state: OlympiaState;
-  contestantConfigs: Array<{
+  seatId: number;
+  seatStart: number;
+  targetCfg: {
     seatId: number;
     pos: [number, number, number];
     rotY: number;
-  }>;
+  };
   serverNow?: () => number;
 }) {
   const figureRef = useRef<THREE.Group>(null);
@@ -3154,24 +3156,35 @@ export function ContestantEntranceWalkingFigures({
   const [gesture, setGesture] = useState<"none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow">("none");
   const [gestureProgress, setGestureProgress] = useState(0);
 
-  const currentSeat = state.entranceState?.currentSeatIdx ?? 0;
-  const seatStart = state.entranceState?.seatStartedAt || state.entranceState?.startedAt || Date.now();
   const getNow = serverNow || (() => Date.now());
 
   useFrame(() => {
     const g = figureRef.current;
     if (!g) return;
 
-    const targetCfg = contestantConfigs[currentSeat] || contestantConfigs[0];
     const deskRotY = targetCfg ? targetCfg.rotY : 0;
     const deskX = targetCfg ? targetCfg.pos[0] - Math.sin(deskRotY) * 0.42 : -3.0;
     const deskY = targetCfg ? targetCfg.pos[1] : 0.22;
     const deskZ = targetCfg ? targetCfg.pos[2] - Math.cos(deskRotY) * 0.42 : -3.5;
 
+    // Outer aisle behind podium desk (R = 7.35m from (0, -0.5m)):
+    // Podiums are placed along the arc centered at (0, -0.5m)
+    const relX = targetCfg.pos[0];
+    const relZ = targetCfg.pos[2] - (-0.5);
+    const phi = Math.atan2(-relZ, -relX); // angle in radians
+
+    const aisleRadius = 7.35;
+    const aisleX = -aisleRadius * Math.cos(phi);
+    const aisleZ = -0.5 - aisleRadius * Math.sin(phi);
+
+    // Midway waypoint along dais floor towards outer aisle (sweeps wide to avoid clipping podium front kiosk):
+    const midX = aisleX * 0.52;
+    const midZ = THREE.MathUtils.lerp(6.20, aisleZ, 0.42);
+
     // Door side selection for contestants (alternating or seat-based):
     // TS 1 (seat 0) & TS 3 (seat 2): emerge from Door Left (X = +1.15m, Z = 12.85m)
     // TS 2 (seat 1) & TS 4 (seat 3) & TS 5 (seat 4): emerge from Door Right (X = -1.15m, Z = 12.85m)
-    const isDoorLeft = currentSeat % 2 === 0;
+    const isDoorLeft = seatId % 2 === 0;
     const doorX = isDoorLeft ? 1.15 : -1.15;
     const doorZ = 12.85;
 
@@ -3181,6 +3194,12 @@ export function ContestantEntranceWalkingFigures({
 
     const now = getNow();
     const t = Math.max(0, (now - seatStart) / 1000);
+
+    // If walk completed (t >= 6.8s), hide this walking figure (stationary podium figure takes over)
+    if (t >= 6.8) {
+      g.visible = false;
+      return;
+    }
 
     let curX = startX;
     let curY = startY;
@@ -3205,7 +3224,6 @@ export function ContestantEntranceWalkingFigures({
       curX = THREE.MathUtils.lerp(doorX, 0, smoothP);
       curY = startY;
       curZ = THREE.MathUtils.lerp(doorZ, 11.90, smoothP);
-      // Subtle facing angle while stepping out from side door, turning to face forward
       curRotY = THREE.MathUtils.lerp(isDoorLeft ? Math.PI - 0.35 : Math.PI + 0.35, Math.PI, smoothP);
     } else if (t < 2.2) {
       // Phase 2 (1.0 -> 2.2s): Walks down upper stairs step by step (1.2s) to mid-stairs landing platform ("Bục Giữa")
@@ -3229,40 +3247,48 @@ export function ContestantEntranceWalkingFigures({
         "heart",
         "open_arms",
       ];
-      curGesture = signatureGestures[currentSeat % signatureGestures.length];
+      curGesture = signatureGestures[seatId % signatureGestures.length];
       curGestureProg = Math.max(0, Math.min(1.0, (t - 2.2) / 1.6));
-    } else if (t < 5.0) {
-      // Phase 4 (3.8 -> 5.0s): Walks down lower stairs step by step to dais floor, then walks along floor (1.2s)
+    } else if (t < 4.8) {
+      // Phase 4 (3.8 -> 4.8s): Walks down lower stairs to dais floor (1.0s, arrives at dais floor Z = 6.20m)
       g.visible = true;
-      const p = (t - 3.8) / 1.2;
+      const p = (t - 3.8) / 1.0;
       curX = 0;
       curZ = THREE.MathUtils.lerp(10.20, 6.20, p);
       curY = getGrandstandStairY(curZ);
       curRotY = Math.PI;
-    } else if (t < 6.2) {
-      // Phase 5 (5.0 -> 6.2s): Fans out across dais to assigned podium desk (1.2s)
+    } else if (t < 5.6) {
+      // Phase 5A (4.8 -> 5.6s): Curves outward across dais towards rear aisle behind podium arc (0.8s)
+      // Follows quadratic curve to avoid cutting across any desk front/body
       g.visible = true;
-      const p = (t - 5.0) / 1.2;
-      const easeP = p * p * (3 - 2 * p); // Smooth ease-in-out
-      curX = THREE.MathUtils.lerp(0, deskX, easeP);
+      const p = (t - 4.8) / 0.8;
+      const easeP = p * p * (3 - 2 * p);
+      const u = 1 - easeP;
+      curX = u * u * 0 + 2 * u * easeP * midX + easeP * easeP * aisleX;
       curY = 0.22;
-      curZ = THREE.MathUtils.lerp(6.20, deskZ, easeP);
-      curRotY = THREE.MathUtils.lerp(Math.PI, deskRotY, easeP);
+      curZ = u * u * 6.20 + 2 * u * easeP * midZ + easeP * easeP * aisleZ;
+      const dx = 2 * u * (midX - 0) + 2 * easeP * (aisleX - midX);
+      const dz = 2 * u * (midZ - 6.20) + 2 * easeP * (aisleZ - midZ);
+      curRotY = Math.atan2(-dx, -dz);
+    } else if (t < 6.3) {
+      // Phase 5B (5.6 -> 6.3s): Steps smoothly along rear corridor and turns into standing spot behind desk (0.7s)
+      g.visible = true;
+      const p = (t - 5.6) / 0.7;
+      const easeP = p * p * (3 - 2 * p);
+      curX = THREE.MathUtils.lerp(aisleX, deskX, easeP);
+      curY = deskY;
+      curZ = THREE.MathUtils.lerp(aisleZ, deskZ, easeP);
+      curRotY = THREE.MathUtils.lerp(Math.PI / 2 - phi + 0.3, deskRotY, easeP);
     } else {
-      // Phase 6 (6.2 -> 6.8s): Arrived and standing proudly behind desk.
+      // Phase 6 (6.3 -> 6.8s): Arrived and standing proudly behind desk with desk greeting bow
       g.visible = true;
       curX = deskX;
       curY = deskY;
       curZ = deskZ;
       curRotY = deskRotY;
       walkingNow = false;
-      if (t < 6.8) {
-        curGesture = "desk_bow";
-        curGestureProg = Math.max(0, Math.min(1.0, (t - 6.2) / 0.6));
-      } else {
-        curGesture = "none";
-        curGestureProg = 0;
-      }
+      curGesture = "desk_bow";
+      curGestureProg = Math.max(0, Math.min(1.0, (t - 6.3) / 0.5));
     }
 
     if (walkingNow !== isWalking) {
@@ -3282,12 +3308,72 @@ export function ContestantEntranceWalkingFigures({
   return (
     <group ref={figureRef}>
       <ContestantFigure
-        seatId={currentSeat}
+        seatId={seatId}
         position={[0, 0, 0]}
         isWalking={isWalking}
         gesture={gesture}
         gestureProgress={gestureProgress}
       />
+    </group>
+  );
+}
+
+export function ContestantEntranceWalkingFigures({
+  state,
+  contestantConfigs,
+  serverNow,
+}: {
+  state: OlympiaState;
+  contestantConfigs: Array<{
+    seatId: number;
+    pos: [number, number, number];
+    rotY: number;
+  }>;
+  serverNow?: () => number;
+}) {
+  const entrance = state.entranceState;
+  if (!entrance || !entrance.active) return null;
+
+  const getNow = serverNow || (() => Date.now());
+  const now = getNow();
+  const currentSeat = entrance.currentSeatIdx ?? 0;
+  const startTimes = entrance.seatStartTimes || [];
+
+  // Concurrently render all active walking contestants whose elapsed walk time is < 6.8s
+  const activeFigures: Array<{
+    seatId: number;
+    seatStart: number;
+    targetCfg: { seatId: number; pos: [number, number, number]; rotY: number };
+  }> = [];
+
+  for (let i = 0; i <= currentSeat && i < contestantConfigs.length; i++) {
+    const seatStart =
+      startTimes[i] ??
+      (i === currentSeat
+        ? entrance.seatStartedAt || entrance.startedAt
+        : (entrance.startedAt || now) + i * 4800);
+
+    const elapsed = (now - seatStart) / 1000;
+    if (elapsed >= 0 && elapsed < 6.8) {
+      activeFigures.push({
+        seatId: i,
+        seatStart,
+        targetCfg: contestantConfigs[i],
+      });
+    }
+  }
+
+  return (
+    <group>
+      {activeFigures.map((fig) => (
+        <SingleContestantEntranceWalkingFigure
+          key={fig.seatId}
+          seatId={fig.seatId}
+          seatStart={fig.seatStart}
+          targetCfg={fig.targetCfg}
+          serverNow={serverNow}
+        />
+      ))}
     </group>
   );
 }
@@ -4869,6 +4955,20 @@ export function Podiums({
         const hasEntranceCompleted = Boolean(state?.entranceCompleted);
         const isCompetitionRound = Boolean(state?.stage === "playing" && !state?.introTimer && state?.currentRound);
 
+        const getSeatStart = (seatIdx: number) => {
+          if (!state?.entranceState) return 0;
+          return (
+            state.entranceState.seatStartTimes?.[seatIdx] ??
+            (seatIdx === currentEntranceSeat
+              ? currentEntranceSeatStartedAt || 0
+              : (state.entranceState.startedAt || 0) + seatIdx * 4800)
+          );
+        };
+        const now = serverNow ? serverNow() : Date.now();
+        const thisSeatStart = getSeatStart(cfg.seatId);
+        const thisSeatElapsed = thisSeatStart > 0 ? (now - thisSeatStart) / 1000 : 0;
+        const hasFinishedEntrance = thisSeatStart > 0 && thisSeatElapsed >= 6.8;
+
         // ── PODIUM SCOREBOARD 3-PHASE LIFECYCLE (User Request 8) ──
         // 1. "logo": Mới mở phòng (Lobby / Pre-match / Intro / Thí sinh chưa bước tới bục) -> Logo Đường lên đỉnh Olympia (D:\Olympia 26)
         // 2. "name_school": Từng thí sinh bước tới bục của mình xong -> Tên + Trường THPT (giữ nguyên đến trước Khởi Động)
@@ -4882,7 +4982,7 @@ export function Podiums({
           const isCurrentApproaching =
             cfg.seatId === currentEntranceSeat && approachingSeatIdx === currentEntranceSeat;
           screenMode =
-            cfg.seatId < currentEntranceSeat || isCurrentApproaching ? "name_school" : "logo";
+            hasFinishedEntrance || isCurrentApproaching ? "name_school" : "logo";
         } else {
           screenMode = "logo";
         }
@@ -4892,7 +4992,7 @@ export function Podiums({
         if (isLobby) {
           showFigure = false;
         } else if (isEntranceActive) {
-          showFigure = cfg.seatId < currentEntranceSeat;
+          showFigure = hasFinishedEntrance;
         } else if (hasEntranceCompleted || isCompetitionRound) {
           showFigure = !isThisContestantInVeDichTurn;
         } else if (isIntro) {

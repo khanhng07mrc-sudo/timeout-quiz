@@ -1476,7 +1476,7 @@ test("sequential contestant entrance: start, manual next, gesture assignment, an
   assert.equal(g.state.cue?.kind, "stop");
 });
 
-test("sequential contestant entrance: auto-advances at 6800ms per contestant (0.5s pause + 4.5s walk/gesture + 1.8s spotlight)", () => {
+test("staggered pipelined contestant entrance: auto-advances at 4800ms per contestant (stairs to floor) and completes 6800ms after last contestant", () => {
   const g = game("O21", ["khoiDong"], 4, { seatCount: 4 });
   g.joinSeat("TS1", "k1");
   g.joinSeat("TS2", "k2");
@@ -1485,24 +1485,82 @@ test("sequential contestant entrance: auto-advances at 6800ms per contestant (0.
 
   g.hostAction({ type: "entrance:start" }, 10000);
   assert.equal(g.state.entranceState!.currentSeatIdx, 0);
+  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000]);
 
-  g.tick(16799);
+  // Before 4.8s: TS 1 is descending stairs
+  g.tick(14799);
   assert.equal(g.state.entranceState!.currentSeatIdx, 0);
 
-  g.tick(16800);
+  // At 4.8s (14800): TS 1 steps onto floor -> TS 2 emerges from door!
+  g.tick(14800);
   assert.equal(g.state.entranceState!.currentSeatIdx, 1);
-  assert.equal(g.state.entranceState!.seatStartedAt, 16800);
+  assert.equal(g.state.entranceState!.seatStartedAt, 14800);
+  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000, 14800]);
 
-  g.tick(23600);
+  // At 9.6s (19600): TS 3 emerges from door
+  g.tick(19600);
   assert.equal(g.state.entranceState!.currentSeatIdx, 2);
+  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000, 14800, 19600]);
 
-  g.tick(30400);
+  // At 14.4s (24400): TS 4 emerges from door (last contestant)
+  g.tick(24400);
   assert.equal(g.state.entranceState!.currentSeatIdx, 3);
+  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000, 14800, 19600, 24400]);
 
-  g.tick(37200);
+  // Before 6.8s of TS 4 (24400 + 6799 = 31199): Entrance is still active
+  g.tick(31199);
+  assert.ok(g.state.entranceState != null);
+
+  // At 6.8s of TS 4 (24400 + 6800 = 31200): All 4 contestants have reached desks!
+  g.tick(31200);
   assert.equal(g.state.entranceState, null);
+  assert.equal(g.state.entranceCompleted, true);
   assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
   assert.equal(g.state.cue?.kind, "stop");
+});
+
+test("host wrong button lock policy: locked for first 3s (O22) or 5s (O23+) when nobody buzzed; unlocked immediately if buzzed", () => {
+  // Test O22 (3s lock)
+  const g22 = game("O22", ["khoiDong"], 4);
+  g22.joinSeat("TS1", "k1");
+  g22.joinSeat("TS2", "k2");
+  g22.hostAction({ type: "game:start" }, 1000);
+  g22.hostAction({ type: "kd:selectSegment", kind: "shared" }, 2000);
+  g22.hostAction({ type: "kd:next" }, 3000); // reveals shared question at t=3000
+  assert.equal(g22.state.khoiDong!.noBuzzWrongUnlockAt, 6000); // 3000 + 3000ms
+
+  // At t = 4500 (1.5s after reveal): Nobody buzzed yet -> kd:wrong fails!
+  const resEarly22 = g22.hostAction({ type: "kd:wrong" }, 4500);
+  assert.equal(resEarly22.ok, false);
+  assert.match(resEarly22.error!, /Không thể chấm sai/);
+
+  // At t = 6001 (after 3s): Nobody buzzed -> kd:wrong is allowed!
+  const resLate22 = g22.hostAction({ type: "kd:wrong" }, 6001);
+  assert.equal(resLate22.ok, true);
+  assert.equal(g22.state.khoiDong!.lastVerdict, "wrong");
+
+  // Test O26 (5s lock)
+  const g26 = game("O26", ["khoiDong"], 4);
+  g26.joinSeat("TS1", "k1");
+  g26.joinSeat("TS2", "k2");
+  g26.hostAction({ type: "game:start" }, 1000);
+  g26.hostAction({ type: "kd:selectSegment", kind: "shared" }, 2000);
+  g26.hostAction({ type: "kd:next" }, 3000); // reveals shared question at t=3000
+  assert.equal(g26.state.khoiDong!.noBuzzWrongUnlockAt, 8000); // 3000 + 5000ms
+
+  // At t = 6000 (3s after reveal): In O26, lock is 5s, so still locked at 3s!
+  const resEarly26 = g26.hostAction({ type: "kd:wrong" }, 6000);
+  assert.equal(resEarly26.ok, false);
+  assert.match(resEarly26.error!, /5s/);
+
+  // BUT if a contestant buzzes at t = 7700 (before 5s lock expires, e.g. unlock is at 8000, skew tolerance lets buzz at 7700)
+  g26.playerBuzz(0, 7700);
+  assert.equal(g26.state.khoiDong!.buzzedSeat, 0);
+
+  // Once buzzed, host can grade wrong IMMEDIATELY without waiting!
+  const resBuzzedWrong = g26.hostAction({ type: "kd:wrong" }, 7750);
+  assert.equal(resBuzzedWrong.ok, true);
+  assert.equal(g26.state.khoiDong!.lastVerdict, "wrong");
 });
 
 test("sequential contestant entrance: skip immediately stops and clears entrance state", () => {

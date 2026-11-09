@@ -80,20 +80,35 @@ export default function PlayerPad({
   const introRem = useCountdown(state?.introTimer, serverNow);
   void introRem;
 
-  // Tick local clock every 40ms when Khởi Động buzzUnlockAt is active so 2s/5s unlock is instantaneous
+  // Tick local clock every 100ms when Khởi Động buzzUnlockAt is active (reduced from 40ms to avoid re-render lag)
+  // and schedule a single precise timeout right at the unlock moment for instant UI transition
   const [, setUnlockTick] = useState(0);
   useEffect(() => {
     const unlockAt = state?.khoiDong?.buzzUnlockAt;
     if (!unlockAt) return;
-    const id = setInterval(() => {
+    const now = serverNow();
+    if (now >= unlockAt) return;
+
+    const timerId = setTimeout(() => {
       setUnlockTick((t) => t + 1);
-      if (serverNow() >= unlockAt) clearInterval(id);
-    }, 40);
-    return () => clearInterval(id);
+    }, Math.max(10, unlockAt - now));
+
+    const intervalId = setInterval(() => {
+      setUnlockTick((t) => t + 1);
+      if (serverNow() >= unlockAt) {
+        clearInterval(intervalId);
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timerId);
+      clearInterval(intervalId);
+    };
   }, [state?.khoiDong?.buzzUnlockAt, serverNow]);
 
   const lastBuzzEmitAtRef = useRef<number>(0);
   const [optimisticBuzzPending, setOptimisticBuzzPending] = useState(false);
+  const prebufferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const triggerBuzz = useCallback(async () => {
     const nowLocal = performance.now();
@@ -116,6 +131,24 @@ export default function PlayerPad({
       setTimeout(() => setOptimisticBuzzPending(false), 260);
     }
   }, [emit]);
+
+  // Pre-buffer buzzer click/tap up to 250ms before unlock so eager clicks are never dropped
+  const schedulePrebufferedBuzz = useCallback(() => {
+    if (prebufferTimerRef.current) return;
+    const unlockAt = state?.khoiDong?.buzzUnlockAt;
+    if (!unlockAt) {
+      triggerBuzz();
+      return;
+    }
+    const now = serverNow();
+    const waitMs = Math.max(0, unlockAt - now - 60);
+    setOptimisticBuzzPending(true);
+    playInstantBuzzerBeep();
+    prebufferTimerRef.current = setTimeout(() => {
+      prebufferTimerRef.current = null;
+      triggerBuzz();
+    }, waitMs);
+  }, [state?.khoiDong?.buzzUnlockAt, serverNow, triggerBuzz]);
 
   // Forward first user interaction to parent to unlock display iframe audio in sandbox mode & pre-warm WebAudio
   useEffect(() => {
@@ -167,8 +200,8 @@ export default function PlayerPad({
         const seg = kd.segments[kd.segIdx];
         if (!seg || seg.kind === "solo") return false;
         if (kd.lockedSeats.includes(seatId) || kd.buzzedSeat != null) return false;
-        if (kd.buzzUnlockAt && now + 180 < kd.buzzUnlockAt) return false;
-        return kd.buzzOpen || Boolean(kd.buzzUnlockAt && now + 180 >= kd.buzzUnlockAt);
+        if (kd.buzzUnlockAt && now + 250 < kd.buzzUnlockAt) return false;
+        return kd.buzzOpen || Boolean(kd.buzzUnlockAt && now + 250 >= kd.buzzUnlockAt);
       }
       case "vcnv": {
         const v = state.vcnv;
@@ -191,6 +224,18 @@ export default function PlayerPad({
     }
   }, [state, seatId, serverNow]);
 
+  const isNearUnlock = useCallback((): boolean => {
+    if (!state || seatId < 0 || state.stage !== "playing" || state.introTimer) return false;
+    if (state.currentRound !== "khoiDong") return false;
+    const kd = state.khoiDong;
+    if (!kd || kd.phase !== "question") return false;
+    const seg = kd.segments[kd.segIdx];
+    if (!seg || seg.kind === "solo") return false;
+    if (kd.lockedSeats.includes(seatId) || kd.buzzedSeat != null) return false;
+    const now = serverNow();
+    return Boolean(kd.buzzUnlockAt && now < kd.buzzUnlockAt && kd.buzzUnlockAt - now <= 350);
+  }, [state, seatId, serverNow]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return; // Anti-spam guard: ignore held-down key repeats
@@ -200,12 +245,15 @@ export default function PlayerPad({
         if (canPressMainBuzz()) {
           e.preventDefault();
           triggerBuzz();
+        } else if (isNearUnlock()) {
+          e.preventDefault();
+          schedulePrebufferedBuzz();
         }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [canPressMainBuzz, triggerBuzz]);
+  }, [canPressMainBuzz, isNearUnlock, triggerBuzz, schedulePrebufferedBuzz]);
 
   if (kickedMessage) {
     return (
@@ -638,6 +686,7 @@ export default function PlayerPad({
           seatId={me.id}
           emit={emit}
           triggerBuzz={triggerBuzz}
+          schedulePrebufferedBuzz={schedulePrebufferedBuzz}
           serverNow={serverNow}
           optimisticBuzzPending={optimisticBuzzPending}
         />
@@ -967,6 +1016,7 @@ function InteractionZone({
   seatId,
   emit,
   triggerBuzz,
+  schedulePrebufferedBuzz,
   serverNow,
   optimisticBuzzPending = false,
 }: {
@@ -974,6 +1024,7 @@ function InteractionZone({
   seatId: number;
   emit: Emit;
   triggerBuzz: () => void;
+  schedulePrebufferedBuzz?: () => void;
   serverNow: () => number;
   optimisticBuzzPending?: boolean;
 }) {
@@ -1032,13 +1083,14 @@ function InteractionZone({
 
       const locked = kd.lockedSeats.includes(seatId);
       const unlockRemainingMs = kd.buzzUnlockAt ? Math.max(0, kd.buzzUnlockAt - now) : 0;
-      const isCountingDownUnlock = kd.phase === "question" && unlockRemainingMs > 180;
+      const isCountingDownUnlock = kd.phase === "question" && unlockRemainingMs > 250;
+      const nearUnlock = !locked && kd.buzzedSeat == null && kd.phase === "question" && unlockRemainingMs <= 350 && unlockRemainingMs > 0;
       const canBuzz =
         kd.phase === "question" &&
         !locked &&
         kd.buzzedSeat == null &&
         !isCountingDownUnlock &&
-        (kd.buzzOpen || Boolean(kd.buzzUnlockAt && now + 180 >= kd.buzzUnlockAt));
+        (kd.buzzOpen || Boolean(kd.buzzUnlockAt && now + 250 >= kd.buzzUnlockAt));
 
       const label =
         kd.buzzedSeat === seatId || (optimisticBuzzPending && kd.buzzedSeat == null)
@@ -1054,12 +1106,20 @@ function InteractionZone({
           ? `🔔 ${seatName(state, kd.buzzedSeat)} giành quyền`
           : canBuzz
           ? "Nhấn Space hoặc bấm nút ngay!"
+          : nearUnlock
+          ? "Đang chuẩn bị mở — Bấm sẵn!"
           : "Nhấn Space hoặc chạm nút để bấm chuông";
 
       return (
         <CircularBuzzer3D
-          enabled={canBuzz}
-          onPress={triggerBuzz}
+          enabled={canBuzz || nearUnlock}
+          onPress={() => {
+            if (canBuzz) {
+              triggerBuzz();
+            } else if (nearUnlock && schedulePrebufferedBuzz) {
+              schedulePrebufferedBuzz();
+            }
+          }}
           label={label}
           subLabel={subLabel}
         />

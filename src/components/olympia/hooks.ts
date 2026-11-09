@@ -239,6 +239,33 @@ export const isLoopingBgm = (sound: string): boolean =>
 export const isIntroOrMusicTrack = (sound: string): boolean =>
   /(?:show_intro|contest_intro|contestant_intro|ending_music|summary|prize_award)$/.test(sound);
 
+const sfxAudioCache = new Map<string, HTMLAudioElement>();
+
+function prewarmSfx(url: string) {
+  if (typeof window === "undefined") return;
+  if (!sfxAudioCache.has(url)) {
+    try {
+      const a = new Audio(url);
+      a.preload = "auto";
+      sfxAudioCache.set(url, a);
+    } catch {}
+  }
+}
+
+export function prewarmBuzzerSounds(season: string = "O26") {
+  if (typeof window === "undefined") return;
+  const list = [
+    `/olympia-audio/${season}/1_KhoiDong/bell_ring.mp3`,
+    `/olympia-audio/${season}/2_VuotChuongNgaiVat/bell_ring.mp3`,
+    `/olympia-audio/${season}/4_VeDich/bell_ring.mp3`,
+    `/olympia-audio/${season}/5_CauHoiPhu/bell_ring.mp3`,
+    `/olympia-audio/${season}/1_KhoiDong/correct.mp3`,
+    `/olympia-audio/${season}/1_KhoiDong/wrong.mp3`,
+    `/olympia-audio/O26/1_KhoiDong/bell_ring.mp3`,
+  ];
+  list.forEach(prewarmSfx);
+}
+
 if (typeof window !== "undefined") {
   (window as any).__OLYMPIA_UNLOCK_AUDIO__ = (window as any).__OLYMPIA_UNLOCK_AUDIO__ || (() => {});
 }
@@ -543,12 +570,13 @@ export function useOlympiaAudio(
     };
   }, [unlockAudio]);
 
-  // Tự động khởi tạo AudioContext khi hook mount và enabled
+  // Tự động khởi tạo AudioContext khi hook mount và enabled, đồng thời pre-warm buzzer audio
   useEffect(() => {
     if (enabled) {
       getAudioContext();
+      prewarmBuzzerSounds(audioSeason || "O26");
     }
-  }, [enabled, getAudioContext]);
+  }, [enabled, getAudioContext, audioSeason]);
 
   // Dừng toàn bộ âm thanh khi audio bị tắt (enabled = false)
   useEffect(() => {
@@ -690,7 +718,20 @@ export function useOlympiaAudio(
       if (currentChannel === "left") soundUrl = `/olympia-audio/${s}/${cue.sound}_left.mp3`;
       else if (currentChannel === "right") soundUrl = `/olympia-audio/${s}/${cue.sound}_right.mp3`;
 
-      const a = new Audio(soundUrl);
+      let a: HTMLAudioElement;
+      const isFrequentSfx = cue.sound.endsWith("bell_ring") || cue.sound.endsWith("correct") || cue.sound.endsWith("wrong");
+      if (isFrequentSfx && sfxAudioCache.has(soundUrl)) {
+        const cached = sfxAudioCache.get(soundUrl)!;
+        if (cached.paused || cached.ended) {
+          cached.currentTime = 0;
+          a = cached;
+        } else {
+          a = cached.cloneNode(true) as HTMLAudioElement;
+        }
+      } else {
+        a = new Audio(soundUrl);
+        if (isFrequentSfx) sfxAudioCache.set(soundUrl, a);
+      }
       const isOpenQuestion = cue.sound.includes("open_question");
       const defaultSfxVol = isOpenQuestion ? 0.95 : 0.85;
       a.loop = looping;

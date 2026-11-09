@@ -106729,6 +106729,8 @@ var OlympiaGame = class _OlympiaGame {
         for (let i = 0; i < activeCount; i++) {
           seatGestures.push(shuffled[i % shuffled.length]);
         }
+        st.introTimer = null;
+        st.studioCamera = 11;
         st.studioCameraManual = false;
         st.entranceState = {
           active: true,

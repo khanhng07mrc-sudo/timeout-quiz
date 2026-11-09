@@ -1235,6 +1235,8 @@ export class OlympiaGame {
           seatGestures.push(shuffled[i % shuffled.length]);
         }
 
+        st.introTimer = null;
+        st.studioCamera = 11;
         st.studioCameraManual = false;
         st.entranceState = {
           active: true,

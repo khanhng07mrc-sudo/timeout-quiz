@@ -68,7 +68,8 @@ export function OlympiaStudio3DScene({
     (typeof window !== "undefined" &&
       (window.location.search.includes("sandbox=1") ||
         window.location.search.includes("perf=light")));
-  const [internalCam, setInternalCam] = useState<number>(activeCamera);
+  const [internalCam, setInternalCam] = useState<number>(activeCamera ?? 1);
+  const effectiveCam = activeCamera !== undefined ? activeCamera : internalCam;
   const [internalTransitionMode, setInternalTransitionMode] = useState<"CUT" | "MORPH">("MORPH");
   const transitionMode = propTransitionMode || internalTransitionMode;
   const [quality, setQuality] = useState<"HIGH" | "MEDIUM" | "LIGHT">(
@@ -163,7 +164,7 @@ export function OlympiaStudio3DScene({
         dpr={isSandboxEnv ? 0.5 : quality === "LIGHT" ? 0.5 : isIframe ? 0.75 : quality === "HIGH" ? (typeof window !== "undefined" ? (window.innerWidth >= 3840 || window.innerHeight >= 2160 ? Math.min(window.devicePixelRatio || 1, 1.0) : Math.min(window.devicePixelRatio || 1, 1.25)) : 1) : 1}
       >
         <CameraController
-          camAngle={internalCam}
+          camAngle={effectiveCam}
           totalSeats={state?.seats?.length || 4}
           transitionMode={transitionMode}
           pushInProgress={pushInProgress}
@@ -172,7 +173,7 @@ export function OlympiaStudio3DScene({
           ptzZoom={ptzZoom}
           introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
           kdStartCooldownUntil={state?.khoiDong?.startCooldownUntil ?? null}
-          isIdleLobby={Boolean(isIdle && !state?.studioCameraManual)}
+          isIdleLobby={Boolean(isIdle && !state?.studioCameraManual && !state?.entranceState?.active)}
           serverNow={serverNow}
         />
 

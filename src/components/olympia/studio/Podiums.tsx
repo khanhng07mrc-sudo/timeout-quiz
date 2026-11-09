@@ -3655,11 +3655,62 @@ export function VeDichWalkingContestant({
  *   - Round 4 (Về Đích): Continuously rotating in real-time at 0.35 rad/s!
  * - Entry Animation Effect (Tia sáng / Radiant light rays expanding outward from center on room entry).
 /**
- * Dynamic 6-Second Tech Floor Graphic (Sân khấu công nghệ vòng tròn trung tâm - 5 Broadcast Images Reference):
- * - Center glowing cyan core disc (R = 0.36m) with white core and breathing pulse.
- * - Symmetrical opposing rotating cyan laser arcs (clockwise at ~0.9 rad/s, AdditiveBlending).
- * - Secondary counter-rotating circuit arcs (counter-clockwise at ~0.55 rad/s, AdditiveBlending).
- * - Concentric HUD radar rings (R = 0.44m, 0.65m, 1.02m, 1.27m) and radar scan pulses.
+ * Procedural Soft Glow & Volumetric Gradient Texture Helpers
+ * Cached as singletons to ensure zero runtime GC overhead in 60fps frame loop
+ */
+let _volumetricBeamTex: THREE.CanvasTexture | null = null;
+function getVolumetricBeamTexture(): THREE.CanvasTexture {
+  if (_volumetricBeamTex) return _volumetricBeamTex;
+  if (typeof document === "undefined") return new THREE.CanvasTexture({} as any);
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    const grad = ctx.createLinearGradient(0, 256, 0, 0); // bottom (0) to top (256)
+    grad.addColorStop(0.0, "rgba(255, 255, 255, 1.0)");
+    grad.addColorStop(0.12, "rgba(255, 255, 255, 0.95)");
+    grad.addColorStop(0.35, "rgba(255, 255, 255, 0.68)");
+    grad.addColorStop(0.65, "rgba(255, 255, 255, 0.28)");
+    grad.addColorStop(0.85, "rgba(255, 255, 255, 0.08)");
+    grad.addColorStop(1.0, "rgba(255, 255, 255, 0.0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 256);
+  }
+  _volumetricBeamTex = new THREE.CanvasTexture(canvas);
+  _volumetricBeamTex.wrapS = THREE.ClampToEdgeWrapping;
+  _volumetricBeamTex.wrapT = THREE.ClampToEdgeWrapping;
+  return _volumetricBeamTex;
+}
+
+let _softRadialGlowTex: THREE.CanvasTexture | null = null;
+function getSoftRadialGlowTexture(): THREE.CanvasTexture {
+  if (_softRadialGlowTex) return _softRadialGlowTex;
+  if (typeof document === "undefined") return new THREE.CanvasTexture({} as any);
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grad.addColorStop(0.0, "rgba(255, 255, 255, 1.0)");
+    grad.addColorStop(0.22, "rgba(255, 255, 255, 0.92)");
+    grad.addColorStop(0.50, "rgba(255, 255, 255, 0.42)");
+    grad.addColorStop(0.78, "rgba(255, 255, 255, 0.12)");
+    grad.addColorStop(1.0, "rgba(255, 255, 255, 0.0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 256);
+  }
+  _softRadialGlowTex = new THREE.CanvasTexture(canvas);
+  return _softRadialGlowTex;
+}
+
+/**
+ * Dynamic 6-Second Tech Floor Graphic (Sân khấu công nghệ vòng tròn trung tâm - VTV3 Parity):
+ * - Multi-layer Organic Blending: Đa tầng năng lượng hòa quyện đan xen (Images 3-5).
+ * - Core Cyan Disc pulses & breathes in scale and opacity with soft radial falloff.
+ * - Staggered concentric ripple waves expand outward from center with soft alpha fading.
+ * - 4 Quadrant Arcs modulate independent opacities (phase-shifted sines) and cross-fade cyan/sky-blue.
  */
 function CenterTechFloorGraphic({
   introStartedAt,
@@ -3669,11 +3720,17 @@ function CenterTechFloorGraphic({
   serverNow?: () => number;
 }) {
   const rootRef = useRef<THREE.Group>(null);
+  const coreGroupRef = useRef<THREE.Group>(null);
+  const corePulseRef = useRef<THREE.MeshBasicMaterial>(null);
+  const centerWhiteMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const primaryArcsRef = useRef<THREE.Group>(null);
   const secondaryArcsRef = useRef<THREE.Group>(null);
-  const corePulseRef = useRef<THREE.MeshBasicMaterial>(null);
-  const rippleRef = useRef<THREE.Group>(null);
-  const centerWhiteMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const ripple1Ref = useRef<THREE.Mesh>(null);
+  const ripple1MatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const ripple2Ref = useRef<THREE.Mesh>(null);
+  const ripple2MatRef = useRef<THREE.MeshBasicMaterial>(null);
+
+  const softGlowTex = useMemo(() => getSoftRadialGlowTexture(), []);
 
   useFrame((state) => {
     let targetOp = 0.0;
@@ -3681,7 +3738,7 @@ function CenterTechFloorGraphic({
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = (now - introStartedAt) / 1000;
       if (elapsedSec >= 3.0 && elapsedSec < 9.5) {
-        // 3.0s - 9.5s (exact 6.5s duration): Tech graphic is prominently displayed (Image 4 & 5)
+        // 3.0s - 9.5s (exact 6.5s duration): Tech graphic is prominently displayed (Images 3-5)
         targetOp = 1.0;
       } else if (elapsedSec >= 9.5 && elapsedSec < 10.3) {
         // 9.5s - 10.3s (0.8s): Fades to ambient as laurel returns
@@ -3701,64 +3758,110 @@ function CenterTechFloorGraphic({
     const rotPrimary = (((nowSec * 0.65) % (Math.PI * 2)) + (Math.PI * 2)) % (Math.PI * 2);
     const rotSecondary = (((-nowSec * 0.42) % (Math.PI * 2)) + (Math.PI * 2)) % (Math.PI * 2);
 
-    if (primaryArcsRef.current) primaryArcsRef.current.rotation.z = rotPrimary;
-    if (secondaryArcsRef.current) secondaryArcsRef.current.rotation.z = rotSecondary;
-
-    const now = serverNow ? serverNow() : Date.now();
+    // 1. Organic Breathing Cyan Core
+    const breathScale = 1.0 + 0.12 * Math.sin(nowSec * 2.2);
+    if (coreGroupRef.current) {
+      coreGroupRef.current.scale.set(breathScale, breathScale, 1);
+    }
     if (corePulseRef.current) {
-      corePulseRef.current.opacity = (0.75 + 0.25 * Math.sin(now * 0.005)) * targetOp;
+      corePulseRef.current.opacity = (0.65 + 0.32 * Math.sin(nowSec * 2.5)) * targetOp;
     }
     if (centerWhiteMatRef.current) {
-      centerWhiteMatRef.current.opacity = 0.96 * targetOp;
+      centerWhiteMatRef.current.opacity = (0.85 + 0.15 * Math.sin(nowSec * 3.0)) * targetOp;
     }
-    if (rippleRef.current) {
-      const cycle = ((now * 0.001) % 1.5) / 1.5;
-      const s = 0.25 + cycle * 1.1;
-      rippleRef.current.scale.set(s, s, s);
+
+    // 2. Continuous Concentric Energy Ripple Waves (Expanding outwards)
+    const wave1 = (nowSec * 0.45) % 1.0;
+    const wave2 = (nowSec * 0.45 + 0.5) % 1.0;
+    if (ripple1Ref.current) {
+      const s1 = 0.40 + wave1 * 0.95;
+      ripple1Ref.current.scale.set(s1, s1, 1);
+    }
+    if (ripple1MatRef.current) {
+      ripple1MatRef.current.opacity = (1.0 - wave1) * 0.75 * targetOp;
+    }
+    if (ripple2Ref.current) {
+      const s2 = 0.40 + wave2 * 0.95;
+      ripple2Ref.current.scale.set(s2, s2, 1);
+    }
+    if (ripple2MatRef.current) {
+      ripple2MatRef.current.opacity = (1.0 - wave2) * 0.75 * targetOp;
+    }
+
+    // 3. 4 Symmetrical Quadrant Arcs - Organic Interwoven Opacity Modulation
+    if (primaryArcsRef.current) {
+      primaryArcsRef.current.rotation.z = rotPrimary;
+      const children = primaryArcsRef.current.children;
+      for (let i = 0; i < children.length; i++) {
+        const mesh = children[i];
+        if (mesh instanceof THREE.Mesh && mesh.material) {
+          const arcPhase = nowSec * 2.0 + i * (Math.PI * 0.5);
+          const arcOp = (0.35 + 0.55 * Math.sin(arcPhase)) * targetOp;
+          (mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0.15, Math.min(0.95, arcOp));
+        }
+      }
+    }
+
+    // 4. Secondary Counter-Drifting Circuit Arcs
+    if (secondaryArcsRef.current) {
+      secondaryArcsRef.current.rotation.z = rotSecondary;
+      const children = secondaryArcsRef.current.children;
+      for (let i = 0; i < children.length; i++) {
+        const mesh = children[i];
+        if (mesh instanceof THREE.Mesh && mesh.material) {
+          const arcPhase = -nowSec * 1.6 + i * (Math.PI * 0.66);
+          const arcOp = (0.30 + 0.45 * Math.cos(arcPhase)) * targetOp;
+          (mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0.12, Math.min(0.85, arcOp));
+        }
+      }
     }
   });
 
   return (
     <group ref={rootRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0048, 0]}>
-      {/* ── 1. GLOWING CYAN CORE DISC WITH WHITE CENTER (Image 4 & 5 Reference) ── */}
-      <mesh renderOrder={9.65}>
-        <circleGeometry args={[0.42, 64]} />
-        <meshBasicMaterial
-          ref={corePulseRef}
-          color="#00f0ff"
-          transparent
-          opacity={0.88}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          polygonOffset
-          polygonOffsetFactor={-2}
-          polygonOffsetUnits={-2}
-        />
-      </mesh>
-      <mesh renderOrder={9.68}>
-        <circleGeometry args={[0.15, 36]} />
-        <meshBasicMaterial
-          ref={centerWhiteMatRef}
-          color="#ffffff"
-          transparent
-          opacity={0.96}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          polygonOffset
-          polygonOffsetFactor={-2}
-          polygonOffsetUnits={-2}
-        />
-      </mesh>
+      {/* ── 1. GLOWING CYAN CORE DISC WITH WHITE CENTER (Breathing Hologram) ── */}
+      <group ref={coreGroupRef} renderOrder={9.65}>
+        <mesh renderOrder={9.65}>
+          <circleGeometry args={[0.42, 64]} />
+          <meshBasicMaterial
+            ref={corePulseRef}
+            map={softGlowTex}
+            color="#00f0ff"
+            transparent
+            opacity={0.88}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+          />
+        </mesh>
+        <mesh renderOrder={9.68}>
+          <circleGeometry args={[0.18, 36]} />
+          <meshBasicMaterial
+            ref={centerWhiteMatRef}
+            map={softGlowTex}
+            color="#ffffff"
+            transparent
+            opacity={0.96}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+          />
+        </mesh>
+      </group>
 
-      {/* ── 2. 4 SYMMETRICAL QUADRANT CYAN ARCS (Image 4 & 5 Reference) ── */}
+      {/* ── 2. 4 SYMMETRICAL QUADRANT CYAN ARCS (Multi-layer Organic Blending) ── */}
       <group ref={primaryArcsRef}>
-        {[0, 90, 180, 270].map((deg) => (
+        {[0, 90, 180, 270].map((deg, idx) => (
           <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]} renderOrder={9.72}>
             <ringGeometry args={[0.72, 0.94, 36, 1, 0, (70 * Math.PI) / 180]} />
             <meshBasicMaterial
-              color="#00f0ff"
+              color={idx % 2 === 0 ? "#00f0ff" : "#38bdf8"}
               transparent
-              opacity={0.92}
+              opacity={0.85}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
               polygonOffset
@@ -3778,7 +3881,7 @@ function CenterTechFloorGraphic({
             <meshBasicMaterial
               color="#38bdf8"
               transparent
-              opacity={0.80}
+              opacity={0.70}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
               polygonOffset
@@ -3790,13 +3893,13 @@ function CenterTechFloorGraphic({
         ))}
       </group>
 
-      {/* ── 4. CONCENTRIC HUD RADAR RINGS & EXPANDING RIPPLE ── */}
+      {/* ── 4. CONCENTRIC HUD RADAR RINGS & EXPANDING RIPPLE WAVES ── */}
       <mesh renderOrder={9.70}>
         <ringGeometry args={[0.52, 0.54, 64]} />
         <meshBasicMaterial
           color="#00f0ff"
           transparent
-          opacity={0.75}
+          opacity={0.65}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           polygonOffset
@@ -3809,7 +3912,7 @@ function CenterTechFloorGraphic({
         <meshBasicMaterial
           color="#38bdf8"
           transparent
-          opacity={0.65}
+          opacity={0.55}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           polygonOffset
@@ -3822,7 +3925,7 @@ function CenterTechFloorGraphic({
         <meshBasicMaterial
           color="#00f0ff"
           transparent
-          opacity={0.70}
+          opacity={0.60}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           polygonOffset
@@ -3835,7 +3938,7 @@ function CenterTechFloorGraphic({
         <meshBasicMaterial
           color="#38bdf8"
           transparent
-          opacity={0.65}
+          opacity={0.55}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           polygonOffset
@@ -3844,22 +3947,39 @@ function CenterTechFloorGraphic({
         />
       </mesh>
 
-      {/* Expanding Ripple Pulse */}
-      <group ref={rippleRef}>
-        <mesh renderOrder={9.69}>
-          <ringGeometry args={[0.95, 1.0, 96]} />
-          <meshBasicMaterial
-            color="#67e8f9"
-            transparent
-            opacity={0.45}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            polygonOffset
-            polygonOffsetFactor={-2}
-            polygonOffsetUnits={-2}
-          />
-        </mesh>
-      </group>
+      {/* Expanding Ripple Wave 1 */}
+      <mesh ref={ripple1Ref} renderOrder={9.69}>
+        <ringGeometry args={[0.92, 1.02, 96]} />
+        <meshBasicMaterial
+          ref={ripple1MatRef}
+          color="#67e8f9"
+          transparent
+          opacity={0.55}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Expanding Ripple Wave 2 */}
+      <mesh ref={ripple2Ref} renderOrder={9.69}>
+        <ringGeometry args={[0.92, 1.02, 96]} />
+        <meshBasicMaterial
+          ref={ripple2MatRef}
+          color="#38bdf8"
+          transparent
+          opacity={0.55}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
     </group>
   );
 }
@@ -3909,7 +4029,8 @@ function createSegmentedTrackGeometry(
 /**
  * Dynamic Central Floor Intro Effects (Broadcast Reference Parity):
  * 1. 0.0s - 3.0s: Outer laurel rim light beam transitioning from cyan (#00f0ff) to crimson red (#ef4444).
- * 2. 0.5s - 1.5s: Huge flat red light beam burst strictly on the floor screen surface (white-hot core + expanding red shockwave disk + radial floor streaks).
+ * 2. 0.4s - 2.5s: 3D Volumetric Red Light Column (rising ~3.6m into airspace with white-hot core, no rigid spokes)
+ *    + Soft radial glowing floor bloom disc.
  * 3. 3.0s - 9.5s: Laurel wreath temporarily hidden; concentric tech circular sectors/rings displayed.
  */
 function CentralFloorIntroBurst({
@@ -3924,18 +4045,22 @@ function CentralFloorIntroBurst({
   const rimMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const rimPulse1Ref = useRef<THREE.Mesh>(null);
   const rimPulse2Ref = useRef<THREE.Mesh>(null);
-  const redGroupRef = useRef<THREE.Group>(null);
-  const redFlareRef = useRef<THREE.Mesh>(null);
-  const redFlareMatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const redHaloRef = useRef<THREE.Mesh>(null);
-  const redHaloMatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const whiteCoreRef = useRef<THREE.Mesh>(null);
-  const whiteCoreMatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const shockwave1Ref = useRef<THREE.Mesh>(null);
-  const shockwave1MatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const shockwave2Ref = useRef<THREE.Mesh>(null);
-  const shockwave2MatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const raysRef = useRef<THREE.Group>(null);
+
+  // Floor plane soft glow (2D flat on floor)
+  const floorRedGroupRef = useRef<THREE.Group>(null);
+  const floorRedBloomMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const floorWhiteCoreMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const floorRipple1MatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const floorRipple2MatRef = useRef<THREE.MeshBasicMaterial>(null);
+
+  // Volumetric 3D Light Column (standing vertical in 3D studio airspace)
+  const beamGroupRef = useRef<THREE.Group>(null);
+  const beamCoreMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const beamPlasmaMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const beamAuraMatRef = useRef<THREE.MeshBasicMaterial>(null);
+
+  const beamTex = useMemo(() => getVolumetricBeamTexture(), []);
+  const softGlowTex = useMemo(() => getSoftRadialGlowTexture(), []);
 
   useFrame(() => {
     if (!introStartedAt) {
@@ -3965,47 +4090,52 @@ function CentralFloorIntroBurst({
       }
     }
 
-    // 2. 0.5s - 2.5s: HUGE fiery red light beam surge strictly on floor screen (Image 2 Parity)
+    // 2. 0.4s - 2.5s: 3D VOLUMETRIC RED LIGHT BEAM PILLAR & FLOOR BLOOM
     const redActive = elapsedSec >= 0.4 && elapsedSec < 2.5;
-    if (redGroupRef.current) {
-      redGroupRef.current.visible = redActive;
-      if (redActive) {
-        const burstT = (elapsedSec - 0.4) / 2.1;
-        const intensity = Math.sin(burstT * Math.PI);
-        const radiusScale = THREE.MathUtils.lerp(0.60, 1.38, Math.min(1.0, burstT * 1.6));
+    if (floorRedGroupRef.current) {
+      floorRedGroupRef.current.visible = redActive;
+    }
+    if (beamGroupRef.current) {
+      beamGroupRef.current.visible = redActive;
+    }
 
-        if (redFlareRef.current) redFlareRef.current.scale.set(radiusScale, radiusScale, 1);
-        if (redFlareMatRef.current) redFlareMatRef.current.opacity = 0.98 * intensity;
+    if (redActive) {
+      const burstT = (elapsedSec - 0.4) / 2.1; // 0.0 to 1.0
+      // Smooth bell curve intensity: rises sharply, sustains, then dissolves
+      const intensity = Math.sin(burstT * Math.PI);
 
-        if (redHaloRef.current) redHaloRef.current.scale.set(radiusScale * 0.80, radiusScale * 0.80, 1);
-        if (redHaloMatRef.current) redHaloMatRef.current.opacity = 0.95 * intensity;
-
-        if (whiteCoreRef.current) whiteCoreRef.current.scale.set(radiusScale * 0.45, radiusScale * 0.45, 1);
-        if (whiteCoreMatRef.current) whiteCoreMatRef.current.opacity = 0.99 * intensity;
-
-        if (shockwave1Ref.current) shockwave1Ref.current.scale.set(radiusScale, radiusScale, 1);
-        if (shockwave1MatRef.current) shockwave1MatRef.current.opacity = 0.92 * intensity;
-
-        if (shockwave2Ref.current) shockwave2Ref.current.scale.set(radiusScale * 0.75, radiusScale * 0.75, 1);
-        if (shockwave2MatRef.current) shockwave2MatRef.current.opacity = 0.88 * intensity;
-
-        if (raysRef.current) {
-          raysRef.current.scale.set(radiusScale, radiusScale, 1);
-          raysRef.current.rotation.z = elapsedSec * 1.5;
-          raysRef.current.traverse((child) => {
-            if (child instanceof THREE.Mesh && child.material) {
-              (child.material as THREE.MeshBasicMaterial).opacity = 0.85 * intensity;
-            }
-          });
-        }
+      // Floor bloom expansion & pulse
+      const floorScale = THREE.MathUtils.lerp(0.70, 1.40, Math.min(1.0, burstT * 1.5));
+      if (floorRedGroupRef.current) {
+        floorRedGroupRef.current.scale.set(floorScale, floorScale, 1);
       }
+      if (floorRedBloomMatRef.current) floorRedBloomMatRef.current.opacity = 0.96 * intensity;
+      if (floorWhiteCoreMatRef.current) floorWhiteCoreMatRef.current.opacity = 0.99 * intensity;
+      if (floorRipple1MatRef.current) floorRipple1MatRef.current.opacity = 0.85 * intensity;
+      if (floorRipple2MatRef.current) floorRipple2MatRef.current.opacity = 0.75 * intensity;
+
+      // Volumetric 3D Light Column Dynamics:
+      // Surges rapidly upwards from floor in first 0.35s (Y scale 0.1 -> 1.0)
+      const heightGrowth = Math.min(1.0, burstT * 4.0);
+      const heightScale = Math.sin(heightGrowth * Math.PI * 0.5); // ease out to 1.0
+      const radiusBreath = 1.0 + 0.08 * Math.sin(elapsedSec * 12.0);
+
+      if (beamGroupRef.current) {
+        const actualH = 3.6 * heightScale;
+        beamGroupRef.current.position.set(0, actualH / 2, 0);
+        beamGroupRef.current.scale.set(radiusBreath, heightScale, radiusBreath);
+      }
+
+      if (beamCoreMatRef.current) beamCoreMatRef.current.opacity = 0.98 * intensity;
+      if (beamPlasmaMatRef.current) beamPlasmaMatRef.current.opacity = 0.90 * intensity;
+      if (beamAuraMatRef.current) beamAuraMatRef.current.opacity = 0.82 * intensity;
     }
   });
 
   return (
-    <group ref={rootRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0055, 0]}>
+    <group ref={rootRef} position={[0, 0.0055, 0]}>
       {/* ── A. 0.0s - 3.0s: RIM LIGHT BEAM TRANSITIONING CYAN -> RED AROUND LAUREL WREATH ── */}
-      <group ref={rimGroupRef} renderOrder={10.15}>
+      <group ref={rimGroupRef} rotation={[-Math.PI / 2, 0, 0]} renderOrder={10.15}>
         {/* Glowing perimeter border ring (R = 1.22m to 1.32m) */}
         <mesh>
           <ringGeometry args={[1.22, 1.32, 128]} />
@@ -4022,7 +4152,6 @@ function CentralFloorIntroBurst({
             side={THREE.DoubleSide}
           />
         </mesh>
-        {/* Fast-rotating bright light beam pulse traveling along the rim */}
         <mesh ref={rimPulse1Ref}>
           <ringGeometry args={[1.20, 1.34, 64, 1, 0, (60 * Math.PI) / 180]} />
           <meshBasicMaterial
@@ -4053,27 +4182,17 @@ function CentralFloorIntroBurst({
         </mesh>
       </group>
 
-      {/* ── B. 0.5s - 1.5s: HUGE RED LIGHT BEAM BURST ON FLOOR SCREEN (Image 2 & 3 Broadcast Parity) ── */}
-      <group ref={redGroupRef} renderOrder={10.20}>
-        {/* 1. Fiery Crimson Main Flare Disc */}
-        <mesh ref={redFlareRef} renderOrder={10.20}>
-          <circleGeometry args={[1.0, 64]} />
-          <meshBasicMaterial ref={redFlareMatRef} color="#e11d48" transparent opacity={0.98}
-            depthWrite={false}
-            polygonOffset
-            polygonOffsetFactor={-2}
-            polygonOffsetUnits={-2}
-          />
-        </mesh>
-
-        {/* 2. Secondary Orange-Red Energy Halo */}
-        <mesh ref={redHaloRef} renderOrder={10.22}>
-          <circleGeometry args={[1.0, 48]} />
+      {/* ── B. 0.4s - 2.5s: SOFT RADIAL FLOOR BLOOM (FLAT ON FLOOR SCREEN) ── */}
+      <group ref={floorRedGroupRef} rotation={[-Math.PI / 2, 0, 0]} renderOrder={10.20}>
+        {/* Soft Radial Fiery Crimson Floor Bloom Disc */}
+        <mesh renderOrder={10.20}>
+          <circleGeometry args={[1.35, 64]} />
           <meshBasicMaterial
-            ref={redHaloMatRef}
-            color="#ff3b30"
+            ref={floorRedBloomMatRef}
+            map={softGlowTex}
+            color="#ff1a42"
             transparent
-            opacity={0.92}
+            opacity={0.96}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             polygonOffset
@@ -4081,12 +4200,12 @@ function CentralFloorIntroBurst({
             polygonOffsetUnits={-2}
           />
         </mesh>
-
-        {/* 3. Blinding White-Hot Center Core */}
-        <mesh ref={whiteCoreRef} renderOrder={10.30}>
-          <circleGeometry args={[1.0, 36]} />
+        {/* Blinding White Core Floor Bloom */}
+        <mesh renderOrder={10.25}>
+          <circleGeometry args={[0.55, 48]} />
           <meshBasicMaterial
-            ref={whiteCoreMatRef}
+            ref={floorWhiteCoreMatRef}
+            map={softGlowTex}
             color="#ffffff"
             transparent
             opacity={0.99}
@@ -4097,28 +4216,12 @@ function CentralFloorIntroBurst({
             polygonOffsetUnits={-2}
           />
         </mesh>
-
-        {/* 4. Expanding Red Shockwave Ripples along floor plane */}
-        <mesh ref={shockwave1Ref} renderOrder={10.24}>
-          <ringGeometry args={[0.88, 0.98, 96]} />
+        {/* Expanding Subtle Energy Ripples on Floor */}
+        <mesh renderOrder={10.22}>
+          <ringGeometry args={[0.78, 0.88, 96]} />
           <meshBasicMaterial
-            ref={shockwave1MatRef}
-            color="#ff453a"
-            transparent
-            opacity={0.90}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            polygonOffset
-            polygonOffsetFactor={-2}
-            polygonOffsetUnits={-2}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-        <mesh ref={shockwave2Ref} renderOrder={10.24}>
-          <ringGeometry args={[0.62, 0.70, 96]} />
-          <meshBasicMaterial
-            ref={shockwave2MatRef}
-            color="#ff9f0a"
+            ref={floorRipple1MatRef}
+            color="#ff4455"
             transparent
             opacity={0.85}
             blending={THREE.AdditiveBlending}
@@ -4129,25 +4232,69 @@ function CentralFloorIntroBurst({
             side={THREE.DoubleSide}
           />
         </mesh>
+        <mesh renderOrder={10.23}>
+          <ringGeometry args={[0.98, 1.08, 96]} />
+          <meshBasicMaterial
+            ref={floorRipple2MatRef}
+            color="#ff9933"
+            transparent
+            opacity={0.75}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      </group>
 
-        {/* 5. 16 Floor-Planar Radial Flare Streaks (strictly 2D on floor surface) */}
-        <group ref={raysRef} renderOrder={10.26}>
-          {[0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5].map((deg) => (
-            <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]}>
-              <planeGeometry args={[0.055, 2.4]} />
-              <meshBasicMaterial
-                color="#ff2244"
-                transparent
-                opacity={0.80}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-                polygonOffset
-                polygonOffsetFactor={-2}
-                polygonOffsetUnits={-2}
-              />
-            </mesh>
-          ))}
-        </group>
+      {/* ── C. 0.4s - 2.5s: 3D VOLUMETRIC LIGHT BEAM PILLAR (STANDING VERTICAL IN STUDIO AIRSPACE) ── */}
+      <group ref={beamGroupRef} position={[0, 1.8, 0]} renderOrder={10.50}>
+        {/* Layer 1: White-Hot Concentrated Plasma Core */}
+        <mesh renderOrder={10.55}>
+          <cylinderGeometry args={[0.10, 0.35, 3.6, 32, 1, true]} />
+          <meshBasicMaterial
+            ref={beamCoreMatRef}
+            map={beamTex}
+            color="#ffffff"
+            transparent
+            opacity={0.98}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Layer 2: Fiery Inner Plasma Column */}
+        <mesh renderOrder={10.52}>
+          <cylinderGeometry args={[0.24, 0.75, 3.6, 32, 1, true]} />
+          <meshBasicMaterial
+            ref={beamPlasmaMatRef}
+            map={beamTex}
+            color="#ff2a4b"
+            transparent
+            opacity={0.90}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Layer 3: Outer Crimson Atmospheric Aura */}
+        <mesh renderOrder={10.50}>
+          <cylinderGeometry args={[0.42, 1.25, 3.6, 36, 1, true]} />
+          <meshBasicMaterial
+            ref={beamAuraMatRef}
+            map={beamTex}
+            color="#dc2626"
+            transparent
+            opacity={0.82}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
       </group>
     </group>
   );

@@ -841,18 +841,20 @@ function VietnameseHand({
   scale?: [number, number, number] | number;
   skinMat: THREE.Material;
   isLeft?: boolean;
-  mode?: "hang" | "rest" | "mic" | "card" | "tablet";
+  mode?: "hang" | "rest" | "mic" | "card" | "tablet" | "fist";
 }) {
   const side = isLeft ? -1 : 1;
 
   // Natural curl angles calibrated for realistic broadcast gestures
   const fingerCurl =
+    mode === "fist" ? 1.65 :
     mode === "mic" ? 1.25 :
     mode === "card" ? 0.35 :
     mode === "tablet" ? 0.25 :
     mode === "rest" ? 0.18 : 0.08;
 
   const thumbCurl =
+    mode === "fist" ? 1.25 :
     mode === "mic" ? 0.85 :
     mode === "card" ? 0.25 :
     mode === "tablet" ? 0.18 :
@@ -1079,11 +1081,15 @@ export function ContestantFigure({
   position = [0, 0, 0],
   isWalking = false,
   quality = "HIGH",
+  gesture = "none",
+  gestureProgress = 0,
 }: {
   seatId: number;
   position?: [number, number, number];
   isWalking?: boolean;
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
+  gesture?: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow";
+  gestureProgress?: number;
 }) {
   const style = CONTESTANT_STYLES[seatId % CONTESTANT_STYLES.length];
   const chestRef = useRef<THREE.Group>(null);
@@ -1091,29 +1097,210 @@ export function ContestantFigure({
   const leftLegRef = useRef<THREE.Group>(null);
   const rightLegRef = useRef<THREE.Group>(null);
   const leftArmRef = useRef<THREE.Group>(null);
+  const leftForearmRef = useRef<THREE.Group>(null);
   const rightArmRef = useRef<THREE.Group>(null);
+  const rightForearmRef = useRef<THREE.Group>(null);
   const skinMat = useMemo(() => createWarmPeachSkinMaterial(style.skinTone), [style.skinTone]);
   const hairMat = useMemo(() => createHairMaterial(style.hairColor), [style.hairColor]);
   const contestantTorsoGeom = useMemo(() => createProceduralTorsoGeometry("contestant"), []);
 
-  // Micro-breathing & natural student idle posture / walking animation via useFrame
+  // Micro-breathing & natural student signature gestures / walking animation via useFrame
   useFrame(({ clock }) => {
     if (quality === "LIGHT") return;
     const t = clock.getElapsedTime();
     if (isWalking) {
       const stride = Math.sin(t * 8.0) * 0.35;
       const armStride = Math.sin(t * 8.0) * 0.25;
-      if (leftLegRef.current) leftLegRef.current.rotation.x = stride;
-      if (rightLegRef.current) rightLegRef.current.rotation.x = -stride;
-      if (leftArmRef.current) leftArmRef.current.rotation.x = -armStride;
-      if (rightArmRef.current) rightArmRef.current.rotation.x = armStride;
+      if (leftLegRef.current) { leftLegRef.current.rotation.x = stride; leftLegRef.current.rotation.z = 0; }
+      if (rightLegRef.current) { rightLegRef.current.rotation.x = -stride; rightLegRef.current.rotation.z = 0; }
+      if (leftArmRef.current) { leftArmRef.current.rotation.x = -armStride; leftArmRef.current.rotation.y = 0; leftArmRef.current.rotation.z = -0.04; }
+      if (leftForearmRef.current) { leftForearmRef.current.rotation.x = -0.10; leftForearmRef.current.rotation.y = 0; leftForearmRef.current.rotation.z = 0; }
+      if (rightArmRef.current) { rightArmRef.current.rotation.x = armStride; rightArmRef.current.rotation.y = 0; rightArmRef.current.rotation.z = 0.04; }
+      if (rightForearmRef.current) { rightForearmRef.current.rotation.x = -0.10; rightForearmRef.current.rotation.y = 0; rightForearmRef.current.rotation.z = 0; }
+      if (chestRef.current) chestRef.current.rotation.x = 0;
+      if (headRef.current) { headRef.current.rotation.x = 0; headRef.current.rotation.y = 0; headRef.current.rotation.z = 0; }
+    } else if (gesture === "wave") {
+      // TS 1 (Seat 0): Cheerful energetic high wave beside head with friendly head tilt
+      if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
+      if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
+
+      const wave = Math.sin(t * 7.5);
+      if (rightArmRef.current) {
+        rightArmRef.current.rotation.x = -0.20;
+        rightArmRef.current.rotation.y = 0.10;
+        rightArmRef.current.rotation.z = 1.85;
+      }
+      if (rightForearmRef.current) {
+        rightForearmRef.current.rotation.x = -0.30;
+        rightForearmRef.current.rotation.y = 0.10;
+        rightForearmRef.current.rotation.z = 0.85 + wave * 0.35;
+      }
+      if (leftArmRef.current) {
+        leftArmRef.current.rotation.x = 0.04;
+        leftArmRef.current.rotation.y = 0;
+        leftArmRef.current.rotation.z = -0.06;
+      }
+      if (leftForearmRef.current) {
+        leftForearmRef.current.rotation.x = -0.06;
+        leftForearmRef.current.rotation.y = 0;
+        leftForearmRef.current.rotation.z = 0;
+      }
+      if (headRef.current) {
+        headRef.current.rotation.x = -0.02;
+        headRef.current.rotation.y = 0.04;
+        headRef.current.rotation.z = -0.04;
+      }
+      if (chestRef.current) chestRef.current.rotation.x = -0.02;
+    } else if (gesture === "fist_pump") {
+      // TS 2 (Seat 1): Clenched fist pump of determination held firmly to chest
+      if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
+      if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
+
+      const pump = Math.sin(gestureProgress * Math.PI * 4) * 0.12;
+      if (rightArmRef.current) {
+        rightArmRef.current.rotation.x = -0.45;
+        rightArmRef.current.rotation.y = -0.15;
+        rightArmRef.current.rotation.z = -0.20;
+      }
+      if (rightForearmRef.current) {
+        rightForearmRef.current.rotation.x = -1.55 + pump * 0.40;
+        rightForearmRef.current.rotation.y = -0.30;
+        rightForearmRef.current.rotation.z = -0.45;
+      }
+      if (leftArmRef.current) {
+        leftArmRef.current.rotation.x = 0.04;
+        leftArmRef.current.rotation.y = 0;
+        leftArmRef.current.rotation.z = -0.06;
+      }
+      if (leftForearmRef.current) {
+        leftForearmRef.current.rotation.x = -0.06;
+        leftForearmRef.current.rotation.y = 0;
+        leftForearmRef.current.rotation.z = 0;
+      }
+      if (headRef.current) {
+        headRef.current.rotation.x = -0.06 + pump * 0.1;
+        headRef.current.rotation.y = 0;
+        headRef.current.rotation.z = 0;
+      }
+      if (chestRef.current) chestRef.current.rotation.x = -0.04;
+    } else if (gesture === "heart") {
+      // TS 3 (Seat 2): Right hand flat on heart / left breast laurel badge with respectful slight head bow
+      if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
+      if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
+
+      if (rightArmRef.current) {
+        rightArmRef.current.rotation.x = -0.30;
+        rightArmRef.current.rotation.y = -0.20;
+        rightArmRef.current.rotation.z = -0.15;
+      }
+      if (rightForearmRef.current) {
+        rightForearmRef.current.rotation.x = -1.35;
+        rightForearmRef.current.rotation.y = -0.55;
+        rightForearmRef.current.rotation.z = -0.85;
+      }
+      if (leftArmRef.current) {
+        leftArmRef.current.rotation.x = 0.04;
+        leftArmRef.current.rotation.y = 0;
+        leftArmRef.current.rotation.z = -0.06;
+      }
+      if (leftForearmRef.current) {
+        leftForearmRef.current.rotation.x = -0.06;
+        leftForearmRef.current.rotation.y = 0;
+        leftForearmRef.current.rotation.z = 0;
+      }
+      if (headRef.current) {
+        headRef.current.rotation.x = 0.08;
+        headRef.current.rotation.y = 0;
+        headRef.current.rotation.z = 0;
+      }
+      if (chestRef.current) chestRef.current.rotation.x = -0.02;
+    } else if (gesture === "open_arms") {
+      // TS 4 (Seat 3): Both arms opened wide in proud athletic stance
+      if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
+      if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
+
+      if (leftArmRef.current) {
+        leftArmRef.current.rotation.x = -0.15;
+        leftArmRef.current.rotation.y = 0;
+        leftArmRef.current.rotation.z = -0.75;
+      }
+      if (leftForearmRef.current) {
+        leftForearmRef.current.rotation.x = -0.15;
+        leftForearmRef.current.rotation.z = -0.20;
+      }
+      if (rightArmRef.current) {
+        rightArmRef.current.rotation.x = -0.15;
+        rightArmRef.current.rotation.y = 0;
+        rightArmRef.current.rotation.z = 0.75;
+      }
+      if (rightForearmRef.current) {
+        rightForearmRef.current.rotation.x = -0.15;
+        rightForearmRef.current.rotation.z = 0.20;
+      }
+      if (headRef.current) {
+        headRef.current.rotation.x = -0.04;
+        headRef.current.rotation.y = 0;
+        headRef.current.rotation.z = 0;
+      }
+      if (chestRef.current) chestRef.current.rotation.x = -0.04;
+    } else if (gesture === "desk_bow") {
+      // Arrived behind desk: Hands resting forward on desk, polite formal bow
+      if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
+      if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
+
+      const bowAngle = Math.sin(gestureProgress * Math.PI) * 0.20;
+      if (leftArmRef.current) {
+        leftArmRef.current.rotation.x = -0.35;
+        leftArmRef.current.rotation.y = 0;
+        leftArmRef.current.rotation.z = -0.08;
+      }
+      if (leftForearmRef.current) {
+        leftForearmRef.current.rotation.x = -0.40;
+        leftForearmRef.current.rotation.y = 0;
+        leftForearmRef.current.rotation.z = 0;
+      }
+      if (rightArmRef.current) {
+        rightArmRef.current.rotation.x = -0.35;
+        rightArmRef.current.rotation.y = 0;
+        rightArmRef.current.rotation.z = 0.08;
+      }
+      if (rightForearmRef.current) {
+        rightForearmRef.current.rotation.x = -0.40;
+        rightForearmRef.current.rotation.y = 0;
+        rightForearmRef.current.rotation.z = 0;
+      }
+      if (headRef.current) {
+        headRef.current.rotation.x = bowAngle * 0.85;
+        headRef.current.rotation.y = 0;
+        headRef.current.rotation.z = 0;
+      }
+      if (chestRef.current) chestRef.current.rotation.x = bowAngle * 0.55;
     } else {
-      if (leftLegRef.current) leftLegRef.current.rotation.x = 0;
-      if (rightLegRef.current) rightLegRef.current.rotation.x = 0;
-      if (leftArmRef.current) leftArmRef.current.rotation.x = 0;
-      if (rightArmRef.current) rightArmRef.current.rotation.x = 0;
+      // Default natural standing idle posture with micro-breathing
+      if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
+      if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
+      if (leftArmRef.current) {
+        leftArmRef.current.rotation.x = 0.02;
+        leftArmRef.current.rotation.y = 0;
+        leftArmRef.current.rotation.z = -0.04;
+      }
+      if (leftForearmRef.current) {
+        leftForearmRef.current.rotation.x = -0.08;
+        leftForearmRef.current.rotation.y = 0;
+        leftForearmRef.current.rotation.z = 0;
+      }
+      if (rightArmRef.current) {
+        rightArmRef.current.rotation.x = 0.02;
+        rightArmRef.current.rotation.y = 0;
+        rightArmRef.current.rotation.z = 0.04;
+      }
+      if (rightForearmRef.current) {
+        rightForearmRef.current.rotation.x = -0.08;
+        rightForearmRef.current.rotation.y = 0;
+        rightForearmRef.current.rotation.z = 0;
+      }
       if (chestRef.current) {
-        // Subtle vertical breathing oscillation (2mm amplitude)
+        chestRef.current.rotation.x = 0;
         chestRef.current.position.y = Math.sin(t * 1.8 + seatId * 1.2) * 0.002;
         chestRef.current.scale.set(
           1 + Math.sin(t * 1.8 + seatId) * 0.004,
@@ -1124,6 +1311,7 @@ export function ContestantFigure({
       if (headRef.current) {
         headRef.current.rotation.x = Math.sin(t * 1.1 + seatId) * 0.005;
         headRef.current.rotation.y = Math.cos(t * 0.8 + seatId * 1.4) * 0.008;
+        headRef.current.rotation.z = 0;
       }
     }
   });
@@ -1162,10 +1350,10 @@ export function ContestantFigure({
             <cylinderGeometry args={[0.042, 0.034, 0.32, 16]} />
             <meshStandardMaterial color={trouserColor} roughness={0.85} />
           </mesh>
-          {/* Athletic Sneaker (Sole flush at Y = 0.00m local) */}
-          <mesh position={[0, -0.34, 0.025]}>
-            <boxGeometry args={[0.052, 0.038, 0.13]} />
-            <meshStandardMaterial color="#020617" roughness={0.35} metalness={0.25} />
+          {/* Black dress shoe */}
+          <mesh position={[0, -0.34, 0.04]}>
+            <boxGeometry args={[0.075, 0.045, 0.17]} />
+            <meshStandardMaterial color="#020617" roughness={0.3} metalness={0.5} />
           </mesh>
         </group>
       </group>
@@ -1181,10 +1369,10 @@ export function ContestantFigure({
             <cylinderGeometry args={[0.042, 0.034, 0.32, 16]} />
             <meshStandardMaterial color={trouserColor} roughness={0.85} />
           </mesh>
-          {/* Athletic Sneaker (Sole flush at Y = 0.00m local) */}
-          <mesh position={[0, -0.34, 0.025]}>
-            <boxGeometry args={[0.052, 0.038, 0.13]} />
-            <meshStandardMaterial color="#020617" roughness={0.35} metalness={0.25} />
+          {/* Black dress shoe */}
+          <mesh position={[0, -0.34, 0.04]}>
+            <boxGeometry args={[0.075, 0.045, 0.17]} />
+            <meshStandardMaterial color="#020617" roughness={0.3} metalness={0.5} />
           </mesh>
         </group>
       </group>
@@ -1197,17 +1385,17 @@ export function ContestantFigure({
 
         {/* ── AUTHENTIC VIETNAMESE POLO COLLAR, STANDING BAND & PLACKET ── */}
         {/* Standing Collar Band (Chân Cổ) wrapping neck base */}
-        <mesh position={[0, 1.295, 0.010]}>
+        <mesh position={[0, 1.285, 0.010]}>
           <cylinderGeometry args={[0.036, 0.040, 0.024, 24]} />
           <meshStandardMaterial color={collarColor} roughness={0.35} />
         </mesh>
         {/* Left Lapel (Beveled 3D Fold) */}
-        <mesh position={[-0.040, 1.280, 0.062]} rotation={[0.26, -0.12, -0.18]}>
+        <mesh position={[-0.040, 1.275, 0.062]} rotation={[0.26, -0.12, -0.18]}>
           <boxGeometry args={[0.044, 0.032, 0.004]} />
           <meshStandardMaterial color={collarColor} roughness={0.35} />
         </mesh>
         {/* Right Lapel (Beveled 3D Fold) */}
-        <mesh position={[0.040, 1.280, 0.062]} rotation={[0.26, 0.12, 0.18]}>
+        <mesh position={[0.040, 1.275, 0.062]} rotation={[0.26, 0.12, 0.18]}>
           <boxGeometry args={[0.044, 0.032, 0.004]} />
           <meshStandardMaterial color={collarColor} roughness={0.35} />
         </mesh>
@@ -1239,13 +1427,12 @@ export function ContestantFigure({
         {/* ── ARMS & HANDS (Seamless Sleeves embedded in shoulder, ZERO Ball Joints!) ── */}
         {/* Left Arm Group (pivoted at shoulder X = -0.145, Y = 1.21m) */}
         <group position={[-0.145, 1.21, 0.0]}>
-          {/* Shoulder cap seamlessly bridging into polo shoulder */}
           <mesh>
             <sphereGeometry args={[0.035, 16, 16]} />
             <meshStandardMaterial color={shirtColor} roughness={0.45} />
           </mesh>
           <group ref={leftArmRef}>
-            {/* Left Polo Sleeve */}
+            {/* Left Polo Sleeve (Upper Arm) */}
             <mesh position={[0, -0.055, 0]} rotation={[0.04, 0, -0.04]}>
               <cylinderGeometry args={[0.035, 0.030, 0.11, 16]} />
               <meshStandardMaterial color={shirtColor} roughness={0.45} />
@@ -1255,32 +1442,38 @@ export function ContestantFigure({
               <cylinderGeometry args={[0.031, 0.031, 0.016, 16]} />
               <meshStandardMaterial color={collarColor} roughness={0.35} />
             </mesh>
-            {/* Left Forearm */}
-            <mesh position={[0, -0.180, 0]} rotation={[0.05, 0, -0.03]}>
-              <cylinderGeometry args={[0.026, 0.022, 0.12, 14]} />
-              <primitive object={skinMat} attach="material" />
-            </mesh>
-            {/* Left Hand: Slender Vietnamese hand resting naturally */}
-            <VietnameseHand
-              position={[0, -0.245, 0]}
-              rotation={[0, 0, -0.04]}
-              scale={0.88}
-              skinMat={skinMat}
-              isLeft={true}
-              mode={isWalking ? "hang" : "rest"}
-            />
+            {/* Left Elbow Joint */}
+            <group ref={leftForearmRef} position={[0, -0.115, 0]}>
+              <mesh position={[0, 0, 0]}>
+                <sphereGeometry args={[0.024, 14, 14]} />
+                <primitive object={skinMat} attach="material" />
+              </mesh>
+              {/* Left Forearm */}
+              <mesh position={[0, -0.065, 0]}>
+                <cylinderGeometry args={[0.026, 0.022, 0.12, 14]} />
+                <primitive object={skinMat} attach="material" />
+              </mesh>
+              {/* Left Hand: Slender Vietnamese hand resting naturally */}
+              <VietnameseHand
+                position={[0, -0.130, 0]}
+                rotation={[0, 0, -0.04]}
+                scale={0.88}
+                skinMat={skinMat}
+                isLeft={true}
+                mode={isWalking ? "hang" : gesture === "desk_bow" ? "rest" : "hang"}
+              />
+            </group>
           </group>
         </group>
 
         {/* Right Arm Group (pivoted at shoulder X = 0.145, Y = 1.21m) */}
         <group position={[0.145, 1.21, 0.0]}>
-          {/* Shoulder cap seamlessly bridging into polo shoulder */}
           <mesh>
             <sphereGeometry args={[0.035, 16, 16]} />
             <meshStandardMaterial color={shirtColor} roughness={0.45} />
           </mesh>
           <group ref={rightArmRef}>
-            {/* Right Polo Sleeve */}
+            {/* Right Polo Sleeve (Upper Arm) */}
             <mesh position={[0, -0.055, 0]} rotation={[0.04, 0, 0.04]}>
               <cylinderGeometry args={[0.035, 0.030, 0.11, 16]} />
               <meshStandardMaterial color={shirtColor} roughness={0.45} />
@@ -1290,66 +1483,87 @@ export function ContestantFigure({
               <cylinderGeometry args={[0.031, 0.031, 0.016, 16]} />
               <meshStandardMaterial color={collarColor} roughness={0.35} />
             </mesh>
-            {/* Right Forearm */}
-            <mesh position={[0, -0.180, 0]} rotation={[0.05, 0, 0.03]}>
-              <cylinderGeometry args={[0.026, 0.022, 0.12, 14]} />
-              <primitive object={skinMat} attach="material" />
-            </mesh>
-            {/* Right Hand: Slender Vietnamese hand resting naturally */}
-            <VietnameseHand
-              position={[0, -0.245, 0]}
-              rotation={[0, 0, 0.04]}
-              scale={0.88}
-              skinMat={skinMat}
-              isLeft={false}
-              mode={isWalking ? "hang" : "rest"}
-            />
+            {/* Right Elbow Joint */}
+            <group ref={rightForearmRef} position={[0, -0.115, 0]}>
+              <mesh position={[0, 0, 0]}>
+                <sphereGeometry args={[0.024, 14, 14]} />
+                <primitive object={skinMat} attach="material" />
+              </mesh>
+              {/* Right Forearm */}
+              <mesh position={[0, -0.065, 0]}>
+                <cylinderGeometry args={[0.026, 0.022, 0.12, 14]} />
+                <primitive object={skinMat} attach="material" />
+              </mesh>
+              {/* Right Hand: Slender Vietnamese hand */}
+              <VietnameseHand
+                position={[0, -0.130, 0]}
+                rotation={[0, 0, 0.04]}
+                scale={0.88}
+                skinMat={skinMat}
+                isLeft={false}
+                mode={
+                  isWalking
+                    ? "hang"
+                    : gesture === "fist_pump"
+                    ? "fist"
+                    : gesture === "desk_bow" || gesture === "heart"
+                    ? "rest"
+                    : "hang"
+                }
+              />
+            </group>
           </group>
         </group>
       </group>
 
-      {/* ── HEAD & FACIAL ANATOMY (Athletic Vietnamese Student) ── */}
-      <group ref={headRef}>
-        {/* Slender Natural Upright Neck (bare skin under chin is only 2.5cm!) */}
-        <mesh position={[0, 1.325, -0.004]}>
-          <cylinderGeometry args={[0.026, 0.030, 0.028, 20]} />
+      {/* ── SOLID CONTINUOUS STUDENT NECK (Firmly anchored into polo collar, NO GAPS EVER!) ── */}
+      <mesh position={[0, 1.325, -0.004]}>
+        <cylinderGeometry args={[0.028, 0.034, 0.080, 24]} />
+        <primitive object={skinMat} attach="material" />
+      </mesh>
+
+      {/* ── HEAD & FACIAL ANATOMY (Athletic Vietnamese Student, Pivoted at Skull Base [0, 1.365, 0]) ── */}
+      <group ref={headRef} position={[0, 1.365, 0]}>
+        {/* Upper Throat & Mandible Transition (seamlessly covers neck joint) */}
+        <mesh position={[0, -0.010, -0.004]}>
+          <cylinderGeometry args={[0.028, 0.029, 0.026, 20]} />
           <primitive object={skinMat} attach="material" />
         </mesh>
 
         {/* 1. Cranial Vault */}
-        <mesh position={[0, 1.435, 0.000]} scale={[0.96, 1.02, 0.98]}>
+        <mesh position={[0, 0.075, 0.000]} scale={[0.96, 1.02, 0.98]}>
           <sphereGeometry args={[0.072, 28, 28]} />
           <primitive object={skinMat} attach="material" />
         </mesh>
 
         {/* 2. Soft Midface & Cheekbones */}
-        <mesh position={[0, 1.402, 0.008]} scale={[0.95, 0.90, 0.95]}>
+        <mesh position={[0, 0.042, 0.008]} scale={[0.95, 0.90, 0.95]}>
           <sphereGeometry args={[0.066, 24, 24]} />
           <primitive object={skinMat} attach="material" />
         </mesh>
 
         {/* 3. Defined Student Jawline */}
-        <mesh position={[0, 1.378, 0.010]} rotation={[0.04, 0, 0]}>
+        <mesh position={[0, 0.018, 0.010]} rotation={[0.04, 0, 0]}>
           <cylinderGeometry args={[0.042, 0.028, 0.046, 20]} />
           <primitive object={skinMat} attach="material" />
         </mesh>
 
         {/* 4. Natural Chin */}
-        <mesh position={[0, 1.358, 0.024]}>
+        <mesh position={[0, -0.002, 0.024]}>
           <sphereGeometry args={[0.012, 16, 16]} />
           <primitive object={skinMat} attach="material" />
         </mesh>
 
         {/* 5. Sculpted Left & Right Ears */}
         <SculptedEar
-          position={[-0.070, 1.415, -0.005]}
+          position={[-0.070, 0.055, -0.005]}
           rotation={[0, -0.15, 0.05]}
           skinMat={skinMat}
           isLeft={true}
           scale={0.90}
         />
         <SculptedEar
-          position={[0.070, 1.415, -0.005]}
+          position={[0.070, 0.055, -0.005]}
           rotation={[0, 0.15, -0.05]}
           skinMat={skinMat}
           isLeft={false}
@@ -1358,52 +1572,52 @@ export function ContestantFigure({
 
         {/* ── AUTHENTIC STUDENT HAIRSTYLES (Layered volume, NO helmet look!) ── */}
         {/* Layer 1: Cranial Base Hair Dome with front volume */}
-        <mesh position={[0, 1.450, -0.005]} scale={[1.04, 1.05, 1.04]}>
+        <mesh position={[0, 0.090, -0.005]} scale={[1.04, 1.05, 1.04]}>
           <sphereGeometry args={[0.076, 24, 24]} />
           <primitive object={hairMat} attach="material" />
         </mesh>
         {/* Layer 2: Natural Side-Part Hair Sweep */}
-        <mesh position={[0.012, 1.472, 0.020]} rotation={[-0.10, 0.06, -0.06]}>
+        <mesh position={[0.012, 0.112, 0.020]} rotation={[-0.10, 0.06, -0.06]}>
           <capsuleGeometry args={[0.018, 0.065, 8, 14]} />
           <primitive object={hairMat} attach="material" />
         </mesh>
         {/* Layer 3: Tapered Temples */}
-        <mesh position={[-0.062, 1.442, 0.016]} rotation={[0, 0, -0.15]}>
+        <mesh position={[-0.062, 0.082, 0.016]} rotation={[0, 0, -0.15]}>
           <capsuleGeometry args={[0.012, 0.045, 6, 8]} />
           <primitive object={hairMat} attach="material" />
         </mesh>
-        <mesh position={[0.062, 1.442, 0.016]} rotation={[0, 0, 0.15]}>
+        <mesh position={[0.062, 0.082, 0.016]} rotation={[0, 0, 0.15]}>
           <capsuleGeometry args={[0.012, 0.045, 6, 8]} />
           <primitive object={hairMat} attach="material" />
         </mesh>
 
         {/* ── EXPRESSIVE STUDENT FACIAL FEATURES ── */}
         <ProceduralEye
-          position={[-0.026, 1.420, 0.066]}
+          position={[-0.026, 0.060, 0.066]}
           scale={0.90}
           isLeft={true}
           skinColor={style.skinTone}
         />
         <ProceduralEye
-          position={[0.026, 1.420, 0.066]}
+          position={[0.026, 0.060, 0.066]}
           scale={0.90}
           isLeft={false}
           skinColor={style.skinTone}
         />
 
         {/* Student Eyebrows */}
-        <mesh position={[-0.026, 1.438, 0.068]} rotation={[0, 0, 0.06]}>
+        <mesh position={[-0.026, 0.078, 0.068]} rotation={[0, 0, 0.06]}>
           <boxGeometry args={[0.024, 0.0035, 0.004]} />
           <meshStandardMaterial color="#1a1412" roughness={0.8} />
         </mesh>
-        <mesh position={[0.026, 1.438, 0.068]} rotation={[0, 0, -0.06]}>
+        <mesh position={[0.026, 0.078, 0.068]} rotation={[0, 0, -0.06]}>
           <boxGeometry args={[0.024, 0.0035, 0.004]} />
           <meshStandardMaterial color="#1a1412" roughness={0.8} />
         </mesh>
 
         {/* Procedural 3D Nose */}
         <ProceduralNose
-          position={[0, 1.396, 0.066]}
+          position={[0, 0.036, 0.066]}
           skinMat={skinMat}
           scale={0.88}
           width={0.90}
@@ -1412,7 +1626,7 @@ export function ContestantFigure({
 
         {/* Procedural 3D Mouth (Natural smile, philtrum 1.0cm below nose tip) */}
         <ProceduralMouth
-          position={[0, 1.382, 0.067]}
+          position={[0, 0.022, 0.067]}
           scale={0.90}
           lipColor="#aa5e50"
           smile={0.07}
@@ -1421,7 +1635,7 @@ export function ContestantFigure({
 
         {/* Optional Chic Wireframe Eyeglasses */}
         {style.hasGlasses && (
-          <group position={[0, 1.420, 0.069]}>
+          <group position={[0, 0.060, 0.069]}>
             <mesh position={[-0.026, 0, 0]}>
               <torusGeometry args={[0.012, 0.00045, 10, 24]} />
               <meshStandardMaterial color={style.glassesColor || "#cbd5e1"} metalness={0.9} roughness={0.2} />
@@ -1441,16 +1655,6 @@ export function ContestantFigure({
   );
 }
 
-/**
- * Single Contestant Podium with Grounded Architectural Plinth Footing,
- * Flush Recessed Scoreboard, Slanted Desk Surface, and Palm-Sized Buzzer.
- */
-/**
- * Contestant Podium Matching Authentic VTV3 S14 Studio (Image 2):
- * - Modern tapered architectural kiosk with crisp white pearl chamfered borders.
- * - Distinct RECESSED DARK HORIZONTAL DISPLAY NICHE (hốc chữ nhật khoét chìm màu đen) housing the scoreboard.
- * - Slanted dark graphite desk surface with inset touchscreen tablet and compact palm-sized buzzer.
- */
 export function ContestantPodium({
   seatId,
   name,
@@ -1650,7 +1854,7 @@ export function ContestantPodium({
       </group>
 
       {/* ── 6. 3D CONTESTANT FIGURE STANDING BEHIND PODIUM (Hidden during walking entrance) ── */}
-      {showFigure && <ContestantFigure seatId={seatId} quality={quality} />}
+      {showFigure && <ContestantFigure seatId={seatId} quality={quality} position={[0, 0, -0.42]} />}
     </group>
   );
 }
@@ -2947,6 +3151,8 @@ export function ContestantEntranceWalkingFigures({
 }) {
   const figureRef = useRef<THREE.Group>(null);
   const [isWalking, setIsWalking] = useState(true);
+  const [gesture, setGesture] = useState<"none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow">("none");
+  const [gestureProgress, setGestureProgress] = useState(0);
 
   const currentSeat = state.entranceState?.currentSeatIdx ?? 0;
   const seatStart = state.entranceState?.seatStartedAt || state.entranceState?.startedAt || Date.now();
@@ -2981,6 +3187,8 @@ export function ContestantEntranceWalkingFigures({
     let curZ = startZ;
     let curRotY = Math.PI; // Facing towards camera (-Z)
     let walkingNow = true;
+    let curGesture: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow" = "none";
+    let curGestureProg = 0;
 
     // 0.0s -> 0.4s: Quick 0.4s pause before contestant emerges from behind side arch door
     if (t < 0.4) {
@@ -3015,6 +3223,14 @@ export function ContestantEntranceWalkingFigures({
       curZ = 10.20;
       curRotY = Math.PI;
       walkingNow = false;
+      const signatureGestures: Array<"wave" | "fist_pump" | "heart" | "open_arms"> = [
+        "wave",
+        "fist_pump",
+        "heart",
+        "open_arms",
+      ];
+      curGesture = signatureGestures[currentSeat % signatureGestures.length];
+      curGestureProg = Math.max(0, Math.min(1.0, (t - 2.2) / 1.6));
     } else if (t < 5.0) {
       // Phase 4 (3.8 -> 5.0s): Walks down lower stairs step by step to dais floor, then walks along floor (1.2s)
       g.visible = true;
@@ -3040,11 +3256,22 @@ export function ContestantEntranceWalkingFigures({
       curZ = deskZ;
       curRotY = deskRotY;
       walkingNow = false;
+      if (t < 6.8) {
+        curGesture = "desk_bow";
+        curGestureProg = Math.max(0, Math.min(1.0, (t - 6.2) / 0.6));
+      } else {
+        curGesture = "none";
+        curGestureProg = 0;
+      }
     }
 
     if (walkingNow !== isWalking) {
       setIsWalking(walkingNow);
     }
+    if (curGesture !== gesture) {
+      setGesture(curGesture);
+    }
+    setGestureProgress(curGestureProg);
 
     // Natural energetic walking bounce (3.5cm) synced with brisk stride
     const bounce = walkingNow ? Math.abs(Math.sin((t - 0.4) * 10.0)) * 0.035 : 0;
@@ -3058,6 +3285,8 @@ export function ContestantEntranceWalkingFigures({
         seatId={currentSeat}
         position={[0, 0, 0]}
         isWalking={isWalking}
+        gesture={gesture}
+        gestureProgress={gestureProgress}
       />
     </group>
   );
@@ -3433,33 +3662,54 @@ export function VeDichWalkingContestant({
  * - Concentric HUD radar rings (R = 0.44m, 0.65m, 1.02m, 1.27m) and radar scan pulses.
  */
 function CenterTechFloorGraphic({
-  opacity = 1.0,
+  introStartedAt,
   serverNow,
 }: {
-  opacity: number;
+  introStartedAt: number | null;
   serverNow?: () => number;
 }) {
+  const rootRef = useRef<THREE.Group>(null);
   const primaryArcsRef = useRef<THREE.Group>(null);
   const secondaryArcsRef = useRef<THREE.Group>(null);
   const corePulseRef = useRef<THREE.MeshBasicMaterial>(null);
   const rippleRef = useRef<THREE.Group>(null);
+  const centerWhiteMatRef = useRef<THREE.MeshBasicMaterial>(null);
 
   useFrame((state) => {
+    let targetOp = 0.0;
+    if (introStartedAt != null) {
+      const now = serverNow ? serverNow() : Date.now();
+      const elapsedSec = (now - introStartedAt) / 1000;
+      if (elapsedSec >= 3.0 && elapsedSec < 9.5) {
+        // 3.0s - 9.5s (exact 6.5s duration): Tech graphic is prominently displayed (Image 4 & 5)
+        targetOp = 1.0;
+      } else if (elapsedSec >= 9.5 && elapsedSec < 10.3) {
+        // 9.5s - 10.3s (0.8s): Fades to ambient as laurel returns
+        const fadeT = (elapsedSec - 9.5) / 0.8;
+        targetOp = 1.0 - fadeT * 0.6;
+      } else if (elapsedSec >= 10.3) {
+        targetOp = 0.4;
+      }
+    }
+
+    if (rootRef.current) {
+      rootRef.current.visible = targetOp > 0.001;
+    }
+    if (targetOp <= 0.001) return;
+
     const nowSec = serverNow ? serverNow() / 1000 : state.clock.getElapsedTime();
-    // Continuous deterministic clock-based modulo rotation [0, 2π) (F9)
     const rotPrimary = (((nowSec * 0.65) % (Math.PI * 2)) + (Math.PI * 2)) % (Math.PI * 2);
     const rotSecondary = (((-nowSec * 0.42) % (Math.PI * 2)) + (Math.PI * 2)) % (Math.PI * 2);
 
-    if (primaryArcsRef.current) {
-      primaryArcsRef.current.rotation.z = rotPrimary;
-    }
-    if (secondaryArcsRef.current) {
-      secondaryArcsRef.current.rotation.z = rotSecondary;
-    }
+    if (primaryArcsRef.current) primaryArcsRef.current.rotation.z = rotPrimary;
+    if (secondaryArcsRef.current) secondaryArcsRef.current.rotation.z = rotSecondary;
+
     const now = serverNow ? serverNow() : Date.now();
-    const effectiveOpacity = Math.max(0.35, opacity);
     if (corePulseRef.current) {
-      corePulseRef.current.opacity = (0.65 + 0.30 * Math.sin(now * 0.005)) * effectiveOpacity;
+      corePulseRef.current.opacity = (0.75 + 0.25 * Math.sin(now * 0.005)) * targetOp;
+    }
+    if (centerWhiteMatRef.current) {
+      centerWhiteMatRef.current.opacity = 0.96 * targetOp;
     }
     if (rippleRef.current) {
       const cycle = ((now * 0.001) % 1.5) / 1.5;
@@ -3468,19 +3718,16 @@ function CenterTechFloorGraphic({
     }
   });
 
-  // Maintain ambient floor activity throughout match play instead of unmounting abruptly
-  const effectiveOpacity = Math.max(0.35, opacity);
-
   return (
-    <group rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0036, 0]}>
-      {/* ── 1. GLOWING CYAN CORE DISC WITH WHITE CENTER ── */}
-      <mesh renderOrder={9.55}>
-        <circleGeometry args={[0.36, 48]} />
+    <group ref={rootRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0048, 0]}>
+      {/* ── 1. GLOWING CYAN CORE DISC WITH WHITE CENTER (Image 4 & 5 Reference) ── */}
+      <mesh renderOrder={9.65}>
+        <circleGeometry args={[0.42, 64]} />
         <meshBasicMaterial
           ref={corePulseRef}
           color="#00f0ff"
           transparent
-          opacity={0.85 * effectiveOpacity}
+          opacity={0.88}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           polygonOffset
@@ -3488,12 +3735,13 @@ function CenterTechFloorGraphic({
           polygonOffsetUnits={-2}
         />
       </mesh>
-      <mesh renderOrder={9.58}>
-        <circleGeometry args={[0.12, 32]} />
+      <mesh renderOrder={9.68}>
+        <circleGeometry args={[0.15, 36]} />
         <meshBasicMaterial
+          ref={centerWhiteMatRef}
           color="#ffffff"
           transparent
-          opacity={0.95 * effectiveOpacity}
+          opacity={0.96}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           polygonOffset
@@ -3502,47 +3750,35 @@ function CenterTechFloorGraphic({
         />
       </mesh>
 
-      {/* ── 2. PRIMARY OPPOSING ROTATING CYAN LASER ARCS (Clockwise) ── */}
+      {/* ── 2. 4 SYMMETRICAL QUADRANT CYAN ARCS (Image 4 & 5 Reference) ── */}
       <group ref={primaryArcsRef}>
-        <mesh renderOrder={9.62}>
-          <ringGeometry args={[0.72, 0.96, 48, 1, 0, (75 * Math.PI) / 180]} />
-          <meshBasicMaterial
-            color="#00f0ff"
-            transparent
-            opacity={0.90 * effectiveOpacity}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            polygonOffset
-            polygonOffsetFactor={-2}
-            polygonOffsetUnits={-2}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-        <mesh rotation={[0, 0, Math.PI]} renderOrder={9.62}>
-          <ringGeometry args={[0.72, 0.96, 48, 1, 0, (75 * Math.PI) / 180]} />
-          <meshBasicMaterial
-            color="#00f0ff"
-            transparent
-            opacity={0.90 * effectiveOpacity}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-            polygonOffset
-            polygonOffsetFactor={-2}
-            polygonOffsetUnits={-2}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
+        {[0, 90, 180, 270].map((deg) => (
+          <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]} renderOrder={9.72}>
+            <ringGeometry args={[0.72, 0.94, 36, 1, 0, (70 * Math.PI) / 180]} />
+            <meshBasicMaterial
+              color="#00f0ff"
+              transparent
+              opacity={0.92}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-2}
+              polygonOffsetUnits={-2}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        ))}
       </group>
 
-      {/* ── 3. SECONDARY COUNTER-ROTATING CIRCUIT ARCS (Counter-Clockwise) ── */}
+      {/* ── 3. SECONDARY COUNTER-ROTATING ACCENT ARCS ── */}
       <group ref={secondaryArcsRef}>
-        {[0, 120, 240].map((deg) => (
-          <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]} renderOrder={9.63}>
-            <ringGeometry args={[1.06, 1.22, 36, 1, 0, (55 * Math.PI) / 180]} />
+        {[45, 165, 285].map((deg) => (
+          <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]} renderOrder={9.73}>
+            <ringGeometry args={[1.08, 1.22, 36, 1, 0, (50 * Math.PI) / 180]} />
             <meshBasicMaterial
               color="#38bdf8"
               transparent
-              opacity={0.75 * effectiveOpacity}
+              opacity={0.80}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
               polygonOffset
@@ -3555,12 +3791,12 @@ function CenterTechFloorGraphic({
       </group>
 
       {/* ── 4. CONCENTRIC HUD RADAR RINGS & EXPANDING RIPPLE ── */}
-      <mesh renderOrder={9.60}>
-        <ringGeometry args={[0.44, 0.455, 64]} />
+      <mesh renderOrder={9.70}>
+        <ringGeometry args={[0.52, 0.54, 64]} />
         <meshBasicMaterial
           color="#00f0ff"
           transparent
-          opacity={0.7 * effectiveOpacity}
+          opacity={0.75}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           polygonOffset
@@ -3568,12 +3804,12 @@ function CenterTechFloorGraphic({
           polygonOffsetUnits={-2}
         />
       </mesh>
-      <mesh renderOrder={9.60}>
-        <ringGeometry args={[0.65, 0.665, 64]} />
+      <mesh renderOrder={9.70}>
+        <ringGeometry args={[0.66, 0.68, 64]} />
         <meshBasicMaterial
           color="#38bdf8"
           transparent
-          opacity={0.6 * effectiveOpacity}
+          opacity={0.65}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           polygonOffset
@@ -3581,12 +3817,12 @@ function CenterTechFloorGraphic({
           polygonOffsetUnits={-2}
         />
       </mesh>
-      <mesh renderOrder={9.60}>
-        <ringGeometry args={[1.02, 1.035, 64]} />
+      <mesh renderOrder={9.70}>
+        <ringGeometry args={[1.02, 1.04, 64]} />
         <meshBasicMaterial
           color="#00f0ff"
           transparent
-          opacity={0.65 * effectiveOpacity}
+          opacity={0.70}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           polygonOffset
@@ -3594,12 +3830,12 @@ function CenterTechFloorGraphic({
           polygonOffsetUnits={-2}
         />
       </mesh>
-      <mesh renderOrder={9.65}>
-        <ringGeometry args={[1.27, 1.285, 64]} />
+      <mesh renderOrder={9.75}>
+        <ringGeometry args={[1.26, 1.28, 64]} />
         <meshBasicMaterial
           color="#38bdf8"
           transparent
-          opacity={0.6 * effectiveOpacity}
+          opacity={0.65}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           polygonOffset
@@ -3610,12 +3846,12 @@ function CenterTechFloorGraphic({
 
       {/* Expanding Ripple Pulse */}
       <group ref={rippleRef}>
-        <mesh renderOrder={9.59}>
+        <mesh renderOrder={9.69}>
           <ringGeometry args={[0.95, 1.0, 96]} />
           <meshBasicMaterial
             color="#67e8f9"
             transparent
-            opacity={0.45 * effectiveOpacity}
+            opacity={0.45}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             polygonOffset
@@ -3671,96 +3907,248 @@ function createSegmentedTrackGeometry(
 }
 
 /**
- * Dynamic Central Floor Intro Aperture Burst (0.0s - 7.0s VTV3 Broadcast Parity):
- * - 0.0s - 1.5s: Handled by CenterFloorStage with Golden Laurel Wreath decal visible.
- * - 1.5s - 3.5s: Radiant Fire Burst (intense red/orange/gold glowing core & 16 expanding rays).
- * - 3.5s - 7.0s: Electric Cyan Bloom (color shifts into electric cyan, concentric aperture rings open).
- * - 7.0s onwards: Steady cyan stage lighting.
+ * Dynamic Central Floor Intro Effects (Broadcast Reference Parity):
+ * 1. 0.0s - 3.0s: Outer laurel rim light beam transitioning from cyan (#00f0ff) to crimson red (#ef4444).
+ * 2. 0.5s - 1.5s: Huge flat red light beam burst strictly on the floor screen surface (white-hot core + expanding red shockwave disk + radial floor streaks).
+ * 3. 3.0s - 9.5s: Laurel wreath temporarily hidden; concentric tech circular sectors/rings displayed.
  */
 function CentralFloorIntroBurst({
-  elapsedSec,
+  introStartedAt,
+  serverNow,
 }: {
-  elapsedSec: number;
+  introStartedAt: number | null;
+  serverNow?: () => number;
 }) {
-  if (elapsedSec < 1.5 || elapsedSec >= 7.0) return null;
+  const rootRef = useRef<THREE.Group>(null);
+  const rimGroupRef = useRef<THREE.Group>(null);
+  const rimMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const rimPulse1Ref = useRef<THREE.Mesh>(null);
+  const rimPulse2Ref = useRef<THREE.Mesh>(null);
+  const redGroupRef = useRef<THREE.Group>(null);
+  const redFlareRef = useRef<THREE.Mesh>(null);
+  const redFlareMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const redHaloRef = useRef<THREE.Mesh>(null);
+  const redHaloMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const whiteCoreRef = useRef<THREE.Mesh>(null);
+  const whiteCoreMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const shockwave1Ref = useRef<THREE.Mesh>(null);
+  const shockwave1MatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const shockwave2Ref = useRef<THREE.Mesh>(null);
+  const shockwave2MatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const raysRef = useRef<THREE.Group>(null);
 
-  const isFirePhase = elapsedSec < 3.5;
-  const fireT = isFirePhase ? (elapsedSec - 1.5) / 2.0 : 1.0;
-  const cyanT = isFirePhase ? 0 : Math.min(1.0, (elapsedSec - 3.5) / 3.5);
+  useFrame(() => {
+    if (!introStartedAt) {
+      if (rootRef.current) rootRef.current.visible = false;
+      return;
+    }
+    const now = serverNow ? serverNow() : Date.now();
+    const elapsedSec = (now - introStartedAt) / 1000;
+    if (elapsedSec < 0 || elapsedSec >= 10.3) {
+      if (rootRef.current) rootRef.current.visible = false;
+      return;
+    }
+    if (rootRef.current) rootRef.current.visible = true;
 
-  const coreColor = isFirePhase
-    ? (fireT < 0.5 ? "#ef4444" : "#f97316")
-    : (cyanT < 0.35 ? "#f59e0b" : "#00f0ff");
+    // 1. 0.0s - 3.0s: Laurel rim light beam transitioning cyan -> red
+    const rimActive = elapsedSec < 3.0;
+    if (rimGroupRef.current) {
+      rimGroupRef.current.visible = rimActive;
+      if (rimActive && rimMatRef.current) {
+        const rimT = Math.max(0, Math.min(1.0, elapsedSec / 3.0));
+        const c1 = new THREE.Color("#00f0ff");
+        const c2 = new THREE.Color("#ef4444");
+        rimMatRef.current.color.copy(c1).lerp(c2, rimT);
+        rimMatRef.current.opacity = 0.95 * (1 - rimT * 0.15);
+        if (rimPulse1Ref.current) rimPulse1Ref.current.rotation.z = elapsedSec * 3.5;
+        if (rimPulse2Ref.current) rimPulse2Ref.current.rotation.z = elapsedSec * 3.5 + Math.PI;
+      }
+    }
 
-  const coreRadius = isFirePhase
-    ? THREE.MathUtils.lerp(0.20, 0.75, fireT)
-    : THREE.MathUtils.lerp(0.75, 1.25, cyanT);
+    // 2. 0.5s - 2.5s: HUGE fiery red light beam surge strictly on floor screen (Image 2 Parity)
+    const redActive = elapsedSec >= 0.4 && elapsedSec < 2.5;
+    if (redGroupRef.current) {
+      redGroupRef.current.visible = redActive;
+      if (redActive) {
+        const burstT = (elapsedSec - 0.4) / 2.1;
+        const intensity = Math.sin(burstT * Math.PI);
+        const radiusScale = THREE.MathUtils.lerp(0.60, 1.38, Math.min(1.0, burstT * 1.6));
 
-  const burstIntensity = isFirePhase ? 1.0 : Math.max(0, 1.0 - cyanT);
+        if (redFlareRef.current) redFlareRef.current.scale.set(radiusScale, radiusScale, 1);
+        if (redFlareMatRef.current) redFlareMatRef.current.opacity = 0.98 * intensity;
+
+        if (redHaloRef.current) redHaloRef.current.scale.set(radiusScale * 0.80, radiusScale * 0.80, 1);
+        if (redHaloMatRef.current) redHaloMatRef.current.opacity = 0.95 * intensity;
+
+        if (whiteCoreRef.current) whiteCoreRef.current.scale.set(radiusScale * 0.45, radiusScale * 0.45, 1);
+        if (whiteCoreMatRef.current) whiteCoreMatRef.current.opacity = 0.99 * intensity;
+
+        if (shockwave1Ref.current) shockwave1Ref.current.scale.set(radiusScale, radiusScale, 1);
+        if (shockwave1MatRef.current) shockwave1MatRef.current.opacity = 0.92 * intensity;
+
+        if (shockwave2Ref.current) shockwave2Ref.current.scale.set(radiusScale * 0.75, radiusScale * 0.75, 1);
+        if (shockwave2MatRef.current) shockwave2MatRef.current.opacity = 0.88 * intensity;
+
+        if (raysRef.current) {
+          raysRef.current.scale.set(radiusScale, radiusScale, 1);
+          raysRef.current.rotation.z = elapsedSec * 1.5;
+          raysRef.current.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.material) {
+              (child.material as THREE.MeshBasicMaterial).opacity = 0.85 * intensity;
+            }
+          });
+        }
+      }
+    }
+  });
 
   return (
-    <group rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0042, 0]}>
-      {/* 1. Radiant Glowing Light Core Disc */}
-      <mesh renderOrder={9.7}>
-        <circleGeometry args={[coreRadius, 64]} />
-        <meshBasicMaterial
-          color={coreColor}
-          transparent
-          opacity={0.85 * (1 - cyanT * 0.45)}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          polygonOffset
-          polygonOffsetFactor={-2}
-          polygonOffsetUnits={-2}
-        />
-      </mesh>
+    <group ref={rootRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0055, 0]}>
+      {/* ── A. 0.0s - 3.0s: RIM LIGHT BEAM TRANSITIONING CYAN -> RED AROUND LAUREL WREATH ── */}
+      <group ref={rimGroupRef} renderOrder={10.15}>
+        {/* Glowing perimeter border ring (R = 1.22m to 1.32m) */}
+        <mesh>
+          <ringGeometry args={[1.22, 1.32, 128]} />
+          <meshBasicMaterial
+            ref={rimMatRef}
+            color="#00f0ff"
+            transparent
+            opacity={0.92}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+        {/* Fast-rotating bright light beam pulse traveling along the rim */}
+        <mesh ref={rimPulse1Ref}>
+          <ringGeometry args={[1.20, 1.34, 64, 1, 0, (60 * Math.PI) / 180]} />
+          <meshBasicMaterial
+            color="#ffffff"
+            transparent
+            opacity={0.95}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+        <mesh ref={rimPulse2Ref}>
+          <ringGeometry args={[1.20, 1.34, 64, 1, 0, (60 * Math.PI) / 180]} />
+          <meshBasicMaterial
+            color="#ffffff"
+            transparent
+            opacity={0.95}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      </group>
 
-      {/* 2. Intense White Hotspot at epicenter */}
-      <mesh renderOrder={9.75}>
-        <circleGeometry args={[coreRadius * 0.35, 32]} />
-        <meshBasicMaterial
-          color="#ffffff"
-          transparent
-          opacity={0.95 * burstIntensity}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          polygonOffset
-          polygonOffsetFactor={-2}
-          polygonOffsetUnits={-2}
-        />
-      </mesh>
+      {/* ── B. 0.5s - 1.5s: HUGE RED LIGHT BEAM BURST ON FLOOR SCREEN (Image 2 & 3 Broadcast Parity) ── */}
+      <group ref={redGroupRef} renderOrder={10.20}>
+        {/* 1. Fiery Crimson Main Flare Disc */}
+        <mesh ref={redFlareRef} renderOrder={10.20}>
+          <circleGeometry args={[1.0, 64]} />
+          <meshBasicMaterial ref={redFlareMatRef} color="#e11d48" transparent opacity={0.98}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+          />
+        </mesh>
 
-      {/* 3. Expanding Aperture Concentric Rings (Cyan Bloom) */}
-      {cyanT > 0.08 && (
-        <group renderOrder={9.73}>
-          <mesh>
-            <ringGeometry args={[coreRadius * 0.58, coreRadius * 0.66, 64]} />
-            <meshBasicMaterial
-              color="#00f0ff"
-              transparent
-              opacity={0.82 * cyanT}
-              blending={THREE.AdditiveBlending}
-              depthWrite={false}
-              polygonOffset
-              polygonOffsetFactor={-2}
-              polygonOffsetUnits={-2}
-            />
-          </mesh>
-          <mesh>
-            <ringGeometry args={[coreRadius * 0.84, coreRadius * 0.92, 64]} />
-            <meshBasicMaterial
-              color="#38bdf8"
-              transparent
-              opacity={0.72 * cyanT}
-              blending={THREE.AdditiveBlending}
-              depthWrite={false}
-              polygonOffset
-              polygonOffsetFactor={-2}
-              polygonOffsetUnits={-2}
-            />
-          </mesh>
+        {/* 2. Secondary Orange-Red Energy Halo */}
+        <mesh ref={redHaloRef} renderOrder={10.22}>
+          <circleGeometry args={[1.0, 48]} />
+          <meshBasicMaterial
+            ref={redHaloMatRef}
+            color="#ff3b30"
+            transparent
+            opacity={0.92}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+          />
+        </mesh>
+
+        {/* 3. Blinding White-Hot Center Core */}
+        <mesh ref={whiteCoreRef} renderOrder={10.30}>
+          <circleGeometry args={[1.0, 36]} />
+          <meshBasicMaterial
+            ref={whiteCoreMatRef}
+            color="#ffffff"
+            transparent
+            opacity={0.99}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+          />
+        </mesh>
+
+        {/* 4. Expanding Red Shockwave Ripples along floor plane */}
+        <mesh ref={shockwave1Ref} renderOrder={10.24}>
+          <ringGeometry args={[0.88, 0.98, 96]} />
+          <meshBasicMaterial
+            ref={shockwave1MatRef}
+            color="#ff453a"
+            transparent
+            opacity={0.90}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+        <mesh ref={shockwave2Ref} renderOrder={10.24}>
+          <ringGeometry args={[0.62, 0.70, 96]} />
+          <meshBasicMaterial
+            ref={shockwave2MatRef}
+            color="#ff9f0a"
+            transparent
+            opacity={0.85}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* 5. 16 Floor-Planar Radial Flare Streaks (strictly 2D on floor surface) */}
+        <group ref={raysRef} renderOrder={10.26}>
+          {[0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5].map((deg) => (
+            <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]}>
+              <planeGeometry args={[0.055, 2.4]} />
+              <meshBasicMaterial
+                color="#ff2244"
+                transparent
+                opacity={0.80}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+                polygonOffset
+                polygonOffsetFactor={-2}
+                polygonOffsetUnits={-2}
+              />
+            </mesh>
+          ))}
         </group>
-      )}
+      </group>
     </group>
   );
 }
@@ -3783,6 +4171,7 @@ export function CenterFloorStage({
   isIdle?: boolean;
 }) {
   const wreathGroupRef = useRef<THREE.Group>(null);
+  const wreathMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const entryBurstRef = useRef<THREE.Group>(null);
   const outerLaserArcsRef = useRef<THREE.Group>(null);
   const entryElapsedRef = useRef(0);
@@ -3798,46 +4187,10 @@ export function CenterFloorStage({
   const neonColor = isRed ? "#ef4444" : "#00f0ff";
   const accentColor = isRed ? "#dc2626" : "#38bdf8";
 
-  // Timeline for Center Tech Graphic & Laurel Wreath Transition (R4)
-  let techOpacity = 0.0;
-  let laurelOpacity = 1.0;
-
-  if (isIdle && !introStartedAt) {
-    // Idle / lobby state: circular LED floor screen displays pure dark floor disc, entry rays suppressed, laurel opacity 0
-    techOpacity = 0.0;
-    laurelOpacity = 0.0;
-  } else if (introStartedAt != null) {
-    const elapsedSec = (nowMs - introStartedAt) / 1000;
-    if (elapsedSec < 1.5) {
-      // 0.0s - 1.5s: Calm dark floor disc with Golden Laurel Wreath (Image 1)
-      techOpacity = 0.0;
-      laurelOpacity = 1.0;
-    } else if (elapsedSec < 3.5) {
-      // 1.5s - 3.5s: Radiant Fire Burst (Image 2 & 3)
-      const fireT = (elapsedSec - 1.5) / 2.0;
-      techOpacity = 1.0;
-      laurelOpacity = Math.max(0.35, 1.0 - fireT * 0.65);
-    } else if (elapsedSec < 7.0) {
-      // 3.5s - 7.0s: Color shift from fire to electric cyan with expanding aperture rings (Image 4)
-      const shiftT = (elapsedSec - 3.5) / 3.5;
-      techOpacity = 1.0;
-      laurelOpacity = Math.min(1.0, 0.35 + shiftT * 0.65);
-    } else {
-      // 7.0s onwards: Steady cyan broadcast lighting with laurel decal
-      techOpacity = 0.6;
-      laurelOpacity = 1.0;
-    }
-  } else {
-    // Non-intro active match rounds: golden laurel decal at 100% opacity
-    techOpacity = 0.0;
-    laurelOpacity = 1.0;
-  }
-
   const isEntrance = !isIdle && Boolean(state?.entranceState?.active);
 
-  // Real-time animation loop
+  // Real-time animation loop (60 FPS)
   useFrame((state, delta) => {
-    // Continuous monotonic modulo rotation [0, 2π) for outer cyan laser rings (F9)
     const nowSec = serverNow ? serverNow() / 1000 : state.clock.getElapsedTime();
     if (outerLaserArcsRef.current) {
       outerLaserArcsRef.current.rotation.z = (((nowSec * 0.45) % (Math.PI * 2)) + (Math.PI * 2)) % (Math.PI * 2);
@@ -3852,10 +4205,40 @@ export function CenterFloorStage({
       }
     }
 
-    // 2. Hiệu ứng bắt đầu (tia sáng / radiant glow burst khi bắt đầu vô phòng - zero-allocation ref mutation)
+    // 2. Real-time 60 FPS Laurel Wreath Transition Timeline
+    let curLaurelOpacity = 1.0;
+    if (isIdle && !introStartedAt) {
+      curLaurelOpacity = 0.0;
+    } else if (introStartedAt != null) {
+      const now = serverNow ? serverNow() : Date.now();
+      const elapsedSec = (now - introStartedAt) / 1000;
+      if (elapsedSec < 3.0) {
+        curLaurelOpacity = 1.0;
+      } else if (elapsedSec < 9.5) {
+        // 3.0s - 9.5s: exact 6.5s laurel wreath temporarily disappears completely!
+        curLaurelOpacity = 0.0;
+      } else if (elapsedSec < 10.3) {
+        // 9.5s - 10.3s: 0.8s smooth fade-in of laurel wreath
+        const fadeT = (elapsedSec - 9.5) / 0.8;
+        curLaurelOpacity = Math.max(0, Math.min(1.0, fadeT));
+      } else {
+        curLaurelOpacity = 1.0;
+      }
+    } else {
+      curLaurelOpacity = 1.0;
+    }
+
+    if (wreathGroupRef.current) {
+      wreathGroupRef.current.visible = curLaurelOpacity > 0.001;
+    }
+    if (wreathMatRef.current) {
+      wreathMatRef.current.opacity = curLaurelOpacity;
+    }
+
+    // 3. Hiệu ứng bắt đầu chào sân
     if (entryBurstRef.current) {
       entryElapsedRef.current += delta;
-      const cycle = (entryElapsedRef.current % 3.0) / 3.0; // 3-second gentle radiant cycle
+      const cycle = (entryElapsedRef.current % 3.0) / 3.0;
       const s = 0.4 + cycle * 1.8;
       entryBurstRef.current.scale.set(s, s, s);
       entryBurstRef.current.rotation.z += delta * 0.2;
@@ -4117,12 +4500,10 @@ export function CenterFloorStage({
       </group>
 
       {/* ── 2A. 6-SECOND DYNAMIC TECH FLOOR GRAPHIC (BROADCAST REFERENCE) ── */}
-      <CenterTechFloorGraphic opacity={techOpacity} serverNow={serverNow} />
+      <CenterTechFloorGraphic introStartedAt={introStartedAt} serverNow={serverNow} />
 
       {/* ── 2A.1 CENTRAL FLOOR INTRO APERTURE BURST (0-7s VTV3 Footages: Gold Laurel -> Fire -> Cyan Bloom) ── */}
-      {introStartedAt != null && (
-        <CentralFloorIntroBurst elapsedSec={(nowMs - introStartedAt) / 1000} />
-      )}
+      <CentralFloorIntroBurst introStartedAt={introStartedAt} serverNow={serverNow} />
 
       {/* ── 2B. ENTRY RADIANT LIGHT BURST EFFECT (Khi diễn ra màn chào sân) ── */}
       {isEntrance && (
@@ -4169,15 +4550,11 @@ export function CenterFloorStage({
         position={[0, 0.0050, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         renderOrder={10.0}
-        visible={laurelOpacity > 0.001}
       >
         {activeWreathTex && (
           <mesh>
             <planeGeometry args={[2.3, 2.3]} />
-            <meshBasicMaterial
-              map={activeWreathTex}
-              transparent={true}
-              opacity={laurelOpacity}
+            <meshBasicMaterial ref={wreathMatRef} map={activeWreathTex} transparent={true} opacity={1.0}
               depthWrite={false}
               toneMapped={false}
               polygonOffset

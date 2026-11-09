@@ -3692,8 +3692,6 @@ function CentralFloorIntroBurst({
     ? (fireT < 0.5 ? "#ef4444" : "#f97316")
     : (cyanT < 0.35 ? "#f59e0b" : "#00f0ff");
 
-  const rayColor = isFirePhase ? "#fbbf24" : (cyanT < 0.5 ? "#38bdf8" : "#00f0ff");
-
   const coreRadius = isFirePhase
     ? THREE.MathUtils.lerp(0.20, 0.75, fireT)
     : THREE.MathUtils.lerp(0.75, 1.25, cyanT);
@@ -3732,25 +3730,7 @@ function CentralFloorIntroBurst({
         />
       </mesh>
 
-      {/* 3. 16 Radiant Fire/Light Rays expanding outwards to the rim */}
-      {burstIntensity > 0.05 &&
-        [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5].map((deg) => (
-          <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]} renderOrder={9.72}>
-            <planeGeometry args={[0.08, 2.35]} />
-            <meshBasicMaterial
-              color={rayColor}
-              transparent
-              opacity={0.65 * burstIntensity}
-              blending={THREE.AdditiveBlending}
-              depthWrite={false}
-              polygonOffset
-              polygonOffsetFactor={-2}
-              polygonOffsetUnits={-2}
-            />
-          </mesh>
-        ))}
-
-      {/* 4. Expanding Aperture Concentric Rings (Cyan Bloom) */}
+      {/* 3. Expanding Aperture Concentric Rings (Cyan Bloom) */}
       {cyanT > 0.08 && (
         <group renderOrder={9.73}>
           <mesh>

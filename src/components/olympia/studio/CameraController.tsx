@@ -195,16 +195,21 @@ export const _wideStageTarget = new THREE.Vector3(-0.60, 1.80, -3.80);
 export const _centerStagePos = new THREE.Vector3(0.00, 1.95, 4.60);
 export const _centerStageTarget = new THREE.Vector3(0.00, 1.15, -0.30);
 
-// Opening Low-Ground Crane Sweep Waypoints (0.0s - 7.0s, VTV3 Olympia Broadcast Parity):
-// Starts low to the ground looking slightly diagonal upwards across the central floor aperture disc
-export const _introLowGroundPos = new THREE.Vector3(-2.35, 0.48, 5.60);
-export const _introLowGroundTarget = new THREE.Vector3(0.00, 0.25, 0.60);
-// Elevates gently up to mid-ground over 7 seconds
-export const _introMidGroundPos = new THREE.Vector3(-1.70, 1.35, 4.75);
-export const _introMidGroundTarget = new THREE.Vector3(0.00, 0.90, 0.30);
-// Instant Hard Cut directly to Frontal Center MC medium shot at t = 7.0s (Image 5)
+// Opening Central Floor Focused & Crane Up Waypoints (0.0s - 7.0s, VTV3 Olympia 27 Broadcast Parity):
+// Phase 1 (0.0s - 2.5s): Pitched downwards (~18-20°) focused precisely on central stage floor disc and laurel wreath / fire burst (Images 1-3)
+export const _introFloorFocusPos = new THREE.Vector3(-1.75, 1.45, 3.10);
+export const _introFloorFocusTarget = new THREE.Vector3(0.00, 0.188, -0.50);
+// Phase 2 (2.5s - 7.0s): Crane elevates and smoothly tilts up as cyan bloom opens, revealing both MCs at center background (Image 4)
+export const _introCraneUpPos = new THREE.Vector3(-1.20, 1.65, 4.20);
+export const _introCraneUpTarget = new THREE.Vector3(0.00, 1.25, 0.00);
+// Phase 3 (7.0s onwards): Instant Hard Cut directly to Frontal Center MC medium shot (Image 5)
 export const _frontCenterMCPos = new THREE.Vector3(0.00, 1.35, 3.65);
 export const _frontCenterMCTarget = new THREE.Vector3(0.00, 1.25, 0.00);
+// Aliases for backwards compatibility with existing references
+export const _introLowGroundPos = _introFloorFocusPos;
+export const _introLowGroundTarget = _introFloorFocusTarget;
+export const _introMidGroundPos = _introCraneUpPos;
+export const _introMidGroundTarget = _introCraneUpTarget;
 
 const _sweepStartPos = new THREE.Vector3();
 const _sweepStartTarget = new THREE.Vector3();
@@ -289,24 +294,36 @@ export function CameraController({
         camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 6.0, delta);
       }
     }
-    // 0. Opening Sequence Camera Director (VTV3 Broadcast Parity):
-    // Phase 1 (0.0s - 7.0s): Low-ground crane sweep elevating diagonally across stage floor,
-    //                       capturing the radiant floor opening burst (0-1.5s golden laurel, 1.5-3.5s fire burst, 3.5-7.0s cyan bloom)
+    // 0. Opening Sequence Camera Director (VTV3 Olympia 27 Broadcast Parity):
+    // Phase 1 (0.0s - 2.5s): Camera stays pitched downwards (~18-20°) focused precisely on central floor dais [0, 0.188, -0.5],
+    //                       capturing the golden laurel wreath and radiant fire burst (Images 1-3).
+    // Phase 2 (2.5s - 7.0s): Crane elevates and smoothly tilts up to reveal 2 MCs as floor blooms into electric cyan (Image 4).
     //                       (Preserves timeline references: elapsedSec < 4.0 and elapsedSec < 6.0)
-    // Phase 2 (7.0s onwards): Instant hard cut (0s transition) directly to Frontal Center MC medium shot
+    // Phase 3 (7.0s onwards): Instant hard cut (0s transition) directly to Frontal Center MC medium shot (Image 5)
     //                       with subtle broadcast breathing (Math.sin(holdElapsed * 0.45)).
     if (introStartedAt) {
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = Math.max(0, (now - introStartedAt) / 1000);
 
-      if (elapsedSec < 7.0) {
-        // Low-ground sweeping crane shot: elevates gently over 7 seconds
-        const t = Math.min(1.0, elapsedSec / 7.0);
+      if (elapsedSec < 2.5) {
+        // Phase 1 (0.0s - 2.5s): Chĩa chính xác vào tâm mặt sàn trung tâm [0, 0.188, -0.5] (dốc xuống ~20°)
+        const p = elapsedSec / 2.5;
+        const driftX = Math.sin(p * Math.PI * 0.5) * 0.05;
+        const driftY = Math.sin(p * Math.PI * 0.5) * 0.03;
+        _curPos.set(
+          _introFloorFocusPos.x + driftX,
+          _introFloorFocusPos.y + driftY,
+          _introFloorFocusPos.z
+        );
+        _curTarget.copy(_introFloorFocusTarget);
+      } else if (elapsedSec < 7.0) {
+        // Phase 2 (2.5s - 7.0s): Cẩu lướt nâng cao kết hợp ngửa dần lên ngực 2 MC
+        const t = (elapsedSec - 2.5) / 4.5;
         const smoothT = t * t * (3 - 2 * t);
-        _curPos.lerpVectors(_introLowGroundPos, _introMidGroundPos, smoothT);
-        _curTarget.lerpVectors(_introLowGroundTarget, _introMidGroundTarget, smoothT);
+        _curPos.lerpVectors(_introFloorFocusPos, _introCraneUpPos, smoothT);
+        _curTarget.lerpVectors(_introFloorFocusTarget, _introCraneUpTarget, smoothT);
       } else {
-        // Instant hard cut (0s transition) at t = 7.0s to Frontal Center MC Medium Shot
+        // Phase 3 (7.0s onwards): Instant hard cut (0s transition) to Frontal Center MC Medium Shot
         const holdElapsed = elapsedSec - 7.0;
         const breatheY = Math.sin(holdElapsed * 0.75) * 0.010;
         const breatheX = Math.sin(holdElapsed * 0.45) * 0.008;

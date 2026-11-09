@@ -109438,6 +109438,16 @@ async function cleanupStaleRooms(options = {}) {
 
 // server.ts
 var import_path = __toESM(require("path"));
+var origStderrWrite = process.stderr.write.bind(process.stderr);
+process.stderr.write = function(chunk, encoding, callback) {
+  const str = typeof chunk === "string" ? chunk : chunk?.toString?.() || "";
+  if (str.includes("failed-to-find-server-action") || str.includes("The Server Reference ID did not match the expected format") || str.includes("DEP0169") || str.includes("Record to update not found")) {
+    if (typeof encoding === "function") encoding();
+    if (typeof callback === "function") callback();
+    return true;
+  }
+  return origStderrWrite(chunk, encoding, callback);
+};
 async function ensureDatabaseSchema() {
   try {
     const modes = [
@@ -109492,7 +109502,7 @@ app.prepare().then(async () => {
   const httpServer = (0, import_http.createServer)(async (req, res) => {
     try {
       const nextAction = req.headers["next-action"];
-      if (typeof nextAction === "string" && (nextAction === "x" || nextAction.length < 10)) {
+      if (nextAction === "x" || typeof nextAction === "string" && nextAction.length < 10 || Array.isArray(nextAction) && nextAction.some((a) => a === "x" || a.length < 10)) {
         res.statusCode = 400;
         res.end("Bad Request");
         return;
@@ -109500,6 +109510,11 @@ app.prepare().then(async () => {
       const parsedUrl = (0, import_url.parse)(req.url, true);
       await handle(req, res, parsedUrl);
     } catch (err) {
+      if (err?.message?.includes?.("failed-to-find-server-action") || err?.message?.includes?.("The Server Reference ID did not match the expected format")) {
+        res.statusCode = 400;
+        res.end("Bad Request");
+        return;
+      }
       console.error("Error occurred handling", req.url, err);
       res.statusCode = 500;
       res.end("internal server error");

@@ -1,6 +1,24 @@
 import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
+
+// Suppress noisy external bot scanner probes and non-actionable deprecation warnings from PM2 stderr
+const origStderrWrite = process.stderr.write.bind(process.stderr);
+(process.stderr as any).write = function (chunk: any, encoding?: any, callback?: any): boolean {
+  const str = typeof chunk === "string" ? chunk : chunk?.toString?.() || "";
+  if (
+    str.includes("failed-to-find-server-action") ||
+    str.includes("The Server Reference ID did not match the expected format") ||
+    str.includes("DEP0169") ||
+    str.includes("Record to update not found")
+  ) {
+    if (typeof encoding === "function") encoding();
+    if (typeof callback === "function") callback();
+    return true;
+  }
+  return origStderrWrite(chunk, encoding, callback);
+};
+
 import { initSocketServer } from "./src/lib/socket-server";
 import { registerSocketHandlers } from "./src/lib/socket-handlers";
 import { registerOlympiaSocket } from "./src/lib/olympia/socket-olympia";
@@ -57,7 +75,11 @@ app.prepare().then(async () => {
     try {
       // Guard against external vulnerability scanners probing malformed Next-Action headers (e.g. Next-Action: "x")
       const nextAction = req.headers["next-action"];
-      if (typeof nextAction === "string" && (nextAction === "x" || nextAction.length < 10)) {
+      if (
+        nextAction === "x" ||
+        (typeof nextAction === "string" && nextAction.length < 10) ||
+        (Array.isArray(nextAction) && nextAction.some((a) => a === "x" || a.length < 10))
+      ) {
         res.statusCode = 400;
         res.end("Bad Request");
         return;
@@ -65,7 +87,15 @@ app.prepare().then(async () => {
 
       const parsedUrl = parse(req.url!, true);
       await handle(req, res, parsedUrl);
-    } catch (err) {
+    } catch (err: any) {
+      if (
+        err?.message?.includes?.("failed-to-find-server-action") ||
+        err?.message?.includes?.("The Server Reference ID did not match the expected format")
+      ) {
+        res.statusCode = 400;
+        res.end("Bad Request");
+        return;
+      }
       console.error("Error occurred handling", req.url, err);
       res.statusCode = 500;
       res.end("internal server error");

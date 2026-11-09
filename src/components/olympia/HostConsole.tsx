@@ -1926,8 +1926,8 @@ function KhoiDongDeck({
     <div className="space-y-2">
       {/* Row 1: Segment & Contestant Selectors */}
       <div className="flex items-center justify-between gap-1.5 flex-wrap bg-black/30 p-1.5 rounded-xl border border-white/5">
-        {/* Toggle Lượt Riêng / Lượt Chung - CHỈ HIỂN THỊ Ở O24, O25, O26 */}
-        {["O24", "O25", "O26"].includes(state.rulesetId) && (
+        {/* Toggle Lượt Riêng / Lượt Chung - CHỈ HIỂN THỊ Ở O24, O25, O26, O27 */}
+        {["O24", "O25", "O26", "O27"].includes(state.rulesetId) && (
           <div className="flex items-center gap-1">
             <button
               type="button"

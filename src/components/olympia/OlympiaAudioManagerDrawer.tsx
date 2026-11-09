@@ -521,7 +521,7 @@ export default function OlympiaAudioManagerDrawer({
         {/* Season Tabs */}
         <div className="grid grid-cols-4 border-b border-white/10 bg-black/20 text-xs font-bold text-center">
           {[
-            { id: "O26", label: "O26 (Mới nhất)" },
+            { id: "O26", label: "O26 – O27 (Mới nhất)" },
             { id: "O24-25", label: "O24–25" },
             { id: "O22", label: "O22" },
             { id: "O13-21", label: "O13–21" },

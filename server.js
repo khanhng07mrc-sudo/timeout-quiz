@@ -105347,7 +105347,7 @@ function getPresetOlympiaBanks() {
       id: "olympia_preset_dauthau_bacai",
       name: "\u0110\u1EA5u th\u1EA7u G\xF3i th\u1EA7u 01TB-BA - Th\u1EE7y \u0111i\u1EC7n T\xEDch n\u0103ng B\xE1c \xC1i",
       description: "Kho \u0111\u1EC1 Olympia chuy\xEAn \u0111\u1EC1: C\u01A1 s\u1EDF l\xFD lu\u1EADn \u0110\u1EA5u th\u1EA7u Nh\xE0 n\u01B0\u1EDBc theo Lu\u1EADt 90/2025/QH15 & Th\u1EF1c ti\u1EC5n G\xF3i th\u1EA7u 01TB-BA Th\u1EE7y \u0111i\u1EC7n t\xEDch n\u0103ng B\xE1c \xC1i (Kh\u1EDFi \u0111\u1ED9ng 36 c\xE2u, VCNV t\u1EEB kh\xF3a '\u1EAEC QUY N\u01AF\u1EDAC', T\u0103ng t\u1ED1c 4 c\xE2u, V\u1EC1 \u0111\xEDch 14 c\xE2u v\xE0 3 C\xE2u h\u1ECFi ph\u1EE5).",
-      seasonHint: "O13 \u2013 O26 (2\u20138 th\xED sinh)",
+      seasonHint: "O13 \u2013 O27 (2\u20138 th\xED sinh)",
       createdAt: "2026-11-02T00:00:00.000Z",
       updatedAt: "2026-11-02T00:00:00.000Z",
       isPreset: true,
@@ -105357,7 +105357,7 @@ function getPresetOlympiaBanks() {
       id: "olympia_preset_o25_o26_full",
       name: "\u0110\u1EC1 Thi Olympia 25\u201326 To\xE0n T\u1EADp (96 C\xE2u Kh\u1EDFi \u0110\u1ED9ng \xB7 27 C\xE2u V\u1EC1 \u0110\xEDch)",
       description: "Kho \u0111\u1EC1 Olympia chu\u1EA9n \u0111a l\u0129nh v\u1EF1c (tham kh\u1EA3o Form test Olympia 25 & O22\u2013O26): 96 c\xE2u Kh\u1EDFi \u0111\u1ED9ng chia \u0111\u1EC1u 6 ph\xE2n v\xF9ng, VCNV 5 m\u1EA3nh gh\xE9p (T\u1EEB kh\xF3a: TI\xCAU L\u1EC6NH CH\u1EEEA CH\xC1Y), 4 c\xE2u T\u0103ng T\u1ED1c k\xE8m 4 m\u1ED1c \u1EA3nh g\u1EE3i \xFD, 27 c\xE2u V\u1EC1 \u0110\xEDch (10/20/30\u0111 c\xE2n b\u1EB1ng KHTN - KHXH - Hi\u1EC3u bi\u1EBFt chung) v\xE0 6 C\xE2u h\u1ECFi ph\u1EE5.",
-      seasonHint: "O13 \u2013 O26 (2\u20138 th\xED sinh)",
+      seasonHint: "O13 \u2013 O27 (2\u20138 th\xED sinh)",
       createdAt: "2026-10-28T00:00:00.000Z",
       updatedAt: "2026-10-28T00:00:00.000Z",
       isPreset: true,
@@ -105638,9 +105638,15 @@ var RULESETS = {
   }),
   O26: make({
     id: "O26",
-    label: "Olympia 26",
+    label: "Olympia 26 \u2013 27",
     audioSeason: "O26",
-    note: "T\u0103ng T\u1ED1c 20/20/30/30s, CNV 60\u201350\u201340\u201330\u201320, V\u1EC1 \u0110\xEDch g\xF3i 20/30 \u0111i\u1EC3m."
+    note: "T\u0103ng T\u1ED1c 20/20/30/30s, CNV 60\u201350\u201340\u201330\u201320, V\u1EC1 \u0110\xEDch g\xF3i 20/30 \u0111i\u1EC3m (\xC1p d\u1EE5ng chung cho Olympia 26 & 27)."
+  }),
+  O27: make({
+    id: "O27",
+    label: "Olympia 26 \u2013 27",
+    audioSeason: "O26",
+    note: "T\u0103ng T\u1ED1c 20/20/30/30s, CNV 60\u201350\u201340\u201330\u201320, V\u1EC1 \u0110\xEDch g\xF3i 20/30 \u0111i\u1EC3m (\xC1p d\u1EE5ng chung cho Olympia 26 & 27)."
   })
 };
 var RULESET_LIST = [

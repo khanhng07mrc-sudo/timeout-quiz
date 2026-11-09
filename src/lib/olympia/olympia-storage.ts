@@ -31,7 +31,7 @@ export function getPresetOlympiaBanks(): OlympiaBankItem[] {
       name: "Đấu thầu Gói thầu 01TB-BA - Thủy điện Tích năng Bác Ái",
       description:
         "Kho đề Olympia chuyên đề: Cơ sở lý luận Đấu thầu Nhà nước theo Luật 90/2025/QH15 & Thực tiễn Gói thầu 01TB-BA Thủy điện tích năng Bác Ái (Khởi động 36 câu, VCNV từ khóa 'ẮC QUY NƯỚC', Tăng tốc 4 câu, Về đích 14 câu và 3 Câu hỏi phụ).",
-      seasonHint: "O13 – O26 (2–8 thí sinh)",
+      seasonHint: "O13 – O27 (2–8 thí sinh)",
       createdAt: "2026-11-02T00:00:00.000Z",
       updatedAt: "2026-11-02T00:00:00.000Z",
       isPreset: true,
@@ -42,7 +42,7 @@ export function getPresetOlympiaBanks(): OlympiaBankItem[] {
       name: "Đề Thi Olympia 25–26 Toàn Tập (96 Câu Khởi Động · 27 Câu Về Đích)",
       description:
         "Kho đề Olympia chuẩn đa lĩnh vực (tham khảo Form test Olympia 25 & O22–O26): 96 câu Khởi động chia đều 6 phân vùng, VCNV 5 mảnh ghép (Từ khóa: TIÊU LỆNH CHỮA CHÁY), 4 câu Tăng Tốc kèm 4 mốc ảnh gợi ý, 27 câu Về Đích (10/20/30đ cân bằng KHTN - KHXH - Hiểu biết chung) và 6 Câu hỏi phụ.",
-      seasonHint: "O13 – O26 (2–8 thí sinh)",
+      seasonHint: "O13 – O27 (2–8 thí sinh)",
       createdAt: "2026-10-28T00:00:00.000Z",
       updatedAt: "2026-10-28T00:00:00.000Z",
       isPreset: true,

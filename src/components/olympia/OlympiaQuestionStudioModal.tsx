@@ -167,7 +167,7 @@ export default function OlympiaQuestionStudioModal({
       id: targetId,
       name: asNew ? `${name} (Bản mới)` : name,
       description,
-      seasonHint: "O13 – O26",
+      seasonHint: "O13 – O27",
       createdAt: new Date().toISOString(),
       isPreset: false,
       set: draft,
@@ -1595,7 +1595,7 @@ export default function OlympiaQuestionStudioModal({
                           id: `olympia_backup_${Date.now()}`,
                           name: `${name} (Sao lưu trước Reset)`,
                           description,
-                          seasonHint: "O13 – O26",
+                          seasonHint: "O13 – O27",
                           createdAt: new Date().toISOString(),
                           set: draft,
                         });

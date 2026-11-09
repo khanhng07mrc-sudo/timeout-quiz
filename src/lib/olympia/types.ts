@@ -27,7 +27,8 @@ export type RulesetId =
   | "O23"
   | "O24"
   | "O25"
-  | "O26";
+  | "O26"
+  | "O27";
 
 export type AudioSeason = "O13-21" | "O22" | "O23" | "O24-25" | "O26";
 export type AudioChannel = "both" | "left" | "right";

@@ -14,7 +14,7 @@ interface RuleDetail {
 
 const WIKIPEDIA_RULES: Record<string, RuleDetail> = {
   O26: {
-    season: "Olympia 26 (Mới nhất)",
+    season: "Olympia 26 – 27 (Mới nhất)",
     khoiDong:
       "• Khởi động riêng: 4 thí sinh lần lượt trả lời 6 câu hỏi riêng (suy nghĩ 3 giây/câu). Đúng +10đ, sai không bị trừ điểm.\n• Khởi động chung: Gồm 12 câu hỏi bấm chuông giành quyền trả lời. Khi câu hỏi hiện lên, chuông bị khóa 5 giây rồi mới mở. Đúng +10đ, bấm chuông sai bị trừ 5đ; các thí sinh còn lại có quyền bấm chuông trả lời lại 1 lần duy nhất trong 5 giây.",
     vcnv:
@@ -94,6 +94,7 @@ export default function OlympiaRulesWikipediaModal({
     if (initialSeason === "O23") return "O23";
     if (initialSeason === "O22") return "O22";
     if (["O13", "O14", "O15", "O16", "O17", "O18", "O19", "O20", "O21"].includes(initialSeason)) return "O13-21";
+    if (initialSeason === "O26" || initialSeason === "O27") return "O26";
     return "O26";
   });
 

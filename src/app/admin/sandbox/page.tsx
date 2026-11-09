@@ -10214,7 +10214,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   className="px-2 py-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold text-xs focus:outline-none cursor-pointer"
                   title="Chọn mùa / thể thức luật thi đấu Olympia"
                 >
-                  <option value="O26" className="bg-[#151728] text-white">Mùa O26 (Mới nhất)</option>
+                  <option value="O26" className="bg-[#151728] text-white">Mùa O26 – O27 (Mới nhất)</option>
                   <option value="O25" className="bg-[#151728] text-white">Mùa O25</option>
                   <option value="O24" className="bg-[#151728] text-white">Mùa O24</option>
                   <option value="O23" className="bg-[#151728] text-white">Mùa O23</option>
@@ -11502,7 +11502,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       setSelectedMode("OLYMPIA");
                       handleExitSandboxRoom();
                     }}
-                    title="Đổi mùa thi đấu Olympia (O13 - O26)"
+                    title="Đổi mùa thi đấu Olympia (O13 - O27)"
                     className="px-2.5 py-1 rounded-lg glass border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 text-xs font-bold transition shrink-0 whitespace-nowrap cursor-pointer flex items-center gap-1 shadow-sm"
                   >
                     <span>🏔️</span>
@@ -11639,7 +11639,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                 )}
               </select>
 
-              {/* 🏔️ MÙA THI OLYMPIA (O13 - O26) */}
+              {/* 🏔️ MÙA THI OLYMPIA (O13 - O27) */}
               {selectedMode === "OLYMPIA" && (
                 <div className="flex items-center gap-1.5 animate-fade-in">
                   <span className="text-xs font-bold text-amber-400 shrink-0 flex items-center gap-1">
@@ -11650,7 +11650,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     value={olympiaRulesetId}
                     onChange={(e) => setOlympiaRulesetId(e.target.value)}
                     className="px-2.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/25 to-yellow-500/15 border-2 border-amber-400/60 text-amber-300 font-black text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer shadow-lg shadow-amber-500/20"
-                    title="Chọn mùa / thể thức luật thi đấu Olympia (O13 - O26)"
+                    title="Chọn mùa / thể thức luật thi đấu Olympia (O13 - O27)"
                   >
                     {RULESET_YEAR_BUTTONS.map((btn) => (
                       <option key={btn.id} value={btn.id} className="bg-[#151728] text-white">

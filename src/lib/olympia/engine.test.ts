@@ -109,7 +109,7 @@ test("custom seatCount and sandbox pre-populated teams", () => {
 
 
 
-test("CNV points per season (O13 through O26)", () => {
+test("CNV points per season (O13 through O27)", () => {
 
   const o = (s: RulesetId) => [0, 1, 2, 3, 4].map((n) => cnvPointsFor(RULESETS[s], n, false)).concat([cnvPointsFor(RULESETS[s], 4, true)]);
 
@@ -128,6 +128,7 @@ test("CNV points per season (O13 through O26)", () => {
   assert.deepEqual(o("O23"), [50, 50, 40, 30, 20, 10]);
 
   assert.deepEqual(o("O26"), [60, 60, 50, 40, 30, 20]);
+  assert.deepEqual(o("O27"), [60, 60, 50, 40, 30, 20]);
 
 });
 
@@ -355,7 +356,7 @@ test("Khởi Động O23: turn question counts = X*2, X*3, X*4", () => {
 
 test("Khởi Động O24+: shared segment = X*3", () => {
 
-  for (const id of ["O24", "O25", "O26"] as RulesetId[]) {
+  for (const id of ["O24", "O25", "O26", "O27"] as RulesetId[]) {
 
     for (const x of [2, 4, 7, 8]) {
 
@@ -368,6 +369,7 @@ test("Khởi Động O24+: shared segment = X*3", () => {
   }
 
   assert.equal(RULESETS.O26.khoiDong.segments(8).filter((s) => s.kind === "solo").length, 8);
+  assert.equal(RULESETS.O27.khoiDong.segments(8).filter((s) => s.kind === "solo").length, 8);
 
 });
 
@@ -848,16 +850,32 @@ import { analyzeSetInventoryAndThresholds, classifyQuestionWithAI } from "./ai-c
 
 
 
-test("RULESET_YEAR_BUTTONS merges O15–O19 into '15' and O24–O25 into '24'", () => {
-
+test("RULESET_YEAR_BUTTONS merges O15–O19 into '15', O24–O25 into '24', and O26–O27 into '26'", () => {
   assert.deepEqual(
-
     RULESET_YEAR_BUTTONS.map((b) => b.numberLabel),
-
     ["13", "14", "15", "20", "21", "22", "23", "24", "26"]
-
   );
+  const btn26 = RULESET_YEAR_BUTTONS.find((b) => b.id === "O26");
+  assert.equal(btn26?.fullTitle, "Olympia 26 – 27 (Mới nhất)");
+});
 
+test("RULESETS.O27 is identical to RULESETS.O26 parity", () => {
+  assert.equal(RULESETS.O27.id, "O27");
+  assert.equal(RULESETS.O27.label, "Olympia 26 – 27");
+  assert.equal(RULESETS.O27.audioSeason, "O26");
+  assert.deepEqual(RULESETS.O27.tangToc.timers, [20000, 20000, 30000, 30000]);
+  assert.deepEqual(RULESETS.O27.tangToc.timers, RULESETS.O26.tangToc.timers);
+  assert.deepEqual(RULESETS.O27.vcnv.cnvPoints, RULESETS.O26.vcnv.cnvPoints);
+  assert.deepEqual(RULESETS.O27.veDich.pointOptions, RULESETS.O26.veDich.pointOptions);
+
+  const g27 = game("O27", ["khoiDong"], 4);
+  assert.equal(g27.state.rulesetId, "O27");
+  act(g27, "game:start");
+  assert.ok(g27.state.khoiDong);
+
+  const gTT = game("O27", ["tangToc"], 4);
+  act(gTT, "game:start");
+  assert.equal(gTT.state.tangToc?.questions.length, 4);
 });
 
 

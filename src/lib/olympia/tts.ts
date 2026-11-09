@@ -21,6 +21,7 @@ export function normalizeVietnameseTTS(rawText: string): string {
   t = t.replace(/\bVTV3\b/gi, "Vê Tê Vê Ba");
   t = t.replace(/\bCNV\b/gi, "Chướng ngại vật");
   t = t.replace(/\bO26\b/gi, "Ô hai sáu");
+  t = t.replace(/\bO27\b/gi, "Ô hai bảy");
   t = t.replace(/\bkm\/h\b/gi, "ki lô mét một giờ");
   t = t.replace(/\bm\/s\b/gi, "mét một giây");
   t = t.replace(/\b°C\b/gi, "độ xê");

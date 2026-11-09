@@ -22,7 +22,7 @@ const solo60sUnlimited = (seatCount: number): KdSegmentDef[] =>
     globalMs: 60000,
   }));
 
-/** O22–O26: 6 solo questions per contestant (5s per question) */
+/** O22–O27: 6 solo questions per contestant (5s per question) */
 const soloSegments = (seatCount: number): KdSegmentDef[] =>
   Array.from({ length: seatCount }, (_, i) => ({
     kind: "solo" as const,
@@ -59,7 +59,7 @@ export const turnsO22 = (quarter: O22Quarter = 1): KdSegmentDef[] =>
 
 /** O13–O21 think times: 10đ = 10s, 20đ = 15s, 30đ = 20s */
 const THINK_CLASSIC = { "10": 10000, "20": 15000, "30": 20000, "40": 30000 };
-/** O22–O26 think times: 10/20đ = 15s, 30đ = 20s */
+/** O22–O27 think times: 10/20đ = 15s, 30đ = 20s */
 const THINK_MODERN = { "10": 15000, "20": 15000, "30": 20000, "40": 30000 };
 
 export function getO22Rules(quarter: O22Quarter = 1) {
@@ -103,7 +103,7 @@ export const PRESET_PACKAGES_O15_O19: Record<string, number[]> = {
  * - O13: 2 hàng đầu (0,1,2) = 80đ; 2 hàng còn lại (3,4) = 40đ; sau câu thứ 5 (ô trung tâm) = 20đ.
  * - O14–O22: hàng 1 (0,1) = 80đ; hàng 2 = 60đ; hàng 3 = 40đ; hàng 4 = 20đ; sau câu thứ 5 = 10đ.
  * - O23: 50 - 40 - 30 - 20 - 10.
- * - O24–O26: 60 - 50 - 40 - 30 - 20.
+ * - O24–O27: 60 - 50 - 40 - 30 - 20.
  */
 const CNV_O13 = [80, 80, 80, 40, 40, 20];
 const CNV_O14_O22 = [80, 80, 60, 40, 20, 10];
@@ -324,14 +324,20 @@ export const RULESETS: Record<RulesetId, OlympiaRuleset> = {
   }),
   O26: make({
     id: "O26",
-    label: "Olympia 26",
+    label: "Olympia 26 – 27",
     audioSeason: "O26",
-    note: "Tăng Tốc 20/20/30/30s, CNV 60–50–40–30–20, Về Đích gói 20/30 điểm.",
+    note: "Tăng Tốc 20/20/30/30s, CNV 60–50–40–30–20, Về Đích gói 20/30 điểm (Áp dụng chung cho Olympia 26 & 27).",
+  }),
+  O27: make({
+    id: "O27",
+    label: "Olympia 26 – 27",
+    audioSeason: "O26",
+    note: "Tăng Tốc 20/20/30/30s, CNV 60–50–40–30–20, Về Đích gói 20/30 điểm (Áp dụng chung cho Olympia 26 & 27).",
   }),
 };
 
 /**
- * Distinct rulesets shown in the UI selector (O15–O19 merged into "15", O24–O25 merged into "24").
+ * Distinct rulesets shown in the UI selector (O15–O19 merged into "15", O24–O25 merged into "24", O26–O27 merged into "26").
  */
 export const RULESET_LIST: OlympiaRuleset[] = [
   RULESETS.O13,
@@ -354,7 +360,7 @@ export const RULESET_YEAR_BUTTONS: Array<{ id: RulesetId; numberLabel: string; f
   { id: "O22", numberLabel: "22", fullTitle: "Olympia 22" },
   { id: "O23", numberLabel: "23", fullTitle: "Olympia 23" },
   { id: "O24", numberLabel: "24", fullTitle: "Olympia 24 – 25" },
-  { id: "O26", numberLabel: "26", fullTitle: "Olympia 26" },
+  { id: "O26", numberLabel: "26", fullTitle: "Olympia 26 – 27 (Mới nhất)" },
 ];
 
 /**

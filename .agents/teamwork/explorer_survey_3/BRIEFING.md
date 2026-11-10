@@ -1,44 +1,45 @@
-# BRIEFING — 2026-10-31T01:45:00Z
+# BRIEFING — 2026-11-10T13:33:00Z
 
 ## Mission
-Investigate visual assets (Olympia logo), 3D staging layout (central LED, MC podium, 4 contestant podiums, laurel wreath area), lighting multi-zone fading, and UI integration into Timeout Quiz.
+Investigate MC area lighting (R3), intro audio looping (R5), and screenshot verification setup (R6) in Timeout Quiz.
 
 ## 🔒 My Identity
-- Archetype: explorer
-- Roles: visual asset requirements, branding, 3D staging, and UI integration investigation
-- Working directory: d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\
-- Original parent: 29c0daaf-06fc-45bd-8731-a373118d9533
-- Milestone: Phase 0 (Survey)
+- Archetype: Teamwork explorer
+- Roles: Investigation, Synthesis
+- Working directory: d:\Timeout Quiz\.agents\teamwork\explorer_survey_3
+- Original parent: 92bc7ea3-6992-4337-87ba-6322ebaf6868
+- Milestone: Investigation R3, R5, R6
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement
-- Do NOT delete files outside d:\Timeout Quiz
-- .agents/teamwork/ must contain only metadata
+- Read-only investigation — do NOT implement project code
+- Keep d:\Olympia 26 completely untouched
+- Do not edit d:\Timeout Quiz\AGENTS.md
+- Write reports and metadata ONLY in d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\
 
 ## Current Parent
-- Conversation ID: 29c0daaf-06fc-45bd-8731-a373118d9533
-- Updated: 2026-10-31T01:36:22Z
+- Conversation ID: 92bc7ea3-6992-4337-87ba-6322ebaf6868
+- Updated: 2026-11-10T13:33:00Z
 
 ## Investigation State
 - **Explored paths**:
-  - `C:\Users\khanh\Downloads\Olympia_logo_2016.webp` (verified 512x512, VP8X, transparent alpha)
-  - `d:\Timeout Quiz\src\components\modes\WheelStudio3DScene.tsx` (reference 3D studio architecture)
-  - `d:\Timeout Quiz\src\components\olympia\DisplayScreen.tsx` (display UI & canvas)
-  - `d:\Timeout Quiz\src\lib\olympia\types.ts` & `engine.ts` (state machine, rounds, buzzers)
-  - `d:\Timeout Quiz\public\olympia-audio` (round-specific audio cues)
+  - `Podiums.tsx`: `CenterMcDesk`, `McPresenters`, `createWarmPeachSkinMaterial`, `createHairMaterial`.
+  - `StudioLighting.tsx`: MC Key/Fill/Rim spotlights, directional lights, ambient lighting.
+  - `CameraController.tsx` & `useOlympiaCamera.ts`: CAM 10, CAM 3, CAM 11, CAM 1.
+  - `hooks.ts` & `engine.ts`: `useOlympiaAudio`, `crossfadeToBgm`, entrance timing logic.
+  - `server.ts`, `package.json`, `capture-r6-screenshots.ts`, `dev/graphics/client.tsx`.
 - **Key findings**:
-  - Logo asset is verified and ready for copying to `public/olympia/Olympia_logo_2016.webp`.
-  - 3D staging blueprint defined: Central LED (12m x 6.75m 16:9), 1 MC lectern, 4 contestant podiums in broadcast arc, Laurel Wreath pedestal area.
-  - Multi-zone lighting fade engineered: Zone 1 (LED screen) fades at t=0s; Zone 2 (back lights, trusses, audience) fades after delay of 0.6s.
-  - Buzzer reaction rules mapped: VCNV fastest lockout vs other rounds all-buzzers.
-  - UI integration points mapped: `OlympiaStudio3DScene.tsx` dynamic import in `DisplayScreen.tsx`, 7-camera director dock, audio synchronization.
-- **Unexplored areas**: None for survey scope. Implementation phase will build the component.
+  - R3: MCs are dark because Three.js v0.186 light decay reduces illuminance over 5.4m to <0.5 lux, directional lights miss the MC desk, and materials have zero emissive baseline under navy ambient light. Fix: add warm white local fill/uplight and tune PBR emissive.
+  - R5: `contest_intro.mp3` is 18.55s long; 6 contestants require 26.8s, 8 contestants require 34.8s. `isLoopingBgm` returns false for `contest_intro`, leaving dead silence. Fix: dual-instance predictive crossfade looping at t=16.55s with 2.0s overlap.
+  - R6: `npm run build` succeeds (code 0), 489/489 tests pass, `puppeteer-core` with Edge (`msedge.exe`) and WebGL ANGLE flags captures 3D scenes reliably.
+- **Unexplored areas**: None for R3, R5, R6.
 
 ## Key Decisions Made
-- Confirmed single-quad canvas texture strategy for Central LED combining 512x512 logo, golden gradient text, and scanlines to maximize performance.
-- Confirmed procedural Three.js geometry architecture (0 KB external 3D model downloads).
-- Standardized staggered fade timing (Zone 1: 0.0s delay, 1.2s duration; Zone 2: 0.6s delay, 1.4s duration).
+- Fully documented root causes and proposed fix strategies in `analysis.md` and `handoff.md`.
+- Verified `d:\Olympia 26` and `AGENTS.md` are completely untouched.
 
 ## Artifact Index
-- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\report.md` — Detailed staging & asset analysis report
-- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\handoff.md` — Structured 5-component handoff report
+- DISPATCH.md — Parent dispatch instruction
+- BRIEFING.md — Persistent context & state
+- progress.md — Liveness heartbeat
+- analysis.md — Comprehensive technical investigation report
+- handoff.md — 5-component handoff report

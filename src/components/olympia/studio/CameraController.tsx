@@ -24,16 +24,46 @@ export interface CameraPreset {
  * - CAM 9: Cẩu Quay Toàn Cảnh (Jib Crane High-Angle)
  * - CAM 10: Vách Ký Hiệu Khoa Học
  */
+export interface ContestantArcParams {
+  radius: number;
+  startPhi: number;
+  endPhi: number;
+  span: number;
+}
+
+export function getContestantArcParams(totalSeats: number = 4): ContestantArcParams {
+  const count = Math.min(8, Math.max(1, totalSeats || 4));
+  switch (count) {
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+      // Classic 4-seat Olympia layout: clearance +44.6cm, rightmost podium X = -2.82m
+      return { radius: 6.60, startPhi: 0.380, endPhi: 1.130, span: 0.750 };
+    case 5:
+      // 5 seats: clearance +39.2cm, rightmost podium X = -2.53m (lock endPhi <= 1.20 rad)
+      return { radius: 6.65, startPhi: 0.220, endPhi: 1.180, span: 0.960 };
+    case 6:
+      // 6 seats: clearance +32.4cm, rightmost podium X = -2.49m (Stage Left shift along Science Wall)
+      return { radius: 6.70, startPhi: 0.050, endPhi: 1.190, span: 1.140 };
+    case 7:
+      // 7 seats: clearance +32.7cm, rightmost podium X = -2.46m (Stage Left shift along Science Wall)
+      return { radius: 6.80, startPhi: -0.150, endPhi: 1.200, span: 1.350 };
+    case 8:
+    default:
+      // 8 seats: clearance +32.4cm, rightmost podium X = -2.50m (>= 5.5m from MC desk, lock endPhi = 1.200 rad)
+      return { radius: 6.90, startPhi: -0.350, endPhi: 1.200, span: 1.550 };
+  }
+}
+
 export function getContestantPodiumWorldPos(
   seatId: number,
   totalSeats: number = 4,
   y: number = 0.22
 ): [number, number, number] {
-  const activeCount = Math.min(8, Math.max(1, totalSeats));
+  const activeCount = Math.min(8, Math.max(1, totalSeats || 4));
   const clampedSeat = Math.min(activeCount - 1, Math.max(0, seatId));
-  const radius = 6.6;
-  const startPhi = activeCount > 4 ? 0.26 : 0.38;
-  const endPhi = activeCount > 4 ? 1.31 : 1.13;
+  const { radius, startPhi, endPhi } = getContestantArcParams(activeCount);
   const frac = activeCount === 1 ? 0.5 : clampedSeat / (activeCount - 1);
   const phi = startPhi + frac * (endPhi - startPhi);
 
@@ -43,11 +73,9 @@ export function getContestantPodiumWorldPos(
 }
 
 export function getContestantCameraPreset(seatId: number, totalSeats: number = 4): CameraPreset {
-  const activeCount = Math.min(8, Math.max(1, totalSeats));
+  const activeCount = Math.min(8, Math.max(1, totalSeats || 4));
   const clampedSeat = Math.min(activeCount - 1, Math.max(0, seatId));
-  const radius = 6.6;
-  const startPhi = activeCount > 4 ? 0.26 : 0.38;
-  const endPhi = activeCount > 4 ? 1.31 : 1.13;
+  const { radius, startPhi, endPhi } = getContestantArcParams(activeCount);
   const frac = activeCount === 1 ? 0.5 : clampedSeat / (activeCount - 1);
   const phi = startPhi + frac * (endPhi - startPhi);
 
@@ -74,6 +102,45 @@ export function getContestantCameraPreset(seatId: number, totalSeats: number = 4
     target: [targetX, targetY, targetZ],
   };
 }
+
+export function getWidePodiumsCameraPreset(totalSeats: number = 4): CameraPreset {
+  const count = Math.min(8, Math.max(1, totalSeats || 4));
+  const { radius, startPhi, endPhi } = getContestantArcParams(count);
+
+  const midPhi = (startPhi + endPhi) / 2;
+  const startX = -radius * Math.cos(startPhi);
+  const startZ = -0.5 - radius * Math.sin(startPhi);
+  const endX = -radius * Math.cos(endPhi);
+  const endZ = -0.5 - radius * Math.sin(endPhi);
+  const midX = -radius * Math.cos(midPhi);
+  const midZ = -0.5 - radius * Math.sin(midPhi);
+
+  // Center of the arc cluster
+  const targetX = +(0.5 * midX + 0.25 * (startX + endX)).toFixed(2);
+  const targetY = 1.15;
+  const targetZ = +(0.5 * midZ + 0.25 * (startZ + endZ)).toFixed(2);
+
+  // Direction along the cluster normal from stage center
+  const viewDirX = Math.cos(midPhi);
+  const viewDirZ = Math.sin(midPhi);
+
+  // Scaled distance to fit entire bounding box with >= 15% broadcast safe margins
+  const baseDist = 7.20;
+  const extraDist = Math.max(0, (count - 4) * 0.75);
+  const dist = baseDist + extraDist;
+
+  const camX = +(targetX + dist * viewDirX).toFixed(2);
+  const camY = +(2.45 + Math.max(0, (count - 4) * 0.12)).toFixed(2);
+  const camZ = +(targetZ + dist * viewDirZ).toFixed(2);
+
+  return {
+    id: 10,
+    label: "Toàn Cảnh Bục Thí Sinh",
+    pos: [camX, camY, camZ],
+    target: [targetX, targetY, targetZ],
+  };
+}
+
 
 export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   1: {
@@ -111,13 +178,7 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     pos: [-1.4, 5.5, -0.6],
     target: [0.8, 1.8, -3.2],
   },
-  10: {
-    id: 10,
-    label: "Toàn Cảnh Bục Thí Sinh",
-    // Expanded distance & elevated framing so all podiums (4 or 5) have generous margins without edge clipping
-    pos: [0.85, 2.45, 0.45],
-    target: [-4.40, 1.25, -4.60],
-  },
+  10: getWidePodiumsCameraPreset(4),
   11: {
     id: 11,
     label: "Cam Cận Cảnh Trực Diện Chào Sân",
@@ -250,6 +311,8 @@ export function CameraController({
         camAngle >= 25 ? camAngle - 25 + 4 : camAngle - 5,
         effectiveTotalSeats
       )
+    : camAngle === 10
+    ? getWidePodiumsCameraPreset(effectiveTotalSeats)
     : (OLYMPIA_CAM_PRESETS[camAngle] || OLYMPIA_CAM_PRESETS[1]);
   const targetPos = useMemo(
     () => (isIdleLobby && camAngle === 3 ? _mcTightPos.clone() : new THREE.Vector3(...targetPreset.pos)),

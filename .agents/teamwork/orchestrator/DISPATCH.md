@@ -1,169 +1,88 @@
-# Dispatch Log
+# Dispatch History
 
-## 2026-10-31T01:35:00Z
-Build an interactive 3D Đường lên đỉnh Olympia studio set environment integrated into Timeout Quiz (Quizorra) based on the Magic Wheel (CNKD) studio architecture, featuring dynamic round-based lighting transitions, realistic central LED display, contestant and MC podiums with buzzer lighting reactions, and a laurel wreath display area.
+## 2026-11-10T13:18:58Z
 
-Working directory: d:\Timeout Quiz
-Integrity mode: development
-The team must NOT: delete files outside the designated project folder
-
-Reference material: Existing 3D studio architecture and implementation in `d:\Timeout Quiz\src\components\modes\WheelStudio3DScene.tsx` (Magic Wheel / CNKD studio).
-
-## Requirements
-
-### R1. Bố cục không gian 3D trường quay và Nhận diện thương hiệu
-Xây dựng không gian trường quay 3D tương tác (Three.js / WebGL) tích hợp vào Timeout Quiz, kế thừa phong cách và kiến trúc từ trường quay CNKD / Magic Wheel (`WheelStudio3DScene.tsx`):
-- Màn hình LED trung tâm: rộng rãi, chân thực, phong cách hiện đại, phối hợp sáng tối chuẩn quốc tế.
-- Nhận diện thương hiệu: Logo Olympia sử dụng file tại đường dẫn `C:\Users\khanh\Downloads\Olympia_logo_2016.webp`, bên dưới có dòng chữ hiệu ứng gradient màu vàng (chuyển từ sáng sang tối).
-- Bục và khu vực chức năng: Đầy đủ 1 bục MC, 4 bục thí sinh, và khu vực trưng bày vòng nguyệt quế.
-
-### R2. Hệ thống chiếu sáng và Kịch bản đổi màu đèn
-Hệ thống đèn và màn LED sân khấu đổi màu linh hoạt giữa màu xanh dương (bối cảnh chung ngoài thi đấu) và màu đỏ (trong thi đấu):
-- Phần Khởi động: Chuyển sang màu đỏ từ khi nhấn Bắt đầu cho đến khi kết thúc lượt thi; khi nhấn kết thúc lượt tự động quay về màu xanh.
-- Phần Vượt chướng ngại vật và Tăng tốc: Chuyển sang màu đỏ sau khi bắt đầu một khoảng thời gian (khoảng 2 - 3 giây).
-- Phần Về đích: Chuyển sang màu đỏ từ khi thí sinh bước lên sân khấu cho đến khi hoàn thành lượt chơi; khi nhấn kết thúc lượt tự động quay về màu xanh.
-- Hiệu ứng chuyển đèn: Chuyển từ từ (fade mượt mà), trong đó cụm màn hình bên trong fade trước, sau đó cụm đèn sau sân khấu và khu vực khán giả fade sau.
-
-### R3. Hệ thống đèn tín hiệu chuông (Buzzer Reactions)
-Đèn bục thí sinh phản hồi theo tín hiệu bấm chuông của từng vòng thi:
-- Trong phần Khởi động, Về đích và Câu hỏi phụ: Bục của bất kỳ thí sinh nào bấm chuông sẽ phát sáng màu đỏ.
-- Trong phần Vượt chướng ngại vật: Chỉ bục của thí sinh bấm nhanh nhất (đầu tiên) mới phát sáng màu đỏ.
-
-### R4. Ràng buộc an toàn dự án
-Đội ngũ triển khai không được phép xóa bất kỳ tệp tin nào bên ngoài thư mục dự án `d:\Timeout Quiz`.
-
-
-## 2026-11-01T06:28:44Z
-Refactor and refine the 3D broadcast studio backdrop, mountain landscape, portal arches, and stage fixtures for the Đường lên đỉnh Olympia S14 studio in Timeout Quiz to match the official broadcast reference for production use.
+Fix 3D stage layout, camera framing, contestant walk trajectories, MC stage lighting, CAM 11 transition timing, and intro audio looping for 6-8 contestants in Timeout Quiz for production use, with visual screenshot proof.
 
 Working directory: d:\Timeout Quiz
 Integrity mode: development
-The team must NOT: delete files outside the project directory, delete existing files in the project directory unnecessarily
-
-Reference material:
-- Official VTV3 broadcast reference photo: file:///C:/Users/khanh/.gemini/antigravity/brain/3d0360d1-4046-41c8-97dd-26b885fc39df/.user_uploaded/media_1793509491924_ff35bde5.jpg
-- Current camera 11 screenshot: file:///C:/Users/khanh/.gemini/antigravity/brain/3d0360d1-4046-41c8-97dd-26b885fc39df/screenshots/38_stage3_cam11_khan_dai_khan_gia.png
-- Existing scene implementation: `d:\Timeout Quiz\src\components\olympia\studio\StudioLighting.tsx` and `CentralLedWall.tsx`
 
 ## Requirements
 
-### R1. Khán đài vòm trụ cong Panorama (Curved Cylindrical Cyclorama)
-Thay thế bức tường backdrop phẳng ở vị trí Z = 5.05m bằng cyclorama vòm cong hình trụ thực thụ (curved cylindrical panoramic cyclorama) uốn cong liền mạch bao bọc toàn bộ khán đài khán giả, hiển thị nền vũ trụ hoàng hôn sapphire và 8 biểu tượng học vấn chìm tinh tế.
+### R1. Khoảng cách bục & góc CAM cho 6 - 8 thí sinh
+- Khi `seatCount` là 6, 7 hoặc 8: Mở rộng bán kính cung hoặc khoảng cách góc (angular span / radius) của các bục thí sinh trong `Podiums.tsx` để các bục có khoảng cách thoáng đãng, đồng đều, không bị dính sát vào nhau.
+- Cân chỉnh góc quay CAM 10 (toàn cảnh bục thí sinh) và các camera cá nhân thí sinh (CAM 5..8, CAM 25..28) trong `CameraController.tsx` và `useOlympiaCamera.ts` để bao quát toàn bộ 6-8 bục, không bị cắt mép hoặc lệch góc.
+- Tuyệt đối không sửa đổi, tạo mới hay xóa bỏ bất kỳ file nào ngoài thư mục `d:\Timeout Quiz` (đặc biệt thư mục `d:\Olympia 26` phải giữ nguyên vẹn 100%).
+- Giữ nguyên vẹn nội dung file `d:\Timeout Quiz\AGENTS.md`.
 
-### R2. Đường lên đỉnh núi dạng hẻm núi phát sáng (Luminous Canyon Pass)
-Đường lên đỉnh núi phải là một thung lũng / hẻm núi mượt mà, phát sáng tự nhiên được tạo nên giữa các triền núi gồ ghề, dẫn lối mượt mà lên chân tháp đỉnh núi. Tuyệt đối không vẽ đường line thô cứng và không tạo lỗ hổng như thác nước đổ ra từ lều băng rỗng.
+### R2. Quỹ đạo di chuyển thí sinh từ cầu thang về bục
+- Thí sinh khi bước khỏi cầu thang và tiến về bục không bị chậm lại đột ngột hay xoay vuông góc 90 độ thô cứng.
+- Làm mượt đường đi (curve / Bézier spline / s-curve) và làm mượt góc xoay `rotY` theo hướng vector vận tốc di chuyển tự nhiên, nhịp bước chân đều đặn.
 
-### R3. Địa hình núi kỹ thuật số gồ ghề (Rugged Digital Wireframe Mountain Landscape)
-Địa hình núi phải có nhiều đỉnh nhọn, sườn núi hiểm trở, nhiều chông gai lộn xộn đúng như ảnh phát sóng thực tế; cấu trúc lưới wireframe đa giác 3D với các điểm nút (vertex nodes) phát sáng tại đỉnh và các mảng đa giác đổ bóng màu xanh lam tương phản sáng tối.
+### R3. Ánh sáng khu vực MC
+- Khắc phục tình trạng hai MC (Khánh Vy & Ngọc Huy) tại bục MC bị thiếu sáng, tối đen như bóng ma khi nhìn từ xa hoặc từ góc CAM 10.
+- Chiếu sáng rõ ràng MC desk & figures (sử dụng SpotLight / PointLight / Directional key light warm white #fff5e6 hoặc cân chỉnh hệ số phản xạ/ambient của vật liệu MC) để nổi bật khuôn mặt và trang phục rõ ràng, chuyên nghiệp.
 
-### R4. Đỉnh núi, Tháp đèn hải đăng và Lá cờ chiến thắng chìm (Summit Beacon & Translucent Flag)
-Đỉnh núi có tháp đèn hải đăng phát sáng rực rỡ (radiant beacon) toả vầng hào quang dịu nhẹ và cột cờ thanh mảnh với lá cờ đuôi nheo màu lam nhạt / trắng mờ bán trong suốt ("lá cờ chìm") tung bay sang phải.
+### R4. Thời điểm chuyển cảnh CAM 11 giới thiệu thí sinh
+- Cắt góc sang CAM 11 sớm hơn khoảng 0.6s trước khi thí sinh dừng ở bục giữa (khi thí sinh đang bước nốt 2 bậc cuối xuống bục giữa, khoảng t ≈ 1.2s thay vì chờ đến 1.8s) để khung hình đón trước bước chân thí sinh bước vào bục giữa chào sân.
 
-### R5. Hệ thống 4 tầng cổng vòm đồng tâm (4-Layer Portal Arches)
-Hệ thống cổng vòm trung tâm gồm đúng 4 tầng chuẩn xác theo thiết kế sân khấu:
-- Cung 1 ngoài cùng: Cổng lớn thứ 3, màu ngà ấm (warm ivory).
-- Cung 2: Cổng bé nhất, vách đệm tối màu (dark spacer).
-- Cung 3: CỔNG ĐEN LỚN NHẤT, trụ màu sơn mài đen bóng (glossy black lacquer pylon).
-- Cung 4 trong cùng: Lớn thứ 2 nhưng CAO HƠN vươn tới 5.2m, màu ngà ấm ôm trọn khung hình đỉnh núi.
+### R5. Cơ chế ghép nối / lặp âm thanh chào sân khi thời lượng dài
+- Với 6-8 thí sinh, tổng thời gian chào sân kéo dài (khoảng 26.8s cho 6 người, 34.8s cho 8 người).
+- Nếu bản nhạc intro thí sinh ngắn hơn tổng thời gian giới thiệu thí sinh, áp dụng cơ chế ghép nối crossfade nối tiếp tự động (seamless crossfade looping / concatenation) trong audio engine để nhạc nền phát liên tục không bị ngắt quãng giữa chừng.
 
-### R6. Chân trụ biển logo và huy hiệu (Anchored Logo Board Stanchion Legs)
-Hộp đèn tài trợ Quizorra và huy hiệu Olympia phải có hai chân trụ thép thẳng đứng cắm cố định xuống bục plinth, không lơ lửng giữa không trung.
-
-### R7. Ràng buộc an toàn tệp tin (File Safety Constraints)
-Tuyệt đối không xoá bất kỳ tệp tin nào bên ngoài thư mục dự án `d:\Timeout Quiz`. Cố gắng bảo lưu và giữ nguyên vẹn các tệp tin sẵn có trong dự án, chỉ chỉnh sửa bổ sung các thành phần cần thiết.
-
-## 2026-11-10T02:58:21Z
-Fix three critical Olympia broadcast and gameplay issues in `Timeout Quiz` — contestant podium path clipping, pipelined contestant entrance, and host wrong button lock — and ensure verified deployment to the live VPS.
-
-Working directory: d:\Timeout Quiz
-Integrity mode: development
-The team must NOT: delete or modify any files outside the directory d:\Timeout Quiz.
-
-## Requirements
-
-### R1. Anti-Clipping Contestant Podium Walkway
-- Thí sinh di chuyển chào sân về bục không được đi xuyên qua bàn hoặc màn hình bục.
-- Thí sinh phải đi vòng theo hành lang phía sau và bước vào bục từ đằng sau ở cả Sandbox mode và Online mode.
-- Khắc phục triệt để mọi edge-case khiến thí sinh bị render theo đường đi cũ đâm xuyên qua bục.
-
-### R2. Pipelined Contestant Entrance (Chào sân gối đầu)
-- Không bắt buộc thí sinh trước phải về hẳn bục thì thí sinh tiếp theo mới bước ra từ sau cửa.
-- Khi thí sinh trước đi gần hết bậc thang, thí sinh tiếp theo lập tức bước ra luôn.
-- Đảm bảo logic `seatStartTimes` và staggered entrance hoạt động chính xác, mượt mà và đồng bộ ở cả Sandbox mode và Online mode.
-
-### R3. Host "Wrong" Button Lock (Khóa nút Sai của MC)
-- Ở các lượt thi chung hoặc các lượt có bấm chuông, khi câu hỏi hiện ra và chưa có ai bấm chuông, hệ thống khóa nút chấm "X Sai" của MC trong vòng 3 giây đầu (với luật O22) và 5 giây đầu (với luật O23+).
-- Khi có thí sinh bấm chuông, MC có quyền bấm chấm Sai bất kỳ lúc nào mà không bị khóa.
-- Đảm bảo Host Console không bị bypass hay mất đồng bộ `noBuzzWrongUnlockAt` từ state.
-
-### R4. Workspace Boundary Constraint
-- The team must NOT modify or delete any files outside `d:\Timeout Quiz`. Reading and checking files outside `d:\Timeout Quiz` for context is permitted.
-
-### R5. Build and VPS Deployment
-- Build và kiểm tra toàn diện codebase local trong `d:\Timeout Quiz`.
-- Kiểm tra quyền truy cập môi trường và triển khai bản build mới nhất lên VPS `https://quizorra.ddns.net` tại thư mục `/var/www/quizorra`, đảm bảo VPS phục vụ đúng bundle mới và không còn phục vụ chunk HTML cũ (`page-7aba8b85ceac9a89.js`). Nếu không có quyền truy cập trực tiếp từ xa vào VPS, chuẩn bị commit/push sạch và cung cấp hướng dẫn lệnh chính xác để chạy trên VPS.
+### R6. Chụp ảnh màn hình (screenshot) minh chứng thực tế
+- Chụp ảnh màn hình (screenshot) trực tiếp từ giao diện trường quay 3D khi chạy ứng dụng trên trình duyệt:
+  + Hiển thị trường quay khi có 6, 7 và 8 thí sinh với bục đã được giãn khoảng cách thoáng đãng, không bị dính sát vào nhau.
+  + Góc CAM 10 và các góc CAM liên quan bao quát toàn cảnh không bị cắt lẹm.
+  + Bục MC và hai MC được chiếu sáng rõ ràng khuôn mặt và trang phục.
+- Đính kèm/cung cấp đường dẫn các file ảnh screenshot trong báo cáo nghiệm thu cho người dùng xem trực quan.
 
 ## Verification Resources
-- Test suites sẵn có của project (`npm test` / build verification trong `d:\Timeout Quiz`).
-- Kiểm tra trực quan và chức năng trong Sandbox mode (`/admin/sandbox`) và Host Console.
-- Kiểm tra live VPS endpoint `https://quizorra.ddns.net` (HTML chunk verification).
+- Kiểm tra build thành công của dự án (`npm run build`).
+- Khởi chạy dev server (`npm run dev`), mở trình duyệt để kiểm tra trực quan và chụp ảnh màn hình (screenshot) thực tế kết quả hiển thị 3D.
 
 ## Acceptance Criteria
 
-### Contestant Movement & Podium Entrance
-- [ ] Ở cả Sandbox mode và Online mode, thí sinh chào sân đi vòng theo hành lang phía sau và bước vào bục từ phía sau, tuyệt đối không đi xuyên qua bàn hay màn hình bục.
-- [ ] Chào sân gối đầu hoạt động mượt mà: thí sinh tiếp theo bước ra ngay khi thí sinh trước đi gần hết bậc thang, không chờ thí sinh trước về hẳn bục.
+### Stage Layout & Cameras
+- [ ] Khi seatCount = 6, 7, 8, các bục thí sinh có khoảng cách giãn đều, không chạm hoặc chồng đè lên nhau.
+- [ ] CAM 10 và các camera cá nhân (CAM 5..8, CAM 25..28) bao quát trọn vẹn bục tương ứng mà không bị che khuất hoặc cắt lẹm khỏi khung hình.
 
-### Host Console Wrong Button
-- [ ] Ở các lượt thi có bấm chuông khi chưa có ai bấm, nút chấm "X Sai" của Host bị khóa không bấm được trong 3 giây đầu (luật O22) hoặc 5 giây đầu (luật O23+).
-- [ ] Ngay khi có thí sinh bấm chuông, nút chấm "X Sai" của Host lập tức được mở khóa.
+### Movement & Animation
+- [ ] Thí sinh di chuyển từ cầu thang về bục theo quỹ đạo cong mượt mà, tốc độ ổn định, không bị giảm tốc đột ngột và xoay mượt mà theo hướng di chuyển.
+- [ ] Chuyển cảnh sang CAM 11 diễn ra sớm hơn ~0.6s khi thí sinh bước nốt các bậc cuối vào bục giữa chào sân.
 
-### Safety & Workspace Integrity
-- [ ] Tuyệt đối không có file nào ngoài thư mục `d:\Timeout Quiz` bị sửa đổi hoặc xóa bỏ.
+### Lighting & MC Visibility
+- [ ] Hai MC hiển thị sáng rõ, nhận diện được khuôn mặt và trang phục từ góc CAM 10 và toàn cảnh, không còn bị tối đen/bóng ma.
 
-### Build & Deployment
-- [ ] Toàn bộ test suite và build production hoàn thành thành công không có lỗi.
-- [ ] Live VPS `https://quizorra.ddns.net` được cập nhật bản build mới nhất, không còn chạy mã nguồn hay chunk cũ.
+### Audio Playback
+- [ ] Nhạc intro thí sinh phát liên tục bằng cơ chế crossfade nối tiếp liền mạch khi tổng thời gian giới thiệu 6-8 thí sinh vượt quá độ dài file âm thanh gốc.
 
-## 2026-11-10T10:50:20Z
-Audit, resolve, and verify persistent entrance timing, arm animation stiffness, podium collision, stage flow transition, and production VPS deployment issues for Timeout Quiz.
+### Visual Proof & Screenshots
+- [ ] Có ảnh màn hình (screenshot) thực tế chụp từ trình duyệt cho các trường hợp 6, 7, 8 thí sinh, thể hiện rõ bục giãn cách thoáng, MC sáng rõ, camera bao quát trọn vẹn.
 
-Working directory: d:\Timeout Quiz
-Integrity mode: development
+### Workspace Safety
+- [ ] Không có file nào ngoài `d:\Timeout Quiz` bị thay đổi, tạo mới hay xóa bỏ (thư mục `d:\Olympia 26` giữ nguyên 100%).
+- [ ] File `d:\Timeout Quiz\AGENTS.md` giữ nguyên vẹn.
+- [ ] Lệnh kiểm tra build dự án (`npm run build`) hoàn thành không có lỗi.
 
-STRICT CONSTRAINT: Tuyệt đối không xóa hoặc sửa file ngoài thư mục d:\Timeout Quiz (đặc biệt không đụng chạm vào d:\Olympia 26).
+## 2026-11-10T16:37:51Z
 
-## Requirements
+[URGENT INSTRUCTION FROM USER & CALLER - MANDATORY RE-WORK]:
+THÔNG BÁO KHẨN CẤP TỪ NGƯỜI DÙNG VỀ BỐ CỤC BỤC (YÊU CẦU SỬA NGAY TRƯỚC 01:15):
 
-### R1. Pipelined Concurrent Entrance
-Cần giải quyết triệt để luồng ra sân gối đầu đồng thời (Pipelined Concurrent Entrance): thí sinh trước vừa bước xuống cầu thang tới sàn (4.0s) thì thí sinh kế tiếp lập tức mở cửa xuất hiện bước xuống, không phải đợi thí sinh trước về tận bục (6.8s) mới cho thí sinh sau ra.
+Người dùng vừa kiểm tra ảnh screenshot R6.3 và phát hiện lỗi nghiêm trọng:
+"chưa được rồi, nếu không đủ không gian bên phải thì bục phải dồn về bên trái, không dồn sang gần MC, nó sẽ bị lỗi ngu học này"
 
-### R2. Arm Animation Naturalness and Fluidity
-Khắc phục triệt để lỗi đơ tay: cả động tác tay của thí sinh lúc pose chào lẫn cánh tay MC (khớp vai, khuỷu, cổ tay) phải cử động mượt mà, không bị cứng, giật nhảy frame hoặc bị đơ như tượng sáp.
+1. Nguyên nhân:
+Trong cấu hình 8 thí sinh (và 6-7 thí sinh), thuật toán cũ đẩy `endPhi` lên tới 1.710 rad (vượt sang X = +0.94m sang mạn phải), khiến Thí sinh số 8 đứng sát rạt, dính vào ngay cạnh bục MC (CenterMcDesk tại X = +3.0m). Bục MC bị lọt vào mép phải của CAM 10.
 
-### R3. Podium Collision Avoidance via Rear Corridor
-Đường đi của thí sinh từ cầu thang về bục thi đấu không được cắt xuyên qua các bục của thí sinh khác hoặc bục chính giữa; phải đi vòng qua hành lang sau (rear corridor arc) rộng rãi, tuyệt đối không xuyên qua bất kỳ bục nào.
+2. Quyết định kiến trúc bắt buộc (Người dùng đã xác nhận 100% qua phỏng vấn):
+- KHÓA CỐ ĐỊNH MỐC BÊN PHẢI: Khóa `endPhi <= 1.20 rad` (hoặc tối đa 1.22 rad) để bục thí sinh cuối cùng bên phải luôn cách bục MC tối thiểu 3.5m - 4.0m (vùng X <= -2.2m), TUYỆT ĐỐI KHÔNG xâm lấn sang khu vực MC bên phải!
+- DỒN TOÀN BỘ CUNG MỞ RỘNG SANG CÁNH TRÁI (STAGE LEFT): Mở rộng `startPhi` về phía cánh trái dọc theo Vách Ký hiệu Khoa học (Stage Left, X âm) từ 0.05 rad - 0.35 rad hoặc tăng bán kính cung/dịch tâm cung sang trái để toàn bộ 6, 7, 8 bục dàn đều, rộng rãi bên cánh trái.
+- CÂN CHỈNH LẠI CAM 10: Dịch trục ngắm `pos` và `target` của CAM 10 lệch sang trái (hướng về trung tâm dồn trái của dàn bục) để toàn bộ 6 - 8 bục nằm cân đối chính giữa khung hình CAM 10, loại bỏ hoàn toàn bục MC khỏi rìa phải của CAM 10!
+- Cập nhật lại các camera cá nhân thí sinh (CAM 5..8, CAM 25..28) tương ứng theo vị trí mới.
+- Cập nhật lại đường di chuyển bước chân thí sinh (từ cầu thang về bục) để ăn khớp với tọa độ bục mới.
+- CHỤP LẠI BỘ ẢNH SCREENSHOT THỰC TẾ (đặc biệt là ảnh 6, 7, 8 thí sinh và CAM 10) thể hiện rõ ràng bục dồn sang trái, bục MC bên phải hoàn toàn thông thoáng độc lập!
 
-### R4. Stage Flow Intro Standby
-Khi giới thiệu xong thí sinh, hệ thống không tự động nhảy ngay sang vòng Khởi động mà phải dừng lại ở màn Chờ mở màn trang trọng (introStandby) để MC dẫn và chờ Host bấm nút bắt đầu.
-
-### R5. Production Build and VPS Deployment Verification
-Đảm bảo bản build production và triển khai VPS (quizorra.ddns.net / process name PM2: quizorra / timeout-quiz) thực sự nạp mã mới nhất, không bị cache hay chạy mã nguồn cũ.
-
-## Verification Resources
-- Use existing test suites in `d:\Timeout Quiz`: `npm run test:olympia`, `npm run test:olympia-3d`, `npm test`, and typecheck `npx tsc --noEmit`.
-- Inspect repository deployment scripts (e.g. `deploy-vps.sh`) and PM2 configuration for process `quizorra` / `timeout-quiz` at `quizorra.ddns.net`.
-- Design and execute automated and regression verification checks to ensure all 5 issues are resolved without regressions.
-
-## Acceptance Criteria
-
-### Entrance Timing & Animation
-- [ ] Thí sinh tiếp theo xuất hiện và bước xuống cầu thang tại thời điểm t = 4.0s khi thí sinh trước chạm sàn, thay vì chờ đến 6.8s.
-- [ ] Cử động tay của thí sinh khi pose chào và cánh tay MC (khớp vai, khuỷu, cổ tay) chuyển động mượt mà liên tục, không bị đơ hoặc nhảy frame.
-- [ ] Quỹ đạo di chuyển của tất cả thí sinh từ cầu thang về bục thi đấu đi qua hành lang sau (rear corridor arc) và không cắt xuyên qua bất kỳ bục nào.
-
-### Stage Flow & Deployment
-- [ ] Sau khi kết thúc phần giới thiệu thí sinh, hệ thống dừng lại ở màn Chờ mở màn (introStandby), không tự động chuyển sang vòng Khởi động cho đến khi Host bấm nút bắt đầu.
-- [ ] Toàn bộ test suites (`npm run test:olympia`, `npm run test:olympia-3d`, `npm test`, `npx tsc --noEmit`) vượt qua thành công (100% pass rate).
-- [ ] Bản build production trên VPS quizorra.ddns.net (PM2 process `quizorra` / `timeout-quiz`) chạy đúng mã nguồn mới nhất, không bị cache hay chạy mã nguồn cũ.
-- [ ] Không có file nào ngoài thư mục `d:\Timeout Quiz` (đặc biệt thư mục `d:\Olympia 26`) bị sửa hoặc xóa.
+Cam kết hoàn thành trước 01:15 sáng mai. Vui lòng lập tức điều động worker thực hiện ngay!
+File authoritative request đã được cập nhật tại: d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md

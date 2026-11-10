@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { OlympiaState } from "@/lib/olympia/types";
 import { isSeatBuzzedIn3D, computeTargetLightingMode } from "./useOlympiaLightingState";
+import { getContestantArcParams } from "./CameraController";
 
 interface PodiumsProps {
   state?: OlympiaState | null;
@@ -519,12 +520,16 @@ export function createProceduralTorsoGeometry(
 
 export function createWarmPeachSkinMaterial(
   color: string = "#f4cba5",
-  roughness: number = 0.58
+  roughness: number = 0.58,
+  emissive: string | THREE.Color = new THREE.Color("#fae5d3"),
+  emissiveIntensity: number = 0.16
 ): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
     color,
     roughness,
     metalness: 0.02,
+    emissive: emissive instanceof THREE.Color ? emissive : new THREE.Color(emissive),
+    emissiveIntensity,
   });
 }
 
@@ -535,12 +540,16 @@ export function createWarmPeachSkinMaterial(
  */
 export function createHairMaterial(
   color: string = "#1a1512",
-  roughness: number = 0.88
+  roughness: number = 0.88,
+  emissive: string | THREE.Color = new THREE.Color("#3d271d"),
+  emissiveIntensity: number = 0.08
 ): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
     color,
     roughness,
     metalness: 0.0,
+    emissive: emissive instanceof THREE.Color ? emissive : new THREE.Color(emissive),
+    emissiveIntensity,
   });
 }
 
@@ -1080,6 +1089,8 @@ export function ContestantFigure({
   seatId,
   position = [0, 0, 0],
   isWalking = false,
+  walkPhase,
+  walkPhaseRef,
   quality = "HIGH",
   gesture = "none",
   gestureProgress = 0,
@@ -1088,6 +1099,8 @@ export function ContestantFigure({
   seatId: number;
   position?: [number, number, number];
   isWalking?: boolean;
+  walkPhase?: number;
+  walkPhaseRef?: React.RefObject<number>;
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
   gesture?: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow";
   gestureProgress?: number;
@@ -1115,8 +1128,13 @@ export function ContestantFigure({
     const effProgress = gestureProgressRef?.current !== undefined ? gestureProgressRef.current : gestureProgress;
 
     if (isWalking) {
-      const stride = Math.sin(t * 8.0) * 0.35;
-      const armStride = Math.sin(t * 8.0) * 0.25;
+      // Synchronize walking stride to unified cadence (omega = 8.5 rad/s, natural 108 steps/min pace)
+      const activeWalkPhase =
+        walkPhaseRef?.current !== undefined
+          ? walkPhaseRef.current
+          : (walkPhase !== undefined ? walkPhase : t * 8.5);
+      const stride = Math.sin(activeWalkPhase) * 0.35;
+      const armStride = Math.sin(activeWalkPhase) * 0.25;
       if (leftLegRef.current) { leftLegRef.current.rotation.x = stride; leftLegRef.current.rotation.z = 0; }
       if (rightLegRef.current) { rightLegRef.current.rotation.x = -stride; rightLegRef.current.rotation.z = 0; }
       if (leftArmRef.current) { leftArmRef.current.rotation.x = -armStride; leftArmRef.current.rotation.y = 0; leftArmRef.current.rotation.z = -0.04; }
@@ -1840,6 +1858,55 @@ export function ContestantPodium({
  * - Deep setback at Z = -6.40m, opening up over 5.5m of reflective studio floor.
  * - MC Presenters Khánh Vy & Ngọc Huy standing strictly behind the desk at Z = -7.00m.
  */
+/**
+ * Milestone 3: MC Stage Visibility Formal Specifications (Requirement R3)
+ */
+export const MC_DESK_UPLIGHT_CONFIG = {
+  position: [0, 1.20, 0.15] as [number, number, number],
+  color: "#fff5e6",
+  intensity: 4.5,
+  distance: 2.5,
+  decay: 1.0,
+} as const;
+
+export const MC_WARDROBE_SPEC = {
+  khanhVy: {
+    blazer: {
+      color: "#831843",
+      roughness: 0.38,
+      metalness: 0.05,
+      emissive: "#831843",
+      emissiveIntensity: 0.12,
+    },
+    blouse: {
+      color: "#ffffff",
+      roughness: 0.35,
+      emissive: "#ffffff",
+      emissiveIntensity: 0.16,
+    },
+    spectacles: {
+      color: "#cbd5e1",
+      metalness: 0.95,
+      roughness: 0.12,
+    },
+  },
+  ngocHuy: {
+    blazer: {
+      color: "#b88a44",
+      roughness: 0.42,
+      metalness: 0.32,
+      emissive: "#b88a44",
+      emissiveIntensity: 0.12,
+    },
+    shirt: {
+      color: "#ffffff",
+      roughness: 0.35,
+      emissive: "#ffffff",
+      emissiveIntensity: 0.16,
+    },
+  },
+} as const;
+
 export function CenterMcDesk({
   screenFadeProgress = 0,
   liveFactor = 1.0,
@@ -2023,6 +2090,15 @@ export function CenterMcDesk({
           <meshStandardMaterial color="#1e2430" metalness={0.95} roughness={0.15} />
         </mesh>
       </group>
+
+      {/* ── 6. INTERIOR HOST CONSOLE UPLIGHT / CHEST FILL (Milestone 3 R3) ── */}
+      <pointLight
+        position={MC_DESK_UPLIGHT_CONFIG.position}
+        color={MC_DESK_UPLIGHT_CONFIG.color}
+        intensity={MC_DESK_UPLIGHT_CONFIG.intensity}
+        distance={MC_DESK_UPLIGHT_CONFIG.distance}
+        decay={MC_DESK_UPLIGHT_CONFIG.decay}
+      />
     </group>
   );
 }
@@ -2097,6 +2173,52 @@ export function McPresenters({
   const nhHairMat = useMemo(() => createHairMaterial("#191512", 0.65), []);
   const kvTorsoGeom = useMemo(() => createProceduralTorsoGeometry("mc_female"), []);
   const nhTorsoGeom = useMemo(() => createProceduralTorsoGeometry("mc_male"), []);
+
+  const kvBlazerMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: MC_WARDROBE_SPEC.khanhVy.blazer.color,
+        roughness: MC_WARDROBE_SPEC.khanhVy.blazer.roughness,
+        metalness: MC_WARDROBE_SPEC.khanhVy.blazer.metalness,
+        emissive: new THREE.Color(MC_WARDROBE_SPEC.khanhVy.blazer.emissive),
+        emissiveIntensity: MC_WARDROBE_SPEC.khanhVy.blazer.emissiveIntensity,
+      }),
+    []
+  );
+
+  const kvBlouseMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: MC_WARDROBE_SPEC.khanhVy.blouse.color,
+        roughness: MC_WARDROBE_SPEC.khanhVy.blouse.roughness,
+        emissive: new THREE.Color(MC_WARDROBE_SPEC.khanhVy.blouse.emissive),
+        emissiveIntensity: MC_WARDROBE_SPEC.khanhVy.blouse.emissiveIntensity,
+      }),
+    []
+  );
+
+  const nhBlazerMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: MC_WARDROBE_SPEC.ngocHuy.blazer.color,
+        roughness: MC_WARDROBE_SPEC.ngocHuy.blazer.roughness,
+        metalness: MC_WARDROBE_SPEC.ngocHuy.blazer.metalness,
+        emissive: new THREE.Color(MC_WARDROBE_SPEC.ngocHuy.blazer.emissive),
+        emissiveIntensity: MC_WARDROBE_SPEC.ngocHuy.blazer.emissiveIntensity,
+      }),
+    []
+  );
+
+  const nhShirtMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: MC_WARDROBE_SPEC.ngocHuy.shirt.color,
+        roughness: MC_WARDROBE_SPEC.ngocHuy.shirt.roughness,
+        emissive: new THREE.Color(MC_WARDROBE_SPEC.ngocHuy.shirt.emissive),
+        emissiveIntensity: MC_WARDROBE_SPEC.ngocHuy.shirt.emissiveIntensity,
+      }),
+    []
+  );
 
   useFrame(() => {
     const now = serverNow ? serverNow() : Date.now();
@@ -2574,23 +2696,23 @@ export function McPresenters({
         <group position={[0, 1.430, 0.070]}>
           <mesh position={[-0.026, 0, 0]} scale={[1.12, 0.90, 1.0]}>
             <torusGeometry args={[0.0125, 0.00045, 10, 24]} />
-            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.15} />
+            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.12} />
           </mesh>
           <mesh position={[0.026, 0, 0]} scale={[1.12, 0.90, 1.0]}>
             <torusGeometry args={[0.0125, 0.00045, 10, 24]} />
-            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.15} />
+            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.12} />
           </mesh>
           <mesh position={[0, 0.001, 0]} rotation={[0, 0, Math.PI / 2]}>
             <cylinderGeometry args={[0.00045, 0.00045, 0.008, 6]} />
-            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.15} />
+            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.12} />
           </mesh>
           <mesh position={[-0.039, 0, -0.035]} rotation={[Math.PI / 2, 0, 0.15]}>
             <cylinderGeometry args={[0.00045, 0.00045, 0.070, 6]} />
-            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.15} />
+            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.12} />
           </mesh>
           <mesh position={[0.039, 0, -0.035]} rotation={[Math.PI / 2, 0, -0.15]}>
             <cylinderGeometry args={[0.00045, 0.00045, 0.070, 6]} />
-            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.15} />
+            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.12} />
           </mesh>
         </group>
 
@@ -2601,29 +2723,35 @@ export function McPresenters({
         </mesh>
 
         {/* ── TAILORED FEMALE BROADCAST SUIT BLAZER (Royal Wine Burgundy #831843) ── */}
-        <mesh geometry={kvTorsoGeom}>
-          <meshStandardMaterial color="#831843" roughness={0.38} metalness={0.05} />
-        </mesh>
+        <mesh geometry={kvTorsoGeom} material={kvBlazerMat} />
 
         {/* Silk Blouse Collar Band wrapping neck base */}
-        <mesh position={[0, 1.328, 0.010]}>
+        <mesh position={[0, 1.328, 0.010]} material={kvBlouseMat}>
           <cylinderGeometry args={[0.031, 0.035, 0.022, 22]} />
-          <meshStandardMaterial color="#ffffff" roughness={0.35} />
         </mesh>
         {/* Inner Crisp Silk Blouse V-Neck Accent */}
-        <mesh position={[0, 1.310, 0.052]}>
+        <mesh position={[0, 1.310, 0.052]} material={kvBlouseMat}>
           <boxGeometry args={[0.022, 0.032, 0.003]} />
-          <meshStandardMaterial color="#ffffff" roughness={0.35} />
         </mesh>
 
         {/* Peaked Blazer Lapels */}
         <mesh position={[-0.038, 1.225, 0.062]} rotation={[0.15, -0.08, 0.14]}>
           <boxGeometry args={[0.020, 0.090, 0.003]} />
-          <meshStandardMaterial color="#6b1437" roughness={0.35} />
+          <meshStandardMaterial
+            color="#6b1437"
+            roughness={0.35}
+            emissive={new THREE.Color("#831843")}
+            emissiveIntensity={0.12}
+          />
         </mesh>
         <mesh position={[0.038, 1.225, 0.062]} rotation={[0.15, 0.08, -0.14]}>
           <boxGeometry args={[0.020, 0.090, 0.003]} />
-          <meshStandardMaterial color="#6b1437" roughness={0.35} />
+          <meshStandardMaterial
+            color="#6b1437"
+            roughness={0.35}
+            emissive={new THREE.Color("#831843")}
+            emissiveIntensity={0.12}
+          />
         </mesh>
 
         {/* Single Tailored Blazer Button Closure */}
@@ -2637,32 +2765,27 @@ export function McPresenters({
         <group position={[-0.142, 1.24, 0.005]}>
           <group ref={kvLeftArmRef}>
             {/* Seamless anatomical shoulder cap */}
-            <mesh position={[0, 0, 0]}>
+            <mesh position={[0, 0, 0]} material={kvBlazerMat}>
               <sphereGeometry args={[0.033, 14, 14]} />
-              <meshStandardMaterial color="#831843" roughness={0.4} />
             </mesh>
             {/* Upper arm hangs naturally down along side of body */}
             <group rotation={[-0.08, 0, 0.06]}>
-              <mesh position={[0, -0.09, 0]}>
+              <mesh position={[0, -0.09, 0]} material={kvBlazerMat}>
                 <cylinderGeometry args={[0.032, 0.026, 0.18, 16]} />
-                <meshStandardMaterial color="#831843" roughness={0.4} />
               </mesh>
               {/* Seamless anatomical elbow joint */}
               <group position={[0, -0.18, 0]}>
-                <mesh position={[0, 0, 0]}>
+                <mesh position={[0, 0, 0]} material={kvBlazerMat}>
                   <sphereGeometry args={[0.026, 14, 14]} />
-                  <meshStandardMaterial color="#831843" roughness={0.4} />
                 </mesh>
                 {/* Forearm hangs gracefully down with subtle natural curve */}
                 <group ref={kvLeftForearmRef} rotation={[-0.12, -0.04, 0.05]}>
-                  <mesh position={[0, -0.07, 0]}>
+                  <mesh position={[0, -0.07, 0]} material={kvBlazerMat}>
                     <cylinderGeometry args={[0.026, 0.022, 0.14, 16]} />
-                    <meshStandardMaterial color="#831843" roughness={0.4} />
                   </mesh>
                   {/* White Blouse Cuff */}
-                  <mesh position={[0, -0.14, 0]}>
+                  <mesh position={[0, -0.14, 0]} material={kvBlouseMat}>
                     <cylinderGeometry args={[0.024, 0.024, 0.016, 16]} />
-                    <meshStandardMaterial color="#ffffff" roughness={0.3} />
                   </mesh>
                   {/* Sculpted Hand & Cue Card wrapped in Wrist Joint */}
                   <group ref={kvLeftWristRef} position={[0, -0.155, 0]}>
@@ -2700,32 +2823,27 @@ export function McPresenters({
         <group position={[0.142, 1.24, 0.005]}>
           <group ref={kvRightArmRef}>
             {/* Seamless anatomical shoulder cap */}
-            <mesh position={[0, 0, 0]}>
+            <mesh position={[0, 0, 0]} material={kvBlazerMat}>
               <sphereGeometry args={[0.033, 14, 14]} />
-              <meshStandardMaterial color="#831843" roughness={0.4} />
             </mesh>
             {/* Upper arm hangs down and slightly forward */}
             <group rotation={[-0.20, -0.04, -0.10]}>
-              <mesh position={[0, -0.09, 0]}>
+              <mesh position={[0, -0.09, 0]} material={kvBlazerMat}>
                 <cylinderGeometry args={[0.032, 0.026, 0.18, 16]} />
-                <meshStandardMaterial color="#831843" roughness={0.4} />
               </mesh>
               {/* Seamless anatomical elbow joint */}
               <group position={[0, -0.18, 0]}>
-                <mesh position={[0, 0, 0]}>
+                <mesh position={[0, 0, 0]} material={kvBlazerMat}>
                   <sphereGeometry args={[0.026, 14, 14]} />
-                  <meshStandardMaterial color="#831843" roughness={0.4} />
                 </mesh>
                 {/* Forearm bends forward (-X) and inward to hold mic upright in front of sternum */}
                 <group ref={kvRightForearmRef} rotation={[-1.25, 0.20, -0.32]}>
-                  <mesh position={[0, -0.07, 0]}>
+                  <mesh position={[0, -0.07, 0]} material={kvBlazerMat}>
                     <cylinderGeometry args={[0.026, 0.022, 0.14, 16]} />
-                    <meshStandardMaterial color="#831843" roughness={0.4} />
                   </mesh>
                   {/* White Blouse Cuff */}
-                  <mesh position={[0, -0.14, 0]}>
+                  <mesh position={[0, -0.14, 0]} material={kvBlouseMat}>
                     <cylinderGeometry args={[0.024, 0.024, 0.016, 16]} />
-                    <meshStandardMaterial color="#ffffff" roughness={0.3} />
                   </mesh>
                   {/* Sculpted Hand holding Microphone wrapped in Wrist Joint */}
                   <group ref={kvRightWristRef} position={[0, -0.155, 0]}>
@@ -2915,23 +3033,18 @@ export function McPresenters({
         </mesh>
 
         {/* ── TAILORED METALLIC BRONZE BROADCAST SUIT JACKET (#b88a44) ── */}
-        <mesh geometry={nhTorsoGeom}>
-          <meshStandardMaterial color="#b88a44" roughness={0.42} metalness={0.32} />
-        </mesh>
+        <mesh geometry={nhTorsoGeom} material={nhBlazerMat} />
 
         {/* Shirt Collar Band wrapping neck base */}
-        <mesh position={[0, 1.398, 0.010]}>
+        <mesh position={[0, 1.398, 0.010]} material={nhShirtMat}>
           <cylinderGeometry args={[0.035, 0.040, 0.024, 24]} />
-          <meshStandardMaterial color="#ffffff" roughness={0.35} />
         </mesh>
         {/* Inner Crisp White Dress Shirt & Folded Collar Points */}
-        <mesh position={[-0.022, 1.390, 0.062]} rotation={[0.16, -0.12, 0.20]}>
+        <mesh position={[-0.022, 1.390, 0.062]} rotation={[0.16, -0.12, 0.20]} material={nhShirtMat}>
           <boxGeometry args={[0.022, 0.036, 0.003]} />
-          <meshStandardMaterial color="#ffffff" roughness={0.35} />
         </mesh>
-        <mesh position={[0.022, 1.390, 0.062]} rotation={[0.16, 0.12, -0.20]}>
+        <mesh position={[0.022, 1.390, 0.062]} rotation={[0.16, 0.12, -0.20]} material={nhShirtMat}>
           <boxGeometry args={[0.022, 0.036, 0.003]} />
-          <meshStandardMaterial color="#ffffff" roughness={0.35} />
         </mesh>
 
         {/* Dark Navy Silk Tie Knot & Tapered Tie Body */}
@@ -2947,21 +3060,37 @@ export function McPresenters({
         {/* Notched Suit Lapels (matching suit fabric color for seamless luxury look) */}
         <mesh position={[-0.044, 1.250, 0.070]} rotation={[0.16, -0.08, 0.12]}>
           <boxGeometry args={[0.024, 0.110, 0.003]} />
-          <meshStandardMaterial color="#9c7538" roughness={0.42} metalness={0.28} />
+          <meshStandardMaterial
+            color="#9c7538"
+            roughness={0.42}
+            metalness={0.28}
+            emissive={new THREE.Color("#b88a44")}
+            emissiveIntensity={0.12}
+          />
         </mesh>
         <mesh position={[0.044, 1.250, 0.070]} rotation={[0.16, 0.08, -0.12]}>
           <boxGeometry args={[0.024, 0.110, 0.003]} />
-          <meshStandardMaterial color="#9c7538" roughness={0.42} metalness={0.28} />
+          <meshStandardMaterial
+            color="#9c7538"
+            roughness={0.42}
+            metalness={0.28}
+            emissive={new THREE.Color("#b88a44")}
+            emissiveIntensity={0.12}
+          />
         </mesh>
 
         {/* Left Chest Welt Pocket with Folded White Silk Pocket Square */}
         <mesh position={[-0.072, 1.270, 0.078]}>
           <boxGeometry args={[0.032, 0.005, 0.002]} />
-          <meshStandardMaterial color="#9c7538" roughness={0.42} />
+          <meshStandardMaterial
+            color="#9c7538"
+            roughness={0.42}
+            emissive={new THREE.Color("#b88a44")}
+            emissiveIntensity={0.12}
+          />
         </mesh>
-        <mesh position={[-0.072, 1.278, 0.080]} rotation={[0.1, 0, 0.15]}>
+        <mesh position={[-0.072, 1.278, 0.080]} rotation={[0.1, 0, 0.15]} material={nhShirtMat}>
           <coneGeometry args={[0.006, 0.012, 3]} />
-          <meshStandardMaterial color="#ffffff" roughness={0.2} />
         </mesh>
 
         {/* Two-Button Front Suit Closure */}
@@ -2979,32 +3108,27 @@ export function McPresenters({
         <group position={[-0.165, 1.28, 0.005]}>
           <group ref={nhLeftArmRef}>
             {/* Seamless anatomical shoulder cap */}
-            <mesh position={[0, 0, 0]}>
+            <mesh position={[0, 0, 0]} material={nhBlazerMat}>
               <sphereGeometry args={[0.039, 14, 14]} />
-              <meshStandardMaterial color="#b88a44" metalness={0.35} roughness={0.42} />
             </mesh>
             {/* Upper arm hangs naturally down and slightly forward */}
             <group rotation={[-0.22, 0.05, 0.12]}>
-              <mesh position={[0, -0.10, 0]}>
+              <mesh position={[0, -0.10, 0]} material={nhBlazerMat}>
                 <cylinderGeometry args={[0.038, 0.032, 0.20, 16]} />
-                <meshStandardMaterial color="#b88a44" metalness={0.35} roughness={0.42} />
               </mesh>
               {/* Seamless anatomical elbow joint */}
               <group position={[0, -0.20, 0]}>
-                <mesh position={[0, 0, 0]}>
+                <mesh position={[0, 0, 0]} material={nhBlazerMat}>
                   <sphereGeometry args={[0.032, 14, 14]} />
-                  <meshStandardMaterial color="#b88a44" metalness={0.35} roughness={0.42} />
                 </mesh>
                 {/* Forearm bends forward (-X) and inward to hold mic upright in front of sternum */}
                 <group ref={nhLeftForearmRef} rotation={[-1.25, -0.20, 0.35]}>
-                  <mesh position={[0, -0.075, 0]}>
+                  <mesh position={[0, -0.075, 0]} material={nhBlazerMat}>
                     <cylinderGeometry args={[0.032, 0.026, 0.15, 16]} />
-                    <meshStandardMaterial color="#b88a44" metalness={0.35} roughness={0.42} />
                   </mesh>
                   {/* White Shirt Cuff & Watch */}
-                  <mesh position={[0, -0.15, 0]}>
+                  <mesh position={[0, -0.15, 0]} material={nhShirtMat}>
                     <cylinderGeometry args={[0.028, 0.028, 0.018, 16]} />
-                    <meshStandardMaterial color="#ffffff" roughness={0.3} />
                   </mesh>
                   <mesh position={[0, -0.15, 0.022]} rotation={[0.4, 0.1, 0]}>
                     <cylinderGeometry args={[0.014, 0.014, 0.006, 16]} />
@@ -3046,32 +3170,27 @@ export function McPresenters({
         <group position={[0.165, 1.28, 0.005]}>
           <group ref={nhRightArmRef}>
             {/* Seamless anatomical shoulder cap */}
-            <mesh position={[0, 0, 0]}>
+            <mesh position={[0, 0, 0]} material={nhBlazerMat}>
               <sphereGeometry args={[0.039, 14, 14]} />
-              <meshStandardMaterial color="#b88a44" metalness={0.35} roughness={0.42} />
             </mesh>
             {/* Upper arm hangs down along flank */}
             <group rotation={[-0.06, 0, -0.06]}>
-              <mesh position={[0, -0.10, 0]}>
+              <mesh position={[0, -0.10, 0]} material={nhBlazerMat}>
                 <cylinderGeometry args={[0.038, 0.032, 0.20, 16]} />
-                <meshStandardMaterial color="#b88a44" metalness={0.35} roughness={0.42} />
               </mesh>
               {/* Seamless anatomical elbow joint */}
               <group position={[0, -0.20, 0]}>
-                <mesh position={[0, 0, 0]}>
+                <mesh position={[0, 0, 0]} material={nhBlazerMat}>
                   <sphereGeometry args={[0.032, 14, 14]} />
-                  <meshStandardMaterial color="#b88a44" metalness={0.35} roughness={0.42} />
                 </mesh>
                 {/* Forearm hangs naturally down beside trousers */}
                 <group ref={nhRightForearmRef} rotation={[-0.10, 0.04, -0.06]}>
-                  <mesh position={[0, -0.075, 0]}>
+                  <mesh position={[0, -0.075, 0]} material={nhBlazerMat}>
                     <cylinderGeometry args={[0.032, 0.026, 0.15, 16]} />
-                    <meshStandardMaterial color="#b88a44" metalness={0.35} roughness={0.42} />
                   </mesh>
                   {/* White Shirt Cuff */}
-                  <mesh position={[0, -0.15, 0]}>
+                  <mesh position={[0, -0.15, 0]} material={nhShirtMat}>
                     <cylinderGeometry args={[0.028, 0.028, 0.018, 16]} />
-                    <meshStandardMaterial color="#ffffff" roughness={0.3} />
                   </mesh>
                   {/* Sculpted Hand & Cue Card wrapped in Wrist Joint */}
                   <group ref={nhRightWristRef} position={[0, -0.165, 0]}>
@@ -3214,10 +3333,205 @@ export function getGrandstandStairY(z: number): number {
   return 0.22;
 }
 
+/**
+ * Evaluates the full continuous 3D trajectory, velocity-aligned rotY, synchronized walkPhase,
+ * and bounce for a walking contestant during the entrance sequence.
+ */
+export function evaluateContestantEntranceTrajectory(
+  t: number,
+  seatId: number,
+  targetCfg: { pos: [number, number, number]; rotY: number },
+  firstPhi: number = 0.38
+) {
+  const deskRotY = targetCfg ? targetCfg.rotY : 0;
+  const deskX = targetCfg ? targetCfg.pos[0] - Math.sin(deskRotY) * 0.42 : -3.0;
+  const deskY = targetCfg ? targetCfg.pos[1] : 0.22;
+  const deskZ = targetCfg ? targetCfg.pos[2] - Math.cos(deskRotY) * 0.42 : -3.5;
+
+  // Outer aisle behind podium desk (R = 7.75m from (0, -0.5m)):
+  // Podiums are placed along the arc centered at (0, -0.5m)
+  const relX = targetCfg ? targetCfg.pos[0] : -6.0;
+  const relZ = targetCfg ? targetCfg.pos[2] - (-0.5) : -2.5;
+  const targetPhi = Math.atan2(-relZ, -relX); // target podium polar angle
+
+  // Rear corridor radius (between podium backs at R=7.02m and Science Wall at R=8.60m)
+  const aisleRadius = 7.75;
+
+  // Outer left corridor entry point (dynamically placed in front of first podium)
+  const entryPhi = Math.min(0.20, firstPhi - 0.06);
+  const entryAisleX = -aisleRadius * Math.cos(entryPhi);
+  const entryAisleZ = -0.5 - aisleRadius * Math.sin(entryPhi);
+
+  // Aisle waypoint directly behind the contestant's assigned desk
+  const targetAisleX = -aisleRadius * Math.cos(targetPhi);
+  const targetAisleZ = -0.5 - aisleRadius * Math.sin(targetPhi);
+
+  // Smooth wide sweep waypoint from bottom of stairs across dais floor towards left corridor mouth
+  const daisSweepX = -5.20;
+  const daisSweepZ = 2.50;
+
+  // Door side selection for contestants (alternating or seat-based):
+  // TS 1 (seat 0) & TS 3 (seat 2): emerge from Door Left (X = +1.15m, Z = 12.85m)
+  // TS 2 (seat 1) & TS 4 (seat 3) & TS 5 (seat 4): emerge from Door Right (X = -1.15m, Z = 12.85m)
+  const isDoorLeft = seatId % 2 === 0;
+  const doorX = isDoorLeft ? 1.15 : -1.15;
+  const doorZ = 12.85;
+
+  const startX = doorX;
+  const startY = 1.84;
+  const startZ = doorZ;
+
+  let curX = startX;
+  let curY = startY;
+  let curZ = startZ;
+  let curRotY = Math.PI; // Facing towards camera (-Z)
+  let walkingNow = true;
+  let curGesture: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow" = "none";
+  let curGestureProg = 0;
+  let vel = 0;
+
+  // Phase 1 (0.0 -> 0.6s): Steps out from behind side arch door, curving onto central aisle on top plinth (11.90m)
+  if (t < 0.6) {
+    const p = t / 0.6;
+    const smoothP = p * p * (3 - 2 * p);
+    curX = THREE.MathUtils.lerp(doorX, 0, smoothP);
+    curY = startY;
+    curZ = THREE.MathUtils.lerp(doorZ, 11.90, smoothP);
+    curRotY = THREE.MathUtils.lerp(isDoorLeft ? Math.PI - 0.35 : Math.PI + 0.35, Math.PI, smoothP);
+    const dp_dt = 6 * p * (1 - p) / 0.6;
+    vel = Math.hypot(-doorX, 11.90 - doorZ) * dp_dt;
+  } else if (t < 1.8) {
+    // Phase 2 (0.6 -> 1.8s): Walks down upper stairs (1.2s) to mid-stairs landing platform ("Bục Giữa" Z = 10.20m, Y = 0.92m)
+    const p = (t - 0.6) / 1.2;
+    curX = 0;
+    curZ = THREE.MathUtils.lerp(11.90, 10.20, p);
+    curY = getGrandstandStairY(curZ);
+    curRotY = Math.PI;
+    vel = (11.90 - 10.20) / 1.2;
+  } else if (t < 3.0) {
+    // Phase 3 (1.8 -> 3.0s): Stands firmly on Bục Giữa & performs signature gesture (1.2s)
+    curX = 0;
+    curY = 0.92;
+    curZ = 10.20;
+    curRotY = Math.PI;
+    walkingNow = false;
+    const signatureGestures: Array<"wave" | "fist_pump" | "heart" | "open_arms"> = [
+      "wave",
+      "fist_pump",
+      "heart",
+      "open_arms",
+    ];
+    curGesture = signatureGestures[seatId % signatureGestures.length];
+    curGestureProg = Math.max(0, Math.min(1.0, (t - 1.8) / 1.2));
+    vel = 0;
+  } else if (t < 4.0) {
+    // Phase 4 (3.0 -> 4.0s): Walks down lower stairs to dais floor (1.0s, arrives at dais floor Z = 6.20m, Y = 0.22m at exactly t = 4.0s)
+    const p = (t - 3.0) / 1.0;
+    curX = 0;
+    curZ = THREE.MathUtils.lerp(10.20, 6.20, p);
+    curY = getGrandstandStairY(curZ);
+    curRotY = Math.PI;
+    vel = (10.20 - 6.20) / 1.0;
+  } else if (t < 6.5) {
+    // Phase 5 (4.0 -> 6.5s): Smooth continuous trajectory across dais to assigned podium (2.5s uninterrupted walk)
+    // Replaces disjoint 5A, 5B, 5C with a single continuous C1-smooth parametric curve
+    const u = (t - 4.0) / 2.5; // Normalized progress 0 -> 1
+
+    // Calibrated smooth forward progression across dais floor with moderated peak velocity (Delta P < 0.25m everywhere)
+    const s = 1.04 * u + 0.42 * u * u + 0.04 * u * u * u - 0.50 * u * u * u * u;
+    const invS = 1 - s;
+
+    // P0 = [0, 0.22, 6.20] (bottom of lower stairs)
+    const p0x = 0.00;
+    const p0z = 6.20;
+    // P1 = [0, 0.22, 3.80] (start tangent along -Z, guaranteeing initial heading rotY = Math.PI at t = 4.0s, zero rotational snap!)
+    const p1x = 0.00;
+    const p1z = 3.80;
+    // P2 = [-7.75 * Math.cos(sweepAngle), 0.22, rawP2Z]
+    const sweepAngle = targetPhi <= 0.25
+      ? targetPhi * 0.70
+      : Math.max(0.18, targetPhi - 0.22);
+    const rawP2X = -7.75 * Math.cos(sweepAngle);
+    const p2x = Math.max(targetAisleX, rawP2X);
+    const rawP2Z = -0.5 - 7.75 * Math.sin(sweepAngle);
+    const p2z = Math.min(targetAisleZ + 1.20, rawP2Z);
+    // P3 = [targetAisleX, 0.22, targetAisleZ] (aisle point behind desk)
+    const p3x = targetAisleX;
+    const p3z = targetAisleZ;
+    // P4 = [deskX, 0.22, deskZ] (desk standing position)
+    const p4x = deskX;
+    const p4z = deskZ;
+
+    // Quartic Bézier evaluation across s in [0, 1]
+    const s2 = s * s;
+    const s3 = s2 * s;
+    const s4 = s3 * s;
+    const iU = invS;
+    const iU2 = iU * iU;
+    const iU3 = iU2 * iU;
+    const iU4 = iU3 * iU;
+
+    const posX = iU4 * p0x + 4 * iU3 * s * p1x + 6 * iU2 * s2 * p2x + 4 * iU * s3 * p3x + s4 * p4x;
+    const posZ = iU4 * p0z + 4 * iU3 * s * p1z + 6 * iU2 * s2 * p2z + 4 * iU * s3 * p3z + s4 * p4z;
+
+    const tanX = 4 * iU3 * (p1x - p0x) + 12 * iU2 * s * (p2x - p1x) + 12 * iU * s2 * (p3x - p2x) + 4 * s3 * (p4x - p3x);
+    const tanZ = 4 * iU3 * (p1z - p0z) + 12 * iU2 * s * (p2z - p1z) + 12 * iU * s2 * (p3z - p2z) + 4 * s3 * (p4z - p3z);
+
+    const ds_du = 1.04 + 0.84 * u + 0.12 * u * u - 2.00 * u * u * u;
+    vel = Math.hypot(tanX, tanZ) * (ds_du / 2.5);
+
+    curX = posX;
+    curY = 0.22;
+    curZ = posZ;
+
+    // Continuous velocity-aligned rotation: compute moveAngle = Math.atan2(tanX, tanZ);
+    // blend smoothly into deskRotY as u approaches 1 (u > 0.82). Zero 90° turns!
+    const rawMoveAngle = Math.atan2(tanX, tanZ);
+    const moveAngle = rawMoveAngle < 0 ? rawMoveAngle + 2 * Math.PI : rawMoveAngle;
+    if (u > 0.82) {
+      const blendP = (u - 0.82) / 0.18;
+      const easeBlend = blendP * blendP * (3 - 2 * blendP);
+      let diff = (deskRotY - moveAngle) % (2 * Math.PI);
+      if (diff > Math.PI) diff -= 2 * Math.PI;
+      if (diff < -Math.PI) diff += 2 * Math.PI;
+      curRotY = moveAngle + diff * easeBlend;
+    } else {
+      curRotY = moveAngle;
+    }
+  } else {
+    // Phase 6 (6.5 -> 6.8s): Arrived and standing proudly behind desk with desk greeting bow (0.3s)
+    curX = deskX;
+    curY = deskY;
+    curZ = deskZ;
+    curRotY = deskRotY;
+    walkingNow = false;
+    curGesture = "desk_bow";
+    curGestureProg = Math.max(0, Math.min(1.0, (t - 6.5) / 0.3));
+    vel = 0;
+  }
+
+  // Synchronize walking stride and vertical bounce to a single frequency (omega = 8.5 rad/s, natural pace):
+  const walkPhase = walkingNow ? t * 8.5 : 0;
+  const bounce = walkingNow ? Math.abs(Math.sin(walkPhase)) * 0.032 : 0;
+
+  return {
+    pos: [curX, curY + bounce, curZ] as [number, number, number],
+    rawPos: [curX, curY, curZ] as [number, number, number],
+    rotY: curRotY,
+    walkingNow,
+    gesture: curGesture,
+    gestureProg: curGestureProg,
+    bounce,
+    walkPhase,
+    vel,
+  };
+}
+
 function SingleContestantEntranceWalkingFigure({
   seatId,
   seatStart,
   targetCfg,
+  firstPhi = 0.38,
   serverNow,
 }: {
   seatId: number;
@@ -3227,12 +3541,14 @@ function SingleContestantEntranceWalkingFigure({
     pos: [number, number, number];
     rotY: number;
   };
+  firstPhi?: number;
   serverNow?: () => number;
 }) {
   const figureRef = useRef<THREE.Group>(null);
   const [isWalking, setIsWalking] = useState(true);
   const [gesture, setGesture] = useState<"none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow">("none");
   const gestureProgressRef = useRef<number>(0);
+  const walkPhaseRef = useRef<number>(0);
 
   const getNow = serverNow || (() => Date.now());
 
@@ -3240,152 +3556,23 @@ function SingleContestantEntranceWalkingFigure({
     const g = figureRef.current;
     if (!g) return;
 
-    const deskRotY = targetCfg ? targetCfg.rotY : 0;
-    const deskX = targetCfg ? targetCfg.pos[0] - Math.sin(deskRotY) * 0.42 : -3.0;
-    const deskY = targetCfg ? targetCfg.pos[1] : 0.22;
-    const deskZ = targetCfg ? targetCfg.pos[2] - Math.cos(deskRotY) * 0.42 : -3.5;
-
-    // Outer aisle behind podium desk (R = 7.75m from (0, -0.5m)):
-    // Podiums are placed along the arc centered at (0, -0.5m)
-    const relX = targetCfg ? targetCfg.pos[0] : -6.0;
-    const relZ = targetCfg ? targetCfg.pos[2] - (-0.5) : -2.5;
-    const targetPhi = Math.atan2(-relZ, -relX); // target podium polar angle
-
-    // Rear corridor radius (between podium backs at R=7.02m and Science Wall at R=8.60m)
-    const aisleRadius = 7.75;
-
-    // Outer left corridor entry point (phi = 0.20 rad, well outside Podium 0 at phi = 0.38 rad)
-    const entryPhi = 0.20;
-    const entryAisleX = -aisleRadius * Math.cos(entryPhi); // -7.60m
-    const entryAisleZ = -0.5 - aisleRadius * Math.sin(entryPhi); // -2.04m
-
-    // Aisle waypoint directly behind the contestant's assigned desk
-    const targetAisleX = -aisleRadius * Math.cos(targetPhi);
-    const targetAisleZ = -0.5 - aisleRadius * Math.sin(targetPhi);
-
-    // Smooth wide sweep waypoint from bottom of stairs across dais floor towards left corridor mouth
-    const daisSweepX = -5.20;
-    const daisSweepZ = 2.50;
-
-    // Door side selection for contestants (alternating or seat-based):
-    // TS 1 (seat 0) & TS 3 (seat 2): emerge from Door Left (X = +1.15m, Z = 12.85m)
-    // TS 2 (seat 1) & TS 4 (seat 3) & TS 5 (seat 4): emerge from Door Right (X = -1.15m, Z = 12.85m)
-    const isDoorLeft = seatId % 2 === 0;
-    const doorX = isDoorLeft ? 1.15 : -1.15;
-    const doorZ = 12.85;
-
-    const startX = doorX;
-    const startY = 1.84;
-    const startZ = doorZ;
-
     const now = getNow();
     const t = Math.max(0, (now - seatStart) / 1000);
 
-    let curX = startX;
-    let curY = startY;
-    let curZ = startZ;
-    let curRotY = Math.PI; // Facing towards camera (-Z)
-    let walkingNow = true;
-    let curGesture: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow" = "none";
-    let curGestureProg = 0;
+    const traj = evaluateContestantEntranceTrajectory(t, seatId, targetCfg, firstPhi);
 
-    // Phase 1 (0.0 -> 0.6s): Steps out from behind side arch door, curving onto central aisle on top plinth (11.90m)
-    if (t < 0.6) {
-      g.visible = true;
-      const p = t / 0.6;
-      const smoothP = p * p * (3 - 2 * p);
-      curX = THREE.MathUtils.lerp(doorX, 0, smoothP);
-      curY = startY;
-      curZ = THREE.MathUtils.lerp(doorZ, 11.90, smoothP);
-      curRotY = THREE.MathUtils.lerp(isDoorLeft ? Math.PI - 0.35 : Math.PI + 0.35, Math.PI, smoothP);
-    } else if (t < 1.8) {
-      // Phase 2 (0.6 -> 1.8s): Walks down upper stairs (1.2s) to mid-stairs landing platform ("Bục Giữa" Z = 10.20m, Y = 0.92m)
-      g.visible = true;
-      const p = (t - 0.6) / 1.2;
-      curX = 0;
-      curZ = THREE.MathUtils.lerp(11.90, 10.20, p);
-      curY = getGrandstandStairY(curZ);
-      curRotY = Math.PI;
-    } else if (t < 3.0) {
-      // Phase 3 (1.8 -> 3.0s): Stands firmly on Bục Giữa & performs signature gesture (1.2s)
-      g.visible = true;
-      curX = 0;
-      curY = 0.92;
-      curZ = 10.20;
-      curRotY = Math.PI;
-      walkingNow = false;
-      const signatureGestures: Array<"wave" | "fist_pump" | "heart" | "open_arms"> = [
-        "wave",
-        "fist_pump",
-        "heart",
-        "open_arms",
-      ];
-      curGesture = signatureGestures[seatId % signatureGestures.length];
-      curGestureProg = Math.max(0, Math.min(1.0, (t - 1.8) / 1.2));
-    } else if (t < 4.0) {
-      // Phase 4 (3.0 -> 4.0s): Walks down lower stairs to dais floor (1.0s, arrives at dais floor Z = 6.20m, Y = 0.22m at exactly t = 4.0s)
-      g.visible = true;
-      const p = (t - 3.0) / 1.0;
-      curX = 0;
-      curZ = THREE.MathUtils.lerp(10.20, 6.20, p);
-      curY = getGrandstandStairY(curZ);
-      curRotY = Math.PI;
-    } else if (t < 5.0) {
-      // Phase 5A (4.0 -> 5.0s): Sweeps wide outward across dais to the outer left corridor entrance (1.0s)
-      g.visible = true;
-      const p = (t - 4.0) / 1.0;
-      const easeP = p * p * (3 - 2 * p);
-      const u = 1 - easeP;
-      curX = u * u * 0 + 2 * u * easeP * daisSweepX + easeP * easeP * entryAisleX;
-      curY = 0.22;
-      curZ = u * u * 6.20 + 2 * u * easeP * daisSweepZ + easeP * easeP * entryAisleZ;
-      const dx = 2 * u * (daisSweepX - 0) + 2 * easeP * (entryAisleX - daisSweepX);
-      const dz = 2 * u * (daisSweepZ - 6.20) + 2 * easeP * (entryAisleZ - daisSweepZ);
-      curRotY = Math.atan2(dx, dz);
-    } else if (t < 6.1) {
-      // Phase 5B (5.0 -> 6.1s): Walks along the rear corridor arc behind all podiums to target desk (1.1s)
-      g.visible = true;
-      const p = (t - 5.0) / 1.1;
-      const easeP = p * p * (3 - 2 * p);
-      const curPhi = THREE.MathUtils.lerp(entryPhi, targetPhi, easeP);
-      curX = -aisleRadius * Math.cos(curPhi);
-      curY = 0.22;
-      curZ = -0.5 - aisleRadius * Math.sin(curPhi);
-      // Tangent heading along rear corridor arc
-      curRotY = Math.PI - curPhi;
-    } else if (t < 6.5) {
-      // Phase 5C (6.1 -> 6.5s): Steps forward radially from rear corridor into desk standing spot (0.4s)
-      g.visible = true;
-      const p = (t - 6.1) / 0.4;
-      const easeP = p * p * (3 - 2 * p);
-      curX = THREE.MathUtils.lerp(targetAisleX, deskX, easeP);
-      curY = deskY;
-      curZ = THREE.MathUtils.lerp(targetAisleZ, deskZ, easeP);
-      curRotY = THREE.MathUtils.lerp(Math.PI - targetPhi, deskRotY, easeP);
-    } else {
-      // Phase 6 (6.5 -> 6.8s): Arrived and standing proudly behind desk with desk greeting bow (0.3s)
-      g.visible = true;
-      curX = deskX;
-      curY = deskY;
-      curZ = deskZ;
-      curRotY = deskRotY;
-      walkingNow = false;
-      curGesture = "desk_bow";
-      curGestureProg = Math.max(0, Math.min(1.0, (t - 6.5) / 0.3));
+    if (traj.walkingNow !== isWalking) {
+      setIsWalking(traj.walkingNow);
     }
+    if (traj.gesture !== gesture) {
+      setGesture(traj.gesture);
+    }
+    gestureProgressRef.current = traj.gestureProg;
+    walkPhaseRef.current = traj.walkPhase;
 
-    if (walkingNow !== isWalking) {
-      setIsWalking(walkingNow);
-    }
-    if (curGesture !== gesture) {
-      setGesture(curGesture);
-    }
-    gestureProgressRef.current = curGestureProg;
-
-    // Natural energetic walking bounce (3.5cm) synced with brisk stride
-    const bounce = walkingNow ? Math.abs(Math.sin((t - 0.4) * 10.0)) * 0.035 : 0;
-    g.position.set(curX, curY + bounce, curZ);
-    g.rotation.y = curRotY;
+    g.visible = true;
+    g.position.set(traj.pos[0], traj.pos[1], traj.pos[2]);
+    g.rotation.y = traj.rotY;
   });
 
   return (
@@ -3394,6 +3581,7 @@ function SingleContestantEntranceWalkingFigure({
         seatId={seatId}
         position={[0, 0, 0]}
         isWalking={isWalking}
+        walkPhaseRef={walkPhaseRef}
         gesture={gesture}
         gestureProgressRef={gestureProgressRef}
       />
@@ -3447,6 +3635,11 @@ export function ContestantEntranceWalkingFigures({
     }
   }
 
+  const firstCfg = contestantConfigs[0];
+  const firstPhi = firstCfg?.rotY != null
+    ? (Math.PI / 2 - firstCfg.rotY)
+    : 0.38;
+
   return (
     <group>
       {activeFigures.map((fig) => (
@@ -3455,6 +3648,7 @@ export function ContestantEntranceWalkingFigures({
           seatId={fig.seatId}
           seatStart={fig.seatStart}
           targetCfg={fig.targetCfg}
+          firstPhi={firstPhi}
           serverNow={serverNow}
         />
       ))}
@@ -4909,9 +5103,7 @@ export function Podiums({
       rotY: number;
     }> = [];
 
-    const radius = 6.6;
-    const startPhi = activeCount > 4 ? 0.26 : 0.38; // 15° or 21.8°
-    const endPhi = activeCount > 4 ? 1.31 : 1.13;   // 75° or 64.7°
+    const { radius, startPhi, endPhi } = getContestantArcParams(activeCount);
 
     for (let i = 0; i < activeCount; i++) {
       const frac = activeCount === 1 ? 0.5 : i / (activeCount - 1);

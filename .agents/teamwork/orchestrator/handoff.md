@@ -1,99 +1,69 @@
-# Orchestrator Final Completion Handoff
+# Soft Handoff Report: Orchestrator -> Successor (Gen 1)
 
-**Date**: 2026-11-10T11:43:00Z  
-**From**: Orchestrator (`39d2aeb7-a769-4565-8ae5-bc2e98c1c6be`)  
-**To**: Parent Agent (`4c5e72ee-9502-4cb6-a967-4a67959cf76b`) / User  
-**Target Project**: Timeout Quiz (`d:\Timeout Quiz`)  
-**Type**: Hard Handoff (All Requirements R1–R5 Fully Satisfied and Verified)  
-**Strict Constraint**: Confirmed 0 non-metadata files modified, touched, or deleted outside `d:\Timeout Quiz` (specifically 0 in `d:\Olympia 26`).
-
----
-
-## 1. Milestone State
-
-| Milestone | Scope | Deliverables & Code Touched | Status | Gate Verdict |
-|---|---|---|:---:|:---:|
-| **M1** | R1: Pipelined Concurrent Entrance & R3: Rear Corridor Anti-Clipping Walkway | `src/components/olympia/studio/Podiums.tsx`, `src/lib/olympia/engine.ts` | **DONE** | **APPROVE** (Reviewer 1, Challenger 1) |
-| **M2** | R2: Arm Animation Naturalness, Biomechanical Rigging & Fluidity | `src/components/olympia/studio/Podiums.tsx` (Contestants & MC Presenters) | **DONE** | **APPROVE** (Reviewer 1, Challenger 1) |
-| **M3** | R4: Stage Flow Intro Standby & Studio Synchronization | `src/components/olympia/studio/CentralLedWall.tsx`, `src/lib/olympia/engine.ts`, `HostConsole.tsx` | **DONE** | **APPROVE** (Reviewer 2, Challenger 2) |
-| **M4** | R5: Production Build Freshness & VPS Deployment Hardening | `deploy-vps.sh`, `src/app/api/health/route.ts`, Next.js build bundle | **DONE** | **APPROVE** (Reviewer 2, Challenger 2, Auditor) |
+## 1. Executive Summary & Succession Context
+- **Trigger**: Spawn threshold reached (16/16 subagent spawns completed) and all subagents are idle/complete.
+- **Project**: Timeout Quiz 3D Stage Layout, Camera Framing, Contestant Walk Trajectories, MC Stage Lighting, CAM 11 Timing, and Intro Audio Looping (6-8 contestants) for production use with browser screenshot proof.
+- **Original Parent Conversation ID**: `b25c8f33-3c33-42cd-9c39-ac3022cc4aea`
+- **Working Directory**: `d:\Timeout Quiz\.agents\teamwork\orchestrator\`
+- **Project Workspace**: `d:\Timeout Quiz`
 
 ---
 
-## 2. Quantitative Verification Results
-
-1. **R1: Pipelined Concurrent Entrance Timing**:
-   - Stair descent calibrated so Phase 4 reaches dais floor ($Z = 6.20\text{ m}, Y = 0.22\text{ m}$) at exactly $t = 4.0\text{ s}$.
-   - Contestant $N+1$ emerges immediately from the top door at $t = 4.0\text{ s}$ while Contestant $N$ begins floor sweep.
-   - Total entrance time for 4 contestants reduced from $27.2\text{ s}$ to exactly $18.8\text{ s}$ ($30.9\%$ broadcast pacing improvement).
-   - Multi-figure concurrent rendering operates deterministically without socket lag jitter.
-
-2. **R2: Arm Animation Fluidity & Biomechanical Kinematics**:
-   - Added wrist joint refs (`leftWristRef`, `rightWristRef`) to `ContestantFigure` and 8 joint refs (`kvLeftForearmRef`, `kvRightForearmRef`, etc.) to `McPresenters`.
-   - Replaced `useState(gestureProgress)` in `useFrame` with `gestureProgressRef`, reducing re-render calls from 425 to 6 across 425 frames (eliminating 60–144 Hz React re-render bottleneck).
-   - Replaced phase snapping with C2 Hermite quintic smootherstep blending ($S(s) = s^3(s(6s-15)+10)$). Maximum observed angular velocity delta across 16ms frames dropped to $8.07^\circ$ ($0.141\text{ rad}$), strictly $< 15.0^\circ$ limit.
-   - Resting elbow flexion calibrated to $18.33^\circ$–$21.77^\circ$ (within $[14^\circ, 24^\circ]$ anatomical range), with continuous micro-breathing sway and organic wave pose.
-
-3. **R3: Podium Collision Avoidance via Rear Corridor**:
-   - Evaluated 2,244 trajectory sample points at 5ms resolution against all studio obstacles:
-     - Minimum clearance to Central Rotating Dais ($R=2.45\text{m}$): $2.723\text{ m}$.
-     - Minimum clearance to MC Desk: $4.695\text{ m}$.
-     - Minimum clearance inside Science Wall ($R=8.60\text{m}$): $0.850\text{ m} > 0.80\text{ m}$.
-     - Minimum clearance behind contestant desks ($R=7.02\text{m}$): $0.730\text{ m} > 0.70\text{ m}$.
-     - Total spatial collisions across all 4 and 8 seats: **EXACTLY 0**.
-
-4. **R4: Stage Flow Intro Standby**:
-   - Tested across 1,000 Monte Carlo fuzzing iterations (9,508 state transitions): `introStandby` NEVER auto-advances to Khởi Động across simulated time jumps (+10m, +1h, +24h, +7d, +30d) and 5,000 engine ticks.
-   - Buzzers, scoring hotkeys, and question reveal are blocked during `introStandby`.
-   - `CentralLedWall.tsx` renders formal Olympia logo in auto-mode during `introStandby`.
-   - Explicit Host click (`round:force khoiDong`) cleanly initiates Khởi Động.
-
-5. **R5: Production Build Freshness & VPS Deployment**:
-   - `deploy-vps.sh` purges `.next/cache .next/standalone .next/server .next` before `npm run build`, ensuring zero stale chunk caching.
-   - PM2 restart chain deletes orphan `quizorra` process before starting `timeout-quiz`, preventing port 3000 collision.
-   - `/api/health` exposes `{ status: "ok", commit, buildId, version: "0.1.0", uptime, timestamp }`.
-   - Production build compiles cleanly (33 routes generated, `server.js` 4.0MB bundled).
-   - Full test suite execution: **746 / 746 automated tests pass with 100% pass rate** (`npm run test:olympia` 64/64, `npm run test:olympia-3d` 489/489, `node tests/e2e/runner-olympia-fixes.js` 97/97, `npm test` 97/97, `npm run type-check` 0 errors).
-
-6. **Safety & Workspace Boundary (Strict Constraint)**:
-   - Zero files outside `d:\Timeout Quiz` were modified, created, or deleted. Specifically, `d:\Olympia 26` has 0 changes.
-   - Forensic Auditor rendered unconditional binary verdict: **CLEAN**.
+## 2. Milestone State
+| Milestone | Scope | Status | Notes |
+|---|---|---|---|
+| **Survey (Phase 0)** | Full codebase survey across R1-R6 | **DONE** | 3 Explorers delivered exhaustive analysis (`explorer_survey_1`, `2`, `3`). |
+| **Milestone 1** | Stage Layout & Cameras (R1) | **DONE** | `CameraController.tsx` & `Podiums.tsx` updated with parametric arc (`getContestantArcParams`, clearances >= 32.2cm, CAM 10 margins >= 15.8%). Gate PASSED (Reviewers: APPROVE, Challengers: APPROVE, Auditor: CLEAN). |
+| **Milestone 2** | Walk Trajectories & CAM 11 Timing (R2, R4) | **IN_PROGRESS (Iteration 2 required)** | CAM 11 early cut at 1.2s is 100% verified. Unified C1 Bézier curve implemented. Gate Result: FAIL due to `challenger_m2_1` finding 2 kinematic issues in `Podiums.tsx` (see details below). |
+| **Milestone 3** | MC Stage Lighting & Visibility (R3) | **PLANNED** | Survey 3 designed exact fix: warm white `#fff5e6` lighting, desk console uplight at Y=1.2m, and MC PBR skin/suit emissive tuning in `StudioLighting.tsx` and `Podiums.tsx`. |
+| **Milestone 4** | Seamless Intro Audio Looping (R5) | **PLANNED** | Survey 3 identified `contest_intro.mp3` duration = 18.55s vs 26.8s/34.8s presentation. Dual-instance crossfade loop designed in `hooks.ts`. |
+| **Milestone 5** | E2E Verification & Browser Screenshot Proof (R6) | **PLANNED** | Headless Chrome/Edge screenshot runner using `puppeteer-core` with WebGL ANGLE flags, capturing 6, 7, 8 contestants in CAM 10 and MC CAM 3; production build check. |
 
 ---
 
-## 3. Active Subagents
-All 10 subagents have completed their tasks and delivered their handoff reports:
-- Explorers 1, 2, 3: completed
-- Test Writer: completed
-- Worker: completed
-- Reviewers 1, 2: completed (APPROVE, APPROVE)
-- Challengers 1, 2: completed (APPROVE, APPROVE)
-- Forensic Auditor: completed (CLEAN)
+## 3. Immediate Next Steps for Successor
+
+### Step 1: Execute Milestone 2 Iteration 2
+Dispatch `worker_m2_2` to resolve the 2 kinematic issues identified by `challenger_m2_1` in `src/components/olympia/studio/Podiums.tsx`:
+1. **Issue 1 (Rotational Snap on Seat 0 for N=8)**:
+   - Line 3343: Currently `const sweepAngle = Math.max(0.18, targetPhi - 0.22);`.
+   - For Seat 0 of 8, `targetPhi = 0.140 < 0.18`, so $P_2$ is placed past $P_3$, creating an overshoot loop and $25.16^\circ$ twist at $t = 5.84$s.
+   - **Fix**:
+     ```typescript
+     const sweepAngle = targetPhi <= 0.25
+       ? targetPhi * 0.70
+       : Math.max(0.18, targetPhi - 0.22);
+     ```
+2. **Issue 2 (Far-Seat Mid-Walk Velocity / Positional Jump)**:
+   - On Seats 5 and 7 (for 6 and 8 seats), large waypoint distance in Z produces mid-walk velocity of $12.88$ m/s, causing $\Delta P = 0.2576$m in 0.02s ($> 0.25$m).
+   - **Fix**: Moderate $P_2$ intermediate waypoint coordinates (e.g. clamp $p_{2z} = \max(-4.50, -0.5 - 7.75 \sin(\text{sweepAngle}))$) or calibrate the progression scaling so $\Delta P < 0.22$m everywhere across all seats.
+3. **Verify**:
+   - Run `npx esbuild scratch/challenger_m2_kinematics.ts --bundle --platform=node --target=node20 --outfile=scratch/challenger_m2_kinematics.cjs; node scratch/challenger_m2_kinematics.cjs`. Confirm 0 kinematic failures.
+   - Run `npm run type-check`, `npm run test:olympia-3d` (all tests pass), `npm run build`.
+4. Re-verify with Challenger and Auditor, mark Milestone 2 DONE.
+
+### Step 2: Milestone 3 (MC Stage Lighting)
+- Files: `src/components/olympia/studio/StudioLighting.tsx` and `src/components/olympia/studio/Podiums.tsx`.
+- Implement warm white `#fff5e6` lighting, local desk fill `pointLight`, and MC PBR emissive baseline (0.12–0.16).
+- Verify with Reviewers, Challenger, and Auditor. Mark M3 DONE.
+
+### Step 3: Milestone 4 (Seamless Intro Audio Looping)
+- File: `src/components/olympia/hooks.ts`.
+- Implement predictive dual-instance crossfade loop for `contest_intro` starting at 16.55s with 2.0s crossfade overlap.
+- Verify with Reviewers, Challenger, and Auditor. Mark M4 DONE.
+
+### Step 4: Milestone 5 (E2E Verification & Browser Screenshot Proof)
+- Run `npm run build` and `npm run test:olympia-3d`.
+- Run screenshot automation via `puppeteer-core` with Edge (`msedge.exe`) and WebGL ANGLE flags on dev server port.
+- Capture actual screenshots of 6, 7, and 8 contestants in CAM 10 (showing wide podium spacing and camera framing) and CAM 3 / wide view (showing illuminated MCs).
+- Verify workspace safety: `d:\Olympia 26` must be 100% untouched; `AGENTS.md` intact.
+- Claim project victory and report to parent (`b25c8f33-3c33-42cd-9c39-ac3022cc4aea`).
 
 ---
 
-## 4. Pending Decisions
-None. All 5 requirements (R1–R5) are resolved with 100% consensus across all gate verifiers.
-
----
-
-## 5. Remaining Work
-The local codebase is fully verified, clean, and ready. On the live production VPS (`quizorra.ddns.net` at `/var/www/quizorra`), run:
-```bash
-cd /var/www/quizorra
-bash deploy-vps.sh
-```
-
----
-
-## 6. Key Artifacts
-- `d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md` — Authoritative request
-- `d:\Timeout Quiz\.agents\teamwork\orchestrator\PROJECT.md` — Scope & milestones
-- `d:\Timeout Quiz\.agents\teamwork\orchestrator\GATE_STATUS.md` — Gate results
-- `d:\Timeout Quiz\.agents\teamwork\orchestrator\TEST_READY.md` — E2E test declaration
-- `d:\Timeout Quiz\.agents\teamwork\worker_olympia_2\handoff.md` — Worker handoff
-- `d:\Timeout Quiz\.agents\teamwork\reviewer_olympia_1\handoff.md` — Reviewer 1 handoff
-- `d:\Timeout Quiz\.agents\teamwork\reviewer_olympia_2\handoff.md` — Reviewer 2 handoff
-- `d:\Timeout Quiz\.agents\teamwork\challenger_olympia_1\handoff.md` — Challenger 1 handoff
-- `d:\Timeout Quiz\.agents\teamwork\challenger_olympia_2\handoff.md` — Challenger 2 handoff
-- `d:\Timeout Quiz\.agents\teamwork\auditor_olympia_1\handoff.md` — Forensic Auditor handoff
+## 4. Key Artifacts & Reference Paths
+- `d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md` — Authoritative User Request
+- `d:\Timeout Quiz\.agents\teamwork\PROJECT.md` — Project Plan, Architecture, and Contracts
+- `d:\Timeout Quiz\.agents\teamwork\orchestrator\GATE_STATUS.md` — Gate Verdict Log
+- `d:\Timeout Quiz\.agents\teamwork\challenger_m2_1\handoff.md` — Challenger report with exact kinematic data & mitigations
+- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\analysis.md` — Complete plan for MC Lighting & Audio Looping

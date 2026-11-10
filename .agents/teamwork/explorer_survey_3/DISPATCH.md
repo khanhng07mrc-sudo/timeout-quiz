@@ -1,22 +1,20 @@
-## 2026-10-31T01:36:22Z
-You are teamwork_explorer instance 3 for Phase 0 (Survey).
-Your working directory is: d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\
-Original request path: d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md
-You MUST read d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md before starting work.
+## 2026-11-10T13:20:55Z
+You are an Explorer investigating MC area lighting, intro audio looping, and screenshot verification setup in Timeout Quiz (working directory `d:\Timeout Quiz`).
+Read `d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md`.
+Your working directory is `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\`.
 
-Your task:
-Investigate visual asset requirements, branding, 3D staging, and UI integration:
-1. Inspect the branding asset at `C:\Users\khanh\Downloads\Olympia_logo_2016.webp` (verify accessibility, dimensions, format, how best to bring it into the project assets / public directory or load via Three.js TextureLoader).
-2. Detail the exact staging layout for Đường lên đỉnh Olympia:
-   - Central LED display: dimensions, realistic framing, aspect ratio, content projection (logo + gradient text "ĐƯỜNG LÊN ĐỈNH OLYMPIA" in yellow gradient light-to-dark, high contrast modern broadcast aesthetic).
-   - 1 MC podium placement and design.
-   - 4 contestant podiums placement, numbering/labels, and buzzer reaction lighting fixtures.
-   - Laurel wreath (Vòng nguyệt quế) display pedestal/area layout and aesthetic.
-3. Lighting staging: Blue base state vs Red competition state, multi-zone fading sequence (Zone 1: inner central LED screen fade first; Zone 2: stage back lights and audience fade after).
-4. Analyze how the 3D scene will integrate into the UI of Timeout Quiz (e.g. view toggle, studio mode screen, audio sync if applicable, responsive canvas).
-
-Output your findings to:
-- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\report.md` (detailed staging & asset analysis)
-- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\handoff.md` (structured handoff report)
-Maintain your `progress.md` with timestamps while working.
-Send a completion message back when done.
+Investigate:
+1. Requirement R3:
+   - Where MC desk, figures (Khánh Vy & Ngọc Huy), and lighting in the MC area are defined.
+   - Why the MCs appear dark/ghost-like from distance or CAM 10.
+   - How lights (SpotLight, PointLight, Directional key light, warm white #fff5e6) or material settings (roughness, metalness, emissive, ambient) are configured, and where to add/adjust dedicated key/fill lighting for the MCs.
+2. Requirement R5:
+   - How contestant intro audio is handled in the audio engine (Web Audio API, Howler, HTML5 Audio, etc.).
+   - What the duration of the intro audio track is, and how total intro time is calculated for 6 contestants (~26.8s) and 8 contestants (~34.8s).
+   - Where and how to implement seamless crossfade looping / concatenation if the track length is shorter than the presentation duration.
+3. Requirement R6:
+   - How the application runs (`npm run dev`, `npm run build`), what port it uses, and how browser screenshots can be captured (Playwright, Puppeteer, headless Chrome, or screenshot utility in the environment).
+4. Absolute workspace safety rule: Do NOT modify or create any file outside `d:\Timeout Quiz`. Keep `d:\Olympia 26` completely untouched. Do not edit `d:\Timeout Quiz\AGENTS.md`. You are in exploration mode (read-only for project code, write reports only in your working directory).
+5. Document all affected files, line numbers, audio/lighting configurations, and build/dev setup.
+6. Propose concrete fix strategies for R3, R5, and R6.
+7. Write your comprehensive report to `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\analysis.md` and deliver `handoff.md`. Send a message when finished.

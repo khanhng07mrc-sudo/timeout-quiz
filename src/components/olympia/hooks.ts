@@ -229,6 +229,11 @@ export function useCountdown(timer: TimerState | null | undefined, serverNow: ()
 
 const BGM_CROSSFADE_MS = 1500;
 
+export const INTRO_CROSSFADE_WINDOW_SEC = 2.0;
+export const INTRO_CROSSFADE_WINDOW_MS = 2000;
+export const CONTEST_INTRO_DURATION_SEC = 18.55;
+export const CONTEST_INTRO_TRIGGER_SEC = 16.55; // CONTEST_INTRO_DURATION_SEC - INTRO_CROSSFADE_WINDOW_SEC
+
 export const isCountdownTrack = (sound: string): boolean =>
   /(?:(?:^|\/)(?:\d+s(?:_tick|_steal|_practice)?|tick_\d+s))$/.test(sound) ||
   /(?:10s_tick|15s_tick|20s_tick|30s_tick|40s_tick|5s_steal|20s_practice|30s_practice|40s_practice|60s_practice|60s|30s|90s)$/.test(sound);
@@ -238,6 +243,159 @@ export const isLoopingBgm = (sound: string): boolean =>
 
 export const isIntroOrMusicTrack = (sound: string): boolean =>
   /(?:show_intro|contest_intro|contestant_intro|ending_music|summary|prize_award)$/.test(sound);
+
+export const isIntroSeamlessLoopTrack = (sound: string): boolean => {
+  if (!sound) return false;
+  const normalized = sound.split("?")[0].replace(/\.mp3$/, "");
+  return /(?:contest_intro|show_intro)$/.test(normalized);
+};
+
+export const calculateEntranceDuration = (seatCount: number): number => {
+  const n = Math.max(1, Math.floor(seatCount));
+  return (n - 1) * 4.0 + 6.8;
+};
+
+export const calculateRequiredIntroLoops = (
+  seatCount: number,
+  trackDuration: number = CONTEST_INTRO_DURATION_SEC,
+  crossfadeWindow: number = INTRO_CROSSFADE_WINDOW_SEC
+): number => {
+  const totalDuration = calculateEntranceDuration(seatCount);
+  const effectivePerLoop = Math.max(0.1, trackDuration - crossfadeWindow);
+  if (totalDuration <= trackDuration - crossfadeWindow) {
+    return 1;
+  }
+  return 1 + Math.ceil((totalDuration - (trackDuration - crossfadeWindow)) / effectivePerLoop);
+};
+
+export interface IntroAudioInstanceRecord {
+  id: number;
+  src: string;
+  volume: number;
+  currentTime: number;
+  duration: number;
+  state: "SPAWNED" | "FADING_IN" | "PLAYING" | "FADING_OUT" | "PAUSED" | "DISPOSED";
+}
+
+export class SeamlessIntroAudioLoopSimulator {
+  public instances: IntroAudioInstanceRecord[] = [];
+  public currentInstanceIndex = -1;
+  public totalSimulatedTime = 0;
+  public crossfadeWindowSec: number;
+  public trackDurationSec: number;
+  public triggerTimeSec: number;
+  public isStopped = false;
+  public events: { time: number; type: string; detail: any }[] = [];
+
+  constructor(
+    trackDuration: number = CONTEST_INTRO_DURATION_SEC,
+    crossfadeWindow: number = INTRO_CROSSFADE_WINDOW_SEC
+  ) {
+    this.trackDurationSec = trackDuration;
+    this.crossfadeWindowSec = crossfadeWindow;
+    this.triggerTimeSec = Math.max(0, trackDuration - crossfadeWindow);
+  }
+
+  public start(src: string = "/olympia-audio/O26/6_NhacKhac/contest_intro.mp3"): IntroAudioInstanceRecord {
+    const inst: IntroAudioInstanceRecord = {
+      id: 1,
+      src,
+      volume: 0.85,
+      currentTime: 0,
+      duration: this.trackDurationSec,
+      state: "PLAYING",
+    };
+    this.instances.push(inst);
+    this.currentInstanceIndex = 0;
+    this.events.push({ time: 0, type: "START", detail: { instanceId: 1 } });
+    return inst;
+  }
+
+  private stepSubTick(dt: number): void {
+    if (this.isStopped) return;
+    this.totalSimulatedTime += dt;
+    const current = this.instances[this.currentInstanceIndex];
+    if (!current || current.state === "DISPOSED" || current.state === "PAUSED") return;
+
+    // Advance current time
+    current.currentTime += dt;
+
+    // Check if trigger reached and next instance not yet spawned
+    if (
+      current.currentTime >= this.triggerTimeSec - 1e-4 &&
+      this.instances.length === this.currentInstanceIndex + 1
+    ) {
+      // Spawn next instance
+      const nextId = this.instances.length + 1;
+      const nextInst: IntroAudioInstanceRecord = {
+        id: nextId,
+        src: current.src,
+        volume: 0.0,
+        currentTime: 0,
+        duration: this.trackDurationSec,
+        state: "FADING_IN",
+      };
+      this.instances.push(nextInst);
+      current.state = "FADING_OUT";
+      this.events.push({
+        time: this.totalSimulatedTime,
+        type: "CROSSFADE_START",
+        detail: { fadingOutId: current.id, fadingInId: nextId },
+      });
+    }
+
+    // Handle crossfade volume updates
+    if (this.instances.length > this.currentInstanceIndex + 1) {
+      const fadingOut = current;
+      const fadingIn = this.instances[this.currentInstanceIndex + 1];
+
+      const crossfadeElapsed = fadingOut.currentTime - this.triggerTimeSec;
+      const progress = Math.min(1.0, Math.max(0.0, crossfadeElapsed / this.crossfadeWindowSec));
+
+      fadingOut.volume = Math.max(0, 0.85 * (1.0 - progress));
+      fadingIn.volume = Math.min(0.85, 0.85 * progress);
+      fadingIn.currentTime = crossfadeElapsed;
+
+      if (progress >= 1.0 - 1e-4) {
+        fadingOut.state = "DISPOSED";
+        fadingOut.volume = 0;
+        fadingIn.state = "PLAYING";
+        fadingIn.volume = 0.85;
+        this.currentInstanceIndex++;
+        this.events.push({
+          time: this.totalSimulatedTime,
+          type: "CROSSFADE_COMPLETE",
+          detail: { activeId: fadingIn.id, retiredId: fadingOut.id },
+        });
+      }
+    }
+  }
+
+  public step(deltaSec: number): void {
+    if (this.isStopped) return;
+    const subTick = 0.05;
+    let remaining = deltaSec;
+    while (remaining > 0.00001 && !this.isStopped) {
+      const dt = Math.min(subTick, remaining);
+      this.stepSubTick(dt);
+      remaining -= dt;
+    }
+  }
+
+  public fadeOutAndStop(durationSec: number = 1.0): void {
+    this.isStopped = true;
+    const active = this.instances.filter((i) => i.state !== "DISPOSED" && i.state !== "PAUSED");
+    active.forEach((inst) => {
+      inst.state = "DISPOSED";
+      inst.volume = 0;
+    });
+    this.events.push({
+      time: this.totalSimulatedTime,
+      type: "FADE_OUT_STOP",
+      detail: { durationSec, stoppedCount: active.length },
+    });
+  }
+}
 
 const sfxAudioCache = new Map<string, HTMLAudioElement>();
 
@@ -284,6 +442,8 @@ export function useOlympiaAudio(
   const activeBgmSet = useRef<Set<HTMLAudioElement>>(new Set());
   const activeFadeTimers = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
   const activeAudioSet = useRef<Set<HTMLAudioElement>>(new Set());
+  const activeIntroTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const activeIntroCleanups = useRef<Set<() => void>>(new Set());
   const audioCtxRef = useRef<AudioContext | null>(null);
   const pendingCueRef = useRef<(() => void) | null>(null);
   const isAudioUnlockedRef = useRef(false);
@@ -308,6 +468,15 @@ export function useOlympiaAudio(
     isBgmPausedExplicitlyRef.current = false;
     activeFadeTimers.current.forEach((t) => clearInterval(t));
     activeFadeTimers.current.clear();
+
+    activeIntroTimers.current.forEach((t) => clearTimeout(t));
+    activeIntroTimers.current.clear();
+    activeIntroCleanups.current.forEach((cleanup) => {
+      try {
+        cleanup();
+      } catch {}
+    });
+    activeIntroCleanups.current.clear();
 
     activeBgmSet.current.forEach((a) => {
       try {
@@ -370,11 +539,15 @@ export function useOlympiaAudio(
       newAudio: HTMLAudioElement,
       durationMs: number,
       immediate: boolean = false,
-      fadeOldOnly: boolean = false
+      fadeOldOnly: boolean = false,
+      allowSameSrc: boolean = false
     ) => {
       const old = bgm.current;
-      // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại; nếu đã kết thúc hoặc pause thì duy trì không tự ý phát lại nếu đã kết thúc
-      if (old && old.src === newAudio.src) {
+      const isIntroTrackLoop = isIntroSeamlessLoopTrack(newAudio.src);
+      const permitSameSrc = allowSameSrc || isIntroTrackLoop;
+
+      // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại; nếu là seamless crossfade loop thì cho phép old !== newAudio cùng src
+      if (old && (old === newAudio || (!permitSameSrc && old.src === newAudio.src))) {
         if (old.paused && !old.ended && !isBgmPausedExplicitlyRef.current) {
           old.play().catch(() => {});
         }
@@ -503,6 +676,153 @@ export function useOlympiaAudio(
       bgm.current.play().catch(() => {});
     }
   }, []);
+
+  const connectPanner = useCallback(
+    (a: HTMLAudioElement, panOverride?: "both" | "left" | "right") => {
+      const activePan =
+        panOverride ||
+        channel ||
+        (typeof window !== "undefined"
+          ? (localStorage.getItem("olympia_audio_channel") as any) || "both"
+          : "both");
+      if (activePan === "both") return;
+      const ctx = getAudioContext();
+      if (ctx && ctx.createStereoPanner) {
+        try {
+          const source = ctx.createMediaElementSource(a);
+          const panner = ctx.createStereoPanner();
+          panner.pan.value = activePan === "left" ? -1.0 : activePan === "right" ? 1.0 : 0.0;
+          source.connect(panner);
+          panner.connect(ctx.destination);
+        } catch {
+          // Fallback: already connected or not supported
+        }
+      }
+    },
+    [channel, getAudioContext]
+  );
+
+  const registerActive = useCallback((a: HTMLAudioElement) => {
+    activeAudioSet.current.add(a);
+    const cleanup = () => {
+      activeAudioSet.current.delete(a);
+    };
+    a.addEventListener("ended", cleanup, { once: true });
+    a.addEventListener("error", cleanup, { once: true });
+  }, []);
+
+  const setupIntroSeamlessLoop = useCallback(
+    (currentAudio: HTMLAudioElement) => {
+      if (!isIntroSeamlessLoopTrack(currentAudio.src)) return;
+
+      let hasCrossfaded = false;
+      let timeupdateHandler: (() => void) | null = null;
+      let metaHandler: (() => void) | null = null;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+
+      const cleanup = () => {
+        if (timer) {
+          clearTimeout(timer);
+          activeIntroTimers.current.delete(timer);
+          timer = null;
+        }
+        if (timeupdateHandler) {
+          currentAudio.removeEventListener("timeupdate", timeupdateHandler);
+          timeupdateHandler = null;
+        }
+        if (metaHandler) {
+          currentAudio.removeEventListener("loadedmetadata", metaHandler);
+          metaHandler = null;
+        }
+        activeIntroCleanups.current.delete(cleanup);
+      };
+
+      activeIntroCleanups.current.add(cleanup);
+
+      const doCrossfade = () => {
+        if (hasCrossfaded) return;
+        // Verify currentAudio is still the current active BGM and not paused/ended
+        if (
+          bgm.current !== currentAudio ||
+          currentAudio.paused ||
+          currentAudio.ended ||
+          !activeBgmSet.current.has(currentAudio)
+        ) {
+          cleanup();
+          return;
+        }
+        hasCrossfaded = true;
+        cleanup();
+
+        // Spawn secondary audio instance with identical track
+        const nextAudio = new Audio(currentAudio.src);
+        nextAudio.loop = false;
+        connectPanner(nextAudio);
+        registerActive(nextAudio);
+
+        // Recursively arm seamless predictive crossfade loop on the new instance
+        setupIntroSeamlessLoop(nextAudio);
+
+        // Perform smooth 2.0s crossfade
+        crossfadeToBgm(nextAudio, INTRO_CROSSFADE_WINDOW_MS, false, false, true);
+      };
+
+      const armTimer = () => {
+        if (hasCrossfaded) return;
+        const d = currentAudio.duration;
+        const totalDuration =
+          !isNaN(d) && isFinite(d) && d > 0
+            ? d
+            : currentAudio.src.includes("show_intro")
+            ? 37.1
+            : CONTEST_INTRO_DURATION_SEC;
+        const triggerTime = Math.max(0, totalDuration - INTRO_CROSSFADE_WINDOW_SEC);
+        const cur = currentAudio.currentTime || 0;
+        const delayMs = Math.max(0, Math.round((triggerTime - cur) * 1000));
+
+        if (timer) {
+          clearTimeout(timer);
+          activeIntroTimers.current.delete(timer);
+        }
+
+        timer = setTimeout(() => {
+          activeIntroTimers.current.delete(timer!);
+          timer = null;
+          doCrossfade();
+        }, delayMs);
+        activeIntroTimers.current.add(timer);
+      };
+
+      timeupdateHandler = () => {
+        if (hasCrossfaded) return;
+        const d = currentAudio.duration;
+        const totalDuration =
+          !isNaN(d) && isFinite(d) && d > 0
+            ? d
+            : currentAudio.src.includes("show_intro")
+            ? 37.1
+            : CONTEST_INTRO_DURATION_SEC;
+        const triggerTime = Math.max(0, totalDuration - INTRO_CROSSFADE_WINDOW_SEC);
+        if (currentAudio.currentTime >= triggerTime) {
+          doCrossfade();
+        }
+      };
+
+      currentAudio.addEventListener("timeupdate", timeupdateHandler);
+      currentAudio.addEventListener("play", () => {
+        if (!hasCrossfaded) armTimer();
+      });
+
+      if (isNaN(currentAudio.duration) || !isFinite(currentAudio.duration) || currentAudio.duration <= 0) {
+        metaHandler = () => {
+          armTimer();
+        };
+        currentAudio.addEventListener("loadedmetadata", metaHandler, { once: true });
+      }
+      armTimer();
+    },
+    [crossfadeToBgm, connectPanner, registerActive]
+  );
 
   // Global unlock handler for browser autoplay policies & AudioContext resumption
   const unlockAudio = useCallback(() => {
@@ -661,7 +981,13 @@ export function useOlympiaAudio(
       stopBgm();
     }
 
-    if (cue.kind === "bgm" && bgm.current && !bgm.current.paused && bgm.current.src && bgm.current.src.includes(cue.sound)) {
+    if (
+      (cue.kind === "bgm" || isIntroTrackEarly) &&
+      bgm.current &&
+      !bgm.current.paused &&
+      bgm.current.src &&
+      bgm.current.src.includes(cue.sound.replace(/\.mp3$/, ""))
+    ) {
       return; // Continuous playback without restarting
     }
 
@@ -687,32 +1013,6 @@ export function useOlympiaAudio(
     const isCountdown = isCountdownTrack(cue.sound);
     const looping = isBgmCue && !isCountdown && isLoopingBgm(cue.sound);
 
-    const connectPanner = (a: HTMLAudioElement) => {
-      // Khi phát cả 2 kênh (both) tiêu chuẩn, không gắn MediaElementSource để tránh lỗi AudioContext bị suspended do Autoplay
-      if (currentChannel === "both") return;
-      const ctx = getAudioContext();
-      if (ctx && ctx.createStereoPanner) {
-        try {
-          const source = ctx.createMediaElementSource(a);
-          const panner = ctx.createStereoPanner();
-          panner.pan.value = currentChannel === "left" ? -1.0 : currentChannel === "right" ? 1.0 : 0.0;
-          source.connect(panner);
-          panner.connect(ctx.destination);
-        } catch {
-          // Fallback: already connected or not supported
-        }
-      }
-    };
-
-    const registerActive = (a: HTMLAudioElement) => {
-      activeAudioSet.current.add(a);
-      const cleanup = () => {
-        activeAudioSet.current.delete(a);
-      };
-      a.addEventListener("ended", cleanup, { once: true });
-      a.addEventListener("error", cleanup, { once: true });
-    };
-
     const play = (s: string, fallback: boolean) => {
       let soundUrl = `/olympia-audio/${s}/${cue.sound}.mp3`;
       if (currentChannel === "left") soundUrl = `/olympia-audio/${s}/${cue.sound}_left.mp3`;
@@ -736,7 +1036,7 @@ export function useOlympiaAudio(
       const defaultSfxVol = isOpenQuestion ? 0.95 : 0.85;
       a.loop = looping;
       a.volume = (isBgmCue && !isCountdown && !isIntroTrack) ? 0 : defaultSfxVol;
-      connectPanner(a);
+      connectPanner(a, currentChannel);
       registerActive(a);
 
       a.onerror = () => {
@@ -744,10 +1044,13 @@ export function useOlympiaAudio(
           const std = new Audio(`/olympia-audio/${s}/${cue.sound}.mp3`);
           std.loop = looping;
           std.volume = (isBgmCue && !isCountdown && !isIntroTrack) ? 0 : defaultSfxVol;
-          connectPanner(std);
+          connectPanner(std, currentChannel);
           registerActive(std);
           if (isBgmCue) {
             crossfadeToBgm(std, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
+            if (isIntroSeamlessLoopTrack(cue.sound)) {
+              setupIntroSeamlessLoop(std);
+            }
           } else {
             std.volume = defaultSfxVol;
             std.play().catch((err) => {
@@ -797,14 +1100,14 @@ export function useOlympiaAudio(
         const bgmAudio = new Audio(bgmUrl);
         bgmAudio.loop = isLoopingBgm(bgmTrack);
         bgmAudio.volume = 0;
-        connectPanner(bgmAudio);
+        connectPanner(bgmAudio, currentChannel);
         registerActive(bgmAudio);
         bgmAudio.onerror = () => {
           if (currentChannel !== "both" && bgmUrl !== `/olympia-audio/${season}/${bgmTrack}.mp3`) {
             const stdBgm = new Audio(`/olympia-audio/${season}/${bgmTrack}.mp3`);
             stdBgm.loop = isLoopingBgm(bgmTrack);
             stdBgm.volume = 0;
-            connectPanner(stdBgm);
+            connectPanner(stdBgm, currentChannel);
             registerActive(stdBgm);
             crossfadeToBgm(stdBgm, BGM_CROSSFADE_MS, false, false);
           }
@@ -814,6 +1117,9 @@ export function useOlympiaAudio(
 
       if (isBgmCue) {
         crossfadeToBgm(a, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
+        if (isIntroSeamlessLoopTrack(cue.sound)) {
+          setupIntroSeamlessLoop(a);
+        }
       } else {
         a.volume = defaultSfxVol;
         a.play().catch((err) => {
@@ -827,7 +1133,22 @@ export function useOlympiaAudio(
       }
     };
     play(season, true);
-  }, [state?.cue, state?.stage, audioSeason, enabled, channel, stopBgm, pauseBgm, resumeBgm, getAudioContext, crossfadeToBgm, fadeOutAndStopBgm]);
+  }, [
+    state?.cue,
+    state?.stage,
+    audioSeason,
+    enabled,
+    channel,
+    stopBgm,
+    pauseBgm,
+    resumeBgm,
+    getAudioContext,
+    crossfadeToBgm,
+    fadeOutAndStopBgm,
+    setupIntroSeamlessLoop,
+    connectPanner,
+    registerActive,
+  ]);
 
   useEffect(() => () => {
     pendingCueRef.current = null;
@@ -858,6 +1179,9 @@ export function useOlympiaAudio(
       a.volume = 0.85;
       registerActiveFromIntro(a);
       crossfadeToBgm(a, BGM_CROSSFADE_MS, false, true);
+      if (isIntroSeamlessLoopTrack("show_intro")) {
+        setupIntroSeamlessLoop(a);
+      }
       a.onerror = () => {
         if (s !== "O26") tryPlay("O26"); // fallback
       };
@@ -869,7 +1193,7 @@ export function useOlympiaAudio(
       a.addEventListener("error", cleanup, { once: true });
     };
     tryPlay(season);
-  }, [audioSeason, enabled, state?.stage, crossfadeToBgm]);
+  }, [audioSeason, enabled, state?.stage, crossfadeToBgm, setupIntroSeamlessLoop]);
 }
 
 export function useStableToken(): string {

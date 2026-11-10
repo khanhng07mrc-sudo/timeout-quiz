@@ -25,6 +25,10 @@ import { runOlympiaStudioRefactorSuite } from "./olympia-studio-refactor.test";
 import { runOlympiaIntroChoreographySuite } from "./olympia-intro-choreography.test";
 import { runOlympiaStageLightingPerfSuite } from "./olympia-stage-lighting-perf.test";
 import { runOlympiaStageRefactorE2ESuite } from "./olympia-stage-refactor-e2e.test";
+import { runOlympiaM1LayoutSuite } from "./olympia-m1-layout.test";
+import { runOlympiaM2TrajectoriesSuite } from "./olympia-m2-trajectories.test";
+import { runOlympiaM3LightingSuite } from "./olympia-m3-lighting.test";
+import { runOlympiaM4AudioSuite } from "./olympia-m4-audio.test";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Formal Interface Contracts & Specifications (from PROJECT.md)
@@ -1354,16 +1358,36 @@ const stagePerfResults = runOlympiaStageLightingPerfSuite();
 // ─────────────────────────────────────────────────────────────────────────────
 const stageRefactorResults = runOlympiaStageRefactorE2ESuite();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Execute Milestone 1: Stage Layout & Camera Framing Suite (R1, Tiers 1-4)
+// ─────────────────────────────────────────────────────────────────────────────
+const m1Results = runOlympiaM1LayoutSuite();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Execute Milestone 2: Contestant Trajectories & CAM 11 Timing Suite (R2 & R4, Tiers 1-4)
+// ─────────────────────────────────────────────────────────────────────────────
+const m2Results = runOlympiaM2TrajectoriesSuite();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Execute Milestone 3: MC Stage Lighting & Visibility Suite (R3, Tiers 1-4)
+// ─────────────────────────────────────────────────────────────────────────────
+const m3Results = runOlympiaM3LightingSuite();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Execute Milestone 4: Seamless Intro Audio Looping Suite (R5, Tiers 1-4)
+// ─────────────────────────────────────────────────────────────────────────────
+const m4Results = runOlympiaM4AudioSuite();
+
 // Consolidated Grand Total Summary across All Suites
-const grandTier1 = tier1Count + refactorResults.tier1Count + introResults.tier1Count + stagePerfResults.tier1Count + stageRefactorResults.tier1Count;
-const grandTier2 = tier2Count + refactorResults.tier2Count + introResults.tier2Count + stagePerfResults.tier2Count + stageRefactorResults.tier2Count;
-const grandTier3 = tier3Count + refactorResults.tier3Count + introResults.tier3Count + stagePerfResults.tier3Count + stageRefactorResults.tier3Count;
-const grandTier4 = tier4Count + refactorResults.tier4Count + introResults.tier4Count + stagePerfResults.tier4Count + stageRefactorResults.tier4Count;
-const grandTotalPassed = totalPassed + refactorResults.totalPassed + introResults.totalPassed + stagePerfResults.totalPassed + stageRefactorResults.totalPassed;
-const grandTotalExecuted = 97 + refactorResults.totalExecuted + introResults.totalExecuted + stagePerfResults.totalExecuted + stageRefactorResults.totalExecuted;
+const grandTier1 = tier1Count + refactorResults.tier1Count + introResults.tier1Count + stagePerfResults.tier1Count + stageRefactorResults.tier1Count + m1Results.tier1Count + m2Results.tier1Count + m3Results.tier1Count + m4Results.tier1Count;
+const grandTier2 = tier2Count + refactorResults.tier2Count + introResults.tier2Count + stagePerfResults.tier2Count + stageRefactorResults.tier2Count + m1Results.tier2Count + m2Results.tier2Count + m3Results.tier2Count + m4Results.tier2Count;
+const grandTier3 = tier3Count + refactorResults.tier3Count + introResults.tier3Count + stagePerfResults.tier3Count + stageRefactorResults.tier3Count + m1Results.tier3Count + m2Results.tier3Count + m3Results.tier3Count + m4Results.tier3Count;
+const grandTier4 = tier4Count + refactorResults.tier4Count + introResults.tier4Count + stagePerfResults.tier4Count + stageRefactorResults.tier4Count + m1Results.tier4Count + m2Results.tier4Count + m3Results.tier4Count + m4Results.tier4Count;
+const grandTotalPassed = totalPassed + refactorResults.totalPassed + introResults.totalPassed + stagePerfResults.totalPassed + stageRefactorResults.totalPassed + m1Results.totalPassed + m2Results.totalPassed + m3Results.totalPassed + m4Results.totalPassed;
+const grandTotalExecuted = 97 + refactorResults.totalExecuted + introResults.totalExecuted + stagePerfResults.totalExecuted + stageRefactorResults.totalExecuted + m1Results.totalExecuted + m2Results.totalExecuted + m3Results.totalExecuted + m4Results.totalExecuted;
 
 console.log("================================================================================");
-console.log("GRAND CONSOLIDATED 3D STUDIO TEST SUMMARY (ALL 5 SUITES INCLUDED)");
+console.log("GRAND CONSOLIDATED 3D STUDIO TEST SUMMARY (ALL 9 SUITES INCLUDED)");
 console.log("================================================================================");
 console.log(`  Tier 1 (Feature Coverage):        ${grandTier1} passed (Threshold: >= 150)`);
 console.log(`  Tier 2 (Boundary & Corner Cases): ${grandTier2} passed (Threshold: >= 115)`);

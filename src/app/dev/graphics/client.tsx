@@ -40,6 +40,25 @@ export function DevGraphicsClient() {
   const [rulesetId, setRulesetId] = useState<"O26" | "O20" | "O15">("O26");
   const [summaryIndex, setSummaryIndex] = useState(3);
 
+  const mockSeats6 = [
+    { id: 0, name: "Quang Minh", school: "THPT Chuyên Hà Nội - Amsterdam", score: 285, online: true },
+    { id: 1, name: "Anh Đức", school: "THPT Chuyên Lê Hồng Phong", score: 210, online: true },
+    { id: 2, name: "Gia Bảo", school: "THPT Chuyên Quốc Học Huế", score: 180, online: true },
+    { id: 3, name: "Thái Dương", school: "THPT Chuyên Phan Bội Châu", score: 150, online: true },
+    { id: 4, name: "Hải Đăng", school: "THPT Chuyên Lam Sơn", score: 195, online: true },
+    { id: 5, name: "Tuấn Minh", school: "THPT Chuyên Bắc Ninh", score: 165, online: true },
+  ];
+
+  const mockSeats7 = [
+    ...mockSeats6,
+    { id: 6, name: "Hoàng Bách", school: "THPT Chuyên Trần Phú", score: 175, online: true },
+  ];
+
+  const mockSeats8 = [
+    ...mockSeats7,
+    { id: 7, name: "Minh Triết", school: "THPT Chuyên Lương Thế Vinh", score: 220, online: true },
+  ];
+
   const mockState = {
     id: "dev-room",
     title: "Trận Chung Kết Năm - Olympia 26",
@@ -354,9 +373,170 @@ export function DevGraphicsClient() {
           </div>
         )}
 
-        {/* Deliverable R6: 3D STUDIO CHOREOGRAPHY VERIFICATION (R1 - R6) */}
-        {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-cam3" || activeTab === "r6-tech" || activeTab === "r6-mc-center" || activeTab === "r6-empty-podiums" || activeTab === "r6-name-school") && (
+        {/* Deliverable R6: 3D STUDIO CHOREOGRAPHY & 6-8 CONTESTANT VERIFICATION (R1 - R6) */}
+        {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-6" || activeTab === "r6-7" || activeTab === "r6-8" || activeTab === "r6-mc" || activeTab === "r6-cam11" || activeTab === "r6-cam3" || activeTab === "r6-tech" || activeTab === "r6-mc-center" || activeTab === "r6-empty-podiums" || activeTab === "r6-name-school") && (
           <div className="w-full flex flex-col gap-6">
+            {/* R6 Milestone 5.1: 6 Contestants in CAM 10 (Wide Podiums Arc) */}
+            {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-6") && (
+              <div
+                id="screenshot-r6-6-contestants-cam10"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-cyan-500/40 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  R6.1: 6 THÍ SINH — CAM 10 TOÀN CẢNH CUNG BỤC THÍ SINH (BÁN KÍNH MỞ RỘNG, THOÁNG ĐÃNG, KHÔNG CHỒNG ĐÈ)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Cung bục mở rộng sang cánh trái (Stage Left) dọc theo Vách Ký hiệu Khoa học, khóa endPhi &lt;= 1.20 rad cách xa bục MC &gt;5.4m. CAM 10 tự động căn giữa cụm bục với khoảng hở an toàn &gt;= 32cm giữa các bục, loại bỏ hoàn toàn bục MC khỏi khung hình.
+                </p>
+                <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-cyan-500/20 shadow-inner bg-[#030712] relative">
+                  <OlympiaStudio3DScene
+                    state={{
+                      ...mockState,
+                      stage: "playing",
+                      seatCount: 6,
+                      seats: mockSeats6 as any,
+                      entranceCompleted: true,
+                    }}
+                    serverNow={serverNow}
+                    activeCamera={10}
+                    transitionMode="CUT"
+                    showDirectorBar={false}
+                    allowPTZ={false}
+                    defaultQuality="HIGH"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* R6 Milestone 5.2: 7 Contestants in CAM 10 (Wide Podiums Arc) */}
+            {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-7") && (
+              <div
+                id="screenshot-r6-7-contestants-cam10"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-cyan-500/40 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  R6.2: 7 THÍ SINH — CAM 10 TOÀN CẢNH CUNG BỤC THÍ SINH (DỒN CÁNH TRÁI, CÁCH LY BỤC MC, BAO QUÁT TRỌN VẸN)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Cung bục 7 thí sinh dồn đều sang cánh trái dọc Vách Ký hiệu Khoa học, bục số 7 cách bục MC &gt;5.4m (endPhi &lt;= 1.20 rad). CAM 10 căn chỉnh tọa độ tâm ngắm trọn vẹn, khoảng hở an toàn &gt;= 32cm.
+                </p>
+                <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-cyan-500/20 shadow-inner bg-[#030712] relative">
+                  <OlympiaStudio3DScene
+                    state={{
+                      ...mockState,
+                      stage: "playing",
+                      seatCount: 7,
+                      seats: mockSeats7 as any,
+                      entranceCompleted: true,
+                    }}
+                    serverNow={serverNow}
+                    activeCamera={10}
+                    transitionMode="CUT"
+                    showDirectorBar={false}
+                    allowPTZ={false}
+                    defaultQuality="HIGH"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* R6 Milestone 5.3: 8 Contestants in CAM 10 (Wide Podiums Arc) */}
+            {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-8") && (
+              <div
+                id="screenshot-r6-8-contestants-cam10"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-cyan-500/40 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  R6.3: 8 THÍ SINH — CAM 10 TOÀN CẢNH CUNG BỤC THÍ SINH (DỒN CÁNH TRÁI, KHOẢNG HỞ AN TOÀN &gt;= 32CM)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Toàn bộ 8 bục thí sinh được dàn trải về phía cánh trái (Stage Left) với khoảng hở an toàn &gt;= 32cm giữa các bục, bục số 8 cách bục MC &gt;5.5m (endPhi &lt;= 1.20 rad). CAM 10 tự động ngắm giữa cụm bục bao quát toàn bộ 8 thí sinh với safe broadcast margins &gt;= 25%, loại bỏ 100% bục MC khỏi mép phải.
+                </p>
+                <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-cyan-500/20 shadow-inner bg-[#030712] relative">
+                  <OlympiaStudio3DScene
+                    state={{
+                      ...mockState,
+                      stage: "playing",
+                      seatCount: 8,
+                      seats: mockSeats8 as any,
+                      entranceCompleted: true,
+                    }}
+                    serverNow={serverNow}
+                    activeCamera={10}
+                    transitionMode="CUT"
+                    showDirectorBar={false}
+                    allowPTZ={false}
+                    defaultQuality="HIGH"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* R6 Milestone 5.4: MC Stage Lighting (CAM 3: Warm White Key/Fill + Desk Uplight) */}
+            {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-mc") && (
+              <div
+                id="screenshot-r6-mc-lighting"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-amber-500/40 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-amber-300">
+                  R6.4: BỤC MC &amp; CHIẾU SÁNG HAI MC KHÁNH VY &amp; NGỌC HUY (CAM 3: WARM WHITE KEY/FILL + DESK UPLIGHT)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Chiếu sáng khu vực MC bằng đèn overhead warm white #fff5e6, đèn rọi bàn pointLight cục bộ [3.12, 2.40, -6.40] và console uplight. Khánh Vy và Ngọc Huy sáng rõ khuôn mặt, màu da hồng hào ấm áp và trang phục chuẩn truyền hình.
+                </p>
+                <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-amber-500/20 shadow-inner bg-[#030712] relative">
+                  <OlympiaStudio3DScene
+                    state={{
+                      ...mockState,
+                      stage: "playing",
+                    }}
+                    serverNow={serverNow}
+                    activeCamera={3}
+                    transitionMode="CUT"
+                    showDirectorBar={false}
+                    allowPTZ={false}
+                    defaultQuality="HIGH"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* R6 Milestone 5.5: CAM 11 Contestant Greeting Transition Perspective */}
+            {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-cam11") && (
+              <div
+                id="screenshot-r6-cam11-perspective"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-purple-500/40 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-purple-300">
+                  R6.5: CAM 11 CHUYỂN CẢNH SỚM 0.6S (ĐÓN TRƯỚC BƯỚC CHÂN THÍ SINH CHÀO SÂN TẠI BỤC GIỮA)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Góc máy CAM 11 cận cảnh trực diện chào sân chuyển cảnh sớm tại t = 1.2s đón đầu bước chân thí sinh bước xuống bậc thang cuối cùng của sàn trung tâm, loại bỏ khán giả phân tâm phía sau.
+                </p>
+                <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-purple-500/20 shadow-inner bg-[#030712] relative">
+                  <OlympiaStudio3DScene
+                    state={{
+                      ...mockState,
+                      stage: "playing",
+                      entranceState: {
+                        active: true,
+                        startedAt: Date.now() - 1500,
+                        currentSeatIdx: 0,
+                        seatStartedAt: Date.now() - 1500,
+                        seatGestures: [],
+                      },
+                    }}
+                    serverNow={serverNow}
+                    activeCamera={11}
+                    transitionMode="CUT"
+                    showDirectorBar={false}
+                    allowPTZ={false}
+                    defaultQuality="HIGH"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* R6 Verification 1: Idle MC Framing (CAM 3, Tight MC Framing, Desk Excluded) */}
             {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-cam3") && (
               <div

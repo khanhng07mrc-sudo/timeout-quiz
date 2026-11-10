@@ -1,119 +1,154 @@
-# Handoff Report: 3D Studio Architecture Survey for Olympia Set
+# Handoff Report: 3D Stage Layout & Camera Framing for 6-8 Contestants (R1)
 
-- **Author**: `teamwork_explorer_survey_1`
-- **Working Directory**: `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\`
-- **Milestone**: Phase 0 (Survey)
-- **Handoff Type**: Hard
+**From**: Teamwork Explorer (Survey 1)  
+**To**: Orchestrator / Implementer  
+**Date**: 2026-11-10  
+**Status**: Task Complete (Hard Handoff)  
+**Working Directory**: `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\`  
+**Detailed Report**: `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\analysis.md`  
 
 ---
 
 ## 1. Observation
 
-1. **Three.js & React Ecosystem**:
-   - `d:\Timeout Quiz\package.json` lines 38-41, 58-63:
-     ```json
-     "@react-three/drei": "^10.7.9",
-     "@react-three/fiber": "^9.8.2",
-     "@types/three": "^0.186.0",
-     "react": "19.2.8",
-     "react-dom": "19.2.8",
-     "three": "^0.186.1"
+1. **Podium Dimensions**:
+   In `src/components/olympia/studio/Podiums.tsx` (lines 1696–1698):
+   ```tsx
+   <mesh position={[0, 0.04, 0]}>
+     <boxGeometry args={[1.20, 0.08, 0.88]} />
+     <meshStandardMaterial color="#0f172a" metalness={0.92} roughness={0.18} />
+   </mesh>
+   ```
+   Direct measurement: Each contestant podium base plinth is **$1.20\text{ m}$ wide** ($X$) and $0.88\text{ m}$ deep ($Z$).
+
+2. **Podium Arc Layout Formula**:
+   In `src/components/olympia/studio/Podiums.tsx` (lines 4912–4924) and `src/components/olympia/studio/CameraController.tsx` (lines 34–41, lines 48–55):
+   ```typescript
+   const radius = 6.6;
+   const startPhi = activeCount > 4 ? 0.26 : 0.38; // 15° or 21.8°
+   const endPhi = activeCount > 4 ? 1.31 : 1.13;   // 75° or 64.7°
+   for (let i = 0; i < activeCount; i++) {
+     const frac = activeCount === 1 ? 0.5 : i / (activeCount - 1);
+     const phi = startPhi + frac * (endPhi - startPhi);
+     const x = -radius * Math.cos(phi);
+     const z = -0.5 - radius * Math.sin(phi);
+     const rotY = Math.PI / 2 - phi;
+   ...
+   ```
+   For all `activeCount > 4` (whether 5, 6, 7, or 8), `startPhi` is fixed at $0.26\text{ rad}$ ($14.90^\circ$) and `endPhi` at $1.31\text{ rad}$ ($75.06^\circ$), creating an invariant angular span of $1.05\text{ rad}$ ($60.16^\circ$).
+
+3. **Center-to-Center Distances & Overlaps**:
+   Running numerical geometry analysis (`node -e "..."`):
+   - $N=4$: Chord distance $= 1.645\text{ m} \implies \text{Clearance} = +0.445\text{ m}$ (+44.5 cm gap).
+   - $N=6$: Chord distance $= 1.383\text{ m} \implies \text{Clearance} = +0.183\text{ m}$ (+18.3 cm gap).
+   - $N=7$: Chord distance $= 1.153\text{ m} \implies \text{Clearance} = \mathbf{-0.047\text{ m}}$ (**-4.7 cm physical overlap**).
+   - $N=8$: Chord distance $= 0.989\text{ m} \implies \text{Clearance} = \mathbf{-0.211\text{ m}}$ (**-21.1 cm severe collision**).
+
+4. **Static CAM 10 & Camera Resolution**:
+   In `src/components/olympia/studio/CameraController.tsx`:
+   - Line 114–120:
+     ```typescript
+     10: {
+       id: 10,
+       label: "Toàn Cảnh Bục Thí Sinh",
+       pos: [0.85, 2.45, 0.45],
+       target: [-4.40, 1.25, -4.60],
+     }
      ```
-   - `d:\Timeout Quiz\src\components\modes\WheelStudio3DScene.tsx` lines 15-18:
-     ```tsx
-     import React, { useRef, useEffect, useMemo, useState } from "react";
-     import { Canvas, useFrame, useThree } from "@react-three/fiber";
-     // MeshReflectorMaterial removed for 60 FPS performance optimization
-     import * as THREE from "three";
+   - Line 248–253:
+     ```typescript
+     const isContestantCam =
+       (camAngle >= 5 && camAngle <= 8) ||
+       (camAngle >= 25 && camAngle <= 28);
+     const targetPreset = isContestantCam
+       ? getContestantCameraPreset(
+           camAngle >= 25 ? camAngle - 25 + 4 : camAngle - 5,
+           effectiveTotalSeats
+         )
+       : (OLYMPIA_CAM_PRESETS[camAngle] || OLYMPIA_CAM_PRESETS[1]);
      ```
-   - `d:\Timeout Quiz\src\components\modes\MagicWheelBoard.tsx` line 34:
-     ```tsx
-     const WheelStudio3DScene = dynamic(() => import("./WheelStudio3DScene"), { ssr: false });
-     ```
+   CAM 10 is static, locked to target `[-4.40, 1.25, -4.60]` (4-podium cluster center). When podiums expand to 8 seats, the cluster center moves to `[-2.67, 1.15, -3.98]` ($+1.64\text{m}$ in X). If the arc is expanded without moving CAM 10, Three.js camera projection reveals the rightmost podium reaches NDC X $= \mathbf{+1.668}$, severely clipping out of view.
 
-2. **Studio Geometry, Materials, and Textures**:
-   - `WheelStudio3DScene.tsx` lines 318-347, 4471-4541:
-     Procedural HTML5 canvas textures are used for screens and scoreboards (`generatePodiumTexture`, `generateDongSonTexture`, `renderVideoWallCanvas`).
-     Stage floor uses high-specular dark epoxy PBR (`roughness: 0.10`, `metalness: 0.90`, `color: "#080e1c"`) with zero mirror render passes.
-     Screens and neon glows use `toneMapped={false}` on `meshBasicMaterial` to avoid tone mapping dimming.
-   - Entire studio is built using native Three.js procedural geometries (`BoxGeometry`, `CylinderGeometry`, `RingGeometry`, `CircleGeometry`, `PlaneGeometry`, `TorusGeometry`, `SphereGeometry`), requiring 0 KB external GLTF models.
+5. **Raised Dais Capacity**:
+   In `src/components/olympia/studio/StudioLighting.tsx` (lines 622–633, lines 913–933):
+   `daisGeometry` is an annular sector with $r_{\text{in}} = 5.2\text{ m}, r_{\text{out}} = 7.6\text{ m}$, covering polar angles from $-18^\circ$ to $+90^\circ$ ($108^\circ$ total). The current podium arc ($14.9^\circ$ to $75^\circ$) only utilizes $60^\circ$, leaving $48^\circ$ of unutilized platform space.
 
-3. **Lighting, Cameras, and Buzzers**:
-   - Multi-point studio lighting (`WheelStudio3DScene.tsx` lines 4857-4901):
-     Ambient light (intensity 3.2), directional key (intensity 3.5), single shadow-casting Key Spotlight (intensity 14.0, shadow-mapSize 512x512), floor specular downlight (intensity 6.0), front camera fill (intensity 7.0), left/right wash spotlights (intensity 5.5), and back rim point light (intensity 8.0).
-   - Camera Controller (`WheelStudio3DScene.tsx` lines 4274-4431):
-     10 camera positions, supporting 0ms broadcast Hard Cut and smooth Jib Morph, plus adaptive horizontal FOV calculations for non-16:9 aspect ratios, and bounded PTZ (Pan $\pm 25^\circ$, Tilt $\pm 15^\circ$, Zoom $1.0\times - 2.5\times$).
-   - Buzzer Beacon (`WheelStudio3DScene.tsx` lines 2172-2207):
-     Buzzer dome with `scale={isBuzzed ? [1.15, 1.15, 1.15] : [1, 1, 1]}`, `emissive={isBuzzed ? "#ff0000" : "#fbbf24"}`, `emissiveIntensity={isBuzzed ? 8.5 : 0.65}`, and dedicated point light `intensity={isBuzzed ? 14.0 : 0}`.
-
-4. **Olympia State Machine & Engine**:
-   - `d:\Timeout Quiz\src\lib\olympia\types.ts` lines 300-430:
-     - `KhoiDongState.buzzedSeat`: current buzz in Khởi động.
-     - `VcnvState.bells`: ordered list `{ seat: number; before: boolean; atMs?: number }[]`. Fastest buzzer is strictly `bells[0].seat`.
-     - `VeDichState.steal.buzzedSeat`: buzzing seat during steal phase.
-     - `CauHoiPhuState.buzzedSeat`: buzzing seat during tiebreak question.
-   - `d:\Timeout Quiz\src\lib\olympia\engine.ts` lines 76-120:
-     Pure state machine handling rounds `khoiDong`, `vcnv`, `tangToc`, `veDich`, `cauHoiPhu`.
-
-5. **Olympia Logo Asset Verification**:
-   - Command `Test-Path "C:\Users\khanh\Downloads\Olympia_logo_2016.webp"` executed with `BypassSandbox: true` returned `True`.
-   - File exists at `C:\Users\khanh\Downloads\Olympia_logo_2016.webp`.
+6. **Workspace State**:
+   - `d:\Olympia 26` has not been accessed, modified, or touched in any command or tool call.
+   - `d:\Timeout Quiz\AGENTS.md` is completely untouched.
+   - Project tests (`npm run test:olympia-3d` [489 tests] and `npm run test:olympia` [51 tests]) and `npm run type-check` pass with zero errors.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Step 1 (Framework Selection)**:
-   - Based on Observation 1, the repository standardizes on React Three Fiber (`@react-three/fiber` v9.8.2) with Next.js dynamic client import (`ssr: false`).
-   - Therefore, the Olympia 3D studio should be built as an R3F component `OlympiaStudio3DScene.tsx`, rather than raw imperative canvas scripts or external engine wrappers.
+1. **Step 1 (Physical Collision)**:
+   From Observation 1, each podium plinth base is $1.20\text{ m}$ wide. From Observation 2, when $N > 4$, all seat configurations are forced into a fixed $1.05\text{ rad}$ ($60.16^\circ$) arc at $R = 6.6\text{ m}$. Dividing this fixed arc by $(N - 1)$ intervals yields chord distances of $1.153\text{ m}$ for $N=7$ and $0.989\text{ m}$ for $N=8$. Because $0.989 < 1.20$ and $1.153 < 1.20$, adjacent podiums physically interpenetrate (by 4.7 cm at $N=7$ and 21.1 cm at $N=8$).
 
-2. **Step 2 (3D Studio Architecture & Performance)**:
-   - Observation 2 demonstrates that procedural parametric geometries and single-quad canvas textures deliver 60 FPS performance without any asset download overhead.
-   - Applying this approach to the Olympia set guarantees instant loading, zero CORS issues, and total styling freedom for the 4 contestant podiums, MC lectern, and Laurel Wreath showcase.
+2. **Step 2 (Camera Framing Failure)**:
+   From Observation 4, CAM 10 has hardcoded coordinates `pos: [0.85, 2.45, 0.45]` and `target: [-4.40, 1.25, -4.60]`, calibrated strictly for the 4-podium center `[-4.31, 1.15, -4.56]`. When $N$ increases to 6, 7, 8, the podium arc spans further towards the stage center, shifting the true cluster center up to $1.64\text{ m}$ along $+X$ and widening the bounding box from $4.07\text{m}$ to $7.91\text{m}$. Because `CameraController` treats CAM 10 as static, the camera remains aimed at the old 4-seat center, causing the right half of the 6–8 podium array to shift off-screen (NDC X $= +1.668$).
 
-3. **Step 3 (Lighting & Staggered Transitions - R2)**:
-   - Observation 3 shows how multi-point broadcast lights, cove rings, and ambient fixtures create broadcast television atmosphere.
-   - Requirement R2 requires a staggered fade: Inner Screen $\rightarrow$ Stage Back $\rightarrow$ Audience Area.
-   - By structuring the scene into 3 distinct lighting clusters with independent delay offsets (Screen: 0.0s, Stage: 0.35s, Audience: 0.70s) and cubic smoothstep interpolation in `useFrame`, the system will execute smooth, cinematic color transitions between Blue and Red without abrupt pop-ins.
+3. **Step 3 (Feasibility on Raised Dais)**:
+   From Observation 5, the physical dais platform extends across $108^\circ$ (from $-18^\circ$ to $+90^\circ$). Expanding the podium angular span to $72^\circ$ ($N=6$), $82^\circ$ ($N=7$), and $90^\circ$ ($N=8$) at radius $R = 6.7 - 6.8\text{ m}$ fits entirely within the dais platform with $\ge 36\text{ cm}$ of clearance to the rear dais edge and $\ge 53\text{ cm}$ of clearance to the rear walking corridor.
 
-4. **Step 4 (Buzzer Reactions - R3)**:
-   - Observation 3 and 4 reveal how `WheelStudio3DScene.tsx` handles buzzer visual effects, and how `OlympiaState` exposes buzzer states.
-   - In Khởi động, Về đích, and Câu hỏi phụ, checking the active buzzer property illuminates any buzzing contestant's podium.
-   - In Vượt chướng ngại vật (VCNV), checking `bells[0]?.seat` guarantees that strictly the fastest contestant lights up, fulfilling R3.
-
-5. **Step 5 (Asset Integration - R1 & R4)**:
-   - Observation 5 confirms `C:\Users\khanh\Downloads\Olympia_logo_2016.webp` is present on the host system.
-   - For browser WebGL access in Next.js without path/sandbox restrictions, copying the file to `d:\Timeout Quiz\public\brand\olympia\Olympia_logo_2016.webp` allows standard `ctx.drawImage()` or `TextureLoader.load()` to render the logo on the central LED canvas, alongside the golden gradient typography ("ĐƯỜNG LÊN ĐỈNH OLYMPIA").
-   - Requirement R4 is strictly respected: no files outside `d:\Timeout Quiz` will be deleted.
+4. **Step 4 (Mathematical Solution)**:
+   By establishing a centralized parametric function `getContestantArcParams(totalSeats)`:
+   - $N=4$: $R=6.60\text{m}, \phi \in [0.380, 1.130] \implies \text{Clearance} = +44.5\text{ cm}$
+   - $N=6$: $R=6.70\text{m}, \phi \in [0.209, 1.466] \implies \text{Clearance} = +47.9\text{ cm}$
+   - $N=7$: $R=6.80\text{m}, \phi \in [0.175, 1.606] \implies \text{Clearance} = +41.8\text{ cm}$
+   - $N=8$: $R=6.80\text{m}, \phi \in [0.140, 1.710] \implies \text{Clearance} = +32.3\text{ cm}$
+   And pairing it with dynamic wide camera preset `getWidePodiumsCameraPreset(totalSeats)`:
+   - $N=4$: `pos: [0.86, 2.45, 0.31]`, `target: [-4.31, 1.15, -4.56]`, NDC bounds `[-0.57, +0.57]`
+   - $N=6$: `pos: [2.03, 2.69, 1.75]`, `target: [-3.39, 1.15, -4.27]`, NDC bounds `[-0.75, +0.75]`
+   - $N=7$: `pos: [2.42, 2.81, 2.47]`, `target: [-2.98, 1.15, -4.20]`, NDC bounds `[-0.79, +0.79]`
+   - $N=8$: `pos: [2.83, 2.93, 3.17]`, `target: [-2.64, 1.15, -4.09]`, NDC bounds `[-0.81, +0.79]`
+   Every seat count achieves $> 32\text{ cm}$ clearance, zero physical overlap, and perfectly centered 20% safe broadcast margins under CAM 10.
 
 ---
 
 ## 3. Caveats
 
-1. The logo file at `C:\Users\khanh\Downloads\Olympia_logo_2016.webp` must only be **copied** into `public/brand/olympia/`; it must **never** be moved or deleted.
-2. In narrow viewport aspect ratios ($< 16:9$), the vertical FOV must be dynamically compensated as shown in `WheelStudio3DScene.tsx` lines 4387-4395 so that the MC and Laurel Wreath outer stations remain in view on tablets or split screens.
-3. Shadows should remain limited to a single Key Spotlight to sustain 60 FPS on integrated GPUs.
+1. **Entrance Corridor Entry Point**: When $N=8$, $\text{startPhi}$ reaches $0.140\text{ rad}$ ($8.0^\circ$). The hardcoded constant `entryPhi = 0.20` in `SingleContestantEntranceWalkingFigure` (`Podiums.tsx` line 3258) must be updated to `Math.min(0.20, startPhi - 0.06)` so that the contestant descending the stairs enters the rear corridor outside Podium 0.
+2. **Director Bar & Static CAM Dictionary**: In `OLYMPIA_CAM_PRESETS`, presets 5..8 and 25..28 are pre-evaluated at file load time. The dynamic resolution in `CameraController` (line 248) already resolves individual cameras dynamically at runtime. Adding dynamic resolution for CAM 10 inside `CameraController` ensures live gameplay and director transitions remain 100% accurate.
 
 ---
 
 ## 4. Conclusion
 
-The technical foundation in `WheelStudio3DScene.tsx` is completely analyzed and proven. We recommend implementing `OlympiaStudio3DScene.tsx` inside `src/components/olympia/` using React Three Fiber, procedural PBR geometry, a 3-cluster staggered lighting engine, an authentic 10-camera director system, and direct state machine integration for live buzzer reactions and round phase transitions.
+Requirement R1 is completely scoped and solved:
+1. **Root cause identified**: Fixed 60° arc ternary `activeCount > 4 ? 0.26 : 0.38` directly produces mesh interpenetration of 4.7 cm ($N=7$) and 21.1 cm ($N=8$), while static CAM 10 target `[-4.40, 1.25, -4.60]` causes extreme $+1.668$ NDC clipping for wider layouts.
+2. **Actionable fix**:
+   - In `CameraController.tsx`: Add `getContestantArcParams(totalSeats)` and `getWidePodiumsCameraPreset(totalSeats)`. Update `getContestantPodiumWorldPos` and `getContestantCameraPreset` to delegate to `getContestantArcParams`. Update `CameraController` to resolve CAM 10 dynamically.
+   - In `Podiums.tsx`: Import `getContestantArcParams` to compute `contestantConfigs` (lines 4912–4924). Update `entryPhi` at line 3258.
+   - `StudioLighting.tsx` and `BroadcastCameras.tsx` call `getContestantPodiumWorldPos` and will automatically inherit the updated positions without modifications.
 
 ---
 
 ## 5. Verification Method
 
-To verify the findings of this survey:
-1. **Dependency check**:
+To independently verify the findings and any proposed changes:
+1. **Mathematical Verification Script**:
+   Run in Node.js from `d:\Timeout Quiz`:
    ```powershell
-   Get-Content "d:\Timeout Quiz\package.json" | Select-String "three", "@react-three"
+   node -e "
+   const THREE = require('d:/Timeout Quiz/node_modules/three');
+   // Run projection script documented in analysis.md Section 6.2
+   "
    ```
-2. **Review reference architecture**:
-   Inspect `d:\Timeout Quiz\src\components\modes\WheelStudio3DScene.tsx` lines 4274-4431 (CameraController), 4468-4592 (StudioFloor), 4841-4942 (Canvas & Lights).
-3. **Verify Olympia logo availability**:
+   Assert that for $N \in \{4, 6, 7, 8\}$:
+   - $\text{minDistance} \ge 1.52\text{ m}$ ($\text{clearance} \ge +32\text{ cm}$).
+   - $\text{NDC minX} \ge -0.85$ and $\text{NDC maxX} \le +0.85$ under CAM 10 (zero clipping).
+2. **Test Suites**:
    ```powershell
-   Test-Path "C:\Users\khanh\Downloads\Olympia_logo_2016.webp"
+   cd "d:\Timeout Quiz"
+   npm run test:olympia-3d
+   npm run test:olympia
+   npm run type-check
    ```
-4. **Inspect comprehensive survey report**:
-   View `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\report.md`.
+   All existing 489 3D tests and 51 engine tests must pass with 0 errors.
+3. **Workspace Safety Check**:
+   ```powershell
+   cd "d:\Timeout Quiz"
+   git status --short
+   ```
+   Confirm zero files modified outside `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\`.

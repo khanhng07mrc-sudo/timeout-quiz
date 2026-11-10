@@ -43,6 +43,57 @@ const CONTESTANT_POSITIONS: Array<[number, number, number]> = [
 ];
 
 /**
+ * Milestone 3: MC Stage Lighting Rig & Visibility Specification (Requirement R3)
+ * Calibrated for Three.js v0.186 physically-correct distance attenuation:
+ * - MC Key Light: Warm white #fff5e6, elevated intensity (14.0 -> 22.0), decay 0.5 (reduced falloff over 5.4m)
+ * - MC Fill Light: Warm white #fffaf0, elevated intensity (6.0 -> 10.0), decay 0.8
+ * - MC Rim Light: Clean daylight #ffffff, intensity (4.0 -> 6.5), decay 1.2
+ * - MC Desk Local Downlight: Overhead pointLight at [3.12, 2.40, -6.40], intensity 7.0 * liveFactor, distance 7.0, decay 1.0
+ */
+export const MC_LIGHTING_RIG_CONFIG = {
+  keyLight: {
+    position: [4.60, 5.20, -3.40] as [number, number, number],
+    targetPosition: [3.10, 1.35, -6.85] as [number, number, number],
+    color: "#fff5e6",
+    minIntensity: 14.0,
+    maxIntensity: 22.0,
+    decay: 0.5,
+    angle: 0.52,
+    penumbra: 0.45,
+    distance: 14,
+  },
+  fillLight: {
+    position: [1.40, 4.80, -3.60] as [number, number, number],
+    targetPosition: [3.10, 1.35, -6.85] as [number, number, number],
+    color: "#fffaf0",
+    minIntensity: 6.0,
+    maxIntensity: 10.0,
+    decay: 0.8,
+    angle: 0.60,
+    penumbra: 0.55,
+    distance: 13,
+  },
+  rimLight: {
+    position: [3.10, 5.60, -8.80] as [number, number, number],
+    targetPosition: [3.10, 1.45, -6.85] as [number, number, number],
+    color: "#ffffff",
+    minIntensity: 4.0,
+    maxIntensity: 6.5,
+    decay: 1.2,
+    angle: 0.45,
+    penumbra: 0.50,
+    distance: 10,
+  },
+  deskDownlight: {
+    position: [3.12, 2.40, -6.40] as [number, number, number],
+    color: "#fff5e6",
+    baseIntensity: 7.0,
+    distance: 7.0,
+    decay: 1.0,
+  },
+} as const;
+
+/**
  * TargetedSpotLight:
  * Fixes Three.js / React Three Fiber `<spotLight>` target disconnection bug.
  * Three.js requires `spotLight.target` to be mounted in the scene graph (`<primitive object={targetObj} />`)
@@ -2996,13 +3047,25 @@ export function StudioLighting({
     liveFactor
   );
 
-  // MC Podiums 3-Point Stage Lighting Rig Intensities:
-  // - Key: match 8.5, standby 4.5
-  // - Fill: match 4.8, standby 2.5
-  // - Rim: match 3.2, standby 1.5
-  const mcKeyIntensity = THREE.MathUtils.lerp(4.5, 8.5 * (isVeDichDimmed ? 0.7 : 1.0), liveFactor);
-  const mcFillIntensity = THREE.MathUtils.lerp(2.5, 4.8 * (isVeDichDimmed ? 0.7 : 1.0), liveFactor);
-  const mcRimIntensity = THREE.MathUtils.lerp(1.5, 3.2 * (isVeDichDimmed ? 0.7 : 1.0), liveFactor);
+  // MC Podiums 3-Point Stage Lighting Rig Intensities (Calibrated for Broadcast Clarity & Distance Falloff):
+  // - Key: match 22.0, standby 14.0 (decay 0.5 over 5.4m distance)
+  // - Fill: match 10.0, standby 6.0 (decay 0.8)
+  // - Rim: match 6.5, standby 4.0 (decay 1.2)
+  const mcKeyIntensity = THREE.MathUtils.lerp(
+    MC_LIGHTING_RIG_CONFIG.keyLight.minIntensity,
+    MC_LIGHTING_RIG_CONFIG.keyLight.maxIntensity * (isVeDichDimmed ? 0.7 : 1.0),
+    liveFactor
+  );
+  const mcFillIntensity = THREE.MathUtils.lerp(
+    MC_LIGHTING_RIG_CONFIG.fillLight.minIntensity,
+    MC_LIGHTING_RIG_CONFIG.fillLight.maxIntensity * (isVeDichDimmed ? 0.7 : 1.0),
+    liveFactor
+  );
+  const mcRimIntensity = THREE.MathUtils.lerp(
+    MC_LIGHTING_RIG_CONFIG.rimLight.minIntensity,
+    MC_LIGHTING_RIG_CONFIG.rimLight.maxIntensity * (isVeDichDimmed ? 0.7 : 1.0),
+    liveFactor
+  );
 
   // Contestant Podiums Balanced Stage Lighting Rig Intensities:
   // - Sector 1 Key: match 7.5, standby 4.0
@@ -3047,41 +3110,50 @@ export function StudioLighting({
       {/* ── MC PODIUMS 3-POINT STAGE LIGHTING RIG ── */}
       {/* MC Key Light: Warm quartz front key illuminating MC faces & wardrobe */}
       <TargetedSpotLight
-        position={[4.60, 5.20, -3.40]}
-        targetPosition={[3.10, 1.35, -6.85]}
-        color="#fffaf0"
+        position={MC_LIGHTING_RIG_CONFIG.keyLight.position}
+        targetPosition={MC_LIGHTING_RIG_CONFIG.keyLight.targetPosition}
+        color={MC_LIGHTING_RIG_CONFIG.keyLight.color}
         intensity={mcKeyIntensity}
-        angle={0.52}
-        penumbra={0.45}
-        distance={14}
-        decay={1.5}
+        angle={MC_LIGHTING_RIG_CONFIG.keyLight.angle}
+        penumbra={MC_LIGHTING_RIG_CONFIG.keyLight.penumbra}
+        distance={MC_LIGHTING_RIG_CONFIG.keyLight.distance}
+        decay={MC_LIGHTING_RIG_CONFIG.keyLight.decay}
         castShadow={false}
       />
 
-      {/* MC Fill Light: Soft blue-white cross fill to eliminate harsh facial shadows */}
+      {/* MC Fill Light: Warm white cross fill to eliminate harsh facial shadows */}
       <TargetedSpotLight
-        position={[1.40, 4.80, -3.60]}
-        targetPosition={[3.10, 1.35, -6.85]}
-        color="#f0f7ff"
+        position={MC_LIGHTING_RIG_CONFIG.fillLight.position}
+        targetPosition={MC_LIGHTING_RIG_CONFIG.fillLight.targetPosition}
+        color={MC_LIGHTING_RIG_CONFIG.fillLight.color}
         intensity={mcFillIntensity}
-        angle={0.60}
-        penumbra={0.55}
-        distance={13}
-        decay={1.5}
+        angle={MC_LIGHTING_RIG_CONFIG.fillLight.angle}
+        penumbra={MC_LIGHTING_RIG_CONFIG.fillLight.penumbra}
+        distance={MC_LIGHTING_RIG_CONFIG.fillLight.distance}
+        decay={MC_LIGHTING_RIG_CONFIG.fillLight.decay}
         castShadow={false}
       />
 
       {/* MC Back/Rim Light: Daylight separation rim delineating shoulders and hair from backdrop */}
       <TargetedSpotLight
-        position={[3.10, 5.60, -8.80]}
-        targetPosition={[3.10, 1.45, -6.85]}
-        color="#ffffff"
+        position={MC_LIGHTING_RIG_CONFIG.rimLight.position}
+        targetPosition={MC_LIGHTING_RIG_CONFIG.rimLight.targetPosition}
+        color={MC_LIGHTING_RIG_CONFIG.rimLight.color}
         intensity={mcRimIntensity}
-        angle={0.45}
-        penumbra={0.50}
-        distance={10}
-        decay={1.8}
+        angle={MC_LIGHTING_RIG_CONFIG.rimLight.angle}
+        penumbra={MC_LIGHTING_RIG_CONFIG.rimLight.penumbra}
+        distance={MC_LIGHTING_RIG_CONFIG.rimLight.distance}
+        decay={MC_LIGHTING_RIG_CONFIG.rimLight.decay}
         castShadow={false}
+      />
+
+      {/* MC Desk Local Warm Overhead Downlight (Milestone 3 R3 - illuminates desk & presenters directly) */}
+      <pointLight
+        position={MC_LIGHTING_RIG_CONFIG.deskDownlight.position}
+        color={MC_LIGHTING_RIG_CONFIG.deskDownlight.color}
+        intensity={MC_LIGHTING_RIG_CONFIG.deskDownlight.baseIntensity * liveFactor}
+        distance={MC_LIGHTING_RIG_CONFIG.deskDownlight.distance}
+        decay={MC_LIGHTING_RIG_CONFIG.deskDownlight.decay}
       />
 
       {/* ── CONTESTANT PODIUMS BALANCED STAGE LIGHTING RIG ── */}

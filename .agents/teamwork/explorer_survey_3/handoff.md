@@ -1,120 +1,129 @@
-# Handoff Report: Visual Asset Requirements, 3D Staging, and UI Integration Survey
+# Handoff Report: Investigation of MC Area Lighting (R3), Intro Audio Looping (R5), and Screenshot Verification Setup (R6)
 
-- **Author**: `teamwork_explorer_survey_3`
-- **Working Directory**: `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\`
-- **Milestone**: Phase 0 (Survey)
-- **Handoff Type**: Hard
+**From**: `explorer_survey_3`  
+**To**: Orchestrator (`92bc7ea3-6992-4337-87ba-6322ebaf6868`)  
+**Workspace**: `d:\Timeout Quiz`  
+**Working Directory**: `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\`  
+**Date**: 2026-11-10  
+**Handoff Type**: Hard (Task Complete)
 
 ---
 
 ## 1. Observation
 
-1. **Branding Asset Verification (`Olympia_logo_2016.webp`)**:
-   - Tool command executed:
-     `node -e "const fs = require('fs'); const buf = fs.readFileSync('C:/Users/khanh/Downloads/Olympia_logo_2016.webp'); ..."`
-   - Output observed verbatim:
-     ```json
-     RIFF: RIFF
-     WEBP: WEBP
-     Chunk: VP8X
-     Size: 77292
-     { width: 512, height: 512, hasAlpha: true, hasAnimation: false }
-     ```
-   - Target static directory in Timeout Quiz:
-     `d:\Timeout Quiz\public\olympia` exists and already contains Olympia media assets (e.g. `d:\Timeout Quiz\public\olympia\olympia_logo.png`, `d:\Timeout Quiz\public\olympia\media`).
+### R3 Observations (MC Area Lighting & Figure Visibility):
+1. **MC Desk & Figures Definition**:
+   - `d:\Timeout Quiz\src\components\olympia\studio\Podiums.tsx`:
+     - Line 1843: `export function CenterMcDesk({ ... })` defines the origami faceted desk at position `[3.00, 0.08, -6.70]`, with rotation `MC_DESK_ROT_Y = -0.25 rad` (lines 2030–2033).
+     - Line 2060: `export function McPresenters({ ... })` animates and renders Khánh Vy and Ngọc Huy.
+     - Line 2031: `KV_DESK_POS: [3.35, 0.14, -7.11]` (Khánh Vy).
+     - Line 2032: `NH_DESK_POS: [2.89, 0.14, -7.22]` (Ngọc Huy).
+2. **MC Lighting Configuration**:
+   - `d:\Timeout Quiz\src\components\olympia\studio\StudioLighting.tsx`:
+     - Lines 3048–3085:
+       - MC Key Light: `TargetedSpotLight` at `[4.60, 5.20, -3.40]`, targeting `[3.10, 1.35, -6.85]`, color `#fffaf0`, intensity `mcKeyIntensity` (lerp 4.5 to 8.5), angle 0.52, penumbra 0.45, distance 14, decay 1.5.
+       - MC Fill Light: `TargetedSpotLight` at `[1.40, 4.80, -3.60]`, targeting `[3.10, 1.35, -6.85]`, color `#f0f7ff`, intensity `mcFillIntensity` (lerp 2.5 to 4.8), distance 13, decay 1.5.
+       - MC Rim Light: `TargetedSpotLight` at `[3.10, 5.60, -8.80]`, targeting `[3.10, 1.45, -6.85]`, color `#ffffff`, intensity `mcRimIntensity` (lerp 1.5 to 3.2), distance 10, decay 1.8.
+     - Lines 2975–2981: Ambient light is `#162848` (navy blue), intensity 0.25–0.26.
+     - Lines 3024–3045: Directional key (`[4.5, 12, 7.5]`) and front flood (`[0, 5.5, 7.5]`) lights have default target `(0, 0, 0)` (Center Stage Dais).
+3. **MC Material Settings**:
+   - `d:\Timeout Quiz\src\components\olympia\studio\Podiums.tsx`:
+     - Line 1902: `createWarmPeachSkinMaterial(color = "#f4cba5", roughness = 0.58)`: `metalness: 0.02`, `emissive: #000000`, `emissiveIntensity: 0.0`.
+     - Lines 2604–2606: Khánh Vy blazer: `color="#831843"`, `roughness={0.38}`, `metalness={0.05}`, no emissive.
+     - Lines 2805–2806: Ngọc Huy blazer: `color="#b88a44"`, `roughness={0.42}`, `metalness={0.12}`, no emissive.
 
-2. **Existing 3D Studio Architecture Reference (`WheelStudio3DScene.tsx`)**:
-   - `d:\Timeout Quiz\src\components\modes\WheelStudio3DScene.tsx` lines 15-20, 1960-2225, 3656-3754, 4857-4942:
-     - Implements high-performance broadcast 3D studio with `@react-three/fiber` and `three`.
-     - MC station (`DedicatedMcStation`, lines 1960-2046): independent lectern placed at `X = -3.45m, Z = -0.65m` with microphone, cue card, and dedicated key spotlight.
-     - Contestant stations (`ElevatedSlotStation`, lines 2049-2225): front score screen canvas texture, illuminated handrails, and buzzer dome with point light intensity burst (`intensity: 14.0`).
-     - Backdrop Curved LED Screen (`BackdropCurvedLedScreen`, lines 3656-3754): `11.2m x 7.5m` with titanium bezel (50mm), inner gold LED accent, multi-tier pedestal, and procedural canvas texture (`renderVideoWallCanvas`).
-     - Lighting setup (lines 4857-4901): ambient light (intensity 3.2), directional key (intensity 3.5), key spotlight (intensity 14.0), floor specular downlight (intensity 6.0), wash spotlights (intensity 5.5), and back rim point light (8.0).
+### R5 Observations (Contestant Intro Audio Engine & Timings):
+1. **Audio Engine**:
+   - `d:\Timeout Quiz\src\components\olympia\hooks.ts`:
+     - Line 274: `export function useOlympiaAudio(...)` manages client playback using HTML5 `Audio` elements with Web Audio `AudioContext` stereo panners.
+     - Line 239: `isIntroOrMusicTrack` recognizes `contest_intro`.
+     - Line 236: `isLoopingBgm` matches only `/kd_bgm_[12]$/` or `/loop/`.
+     - Line 689: `const looping = isBgmCue && !isCountdown && isLoopingBgm(cue.sound);` => `looping = false` for `contest_intro`!
+     - Line 737: `a.loop = looping;` sets `a.loop = false`.
+2. **Audio Asset Duration**:
+   - File: `d:\Timeout Quiz\public\olympia-audio\O26\6_NhacKhac\contest_intro.mp3`.
+   - File size: 296,142 bytes.
+   - Exact length: 710 MP3 frames at 44.1 kHz = **18.55 seconds**.
+3. **Presentation Duration Logic**:
+   - `d:\Timeout Quiz\src\lib\olympia\engine.ts`:
+     - Lines 480–495: Contestants 0 to $N-2$ advance every 4.0s (`advanceThreshold = 4000`), and contestant $N-1$ takes 6.8s (`advanceThreshold = 6800`).
+     - Formula: $T = (N - 1) \times 4.0\,\text{s} + 6.8\,\text{s}$.
+     - For 6 contestants: $(5 \times 4.0) + 6.8 = \mathbf{26.8\,\text{s}}$ (18.55s track leaves 8.25s silence).
+     - For 8 contestants: $(7 \times 4.0) + 6.8 = \mathbf{34.8\,\text{s}}$ (18.55s track leaves 16.25s silence).
 
-3. **Olympia State Machine & Game Lifecycle**:
-   - `d:\Timeout Quiz\src\lib\olympia\types.ts` lines 288-430:
-     - Khởi động: `state.khoiDong.started`, `state.khoiDong.phase`, `state.khoiDong.buzzedSeat`.
-     - Vượt chướng ngại vật: `state.vcnv.phase === "question"`, `state.vcnv.timer.startedAt`. Buzzer bells array: `state.vcnv.bells: { seat: number; before: boolean; atMs?: number }[]`, where fastest buzzer is uniquely `bells[0].seat`.
-     - Tăng tốc: `state.tangToc.phase === "question"`, `state.tangToc.timer.startedAt`.
-     - Về đích: `state.veDich.phase`, `state.veDich.steal.buzzedSeat`, `on_stage.mp3` and `finish_turn.mp3`.
-     - Câu hỏi phụ: `state.cauHoiPhu.buzzedSeat`.
-
-4. **UI Integration Points**:
-   - `d:\Timeout Quiz\src\components\olympia\DisplayScreen.tsx` lines 25-41, 740-850:
-     - Currently mounts `OlympiaIntroCanvas` (2D Canvas).
-     - Renders scoreboard overlay, header bar, and round banners.
-     - Can conditionally mount 3D studio scene `OlympiaStudio3DScene.tsx` with dynamic import (`ssr: false`).
-   - `d:\Timeout Quiz\public\olympia-audio` contains complete sound libraries by season (`O13-21`, `O22`, `O23`, `O24-25`, `O26`), with round subdirectories:
-     `1_KhoiDong/bell_ring.mp3`, `start_round.mp3`, `finish_turn.mp3`; `2_VuotChuongNgaiVat/15s_tick.mp3`, `bell_ring.mp3`; `4_VeDich/on_stage.mp3`, `bell_ring.mp3`, `finish_turn.mp3`.
+### R6 Observations (Build, Port & Screenshot Pipeline):
+1. **Application Build & Dev**:
+   - `package.json`:
+     - `npm run dev`: `ts-node --project tsconfig.server.json server.ts`.
+     - `npm run build`: `next build --webpack && esbuild server.ts ...`. **Verified: Build succeeds with code 0!**
+     - `npm run type-check`: `tsc --noEmit`. **Verified: 0 errors!**
+     - `npm run test:olympia-3d`: **Verified: 489 / 489 tests pass!**
+2. **Port**:
+   - `server.ts` line 65: `const port = parseInt(process.env.PORT ?? "3000", 10);`. Defaults to 3000.
+3. **Screenshot Automation**:
+   - `puppeteer-core` version `^25.15.0` is present in devDependencies.
+   - Microsoft Edge is installed at `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`.
+   - Google Chrome is installed at `C:\Program Files\Google\Chrome\Application\chrome.exe`.
+   - Proven script `src/lib/olympia/capture-r6-screenshots.ts` uses `puppeteer-core` with WebGL ANGLE flags to capture 3D studio canvases cleanly.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Branding Asset Viability**:
-   - From Observation 1, the file `C:\Users\khanh\Downloads\Olympia_logo_2016.webp` is valid 512x512 WebP with an 8-bit alpha channel (`hasAlpha: true`).
-   - Copying this file to `d:\Timeout Quiz\public\olympia\Olympia_logo_2016.webp` allows standard Next.js static resolution at `/olympia/Olympia_logo_2016.webp`.
-   - WebP textures load natively in Three.js via `TextureLoader` or can be composited into an offscreen Canvas alongside the yellow gradient typography for optimal 1-draw-call performance.
-   - Requirement R4 is strictly adhered to because the file in `Downloads` is only read and copied, never moved or deleted.
+1. **R3 (MC Lighting)**:
+   - Three.js v0.186 enforces physically-correct distance decay.
+   - At a 5.4m distance with `decay={1.5}`, spotlight intensity arriving at the MCs drops to ~0.45 lux.
+   - Directional lights focus on `(0, 0, 0)` rather than the MC desk at `[3.0, 0.08, -6.7]`.
+   - The studio ambient color is navy blue (`#162848`), which does not reflect off warm peach skin, deep burgundy, or black hair.
+   - The materials have zero emissive values.
+   - Therefore, from wide shots (CAM 10, CAM 1), high foreground stage brightness creates an extreme contrast ratio, turning the unlit MC figures into dark silhouettes ("ghosts").
+   - *Solution*: Add local warm-white `#fff5e6` lighting at the MC desk (`pointLight` at `[3.12, 2.40, -6.40]` and desk console uplight at `Y=1.20m`), decrease spotlight decay to `0.0`–`0.5` with elevated intensity, and calibrate skin/wardrobe materials with subtle broadcast emissive baseline (0.12–0.16).
 
-2. **Olympia 3D Staging Layout**:
-   - From Observation 2, `WheelStudio3DScene.tsx` proves that procedural Three.js geometry achieves zero-overhead 60 FPS without downloading heavy external 3D models.
-   - Adapting this to Olympia yields:
-     - Central LED Screen: `12.0m x 6.75m` (16:9), titanium framing, tiered pedestal, located at `X = 0, Z = -8.5m`.
-     - 1 MC Podium: Located at Stage Left `[X = -4.5m, Y = 0.0m, Z = -2.0m]` with `rotY = +0.70 rad` (inward facing).
-     - 4 Contestant Podiums: Arranged in a broadcast arc at `X = -1.8m, 0.0m, +1.8m, +3.6m` (`Z = -2.5m` to `-3.1m`), each with an individual score screen, touch tablet, and dome buzzer.
-     - Laurel Wreath Area: Placed at honored Stage Left-Center `[X = -2.4m, Y = 0.0m, Z = -4.8m]`, featuring an octagonal marble column, velvet pillow, transparent crystal cloche, rotating golden wreath, and a dedicated overhead spotlight.
+2. **R5 (Audio Looping)**:
+   - The audio file `contest_intro.mp3` is 18.55s long.
+   - The presentation time for 6 contestants is 26.8s, and for 8 contestants is 34.8s.
+   - `isLoopingBgm` returns `false` for `contest_intro`, so `a.loop = false`.
+   - When the track reaches 18.55s, it terminates and remains silent for the remainder of the entrance sequence.
+   - *Solution*: Implement predictive dual-instance crossfade looping in `useOlympiaAudio` triggered 2.0s before track completion ($t \approx 16.55\text{s}$), recurring until the Host begins Khởi Động (where existing `fadeOutAndStopBgm(1000)` smoothly takes over).
 
-3. **Lighting Multi-Zone Fading (R2 & R3)**:
-   - Observation 2 & 3 define the lighting architecture and game state triggers.
-   - To achieve the staggered fade required by R2:
-     - Zone 1 (Central LED canvas & screen bezel) fades first at $t = 0.0s$ ($1.0s - 1.2s$ duration).
-     - Zone 2 (Stage back lights, moving heads, audience amphitheater) starts fading after a delay $\Delta t = 0.5s - 0.7s$ ($1.4s$ duration).
-     - Transitions are powered by a damped Hermite smoothstep in `useFrame`, preventing abrupt color pop-ins.
-   - Round logic:
-     - Khởi động: Turns Red on start, returns to Blue on finish.
-     - VCNV & Tăng tốc: Starts Blue, turns Red after 2.5s.
-     - VCNV buzzer lockout: strictly `state.vcnv.bells[0].seat` illuminates Red.
-     - Về đích: Turns Red from `on_stage` through turn finish.
-
-4. **UI Integration**:
-   - Observation 4 shows `DisplayScreen.tsx` currently uses `OlympiaIntroCanvas` (2D).
-   - Dynamically importing `OlympiaStudio3DScene` (`ssr: false`) allows seamless switching between 2D and 3D modes.
-   - Audio cues in `public/olympia-audio` sync directly with lighting transitions (e.g., `start_round`, `on_stage`, `bell_ring`, `finish_turn`).
+3. **R6 (Screenshot Setup)**:
+   - `npm run build` succeeds cleanly.
+   - `puppeteer-core` with Edge (`msedge.exe`) and WebGL flags (`--enable-webgl`, `--use-gl=angle`) reliably captures Three.js 3D studio views without GPU stalls.
+   - Test harness routes like `/dev/graphics?tab=r6` allow automated capture of 6, 7, and 8 contestant layouts and CAM 10/CAM 3 framings.
 
 ---
 
 ## 3. Caveats
 
-1. The asset `C:\Users\khanh\Downloads\Olympia_logo_2016.webp` must strictly be **copied** into `d:\Timeout Quiz\public\olympia\`; never delete or move the original file in `Downloads`.
-2. Responsive canvas handling: On viewports with aspect ratios narrower than 16:9 (e.g. mobile or vertical window split), camera FOV must be compensated (as implemented in `WheelStudio3DScene.tsx` lines 4387-4395) so that the MC and outer contestant podiums remain visible.
-3. Shadows should be confined to a single shadow-casting Key Spotlight with a `512x512` map to ensure 60 FPS performance on laptops with integrated GPUs.
+- In headless Chromium environments without physical GPU acceleration, WebGL relies on ANGLE software rasterization (SwiftShader/D3D11). `capture-r6-screenshots.ts` requires `--use-gl=angle` and `--use-angle=default` to render Three.js canvases accurately.
+- `contest_intro.mp3` has a natural crescendo ending at 18.0–18.5s. A 2.0s crossfade window ($t=16.55\text{s}$) cleanly overlaps the crescendo into the opening beat of the looped track.
 
 ---
 
 ## 4. Conclusion
 
-All four assigned survey objectives are completely investigated and mapped into a concrete architectural blueprint:
-1. `Olympia_logo_2016.webp` is verified (512x512, transparent VP8X) and ready for copying to `public/olympia/`.
-2. The 3D Olympia staging blueprint (Central LED 16:9 with gradient text, 1 MC lectern, 4 contestant arc podiums, and Laurel Wreath pedestal) is fully dimensioned and mapped to Three.js coordinates.
-3. The dual-state lighting system (Blue vs Red) and staggered multi-zone fade engine (Zone 1 screen first, Zone 2 back lights & audience after) are formulated with exact mathematical easing and state machine hooks.
-4. UI integration into `DisplayScreen.tsx` with audio synchronization and a 7-camera director system is defined and validated.
-
-All details are compiled in `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\report.md`.
+All three investigation areas (R3, R5, R6) have clear, actionable, and low-risk implementation paths:
+1. **R3**: Update `StudioLighting.tsx` with warm white `#fff5e6` key/fill lighting focused on `[3.10, 1.35, -6.85]`, add local desk fill `pointLight`, and calibrate MC skin/fabric emissive values in `Podiums.tsx`.
+2. **R5**: In `hooks.ts`, add predictive dual-instance crossfade looping for `contest_intro` triggered at 16.55s with a 2.0s crossfade overlap.
+3. **R6**: Utilize `puppeteer-core` with Edge to capture visual proof of 6, 7, and 8 contestant stage layouts, CAM 10 coverage, and brightly lit MCs.
 
 ---
 
 ## 5. Verification Method
 
-1. **Verify Branding Asset**:
-   ```powershell
-   node -e "const fs = require('fs'); const buf = fs.readFileSync('C:/Users/khanh/Downloads/Olympia_logo_2016.webp'); console.log('Size:', buf.length, 'VP8X:', buf.toString('ascii', 12, 16));"
+1. **Build Integrity**:
+   ```bash
+   npm run build
    ```
-2. **Review Reference 3D Architecture**:
-   Inspect `d:\Timeout Quiz\src\components\modes\WheelStudio3DScene.tsx` (lines 1960-2046 for MC, lines 2049-2225 for Podiums, lines 3656-3754 for Backdrop LED).
-3. **Verify Olympia Audio Assets**:
-   ```powershell
-   Get-ChildItem "d:\Timeout Quiz\public\olympia-audio\O26" -Recurse -Filter "*.mp3" | Select-Object -First 10
+   Must exit with code 0.
+2. **Contract Test Suite**:
+   ```bash
+   npm run test:olympia-3d
    ```
-4. **Read Comprehensive Survey Report**:
-   Inspect `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\report.md`.
+   All 489 tests must pass with 100% pass rate.
+3. **Audio Duration Test**:
+   ```bash
+   node -e "const fs = require('fs'); const b = fs.readFileSync('public/olympia-audio/O26/6_NhacKhac/contest_intro.mp3'); console.log('Size:', b.length);"
+   ```
+4. **Visual Proof Screenshot Execution**:
+   Launch dev server (`PORT=3005 npm run dev`) and execute headless screenshot capture script. Inspect output PNG files for proper illumination and framing.

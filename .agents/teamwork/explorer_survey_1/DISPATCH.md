@@ -1,19 +1,16 @@
-## 2026-10-31T01:36:11Z
-[Message] timestamp=2026-10-31T01:36:11Z sender=29c0daaf-06fc-45bd-8731-a373118d9533 priority=MESSAGE_PRIORITY_HIGH content=You are teamwork_explorer instance 1 for Phase 0 (Survey).
-Your working directory is: d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\
-Original request path: d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md
-You MUST read d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md before starting work.
+## 2026-11-10T13:20:44Z
+You are an Explorer investigating the 3D stage layout and camera framing in Timeout Quiz (working directory `d:\Timeout Quiz`).
+Read `d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md`.
+Your working directory is `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\`.
 
-Your task:
-Investigate the technical foundation and reference 3D studio architecture in `d:\Timeout Quiz\src\components\modes\WheelStudio3DScene.tsx` and related 3D utilities in the repository.
-Specifically analyze:
-1. Three.js version and ecosystem used (Three.js, React Three Fiber (@react-three/fiber), Drei (@react-three/drei), or vanilla Three.js in a React useEffect/canvas ref).
-2. Studio geometry, meshes, materials, shaders, textures, canvas setup, animation loop, camera controls, resizing, and performance optimization techniques.
-3. How lighting, ambient occlusion, reflections, shadows, spotlights, and color transitions are structured and controlled in `WheelStudio3DScene.tsx`.
-4. Technical architecture recommendation for building the Olympia 3D studio set (`OlympiaStudio3DScene.tsx` or similar) matching R1 (LED screen, MC podium, 4 contestant podiums, laurel wreath area) and R2 (staged lighting transitions: blue vs red, inner screen fade first, then stage back and audience).
-
-Output your findings to:
-- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\report.md` (detailed technical analysis)
-- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\handoff.md` (structured handoff report)
-Maintain your `progress.md` with timestamps while working.
-Send a completion message back when done.
+Investigate:
+1. Requirement R1:
+   - Where and how `seatCount` (specifically 6, 7, 8) is defined and handled in `Podiums.tsx`, stage layout, and related components.
+   - How podium positions, arc radius, angular span, or spacing are calculated. What causes podiums to crowd or collide when seatCount is 6, 7, 8?
+   - Where CAM 10 (wide shot of all contestant podiums) and individual contestant cameras (CAM 5..8, CAM 25..28) are configured in `CameraController.tsx`, `useOlympiaCamera.ts`, or elsewhere.
+   - How camera targets, FOV, position, lookAt, and bounding boxes are computed for different seatCount values.
+   - Any aspect ratio / viewport clipping issues.
+2. Absolute workspace safety rule: Do NOT modify or create any file outside `d:\Timeout Quiz`. Keep `d:\Olympia 26` completely untouched. Do not edit `d:\Timeout Quiz\AGENTS.md`. You are in exploration mode (read-only for project code, write reports only in your working directory).
+3. Document all affected files, line numbers, data structures, and exact mathematical/geometric formulas currently used.
+4. Propose a concrete fix strategy for R1.
+5. Write your comprehensive report to `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\analysis.md` and deliver `handoff.md`. Send a message when finished.

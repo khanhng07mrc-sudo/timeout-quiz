@@ -23,6 +23,64 @@ export function getCameraForSeat(seatId: number, totalSeats: number = 4): number
 }
 
 /**
+ * Evaluates the broadcast camera preset for the contestant entrance sequence:
+ * - Anticipatory early cut to CAM 11 at t = 1.2s (~0.6s early) for Contestant N > 0.
+ * - Gentle optical zoom push (0.0 -> 0.25) during center landing pose (1.8s -> 3.0s).
+ */
+export function evaluateEntranceCameraState(
+  currentSeat: number,
+  activeCount: number,
+  elapsedSec: number
+): OlympiaCameraState {
+  const isFirstSeat = currentSeat === 0;
+  const isLastSeat = currentSeat >= activeCount - 1;
+  const targetCam = getCameraForSeat(currentSeat, activeCount);
+
+  // Broadcast Choreography:
+  // For Contestant 0 (first contestant):
+  // - 0.0s -> 3.8s: CAM 11 (MCU direct greeting on center landing, with push zoom 0.25 during pose 1.8s - 3.0s)
+  // - >= 3.8s: CAM 10 (Wide podiums view)
+  // For Contestant N > 0:
+  // - 0.0s -> 1.2s: CAM 10 (Wide view while previous contestant settles)
+  // - 1.2s -> 3.8s: CAM 11 (Cut ~0.6s early while descending last 2 steps onto center landing, with push zoom 0.25 during pose 1.8s - 3.0s)
+  // - >= 3.8s:
+  //     If !isLastSeat: CAM 10 (continues wide view until next contestant reaches landing)
+  //     If isLastSeat: CAM 10 from 3.8s -> 6.2s, then targetCam (desk close-up) from 6.2s -> 6.8s
+  const isCam11Phase = isFirstSeat
+    ? elapsedSec < 3.8
+    : elapsedSec >= 1.2 && elapsedSec < 3.8;
+
+  if (isCam11Phase) {
+    // Optical zoom push (0.25) during pose greeting on center landing (1.8s -> 3.0s)
+    const pushInProgress = elapsedSec < 1.8 ? 0.0 : Math.min(1.0, (elapsedSec - 1.8) / 1.2) * 0.25;
+    return {
+      camAngle: 11,
+      transitionMode: "CUT",
+      isOverlayHidden: false,
+      pushInProgress,
+    };
+  }
+
+  if (isLastSeat && elapsedSec >= 6.2) {
+    // Last contestant has arrived behind their assigned desk: frame desk close-up
+    return {
+      camAngle: targetCam,
+      transitionMode: "CUT",
+      isOverlayHidden: false,
+      pushInProgress: 0.0,
+    };
+  }
+
+  // Default to CAM 10 (Toàn Cảnh Bục Thí Sinh)
+  return {
+    camAngle: 10,
+    transitionMode: "CUT",
+    isOverlayHidden: false,
+    pushInProgress: 0.0,
+  };
+}
+
+/**
  * Auto-camera logic for Olympia 3D Broadcast Studio.
  * Computes camera angles, cuts/morphs, dolly pushes, and overlay suppression based on round state.
  */
@@ -134,54 +192,9 @@ export function useOlympiaCameraState(
     // 1.5. Sequential Contestant Entrance Cinematic Sequence (Broadcast Smooth Directing)
     if (state.entranceState?.active) {
       const currentSeat = Math.min(activeCount - 1, Math.max(0, state.entranceState.currentSeatIdx ?? 0));
-      const targetCam = getCameraForSeat(currentSeat, activeCount);
       const seatStart = state.entranceState.seatStartedAt || state.entranceState.startedAt || getNow();
       const elapsedSec = Math.max(0, (getNow() - seatStart) / 1000);
-      const isFirstSeat = currentSeat === 0;
-      const isLastSeat = currentSeat >= activeCount - 1;
-
-      // Broadcast Choreography:
-      // For Contestant 0 (first contestant):
-      // - 0.0s -> 3.8s: CAM 11 (MCU direct greeting on center landing, with push zoom 0.25 during pose 1.8s - 3.0s)
-      // - >= 3.8s: CAM 10 (Wide podiums view)
-      // For Contestant N > 0:
-      // - 0.0s -> 1.8s (held for 2.0s total since previous contestant's 3.8s): CAM 10 (Wide view while previous contestant settles and new contestant descends upper stairs)
-      // - 1.8s -> 3.8s: CAM 11 (MCU direct greeting on center landing, with push zoom 0.25 during pose)
-      // - >= 3.8s:
-      //     If !isLastSeat: CAM 10 (continues wide view until next contestant reaches landing)
-      //     If isLastSeat: CAM 10 from 3.8s -> 6.2s, then targetCam (desk close-up) from 6.2s -> 6.8s
-      const isCam11Phase = isFirstSeat
-        ? elapsedSec < 3.8
-        : elapsedSec >= 1.8 && elapsedSec < 3.8;
-
-      if (isCam11Phase) {
-        // Optical zoom push (0.25) during pose greeting on center landing (1.8s -> 3.0s)
-        const pushInProgress = elapsedSec < 1.8 ? 0.0 : Math.min(1.0, (elapsedSec - 1.8) / 1.2) * 0.25;
-        return {
-          camAngle: 11,
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress,
-        };
-      }
-
-      if (isLastSeat && elapsedSec >= 6.2) {
-        // Last contestant has arrived behind their assigned desk: frame desk close-up
-        return {
-          camAngle: targetCam,
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: 0.0,
-        };
-      }
-
-      // Default to CAM 10 (Toàn Cảnh Bục Thí Sinh)
-      return {
-        camAngle: 10,
-        transitionMode: "CUT",
-        isOverlayHidden: false,
-        pushInProgress: 0.0,
-      };
+      return evaluateEntranceCameraState(currentSeat, activeCount, elapsedSec);
     }
     const round = state.currentRound;
 

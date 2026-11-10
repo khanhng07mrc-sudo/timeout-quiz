@@ -2315,6 +2315,43 @@ test("Score Summary (R7): strictly blocked mid-round, allowed at end-of-round, m
   assert.equal(canStartScoreSummary(g.state), true, "Allowed once final Tăng Tốc Q4 is graded");
 });
 
+test("Intro standby lifecycle: entrance completion preserves introStandby until Host manually starts Khởi Động", () => {
+  const g = game("O26", ["khoiDong", "vcnv", "tangToc", "veDich"], 4, { seatCount: 4 });
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  g.joinSeat("TS3", "k3");
+  g.joinSeat("TS4", "k4");
+
+  act(g, "game:start", {}, 1000);
+  assert.equal(g.state.introStandby, true, "game:start initializes introStandby to true");
+  assert.ok(g.state.introTimer, "introTimer active");
+  assert.equal(Boolean(g.state.khoiDong?.started), false, "Khởi Động must NOT start prematurely");
+
+  // Entrance starts at t=2000
+  act(g, "entrance:start", {}, 2000);
+  assert.equal(g.state.introStandby, true, "introStandby stays true during entrance");
+  assert.ok(g.state.entranceState?.active, "entrance active");
+
+  // Advance time through each contestant entrance:
+  // TS 1 (2000) -> TS 2 (6000) -> TS 3 (10000) -> TS 4 (14000) -> Completion (14000 + 6800 = 20800ms)
+  g.tick(6000);
+  g.tick(10000);
+  g.tick(14000);
+  g.tick(20800);
+  assert.equal(g.state.entranceCompleted, true, "All contestants arrived");
+  assert.equal(g.state.entranceState, null, "Entrance no longer active");
+  assert.equal(g.state.introStandby, true, "introStandby remains true waiting for Host decision");
+  assert.equal(Boolean(g.state.khoiDong?.started), false, "Khởi Động remains unstarted");
+  assert.equal(g.state.studioCamera, 3, "Camera targets CAM 3 (trực diện 2 MC) during standby");
+
+  // Host clicks [⭐ Vào Vòng KHỞI ĐỘNG]
+  act(g, "round:force", { round: "khoiDong" }, 30000);
+  assert.equal(g.state.introStandby, false, "introStandby cleared on round:force");
+  assert.equal(g.state.introTimer, null, "introTimer cleared on round start");
+  assert.equal(g.state.currentRound, "khoiDong", "Khởi Động active");
+});
+
+
 
 
 

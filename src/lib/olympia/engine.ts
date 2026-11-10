@@ -474,12 +474,12 @@ export class OlympiaGame {
       return true;
     }
 
-    // Auto-advance contestant entrance (staggered 4.8s step per contestant, 6.8s total walk each)
+    // Auto-advance contestant entrance (staggered 4.0s step per contestant, 6.8s total walk each)
     if (st.entranceState && st.entranceState.active) {
       const elapsedForSeat = now - st.entranceState.seatStartedAt;
       const activeCount = Math.max(1, st.seats.length);
       const isLast = st.entranceState.currentSeatIdx >= activeCount - 1;
-      const advanceThreshold = isLast ? 6800 : 4800;
+      const advanceThreshold = isLast ? 6800 : 4000;
       if (elapsedForSeat >= advanceThreshold) {
         if (!isLast) {
           const nextIdx = st.entranceState.currentSeatIdx + 1;
@@ -3409,14 +3409,15 @@ export class OlympiaGame {
         const kd = st.khoiDong;
         if (!kd || kd.phase !== "question") return fail("Chuông chưa mở");
         if (kd.segments[kd.segIdx].kind === "solo") return fail("Khởi động riêng không có chuông");
-        if (kd.buzzUnlockAt && now + 350 >= kd.buzzUnlockAt && !kd.buzzOpen && kd.buzzedSeat == null) {
+        if (kd.lockedSeats.includes(seatId)) return fail("Bạn bị khóa chuông câu này");
+        if (kd.buzzedSeat != null) return fail("Đã có người bấm");
+        if (kd.buzzUnlockAt && now + 350 >= kd.buzzUnlockAt && !kd.buzzOpen) {
           kd.buzzOpen = true;
           kd.buzzUnlockAt = undefined;
         }
         if (!kd.buzzOpen) return fail("Chuông chưa mở");
-        if (kd.lockedSeats.includes(seatId)) return fail("Bạn bị khóa chuông câu này");
-        if (kd.buzzedSeat != null) return fail("Đã có người bấm");
         kd.buzzedSeat = seatId;
+        kd.noBuzzWrongUnlockAt = undefined;
         kd.buzzOpen = false;
         pauseTimer(kd.timer, now);
         this.cue("1_KhoiDong/bell_ring");

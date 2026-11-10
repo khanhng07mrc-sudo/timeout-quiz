@@ -662,6 +662,29 @@ type SN = () => number;
 function SandboxKhoiDong({ state, act, serverNow }: { state: OlympiaState; act: Act; serverNow: SN }) {
   const kd = state.khoiDong!;
   const seg = kd.segments[kd.segIdx];
+  const isSolo = seg?.kind === "solo";
+
+  const [, setWrongLockTick] = useState(0);
+  useEffect(() => {
+    const unlockAt = kd.noBuzzWrongUnlockAt;
+    if (!unlockAt) return;
+    const now = serverNow ? serverNow() : Date.now();
+    if (now >= unlockAt) return;
+    const interval = setInterval(() => {
+      setWrongLockTick((t) => t + 1);
+      const cur = serverNow ? serverNow() : Date.now();
+      if (cur >= unlockAt) clearInterval(interval);
+    }, 100);
+    return () => clearInterval(interval);
+  }, [kd.noBuzzWrongUnlockAt, serverNow]);
+
+  const now = serverNow ? serverNow() : Date.now();
+  const wrongUnlockRemMs =
+    !isSolo && kd.buzzedSeat == null && kd.noBuzzWrongUnlockAt
+      ? Math.max(0, kd.noBuzzWrongUnlockAt - now)
+      : 0;
+  const isWrongLocked = wrongUnlockRemMs > 0;
+
   return (
     <div className="space-y-2 rounded-xl bg-white/5 p-3">
       <div className="flex items-center justify-between text-xs text-sky-300 flex-wrap gap-2">
@@ -704,8 +727,24 @@ function SandboxKhoiDong({ state, act, serverNow }: { state: OlympiaState; act: 
         <button className={btnOk} onClick={() => act("kd:correct")}>
           ✔ Đúng
         </button>
-        <button className={btnBad} onClick={() => act("kd:wrong")}>
-          ✘ Sai
+        <button
+          className={`${btnBad} flex items-center justify-center gap-1 ${
+            isWrongLocked ? "opacity-40 cursor-not-allowed pointer-events-none" : ""
+          }`}
+          onClick={() => act("kd:wrong")}
+          disabled={isWrongLocked}
+          title={
+            isWrongLocked
+              ? `Khóa chấm sai trong ${(wrongUnlockRemMs / 1000).toFixed(1)}s đầu khi chưa có thí sinh bấm chuông`
+              : "Chấm sai cho thí sinh"
+          }
+        >
+          <span>✘ Sai</span>
+          {isWrongLocked && (
+            <span className="text-[10px] px-1 py-0.2 rounded bg-black/40 text-amber-300 font-mono font-bold animate-pulse">
+              {(wrongUnlockRemMs / 1000).toFixed(1)}s
+            </span>
+          )}
         </button>
         <button className={btn} onClick={() => act("kd:skip")}>
           Bỏ qua

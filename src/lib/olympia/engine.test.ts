@@ -1476,7 +1476,7 @@ test("sequential contestant entrance: start, manual next, gesture assignment, an
   assert.equal(g.state.cue?.kind, "stop");
 });
 
-test("staggered pipelined contestant entrance: auto-advances at 4800ms per contestant (stairs to floor) and completes 6800ms after last contestant", () => {
+test("staggered pipelined contestant entrance: auto-advances at 4000ms per contestant (stairs to floor) and completes 6800ms after last contestant", () => {
   const g = game("O21", ["khoiDong"], 4, { seatCount: 4 });
   g.joinSeat("TS1", "k1");
   g.joinSeat("TS2", "k2");
@@ -1487,32 +1487,32 @@ test("staggered pipelined contestant entrance: auto-advances at 4800ms per conte
   assert.equal(g.state.entranceState!.currentSeatIdx, 0);
   assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000]);
 
-  // Before 4.8s: TS 1 is descending stairs
-  g.tick(14799);
+  // Before 4.0s: TS 1 is descending stairs
+  g.tick(13999);
   assert.equal(g.state.entranceState!.currentSeatIdx, 0);
 
-  // At 4.8s (14800): TS 1 steps onto floor -> TS 2 emerges from door!
-  g.tick(14800);
+  // At 4.0s (14000): TS 1 steps onto floor -> TS 2 emerges from door!
+  g.tick(14000);
   assert.equal(g.state.entranceState!.currentSeatIdx, 1);
-  assert.equal(g.state.entranceState!.seatStartedAt, 14800);
-  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000, 14800]);
+  assert.equal(g.state.entranceState!.seatStartedAt, 14000);
+  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000, 14000]);
 
-  // At 9.6s (19600): TS 3 emerges from door
-  g.tick(19600);
+  // At 8.0s (18000): TS 3 emerges from door
+  g.tick(18000);
   assert.equal(g.state.entranceState!.currentSeatIdx, 2);
-  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000, 14800, 19600]);
+  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000, 14000, 18000]);
 
-  // At 14.4s (24400): TS 4 emerges from door (last contestant)
-  g.tick(24400);
+  // At 12.0s (22000): TS 4 emerges from door (last contestant)
+  g.tick(22000);
   assert.equal(g.state.entranceState!.currentSeatIdx, 3);
-  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000, 14800, 19600, 24400]);
+  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000, 14000, 18000, 22000]);
 
-  // Before 6.8s of TS 4 (24400 + 6799 = 31199): Entrance is still active
-  g.tick(31199);
+  // Before 6.8s of TS 4 (22000 + 6799 = 28799): Entrance is still active
+  g.tick(28799);
   assert.ok(g.state.entranceState != null);
 
-  // At 6.8s of TS 4 (24400 + 6800 = 31200): All 4 contestants have reached desks!
-  g.tick(31200);
+  // At 6.8s of TS 4 (22000 + 6800 = 28800): All 4 contestants have reached desks!
+  g.tick(28800);
   assert.equal(g.state.entranceState, null);
   assert.equal(g.state.entranceCompleted, true);
   assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
@@ -1556,6 +1556,7 @@ test("host wrong button lock policy: locked for first 3s (O22) or 5s (O23+) when
   // BUT if a contestant buzzes at t = 7700 (before 5s lock expires, e.g. unlock is at 8000, skew tolerance lets buzz at 7700)
   g26.playerBuzz(0, 7700);
   assert.equal(g26.state.khoiDong!.buzzedSeat, 0);
+  assert.equal(g26.state.khoiDong!.noBuzzWrongUnlockAt, undefined);
 
   // Once buzzed, host can grade wrong IMMEDIATELY without waiting!
   const resBuzzedWrong = g26.hostAction({ type: "kd:wrong" }, 7750);

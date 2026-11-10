@@ -106041,7 +106041,7 @@ var OlympiaGame = class _OlympiaGame {
       const elapsedForSeat = now - st.entranceState.seatStartedAt;
       const activeCount = Math.max(1, st.seats.length);
       const isLast = st.entranceState.currentSeatIdx >= activeCount - 1;
-      const advanceThreshold = isLast ? 6800 : 4800;
+      const advanceThreshold = isLast ? 6800 : 4e3;
       if (elapsedForSeat >= advanceThreshold) {
         if (!isLast) {
           const nextIdx = st.entranceState.currentSeatIdx + 1;
@@ -108795,14 +108795,15 @@ var OlympiaGame = class _OlympiaGame {
         const kd = st.khoiDong;
         if (!kd || kd.phase !== "question") return fail("Chu\xF4ng ch\u01B0a m\u1EDF");
         if (kd.segments[kd.segIdx].kind === "solo") return fail("Kh\u1EDFi \u0111\u1ED9ng ri\xEAng kh\xF4ng c\xF3 chu\xF4ng");
-        if (kd.buzzUnlockAt && now + 350 >= kd.buzzUnlockAt && !kd.buzzOpen && kd.buzzedSeat == null) {
+        if (kd.lockedSeats.includes(seatId)) return fail("B\u1EA1n b\u1ECB kh\xF3a chu\xF4ng c\xE2u n\xE0y");
+        if (kd.buzzedSeat != null) return fail("\u0110\xE3 c\xF3 ng\u01B0\u1EDDi b\u1EA5m");
+        if (kd.buzzUnlockAt && now + 350 >= kd.buzzUnlockAt && !kd.buzzOpen) {
           kd.buzzOpen = true;
           kd.buzzUnlockAt = void 0;
         }
         if (!kd.buzzOpen) return fail("Chu\xF4ng ch\u01B0a m\u1EDF");
-        if (kd.lockedSeats.includes(seatId)) return fail("B\u1EA1n b\u1ECB kh\xF3a chu\xF4ng c\xE2u n\xE0y");
-        if (kd.buzzedSeat != null) return fail("\u0110\xE3 c\xF3 ng\u01B0\u1EDDi b\u1EA5m");
         kd.buzzedSeat = seatId;
+        kd.noBuzzWrongUnlockAt = void 0;
         kd.buzzOpen = false;
         pauseTimer(kd.timer, now);
         this.cue("1_KhoiDong/bell_ring");

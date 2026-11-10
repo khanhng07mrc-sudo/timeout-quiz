@@ -3167,19 +3167,27 @@ function SingleContestantEntranceWalkingFigure({
     const deskY = targetCfg ? targetCfg.pos[1] : 0.22;
     const deskZ = targetCfg ? targetCfg.pos[2] - Math.cos(deskRotY) * 0.42 : -3.5;
 
-    // Outer aisle behind podium desk (R = 7.35m from (0, -0.5m)):
+    // Outer aisle behind podium desk (R = 7.75m from (0, -0.5m)):
     // Podiums are placed along the arc centered at (0, -0.5m)
-    const relX = targetCfg.pos[0];
-    const relZ = targetCfg.pos[2] - (-0.5);
-    const phi = Math.atan2(-relZ, -relX); // angle in radians
+    const relX = targetCfg ? targetCfg.pos[0] : -6.0;
+    const relZ = targetCfg ? targetCfg.pos[2] - (-0.5) : -2.5;
+    const targetPhi = Math.atan2(-relZ, -relX); // target podium polar angle
 
-    const aisleRadius = 7.35;
-    const aisleX = -aisleRadius * Math.cos(phi);
-    const aisleZ = -0.5 - aisleRadius * Math.sin(phi);
+    // Rear corridor radius (between podium backs at R=7.02m and Science Wall at R=8.60m)
+    const aisleRadius = 7.75;
 
-    // Midway waypoint along dais floor towards outer aisle (sweeps wide to avoid clipping podium front kiosk):
-    const midX = aisleX * 0.52;
-    const midZ = THREE.MathUtils.lerp(6.20, aisleZ, 0.42);
+    // Outer left corridor entry point (phi = 0.20 rad, well outside Podium 0 at phi = 0.38 rad)
+    const entryPhi = 0.20;
+    const entryAisleX = -aisleRadius * Math.cos(entryPhi); // -7.60m
+    const entryAisleZ = -0.5 - aisleRadius * Math.sin(entryPhi); // -2.04m
+
+    // Aisle waypoint directly behind the contestant's assigned desk
+    const targetAisleX = -aisleRadius * Math.cos(targetPhi);
+    const targetAisleZ = -0.5 - aisleRadius * Math.sin(targetPhi);
+
+    // Smooth wide sweep waypoint from bottom of stairs across dais floor towards left corridor mouth
+    const daisSweepX = -5.20;
+    const daisSweepZ = 2.50;
 
     // Door side selection for contestants (alternating or seat-based):
     // TS 1 (seat 0) & TS 3 (seat 2): emerge from Door Left (X = +1.15m, Z = 12.85m)
@@ -3257,30 +3265,40 @@ function SingleContestantEntranceWalkingFigure({
       curZ = THREE.MathUtils.lerp(10.20, 6.20, p);
       curY = getGrandstandStairY(curZ);
       curRotY = Math.PI;
-    } else if (t < 5.6) {
-      // Phase 5A (4.8 -> 5.6s): Curves outward across dais towards rear aisle behind podium arc (0.8s)
-      // Follows quadratic curve to avoid cutting across any desk front/body
+    } else if (t < 5.4) {
+      // Phase 5A (4.8 -> 5.4s): Sweeps wide outward across dais to the outer left corridor entrance (0.6s)
       g.visible = true;
-      const p = (t - 4.8) / 0.8;
+      const p = (t - 4.8) / 0.6;
       const easeP = p * p * (3 - 2 * p);
       const u = 1 - easeP;
-      curX = u * u * 0 + 2 * u * easeP * midX + easeP * easeP * aisleX;
+      curX = u * u * 0 + 2 * u * easeP * daisSweepX + easeP * easeP * entryAisleX;
       curY = 0.22;
-      curZ = u * u * 6.20 + 2 * u * easeP * midZ + easeP * easeP * aisleZ;
-      const dx = 2 * u * (midX - 0) + 2 * easeP * (aisleX - midX);
-      const dz = 2 * u * (midZ - 6.20) + 2 * easeP * (aisleZ - midZ);
-      curRotY = Math.atan2(-dx, -dz);
-    } else if (t < 6.3) {
-      // Phase 5B (5.6 -> 6.3s): Steps smoothly along rear corridor and turns into standing spot behind desk (0.7s)
+      curZ = u * u * 6.20 + 2 * u * easeP * daisSweepZ + easeP * easeP * entryAisleZ;
+      const dx = 2 * u * (daisSweepX - 0) + 2 * easeP * (entryAisleX - daisSweepX);
+      const dz = 2 * u * (daisSweepZ - 6.20) + 2 * easeP * (entryAisleZ - daisSweepZ);
+      curRotY = Math.atan2(dx, dz);
+    } else if (t < 6.1) {
+      // Phase 5B (5.4 -> 6.1s): Walks along the rear corridor arc behind all podiums to target desk (0.7s)
       g.visible = true;
-      const p = (t - 5.6) / 0.7;
+      const p = (t - 5.4) / 0.7;
       const easeP = p * p * (3 - 2 * p);
-      curX = THREE.MathUtils.lerp(aisleX, deskX, easeP);
+      const curPhi = THREE.MathUtils.lerp(entryPhi, targetPhi, easeP);
+      curX = -aisleRadius * Math.cos(curPhi);
+      curY = 0.22;
+      curZ = -0.5 - aisleRadius * Math.sin(curPhi);
+      // Tangent heading along rear corridor arc
+      curRotY = Math.PI - curPhi;
+    } else if (t < 6.4) {
+      // Phase 5C (6.1 -> 6.4s): Steps forward radially from rear corridor into desk standing spot (0.3s)
+      g.visible = true;
+      const p = (t - 6.1) / 0.3;
+      const easeP = p * p * (3 - 2 * p);
+      curX = THREE.MathUtils.lerp(targetAisleX, deskX, easeP);
       curY = deskY;
-      curZ = THREE.MathUtils.lerp(aisleZ, deskZ, easeP);
-      curRotY = THREE.MathUtils.lerp(Math.PI / 2 - phi + 0.3, deskRotY, easeP);
+      curZ = THREE.MathUtils.lerp(targetAisleZ, deskZ, easeP);
+      curRotY = THREE.MathUtils.lerp(Math.PI - targetPhi, deskRotY, easeP);
     } else {
-      // Phase 6 (6.3 -> 6.8s): Arrived and standing proudly behind desk with desk greeting bow
+      // Phase 6 (6.4 -> 6.8s): Arrived and standing proudly behind desk with desk greeting bow (0.4s)
       g.visible = true;
       curX = deskX;
       curY = deskY;
@@ -3288,7 +3306,7 @@ function SingleContestantEntranceWalkingFigure({
       curRotY = deskRotY;
       walkingNow = false;
       curGesture = "desk_bow";
-      curGestureProg = Math.max(0, Math.min(1.0, (t - 6.3) / 0.5));
+      curGestureProg = Math.max(0, Math.min(1.0, (t - 6.4) / 0.4));
     }
 
     if (walkingNow !== isWalking) {
@@ -3351,7 +3369,7 @@ export function ContestantEntranceWalkingFigures({
       startTimes[i] ??
       (i === currentSeat
         ? entrance.seatStartedAt || entrance.startedAt
-        : (entrance.startedAt || now) + i * 4800);
+        : (entrance.startedAt || now) + i * 4000);
 
     const elapsed = (now - seatStart) / 1000;
     if (elapsed >= 0 && elapsed < 6.8) {
@@ -4858,28 +4876,7 @@ export function Podiums({
   const currentEntranceSeatStartedAt =
     state?.entranceState?.seatStartedAt ?? state?.entranceState?.startedAt ?? null;
 
-  // Early Podium Scoreboard Transition (R5):
-  // Switch the active walking contestant's podium LED screen from "logo" to "name_school" at t = 5.2s
-  // right as they step off the bottom stair and fan out across the stage floor towards their podium.
-  const [approachingSeatIdx, setApproachingSeatIdx] = useState<number | null>(null);
-  useEffect(() => {
-    if (!isEntranceActive || currentEntranceSeatStartedAt == null) {
-      setApproachingSeatIdx(null);
-      return;
-    }
-    const now = serverNow ? serverNow() : Date.now();
-    const elapsedMs = Math.max(0, now - currentEntranceSeatStartedAt);
-    if (elapsedMs >= 5200) {
-      setApproachingSeatIdx(currentEntranceSeat);
-      return;
-    }
-    setApproachingSeatIdx(null);
-    const delayMs = Math.max(16, 5200 - elapsedMs);
-    const timerId = window.setTimeout(() => {
-      setApproachingSeatIdx(currentEntranceSeat);
-    }, delayMs);
-    return () => window.clearTimeout(timerId);
-  }, [isEntranceActive, currentEntranceSeat, currentEntranceSeatStartedAt, serverNow]);
+
 
   const isVeDich = state?.currentRound === "veDich" || state?.roundsPlan?.[state?.roundIdx ?? 0] === "veDich";
   const vd = state?.veDich;
@@ -4961,7 +4958,7 @@ export function Podiums({
             state.entranceState.seatStartTimes?.[seatIdx] ??
             (seatIdx === currentEntranceSeat
               ? currentEntranceSeatStartedAt || 0
-              : (state.entranceState.startedAt || 0) + seatIdx * 4800)
+              : (state.entranceState.startedAt || 0) + seatIdx * 4000)
           );
         };
         const now = serverNow ? serverNow() : Date.now();
@@ -4979,10 +4976,9 @@ export function Podiums({
         } else if (hasEntranceCompleted) {
           screenMode = "name_school";
         } else if (isEntranceActive) {
-          const isCurrentApproaching =
-            cfg.seatId === currentEntranceSeat && approachingSeatIdx === currentEntranceSeat;
-          screenMode =
-            hasFinishedEntrance || isCurrentApproaching ? "name_school" : "logo";
+          // Early Podium Scoreboard Transition (5200ms / 5.2s):
+          const isApproachingOrArrived = thisSeatStart > 0 && thisSeatElapsed >= 5.2; // 5200ms
+          screenMode = hasFinishedEntrance || isApproachingOrArrived ? "name_school" : "logo";
         } else {
           screenMode = "logo";
         }

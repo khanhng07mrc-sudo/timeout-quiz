@@ -47,6 +47,8 @@ echo "  -> Đã đồng bộ mã nguồn về commit: $CURRENT_COMMIT ($COMMIT_M
 
 # Dọn sạch các file rác phát sinh nhưng giữ nguyên toàn bộ file biến môi trường và tài nguyên uploads
 git clean -fd -e ".env*" -e "public/uploads*"
+# Xóa sạch cache và standalone bundle để tránh nạp mã hoặc chunk cũ
+rm -rf .next/cache .next/standalone .next/server .next
 
 # 2. Cài đặt dependencies sạch (Có fallback nếu npm ci gặp sai lệch lockfile)
 echo "[2/7] Installing dependencies..."
@@ -63,6 +65,7 @@ npx prisma migrate deploy || npx prisma db push --accept-data-loss || true
 # 4. Biên dịch Next.js và bundled server.js với giới hạn bộ nhớ 2-vCPU an toàn (tránh OOM)
 echo "[4/7] Compiling production build (2-vCPU memory optimized)..."
 export NODE_OPTIONS="--max-old-space-size=2048"
+export GIT_COMMIT="$CURRENT_COMMIT"
 npm run build
 
 # 5. Khởi động lại dịch vụ PM2 với cập nhật biến môi trường (--update-env)
@@ -74,10 +77,10 @@ if ! command -v pm2 >/dev/null 2>&1; then
   fi
 fi
 
-$PM2_BIN restart all --update-env || \
-$PM2_BIN reload ecosystem.config.cjs --update-env || \
-$PM2_BIN restart quizorra --update-env || \
+# Loại bỏ tiến trình cũ có thể trùng lặp port 3000 (tránh va chạm quizorra vs timeout-quiz)
+$PM2_BIN delete quizorra 2>/dev/null || true
 $PM2_BIN restart timeout-quiz --update-env || \
+$PM2_BIN reload ecosystem.config.cjs --update-env || \
 $PM2_BIN start ecosystem.config.cjs
 
 $PM2_BIN save
@@ -107,6 +110,13 @@ echo "[7/7] Verifying public endpoint (quizorra.ddns.net)..."
 if command -v curl >/dev/null 2>&1; then
   PUBLIC_STATUS=$(curl -s -k -o /dev/null -w "%{http_code}" https://quizorra.ddns.net/api/health 2>/dev/null || true)
   echo "  -> Public status: HTTP $PUBLIC_STATUS"
+
+  # Kiểm tra xác thực commit đang chạy trên public endpoint
+  HEALTH_JSON=$(curl -s -k https://quizorra.ddns.net/api/health 2>/dev/null || true)
+  DEPLOYED_COMMIT=$(node -e "try { console.log(JSON.parse(process.argv[1]).commit || ''); } catch(e) { console.log(''); }" "$HEALTH_JSON")
+  if [ -n "$DEPLOYED_COMMIT" ] && [ "$DEPLOYED_COMMIT" != "HEAD" ]; then
+    echo "  -> Deployed commit hash: $DEPLOYED_COMMIT"
+  fi
 fi
 
 echo "=========================================================="

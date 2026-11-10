@@ -1083,6 +1083,7 @@ export function ContestantFigure({
   quality = "HIGH",
   gesture = "none",
   gestureProgress = 0,
+  gestureProgressRef,
 }: {
   seatId: number;
   position?: [number, number, number];
@@ -1090,6 +1091,7 @@ export function ContestantFigure({
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
   gesture?: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow";
   gestureProgress?: number;
+  gestureProgressRef?: React.RefObject<number>;
 }) {
   const style = CONTESTANT_STYLES[seatId % CONTESTANT_STYLES.length];
   const chestRef = useRef<THREE.Group>(null);
@@ -1098,8 +1100,10 @@ export function ContestantFigure({
   const rightLegRef = useRef<THREE.Group>(null);
   const leftArmRef = useRef<THREE.Group>(null);
   const leftForearmRef = useRef<THREE.Group>(null);
+  const leftWristRef = useRef<THREE.Group>(null);
   const rightArmRef = useRef<THREE.Group>(null);
   const rightForearmRef = useRef<THREE.Group>(null);
+  const rightWristRef = useRef<THREE.Group>(null);
   const skinMat = useMemo(() => createWarmPeachSkinMaterial(style.skinTone), [style.skinTone]);
   const hairMat = useMemo(() => createHairMaterial(style.hairColor), [style.hairColor]);
   const contestantTorsoGeom = useMemo(() => createProceduralTorsoGeometry("contestant"), []);
@@ -1108,46 +1112,55 @@ export function ContestantFigure({
   useFrame(({ clock }) => {
     if (quality === "LIGHT") return;
     const t = clock.getElapsedTime();
+    const effProgress = gestureProgressRef?.current !== undefined ? gestureProgressRef.current : gestureProgress;
+
     if (isWalking) {
       const stride = Math.sin(t * 8.0) * 0.35;
       const armStride = Math.sin(t * 8.0) * 0.25;
       if (leftLegRef.current) { leftLegRef.current.rotation.x = stride; leftLegRef.current.rotation.z = 0; }
       if (rightLegRef.current) { rightLegRef.current.rotation.x = -stride; rightLegRef.current.rotation.z = 0; }
       if (leftArmRef.current) { leftArmRef.current.rotation.x = -armStride; leftArmRef.current.rotation.y = 0; leftArmRef.current.rotation.z = -0.04; }
-      if (leftForearmRef.current) { leftForearmRef.current.rotation.x = -0.10; leftForearmRef.current.rotation.y = 0; leftForearmRef.current.rotation.z = 0; }
+      if (leftForearmRef.current) { leftForearmRef.current.rotation.x = -0.22; leftForearmRef.current.rotation.y = 0; leftForearmRef.current.rotation.z = 0; }
+      if (leftWristRef.current) { leftWristRef.current.rotation.set(0.06, 0, -0.02); }
       if (rightArmRef.current) { rightArmRef.current.rotation.x = armStride; rightArmRef.current.rotation.y = 0; rightArmRef.current.rotation.z = 0.04; }
-      if (rightForearmRef.current) { rightForearmRef.current.rotation.x = -0.10; rightForearmRef.current.rotation.y = 0; rightForearmRef.current.rotation.z = 0; }
+      if (rightForearmRef.current) { rightForearmRef.current.rotation.x = -0.22; rightForearmRef.current.rotation.y = 0; rightForearmRef.current.rotation.z = 0; }
+      if (rightWristRef.current) { rightWristRef.current.rotation.set(0.06, 0, 0.02); }
       if (chestRef.current) chestRef.current.rotation.x = 0;
       if (headRef.current) { headRef.current.rotation.x = 0; headRef.current.rotation.y = 0; headRef.current.rotation.z = 0; }
     } else {
-      // Kinematic ease-in and ease-out smoothing buffer (0.35s / ~22% at each end)
+      // Kinematic ease-in and ease-out smoothing buffer using C2 Hermite smootherstep
       // Eliminates sudden popping or stiffness across shoulder, elbow, and wrist joints
       let gestureBlend = 0;
       if (gesture !== "none" && gesture !== "desk_bow") {
-        const p = Math.max(0, Math.min(1.0, gestureProgress));
-        const easeEdge = 0.22; // ~0.35s ease-in and 0.35s ease-out over 1.6s pose
+        const p = Math.max(0, Math.min(1.0, effProgress));
+        const easeEdge = 0.25; // smooth ramp in and out
         if (p < easeEdge) {
           const s = p / easeEdge;
-          gestureBlend = s * s * (3 - 2 * s);
+          gestureBlend = s * s * s * (s * (s * 6 - 15) + 10);
         } else if (p > 1.0 - easeEdge) {
           const s = (1.0 - p) / easeEdge;
-          gestureBlend = s * s * (3 - 2 * s);
+          gestureBlend = s * s * s * (s * (s * 6 - 15) + 10);
         } else {
           gestureBlend = 1.0;
         }
       } else if (gesture === "desk_bow") {
-        const p = Math.max(0, Math.min(1.0, gestureProgress));
-        gestureBlend = Math.sin(p * Math.PI);
+        const p = Math.max(0, Math.min(1.0, effProgress));
+        const s = Math.sin(p * Math.PI);
+        gestureBlend = s * s * (3 - 2 * s);
       }
 
       if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
       if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
 
-      // 1. Natural idle posture baseline
-      const idleLeftArm = { x: 0.02, y: 0, z: -0.04 };
-      const idleLeftForearm = { x: -0.08, y: 0, z: 0 };
-      const idleRightArm = { x: 0.02, y: 0, z: 0.04 };
-      const idleRightForearm = { x: -0.08, y: 0, z: 0 };
+      // 1. Natural idle posture baseline (Relaxed physiological resting curves: elbow ~20 deg flexed, subtle breathing sway)
+      const idleSway = Math.sin(t * 1.6 + seatId) * 0.012;
+      const idleBreath = Math.sin(t * 1.8 + seatId * 1.2) * 0.016;
+      const idleLeftArm = { x: -0.06 + idleBreath, y: 0.02, z: -0.08 - idleSway };
+      const idleLeftForearm = { x: -0.34 + idleBreath * 0.4, y: 0, z: 0 };
+      const idleLeftWrist = { x: 0.08, y: 0, z: -0.03 };
+      const idleRightArm = { x: -0.06 + idleBreath, y: -0.02, z: 0.08 + idleSway };
+      const idleRightForearm = { x: -0.34 + idleBreath * 0.4, y: 0, z: 0 };
+      const idleRightWrist = { x: 0.08, y: 0, z: 0.03 };
       const idleHead = {
         x: Math.sin(t * 1.1 + seatId) * 0.005,
         y: Math.cos(t * 0.8 + seatId * 1.4) * 0.008,
@@ -1158,39 +1171,47 @@ export function ContestantFigure({
       // 2. Target signature gesture posture
       let targetLeftArm = { ...idleLeftArm };
       let targetLeftForearm = { ...idleLeftForearm };
+      let targetLeftWrist = { ...idleLeftWrist };
       let targetRightArm = { ...idleRightArm };
       let targetRightForearm = { ...idleRightForearm };
+      let targetRightWrist = { ...idleRightWrist };
       let targetHead = { ...idleHead };
       let targetChest = { ...idleChest };
 
       if (gesture === "wave") {
-        const wave = Math.sin(t * 7.5);
-        targetRightArm = { x: -0.20, y: 0.10, z: 1.85 };
-        targetRightForearm = { x: -0.30, y: 0.10, z: 0.85 + wave * 0.35 };
-        targetLeftArm = { x: 0.04, y: 0, z: -0.06 };
-        targetLeftForearm = { x: -0.06, y: 0, z: 0 };
+        const wave = Math.sin(t * 5.8);
+        const waveLag = Math.sin(t * 5.8 - 0.45);
+        targetRightArm = { x: -0.32, y: 0.12, z: 1.48 };
+        targetRightForearm = { x: -1.28, y: 0.15, z: 0.55 + wave * 0.28 };
+        targetRightWrist = { x: -0.15, y: 0.10, z: 0.20 + waveLag * 0.22 };
+        targetLeftArm = { x: -0.04, y: 0, z: -0.08 };
+        targetLeftForearm = { x: -0.28, y: 0, z: 0 };
         targetHead = { x: -0.02, y: 0.04, z: -0.04 };
         targetChest = { x: -0.02 };
       } else if (gesture === "fist_pump") {
-        const pump = Math.sin(gestureProgress * Math.PI * 4) * 0.12;
+        const pump = Math.sin(effProgress * Math.PI * 4) * 0.12;
         targetRightArm = { x: -0.45, y: -0.15, z: -0.20 };
         targetRightForearm = { x: -1.55 + pump * 0.40, y: -0.30, z: -0.45 };
-        targetLeftArm = { x: 0.04, y: 0, z: -0.06 };
-        targetLeftForearm = { x: -0.06, y: 0, z: 0 };
+        targetRightWrist = { x: 0.12, y: -0.10, z: 0.05 };
+        targetLeftArm = { x: -0.04, y: 0, z: -0.08 };
+        targetLeftForearm = { x: -0.28, y: 0, z: 0 };
         targetHead = { x: -0.06 + pump * 0.1, y: 0, z: 0 };
         targetChest = { x: -0.04 };
       } else if (gesture === "heart") {
         targetRightArm = { x: -0.30, y: -0.20, z: -0.15 };
         targetRightForearm = { x: -1.35, y: -0.55, z: -0.85 };
-        targetLeftArm = { x: 0.04, y: 0, z: -0.06 };
-        targetLeftForearm = { x: -0.06, y: 0, z: 0 };
+        targetRightWrist = { x: 0.18, y: 0.10, z: -0.12 };
+        targetLeftArm = { x: -0.04, y: 0, z: -0.08 };
+        targetLeftForearm = { x: -0.28, y: 0, z: 0 };
         targetHead = { x: 0.08, y: 0, z: 0 };
         targetChest = { x: -0.02 };
       } else if (gesture === "open_arms") {
         targetLeftArm = { x: -0.15, y: 0, z: -0.75 };
-        targetLeftForearm = { x: -0.15, y: 0, z: -0.20 };
+        targetLeftForearm = { x: -0.35, y: 0, z: -0.20 };
+        targetLeftWrist = { x: 0.12, y: 0, z: -0.08 };
         targetRightArm = { x: -0.15, y: 0, z: 0.75 };
-        targetRightForearm = { x: -0.15, y: 0, z: 0.20 };
+        targetRightForearm = { x: -0.35, y: 0, z: 0.20 };
+        targetRightWrist = { x: 0.12, y: 0, z: 0.08 };
         targetHead = { x: -0.04, y: 0, z: 0 };
         targetChest = { x: -0.04 };
       } else if (gesture === "desk_bow") {
@@ -1199,11 +1220,13 @@ export function ContestantFigure({
         targetLeftForearm = { x: -0.40, y: 0, z: 0 };
         targetRightArm = { x: -0.35, y: 0, z: 0.08 };
         targetRightForearm = { x: -0.40, y: 0, z: 0 };
+        targetLeftWrist = { x: 0.10, y: 0, z: 0 };
+        targetRightWrist = { x: 0.10, y: 0, z: 0 };
         targetHead = { x: bowAngle * 0.85, y: 0, z: 0 };
         targetChest = { x: bowAngle * 0.55 };
       }
 
-      // 3. Smooth kinematic interpolation with 0.35s ease-in / ease-out buffer
+      // 3. Smooth kinematic interpolation with C2 smootherstep buffer
       if (leftArmRef.current) {
         leftArmRef.current.rotation.x = THREE.MathUtils.lerp(idleLeftArm.x, targetLeftArm.x, gestureBlend);
         leftArmRef.current.rotation.y = THREE.MathUtils.lerp(idleLeftArm.y, targetLeftArm.y, gestureBlend);
@@ -1214,6 +1237,11 @@ export function ContestantFigure({
         leftForearmRef.current.rotation.y = THREE.MathUtils.lerp(idleLeftForearm.y, targetLeftForearm.y, gestureBlend);
         leftForearmRef.current.rotation.z = THREE.MathUtils.lerp(idleLeftForearm.z, targetLeftForearm.z, gestureBlend);
       }
+      if (leftWristRef.current) {
+        leftWristRef.current.rotation.x = THREE.MathUtils.lerp(idleLeftWrist.x, targetLeftWrist.x, gestureBlend);
+        leftWristRef.current.rotation.y = THREE.MathUtils.lerp(idleLeftWrist.y, targetLeftWrist.y, gestureBlend);
+        leftWristRef.current.rotation.z = THREE.MathUtils.lerp(idleLeftWrist.z, targetLeftWrist.z, gestureBlend);
+      }
       if (rightArmRef.current) {
         rightArmRef.current.rotation.x = THREE.MathUtils.lerp(idleRightArm.x, targetRightArm.x, gestureBlend);
         rightArmRef.current.rotation.y = THREE.MathUtils.lerp(idleRightArm.y, targetRightArm.y, gestureBlend);
@@ -1223,6 +1251,11 @@ export function ContestantFigure({
         rightForearmRef.current.rotation.x = THREE.MathUtils.lerp(idleRightForearm.x, targetRightForearm.x, gestureBlend);
         rightForearmRef.current.rotation.y = THREE.MathUtils.lerp(idleRightForearm.y, targetRightForearm.y, gestureBlend);
         rightForearmRef.current.rotation.z = THREE.MathUtils.lerp(idleRightForearm.z, targetRightForearm.z, gestureBlend);
+      }
+      if (rightWristRef.current) {
+        rightWristRef.current.rotation.x = THREE.MathUtils.lerp(idleRightWrist.x, targetRightWrist.x, gestureBlend);
+        rightWristRef.current.rotation.y = THREE.MathUtils.lerp(idleRightWrist.y, targetRightWrist.y, gestureBlend);
+        rightWristRef.current.rotation.z = THREE.MathUtils.lerp(idleRightWrist.z, targetRightWrist.z, gestureBlend);
       }
       if (headRef.current) {
         headRef.current.rotation.x = THREE.MathUtils.lerp(idleHead.x, targetHead.x, gestureBlend);
@@ -1380,14 +1413,16 @@ export function ContestantFigure({
                 <primitive object={skinMat} attach="material" />
               </mesh>
               {/* Left Hand: Slender Vietnamese hand resting naturally */}
-              <VietnameseHand
-                position={[0, -0.130, 0]}
-                rotation={[0, 0, -0.04]}
-                scale={0.88}
-                skinMat={skinMat}
-                isLeft={true}
-                mode={isWalking ? "hang" : gesture === "desk_bow" ? "rest" : "hang"}
-              />
+              <group ref={leftWristRef} position={[0, -0.130, 0]}>
+                <VietnameseHand
+                  position={[0, 0, 0]}
+                  rotation={[0, 0, -0.04]}
+                  scale={0.88}
+                  skinMat={skinMat}
+                  isLeft={true}
+                  mode={isWalking ? "hang" : gesture === "desk_bow" ? "rest" : "hang"}
+                />
+              </group>
             </group>
           </group>
         </group>
@@ -1421,22 +1456,26 @@ export function ContestantFigure({
                 <primitive object={skinMat} attach="material" />
               </mesh>
               {/* Right Hand: Slender Vietnamese hand */}
-              <VietnameseHand
-                position={[0, -0.130, 0]}
-                rotation={[0, 0, 0.04]}
-                scale={0.88}
-                skinMat={skinMat}
-                isLeft={false}
-                mode={
-                  isWalking
-                    ? "hang"
-                    : gesture === "fist_pump"
-                    ? "fist"
-                    : gesture === "desk_bow" || gesture === "heart"
-                    ? "rest"
-                    : "hang"
-                }
-              />
+              <group ref={rightWristRef} position={[0, -0.130, 0]}>
+                <VietnameseHand
+                  position={[0, 0, 0]}
+                  rotation={[0, 0, 0.04]}
+                  scale={0.88}
+                  skinMat={skinMat}
+                  isLeft={false}
+                  mode={
+                    isWalking
+                      ? "hang"
+                      : gesture === "wave"
+                      ? "card"
+                      : gesture === "fist_pump"
+                      ? "fist"
+                      : gesture === "desk_bow" || gesture === "heart"
+                      ? "rest"
+                      : "hang"
+                  }
+                />
+              </group>
             </group>
           </group>
         </group>
@@ -2040,9 +2079,17 @@ export function McPresenters({
   const nhLeftKneeRef = useRef<THREE.Group>(null);
   const nhRightKneeRef = useRef<THREE.Group>(null);
   const kvLeftArmRef = useRef<THREE.Group>(null);
+  const kvLeftForearmRef = useRef<THREE.Group>(null);
+  const kvLeftWristRef = useRef<THREE.Group>(null);
   const kvRightArmRef = useRef<THREE.Group>(null);
+  const kvRightForearmRef = useRef<THREE.Group>(null);
+  const kvRightWristRef = useRef<THREE.Group>(null);
   const nhLeftArmRef = useRef<THREE.Group>(null);
+  const nhLeftForearmRef = useRef<THREE.Group>(null);
+  const nhLeftWristRef = useRef<THREE.Group>(null);
   const nhRightArmRef = useRef<THREE.Group>(null);
+  const nhRightForearmRef = useRef<THREE.Group>(null);
+  const nhRightWristRef = useRef<THREE.Group>(null);
 
   const kvSkinMat = useMemo(() => createWarmPeachSkinMaterial("#fae5d3"), []);
   const nhSkinMat = useMemo(() => createWarmPeachSkinMaterial("#f2c49c"), []);
@@ -2327,21 +2374,77 @@ export function McPresenters({
       kvLeftArmZ = 0.45 * greetingBell;
     }
 
+    const breatheWave = Math.sin(speechTime * 1.2);
+    const vocalPulse = Math.sin(speechTime * 2.1 + 0.4) * 0.030;
+
+    // Presentation gestures towards Contestants (Stage Right) and LED Screen
+    const gestureCycle = Math.sin(speechTime * 0.42);
+    const isGesturing = !isWalking && !isGreeting && gestureCycle > 0.45;
+    const gestBlend = isGesturing ? Math.min(1.0, (gestureCycle - 0.45) / 0.25) : 0;
+    const smoothGest = gestBlend * gestBlend * (3 - 2 * gestBlend);
+
     if (kvLeftArmRef.current) {
       kvLeftArmRef.current.rotation.x = kvLeftArmX;
+      kvLeftArmRef.current.rotation.y = isGreeting ? 0 : THREE.MathUtils.lerp(0, 0.22, smoothGest);
       kvLeftArmRef.current.rotation.z = kvLeftArmZ;
     }
+    if (kvLeftForearmRef.current) {
+      // Natural resting flex 18-24° (-0.35 rad) with subtle breathing and conversational open-palm
+      const baseElbowX = isWalking ? -0.22 : THREE.MathUtils.lerp(-0.35 + breatheWave * 0.03, -0.52, smoothGest);
+      const baseElbowY = THREE.MathUtils.lerp(-0.04, 0.16, smoothGest);
+      const baseElbowZ = THREE.MathUtils.lerp(0.05, 0.10, smoothGest);
+      kvLeftForearmRef.current.rotation.x = THREE.MathUtils.lerp(baseElbowX, -0.15, isGreeting ? greetingBell : 0);
+      kvLeftForearmRef.current.rotation.y = baseElbowY;
+      kvLeftForearmRef.current.rotation.z = baseElbowZ;
+    }
+    if (kvLeftWristRef.current) {
+      kvLeftWristRef.current.rotation.x = THREE.MathUtils.lerp(0.06 + talkSub * 0.02, 0.14, smoothGest);
+      kvLeftWristRef.current.rotation.z = THREE.MathUtils.lerp(0.04, 0.09, smoothGest);
+    }
+
     if (kvRightArmRef.current) {
       kvRightArmRef.current.rotation.x = kvRightArmX;
       kvRightArmRef.current.rotation.z = kvRightArmZ;
     }
+    if (kvRightForearmRef.current) {
+      kvRightForearmRef.current.rotation.x = -1.25 + breatheWave * 0.025;
+      kvRightForearmRef.current.rotation.y = 0.20 + vocalPulse * 0.02;
+    }
+    if (kvRightWristRef.current) {
+      kvRightWristRef.current.rotation.x = vocalPulse * 0.03;
+      kvRightWristRef.current.rotation.z = breatheWave * 0.015;
+    }
+
     if (nhLeftArmRef.current) {
       nhLeftArmRef.current.rotation.x = nhLeftArmX;
       nhLeftArmRef.current.rotation.z = nhLeftArmZ;
     }
+    if (nhLeftForearmRef.current) {
+      nhLeftForearmRef.current.rotation.x = -1.25 + breatheWave * 0.025;
+      nhLeftForearmRef.current.rotation.y = -0.20 - vocalPulse * 0.02;
+    }
+    if (nhLeftWristRef.current) {
+      nhLeftWristRef.current.rotation.x = vocalPulse * 0.03;
+      nhLeftWristRef.current.rotation.z = -breatheWave * 0.015;
+    }
+
     if (nhRightArmRef.current) {
       nhRightArmRef.current.rotation.x = nhRightArmX;
+      nhRightArmRef.current.rotation.y = isGreeting ? 0 : THREE.MathUtils.lerp(0, -0.20, smoothGest);
       nhRightArmRef.current.rotation.z = nhRightArmZ;
+    }
+    if (nhRightForearmRef.current) {
+      // Natural resting flex 18-24° (-0.36 rad) with subtle breathing and conversational open-palm
+      const baseElbowX = isWalking ? -0.22 : THREE.MathUtils.lerp(-0.36 + breatheWave * 0.03, -0.50, smoothGest);
+      const baseElbowY = THREE.MathUtils.lerp(0.04, -0.15, smoothGest);
+      const baseElbowZ = THREE.MathUtils.lerp(-0.06, -0.10, smoothGest);
+      nhRightForearmRef.current.rotation.x = THREE.MathUtils.lerp(baseElbowX, -0.15, isGreeting ? greetingBell : 0);
+      nhRightForearmRef.current.rotation.y = baseElbowY;
+      nhRightForearmRef.current.rotation.z = baseElbowZ;
+    }
+    if (nhRightWristRef.current) {
+      nhRightWristRef.current.rotation.x = THREE.MathUtils.lerp(0.06 - talkSub * 0.02, 0.14, smoothGest);
+      nhRightWristRef.current.rotation.z = THREE.MathUtils.lerp(-0.05, -0.08, smoothGest);
     }
   });
 
@@ -2551,7 +2654,7 @@ export function McPresenters({
                   <meshStandardMaterial color="#831843" roughness={0.4} />
                 </mesh>
                 {/* Forearm hangs gracefully down with subtle natural curve */}
-                <group rotation={[-0.12, -0.04, 0.05]}>
+                <group ref={kvLeftForearmRef} rotation={[-0.12, -0.04, 0.05]}>
                   <mesh position={[0, -0.07, 0]}>
                     <cylinderGeometry args={[0.026, 0.022, 0.14, 16]} />
                     <meshStandardMaterial color="#831843" roughness={0.4} />
@@ -2561,29 +2664,31 @@ export function McPresenters({
                     <cylinderGeometry args={[0.024, 0.024, 0.016, 16]} />
                     <meshStandardMaterial color="#ffffff" roughness={0.3} />
                   </mesh>
-                  {/* Sculpted Hand - Presenter posture holding Cue Card */}
-                  <VietnameseHand
-                    position={[0, -0.155, 0]}
-                    rotation={[0, 0, 0.04]}
-                    scale={0.88}
-                    skinMat={kvSkinMat}
-                    isLeft={true}
-                    mode="hang"
-                  />
-                  {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC) */}
-                  <group position={[0.012, -0.160, 0.032]} rotation={[0.42, 0.10, -0.16]}>
-                    <mesh>
-                      <boxGeometry args={[0.13, 0.18, 0.004]} />
-                      <meshStandardMaterial color="#0f172a" roughness={0.35} metalness={0.15} />
-                    </mesh>
-                    <mesh position={[0, 0.088, 0.002]}>
-                      <boxGeometry args={[0.128, 0.004, 0.002]} />
-                      <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
-                    </mesh>
-                    <mesh position={[0, -0.005, 0.0025]}>
-                      <boxGeometry args={[0.116, 0.160, 0.001]} />
-                      <meshStandardMaterial color="#f8fafc" roughness={0.6} />
-                    </mesh>
+                  {/* Sculpted Hand & Cue Card wrapped in Wrist Joint */}
+                  <group ref={kvLeftWristRef} position={[0, -0.155, 0]}>
+                    <VietnameseHand
+                      position={[0, 0, 0]}
+                      rotation={[0, 0, 0.04]}
+                      scale={0.88}
+                      skinMat={kvSkinMat}
+                      isLeft={true}
+                      mode="hang"
+                    />
+                    {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC) */}
+                    <group position={[0.012, -0.005, 0.032]} rotation={[0.42, 0.10, -0.16]}>
+                      <mesh>
+                        <boxGeometry args={[0.13, 0.18, 0.004]} />
+                        <meshStandardMaterial color="#0f172a" roughness={0.35} metalness={0.15} />
+                      </mesh>
+                      <mesh position={[0, 0.088, 0.002]}>
+                        <boxGeometry args={[0.128, 0.004, 0.002]} />
+                        <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
+                      </mesh>
+                      <mesh position={[0, -0.005, 0.0025]}>
+                        <boxGeometry args={[0.116, 0.160, 0.001]} />
+                        <meshStandardMaterial color="#f8fafc" roughness={0.6} />
+                      </mesh>
+                    </group>
                   </group>
                 </group>
               </group>
@@ -2612,7 +2717,7 @@ export function McPresenters({
                   <meshStandardMaterial color="#831843" roughness={0.4} />
                 </mesh>
                 {/* Forearm bends forward (-X) and inward to hold mic upright in front of sternum */}
-                <group rotation={[-1.25, 0.20, -0.32]}>
+                <group ref={kvRightForearmRef} rotation={[-1.25, 0.20, -0.32]}>
                   <mesh position={[0, -0.07, 0]}>
                     <cylinderGeometry args={[0.026, 0.022, 0.14, 16]} />
                     <meshStandardMaterial color="#831843" roughness={0.4} />
@@ -2622,29 +2727,31 @@ export function McPresenters({
                     <cylinderGeometry args={[0.024, 0.024, 0.016, 16]} />
                     <meshStandardMaterial color="#ffffff" roughness={0.3} />
                   </mesh>
-                  {/* Sculpted Hand holding Microphone */}
-                  <VietnameseHand
-                    position={[0, -0.155, 0]}
-                    rotation={[-0.10, 0.10, 0]}
-                    scale={0.88}
-                    skinMat={kvSkinMat}
-                    isLeft={false}
-                    mode="mic"
-                  />
-                  {/* Studio Microphone held firmly IN HAND at sternum height */}
-                  <group position={[0, -0.19, 0.015]} rotation={[0.35, 0, 0]}>
-                    <mesh>
-                      <cylinderGeometry args={[0.0065, 0.0045, 0.11, 14]} />
-                      <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
-                    </mesh>
-                    <mesh position={[0, 0.055, 0]}>
-                      <cylinderGeometry args={[0.0075, 0.0075, 0.005, 14]} />
-                      <meshStandardMaterial color="#fcd34d" metalness={0.8} roughness={0.2} />
-                    </mesh>
-                    <mesh position={[0, 0.068, 0]}>
-                      <sphereGeometry args={[0.0115, 16, 16]} />
-                      <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.3} />
-                    </mesh>
+                  {/* Sculpted Hand holding Microphone wrapped in Wrist Joint */}
+                  <group ref={kvRightWristRef} position={[0, -0.155, 0]}>
+                    <VietnameseHand
+                      position={[0, 0, 0]}
+                      rotation={[-0.10, 0.10, 0]}
+                      scale={0.88}
+                      skinMat={kvSkinMat}
+                      isLeft={false}
+                      mode="mic"
+                    />
+                    {/* Studio Microphone held firmly IN HAND at sternum height */}
+                    <group position={[0, -0.035, 0.015]} rotation={[0.35, 0, 0]}>
+                      <mesh>
+                        <cylinderGeometry args={[0.0065, 0.0045, 0.11, 14]} />
+                        <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
+                      </mesh>
+                      <mesh position={[0, 0.055, 0]}>
+                        <cylinderGeometry args={[0.0075, 0.0075, 0.005, 14]} />
+                        <meshStandardMaterial color="#fcd34d" metalness={0.8} roughness={0.2} />
+                      </mesh>
+                      <mesh position={[0, 0.068, 0]}>
+                        <sphereGeometry args={[0.0115, 16, 16]} />
+                        <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.3} />
+                      </mesh>
+                    </group>
                   </group>
                 </group>
               </group>
@@ -2889,7 +2996,7 @@ export function McPresenters({
                   <meshStandardMaterial color="#b88a44" metalness={0.35} roughness={0.42} />
                 </mesh>
                 {/* Forearm bends forward (-X) and inward to hold mic upright in front of sternum */}
-                <group rotation={[-1.25, -0.20, 0.35]}>
+                <group ref={nhLeftForearmRef} rotation={[-1.25, -0.20, 0.35]}>
                   <mesh position={[0, -0.075, 0]}>
                     <cylinderGeometry args={[0.032, 0.026, 0.15, 16]} />
                     <meshStandardMaterial color="#b88a44" metalness={0.35} roughness={0.42} />
@@ -2903,29 +3010,31 @@ export function McPresenters({
                     <cylinderGeometry args={[0.014, 0.014, 0.006, 16]} />
                     <meshStandardMaterial color="#e2e8f0" metalness={0.95} roughness={0.1} />
                   </mesh>
-                  {/* Sculpted Hand holding Microphone */}
-                  <VietnameseHand
-                    position={[0, -0.165, 0]}
-                    rotation={[-0.10, -0.10, 0]}
-                    scale={0.94}
-                    skinMat={nhSkinMat}
-                    isLeft={true}
-                    mode="mic"
-                  />
-                  {/* Studio Microphone held firmly IN HAND at sternum height */}
-                  <group position={[0, -0.20, 0.015]} rotation={[0.35, 0, 0]}>
-                    <mesh>
-                      <cylinderGeometry args={[0.007, 0.005, 0.12, 14]} />
-                      <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
-                    </mesh>
-                    <mesh position={[0, 0.060, 0]}>
-                      <cylinderGeometry args={[0.008, 0.008, 0.005, 14]} />
-                      <meshStandardMaterial color="#e2e8f0" metalness={0.8} roughness={0.2} />
-                    </mesh>
-                    <mesh position={[0, 0.075, 0]}>
-                      <sphereGeometry args={[0.0125, 16, 16]} />
-                      <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.3} />
-                    </mesh>
+                  {/* Sculpted Hand holding Microphone wrapped in Wrist Joint */}
+                  <group ref={nhLeftWristRef} position={[0, -0.165, 0]}>
+                    <VietnameseHand
+                      position={[0, 0, 0]}
+                      rotation={[-0.10, -0.10, 0]}
+                      scale={0.94}
+                      skinMat={nhSkinMat}
+                      isLeft={true}
+                      mode="mic"
+                    />
+                    {/* Studio Microphone held firmly IN HAND at sternum height */}
+                    <group position={[0, -0.035, 0.015]} rotation={[0.35, 0, 0]}>
+                      <mesh>
+                        <cylinderGeometry args={[0.007, 0.005, 0.12, 14]} />
+                        <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
+                      </mesh>
+                      <mesh position={[0, 0.060, 0]}>
+                        <cylinderGeometry args={[0.008, 0.008, 0.005, 14]} />
+                        <meshStandardMaterial color="#e2e8f0" metalness={0.8} roughness={0.2} />
+                      </mesh>
+                      <mesh position={[0, 0.075, 0]}>
+                        <sphereGeometry args={[0.0125, 16, 16]} />
+                        <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.3} />
+                      </mesh>
+                    </group>
                   </group>
                 </group>
               </group>
@@ -2954,7 +3063,7 @@ export function McPresenters({
                   <meshStandardMaterial color="#b88a44" metalness={0.35} roughness={0.42} />
                 </mesh>
                 {/* Forearm hangs naturally down beside trousers */}
-                <group rotation={[-0.10, 0.04, -0.06]}>
+                <group ref={nhRightForearmRef} rotation={[-0.10, 0.04, -0.06]}>
                   <mesh position={[0, -0.075, 0]}>
                     <cylinderGeometry args={[0.032, 0.026, 0.15, 16]} />
                     <meshStandardMaterial color="#b88a44" metalness={0.35} roughness={0.42} />
@@ -2964,29 +3073,31 @@ export function McPresenters({
                     <cylinderGeometry args={[0.028, 0.028, 0.018, 16]} />
                     <meshStandardMaterial color="#ffffff" roughness={0.3} />
                   </mesh>
-                  {/* Sculpted Hand - Relaxed presenter posture holding Cue Card */}
-                  <VietnameseHand
-                    position={[0, -0.165, 0]}
-                    rotation={[0, 0, -0.05]}
-                    scale={0.94}
-                    skinMat={nhSkinMat}
-                    isLeft={false}
-                    mode="hang"
-                  />
-                  {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC) */}
-                  <group position={[-0.012, -0.170, 0.032]} rotation={[0.42, -0.10, 0.16]}>
-                    <mesh>
-                      <boxGeometry args={[0.135, 0.185, 0.004]} />
-                      <meshStandardMaterial color="#0f172a" roughness={0.35} metalness={0.15} />
-                    </mesh>
-                    <mesh position={[0, 0.090, 0.002]}>
-                      <boxGeometry args={[0.132, 0.004, 0.002]} />
-                      <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
-                    </mesh>
-                    <mesh position={[0, -0.005, 0.0025]}>
-                      <boxGeometry args={[0.120, 0.165, 0.001]} />
-                      <meshStandardMaterial color="#f8fafc" roughness={0.6} />
-                    </mesh>
+                  {/* Sculpted Hand & Cue Card wrapped in Wrist Joint */}
+                  <group ref={nhRightWristRef} position={[0, -0.165, 0]}>
+                    <VietnameseHand
+                      position={[0, 0, 0]}
+                      rotation={[0, 0, -0.05]}
+                      scale={0.94}
+                      skinMat={nhSkinMat}
+                      isLeft={false}
+                      mode="hang"
+                    />
+                    {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC) */}
+                    <group position={[-0.012, -0.005, 0.032]} rotation={[0.42, -0.10, 0.16]}>
+                      <mesh>
+                        <boxGeometry args={[0.135, 0.185, 0.004]} />
+                        <meshStandardMaterial color="#0f172a" roughness={0.35} metalness={0.15} />
+                      </mesh>
+                      <mesh position={[0, 0.090, 0.002]}>
+                        <boxGeometry args={[0.132, 0.004, 0.002]} />
+                        <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
+                      </mesh>
+                      <mesh position={[0, -0.005, 0.0025]}>
+                        <boxGeometry args={[0.120, 0.165, 0.001]} />
+                        <meshStandardMaterial color="#f8fafc" roughness={0.6} />
+                      </mesh>
+                    </group>
                   </group>
                 </group>
               </group>
@@ -3121,7 +3232,7 @@ function SingleContestantEntranceWalkingFigure({
   const figureRef = useRef<THREE.Group>(null);
   const [isWalking, setIsWalking] = useState(true);
   const [gesture, setGesture] = useState<"none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow">("none");
-  const [gestureProgress, setGestureProgress] = useState(0);
+  const gestureProgressRef = useRef<number>(0);
 
   const getNow = serverNow || (() => Date.now());
 
@@ -3184,32 +3295,25 @@ function SingleContestantEntranceWalkingFigure({
     let curGesture: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow" = "none";
     let curGestureProg = 0;
 
-    // 0.0s -> 0.4s: Quick 0.4s pause before contestant emerges from behind side arch door
-    if (t < 0.4) {
-      g.visible = false;
-      curX = startX;
-      curY = startY;
-      curZ = startZ;
-      walkingNow = false;
-    } else if (t < 1.0) {
-      // Phase 1 (0.4 -> 1.0s): Steps out from behind side arch door, curving onto central aisle on top plinth
+    // Phase 1 (0.0 -> 0.6s): Steps out from behind side arch door, curving onto central aisle on top plinth (11.90m)
+    if (t < 0.6) {
       g.visible = true;
-      const p = (t - 0.4) / 0.6;
+      const p = t / 0.6;
       const smoothP = p * p * (3 - 2 * p);
       curX = THREE.MathUtils.lerp(doorX, 0, smoothP);
       curY = startY;
       curZ = THREE.MathUtils.lerp(doorZ, 11.90, smoothP);
       curRotY = THREE.MathUtils.lerp(isDoorLeft ? Math.PI - 0.35 : Math.PI + 0.35, Math.PI, smoothP);
-    } else if (t < 2.2) {
-      // Phase 2 (1.0 -> 2.2s): Walks down upper stairs step by step (1.2s) to mid-stairs landing platform ("Bục Giữa")
+    } else if (t < 1.8) {
+      // Phase 2 (0.6 -> 1.8s): Walks down upper stairs (1.2s) to mid-stairs landing platform ("Bục Giữa" Z = 10.20m, Y = 0.92m)
       g.visible = true;
-      const p = (t - 1.0) / 1.2;
+      const p = (t - 0.6) / 1.2;
       curX = 0;
       curZ = THREE.MathUtils.lerp(11.90, 10.20, p);
       curY = getGrandstandStairY(curZ);
       curRotY = Math.PI;
-    } else if (t < 3.8) {
-      // Phase 3 (2.2 -> 3.8s): Stands firmly on Bục Giữa & performs signature gesture (1.6s)
+    } else if (t < 3.0) {
+      // Phase 3 (1.8 -> 3.0s): Stands firmly on Bục Giữa & performs signature gesture (1.2s)
       g.visible = true;
       curX = 0;
       curY = 0.92;
@@ -3223,19 +3327,19 @@ function SingleContestantEntranceWalkingFigure({
         "open_arms",
       ];
       curGesture = signatureGestures[seatId % signatureGestures.length];
-      curGestureProg = Math.max(0, Math.min(1.0, (t - 2.2) / 1.6));
-    } else if (t < 4.8) {
-      // Phase 4 (3.8 -> 4.8s): Walks down lower stairs to dais floor (1.0s, arrives at dais floor Z = 6.20m)
+      curGestureProg = Math.max(0, Math.min(1.0, (t - 1.8) / 1.2));
+    } else if (t < 4.0) {
+      // Phase 4 (3.0 -> 4.0s): Walks down lower stairs to dais floor (1.0s, arrives at dais floor Z = 6.20m, Y = 0.22m at exactly t = 4.0s)
       g.visible = true;
-      const p = (t - 3.8) / 1.0;
+      const p = (t - 3.0) / 1.0;
       curX = 0;
       curZ = THREE.MathUtils.lerp(10.20, 6.20, p);
       curY = getGrandstandStairY(curZ);
       curRotY = Math.PI;
-    } else if (t < 5.4) {
-      // Phase 5A (4.8 -> 5.4s): Sweeps wide outward across dais to the outer left corridor entrance (0.6s)
+    } else if (t < 5.0) {
+      // Phase 5A (4.0 -> 5.0s): Sweeps wide outward across dais to the outer left corridor entrance (1.0s)
       g.visible = true;
-      const p = (t - 4.8) / 0.6;
+      const p = (t - 4.0) / 1.0;
       const easeP = p * p * (3 - 2 * p);
       const u = 1 - easeP;
       curX = u * u * 0 + 2 * u * easeP * daisSweepX + easeP * easeP * entryAisleX;
@@ -3245,9 +3349,9 @@ function SingleContestantEntranceWalkingFigure({
       const dz = 2 * u * (daisSweepZ - 6.20) + 2 * easeP * (entryAisleZ - daisSweepZ);
       curRotY = Math.atan2(dx, dz);
     } else if (t < 6.1) {
-      // Phase 5B (5.4 -> 6.1s): Walks along the rear corridor arc behind all podiums to target desk (0.7s)
+      // Phase 5B (5.0 -> 6.1s): Walks along the rear corridor arc behind all podiums to target desk (1.1s)
       g.visible = true;
-      const p = (t - 5.4) / 0.7;
+      const p = (t - 5.0) / 1.1;
       const easeP = p * p * (3 - 2 * p);
       const curPhi = THREE.MathUtils.lerp(entryPhi, targetPhi, easeP);
       curX = -aisleRadius * Math.cos(curPhi);
@@ -3255,17 +3359,17 @@ function SingleContestantEntranceWalkingFigure({
       curZ = -0.5 - aisleRadius * Math.sin(curPhi);
       // Tangent heading along rear corridor arc
       curRotY = Math.PI - curPhi;
-    } else if (t < 6.4) {
-      // Phase 5C (6.1 -> 6.4s): Steps forward radially from rear corridor into desk standing spot (0.3s)
+    } else if (t < 6.5) {
+      // Phase 5C (6.1 -> 6.5s): Steps forward radially from rear corridor into desk standing spot (0.4s)
       g.visible = true;
-      const p = (t - 6.1) / 0.3;
+      const p = (t - 6.1) / 0.4;
       const easeP = p * p * (3 - 2 * p);
       curX = THREE.MathUtils.lerp(targetAisleX, deskX, easeP);
       curY = deskY;
       curZ = THREE.MathUtils.lerp(targetAisleZ, deskZ, easeP);
       curRotY = THREE.MathUtils.lerp(Math.PI - targetPhi, deskRotY, easeP);
     } else {
-      // Phase 6 (6.4 -> 6.8s): Arrived and standing proudly behind desk with desk greeting bow (0.4s)
+      // Phase 6 (6.5 -> 6.8s): Arrived and standing proudly behind desk with desk greeting bow (0.3s)
       g.visible = true;
       curX = deskX;
       curY = deskY;
@@ -3273,7 +3377,7 @@ function SingleContestantEntranceWalkingFigure({
       curRotY = deskRotY;
       walkingNow = false;
       curGesture = "desk_bow";
-      curGestureProg = Math.max(0, Math.min(1.0, (t - 6.4) / 0.4));
+      curGestureProg = Math.max(0, Math.min(1.0, (t - 6.5) / 0.3));
     }
 
     if (walkingNow !== isWalking) {
@@ -3282,7 +3386,7 @@ function SingleContestantEntranceWalkingFigure({
     if (curGesture !== gesture) {
       setGesture(curGesture);
     }
-    setGestureProgress(curGestureProg);
+    gestureProgressRef.current = curGestureProg;
 
     // Natural energetic walking bounce (3.5cm) synced with brisk stride
     const bounce = walkingNow ? Math.abs(Math.sin((t - 0.4) * 10.0)) * 0.035 : 0;
@@ -3297,7 +3401,7 @@ function SingleContestantEntranceWalkingFigure({
         position={[0, 0, 0]}
         isWalking={isWalking}
         gesture={gesture}
-        gestureProgress={gestureProgress}
+        gestureProgressRef={gestureProgressRef}
       />
     </group>
   );
@@ -3331,7 +3435,7 @@ export function ContestantEntranceWalkingFigures({
     targetCfg: { seatId: number; pos: [number, number, number]; rotY: number };
   }> = [];
 
-  for (let i = 0; i <= currentSeat && i < contestantConfigs.length; i++) {
+  for (let i = 0; i < contestantConfigs.length; i++) {
     const seatStart =
       startTimes[i] ??
       (i === currentSeat

@@ -1096,8 +1096,8 @@ function renderLedScreenToCanvas(
     return;
   }
 
-  // Auto mode during match intro or contestant entrance:
-  if (screenMode === "auto" && (state?.introTimer || state?.entranceState?.active)) {
+  // Auto mode during match intro, contestant entrance, or formal intro standby:
+  if (screenMode === "auto" && (state?.introTimer || state?.entranceState?.active || state?.introStandby)) {
     renderOlympiaLogoToCanvas(ctx, width, height, cx, cy, logoImg, fadeProgress);
     return;
   }
@@ -2437,6 +2437,7 @@ export function CentralLedWall({
     state?.rightScreenMode,
     state?.introTimer,
     state?.entranceState?.active,
+    state?.introStandby,
     state?.khoiDong?.questionRevealed,
     state?.khoiDong?.started,
     state?.khoiDong?.phase,

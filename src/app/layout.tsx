@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 import OfflineBanner from "@/components/ui/OfflineBanner";
@@ -7,13 +6,6 @@ import QuizSoulBackground from "@/components/ui/QuizSoulBackground";
 import GlobalPageTransition from "@/components/ui/GlobalPageTransition";
 import AppProviders from "@/components/providers/AppProviders";
 import GlobalNavigationToolbar from "@/components/ui/GlobalNavigationToolbar";
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ["vietnamese", "latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-plus-jakarta-sans",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Quizorra — Đấu Trường Trí Tuệ & Realtime Quiz Arena",
@@ -31,8 +23,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" className={plusJakartaSans.variable}>
-      <body className={`${plusJakartaSans.className} font-sans bg-background text-foreground relative min-h-screen antialiased`}>
+    <html lang="vi">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="font-sans bg-background text-foreground relative min-h-screen antialiased">
         <QuizSoulBackground />
         <GlobalPageTransition />
         <OfflineBanner />

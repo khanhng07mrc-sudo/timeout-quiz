@@ -74,7 +74,9 @@ if ! command -v pm2 >/dev/null 2>&1; then
   fi
 fi
 
+$PM2_BIN restart all --update-env || \
 $PM2_BIN reload ecosystem.config.cjs --update-env || \
+$PM2_BIN restart quizorra --update-env || \
 $PM2_BIN restart timeout-quiz --update-env || \
 $PM2_BIN start ecosystem.config.cjs
 

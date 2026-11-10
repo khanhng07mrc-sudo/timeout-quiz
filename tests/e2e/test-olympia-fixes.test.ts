@@ -391,6 +391,7 @@ export function buildTestGame(
     rulesetId,
     rounds,
     questionSet: SAMPLE_QUESTION_SET,
+    seatCount: playerCount,
     ...extraCfg,
   };
   const g = new OlympiaGame("TEST_ROOM", cfg, 0);
@@ -1134,9 +1135,10 @@ registerTest(3, "C7", "Khởi Động question reveal + buzzer lockout + timer p
   g.hostAction({ type: "game:start" }, 1000);
   g.hostAction({ type: "kd:selectSegment", kind: "shared" }, 2000);
   g.hostAction({ type: "kd:start" }, 2500);
-  g.hostAction({ type: "kd:next" }, 3000);
+  g.tick(6500); // 3.5s prelude finishes
+  g.hostAction({ type: "kd:next" }, 7000);
   assert.ok(g.state.khoiDong?.globalTimer?.startedAt != null, "Global timer must be running");
-  g.playerBuzz(3, 4800);
+  g.playerBuzz(3, 9000);
   assert.equal(g.state.khoiDong?.buzzedSeat, 3);
 });
 

@@ -494,6 +494,9 @@ export class OlympiaGame {
         } else {
           st.entranceState = null;
           st.entranceCompleted = true;
+          st.introStandby = true;
+          st.studioCamera = 3;
+          st.studioCameraManual = false;
           this.cue("6_NhacKhac/contest_intro", "stop");
           this.touch(now);
           return true;
@@ -517,7 +520,7 @@ export class OlympiaGame {
           st.summaryState.active = false;
           st.studioCameraManual = false;
           st.studioCamera = 10;
-          this.cue("", "stop");
+          // USER REQUIREMENT: Không ngắt bài nhạc tổng kết 6_NhacKhac/summary sớm, để nhạc phát trọn vẹn cho tới khi Host can thiệp hoặc chuyển vòng
           this.touch(now);
           return true;
         }
@@ -629,6 +632,7 @@ export class OlympiaGame {
     if (active.length === 0) return fail("Chưa có thí sinh nào trong phòng");
     // Clear intro/summary animations and release any manual camera override when any round begins
     st.introTimer = null;
+    st.introStandby = false;
     if (st.summaryState) st.summaryState.active = false;
     st.showStageGraphics = false;
     st.studioCameraManual = false;
@@ -903,12 +907,14 @@ export class OlympiaGame {
         }
         st.stage = "playing";
         st.entranceCompleted = false;
+        st.introStandby = true;
         st.roundIdx = -1;
         if (st.rounds.length === 0) return fail("Chưa chọn vòng thi nào");
         const res = this.nextRound(now);
         if (!res.ok) return res;
         st.banner = null;
         // Giữ trạng thái intro/chào đầu cho tới khi Host chủ động chọn vòng thi (không tự nhảy sang Khởi Động)
+        st.introStandby = true;
         st.introTimer = mkTimer(86400000);
         startTimer(st.introTimer, now);
         st.showStageGraphics = false;
@@ -1241,7 +1247,12 @@ export class OlympiaGame {
           seatGestures.push(shuffled[i % shuffled.length]);
         }
 
-        st.introTimer = null;
+        // Giữ trạng thái Intro Standby để không tự ý chuyển sang vòng thi đấu khi chưa có hiệu lệnh của Host
+        st.introStandby = true;
+        if (!st.introTimer) {
+          st.introTimer = mkTimer(86400000);
+          startTimer(st.introTimer, now);
+        }
         st.studioCamera = 11;
         st.studioCameraManual = false;
         st.entranceState = {
@@ -1269,6 +1280,9 @@ export class OlympiaGame {
         } else {
           st.entranceState = null;
           st.entranceCompleted = true;
+          st.introStandby = true;
+          st.studioCamera = 3;
+          st.studioCameraManual = false;
           this.cue("", "stop");
         }
         return OK;
@@ -1276,6 +1290,9 @@ export class OlympiaGame {
       case "entrance:skip": {
         st.entranceState = null;
         st.entranceCompleted = true;
+        st.introStandby = true;
+        st.studioCamera = 3;
+        st.studioCameraManual = false;
         this.cue("", "stop");
         return OK;
       }

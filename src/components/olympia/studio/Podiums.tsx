@@ -1119,199 +1119,125 @@ export function ContestantFigure({
       if (rightForearmRef.current) { rightForearmRef.current.rotation.x = -0.10; rightForearmRef.current.rotation.y = 0; rightForearmRef.current.rotation.z = 0; }
       if (chestRef.current) chestRef.current.rotation.x = 0;
       if (headRef.current) { headRef.current.rotation.x = 0; headRef.current.rotation.y = 0; headRef.current.rotation.z = 0; }
-    } else if (gesture === "wave") {
-      // TS 1 (Seat 0): Cheerful energetic high wave beside head with friendly head tilt
-      if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
-      if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
-
-      const wave = Math.sin(t * 7.5);
-      if (rightArmRef.current) {
-        rightArmRef.current.rotation.x = -0.20;
-        rightArmRef.current.rotation.y = 0.10;
-        rightArmRef.current.rotation.z = 1.85;
-      }
-      if (rightForearmRef.current) {
-        rightForearmRef.current.rotation.x = -0.30;
-        rightForearmRef.current.rotation.y = 0.10;
-        rightForearmRef.current.rotation.z = 0.85 + wave * 0.35;
-      }
-      if (leftArmRef.current) {
-        leftArmRef.current.rotation.x = 0.04;
-        leftArmRef.current.rotation.y = 0;
-        leftArmRef.current.rotation.z = -0.06;
-      }
-      if (leftForearmRef.current) {
-        leftForearmRef.current.rotation.x = -0.06;
-        leftForearmRef.current.rotation.y = 0;
-        leftForearmRef.current.rotation.z = 0;
-      }
-      if (headRef.current) {
-        headRef.current.rotation.x = -0.02;
-        headRef.current.rotation.y = 0.04;
-        headRef.current.rotation.z = -0.04;
-      }
-      if (chestRef.current) chestRef.current.rotation.x = -0.02;
-    } else if (gesture === "fist_pump") {
-      // TS 2 (Seat 1): Clenched fist pump of determination held firmly to chest
-      if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
-      if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
-
-      const pump = Math.sin(gestureProgress * Math.PI * 4) * 0.12;
-      if (rightArmRef.current) {
-        rightArmRef.current.rotation.x = -0.45;
-        rightArmRef.current.rotation.y = -0.15;
-        rightArmRef.current.rotation.z = -0.20;
-      }
-      if (rightForearmRef.current) {
-        rightForearmRef.current.rotation.x = -1.55 + pump * 0.40;
-        rightForearmRef.current.rotation.y = -0.30;
-        rightForearmRef.current.rotation.z = -0.45;
-      }
-      if (leftArmRef.current) {
-        leftArmRef.current.rotation.x = 0.04;
-        leftArmRef.current.rotation.y = 0;
-        leftArmRef.current.rotation.z = -0.06;
-      }
-      if (leftForearmRef.current) {
-        leftForearmRef.current.rotation.x = -0.06;
-        leftForearmRef.current.rotation.y = 0;
-        leftForearmRef.current.rotation.z = 0;
-      }
-      if (headRef.current) {
-        headRef.current.rotation.x = -0.06 + pump * 0.1;
-        headRef.current.rotation.y = 0;
-        headRef.current.rotation.z = 0;
-      }
-      if (chestRef.current) chestRef.current.rotation.x = -0.04;
-    } else if (gesture === "heart") {
-      // TS 3 (Seat 2): Right hand flat on heart / left breast laurel badge with respectful slight head bow
-      if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
-      if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
-
-      if (rightArmRef.current) {
-        rightArmRef.current.rotation.x = -0.30;
-        rightArmRef.current.rotation.y = -0.20;
-        rightArmRef.current.rotation.z = -0.15;
-      }
-      if (rightForearmRef.current) {
-        rightForearmRef.current.rotation.x = -1.35;
-        rightForearmRef.current.rotation.y = -0.55;
-        rightForearmRef.current.rotation.z = -0.85;
-      }
-      if (leftArmRef.current) {
-        leftArmRef.current.rotation.x = 0.04;
-        leftArmRef.current.rotation.y = 0;
-        leftArmRef.current.rotation.z = -0.06;
-      }
-      if (leftForearmRef.current) {
-        leftForearmRef.current.rotation.x = -0.06;
-        leftForearmRef.current.rotation.y = 0;
-        leftForearmRef.current.rotation.z = 0;
-      }
-      if (headRef.current) {
-        headRef.current.rotation.x = 0.08;
-        headRef.current.rotation.y = 0;
-        headRef.current.rotation.z = 0;
-      }
-      if (chestRef.current) chestRef.current.rotation.x = -0.02;
-    } else if (gesture === "open_arms") {
-      // TS 4 (Seat 3): Both arms opened wide in proud athletic stance
-      if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
-      if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
-
-      if (leftArmRef.current) {
-        leftArmRef.current.rotation.x = -0.15;
-        leftArmRef.current.rotation.y = 0;
-        leftArmRef.current.rotation.z = -0.75;
-      }
-      if (leftForearmRef.current) {
-        leftForearmRef.current.rotation.x = -0.15;
-        leftForearmRef.current.rotation.z = -0.20;
-      }
-      if (rightArmRef.current) {
-        rightArmRef.current.rotation.x = -0.15;
-        rightArmRef.current.rotation.y = 0;
-        rightArmRef.current.rotation.z = 0.75;
-      }
-      if (rightForearmRef.current) {
-        rightForearmRef.current.rotation.x = -0.15;
-        rightForearmRef.current.rotation.z = 0.20;
-      }
-      if (headRef.current) {
-        headRef.current.rotation.x = -0.04;
-        headRef.current.rotation.y = 0;
-        headRef.current.rotation.z = 0;
-      }
-      if (chestRef.current) chestRef.current.rotation.x = -0.04;
-    } else if (gesture === "desk_bow") {
-      // Arrived behind desk: Hands resting forward on desk, polite formal bow
-      if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
-      if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
-
-      const bowAngle = Math.sin(gestureProgress * Math.PI) * 0.20;
-      if (leftArmRef.current) {
-        leftArmRef.current.rotation.x = -0.35;
-        leftArmRef.current.rotation.y = 0;
-        leftArmRef.current.rotation.z = -0.08;
-      }
-      if (leftForearmRef.current) {
-        leftForearmRef.current.rotation.x = -0.40;
-        leftForearmRef.current.rotation.y = 0;
-        leftForearmRef.current.rotation.z = 0;
-      }
-      if (rightArmRef.current) {
-        rightArmRef.current.rotation.x = -0.35;
-        rightArmRef.current.rotation.y = 0;
-        rightArmRef.current.rotation.z = 0.08;
-      }
-      if (rightForearmRef.current) {
-        rightForearmRef.current.rotation.x = -0.40;
-        rightForearmRef.current.rotation.y = 0;
-        rightForearmRef.current.rotation.z = 0;
-      }
-      if (headRef.current) {
-        headRef.current.rotation.x = bowAngle * 0.85;
-        headRef.current.rotation.y = 0;
-        headRef.current.rotation.z = 0;
-      }
-      if (chestRef.current) chestRef.current.rotation.x = bowAngle * 0.55;
     } else {
-      // Default natural standing idle posture with micro-breathing
+      // Kinematic ease-in and ease-out smoothing buffer (0.35s / ~22% at each end)
+      // Eliminates sudden popping or stiffness across shoulder, elbow, and wrist joints
+      let gestureBlend = 0;
+      if (gesture !== "none" && gesture !== "desk_bow") {
+        const p = Math.max(0, Math.min(1.0, gestureProgress));
+        const easeEdge = 0.22; // ~0.35s ease-in and 0.35s ease-out over 1.6s pose
+        if (p < easeEdge) {
+          const s = p / easeEdge;
+          gestureBlend = s * s * (3 - 2 * s);
+        } else if (p > 1.0 - easeEdge) {
+          const s = (1.0 - p) / easeEdge;
+          gestureBlend = s * s * (3 - 2 * s);
+        } else {
+          gestureBlend = 1.0;
+        }
+      } else if (gesture === "desk_bow") {
+        const p = Math.max(0, Math.min(1.0, gestureProgress));
+        gestureBlend = Math.sin(p * Math.PI);
+      }
+
       if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
       if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
+
+      // 1. Natural idle posture baseline
+      const idleLeftArm = { x: 0.02, y: 0, z: -0.04 };
+      const idleLeftForearm = { x: -0.08, y: 0, z: 0 };
+      const idleRightArm = { x: 0.02, y: 0, z: 0.04 };
+      const idleRightForearm = { x: -0.08, y: 0, z: 0 };
+      const idleHead = {
+        x: Math.sin(t * 1.1 + seatId) * 0.005,
+        y: Math.cos(t * 0.8 + seatId * 1.4) * 0.008,
+        z: 0,
+      };
+      const idleChest = { x: 0 };
+
+      // 2. Target signature gesture posture
+      let targetLeftArm = { ...idleLeftArm };
+      let targetLeftForearm = { ...idleLeftForearm };
+      let targetRightArm = { ...idleRightArm };
+      let targetRightForearm = { ...idleRightForearm };
+      let targetHead = { ...idleHead };
+      let targetChest = { ...idleChest };
+
+      if (gesture === "wave") {
+        const wave = Math.sin(t * 7.5);
+        targetRightArm = { x: -0.20, y: 0.10, z: 1.85 };
+        targetRightForearm = { x: -0.30, y: 0.10, z: 0.85 + wave * 0.35 };
+        targetLeftArm = { x: 0.04, y: 0, z: -0.06 };
+        targetLeftForearm = { x: -0.06, y: 0, z: 0 };
+        targetHead = { x: -0.02, y: 0.04, z: -0.04 };
+        targetChest = { x: -0.02 };
+      } else if (gesture === "fist_pump") {
+        const pump = Math.sin(gestureProgress * Math.PI * 4) * 0.12;
+        targetRightArm = { x: -0.45, y: -0.15, z: -0.20 };
+        targetRightForearm = { x: -1.55 + pump * 0.40, y: -0.30, z: -0.45 };
+        targetLeftArm = { x: 0.04, y: 0, z: -0.06 };
+        targetLeftForearm = { x: -0.06, y: 0, z: 0 };
+        targetHead = { x: -0.06 + pump * 0.1, y: 0, z: 0 };
+        targetChest = { x: -0.04 };
+      } else if (gesture === "heart") {
+        targetRightArm = { x: -0.30, y: -0.20, z: -0.15 };
+        targetRightForearm = { x: -1.35, y: -0.55, z: -0.85 };
+        targetLeftArm = { x: 0.04, y: 0, z: -0.06 };
+        targetLeftForearm = { x: -0.06, y: 0, z: 0 };
+        targetHead = { x: 0.08, y: 0, z: 0 };
+        targetChest = { x: -0.02 };
+      } else if (gesture === "open_arms") {
+        targetLeftArm = { x: -0.15, y: 0, z: -0.75 };
+        targetLeftForearm = { x: -0.15, y: 0, z: -0.20 };
+        targetRightArm = { x: -0.15, y: 0, z: 0.75 };
+        targetRightForearm = { x: -0.15, y: 0, z: 0.20 };
+        targetHead = { x: -0.04, y: 0, z: 0 };
+        targetChest = { x: -0.04 };
+      } else if (gesture === "desk_bow") {
+        const bowAngle = gestureBlend * 0.20;
+        targetLeftArm = { x: -0.35, y: 0, z: -0.08 };
+        targetLeftForearm = { x: -0.40, y: 0, z: 0 };
+        targetRightArm = { x: -0.35, y: 0, z: 0.08 };
+        targetRightForearm = { x: -0.40, y: 0, z: 0 };
+        targetHead = { x: bowAngle * 0.85, y: 0, z: 0 };
+        targetChest = { x: bowAngle * 0.55 };
+      }
+
+      // 3. Smooth kinematic interpolation with 0.35s ease-in / ease-out buffer
       if (leftArmRef.current) {
-        leftArmRef.current.rotation.x = 0.02;
-        leftArmRef.current.rotation.y = 0;
-        leftArmRef.current.rotation.z = -0.04;
+        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(idleLeftArm.x, targetLeftArm.x, gestureBlend);
+        leftArmRef.current.rotation.y = THREE.MathUtils.lerp(idleLeftArm.y, targetLeftArm.y, gestureBlend);
+        leftArmRef.current.rotation.z = THREE.MathUtils.lerp(idleLeftArm.z, targetLeftArm.z, gestureBlend);
       }
       if (leftForearmRef.current) {
-        leftForearmRef.current.rotation.x = -0.08;
-        leftForearmRef.current.rotation.y = 0;
-        leftForearmRef.current.rotation.z = 0;
+        leftForearmRef.current.rotation.x = THREE.MathUtils.lerp(idleLeftForearm.x, targetLeftForearm.x, gestureBlend);
+        leftForearmRef.current.rotation.y = THREE.MathUtils.lerp(idleLeftForearm.y, targetLeftForearm.y, gestureBlend);
+        leftForearmRef.current.rotation.z = THREE.MathUtils.lerp(idleLeftForearm.z, targetLeftForearm.z, gestureBlend);
       }
       if (rightArmRef.current) {
-        rightArmRef.current.rotation.x = 0.02;
-        rightArmRef.current.rotation.y = 0;
-        rightArmRef.current.rotation.z = 0.04;
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(idleRightArm.x, targetRightArm.x, gestureBlend);
+        rightArmRef.current.rotation.y = THREE.MathUtils.lerp(idleRightArm.y, targetRightArm.y, gestureBlend);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(idleRightArm.z, targetRightArm.z, gestureBlend);
       }
       if (rightForearmRef.current) {
-        rightForearmRef.current.rotation.x = -0.08;
-        rightForearmRef.current.rotation.y = 0;
-        rightForearmRef.current.rotation.z = 0;
+        rightForearmRef.current.rotation.x = THREE.MathUtils.lerp(idleRightForearm.x, targetRightForearm.x, gestureBlend);
+        rightForearmRef.current.rotation.y = THREE.MathUtils.lerp(idleRightForearm.y, targetRightForearm.y, gestureBlend);
+        rightForearmRef.current.rotation.z = THREE.MathUtils.lerp(idleRightForearm.z, targetRightForearm.z, gestureBlend);
+      }
+      if (headRef.current) {
+        headRef.current.rotation.x = THREE.MathUtils.lerp(idleHead.x, targetHead.x, gestureBlend);
+        headRef.current.rotation.y = THREE.MathUtils.lerp(idleHead.y, targetHead.y, gestureBlend);
+        headRef.current.rotation.z = THREE.MathUtils.lerp(idleHead.z, targetHead.z, gestureBlend);
       }
       if (chestRef.current) {
-        chestRef.current.rotation.x = 0;
-        chestRef.current.position.y = Math.sin(t * 1.8 + seatId * 1.2) * 0.002;
+        chestRef.current.rotation.x = THREE.MathUtils.lerp(idleChest.x, targetChest.x, gestureBlend);
+        const breathWeight = 1.0 - gestureBlend * 0.7;
+        chestRef.current.position.y = Math.sin(t * 1.8 + seatId * 1.2) * 0.002 * breathWeight;
         chestRef.current.scale.set(
-          1 + Math.sin(t * 1.8 + seatId) * 0.004,
+          1 + Math.sin(t * 1.8 + seatId) * 0.004 * breathWeight,
           1,
-          1 + Math.sin(t * 1.8 + seatId) * 0.004
+          1 + Math.sin(t * 1.8 + seatId) * 0.004 * breathWeight
         );
-      }
-      if (headRef.current) {
-        headRef.current.rotation.x = Math.sin(t * 1.1 + seatId) * 0.005;
-        headRef.current.rotation.y = Math.cos(t * 0.8 + seatId * 1.4) * 0.008;
-        headRef.current.rotation.z = 0;
       }
     }
   });
@@ -2343,16 +2269,27 @@ export function McPresenters({
     const stride = isWalking ? Math.sin(walkPhase) * 0.35 : 0;
     const armStride = isWalking ? Math.sin(walkPhase) * 0.25 : 0;
     const bounce = isWalking ? Math.abs(Math.sin(walkPhase)) * 0.025 : 0;
-    const idleBreathing = Math.sin(now * 0.002) * 0.003;
+
+    // Natural television presenter micro-breathing & conversational articulation (~3.2s cadence)
+    // Eliminates static wax-statue pose when standing at dais or MC desk
+    const speechTime = now * 0.00196; // ~3.2s period
+    const talkSub = Math.sin(speechTime * 1.7 + 0.5);
+    const kvMicBreathe = Math.sin(speechTime * 1.2) * 0.035 + talkSub * 0.012;
+    const nhMicBreathe = Math.cos(speechTime * 1.1) * 0.035 - talkSub * 0.012;
+    const kvCardBreathe = Math.cos(speechTime * 0.9) * 0.022;
+    const nhCardBreathe = Math.sin(speechTime * 0.9) * 0.022;
+    const mcBodySway = Math.sin(speechTime * 0.75) * 0.014;
+
+    const idleBreathing = Math.sin(now * 0.002) * 0.004;
     const effectiveYOffset = isWalking ? bounce : idleBreathing;
 
     if (kvRef.current) {
       kvRef.current.position.set(kvX, kvY + effectiveYOffset, kvZ);
-      kvRef.current.rotation.y = kvRotY;
+      kvRef.current.rotation.y = kvRotY + (isWalking ? 0 : mcBodySway);
     }
     if (nhRef.current) {
       nhRef.current.position.set(nhX, nhY + effectiveYOffset, nhZ);
-      nhRef.current.rotation.y = nhRotY;
+      nhRef.current.rotation.y = nhRotY + (isWalking ? 0 : -mcBodySway);
     }
 
     if (kvLeftLegRef.current && kvRightLegRef.current) {
@@ -2372,14 +2309,14 @@ export function McPresenters({
       nhRightKneeRef.current.rotation.x = Math.max(0, -stride * 0.95);
     }
 
-    let kvLeftArmX = isWalking ? -armStride * 0.25 : 0;
+    let kvLeftArmX = isWalking ? -armStride * 0.25 : kvCardBreathe;
     let kvLeftArmZ = 0;
-    let kvRightArmX = isWalking ? armStride * 0.25 : 0;
+    let kvRightArmX = isWalking ? armStride * 0.25 : kvMicBreathe;
     let kvRightArmZ = 0;
 
-    let nhLeftArmX = isWalking ? armStride * 0.25 : 0;
+    let nhLeftArmX = isWalking ? armStride * 0.25 : nhMicBreathe;
     let nhLeftArmZ = 0;
-    let nhRightArmX = isWalking ? -armStride * 0.25 : 0;
+    let nhRightArmX = isWalking ? -armStride * 0.25 : nhCardBreathe;
     let nhRightArmZ = 0;
 
     if (isGreeting) {
@@ -2624,7 +2561,7 @@ export function McPresenters({
                     <cylinderGeometry args={[0.024, 0.024, 0.016, 16]} />
                     <meshStandardMaterial color="#ffffff" roughness={0.3} />
                   </mesh>
-                  {/* Sculpted Hand - Gracefully resting along body (NO books, NO cards attached to arm!) */}
+                  {/* Sculpted Hand - Presenter posture holding Cue Card */}
                   <VietnameseHand
                     position={[0, -0.155, 0]}
                     rotation={[0, 0, 0.04]}
@@ -2633,6 +2570,21 @@ export function McPresenters({
                     isLeft={true}
                     mode="hang"
                   />
+                  {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC) */}
+                  <group position={[0.012, -0.160, 0.032]} rotation={[0.42, 0.10, -0.16]}>
+                    <mesh>
+                      <boxGeometry args={[0.13, 0.18, 0.004]} />
+                      <meshStandardMaterial color="#0f172a" roughness={0.35} metalness={0.15} />
+                    </mesh>
+                    <mesh position={[0, 0.088, 0.002]}>
+                      <boxGeometry args={[0.128, 0.004, 0.002]} />
+                      <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
+                    </mesh>
+                    <mesh position={[0, -0.005, 0.0025]}>
+                      <boxGeometry args={[0.116, 0.160, 0.001]} />
+                      <meshStandardMaterial color="#f8fafc" roughness={0.6} />
+                    </mesh>
+                  </group>
                 </group>
               </group>
             </group>
@@ -3012,7 +2964,7 @@ export function McPresenters({
                     <cylinderGeometry args={[0.028, 0.028, 0.018, 16]} />
                     <meshStandardMaterial color="#ffffff" roughness={0.3} />
                   </mesh>
-                  {/* Sculpted Hand - Relaxed presenter posture along trousers (NO books, NO tablet!) */}
+                  {/* Sculpted Hand - Relaxed presenter posture holding Cue Card */}
                   <VietnameseHand
                     position={[0, -0.165, 0]}
                     rotation={[0, 0, -0.05]}
@@ -3021,6 +2973,21 @@ export function McPresenters({
                     isLeft={false}
                     mode="hang"
                   />
+                  {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC) */}
+                  <group position={[-0.012, -0.170, 0.032]} rotation={[0.42, -0.10, 0.16]}>
+                    <mesh>
+                      <boxGeometry args={[0.135, 0.185, 0.004]} />
+                      <meshStandardMaterial color="#0f172a" roughness={0.35} metalness={0.15} />
+                    </mesh>
+                    <mesh position={[0, 0.090, 0.002]}>
+                      <boxGeometry args={[0.132, 0.004, 0.002]} />
+                      <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
+                    </mesh>
+                    <mesh position={[0, -0.005, 0.0025]}>
+                      <boxGeometry args={[0.120, 0.165, 0.001]} />
+                      <meshStandardMaterial color="#f8fafc" roughness={0.6} />
+                    </mesh>
+                  </group>
                 </group>
               </group>
             </group>
@@ -4948,9 +4915,15 @@ export function Podiums({
         //   Subsequent contestants waiting upstairs hidden (showFigure = false).
         // - Entrance completed or competition rounds active: contestants stand at their podium desks (except active Về Đích contestant at center stage).
         const isLobby = state?.stage === "lobby";
-        const isIntro = Boolean(introStartedAt || state?.introTimer);
+        const isIntro = Boolean(introStartedAt || state?.introTimer || state?.introStandby);
         const hasEntranceCompleted = Boolean(state?.entranceCompleted);
-        const isCompetitionRound = Boolean(state?.stage === "playing" && !state?.introTimer && state?.currentRound);
+        const isCompetitionRound = Boolean(
+          state?.stage === "playing" &&
+          !state?.introTimer &&
+          !state?.introStandby &&
+          state?.currentRound &&
+          (state.currentRound === "khoiDong" ? Boolean(state.khoiDong?.started) : true)
+        );
 
         const getSeatStart = (seatIdx: number) => {
           if (!state?.entranceState) return 0;
@@ -4966,10 +4939,10 @@ export function Podiums({
         const thisSeatElapsed = thisSeatStart > 0 ? (now - thisSeatStart) / 1000 : 0;
         const hasFinishedEntrance = thisSeatStart > 0 && thisSeatElapsed >= 6.8;
 
-        // ── PODIUM SCOREBOARD 3-PHASE LIFECYCLE (User Request 8) ──
-        // 1. "logo": Mới mở phòng (Lobby / Pre-match / Intro / Thí sinh chưa bước tới bục) -> Logo Đường lên đỉnh Olympia (D:\Olympia 26)
-        // 2. "name_school": Từng thí sinh bước tới bục của mình xong -> Tên + Trường THPT (giữ nguyên đến trước Khởi Động)
-        // 3. "name_score": Bước vào Khởi Động (kd) hoặc thi đấu chính thức -> Tên + Điểm số
+        // ── PODIUM SCOREBOARD 3-PHASE LIFECYCLE ──
+        // 1. "logo": Mới mở phòng (Lobby / Pre-match / Intro / Thí sinh chưa bước tới bục) -> Logo Đường lên đỉnh Olympia
+        // 2. "name_school": Từng thí sinh bước tới bục của mình xong -> Tên + Trường THPT (giữ nguyên trong suốt Chào sân & Chờ mở màn introStandby!)
+        // 3. "name_score": Chỉ chuyển sang Tên + Điểm khi vòng thi Khởi Động thực sự bấm bắt đầu (state.khoiDong.started = true)
         let screenMode: PodiumScreenMode = "logo";
         if (isCompetitionRound) {
           screenMode = "name_score";

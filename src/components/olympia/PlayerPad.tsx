@@ -190,7 +190,7 @@ export default function PlayerPad({
   const canPressMainBuzz = useCallback((): boolean => {
     if (!state || seatId < 0) return false;
     if (state.bellTestMode) return true;
-    if (state.stage !== "playing" || state.introTimer) return false;
+    if (state.stage !== "playing" || state.introTimer || state.introStandby || state.entranceState?.active) return false;
     const now = serverNow();
 
     switch (state.currentRound) {
@@ -225,7 +225,7 @@ export default function PlayerPad({
   }, [state, seatId, serverNow]);
 
   const isNearUnlock = useCallback((): boolean => {
-    if (!state || seatId < 0 || state.stage !== "playing" || state.introTimer) return false;
+    if (!state || seatId < 0 || state.stage !== "playing" || state.introTimer || state.introStandby || state.entranceState?.active) return false;
     if (state.currentRound !== "khoiDong") return false;
     const kd = state.khoiDong;
     if (!kd || kd.phase !== "question") return false;
@@ -698,7 +698,9 @@ export default function PlayerPad({
 function getSubRoundLabel(state: OlympiaState): string {
   if (state.stage === "lobby") return "Đang chờ quản trò bắt đầu trận đấu";
   if (state.stage === "finished") return "Trận đấu đã kết thúc";
-  if (state.introTimer) return "Giới thiệu trận đấu";
+  if (state.introTimer || state.introStandby || state.entranceState?.active) {
+    return state.entranceState?.active ? "Chào sân & Giới thiệu thí sinh" : "Khai mạc & Giới thiệu trận đấu";
+  }
   if (state.banner) return state.banner;
 
   switch (state.currentRound) {
@@ -776,13 +778,17 @@ function QuestionBoxContent({
       </div>
     );
   }
-  if (state.introTimer) {
+  if (state.introTimer || state.introStandby || state.entranceState?.active) {
     return (
       <div className="space-y-2">
         <div className="text-2xl sm:text-3xl font-black tracking-widest uppercase text-cyan-300 animate-pulse">
-          SẴN SÀNG THI ĐẤU
+          {state.entranceState?.active ? "CHÀO SÂN THÍ SINH" : "SẴN SÀNG THI ĐẤU"}
         </div>
-        <div className="text-slate-400 text-sm">Đang phát nhạc giới thiệu trận đấu…</div>
+        <div className="text-slate-400 text-sm">
+          {state.entranceState?.active
+            ? "Đang giới thiệu từng thí sinh bước vào vị trí thi đấu…"
+            : "Đang ở phần giới thiệu trận đấu — Chờ MC mở màn…"}
+        </div>
       </div>
     );
   }
@@ -1054,7 +1060,14 @@ function InteractionZone({
     );
   }
 
-  if (state.stage !== "playing" || state.introTimer || state.entranceState?.active || !state.currentRound) {
+  if (
+    state.stage !== "playing" ||
+    state.introTimer ||
+    state.introStandby ||
+    state.entranceState?.active ||
+    !state.currentRound ||
+    (state.currentRound === "khoiDong" && !state.khoiDong?.started)
+  ) {
     return (
       <div className="text-slate-500 text-sm font-bold uppercase tracking-wider">
         Khu vực tương tác sẽ mở khi phần thi bắt đầu

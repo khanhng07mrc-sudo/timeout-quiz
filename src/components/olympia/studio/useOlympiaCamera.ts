@@ -66,6 +66,7 @@ export function useOlympiaCameraState(
   const needsTimedCameraTicker = Boolean(
     state?.entranceState?.active ||
       state?.introTimer ||
+      state?.introStandby ||
       (state?.currentRound === "khoiDong" &&
         state?.khoiDong &&
         (!state.khoiDong.started ||
@@ -130,40 +131,26 @@ export function useOlympiaCameraState(
       };
     }
 
-    // 1.5. Sequential Contestant Entrance Cinematic Sequence (Decision 8 Television Directing)
+    // 1.5. Sequential Contestant Entrance Cinematic Sequence (Broadcast Smooth Directing)
     if (state.entranceState?.active) {
       const currentSeat = Math.min(activeCount - 1, Math.max(0, state.entranceState.currentSeatIdx ?? 0));
       const targetCam = getCameraForSeat(currentSeat, activeCount);
       const seatStart = state.entranceState.seatStartedAt || state.entranceState.startedAt || getNow();
       const elapsedSec = Math.max(0, (getNow() - seatStart) / 1000);
 
-      if (elapsedSec < 2.0) {
-        // Phase 1 (0.0s - 2.0s): Cam Trực Diện Chào Sân (CAM 11) thẳng mặt thí sinh bước xuống bậc thang dứt khoát
-        return {
-          camAngle: 11,
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: 0.0,
-        };
-      } else if (elapsedSec < 3.8) {
-        // Phase 2 (2.0s - 3.8s): Thí sinh dừng trên Bục Giữa làm động tác chào/pose -> Giữ CAM 11, push zoom quang học nhẹ (0.15)
-        const pushInProgress = Math.min(1.0, Math.max(0.0, (elapsedSec - 2.0) / 1.8));
+      if (elapsedSec < 3.8) {
+        // Phase 1 & 2 (0.0s - 3.8s): CAM 11 trực diện ở cự ly an toàn (Z=3.20m, cách cầu thang >3m, không đâm vào mặt kính)
+        // Khi thí sinh dừng pose chào ở Bục Giữa (2.2s - 3.8s), push zoom quang học êm dịu (0.12)
+        const pushInProgress = elapsedSec < 2.0 ? 0.0 : Math.min(1.0, (elapsedSec - 2.0) / 1.8) * 0.12;
         return {
           camAngle: 11,
           transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress,
         };
-      } else if (elapsedSec < 5.0) {
-        // Phase 3 (3.8s - 5.0s): Cắt sang góc chéo nghệ thuật 3/4 (CAM 12) bắt trọn bước đi xuống sàn và không gian khán đài
-        return {
-          camAngle: 12,
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: 0.0,
-        };
       } else if (elapsedSec < 6.2) {
-        // Phase 4 (5.0s - 6.2s): Cắt sang CAM 10 (Toàn Cảnh Bục Thí Sinh) khi thí sinh di chuyển về bàn đấu
+        // Phase 3 (3.8s - 6.2s): Chuyển mượt sang CAM 10 (Toàn Cảnh Bục Thí Sinh & Sàn Đấu) khi thí sinh bước xuống cầu thang
+        // và di chuyển qua luồng hành lang phía sau về bàn đấu (loại bỏ cắt góc CAM 12 giật cục)
         return {
           camAngle: 10,
           transitionMode: "CUT",
@@ -171,7 +158,7 @@ export function useOlympiaCameraState(
           pushInProgress: 0.0,
         };
       } else {
-        // Phase 5 (6.2s onwards): Cắt khóa cận cảnh vào bục của thí sinh đó
+        // Phase 4 (6.2s onwards): Cắt cận cảnh vào bục của thí sinh đó
         return {
           camAngle: targetCam,
           transitionMode: "CUT",
@@ -212,13 +199,14 @@ export function useOlympiaCameraState(
       };
     }
 
-    // Opening show intro: Align director target with MC Lectern (CAM 3)
-    if (state.introTimer) {
+    // Opening show intro or standby waiting for Host to begin Khởi Động:
+    // Focus directly on MCs (CAM 3) with dignified broadcaster framing
+    if (state.introTimer || state.introStandby) {
       return {
         camAngle: 3,
         transitionMode: "MORPH",
         isOverlayHidden: false,
-        pushInProgress: 0.3,
+        pushInProgress: 0.15,
       };
     }
 

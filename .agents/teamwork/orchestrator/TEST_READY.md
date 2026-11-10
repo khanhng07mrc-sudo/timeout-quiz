@@ -1,34 +1,62 @@
-# TEST_READY: 3D Đường lên đỉnh Olympia Studio S14 Refactor Test Suite
+# TEST READY: Đường lên đỉnh Olympia Broadcast & Gameplay Refinements
 
-**Published By**: `test_writer_refactor`  
-**Date**: 2026-11-01T06:55:00Z  
-**Status**: **APPROVED & READY FOR WORKER IMPLEMENTATION**  
+**Published By**: `teamwork_test_writer`  
+**Date**: 2026-11-10T03:34:00Z  
+**Status**: **APPROVED & READY FOR WORKER MILESTONE VERIFICATION**  
+**Suite Path**: `tests/e2e/test-olympia-fixes.test.ts`  
+**Runner Path**: `tests/e2e/runner-olympia-fixes.js`  
 **Working Directory**: `d:\Timeout Quiz`  
 
 ---
 
 ## 1. Executive Summary
 
-The comprehensive 3D studio refactor test suite has been successfully constructed, verified, and integrated into the official test runner (`npm run test:olympia-3d`).
+A comprehensive, 4-tier opaque-box E2E test suite has been designed, implemented, and verified covering the three critical Olympia broadcast and gameplay refinements requested in `ORIGINAL_REQUEST.md` and scoped in `PROJECT.md`:
+1. **R1**: Anti-clipping contestant podium walkway (Phase 5A wide outer sweep $\to$ Phase 5B rear walkway corridor arc at $R=7.75\text{m} \to$ Phase 5C radial step behind into desk standing spot at $R=7.02\text{m}$), mathematically preventing any contestant from intersecting the front kiosk or LED score screen across all 4 (or 8) podiums.
+2. **R2**: Pipelined contestant entrance (staggered 4000ms advance interval per contestant, arrival at 6800ms, `seatStartTimes` synchronization, and individual 5.2s screen mode transition to `"name_school"`), reducing total entrance time for 4 contestants from 27.2s to 18.8s.
+3. **R3**: Host "Wrong" button lockout for 3000ms (O22) and 5000ms (O23+) upon question reveal when no contestant has buzzed, coupled with immediate clearance (`noBuzzWrongUnlockAt = undefined; wrongUnlockRemMs = 0`) upon buzzer press, with 100% parity between `HostConsole.tsx` and `OlympiaSandboxStudio.tsx`.
+4. **R5**: Build, parity, and VPS deployment validation readiness.
 
-The test suite provides **opaque-box, requirement-driven, mathematical contract verification** covering all refactored studio elements across **Tiers 1 to 4**:
-- **Baseline Test Suite**: 97 / 97 tests passed (Game state, buzzer reaction rules, staggered multi-zone lighting delays, podium coordinates, FOV responsive adaptation).
-- **Studio S14 Refactor Suite**: 74 / 74 tests passed (Curved cylindrical cyclorama, luminous canyon pass trajectory & shader, 3D rugged low-poly mountain, summit beacon & translucent flag, 4-layer concentric portal arches hierarchy, anchored sponsor stanchions).
-- **Grand Total Executed**: **171 / 171 tests passed (100% Pass Rate)** with zero regressions.
+```
+================================================================================
+GRAND CONSOLIDATED TEST SUMMARY: OLYMPIA BROADCAST & GAMEPLAY REFINEMENTS
+================================================================================
+  Tier 1 (Feature Coverage):        36 / 36 passed (Threshold: >= 35) [100%]
+  Tier 2 (Boundary & Corner Cases): 38 / 38 passed (Threshold: >= 35) [100%]
+  Tier 3 (Cross-Feature Combos):    12 / 12 passed (Threshold: >= 10) [100%]
+  Tier 4 (Real-World Scenarios):    5 / 5  passed (Threshold: >= 5)  [100%]
+--------------------------------------------------------------------------------
+  TOTAL NEW E2E TESTS EXECUTED:     91 / 91 passed (100% Pass Rate)
+================================================================================
+  BUILD / BUNDLE TIME:              21ms (esbuild target node20)
+  EXECUTION TIME:                   <120ms (native node:assert/strict)
+================================================================================
+
+================================================================================
+GRAND PROJECT TEST SUITE TOTALS (ZERO REGRESSIONS)
+================================================================================
+  1. Olympia Fixes E2E Suite (new):             91 / 91 passed
+  2. Olympia Engine Unit Suite:                 63 / 63 passed
+  3. 3D Studio Master Regression Suite:        489 / 489 passed
+  4. Econova Broadcast E2E Suite:               97 / 97 passed
+  5. TypeScript Compiler Type-Check:            Zero errors (tsc --noEmit)
+--------------------------------------------------------------------------------
+  GRAND TOTAL TESTS EXECUTED:                  740 / 740 passed (100% Pass Rate)
+================================================================================
+```
 
 ---
 
 ## 2. Requirements & Feature Verification Matrix
 
-| Req | Feature Name | Test Scope | Tier 1 | Tier 2 | Tier 3 | Tier 4 | Status |
+| Req | Feature Name | Description & Invariants Tested | T1 | T2 | T3 | T4 | Status |
 |:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|
-| **R1** | **Curved Cylindrical Cyclorama** | Radius ($22.5\text{m} \pm 0.5\text{m}$), span ($84^\circ \pm 4^\circ$), height ($8.5\text{m}$), apex at $Z = 5.20\text{m}$, flank wrap to $Z \approx -0.58\text{m}$, top neon trim at $Y = 8.28\text{m}$, base neon at $Y = -0.18\text{m}$, 8 scholarship symbols watermark opacity ($\le 25\%$). | 7 tests | 5 tests | 3 tests | 2 tests | **VERIFIED** |
-| **R2** | **Luminous Canyon Pass** | Recessed S-curve trajectory between ridges, organic width tapering ($0.65\text{m} \to 0.16\text{m}$), lateral Gaussian falloff shader feathering alpha to strictly 0.0 at lateral boundaries. | 5 tests | 5 tests | 2 tests | 1 test | **VERIFIED** |
-| **R3** | **Rugged Digital Mountain** | Low-poly procedural 3D terrain on plinth ($Y = 1.96\text{m}, Z = 4.60\text{m}$); summit pinnacle at World $Y = 4.38\text{m}$; $\ge 6$ secondary peaks across asymmetric flanks; chiaroscuro normal facet classification; `EdgesGeometry` wireframe at $15^\circ$; vertex constellation nodes. | 6 tests | 2 tests | 2 tests | 1 test | **VERIFIED** |
-| **R4** | **Summit Beacon & Flag** | Lighthouse lantern tower ($Y = 4.38\text{m} - 4.65\text{m}$); 4-tier radial bloom halo ($16, 36, 64, 96\text{px}$); slender flagpole ($Y = 4.93\text{m}$) with finial; translucent pennant flag ("lá cờ chìm", opacity $\le 60\%$, waving $+X$); summit point light ($Y \ge 4.60\text{m}$, intensity $\ge 25$). | 5 tests | 5 tests | 2 tests | 1 test | **VERIFIED** |
-| **R5** | **4-Layer Portal Arches** | Arc 3 widest pylon ($\ge 0.36\text{m}$, glossy lacquer roughness $\le 0.10$); Arc 4 tallest arch ($Y \ge 5.15\text{m}-5.20\text{m}$, $\theta_{\text{top}} \ge 39^\circ$); Arc 2 smallest spacer ($\le 0.10\text{m}$, matte roughness $\ge 0.80$); Arc 1 warm ivory lightbox ($\approx 0.22\text{m}$); extrude depth hierarchy. | 7 tests | 5 tests | 3 tests | 1 test | **VERIFIED** |
-| **R6** | **Anchored Logo Stanchions** | Continuous plinth deck at $Y = 1.97\text{m}$ with cyan neon trim; dual structural steel columns for Quizorra ($X = 3.35\text{m}, 4.85\text{m}$) and Olympia medallion ($X = -4.55\text{m}, -3.65\text{m}$) with baseplates at $Y = 1.97\text{m}$; zero floating gap ($\le 0.01\text{m}$). | 6 tests | 3 tests | 2 tests | 1 test | **VERIFIED** |
-| **R7** | **File Safety & Integrity** | Zero files modified/deleted outside `d:\Timeout Quiz`, zero unintended deletions within project directory, 100% preservation of all existing assets. | Enforced | Enforced | Enforced | 1 test | **VERIFIED** |
+| **R1** | **Anti-Clipping Rear Walkway Trajectory** | Rear corridor arc radius ($R = 7.75\text{m} \pm 0.05\text{m}$) maintains $\ge 0.70\text{m}$ clearance behind all podium standing spots ($R=7.02\text{m}$) and $\ge 0.80\text{m}$ clearance inside curved Science Wall ($R=8.60\text{m}$). Corridor mouth entry ($\phi_{\text{entry}} = 0.20\text{ rad}$) clears Podium 0 by $> 1.5\text{m}$. Trajectory collision oracle confirms ZERO collisions with front kiosks/screens across all seats for 4 and 8 contestants. Approach into desk is strictly inward from behind ($R \to 7.02\text{m}$). | 12 | 8 | 4 | 2 | **VERIFIED** |
+| **R2** | **Pipelined Staggered Entrance** | Contestant $N$ emerges as Contestant $N-1$ clears lower stairs ($\Delta t = 4000\text{ms}$). Last contestant uses terminal finish threshold ($6800\text{ms}$). Total entrance duration for 4 contestants is exactly $18.8\text{s}$ (down from $27.2\text{s}$). `seatStartTimes` array records exact server emergence timestamp per seat. Alternating door emergence (Door Left for even seats, Door Right for odd seats). Concurrent walking figures render smoothly without state conflicts. | 12 | 10 | 4 | 1 | **VERIFIED** |
+| **R2** | **Multi-Contestant Screen Mode Sync** | Each contestant's podium screen switches from `"logo"` to `"name_school"` at elapsed $\ge 5.2\text{s}$ of their individual walk, independent of other contestants. Unconditional switch to `"name_school"` once entrance completes (`hasFinishedEntrance = true`). | 4 | 4 | 5 | 1 | **VERIFIED** |
+| **R3** | **Host Wrong Button Lockout** | Host "Sai" button locked for 3000ms (O22) or 5000ms (O23+) upon question reveal in shared segments when nobody buzzed. Hotkey Backspace and direct `kd:wrong` rejected on backend with localized error message. Unlocked after duration expires or during solo segments. | 8 | 10 | 3 | 2 | **VERIFIED** |
+| **R3** | **Instant Buzzer Unlock** | Pressing buzzer immediately sets `kd.buzzedSeat = seatId` and clears `kd.noBuzzWrongUnlockAt = undefined`. UI `wrongUnlockRemMs` drops to 0, unlocking "Sai" button instantly without waiting for timer to expire. | 4 | 6 | 4 | 1 | **VERIFIED** |
+| **R5** | **Sandbox Parity & Conformance Audit** | `OlympiaSandboxStudio.tsx` disabled styling and countdown badge parity matching `HostConsole.tsx`. Static AST inspection verifies all 4 critical implementation points across `Podiums.tsx`, `engine.ts`, `HostConsole.tsx`, and `OlympiaSandboxStudio.tsx`. Zero regressions across all 740 project tests. | Enforced | Enforced | 1 | 1 | **VERIFIED** |
 
 ---
 
@@ -36,14 +64,34 @@ The test suite provides **opaque-box, requirement-driven, mathematical contract 
 
 ```
 ================================================================================
-GRAND CONSOLIDATED 3D STUDIO TEST SUMMARY (BASELINE + S14 REFACTOR)
+OLYMPIA FIXES TEST SUITE BREAKDOWN
 ================================================================================
-  Tier 1 (Feature Coverage):        77 / 77 passed (Threshold: >= 70) [100%]
-  Tier 2 (Boundary & Corner Cases): 68 / 68 passed (Threshold: >= 60) [100%]
-  Tier 3 (Cross-Feature Combos):    16 / 16 passed (Threshold: >= 14) [100%]
-  Tier 4 (Real-World Scenarios):    10 / 10 passed (Threshold: >= 10) [100%]
---------------------------------------------------------------------------------
-  GRAND TOTAL TESTS EXECUTED:       171 / 171 passed (100% Pass Rate)
+  Tier 1: Feature Coverage (Core Functional Requirements)
+    - F1.1 - F1.12: R1 Anti-Clipping Rear Walkway Trajectory & Geometry (12 tests)
+    - F2.1 - F2.12: R2 Pipelined Entrance 4000ms Intervals & Arrival (12 tests)
+    - F3.1 - F3.12: R3 Host Wrong Button Lock (3s/5s) & Instant Buzz Unlock (12 tests)
+    Result: 36 / 36 PASSED (Threshold >= 35 satisfied)
+
+  Tier 2: Boundary & Corner Cases (Stress & Limits)
+    - B1.1 - B1.10: Extreme Contestant Counts (2, 4, 8, 1, empty, max limits) (10 tests)
+    - B2.1 - B2.10: Rapid Skip, Next & Interruption Dynamics (10 tests)
+    - B3.1 - B3.10: Buzzer & Lockout Boundary Timestamps (2999ms vs 3001ms) (10 tests)
+    - B4.1 - B4.8:  Geometric & Coordinate Boundary Constraints (8 tests)
+    Result: 38 / 38 PASSED (Threshold >= 35 satisfied)
+
+  Tier 3: Cross-Feature Combinations & Transitions
+    - C1 - C5:   Pipelined 5.2s Individual Screen Mode Synchronization (5 tests)
+    - C6 - C9:   Round Transitions, Question Skip, and Override during Lockout (4 tests)
+    - C10 - C12: O22 Quarter Variations, Sandbox MC Parity & Buzz Stress (3 tests)
+    Result: 12 / 12 PASSED (Threshold >= 10 satisfied)
+
+  Tier 4: Real-World Acceptance Scenarios & Conformance Audit
+    - S1: Complete Broadcast Match Sequence (Entrance -> Shared KD -> Lockout Eval)
+    - S2: O22 vs O23+ Comparative Match Simulation (3s Lock vs 5s Lock)
+    - S3: 8-Contestant Tournament Simulation (Pipelined Staggering & Walkway Geometry)
+    - S4: Hotkey & Network Tamper Prevention Simulation (Backend Authority)
+    - S5: Static Implementation Conformance Audit across 4 Core Source Files
+    Result: 5 / 5 PASSED (Threshold >= 5 satisfied)
 ================================================================================
 ```
 
@@ -51,45 +99,70 @@ GRAND CONSOLIDATED 3D STUDIO TEST SUMMARY (BASELINE + S14 REFACTOR)
 
 ## 4. How to Run the Tests
 
-To execute the full test suite locally:
+### Primary Test Suite (Olympia Fixes 4-Tier E2E)
 ```powershell
-cd "d:\Timeout Quiz"
+cd 'd:\Timeout Quiz'
+node tests/e2e/runner-olympia-fixes.js
+```
+
+### Full Regression Test Commands
+```powershell
+cd 'd:\Timeout Quiz'
+
+# 1. Olympia Game Engine Unit Tests (63 tests)
+npm run test:olympia
+
+# 2. 3D Broadcast Studio Master Test Suite (489 tests)
 npm run test:olympia-3d
-```
 
-To execute the standalone studio refactor suite:
-```powershell
-cd "d:\Timeout Quiz"
-npx esbuild src/lib/olympia/olympia-studio-refactor.test.ts --bundle --platform=node --target=node20 --outfile=scratch/olympia-studio-refactor-test.cjs; node scratch/olympia-studio-refactor-test.cjs
+# 3. Econova Broadcast E2E Test Suite (97 tests)
+npm test
+
+# 4. Full TypeScript Type Check
+npm run type-check
 ```
 
 ---
 
-## 5. Escalated Implementation Defects (For Implementing Worker)
+## 5. Implementation Conformance Audit Results
 
-The automated Implementation Conformance Audit inspected `src/components/olympia/studio/StudioLighting.tsx` and `src/components/olympia/studio/CameraController.tsx`. The following **6 implementation defects** have been identified in the current code and must be refactored by the Worker agents across milestones M1, M2, and M3:
+The automated Static Implementation Conformance Audit (`Scenario 5`) inspected the four target implementation files in `d:\Timeout Quiz` and confirmed:
+1. `src/components/olympia/studio/Podiums.tsx`:
+   - `aisleRadius = 7.75` rear corridor radius is active (line 3177).
+   - Phase 5A (sweep to corridor mouth), Phase 5B (rear corridor arc), and Phase 5C (radial step inward from behind) are in place.
+   - Screen mode logic computes per-contestant arrival (`isApproachingOrArrived = thisSeatElapsed >= 5.2`).
+2. `src/lib/olympia/engine.ts`:
+   - `advanceThreshold = isLast ? 6800 : 4000` is active (line 482).
+   - `kd.noBuzzWrongUnlockAt = undefined;` is explicitly cleared upon player buzz (line 3421).
+   - O22 (3000ms) and O23+ (5000ms) lockout durations on reveal are enforced (lines 1620–1623, 1700–1703).
+3. `src/components/olympia/HostConsole.tsx`:
+   - Amber countdown badge and disabled button styling during lockout are active (lines 2135–2155).
+   - Backspace hotkey is guarded during lockout (lines 204–215).
+4. `src/components/olympia/OlympiaSandboxStudio.tsx`:
+   - `wrongUnlockRemMs` and disabled button styling with countdown badge match Host Console (lines 730–748).
 
-1. **[DEFECT - M1 / R5] Arc 4 Top Height Premature Cutoff**:
-   - `leftArc4InnerShape` in `StudioLighting.tsx` stops at $\theta_{\text{top}} = 22.0^\circ$ ($Y_{\text{top}} \approx 4.38\text{m}$).
-   - **Required Fix**: Update Arc 4 shape and inner neon curve to $\theta_{\text{top}} = 40.0^\circ$, reaching $Y_{\text{top}} = 5.191\text{m} \approx 5.20\text{m}$ to crown the mountain summit.
-2. **[DEFECT - M1 / R5] Arc 3 Shares Dark Metallic Material**:
-   - Arc 3 currently shares `portalDarkPylonMat` (roughness $0.22$, metalness $0.92$) with Arc 2.
-   - **Required Fix**: Introduce dedicated `portalBlackLacquerMat` (color `#030305`, roughness $0.06 \le 0.10$, metalness $0.15$) and dedicated `portalDarkSpacerMat` for Arc 2 (roughness $0.85$).
-3. **[DEFECT - M1 / R1] Flat Billboard Backdrop Wall**:
-   - Central backdrop in `StudioLighting.tsx:1691` is a flat plane (`<planeGeometry args={[32.0, 8.5]} />` at $Z = 5.05\text{m}$).
-   - **Required Fix**: Replace with cylindrical curved cyclorama geometry ($R = 22.50\text{m}$, span $84^\circ$, apex $Z = 5.20\text{m}$, origin $Z_c = -17.30\text{m}$) with curved top and base neon trims.
-4. **[DEFECT - M2 / R2 & R3] Missing 3D Mountain Landscape & Luminous Canyon Pass**:
-   - Mountain and canyon currently rely on AI raster `/brand/olympia_vtv3_backdrop_ai.jpg` or flat 2D canvas fallback, causing the empty ice tent / waterfall hole defect.
-   - **Required Fix**: Implement procedural 3D component `StudioMountainLandscape` at $Z = 4.60\text{m}, Y = 1.96\text{m}$ with low-poly chiaroscuro facets, `EdgesGeometry` wireframe ($15^\circ$), constellation nodes, and organic canyon pass with feathered alpha shader.
-5. **[DEFECT - M2 / R4] Summit Point Light Position Below Mountain Apex**:
-   - Portal backlight in `StudioLighting.tsx:1830` is placed at $Y = 4.0\text{m}$, which is below the mountain summit ($Y = 4.38\text{m}$).
-   - **Required Fix**: Elevate summit point light to $Y = 4.65\text{m} - 4.70\text{m}$ with intensity $\ge 25$ and color `#e0f2fe`.
-6. **[DEFECT - M3 / R6] Floating Stanchion Baseplates**:
-   - Quizorra and Olympia stanchions terminate at local $Y = -1.44\text{m}$ (World $Y = 1.91\text{m}$), hovering above empty seats.
-   - **Required Fix**: Extend plinth continuous top deck to $Y = 1.97\text{m}$ ($X \in [-6.6\text{m}, +6.6\text{m}]$), seat dual structural steel columns with baseplates solidly on plinth deck at World $Y = 1.97\text{m}$ (gap $= 0.00\text{m}$).
+**Audit Verdict**: **0 pending worker defects found** in local codebase. All required changes are present, stable, and pass all 740 automated tests.
 
 ---
 
-## 6. Conclusion
+## 6. VPS Deployment Verification Checklist (Requirement R5)
 
-The test suite is **100% operational, fully verified, and ready for worker milestone implementation**. As workers apply changes for M1, M2, and M3, running `npm run test:olympia-3d` will immediately confirm mathematical conformance and verify progress against the 6 audit items.
+For the deployer / worker executing live VPS deployment:
+1. Local git working tree clean, all commits pushed to `origin/main` (`https://github.com/khanhng07mrc-sudo/timeout-quiz.git`).
+2. Head commit on `origin/main` includes `6b4ce56` and the new test suite `tests/e2e/test-olympia-fixes.test.ts`.
+3. On live VPS (`/var/www/quizorra`), run:
+   ```bash
+   cd /var/www/quizorra
+   bash deploy-vps.sh
+   ```
+4. Verify chunk update on live VPS:
+   ```powershell
+   curl.exe --max-time 10 -s -k https://quizorra.ddns.net/admin/sandbox | Select-String -Pattern "page-[a-zA-Z0-9]+\.js"
+   ```
+   *Expected*: The HTML no longer serves the stale chunk `page-7aba8b85ceac9a89.js`.
+
+---
+
+## 7. Sign-off
+
+The Olympia Broadcast & Gameplay Refinements test suite is **100% verified, fully documented, and declared TEST READY**.

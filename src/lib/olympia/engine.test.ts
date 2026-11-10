@@ -1875,11 +1875,11 @@ test("VCNV selecting, openQuestion, blank, auto-grid on correct/wrong & Summary 
   assert.equal(g.state.summaryState!.currentIndex, 3);
   assert.equal(g.state.studioCamera, 5 + 2); // CAM 7 for TS3
 
-  // Advance 3.5s on tick -> Concludes summary, returns to CAM 10 and stops BGM
+  // Advance 3.5s on tick -> Concludes summary, returns to CAM 10 and keeps summary BGM playing seamlessly (USER REQUIREMENT)
   g.tick(24000);
   assert.equal(g.state.summaryState?.active, false);
   assert.equal(g.state.studioCamera, 10);
-  assert.equal(g.state.cue?.sound, "");
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/summary");
 
   // 7. Test Tang Toc blank, redaction, and grading
   const gTT = game("O26", ["tangToc"], 4);

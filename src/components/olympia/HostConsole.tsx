@@ -161,7 +161,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select") return;
 
-      const isIntro = state?.stage === "playing" && (Boolean(state.introTimer) || Boolean(state.entranceState?.active));
+      const isIntro = state?.stage === "playing" && (Boolean(state.introTimer) || Boolean(state.entranceState?.active) || Boolean(state.introStandby));
       const notInGame = state?.stage !== "playing" || isIntro;
 
       // When in lobby or intro stage, lock all game actions and scoring hotkeys!
@@ -287,7 +287,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
 
   // Calculate current timer countdown for right-hand status widget with live useCountdown
   const activeTimer = useMemo(() => {
-    if (!state || state.stage !== "playing" || Boolean(state.introTimer) || Boolean(state.entranceState?.active)) return null;
+    if (!state || state.stage !== "playing" || Boolean(state.introTimer) || Boolean(state.entranceState?.active) || Boolean(state.introStandby)) return null;
     const curRound = state.currentRound;
     if (curRound === "khoiDong") {
       if (!state.khoiDong?.started || !state.khoiDong?.questionRevealed) return null;
@@ -327,7 +327,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
   const summaryAllowed = canStartScoreSummary(state);
   const isIntroStage =
     state.stage === "playing" &&
-    (Boolean(state.introTimer) || Boolean(state.entranceState?.active));
+    (Boolean(state.introTimer) || Boolean(state.entranceState?.active) || Boolean(state.introStandby));
   const curRoundName = isIntroStage
     ? "CHÀO ĐẦU & GIỚI THIỆU"
     : curRound
@@ -1112,6 +1112,11 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                           <span>Kết thúc màn chào thí sinh</span>
                         </button>
                       </>
+                    ) : state.entranceCompleted ? (
+                      <div className="px-4 py-2 rounded-xl bg-emerald-950/60 border border-emerald-400/50 text-emerald-200 text-xs sm:text-sm font-black flex items-center gap-2 shadow-inner">
+                        <span>✅</span>
+                        <span>Đã giới thiệu xong ({state.seats.length || 4}/{state.seats.length || 4}) thí sinh — Sẵn sàng vào thi</span>
+                      </div>
                     ) : (
                       <button
                         type="button"
@@ -3519,7 +3524,7 @@ function HotkeyRow({ keyName, desc, color }: { keyName: string; desc: string; co
 }
 
 function isQuestionRevealedToHost(st: OlympiaState): boolean {
-  if (st.stage !== "playing" || Boolean(st.introTimer) || Boolean(st.entranceState?.active)) {
+  if (st.stage !== "playing" || Boolean(st.introTimer) || Boolean(st.entranceState?.active) || Boolean(st.introStandby)) {
     return false;
   }
   if (st.currentRound === "khoiDong") {

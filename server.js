@@ -106056,6 +106056,9 @@ var OlympiaGame = class _OlympiaGame {
         } else {
           st.entranceState = null;
           st.entranceCompleted = true;
+          st.introStandby = true;
+          st.studioCamera = 3;
+          st.studioCameraManual = false;
           this.cue("6_NhacKhac/contest_intro", "stop");
           this.touch(now);
           return true;
@@ -106077,7 +106080,6 @@ var OlympiaGame = class _OlympiaGame {
           st.summaryState.active = false;
           st.studioCameraManual = false;
           st.studioCamera = 10;
-          this.cue("", "stop");
           this.touch(now);
           return true;
         }
@@ -106176,6 +106178,7 @@ var OlympiaGame = class _OlympiaGame {
     const active = this.activeSeatIds;
     if (active.length === 0) return fail("Ch\u01B0a c\xF3 th\xED sinh n\xE0o trong ph\xF2ng");
     st.introTimer = null;
+    st.introStandby = false;
     if (st.summaryState) st.summaryState.active = false;
     st.showStageGraphics = false;
     st.studioCameraManual = false;
@@ -106423,11 +106426,13 @@ var OlympiaGame = class _OlympiaGame {
         }
         st.stage = "playing";
         st.entranceCompleted = false;
+        st.introStandby = true;
         st.roundIdx = -1;
         if (st.rounds.length === 0) return fail("Ch\u01B0a ch\u1ECDn v\xF2ng thi n\xE0o");
         const res = this.nextRound(now);
         if (!res.ok) return res;
         st.banner = null;
+        st.introStandby = true;
         st.introTimer = mkTimer(864e5);
         startTimer(st.introTimer, now);
         st.showStageGraphics = false;
@@ -106735,7 +106740,11 @@ var OlympiaGame = class _OlympiaGame {
         for (let i = 0; i < activeCount; i++) {
           seatGestures.push(shuffled[i % shuffled.length]);
         }
-        st.introTimer = null;
+        st.introStandby = true;
+        if (!st.introTimer) {
+          st.introTimer = mkTimer(864e5);
+          startTimer(st.introTimer, now);
+        }
         st.studioCamera = 11;
         st.studioCameraManual = false;
         st.entranceState = {
@@ -106763,6 +106772,9 @@ var OlympiaGame = class _OlympiaGame {
         } else {
           st.entranceState = null;
           st.entranceCompleted = true;
+          st.introStandby = true;
+          st.studioCamera = 3;
+          st.studioCameraManual = false;
           this.cue("", "stop");
         }
         return OK;
@@ -106770,6 +106782,9 @@ var OlympiaGame = class _OlympiaGame {
       case "entrance:skip": {
         st.entranceState = null;
         st.entranceCompleted = true;
+        st.introStandby = true;
+        st.studioCamera = 3;
+        st.studioCameraManual = false;
         this.cue("", "stop");
         return OK;
       }

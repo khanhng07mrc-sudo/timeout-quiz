@@ -43,3 +43,15 @@ Gate Result: **PASS**
 
 Gate Result: **PASS**
 
+
+## Gate — Milestone 5 Rework (Iteration 1: Stage Left Shift)
+| Agent | Role | Verdict | Source |
+|-------|------|---------|--------|
+| worker_rework_layout | teamwork_worker | DONE (574/574 tests passed, build passed) | handoff.md |
+| reviewer_rework_1 | teamwork_reviewer | APPROVE | handoff.md |
+| reviewer_rework_2 | teamwork_reviewer | APPROVE | handoff.md |
+| challenger_rework_1 | teamwork_challenger | APPROVE (margins >= 13%, MC excluded NDC X = 1.79..2.88) | handoff.md |
+| challenger_rework_2 | teamwork_challenger | REQUEST_CHANGES (kinematic snap 85.18°/0.02s on Seat 1, dead stop 0.037 m/s) | handoff.md |
+| auditor_rework_1 | teamwork_auditor | CLEAN (zero integrity violations) | handoff.md |
+
+Gate Result: **FAIL** (challenger_rework_2 REQUEST_CHANGES: kinematic snap & dead stop on negative targetPhi)

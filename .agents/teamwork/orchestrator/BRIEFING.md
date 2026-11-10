@@ -61,16 +61,17 @@ Orchestrate the fix of 3D stage layout, camera framing, contestant walk trajecto
 | challenger_m5_2 | teamwork_challenger | Milestone 5 Photometric, Contrast & Framing Challenger 2 | completed | 8d2bcf3e-5cc3-48d7-b44a-8f97d64d083f |
 | auditor_m5_1 | teamwork_auditor | Milestone 5 Forensic Auditor | completed | aa3c0a00-4dc5-43bb-a851-938f7d6d6da6 |
 | worker_rework_layout | teamwork_worker | Stage Left Shift, MC Separation & Screenshot Proof | completed | 6bdef92d-94c8-48ad-b88a-d0c3f977e468 |
-| reviewer_rework_1 | teamwork_reviewer | Milestone 5 Rework Code & Layout Reviewer 1 | in-progress | 586a3d99-d0bb-4a95-b677-3224e9eae4e0 |
-| reviewer_rework_2 | teamwork_reviewer | Milestone 5 Rework Visual & Framing Reviewer 2 | in-progress | af44645e-5418-40dc-8287-f9ac2f1972c0 |
-| challenger_rework_1 | teamwork_challenger | Milestone 5 Rework Clearance, Bounding & Margins Challenger 1 | in-progress | 15fc7f5d-3390-426e-882a-068e8e64ed84 |
-| challenger_rework_2 | teamwork_challenger | Milestone 5 Rework Photometric, MC Stage Separation & Kinematic Challenger 2 | in-progress | fc52f4d1-52ed-4da1-8461-acfaa28770bf |
-| auditor_rework_1 | teamwork_auditor | Milestone 5 Rework Forensic Auditor | in-progress | 9b6780b6-ac0f-4f14-abfc-53fb0f8998e9 |
+| reviewer_rework_1 | teamwork_reviewer | Milestone 5 Rework Code & Layout Reviewer 1 | completed | 586a3d99-d0bb-4a95-b677-3224e9eae4e0 |
+| reviewer_rework_2 | teamwork_reviewer | Milestone 5 Rework Visual & Framing Reviewer 2 | completed | af44645e-5418-40dc-8287-f9ac2f1972c0 |
+| challenger_rework_1 | teamwork_challenger | Milestone 5 Rework Clearance, Bounding & Margins Challenger 1 | completed | 15fc7f5d-3390-426e-882a-068e8e64ed84 |
+| challenger_rework_2 | teamwork_challenger | Milestone 5 Rework Photometric, MC Stage Separation & Kinematic Challenger 2 | completed | fc52f4d1-52ed-4da1-8461-acfaa28770bf |
+| auditor_rework_1 | teamwork_auditor | Milestone 5 Rework Forensic Auditor | completed | 9b6780b6-ac0f-4f14-abfc-53fb0f8998e9 |
+| worker_rework_kinematics | teamwork_worker | Kinematic Spline Monotonicity & Rotation Smoothing Remediation | in-progress | b8cd60d4-4fc9-4e29-9110-123a22f5ae13 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 38 / 128
-- Pending subagents: 586a3d99-d0bb-4a95-b677-3224e9eae4e0, af44645e-5418-40dc-8287-f9ac2f1972c0, 15fc7f5d-3390-426e-882a-068e8e64ed84, fc52f4d1-52ed-4da1-8461-acfaa28770bf, 9b6780b6-ac0f-4f14-abfc-53fb0f8998e9
+- Spawn count: 39 / 128
+- Pending subagents: b8cd60d4-4fc9-4e29-9110-123a22f5ae13
 - Predecessor: none
 - Successor: none
 

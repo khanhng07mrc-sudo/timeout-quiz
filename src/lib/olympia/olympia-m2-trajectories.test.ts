@@ -294,13 +294,80 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     }
   });
 
+  runTest(4, "M2.17: Continuous 50 Hz kinematic verification across all 8 seats (0 snaps, 0 dead stops, 0 flips)", () => {
+    const dt = 0.02;
+    const numSteps = Math.round(6.80 / dt) + 1; // 341 steps
+    let deadStops = 0;
+    let snaps = 0;
+    let flips = 0;
+    let arrivalErrors = 0;
+
+    for (let s = 0; s < 8; s++) {
+      const cfg = getDeskConfig(s, 8);
+      const deskRotY = cfg.rotY;
+      const deskX = cfg.pos[0] - Math.sin(deskRotY) * 0.42;
+      const deskZ = cfg.pos[2] - Math.cos(deskRotY) * 0.42;
+
+      let prevPos: [number, number, number] | null = null;
+      let prevRotY: number | null = null;
+
+      for (let step = 0; step < numSteps; step++) {
+        const t = +(step * dt).toFixed(3);
+        const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
+
+        const isWalkingPhase =
+          (t >= 0.05 && t <= 0.55) ||
+          (t >= 0.65 && t <= 1.75) ||
+          (t >= 3.05 && t <= 3.95) ||
+          (t >= 4.05 && t <= 6.45);
+
+        if (isWalkingPhase) {
+          if (traj.vel < 0.25) deadStops++;
+        }
+
+        if (prevPos !== null && prevRotY !== null) {
+          const stepDist = Math.hypot(
+            traj.rawPos[0] - prevPos[0],
+            traj.rawPos[1] - prevPos[1],
+            traj.rawPos[2] - prevPos[2]
+          );
+          if (isWalkingPhase && stepDist / dt < 0.20) deadStops++;
+
+          let dRot = (traj.rotY - prevRotY) % (2 * Math.PI);
+          if (dRot > Math.PI) dRot -= 2 * Math.PI;
+          if (dRot < -Math.PI) dRot += 2 * Math.PI;
+          const rotStepDeg = Math.abs(dRot) * (180 / Math.PI);
+
+          if (rotStepDeg > 12.0) snaps++;
+          if (rotStepDeg > 90.0) flips++;
+        }
+
+        prevPos = [traj.rawPos[0], traj.rawPos[1], traj.rawPos[2]];
+        prevRotY = traj.rotY;
+
+        if (step === numSteps - 1) {
+          const arrPosErr = Math.hypot(traj.rawPos[0] - deskX, traj.rawPos[2] - deskZ);
+          let rotDiff = (traj.rotY - deskRotY) % (2 * Math.PI);
+          if (rotDiff > Math.PI) rotDiff -= 2 * Math.PI;
+          if (rotDiff < -Math.PI) rotDiff += 2 * Math.PI;
+          if (arrPosErr > 0.01 || Math.abs(rotDiff) > 0.001) arrivalErrors++;
+        }
+      }
+    }
+
+    assert.equal(deadStops, 0, `Expected 0 dead stops (< 0.25 m/s), found ${deadStops}`);
+    assert.equal(snaps, 0, `Expected 0 rotational snaps (> 12.0°/0.02s), found ${snaps}`);
+    assert.equal(flips, 0, `Expected 0 angle flips (> 90°), found ${flips}`);
+    assert.equal(arrivalErrors, 0, `Expected 0 arrival errors, found ${arrivalErrors}`);
+  });
+
   console.log("\n================================================================================");
   console.log("MILESTONE 2 TEST SUMMARY");
   console.log("================================================================================");
   console.log(`  Tier 1 (Feature Coverage):        ${tier1Count} / 6 passed`);
   console.log(`  Tier 2 (Boundary & Continuity):   ${tier2Count} / 5 passed`);
   console.log(`  Tier 3 (Cross-Feature Combos):    ${tier3Count} / 3 passed`);
-  console.log(`  Tier 4 (Real-World Scenarios):    ${tier4Count} / 2 passed`);
+  console.log(`  Tier 4 (Real-World Scenarios):    ${tier4Count} / 3 passed`);
   console.log("--------------------------------------------------------------------------------");
   console.log(`  TOTAL M2 TESTS EXECUTED:          ${totalPassed} / ${totalExecuted} passed (100% Pass Rate)`);
   console.log("================================================================================\n");

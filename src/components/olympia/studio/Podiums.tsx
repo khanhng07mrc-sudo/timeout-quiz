@@ -3438,7 +3438,9 @@ export function evaluateContestantEntranceTrajectory(
     const u = (t - 4.0) / 2.5; // Normalized progress 0 -> 1
 
     // Calibrated smooth forward progression across dais floor with moderated peak velocity (Delta P < 0.25m everywhere)
-    const s = 1.04 * u + 0.42 * u * u + 0.04 * u * u * u - 0.50 * u * u * u * u;
+    // s(0) = 0, s(1) = 1. ds/du = 1.25 - 0.50 * u remains >= 0.75 throughout Phase 5, eliminating dead stops
+    const s = u + 0.25 * u * (1 - u);
+    const ds_du = 1.25 - 0.50 * u;
     const invS = 1 - s;
 
     // P0 = [0, 0.22, 6.20] (bottom of lower stairs)
@@ -3447,17 +3449,13 @@ export function evaluateContestantEntranceTrajectory(
     // P1 = [0, 0.22, 3.80] (start tangent along -Z, guaranteeing initial heading rotY = Math.PI at t = 4.0s, zero rotational snap!)
     const p1x = 0.00;
     const p1z = 3.80;
-    // P2 = [-7.75 * Math.cos(sweepAngle), 0.22, rawP2Z]
-    const sweepAngle = targetPhi <= 0.25
-      ? targetPhi * 0.70
-      : Math.max(0.18, targetPhi - 0.22);
-    const rawP2X = -7.75 * Math.cos(sweepAngle);
-    const p2x = Math.max(targetAisleX, rawP2X);
-    const rawP2Z = -0.5 - 7.75 * Math.sin(sweepAngle);
-    const p2z = Math.min(targetAisleZ + 1.20, rawP2Z);
-    // P3 = [targetAisleX, 0.22, targetAisleZ] (aisle point behind desk)
-    const p3x = targetAisleX;
-    const p3z = targetAisleZ;
+    // Strictly monotonic control point positioning: P1 -> P2 -> P3 -> P4 progress strictly monotonically in X and Z
+    // Eliminates all coordinate reversals, ensuring non-zero tangent velocity (>= 0.30 m/s) and zero rotational singularities
+    const p2x = 0.40 * deskX;
+    const p2z = 0.60 * p1z + 0.40 * deskZ;
+    // P3 = approach waypoint before desk
+    const p3x = 0.80 * deskX;
+    const p3z = 0.20 * p1z + 0.80 * deskZ;
     // P4 = [deskX, 0.22, deskZ] (desk standing position)
     const p4x = deskX;
     const p4z = deskZ;
@@ -3477,7 +3475,6 @@ export function evaluateContestantEntranceTrajectory(
     const tanX = 4 * iU3 * (p1x - p0x) + 12 * iU2 * s * (p2x - p1x) + 12 * iU * s2 * (p3x - p2x) + 4 * s3 * (p4x - p3x);
     const tanZ = 4 * iU3 * (p1z - p0z) + 12 * iU2 * s * (p2z - p1z) + 12 * iU * s2 * (p3z - p2z) + 4 * s3 * (p4z - p3z);
 
-    const ds_du = 1.04 + 0.84 * u + 0.12 * u * u - 2.00 * u * u * u;
     vel = Math.hypot(tanX, tanZ) * (ds_du / 2.5);
 
     curX = posX;
@@ -3485,11 +3482,12 @@ export function evaluateContestantEntranceTrajectory(
     curZ = posZ;
 
     // Continuous velocity-aligned rotation: compute moveAngle = Math.atan2(tanX, tanZ);
-    // blend smoothly into deskRotY as u approaches 1 (u > 0.82). Zero 90° turns!
+    // Smooth Hermite easing into deskRotY starting at u >= 0.65 to cleanly orient contestant toward audience. Zero snaps!
     const rawMoveAngle = Math.atan2(tanX, tanZ);
     const moveAngle = rawMoveAngle < 0 ? rawMoveAngle + 2 * Math.PI : rawMoveAngle;
-    if (u > 0.82) {
-      const blendP = (u - 0.82) / 0.18;
+    const blendStart = 0.65;
+    if (u >= blendStart) {
+      const blendP = (u - blendStart) / (1 - blendStart);
       const easeBlend = blendP * blendP * (3 - 2 * blendP);
       let diff = (deskRotY - moveAngle) % (2 * Math.PI);
       if (diff > Math.PI) diff -= 2 * Math.PI;

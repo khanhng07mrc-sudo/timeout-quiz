@@ -480,6 +480,14 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
               const next = !ttsActive;
               setTtsActive(next);
               setTtsEnabled(next);
+              if (typeof window !== "undefined") {
+                try {
+                  window.postMessage({ type: "SET_TTS", enabled: next }, "*");
+                  document.querySelectorAll("iframe").forEach((frame) => {
+                    frame.contentWindow?.postMessage({ type: "SET_TTS", enabled: next }, "*");
+                  });
+                } catch {}
+              }
               if (next) {
                 speakTTS("Bật chế độ đọc câu hỏi");
               } else {
@@ -790,13 +798,21 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
               </div>
             </div>
 
-            {/* 2. Separate Answer & Explanation Card Box */}
+            {/* 2. Separate Answer, Subject & Explanation Card Box */}
             <div className="rounded-xl border border-emerald-500/35 bg-gradient-to-r from-emerald-950/45 via-[#0b1f1a]/70 to-purple-950/35 p-2 flex flex-col gap-1.5 shadow-md backdrop-blur-sm">
               {/* Green box: ĐÁP ÁN */}
               <div className="rounded-lg bg-emerald-900/50 border border-emerald-400/40 px-2.5 py-1 text-xs text-emerald-200 flex items-center gap-2 shadow-inner">
                 <span className="font-black text-emerald-400 shrink-0 text-[11px] uppercase tracking-wider">ĐÁP ÁN:</span>
                 <span className="font-bold text-xs tracking-wide text-emerald-100 select-text">{getAnswerText(state) || "--"}</span>
               </div>
+
+              {/* Cyan / Sky box: LĨNH VỰC (if available) */}
+              {getSubjectText(state) && (
+                <div className="rounded-lg bg-sky-950/40 border border-sky-400/35 px-2.5 py-1 text-xs text-sky-200 flex items-center gap-2">
+                  <span className="font-black text-sky-400 shrink-0 text-[11px] uppercase tracking-wider">LĨNH VỰC:</span>
+                  <span className="font-semibold text-sky-100 text-[11px] select-text">{getSubjectText(state)}</span>
+                </div>
+              )}
 
               {/* Purple box: GIẢI THÍCH */}
               {getExplanationText(state) && (
@@ -3589,14 +3605,41 @@ function getAnswerText(st: OlympiaState): string {
   return "";
 }
 
+function getSubjectText(st: OlympiaState): string {
+  if (!isQuestionRevealedToHost(st)) return "";
+  if (st.currentRound === "khoiDong") return st.khoiDong?.current?.subject || "";
+  if (st.currentRound === "veDich") return st.veDich?.current?.q?.subject || "";
+  return "";
+}
+
 function getExplanationText(st: OlympiaState): string {
   if (!isQuestionRevealedToHost(st)) return "";
-  if (st.currentRound === "khoiDong") return st.khoiDong?.current?.subject || "--";
-  if (st.currentRound === "vcnv") return `Từ khóa Chướng ngại vật: ${st.vcnv?.keyword || "--"}`;
-  if (st.currentRound === "tangToc") return `Thời gian câu: ${st.tangToc ? [10, 20, 30, 40][st.tangToc.qIdx] || 20 : 20}s`;
-  if (st.currentRound === "veDich") return st.veDich?.current ? `Mức điểm: ${st.veDich.current.points}đ` : "--";
-  if (st.currentRound === "cauHoiPhu") return "Thời gian suy nghĩ: 15s";
-  return "--";
+  let exp = "";
+  if (st.currentRound === "khoiDong") {
+    const cur = st.khoiDong?.current as any;
+    exp = cur?.explanation || cur?.hint || "";
+  } else if (st.currentRound === "vcnv") {
+    const curIdx = st.vcnv?.currentRow;
+    if (curIdx === 4) {
+      exp = (st.vcnv?.centerQuestion as any)?.explanation || (st.vcnv?.centerQuestion as any)?.hint || "";
+    } else if (curIdx != null && curIdx >= 0) {
+      exp = (st.vcnv?.rows[curIdx] as any)?.explanation || (st.vcnv?.rows[curIdx] as any)?.hint || "";
+    }
+  } else if (st.currentRound === "tangToc") {
+    if (st.tangToc && st.tangToc.qIdx >= 0) {
+      const q = st.tangToc.questions[st.tangToc.qIdx] as any;
+      exp = q?.explanation || q?.hint || "";
+    }
+  } else if (st.currentRound === "veDich") {
+    const cur = st.veDich?.current?.q as any;
+    exp = cur?.explanation || cur?.hint || "";
+  } else if (st.currentRound === "cauHoiPhu") {
+    if (st.cauHoiPhu && st.cauHoiPhu.qIdx >= 0) {
+      const q = st.cauHoiPhu.questions[st.cauHoiPhu.qIdx] as any;
+      exp = q?.explanation || q?.hint || "";
+    }
+  }
+  return exp.trim();
 }
 
 export default HostConsole;

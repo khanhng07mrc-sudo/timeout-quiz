@@ -106059,7 +106059,6 @@ var OlympiaGame = class _OlympiaGame {
           st.introStandby = true;
           st.studioCamera = 3;
           st.studioCameraManual = false;
-          this.cue("6_NhacKhac/contest_intro", "stop");
           this.touch(now);
           return true;
         }

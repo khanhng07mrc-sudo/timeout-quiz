@@ -113,6 +113,10 @@ export interface QA {
   acceptedAnswers?: string[];
   /** optional subject/category label (e.g. Toán, Lý, Hóa, Sinh, Văn, Sử, Địa, Thể thao, Nghệ thuật, Lĩnh vực khác, Tiếng Anh) */
   subject?: string;
+  /** optional explanation for answer */
+  explanation?: string;
+  /** optional hint/note */
+  hint?: string;
   /** 1 of 6 Khởi Động zones */
   kdZone?: KdZoneId;
   /** 1 of 3 Về Đích macro-zones */

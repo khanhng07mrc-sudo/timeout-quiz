@@ -137,28 +137,36 @@ export function useOlympiaCameraState(
       const targetCam = getCameraForSeat(currentSeat, activeCount);
       const seatStart = state.entranceState.seatStartedAt || state.entranceState.startedAt || getNow();
       const elapsedSec = Math.max(0, (getNow() - seatStart) / 1000);
+      const isFirstSeat = currentSeat === 0;
+      const isLastSeat = currentSeat >= activeCount - 1;
 
-      if (elapsedSec < 3.8) {
-        // Phase 1 & 2 (0.0s - 3.8s): CAM 11 trực diện ở cự ly an toàn (Z=3.20m, cách cầu thang >3m, không đâm vào mặt kính)
-        // Khi thí sinh dừng pose chào ở Bục Giữa (2.2s - 3.8s), push zoom quang học êm dịu (0.12)
-        const pushInProgress = elapsedSec < 2.0 ? 0.0 : Math.min(1.0, (elapsedSec - 2.0) / 1.8) * 0.12;
+      // Broadcast Choreography:
+      // For Contestant 0 (first contestant):
+      // - 0.0s -> 3.8s: CAM 11 (MCU direct greeting on center landing, with push zoom 0.25 during pose 1.8s - 3.0s)
+      // - >= 3.8s: CAM 10 (Wide podiums view)
+      // For Contestant N > 0:
+      // - 0.0s -> 1.8s (held for 2.0s total since previous contestant's 3.8s): CAM 10 (Wide view while previous contestant settles and new contestant descends upper stairs)
+      // - 1.8s -> 3.8s: CAM 11 (MCU direct greeting on center landing, with push zoom 0.25 during pose)
+      // - >= 3.8s:
+      //     If !isLastSeat: CAM 10 (continues wide view until next contestant reaches landing)
+      //     If isLastSeat: CAM 10 from 3.8s -> 6.2s, then targetCam (desk close-up) from 6.2s -> 6.8s
+      const isCam11Phase = isFirstSeat
+        ? elapsedSec < 3.8
+        : elapsedSec >= 1.8 && elapsedSec < 3.8;
+
+      if (isCam11Phase) {
+        // Optical zoom push (0.25) during pose greeting on center landing (1.8s -> 3.0s)
+        const pushInProgress = elapsedSec < 1.8 ? 0.0 : Math.min(1.0, (elapsedSec - 1.8) / 1.2) * 0.25;
         return {
           camAngle: 11,
           transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress,
         };
-      } else if (elapsedSec < 6.2) {
-        // Phase 3 (3.8s - 6.2s): Chuyển mượt sang CAM 10 (Toàn Cảnh Bục Thí Sinh & Sàn Đấu) khi thí sinh bước xuống cầu thang
-        // và di chuyển qua luồng hành lang phía sau về bàn đấu (loại bỏ cắt góc CAM 12 giật cục)
-        return {
-          camAngle: 10,
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: 0.0,
-        };
-      } else {
-        // Phase 4 (6.2s onwards): Cắt cận cảnh vào bục của thí sinh đó
+      }
+
+      if (isLastSeat && elapsedSec >= 6.2) {
+        // Last contestant has arrived behind their assigned desk: frame desk close-up
         return {
           camAngle: targetCam,
           transitionMode: "CUT",
@@ -166,6 +174,14 @@ export function useOlympiaCameraState(
           pushInProgress: 0.0,
         };
       }
+
+      // Default to CAM 10 (Toàn Cảnh Bục Thí Sinh)
+      return {
+        camAngle: 10,
+        transitionMode: "CUT",
+        isOverlayHidden: false,
+        pushInProgress: 0.0,
+      };
     }
     const round = state.currentRound;
 

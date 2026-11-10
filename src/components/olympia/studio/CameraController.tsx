@@ -120,10 +120,10 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   },
   11: {
     id: 11,
-    label: "Cam Ẩn Trực Diện Chào Sân",
-    // Broadcast eye-level medium-wide perspective with safe distance (>3.0m) preventing contestant from flying into camera
-    pos: [0.0, 2.15, 3.20],
-    target: [0.0, 1.45, 9.50],
+    label: "Cam Cận Cảnh Trực Diện Chào Sân",
+    // Broadcast eye-level Medium Close-Up (MCU) framing contestant from waist up, eliminating distracting grandstand spectator seats
+    pos: [0.0, 1.85, 6.40],
+    target: [0.0, 1.50, 10.20],
   },
   12: {
     id: 12,

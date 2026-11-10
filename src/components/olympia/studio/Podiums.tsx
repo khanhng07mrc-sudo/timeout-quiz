@@ -3281,12 +3281,6 @@ function SingleContestantEntranceWalkingFigure({
     const now = getNow();
     const t = Math.max(0, (now - seatStart) / 1000);
 
-    // If walk completed (t >= 6.8s), hide this walking figure (stationary podium figure takes over)
-    if (t >= 6.8) {
-      g.visible = false;
-      return;
-    }
-
     let curX = startX;
     let curY = startY;
     let curZ = startZ;
@@ -3443,7 +3437,8 @@ export function ContestantEntranceWalkingFigures({
         : (entrance.startedAt || now) + i * 4000);
 
     const elapsed = (now - seatStart) / 1000;
-    if (elapsed >= 0 && elapsed < 6.8) {
+    // Render figure once walk has started; stays at desk seamlessly until entire entrance sequence concludes
+    if (elapsed >= 0) {
       activeFigures.push({
         seatId: i,
         seatStart,
@@ -5065,7 +5060,8 @@ export function Podiums({
         if (isLobby) {
           showFigure = false;
         } else if (isEntranceActive) {
-          showFigure = hasFinishedEntrance;
+          // All active and arrived figures during entrance are rendered seamlessly by ContestantEntranceWalkingFigures
+          showFigure = false;
         } else if (hasEntranceCompleted || isCompetitionRound) {
           showFigure = !isThisContestantInVeDichTurn;
         } else if (isIntro) {

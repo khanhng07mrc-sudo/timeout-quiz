@@ -497,7 +497,8 @@ export class OlympiaGame {
           st.introStandby = true;
           st.studioCamera = 3;
           st.studioCameraManual = false;
-          this.cue("6_NhacKhac/contest_intro", "stop");
+          // Note: 6_NhacKhac/contest_intro is allowed to play naturally until its end
+          // or until another active audio cue starts (e.g. entering Khởi Động).
           this.touch(now);
           return true;
         }

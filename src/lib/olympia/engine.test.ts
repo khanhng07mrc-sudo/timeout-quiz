@@ -1515,8 +1515,9 @@ test("staggered pipelined contestant entrance: auto-advances at 4000ms per conte
   g.tick(28800);
   assert.equal(g.state.entranceState, null);
   assert.equal(g.state.entranceCompleted, true);
-  assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
-  assert.equal(g.state.cue?.kind, "stop");
+  assert.equal(g.state.introStandby, true);
+  // Music is not stopped early, allowed to play until natural completion
+  assert.notEqual(g.state.cue?.kind, "stop");
 });
 
 test("host wrong button lock policy: locked for first 3s (O22) or 5s (O23+) when nobody buzzed; unlocked immediately if buzzed", () => {

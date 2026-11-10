@@ -159,7 +159,7 @@ export default function DisplayScreen({ code }: { code: string }) {
       window.location.search.includes("perf=light") ||
       window.self !== window.top);
   const [audioOn, setAudioOn] = useState(!isExplicitMuteParam);
-  const [ttsActive, setTtsActive] = useState<boolean>(() => (isSandboxParam ? false : isTtsEnabled()));
+  const [ttsActive, setTtsActive] = useState<boolean>(() => isTtsEnabled());
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
@@ -170,15 +170,37 @@ export default function DisplayScreen({ code }: { code: string }) {
         if (typeof (window as any).__OLYMPIA_UNLOCK_AUDIO__ === "function") {
           (window as any).__OLYMPIA_UNLOCK_AUDIO__();
         }
+        if (typeof window !== "undefined" && "speechSynthesis" in window) {
+          try {
+            if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+          } catch {}
+        }
+      } else if (e.data?.type === "SET_TTS") {
+        setTtsActive(Boolean(e.data.enabled));
+        setTtsEnabled(Boolean(e.data.enabled));
+      }
+    };
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "olympia_tts_enabled") {
+        setTtsActive(e.newValue !== "false" && e.newValue !== "0");
       }
     };
     window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, [isExplicitMuteParam]);
 
   const handleUserUnlock = useCallback(() => {
     if (typeof (window as any).__OLYMPIA_UNLOCK_AUDIO__ === "function") {
       (window as any).__OLYMPIA_UNLOCK_AUDIO__();
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+      } catch {}
     }
     if (!audioOn && !isExplicitMuteParam) {
       setAudioOn(true);

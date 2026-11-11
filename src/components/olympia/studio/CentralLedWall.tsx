@@ -2534,7 +2534,7 @@ export function CentralLedWall({
   }, []);
 
   const activeCount = state?.seats?.length ? Math.min(8, Math.max(2, state.seats.length)) : 4;
-  const wallSweepAng = activeCount > 4 ? 0.70 * Math.PI : 0.65 * Math.PI;
+  const wallSweepAng = activeCount > 4 ? 0.80 * Math.PI : 0.75 * Math.PI;
   const wallStartAng = 0.98 * Math.PI;
   // Open a clean ~1.20m backstage wing corridor on the floor level between Left Base Wall and Hexagon Portal
   const lowerWallStartAng = 1.02 * Math.PI;

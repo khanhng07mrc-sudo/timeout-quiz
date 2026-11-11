@@ -138,14 +138,14 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     assert.ok(Math.abs(traj1.bounce - expectedBounce) < 0.0001, "bounce must equal |sin(walkPhase)| * 0.032");
   });
 
-  runTest(1, "M2.6: Desk arrival alignment at t = 6.5s reaches desk standing spot and deskRotY", () => {
+  runTest(1, "M2.6: Desk arrival alignment at t = 6.5s reaches desk standing spot (error <= 1.0mm) and deskRotY", () => {
     const cfg = getDeskConfig(2, 4);
     const deskX = cfg.pos[0] - Math.sin(cfg.rotY) * 0.42;
     const deskZ = cfg.pos[2] - Math.cos(cfg.rotY) * 0.42;
     const traj = evaluateContestantEntranceTrajectory(6.5, 2, cfg, cfg.phi);
-    assert.ok(Math.abs(traj.rawPos[0] - deskX) < 0.01, `X must match deskX, got ${traj.rawPos[0]} vs ${deskX}`);
-    assert.ok(Math.abs(traj.rawPos[2] - deskZ) < 0.01, `Z must match deskZ, got ${traj.rawPos[2]} vs ${deskZ}`);
-    assert.ok(Math.abs(traj.rotY - cfg.rotY) < 0.01, `rotY must match deskRotY, got ${traj.rotY} vs ${cfg.rotY}`);
+    const posErr = Math.hypot(traj.rawPos[0] - deskX, traj.rawPos[2] - deskZ);
+    assert.ok(posErr <= 0.001, `Arrival error ${(posErr * 1000).toFixed(3)}mm must be <= 1.0mm`);
+    assert.ok(Math.abs(traj.rotY - cfg.rotY) <= 0.001, `rotY must match deskRotY, got ${traj.rotY} vs ${cfg.rotY}`);
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -195,19 +195,73 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     assert.ok(deltaT6 < 0.01, `Heading jump at t=6.1s must be < 0.01 rad, got ${deltaT6.toFixed(4)} rad`);
   });
 
-  runTest(2, "M2.11: Positive forward velocity across entire walk interval t in [4.0, 6.2]s for all seats", () => {
-    [4, 6, 8].forEach((totalSeats) => {
+  runTest(2, "M2.11: Kinematic velocity v >= 1.20 m/s during active entrance intervals across ALL N in [2..8]", () => {
+    for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
       for (let s = 0; s < totalSeats; s++) {
         const cfg = getDeskConfig(s, totalSeats);
-        for (let t = 4.0; t <= 6.2; t += 0.2) {
+
+        // Phase 1 (t in [0.1, 0.5]): Door emergence onto top plinth
+        for (let t = 0.1; t <= 0.501; t += 0.05) {
           const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
           assert.ok(
-            traj.vel > 0.10,
-            `Seat ${s}/${totalSeats} at t=${t.toFixed(1)}s must have vel > 0.10 m/s (no dead stops), got ${traj.vel.toFixed(3)} m/s`
+            traj.vel >= 1.20,
+            `N=${totalSeats} seat=${s} Phase 1 at t=${t.toFixed(2)}s: vel=${traj.vel.toFixed(3)} m/s must be >= 1.20 m/s`
+          );
+        }
+
+        // Phase 2 (t in [0.7, 1.7]): Walking down upper stairs
+        for (let t = 0.7; t <= 1.701; t += 0.1) {
+          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
+          assert.ok(
+            traj.vel >= 1.20,
+            `N=${totalSeats} seat=${s} Phase 2 at t=${t.toFixed(2)}s: vel=${traj.vel.toFixed(3)} m/s must be >= 1.20 m/s`
+          );
+        }
+
+        // Phase 4 (t in [3.1, 3.9]): Walking down lower stairs
+        for (let t = 3.1; t <= 3.901; t += 0.1) {
+          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
+          assert.ok(
+            traj.vel >= 1.20,
+            `N=${totalSeats} seat=${s} Phase 4 at t=${t.toFixed(2)}s: vel=${traj.vel.toFixed(3)} m/s must be >= 1.20 m/s`
+          );
+        }
+
+        // Phase 5 (t in [4.1, 6.2]): Walking across dais floor to desk
+        for (let t = 4.1; t <= 6.201; t += 0.05) {
+          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
+          assert.ok(
+            traj.vel >= 1.20,
+            `N=${totalSeats} seat=${s} Phase 5 at t=${t.toFixed(2)}s: vel=${traj.vel.toFixed(3)} m/s must be >= 1.20 m/s`
           );
         }
       }
-    });
+    }
+  });
+
+  runTest(2, "M2.11B: Maximum rotational step Delta rotY <= 5.0 deg per 0.05s step everywhere during smooth traversal for ALL N in [2..8]", () => {
+    const dt = 0.05;
+    for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
+      for (let s = 0; s < totalSeats; s++) {
+        const cfg = getDeskConfig(s, totalSeats);
+        for (let t = 0.0; t <= 6.50 - dt; t += dt) {
+          // Skip intentional stationary pause transitions on Bục Giữa (around 1.8s and 3.0s)
+          if ((t >= 1.75 && t <= 1.85) || (t >= 2.95 && t <= 3.05)) continue;
+          const tA = +t.toFixed(3);
+          const tB = +(t + dt).toFixed(3);
+          const trajA = evaluateContestantEntranceTrajectory(tA, s, cfg, cfg.phi);
+          const trajB = evaluateContestantEntranceTrajectory(tB, s, cfg, cfg.phi);
+          let dRot = (trajB.rotY - trajA.rotY) % (2 * Math.PI);
+          if (dRot > Math.PI) dRot -= 2 * Math.PI;
+          if (dRot < -Math.PI) dRot += 2 * Math.PI;
+          const rotDeg = Math.abs(dRot) * (180 / Math.PI);
+          assert.ok(
+            rotDeg <= 5.0,
+            `N=${totalSeats} seat=${s} at t=${tA}-${tB}s: Delta rotY = ${rotDeg.toFixed(2)}° exceeds 5.0° per 0.05s step`
+          );
+        }
+      }
+    }
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -233,8 +287,8 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     }
   });
 
-  runTest(3, "M2.13: All contestant walk trajectories remain inside Dais platform boundary (R <= 8.2m)", () => {
-    [4, 6, 8].forEach((totalSeats) => {
+  runTest(3, "M2.13: All contestant walk trajectories remain inside Dais platform boundary (R <= 8.2m) across ALL N in [2..8]", () => {
+    [2, 3, 4, 5, 6, 7, 8].forEach((totalSeats) => {
       for (let s = 0; s < totalSeats; s++) {
         const cfg = getDeskConfig(s, totalSeats);
         for (let t = 4.0; t <= 6.5; t += 0.1) {
@@ -249,18 +303,25 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     });
   });
 
-  runTest(3, "M2.14: Final contestant close-up camera handoff at t = 6.2s for 4, 6, 8 seats", () => {
-    // 4 seats: seat 3 is last seat, targetCam = 8
-    const cam4 = evaluateEntranceCameraState(3, 4, 6.3);
-    assert.equal(cam4.camAngle, 8, "Seat 3/4 at 6.3s frames CAM 8 close-up");
-
-    // 6 seats: seat 5 is last seat, targetCam = 26
-    const cam6 = evaluateEntranceCameraState(5, 6, 6.3);
-    assert.equal(cam6.camAngle, 26, "Seat 5/6 at 6.3s frames CAM 26 close-up");
-
-    // 8 seats: seat 7 is last seat, targetCam = 28
-    const cam8 = evaluateEntranceCameraState(7, 8, 6.3);
-    assert.equal(cam8.camAngle, 28, "Seat 7/8 at 6.3s frames CAM 28 close-up");
+  runTest(3, "M2.14: Final contestant close-up camera handoff at t = 6.3s for ALL N in [2..8]", () => {
+    const expectedCams: Record<number, number> = {
+      2: 6,
+      3: 7,
+      4: 8,
+      5: 25,
+      6: 26,
+      7: 27,
+      8: 28,
+    };
+    for (const total of [2, 3, 4, 5, 6, 7, 8]) {
+      const lastSeat = total - 1;
+      const cam = evaluateEntranceCameraState(lastSeat, total, 6.3);
+      assert.equal(
+        cam.camAngle,
+        expectedCams[total],
+        `Seat ${lastSeat}/${total} at 6.3s frames CAM ${expectedCams[total]} close-up`
+      );
+    }
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -279,22 +340,31 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     }
   });
 
-  runTest(4, "M2.16: Full 8-contestant entrance timeline: all 8 contestants arrive cleanly at desks", () => {
-    // 8 contestants, staggered by 4.0s: Total entrance sequence = 7 * 4.0 + 6.8 = 34.8s
-    for (let s = 0; s < 8; s++) {
-      const cfg = getDeskConfig(s, 8);
-      const deskX = cfg.pos[0] - Math.sin(cfg.rotY) * 0.42;
-      const deskZ = cfg.pos[2] - Math.cos(cfg.rotY) * 0.42;
+  runTest(4, "M2.16: Full multi-contestant entrance timeline: all contestants across ALL N in [2..8] arrive with error <= 1.0mm", () => {
+    for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
+      for (let s = 0; s < totalSeats; s++) {
+        const cfg = getDeskConfig(s, totalSeats);
+        const deskX = cfg.pos[0] - Math.sin(cfg.rotY) * 0.42;
+        const deskZ = cfg.pos[2] - Math.cos(cfg.rotY) * 0.42;
 
-      // Check arrival at t = 6.5s
-      const arrival = evaluateContestantEntranceTrajectory(6.5, s, cfg, cfg.phi);
-      assert.ok(Math.abs(arrival.rawPos[0] - deskX) < 0.02, `Seat ${s} X arrival matches desk`);
-      assert.ok(Math.abs(arrival.rawPos[2] - deskZ) < 0.02, `Seat ${s} Z arrival matches desk`);
-      assert.ok(Math.abs(arrival.rotY - cfg.rotY) < 0.02, `Seat ${s} facing matches desk`);
+        const arrival = evaluateContestantEntranceTrajectory(6.5, s, cfg, cfg.phi);
+        const posErr = Math.hypot(arrival.rawPos[0] - deskX, arrival.rawPos[2] - deskZ);
+        assert.ok(
+          posErr <= 0.001,
+          `N=${totalSeats} seat=${s}: arrival error ${(posErr * 1000).toFixed(3)}mm must be <= 1.0mm`
+        );
+        let rotDiff = (arrival.rotY - cfg.rotY) % (2 * Math.PI);
+        if (rotDiff > Math.PI) rotDiff -= 2 * Math.PI;
+        if (rotDiff < -Math.PI) rotDiff += 2 * Math.PI;
+        assert.ok(
+          Math.abs(rotDiff) <= 0.001,
+          `N=${totalSeats} seat=${s}: facing diff ${Math.abs(rotDiff).toFixed(4)} rad must be <= 0.001 rad`
+        );
+      }
     }
   });
 
-  runTest(4, "M2.17: Continuous 50 Hz kinematic verification across all 8 seats (0 snaps, 0 dead stops, 0 flips)", () => {
+  runTest(4, "M2.17: Continuous 50 Hz kinematic verification across ALL N in [2..8] (0 snaps, 0 dead stops, 0 flips, arrival <= 1.0mm)", () => {
     const dt = 0.02;
     const numSteps = Math.round(6.80 / dt) + 1; // 341 steps
     let deadStops = 0;
@@ -302,55 +372,57 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     let flips = 0;
     let arrivalErrors = 0;
 
-    for (let s = 0; s < 8; s++) {
-      const cfg = getDeskConfig(s, 8);
-      const deskRotY = cfg.rotY;
-      const deskX = cfg.pos[0] - Math.sin(deskRotY) * 0.42;
-      const deskZ = cfg.pos[2] - Math.cos(deskRotY) * 0.42;
+    for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
+      for (let s = 0; s < totalSeats; s++) {
+        const cfg = getDeskConfig(s, totalSeats);
+        const deskRotY = cfg.rotY;
+        const deskX = cfg.pos[0] - Math.sin(deskRotY) * 0.42;
+        const deskZ = cfg.pos[2] - Math.cos(deskRotY) * 0.42;
 
-      let prevPos: [number, number, number] | null = null;
-      let prevRotY: number | null = null;
+        let prevPos: [number, number, number] | null = null;
+        let prevRotY: number | null = null;
 
-      for (let step = 0; step < numSteps; step++) {
-        const t = +(step * dt).toFixed(3);
-        const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
+        for (let step = 0; step < numSteps; step++) {
+          const t = +(step * dt).toFixed(3);
+          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
 
-        const isWalkingPhase =
-          (t >= 0.05 && t <= 0.55) ||
-          (t >= 0.65 && t <= 1.75) ||
-          (t >= 3.05 && t <= 3.95) ||
-          (t >= 4.05 && t <= 6.45);
+          const isWalkingPhase =
+            (t >= 0.05 && t <= 0.55) ||
+            (t >= 0.65 && t <= 1.75) ||
+            (t >= 3.05 && t <= 3.95) ||
+            (t >= 4.05 && t <= 6.45);
 
-        if (isWalkingPhase) {
-          if (traj.vel < 0.25) deadStops++;
-        }
+          if (isWalkingPhase) {
+            if (traj.vel < 0.25) deadStops++;
+          }
 
-        if (prevPos !== null && prevRotY !== null) {
-          const stepDist = Math.hypot(
-            traj.rawPos[0] - prevPos[0],
-            traj.rawPos[1] - prevPos[1],
-            traj.rawPos[2] - prevPos[2]
-          );
-          if (isWalkingPhase && stepDist / dt < 0.20) deadStops++;
+          if (prevPos !== null && prevRotY !== null) {
+            const stepDist = Math.hypot(
+              traj.rawPos[0] - prevPos[0],
+              traj.rawPos[1] - prevPos[1],
+              traj.rawPos[2] - prevPos[2]
+            );
+            if (isWalkingPhase && stepDist / dt < 0.20) deadStops++;
 
-          let dRot = (traj.rotY - prevRotY) % (2 * Math.PI);
-          if (dRot > Math.PI) dRot -= 2 * Math.PI;
-          if (dRot < -Math.PI) dRot += 2 * Math.PI;
-          const rotStepDeg = Math.abs(dRot) * (180 / Math.PI);
+            let dRot = (traj.rotY - prevRotY) % (2 * Math.PI);
+            if (dRot > Math.PI) dRot -= 2 * Math.PI;
+            if (dRot < -Math.PI) dRot += 2 * Math.PI;
+            const rotStepDeg = Math.abs(dRot) * (180 / Math.PI);
 
-          if (rotStepDeg > 12.0) snaps++;
-          if (rotStepDeg > 90.0) flips++;
-        }
+            if (rotStepDeg > 12.0) snaps++;
+            if (rotStepDeg > 90.0) flips++;
+          }
 
-        prevPos = [traj.rawPos[0], traj.rawPos[1], traj.rawPos[2]];
-        prevRotY = traj.rotY;
+          prevPos = [traj.rawPos[0], traj.rawPos[1], traj.rawPos[2]];
+          prevRotY = traj.rotY;
 
-        if (step === numSteps - 1) {
-          const arrPosErr = Math.hypot(traj.rawPos[0] - deskX, traj.rawPos[2] - deskZ);
-          let rotDiff = (traj.rotY - deskRotY) % (2 * Math.PI);
-          if (rotDiff > Math.PI) rotDiff -= 2 * Math.PI;
-          if (rotDiff < -Math.PI) rotDiff += 2 * Math.PI;
-          if (arrPosErr > 0.01 || Math.abs(rotDiff) > 0.001) arrivalErrors++;
+          if (step === numSteps - 1) {
+            const arrPosErr = Math.hypot(traj.rawPos[0] - deskX, traj.rawPos[2] - deskZ);
+            let rotDiff = (traj.rotY - deskRotY) % (2 * Math.PI);
+            if (rotDiff > Math.PI) rotDiff -= 2 * Math.PI;
+            if (rotDiff < -Math.PI) rotDiff += 2 * Math.PI;
+            if (arrPosErr > 0.001 || Math.abs(rotDiff) > 0.001) arrivalErrors++;
+          }
         }
       }
     }
@@ -358,14 +430,14 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     assert.equal(deadStops, 0, `Expected 0 dead stops (< 0.25 m/s), found ${deadStops}`);
     assert.equal(snaps, 0, `Expected 0 rotational snaps (> 12.0°/0.02s), found ${snaps}`);
     assert.equal(flips, 0, `Expected 0 angle flips (> 90°), found ${flips}`);
-    assert.equal(arrivalErrors, 0, `Expected 0 arrival errors, found ${arrivalErrors}`);
+    assert.equal(arrivalErrors, 0, `Expected 0 arrival errors (> 1.0mm), found ${arrivalErrors}`);
   });
 
   console.log("\n================================================================================");
   console.log("MILESTONE 2 TEST SUMMARY");
   console.log("================================================================================");
   console.log(`  Tier 1 (Feature Coverage):        ${tier1Count} / 6 passed`);
-  console.log(`  Tier 2 (Boundary & Continuity):   ${tier2Count} / 5 passed`);
+  console.log(`  Tier 2 (Boundary & Continuity):   ${tier2Count} / 6 passed`);
   console.log(`  Tier 3 (Cross-Feature Combos):    ${tier3Count} / 3 passed`);
   console.log(`  Tier 4 (Real-World Scenarios):    ${tier4Count} / 3 passed`);
   console.log("--------------------------------------------------------------------------------");

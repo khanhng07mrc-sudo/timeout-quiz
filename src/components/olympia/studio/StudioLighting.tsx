@@ -672,7 +672,7 @@ export function StudioFloor({
 
   // Raised Contestant Dais Extruded Geometry (Y = 0.22m for 4 to 8 contestants)
   const daisGeometry = useMemo(() => {
-    const shape = createAnnularSectorShape(5.2, 7.6, 0.50 * Math.PI, 1.10 * Math.PI, 48);
+    const shape = createAnnularSectorShape(5.2, 7.6, 0.50 * Math.PI, 1.28 * Math.PI, 64);
     return new THREE.ExtrudeGeometry(shape, {
       depth: 0.22,
       bevelEnabled: true,
@@ -686,9 +686,9 @@ export function StudioFloor({
   // Step-light points along the front edge of the contestant platform (r = 5.2m)
   const stepLightPoints = useMemo(() => {
     const pts: THREE.Vector3[] = [];
-    const count = 48;
+    const count = 64;
     const startAng = 0.50 * Math.PI;
-    const endAng = 1.10 * Math.PI;
+    const endAng = 1.28 * Math.PI;
     for (let i = 0; i <= count; i++) {
       const t = i / count;
       const a = startAng + t * (endAng - startAng);
@@ -714,13 +714,13 @@ export function StudioFloor({
 
   // Continuous Global Floor Cove Light Glow Ribbons (Unbroken luminous cyan sheets)
   const coveLeftFloorGlowGeom = useMemo(
-    () => createAnnularGlowGeometry(5.20, 4.20, 0.50 * Math.PI, 1.10 * Math.PI, 64, 0.005),
+    () => createAnnularGlowGeometry(5.20, 4.20, 0.50 * Math.PI, 1.28 * Math.PI, 64, 0.005),
     []
   );
 
   // Continuous Curved Cove Vertical Fascia Backplate inside the left slot
   const coveLeftFasciaGeom = useMemo(
-    () => createCurvedCoveFasciaGeometry(5.21, 0.50 * Math.PI, 1.10 * Math.PI, 0.015, 0.215, 64),
+    () => createCurvedCoveFasciaGeometry(5.21, 0.50 * Math.PI, 1.28 * Math.PI, 0.015, 0.215, 64),
     []
   );
 

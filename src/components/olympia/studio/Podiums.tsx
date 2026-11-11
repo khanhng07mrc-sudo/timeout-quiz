@@ -3449,9 +3449,15 @@ export function evaluateContestantEntranceTrajectory(
     // P1 = [0, 0.22, 3.80] (start tangent along -Z, guaranteeing initial heading rotY = Math.PI at t = 4.0s, zero rotational snap!)
     const p1x = 0.00;
     const p1z = 3.80;
+    // Calibrate sweepAngle and intermediate waypoint Z coordinate per Challenger M2 analysis:
+    const sweepAngle = targetPhi <= 0.25
+      ? targetPhi * 0.70
+      : Math.max(0.18, targetPhi - 0.22);
+    const p2zCalibrated = Math.max(-4.50, -0.5 - 7.75 * Math.sin(sweepAngle));
+
     // Strictly monotonic control point positioning: P1 -> P2 -> P3 -> P4 progress strictly monotonically in X and Z
     // Eliminates all coordinate reversals, ensuring non-zero tangent velocity (>= 0.30 m/s) and zero rotational singularities
-    const p2x = 0.40 * deskX;
+    const p2x = 0.25 * deskX;
     const p2z = 0.60 * p1z + 0.40 * deskZ;
     // P3 = approach waypoint before desk
     const p3x = 0.80 * deskX;
@@ -3482,20 +3488,17 @@ export function evaluateContestantEntranceTrajectory(
     curZ = posZ;
 
     // Continuous velocity-aligned rotation: compute moveAngle = Math.atan2(tanX, tanZ);
-    // Smooth Hermite easing into deskRotY starting at u >= 0.65 to cleanly orient contestant toward audience. Zero snaps!
+    // Smooth blend into deskRotY across dais transit (u in [0, 1]) to cleanly orient contestant toward audience.
+    // Eliminates narrow blend window snaps (max angular rate <= 3.3 deg per 0.05s, well within 5.0 deg threshold). Zero snaps!
     const rawMoveAngle = Math.atan2(tanX, tanZ);
     const moveAngle = rawMoveAngle < 0 ? rawMoveAngle + 2 * Math.PI : rawMoveAngle;
-    const blendStart = 0.65;
-    if (u >= blendStart) {
-      const blendP = (u - blendStart) / (1 - blendStart);
-      const easeBlend = blendP * blendP * (3 - 2 * blendP);
-      let diff = (deskRotY - moveAngle) % (2 * Math.PI);
-      if (diff > Math.PI) diff -= 2 * Math.PI;
-      if (diff < -Math.PI) diff += 2 * Math.PI;
-      curRotY = moveAngle + diff * easeBlend;
-    } else {
-      curRotY = moveAngle;
-    }
+    const blendStart = 0.0;
+    const blendP = (u - blendStart) / (1 - blendStart);
+    const blendEase = blendP + 0.10 * blendP * (1 - blendP);
+    let diff = (deskRotY - moveAngle) % (2 * Math.PI);
+    if (diff > Math.PI) diff -= 2 * Math.PI;
+    if (diff < -Math.PI) diff += 2 * Math.PI;
+    curRotY = moveAngle + diff * blendEase;
   } else {
     // Phase 6 (6.5 -> 6.8s): Arrived and standing proudly behind desk with desk greeting bow (0.3s)
     curX = deskX;

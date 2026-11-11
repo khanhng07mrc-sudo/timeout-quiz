@@ -3157,41 +3157,41 @@ export function StudioLighting({
       />
 
       {/* ── CONTESTANT PODIUMS BALANCED STAGE LIGHTING RIG ── */}
-      {/* TS Sector 1 Key: Crisp keylight dedicated to TS 1 and TS 2 */}
+      {/* TS Sector 1 Key: Crisp keylight covering left sector of centered Stage Left dais */}
       <TargetedSpotLight
-        position={[-3.20, 5.80, 0.40]}
-        targetPosition={[-5.75, 1.25, -3.65]}
+        position={[-3.60, 5.80, 2.00]}
+        targetPosition={[-6.45, 1.25, -1.00]}
         color="#fffcf5"
         intensity={tsSec1Intensity}
-        angle={0.64}
+        angle={0.72}
         penumbra={0.50}
         distance={14}
         decay={1.5}
         castShadow={false}
       />
 
-      {/* TS Sector 2 Key: Crisp keylight dedicated to TS 3 and TS 4 */}
+      {/* TS Sector 2 Key: Crisp keylight covering right sector of centered Stage Left dais */}
       <TargetedSpotLight
-        position={[-1.10, 5.80, -2.20]}
-        targetPosition={[-3.50, 1.25, -6.00]}
+        position={[-2.20, 5.80, -1.20]}
+        targetPosition={[-5.10, 1.25, -4.60]}
         color="#fffcf5"
         intensity={tsSec2Intensity}
-        angle={0.64}
+        angle={0.72}
         penumbra={0.50}
         distance={14}
         decay={1.5}
         castShadow={false}
       />
 
-      {/* TS Arc Fill Flood: Soft sky-blue arc wash covering all 4 contestant podiums */}
+      {/* TS Arc Fill Flood: Soft sky-blue arc wash centered on midPhi = 0.346 rad covering all 2..8 podiums */}
       <TargetedSpotLight
         position={[-0.80, 5.20, 1.80]}
-        targetPosition={[-4.60, 1.10, -4.80]}
+        targetPosition={[-6.25, 1.10, -2.76]}
         color="#e0f2fe"
         intensity={tsArcIntensity}
-        angle={0.78}
+        angle={0.90}
         penumbra={0.60}
-        distance={15}
+        distance={16}
         decay={1.5}
         castShadow={false}
       />

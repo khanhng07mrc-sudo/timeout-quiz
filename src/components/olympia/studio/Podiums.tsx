@@ -3449,12 +3449,6 @@ export function evaluateContestantEntranceTrajectory(
     // P1 = [0, 0.22, 3.80] (start tangent along -Z, guaranteeing initial heading rotY = Math.PI at t = 4.0s, zero rotational snap!)
     const p1x = 0.00;
     const p1z = 3.80;
-    // Calibrate sweepAngle and intermediate waypoint Z coordinate per Challenger M2 analysis:
-    const sweepAngle = targetPhi <= 0.25
-      ? targetPhi * 0.70
-      : Math.max(0.18, targetPhi - 0.22);
-    const p2zCalibrated = Math.max(-4.50, -0.5 - 7.75 * Math.sin(sweepAngle));
-
     // Strictly monotonic control point positioning: P1 -> P2 -> P3 -> P4 progress strictly monotonically in X and Z
     // Eliminates all coordinate reversals, ensuring non-zero tangent velocity (>= 0.30 m/s) and zero rotational singularities
     const p2x = 0.25 * deskX;

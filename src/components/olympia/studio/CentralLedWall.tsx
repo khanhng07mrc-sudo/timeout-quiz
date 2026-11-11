@@ -2533,8 +2533,9 @@ export function CentralLedWall({
     return geom;
   }, []);
 
-  const activeCount = state?.seats?.length ? Math.min(8, Math.max(2, state.seats.length)) : 4;
-  const wallSweepAng = activeCount > 4 ? 0.80 * Math.PI : 0.75 * Math.PI;
+  // Synchronize elevated wall sweep angle (0.80 * Math.PI -> a = 1.28 * Math.PI) uniformly across all 2..8 seat counts
+  // so left edge of curved wall aligns flush with the expanded 1.28 * Math.PI Left Dais platform.
+  const wallSweepAng = 0.80 * Math.PI;
   const wallStartAng = 0.98 * Math.PI;
   // Open a clean ~1.20m backstage wing corridor on the floor level between Left Base Wall and Hexagon Portal
   const lowerWallStartAng = 1.02 * Math.PI;
@@ -2850,8 +2851,8 @@ export function CentralLedWall({
         </mesh>
       </group>
 
-      {/* 3D Quizorra Sponsor Illuminated Lightbox mounted on the arch above contestant dais (no 45-deg diamond) */}
-      <group position={[-6.2, 4.15, -4.6]} rotation={[0, 0.95, 0]}>
+      {/* 3D Quizorra Sponsor Illuminated Lightbox centered above Stage Left Dais & Science Wall arc (no 45-deg diamond) */}
+      <group position={[-6.98, 4.05, -3.05]} rotation={[0, 1.22, 0]}>
         <mesh position={[0, 0, 0]}>
           <boxGeometry args={[1.56, 0.52, 0.12]} />
           <meshStandardMaterial color="#02153b" metalness={0.7} roughness={0.25} />

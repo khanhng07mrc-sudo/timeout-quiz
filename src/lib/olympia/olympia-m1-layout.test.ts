@@ -61,43 +61,44 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
   // ───────────────────────────────────────────────────────────────────────────
   console.log("\n--- TIER 1: FEATURE COVERAGE (Arc Params & Camera Presets) ---");
 
-  runTest(1, "M1.1: getContestantArcParams for 4 seats matches classic Olympia layout", () => {
-    const params = getContestantArcParams(4);
-    assert.equal(params.radius, 6.60);
-    assert.equal(params.startPhi, 0.380);
-    assert.equal(params.endPhi, 1.130);
-    assert.equal(params.span, 0.750);
+  runTest(1, "M1.1: getContestantArcParams for 2, 3, and 4 seats match Dais-centered parametric specs", () => {
+    const p2 = getContestantArcParams(2);
+    assert.deepEqual(p2, { radius: 6.65, startPhi: 0.186, endPhi: 0.506, span: 0.320 });
+    const p3 = getContestantArcParams(3);
+    assert.deepEqual(p3, { radius: 6.65, startPhi: 0.076, endPhi: 0.616, span: 0.540 });
+    const p4 = getContestantArcParams(4);
+    assert.deepEqual(p4, { radius: 6.65, startPhi: -0.029, endPhi: 0.721, span: 0.750 });
   });
 
-  runTest(1, "M1.2: getContestantArcParams for 5 seats matches parametric specification", () => {
+  runTest(1, "M1.2: getContestantArcParams for 5 seats matches Dais-centered specification", () => {
     const params = getContestantArcParams(5);
     assert.equal(params.radius, 6.65);
-    assert.equal(params.startPhi, 0.180);
-    assert.equal(params.endPhi, 1.140);
+    assert.equal(params.startPhi, -0.134);
+    assert.equal(params.endPhi, 0.826);
     assert.equal(params.span, 0.960);
   });
 
-  runTest(1, "M1.3: getContestantArcParams for 6 seats matches Stage Left expanded arc specification", () => {
+  runTest(1, "M1.3: getContestantArcParams for 6 seats matches Dais-centered specification", () => {
     const params = getContestantArcParams(6);
     assert.equal(params.radius, 6.65);
-    assert.equal(params.startPhi, -0.010);
-    assert.equal(params.endPhi, 1.140);
-    assert.equal(params.span, 1.150);
+    assert.equal(params.startPhi, -0.234);
+    assert.equal(params.endPhi, 0.926);
+    assert.equal(params.span, 1.160);
   });
 
-  runTest(1, "M1.4: getContestantArcParams for 7 seats matches Stage Left expanded arc specification", () => {
+  runTest(1, "M1.4: getContestantArcParams for 7 seats matches Dais-centered specification", () => {
     const params = getContestantArcParams(7);
     assert.equal(params.radius, 6.65);
-    assert.equal(params.startPhi, -0.240);
-    assert.equal(params.endPhi, 1.140);
+    assert.equal(params.startPhi, -0.344);
+    assert.equal(params.endPhi, 1.036);
     assert.equal(params.span, 1.380);
   });
 
-  runTest(1, "M1.5: getContestantArcParams for 8 seats matches Stage Left locked specification", () => {
+  runTest(1, "M1.5: getContestantArcParams for 8 seats matches Dais-centered Stage Left specification", () => {
     const params = getContestantArcParams(8);
     assert.equal(params.radius, 6.65);
-    assert.equal(params.startPhi, -0.460);
-    assert.equal(params.endPhi, 1.140);
+    assert.equal(params.startPhi, -0.454);
+    assert.equal(params.endPhi, 1.146);
     assert.equal(params.span, 1.600);
   });
 
@@ -130,19 +131,19 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
 
   runTest(2, "M2.1: Seat counts clamped safely (N=0, negative, >8)", () => {
     const zero = getContestantArcParams(0);
-    assert.equal(zero.radius, 6.60);
+    assert.equal(zero.radius, 6.65);
     const over = getContestantArcParams(12);
     assert.equal(over.radius, 6.65);
     assert.equal(over.span, 1.600);
   });
 
-  runTest(2, "M2.2A: Podium edge clearance for N = 2 and N = 3 is >= 30cm (N=2 ~3.64m, N=3 ~1.26m)", () => {
+  runTest(2, "M2.2A: Podium edge clearance for N = 2 and N = 3 is cohesive (>= 30cm, <= 120cm)", () => {
     // N = 2
     const p0_2 = getContestantPodiumWorldPos(0, 2);
     const p1_2 = getContestantPodiumWorldPos(1, 2);
     const dist2 = Math.hypot(p1_2[0] - p0_2[0], p1_2[2] - p0_2[2]);
     const clr2 = dist2 - 1.20;
-    assert.ok(clr2 >= 0.30, `N=2 clearance ${clr2.toFixed(3)}m must be >= 0.30m`);
+    assert.ok(clr2 >= 0.30 && clr2 <= 1.20, `N=2 clearance ${clr2.toFixed(3)}m must be in [0.30, 1.20]m`);
 
     // N = 3
     for (let i = 0; i < 2; i++) {
@@ -150,7 +151,7 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
       const pb = getContestantPodiumWorldPos(i + 1, 3);
       const dist3 = Math.hypot(pb[0] - pa[0], pb[2] - pa[2]);
       const clr3 = dist3 - 1.20;
-      assert.ok(clr3 >= 0.30, `N=3 seat ${i}-${i + 1} clearance ${clr3.toFixed(3)}m must be >= 0.30m`);
+      assert.ok(clr3 >= 0.30 && clr3 <= 1.20, `N=3 seat ${i}-${i + 1} clearance ${clr3.toFixed(3)}m must be in [0.30, 1.20]m`);
     }
   });
 
@@ -310,6 +311,50 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
           );
         }
       }
+    }
+  });
+
+  runTest(2, "M2.8: Left and right Dais margins are symmetrically centered across ALL N in [2..8] (|Delta| <= 15cm)", () => {
+    const halfW = 1.20 / 2;
+    const halfD = 0.88 / 2;
+    const corners2D: [number, number][] = [
+      [-halfW, -halfD],
+      [+halfW, -halfD],
+      [-halfW, +halfD],
+      [+halfW, +halfD],
+    ];
+
+    for (const total of [2, 3, 4, 5, 6, 7, 8]) {
+      const arc = getContestantArcParams(total);
+      let minA = Infinity;
+      let maxA = -Infinity;
+
+      for (let s = 0; s < total; s++) {
+        const frac = s / (total - 1);
+        const phi = arc.startPhi + frac * (arc.endPhi - arc.startPhi);
+        const cx = -arc.radius * Math.cos(phi);
+        const cz = -0.5 - arc.radius * Math.sin(phi);
+        const rotY = Math.PI / 2 - phi;
+        const cosR = Math.cos(rotY);
+        const sinR = Math.sin(rotY);
+
+        for (const [lx, lz] of corners2D) {
+          const wx = cx + (lx * cosR + lz * sinR);
+          const wz = cz + (-lx * sinR + lz * cosR);
+          let a = Math.atan2(-(wz - (-0.5)), wx);
+          if (a < 0) a += 2 * Math.PI;
+          if (a < minA) minA = a;
+          if (a > maxA) maxA = a;
+        }
+      }
+
+      const rightArcMarginM = (minA - 0.50 * Math.PI) * arc.radius;
+      const leftArcMarginM = (1.28 * Math.PI - maxA) * arc.radius;
+      const asymmetryM = Math.abs(leftArcMarginM - rightArcMarginM);
+      assert.ok(
+        asymmetryM <= 0.15,
+        `N=${total}: Dais symmetry offset ${asymmetryM.toFixed(3)}m (left=${leftArcMarginM.toFixed(3)}m, right=${rightArcMarginM.toFixed(3)}m) must be <= 0.15m`
+      );
     }
   });
 
@@ -599,7 +644,7 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
   console.log("MILESTONE 1 TEST SUMMARY");
   console.log("================================================================================");
   console.log(`  Tier 1 (Feature Coverage):        ${tier1Count} / 7 passed`);
-  console.log(`  Tier 2 (Boundary & Clearances):   ${tier2Count} / 10 passed`);
+  console.log(`  Tier 2 (Boundary & Clearances):   ${tier2Count} / 11 passed`);
   console.log(`  Tier 3 (Camera Framing):          ${tier3Count} / 6 passed`);
   console.log(`  Tier 4 (Real-World Scenarios):    ${tier4Count} / 2 passed`);
   console.log("--------------------------------------------------------------------------------");

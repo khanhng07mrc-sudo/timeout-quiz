@@ -19,22 +19,34 @@ const OUTPUT_DIRS = [
 
 const TARGETS = [
   {
+    tab: "r6-2",
+    id: "#screenshot-r6-2-contestants-cam10",
+    filename: "r6_2_contestants_cam10.png",
+    desc: "R6.0A: 2 contestants in CAM 10 (centered on Dais 1.28pi)",
+  },
+  {
+    tab: "r6-4",
+    id: "#screenshot-r6-4-contestants-cam10",
+    filename: "r6_4_contestants_cam10.png",
+    desc: "R6.0B: 4 contestants in CAM 10 (centered on Dais 1.28pi)",
+  },
+  {
     tab: "r6-6",
     id: "#screenshot-r6-6-contestants-cam10",
     filename: "r6_6_contestants_cam10.png",
-    desc: "R6.1: 6 contestants in CAM 10 (wide podiums without crowding)",
+    desc: "R6.1: 6 contestants in CAM 10 (centered on Dais 1.28pi)",
   },
   {
     tab: "r6-7",
     id: "#screenshot-r6-7-contestants-cam10",
     filename: "r6_7_contestants_cam10.png",
-    desc: "R6.2: 7 contestants in CAM 10 (wide podiums without crowding)",
+    desc: "R6.2: 7 contestants in CAM 10 (centered on Dais 1.28pi)",
   },
   {
     tab: "r6-8",
     id: "#screenshot-r6-8-contestants-cam10",
     filename: "r6_8_contestants_cam10.png",
-    desc: "R6.3: 8 contestants in CAM 10 (wide podiums without crowding)",
+    desc: "R6.3: 8 contestants in CAM 10 (centered on Dais 1.28pi, 100% contained)",
   },
   {
     tab: "r6-mc",

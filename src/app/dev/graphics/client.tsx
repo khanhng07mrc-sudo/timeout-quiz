@@ -40,11 +40,19 @@ export function DevGraphicsClient() {
   const [rulesetId, setRulesetId] = useState<"O26" | "O20" | "O15">("O26");
   const [summaryIndex, setSummaryIndex] = useState(3);
 
-  const mockSeats6 = [
+  const mockSeats2 = [
     { id: 0, name: "Quang Minh", school: "THPT Chuyên Hà Nội - Amsterdam", score: 285, online: true },
     { id: 1, name: "Anh Đức", school: "THPT Chuyên Lê Hồng Phong", score: 210, online: true },
+  ];
+
+  const mockSeats4 = [
+    ...mockSeats2,
     { id: 2, name: "Gia Bảo", school: "THPT Chuyên Quốc Học Huế", score: 180, online: true },
     { id: 3, name: "Thái Dương", school: "THPT Chuyên Phan Bội Châu", score: 150, online: true },
+  ];
+
+  const mockSeats6 = [
+    ...mockSeats4,
     { id: 4, name: "Hải Đăng", school: "THPT Chuyên Lam Sơn", score: 195, online: true },
     { id: 5, name: "Tuấn Minh", school: "THPT Chuyên Bắc Ninh", score: 165, online: true },
   ];
@@ -373,9 +381,73 @@ export function DevGraphicsClient() {
           </div>
         )}
 
-        {/* Deliverable R6: 3D STUDIO CHOREOGRAPHY & 6-8 CONTESTANT VERIFICATION (R1 - R6) */}
-        {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-6" || activeTab === "r6-7" || activeTab === "r6-8" || activeTab === "r6-mc" || activeTab === "r6-cam11" || activeTab === "r6-cam3" || activeTab === "r6-tech" || activeTab === "r6-mc-center" || activeTab === "r6-empty-podiums" || activeTab === "r6-name-school") && (
+        {/* Deliverable R6: 3D STUDIO CHOREOGRAPHY & 2-8 CONTESTANT VERIFICATION (R1 - R6) */}
+        {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-2" || activeTab === "r6-4" || activeTab === "r6-6" || activeTab === "r6-7" || activeTab === "r6-8" || activeTab === "r6-mc" || activeTab === "r6-cam11" || activeTab === "r6-cam3" || activeTab === "r6-tech" || activeTab === "r6-mc-center" || activeTab === "r6-empty-podiums" || activeTab === "r6-name-school") && (
           <div className="w-full flex flex-col gap-6">
+            {/* R6.0A: 2 Contestants in CAM 10 (Centered on Dais) */}
+            {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-2") && (
+              <div
+                id="screenshot-r6-2-contestants-cam10"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-cyan-500/40 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  R6.0A: 2 THÍ SINH — CAM 10 CĂN GIỮA CUNG SÀN DAIS 1.28π (GỌN GÀNG, CÁCH ĐỀU 91.9CM)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  2 bục thí sinh căn giữa chính tâm cung sàn mở rộng 1.28π, khớp nối màn hình cong LED phía trên và logo Quizorra ở chính giữa.
+                </p>
+                <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-cyan-500/20 shadow-inner bg-[#030712] relative">
+                  <OlympiaStudio3DScene
+                    state={{
+                      ...mockState,
+                      stage: "playing",
+                      seatCount: 2,
+                      seats: mockSeats2 as any,
+                      entranceCompleted: true,
+                    }}
+                    serverNow={serverNow}
+                    activeCamera={10}
+                    transitionMode="CUT"
+                    showDirectorBar={false}
+                    allowPTZ={false}
+                    defaultQuality="HIGH"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* R6.0B: 4 Contestants in CAM 10 (Centered on Dais) */}
+            {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-4") && (
+              <div
+                id="screenshot-r6-4-contestants-cam10"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-cyan-500/40 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  R6.0B: 4 THÍ SINH — CAM 10 CĂN GIỮA CUNG SÀN DAIS 1.28π (KHỚP NỐI MÀN HÌNH LED, CÁCH BỤC MC 7.88M)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  4 bục thí sinh căn đối xứng chính tâm cung sàn Dais mở rộng 1.28π (lề trái/phải cân bằng 5.01m), nằm gọn 100% trên sàn và thẳng hàng màn hình LED phía trên.
+                </p>
+                <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-cyan-500/20 shadow-inner bg-[#030712] relative">
+                  <OlympiaStudio3DScene
+                    state={{
+                      ...mockState,
+                      stage: "playing",
+                      seatCount: 4,
+                      seats: mockSeats4 as any,
+                      entranceCompleted: true,
+                    }}
+                    serverNow={serverNow}
+                    activeCamera={10}
+                    transitionMode="CUT"
+                    showDirectorBar={false}
+                    allowPTZ={false}
+                    defaultQuality="HIGH"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* R6 Milestone 5.1: 6 Contestants in CAM 10 (Wide Podiums Arc) */}
             {(activeTab === "all" || activeTab === "r6" || activeTab === "r6-6") && (
               <div
@@ -383,10 +455,10 @@ export function DevGraphicsClient() {
                 className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-cyan-500/40 shadow-2xl"
               >
                 <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
-                  R6.1: 6 THÍ SINH — CAM 10 TOÀN CẢNH CUNG BỤC THÍ SINH (BÁN KÍNH MỞ RỘNG, THOÁNG ĐÃNG, KHÔNG CHỒNG ĐÈ)
+                  R6.1: 6 THÍ SINH — CAM 10 CĂN GIỮA CUNG SÀN DAIS 1.28π (KHOẢNG HỞ 33.9CM, NẰM GỌN 100% TRÊN SÀN)
                 </div>
                 <p className="text-xs text-slate-300 mb-4 text-center">
-                  Cung bục mở rộng sang cánh trái (Stage Left) dọc theo Vách Ký hiệu Khoa học, khóa endPhi &lt;= 1.20 rad cách xa bục MC &gt;5.4m. CAM 10 tự động căn giữa cụm bục với khoảng hở an toàn &gt;= 32cm giữa các bục, loại bỏ hoàn toàn bục MC khỏi khung hình.
+                  Toàn bộ 6 bục căn đối xứng chính tâm cung sàn mở rộng 1.28π (lề trái/phải ~3.65m), cách bục MC 7.33m, CAM 10 bao quát trọn vẹn không dính bục MC.
                 </p>
                 <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-cyan-500/20 shadow-inner bg-[#030712] relative">
                   <OlympiaStudio3DScene
@@ -415,10 +487,10 @@ export function DevGraphicsClient() {
                 className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-cyan-500/40 shadow-2xl"
               >
                 <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
-                  R6.2: 7 THÍ SINH — CAM 10 TOÀN CẢNH CUNG BỤC THÍ SINH (DỒN CÁNH TRÁI, CÁCH LY BỤC MC, BAO QUÁT TRỌN VẸN)
+                  R6.2: 7 THÍ SINH — CAM 10 CĂN GIỮA CUNG SÀN DAIS 1.28π (KHOẢNG HỞ 32.6CM, NẰM GỌN TRÊN SÀN)
                 </div>
                 <p className="text-xs text-slate-300 mb-4 text-center">
-                  Cung bục 7 thí sinh dồn đều sang cánh trái dọc Vách Ký hiệu Khoa học, bục số 7 cách bục MC &gt;5.4m (endPhi &lt;= 1.20 rad). CAM 10 căn chỉnh tọa độ tâm ngắm trọn vẹn, khoảng hở an toàn &gt;= 32cm.
+                  7 bục thí sinh căn đối xứng chính giữa cung sàn mở rộng 1.28π (lề hai bên ~2.92m, không nổi lềnh bềnh), cách bục MC 7.01m, khớp nối màn hình LED phía trên.
                 </p>
                 <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-cyan-500/20 shadow-inner bg-[#030712] relative">
                   <OlympiaStudio3DScene
@@ -447,10 +519,10 @@ export function DevGraphicsClient() {
                 className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border border-cyan-500/40 shadow-2xl"
               >
                 <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
-                  R6.3: 8 THÍ SINH — CAM 10 TOÀN CẢNH CUNG BỤC THÍ SINH (DỒN CÁNH TRÁI, KHOẢNG HỞ AN TOÀN &gt;= 32CM)
+                  R6.3: 8 THÍ SINH — CAM 10 CĂN GIỮA CUNG SÀN DAIS 1.28π (KHOẢNG HỞ 31.7CM, CÁCH BỤC MC 6.67M)
                 </div>
                 <p className="text-xs text-slate-300 mb-4 text-center">
-                  Toàn bộ 8 bục thí sinh được dàn trải về phía cánh trái (Stage Left) với khoảng hở an toàn &gt;= 32cm giữa các bục, bục số 8 cách bục MC &gt;5.5m (endPhi &lt;= 1.20 rad). CAM 10 tự động ngắm giữa cụm bục bao quát toàn bộ 8 thí sinh với safe broadcast margins &gt;= 25%, loại bỏ 100% bục MC khỏi mép phải.
+                  Toàn bộ 8 bục nằm gọn 100% bên trong mặt sàn nâng 1.28π (lề hai bên cân đối ~2.19m, không tràn mép hay nổi lềnh bềnh), mép sàn khớp nối vách màn hình LED phía trên và loại bỏ hoàn toàn bục MC khỏi CAM 10.
                 </p>
                 <div className="w-full h-[540px] rounded-2xl overflow-hidden border border-cyan-500/20 shadow-inner bg-[#030712] relative">
                   <OlympiaStudio3DScene

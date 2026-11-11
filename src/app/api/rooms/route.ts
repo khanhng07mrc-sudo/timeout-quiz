@@ -69,27 +69,37 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, quizBankId: rawQuizBankId, mode, teamMode, config, teams } = body;
     const quizBankId = rawQuizBankId ? (await ensureQuizBankExists(rawQuizBankId)) : null;
-    const effectiveHostId = user?.userId || body.hostId || "demo-host-id";
+    let effectiveHostId = user?.userId || body.hostId || "demo-host-id";
 
     if (!name) {
       return NextResponse.json({ error: "Vui lòng nhập tên phòng thi" }, { status: 400 });
     }
 
-    // Ensure host User record exists in DB with in-memory caching to save 1.5s
-    if (!verifiedHostIds.has(effectiveHostId)) {
-      const existingHost = await prisma.user.findUnique({ where: { id: effectiveHostId } });
-      if (!existingHost) {
-        await prisma.user.upsert({
-          where: { email: user?.email || `${effectiveHostId}@quizorra.com` },
-          update: {},
-          create: {
-            id: effectiveHostId,
-            name: user?.name || "Quizorra Host",
-            email: user?.email || `${effectiveHostId}@quizorra.com`,
-            role: "ADMIN",
-          },
-        });
-      }
+    // Ensure host User record exists in DB (matching by id or email to avoid synthetic id FK mismatches)
+    const hostLookupEmail = user?.email?.trim().toLowerCase();
+    const existingHost = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: effectiveHostId },
+          ...(hostLookupEmail ? [{ email: hostLookupEmail }] : []),
+        ],
+      },
+    });
+    if (existingHost) {
+      effectiveHostId = existingHost.id;
+      verifiedHostIds.add(effectiveHostId);
+    } else {
+      const createdHost = await prisma.user.upsert({
+        where: { email: hostLookupEmail || `${effectiveHostId}@quizorra.com` },
+        update: {},
+        create: {
+          id: effectiveHostId,
+          name: user?.name || "Quizorra Host",
+          email: hostLookupEmail || `${effectiveHostId}@quizorra.com`,
+          role: user?.role || "USER",
+        },
+      });
+      effectiveHostId = createdHost.id;
       verifiedHostIds.add(effectiveHostId);
     }
 

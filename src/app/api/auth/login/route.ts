@@ -3,8 +3,10 @@ import { prisma } from "@/lib/prisma";
 import {
   comparePassword,
   createUserToken,
-  createAdminToken,
   isValidMasterPassword,
+  getAuthCookieOptions,
+  DEMO_HOST_IDS,
+  DEMO_HOST_EMAILS,
 } from "@/lib/security";
 import { isDeviceTrusted } from "@/lib/device-trust";
 import { sendOtpEmail } from "@/lib/email-service";
@@ -16,7 +18,7 @@ export async function POST(req: NextRequest) {
     const { email, password, isMasterKey } = body;
 
     const isMaster = isValidMasterPassword(password);
-
+    const cookieOptions = getAuthCookieOptions(req);
     const cleanEmail = email?.trim().toLowerCase();
 
     // 1. If email is provided, authenticate strictly as that specific user
@@ -37,8 +39,8 @@ export async function POST(req: NextRequest) {
         console.warn("[POST /api/auth/login] Database query error:", dbErr);
       }
 
-      // If user provided Master Admin Password, ALWAYS grant ADMIN login immediately!
-      // This ensures the system administrator is NEVER locked out, even if the DB is offline or initializing.
+      // If user provided Master Admin Password alongside their email, bind the ADMIN session
+      // strictly to THAT email (never an anonymous token or demo account).
       if (isMaster) {
         const displayName =
           user?.name ||
@@ -46,42 +48,41 @@ export async function POST(req: NextRequest) {
             ? "Nguyễn Gia Khánh"
             : cleanEmail.split("@")[0] || "Quản trị viên");
 
-        // Try to persist user in DB in background if not exists
-        if (!user) {
-          try {
+        try {
+          if (!user) {
             user = await prisma.user.create({
               data: {
                 email: cleanEmail,
                 name: displayName,
                 role: "ADMIN",
+                emailVerified: new Date(),
               },
             });
-          } catch (createErr) {
-            console.warn("[POST /api/auth/login] Background user create warning:", createErr);
+          } else if (user.role !== "ADMIN") {
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: { role: "ADMIN" },
+            });
           }
+        } catch (persistErr) {
+          console.warn("[POST /api/auth/login] Background admin user persist warning:", persistErr);
         }
 
-        const token = createAdminToken();
+        const sessionUser = {
+          id: user?.id || `master:${cleanEmail}`,
+          name: user?.name || displayName,
+          email: cleanEmail,
+          role: "ADMIN" as const,
+          image: user?.image || null,
+        };
+
+        const token = createUserToken(sessionUser);
         const response = NextResponse.json({
           success: true,
           message: "Đăng nhập Quản trị viên thành công",
           token,
-          user: {
-            id: user?.id || "master-admin",
-            name: displayName,
-            email: cleanEmail,
-            role: "ADMIN",
-            image: user?.image || null,
-          },
+          user: sessionUser,
         });
-
-        const cookieOptions = {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax" as const,
-          path: "/",
-          maxAge: 7 * 24 * 60 * 60,
-        };
 
         response.cookies.set("auth_token", token, cookieOptions);
         response.cookies.set("admin_token", token, cookieOptions);
@@ -99,9 +100,6 @@ export async function POST(req: NextRequest) {
       let isMatch = false;
       if (user.password) {
         isMatch = await comparePassword(password, user.password);
-      }
-      if (!isMatch && isMaster) {
-        isMatch = true;
       }
 
       if (!isMatch) {
@@ -155,14 +153,6 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      const cookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax" as const,
-        path: "/",
-        maxAge: 7 * 24 * 60 * 60,
-      };
-
       response.cookies.set("auth_token", token, cookieOptions);
       response.cookies.set("admin_token", token, cookieOptions);
 
@@ -172,26 +162,43 @@ export async function POST(req: NextRequest) {
     // 2. Anonymous Master Passcode mode (when NO email is provided)
     if (isMasterKey || (!email && password) || isMaster) {
       if (isMaster) {
-        const token = createAdminToken();
+        let primaryAdmin = null;
+        try {
+          primaryAdmin = await prisma.user.findFirst({
+            where: {
+              role: "ADMIN",
+              id: { notIn: DEMO_HOST_IDS },
+              email: { notIn: DEMO_HOST_EMAILS },
+            },
+            orderBy: { createdAt: "asc" },
+          });
+        } catch (dbErr) {
+          console.warn("[POST /api/auth/login] Primary admin lookup warning:", dbErr);
+        }
+
+        const resolvedAdmin = primaryAdmin
+          ? {
+              id: primaryAdmin.id,
+              name: primaryAdmin.name,
+              email: primaryAdmin.email,
+              role: "ADMIN" as const,
+              image: primaryAdmin.image || null,
+            }
+          : {
+              id: "master-admin",
+              name: "Nguyễn Gia Khánh",
+              email: "channelngktv@gmail.com",
+              role: "ADMIN" as const,
+              image: null,
+            };
+
+        const token = createUserToken(resolvedAdmin);
         const response = NextResponse.json({
           success: true,
           message: "Xác thực Quản trị viên tối cao (Master Key) thành công",
           token,
-          user: {
-            id: "master-admin",
-            name: "Quản trị viên cấp cao",
-            email: "admin@quizorra.com",
-            role: "ADMIN",
-          },
+          user: resolvedAdmin,
         });
-
-        const cookieOptions = {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax" as const,
-          path: "/",
-          maxAge: 7 * 24 * 60 * 60,
-        };
 
         response.cookies.set("auth_token", token, cookieOptions);
         response.cookies.set("admin_token", token, cookieOptions);

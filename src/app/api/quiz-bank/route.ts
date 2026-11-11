@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
               id: "demo-host-id",
               name: "Hệ thống Quizorra",
               email: "demo-host@quizorra.com",
-              role: "ADMIN",
+              role: "USER",
             },
           });
         } catch (err: any) {
@@ -311,26 +311,37 @@ export async function POST(req: NextRequest) {
     const user = getCurrentUserFromRequest(req);
     const body = await req.json();
     const { title, description, isPublic } = body;
-    const effectiveOwnerId = user?.userId || body.ownerId || "demo-host-id";
+    let effectiveOwnerId = user?.userId || body.ownerId || "demo-host-id";
 
     if (!title) {
       return NextResponse.json({ error: "Vui lòng nhập tên bộ đề" }, { status: 400 });
     }
 
     // Ensure owner user exists in database to satisfy foreign key
-    const existingOwner = await prisma.user.findUnique({ where: { id: effectiveOwnerId } });
-    if (!existingOwner) {
+    const ownerLookupEmail = user?.email?.trim().toLowerCase();
+    const existingOwner = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: effectiveOwnerId },
+          ...(ownerLookupEmail ? [{ email: ownerLookupEmail }] : []),
+        ],
+      },
+    });
+    if (existingOwner) {
+      effectiveOwnerId = existingOwner.id;
+    } else {
       try {
-        await prisma.user.upsert({
-          where: { id: effectiveOwnerId },
+        const createdOwner = await prisma.user.upsert({
+          where: { email: ownerLookupEmail || `${effectiveOwnerId}@quizorra.com` },
           update: {},
           create: {
             id: effectiveOwnerId,
             name: user?.name || "Quiz Creator",
-            email: user?.email || `${effectiveOwnerId}@quizorra.com`,
-            role: "ADMIN",
+            email: ownerLookupEmail || `${effectiveOwnerId}@quizorra.com`,
+            role: user?.role || "USER",
           },
         });
+        effectiveOwnerId = createdOwner.id;
       } catch (err: any) {
         if (err?.code !== "P2002") throw err;
       }

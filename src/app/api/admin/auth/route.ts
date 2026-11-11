@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  getAdminMasterPassword,
   isValidMasterPassword,
-  createAdminToken,
   createUserToken,
   comparePassword,
   verifyAdminRequest,
+  getAuthCookieOptions,
+  DEMO_HOST_IDS,
+  DEMO_HOST_EMAILS,
 } from "@/lib/security";
 import { prisma } from "@/lib/prisma";
 
@@ -13,15 +14,47 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { password, email } = body;
+    const cookieOptions = getAuthCookieOptions(req);
+    const isMaster = isValidMasterPassword(password);
 
-    const masterPassword = getAdminMasterPassword();
-
-    // 1. If email is provided, perform user password login
+    // 1. If email is provided, perform strict user authentication for THAT exact email
     if (email && email.trim()) {
       const cleanEmail = email.trim().toLowerCase();
-      const user = await prisma.user.findUnique({
+      let user = await prisma.user.findUnique({
         where: { email: cleanEmail },
       });
+
+      if (isMaster) {
+        const displayName =
+          user?.name ||
+          (cleanEmail === "channelngktv@gmail.com"
+            ? "Nguyễn Gia Khánh"
+            : cleanEmail.split("@")[0] || "Quản trị viên");
+
+        if (!user) {
+          user = await prisma.user.create({
+            data: { email: cleanEmail, name: displayName, role: "ADMIN", emailVerified: new Date() },
+          });
+        } else if (user.role !== "ADMIN") {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: { role: "ADMIN" },
+          });
+        }
+
+        const sessionUser = { id: user.id, name: user.name, email: cleanEmail, role: "ADMIN" as const };
+        const token = createUserToken(sessionUser);
+        const response = NextResponse.json({
+          success: true,
+          token,
+          user: sessionUser,
+          message: "Đăng nhập Quản trị viên thành công",
+        });
+
+        response.cookies.set("auth_token", token, cookieOptions);
+        response.cookies.set("admin_token", token, cookieOptions);
+        return response;
+      }
 
       if (!user || !user.password) {
         return NextResponse.json(
@@ -46,48 +79,53 @@ export async function POST(req: NextRequest) {
         message: "Đăng nhập thành công",
       });
 
-      const cookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax" as const,
-        path: "/",
-        maxAge: 7 * 24 * 60 * 60,
-      };
-
       response.cookies.set("auth_token", token, cookieOptions);
       response.cookies.set("admin_token", token, cookieOptions);
       return response;
     }
 
-    // 2. Master Passcode login
-    if (!password || !isValidMasterPassword(password)) {
+    // 2. Master Passcode login (without explicit email -> primary real admin, never demo-host)
+    if (!password || !isMaster) {
       return NextResponse.json(
         { error: "Mật khẩu Quản trị (Admin Passcode) không chính xác" },
         { status: 401 }
       );
     }
 
-    const token = createAdminToken();
+    let primaryAdmin = null;
+    try {
+      primaryAdmin = await prisma.user.findFirst({
+        where: {
+          role: "ADMIN",
+          id: { notIn: DEMO_HOST_IDS },
+          email: { notIn: DEMO_HOST_EMAILS },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+    } catch {}
+
+    const resolvedAdmin = primaryAdmin
+      ? {
+          id: primaryAdmin.id,
+          name: primaryAdmin.name,
+          email: primaryAdmin.email,
+          role: "ADMIN" as const,
+        }
+      : {
+          id: "master-admin",
+          name: "Nguyễn Gia Khánh",
+          email: "channelngktv@gmail.com",
+          role: "ADMIN" as const,
+        };
+
+    const token = createUserToken(resolvedAdmin);
 
     const response = NextResponse.json({
       success: true,
       token,
-      user: {
-        id: "master-admin",
-        name: "Nguyễn Gia Khánh",
-        email: "channelngktv@gmail.com",
-        role: "ADMIN",
-      },
+      user: resolvedAdmin,
       message: "Xác thực Quản trị viên thành công",
     });
-
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax" as const,
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60,
-    };
 
     response.cookies.set("admin_token", token, cookieOptions);
     response.cookies.set("auth_token", token, cookieOptions);
@@ -104,8 +142,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ authenticated });
 }
 
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
   const response = NextResponse.json({ success: true, message: "Đã đăng xuất phiên quản trị" });
+  const expiredOpts = { ...getAuthCookieOptions(req), maxAge: 0 };
+  response.cookies.set("admin_token", "", expiredOpts);
+  response.cookies.set("auth_token", "", expiredOpts);
   response.cookies.delete("admin_token");
   response.cookies.delete("auth_token");
   return response;

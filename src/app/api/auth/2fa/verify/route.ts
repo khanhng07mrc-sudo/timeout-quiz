@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { createUserToken } from "@/lib/security";
+import { createUserToken, getAuthCookieOptions, isSecureRequest } from "@/lib/security";
 import { verifyTotpToken, hashBackupCode } from "@/lib/totp";
 import { addTrustedDevice, generateDeviceToken } from "@/lib/device-trust";
 
@@ -91,13 +91,7 @@ export async function POST(req: NextRequest) {
       token,
     });
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax" as const,
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60,
-    };
+    const cookieOptions = getAuthCookieOptions(req);
     response.cookies.set("auth_token", token, cookieOptions);
     response.cookies.set("admin_token", token, cookieOptions);
 
@@ -111,7 +105,7 @@ export async function POST(req: NextRequest) {
       });
       response.cookies.set("quizorra_trust_device", deviceToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: isSecureRequest(req),
         sameSite: "lax",
         path: "/",
         maxAge: 30 * 24 * 60 * 60,

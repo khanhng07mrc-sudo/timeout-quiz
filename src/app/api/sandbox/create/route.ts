@@ -92,8 +92,8 @@ export async function POST(req: NextRequest) {
           data: {
             id: "demo-host-id",
             email: "demo.host@quizorra.com",
-            name: "Nguyễn Gia Khánh (Host)",
-            role: "ADMIN",
+            name: "Hệ thống Quizorra",
+            role: "USER",
           },
         });
       }
@@ -101,8 +101,8 @@ export async function POST(req: NextRequest) {
       host = {
         id: "demo-host-id",
         email: "demo.host@quizorra.com",
-        name: "Nguyễn Gia Khánh (Host)",
-        role: "ADMIN",
+        name: "Hệ thống Quizorra",
+        role: "USER",
       };
     }
 
@@ -240,9 +240,17 @@ export async function POST(req: NextRequest) {
     const hostKey = generateHostKey();
     const currentUser = getCurrentUserFromRequest(req);
     let effectiveHostId = host.id;
-    if (currentUser?.userId && currentUser.userId !== "master-admin") {
+    if (currentUser) {
       try {
-        const existingUser = await prisma.user.findUnique({ where: { id: currentUser.userId } });
+        let existingUser = null;
+        if (currentUser.userId && currentUser.userId !== "master-admin" && !currentUser.userId.startsWith("master:")) {
+          existingUser = await prisma.user.findUnique({ where: { id: currentUser.userId } });
+        }
+        if (!existingUser && currentUser.email) {
+          existingUser = await prisma.user.findUnique({
+            where: { email: currentUser.email.trim().toLowerCase() },
+          });
+        }
         if (existingUser) {
           effectiveHostId = existingUser.id;
         }

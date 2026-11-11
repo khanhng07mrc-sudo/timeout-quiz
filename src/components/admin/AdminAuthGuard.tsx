@@ -57,7 +57,15 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
 
   const checkAuth = async () => {
     try {
-      const res = await fetch("/api/auth/me");
+      const storedToken =
+        typeof window !== "undefined"
+          ? localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token")
+          : null;
+      const res = await fetch("/api/auth/me", {
+        cache: "no-store",
+        credentials: "include",
+        headers: storedToken ? { Authorization: `Bearer ${storedToken}` } : undefined,
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.authenticated && data.user) {
@@ -65,6 +73,10 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
           setUser(data.user);
           return;
         }
+      }
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("admin_token");
+        sessionStorage.removeItem("admin_token");
       }
       setIsAuthenticated(false);
       setUser(null);

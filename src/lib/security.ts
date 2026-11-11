@@ -12,6 +12,51 @@ export const VALID_SECRETS = [
   "brainclash_super_secret_key_2026",
 ].filter(Boolean) as string[];
 
+export const DEMO_HOST_IDS = ["demo-host-id"];
+export const DEMO_HOST_EMAILS = [
+  "demo-host@quizorra.com",
+  "demo.host@quizorra.com",
+  "demo-host@timeoutquiz.com",
+];
+
+export function isDemoAccountEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return DEMO_HOST_EMAILS.includes(email.trim().toLowerCase());
+}
+
+export function isSecureRequest(req: Request): boolean {
+  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
+  if (forwardedProto) return forwardedProto === "https";
+  try {
+    return new URL(req.url).protocol === "https:";
+  } catch {
+    return process.env.NODE_ENV === "production";
+  }
+}
+
+export function getAuthCookieOptions(req: Request) {
+  return {
+    httpOnly: true,
+    secure: isSecureRequest(req),
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60,
+  };
+}
+
+export function getCookieValue(req: Request, cookieName: string): string | null {
+  const cookieHeader = req.headers.get("cookie");
+  if (!cookieHeader) return null;
+  const escaped = cookieName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${escaped}=([^;]+)`));
+  if (!match || !match[1]) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
 export function getAdminMasterPassword(): string {
   return process.env.ADMIN_MASTER_PASSWORD || "Quizorra@Admin2026";
 }
@@ -176,10 +221,24 @@ export function verifyAdminToken(token: string | null | undefined): boolean {
 }
 
 /**
- * Extracts currently logged-in user from Request headers / cookies
+ * Extracts currently logged-in user from Request headers / cookies.
+ * Prefers HTTP cookies when present so a newer cookie login cannot be masked by stale headers,
+ * while seamlessly falling back to Authorization / custom token headers for stateless clients.
  */
 export function getCurrentUserFromRequest(req: Request): UserSessionPayload | null {
-  // 1. Check Authorization header
+  // 1. Check HttpOnly cookies first (auth_token -> admin_token)
+  const authCookie = getCookieValue(req, "auth_token");
+  if (authCookie) {
+    const user = verifyUserToken(authCookie);
+    if (user) return user;
+  }
+  const adminCookie = getCookieValue(req, "admin_token");
+  if (adminCookie) {
+    const user = verifyUserToken(adminCookie);
+    if (user) return user;
+  }
+
+  // 2. Check Authorization header (Bearer <token>)
   const authHeader = req.headers.get("authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.slice(7).trim();
@@ -187,26 +246,11 @@ export function getCurrentUserFromRequest(req: Request): UserSessionPayload | nu
     if (user) return user;
   }
 
-  // 2. Check x-admin-token or x-auth-token custom headers
+  // 3. Check x-auth-token or x-admin-token custom headers
   const customHeader = req.headers.get("x-auth-token") || req.headers.get("x-admin-token");
   if (customHeader) {
     const user = verifyUserToken(customHeader);
     if (user) return user;
-  }
-
-  // 3. Check cookies (auth_token or admin_token)
-  const cookieHeader = req.headers.get("cookie");
-  if (cookieHeader) {
-    const matchAuth = cookieHeader.match(/(?:^|;\s*)auth_token=([^;]+)/);
-    if (matchAuth && matchAuth[1]) {
-      const user = verifyUserToken(decodeURIComponent(matchAuth[1]));
-      if (user) return user;
-    }
-    const matchAdmin = cookieHeader.match(/(?:^|;\s*)admin_token=([^;]+)/);
-    if (matchAdmin && matchAdmin[1]) {
-      const user = verifyUserToken(decodeURIComponent(matchAdmin[1]));
-      if (user) return user;
-    }
   }
 
   return null;

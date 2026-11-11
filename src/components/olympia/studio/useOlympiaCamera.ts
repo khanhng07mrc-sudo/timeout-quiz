@@ -143,6 +143,32 @@ export function evaluateVeDichCameraState(
     };
   }
 
+  if (vd.phase === "idle") {
+    if (vd.onStage) {
+      const onStageElapsed = Math.max(0, (now - onStageEnteredAt) / 1000);
+      if (onStageElapsed < 2.0) {
+        return {
+          camAngle: 10,
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+      return {
+        camAngle: 15,
+        transitionMode: "MORPH",
+        isOverlayHidden: false,
+        pushInProgress: 0,
+      };
+    }
+    return {
+      camAngle: 10,
+      transitionMode: "MORPH",
+      isOverlayHidden: false,
+      pushInProgress: 0,
+    };
+  }
+
   if (vd.phase === "choosing") {
     const onStageElapsed = Math.max(0, (now - onStageEnteredAt) / 1000);
     if (onStageElapsed < 2.0) {
@@ -248,12 +274,12 @@ export function useOlympiaCameraState(
     const vd = state?.veDich;
     const turnIdx = vd?.turnIdx ?? 0;
     const p = vd?.phase ?? "idle";
-    const mode = p === "idle" ? "idle" : p === "seatDone" ? "seatDone" : "onStage";
+    const mode = vd?.onStage ? "onStage" : p === "seatDone" ? "seatDone" : "idle";
     if (turnIdx !== lastVdRef.current.turnIdx || mode !== lastVdRef.current.mode) {
       lastVdRef.current = { turnIdx, mode };
       vdOnStageEnteredAtRef.current = getNow();
     }
-  }, [state?.veDich?.turnIdx, state?.veDich?.phase]);
+  }, [state?.veDich?.turnIdx, state?.veDich?.phase, state?.veDich?.onStage]);
 
   // Only run 100ms ticker when a time-varying camera transition is actively running (eliminates idle 10Hz re-renders)
   const needsTimedCameraTicker = Boolean(
@@ -270,6 +296,7 @@ export function useOlympiaCameraState(
       (state?.currentRound === "veDich" &&
         state?.veDich &&
         (Boolean(state.veDich.timer?.startedAt) ||
+          (state.veDich.phase === "idle" && state.veDich.onStage) ||
           state.veDich.phase === "choosing" ||
           state.veDich.phase === "packageReady" ||
           state.veDich.phase === "result"))
@@ -641,6 +668,7 @@ export function useOlympiaCameraState(
     state?.vcnv?.bells,
     state?.veDich?.phase,
     state?.veDich?.turnIdx,
+    state?.veDich?.onStage,
     state?.veDich?.timer?.startedAt,
     state?.veDich?.steal?.buzzedSeat,
     state?.cauHoiPhu?.buzzedSeat,

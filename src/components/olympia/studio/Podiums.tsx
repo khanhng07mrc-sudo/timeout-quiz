@@ -4080,7 +4080,7 @@ export function VeDichWalkingContestant({
     const vd = state?.veDich;
     const curTurn = vd?.turnIdx ?? 0;
     const curPhase = vd?.phase ?? "idle";
-    const mode = curPhase === "idle" ? "idle" : curPhase === "seatDone" ? "seatDone" : "onStage";
+    const mode = vd?.onStage ? "onStage" : curPhase === "seatDone" ? "seatDone" : "idle";
     const now = serverNow ? serverNow() : Date.now();
 
     if (curTurn !== lastStateRef.current.turnIdx || mode !== lastStateRef.current.mode) {
@@ -5286,7 +5286,7 @@ export function Podiums({
   const isVeDich = state?.currentRound === "veDich" || state?.roundsPlan?.[state?.roundIdx ?? 0] === "veDich";
   const vd = state?.veDich;
   const activeSeat = vd ? (vd.order?.[vd.turnIdx] ?? 0) : 0;
-  const isVdActive = Boolean(isVeDich && vd?.phase && vd.phase !== "idle");
+  const isVdActive = Boolean(isVeDich && vd?.phase && (vd.phase !== "idle" || vd.onStage));
 
   return (
     <group>

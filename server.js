@@ -105686,6 +105686,90 @@ function tangTocTierPoints(contestants) {
   return TANG_TOC_TABLE[n];
 }
 
+// src/lib/olympia/entrance-geometry.ts
+var STAGE_CENTER_Z = -0.5;
+var PODIUM_ARC_RADIUS = 6.65;
+var PODIUM_STAND_BACK_OFFSET = 0.42;
+var DESK_STAND_RADIUS = PODIUM_ARC_RADIUS + PODIUM_STAND_BACK_OFFSET;
+var ENTRANCE_CORRIDOR_RADIUS = 7.52;
+var ENTRANCE_WING_OFFSET_RAD = 0.24;
+var ENTRANCE_STAIRS_END_SEC = 4;
+var ENTRANCE_TARGET_FLOOR_SPEED = 2.45;
+var ENTRANCE_DESK_BOW_SEC = 0.5;
+var ENTRANCE_LAST_CLOSEUP_HOLD_SEC = 1.8;
+function getContestantArcParams(totalSeats = 4) {
+  const count = Math.min(8, Math.max(1, totalSeats || 4));
+  switch (count) {
+    case 1:
+      return { radius: PODIUM_ARC_RADIUS, startPhi: 0.346, endPhi: 0.346, span: 0 };
+    case 2:
+      return { radius: PODIUM_ARC_RADIUS, startPhi: 0.186, endPhi: 0.506, span: 0.32 };
+    case 3:
+      return { radius: PODIUM_ARC_RADIUS, startPhi: 0.076, endPhi: 0.616, span: 0.54 };
+    case 4:
+      return { radius: PODIUM_ARC_RADIUS, startPhi: -0.029, endPhi: 0.721, span: 0.75 };
+    case 5:
+      return { radius: PODIUM_ARC_RADIUS, startPhi: -0.134, endPhi: 0.826, span: 0.96 };
+    case 6:
+      return { radius: PODIUM_ARC_RADIUS, startPhi: -0.234, endPhi: 0.926, span: 1.16 };
+    case 7:
+      return { radius: PODIUM_ARC_RADIUS, startPhi: -0.344, endPhi: 1.036, span: 1.38 };
+    case 8:
+    default:
+      return { radius: PODIUM_ARC_RADIUS, startPhi: -0.454, endPhi: 1.146, span: 1.6 };
+  }
+}
+function getSeatPolarPhi(seatId, totalSeats = 4) {
+  const count = Math.min(8, Math.max(1, totalSeats || 4));
+  const clamped = Math.min(count - 1, Math.max(0, seatId));
+  const { startPhi, endPhi } = getContestantArcParams(count);
+  const frac = count === 1 ? 0.5 : clamped / (count - 1);
+  return startPhi + frac * (endPhi - startPhi);
+}
+function getEntranceSeatTiming(seatId, totalSeats = 4) {
+  const count = Math.min(8, Math.max(1, totalSeats || 4));
+  const clampedSeat = Math.min(count - 1, Math.max(0, seatId));
+  const arc = getContestantArcParams(count);
+  const firstPhi = arc.startPhi;
+  const targetPhi = getSeatPolarPhi(clampedSeat, count);
+  const entryPhi = firstPhi - ENTRANCE_WING_OFFSET_RAD;
+  const corridorRadius = ENTRANCE_CORRIDOR_RADIUS;
+  const entryX = -corridorRadius * Math.cos(entryPhi);
+  const entryZ = STAGE_CENTER_Z - corridorRadius * Math.sin(entryPhi);
+  const chordA = Math.hypot(entryX - 0, entryZ - 6.2);
+  const arcLenA = chordA * 1.12;
+  const deltaPhi = Math.max(0.05, targetPhi - entryPhi);
+  const arcLenB = corridorRadius * deltaPhi;
+  const splitU = Math.min(0.88, Math.max(0.18, arcLenA / (arcLenA + arcLenB)));
+  const totalDist = arcLenA + arcLenB;
+  const floorDurationSec = +Math.min(8.4, Math.max(3.6, totalDist / ENTRANCE_TARGET_FLOOR_SPEED)).toFixed(2);
+  const arrivalSec = +(ENTRANCE_STAIRS_END_SEC + floorDurationSec).toFixed(2);
+  const bowEndSec = +(arrivalSec + ENTRANCE_DESK_BOW_SEC).toFixed(2);
+  const advanceMs = Math.round((arrivalSec - 0.5) * 1e3);
+  const lastFinishMs = Math.round((arrivalSec + ENTRANCE_LAST_CLOSEUP_HOLD_SEC) * 1e3);
+  return {
+    seatId: clampedSeat,
+    totalSeats: count,
+    firstPhi,
+    targetPhi,
+    entryPhi,
+    stairsEndSec: ENTRANCE_STAIRS_END_SEC,
+    floorDurationSec,
+    arrivalSec,
+    bowEndSec,
+    advanceMs,
+    lastFinishMs,
+    splitU,
+    arcLenA,
+    arcLenB,
+    corridorRadius
+  };
+}
+function getEntranceStepThresholdMs(seatId, totalSeats = 4) {
+  const timing = getEntranceSeatTiming(seatId, totalSeats);
+  return seatId >= timing.totalSeats - 1 ? timing.lastFinishMs : timing.advanceMs;
+}
+
 // src/lib/olympia/engine.ts
 var mkTimer = (ms) => ({ totalMs: ms, remainingMs: ms, startedAt: null });
 var timerRemaining = (t, now) => t.startedAt == null ? t.remainingMs : Math.max(0, t.remainingMs - (now - t.startedAt));
@@ -106041,7 +106125,7 @@ var OlympiaGame = class _OlympiaGame {
       const elapsedForSeat = now - st.entranceState.seatStartedAt;
       const activeCount = Math.max(1, st.seats.length);
       const isLast = st.entranceState.currentSeatIdx >= activeCount - 1;
-      const advanceThreshold = isLast ? 6800 : 4e3;
+      const advanceThreshold = getEntranceStepThresholdMs(st.entranceState.currentSeatIdx, activeCount);
       if (elapsedForSeat >= advanceThreshold) {
         if (!isLast) {
           const nextIdx = st.entranceState.currentSeatIdx + 1;
@@ -106101,23 +106185,6 @@ var OlympiaGame = class _OlympiaGame {
     if (st.vdPackageTimer && expired(st.vdPackageTimer)) {
       st.vdPackageTimer = null;
       changed = true;
-      if (st.veDich) {
-        const vd = st.veDich;
-        const owner = this.vdSeat(vd);
-        const pkg = vd.packages[owner];
-        if (pkg && pkg.length > 0) {
-          vd.qIdx = 0;
-          vd.current = pkg[0];
-          if (vd.current?.q) {
-            vd.current.q.used = true;
-            this.recordOpenedQuestion(vd.current.q.q);
-          }
-          vd.phase = "thinking";
-          const rs = this.ruleset.veDich;
-          vd.timer = mkTimer(rs.thinkMs[String(vd.current.points)] ?? 15e3);
-          this.cue("4_VeDich/open_question");
-        }
-      }
     }
     if (st.khoiDong) {
       const kd = st.khoiDong;
@@ -106289,7 +106356,8 @@ var OlympiaGame = class _OlympiaGame {
           order: initialOrder,
           turnIdx: 0,
           playedSeats: [],
-          phase: "choosing",
+          phase: "idle",
+          onStage: false,
           packages: {},
           qIdx: -1,
           current: null,
@@ -106302,7 +106370,6 @@ var OlympiaGame = class _OlympiaGame {
           usedKeys: [],
           lastVerdict: null
         };
-        this.cue("4_VeDich/choose_package");
         break;
       }
       case "cauHoiPhu": {
@@ -108284,7 +108351,9 @@ var OlympiaGame = class _OlympiaGame {
     const ownerSeat = this.vdSeat(vd);
     vd.packages[ownerSeat] = this.allocatePackage(vd, resolvedPoints);
     vd.qIdx = -1;
+    vd.current = null;
     vd.phase = "packageReady";
+    st.vdPackageTimer = null;
     const totalPkg = resolvedPoints.reduce((s, p) => s + p, 0);
     this.pushTranscript({
       at: now,
@@ -108320,9 +108389,7 @@ var OlympiaGame = class _OlympiaGame {
         const pts = (a.points ?? []).map(Number);
         const res = this.setPackage(pts, now);
         if (!res.ok) return res;
-        this.cue("4_VeDich/open_question");
-        st.vdPackageTimer = mkTimer(1800);
-        startTimer(st.vdPackageTimer, now);
+        this.cue("4_VeDich/choose_package");
         return OK;
       }
       case "vd:onStage": {
@@ -108360,14 +108427,14 @@ var OlympiaGame = class _OlympiaGame {
         const idx = vd.order.indexOf(Number(a.seat));
         if (idx < 0) return fail("Th\xED sinh kh\xF4ng h\u1EE3p l\u1EC7");
         vd.turnIdx = idx;
-        vd.phase = vd.packages[vd.order[idx]] ? "packageReady" : "choosing";
+        vd.onStage = false;
+        vd.phase = vd.packages[vd.order[idx]] ? "packageReady" : "idle";
         vd.qIdx = -1;
         vd.current = null;
         vd.hopeStarActive = false;
         vd.deductedOnSteal = false;
         vd.lastVerdict = null;
         vd.steal = null;
-        this.cue("4_VeDich/on_stage");
         return OK;
       }
       case "vd:choosePackage":
@@ -108611,6 +108678,7 @@ var OlympiaGame = class _OlympiaGame {
         if (!vd.playedSeats) vd.playedSeats = [];
         if (!vd.playedSeats.includes(owner)) vd.playedSeats.push(owner);
         vd.turnIdx += 1;
+        vd.onStage = false;
         vd.qIdx = -1;
         vd.current = null;
         vd.steal = null;
@@ -108634,8 +108702,7 @@ var OlympiaGame = class _OlympiaGame {
             }
           }
         }
-        vd.phase = vd.packages[vd.order[vd.turnIdx]] ? "packageReady" : "choosing";
-        this.cue("4_VeDich/on_stage");
+        vd.phase = vd.packages[vd.order[vd.turnIdx]] ? "packageReady" : "idle";
         return OK;
       }
     }
@@ -109034,24 +109101,32 @@ var OlympiaGame = class _OlympiaGame {
     if (s.veDich) {
       const vd = s.veDich;
       const showAns = vd.phase === "result";
+      delete s.veDich.usedKeys;
       Object.values(vd.packages).forEach(
         (pkg) => pkg.forEach((p) => {
-          p.q = { ...p.q, a: "" };
-          if (vd.current !== p) p.q.q = vd.phase === "idle" ? "" : p.q.q;
+          p.q = {
+            q: "",
+            a: "",
+            points: p.points,
+            used: p.q?.used
+          };
         })
       );
-      Object.values(vd.packages).forEach((pkg) => pkg.forEach((p) => p.q = { ...p.q, q: "", media: void 0 }));
       if (vd.current) {
-        vd.current = { ...vd.current, q: { ...vd.current.q, a: showAns ? vd.current.q.a : "" } };
         const real = this.state.veDich?.current;
-        if (real) {
-          vd.current.q.q = real.q.q;
-          vd.current.q.media = real.q.media;
-          vd.current.q.mediaType = real.q.mediaType;
-          vd.current.q.subject = real.q.subject;
-          vd.current.q.kdZone = real.q.kdZone;
-          vd.current.q.vdZone = real.q.vdZone;
-        }
+        vd.current = {
+          points: real?.points ?? vd.current.points,
+          q: {
+            ...vd.current.q,
+            q: real?.q?.q || "",
+            a: showAns ? real?.q?.a || "" : "",
+            media: real?.q?.media,
+            mediaType: real?.q?.mediaType,
+            subject: real?.q?.subject,
+            kdZone: real?.q?.kdZone,
+            vdZone: real?.q?.vdZone
+          }
+        };
       }
     }
     if (s.cauHoiPhu) {
@@ -109061,6 +109136,10 @@ var OlympiaGame = class _OlympiaGame {
       );
     }
     return s;
+  }
+  /** Public display view (alias for view("display")) */
+  getPublicState() {
+    return this.view("display");
   }
 };
 

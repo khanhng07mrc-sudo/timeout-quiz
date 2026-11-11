@@ -82,21 +82,25 @@ export const V3_COLORS = {
  * 4. 1.7s -> 2.0s (85% -> 100%): Question content cleanly fades in.
  */
 const SHELL_CSS = `
+.v3a-l, .v3a-r {
+  transform-box: fill-box;
+  transform-origin: center;
+}
 @keyframes v3a-wing-l {
-  0%   { transform: translateX(calc(var(--v3a-dc-converge) - 550px)); opacity: 0; }
+  0%   { transform: translateX(calc(var(--v3a-dc-converge) + var(--v3-travel))) scale(0.15); opacity: 0; }
   12%  { opacity: 1; }
-  38%  { transform: translateX(var(--v3a-dc-converge)); opacity: 1; }
-  44%  { transform: translateX(var(--v3a-dc-converge)); opacity: 1; }
-  78%  { transform: translateX(-8px); opacity: 1; }
-  100% { transform: translateX(0); opacity: 1; }
+  38%  { transform: translateX(var(--v3a-dc-converge)) scale(1.15); opacity: 1; }
+  44%  { transform: translateX(var(--v3a-dc-converge)) scale(1.08); opacity: 1; }
+  78%  { transform: translateX(-8px) scale(1.0); opacity: 1; }
+  100% { transform: translateX(0) scale(1.0); opacity: 1; }
 }
 @keyframes v3a-wing-r {
-  0%   { transform: translateX(calc(var(--v3a-dc-converge) * -1 + 550px)); opacity: 0; }
+  0%   { transform: translateX(calc(var(--v3a-dc-converge) * -1 - var(--v3-travel))) scale(0.15); opacity: 0; }
   12%  { opacity: 1; }
-  38%  { transform: translateX(calc(var(--v3a-dc-converge) * -1)); opacity: 1; }
-  44%  { transform: translateX(calc(var(--v3a-dc-converge) * -1)); opacity: 1; }
-  78%  { transform: translateX(8px); opacity: 1; }
-  100% { transform: translateX(0); opacity: 1; }
+  38%  { transform: translateX(calc(var(--v3a-dc-converge) * -1)) scale(1.15); opacity: 1; }
+  44%  { transform: translateX(calc(var(--v3a-dc-converge) * -1)) scale(1.08); opacity: 1; }
+  78%  { transform: translateX(8px) scale(1.0); opacity: 1; }
+  100% { transform: translateX(0) scale(1.0); opacity: 1; }
 }
 @keyframes v3a-body {
   0%, 40%  { clip-path: inset(0 50% 0 50%); opacity: 0; }
@@ -156,10 +160,12 @@ export function V3ArrowShell({
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const { canvasW, H } = shell;
   const hexPath = toSvgPath(shell.bgPts);
-  const dcConverge = canvasW / 2 - shell.startX / 2;
+  const dcConverge = shell.W / 2;
+  const travelDist = Math.max(canvasW, 1400);
   const cssVars = {
     ["--v3a-dc" as string]: `${canvasW / 2 - shell.cThick}px`,
     ["--v3a-dc-converge" as string]: `${dcConverge}px`,
+    ["--v3-travel" as string]: `${travelDist}px`,
   } as React.CSSProperties;
 
   return (

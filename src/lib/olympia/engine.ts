@@ -551,23 +551,6 @@ export class OlympiaGame {
     if (st.vdPackageTimer && expired(st.vdPackageTimer)) {
       st.vdPackageTimer = null;
       changed = true;
-      if (st.veDich) {
-        const vd = st.veDich;
-        const owner = this.vdSeat(vd);
-        const pkg = vd.packages[owner];
-        if (pkg && pkg.length > 0) {
-          vd.qIdx = 0;
-          vd.current = pkg[0];
-          if (vd.current?.q) {
-            vd.current.q.used = true;
-            this.recordOpenedQuestion(vd.current.q.q);
-          }
-          vd.phase = "thinking";
-          const rs = this.ruleset.veDich;
-          vd.timer = mkTimer(rs.thinkMs[String(vd.current.points)] ?? 15000);
-          this.cue("4_VeDich/open_question");
-        }
-      }
     }
 
     if (st.khoiDong) {
@@ -762,7 +745,8 @@ export class OlympiaGame {
           order: initialOrder,
           turnIdx: 0,
           playedSeats: [],
-          phase: "choosing",
+          phase: "idle",
+          onStage: false,
           packages: {},
           qIdx: -1,
           current: null,
@@ -775,7 +759,6 @@ export class OlympiaGame {
           usedKeys: [],
           lastVerdict: null,
         };
-        this.cue("4_VeDich/choose_package");
         break;
       }
       case "cauHoiPhu": {
@@ -2891,7 +2874,9 @@ export class OlympiaGame {
     const ownerSeat = this.vdSeat(vd);
     vd.packages[ownerSeat] = this.allocatePackage(vd, resolvedPoints);
     vd.qIdx = -1;
+    vd.current = null;
     vd.phase = "packageReady";
+    st.vdPackageTimer = null;
     const totalPkg = resolvedPoints.reduce((s, p) => s + p, 0);
     this.pushTranscript({
       at: now,
@@ -2929,9 +2914,7 @@ export class OlympiaGame {
         const pts = ((a.points as number[]) ?? []).map(Number);
         const res = this.setPackage(pts, now);
         if (!res.ok) return res;
-        this.cue("4_VeDich/open_question");
-        st.vdPackageTimer = mkTimer(1800);
-        startTimer(st.vdPackageTimer, now);
+        this.cue("4_VeDich/choose_package");
         return OK;
       }
       case "vd:onStage": {
@@ -2969,14 +2952,14 @@ export class OlympiaGame {
         const idx = vd.order.indexOf(Number(a.seat));
         if (idx < 0) return fail("Thí sinh không hợp lệ");
         vd.turnIdx = idx;
-        vd.phase = vd.packages[vd.order[idx]] ? "packageReady" : "choosing";
+        vd.onStage = false;
+        vd.phase = vd.packages[vd.order[idx]] ? "packageReady" : "idle";
         vd.qIdx = -1;
         vd.current = null;
         vd.hopeStarActive = false;
         vd.deductedOnSteal = false;
         vd.lastVerdict = null;
         vd.steal = null;
-        this.cue("4_VeDich/on_stage");
         return OK;
       }
       case "vd:choosePackage":
@@ -3223,6 +3206,7 @@ export class OlympiaGame {
         if (!vd.playedSeats) vd.playedSeats = [];
         if (!vd.playedSeats.includes(owner)) vd.playedSeats.push(owner);
         vd.turnIdx += 1;
+        vd.onStage = false;
         vd.qIdx = -1;
         vd.current = null;
         vd.steal = null;
@@ -3246,8 +3230,7 @@ export class OlympiaGame {
             }
           }
         }
-        vd.phase = vd.packages[vd.order[vd.turnIdx]] ? "packageReady" : "choosing";
-        this.cue("4_VeDich/on_stage");
+        vd.phase = vd.packages[vd.order[vd.turnIdx]] ? "packageReady" : "idle";
         return OK;
       }
     }
@@ -3665,26 +3648,33 @@ export class OlympiaGame {
     if (s.veDich) {
       const vd = s.veDich;
       const showAns = vd.phase === "result";
+      delete (s.veDich as any).usedKeys;
+      // Strip unrevealed questions completely from packages so browser/player cannot cache or leak them
       Object.values(vd.packages).forEach((pkg) =>
         pkg.forEach((p) => {
-          p.q = { ...p.q, a: "" };
-          if (vd.current !== p) p.q.q = vd.phase === "idle" ? "" : p.q.q;
+          p.q = {
+            q: "",
+            a: "",
+            points: p.points,
+            used: p.q?.used,
+          } as any;
         })
       );
-      // only expose question text of the current question
-      Object.values(vd.packages).forEach((pkg) => pkg.forEach((p) => (p.q = { ...p.q, q: "", media: undefined })));
       if (vd.current) {
-        vd.current = { ...vd.current, q: { ...vd.current.q, a: showAns ? vd.current.q.a : "" } };
-        // restore the current question text and media from the authoritative state
         const real = this.state.veDich?.current;
-        if (real) {
-          vd.current.q.q = real.q.q;
-          vd.current.q.media = real.q.media;
-          vd.current.q.mediaType = real.q.mediaType;
-          vd.current.q.subject = real.q.subject;
-          vd.current.q.kdZone = real.q.kdZone;
-          vd.current.q.vdZone = real.q.vdZone;
-        }
+        vd.current = {
+          points: real?.points ?? vd.current.points,
+          q: {
+            ...vd.current.q,
+            q: real?.q?.q || "",
+            a: showAns ? (real?.q?.a || "") : "",
+            media: real?.q?.media,
+            mediaType: real?.q?.mediaType,
+            subject: real?.q?.subject,
+            kdZone: real?.q?.kdZone,
+            vdZone: real?.q?.vdZone,
+          },
+        };
       }
     }
     if (s.cauHoiPhu) {
@@ -3694,5 +3684,10 @@ export class OlympiaGame {
       );
     }
     return s;
+  }
+
+  /** Public display view (alias for view("display")) */
+  getPublicState(): OlympiaState {
+    return this.view("display");
   }
 }

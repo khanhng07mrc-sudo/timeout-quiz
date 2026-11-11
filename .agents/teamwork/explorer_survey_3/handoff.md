@@ -1,129 +1,190 @@
-# Handoff Report: Investigation of MC Area Lighting (R3), Intro Audio Looping (R5), and Screenshot Verification Setup (R6)
+# Handoff Report: Về Đích Question 1 Display Isolation, Automated Tests, Visual Screenshot Automation, and VPS Deployment
 
-**From**: `explorer_survey_3`  
-**To**: Orchestrator (`92bc7ea3-6992-4337-87ba-6322ebaf6868`)  
-**Workspace**: `d:\Timeout Quiz`  
-**Working Directory**: `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\`  
-**Date**: 2026-11-10  
-**Handoff Type**: Hard (Task Complete)
+**Agent**: Explorer 3 (`explorer_survey_3`)  
+**Parent / Recipient**: `47820d92-4889-4395-abf8-ed65add978a1`  
+**Status**: Hard Handoff (Investigation Complete)  
+**Deliverable Document**: `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\analysis.md`  
 
 ---
 
 ## 1. Observation
 
-### R3 Observations (MC Area Lighting & Figure Visibility):
-1. **MC Desk & Figures Definition**:
-   - `d:\Timeout Quiz\src\components\olympia\studio\Podiums.tsx`:
-     - Line 1843: `export function CenterMcDesk({ ... })` defines the origami faceted desk at position `[3.00, 0.08, -6.70]`, with rotation `MC_DESK_ROT_Y = -0.25 rad` (lines 2030–2033).
-     - Line 2060: `export function McPresenters({ ... })` animates and renders Khánh Vy and Ngọc Huy.
-     - Line 2031: `KV_DESK_POS: [3.35, 0.14, -7.11]` (Khánh Vy).
-     - Line 2032: `NH_DESK_POS: [2.89, 0.14, -7.22]` (Ngọc Huy).
-2. **MC Lighting Configuration**:
-   - `d:\Timeout Quiz\src\components\olympia\studio\StudioLighting.tsx`:
-     - Lines 3048–3085:
-       - MC Key Light: `TargetedSpotLight` at `[4.60, 5.20, -3.40]`, targeting `[3.10, 1.35, -6.85]`, color `#fffaf0`, intensity `mcKeyIntensity` (lerp 4.5 to 8.5), angle 0.52, penumbra 0.45, distance 14, decay 1.5.
-       - MC Fill Light: `TargetedSpotLight` at `[1.40, 4.80, -3.60]`, targeting `[3.10, 1.35, -6.85]`, color `#f0f7ff`, intensity `mcFillIntensity` (lerp 2.5 to 4.8), distance 13, decay 1.5.
-       - MC Rim Light: `TargetedSpotLight` at `[3.10, 5.60, -8.80]`, targeting `[3.10, 1.45, -6.85]`, color `#ffffff`, intensity `mcRimIntensity` (lerp 1.5 to 3.2), distance 10, decay 1.8.
-     - Lines 2975–2981: Ambient light is `#162848` (navy blue), intensity 0.25–0.26.
-     - Lines 3024–3045: Directional key (`[4.5, 12, 7.5]`) and front flood (`[0, 5.5, 7.5]`) lights have default target `(0, 0, 0)` (Center Stage Dais).
-3. **MC Material Settings**:
-   - `d:\Timeout Quiz\src\components\olympia\studio\Podiums.tsx`:
-     - Line 1902: `createWarmPeachSkinMaterial(color = "#f4cba5", roughness = 0.58)`: `metalness: 0.02`, `emissive: #000000`, `emissiveIntensity: 0.0`.
-     - Lines 2604–2606: Khánh Vy blazer: `color="#831843"`, `roughness={0.38}`, `metalness={0.05}`, no emissive.
-     - Lines 2805–2806: Ngọc Huy blazer: `color="#b88a44"`, `roughness={0.42}`, `metalness={0.12}`, no emissive.
+### Obs 1: Về Đích Package Confirmation Triggers Auto-Start Timer Prematurely
+- **File**: `D:\Timeout Quiz\src\lib\olympia\engine.ts`
+- **Lines**: 2928–2936
+- **Code**:
+  ```ts
+  case "vd:confirmPackage": {
+    const pts = ((a.points as number[]) ?? []).map(Number);
+    const res = this.setPackage(pts, now);
+    if (!res.ok) return res;
+    this.cue("4_VeDich/open_question");
+    st.vdPackageTimer = mkTimer(1800);
+    startTimer(st.vdPackageTimer, now);
+    return OK;
+  }
+  ```
+- **Finding**: Calling `vd:confirmPackage` immediately triggers `4_VeDich/open_question` (premature audio) and starts `st.vdPackageTimer = mkTimer(1800)`.
 
-### R5 Observations (Contestant Intro Audio Engine & Timings):
-1. **Audio Engine**:
-   - `d:\Timeout Quiz\src\components\olympia\hooks.ts`:
-     - Line 274: `export function useOlympiaAudio(...)` manages client playback using HTML5 `Audio` elements with Web Audio `AudioContext` stereo panners.
-     - Line 239: `isIntroOrMusicTrack` recognizes `contest_intro`.
-     - Line 236: `isLoopingBgm` matches only `/kd_bgm_[12]$/` or `/loop/`.
-     - Line 689: `const looping = isBgmCue && !isCountdown && isLoopingBgm(cue.sound);` => `looping = false` for `contest_intro`!
-     - Line 737: `a.loop = looping;` sets `a.loop = false`.
-2. **Audio Asset Duration**:
-   - File: `d:\Timeout Quiz\public\olympia-audio\O26\6_NhacKhac\contest_intro.mp3`.
-   - File size: 296,142 bytes.
-   - Exact length: 710 MP3 frames at 44.1 kHz = **18.55 seconds**.
-3. **Presentation Duration Logic**:
-   - `d:\Timeout Quiz\src\lib\olympia\engine.ts`:
-     - Lines 480–495: Contestants 0 to $N-2$ advance every 4.0s (`advanceThreshold = 4000`), and contestant $N-1$ takes 6.8s (`advanceThreshold = 6800`).
-     - Formula: $T = (N - 1) \times 4.0\,\text{s} + 6.8\,\text{s}$.
-     - For 6 contestants: $(5 \times 4.0) + 6.8 = \mathbf{26.8\,\text{s}}$ (18.55s track leaves 8.25s silence).
-     - For 8 contestants: $(7 \times 4.0) + 6.8 = \mathbf{34.8\,\text{s}}$ (18.55s track leaves 16.25s silence).
+### Obs 2: Main Timer Loop Auto-Advances to Question 1 Without Host Action
+- **File**: `D:\Timeout Quiz\src\lib\olympia\engine.ts`
+- **Lines**: 551–570
+- **Code**:
+  ```ts
+  if (st.vdPackageTimer && expired(st.vdPackageTimer)) {
+    st.vdPackageTimer = null;
+    changed = true;
+    if (st.veDich) {
+      const vd = st.veDich;
+      const owner = this.vdSeat(vd);
+      const pkg = vd.packages[owner];
+      if (pkg && pkg.length > 0) {
+        vd.qIdx = 0;
+        vd.current = pkg[0];
+        if (vd.current?.q) {
+          vd.current.q.used = true;
+          this.recordOpenedQuestion(vd.current.q.q);
+        }
+        vd.phase = "thinking";
+        const rs = this.ruleset.veDich;
+        vd.timer = mkTimer(rs.thinkMs[String(vd.current.points)] ?? 15000);
+        this.cue("4_VeDich/open_question");
+      }
+    }
+  }
+  ```
+- **Finding**: Exactly 1.8 seconds after package confirmation, the server auto-populates `vd.qIdx = 0`, `vd.current = pkg[0]`, sets `vd.phase = "thinking"`, starts countdown timer, and plays `open_question`. This completely bypasses Host/MC control.
 
-### R6 Observations (Build, Port & Screenshot Pipeline):
-1. **Application Build & Dev**:
-   - `package.json`:
-     - `npm run dev`: `ts-node --project tsconfig.server.json server.ts`.
-     - `npm run build`: `next build --webpack && esbuild server.ts ...`. **Verified: Build succeeds with code 0!**
-     - `npm run type-check`: `tsc --noEmit`. **Verified: 0 errors!**
-     - `npm run test:olympia-3d`: **Verified: 489 / 489 tests pass!**
-2. **Port**:
-   - `server.ts` line 65: `const port = parseInt(process.env.PORT ?? "3000", 10);`. Defaults to 3000.
-3. **Screenshot Automation**:
-   - `puppeteer-core` version `^25.15.0` is present in devDependencies.
-   - Microsoft Edge is installed at `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`.
-   - Google Chrome is installed at `C:\Program Files\Google\Chrome\Application\chrome.exe`.
-   - Proven script `src/lib/olympia/capture-r6-screenshots.ts` uses `puppeteer-core` with WebGL ANGLE flags to capture 3D studio canvases cleanly.
+### Obs 3: DisplayScreen Enforces 2-Second Cutoff to Question Frame
+- **File**: `D:\Timeout Quiz\src\components\olympia\DisplayScreen.tsx`
+- **Lines**: 771–791
+- **Code**:
+  ```tsx
+  const isPackageIntroTime = Boolean(
+    hasPkg && !cur && pkgTimer?.startedAt && serverNow() - pkgTimer.startedAt < 2000
+  );
+  ...
+  {vd.phase !== "result" && (isChoosing || isPackageIntroTime) && (
+    <VeDichSlantedGridGraphic state={state} />
+  )}
+  ...
+  ) : cur || (hasPkg && !isPackageIntroTime) ? (
+    <EconovaLowerThirdV3 ... />
+  )
+  ```
+- **Finding**: `DisplayScreen` limits package summary visibility to < 2000ms. As soon as 2s passes or `cur` is set by the 1.8s timer, it unconditionally switches to the question lower-third frame.
+
+### Obs 4: HostConsole Hotkey Discrepancy on Key `N`
+- **File**: `D:\Timeout Quiz\src\components\olympia\HostConsole.tsx`
+- **Lines**: 261 & 3295
+- **Code**:
+  - Line 261: `else if (state?.currentRound === "veDich") call("vd:nextSeat");`
+  - Line 3295: `<button type="button" onClick={() => call("vd:startQuestion")}><span>Câu tiếp (N)</span></button>`
+- **Finding**: The UI button says "Câu tiếp (N)" and calls `vd:startQuestion`, but pressing key `N` triggers `vd:nextSeat`, which would prematurely end the contestant's turn and move to the next contestant.
+
+### Obs 5: Server Masking Protects Question Text When `vd.current === null`
+- **File**: `D:\Timeout Quiz\src\lib\olympia\engine.ts`
+- **Lines**: 3668–3675
+- **Code**:
+  ```ts
+  Object.values(vd.packages).forEach((pkg) => pkg.forEach((p) => (p.q = { ...p.q, q: "", media: undefined })));
+  ```
+- **Finding**: In `getPublicState`, when `vd.current === null`, all questions in `vd.packages` have `q: ""` and `media: undefined`. Keeping `vd.current === null` during package confirmation mathematically guarantees that question 1 cannot leak over the network.
+
+### Obs 6: Automated Test Suites and Build Status
+- **Commands & Results**:
+  1. `npm run test:olympia`: **64 / 64 passing** (441ms).
+  2. `npm run test:olympia-3d`: **584 / 584 passing** (853ms).
+  3. `npx tsc --noEmit`: **0 errors** (Clean exit code 0).
+  4. `npm run build`: **Compiled 33/33 static pages** and bundled `server.js` (4.0mb) in 2.78s.
+  5. `curl.exe -s -k https://quizorra.ddns.net/api/health`: **HTTP 200 OK**, payload: `{"status":"ok","commit":"e2352a9",...}`.
+  6. Git status: Clean working tree on branch `main` at commit `e2352a9`.
+  7. SSH to `103.161.180.142`: `Permission denied (publickey,password)` — SSH key not present on subagent, delegating remote VPS deploy to orchestrator as required by prompt.
 
 ---
 
 ## 2. Logic Chain
 
-1. **R3 (MC Lighting)**:
-   - Three.js v0.186 enforces physically-correct distance decay.
-   - At a 5.4m distance with `decay={1.5}`, spotlight intensity arriving at the MCs drops to ~0.45 lux.
-   - Directional lights focus on `(0, 0, 0)` rather than the MC desk at `[3.0, 0.08, -6.7]`.
-   - The studio ambient color is navy blue (`#162848`), which does not reflect off warm peach skin, deep burgundy, or black hair.
-   - The materials have zero emissive values.
-   - Therefore, from wide shots (CAM 10, CAM 1), high foreground stage brightness creates an extreme contrast ratio, turning the unlit MC figures into dark silhouettes ("ghosts").
-   - *Solution*: Add local warm-white `#fff5e6` lighting at the MC desk (`pointLight` at `[3.12, 2.40, -6.40]` and desk console uplight at `Y=1.20m`), decrease spotlight decay to `0.0`–`0.5` with elevated intensity, and calibrate skin/wardrobe materials with subtle broadcast emissive baseline (0.12–0.16).
+1. **Premature Revelation Mechanism**:
+   - From **Obs 1**, when package selection is confirmed, `vd:confirmPackage` creates a 1.8s timer `st.vdPackageTimer` and immediately emits `open_question`.
+   - From **Obs 2**, when `vdPackageTimer` expires after 1.8s, `updateTimers` forces `vd.qIdx = 0`, attaches `vd.current = pkg[0]`, and transitions to `phase: "thinking"`.
+   - From **Obs 3**, `DisplayScreen` drops `VeDichSlantedGridGraphic` after 2s and renders `EconovaLowerThirdV3` or chalkboard whenever `cur` or `!isPackageIntroTime` is true.
+   - Therefore, the early display of Question 1 is entirely caused by the automated 1.8s timer handoff in `engine.ts` and the 2.0s timeout in `DisplayScreen.tsx`.
 
-2. **R5 (Audio Looping)**:
-   - The audio file `contest_intro.mp3` is 18.55s long.
-   - The presentation time for 6 contestants is 26.8s, and for 8 contestants is 34.8s.
-   - `isLoopingBgm` returns `false` for `contest_intro`, so `a.loop = false`.
-   - When the track reaches 18.55s, it terminates and remains silent for the remainder of the entrance sequence.
-   - *Solution*: Implement predictive dual-instance crossfade looping in `useOlympiaAudio` triggered 2.0s before track completion ($t \approx 16.55\text{s}$), recurring until the Host begins Khởi Động (where existing `fadeOutAndStopBgm(1000)` smoothly takes over).
+2. **Decoupling Strategy**:
+   - By eliminating `st.vdPackageTimer` from `vd:confirmPackage` in `engine.ts`, the state remains stably in `vd.phase = "packageReady"`, `vd.qIdx = -1`, and `vd.current = null`.
+   - From **Obs 5**, keeping `vd.current = null` ensures that `getPublicState` masks all question text (`q: ""`), guaranteeing anti-leakage over WebSocket broadcast.
+   - By updating `DisplayScreen.tsx` to display `VeDichSlantedGridGraphic` (or package chips pill) continuously while `vd.phase === "packageReady"` and `vd.current === null`, the display holds the package information without revealing question content.
+   - By updating `HostConsole.tsx` (Obs 4), the Host is provided with a dedicated button `▶ Bắt đầu Câu 1 (N)` calling `vd:startQuestion`, and hotkey `N` is mapped to `vd:startQuestion` while in `packageReady` or `result`.
+   - When Host triggers `vd:startQuestion`, `engine.ts` sets `vd.qIdx = 0`, `vd.current = pkg[0]`, `vd.phase = "thinking"`, starting the countdown and revealing Question 1 text.
 
-3. **R6 (Screenshot Setup)**:
-   - `npm run build` succeeds cleanly.
-   - `puppeteer-core` with Edge (`msedge.exe`) and WebGL flags (`--enable-webgl`, `--use-gl=angle`) reliably captures Three.js 3D studio views without GPU stalls.
-   - Test harness routes like `/dev/graphics?tab=r6` allow automated capture of 6, 7, and 8 contestant layouts and CAM 10/CAM 3 framings.
+3. **5-State Visual Screenshot Automation**:
+   - The project already has Puppeteer and Edge/Chrome automation scripts (`scripts/capture-r6-m5.mjs`, `scripts/verify-screenshots.mjs`) navigating to `/dev/graphics?tab=...`.
+   - We map the 5 required states to distinct tabs/DOM IDs in `src/app/dev/graphics/client.tsx` or a dedicated runner `scripts/capture-vedich-5states.mjs`, capturing `state_1_intro.png`, `state_2_onstage.png`, `state_3_arrows_package.png`, `state_4_package_confirmed.png`, and `state_5_question1_active.png`.
+
+4. **Production Deployment Execution**:
+   - All tests pass (Obs 6), TypeScript check is clean, build succeeds.
+   - Git remote is `origin/main`.
+   - Since subagent lacks SSH credentials to `103.161.180.142`, preparing clean commit on `origin/main` and handing off to orchestrator for VPS deployment satisfies R6 and the security constraint.
 
 ---
 
 ## 3. Caveats
 
-- In headless Chromium environments without physical GPU acceleration, WebGL relies on ANGLE software rasterization (SwiftShader/D3D11). `capture-r6-screenshots.ts` requires `--use-gl=angle` and `--use-angle=default` to render Three.js canvases accurately.
-- `contest_intro.mp3` has a natural crescendo ending at 18.0–18.5s. A 2.0s crossfade window ($t=16.55\text{s}$) cleanly overlaps the crescendo into the opening beat of the looped track.
+1. **Sound Cue in Package Confirmation**: When removing `this.cue("4_VeDich/open_question")` from `vd:confirmPackage`, the system should play `4_VeDich/choose_package` so the audio confirms package locking without signaling a question opening.
+2. **Preset vs Custom Package Modes**: In O13–O19, packages are fixed (e.g. 40, 60, 80), whereas in O20–O27 packages are custom combinations (e.g. 20-20-20, 20-30-30). The package display in State 4 must handle both modes cleanly.
+3. **SSH Access**: As verified by command execution, direct passwordless SSH to `root@103.161.180.142` is not available in the subagent environment. This is expected and handled via the orchestrator handoff protocol.
 
 ---
 
 ## 4. Conclusion
 
-All three investigation areas (R3, R5, R6) have clear, actionable, and low-risk implementation paths:
-1. **R3**: Update `StudioLighting.tsx` with warm white `#fff5e6` key/fill lighting focused on `[3.10, 1.35, -6.85]`, add local desk fill `pointLight`, and calibrate MC skin/fabric emissive values in `Podiums.tsx`.
-2. **R5**: In `hooks.ts`, add predictive dual-instance crossfade looping for `contest_intro` triggered at 16.55s with a 2.0s crossfade overlap.
-3. **R6**: Utilize `puppeteer-core` with Edge to capture visual proof of 6, 7, and 8 contestant stage layouts, CAM 10 coverage, and brightly lit MCs.
+1. **Question 1 Display Isolation (R3)**:
+   - **Root Cause Identified**: Auto-start timer `st.vdPackageTimer` (1800ms) in `engine.ts:2933` and `engine.ts:551` forces question 1 revelation without Host action.
+   - **Decoupling Action**: Remove `st.vdPackageTimer` auto-start. Maintain `phase = "packageReady"`, `qIdx = -1`, `current = null`.
+   - **Host Action**: Implement `▶ Bắt đầu Câu 1 (N)` button and bind hotkey `N` to `vd:startQuestion`.
+   - **Screen Action**: Render package grid/chips during `packageReady`; withhold question lower third until `vd.phase === "thinking"`.
+2. **Automated Tests**:
+   - 64 engine tests and 584 3D studio tests are passing (100%).
+   - Specified 3 new unit tests in `src/lib/olympia/engine.test.ts` verifying package isolation, public state censoring, and explicit host trigger.
+3. **Visual Screenshots (R5)**:
+   - Formulated concrete Puppeteer plan for all 5 states using `/dev/graphics` tabs and PNG validation.
+4. **VPS Deployment (R6)**:
+   - Build verified, healthcheck verified live on `https://quizorra.ddns.net/api/health`.
 
 ---
 
 ## 5. Verification Method
 
-1. **Build Integrity**:
+To independently verify all findings and test suites:
+
+1. **Run Olympia Engine Test Suite**:
    ```bash
-   npm run build
+   cd "d:\Timeout Quiz"
+   npm run test:olympia
    ```
-   Must exit with code 0.
-2. **Contract Test Suite**:
+   *Expected*: 64 passed, 0 failed.
+
+2. **Run 3D Studio Test Suite**:
    ```bash
    npm run test:olympia-3d
    ```
-   All 489 tests must pass with 100% pass rate.
-3. **Audio Duration Test**:
+   *Expected*: 584 passed, 0 failed.
+
+3. **Run TypeScript Check**:
    ```bash
-   node -e "const fs = require('fs'); const b = fs.readFileSync('public/olympia-audio/O26/6_NhacKhac/contest_intro.mp3'); console.log('Size:', b.length);"
+   npx tsc --noEmit
    ```
-4. **Visual Proof Screenshot Execution**:
-   Launch dev server (`PORT=3005 npm run dev`) and execute headless screenshot capture script. Inspect output PNG files for proper illumination and framing.
+   *Expected*: Clean exit code 0, 0 errors.
+
+4. **Run Production Build**:
+   ```bash
+   npm run build
+   ```
+   *Expected*: Static page generation 33/33, server.js bundled (4.0mb), exit code 0.
+
+5. **Verify Public Production Health**:
+   ```bash
+   curl -s -k https://quizorra.ddns.net/api/health
+   ```
+   *Expected*: HTTP 200 with JSON payload `{"status":"ok",...}`.

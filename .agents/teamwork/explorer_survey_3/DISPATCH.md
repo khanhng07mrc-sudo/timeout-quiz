@@ -1,20 +1,52 @@
-## 2026-11-10T13:20:55Z
-You are an Explorer investigating MC area lighting, intro audio looping, and screenshot verification setup in Timeout Quiz (working directory `d:\Timeout Quiz`).
-Read `d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md`.
-Your working directory is `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\`.
+# Dispatch for Explorer Survey 3
 
-Investigate:
-1. Requirement R3:
-   - Where MC desk, figures (Khánh Vy & Ngọc Huy), and lighting in the MC area are defined.
-   - Why the MCs appear dark/ghost-like from distance or CAM 10.
-   - How lights (SpotLight, PointLight, Directional key light, warm white #fff5e6) or material settings (roughness, metalness, emissive, ambient) are configured, and where to add/adjust dedicated key/fill lighting for the MCs.
-2. Requirement R5:
-   - How contestant intro audio is handled in the audio engine (Web Audio API, Howler, HTML5 Audio, etc.).
-   - What the duration of the intro audio track is, and how total intro time is calculated for 6 contestants (~26.8s) and 8 contestants (~34.8s).
-   - Where and how to implement seamless crossfade looping / concatenation if the track length is shorter than the presentation duration.
-3. Requirement R6:
-   - How the application runs (`npm run dev`, `npm run build`), what port it uses, and how browser screenshots can be captured (Playwright, Puppeteer, headless Chrome, or screenshot utility in the environment).
-4. Absolute workspace safety rule: Do NOT modify or create any file outside `d:\Timeout Quiz`. Keep `d:\Olympia 26` completely untouched. Do not edit `d:\Timeout Quiz\AGENTS.md`. You are in exploration mode (read-only for project code, write reports only in your working directory).
-5. Document all affected files, line numbers, audio/lighting configurations, and build/dev setup.
-6. Propose concrete fix strategies for R3, R5, and R6.
-7. Write your comprehensive report to `d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\analysis.md` and deliver `handoff.md`. Send a message when finished.
+**Task**: Deep technical investigation of Question 1 display isolation in Ve Dich (R3), automated tests, screenshot automation for 5 states (R5), and production VPS deployment pipeline (R6).
+**Working Directory**: d:\Timeout Quiz\.agents\teamwork\explorer_survey_3
+**Authoritative Request**: d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md
+
+## Scope & Instructions
+1. Read `d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md`.
+2. Trace the question rendering and package selection flow in Ve Dich:
+   - Why does confirming package selection immediately reveal Question 1?
+   - How to decouple package selection confirmation (showing package info only: 40/60/80, point chips, contestant name) from question content rendering?
+   - What Host button/hotkey/event is or should be used to trigger question 1 display?
+3. Inspect automated testing infrastructure:
+   - Existing tests (`npm run test:olympia`, `npm test`, `npx tsc --noEmit`, `npm run build`).
+   - Identify how to write unit/integration tests for the new Ve Dich state flow and question isolation.
+4. Inspect visual screenshot capture tools:
+   - Check existing Puppeteer / Playwright / script setups in `d:\Timeout Quiz`.
+   - Formulate a concrete script plan to capture all 5 required visual screenshot states.
+5. Inspect VPS deployment:
+   - Check `deploy-vps.sh`, package.json scripts, git remote `origin/main`, healthcheck endpoint `https://quizorra.ddns.net/api/health`.
+6. Write findings to `analysis.md` and `handoff.md` in your working directory.
+
+
+## 2026-11-11T09:06:58Z
+You are Explorer 3 investigating the Question 1 display isolation in Ve Dich (R3), automated test suites, visual screenshot automation for 5 states (R5), and VPS deploy flow (R6) for Timeout Quiz.
+
+Working directory: d:\Timeout Quiz\.agents\teamwork\explorer_survey_3
+Authoritative request: d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md
+Dispatch instructions: d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\DISPATCH.md
+
+STRICT CONSTRAINT: You are in READ-ONLY exploration mode. Tuyệt đối không xóa hoặc sửa file ngoài thư mục d:\Timeout Quiz. Do not modify any source code files yet.
+
+Your tasks:
+1. Read `d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md` carefully.
+2. Trace the question rendering and package selection flow in Ve Dich:
+   - Why does confirming package selection immediately reveal Question 1?
+   - How to decouple package selection confirmation (showing package info only: 40/60/80, point chips, contestant name) from question content rendering?
+   - What Host button/hotkey/event is or should be used to trigger question 1 display?
+3. Inspect automated testing infrastructure:
+   - Existing tests (`npm run test:olympia`, `npm test`, `npx tsc --noEmit`, `npm run build`).
+   - Identify how to write unit/integration tests for the new Ve Dich state flow and question isolation.
+4. Inspect visual screenshot capture tools:
+   - Check existing Puppeteer / Playwright / script setups in `d:\Timeout Quiz`.
+   - Formulate a concrete script plan to capture all 5 required visual screenshot states:
+     State 1: Nhấn tên phần thi Về đích (chỉ phát intro, không mở bảng chọn gói).
+     State 2: Nhấn nút "Lên sân khấu" (chỉ phát nhạc, không mở bảng chọn gói).
+     State 3: Nhấn nút "Mở bảng chọn gói" (hiển thị hiệu ứng cặp mũi tên căn giữa + zoom các lớp, sau đó mở bảng chọn gói).
+     State 4: Trạng thái sau khi xác nhận chọn gói (chỉ hiển thị thông tin gói, câu hỏi 1 chưa hiển thị).
+     State 5: Host kích hoạt hiển thị câu hỏi 1 (nội dung câu hỏi 1 xuất hiện).
+5. Inspect VPS deployment:
+   - Check `deploy-vps.sh`, package.json scripts, git remote `origin/main`, healthcheck endpoint `https://quizorra.ddns.net/api/health`.
+6. Write your comprehensive analysis to `analysis.md` and deliver `handoff.md` in your working directory. Notify the orchestrator via send_message when done.

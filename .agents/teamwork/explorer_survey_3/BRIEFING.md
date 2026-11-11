@@ -1,45 +1,57 @@
-# BRIEFING — 2026-11-10T13:33:00Z
+# BRIEFING — 2026-11-11T09:24:00Z
 
 ## Mission
-Investigate MC area lighting (R3), intro audio looping (R5), and screenshot verification setup (R6) in Timeout Quiz.
+Investigate Ve Dich Question 1 display isolation (R3), automated test suites, 5-state visual screenshot automation (R5), and VPS deploy flow (R6) for Timeout Quiz.
 
 ## 🔒 My Identity
-- Archetype: Teamwork explorer
-- Roles: Investigation, Synthesis
+- Archetype: explorer
+- Roles: Teamwork explorer
 - Working directory: d:\Timeout Quiz\.agents\teamwork\explorer_survey_3
-- Original parent: 92bc7ea3-6992-4337-87ba-6322ebaf6868
-- Milestone: Investigation R3, R5, R6
+- Original parent: 89bbb983-455a-463b-9e0e-8a3d1887ba4b
+- Milestone: Survey Phase R3, R4, R5
+- Current Task Parent: 47820d92-4889-4395-abf8-ed65add978a1
+- Current Milestone: Ve Dich Flow, Question 1 Isolation (R3), Automated Tests, 5-State Screenshots (R5), VPS Deployment (R6)
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement project code
-- Keep d:\Olympia 26 completely untouched
-- Do not edit d:\Timeout Quiz\AGENTS.md
-- Write reports and metadata ONLY in d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\
+- Read-only investigation — do NOT implement
+- DO NOT write or edit source code files
+- DO NOT run any mutating git commands or push
+- DO NOT touch or inspect anything outside d:\Timeout Quiz (keep d:\Olympia 26 completely untouched)
+- DO NOT touch d:\Timeout Quiz\AGENTS.md
+- Write handoff report to d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\handoff.md
+- Communicate to parent via send_message
+- Strict read-only exploration mode; no deleting or editing files outside working directory
+- Provide concrete evidence-based analysis for R3, R5, R6
 
 ## Current Parent
-- Conversation ID: 92bc7ea3-6992-4337-87ba-6322ebaf6868
-- Updated: 2026-11-10T13:33:00Z
+- Conversation ID: 47820d92-4889-4395-abf8-ed65add978a1
+- Updated: 2026-11-11T09:07:00Z
 
 ## Investigation State
 - **Explored paths**:
-  - `Podiums.tsx`: `CenterMcDesk`, `McPresenters`, `createWarmPeachSkinMaterial`, `createHairMaterial`.
-  - `StudioLighting.tsx`: MC Key/Fill/Rim spotlights, directional lights, ambient lighting.
-  - `CameraController.tsx` & `useOlympiaCamera.ts`: CAM 10, CAM 3, CAM 11, CAM 1.
-  - `hooks.ts` & `engine.ts`: `useOlympiaAudio`, `crossfadeToBgm`, entrance timing logic.
-  - `server.ts`, `package.json`, `capture-r6-screenshots.ts`, `dev/graphics/client.tsx`.
+  - `src/lib/olympia/engine.ts` (`vd:confirmPackage`, `updateTimers`, `setPackage`, `getPublicState`)
+  - `src/components/olympia/DisplayScreen.tsx` (`VeDich`, `VeDichSlantedGridGraphic`, question render triggers)
+  - `src/components/olympia/HostConsole.tsx` (`call("vd:confirmPackage")`, hotkey `N`, `vd:startQuestion`)
+  - `src/components/olympia/PlayerPad.tsx` (Package confirmation display, question isolation)
+  - `src/components/olympia/V3ArrowShell.tsx` & `v3Geometry.ts` (Twin arrows animation timeline & alignment)
+  - Automated test suites (`npm run test:olympia`, `npm run test:olympia-3d`, `npx tsc --noEmit`, `npm run build`)
+  - `deploy-vps.sh`, Git status on `origin/main`, public health endpoint `https://quizorra.ddns.net/api/health`
 - **Key findings**:
-  - R3: MCs are dark because Three.js v0.186 light decay reduces illuminance over 5.4m to <0.5 lux, directional lights miss the MC desk, and materials have zero emissive baseline under navy ambient light. Fix: add warm white local fill/uplight and tune PBR emissive.
-  - R5: `contest_intro.mp3` is 18.55s long; 6 contestants require 26.8s, 8 contestants require 34.8s. `isLoopingBgm` returns false for `contest_intro`, leaving dead silence. Fix: dual-instance predictive crossfade looping at t=16.55s with 2.0s overlap.
-  - R6: `npm run build` succeeds (code 0), 489/489 tests pass, `puppeteer-core` with Edge (`msedge.exe`) and WebGL ANGLE flags captures 3D scenes reliably.
-- **Unexplored areas**: None for R3, R5, R6.
+  - Root cause of Q1 leak: `engine.ts:2933` arms `vdPackageTimer` (1800ms) and `updateTimers` (line 551-570) auto-advances to Q1 (`qIdx=0`, `current=pkg[0]`, `phase="thinking"`) without Host action.
+  - Decoupling solution: Remove `vdPackageTimer`, maintain `phase="packageReady"`, `qIdx=-1`, `current=null`. Update DisplayScreen to hold package info, and provide Host button/hotkey `N` calling `vd:startQuestion`.
+  - Automated tests: 64/64 engine tests and 584/584 3D studio tests pass. 0 type errors. Production build succeeds (33/33 static pages, server.js 4.0mb).
+  - 5-state screenshot automation designed using Puppeteer and `/dev/graphics` tabs.
+  - VPS deployment verified healthy on `https://quizorra.ddns.net/api/health` (HTTP 200, commit `e2352a9`).
+- **Unexplored areas**: None; all required topics explored and documented.
 
 ## Key Decisions Made
-- Fully documented root causes and proposed fix strategies in `analysis.md` and `handoff.md`.
-- Verified `d:\Olympia 26` and `AGENTS.md` are completely untouched.
+- Formulated complete state transition flow decoupling package confirmation from Q1 display.
+- Outlined 3 new automated test cases in `engine.test.ts`.
+- Mapped out the 5 required screenshot states for automated browser verification.
 
 ## Artifact Index
-- DISPATCH.md — Parent dispatch instruction
-- BRIEFING.md — Persistent context & state
-- progress.md — Liveness heartbeat
-- analysis.md — Comprehensive technical investigation report
-- handoff.md — 5-component handoff report
+- DISPATCH.md — record of dispatch
+- BRIEFING.md — working memory
+- progress.md — liveness heartbeat
+- analysis.md — comprehensive technical report
+- handoff.md — 5-component hard handoff report

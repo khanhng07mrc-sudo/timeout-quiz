@@ -72,7 +72,7 @@ function hasActiveRoundContent(state: OlympiaState): boolean {
     }
     case "veDich": {
       const vd = state.veDich;
-      if (!vd || vd.phase === "seatDone") return false;
+      if (!vd || vd.phase === "seatDone" || vd.phase === "idle") return false;
       return (
         vd.phase === "choosing" ||
         vd.phase === "packageReady" ||
@@ -763,23 +763,24 @@ function VeDich({ state, serverNow }: P) {
   const owner = vd.order[vd.turnIdx];
   const cur = vd.current;
 
-  if (vd.phase === "seatDone") return null;
+  if (vd.phase === "seatDone" || vd.phase === "idle") return null;
 
-  const pkgTimer = state.vdPackageTimer;
   const isChoosing = vd.phase === "choosing";
-  const hasPkg = Boolean(vd.packages[owner]);
-  const isPackageIntroTime = Boolean(
-    hasPkg && !cur && pkgTimer?.startedAt && serverNow() - pkgTimer.startedAt < 2000
-  );
+  const isPackageReady = vd.phase === "packageReady";
+  const showPackageGrid = vd.phase !== "result" && (isChoosing || (isPackageReady && !cur));
 
   return (
-    <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end">
-      {/* While choosing package or during the first 2s after confirmation: show slanted hexagonal package grid */}
-      {vd.phase !== "result" && (isChoosing || isPackageIntroTime) && (
-        <VeDichSlantedGridGraphic state={state} />
+    <div key={`vd-turn-${owner}-${vd.turnIdx}`} className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end">
+      {/* While choosing package or after package is ready (before question is opened): show slanted hexagonal package grid */}
+      {showPackageGrid && (
+        <div key={`pkg-grid-${owner}-${vd.turnIdx}`} className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none">
+          <div className="pointer-events-auto w-full max-w-5xl flex items-center justify-center">
+            <VeDichSlantedGridGraphic state={state} animate={true} />
+          </div>
+        </div>
       )}
 
-      {vd.phase === "result" ? (
+      {vd.phase === "result" && cur ? (
         <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto px-2 sm:px-4 flex flex-col justify-end">
           <V3SingleAnswerBar
             answerText={cur?.q?.a || "(Chưa có đáp án)"}
@@ -788,15 +789,13 @@ function VeDich({ state, serverNow }: P) {
             roundLabel="ĐÁP ÁN VỀ ĐÍCH"
           />
         </div>
-      ) : cur || (hasPkg && !isPackageIntroTime) ? (
+      ) : cur && (vd.phase === "thinking" || vd.phase === "stealing") ? (
         state.themeMode === "o26_classic" ? (
           <Vtv3ChalkboardQuestionFrame
             headerBadge={
-              cur
-                ? `${seatName(state, owner)} · ${cur.q.subject || "VỀ ĐÍCH"} (${cur.points} điểm) ${
-                    vd.hopeStarActive ? "⭐ NGÔI SAO HY VỌNG" : ""
-                  }`
-                : `${seatName(state, owner)} · VỀ ĐÍCH`
+              `${seatName(state, owner)} · VỀ ĐÍCH (${cur.points} điểm)${
+                vd.hopeStarActive ? " ⭐ NGÔI SAO HY VỌNG" : ""
+              }`
             }
             questionText={cur?.q.q || ""}
             mediaElement={
@@ -808,7 +807,7 @@ function VeDich({ state, serverNow }: P) {
                 />
               ) : null
             }
-            timer={cur ? (vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer) : null}
+            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer}
             serverNow={serverNow}
           >
             {vd.phase === "stealing" && (
@@ -823,17 +822,11 @@ function VeDich({ state, serverNow }: P) {
             serverNow={serverNow}
             activeSeatId={owner}
             buzzedSeatId={vd.steal?.buzzedSeat ?? null}
-            questionNumberBadge={
-              cur
-                ? `Câu ${vd.qIdx + 1}/${vd.packages[owner]?.length || 3}`
-                : `Câu ${Math.max(1, vd.qIdx + 1)}/${vd.packages[owner]?.length || 3}`
-            }
+            questionNumberBadge={null}
             headerBadge={
-              cur
-                ? `${cur.q.subject || "VỀ ĐÍCH"} · ${cur.points} ĐIỂM${
-                    vd.hopeStarActive ? " ⭐ NGÔI SAO HY VỌNG" : ""
-                  }`
-                : "VỀ ĐÍCH"
+              `VỀ ĐÍCH · ${cur.points} ĐIỂM${
+                vd.hopeStarActive ? " ⭐ NGÔI SAO HY VỌNG" : ""
+              }`
             }
             questionText={cur?.q.q || ""}
             mediaElement={
@@ -845,10 +838,10 @@ function VeDich({ state, serverNow }: P) {
                 />
               ) : null
             }
-            timer={cur ? (vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer) : null}
+            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer}
             hopeStarActive={vd.hopeStarActive}
             showScoreTab={true}
-            runAnim={!cur}
+            runAnim={false}
           >
             {vd.phase === "stealing" && (
               <div className="text-sm sm:text-base font-black text-rose-400 animate-pulse">

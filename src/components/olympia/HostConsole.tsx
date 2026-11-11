@@ -258,7 +258,11 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
           call("kd:next");
         }
         else if (state?.currentRound === "tangToc") call("tt:next");
-        else if (state?.currentRound === "veDich") call("vd:nextSeat");
+        else if (state?.currentRound === "veDich") {
+          const vd = state.veDich;
+          if (vd?.phase === "seatDone") call("vd:nextSeat");
+          else if (vd?.phase === "packageReady" || vd?.phase === "result") call("vd:startQuestion");
+        }
         else if (state?.currentRound === "cauHoiPhu") call("chp:next");
       } else if (e.key === "f" || e.key === "F") {
         e.preventDefault();
@@ -3066,9 +3070,15 @@ function VeDichDeck({
             <button
               type="button"
               onClick={() => call("vd:onStage")}
-              className="py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow cursor-pointer"
+              className={`py-1.5 rounded-lg text-white text-xs font-bold shadow cursor-pointer transition ${
+                vd.phase === "idle" && !vd.onStage
+                  ? "bg-cyan-600 hover:bg-cyan-500 font-black animate-pulse border border-cyan-300"
+                  : vd.onStage
+                  ? "bg-emerald-700/80 text-emerald-200 border border-emerald-500/40"
+                  : "bg-cyan-600 hover:bg-cyan-500"
+              }`}
             >
-              Lên sân khấu
+              {vd.onStage ? "✓ Đã lên sân khấu" : "Lên sân khấu"}
             </button>
             <button
               type="button"
@@ -3122,14 +3132,22 @@ function VeDichDeck({
             </div>
           )}
 
-          {/* Mở bảng chọn gói đồ họa: Phát ngay choose_package.mp3 */}
-          <button
-            type="button"
-            onClick={() => call("vd:showPackageGraphic")}
-            className="w-full py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow cursor-pointer"
-          >
-            🎨 Mở bảng chọn gói đồ họa
-          </button>
+          {/* Mở bảng chọn gói đồ họa: Hiển thị khi thí sinh đã lên sân khấu hoặc đang chọn gói */}
+          {(vd.onStage || vd.phase === "choosing") && (
+            <button
+              type="button"
+              onClick={() => call("vd:showPackageGraphic")}
+              className={`w-full py-1.5 rounded-lg text-white text-xs font-black shadow cursor-pointer transition ${
+                vd.phase === "idle" && vd.onStage
+                  ? "bg-cyan-600 hover:bg-cyan-500 border border-cyan-300 animate-pulse"
+                  : vd.phase === "choosing"
+                  ? "bg-emerald-700/80 text-emerald-200 border border-emerald-500/40"
+                  : "bg-cyan-600 hover:bg-cyan-500"
+              }`}
+            >
+              {vd.phase === "choosing" ? "✓ Đang mở bảng chọn gói" : "🎨 Mở bảng chọn gói đồ họa"}
+            </button>
+          )}
 
           {/* Gói Câu Hỏi Dropdowns strictly filtered by ruleset pointOptions */}
           <div className="space-y-1 bg-[#162032] p-2 rounded-lg border border-white/5">
@@ -3293,9 +3311,13 @@ function VeDichDeck({
           <button
             type="button"
             onClick={() => call("vd:startQuestion")}
-            className="w-full py-2 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white text-xs font-black shadow uppercase cursor-pointer"
+            className={`w-full py-2 rounded-xl text-white text-xs font-black shadow uppercase cursor-pointer transition ${
+              vd.phase === "packageReady"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 animate-pulse border border-emerald-400"
+                : "bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400"
+            }`}
           >
-            <span>Câu tiếp (N)</span>
+            <span>{vd.phase === "packageReady" ? "▶ Bắt đầu Câu 1 (N)" : "Câu tiếp (N)"}</span>
             <span>⏭</span>
           </button>
         </div>

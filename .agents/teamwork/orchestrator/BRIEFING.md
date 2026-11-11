@@ -1,33 +1,35 @@
-# BRIEFING — 2026-11-10T15:07:00Z
+# BRIEFING — 2026-11-11T11:16:30Z
 
 ## Mission
-Orchestrate the fix of 3D stage layout, camera framing, contestant walk trajectories, MC stage lighting, CAM 11 transition timing, and intro audio looping for 6-8 contestants in Timeout Quiz for production use with screenshot verification.
+Investigate and resolve the Ve Dich transition flow, perfect the twin arrows animation (center alignment and layer zoom), fix premature question 1 visibility after package selection, capture 5 visual screenshots, verify automated tests and build, and deploy to VPS for Timeout Quiz. Mandatory technical plan (/plan) review before source code modifications.
 
 ## 🔒 My Identity
 - Archetype: orchestrator
 - Roles: orchestrator, user_liaison, human_reporter, successor
 - Working directory: d:\Timeout Quiz\.agents\teamwork\orchestrator\
 - Original parent: parent
-- Original parent conversation ID: b25c8f33-3c33-42cd-9c39-ac3022cc4aea
+- Original parent conversation ID: 3871af81-7843-49b0-9e22-ccbecfb6b195
 
 ## 🔒 My Workflow
 - **Pattern**: Project
 - **Scope document**: d:\Timeout Quiz\.agents\teamwork\PROJECT.md
-1. **Decompose**: Survey codebase with 3 Explorers, synthesize Feature Inventory, partition into Milestones (Layout & Cameras, Trajectories & Timing, MC Lighting, Intro Audio Loop, E2E Testing & Screenshot Verification).
+1. **Decompose**: Survey codebase with 3 Explorers, synthesize Feature Inventory & Root Cause Analysis, deliver Technical Plan (/plan) for approval, partition into Milestones (M1: Ve Dich State Machine, 3D Camera & Host Triggers, M2: Twin Arrows Visual & Layer Zoom Animation, M3: Question Display Isolation & Host Question Trigger, M4: Automated Tests, Visual Screenshots & VPS Deployment).
 2. **Dispatch & Execute**:
-   - **Survey**: Completed.
-   - **Direct (iteration loop)**: For each milestone, Explorer findings -> Worker -> Reviewers -> Challengers -> Auditor -> Gate.
+   - **Survey**: Completed (3 Explorers delivered).
+   - **Plan Gate**: APPROVED by user and parent agent.
+   - **Milestone 1**: PASSED & VERIFIED (Auditor: CLEAN, Reviewers: APPROVE).
+   - **Milestone 2**: Implemented by worker_m2 (Twin Arrows Centering, Zoom, Typography, Slanted Overflow Fix & Intermediate Screenshots). Gate squad evaluating.
 3. **On failure**: Retry -> Replace -> Skip (non-critical) -> Redistribute -> Redesign -> Escalate.
 4. **Succession**: Environment supports single-tier orchestrator up to 128 subagents.
 - **Work items**:
-  1. Survey and Scope Mapping [done]
-  2. Milestone 1: Stage Layout & Camera Framing (R1) [done]
-  3. Milestone 2: Contestant Walk Trajectories & CAM 11 Timing (R2, R4) [done]
-  4. Milestone 3: MC Stage Lighting (R3) [in-progress]
-  5. Milestone 4: Seamless Intro Audio Looping (R5) [planned]
-  6. Milestone 5: E2E Verification & Browser Screenshot Proof (R6) [planned]
-- **Current phase**: 2B (Iteration Loop - Milestone 5)
-- **Current focus**: Milestone 5 Screenshot & Final Verification (worker_m5 running)
+  1. Survey & Codebase Exploration (3 Explorers) [done]
+  2. Technical Plan (/plan) Synthesis & Submission [done - APPROVED]
+  3. Milestone 1: Ve Dich Transition Flow & Host Triggers (R1, R3 zero-cache) [done - PASSED GATE]
+  4. Milestone 2: Twin Arrows Centering & Zoom Animation + Typography & Urgent Screenshots (R2) [gate verification in progress]
+  5. Milestone 3: Question Display Isolation & Host Trigger (R3) [pending]
+  6. Milestone 4: E2E Tests, Visual Screenshots (5 states) & VPS Deploy (R5, R6) [pending]
+- **Current phase**: 2B (Iteration Loop - Milestone 2 Gate Check)
+- **Current focus**: Parallel review, challenge, and forensic audit of Milestone 2
 
 ## 🔒 Key Constraints
 - NEVER write, modify, or create source code files directly.
@@ -35,52 +37,64 @@ Orchestrate the fix of 3D stage layout, camera framing, contestant walk trajecto
 - NEVER investigate or explore the problem at the code level — dispatch Explorers for technical investigation.
 - You MAY use file-editing tools ONLY for metadata/state files (.md) in your .agents/teamwork/ folder.
 - Absolutely NO modification/creation/deletion outside `d:\Timeout Quiz` (especially `d:\Olympia 26` must remain 100% untouched).
-- Preserve `d:\Timeout Quiz\AGENTS.md` intact.
+- Mandatory technical plan (/plan) review before editing application source code.
 - Audit verdict is a binary veto.
-- Provide visual screenshot proof for 6, 7, and 8 contestants.
+- Provide visual screenshot proof for all 5 requested Ve Dich flow states.
+- Prioritize intermediate screenshot of twin arrows + package grid right after M2 code completion.
 - Never reuse a subagent after it has delivered its handoff — always spawn fresh.
+- No secret keys or SSH credentials committed to git.
 
 ## Current Parent
-- Conversation ID: b25c8f33-3c33-42cd-9c39-ac3022cc4aea
-- Updated: 2026-11-10T15:59:00Z
+- Conversation ID: 3871af81-7843-49b0-9e22-ccbecfb6b195
+- Updated: 2026-11-11T11:16:30Z
 
 ## Key Decisions Made
-- Milestone 1: Passed & Verified (Podiums arc & CAM 10 framing).
-- Milestone 2: Passed & Verified (Kinematics harness 100% pass across all 1,620 trajectory points, 0 snaps, CAM 11 at 1.2s).
-- Milestone 3: Passed & Verified (MC key/fill lights, local downlight, console uplight, PBR emissives, illuminance > 24 lux, zero occlusion).
-- Milestone 4: Passed & Verified (Seamless intro audio looper, predictive dual-instance crossfade, acoustic power invariant 0.85, 27 tests).
-- Milestone 5: Dispatched worker_m5 for browser screenshot proof (6, 7, 8 contestants & MC lighting) and final verification.
+- Milestone 1 passed gate (Reviewers APPROVE, Auditor CLEAN).
+- Worker worker_m2 (6f3c6a74) delivered Milestone 2 implementation and captured 2 valid intermediate screenshots (`vd_grid_centered.png`, `vd_qbox_typography.png`).
+- Parent agent directly inspected and validated the 2 screenshots (QUANG MINH centered, white bold 285 centered, 20|30|30 crisp, question text safely contained).
+- Added 3 directives from parent: do NOT commit screenshots to `public/screenshots/` (clean up before git commit), verify 6-8 contestant names auto-fit `scale(sx, 1)`, and capture mid-animation twin arrows & 3D centered package grid in M4.
+- Dispatched Milestone 2 Gate squad: 2 Reviewers, 2 Challengers, 1 Forensic Auditor.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| worker_m5 | teamwork_worker | Headless Browser Screenshot Capture & Verification | completed | ac8fe87d-6cc6-4130-a680-3c926fb7bce7 |
-| reviewer_m5_1 | teamwork_reviewer | Milestone 5 Code & Screenshot Reviewer 1 | completed | 0a865874-88ea-4949-88d5-e741ef826946 |
-| reviewer_m5_2 | teamwork_reviewer | Milestone 5 Visual Framing & Build Reviewer 2 | completed | f988f57a-4715-4621-9da4-292261632b33 |
-| challenger_m5_1 | teamwork_challenger | Milestone 5 Pixel, Header & Clearance Challenger 1 | completed | bede1b49-9204-480c-ace4-7b4324922a73 |
-| challenger_m5_2 | teamwork_challenger | Milestone 5 Photometric, Contrast & Framing Challenger 2 | completed | 8d2bcf3e-5cc3-48d7-b44a-8f97d64d083f |
-| auditor_m5_1 | teamwork_auditor | Milestone 5 Forensic Auditor | completed | aa3c0a00-4dc5-43bb-a851-938f7d6d6da6 |
-| worker_rework_layout | teamwork_worker | Stage Left Shift, MC Separation & Screenshot Proof | completed | 6bdef92d-94c8-48ad-b88a-d0c3f977e468 |
-| reviewer_rework_1 | teamwork_reviewer | Milestone 5 Rework Code & Layout Reviewer 1 | completed | 586a3d99-d0bb-4a95-b677-3224e9eae4e0 |
-| reviewer_rework_2 | teamwork_reviewer | Milestone 5 Rework Visual & Framing Reviewer 2 | completed | af44645e-5418-40dc-8287-f9ac2f1972c0 |
-| challenger_rework_1 | teamwork_challenger | Milestone 5 Rework Clearance, Bounding & Margins Challenger 1 | completed | 15fc7f5d-3390-426e-882a-068e8e64ed84 |
-| challenger_rework_2 | teamwork_challenger | Milestone 5 Rework Photometric, MC Stage Separation & Kinematic Challenger 2 | completed | fc52f4d1-52ed-4da1-8461-acfaa28770bf |
-| auditor_rework_1 | teamwork_auditor | Milestone 5 Rework Forensic Auditor | completed | 9b6780b6-ac0f-4f14-abfc-53fb0f8998e9 |
-| worker_rework_kinematics | teamwork_worker | Kinematic Spline Monotonicity & Rotation Smoothing Remediation | in-progress | b8cd60d4-4fc9-4e29-9110-123a22f5ae13 |
+| explorer_survey_1 | teamwork_explorer | Ve Dich State Machine & Host Triggers (R1) | completed | 56927a41-8b98-496b-8b6f-4a134d7e97b3 |
+| explorer_survey_2 | teamwork_explorer | Twin Arrows Animation, Centering & Layer Zoom (R2) | completed | c8f6086f-2f3b-4c79-9982-f3622e35ac0b |
+| explorer_survey_3 | teamwork_explorer | Question Display, Test, Screenshots & Deploy (R3, R4, R5, R6) | completed | 7f9ef152-5737-491d-8358-aec13a7a375c |
+| worker_m1 | teamwork_worker | Milestone 1 Implementation (R1) | killed (hang) | e41361f9-9e80-4d61-a188-f97fc0fd43ad |
+| worker_m1_gen2 | teamwork_worker | Milestone 1 Replacement (R1, R3) | completed | f2277fbf-a837-45b5-9831-418a3e7b4ea2 |
+| reviewer_m1_1 | teamwork_reviewer | Milestone 1 Code & FSM Reviewer 1 | completed | 15d063af-54a3-45a0-8f9b-8b9aa801c68f |
+| reviewer_m1_2 | teamwork_reviewer | Milestone 1 3D, Zero-Cache & UI Reviewer 2 | completed | a8ecb0e8-d0ef-4e14-9352-261e7cedd506 |
+| challenger_m1_1 | teamwork_challenger | Milestone 1 FSM Stress Challenger 1 | completed | 1243c13d-7f3e-4bc7-a5c8-03e39afc7ff5 |
+| challenger_m1_2 | teamwork_challenger | Milestone 1 Zero-Cache Challenger 2 | completed | dbb07195-fc6f-4cc1-85e2-a04c2a3daf3f |
+| auditor_m1_1 | teamwork_auditor | Milestone 1 Forensic Auditor | completed | 2ab9c731-38d1-438f-9668-87402c6a4966 |
+| worker_m2 | teamwork_worker | Milestone 2 Twin Arrows, Typography & Screenshots | completed | 6f3c6a74-9ee3-4030-9e87-d4ba37a5f574 |
+| reviewer_m2_1 | teamwork_reviewer | Milestone 2 Code & Arrow Math Reviewer 1 | completed | f82c2c80-dcad-487d-9364-46094ce972a4 |
+| reviewer_m2_2 | teamwork_reviewer | Milestone 2 Visual & Screenshot Reviewer 2 | completed | 24284453-26c3-4708-95c5-6aa798f3000c |
+| challenger_m2_1 | teamwork_challenger | Milestone 2 Arrow Math & Overflow Challenger 1 | completed | 4012ab46-84d3-4dbc-a03c-efb59e996230 |
+| challenger_m2_2 | teamwork_challenger | Milestone 2 Zero-Cache & Geometry Challenger 2 | completed | 496dcebf-6686-4915-8c87-19f9d89d6847 |
+| auditor_m2_1 | teamwork_auditor | Milestone 2 Forensic Auditor | completed | 697024bf-3340-4082-8487-bc37d4f5ceca |
+| worker_m2_hopestar | teamwork_worker | Hope Star Crowning & Sizing Fix | completed | 5dcc2984-0e75-4bbf-8bf5-567410af0b3c |
+| worker_m4 | teamwork_worker | Milestone 4 Automated Tests, 5 Screenshots, Build & Deploy | killed (429 quota) | 3b9fbd81-216b-4892-becc-b22f521c4739 |
+| worker_m4_gen2 | teamwork_worker | Milestone 4 Replacement (Flash) Tests, Visuals, Build & Deploy | killed (429 quota) | d929d4cd-fe6e-4e6c-a6e1-476b24f31617 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 39 / 128
-- Pending subagents: b8cd60d4-4fc9-4e29-9110-123a22f5ae13
+- Spawn count: 18 / 128
+- Pending subagents: none (Awaiting API quota reset at ~13:46Z)
 - Predecessor: none
 - Successor: none
 
 ## Active Timers
-- Heartbeat cron: 92bc7ea3-6992-4337-87ba-6322ebaf6868/task-252
+- Heartbeat cron: 47820d92-4889-4395-abf8-ed65add978a1/task-122
 - Safety timer: none
 
 ## Artifact Index
 - d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative User Request
+- d:\Timeout Quiz\.agents\teamwork\orchestrator\DISPATCH.md — Dispatch log
 - d:\Timeout Quiz\.agents\teamwork\PROJECT.md — Global Project Plan & Contracts
+- d:\Timeout Quiz\.agents\teamwork\orchestrator\plan.md — Master Technical Plan (/plan)
+- d:\Timeout Quiz\.agents\teamwork\worker_m2\handoff.md — Worker M2 Handoff
+- d:\Timeout Quiz\public\screenshots\m2\vd_grid_centered.png — Intermediate Screenshot 1
+- d:\Timeout Quiz\public\screenshots\m2\vd_qbox_typography.png — Intermediate Screenshot 2
 - d:\Timeout Quiz\.agents\teamwork\orchestrator\GATE_STATUS.md — Gate Verdict Matrix
-- d:\Timeout Quiz\.agents\teamwork\explorer_survey_3\analysis.md — MC Lighting & Audio Looping blueprint

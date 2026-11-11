@@ -1,14 +1,22 @@
-## 2026-11-10T13:20:49Z
-Investigate:
-1. Requirement R2:
-   - Where contestant walking animation and path traversal from stairs to podiums are defined (e.g. animation loop, walk path, waypoints, interpolation, s-curve, Bezier, etc.).
-   - Why contestants abruptly slow down or make sharp 90-degree turns when leaving the stairs for their podium.
-   - How position and rotation (`rotY`) are currently updated. How to implement smooth Bézier/spline curve pathing and smooth velocity-aligned `rotY` orientation with steady footstep cadence.
-2. Requirement R4:
-   - Where CAM 11 transition timing is triggered during contestant introduction.
-   - How the current timing is calculated (e.g. t ≈ 1.8s when contestant stops at center podium).
-   - How to trigger the switch ~0.6s earlier (at t ≈ 1.2s when descending the last 2 steps) to anticipate their arrival at center stage.
-3. Absolute workspace safety rule: Do NOT modify or create any file outside `d:\Timeout Quiz`. Keep `d:\Olympia 26` completely untouched. Do not edit `d:\Timeout Quiz\AGENTS.md`. You are in exploration mode (read-only for project code, write reports only in your working directory).
-4. Document all affected files, line numbers, animation states, and mathematical formulas.
-5. Propose a concrete fix strategy for R2 and R4.
-6. Write your comprehensive report to `d:\Timeout Quiz\.agents\teamwork\explorer_survey_2\analysis.md` and deliver `handoff.md`. Send a message when finished.
+# Dispatch for Explorer Survey 2
+
+**Task**: Deep technical investigation of Twin Arrows (cặp mũi tên) animation, center alignment, and layer zoom effect (Requirement R2).
+**Working Directory**: d:\Timeout Quiz\.agents\teamwork\explorer_survey_2
+**Authoritative Request**: d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md
+
+## Scope & Instructions
+1. Read `d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md`.
+2. Locate existing twin arrows animations, SVG/Canvas/CSS/Three.js assets, and transition components in `d:\Timeout Quiz`.
+3. Analyze current positioning, viewport scaling, flex/grid/absolute coordinate setups, and identify why twin arrows are misaligned or not centered on game displays.
+4. Design the center-alignment fix so that across various resolutions (1080p, 4K, ultrawide, mobile/tablet if any), the arrows are mathematically and visually centered.
+5. Analyze the layer structure of the arrow graphics and design the layer zoom-in animation (scale, keyframe timing, easing, depth/perspective) when the animation triggers.
+6. Write findings to `analysis.md` and `handoff.md` in your working directory.
+
+## 2026-11-11T09:06:42Z
+[Message] timestamp=2026-11-11T09:06:42Z sender=47820d92-4889-4395-abf8-ed65add978a1 priority=MESSAGE_PRIORITY_HIGH content=You are Explorer 2 investigating the Twin Arrows (cặp mũi tên) animation, center alignment, and multi-layer zoom effect for Timeout Quiz.
+
+Working directory: d:\Timeout Quiz\.agents\teamwork\explorer_survey_2
+Authoritative request: d:\Timeout Quiz\.agents\teamwork\ORIGINAL_REQUEST.md
+Dispatch instructions: d:\Timeout Quiz\.agents\teamwork\explorer_survey_2\DISPATCH.md
+
+STRICT CONSTRAINT: You are in READ-ONLY exploration mode. Tuyệt đối không xóa hoặc sửa file ngoài thư mục d:\Timeout Quiz. Do not modify any source code files yet.

@@ -1,47 +1,55 @@
-# BRIEFING — 2026-11-10T13:33:00Z
+# BRIEFING — 2026-11-11T09:25:00Z
 
 ## Mission
-Investigate 3D stage layout and camera framing for seatCount 6, 7, 8 in Timeout Quiz (R1).
+Investigate Ve Dich state machine, transition flows, and Host controls for Timeout Quiz (Requirement R1, R2, R3). Analyze code paths for round activation, "Về đích" click, "Lên sân khấu" button, package selection trigger, arrow animations, and question leak to diagnose root causes and propose clean state machine and socket event architecture.
 
 ## 🔒 My Identity
-- Archetype: explorer
-- Roles: Explorer, Synthesizer
+- Archetype: Teamwork explorer
+- Roles: Read-only investigation, code & geometry analysis, architectural survey
 - Working directory: d:\Timeout Quiz\.agents\teamwork\explorer_survey_1
-- Original parent: 92bc7ea3-6992-4337-87ba-6322ebaf6868
-- Milestone: Survey 3D stage layout and camera framing (R1)
+- Original parent: 89bbb983-455a-463b-9e0e-8a3d1887ba4b
+- Milestone: Survey Phase (Dais Platform & Cove Lighting)
+- Current Milestone: Ve Dich State Machine, Transition Flows & Host Controls (Requirement R1)
+- Dispatch Parent: 47820d92-4889-4395-abf8-ed65add978a1
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement
-- Do NOT modify or create any file outside d:\Timeout Quiz
-- Keep d:\Olympia 26 completely untouched
-- Do not edit d:\Timeout Quiz\AGENTS.md
-- Write reports and files only in d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\
+- Read-only investigation — do NOT implement or edit source code
+- DO NOT touch or inspect anything outside `d:\Timeout Quiz` (Keep `d:\Olympia 26` completely untouched)
+- DO NOT touch `d:\Timeout Quiz\AGENTS.md`
+- Write only inside working directory `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1`
+- Read-only exploration mode. Do not modify any source code files.
 
 ## Current Parent
-- Conversation ID: 92bc7ea3-6992-4337-87ba-6322ebaf6868
-- Updated: 2026-11-10T13:33:00Z
+- Conversation ID: 47820d92-4889-4395-abf8-ed65add978a1
+- Updated: 2026-11-11T09:25:00Z
 
 ## Investigation State
 - **Explored paths**:
-  - `src/components/olympia/studio/Podiums.tsx`: Podium dimensions (plinth base 1.20m), layout loop (lines 4905-4938), entrance walk trajectory (lines 3248-3268).
-  - `src/components/olympia/studio/CameraController.tsx`: `getContestantPodiumWorldPos` (lines 27-43), `getContestantCameraPreset` (lines 45-76), `OLYMPIA_CAM_PRESETS[10]` (lines 114-120), `CameraController` preset resolution (lines 244-254), adaptive FOV (lines 272-296).
-  - `src/components/olympia/studio/useOlympiaCamera.ts`: `getCameraForSeat`, CAM 10 triggers (Summary, Entrance, Khoi Dong).
-  - `src/components/olympia/studio/StudioLighting.tsx`: `daisGeometry` (5.2m - 7.6m radius, 108° sector), `dynamicContestantPositions`.
-  - `src/components/olympia/studio/CentralLedWall.tsx`: Science Wall (R=8.6m, 126° sweep).
-  - `src/components/olympia/studio/BroadcastCameras.tsx`: Studio physical camera targeting.
+  - `src/lib/olympia/types.ts` (`VeDichState`, `OlympiaState`, `ROUND_ORDER`)
+  - `src/lib/olympia/engine.ts` (`beginRound`, `vdAction`, `setPackage`, `view()`)
+  - `src/lib/olympia/socket-olympia.ts` (action & state broadcast flow)
+  - `src/components/olympia/HostConsole.tsx` (Host buttons: `round:force`, `vd:setSeat`, `vd:onStage`, `vd:showPackageGraphic`, `vd:confirmPackage`, `vd:startQuestion`)
+  - `src/components/olympia/DisplayScreen.tsx` (`hasActiveRoundContent`, `VeDich`, `isPackageIntroTime`)
+  - `src/components/olympia/Vtv3BroadcastGraphics.tsx` (`VeDichSlantedGridGraphic`, `EconovaLowerThirdV3`)
+  - `src/components/olympia/V3ArrowShell.tsx` & `v3Geometry.ts` (`dcConverge` formula, keyframe animations)
+  - `src/components/olympia/PlayerPad.tsx` (`PackagePicker`, question view)
+  - `src/components/olympia/hooks.ts` (`useOlympiaSocket`, `useOlympiaAudio`)
+  - `src/components/olympia/studio/useOlympiaCamera.ts` & `useOlympiaLightingState.ts`
 - **Key findings**:
-  - Podiums collide at N=7 (-4.7cm overlap) and N=8 (-21.1cm overlap) due to fixed 60° span ternary (`activeCount > 4 ? 0.26 : 0.38`).
-  - CAM 10 is static (`pos: [0.85, 2.45, 0.45], target: [-4.40, 1.25, -4.60]`), tuned only for 4 seats. Podiums cluster center shifts by +1.64m in X for 8 seats, causing extreme clipping (NDC maxX = +1.668).
-  - Physical dais platform covers 108° (-18° to +90°), offering 48° of unused space for expansion without falling off the platform.
-  - Formulated `getContestantArcParams(seatCount)` and `getWidePodiumsCameraPreset(seatCount)` with proven $>32cm$ clearance and centered 20% framing margins.
-- **Unexplored areas**: None for R1 scope.
+  - R1: `engine.ts` dòng 765 gán `vd.phase = "choosing"` ngay tại `beginRound("veDich")` và đè `choose_package` lên `start_round`.
+  - R2: `V3ArrowShell.tsx` dòng 159 dùng `canvasW/2 - startX/2` thay vì `W/2`, gây lệch tâm 64px; CSS thiếu `scale()`.
+  - R3: `DisplayScreen.tsx` dòng 772 có timer ngầm 2000ms `isPackageIntroTime`, hết 2s tự unmount bảng gói và ép render `EconovaLowerThirdV3` khi chưa bấm câu 1.
+- **Unexplored areas**: None. Toàn bộ chuỗi bằng chứng đã được kiểm chứng bằng thực nghiệm và code inspection.
 
 ## Key Decisions Made
-- Fully documented root cause, mathematical equations, and exact parametric fix strategy for R1 in `analysis.md` and `handoff.md`.
+- Kiến trúc hóa 5 trạng thái FSM: 1) Intro vòng -> 2) Lên sân khấu -> 3) Mở bảng chọn gói -> 4) Đã chọn gói -> 5) Bắt đầu câu hỏi 1.
+- Sửa công thức `dcConverge = shell.W / 2` để triệt tiêu hoàn toàn sai số lệch tâm.
+- Duy trì `VeDichSlantedGridGraphic` trong suốt pha `packageReady` cho đến khi `vd:startQuestion` kích hoạt câu 1.
 
 ## Artifact Index
-- DISPATCH.md — Received dispatch message
-- BRIEFING.md — Situational awareness
-- progress.md — Heartbeat and activity log
-- analysis.md — Comprehensive investigation report with mathematical proofs
-- handoff.md — 5-component self-contained handoff report
+- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\DISPATCH.md` — Inbound dispatches
+- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\BRIEFING.md` — Situational awareness
+- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\progress.md` — Heartbeat / progress log
+- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\test_arrows.cjs` — Script chứng minh toán học lệch tâm 64px
+- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\analysis.md` — Báo cáo kỹ thuật chi tiết
+- `d:\Timeout Quiz\.agents\teamwork\explorer_survey_1\handoff.md` — Handoff report 5 thành phần

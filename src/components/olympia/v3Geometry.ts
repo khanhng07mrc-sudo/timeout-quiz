@@ -328,7 +328,7 @@ export function buildSlantedCells(spec: SlantedCellsSpec): SlantedCells {
     cells.push({
       i,
       pts,
-      cx: (Math.min(...xs) + Math.max(...xs)) / 2,
+      cx: (left(cy) + right(cy)) / 2,
       cy,
       minX: Math.min(...xs),
       maxX: Math.max(...xs),

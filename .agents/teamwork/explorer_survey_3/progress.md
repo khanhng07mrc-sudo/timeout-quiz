@@ -1,12 +1,11 @@
-# Progress — explorer_survey_3
+# Progress
 
-Last visited: 2026-11-10T13:33:30Z
-Current Status: Investigation complete. Reports written and delivered.
-
-- [x] Initialized DISPATCH.md, BRIEFING.md, progress.md
-- [x] Investigate R3 (MC Area Lighting & Figure Rendering)
-- [x] Investigate R5 (Contestant Intro Audio Engine & Seamless Crossfade Looping)
-- [x] Investigate R6 (Build/Dev Scripts, Port, Screenshot Capture Tools)
-- [x] Synthesize findings into analysis.md
-- [x] Create handoff.md and report to parent
-- [x] Workspace safety verified (d:\Olympia 26 untouched, AGENTS.md untouched)
+- State: Investigation completed, analysis.md and handoff.md delivered
+- Last visited: 2026-11-11T09:24:30Z
+- Completed tasks:
+  - Traced Question 1 display leak and package selection flow in Ve Dich (R3)
+  - Designed decoupling architecture and Host controls
+  - Inspected automated test suites (test:olympia, test:olympia-3d, tsc --noEmit, build) — all 100% passing
+  - Designed visual screenshot plan for 5 states (R5)
+  - Inspected VPS deployment flow (deploy-vps.sh, origin/main, healthcheck)
+  - Authored analysis.md and handoff.md

@@ -1090,7 +1090,7 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
     const pad = Math.round(cThick * 1.5);
     const shell = buildArrowShell({ W, H, slantRatio: 0.34, thick, cThick, pad });
     const cols = buildRowColumns(shell, [44, 56]);
-    const dc = shell.canvasW / 2 - shell.startX / 2;
+    const dc = shell.W / 2;
     const nameFontSize = seatCount <= 4 ? 34 : seatCount === 5 ? 32 : seatCount === 6 ? 28 : 25;
     const ansFontSize = seatCount <= 4 ? 38 : seatCount === 5 ? 36 : seatCount === 6 ? 31 : 27;
     const textBaselineOffset = Math.round(ansFontSize * 0.34);
@@ -1465,7 +1465,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
     const pad = Math.round(cThick * 1.5);
     const shell = buildArrowShell({ W, H, slantRatio: 0.34, thick, cThick, pad });
     const cols = buildRowColumns(shell, [36, 46, 18]);
-    const dc = shell.canvasW / 2 - shell.startX;
+    const dc = shell.W / 2;
     const nameFontSize = rankCount <= 4 ? 34 : rankCount === 5 ? 32 : rankCount === 6 ? 28 : 25;
     const ansFontSize = rankCount <= 4 ? 38 : rankCount === 5 ? 36 : rankCount === 6 ? 31 : 27;
     const timeFontSize = rankCount <= 4 ? 32 : rankCount === 5 ? 30 : rankCount === 6 ? 26 : 23;
@@ -1775,9 +1775,14 @@ export function V3SingleAnswerBar({
   const cThick = 16;
   const pad = Math.round(cThick * 1.5);
   const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick, cThick, pad });
-  const dc = shell.canvasW / 2 - shell.startX / 2;
+  const dc = shell.W / 2;
   const fullText = points ? `${answerText} (${points}đ)` : answerText;
   const fs = fullText.length > 45 ? "19" : fullText.length > 30 ? "22" : "25";
+
+  const starSize = 120;
+  const starCx = shell.endX - 70;
+  const starLeft = Math.round(starCx - starSize / 2);
+  const starTop = -Math.round(starSize * 0.44);
 
   return (
     <div className="w-full flex items-center justify-center p-2 select-none">
@@ -1851,19 +1856,24 @@ export function V3SingleAnswerBar({
         }
       `}</style>
       <div className="w-full max-w-4xl flex items-center justify-center relative" style={{ ["--dc" as string]: `${dc}px` }}>
-        {hopeStarActive && (
-          <div
-            className="absolute z-30 pointer-events-none"
-            style={{
-              top: -24,
-              right: 20,
-              filter: "drop-shadow(0 4px 14px rgba(0,0,0,0.9))",
-            }}
-          >
-            <HopeStarBadge size={72} />
-          </div>
-        )}
         <V3ScaledStage designW={shell.canvasW} designH={H}>
+          {hopeStarActive && (
+            <div
+              className="absolute z-30 pointer-events-none transition-all duration-300 animate-in zoom-in-50"
+              style={{
+                position: "absolute",
+                left: `${starLeft}px`,
+                top: `${starTop}px`,
+                width: `${starSize}px`,
+                height: `${starSize}px`,
+                zIndex: 30,
+                pointerEvents: "none",
+                filter: "drop-shadow(0 4px 14px rgba(0,0,0,0.9))",
+              }}
+            >
+              <HopeStarBadge size={starSize} />
+            </div>
+          )}
           <svg
             width={shell.canvasW}
             height={H}
@@ -2020,7 +2030,7 @@ export function SummaryLowerThirdGraphic({
   const cThick = Math.round(H * 0.16);
   const pad = Math.round(cThick * 1.5);
   const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick, cThick, pad });
-  const dcConverge = shell.canvasW / 2 - shell.startX / 2;
+  const dcConverge = shell.W / 2;
   const stepPulseClassL =
     currentIdx === 0 ? "" : currentIdx % 2 === 1 ? "sm-pulse-l-odd" : "sm-pulse-l-even";
   const stepPulseClassR =
@@ -2446,7 +2456,7 @@ export function EconovaLowerThirdV3({
   const seats = activeSeats(state);
   const n = seats.length;
   const lt = buildLowerThirdLayout(shell, n, isVeDich ? "VE_DICH" : "KHOI_DONG", { tabH: 42 });
-  const packStrip = isVeDich ? buildClusterPackStrip(shell, lt, 3, 36) : null;
+  const packStrip = isVeDich ? buildClusterPackStrip(shell, lt, 3, 44) : null;
 
   const targetSeatId = buzzedSeatId ?? activeSeatId;
   const activeSeat = targetSeatId != null ? state.seats[targetSeatId] : null;
@@ -2507,10 +2517,23 @@ export function EconovaLowerThirdV3({
       ? "text-[24px] sm:text-[26px] md:text-[27px] leading-snug font-black"
       : "text-[28px] sm:text-[31px] md:text-[33px] leading-snug font-black";
 
+  const qTop = showScoreTab ? 48 : 16;
+  const qHeight = H - (showScoreTab ? 62 : 30);
+  const qBottom = qTop + qHeight;
+  const safeClusterX = isVeDich && lt.clusterX
+    ? Math.min(lt.clusterX(qTop), lt.clusterX(qBottom)) - 18
+    : shell.endX - shell.pS - 12;
+
   const qLeft = shell.startX + shell.pS + 12;
-  const qRight = isVeDich && lt.clusterLine ? lt.clusterLine.x0 - 16 : shell.endX - shell.pS - 12;
-  const qWidth = qRight - qLeft;
-  const dc = shell.canvasW / 2 - shell.startX / 2;
+  const qRight = isVeDich && lt.clusterLine ? safeClusterX : shell.endX - shell.pS - 12;
+  const qWidth = Math.max(100, qRight - qLeft);
+  const dc = shell.W / 2;
+  const travelDist = Math.max(shell.canvasW, 1400);
+
+  const starSize = 160;
+  const starCx = isVeDich && lt?.clusterX ? (lt.clusterX(0) + shell.edgeR(0)) / 2 : (shell.endX - 70);
+  const starLeft = Math.round(starCx - starSize / 2);
+  const starTop = -Math.round(starSize * 0.44);
 
   return (
     <div
@@ -2530,79 +2553,91 @@ export function EconovaLowerThirdV3({
 
       {extraTopBanner && <div className="mb-2 w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto">{extraTopBanner}</div>}
 
-      <div className="relative w-full flex items-center justify-center select-none" style={{ ["--dc" as string]: `${dc}px` }}>
+      <div
+        className="relative w-full flex items-center justify-center select-none"
+        style={{
+          ["--dc" as string]: `${dc}px`,
+          ["--v3-travel" as string]: `${travelDist}px`,
+        }}
+      >
         <style>{`
-          /* --- ECONOVA LOWER THIRD MASTER TIMELINE --- */
-          /* Left direction keyframes (Pointing <) - Fly from right (+50vw) across to center */
-          @keyframes v3-eco-l-g1 {
-            0%   { transform: translateX(calc(var(--dc) + 50vw)) scale(0.1); opacity: 0; }
-            1%   { opacity: 0.35; }
-            25%  { transform: translateX(calc(var(--dc) - 24px)) scale(1); opacity: 0.35; }
-            35%  { transform: translateX(var(--dc)) scale(1); opacity: 0.35; }
-            45%  { transform: translateX(var(--dc)) scale(1); opacity: 0.35; }
-            80%  { transform: translateX(0) scale(1); opacity: 0.35; }
-            100% { transform: translateX(0) scale(1); opacity: 0.35; }
-          }
-          @keyframes v3-eco-l-g2 {
-            0%   { transform: translateX(calc(var(--dc) + 50vw)) scale(0.1); opacity: 0; }
-            5%   { opacity: 0.65; }
-            30%  { transform: translateX(calc(var(--dc) - 12px)) scale(1); opacity: 0.65; }
-            35%  { transform: translateX(var(--dc)) scale(1); opacity: 0.65; }
-            45%  { transform: translateX(var(--dc)) scale(1); opacity: 0.65; }
-            80%  { transform: translateX(0) scale(1); opacity: 0.65; }
-            100% { transform: translateX(0) scale(1); opacity: 0.65; }
-          }
-          @keyframes v3-eco-l-l3 {
-            0%   { transform: translateX(calc(var(--dc) + 50vw)) scale(0.1); opacity: 0; }
-            10%  { opacity: 1; }
-            35%  { transform: translateX(var(--dc)) scale(1); opacity: 1; }
-            45%  { transform: translateX(var(--dc)) scale(1); opacity: 1; }
-            80%  { transform: translateX(0) scale(1); opacity: 1; }
-            100% { transform: translateX(0) scale(1); opacity: 1; }
-          }
-          @keyframes v3-eco-l-navy {
-            0%   { transform: translateX(calc(var(--dc) + 50vw)) scale(0.1); opacity: 0; }
-            10%  { opacity: 1; }
-            35%  { transform: translateX(var(--dc)) scale(1); opacity: 1; }
-            45%  { transform: translateX(var(--dc)) scale(1); opacity: 1; }
-            80%  { transform: translateX(0) scale(1); opacity: 1; }
-            100% { transform: translateX(0) scale(1); opacity: 1; }
+          /* SVG Transform Box & Centroid Anchoring for Layer Zoom */
+          .v3-anim-l-g1, .v3-anim-l-g2, .v3-anim-l-l3, .v3-anim-l-navy,
+          .v3-anim-r-g1, .v3-anim-r-g2, .v3-anim-r-l3, .v3-anim-r-navy {
+            transform-box: fill-box;
+            transform-origin: center;
           }
 
-          /* Right direction keyframes (Pointing >) - Fly from left (-50vw) across to center */
-          @keyframes v3-eco-r-g1 {
-            0%   { transform: translateX(calc(var(--dc) * -1 - 50vw)) scale(0.1); opacity: 0; }
+          /* Left direction keyframes (Pointing <) - Fly from right (+travel) across to center */
+          @keyframes v3-eco-l-g1 {
+            0%   { transform: translateX(calc(var(--dc) + var(--v3-travel))) scale(0.10); opacity: 0; }
             1%   { opacity: 0.35; }
-            25%  { transform: translateX(calc(var(--dc) * -1 + 24px)) scale(1); opacity: 0.35; }
-            35%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 0.35; }
-            45%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 0.35; }
-            80%  { transform: translateX(0) scale(1); opacity: 0.35; }
-            100% { transform: translateX(0) scale(1); opacity: 0.35; }
+            25%  { transform: translateX(calc(var(--dc) - 24px)) scale(0.85); opacity: 0.35; }
+            35%  { transform: translateX(var(--dc)) scale(1.20); opacity: 0.35; }
+            45%  { transform: translateX(var(--dc)) scale(1.15); opacity: 0.35; }
+            80%  { transform: translateX(0) scale(1.0); opacity: 0.35; }
+            100% { transform: translateX(0) scale(1.0); opacity: 0.35; }
+          }
+          @keyframes v3-eco-l-g2 {
+            0%   { transform: translateX(calc(var(--dc) + var(--v3-travel))) scale(0.15); opacity: 0; }
+            5%   { opacity: 0.65; }
+            30%  { transform: translateX(calc(var(--dc) - 12px)) scale(0.90); opacity: 0.65; }
+            35%  { transform: translateX(var(--dc)) scale(1.15); opacity: 0.65; }
+            45%  { transform: translateX(var(--dc)) scale(1.10); opacity: 0.65; }
+            80%  { transform: translateX(0) scale(1.0); opacity: 0.65; }
+            100% { transform: translateX(0) scale(1.0); opacity: 0.65; }
+          }
+          @keyframes v3-eco-l-l3 {
+            0%   { transform: translateX(calc(var(--dc) + var(--v3-travel))) scale(0.20); opacity: 0; }
+            10%  { opacity: 1; }
+            35%  { transform: translateX(var(--dc)) scale(1.08); opacity: 1; }
+            45%  { transform: translateX(var(--dc)) scale(1.04); opacity: 1; }
+            80%  { transform: translateX(0) scale(1.0); opacity: 1; }
+            100% { transform: translateX(0) scale(1.0); opacity: 1; }
+          }
+          @keyframes v3-eco-l-navy {
+            0%   { transform: translateX(calc(var(--dc) + var(--v3-travel))) scale(0.25); opacity: 0; }
+            10%  { opacity: 1; }
+            35%  { transform: translateX(var(--dc)) scale(1.02); opacity: 1; }
+            45%  { transform: translateX(var(--dc)) scale(1.0); opacity: 1; }
+            80%  { transform: translateX(0) scale(1.0); opacity: 1; }
+            100% { transform: translateX(0) scale(1.0); opacity: 1; }
+          }
+
+          /* Right direction keyframes (Pointing >) - Fly from left (-travel) across to center */
+          @keyframes v3-eco-r-g1 {
+            0%   { transform: translateX(calc(var(--dc) * -1 - var(--v3-travel))) scale(0.10); opacity: 0; }
+            1%   { opacity: 0.35; }
+            25%  { transform: translateX(calc(var(--dc) * -1 + 24px)) scale(0.85); opacity: 0.35; }
+            35%  { transform: translateX(calc(var(--dc) * -1)) scale(1.20); opacity: 0.35; }
+            45%  { transform: translateX(calc(var(--dc) * -1)) scale(1.15); opacity: 0.35; }
+            80%  { transform: translateX(0) scale(1.0); opacity: 0.35; }
+            100% { transform: translateX(0) scale(1.0); opacity: 0.35; }
           }
           @keyframes v3-eco-r-g2 {
-            0%   { transform: translateX(calc(var(--dc) * -1 - 50vw)) scale(0.1); opacity: 0; }
+            0%   { transform: translateX(calc(var(--dc) * -1 - var(--v3-travel))) scale(0.15); opacity: 0; }
             5%   { opacity: 0.65; }
-            30%  { transform: translateX(calc(var(--dc) * -1 + 12px)) scale(1); opacity: 0.65; }
-            35%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 0.65; }
-            45%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 0.65; }
-            80%  { transform: translateX(0) scale(1); opacity: 0.65; }
-            100% { transform: translateX(0) scale(1); opacity: 0.65; }
+            30%  { transform: translateX(calc(var(--dc) * -1 + 12px)) scale(0.90); opacity: 0.65; }
+            35%  { transform: translateX(calc(var(--dc) * -1)) scale(1.15); opacity: 0.65; }
+            45%  { transform: translateX(calc(var(--dc) * -1)) scale(1.10); opacity: 0.65; }
+            80%  { transform: translateX(0) scale(1.0); opacity: 0.65; }
+            100% { transform: translateX(0) scale(1.0); opacity: 0.65; }
           }
           @keyframes v3-eco-r-l3 {
-            0%   { transform: translateX(calc(var(--dc) * -1 - 50vw)) scale(0.1); opacity: 0; }
+            0%   { transform: translateX(calc(var(--dc) * -1 - var(--v3-travel))) scale(0.20); opacity: 0; }
             10%  { opacity: 1; }
-            35%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 1; }
-            45%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 1; }
-            80%  { transform: translateX(0) scale(1); opacity: 1; }
-            100% { transform: translateX(0) scale(1); opacity: 1; }
+            35%  { transform: translateX(calc(var(--dc) * -1)) scale(1.08); opacity: 1; }
+            45%  { transform: translateX(calc(var(--dc) * -1)) scale(1.04); opacity: 1; }
+            80%  { transform: translateX(0) scale(1.0); opacity: 1; }
+            100% { transform: translateX(0) scale(1.0); opacity: 1; }
           }
           @keyframes v3-eco-r-navy {
-            0%   { transform: translateX(calc(var(--dc) * -1 - 50vw)) scale(0.1); opacity: 0; }
+            0%   { transform: translateX(calc(var(--dc) * -1 - var(--v3-travel))) scale(0.25); opacity: 0; }
             10%  { opacity: 1; }
-            35%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 1; }
-            45%  { transform: translateX(calc(var(--dc) * -1)) scale(1); opacity: 1; }
-            80%  { transform: translateX(0) scale(1); opacity: 1; }
-            100% { transform: translateX(0) scale(1); opacity: 1; }
+            35%  { transform: translateX(calc(var(--dc) * -1)) scale(1.02); opacity: 1; }
+            45%  { transform: translateX(calc(var(--dc) * -1)) scale(1.0); opacity: 1; }
+            80%  { transform: translateX(0) scale(1.0); opacity: 1; }
+            100% { transform: translateX(0) scale(1.0); opacity: 1; }
           }
 
           /* Hexagon Body Expand from center at 45% to 80% */
@@ -2641,17 +2676,22 @@ export function EconovaLowerThirdV3({
           .v3-anim-swap   { animation: v3-eco-text-swap 0.35s ease-out both; }
         `}</style>
         <V3ScaledStage designW={shell.canvasW} designH={H}>
-          {/* Authentic Floating Hope Star Badge at top-right of score cluster */}
+          {/* Authentic Floating Hope Star Badge crowning the right score cluster */}
           {hopeStarActive && (
             <div
               className="absolute z-30 pointer-events-none transition-all duration-300 animate-in zoom-in-50"
               style={{
-                top: -24,
-                right: 12,
+                position: "absolute",
+                left: `${starLeft}px`,
+                top: `${starTop}px`,
+                width: `${starSize}px`,
+                height: `${starSize}px`,
+                zIndex: 30,
+                pointerEvents: "none",
                 filter: "drop-shadow(0 4px 14px rgba(0,0,0,0.9))",
               }}
             >
-              <HopeStarBadge size={76} />
+              <HopeStarBadge size={starSize} />
             </div>
           )}
 
@@ -2771,6 +2811,11 @@ export function EconovaLowerThirdV3({
                   const displayText =
                     isVeDich && isActive ? seat.name : `${seat.name} (${seat.score})`;
 
+                  // Horizontal-only auto-fit compression when name length exceeds cell width
+                  const availableW = Math.max(24, tab.width - 18);
+                  const approxTextW = displayText.length * 10.6;
+                  const sx = approxTextW > availableW ? Math.max(0.55, availableW / approxTextW) : 1;
+
                   return (
                     <g key={seat.id} className={isBuzzed ? "v3a-buzz" : ""}>
                       <path
@@ -2781,12 +2826,13 @@ export function EconovaLowerThirdV3({
                       />
                       <text
                         x={tab.cx}
-                        y={tab.cy + 6}
+                        y={tab.cy}
+                        dominantBaseline="central"
                         textAnchor="middle"
                         fill={isLocked ? "#64748b" : "#ffffff"}
                         fontWeight="900"
                         fontSize="16"
-                        letterSpacing="0.04em"
+                        transform={sx < 1 ? `translate(${tab.cx}, ${tab.cy}) scale(${sx}, 1) translate(${-tab.cx}, ${-tab.cy})` : undefined}
                         className="uppercase font-sans"
                         style={{
                           filter: isBuzzed || isActive ? "drop-shadow(0 2px 6px rgba(0,0,0,0.9))" : "none",
@@ -2829,19 +2875,29 @@ export function EconovaLowerThirdV3({
                   />
 
                   {/* Big Score Display */}
-                  <text
-                    x={(lt.clusterLine.x0 + shell.endX) / 2}
-                    y={82}
-                    textAnchor="middle"
-                    fill="#fbbf24"
-                    fontWeight="900"
-                    fontSize="42"
-                    fontFamily="monospace"
-                    letterSpacing="-0.03em"
-                    style={{ filter: "drop-shadow(0 0 16px rgba(251,191,36,0.7))" }}
-                  >
-                    {displayScore}
-                  </text>
+                  {(() => {
+                    const stripH = packStrip ? 44 : 36;
+                    const scoreCy = (H - stripH) / 2;
+                    const scoreCx = lt.clusterX ? (lt.clusterX(scoreCy) + shell.edgeR(scoreCy)) / 2 : (lt.clusterLine.x0 + shell.endX) / 2;
+                    return (
+                      <text
+                        x={scoreCx}
+                        y={scoreCy}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fill="#ffffff"
+                        fontWeight="900"
+                        fontSize="44"
+                        className="font-sans font-black"
+                        style={{
+                          fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
+                          filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.85)) drop-shadow(0 4px 14px rgba(0,0,0,0.9))",
+                        }}
+                      >
+                        {displayScore}
+                      </text>
+                    );
+                  })()}
 
                   {/* Package strip at bottom */}
                   {packStrip &&
@@ -2859,12 +2915,17 @@ export function EconovaLowerThirdV3({
                           />
                           <text
                             x={cell.cx}
-                            y={cell.cy + 5}
+                            y={cell.cy}
                             textAnchor="middle"
+                            dominantBaseline="central"
                             fill={isCurQ ? "#ffffff" : "#cbd5e1"}
                             fontWeight="900"
-                            fontSize="13"
-                            fontFamily="sans-serif"
+                            fontSize="21"
+                            className="font-sans font-black"
+                            style={{
+                              fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
+                              filter: isCurQ ? "drop-shadow(0 0 8px rgba(56,189,248,0.9))" : "drop-shadow(0 1px 3px rgba(0,0,0,0.8))",
+                            }}
                           >
                             {qPoints}
                           </text>
@@ -2883,15 +2944,16 @@ export function EconovaLowerThirdV3({
             }`}
             style={{
               left: qLeft,
-              top: showScoreTab ? 48 : 16,
+              top: qTop,
               width: qWidth,
-              height: H - (showScoreTab ? 62 : 30),
+              height: qHeight,
+              maxWidth: qWidth,
             }}
           >
             {questionText ? (
               <div
                 key={typeof questionText === "string" ? questionText.slice(0, 40) : undefined}
-                className={`text-white text-left tracking-normal ${fontSizeClass} drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] max-h-full w-full pt-1 pr-3 v3-anim-swap select-none`}
+                className={`text-white text-left tracking-normal ${fontSizeClass} drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] max-h-full w-full pt-1 pr-3 v3-anim-swap select-none break-words overflow-hidden`}
               >
                 {questionText}
               </div>
@@ -2936,11 +2998,13 @@ export function VeDichSlantedGridGraphic({
   ownerSeatId,
   selectedPoints,
   pointOptions,
+  animate = false,
 }: {
   state: OlympiaState;
   ownerSeatId?: number;
   selectedPoints?: number[];
   pointOptions?: number[];
+  animate?: boolean;
 }) {
   const vd = state.veDich;
   const resolvedOwnerId = ownerSeatId ?? (vd ? vd.order[vd.turnIdx] : 0);
@@ -3004,112 +3068,97 @@ export function VeDichSlantedGridGraphic({
 
       {/* Main Hexagonal Grid Chamber: 100% Geometry Parity with Olympia 26 Wiki */}
       <div className="relative w-full max-w-4xl flex items-center justify-center">
-        <V3ScaledStage designW={shell.canvasW} designH={H}>
-          <svg
-            width={shell.canvasW}
-            height={H}
-            viewBox={`0 0 ${shell.canvasW} ${H}`}
-            className="overflow-visible"
-          >
-            <defs>
-              <linearGradient id="vdGridCyanWing" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#1fd1ff" />
-                <stop offset="100%" stopColor="#2ee6ff" />
-              </linearGradient>
-              <linearGradient id="vdGridNavyCell" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#1a385c" />
-                <stop offset="45%" stopColor="#102d4f" />
-                <stop offset="100%" stopColor="#062243" />
-              </linearGradient>
-              <linearGradient id="vdGridRedCell" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#c51442" />
-                <stop offset="50%" stopColor="#a30d36" />
-                <stop offset="100%" stopColor="#7a0624" />
-              </linearGradient>
-            </defs>
+        <V3ArrowShell
+          shell={shell}
+          animate={animate}
+          hideOutline
+          bodySvg={
+            <>
+              <defs>
+                <linearGradient id="vdGridNavyCell" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#1a385c" />
+                  <stop offset="45%" stopColor="#102d4f" />
+                  <stop offset="100%" stopColor="#062243" />
+                </linearGradient>
+                <linearGradient id="vdGridRedCell" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#c51442" />
+                  <stop offset="50%" stopColor="#a30d36" />
+                  <stop offset="100%" stopColor="#7a0624" />
+                </linearGradient>
+              </defs>
 
-            {/* Left cyan wing & navy chevron */}
-            <path d={toSvgPath(shell.alcPts)} fill="url(#vdGridCyanWing)" stroke="#ffffff" strokeWidth="2" />
-            <path d={toSvgPath(shell.alnPts)} fill="#0d2c54" stroke="#c5d0db" strokeWidth="2.5" />
+              {/* Grid Cells (Parallelograms and boundary trapezoids) */}
+              {cells.map((cell, idx) => {
+                const isSelected = isGridCellSelected(spec, cell, resolvedSelected);
+                return (
+                  <path
+                    key={idx}
+                    d={toSvgPath(cell.pts)}
+                    fill={isSelected ? "url(#vdGridRedCell)" : "url(#vdGridNavyCell)"}
+                    stroke="none"
+                  />
+                );
+              })}
 
-            {/* Right navy chevron & cyan wing */}
-            <path d={toSvgPath(shell.arnPts)} fill="#0d2c54" stroke="#c5d0db" strokeWidth="2.5" />
-            <path d={toSvgPath(shell.arcPts)} fill="url(#vdGridCyanWing)" stroke="#ffffff" strokeWidth="2" />
+              {/* Center Horizontal Divider Line(s) */}
+              {Array.from({ length: spec.rows - 1 }).map((_, rIdx) => {
+                const y = ((rIdx + 1) * H) / spec.rows;
+                return (
+                  <line
+                    key={`h-div-${rIdx}`}
+                    x1={shell.edgeL(y)}
+                    y1={y}
+                    x2={shell.edgeR(y)}
+                    y2={y}
+                    stroke="#c5d0db"
+                    strokeWidth="3.5"
+                  />
+                );
+              })}
 
-            {/* Base Hexagon Background */}
-            <path d={toSvgPath(shell.bgPts)} fill="#051433" />
+              {/* Slanted Column Divider Lines (Continuous straight lines from top to bottom) */}
+              {Array.from({ length: spec.cols - 1 }).map((_, cIdx) => {
+                const col = cIdx + 1;
+                return (
+                  <line
+                    key={`v-div-${cIdx}`}
+                    x1={xDiv(col, 0)}
+                    y1={0}
+                    x2={xDiv(col, H)}
+                    y2={H}
+                    stroke="#c5d0db"
+                    strokeWidth="3.5"
+                  />
+                );
+              })}
 
-            {/* Grid Cells (Parallelograms and boundary trapezoids) */}
-            {cells.map((cell, idx) => {
-              const isSelected = isGridCellSelected(spec, cell, resolvedSelected);
-              return (
-                <path
-                  key={idx}
-                  d={toSvgPath(cell.pts)}
-                  fill={isSelected ? "url(#vdGridRedCell)" : "url(#vdGridNavyCell)"}
-                  stroke="none"
-                />
-              );
-            })}
+              {/* Outer Hexagon Chamber Stroke */}
+              <path d={toSvgPath(shell.bgPts)} fill="none" stroke="#c5d0db" strokeWidth="3" />
 
-            {/* Center Horizontal Divider Line(s) */}
-            {Array.from({ length: spec.rows - 1 }).map((_, rIdx) => {
-              const y = ((rIdx + 1) * H) / spec.rows;
-              return (
-                <line
-                  key={`h-div-${rIdx}`}
-                  x1={shell.edgeL(y)}
-                  y1={y}
-                  x2={shell.edgeR(y)}
-                  y2={y}
-                  stroke="#c5d0db"
-                  strokeWidth="3.5"
-                />
-              );
-            })}
-
-            {/* Slanted Column Divider Lines (Continuous straight lines from top to bottom) */}
-            {Array.from({ length: spec.cols - 1 }).map((_, cIdx) => {
-              const col = cIdx + 1;
-              return (
-                <line
-                  key={`v-div-${cIdx}`}
-                  x1={xDiv(col, 0)}
-                  y1={0}
-                  x2={xDiv(col, H)}
-                  y2={H}
-                  stroke="#c5d0db"
-                  strokeWidth="3.5"
-                />
-              );
-            })}
-
-            {/* Outer Hexagon Chamber Stroke */}
-            <path d={toSvgPath(shell.bgPts)} fill="none" stroke="#c5d0db" strokeWidth="3" />
-
-            {/* Text Numbers at Centroids (Clean, bold white, exactly like Image 2) */}
-            {cells.map((cell, idx) => {
-              const fontSize = spec.rows === 1 ? 58 : 52;
-              return (
-                <text
-                  key={`txt-${idx}`}
-                  x={cell.cx}
-                  y={cell.cy + (spec.rows === 1 ? 20 : 18)}
-                  textAnchor="middle"
-                  fill="#ffffff"
-                  fontWeight="900"
-                  fontSize={fontSize}
-                  fontFamily="sans-serif"
-                  style={{
-                    filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.85))",
-                  }}
-                >
-                  {cell.ptsValue}
-                </text>
-              );
-            })}
-          </svg>
-        </V3ScaledStage>
+              {/* Text Numbers at Centroids (Clean, bold white, exactly like Image 2) */}
+              {cells.map((cell, idx) => {
+                const fontSize = spec.rows === 1 ? 58 : 52;
+                return (
+                  <text
+                    key={`txt-${idx}`}
+                    x={cell.cx}
+                    y={cell.cy + (spec.rows === 1 ? 20 : 18)}
+                    textAnchor="middle"
+                    fill="#ffffff"
+                    fontWeight="900"
+                    fontSize={fontSize}
+                    fontFamily="sans-serif"
+                    style={{
+                      filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.85))",
+                    }}
+                  >
+                    {cell.ptsValue}
+                  </text>
+                );
+              })}
+            </>
+          }
+        />
       </div>
     </div>
   );

@@ -24,43 +24,15 @@ export interface CameraPreset {
  * - CAM 9: Cẩu Quay Toàn Cảnh (Jib Crane High-Angle)
  * - CAM 10: Vách Ký Hiệu Khoa Học
  */
-export interface ContestantArcParams {
-  radius: number;
-  startPhi: number;
-  endPhi: number;
-  span: number;
-}
+import {
+  getContestantArcParams as getSharedContestantArcParams,
+  type ContestantArcParams,
+} from "@/lib/olympia/entrance-geometry";
+
+export type { ContestantArcParams };
 
 export function getContestantArcParams(totalSeats: number = 4): ContestantArcParams {
-  const count = Math.min(8, Math.max(1, totalSeats || 4));
-  // Expanded Left Dais arc spans [0.50*PI, 1.28*PI]; geometric midpoint a_mid = 0.890*PI -> midPhi = +0.346 rad.
-  // All configurations (2..8) are centered symmetrically around midPhi = +0.346 rad so left & right Dais margins match within 1cm.
-  switch (count) {
-    case 1:
-      return { radius: 6.65, startPhi: 0.346, endPhi: 0.346, span: 0.000 };
-    case 2:
-      // 2 seats centered on Dais (midPhi = 0.346 rad): chord clearance +91.9cm, Dais margins ~644cm / 644cm
-      return { radius: 6.65, startPhi: 0.186, endPhi: 0.506, span: 0.320 };
-    case 3:
-      // 3 seats centered on Dais (midPhi = 0.346 rad): chord clearance +59.0cm, Dais margins ~571cm / 571cm
-      return { radius: 6.65, startPhi: 0.076, endPhi: 0.616, span: 0.540 };
-    case 4:
-      // 4 seats centered on Dais (midPhi = 0.346 rad): chord clearance +45.8cm, Dais margins ~501cm / 501cm
-      return { radius: 6.65, startPhi: -0.029, endPhi: 0.721, span: 0.750 };
-    case 5:
-      // 5 seats centered on Dais (midPhi = 0.346 rad): chord clearance +39.2cm, Dais margins ~431cm / 431cm
-      return { radius: 6.65, startPhi: -0.134, endPhi: 0.826, span: 0.960 };
-    case 6:
-      // 6 seats centered on Dais (midPhi = 0.346 rad): chord clearance +33.9cm, Dais margins ~365cm / 365cm
-      return { radius: 6.65, startPhi: -0.234, endPhi: 0.926, span: 1.160 };
-    case 7:
-      // 7 seats centered on Dais (midPhi = 0.346 rad): chord clearance +32.6cm, Dais margins ~292cm / 292cm
-      return { radius: 6.65, startPhi: -0.344, endPhi: 1.036, span: 1.380 };
-    case 8:
-    default:
-      // 8 seats centered on Dais (midPhi = 0.346 rad): chord clearance +31.7cm, Dais margins ~219cm / 218cm, MC dist 6.67m
-      return { radius: 6.65, startPhi: -0.454, endPhi: 1.146, span: 1.600 };
-  }
+  return getSharedContestantArcParams(totalSeats);
 }
 
 export function getContestantPodiumWorldPos(

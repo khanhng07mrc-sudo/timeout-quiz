@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import type { OlympiaState, TimerState } from "@/lib/olympia/types";
+import { getEntranceScheduleOffsetsMs } from "@/lib/olympia/entrance-geometry";
 
 export type OlympiaRole = "host" | "display" | "player";
 
@@ -252,7 +253,7 @@ export const isIntroSeamlessLoopTrack = (sound: string): boolean => {
 
 export const calculateEntranceDuration = (seatCount: number): number => {
   const n = Math.max(1, Math.floor(seatCount));
-  return (n - 1) * 4.0 + 6.8;
+  return getEntranceScheduleOffsetsMs(n).totalDurationSec;
 };
 
 export const calculateRequiredIntroLoops = (

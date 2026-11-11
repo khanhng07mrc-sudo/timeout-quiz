@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect, useRef } from "react";
 import type { OlympiaState } from "@/lib/olympia/types";
+import { getEntranceSeatTiming } from "@/lib/olympia/entrance-geometry";
 
 export interface OlympiaCameraState {
   camAngle: number;
@@ -35,20 +36,19 @@ export function evaluateEntranceCameraState(
   const isFirstSeat = currentSeat === 0;
   const isLastSeat = currentSeat >= activeCount - 1;
   const targetCam = getCameraForSeat(currentSeat, activeCount);
+  const seatTiming = getEntranceSeatTiming(currentSeat, activeCount);
+  // Lower 6 stair treads end at Z = 8.50m (t = 3.425s). Cutting to CAM 10 at 3.55s completes
+  // every physical stair tread inside CAM 11 before the contestant walks past CAM 11 lens (Z = 6.40m).
+  const cam11EndSec = 3.55;
 
   // Broadcast Choreography:
-  // For Contestant 0 (first contestant):
-  // - 0.0s -> 3.8s: CAM 11 (MCU direct greeting on center landing, with push zoom 0.25 during pose 1.8s - 3.0s)
-  // - >= 3.8s: CAM 10 (Wide podiums view)
-  // For Contestant N > 0:
-  // - 0.0s -> 1.2s: CAM 10 (Wide view while previous contestant settles)
-  // - 1.2s -> 3.8s: CAM 11 (Cut ~0.6s early while descending last 2 steps onto center landing, with push zoom 0.25 during pose 1.8s - 3.0s)
-  // - >= 3.8s:
-  //     If !isLastSeat: CAM 10 (continues wide view until next contestant reaches landing)
-  //     If isLastSeat: CAM 10 from 3.8s -> 6.2s, then targetCam (desk close-up) from 6.2s -> 6.8s
+  // - Contestant 0: 0.0s -> 4.05s on CAM 11 (push zoom 1.8s -> 3.0s), then CAM 10 wide tracking behind podiums.
+  // - Contestant N > 0: 0.0s -> 1.2s on CAM 10 (prev settles & bows), 1.2s -> 4.05s on CAM 11 (0.6s early before Bục Giữa),
+  //   then CAM 10 wide tracking behind podiums.
+  // - Last Seat: CAM 10 until actual desk arrival (arrivalSec), then CUT to targetCam close-up for 1.8s before MC CAM 3.
   const isCam11Phase = isFirstSeat
-    ? elapsedSec < 3.8
-    : elapsedSec >= 1.2 && elapsedSec < 3.8;
+    ? elapsedSec < cam11EndSec
+    : elapsedSec >= 1.2 && elapsedSec < cam11EndSec;
 
   if (isCam11Phase) {
     // Optical zoom push (0.25) during pose greeting on center landing (1.8s -> 3.0s)
@@ -61,8 +61,8 @@ export function evaluateEntranceCameraState(
     };
   }
 
-  if (isLastSeat && elapsedSec >= 6.2) {
-    // Last contestant has arrived behind their assigned desk: frame desk close-up
+  if (isLastSeat && elapsedSec >= seatTiming.arrivalSec) {
+    // Last contestant has actually arrived behind their assigned desk: frame desk close-up cleanly
     return {
       camAngle: targetCam,
       transitionMode: "CUT",
@@ -81,6 +81,128 @@ export function evaluateEntranceCameraState(
 }
 
 /**
+ * Computes evenly partitioned VCNV 15s contestant camera slot (0..slots-1) with >= 3.0s dwell
+ * and zero <2s sliver cuts right before returning to wide CAM 10 at t = 15s.
+ */
+export function evaluateVcnvTimerSeat(elapsedSec: number, activeCount: number): number {
+  const count = Math.max(1, activeCount);
+  const slots = count <= 4 ? count : 5;
+  const slotDur = 15.0 / slots;
+  const slotIdx = Math.min(slots - 1, Math.max(0, Math.floor(elapsedSec / slotDur)));
+  return slotIdx % count;
+}
+
+/**
+ * Evaluates Về Đích stage camera state with anti-early-cut dwell:
+ * - Holds CAM 10 for the first 2.0s of walking out around the rear corridor before morphing to CAM 15.
+ * - Holds reaction shot for 1.5s on result before cutting to MC CAM 3.
+ */
+export function evaluateVeDichCameraState(
+  vd: NonNullable<OlympiaState["veDich"]>,
+  now: number,
+  phaseEnteredAt: number,
+  onStageEnteredAt: number,
+  activeCount: number
+): OlympiaCameraState {
+  if (vd.phase === "result") {
+    const resultElapsed = Math.max(0, (now - phaseEnteredAt) / 1000);
+    if (resultElapsed < 1.5) {
+      const reactionCam =
+        vd.steal?.buzzedSeat != null
+          ? getCameraForSeat(vd.steal.buzzedSeat, activeCount)
+          : 15;
+      return {
+        camAngle: reactionCam,
+        transitionMode: "CUT",
+        isOverlayHidden: false,
+        pushInProgress: 0.12,
+      };
+    }
+    return {
+      camAngle: 3,
+      transitionMode: "CUT",
+      isOverlayHidden: false,
+      pushInProgress: 0,
+    };
+  }
+
+  if (vd.phase === "stealing") {
+    if (vd.steal?.buzzedSeat != null) {
+      return {
+        camAngle: getCameraForSeat(vd.steal.buzzedSeat, activeCount),
+        transitionMode: "CUT",
+        isOverlayHidden: false,
+        pushInProgress: 0.2,
+      };
+    }
+    return {
+      camAngle: 10,
+      transitionMode: "CUT",
+      isOverlayHidden: false,
+      pushInProgress: 0,
+    };
+  }
+
+  if (vd.phase === "choosing") {
+    const onStageElapsed = Math.max(0, (now - onStageEnteredAt) / 1000);
+    if (onStageElapsed < 2.0) {
+      return {
+        camAngle: 10,
+        transitionMode: "MORPH",
+        isOverlayHidden: false,
+        pushInProgress: 0,
+      };
+    }
+    return {
+      camAngle: 15,
+      transitionMode: "MORPH",
+      isOverlayHidden: false,
+      pushInProgress: 0,
+    };
+  }
+
+  if (vd.phase === "packageReady") {
+    return {
+      camAngle: 15,
+      transitionMode: "MORPH",
+      isOverlayHidden: false,
+      pushInProgress: 0,
+    };
+  }
+
+  if (vd.phase === "thinking") {
+    let push = 0;
+    if (vd.timer?.startedAt) {
+      const duration = vd.timer.totalMs || 20000;
+      const elapsed = Math.max(0, now - vd.timer.startedAt);
+      push = Math.min(1.0, elapsed / duration);
+    }
+    return {
+      camAngle: 15,
+      transitionMode: "MORPH",
+      isOverlayHidden: false,
+      pushInProgress: push,
+    };
+  }
+
+  if (vd.phase === "seatDone") {
+    return {
+      camAngle: 1,
+      transitionMode: "MORPH",
+      isOverlayHidden: false,
+      pushInProgress: 0,
+    };
+  }
+
+  return {
+    camAngle: 15,
+    transitionMode: "CUT",
+    isOverlayHidden: false,
+    pushInProgress: 0,
+  };
+}
+
+/**
  * Auto-camera logic for Olympia 3D Broadcast Studio.
  * Computes camera angles, cuts/morphs, dolly pushes, and overlay suppression based on round state.
  */
@@ -95,6 +217,8 @@ export function useOlympiaCameraState(
   const roundEnteredAtRef = useRef<number>(Date.now());
   const lastPhaseRef = useRef<string | null>(null);
   const phaseEnteredAtRef = useRef<number>(Date.now());
+  const lastVdRef = useRef<{ turnIdx: number; mode: string }>({ turnIdx: -1, mode: "idle" });
+  const vdOnStageEnteredAtRef = useRef<number>(Date.now());
 
   useEffect(() => {
     if (state?.currentRound && state.currentRound !== lastRoundRef.current) {
@@ -120,6 +244,17 @@ export function useOlympiaCameraState(
     }
   }, [state?.khoiDong?.phase, state?.veDich?.phase]);
 
+  useEffect(() => {
+    const vd = state?.veDich;
+    const turnIdx = vd?.turnIdx ?? 0;
+    const p = vd?.phase ?? "idle";
+    const mode = p === "idle" ? "idle" : p === "seatDone" ? "seatDone" : "onStage";
+    if (turnIdx !== lastVdRef.current.turnIdx || mode !== lastVdRef.current.mode) {
+      lastVdRef.current = { turnIdx, mode };
+      vdOnStageEnteredAtRef.current = getNow();
+    }
+  }, [state?.veDich?.turnIdx, state?.veDich?.phase]);
+
   // Only run 100ms ticker when a time-varying camera transition is actively running (eliminates idle 10Hz re-renders)
   const needsTimedCameraTicker = Boolean(
     state?.entranceState?.active ||
@@ -132,7 +267,12 @@ export function useOlympiaCameraState(
           Boolean(state.khoiDong.timer?.startedAt) ||
           state.khoiDong.phase === "segmentDone")) ||
       (state?.currentRound === "vcnv" && Boolean(state?.vcnv?.timer?.startedAt)) ||
-      (state?.currentRound === "veDich" && Boolean(state?.veDich?.timer?.startedAt))
+      (state?.currentRound === "veDich" &&
+        state?.veDich &&
+        (Boolean(state.veDich.timer?.startedAt) ||
+          state.veDich.phase === "choosing" ||
+          state.veDich.phase === "packageReady" ||
+          state.veDich.phase === "result"))
   );
 
   useEffect(() => {
@@ -263,15 +403,15 @@ export function useOlympiaCameraState(
         : (kd.buzzedSeat != null ? getCameraForSeat(kd.buzzedSeat, activeCount) : 10);
 
       // 3.2. Khi chưa nhấn Bắt đầu (hết intro Khởi động):
-      // USER REQUIREMENT: "cơ mà hết intro Khởi động, nó chưa tự zoom in bục MC, sau đó quay toàn cảnh"
+      // Giữ zoom in bục MC 5.0s để MC dẫn trọn lời trước khi morph quay toàn cảnh
       if (!kd.started && (kd.phase === "intro" || kd.qIdx < 0)) {
         const introElapsed = Math.max(0, (now - roundEnteredAtRef.current) / 1000);
-        if (introElapsed < 2.5) {
+        if (introElapsed < 5.0) {
           return {
             camAngle: 3, // Zoom in bục MC
             transitionMode: "MORPH",
             isOverlayHidden: false,
-            pushInProgress: Math.min(1.0, introElapsed / 2.5),
+            pushInProgress: Math.min(1.0, introElapsed / 5.0),
           };
         }
         return {
@@ -342,12 +482,11 @@ export function useOlympiaCameraState(
       }
 
       // 3.6. Sau khi nhấn Kết thúc lượt (sau một lượt khởi động riêng):
-      // USER REQUIREMENT: "sau khi nhấn kết thúc lượt (sau một lượt khởi động riêng), hệ thống cut ngay sang góc quay thí sinh đó, zoom in nhẹ, rồi cut sang zoom out camera toàn cảnh"
+      // Giữ cận cảnh thí sinh 4.0s (zoom in nhẹ) rồi cut sang toàn cảnh CAM 1 và zoom out nhẹ
       if (kd.phase === "segmentDone") {
         const segDoneElapsed = Math.max(0, (now - phaseEnteredAtRef.current) / 1000);
-        if (segDoneElapsed < 2.5) {
-          // Giai đoạn 1 (0 - 2.5s): CUT ngay sang góc quay thí sinh đó, zoom in nhẹ
-          const pushIn = Math.min(1.0, segDoneElapsed / 2.5) * 0.15;
+        if (segDoneElapsed < 4.0) {
+          const pushIn = Math.min(1.0, segDoneElapsed / 4.0) * 0.15;
           return {
             camAngle: targetContestantCam,
             transitionMode: "CUT",
@@ -355,8 +494,7 @@ export function useOlympiaCameraState(
             pushInProgress: pushIn,
           };
         }
-        // Giai đoạn 2 (2.5s - 5.5s): CUT sang toàn cảnh 3 màn hình chính và zoom out nhẹ
-        const zoomOutProgress = Math.max(0, 1.0 - (segDoneElapsed - 2.5) / 3.0) * 0.15;
+        const zoomOutProgress = Math.max(0, 1.0 - (segDoneElapsed - 4.0) / 3.0) * 0.15;
         return {
           camAngle: 1,
           transitionMode: "CUT",
@@ -399,14 +537,13 @@ export function useOlympiaCameraState(
         }
       }
 
-      // Camera VCNV: Idle/pre-15s defaults to CAM 10 (wide) or CAM 3 (MC).
-      // Only during 15s timer does it cycle contestants every 3.5s; returns to CAM 10 afterwards.
+      // Camera VCNV: Divide 15s evenly so each shot gets >= 3.0s–7.5s dwell and ZERO <2s tail sliver cut at 14s
       const startedAt = v.timer?.startedAt;
       const isTimerRunning = startedAt != null;
       const elapsed = startedAt ? Math.max(0, (now - startedAt) / 1000) : 0;
 
       if (isTimerRunning && elapsed <= 15.0) {
-        const cycleSeat = Math.floor(elapsed / 3.5) % activeCount;
+        const cycleSeat = evaluateVcnvTimerSeat(elapsed, activeCount);
         return {
           camAngle: getCameraForSeat(cycleSeat, activeCount),
           transitionMode: "CUT",
@@ -445,95 +582,13 @@ export function useOlympiaCameraState(
 
     // ── 6. VỀ ĐÍCH ───────────────────────────────────────────────────────────
     if (round === "veDich" && state.veDich) {
-      const vd = state.veDich;
-      const owner = vd.order?.[vd.turnIdx] ?? 0;
-      const targetOwnerCam = getCameraForSeat(owner, activeCount);
-
-      // 6.1. Khi Đúng / Sai:
-      // USER REQUIREMENT: Cắt ngay sang góc thẳng bục MC (CAM 3), tạm gác khung câu hỏi, hiện đồ hoạ đáp án
-      if (vd.phase === "result") {
-        return {
-          camAngle: 3, // Bục MC
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: 0,
-        };
-      }
-
-      // 6.2. Khi mở chuông cướp điểm (5s stealing):
-      // USER REQUIREMENT: Cắt sang góc toàn cảnh 4 bục (CAM 10); khi có người bấm chuông: Cắt ngay vào thí sinh cướp chuông
-      if (vd.phase === "stealing") {
-        if (vd.steal?.buzzedSeat != null) {
-          const stealSeat = vd.steal.buzzedSeat;
-          return {
-            camAngle: getCameraForSeat(stealSeat, activeCount),
-            transitionMode: "CUT",
-            isOverlayHidden: false,
-            pushInProgress: 0.2,
-          };
-        }
-        return {
-          camAngle: 10, // Toàn cảnh 4 bục thí sinh
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: 0,
-        };
-      }
-
-      // 6.3. Giai đoạn thí sinh bước lên sân khấu & chọn gói:
-      // USER REQUIREMENT: Camera Dolly điện ảnh mượt lia theo bước chân thí sinh hướng về bục giữa (CAM 15)
-      if (vd.phase === "choosing") {
-        return {
-          camAngle: 15, // Cận cảnh chính diện bục giữa Về Đích
-          transitionMode: "MORPH", // Smooth dolly tracking camera
-          isOverlayHidden: false,
-          pushInProgress: 0,
-        };
-      }
-
-      if (vd.phase === "packageReady") {
-        return {
-          camAngle: 15, // Cận cảnh chính diện bục giữa Về Đích
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: 0,
-        };
-      }
-
-      // 6.4. Trong thời gian suy nghĩ câu hỏi Về Đích:
-      // USER REQUIREMENT: Camera cận chính diện thí sinh tại bục giữa (CAM 15) và zoom smooth chậm vào mặt thí sinh
-      if (vd.phase === "thinking") {
-        let push = 0;
-        if (vd.timer?.startedAt) {
-          const duration = vd.timer.totalMs || 20000;
-          const elapsed = Math.max(0, now - vd.timer.startedAt);
-          push = Math.min(1.0, elapsed / duration);
-        }
-
-        return {
-          camAngle: 15, // Cận cảnh chính diện bục giữa Về Đích
-          transitionMode: "MORPH",
-          isOverlayHidden: false,
-          pushInProgress: push, // Zoom smooth chậm từ 100% lên 115%
-        };
-      }
-
-      // 6.5. Hoàn thành lượt thi: Thí sinh bước về bục bảng điểm, camera toàn cảnh bao quát
-      if (vd.phase === "seatDone") {
-        return {
-          camAngle: 1, // Toàn cảnh sân khấu khi thí sinh bước về bục
-          transitionMode: "MORPH",
-          isOverlayHidden: false,
-          pushInProgress: 0,
-        };
-      }
-
-      return {
-        camAngle: 15,
-        transitionMode: "CUT",
-        isOverlayHidden: false,
-        pushInProgress: 0,
-      };
+      return evaluateVeDichCameraState(
+        state.veDich,
+        now,
+        phaseEnteredAtRef.current,
+        vdOnStageEnteredAtRef.current,
+        activeCount
+      );
     }
 
     // ── 7. CÂU HỎI PHỤ ───────────────────────────────────────────────────────

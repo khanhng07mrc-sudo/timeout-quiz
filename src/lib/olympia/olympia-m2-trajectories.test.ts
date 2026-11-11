@@ -17,9 +17,24 @@
  */
 
 import assert from "node:assert/strict";
-import { evaluateEntranceCameraState } from "../../components/olympia/studio/useOlympiaCamera";
-import { evaluateContestantEntranceTrajectory } from "../../components/olympia/studio/Podiums";
+import fs from "node:fs";
+import path from "node:path";
+import {
+  evaluateEntranceCameraState,
+  evaluateVcnvTimerSeat,
+  evaluateVeDichCameraState,
+} from "../../components/olympia/studio/useOlympiaCamera";
+import {
+  evaluateContestantEntranceTrajectory,
+  evaluateVeDichWalkTrajectory,
+} from "../../components/olympia/studio/Podiums";
 import { getContestantArcParams } from "../../components/olympia/studio/CameraController";
+import {
+  getEntranceScheduleOffsetsMs,
+  getEntranceSeatTiming,
+  PODIUM_PLINTH_DEPTH,
+  PODIUM_PLINTH_WIDTH,
+} from "./entrance-geometry";
 
 export interface M2SuiteResults {
   tier1Count: number;
@@ -75,54 +90,77 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     };
   }
 
+  // Helper to compute minimum signed distance from point (x, z) to podium plinth OBBs (1.20m x 0.88m)
+  function minPodiumObbClearance(
+    x: number,
+    z: number,
+    podiums: Array<{ pos: [number, number, number]; rotY: number }>
+  ): number {
+    let minD = Infinity;
+    for (const p of podiums) {
+      const dx = x - p.pos[0];
+      const dz = z - p.pos[2];
+      const c = Math.cos(p.rotY);
+      const s = Math.sin(p.rotY);
+      const lx = dx * c - dz * s;
+      const lz = dx * s + dz * c;
+      const ox = Math.max(0, Math.abs(lx) - PODIUM_PLINTH_WIDTH / 2);
+      const oz = Math.max(0, Math.abs(lz) - PODIUM_PLINTH_DEPTH / 2);
+      const dist = Math.hypot(ox, oz);
+      if (dist < minD) minD = dist;
+    }
+    return minD;
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
-  // TIER 1: Feature Coverage (CAM 11 Timing & Spline Waypoints)
+  // TIER 1: Feature Coverage (CAM 11 Timing & Rear-Corridor Spline Waypoints)
   // ───────────────────────────────────────────────────────────────────────────
   console.log("\n--- TIER 1: FEATURE COVERAGE (CAM 11 Timing & Spline Waypoints) ---");
 
-  runTest(1, "M2.1: Contestant 0 starts immediately on CAM 11 until 3.8s", () => {
+  runTest(1, "M2.1: Contestant 0 starts on CAM 11 and holds through full lower stair treads (3.425s) until 3.55s", () => {
     const camAtStart = evaluateEntranceCameraState(0, 4, 0.5);
     assert.equal(camAtStart.camAngle, 11, "Contestant 0 must be framed on CAM 11 at t=0.5s");
 
     const camAtPose = evaluateEntranceCameraState(0, 4, 2.0);
     assert.equal(camAtPose.camAngle, 11, "Contestant 0 must be framed on CAM 11 at t=2.0s");
 
-    const camAtDescent = evaluateEntranceCameraState(0, 4, 4.0);
-    assert.equal(camAtDescent.camAngle, 10, "Contestant 0 transitions to CAM 10 wide shot at t=4.0s");
+    const camAtStairBottom = evaluateEntranceCameraState(0, 4, 3.45);
+    assert.equal(camAtStairBottom.camAngle, 11, "Contestant 0 stays on CAM 11 through physical bottom step (3.425s)");
+
+    const camOnFloor = evaluateEntranceCameraState(0, 4, 3.56);
+    assert.equal(camOnFloor.camAngle, 10, "Contestant 0 transitions to CAM 10 wide shot at t=3.56s before passing Z=6.40 lens");
   });
 
-  runTest(1, "M2.2: Contestant N > 0 cuts to CAM 11 at t = 1.2s (~0.6s early anticipatory cut)", () => {
-    // Before 1.2s: Wide shot (CAM 10) while previous contestant settles
+  runTest(1, "M2.2: Contestant N > 0 cuts to CAM 11 at t = 1.2s and holds through 3.55s", () => {
     const camEarly = evaluateEntranceCameraState(1, 4, 1.0);
     assert.equal(camEarly.camAngle, 10, "Contestant 1 must be on CAM 10 at t=1.0s");
 
-    // At 1.2s: Cuts early to CAM 11 to frame the contestant descending the final 2 steps
     const camCut = evaluateEntranceCameraState(1, 4, 1.2);
     assert.equal(camCut.camAngle, 11, "Contestant 1 must cut to CAM 11 at t=1.2s");
     assert.equal(camCut.transitionMode, "CUT");
 
-    // During mid-landing greeting: CAM 11 active
     const camPose = evaluateEntranceCameraState(1, 4, 2.5);
     assert.equal(camPose.camAngle, 11, "Contestant 1 must remain on CAM 11 at t=2.5s");
+
+    const camStairHold = evaluateEntranceCameraState(1, 4, 3.45);
+    assert.equal(camStairHold.camAngle, 11, "Contestant 1 holds CAM 11 until physical stairs finish (3.45s)");
   });
 
   runTest(1, "M2.3: Optical push zoom timing on CAM 11 (hold 0.0 before 1.8s, ramp to 0.25 by 3.0s)", () => {
-    // t in [1.2, 1.8): pushInProgress = 0.0 (holding steady as contestant steps onto landing)
     const camAtDescent = evaluateEntranceCameraState(1, 4, 1.5);
     assert.equal(camAtDescent.pushInProgress, 0.0, "Zoom push must hold at 0.0 before pose at t=1.5s");
 
-    // t in [1.8, 3.0): gentle zoom push
     const camMidPose = evaluateEntranceCameraState(1, 4, 2.4);
     assert.ok(camMidPose.pushInProgress > 0.08 && camMidPose.pushInProgress < 0.16, "Zoom push ramps mid-pose");
 
-    // t >= 3.0: zoom push reaches maximum 0.25
     const camEndPose = evaluateEntranceCameraState(1, 4, 3.2);
     assert.equal(camEndPose.pushInProgress, 0.25, "Zoom push holds at 0.25 after t=3.0s");
   });
 
   runTest(1, "M2.4: Continuous trajectory start point P0 = [0, 0.22, 6.20] with rotY = Math.PI at t = 4.0s", () => {
+    const arc = getContestantArcParams(4);
     const cfg = getDeskConfig(0, 4);
-    const traj = evaluateContestantEntranceTrajectory(4.0, 0, cfg, cfg.phi);
+    const traj = evaluateContestantEntranceTrajectory(4.0, 0, cfg, arc.startPhi, 4);
     assert.ok(Math.abs(traj.rawPos[0] - 0.00) < 0.01, `X must be 0 at t=4.0s, got ${traj.rawPos[0]}`);
     assert.ok(Math.abs(traj.rawPos[1] - 0.22) < 0.01, `Y must be 0.22 at t=4.0s, got ${traj.rawPos[1]}`);
     assert.ok(Math.abs(traj.rawPos[2] - 6.20) < 0.01, `Z must be 6.20 at t=4.0s, got ${traj.rawPos[2]}`);
@@ -130,19 +168,22 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
   });
 
   runTest(1, "M2.5: Stride cadence and vertical bounce unified at omega = 8.5 rad/s", () => {
+    const arc = getContestantArcParams(4);
     const cfg = getDeskConfig(1, 4);
-    const traj1 = evaluateContestantEntranceTrajectory(4.5, 1, cfg, cfg.phi);
+    const traj1 = evaluateContestantEntranceTrajectory(4.5, 1, cfg, arc.startPhi, 4);
     const expectedPhase = 4.5 * 8.5;
     assert.equal(traj1.walkPhase, expectedPhase, "walkPhase must equal t * 8.5");
     const expectedBounce = Math.abs(Math.sin(expectedPhase)) * 0.032;
     assert.ok(Math.abs(traj1.bounce - expectedBounce) < 0.0001, "bounce must equal |sin(walkPhase)| * 0.032");
   });
 
-  runTest(1, "M2.6: Desk arrival alignment at t = 6.5s reaches desk standing spot (error <= 1.0mm) and deskRotY", () => {
+  runTest(1, "M2.6: Desk arrival alignment at timing.arrivalSec reaches desk standing spot (<= 1.0mm) and deskRotY", () => {
+    const arc = getContestantArcParams(4);
     const cfg = getDeskConfig(2, 4);
+    const timing = getEntranceSeatTiming(2, 4);
     const deskX = cfg.pos[0] - Math.sin(cfg.rotY) * 0.42;
     const deskZ = cfg.pos[2] - Math.cos(cfg.rotY) * 0.42;
-    const traj = evaluateContestantEntranceTrajectory(6.5, 2, cfg, cfg.phi);
+    const traj = evaluateContestantEntranceTrajectory(timing.arrivalSec, 2, cfg, arc.startPhi, 4);
     const posErr = Math.hypot(traj.rawPos[0] - deskX, traj.rawPos[2] - deskZ);
     assert.ok(posErr <= 0.001, `Arrival error ${(posErr * 1000).toFixed(3)}mm must be <= 1.0mm`);
     assert.ok(Math.abs(traj.rotY - cfg.rotY) <= 0.001, `rotY must match deskRotY, got ${traj.rotY} vs ${cfg.rotY}`);
@@ -153,24 +194,25 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
   // ───────────────────────────────────────────────────────────────────────────
   console.log("\n--- TIER 2: BOUNDARY & CORNER CASES (Kinematic Continuity & Bounds) ---");
 
-  runTest(2, "M2.7: CAM 11 trigger boundary at exactly 1.199s is CAM 10 and 1.200s is CAM 11", () => {
+  runTest(2, "M2.7: CAM 11 trigger boundary at 1.199s is CAM 10 and 1.200s is CAM 11", () => {
     const camBefore = evaluateEntranceCameraState(1, 4, 1.199);
     assert.equal(camBefore.camAngle, 10, "1.199s must be wide CAM 10");
     const camAt = evaluateEntranceCameraState(1, 4, 1.200);
     assert.equal(camAt.camAngle, 11, "1.200s must cut to CAM 11");
   });
 
-  runTest(2, "M2.8: CAM 11 exit boundary at exactly 3.799s is CAM 11 and 3.800s is CAM 10", () => {
-    const camBefore = evaluateEntranceCameraState(1, 4, 3.799);
-    assert.equal(camBefore.camAngle, 11, "3.799s must still be CAM 11");
-    const camAt = evaluateEntranceCameraState(1, 4, 3.800);
-    assert.equal(camAt.camAngle, 10, "3.800s must return to wide CAM 10");
+  runTest(2, "M2.8: CAM 11 exit boundary holds full physical stairs (3.549s = CAM 11, 3.550s = CAM 10)", () => {
+    const camBefore = evaluateEntranceCameraState(1, 4, 3.549);
+    assert.equal(camBefore.camAngle, 11, "3.549s must hold CAM 11 until bottom steps clear");
+    const camAt = evaluateEntranceCameraState(1, 4, 3.550);
+    assert.equal(camAt.camAngle, 10, "3.550s transitions cleanly to wide CAM 10");
   });
 
   runTest(2, "M2.9: Kinematic continuity at t = 4.0s (zero rotational snap: |delta rotY| < 0.01 rad)", () => {
+    const arc = getContestantArcParams(4);
     const cfg = getDeskConfig(0, 4);
-    const before = evaluateContestantEntranceTrajectory(3.999, 0, cfg, cfg.phi);
-    const after = evaluateContestantEntranceTrajectory(4.001, 0, cfg, cfg.phi);
+    const before = evaluateContestantEntranceTrajectory(3.999, 0, cfg, arc.startPhi, 4);
+    const after = evaluateContestantEntranceTrajectory(4.001, 0, cfg, arc.startPhi, 4);
     let deltaRot = Math.abs(after.rotY - before.rotY);
     if (deltaRot > Math.PI) deltaRot = 2 * Math.PI - deltaRot;
     assert.ok(deltaRot < 0.01, `Angular snap at t=4.0s must be < 0.01 rad (0.57 deg), got ${deltaRot.toFixed(4)} rad`);
@@ -178,79 +220,60 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     assert.ok(deltaPos < 0.02, `Positional jump at t=4.0s must be < 0.02m, got ${deltaPos.toFixed(4)}m`);
   });
 
-  runTest(2, "M2.10: Smooth continuous heading across old phase boundaries (t = 5.0s and t = 6.1s)", () => {
-    const cfg = getDeskConfig(1, 6);
-    // Old Phase 5A -> 5B boundary at t = 5.0s
-    const t5Before = evaluateContestantEntranceTrajectory(4.999, 1, cfg, cfg.phi);
-    const t5After = evaluateContestantEntranceTrajectory(5.001, 1, cfg, cfg.phi);
-    let deltaT5 = Math.abs(t5After.rotY - t5Before.rotY);
-    if (deltaT5 > Math.PI) deltaT5 = 2 * Math.PI - deltaT5;
-    assert.ok(deltaT5 < 0.01, `Heading jump at t=5.0s must be < 0.01 rad, got ${deltaT5.toFixed(4)} rad`);
-
-    // Old Phase 5B -> 5C boundary at t = 6.1s
-    const t6Before = evaluateContestantEntranceTrajectory(6.099, 1, cfg, cfg.phi);
-    const t6After = evaluateContestantEntranceTrajectory(6.101, 1, cfg, cfg.phi);
-    let deltaT6 = Math.abs(t6After.rotY - t6Before.rotY);
-    if (deltaT6 > Math.PI) deltaT6 = 2 * Math.PI - deltaT6;
-    assert.ok(deltaT6 < 0.01, `Heading jump at t=6.1s must be < 0.01 rad, got ${deltaT6.toFixed(4)} rad`);
+  runTest(2, "M2.10: Smooth continuous heading across Segment A -> Segment B boundary across ALL N in [2..8]", () => {
+    for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
+      const arc = getContestantArcParams(totalSeats);
+      const cfg = getDeskConfig(totalSeats - 1, totalSeats);
+      const timing = getEntranceSeatTiming(totalSeats - 1, totalSeats);
+      const splitT = timing.stairsEndSec + timing.splitU * timing.floorDurationSec;
+      const before = evaluateContestantEntranceTrajectory(splitT - 0.002, totalSeats - 1, cfg, arc.startPhi, totalSeats);
+      const after = evaluateContestantEntranceTrajectory(splitT + 0.002, totalSeats - 1, cfg, arc.startPhi, totalSeats);
+      let dRot = Math.abs(after.rotY - before.rotY);
+      if (dRot > Math.PI) dRot = 2 * Math.PI - dRot;
+      assert.ok(dRot < 0.01, `N=${totalSeats}: heading jump at splitT=${splitT.toFixed(2)}s was ${dRot.toFixed(4)} rad`);
+    }
   });
 
   runTest(2, "M2.11: Kinematic velocity v >= 1.20 m/s during active entrance intervals across ALL N in [2..8]", () => {
     for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
+      const arc = getContestantArcParams(totalSeats);
       for (let s = 0; s < totalSeats; s++) {
         const cfg = getDeskConfig(s, totalSeats);
+        const timing = getEntranceSeatTiming(s, totalSeats);
 
-        // Phase 1 (t in [0.1, 0.5]): Door emergence onto top plinth
         for (let t = 0.1; t <= 0.501; t += 0.05) {
-          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
-          assert.ok(
-            traj.vel >= 1.20,
-            `N=${totalSeats} seat=${s} Phase 1 at t=${t.toFixed(2)}s: vel=${traj.vel.toFixed(3)} m/s must be >= 1.20 m/s`
-          );
+          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, arc.startPhi, totalSeats);
+          assert.ok(traj.vel >= 1.20, `N=${totalSeats} seat=${s} Phase 1 at t=${t.toFixed(2)}s: vel=${traj.vel.toFixed(3)}`);
         }
-
-        // Phase 2 (t in [0.7, 1.7]): Walking down upper stairs
         for (let t = 0.7; t <= 1.701; t += 0.1) {
-          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
-          assert.ok(
-            traj.vel >= 1.20,
-            `N=${totalSeats} seat=${s} Phase 2 at t=${t.toFixed(2)}s: vel=${traj.vel.toFixed(3)} m/s must be >= 1.20 m/s`
-          );
+          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, arc.startPhi, totalSeats);
+          assert.ok(traj.vel >= 1.20, `N=${totalSeats} seat=${s} Phase 2 at t=${t.toFixed(2)}s: vel=${traj.vel.toFixed(3)}`);
         }
-
-        // Phase 4 (t in [3.1, 3.9]): Walking down lower stairs
         for (let t = 3.1; t <= 3.901; t += 0.1) {
-          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
-          assert.ok(
-            traj.vel >= 1.20,
-            `N=${totalSeats} seat=${s} Phase 4 at t=${t.toFixed(2)}s: vel=${traj.vel.toFixed(3)} m/s must be >= 1.20 m/s`
-          );
+          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, arc.startPhi, totalSeats);
+          assert.ok(traj.vel >= 1.20, `N=${totalSeats} seat=${s} Phase 4 at t=${t.toFixed(2)}s: vel=${traj.vel.toFixed(3)}`);
         }
-
-        // Phase 5 (t in [4.1, 6.2]): Walking across dais floor to desk
-        for (let t = 4.1; t <= 6.201; t += 0.05) {
-          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
-          assert.ok(
-            traj.vel >= 1.20,
-            `N=${totalSeats} seat=${s} Phase 5 at t=${t.toFixed(2)}s: vel=${traj.vel.toFixed(3)} m/s must be >= 1.20 m/s`
-          );
+        for (let t = 4.05; t <= timing.arrivalSec - 0.10; t += 0.05) {
+          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, arc.startPhi, totalSeats);
+          assert.ok(traj.vel >= 1.20, `N=${totalSeats} seat=${s} Phase 5 at t=${t.toFixed(2)}s: vel=${traj.vel.toFixed(3)}`);
         }
       }
     }
   });
 
-  runTest(2, "M2.11B: Maximum rotational step Delta rotY <= 5.0 deg per 0.05s step everywhere during smooth traversal for ALL N in [2..8]", () => {
+  runTest(2, "M2.11B: Maximum rotational step Delta rotY <= 5.0 deg per 0.05s step everywhere across ALL N in [2..8]", () => {
     const dt = 0.05;
     for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
+      const arc = getContestantArcParams(totalSeats);
       for (let s = 0; s < totalSeats; s++) {
         const cfg = getDeskConfig(s, totalSeats);
-        for (let t = 0.0; t <= 6.50 - dt; t += dt) {
-          // Skip intentional stationary pause transitions on Bục Giữa (around 1.8s and 3.0s)
+        const timing = getEntranceSeatTiming(s, totalSeats);
+        for (let t = 0.0; t <= timing.bowEndSec - dt; t += dt) {
           if ((t >= 1.75 && t <= 1.85) || (t >= 2.95 && t <= 3.05)) continue;
           const tA = +t.toFixed(3);
           const tB = +(t + dt).toFixed(3);
-          const trajA = evaluateContestantEntranceTrajectory(tA, s, cfg, cfg.phi);
-          const trajB = evaluateContestantEntranceTrajectory(tB, s, cfg, cfg.phi);
+          const trajA = evaluateContestantEntranceTrajectory(tA, s, cfg, arc.startPhi, totalSeats);
+          const trajB = evaluateContestantEntranceTrajectory(tB, s, cfg, arc.startPhi, totalSeats);
           let dRot = (trajB.rotY - trajA.rotY) % (2 * Math.PI);
           if (dRot > Math.PI) dRot -= 2 * Math.PI;
           if (dRot < -Math.PI) dRot += 2 * Math.PI;
@@ -265,45 +288,45 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
   });
 
   // ───────────────────────────────────────────────────────────────────────────
-  // TIER 3: Cross-Feature Combinations (Cadence, Clearance, Multi-Contestant)
+  // TIER 3: Cross-Feature Combinations (Cadence, Clearance, ZERO Podium Collision)
   // ───────────────────────────────────────────────────────────────────────────
-  console.log("\n--- TIER 3: CROSS-FEATURE COMBINATIONS (Cadence Synchrony & Dais Boundaries) ---");
+  console.log("\n--- TIER 3: CROSS-FEATURE COMBINATIONS (Zero Podium Collision & Dais Bounds) ---");
 
   runTest(3, "M2.12: Leg swing stride and vertical hip bounce are 100% in-phase", () => {
+    const arc = getContestantArcParams(4);
     const cfg = getDeskConfig(0, 4);
-    // Sample 20 time points during floor walk
-    for (let t = 4.0; t <= 6.5; t += 0.125) {
-      const traj = evaluateContestantEntranceTrajectory(t, 0, cfg, cfg.phi);
+    const timing = getEntranceSeatTiming(0, 4);
+    for (let t = 4.0; t <= timing.arrivalSec - 0.05; t += 0.125) {
+      const traj = evaluateContestantEntranceTrajectory(t, 0, cfg, arc.startPhi, 4);
       const strideSin = Math.sin(traj.walkPhase);
-      const bounceSin = Math.sin(traj.walkPhase);
-      // When stride swing is near 0 (neutral leg cross), bounce must be near 0
       if (Math.abs(strideSin) < 0.05) {
         assert.ok(traj.bounce < 0.005, `Bounce must be near zero at neutral stride at t=${t.toFixed(3)}`);
       }
-      // When stride swing is at maximum (|sin| = 1), bounce must be at peak 0.032m
       if (Math.abs(strideSin) > 0.95) {
         assert.ok(traj.bounce > 0.028, `Bounce must be near peak at maximum stride at t=${t.toFixed(3)}`);
       }
     }
   });
 
-  runTest(3, "M2.13: All contestant walk trajectories remain inside Dais platform boundary (R <= 8.2m) across ALL N in [2..8]", () => {
+  runTest(3, "M2.13: All contestant walk trajectories stay strictly inside Dais outer rim (R <= 7.60m) across ALL N in [2..8]", () => {
     [2, 3, 4, 5, 6, 7, 8].forEach((totalSeats) => {
+      const arc = getContestantArcParams(totalSeats);
       for (let s = 0; s < totalSeats; s++) {
         const cfg = getDeskConfig(s, totalSeats);
-        for (let t = 4.0; t <= 6.5; t += 0.1) {
-          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
+        const timing = getEntranceSeatTiming(s, totalSeats);
+        for (let t = 4.0; t <= timing.arrivalSec; t += 0.1) {
+          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, arc.startPhi, totalSeats);
           const r = Math.hypot(traj.rawPos[0], traj.rawPos[2] - (-0.5));
           assert.ok(
-            r <= 8.20,
-            `Seat ${s}/${totalSeats} at t=${t.toFixed(1)}s went outside dais radius (R=${r.toFixed(2)}m > 8.20m)`
+            r <= 7.601,
+            `Seat ${s}/${totalSeats} at t=${t.toFixed(1)}s stepped outside Dais outer rim (R=${r.toFixed(3)}m > 7.60m)`
           );
         }
       }
     });
   });
 
-  runTest(3, "M2.14: Final contestant close-up camera handoff at t = 6.3s for ALL N in [2..8]", () => {
+  runTest(3, "M2.14: Final contestant close-up camera holds CAM 10 until exact arrivalSec then cuts to targetCam for 1.8s (ALL N=2..8)", () => {
     const expectedCams: Record<number, number> = {
       2: 6,
       3: 7,
@@ -315,82 +338,174 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     };
     for (const total of [2, 3, 4, 5, 6, 7, 8]) {
       const lastSeat = total - 1;
-      const cam = evaluateEntranceCameraState(lastSeat, total, 6.3);
+      const timing = getEntranceSeatTiming(lastSeat, total);
+      const camBeforeArrival = evaluateEntranceCameraState(lastSeat, total, timing.arrivalSec - 0.15);
+      assert.equal(camBeforeArrival.camAngle, 10, `Seat ${lastSeat}/${total} must still hold CAM 10 before arrival`);
+      const camOnArrival = evaluateEntranceCameraState(lastSeat, total, timing.arrivalSec);
       assert.equal(
-        cam.camAngle,
+        camOnArrival.camAngle,
         expectedCams[total],
-        `Seat ${lastSeat}/${total} at 6.3s frames CAM ${expectedCams[total]} close-up`
+        `Seat ${lastSeat}/${total} at arrivalSec=${timing.arrivalSec}s cuts cleanly to CAM ${expectedCams[total]}`
       );
     }
   });
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // TIER 4: Real-World Scenarios (End-to-End Entrance Lifecycles)
-  // ───────────────────────────────────────────────────────────────────────────
-  console.log("\n--- TIER 4: REAL-WORLD SCENARIOS (E2E Entrance Sequences) ---");
+  runTest(3, "M2.18: ZERO podium OBB collision during Entrance walk across ALL N in [2..8] (clearance >= 0.35m)", () => {
+    for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
+      const arc = getContestantArcParams(totalSeats);
+      const allPodiums = Array.from({ length: totalSeats }, (_, idx) => getDeskConfig(idx, totalSeats));
+      for (let s = 0; s < totalSeats; s++) {
+        const cfg = allPodiums[s];
+        const otherPodiums = allPodiums.filter((p) => p.seatId !== s);
+        const timing = getEntranceSeatTiming(s, totalSeats);
 
-  runTest(4, "M2.15: Full 4-contestant entrance timeline: smooth camera and kinematic handoffs", () => {
-    // 4 contestants, staggered by 4.0s: Total entrance sequence = 3 * 4.0 + 6.8 = 18.8s
-    const totalDuration = 18.8;
-    for (let globalSec = 0; globalSec <= totalDuration; globalSec += 0.5) {
-      const currentSeat = Math.min(3, Math.floor(globalSec / 4.0));
-      const seatElapsed = globalSec - currentSeat * 4.0;
-      const cam = evaluateEntranceCameraState(currentSeat, 4, seatElapsed);
-      assert.ok(cam.camAngle >= 5 && cam.camAngle <= 28, `Camera angle ${cam.camAngle} must be valid broadcast angle`);
+        for (let t = 4.0; t <= timing.arrivalSec; t += 0.04) {
+          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, arc.startPhi, totalSeats);
+          const clearOther = minPodiumObbClearance(traj.rawPos[0], traj.rawPos[2], otherPodiums);
+          assert.ok(
+            clearOther >= 0.35,
+            `N=${totalSeats} seat=${s} at t=${t.toFixed(2)}s passed within ${clearOther.toFixed(3)}m of another podium (< 0.35m)`
+          );
+          if (t < timing.arrivalSec - 0.40) {
+            const clearOwn = minPodiumObbClearance(traj.rawPos[0], traj.rawPos[2], [cfg]);
+            assert.ok(
+              clearOwn >= 0.25,
+              `N=${totalSeats} seat=${s} at t=${t.toFixed(2)}s clipped own podium early (${clearOwn.toFixed(3)}m < 0.25m)`
+            );
+          }
+        }
+      }
+    }
+  });
+
+  runTest(3, "M2.19: ZERO collision behind already-standing seated contestants (distance >= 0.40m) across ALL N in [2..8]", () => {
+    for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
+      const arc = getContestantArcParams(totalSeats);
+      const deskSpots = Array.from({ length: totalSeats }, (_, idx) => {
+        const c = getDeskConfig(idx, totalSeats);
+        return {
+          seatId: idx,
+          x: c.pos[0] - Math.sin(c.rotY) * 0.42,
+          z: c.pos[2] - Math.cos(c.rotY) * 0.42,
+          cfg: c,
+        };
+      });
+
+      for (let s = 1; s < totalSeats; s++) {
+        const timing = getEntranceSeatTiming(s, totalSeats);
+        const cfg = deskSpots[s].cfg;
+        for (let t = 4.0; t <= timing.arrivalSec; t += 0.04) {
+          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, arc.startPhi, totalSeats);
+          for (let prev = 0; prev < s; prev++) {
+            const dist = Math.hypot(traj.rawPos[0] - deskSpots[prev].x, traj.rawPos[2] - deskSpots[prev].z);
+            assert.ok(
+              dist >= 0.40,
+              `N=${totalSeats} seat=${s} at t=${t.toFixed(2)}s collided with standing seat=${prev} (${dist.toFixed(3)}m < 0.40m)`
+            );
+          }
+        }
+      }
+    }
+  });
+
+  runTest(3, "M2.20: ZERO podium OBB collision during Về Đích on-stage & return walks across ALL N in [2..8]", () => {
+    for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
+      const allPodiums = Array.from({ length: totalSeats }, (_, idx) => getDeskConfig(idx, totalSeats));
+      for (let s = 0; s < totalSeats; s++) {
+        const cfg = allPodiums[s];
+        const otherPodiums = allPodiums.filter((p) => p.seatId !== s);
+        for (const isReturning of [false, true]) {
+          for (let u = 0; u <= 1.0001; u += 0.02) {
+            const clampedU = Math.min(1.0, u);
+            const traj = evaluateVeDichWalkTrajectory(clampedU, s, cfg.pos, cfg.rotY, totalSeats, isReturning);
+            const clearOther = minPodiumObbClearance(traj.rawPos[0], traj.rawPos[2], otherPodiums);
+            assert.ok(
+              clearOther >= 0.35,
+              `VeDich N=${totalSeats} seat=${s} ret=${isReturning} u=${clampedU.toFixed(2)} clipped another podium (${clearOther.toFixed(3)}m)`
+            );
+            if (clampedU >= 0.04) {
+              const clearOwn = minPodiumObbClearance(traj.rawPos[0], traj.rawPos[2], [cfg]);
+              const requiredMin = clampedU >= 0.16 ? 0.35 : 0.01;
+              assert.ok(
+                clearOwn >= requiredMin,
+                `VeDich N=${totalSeats} seat=${s} u=${clampedU.toFixed(2)} clipped own podium (${clearOwn.toFixed(3)}m < ${requiredMin}m)`
+              );
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // TIER 4: Real-World Scenarios (End-to-End Entrance & Round Camera Timings)
+  // ───────────────────────────────────────────────────────────────────────────
+  console.log("\n--- TIER 4: REAL-WORLD SCENARIOS (E2E Entrance & Round Camera Timings) ---");
+
+  runTest(4, "M2.15: Synchronized multi-seat entrance timeline ensures previous seat bows BEFORE next CAM 11 cut (ALL N=2..8)", () => {
+    for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
+      const { seatStartOffsetsMs, totalDurationMs } = getEntranceScheduleOffsetsMs(totalSeats);
+      for (let i = 0; i < totalSeats - 1; i++) {
+        const timing = getEntranceSeatTiming(i, totalSeats);
+        const nextCam11Ms = (seatStartOffsetsMs[i + 1] - seatStartOffsetsMs[i]) + 1200;
+        assert.ok(
+          nextCam11Ms >= timing.bowEndSec * 1000 - 1,
+          `N=${totalSeats} seat=${i}: next CAM 11 cut (${nextCam11Ms}ms) must not preempt bowEnd (${timing.bowEndSec * 1000}ms)`
+        );
+      }
+      assert.ok(totalDurationMs > 0);
     }
   });
 
   runTest(4, "M2.16: Full multi-contestant entrance timeline: all contestants across ALL N in [2..8] arrive with error <= 1.0mm", () => {
     for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
+      const arc = getContestantArcParams(totalSeats);
       for (let s = 0; s < totalSeats; s++) {
         const cfg = getDeskConfig(s, totalSeats);
+        const timing = getEntranceSeatTiming(s, totalSeats);
         const deskX = cfg.pos[0] - Math.sin(cfg.rotY) * 0.42;
         const deskZ = cfg.pos[2] - Math.cos(cfg.rotY) * 0.42;
 
-        const arrival = evaluateContestantEntranceTrajectory(6.5, s, cfg, cfg.phi);
+        const arrival = evaluateContestantEntranceTrajectory(timing.arrivalSec, s, cfg, arc.startPhi, totalSeats);
         const posErr = Math.hypot(arrival.rawPos[0] - deskX, arrival.rawPos[2] - deskZ);
-        assert.ok(
-          posErr <= 0.001,
-          `N=${totalSeats} seat=${s}: arrival error ${(posErr * 1000).toFixed(3)}mm must be <= 1.0mm`
-        );
+        assert.ok(posErr <= 0.001, `N=${totalSeats} seat=${s}: arrival error ${(posErr * 1000).toFixed(3)}mm must be <= 1.0mm`);
         let rotDiff = (arrival.rotY - cfg.rotY) % (2 * Math.PI);
         if (rotDiff > Math.PI) rotDiff -= 2 * Math.PI;
         if (rotDiff < -Math.PI) rotDiff += 2 * Math.PI;
-        assert.ok(
-          Math.abs(rotDiff) <= 0.001,
-          `N=${totalSeats} seat=${s}: facing diff ${Math.abs(rotDiff).toFixed(4)} rad must be <= 0.001 rad`
-        );
+        assert.ok(Math.abs(rotDiff) <= 0.001, `N=${totalSeats} seat=${s}: facing diff ${Math.abs(rotDiff).toFixed(4)} rad must be <= 0.001 rad`);
       }
     }
   });
 
   runTest(4, "M2.17: Continuous 50 Hz kinematic verification across ALL N in [2..8] (0 snaps, 0 dead stops, 0 flips, arrival <= 1.0mm)", () => {
     const dt = 0.02;
-    const numSteps = Math.round(6.80 / dt) + 1; // 341 steps
     let deadStops = 0;
     let snaps = 0;
     let flips = 0;
     let arrivalErrors = 0;
 
     for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
+      const arc = getContestantArcParams(totalSeats);
       for (let s = 0; s < totalSeats; s++) {
         const cfg = getDeskConfig(s, totalSeats);
+        const timing = getEntranceSeatTiming(s, totalSeats);
         const deskRotY = cfg.rotY;
         const deskX = cfg.pos[0] - Math.sin(deskRotY) * 0.42;
         const deskZ = cfg.pos[2] - Math.cos(deskRotY) * 0.42;
+        const numSteps = Math.round(timing.bowEndSec / dt) + 1;
 
         let prevPos: [number, number, number] | null = null;
         let prevRotY: number | null = null;
 
         for (let step = 0; step < numSteps; step++) {
           const t = +(step * dt).toFixed(3);
-          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, cfg.phi);
+          const traj = evaluateContestantEntranceTrajectory(t, s, cfg, arc.startPhi, totalSeats);
 
           const isWalkingPhase =
             (t >= 0.05 && t <= 0.55) ||
             (t >= 0.65 && t <= 1.75) ||
             (t >= 3.05 && t <= 3.95) ||
-            (t >= 4.05 && t <= 6.45);
+            (t >= 4.05 && t <= timing.arrivalSec - 0.05);
 
           if (isWalkingPhase) {
             if (traj.vel < 0.25) deadStops++;
@@ -433,13 +548,37 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     assert.equal(arrivalErrors, 0, `Expected 0 arrival errors (> 1.0mm), found ${arrivalErrors}`);
   });
 
+  runTest(4, "M2.21: Anti-early-cut Round Camera Timings (Khởi Động 5s/4s, VCNV even slots >= 3s, Về Đích 2.0s approach + 1.5s result)", () => {
+    // 1. VCNV: Even partitioning eliminates any <2s tail cut around 14.0s
+    for (const totalSeats of [2, 3, 4, 6, 8]) {
+      const s13 = evaluateVcnvTimerSeat(13.0, totalSeats);
+      const s14 = evaluateVcnvTimerSeat(14.5, totalSeats);
+      assert.equal(s13, s14, `VCNV N=${totalSeats}: must NOT execute short sliver cut between 13.0s and 14.5s`);
+    }
+
+    // 2. Về Đích: choosing holds CAM 10 for first 2.0s while contestant rounds behind podiums, then MORPHs to CAM 15
+    const vdChoosing = { phase: "choosing", turnIdx: 0 } as any;
+    assert.equal(evaluateVeDichCameraState(vdChoosing, 11500, 10000, 10000, 4).camAngle, 10, "VeDich t=1.5s still frames CAM 10");
+    assert.equal(evaluateVeDichCameraState(vdChoosing, 12100, 10000, 10000, 4).camAngle, 15, "VeDich t=2.1s morphs to CAM 15");
+
+    // 3. Về Đích result holds stealer/contestant reaction for 1.5s before cutting to MC CAM 3
+    const vdResultSteal = { phase: "result", turnIdx: 0, steal: { buzzedSeat: 2 } } as any;
+    assert.equal(evaluateVeDichCameraState(vdResultSteal, 21400, 20000, 10000, 4).camAngle, 7, "Result holds stealer seat 2 at 1.4s");
+    assert.equal(evaluateVeDichCameraState(vdResultSteal, 21550, 20000, 10000, 4).camAngle, 3, "Result cuts to MC CAM 3 at 1.55s");
+
+    // 4. Khởi Động holds MC intro 5.0s and segmentDone 4.0s
+    const camSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/studio/useOlympiaCamera.ts"), "utf-8");
+    assert.ok(camSrc.includes("introElapsed < 5.0"), "Khởi Động intro holds MC zoom-in for 5.0s");
+    assert.ok(camSrc.includes("segDoneElapsed < 4.0"), "Khởi Động segmentDone holds contestant closeup for 4.0s");
+  });
+
   console.log("\n================================================================================");
   console.log("MILESTONE 2 TEST SUMMARY");
   console.log("================================================================================");
   console.log(`  Tier 1 (Feature Coverage):        ${tier1Count} / 6 passed`);
   console.log(`  Tier 2 (Boundary & Continuity):   ${tier2Count} / 6 passed`);
-  console.log(`  Tier 3 (Cross-Feature Combos):    ${tier3Count} / 3 passed`);
-  console.log(`  Tier 4 (Real-World Scenarios):    ${tier4Count} / 3 passed`);
+  console.log(`  Tier 3 (Cross-Feature Combos):    ${tier3Count} / 6 passed`);
+  console.log(`  Tier 4 (Real-World Scenarios):    ${tier4Count} / 4 passed`);
   console.log("--------------------------------------------------------------------------------");
   console.log(`  TOTAL M2 TESTS EXECUTED:          ${totalPassed} / ${totalExecuted} passed (100% Pass Rate)`);
   console.log("================================================================================\n");

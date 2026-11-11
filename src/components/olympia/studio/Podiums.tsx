@@ -6,6 +6,17 @@ import * as THREE from "three";
 import type { OlympiaState } from "@/lib/olympia/types";
 import { isSeatBuzzedIn3D, computeTargetLightingMode } from "./useOlympiaLightingState";
 import { getContestantArcParams } from "./CameraController";
+import {
+  DESK_STAND_RADIUS,
+  ENTRANCE_CORRIDOR_RADIUS,
+  ENTRANCE_DESK_BOW_SEC,
+  ENTRANCE_STAIRS_END_SEC,
+  ENTRANCE_WING_OFFSET_RAD,
+  STAGE_CENTER_Z,
+  getContestantArcParams as getSharedArcParams,
+  getEntranceScheduleOffsetsMs,
+  getEntranceSeatTiming,
+} from "@/lib/olympia/entrance-geometry";
 
 interface PodiumsProps {
   state?: OlympiaState | null;
@@ -3337,42 +3348,62 @@ export function getGrandstandStairY(z: number): number {
  * Evaluates the full continuous 3D trajectory, velocity-aligned rotY, synchronized walkPhase,
  * and bounce for a walking contestant during the entrance sequence.
  */
+function normalizeAnglePi(a: number): number {
+  let out = a % (2 * Math.PI);
+  if (out > Math.PI) out -= 2 * Math.PI;
+  if (out < -Math.PI) out += 2 * Math.PI;
+  return out;
+}
+
+/**
+ * Evaluates C1-smooth collision-free 3D entrance trajectory for a contestant from grandstand portal arch
+ * -> staircases -> outer Stage Left wing (past Seat 0) -> rear corridor (R = 7.52m, behind all podiums)
+ * -> assigned desk standing position.
+ */
 export function evaluateContestantEntranceTrajectory(
   t: number,
   seatId: number,
   targetCfg: { pos: [number, number, number]; rotY: number },
-  firstPhi: number = 0.38
+  firstPhi: number = 0.38,
+  totalSeats?: number
 ) {
   const deskRotY = targetCfg ? targetCfg.rotY : 0;
   const deskX = targetCfg ? targetCfg.pos[0] - Math.sin(deskRotY) * 0.42 : -3.0;
   const deskY = targetCfg ? targetCfg.pos[1] : 0.22;
   const deskZ = targetCfg ? targetCfg.pos[2] - Math.cos(deskRotY) * 0.42 : -3.5;
 
-  // Outer aisle behind podium desk (R = 7.75m from (0, -0.5m)):
-  // Podiums are placed along the arc centered at (0, -0.5m)
-  const relX = targetCfg ? targetCfg.pos[0] : -6.0;
-  const relZ = targetCfg ? targetCfg.pos[2] - (-0.5) : -2.5;
-  const targetPhi = Math.atan2(-relZ, -relX); // target podium polar angle
+  const deskRelX = deskX;
+  const deskRelZ = deskZ - STAGE_CENTER_Z;
+  const deskPolarR = Math.hypot(deskRelX, deskRelZ) || DESK_STAND_RADIUS;
+  const targetPhi = Math.atan2(-deskRelZ, -deskRelX);
 
-  // Rear corridor radius (between podium backs at R=7.02m and Science Wall at R=8.60m)
-  const aisleRadius = 7.75;
+  const timing = totalSeats != null ? getEntranceSeatTiming(seatId, totalSeats) : null;
+  const resolvedFirstPhi = timing
+    ? timing.firstPhi
+    : seatId === 0
+      ? targetPhi
+      : Math.min(firstPhi, targetPhi - 0.1);
 
-  // Outer left corridor entry point (dynamically placed in front of first podium)
-  const entryPhi = Math.min(0.20, firstPhi - 0.06);
-  const entryAisleX = -aisleRadius * Math.cos(entryPhi);
-  const entryAisleZ = -0.5 - aisleRadius * Math.sin(entryPhi);
+  const corridorRadius = timing ? timing.corridorRadius : ENTRANCE_CORRIDOR_RADIUS;
+  const entryPhi = timing ? timing.entryPhi : resolvedFirstPhi - ENTRANCE_WING_OFFSET_RAD;
+  const deltaPhi = Math.max(0.05, targetPhi - entryPhi);
 
-  // Aisle waypoint directly behind the contestant's assigned desk
-  const targetAisleX = -aisleRadius * Math.cos(targetPhi);
-  const targetAisleZ = -0.5 - aisleRadius * Math.sin(targetPhi);
+  const entryAisleX = -corridorRadius * Math.cos(entryPhi);
+  const entryAisleZ = STAGE_CENTER_Z - corridorRadius * Math.sin(entryPhi);
 
-  // Smooth wide sweep waypoint from bottom of stairs across dais floor towards left corridor mouth
-  const daisSweepX = -5.20;
-  const daisSweepZ = 2.50;
+  const chordA = Math.hypot(entryAisleX - 0.0, entryAisleZ - 6.2);
+  const arcLenA = timing ? timing.arcLenA : chordA * 1.12;
+  const arcLenB = corridorRadius * deltaPhi;
+  const splitU = timing
+    ? timing.splitU
+    : Math.min(0.88, Math.max(0.18, arcLenA / (arcLenA + arcLenB)));
+  const floorDurationSec = timing
+    ? timing.floorDurationSec
+    : +Math.min(8.4, Math.max(3.6, (arcLenA + arcLenB) / 2.45)).toFixed(2);
+  const arrivalSec = ENTRANCE_STAIRS_END_SEC + floorDurationSec;
+  const bowEndSec = arrivalSec + ENTRANCE_DESK_BOW_SEC;
 
   // Door side selection for contestants (alternating or seat-based):
-  // TS 1 (seat 0) & TS 3 (seat 2): emerge from Door Left (X = +1.15m, Z = 12.85m)
-  // TS 2 (seat 1) & TS 4 (seat 3) & TS 5 (seat 4): emerge from Door Right (X = -1.15m, Z = 12.85m)
   const isDoorLeft = seatId % 2 === 0;
   const doorX = isDoorLeft ? 1.15 : -1.15;
   const doorZ = 12.85;
@@ -3390,29 +3421,29 @@ export function evaluateContestantEntranceTrajectory(
   let curGestureProg = 0;
   let vel = 0;
 
-  // Phase 1 (0.0 -> 0.6s): Steps out from behind side arch door, curving onto central aisle on top plinth (11.90m)
+  // Phase 1 (0.0 -> 0.6s): Steps out from behind side arch door onto central aisle on top plinth (11.90m)
   if (t < 0.6) {
     const p = t / 0.6;
     const smoothP = p * p * (3 - 2 * p);
     curX = THREE.MathUtils.lerp(doorX, 0, smoothP);
     curY = startY;
-    curZ = THREE.MathUtils.lerp(doorZ, 11.90, smoothP);
+    curZ = THREE.MathUtils.lerp(doorZ, 11.9, smoothP);
     curRotY = THREE.MathUtils.lerp(isDoorLeft ? Math.PI - 0.35 : Math.PI + 0.35, Math.PI, smoothP);
-    const dp_dt = 6 * p * (1 - p) / 0.6;
-    vel = Math.hypot(-doorX, 11.90 - doorZ) * dp_dt;
+    const dpDt = (6 * p * (1 - p)) / 0.6;
+    vel = Math.hypot(-doorX, 11.9 - doorZ) * dpDt;
   } else if (t < 1.8) {
-    // Phase 2 (0.6 -> 1.8s): Walks down upper stairs (1.2s) to mid-stairs landing platform ("Bục Giữa" Z = 10.20m, Y = 0.92m)
+    // Phase 2 (0.6 -> 1.8s): Walks down upper stairs (1.2s) to Bục Giữa (Z = 10.20m, Y = 0.92m)
     const p = (t - 0.6) / 1.2;
     curX = 0;
-    curZ = THREE.MathUtils.lerp(11.90, 10.20, p);
+    curZ = THREE.MathUtils.lerp(11.9, 10.2, p);
     curY = getGrandstandStairY(curZ);
     curRotY = Math.PI;
-    vel = (11.90 - 10.20) / 1.2;
+    vel = (11.9 - 10.2) / 1.2;
   } else if (t < 3.0) {
     // Phase 3 (1.8 -> 3.0s): Stands firmly on Bục Giữa & performs signature gesture (1.2s)
     curX = 0;
     curY = 0.92;
-    curZ = 10.20;
+    curZ = 10.2;
     curRotY = Math.PI;
     walkingNow = false;
     const signatureGestures: Array<"wave" | "fist_pump" | "heart" | "open_arms"> = [
@@ -3424,84 +3455,128 @@ export function evaluateContestantEntranceTrajectory(
     curGesture = signatureGestures[seatId % signatureGestures.length];
     curGestureProg = Math.max(0, Math.min(1.0, (t - 1.8) / 1.2));
     vel = 0;
-  } else if (t < 4.0) {
-    // Phase 4 (3.0 -> 4.0s): Walks down lower stairs to dais floor (1.0s, arrives at dais floor Z = 6.20m, Y = 0.22m at exactly t = 4.0s)
+  } else if (t < ENTRANCE_STAIRS_END_SEC) {
+    // Phase 4 (3.0 -> 4.0s): Walks down lower stairs to dais floor [0, 0.22, 6.20]
     const p = (t - 3.0) / 1.0;
     curX = 0;
-    curZ = THREE.MathUtils.lerp(10.20, 6.20, p);
+    curZ = THREE.MathUtils.lerp(10.2, 6.2, p);
     curY = getGrandstandStairY(curZ);
     curRotY = Math.PI;
-    vel = (10.20 - 6.20) / 1.0;
-  } else if (t < 6.5) {
-    // Phase 5 (4.0 -> 6.5s): Smooth continuous trajectory across dais to assigned podium (2.5s uninterrupted walk)
-    // Replaces disjoint 5A, 5B, 5C with a single continuous C1-smooth parametric curve
-    const u = (t - 4.0) / 2.5; // Normalized progress 0 -> 1
+    vel = (10.2 - 6.2) / 1.0;
+  } else if (t < arrivalSec) {
+    // Phase 5 (4.0s -> arrivalSec): Collision-free 2-segment C1 spline
+    // Segment A (u < splitU): Cubic Hermite sweeping from [0, 6.20] around Seat 0 outer wing into (corridorRadius, entryPhi)
+    // Segment B (u >= splitU): Rear corridor arc along R = 7.52m behind seated podiums, easing inward behind assigned seat
+    const u = Math.max(0, Math.min(1.0, (t - ENTRANCE_STAIRS_END_SEC) / floorDurationSec));
 
-    // Calibrated smooth forward progression across dais floor with moderated peak velocity (Delta P < 0.25m everywhere)
-    // s(0) = 0, s(1) = 1. ds/du = 1.25 - 0.50 * u remains >= 0.75 throughout Phase 5, eliminating dead stops
-    const s = u + 0.25 * u * (1 - u);
-    const ds_du = 1.25 - 0.50 * u;
-    const invS = 1 - s;
+    let posX = 0;
+    let posZ = 6.2;
+    let duDx = 0;
+    let duDz = -1;
 
-    // P0 = [0, 0.22, 6.20] (bottom of lower stairs)
-    const p0x = 0.00;
-    const p0z = 6.20;
-    // P1 = [0, 0.22, 3.80] (start tangent along -Z, guaranteeing initial heading rotY = Math.PI at t = 4.0s, zero rotational snap!)
-    const p1x = 0.00;
-    const p1z = 3.80;
-    // Strictly monotonic control point positioning: P1 -> P2 -> P3 -> P4 progress strictly monotonically in X and Z
-    // Eliminates all coordinate reversals, ensuring non-zero tangent velocity (>= 0.30 m/s) and zero rotational singularities
-    const p2x = 0.25 * deskX;
-    const p2z = 0.60 * p1z + 0.40 * deskZ;
-    // P3 = approach waypoint before desk
-    const p3x = 0.80 * deskX;
-    const p3z = 0.20 * p1z + 0.80 * deskZ;
-    // P4 = [deskX, 0.22, deskZ] (desk standing position)
-    const p4x = deskX;
-    const p4z = deskZ;
+    // Exact tangent magnitude at segment boundary so Segment A & Segment B velocities match C1 continuously
+    const arcSpeedU = arcLenB / (1 - splitU);
+    const dirEntryX = Math.sin(entryPhi);
+    const dirEntryZ = -Math.cos(entryPhi);
 
-    // Quartic Bézier evaluation across s in [0, 1]
-    const s2 = s * s;
-    const s3 = s2 * s;
-    const s4 = s3 * s;
-    const iU = invS;
-    const iU2 = iU * iU;
-    const iU3 = iU2 * iU;
-    const iU4 = iU3 * iU;
+    if (u < splitU) {
+      const sA = u / splitU;
+      const s2 = sA * sA;
+      const s3 = s2 * sA;
 
-    const posX = iU4 * p0x + 4 * iU3 * s * p1x + 6 * iU2 * s2 * p2x + 4 * iU * s3 * p3x + s4 * p4x;
-    const posZ = iU4 * p0z + 4 * iU3 * s * p1z + 6 * iU2 * s2 * p2z + 4 * iU * s3 * p3z + s4 * p4z;
+      const h00 = 2 * s3 - 3 * s2 + 1;
+      const h10 = s3 - 2 * s2 + sA;
+      const h01 = -2 * s3 + 3 * s2;
+      const h11 = s3 - s2;
 
-    const tanX = 4 * iU3 * (p1x - p0x) + 12 * iU2 * s * (p2x - p1x) + 12 * iU * s2 * (p3x - p2x) + 4 * s3 * (p4x - p3x);
-    const tanZ = 4 * iU3 * (p1z - p0z) + 12 * iU2 * s * (p2z - p1z) + 12 * iU * s2 * (p3z - p2z) + 4 * s3 * (p4z - p3z);
+      const dh00 = 6 * s2 - 6 * sA;
+      const dh10 = 3 * s2 - 4 * sA + 1;
+      const dh01 = -6 * s2 + 6 * sA;
+      const dh11 = 3 * s2 - 2 * sA;
 
-    vel = Math.hypot(tanX, tanZ) * (ds_du / 2.5);
+      const m0Mag = arcLenA;
+      const m1Mag = splitU * arcSpeedU;
 
+      const m0x = 0.0;
+      const m0z = -m0Mag;
+      const m1x = dirEntryX * m1Mag;
+      const m1z = dirEntryZ * m1Mag;
+
+      posX = h00 * 0.0 + h10 * m0x + h01 * entryAisleX + h11 * m1x;
+      posZ = h00 * 6.2 + h10 * m0z + h01 * entryAisleZ + h11 * m1z;
+
+      const dsDx = dh00 * 0.0 + dh10 * m0x + dh01 * entryAisleX + dh11 * m1x;
+      const dsDz = dh00 * 6.2 + dh10 * m0z + dh01 * entryAisleZ + dh11 * m1z;
+      duDx = dsDx / splitU;
+      duDz = dsDz / splitU;
+    } else {
+      const v = Math.max(0, Math.min(1.0, (u - splitU) / (1 - splitU)));
+      const phi = entryPhi + deltaPhi * v;
+
+      // Keep strictly at outer corridor radius (7.52m) while passing behind earlier seats;
+      // tuck smoothly inward to deskPolarR (~7.07m) only over final <= 0.145 rad behind own podium.
+      const tuckSpanPhi = Math.min(0.145, deltaPhi * 0.62);
+      const tuckStartV = 1.0 - tuckSpanPhi / deltaPhi;
+      let r = corridorRadius;
+      let drDv = 0;
+      if (v > tuckStartV) {
+        const w = Math.max(0, Math.min(1.0, (v - tuckStartV) / Math.max(1e-5, 1.0 - tuckStartV)));
+        const sw = w * w * (3 - 2 * w);
+        const dswDw = 6 * w * (1 - w);
+        r = corridorRadius - (corridorRadius - deskPolarR) * sw;
+        drDv = (-(corridorRadius - deskPolarR) * dswDw) / Math.max(1e-5, 1.0 - tuckStartV);
+      }
+
+      const cosPhi = Math.cos(phi);
+      const sinPhi = Math.sin(phi);
+      posX = -r * cosPhi;
+      posZ = STAGE_CENTER_Z - r * sinPhi;
+
+      const dvDx = -drDv * cosPhi + r * deltaPhi * sinPhi;
+      const dvDz = -drDv * sinPhi - r * deltaPhi * cosPhi;
+      duDx = dvDx / (1 - splitU);
+      duDz = dvDz / (1 - splitU);
+    }
+
+    vel = Math.hypot(duDx, duDz) / floorDurationSec;
     curX = posX;
     curY = 0.22;
     curZ = posZ;
 
-    // Continuous velocity-aligned rotation: compute moveAngle = Math.atan2(tanX, tanZ);
-    // Smooth blend into deskRotY across dais transit (u in [0, 1]) to cleanly orient contestant toward audience.
-    // Eliminates narrow blend window snaps (max angular rate <= 3.3 deg per 0.05s, well within 5.0 deg threshold). Zero snaps!
-    const rawMoveAngle = Math.atan2(tanX, tanZ);
+    // Continuous velocity-aligned heading, gradually turning into deskRotY over final ~1.95s
+    // so rotational rate stays well below 5.0 deg / 0.05s step everywhere.
+    const rawMoveAngle = Math.atan2(duDx, duDz);
     const moveAngle = rawMoveAngle < 0 ? rawMoveAngle + 2 * Math.PI : rawMoveAngle;
-    const blendStart = 0.0;
-    const blendP = (u - blendStart) / (1 - blendStart);
-    const blendEase = blendP + 0.10 * blendP * (1 - blendP);
-    let diff = (deskRotY - moveAngle) % (2 * Math.PI);
-    if (diff > Math.PI) diff -= 2 * Math.PI;
-    if (diff < -Math.PI) diff += 2 * Math.PI;
-    curRotY = moveAngle + diff * blendEase;
+    const rawEntryAngle = Math.atan2(dirEntryX, dirEntryZ);
+    const entryAngle = rawEntryAngle < 0 ? rawEntryAngle + 2 * Math.PI : rawEntryAngle;
+
+    let baseHeading = moveAngle;
+    if (u < splitU) {
+      // Smoothly pivot from stair exit heading (PI) into rear-corridor heading (entryAngle)
+      // across Segment A, hitting exact C1 tangent alignment at u = splitU
+      const pA = Math.max(0, Math.min(1.0, u / splitU));
+      const smA = pA * pA * (3 - 2 * pA);
+      baseHeading = Math.PI + normalizeAnglePi(entryAngle - Math.PI) * smA;
+    }
+
+    const turnWindowU = Math.min(0.55, 2.2 / floorDurationSec);
+    const turnStartU = 1.0 - turnWindowU;
+    let blendEase = 0;
+    if (u > turnStartU) {
+      const turnP = Math.max(0, Math.min(1.0, (u - turnStartU) / Math.max(1e-5, turnWindowU)));
+      blendEase = turnP * turnP * (3 - 2 * turnP);
+    }
+    const diff = normalizeAnglePi(deskRotY - baseHeading);
+    curRotY = baseHeading + diff * blendEase;
   } else {
-    // Phase 6 (6.5 -> 6.8s): Arrived and standing proudly behind desk with desk greeting bow (0.3s)
+    // Phase 6 (arrivalSec -> bowEndSec+): Arrived behind desk with greeting bow
     curX = deskX;
     curY = deskY;
     curZ = deskZ;
     curRotY = deskRotY;
     walkingNow = false;
     curGesture = "desk_bow";
-    curGestureProg = Math.max(0, Math.min(1.0, (t - 6.5) / 0.3));
+    curGestureProg = Math.max(0, Math.min(1.0, (t - arrivalSec) / ENTRANCE_DESK_BOW_SEC));
     vel = 0;
   }
 
@@ -3519,6 +3594,9 @@ export function evaluateContestantEntranceTrajectory(
     bounce,
     walkPhase,
     vel,
+    floorDurationSec,
+    arrivalSec,
+    bowEndSec,
   };
 }
 
@@ -3527,6 +3605,7 @@ function SingleContestantEntranceWalkingFigure({
   seatStart,
   targetCfg,
   firstPhi = 0.38,
+  totalSeats = 4,
   serverNow,
 }: {
   seatId: number;
@@ -3537,6 +3616,7 @@ function SingleContestantEntranceWalkingFigure({
     rotY: number;
   };
   firstPhi?: number;
+  totalSeats?: number;
   serverNow?: () => number;
 }) {
   const figureRef = useRef<THREE.Group>(null);
@@ -3554,7 +3634,7 @@ function SingleContestantEntranceWalkingFigure({
     const now = getNow();
     const t = Math.max(0, (now - seatStart) / 1000);
 
-    const traj = evaluateContestantEntranceTrajectory(t, seatId, targetCfg, firstPhi);
+    const traj = evaluateContestantEntranceTrajectory(t, seatId, targetCfg, firstPhi, totalSeats);
 
     if (traj.walkingNow !== isWalking) {
       setIsWalking(traj.walkingNow);
@@ -3602,22 +3682,24 @@ export function ContestantEntranceWalkingFigures({
 
   const getNow = serverNow || (() => Date.now());
   const now = getNow();
+  const totalSeats = contestantConfigs.length;
   const currentSeat = entrance.currentSeatIdx ?? 0;
   const startTimes = entrance.seatStartTimes || [];
+  const { seatStartOffsetsMs } = getEntranceScheduleOffsetsMs(totalSeats);
 
-  // Concurrently render all active walking contestants whose elapsed walk time is < 6.8s
+  // Concurrently render all active walking contestants once their walk has started
   const activeFigures: Array<{
     seatId: number;
     seatStart: number;
     targetCfg: { seatId: number; pos: [number, number, number]; rotY: number };
   }> = [];
 
-  for (let i = 0; i < contestantConfigs.length; i++) {
+  for (let i = 0; i < totalSeats; i++) {
     const seatStart =
       startTimes[i] ??
       (i === currentSeat
         ? entrance.seatStartedAt || entrance.startedAt
-        : (entrance.startedAt || now) + i * 4000);
+        : (entrance.startedAt || now) + (seatStartOffsetsMs[i] ?? i * 6800));
 
     const elapsed = (now - seatStart) / 1000;
     // Render figure once walk has started; stays at desk seamlessly until entire entrance sequence concludes
@@ -3644,6 +3726,7 @@ export function ContestantEntranceWalkingFigures({
           seatStart={fig.seatStart}
           targetCfg={fig.targetCfg}
           firstPhi={firstPhi}
+          totalSeats={totalSeats}
           serverNow={serverNow}
         />
       ))}
@@ -3855,6 +3938,115 @@ function VeDichCenterPodium({ isRed = false }: { isRed?: boolean }) {
  * - When their turn finishes (seatDone): walks smoothly back to their home desk.
  * - All other 3 contestants remain permanently standing at their own desks!
  */
+/**
+ * Evaluates collision-free 3D walk trajectory for Về Đích contestant between assigned home desk
+ * and VeDichCenterPodium ([0, 0.188, -0.90]), routing via the rear corridor (R = 7.52m) past the
+ * nearest unobstructed arc end (Seat 0 downstage wing or Seat N-1 upstage wing) without intersecting any podium.
+ */
+export function evaluateVeDichWalkTrajectory(
+  walkProgress: number,
+  seatId: number,
+  homePos: [number, number, number],
+  homeRotY: number,
+  totalSeats: number = 4,
+  isReturning: boolean = false
+) {
+  const u = Math.max(0, Math.min(1.0, walkProgress));
+  const targetCenterPos: [number, number, number] = [0.0, 0.188, -0.9];
+
+  const deskX = homePos[0] - Math.sin(homeRotY) * 0.42;
+  const deskZ = homePos[2] - Math.cos(homeRotY) * 0.42;
+
+  const deskRelX = deskX;
+  const deskRelZ = deskZ - STAGE_CENTER_Z;
+  const deskR = Math.hypot(deskRelX, deskRelZ) || DESK_STAND_RADIUS;
+  const seatPhi = Math.atan2(-deskRelZ, -deskRelX);
+
+  const arc = getSharedArcParams(totalSeats);
+  const corridorRadius = ENTRANCE_CORRIDOR_RADIUS;
+  const useLeftWing = seatId <= (totalSeats - 1) / 2;
+  const exitPhi = useLeftWing
+    ? arc.startPhi - ENTRANCE_WING_OFFSET_RAD
+    : arc.endPhi + ENTRANCE_WING_OFFSET_RAD;
+
+  // Waypoint just behind own desk into rear corridor, and wing exit point outside podium row
+  const exitX = -corridorRadius * Math.cos(exitPhi);
+  const exitZ = STAGE_CENTER_Z - corridorRadius * Math.sin(exitPhi);
+
+  // Stage interior sweep control point well clear of podiums (R < 5.5m) and Laurel Vitrine ([1.8, 2.6])
+  const sweepMidX = useLeftWing ? -3.4 : -1.55;
+  const sweepMidZ = useLeftWing ? 1.85 : -3.95;
+
+  let curX = deskX;
+  let curY = 0.22;
+  let curZ = deskZ;
+  let dX = 0;
+  let dZ = 1;
+
+  if (u < 0.16) {
+    // 1. Step cleanly backward from desk (deskR -> 7.52m) along radial normal
+    const s = u / 0.16;
+    const smoothS = s * s * (3 - 2 * s);
+    const dSmooth = (6 * s * (1 - s)) / 0.16;
+    const r = deskR + (corridorRadius - deskR) * smoothS;
+    curX = -r * Math.cos(seatPhi);
+    curZ = STAGE_CENTER_Z - r * Math.sin(seatPhi);
+    const dr = (corridorRadius - deskR) * dSmooth;
+    dX = -dr * Math.cos(seatPhi);
+    dZ = -dr * Math.sin(seatPhi);
+  } else if (u < 0.54) {
+    // 2. Walk tangentially behind podiums in rear corridor (R = 7.52m) to nearest open wing
+    const s = (u - 0.16) / 0.38;
+    const smoothS = s * s * (3 - 2 * s);
+    const dSmooth = (6 * s * (1 - s)) / 0.38;
+    const phi = seatPhi + (exitPhi - seatPhi) * smoothS;
+    curX = -corridorRadius * Math.cos(phi);
+    curZ = STAGE_CENTER_Z - corridorRadius * Math.sin(phi);
+    const dPhi = (exitPhi - seatPhi) * dSmooth;
+    dX = corridorRadius * Math.sin(phi) * dPhi;
+    dZ = -corridorRadius * Math.cos(phi) * dPhi;
+  } else {
+    // 3. Smooth quadratic sweep from unobstructed wing past interior floor to center podium [0, 0.188, -0.90]
+    const s = (u - 0.54) / 0.46;
+    const inv = 1 - s;
+    curX = inv * inv * exitX + 2 * inv * s * sweepMidX + s * s * targetCenterPos[0];
+    curY = 0.22 + (targetCenterPos[1] - 0.22) * s;
+    curZ = inv * inv * exitZ + 2 * inv * s * sweepMidZ + s * s * targetCenterPos[2];
+    dX = (2 * inv * (sweepMidX - exitX) + 2 * s * (targetCenterPos[0] - sweepMidX)) / 0.46;
+    dZ = (2 * inv * (sweepMidZ - exitZ) + 2 * s * (targetCenterPos[2] - sweepMidZ)) / 0.46;
+  }
+
+  // Forward velocity direction along progression (reverse sign when returning from center to desk)
+  const dirX = isReturning ? -dX : dX;
+  const dirZ = isReturning ? -dZ : dZ;
+  const dirMag = Math.hypot(dirX, dirZ);
+  const walkAngle = dirMag > 1e-4 ? Math.atan2(dirX, dirZ) : isReturning ? homeRotY : 0;
+
+  let rotY = walkAngle;
+  if (isReturning) {
+    if (u < 0.15) {
+      const w = (0.15 - u) / 0.15;
+      rotY = walkAngle + normalizeAnglePi(homeRotY - walkAngle) * w;
+    } else if (u > 0.85) {
+      const w = (u - 0.85) / 0.15;
+      rotY = walkAngle + normalizeAnglePi(0 - walkAngle) * w;
+    }
+  } else {
+    if (u < 0.15) {
+      const w = (0.15 - u) / 0.15;
+      rotY = walkAngle + normalizeAnglePi(homeRotY - walkAngle) * w;
+    } else if (u > 0.85) {
+      const w = (u - 0.85) / 0.15;
+      rotY = walkAngle + normalizeAnglePi(0 - walkAngle) * w;
+    }
+  }
+
+  return {
+    rawPos: [curX, curY, curZ] as [number, number, number],
+    rotY,
+  };
+}
+
 export function VeDichWalkingContestant({
   seatId,
   homePos,
@@ -3873,25 +4065,28 @@ export function VeDichWalkingContestant({
   const rootRef = useRef<THREE.Group>(null);
   const [isWalking, setIsWalking] = useState(false);
 
-  // Track phase entry and turn timing
-  const lastStateRef = useRef<{ turnIdx: number; phase: string; startedAt: number }>({
+  // Track turn + high-level mode ("idle" | "onStage" | "seatDone") so sub-phase changes
+  // (choosing -> packageReady -> thinking -> result -> stealing) NEVER restart the walk!
+  const lastStateRef = useRef<{ turnIdx: number; mode: string; startedAt: number }>({
     turnIdx: -1,
-    phase: "",
+    mode: "idle",
     startedAt: 0,
   });
 
-  const targetCenterPos: [number, number, number] = [0.0, 0.188, -0.90];
+  const targetCenterPos: [number, number, number] = [0.0, 0.188, -0.9];
+  const totalSeats = Math.max(1, state?.seats?.length || 4);
 
   useFrame(() => {
     const vd = state?.veDich;
     const curTurn = vd?.turnIdx ?? 0;
     const curPhase = vd?.phase ?? "idle";
+    const mode = curPhase === "idle" ? "idle" : curPhase === "seatDone" ? "seatDone" : "onStage";
     const now = serverNow ? serverNow() : Date.now();
 
-    if (curTurn !== lastStateRef.current.turnIdx || curPhase !== lastStateRef.current.phase) {
+    if (curTurn !== lastStateRef.current.turnIdx || mode !== lastStateRef.current.mode) {
       lastStateRef.current = {
         turnIdx: curTurn,
-        phase: curPhase,
+        mode,
         startedAt: now,
       };
     }
@@ -3903,7 +4098,7 @@ export function VeDichWalkingContestant({
     let walkingNow = false;
     let isReturning = false;
 
-    if (curPhase === "seatDone") {
+    if (mode === "seatDone") {
       isReturning = true;
       if (elapsed < DURATION) {
         const raw = elapsed / DURATION;
@@ -3913,7 +4108,7 @@ export function VeDichWalkingContestant({
         walkProgress = 0.0;
         walkingNow = false;
       }
-    } else if (curPhase !== "idle") {
+    } else if (mode === "onStage") {
       if (elapsed < DURATION) {
         const raw = elapsed / DURATION;
         walkProgress = raw * raw * (3 - 2 * raw);
@@ -3931,62 +4126,19 @@ export function VeDichWalkingContestant({
       setIsWalking(walkingNow);
     }
 
-    // Trajectory Bézier Curve:
-    // P0: Desk standing position (behind desk)
-    const p0x = homePos[0] - 0.42 * Math.sin(homeRotY);
-    const p0y = 0.22;
-    const p0z = homePos[2] - 0.42 * Math.cos(homeRotY);
+    const { rawPos, rotY } = evaluateVeDichWalkTrajectory(
+      walkProgress,
+      seatId,
+      homePos,
+      homeRotY,
+      totalSeats,
+      isReturning
+    );
 
-    // P1: Stepping outward into aisle
-    const p1x = p0x + 0.85 * Math.cos(homeRotY - Math.PI / 2);
-    const p1y = 0.22;
-    const p1z = p0z + 0.85 * Math.sin(homeRotY - Math.PI / 2);
-
-    // P2: Smooth approach curve toward center dais
-    const p2x = -0.45;
-    const p2y = 0.20;
-    const p2z = -1.65;
-
-    // P3: Standing position behind center podium
-    const p3x = targetCenterPos[0];
-    const p3y = targetCenterPos[1];
-    const p3z = targetCenterPos[2];
-
-    const u = Math.max(0, Math.min(1.0, walkProgress));
-    const inv = 1 - u;
-    const w0 = inv * inv * inv;
-    const w1 = 3 * inv * inv * u;
-    const w2 = 3 * inv * u * u;
-    const w3 = u * u * u;
-
-    const curX = w0 * p0x + w1 * p1x + w2 * p2x + w3 * p3x;
-    const curY = w0 * p0y + w1 * p1y + w2 * p2y + w3 * p3y;
-    const curZ = w0 * p0z + w1 * p1z + w2 * p2z + w3 * p3z;
-
-    const dX = 3 * inv * inv * (p1x - p0x) + 6 * inv * u * (p2x - p1x) + 3 * u * u * (p3x - p2x);
-    const dZ = 3 * inv * inv * (p1z - p0z) + 6 * inv * u * (p2z - p1z) + 3 * u * u * (p3z - p2z);
-
-    let rotY = 0;
-    if (isReturning) {
-      const walkAngle = Math.atan2(-dX, -dZ);
-      if (u < 0.15) {
-        rotY = THREE.MathUtils.lerp(walkAngle, homeRotY, (0.15 - u) / 0.15);
-      } else {
-        rotY = THREE.MathUtils.lerp(0, walkAngle, Math.min(1.0, (1.0 - u) / 0.15));
-      }
-    } else {
-      const walkAngle = Math.atan2(dX, dZ);
-      if (u > 0.85) {
-        rotY = THREE.MathUtils.lerp(walkAngle, 0, (u - 0.85) / 0.15);
-      } else {
-        rotY = THREE.MathUtils.lerp(homeRotY, walkAngle, Math.min(1.0, u / 0.15));
-      }
-    }
-
-    const bounce = walkingNow ? Math.abs(Math.sin(u * Math.PI * 14)) * 0.024 : 0;
+    const bounce = walkingNow ? Math.abs(Math.sin(walkProgress * Math.PI * 14)) * 0.024 : 0;
 
     if (rootRef.current) {
-      rootRef.current.position.set(curX, curY + bounce, curZ);
+      rootRef.current.position.set(rawPos[0], rawPos[1] + bounce, rawPos[2]);
       rootRef.current.rotation.y = rotY;
     }
   });
@@ -5211,23 +5363,25 @@ export function Podiums({
           (state.currentRound === "khoiDong" ? Boolean(state.khoiDong?.started) : true)
         );
 
+        const { seatStartOffsetsMs } = getEntranceScheduleOffsetsMs(activeCount);
+        const seatTiming = getEntranceSeatTiming(cfg.seatId, activeCount);
         const getSeatStart = (seatIdx: number) => {
           if (!state?.entranceState) return 0;
           return (
             state.entranceState.seatStartTimes?.[seatIdx] ??
             (seatIdx === currentEntranceSeat
               ? currentEntranceSeatStartedAt || 0
-              : (state.entranceState.startedAt || 0) + seatIdx * 4000)
+              : (state.entranceState.startedAt || 0) + (seatStartOffsetsMs[seatIdx] ?? seatIdx * 6800))
           );
         };
         const now = serverNow ? serverNow() : Date.now();
         const thisSeatStart = getSeatStart(cfg.seatId);
         const thisSeatElapsed = thisSeatStart > 0 ? (now - thisSeatStart) / 1000 : 0;
-        const hasFinishedEntrance = thisSeatStart > 0 && thisSeatElapsed >= 6.8;
+        const hasFinishedEntrance = thisSeatStart > 0 && thisSeatElapsed >= seatTiming.bowEndSec;
 
         // ── PODIUM SCOREBOARD 3-PHASE LIFECYCLE ──
         // 1. "logo": Mới mở phòng (Lobby / Pre-match / Intro / Thí sinh chưa bước tới bục) -> Logo Đường lên đỉnh Olympia
-        // 2. "name_school": Từng thí sinh bước tới bục của mình xong -> Tên + Trường THPT (giữ nguyên trong suốt Chào sân & Chờ mở màn introStandby!)
+        // 2. "name_school": Từng thí sinh chuẩn bị bước vào sau bục của mình xong -> Tên + Trường THPT
         // 3. "name_score": Chỉ chuyển sang Tên + Điểm khi vòng thi Khởi Động thực sự bấm bắt đầu (state.khoiDong.started = true)
         let screenMode: PodiumScreenMode = "logo";
         if (isCompetitionRound) {
@@ -5235,8 +5389,8 @@ export function Podiums({
         } else if (hasEntranceCompleted) {
           screenMode = "name_school";
         } else if (isEntranceActive) {
-          // Early Podium Scoreboard Transition (5200ms / 5.2s):
-          const isApproachingOrArrived = thisSeatStart > 0 && thisSeatElapsed >= 5.2; // 5200ms
+          // Transition to name + school shortly before stepping behind podium desk
+          const isApproachingOrArrived = thisSeatStart > 0 && thisSeatElapsed >= Math.max(4.5, seatTiming.arrivalSec - 0.8);
           screenMode = hasFinishedEntrance || isApproachingOrArrived ? "name_school" : "logo";
         } else {
           screenMode = "logo";

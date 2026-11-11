@@ -10,6 +10,7 @@ import { SAMPLE_QUESTION_SET, BAC_AI_QUESTION_SET } from "./sample-questions";
 import { buildBalancedKhoiDongQueues } from "./ai-classifier";
 
 import { canStartScoreSummary, seatToStudioCamera, type OlympiaConfig, type RoundId, type RulesetId } from "./types";
+import { getEntranceScheduleOffsetsMs } from "./entrance-geometry";
 
 
 
@@ -1476,43 +1477,48 @@ test("sequential contestant entrance: start, manual next, gesture assignment, an
   assert.equal(g.state.cue?.kind, "stop");
 });
 
-test("staggered pipelined contestant entrance: auto-advances at 4000ms per contestant (stairs to floor) and completes 6800ms after last contestant", () => {
+test("staggered pipelined contestant entrance: auto-advances dynamically after previous contestant settles and completes last closeup hold", () => {
   const g = game("O21", ["khoiDong"], 4, { seatCount: 4 });
   g.joinSeat("TS1", "k1");
   g.joinSeat("TS2", "k2");
   g.joinSeat("TS3", "k3");
   g.joinSeat("TS4", "k4");
 
-  g.hostAction({ type: "entrance:start" }, 10000);
+  const startMs = 10000;
+  const { seatStartOffsetsMs, totalDurationMs } = getEntranceScheduleOffsetsMs(4);
+  g.hostAction({ type: "entrance:start" }, startMs);
   assert.equal(g.state.entranceState!.currentSeatIdx, 0);
-  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000]);
+  assert.deepEqual(g.state.entranceState!.seatStartTimes, [startMs]);
 
-  // Before 4.0s: TS 1 is descending stairs
-  g.tick(13999);
+  // 1ms before TS 2 offset: TS 1 still active
+  g.tick(startMs + seatStartOffsetsMs[1] - 1);
   assert.equal(g.state.entranceState!.currentSeatIdx, 0);
 
-  // At 4.0s (14000): TS 1 steps onto floor -> TS 2 emerges from door!
-  g.tick(14000);
+  // At TS 2 offset: advances to TS 2
+  g.tick(startMs + seatStartOffsetsMs[1]);
   assert.equal(g.state.entranceState!.currentSeatIdx, 1);
-  assert.equal(g.state.entranceState!.seatStartedAt, 14000);
-  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000, 14000]);
+  assert.equal(g.state.entranceState!.seatStartedAt, startMs + seatStartOffsetsMs[1]);
+  assert.deepEqual(g.state.entranceState!.seatStartTimes, [
+    startMs,
+    startMs + seatStartOffsetsMs[1],
+  ]);
 
-  // At 8.0s (18000): TS 3 emerges from door
-  g.tick(18000);
+  // Advance to TS 3 & TS 4
+  g.tick(startMs + seatStartOffsetsMs[2]);
   assert.equal(g.state.entranceState!.currentSeatIdx, 2);
-  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000, 14000, 18000]);
-
-  // At 12.0s (22000): TS 4 emerges from door (last contestant)
-  g.tick(22000);
+  g.tick(startMs + seatStartOffsetsMs[3]);
   assert.equal(g.state.entranceState!.currentSeatIdx, 3);
-  assert.deepEqual(g.state.entranceState!.seatStartTimes, [10000, 14000, 18000, 22000]);
+  assert.deepEqual(
+    g.state.entranceState!.seatStartTimes,
+    seatStartOffsetsMs.map((o) => startMs + o)
+  );
 
-  // Before 6.8s of TS 4 (22000 + 6799 = 28799): Entrance is still active
-  g.tick(28799);
+  // 1ms before completion: Entrance is still active
+  g.tick(startMs + totalDurationMs - 1);
   assert.ok(g.state.entranceState != null);
 
-  // At 6.8s of TS 4 (22000 + 6800 = 28800): All 4 contestants have reached desks!
-  g.tick(28800);
+  // At exact completion: All 4 contestants have reached desks & held last closeup!
+  g.tick(startMs + totalDurationMs);
   assert.equal(g.state.entranceState, null);
   assert.equal(g.state.entranceCompleted, true);
   assert.equal(g.state.introStandby, true);
@@ -2333,12 +2339,12 @@ test("Intro standby lifecycle: entrance completion preserves introStandby until 
   assert.equal(g.state.introStandby, true, "introStandby stays true during entrance");
   assert.ok(g.state.entranceState?.active, "entrance active");
 
-  // Advance time through each contestant entrance:
-  // TS 1 (2000) -> TS 2 (6000) -> TS 3 (10000) -> TS 4 (14000) -> Completion (14000 + 6800 = 20800ms)
-  g.tick(6000);
-  g.tick(10000);
-  g.tick(14000);
-  g.tick(20800);
+  // Advance time through each contestant entrance per synchronized schedule:
+  const { seatStartOffsetsMs, totalDurationMs } = getEntranceScheduleOffsetsMs(4);
+  g.tick(2000 + seatStartOffsetsMs[1]);
+  g.tick(2000 + seatStartOffsetsMs[2]);
+  g.tick(2000 + seatStartOffsetsMs[3]);
+  g.tick(2000 + totalDurationMs);
   assert.equal(g.state.entranceCompleted, true, "All contestants arrived");
   assert.equal(g.state.entranceState, null, "Entrance no longer active");
   assert.equal(g.state.introStandby, true, "introStandby remains true waiting for Host decision");

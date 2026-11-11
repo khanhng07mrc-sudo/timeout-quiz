@@ -2,6 +2,7 @@
 import { SAMPLE_QUESTION_SET } from "./sample-questions";
 import { RULESETS, cnvPointsFor, tangTocTierPoints, turnsO22 } from "./rulesets";
 import { buildBalancedKhoiDongQueues, pickBalancedVeDichPackage, tagQAWithAI, normKey } from "./ai-classifier";
+import { getEntranceStepThresholdMs } from "./entrance-geometry";
 import {
   KHOI_DONG_SUBJECTS,
   MAX_SEATS,
@@ -474,12 +475,12 @@ export class OlympiaGame {
       return true;
     }
 
-    // Auto-advance contestant entrance (staggered 4.0s step per contestant, 6.8s total walk each)
+    // Auto-advance contestant entrance synchronized with collision-free rear-corridor walk per seat
     if (st.entranceState && st.entranceState.active) {
       const elapsedForSeat = now - st.entranceState.seatStartedAt;
       const activeCount = Math.max(1, st.seats.length);
       const isLast = st.entranceState.currentSeatIdx >= activeCount - 1;
-      const advanceThreshold = isLast ? 6800 : 4000;
+      const advanceThreshold = getEntranceStepThresholdMs(st.entranceState.currentSeatIdx, activeCount);
       if (elapsedForSeat >= advanceThreshold) {
         if (!isLast) {
           const nextIdx = st.entranceState.currentSeatIdx + 1;

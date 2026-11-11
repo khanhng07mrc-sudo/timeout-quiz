@@ -141,14 +141,12 @@ export function calculateModeDerivedConfig(
       };
     }
     case "WAGER": {
-      const roundsPerTeam = Math.max(1, Math.floor(qCount / safeTeams));
-      const adjustedTotal = roundsPerTeam * safeTeams;
       return {
-        matchMaxQuestions: adjustedTotal,
-        wagerRoundsPerTeam: roundsPerTeam,
-        roundsOrCycles: roundsPerTeam,
+        matchMaxQuestions: qCount,
+        wagerRoundsPerTeam: qCount,
+        roundsOrCycles: qCount,
         questionsPerUnit: 1,
-        descriptionVi: `Tự động chia thành ${roundsPerTeam} vòng cược điểm bí mật (${roundsPerTeam} lượt cược/đội × ${safeTeams} đội = ${adjustedTotal} câu hỏi cân não).`,
+        descriptionVi: `Gồm ${qCount} câu hỏi cược điểm bí mật. Tất cả thí sinh/đội cược điểm và trả lời đồng thời ở mỗi câu hỏi!`,
       };
     }
     case "BOUNCEBACK": {
@@ -325,7 +323,7 @@ export function allocateQuestionsForMatch(params: QuestionAllocationParams): All
   const shuffledMed = shuffle(medPool);
   const shuffledHard = shuffle(hardPool);
 
-  const isTurnBasedMode = mode === "MYSTERY_QUEST" || mode === "BOUNCEBACK" || mode === "WAGER" || mode === "DICE_RACE" || mode === "GRID_CARO";
+  const isTurnBasedMode = mode === "MYSTERY_QUEST" || mode === "BOUNCEBACK" || mode === "DICE_RACE" || mode === "GRID_CARO";
 
   let allocatedQuestions: any[] = [];
   const pickedIds = new Set<string>();
@@ -372,9 +370,6 @@ export function allocateQuestionsForMatch(params: QuestionAllocationParams): All
 
     if (mode === "MYSTERY_QUEST") {
       roundsCount = derived.mysteryQuestTurnsPerTeam || Math.max(1, Math.floor(effectiveTotal / safeTeams));
-      questionsPerRound = safeTeams;
-    } else if (mode === "WAGER") {
-      roundsCount = derived.wagerRoundsPerTeam || Math.max(1, Math.floor(effectiveTotal / safeTeams));
       questionsPerRound = safeTeams;
     } else if (mode === "BOUNCEBACK") {
       const qPerTurn = derived.bouncebackQuestionsPerTurn || 1;

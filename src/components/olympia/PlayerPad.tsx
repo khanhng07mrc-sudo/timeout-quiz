@@ -599,7 +599,9 @@ export default function PlayerPad({
                   >
                     {s.name || `TS ${s.id + 1}`}
                   </span>
-                  <div className="flex items-center gap-0.5 shrink-0">
+                </div>
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-0.5 shrink-0 min-h-[16px]">
                     {isMe && (
                       <span className="px-1 py-0.2 rounded bg-red-600 text-[9px] font-black text-white uppercase">
                         BẠN
@@ -608,8 +610,6 @@ export default function PlayerPad({
                     {isBuzzed && <span className="text-xs animate-bounce">🔔</span>}
                     {isLocked && <span className="text-xs text-rose-400">🔒</span>}
                   </div>
-                </div>
-                <div className="flex items-baseline justify-end">
                   <span
                     className={`text-lg sm:text-2xl font-black tabular-nums leading-none ${
                       isMe ? "text-white" : "text-amber-300"

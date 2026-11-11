@@ -1661,6 +1661,8 @@ export interface QuestionState {
   stealBuzzedTeamName?: string;
   stealAnsweringActive?: boolean; // When answer timer is counting down for steal team
   buzzAnsweringActive?: boolean; // In BUZZ mode: when answer timer is active for buzzed team
+  buzzGraceActive?: boolean;
+  buzzAwaitingReveal?: boolean;
   buzzedTeamId?: string;
   buzzedTeamName?: string;
   answerMethod?: "DEVICE" | "MC";
@@ -1878,7 +1880,8 @@ export interface ServerToClientEvents {
   "game:intermission": (payload: GameIntermissionPayload | null) => void;
   "game:question": (question: QuestionState) => void;
   "game:timer": (payload: { remaining: number; total: number; endsAt?: number; serverTime?: number }) => void;
-  "game:buzz": (payload: { playerId: string; playerName: string; teamId?: string; teamName?: string; attemptNumber?: number; multiplier?: number }) => void;
+  "game:buzz": (payload: { playerId: string; playerName: string; teamId?: string; teamName?: string; attemptNumber?: number; multiplier?: number; graceActive?: boolean; graceSeconds?: number }) => void;
+  "game:buzz:answered": (payload: { teamId?: string; answer: string[] }) => void;
   "game:buzz:closed": () => void;
   "game:buzz:answering": (payload: { teamId: string; teamName: string; timeLimit: number; attemptNumber?: number; maxAttempts?: number; multiplier?: number }) => void;
   "game:buzz:wrong_attempt": (payload: { teamId: string; teamName: string; attemptNumber: number; maxAttempts?: number; remainingSeconds: number; canRetry: boolean; disqualifiedTeamIds?: string[] }) => void;
@@ -2004,6 +2007,7 @@ export interface ClientToServerEvents {
   "admin:buzz:start_answer": (payload?: { duration?: number }) => void;
   "admin:buzz:unlock": () => void;
   "admin:buzz:judge": (payload: { isCorrect: boolean; code?: string }) => void;
+  "admin:buzz:reveal_now": (payload?: { code?: string }) => void;
   "admin:bounceback:open_steal": () => void;
   "admin:bounceback:start_steal_answer": (payload?: { duration?: number }) => void;
   "admin:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;
@@ -2186,3 +2190,5 @@ export type NextApiResponseWithSocket = NextApiResponse & {
     };
   };
 };
+
+

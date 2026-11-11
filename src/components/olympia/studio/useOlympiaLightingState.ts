@@ -127,9 +127,9 @@ export function computeTargetLightingMode(
     case "veDich": {
       const vd = state.veDich;
       if (!vd) return "BLUE";
-      // Turns Red on contestant onStage / package selection through turn finish:
+      // Turns Red immediately on contestant onStage / package selection through turn finish:
       // (phases: "choosing", "packageReady", "thinking", "stealing", "result")
-      if (vd.phase !== "idle" && vd.phase !== "seatDone") {
+      if (vd.onStage || (vd.phase !== "idle" && vd.phase !== "seatDone")) {
         return "RED";
       }
       return "BLUE";
@@ -344,7 +344,7 @@ export function useOlympiaLightingState(
   const isVeDich = state?.stage === "playing" && state?.currentRound === "veDich";
   const vd = isVeDich ? state?.veDich : null;
   const isVeDichDimmed = Boolean(
-    isVeDich && vd && vd.phase !== "idle" && vd.phase !== "seatDone"
+    isVeDich && vd && (vd.onStage || (vd.phase !== "idle" && vd.phase !== "seatDone"))
   );
   const activeMainContestantSeat = vd ? (vd.order?.[vd.turnIdx] ?? 0) : null;
   const is5sBuzzerChasing = Boolean(

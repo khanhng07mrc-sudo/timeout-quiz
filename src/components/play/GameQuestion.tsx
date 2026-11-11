@@ -82,7 +82,8 @@ export default function GameQuestion({
     playerName: "",
   } : null);
   const isBouncebackSteal = roomMode === "BOUNCEBACK" && Boolean(effStealTeamForSingle);
-  const isSingleSubmit = isBouncebackSteal || subMode === "SINGLE_SUBMIT";
+  const isBuzzSingleSubmit = roomMode === "BUZZ";
+  const isSingleSubmit = isBouncebackSteal || isBuzzSingleSubmit || subMode === "SINGLE_SUBMIT";
 
   const [selected, setSelected] = useState<string[]>(() => {
     if (!initialAnswer) return [];
@@ -833,17 +834,38 @@ export default function GameQuestion({
               </div>
             )
           ) : (
-            <div className="bg-white text-slate-900 border-2 border-slate-200 p-3.5 rounded-xl flex items-center justify-between shadow-md">
-              <div>
-                <span className="text-xs uppercase text-slate-600 font-black tracking-wider">🎯 Đội trả lời chính: </span>
-                <span className="font-black text-slate-950 text-base">{question.primaryTeamName ?? "Đang xác định"}</span>
+            <div className="flex flex-col items-center gap-3 w-full">
+              <div className="w-full bg-white text-slate-900 border-2 border-slate-200 p-3.5 rounded-xl flex items-center justify-between shadow-md">
+                <div>
+                  <span className="text-xs uppercase text-slate-600 font-black tracking-wider">🎯 Đội trả lời chính: </span>
+                  <span className="font-black text-slate-950 text-base">{question.primaryTeamName ?? "Đang xác định"}</span>
+                </div>
+                {isPrimaryTeam ? (
+                  <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-black shadow whitespace-nowrap shrink-0">
+                    Lượt của bạn
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-600 font-bold whitespace-nowrap shrink-0">Chờ đội chính</span>
+                )}
               </div>
-              {isPrimaryTeam ? (
-                <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-black shadow whitespace-nowrap shrink-0">
-                  Lượt của bạn
-                </span>
-              ) : (
-                <span className="text-xs text-slate-600 font-bold whitespace-nowrap shrink-0">Chờ đội chính</span>
+
+              {!isPrimaryTeam && (
+                <div className="flex flex-col items-center justify-center gap-2 my-2">
+                  <button
+                    type="button"
+                    disabled={true}
+                    style={{ touchAction: "manipulation", userSelect: "none", WebkitUserSelect: "none" }}
+                    className="w-36 h-36 sm:w-48 sm:h-48 md:w-56 md:h-56 rounded-full border-4 sm:border-8 border-white/20 bg-white/10 text-slate-400 select-none cursor-not-allowed flex flex-col items-center justify-center gap-1 sm:gap-2 opacity-60 shadow-inner"
+                  >
+                    <span className="text-4xl sm:text-5xl md:text-6xl drop-shadow">🔒</span>
+                    <span className="text-white font-black text-xs sm:text-base tracking-wider uppercase text-center px-2">
+                      CHUÔNG KHÓA
+                    </span>
+                    <span className="text-slate-400 text-[10px] sm:text-xs">
+                      Chờ đội chính hoàn thành
+                    </span>
+                  </button>
+                </div>
               )}
             </div>
           )}

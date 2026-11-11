@@ -39,8 +39,8 @@ export default function GridCaroBoard({
   }
 
   const {
-    rows,
-    cols,
+    rows: rawRows,
+    cols: rawCols,
     cells,
     previewActive = false,
     previewRemaining = 0,
@@ -54,10 +54,13 @@ export default function GridCaroBoard({
     selectedCellInfo,
     questionReady = false,
     autoAdvanceSeconds,
-    streakTargetK,
+    streakTargetK = 3,
     caroBonusPoints,
     caroAchievedTeams = [],
   } = gridState;
+
+  const rows = rawRows || (gridState as unknown as { gridSize?: number }).gridSize || Math.max(1, Math.round(Math.sqrt(cells.length)));
+  const cols = rawCols || (gridState as unknown as { gridSize?: number }).gridSize || Math.max(1, Math.ceil(cells.length / rows));
 
   const ticTacToeActive = !!gridState.caroEnabled && rows >= 4 && cols >= 4;
 
@@ -69,7 +72,7 @@ export default function GridCaroBoard({
   };
 
   return (
-    <div className={`glass rounded-2xl ${isDisplay ? "p-3 sm:p-4 space-y-2 flex flex-col justify-between h-[calc(100vh-140px)] max-h-[calc(100vh-140px)] overflow-hidden" : "p-2.5 sm:p-3 space-y-2 max-h-[75vh] overflow-y-auto"}`}>
+    <div className={`glass rounded-2xl ${isDisplay ? "p-2 sm:p-3 space-y-1.5 flex flex-col flex-1 min-h-0 overflow-y-auto" : "p-2 sm:p-3 space-y-2"}`}>
       {/* Header Info */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2">
         <div className="flex items-center gap-3">
@@ -148,28 +151,28 @@ export default function GridCaroBoard({
         </div>
       )}
 
-      {/* Selected Cell Announcement Banner */}
+      {/* Selected Cell Announcement Banner (Compact to preserve 100% board visibility) */}
       {selectedCellInfo && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-yellow-500/25 via-purple-600/25 to-cyan-500/25 border-2 border-yellow-400 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-bounce-in">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-yellow-400/20 border border-yellow-400 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+        <div className="px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-gradient-to-r from-yellow-500/25 via-purple-600/25 to-cyan-500/25 border-2 border-yellow-400 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-2 shrink-0 animate-bounce-in">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-yellow-400/20 border border-yellow-400 flex items-center justify-center text-lg shrink-0 shadow-inner">
               🎯
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-black text-base sm:text-lg text-yellow-300">
+                <span className="font-black text-sm sm:text-base text-yellow-300 truncate">
                   {selectedCellInfo.teamName}
                 </span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-yellow-400/20 text-yellow-200 border border-yellow-400/40 font-bold font-mono">
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-200 border border-yellow-400/40 font-bold font-mono">
                   ĐÃ CHỌN Ô #{selectedCellInfo.cellId}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-white font-medium mt-0.5 flex items-center gap-2">
+              <p className="text-xs text-white font-medium flex items-center gap-1.5 mt-0.5">
                 <span>Độ khó:</span>
-                <span className={`px-2 py-0.5 rounded font-black uppercase text-xs border ${difficultyColors[selectedCellInfo.difficulty] || ""}`}>
+                <span className={`px-1.5 py-0.2 rounded font-black uppercase text-[10px] border ${difficultyColors[selectedCellInfo.difficulty] || ""}`}>
                   {selectedCellInfo.difficulty}
                 </span>
-                <span className="text-cyan-300 font-bold font-mono">({selectedCellInfo.points} điểm)</span>
+                <span className="text-cyan-300 font-bold font-mono">({selectedCellInfo.points}đ)</span>
               </p>
             </div>
           </div>
@@ -178,7 +181,7 @@ export default function GridCaroBoard({
             <button
               type="button"
               onClick={onLaunchQuestion}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-black text-sm shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 animate-pulse whitespace-nowrap"
+              className="w-full sm:w-auto px-4 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-black text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 animate-pulse whitespace-nowrap cursor-pointer shrink-0"
             >
               <span>📖</span>
               <span>Hiện câu hỏi ngay</span>
@@ -189,18 +192,18 @@ export default function GridCaroBoard({
 
       {/* Auto-Advance Countdown Banner */}
       {autoAdvanceSeconds !== undefined && autoAdvanceSeconds > 0 && (
-        <div className="p-3.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-cyan-600/30 border border-purple-500/60 flex items-center justify-between animate-pulse shadow-lg">
+        <div className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-cyan-600/30 border border-purple-500/60 flex items-center justify-between animate-pulse shadow-md shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-xl">⏱️</span>
-            <span className="font-bold text-sm text-purple-200">
-              Tự động trở về bàn cờ sau: <strong className="text-white font-mono text-base">{autoAdvanceSeconds}s</strong>
+            <span className="text-lg">⏱️</span>
+            <span className="font-bold text-xs sm:text-sm text-purple-200">
+              Tự động trở về bàn cờ sau: <strong className="text-white font-mono text-sm sm:text-base">{autoAdvanceSeconds}s</strong>
             </span>
           </div>
           {isAdmin && onAdvanceNow && (
             <button
               type="button"
               onClick={onAdvanceNow}
-              className="px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black font-black text-xs shadow transition active:scale-95 flex items-center gap-1"
+              className="px-2.5 py-1 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black font-black text-xs shadow transition active:scale-95 flex items-center gap-1 cursor-pointer"
             >
               <span>⚡</span>
               <span>Trở về bàn cờ ngay</span>
@@ -209,11 +212,12 @@ export default function GridCaroBoard({
         </div>
       )}
 
-      {/* Grid of Rectangles */}
+      {/* Grid of Rectangles - Row 4 (#13-#16) is guaranteed 100% visible with equal 1fr distribution */}
       <div
-        className={`grid gap-2 sm:gap-2.5 select-none ${isDisplay ? "flex-1 min-h-0 items-stretch" : ""}`}
+        className={`grid gap-1.5 sm:gap-2 select-none ${isDisplay ? "flex-1 min-h-[200px] items-stretch" : ""}`}
         style={{
           gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+          gridTemplateRows: isDisplay ? `repeat(${rows}, minmax(46px, 1fr))` : undefined,
         }}
       >
         {cells.map((cell: GridCell) => {
@@ -230,7 +234,7 @@ export default function GridCaroBoard({
               type="button"
               disabled={!isClickable}
               onClick={() => onSelectCell && onSelectCell(cell.id)}
-              className={`relative rounded-2xl border-2 border-b-[4.5px] border-t border-white/20 transition-all flex flex-col items-center justify-between p-2 sm:p-2.5 text-center w-full ${isDisplay ? "aspect-auto h-full min-h-[48px]" : "aspect-[4/3] sm:aspect-square"} overflow-hidden select-none ${
+              className={`relative rounded-xl border-2 border-b-[4px] border-t border-white/20 transition-all flex flex-col items-center justify-between p-1.5 sm:p-2 text-center w-full ${isDisplay ? "aspect-auto h-full min-h-0" : "aspect-[4/3] sm:aspect-square"} overflow-hidden select-none ${
                 isSelectedAnim
                   ? "animate-flip-360 border-yellow-400 border-b-yellow-700 bg-yellow-500/35 shadow-2xl ring-4 ring-yellow-400/60 z-20"
                   : isSelected

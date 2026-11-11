@@ -19,11 +19,24 @@ type SFXKey =
   | "mw_mystery"
   | "mw_trade";
 
+export const GENERAL_BGM_PLAYLIST = [
+  { id: "olympia", label: "Mặc định (Đếm ngược Olympia)" },
+  { id: "question_suspense", label: "Kịch tính Hồi hộp (Suspense)" },
+  { id: "nhac_nen_1", label: "Tư duy Sôi động (Thinking 1)" },
+  { id: "nhac_nen_2", label: "Tập trung Cao độ (Thinking 2)" },
+  { id: "thinking_timer", label: "Nhịp Đếm Ngược (Timer Pulse)" },
+  { id: "lobby", label: "Nhạc Nền Hiện Đại (Lounge)" },
+  { id: "silent", label: "Không nhạc nền (Chỉ SFX)" },
+] as const;
+
 type BGMKey =
   | "lobby" | "olympia_5s" | "olympia_15s" | "olympia_20s" | "olympia_30s" | "olympia_60s" | "question_suspense" | "wheel_spin"
   | "mw_intro"
   | "mw_thinking"
-  | "mw_trade_bgm";
+  | "mw_trade_bgm"
+  | "nhac_nen_1"
+  | "nhac_nen_2"
+  | "thinking_timer";
 
 interface AudioSourceConfig {
   primary: string;
@@ -68,11 +81,16 @@ const BGM_CONFIG: Record<BGMKey, AudioSourceConfig> = {
   mw_intro: { primary: "/sounds/magic-wheel/intro_hinh_hieu.webm", fallbacks: ["/sounds/magic-wheel/intro_round.mp3", "/sounds/lobby.mp3"] },
   mw_thinking: { primary: "/sounds/magic-wheel/nhac_nen_1.mp3", fallbacks: ["/sounds/magic-wheel/thinking_timer.mp3", "/sounds/olympia_5s.mp3"] },
   mw_trade_bgm: { primary: "/sounds/magic-wheel/trade_offer.mp3", fallbacks: ["/sounds/lobby.mp3"] },
+  nhac_nen_1: { primary: "/sounds/magic-wheel/nhac_nen_1.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
+  nhac_nen_2: { primary: "/sounds/magic-wheel/nhac_nen_2.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
+  thinking_timer: { primary: "/sounds/magic-wheel/thinking_timer.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
 };
 
 class SoundManager {
   private isMuted: boolean = false;
   private volume: number = 0.8;
+  private bgmVolumeFactor: number = 0.7;
+  private roomPreferredBgm: string = "olympia";
 
   // Background Music tracks
   private currentMusicAudio: HTMLAudioElement | null = null;
@@ -493,12 +511,61 @@ class SoundManager {
       this.currentMusicKey = audioKey;
       this.currentPlayingQuestionId = null;
       this.lastMusicStartTime = now;
-      nextAudio.loop = audioKey === "question_suspense";
+      nextAudio.loop =
+        audioKey === "question_suspense" ||
+        audioKey === "nhac_nen_1" ||
+        audioKey === "nhac_nen_2" ||
+        audioKey === "thinking_timer" ||
+        audioKey === "lobby";
 
       this.fadeInAudio(nextAudio, targetVol, Math.max(300, crossfadeMs - 50), () => {
         this.pendingMusicTrack = { type, audioKey, targetVolFactor, crossfadeMs, questionId };
       });
     }
+  }
+
+  public setRoomPreferredBgm(trackId: string) {
+    this.roomPreferredBgm = trackId || "olympia";
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("quizorra_room_bgm", this.roomPreferredBgm);
+      } catch {}
+    }
+    if (this.roomPreferredBgm === "silent" && this.currentMusicType === "QUESTION") {
+      this.stopQuestionMusic(300, true);
+    }
+  }
+
+  public getRoomPreferredBgm(): string {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("quizorra_room_bgm");
+        if (saved) this.roomPreferredBgm = saved;
+      } catch {}
+    }
+    return this.roomPreferredBgm;
+  }
+
+  public setBgmVolume(volFactor: number) {
+    this.bgmVolumeFactor = Math.max(0, Math.min(1, volFactor));
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("quizorra_bgm_volume", String(this.bgmVolumeFactor));
+      } catch {}
+    }
+    if (this.currentMusicAudio && !this.isMuted) {
+      this.currentMusicAudio.volume = Math.max(0, Math.min(1, this.volume * this.bgmVolumeFactor));
+    }
+  }
+
+  public getBgmVolume(): number {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("quizorra_bgm_volume");
+        if (saved != null) this.bgmVolumeFactor = Math.max(0, Math.min(1, Number(saved)));
+      } catch {}
+    }
+    return this.bgmVolumeFactor;
   }
 
   public playLobbyMusic(mode?: string) {
@@ -510,7 +577,8 @@ class SoundManager {
       clearTimeout(this.questionMusicTimeout);
       this.questionMusicTimeout = null;
     }
-    this.playMusicTrack("LOBBY", "lobby", 0.7, 500);
+    if (this.getRoomPreferredBgm() === "silent") return;
+    this.playMusicTrack("LOBBY", "lobby", 0.7 * this.getBgmVolume() / 0.7, 500);
   }
 
   /**
@@ -518,6 +586,7 @@ class SoundManager {
    * Runs as background ambient music without interfering with Olympia question countdown tracks.
    */
   public playBiddingSuspense() {
+    if (this.getRoomPreferredBgm() === "silent") return;
     if (this.currentMusicType === "QUESTION" && this.currentMusicAudio && !this.currentMusicAudio.paused) {
       return;
     }
@@ -530,29 +599,40 @@ class SoundManager {
 
 
   /**
-   * Automatically maps to official Olympia countdown music:
-   * - <= 15s: Olympia 10 Về đích (15s)
-   * - 16s - 25s: Olympia 9 Về đích (20s)
-   * - 26s - 45s: Olympia 22 Về đích (30s)
-   * - > 45s: Olympia 10 Khởi động (60s)
-   *
-   * Countdown music plays naturally through to the end of the audio track
-   * to preserve authentic Olympia resolutions and gong/reverb effects.
+   * Maps question audio either to user-selected General Background Music track
+   * (question_suspense, nhac_nen_1, nhac_nen_2, thinking_timer, lobby, silent)
+   * or official Olympia countdown music based on remaining duration.
    */
-  public playQuestionMusic(remainingSeconds: number = 30, questionId?: string) {
+  public playQuestionMusic(remainingSeconds: number = 30, questionId?: string, overrideTrack?: string) {
     if (remainingSeconds <= 0) {
       return;
     }
 
+    const pref = overrideTrack || this.getRoomPreferredBgm();
+    if (pref === "silent") {
+      this.stopQuestionMusic(200, true);
+      return;
+    }
+
     let selectedKey: BGMKey = "olympia_30s";
-    if (remainingSeconds <= 15) {
-      selectedKey = "olympia_15s";
-    } else if (remainingSeconds <= 25) {
-      selectedKey = "olympia_20s";
-    } else if (remainingSeconds <= 45) {
-      selectedKey = "olympia_30s";
+    if (
+      pref === "question_suspense" ||
+      pref === "nhac_nen_1" ||
+      pref === "nhac_nen_2" ||
+      pref === "thinking_timer" ||
+      pref === "lobby"
+    ) {
+      selectedKey = pref;
     } else {
-      selectedKey = "olympia_60s";
+      if (remainingSeconds <= 15) {
+        selectedKey = "olympia_15s";
+      } else if (remainingSeconds <= 25) {
+        selectedKey = "olympia_20s";
+      } else if (remainingSeconds <= 45) {
+        selectedKey = "olympia_30s";
+      } else {
+        selectedKey = "olympia_60s";
+      }
     }
 
     // Check if this exact track or another QUESTION countdown track is already actively playing for the current question
@@ -582,7 +662,7 @@ class SoundManager {
       this.questionMusicTimeout = null;
     }
 
-    this.playMusicTrack("QUESTION", selectedKey, 0.85, 400, questionId);
+    this.playMusicTrack("QUESTION", selectedKey, this.getBgmVolume(), 400, questionId);
 
     // Audio file plays naturally to its end (chạy tới hết file).
     // Safety watchdog only to reset state after track completion.

@@ -206,6 +206,7 @@ const roomBuzzWindowEndsAt = new Map<string, number>(); // qKey -> when the 5s b
 const roomBuzzWindowRemaining = new Map<string, number>(); // qKey -> remaining ms in 5s buzz window
 const roomBuzzDisqualified = new Map<string, Set<string>>(); // qKey -> set of teamIds who answered wrong in this question
 const roomBuzzAnsweringTimers = new Map<string, NodeJS.Timeout>(); // qKey -> 5s answering timer
+const roomBuzzAutoRevealTimers = new Map<string, NodeJS.Timeout>(); // qKey -> auto reveal timer after 2s
 const roomTotalActorsCache = new Map<string, number>(); // roomId -> cached total actors (teams or players) for 0ms buzz window openings
 
 // New Game Modes in-memory stores
@@ -1248,6 +1249,12 @@ export function cleanupRoomInMemory(roomId: string) {
         roomBuzzDelayTimers.delete(key);
       }
     }
+    for (const [key, timer] of roomBuzzAutoRevealTimers.entries()) {
+      if (key.startsWith(`${roomId}:`)) {
+        clearTimeout(timer);
+        roomBuzzAutoRevealTimers.delete(key);
+      }
+    }
 
     // 4. Delete room-level entries and cancel zombie timers
     const prep = roomPrepareStates.get(roomId);
@@ -1638,42 +1645,60 @@ export function registerSocketHandlers(io: IO) {
       const currentQ = activeQ?.question;
       const isDeviceAnswer = (activeQ as any)?.answerMethod !== "MC";
       const answerTimeLimit = currentQ ? (isDeviceAnswer ? getBuzzedAnswerTimeLimit(currentQ) : 15) : 15;
-      const answerEndsAt = Date.now() + answerTimeLimit * 1000;
 
       if (activeQ) {
         activeQ.buzzedTeamId = winner.teamId;
         activeQ.buzzedTeamName = winner.teamName;
         activeQ.buzzedBy = winner.playerName;
-        activeQ.buzzAnsweringActive = true;
+        activeQ.buzzGraceActive = true;
+        activeQ.buzzAnsweringActive = false;
         activeQ.buzzAttemptNumber = attemptNumber;
         activeQ.buzzMaxAttempts = activeQ.buzzMaxAttempts ?? (attempts.length <= 2 ? 2 : 3);
         activeQ.buzzMultiplier = multiplier;
         activeQ.buzzWindowActive = false;
         activeQ.timeLimit = answerTimeLimit;
-        activeQ.startedAt = Date.now();
-        activeQ.endsAt = answerEndsAt;
-        activeQ.timerPending = false;
-        activeQ.timerStarted = true;
+        activeQ.timerPending = true;
+        activeQ.timerStarted = false;
         io.to(`room:${roomCode}`).emit("game:question", activeQ);
       }
 
-      io.to(`room:${roomCode}`).emit("game:buzz", buzzInfo);
-      io.to(`room:${roomCode}`).emit("game:buzz:answering", {
-        teamId: winner.teamId,
-        teamName: winner.teamName,
-        timeLimit: answerTimeLimit,
-        attemptNumber,
-        maxAttempts: activeQ?.buzzMaxAttempts,
-        multiplier,
-      });
-      io.to(`room:${roomCode}`).emit("game:timer:started", {
-        timeLimit: answerTimeLimit,
-        endsAt: answerEndsAt,
-        serverTime: Date.now(),
-        questionId,
+      io.to(`room:${roomCode}`).emit("game:buzz", {
+        ...buzzInfo,
+        graceActive: true,
+        graceSeconds: 1,
       });
 
-      startQuestionTimer(io, roomCode, roomId, questionId, answerTimeLimit);
+      // 1.0s buffer delay: Thí sinh hồi sức 1s trước khi đồng hồ trả lời chính thức đếm ngược
+      setTimeout(() => {
+        const curActiveQ = roomActiveQuestions.get(roomId);
+        if (!curActiveQ || curActiveQ.buzzedTeamId !== winner.teamId) return;
+
+        const answerEndsAt = Date.now() + answerTimeLimit * 1000;
+        curActiveQ.buzzGraceActive = false;
+        curActiveQ.buzzAnsweringActive = true;
+        curActiveQ.startedAt = Date.now();
+        curActiveQ.endsAt = answerEndsAt;
+        curActiveQ.timerPending = false;
+        curActiveQ.timerStarted = true;
+
+        io.to(`room:${roomCode}`).emit("game:question", curActiveQ);
+        io.to(`room:${roomCode}`).emit("game:buzz:answering", {
+          teamId: winner.teamId,
+          teamName: winner.teamName,
+          timeLimit: answerTimeLimit,
+          attemptNumber,
+          maxAttempts: curActiveQ.buzzMaxAttempts,
+          multiplier,
+        });
+        io.to(`room:${roomCode}`).emit("game:timer:started", {
+          timeLimit: answerTimeLimit,
+          endsAt: answerEndsAt,
+          serverTime: Date.now(),
+          questionId,
+        });
+
+        startQuestionTimer(io, roomCode, roomId, questionId, answerTimeLimit);
+      }, 1000);
     } else if (mode === "BOUNCEBACK") {
       if (roomStealBuzzed.has(qKey)) return;
 
@@ -2359,9 +2384,6 @@ export function registerSocketHandlers(io: IO) {
           return callback?.({ success: false, error: "Không tìm thấy thông tin thí sinh" });
         }
 
-        // Always re-associate socket.id with playerId
-        playerSockets.set(socket.id, playerId);
-
         const player = await prisma.player.findUnique({
           where: { id: playerId },
           include: { room: true },
@@ -2370,8 +2392,11 @@ export function registerSocketHandlers(io: IO) {
           return callback?.({ success: false, error: "Không tìm thấy thí sinh trong phòng này" });
         }
 
+        const isSandboxHuman = isSandboxRoomEntity(player.room) && !isPlayerBot(player);
+        playerSockets.set(socket.id, playerId);
+
         const cachedRoom = roomCache.get(player.room.id);
-        if (cachedRoom?.teamsLocked) {
+        if (cachedRoom?.teamsLocked && !isSandboxHuman) {
           return callback?.({ success: false, error: "Đội hình đã được Host khóa, không thể tự ý đổi đội!" });
         }
 
@@ -2398,6 +2423,10 @@ export function registerSocketHandlers(io: IO) {
             socketId: socket.id,
           },
         });
+
+        if (isSandboxHuman) {
+          roomSandboxActiveTeam.set(player.room.id, team.id);
+        }
 
         const state = await buildRoomState(player.room.id);
         const sess = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
@@ -2851,6 +2880,10 @@ export function registerSocketHandlers(io: IO) {
         clearTimeout(roomBuzzDelayTimers.get(qKey)!);
         roomBuzzDelayTimers.delete(qKey);
       }
+      if (roomBuzzAutoRevealTimers.has(qKey)) {
+        clearTimeout(roomBuzzAutoRevealTimers.get(qKey)!);
+        roomBuzzAutoRevealTimers.delete(qKey);
+      }
 
       // Mở mới 5s khi MC bấm mở chuông
       roomBuzzWindowRemaining.set(qKey, 5000);
@@ -2866,7 +2899,31 @@ export function registerSocketHandlers(io: IO) {
       const currentQ = questions[room.currentQuestion];
       if (!currentQ) return;
 
+      const qKey = `${room.id}:${currentQ.id}`;
+      if (roomBuzzAutoRevealTimers.has(qKey)) {
+        clearTimeout(roomBuzzAutoRevealTimers.get(qKey)!);
+        roomBuzzAutoRevealTimers.delete(qKey);
+      }
+
       await finalizeBuzzAnswer(io, room.id, room.code, currentQ.id, isCorrect);
+    });
+
+    // ── Admin: Buzz Reveal Now (Host clicks manual reveal without waiting 2s) ──
+    socket.on("admin:buzz:reveal_now", async ({ code }: any = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "BUZZ") return;
+
+      const questions = await getRoomQuestions(room.id);
+      const currentQ = questions[room.currentQuestion];
+      if (!currentQ) return;
+
+      const qKey = `${room.id}:${currentQ.id}`;
+      if (roomBuzzAutoRevealTimers.has(qKey)) {
+        clearTimeout(roomBuzzAutoRevealTimers.get(qKey)!);
+        roomBuzzAutoRevealTimers.delete(qKey);
+      }
+
+      await finalizeBuzzAnswer(io, room.id, room.code, currentQ.id);
     });
 
     // ── Admin: Room Toggle Lock ───────────────────────────────────────────────
@@ -3428,6 +3485,10 @@ export function registerSocketHandlers(io: IO) {
         clearTimeout(roomBuzzDelayTimers.get(qKey)!);
         roomBuzzDelayTimers.delete(qKey);
       }
+      if (roomBuzzAutoRevealTimers.has(qKey)) {
+        clearTimeout(roomBuzzAutoRevealTimers.get(qKey)!);
+        roomBuzzAutoRevealTimers.delete(qKey);
+      }
       roomQuestionProcessed.delete(qKey);
       roomQuestionScoresCache.delete(qKey);
       roomSharedPowerupUsedInQuestion.delete(room.id);
@@ -3604,8 +3665,8 @@ export function registerSocketHandlers(io: IO) {
         roomOriginalQuestions.set(qKey, q);
 
         // Đếm ngược thủ công (Manual Timer) mặc định cho TẤT CẢ các mode
-        // Chỉ tự động đếm ngay nếu config.autoTimerStart === true và không phải giai đoạn chọn điểm Bounceback
-        const isAutoTimer = config?.autoTimerStart === true && !bouncebackSelectPhase;
+        // Tự động đếm ngay nếu config.autoTimerStart === true hoặc (Classic / Elimination) bật setting autoTimerOnQuestionShow
+        const isAutoTimer = (config?.autoTimerStart === true || ((room.mode === "CLASSIC" || room.mode === "ELIMINATION") && (config?.autoTimerOnQuestionShow === true || config?.autoTimerStart === true))) && !bouncebackSelectPhase;
         if (!isAutoTimer) {
           questionState.timerPending = true;
           questionState.timerStarted = false;
@@ -4356,7 +4417,6 @@ export function registerSocketHandlers(io: IO) {
         stopQuestionTimer(room.id);
         roomActiveQuestions.delete(room.id);
         roomRevealPayloads.delete(room.id);
-        io.to(`room:${room.code}`).emit("game:question:clear");
         await advanceGridToBoard(io, room.id, room.code);
         return;
       }
@@ -5121,15 +5181,20 @@ export function registerSocketHandlers(io: IO) {
       if (!playerId) return;
       const player = await prisma.player.findUnique({
         where: { id: playerId },
-        include: { room: { include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } } } },
+        include: { room: { include: { teams: true, quizBank: { include: { questions: { orderBy: { order: "asc" } } } } } } },
       });
       if (!player || !player.room || player.room.mode !== "GRID_CARO" || player.room.status !== "PLAYING") return;
 
       const gridState = roomGridCaros.get(player.room.id);
       if (!gridState) return;
 
-      // In Sandbox mode, bot on current turn can select:
-      if (gridState.currentTurnTeamId === player.teamId) {
+      const actingTeamId =
+        (!isPlayerBot(player) && isSandboxRoomEntity(player.room) && roomSandboxActiveTeam.get(player.room.id)) ||
+        socketPlayerSessions.get(socket.id)?.teamId ||
+        player.teamId;
+
+      // In Sandbox mode, switched tester team or bot on current turn can select:
+      if (gridState.currentTurnTeamId === actingTeamId) {
         await handleGridCellSelect(player.room, cellId);
       } else {
         socket.emit("error", "Chưa tới lượt chọn ô của đội bạn!");
@@ -5226,7 +5291,13 @@ export function registerSocketHandlers(io: IO) {
         where: { id: playerId },
         include: { room: true },
       });
-      if (!player || !player.room || !player.teamId) return;
+      if (!player || !player.room) return;
+
+      const actingTeamId =
+        (!isPlayerBot(player) && isSandboxRoomEntity(player.room) && roomSandboxActiveTeam.get(player.room.id)) ||
+        socketPlayerSessions.get(socket.id)?.teamId ||
+        player.teamId;
+      if (!actingTeamId) return;
 
       const room = player.room;
       if (room.mode !== "DICE_RACE" || room.status !== "PLAYING") return;
@@ -5238,7 +5309,7 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
-      if (diceState.currentTurnTeamId !== player.teamId) {
+      if (diceState.currentTurnTeamId !== actingTeamId) {
         socket.emit("error", "Chưa tới lượt tung xúc xắc của đội bạn!");
         socket.emit("game:dice:update", diceState);
         return;
@@ -5252,7 +5323,7 @@ export function registerSocketHandlers(io: IO) {
         await new Promise((resolve) => setTimeout(resolve, 400));
       }
 
-      await executeDiceRoll(room, diceState, player.teamId);
+      await executeDiceRoll(room, diceState, actingTeamId);
     });
 
     // ── Secret Wager Events ───────────────────────────────────────────────────
@@ -5263,7 +5334,13 @@ export function registerSocketHandlers(io: IO) {
         where: { id: playerId },
         include: { room: true },
       });
-      if (!player || !player.room || !player.teamId) return;
+      if (!player || !player.room) return;
+
+      const actingTeamId =
+        (!isPlayerBot(player) && isSandboxRoomEntity(player.room) && roomSandboxActiveTeam.get(player.room.id)) ||
+        socketPlayerSessions.get(socket.id)?.teamId ||
+        player.teamId;
+      if (!actingTeamId) return;
 
       const room = player.room;
       if (room.mode !== "WAGER" || room.status !== "PLAYING") return;
@@ -5271,7 +5348,7 @@ export function registerSocketHandlers(io: IO) {
       const wagerState = roomWagers.get(room.id);
       if (!wagerState || wagerState.phase !== "WAGER_PERIOD") return;
 
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      const team = await prisma.team.findUnique({ where: { id: actingTeamId } });
       if (!team) return;
 
       // 0. "Và để đảm bảo công bằng, một đội không được cược 2 câu liên tiếp"
@@ -11620,7 +11697,7 @@ export function registerSocketHandlers(io: IO) {
           message: "Tất cả các đội đã chốt đáp án! Đang kiểm tra kết quả...",
         });
         setTimeout(async () => {
-          await finalizeQuestionOnTimeUp(io, room.id, room.code, questionId);
+          await finalizeQuestionOnTimeUp(io, room.id, room.code, questionId, true);
         }, 2500);
       }
     });
@@ -12218,6 +12295,19 @@ async function processAnswerSubmissionImpl({
       }
       return;
     }
+    if (!isAdminOverride && activeQ?.buzzGraceActive) {
+      if (socket) {
+        socket.emit("error", "Đang trong 1s đệm chuẩn bị sau khi bấm chuông, vui lòng chờ đồng hồ trả lời bắt đầu!");
+      }
+      return;
+    }
+    if (!isAdminOverride && activeQ?.buzzAwaitingReveal) {
+      if (socket) {
+        socket.emit("error", "Chuông Nhanh chỉ ghi nhận đáp án đầu tiên là đáp án duy nhất!");
+        socket.emit("game:question", activeQ);
+      }
+      return;
+    }
   } else if (room.mode === "TOURNAMENT") {
     // Trong TOURNAMENT mode: 2 đội đối đầu 1v1 trả lời tính điểm trận đấu chính thức.
     // Các đội khán giả/chờ lượt/bị loại được phép trả lời thử để tích lũy +10 Điểm Tiên Tri (Oracle Points)!
@@ -12390,9 +12480,10 @@ async function processAnswerSubmissionImpl({
   const isUpdate = Boolean(existingAnswer);
   const normalizedAnswer = Array.isArray(answer) ? answer : [answer];
 
-  // 1. BOUNCEBACK Steal Team rule: Đội bấm chuông chỉ tính MỘT LẦN TRẢ LỜI DUY NHẤT (Admin không thể chỉnh điều đó)!
+  // 1. BOUNCEBACK Steal Team & BUZZ Mode: Đội bấm chuông chỉ tính MỘT LẦN TRẢ LỜI DUY NHẤT (Admin không thể chỉnh điều đó)!
   const isBouncebackSteal = room.mode === "BOUNCEBACK" && roomStealBuzzed.has(qKey);
-  if (isBouncebackSteal && existingAnswer && !isAdminOverride && !isHumanOverridingBot) {
+  const isBuzzActor = room.mode === "BUZZ" && roomBuzzFirst.has(qKey);
+  if ((isBouncebackSteal || isBuzzActor) && existingAnswer && !isAdminOverride && !isHumanOverridingBot) {
     if (socket) socket.emit("error", "Đội bấm chuông chỉ được chọn 1 đáp án duy nhất!");
     return;
   }
@@ -12641,7 +12732,26 @@ async function processAnswerSubmissionImpl({
     stopQuestionTimer(room.id);
     const { isAutoCorrect } = evaluateAnswerCorrectness(question, normalizedAnswer);
     if (question.type !== "ESSAY") {
-      await finalizeBuzzAnswer(io, room.id, room.code, questionId, isAutoCorrect);
+      if (activeQ) {
+        activeQ.buzzAwaitingReveal = true;
+        io.to(`room:${room.code}`).emit("game:question", activeQ);
+      }
+      io.to(`room:${room.code}`).emit("game:buzz:answered", {
+        teamId: targetTeamId || playerId,
+        answer: normalizedAnswer,
+      });
+
+      if (roomBuzzAutoRevealTimers.has(qKey)) {
+        clearTimeout(roomBuzzAutoRevealTimers.get(qKey)!);
+        roomBuzzAutoRevealTimers.delete(qKey);
+      }
+
+      // Tự động công bố đáp án sau 2s (hoặc MC có thể bấm thủ công ngay lập tức)
+      const autoRevTimer = setTimeout(async () => {
+        roomBuzzAutoRevealTimers.delete(qKey);
+        await finalizeBuzzAnswer(io, room.id, room.code, questionId, isAutoCorrect);
+      }, 2000);
+      roomBuzzAutoRevealTimers.set(qKey, autoRevTimer);
       return;
     }
   }
@@ -12678,7 +12788,7 @@ async function processAnswerSubmissionImpl({
           message: "Tất cả các đội đã hoàn thành chọn đáp án! Đang chuẩn bị công bố đáp án...",
         });
         setTimeout(async () => {
-          await finalizeQuestionOnTimeUp(io, room.id, room.code, questionId);
+          await finalizeQuestionOnTimeUp(io, room.id, room.code, questionId, true);
         }, 2500);
       }
     }
@@ -12747,6 +12857,8 @@ async function openBuzzWindow(io: IO, roomId: string, roomCode: string, question
     activeQ.buzzedTeamId = undefined;
     activeQ.buzzedTeamName = undefined;
     activeQ.buzzedBy = undefined;
+    activeQ.buzzGraceActive = false;
+    activeQ.buzzAwaitingReveal = false;
     activeQ.buzzAnsweringActive = false;
     io.to(`room:${roomCode}`).emit("game:question", activeQ);
   }
@@ -12894,6 +13006,12 @@ async function finalizeBuzzAnswer(
 
     // Giải phóng lượt buzz hiện tại
     roomBuzzFirst.delete(qKey);
+    const activeQ = roomActiveQuestions.get(roomId);
+    if (activeQ) {
+      activeQ.buzzGraceActive = false;
+      activeQ.buzzAwaitingReveal = false;
+      activeQ.buzzAnsweringActive = false;
+    }
 
     const attempts = roomBuzzAttemptOrder.get(qKey) || [];
     const isTeamMode = room.teamMode === "TEAM";
@@ -12918,8 +13036,10 @@ async function finalizeBuzzAnswer(
         disqualifiedTeamIds: Array.from(disqSet),
       });
 
-      // Mở lại chuông với thời gian 5s mới cho các đội khác bấm!
-      await openBuzzWindow(io, roomId, roomCode, questionId, freshWindowMs);
+      // User requirement: nếu sai sẽ chờ thêm 1s rồi mới mở lại chuông cho các đội khác bấm
+      setTimeout(async () => {
+        await openBuzzWindow(io, roomId, roomCode, questionId, freshWindowMs);
+      }, 1000);
     } else {
       // Hết số lần bấm tối đa hoặc hết đội -> Chốt kết thúc câu và hiện đáp án
       roomQuestionProcessed.add(qKey);
@@ -14930,7 +15050,7 @@ async function resolveQuestionTeamScores(
   return scoreResult;
 }
 
-async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string, questionId: string) {
+async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string, questionId: string, skipTimerExpiredEmit: boolean = false) {
   const activeQ = roomActiveQuestions.get(roomId);
   if (activeQ?.question?.id && activeQ.question.id !== questionId) {
     return;
@@ -14942,7 +15062,9 @@ async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string
   roomRemainingTimes.set(key, 0);
   roomTimerEndsAt.delete(roomId);
   io.to(`room:${roomCode}`).emit("game:timer", { remaining: 0, total: 30, endsAt: Date.now(), serverTime: Date.now() });
-  io.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
+  if (!skipTimerExpiredEmit) {
+    io.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
+  }
 
   const room = await prisma.room.findUnique({ where: { id: roomId } });
   if (!room) return;

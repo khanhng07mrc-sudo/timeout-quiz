@@ -767,39 +767,30 @@ function VeDich({ state, serverNow }: P) {
 
   const isChoosing = vd.phase === "choosing";
   const isPackageReady = vd.phase === "packageReady";
-  const showPackageGrid = vd.phase !== "result" && (isChoosing || (isPackageReady && !cur));
+  // Only show slanted package grid when actively choosing package (lower-third 1/3 dưới màn)
+  const showPackageGrid = isChoosing;
 
   return (
     <div key={`vd-turn-${owner}-${vd.turnIdx}`} className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end">
-      {/* While choosing package or after package is ready (before question is opened): show slanted hexagonal package grid */}
+      {/* While choosing package: show slanted hexagonal package grid anchored at lower third (1/3 dưới màn) */}
       {showPackageGrid && (
-        <div key={`pkg-grid-${owner}-${vd.turnIdx}`} className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none">
-          <div className="pointer-events-auto w-full max-w-5xl flex items-center justify-center">
+        <div key={`pkg-grid-${owner}-${vd.turnIdx}`} className="fixed inset-x-0 bottom-2 sm:bottom-3 z-30 flex items-end justify-center pointer-events-none px-4">
+          <div className="pointer-events-auto w-full max-w-3xl flex items-center justify-center">
             <VeDichSlantedGridGraphic state={state} animate={true} />
           </div>
         </div>
       )}
 
-      {vd.phase === "result" && cur ? (
-        <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto px-2 sm:px-4 flex flex-col justify-end">
-          <V3SingleAnswerBar
-            answerText={cur?.q?.a || "(Chưa có đáp án)"}
-            points={cur?.points}
-            hopeStarActive={vd.hopeStarActive}
-            roundLabel="ĐÁP ÁN VỀ ĐÍCH"
-          />
-        </div>
-      ) : cur && (vd.phase === "thinking" || vd.phase === "stealing") ? (
+      {/* When package is ready (index -1, empty body, twin arrows opening) OR question is opened (thinking / stealing / result) */}
+      {((isPackageReady && !cur) || (cur && (vd.phase === "thinking" || vd.phase === "stealing" || vd.phase === "result"))) ? (
         state.themeMode === "o26_classic" ? (
           <Vtv3ChalkboardQuestionFrame
             headerBadge={
-              `${seatName(state, owner)} · VỀ ĐÍCH (${cur.points} điểm)${
-                vd.hopeStarActive ? " ⭐ NGÔI SAO HY VỌNG" : ""
-              }`
+              vd.hopeStarActive ? "⭐ NGÔI SAO HY VỌNG" : undefined
             }
-            questionText={cur?.q.q || ""}
+            questionText={cur?.q?.q || ""}
             mediaElement={
-              cur?.q.media ? (
+              cur?.q?.media ? (
                 <MediaView
                   url={cur.q.media}
                   type={cur.q.mediaType}
@@ -807,15 +798,9 @@ function VeDich({ state, serverNow }: P) {
                 />
               ) : null
             }
-            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer}
+            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : (cur && vd.phase === "thinking" ? vd.timer : null)}
             serverNow={serverNow}
-          >
-            {vd.phase === "stealing" && (
-              <div className="text-base sm:text-lg font-black text-rose-400 animate-pulse mt-1">
-                🚨 CƯỚP ĐIỂM {vd.steal?.buzzedSeat != null ? `— ${seatName(state, vd.steal.buzzedSeat)}` : ""}
-              </div>
-            )}
-          </Vtv3ChalkboardQuestionFrame>
+          />
         ) : (
           <EconovaLowerThirdV3
             state={state}
@@ -823,14 +808,10 @@ function VeDich({ state, serverNow }: P) {
             activeSeatId={owner}
             buzzedSeatId={vd.steal?.buzzedSeat ?? null}
             questionNumberBadge={null}
-            headerBadge={
-              `VỀ ĐÍCH · ${cur.points} ĐIỂM${
-                vd.hopeStarActive ? " ⭐ NGÔI SAO HY VỌNG" : ""
-              }`
-            }
-            questionText={cur?.q.q || ""}
+            headerBadge={null}
+            questionText={cur?.q?.q || ""}
             mediaElement={
-              cur?.q.media ? (
+              cur?.q?.media ? (
                 <MediaView
                   url={cur.q.media}
                   type={cur.q.mediaType}
@@ -838,17 +819,11 @@ function VeDich({ state, serverNow }: P) {
                 />
               ) : null
             }
-            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : vd.timer}
+            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : (cur && vd.phase === "thinking" ? vd.timer : null)}
             hopeStarActive={vd.hopeStarActive}
             showScoreTab={true}
-            runAnim={false}
-          >
-            {vd.phase === "stealing" && (
-              <div className="text-sm sm:text-base font-black text-rose-400 animate-pulse">
-                🚨 CƯỚP ĐIỂM {vd.steal?.buzzedSeat != null ? `— ${seatName(state, vd.steal.buzzedSeat)}` : ""}
-              </div>
-            )}
-          </EconovaLowerThirdV3>
+            runAnim={isPackageReady && !cur}
+          />
         )
       ) : null}
     </div>

@@ -31,13 +31,44 @@ export function DevGraphicsClient() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const p = new URLSearchParams(window.location.search).get("tab");
+      const sp = new URLSearchParams(window.location.search);
+      const p = sp.get("tab");
       if (p && p !== activeTab) setActiveTab(p);
+      const r = sp.get("ruleset");
+      if (r && (r === "O26" || r === "O20" || r === "O15" || r === "O13" || r === "O14")) {
+        setRulesetId(r as any);
+      }
     }
   }, [activeTab]);
-  const [isBuzzed, setIsBuzzed] = useState(false);
-  const [hopeStar, setHopeStar] = useState(true);
-  const [rulesetId, setRulesetId] = useState<"O26" | "O20" | "O15">("O26");
+  const [isBuzzed, setIsBuzzed] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("buzzed") === "1";
+    }
+    return false;
+  });
+  const [hopeStar, setHopeStar] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const hs = new URLSearchParams(window.location.search).get("hopeStar");
+      if (hs === "0" || hs === "false") return false;
+    }
+    return true;
+  });
+  const [rulesetId, setRulesetId] = useState<"O26" | "O20" | "O15" | "O13" | "O14">(() => {
+    if (typeof window !== "undefined") {
+      const r = new URLSearchParams(window.location.search).get("ruleset");
+      if (r === "O26" || r === "O20" || r === "O15" || r === "O13" || r === "O14") {
+        return r;
+      }
+    }
+    return "O26";
+  });
+  const [seatsCount, setSeatsCount] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const n = Number(new URLSearchParams(window.location.search).get("seats"));
+      if (n >= 2 && n <= 8) return Math.floor(n);
+    }
+    return 4;
+  });
   const [summaryIndex, setSummaryIndex] = useState(3);
 
   const mockSeats2 = [
@@ -64,8 +95,19 @@ export function DevGraphicsClient() {
 
   const mockSeats8 = [
     ...mockSeats7,
-    { id: 7, name: "Minh Triết", school: "THPT Chuyên Lương Thế Vinh", score: 220, online: true },
+    { id: 7, name: "Nguyễn Hoàng Minh Triết", school: "THPT Chuyên Lương Thế Vinh", score: 220, online: true },
   ];
+
+  const activeMockSeats =
+    seatsCount === 2
+      ? mockSeats2
+      : seatsCount === 6
+      ? mockSeats6
+      : seatsCount === 7
+      ? mockSeats7
+      : seatsCount === 8
+      ? mockSeats8
+      : mockSeats4.slice(0, seatsCount);
 
   const mockState = {
     id: "dev-room",
@@ -74,16 +116,12 @@ export function DevGraphicsClient() {
     createdAt: Date.now(),
     themeMode: "v3_arrow",
     rulesetId,
+    seatCount: activeMockSeats.length,
     currentRound: "khoiDong",
     status: "in_progress",
     stage: "playing",
     audioSeason: "O26",
-    seats: [
-      { id: 0, name: "Quang Minh", school: "THPT Chuyên Hà Nội - Amsterdam", score: 285, online: true },
-      { id: 1, name: "Anh Đức", school: "THPT Chuyên Lê Hồng Phong", score: 210, online: true },
-      { id: 2, name: "Gia Bảo", school: "THPT Chuyên Quốc Học Huế", score: 180, online: true },
-      { id: 3, name: "Thái Dương", school: "THPT Chuyên Phan Bội Châu", score: 150, online: true },
-    ],
+    seats: activeMockSeats,
     khoiDong: {
       phase: "question",
       qIdx: 5,
@@ -226,7 +264,24 @@ export function DevGraphicsClient() {
             >
               <option value="O26">O26 (2 rows: 20, 30)</option>
               <option value="O20">O20 (3 rows: 10, 20, 30)</option>
-              <option value="O15">O15 (1 row preset: 40, 60, 80)</option>
+              <option value="O15">O15 (1 row preset: 40, 60, 80 — 3 câu: 10-20-30)</option>
+              <option value="O13">O13 (1 row preset: 40, 60, 80 — 4 câu: 10-10-20-20)</option>
+              <option value="O14">O14 (1 row preset: 40, 60, 80 — 4 câu: 10-10-20-20)</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span>Thí sinh:</span>
+            <select
+              value={seatsCount}
+              onChange={(e) => setSeatsCount(Number(e.target.value))}
+              className="bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-xs text-white"
+            >
+              <option value={2}>2 thí sinh</option>
+              <option value={4}>4 thí sinh</option>
+              <option value={6}>6 thí sinh</option>
+              <option value={7}>7 thí sinh</option>
+              <option value={8}>8 thí sinh</option>
             </select>
           </div>
 
@@ -962,14 +1017,20 @@ export function DevGraphicsClient() {
               Deliverable 4a: Lưới Chọn Gói Điểm Về Đích (1080×360 — Chuẩn Olympia 26 Wiki, các ô hình bình hành)
             </div>
             <div className="w-full flex items-center justify-center min-h-[420px]">
-              <VeDichSlantedGridGraphic
-                state={mockState}
-                ownerSeatId={0}
-                selectedPoints={[20, 30, 20]}
-              />
-            </div>
-          </div>
-        )}
+                  <VeDichSlantedGridGraphic
+                    state={mockState}
+                    ownerSeatId={0}
+                    selectedPoints={
+                      rulesetId === "O13" || rulesetId === "O14"
+                        ? [10, 10, 20, 20]
+                        : rulesetId === "O15"
+                        ? [10, 20, 30]
+                        : [20, 30, 20]
+                    }
+                  />
+                </div>
+              </div>
+            )}
 
         {/* Deliverable 4b: Về Đích Question Lower Third */}
         {(activeTab === "all" || activeTab === "vd-qbox") && (
@@ -978,11 +1039,44 @@ export function DevGraphicsClient() {
             className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
           >
             <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
-              Deliverable 4b: Thanh Câu Hỏi Về Đích (1000×195 — Cụm điểm chuẩn Econova, ⭐, dải gói điểm 20|30|30)
+              Deliverable 4b: Thanh Câu Hỏi Về Đích (1000×200 — Cụm điểm chuẩn Econova, ⭐, dải gói điểm theo luật {rulesetId})
             </div>
             <div className="w-full flex items-center justify-center min-h-[240px]">
               {(() => {
-                const vdState = { ...mockState, currentRound: "veDich" as const };
+                const mockPackages =
+                  rulesetId === "O13" || rulesetId === "O14"
+                    ? [
+                        { points: 10, q: { q: "Câu 1 (10đ): Tác phẩm 'Tắt đèn' của nhà văn nào?", a: "Ngô Tất Tố" } },
+                        { points: 10, q: { q: "Câu 2 (10đ): Đơn vị đo cường độ dòng điện là gì?", a: "Ampe" } },
+                        { points: 20, q: { q: "Câu 3 (20đ): Thành phố nào có diện tích tự nhiên lớn nhất cả nước?", a: "Hà Nội" } },
+                        { points: 20, q: { q: "Câu 4 (20đ): Hành tinh nào gần Mặt Trời nhất?", a: "Sao Thủy" } },
+                      ]
+                    : rulesetId === "O15"
+                    ? [
+                        { points: 10, q: { q: "Câu 1 (10đ): Đơn vị đo cường độ dòng điện là gì?", a: "Ampe" } },
+                        { points: 20, q: { q: "Câu 2 (20đ): Thành phố nào có diện tích tự nhiên lớn nhất cả nước?", a: "Hà Nội" } },
+                        { points: 30, q: { q: "Câu 3 (30đ): Ai là người phát minh ra bảng tuần hoàn các nguyên tố hóa học?", a: "Dmitri Mendeleev" } },
+                      ]
+                    : [
+                        { points: 20, q: { q: "Câu 1 (20đ): Thành phố nào có diện tích tự nhiên lớn nhất cả nước?", a: "Hà Nội" } },
+                        { points: 30, q: { q: "Câu 2 (30đ): Ai là người phát minh ra bảng tuần hoàn hóa học?", a: "Mendeleev" } },
+                        { points: 20, q: { q: "Câu 3 (20đ): Đơn vị đo cường độ dòng điện là gì?", a: "Ampe" } },
+                      ];
+
+                const vdState = {
+                  ...mockState,
+                  currentRound: "veDich" as const,
+                  rulesetId,
+                  veDich: {
+                    ...mockState.veDich!,
+                    order: activeMockSeats.map((s) => s.id),
+                    qIdx: 0,
+                    packages: {
+                      0: mockPackages,
+                    },
+                    current: mockPackages[0],
+                  },
+                } as unknown as OlympiaState;
                 return (
                   <EconovaLowerThirdV3
                     state={vdState}

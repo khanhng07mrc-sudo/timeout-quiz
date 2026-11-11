@@ -50,6 +50,10 @@ export default function DisplayPage() {
   const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
 
   const [roomState, setRoomState] = useState<RoomState | null>(null);
+  const roomStateRef = useRef<RoomState | null>(null);
+  useEffect(() => {
+    roomStateRef.current = roomState;
+  }, [roomState]);
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
   const [revealPayload, setRevealPayload] = useState<AnswerRevealPayload | null>(null);
   const [gameEnd, setGameEnd] = useState<GameEndPayload | null>(null);
@@ -458,7 +462,12 @@ export default function DisplayPage() {
         window.location.replace(`/olympia/display/${code}`);
         return;
       }
+      roomStateRef.current = state;
       setRoomState(state);
+      const customBgm = (state.config as any)?.bgmTrack;
+      if (customBgm) {
+        soundManager.setRoomPreferredBgm(customBgm);
+      }
       if (state.status === "LOBBY") {
         if (!matchStartingRef.current) {
           soundManager.playLobbyMusic(state.mode);
@@ -548,13 +557,13 @@ export default function DisplayPage() {
       if (isTimerRunning) {
         const auth = calculateAuthoritativeTimer(q.endsAt!, q.timeLimit, q.timeLimit);
         setTimer({ remaining: auth.remaining, total: q.timeLimit, endsAt: q.endsAt });
-        if (roomState?.mode !== "BUZZ") {
+        if (roomStateRef.current?.mode !== "BUZZ" && roomStateRef.current?.mode !== "MAGIC_WHEEL") {
           soundManager.playQuestionMusic(q.timeLimit, q.question?.id);
         }
       } else {
         setTimer(null);
-        if (!q) {
-          soundManager.stopQuestionMusic();
+        if (!q || roomStateRef.current?.mode === "BUZZ") {
+          soundManager.stopQuestionMusic(0, true);
         }
       }
     });
@@ -577,7 +586,7 @@ export default function DisplayPage() {
         const auth = calculateAuthoritativeTimer(payload.endsAt, tLimit, tLimit);
         setTimer({ remaining: auth.remaining, total: tLimit, endsAt: payload.endsAt });
       }
-      if (roomState?.mode !== "BUZZ") {
+      if (roomStateRef.current?.mode !== "BUZZ" && roomStateRef.current?.mode !== "MAGIC_WHEEL") {
         soundManager.playQuestionMusic(tLimit, payload?.questionId);
       }
     });
@@ -598,6 +607,7 @@ export default function DisplayPage() {
     });
     socket.on("game:buzz", (p) => {
       setBuzzed({ playerName: p.teamName ?? p.playerName });
+      soundManager.stopQuestionMusic(0, true);
       soundManager.playBuzz();
     });
     socket.on("game:buzz:answering", (p) => {
@@ -2428,7 +2438,7 @@ export default function DisplayPage() {
             )}
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex flex-col items-center justify-start md:justify-center p-2 overflow-y-auto w-full tab-content-enter">
+          <div className="flex-1 min-h-0 flex flex-col items-stretch justify-start p-2 overflow-y-auto w-full tab-content-enter">
             {/* If user switched to Board view while question is active, show Return button */}
             {currentQuestion && displayModeTab === "BOARD" && (
               <div className="w-full flex justify-end pb-1 shrink-0">
@@ -2448,7 +2458,7 @@ export default function DisplayPage() {
                 <TournamentBracket tournamentState={roomState.tournamentState} isDisplay={true} />
               </div>
             ) : roomState.mode === "GRID_CARO" && roomState.gridCaroState ? (
-              <div className="w-full">
+              <div className="w-full flex-1 min-h-0 flex flex-col">
                 <GridCaroBoard gridState={roomState.gridCaroState} isDisplay={true} />
               </div>
             ) : roomState.mode === "DICE_RACE" && roomState.diceRaceState ? (

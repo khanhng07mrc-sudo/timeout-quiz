@@ -293,9 +293,8 @@ export default function PlayPage() {
           setErrorMessage(null);
           setConnected(true);
 
-          const teamIdx = e.data.payload?.teamIndex ?? e.data.teamIndex ?? 0;
           const teamPlayerId = isSandboxRef.current
-            ? `sb_${code}_t${teamIdx}`
+            ? `sb_${code}_t0`
             : playerIdRef.current;
           playerIdRef.current = teamPlayerId;
           setPlayerId(teamPlayerId);
@@ -2208,7 +2207,13 @@ export default function PlayPage() {
             )}
           </>
         ) : (
-          <div className={`flex-1 flex flex-col ${roomState?.mode === "MAGIC_WHEEL" ? "p-0 overflow-hidden h-full" : "items-center justify-center p-2"}`}>
+          <div className={`flex-1 flex flex-col ${
+            roomState?.mode === "MAGIC_WHEEL"
+              ? "p-0 overflow-hidden h-full"
+              : roomState?.mode && ["GRID_CARO", "TOURNAMENT", "DICE_RACE", "WAGER"].includes(roomState.mode)
+              ? "items-stretch justify-start p-1.5 sm:p-2 overflow-y-auto"
+              : "items-center justify-center p-2"
+          }`}>
             {roomState?.mode === "TOURNAMENT" && roomState?.tournamentState ? (
               <div className="w-full">
                 <TournamentBracket
@@ -2228,17 +2233,7 @@ export default function PlayPage() {
                     !roomState.gridCaroState.previewActive &&
                     !roomState.gridCaroState.selectedCellAnimation
                   }
-                  onSelectCell={(cellId) => {
-                    if (socketRef.current?.connected) {
-                      socketRef.current.emit("game:grid:select", { cellId });
-                    }
-                    window.parent?.postMessage({
-                      type: "OFFLINE_PLAYER_ACTION",
-                      action: "grid_select_cell",
-                      cellId,
-                      teamId: effectiveTeamId,
-                    }, "*");
-                  }}
+                  onSelectCell={handleSelectGridCell}
                 />
               </div>
             ) : roomState?.mode === "DICE_RACE" && roomState?.diceRaceState ? (

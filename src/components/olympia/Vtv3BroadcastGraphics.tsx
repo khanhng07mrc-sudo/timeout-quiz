@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useLayoutEffect } from "react";
 import type { OlympiaState, Seat, TimerState } from "@/lib/olympia/types";
 import { parseVcnvAnswer, cleanVcnvWord } from "@/lib/olympia/engine";
 import { activeSeats, seatName, SEAT_COLORS } from "./ui";
@@ -2254,6 +2254,138 @@ export function SummaryLowerThirdGraphic({
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
+ * HORIZONTAL-ONLY AUTO-FIT TAB LABELS (Keep height 100% constant, scaleX only)
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+function SlantedTabLabel({
+  text,
+  cx,
+  cy,
+  maxWidth,
+  fontSize,
+  fill,
+  textShadow,
+}: {
+  text: string;
+  cx: number;
+  cy: number;
+  maxWidth: number;
+  fontSize: number;
+  fill: string;
+  textShadow?: string;
+}) {
+  const ref = useRef<SVGTextElement>(null);
+  const [sx, setSx] = useState(1);
+
+  useLayoutEffect(() => {
+    let active = true;
+    const fit = () => {
+      if (!active || !ref.current) return;
+      const len = ref.current.getComputedTextLength();
+      if (len > 0 && maxWidth > 0) {
+        const next = len > maxWidth ? Math.max(0.22, maxWidth / len) : 1;
+        setSx((prev) => (Math.abs(prev - next) > 0.005 ? next : prev));
+      } else {
+        setSx(1);
+      }
+    };
+    fit();
+    if (typeof document !== "undefined" && (document as any).fonts?.ready) {
+      (document as any).fonts.ready.then(fit).catch(() => {});
+    }
+    return () => {
+      active = false;
+    };
+  }, [text, maxWidth, fontSize]);
+
+  return (
+    <text
+      ref={ref}
+      x={cx}
+      y={cy}
+      dominantBaseline="central"
+      textAnchor="middle"
+      fill={fill}
+      fontWeight="900"
+      fontSize={fontSize}
+      transform={
+        sx < 0.999
+          ? `translate(${cx}, ${cy}) scale(${sx}, 1) translate(${-cx}, ${-cy})`
+          : undefined
+      }
+      className="uppercase font-sans"
+      style={{
+        fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
+        filter: textShadow,
+      }}
+    >
+      {text}
+    </text>
+  );
+}
+
+function FlexAutoFitTabLabel({
+  text,
+  className,
+  textShadow,
+}: {
+  text: string;
+  className: string;
+  textShadow?: string;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [sx, setSx] = useState(1);
+
+  useLayoutEffect(() => {
+    let active = true;
+    const fit = () => {
+      if (!active || !ref.current) return;
+      const parent = ref.current.parentElement;
+      if (!parent) return;
+      const maxW = Math.max(24, parent.clientWidth - 20);
+      const naturalW = ref.current.scrollWidth;
+      if (naturalW > 0) {
+        const next = naturalW > maxW ? Math.max(0.25, maxW / naturalW) : 1;
+        setSx((prev) => (Math.abs(prev - next) > 0.005 ? next : prev));
+      } else {
+        setSx(1);
+      }
+    };
+    fit();
+    if (typeof document !== "undefined" && (document as any).fonts?.ready) {
+      (document as any).fonts.ready.then(fit).catch(() => {});
+    }
+    if (typeof ResizeObserver !== "undefined" && ref.current?.parentElement) {
+      const ro = new ResizeObserver(fit);
+      ro.observe(ref.current.parentElement);
+      return () => {
+        active = false;
+        ro.disconnect();
+      };
+    }
+    return () => {
+      active = false;
+    };
+  }, [text]);
+
+  return (
+    <span
+      ref={ref}
+      className={`text-[15px] sm:text-[18px] font-black uppercase tracking-wide whitespace-nowrap leading-none ${className}`}
+      style={{
+        display: "inline-block",
+        transformOrigin: "center center",
+        transform: sx < 0.999 ? `scaleX(${sx})` : undefined,
+        textShadow,
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
  * STANDALONE CONTESTANT SCORE TAB BAR
  * Used for standalone displays or answer boxes in DisplayScreen.
  * ─────────────────────────────────────────────────────────────────────────────
@@ -2359,18 +2491,15 @@ export function EconovaContestantScoreTabBar({
                 zIndex: isBuzzed ? 15 : isActive ? 12 : 5,
               }}
             >
-              <span
-                className={`text-[12px] sm:text-[14px] font-black uppercase tracking-wider truncate px-3 ${textClass}`}
-                style={{
-                  display: "inline-block",
-                  textShadow:
-                    isBuzzed || isActive
-                      ? "0 2px 8px rgba(0,0,0,0.9)"
-                      : "0 1px 3px rgba(0,0,0,0.8)",
-                }}
-              >
-                {displayText}
-              </span>
+              <FlexAutoFitTabLabel
+                text={displayText}
+                className={textClass}
+                textShadow={
+                  isBuzzed || isActive
+                    ? "0 2px 8px rgba(0,0,0,0.9)"
+                    : "0 1px 3px rgba(0,0,0,0.8)"
+                }
+              />
             </div>
 
             {idx < n - 1 && (
@@ -2455,22 +2584,26 @@ export function EconovaLowerThirdV3({
   const shell = buildArrowShell({ W, H, slantRatio: 0.3571, pad });
   const seats = activeSeats(state);
   const n = seats.length;
-  const lt = buildLowerThirdLayout(shell, n, isVeDich ? "VE_DICH" : "KHOI_DONG", { tabH: 42 });
-  const packStrip = isVeDich ? buildClusterPackStrip(shell, lt, 3, 44) : null;
+  const vd = state.veDich;
+  const currentPkg = vd && vd.packages[activeSeatId ?? 0];
+  const qCount = currentPkg?.length ?? ((state.rulesetId === "O13" || state.rulesetId === "O14") ? 4 : 3);
+  const lt = buildLowerThirdLayout(shell, n, isVeDich ? "VE_DICH" : "KHOI_DONG", {
+    tabH: 42,
+    clusterBottomW: isVeDich && qCount >= 4 ? 228 : 206,
+  });
+  const packStrip = isVeDich ? buildClusterPackStrip(shell, lt, qCount, 46) : null;
 
   const targetSeatId = buzzedSeatId ?? activeSeatId;
   const activeSeat = targetSeatId != null ? state.seats[targetSeatId] : null;
   const displayScore = activeSeat ? activeSeat.score : 0;
-  const vd = state.veDich;
-  const currentPkg = vd && vd.packages[activeSeatId ?? 0];
 
   const fillRef = useRef<HTMLDivElement>(null);
-  const [countdownSec, setCountdownSec] = useState<number | null>(null);
+  const handleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!timer || timer.startedAt == null) {
-      if (fillRef.current) fillRef.current.style.width = "100%";
-      setCountdownSec(null);
+      if (fillRef.current) fillRef.current.style.width = "0%";
+      if (handleRef.current) handleRef.current.style.display = "none";
       return;
     }
 
@@ -2482,17 +2615,14 @@ export function EconovaLowerThirdV3({
       const total = Math.max(1, timer.totalMs || 5000);
       const elapsed = Math.max(0, serverNow() - (timer.startedAt ?? 0));
       const rem = Math.max(0, timer.remainingMs - elapsed);
-      const pct = Math.max(0, Math.min(100, (rem / total) * 100));
-
-      const sec = Math.ceil(rem / 1000);
-      setCountdownSec(rem > 0 ? sec : null);
+      // Match Econova Show screen.html: fills LEFT-TO-RIGHT 0% -> 100% as elapsed time progresses
+      const pct = Math.max(0, Math.min(100, ((total - rem) / total) * 100));
 
       if (fillRef.current) {
         fillRef.current.style.width = `${pct}%`;
-        fillRef.current.style.background =
-          pct <= 25
-            ? "linear-gradient(90deg, #dc2626, #ef4444)"
-            : "linear-gradient(90deg, #0284c7, #38bdf8)";
+      }
+      if (handleRef.current) {
+        handleRef.current.style.display = pct > 0 && rem > 0 ? "block" : "none";
       }
 
       if (rem > 0) {
@@ -2517,8 +2647,9 @@ export function EconovaLowerThirdV3({
       ? "text-[24px] sm:text-[26px] md:text-[27px] leading-snug font-black"
       : "text-[28px] sm:text-[31px] md:text-[33px] leading-snug font-black";
 
+  const timerH = 22;
   const qTop = showScoreTab ? 48 : 16;
-  const qHeight = H - (showScoreTab ? 62 : 30);
+  const qHeight = H - (showScoreTab ? 74 : 42);
   const qBottom = qTop + qHeight;
   const safeClusterX = isVeDich && lt.clusterX
     ? Math.min(lt.clusterX(qTop), lt.clusterX(qBottom)) - 18
@@ -2530,10 +2661,22 @@ export function EconovaLowerThirdV3({
   const dc = shell.W / 2;
   const travelDist = Math.max(shell.canvasW, 1400);
 
-  const starSize = 160;
+  // Trapezoid geometry for the Econova bottom silver timer housing
+  const tY0 = H - timerH;
+  const tY1 = H;
+  const tLx0 = shell.edgeL(tY0);
+  const tLx1 = shell.edgeL(tY1);
+  const tRx0 = isVeDich && lt.clusterX ? lt.clusterX(tY0) : shell.edgeR(tY0);
+  const tRx1 = isVeDich && lt.clusterX ? lt.clusterX(tY1) : shell.edgeR(tY1);
+  const timerMinX = Math.min(tLx0, tLx1);
+  const timerMaxX = Math.max(tRx0, tRx1);
+  const timerBarW = Math.max(120, timerMaxX - timerMinX);
+  const timerClipPath = `polygon(${(tLx0 - timerMinX).toFixed(1)}px 0, ${(tRx0 - timerMinX).toFixed(1)}px 0, ${(tRx1 - timerMinX).toFixed(1)}px 100%, ${(tLx1 - timerMinX).toFixed(1)}px 100%)`;
+
+  const starSize = 180;
   const starCx = isVeDich && lt?.clusterX ? (lt.clusterX(0) + shell.edgeR(0)) / 2 : (shell.endX - 70);
   const starLeft = Math.round(starCx - starSize / 2);
-  const starTop = -Math.round(starSize * 0.44);
+  const starTop = -Math.round(starSize * 0.50);
 
   return (
     <div
@@ -2543,14 +2686,6 @@ export function EconovaLowerThirdV3({
           : "w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto px-1 sm:px-2 pb-2 pt-1 z-20 pointer-events-auto relative"
       }
     >
-      {countdownSec != null && countdownSec > 0 && (
-        <div className="absolute -top-12 sm:-top-16 left-1/2 -translate-x-1/2 z-40 pointer-events-none flex items-center justify-center animate-fade-in">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-red-500 to-rose-700 border-2 border-white shadow-[0_0_25px_rgba(239,68,68,0.95)] flex items-center justify-center text-white font-black text-2xl sm:text-3xl font-sans drop-shadow animate-pulse">
-            {countdownSec}
-          </div>
-        </div>
-      )}
-
       {extraTopBanner && <div className="mb-2 w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto">{extraTopBanner}</div>}
 
       <div
@@ -2660,6 +2795,16 @@ export function EconovaLowerThirdV3({
             100%     { opacity: 1; transform: translateY(0); }
           }
 
+          @keyframes pulse-timer-v3 {
+            from { box-shadow: 0 0 6px #fff, 0 0 12px #ff0000; transform: scale(1); }
+            to   { box-shadow: 0 0 12px #fff, 0 0 22px #ff0000; transform: scale(1.22); }
+          }
+
+          @keyframes buzz-pulse-v3a {
+            from { filter: brightness(1.0); }
+            to   { filter: brightness(1.35) drop-shadow(0 0 10px rgba(255, 56, 56, 0.9)); }
+          }
+
           /* Master Animation Classes: 2.4s duration */
           .v3-anim-l-g1   { animation: v3-eco-l-g1 2.4s both cubic-bezier(0.25, 1, 0.5, 1); }
           .v3-anim-l-g2   { animation: v3-eco-l-g2 2.4s both cubic-bezier(0.25, 1, 0.5, 1); }
@@ -2674,6 +2819,7 @@ export function EconovaLowerThirdV3({
           .v3-anim-body   { animation: v3-eco-hex-body 2.4s both; }
           .v3-anim-content{ animation: v3-eco-content-fade 2.4s ease-out both; }
           .v3-anim-swap   { animation: v3-eco-text-swap 0.35s ease-out both; }
+          .v3a-buzz       { animation: buzz-pulse-v3a 0.35s infinite alternate; }
         `}</style>
         <V3ScaledStage designW={shell.canvasW} designH={H}>
           {/* Authentic Floating Hope Star Badge crowning the right score cluster */}
@@ -2811,10 +2957,12 @@ export function EconovaLowerThirdV3({
                   const displayText =
                     isVeDich && isActive ? seat.name : `${seat.name} (${seat.score})`;
 
-                  // Horizontal-only auto-fit compression when name length exceeds cell width
-                  const availableW = Math.max(24, tab.width - 18);
-                  const approxTextW = displayText.length * 10.6;
-                  const sx = approxTextW > availableW ? Math.max(0.55, availableW / approxTextW) : 1;
+                  const tabSafeW =
+                    !isVeDich && tab.i === n - 1
+                      ? Math.max(20, tab.xr0 - tab.xl0)
+                      : tab.width;
+                  const maxLabelW = Math.max(16, tabSafeW - (n <= 4 ? 14 : 10));
+                  const baseTabFontSize = n <= 4 ? 24 : 21;
 
                   return (
                     <g key={seat.id} className={isBuzzed ? "v3a-buzz" : ""}>
@@ -2824,22 +2972,19 @@ export function EconovaLowerThirdV3({
                         stroke="rgba(0, 207, 255, 0.35)"
                         strokeWidth="1"
                       />
-                      <text
-                        x={tab.cx}
-                        y={tab.cy}
-                        dominantBaseline="central"
-                        textAnchor="middle"
+                      <SlantedTabLabel
+                        text={displayText}
+                        cx={tab.cx}
+                        cy={tab.cy}
+                        maxWidth={maxLabelW}
+                        fontSize={baseTabFontSize}
                         fill={isLocked ? "#64748b" : "#ffffff"}
-                        fontWeight="900"
-                        fontSize="16"
-                        transform={sx < 1 ? `translate(${tab.cx}, ${tab.cy}) scale(${sx}, 1) translate(${-tab.cx}, ${-tab.cy})` : undefined}
-                        className="uppercase font-sans"
-                        style={{
-                          filter: isBuzzed || isActive ? "drop-shadow(0 2px 6px rgba(0,0,0,0.9))" : "none",
-                        }}
-                      >
-                        {displayText}
-                      </text>
+                        textShadow={
+                          isBuzzed || isActive
+                            ? "drop-shadow(0 2px 6px rgba(0,0,0,0.9))"
+                            : undefined
+                        }
+                      />
                     </g>
                   );
                 })}
@@ -2874,11 +3019,26 @@ export function EconovaLowerThirdV3({
                     strokeWidth="2.5"
                   />
 
-                  {/* Big Score Display */}
+                  {/* Big Score Display (Pure white geometric sans, vertically & horizontally centered inside cluster) */}
                   {(() => {
-                    const stripH = packStrip ? 44 : 36;
-                    const scoreCy = (H - stripH) / 2;
-                    const scoreCx = lt.clusterX ? (lt.clusterX(scoreCy) + shell.edgeR(scoreCy)) / 2 : (lt.clusterLine.x0 + shell.endX) / 2;
+                    const stripH = packStrip ? 46 : 36;
+                    const scoreCy = (H - stripH) / 2 + 7;
+                    const scoreCx = lt.clusterX
+                      ? (lt.clusterX(scoreCy) + shell.edgeR(scoreCy)) / 2
+                      : (lt.clusterLine.x0 + shell.endX) / 2;
+                    const scoreDigits = String(displayScore).length;
+                    const scoreFontSize =
+                      scoreDigits >= 4
+                        ? qCount >= 4
+                          ? "38"
+                          : "42"
+                        : scoreDigits >= 3
+                        ? qCount >= 4
+                          ? "46"
+                          : "50"
+                        : qCount >= 4
+                        ? "52"
+                        : "58";
                     return (
                       <text
                         x={scoreCx}
@@ -2887,7 +3047,7 @@ export function EconovaLowerThirdV3({
                         dominantBaseline="central"
                         fill="#ffffff"
                         fontWeight="900"
-                        fontSize="44"
+                        fontSize={scoreFontSize}
                         className="font-sans font-black"
                         style={{
                           fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
@@ -2909,22 +3069,22 @@ export function EconovaLowerThirdV3({
                         <g key={`pack-${pIdx}`}>
                           <path
                             d={toSvgPath(cell.pts)}
-                            fill={isCurQ ? "#0284c7" : "rgba(5, 20, 51, 0.9)"}
-                            stroke="rgba(255,255,255,0.4)"
-                            strokeWidth="1"
+                            fill={isCurQ ? "#0284c7" : "rgba(5, 20, 51, 0.92)"}
+                            stroke="rgba(255,255,255,0.45)"
+                            strokeWidth="1.2"
                           />
                           <text
                             x={cell.cx}
                             y={cell.cy}
                             textAnchor="middle"
                             dominantBaseline="central"
-                            fill={isCurQ ? "#ffffff" : "#cbd5e1"}
+                            fill={isCurQ ? "#ffffff" : "#e2e8f0"}
                             fontWeight="900"
-                            fontSize="21"
+                            fontSize={qCount >= 4 ? "22" : "25"}
                             className="font-sans font-black"
                             style={{
                               fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
-                              filter: isCurQ ? "drop-shadow(0 0 8px rgba(56,189,248,0.9))" : "drop-shadow(0 1px 3px rgba(0,0,0,0.8))",
+                              filter: isCurQ ? "drop-shadow(0 0 8px rgba(56,189,248,0.9))" : "drop-shadow(0 1px 3px rgba(0,0,0,0.85))",
                             }}
                           >
                             {qPoints}
@@ -2962,19 +3122,62 @@ export function EconovaLowerThirdV3({
             {children}
           </div>
 
-          {/* Timer bar at bottom of hexagon */}
-          {timer && timer.startedAt != null && (
+          {/* Exact Econova Show Silver Trapezoid Timer Housing (screen.html: 22px height, #d1d5db->#6b7280 housing, 8px black track, red left-to-right progress bar + pulsing white handle) */}
+          <div
+            className={`absolute z-30 flex items-center pointer-events-none ${
+              runAnim ? "v3-anim-content" : ""
+            }`}
+            style={{
+              left: timerMinX,
+              bottom: 0,
+              width: timerBarW,
+              height: timerH,
+              background: "linear-gradient(to bottom, #d1d5db, #6b7280)",
+              clipPath: timerClipPath,
+              borderTop: "1px solid rgba(255,255,255,0.45)",
+              boxShadow: "0 5px 15px rgba(0,0,0,0.5)",
+            }}
+          >
             <div
-              className="absolute bottom-1 z-30 h-1.5 rounded-full overflow-hidden"
+              className="relative w-full"
               style={{
-                left: qLeft,
-                width: qWidth,
-                background: "rgba(255,255,255,0.15)",
+                height: 8,
+                background: "#000000",
+                borderRadius: 4,
+                margin: "0 24px",
+                overflow: "visible",
               }}
             >
-              <div ref={fillRef} className="h-full transition-all duration-100 ease-linear" />
+              <div
+                ref={fillRef}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "0%",
+                  height: "100%",
+                  background: "#ff0000",
+                  borderRadius: "4px",
+                }}
+              >
+                <div
+                  ref={handleRef}
+                  style={{
+                    display: "none",
+                    position: "absolute",
+                    right: "-7px",
+                    top: "-3px",
+                    width: "14px",
+                    height: "14px",
+                    background: "#ffffff",
+                    borderRadius: "50%",
+                    boxShadow: "0 0 8px rgba(255, 0, 0, 0.85)",
+                    animation: "pulse-timer-v3 0.6s infinite alternate",
+                  }}
+                />
+              </div>
             </div>
-          )}
+          </div>
         </V3ScaledStage>
       </div>
     </div>
@@ -3060,14 +3263,14 @@ export function VeDichSlantedGridGraphic({
   const xDiv = (k: number, y: number) => L + k * colW + slope * (midY - y);
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-4 z-20 pointer-events-auto animate-fade-in flex flex-col items-center gap-3 select-none">
+    <div className="w-full max-w-4xl mx-auto px-2 py-1 z-20 pointer-events-auto animate-fade-in flex flex-col items-center gap-1.5 select-none">
       {/* Contestant Header Pill */}
-      <div className="px-6 py-1.5 rounded-full bg-[#08203f]/95 border border-cyan-400/80 text-cyan-200 font-black text-xs sm:text-sm uppercase tracking-widest shadow-lg">
+      <div className="px-5 py-1 rounded-full bg-[#08203f]/95 border border-cyan-400/80 text-cyan-200 font-black text-[11px] sm:text-xs uppercase tracking-widest shadow-lg">
         LỰA CHỌN GÓI CÂU HỎI — {owner?.name || `THÍ SINH ${resolvedOwnerId + 1}`}
       </div>
 
       {/* Main Hexagonal Grid Chamber: 100% Geometry Parity with Olympia 26 Wiki */}
-      <div className="relative w-full max-w-4xl flex items-center justify-center">
+      <div className="relative w-full max-w-3xl flex items-center justify-center">
         <V3ArrowShell
           shell={shell}
           animate={animate}

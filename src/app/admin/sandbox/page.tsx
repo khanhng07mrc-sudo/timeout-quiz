@@ -491,6 +491,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
   const pendingBotGridTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingBotDiceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const offlineIntermissionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLoggedGridSelectionRef = useRef<string>("");
 
   // Admin Features States & Tickers
   const [matchStarting, setMatchStarting] = useState<{ seconds: number; endsAt?: number; total?: number } | null>(null);
@@ -504,6 +505,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
   const [teamSelectedAnswers, setTeamSelectedAnswers] = useState<Record<string, string>>({});
   const [initialTeamScoreInput, setInitialTeamScoreInput] = useState<number>(0);
   const [customMaxQuestionsInput, setCustomMaxQuestionsInput] = useState<string>("");
+  const [sandboxViewMode, setSandboxViewMode] = useState<"BALANCED" | "PHONE_FOCUS" | "DISPLAY_FOCUS">("BALANCED");
 
   useEffect(() => {
     if (roomState?.config?.matchMaxQuestions !== undefined) {
@@ -511,7 +513,10 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     }
   }, [roomState?.config?.matchMaxQuestions]);
 
+  const lastLogMsgRef = useRef<string>("");
   const addLog = useCallback((msg: string) => {
+    if (lastLogMsgRef.current === msg) return;
+    lastLogMsgRef.current = msg;
     setBotLogs((prev) => [
       `[${new Date().toLocaleTimeString()}] ${msg}`,
       ...prev.slice(0, 49),
@@ -1212,14 +1217,6 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
         return next;
       });
     });
-    sock.on("game:question:clear" as any, () => {
-      setCurrentQuestion(null);
-      setRevealPayload(null);
-      setTimer(null);
-      setTeamSelectedAnswers({});
-      offlineAnswersRef.current.clear();
-      offlineFinalizedActorsRef.current.clear();
-    });
     sock.on("admin:question:data", (data: any) => {
       setAdminQuestionData(data);
       adminQuestionDataRef.current = data;
@@ -1376,7 +1373,19 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     });
     sock.on("game:grid:update", (grid) => {
       setRoomState((prev) => prev ? { ...prev, gridCaroState: grid } : prev);
-      
+
+      if (grid.selectedCellId && grid.selectedCellInfo) {
+        const selKey = `${grid.turnsCompleted ?? 0}:${grid.selectedCellId}:${grid.selectedCellInfo.teamId}`;
+        if (lastLoggedGridSelectionRef.current !== selKey) {
+          lastLoggedGridSelectionRef.current = selKey;
+          addLog(
+            `🎯 [${grid.selectedCellInfo.teamName}] đã chọn ô #${grid.selectedCellInfo.cellId} (${grid.selectedCellInfo.difficulty} · ${grid.selectedCellInfo.points}đ)`
+          );
+        }
+      } else if (!grid.selectedCellId) {
+        lastLoggedGridSelectionRef.current = "";
+      }
+
       if (grid.selectedCellId || grid.previewActive) {
         if (pendingBotGridTimerRef.current) {
           clearTimeout(pendingBotGridTimerRef.current);
@@ -1396,7 +1405,6 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
             pendingBotGridTimerRef.current = setTimeout(() => {
               const target = unclaimed[Math.floor(Math.random() * unclaimed.length)];
               botSock.emit("game:grid:select", { cellId: target.id });
-              addLog(`Bot [${grid.currentTurnTeamName}] đã chọn ô #${target.id} (${target.points}đ)`);
               pendingBotGridTimerRef.current = null;
             }, 2000);
           }
@@ -1807,26 +1815,45 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       isOnline: true,
     }));
 
-    let gridCaroState: any = undefined;
+    let gridCaroState: GridCaroState | undefined = undefined;
     if (mode === "GRID_CARO") {
-      const difficultyPoints = [10, 20, 30];
-      const cells = Array.from({ length: 9 }, (_, i) => ({
-        id: i + 1,
-        row: Math.floor(i / 3),
-        col: i % 3,
-        points: difficultyPoints[i % 3],
-        bloomLevel: (i % 3 === 0 ? "REMEMBER" : i % 3 === 1 ? "APPLY" : "EVALUATE") as any,
-        isCompleted: false,
-      }));
+      const rows = 4;
+      const cols = 4;
+      const totalCells = rows * cols;
+      const diffPresets: Array<{ points: number; difficulty: "DỄ" | "TRUNG BÌNH" | "KHÓ" }> = [
+        { points: 10, difficulty: "DỄ" },
+        { points: 20, difficulty: "TRUNG BÌNH" },
+        { points: 30, difficulty: "KHÓ" },
+      ];
+      const cells = Array.from({ length: totalCells }, (_, i) => {
+        const preset = diffPresets[i % diffPresets.length];
+        return {
+          id: i + 1,
+          row: Math.floor(i / cols),
+          col: i % cols,
+          points: preset.points,
+          difficulty: preset.difficulty,
+          isCompleted: false,
+          attemptCount: 0,
+        };
+      });
       gridCaroState = {
-        gridSize: 3,
-        targetToWin: 3,
+        rows,
+        cols,
+        totalCells,
         cells,
+        previewActive: false,
+        previewRemaining: 0,
         currentTurnTeamId: teams[0].id,
         currentTurnTeamName: teams[0].name,
-        currentTurnIndex: 0,
-        completedLines: [],
-        previewActive: false,
+        currentRound: 1,
+        maxRounds: 3,
+        turnsCompleted: 0,
+        maxTurns: numTeams * 3,
+        caroEnabled: true,
+        streakTargetK: 3,
+        caroAchievedTeams: [],
+        caroBonusPoints: 50,
       };
     }
 
@@ -4671,8 +4698,35 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
           lastPowerup: powerupPayload,
           roomState: { ...(roomStateRef.current || {}), teams: [...teams] },
         });
-      } else if (action === "grid_select") {
-        addLog(`🏁 [${targetTeamName}] đã chọn ô #${cellId}`);
+      } else if (action === "grid_select" || action === "grid_select_cell") {
+        const cId = Number(cellId || e.data?.cellId);
+        addLog(`🏁 [${targetTeamName}] đã chọn ô #${cId}`);
+        if (isOfflineSandbox && cId) {
+          setRoomState((prev) => {
+            if (!prev || !prev.gridCaroState) return prev;
+            const curGrid = prev.gridCaroState;
+            if (curGrid.selectedCellId || curGrid.previewActive) return prev;
+            const cell = curGrid.cells.find((c) => c.id === cId);
+            if (!cell || cell.isCompleted) return prev;
+            const nextGrid: GridCaroState = {
+              ...curGrid,
+              selectedCellId: cId,
+              selectedCellAnimation: true,
+              selectedCellInfo: {
+                cellId: cell.id,
+                teamId: targetTeamId,
+                teamName: targetTeamName,
+                difficulty: cell.difficulty,
+                points: cell.points,
+              },
+              questionReady: true,
+            };
+            const nextRoom = { ...prev, gridCaroState: nextGrid };
+            roomStateRef.current = nextRoom;
+            syncToIframes({ roomState: nextRoom, gridCaroState: nextGrid });
+            return nextRoom;
+          });
+        }
       } else if (action === "dice_roll") {
         handleDiceRollManual();
       } else if (action === "wager_submit") {
@@ -7646,34 +7700,41 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
             offlineWarmupIntervalRef.current = null;
           }
           setMatchStarting(null);
-          setRoomState((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              status: "PLAYING",
-              tournamentState: tourState || prev.tournamentState,
-            };
-          });
+          const baseState = roomStateRef.current || roomState;
+          const updatedPlayingState: RoomState | null = baseState
+            ? {
+                ...baseState,
+                status: "PLAYING",
+                tournamentState: tourState || baseState.tournamentState,
+              }
+            : baseState;
+          if (updatedPlayingState) {
+            roomStateRef.current = updatedPlayingState;
+            setRoomState(updatedPlayingState);
+          } else {
+            setRoomState((prev) => {
+              if (!prev) return prev;
+              const next = {
+                ...prev,
+                status: "PLAYING" as const,
+                tournamentState: tourState || prev.tournamentState,
+              };
+              roomStateRef.current = next;
+              return next;
+            });
+          }
 
           if (selectedMode === "DICE_RACE") {
             syncToIframes({
               matchStarting: null,
-              roomState: {
-                ...(roomState || {}),
-                status: "PLAYING",
-                tournamentState: tourState || roomState?.tournamentState,
-              },
+              roomState: updatedPlayingState || roomStateRef.current,
             });
             addLog("🏁 Cuộc đua cờ xí ngầu bắt đầu! Bàn cờ hiển thị toàn màn hình. Nhấn 'Hiện câu hỏi' khi sẵn sàng.");
             return;
           } else if (selectedMode === "GRID_CARO") {
             syncToIframes({
               matchStarting: null,
-              roomState: {
-                ...(roomState || {}),
-                status: "PLAYING",
-                tournamentState: tourState || roomState?.tournamentState,
-              },
+              roomState: updatedPlayingState || roomStateRef.current,
             });
             addLog("🏁 Bàn cờ Caro bắt đầu! Đội hiện tại chọn ô để mở câu hỏi.");
             return;
@@ -7758,11 +7819,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
 
       // Chế độ bàn cờ/theo lượt (MYSTERY_QUEST, GRID_CARO, DICE_RACE): Chuyển lượt/về bàn cờ ngay lập tức 0ms, không treo đếm ngược 3s
       if (selectedMode === "GRID_CARO") {
-        setCurrentQuestion(null);
-        setRevealPayload(null);
-        setTimer(null);
-        syncToIframes({ currentQuestion: null, revealPayload: null, timer: null });
-        addLog("Admin: Quay về bảng ô Caro ngay lập tức (0s delay)");
+        handleGridAdvanceNow();
         return;
       }
       if (selectedMode === "DICE_RACE") {
@@ -9868,6 +9925,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
 
 
   const handleSwitchActiveTeam = (idx: number) => {
+    if (activeTeamIndex === idx) return;
     setActiveTeamIndex(idx);
     const targetTeam = stableTeams[idx];
     if (!targetTeam) return;
@@ -12181,46 +12239,98 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
           </div>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 flex flex-col gap-1.5 sm:gap-2 overflow-hidden animate-loaded-reveal pb-14 lg:pb-0">
-{/* ══════════════════════════════════════════════════════════════════
-              PHẦN TRÊN (~55% chiều cao): Màn hình Chiếu Trường Quay (TV 3D Display)
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-1.5 sm:gap-2 overflow-hidden animate-loaded-reveal pb-14 lg:pb-0">
+          {/* ══════════════════════════════════════════════════════════════════
+              CỘT TRÁI (Cockpit): Màn hình Chiếu Trường Quay + Nhật ký + Chọn Đội & Thử nghiệm
              ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`flex-col min-h-0 h-full gap-1.5 overflow-hidden animate-slide-in-left landscape:col-span-1 lg:col-span-7 lg:order-first ${
-              mobileTab === "DISPLAY" ? "flex" : "hidden landscape:flex lg:flex"
+            className={`flex-col gap-1.5 overflow-hidden animate-slide-in-left ${
+              mobileTab === "HOST"
+                ? "hidden lg:flex"
+                : mobileTab === "PLAYER"
+                ? "flex shrink-0 order-2 lg:order-none"
+                : "flex flex-1 min-h-0"
+            } ${
+              sandboxViewMode === "PHONE_FOCUS"
+                ? "lg:w-[380px] xl:w-[440px] lg:flex-none lg:h-full lg:min-h-0"
+                : "lg:flex-1 lg:min-w-0 lg:h-full lg:min-h-0"
             }`}
           >
-            {/* Viewport Card: Display Iframe or Host Panel */}
-            <div className="flex-1 min-h-0 glass rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-black">
-              {/* Card Header */}
-              <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
-                  <span className="text-white font-black tracking-wide">
-                    📺 MÀN HÌNH HIỂN THỊ TRƯỜNG QUAY (TRỰC TIẾP 3D)
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                    Trực tiếp 3D
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={`/display/${code}?sandbox=1&standalone=1`}
-                    target="_blank"
-                    className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
-                  >
-                    <span>Mở tab riêng</span>
-                    <span>↗</span>
-                  </Link>
-                </div>
-              </div>
+            {/* Display Card + Settings/Ticker */}
+            <div className={`${mobileTab === "DISPLAY" ? "flex" : "hidden lg:flex"} flex-1 min-h-0 flex-col gap-1.5 overflow-hidden`}>
+              {/* Viewport Card: Display Iframe */}
+              <div className="flex-1 min-h-0 glass rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-black">
+                {/* Card Header */}
+                <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee] shrink-0" />
+                    <span className="text-white font-black tracking-wide truncate">
+                      📺 MÀN HÌNH HIỂN THỊ TRƯỜNG QUAY (TRỰC TIẾP 3D)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hidden xl:inline shrink-0">
+                      Trực tiếp 3D
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Sandbox Multi-View Mode Switcher */}
+                    <div className="hidden sm:flex items-center gap-1 bg-[#090b14] p-0.5 rounded-lg border border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => setSandboxViewMode("BALANCED")}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                          sandboxViewMode === "BALANCED"
+                            ? "bg-cyan-500/30 text-cyan-200 border border-cyan-400/50 shadow"
+                            : "text-slate-400 hover:text-white"
+                        }`}
+                        title="Chia đôi không gian cân bằng (Màn chiếu + Điện thoại)"
+                      >
+                        Cân bằng
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSandboxViewMode("PHONE_FOCUS")}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                          sandboxViewMode === "PHONE_FOCUS"
+                            ? "bg-purple-600 text-white shadow ring-1 ring-purple-400"
+                            : "text-slate-400 hover:text-white"
+                        }`}
+                        title="Phóng to Điện thoại thí sinh để test dễ dàng"
+                      >
+                        <span>📱</span>
+                        <span>Phóng to ĐT</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSandboxViewMode("DISPLAY_FOCUS")}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                          sandboxViewMode === "DISPLAY_FOCUS"
+                            ? "bg-cyan-600 text-white shadow ring-1 ring-cyan-400"
+                            : "text-slate-400 hover:text-white"
+                        }`}
+                        title="Chỉ xem Màn chiếu trường quay"
+                      >
+                        <span>📺</span>
+                        <span>Màn chiếu</span>
+                      </button>
+                    </div>
 
-              {/* Viewport Content */}
-              <div
-                className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col"
-                onPointerDownCapture={forwardUnlock}
-              >
-                <iframe
+                    <Link
+                      href={`/display/${code}?sandbox=1&standalone=1`}
+                      target="_blank"
+                      className="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 text-[11px] font-bold"
+                    >
+                      <span>Mở tab riêng</span>
+                      <span>↗</span>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Viewport Content */}
+                <div
+                  className="flex-1 min-h-0 bg-[#0c0d18] relative overflow-hidden flex flex-col"
+                  onPointerDownCapture={forwardUnlock}
+                >
+                  <iframe
                     ref={displayIframeRef}
                     src={`/display/${code}?sandbox=1`}
                     title="Display Viewport"
@@ -12233,200 +12343,117 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       }
                     }}
                   />
-              </div>
-            </div>
-
-            {/* Bottom Controls Bar (Red Area): Cài đặt & Pháp lý + Live Ticker */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 shrink-0">
-              {/* Cài đặt & Pháp lý Buttons Dock (Vùng đỏ theo thiết kế) */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowGlobalSettingsModal(true)}
-                  className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#12162a]/90 hover:bg-[#1c2242] border border-cyan-500/30 hover:border-cyan-400 text-xs text-slate-300 hover:text-white shadow-md backdrop-blur-md transition-all active:scale-95 cursor-pointer"
-                  title="Cài đặt hệ thống (Âm thanh, Đồ họa, Ngôn ngữ, Toàn màn hình)"
-                >
-                  <span className="w-3.5 h-3.5 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <svg className="w-2.5 h-2.5 group-hover:rotate-45 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </span>
-                  <span className="font-semibold text-[11px] text-slate-300 group-hover:text-cyan-200">
-                    Cài đặt
-                  </span>
-                </button>
-                <FloatingLegalButton />
+                </div>
               </div>
 
-              {/* Live Bot Event Logs (Compact Single-line Ticker Bar) */}
-              <div className="glass rounded-xl px-2.5 py-1 border border-white/10 text-xs bg-[#121424] flex items-center justify-between flex-1 min-w-0 shadow-lg">
-                <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${botAutoEnabled ? "bg-emerald-400 animate-pulse glow-neon-emerald" : "bg-cyan-400 animate-pulse glow-neon-cyan"}`} />
-                  <span className="font-bold text-slate-400 text-[10px] sm:text-[11px] shrink-0 uppercase tracking-wider hidden sm:inline">Bản tin trực tiếp:</span>
-                  <span
-                    key={botLogs[0] || "initial"}
-                    className="font-mono text-[10px] sm:text-[11px] text-slate-200 truncate animate-ticker-slide"
+              {/* Bottom Controls Bar: Cài đặt & Pháp lý + Live Ticker */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowGlobalSettingsModal(true)}
+                    className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#12162a]/90 hover:bg-[#1c2242] border border-cyan-500/30 hover:border-cyan-400 text-xs text-slate-300 hover:text-white shadow-md backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+                    title="Cài đặt hệ thống (Âm thanh, Đồ họa, Ngôn ngữ, Toàn màn hình)"
                   >
-                    {botLogs[0] || "Phòng Sandbox sẵn sàng · Đang kết nối hiển thị trường quay..."}
-                  </span>
+                    <span className="w-3.5 h-3.5 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                      <svg className="w-2.5 h-2.5 group-hover:rotate-45 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </span>
+                    <span className="font-semibold text-[11px] text-slate-300 group-hover:text-cyan-200">
+                      Cài đặt
+                    </span>
+                  </button>
+                  <FloatingLegalButton />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowLogsModal(true)}
-                  className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[10px] sm:text-[11px] font-bold shrink-0 transition btn-tactile cursor-pointer"
-                >
-                  📜 Nhật ký ({botLogs.length})
-                </button>
-              </div>
-            </div>
-          </div>
 
-                    {/* ══════════════════════════════════════════════════════════════════
-              PHẦN DƯỚI (~45% chiều cao): Điện thoại Thí sinh (Trái) + Chọn Đội & Bàn Phím Điều Khiển (Phải)
-             ══════════════════════════════════════════════════════════════════ */}
-          <div
-            className={`flex-1 min-h-[240px] flex flex-col lg:flex-row gap-2 overflow-hidden animate-slide-in-up ${
-              mobileTab === "PLAYER" ? "flex" : mobileTab === "DISPLAY" ? "hidden lg:flex" : "hidden lg:flex"
-            }`}
-          >
-            {/* Cột trái: Khung Điện thoại Thí sinh */}
-            <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 h-full flex flex-col min-h-0 glass rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-[#0b0c16]">
-              {/* Thanh tiêu đề thiết bị */}
-              <div className="bg-[#151728] px-2.5 py-1.5 border-b border-white/10 flex items-center justify-between gap-1.5 shrink-0">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse" style={{ background: currentTeam?.color || "#a855f7" }} />
-                  <span className="font-black text-xs text-white truncate max-w-[120px]">
-                    {activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
-                  </span>
-                  <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
-                    {`${(((currentTeam?.score ?? 0)) + (roomState?.mode === "MAGIC_WHEEL" && currentTeam?.id && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[currentTeam.id] || 0) : 0)).toLocaleString()}đ`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">📱 Điện thoại thí sinh</span>
-
-                </div>
-              </div>
-
-
-
-              <div className="flex-1 min-h-0 bg-[#0f0f1a]">
-                <iframe
-                  ref={playerIframeRef}
-                  src={`/play/${code}?sandbox=1&playerId=sb_${code}_t0&teamIndex=0&name=${encodeURIComponent("Bạn (Tester)")}`}
-                  allow="autoplay; camera; microphone"
-                  onLoad={() => {
-                    if (isOfflineSandbox) {
-                      syncToIframes();
-                    }
-                    const targetTeam = stableTeams[activeTeamIndex] || stableTeams[0];
-                    if (targetTeam) {
-                      const tName = activeTeamIndex === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
-                      const isQuestionActive = Boolean(currentQuestion && !revealPayload);
-                      const targetAnswer = isQuestionActive
-                        ? (isOfflineSandbox
-                            ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null)
-                            : (teamSelectedAnswers[targetTeam.id] || null))
-                        : null;
-                      const allAnswers = isQuestionActive
-                        ? (isOfflineSandbox
-                            ? Object.fromEntries(
-                                Array.from(offlineAnswersRef.current.entries()).map(([tid, val]) => [tid, val.answer])
-                              )
-                            : teamSelectedAnswers)
-                        : {};
-                      playerIframeRef.current?.contentWindow?.postMessage(
-                        {
-                          type: "SWITCH_ACTIVE_TEAM",
-                          teamId: targetTeam.id,
-                          teamName: tName,
-                          teamIndex: activeTeamIndex,
-                          currentAnswer: targetAnswer,
-                          allTeamAnswers: allAnswers,
-                          roomState,
-                          currentQuestion,
-                          timer,
-                          revealPayload,
-                          payload: {
-                            teamId: targetTeam.id,
-                            teamName: tName,
-                            teamIndex: activeTeamIndex,
-                            currentAnswer: targetAnswer,
-                          },
-                        },
-                        "*"
-                      );
-                    }
-                  }}
-                  title="Player Viewport"
-                  className="w-full h-full border-0"
-                />
-              </div>
-            </div>
-
-            {/* Cột phải: Chọn Đội & Bàn Phím Thử Nghiệm / Quản Trò */}
-            <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto no-scrollbar">
-              <div className="glass rounded-xl px-2 py-1 border border-white/10 bg-[#121424] shrink-0 flex items-center gap-1.5">
-              <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0 hidden sm:inline">📱 Chọn Đội:</span>
-              <div className="flex items-center gap-1.5 flex-1 overflow-x-auto no-scrollbar py-0.5">
-                {stableTeams.map((t: TeamState, idx: number) => {
-                  const isActive = activeTeamIndex === idx;
-                  const teamPopups = scorePopups.filter((p) => p.teamId === t.id);
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => handleSwitchActiveTeam(idx)}
-                      className={`relative px-1.5 py-0.5 rounded-lg text-left border transition flex flex-col justify-center gap-0.5 cursor-pointer btn-tactile shrink-0 sm:flex-1 sm:max-w-[130px] min-w-[105px] ${
-                        isActive
-                          ? "bg-purple-600/30 border-purple-500 shadow ring-1 ring-purple-400/50"
-                          : "glass border-white/10 hover:border-white/30 text-slate-300"
-                      }`}
+                {/* Live Bot Event Logs (Compact Single-line Ticker Bar) */}
+                <div className="glass rounded-xl px-2.5 py-1 border border-white/10 text-xs bg-[#121424] flex items-center justify-between flex-1 min-w-0 shadow-lg">
+                  <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${botAutoEnabled ? "bg-emerald-400 animate-pulse glow-neon-emerald" : "bg-cyan-400 animate-pulse glow-neon-cyan"}`} />
+                    <span className="font-bold text-slate-400 text-[10px] sm:text-[11px] shrink-0 uppercase tracking-wider hidden sm:inline">Bản tin trực tiếp:</span>
+                    <span
+                      key={botLogs[0] || "initial"}
+                      className="font-mono text-[10px] sm:text-[11px] text-slate-200 truncate animate-ticker-slide"
                     >
-                      {/* Floating dynamic score badges */}
-                      {teamPopups.map((p) => (
-                        <span
-                          key={p.id}
-                          className={`absolute -top-3.5 right-1 z-30 font-black text-[10px] px-1.5 py-0.2 rounded-full shadow-lg animate-score-float pointer-events-none whitespace-nowrap ${
-                            p.delta > 0
-                              ? "bg-emerald-500 text-white shadow-emerald-500/50"
-                              : "bg-rose-500 text-white shadow-rose-500/50"
-                          }`}
-                        >
-                          {p.text}
-                        </span>
-                      ))}
-                      {/* Dòng 1: Tên đội */}
-                      <div className="flex items-center gap-1.5 min-w-0 w-full">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
-                        <span className="font-bold text-[10.5px] truncate text-white leading-tight">{t.name}</span>
-                      </div>
-                      {/* Dòng 2: Tổng điểm và Điểm vòng riêng biệt */}
-                      <div className="flex items-center justify-between gap-1 w-full text-[9.5px] leading-tight">
-                        <span className="font-mono font-bold text-cyan-300 shrink-0">
-                          {((t.score || 0) + (roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[t.id] || 0) : 0)).toLocaleString()}đ
-                        </span>
-                        {roomState?.mode === "MAGIC_WHEEL" && (roomState?.magicWheelState?.roundScores?.[t.id] || 0) > 0 ? (
-                          <span className="text-[8.5px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold shrink-0">
-                            +{(roomState.magicWheelState?.roundScores?.[t.id] || 0).toLocaleString()}đ
-                          </span>
-                        ) : null}
-                        {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === t.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
-                          <span className="text-yellow-400 font-extrabold text-[8.5px] shrink-0">
-                            (+{roomState.mysteryQuestState.potPoints}đ)
-                          </span>
-                        ) : null}
-                      </div>
-                    </button>
-                  );
-                })}
+                      {botLogs[0] || "Phòng Sandbox sẵn sàng · Đang kết nối hiển thị trường quay..."}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowLogsModal(true)}
+                    className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[10px] sm:text-[11px] font-bold shrink-0 transition btn-tactile cursor-pointer"
+                  >
+                    📜 Nhật ký ({botLogs.length})
+                  </button>
+                </div>
               </div>
             </div>
 
-            
+            {/* Chọn Đội & Bàn Phím Thử Nghiệm / Điều Khiển Nhanh */}
+            <div
+              className={`${
+                sandboxViewMode === "DISPLAY_FOCUS" ? "lg:hidden " : ""
+              }${
+                mobileTab === "PLAYER" ? "flex" : "hidden lg:flex"
+              } flex-col gap-1 shrink-0`}
+            >
+              <div className="glass rounded-xl px-2 py-1 border border-white/10 bg-[#121424] shrink-0 flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0 hidden sm:inline">📱 Chọn Đội:</span>
+                <div className="flex items-center gap-1.5 flex-1 overflow-x-auto no-scrollbar py-0.5">
+                  {stableTeams.map((t: TeamState, idx: number) => {
+                    const isActive = activeTeamIndex === idx;
+                    const teamPopups = scorePopups.filter((p) => p.teamId === t.id);
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => handleSwitchActiveTeam(idx)}
+                        className={`relative px-1.5 py-0.5 rounded-lg text-left border transition flex flex-col justify-center gap-0.5 cursor-pointer btn-tactile shrink-0 sm:flex-1 sm:max-w-[130px] min-w-[96px] ${
+                          isActive
+                            ? "bg-purple-600/30 border-purple-500 shadow ring-1 ring-purple-400/50"
+                            : "glass border-white/10 hover:border-white/30 text-slate-300"
+                        }`}
+                      >
+                        {teamPopups.map((p) => (
+                          <span
+                            key={p.id}
+                            className={`absolute -top-3.5 right-1 z-30 font-black text-[10px] px-1.5 py-0.2 rounded-full shadow-lg animate-score-float pointer-events-none whitespace-nowrap ${
+                              p.delta > 0
+                                ? "bg-emerald-500 text-white shadow-emerald-500/50"
+                                : "bg-rose-500 text-white shadow-rose-500/50"
+                            }`}
+                          >
+                            {p.text}
+                          </span>
+                        ))}
+                        <div className="flex items-center gap-1.5 min-w-0 w-full">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
+                          <span className="font-bold text-[10.5px] truncate text-white leading-tight">{t.name}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-1 w-full text-[9.5px] leading-tight">
+                          <span className="font-mono font-bold text-cyan-300 shrink-0">
+                            {((t.score || 0) + (roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[t.id] || 0) : 0)).toLocaleString()}đ
+                          </span>
+                          {roomState?.mode === "MAGIC_WHEEL" && (roomState?.magicWheelState?.roundScores?.[t.id] || 0) > 0 ? (
+                            <span className="text-[8.5px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold shrink-0">
+                              +{(roomState.magicWheelState?.roundScores?.[t.id] || 0).toLocaleString()}đ
+                            </span>
+                          ) : null}
+                          {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === t.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
+                            <span className="text-yellow-400 font-extrabold text-[8.5px] shrink-0">
+                              (+{roomState.mysteryQuestState.potPoints}đ)
+                            </span>
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-              <div className="bg-[#151728] px-2 sm:px-2.5 py-1.5 border-b border-white/10 flex items-center justify-between gap-1 sm:gap-2 shrink-0 overflow-x-auto no-scrollbar">
+              <div className="bg-[#151728] rounded-xl px-2 sm:px-2.5 py-1 border border-white/10 flex items-center justify-between gap-1 sm:gap-2 shrink-0 overflow-x-auto no-scrollbar">
                 {/* Active Team Identity Badge */}
                 <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 shrink-0 relative">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse" style={{ background: currentTeam?.color || "#a855f7" }} />
@@ -12606,8 +12633,101 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
 
+          {/* ══════════════════════════════════════════════════════════════════
+              CỘT PHẢI: Khung Điện thoại Thí sinh toàn chiều cao (Desktop Side-by-Side)
+             ══════════════════════════════════════════════════════════════════ */}
+          <div
+            className={`flex-col min-h-0 overflow-hidden animate-slide-in-up ${
+              mobileTab === "PLAYER" ? "flex flex-1 order-1 lg:order-none" : "hidden lg:flex"
+            } ${
+              sandboxViewMode === "DISPLAY_FOCUS"
+                ? "lg:hidden"
+                : sandboxViewMode === "PHONE_FOCUS"
+                ? "lg:flex-1 lg:min-w-0 lg:h-full"
+                : "lg:w-[390px] xl:w-[430px] 2xl:w-[460px] lg:shrink-0 lg:h-full"
+            }`}
+          >
+            <div className="w-full flex-1 flex flex-col min-h-0 glass rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-[#0b0c16]">
+              {/* Thanh tiêu đề thiết bị */}
+              <div className="bg-[#151728] px-2.5 py-1.5 border-b border-white/10 flex items-center justify-between gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse" style={{ background: currentTeam?.color || "#a855f7" }} />
+                  <span className="font-black text-xs text-white truncate max-w-[140px]">
+                    {activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
+                    {`${(((currentTeam?.score ?? 0)) + (roomState?.mode === "MAGIC_WHEEL" && currentTeam?.id && roomState?.magicWheelState?.phase !== "ROUND_RECAP" ? (roomState?.magicWheelState?.roundScores?.[currentTeam.id] || 0) : 0)).toLocaleString()}đ`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">📱 Điện thoại thí sinh</span>
+                  <Link
+                    href={`/play/${code}?sandbox=1&playerId=sb_${code}_t0&teamIndex=0&standalone=1`}
+                    target="_blank"
+                    className="text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-0.5 text-[10px] font-bold"
+                  >
+                    <span>Mở tab</span>
+                    <span>↗</span>
+                  </Link>
+                </div>
               </div>
+
+              <div className="flex-1 min-h-0 bg-[#0f0f1a]">
+                <iframe
+                  ref={playerIframeRef}
+                  src={`/play/${code}?sandbox=1&playerId=sb_${code}_t0&teamIndex=0&name=${encodeURIComponent("Bạn (Tester)")}`}
+                  allow="autoplay; camera; microphone"
+                  onLoad={() => {
+                    if (isOfflineSandbox) {
+                      syncToIframes();
+                    }
+                    const targetTeam = stableTeams[activeTeamIndex] || stableTeams[0];
+                    if (targetTeam) {
+                      const tName = activeTeamIndex === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
+                      const isQuestionActive = Boolean(currentQuestion && !revealPayload);
+                      const targetAnswer = isQuestionActive
+                        ? (isOfflineSandbox
+                            ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null)
+                            : (teamSelectedAnswers[targetTeam.id] || null))
+                        : null;
+                      const allAnswers = isQuestionActive
+                        ? (isOfflineSandbox
+                            ? Object.fromEntries(
+                                Array.from(offlineAnswersRef.current.entries()).map(([tid, val]) => [tid, val.answer])
+                              )
+                            : teamSelectedAnswers)
+                        : {};
+                      playerIframeRef.current?.contentWindow?.postMessage(
+                        {
+                          type: "SWITCH_ACTIVE_TEAM",
+                          teamId: targetTeam.id,
+                          teamName: tName,
+                          teamIndex: activeTeamIndex,
+                          currentAnswer: targetAnswer,
+                          allTeamAnswers: allAnswers,
+                          roomState,
+                          currentQuestion,
+                          timer,
+                          revealPayload,
+                          payload: {
+                            teamId: targetTeam.id,
+                            teamName: tName,
+                            teamIndex: activeTeamIndex,
+                            currentAnswer: targetAnswer,
+                          },
+                        },
+                        "*"
+                      );
+                    }
+                  }}
+                  title="Player Viewport"
+                  className="w-full h-full border-0"
+                />
+              </div>
+            </div>
           </div>
 
 {/* ══════════════════════════════════════════════════════════════════

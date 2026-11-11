@@ -1485,6 +1485,22 @@ export default function AdminRoomPage() {
                     </div>
                   )}
 
+                  {currentQuestion?.buzzGraceActive && (
+                    <div className="p-2.5 rounded-lg bg-blue-950/60 border border-blue-400/40 text-xs text-blue-200 flex items-center justify-center gap-2 animate-pulse">
+                      <span>⏳ Đang đệm 1s hồi sức cho thí sinh bấm chuông...</span>
+                    </div>
+                  )}
+
+                  {currentQuestion?.buzzAwaitingReveal && (
+                    <button
+                      type="button"
+                      onClick={() => emit("admin:buzz:reveal_now", { code })}
+                      className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-black shadow animate-pulse cursor-pointer mb-2"
+                    >
+                      ✨ Công bố đáp án ngay (tự công bố sau 2s)
+                    </button>
+                  )}
+
                   {/* Nút phán quyết Đúng / Sai trực tiếp cho MC */}
                   <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
                     <span className="text-[11px] text-slate-400">Phán quyết MC:</span>

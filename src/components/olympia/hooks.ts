@@ -251,6 +251,13 @@ export const isIntroSeamlessLoopTrack = (sound: string): boolean => {
   return /(?:contest_intro|show_intro)$/.test(normalized);
 };
 
+/** Loops contestant_intro seamlessly when there are more than 4 active contestants */
+export const shouldLoopContestantIntro = (sound: string, seatCount: number): boolean => {
+  if (!sound || seatCount <= 4) return false;
+  const normalized = sound.split("?")[0].replace(/\.mp3$/, "");
+  return /(?:^|\/)contestant_intro$/.test(normalized);
+};
+
 export const calculateEntranceDuration = (seatCount: number): number => {
   const n = Math.max(1, Math.floor(seatCount));
   return getEntranceScheduleOffsetsMs(n).totalDurationSec;
@@ -713,12 +720,13 @@ export function useOlympiaAudio(
   }, []);
 
   const setupIntroSeamlessLoop = useCallback(
-    (currentAudio: HTMLAudioElement) => {
-      if (!isIntroSeamlessLoopTrack(currentAudio.src)) return;
+    (currentAudio: HTMLAudioElement, forceLoop: boolean = false) => {
+      if (!forceLoop && !isIntroSeamlessLoopTrack(currentAudio.src)) return;
 
       let hasCrossfaded = false;
       let timeupdateHandler: (() => void) | null = null;
       let metaHandler: (() => void) | null = null;
+      let endedHandler: (() => void) | null = null;
       let timer: ReturnType<typeof setTimeout> | null = null;
 
       const cleanup = () => {
@@ -735,6 +743,10 @@ export function useOlympiaAudio(
           currentAudio.removeEventListener("loadedmetadata", metaHandler);
           metaHandler = null;
         }
+        if (endedHandler) {
+          currentAudio.removeEventListener("ended", endedHandler);
+          endedHandler = null;
+        }
         activeIntroCleanups.current.delete(cleanup);
       };
 
@@ -742,11 +754,10 @@ export function useOlympiaAudio(
 
       const doCrossfade = () => {
         if (hasCrossfaded) return;
-        // Verify currentAudio is still the current active BGM and not paused/ended
+        // Verify currentAudio is still the current active BGM and not paused/stopped intentionally
         if (
           bgm.current !== currentAudio ||
-          currentAudio.paused ||
-          currentAudio.ended ||
+          (currentAudio.paused && !currentAudio.ended) ||
           !activeBgmSet.current.has(currentAudio)
         ) {
           cleanup();
@@ -762,21 +773,23 @@ export function useOlympiaAudio(
         registerActive(nextAudio);
 
         // Recursively arm seamless predictive crossfade loop on the new instance
-        setupIntroSeamlessLoop(nextAudio);
+        setupIntroSeamlessLoop(nextAudio, forceLoop);
 
         // Perform smooth 2.0s crossfade
         crossfadeToBgm(nextAudio, INTRO_CROSSFADE_WINDOW_MS, false, false, true);
       };
 
+      const fallbackDuration = currentAudio.src.includes("contestant_intro")
+        ? 38.4
+        : currentAudio.src.includes("show_intro")
+        ? 37.1
+        : CONTEST_INTRO_DURATION_SEC;
+
       const armTimer = () => {
         if (hasCrossfaded) return;
         const d = currentAudio.duration;
         const totalDuration =
-          !isNaN(d) && isFinite(d) && d > 0
-            ? d
-            : currentAudio.src.includes("show_intro")
-            ? 37.1
-            : CONTEST_INTRO_DURATION_SEC;
+          !isNaN(d) && isFinite(d) && d > 0 ? d : fallbackDuration;
         const triggerTime = Math.max(0, totalDuration - INTRO_CROSSFADE_WINDOW_SEC);
         const cur = currentAudio.currentTime || 0;
         const delayMs = Math.max(0, Math.round((triggerTime - cur) * 1000));
@@ -798,11 +811,7 @@ export function useOlympiaAudio(
         if (hasCrossfaded) return;
         const d = currentAudio.duration;
         const totalDuration =
-          !isNaN(d) && isFinite(d) && d > 0
-            ? d
-            : currentAudio.src.includes("show_intro")
-            ? 37.1
-            : CONTEST_INTRO_DURATION_SEC;
+          !isNaN(d) && isFinite(d) && d > 0 ? d : fallbackDuration;
         const triggerTime = Math.max(0, totalDuration - INTRO_CROSSFADE_WINDOW_SEC);
         if (currentAudio.currentTime >= triggerTime) {
           doCrossfade();
@@ -810,6 +819,10 @@ export function useOlympiaAudio(
       };
 
       currentAudio.addEventListener("timeupdate", timeupdateHandler);
+      endedHandler = () => {
+        if (!hasCrossfaded) doCrossfade();
+      };
+      currentAudio.addEventListener("ended", endedHandler, { once: true });
       currentAudio.addEventListener("play", () => {
         if (!hasCrossfaded) armTimer();
       });
@@ -1009,8 +1022,14 @@ export function useOlympiaAudio(
 
     const season = audioSeason || "O26";
     const currentChannel = cue.pan || channel || (typeof window !== "undefined" ? (localStorage.getItem("olympia_audio_channel") as any) || "both" : "both");
+    const activeSeatCount = Math.max(
+      state?.seatCount ?? 0,
+      state?.seats?.filter((s) => s.connected || s.name).length ?? 0,
+      state?.seats?.length ?? 4
+    );
+    const forceLoopContestantIntro = shouldLoopContestantIntro(cue.sound, activeSeatCount);
     const isIntroTrack = isIntroOrMusicTrack(cue.sound);
-    const isBgmCue = cue.kind === "bgm" || isIntroTrack;
+    const isBgmCue = cue.kind === "bgm" || isIntroTrack || forceLoopContestantIntro;
     const isCountdown = isCountdownTrack(cue.sound);
     const looping = isBgmCue && !isCountdown && isLoopingBgm(cue.sound);
 
@@ -1049,8 +1068,8 @@ export function useOlympiaAudio(
           registerActive(std);
           if (isBgmCue) {
             crossfadeToBgm(std, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
-            if (isIntroSeamlessLoopTrack(cue.sound)) {
-              setupIntroSeamlessLoop(std);
+            if (isIntroSeamlessLoopTrack(cue.sound) || forceLoopContestantIntro) {
+              setupIntroSeamlessLoop(std, forceLoopContestantIntro);
             }
           } else {
             std.volume = defaultSfxVol;
@@ -1118,8 +1137,8 @@ export function useOlympiaAudio(
 
       if (isBgmCue) {
         crossfadeToBgm(a, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
-        if (isIntroSeamlessLoopTrack(cue.sound)) {
-          setupIntroSeamlessLoop(a);
+        if (isIntroSeamlessLoopTrack(cue.sound) || forceLoopContestantIntro) {
+          setupIntroSeamlessLoop(a, forceLoopContestantIntro);
         }
       } else {
         a.volume = defaultSfxVol;
@@ -1137,6 +1156,8 @@ export function useOlympiaAudio(
   }, [
     state?.cue,
     state?.stage,
+    state?.seatCount,
+    state?.seats?.length,
     audioSeason,
     enabled,
     channel,

@@ -146,9 +146,9 @@ export function evaluateVeDichCameraState(
   if (vd.phase === "idle") {
     if (vd.onStage) {
       const onStageElapsed = Math.max(0, (now - onStageEnteredAt) / 1000);
-      if (onStageElapsed < 2.0) {
+      if (onStageElapsed < 3.8) {
         return {
-          camAngle: 10,
+          camAngle: 1,
           transitionMode: "MORPH",
           isOverlayHidden: false,
           pushInProgress: 0,
@@ -162,7 +162,7 @@ export function evaluateVeDichCameraState(
       };
     }
     return {
-      camAngle: 10,
+      camAngle: 1,
       transitionMode: "MORPH",
       isOverlayHidden: false,
       pushInProgress: 0,
@@ -171,9 +171,9 @@ export function evaluateVeDichCameraState(
 
   if (vd.phase === "choosing") {
     const onStageElapsed = Math.max(0, (now - onStageEnteredAt) / 1000);
-    if (onStageElapsed < 2.0) {
+    if (onStageElapsed < 3.8) {
       return {
-        camAngle: 10,
+        camAngle: 1,
         transitionMode: "MORPH",
         isOverlayHidden: false,
         pushInProgress: 0,

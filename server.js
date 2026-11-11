@@ -88613,14 +88613,12 @@ function calculateModeDerivedConfig(mode, targetCount, teamsCount = 4, options) 
       };
     }
     case "WAGER": {
-      const roundsPerTeam = Math.max(1, Math.floor(qCount / safeTeams));
-      const adjustedTotal = roundsPerTeam * safeTeams;
       return {
-        matchMaxQuestions: adjustedTotal,
-        wagerRoundsPerTeam: roundsPerTeam,
-        roundsOrCycles: roundsPerTeam,
+        matchMaxQuestions: qCount,
+        wagerRoundsPerTeam: qCount,
+        roundsOrCycles: qCount,
         questionsPerUnit: 1,
-        descriptionVi: `T\u1EF1 \u0111\u1ED9ng chia th\xE0nh ${roundsPerTeam} v\xF2ng c\u01B0\u1EE3c \u0111i\u1EC3m b\xED m\u1EADt (${roundsPerTeam} l\u01B0\u1EE3t c\u01B0\u1EE3c/\u0111\u1ED9i \xD7 ${safeTeams} \u0111\u1ED9i = ${adjustedTotal} c\xE2u h\u1ECFi c\xE2n n\xE3o).`
+        descriptionVi: `G\u1ED3m ${qCount} c\xE2u h\u1ECFi c\u01B0\u1EE3c \u0111i\u1EC3m b\xED m\u1EADt. T\u1EA5t c\u1EA3 th\xED sinh/\u0111\u1ED9i c\u01B0\u1EE3c \u0111i\u1EC3m v\xE0 tr\u1EA3 l\u1EDDi \u0111\u1ED3ng th\u1EDDi \u1EDF m\u1ED7i c\xE2u h\u1ECFi!`
       };
     }
     case "BOUNCEBACK": {
@@ -88725,7 +88723,7 @@ function allocateQuestionsForMatch(params) {
   const shuffledEasy = shuffle(easyPool);
   const shuffledMed = shuffle(medPool);
   const shuffledHard = shuffle(hardPool);
-  const isTurnBasedMode = mode === "MYSTERY_QUEST" || mode === "BOUNCEBACK" || mode === "WAGER" || mode === "DICE_RACE" || mode === "GRID_CARO";
+  const isTurnBasedMode = mode === "MYSTERY_QUEST" || mode === "BOUNCEBACK" || mode === "DICE_RACE" || mode === "GRID_CARO";
   let allocatedQuestions = [];
   const pickedIds = /* @__PURE__ */ new Set();
   const drawFromPool = (desiredDiff) => {
@@ -88760,9 +88758,6 @@ function allocateQuestionsForMatch(params) {
     let roundsCount = 1;
     if (mode === "MYSTERY_QUEST") {
       roundsCount = derived.mysteryQuestTurnsPerTeam || Math.max(1, Math.floor(effectiveTotal / safeTeams));
-      questionsPerRound = safeTeams;
-    } else if (mode === "WAGER") {
-      roundsCount = derived.wagerRoundsPerTeam || Math.max(1, Math.floor(effectiveTotal / safeTeams));
       questionsPerRound = safeTeams;
     } else if (mode === "BOUNCEBACK") {
       const qPerTurn = derived.bouncebackQuestionsPerTurn || 1;
@@ -89776,6 +89771,7 @@ var roomBuzzWindowEndsAt = /* @__PURE__ */ new Map();
 var roomBuzzWindowRemaining = /* @__PURE__ */ new Map();
 var roomBuzzDisqualified = /* @__PURE__ */ new Map();
 var roomBuzzAnsweringTimers = /* @__PURE__ */ new Map();
+var roomBuzzAutoRevealTimers = /* @__PURE__ */ new Map();
 var roomTotalActorsCache = /* @__PURE__ */ new Map();
 var roomTournaments = /* @__PURE__ */ new Map();
 var roomMagicWheels = /* @__PURE__ */ new Map();
@@ -90665,6 +90661,12 @@ function cleanupRoomInMemory(roomId) {
         roomBuzzDelayTimers.delete(key);
       }
     }
+    for (const [key, timer] of roomBuzzAutoRevealTimers.entries()) {
+      if (key.startsWith(`${roomId}:`)) {
+        clearTimeout(timer);
+        roomBuzzAutoRevealTimers.delete(key);
+      }
+    }
     const prep = roomPrepareStates.get(roomId);
     if (prep?.timer) clearTimeout(prep.timer);
     roomPrepareStates.delete(roomId);
@@ -91000,39 +91002,53 @@ function registerSocketHandlers(io2) {
       const currentQ = activeQ?.question;
       const isDeviceAnswer = activeQ?.answerMethod !== "MC";
       const answerTimeLimit = currentQ ? isDeviceAnswer ? getBuzzedAnswerTimeLimit(currentQ) : 15 : 15;
-      const answerEndsAt = Date.now() + answerTimeLimit * 1e3;
       if (activeQ) {
         activeQ.buzzedTeamId = winner.teamId;
         activeQ.buzzedTeamName = winner.teamName;
         activeQ.buzzedBy = winner.playerName;
-        activeQ.buzzAnsweringActive = true;
+        activeQ.buzzGraceActive = true;
+        activeQ.buzzAnsweringActive = false;
         activeQ.buzzAttemptNumber = attemptNumber;
         activeQ.buzzMaxAttempts = activeQ.buzzMaxAttempts ?? (attempts.length <= 2 ? 2 : 3);
         activeQ.buzzMultiplier = multiplier;
         activeQ.buzzWindowActive = false;
         activeQ.timeLimit = answerTimeLimit;
-        activeQ.startedAt = Date.now();
-        activeQ.endsAt = answerEndsAt;
-        activeQ.timerPending = false;
-        activeQ.timerStarted = true;
+        activeQ.timerPending = true;
+        activeQ.timerStarted = false;
         io2.to(`room:${roomCode}`).emit("game:question", activeQ);
       }
-      io2.to(`room:${roomCode}`).emit("game:buzz", buzzInfo);
-      io2.to(`room:${roomCode}`).emit("game:buzz:answering", {
-        teamId: winner.teamId,
-        teamName: winner.teamName,
-        timeLimit: answerTimeLimit,
-        attemptNumber,
-        maxAttempts: activeQ?.buzzMaxAttempts,
-        multiplier
+      io2.to(`room:${roomCode}`).emit("game:buzz", {
+        ...buzzInfo,
+        graceActive: true,
+        graceSeconds: 1
       });
-      io2.to(`room:${roomCode}`).emit("game:timer:started", {
-        timeLimit: answerTimeLimit,
-        endsAt: answerEndsAt,
-        serverTime: Date.now(),
-        questionId
-      });
-      startQuestionTimer(io2, roomCode, roomId, questionId, answerTimeLimit);
+      setTimeout(() => {
+        const curActiveQ = roomActiveQuestions.get(roomId);
+        if (!curActiveQ || curActiveQ.buzzedTeamId !== winner.teamId) return;
+        const answerEndsAt = Date.now() + answerTimeLimit * 1e3;
+        curActiveQ.buzzGraceActive = false;
+        curActiveQ.buzzAnsweringActive = true;
+        curActiveQ.startedAt = Date.now();
+        curActiveQ.endsAt = answerEndsAt;
+        curActiveQ.timerPending = false;
+        curActiveQ.timerStarted = true;
+        io2.to(`room:${roomCode}`).emit("game:question", curActiveQ);
+        io2.to(`room:${roomCode}`).emit("game:buzz:answering", {
+          teamId: winner.teamId,
+          teamName: winner.teamName,
+          timeLimit: answerTimeLimit,
+          attemptNumber,
+          maxAttempts: curActiveQ.buzzMaxAttempts,
+          multiplier
+        });
+        io2.to(`room:${roomCode}`).emit("game:timer:started", {
+          timeLimit: answerTimeLimit,
+          endsAt: answerEndsAt,
+          serverTime: Date.now(),
+          questionId
+        });
+        startQuestionTimer(io2, roomCode, roomId, questionId, answerTimeLimit);
+      }, 1e3);
     } else if (mode === "BOUNCEBACK") {
       if (roomStealBuzzed.has(qKey)) return;
       if (roomStealTimer.has(qKey)) {
@@ -91588,7 +91604,6 @@ function registerSocketHandlers(io2) {
         if (!playerId) {
           return callback?.({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y th\xF4ng tin th\xED sinh" });
         }
-        playerSockets.set(socket.id, playerId);
         const player = await prisma.player.findUnique({
           where: { id: playerId },
           include: { room: true }
@@ -91596,8 +91611,10 @@ function registerSocketHandlers(io2) {
         if (!player || !player.room) {
           return callback?.({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y th\xED sinh trong ph\xF2ng n\xE0y" });
         }
+        const isSandboxHuman = isSandboxRoomEntity(player.room) && !isPlayerBot(player);
+        playerSockets.set(socket.id, playerId);
         const cachedRoom = roomCache.get(player.room.id);
-        if (cachedRoom?.teamsLocked) {
+        if (cachedRoom?.teamsLocked && !isSandboxHuman) {
           return callback?.({ success: false, error: "\u0110\u1ED9i h\xECnh \u0111\xE3 \u0111\u01B0\u1EE3c Host kh\xF3a, kh\xF4ng th\u1EC3 t\u1EF1 \xFD \u0111\u1ED5i \u0111\u1ED9i!" });
         }
         socket.join(`room:${player.room.code}`);
@@ -91619,6 +91636,9 @@ function registerSocketHandlers(io2) {
             socketId: socket.id
           }
         });
+        if (isSandboxHuman) {
+          roomSandboxActiveTeam.set(player.room.id, team.id);
+        }
         const state = await buildRoomState(player.room.id);
         const sess = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
         if (sess) {
@@ -91996,6 +92016,10 @@ function registerSocketHandlers(io2) {
         clearTimeout(roomBuzzDelayTimers.get(qKey));
         roomBuzzDelayTimers.delete(qKey);
       }
+      if (roomBuzzAutoRevealTimers.has(qKey)) {
+        clearTimeout(roomBuzzAutoRevealTimers.get(qKey));
+        roomBuzzAutoRevealTimers.delete(qKey);
+      }
       roomBuzzWindowRemaining.set(qKey, 5e3);
       await openBuzzWindow(io2, room.id, room.code, currentQ.id, 5e3);
     });
@@ -92005,7 +92029,25 @@ function registerSocketHandlers(io2) {
       const questions = await getRoomQuestions(room.id);
       const currentQ = questions[room.currentQuestion];
       if (!currentQ) return;
+      const qKey = `${room.id}:${currentQ.id}`;
+      if (roomBuzzAutoRevealTimers.has(qKey)) {
+        clearTimeout(roomBuzzAutoRevealTimers.get(qKey));
+        roomBuzzAutoRevealTimers.delete(qKey);
+      }
       await finalizeBuzzAnswer(io2, room.id, room.code, currentQ.id, isCorrect);
+    });
+    socket.on("admin:buzz:reveal_now", async ({ code } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "BUZZ") return;
+      const questions = await getRoomQuestions(room.id);
+      const currentQ = questions[room.currentQuestion];
+      if (!currentQ) return;
+      const qKey = `${room.id}:${currentQ.id}`;
+      if (roomBuzzAutoRevealTimers.has(qKey)) {
+        clearTimeout(roomBuzzAutoRevealTimers.get(qKey));
+        roomBuzzAutoRevealTimers.delete(qKey);
+      }
+      await finalizeBuzzAnswer(io2, room.id, room.code, currentQ.id);
     });
     socket.on("admin:room:toggle_lock", async ({ code } = {}) => {
       const room = await getAdminRoom(socket, code);
@@ -92477,6 +92519,10 @@ function registerSocketHandlers(io2) {
         clearTimeout(roomBuzzDelayTimers.get(qKey));
         roomBuzzDelayTimers.delete(qKey);
       }
+      if (roomBuzzAutoRevealTimers.has(qKey)) {
+        clearTimeout(roomBuzzAutoRevealTimers.get(qKey));
+        roomBuzzAutoRevealTimers.delete(qKey);
+      }
       roomQuestionProcessed.delete(qKey);
       roomQuestionScoresCache.delete(qKey);
       roomSharedPowerupUsedInQuestion.delete(room.id);
@@ -92628,7 +92674,7 @@ function registerSocketHandlers(io2) {
         questionState.timeLimit = standardTimeLimit;
         questionState.question.timeLimit = standardTimeLimit;
         roomOriginalQuestions.set(qKey, q);
-        const isAutoTimer = config?.autoTimerStart === true && !bouncebackSelectPhase;
+        const isAutoTimer = (config?.autoTimerStart === true || (room.mode === "CLASSIC" || room.mode === "ELIMINATION") && (config?.autoTimerOnQuestionShow === true || config?.autoTimerStart === true)) && !bouncebackSelectPhase;
         if (!isAutoTimer) {
           questionState.timerPending = true;
           questionState.timerStarted = false;
@@ -93280,7 +93326,6 @@ function registerSocketHandlers(io2) {
         stopQuestionTimer(room.id);
         roomActiveQuestions.delete(room.id);
         roomRevealPayloads.delete(room.id);
-        io2.to(`room:${room.code}`).emit("game:question:clear");
         await advanceGridToBoard(io2, room.id, room.code);
         return;
       }
@@ -93925,12 +93970,13 @@ function registerSocketHandlers(io2) {
       if (!playerId) return;
       const player = await prisma.player.findUnique({
         where: { id: playerId },
-        include: { room: { include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } } } }
+        include: { room: { include: { teams: true, quizBank: { include: { questions: { orderBy: { order: "asc" } } } } } } }
       });
       if (!player || !player.room || player.room.mode !== "GRID_CARO" || player.room.status !== "PLAYING") return;
       const gridState = roomGridCaros.get(player.room.id);
       if (!gridState) return;
-      if (gridState.currentTurnTeamId === player.teamId) {
+      const actingTeamId = !isPlayerBot(player) && isSandboxRoomEntity(player.room) && roomSandboxActiveTeam.get(player.room.id) || socketPlayerSessions.get(socket.id)?.teamId || player.teamId;
+      if (gridState.currentTurnTeamId === actingTeamId) {
         await handleGridCellSelect(player.room, cellId);
       } else {
         socket.emit("error", "Ch\u01B0a t\u1EDBi l\u01B0\u1EE3t ch\u1ECDn \xF4 c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
@@ -94006,7 +94052,9 @@ function registerSocketHandlers(io2) {
         where: { id: playerId },
         include: { room: true }
       });
-      if (!player || !player.room || !player.teamId) return;
+      if (!player || !player.room) return;
+      const actingTeamId = !isPlayerBot(player) && isSandboxRoomEntity(player.room) && roomSandboxActiveTeam.get(player.room.id) || socketPlayerSessions.get(socket.id)?.teamId || player.teamId;
+      if (!actingTeamId) return;
       const room = player.room;
       if (room.mode !== "DICE_RACE" || room.status !== "PLAYING") return;
       const diceState = roomDiceRaces.get(room.id);
@@ -94015,7 +94063,7 @@ function registerSocketHandlers(io2) {
         if (diceState) socket.emit("game:dice:update", diceState);
         return;
       }
-      if (diceState.currentTurnTeamId !== player.teamId) {
+      if (diceState.currentTurnTeamId !== actingTeamId) {
         socket.emit("error", "Ch\u01B0a t\u1EDBi l\u01B0\u1EE3t tung x\xFAc x\u1EAFc c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         socket.emit("game:dice:update", diceState);
         return;
@@ -94026,7 +94074,7 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
         await new Promise((resolve) => setTimeout(resolve, 400));
       }
-      await executeDiceRoll(room, diceState, player.teamId);
+      await executeDiceRoll(room, diceState, actingTeamId);
     });
     socket.on("game:wager:submit", async ({ amount }) => {
       const playerId = playerSockets.get(socket.id);
@@ -94035,12 +94083,14 @@ function registerSocketHandlers(io2) {
         where: { id: playerId },
         include: { room: true }
       });
-      if (!player || !player.room || !player.teamId) return;
+      if (!player || !player.room) return;
+      const actingTeamId = !isPlayerBot(player) && isSandboxRoomEntity(player.room) && roomSandboxActiveTeam.get(player.room.id) || socketPlayerSessions.get(socket.id)?.teamId || player.teamId;
+      if (!actingTeamId) return;
       const room = player.room;
       if (room.mode !== "WAGER" || room.status !== "PLAYING") return;
       const wagerState = roomWagers.get(room.id);
       if (!wagerState || wagerState.phase !== "WAGER_PERIOD") return;
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      const team = await prisma.team.findUnique({ where: { id: actingTeamId } });
       if (!team) return;
       if (wagerState.previousQuestionWagerTeamId && team.id === wagerState.previousQuestionWagerTeamId) {
         socket.emit("error", "\u0110\u1ED9i b\u1EA1n \u0111\xE3 \u0111\u1EB7t c\u01B0\u1EE3c \u1EDF c\xE2u h\u1ECFi tr\u01B0\u1EDBc! Theo lu\u1EADt c\xF4ng b\u1EB1ng, \u0111\u1ED9i b\u1EA1n t\u1EA1m ngh\u1EC9 c\u01B0\u1EE3c c\xE2u n\xE0y \u0111\u1EC3 nh\u01B0\u1EDDng c\xE1c \u0111\u1ED9i kh\xE1c.");
@@ -99423,7 +99473,7 @@ function registerSocketHandlers(io2) {
           message: "T\u1EA5t c\u1EA3 c\xE1c \u0111\u1ED9i \u0111\xE3 ch\u1ED1t \u0111\xE1p \xE1n! \u0110ang ki\u1EC3m tra k\u1EBFt qu\u1EA3..."
         });
         setTimeout(async () => {
-          await finalizeQuestionOnTimeUp(io2, room.id, room.code, questionId);
+          await finalizeQuestionOnTimeUp(io2, room.id, room.code, questionId, true);
         }, 2500);
       }
     });
@@ -99917,11 +99967,24 @@ async function processAnswerSubmissionImpl({
       }
       return;
     }
-    const isBuzzActor = buzz ? effectiveTeamId && effectiveTeamId === buzz.teamId || actorId && actorId === buzz.teamId || playerId && (playerId === buzz.playerId || playerId === buzz.teamId) : false;
-    if (!isAdminOverride && !isBuzzActor) {
+    const isBuzzActor2 = buzz ? effectiveTeamId && effectiveTeamId === buzz.teamId || actorId && actorId === buzz.teamId || playerId && (playerId === buzz.playerId || playerId === buzz.teamId) : false;
+    if (!isAdminOverride && !isBuzzActor2) {
       if (socket) {
         socket.emit("error", "Ch\u1EC9 \u0111\u1ED9i b\u1EA5m chu\xF4ng \u0111\u1EA7u ti\xEAn m\u1EDBi \u0111\u01B0\u1EE3c tr\u1EA3 l\u1EDDi!");
         if (activeQ) socket.emit("game:question", activeQ);
+      }
+      return;
+    }
+    if (!isAdminOverride && activeQ?.buzzGraceActive) {
+      if (socket) {
+        socket.emit("error", "\u0110ang trong 1s \u0111\u1EC7m chu\u1EA9n b\u1ECB sau khi b\u1EA5m chu\xF4ng, vui l\xF2ng ch\u1EDD \u0111\u1ED3ng h\u1ED3 tr\u1EA3 l\u1EDDi b\u1EAFt \u0111\u1EA7u!");
+      }
+      return;
+    }
+    if (!isAdminOverride && activeQ?.buzzAwaitingReveal) {
+      if (socket) {
+        socket.emit("error", "Chu\xF4ng Nhanh ch\u1EC9 ghi nh\u1EADn \u0111\xE1p \xE1n \u0111\u1EA7u ti\xEAn l\xE0 \u0111\xE1p \xE1n duy nh\u1EA5t!");
+        socket.emit("game:question", activeQ);
       }
       return;
     }
@@ -100048,7 +100111,8 @@ async function processAnswerSubmissionImpl({
   const isUpdate = Boolean(existingAnswer);
   const normalizedAnswer = Array.isArray(answer) ? answer : [answer];
   const isBouncebackSteal = room.mode === "BOUNCEBACK" && roomStealBuzzed.has(qKey);
-  if (isBouncebackSteal && existingAnswer && !isAdminOverride && !isHumanOverridingBot) {
+  const isBuzzActor = room.mode === "BUZZ" && roomBuzzFirst.has(qKey);
+  if ((isBouncebackSteal || isBuzzActor) && existingAnswer && !isAdminOverride && !isHumanOverridingBot) {
     if (socket) socket.emit("error", "\u0110\u1ED9i b\u1EA5m chu\xF4ng ch\u1EC9 \u0111\u01B0\u1EE3c ch\u1ECDn 1 \u0111\xE1p \xE1n duy nh\u1EA5t!");
     return;
   }
@@ -100270,7 +100334,23 @@ async function processAnswerSubmissionImpl({
     stopQuestionTimer(room.id);
     const { isAutoCorrect } = evaluateAnswerCorrectness(question, normalizedAnswer);
     if (question.type !== "ESSAY") {
-      await finalizeBuzzAnswer(io2, room.id, room.code, questionId, isAutoCorrect);
+      if (activeQ) {
+        activeQ.buzzAwaitingReveal = true;
+        io2.to(`room:${room.code}`).emit("game:question", activeQ);
+      }
+      io2.to(`room:${room.code}`).emit("game:buzz:answered", {
+        teamId: targetTeamId || playerId,
+        answer: normalizedAnswer
+      });
+      if (roomBuzzAutoRevealTimers.has(qKey)) {
+        clearTimeout(roomBuzzAutoRevealTimers.get(qKey));
+        roomBuzzAutoRevealTimers.delete(qKey);
+      }
+      const autoRevTimer = setTimeout(async () => {
+        roomBuzzAutoRevealTimers.delete(qKey);
+        await finalizeBuzzAnswer(io2, room.id, room.code, questionId, isAutoCorrect);
+      }, 2e3);
+      roomBuzzAutoRevealTimers.set(qKey, autoRevTimer);
       return;
     }
   }
@@ -100301,7 +100381,7 @@ async function processAnswerSubmissionImpl({
           message: "T\u1EA5t c\u1EA3 c\xE1c \u0111\u1ED9i \u0111\xE3 ho\xE0n th\xE0nh ch\u1ECDn \u0111\xE1p \xE1n! \u0110ang chu\u1EA9n b\u1ECB c\xF4ng b\u1ED1 \u0111\xE1p \xE1n..."
         });
         setTimeout(async () => {
-          await finalizeQuestionOnTimeUp(io2, room.id, room.code, questionId);
+          await finalizeQuestionOnTimeUp(io2, room.id, room.code, questionId, true);
         }, 2500);
       }
     }
@@ -100359,6 +100439,8 @@ async function openBuzzWindow(io2, roomId, roomCode, questionId, customDurationM
     activeQ.buzzedTeamId = void 0;
     activeQ.buzzedTeamName = void 0;
     activeQ.buzzedBy = void 0;
+    activeQ.buzzGraceActive = false;
+    activeQ.buzzAwaitingReveal = false;
     activeQ.buzzAnsweringActive = false;
     io2.to(`room:${roomCode}`).emit("game:question", activeQ);
   }
@@ -100478,6 +100560,12 @@ async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId, overrideIsC
     }
     disqSet.add(effTeamId);
     roomBuzzFirst.delete(qKey);
+    const activeQ = roomActiveQuestions.get(roomId);
+    if (activeQ) {
+      activeQ.buzzGraceActive = false;
+      activeQ.buzzAwaitingReveal = false;
+      activeQ.buzzAnsweringActive = false;
+    }
     const attempts = roomBuzzAttemptOrder.get(qKey) || [];
     const isTeamMode = room.teamMode === "TEAM";
     const totalActors = isTeamMode ? await prisma.team.count({ where: { roomId } }) : await prisma.player.count({ where: { roomId } });
@@ -100495,7 +100583,9 @@ async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId, overrideIsC
         canRetry: true,
         disqualifiedTeamIds: Array.from(disqSet)
       });
-      await openBuzzWindow(io2, roomId, roomCode, questionId, freshWindowMs);
+      setTimeout(async () => {
+        await openBuzzWindow(io2, roomId, roomCode, questionId, freshWindowMs);
+      }, 1e3);
     } else {
       roomQuestionProcessed.add(qKey);
       roomBuzzUnlocked.set(qKey, false);
@@ -102113,7 +102203,7 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
   roomQuestionScoresCache.set(qKey, scoreResult);
   return scoreResult;
 }
-async function finalizeQuestionOnTimeUp(io2, roomId, roomCode, questionId) {
+async function finalizeQuestionOnTimeUp(io2, roomId, roomCode, questionId, skipTimerExpiredEmit = false) {
   const activeQ = roomActiveQuestions.get(roomId);
   if (activeQ?.question?.id && activeQ.question.id !== questionId) {
     return;
@@ -102124,7 +102214,9 @@ async function finalizeQuestionOnTimeUp(io2, roomId, roomCode, questionId) {
   roomRemainingTimes.set(key, 0);
   roomTimerEndsAt.delete(roomId);
   io2.to(`room:${roomCode}`).emit("game:timer", { remaining: 0, total: 30, endsAt: Date.now(), serverTime: Date.now() });
-  io2.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
+  if (!skipTimerExpiredEmit) {
+    io2.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
+  }
   const room = await prisma.room.findUnique({ where: { id: roomId } });
   if (!room) return;
   const qKey = `${roomId}:${questionId}`;
@@ -108368,7 +108460,7 @@ var OlympiaGame = class _OlympiaGame {
       verdict: "info",
       note: `${this.seatName(ownerSeat)} ch\u1ECDn g\xF3i c\xE2u h\u1ECFi ${resolvedPoints.join(" - ")} \u0111i\u1EC3m (T\u1ED5ng ${totalPkg}\u0111).`
     });
-    this.cue("4_VeDich/choose_package");
+    this.cue("4_VeDich/open_question");
     this.touch(now);
     return OK;
   }
@@ -108387,13 +108479,12 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "vd:confirmPackage": {
         const pts = (a.points ?? []).map(Number);
-        const res = this.setPackage(pts, now);
-        if (!res.ok) return res;
-        this.cue("4_VeDich/choose_package");
-        return OK;
+        return this.setPackage(pts, now);
       }
       case "vd:onStage": {
         vd.onStage = true;
+        st.studioCamera = 1;
+        st.studioCameraManual = false;
         this.cue("4_VeDich/on_stage");
         return OK;
       }
@@ -108471,7 +108562,6 @@ var OlympiaGame = class _OlympiaGame {
         vd.deductedOnSteal = false;
         vd.lastVerdict = null;
         if (st.showStageGraphics) st.showStageGraphics = false;
-        this.cue("4_VeDich/open_question");
         return OK;
       }
       case "vd:timer": {
@@ -109100,7 +109190,7 @@ var OlympiaGame = class _OlympiaGame {
     }
     if (s.veDich) {
       const vd = s.veDich;
-      const showAns = vd.phase === "result";
+      const showAns = vd.phase === "result" && role !== "display";
       delete s.veDich.usedKeys;
       Object.values(vd.packages).forEach(
         (pkg) => pkg.forEach((p) => {

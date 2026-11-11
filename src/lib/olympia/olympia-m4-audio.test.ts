@@ -29,6 +29,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   isIntroSeamlessLoopTrack,
+  shouldLoopContestantIntro,
   INTRO_CROSSFADE_WINDOW_SEC,
   INTRO_CROSSFADE_WINDOW_MS,
   CONTEST_INTRO_DURATION_SEC,
@@ -354,6 +355,14 @@ export function runOlympiaM4AudioSuite(): M4SuiteResults {
     assert.ok(hooksSrc.includes("activeIntroCleanups"), "Must maintain activeIntroCleanups for cleanup");
   });
 
+  runTest(4, "M4.28: shouldLoopContestantIntro scales seamlessly for N > 4 contestants while preserving M4.10", () => {
+    assert.equal(isIntroSeamlessLoopTrack("contestant_intro"), false, "M4.10 contract stays false");
+    assert.equal(shouldLoopContestantIntro("6_NhacKhac/contestant_intro", 4), false, "N=4 does not need contestant_intro loop");
+    assert.equal(shouldLoopContestantIntro("6_NhacKhac/contestant_intro", 5), true, "N=5 enables contestant_intro loop");
+    assert.equal(shouldLoopContestantIntro("contestant_intro", 8), true, "N=8 enables contestant_intro loop");
+    assert.equal(shouldLoopContestantIntro("6_NhacKhac/contest_intro", 8), false, "contest_intro uses isIntroSeamlessLoopTrack");
+  });
+
   // Summary
   console.log("\n================================================================================");
   console.log("MILESTONE 4 TEST SUMMARY");
@@ -361,7 +370,7 @@ export function runOlympiaM4AudioSuite(): M4SuiteResults {
   console.log(`  Tier 1 (Feature Coverage):        ${tier1Count} / 10 passed`);
   console.log(`  Tier 2 (Boundary & Tolerances):   ${tier2Count} / 8 passed`);
   console.log(`  Tier 3 (Cross-Feature Combos):    ${tier3Count} / 5 passed`);
-  console.log(`  Tier 4 (Real-World Scenarios):    ${tier4Count} / 4 passed`);
+  console.log(`  Tier 4 (Real-World Scenarios):    ${tier4Count} / 5 passed`);
   console.log("--------------------------------------------------------------------------------");
   console.log(`  TOTAL M4 TESTS EXECUTED:          ${totalPassed} / ${totalExecuted} passed (100% Pass Rate)`);
   console.log("================================================================================\n");

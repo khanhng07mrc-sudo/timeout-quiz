@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useTranslation, SUPPORTED_LANGUAGES, Language } from "@/lib/i18n";
 import Link from "next/link";
 import TwoFactorSetupModal from "@/components/admin/TwoFactorSetupModal";
+import { GENERAL_BGM_PLAYLIST, soundManager } from "@/lib/sound-manager";
 
 interface GlobalSettingsModalProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ export default function GlobalSettingsModal({ isOpen, onClose }: GlobalSettingsM
   const { language, setLanguage } = useTranslation();
   const [bgmEnabled, setBgmEnabled] = useState(true);
   const [sfxEnabled, setSfxEnabled] = useState(true);
+  const [selectedBgmTrack, setSelectedBgmTrack] = useState("olympia");
+  const [bgmVolume, setBgmVolume] = useState(70);
   const [gpuSaver, setGpuSaver] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
@@ -25,6 +28,9 @@ export default function GlobalSettingsModal({ isOpen, onClose }: GlobalSettingsM
 
       const savedSfx = localStorage.getItem("quizorra_sfx");
       if (savedSfx !== null) setSfxEnabled(savedSfx === "true");
+
+      setSelectedBgmTrack(soundManager.getRoomPreferredBgm());
+      setBgmVolume(Math.round(soundManager.getBgmVolume() * 100));
 
       const savedGpu = localStorage.getItem("quizorra_gpu_saver");
       if (savedGpu !== null) setGpuSaver(savedGpu === "true");
@@ -157,6 +163,47 @@ export default function GlobalSettingsModal({ isOpen, onClose }: GlobalSettingsM
                   }`}
                 />
               </button>
+            </div>
+
+            <div className="pt-2 border-t border-slate-700/50 space-y-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-white">Chủ đề nhạc nền phòng chơi</p>
+                  <p className="text-[11px] text-slate-400">Cá nhân hoá âm thanh thay cho nhạc mặc định</p>
+                </div>
+                <select
+                  value={selectedBgmTrack}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedBgmTrack(val);
+                    soundManager.setRoomPreferredBgm(val);
+                  }}
+                  className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400 max-w-[180px]"
+                >
+                  {GENERAL_BGM_PLAYLIST.map((track) => (
+                    <option key={track.id} value={track.id}>
+                      {track.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-slate-300 font-medium">Âm lượng nhạc nền ({bgmVolume}%)</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={bgmVolume}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setBgmVolume(v);
+                    soundManager.setBgmVolume(v / 100);
+                  }}
+                  className="w-36 accent-cyan-400 cursor-pointer"
+                />
+              </div>
             </div>
           </div>
 

@@ -166,7 +166,7 @@ export function evaluateLightingMode(
       const vd = state.veDich;
       if (!vd) return "BLUE";
       const onStagePhases = ["choosing", "packageReady", "thinking", "stealing", "result"];
-      if (onStagePhases.includes(vd.phase)) {
+      if (vd.phase !== "seatDone" && (vd.onStage || onStagePhases.includes(vd.phase))) {
         return "RED";
       }
       return "BLUE";
@@ -529,9 +529,14 @@ runTest(1, "F4.23: Về đích seatDone (turn finish) returns to BLUE", () => {
   assert.equal(evaluateLightingMode(state), "BLUE");
 });
 
-runTest(1, "F4.24: Về đích idle stage is BLUE", () => {
+runTest(1, "F4.24: Về đích idle offStage is BLUE, idle onStage is RED, seatDone is BLUE", () => {
   const state = createMockOlympiaState({ currentRound: "veDich" });
   state.veDich!.phase = "idle";
+  state.veDich!.onStage = false;
+  assert.equal(evaluateLightingMode(state), "BLUE");
+  state.veDich!.onStage = true;
+  assert.equal(evaluateLightingMode(state), "RED");
+  state.veDich!.phase = "seatDone";
   assert.equal(evaluateLightingMode(state), "BLUE");
 });
 

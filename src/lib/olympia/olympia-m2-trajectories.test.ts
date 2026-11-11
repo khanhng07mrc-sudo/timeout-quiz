@@ -548,7 +548,7 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     assert.equal(arrivalErrors, 0, `Expected 0 arrival errors (> 1.0mm), found ${arrivalErrors}`);
   });
 
-  runTest(4, "M2.21: Anti-early-cut Round Camera Timings (Khởi Động 5s/4s, VCNV even slots >= 3s, Về Đích 2.0s approach + 1.5s result)", () => {
+  runTest(4, "M2.21: Anti-early-cut Round Camera Timings (Khởi Động 5s/4s, VCNV even slots >= 3s, Về Đích 3.8s wide CAM 1 -> closeup CAM 15 + 1.5s result)", () => {
     // 1. VCNV: Even partitioning eliminates any <2s tail cut around 14.0s
     for (const totalSeats of [2, 3, 4, 6, 8]) {
       const s13 = evaluateVcnvTimerSeat(13.0, totalSeats);
@@ -556,10 +556,14 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
       assert.equal(s13, s14, `VCNV N=${totalSeats}: must NOT execute short sliver cut between 13.0s and 14.5s`);
     }
 
-    // 2. Về Đích: choosing holds CAM 10 for first 2.0s while contestant rounds behind podiums, then MORPHs to CAM 15
-    const vdChoosing = { phase: "choosing", turnIdx: 0 } as any;
-    assert.equal(evaluateVeDichCameraState(vdChoosing, 11500, 10000, 10000, 4).camAngle, 10, "VeDich t=1.5s still frames CAM 10");
-    assert.equal(evaluateVeDichCameraState(vdChoosing, 12100, 10000, 10000, 4).camAngle, 15, "VeDich t=2.1s morphs to CAM 15");
+    // 2. Về Đích: onStage idle & choosing hold wide CAM 1 for 3.8s while contestant approaches podium, then zoom in to CAM 15
+    const vdIdleOnStage = { phase: "idle", onStage: true, turnIdx: 0 } as any;
+    assert.equal(evaluateVeDichCameraState(vdIdleOnStage, 11500, 10000, 10000, 4).camAngle, 1, "VeDich onStage idle t=1.5s holds wide CAM 1");
+    assert.equal(evaluateVeDichCameraState(vdIdleOnStage, 14000, 10000, 10000, 4).camAngle, 15, "VeDich onStage idle t=4.0s zooms in to CAM 15");
+
+    const vdChoosing = { phase: "choosing", onStage: true, turnIdx: 0 } as any;
+    assert.equal(evaluateVeDichCameraState(vdChoosing, 11500, 10000, 10000, 4).camAngle, 1, "VeDich choosing t=1.5s still frames wide CAM 1");
+    assert.equal(evaluateVeDichCameraState(vdChoosing, 14000, 10000, 10000, 4).camAngle, 15, "VeDich choosing t=4.0s morphs to CAM 15");
 
     // 3. Về Đích result holds stealer/contestant reaction for 1.5s before cutting to MC CAM 3
     const vdResultSteal = { phase: "result", turnIdx: 0, steal: { buzzedSeat: 2 } } as any;

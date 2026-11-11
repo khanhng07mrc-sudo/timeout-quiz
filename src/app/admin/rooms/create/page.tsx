@@ -20,6 +20,7 @@ import { getOlympiaBanks, getPresetOlympiaBanks } from "@/lib/olympia/olympia-st
 import { BilingualCategoryPicker } from "@/components/modes/BilingualCategoryPicker";
 import { getLocalizedModeMeta } from "@/lib/game-engine/game-modes-meta";
 import { useTranslation, type Language } from "@/lib/i18n";
+import { GENERAL_BGM_PLAYLIST } from "@/lib/sound-manager";
 import {
   DEFAULT_MAGIC_WHEEL_PUZZLES,
   ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE,
@@ -336,6 +337,9 @@ export default function CreateRoomPage() {
     }
     if (newMode === "CLASSIC" || newMode === "ELIMINATION") {
       setAnswerMethod("DEVICE");
+      setAutoTimerStart(true);
+    } else {
+      setAutoTimerStart(false);
     }
   };
 
@@ -360,7 +364,8 @@ export default function CreateRoomPage() {
   const [penaltyForWrong, setPenaltyForWrong] = useState(false);
   const [penaltyPoints, setPenaltyPoints] = useState(5);
   const [answerSubmissionMode, setAnswerSubmissionMode] = useState<"ALLOW_CHANGE" | "SINGLE_SUBMIT">("ALLOW_CHANGE");
-  const [autoTimerStart, setAutoTimerStart] = useState(false);
+  const [autoTimerStart, setAutoTimerStart] = useState(true);
+  const [bgmTrack, setBgmTrack] = useState("question_suspense");
   const [initialTeamScore, setInitialTeamScore] = useState<number>(0);
 
   const addTeam = () => {
@@ -467,6 +472,8 @@ export default function CreateRoomPage() {
             // Answer submission & timer control
             answerSubmissionMode,
             autoTimerStart,
+            autoTimerOnQuestionShow: autoTimerStart,
+            bgmTrack,
             initialTeamScore: Math.max(0, Number(initialTeamScore) || 0),
             // Match Question Allocation
             matchMaxQuestions: isCustomQuestionCount ? Math.max(1, Number(matchMaxQuestions) || 12) : 0,
@@ -951,7 +958,7 @@ export default function CreateRoomPage() {
 
             {/* Custom Question Selection Controls */}
             {isCustomQuestionCount && (() => {
-              const isTeamMultipleMode = ["MYSTERY_QUEST", "WAGER", "BOUNCEBACK"].includes(mode);
+              const isTeamMultipleMode = ["MYSTERY_QUEST", "BOUNCEBACK"].includes(mode);
               const numTeams = Math.max(1, teams.length || 4);
               const presetList = isTeamMultipleMode
                 ? [numTeams * 1, numTeams * 2, numTeams * 3, numTeams * 4, numTeams * 5]
@@ -1044,7 +1051,7 @@ export default function CreateRoomPage() {
               });
 
               const { breakdown, modeDetails, totalQuestions } = allocResult;
-              const isTurnBased = ["MYSTERY_QUEST", "WAGER", "BOUNCEBACK", "DICE_RACE"].includes(mode);
+              const isTurnBased = ["MYSTERY_QUEST", "BOUNCEBACK", "DICE_RACE"].includes(mode);
               const bankCount = bankQuestions.length;
               const surplusRatio = totalQuestions > 0 ? (bankCount / totalQuestions).toFixed(1) : "1.0";
 
@@ -2835,6 +2842,32 @@ export default function CreateRoomPage() {
               />
               <span className="text-sm font-semibold text-muted-foreground">pts</span>
             </div>
+          </div>
+
+          {/* Cài đặt nhạc nền riêng cho phòng chơi */}
+          <div className="glass rounded-xl p-4 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <p className="font-bold">Chủ đề nhạc nền phòng chơi (BGM)</p>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                  Cá nhân hoá
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Chọn bản nhạc nền phát trong quá trình thí sinh suy nghĩ trả lời (không bắt buộc dùng nhạc Olympia).
+              </p>
+            </div>
+            <select
+              value={bgmTrack}
+              onChange={(e) => setBgmTrack(e.target.value)}
+              className="px-3 py-2 rounded-xl bg-input border border-border text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-ring shrink-0"
+            >
+              {GENERAL_BGM_PLAYLIST.map((track) => (
+                <option key={track.id} value={track.id} className="bg-slate-900 text-white">
+                  {track.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       )}

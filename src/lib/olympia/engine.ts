@@ -2891,7 +2891,7 @@ export class OlympiaGame {
       verdict: "info",
       note: `${this.seatName(ownerSeat)} chọn gói câu hỏi ${resolvedPoints.join(" - ")} điểm (Tổng ${totalPkg}đ).`,
     });
-    this.cue("4_VeDich/choose_package");
+    this.cue("4_VeDich/open_question");
     this.touch(now);
     return OK;
   }
@@ -2912,13 +2912,12 @@ export class OlympiaGame {
       }
       case "vd:confirmPackage": {
         const pts = ((a.points as number[]) ?? []).map(Number);
-        const res = this.setPackage(pts, now);
-        if (!res.ok) return res;
-        this.cue("4_VeDich/choose_package");
-        return OK;
+        return this.setPackage(pts, now);
       }
       case "vd:onStage": {
         vd.onStage = true;
+        st.studioCamera = 1;
+        st.studioCameraManual = false;
         this.cue("4_VeDich/on_stage");
         return OK;
       }
@@ -2998,7 +2997,7 @@ export class OlympiaGame {
         vd.deductedOnSteal = false;
         vd.lastVerdict = null;
         if (st.showStageGraphics) st.showStageGraphics = false;
-        this.cue("4_VeDich/open_question");
+        // Note: open_question is played exclusively when package is confirmed (packageReady), NOT replayed on next question
         return OK;
       }
       case "vd:timer": {
@@ -3647,7 +3646,7 @@ export class OlympiaGame {
     }
     if (s.veDich) {
       const vd = s.veDich;
-      const showAns = vd.phase === "result";
+      const showAns = vd.phase === "result" && role !== "display";
       delete (s.veDich as any).usedKeys;
       // Strip unrevealed questions completely from packages so browser/player cannot cache or leak them
       Object.values(vd.packages).forEach((pkg) =>

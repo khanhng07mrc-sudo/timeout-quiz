@@ -2378,6 +2378,7 @@ test("Về Đích FSM: idle intro -> onStage walk -> showPackageGraphic -> packa
   act(g, "vd:onStage", {}, 2000);
   assert.equal(vd.onStage, true, "vd:onStage sets onStage to true");
   assert.equal(vd.phase, "idle", "vd:onStage must preserve phase 'idle' without jumping to choosing");
+  assert.equal(g.state.studioCamera, 1, "vd:onStage starts on wide studio CAM 1");
   assert.equal((g.state as any).cue?.sound, "4_VeDich/on_stage", "vd:onStage cues on_stage music");
 
   // 3. Host clicks [Mở bảng chọn gói đồ họa] (vd:showPackageGraphic)
@@ -2435,7 +2436,7 @@ test("Về Đích R3 Zero-Leak & Question Index: qIdx stays -1 (display 0), zero
   assert.ok(vdThinking.current != null, "Question 1 is now loaded");
   assert.equal(vdThinking.current?.points, 20, "First question points match chosen package");
   assert.ok((vdThinking.current?.q.q.length ?? 0) > 0, "Question 1 text is present in authoritative state");
-  assert.equal((g.state as any).cue?.sound, "4_VeDich/open_question", "Must cue open_question on startQuestion");
+  assert.notEqual((g.state as any).cue?.sound, "4_VeDich/open_question", "Must NOT replay open_question on startQuestion");
 
   // In public state during thinking, Question 1 text is now visible, but Question 2 & 3 remain stripped
   const pubDuringQ1 = g.getPublicState();
@@ -2482,7 +2483,7 @@ test("Về Đích: vd:confirmPackage sets packageReady, qIdx = -1, current = nul
   assert.equal(vd.qIdx, -1, "vd:confirmPackage keeps qIdx at -1 (display 0)");
   assert.equal(vd.current, null, "vd:confirmPackage sets current to null");
   assert.equal(g.state.vdPackageTimer ?? null, null, "vdPackageTimer is null (no auto-timer)");
-  assert.equal((g.state as any).cue?.sound, "4_VeDich/choose_package", "Cues choose_package (not open_question)");
+  assert.equal((g.state as any).cue?.sound, "4_VeDich/open_question", "Cues open_question immediately on package confirm");
 
   // Zero-cache check via getPublicState()
   const pub = g.getPublicState();
@@ -2494,13 +2495,14 @@ test("Về Đích: vd:confirmPackage sets packageReady, qIdx = -1, current = nul
     assert.equal(item.q.media, undefined, "Public package media must be undefined");
   }
 
-  // Host starts question 1
+  // Host starts question 1 (must NOT replay open_question)
+  (g.state as any).cue = null;
   act(g, "vd:startQuestion", {}, 4000);
   assert.equal(g.state.veDich!.phase, "thinking");
   assert.equal(g.state.veDich!.qIdx, 0, "First startQuestion advances qIdx: -1 -> 0");
   assert.ok(Boolean(g.state.veDich?.current), "Question 1 loaded");
   assert.equal((g.state.veDich?.current as any)?.points, 20);
-  assert.equal((g.state as any).cue?.sound, "4_VeDich/open_question");
+  assert.notEqual((g.state as any).cue?.sound, "4_VeDich/open_question");
 });
 
 test("Về Đích Display compliance: DisplayScreen does not render Câu x/3 or subject on Về Đích", () => {
@@ -2589,7 +2591,7 @@ test("Về Đích Full 5-State FSM, Zero-Cache Isolation, and Sequential Questio
   assert.equal(vd4.qIdx, -1, "State 4: qIdx MUST stay -1 (display 0)");
   assert.equal(vd4.current, null, "State 4: current question must be strictly null");
   assert.equal(g.state.vdPackageTimer ?? null, null, "State 4: no auto-timer running");
-  assert.equal(g.state.cue?.sound, "4_VeDich/choose_package", "State 4: cues choose_package (not open_question)");
+  assert.equal(g.state.cue?.sound, "4_VeDich/open_question", "State 4: cues open_question immediately on confirming package");
 
   // ZERO-CACHE CHECKS in getPublicState(), view("display"), and view("player"):
   const pub4 = g.getPublicState();
@@ -2621,7 +2623,7 @@ test("Về Đích Full 5-State FSM, Zero-Cache Isolation, and Sequential Questio
   assert.ok(vd5.current != null, "State 5: Question 1 object is loaded");
   assert.equal(vd5.current?.points, 20, "Question 1 points match package (20)");
   assert.ok((vd5.current?.q.q.length ?? 0) > 0, "Question 1 text is populated in authoritative state");
-  assert.equal(g.state.cue?.sound, "4_VeDich/open_question", "State 5: cues open_question");
+  assert.notEqual(g.state.cue?.sound, "4_VeDich/open_question", "State 5: must NOT replay open_question on vd:startQuestion");
 
   // In public state during thinking, Question 1 text is visible, but answer and Questions 2/3 remain wiped
   const pub5 = g.getPublicState();
@@ -2672,6 +2674,50 @@ test("Về Đích Full 5-State FSM, Zero-Cache Isolation, and Sequential Questio
   assert.equal(g.state.veDich?.phase, "idle", "New turn starts in phase 'idle'");
   assert.equal(g.state.veDich?.qIdx, -1, "New turn resets qIdx to -1");
   assert.equal(g.state.veDich?.current, null, "New turn starts with current null");
+});
+
+test("Về Đích Display strips question answer even in result phase, while Host keeps it", () => {
+  const g = game("O26", ["veDich"], 2, { seatCount: 2 });
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+
+  act(g, "game:start", {}, 1000);
+  act(g, "vd:showPackageGraphic", {}, 2000);
+  act(g, "vd:confirmPackage", { points: [20, 20, 30] }, 3000);
+  act(g, "vd:startQuestion", {}, 4000);
+  act(g, "vd:correct", {}, 5000);
+
+  assert.equal(g.state.veDich?.phase, "result");
+  const displayView = g.view("display");
+  const hostView = g.view("host");
+  assert.equal(displayView.veDich?.current?.q.a, "", "Display never receives answer text in Về Đích result");
+  assert.ok((hostView.veDich?.current?.q.a.length ?? 0) > 0, "Host still receives authoritative answer text");
+});
+
+test("Về Đích O13/O14 4-question package confirm retains qIdx -1, current null, and plays open_question once", () => {
+  const g = game("O13", ["veDich"], 2, { seatCount: 2 });
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+
+  act(g, "game:start", {}, 1000);
+  act(g, "vd:onStage", {}, 1500);
+  assert.equal(g.state.studioCamera, 1, "O13 vd:onStage starts on wide CAM 1");
+  act(g, "vd:showPackageGraphic", {}, 2000);
+
+  (g.state as any).cue = null;
+  act(g, "vd:confirmPackage", { points: [10, 10, 20, 20] }, 3000);
+  assert.equal(g.state.veDich?.phase, "packageReady");
+  assert.equal(g.state.veDich?.qIdx, -1);
+  assert.equal(g.state.veDich?.current, null);
+  assert.equal(g.state.veDich?.packages[0]?.length, 4);
+  assert.equal(g.state.cue?.sound, "4_VeDich/open_question");
+
+  (g.state as any).cue = null;
+  act(g, "vd:startQuestion", {}, 4000);
+  const vdQ1 = g.state.veDich!;
+  assert.equal(vdQ1.qIdx, 0);
+  assert.equal((vdQ1.current as any)?.points, 10);
+  assert.notEqual(g.state.cue?.sound, "4_VeDich/open_question");
 });
 
 

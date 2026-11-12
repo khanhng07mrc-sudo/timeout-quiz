@@ -5,10 +5,13 @@ import dynamic from "next/dynamic";
 import type { OlympiaState } from "@/lib/olympia/types";
 import {
   EconovaLowerThirdV3,
+  VcnvCountdownGraphic,
   VcnvAnswerRevealGraphic,
+  TangTocQuestionGraphic,
   TangTocRankedAnswersGraphic,
   VeDichSlantedGridGraphic,
   SummaryLowerThirdGraphic,
+  V3SingleAnswerBar,
 } from "@/components/olympia/Vtv3BroadcastGraphics";
 
 const OlympiaStudio3DScene = dynamic(() => import("@/components/olympia/OlympiaStudio3DScene"), {
@@ -70,6 +73,12 @@ export function DevGraphicsClient() {
     return 4;
   });
   const [summaryIndex, setSummaryIndex] = useState(3);
+  const [forceAnim, setForceAnim] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("anim") === "1";
+    }
+    return false;
+  });
 
   const mockSeats2 = [
     { id: 0, name: "Quang Minh", school: "THPT Chuyên Hà Nội - Amsterdam", score: 285, online: true },
@@ -217,6 +226,8 @@ export function DevGraphicsClient() {
               ["tt", "3. Tăng Tốc"],
               ["vd-grid", "4a. Lưới Về Đích"],
               ["vd-qbox", "4b. Câu hỏi Về Đích"],
+              ["ans", "4c. Đáp án đơn"],
+              ["chp", "4d. Câu hỏi phụ"],
               ["summary", "5. Tổng kết điểm"],
             ] as const
           ).map(([key, label]) => (
@@ -235,6 +246,15 @@ export function DevGraphicsClient() {
         </div>
 
         <div className="flex items-center gap-3 w-full pt-2 border-t border-slate-800 text-xs text-slate-300">
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={forceAnim}
+              onChange={(e) => setForceAnim(e.target.checked)}
+              className="rounded text-cyan-500"
+            />
+            <span>Run Entrance Anim</span>
+          </label>
           <label className="flex items-center gap-1.5 cursor-pointer">
             <input
               type="checkbox"
@@ -957,52 +977,163 @@ export function DevGraphicsClient() {
 
         {/* Deliverable 1: Khởi Động Lower Third (Full View) */}
         {(activeTab === "all" || activeTab === "kd") && (
-          <div
-            id="graphic-khoidong"
-            className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
-          >
-            <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
-              Deliverable 1: Khởi Động Lower Third (1000×172 — Tabs: 0..2 hình bình hành, tab 3 hình thang cân)
+          <div className="w-full flex flex-col gap-6">
+            <div
+              id="graphic-khoidong"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
+            >
+              <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
+                Deliverable 1: Khởi Động Lower Third (1000×172 — Tabs: 0..2 hình bình hành, tab 3 hình thang cân)
+              </div>
+              <div className="w-full flex items-center justify-center min-h-[220px]">
+                <EconovaLowerThirdV3
+                  state={mockState}
+                  activeSeatId={0}
+                  buzzedSeatId={isBuzzed ? 1 : undefined}
+                  questionText={mockState.khoiDong?.current?.q}
+                  serverNow={serverNow}
+                  runAnim={forceAnim}
+                />
+              </div>
             </div>
-            <div className="w-full flex items-center justify-center min-h-[220px]">
-              <EconovaLowerThirdV3
-                state={mockState}
-                activeSeatId={0}
-                buzzedSeatId={isBuzzed ? 1 : undefined}
-                questionText={mockState.khoiDong?.current?.q}
-                serverNow={serverNow}
-                runAnim={false}
-              />
+
+            <div
+              id="graphic-kd-o22"
+              className="w-full flex flex-col items-center p-6 pt-10 rounded-3xl bg-[#061129]/60 border border-amber-400/30 shadow-xl"
+            >
+              <div className="mb-6 text-sm font-black uppercase tracking-widest text-amber-300">
+                Deliverable 1b: Khởi Động Luật O22 / O13–O21 (Đồng hồ lượt 60s + Thanh thời gian bạc Econova)
+              </div>
+              <div className="w-full flex items-center justify-center min-h-[240px]">
+                <EconovaLowerThirdV3
+                  state={{ ...mockState, rulesetId: "O22" } as unknown as OlympiaState}
+                  activeSeatId={0}
+                  questionNumberBadge="Câu 3/12"
+                  headerBadge="KHỞI ĐỘNG 60S"
+                  questionText="Trong hệ Mặt Trời, hành tinh nào có kích thước lớn nhất và khối lượng gấp hơn 2,5 lần tổng khối lượng các hành tinh còn lại?"
+                  timer={{ totalMs: 60000, remainingMs: 60000, startedAt: Date.now() - 18000 }}
+                  showTimerClock={true}
+                  serverNow={serverNow}
+                  runAnim={forceAnim}
+                />
+              </div>
             </div>
           </div>
         )}
 
-        {/* Deliverable 2: VCNV Answer Reveal */}
+        {/* Deliverable 2: VCNV Countdown 4-Quadrant & Answer Reveal */}
         {(activeTab === "all" || activeTab === "vcnv") && (
-          <div
-            id="graphic-vcnv"
-            className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
-          >
-            <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
-              Deliverable 2: Hàng Đáp Án VCNV (4 thanh chevron, tên thuần, không tiền tố số thứ tự, font đồng đều)
+          <div className="w-full flex flex-col gap-6">
+            <div
+              id="graphic-vcnv-quad"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
+            >
+              <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
+                Deliverable 2a: VCNV 4-Góc (Nền Econova 22 + Thanh thời gian 15s chuyên biệt)
+              </div>
+              <div className="relative w-full max-w-[1120px] aspect-video rounded-2xl overflow-hidden border border-cyan-400/30 shadow-2xl">
+                {(() => {
+                  const vcnvQuadState = {
+                    ...mockState,
+                    currentRound: "vcnv",
+                    vcnv: {
+                      ...mockState.vcnv,
+                      phase: "hint_showing",
+                      currentRow: 1,
+                      keyword: "TRÍ TUỆ NHÂN TẠO",
+                      keywordLength: 14,
+                      mysteryImage: "/olympia/olympia_22_background.png",
+                      piecesRevealed: [true, false, false, false, false],
+                      bells: [],
+                      rows: [
+                        { hint: "Hàng ngang 1", answer: "MẠNG NƠ RON", letterCount: 9, opened: true, wrong: false },
+                        { hint: "Dãy hữu hạn các bước rõ ràng nhằm giải quyết một bài toán trên máy tính gọi là gì?", answer: "THUẬT TOÁN", letterCount: 9, opened: false, wrong: false },
+                        { hint: "Hàng ngang 3", answer: "DỮ LIỆU LỚN", letterCount: 9, opened: false, wrong: false },
+                        { hint: "Hàng ngang 4", answer: "HỌC SÂU", letterCount: 6, opened: false, wrong: false },
+                      ],
+                      timer: { totalMs: 15000, remainingMs: 15000, startedAt: Date.now() - 6200 },
+                    } as any,
+                  } as unknown as OlympiaState;
+                  return (
+                    <>
+                      <VcnvCountdownGraphic state={vcnvQuadState} serverNow={serverNow} />
+                      {/* Real Quadrant 4 3D Studio Camera matching DisplayScreen.tsx z-[35] */}
+                      <div className="absolute z-[35] rounded-2xl border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] overflow-hidden pointer-events-none top-[calc(50%+0.375rem)] left-[calc(50%+0.375rem)] right-3 bottom-3 sm:top-[calc(50%+0.5rem)] sm:left-[calc(50%+0.5rem)] sm:right-5 sm:bottom-5 md:top-[calc(50%+0.625rem)] md:left-[calc(50%+0.625rem)] md:right-6 md:bottom-6 bg-[#020510]">
+                        <OlympiaStudio3DScene
+                          state={vcnvQuadState}
+                          serverNow={serverNow}
+                          activeCamera={1}
+                          transitionMode="CUT"
+                          showDirectorBar={false}
+                          allowPTZ={false}
+                          defaultQuality="LIGHT"
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
             </div>
-            <div className="w-full relative min-h-[360px] flex items-center justify-center">
-              <VcnvAnswerRevealGraphic state={mockState} />
+
+            <div
+              id="graphic-vcnv"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
+            >
+              <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
+                Deliverable 2b: Hàng Đáp Án VCNV (Nền Econova 22 + 4 thanh chevron)
+              </div>
+              <div className="w-full relative min-h-[420px] flex items-center justify-center rounded-2xl overflow-hidden border border-cyan-400/20">
+                <VcnvAnswerRevealGraphic state={mockState} />
+              </div>
             </div>
           </div>
         )}
 
-        {/* Deliverable 3: Tăng Tốc Ranked Answers */}
+        {/* Deliverable 3: Tăng Tốc Question & Ranked Answers */}
         {(activeTab === "all" || activeTab === "tt") && (
-          <div
-            id="graphic-tangtoc"
-            className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
-          >
-            <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
-              Deliverable 3: Đáp Án Xếp Hạng Tăng Tốc (4 thanh chevron, thời gian thuần số xx.xx không chữ &apos;s&apos;)
+          <div className="w-full flex flex-col gap-6">
+            <div
+              id="graphic-tt-question"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
+            >
+              <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
+                Deliverable 3a: Tăng Tốc Câu Hỏi (Nền Econova 22 + Thanh thời gian bạc 30s)
+              </div>
+              <div className="relative w-full max-w-[1120px] aspect-video rounded-2xl overflow-hidden border border-cyan-400/30 shadow-2xl">
+                <TangTocQuestionGraphic
+                  state={{
+                    ...mockState,
+                    currentRound: "tangToc",
+                    tangToc: {
+                      ...mockState.tangToc!,
+                      phase: "question",
+                      qIdx: 0,
+                      questions: [
+                        {
+                          q: "Đây là công trình kiến trúc biểu tượng nào của thế giới?",
+                          a: "Tháp Eiffel",
+                          media: "/olympia/olympia_scoreboard_startscreen.png",
+                          type: "image",
+                        },
+                      ],
+                      timer: { totalMs: 30000, remainingMs: 30000, startedAt: Date.now() - 12500 },
+                    } as any,
+                  }}
+                  serverNow={serverNow}
+                />
+              </div>
             </div>
-            <div className="w-full relative min-h-[360px] flex items-center justify-center">
-              <TangTocRankedAnswersGraphic state={mockState} />
+
+            <div
+              id="graphic-tangtoc"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
+            >
+              <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
+                Deliverable 3b: Đáp Án Xếp Hạng Tăng Tốc (Nền Econova 22 + 4 thanh chevron, thời gian xx.xx)
+              </div>
+              <div className="w-full relative min-h-[420px] flex items-center justify-center rounded-2xl overflow-hidden border border-cyan-400/20">
+                <TangTocRankedAnswersGraphic state={mockState} />
+              </div>
             </div>
           </div>
         )}
@@ -1020,6 +1151,7 @@ export function DevGraphicsClient() {
                   <VeDichSlantedGridGraphic
                     state={mockState}
                     ownerSeatId={0}
+                    animate={forceAnim}
                     selectedPoints={
                       rulesetId === "O13" || rulesetId === "O14"
                         ? [10, 10, 20, 20]
@@ -1041,7 +1173,7 @@ export function DevGraphicsClient() {
             <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
               Deliverable 4b: Thanh Câu Hỏi Về Đích (1000×200 — Cụm điểm chuẩn Econova, ⭐, dải gói điểm theo luật {rulesetId})
             </div>
-            <div className="w-full flex items-center justify-center min-h-[240px]">
+            <div className="w-full flex items-center justify-center min-h-[240px] pt-24">
               {(() => {
                 const mockPackages =
                   rulesetId === "O13" || rulesetId === "O14"
@@ -1075,6 +1207,7 @@ export function DevGraphicsClient() {
                       0: mockPackages,
                     },
                     current: mockPackages[0],
+                    timer: { totalMs: 20000, remainingMs: 20000, startedAt: Date.now() - 8000 },
                   },
                 } as unknown as OlympiaState;
                 return (
@@ -1084,8 +1217,9 @@ export function DevGraphicsClient() {
                     buzzedSeatId={isBuzzed ? 2 : undefined}
                     hopeStarActive={hopeStar}
                     questionText={vdState.veDich?.current?.q?.q}
+                    timer={vdState.veDich?.timer}
                     serverNow={serverNow}
-                    runAnim={false}
+                    runAnim={forceAnim}
                   />
                 );
               })()}
@@ -1093,17 +1227,81 @@ export function DevGraphicsClient() {
           </div>
         )}
 
-        {/* Deliverable 5: Summary Scoreboard */}
-        {(activeTab === "all" || activeTab === "summary") && (
+        {/* Deliverable 4c: Single Answer Bar */}
+        {(activeTab === "all" || activeTab === "ans") && (
           <div
-            id="graphic-summary"
+            id="graphic-single-answer"
             className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
           >
             <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
-              Deliverable 5: Tổng Kết Điểm (Khung Banner Mũi Tên 1000×268, mở dần theo từng người)
+              Deliverable 4c: Thanh Đáp Án Đơn Khởi Động (V3SingleAnswerBar)
             </div>
-            <div className="w-full relative min-h-[320px] flex items-center justify-center">
-              <SummaryLowerThirdGraphic state={mockState} />
+            <div className="w-full relative min-h-[140px] flex items-center justify-center">
+              <V3SingleAnswerBar
+                answerText="ĐIỆN TÍCH HẠT NHÂN NGUYÊN TỬ"
+                points={30}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Deliverable 4d: Câu Hỏi Phụ */}
+        {(activeTab === "all" || activeTab === "chp") && (
+          <div
+            id="graphic-chp"
+            className="w-full flex flex-col items-center p-6 pt-10 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
+          >
+            <div className="mb-6 text-sm font-black uppercase tracking-widest text-cyan-300">
+              Deliverable 4d: Câu Hỏi Phụ (15s Econova + Chuông Giành Quyền Trả Lời)
+            </div>
+            <div className="w-full flex items-center justify-center min-h-[220px]">
+              <EconovaLowerThirdV3
+                state={{ ...mockState, currentRound: "cauHoiPhu" } as unknown as OlympiaState}
+                buzzedSeatId={isBuzzed ? 1 : 0}
+                headerBadge="CÂU HỎI PHỤ"
+                questionText="Trong bảng tuần hoàn các nguyên tố hóa học, nguyên tố nào có độ âm điện lớn nhất?"
+                timer={{ totalMs: 15000, remainingMs: 15000, startedAt: Date.now() - 6000 }}
+                serverNow={serverNow}
+                runAnim={forceAnim}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Deliverable 5: Summary Scoreboard (Lower-Third & Fullscreen) */}
+        {(activeTab === "all" || activeTab === "summary") && (
+          <div className="w-full flex flex-col gap-6">
+            <div
+              id="graphic-summary"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
+            >
+              <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
+                Deliverable 5a: Tổng Kết Điểm Lower Third (1000×268)
+              </div>
+              <div className="w-full relative min-h-[320px] flex items-center justify-center">
+                <SummaryLowerThirdGraphic state={mockState} />
+              </div>
+            </div>
+
+            <div
+              id="graphic-summary-fs"
+              className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/60 border border-cyan-500/20 shadow-xl"
+            >
+              <div className="mb-4 text-sm font-black uppercase tracking-widest text-cyan-300">
+                Deliverable 5b: Tổng Kết Điểm Fullscreen (Nền Econova 22)
+              </div>
+              <div className="relative w-full max-w-[1120px] aspect-video rounded-2xl overflow-hidden border border-cyan-400/30 shadow-2xl">
+                <SummaryLowerThirdGraphic
+                  state={{
+                    ...mockState,
+                    overlayMode: "FULLSCREEN",
+                    summaryState: {
+                      ...mockState.summaryState!,
+                      isFullscreen: true,
+                    },
+                  }}
+                />
+              </div>
             </div>
           </div>
         )}

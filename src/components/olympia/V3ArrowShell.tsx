@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useId, useLayoutEffect, useRef, useState } from "react";
-import { toPoly, toSvgPath, type ArrowShell } from "./v3Geometry";
+import { toPoly, toSvgPath, buildHexClipKeyframes, type ArrowShell } from "./v3Geometry";
+
 
 /**
  * Renders a design-pixel stage scaled uniformly to its container width.
@@ -102,12 +103,6 @@ const SHELL_CSS = `
   78%  { transform: translateX(8px) scale(1.0); opacity: 1; }
   100% { transform: translateX(0) scale(1.0); opacity: 1; }
 }
-@keyframes v3a-body {
-  0%, 40%  { clip-path: inset(0 50% 0 50%); opacity: 0; }
-  41%      { clip-path: inset(0 50% 0 50%); opacity: 1; }
-  82%      { clip-path: inset(0 0% 0 0%); opacity: 1; }
-  100%     { clip-path: inset(0 0 0 0); opacity: 1; }
-}
 @keyframes v3a-content {
   0%, 75% { opacity: 0; }
   100%    { opacity: 1; }
@@ -168,19 +163,27 @@ export function V3ArrowShell({
     ["--v3-travel" as string]: `${travelDist}px`,
   } as React.CSSProperties;
 
+  const hexClipCss = buildHexClipKeyframes(shell, {
+    name: "v3a-body",
+    closeEndPercent: 40,
+    openStartPercent: 41,
+    openEndPercent: 82,
+    timingFunction: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+  });
+
   return (
     <V3ScaledStage designW={canvasW} designH={H} maxScale={maxScale} className={className}>
-      <style>{SHELL_CSS}</style>
+      <style>{`${SHELL_CSS}\n${hexClipCss}`}</style>
       <div
         className={animate ? "v3a-run" : "v3a-static"}
         style={{ position: "relative", width: canvasW, height: H, ...cssVars }}
       >
-        {/* Back layer: cyan wings + navy chevrons (generated from the same points as the hexagon) */}
+        {/* Tier 1 (Bottom / z-0): Cyan sliding wings (3-layer radiant glow) */}
         <svg
           width={canvasW}
           height={H}
           viewBox={`0 0 ${canvasW} ${H}`}
-          style={{ position: "absolute", inset: 0, overflow: "visible" }}
+          style={{ position: "absolute", inset: 0, overflow: "visible", zIndex: 0 }}
         >
           <defs>
             <linearGradient id={`${uid}-cyan`} x1="0" y1="0" x2="1" y2="0">
@@ -193,51 +196,23 @@ export function V3ArrowShell({
             </linearGradient>
           </defs>
           <g className="v3a-l">
-            {/* Layer 1: Radiant Cyan wing */}
             <path d={toSvgPath(shell.alcPts)} fill={`url(#${uid}-cyan)`} filter={`drop-shadow(0 0 6px ${V3_COLORS.cyanA})`} />
-            {/* Layer 2: Deep Navy chevron core */}
-            <path
-              d={toSvgPath(shell.alnPts)}
-              fill={V3_COLORS.navyDeep}
-              stroke={V3_COLORS.navy}
-              strokeWidth={2}
-              strokeLinejoin="miter"
-            />
-            {/* Layer 3: Crisp White/Silver accent outline */}
-            <path
-              d={toSvgPath(shell.alnPts)}
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth={1.2}
-              strokeLinejoin="miter"
-              opacity={0.9}
-            />
           </g>
           <g className="v3a-r">
-            {/* Layer 1: Radiant Cyan wing */}
             <path d={toSvgPath(shell.arcPts)} fill={`url(#${uid}-cyan-r)`} filter={`drop-shadow(0 0 6px ${V3_COLORS.cyanA})`} />
-            {/* Layer 2: Deep Navy chevron core */}
-            <path
-              d={toSvgPath(shell.arnPts)}
-              fill={V3_COLORS.navyDeep}
-              stroke={V3_COLORS.navy}
-              strokeWidth={2}
-              strokeLinejoin="miter"
-            />
-            {/* Layer 3: Crisp White/Silver accent outline */}
-            <path
-              d={toSvgPath(shell.arnPts)}
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth={1.2}
-              strokeLinejoin="miter"
-              opacity={0.9}
-            />
           </g>
         </svg>
 
-        {/* Hexagon body (expands from the centre) */}
-        <div className="v3a-body" style={{ position: "absolute", inset: 0 }}>
+        {/* Tier 2 (Middle / z-10): Unified wrapper containing BOTH hexagon SVG body AND HTML content */}
+        <div
+          className="v3a-body"
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 10,
+            clipPath: `polygon(${toPoly(shell.bgPts)})`,
+          }}
+        >
           <svg
             width={canvasW}
             height={H}
@@ -263,15 +238,69 @@ export function V3ArrowShell({
             style={{
               position: "absolute",
               inset: 0,
-              clipPath: `polygon(${toPoly(shell.bgPts)})`,
             }}
           >
             {children}
           </div>
         </div>
 
-        {overlay && <div className="v3a-content" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{overlay}</div>}
+        {/* Tier 3 (Top / z-30): Navy chevrons + crisp white accent lines cutting the hex wedge */}
+        <svg
+          width={canvasW}
+          height={H}
+          viewBox={`0 0 ${canvasW} ${H}`}
+          style={{ position: "absolute", inset: 0, overflow: "visible", zIndex: 30, pointerEvents: "none" }}
+        >
+          <g className="v3a-l">
+            {/* Layer 2: Deep Navy chevron core */}
+            <path
+              d={toSvgPath(shell.alnPts)}
+              fill={V3_COLORS.navyDeep}
+              stroke={V3_COLORS.navy}
+              strokeWidth={2}
+              strokeLinejoin="miter"
+            />
+            {/* Layer 3: Crisp White/Silver accent outline */}
+            <path
+              d={toSvgPath(shell.alnPts)}
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth={1.2}
+              strokeLinejoin="miter"
+              opacity={0.9}
+            />
+          </g>
+          <g className="v3a-r">
+            {/* Layer 2: Deep Navy chevron core */}
+            <path
+              d={toSvgPath(shell.arnPts)}
+              fill={V3_COLORS.navyDeep}
+              stroke={V3_COLORS.navy}
+              strokeWidth={2}
+              strokeLinejoin="miter"
+            />
+            {/* Layer 3: Crisp White/Silver accent outline */}
+            <path
+              d={toSvgPath(shell.arnPts)}
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth={1.2}
+              strokeLinejoin="miter"
+              opacity={0.9}
+            />
+          </g>
+        </svg>
+
+        {overlay && (
+          <div
+            className="v3a-content"
+            style={{ position: "absolute", inset: 0, zIndex: 40, pointerEvents: "none" }}
+          >
+            {overlay}
+          </div>
+        )}
       </div>
     </V3ScaledStage>
   );
 }
+

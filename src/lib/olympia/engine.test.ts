@@ -11,6 +11,12 @@ import { buildBalancedKhoiDongQueues } from "./ai-classifier";
 
 import { canStartScoreSummary, seatToStudioCamera, type OlympiaConfig, type RoundId, type RulesetId } from "./types";
 import { getEntranceScheduleOffsetsMs } from "./entrance-geometry";
+import {
+  buildArrowShell,
+  buildHexClipKeyframes,
+  getHexClipPoints,
+  getHexClipPolygonAt,
+} from "../../components/olympia/v3Geometry";
 
 
 
@@ -2719,6 +2725,57 @@ test("Về Đích O13/O14 4-question package confirm retains qIdx -1, current nu
   assert.equal((vdQ1.current as any)?.points, 10);
   assert.notEqual(g.state.cue?.sound, "4_VeDich/open_question");
 });
+
+test("buildHexClipKeyframes computes 6-vertex polygon expanding from center line", () => {
+  const shell = buildArrowShell({ W: 1000, H: 200, slantRatio: 0.3571 });
+  const cx = shell.canvasW / 2;
+  const { closedPts, openPts, closedClip, openClip } = getHexClipPoints(shell);
+
+  // Closed state: exactly 6 points, all x coords equal to center cx
+  assert.equal(closedPts.length, 6);
+  assert.ok(closedPts.every((p) => p[0] === cx), "all closed points must have x = cx");
+  assert.equal(closedPts[0][1], 0);
+  assert.equal(closedPts[2][1], shell.midY);
+  assert.equal(closedPts[3][1], shell.H);
+
+  // Open state: matches shell.bgPts 100%
+  assert.equal(openPts.length, 6);
+  assert.deepEqual(openPts, shell.bgPts);
+  const L = shell.startX;
+  const R = shell.startX + shell.W;
+  const pS = shell.pS;
+  assert.deepEqual(openPts[0], [L + pS, 0]);
+  assert.deepEqual(openPts[1], [R - pS, 0]);
+  assert.deepEqual(openPts[2], [R, shell.midY]);
+  assert.deepEqual(openPts[3], [R - pS, shell.H]);
+  assert.deepEqual(openPts[4], [L + pS, shell.H]);
+  assert.deepEqual(openPts[5], [L, shell.midY]);
+
+  // Intermediate progress interpolation
+  const midPoly = getHexClipPolygonAt(shell, 0.5);
+  assert.ok(midPoly.startsWith("polygon("));
+  assert.ok(!midPoly.includes("inset("));
+
+  // Keyframes generation
+  const ecoCss = buildHexClipKeyframes(shell, "v3-eco-hex-body");
+  assert.ok(ecoCss.includes("@keyframes v3-eco-hex-body"));
+  assert.ok(ecoCss.includes("0%, 44.9%"));
+  assert.ok(ecoCss.includes("80%"));
+  assert.ok(ecoCss.includes(closedClip));
+  assert.ok(ecoCss.includes(openClip));
+  assert.ok(!ecoCss.includes("inset("));
+
+  const rowCss = buildHexClipKeyframes(shell, {
+    name: "v3-row-hex",
+    openStartPercent: 0,
+    openEndPercent: 100,
+    fadeInPercent: 15,
+  });
+  assert.ok(rowCss.includes("@keyframes v3-row-hex"));
+  assert.ok(rowCss.includes("15% { opacity: 1; }"));
+  assert.ok(!rowCss.includes("inset("));
+});
+
 
 
 

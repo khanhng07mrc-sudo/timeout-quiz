@@ -25,6 +25,107 @@ export function toSvgPath(pts: Pt[]): string {
   return "M " + pts.map((p) => `${p[0]},${p[1]}`).join(" L ") + " Z";
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hexagonal clip-path helper geometry (6 vertices, Econova-exact)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface HexClipPoints {
+  closedPts: Pt[];
+  openPts: Pt[];
+  closedClip: string;
+  openClip: string;
+}
+
+export function getHexClipPoints(
+  shell: ArrowShell | { canvasW: number; H: number; bgPts: Pt[]; midY?: number }
+): HexClipPoints {
+  const cx = shell.canvasW / 2;
+  const H = shell.H;
+  const midY = shell.midY ?? H / 2;
+  const closedPts: Pt[] = [
+    [cx, 0],
+    [cx, 0],
+    [cx, midY],
+    [cx, H],
+    [cx, H],
+    [cx, midY],
+  ];
+  const openPts = shell.bgPts;
+  return {
+    closedPts,
+    openPts,
+    closedClip: `polygon(${toPoly(closedPts)})`,
+    openClip: `polygon(${toPoly(openPts)})`,
+  };
+}
+
+export function getHexClipPolygonAt(
+  shell: ArrowShell | { canvasW: number; H: number; bgPts: Pt[]; midY?: number },
+  progress: number
+): string {
+  const u = Math.max(0, Math.min(1, progress));
+  const cx = shell.canvasW / 2;
+  const H = shell.H;
+  const midY = shell.midY ?? H / 2;
+  const [p0, p1, p2, p3, p4, p5] = shell.bgPts;
+  const interpolate = (target: Pt, closed: Pt): Pt => [
+    closed[0] + (target[0] - closed[0]) * u,
+    closed[1] + (target[1] - closed[1]) * u,
+  ];
+  const pts: Pt[] = [
+    interpolate(p0, [cx, 0]),
+    interpolate(p1, [cx, 0]),
+    interpolate(p2, [cx, midY]),
+    interpolate(p3, [cx, H]),
+    interpolate(p4, [cx, H]),
+    interpolate(p5, [cx, midY]),
+  ];
+  return `polygon(${toPoly(pts)})`;
+}
+
+export interface HexClipKeyframeOptions {
+  name: string;
+  closeEndPercent?: number;
+  openStartPercent?: number;
+  openEndPercent?: number;
+  timingFunction?: string;
+  fadeInPercent?: number;
+}
+
+export function buildHexClipKeyframes(
+  shell: ArrowShell | { canvasW: number; H: number; bgPts: Pt[]; midY?: number },
+  opts: string | HexClipKeyframeOptions = "v3-eco-hex-body"
+): string {
+  const { closedClip, openClip } = getHexClipPoints(shell);
+  const options: HexClipKeyframeOptions =
+    typeof opts === "string" ? { name: opts } : opts;
+  const name = options.name;
+
+  if (typeof options.fadeInPercent === "number") {
+    const fadeIn = options.fadeInPercent;
+    const openEnd = options.openEndPercent ?? 100;
+    return `@keyframes ${name} {
+  0% { clip-path: ${closedClip}; opacity: 0; }
+  ${fadeIn}% { opacity: 1; }
+  ${openEnd}% { clip-path: ${openClip}; opacity: 1; }
+  100% { clip-path: ${openClip}; opacity: 1; }
+}`;
+  }
+
+  const closeEnd = options.closeEndPercent ?? 44.9;
+  const openStart = options.openStartPercent ?? 45;
+  const openEnd = options.openEndPercent ?? 80;
+  const tf = options.timingFunction ?? "cubic-bezier(0.25, 1, 0.5, 1)";
+
+  return `@keyframes ${name} {
+  0%, ${closeEnd}% { clip-path: ${closedClip}; opacity: 0; }
+  ${openStart}% { clip-path: ${closedClip}; opacity: 1; animation-timing-function: ${tf}; }
+  ${openEnd}% { clip-path: ${openClip}; opacity: 1; }
+  100% { clip-path: ${openClip}; opacity: 1; }
+}`;
+}
+
+
 export interface ZigzagShape {
   bgPts: Pt[];
   alnPts: Pt[];

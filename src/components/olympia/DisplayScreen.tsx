@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
 import { RULESETS } from "@/lib/olympia/rulesets";
-import { parseVcnvAnswer } from "@/lib/olympia/engine";
+import { parseVcnvAnswer, stripVcnvLetterCount } from "@/lib/olympia/engine";
 import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
 import { CircularTimer, MediaView, ScoreStrip, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
 import { useOlympiaCameraState } from "./studio/useOlympiaCamera";
@@ -60,6 +60,7 @@ function hasActiveRoundContent(state: OlympiaState): boolean {
         v.phase === "grid" ||
         v.phase === "selecting" ||
         v.phase === "question" ||
+        v.phase === "waitingAnswer" ||
         v.phase === "answers" ||
         v.phase === "done" ||
         Boolean(v.answersRevealed)
@@ -226,10 +227,11 @@ export default function DisplayScreen({ code }: { code: string }) {
       state.khoiDong.current?.q
     ) {
       currentQ = state.khoiDong.current.q;
-    } else if (state.currentRound === "vcnv" && state.vcnv?.phase === "waitingAnswer") {
+    } else if (state.currentRound === "vcnv" && state.vcnv?.phase === "question") {
       const curIdx = state.vcnv.currentRow;
       const isCenter = curIdx === 4;
-      currentQ = isCenter ? (state.vcnv.centerQuestion?.q || "") : (state.vcnv.rows[curIdx]?.hint || "");
+      const rawQ = isCenter ? (state.vcnv.centerQuestion?.q || "") : (state.vcnv.rows[curIdx]?.hint || "");
+      currentQ = stripVcnvLetterCount(rawQ);
     } else if (state.currentRound === "tangToc" && state.tangToc?.phase === "question") {
       const tt = state.tangToc;
       currentQ = tt.questions[tt.qIdx]?.q || "";
@@ -290,7 +292,7 @@ export default function DisplayScreen({ code }: { code: string }) {
     state.currentRound === "tangToc" &&
     (state.tangToc?.phase === "ranking" || state.tangToc?.phase === "graded");
   const isTangTocQuestion = state.currentRound === "tangToc" && state.tangToc?.phase === "question";
-  const isVcnvFullscreen = state.currentRound === "vcnv" && state.vcnv?.phase !== "waitingAnswer";
+  const isVcnvFullscreen = state.currentRound === "vcnv";
 
   const showFullscreen =
     isVcnvReveal ||
@@ -310,7 +312,8 @@ export default function DisplayScreen({ code }: { code: string }) {
     activeRoundContent &&
     state.currentRound === "vcnv" &&
     Boolean(state.vcnv) &&
-    !state.vcnv?.answersRevealed;
+    !state.vcnv?.answersRevealed &&
+    state.vcnv?.phase !== "waitingAnswer";
 
   return (
     <div
@@ -725,19 +728,17 @@ function Vcnv({ state, serverNow }: P) {
   const v = state.vcnv!;
   if (!v) return null;
 
-  // 0. Nền chờ ĐA (W): Hiển thị nền mờ trong suốt trên camera toàn cảnh thí sinh trước khi hiện đáp án
-  if (v.phase === "waitingAnswer") {
+  // Candidate Answers Revealed OR Waiting Answer Background -> Fullscreen VTV3 Answer Graphic
+  if (v.answersRevealed || v.phase === "waitingAnswer") {
     return (
-      <div className="absolute inset-0 bg-[#040e24]/75 backdrop-blur-sm animate-fade-in pointer-events-none" />
+      <VcnvAnswerRevealGraphic
+        state={state}
+        isWaitingAnswer={v.phase === "waitingAnswer" && !v.answersRevealed}
+      />
     );
   }
 
-  // 1. Candidate Answers Revealed -> Fullscreen VTV3 Vertical Brass Rail Layout (Image 3)
-  if (v.answersRevealed) {
-    return <VcnvAnswerRevealGraphic state={state} />;
-  }
-
-  // 2. Authentic VTV3 4-Quadrant Broadcast Layout (Grid, Question & 15s Countdown Phases)
+  // Authentic VTV3 4-Quadrant Broadcast Layout (Grid, Question & 15s Countdown Phases)
   return <VcnvCountdownGraphic state={state} serverNow={serverNow} />;
 }
 

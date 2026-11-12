@@ -219,7 +219,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
         else if (state?.currentRound === "cauHoiPhu") call("chp:wrong");
       } else if (e.key === "w" || e.key === "W") {
         e.preventDefault();
-        if (state?.currentRound === "vcnv") call("vcnv:blank");
+        if (state?.currentRound === "vcnv") call("vcnv:waitingAnswer");
         else if (state?.currentRound === "tangToc") call("tt:blank");
         else call("bgm:waiting");
       } else if (e.key === "r" || e.key === "R") {
@@ -2504,7 +2504,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
           <div className="grid grid-cols-4 gap-1">
             <button
               type="button"
-              onClick={() => call("vcnv:blank")}
+              onClick={() => call("vcnv:waitingAnswer")}
               className="py-1 rounded bg-white/10 hover:bg-white/15 text-[11px] font-bold text-slate-300 cursor-pointer"
             >
               Nền chờ ĐA
@@ -2529,7 +2529,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             </button>
             <button
               type="button"
-              onClick={() => call("vcnv:blank")}
+              onClick={() => call("vcnv:hideAnswer")}
               className="py-1 rounded bg-white/5 hover:bg-white/10 text-[11px] text-slate-400 cursor-pointer"
             >
               ○ Ẩn

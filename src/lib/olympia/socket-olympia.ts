@@ -22,6 +22,8 @@ interface GameEntry {
   clients: Map<string, ClientInfo>; // socketId -> info
   saveTimer: ReturnType<typeof setTimeout> | null;
   lastStage: string;
+  buzzUnlockTimer?: NodeJS.Timeout | null;
+  buzzUnlockTarget?: number | null;
   /** previous view for each socket is not stored; clients de-dupe by version */
 }
 
@@ -146,6 +148,46 @@ function scheduleSave(entry: GameEntry) {
 export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
   const nsp = io.of("/olympia");
 
+  function scheduleBuzzUnlock(code: string, entry: GameEntry) {
+    const kd = entry.game.state.khoiDong;
+    if (!kd?.buzzUnlockAt || kd.buzzOpen || kd.phase !== "question") {
+      if (entry.buzzUnlockTimer) {
+        clearTimeout(entry.buzzUnlockTimer);
+        entry.buzzUnlockTimer = null;
+        entry.buzzUnlockTarget = null;
+      }
+      return;
+    }
+
+    if (entry.buzzUnlockTimer && entry.buzzUnlockTarget === kd.buzzUnlockAt) {
+      return;
+    }
+
+    if (entry.buzzUnlockTimer) {
+      clearTimeout(entry.buzzUnlockTimer);
+      entry.buzzUnlockTimer = null;
+    }
+
+    const unlockAt = kd.buzzUnlockAt;
+    entry.buzzUnlockTarget = unlockAt;
+    const delay = Math.max(0, unlockAt - Date.now());
+    entry.buzzUnlockTimer = setTimeout(() => {
+      entry.buzzUnlockTimer = null;
+      entry.buzzUnlockTarget = null;
+      const cur = games.get(code);
+      if (!cur) return;
+      const curKd = cur.game.state.khoiDong;
+      if (curKd && curKd.buzzUnlockAt && curKd.phase === "question" && curKd.buzzedSeat == null) {
+        if (Date.now() >= curKd.buzzUnlockAt) {
+          curKd.buzzOpen = true;
+          curKd.buzzUnlockAt = undefined;
+          cur.game.touch(Date.now());
+          broadcast(code);
+        }
+      }
+    }, delay);
+  }
+
   function broadcast(code: string) {
     const entry = games.get(code);
     if (!entry) return;
@@ -165,6 +207,7 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
       }
     }
     scheduleSave(entry);
+    scheduleBuzzUnlock(code, entry);
   }
 
   nsp.on("connection", (socket: Socket) => {
@@ -400,7 +443,10 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
   // free memory for abandoned games
   const gc = setInterval(() => {
     for (const [code, entry] of games) {
-      if (entry.clients.size === 0) games.delete(code);
+      if (entry.clients.size === 0) {
+        if (entry.buzzUnlockTimer) clearTimeout(entry.buzzUnlockTimer);
+        games.delete(code);
+      }
     }
   }, 30 * 60 * 1000);
   gc.unref?.();

@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect, useLayoutEffect } from "react";
 import type { OlympiaState, Seat, TimerState } from "@/lib/olympia/types";
-import { parseVcnvAnswer, cleanVcnvWord } from "@/lib/olympia/engine";
+import { parseVcnvAnswer, cleanVcnvWord, stripVcnvLetterCount } from "@/lib/olympia/engine";
 import { activeSeats, seatName, SEAT_COLORS } from "./ui";
 
 /**
@@ -824,7 +824,9 @@ export function VcnvCountdownGraphic({
   const curIdx = v.currentRow;
   const isCenter = curIdx === 4;
   const curRow = curIdx >= 0 && curIdx < 4 ? v.rows[curIdx] : null;
-  const questionHint = isCenter ? v.centerQuestion?.q : curRow?.hint;
+  const isQuestionActive = (v.phase === "question" || v.phase === "waitingAnswer") && curIdx >= 0;
+  const rawQuestionHint = isQuestionActive ? (isCenter ? v.centerQuestion?.q : curRow?.hint) : "";
+  const questionHint = stripVcnvLetterCount(rawQuestionHint || "");
   const isV3Arrow = state.themeMode !== "o26_classic";
 
   // Keyword character count (exact length from server or clean word)
@@ -1140,7 +1142,7 @@ export function VcnvCountdownGraphic({
         <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-gradient-to-br from-[#061838] via-[#041026] to-[#020914] flex flex-col justify-between">
           {/* Question Text Body (Top-Left Aligned) / Done Celebration */}
           <div className="flex-1 min-h-0 flex flex-col items-start justify-start px-5 sm:px-7 pt-5 sm:pt-6 pb-8 text-left overflow-hidden">
-            {v.phase === "selecting" ? null : v.phase === "done" ? (
+            {v.phase === "selecting" || v.phase === "grid" || curIdx < 0 ? null : v.phase === "done" ? (
               <div className="w-full flex flex-col items-center justify-center h-full text-center gap-2 animate-fade-in">
                 <div className="px-4 py-1 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 text-xs sm:text-sm font-black uppercase tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.5)]">
                   CHƯỚNG NGẠI VẬT ĐÃ ĐƯỢC GIẢI MÃ
@@ -1156,14 +1158,14 @@ export function VcnvCountdownGraphic({
               </div>
             ) : (
               <p
-                className={`w-full font-bold text-white select-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.88)] ${
+                className={`w-full font-bold text-white select-none drop-shadow-[0_2px_8px_rgba(0,0,0,0.92)] tracking-wide ${
                   (questionHint || "").length > 210
-                    ? "text-[13px] sm:text-[14px] md:text-[15px] leading-[1.35]"
+                    ? "text-[15px] sm:text-[17px] md:text-[19px] lg:text-[21px] xl:text-[23px] 2xl:text-[26px] leading-[1.36]"
                     : (questionHint || "").length > 140
-                    ? "text-[14px] sm:text-[15px] md:text-[17px] leading-[1.36]"
+                    ? "text-[17px] sm:text-[19px] md:text-[22px] lg:text-[24px] xl:text-[27px] 2xl:text-[30px] leading-[1.36]"
                     : (questionHint || "").length > 85
-                    ? "text-[15px] sm:text-[17px] md:text-[19px] leading-[1.38]"
-                    : "text-[16px] sm:text-[18px] md:text-[21px] leading-[1.38]"
+                    ? "text-[19px] sm:text-[22px] md:text-[25px] lg:text-[28px] xl:text-[31px] 2xl:text-[35px] leading-[1.38]"
+                    : "text-[22px] sm:text-[25px] md:text-[28px] lg:text-[32px] xl:text-[36px] 2xl:text-[42px] leading-[1.38]"
                 }`}
               >
                 {questionHint || ""}
@@ -1173,19 +1175,21 @@ export function VcnvCountdownGraphic({
 
           {/* CNV Bell Red Shapes (Bottom-Left Only) */}
           {hasBell && (
-            <div className="w-full flex flex-col gap-1 px-6 sm:px-8 pb-7 shrink-0">
-              <div className="flex items-center justify-center gap-1.5 flex-wrap min-h-[26px]">
-                {v.bells.map((b, bIdx) => {
-                  const s = state.seats[b.seat];
-                  return (
-                    <div
-                      key={`${b.seat}-${bIdx}`}
-                      className="bg-gradient-to-r from-red-600 to-rose-600 rounded-lg px-3 py-1 text-white font-black text-xs sm:text-sm shadow-[0_0_15px_rgba(239,68,68,0.7)] border border-red-300 flex items-center gap-1.5 animate-fade-in"
-                    >
-                      <span>🔔 {s?.name || `Thí sinh ${b.seat + 1}`}</span>
-                    </div>
-                  );
-                })}
+            <div className="w-full flex flex-col gap-1 px-5 sm:px-7 pb-7 shrink-0">
+              <div className="flex items-center justify-start gap-2 flex-wrap min-h-[26px]">
+                {[...v.bells]
+                  .sort((a, b) => (a.atMs ?? 0) - (b.atMs ?? 0))
+                  .map((b, bIdx) => {
+                    const s = state.seats[b.seat];
+                    return (
+                      <div
+                        key={`${b.seat}-${bIdx}`}
+                        className="bg-gradient-to-r from-red-600 to-rose-600 rounded-lg px-3.5 py-1 text-white font-black text-xs sm:text-sm md:text-base shadow-[0_0_15px_rgba(239,68,68,0.7)] border border-red-300 flex items-center animate-fade-in"
+                      >
+                        <span>{s?.name || `Thí sinh ${b.seat + 1}`}</span>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           )}
@@ -1273,7 +1277,13 @@ export type { ZigzagShape, GridCell, ArrowShell };
  * Uniform typography, zero header pill text.
  * ─────────────────────────────────────────────────────────────────────────────
  */
-export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
+export function VcnvAnswerRevealGraphic({
+  state,
+  isWaitingAnswer = false,
+}: {
+  state: OlympiaState;
+  isWaitingAnswer?: boolean;
+}) {
   const v = state.vcnv;
   if (!v) return null;
   const seats = activeSeats(state);
@@ -1496,7 +1506,7 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
                           className="uppercase font-sans"
                           style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
                         >
-                          {answerText || "—"}
+                          {isWaitingAnswer ? "" : (answerText || "")}
                         </text>
                       </g>
                     </svg>
@@ -1545,7 +1555,7 @@ export function VcnvAnswerRevealGraphic({ state }: { state: OlympiaState }) {
                 {seat.name}
               </div>
               <div className="flex-1 px-8 text-center text-white font-black text-2xl sm:text-4xl uppercase tracking-widest truncate">
-                {answerText || "—"}
+                {isWaitingAnswer ? "" : (answerText || "")}
               </div>
             </div>
           );
@@ -2026,7 +2036,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                           className="uppercase font-sans"
                           style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
                         >
-                          {answerText || "—"}
+                          {answerText || ""}
                         </text>
 
                         <text
@@ -2108,7 +2118,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                 </div>
                 <div className="flex-1 min-w-0 text-center z-10 px-4 overflow-hidden">
                   <span className="font-black text-2xl sm:text-4xl text-white tracking-widest uppercase drop-shadow truncate block max-w-full">
-                    {answerText || "—"}
+                    {answerText || ""}
                   </span>
                 </div>
                 {awardedPts > 0 && (

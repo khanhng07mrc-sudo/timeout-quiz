@@ -808,7 +808,7 @@ function renderRoundGraphicsToCanvas(
       const isRight = idx % 2 === 0;
       const py = startY + idx * gapY;
       const px = isRight ? cx + 20 : cx - 20 - plaqueW;
-      const ans = state.vcnv?.answers?.[s.id]?.text || "—";
+      const ans = state.vcnv?.answers?.[s.id]?.text || "";
 
       // Rivet
       ctx.beginPath();
@@ -870,7 +870,7 @@ function renderRoundGraphicsToCanvas(
     ranking.forEach((r: any, idx: number) => {
       const py = startY + idx * gapY;
       const s = state.seats?.[r.seat];
-      const ans = r.noAnswer ? "—" : r.answer;
+      const ans = r.noAnswer ? "" : r.answer;
       const sec = r.noAnswer ? "" : `${(r.ms / 1000).toFixed(2)}s`;
 
       ctx.beginPath();

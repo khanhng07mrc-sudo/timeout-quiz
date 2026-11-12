@@ -720,7 +720,8 @@ export function useOlympiaAudio(
   }, []);
 
   const setupIntroSeamlessLoop = useCallback(
-    (currentAudio: HTMLAudioElement, forceLoop: boolean = false) => {
+    (currentAudio: HTMLAudioElement, forceLoop: boolean = false, remainingLoops: number = 999) => {
+      if (remainingLoops <= 0) return;
       if (!forceLoop && !isIntroSeamlessLoopTrack(currentAudio.src)) return;
 
       let hasCrossfaded = false;
@@ -754,6 +755,10 @@ export function useOlympiaAudio(
 
       const doCrossfade = () => {
         if (hasCrossfaded) return;
+        if (remainingLoops <= 0) {
+          cleanup();
+          return;
+        }
         // Verify currentAudio is still the current active BGM and not paused/stopped intentionally
         if (
           bgm.current !== currentAudio ||
@@ -772,8 +777,10 @@ export function useOlympiaAudio(
         connectPanner(nextAudio);
         registerActive(nextAudio);
 
-        // Recursively arm seamless predictive crossfade loop on the new instance
-        setupIntroSeamlessLoop(nextAudio, forceLoop);
+        // Recursively arm seamless predictive crossfade loop on the new instance with decremented counter
+        if (remainingLoops - 1 > 0) {
+          setupIntroSeamlessLoop(nextAudio, forceLoop, remainingLoops - 1);
+        }
 
         // Perform smooth 2.0s crossfade
         crossfadeToBgm(nextAudio, INTRO_CROSSFADE_WINDOW_MS, false, false, true);
@@ -1137,8 +1144,19 @@ export function useOlympiaAudio(
 
       if (isBgmCue) {
         crossfadeToBgm(a, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
-        if (isIntroSeamlessLoopTrack(cue.sound) || forceLoopContestantIntro) {
-          setupIntroSeamlessLoop(a, forceLoopContestantIntro);
+        const isOpeningContestIntro = cue.sound.includes("contest_intro");
+        // Opening theme ("contest_intro") plays strictly ONCE (remainingLoops = 0)
+        // Contestant intro plays bounded loops matching entrance duration for N > 4
+        const maxLoops = isOpeningContestIntro
+          ? 0
+          : forceLoopContestantIntro
+            ? Math.max(0, calculateRequiredIntroLoops(activeSeatCount) - 1)
+            : isIntroSeamlessLoopTrack(cue.sound)
+              ? 999
+              : 0;
+
+        if (maxLoops > 0) {
+          setupIntroSeamlessLoop(a, forceLoopContestantIntro, maxLoops);
         }
       } else {
         a.volume = defaultSfxVol;
@@ -1188,6 +1206,20 @@ export function useOlympiaAudio(
       fadeOutAndStopBgm(1000);
     }
   }, [state?.stage, state?.cue, fadeOutAndStopBgm]);
+
+  // Khi màn chào & giới thiệu thí sinh hoàn thành (entranceCompleted = true),
+  // tự động ngắt ngay nhạc giới thiệu contestant_intro nếu vẫn còn đang phát dở dang.
+  useEffect(() => {
+    if (!state?.entranceCompleted) return;
+    const hasContestantIntroPlaying =
+      Array.from(activeBgmSet.current).some(
+        (a) => a.src && a.src.includes("contestant_intro") && !a.paused
+      ) ||
+      Boolean(bgm.current?.src && bgm.current.src.includes("contestant_intro") && !bgm.current.paused);
+    if (hasContestantIntroPlaying) {
+      fadeOutAndStopBgm(1000);
+    }
+  }, [state?.entranceCompleted, fadeOutAndStopBgm]);
 
   // Retry show_intro khi audioSeason vừa arrive hoặc unmuting (fix race condition: state đến trước audioSeason)
   useEffect(() => {

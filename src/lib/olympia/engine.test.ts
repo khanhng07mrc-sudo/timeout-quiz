@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 
-import { OlympiaGame } from "./engine";
+import { OlympiaGame, stripVcnvLetterCount } from "./engine";
 
 import { RULESETS, cnvPointsFor, tangTocTierPoints } from "./rulesets";
 
@@ -629,6 +629,79 @@ test("Khởi Động shared: O22 2s lock, O23+ 5s lock, early manual unlock, tim
 
   assert.equal(g.state.khoiDong!.timer.startedAt, null, "Timer stopped");
 
+});
+
+test("Khởi Động shared buzzer fairness: strictly rejects buzz at now < kd.buzzUnlockAt and accepts at now >= kd.buzzUnlockAt", () => {
+  const g = game("O26", ["khoiDong"], 4);
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  g.joinSeat("TS3", "k3");
+  g.joinSeat("TS4", "k4");
+
+  act(g, "game:start");
+  const sharedIdx = g.state.khoiDong!.segments.findIndex((s) => s.kind === "shared");
+  g.state.khoiDong!.segIdx = sharedIdx;
+  g.state.khoiDong!.phase = "intro";
+
+  const questionStartMs = 1000;
+  act(g, "kd:next", {}, questionStartMs);
+
+  assert.equal(g.state.khoiDong!.buzzOpen, false, "Buzzer must be locked initially");
+  assert.equal(g.state.khoiDong!.buzzUnlockAt, questionStartMs + 5000, "Locked for 5000ms");
+
+  // 1. Buzz early before 350ms window (t = 4000ms): Must be rejected
+  const resEarly1 = g.playerBuzz(0, 4000);
+  assert.equal(resEarly1.ok, false, "Early buzz rejected");
+  assert.equal(resEarly1.error, "Chuông chưa mở");
+  assert.equal(g.state.khoiDong!.buzzOpen, false);
+  assert.equal(g.state.khoiDong!.buzzedSeat, null);
+
+  // 2. Buzz early inside previous 350ms buffer (t = 5700ms, unlock is 6000ms): Must be STRICTLY rejected
+  const resInsideBuffer = g.playerBuzz(0, 5700);
+  assert.equal(resInsideBuffer.ok, false, "Buzz inside 350ms early buffer must be strictly rejected");
+  assert.equal(resInsideBuffer.error, "Chuông chưa mở");
+  assert.equal(g.state.khoiDong!.buzzOpen, false);
+  assert.equal(g.state.khoiDong!.buzzedSeat, null);
+
+  // 3. Buzz 1ms before unlock (t = 5999ms): Must be rejected
+  const resNear1ms = g.playerBuzz(0, 5999);
+  assert.equal(resNear1ms.ok, false, "Buzz 1ms before unlock must be rejected");
+  assert.equal(resNear1ms.error, "Chuông chưa mở");
+  assert.equal(g.state.khoiDong!.buzzOpen, false);
+
+  // 4. Buzz at exact unlock time (t = 6000ms): Must be ACCEPTED
+  const resExact = g.playerBuzz(0, 6000);
+  assert.equal(resExact.ok, true, "Buzz at exact unlock timestamp accepted");
+  assert.equal(g.state.khoiDong!.buzzedSeat, 0, "Seat 0 awarded buzzer");
+  assert.equal(g.state.khoiDong!.buzzOpen, false, "Buzzer closes upon buzz");
+});
+
+test("Khởi Động shared buzzer unlock via server tick: unlocks at now >= buzzUnlockAt", () => {
+  const g = game("O26", ["khoiDong"], 2);
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  act(g, "game:start");
+  const sharedIdx = g.state.khoiDong!.segments.findIndex((s) => s.kind === "shared");
+  g.state.khoiDong!.segIdx = sharedIdx;
+  g.state.khoiDong!.phase = "intro";
+
+  act(g, "kd:next", {}, 10000);
+  assert.equal(g.state.khoiDong!.buzzUnlockAt, 15000);
+  assert.equal(g.state.khoiDong!.buzzOpen, false);
+
+  // Tick before unlock
+  g.tick(14999);
+  assert.equal(g.state.khoiDong!.buzzOpen, false);
+
+  // Tick at unlock
+  g.tick(15000);
+  assert.equal(g.state.khoiDong!.buzzOpen, true);
+  assert.equal(g.state.khoiDong!.buzzUnlockAt, undefined);
+
+  // Now seat 1 buzzes
+  const res = g.playerBuzz(1, 15001);
+  assert.equal(res.ok, true);
+  assert.equal(g.state.khoiDong!.buzzedSeat, 1);
 });
 
 
@@ -1524,8 +1597,8 @@ test("staggered pipelined contestant entrance: auto-advances dynamically after p
   assert.equal(g.state.entranceState, null);
   assert.equal(g.state.entranceCompleted, true);
   assert.equal(g.state.introStandby, true);
-  // Music is not stopped early, allowed to play until natural completion
-  assert.notEqual(g.state.cue?.kind, "stop");
+  // Stop cue emitted when auto-entrance completes naturally to terminate contestant_intro
+  assert.equal(g.state.cue?.kind, "stop");
 });
 
 test("host wrong button lock policy: locked for first 3s (O22) or 5s (O23+) when nobody buzzed; unlocked immediately if buzzed", () => {
@@ -1562,13 +1635,19 @@ test("host wrong button lock policy: locked for first 3s (O22) or 5s (O23+) when
   assert.equal(resEarly26.ok, false);
   assert.match(resEarly26.error!, /5s/);
 
-  // BUT if a contestant buzzes at t = 7700 (before 5s lock expires, e.g. unlock is at 8000, skew tolerance lets buzz at 7700)
-  g26.playerBuzz(0, 7700);
+  // At t = 7700 (before 5s lock expires at 8000), early buzz is strictly rejected:
+  const resEarlyBuzz = g26.playerBuzz(0, 7700);
+  assert.equal(resEarlyBuzz.ok, false);
+  assert.equal(resEarlyBuzz.error, "Chuông chưa mở");
+
+  // At t = 8000, 5s lock expires -> contestant buzzes successfully:
+  const resValidBuzz = g26.playerBuzz(0, 8000);
+  assert.equal(resValidBuzz.ok, true);
   assert.equal(g26.state.khoiDong!.buzzedSeat, 0);
   assert.equal(g26.state.khoiDong!.noBuzzWrongUnlockAt, undefined);
 
   // Once buzzed, host can grade wrong IMMEDIATELY without waiting!
-  const resBuzzedWrong = g26.hostAction({ type: "kd:wrong" }, 7750);
+  const resBuzzedWrong = g26.hostAction({ type: "kd:wrong" }, 8050);
   assert.equal(resBuzzedWrong.ok, true);
   assert.equal(g26.state.khoiDong!.lastVerdict, "wrong");
 });
@@ -1817,12 +1896,18 @@ test("VCNV selecting, openQuestion, blank, auto-grid on correct/wrong & Summary 
   assert.ok(g.view("display").vcnv!.rows[1].hint.length > 0);
   assert.ok(g.view("player", 0).vcnv!.rows[1].hint.length > 0);
 
-  // 3. Blank -> sets waitingAnswer camera to 10
+  // 3. Blank -> plays blank_space sound, does NOT set camera to 10 or switch to waitingAnswer
   act(g, "vcnv:blank");
-  assert.equal(g.state.vcnv!.phase, "waitingAnswer");
-  assert.equal(g.state.studioCamera, 10);
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/blank_space");
+  assert.notEqual(g.state.studioCamera, 10);
+  assert.equal(g.state.vcnv!.phase, "question");
 
-  // 4. Timer starts -> phase is question
+  // 4. WaitingAnswer -> sets phase to waitingAnswer without jumping camera to 10
+  act(g, "vcnv:waitingAnswer");
+  assert.equal(g.state.vcnv!.phase, "waitingAnswer");
+  assert.notEqual(g.state.studioCamera, 10);
+
+  // 5. Timer starts -> phase is question
   act(g, "vcnv:timer", {}, 1000);
   assert.equal(g.state.vcnv!.phase, "question");
 
@@ -2835,6 +2920,44 @@ test("Câu hỏi phụ: hỗ trợ cấu hình 3 câu vs không giới hạn đ�
   act(g27Limited, "chp:next"); // Stops at 3
   assert.equal(g27Limited.state.cauHoiPhu!.phase, "done");
   assert.equal(g27Limited.state.cauHoiPhu!.qIdx, 2);
+});
+
+test("stripVcnvLetterCount removes trailing letter annotations while preserving internal parentheses and punctuation", () => {
+  const q1 = "Trong Hóa học, những phản ứng có thể diễn ra đồng thời theo cả hai chiều ngược nhau trong cùng một điều kiện (ký hiệu bằng mũi tên ⇌) được gọi là phản ứng ... (9 chữ cái)";
+  assert.equal(
+    stripVcnvLetterCount(q1),
+    "Trong Hóa học, những phản ứng có thể diễn ra đồng thời theo cả hai chiều ngược nhau trong cùng một điều kiện (ký hiệu bằng mũi tên ⇌) được gọi là phản ứng ..."
+  );
+
+  const q2 = "Đâu là tên một tác phẩm của Nam Cao? ( gồm 7 ký tự )?";
+  assert.equal(stripVcnvLetterCount(q2), "Đâu là tên một tác phẩm của Nam Cao??");
+
+  const q3 = "Từ nào còn thiếu trong câu ca dao: '... ơi thương lấy bí cùng' (4 chữ)?";
+  assert.equal(stripVcnvLetterCount(q3), "Từ nào còn thiếu trong câu ca dao: '... ơi thương lấy bí cùng'?");
+
+  const q4 = "Một câu hỏi không có chú thích số chữ cái.";
+  assert.equal(stripVcnvLetterCount(q4), "Một câu hỏi không có chú thích số chữ cái.");
+});
+
+test("VCNV bells sort chronologically from left to right", () => {
+  const g = game("O26", ["vcnv"], 4);
+  act(g, "game:start");
+  act(g, "vcnv:selectRow", { row: 1 });
+  act(g, "vcnv:openQuestion");
+
+  // Seat 2 buzzes at t=1000
+  g.playerBuzz(2, 1000);
+  // Seat 0 buzzes at t=1500
+  g.playerBuzz(0, 1500);
+  // Seat 3 buzzes at t=2000
+  g.playerBuzz(3, 2000);
+
+  const bells = g.state.vcnv!.bells;
+  assert.equal(bells.length, 3);
+  const sorted = [...bells].sort((a, b) => (a.atMs ?? 0) - (b.atMs ?? 0));
+  assert.equal(sorted[0].seat, 2, "First buzz on the left is seat 2");
+  assert.equal(sorted[1].seat, 0, "Second buzz is seat 0");
+  assert.equal(sorted[2].seat, 3, "Third buzz is seat 3");
 });
 
 

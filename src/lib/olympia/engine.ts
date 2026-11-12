@@ -77,6 +77,20 @@ export function normalizeAnswer(s: string): string {
  * 3. Strips forbidden bracket characters: '(', ')', '[', ']', '{', '}'
  * 4. Preserves ALL other characters (letters, digits, punctuation/special characters).
  */
+/**
+ * Strips trailing letter count annotations like "(9 chữ cái)", "(4 chữ cái)?", "(7 chữ cái)."
+ * from VCNV question strings while cleanly preserving terminal punctuation (?, .).
+ */
+export function stripVcnvLetterCount(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(
+      /\s*[([]\s*(?:gồm\s*)?\d+\s*(?:chữ\s*cái|kí\s*tự|ký\s*tự|chữ\s*số|chữ|ô\s*chữ|tiếng|chu\s*cai|ky\s*tu)\s*[)\]](\s*[.?:!]?)\s*$/i,
+      "$1"
+    )
+    .trim();
+}
+
 export function cleanVcnvWord(raw: string): string {
   if (!raw) return "";
   const idx = raw.search(/[\(\[\{]/);
@@ -504,8 +518,7 @@ export class OlympiaGame {
           st.introStandby = true;
           st.studioCamera = 3;
           st.studioCameraManual = false;
-          // Note: 6_NhacKhac/contest_intro is allowed to play naturally until its end
-          // or until another active audio cue starts (e.g. entering Khởi Động).
+          this.cue("", "stop");
           this.touch(now);
           return true;
         }
@@ -2160,11 +2173,19 @@ export class OlympiaGame {
         return OK;
       }
       case "vcnv:blank": {
-        // Nền chờ ĐA (W): chuyển camera sang toàn cảnh thí sinh (CAM 10), hiển thị nền chờ mờ (tách biệt âm thanh ô trống)
+        // Ô trống: phát âm thanh ô trống, không đọc câu hỏi, không đổi phase, không đổi camera sang 3D
+        this.cue("6_NhacKhac/blank_space");
+        return OK;
+      }
+      case "vcnv:waitingAnswer": {
+        // Nền chờ đáp án (W): hiển thị background bảng đáp án (nền chờ trước khi hiện đáp án), không văng về trường quay 3D
         v.phase = "waitingAnswer";
         v.answersRevealed = false;
-        st.studioCamera = 10;
-        st.studioCameraManual = true;
+        return OK;
+      }
+      case "vcnv:hideAnswer": {
+        v.answersRevealed = false;
+        v.phase = "question";
         return OK;
       }
       case "vcnv:revealRowText": {
@@ -3486,7 +3507,8 @@ export class OlympiaGame {
         if (kd.segments[kd.segIdx].kind === "solo") return fail("Khởi động riêng không có chuông");
         if (kd.lockedSeats.includes(seatId)) return fail("Bạn bị khóa chuông câu này");
         if (kd.buzzedSeat != null) return fail("Đã có người bấm");
-        if (kd.buzzUnlockAt && now + 350 >= kd.buzzUnlockAt && !kd.buzzOpen) {
+        if (kd.buzzUnlockAt) {
+          if (now < kd.buzzUnlockAt) return fail("Chuông chưa mở");
           kd.buzzOpen = true;
           kd.buzzUnlockAt = undefined;
         }

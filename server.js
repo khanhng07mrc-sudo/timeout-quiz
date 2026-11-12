@@ -106240,6 +106240,7 @@ var OlympiaGame = class _OlympiaGame {
           st.introStandby = true;
           st.studioCamera = 3;
           st.studioCameraManual = false;
+          this.cue("", "stop");
           this.touch(now);
           return true;
         }
@@ -107757,10 +107758,17 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "vcnv:blank": {
+        this.cue("6_NhacKhac/blank_space");
+        return OK;
+      }
+      case "vcnv:waitingAnswer": {
         v.phase = "waitingAnswer";
         v.answersRevealed = false;
-        st.studioCamera = 10;
-        st.studioCameraManual = true;
+        return OK;
+      }
+      case "vcnv:hideAnswer": {
+        v.answersRevealed = false;
+        v.phase = "question";
         return OK;
       }
       case "vcnv:revealRowText": {
@@ -109034,7 +109042,8 @@ var OlympiaGame = class _OlympiaGame {
         if (kd.segments[kd.segIdx].kind === "solo") return fail("Kh\u1EDFi \u0111\u1ED9ng ri\xEAng kh\xF4ng c\xF3 chu\xF4ng");
         if (kd.lockedSeats.includes(seatId)) return fail("B\u1EA1n b\u1ECB kh\xF3a chu\xF4ng c\xE2u n\xE0y");
         if (kd.buzzedSeat != null) return fail("\u0110\xE3 c\xF3 ng\u01B0\u1EDDi b\u1EA5m");
-        if (kd.buzzUnlockAt && now + 350 >= kd.buzzUnlockAt && !kd.buzzOpen) {
+        if (kd.buzzUnlockAt) {
+          if (now < kd.buzzUnlockAt) return fail("Chu\xF4ng ch\u01B0a m\u1EDF");
           kd.buzzOpen = true;
           kd.buzzUnlockAt = void 0;
         }
@@ -109405,6 +109414,42 @@ function scheduleSave(entry) {
 }
 function registerOlympiaSocket(io2) {
   const nsp = io2.of("/olympia");
+  function scheduleBuzzUnlock(code, entry) {
+    const kd = entry.game.state.khoiDong;
+    if (!kd?.buzzUnlockAt || kd.buzzOpen || kd.phase !== "question") {
+      if (entry.buzzUnlockTimer) {
+        clearTimeout(entry.buzzUnlockTimer);
+        entry.buzzUnlockTimer = null;
+        entry.buzzUnlockTarget = null;
+      }
+      return;
+    }
+    if (entry.buzzUnlockTimer && entry.buzzUnlockTarget === kd.buzzUnlockAt) {
+      return;
+    }
+    if (entry.buzzUnlockTimer) {
+      clearTimeout(entry.buzzUnlockTimer);
+      entry.buzzUnlockTimer = null;
+    }
+    const unlockAt = kd.buzzUnlockAt;
+    entry.buzzUnlockTarget = unlockAt;
+    const delay = Math.max(0, unlockAt - Date.now());
+    entry.buzzUnlockTimer = setTimeout(() => {
+      entry.buzzUnlockTimer = null;
+      entry.buzzUnlockTarget = null;
+      const cur = games.get(code);
+      if (!cur) return;
+      const curKd = cur.game.state.khoiDong;
+      if (curKd && curKd.buzzUnlockAt && curKd.phase === "question" && curKd.buzzedSeat == null) {
+        if (Date.now() >= curKd.buzzUnlockAt) {
+          curKd.buzzOpen = true;
+          curKd.buzzUnlockAt = void 0;
+          cur.game.touch(Date.now());
+          broadcast(code);
+        }
+      }
+    }, delay);
+  }
   function broadcast(code) {
     const entry = games.get(code);
     if (!entry) return;
@@ -109422,6 +109467,7 @@ function registerOlympiaSocket(io2) {
       }
     }
     scheduleSave(entry);
+    scheduleBuzzUnlock(code, entry);
   }
   nsp.on("connection", (socket) => {
     let info = null;
@@ -109620,7 +109666,10 @@ function registerOlympiaSocket(io2) {
   ticker.unref?.();
   const gc = setInterval(() => {
     for (const [code, entry] of games) {
-      if (entry.clients.size === 0) games.delete(code);
+      if (entry.clients.size === 0) {
+        if (entry.buzzUnlockTimer) clearTimeout(entry.buzzUnlockTimer);
+        games.delete(code);
+      }
     }
   }, 30 * 60 * 1e3);
   gc.unref?.();

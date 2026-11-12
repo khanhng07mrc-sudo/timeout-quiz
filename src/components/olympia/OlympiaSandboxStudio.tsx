@@ -904,7 +904,7 @@ function SandboxVcnv({
                   onChange={(e) => setChecked(e.target.checked ? [...sel, s.id] : sel.filter((x) => x !== s.id))}
                 />
                 <b style={{ color: SEAT_COLORS[s.id] }}>{s.name}:</b>
-                <span>{ans?.text || "—"}</span>
+                <span>{ans?.text || ""}</span>
                 {ans?.previousText && (
                   <span className="text-amber-300 text-[11px]">(Áp chót: &ldquo;{ans.previousText}&rdquo;)</span>
                 )}
@@ -1001,7 +1001,7 @@ function SandboxTangToc({
                 onChange={(e) => setChecked(e.target.checked ? [...sel, r.seat] : sel.filter((x) => x !== r.seat))}
               />
               <span>
-                #{i + 1} <b>{seatName(state, r.seat)}</b>: {r.noAnswer ? "—" : `${r.answer} (${(r.ms / 1000).toFixed(2)}s)`}
+                #{i + 1} <b>{seatName(state, r.seat)}</b>: {r.noAnswer ? "" : `${r.answer} (${(r.ms / 1000).toFixed(2)}s)`}
                 {r.previousAnswer && <span className="text-amber-300 ml-1">(Áp chót: &ldquo;{r.previousAnswer}&rdquo;)</span>}
                 {r.points ? <b className="text-yellow-300"> +{r.points}đ</b> : ""}
               </span>

@@ -12227,27 +12227,17 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                 })}
               </div>
 
-              {/* Iframe Thí sinh: Giữ kết nối ngầm toàn bộ các máy thí sinh, chuyển đổi mượt mà bằng CSS visibility */}
+              {/* Iframe Thí sinh: Chỉ render duy nhất máy thí sinh đang chọn để tránh lag do chạy đồng thời nhiều iframe */}
               <div className="flex-1 min-h-0 bg-[#0f0f1a] relative">
-                {Array.from({ length: Math.min(8, Math.max(2, sandboxCustomTeams.length || 4)) }, (_, sIdx) => {
-                  const isActive = olympiaActiveSeat === sIdx;
-                  const tName = sandboxCustomTeams[sIdx]?.name || `Thí sinh ${sIdx + 1}`;
-                  return (
-                    <iframe
-                      key={sIdx}
-                      src={`/olympia/play/${code}?seat=${sIdx}&name=${encodeURIComponent(tName)}`}
-                      allow="autoplay *; fullscreen *; camera; microphone; display-capture"
-                      title={`Player Viewport ${sIdx}`}
-                      className={`w-full h-full border-0 absolute inset-0 transition-opacity duration-150 ${
-                        isActive ? "opacity-100 pointer-events-auto z-10" : "opacity-0 pointer-events-none z-0"
-                      }`}
-                      style={{
-                        opacity: isActive ? 1 : 0,
-                        pointerEvents: isActive ? "auto" : "none",
-                      }}
-                    />
-                  );
-                })}
+                <iframe
+                  key={olympiaActiveSeat}
+                  src={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(
+                    sandboxCustomTeams[olympiaActiveSeat]?.name || `Thí sinh ${olympiaActiveSeat + 1}`
+                  )}`}
+                  allow="autoplay *; fullscreen *; camera; microphone; display-capture"
+                  title={`Player Viewport ${olympiaActiveSeat}`}
+                  className="w-full h-full border-0 absolute inset-0 opacity-100 pointer-events-auto z-10"
+                />
               </div>
             </div>
           </div>

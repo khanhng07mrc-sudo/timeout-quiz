@@ -1905,9 +1905,15 @@ test("VCNV selecting, openQuestion, blank, auto-grid on correct/wrong & Summary 
   // 4. WaitingAnswer -> sets phase to waitingAnswer without jumping camera to 10
   act(g, "vcnv:waitingAnswer");
   assert.equal(g.state.vcnv!.phase, "waitingAnswer");
+  assert.equal(g.state.vcnv!.answersRevealed, false);
   assert.notEqual(g.state.studioCamera, 10);
 
-  // 5. Timer starts -> phase is question
+  // 5. HideAnswer -> resets phase to question and answersRevealed to false
+  act(g, "vcnv:hideAnswer");
+  assert.equal(g.state.vcnv!.phase, "question");
+  assert.equal(g.state.vcnv!.answersRevealed, false);
+
+  // 6. Timer starts -> phase is question
   act(g, "vcnv:timer", {}, 1000);
   assert.equal(g.state.vcnv!.phase, "question");
 

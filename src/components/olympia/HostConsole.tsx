@@ -762,7 +762,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                         : curRound === "veDich" && state.veDich
                           ? `Câu ${Math.max(0, state.veDich.qIdx + 1)}/3`
                           : curRound === "cauHoiPhu" && state.cauHoiPhu
-                            ? `Câu ${Math.max(0, state.cauHoiPhu.qIdx + 1)}/3`
+                            ? `Câu ${Math.max(0, state.cauHoiPhu.qIdx + 1)}/${state.chpQuestionLimit === "unlimited" ? "∞" : 3}`
                             : "Vòng đấu"}
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30 text-[11px]">
@@ -1240,7 +1240,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                           {copiedLink ? "✓ Đã chép link!" : "📋 Chép Link"}
                         </button>
                       </div>
-                      <div className="pt-1 flex items-center justify-center md:justify-start gap-2">
+                      <div className="pt-1 flex items-center justify-center md:justify-start gap-2 flex-wrap">
                         <button
                           type="button"
                           onClick={() => setShowQrModal(true)}
@@ -1249,6 +1249,36 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                           <span>📱</span>
                           <span>Phóng to Mã QR Toàn Màn Hình</span>
                         </button>
+
+                        {/* Setting Câu hỏi phụ: 3 câu vs Không giới hạn (độc lập mùa thi) */}
+                        <div
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-950/50 border border-amber-400/35"
+                          title="Cài đặt số câu tối đa cho vòng Câu hỏi phụ (độc lập với mùa thi; không giới hạn áp dụng từ O27)"
+                        >
+                          <span className="text-[11px] font-bold text-amber-300 mr-0.5">❓ CHP:</span>
+                          <button
+                            type="button"
+                            onClick={() => call("system:setChpLimit", { limit: 3 })}
+                            className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                              state.chpQuestionLimit !== "unlimited"
+                                ? "bg-amber-400 text-slate-950 shadow"
+                                : "bg-white/5 text-slate-300 hover:bg-white/10"
+                            }`}
+                          >
+                            3 câu
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => call("system:setChpLimit", { limit: "unlimited" })}
+                            className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                              state.chpQuestionLimit === "unlimited"
+                                ? "bg-cyan-400 text-slate-950 shadow"
+                                : "bg-white/5 text-slate-300 hover:bg-white/10"
+                            }`}
+                          >
+                            ∞ Không giới hạn
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -3491,8 +3521,47 @@ function CauHoiPhuDeck({ state, call, seats }: { state: OlympiaState; call: Call
         </button>
       </div>
 
-      {/* Right: Mở chuông thủ công & Dừng nhạc */}
+      {/* Right: Giới hạn Câu hỏi phụ, Mở chuông thủ công & Dừng nhạc */}
       <div className="space-y-2">
+        <div className="rounded-xl border border-amber-400/30 bg-amber-950/30 p-2 space-y-1.5">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="font-bold text-amber-300">Giới hạn Câu hỏi phụ</span>
+            <span className="font-black text-white">
+              {state.chpQuestionLimit === "unlimited" ? "♾️ Không giới hạn" : "🔒 Tối đa 3 câu"}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-1">
+            <button
+              type="button"
+              onClick={() => call("system:setChpLimit", { limit: 3 })}
+              className={`py-1 px-2 rounded-lg text-[11px] font-black border cursor-pointer transition ${
+                state.chpQuestionLimit !== "unlimited"
+                  ? "bg-amber-400 text-slate-950 border-amber-300 shadow"
+                  : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+              }`}
+            >
+              3 câu
+            </button>
+            <button
+              type="button"
+              onClick={() => call("system:setChpLimit", { limit: "unlimited" })}
+              className={`py-1 px-2 rounded-lg text-[11px] font-black border cursor-pointer transition ${
+                state.chpQuestionLimit === "unlimited"
+                  ? "bg-cyan-400 text-slate-950 border-cyan-300 shadow"
+                  : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+              }`}
+            >
+              ∞ Không giới hạn
+            </button>
+          </div>
+          {cp.phase === "done" && cp.winner == null && (
+            <div className="text-[11px] text-amber-200 bg-black/30 rounded-lg px-2 py-1 border border-amber-400/20">
+              {state.chpQuestionLimit !== "unlimited"
+                ? "Đã hết 3 câu hỏi phụ mà chưa phân định thắng thua (có thể bốc thăm hoặc bật Không giới hạn để hỏi tiếp)."
+                : "Đã kết thúc vòng Câu hỏi phụ."}
+            </div>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => call("chp:buzzer")}

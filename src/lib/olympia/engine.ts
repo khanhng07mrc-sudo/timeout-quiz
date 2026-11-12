@@ -1,6 +1,6 @@
 // Olympia game engine — pure state machine (no sockets, no I/O). Fully unit-testable.
 import { SAMPLE_QUESTION_SET } from "./sample-questions";
-import { RULESETS, cnvPointsFor, tangTocTierPoints, turnsO22 } from "./rulesets";
+import { RULESETS, cnvPointsFor, defaultChpQuestionLimitForRuleset, tangTocTierPoints, turnsO22 } from "./rulesets";
 import { buildBalancedKhoiDongQueues, pickBalancedVeDichPackage, tagQAWithAI, normKey } from "./ai-classifier";
 import { getEntranceStepThresholdMs } from "./entrance-geometry";
 import {
@@ -11,6 +11,7 @@ import {
   canStartScoreSummary,
   seatToStudioCamera,
   type CauHoiPhuState,
+  type ChpQuestionLimit,
   type ContestantGestureType,
   type HostAction,
   type KdSegmentDef,
@@ -185,10 +186,15 @@ export class OlympiaGame {
       : (config.teams && config.teams.length > 0)
       ? Math.max(2, Math.min(MAX_SEATS, config.teams.length))
       : MAX_SEATS;
+    const initialChpLimit: ChpQuestionLimit =
+      config.chpQuestionLimit === "unlimited" || config.chpQuestionLimit === 3
+        ? config.chpQuestionLimit
+        : defaultChpQuestionLimitForRuleset(this.ruleset.id);
     this.state = {
       code,
       rulesetId: this.ruleset.id,
       o22Quarter: config.o22Quarter ?? 1,
+      chpQuestionLimit: initialChpLimit,
       rounds,
       stage: "lobby",
       seatCount,
@@ -1164,6 +1170,24 @@ export class OlympiaGame {
             }
           }
         }
+        return OK;
+      }
+      case "system:setChpLimit": {
+        const raw = a.limit;
+        const nextLimit: ChpQuestionLimit | null =
+          raw === "unlimited" || raw === null || raw === 0 || raw === "0"
+            ? "unlimited"
+            : Number(raw) === 3
+              ? 3
+              : null;
+        if (!nextLimit) return fail("Giới hạn Câu hỏi phụ không hợp lệ (chỉ hỗ trợ 3 hoặc unlimited)");
+        st.chpQuestionLimit = nextLimit;
+        if (st.cauHoiPhu && st.cauHoiPhu.phase === "done" && nextLimit === "unlimited" && st.cauHoiPhu.winner == null) {
+          st.cauHoiPhu.phase = st.cauHoiPhu.qIdx >= 0 ? "result" : "idle";
+        }
+        this.logMsg(
+          `Cài đặt Câu hỏi phụ: ${nextLimit === "unlimited" ? "Không giới hạn số câu" : "Tối đa 3 câu"}`
+        );
         return OK;
       }
       case "theme:set": {
@@ -3237,6 +3261,39 @@ export class OlympiaGame {
   }
 
   // ───────────────────────── CÂU HỎI PHỤ ─────────────────────────
+  private chpLimit(): ChpQuestionLimit {
+    return this.state.chpQuestionLimit === "unlimited" ? "unlimited" : 3;
+  }
+
+  /**
+   * Khi ở chế độ Câu hỏi phụ không giới hạn và đã dùng hết kho cauHoiPhu,
+   * lấy tiếp câu chưa mở từ các kho Khởi Động / Về Đích để không bị dừng đột ngột.
+   */
+  private drawChpUnlimitedFallbackQuestion(cp: CauHoiPhuState): QA | null {
+    const qs = this.config.questionSet;
+    const guard = this.duplicateGuard();
+    const inCp = new Set(cp.questions.map((q) => this.normQ(q.q)));
+    const pool: QA[] = [];
+    const seen = new Set<string>();
+    const push = (item?: QA | null) => {
+      if (!item?.q) return;
+      const k = this.normQ(item.q);
+      if (seen.has(k) || inCp.has(k) || guard.openedQ.has(k)) return;
+      seen.add(k);
+      pool.push(item);
+    };
+    for (const q of qs.cauHoiPhu ?? []) push(q);
+    for (const q of qs.khoiDong?.shared ?? []) push(q);
+    for (const list of Object.values(qs.khoiDong?.solo ?? {})) for (const q of list) push(q);
+    for (const tier of Object.values(qs.veDich ?? {})) for (const q of tier) push(q);
+    if (pool.length === 0) return null;
+    const strict = pool.filter(
+      (q) => !(q.a && guard.openedA.has(this.normQ(q.a))) && !guard.reservedQ.has(this.normQ(q.q))
+    );
+    const chosen = strict[0] ?? pool.find((q) => !guard.reservedQ.has(this.normQ(q.q))) ?? pool[0];
+    return chosen ? tagQAWithAI(chosen, false) : null;
+  }
+
   private chpAction(type: string, a: HostAction, now: number): ActionResult {
     const st = this.state;
     const cp = st.cauHoiPhu;
@@ -3261,11 +3318,28 @@ export class OlympiaGame {
         return OK;
       }
       case "chp:next": {
-        cp.qIdx += 1;
-        if (cp.qIdx >= cp.questions.length) {
+        const limit = this.chpLimit();
+        const nextIdx = cp.qIdx + 1;
+        if (limit !== "unlimited" && nextIdx >= limit) {
           cp.phase = "done";
+          cp.buzzOpen = false;
+          pauseTimer(cp.timer, now);
+          this.logMsg(`Đã hoàn thành đủ ${limit} câu hỏi phụ.`);
           return OK;
         }
+        if (nextIdx >= cp.questions.length) {
+          if (limit === "unlimited") {
+            const extra = this.drawChpUnlimitedFallbackQuestion(cp);
+            if (extra) cp.questions.push(extra);
+          }
+          if (nextIdx >= cp.questions.length) {
+            cp.phase = "done";
+            cp.buzzOpen = false;
+            pauseTimer(cp.timer, now);
+            return OK;
+          }
+        }
+        cp.qIdx = nextIdx;
         cp.phase = "idle";
         resetTimer(cp.timer);
         cp.buzzOpen = false;

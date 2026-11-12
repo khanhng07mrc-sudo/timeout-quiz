@@ -9,6 +9,7 @@ import { parseJsonSet, parseSheets } from "@/lib/olympia/excel-import";
 import {
   ROUND_LABELS,
   ROUND_ORDER,
+  type ChpQuestionLimit,
   type OlympiaQuestionSet,
   type OlympiaState,
   type RoundId,
@@ -54,6 +55,7 @@ export default function OlympiaSandboxStudio({
   const [banks, setBanks] = useState<OlympiaBankItem[]>([]);
   const [activeBankId, setActiveBankId] = useState<string>(selectedBankId || "");
   const [rulesetId, setRulesetId] = useState<RulesetId>("O26");
+  const [chpQuestionLimit, setChpQuestionLimit] = useState<ChpQuestionLimit>(3);
   const [rounds, setRounds] = useState<RoundId[]>([...SELECTABLE_ROUNDS]);
   const [playerCount, setPlayerCount] = useState<number>(4);
   const [questionSet, setQuestionSet] = useState<OlympiaQuestionSet>(() => {
@@ -76,14 +78,20 @@ export default function OlympiaSandboxStudio({
   const [showTranscript, setShowTranscript] = useState(false);
 
   const buildGame = useCallback(
-    (rsId: RulesetId, rds: RoundId[], count: number, qSet: OlympiaQuestionSet) => {
-      const g = new OlympiaGame("SANDBOX", { rulesetId: rsId, rounds: rds, questionSet: qSet, seatCount: count });
+    (rsId: RulesetId, rds: RoundId[], count: number, qSet: OlympiaQuestionSet, chpLimit: ChpQuestionLimit = chpQuestionLimit) => {
+      const g = new OlympiaGame("SANDBOX", {
+        rulesetId: rsId,
+        chpQuestionLimit: chpLimit,
+        rounds: rds,
+        questionSet: qSet,
+        seatCount: count,
+      });
       for (let i = 0; i < count; i++) {
         g.joinSeat(DEFAULT_NAMES[i] || `Thí sinh ${i + 1}`, `sb_${i}`);
       }
       return g;
     },
-    []
+    [chpQuestionLimit]
   );
 
   const gameRef = useRef<OlympiaGame | null>(null);
@@ -121,8 +129,14 @@ export default function OlympiaSandboxStudio({
 
   // Re-initialize when lobby config changes
   const recreateGame = useCallback(
-    (nextRs = rulesetId, nextRounds = rounds, nextCount = playerCount, nextSet = questionSet) => {
-      gameRef.current = buildGame(nextRs, nextRounds, nextCount, nextSet);
+    (
+      nextRs = rulesetId,
+      nextRounds = rounds,
+      nextCount = playerCount,
+      nextSet = questionSet,
+      nextChpLimit = chpQuestionLimit
+    ) => {
+      gameRef.current = buildGame(nextRs, nextRounds, nextCount, nextSet, nextChpLimit);
       setCheckedVcnv([]);
       setCheckedTt([]);
       setErr("");
@@ -130,7 +144,7 @@ export default function OlympiaSandboxStudio({
       setVdPkgDraft(Array(RULESETS[nextRs].veDich.questionsPerSeat).fill(opts[0] ?? 20));
       refresh();
     },
-    [buildGame, playerCount, questionSet, refresh, rounds, rulesetId]
+    [buildGame, chpQuestionLimit, playerCount, questionSet, refresh, rounds, rulesetId]
   );
 
   useEffect(() => {
@@ -333,6 +347,36 @@ export default function OlympiaSandboxStudio({
             <span className="px-2 py-1 rounded border border-amber-400/40 bg-amber-500/15 text-amber-200 font-bold" title="Vòng Câu hỏi phụ luôn được chọn mặc định">
               +CHP
             </span>
+            <div className="inline-flex items-center gap-0.5 rounded-lg border border-amber-400/40 bg-amber-950/30 p-0.5" title="Giới hạn Câu hỏi phụ (độc lập mùa thi; không giới hạn áp dụng từ O27+)">
+              <button
+                type="button"
+                onClick={() => {
+                  setChpQuestionLimit(3);
+                  if (gameRef.current) {
+                    act("system:setChpLimit", { limit: 3 });
+                  }
+                }}
+                className={`px-2 py-0.5 rounded text-[11px] font-black transition cursor-pointer ${
+                  chpQuestionLimit !== "unlimited" ? "bg-amber-400 text-slate-950" : "text-slate-300 hover:bg-white/10"
+                }`}
+              >
+                CHP: 3 câu
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setChpQuestionLimit("unlimited");
+                  if (gameRef.current) {
+                    act("system:setChpLimit", { limit: "unlimited" });
+                  }
+                }}
+                className={`px-2 py-0.5 rounded text-[11px] font-black transition cursor-pointer ${
+                  chpQuestionLimit === "unlimited" ? "bg-cyan-400 text-slate-950" : "text-slate-300 hover:bg-white/10"
+                }`}
+              >
+                ∞ Không giới hạn
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1085,10 +1129,29 @@ function SandboxVeDich({
 function SandboxChp({ state, act, serverNow }: { state: OlympiaState; act: Act; serverNow: SN }) {
   const cp = state.cauHoiPhu!;
   const q = cp.questions[cp.qIdx];
+  const isUnlimited = state.chpQuestionLimit === "unlimited";
   return (
     <div className="space-y-2 rounded-xl bg-white/5 p-3">
-      <div className="text-xs text-amber-300">
-        Đồng hạng: {cp.tied.map((i) => seatName(state, i)).join(", ")}
+      <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+        <span className="text-amber-300">
+          Đồng hạng: {cp.tied.map((i) => seatName(state, i)).join(", ")} · Câu {Math.max(0, cp.qIdx + 1)}/{isUnlimited ? "∞" : 3}
+        </span>
+        <div className="inline-flex items-center gap-1">
+          <button
+            type="button"
+            className={`px-2 py-0.5 rounded text-[11px] font-black border cursor-pointer ${!isUnlimited ? "bg-amber-400 text-slate-950 border-amber-300" : "bg-white/5 text-slate-300 border-white/15"}`}
+            onClick={() => act("system:setChpLimit", { limit: 3 })}
+          >
+            3 câu
+          </button>
+          <button
+            type="button"
+            className={`px-2 py-0.5 rounded text-[11px] font-black border cursor-pointer ${isUnlimited ? "bg-cyan-400 text-slate-950 border-cyan-300" : "bg-white/5 text-slate-300 border-white/15"}`}
+            onClick={() => act("system:setChpLimit", { limit: "unlimited" })}
+          >
+            ∞ Không giới hạn
+          </button>
+        </div>
       </div>
       {q && (
         <div>

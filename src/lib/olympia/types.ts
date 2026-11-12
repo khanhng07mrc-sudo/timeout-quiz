@@ -33,6 +33,7 @@ export type RulesetId =
 export type AudioSeason = "O13-21" | "O22" | "O23" | "O24-25" | "O26";
 export type AudioChannel = "both" | "left" | "right";
 export type O22Quarter = 1 | 2 | 3;
+export type ChpQuestionLimit = 3 | "unlimited";
 
 export const MAX_SEATS = 8;
 
@@ -324,6 +325,8 @@ export interface OlympiaConfig {
   teams?: Array<{ name: string; color?: string }>;
   /** Olympia 22 Quarter selection (1 = Quý 1, 2 = Quý 2, 3 = Quý 3 - CKN) */
   o22Quarter?: O22Quarter;
+  /** Maximum questions in Câu hỏi phụ (3 or "unlimited"), independent of season (unlimited native from O27+) */
+  chpQuestionLimit?: ChpQuestionLimit;
   /** When true (default), play show_intro opening sound on room creation */
   playIntroOnCreate?: boolean;
 }
@@ -568,6 +571,8 @@ export interface OlympiaState {
   name?: string;
   rulesetId: RulesetId;
   o22Quarter?: O22Quarter;
+  /** Season-independent Câu hỏi phụ question limit: 3 (max 3 questions) or "unlimited" */
+  chpQuestionLimit?: ChpQuestionLimit;
   rounds: RoundId[]; // selected rounds in canonical order (excl. CHP)
   stage: LobbyPhase;
   seatCount?: number;

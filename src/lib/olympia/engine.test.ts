@@ -2776,6 +2776,67 @@ test("buildHexClipKeyframes computes 6-vertex polygon expanding from center line
   assert.ok(!rowCss.includes("inset("));
 });
 
+test("Câu hỏi phụ: hỗ trợ cấu hình 3 câu vs không giới hạn độc lập với mùa thi (và O27 mặc định không giới hạn)", () => {
+  // 1. Default theo mùa: O13..O26 mặc định 3 câu; O27 mặc định không giới hạn
+  const g26 = game("O26", ["khoiDong"], 2);
+  assert.equal(g26.state.chpQuestionLimit, 3);
+  const g27 = game("O27", ["khoiDong"], 2);
+  assert.equal(g27.state.chpQuestionLimit, "unlimited");
+
+  // 2. O26 với cài đặt 3 câu: chỉ chơi tối đa 3 câu (qIdx 0, 1, 2), lần chp:next thứ 4 -> phase = "done"
+  act(g26, "game:start");
+  g26.state.seats[0].score = 50;
+  g26.state.seats[1].score = 50;
+  act(g26, "round:force", { round: "cauHoiPhu" });
+  act(g26, "chp:next"); // Q1 (qIdx = 0)
+  assert.equal(g26.state.cauHoiPhu!.qIdx, 0);
+  act(g26, "chp:show");
+  act(g26, "chp:next"); // Q2 (qIdx = 1)
+  assert.equal(g26.state.cauHoiPhu!.qIdx, 1);
+  act(g26, "chp:show");
+  act(g26, "chp:next"); // Q3 (qIdx = 2)
+  assert.equal(g26.state.cauHoiPhu!.qIdx, 2);
+  act(g26, "chp:show");
+  act(g26, "chp:next"); // Exceeds 3 -> done
+  assert.equal(g26.state.cauHoiPhu!.phase, "done");
+  assert.equal(g26.state.cauHoiPhu!.qIdx, 2);
+
+  // 3. Chuyển động từ 3 câu -> Không giới hạn giữa chừng qua system:setChpLimit -> mở tiếp câu 4+
+  act(g26, "system:setChpLimit", { limit: "unlimited" });
+  assert.equal(g26.state.chpQuestionLimit, "unlimited");
+  assert.notEqual(g26.state.cauHoiPhu!.phase, "done");
+  act(g26, "chp:next"); // Q4 (qIdx = 3)
+  assert.equal(g26.state.cauHoiPhu!.qIdx, 3);
+  act(g26, "chp:show");
+
+  // 4. Setting không phụ thuộc mùa thi: O15 có thể cài unlimited, O27 có thể cài 3 câu
+  const g15Unlim = game("O15", ["khoiDong"], 2, { chpQuestionLimit: "unlimited" });
+  assert.equal(g15Unlim.state.chpQuestionLimit, "unlimited");
+  act(g15Unlim, "game:start");
+  g15Unlim.state.seats[0].score = 40;
+  g15Unlim.state.seats[1].score = 40;
+  act(g15Unlim, "round:force", { round: "cauHoiPhu" });
+  for (let i = 0; i < 7; i++) {
+    act(g15Unlim, "chp:next");
+    assert.equal(g15Unlim.state.cauHoiPhu!.qIdx, i);
+    act(g15Unlim, "chp:show");
+  }
+  assert.notEqual(g15Unlim.state.cauHoiPhu!.phase, "done");
+
+  const g27Limited = game("O27", ["khoiDong"], 2, { chpQuestionLimit: 3 });
+  assert.equal(g27Limited.state.chpQuestionLimit, 3);
+  act(g27Limited, "game:start");
+  g27Limited.state.seats[0].score = 40;
+  g27Limited.state.seats[1].score = 40;
+  act(g27Limited, "round:force", { round: "cauHoiPhu" });
+  act(g27Limited, "chp:next"); // Q1
+  act(g27Limited, "chp:next"); // Q2
+  act(g27Limited, "chp:next"); // Q3
+  act(g27Limited, "chp:next"); // Stops at 3
+  assert.equal(g27Limited.state.cauHoiPhu!.phase, "done");
+  assert.equal(g27Limited.state.cauHoiPhu!.qIdx, 2);
+});
+
 
 
 

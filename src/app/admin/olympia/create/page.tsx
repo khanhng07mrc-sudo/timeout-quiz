@@ -23,6 +23,7 @@ import {
   type RoundId,
   type RulesetId,
   type O22Quarter,
+  type ChpQuestionLimit,
 } from "@/lib/olympia/types";
 
 const SELECTABLE_ROUNDS: RoundId[] = ROUND_ORDER.filter((r) => r !== "cauHoiPhu");
@@ -32,6 +33,7 @@ export default function CreateOlympiaPage() {
   const [roomName, setRoomName] = useState("Trận đấu Olympia");
   const [rulesetId, setRulesetId] = useState<RulesetId>("O26");
   const [o22Quarter, setO22Quarter] = useState<O22Quarter>(1);
+  const [chpQuestionLimit, setChpQuestionLimit] = useState<ChpQuestionLimit>(3);
   const [rounds, setRounds] = useState<RoundId[]>([...SELECTABLE_ROUNDS]);
   const [questionSet, setQuestionSet] = useState<OlympiaQuestionSet>(SAMPLE_QUESTION_SET);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -155,6 +157,7 @@ export default function CreateOlympiaPage() {
             olympia: {
               rulesetId,
               o22Quarter: rulesetId === "O22" ? o22Quarter : undefined,
+              chpQuestionLimit,
               rounds,
               questionSet: finalSet,
               seatCount: targetContestantCount,
@@ -358,6 +361,42 @@ export default function CreateOlympiaPage() {
 
       <section className="rounded-2xl border border-white/15 bg-slate-900/70 p-4 space-y-3">
         <div className="text-sm font-bold text-sky-300">3. Chọn các vòng thi</div>
+        {/* Season-independent Câu hỏi phụ Limit Setting */}
+        <div className="rounded-xl border border-amber-400/35 bg-amber-950/25 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+          <div className="space-y-0.5">
+            <div className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+              <span>❓</span>
+              <span>Giới hạn số câu vòng Câu hỏi phụ (Độc lập với mùa thi)</span>
+            </div>
+            <div className="text-[11px] text-slate-300">
+              Chọn tối đa <b>3 câu</b> (truyền thống ≤O26) hoặc <b>Không giới hạn</b> (áp dụng từ O27+). Cài đặt này độc lập hoàn toàn với mùa thi đã chọn.
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setChpQuestionLimit(3)}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-black transition cursor-pointer ${
+                chpQuestionLimit === 3
+                  ? "border-amber-400 bg-amber-400 text-slate-950 shadow"
+                  : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10"
+              }`}
+            >
+              🔒 3 câu
+            </button>
+            <button
+              type="button"
+              onClick={() => setChpQuestionLimit("unlimited")}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-black transition cursor-pointer ${
+                chpQuestionLimit === "unlimited"
+                  ? "border-cyan-400 bg-cyan-400 text-slate-950 shadow"
+                  : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10"
+              }`}
+            >
+              ♾️ Không giới hạn (O27+)
+            </button>
+          </div>
+        </div>
         <div className="grid sm:grid-cols-2 gap-2">
           {SELECTABLE_ROUNDS.map((r) => {
             const on = rounds.includes(r);

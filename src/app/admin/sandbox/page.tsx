@@ -35,7 +35,7 @@ import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
 import OlympiaSandboxStudio from "@/components/olympia/OlympiaSandboxStudio";
 import HostConsole from "@/components/olympia/HostConsole";
-import { ROUND_LABELS, type OlympiaState, type RulesetId } from "@/lib/olympia/types";
+import { ROUND_LABELS, type ChpQuestionLimit, type OlympiaState, type RulesetId } from "@/lib/olympia/types";
 import { getOlympiaBanks, getPresetOlympiaBanks } from "@/lib/olympia/olympia-storage";
 import { RULESET_YEAR_BUTTONS, RULESETS } from "@/lib/olympia/rulesets";
 
@@ -258,6 +258,7 @@ export default function AdminSandboxPage() {
   const [selectedMode, setSelectedMode] = useState<GameMode>("GRID_CARO");
   const [selectedBankId, setSelectedBankId] = useState<string>("");
 const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
+  const [olympiaChpLimit, setOlympiaChpLimit] = useState<ChpQuestionLimit>(3);
   const [sandboxPlayIntroOnCreate, setSandboxPlayIntroOnCreate] = useState<boolean>(true);
   const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; isWordPuzzle?: boolean; _count?: { questions: number } }[]>([]);
   const lastUserEditionChangeTimestampRef = useRef<number>(0);
@@ -6997,6 +6998,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
           config: modeToUse === "OLYMPIA" ? {
             olympia: {
               rulesetId: olympiaRulesetId,
+              chpQuestionLimit: olympiaChpLimit,
               playIntroOnCreate: sandboxPlayIntroOnCreate,
               questionSet: olympiaQuestionSet,
             }
@@ -11716,6 +11718,15 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       </option>
                     ))}
                   </select>
+                  <select
+                    value={String(olympiaChpLimit)}
+                    onChange={(e) => setOlympiaChpLimit(e.target.value === "unlimited" ? "unlimited" : 3)}
+                    className="px-2 py-2 rounded-xl bg-amber-950/60 border border-amber-400/50 text-cyan-300 font-black text-xs focus:outline-none cursor-pointer"
+                    title="Số câu vòng Câu hỏi phụ (độc lập với mùa thi; không giới hạn áp dụng từ O27)"
+                  >
+                    <option value="3" className="bg-[#151728] text-white">CHP: 3 câu</option>
+                    <option value="unlimited" className="bg-[#151728] text-white">CHP: ∞ Không giới hạn</option>
+                  </select>
                 </div>
               )}
 
@@ -12065,6 +12076,33 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                             </button>
                           );
                         })}
+                      </div>
+                      <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-white/10 text-xs">
+                        <span className="font-bold text-amber-200/90">❓ Giới hạn Câu hỏi phụ (độc lập mùa thi):</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setOlympiaChpLimit(3)}
+                            className={`px-2.5 py-1 rounded-lg border text-[11px] font-black cursor-pointer transition ${
+                              olympiaChpLimit === 3
+                                ? "border-amber-400 bg-amber-400 text-slate-950 shadow"
+                                : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10"
+                            }`}
+                          >
+                            🔒 3 câu
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOlympiaChpLimit("unlimited")}
+                            className={`px-2.5 py-1 rounded-lg border text-[11px] font-black cursor-pointer transition ${
+                              olympiaChpLimit === "unlimited"
+                                ? "border-cyan-400 bg-cyan-400 text-slate-950 shadow"
+                                : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10"
+                            }`}
+                          >
+                            ♾️ Không giới hạn (O27+)
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -14658,6 +14696,29 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                           </button>
                         );
                       })}
+                    </div>
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10 text-xs">
+                      <span className="font-bold text-amber-200">❓ Câu hỏi phụ (độc lập mùa):</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setOlympiaChpLimit(3)}
+                          className={`px-2.5 py-1 rounded-lg border text-[11px] font-black cursor-pointer ${
+                            olympiaChpLimit === 3 ? "border-amber-400 bg-amber-400 text-slate-950" : "border-white/15 bg-white/5 text-slate-300"
+                          }`}
+                        >
+                          3 câu
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOlympiaChpLimit("unlimited")}
+                          className={`px-2.5 py-1 rounded-lg border text-[11px] font-black cursor-pointer ${
+                            olympiaChpLimit === "unlimited" ? "border-cyan-400 bg-cyan-400 text-slate-950" : "border-white/15 bg-white/5 text-slate-300"
+                          }`}
+                        >
+                          ∞ Không giới hạn
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

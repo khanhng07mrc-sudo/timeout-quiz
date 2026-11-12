@@ -105773,6 +105773,9 @@ var TANG_TOC_TABLE = {
   7: [40, 35, 30, 25, 20, 15, 10],
   8: [40, 35, 30, 25, 20, 15, 10, 5]
 };
+function defaultChpQuestionLimitForRuleset(rulesetId) {
+  return rulesetId === "O27" ? "unlimited" : 3;
+}
 function tangTocTierPoints(contestants) {
   const n = Math.min(8, Math.max(1, Math.floor(contestants) || 1));
   return TANG_TOC_TABLE[n];
@@ -105962,10 +105965,12 @@ var OlympiaGame = class _OlympiaGame {
     this.ruleset = RULESETS[config.rulesetId] ?? RULESETS.O26;
     const rounds = sortRounds(config.rounds);
     const seatCount = config.seatCount ? Math.max(2, Math.min(MAX_SEATS, config.seatCount)) : config.teams && config.teams.length > 0 ? Math.max(2, Math.min(MAX_SEATS, config.teams.length)) : MAX_SEATS;
+    const initialChpLimit = config.chpQuestionLimit === "unlimited" || config.chpQuestionLimit === 3 ? config.chpQuestionLimit : defaultChpQuestionLimitForRuleset(this.ruleset.id);
     this.state = {
       code,
       rulesetId: this.ruleset.id,
       o22Quarter: config.o22Quarter ?? 1,
+      chpQuestionLimit: initialChpLimit,
       rounds,
       stage: "lobby",
       seatCount,
@@ -106831,6 +106836,19 @@ var OlympiaGame = class _OlympiaGame {
             }
           }
         }
+        return OK;
+      }
+      case "system:setChpLimit": {
+        const raw = a.limit;
+        const nextLimit = raw === "unlimited" || raw === null || raw === 0 || raw === "0" ? "unlimited" : Number(raw) === 3 ? 3 : null;
+        if (!nextLimit) return fail("Gi\u1EDBi h\u1EA1n C\xE2u h\u1ECFi ph\u1EE5 kh\xF4ng h\u1EE3p l\u1EC7 (ch\u1EC9 h\u1ED7 tr\u1EE3 3 ho\u1EB7c unlimited)");
+        st.chpQuestionLimit = nextLimit;
+        if (st.cauHoiPhu && st.cauHoiPhu.phase === "done" && nextLimit === "unlimited" && st.cauHoiPhu.winner == null) {
+          st.cauHoiPhu.phase = st.cauHoiPhu.qIdx >= 0 ? "result" : "idle";
+        }
+        this.logMsg(
+          `C\xE0i \u0111\u1EB7t C\xE2u h\u1ECFi ph\u1EE5: ${nextLimit === "unlimited" ? "Kh\xF4ng gi\u1EDBi h\u1EA1n s\u1ED1 c\xE2u" : "T\u1ED1i \u0111a 3 c\xE2u"}`
+        );
         return OK;
       }
       case "theme:set": {
@@ -108799,6 +108817,37 @@ var OlympiaGame = class _OlympiaGame {
     return fail("H\xE0nh \u0111\u1ED9ng V\u1EC1 \u0110\xEDch kh\xF4ng h\u1EE3p l\u1EC7");
   }
   // ───────────────────────── CÂU HỎI PHỤ ─────────────────────────
+  chpLimit() {
+    return this.state.chpQuestionLimit === "unlimited" ? "unlimited" : 3;
+  }
+  /**
+   * Khi ở chế độ Câu hỏi phụ không giới hạn và đã dùng hết kho cauHoiPhu,
+   * lấy tiếp câu chưa mở từ các kho Khởi Động / Về Đích để không bị dừng đột ngột.
+   */
+  drawChpUnlimitedFallbackQuestion(cp) {
+    const qs = this.config.questionSet;
+    const guard = this.duplicateGuard();
+    const inCp = new Set(cp.questions.map((q) => this.normQ(q.q)));
+    const pool = [];
+    const seen = /* @__PURE__ */ new Set();
+    const push = (item) => {
+      if (!item?.q) return;
+      const k = this.normQ(item.q);
+      if (seen.has(k) || inCp.has(k) || guard.openedQ.has(k)) return;
+      seen.add(k);
+      pool.push(item);
+    };
+    for (const q of qs.cauHoiPhu ?? []) push(q);
+    for (const q of qs.khoiDong?.shared ?? []) push(q);
+    for (const list of Object.values(qs.khoiDong?.solo ?? {})) for (const q of list) push(q);
+    for (const tier of Object.values(qs.veDich ?? {})) for (const q of tier) push(q);
+    if (pool.length === 0) return null;
+    const strict = pool.filter(
+      (q) => !(q.a && guard.openedA.has(this.normQ(q.a))) && !guard.reservedQ.has(this.normQ(q.q))
+    );
+    const chosen = strict[0] ?? pool.find((q) => !guard.reservedQ.has(this.normQ(q.q))) ?? pool[0];
+    return chosen ? tagQAWithAI(chosen, false) : null;
+  }
   chpAction(type, a, now) {
     const st = this.state;
     const cp = st.cauHoiPhu;
@@ -108822,11 +108871,28 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
       case "chp:next": {
-        cp.qIdx += 1;
-        if (cp.qIdx >= cp.questions.length) {
+        const limit = this.chpLimit();
+        const nextIdx = cp.qIdx + 1;
+        if (limit !== "unlimited" && nextIdx >= limit) {
           cp.phase = "done";
+          cp.buzzOpen = false;
+          pauseTimer(cp.timer, now);
+          this.logMsg(`\u0110\xE3 ho\xE0n th\xE0nh \u0111\u1EE7 ${limit} c\xE2u h\u1ECFi ph\u1EE5.`);
           return OK;
         }
+        if (nextIdx >= cp.questions.length) {
+          if (limit === "unlimited") {
+            const extra = this.drawChpUnlimitedFallbackQuestion(cp);
+            if (extra) cp.questions.push(extra);
+          }
+          if (nextIdx >= cp.questions.length) {
+            cp.phase = "done";
+            cp.buzzOpen = false;
+            pauseTimer(cp.timer, now);
+            return OK;
+          }
+        }
+        cp.qIdx = nextIdx;
         cp.phase = "idle";
         resetTimer(cp.timer);
         cp.buzzOpen = false;

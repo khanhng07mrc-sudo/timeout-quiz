@@ -24,7 +24,7 @@ const WIKIPEDIA_RULES: Record<string, RuleDetail> = {
     veDich:
       "• Mỗi thí sinh chọn gói 3 câu hỏi ở 2 mức điểm: 20 điểm hoặc 30 điểm (thời gian suy nghĩ: 15s cho câu 20đ, 20s cho câu 30đ; thực hành: 20s–60s).\n• Ngôi sao hy vọng: Đúng nhân đôi (+2x), sai trừ số điểm câu hỏi (-1x).\n• Cướp điểm: Nếu thí sinh chính trả lời sai, các thí sinh còn lại có 5 giây bấm chuông cướp điểm. Đúng được cộng số điểm câu hỏi, sai bị trừ 50% số điểm.",
     cauHoiPhu:
-      "• Dành cho các thí sinh bằng điểm sau 4 vòng thi. Mỗi câu 15 giây suy nghĩ, bấm chuông giành quyền. Trả lời đúng thắng ngay lập tức.",
+      "• Dành cho các thí sinh bằng điểm sau 4 vòng thi. Mỗi câu 15 giây suy nghĩ, bấm chuông giành quyền. Trả lời đúng thắng ngay lập tức.\n• O26 tối đa 3 câu (hòa sau 3 câu sẽ bốc thăm); từ O27 áp dụng không giới hạn câu hỏi phụ (hệ thống hỗ trợ tùy chọn độc lập giữa 3 câu và không giới hạn cho mọi mùa).",
   },
   "O24-25": {
     season: "Olympia 24 – 25",

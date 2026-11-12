@@ -1,4 +1,4 @@
-import type { AudioSeason, KdSegmentDef, OlympiaRuleset, RulesetId, O22Quarter } from "./types";
+import type { AudioSeason, ChpQuestionLimit, KdSegmentDef, OlympiaRuleset, RulesetId, O22Quarter } from "./types";
 
 /** O13–O19: 60s personal clock per contestant, max 12 questions */
 const solo60s12q = (seatCount: number): KdSegmentDef[] =>
@@ -394,6 +394,14 @@ const TANG_TOC_TABLE: Record<number, number[]> = {
   7: [40, 35, 30, 25, 20, 15, 10],
   8: [40, 35, 30, 25, 20, 15, 10, 5],
 };
+
+/**
+ * Default Câu hỏi phụ question cap per season (unlimited applies natively from O27 onward),
+ * while still allowing explicit per-room / live override independent of season.
+ */
+export function defaultChpQuestionLimitForRuleset(rulesetId?: RulesetId): ChpQuestionLimit {
+  return rulesetId === "O27" ? "unlimited" : 3;
+}
 
 export function tangTocTierPoints(contestants: number): number[] {
   const n = Math.min(8, Math.max(1, Math.floor(contestants) || 1));

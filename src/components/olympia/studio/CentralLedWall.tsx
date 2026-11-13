@@ -2069,10 +2069,10 @@ export function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasE
  * 3D Solid Volumetric Neon Hexagon Frame
  * Made of 6 interconnected solid neon rods with radiant emissive glow (eliminates WebGL 1px line limits).
  */
-const HEX_TIER1_OUTER = computeGroundedHexagonVertices(4.80, 5.20, 3.36);
-const HEX_TIER1_INNER = offsetGroundedContour(HEX_TIER1_OUTER, 0.32);
+const HEX_TIER1_OUTER = computeGroundedHexagonVertices(6.40, 5.00, 3.80);
+const HEX_TIER1_INNER = offsetGroundedContour(HEX_TIER1_OUTER, 0.36);
 const HEX_TIER2_OUTER = HEX_TIER1_INNER;
-const HEX_TIER2_INNER = offsetGroundedContour(HEX_TIER2_OUTER, 0.30);
+const HEX_TIER2_INNER = offsetGroundedContour(HEX_TIER2_OUTER, 0.32);
 const HEX_TIER3_OUTER = HEX_TIER2_INNER;
 const HEX_TIER3_INNER = offsetGroundedContour(HEX_TIER3_OUTER, 0.28);
 
@@ -2548,29 +2548,29 @@ export function CentralLedWall({
       {/* Đặt tại [3.48, 0, -8.59], rotation [0, -0.25, 0] đồng trục 100% với Bục MC và CAM 3 */}
       {/* 3 VIỀN (Tier 1, Tier 2, Tier 3) lồng giật cấp theo chiều sâu Z để tạo hiệu ứng đường hầm 3D portal chân thực */}
       <group position={[3.48, 0, -8.59]} rotation={[0, -0.25, 0]}>
-        {/* Tier 1 (Viền ngoài cùng): 4.80m x 5.20m tại Z = 0 */}
+        {/* Tier 1 (Viền ngoài cùng): 6.40m x 5.00m tại Z = 0 */}
         <CutBottomHexagonArch
           outerPts={HEX_TIER1_OUTER}
           innerPts={HEX_TIER1_INNER}
-          outerW={4.80}
-          outerH={5.20}
-          innerW={4.16}
-          innerH={4.58}
+          outerW={6.40}
+          outerH={5.00}
+          innerW={5.68}
+          innerH={4.28}
           neonColor={neonColor}
           depth={0.18}
           showOuterNeon={true}
           showInnerNeon={true}
         />
 
-        {/* Tier 2 (Viền giữa - lùi Z = -0.25m): 4.16m x 4.58m */}
+        {/* Tier 2 (Viền giữa - lùi Z = -0.25m): ~5.68m x ~4.28m */}
         <group position={[0, 0, -0.25]}>
           <CutBottomHexagonArch
             outerPts={HEX_TIER2_OUTER}
             innerPts={HEX_TIER2_INNER}
-            outerW={4.16}
-            outerH={4.58}
-            innerW={3.56}
-            innerH={3.98}
+            outerW={5.68}
+            outerH={4.28}
+            innerW={5.04}
+            innerH={3.64}
             neonColor={neonColor}
             depth={0.18}
             showOuterNeon={true}
@@ -2578,15 +2578,15 @@ export function CentralLedWall({
           />
         </group>
 
-        {/* Tier 3 (Viền trong cùng - lùi Z = -0.50m): 3.56m x 3.98m */}
+        {/* Tier 3 (Viền trong cùng - lùi Z = -0.50m): ~5.04m x ~3.64m */}
         <group position={[0, 0, -0.50]}>
           <CutBottomHexagonArch
             outerPts={HEX_TIER3_OUTER}
             innerPts={HEX_TIER3_INNER}
-            outerW={3.56}
-            outerH={3.98}
-            innerW={3.00}
-            innerH={3.42}
+            outerW={5.04}
+            outerH={3.64}
+            innerW={4.48}
+            innerH={3.08}
             neonColor={neonColor}
             depth={0.18}
             showOuterNeon={true}

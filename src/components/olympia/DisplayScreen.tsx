@@ -847,7 +847,7 @@ function VeDich({ state, serverNow }: P) {
                 />
               ) : null
             }
-            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : (cur && vd.phase === "thinking" ? vd.timer : null)}
+            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : (cur && (vd.phase === "thinking" || vd.phase === "result") ? vd.timer : null)}
             serverNow={serverNow}
           />
         ) : (
@@ -869,7 +869,7 @@ function VeDich({ state, serverNow }: P) {
                 />
               ) : null
             }
-            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : (cur && vd.phase === "thinking" ? vd.timer : null)}
+            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : (cur && (vd.phase === "thinking" || vd.phase === "result") ? vd.timer : null)}
             hopeStarActive={vd.hopeStarActive}
             showScoreTab={true}
             runAnim={isEarlyLowerThird}

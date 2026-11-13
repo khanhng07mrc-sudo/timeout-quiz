@@ -5359,8 +5359,7 @@ export function Podiums({
           state?.stage === "playing" &&
           !state?.introTimer &&
           !state?.introStandby &&
-          state?.currentRound &&
-          (state.currentRound === "khoiDong" ? Boolean(state.khoiDong?.started) : true)
+          state?.currentRound
         );
 
         const { seatStartOffsetsMs } = getEntranceScheduleOffsetsMs(activeCount);

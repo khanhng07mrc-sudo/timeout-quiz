@@ -545,7 +545,7 @@ export function EconovaSecondsBadge({
     const update = () => {
       if (spanRef.current) {
         const s = getSeconds();
-        spanRef.current.textContent = `${s}s`;
+        spanRef.current.textContent = `${s}`;
       }
       if (timer.startedAt != null) {
         animId = requestAnimationFrame(update);
@@ -557,14 +557,20 @@ export function EconovaSecondsBadge({
     };
   }, [timer, getSeconds]);
 
+  // Only display when active timer is running ("Tính giờ" pressed)
+  if (timer.startedAt == null) {
+    return null;
+  }
+
   return (
     <div
-      className={`px-3 py-0.5 rounded-lg font-black text-xs sm:text-sm tracking-widest tabular-nums flex items-center justify-center border-2 border-amber-400 text-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.6)] ${className}`}
+      className={`w-[44px] h-[30px] rounded-lg font-black text-sm tracking-normal tabular-nums flex items-center justify-center border-2 border-amber-400 text-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.6)] shrink-0 ${className}`}
       style={{
         background: "linear-gradient(135deg, #091a42 0%, #061129 100%)",
+        fontFamily: "'UTM Avo', 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif",
       }}
     >
-      <span ref={spanRef}>{getSeconds()}s</span>
+      <span ref={spanRef}>{getSeconds()}</span>
     </div>
   );
 }
@@ -1958,7 +1964,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
         <div className={`relative z-10 w-[88%] max-w-[1640px] flex flex-col ${rowGapClass} items-center justify-center py-2`}>
           {(tt.ranking || []).map((item, idx) => {
             const seat = state.seats[item.seat];
-            const sec = item.noAnswer ? "—" : (item.ms / 1000).toFixed(2);
+            const sec = item.noAnswer ? "0.00" : (item.ms / 1000).toFixed(2);
             const answerText = item.noAnswer ? "" : (item.answer || "");
             const rowDelay = 0;
             const textDelay = "0.440";
@@ -3631,10 +3637,11 @@ export function EconovaLowerThirdV3({
               <div className="flex items-center gap-2">
                 {questionNumberBadge && (
                   <div
-                    className="px-3 py-0.5 rounded-t-lg font-black text-xs sm:text-sm tracking-widest uppercase flex items-center gap-1.5 shadow-[0_0_15px_rgba(251,191,36,0.5)] border-t border-x border-amber-300/60"
+                    className="w-[132px] min-w-[132px] max-w-[132px] h-[30px] px-2 rounded-t-lg font-black text-xs sm:text-sm tracking-widest uppercase flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(251,191,36,0.5)] border-t border-x border-amber-300/60 shrink-0"
                     style={{
                       background: "linear-gradient(135deg, #091a42 0%, #061129 100%)",
                       color: "#fbbf24",
+                      boxSizing: "border-box",
                     }}
                   >
                     <span>🎯</span>

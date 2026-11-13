@@ -3019,6 +3019,76 @@ test("Khởi Động question format logic: unlimited in O20-O22 (Câu X without
   assert.equal(formatQ(12, 60000, 4), "Câu 5/12");
 });
 
+test("Tăng Tốc: Unanswered contestants default to ms: 0 and sort to the top of ranking in time order", () => {
+  const g = game("O26", ["tangToc"], 6, { seatCount: 6 });
+  for (let i = 0; i < 6; i++) {
+    g.joinSeat(`Thí sinh ${i + 1}`, `k${i}`);
+  }
+  act(g, "game:start", {}, 1000);
+  act(g, "tt:selectQuestion", { qIdx: 0 }, 1500);
+  act(g, "tt:show", {}, 2000);
+  act(g, "tt:timer", {}, 2000);
+
+  // Seat 0 answers at 11.54s (11540ms)
+  g.playerAnswer(0, "ĐẤU THẦU QUỐC TẾ", 2000 + 11540);
+  // Seat 3 answers at 14.82s (14820ms)
+  g.playerAnswer(3, "ĐẤU THẦU QUỐC TẾ", 2000 + 14820);
+  // Seat 4 answers at 17.20s (17200ms)
+  g.playerAnswer(4, "ĐẤU THẦU QUỐC TẾ", 2000 + 17200);
+  // Seats 1, 2, 5 do not answer
+
+  act(g, "tt:reveal", {}, 25000);
+  const ranking = g.state.tangToc?.ranking || [];
+  assert.equal(ranking.length, 6);
+
+  // The 3 unanswered contestants (Seats 1, 2, 5) must default to ms = 0 and be pushed to the top in time order
+  assert.equal(ranking[0].seat, 1);
+  assert.equal(ranking[0].noAnswer, true);
+  assert.equal(ranking[0].ms, 0);
+
+  assert.equal(ranking[1].seat, 2);
+  assert.equal(ranking[1].noAnswer, true);
+  assert.equal(ranking[1].ms, 0);
+
+  assert.equal(ranking[2].seat, 5);
+  assert.equal(ranking[2].noAnswer, true);
+  assert.equal(ranking[2].ms, 0);
+
+  // Then the contestants who answered follow in increasing time order
+  assert.equal(ranking[3].seat, 0);
+  assert.equal(ranking[3].ms, 11540);
+
+  assert.equal(ranking[4].seat, 3);
+  assert.equal(ranking[4].ms, 14820);
+
+  assert.equal(ranking[5].seat, 4);
+  assert.equal(ranking[5].ms, 17200);
+});
+
+test("Sandbox seat takeover & requestSeat during active game round succeeds immediately", () => {
+  const g = new OlympiaGame("289791", {
+    rulesetId: "O26",
+    rounds: ["tangToc"],
+    seatCount: 6,
+    questionSet: SAMPLE_QUESTION_SET,
+  }, 1000);
+
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+
+  // Start match so stage is no longer 'lobby'
+  act(g, "game:start", {}, 2000);
+  assert.notEqual(g.state.stage, "lobby");
+
+  // In Sandbox room (6-digit PIN), requestSeat for Seat 5 (Thí sinh 6) must be approved immediately
+  const res = g.requestSeat("Thí sinh 6", 5, "device_token_xyz_123");
+  assert.equal(res.ok, true);
+  assert.equal(res.status, "approved");
+  assert.equal(res.seatId, 5);
+  assert.equal(g.state.seats[5].approved, true);
+  assert.equal(g.state.seats[5].playerKey, "device_token_xyz_123");
+});
+
 
 
 

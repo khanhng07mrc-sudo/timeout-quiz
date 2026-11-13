@@ -427,9 +427,32 @@ export function prewarmBuzzerSounds(season: string = "O26") {
     `/olympia-audio/${season}/5_CauHoiPhu/bell_ring.mp3`,
     `/olympia-audio/${season}/1_KhoiDong/correct.mp3`,
     `/olympia-audio/${season}/1_KhoiDong/wrong.mp3`,
+    `/olympia-audio/${season}/1_KhoiDong/open_question.mp3`,
+    `/olympia-audio/${season}/2_VuotChuongNgaiVat/open_row.mp3`,
+    `/olympia-audio/${season}/3_TangToc/open_question.mp3`,
+    `/olympia-audio/${season}/3_TangToc/show_answer.mp3`,
+    `/olympia-audio/${season}/4_VeDich/open_question.mp3`,
+    `/olympia-audio/${season}/4_VeDich/hope_star.mp3`,
+    `/olympia-audio/${season}/6_NhacKhac/show_intro.mp3`,
+    `/olympia-audio/${season}/6_NhacKhac/contest_intro.mp3`,
+    `/olympia-audio/${season}/3_TangToc/tick_10s.mp3`,
+    `/olympia-audio/${season}/3_TangToc/tick_20s.mp3`,
+    `/olympia-audio/${season}/3_TangToc/tick_30s.mp3`,
+    `/olympia-audio/${season}/3_TangToc/tick_40s.mp3`,
     `/olympia-audio/O26/1_KhoiDong/bell_ring.mp3`,
+    `/olympia-audio/O26/1_KhoiDong/correct.mp3`,
+    `/olympia-audio/O26/1_KhoiDong/wrong.mp3`,
   ];
   list.forEach(prewarmSfx);
+  if ("caches" in window) {
+    caches.open("olympia-audio-v1").then((cache) => {
+      list.forEach((url) => {
+        cache.match(url).then((match) => {
+          if (!match) cache.add(url).catch(() => {});
+        }).catch(() => {});
+      });
+    }).catch(() => {});
+  }
 }
 
 if (typeof window !== "undefined") {

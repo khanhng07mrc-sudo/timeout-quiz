@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { RULESETS } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
-import { useOlympiaSocket, useStableToken } from "./hooks";
+import { useOlympiaSocket, useStableToken, prewarmBuzzerSounds } from "./hooks";
 import { Timer, MediaView, SEAT_COLORS, seatName, activeSeats } from "./ui";
 
 type Emit = (e: string, p?: unknown) => Promise<{ ok: boolean; error?: string }>;
@@ -40,6 +40,11 @@ export default function PlayerPad({
     school,
     enabled: !!token,
   });
+
+  useEffect(() => {
+    prewarmBuzzerSounds(join?.audioSeason || "O26");
+  }, [join?.audioSeason]);
+
   // Smooth direct ticker during Khởi Động buzzer lock countdown (60ms intervals)
   const [, setUnlockTick] = useState(0);
   useEffect(() => {
@@ -1291,9 +1296,14 @@ function HorizontalAnswerBar({
     if (!enabled || !text.trim()) return;
     const submittedText = text.trim();
     setText("");
-    setLastSubmitted(submittedText);
     const r = await emit(event, { text: submittedText });
-    setMsg(r.ok ? "✔ Đã ghi nhận" : r.error || "Lỗi khi gửi");
+    if (r.ok) {
+      setLastSubmitted(submittedText);
+      setMsg("✔ Đã ghi nhận");
+    } else {
+      setText(submittedText);
+      setMsg(r.error || "Lỗi khi gửi");
+    }
   };
 
   const displaySubmitted = serverSubmittedText || lastSubmitted;

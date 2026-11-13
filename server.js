@@ -106106,12 +106106,13 @@ var OlympiaGame = class _OlympiaGame {
     const cleanName = (name || "").trim();
     const target = this.state.seats[seatId];
     const sbPrefix = `sandbox_${this.state.code}_seat_`;
+    const isSandboxRoom = /^\d{6}$/.test(this.state.code) || this.state.code.toLowerCase().includes("sandbox") || this.state.code.toLowerCase().includes("offline") || Boolean(this.config?.sandbox);
     const isSamePlayer = Boolean(playerKey && target.playerKey === playerKey);
-    const isSandbox = Boolean(playerKey && playerKey.startsWith(sbPrefix));
+    const isSandbox = Boolean(playerKey && (playerKey.startsWith("sandbox_") || playerKey.startsWith(sbPrefix)));
     const isApprovedMatching = Boolean(
       target.approved && (isSamePlayer || cleanName && target.name.trim().toLowerCase() === cleanName.toLowerCase())
     );
-    if (isSandbox || isSamePlayer || isApprovedMatching) {
+    if (isSandboxRoom || isSandbox || isSamePlayer || isApprovedMatching) {
       if (cleanName) target.name = cleanName;
       if (school) target.school = school.trim();
       target.playerKey = playerKey;
@@ -108237,18 +108238,17 @@ var OlympiaGame = class _OlympiaGame {
         const q = tt.questions[tt.qIdx];
         tt.ranking = this.activeSeatIds.map((id) => {
           const sub = tt.submissions[id];
+          const hasAns = Boolean(sub && sub.answer && sub.answer.trim());
           return {
             seat: id,
             answer: sub?.answer ?? "",
-            ms: sub?.ms ?? 0,
+            ms: hasAns ? sub?.ms ?? 0 : 0,
             previousAnswer: sub?.previousAnswer,
             previousMs: sub?.previousMs,
             history: sub?.history ? [...sub.history] : [],
-            noAnswer: !sub || !sub.answer.trim()
+            noAnswer: !hasAns
           };
         }).sort((x, y) => {
-          if (x.noAnswer !== y.noAnswer) return x.noAnswer ? 1 : -1;
-          if (x.noAnswer && y.noAnswer) return x.seat - y.seat;
           return x.ms - y.ms || x.seat - y.seat;
         });
         tt.correctAnswer = q?.answer;

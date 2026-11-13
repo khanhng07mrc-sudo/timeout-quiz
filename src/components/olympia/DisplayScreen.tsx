@@ -661,7 +661,8 @@ function KhoiDong({ state, serverNow }: P) {
   const isGlobalClockRule = Boolean(seg.globalMs && kd.globalTimer);
   const isO23ToO26 = !isGlobalClockRule;
   const kdActiveTimer = isGlobalClockRule ? kd.globalTimer : null;
-  const kdSecondsBadgeTimer = isO23ToO26 && hasRevealedQ ? kd.timer : null;
+  const isTimerRunning = Boolean(kd.timer && kd.timer.startedAt != null);
+  const kdSecondsBadgeTimer = isO23ToO26 && hasRevealedQ && isTimerRunning ? kd.timer : null;
 
   return (
     <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">

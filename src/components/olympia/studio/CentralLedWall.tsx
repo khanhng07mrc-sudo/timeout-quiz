@@ -2069,10 +2069,10 @@ export function createCurvedFormulaCanvas(fadeProgress: number = 0): HTMLCanvasE
  * 3D Solid Volumetric Neon Hexagon Frame
  * Made of 6 interconnected solid neon rods with radiant emissive glow (eliminates WebGL 1px line limits).
  */
-const HEX_TIER1_OUTER = computeGroundedHexagonVertices(6.40, 5.00, 3.80);
-const HEX_TIER1_INNER = offsetGroundedContour(HEX_TIER1_OUTER, 0.36);
+const HEX_TIER1_OUTER = computeGroundedHexagonVertices(4.80, 5.20, 3.36);
+const HEX_TIER1_INNER = offsetGroundedContour(HEX_TIER1_OUTER, 0.32);
 const HEX_TIER2_OUTER = HEX_TIER1_INNER;
-const HEX_TIER2_INNER = offsetGroundedContour(HEX_TIER2_OUTER, 0.32);
+const HEX_TIER2_INNER = offsetGroundedContour(HEX_TIER2_OUTER, 0.30);
 const HEX_TIER3_OUTER = HEX_TIER2_INNER;
 const HEX_TIER3_INNER = offsetGroundedContour(HEX_TIER3_OUTER, 0.28);
 
@@ -2534,11 +2534,12 @@ export function CentralLedWall({
   }, []);
 
   // Synchronize elevated wall sweep angle (0.80 * Math.PI -> a = 1.28 * Math.PI) uniformly across all 2..8 seat counts
-  // so left edge of curved wall aligns flush with the expanded 1.28 * Math.PI Left Dais platform.
+  // so left edge of curved wall aligns flush with the expanded 1.28 * Math.PI Left Dais platform,
+  // while ensuring zero clipping into the Grand Hexagon Portal behind the MC podium.
   const wallSweepAng = 0.80 * Math.PI;
-  const wallStartAng = 0.98 * Math.PI;
+  const wallStartAng = 1.03 * Math.PI;
   // Open a clean ~1.20m backstage wing corridor on the floor level between Left Base Wall and Hexagon Portal
-  const lowerWallStartAng = 1.02 * Math.PI;
+  const lowerWallStartAng = 1.03 * Math.PI;
   const lowerWallSweepAng = wallSweepAng - 0.04 * Math.PI;
 
   return (
@@ -2835,7 +2836,7 @@ export function CentralLedWall({
       <group position={[0, 2.85, -0.5]}>
         <mesh rotation={[0, 0, 0]}>
           <cylinderGeometry
-            args={[8.85, 8.85, 3.8, quality === "LIGHT" ? 32 : 64, 1, true, wallStartAng - 0.05, wallSweepAng + 0.10]}
+            args={[8.85, 8.85, 3.8, quality === "LIGHT" ? 32 : 64, 1, true, wallStartAng, wallSweepAng + 0.10]}
           />
           {whiteDotsArchTexture ? (
             <meshBasicMaterial

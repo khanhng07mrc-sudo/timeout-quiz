@@ -249,6 +249,9 @@ export default function OlympiaAudioManagerDrawer({
   const [mutedMap, setMutedMap] = useState<Record<string, boolean>>({});
   const activeAudiosRef = useRef<Map<string, HTMLAudioElement>>(new Map());
   const audioCtxRef = useRef<AudioContext | null>(null);
+  // WeakMap cache: reuse existing MediaElementAudioSourceNode per element
+  // (createMediaElementSource() throws InvalidStateError if called twice on same element)
+  const mediaSourceMap = useRef<WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>>(new WeakMap());
 
   const getAudioContext = useCallback(() => {
     if (typeof window === "undefined") return null;
@@ -262,6 +265,42 @@ export default function OlympiaAudioManagerDrawer({
     }
     return audioCtxRef.current;
   }, []);
+
+  const getOrCreateMediaSource = useCallback(
+    (a: HTMLAudioElement, ctx: AudioContext): MediaElementAudioSourceNode => {
+      if (mediaSourceMap.current.has(a)) return mediaSourceMap.current.get(a)!;
+      const src = ctx.createMediaElementSource(a);
+      mediaSourceMap.current.set(a, src);
+      return src;
+    },
+    []
+  );
+
+  // True mono downmix via ChannelSplitter→ChannelMerger before StereoPanner.
+  // StereoPanner alone only pans stereo signal — R leaks into L ear at pan=-1.
+  const connectPanner = useCallback(
+    (a: HTMLAudioElement, ch: "both" | "left" | "right") => {
+      if (ch === "both") return;
+      const ctx = getAudioContext();
+      if (!ctx?.createStereoPanner) return;
+      try {
+        const source = getOrCreateMediaSource(a, ctx);
+        const splitter = ctx.createChannelSplitter(2);
+        const merger = ctx.createChannelMerger(2);
+        const panner = ctx.createStereoPanner();
+        panner.pan.value = ch === "left" ? -1.0 : 1.0;
+        // Downmix both channels to mono then pan to target ear
+        source.connect(splitter);
+        splitter.connect(merger, 0, 0); // L → mono ch0
+        splitter.connect(merger, 1, 0); // R → mono ch0 (summed)
+        merger.connect(panner);
+        panner.connect(ctx.destination);
+      } catch {
+        // Fallback: audio plays without panning if WebAudio not supported
+      }
+    },
+    [getAudioContext, getOrCreateMediaSource]
+  );
 
   const handleSetChannel = (ch: "both" | "left" | "right") => {
     setChannel(ch);
@@ -310,17 +349,8 @@ export default function OlympiaAudioManagerDrawer({
 
     const audio = new Audio(url);
 
-    // Apply hardware stereo panner if available
-    const ctx = getAudioContext();
-    if (ctx && ctx.createStereoPanner) {
-      try {
-        const source = ctx.createMediaElementSource(audio);
-        const panner = ctx.createStereoPanner();
-        panner.pan.value = channel === "left" ? -1.0 : channel === "right" ? 1.0 : 0.0;
-        source.connect(panner);
-        panner.connect(ctx.destination);
-      } catch {}
-    }
+    // Connect true-mono downmix panner (WeakMap-cached source node)
+    connectPanner(audio, channel);
 
     activeAudiosRef.current.set(id, audio);
     setPlayingId(id);
@@ -334,15 +364,8 @@ export default function OlympiaAudioManagerDrawer({
       // Fallback to standard file if channel suffix variant wasn't found
       if (channel !== "both" && url !== `/olympia-audio/${folder}/${id}.mp3`) {
         const stdAudio = new Audio(`/olympia-audio/${folder}/${id}.mp3`);
-        if (ctx && ctx.createStereoPanner) {
-          try {
-            const src = ctx.createMediaElementSource(stdAudio);
-            const p = ctx.createStereoPanner();
-            p.pan.value = channel === "left" ? -1.0 : channel === "right" ? 1.0 : 0.0;
-            src.connect(p);
-            p.connect(ctx.destination);
-          } catch {}
-        }
+        // Apply panner to fallback element (fresh element, WeakMap will cache it)
+        connectPanner(stdAudio, channel);
         activeAudiosRef.current.set(id, stdAudio);
         stdAudio.onended = () => {
           activeAudiosRef.current.delete(id);
@@ -399,6 +422,14 @@ export default function OlympiaAudioManagerDrawer({
           a.currentTime = 0;
         } catch {}
       });
+    }
+
+    // Suspend then immediately resume AudioContext to cut all WebAudio graph output
+    if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+      audioCtxRef.current
+        .suspend()
+        .then(() => audioCtxRef.current?.resume().catch(() => {}))
+        .catch(() => {});
     }
   };
 

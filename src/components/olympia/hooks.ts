@@ -476,6 +476,8 @@ export function useOlympiaAudio(
   const activeIntroTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const activeIntroCleanups = useRef<Set<() => void>>(new Set());
   const audioCtxRef = useRef<AudioContext | null>(null);
+  // WeakMap cache: reuse existing MediaElementAudioSourceNode per element
+  const mediaSourceMap = useRef<WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>>(new WeakMap());
   const pendingCueRef = useRef<(() => void) | null>(null);
   const isAudioUnlockedRef = useRef(false);
   const isBgmPausedExplicitlyRef = useRef(false);
@@ -719,16 +721,29 @@ export function useOlympiaAudio(
           : "both");
       if (activePan === "both") return;
       const ctx = getAudioContext();
-      if (ctx && ctx.createStereoPanner) {
-        try {
-          const source = ctx.createMediaElementSource(a);
-          const panner = ctx.createStereoPanner();
-          panner.pan.value = activePan === "left" ? -1.0 : activePan === "right" ? 1.0 : 0.0;
-          source.connect(panner);
-          panner.connect(ctx.destination);
-        } catch {
-          // Fallback: already connected or not supported
+      if (!ctx?.createStereoPanner) return;
+      try {
+        // Reuse cached MediaElementAudioSourceNode (createMediaElementSource throws if called twice)
+        let source: MediaElementAudioSourceNode;
+        if (mediaSourceMap.current.has(a)) {
+          source = mediaSourceMap.current.get(a)!;
+        } else {
+          source = ctx.createMediaElementSource(a);
+          mediaSourceMap.current.set(a, source);
         }
+        // True mono downmix: ChannelSplitter → ChannelMerger before StereoPanner
+        // (StereoPanner alone only pans stereo signal — R leaks into L ear at pan=-1)
+        const splitter = ctx.createChannelSplitter(2);
+        const merger = ctx.createChannelMerger(2);
+        const panner = ctx.createStereoPanner();
+        panner.pan.value = activePan === "left" ? -1.0 : activePan === "right" ? 1.0 : 0.0;
+        source.connect(splitter);
+        splitter.connect(merger, 0, 0); // L → mono ch0
+        splitter.connect(merger, 1, 0); // R → mono ch0 (summed)
+        merger.connect(panner);
+        panner.connect(ctx.destination);
+      } catch {
+        // Fallback: already connected or not supported
       }
     },
     [channel, getAudioContext]

@@ -1354,6 +1354,7 @@ import {
   toPoly,
   toSvgPath,
   buildHexClipKeyframes,
+  getHexClipPoints,
   genZigzagShape,
   genVeDichGridCells,
   type ZigzagShape,
@@ -1453,6 +1454,10 @@ export function VcnvAnswerRevealGraphic({
             0% { opacity: 0; transform: translateY(4px); }
             100% { opacity: 1; transform: translateY(0); }
           }
+          @keyframes v3-row-answer {
+            0% { opacity: 0; transform: translateY(6px); }
+            100% { opacity: 1; transform: translateY(0); }
+          }
           .v3-row-wing-l-g1 {
             animation: v3-row-wing-l-g1 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
@@ -1475,15 +1480,19 @@ export function VcnvAnswerRevealGraphic({
             animation: v3-row-hex 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
           .v3-row-text {
-            animation: v3-row-text 0.22s ease-out both;
+            animation: v3-row-text 0.25s ease-out both;
+          }
+          .v3-row-answer {
+            animation: v3-row-answer 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
           }
         `}</style>
         {/* Only pure graphic bars - Expanded to ~86-88% broadcast viewport width */}
         <div className={`relative z-10 w-[88%] max-w-[1640px] flex flex-col ${rowGapClass} items-center justify-center py-2`}>
           {seats.map((seat, idx) => {
             const answerText = v.answers?.[seat.id]?.text || "";
-            const rowDelay = 0;
-            const textDelay = "0.440";
+            const rowDelay = idx * 0.16;
+            const nameDelay = (rowDelay + 0.38).toFixed(3);
+            const ansDelay = (2.0 + idx * 0.25).toFixed(3);
 
             return (
               <div
@@ -1578,8 +1587,8 @@ export function VcnvAnswerRevealGraphic({
                       {/* Hexagon outer border */}
                       <path d={toSvgPath(shell.bgPts)} fill="none" stroke="#d1d5db" strokeWidth={2} />
 
-                      {/* Text Overlay: Fades in when row animation reaches ~80% */}
-                      <g className="v3-row-text" style={{ animationDelay: `${textDelay}s` }}>
+                      {/* Name Overlay: Fades in as row opens */}
+                      <g className="v3-row-text" style={{ animationDelay: `${nameDelay}s` }}>
                         <text
                           x={cols.cells[0].cx}
                           y={cols.cells[0].cy + textBaselineOffset}
@@ -1593,21 +1602,26 @@ export function VcnvAnswerRevealGraphic({
                         >
                           {seat.name}
                         </text>
-
-                        <text
-                          x={cols.cells[1].cx}
-                          y={cols.cells[1].cy + textBaselineOffset}
-                          textAnchor="middle"
-                          fill="#ffffff"
-                          fontWeight="900"
-                          fontSize={ansFontSize}
-                          letterSpacing="0.08em"
-                          className="uppercase font-sans"
-                          style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
-                        >
-                          {isWaitingAnswer ? "" : (answerText || "")}
-                        </text>
                       </g>
+
+                      {/* Answer Overlay: Fades in ~2s after reveal starts, staggered by contestant order */}
+                      {!isWaitingAnswer && (
+                        <g className="v3-row-answer" style={{ animationDelay: `${ansDelay}s` }}>
+                          <text
+                            x={cols.cells[1].cx}
+                            y={cols.cells[1].cy + textBaselineOffset}
+                            textAnchor="middle"
+                            fill="#ffffff"
+                            fontWeight="900"
+                            fontSize={ansFontSize}
+                            letterSpacing="0.08em"
+                            className="uppercase font-sans"
+                            style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
+                          >
+                            {answerText || ""}
+                          </text>
+                        </g>
+                      )}
                     </svg>
                   </div>
 
@@ -1974,6 +1988,10 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             0% { opacity: 0; transform: translateY(4px); }
             100% { opacity: 1; transform: translateY(0); }
           }
+          @keyframes v3-tt-answer {
+            0% { opacity: 0; transform: translateY(6px); }
+            100% { opacity: 1; transform: translateY(0); }
+          }
           .v3-tt-wing-l-g1 {
             animation: v3-tt-wing-l-g1 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
@@ -1996,7 +2014,10 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             animation: v3-tt-hex 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
           .v3-tt-text {
-            animation: v3-tt-text 0.22s ease-out both;
+            animation: v3-tt-text 0.25s ease-out both;
+          }
+          .v3-tt-answer {
+            animation: v3-tt-answer 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
           }
         `}</style>
         {/* Only pure graphic bars - Expanded to ~86-88% broadcast viewport width */}
@@ -2005,8 +2026,9 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             const seat = state.seats[item.seat];
             const sec = item.noAnswer ? "0.00" : (item.ms / 1000).toFixed(2);
             const answerText = item.noAnswer ? "" : (item.answer || "");
-            const rowDelay = 0;
-            const textDelay = "0.440";
+            const rowDelay = idx * 0.16;
+            const nameDelay = (rowDelay + 0.38).toFixed(3);
+            const ansDelay = (2.0 + idx * 0.25).toFixed(3);
 
             return (
               <div
@@ -2108,8 +2130,8 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                       {/* Hexagon outer border */}
                       <path d={toSvgPath(shell.bgPts)} fill="none" stroke="#d1d5db" strokeWidth={2} />
 
-                      {/* Text Overlays: Fades in when row reaches ~80% */}
-                      <g className="v3-tt-text" style={{ animationDelay: `${textDelay}s` }}>
+                      {/* Name Overlay: Fades in as row opens */}
+                      <g className="v3-tt-text" style={{ animationDelay: `${nameDelay}s` }}>
                         <text
                           x={cols.cells[0].cx}
                           y={cols.cells[0].cy + textBaselineOffset}
@@ -2123,7 +2145,10 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                         >
                           {seat?.name || `Thí sinh ${item.seat + 1}`}
                         </text>
+                      </g>
 
+                      {/* Answer & Time Overlay: Fades in ~2s after reveal starts, staggered by ranking order */}
+                      <g className="v3-tt-answer" style={{ animationDelay: `${ansDelay}s` }}>
                         <text
                           x={cols.cells[1].cx}
                           y={cols.cells[1].cy + textBaselineOffset}
@@ -3105,6 +3130,8 @@ export function EconovaLowerThirdV3({
   showTimerClock = false,
   timerBadge,
   runAnim = true,
+  arrowFromCenter = false,
+  expandFromCenter = false,
   children,
 }: {
   state: OlympiaState;
@@ -3126,8 +3153,11 @@ export function EconovaLowerThirdV3({
   showTimerClock?: boolean;
   timerBadge?: TimerState | null;
   runAnim?: boolean;
+  arrowFromCenter?: boolean;
+  expandFromCenter?: boolean;
   children?: React.ReactNode;
 }) {
+  const fromCenter = Boolean(arrowFromCenter || expandFromCenter);
   const isFs = overlayMode === "FULLSCREEN";
   const isVeDich = state.currentRound === "veDich";
   const W = 1000;
@@ -3200,6 +3230,7 @@ export function EconovaLowerThirdV3({
   const starCx = isVeDich && lt?.clusterX ? (lt.clusterX(0) + shell.edgeR(0)) / 2 : (shell.endX - 70);
   const starLeft = Math.round(starCx - starSize / 2);
   const starTop = -Math.round(starSize * 0.72);
+  const { closedClip, openClip } = getHexClipPoints(shell);
   const ecoHexClipCss = buildHexClipKeyframes(shell, {
     name: "v3-eco-hex-body",
     closeEndPercent: 44.9,
@@ -3219,7 +3250,7 @@ export function EconovaLowerThirdV3({
       {extraTopBanner && <div className="mb-2 w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto">{extraTopBanner}</div>}
 
       <div
-        className="relative w-full flex items-center justify-center select-none"
+        className={`relative w-full flex items-center justify-center select-none ${fromCenter ? "v3-fc" : ""}`}
         style={{
           ["--dc" as string]: `${dc}px`,
           ["--v3-travel" as string]: `${travelDist}px`,
@@ -3345,6 +3376,45 @@ export function EconovaLowerThirdV3({
           .v3-anim-content{ animation: v3-eco-content-fade 2.4s ease-out both; }
           .v3-anim-swap   { animation: v3-eco-text-swap 0.35s ease-out both; }
           .v3a-buzz       { animation: buzz-pulse-v3a 0.35s infinite alternate; }
+
+          /* Direct Expand from Center (Continuous transition from package grid collapse) */
+          @keyframes v3-eco-fc-l {
+            0%   { transform: translateX(var(--dc)) scale(1.05); opacity: 1; }
+            15%  { transform: translateX(var(--dc)) scale(1.02); opacity: 1; }
+            80%  { transform: translateX(0) scale(1.0); opacity: 1; }
+            100% { transform: translateX(0) scale(1.0); opacity: 1; }
+          }
+          @keyframes v3-eco-fc-r {
+            0%   { transform: translateX(calc(var(--dc) * -1)) scale(1.05); opacity: 1; }
+            15%  { transform: translateX(calc(var(--dc) * -1)) scale(1.02); opacity: 1; }
+            80%  { transform: translateX(0) scale(1.0); opacity: 1; }
+            100% { transform: translateX(0) scale(1.0); opacity: 1; }
+          }
+          @keyframes v3-eco-fc-body {
+            0%   { clip-path: ${closedClip}; opacity: 1; }
+            15%  { clip-path: ${closedClip}; opacity: 1; }
+            80%  { clip-path: ${openClip}; opacity: 1; }
+            100% { clip-path: ${openClip}; opacity: 1; }
+          }
+
+          .v3-fc .v3-anim-l-g1,
+          .v3-fc .v3-anim-l-g2,
+          .v3-fc .v3-anim-l-l3,
+          .v3-fc .v3-anim-l-navy {
+            animation: v3-eco-fc-l 0.85s both cubic-bezier(0.2, 0.8, 0.2, 1);
+          }
+          .v3-fc .v3-anim-r-g1,
+          .v3-fc .v3-anim-r-g2,
+          .v3-fc .v3-anim-r-l3,
+          .v3-fc .v3-anim-r-navy {
+            animation: v3-eco-fc-r 0.85s both cubic-bezier(0.2, 0.8, 0.2, 1);
+          }
+          .v3-fc .v3-anim-body {
+            animation: v3-eco-fc-body 0.85s both cubic-bezier(0.2, 0.8, 0.2, 1);
+          }
+          .v3-fc .v3-anim-content {
+            animation: v3-eco-content-fade 0.85s ease-out both;
+          }
         `}</style>
         <V3ScaledStage designW={shell.canvasW} designH={H}>
           {/* Tier 1 (Bottom / z-0): Cyan sliding wings with Econova motion cushion */}
@@ -3807,11 +3877,11 @@ export function VeDichSlantedGridGraphic({
   const xDiv = (k: number, y: number) => L + k * colW + slope * (midY - y);
 
   return (
-    <div className={`w-full max-w-4xl mx-auto px-2 py-1 z-20 pointer-events-auto flex flex-col items-center gap-1.5 select-none transition-all duration-400 ease-in-out ${
-      closing ? "transform translate-y-16 opacity-0 scale-95" : "animate-fade-in transform translate-y-0 opacity-100 scale-100"
-    }`}>
+    <div className="w-full max-w-4xl mx-auto px-2 py-1 z-20 pointer-events-auto flex flex-col items-center gap-1.5 select-none">
       {/* Contestant Header Pill */}
-      <div className="px-5 py-1 rounded-full bg-[#08203f]/95 border border-cyan-400/80 text-cyan-200 font-black text-[11px] sm:text-xs uppercase tracking-widest shadow-lg">
+      <div className={`px-5 py-1 rounded-full bg-[#08203f]/95 border border-cyan-400/80 text-cyan-200 font-black text-[11px] sm:text-xs uppercase tracking-widest shadow-lg transition-opacity duration-300 ${
+        closing ? "opacity-0" : "opacity-100 animate-fade-in"
+      }`}>
         LỰA CHỌN GÓI CÂU HỎI — {owner?.name || `THÍ SINH ${resolvedOwnerId + 1}`}
       </div>
 
@@ -3820,6 +3890,7 @@ export function VeDichSlantedGridGraphic({
         <V3ArrowShell
           shell={shell}
           animate={animate}
+          closing={closing}
           hideOutline
           bodySvg={
             <>

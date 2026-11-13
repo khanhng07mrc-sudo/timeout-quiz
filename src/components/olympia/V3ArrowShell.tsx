@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useId, useLayoutEffect, useRef, useState } from "react";
-import { toPoly, toSvgPath, buildHexClipKeyframes, type ArrowShell } from "./v3Geometry";
+import { toPoly, toSvgPath, buildHexClipKeyframes, getHexClipPoints, type ArrowShell } from "./v3Geometry";
 
 
 /**
@@ -111,10 +111,26 @@ const SHELL_CSS = `
   0%   { opacity: 0; transform: translateY(6px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+@keyframes v3a-wing-l-close {
+  0%   { transform: translateX(0) scale(1.0); opacity: 1; }
+  100% { transform: translateX(var(--v3a-dc-converge)) scale(1.05); opacity: 1; }
+}
+@keyframes v3a-wing-r-close {
+  0%   { transform: translateX(0) scale(1.0); opacity: 1; }
+  100% { transform: translateX(calc(var(--v3a-dc-converge) * -1)) scale(1.05); opacity: 1; }
+}
+@keyframes v3a-body-close {
+  0%   { clip-path: var(--v3a-open-clip); opacity: 1; }
+  100% { clip-path: var(--v3a-closed-clip); opacity: 1; }
+}
 .v3a-run .v3a-l { animation: v3a-wing-l 2s forwards cubic-bezier(0.2, 0.8, 0.2, 1); }
 .v3a-run .v3a-r { animation: v3a-wing-r 2s forwards cubic-bezier(0.2, 0.8, 0.2, 1); }
 .v3a-run .v3a-body { animation: v3a-body 2s forwards cubic-bezier(0.2, 0.8, 0.2, 1); }
 .v3a-run .v3a-content { animation: v3a-content 2s forwards; }
+.v3a-closing .v3a-l { animation: v3a-wing-l-close 0.45s forwards cubic-bezier(0.2, 0.8, 0.2, 1); }
+.v3a-closing .v3a-r { animation: v3a-wing-r-close 0.45s forwards cubic-bezier(0.2, 0.8, 0.2, 1); }
+.v3a-closing .v3a-body { animation: v3a-body-close 0.45s forwards cubic-bezier(0.2, 0.8, 0.2, 1); }
+.v3a-closing .v3a-content { animation: v3a-swap 0.25s reverse forwards; }
 .v3a-swap { animation: v3a-swap 0.45s ease-out both; }
 @keyframes v3a-buzz {
   from { filter: brightness(1) drop-shadow(0 0 3px rgba(255,40,40,0.7)); }
@@ -127,6 +143,8 @@ export interface V3ArrowShellProps {
   shell: ArrowShell;
   /** Play the 2.0s Econova entrance timeline. */
   animate?: boolean;
+  /** Play the collapse closing timeline towards center. */
+  closing?: boolean;
   /** SVG nodes drawn inside the hexagon (cells, tabs, bands, dividers). */
   bodySvg?: React.ReactNode;
   /** Gradient used to fill the hexagon (left → right). */
@@ -144,6 +162,7 @@ export interface V3ArrowShellProps {
 export function V3ArrowShell({
   shell,
   animate = false,
+  closing = false,
   bodySvg,
   bodyStops = ["#071b47", "#0a2f6e", "#0b3d92"],
   children,
@@ -157,10 +176,13 @@ export function V3ArrowShell({
   const hexPath = toSvgPath(shell.bgPts);
   const dcConverge = shell.W / 2;
   const travelDist = Math.max(canvasW, 1400);
+  const { closedClip, openClip } = getHexClipPoints(shell);
   const cssVars = {
     ["--v3a-dc" as string]: `${canvasW / 2 - shell.cThick}px`,
     ["--v3a-dc-converge" as string]: `${dcConverge}px`,
     ["--v3-travel" as string]: `${travelDist}px`,
+    ["--v3a-open-clip" as string]: openClip,
+    ["--v3a-closed-clip" as string]: closedClip,
   } as React.CSSProperties;
 
   const hexClipCss = buildHexClipKeyframes(shell, {
@@ -175,7 +197,7 @@ export function V3ArrowShell({
     <V3ScaledStage designW={canvasW} designH={H} maxScale={maxScale} className={className}>
       <style>{`${SHELL_CSS}\n${hexClipCss}`}</style>
       <div
-        className={animate ? "v3a-run" : "v3a-static"}
+        className={closing ? "v3a-closing" : (animate ? "v3a-run" : "v3a-static")}
         style={{ position: "relative", width: canvasW, height: H, ...cssVars }}
       >
         {/* Tier 1 (Bottom / z-0): Cyan sliding wings (3-layer radiant glow) */}

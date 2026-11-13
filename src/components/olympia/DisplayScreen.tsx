@@ -789,17 +789,22 @@ function VeDich({ state, serverNow }: P) {
     } else if (isPackageReady) {
       const readyAt = vd.packageReadyAt || serverNow();
       const elapsed = Math.max(0, serverNow() - readyAt);
-      const remainingVisible = Math.max(0, 3000 - elapsed);
-      const closeTimer = setTimeout(() => {
+      if (elapsed >= 3450) {
         setClosing(true);
-      }, remainingVisible);
-      const hideTimer = setTimeout(() => {
         setClosed(true);
-      }, remainingVisible + 450);
-      return () => {
-        clearTimeout(closeTimer);
-        clearTimeout(hideTimer);
-      };
+      } else {
+        const remainingVisible = Math.max(0, 3000 - elapsed);
+        const closeTimer = setTimeout(() => {
+          setClosing(true);
+        }, remainingVisible);
+        const hideTimer = setTimeout(() => {
+          setClosed(true);
+        }, remainingVisible + 450);
+        return () => {
+          clearTimeout(closeTimer);
+          clearTimeout(hideTimer);
+        };
+      }
     } else {
       setClosing(false);
       setClosed(true);
@@ -807,6 +812,11 @@ function VeDich({ state, serverNow }: P) {
   }, [isChoosing, isPackageReady, vd.packageReadyAt, serverNow]);
 
   const showPackageGrid = (isChoosing || (isPackageReady && !closed)) && vd.phase !== "thinking" && vd.phase !== "stealing" && vd.phase !== "result";
+
+  const isEarlyLowerThird = isPackageReady && closed;
+  const showQuestionFrame =
+    isEarlyLowerThird ||
+    Boolean(cur && (vd.phase === "thinking" || vd.phase === "stealing" || vd.phase === "result"));
 
   return (
     <div key={`vd-turn-${owner}-${vd.turnIdx}`} className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end">
@@ -819,8 +829,8 @@ function VeDich({ state, serverNow }: P) {
         </div>
       )}
 
-      {/* Question is opened (thinking / stealing / result) */}
-      {(cur && (vd.phase === "thinking" || vd.phase === "stealing" || vd.phase === "result")) ? (
+      {/* Question is opened: opens early with blank content once package grid closes, or active during thinking / stealing / result */}
+      {showQuestionFrame ? (
         state.themeMode === "o26_classic" ? (
           <Vtv3ChalkboardQuestionFrame
             headerBadge={
@@ -841,6 +851,7 @@ function VeDich({ state, serverNow }: P) {
           />
         ) : (
           <EconovaLowerThirdV3
+            key={`vd-lower-third-${owner}-${vd.turnIdx}`}
             state={state}
             serverNow={serverNow}
             activeSeatId={owner}
@@ -860,6 +871,9 @@ function VeDich({ state, serverNow }: P) {
             timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : (cur && vd.phase === "thinking" ? vd.timer : null)}
             hopeStarActive={vd.hopeStarActive}
             showScoreTab={true}
+            runAnim={isEarlyLowerThird}
+            arrowFromCenter={true}
+            expandFromCenter={true}
           />
         )
       ) : null}

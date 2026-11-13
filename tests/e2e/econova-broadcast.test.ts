@@ -230,7 +230,33 @@ export function evaluateAnswerBarContract(round: "khoiDong" | "veDich", phase: s
 }
 
 /**
- * Evaluates Simultaneous Reveal parameters for VCNV and Tăng Tốc (R3 Contract)
+ * Evaluates Staggered Reveal parameters for VCNV and Tăng Tốc (Econova Standard)
+ */
+export function evaluateStaggeredReveal(contestantCount: number): {
+  rowDelays: number[];
+  nameDelays: number[];
+  ansDelays: number[];
+  isStaggered: boolean;
+} {
+  const rowDelays: number[] = [];
+  const nameDelays: number[] = [];
+  const ansDelays: number[] = [];
+
+  for (let idx = 0; idx < contestantCount; idx++) {
+    const rowDelay = idx * 0.16;
+    const nameDelay = Number((rowDelay + 0.38).toFixed(3));
+    const ansDelay = Number((2.0 + idx * 0.25).toFixed(3));
+    rowDelays.push(Number(rowDelay.toFixed(3)));
+    nameDelays.push(nameDelay);
+    ansDelays.push(ansDelay);
+  }
+
+  const isStaggered = contestantCount <= 1 || rowDelays[1] > rowDelays[0];
+  return { rowDelays, nameDelays, ansDelays, isStaggered };
+}
+
+/**
+ * Evaluates Simultaneous Reveal parameters for VCNV and Tăng Tốc (Compatibility wrapper)
  */
 export function evaluateSimultaneousReveal(contestantCount: number): {
   rowDelays: number[];
@@ -238,22 +264,13 @@ export function evaluateSimultaneousReveal(contestantCount: number): {
   isSimultaneous: boolean;
   textRevealRatio: number;
 } {
-  const rowDelays: number[] = [];
-  const textDelays: number[] = [];
-  const baseDuration = ECONOVA_SPEC.TIMELINE.ROW_TIMELINE_DURATION_S; // 0.55s
-
-  for (let i = 0; i < contestantCount; i++) {
-    // R3 specification: Simultaneous reveal means rowDelay = 0 for all contestants!
-    const rowDelay = 0;
-    const textDelay = Number((rowDelay + baseDuration * 0.8).toFixed(3)); // 0.440s
-    rowDelays.push(rowDelay);
-    textDelays.push(textDelay);
-  }
-
-  const isSimultaneous = rowDelays.every((d) => d === 0);
-  const textRevealRatio = textDelays[0] / baseDuration;
-
-  return { rowDelays, textDelays, isSimultaneous, textRevealRatio };
+  const st = evaluateStaggeredReveal(contestantCount);
+  return {
+    rowDelays: st.rowDelays,
+    textDelays: st.ansDelays,
+    isSimultaneous: false,
+    textRevealRatio: 2.0 / 0.55,
+  };
 }
 
 /**
@@ -557,29 +574,29 @@ runTest(1, "F3.6: Non-result phases (thinking/stealing) render full question fra
   assert.equal(evalStealing.rendersContestantNameBadge, true);
 });
 
-// F4: Simultaneous Reveal for VCNV & Tang Toc (R3)
-runTest(1, "F4.1: VCNV row entrance delay is simultaneous for all 4 contestants (rowDelay = 0)", () => {
-  const rev = evaluateSimultaneousReveal(4);
-  assert.equal(rev.isSimultaneous, true);
-  assert.deepEqual(rev.rowDelays, [0, 0, 0, 0], "All contestants share rowDelay = 0");
+// F4: Staggered Reveal & 2s Text Fade-In for VCNV & Tang Toc (Econova Standard)
+runTest(1, "F4.1: VCNV row entrance delay is staggered by 0.16s per contestant (rowDelay = idx * 0.16)", () => {
+  const rev = evaluateStaggeredReveal(4);
+  assert.equal(rev.isStaggered, true);
+  assert.deepEqual(rev.rowDelays, [0, 0.16, 0.32, 0.48], "All contestants enter in 0.16s staggered cascade");
 });
 
-runTest(1, "F4.2: Tăng Tốc ranked answer row entrance delay is simultaneous for all contestants (rowDelay = 0)", () => {
-  const rev = evaluateSimultaneousReveal(4);
-  assert.equal(rev.isSimultaneous, true);
-  assert.deepEqual(rev.rowDelays, [0, 0, 0, 0], "All 4 rows enter at exactly 0.0s");
+runTest(1, "F4.2: Tăng Tốc ranked answer row entrance delay is staggered by 0.16s per contestant (rowDelay = idx * 0.16)", () => {
+  const rev = evaluateStaggeredReveal(4);
+  assert.equal(rev.isStaggered, true);
+  assert.deepEqual(rev.rowDelays, [0, 0.16, 0.32, 0.48], "All 4 rows enter in 0.16s staggered cascade");
 });
 
-runTest(1, "F4.3: VCNV text reveal delay conforms to 80% of 0.55s timeline (0.440s)", () => {
-  const rev = evaluateSimultaneousReveal(4);
-  assert.equal(rev.textDelays[0], 0.440);
-  assert.ok(Math.abs(rev.textRevealRatio - 0.8) < 1e-4, "Exact 80% text reveal ratio");
+runTest(1, "F4.3: VCNV name delay aligns with frame expansion (rowDelay + 0.38s) and answer text fades in after 2s (2.0s + idx * 0.25s)", () => {
+  const rev = evaluateStaggeredReveal(4);
+  assert.deepEqual(rev.nameDelays, [0.380, 0.540, 0.700, 0.860]);
+  assert.deepEqual(rev.ansDelays, [2.000, 2.250, 2.500, 2.750]);
 });
 
-runTest(1, "F4.4: Tăng Tốc text reveal delay conforms to 80% of 0.55s timeline (0.440s)", () => {
-  const rev = evaluateSimultaneousReveal(4);
-  assert.equal(rev.textDelays[1], 0.440);
-  assert.ok(Math.abs(rev.textRevealRatio - 0.8) < 1e-4);
+runTest(1, "F4.4: Tăng Tốc name delay aligns with frame expansion and answer/time fades in after 2s by ranking order", () => {
+  const rev = evaluateStaggeredReveal(4);
+  assert.deepEqual(rev.nameDelays, [0.380, 0.540, 0.700, 0.860]);
+  assert.deepEqual(rev.ansDelays, [2.000, 2.250, 2.500, 2.750]);
 });
 
 runTest(1, "F4.5: Both VCNV and Tăng Tốc utilize 3-layer buffered wings (ghost-1, ghost-2, layer-3)", () => {

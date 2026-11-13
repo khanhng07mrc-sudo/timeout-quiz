@@ -1210,16 +1210,19 @@ export function DevGraphicsClient() {
                     timer: { totalMs: 20000, remainingMs: 20000, startedAt: Date.now() - 8000 },
                   },
                 } as unknown as OlympiaState;
+                const emptyQ = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("empty") === "1";
+                const fc = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("fc") === "1";
                 return (
                   <EconovaLowerThirdV3
                     state={vdState}
                     activeSeatId={0}
                     buzzedSeatId={isBuzzed ? 2 : undefined}
                     hopeStarActive={hopeStar}
-                    questionText={vdState.veDich?.current?.q?.q}
-                    timer={vdState.veDich?.timer}
+                    questionText={emptyQ ? "" : vdState.veDich?.current?.q?.q}
+                    timer={emptyQ ? null : vdState.veDich?.timer}
                     serverNow={serverNow}
                     runAnim={forceAnim}
+                    expandFromCenter={fc || emptyQ}
                   />
                 );
               })()}

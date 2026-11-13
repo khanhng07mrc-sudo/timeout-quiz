@@ -853,22 +853,30 @@ runTest(2, "B3.6: Hope star active parameter sets boolean flag without DOM leak"
   assert.equal(Boolean(hopeStar), true);
 });
 
-// B4: Simultaneous Reveal Boundary Cases (R3)
-runTest(2, "B4.1: Simultaneous reveal handles 1 active contestant match gracefully", () => {
-  const rev = evaluateSimultaneousReveal(1);
+// B4: Staggered Reveal Boundary Cases (Econova Standard)
+runTest(2, "B4.1: Staggered reveal handles 1 active contestant match gracefully", () => {
+  const rev = evaluateStaggeredReveal(1);
   assert.equal(rev.rowDelays.length, 1);
   assert.equal(rev.rowDelays[0], 0);
+  assert.equal(rev.nameDelays[0], 0.380);
+  assert.equal(rev.ansDelays[0], 2.000);
 });
 
-runTest(2, "B4.2: Simultaneous reveal handles maximum 8 active contestants with all rowDelay = 0", () => {
-  const rev = evaluateSimultaneousReveal(8);
+runTest(2, "B4.2: Staggered reveal handles maximum 8 active contestants with strictly increasing delays", () => {
+  const rev = evaluateStaggeredReveal(8);
   assert.equal(rev.rowDelays.length, 8);
-  assert.ok(rev.rowDelays.every((d) => d === 0));
+  for (let i = 1; i < 8; i++) {
+    assert.ok(rev.rowDelays[i] > rev.rowDelays[i - 1], "Row delays strictly increasing");
+    assert.ok(rev.nameDelays[i] > rev.nameDelays[i - 1], "Name delays strictly increasing");
+    assert.ok(rev.ansDelays[i] > rev.ansDelays[i - 1], "Answer delays strictly increasing");
+  }
 });
 
-runTest(2, "B4.3: Empty answers object preserves simultaneous timing arrays", () => {
-  const rev = evaluateSimultaneousReveal(0);
+runTest(2, "B4.3: Empty answers object preserves timing arrays without exceptions", () => {
+  const rev = evaluateStaggeredReveal(0);
   assert.equal(rev.rowDelays.length, 0);
+  assert.equal(rev.nameDelays.length, 0);
+  assert.equal(rev.ansDelays.length, 0);
 });
 
 runTest(2, "B4.4: Sub-millisecond reaction times in Tăng Tốc preserve sorted ranking", () => {
@@ -890,11 +898,11 @@ runTest(2, "B4.5: Exact tied reaction times maintain stable contestant ordering"
   assert.equal(sorted.length, 2);
 });
 
-runTest(2, "B4.6: Simultaneous reveal text delay precision rounded to exactly 3 decimals", () => {
-  const rev = evaluateSimultaneousReveal(4);
-  for (const d of rev.textDelays) {
+runTest(2, "B4.6: Staggered reveal timing precision rounded to exactly 3 decimals", () => {
+  const rev = evaluateStaggeredReveal(4);
+  for (const d of rev.ansDelays) {
     const str = d.toFixed(3);
-    assert.equal(str, "0.440");
+    assert.ok(str.startsWith("2."));
   }
 });
 
@@ -1052,7 +1060,7 @@ runTest(3, "C2 (F1 + F3): SingleAnswerBar shares identical slant ratio (0.3571) 
   assert.equal(ECONOVA_SPEC.COLORS.CYAN, "#1fd1ff");
 });
 
-runTest(3, "C3 (F3 + F4): Clean transition from SingleAnswerBar (KD result) to Simultaneous Reveal (VCNV)", () => {
+runTest(3, "C3 (F3 + F4): Clean transition from SingleAnswerBar (KD result) to Staggered Reveal (VCNV)", () => {
   const kdState = createMockOlympiaState({ currentRound: "khoiDong" });
   kdState.khoiDong!.phase = "result";
   const kdEval = evaluateAnswerBarContract("khoiDong", kdState.khoiDong!.phase);
@@ -1061,20 +1069,20 @@ runTest(3, "C3 (F3 + F4): Clean transition from SingleAnswerBar (KD result) to S
   // Transition to VCNV answer reveal
   const vcnvState = createMockOlympiaState({ currentRound: "vcnv" });
   vcnvState.vcnv!.phase = "answers";
-  const vcnvRev = evaluateSimultaneousReveal(4);
-  assert.equal(vcnvRev.isSimultaneous, true);
-  assert.deepEqual(vcnvRev.rowDelays, [0, 0, 0, 0]);
+  const vcnvRev = evaluateStaggeredReveal(4);
+  assert.equal(vcnvRev.isStaggered, true);
+  assert.deepEqual(vcnvRev.rowDelays, [0, 0.16, 0.32, 0.48]);
 });
 
-runTest(3, "C4 (F4 + F5): Room initialized in Olympia mode executes Simultaneous Reveal with zero powerup interference", () => {
+runTest(3, "C4 (F4 + F5): Room initialized in Olympia mode executes Staggered Reveal with zero powerup interference", () => {
   const room = evaluateOlympiaRoomSanitization("OLYMPIA", true, ["FREEZE", "SHIELD"]);
   assert.equal(room.powerupEnabled, false);
   assert.deepEqual(room.allowedPowerups, []);
 
-  // In active game, simultaneous reveal triggers cleanly for all contestants
-  const rev = evaluateSimultaneousReveal(4);
-  assert.equal(rev.isSimultaneous, true);
-  assert.equal(rev.textDelays[0], 0.440);
+  // In active game, staggered reveal triggers cleanly for all contestants
+  const rev = evaluateStaggeredReveal(4);
+  assert.equal(rev.isStaggered, true);
+  assert.equal(rev.ansDelays[0], 2.000);
 });
 
 runTest(3, "C5 (F5 + F6): HostConsole in Sandbox reflects Olympia Mode settings without timer re-render penalty", () => {
@@ -1103,9 +1111,9 @@ runTest(3, "C7 (F3 + F6): SingleAnswerBar transitions during active timer mainta
   assert.equal(perf.fpsDropRisk, false);
 });
 
-runTest(3, "C8 (F4 + F7): Full 4-contestant simultaneous reveal simulation operates strictly within project workspace", () => {
-  const rev = evaluateSimultaneousReveal(4);
-  assert.equal(rev.isSimultaneous, true);
+runTest(3, "C8 (F4 + F7): Full 4-contestant staggered reveal simulation operates strictly within project workspace", () => {
+  const rev = evaluateStaggeredReveal(4);
+  assert.equal(rev.isStaggered, true);
   const outPath = path.resolve("tests/e2e");
   assert.ok(outPath.toLowerCase().includes("timeout quiz"));
 });
@@ -1135,20 +1143,21 @@ runTest(4, "Scenario 1: Complete 4-Round Match Broadcast Simulation (KD -> VCNV 
   assert.equal(kdEval.rendersScoreTabBar, false, "KD result strictly suppresses score tab bar");
   assert.equal(kdEval.rendersContestantNameBadge, false, "KD result strictly suppresses contestant name badge");
 
-  // 2. VCNV: Clue question -> Reveal all answers simultaneously
+  // 2. VCNV: Clue question -> Reveal all answers with staggered frame and 2s text fade-in
   state.currentRound = "vcnv";
   state.vcnv!.phase = "answers";
-  const vcnvRev = evaluateSimultaneousReveal(4);
-  assert.equal(vcnvRev.isSimultaneous, true);
-  assert.deepEqual(vcnvRev.rowDelays, [0, 0, 0, 0]);
-  assert.equal(vcnvRev.textDelays[0], 0.440);
+  const vcnvRev = evaluateStaggeredReveal(4);
+  assert.equal(vcnvRev.isStaggered, true);
+  assert.deepEqual(vcnvRev.rowDelays, [0, 0.16, 0.32, 0.48]);
+  assert.equal(vcnvRev.ansDelays[0], 2.000);
 
-  // 3. Tăng Tốc: 30s question -> Ranked answers reveal simultaneously
+  // 3. Tăng Tốc: 30s question -> Ranked answers reveal with staggered frame and 2s text fade-in
   state.currentRound = "tangToc";
   state.tangToc!.phase = "ranking";
-  const ttRev = evaluateSimultaneousReveal(4);
-  assert.equal(ttRev.isSimultaneous, true);
-  assert.deepEqual(ttRev.rowDelays, [0, 0, 0, 0]);
+  const ttRev = evaluateStaggeredReveal(4);
+  assert.equal(ttRev.isStaggered, true);
+  assert.deepEqual(ttRev.rowDelays, [0, 0.16, 0.32, 0.48]);
+  assert.equal(ttRev.ansDelays[0], 2.000);
 
   // 4. Về Đích: Package question -> Result phase
   state.currentRound = "veDich";
@@ -1201,7 +1210,7 @@ runTest(4, "Scenario 3: Multi-Window Sandbox Stress Test at 60fps Target", () =>
   assert.equal(texturesAllocated, 4, "Textures reused across ticks without allocation storm");
 });
 
-runTest(4, "Scenario 4: High-Stress 4-Contestant Simultaneous Reveal & Speed Ties", () => {
+runTest(4, "Scenario 4: High-Stress 4-Contestant Staggered Reveal & Speed Ties", () => {
   // 4 contestants submit in Tăng Tốc with sub-second reaction times
   const ranking = [
     { seat: 0, ms: 1420, answer: "QUANG TRUNG", pts: 40 },
@@ -1210,15 +1219,13 @@ runTest(4, "Scenario 4: High-Stress 4-Contestant Simultaneous Reveal & Speed Tie
     { seat: 3, ms: 3890, answer: "NGUYỄN HUỆ", pts: 10 },
   ];
 
-  // Host triggers reveal: all 4 rows burst simultaneously
-  const rev = evaluateSimultaneousReveal(ranking.length);
-  assert.equal(rev.isSimultaneous, true);
-  assert.deepEqual(rev.rowDelays, [0, 0, 0, 0]);
+  // Host triggers reveal: rows burst in 0.16s stagger wave
+  const rev = evaluateStaggeredReveal(ranking.length);
+  assert.equal(rev.isStaggered, true);
+  assert.deepEqual(rev.rowDelays, [0, 0.16, 0.32, 0.48]);
 
-  // Text reveals uniformly at 80% mark
-  for (const t of rev.textDelays) {
-    assert.equal(t, 0.440);
-  }
+  // Answer text reveals sequentially after 2.0s
+  assert.deepEqual(rev.ansDelays, [2.000, 2.250, 2.500, 2.750]);
 });
 
 runTest(4, "Scenario 5: Edge-Case Resilience & Rapid Broadcast Fault Recovery", () => {
@@ -1247,29 +1254,31 @@ console.log("--- IMPLEMENTATION CONFORMANCE AUDIT (Source File Inspection) ---")
 
 const defects: string[] = [];
 
-// Audit 1: Check DisplayScreen.tsx for KD and VD SingleAnswerBar isolation
+// Audit 1: Check DisplayScreen.tsx for KD and VD SingleAnswerBar isolation & Early Lower Third
 try {
   const displayScreenContent = fs.readFileSync("src/components/olympia/DisplayScreen.tsx", "utf8");
   const hasKdSingleBar = displayScreenContent.includes("kd.phase === \"result\"") && displayScreenContent.includes("V3SingleAnswerBar");
   const hasVdSingleBar = displayScreenContent.includes("vd.phase === \"result\"") && displayScreenContent.includes("V3SingleAnswerBar");
-  if (hasKdSingleBar && hasVdSingleBar) {
-    console.log("  [Audit PASS] DisplayScreen.tsx isolates V3SingleAnswerBar for both KD and VD result phases.");
+  const hasEarlyLowerThird = displayScreenContent.includes("isEarlyLowerThird = isPackageReady && closed") && displayScreenContent.includes("arrowFromCenter");
+  if (hasKdSingleBar && hasVdSingleBar && hasEarlyLowerThird) {
+    console.log("  [Audit PASS] DisplayScreen.tsx isolates V3SingleAnswerBar in result and implements early lower third opening.");
   } else {
-    defects.push("[DEFECT] DisplayScreen.tsx missing V3SingleAnswerBar isolation in result phase.");
+    defects.push("[DEFECT] DisplayScreen.tsx missing V3SingleAnswerBar isolation or early lower-third integration.");
   }
 } catch (e: any) {
   defects.push(`[DEFECT] Unable to inspect DisplayScreen.tsx: ${e.message}`);
 }
 
-// Audit 2: Check Vtv3BroadcastGraphics.tsx for rowDelay = 0 in VCNV and Tăng Tốc
+// Audit 2: Check Vtv3BroadcastGraphics.tsx for Econova Staggered Reveal (0.16s row delay, 2.0s text fade-in)
 try {
   const broadcastContent = fs.readFileSync("src/components/olympia/Vtv3BroadcastGraphics.tsx", "utf8");
-  const isVcnvStaggered = broadcastContent.includes("const rowDelay = idx * 0.18;");
-  if (isVcnvStaggered) {
-    // Escalate to Milestone 1 Worker agent:
-    defects.push("[DEFECT - ESCALATE TO M1] Vtv3BroadcastGraphics.tsx uses staggered rowDelay (idx * 0.18) instead of simultaneous rowDelay = 0 in VcnvAnswerRevealGraphic and TangTocRankedAnswersGraphic.");
+  const hasVcnvStagger = broadcastContent.includes("rowDelay = idx * 0.16") && broadcastContent.includes("ansDelay = (2.0 + idx * 0.25).toFixed(3)");
+  const hasTtStagger = broadcastContent.includes("v3-tt-answer") && broadcastContent.includes("2.0 + idx * 0.25");
+  const hasFromCenter = broadcastContent.includes("arrowFromCenter") && broadcastContent.includes("v3-fc");
+  if (hasVcnvStagger && hasTtStagger && hasFromCenter) {
+    console.log("  [Audit PASS] Vtv3BroadcastGraphics.tsx implements Econova staggered reveal (0.16s / 2.0s) and arrowFromCenter expansion.");
   } else {
-    console.log("  [Audit PASS] Vtv3BroadcastGraphics.tsx implements simultaneous rowDelay = 0.");
+    defects.push("[DEFECT] Vtv3BroadcastGraphics.tsx missing staggered reveal or arrowFromCenter support.");
   }
 } catch (e: any) {
   defects.push(`[DEFECT] Unable to inspect Vtv3BroadcastGraphics.tsx: ${e.message}`);

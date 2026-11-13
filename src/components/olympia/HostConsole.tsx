@@ -3456,29 +3456,59 @@ function CauHoiPhuDeck({ state, call, seats }: { state: OlympiaState; call: Call
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
       {/* Left: CHỌN THÍ SINH DỰ THI */}
       <div className="space-y-1.5">
-        <div className="text-xs font-bold text-slate-400 uppercase">CHỌN THÍ SINH</div>
-        <div className={`grid gap-1.5 ${seats.length <= 4 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-black text-slate-300 uppercase tracking-wider">CHỌN THÍ SINH DỰ THI</div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSelectedSeats(seats.map((s) => s.id))}
+              className="text-[10px] text-cyan-400 hover:underline cursor-pointer"
+            >
+              Tất cả
+            </button>
+            <span className="text-slate-600">|</span>
+            <button
+              type="button"
+              onClick={() => setSelectedSeats([])}
+              className="text-[10px] text-slate-400 hover:underline cursor-pointer"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        </div>
+        <div className="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
           {seats.map((s) => {
             const checked = selectedSeats.includes(s.id);
+            const contestantName = s.name || `Thí sinh ${s.id + 1}`;
             return (
               <label
                 key={s.id}
-                className={`flex items-center gap-2 p-1.5 rounded-lg border text-xs font-bold cursor-pointer transition ${
-                  checked ? "bg-sky-500/20 border-sky-400 text-sky-200" : "bg-white/5 border-white/10 text-slate-400"
+                className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer transition select-none ${
+                  checked ? "bg-sky-500/20 border-sky-400 text-sky-200 shadow-sm" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
                 }`}
               >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => {
-                    const next = e.target.checked
-                      ? [...selectedSeats, s.id]
-                      : selectedSeats.filter((x) => x !== s.id);
-                    setSelectedSeats(next);
-                  }}
-                  className="rounded"
-                />
-                <span>TS{s.id + 1}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      const next = e.target.checked
+                        ? [...selectedSeats, s.id]
+                        : selectedSeats.filter((x) => x !== s.id);
+                      setSelectedSeats(next);
+                    }}
+                    className="rounded text-sky-500 focus:ring-sky-400 cursor-pointer"
+                  />
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-white/10 text-slate-300 shrink-0">
+                    TS{s.id + 1}
+                  </span>
+                  <span className="truncate text-white font-medium">
+                    {contestantName}
+                  </span>
+                </div>
+                <span className="text-amber-300 font-mono text-[11px] shrink-0 font-bold">
+                  {s.score}đ
+                </span>
               </label>
             );
           })}
@@ -3486,9 +3516,9 @@ function CauHoiPhuDeck({ state, call, seats }: { state: OlympiaState; call: Call
         <button
           type="button"
           onClick={() => call("chp:selectSeats", { seats: selectedSeats })}
-          className="w-full py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow"
+          className="w-full py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow transition cursor-pointer"
         >
-          ✔ Xác nhận Thí sinh dự thi
+          ✔ Xác nhận Thí sinh dự thi ({selectedSeats.length})
         </button>
       </div>
 

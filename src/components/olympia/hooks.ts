@@ -579,7 +579,8 @@ export function useOlympiaAudio(
 
       // Nếu cùng nguồn âm thanh đang phát thì bỏ qua không lặp lại; nếu là seamless crossfade loop thì cho phép old !== newAudio cùng src
       if (old && (old === newAudio || (!permitSameSrc && old.src === newAudio.src))) {
-        if (old.paused && !old.ended && !isBgmPausedExplicitlyRef.current) {
+        isBgmPausedExplicitlyRef.current = false;
+        if (old.paused && !old.ended) {
           old.play().catch(() => {});
         }
         return;

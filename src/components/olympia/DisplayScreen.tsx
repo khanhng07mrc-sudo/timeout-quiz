@@ -777,22 +777,50 @@ function VeDich({ state, serverNow }: P) {
 
   const isChoosing = vd.phase === "choosing";
   const isPackageReady = vd.phase === "packageReady";
-  // Only show slanted package grid when actively choosing package (lower-third 1/3 dưới màn)
-  const showPackageGrid = isChoosing;
+
+  // Hiển thị gói điểm đã chọn trong 3 giây sau khi chốt, sau đó tự đóng đồ hoạ gói điểm chuyển sang sẵn sàng mở Câu 1
+  const [closing, setClosing] = useState(false);
+  const [closed, setClosed] = useState(false);
+
+  useEffect(() => {
+    if (isChoosing) {
+      setClosing(false);
+      setClosed(false);
+    } else if (isPackageReady) {
+      const readyAt = vd.packageReadyAt || serverNow();
+      const elapsed = Math.max(0, serverNow() - readyAt);
+      const remainingVisible = Math.max(0, 3000 - elapsed);
+      const closeTimer = setTimeout(() => {
+        setClosing(true);
+      }, remainingVisible);
+      const hideTimer = setTimeout(() => {
+        setClosed(true);
+      }, remainingVisible + 450);
+      return () => {
+        clearTimeout(closeTimer);
+        clearTimeout(hideTimer);
+      };
+    } else {
+      setClosing(false);
+      setClosed(true);
+    }
+  }, [isChoosing, isPackageReady, vd.packageReadyAt, serverNow]);
+
+  const showPackageGrid = (isChoosing || (isPackageReady && !closed)) && vd.phase !== "thinking" && vd.phase !== "stealing" && vd.phase !== "result";
 
   return (
     <div key={`vd-turn-${owner}-${vd.turnIdx}`} className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end">
-      {/* While choosing package: show slanted hexagonal package grid anchored at lower third (1/3 dưới màn) */}
+      {/* While choosing package or viewing confirmed package: show slanted hexagonal package grid anchored at lower third */}
       {showPackageGrid && (
         <div key={`pkg-grid-${owner}-${vd.turnIdx}`} className="fixed inset-x-0 bottom-2 sm:bottom-3 z-30 flex items-end justify-center pointer-events-none px-4">
           <div className="pointer-events-auto w-full max-w-3xl flex items-center justify-center">
-            <VeDichSlantedGridGraphic state={state} animate={true} />
+            <VeDichSlantedGridGraphic state={state} animate={true} closing={closing} />
           </div>
         </div>
       )}
 
-      {/* When package is ready (index -1, empty body, twin arrows opening) OR question is opened (thinking / stealing / result) */}
-      {((isPackageReady && !cur) || (cur && (vd.phase === "thinking" || vd.phase === "stealing" || vd.phase === "result"))) ? (
+      {/* Question is opened (thinking / stealing / result) */}
+      {(cur && (vd.phase === "thinking" || vd.phase === "stealing" || vd.phase === "result")) ? (
         state.themeMode === "o26_classic" ? (
           <Vtv3ChalkboardQuestionFrame
             headerBadge={
@@ -832,7 +860,6 @@ function VeDich({ state, serverNow }: P) {
             timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : (cur && vd.phase === "thinking" ? vd.timer : null)}
             hopeStarActive={vd.hopeStarActive}
             showScoreTab={true}
-            runAnim={isPackageReady && !cur}
           />
         )
       ) : null}
@@ -845,15 +872,12 @@ function Chp({ state, serverNow }: P) {
   const q = cp.questions[cp.qIdx];
   return (
     <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto text-center space-y-2 animate-fade-in">
-      <div className="text-sm font-bold text-amber-300">
-        Câu hỏi phụ — {cp.tied.map((i) => seatName(state, i)).join(" · ")}
-      </div>
       {q && (
         state.themeMode === "o26_classic" ? (
           <div className="flex flex-col gap-1">
             <EconovaContestantScoreTabBar
               state={state}
-              buzzedSeatId={cp.buzzedSeat}
+              buzzedSeatId={cp.buzzedSeat || cp.winner}
             />
             <Vtv3ChalkboardQuestionFrame
               headerBadge="CÂU HỎI PHỤ"
@@ -866,19 +890,13 @@ function Chp({ state, serverNow }: P) {
           <EconovaLowerThirdV3
             state={state}
             serverNow={serverNow}
-            buzzedSeatId={cp.buzzedSeat}
+            buzzedSeatId={cp.buzzedSeat || cp.winner}
             headerBadge="CÂU HỎI PHỤ"
             questionText={q.q}
             timer={cp.timer}
             showScoreTab={true}
           />
         )
-      )}
-      {cp.phase === "result" && q?.a && (
-        <div className="text-2xl font-black text-emerald-300 mt-2">✔ Đáp án: {q.a}</div>
-      )}
-      {cp.winner != null && (
-        <div className="text-3xl font-black text-emerald-300 mt-2">🏆 {seatName(state, cp.winner)}</div>
       )}
     </div>
   );

@@ -329,6 +329,12 @@ export interface OlympiaConfig {
   chpQuestionLimit?: ChpQuestionLimit;
   /** When true (default), play show_intro opening sound on room creation */
   playIntroOnCreate?: boolean;
+  /** When true, create a standalone Tiebreaker room playing only Câu hỏi phụ (Play-off điểm nhì) */
+  standaloneChp?: boolean;
+  /** Custom contestants for standalone Tiebreaker room (names & starting scores) */
+  chpContestants?: Array<{ name: string; score: number }>;
+  /** Custom initial scores for seats */
+  seatInitialScores?: number[];
 }
 
 export type RoundStatus = "pending" | "active" | "done";
@@ -461,6 +467,7 @@ export interface VeDichState {
   turnIdx: number;
   playedSeats?: number[];
   phase: "idle" | "choosing" | "packageReady" | "thinking" | "stealing" | "result" | "seatDone";
+  packageReadyAt?: number;
   onStage?: boolean;
   packages: Record<number, { points: number; q: VeDichQuestion }[]>;
   qIdx: number;

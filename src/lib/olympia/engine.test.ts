@@ -3089,6 +3089,124 @@ test("Sandbox seat takeover & requestSeat during active game round succeeds imme
   assert.equal(g.state.seats[5].playerKey, "device_token_xyz_123");
 });
 
+test("Về Đích: packageReadyAt timestamp is set on confirmPackage", () => {
+  const g = new OlympiaGame("vd-pkg-test", {
+    rulesetId: "O26",
+    rounds: ["veDich"],
+    questionSet: SAMPLE_QUESTION_SET,
+  }, 1000);
+
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  act(g, "game:start", {}, 2000);
+  act(g, "round:force", { round: "veDich" }, 2500);
+
+  assert.equal(g.state.currentRound, "veDich");
+  act(g, "vd:showPackageGraphic", {}, 3000);
+  assert.equal(g.state.veDich?.phase, "choosing");
+
+  act(g, "vd:confirmPackage", { points: [20, 30, 30] }, 3500);
+  assert.equal(g.state.veDich?.phase, "packageReady");
+  assert.equal(g.state.veDich?.packageReadyAt, 3500);
+  assert.deepEqual(g.state.veDich?.packages[0].map((p) => p.points), [20, 30, 30]);
+});
+
+test("Câu Hỏi Phụ: beginRound suppresses opening fanfare audio and chp:wrong re-cues 15s_tick", () => {
+  const g = new OlympiaGame("chp-audio-test", {
+    rulesetId: "O26",
+    rounds: ["veDich"],
+    questionSet: SAMPLE_QUESTION_SET,
+  }, 1000);
+
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  act(g, "game:start", {}, 2000);
+
+  // Force start cauHoiPhu
+  (g.state as any).cue = null;
+  act(g, "round:force", { round: "cauHoiPhu" }, 3000);
+  assert.equal(g.state.currentRound, "cauHoiPhu");
+  // Per requirement: No opening fanfare when entering CHP (cue is either stopped or null)
+  assert.notEqual((g.state.cue as any)?.sound, "5_CauHoiPhu/open_question");
+  assert.notEqual((g.state.cue as any)?.sound, "5_CauHoiPhu/start_round");
+
+  // Host prepares question 1 and shows it
+  act(g, "chp:next", {}, 3500);
+  act(g, "chp:show", {}, 3600);
+  assert.equal(g.state.cauHoiPhu?.phase, "question");
+  assert.equal((g.state.cue as any)?.sound, "5_CauHoiPhu/open_question");
+
+  // Host starts timer
+  act(g, "chp:timer", {}, 4000);
+  assert.equal((g.state.cue as any)?.sound, "5_CauHoiPhu/15s_tick");
+  assert.equal((g.state.cue as any)?.kind, "bgm");
+
+  // Contestant 0 buzzes -> timer paused
+  const buzzRes = g.playerBuzz(0, 4500);
+  assert.equal(buzzRes.ok, true);
+  assert.equal(g.state.cauHoiPhu?.buzzedSeat, 0);
+  assert.equal(g.state.cauHoiPhu?.timer.startedAt, null);
+  assert.equal((g.state.cue as any)?.sound, "5_CauHoiPhu/bell_ring");
+
+  // Host grades WRONG -> 15s_tick must be re-cued on bgm channel
+  act(g, "chp:wrong", {}, 5000);
+  assert.equal(g.state.cauHoiPhu?.buzzedSeat, null);
+  assert.equal(g.state.cauHoiPhu?.timer.startedAt, 5000);
+  assert.equal((g.state.cue as any)?.sound, "5_CauHoiPhu/15s_tick");
+  assert.equal((g.state.cue as any)?.kind, "bgm");
+
+  // Contestant 1 buzzes
+  const buzzRes2 = g.playerBuzz(1, 5500);
+  assert.equal(buzzRes2.ok, true);
+  assert.equal(g.state.cauHoiPhu?.buzzedSeat, 1);
+
+  // Host grades CORRECT -> winner set, phase = result, timer stopped
+  act(g, "chp:correct", {}, 6000);
+  assert.equal(g.state.cauHoiPhu?.winner, 1);
+  assert.equal(g.state.cauHoiPhu?.phase, "result");
+  assert.equal(g.state.cauHoiPhu?.buzzOpen, false);
+});
+
+test("Phòng chỉ chơi Câu hỏi phụ (Standalone Tiebreaker): initializes custom contestants, starting scores, and starts directly into CHP", () => {
+  const g = new OlympiaGame("tiebreaker-room", {
+    rulesetId: "O26",
+    standaloneChp: true,
+    rounds: ["cauHoiPhu"],
+    chpContestants: [
+      { name: "Nguyễn Văn A (Nhì Tuần 1)", score: 240 },
+      { name: "Trần Thị B (Nhì Tuần 2)", score: 235 },
+      { name: "Lê Văn C (Nhì Tuần 3)", score: 220 },
+    ],
+    questionSet: SAMPLE_QUESTION_SET,
+  }, 1000);
+
+  // Should have exactly 3 seats matching custom contestants and starting scores
+  assert.equal(g.state.seatCount, 3);
+  assert.equal(g.state.seats.length, 3);
+  assert.equal(g.state.seats[0].name, "Nguyễn Văn A (Nhì Tuần 1)");
+  assert.equal(g.state.seats[0].score, 240);
+  assert.equal(g.state.seats[1].name, "Trần Thị B (Nhì Tuần 2)");
+  assert.equal(g.state.seats[1].score, 235);
+  assert.equal(g.state.seats[2].name, "Lê Văn C (Nhì Tuần 3)");
+  assert.equal(g.state.seats[2].score, 220);
+
+  // Rounds plan is strictly only cauHoiPhu
+  assert.deepEqual(g.state.rounds, ["cauHoiPhu"]);
+  assert.deepEqual(g.state.roundsPlan, ["cauHoiPhu"]);
+
+  // Start match -> introStandby is active per user preference (màn chào đầu)
+  act(g, "game:start", {}, 2000);
+  assert.equal(g.state.stage, "playing");
+  assert.equal(g.state.introStandby, true);
+
+  // When Host skips intro or begins first round
+  act(g, "intro:skip", {}, 2500);
+  assert.equal(g.state.currentRound, "cauHoiPhu");
+  assert.equal(g.state.roundStatus.cauHoiPhu, "active");
+  // All 3 contestants are automatically tied contestants
+  assert.deepEqual(g.state.cauHoiPhu?.tied, [0, 1, 2]);
+});
+
 
 
 

@@ -47,6 +47,11 @@ export default function CreateOlympiaPage() {
   const [selectedBankId, setSelectedBankId] = useState<string>("olympia_preset_o25_o26_full");
   const [targetContestantCount, setTargetContestantCount] = useState<number>(4);
   const [playIntroOnCreate, setPlayIntroOnCreate] = useState<boolean>(true);
+  const [standaloneChp, setStandaloneChp] = useState<boolean>(false);
+  const [chpContestants, setChpContestants] = useState<Array<{ name: string; score: number }>>([
+    { name: "Thí sinh 1", score: 200 },
+    { name: "Thí sinh 2", score: 200 },
+  ]);
 
   useEffect(() => {
     const loaded = getOlympiaBanks();
@@ -138,7 +143,12 @@ export default function CreateOlympiaPage() {
 
   const onCreate = async () => {
     if (!roomName.trim()) return setErr("Vui lòng nhập tên phòng");
-    if (rounds.length === 0) return setErr("Chọn ít nhất 1 vòng thi");
+    if (!standaloneChp && rounds.length === 0) return setErr("Chọn ít nhất 1 vòng thi");
+    const resolvedRounds: RoundId[] = standaloneChp ? ["cauHoiPhu"] : rounds;
+    const resolvedSeatCount = standaloneChp ? chpContestants.length : targetContestantCount;
+    const resolvedTeams = standaloneChp
+      ? chpContestants.map((c, i) => ({ name: c.name || `Thí sinh ${i + 1}`, color: "#8b5cf6" }))
+      : [];
     setCreating(true);
     setErr("");
     try {
@@ -150,7 +160,7 @@ export default function CreateOlympiaPage() {
           mode: "OLYMPIA",
           teamMode: "INDIVIDUAL",
           hostId: "demo-host-id",
-          teams: [],
+          teams: resolvedTeams,
           config: {
             powerupEnabled: false,
             allowedPowerups: [],
@@ -158,10 +168,12 @@ export default function CreateOlympiaPage() {
               rulesetId,
               o22Quarter: rulesetId === "O22" ? o22Quarter : undefined,
               chpQuestionLimit,
-              rounds,
+              rounds: resolvedRounds,
               questionSet: finalSet,
-              seatCount: targetContestantCount,
+              seatCount: resolvedSeatCount,
               playIntroOnCreate,
+              standaloneChp,
+              chpContestants: standaloneChp ? chpContestants : undefined,
             },
           },
         }),
@@ -360,7 +372,102 @@ export default function CreateOlympiaPage() {
       </section>
 
       <section className="rounded-2xl border border-white/15 bg-slate-900/70 p-4 space-y-3">
-        <div className="text-sm font-bold text-sky-300">3. Chọn các vòng thi</div>
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-bold text-sky-300">3. Chọn các vòng thi</div>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !standaloneChp;
+              setStandaloneChp(next);
+              if (next) {
+                setRounds(["cauHoiPhu"]);
+              } else {
+                setRounds([...SELECTABLE_ROUNDS]);
+              }
+            }}
+            className={`px-3 py-1 rounded-lg border text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+              standaloneChp
+                ? "bg-purple-600 border-purple-400 text-white shadow-lg shadow-purple-600/30"
+                : "bg-purple-500/10 border-purple-400/30 text-purple-300 hover:bg-purple-500/20"
+            }`}
+          >
+            <span>⚔️</span>
+            <span>{standaloneChp ? "✓ Đang chọn: Chỉ đấu Câu hỏi phụ" : "Chỉ đấu Câu hỏi phụ (Play-off)"}</span>
+          </button>
+        </div>
+
+        {standaloneChp && (
+          <div className="rounded-xl border border-purple-500/40 bg-purple-950/30 p-3.5 space-y-3 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-purple-500/20 pb-2.5">
+              <div>
+                <div className="text-xs font-black text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>⚔️</span>
+                  <span>Cấu hình thí sinh đấu Câu hỏi phụ (Play-off điểm nhì)</span>
+                </div>
+                <div className="text-[11px] text-slate-300 mt-0.5">
+                  Tự đặt tên và điểm số ban đầu cho từng thí sinh tham gia tranh vé play-off.
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] text-slate-400 mr-1">Số thí sinh:</span>
+                {[2, 3, 4, 5, 6, 7, 8].map((cnt) => (
+                  <button
+                    key={cnt}
+                    type="button"
+                    onClick={() => {
+                      const next = Array.from({ length: cnt }, (_, i) => ({
+                        name: chpContestants[i]?.name || `Thí sinh ${i + 1}`,
+                        score: chpContestants[i]?.score ?? 200,
+                      }));
+                      setChpContestants(next);
+                      setTargetContestantCount(cnt);
+                    }}
+                    className={`w-7 h-7 rounded-lg text-xs font-black border transition ${
+                      chpContestants.length === cnt
+                        ? "bg-purple-500 border-purple-400 text-white shadow"
+                        : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {cnt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {chpContestants.map((c, idx) => (
+                <div key={idx} className="flex items-center gap-2 p-2 rounded-xl bg-black/40 border border-white/10">
+                  <span className="px-2 py-1 rounded bg-purple-500/20 text-purple-300 text-[11px] font-black shrink-0">
+                    TS{idx + 1}
+                  </span>
+                  <input
+                    type="text"
+                    value={c.name}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setChpContestants((prev) => prev.map((item, i) => i === idx ? { ...item, name: val } : item));
+                    }}
+                    placeholder={`Tên Thí sinh ${idx + 1}`}
+                    className="flex-1 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-400"
+                  />
+                  <div className="flex items-center gap-1 shrink-0">
+                    <input
+                      type="number"
+                      value={c.score}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setChpContestants((prev) => prev.map((item, i) => i === idx ? { ...item, score: val } : item));
+                      }}
+                      placeholder="Điểm"
+                      className="w-16 px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs text-amber-300 font-mono text-center focus:outline-none focus:border-purple-400"
+                    />
+                    <span className="text-[11px] text-slate-400">đ</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {/* Season-independent Câu hỏi phụ Limit Setting */}
         <div className="rounded-xl border border-amber-400/35 bg-amber-950/25 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
           <div className="space-y-0.5">

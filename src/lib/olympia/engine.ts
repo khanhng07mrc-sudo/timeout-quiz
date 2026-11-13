@@ -180,6 +180,7 @@ const emptyRoundStatus = (): Record<RoundId, "pending" | "active" | "done"> => (
 
 export function sortRounds(rounds: RoundId[]): RoundId[] {
   const set = new Set(rounds);
+  if (set.size === 1 && set.has("cauHoiPhu")) return ["cauHoiPhu"];
   return ROUND_ORDER.filter((r) => r !== "cauHoiPhu" && set.has(r));
 }
 
@@ -194,8 +195,11 @@ export class OlympiaGame {
       this.config.questionSet = SAMPLE_QUESTION_SET;
     }
     this.ruleset = RULESETS[config.rulesetId] ?? RULESETS.O26;
-    const rounds = sortRounds(config.rounds);
-    const seatCount = config.seatCount
+    const isStandaloneChp = !!config.standaloneChp || (config.rounds?.length === 1 && config.rounds[0] === "cauHoiPhu");
+    const rounds = isStandaloneChp ? ["cauHoiPhu" as RoundId] : sortRounds(config.rounds);
+    const seatCount = config.chpContestants && config.chpContestants.length >= 2
+      ? Math.max(2, Math.min(MAX_SEATS, config.chpContestants.length))
+      : config.seatCount
       ? Math.max(2, Math.min(MAX_SEATS, config.seatCount))
       : (config.teams && config.teams.length > 0)
       ? Math.max(2, Math.min(MAX_SEATS, config.teams.length))
@@ -213,14 +217,25 @@ export class OlympiaGame {
       stage: "lobby",
       seatCount,
       seats: Array.from({ length: seatCount }, (_, i) => {
+        const chpContestant = config.chpContestants?.[i];
         const team = config.teams?.[i];
+        const initialScore = chpContestant?.score ?? config.seatInitialScores?.[i] ?? 0;
+        if (chpContestant) {
+          return {
+            id: i,
+            name: chpContestant.name || `Thí sinh ${i + 1}`,
+            playerKey: `chp_${code}_seat_${i}`,
+            connected: true,
+            score: initialScore,
+          };
+        }
         if (team) {
           return {
             id: i,
             name: team.name || `Thí sinh ${i + 1}`,
             playerKey: `sandbox_${code}_seat_${i}`,
             connected: true,
-            score: 0,
+            score: initialScore,
           };
         }
         return {
@@ -228,11 +243,11 @@ export class OlympiaGame {
           name: "",
           playerKey: null,
           connected: false,
-          score: 0,
+          score: initialScore,
         };
       }),
       roundIdx: -1,
-      roundsPlan: [...rounds, "cauHoiPhu"],
+      roundsPlan: isStandaloneChp ? ["cauHoiPhu"] : [...rounds, "cauHoiPhu"],
       currentRound: null,
       roundStatus: emptyRoundStatus(),
       banner: null,
@@ -650,17 +665,17 @@ export class OlympiaGame {
     st.currentRound = round;
     st.roundStatus[round] = "active";
     st.banner = ROUND_LABELS[round];
-    this.cue(
-      round === "khoiDong"
-        ? "1_KhoiDong/start_round"
-        : round === "vcnv"
-          ? "2_VuotChuongNgaiVat/start_round"
-          : round === "tangToc"
-            ? "3_TangToc/start_round"
-            : round === "veDich"
-              ? "4_VeDich/start_round"
-              : "5_CauHoiPhu/open_question"
-    );
+    if (round !== "cauHoiPhu") {
+      this.cue(
+        round === "khoiDong"
+          ? "1_KhoiDong/start_round"
+          : round === "vcnv"
+            ? "2_VuotChuongNgaiVat/start_round"
+            : round === "tangToc"
+              ? "3_TangToc/start_round"
+              : "4_VeDich/start_round"
+      );
+    }
 
     switch (round) {
       case "khoiDong": {
@@ -788,9 +803,10 @@ export class OlympiaGame {
         break;
       }
       case "cauHoiPhu": {
+        const isStandalone = !!this.config.standaloneChp || (st.roundsPlan.length === 1 && st.roundsPlan[0] === "cauHoiPhu");
         const tie = this.topTie();
-        const tied = tie.length >= 2 ? tie : forced ? [...active] : [];
-        if (tied.length < 2 && !forced) return fail("Không có thí sinh đồng hạng");
+        const tied = isStandalone ? [...active] : (tie.length >= 2 ? tie : forced ? [...active] : []);
+        if (tied.length < 2 && !forced && !isStandalone) return fail("Không có thí sinh đồng hạng");
         const chpGuard = this.duplicateGuard();
         const chpSeen = new Set<string>();
         const chpAll = (qs.cauHoiPhu ?? []).filter((q) => {
@@ -873,9 +889,10 @@ export class OlympiaGame {
     while (idx < st.roundsPlan.length) {
       const r = st.roundsPlan[idx];
       if (r === "cauHoiPhu") {
-        if (this.topTie().length >= 2 && st.roundStatus.cauHoiPhu === "pending") {
+        const isStandalone = !!this.config.standaloneChp || (st.roundsPlan.length === 1 && st.roundsPlan[0] === "cauHoiPhu");
+        if ((isStandalone || this.topTie().length >= 2) && st.roundStatus.cauHoiPhu === "pending") {
           st.roundIdx = idx;
-          return this.beginRound(r, now);
+          return this.beginRound(r, now, isStandalone);
         }
         break;
       }
@@ -2934,6 +2951,7 @@ export class OlympiaGame {
     vd.qIdx = -1;
     vd.current = null;
     vd.phase = "packageReady";
+    vd.packageReadyAt = now;
     st.vdPackageTimer = null;
     const totalPkg = resolvedPoints.reduce((s, p) => s + p, 0);
     this.pushTranscript({
@@ -3478,6 +3496,7 @@ export class OlympiaGame {
         } else {
           cp.buzzOpen = true;
           startTimer(cp.timer, now);
+          this.cue("5_CauHoiPhu/15s_tick", "bgm");
         }
         return OK;
       }

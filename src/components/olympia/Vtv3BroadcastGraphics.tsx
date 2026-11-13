@@ -267,7 +267,7 @@ function Vtv3BottomEdgeTimerBar({
   const lastStartRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!timer || timer.startedAt == null) {
+    if (!timer) {
       lastStartRef.current = null;
       lastPctRef.current = 0;
       if (fillRef.current) fillRef.current.style.width = "0%";
@@ -275,9 +275,48 @@ function Vtv3BottomEdgeTimerBar({
       return;
     }
 
+    const total = timer.totalMs || 15000;
+
+    // Timer is paused (buzzer pressed by contestant in CHP or Solo KD)
+    if (timer.startedAt == null) {
+      lastStartRef.current = null;
+      const remMs = Math.max(0, timer.remainingMs ?? 0);
+      // Unstarted timer
+      if (remMs >= total) {
+        lastPctRef.current = 0;
+        if (fillRef.current) fillRef.current.style.width = "0%";
+        if (pearlRef.current) pearlRef.current.style.display = "none";
+        return;
+      }
+      // Paused timer: FREEZE progress bar and pearl at current position!
+      const totalElapsed = Math.max(0, total - remMs);
+      const frozenPct = Math.max(0, Math.min(100, (totalElapsed / total) * 100));
+      lastPctRef.current = frozenPct;
+      const remSec = Math.ceil(remMs / 1000);
+      if (fillRef.current) {
+        fillRef.current.style.width = `${frozenPct}%`;
+        fillRef.current.style.background =
+          remSec <= 5
+            ? "linear-gradient(90deg, #ef4444, #f43f5e)"
+            : "linear-gradient(90deg, #d97706, #f59e0b, #ef4444)";
+        fillRef.current.style.boxShadow = remSec <= 5 ? "0 0 12px #ef4444" : "0 0 8px #f59e0b";
+      }
+      if (pearlRef.current) {
+        if (frozenPct > 0 && frozenPct < 100 && remMs > 0) {
+          pearlRef.current.style.display = "block";
+          pearlRef.current.style.left = `${frozenPct}%`;
+        } else {
+          pearlRef.current.style.display = "none";
+        }
+      }
+      return;
+    }
+
     if (lastStartRef.current !== timer.startedAt) {
       lastStartRef.current = timer.startedAt;
-      lastPctRef.current = 0;
+      const remMs = Math.max(0, timer.remainingMs ?? total);
+      const totalElapsed = Math.max(0, total - remMs);
+      lastPctRef.current = Math.max(0, Math.min(100, (totalElapsed / total) * 100));
     }
 
     let rafId: number;
@@ -285,11 +324,11 @@ function Vtv3BottomEdgeTimerBar({
 
     const tick = () => {
       if (!active) return;
-      const total = timer.totalMs || 15000;
-      const elapsed = Math.max(0, serverNow() - (timer.startedAt ?? 0));
-      const remMs = Math.max(0, timer.remainingMs - elapsed);
+      const elapsedSinceStart = Math.max(0, serverNow() - (timer.startedAt ?? 0));
+      const remMs = Math.max(0, (timer.remainingMs ?? total) - elapsedSinceStart);
       const remSec = Math.ceil(remMs / 1000);
-      const rawPct = Math.max(0, Math.min(100, (elapsed / total) * 100));
+      const totalElapsed = Math.max(0, total - remMs);
+      const rawPct = Math.max(0, Math.min(100, (totalElapsed / total) * 100));
       const safePct = Math.max(lastPctRef.current, rawPct);
       lastPctRef.current = safePct;
 
@@ -3703,12 +3742,14 @@ export function VeDichSlantedGridGraphic({
   selectedPoints,
   pointOptions,
   animate = false,
+  closing = false,
 }: {
   state: OlympiaState;
   ownerSeatId?: number;
   selectedPoints?: number[];
   pointOptions?: number[];
   animate?: boolean;
+  closing?: boolean;
 }) {
   const vd = state.veDich;
   const resolvedOwnerId = ownerSeatId ?? (vd ? vd.order[vd.turnIdx] : 0);
@@ -3730,7 +3771,9 @@ export function VeDichSlantedGridGraphic({
 
   if (!isV3Arrow) {
     return (
-      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 pointer-events-auto">
+      <div className={`absolute inset-0 z-20 flex flex-col items-center justify-center p-6 pointer-events-auto transition-all duration-400 ease-in-out ${
+        closing ? "transform scale-90 opacity-0" : "animate-fade-in transform scale-100 opacity-100"
+      }`}>
         <Vtv3ChalkboardBackdrop />
         <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-6 animate-fade-in">
           <div className="px-8 py-2.5 rounded-full bg-slate-900/90 border-2 border-amber-400 text-amber-300 font-black text-base sm:text-xl uppercase tracking-widest shadow-xl">
@@ -3764,7 +3807,9 @@ export function VeDichSlantedGridGraphic({
   const xDiv = (k: number, y: number) => L + k * colW + slope * (midY - y);
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-2 py-1 z-20 pointer-events-auto animate-fade-in flex flex-col items-center gap-1.5 select-none">
+    <div className={`w-full max-w-4xl mx-auto px-2 py-1 z-20 pointer-events-auto flex flex-col items-center gap-1.5 select-none transition-all duration-400 ease-in-out ${
+      closing ? "transform translate-y-16 opacity-0 scale-95" : "animate-fade-in transform translate-y-0 opacity-100 scale-100"
+    }`}>
       {/* Contestant Header Pill */}
       <div className="px-5 py-1 rounded-full bg-[#08203f]/95 border border-cyan-400/80 text-cyan-200 font-black text-[11px] sm:text-xs uppercase tracking-widest shadow-lg">
         LỰA CHỌN GÓI CÂU HỎI — {owner?.name || `THÍ SINH ${resolvedOwnerId + 1}`}

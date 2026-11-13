@@ -735,13 +735,14 @@ function Vcnv({ state, serverNow }: P) {
   if (!v) return null;
 
   // Candidate Answers Revealed OR Waiting Answer Background -> Fullscreen VTV3 Answer Graphic
-  if (v.answersRevealed || v.phase === "waitingAnswer") {
+  // Nền chờ ĐA: chỉ nền xanh/blur, tuyệt đối không có khung đáp án
+  if (v.phase === "waitingAnswer" && !v.answersRevealed) {
     return (
-      <VcnvAnswerRevealGraphic
-        state={state}
-        isWaitingAnswer={v.phase === "waitingAnswer" && !v.answersRevealed}
-      />
+      <div className="absolute inset-0 bg-[#040e24]/75 backdrop-blur-sm animate-fade-in pointer-events-none" />
     );
+  }
+  if (v.answersRevealed) {
+    return <VcnvAnswerRevealGraphic state={state} isWaitingAnswer={false} />;
   }
 
   // Authentic VTV3 4-Quadrant Broadcast Layout (Grid, Question & 15s Countdown Phases)

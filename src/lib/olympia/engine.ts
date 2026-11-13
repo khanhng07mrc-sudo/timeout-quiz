@@ -665,17 +665,15 @@ export class OlympiaGame {
     st.currentRound = round;
     st.roundStatus[round] = "active";
     st.banner = ROUND_LABELS[round];
-    if (round !== "cauHoiPhu") {
-      this.cue(
-        round === "khoiDong"
-          ? "1_KhoiDong/start_round"
-          : round === "vcnv"
-            ? "2_VuotChuongNgaiVat/start_round"
-            : round === "tangToc"
-              ? "3_TangToc/start_round"
-              : "4_VeDich/start_round"
-      );
-    }
+    this.cue(
+      round === "khoiDong"
+        ? "1_KhoiDong/start_round"
+        : round === "vcnv"
+          ? "2_VuotChuongNgaiVat/start_round"
+          : round === "tangToc"
+            ? "3_TangToc/start_round"
+            : "4_VeDich/start_round" // Câu hỏi phụ dùng chung nhạc mở đầu vòng Về Đích
+    );
 
     switch (round) {
       case "khoiDong": {
@@ -2439,7 +2437,9 @@ export class OlympiaGame {
           return fail("Chỉ được chấm CNV cho thí sinh đang có tín hiệu chuông!");
         }
         v.eliminatedSeats = v.eliminatedSeats.filter((id) => id !== seat);
-        const pts = cnvPointsFor(rs, v.openedCount, Boolean(v.centerOpened));
+        const realOpenedRows = v.rows.filter((r) => r.opened).length;
+          v.openedCount = Math.max(v.openedCount, realOpenedRows);
+          const pts = cnvPointsFor(rs, realOpenedRows, Boolean(v.centerOpened));
         this.addScore(seat, pts);
         v.solvedBy = seat;
         v.rows.forEach((r, i) => {
@@ -2494,12 +2494,12 @@ export class OlympiaGame {
           return fail("Chỉ được chấm CNV cho thí sinh đang có tín hiệu chuông!");
         }
 
-        // Đánh dấu chuông đã bị host chấm sai (không đưa ngay vào eliminatedSeats, không tự tắt chuông)
-        const bell = v.bells.find((b) => b.seat === seat);
-        if (bell) {
-          (bell as any).judgedWrong = true;
-          (bell as any).judgedAt = judgeTime;
-        }
+        // Chấm sai áp dụng cho TẤT CẢ thí sinh đang có chuông: khóa quyền chơi, nhưng GIỮ tín hiệu chuông
+        v.bells.forEach((b) => {
+          (b as any).judgedWrong = true;
+          (b as any).judgedAt = judgeTime;
+          if (!v.eliminatedSeats.includes(b.seat)) v.eliminatedSeats.push(b.seat);
+        });
 
         const buzzers: TranscriptBuzzerItem[] = [
           { order: 1, seat, name: this.seatName(seat), verdict: "wrong" }
@@ -3488,15 +3488,16 @@ export class OlympiaGame {
           })),
           verdict: "wrong",
         });
-        this.cue("5_CauHoiPhu/wrong");
         const remaining = cp.tied.filter((id) => !cp.buzzedThisQuestion.includes(id));
         if (remaining.length === 0) {
           cp.buzzOpen = false;
           cp.phase = "result";
+          this.cue("5_CauHoiPhu/wrong");
         } else {
           cp.buzzOpen = true;
           startTimer(cp.timer, now);
-          this.cue("5_CauHoiPhu/15s_tick", "bgm");
+          // Một cue duy nhất: phát âm "sai" đồng thời chạy tiếp nhạc đếm 15s (cue sau không ghi đè cue trước)
+          this.cue("5_CauHoiPhu/wrong", "sound", undefined, "5_CauHoiPhu/15s_tick");
         }
         return OK;
       }

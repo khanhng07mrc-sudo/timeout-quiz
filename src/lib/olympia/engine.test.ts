@@ -2048,7 +2048,7 @@ test("VCNV immediate self-lock on bell press, manual per-seat unlock, letterCoun
   assert.equal(g.state.cue?.sound, "2_VuotChuongNgaiVat/cnv_wrong");
   assert.equal(g.state.vcnv!.bells.length, 1);
   assert.equal((g.state.vcnv!.bells[0] as any).judgedWrong, true);
-  assert.deepEqual(g.state.vcnv!.eliminatedSeats, [], "Not eliminated until bells are cleared");
+  assert.deepEqual(g.state.vcnv!.eliminatedSeats, [1], "Chấm sai CNV khóa tất cả thí sinh có chuông nhưng giữ tín hiệu chuông");
 
   // 5. Host clears bells: now seat 1 is officially eliminated
   // Safety verification: cannot clear if unjudged, but succeeds once judged wrong
@@ -3152,8 +3152,8 @@ test("Câu Hỏi Phụ: beginRound suppresses opening fanfare audio and chp:wron
   act(g, "chp:wrong", {}, 5000);
   assert.equal(g.state.cauHoiPhu?.buzzedSeat, null);
   assert.equal(g.state.cauHoiPhu?.timer.startedAt, 5000);
-  assert.equal((g.state.cue as any)?.sound, "5_CauHoiPhu/15s_tick");
-  assert.equal((g.state.cue as any)?.kind, "bgm");
+  assert.equal((g.state.cue as any)?.sound, "5_CauHoiPhu/wrong");
+  assert.equal((g.state.cue as any)?.bgmSound, "5_CauHoiPhu/15s_tick");
 
   // Contestant 1 buzzes
   const buzzRes2 = g.playerBuzz(1, 5500);

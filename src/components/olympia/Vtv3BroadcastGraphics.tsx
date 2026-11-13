@@ -462,7 +462,7 @@ export function EconovaSpecializedTimerBar({
       const rem = timer ? Math.max(0, Math.min(total, timer.remainingMs ?? total)) : total;
       const pct = timer ? Math.max(0, Math.min(100, ((total - rem) / total) * 100)) : 0;
       if (fillRef.current) fillRef.current.style.width = `${pct}%`;
-      if (handleRef.current) handleRef.current.style.display = "none";
+      if (handleRef.current) handleRef.current.style.display = pct > 0 && rem > 0 ? "block" : "none";
       if (clockRef?.current) clockRef.current.textContent = formatClock(rem);
       return;
     }
@@ -1074,9 +1074,9 @@ export function VcnvCountdownGraphic({
               return (
                 <div
                   key={piece.index}
-                  className={`relative transition-all duration-700 ${
+                  className={`relative bg-[#0b1b3d] ${
                     isRevealed
-                      ? "opacity-0 pointer-events-none"
+                      ? "opacity-0 pointer-events-none transition-opacity duration-700"
                       : isSelectedPiece
                       ? "bg-gradient-to-br from-[#0f3178] to-[#081d4a] opacity-100"
                       : "bg-[#0b1b3d] opacity-100"
@@ -1110,9 +1110,9 @@ export function VcnvCountdownGraphic({
 
           {/* Center Tile (Piece 5): Fits flush into the balanced 45% x 45% center cutout without overlapping pieces 1-4 */}
           <div
-            className={`absolute left-[27.5%] top-[27.5%] w-[45%] h-[45%] border-2 flex items-center justify-center transition-all duration-700 z-10 ${
+            className={`absolute left-[27.5%] top-[27.5%] w-[45%] h-[45%] border-2 flex items-center justify-center z-10 ${
               v.piecesRevealed[4]
-                ? "opacity-0 pointer-events-none"
+                ? "opacity-0 pointer-events-none transition-opacity duration-700"
                 : isCenter
                 ? "bg-gradient-to-br from-[#0c2866] to-[#04153a] border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.85)] animate-pulse opacity-100 ring-2 ring-amber-300/70"
                 : "bg-[#071739] border-cyan-400/80 shadow-[0_0_16px_rgba(6,182,212,0.4)] opacity-100"

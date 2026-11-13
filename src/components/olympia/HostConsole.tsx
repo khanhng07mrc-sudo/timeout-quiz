@@ -160,6 +160,9 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if ((e.target as HTMLElement)?.isContentEditable) return;
+      // Enter/Space on a focused button must only activate that button, never a host shortcut
+      if ((tag === "button" || tag === "a") && (e.key === "Enter" || e.code === "Space")) return;
 
       const isIntro = state?.stage === "playing" && (Boolean(state.introTimer) || Boolean(state.entranceState?.active) || Boolean(state.introStandby));
       const notInGame = state?.stage !== "playing" || isIntro;
@@ -363,7 +366,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
   return (
     <div className="w-full h-full min-h-full flex-1 bg-gradient-to-b from-[#0a0c1a] via-[#101226] to-[#060712] text-slate-100 flex flex-col font-sans select-none overflow-hidden">
       {/* ── TOP HEADER BAR (CLEAN, NO OVERLAPPING) ── */}
-      <header className="h-10 border-b border-violet-500/15 bg-black/30 backdrop-blur-sm px-2.5 sm:px-3 flex items-center justify-between shrink-0 gap-2">
+      <header className="min-h-10 py-1 border-b border-violet-500/15 bg-black/30 backdrop-blur-sm px-2.5 sm:px-3 flex flex-wrap items-center justify-between shrink-0 gap-x-2 gap-y-1">
         {/* Left: Branding & Current Round */}
         <div className="flex items-center gap-2 min-w-0 shrink-0">
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-red-400 text-xs sm:text-sm font-black tracking-wide flex items-center gap-1.5 whitespace-nowrap">
@@ -376,7 +379,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
         </div>
 
         {/* Right: Theme Switcher, Buzzer Test, Audio Manager, Mute, Toggle Sidebar, Connection, PIN & QR */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-wrap justify-end">
+        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 flex-wrap justify-end">
           {/* Dual-Theme Broadcast Switcher */}
           <button
             type="button"
@@ -2703,12 +2706,12 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             </button>
             <button
               type="button"
-              disabled={activeCnvSeat == null}
+              disabled={!v.bells || v.bells.length === 0}
               onClick={() => {
-                if (activeCnvSeat != null) call("vcnv:wrongCNV", { seat: activeCnvSeat });
+                call("vcnv:wrongCNV", activeCnvSeat != null ? { seat: activeCnvSeat } : {});
               }}
               className={`py-2 px-1 rounded-lg text-white text-xs font-black shadow transition ${
-                activeCnvSeat != null
+                v.bells && v.bells.length > 0
                   ? "bg-rose-600 hover:bg-rose-500 cursor-pointer"
                   : "bg-rose-950/40 text-slate-500 border border-white/10 opacity-50 cursor-not-allowed"
               }`}
@@ -3453,6 +3456,14 @@ function CauHoiPhuDeck({ state, call, seats }: { state: OlympiaState; call: Call
   const [selectedSeats, setSelectedSeats] = useState<number[]>(cp.tied ?? [0, 1]);
 
   return (
+    <div className="space-y-2">
+      {cp.winner != null && (
+        <div className="rounded-xl border border-emerald-400/60 bg-emerald-500/15 px-3 py-2 text-xs font-black text-emerald-200 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>🏆 Vô địch: {seats.find((s) => s.id === cp.winner)?.name || `Thí sinh ${cp.winner + 1}`}</span>
+          <span className="text-emerald-300/90">✔ Đáp án: {cp.questions[cp.qIdx]?.a ?? "—"}</span>
+          <span className="text-slate-400 font-medium">(chỉ hiển thị ở Host/Thí sinh, không lên màn hình)</span>
+        </div>
+      )}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
       {/* Left: CHỌN THÍ SINH DỰ THI */}
       <div className="space-y-1.5">
@@ -3631,6 +3642,7 @@ function CauHoiPhuDeck({ state, call, seats }: { state: OlympiaState; call: Call
           Dừng Nhạc Khẩn Cấp
         </button>
       </div>
+    </div>
     </div>
   );
 }

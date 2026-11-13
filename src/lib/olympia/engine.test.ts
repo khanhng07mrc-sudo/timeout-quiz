@@ -2967,6 +2967,59 @@ test("VCNV bells sort chronologically from left to right", () => {
   assert.equal(sorted[2].seat, 3, "Third buzz is seat 3");
 });
 
+test("Khởi Động: showSubject defaults to false and kd:toggleSubject toggles visibility", () => {
+  const g = game("O26", ["khoiDong"], 4);
+  act(g, "game:start");
+  assert.equal(g.state.khoiDong!.showSubject, false, "Subject is hidden by default");
+
+  act(g, "kd:toggleSubject");
+  assert.equal(g.state.khoiDong!.showSubject, true, "Subject becomes visible after toggle");
+
+  act(g, "kd:toggleSubject");
+  assert.equal(g.state.khoiDong!.showSubject, false, "Subject is hidden after second toggle");
+
+  act(g, "kd:setShowSubject", { show: true });
+  assert.equal(g.state.khoiDong!.showSubject, true, "kd:setShowSubject explicitly sets visibility");
+});
+
+test("Khởi Động O22 and timed segments: never triggers kd_bgm_1/2/3 during question advancement", () => {
+  const g = game("O22", ["khoiDong"], 4);
+  act(g, "game:start");
+  act(g, "kd:start", {}, 1000);
+  g.tick(4500);
+
+  // Advance multiple questions in O22
+  for (let i = 0; i < 5; i++) {
+    act(g, "kd:next", {}, 5000 + i * 3000);
+    assert.notEqual(g.state.cue?.sound, "1_KhoiDong/kd_bgm_1", `kd_bgm_1 must never play in O22 (Q${i + 1})`);
+    assert.notEqual(g.state.cue?.sound, "1_KhoiDong/kd_bgm_2", `kd_bgm_2 must never play in O22 (Q${i + 1})`);
+    assert.notEqual(g.state.cue?.sound, "1_KhoiDong/kd_bgm_3", `kd_bgm_3 must never play in O22 (Q${i + 1})`);
+  }
+});
+
+test("Khởi Động question format logic: unlimited in O20-O22 (Câu X without /99) vs fixed in O23-O26 (Câu X/Y)", () => {
+  const formatQ = (questions: number, globalMs?: number, qIdx: number = 0) => {
+    const isUnlimited = questions >= 50 || Boolean(globalMs && questions >= 30);
+    const totalQ = isUnlimited ? "" : `/${questions}`;
+    return `Câu ${qIdx + 1}${totalQ}`;
+  };
+
+  // O22: 99 questions with globalMs -> unlimited format "Câu 11"
+  assert.equal(formatQ(99, 60000, 10), "Câu 11");
+  // O20: 999 questions with globalMs -> unlimited format "Câu 1"
+  assert.equal(formatQ(999, 60000, 0), "Câu 1");
+
+  // O26 solo: 6 questions -> fixed format "Câu 1/6"
+  assert.equal(formatQ(6, undefined, 0), "Câu 1/6");
+  // O26 shared: 18 questions -> fixed format "Câu 2/18"
+  assert.equal(formatQ(18, undefined, 1), "Câu 2/18");
+  // O23 turn: 12 questions -> fixed format "Câu 3/12"
+  assert.equal(formatQ(12, undefined, 2), "Câu 3/12");
+  // O15 solo: 12 questions -> fixed format "Câu 5/12"
+  assert.equal(formatQ(12, 60000, 4), "Câu 5/12");
+});
+
+
 
 
 

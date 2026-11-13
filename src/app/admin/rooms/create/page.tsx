@@ -218,6 +218,7 @@ export default function CreateRoomPage() {
       .catch(() => setBankQuestions([]));
   }, [quizBankId]);
   const [eliminationRevivalCount, setEliminationRevivalCount] = useState(1);
+  const [olympiaChpLimit, setOlympiaChpLimit] = useState<3 | "unlimited">(3);
   // Tournament config (Legacy)
   const [tournamentQuestionsPerMatch, setTournamentQuestionsPerMatch] = useState(3);
   // Magic Wheel config
@@ -399,6 +400,7 @@ export default function CreateRoomPage() {
           rulesetId: "O26",
           rounds: ["khoiDong", "vcnv", "tangToc", "veDich"],
           questionSet: found?.set,
+          chpQuestionLimit: olympiaChpLimit,
         };
       }
 
@@ -2442,6 +2444,38 @@ export default function CreateRoomPage() {
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Toàn bộ thẻ bài hỗ trợ đã được tự động vô hiệu hoá cho chế độ này. Bạn có thể nhấn <strong>&ldquo;Tiếp theo&rdquo;</strong> để sang bước cài đặt điểm số và hoàn tất tạo phòng.
                 </p>
+              </div>
+              <div className="p-4 rounded-xl bg-black/40 border border-sky-500/20 max-w-lg mx-auto text-left space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-sky-300">⚙️ Giới hạn số câu Câu hỏi phụ</span>
+                  <span className="text-[11px] text-slate-400">
+                    {olympiaChpLimit === "unlimited" ? "Không giới hạn (O27+)" : "Tối đa 3 câu (O13–O26)"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOlympiaChpLimit(3)}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                      olympiaChpLimit === 3
+                        ? "bg-amber-400 text-slate-950 border-amber-300 shadow font-black"
+                        : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                    }`}
+                  >
+                    🔒 Tối đa 3 câu
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOlympiaChpLimit("unlimited")}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                      olympiaChpLimit === "unlimited"
+                        ? "bg-cyan-400 text-slate-950 border-cyan-300 shadow font-black"
+                        : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                    }`}
+                  >
+                    ♾️ Không giới hạn
+                  </button>
+                </div>
               </div>
             </div>
           ) : mode === "MYSTERY_QUEST" ? (

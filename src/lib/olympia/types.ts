@@ -368,6 +368,8 @@ export interface KhoiDongState {
   noBuzzWrongUnlockAt?: number;
   bgmMode?: "auto" | "manual";
   currentBgmTrack?: "kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3";
+  /** Whether question subject/category should be displayed on broadcast graphics (defaults to false) */
+  showSubject?: boolean;
 }
 
 export interface AnswerAttempt {

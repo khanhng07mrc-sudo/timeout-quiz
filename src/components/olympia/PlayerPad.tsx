@@ -618,7 +618,8 @@ function getSubRoundLabel(state: OlympiaState): string {
       const kd = state.khoiDong;
       if (!kd) return "";
       const seg = kd.segments[kd.segIdx];
-      const qNum = kd.qIdx >= 0 ? ` · Câu ${kd.qIdx + 1}${seg.questions < 100 ? `/${seg.questions}` : ""}` : "";
+      const isUnlimitedQ = seg.questions >= 50 || Boolean(seg.globalMs && seg.questions >= 30);
+      const qNum = kd.qIdx >= 0 ? ` · Câu ${kd.qIdx + 1}${!isUnlimitedQ ? `/${seg.questions}` : ""}` : "";
       if (seg.kind === "solo") {
         return `Khởi động riêng — ${seatName(state, seg.seat)}${qNum}`;
       }

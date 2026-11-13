@@ -754,7 +754,12 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                   {isIntroStage
                     ? "Mở màn trận đấu"
                     : curRound === "khoiDong" && state.khoiDong
-                    ? `Câu ${state.khoiDong.questionRevealed ? Math.max(1, state.khoiDong.qIdx + 1) : 0}/${state.khoiDong.segments[state.khoiDong.segIdx]?.questions ?? 6}`
+                    ? (() => {
+                        const kdSeg = state.khoiDong.segments[state.khoiDong.segIdx];
+                        const isUnlimited = (kdSeg?.questions ?? 0) >= 50 || Boolean(kdSeg?.globalMs && (kdSeg?.questions ?? 0) >= 30);
+                        const qNum = state.khoiDong.questionRevealed ? Math.max(1, state.khoiDong.qIdx + 1) : 0;
+                        return `Câu ${qNum}${isUnlimited ? "" : `/${kdSeg?.questions ?? 6}`}`;
+                      })()
                     : curRound === "vcnv" && state.vcnv
                       ? `Hàng ${state.vcnv.openedCount}/4`
                       : curRound === "tangToc" && state.tangToc
@@ -2048,11 +2053,29 @@ function KhoiDongDeck({
           })}
         </div>
 
-        {/* Question Counter Badge */}
-        <div className="flex items-center gap-1">
+        {/* Question Counter Badge & Subject Toggle */}
+        <div className="flex items-center gap-1.5 flex-wrap">
           <span className="px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 font-bold border border-sky-400/30 text-xs">
-            {`Câu ${kd.questionRevealed ? Math.max(1, kd.qIdx + 1) : 0}/${seg?.questions ?? 6}`}
+            {(() => {
+              const isUnlimited = (seg?.questions ?? 0) >= 50 || Boolean(seg?.globalMs && (seg?.questions ?? 0) >= 30);
+              const qNum = kd.questionRevealed ? Math.max(1, kd.qIdx + 1) : 0;
+              return `Câu ${qNum}${isUnlimited ? "" : `/${seg?.questions ?? 6}`}`;
+            })()}
           </span>
+
+          <button
+            type="button"
+            onClick={() => call("kd:toggleSubject")}
+            title="Bật/tắt hiển thị lĩnh vực câu hỏi trên màn hình đồ hoạ phát sóng"
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer flex items-center gap-1.5 ${
+              kd.showSubject
+                ? "bg-amber-400 text-slate-950 border-amber-300 shadow-md font-black"
+                : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/10"
+            }`}
+          >
+            <span>📚 Lĩnh vực:</span>
+            <span>{kd.showSubject ? "HIỆN" : "ẨN"}</span>
+          </button>
         </div>
 
         {/* O22 Quarter Toggle (Quý 1 [30s] vs Quý 2 [60s] vs Quý 3-CKN [60s, -5đ]) */}

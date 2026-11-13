@@ -733,9 +733,16 @@ function SandboxKhoiDong({ state, act, serverNow }: { state: OlympiaState; act: 
     <div className="space-y-2 rounded-xl bg-white/5 p-3">
       <div className="flex items-center justify-between text-xs text-sky-300 flex-wrap gap-2">
         <span>
-          <b>{seg.label}</b> · Câu {Math.max(0, kd.qIdx + 1)}/{seg.questions > 100 ? "∞" : seg.questions}
+          {(() => {
+            const isUnlimitedQ = seg.questions >= 50 || Boolean(seg.globalMs && seg.questions >= 30);
+            return (
+              <>
+                <b>{seg.label}</b> · Câu {Math.max(0, kd.qIdx + 1)}{isUnlimitedQ ? "" : `/${seg.questions}`}
+              </>
+            );
+          })()}
         </span>
-        {kd.current?.subject && (
+        {Boolean(kd.showSubject) && kd.current?.subject && (
           <span className="px-2 py-0.5 rounded-full bg-sky-500/20 border border-sky-400/40 text-sky-200 font-bold">
             📚 {kd.current.subject}
           </span>

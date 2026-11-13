@@ -981,6 +981,9 @@ export function useOlympiaAudio(
       if (cue.id === lastCue.current) {
         if (!bgm.current || bgm.current.ended) return;
         if (isBgmPausedExplicitlyRef.current) return;
+        const isKdExpired = Boolean(state?.khoiDong?.globalTimer && state.khoiDong.globalTimer.remainingMs <= 0);
+        const isKdDone = state?.khoiDong?.phase === "segmentDone";
+        if (isKdExpired || isKdDone) return;
         if (enabled && isBgmCueEarly && bgm.current && bgm.current.paused) {
           bgm.current.play().catch(() => {});
         }
@@ -997,9 +1000,11 @@ export function useOlympiaAudio(
       return;
     }
 
-    // Khi có âm thanh kết thúc lượt (finish_turn), dừng nhạc nền cũ để hiệu ứng kết thúc lượt ngân vang rõ nét
+    // Khi có âm thanh kết thúc lượt (finish_turn), dừng nhạc nền cũ nếu không phải là track đếm giờ tự nhiên
     if (cue.sound.endsWith("finish_turn")) {
-      stopBgm();
+      if (bgm.current && !isCountdownTrack(bgm.current.src)) {
+        stopBgm();
+      }
     }
 
     if (
@@ -1022,8 +1027,13 @@ export function useOlympiaAudio(
       return;
     }
 
-    // Tuyệt đối không pause BGM ở vòng Khởi Động khi bấm chuông (chuông là SFX phát đè lên BGM)
-    if (cue.sound.endsWith("bell_ring") && !cue.sound.includes("KhoiDong") && !cue.sound.includes("VuotChuongNgaiVat")) {
+    // Tuyệt đối không pause BGM ở vòng Khởi Động, Vượt Chướng Ngại Vật và khi đếm 5s cướp điểm Về Đích khi bấm chuông
+    if (
+      cue.sound.endsWith("bell_ring") &&
+      !cue.sound.includes("KhoiDong") &&
+      !cue.sound.includes("VuotChuongNgaiVat") &&
+      !cue.sound.includes("VeDich")
+    ) {
       pauseBgm();
     }
 

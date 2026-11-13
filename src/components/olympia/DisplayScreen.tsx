@@ -646,7 +646,8 @@ function KhoiDong({ state, serverNow }: P) {
   const seg = kd.segments[kd.segIdx];
   const isSolo = seg.kind === "solo";
 
-  const totalQ = seg.questions > 100 ? "" : `/${seg.questions}`;
+  const isUnlimitedQ = seg.questions >= 50 || Boolean(seg.globalMs && seg.questions >= 30);
+  const totalQ = isUnlimitedQ ? "" : `/${seg.questions}`;
   const qNum = Math.max(1, kd.qIdx + 1);
   const questionBadge = `Câu ${qNum}${totalQ}`;
 
@@ -706,7 +707,7 @@ function KhoiDong({ state, serverNow }: P) {
           buzzedSeatId={currentBuzzedSeat}
           lockedSeats={kd.lockedSeats}
           questionNumberBadge={kd.started ? (hasRevealedQ ? questionBadge : `Câu 0${totalQ}`) : null}
-          headerBadge={hasRevealedQ && kd.current?.subject ? `${kd.current.subject.toUpperCase()}` : null}
+          headerBadge={hasRevealedQ && Boolean(kd.showSubject) && kd.current?.subject ? `${kd.current.subject.toUpperCase()}` : null}
           questionText={hasRevealedQ ? kd.current?.q : ""}
           mediaElement={
             hasRevealedQ && kd.current?.media ? (

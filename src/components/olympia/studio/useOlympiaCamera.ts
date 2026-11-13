@@ -485,12 +485,12 @@ export function useOlympiaCameraState(
 
           return {
             camAngle: targetContestantCam,
-            transitionMode: kd.qIdx === 0 ? "MORPH" : "CUT",
+            transitionMode: "CUT",
             isOverlayHidden: false,
             pushInProgress: push, // Zoom smooth 100% -> 115%
           };
         } else {
-          // Lượt chung:
+          // Lượt chung: CUT ngay lập tức sang thí sinh bấm chuông hoặc CAM 10
           if (kd.buzzedSeat != null) {
             return {
               camAngle: getCameraForSeat(kd.buzzedSeat, activeCount),
@@ -501,7 +501,7 @@ export function useOlympiaCameraState(
           }
           return {
             camAngle: 10,
-            transitionMode: "MORPH",
+            transitionMode: "CUT",
             isOverlayHidden: false,
             pushInProgress: 0.1,
           };
@@ -533,7 +533,7 @@ export function useOlympiaCameraState(
       if (isSolo) {
         return {
           camAngle: targetContestantCam,
-          transitionMode: "MORPH",
+          transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0,
         };
@@ -541,7 +541,7 @@ export function useOlympiaCameraState(
 
       return {
         camAngle: 10,
-        transitionMode: "MORPH",
+        transitionMode: "CUT",
         isOverlayHidden: false,
         pushInProgress: 0,
       };

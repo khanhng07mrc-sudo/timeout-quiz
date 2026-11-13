@@ -156,7 +156,7 @@ export function OlympiaStudio3DScene({
         camera={{ position: [0.0, 3.2, 6.8], fov: 46 }}
         gl={{
           powerPreference: isSandboxEnv || quality === "LIGHT" ? "low-power" : "high-performance",
-          antialias: true,
+          antialias: !isSandboxEnv,
           alpha: false,
           stencil: false,
           depth: true,

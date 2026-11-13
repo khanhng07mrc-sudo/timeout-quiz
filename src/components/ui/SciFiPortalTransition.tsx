@@ -28,8 +28,8 @@ export function SciFiPortalProvider({ children }: { children: React.ReactNode })
     setIsExiting(false);
     setIsActive(true);
 
-    // Play Warp sound on primary game portals (Display / Admin / Play)
-    const isMainPortal = /display|admin|play/i.test(targetUrl);
+    // Play Warp sound on primary game portals (Display / Play), excluding Admin
+    const isMainPortal = /display|play/i.test(targetUrl) && !/admin/i.test(targetUrl);
     if (isMainPortal) {
       try {
         soundManager.playPowerup();

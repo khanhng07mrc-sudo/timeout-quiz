@@ -1601,9 +1601,6 @@ export class OlympiaGame {
           kd.nextLockedSeats = [];
           kd.current = null;
           kd.lastVerdict = null;
-          if (ns.kind === "solo") {
-            this.cue("1_KhoiDong/ready");
-          }
           return OK;
         }
 
@@ -1889,9 +1886,6 @@ export class OlympiaGame {
               : null;
           } else {
             kd.current = null;
-          }
-          if (ns.kind === "solo") {
-            this.cue("1_KhoiDong/ready");
           }
         };
 

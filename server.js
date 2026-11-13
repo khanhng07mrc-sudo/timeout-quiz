@@ -107219,9 +107219,6 @@ var OlympiaGame = class _OlympiaGame {
           kd.nextLockedSeats = [];
           kd.current = null;
           kd.lastVerdict = null;
-          if (ns.kind === "solo") {
-            this.cue("1_KhoiDong/ready");
-          }
           return OK;
         }
         const isTimeUp = Boolean(seg.globalMs && kd.globalTimer && kd.globalTimer.remainingMs <= 0);
@@ -107478,9 +107475,6 @@ var OlympiaGame = class _OlympiaGame {
             } : null;
           } else {
             kd.current = null;
-          }
-          if (ns.kind === "solo") {
-            this.cue("1_KhoiDong/ready");
           }
         };
         if (a.segIdx != null) {
@@ -109441,12 +109435,10 @@ function registerOlympiaSocket(io2) {
       if (!cur) return;
       const curKd = cur.game.state.khoiDong;
       if (curKd && curKd.buzzUnlockAt && curKd.phase === "question" && curKd.buzzedSeat == null) {
-        if (Date.now() >= curKd.buzzUnlockAt) {
-          curKd.buzzOpen = true;
-          curKd.buzzUnlockAt = void 0;
-          cur.game.touch(Date.now());
-          broadcast(code);
-        }
+        curKd.buzzOpen = true;
+        curKd.buzzUnlockAt = void 0;
+        cur.game.touch(Date.now());
+        broadcast(code);
       }
     }, delay);
   }

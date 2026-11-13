@@ -178,12 +178,10 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
       if (!cur) return;
       const curKd = cur.game.state.khoiDong;
       if (curKd && curKd.buzzUnlockAt && curKd.phase === "question" && curKd.buzzedSeat == null) {
-        if (Date.now() >= curKd.buzzUnlockAt) {
-          curKd.buzzOpen = true;
-          curKd.buzzUnlockAt = undefined;
-          cur.game.touch(Date.now());
-          broadcast(code);
-        }
+        curKd.buzzOpen = true;
+        curKd.buzzUnlockAt = undefined;
+        cur.game.touch(Date.now());
+        broadcast(code);
       }
     }, delay);
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect, useLayoutEffect } from "react";
+import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
 import type { OlympiaState, Seat, TimerState } from "@/lib/olympia/types";
 import { parseVcnvAnswer, cleanVcnvWord, stripVcnvLetterCount } from "@/lib/olympia/engine";
 import { activeSeats, seatName, SEAT_COLORS } from "./ui";
@@ -524,12 +524,58 @@ export function EconovaSpecializedTimerBar({
   );
 }
 
+export function EconovaSecondsBadge({
+  timer,
+  serverNow,
+  className = "",
+}: {
+  timer: TimerState;
+  serverNow: () => number;
+  className?: string;
+}) {
+  const spanRef = useRef<HTMLSpanElement>(null);
+  const getSeconds = useCallback(() => {
+    const now = serverNow ? serverNow() : Date.now();
+    const rem = timer.startedAt != null ? Math.max(0, timer.remainingMs - (now - timer.startedAt)) : timer.remainingMs;
+    return Math.ceil(rem / 1000);
+  }, [timer, serverNow]);
+
+  useEffect(() => {
+    let animId: number;
+    const update = () => {
+      if (spanRef.current) {
+        const s = getSeconds();
+        spanRef.current.textContent = `${s}s`;
+      }
+      if (timer.startedAt != null) {
+        animId = requestAnimationFrame(update);
+      }
+    };
+    update();
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+    };
+  }, [timer, getSeconds]);
+
+  return (
+    <div
+      className={`px-3 py-0.5 rounded-lg font-black text-xs sm:text-sm tracking-widest tabular-nums flex items-center justify-center border-2 border-amber-400 text-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.6)] ${className}`}
+      style={{
+        background: "linear-gradient(135deg, #091a42 0%, #061129 100%)",
+      }}
+    >
+      <span ref={spanRef}>{getSeconds()}s</span>
+    </div>
+  );
+}
+
 export function Vtv3ChalkboardQuestionFrame({
   headerBadge,
   questionText,
   mediaElement,
   timer,
   serverNow,
+  timerBadge,
   children,
 }: {
   headerBadge?: React.ReactNode;
@@ -538,6 +584,7 @@ export function Vtv3ChalkboardQuestionFrame({
   timer?: TimerState | null;
   serverNow: () => number;
   timerSecondsOverride?: number;
+  timerBadge?: TimerState | null;
   children?: React.ReactNode;
 }) {
   return (
@@ -594,8 +641,15 @@ export function Vtv3ChalkboardQuestionFrame({
           {mediaElement && <div className="mt-1">{mediaElement}</div>}
         </div>
 
-        {/* Bottom: Integrated Progress Timer Bar & Glowing Red Pearl touching bottom border (No padding, no numeric clock) */}
-        <Vtv3BottomEdgeTimerBar timer={timer} serverNow={serverNow} />
+        {/* Top-Right Seconds Badge (O23-O26 Khởi Động) */}
+        {timerBadge && (
+          <div className="absolute top-2.5 right-3 z-20">
+            <EconovaSecondsBadge timer={timerBadge} serverNow={serverNow} />
+          </div>
+        )}
+
+        {/* Bottom: Integrated Progress Timer Bar & Glowing Red Pearl touching bottom border */}
+        {timer && <Vtv3BottomEdgeTimerBar timer={timer} serverNow={serverNow} />}
       </div>
     </div>
   );
@@ -3004,6 +3058,7 @@ export function EconovaLowerThirdV3({
   extraTopBanner,
   showScoreTab = true,
   showTimerClock = false,
+  timerBadge,
   runAnim = true,
   children,
 }: {
@@ -3024,6 +3079,7 @@ export function EconovaLowerThirdV3({
   extraTopBanner?: React.ReactNode;
   showScoreTab?: boolean;
   showTimerClock?: boolean;
+  timerBadge?: TimerState | null;
   runAnim?: boolean;
   children?: React.ReactNode;
 }) {
@@ -3502,24 +3558,26 @@ export function EconovaLowerThirdV3({
             </div>
 
             {/* Exact Econova Show Silver Trapezoid Timer Housing (screen.html: 22px height, #d1d5db->#6b7280 housing, 8px black track, red left-to-right progress bar + pulsing white handle) */}
-            <EconovaSpecializedTimerBar
-              timer={timer}
-              serverNow={serverNow}
-              defaultTotalMs={5000}
-              height={timerH}
-              trackMargin="0 24px"
-              clipPath={timerClipPath}
-              clockRef={showTimerClock ? clockRef : undefined}
-              clockFormat="mmss"
-              className={`absolute z-20 pointer-events-none ${
-                runAnim ? "v3-anim-content" : ""
-              }`}
-              style={{
-                left: timerMinX,
-                bottom: 0,
-                width: timerBarW,
-              }}
-            />
+            {timer && (
+              <EconovaSpecializedTimerBar
+                timer={timer}
+                serverNow={serverNow}
+                defaultTotalMs={5000}
+                height={timerH}
+                trackMargin="0 24px"
+                clipPath={timerClipPath}
+                clockRef={showTimerClock ? clockRef : undefined}
+                clockFormat="mmss"
+                className={`absolute z-20 pointer-events-none ${
+                  runAnim ? "v3-anim-content" : ""
+                }`}
+                style={{
+                  left: timerMinX,
+                  bottom: 0,
+                  width: timerBarW,
+                }}
+              />
+            )}
           </div>
 
           {/* Tier 3 (Top / z-30): Navy chevrons + crisp white accent lines cutting the hex wedge */}
@@ -3559,48 +3617,58 @@ export function EconovaLowerThirdV3({
             </div>
           )}
 
-          {(questionNumberBadge || headerBadge || (showTimerClock && timer)) && (
+          {(questionNumberBadge || headerBadge || (showTimerClock && timer) || timerBadge) && (
             <div
-              className={`absolute z-40 pointer-events-none flex items-center gap-2 select-none ${
+              className={`absolute z-40 pointer-events-none flex items-center justify-between select-none ${
                 runAnim ? "v3-anim-content" : ""
               }`}
               style={{
-                top: -26,
+                top: -28,
                 left: qLeft,
+                width: qWidth,
               }}
             >
-              {questionNumberBadge && (
-                <div
-                  className="px-3 py-0.5 rounded-t-lg font-black text-xs sm:text-sm tracking-widest uppercase flex items-center gap-1.5 shadow-[0_0_15px_rgba(251,191,36,0.5)] border-t border-x border-amber-300/60"
-                  style={{
-                    background: "linear-gradient(135deg, #091a42 0%, #061129 100%)",
-                    color: "#fbbf24",
-                  }}
-                >
-                  <span>🎯</span>
-                  <span>{questionNumberBadge}</span>
-                </div>
-              )}
-              {headerBadge && (
-                <div
-                  className="px-2.5 py-0.5 rounded-t-lg font-black text-xs sm:text-sm tracking-wider uppercase border-t border-x border-cyan-400/40 text-cyan-200"
-                  style={{
-                    background: "linear-gradient(135deg, #05264a 0%, #031427 100%)",
-                  }}
-                >
-                  {headerBadge}
-                </div>
-              )}
-              {showTimerClock && timer && (
-                <div
-                  className="px-2.5 py-0.5 rounded-t-lg font-black text-xs sm:text-sm tracking-widest tabular-nums flex items-center gap-1.5 border-t border-x border-cyan-300/60 text-white shadow-[0_0_12px_rgba(31,209,255,0.45)]"
-                  style={{
-                    background: "linear-gradient(135deg, #0b2b59 0%, #061736 100%)",
-                  }}
-                >
-                  <span className="text-cyan-300">⏱</span>
-                  <span ref={clockRef}>{formatClockMMSS(initClockRem)}</span>
-                </div>
+              <div className="flex items-center gap-2">
+                {questionNumberBadge && (
+                  <div
+                    className="px-3 py-0.5 rounded-t-lg font-black text-xs sm:text-sm tracking-widest uppercase flex items-center gap-1.5 shadow-[0_0_15px_rgba(251,191,36,0.5)] border-t border-x border-amber-300/60"
+                    style={{
+                      background: "linear-gradient(135deg, #091a42 0%, #061129 100%)",
+                      color: "#fbbf24",
+                    }}
+                  >
+                    <span>🎯</span>
+                    <span>{questionNumberBadge}</span>
+                  </div>
+                )}
+                {headerBadge && (
+                  <div
+                    className="px-2.5 py-0.5 rounded-t-lg font-black text-xs sm:text-sm tracking-wider uppercase border-t border-x border-cyan-400/40 text-cyan-200"
+                    style={{
+                      background: "linear-gradient(135deg, #05264a 0%, #031427 100%)",
+                    }}
+                  >
+                    {headerBadge}
+                  </div>
+                )}
+                {showTimerClock && timer && (
+                  <div
+                    className="px-2.5 py-0.5 rounded-t-lg font-black text-xs sm:text-sm tracking-widest tabular-nums flex items-center gap-1.5 border-t border-x border-cyan-300/60 text-white shadow-[0_0_12px_rgba(31,209,255,0.45)]"
+                    style={{
+                      background: "linear-gradient(135deg, #0b2b59 0%, #061736 100%)",
+                    }}
+                  >
+                    <span className="text-cyan-300">⏱</span>
+                    <span ref={clockRef}>{formatClockMMSS(initClockRem)}</span>
+                  </div>
+                )}
+              </div>
+
+              {timerBadge && (
+                <EconovaSecondsBadge
+                  timer={timerBadge}
+                  serverNow={serverNow}
+                />
               )}
             </div>
           )}

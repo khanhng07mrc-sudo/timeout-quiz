@@ -8,43 +8,6 @@ import { Timer, MediaView, SEAT_COLORS, seatName, activeSeats } from "./ui";
 
 type Emit = (e: string, p?: unknown) => Promise<{ ok: boolean; error?: string }>;
 
-let sharedBuzzerAudioCtx: AudioContext | null = null;
-
-function warmBuzzerAudioContext() {
-  if (typeof window === "undefined") return;
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    if (!sharedBuzzerAudioCtx || sharedBuzzerAudioCtx.state === "closed") {
-      sharedBuzzerAudioCtx = new AudioCtx();
-    }
-    if (sharedBuzzerAudioCtx.state === "suspended") {
-      sharedBuzzerAudioCtx.resume().catch(() => {});
-    }
-  } catch {}
-}
-
-function playInstantBuzzerBeep() {
-  if (typeof window === "undefined") return;
-  try {
-    warmBuzzerAudioContext();
-    const ctx = sharedBuzzerAudioCtx;
-    if (!ctx) return;
-    const t0 = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(880, t0);
-    osc.frequency.exponentialRampToValueAtTime(440, t0 + 0.11);
-    gain.gain.setValueAtTime(0.22, t0);
-    gain.gain.exponentialRampToValueAtTime(0.01, t0 + 0.11);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(t0);
-    osc.stop(t0 + 0.11);
-  } catch {}
-}
-
 export default function PlayerPad({
   code,
   initialSeat,
@@ -77,7 +40,7 @@ export default function PlayerPad({
     school,
     enabled: !!token,
   });
-  // Schedule a single precise timeout right at the unlock moment for instant UI transition
+  // Smooth direct ticker during Khởi Động buzzer lock countdown (60ms intervals)
   const [, setUnlockTick] = useState(0);
   useEffect(() => {
     const unlockAt = state?.khoiDong?.buzzUnlockAt;
@@ -85,12 +48,16 @@ export default function PlayerPad({
     const now = serverNow();
     if (now >= unlockAt) return;
 
-    const timerId = setTimeout(() => {
+    const id = setInterval(() => {
+      const curNow = serverNow();
       setUnlockTick((t) => t + 1);
-    }, Math.max(0, unlockAt - now));
+      if (curNow >= unlockAt) {
+        clearInterval(id);
+      }
+    }, 60);
 
     return () => {
-      clearTimeout(timerId);
+      clearInterval(id);
     };
   }, [state?.khoiDong?.buzzUnlockAt, serverNow]);
 
@@ -102,7 +69,6 @@ export default function PlayerPad({
     if (nowLocal - lastBuzzEmitAtRef.current < 160) return;
     lastBuzzEmitAtRef.current = nowLocal;
     setOptimisticBuzzPending(true);
-    playInstantBuzzerBeep();
 
     try {
       await emit("buzz");
@@ -111,14 +77,13 @@ export default function PlayerPad({
     }
   }, [emit]);
 
-  // Forward first user interaction to parent to unlock display iframe audio in sandbox mode & pre-warm WebAudio
+  // Forward first user interaction to parent to unlock display iframe audio in sandbox mode
   useEffect(() => {
     if (typeof window === "undefined") return;
     let unlocked = false;
     const notifyParentUnlock = () => {
       if (unlocked) return;
       unlocked = true;
-      warmBuzzerAudioContext();
       try {
         if (window.parent && window.parent !== window) {
           window.parent.postMessage({ type: "UNLOCK_AUDIO" }, "*");

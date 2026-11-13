@@ -1492,11 +1492,12 @@ test("KhoiDong TS2 timer and audio runs properly when question 1 is opened", () 
   g.hostAction({ type: "kd:next" }, 7000);
   assert.equal(g.state.khoiDong!.segIdx, 0);
   
-  // Chuyển sang TS2
+  // Chuyển sang TS2 (không tự động phát âm ready)
   g.hostAction({ type: "kd:selectSegment", seatId: 1 }, 8000);
   assert.equal(g.state.khoiDong!.segIdx, 1);
   assert.equal(g.state.khoiDong!.started, false);
   assert.equal(g.state.khoiDong!.globalTimer?.startedAt, null);
+  assert.notEqual(g.state.cue?.sound, "1_KhoiDong/ready");
   
   // Bấm Bắt đầu ở TS2 -> started = true, cue ready
   g.hostAction({ type: "kd:start" }, 8500);

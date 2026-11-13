@@ -658,7 +658,9 @@ function KhoiDong({ state, serverNow }: P) {
   const currentSoloSeat = isSolo ? (seg.seat ?? null) : null;
   const hasRevealedQ = Boolean(kd.questionRevealed && kd.current);
   const isGlobalClockRule = Boolean(seg.globalMs && kd.globalTimer);
-  const kdActiveTimer = isGlobalClockRule ? kd.globalTimer : (hasRevealedQ ? kd.timer : null);
+  const isO23ToO26 = !isGlobalClockRule;
+  const kdActiveTimer = isGlobalClockRule ? kd.globalTimer : null;
+  const kdSecondsBadgeTimer = isO23ToO26 && hasRevealedQ ? kd.timer : null;
 
   return (
     <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
@@ -692,6 +694,7 @@ function KhoiDong({ state, serverNow }: P) {
               ) : null
             }
             timer={kdActiveTimer}
+            timerBadge={kdSecondsBadgeTimer}
             serverNow={serverNow}
           />
         </div>
@@ -715,6 +718,7 @@ function KhoiDong({ state, serverNow }: P) {
             ) : null
           }
           timer={kdActiveTimer}
+          timerBadge={kdSecondsBadgeTimer}
           showTimerClock={isGlobalClockRule}
           showScoreTab={true}
           runAnim={kd.started && kd.qIdx <= 0 && !hasRevealedQ}

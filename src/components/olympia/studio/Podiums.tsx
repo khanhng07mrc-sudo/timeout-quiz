@@ -2234,7 +2234,7 @@ export function McPresenters({
   useFrame(() => {
     const now = serverNow ? serverNow() : Date.now();
     const isEntranceActive = Boolean(state?.entranceState?.active);
-    const isIntro = Boolean(introStartedAt || state?.introTimer);
+    const isIntro = Boolean((introStartedAt || state?.introTimer) && (state?.introStandby ?? true));
     const hasEntranceCompleted = Boolean(state?.entranceCompleted);
 
     let kvX = KV_DESK_POS[0];
@@ -5354,9 +5354,15 @@ export function Podiums({
         //   Subsequent contestants waiting upstairs hidden (showFigure = false).
         // - Entrance completed or competition rounds active: contestants stand at their podium desks (except active Về Đích contestant at center stage).
         const isLobby = state?.stage === "lobby";
-        const isIntro = Boolean(introStartedAt || state?.introTimer || state?.introStandby);
+        const isIntro = Boolean((introStartedAt || state?.introTimer) && state?.introStandby);
         const hasEntranceCompleted = Boolean(state?.entranceCompleted);
-        const isCompetitionRound = Boolean(state?.currentRound && !state?.entranceState?.active);
+        const isCompetitionRound = Boolean(
+          state?.stage === "playing" &&
+          !state?.introStandby &&
+          !state?.introTimer &&
+          !state?.entranceState?.active &&
+          state?.currentRound
+        );
 
         const { seatStartOffsetsMs } = getEntranceScheduleOffsetsMs(activeCount);
         const seatTiming = getEntranceSeatTiming(cfg.seatId, activeCount);
@@ -5377,9 +5383,9 @@ export function Podiums({
         // ── PODIUM SCOREBOARD 3-PHASE LIFECYCLE ──
         // 1. "logo": Mới mở phòng (Lobby / Pre-match / Intro / Thí sinh chưa bước tới bục) -> Logo Đường lên đỉnh Olympia
         // 2. "name_school": Từng thí sinh chuẩn bị bước vào sau bục của mình xong -> Tên + Trường THPT
-        // 3. "name_score": Khi bắt đầu một vòng thi (nhấn tên phần thi Khởi Động / VCNV / Tăng Tốc / Về Đích hoặc có state.currentRound) -> Tên + Điểm
+        // 3. "name_score": Khi bắt đầu một vòng thi (nhấn tên phần thi Khởi Động / VCNV / Tăng Tốc / Về Đích hoặc có state.currentRound và không còn introStandby) -> Tên + Điểm
         let screenMode: PodiumScreenMode = "logo";
-        if (state?.currentRound) {
+        if (isCompetitionRound) {
           screenMode = "name_score";
         } else if (hasEntranceCompleted) {
           screenMode = "name_school";
@@ -5393,15 +5399,13 @@ export function Podiums({
 
         const isThisContestantInVeDichTurn = isVdActive && cfg.seatId === activeSeat;
         let showFigure = false;
-        if (isLobby) {
+        if (isLobby || (isIntro && !hasEntranceCompleted)) {
           showFigure = false;
         } else if (isEntranceActive) {
           // All active and arrived figures during entrance are rendered seamlessly by ContestantEntranceWalkingFigures
           showFigure = false;
         } else if (hasEntranceCompleted || isCompetitionRound) {
           showFigure = !isThisContestantInVeDichTurn;
-        } else if (isIntro) {
-          showFigure = false;
         } else {
           showFigure = !isThisContestantInVeDichTurn;
         }

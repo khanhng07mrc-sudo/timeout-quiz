@@ -245,10 +245,8 @@ export const isLoopingBgm = (sound: string): boolean =>
 export const isIntroOrMusicTrack = (sound: string): boolean =>
   /(?:show_intro|contest_intro|contestant_intro|ending_music|summary|prize_award)$/.test(sound);
 
-export const isIntroSeamlessLoopTrack = (sound: string): boolean => {
-  if (!sound) return false;
-  const normalized = sound.split("?")[0].replace(/\.mp3$/, "");
-  return /(?:contest_intro|show_intro)$/.test(normalized);
+export const isIntroSeamlessLoopTrack = (_sound: string): boolean => {
+  return false;
 };
 
 /** Loops contestant_intro seamlessly when there are more than 4 active contestants */
@@ -1125,8 +1123,11 @@ export function useOlympiaAudio(
           registerActive(std);
           if (isBgmCue) {
             crossfadeToBgm(std, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
-            if (isIntroSeamlessLoopTrack(cue.sound) || forceLoopContestantIntro) {
-              setupIntroSeamlessLoop(std, forceLoopContestantIntro);
+            if (forceLoopContestantIntro) {
+              const maxLoops = Math.max(0, calculateRequiredIntroLoops(activeSeatCount) - 1);
+              if (maxLoops > 0) {
+                setupIntroSeamlessLoop(std, forceLoopContestantIntro, maxLoops);
+              }
             }
           } else {
             std.volume = defaultSfxVol;
@@ -1194,16 +1195,14 @@ export function useOlympiaAudio(
 
       if (isBgmCue) {
         crossfadeToBgm(a, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
-        const isOpeningContestIntro = cue.sound.includes("contest_intro");
-        // Opening theme ("contest_intro") plays strictly ONCE (remainingLoops = 0)
+        const isOpeningContestIntro = cue.sound.includes("contest_intro") || cue.sound.includes("show_intro");
+        // Opening theme ("contest_intro", "show_intro") plays strictly ONCE (remainingLoops = 0)
         // Contestant intro plays bounded loops matching entrance duration for N > 4
         const maxLoops = isOpeningContestIntro
           ? 0
           : forceLoopContestantIntro
             ? Math.max(0, calculateRequiredIntroLoops(activeSeatCount) - 1)
-            : isIntroSeamlessLoopTrack(cue.sound)
-              ? 999
-              : 0;
+            : 0;
 
         if (maxLoops > 0) {
           setupIntroSeamlessLoop(a, forceLoopContestantIntro, maxLoops);
@@ -1283,9 +1282,7 @@ export function useOlympiaAudio(
       a.volume = 0.85;
       registerActiveFromIntro(a);
       crossfadeToBgm(a, BGM_CROSSFADE_MS, false, true);
-      if (isIntroSeamlessLoopTrack("show_intro")) {
-        setupIntroSeamlessLoop(a);
-      }
+      // show_intro plays strictly ONCE without looping
       a.onerror = () => {
         if (s !== "O26") tryPlay("O26"); // fallback
       };

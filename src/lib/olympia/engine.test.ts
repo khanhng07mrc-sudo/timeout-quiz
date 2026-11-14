@@ -1,6 +1,8 @@
 // Run: npm run test:olympia   (bundles with esbuild, runs with node:assert)
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import { OlympiaGame, stripVcnvLetterCount } from "./engine";
 
@@ -3205,6 +3207,36 @@ test("Phòng chỉ chơi Câu hỏi phụ (Standalone Tiebreaker): initializes c
   assert.equal(g.state.roundStatus.cauHoiPhu, "active");
   // All 3 contestants are automatically tied contestants
   assert.deepEqual(g.state.cauHoiPhu?.tied, [0, 1, 2]);
+});
+
+test("MC walkout and Opening Audio Lifecycle & Khởi Động O23-O26 no timer bar", () => {
+  const g = game("O26", ["khoiDong", "vcnv", "tangToc", "veDich"], 4);
+  assert.equal(g.state.stage, "lobby");
+
+  // 1. game:start initiates intro standby with MC walkout active (entranceCompleted = false)
+  act(g, "game:start", {}, 1000);
+  assert.equal(g.state.stage, "playing");
+  assert.equal(g.state.introStandby, true);
+  assert.equal(g.state.entranceCompleted, false);
+  assert.ok(g.state.introTimer != null);
+  assert.equal(g.state.introTimer.startedAt, 1000);
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/contest_intro");
+
+  // 2. Host clicks kd:start -> intro standby and entrance are completely ended, round enters competition
+  act(g, "kd:start", {}, 5000);
+  assert.equal(g.state.introStandby, false);
+  assert.equal(g.state.entranceCompleted, true);
+  assert.equal(g.state.introTimer, null);
+
+  // 3. Hooks verification: opening audio tracks strictly do not loop
+  const hooksSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/hooks.ts"), "utf-8");
+  assert.ok(hooksSrc.includes("export const isIntroSeamlessLoopTrack"));
+  assert.ok(hooksSrc.includes("return false;"));
+
+  // 4. Graphics verification: EconovaLowerThirdV3 strictly excludes timer bar on O23-O26 Khởi Động
+  const graphicsSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/Vtv3BroadcastGraphics.tsx"), "utf-8");
+  assert.ok(graphicsSrc.includes("isKhoiDongO23ToO26 = state.currentRound === \"khoiDong\" && !showTimerClock;"));
+  assert.ok(graphicsSrc.includes("shouldShowTimerBar = !isKhoiDongO23ToO26 && (isVeDich || Boolean(timer));"));
 });
 
 

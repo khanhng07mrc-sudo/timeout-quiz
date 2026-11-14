@@ -944,7 +944,11 @@ export class OlympiaGame {
         st.introStandby = true;
         st.introTimer = mkTimer(86400000);
         startTimer(st.introTimer, now);
+        st.entranceCompleted = false;
+        st.entranceState = null;
         st.showStageGraphics = false;
+        st.studioCameraManual = false;
+        st.studioCamera = undefined;
         this.cue("6_NhacKhac/contest_intro");
         return OK;
       }
@@ -1077,12 +1081,13 @@ export class OlympiaGame {
         return OK;
       }
       case "intro:skip": {
-        if (st.introTimer) {
-          st.introTimer = null;
-          st.banner = st.currentRound ? ROUND_LABELS[st.currentRound] : null;
-          if (st.currentRound === "khoiDong") {
-            this.cue("1_KhoiDong/start_round");
-          }
+        st.introTimer = null;
+        st.introStandby = false;
+        st.entranceCompleted = true;
+        if (st.entranceState) st.entranceState.active = false;
+        st.banner = st.currentRound ? ROUND_LABELS[st.currentRound] : null;
+        if (st.currentRound === "khoiDong") {
+          this.cue("1_KhoiDong/start_round");
         }
         return OK;
       }
@@ -1844,6 +1849,9 @@ export class OlympiaGame {
         }
         // Auto-hide đồ hoạ sân khấu khi bắt đầu lượt thi
         st.introTimer = null;
+        st.introStandby = false;
+        st.entranceCompleted = true;
+        if (st.entranceState) st.entranceState.active = false;
         if (st.showStageGraphics) st.showStageGraphics = false;
         kd.phase = "question";
         kd.started = true;

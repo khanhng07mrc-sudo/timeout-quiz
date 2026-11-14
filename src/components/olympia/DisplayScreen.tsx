@@ -721,7 +721,7 @@ function KhoiDong({ state, serverNow }: P) {
             ) : null
           }
           timer={kdActiveTimer}
-          timerBadge={kdSecondsBadgeTimer}
+          timerBadge={null}
           showTimerClock={isGlobalClockRule}
           showScoreTab={true}
           runAnim={kd.started && kd.qIdx <= 0 && !hasRevealedQ}

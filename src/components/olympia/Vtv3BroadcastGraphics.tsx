@@ -3232,6 +3232,9 @@ export function EconovaLowerThirdV3({
     tabH: 42,
     clusterBottomW: isVeDich && qCount >= 4 ? 228 : 206,
   });
+  const isKhoiDongO23ToO26 = state.currentRound === "khoiDong" && !showTimerClock;
+  const shouldShowTimerBar = !isKhoiDongO23ToO26 && (isVeDich || Boolean(timer));
+
   const packStrip = isVeDich ? buildClusterPackStrip(shell, lt, qCount, 46) : null;
 
   const targetSeatId = buzzedSeatId ?? activeSeatId;
@@ -3260,7 +3263,7 @@ export function EconovaLowerThirdV3({
 
   const timerH = 22;
   const qTop = showScoreTab ? 48 : 16;
-  const qHeight = H - (showScoreTab ? 74 : 42);
+  const qHeight = H - (showScoreTab ? 48 : 16) - (shouldShowTimerBar ? 26 : 14);
   const qBottom = qTop + qHeight;
   const safeClusterX = isVeDich && lt.clusterX
     ? Math.min(lt.clusterX(qTop), lt.clusterX(qBottom)) - 18
@@ -3731,24 +3734,26 @@ export function EconovaLowerThirdV3({
             </div>
 
             {/* Exact Econova Show Silver Trapezoid Timer Housing (screen.html: 22px height, #d1d5db->#6b7280 housing, 8px black track, red left-to-right progress bar + pulsing white handle) */}
-            <EconovaSpecializedTimerBar
-              timer={timer || { totalMs: 15000, remainingMs: 15000, startedAt: null }}
-              serverNow={serverNow}
-              defaultTotalMs={5000}
-              height={timerH}
-              trackMargin="0 24px"
-              clipPath={timerClipPath}
-              clockRef={showTimerClock ? clockRef : undefined}
-              clockFormat="mmss"
-              className={`absolute z-20 pointer-events-none ${
-                runAnim ? "v3-anim-content" : ""
-              }`}
-              style={{
-                left: timerMinX,
-                bottom: 0,
-                width: timerBarW,
-              }}
-            />
+            {shouldShowTimerBar && (
+              <EconovaSpecializedTimerBar
+                timer={timer || { totalMs: 15000, remainingMs: 15000, startedAt: null }}
+                serverNow={serverNow}
+                defaultTotalMs={5000}
+                height={timerH}
+                trackMargin="0 24px"
+                clipPath={timerClipPath}
+                clockRef={showTimerClock ? clockRef : undefined}
+                clockFormat="mmss"
+                className={`absolute z-20 pointer-events-none ${
+                  runAnim ? "v3-anim-content" : ""
+                }`}
+                style={{
+                  left: timerMinX,
+                  bottom: 0,
+                  width: timerBarW,
+                }}
+              />
+            )}
           </div>
 
           {/* Tier 3 (Top / z-30): Navy chevrons + crisp white accent lines cutting the hex wedge */}

@@ -1006,6 +1006,11 @@ export function useOlympiaAudio(
           connectPanner(a, newChannel);
         } catch {}
       });
+      activeBgmSet.current.forEach((a) => {
+        try {
+          connectPanner(a, newChannel);
+        } catch {}
+      });
       if (bgm.current) {
         try {
           connectPanner(bgm.current, newChannel);

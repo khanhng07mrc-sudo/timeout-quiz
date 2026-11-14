@@ -397,29 +397,29 @@ export interface SlantedCells {
 }
 
 export function buildSlantedCells(spec: SlantedCellsSpec): SlantedCells {
-  const { xl, xr, y0, y1, n } = spec;
+  const { xl, xr, y0, y1, n, slope } = spec;
   const weights = spec.weights && spec.weights.length === n ? spec.weights : Array(n).fill(1);
   const total = weights.reduce((a, b) => a + b, 0);
+  const A0 = xl(y0);
+  const B0 = xr(y0);
 
-  // Symmetrical proportional interpolation at any y:
-  // Guarantees all contestant cells receive exact equal width at all heights,
-  // completely eliminating bloating of the final cell.
-  const seamX = (k: number, y: number) => {
-    if (k <= 0) return xl(y);
-    if (k >= n) return xr(y);
-    let acc = 0;
-    for (let j = 0; j < k; j++) acc += weights[j];
-    const frac = acc / total;
-    return xl(y) + frac * (xr(y) - xl(y));
-  };
+  // x position (at y0) of seam k, k = 1..n-1
+  const seam0: number[] = [A0];
+  let acc = 0;
+  for (let k = 0; k < n - 1; k++) {
+    acc += weights[k];
+    seam0.push(A0 + (acc / total) * (B0 - A0));
+  }
+  seam0.push(B0);
+  const seamX = (k: number, y: number) => seam0[k] - slope * (y - y0);
 
   const breaks = (spec.breaks ?? []).filter((b) => b > y0 + 1e-6 && b < y1 - 1e-6);
   const ys = [y0, ...breaks, y1];
 
   const cells: SlantedCell[] = [];
   for (let i = 0; i < n; i++) {
-    const left = (y: number) => seamX(i, y);
-    const right = (y: number) => seamX(i + 1, y);
+    const left = (y: number) => (i === 0 ? xl(y) : seamX(i, y));
+    const right = (y: number) => (i === n - 1 ? xr(y) : seamX(i + 1, y));
     const pts: Pt[] = [
       ...ys.map((y) => [left(y), y] as Pt),
       ...[...ys].reverse().map((y) => [right(y), y] as Pt),
@@ -476,34 +476,35 @@ export function buildLowerThirdLayout(
 
   if (mode === "KHOI_DONG") {
     // USER REQUIREMENT:
-    //   - Cells 0..N-2: true PARALLELOGRAMS (same width at top and bottom).
-    //   - Cell N-1 (last): TRAPEZOID whose longer edge equals the parallelogram width.
+    //   - First N-1 cells (0..N-2): true PARALLELOGRAMS (equal width at top and bottom).
+    //   - Last cell (N-1): TRAPEZOID whose longer edge (at bottom y=tabH) equals the parallelogram width.
     //
-    // Implementation:
-    //   Inner seams (k=1..N-1) are parallel slanted lines with the same slope as edgeL.
-    //   Each seam is offset by cellW (measured at y=0 / top) from the previous one.
-    //   Only the last cell's RIGHT boundary follows shell.edgeR (the shell V-shape),
-    //   which makes the last cell a trapezoid (wider at bottom inside the hexagon).
+    // Geometry derivation:
+    //   W_bottom = shell.edgeR(tabH) - shell.edgeL(tabH)
+    //   cellW = W_bottom / count
+    //   Seams k (1..count-1): seamX(k, y) = shell.edgeL(y) + k * cellW
+    //
+    //   Since shell.edgeL(y) slants with shell.slope, every inner seam has identical slope:
+    //   (seamX(k, 0) - seamX(k, tabH)) / tabH === shell.slope.
+    //   Cells 0..N-2: both edges slant with shell.slope -> perfect parallelograms of width cellW.
+    //   Cell N-1: left edge has width (count-1)*cellW from edgeL; right edge is shell.edgeR(y).
+    //   At bottom (tabH), its width is exactly W_bottom - (count-1)*cellW = cellW (longer edge = parallelogram width).
+    //   At top (0), its width is W_top - (count-1)*cellW < cellW (shorter edge conforming to hexagon slope).
     const y0 = 0;
     const y1 = tabH;
-    const W_top = shell.edgeR(y0) - shell.edgeL(y0);
-    const cellW = W_top / count;
-    // Slope of the left edge (same slant direction for all inner parallelogram seams)
-    const edgeLSlope = y1 > y0 ? (shell.edgeL(y1) - shell.edgeL(y0)) / (y1 - y0) : slope;
+    const W_bottom = shell.edgeR(y1) - shell.edgeL(y1);
+    const cellW = W_bottom / count;
 
-    // Parallelogram seam: same slope as left edge, offset by k * cellW at y=y0.
-    // k=0 → shell.edgeL(y), k=count → shell.edgeR(y), 1..count-1 → parallelogram seams.
     const seamX = (k: number, y: number): number => {
       if (k <= 0) return shell.edgeL(y);
       if (k >= count) return shell.edgeR(y);
-      // Parallelogram: constant width offset from edgeL, shifted by slope from y0
-      return shell.edgeL(y0) + k * cellW + (y - y0) * edgeLSlope;
+      return shell.edgeL(y) + k * cellW;
     };
 
     const cells: SlantedCell[] = [];
     for (let i = 0; i < count; i++) {
-      const left = (y: number) => seamX(i, y);
-      const right = (y: number) => seamX(i + 1, y);
+      const left = (y: number) => (i === 0 ? shell.edgeL(y) : seamX(i, y));
+      const right = (y: number) => (i === count - 1 ? shell.edgeR(y) : seamX(i + 1, y));
       const pts: Pt[] = [
         [left(y0), y0],
         [left(y1), y1],

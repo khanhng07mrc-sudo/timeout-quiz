@@ -367,9 +367,10 @@ export default function OlympiaAudioManagerDrawer({
     stopAllAudio();
 
     const folder = activeTab;
-    let url = `/olympia-audio/${folder}/${id}.mp3`;
-    if (channel === "left") url = `/olympia-audio/${folder}/${id}_left.mp3`;
-    else if (channel === "right") url = `/olympia-audio/${folder}/${id}_right.mp3`;
+    // Always load the base stereo file. Dual-mono channel routing (left/right/both)
+    // is performed dynamically in real time via connectPanner (WebAudio ChannelSplitter/Merger),
+    // ensuring switching channels mid-playback seamlessly re-routes without reloading or restarting.
+    const url = `/olympia-audio/${folder}/${id}.mp3`;
 
     const audio = new Audio(url);
 
@@ -385,27 +386,6 @@ export default function OlympiaAudioManagerDrawer({
     };
 
     audio.onerror = () => {
-      // Fallback to standard file if channel suffix variant wasn't found
-      if (channel !== "both" && url !== `/olympia-audio/${folder}/${id}.mp3`) {
-        const stdAudio = new Audio(`/olympia-audio/${folder}/${id}.mp3`);
-        // Apply panner to fallback element (fresh element, WeakMap will cache it)
-        connectPanner(stdAudio, channel);
-        activeAudiosRef.current.set(id, stdAudio);
-        stdAudio.onended = () => {
-          activeAudiosRef.current.delete(id);
-          setPlayingId((curr) => (curr === id ? null : curr));
-        };
-        stdAudio.onerror = () => {
-          activeAudiosRef.current.delete(id);
-          setPlayingId((curr) => (curr === id ? null : curr));
-        };
-        stdAudio.play().catch(() => {
-          activeAudiosRef.current.delete(id);
-          setPlayingId((curr) => (curr === id ? null : curr));
-        });
-        return;
-      }
-
       activeAudiosRef.current.delete(id);
       setPlayingId((curr) => (curr === id ? null : curr));
     };

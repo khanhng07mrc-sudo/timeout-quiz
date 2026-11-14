@@ -280,11 +280,19 @@ export default function OlympiaAudioManagerDrawer({
   // and output equally to BOTH ears (Left & Right channels) so clean BGM/SFX can be heard with both ears.
   const connectPanner = useCallback(
     (a: HTMLAudioElement, ch: "both" | "left" | "right") => {
-      if (ch === "both") return;
       const ctx = getAudioContext();
       if (!ctx) return;
       try {
         const source = getOrCreateMediaSource(a, ctx);
+        try {
+          source.disconnect();
+        } catch {}
+
+        if (ch === "both") {
+          source.connect(ctx.destination);
+          return;
+        }
+
         const splitter = ctx.createChannelSplitter(2);
         const merger = ctx.createChannelMerger(2);
         source.connect(splitter);
@@ -306,9 +314,12 @@ export default function OlympiaAudioManagerDrawer({
   );
 
   const handleSetChannel = (ch: "both" | "left" | "right") => {
+    // Immediately stop all audio when switching channels so previous mode audio never clashes
+    stopAllAudio();
     setChannel(ch);
     if (typeof window !== "undefined") {
       localStorage.setItem("olympia_audio_channel", ch);
+      window.dispatchEvent(new CustomEvent("olympia_audio_channel_change", { detail: { channel: ch } }));
     }
   };
 
@@ -342,8 +353,14 @@ export default function OlympiaAudioManagerDrawer({
   };
 
   const playSound = (id: string) => {
-    // Stop any existing instance of this specific sound
-    stopSound(id);
+    // If clicking the currently playing sound, stop it (toggle off)
+    if (playingId === id) {
+      stopSound(id);
+      return;
+    }
+
+    // Stop all playing audio first so sounds do not clash, overlap, or leak
+    stopAllAudio();
 
     const folder = activeTab;
     let url = `/olympia-audio/${folder}/${id}.mp3`;
@@ -401,6 +418,7 @@ export default function OlympiaAudioManagerDrawer({
       try {
         existing.pause();
         existing.currentTime = 0;
+        existing.src = "";
       } catch {}
       activeAudiosRef.current.delete(id);
     }
@@ -412,6 +430,7 @@ export default function OlympiaAudioManagerDrawer({
       try {
         audio.pause();
         audio.currentTime = 0;
+        audio.src = "";
       } catch {}
     });
     activeAudiosRef.current.clear();
@@ -564,7 +583,10 @@ export default function OlympiaAudioManagerDrawer({
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => {
+                  stopAllAudio();
+                  setActiveTab(tab.id as any);
+                }}
                 className={`py-2.5 border-b-2 transition truncate px-1 ${
                   active
                     ? "border-sky-400 text-sky-300 bg-sky-500/10 font-black"

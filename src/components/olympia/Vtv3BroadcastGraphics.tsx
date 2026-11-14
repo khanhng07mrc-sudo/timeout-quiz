@@ -1450,12 +1450,8 @@ export function VcnvAnswerRevealGraphic({
             100% { transform: translateX(0); opacity: 1; }
           }
           ${rowClipCss}
-          @keyframes v3-row-text {
-            0% { opacity: 0; transform: translateY(4px); }
-            100% { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes v3-row-answer {
-            0% { opacity: 0; transform: translateY(6px); }
+          @keyframes v3-row-content {
+            0% { opacity: 0; transform: translateY(-8px); }
             100% { opacity: 1; transform: translateY(0); }
           }
           .v3-row-wing-l-g1 {
@@ -1479,20 +1475,15 @@ export function VcnvAnswerRevealGraphic({
           .v3-row-hex {
             animation: v3-row-hex 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
-          .v3-row-text {
-            animation: v3-row-text 0.25s ease-out both;
-          }
-          .v3-row-answer {
-            animation: v3-row-answer 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+          .v3-row-content {
+            animation: v3-row-content 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
           }
         `}</style>
         {/* Only pure graphic bars - Expanded to ~86-88% broadcast viewport width */}
         <div className={`relative z-10 w-[88%] max-w-[1640px] flex flex-col ${rowGapClass} items-center justify-center py-2`}>
           {seats.map((seat, idx) => {
             const answerText = v.answers?.[seat.id]?.text || "";
-            const rowDelay = idx * 0.28;
-            const nameDelay = (rowDelay + 0.15).toFixed(3);
-            const ansDelay = (rowDelay + 0.15).toFixed(3);
+            const rowDelay = idx * 0.14;
 
             const curRow = v.rows[v.currentRow];
             const isCorrect = state.vcnv?.revealedCorrectAnswer && curRow?.answer
@@ -1536,24 +1527,24 @@ export function VcnvAnswerRevealGraphic({
                     </defs>
 
                     {/* Left 3-layer cyan wings */}
-                    <g className="v3-row-wing-l-g1" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                    <g className="v3-row-wing-l-g1" style={{ animationDelay: `${rowDelay}s` }}>
                       <path d={toSvgPath(shell.alcPts)} fill={`url(#vcnvWing-${idx})`} opacity={0.35} />
                     </g>
-                    <g className="v3-row-wing-l-g2" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                    <g className="v3-row-wing-l-g2" style={{ animationDelay: `${rowDelay}s` }}>
                       <path d={toSvgPath(shell.alcPts)} fill={`url(#vcnvWing-${idx})`} opacity={0.65} />
                     </g>
-                    <g className="v3-row-wing-l-l3" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                    <g className="v3-row-wing-l-l3" style={{ animationDelay: `${rowDelay}s` }}>
                       <path d={toSvgPath(shell.alcPts)} fill={`url(#vcnvWing-${idx})`} opacity={1.0} />
                     </g>
 
                     {/* Right 3-layer cyan wings */}
-                    <g className="v3-row-wing-r-l3" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                    <g className="v3-row-wing-r-l3" style={{ animationDelay: `${rowDelay}s` }}>
                       <path d={toSvgPath(shell.arcPts)} fill={`url(#vcnvWing-${idx})`} opacity={1.0} />
                     </g>
-                    <g className="v3-row-wing-r-g2" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                    <g className="v3-row-wing-r-g2" style={{ animationDelay: `${rowDelay}s` }}>
                       <path d={toSvgPath(shell.arcPts)} fill={`url(#vcnvWing-${idx})`} opacity={0.65} />
                     </g>
-                    <g className="v3-row-wing-r-g1" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                    <g className="v3-row-wing-r-g1" style={{ animationDelay: `${rowDelay}s` }}>
                       <path d={toSvgPath(shell.arcPts)} fill={`url(#vcnvWing-${idx})`} opacity={0.35} />
                     </g>
                   </svg>
@@ -1563,7 +1554,7 @@ export function VcnvAnswerRevealGraphic({
                     className="v3-row-hex absolute inset-0"
                     style={{
                       zIndex: 10,
-                      animationDelay: `${rowDelay.toFixed(3)}s`,
+                      animationDelay: `${rowDelay}s`,
                       clipPath: `polygon(${toPoly(shell.bgPts)})`,
                     }}
                   >
@@ -1606,8 +1597,8 @@ export function VcnvAnswerRevealGraphic({
                       {/* Hexagon outer border */}
                       <path d={toSvgPath(shell.bgPts)} fill="none" stroke="#d1d5db" strokeWidth={2} />
 
-                      {/* Name Overlay: Fades in as row opens */}
-                      <g className="v3-row-text" style={{ animationDelay: `${nameDelay}s` }}>
+                      {/* Unified Content Overlay: Name & Answer fade in together from top down */}
+                      <g className="v3-row-content" style={{ animationDelay: `${rowDelay}s` }}>
                         <text
                           x={cols.cells[0].cx}
                           y={cols.cells[0].cy + textBaselineOffset}
@@ -1621,11 +1612,8 @@ export function VcnvAnswerRevealGraphic({
                         >
                           {seat.name}
                         </text>
-                      </g>
 
-                      {/* Answer Overlay: Fades in ~2s after reveal starts, staggered by contestant order */}
-                      {!isWaitingAnswer && (
-                        <g className="v3-row-answer" style={{ animationDelay: `${ansDelay}s` }}>
+                        {!isWaitingAnswer && (
                           <text
                             x={cols.cells[1].cx}
                             y={cols.cells[1].cy + textBaselineOffset}
@@ -1639,8 +1627,8 @@ export function VcnvAnswerRevealGraphic({
                           >
                             {answerText || ""}
                           </text>
-                        </g>
-                      )}
+                        )}
+                      </g>
                     </svg>
                   </div>
 
@@ -2050,11 +2038,12 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
           .v3-tt-hex {
             animation: v3-tt-hex 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
-          .v3-tt-text {
-            animation: v3-tt-text 0.25s ease-out both;
+          @keyframes v3-tt-content {
+            0% { opacity: 0; transform: translateY(-8px); }
+            100% { opacity: 1; transform: translateY(0); }
           }
-          .v3-tt-answer {
-            animation: v3-tt-answer 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+          .v3-tt-content {
+            animation: v3-tt-content 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
           }
         `}</style>
         {/* Only pure graphic bars - Expanded to ~86-88% broadcast viewport width */}
@@ -2063,9 +2052,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             const seat = state.seats[item.seat];
             const sec = item.noAnswer ? "0.00" : (item.ms / 1000).toFixed(2);
             const answerText = item.noAnswer ? "" : (item.answer || "");
-            const rowDelay = idx * 0.28;
-            const nameDelay = (rowDelay + 0.15).toFixed(3);
-            const ansDelay = (rowDelay + 0.15).toFixed(3);
+            const rowDelay = idx * 0.14;
 
             const isGradedOrRevealed = Boolean(tt.revealedCorrectAnswer || tt.phase === "graded");
             const isCorrect = isGradedOrRevealed
@@ -2111,24 +2098,24 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                     </defs>
 
                     {/* Left 3-layer cyan wings */}
-                    <g className="v3-tt-wing-l-g1" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                    <g className="v3-tt-wing-l-g1" style={{ animationDelay: `${rowDelay}s` }}>
                       <path d={toSvgPath(shell.alcPts)} fill={`url(#ttWing-${idx})`} opacity={0.35} />
                     </g>
-                    <g className="v3-tt-wing-l-g2" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                    <g className="v3-tt-wing-l-g2" style={{ animationDelay: `${rowDelay}s` }}>
                       <path d={toSvgPath(shell.alcPts)} fill={`url(#ttWing-${idx})`} opacity={0.65} />
                     </g>
-                    <g className="v3-tt-wing-l-l3" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                    <g className="v3-tt-wing-l-l3" style={{ animationDelay: `${rowDelay}s` }}>
                       <path d={toSvgPath(shell.alcPts)} fill={`url(#ttWing-${idx})`} opacity={1.0} />
                     </g>
 
                     {/* Right 3-layer cyan wings */}
-                    <g className="v3-tt-wing-r-l3" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                    <g className="v3-tt-wing-r-l3" style={{ animationDelay: `${rowDelay}s` }}>
                       <path d={toSvgPath(shell.arcPts)} fill={`url(#ttWing-${idx})`} opacity={1.0} />
                     </g>
-                    <g className="v3-tt-wing-r-g2" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                    <g className="v3-tt-wing-r-g2" style={{ animationDelay: `${rowDelay}s` }}>
                       <path d={toSvgPath(shell.arcPts)} fill={`url(#ttWing-${idx})`} opacity={0.65} />
                     </g>
-                    <g className="v3-tt-wing-r-g1" style={{ animationDelay: `${rowDelay.toFixed(3)}s` }}>
+                    <g className="v3-tt-wing-r-g1" style={{ animationDelay: `${rowDelay}s` }}>
                       <path d={toSvgPath(shell.arcPts)} fill={`url(#ttWing-${idx})`} opacity={0.35} />
                     </g>
                   </svg>
@@ -2138,7 +2125,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                     className="v3-tt-hex absolute inset-0"
                     style={{
                       zIndex: 10,
-                      animationDelay: `${rowDelay.toFixed(3)}s`,
+                      animationDelay: `${rowDelay}s`,
                       clipPath: `polygon(${toPoly(shell.bgPts)})`,
                     }}
                   >
@@ -2188,8 +2175,8 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                       {/* Hexagon outer border */}
                       <path d={toSvgPath(shell.bgPts)} fill="none" stroke="#d1d5db" strokeWidth={2} />
 
-                      {/* Name Overlay: Fades in as row opens */}
-                      <g className="v3-tt-text" style={{ animationDelay: `${nameDelay}s` }}>
+                      {/* Unified Content Overlay: Name, Answer & Time all fade in together from top down */}
+                      <g className="v3-tt-content" style={{ animationDelay: `${rowDelay}s` }}>
                         <text
                           x={cols.cells[0].cx}
                           y={cols.cells[0].cy + textBaselineOffset}
@@ -2203,10 +2190,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                         >
                           {seat?.name || `Thí sinh ${item.seat + 1}`}
                         </text>
-                      </g>
 
-                      {/* Answer & Time Overlay: Fades in ~2s after reveal starts, staggered by ranking order */}
-                      <g className="v3-tt-answer" style={{ animationDelay: `${ansDelay}s` }}>
                         <text
                           x={cols.cells[1].cx}
                           y={cols.cells[1].cy + textBaselineOffset}
@@ -3744,9 +3728,7 @@ export function EconovaLowerThirdV3({
                 clipPath={timerClipPath}
                 clockRef={showTimerClock ? clockRef : undefined}
                 clockFormat="mmss"
-                className={`absolute z-20 pointer-events-none ${
-                  runAnim ? "v3-anim-content" : ""
-                }`}
+                className="absolute z-20 pointer-events-none"
                 style={{
                   left: timerMinX,
                   bottom: 0,
@@ -3895,9 +3877,11 @@ export function VeDichSlantedGridGraphic({
   }
 
   const isV3Arrow = state.themeMode !== "o26_classic";
-  const W = 1080;
-  const H = 360;
-  const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick: 32, cThick: 24, pad: 36 });
+  const W = 1000;
+  const H = 280;
+  const cThick = Math.round(200 * 0.16);
+  const pad = Math.round(cThick * 1.5);
+  const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick: 32, cThick: 32, pad });
   const cells = buildVeDichGrid(shell, spec);
 
   if (!isV3Arrow) {
@@ -3947,12 +3931,11 @@ export function VeDichSlantedGridGraphic({
       </div>
 
       {/* Main Hexagonal Grid Chamber: 100% Geometry Parity with Olympia 26 Wiki */}
-      <div className="relative w-full max-w-3xl flex items-center justify-center">
+      <div className="relative w-full max-w-4xl flex items-center justify-center">
         <V3ArrowShell
           shell={shell}
           animate={animate}
           closing={closing}
-          hideOutline
           bodySvg={
             <>
               <defs>

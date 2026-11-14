@@ -2522,7 +2522,21 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
 
           <button
             type="button"
-            onClick={() => call("vcnv:timer")}
+            onClick={() => {
+              const timer = state.vcnv?.timer;
+              const isRunning = Boolean(
+                timer &&
+                timer.startedAt != null &&
+                Date.now() - timer.startedAt < timer.remainingMs
+              );
+              if (isRunning) {
+                if (window.confirm("Thời gian 15s đang chạy! Bạn có chắc chắn muốn đếm lại từ đầu?")) {
+                  call("vcnv:timer");
+                }
+              } else {
+                call("vcnv:timer");
+              }
+            }}
             className="w-full py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-black shadow cursor-pointer uppercase tracking-wider"
           >
             ⏳ Đếm 15s (Space)
@@ -3066,7 +3080,21 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
 
           <button
             type="button"
-            onClick={() => call("tt:timer")}
+            onClick={() => {
+              const timer = state.tangToc?.timer;
+              const isRunning = Boolean(
+                timer &&
+                timer.startedAt != null &&
+                Date.now() - timer.startedAt < timer.remainingMs
+              );
+              if (isRunning) {
+                if (window.confirm("Thời gian Tăng tốc đang chạy! Bạn có chắc chắn muốn đếm lại từ đầu?")) {
+                  call("tt:timer");
+                }
+              } else {
+                call("tt:timer");
+              }
+            }}
             className="w-full py-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-sm font-black shadow-lg shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
           >
             <span>Bắt đầu đếm giờ (Space)</span>
@@ -3421,29 +3449,23 @@ function VeDichDeck({
             </button>
           </div>
 
-          <div className="w-full grid grid-cols-3 gap-1.5">
+          <div className="w-full grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => call("vd:correct")}
-              className="py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black shadow cursor-pointer"
+              className="py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow cursor-pointer uppercase tracking-wider flex items-center justify-center gap-1"
             >
-              ✔ ĐÚNG (Enter)
+              <span>✔</span>
+              <span>ĐÚNG (Enter)</span>
             </button>
             <button
               type="button"
               onClick={() => call("vd:openSteal")}
-              className="py-1.5 rounded-lg bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-[11px] font-black shadow cursor-pointer"
-              title="Trả lời sai & Mở ngay 5s cướp điểm (Giữ ẩn đáp án)"
+              className="py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-black shadow cursor-pointer uppercase tracking-wider flex items-center justify-center gap-1"
+              title="Trả lời sai & Mở quyền cướp điểm 5s cho các thí sinh còn lại (cho phép nhấn nhiều lần phòng ngừa lỗi)"
             >
-              ✘ SAI & MỞ CƯỚP 5S
-            </button>
-            <button
-              type="button"
-              onClick={() => call("vd:wrong")}
-              className="py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-rose-200 text-[11px] font-bold shadow cursor-pointer"
-              title="Trả lời sai và hiện đáp án ngay (không mở cướp)"
-            >
-              ✘ Sai (Hiện ĐA)
+              <span>✘</span>
+              <span>SAI & MỞ CƯỚP 5S (Bksp)</span>
             </button>
           </div>
 

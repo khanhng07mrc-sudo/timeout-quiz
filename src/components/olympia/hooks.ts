@@ -717,9 +717,8 @@ export function useOlympiaAudio(
         (typeof window !== "undefined"
           ? (localStorage.getItem("olympia_audio_channel") as any) || "both"
           : "both");
-      if (activePan === "both") return;
       const ctx = getAudioContext();
-      if (!ctx?.createStereoPanner) return;
+      if (!ctx) return;
       try {
         // Reuse cached MediaElementAudioSourceNode (createMediaElementSource throws if called twice)
         let source: MediaElementAudioSourceNode;
@@ -729,6 +728,16 @@ export function useOlympiaAudio(
           source = ctx.createMediaElementSource(a);
           mediaSourceMap.current.set(a, source);
         }
+
+        try {
+          source.disconnect();
+        } catch {}
+
+        if (activePan === "both") {
+          source.connect(ctx.destination);
+          return;
+        }
+
         // Dual-mono channel routing: route selected channel (Left or Right) to BOTH speakers (Center)
         const splitter = ctx.createChannelSplitter(2);
         const merger = ctx.createChannelMerger(2);
@@ -971,6 +980,32 @@ export function useOlympiaAudio(
       activeAudioSet.current.clear();
     }
   }, [enabled, stopBgm]);
+
+  // Lắng nghe sự kiện đổi chế độ kênh âm thanh (Đều 2 bên / Lệch trái / Lệch phải) để cập nhật panner tức thì
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleChannelChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ channel: "both" | "left" | "right" }>;
+      const newChannel =
+        customEvent.detail?.channel ||
+        (localStorage.getItem("olympia_audio_channel") as any) ||
+        "both";
+      activeAudioSet.current.forEach((a) => {
+        try {
+          connectPanner(a, newChannel);
+        } catch {}
+      });
+      if (bgm.current) {
+        try {
+          connectPanner(bgm.current, newChannel);
+        } catch {}
+      }
+    };
+    window.addEventListener("olympia_audio_channel_change", handleChannelChange);
+    return () => {
+      window.removeEventListener("olympia_audio_channel_change", handleChannelChange);
+    };
+  }, [connectPanner]);
 
   // Tự động khôi phục BGM mượt mà khi quay lại tab / focus cửa sổ, không khởi động lại bài hát
   useEffect(() => {

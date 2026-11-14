@@ -4067,10 +4067,10 @@ export function VeDichWalkingContestant({
 
   // Track turn + high-level mode ("idle" | "onStage" | "seatDone") so sub-phase changes
   // (choosing -> packageReady -> thinking -> result -> stealing) NEVER restart the walk!
-  const lastStateRef = useRef<{ turnIdx: number; mode: string; startedAt: number }>({
+  const lastStateRef = useRef<{ turnIdx: number; mode: string; startedPerf: number }>({
     turnIdx: -1,
     mode: "idle",
-    startedAt: 0,
+    startedPerf: 0,
   });
 
   const targetCenterPos: [number, number, number] = [0.0, 0.188, -0.9];
@@ -4081,19 +4081,18 @@ export function VeDichWalkingContestant({
     const curTurn = vd?.turnIdx ?? 0;
     const curPhase = vd?.phase ?? "idle";
     const mode = vd?.onStage ? "onStage" : curPhase === "seatDone" ? "seatDone" : "idle";
-    const now = serverNow ? serverNow() : Date.now();
+    const perfNow = typeof performance !== "undefined" ? performance.now() : Date.now();
 
     if (curTurn !== lastStateRef.current.turnIdx || mode !== lastStateRef.current.mode) {
       lastStateRef.current = {
         turnIdx: curTurn,
         mode,
-        startedAt: mode === "onStage" && vd?.onStageAt ? vd.onStageAt : now,
+        startedPerf: perfNow,
       };
     }
 
-    const walkBaseTime = mode === "onStage" && vd?.onStageAt ? vd.onStageAt : lastStateRef.current.startedAt;
-    const elapsed = Math.max(0, now - walkBaseTime) / 1000;
-    const DURATION = 7.5; // Natural, realistic 7.5-second walk to center stage
+    const elapsed = Math.max(0, perfNow - lastStateRef.current.startedPerf) / 1000;
+    const DURATION = 4.5; // Smooth, realistic 4.5s walk from contestant desk to center dais
 
     let walkProgress = 1.0;
     let walkingNow = false;

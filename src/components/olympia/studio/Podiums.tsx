@@ -1736,9 +1736,7 @@ export function ContestantPodium({
       <mesh position={[0, 0.20, 0.02]}>
         <boxGeometry args={[1.06, 0.24, 0.74]} />
         <meshStandardMaterial
-          color={isRed ? "#ffd6dd" : "#f8fafc"}
-          emissive={isRed ? "#5c0817" : "#000000"}
-          emissiveIntensity={isRed ? 0.45 : 0}
+          color="#f8fafc"
           metalness={0.40}
           roughness={0.18}
           envMapIntensity={1.8}
@@ -1749,9 +1747,7 @@ export function ContestantPodium({
       <mesh position={[-0.49, 0.54, 0.02]}>
         <boxGeometry args={[0.08, 0.44, 0.74]} />
         <meshStandardMaterial
-          color={isRed ? "#ffd6dd" : "#f8fafc"}
-          emissive={isRed ? "#5c0817" : "#000000"}
-          emissiveIntensity={isRed ? 0.45 : 0}
+          color="#f8fafc"
           metalness={0.40}
           roughness={0.18}
         />
@@ -1760,9 +1756,7 @@ export function ContestantPodium({
       <mesh position={[0.49, 0.54, 0.02]}>
         <boxGeometry args={[0.08, 0.44, 0.74]} />
         <meshStandardMaterial
-          color={isRed ? "#ffd6dd" : "#f8fafc"}
-          emissive={isRed ? "#5c0817" : "#000000"}
-          emissiveIntensity={isRed ? 0.45 : 0}
+          color="#f8fafc"
           metalness={0.40}
           roughness={0.18}
         />
@@ -1772,9 +1766,7 @@ export function ContestantPodium({
       <mesh position={[0, 0.83, 0.02]}>
         <boxGeometry args={[1.06, 0.14, 0.74]} />
         <meshStandardMaterial
-          color={isRed ? "#ffd6dd" : "#f8fafc"}
-          emissive={isRed ? "#5c0817" : "#000000"}
-          emissiveIntensity={isRed ? 0.45 : 0}
+          color="#f8fafc"
           metalness={0.40}
           roughness={0.18}
         />
@@ -1808,15 +1800,6 @@ export function ContestantPodium({
         isEntrancePhase={isEntrancePhase}
         screenMode={screenMode}
       />
-
-      {/* Red illumination washing the entire podium when buzzed or active in solo KD */}
-      {isRed && (
-        <>
-          <pointLight position={[0, 0.54, 0.65]} color="#ff0033" intensity={12.0} distance={4.0} />
-          <pointLight position={[0, 1.10, 0.20]} color="#ff2244" intensity={8.0} distance={3.0} />
-          <pointLight position={[0, 0.12, 0.55]} color="#ff0033" intensity={7.0} distance={2.5} />
-        </>
-      )}
 
       {/* ── 4. RECESSED GRAPHITE DESK SURFACE & TOUCH TABLET ── */}
       <mesh position={[0, 0.915, -0.04]} rotation={[-0.18, 0, 0]}>

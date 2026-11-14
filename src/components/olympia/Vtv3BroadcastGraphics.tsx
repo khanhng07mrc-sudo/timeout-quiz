@@ -3553,10 +3553,7 @@ export function EconovaLowerThirdV3({
                   const displayText =
                     isVeDich && isActive ? seat.name : `${seat.name} (${seat.score})`;
 
-                  const tabSafeW =
-                    !isVeDich && tab.i === n - 1
-                      ? Math.max(20, tab.xr0 - tab.xl0)
-                      : tab.width;
+                  const tabSafeW = tab.width;
                   const maxLabelW = Math.max(16, tabSafeW - (n <= 4 ? 14 : 10));
                   const baseTabFontSize = n <= 4 ? 24 : 21;
 

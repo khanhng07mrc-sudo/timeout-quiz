@@ -64,14 +64,16 @@ export function getContestantCameraPreset(seatId: number, totalSeats: number = 4
   const nx = Math.cos(phi);
   const nz = Math.sin(phi);
 
-  // Distance from camera to podium (2.45m for direct medium close-up, perfectly centered on podium & contestant)
-  const dist = 2.45;
+  // Broadcast Medium Close-Up (MCU / Bust Shot) focused on contestant's chest & head:
+  // - Closer distance (1.92m vs 2.45m) cleanly cuts adjacent contestant podiums out of the frame (no '1' or 'T' peeking at corners).
+  // - Elevated target (1.40m vs 1.25m) and camera height (1.48m vs 1.34m) tucks the desk and podium base safely below the 2D Lower-Third banner.
+  const dist = 1.92;
   const camX = +(px + dist * nx).toFixed(3);
-  const camY = 1.34;
+  const camY = 1.48;
   const camZ = +(pz + dist * nz).toFixed(3);
 
   const targetX = +px.toFixed(3);
-  const targetY = 1.25;
+  const targetY = 1.40;
   const targetZ = +pz.toFixed(3);
 
   return {

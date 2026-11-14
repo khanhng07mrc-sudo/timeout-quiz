@@ -48,11 +48,6 @@ export function isSeatBuzzedIn3D(seatId: number, state: OlympiaState | null | un
     case "khoiDong": {
       const kd = state.khoiDong;
       if (!kd || kd.phase === "segmentDone" || kd.phase === "idle") return false;
-      const seg = kd.segments?.[kd.segIdx];
-      // In Khởi động riêng (solo segment): the active contestant's podium glows red throughout their turn
-      if (seg?.kind === "solo") {
-        return Boolean(kd.started) && seg.seat === seatId;
-      }
       // In Khởi động chung: fastest buzzed seat glows red
       return kd.buzzedSeat === seatId;
     }

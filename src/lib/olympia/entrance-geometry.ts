@@ -36,8 +36,8 @@ export const STAGE_CENTER_Z = -0.5;
 export const PODIUM_ARC_RADIUS = 6.65;
 export const PODIUM_PLINTH_WIDTH = 1.20;
 export const PODIUM_PLINTH_DEPTH = 0.88;
-export const PODIUM_STAND_BACK_OFFSET = 0.42;
-export const DESK_STAND_RADIUS = PODIUM_ARC_RADIUS + PODIUM_STAND_BACK_OFFSET; // 7.07m
+export const PODIUM_STAND_BACK_OFFSET = 0.48;
+export const DESK_STAND_RADIUS = PODIUM_ARC_RADIUS + PODIUM_STAND_BACK_OFFSET; // 7.13m
 
 // Rear corridor sits between podium plinth backs (R = 7.09m) / seated contestants (R = 7.07m)
 // and Raised Dais outer edge (R = 7.60m), well clear of Science Wall (R = 8.60m).

@@ -12121,11 +12121,11 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
            Cột trái: Màn hình Chiếu (trên) + Điện thoại thí sinh (dưới)
            Cột phải: Bàn điều khiển Olympia Host Console (full height)
            ══════════════════════════════════════════════════════════════════ */
-        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2 overflow-hidden animate-loaded-reveal pb-14 lg:pb-0 h-[calc(100vh-68px)] max-h-[calc(100vh-68px)]">
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2 overflow-hidden animate-loaded-reveal pb-14 lg:pb-0 h-full">
           {/* CỘT TRÁI (Studio Left: Màn hình chiếu TV 3D + Thí sinh) */}
           <div className="w-full lg:w-[48%] xl:w-[50%] h-full flex flex-col gap-2 min-h-0 shrink-0">
-            {/* 1. Màn hình Chiếu Trường Quay (Aspect 16:9, ~52% chiều cao) */}
-            <div className="flex-1 min-h-[220px] max-h-[55%] glass rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-black">
+            {/* 1. Màn hình Chiếu Trường Quay (Aspect 16:9) */}
+            <div className="flex-1 min-h-[200px] glass rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-black">
               <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />

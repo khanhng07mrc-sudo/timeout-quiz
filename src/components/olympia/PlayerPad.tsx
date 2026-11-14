@@ -440,12 +440,18 @@ export default function PlayerPad({
       ? state.cauHoiPhu?.timer
       : null;
 
+  // Determine if current state is Solo Khởi Động (no buzzer/input required, single status line)
+  const isSoloKd =
+    state.stage === "playing" &&
+    state.currentRound === "khoiDong" &&
+    state.khoiDong?.segments[state.khoiDong.segIdx]?.kind === "solo";
+
   return (
-    <div className="fixed inset-0 w-full h-full min-h-screen overflow-hidden bg-gradient-to-b from-[#070b1e] via-[#0c1433] to-[#040611] text-white p-2 sm:p-3 flex flex-col justify-between gap-2 select-none">
+    <div className="fixed inset-0 w-full h-full overflow-hidden bg-gradient-to-b from-[#070b1e] via-[#0c1433] to-[#040611] text-white p-2 sm:p-3 flex flex-col justify-between gap-2 select-none">
       {/* ═══════════════════════════════════════════════════════════════════════
-          TOP 70% DISPLAY AREA (Header + 4-Contestant Score Cards + Question Box)
+          TOP DISPLAY AREA (Header + 4-Contestant Score Cards + Question Box)
          ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="flex-[7] min-h-0 flex flex-col gap-2 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
         {/* 1. Round Header + Sub-status + Bell Test Mode Indicator */}
         <div className="shrink-0 flex items-center justify-between gap-2 rounded-xl bg-slate-950/85 border border-white/15 px-3 py-1.5">
           <div className="flex items-center gap-2 min-w-0">
@@ -540,8 +546,8 @@ export default function PlayerPad({
         </div>
 
         {/* 3. Fixed Question & Media Box */}
-        <div className="flex-1 min-h-0 rounded-2xl bg-slate-950/85 border-2 border-white/15 p-3 sm:p-5 flex flex-col justify-between relative overflow-hidden shadow-inner">
-          {/* VCNV sub-tabs inside Question Box so bottom 30% never shifts */}
+        <div className="flex-1 min-h-[90px] rounded-2xl bg-slate-950/85 border-2 border-white/15 p-2.5 sm:p-4 flex flex-col justify-between relative overflow-hidden shadow-inner">
+          {/* VCNV sub-tabs inside Question Box so bottom interaction zone never shifts */}
           {state.stage === "playing" && state.currentRound === "vcnv" && state.vcnv && (
             <div className="shrink-0 flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/10">
               <div className="flex items-center gap-1.5">
@@ -577,7 +583,7 @@ export default function PlayerPad({
           )}
 
           {/* Main Question / Content Area */}
-          <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center overflow-y-auto no-scrollbar px-2">
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center overflow-y-auto no-scrollbar px-2 py-1">
             <QuestionBoxContent
               state={state}
               seatId={me.id}
@@ -587,16 +593,20 @@ export default function PlayerPad({
           </div>
 
           {/* Bottom Timer Bar inside Question Box */}
-          <div className="shrink-0 pt-2">
+          <div className="shrink-0 pt-1">
             {activeTimer && <Timer timer={activeTimer} serverNow={serverNow} />}
           </div>
         </div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          BOTTOM 30% FIXED INTERACTION AREA (Buzzer / Answer Input / CNV Bell)
+          BOTTOM FIXED INTERACTION AREA (Buzzer / Answer Input / CNV Bell)
          ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="h-[30%] min-h-[160px] max-h-[225px] shrink-0 rounded-2xl bg-slate-950/95 border-2 border-white/15 px-3 sm:px-6 py-2.5 flex items-center justify-center relative overflow-hidden shadow-2xl">
+      <div
+        className={`shrink-0 rounded-2xl bg-slate-950/95 border-2 border-white/15 px-3 sm:px-6 py-2 flex items-center justify-center relative overflow-hidden shadow-2xl ${
+          isSoloKd ? "h-auto min-h-[50px]" : "h-[28%] min-h-[115px] sm:min-h-[145px] max-h-[225px]"
+        }`}
+      >
         <InteractionZone
           state={state}
           seatId={me.id}

@@ -1201,33 +1201,33 @@ export function ContestantFigure({
       const keyTap = Math.sin(t * (typingFreq * 2) + seatId * 3.4) * 0.018;
 
       const idleLeftArm = {
-        x: -0.52 + idleBreath,
-        y: 0.06,
+        x: -0.62 + idleBreath,
+        y: 0.08,
         z: -0.10,
       };
       const idleLeftForearm = {
-        x: -0.82 + idleBreath * 0.3,
-        y: 0.10,
+        x: -0.92 + idleBreath * 0.3,
+        y: 0.12,
         z: -0.06,
       };
       const idleLeftWrist = {
-        x: 0.22,
+        x: 0.30,
         y: -0.08,
         z: 0.04,
       };
 
       let idleRightArm = {
-        x: -0.56 + idleBreath,
+        x: -0.66 + idleBreath,
         y: -0.10,
         z: 0.08,
       };
       let idleRightForearm = {
-        x: -0.86 + typingWiggle,
+        x: -0.96 + typingWiggle,
         y: -0.12,
         z: 0.06,
       };
       let idleRightWrist = {
-        x: 0.24 + keyTap,
+        x: 0.32 + keyTap,
         y: 0.08,
         z: -0.05,
       };
@@ -1235,30 +1235,30 @@ export function ContestantFigure({
       if (isBuzzed) {
         // Red dome buzzer is at X = +0.26m, Z = -0.15m: right hand reaches and presses down firmly
         idleRightArm = {
-          x: -0.62,
-          y: -0.28,
-          z: 0.24,
+          x: -0.74,
+          y: -0.25,
+          z: 0.22,
         };
         idleRightForearm = {
-          x: -0.74,
-          y: -0.18,
-          z: 0.12,
+          x: -0.84,
+          y: -0.16,
+          z: 0.14,
         };
         idleRightWrist = {
-          x: 0.36,
-          y: 0.12,
-          z: -0.08,
+          x: 0.40,
+          y: 0.10,
+          z: -0.06,
         };
       }
 
-      // Head tilted ~14 deg looking at glowing laptop screen with subtle reading scan
+      // Head tilted ~15 deg looking directly at glowing laptop screen with subtle reading scan
       const headReadScan = Math.sin(t * 1.2 + seatId * 0.9) * 0.035;
       const idleHead = {
-        x: 0.24 + Math.sin(t * 1.5 + seatId) * 0.010,
+        x: 0.26 + Math.sin(t * 1.5 + seatId) * 0.010,
         y: headReadScan,
         z: 0,
       };
-      const idleChest = { x: 0.04 };
+      const idleChest = { x: 0.12 }; // Alert forward student posture leaning toward workstation
 
       // 2. Target signature gesture posture
       let targetLeftArm = { ...idleLeftArm };
@@ -2340,7 +2340,7 @@ export function ContestantPodium({
         <ContestantFigure
           seatId={seatId}
           quality={quality}
-          position={[0, 0, -0.34]}
+          position={[0, 0, -0.48]}
           isBuzzed={isBuzzed}
         />
       )}

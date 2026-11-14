@@ -1723,7 +1723,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
       </div>
 
       {/* ── BOTTOM BAR: CONTESTANT CARDS COMPACT (ZERO-SCROLL) ── */}
-      <footer className="border-t border-violet-500/15 bg-black/25 px-2 py-1 shrink-0">
+      <footer className="border-t border-violet-500/15 bg-black/25 px-2 py-1 pb-2 sm:pb-1 shrink-0">
         <div className={`grid gap-1.5 ${
           state.seats.length <= 4 ? "grid-cols-2 sm:grid-cols-4" :
           state.seats.length <= 6 ? "grid-cols-3 sm:grid-cols-6" :

@@ -1201,35 +1201,35 @@ export function ContestantFigure({
       const keyTap = Math.sin(t * (typingFreq * 2) + seatId * 3.4) * 0.018;
 
       const idleLeftArm = {
-        x: -0.62 + idleBreath,
+        x: -0.58 + idleBreath,
         y: 0.08,
-        z: -0.10,
+        z: -0.08,
       };
       const idleLeftForearm = {
-        x: -0.92 + idleBreath * 0.3,
-        y: 0.12,
+        x: -0.78 + idleBreath * 0.3,
+        y: 0.10,
         z: -0.06,
       };
       const idleLeftWrist = {
-        x: 0.30,
-        y: -0.08,
+        x: 0.22,
+        y: -0.06,
         z: 0.04,
       };
 
       let idleRightArm = {
-        x: -0.66 + idleBreath,
-        y: -0.10,
+        x: -0.60 + idleBreath,
+        y: -0.08,
         z: 0.08,
       };
       let idleRightForearm = {
-        x: -0.96 + typingWiggle,
-        y: -0.12,
+        x: -0.82 + typingWiggle,
+        y: -0.10,
         z: 0.06,
       };
       let idleRightWrist = {
-        x: 0.32 + keyTap,
-        y: 0.08,
-        z: -0.05,
+        x: 0.24 + keyTap,
+        y: 0.06,
+        z: -0.04,
       };
 
       if (isBuzzed) {

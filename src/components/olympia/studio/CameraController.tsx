@@ -104,18 +104,20 @@ export function getContestantScreenCameraPreset(
   const tz = nx;
 
   // Screen desk center position (laptop screen & keyboard inside recessed bay)
-  const deskX = +(px - 0.14 * nx + 0.08 * tx).toFixed(3);
-  const deskY = 1.06;
-  const deskZ = +(pz - 0.14 * nz + 0.08 * tz).toFixed(3);
+  // Target centered between head (1.55m) and desk surface (0.90m) at targetY = 1.20m
+  // Leaves comfortable broadcast headroom above the contestant's hair
+  const deskX = +(px - 0.12 * nx + 0.06 * tx).toFixed(3);
+  const deskY = 1.20;
+  const deskZ = +(pz - 0.12 * nz + 0.06 * tz).toFixed(3);
 
   // Broadcast 3/4 over-the-shoulder perspective (OTS):
-  // Elevated to eye/head height (camY = 1.56m, camDist = 1.25m, tangentOffset = 0.44m)
-  // Perfectly frames the contestant's head (with hair/glasses looking at monitor), shoulders, polo shirt,
+  // Positioned at eye level (camY = 1.62m, camDist = 1.52m, tangentOffset = 0.48m)
+  // Perfectly frames the contestant's full head with ample headroom, shoulders, polo shirt,
   // natural forward arm reach onto the desk/keyboard, glowing laptop screen, and illuminated formula LED wall.
-  const camDist = 1.25;
-  const tangentOffset = 0.44;
+  const camDist = 1.52;
+  const tangentOffset = 0.48;
   const camX = +(px - camDist * nx + tangentOffset * tx).toFixed(3);
-  const camY = 1.56;
+  const camY = 1.62;
   const camZ = +(pz - camDist * nz + tangentOffset * tz).toFixed(3);
 
   return {

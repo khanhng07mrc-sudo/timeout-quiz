@@ -321,6 +321,8 @@ export function ScoreStrip({
   );
 }
 
+import { OlympiaBroadcastVideo } from "./OlympiaBroadcastVideo";
+
 export function resolveMediaUrl(url?: string): string | undefined {
   if (!url) return undefined;
   if (/^[a-zA-Z]:[\\/]/i.test(url) || (!url.startsWith("/") && !url.startsWith("http") && !url.startsWith("data:"))) {
@@ -330,21 +332,42 @@ export function resolveMediaUrl(url?: string): string | undefined {
   return url;
 }
 
-export function MediaView({ url, type, className }: { url?: string; type?: string; className?: string }) {
+export function MediaView({
+  url,
+  type,
+  className,
+  isTiming,
+}: {
+  url?: string;
+  type?: string;
+  className?: string;
+  isTiming?: boolean;
+}) {
   const resolved = resolveMediaUrl(url);
   if (!resolved) return null;
-  const isVideo = type === "video" || /\.(mp4|webm|mov|ogg)$/i.test(resolved);
-  return isVideo ? (
+  const isVideo = type === "video" || /\.(mp4|webm|mov|ogg|m4v|ogv|mpeg)$/i.test(resolved);
+  if (!isVideo) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={resolved} alt="" className={className ?? "max-h-[45vh] rounded-xl mx-auto object-contain shadow-2xl"} />;
+  }
+
+  if (isTiming !== undefined) {
+    return (
+      <div className={className ?? "max-h-[45vh] w-full rounded-xl mx-auto overflow-hidden shadow-2xl"}>
+        <OlympiaBroadcastVideo src={resolved} isTiming={isTiming} />
+      </div>
+    );
+  }
+
+  return (
     <video
       src={resolved}
       controls
       playsInline
-      autoPlay
+      muted
+      preload="auto"
       className={className ?? "max-h-[45vh] rounded-xl mx-auto shadow-2xl"}
     />
-  ) : (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={resolved} alt="" className={className ?? "max-h-[45vh] rounded-xl mx-auto object-contain shadow-2xl"} />
   );
 }
 

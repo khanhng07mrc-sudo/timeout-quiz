@@ -316,6 +316,16 @@ export default function DisplayScreen({ code }: { code: string }) {
     !state.vcnv?.answersRevealed &&
     state.vcnv?.phase !== "waitingAnswer";
 
+  const is3DPaused = Boolean(
+    showFullscreen &&
+      state.stage === "playing" &&
+      !state.banner &&
+      !isOverlayHidden &&
+      !state.summaryState?.active &&
+      activeRoundContent &&
+      !isVcnvQuadView
+  );
+
   return (
     <div
       onPointerDown={handleUserUnlock}
@@ -458,6 +468,7 @@ export default function DisplayScreen({ code }: { code: string }) {
             allowPTZ={false}
             defaultQuality={isSandboxParam ? "LIGHT" : undefined}
             isSandbox={isSandboxParam}
+            isPaused={is3DPaused}
           />
         </div>
 
@@ -692,6 +703,7 @@ function KhoiDong({ state, serverNow }: P) {
                 <MediaView
                   url={kd.current.media}
                   type={kd.current.mediaType}
+                  isTiming={Boolean(kd.timer?.startedAt)}
                   className="max-h-20 sm:max-h-24 rounded-lg mx-auto mt-1"
                 />
               ) : null
@@ -716,6 +728,7 @@ function KhoiDong({ state, serverNow }: P) {
               <MediaView
                 url={kd.current.media}
                 type={kd.current.mediaType}
+                isTiming={Boolean(kd.timer?.startedAt)}
                 className="max-h-20 sm:max-h-24 rounded-lg mx-auto mt-1"
               />
             ) : null
@@ -852,6 +865,7 @@ function VeDich({ state, serverNow }: P) {
                 <MediaView
                   url={cur.q.media}
                   type={cur.q.mediaType}
+                  isTiming={Boolean(vd.phase === "thinking" || vd.phase === "stealing")}
                   className="max-h-20 sm:max-h-24 rounded-xl mx-auto border border-violet-500/20 mt-1"
                 />
               ) : null
@@ -874,6 +888,7 @@ function VeDich({ state, serverNow }: P) {
                 <MediaView
                   url={cur.q.media}
                   type={cur.q.mediaType}
+                  isTiming={Boolean(vd.phase === "thinking" || vd.phase === "stealing")}
                   className="max-h-20 sm:max-h-24 rounded-xl mx-auto border border-violet-500/20 mt-1"
                 />
               ) : null

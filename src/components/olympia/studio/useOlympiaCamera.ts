@@ -245,6 +245,8 @@ export function useOlympiaCameraState(
   const phaseEnteredAtRef = useRef<number>(Date.now());
   const lastVdRef = useRef<{ turnIdx: number; mode: string }>({ turnIdx: -1, mode: "idle" });
   const vdOnStageEnteredAtRef = useRef<number>(Date.now());
+  const lastKdBuzzedSeatRef = useRef<number | null>(null);
+  const kdBuzzedAtRef = useRef<number>(0);
 
   useEffect(() => {
     if (state?.currentRound && state.currentRound !== lastRoundRef.current) {
@@ -490,21 +492,37 @@ export function useOlympiaCameraState(
             pushInProgress: push, // Zoom smooth 100% -> 115%
           };
         } else {
-          // Lượt chung: CUT ngay lập tức sang thí sinh bấm chuông hoặc CAM 10
+          // Lượt chung / O22 / O23: Khi có thí sinh bấm chuông, giữ CAM 10 toàn cảnh trong 1.0s trước khi CUT sang cận cảnh thí sinh
           if (kd.buzzedSeat != null) {
+            if (lastKdBuzzedSeatRef.current !== kd.buzzedSeat) {
+              lastKdBuzzedSeatRef.current = kd.buzzedSeat;
+              kdBuzzedAtRef.current = now;
+            }
+            const elapsedSinceBuzz = (now - kdBuzzedAtRef.current) / 1000;
+            if (elapsedSinceBuzz < 1.0) {
+              return {
+                camAngle: 10,
+                transitionMode: "CUT",
+                isOverlayHidden: false,
+                pushInProgress: 0.1,
+              };
+            }
             return {
               camAngle: getCameraForSeat(kd.buzzedSeat, activeCount),
               transitionMode: "CUT",
               isOverlayHidden: false,
               pushInProgress: 0.20,
             };
+          } else {
+            lastKdBuzzedSeatRef.current = null;
+            kdBuzzedAtRef.current = 0;
+            return {
+              camAngle: 10,
+              transitionMode: "CUT",
+              isOverlayHidden: false,
+              pushInProgress: 0.1,
+            };
           }
-          return {
-            camAngle: 10,
-            transitionMode: "CUT",
-            isOverlayHidden: false,
-            pushInProgress: 0.1,
-          };
         }
       }
 

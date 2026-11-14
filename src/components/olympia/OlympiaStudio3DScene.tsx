@@ -23,6 +23,7 @@ export interface OlympiaStudio3DSceneProps {
   showDirectorBar?: boolean;
   defaultQuality?: "HIGH" | "MEDIUM" | "LIGHT";
   isSandbox?: boolean;
+  isPaused?: boolean;
 }
 
 export function OlympiaStudio3DScene({
@@ -38,6 +39,7 @@ export function OlympiaStudio3DScene({
   showDirectorBar = true,
   defaultQuality,
   isSandbox = false,
+  isPaused = false,
 }: OlympiaStudio3DSceneProps) {
   // Staggered multi-zone lighting state
   const {
@@ -153,6 +155,7 @@ export function OlympiaStudio3DScene({
     >
       {/* ── 1. THREE.JS R3F CANVAS ── */}
       <Canvas
+        frameloop={isPaused ? "never" : "always"}
         camera={{ position: [0.0, 3.2, 6.8], fov: 46 }}
         gl={{
           powerPreference: isSandboxEnv || quality === "LIGHT" ? "low-power" : "high-performance",

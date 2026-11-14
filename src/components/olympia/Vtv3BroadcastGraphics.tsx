@@ -4,6 +4,7 @@ import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from
 import type { OlympiaState, Seat, TimerState } from "@/lib/olympia/types";
 import { parseVcnvAnswer, cleanVcnvWord, stripVcnvLetterCount } from "@/lib/olympia/engine";
 import { activeSeats, seatName, SEAT_COLORS } from "./ui";
+import { OlympiaBroadcastVideo } from "./OlympiaBroadcastVideo";
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
@@ -1696,25 +1697,12 @@ export function TangTocQuestionGraphic({
 }) {
   const tt = state.tangToc!;
   const q = tt.questions[tt.qIdx];
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const isV3Arrow = state.themeMode !== "o26_classic";
 
   const isVideo =
     q?.type === "video" ||
     (Boolean(q?.media) && /\.(mp4|webm|mov|m4v|ogv|mpeg)$/i.test(q?.media || ""));
   const isTiming = tt.timer?.startedAt != null;
-
-  useEffect(() => {
-    if (!videoRef.current || !isVideo) return;
-    if (isTiming) {
-      videoRef.current.play().catch(() => {});
-    } else {
-      videoRef.current.pause();
-      if (tt.phase === "idle" || tt.phase === "question") {
-        videoRef.current.currentTime = 0;
-      }
-    }
-  }, [isTiming, isVideo, tt.phase]);
 
   if (isV3Arrow) {
     const qText = q?.q || "Sắp xếp các miếng ghép sau để có được bức hình hoàn chỉnh.";
@@ -1789,11 +1777,9 @@ export function TangTocQuestionGraphic({
                     })}
                   </div>
                 ) : isVideo && q?.media ? (
-                  <video
-                    ref={videoRef}
+                  <OlympiaBroadcastVideo
                     src={q.media}
-                    playsInline
-                    preload="auto"
+                    isTiming={isTiming}
                     className="w-full h-full object-contain"
                   />
                 ) : q?.media ? (
@@ -1892,11 +1878,9 @@ export function TangTocQuestionGraphic({
               })}
             </div>
           ) : isVideo && q?.media ? (
-            <video
-              ref={videoRef}
+            <OlympiaBroadcastVideo
               src={q.media}
-              playsInline
-              preload="auto"
+              isTiming={isTiming}
               className="max-h-[50vh] w-auto mx-auto rounded-lg shadow-xl object-contain"
             />
           ) : q?.media ? (
@@ -2914,19 +2898,21 @@ function SlantedTabLabel({
     };
   }, [text, maxWidth, fontSize]);
 
+  const baselineY = cy + Math.round(fontSize * 0.35);
+
   return (
     <text
       ref={ref}
       x={cx}
-      y={cy}
-      dominantBaseline="central"
+      y={baselineY}
+      dominantBaseline="alphabetic"
       textAnchor="middle"
       fill={fill}
       fontWeight="900"
       fontSize={fontSize}
       transform={
         sx < 0.999
-          ? `translate(${cx}, ${cy}) scale(${sx}, 1) translate(${-cx}, ${-cy})`
+          ? `translate(${cx}, ${baselineY}) scale(${sx}, 1) translate(${-cx}, ${-baselineY})`
           : undefined
       }
       className="uppercase font-sans"

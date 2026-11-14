@@ -1738,8 +1738,8 @@ export function ContestantPodium({
         <meshBasicMaterial color={podiumNeonColor} />
       </mesh>
 
-      {/* ── 2. MAIN KIOSK BODY (White Pearl Studio Enamel - Image 2) ── */}
-      {/* Lower Apron: Stops at Y = 0.32m, strictly below the dark grey panel and score screen */}
+      {/* ── 2. MAIN KIOSK BODY & RECESSED COCKPIT COWLING (White Pearl Studio Enamel) ── */}
+      {/* Lower Apron: Below dark grey panel and score screen */}
       <mesh position={[0, 0.20, 0.02]}>
         <boxGeometry args={[1.06, 0.24, 0.74]} />
         <meshStandardMaterial
@@ -1751,8 +1751,8 @@ export function ContestantPodium({
       </mesh>
 
       {/* Left Outer Chamfered Wing Pillar */}
-      <mesh position={[-0.49, 0.54, 0.02]}>
-        <boxGeometry args={[0.08, 0.44, 0.74]} />
+      <mesh position={[-0.49, 0.60, 0.02]}>
+        <boxGeometry args={[0.08, 0.56, 0.74]} />
         <meshStandardMaterial
           color="#f8fafc"
           metalness={0.40}
@@ -1760,8 +1760,8 @@ export function ContestantPodium({
         />
       </mesh>
       {/* Right Outer Chamfered Wing Pillar */}
-      <mesh position={[0.49, 0.54, 0.02]}>
-        <boxGeometry args={[0.08, 0.44, 0.74]} />
+      <mesh position={[0.49, 0.60, 0.02]}>
+        <boxGeometry args={[0.08, 0.56, 0.74]} />
         <meshStandardMaterial
           color="#f8fafc"
           metalness={0.40}
@@ -1769,14 +1769,26 @@ export function ContestantPodium({
         />
       </mesh>
 
-      {/* Upper Fascia Header Bar (White Enamel - Starts at Y = 0.76m, well above score screen) */}
-      <mesh position={[0, 0.83, 0.02]}>
-        <boxGeometry args={[1.06, 0.14, 0.74]} />
-        <meshStandardMaterial
-          color="#f8fafc"
-          metalness={0.40}
-          roughness={0.18}
-        />
+      {/* Front Protective Cowl Wall (Che chắn đáy máy tính và dây cáp, đỉnh cao 1.08m tại Z = 0.36m) */}
+      <mesh position={[0, 0.92, 0.36]}>
+        <boxGeometry args={[1.06, 0.32, 0.06]} />
+        <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
+      </mesh>
+      {/* Front Top Baffle Lip Accent */}
+      <mesh position={[0, 1.075, 0.36]}>
+        <boxGeometry args={[1.06, 0.015, 0.08]} />
+        <meshStandardMaterial color="#e2e8f0" metalness={0.60} roughness={0.20} />
+      </mesh>
+
+      {/* Left Raised Side Cowl Wing (Dốc từ Y=1.08m phía trước xuống Y=0.92m phía sau) */}
+      <mesh position={[-0.49, 0.99, 0.08]} rotation={[-0.14, 0, 0]}>
+        <boxGeometry args={[0.08, 0.17, 0.58]} />
+        <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
+      </mesh>
+      {/* Right Raised Side Cowl Wing */}
+      <mesh position={[0.49, 0.99, 0.08]} rotation={[-0.14, 0, 0]}>
+        <boxGeometry args={[0.08, 0.17, 0.58]} />
+        <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
       </mesh>
 
       {/* ── 3. TẤM CHỮ NHẬT XÁM THẪM & HỐC MÀN HÌNH (Dark Grey Rectangular Panel with Padding) ── */}
@@ -1808,78 +1820,80 @@ export function ContestantPodium({
         screenMode={screenMode}
       />
 
-      {/* ── 4. RECESSED GRAPHITE DESK SURFACE & COMPUTER WORKSTATION MONITOR ── */}
-      <mesh position={[0, 0.915, -0.04]} rotation={[-0.18, 0, 0]}>
-        <boxGeometry args={[1.10, 0.02, 0.76]} />
+      {/* ── 4. RECESSED COCKPIT BAY DESK (Mặt bàn hộc chìm Y = 0.89m, khoét sâu 19cm so với thành bục) ── */}
+      <mesh position={[0, 0.89, 0.08]}>
+        <boxGeometry args={[0.90, 0.02, 0.52]} />
         <meshStandardMaterial color="#0b1120" metalness={0.85} roughness={0.35} />
       </mesh>
 
-      {/* Contestant Workstation Touch Monitor System (Elevated & Angled 28° toward contestant) */}
-      <group position={[0, 0.935, -0.02]}>
-        {/* Metal Heavy-Duty Monitor Stand Base Plate */}
-        <mesh position={[0, 0.006, 0.04]}>
-          <boxGeometry args={[0.26, 0.012, 0.18]} />
-          <meshStandardMaterial color="#334155" metalness={0.92} roughness={0.2} />
+      {/* ── 5. OLYMPIA BROADCAST LAPTOP SYSTEM (Màn hình mở quay thẳng về mặt thí sinh tại Z = -0.42m) ── */}
+      <group position={[0, 0.90, 0.08]}>
+        {/* Laptop Base Chassis (Width 38cm, Depth 25cm, Height 1.6cm) */}
+        <mesh position={[0, 0.008, 0]}>
+          <boxGeometry args={[0.38, 0.016, 0.25]} />
+          <meshStandardMaterial color="#0f172a" metalness={0.88} roughness={0.22} />
         </mesh>
 
-        {/* Upright Articulated Stand Neck */}
-        <mesh position={[0, 0.07, 0.02]} rotation={[-0.22, 0, 0]}>
-          <boxGeometry args={[0.07, 0.14, 0.035]} />
-          <meshStandardMaterial color="#1e293b" metalness={0.92} roughness={0.2} />
+        {/* Keyboard Deck Well (Recessed dark chiclet keyboard area) */}
+        <mesh position={[0, 0.0165, -0.015]}>
+          <boxGeometry args={[0.34, 0.002, 0.14]} />
+          <meshStandardMaterial color="#020617" roughness={0.85} />
         </mesh>
 
-        {/* Angled Monitor Housing (Tilted 28° toward contestant, cleanly visible over front podium lip) */}
-        <group position={[0, 0.14, 0.0]} rotation={[-0.48, 0, 0]}>
-          {/* Back Chassis */}
-          <mesh position={[0, 0, 0]}>
-            <boxGeometry args={[0.56, 0.36, 0.022]} />
-            <meshStandardMaterial color="#0f172a" metalness={0.92} roughness={0.18} />
+        {/* Trackpad */}
+        <mesh position={[0, 0.0165, -0.09]}>
+          <boxGeometry args={[0.11, 0.001, 0.065]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.5} roughness={0.4} />
+        </mesh>
+
+        {/* Status Indicator LED (Top left of keyboard deck) */}
+        <mesh position={[-0.14, 0.017, 0.06]}>
+          <boxGeometry args={[0.015, 0.002, 0.004]} />
+          <meshBasicMaterial color={isBuzzed ? "#ef4444" : "#10b981"} />
+        </mesh>
+
+        {/* Open Display Lid: Hinged at Z = +0.10m, Tilted ~110° relative to base (slanted 20° towards contestant) */}
+        <group position={[0, 0.016, 0.10]} rotation={[0.35, 0, 0]}>
+          {/* Display Lid Back Shell (Faces +Z towards audience/front cowl) */}
+          <mesh position={[0, 0.125, 0]}>
+            <boxGeometry args={[0.38, 0.25, 0.012]} />
+            <meshStandardMaterial color="#0f172a" metalness={0.92} roughness={0.20} />
           </mesh>
 
-          {/* Thin Bezel Accent Rim */}
-          <mesh position={[0, 0, 0.012]}>
-            <boxGeometry args={[0.54, 0.34, 0.004]} />
-            <meshStandardMaterial color="#1e293b" metalness={0.85} roughness={0.25} />
+          {/* Minimalist Logo on Lid Back (Facing audience) */}
+          <mesh position={[0, 0.125, 0.0065]}>
+            <circleGeometry args={[0.022, 16]} />
+            <meshStandardMaterial color="#94a3b8" metalness={0.95} roughness={0.1} />
           </mesh>
 
-          {/* Active Screen Surface */}
-          <mesh position={[0, 0, 0.015]}>
-            <planeGeometry args={[0.51, 0.31]} />
+          {/* Display Screen Bezel (Faces -Z towards contestant) */}
+          <mesh position={[0, 0.125, -0.0062]}>
+            <boxGeometry args={[0.36, 0.23, 0.002]} />
+            <meshStandardMaterial color="#020617" roughness={0.4} />
+          </mesh>
+
+          {/* Glowing Active Display Surface (Faces -Z towards contestant!) */}
+          <mesh position={[0, 0.125, -0.0075]} rotation={[0, Math.PI, 0]}>
+            <planeGeometry args={[0.34, 0.21]} />
             <meshStandardMaterial
               color={isBuzzed ? "#991b1b" : "#0284c7"}
-              emissive={isBuzzed ? "#ef4444" : isDimmed ? "#075985" : "#38bdf8"}
-              emissiveIntensity={isBuzzed ? 1.8 : isDimmed ? 0.35 : 0.85}
-              roughness={0.1}
+              emissive={isBuzzed ? "#ef4444" : isDimmed ? "#0369a1" : "#38bdf8"}
+              emissiveIntensity={isBuzzed ? 2.0 : isDimmed ? 0.45 : 1.10}
+              roughness={0.15}
               metalness={0.8}
             />
           </mesh>
 
-          {/* Screen Top Status LED */}
-          <mesh position={[0, 0.162, 0.012]}>
-            <boxGeometry args={[0.04, 0.006, 0.004]} />
-            <meshBasicMaterial color={isBuzzed ? "#ef4444" : "#10b981"} />
-          </mesh>
-        </group>
-
-        {/* Desktop Gooseneck Microphone (Stage Left of Monitor) */}
-        <group position={[-0.32, 0.01, 0.08]}>
-          <mesh position={[0, 0.01, 0]}>
-            <cylinderGeometry args={[0.025, 0.03, 0.02, 16]} />
-            <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
-          </mesh>
-          <mesh position={[0, 0.08, 0]} rotation={[0.2, 0, 0.15]}>
-            <cylinderGeometry args={[0.005, 0.005, 0.14, 8]} />
-            <meshStandardMaterial color="#334155" metalness={0.9} roughness={0.2} />
-          </mesh>
-          <mesh position={[0.01, 0.15, -0.015]}>
-            <capsuleGeometry args={[0.009, 0.025, 8, 8]} />
-            <meshStandardMaterial color="#020617" roughness={0.95} />
+          {/* Webcam / Mic Dot at top of display bezel */}
+          <mesh position={[0, 0.238, -0.0065]}>
+            <circleGeometry args={[0.0025, 8]} />
+            <meshBasicMaterial color="#38bdf8" />
           </mesh>
         </group>
       </group>
 
-      {/* ── 5. CHROME DOME BUZZER SYSTEM (Compact Palm-Sized r=0.035m) ── */}
-      <group position={[0.34, 0.945, 0.12]}>
+      {/* ── 6. CHROME DOME BUZZER SYSTEM (Inside Cockpit Bay, Stage Right of Laptop) ── */}
+      <group position={[0.28, 0.90, 0.05]}>
         {/* Desk Halo Glow Ring (Lights up red when buzzed) */}
         <mesh ref={haloRef} position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.045, 0.075, 32]} />
@@ -1916,6 +1930,22 @@ export function ContestantPodium({
             <pointLight position={[0, 0.10, 0]} color="#ff4466" intensity={10.0} distance={2.5} />
           </>
         )}
+      </group>
+
+      {/* Desktop Gooseneck Microphone (Stage Left of Laptop on Bay Rim) */}
+      <group position={[-0.34, 0.90, 0.05]}>
+        <mesh position={[0, 0.01, 0]}>
+          <cylinderGeometry args={[0.022, 0.026, 0.02, 16]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
+        </mesh>
+        <mesh position={[0, 0.08, 0]} rotation={[0.2, 0, 0.15]}>
+          <cylinderGeometry args={[0.005, 0.005, 0.14, 8]} />
+          <meshStandardMaterial color="#334155" metalness={0.9} roughness={0.2} />
+        </mesh>
+        <mesh position={[0.01, 0.15, -0.015]}>
+          <capsuleGeometry args={[0.009, 0.025, 8, 8]} />
+          <meshStandardMaterial color="#020617" roughness={0.95} />
+        </mesh>
       </group>
 
       {/* ── 6. 3D CONTESTANT FIGURE STANDING BEHIND PODIUM (Hidden during walking entrance) ── */}

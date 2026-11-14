@@ -24,8 +24,8 @@ export async function GET(
     });
   } catch (_) {}
 
-  // Fallback for Sandbox / Offline Olympia rooms
-  if (!room && (code === "647000" || code === "124584" || code.startsWith("647") || code.length === 6)) {
+  // Fallback ONLY for explicitly designated offline simulation rooms
+  if (!room && (code === "OFFLINE" || code.startsWith("OFFLINE_"))) {
     return NextResponse.json({
       room: {
         id: `sandbox_${code}`,

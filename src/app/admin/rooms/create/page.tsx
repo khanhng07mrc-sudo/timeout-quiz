@@ -14,7 +14,7 @@ import { GameMode, CardType } from "@/types";
 import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 import { allocateQuestionsForMatch } from "@/lib/game-engine/question-allocator";
 import { downloadMagicWheelExcelTemplate, downloadMagicWheelJsonTemplate } from "@/lib/quiz-template-generator";
-import { MAGIC_WHEEL_PRESET_BANKS, offlineStorage } from "@/lib/offline-storage";
+import { DEFAULT_OFFLINE_BANK, MAGIC_WHEEL_PRESET_BANKS, offlineStorage } from "@/lib/offline-storage";
 import { detectQuizBankLanguage } from "@/lib/game-engine/magic-wheel";
 import { getOlympiaBanks, getPresetOlympiaBanks } from "@/lib/olympia/olympia-storage";
 import { BilingualCategoryPicker } from "@/components/modes/BilingualCategoryPicker";
@@ -111,8 +111,11 @@ export default function CreateRoomPage() {
   const [eliminationIntervalQuestions, setEliminationIntervalQuestions] = useState(3);
   const [eliminationTeamsPerStage, setEliminationTeamsPerStage] = useState(1);
 
-  // Quiz banks
-  const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; isWordPuzzle?: boolean; _count?: { questions: number } }[]>([]);
+  // Quiz banks - Initialize with offline/preset banks so UI is never empty
+  const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; isWordPuzzle?: boolean; _count?: { questions: number } }[]>([
+    DEFAULT_OFFLINE_BANK as any,
+    ...(MAGIC_WHEEL_PRESET_BANKS as any[]),
+  ]);
   const [quizBankId, setQuizBankId] = useState("");
   const [bankQuestions, setBankQuestions] = useState<any[]>([]);
 
@@ -486,8 +489,20 @@ export default function CreateRoomPage() {
           },
         }),
       });
+      if (!res.ok) {
+        let errMsg = `Lỗi tạo phòng (${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData?.error) errMsg = errData.error;
+        } catch {
+          const text = await res.text().catch(() => "");
+          if (text.includes("413")) errMsg = "Dữ liệu bộ đề quá lớn (vượt giới hạn Nginx 413). Vui lòng chọn bộ đề khác.";
+          else if (text.includes("502")) errMsg = "Máy chủ đang cập nhật/khởi động lại (502 Bad Gateway). Vui lòng thử lại sau vài giây.";
+          else if (text) errMsg = `Lỗi máy chủ (${res.status}): ${text.slice(0, 100)}`;
+        }
+        throw new Error(errMsg);
+      }
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
       const nextUrl = mode === "OLYMPIA"
         ? (data.hostKey ? `/olympia/host/${data.room.code}?key=${data.hostKey}` : `/olympia/host/${data.room.code}`)
         : (data.hostKey ? `/admin/rooms/${data.room.code}?key=${data.hostKey}` : `/admin/rooms/${data.room.code}`);

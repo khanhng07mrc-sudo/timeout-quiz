@@ -645,12 +645,14 @@ export default function AdminRoomsListPage() {
                 <div className="space-y-2 pt-2 border-t border-border/50">
                   <div className="flex gap-2">
                     <Link
-                      href={room.mode === "OLYMPIA" ? `/olympia/host/${room.code}` : `/admin/rooms/${room.code}`}
+                      href={isSb ? `/admin/sandbox?code=${room.code}` : (room.mode === "OLYMPIA" ? `/olympia/host/${room.code}` : `/admin/rooms/${room.code}`)}
                       className={`flex-1 py-2 rounded-xl font-bold text-xs text-center transition flex items-center justify-center gap-1.5 text-white ${
-                        isSb ? "bg-cyan-600 hover:bg-cyan-500" : "bg-purple-600 hover:bg-purple-500"
+                        isSb ? "bg-cyan-600 hover:bg-cyan-500 shadow-md glow-cyan" : "bg-purple-600 hover:bg-purple-500"
                       }`}
+                      title={isSb ? "Mở phòng thử nghiệm Sandbox (Giao diện 3 màn hình đầy đủ)" : "Vào bàn điều khiển Quản trò"}
                     >
-                      <SystemIcon name="dashboard" className="w-3.5 h-3.5 shrink-0" /> Điều khiển
+                      <SystemIcon name={isSb ? "sandbox" : "dashboard"} className="w-3.5 h-3.5 shrink-0" />
+                      <span>{isSb ? "Mở Sandbox Studio" : "Điều khiển"}</span>
                     </Link>
                     <Link
                       href={room.mode === "OLYMPIA" ? `/olympia/display/${room.code}` : `/display/${room.code}`}
@@ -748,12 +750,14 @@ export default function AdminRoomsListPage() {
 
                 <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
                   <Link
-                    href={room.mode === "OLYMPIA" ? `/olympia/host/${room.code}` : `/admin/rooms/${room.code}`}
+                    href={isSb ? `/admin/sandbox?code=${room.code}` : (room.mode === "OLYMPIA" ? `/olympia/host/${room.code}` : `/admin/rooms/${room.code}`)}
                     className={`px-4 py-2 rounded-xl font-bold text-xs text-center transition inline-flex items-center gap-1.5 text-white ${
-                      isSb ? "bg-cyan-600 hover:bg-cyan-500" : "bg-purple-600 hover:bg-purple-500"
+                      isSb ? "bg-cyan-600 hover:bg-cyan-500 shadow-md glow-cyan" : "bg-purple-600 hover:bg-purple-500"
                     }`}
+                    title={isSb ? "Mở phòng thử nghiệm Sandbox (Giao diện 3 màn hình đầy đủ)" : "Vào bàn điều khiển Quản trò"}
                   >
-                    <SystemIcon name="dashboard" className="w-3.5 h-3.5 shrink-0" /> Điều khiển
+                    <SystemIcon name={isSb ? "sandbox" : "dashboard"} className="w-3.5 h-3.5 shrink-0" />
+                    <span>{isSb ? "Mở Sandbox Studio" : "Điều khiển"}</span>
                   </Link>
                   <Link
                     href={room.mode === "OLYMPIA" ? `/olympia/display/${room.code}` : `/display/${room.code}`}

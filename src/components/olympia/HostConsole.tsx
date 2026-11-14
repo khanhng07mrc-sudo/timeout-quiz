@@ -525,6 +525,18 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
             {audioOn ? "🔊" : "🔈"}
           </button>
 
+          {typeof window !== "undefined" && !window.location.pathname.includes("/sandbox") && (
+            <a
+              href={`/admin/sandbox?code=${code}`}
+              className="px-2.5 py-1 rounded-lg bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-400/50 text-cyan-200 text-xs font-bold transition flex items-center gap-1.5 shadow shrink-0"
+              title="Quay lại giao diện Sandbox Studio đầy đủ 3 màn hình"
+            >
+              <span>🧪</span>
+              <span className="hidden sm:inline">Sandbox Studio</span>
+              <span>↗</span>
+            </a>
+          )}
+
           <button
             type="button"
             onClick={() => setRightSidebarOpen((v) => !v)}

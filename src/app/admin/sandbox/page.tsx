@@ -2060,17 +2060,25 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     const isExplicitlyOffline = urlOffline || (urlCode === "OFFLINE" || (urlCode?.startsWith("OFFLINE") ?? false));
 
     if (isExplicitlyOffline) {
-      const modeToUse = urlMode || storedMode || "BOUNCEBACK";
+      const modeToUse = urlMode || storedMode || "OLYMPIA";
       const bankToUse = storedBank || "";
       setSelectedMode(modeToUse);
       setIsOfflineSandbox(true);
-      startOfflineSandbox(modeToUse, bankToUse);
+      if (modeToUse === "OLYMPIA") {
+        setOlympiaSandboxActive(true);
+        setCode("OFFLINE");
+      } else {
+        startOfflineSandbox(modeToUse, bankToUse);
+      }
     } else {
       const candidateCode = (urlCode || (!storedOffline ? storedCode : "") || "").trim();
       if (candidateCode && candidateCode.length === 6 && candidateCode !== "OFFLINE") {
         // Validate with server first before mounting iframes to prevent flashing dead room UI
         fetch(`/api/rooms/${candidateCode}/validate`)
-          .then((r) => r.json())
+          .then((r) => {
+            if (!r.ok) throw new Error("Phòng không tồn tại hoặc đã kết thúc");
+            return r.json();
+          })
           .then((data) => {
             if (data?.room && data.room.status !== "FINISHED") {
               setCode(candidateCode);
@@ -2087,6 +2095,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
             }
           })
           .catch(() => {
+            removeSandboxRoomFromLocal(candidateCode);
             clearSandboxSession();
             setCode("");
             setIsOfflineSandbox(false);
@@ -6946,13 +6955,18 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
     // Cho phép video transition 3D khởi chạy mượt mà ngay frame đầu tiên không bị giật lag
     setTimeout(() => {
       if (selectedMode === "OLYMPIA") {
-        handleLaunchSandbox("OLYMPIA");
+        setIsOfflineSandbox(true);
+        setOlympiaSandboxActive(true);
+        setCode("OFFLINE");
+        setSelectedMode("OLYMPIA");
+        saveSandboxSession("OFFLINE", true, "OLYMPIA", selectedBankId);
+        setIsLaunchReady(true);
       } else {
         startOfflineSandbox(selectedMode, selectedBankId);
         setIsLaunchReady(true);
       }
     }, 120);
-  }, [selectedMode, selectedBankId, startOfflineSandbox]);
+  }, [selectedMode, selectedBankId, startOfflineSandbox, saveSandboxSession]);
 
   const handleLaunchSandbox = async (targetMode?: GameMode) => {
     const modeToUse = targetMode || selectedMode;
@@ -6982,11 +6996,10 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const selectedBank = compatibleBanks.find((b) => b.id === selectedBankId);
-      let olympiaQuestionSet = (selectedBank as any)?.set;
-      if (!olympiaQuestionSet && selectedBankId) {
-        const preset = getPresetOlympiaBanks().find((b) => b.id === selectedBankId);
-        if (preset) olympiaQuestionSet = preset.set;
-      }
+      // Chỉ gửi questionSet nếu là bộ đề tự soạn của người dùng; các preset chuẩn đã có sẵn trên máy chủ để tránh vượt ngưỡng 413
+      const isPreset = !selectedBankId || selectedBankId.startsWith("olympia_preset");
+      let olympiaQuestionSet = isPreset ? undefined : (selectedBank as any)?.set;
+
       const chosenBankTitle = modeToUse === "OLYMPIA"
         ? (selectedBank?.title || `Đề Thi Olympia (${olympiaRulesetId})`)
         : selectedBank?.title;
@@ -7011,6 +7024,25 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
           },
         }),
       });
+
+      if (!res.ok) {
+        let serverError = `Lỗi máy chủ (${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData?.error) serverError = errData.error;
+        } catch {
+          const rawTxt = await res.text().catch(() => "");
+          if (rawTxt.includes("413")) {
+            serverError = "Dữ liệu bộ đề vượt quá giới hạn tải lên (Nginx 413). Vui lòng chọn bộ đề nhẹ hơn.";
+          } else if (rawTxt.includes("502")) {
+            serverError = "Máy chủ đang cập nhật (502 Bad Gateway). Vui lòng thử lại sau 3 giây.";
+          } else if (rawTxt) {
+            serverError = `Lỗi HTTP ${res.status}: ${rawTxt.slice(0, 100)}`;
+          }
+        }
+        throw new Error(serverError);
+      }
+
       const data = await res.json();
       if (data.success && data.code) {
         if (data.hostKey) {
@@ -7046,7 +7078,17 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
         addLog(`❌ Không thể tạo phòng online: ${errorMsg}`);
         const wantOffline = window.confirm(`Không thể tạo phòng Sandbox Online trên máy chủ:\n\n"${errorMsg}"\n\nBạn có muốn chuyển sang chế độ Sandbox Offline (mô phỏng trên trình duyệt) không?`);
         if (wantOffline) {
-          handleLaunchOffline();
+          if (modeToUse === "OLYMPIA") {
+            setIsOfflineSandbox(true);
+            setOlympiaSandboxActive(true);
+            setCode("OFFLINE");
+            setSelectedMode("OLYMPIA");
+            saveSandboxSession("OFFLINE", true, "OLYMPIA", selectedBankId);
+            setIsLaunchReady(true);
+          } else {
+            startOfflineSandbox(modeToUse, selectedBankId);
+            setIsLaunchReady(true);
+          }
         }
       }
     } catch (err: any) {
@@ -7056,7 +7098,17 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       addLog(`❌ Lỗi kết nối mạng: ${errorMsg}`);
       const wantOffline = window.confirm(`Lỗi kết nối mạng khi tạo Sandbox Online:\n\n"${errorMsg}"\n\nBạn có muốn chuyển sang chế độ Sandbox Offline (mô phỏng trên trình duyệt) không?`);
       if (wantOffline) {
-        handleLaunchOffline();
+        if (modeToUse === "OLYMPIA") {
+          setIsOfflineSandbox(true);
+          setOlympiaSandboxActive(true);
+          setCode("OFFLINE");
+          setSelectedMode("OLYMPIA");
+          saveSandboxSession("OFFLINE", true, "OLYMPIA", selectedBankId);
+          setIsLaunchReady(true);
+        } else {
+          startOfflineSandbox(modeToUse, selectedBankId);
+          setIsLaunchReady(true);
+        }
       }
     } finally {
       setCreating(false);

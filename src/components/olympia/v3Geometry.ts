@@ -475,17 +475,62 @@ export function buildLowerThirdLayout(
   const count = Math.max(1, n);
 
   if (mode === "KHOI_DONG") {
-    // Left edge of tab 1 = hexagon left edge, right edge of last tab = hexagon right edge
-    // (isosceles trapezoid), all inner seams are parallelograms with the shell slope.
-    const tabs = buildSlantedCells({
-      xl: shell.edgeL,
-      xr: shell.edgeR,
-      y0: 0,
-      y1: tabH,
-      n: count,
-      slope,
-    });
-    return { tabH, tabs };
+    // USER REQUIREMENT:
+    //   - Cells 0..N-2: true PARALLELOGRAMS (same width at top and bottom).
+    //   - Cell N-1 (last): TRAPEZOID whose longer edge equals the parallelogram width.
+    //
+    // Implementation:
+    //   Inner seams (k=1..N-1) are parallel slanted lines with the same slope as edgeL.
+    //   Each seam is offset by cellW (measured at y=0 / top) from the previous one.
+    //   Only the last cell's RIGHT boundary follows shell.edgeR (the shell V-shape),
+    //   which makes the last cell a trapezoid (wider at bottom inside the hexagon).
+    const y0 = 0;
+    const y1 = tabH;
+    const W_top = shell.edgeR(y0) - shell.edgeL(y0);
+    const cellW = W_top / count;
+    // Slope of the left edge (same slant direction for all inner parallelogram seams)
+    const edgeLSlope = y1 > y0 ? (shell.edgeL(y1) - shell.edgeL(y0)) / (y1 - y0) : slope;
+
+    // Parallelogram seam: same slope as left edge, offset by k * cellW at y=y0.
+    // k=0 → shell.edgeL(y), k=count → shell.edgeR(y), 1..count-1 → parallelogram seams.
+    const seamX = (k: number, y: number): number => {
+      if (k <= 0) return shell.edgeL(y);
+      if (k >= count) return shell.edgeR(y);
+      // Parallelogram: constant width offset from edgeL, shifted by slope from y0
+      return shell.edgeL(y0) + k * cellW + (y - y0) * edgeLSlope;
+    };
+
+    const cells: SlantedCell[] = [];
+    for (let i = 0; i < count; i++) {
+      const left = (y: number) => seamX(i, y);
+      const right = (y: number) => seamX(i + 1, y);
+      const pts: Pt[] = [
+        [left(y0), y0],
+        [left(y1), y1],
+        [right(y1), y1],
+        [right(y0), y0],
+      ];
+      const xs = pts.map((p) => p[0]);
+      const cy = (y0 + y1) / 2;
+      cells.push({
+        i,
+        pts,
+        cx: (left(cy) + right(cy)) / 2,
+        cy,
+        minX: Math.min(...xs),
+        maxX: Math.max(...xs),
+        width: right(cy) - left(cy),
+        xl0: left(y0),
+        xl1: left(y1),
+        xr0: right(y0),
+        xr1: right(y1),
+      });
+    }
+    const seams: Seam[] = [];
+    for (let k = 1; k < count; k++) {
+      seams.push({ x0: seamX(k, y0), y0, x1: seamX(k, y1), y1 });
+    }
+    return { tabH, tabs: { cells, seams } };
   }
 
   // Về Đích: the cluster divider is a "/" line parallel to the shell edges.

@@ -1154,9 +1154,9 @@ export function useOlympiaAudio(
     const looping = isBgmCue && !isCountdown && isLoopingBgm(cue.sound);
 
     const play = (s: string, fallback: boolean) => {
-      let soundUrl = `/olympia-audio/${s}/${cue.sound}.mp3`;
-      if (currentChannel === "left") soundUrl = `/olympia-audio/${s}/${cue.sound}_left.mp3`;
-      else if (currentChannel === "right") soundUrl = `/olympia-audio/${s}/${cue.sound}_right.mp3`;
+      // Channel routing is handled entirely by WebAudio panner (connectPanner).
+      // Always load the base stereo file so channel switches never restart playback.
+      const soundUrl = `/olympia-audio/${s}/${cue.sound}.mp3`;
 
       let a: HTMLAudioElement;
       const isFrequentSfx = cue.sound.endsWith("bell_ring") || cue.sound.endsWith("correct") || cue.sound.endsWith("wrong");
@@ -1180,33 +1180,7 @@ export function useOlympiaAudio(
       registerActive(a);
 
       a.onerror = () => {
-        if (currentChannel !== "both" && soundUrl !== `/olympia-audio/${s}/${cue.sound}.mp3`) {
-          const std = new Audio(`/olympia-audio/${s}/${cue.sound}.mp3`);
-          std.loop = looping;
-          std.volume = (isBgmCue && !isCountdown && !isIntroTrack) ? 0 : defaultSfxVol;
-          connectPanner(std, currentChannel);
-          registerActive(std);
-          if (isBgmCue) {
-            crossfadeToBgm(std, BGM_CROSSFADE_MS, isCountdown, isIntroTrack);
-            if (forceLoopContestantIntro) {
-              const maxLoops = Math.max(0, calculateRequiredIntroLoops(activeSeatCount) - 1);
-              if (maxLoops > 0) {
-                setupIntroSeamlessLoop(std, forceLoopContestantIntro, maxLoops);
-              }
-            }
-          } else {
-            std.volume = defaultSfxVol;
-            std.play().catch((err) => {
-              if (err && err.name === "NotAllowedError") {
-                pendingCueRef.current = () => {
-                  std.currentTime = 0;
-                  std.play().catch(() => {});
-                };
-              }
-            });
-          }
-          return;
-        }
+        // Always using base stereo file; on error just fall back to O26 season.
         if (fallback && s !== "O26") {
           play("O26", false);
         } else if (/tick_(?:10|40)s/.test(cue.sound)) {
@@ -1236,25 +1210,14 @@ export function useOlympiaAudio(
 
       if (cue.bgmSound) {
         const bgmTrack = cue.bgmSound;
-        let bgmUrl = `/olympia-audio/${season}/${bgmTrack}.mp3`;
-        if (currentChannel === "left") bgmUrl = `/olympia-audio/${season}/${bgmTrack}_left.mp3`;
-        else if (currentChannel === "right") bgmUrl = `/olympia-audio/${season}/${bgmTrack}_right.mp3`;
+        // Always load base stereo file; channel routing via WebAudio panner only
+        const bgmUrl = `/olympia-audio/${season}/${bgmTrack}.mp3`;
 
         const bgmAudio = new Audio(bgmUrl);
         bgmAudio.loop = isLoopingBgm(bgmTrack);
         bgmAudio.volume = 0;
         connectPanner(bgmAudio, currentChannel);
         registerActive(bgmAudio);
-        bgmAudio.onerror = () => {
-          if (currentChannel !== "both" && bgmUrl !== `/olympia-audio/${season}/${bgmTrack}.mp3`) {
-            const stdBgm = new Audio(`/olympia-audio/${season}/${bgmTrack}.mp3`);
-            stdBgm.loop = isLoopingBgm(bgmTrack);
-            stdBgm.volume = 0;
-            connectPanner(stdBgm, currentChannel);
-            registerActive(stdBgm);
-            crossfadeToBgm(stdBgm, BGM_CROSSFADE_MS, false, false);
-          }
-        };
         crossfadeToBgm(bgmAudio, BGM_CROSSFADE_MS, false, false);
       }
 

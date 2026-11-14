@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, ROUND_ORDER, canStartScoreSummary, seatToStudioCamera, type OlympiaState, type RoundId, type Seat, type O22Quarter, type TimerState } from "@/lib/olympia/types";
+import { normalizeAnswer } from "@/lib/olympia/engine";
 import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
 import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
 import OlympiaAudioManagerDrawer from "./OlympiaAudioManagerDrawer";
@@ -2843,6 +2844,33 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
 function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
   const tt = state.tangToc!;
   const seats = activeSeats(state);
+  const [extraCorrectSeats, setExtraCorrectSeats] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    setExtraCorrectSeats({});
+  }, [tt.qIdx]);
+
+  const isExactMatch = (ans: string | undefined): boolean => {
+    if (!ans || !tt.correctAnswer) return false;
+    const normUser = normalizeAnswer(ans);
+    const userNoSpace = normUser.replace(/\s+/g, "");
+    const userNoHyphen = normUser.replace(/[-]/g, "");
+    const targetCandidates = new Set<string>();
+    tt.correctAnswer
+      .split(/[/|()]/)
+      .map((s) => normalizeAnswer(s))
+      .filter(Boolean)
+      .forEach((s) => {
+        targetCandidates.add(s);
+        targetCandidates.add(s.replace(/\s+/g, ""));
+        targetCandidates.add(s.replace(/[-]/g, ""));
+      });
+    return (
+      targetCandidates.has(normUser) ||
+      targetCandidates.has(userNoSpace) ||
+      targetCandidates.has(userNoHyphen)
+    );
+  };
 
   return (
     <div className="space-y-2.5">
@@ -2861,6 +2889,9 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
           {seats.map((s) => {
             const sub = tt.submissions?.[s.id];
             const rankEntry = tt.ranking?.find((r) => r.seat === s.id);
+            const exact = isExactMatch(sub?.answer);
+            const isChecked = exact || Boolean(extraCorrectSeats[s.id]);
+
             return (
               <div
                 key={s.id}
@@ -2874,8 +2905,36 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
                     : "bg-slate-900/70 border-white/10"
                 }`}
               >
-                {/* Contestant Badge & Name */}
-                <div className="w-32 sm:w-44 shrink-0 flex items-center gap-1.5 min-w-0">
+                {/* Contestant Checkbox & Badge & Name */}
+                <div className="w-40 sm:w-56 shrink-0 flex items-center gap-2 min-w-0">
+                  {sub?.answer ? (
+                    <label
+                      className="flex items-center gap-1 cursor-pointer"
+                      title={
+                        exact
+                          ? "Khớp hoàn toàn đáp án đề bài (Khóa)"
+                          : "Đánh dấu chấm đúng cho thí sinh này"
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={exact || tt.phase === "graded"}
+                        onChange={(e) =>
+                          setExtraCorrectSeats((prev) => ({
+                            ...prev,
+                            [s.id]: e.target.checked,
+                          }))
+                        }
+                        className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-white/20 focus:ring-emerald-400 cursor-pointer disabled:cursor-not-allowed"
+                      />
+                      {exact ? (
+                        <span className="text-[10px] text-emerald-400 font-bold" title="Khớp đề (Khóa)">
+                          🔒
+                        </span>
+                      ) : null}
+                    </label>
+                  ) : null}
                   <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/35 text-cyan-200 font-mono font-black text-[10px] shrink-0">
                     TS{s.id + 1}
                   </span>
@@ -2941,8 +3000,7 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
           <div className="text-xs font-bold text-slate-400 uppercase">BẢNG ÁN / CÂU HỎI</div>
           {[0, 1, 2, 3].map((idx) => {
             const isCur = tt.qIdx === idx;
-            const secs = [10, 20, 30, 40][idx] || 30;
-            const label = idx === 3 ? `Câu 4 (${secs}s - Video/Ảnh)` : `Câu ${idx + 1} (${secs}s)`;
+            const label = idx === 3 ? "Câu 4 (Video/Ảnh)" : `Câu ${idx + 1}`;
             return (
               <button
                 key={idx}
@@ -2962,14 +3020,31 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
 
         {/* Center: Controls */}
         <div className="space-y-2 flex flex-col items-center">
-          <button
-            type="button"
-            onClick={() => call("tt:show")}
-            className="w-full py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
-          >
-            <span>▶</span>
-            <span>Hiện Câu Hỏi</span>
-          </button>
+          <div className="w-full grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => call("tt:show")}
+              className="py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider"
+              title="Hiện câu hỏi lên màn hình"
+            >
+              <span>▶</span>
+              <span>{tt.phase === "ranking" || tt.phase === "graded" ? "Xem lại Câu Hỏi" : "Hiện Câu Hỏi"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => call("tt:toggleAnswerImage")}
+              className={`py-2 rounded-xl text-xs font-bold border shadow flex items-center justify-center gap-1.5 cursor-pointer ${
+                tt.showAnswerImage
+                  ? "bg-amber-400 text-slate-950 border-amber-300 font-black animate-pulse"
+                  : "bg-slate-800 hover:bg-slate-700 text-amber-300 border-amber-400/40"
+              }`}
+              title="Chuyển đổi hiển thị giữa ảnh câu hỏi và ảnh đáp án"
+            >
+              <span>🖼️</span>
+              <span>{tt.showAnswerImage ? "Ẩn Ảnh ĐA" : "Ảnh Đáp Án"}</span>
+            </button>
+          </div>
 
           <button
             type="button"
@@ -3001,12 +3076,12 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
           <div className="w-full grid grid-cols-3 gap-1.5">
             <button
               type="button"
-              onClick={() => call("tt:reveal")}
+              onClick={() => call(tt.viewMode === "question" && (tt.phase === "ranking" || tt.phase === "graded") ? "tt:showRanking" : "tt:reveal")}
               className="py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-black shadow cursor-pointer flex items-center justify-center gap-1"
-              title="Bước 1: Chỉ hiện đáp án & thời gian của 4 thí sinh"
+              title="Bước 1: Hiện bảng đáp án & thời gian xếp hạng của thí sinh"
             >
               <span>👁</span>
-              <span>Hiện ĐA TS (R)</span>
+              <span>{tt.viewMode === "question" && (tt.phase === "ranking" || tt.phase === "graded") ? "Xem Bảng ĐA" : "Hiện ĐA TS (R)"}</span>
             </button>
             <button
               type="button"
@@ -3016,16 +3091,24 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
                   ? "bg-amber-400 text-slate-950 font-black"
                   : "bg-amber-600 hover:bg-amber-500 text-white"
               }`}
-              title="Bước 2: Hiện đáp án đúng của chương trình"
+              title="Bước 2: Hiện đáp án đúng của chương trình (làm tối các đáp án sai)"
             >
               <span>⭐</span>
               <span>{state.tangToc?.revealedCorrectAnswer ? "Đã hiện ĐA" : "Hiện ĐA Đúng"}</span>
             </button>
             <button
               type="button"
-              onClick={() => call("tt:grade")}
+              onClick={() => {
+                const allCorrectSeats = seats
+                  .filter((s) => {
+                    const sub = tt.submissions?.[s.id];
+                    return isExactMatch(sub?.answer) || Boolean(extraCorrectSeats[s.id]);
+                  })
+                  .map((s) => s.id);
+                call("tt:grade", { correctSeats: allCorrectSeats });
+              }}
               className="py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black shadow cursor-pointer flex items-center justify-center gap-1"
-              title="Bước 3: Chấm điểm tự động (+40/+30/+20/+10) và giữ nguyên bảng xếp hạng"
+              title="Bước 3: Chấm điểm tự động (+40/+30/+20/+10) cho các thí sinh được tick"
             >
               <span>✔</span>
               <span>Chấm Điểm (Enter)</span>
@@ -3380,26 +3463,15 @@ function VeDichDeck({
 
         {/* Right / Steal Controls */}
         <div className="space-y-2 flex flex-col justify-between">
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              type="button"
-              onClick={() => call("vd:openSteal")}
-              className={`py-2.5 rounded-xl font-black text-xs border shadow flex items-center justify-center gap-1 cursor-pointer uppercase ${
-                vd.steal?.open
-                  ? "bg-amber-500 border-amber-400 text-black shadow-amber-500/30 animate-pulse"
-                  : "bg-amber-500/10 border-amber-400/30 text-amber-300 hover:bg-amber-500/20"
-              }`}
-            >
-              <span>🔔</span>
-              <span>Mở Cướp 5s (C)</span>
-            </button>
+          <div className="w-full">
             <button
               type="button"
               onClick={() => call("vd:closeSteal")}
-              className="py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-slate-200 font-bold text-xs cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-slate-200 font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5"
               title="Đóng thời gian cướp điểm và hiện đáp án"
             >
-              ⏹ Đóng Cướp / Hiện ĐA
+              <span>⏹</span>
+              <span>Đóng Cướp / Hiện ĐA</span>
             </button>
           </div>
 

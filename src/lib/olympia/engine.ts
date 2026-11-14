@@ -509,8 +509,7 @@ export class OlympiaGame {
   tick(now: number): boolean {
     const st = this.state;
     if (st.introTimer && !!st.introTimer && timerRunning(st.introTimer) && timerRemaining(st.introTimer, now) <= 0) {
-      st.introTimer.remainingMs = 0;
-      st.introTimer.startedAt = null;
+      st.introTimer = null;
       this.touch(now);
       return true;
     }
@@ -658,6 +657,8 @@ export class OlympiaGame {
     // Clear intro/summary animations and release any manual camera override when any round begins
     st.introTimer = null;
     st.introStandby = false;
+    st.entranceCompleted = true;
+    if (st.entranceState) st.entranceState.active = false;
     if (st.summaryState) st.summaryState.active = false;
     st.showStageGraphics = false;
     st.studioCameraManual = false;
@@ -1097,8 +1098,11 @@ export class OlympiaGame {
       case "round:force": {
         const r = a.round as RoundId;
         if (!ROUND_ORDER.includes(r)) return fail("Vòng không hợp lệ");
-        if (st.stage === "lobby") return fail("Hãy bắt đầu trận trước");
+        if (st.stage === "lobby") st.stage = "playing";
         if (st.stage === "finished") st.stage = "playing";
+        st.introTimer = null;
+        st.introStandby = false;
+        st.entranceCompleted = true;
         if (st.currentRound && st.roundStatus[st.currentRound] === "active") this.finishRound(now);
         st.roundStatus[r] = "pending";
         return this.beginRound(r, now, true);
@@ -2254,12 +2258,10 @@ export class OlympiaGame {
       }
       case "vcnv:timer": {
         if (row < 0) return fail("Chưa chọn hàng");
-        if (timerRunning(v.timer)) pauseTimer(v.timer, now);
-        else {
-          v.phase = "question";
-          startTimer(v.timer, now);
-          this.cue("2_VuotChuongNgaiVat/15s_tick", "bgm");
-        }
+        v.phase = "question";
+        v.timer = mkTimer(rs.vcnv.rowTimerMs);
+        startTimer(v.timer, now);
+        this.cue("2_VuotChuongNgaiVat/15s_tick", "bgm");
         return OK;
       }
       case "vcnv:reveal": {
@@ -2638,6 +2640,8 @@ export class OlympiaGame {
           return OK;
         }
         tt.phase = "idle";
+        tt.viewMode = "question";
+        tt.showAnswerImage = false;
         tt.submissions = {};
         tt.ranking = [];
         tt.correctAnswer = undefined;
@@ -2648,14 +2652,30 @@ export class OlympiaGame {
       }
       case "tt:show": {
         if (tt.qIdx < 0) return fail("Hãy bấm Câu tiếp theo trước");
+        // If already in ranking or graded phase, return to question silently without audio/TTS
+        if (tt.phase === "ranking" || tt.phase === "graded") {
+          tt.viewMode = "question";
+          return OK;
+        }
         const q = tt.questions[tt.qIdx];
         if (q) {
           q.used = true;
           this.recordOpenedQuestion(q.q || q.answer);
         }
         tt.phase = "question";
+        tt.viewMode = "question";
+        tt.showAnswerImage = false;
         tt.revealedCorrectAnswer = false;
         this.cue("3_TangToc/show_question");
+        return OK;
+      }
+      case "tt:toggleAnswerImage": {
+        tt.showAnswerImage = !tt.showAnswerImage;
+        return OK;
+      }
+      case "tt:showRanking": {
+        if (tt.qIdx < 0) return fail("Chưa có câu hỏi");
+        tt.viewMode = "ranking";
         return OK;
       }
       case "tt:swapBackup": {
@@ -2677,13 +2697,12 @@ export class OlympiaGame {
       }
       case "tt:timer": {
         if (tt.phase !== "question") return fail("Hãy hiện câu hỏi trước");
-        if (timerRunning(tt.timer)) pauseTimer(tt.timer, now);
-        else {
-          if (st.showStageGraphics) st.showStageGraphics = false;
-          startTimer(tt.timer, now);
-          const s = Math.round(tt.timer.totalMs / 1000);
-          this.cue(`3_TangToc/tick_${s}s`, "bgm");
-        }
+        if (st.showStageGraphics) st.showStageGraphics = false;
+        const totalMs = rs.timers[Math.min(tt.qIdx, rs.timers.length - 1)];
+        tt.timer = mkTimer(totalMs);
+        startTimer(tt.timer, now);
+        const s = Math.round(totalMs / 1000);
+        this.cue(`3_TangToc/tick_${s}s`, "bgm");
         return OK;
       }
       case "tt:reveal": {
@@ -2712,6 +2731,7 @@ export class OlympiaGame {
         tt.correctAnswer = q?.answer;
         tt.revealedCorrectAnswer = false;
         tt.phase = "ranking";
+        tt.viewMode = "ranking";
         this.cue("3_TangToc/show_answer");
         return OK;
       }
@@ -2992,6 +3012,7 @@ export class OlympiaGame {
       }
       case "vd:onStage": {
         vd.onStage = true;
+        vd.onStageAt = now;
         st.studioCamera = 1;
         st.studioCameraManual = false;
         this.cue("4_VeDich/on_stage");
@@ -2999,6 +3020,7 @@ export class OlympiaGame {
       }
       case "vd:finishTurn": {
         vd.onStage = false;
+        vd.onStageAt = null;
         vd.phase = "seatDone";
         vd.hopeStarActive = false;
         vd.deductedOnSteal = false;
@@ -3164,7 +3186,10 @@ export class OlympiaGame {
       }
       case "vd:openSteal": {
         if (!cur) return fail("Không có câu hỏi");
-        const okPhase = vd.phase === "thinking" || (vd.phase === "result" && vd.lastVerdict === "wrong");
+        const okPhase =
+          vd.phase === "thinking" ||
+          vd.phase === "stealing" ||
+          (vd.phase === "result" && vd.lastVerdict === "wrong");
         if (!okPhase) return fail("Chỉ mở cướp điểm sau khi thí sinh trả lời sai/hết giờ");
         pauseTimer(vd.timer, now);
         if (vd.hopeStarActive && !vd.deductedOnSteal) {

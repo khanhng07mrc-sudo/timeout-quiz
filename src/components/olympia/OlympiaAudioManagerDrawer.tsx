@@ -276,27 +276,30 @@ export default function OlympiaAudioManagerDrawer({
     []
   );
 
-  // True mono downmix via ChannelSplitter→ChannelMerger before StereoPanner.
-  // StereoPanner alone only pans stereo signal — R leaks into L ear at pan=-1.
+  // Dual-mono channel routing: Extract selected channel (Left or Right) from source
+  // and output equally to BOTH ears (Left & Right channels) so clean BGM/SFX can be heard with both ears.
   const connectPanner = useCallback(
     (a: HTMLAudioElement, ch: "both" | "left" | "right") => {
       if (ch === "both") return;
       const ctx = getAudioContext();
-      if (!ctx?.createStereoPanner) return;
+      if (!ctx) return;
       try {
         const source = getOrCreateMediaSource(a, ctx);
         const splitter = ctx.createChannelSplitter(2);
         const merger = ctx.createChannelMerger(2);
-        const panner = ctx.createStereoPanner();
-        panner.pan.value = ch === "left" ? -1.0 : 1.0;
-        // Downmix both channels to mono then pan to target ear
         source.connect(splitter);
-        splitter.connect(merger, 0, 0); // L → mono ch0
-        splitter.connect(merger, 1, 0); // R → mono ch0 (summed)
-        merger.connect(panner);
-        panner.connect(ctx.destination);
+        if (ch === "left") {
+          // Route Left channel of original track to BOTH ears (Dual-Mono Center)
+          splitter.connect(merger, 0, 0); // L -> Out L
+          splitter.connect(merger, 0, 1); // L -> Out R
+        } else if (ch === "right") {
+          // Route Right channel of original track to BOTH ears (Dual-Mono Center)
+          splitter.connect(merger, 1, 0); // R -> Out L
+          splitter.connect(merger, 1, 1); // R -> Out R
+        }
+        merger.connect(ctx.destination);
       } catch {
-        // Fallback: audio plays without panning if WebAudio not supported
+        // Fallback: audio plays without WebAudio routing
       }
     },
     [getAudioContext, getOrCreateMediaSource]

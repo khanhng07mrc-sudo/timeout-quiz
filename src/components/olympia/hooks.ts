@@ -731,17 +731,18 @@ export function useOlympiaAudio(
           source = ctx.createMediaElementSource(a);
           mediaSourceMap.current.set(a, source);
         }
-        // True mono downmix: ChannelSplitter → ChannelMerger before StereoPanner
-        // (StereoPanner alone only pans stereo signal — R leaks into L ear at pan=-1)
+        // Dual-mono channel routing: route selected channel (Left or Right) to BOTH speakers (Center)
         const splitter = ctx.createChannelSplitter(2);
         const merger = ctx.createChannelMerger(2);
-        const panner = ctx.createStereoPanner();
-        panner.pan.value = activePan === "left" ? -1.0 : activePan === "right" ? 1.0 : 0.0;
         source.connect(splitter);
-        splitter.connect(merger, 0, 0); // L → mono ch0
-        splitter.connect(merger, 1, 0); // R → mono ch0 (summed)
-        merger.connect(panner);
-        panner.connect(ctx.destination);
+        if (activePan === "left") {
+          splitter.connect(merger, 0, 0); // L -> Out L
+          splitter.connect(merger, 0, 1); // L -> Out R
+        } else if (activePan === "right") {
+          splitter.connect(merger, 1, 0); // R -> Out L
+          splitter.connect(merger, 1, 1); // R -> Out R
+        }
+        merger.connect(ctx.destination);
       } catch {
         // Fallback: already connected or not supported
       }

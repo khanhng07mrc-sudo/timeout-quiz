@@ -12,6 +12,7 @@ import {
   VeDichSlantedGridGraphic,
   SummaryLowerThirdGraphic,
   V3SingleAnswerBar,
+  Olympia22BackgroundBackdrop,
 } from "@/components/olympia/Vtv3BroadcastGraphics";
 
 const OlympiaStudio3DScene = dynamic(() => import("@/components/olympia/OlympiaStudio3DScene"), {
@@ -229,6 +230,7 @@ export function DevGraphicsClient() {
               ["ans", "4c. Đáp án đơn"],
               ["chp", "4d. Câu hỏi phụ"],
               ["summary", "5. Tổng kết điểm"],
+              ["econova", "6. Econova Broadcast"],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -1306,6 +1308,182 @@ export function DevGraphicsClient() {
                 />
               </div>
             </div>
+          </div>
+        )}
+        {/* Deliverable 6: ECONOVA BROADCAST VERIFICATION (R1 - R3 / MILESTONE 2) */}
+        {(activeTab === "all" ||
+          activeTab === "econova" ||
+          activeTab === "econova-1" ||
+          activeTab === "econova-2" ||
+          activeTab === "econova-3" ||
+          activeTab === "econova-4" ||
+          activeTab === "econova-5" ||
+          activeTab === "vd-empty" ||
+          activeTab === "vcnv-frames" ||
+          activeTab === "tt-frames" ||
+          activeTab === "vcnv-answers" ||
+          activeTab === "tt-answers") && (
+          <div className="w-full flex flex-col gap-8">
+            <div className="p-4 bg-gradient-to-r from-cyan-950/80 via-slate-900 to-blue-950/80 border-l-4 border-cyan-400 rounded-xl">
+              <h2 className="text-base font-black text-cyan-300 tracking-wider">
+                MILESTONE 2 — ECONOVA BROADCAST GRAPHICS AUTOMATED VERIFICATION (R1, R2, R3)
+              </h2>
+              <p className="text-xs text-slate-300 mt-1">
+                Visual proofs for Về Đích seamless continuity &amp; early empty lower-third, and VCNV / Tăng Tốc staggered frame reveal &amp; 2s answer fade-in.
+              </p>
+            </div>
+
+            {/* 01: Về Đích Lower Third Early Empty Content */}
+            {(activeTab === "all" ||
+              activeTab === "econova" ||
+              activeTab === "econova-1" ||
+              activeTab === "vd-empty") && (
+              <div
+                id="screenshot-01-vedich-lower-third-empty"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-500/40 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  01_VEDICH_LOWER_THIRD_EMPTY.PNG — VỀ ĐÍCH LOWER THIRD MỞ SỚM NỘI DUNG TRỐNG (R1)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Mở sớm thanh câu hỏi 1/3 dưới với ruột trống ngay sau khi lưới chọn gói điểm đóng lại. Huy hiệu thí sinh (Quang Minh, 285đ), dải gói điểm (20-30-20), cụm điểm số hiển thị đầy đủ, mũi tên bung mở tiếp tục từ tâm (arrowFromCenter).
+                </p>
+                <div className="relative w-full max-w-[1280px] aspect-video rounded-2xl overflow-hidden border border-cyan-400/30 shadow-2xl bg-[#040d21] flex flex-col justify-end p-6">
+                  <Olympia22BackgroundBackdrop />
+                  <div className="relative z-20 w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end">
+                    <EconovaLowerThirdV3
+                      state={{
+                        ...mockState,
+                        currentRound: "veDich",
+                        rulesetId,
+                        veDich: {
+                          ...mockState.veDich!,
+                          order: activeMockSeats.map((s) => s.id),
+                          qIdx: -1,
+                          turnIdx: 0,
+                          packages: {
+                            0: [
+                              { points: 20, q: { q: "Câu 1", a: "A1" } },
+                              { points: 30, q: { q: "Câu 2", a: "A2" } },
+                              { points: 20, q: { q: "Câu 3", a: "A3" } },
+                            ],
+                          },
+                          current: null,
+                          timer: null as any,
+                        },
+                      }}
+                      activeSeatId={0}
+                      questionText=""
+                      timer={null}
+                      serverNow={serverNow}
+                      runAnim={false}
+                      arrowFromCenter={true}
+                      expandFromCenter={true}
+                      showScoreTab={true}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 02: VCNV Frames Open First */}
+            {(activeTab === "all" ||
+              activeTab === "econova" ||
+              activeTab === "econova-2" ||
+              activeTab === "vcnv-frames") && (
+              <div
+                id="screenshot-02-vcnv-frames-open-first"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-500/40 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  02_VCNV_FRAMES_OPEN_FIRST.PNG — VCNV KHUNG ĐÁP ÁN BUNG MỞ TRƯỚC (R2: GIAI ĐOẠN 1: t &lt; 2.0S)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Các khung đáp án thí sinh bung mở lần lượt dạng stagger (rowDelay = idx * 0.16s), tên thí sinh hiển thị rõ tại điểm kết thúc mở khung (nameDelay = rowDelay + 0.38s), chữ đáp án chưa fade-in (ansDelay = 2.0s).
+                </p>
+                <div className="relative w-full max-w-[1280px] aspect-video rounded-2xl overflow-hidden border border-cyan-400/30 shadow-2xl bg-[#040d21] flex items-center justify-center p-6">
+                  <VcnvAnswerRevealGraphic
+                    state={mockState}
+                    isWaitingAnswer={true}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 03: Tăng Tốc Frames Open First */}
+            {(activeTab === "all" ||
+              activeTab === "econova" ||
+              activeTab === "econova-3" ||
+              activeTab === "tt-frames") && (
+              <div
+                id="screenshot-03-tangtoc-frames-open-first"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-500/40 shadow-2xl"
+              >
+                <style>{`
+                  .econova-tt-frames-only .v3-tt-answer {
+                    display: none !important;
+                  }
+                `}</style>
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  03_TANGTOC_FRAMES_OPEN_FIRST.PNG — TĂNG TỐC KHUNG ĐÁP ÁN BUNG MỞ TRƯỚC (R2: GIAI ĐOẠN 1: t &lt; 2.0S)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Các thanh đáp án thí sinh bung mở lần lượt dạng stagger (rowDelay = idx * 0.16s), tên thí sinh hiển thị rõ, chữ nội dung câu trả lời và thời gian chưa fade-in (ansDelay = 2.0s).
+                </p>
+                <div className="relative w-full max-w-[1280px] aspect-video rounded-2xl overflow-hidden border border-cyan-400/30 shadow-2xl bg-[#040d21] flex items-center justify-center p-6 econova-tt-frames-only">
+                  <TangTocRankedAnswersGraphic
+                    state={mockState}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 04: VCNV Answers Fade-In After 2s */}
+            {(activeTab === "all" ||
+              activeTab === "econova" ||
+              activeTab === "econova-4" ||
+              activeTab === "vcnv-answers") && (
+              <div
+                id="screenshot-04-vcnv-answers-fade-in-2s"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-500/40 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  04_VCNV_ANSWERS_FADE_IN_2S.PNG — VCNV ĐÁP ÁN THÍ SINH FADE-IN SAU 2S THEO THỨ TỰ GHẾ (R2)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Chữ đáp án của 4 thí sinh fade-in xuất hiện lần lượt sau khoảng 2 giây (ansDelay = 2.0s + idx * 0.25s) theo đúng thứ tự ghế thí sinh (Quang Minh: MẠNG NƠ-RON, Anh Đức: MẠNG NƠ-RON, Gia Bảo: THUẬT TOÁN, Thái Dương: MÁY TÍNH).
+                </p>
+                <div className="relative w-full max-w-[1280px] aspect-video rounded-2xl overflow-hidden border border-cyan-400/30 shadow-2xl bg-[#040d21] flex items-center justify-center p-6">
+                  <VcnvAnswerRevealGraphic
+                    state={mockState}
+                    isWaitingAnswer={false}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 05: Tăng Tốc Answers Fade-In After 2s */}
+            {(activeTab === "all" ||
+              activeTab === "econova" ||
+              activeTab === "econova-5" ||
+              activeTab === "tt-answers") && (
+              <div
+                id="screenshot-05-tangtoc-answers-fade-in-2s"
+                className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-500/40 shadow-2xl"
+              >
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  05_TANGTOC_ANSWERS_FADE_IN_2S.PNG — TĂNG TỐC ĐÁP ÁN &amp; THỜI GIAN FADE-IN SAU 2S THEO XẾP HẠNG TỐC ĐỘ (R2)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Chữ đáp án và thời gian phản hồi của 4 thí sinh fade-in xuất hiện lần lượt sau khoảng 2 giây (ansDelay = 2.0s + idx * 0.25s) theo đúng thứ tự xếp hạng thời gian gửi/tốc độ (Quang Minh: CHÂU ÂU - 1.23, Anh Đức: CHÂU Á - 2.45, Gia Bảo: CHÂU PHI - 3.89, Thái Dương: CHÂU MỸ - 4.50).
+                </p>
+                <div className="relative w-full max-w-[1280px] aspect-video rounded-2xl overflow-hidden border border-cyan-400/30 shadow-2xl bg-[#040d21] flex items-center justify-center p-6">
+                  <TangTocRankedAnswersGraphic
+                    state={mockState}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

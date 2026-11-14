@@ -22,6 +22,7 @@ import {
   EconovaLowerThirdV3,
   VeDichSlantedGridGraphic,
   V3SingleAnswerBar,
+  Olympia22BackgroundBackdrop,
 } from "./Vtv3BroadcastGraphics";
 import { isTtsEnabled, setTtsEnabled, speakTTS, cancelTTS } from "@/lib/olympia/tts";
 
@@ -735,9 +736,13 @@ function Vcnv({ state, serverNow }: P) {
   if (!v) return null;
 
   // Candidate Answers Revealed OR Waiting Answer Background -> Fullscreen VTV3 Answer Graphic
-  // Nền chờ ĐA: chỉ nền xanh/blur, tuyệt đối không có khung đáp án
+  // Nền chờ ĐA: nền xanh Olympia công nghệ cho Theme Mũi tên V3, nền blur cho Theme cổ điển
   if (v.phase === "waitingAnswer" && !v.answersRevealed) {
-    return (
+    return state.themeMode !== "o26_classic" ? (
+      <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+        <Olympia22BackgroundBackdrop />
+      </div>
+    ) : (
       <div className="absolute inset-0 bg-[#040e24]/75 backdrop-blur-sm animate-fade-in pointer-events-none" />
     );
   }
@@ -753,20 +758,24 @@ function TangToc({ state, serverNow }: P) {
   const tt = state.tangToc!;
   if (!tt || tt.phase === "idle") return null;
 
-  // 0. Nền chờ ĐA (W): Hiển thị nền mờ trong suốt trên camera toàn cảnh thí sinh trước khi hiện đáp án
+  // 0. Nền chờ ĐA (W): Nền xanh Olympia công nghệ cho Theme Mũi tên V3, nền blur cho Theme cổ điển
   if ((tt as any).phase === "waitingAnswer") {
-    return (
+    return state.themeMode !== "o26_classic" ? (
+      <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+        <Olympia22BackgroundBackdrop />
+      </div>
+    ) : (
       <div className="absolute inset-0 bg-[#040e24]/75 backdrop-blur-sm animate-fade-in pointer-events-none" />
     );
   }
 
-  // 1. Candidate Answers Revealed & Graded -> Fullscreen Ranked Layout
-  if (tt.phase === "ranking" || tt.phase === "graded") {
+  // 1. Candidate Answers Revealed & Graded -> Fullscreen Ranked Layout (unless Host switched to view question)
+  if ((tt.phase === "ranking" || tt.phase === "graded") && tt.viewMode !== "question") {
     return <TangTocRankedAnswersGraphic state={state} />;
   }
 
-  // 2. Question Clue Frame -> Fullscreen Frame
-  return <TangTocQuestionGraphic state={state} serverNow={serverNow} />;
+  // 2. Question Clue Frame -> Fullscreen Frame (silent return if in ranking/graded)
+  return <TangTocQuestionGraphic state={state} serverNow={serverNow} isSilent={tt.phase === "ranking" || tt.phase === "graded"} />;
 }
 
 function VeDich({ state, serverNow }: P) {

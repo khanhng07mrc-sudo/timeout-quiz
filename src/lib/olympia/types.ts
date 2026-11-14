@@ -155,6 +155,8 @@ export interface TangTocQuestion {
   category?: "iq" | "data" | "arrange";
   /** optional timed sequence of clue images for "data" (Dữ kiện mở dần) questions */
   clueImages?: TangTocClueImage[];
+  /** optional answer/solution image replacing the question image */
+  answerImage?: string;
   /** Whether this question has already been used */
   used?: boolean;
 }
@@ -460,6 +462,8 @@ export interface TangTocState {
   isBackupQuestion?: boolean;
   correctAnswer?: string;
   revealedCorrectAnswer?: boolean;
+  viewMode?: "question" | "ranking";
+  showAnswerImage?: boolean;
 }
 
 export interface VeDichState {
@@ -469,6 +473,7 @@ export interface VeDichState {
   phase: "idle" | "choosing" | "packageReady" | "thinking" | "stealing" | "result" | "seatDone";
   packageReadyAt?: number;
   onStage?: boolean;
+  onStageAt?: number | null;
   packages: Record<number, { points: number; q: VeDichQuestion }[]>;
   qIdx: number;
   current: { points: number; q: VeDichQuestion } | null;

@@ -1412,7 +1412,7 @@ export function VcnvAnswerRevealGraphic({
     });
 
     return (
-      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040d21] overflow-hidden animate-fade-in select-none">
+      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040d21] overflow-hidden select-none">
         <Olympia22BackgroundBackdrop />
         <style>{`
           @keyframes v3-row-wing-l-g1 {
@@ -1490,15 +1490,34 @@ export function VcnvAnswerRevealGraphic({
         <div className={`relative z-10 w-[88%] max-w-[1640px] flex flex-col ${rowGapClass} items-center justify-center py-2`}>
           {seats.map((seat, idx) => {
             const answerText = v.answers?.[seat.id]?.text || "";
-            const rowDelay = idx * 0.16;
-            const nameDelay = (rowDelay + 0.38).toFixed(3);
-            const ansDelay = (2.0 + idx * 0.25).toFixed(3);
+            const rowDelay = idx * 0.28;
+            const nameDelay = (rowDelay + 0.15).toFixed(3);
+            const ansDelay = (rowDelay + 0.15).toFixed(3);
+
+            const curRow = v.rows[v.currentRow];
+            const isCorrect = state.vcnv?.revealedCorrectAnswer && curRow?.answer
+              ? (() => {
+                  const rawAns = curRow.answer;
+                  const primaryClean = cleanVcnvWord(rawAns).toLowerCase();
+                  const userClean = cleanVcnvWord(answerText).toLowerCase();
+                  const parsed = parseVcnvAnswer(rawAns);
+                  if (userClean && userClean === primaryClean) return true;
+                  return parsed.acceptedAnswers.some(
+                    (cand) => cleanVcnvWord(cand).toLowerCase() === userClean
+                  );
+                })()
+              : true;
+            const isDimmed = Boolean(state.vcnv?.revealedCorrectAnswer && !isCorrect);
 
             return (
               <div
                 key={seat.id}
-                className="w-full flex items-center justify-center"
-                style={{ ["--dc" as string]: `${dc}px` }}
+                className="w-full flex items-center justify-center transition-all duration-500 ease-in-out"
+                style={{
+                  ["--dc" as string]: `${dc}px`,
+                  opacity: isDimmed ? 0.35 : 1,
+                  filter: isDimmed ? "brightness(0.5) contrast(0.85)" : "none",
+                }}
               >
                 <V3ScaledStage designW={shell.canvasW} designH={H}>
                   {/* Tier 1 (Bottom / z-0): Cyan sliding wings */}
@@ -1681,9 +1700,11 @@ export function VcnvAnswerRevealGraphic({
 export function TangTocQuestionGraphic({
   state,
   serverNow,
+  isSilent = false,
 }: {
   state: OlympiaState;
   serverNow: () => number;
+  isSilent?: boolean;
 }) {
   const tt = state.tangToc!;
   const q = tt.questions[tt.qIdx];
@@ -1714,7 +1735,9 @@ export function TangTocQuestionGraphic({
         <Olympia22BackgroundBackdrop />
 
         <div
-          className="relative z-10 w-full h-full flex items-center justify-center animate-fade-in"
+          className={`relative z-10 w-full h-full flex items-center justify-center ${
+            isSilent ? "" : "animate-fade-in"
+          }`}
           style={{ containerType: "size" }}
         >
           {/* Unified width column so Question Box and 16:9 Media Box always share exact width */}
@@ -1752,7 +1775,14 @@ export function TangTocQuestionGraphic({
             >
               {/* Full-height media slot above the 20px flush bottom timer bar */}
               <div className="w-full h-full pb-[20px] flex items-center justify-center overflow-hidden">
-                {q?.clueImages && q.clueImages.length > 0 ? (
+                {tt.showAnswerImage && q?.answerImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={q.answerImage}
+                    alt="Đáp án câu hỏi"
+                    className="w-full h-full object-contain"
+                  />
+                ) : q?.clueImages && q.clueImages.length > 0 ? (
                   <div className="grid grid-cols-3 grid-rows-2 gap-2 w-full h-full p-2">
                     {q.clueImages.map((clue, idx) => {
                       const label = ["A", "B", "C", "D", "E", "F"][idx] || `${idx + 1}`;
@@ -1816,7 +1846,7 @@ export function TangTocQuestionGraphic({
       <Vtv3ChalkboardBackdrop />
 
       {/* Main framed container */}
-      <div className="relative w-full max-w-4xl z-10 flex flex-col items-center animate-fade-in">
+      <div className={`relative w-full max-w-4xl z-10 flex flex-col items-center ${isSilent ? "" : "animate-fade-in"}`}>
         {/* ── 1. Horizontal Brass Rod (Classic only) ── */}
         <HorizontalBrassRod />
 
@@ -1847,7 +1877,14 @@ export function TangTocQuestionGraphic({
           }}
         >
           {/* Inside Picture Frame Content */}
-          {q?.clueImages && q.clueImages.length > 0 ? (
+          {tt.showAnswerImage && q?.answerImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={q.answerImage}
+              alt="Đáp án câu hỏi"
+              className="max-h-[50vh] w-auto mx-auto rounded-lg shadow-xl object-contain"
+            />
+          ) : q?.clueImages && q.clueImages.length > 0 ? (
             <div className="grid grid-cols-3 grid-rows-2 gap-3 w-full max-w-2xl mx-auto">
               {q.clueImages.map((clue, idx) => {
                 const label = ["A", "B", "C", "D", "E", "F"][idx] || `${idx + 1}`;
@@ -1946,7 +1983,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
     });
 
     return (
-      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040d21] overflow-hidden animate-fade-in select-none">
+      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040d21] overflow-hidden select-none">
         <Olympia22BackgroundBackdrop />
         <style>{`
           @keyframes v3-tt-wing-l-g1 {
@@ -2026,15 +2063,36 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             const seat = state.seats[item.seat];
             const sec = item.noAnswer ? "0.00" : (item.ms / 1000).toFixed(2);
             const answerText = item.noAnswer ? "" : (item.answer || "");
-            const rowDelay = idx * 0.16;
-            const nameDelay = (rowDelay + 0.38).toFixed(3);
-            const ansDelay = (2.0 + idx * 0.25).toFixed(3);
+            const rowDelay = idx * 0.28;
+            const nameDelay = (rowDelay + 0.15).toFixed(3);
+            const ansDelay = (rowDelay + 0.15).toFixed(3);
+
+            const isGradedOrRevealed = Boolean(tt.revealedCorrectAnswer || tt.phase === "graded");
+            const isCorrect = isGradedOrRevealed
+              ? (() => {
+                  if (item.points != null && item.points > 0) return true;
+                  if (tt.correctAnswer) {
+                    const normAns = (item.answer || "").trim().toLowerCase().replace(/[\s-]/g, "");
+                    const targetCandidates = tt.correctAnswer
+                      .split(/[/|()]/)
+                      .map((s) => s.trim().toLowerCase().replace(/[\s-]/g, ""))
+                      .filter(Boolean);
+                    if (targetCandidates.includes(normAns)) return true;
+                  }
+                  return false;
+                })()
+              : true;
+            const isDimmed = Boolean(isGradedOrRevealed && !isCorrect);
 
             return (
               <div
                 key={item.seat}
-                className="w-full flex items-center justify-center"
-                style={{ ["--dc" as string]: `${dc}px` }}
+                className="w-full flex items-center justify-center transition-all duration-500 ease-in-out"
+                style={{
+                  ["--dc" as string]: `${dc}px`,
+                  opacity: isDimmed ? 0.35 : 1,
+                  filter: isDimmed ? "brightness(0.5) contrast(0.85)" : "none",
+                }}
               >
                 <V3ScaledStage designW={shell.canvasW} designH={H}>
                   {/* Tier 1 (Bottom / z-0): Cyan sliding wings */}
@@ -3673,26 +3731,24 @@ export function EconovaLowerThirdV3({
             </div>
 
             {/* Exact Econova Show Silver Trapezoid Timer Housing (screen.html: 22px height, #d1d5db->#6b7280 housing, 8px black track, red left-to-right progress bar + pulsing white handle) */}
-            {timer && (
-              <EconovaSpecializedTimerBar
-                timer={timer}
-                serverNow={serverNow}
-                defaultTotalMs={5000}
-                height={timerH}
-                trackMargin="0 24px"
-                clipPath={timerClipPath}
-                clockRef={showTimerClock ? clockRef : undefined}
-                clockFormat="mmss"
-                className={`absolute z-20 pointer-events-none ${
-                  runAnim ? "v3-anim-content" : ""
-                }`}
-                style={{
-                  left: timerMinX,
-                  bottom: 0,
-                  width: timerBarW,
-                }}
-              />
-            )}
+            <EconovaSpecializedTimerBar
+              timer={timer || { totalMs: 15000, remainingMs: 15000, startedAt: null }}
+              serverNow={serverNow}
+              defaultTotalMs={5000}
+              height={timerH}
+              trackMargin="0 24px"
+              clipPath={timerClipPath}
+              clockRef={showTimerClock ? clockRef : undefined}
+              clockFormat="mmss"
+              className={`absolute z-20 pointer-events-none ${
+                runAnim ? "v3-anim-content" : ""
+              }`}
+              style={{
+                left: timerMinX,
+                bottom: 0,
+                width: timerBarW,
+              }}
+            />
           </div>
 
           {/* Tier 3 (Top / z-30): Navy chevrons + crisp white accent lines cutting the hex wedge */}
@@ -3836,7 +3892,7 @@ export function VeDichSlantedGridGraphic({
   const isV3Arrow = state.themeMode !== "o26_classic";
   const W = 1080;
   const H = 360;
-  const shell = buildArrowShell({ W, H, slantRatio: 0.25, thick: 36, cThick: 28 });
+  const shell = buildArrowShell({ W, H, slantRatio: 0.3571, thick: 32, cThick: 24, pad: 36 });
   const cells = buildVeDichGrid(shell, spec);
 
   if (!isV3Arrow) {

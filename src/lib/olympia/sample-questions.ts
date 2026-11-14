@@ -872,6 +872,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
       "type": "image",
       "media": "/olympia/media/tangtoc_cau1_iq.png",
       "answer": "34",
+      "answerImage": "/olympia/media/tangtoc_cau1_answer.png",
       "duration": 20
     },
     {
@@ -880,6 +881,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
       "type": "image",
       "media": "/olympia/media/tangtoc_cau2_clue1.png",
       "answer": "Vịnh Hạ Long",
+      "answerImage": "/olympia/media/tangtoc_cau2_answer.png",
       "duration": 20,
       "clueImages": [
         {
@@ -910,6 +912,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
       "type": "image",
       "media": "/olympia/media/tangtoc_cau3_arrange.png",
       "answer": "246135",
+      "answerImage": "/olympia/media/tangtoc_cau3_answer.png",
       "duration": 30
     },
     {
@@ -918,6 +921,7 @@ const RAW_SAMPLE_QUESTION_SET: OlympiaQuestionSet = {
       "type": "video",
       "media": "/olympia/media/tangtoc_cau4_video.webm",
       "answer": "Isaac Newton",
+      "answerImage": "/olympia/media/tangtoc_cau4_isaac_newton.png",
       "duration": 30
     }
   ],

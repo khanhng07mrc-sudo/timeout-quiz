@@ -4087,12 +4087,13 @@ export function VeDichWalkingContestant({
       lastStateRef.current = {
         turnIdx: curTurn,
         mode,
-        startedAt: now,
+        startedAt: mode === "onStage" && vd?.onStageAt ? vd.onStageAt : now,
       };
     }
 
-    const elapsed = Math.max(0, now - lastStateRef.current.startedAt) / 1000;
-    const DURATION = 3.8;
+    const walkBaseTime = mode === "onStage" && vd?.onStageAt ? vd.onStageAt : lastStateRef.current.startedAt;
+    const elapsed = Math.max(0, now - walkBaseTime) / 1000;
+    const DURATION = 7.5; // Natural, realistic 7.5-second walk to center stage
 
     let walkProgress = 1.0;
     let walkingNow = false;
@@ -4135,7 +4136,7 @@ export function VeDichWalkingContestant({
       isReturning
     );
 
-    const bounce = walkingNow ? Math.abs(Math.sin(walkProgress * Math.PI * 14)) * 0.024 : 0;
+    const bounce = walkingNow ? Math.abs(Math.sin(walkProgress * Math.PI * 28)) * 0.024 : 0;
 
     if (rootRef.current) {
       rootRef.current.position.set(rawPos[0], rawPos[1] + bounce, rawPos[2]);
@@ -5355,12 +5356,7 @@ export function Podiums({
         const isLobby = state?.stage === "lobby";
         const isIntro = Boolean(introStartedAt || state?.introTimer || state?.introStandby);
         const hasEntranceCompleted = Boolean(state?.entranceCompleted);
-        const isCompetitionRound = Boolean(
-          state?.stage === "playing" &&
-          !state?.introTimer &&
-          !state?.introStandby &&
-          state?.currentRound
-        );
+        const isCompetitionRound = Boolean(state?.currentRound && !state?.entranceState?.active);
 
         const { seatStartOffsetsMs } = getEntranceScheduleOffsetsMs(activeCount);
         const seatTiming = getEntranceSeatTiming(cfg.seatId, activeCount);
@@ -5381,9 +5377,9 @@ export function Podiums({
         // ── PODIUM SCOREBOARD 3-PHASE LIFECYCLE ──
         // 1. "logo": Mới mở phòng (Lobby / Pre-match / Intro / Thí sinh chưa bước tới bục) -> Logo Đường lên đỉnh Olympia
         // 2. "name_school": Từng thí sinh chuẩn bị bước vào sau bục của mình xong -> Tên + Trường THPT
-        // 3. "name_score": Chỉ chuyển sang Tên + Điểm khi vòng thi Khởi Động thực sự bấm bắt đầu (state.khoiDong.started = true)
+        // 3. "name_score": Khi bắt đầu một vòng thi (nhấn tên phần thi Khởi Động / VCNV / Tăng Tốc / Về Đích hoặc có state.currentRound) -> Tên + Điểm
         let screenMode: PodiumScreenMode = "logo";
-        if (isCompetitionRound) {
+        if (state?.currentRound) {
           screenMode = "name_score";
         } else if (hasEntranceCompleted) {
           screenMode = "name_school";

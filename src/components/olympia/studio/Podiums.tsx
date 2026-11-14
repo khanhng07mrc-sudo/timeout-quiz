@@ -2340,7 +2340,7 @@ export function ContestantPodium({
         <ContestantFigure
           seatId={seatId}
           quality={quality}
-          position={[0, 0, -0.42]}
+          position={[0, 0, -0.34]}
           isBuzzed={isBuzzed}
         />
       )}

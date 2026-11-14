@@ -1145,6 +1145,23 @@ export class OlympiaGame {
         }
         return OK;
       }
+      case "media:open": {
+        st.manualMediaState = { isOpen: true, isPlaying: true };
+        return OK;
+      }
+      case "media:close": {
+        st.manualMediaState = { isOpen: false, isPlaying: false };
+        return OK;
+      }
+      case "media:play": {
+        if (!st.manualMediaState) st.manualMediaState = { isOpen: true, isPlaying: true };
+        else st.manualMediaState.isPlaying = true;
+        return OK;
+      }
+      case "media:pause": {
+        if (st.manualMediaState) st.manualMediaState.isPlaying = false;
+        return OK;
+      }
       case "rightScreen:setMode": {
         st.rightScreenMode = (a.mode as any) || "auto";
         return OK;
@@ -1599,6 +1616,7 @@ export class OlympiaGame {
 
     switch (type) {
       case "kd:next": {
+        st.manualMediaState = undefined;
         st.studioCameraManual = false;
         st.studioCamera = undefined;
         if (kd.startCooldownUntil && now < kd.startCooldownUntil) {
@@ -3070,6 +3088,7 @@ export class OlympiaGame {
       case "vd:choosePackage":
         return this.setPackage(((a.points as number[]) ?? []).map(Number), now);
       case "vd:startQuestion": {
+        st.manualMediaState = undefined;
         const pkg = vd.packages[owner];
         if (!pkg) return fail("Thí sinh chưa chọn gói");
         if (vd.phase === "thinking" || vd.phase === "stealing") return fail("Câu hỏi đang diễn ra");
@@ -3403,6 +3422,7 @@ export class OlympiaGame {
         return OK;
       }
       case "chp:next": {
+        st.manualMediaState = undefined;
         const limit = this.chpLimit();
         const nextIdx = cp.qIdx + 1;
         if (limit !== "unlimited" && nextIdx >= limit) {

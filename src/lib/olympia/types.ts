@@ -639,6 +639,11 @@ export interface OlympiaState {
   rightScreenMode?: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" | "roundGraphics";
   /** State for the lower-third sequence summarizing contestant points from lowest to highest */
   summaryState?: OlympiaSummaryState | null;
+  /** Manual Video Control (For Khởi Động, VCNV, Về Đích, Câu Hỏi Phụ) */
+  manualMediaState?: {
+    isOpen: boolean;
+    isPlaying: boolean;
+  };
 }
 
 export interface OlympiaSummaryState {

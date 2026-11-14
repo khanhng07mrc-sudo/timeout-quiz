@@ -836,6 +836,78 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
               )}
             </div>
 
+            {/* Dedicated Manual Video Control for KD, VCNV, VD, CHP */}
+            {(() => {
+              const curMedia = getCurrentQuestionMedia(state);
+              if (!curMedia || !curMedia.isVideo || state.currentRound === "tangToc") return null;
+              const isMediaOpen = Boolean(state.manualMediaState?.isOpen);
+              const isMediaPlaying = Boolean(state.manualMediaState?.isPlaying);
+
+              return (
+                <div className="rounded-xl border-2 border-cyan-400/50 bg-gradient-to-r from-[#041430]/90 to-[#020b1c]/95 p-3 flex flex-wrap items-center justify-between gap-3 shadow-lg animate-fade-in">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-lg">
+                      🎬
+                    </div>
+                    <div>
+                      <div className="text-xs font-black text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>VIDEO CÂU HỎI (ĐIỀU KHIỂN THỦ CÔNG)</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-400/10 text-cyan-200 border border-cyan-400/20 font-bold">
+                          Độc lập
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-medium mt-0.5">
+                        {isMediaOpen
+                          ? isMediaPlaying
+                            ? "🟢 Đang phát trên màn hình chiếu"
+                            : "⏸ Đang tạm dừng trên màn hình chiếu"
+                          : "⚪ Video chưa mở lên màn hình chiếu"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {!isMediaOpen ? (
+                      <button
+                        type="button"
+                        onClick={() => call("media:open")}
+                        className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.35)] cursor-pointer transition"
+                      >
+                        <span>👁 MỞ & PHÁT VIDEO</span>
+                      </button>
+                    ) : (
+                      <>
+                        {isMediaPlaying ? (
+                          <button
+                            type="button"
+                            onClick={() => call("media:pause")}
+                            className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer transition shadow"
+                          >
+                            <span>⏸ TẠM DỪNG</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => call("media:play")}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer transition shadow"
+                          >
+                            <span>▶ PHÁT TIẾP</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => call("media:close")}
+                          className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer transition shadow"
+                        >
+                          <span>✕ ĐÓNG VIDEO</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Utility Bar: NỀN CHỜ (W), BẢNG ĐIỂM (B), TRƯỜNG QUAY 3D (H) & CHẾ ĐỘ HIỂN THỊ */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               <button
@@ -3890,6 +3962,37 @@ function getExplanationText(st: OlympiaState): string {
     }
   }
   return exp.trim();
+}
+
+export function getCurrentQuestionMedia(st: OlympiaState | null): { url?: string; isVideo: boolean } | null {
+  if (!st) return null;
+  let url: string | undefined;
+  let type: string | undefined;
+
+  if (st.currentRound === "khoiDong" && st.khoiDong?.current) {
+    url = st.khoiDong.current.media;
+    type = st.khoiDong.current.mediaType;
+  } else if (st.currentRound === "veDich" && st.veDich?.current?.q) {
+    url = st.veDich.current.q.media;
+    type = st.veDich.current.q.type;
+  } else if (st.currentRound === "cauHoiPhu" && st.cauHoiPhu && st.cauHoiPhu.qIdx >= 0) {
+    const q = st.cauHoiPhu.questions[st.cauHoiPhu.qIdx];
+    url = q?.media;
+    type = q?.mediaType;
+  } else if (st.currentRound === "vcnv" && st.vcnv) {
+    const r = st.vcnv.currentRow;
+    if (r === 4 && st.vcnv.centerQuestion) {
+      url = st.vcnv.centerQuestion.media;
+      type = st.vcnv.centerQuestion.mediaType;
+    } else if (r >= 0 && r < 4) {
+      url = st.vcnv.rows[r]?.media;
+      type = st.vcnv.rows[r]?.mediaType;
+    }
+  }
+
+  if (!url) return null;
+  const isVideo = type === "video" || /\.(mp4|webm|mov|ogg|m4v|ogv|mpeg)$/i.test(url);
+  return { url, isVideo };
 }
 
 export default HostConsole;

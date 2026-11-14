@@ -6,7 +6,8 @@ import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
 import { RULESETS } from "@/lib/olympia/rulesets";
 import { parseVcnvAnswer, stripVcnvLetterCount } from "@/lib/olympia/engine";
 import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
-import { CircularTimer, MediaView, ScoreStrip, SEAT_COLORS, Timer, activeSeats, seatName } from "./ui";
+import { CircularTimer, MediaView, ScoreStrip, SEAT_COLORS, Timer, activeSeats, seatName, resolveMediaUrl } from "./ui";
+import { getCurrentQuestionMedia } from "./HostConsole";
 import { useOlympiaCameraState } from "./studio/useOlympiaCamera";
 import {
   Vtv3ChalkboardBackdrop,
@@ -448,6 +449,47 @@ export default function DisplayScreen({ code }: { code: string }) {
         </div>
       )}
 
+      {/* ── 4.8. BROADCAST MANUAL VIDEO OVERLAY (KD, VCNV, VD, CHP) ── */}
+      {(() => {
+        if (!state.manualMediaState?.isOpen || state.currentRound === "tangToc") return null;
+        const curMedia = getCurrentQuestionMedia(state);
+        if (!curMedia?.url || !curMedia.isVideo) return null;
+        const resolvedUrl = resolveMediaUrl(curMedia.url);
+        if (!resolvedUrl) return null;
+
+        return (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 sm:p-8 bg-black/75 backdrop-blur-md animate-fade-in pointer-events-auto">
+            <div className="relative w-full max-w-4xl aspect-video rounded-3xl overflow-hidden border-2 border-cyan-400 shadow-[0_0_50px_rgba(0,191,255,0.4)] bg-black flex items-center justify-center">
+              <video
+                src={resolvedUrl}
+                controls
+                autoPlay={state.manualMediaState.isPlaying}
+                playsInline
+                className="w-full h-full object-contain"
+                ref={(el) => {
+                  if (el) {
+                    if (state.manualMediaState?.isPlaying && el.paused) el.play().catch(() => {});
+                    else if (!state.manualMediaState?.isPlaying && !el.paused) el.pause();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    (window as any).__OLYMPIA_CALL__?.("media:close");
+                  }
+                }}
+                className="absolute top-3 right-3 z-50 px-3.5 py-1.5 rounded-full bg-slate-950/85 hover:bg-rose-600 text-white text-xs font-black border border-white/20 transition cursor-pointer flex items-center gap-1 shadow-xl"
+                title="Đóng cửa sổ video"
+              >
+                <span>✕ Đóng video</span>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── 5. GAME STAGE LAYERS (Z-20) ── */}
       <div className="flex-1 min-h-0 relative z-20 flex flex-col justify-end overflow-hidden">
         {/* ── 1. 3D BROADCAST STUDIO (FULLSCREEN OR VCNV BOTTOM-RIGHT QUADRANT WINDOW) ── */}
@@ -703,7 +745,6 @@ function KhoiDong({ state, serverNow }: P) {
                 <MediaView
                   url={kd.current.media}
                   type={kd.current.mediaType}
-                  isTiming={Boolean(kd.timer?.startedAt)}
                   className="max-h-20 sm:max-h-24 rounded-lg mx-auto mt-1"
                 />
               ) : null
@@ -728,7 +769,6 @@ function KhoiDong({ state, serverNow }: P) {
               <MediaView
                 url={kd.current.media}
                 type={kd.current.mediaType}
-                isTiming={Boolean(kd.timer?.startedAt)}
                 className="max-h-20 sm:max-h-24 rounded-lg mx-auto mt-1"
               />
             ) : null
@@ -865,7 +905,6 @@ function VeDich({ state, serverNow }: P) {
                 <MediaView
                   url={cur.q.media}
                   type={cur.q.mediaType}
-                  isTiming={Boolean(vd.phase === "thinking" || vd.phase === "stealing")}
                   className="max-h-20 sm:max-h-24 rounded-xl mx-auto border border-violet-500/20 mt-1"
                 />
               ) : null
@@ -888,7 +927,6 @@ function VeDich({ state, serverNow }: P) {
                 <MediaView
                   url={cur.q.media}
                   type={cur.q.mediaType}
-                  isTiming={Boolean(vd.phase === "thinking" || vd.phase === "stealing")}
                   className="max-h-20 sm:max-h-24 rounded-xl mx-auto border border-violet-500/20 mt-1"
                 />
               ) : null

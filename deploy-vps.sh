@@ -85,6 +85,15 @@ $PM2_BIN start ecosystem.config.cjs
 
 $PM2_BIN save
 
+# 5b. Đảm bảo cấu hình Nginx cho phép payload lớn (client_max_body_size 50M)
+if [ -f "/etc/nginx/sites-available/quizorra" ]; then
+  if ! grep -q "client_max_body_size" /etc/nginx/sites-available/quizorra; then
+    echo "  -> Bổ sung client_max_body_size 50M vào cấu hình Nginx..."
+    sed -i '/server_name quizorra.ddns.net;/a \    client_max_body_size 50M;' /etc/nginx/sites-available/quizorra
+    nginx -t && systemctl reload nginx 2>/dev/null || true
+  fi
+fi
+
 # 6. Kiểm tra tình trạng hoạt động nội bộ (Internal Healthcheck loop)
 echo "[6/7] Running local healthcheck..."
 sleep 3

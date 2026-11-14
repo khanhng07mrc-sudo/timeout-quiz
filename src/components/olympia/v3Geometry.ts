@@ -397,29 +397,29 @@ export interface SlantedCells {
 }
 
 export function buildSlantedCells(spec: SlantedCellsSpec): SlantedCells {
-  const { xl, xr, y0, y1, n, slope } = spec;
+  const { xl, xr, y0, y1, n } = spec;
   const weights = spec.weights && spec.weights.length === n ? spec.weights : Array(n).fill(1);
   const total = weights.reduce((a, b) => a + b, 0);
-  const A0 = xl(y0);
-  const B0 = xr(y0);
 
-  // x position (at y0) of seam k, k = 1..n-1
-  const seam0: number[] = [A0];
-  let acc = 0;
-  for (let k = 0; k < n - 1; k++) {
-    acc += weights[k];
-    seam0.push(A0 + (acc / total) * (B0 - A0));
-  }
-  seam0.push(B0);
-  const seamX = (k: number, y: number) => seam0[k] - slope * (y - y0);
+  // Symmetrical proportional interpolation at any y:
+  // Guarantees all contestant cells receive exact equal width at all heights,
+  // completely eliminating bloating of the final cell.
+  const seamX = (k: number, y: number) => {
+    if (k <= 0) return xl(y);
+    if (k >= n) return xr(y);
+    let acc = 0;
+    for (let j = 0; j < k; j++) acc += weights[j];
+    const frac = acc / total;
+    return xl(y) + frac * (xr(y) - xl(y));
+  };
 
   const breaks = (spec.breaks ?? []).filter((b) => b > y0 + 1e-6 && b < y1 - 1e-6);
   const ys = [y0, ...breaks, y1];
 
   const cells: SlantedCell[] = [];
   for (let i = 0; i < n; i++) {
-    const left = (y: number) => (i === 0 ? xl(y) : seamX(i, y));
-    const right = (y: number) => (i === n - 1 ? xr(y) : seamX(i + 1, y));
+    const left = (y: number) => seamX(i, y);
+    const right = (y: number) => seamX(i + 1, y);
     const pts: Pt[] = [
       ...ys.map((y) => [left(y), y] as Pt),
       ...[...ys].reverse().map((y) => [right(y), y] as Pt),

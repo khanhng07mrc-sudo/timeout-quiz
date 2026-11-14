@@ -604,8 +604,12 @@ export function useOlympiaAudio(
 
       const targetVol = 0.85;
 
-      if (immediate) {
-        // Countdown track: ngắt ngay track nhạc cũ và phát âm lượng đầy đủ ngay lập tức
+      const isNewContestIntro = Boolean(newAudio.src && (newAudio.src.includes("contest_intro") || newAudio.src.includes("contestant_intro")));
+      const isOldShowIntro = Boolean(old && old.src && old.src.includes("show_intro"));
+      const cutOldImmediately = immediate || (isNewContestIntro && isOldShowIntro);
+
+      if (cutOldImmediately) {
+        // Countdown track hoặc bắt đầu trận đấu (contest_intro thay thế show_intro): ngắt ngay track nhạc cũ và phát âm lượng đầy đủ ngay lập tức
         if (old && !old.paused) {
           try {
             old.pause();
@@ -613,6 +617,19 @@ export function useOlympiaAudio(
             old.src = "";
           } catch {}
           activeBgmSet.current.delete(old);
+        }
+        // Đồng thời dọn dẹp triệt để bất kỳ track show_intro nào còn sót trong activeBgmSet
+        if (isNewContestIntro) {
+          activeBgmSet.current.forEach((a) => {
+            if (a !== newAudio && a.src && a.src.includes("show_intro")) {
+              try {
+                a.pause();
+                a.currentTime = 0;
+                a.src = "";
+              } catch {}
+              activeBgmSet.current.delete(a);
+            }
+          });
         }
         newAudio.volume = targetVol;
         newAudio.play().catch((err) => {
@@ -713,10 +730,9 @@ export function useOlympiaAudio(
     (a: HTMLAudioElement, panOverride?: "both" | "left" | "right") => {
       const activePan =
         panOverride ||
-        channel ||
         (typeof window !== "undefined"
-          ? (localStorage.getItem("olympia_audio_channel") as any) || "both"
-          : "both");
+          ? (localStorage.getItem("olympia_audio_channel") as any) || channel || "both"
+          : channel || "both");
       const ctx = getAudioContext();
       if (!ctx) return;
       try {
@@ -981,15 +997,10 @@ export function useOlympiaAudio(
     }
   }, [enabled, stopBgm]);
 
-  // Lắng nghe sự kiện đổi chế độ kênh âm thanh (Đều 2 bên / Lệch trái / Lệch phải) để cập nhật panner tức thì
+  // Lắng nghe sự kiện đổi chế độ kênh âm thanh (Đều 2 bên / Lệch trái / Lệch phải) để cập nhật panner tức thì (nội bộ và liên tab)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const handleChannelChange = (e: Event) => {
-      const customEvent = e as CustomEvent<{ channel: "both" | "left" | "right" }>;
-      const newChannel =
-        customEvent.detail?.channel ||
-        (localStorage.getItem("olympia_audio_channel") as any) ||
-        "both";
+    const updateChannelRouting = (newChannel: "both" | "left" | "right") => {
       activeAudioSet.current.forEach((a) => {
         try {
           connectPanner(a, newChannel);
@@ -1001,9 +1012,27 @@ export function useOlympiaAudio(
         } catch {}
       }
     };
+
+    const handleChannelChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ channel: "both" | "left" | "right" }>;
+      const newChannel =
+        customEvent.detail?.channel ||
+        (localStorage.getItem("olympia_audio_channel") as any) ||
+        "both";
+      updateChannelRouting(newChannel);
+    };
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "olympia_audio_channel" && e.newValue) {
+        updateChannelRouting(e.newValue as "both" | "left" | "right");
+      }
+    };
+
     window.addEventListener("olympia_audio_channel_change", handleChannelChange);
+    window.addEventListener("storage", handleStorage);
     return () => {
       window.removeEventListener("olympia_audio_channel_change", handleChannelChange);
+      window.removeEventListener("storage", handleStorage);
     };
   }, [connectPanner]);
 
@@ -1111,7 +1140,8 @@ export function useOlympiaAudio(
     }
 
     const season = audioSeason || "O26";
-    const currentChannel = cue.pan || channel || (typeof window !== "undefined" ? (localStorage.getItem("olympia_audio_channel") as any) || "both" : "both");
+    const userPrefChannel = typeof window !== "undefined" ? (localStorage.getItem("olympia_audio_channel") as any) : null;
+    const currentChannel = userPrefChannel || channel || cue.pan || "both";
     const activeSeatCount = Math.max(
       state?.seatCount ?? 0,
       state?.seats?.filter((s) => s.connected || s.name).length ?? 0,
@@ -1279,17 +1309,29 @@ export function useOlympiaAudio(
     stopBgm();
   }, [stopBgm]);
 
-  // Khi trận đấu đã bắt đầu (stage !== "lobby"), tự động crossfade tắt nhạc sảnh chờ show_intro nếu vẫn còn đang phát
+  // Khi trận đấu đã bắt đầu (stage !== "lobby"), tự động ngắt ngay lập tức nhạc sảnh chờ show_intro nếu vẫn còn đang phát
   useEffect(() => {
     if (!state || state.stage === "lobby") return;
     pendingShowIntroRef.current = false;
-    const hasLobbyIntroPlaying = Array.from(activeBgmSet.current).some(
-      (a) => a.src && a.src.includes("show_intro") && !a.paused
-    );
-    if (hasLobbyIntroPlaying && (!state.cue || state.cue.sound === "6_NhacKhac/show_intro")) {
-      fadeOutAndStopBgm(1000);
+    activeBgmSet.current.forEach((a) => {
+      if (a.src && a.src.includes("show_intro")) {
+        try {
+          a.pause();
+          a.currentTime = 0;
+          a.src = "";
+        } catch {}
+        activeBgmSet.current.delete(a);
+      }
+    });
+    if (bgm.current && bgm.current.src && bgm.current.src.includes("show_intro")) {
+      try {
+        bgm.current.pause();
+        bgm.current.currentTime = 0;
+        bgm.current.src = "";
+      } catch {}
+      bgm.current = null;
     }
-  }, [state?.stage, state?.cue, fadeOutAndStopBgm]);
+  }, [state?.stage]);
 
   // Khi màn chào & giới thiệu thí sinh hoàn thành (entranceCompleted = true),
   // tự động ngắt ngay nhạc giới thiệu contestant_intro nếu vẫn còn đang phát dở dang.

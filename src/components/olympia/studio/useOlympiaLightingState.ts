@@ -37,25 +37,31 @@ export function isPreMatchIdle(state: OlympiaState | null | undefined): boolean 
 }
 
 /**
- * Checks whether a given contestant seat's buzzer is actively ringing in 3D.
- * - Khởi động, Về đích, Câu hỏi phụ: Any buzzed seat lights up Red.
- * - Vượt chướng ngại vật: Strictly the fastest (first) buzzer lights up Red. Subsequent buzzers remain unlit.
+ * Checks whether a given contestant seat's buzzer or active turn is actively lit up Red in 3D.
+ * - Khởi động riêng: Active contestant's entire podium glows Red during their turn.
+ * - Khởi động chung, Về đích, Câu hỏi phụ, VCNV: The fastest buzzed seat lights up Red.
+ * - Switches off when question advances or round ends.
  */
 export function isSeatBuzzedIn3D(seatId: number, state: OlympiaState | null | undefined): boolean {
   if (!state || state.stage !== "playing") return false;
   switch (state.currentRound) {
-    case "khoiDong":
-      return (
-        state.khoiDong?.phase !== "segmentDone" &&
-        state.khoiDong?.phase !== "idle" &&
-        state.khoiDong?.buzzedSeat === seatId
-      );
-    case "vcnv":
-      // Strictly the fastest (first) bell rings red while VCNV is active:
-      return (
-        state.vcnv?.phase !== "done" &&
-        state.vcnv?.bells?.[0]?.seat === seatId
-      );
+    case "khoiDong": {
+      const kd = state.khoiDong;
+      if (!kd || kd.phase === "segmentDone" || kd.phase === "idle") return false;
+      const seg = kd.segments?.[kd.segIdx];
+      // In Khởi động riêng (solo segment): the active contestant's podium glows red throughout their turn
+      if (seg?.kind === "solo") {
+        return Boolean(kd.started) && seg.seat === seatId;
+      }
+      // In Khởi động chung: fastest buzzed seat glows red
+      return kd.buzzedSeat === seatId;
+    }
+    case "vcnv": {
+      // Strictly the fastest active (non-eliminated) bell rings red while VCNV is active
+      if (!state.vcnv || state.vcnv.phase === "done") return false;
+      const activeBell = state.vcnv.bells?.find((b) => !b.judgedWrong);
+      return activeBell?.seat === seatId;
+    }
     case "veDich":
       return (
         state.veDich?.phase !== "seatDone" &&

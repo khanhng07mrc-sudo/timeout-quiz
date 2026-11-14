@@ -3781,7 +3781,7 @@ export function EconovaLowerThirdV3({
                 runAnim ? "v3-anim-content" : ""
               }`}
               style={{
-                top: -28,
+                top: -30,
                 left: qLeft,
                 width: qWidth,
               }}
@@ -3789,14 +3789,13 @@ export function EconovaLowerThirdV3({
               <div className="flex items-center gap-2">
                 {questionNumberBadge && (
                   <div
-                    className="w-[132px] min-w-[132px] max-w-[132px] h-[30px] px-2 rounded-t-lg font-black text-xs sm:text-sm tracking-widest uppercase flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(251,191,36,0.5)] border-t border-x border-amber-300/60 shrink-0"
+                    className="w-[120px] min-w-[120px] max-w-[120px] h-[30px] px-2 rounded-t-lg font-black text-xs sm:text-sm tracking-widest uppercase flex items-center justify-center shadow-[0_0_15px_rgba(251,191,36,0.5)] border-t border-x border-amber-300/60 shrink-0"
                     style={{
                       background: "linear-gradient(135deg, #091a42 0%, #061129 100%)",
                       color: "#fbbf24",
                       boxSizing: "border-box",
                     }}
                   >
-                    <span>🎯</span>
                     <span>{questionNumberBadge}</span>
                   </div>
                 )}

@@ -314,13 +314,17 @@ export default function OlympiaAudioManagerDrawer({
   );
 
   const handleSetChannel = (ch: "both" | "left" | "right") => {
-    // Immediately stop all audio when switching channels so previous mode audio never clashes
-    stopAllAudio();
     setChannel(ch);
     if (typeof window !== "undefined") {
       localStorage.setItem("olympia_audio_channel", ch);
       window.dispatchEvent(new CustomEvent("olympia_audio_channel_change", { detail: { channel: ch } }));
     }
+    // Dynamically re-route all active sounds to the new channel without interrupting playback
+    activeAudiosRef.current.forEach((audio) => {
+      try {
+        connectPanner(audio, ch);
+      } catch {}
+    });
   };
 
   // Cleanup on unmount

@@ -1003,7 +1003,6 @@ function InteractionZone({
             <div className={`text-base sm:text-lg font-black uppercase ${isMyTurn ? "text-amber-300" : "text-slate-400"}`}>
               {isMyTurn ? "🎙️ Phần thi Khởi động riêng — Trả lời trực tiếp với MC" : `Đang là lượt Khởi động riêng của ${seatName(state, seg.seat)}`}
             </div>
-            <div className="text-xs text-slate-500">Phần Khởi động riêng không sử dụng chuông bấm</div>
           </div>
         );
       }

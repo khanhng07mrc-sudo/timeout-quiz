@@ -104,16 +104,16 @@ export function getContestantScreenCameraPreset(
   const tz = nx;
 
   // Screen desk center position (laptop screen inside the recessed bay)
-  const deskX = +(px + 0.10 * nx).toFixed(3);
-  const deskY = 1.02;
-  const deskZ = +(pz + 0.10 * nz).toFixed(3);
+  const deskX = +(px - 0.08 * nx).toFixed(3);
+  const deskY = 0.98;
+  const deskZ = +(pz - 0.08 * nz).toFixed(3);
 
   // Over-the-shoulder elevated camera positioned slightly behind and to the right of contestant
   // looking down directly at the laptop screen, chiclet keyboard and palm buzzer inside the recessed bay
-  const camDist = 1.15;
-  const camX = +(px - camDist * nx + 0.36 * tx).toFixed(3);
-  const camY = 1.65;
-  const camZ = +(pz - camDist * nz + 0.36 * tz).toFixed(3);
+  const camDist = 0.98;
+  const camX = +(px - camDist * nx + 0.34 * tx).toFixed(3);
+  const camY = 1.58;
+  const camZ = +(pz - camDist * nz + 0.34 * tz).toFixed(3);
 
   return {
     id: 16,

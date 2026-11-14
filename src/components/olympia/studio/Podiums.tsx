@@ -1738,10 +1738,10 @@ export function ContestantPodium({
         <meshBasicMaterial color={podiumNeonColor} />
       </mesh>
 
-      {/* ── 2. MAIN KIOSK BODY & RECESSED COCKPIT COWLING (White Pearl Studio Enamel) ── */}
-      {/* Lower Apron: Below dark grey panel and score screen */}
-      <mesh position={[0, 0.20, 0.02]}>
-        <boxGeometry args={[1.06, 0.24, 0.74]} />
+      {/* ── 2. MONOLITHIC SCULPTURAL KIOSK BODY & INTEGRATED ARMREST PYLONS ── */}
+      {/* Left Architectural Side Pylon (Thành bục bên trái liền khối, bản tỳ tay rộng dốc nhẹ) */}
+      <mesh position={[-0.48, 0.53, 0]}>
+        <boxGeometry args={[0.12, 0.90, 0.72]} />
         <meshStandardMaterial
           color="#f8fafc"
           metalness={0.40}
@@ -1749,62 +1749,77 @@ export function ContestantPodium({
           envMapIntensity={1.8}
         />
       </mesh>
+      {/* Left Top Armrest Cap (Mặt tỳ tay phẳng rộng 14cm cho thí sinh/MC tựa khuỷu tay) */}
+      <group position={[-0.48, 0.99, 0]} rotation={[-0.08, 0, 0]}>
+        <mesh>
+          <boxGeometry args={[0.14, 0.04, 0.74]} />
+          <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
+        </mesh>
+        <mesh position={[0, 0.021, 0]}>
+          <boxGeometry args={[0.136, 0.005, 0.736]} />
+          <meshStandardMaterial color="#e2e8f0" metalness={0.65} roughness={0.20} />
+        </mesh>
+      </group>
 
-      {/* Left Outer Chamfered Wing Pillar */}
-      <mesh position={[-0.49, 0.60, 0.02]}>
-        <boxGeometry args={[0.08, 0.56, 0.74]} />
+      {/* Right Architectural Side Pylon (Thành bục bên phải liền khối) */}
+      <mesh position={[0.48, 0.53, 0]}>
+        <boxGeometry args={[0.12, 0.90, 0.72]} />
         <meshStandardMaterial
           color="#f8fafc"
           metalness={0.40}
           roughness={0.18}
+          envMapIntensity={1.8}
         />
       </mesh>
-      {/* Right Outer Chamfered Wing Pillar */}
-      <mesh position={[0.49, 0.60, 0.02]}>
-        <boxGeometry args={[0.08, 0.56, 0.74]} />
-        <meshStandardMaterial
-          color="#f8fafc"
-          metalness={0.40}
-          roughness={0.18}
-        />
+      {/* Right Top Armrest Cap (Mặt tỳ tay phẳng rộng 14cm cho thí sinh/MC tựa khuỷu tay) */}
+      <group position={[0.48, 0.99, 0]} rotation={[-0.08, 0, 0]}>
+        <mesh>
+          <boxGeometry args={[0.14, 0.04, 0.74]} />
+          <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
+        </mesh>
+        <mesh position={[0, 0.021, 0]}>
+          <boxGeometry args={[0.136, 0.005, 0.736]} />
+          <meshStandardMaterial color="#e2e8f0" metalness={0.65} roughness={0.20} />
+        </mesh>
+      </group>
+
+      {/* Front Protective Cowl Wall (Tấm chắn trước liền khối cao 1.06m che hoàn toàn khoang máy tính và dây cáp) */}
+      <mesh position={[0, 0.905, 0.33]}>
+        <boxGeometry args={[0.84, 0.31, 0.06]} />
+        <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
+      </mesh>
+      {/* Front Top Chamfer Lip Accent */}
+      <mesh position={[0, 1.06, 0.33]}>
+        <boxGeometry args={[0.86, 0.02, 0.08]} />
+        <meshStandardMaterial color="#e2e8f0" metalness={0.65} roughness={0.20} />
       </mesh>
 
-      {/* Front Protective Cowl Wall (Che chắn đáy máy tính và dây cáp, đỉnh cao 1.08m tại Z = 0.36m) */}
-      <mesh position={[0, 0.92, 0.36]}>
-        <boxGeometry args={[1.06, 0.32, 0.06]} />
+      {/* Lower Front Apron (Chân mặt trước dưới màn hình điểm số) */}
+      <mesh position={[0, 0.205, 0.32]}>
+        <boxGeometry args={[0.84, 0.25, 0.08]} />
         <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
-      </mesh>
-      {/* Front Top Baffle Lip Accent */}
-      <mesh position={[0, 1.075, 0.36]}>
-        <boxGeometry args={[1.06, 0.015, 0.08]} />
-        <meshStandardMaterial color="#e2e8f0" metalness={0.60} roughness={0.20} />
       </mesh>
 
-      {/* Left Raised Side Cowl Wing (Dốc từ Y=1.08m phía trước xuống Y=0.92m phía sau) */}
-      <mesh position={[-0.49, 0.99, 0.08]} rotation={[-0.14, 0, 0]}>
-        <boxGeometry args={[0.08, 0.17, 0.58]} />
-        <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
-      </mesh>
-      {/* Right Raised Side Cowl Wing */}
-      <mesh position={[0.49, 0.99, 0.08]} rotation={[-0.14, 0, 0]}>
-        <boxGeometry args={[0.08, 0.17, 0.58]} />
-        <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
+      {/* Rear Modesty Baffle & Knee Well (Vách hậu kín đáo che kín lòng bục, không còn hốc đen rỗng) */}
+      <mesh position={[0, 0.47, -0.22]}>
+        <boxGeometry args={[0.84, 0.78, 0.04]} />
+        <meshStandardMaterial color="#f1f5f9" metalness={0.30} roughness={0.40} />
       </mesh>
 
       {/* ── 3. TẤM CHỮ NHẬT XÁM THẪM & HỐC MÀN HÌNH (Dark Grey Rectangular Panel with Padding) ── */}
-      {/* Dark Grey Charcoal Rectangular Panel (0.90m x 0.42m x 0.04m at center Y = 0.54m, Z = 0.36m) */}
-      <mesh position={[0, 0.54, 0.36]}>
-        <boxGeometry args={[0.90, 0.42, 0.04]} />
+      {/* Dark Grey Charcoal Rectangular Panel (0.84m x 0.42m x 0.04m at center Y = 0.54m, Z = 0.34m) */}
+      <mesh position={[0, 0.54, 0.34]}>
+        <boxGeometry args={[0.84, 0.42, 0.04]} />
         <meshStandardMaterial color="#1e293b" roughness={0.35} metalness={0.80} />
       </mesh>
       {/* Top Niche Lip Accent */}
-      <mesh position={[0, 0.745, 0.382]}>
-        <boxGeometry args={[0.90, 0.012, 0.015]} />
+      <mesh position={[0, 0.745, 0.362]}>
+        <boxGeometry args={[0.84, 0.012, 0.015]} />
         <meshBasicMaterial color={podiumNeonColor} />
       </mesh>
       {/* Bottom Niche Lip Accent */}
-      <mesh position={[0, 0.335, 0.382]}>
-        <boxGeometry args={[0.90, 0.012, 0.015]} />
+      <mesh position={[0, 0.335, 0.362]}>
+        <boxGeometry args={[0.84, 0.012, 0.015]} />
         <meshBasicMaterial color={podiumNeonColor} />
       </mesh>
 
@@ -1820,61 +1835,68 @@ export function ContestantPodium({
         screenMode={screenMode}
       />
 
-      {/* ── 4. RECESSED COCKPIT BAY DESK (Mặt bàn hộc chìm Y = 0.89m, khoét sâu 19cm so với thành bục) ── */}
-      <mesh position={[0, 0.89, 0.08]}>
-        <boxGeometry args={[0.90, 0.02, 0.52]} />
+      {/* ── 4. ERGONOMIC COUNTERTOP & WRIST REST (Mặt bàn liền khối & gờ tỳ tay mềm mại cho thí sinh) ── */}
+      {/* Solid Tabletop Counter (Khớp kín giữa 2 thành bục, sâu 64cm từ thành trước ra mép thí sinh) */}
+      <mesh position={[0, 0.88, -0.01]}>
+        <boxGeometry args={[0.84, 0.03, 0.64]} />
         <meshStandardMaterial color="#0b1120" metalness={0.85} roughness={0.35} />
       </mesh>
 
+      {/* Cushioned Ergonomic Wrist Rest (Gờ tỳ tay da cao cấp mềm mại cho thí sinh đặt tay gõ phím) */}
+      <mesh position={[0, 0.898, -0.28]}>
+        <boxGeometry args={[0.84, 0.025, 0.10]} />
+        <meshStandardMaterial color="#1e293b" roughness={0.50} metalness={0.30} />
+      </mesh>
+
       {/* ── 5. OLYMPIA BROADCAST LAPTOP SYSTEM (Màn hình mở quay thẳng về mặt thí sinh tại Z = -0.42m) ── */}
-      <group position={[0, 0.90, 0.08]}>
-        {/* Laptop Base Chassis (Width 38cm, Depth 25cm, Height 1.6cm) */}
-        <mesh position={[0, 0.008, 0]}>
-          <boxGeometry args={[0.38, 0.016, 0.25]} />
+      <group position={[0, 0.895, -0.10]}>
+        {/* Laptop Base Chassis (Width 36cm, Depth 24cm, Height 1.5cm - chuẩn laptop 15.6") */}
+        <mesh position={[0, 0.0075, 0]}>
+          <boxGeometry args={[0.36, 0.015, 0.24]} />
           <meshStandardMaterial color="#0f172a" metalness={0.88} roughness={0.22} />
         </mesh>
 
-        {/* Keyboard Deck Well (Recessed dark chiclet keyboard area) */}
-        <mesh position={[0, 0.0165, -0.015]}>
-          <boxGeometry args={[0.34, 0.002, 0.14]} />
+        {/* Keyboard Deck Well (Khay bàn phím chiclet âm sâu) */}
+        <mesh position={[0, 0.0155, -0.01]}>
+          <boxGeometry args={[0.32, 0.002, 0.13]} />
           <meshStandardMaterial color="#020617" roughness={0.85} />
         </mesh>
 
         {/* Trackpad */}
-        <mesh position={[0, 0.0165, -0.09]}>
-          <boxGeometry args={[0.11, 0.001, 0.065]} />
+        <mesh position={[0, 0.0155, -0.085]}>
+          <boxGeometry args={[0.10, 0.001, 0.06]} />
           <meshStandardMaterial color="#1e293b" metalness={0.5} roughness={0.4} />
         </mesh>
 
-        {/* Status Indicator LED (Top left of keyboard deck) */}
-        <mesh position={[-0.14, 0.017, 0.06]}>
-          <boxGeometry args={[0.015, 0.002, 0.004]} />
+        {/* Status Indicator LED (Góc trái bàn phím) */}
+        <mesh position={[-0.13, 0.016, 0.06]}>
+          <boxGeometry args={[0.012, 0.002, 0.004]} />
           <meshBasicMaterial color={isBuzzed ? "#ef4444" : "#10b981"} />
         </mesh>
 
-        {/* Open Display Lid: Hinged at Z = +0.10m, Tilted ~110° relative to base (slanted 20° towards contestant) */}
-        <group position={[0, 0.016, 0.10]} rotation={[0.35, 0, 0]}>
-          {/* Display Lid Back Shell (Faces +Z towards audience/front cowl) */}
-          <mesh position={[0, 0.125, 0]}>
-            <boxGeometry args={[0.38, 0.25, 0.012]} />
+        {/* Open Display Lid: Bản lề tại Z = +0.10m, Mở nghiêng 105° (nghiêng 15° về phía mắt thí sinh) */}
+        <group position={[0, 0.015, 0.10]} rotation={[0.26, 0, 0]}>
+          {/* Display Lid Back Shell (Quay về phía khán đài/thành trước) */}
+          <mesh position={[0, 0.115, 0]}>
+            <boxGeometry args={[0.36, 0.23, 0.010]} />
             <meshStandardMaterial color="#0f172a" metalness={0.92} roughness={0.20} />
           </mesh>
 
           {/* Minimalist Logo on Lid Back (Facing audience) */}
-          <mesh position={[0, 0.125, 0.0065]}>
-            <circleGeometry args={[0.022, 16]} />
+          <mesh position={[0, 0.115, 0.0055]}>
+            <circleGeometry args={[0.020, 16]} />
             <meshStandardMaterial color="#94a3b8" metalness={0.95} roughness={0.1} />
           </mesh>
 
-          {/* Display Screen Bezel (Faces -Z towards contestant) */}
-          <mesh position={[0, 0.125, -0.0062]}>
-            <boxGeometry args={[0.36, 0.23, 0.002]} />
+          {/* Display Screen Bezel (Quay về phía thí sinh) */}
+          <mesh position={[0, 0.115, -0.0052]}>
+            <boxGeometry args={[0.34, 0.21, 0.002]} />
             <meshStandardMaterial color="#020617" roughness={0.4} />
           </mesh>
 
-          {/* Glowing Active Display Surface (Faces -Z towards contestant!) */}
-          <mesh position={[0, 0.125, -0.0075]} rotation={[0, Math.PI, 0]}>
-            <planeGeometry args={[0.34, 0.21]} />
+          {/* Glowing Active Display Surface (Mặt màn hình phát sáng quay thẳng về hướng thí sinh!) */}
+          <mesh position={[0, 0.115, -0.0068]} rotation={[0, Math.PI, 0]}>
+            <planeGeometry args={[0.32, 0.19]} />
             <meshStandardMaterial
               color={isBuzzed ? "#991b1b" : "#0284c7"}
               emissive={isBuzzed ? "#ef4444" : isDimmed ? "#0369a1" : "#38bdf8"}
@@ -1885,15 +1907,15 @@ export function ContestantPodium({
           </mesh>
 
           {/* Webcam / Mic Dot at top of display bezel */}
-          <mesh position={[0, 0.238, -0.0065]}>
+          <mesh position={[0, 0.222, -0.0055]}>
             <circleGeometry args={[0.0025, 8]} />
             <meshBasicMaterial color="#38bdf8" />
           </mesh>
         </group>
       </group>
 
-      {/* ── 6. CHROME DOME BUZZER SYSTEM (Inside Cockpit Bay, Stage Right of Laptop) ── */}
-      <group position={[0.28, 0.90, 0.05]}>
+      {/* ── 6. CHROME DOME BUZZER SYSTEM (Inside Cockpit Bay, Ngay cạnh tay phải thí sinh) ── */}
+      <group position={[0.26, 0.895, -0.15]}>
         {/* Desk Halo Glow Ring (Lights up red when buzzed) */}
         <mesh ref={haloRef} position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.045, 0.075, 32]} />
@@ -1932,8 +1954,8 @@ export function ContestantPodium({
         )}
       </group>
 
-      {/* Desktop Gooseneck Microphone (Stage Left of Laptop on Bay Rim) */}
-      <group position={[-0.34, 0.90, 0.05]}>
+      {/* Desktop Gooseneck Microphone (Stage Left of Laptop on Desk) */}
+      <group position={[-0.30, 0.895, -0.15]}>
         <mesh position={[0, 0.01, 0]}>
           <cylinderGeometry args={[0.022, 0.026, 0.02, 16]} />
           <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
@@ -2590,95 +2612,93 @@ export function McPresenters({
       nhRightKneeRef.current.rotation.x = Math.max(0, -stride * 0.95);
     }
 
-    let kvLeftArmX = isWalking ? -armStride * 0.25 : kvCardBreathe;
-    let kvLeftArmZ = 0;
-    let kvRightArmX = isWalking ? armStride * 0.25 : kvMicBreathe;
-    let kvRightArmZ = 0;
-
-    let nhLeftArmX = isWalking ? armStride * 0.25 : nhMicBreathe;
-    let nhLeftArmZ = 0;
-    let nhRightArmX = isWalking ? -armStride * 0.25 : nhCardBreathe;
-    let nhRightArmZ = 0;
-
-    if (isGreeting) {
-      // High-five arm gesture on inner arms (NH Right Arm & KV Left Arm)
-      nhRightArmX = -1.25 * greetingBell;
-      nhRightArmZ = -0.45 * greetingBell;
-      kvLeftArmX = -1.25 * greetingBell;
-      kvLeftArmZ = 0.45 * greetingBell;
-    }
-
     const breatheWave = Math.sin(speechTime * 1.2);
     const vocalPulse = Math.sin(speechTime * 2.1 + 0.4) * 0.030;
 
-    // Presentation gestures towards Contestants (Stage Right) and LED Screen
-    const gestureCycle = Math.sin(speechTime * 0.42);
-    const isGesturing = !isWalking && !isGreeting && gestureCycle > 0.45;
-    const gestBlend = isGesturing ? Math.min(1.0, (gestureCycle - 0.45) / 0.25) : 0;
-    const smoothGest = gestBlend * gestBlend * (3 - 2 * gestBlend);
+    // Natural television presenter arm kinematics:
+    // - Khánh Vy: Elegantly holding official Olympia Cue Card Binder with both hands in front of waist
+    // - Ngọc Huy: Holding Cue Card Binder in left hand, right arm flexibly relaxed along side with conversational breathing
+    const kvHoldFolderX = -0.28 + (isWalking ? armStride * 0.06 : breatheWave * 0.015);
+    const kvHoldForearmX = -0.78 + talkSub * 0.02;
 
     if (kvLeftArmRef.current) {
-      kvLeftArmRef.current.rotation.x = kvLeftArmX;
-      kvLeftArmRef.current.rotation.y = isGreeting ? 0 : THREE.MathUtils.lerp(0, 0.22, smoothGest);
-      kvLeftArmRef.current.rotation.z = kvLeftArmZ;
+      kvLeftArmRef.current.rotation.x = kvHoldFolderX;
+      kvLeftArmRef.current.rotation.y = 0.16;
+      kvLeftArmRef.current.rotation.z = -0.12;
     }
     if (kvLeftForearmRef.current) {
-      // Natural resting flex 18-24° (-0.35 rad) with subtle breathing and conversational open-palm
-      const baseElbowX = isWalking ? -0.22 : THREE.MathUtils.lerp(-0.35 + breatheWave * 0.03, -0.52, smoothGest);
-      const baseElbowY = THREE.MathUtils.lerp(-0.04, 0.16, smoothGest);
-      const baseElbowZ = THREE.MathUtils.lerp(0.05, 0.10, smoothGest);
-      kvLeftForearmRef.current.rotation.x = THREE.MathUtils.lerp(baseElbowX, -0.15, isGreeting ? greetingBell : 0);
-      kvLeftForearmRef.current.rotation.y = baseElbowY;
-      kvLeftForearmRef.current.rotation.z = baseElbowZ;
+      kvLeftForearmRef.current.rotation.x = kvHoldForearmX;
+      kvLeftForearmRef.current.rotation.y = -0.32;
+      kvLeftForearmRef.current.rotation.z = 0.35;
     }
     if (kvLeftWristRef.current) {
-      kvLeftWristRef.current.rotation.x = THREE.MathUtils.lerp(0.06 + talkSub * 0.02, 0.14, smoothGest);
-      kvLeftWristRef.current.rotation.z = THREE.MathUtils.lerp(0.04, 0.09, smoothGest);
+      kvLeftWristRef.current.rotation.x = 0.10 + talkSub * 0.02;
+      kvLeftWristRef.current.rotation.y = 0;
+      kvLeftWristRef.current.rotation.z = 0.08;
     }
 
     if (kvRightArmRef.current) {
-      kvRightArmRef.current.rotation.x = kvRightArmX;
-      kvRightArmRef.current.rotation.z = kvRightArmZ;
+      kvRightArmRef.current.rotation.x = kvHoldFolderX;
+      kvRightArmRef.current.rotation.y = -0.16;
+      kvRightArmRef.current.rotation.z = 0.12;
     }
     if (kvRightForearmRef.current) {
-      kvRightForearmRef.current.rotation.x = -1.25 + breatheWave * 0.025;
-      kvRightForearmRef.current.rotation.y = 0.20 + vocalPulse * 0.02;
+      kvRightForearmRef.current.rotation.x = kvHoldForearmX;
+      kvRightForearmRef.current.rotation.y = 0.32;
+      kvRightForearmRef.current.rotation.z = -0.35;
     }
     if (kvRightWristRef.current) {
-      kvRightWristRef.current.rotation.x = vocalPulse * 0.03;
-      kvRightWristRef.current.rotation.z = breatheWave * 0.015;
+      kvRightWristRef.current.rotation.x = 0.10 + talkSub * 0.02;
+      kvRightWristRef.current.rotation.y = 0;
+      kvRightWristRef.current.rotation.z = -0.08;
     }
+
+    const nhHoldFolderX = -0.24 + (isWalking ? armStride * 0.08 : breatheWave * 0.015);
+    const nhHoldForearmX = -0.82 + talkSub * 0.02;
 
     if (nhLeftArmRef.current) {
-      nhLeftArmRef.current.rotation.x = nhLeftArmX;
-      nhLeftArmRef.current.rotation.z = nhLeftArmZ;
+      nhLeftArmRef.current.rotation.x = nhHoldFolderX;
+      nhLeftArmRef.current.rotation.y = 0.14;
+      nhLeftArmRef.current.rotation.z = -0.10;
     }
     if (nhLeftForearmRef.current) {
-      nhLeftForearmRef.current.rotation.x = -1.25 + breatheWave * 0.025;
-      nhLeftForearmRef.current.rotation.y = -0.20 - vocalPulse * 0.02;
+      nhLeftForearmRef.current.rotation.x = nhHoldForearmX;
+      nhLeftForearmRef.current.rotation.y = -0.28;
+      nhLeftForearmRef.current.rotation.z = 0.30;
     }
     if (nhLeftWristRef.current) {
-      nhLeftWristRef.current.rotation.x = vocalPulse * 0.03;
-      nhLeftWristRef.current.rotation.z = -breatheWave * 0.015;
+      nhLeftWristRef.current.rotation.x = 0.08 + talkSub * 0.02;
+      nhLeftWristRef.current.rotation.y = 0;
+      nhLeftWristRef.current.rotation.z = 0.06;
     }
 
+    // Right arm: THẢ LỎNG LINH HOẠT (Flexibly relaxed along right flank with subtle natural sway)
+    const nhRelaxArmX = isWalking ? -armStride * 0.22 : 0.03 + nhCardBreathe * 0.5;
+    const nhRelaxForearmX = isWalking ? -0.18 : -0.25 + breatheWave * 0.025;
+
     if (nhRightArmRef.current) {
-      nhRightArmRef.current.rotation.x = nhRightArmX;
-      nhRightArmRef.current.rotation.y = isGreeting ? 0 : THREE.MathUtils.lerp(0, -0.20, smoothGest);
-      nhRightArmRef.current.rotation.z = nhRightArmZ;
+      nhRightArmRef.current.rotation.x = nhRelaxArmX;
+      nhRightArmRef.current.rotation.y = 0;
+      nhRightArmRef.current.rotation.z = -0.06;
     }
     if (nhRightForearmRef.current) {
-      // Natural resting flex 18-24° (-0.36 rad) with subtle breathing and conversational open-palm
-      const baseElbowX = isWalking ? -0.22 : THREE.MathUtils.lerp(-0.36 + breatheWave * 0.03, -0.50, smoothGest);
-      const baseElbowY = THREE.MathUtils.lerp(0.04, -0.15, smoothGest);
-      const baseElbowZ = THREE.MathUtils.lerp(-0.06, -0.10, smoothGest);
-      nhRightForearmRef.current.rotation.x = THREE.MathUtils.lerp(baseElbowX, -0.15, isGreeting ? greetingBell : 0);
-      nhRightForearmRef.current.rotation.y = baseElbowY;
-      nhRightForearmRef.current.rotation.z = baseElbowZ;
+      nhRightForearmRef.current.rotation.x = nhRelaxForearmX;
+      nhRightForearmRef.current.rotation.y = 0.04;
+      nhRightForearmRef.current.rotation.z = -0.05;
     }
     if (nhRightWristRef.current) {
-      nhRightWristRef.current.rotation.x = THREE.MathUtils.lerp(0.06 - talkSub * 0.02, 0.14, smoothGest);
-      nhRightWristRef.current.rotation.z = THREE.MathUtils.lerp(-0.05, -0.08, smoothGest);
+      nhRightWristRef.current.rotation.x = talkSub * 0.025;
+      nhRightWristRef.current.rotation.y = 0;
+      nhRightWristRef.current.rotation.z = -0.05;
+    }
+
+    // Presenter greeting bow/nod facing audience & contestants during isGreeting
+    if (isGreeting) {
+      if (kvRef.current) kvRef.current.rotation.x = 0.08 * greetingBell;
+      if (nhRef.current) nhRef.current.rotation.x = 0.08 * greetingBell;
+    } else {
+      if (kvRef.current) kvRef.current.rotation.x = 0;
+      if (nhRef.current) nhRef.current.rotation.x = 0;
     }
   });
 
@@ -2726,6 +2746,22 @@ export function McPresenters({
           isLeft={false}
           scale={0.90}
         />
+
+        {/* Professional Broadcast Headset Microphone (Mic cài tai VTV3 siêu nhỏ trang nhã viền má) */}
+        <group position={[0.070, 1.420, 0.005]}>
+          <mesh position={[0, 0, 0]}>
+            <torusGeometry args={[0.012, 0.0018, 8, 16, Math.PI * 1.2]} />
+            <meshStandardMaterial color="#fcd34d" metalness={0.8} roughness={0.2} />
+          </mesh>
+          <mesh position={[-0.012, -0.035, 0.045]} rotation={[-0.45, 0.25, 0.20]}>
+            <cylinderGeometry args={[0.0008, 0.0008, 0.08, 8]} />
+            <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.1} />
+          </mesh>
+          <mesh position={[-0.024, -0.058, 0.072]}>
+            <sphereGeometry args={[0.0035, 8, 8]} />
+            <meshStandardMaterial color="#1e293b" roughness={0.9} />
+          </mesh>
+        </group>
 
         {/* ── MULTI-LAYERED VOLUMETRIC BRUNETTE HAIR (Graceful flowing locks, NO helmet look) ── */}
         {/* Layer 1: Cranial Base Hair Dome with front volume */}
@@ -2909,18 +2945,18 @@ export function McPresenters({
                       isLeft={true}
                       mode="hang"
                     />
-                    {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC) */}
-                    <group position={[0.012, -0.005, 0.032]} rotation={[0.42, 0.10, -0.16]}>
+                    {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC hai tay cầm trang trọng trước eo) */}
+                    <group position={[0.075, 0.010, 0.045]} rotation={[0.38, 0, 0]}>
                       <mesh>
-                        <boxGeometry args={[0.13, 0.18, 0.004]} />
+                        <boxGeometry args={[0.20, 0.26, 0.005]} />
                         <meshStandardMaterial color="#0f172a" roughness={0.35} metalness={0.15} />
                       </mesh>
-                      <mesh position={[0, 0.088, 0.002]}>
-                        <boxGeometry args={[0.128, 0.004, 0.002]} />
+                      <mesh position={[0, 0.124, 0.003]}>
+                        <boxGeometry args={[0.196, 0.006, 0.003]} />
                         <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
                       </mesh>
-                      <mesh position={[0, -0.005, 0.0025]}>
-                        <boxGeometry args={[0.116, 0.160, 0.001]} />
+                      <mesh position={[0, -0.006, 0.0035]}>
+                        <boxGeometry args={[0.180, 0.235, 0.002]} />
                         <meshStandardMaterial color="#f8fafc" roughness={0.6} />
                       </mesh>
                     </group>
@@ -2931,7 +2967,7 @@ export function McPresenters({
           </group>
         </group>
 
-        {/* Right Arm Group (Shoulder Pivot at [0.142, 1.24, 0.005]) holding Broadcast Microphone */}
+        {/* Right Arm Group (Shoulder Pivot at [0.142, 1.24, 0.005]) joining to hold Cue Card Binder */}
         <group position={[0.142, 1.24, 0.005]}>
           <group ref={kvRightArmRef}>
             {/* Seamless anatomical shoulder cap */}
@@ -2948,8 +2984,8 @@ export function McPresenters({
                 <mesh position={[0, 0, 0]} material={kvBlazerMat}>
                   <sphereGeometry args={[0.026, 14, 14]} />
                 </mesh>
-                {/* Forearm bends forward (-X) and inward to hold mic upright in front of sternum */}
-                <group ref={kvRightForearmRef} rotation={[-1.25, 0.20, -0.32]}>
+                {/* Forearm folds forward and inward to support right side of cue card */}
+                <group ref={kvRightForearmRef} rotation={[-0.78, 0.32, -0.35]}>
                   <mesh position={[0, -0.07, 0]} material={kvBlazerMat}>
                     <cylinderGeometry args={[0.026, 0.022, 0.14, 16]} />
                   </mesh>
@@ -2957,31 +2993,16 @@ export function McPresenters({
                   <mesh position={[0, -0.14, 0]} material={kvBlouseMat}>
                     <cylinderGeometry args={[0.024, 0.024, 0.016, 16]} />
                   </mesh>
-                  {/* Sculpted Hand holding Microphone wrapped in Wrist Joint */}
+                  {/* Sculpted Hand touching Cue Card Folder */}
                   <group ref={kvRightWristRef} position={[0, -0.155, 0]}>
                     <VietnameseHand
                       position={[0, 0, 0]}
-                      rotation={[-0.10, 0.10, 0]}
+                      rotation={[0, 0, -0.04]}
                       scale={0.88}
                       skinMat={kvSkinMat}
                       isLeft={false}
-                      mode="mic"
+                      mode="hang"
                     />
-                    {/* Studio Microphone held firmly IN HAND at sternum height */}
-                    <group position={[0, -0.035, 0.015]} rotation={[0.35, 0, 0]}>
-                      <mesh>
-                        <cylinderGeometry args={[0.0065, 0.0045, 0.11, 14]} />
-                        <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
-                      </mesh>
-                      <mesh position={[0, 0.055, 0]}>
-                        <cylinderGeometry args={[0.0075, 0.0075, 0.005, 14]} />
-                        <meshStandardMaterial color="#fcd34d" metalness={0.8} roughness={0.2} />
-                      </mesh>
-                      <mesh position={[0, 0.068, 0]}>
-                        <sphereGeometry args={[0.0115, 16, 16]} />
-                        <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.3} />
-                      </mesh>
-                    </group>
                   </group>
                 </group>
               </group>
@@ -3074,6 +3095,22 @@ export function McPresenters({
           isLeft={false}
           scale={1.00}
         />
+
+        {/* Professional Broadcast Headset Microphone (Mic cài tai VTV3 viền má nam MC trang nhã) */}
+        <group position={[-0.074, 1.490, 0.005]}>
+          <mesh position={[0, 0, 0]}>
+            <torusGeometry args={[0.013, 0.002, 8, 16, Math.PI * 1.2]} />
+            <meshStandardMaterial color="#fcd34d" metalness={0.8} roughness={0.2} />
+          </mesh>
+          <mesh position={[0.012, -0.038, 0.048]} rotation={[-0.45, -0.25, -0.20]}>
+            <cylinderGeometry args={[0.0008, 0.0008, 0.085, 8]} />
+            <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.1} />
+          </mesh>
+          <mesh position={[0.025, -0.062, 0.076]}>
+            <sphereGeometry args={[0.0038, 8, 8]} />
+            <meshStandardMaterial color="#1e293b" roughness={0.9} />
+          </mesh>
+        </group>
 
         {/* ── MULTI-LAYERED VOLUMETRIC SIDE-PART POMPADOUR / QUIFF (PBR Matte Sheen) ── */}
         {/* Layer 1: Cranial Base Hair Dome with front volume */}
@@ -3246,29 +3283,29 @@ export function McPresenters({
                     <cylinderGeometry args={[0.014, 0.014, 0.006, 16]} />
                     <meshStandardMaterial color="#e2e8f0" metalness={0.95} roughness={0.1} />
                   </mesh>
-                  {/* Sculpted Hand holding Microphone wrapped in Wrist Joint */}
+                  {/* Sculpted Hand holding Olympia Cue Card wrapped in Wrist Joint */}
                   <group ref={nhLeftWristRef} position={[0, -0.165, 0]}>
                     <VietnameseHand
                       position={[0, 0, 0]}
-                      rotation={[-0.10, -0.10, 0]}
+                      rotation={[0.10, -0.10, 0.04]}
                       scale={0.94}
                       skinMat={nhSkinMat}
                       isLeft={true}
-                      mode="mic"
+                      mode="card"
                     />
-                    {/* Studio Microphone held firmly IN HAND at sternum height */}
-                    <group position={[0, -0.035, 0.015]} rotation={[0.35, 0, 0]}>
+                    {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC Ngọc Huy cầm tay trái trước bụng) */}
+                    <group position={[0.08, -0.015, 0.05]} rotation={[0.42, 0.15, -0.10]}>
                       <mesh>
-                        <cylinderGeometry args={[0.007, 0.005, 0.12, 14]} />
-                        <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
+                        <boxGeometry args={[0.22, 0.28, 0.006]} />
+                        <meshStandardMaterial color="#0f172a" roughness={0.35} metalness={0.15} />
                       </mesh>
-                      <mesh position={[0, 0.060, 0]}>
-                        <cylinderGeometry args={[0.008, 0.008, 0.005, 14]} />
-                        <meshStandardMaterial color="#e2e8f0" metalness={0.8} roughness={0.2} />
+                      <mesh position={[0, 0.134, 0.003]}>
+                        <boxGeometry args={[0.216, 0.006, 0.003]} />
+                        <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
                       </mesh>
-                      <mesh position={[0, 0.075, 0]}>
-                        <sphereGeometry args={[0.0125, 16, 16]} />
-                        <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.3} />
+                      <mesh position={[0, -0.006, 0.0035]}>
+                        <boxGeometry args={[0.198, 0.252, 0.002]} />
+                        <meshStandardMaterial color="#f8fafc" roughness={0.6} />
                       </mesh>
                     </group>
                   </group>
@@ -3278,7 +3315,7 @@ export function McPresenters({
           </group>
         </group>
 
-        {/* Right Arm Group (Shoulder Pivot at [0.165, 1.28, 0.005]) - Natural Presenter Stance along body (NO TABLET!) */}
+        {/* Right Arm Group (Shoulder Pivot at [0.165, 1.28, 0.005]) - THẢ LỎNG LINH HOẠT (Flexibly Relaxed along body) */}
         <group position={[0.165, 1.28, 0.005]}>
           <group ref={nhRightArmRef}>
             {/* Seamless anatomical shoulder cap */}
@@ -3304,7 +3341,7 @@ export function McPresenters({
                   <mesh position={[0, -0.15, 0]} material={nhShirtMat}>
                     <cylinderGeometry args={[0.028, 0.028, 0.018, 16]} />
                   </mesh>
-                  {/* Sculpted Hand & Cue Card wrapped in Wrist Joint */}
+                  {/* Sculpted Hand relaxed naturally along body (thả lỏng linh hoạt, NO props!) */}
                   <group ref={nhRightWristRef} position={[0, -0.165, 0]}>
                     <VietnameseHand
                       position={[0, 0, 0]}
@@ -3314,21 +3351,6 @@ export function McPresenters({
                       isLeft={false}
                       mode="hang"
                     />
-                    {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC) */}
-                    <group position={[-0.012, -0.005, 0.032]} rotation={[0.42, -0.10, 0.16]}>
-                      <mesh>
-                        <boxGeometry args={[0.135, 0.185, 0.004]} />
-                        <meshStandardMaterial color="#0f172a" roughness={0.35} metalness={0.15} />
-                      </mesh>
-                      <mesh position={[0, 0.090, 0.002]}>
-                        <boxGeometry args={[0.132, 0.004, 0.002]} />
-                        <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
-                      </mesh>
-                      <mesh position={[0, -0.005, 0.0025]}>
-                        <boxGeometry args={[0.120, 0.165, 0.001]} />
-                        <meshStandardMaterial color="#f8fafc" roughness={0.6} />
-                      </mesh>
-                    </group>
                   </group>
                 </group>
               </group>

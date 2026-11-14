@@ -11,8 +11,9 @@ export interface StudioLightingState {
   // Pre-match Idle State (R4)
   isIdle: boolean;
   idleFadeProgress: number;     // 1.0 (Dark Pre-Match Idle) to 0.0 (Active Broadcast)
-  // Về Đích Special Lighting Behaviors
-  isVeDichDimmed: boolean;
+  // Khởi Động Riêng & Về Đích Special Lighting Behaviors
+  isContestantDimmed: boolean;  // True when solo Khởi Động or Về Đích turn is active
+  isVeDichDimmed: boolean;      // Kept for backwards compatibility
   activeMainContestantSeat: number | null;
   is5sBuzzerChasing: boolean;
   spotlightChaseIndex: number;
@@ -43,7 +44,7 @@ export function isPreMatchIdle(state: OlympiaState | null | undefined): boolean 
  * - Switches off when question advances or round ends.
  */
 export function isSeatBuzzedIn3D(seatId: number, state: OlympiaState | null | undefined): boolean {
-  if (!state || state.stage !== "playing") return false;
+  if (!state || state.stage === "lobby" || state.stage === "finished") return false;
   switch (state.currentRound) {
     case "khoiDong": {
       const kd = state.khoiDong;
@@ -341,13 +342,31 @@ export function useOlympiaLightingState(
     };
   }, [state, getNow]);
 
-  // Về Đích Special Behaviors
+  // Khởi Động Riêng & Về Đích Special Behaviors
   const isVeDich = state?.stage === "playing" && state?.currentRound === "veDich";
   const vd = isVeDich ? state?.veDich : null;
   const isVeDichDimmed = Boolean(
     isVeDich && vd && (vd.onStage || (vd.phase !== "idle" && vd.phase !== "seatDone"))
   );
-  const activeMainContestantSeat = vd ? (vd.order?.[vd.turnIdx] ?? 0) : null;
+
+  const kd = state?.stage === "playing" && state?.currentRound === "khoiDong" ? state?.khoiDong : null;
+  const curKdSeg = kd?.segments?.[kd.segIdx ?? 0];
+  const isSoloKd = Boolean(
+    kd &&
+    kd.started &&
+    curKdSeg?.kind === "solo" &&
+    kd.phase !== "idle" &&
+    kd.phase !== "segmentDone"
+  );
+  const soloKdSeat = isSoloKd ? (curKdSeg?.seat ?? 0) : null;
+
+  const isContestantDimmed = isVeDichDimmed || isSoloKd;
+  const activeMainContestantSeat = isVeDich
+    ? (vd ? (vd.order?.[vd.turnIdx] ?? 0) : null)
+    : isSoloKd
+      ? soloKdSeat
+      : null;
+
   const is5sBuzzerChasing = Boolean(
     isVeDich && vd?.phase === "stealing" && vd?.steal?.buzzedSeat == null
   );
@@ -362,6 +381,7 @@ export function useOlympiaLightingState(
     isIdle,
     idleFadeProgress: idleFadeVal,
     isSeatBuzzed: (seatId: number) => isSeatBuzzedIn3D(seatId, state),
+    isContestantDimmed,
     isVeDichDimmed,
     activeMainContestantSeat,
     is5sBuzzerChasing,

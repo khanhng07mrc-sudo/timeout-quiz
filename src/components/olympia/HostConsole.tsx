@@ -72,6 +72,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
   const [swapSourceSeat, setSwapSourceSeat] = useState<number | null>(null);
   const [startBlockModal, setStartBlockModal] = useState(false);
   const [startWarningStep, setStartWarningStep] = useState<0 | 1 | 2>(0);
+  const [showAuxCams, setShowAuxCams] = useState(false);
 
   const handleStartMatch = () => {
     if (!state) return;
@@ -1054,7 +1055,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                   <span className="uppercase tracking-wider font-black text-white">ĐẠO DIỄN TRƯỜNG QUAY 3D</span>
                   <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-700/50">
                     {state.studioCameraManual
-                      ? `Góc C${state.studioCamera ?? 1}`
+                      ? `Góc C${state.studioCamera ?? 1}${state.studioCamera === 16 ? " (Màn hình TS)" : ""}`
                       : state.summaryState?.active
                         ? state.summaryState.isFullscreen
                           ? "Tổng kết Toàn cảnh (C10)"
@@ -1062,24 +1063,38 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                         : "Tự động theo vòng"}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => call("studio:camera:auto")}
-                  className={`px-2 py-0.5 rounded text-[10px] font-black border transition cursor-pointer ${
-                    !state.studioCameraManual
-                      ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b]"
-                      : "bg-white/5 text-slate-300 border-white/15 hover:bg-white/10"
-                  }`}
-                  title="Kích hoạt tự động chuyển góc quay thông minh theo diễn biến thi đấu"
-                >
-                  🤖 TỰ ĐỘNG
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowAuxCams((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                      showAuxCams || (state.studioCameraManual && [9, 11, 12, 13, 14].includes(state.studioCamera ?? -1))
+                        ? "bg-cyan-500/20 text-cyan-200 border-cyan-400"
+                        : "bg-white/5 text-slate-400 border-white/10 hover:text-slate-200"
+                    }`}
+                    title="Bật/tắt hàng góc quay phụ kỹ thuật"
+                  >
+                    {showAuxCams ? "Góc phụ ▲" : "Góc phụ ▼"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => call("studio:camera:auto")}
+                    className={`px-2 py-0.5 rounded text-[10px] font-black border transition cursor-pointer ${
+                      !state.studioCameraManual
+                        ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b]"
+                        : "bg-white/5 text-slate-300 border-white/15 hover:bg-white/10"
+                    }`}
+                    title="Kích hoạt tự động chuyển góc quay thông minh theo diễn biến thi đấu"
+                  >
+                    🤖 TỰ ĐỘNG
+                  </button>
+                </div>
               </div>
 
-              {/* Camera Presets Selector */}
-              <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-14 gap-1">
+              {/* Core Camera Presets Selector */}
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-11 gap-1">
                 {[
-                  { id: 1, label: "CAM 1: Toàn Cảnh Sân Khấu", short: "Toàn Cảnh" },
+                  { id: 1, label: "CAM 1: Toàn Cảnh Sân Khấu (FOV 36°)", short: "Toàn Cảnh" },
                   { id: 2, label: "CAM 2: Màn LED & Cổng Lục Giác", short: "Màn LED" },
                   { id: 3, label: "CAM 3: Bục MC Dẫn Chương Trình", short: "Bục MC" },
                   { id: 4, label: "CAM 4: Bục Danh Dự Vòng Nguyệt Quế", short: "Nguyệt Quế" },
@@ -1094,12 +1109,8 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                         short: `TS ${5 + idx}`,
                       }))
                     : []),
-                  { id: 9, label: "CAM 9: Cẩu Quay Jib Toàn Khán Đài", short: "Cẩu Jib" },
                   { id: 10, label: "CAM 10: Toàn Cảnh Bục Thí Sinh", short: "Bục TS" },
-                  { id: 11, label: "CAM 11: Cam Ẩn Trực Diện Chào Sân", short: "Trực Diện" },
-                  { id: 12, label: "CAM 12: Cam Chéo Khán Đài 3/4", short: "Chéo 3/4" },
-                  { id: 13, label: "CAM 13: Cổng Vòm & Đỉnh Núi", short: "Cổng Vòm" },
-                  { id: 14, label: "CAM 14: Góc Thấp Khởi Động", short: "Góc Thấp" },
+                  { id: 16, label: "CAM 16: Màn Hình Máy Tính Thí Sinh (Over-the-shoulder)", short: "Màn Hình TS" },
                   { id: 15, label: "CAM 15: Cận Bục Về Đích", short: "Về Đích" },
                 ].map((c) => {
                   const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;
@@ -1121,7 +1132,9 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                           ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b] font-black"
                           : isAutoSummaryCam
                             ? "bg-cyan-500/25 text-cyan-100 border-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.45)] font-black"
-                            : "bg-white/5 hover:bg-white/15 text-slate-300 border-white/10 hover:border-cyan-400/40"
+                            : c.id === 16
+                              ? "bg-sky-950/60 hover:bg-sky-900/80 text-sky-200 border-sky-600/40"
+                              : "bg-white/5 hover:bg-white/15 text-slate-300 border-white/10 hover:border-cyan-400/40"
                       }`}
                     >
                       <span className="text-[9px] opacity-75 font-mono">C{c.id}</span>
@@ -1130,6 +1143,37 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                   );
                 })}
               </div>
+
+              {/* Auxiliary / Fixed Scripted Cameras (Collapsible Drawer) */}
+              {(showAuxCams || (state.studioCameraManual && [9, 11, 12, 13, 14].includes(state.studioCamera ?? -1))) && (
+                <div className="pt-1 border-t border-cyan-500/20 grid grid-cols-5 gap-1">
+                  {[
+                    { id: 9, label: "CAM 9: Cẩu Quay Jib Toàn Khán Đài", short: "Cẩu Jib" },
+                    { id: 11, label: "CAM 11: Cam Ẩn Trực Diện Chào Sân", short: "Chào Sân" },
+                    { id: 12, label: "CAM 12: Cam Chéo Khán Đài 3/4", short: "Chéo 3/4" },
+                    { id: 13, label: "CAM 13: Cổng Vòm & Đỉnh Núi", short: "Cổng Vòm" },
+                    { id: 14, label: "CAM 14: Góc Thấp Khởi Động", short: "Góc Thấp" },
+                  ].map((c) => {
+                    const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => call("studio:camera", { cam: c.id })}
+                        title={c.label}
+                        className={`py-0.5 px-0.5 rounded text-[9px] font-semibold transition flex flex-col items-center justify-center cursor-pointer border ${
+                          isPinned
+                            ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b] font-black"
+                            : "bg-white/5 hover:bg-white/10 text-slate-400 border-white/10 hover:text-slate-200"
+                        }`}
+                      >
+                        <span className="text-[8px] opacity-70 font-mono">C{c.id}</span>
+                        <span className="truncate max-w-full leading-tight">{c.short}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Right LED Screen Mode Selector */}
               <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t border-cyan-500/20 text-[11px]">

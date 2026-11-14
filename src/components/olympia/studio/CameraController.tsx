@@ -84,6 +84,45 @@ export function getContestantCameraPreset(seatId: number, totalSeats: number = 4
   };
 }
 
+export function getContestantScreenCameraPreset(
+  seatId: number,
+  totalSeats: number = 4
+): CameraPreset {
+  const activeCount = Math.min(8, Math.max(1, totalSeats || 4));
+  const clampedSeat = Math.min(activeCount - 1, Math.max(0, seatId));
+  const { radius, startPhi, endPhi } = getContestantArcParams(activeCount);
+  const frac = activeCount === 1 ? 0.5 : clampedSeat / (activeCount - 1);
+  const phi = startPhi + frac * (endPhi - startPhi);
+
+  const px = -radius * Math.cos(phi);
+  const pz = -0.5 - radius * Math.sin(phi);
+
+  const nx = Math.cos(phi);
+  const nz = Math.sin(phi);
+  // Tangent perpendicular vector (along contestant right shoulder)
+  const tx = -nz;
+  const tz = nx;
+
+  // Screen desk center position
+  const deskX = +(px + 0.12 * nx).toFixed(3);
+  const deskY = 1.05;
+  const deskZ = +(pz + 0.12 * nz).toFixed(3);
+
+  // Over-the-shoulder elevated camera positioned slightly behind and to the right of contestant
+  // looking down directly at the angled touch monitor and buzzer
+  const camDist = 1.18;
+  const camX = +(px - camDist * nx + 0.38 * tx).toFixed(3);
+  const camY = 1.62;
+  const camZ = +(pz - camDist * nz + 0.38 * tz).toFixed(3);
+
+  return {
+    id: 16,
+    label: `Màn Hình TS ${clampedSeat + 1}`,
+    pos: [camX, camY, camZ],
+    target: [deskX, deskY, deskZ],
+  };
+}
+
 export function getWidePodiumsCameraPreset(totalSeats: number = 4): CameraPreset {
   const count = Math.min(8, Math.max(1, totalSeats || 4));
   const { radius, startPhi, endPhi } = getContestantArcParams(count);
@@ -127,8 +166,8 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   1: {
     id: 1,
     label: "Toàn Cảnh",
-    pos: [0.0, 4.4, 13.0],
-    target: [-0.6, 1.8, -3.8],
+    pos: [0.0, 3.8, 12.2],
+    target: [-0.5, 1.55, -3.2],
   },
   2: {
     id: 2,
@@ -194,6 +233,7 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     pos: [0.0, 1.48, 1.05],
     target: [0.0, 1.38, -0.90],
   },
+  16: getContestantScreenCameraPreset(0, 4),
   25: getContestantCameraPreset(4, 8),
   26: getContestantCameraPreset(5, 8),
   27: getContestantCameraPreset(6, 8),
@@ -202,6 +242,7 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
 
 interface CameraControllerProps {
   totalSeats?: number;
+  activeSeat?: number;
   camAngle: number;
   transitionMode?: "CUT" | "MORPH";
   pushInProgress?: number;
@@ -268,6 +309,7 @@ const _axisX = new THREE.Vector3(1, 0, 0);
 export function CameraController({
   camAngle = 1,
   totalSeats = 4,
+  activeSeat = 0,
   transitionMode = "CUT",
   pushInProgress = 0,
   ptzYaw = 0,
@@ -294,6 +336,8 @@ export function CameraController({
       )
     : camAngle === 10
     ? getWidePodiumsCameraPreset(effectiveTotalSeats)
+    : camAngle === 16
+    ? getContestantScreenCameraPreset(activeSeat, effectiveTotalSeats)
     : (OLYMPIA_CAM_PRESETS[camAngle] || OLYMPIA_CAM_PRESETS[1]);
   const targetPos = useMemo(
     () => (isIdleLobby && camAngle === 3 ? _mcTightPos.clone() : new THREE.Vector3(...targetPreset.pos)),
@@ -315,7 +359,7 @@ export function CameraController({
   useFrame((_, delta) => {
     // 0. True Optical Zoom & Adaptive FOV Calculation
     if (camera instanceof THREE.PerspectiveCamera) {
-      const baseFov = 43;
+      const baseFov = camAngle === 1 ? 36 : 43;
       const aspect = size.width / Math.max(1, size.height);
       const targetAspect = 16 / 9;
       let calculatedFov = baseFov;

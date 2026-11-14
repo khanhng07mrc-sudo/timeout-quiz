@@ -49,6 +49,7 @@ export function OlympiaStudio3DScene({
     audienceFadeProgress,
     isIdle,
     idleFadeProgress = 0,
+    isContestantDimmed,
     isVeDichDimmed,
     activeMainContestantSeat,
     is5sBuzzerChasing,
@@ -169,6 +170,7 @@ export function OlympiaStudio3DScene({
         <CameraController
           camAngle={effectiveCam}
           totalSeats={state?.seats?.length || 4}
+          activeSeat={activeMainContestantSeat ?? (state?.khoiDong?.segments?.[state?.khoiDong?.segIdx ?? 0]?.seat ?? 0)}
           transitionMode={transitionMode}
           pushInProgress={pushInProgress}
           ptzYaw={ptzYaw}
@@ -189,7 +191,7 @@ export function OlympiaStudio3DScene({
           isGrandstandFullLit={isGrandstandFullLit}
           totalSeats={state?.seats?.length || 4}
           quality={quality}
-          isVeDichDimmed={isVeDichDimmed}
+          isVeDichDimmed={isContestantDimmed}
           activeMainContestantSeat={activeMainContestantSeat}
           is5sBuzzerChasing={is5sBuzzerChasing}
           spotlightChaseIndex={spotlightChaseIndex}
@@ -217,6 +219,8 @@ export function OlympiaStudio3DScene({
           liveFactor={liveFactor}
           introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
           isIdle={isIdle}
+          isContestantDimmed={isContestantDimmed}
+          activeMainContestantSeat={activeMainContestantSeat}
         />
 
         <LaurelWreathVitrine

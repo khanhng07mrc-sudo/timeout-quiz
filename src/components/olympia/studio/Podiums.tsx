@@ -26,6 +26,8 @@ interface PodiumsProps {
   liveFactor?: number;
   introStartedAt?: number | null;
   isIdle?: boolean;
+  isContestantDimmed?: boolean;
+  activeMainContestantSeat?: number | null;
 }
 
 /**
@@ -1663,6 +1665,7 @@ export function ContestantPodium({
   quality,
   liveFactor = 1.0,
   screenMode,
+  isDimmed = false,
 }: {
   seatId: number;
   name: string;
@@ -1677,6 +1680,7 @@ export function ContestantPodium({
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
   liveFactor?: number;
   screenMode?: PodiumScreenMode;
+  isDimmed?: boolean;
 }) {
   const buzzerDomeRef = useRef<THREE.Mesh>(null);
   const haloRef = useRef<THREE.Mesh>(null);
@@ -1714,10 +1718,13 @@ export function ContestantPodium({
   const isRed = isBuzzed;
 
   const podiumNeonColor = useMemo(() => {
+    if (isDimmed) {
+      return new THREE.Color("#071b2e");
+    }
     const baseColor = isRed ? new THREE.Color("#ff2a4b") : new THREE.Color("#00f0ff");
     const darkDormant = new THREE.Color("#020712");
     return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
-  }, [isRed, liveFactor]);
+  }, [isRed, liveFactor, isDimmed]);
 
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
@@ -1801,23 +1808,75 @@ export function ContestantPodium({
         screenMode={screenMode}
       />
 
-      {/* ── 4. RECESSED GRAPHITE DESK SURFACE & TOUCH TABLET ── */}
+      {/* ── 4. RECESSED GRAPHITE DESK SURFACE & COMPUTER WORKSTATION MONITOR ── */}
       <mesh position={[0, 0.915, -0.04]} rotation={[-0.18, 0, 0]}>
         <boxGeometry args={[1.10, 0.02, 0.76]} />
         <meshStandardMaterial color="#0b1120" metalness={0.85} roughness={0.35} />
       </mesh>
 
-      {/* Contestant Touch Screen Tablet Inset Flush on Desk */}
-      <mesh position={[0, 0.928, -0.06]} rotation={[-0.18, 0, 0]}>
-        <boxGeometry args={[0.54, 0.012, 0.36]} />
-        <meshStandardMaterial
-          color="#040d1e"
-          roughness={0.12}
-          metalness={0.85}
-          emissive="#0077b6"
-          emissiveIntensity={0.25}
-        />
-      </mesh>
+      {/* Contestant Workstation Touch Monitor System (Elevated & Angled 28° toward contestant) */}
+      <group position={[0, 0.935, -0.02]}>
+        {/* Metal Heavy-Duty Monitor Stand Base Plate */}
+        <mesh position={[0, 0.006, 0.04]}>
+          <boxGeometry args={[0.26, 0.012, 0.18]} />
+          <meshStandardMaterial color="#334155" metalness={0.92} roughness={0.2} />
+        </mesh>
+
+        {/* Upright Articulated Stand Neck */}
+        <mesh position={[0, 0.07, 0.02]} rotation={[-0.22, 0, 0]}>
+          <boxGeometry args={[0.07, 0.14, 0.035]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.92} roughness={0.2} />
+        </mesh>
+
+        {/* Angled Monitor Housing (Tilted 28° toward contestant, cleanly visible over front podium lip) */}
+        <group position={[0, 0.14, 0.0]} rotation={[-0.48, 0, 0]}>
+          {/* Back Chassis */}
+          <mesh position={[0, 0, 0]}>
+            <boxGeometry args={[0.56, 0.36, 0.022]} />
+            <meshStandardMaterial color="#0f172a" metalness={0.92} roughness={0.18} />
+          </mesh>
+
+          {/* Thin Bezel Accent Rim */}
+          <mesh position={[0, 0, 0.012]}>
+            <boxGeometry args={[0.54, 0.34, 0.004]} />
+            <meshStandardMaterial color="#1e293b" metalness={0.85} roughness={0.25} />
+          </mesh>
+
+          {/* Active Screen Surface */}
+          <mesh position={[0, 0, 0.015]}>
+            <planeGeometry args={[0.51, 0.31]} />
+            <meshStandardMaterial
+              color={isBuzzed ? "#991b1b" : "#0284c7"}
+              emissive={isBuzzed ? "#ef4444" : isDimmed ? "#075985" : "#38bdf8"}
+              emissiveIntensity={isBuzzed ? 1.8 : isDimmed ? 0.35 : 0.85}
+              roughness={0.1}
+              metalness={0.8}
+            />
+          </mesh>
+
+          {/* Screen Top Status LED */}
+          <mesh position={[0, 0.162, 0.012]}>
+            <boxGeometry args={[0.04, 0.006, 0.004]} />
+            <meshBasicMaterial color={isBuzzed ? "#ef4444" : "#10b981"} />
+          </mesh>
+        </group>
+
+        {/* Desktop Gooseneck Microphone (Stage Left of Monitor) */}
+        <group position={[-0.32, 0.01, 0.08]}>
+          <mesh position={[0, 0.01, 0]}>
+            <cylinderGeometry args={[0.025, 0.03, 0.02, 16]} />
+            <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.2} />
+          </mesh>
+          <mesh position={[0, 0.08, 0]} rotation={[0.2, 0, 0.15]}>
+            <cylinderGeometry args={[0.005, 0.005, 0.14, 8]} />
+            <meshStandardMaterial color="#334155" metalness={0.9} roughness={0.2} />
+          </mesh>
+          <mesh position={[0.01, 0.15, -0.015]}>
+            <capsuleGeometry args={[0.009, 0.025, 8, 8]} />
+            <meshStandardMaterial color="#020617" roughness={0.95} />
+          </mesh>
+        </group>
+      </group>
 
       {/* ── 5. CHROME DOME BUZZER SYSTEM (Compact Palm-Sized r=0.035m) ── */}
       <group position={[0.34, 0.945, 0.12]}>
@@ -5250,6 +5309,8 @@ export function Podiums({
   liveFactor = 1.0,
   introStartedAt = null,
   isIdle = false,
+  isContestantDimmed = false,
+  activeMainContestantSeat = null,
 }: PodiumsProps) {
   const activeCount = state?.seats?.length ? Math.min(8, Math.max(1, state.seats.length)) : 4;
 
@@ -5421,6 +5482,12 @@ export function Podiums({
           showFigure = !isThisContestantInVeDichTurn;
         }
 
+        const isDimmed = Boolean(
+          isContestantDimmed &&
+          activeMainContestantSeat !== null &&
+          activeMainContestantSeat !== cfg.seatId
+        );
+
         return (
           <ContestantPodium
             key={cfg.seatId}
@@ -5437,6 +5504,7 @@ export function Podiums({
             isBuzzed={isBuzzed}
             screenFadeProgress={screenFadeProgress}
             liveFactor={liveFactor}
+            isDimmed={isDimmed}
           />
         );
       })}

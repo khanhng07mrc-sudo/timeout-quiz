@@ -1133,25 +1133,198 @@ export function StudioWalls({
 }
 
 /**
- * Ceiling Lighting Truss Rig
+ * Realistic VTV3 Studio S14 Broadcast Ceiling Truss & Lighting Network (Y = 6.2m)
+ * Features:
+ * - Lowered from 11.5m to 6.2m to tightly frame the upper broadcast camera view
+ * - Dual concentric circular aluminum trusses (R = 5.2m and R = 8.6m) with cross-lacing
+ * - Outer rectangular boundary box-trusses (18m x 15m)
+ * - 8 radial connecting structural cross-beams
+ * - 16 suspended broadcast stage luminaires (Fresnel spotlights with clamps, barndoors & lenses)
+ * - Visible metal specular finish even when studio is dimmed
  */
-export function StudioCeilingRig() {
+export function StudioCeilingRig({ isDimmed = false }: { isDimmed?: boolean }) {
+  const trussMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: "#334155",
+        metalness: 0.9,
+        roughness: 0.22,
+      }),
+    []
+  );
+
+  const fixtureBodyMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: "#0b1120",
+        metalness: 0.85,
+        roughness: 0.3,
+      }),
+    []
+  );
+
+  const fixtureLensMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: isDimmed ? "#1e293b" : "#e0f2fe",
+        emissive: isDimmed ? "#075985" : "#38bdf8",
+        emissiveIntensity: isDimmed ? 0.35 : 1.25,
+        roughness: 0.15,
+        metalness: 0.85,
+      }),
+    [isDimmed]
+  );
+
+  const barndoorMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: "#1e293b",
+        metalness: 0.75,
+        roughness: 0.4,
+      }),
+    []
+  );
+
+  // 8 Fixture angles around inner and outer concentric truss rings
+  const fixtureAngles = useMemo(
+    () => [
+      0,
+      Math.PI / 4,
+      Math.PI / 2,
+      (3 * Math.PI) / 4,
+      Math.PI,
+      (5 * Math.PI) / 4,
+      (3 * Math.PI) / 2,
+      (7 * Math.PI) / 4,
+    ],
+    []
+  );
+
   return (
-    <group position={[0, 11.5, -1.5]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[9.5, 0.14, 12, 64]} />
-        <meshStandardMaterial color="#334155" metalness={0.92} roughness={0.2} />
+    <group position={[0, 6.2, -1.2]}>
+      {/* ── 1. DUAL CIRCULAR TRUSS RINGS (Inner R=5.2m, Outer R=8.6m) ── */}
+      {/* Inner Ring: Upper and Lower Chords */}
+      <mesh position={[0, 0.15, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[5.2, 0.05, 12, 64]} />
+        <primitive object={trussMat} attach="material" />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[5.5, 0.12, 12, 48]} />
-        <meshStandardMaterial color="#475569" metalness={0.92} roughness={0.2} />
+      <mesh position={[0, -0.15, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[5.2, 0.05, 12, 64]} />
+        <primitive object={trussMat} attach="material" />
       </mesh>
+      {/* Outer Ring: Upper and Lower Chords */}
+      <mesh position={[0, 0.15, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[8.6, 0.06, 12, 64]} />
+        <primitive object={trussMat} attach="material" />
+      </mesh>
+      <mesh position={[0, -0.15, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[8.6, 0.06, 12, 64]} />
+        <primitive object={trussMat} attach="material" />
+      </mesh>
+
+      {/* ── 2. EIGHT RADIAL CONNECTING CROSS-TRUSS BEAMS ── */}
       {[0, Math.PI / 4, Math.PI / 2, (3 * Math.PI) / 4].map((ang, i) => (
-        <mesh key={i} rotation={[0, ang, Math.PI / 2]}>
-          <cylinderGeometry args={[0.08, 0.08, 19.0, 12]} />
-          <meshStandardMaterial color="#334155" metalness={0.9} roughness={0.25} />
+        <group key={`radial-truss-${i}`} rotation={[0, ang, 0]}>
+          <mesh position={[0, 0.15, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.045, 0.045, 18.2, 12]} />
+            <primitive object={trussMat} attach="material" />
+          </mesh>
+          <mesh position={[0, -0.15, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.045, 0.045, 18.2, 12]} />
+            <primitive object={trussMat} attach="material" />
+          </mesh>
+        </group>
+      ))}
+
+      {/* ── 3. OUTER RECTANGULAR PERIMETER BOX TRUSSES ── */}
+      {/* Front & Back Main Beams */}
+      {[-7.2, 7.2].map((pz, zIdx) => (
+        <mesh key={`peri-z-${zIdx}`} position={[0, 0, pz]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.06, 0.06, 18.6, 12]} />
+          <primitive object={trussMat} attach="material" />
         </mesh>
       ))}
+      {/* Left & Right Main Beams */}
+      {[-9.2, 9.2].map((px, xIdx) => (
+        <mesh key={`peri-x-${xIdx}`} position={[px, 0, 0]}>
+          <cylinderGeometry args={[0.06, 0.06, 15.0, 12]} />
+          <primitive object={trussMat} attach="material" />
+        </mesh>
+      ))}
+
+      {/* ── 4. SUSPENDED BROADCAST STAGE LUMINAIRES (Fresnel / Spotlights) ── */}
+      {/* A. Inner Ring Spotlights (R = 5.2m) */}
+      {fixtureAngles.map((ang, fIdx) => {
+        const fx = 5.2 * Math.cos(ang);
+        const fz = 5.2 * Math.sin(ang);
+        return (
+          <group key={`inner-fix-${fIdx}`} position={[fx, -0.22, fz]} rotation={[0, -ang + Math.PI / 2, 0]}>
+            {/* Drop Pipe & C-Clamp */}
+            <mesh position={[0, 0.12, 0]}>
+              <cylinderGeometry args={[0.02, 0.02, 0.24, 8]} />
+              <primitive object={fixtureBodyMat} attach="material" />
+            </mesh>
+            {/* U-Yoke Bracket */}
+            <mesh position={[0, -0.04, 0]}>
+              <boxGeometry args={[0.22, 0.03, 0.12]} />
+              <primitive object={fixtureBodyMat} attach="material" />
+            </mesh>
+            {/* Spotlight Lantern Housing (tilted 35 deg down towards stage) */}
+            <group position={[0, -0.16, 0]} rotation={[0.62, 0, 0]}>
+              <mesh position={[0, 0, 0]}>
+                <cylinderGeometry args={[0.09, 0.11, 0.28, 16]} />
+                <primitive object={fixtureBodyMat} attach="material" />
+              </mesh>
+              {/* Emissive Front Fresnel Lens */}
+              <mesh position={[0, -0.142, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <circleGeometry args={[0.1, 16]} />
+                <primitive object={fixtureLensMat} attach="material" />
+              </mesh>
+              {/* 4-leaf Barndoors */}
+              <mesh position={[0, -0.15, 0.11]} rotation={[-0.35, 0, 0]}>
+                <boxGeometry args={[0.18, 0.005, 0.08]} />
+                <primitive object={barndoorMat} attach="material" />
+              </mesh>
+              <mesh position={[0, -0.15, -0.11]} rotation={[0.35, 0, 0]}>
+                <boxGeometry args={[0.18, 0.005, 0.08]} />
+                <primitive object={barndoorMat} attach="material" />
+              </mesh>
+            </group>
+          </group>
+        );
+      })}
+
+      {/* B. Outer Ring Spotlights (R = 8.6m) */}
+      {fixtureAngles.map((ang, fIdx) => {
+        const fx = 8.6 * Math.cos(ang);
+        const fz = 8.6 * Math.sin(ang);
+        return (
+          <group key={`outer-fix-${fIdx}`} position={[fx, -0.22, fz]} rotation={[0, -ang + Math.PI / 2, 0]}>
+            {/* Drop Pipe */}
+            <mesh position={[0, 0.12, 0]}>
+              <cylinderGeometry args={[0.02, 0.02, 0.24, 8]} />
+              <primitive object={fixtureBodyMat} attach="material" />
+            </mesh>
+            {/* U-Yoke */}
+            <mesh position={[0, -0.04, 0]}>
+              <boxGeometry args={[0.22, 0.03, 0.12]} />
+              <primitive object={fixtureBodyMat} attach="material" />
+            </mesh>
+            {/* Spotlight Housing tilted 45 deg down */}
+            <group position={[0, -0.16, 0]} rotation={[0.78, 0, 0]}>
+              <mesh position={[0, 0, 0]}>
+                <cylinderGeometry args={[0.1, 0.12, 0.32, 16]} />
+                <primitive object={fixtureBodyMat} attach="material" />
+              </mesh>
+              {/* Emissive Front Lens */}
+              <mesh position={[0, -0.162, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <circleGeometry args={[0.11, 16]} />
+                <primitive object={fixtureLensMat} attach="material" />
+              </mesh>
+            </group>
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -3320,7 +3493,7 @@ export function StudioLighting({
         serverNow={serverNow}
       />
       <StudioWalls stageFadeProgress={stageFadeProgress} liveFactor={liveFactor} />
-      <StudioCeilingRig />
+      <StudioCeilingRig isDimmed={isVeDichDimmed} />
       <AudienceAmphitheater
         audienceFadeProgress={audienceFadeProgress}
         quality={quality}

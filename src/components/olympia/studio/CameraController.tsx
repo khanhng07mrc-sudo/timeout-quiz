@@ -104,16 +104,19 @@ export function getContestantScreenCameraPreset(
   const tz = nx;
 
   // Screen desk center position (laptop screen inside the recessed bay)
-  const deskX = +(px - 0.08 * nx).toFixed(3);
-  const deskY = 0.98;
-  const deskZ = +(pz - 0.08 * nz).toFixed(3);
+  const deskX = +(px - 0.05 * nx + 0.04 * tx).toFixed(3);
+  const deskY = 1.02;
+  const deskZ = +(pz - 0.05 * nz + 0.04 * tz).toFixed(3);
 
-  // Over-the-shoulder elevated camera positioned slightly behind and to the right of contestant
-  // looking down directly at the laptop screen, chiclet keyboard and palm buzzer inside the recessed bay
-  const camDist = 0.98;
-  const camX = +(px - camDist * nx + 0.34 * tx).toFixed(3);
-  const camY = 1.58;
-  const camZ = +(pz - camDist * nz + 0.34 * tz).toFixed(3);
+  // Broadcast 3/4 over-the-shoulder perspective (OTS):
+  // Positioned slightly behind and to the right of contestant, framing contestant's right shoulder,
+  // forearm & hand typing on the keyboard, glowing laptop screen, and capturing the illuminated
+  // curved formula LED wall and studio neon rings in the background (as in broadcast reference photo).
+  const camDist = 0.88;
+  const tangentOffset = 0.62;
+  const camX = +(px - camDist * nx + tangentOffset * tx).toFixed(3);
+  const camY = 1.46;
+  const camZ = +(pz - camDist * nz + tangentOffset * tz).toFixed(3);
 
   return {
     id: 16,

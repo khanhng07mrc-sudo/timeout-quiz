@@ -863,13 +863,15 @@ function VietnameseHand({
   scale?: [number, number, number] | number;
   skinMat: THREE.Material;
   isLeft?: boolean;
-  mode?: "hang" | "rest" | "mic" | "card" | "tablet" | "fist";
+  mode?: "hang" | "rest" | "mic" | "card" | "tablet" | "fist" | "type" | "buzzer";
 }) {
   const side = isLeft ? -1 : 1;
 
   // Natural curl angles calibrated for realistic broadcast gestures
   const fingerCurl =
     mode === "fist" ? 1.65 :
+    mode === "buzzer" ? 0.75 :
+    mode === "type" ? 0.45 :
     mode === "mic" ? 1.25 :
     mode === "card" ? 0.35 :
     mode === "tablet" ? 0.25 :
@@ -877,6 +879,8 @@ function VietnameseHand({
 
   const thumbCurl =
     mode === "fist" ? 1.25 :
+    mode === "buzzer" ? 0.65 :
+    mode === "type" ? 0.30 :
     mode === "mic" ? 0.85 :
     mode === "card" ? 0.25 :
     mode === "tablet" ? 0.18 :
@@ -1108,6 +1112,7 @@ export function ContestantFigure({
   gesture = "none",
   gestureProgress = 0,
   gestureProgressRef,
+  isBuzzed = false,
 }: {
   seatId: number;
   position?: [number, number, number];
@@ -1118,6 +1123,7 @@ export function ContestantFigure({
   gesture?: "none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow";
   gestureProgress?: number;
   gestureProgressRef?: React.RefObject<number>;
+  isBuzzed?: boolean;
 }) {
   const style = CONTESTANT_STYLES[seatId % CONTESTANT_STYLES.length];
   const chestRef = useRef<THREE.Group>(null);
@@ -1183,21 +1189,76 @@ export function ContestantFigure({
       if (leftLegRef.current) { leftLegRef.current.rotation.x = 0; leftLegRef.current.rotation.z = 0; }
       if (rightLegRef.current) { rightLegRef.current.rotation.x = 0; rightLegRef.current.rotation.z = 0; }
 
-      // 1. Natural idle posture baseline (Relaxed physiological resting curves: elbow ~20 deg flexed, subtle breathing sway)
-      const idleSway = Math.sin(t * 1.6 + seatId) * 0.012;
-      const idleBreath = Math.sin(t * 1.8 + seatId * 1.2) * 0.016;
-      const idleLeftArm = { x: -0.06 + idleBreath, y: 0.02, z: -0.08 - idleSway };
-      const idleLeftForearm = { x: -0.34 + idleBreath * 0.4, y: 0, z: 0 };
-      const idleLeftWrist = { x: 0.08, y: 0, z: -0.03 };
-      const idleRightArm = { x: -0.06 + idleBreath, y: -0.02, z: 0.08 + idleSway };
-      const idleRightForearm = { x: -0.34 + idleBreath * 0.4, y: 0, z: 0 };
-      const idleRightWrist = { x: 0.08, y: 0, z: 0.03 };
+      // 1. Authentic Desk Workstation Posture Baseline:
+      // Contestant stands behind podium at Z = -0.42m, facing desk at Z = -0.28m to -0.10m.
+      // Left arm rests along padded wrist rest / armrest on the table.
+      // Right arm rests on wrist rest with hand over keyboard, subtle typing micro-cadence.
+      // When buzzer is pressed (isBuzzed), right arm reaches over to red buzzer dome at X = +0.26m.
+      // Head tilts down ~14 deg looking directly at glowing laptop screen, scanning question text.
+      const idleBreath = Math.sin(t * 1.8 + seatId * 1.2) * 0.012;
+      const typingFreq = 7.5;
+      const typingWiggle = Math.sin(t * typingFreq + seatId * 2.1) * 0.016;
+      const keyTap = Math.sin(t * (typingFreq * 2) + seatId * 3.4) * 0.018;
+
+      const idleLeftArm = {
+        x: -0.52 + idleBreath,
+        y: 0.06,
+        z: -0.10,
+      };
+      const idleLeftForearm = {
+        x: -0.82 + idleBreath * 0.3,
+        y: 0.10,
+        z: -0.06,
+      };
+      const idleLeftWrist = {
+        x: 0.22,
+        y: -0.08,
+        z: 0.04,
+      };
+
+      let idleRightArm = {
+        x: -0.56 + idleBreath,
+        y: -0.10,
+        z: 0.08,
+      };
+      let idleRightForearm = {
+        x: -0.86 + typingWiggle,
+        y: -0.12,
+        z: 0.06,
+      };
+      let idleRightWrist = {
+        x: 0.24 + keyTap,
+        y: 0.08,
+        z: -0.05,
+      };
+
+      if (isBuzzed) {
+        // Red dome buzzer is at X = +0.26m, Z = -0.15m: right hand reaches and presses down firmly
+        idleRightArm = {
+          x: -0.62,
+          y: -0.28,
+          z: 0.24,
+        };
+        idleRightForearm = {
+          x: -0.74,
+          y: -0.18,
+          z: 0.12,
+        };
+        idleRightWrist = {
+          x: 0.36,
+          y: 0.12,
+          z: -0.08,
+        };
+      }
+
+      // Head tilted ~14 deg looking at glowing laptop screen with subtle reading scan
+      const headReadScan = Math.sin(t * 1.2 + seatId * 0.9) * 0.035;
       const idleHead = {
-        x: Math.sin(t * 1.1 + seatId) * 0.005,
-        y: Math.cos(t * 0.8 + seatId * 1.4) * 0.008,
+        x: 0.24 + Math.sin(t * 1.5 + seatId) * 0.010,
+        y: headReadScan,
         z: 0,
       };
-      const idleChest = { x: 0 };
+      const idleChest = { x: 0.04 };
 
       // 2. Target signature gesture posture
       let targetLeftArm = { ...idleLeftArm };
@@ -1443,15 +1504,15 @@ export function ContestantFigure({
                 <cylinderGeometry args={[0.026, 0.022, 0.12, 14]} />
                 <primitive object={skinMat} attach="material" />
               </mesh>
-              {/* Left Hand: Slender Vietnamese hand resting naturally */}
+              {/* Left Hand: Slender Vietnamese hand resting naturally on wrist rest */}
               <group ref={leftWristRef} position={[0, -0.130, 0]}>
                 <VietnameseHand
                   position={[0, 0, 0]}
-                  rotation={[0, 0, -0.04]}
+                  rotation={[0.15, 0.10, -0.08]}
                   scale={0.88}
                   skinMat={skinMat}
                   isLeft={true}
-                  mode={isWalking ? "hang" : gesture === "desk_bow" ? "rest" : "hang"}
+                  mode={isWalking ? "hang" : gesture === "desk_bow" ? "rest" : "rest"}
                 />
               </group>
             </group>
@@ -1486,11 +1547,11 @@ export function ContestantFigure({
                 <cylinderGeometry args={[0.026, 0.022, 0.12, 14]} />
                 <primitive object={skinMat} attach="material" />
               </mesh>
-              {/* Right Hand: Slender Vietnamese hand */}
+              {/* Right Hand: Slender Vietnamese hand typing on keyboard or on buzzer */}
               <group ref={rightWristRef} position={[0, -0.130, 0]}>
                 <VietnameseHand
                   position={[0, 0, 0]}
-                  rotation={[0, 0, 0.04]}
+                  rotation={isBuzzed ? [0.20, -0.15, 0.12] : [0.15, -0.10, 0.08]}
                   scale={0.88}
                   skinMat={skinMat}
                   isLeft={false}
@@ -1503,7 +1564,9 @@ export function ContestantFigure({
                       ? "fist"
                       : gesture === "desk_bow" || gesture === "heart"
                       ? "rest"
-                      : "hang"
+                      : isBuzzed
+                      ? "buzzer"
+                      : "type"
                   }
                 />
               </group>
@@ -1651,6 +1714,278 @@ export function ContestantFigure({
   );
 }
 
+/**
+ * Procedural Dynamic Canvas Texture for Olympia Contestant Workstation Laptop Screen (1024 x 640)
+ * Replicates the authentic Đường Lên Đỉnh Olympia contestant computer UI:
+ * - Gold Olympia header, Laurel emblem & PIN / LAN connectivity badge
+ * - Round badge ("KHỞI ĐỘNG CÁ NHÂN - CÂU 3/6") & Score pill
+ * - Central Question card with subtle scientific watermark and crisp Vietnamese question
+ * - Answer input box with glowing cyan border, typed text "Bác Ái" and cursor
+ * - Countdown progress bar & remaining time
+ * - High-intensity emergency red alarm screen when isBuzzed = true
+ */
+function useOlympiaLaptopTexture(seatId: number, isBuzzed: boolean, isDimmed: boolean): THREE.CanvasTexture {
+  return useMemo(() => {
+    if (typeof document === "undefined") {
+      const emptyCanvas = { width: 1, height: 1 } as any;
+      return new THREE.CanvasTexture(emptyCanvas);
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024;
+    canvas.height = 640;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    const W = 1024;
+    const H = 640;
+
+    if (isBuzzed) {
+      // ── ALARM / BUZZER STATE (ĐỎ RỰC TÍN HIỆU GIÀNH QUYỀN TRẢ LỜI) ──
+      const grad = ctx.createLinearGradient(0, 0, W, H);
+      grad.addColorStop(0, "#450a0a");
+      grad.addColorStop(0.5, "#991b1b");
+      grad.addColorStop(1, "#581c87");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Flashing alert border
+      ctx.lineWidth = 14;
+      ctx.strokeStyle = "#ef4444";
+      ctx.strokeRect(7, 7, W - 14, H - 14);
+
+      // Pulsing inner border
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(254, 202, 202, 0.6)";
+      ctx.strokeRect(22, 22, W - 44, H - 44);
+
+      // Top Alert Header
+      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      ctx.fillRect(26, 26, W - 52, 60);
+      ctx.font = '900 28px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#fef08a";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("ĐƯỜNG LÊN ĐỈNH OLYMPIA 26 • TÍN HIỆU CHUÔNG KHẨN CẤP", W / 2, 56);
+
+      // Big Bell Icon & Flash Title
+      ctx.font = '900 68px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#ffffff";
+      ctx.shadowColor = "rgba(239, 68, 68, 0.9)";
+      ctx.shadowBlur = 24;
+      ctx.fillText("🔔 ĐÃ BẤM CHUÔNG!", W / 2, 210);
+
+      // Subtitle: Contestant Number
+      ctx.font = '800 46px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#fef08a";
+      ctx.shadowBlur = 16;
+      ctx.fillText(`THÍ SINH ${seatId + 1} GIÀNH QUYỀN TRẢ LỜI`, W / 2, 290);
+      ctx.shadowBlur = 0;
+
+      // Signal Timestamp Badge
+      ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+      ctx.beginPath();
+      ctx.roundRect(W / 2 - 280, 350, 560, 70, 16);
+      ctx.fill();
+      ctx.strokeStyle = "#f87171";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.font = '700 28px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#e2e8f0";
+      ctx.fillText("TỐC ĐỘ GHI NHẬN TÍN HIỆU: 0.124s", W / 2, 385);
+
+      // Countdown Warning Bar
+      ctx.fillStyle = "#ef4444";
+      ctx.beginPath();
+      ctx.roundRect(W / 2 - 340, 470, 680, 76, 20);
+      ctx.fill();
+      ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText("⏱ 5 GIÂY TRẢ LỜI CỦA BẠN BẮT ĐẦU!", W / 2, 508);
+
+      // Footer
+      ctx.font = '600 20px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+      ctx.fillText("HỆ THỐNG GHI NHẬN TỰ ĐỘNG - VTV3", W / 2, 595);
+    } else {
+      // ── NORMAL BROADCAST WORKSTATION STATE ──
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, "#080e1a");
+      grad.addColorStop(0.5, "#0b1528");
+      grad.addColorStop(1, "#030712");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Subtle formula watermarks in the background
+      ctx.font = '700 24px "Plus Jakarta Sans", monospace';
+      ctx.fillStyle = "rgba(56, 189, 248, 0.05)";
+      ctx.textAlign = "left";
+      ctx.fillText("∑(k=1..n)   ∫ f(x)dx   λ = c/f   ΔE = mc²   sin²θ + cos²θ = 1   Ω   μ   π", 40, 110);
+      ctx.fillText("v = v₀ + at    P = UI    pH = -log[H+]    F = G(m₁m₂)/r²", 80, 240);
+      ctx.fillText("lim(x→0) sin(x)/x = 1    E = hf    PV = nRT", 60, 360);
+
+      // 1. Top Header Bar (Y: 0..64)
+      ctx.fillStyle = "#0a1122";
+      ctx.fillRect(0, 0, W, 64);
+      ctx.fillStyle = "#0284c7";
+      ctx.fillRect(0, 62, W, 2);
+
+      // Header Left: Gold Olympia Brand
+      ctx.font = '900 22px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#fbbf24";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText("🏆 ĐƯỜNG LÊN ĐỈNH OLYMPIA • MÙA 26", 24, 32);
+
+      // Header Center: Contestant Badge
+      ctx.fillStyle = "#0369a1";
+      ctx.beginPath();
+      ctx.roundRect(W / 2 - 90, 14, 180, 36, 18);
+      ctx.fill();
+      ctx.font = '800 18px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.fillText(`THÍ SINH ${seatId + 1}`, W / 2, 32);
+
+      // Header Right: LAN Online Indicator
+      ctx.fillStyle = "#10b981";
+      ctx.beginPath();
+      ctx.arc(W - 200, 32, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = '700 16px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#34d399";
+      ctx.textAlign = "left";
+      ctx.fillText("LAN TRƯỜNG QUAY ONLINE", W - 186, 32);
+
+      // 2. Round Banner (Y: 76..128)
+      ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+      ctx.beginPath();
+      ctx.roundRect(24, 76, W - 48, 54, 12);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.font = '800 20px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#38bdf8";
+      ctx.textAlign = "left";
+      ctx.fillText("★ PHẦN THI KHỞI ĐỘNG • CÂU HỎI 3 / 6", 44, 103);
+
+      ctx.fillStyle = "#f59e0b";
+      ctx.textAlign = "right";
+      ctx.fillText("MỨC ĐIỂM: 10 ĐIỂM   |   TỔNG ĐIỂM: 40", W - 44, 103);
+
+      // 3. Central Question Card (Y: 144..370)
+      ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+      ctx.beginPath();
+      ctx.roundRect(24, 144, W - 48, 226, 16);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(14, 165, 233, 0.5)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Card Header Tag
+      ctx.fillStyle = "rgba(14, 165, 233, 0.2)";
+      ctx.beginPath();
+      ctx.roundRect(44, 164, 130, 32, 8);
+      ctx.fill();
+      ctx.font = '800 15px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#38bdf8";
+      ctx.textAlign = "center";
+      ctx.fillText("CÂU HỎI SỐ 3", 109, 180);
+
+      // Question Text (2 lines of crisp Vietnamese)
+      ctx.font = '800 26px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#f8fafc";
+      ctx.textAlign = "left";
+      ctx.fillText("Nhà máy thủy điện tích năng đầu tiên được xây dựng tại Việt Nam", 44, 235);
+      ctx.fillText("thuộc địa phận huyện nào của tỉnh Ninh Thuận?", 44, 275);
+
+      // Question Hint / Metadata
+      ctx.font = '600 17px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText("Lĩnh vực: Địa lý • Năng lượng Quốc gia", 44, 335);
+
+      // 4. Answer Input Box (Y: 388..484)
+      ctx.fillStyle = "#020617";
+      ctx.beginPath();
+      ctx.roundRect(24, 388, W - 48, 96, 14);
+      ctx.fill();
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.font = '800 20px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#38bdf8";
+      ctx.textAlign = "left";
+      ctx.fillText("ĐÁP ÁN CỦA BẠN:", 44, 422);
+
+      // Typed text + cursor
+      ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText("Bác Ái", 44, 460);
+      // Blinking cursor |
+      ctx.fillStyle = "#38bdf8";
+      ctx.fillRect(158, 434, 4, 30);
+
+      // Accepted Answer Pill
+      ctx.fillStyle = "rgba(16, 185, 129, 0.2)";
+      ctx.beginPath();
+      ctx.roundRect(W - 270, 420, 230, 42, 10);
+      ctx.fill();
+      ctx.strokeStyle = "#10b981";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.font = '800 18px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#34d399";
+      ctx.textAlign = "center";
+      ctx.fillText("✓ ĐÃ GHI NHẬN [0.38s]", W - 155, 442);
+
+      // 5. Timer Bar & Footer (Y: 504..620)
+      ctx.fillStyle = "#1e293b";
+      ctx.beginPath();
+      ctx.roundRect(24, 508, W - 48, 18, 9);
+      ctx.fill();
+
+      // Timer Progress Fill (Cyan to Amber gradient)
+      const timerGrad = ctx.createLinearGradient(24, 0, W - 48, 0);
+      timerGrad.addColorStop(0, "#06b6d4");
+      timerGrad.addColorStop(0.7, "#38bdf8");
+      timerGrad.addColorStop(1, "#f59e0b");
+      ctx.fillStyle = timerGrad;
+      ctx.beginPath();
+      ctx.roundRect(24, 508, (W - 48) * 0.72, 18, 9);
+      ctx.fill();
+
+      // Countdown Info
+      ctx.font = '800 22px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#fef08a";
+      ctx.textAlign = "left";
+      ctx.fillText("⏱ THỜI GIAN CÒN LẠI: 04.62s", 28, 558);
+
+      ctx.font = '600 16px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = "#64748b";
+      ctx.textAlign = "right";
+      ctx.fillText("Bàn phím QWERTY + Nút bấm bàn sẵn sàng • VTV3", W - 28, 558);
+
+      // Micro status line
+      ctx.font = '500 14px "Plus Jakarta Sans", monospace';
+      ctx.fillStyle = "#475569";
+      ctx.textAlign = "center";
+      ctx.fillText(`OLYMPIA-WORKSTATION // NODE-TS${seatId + 1} // LATENCY 1.2ms // SECURE SYNC OK`, W / 2, 600);
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.needsUpdate = true;
+    return tex;
+  }, [seatId, isBuzzed, isDimmed]);
+}
+
 export function ContestantPodium({
   seatId,
   name,
@@ -1696,6 +2031,9 @@ export function ContestantPodium({
       }),
     []
   );
+
+  // Dynamic Olympia Contestant Workstation Laptop Canvas Texture
+  const laptopTexture = useOlympiaLaptopTexture(seatId, isBuzzed, Boolean(isDimmed));
 
   // Smooth buzzer pop animation (zero-allocation per frame)
   useFrame((_, delta) => {
@@ -1898,11 +2236,12 @@ export function ContestantPodium({
           <mesh position={[0, 0.115, -0.0068]} rotation={[0, Math.PI, 0]}>
             <planeGeometry args={[0.32, 0.19]} />
             <meshStandardMaterial
-              color={isBuzzed ? "#991b1b" : "#0284c7"}
-              emissive={isBuzzed ? "#ef4444" : isDimmed ? "#0369a1" : "#38bdf8"}
-              emissiveIntensity={isBuzzed ? 2.0 : isDimmed ? 0.45 : 1.10}
-              roughness={0.15}
-              metalness={0.8}
+              map={laptopTexture}
+              emissiveMap={laptopTexture}
+              emissive="#ffffff"
+              emissiveIntensity={isBuzzed ? 1.85 : isDimmed ? 0.60 : 1.15}
+              roughness={0.20}
+              metalness={0.10}
             />
           </mesh>
 
@@ -1970,8 +2309,41 @@ export function ContestantPodium({
         </mesh>
       </group>
 
+      {/* ── 6B. BROADCAST WORKSTATION LOCAL LIGHTING (Eliminates dark voids in OTS shots) ── */}
+      {/* Overhead Warm-White Key Spotlight (5500K Studio Downlight illuminating desk, armrests, keyboard & hands) */}
+      <pointLight
+        position={[0, 2.4, -0.10]}
+        intensity={isDimmed ? 0.8 : 4.5}
+        distance={4.8}
+        color="#f8fafc"
+        decay={1.8}
+      />
+      {/* Soft Cyan Formula Screen Bounce Wash (Vibrant ambient wash from curved LED wall behind contestant) */}
+      <pointLight
+        position={[0, 1.4, -0.85]}
+        intensity={isDimmed ? 0.6 : 3.8}
+        distance={4.2}
+        color="#00f0ff"
+        decay={1.8}
+      />
+      {/* Laptop Screen Upward Glow Fill onto hands & contestant face */}
+      <pointLight
+        position={[0, 1.05, -0.12]}
+        intensity={isBuzzed ? 5.2 : isDimmed ? 0.6 : 2.4}
+        distance={1.6}
+        color={isBuzzed ? "#ff3344" : "#38bdf8"}
+        decay={2.0}
+      />
+
       {/* ── 6. 3D CONTESTANT FIGURE STANDING BEHIND PODIUM (Hidden during walking entrance) ── */}
-      {showFigure && <ContestantFigure seatId={seatId} quality={quality} position={[0, 0, -0.42]} />}
+      {showFigure && (
+        <ContestantFigure
+          seatId={seatId}
+          quality={quality}
+          position={[0, 0, -0.42]}
+          isBuzzed={isBuzzed}
+        />
+      )}
     </group>
   );
 }
@@ -5522,16 +5894,10 @@ export function Podiums({
         }
 
         const isThisContestantInVeDichTurn = isVdActive && cfg.seatId === activeSeat;
-        let showFigure = false;
-        if (isLobby || (isIntro && !hasEntranceCompleted)) {
+        let showFigure = !isThisContestantInVeDichTurn;
+        if (isEntranceActive) {
+          // During entrance staircase descent, ContestantEntranceWalkingFigures renders walking/arriving figures
           showFigure = false;
-        } else if (isEntranceActive) {
-          // All active and arrived figures during entrance are rendered seamlessly by ContestantEntranceWalkingFigures
-          showFigure = false;
-        } else if (hasEntranceCompleted || isCompetitionRound) {
-          showFigure = !isThisContestantInVeDichTurn;
-        } else {
-          showFigure = !isThisContestantInVeDichTurn;
         }
 
         const isDimmed = Boolean(

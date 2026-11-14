@@ -25,6 +25,7 @@ export interface CleanupResult {
 export interface StaleRoomsStats {
   finishedCount: number;
   sandboxCount: number;
+  allSandboxCount: number;
   staleLobbyCount: number;
   stalePlayingCount: number;
   emptyCount: number;
@@ -50,7 +51,7 @@ export async function getStaleRoomsStats(options: CleanupOptions = {}): Promise<
   const playingCutoff = new Date(now.getTime() - playingMaxAgeHours * 60 * 60 * 1000);
   const emptyCutoff = new Date(now.getTime() - emptyMaxAgeHours * 60 * 60 * 1000);
 
-  const [finishedCount, sandboxCount, staleLobbyCount, stalePlayingCount, emptyCount] = await Promise.all([
+  const [finishedCount, sandboxCount, allSandboxCount, staleLobbyCount, stalePlayingCount, emptyCount] = await Promise.all([
     prisma.room.count({
       where: {
         status: "FINISHED",
@@ -62,8 +63,19 @@ export async function getStaleRoomsStats(options: CleanupOptions = {}): Promise<
     }),
     prisma.room.count({
       where: {
-        name: { startsWith: "[Sandbox]" },
+        OR: [
+          { name: { startsWith: "[Sandbox]" } },
+          { code: { startsWith: "sb_" } },
+        ],
         createdAt: { lte: sandboxCutoff },
+      },
+    }),
+    prisma.room.count({
+      where: {
+        OR: [
+          { name: { startsWith: "[Sandbox]" } },
+          { code: { startsWith: "sb_" } },
+        ],
       },
     }),
     prisma.room.count({
@@ -120,6 +132,7 @@ export async function getStaleRoomsStats(options: CleanupOptions = {}): Promise<
   return {
     finishedCount,
     sandboxCount,
+    allSandboxCount,
     staleLobbyCount,
     stalePlayingCount,
     emptyCount,
@@ -222,26 +235,38 @@ export async function cleanupStaleRooms(options: CleanupOptions = {}): Promise<C
     cleanupRoomInMemory?: (roomId: string) => void;
   };
 
-  const roomsDeleted: CleanupResult["roomsDeleted"] = [];
-
+  // 1. Release in-memory timers and structures
   for (const r of staleRooms) {
-    try {
-      // 1. Release in-memory timers and structures
-      globalForSockets.cleanupRoomInMemory?.(r.id);
+    globalForSockets.cleanupRoomInMemory?.(r.id);
+  }
 
-      // 2. Delete room from database (Prisma cascade handles relations)
-      await prisma.room.delete({
-        where: { id: r.id },
-      });
-
-      roomsDeleted.push(r);
-    } catch (err) {
-      console.error(`[room-cleanup] Failed to delete room ${r.code} (${r.id}):`, err);
+  // 2. Batch delete in strict foreign key order to prevent deadlocks and lock contention
+  const ids = staleRooms.map((r) => r.id);
+  try {
+    await prisma.$transaction([
+      prisma.gameLog.deleteMany({ where: { roomId: { in: ids } } }),
+      prisma.answer.deleteMany({ where: { roomId: { in: ids } } }),
+      prisma.powerupCard.deleteMany({ where: { roomId: { in: ids } } }),
+      prisma.player.deleteMany({ where: { roomId: { in: ids } } }),
+      prisma.team.deleteMany({ where: { roomId: { in: ids } } }),
+      prisma.room.deleteMany({ where: { id: { in: ids } } }),
+    ]);
+  } catch (batchErr) {
+    console.error("[room-cleanup] Batch deletion error, falling back to safe individual delete:", batchErr);
+    for (const r of staleRooms) {
+      try {
+        await prisma.gameLog.deleteMany({ where: { roomId: r.id } }).catch(() => {});
+        await prisma.answer.deleteMany({ where: { roomId: r.id } }).catch(() => {});
+        await prisma.powerupCard.deleteMany({ where: { roomId: r.id } }).catch(() => {});
+        await prisma.player.deleteMany({ where: { roomId: r.id } }).catch(() => {});
+        await prisma.team.deleteMany({ where: { roomId: r.id } }).catch(() => {});
+        await prisma.room.delete({ where: { id: r.id } }).catch(() => {});
+      } catch {}
     }
   }
 
   return {
-    deletedCount: roomsDeleted.length,
-    roomsDeleted,
+    deletedCount: staleRooms.length,
+    roomsDeleted: staleRooms,
   };
 }

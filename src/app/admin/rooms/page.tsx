@@ -28,6 +28,7 @@ export default function AdminRoomsListPage() {
   const [cleanupStats, setCleanupStats] = useState<{
     finishedCount: number;
     sandboxCount: number;
+    allSandboxCount?: number;
     staleLobbyCount: number;
     stalePlayingCount: number;
     emptyCount: number;
@@ -462,8 +463,10 @@ export default function AdminRoomsListPage() {
                 <span className="font-mono font-bold text-amber-300">{cleanupStats?.finishedCount ?? "..."}</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                <span className="text-slate-400">Sandbox test (&gt;1h):</span>
-                <span className="font-mono font-bold text-blue-300">{cleanupStats?.sandboxCount ?? "..."}</span>
+                <span className="text-slate-400">Sandbox test (Hiện có):</span>
+                <span className="font-mono font-bold text-blue-300">
+                  {cleanupStats?.allSandboxCount ?? cleanupStats?.sandboxCount ?? "..."}
+                </span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
                 <span className="text-slate-400">Phòng chờ bỏ quên (&gt;6h):</span>

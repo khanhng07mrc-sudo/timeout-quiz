@@ -10180,21 +10180,18 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
         }}
       />
 
-      {/* ── Top Header Controls (Compact Single-Bar) ─────────────────── */}
-      <div className="glass rounded-xl px-2.5 py-1 border border-white/10 flex items-center justify-between gap-1.5 sm:gap-2 shadow-lg shrink-0 bg-[#121424] overflow-x-auto no-scrollbar h-10">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-sm sm:text-base shadow glow-purple shrink-0">
+      {/* ── Top Header Controls (Compact Single-Bar, No-Scroll) ─────────────────── */}
+      <div className="glass rounded-xl px-2 py-1 border border-white/10 flex items-center justify-between gap-1 shadow-lg shrink-0 bg-[#121424] h-9">
+        <div className="flex items-center gap-1 min-w-0 shrink-0">
+          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-xs shadow glow-purple shrink-0">
             🧪
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap shrink-0">
-              <span className="text-xs sm:text-sm font-black text-white whitespace-nowrap">Phòng Sandbox</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold whitespace-nowrap hidden md:inline" title="Môi trường thử nghiệm độc lập trên máy này, không hiển thị trong phòng đấu chính">
-                🧪 Thử Nghiệm Độc Lập Trên Máy
-              </span>
+            <div className="flex items-center gap-1 flex-nowrap shrink-0">
+              <span className="text-xs font-black text-white whitespace-nowrap">Sandbox</span>
               {isOfflineSandbox && (
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold whitespace-nowrap">
+                <div className="flex items-center gap-0.5">
+                  <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold whitespace-nowrap">
                     ⚡ Offline
                   </span>
                   <button
@@ -10206,8 +10203,8 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       setRoomState(null);
                       setCurrentQuestion(null);
                     }}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold whitespace-nowrap hidden lg:flex items-center gap-1 transition cursor-pointer"
-                    title="Thoát chế độ ngoại tuyến và mở phòng online với bộ đề trên máy chủ"
+                    className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold whitespace-nowrap hidden lg:flex items-center gap-0.5 transition cursor-pointer"
+                    title="Mở phòng online với bộ đề trên máy chủ"
                   >
                     <span>🌐</span>
                     <span>Online</span>
@@ -10215,17 +10212,17 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                 </div>
               )}
               {code && (
-                <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 rounded-lg bg-white/5 border border-purple-500/30 text-xs shrink-0">
+                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-white/5 border border-purple-500/30 text-xs shrink-0">
                   <span className="text-muted-foreground text-[10px]">PIN:</span>
                   <span className="font-mono font-black text-cyan-300 text-xs">{code}</span>
                   <button
                     type="button"
                     onClick={() => setShowQRModal(true)}
-                    className="px-2 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold flex items-center gap-1 transition cursor-pointer"
-                    title="Phóng to mã QR phòng cho thí sinh quét (hỗ trợ mã theo từng đội)"
+                    className="px-1.5 py-0.2 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold flex items-center gap-0.5 transition cursor-pointer"
+                    title="Phóng to mã QR phòng cho thí sinh quét"
                   >
                     <span>⛶</span>
-                    <span>Mã QR</span>
+                    <span>QR</span>
                   </button>
                   <button
                     type="button"
@@ -10238,27 +10235,27 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       syncToIframes({ roomState: { ...(roomStateRef.current || {}), teamsLocked: nextLocked } });
                       addLog(nextLocked ? "🔒 Quản trò đã KHÓA phân đội thí sinh" : "🔓 Quản trò đã MỞ KHÓA phân đội thí sinh");
                     }}
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition cursor-pointer border ${
+                    className={`px-1.5 py-0.2 rounded text-[10px] font-bold flex items-center gap-0.5 transition cursor-pointer border ${
                       roomState?.teamsLocked
                         ? "bg-amber-500/30 text-amber-300 border-amber-500/50 shadow"
                         : "bg-white/5 hover:bg-white/10 text-slate-300 border-white/20"
                     }`}
                     title={roomState?.teamsLocked ? "Đội hình đang bị KHÓA. Bấm để mở cho thí sinh đổi đội" : "Bấm để KHÓA không cho thí sinh tự ý đổi đội"}
                   >
-                    <span>{roomState?.teamsLocked ? "🔒 Khóa đội: BẬT" : "🔓 Khóa đội: TẮT"}</span>
+                    <span>{roomState?.teamsLocked ? "🔒 Khóa" : "🔓 Mở"}</span>
                   </button>
-                  <span className="text-purple-300 font-bold hidden sm:inline-flex items-center gap-1.5 text-[11px]">
-                    <GameModeIcon mode={roomState?.mode || selectedMode} className="w-3.5 h-3.5 drop-shadow-sm" />
+                  <span className="text-purple-300 font-bold hidden sm:inline-flex items-center gap-1 text-[10.5px]">
+                    <GameModeIcon mode={roomState?.mode || selectedMode} className="w-3 h-3 drop-shadow-sm" />
                     <span>
                       {effectiveActiveMode === "OLYMPIA"
-                        ? `Đường Lên Đỉnh Olympia (Mùa ${olympiaState?.rulesetId || (roomState?.config as any)?.olympia?.rulesetId || olympiaRulesetId})`
+                        ? `Olympia ${olympiaState?.rulesetId || (roomState?.config as any)?.olympia?.rulesetId || olympiaRulesetId}`
                         : MODE_DISPLAY_NAMES[(roomState?.mode || selectedMode).toUpperCase()] || (roomState?.mode || selectedMode)}
                     </span>
                   </span>
                   <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
                     roomState?.status === "PLAYING" ? "bg-green-500/20 text-green-300" : roomState?.status ? "bg-yellow-500/20 text-yellow-300" : "bg-cyan-500/20 text-cyan-300 animate-pulse"
                   }`}>
-                    {roomState?.status === "LOBBY" ? "SẢNH CHỜ" : roomState?.status === "PLAYING" ? "ĐANG THI ĐẤU" : roomState?.status === "PAUSED" ? "TẠM DỪNG" : roomState?.status === "FINISHED" ? "KẾT THÚC" : roomState?.status || "KẾT NỐI..."}
+                    {roomState?.status === "LOBBY" ? "SẢNH" : roomState?.status === "PLAYING" ? "THI ĐẤU" : roomState?.status === "PAUSED" ? "TẠM DỪNG" : roomState?.status === "FINISHED" ? "KẾT THÚC" : roomState?.status || "KẾT NỐI..."}
                   </span>
                 </div>
               )}
@@ -10423,48 +10420,46 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     <button
                       type="button"
                       onClick={handleSkipPrepare}
-                      className="px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 text-black text-xs font-black shadow animate-pulse flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                      className="px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 text-black text-[11px] font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap cursor-pointer"
                       title="Bỏ qua đếm ngược chuẩn bị"
                     >
                       <span>⚡</span>
-                      <span>
-                        Bỏ qua chuẩn bị ({matchStarting?.seconds ?? questionPrepare?.seconds ?? 5}s)
-                      </span>
+                      <span>Bỏ qua ({matchStarting?.seconds ?? questionPrepare?.seconds ?? 5}s)</span>
                     </button>
                   )}
                   {olympiaState?.stage === "lobby" && (
                     <button
                       type="button"
                       onClick={() => sendOlympiaAction("game:start")}
-                      className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-sky-400 text-white text-xs font-black shadow-lg shadow-purple-500/30 animate-pulse flex items-center gap-1.5 cursor-pointer"
+                      className="px-2.5 py-0.5 rounded bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-sky-400 text-white text-[11px] font-black shadow animate-pulse flex items-center gap-1 cursor-pointer"
                     >
                       <span>▶</span>
-                      <span>Bắt đầu trận đấu Olympia</span>
+                      <span>Bắt đầu</span>
                     </button>
                   )}
                   {olympiaState?.stage === "playing" && (
                     <button
                       type="button"
                       onClick={() => sendOlympiaAction("entrance:start")}
-                      className="px-3 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/50 text-sky-200 text-xs font-black shadow flex items-center gap-1.5 cursor-pointer transition"
+                      className="px-2 py-0.5 rounded bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/50 text-sky-200 text-[11px] font-black shadow flex items-center gap-1 cursor-pointer transition"
                       title="Chào & Giới thiệu 4 thí sinh bước ra sân khấu"
                     >
                       <span>👥</span>
-                      <span>Chào & Giới thiệu thí sinh</span>
+                      <span>Chào sân</span>
                     </button>
                   )}
                   {olympiaState?.stage === "playing" && olympiaState.introTimer && (
                     <button
                       type="button"
                       onClick={() => sendOlympiaAction("intro:skip")}
-                      className="px-3.5 py-1.5 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-xs font-black shadow flex items-center gap-1.5 cursor-pointer animate-pulse"
+                      className="px-2 py-0.5 rounded bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-[11px] font-black shadow flex items-center gap-1 cursor-pointer animate-pulse"
                     >
                       <span>⚡</span>
-                      <span>Bỏ qua mở đầu / Vào Khởi Động</span>
+                      <span>Vào Khởi Động</span>
                     </button>
                   )}
                   {olympiaState?.currentRound && (
-                    <span className="px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-xs font-bold">
+                    <span className="px-2 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-[10.5px] font-bold">
                       {ROUND_LABELS[olympiaState.currentRound]}
                     </span>
                   )}
@@ -11440,13 +11435,13 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
               )}
 
               {/* Right Section: Studio Utilities */}
-              <div className="flex items-center gap-1.5 shrink-0 justify-end">
+              <div className="flex items-center gap-1 shrink-0 justify-end">
                 {/* Consolidated Utilities Dropdown */}
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => setShowUtilitiesDropdown(!showUtilitiesDropdown)}
-                    className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    className={`px-2 py-0.5 rounded border text-[11px] font-bold transition flex items-center gap-1 cursor-pointer ${
                       showUtilitiesDropdown
                         ? "bg-purple-600/30 border-purple-400/50 text-white shadow-sm"
                         : "glass border-white/10 text-muted-foreground hover:text-white"
@@ -11455,15 +11450,15 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   >
                     <span>🛠️</span>
                     <span className="whitespace-nowrap">Tiện ích</span>
-                    <span className="text-[10px] text-muted-foreground">▾</span>
+                    <span className="text-[9px] text-muted-foreground">▾</span>
                   </button>
 
                   {showUtilitiesDropdown && (
                     <div
-                      className="absolute right-0 top-full mt-1.5 z-50 w-56 rounded-2xl glass border border-white/20 bg-[#151728]/95 backdrop-blur-xl shadow-2xl p-2 flex flex-col gap-1 text-xs"
+                      className="absolute right-0 top-full mt-1 z-50 w-52 rounded-xl glass border border-white/20 bg-[#151728]/95 backdrop-blur-xl shadow-2xl p-1.5 flex flex-col gap-0.5 text-xs"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="flex items-center justify-between px-2 py-1 border-b border-white/10 mb-1">
+                      <div className="flex items-center justify-between px-2 py-1 border-b border-white/10 mb-0.5">
                         <span className="font-black text-white text-[11px] uppercase tracking-wider">🛠️ Tiện ích phòng</span>
                         <button
                           type="button"
@@ -11478,12 +11473,12 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       <button
                         type="button"
                         onClick={() => setBotAutoEnabled(!botAutoEnabled)}
-                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer text-left"
+                        className="w-full flex items-center justify-between px-2 py-1 rounded hover:bg-white/10 transition cursor-pointer text-left text-xs"
                       >
-                        <span className="flex items-center gap-2 text-slate-200">
+                        <span className="flex items-center gap-1.5 text-slate-200">
                           <span>🤖</span> Bot tự động
                         </span>
-                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+                        <span className={`text-[9px] font-black px-1.5 py-0.2 rounded ${
                           botAutoEnabled ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-white/10 text-slate-400"
                         }`}>
                           {botAutoEnabled ? "BẬT" : "TẮT"}
@@ -11498,12 +11493,12 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                           setShowUtilitiesDropdown(false);
                         }}
                         disabled={!currentQuestion || !!revealPayload || Boolean(timer && timer.remaining <= 0)}
-                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer text-left disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-between px-2 py-1 rounded hover:bg-white/10 transition cursor-pointer text-left text-xs disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        <span className="flex items-center gap-2 text-slate-200">
+                        <span className="flex items-center gap-1.5 text-slate-200">
                           <span>⚡</span> Bot nộp bài ngay
                         </span>
-                        <span className="text-[10px] text-muted-foreground">Trigger</span>
+                        <span className="text-[9px] text-muted-foreground">Trigger</span>
                       </button>
 
                       {/* Auto-Timer */}
@@ -11513,19 +11508,19 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                           if (roomState) updateConfig("autoTimerStart", !roomState.config.autoTimerStart);
                         }}
                         disabled={!roomState}
-                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer text-left disabled:opacity-40"
+                        className="w-full flex items-center justify-between px-2 py-1 rounded hover:bg-white/10 transition cursor-pointer text-left text-xs disabled:opacity-40"
                       >
-                        <span className="flex items-center gap-2 text-slate-200">
+                        <span className="flex items-center gap-1.5 text-slate-200">
                           <span>⏱️</span> Đếm tự động
                         </span>
-                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+                        <span className={`text-[9px] font-black px-1.5 py-0.2 rounded ${
                           roomState?.config.autoTimerStart ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30" : "bg-white/10 text-slate-400"
                         }`}>
                           {roomState?.config.autoTimerStart ? "BẬT" : "TẮT"}
                         </span>
                       </button>
 
-                      <div className="h-px bg-white/10 my-1" />
+                      <div className="h-px bg-white/10 my-0.5" />
 
                       {/* Rules */}
                       <button
@@ -11534,7 +11529,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                           setShowRulesModal(true);
                           setShowUtilitiesDropdown(false);
                         }}
-                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-cyan-300 transition cursor-pointer text-left"
+                        className="w-full flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/10 text-cyan-300 transition cursor-pointer text-left text-xs"
                       >
                         <span>📖</span>
                         <span>Luật chơi</span>
@@ -11554,7 +11549,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                           setShowCardModal(true);
                           setShowUtilitiesDropdown(false);
                         }}
-                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-purple-300 transition cursor-pointer text-left"
+                        className="w-full flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/10 text-purple-300 transition cursor-pointer text-left text-xs"
                       >
                         <span>🃏</span>
                         <span>Cấp thẻ bổ trợ</span>
@@ -11567,13 +11562,13 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                           setShowLogsModal(true);
                           setShowUtilitiesDropdown(false);
                         }}
-                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-amber-300 transition cursor-pointer text-left"
+                        className="w-full flex items-center justify-between px-2 py-1 rounded hover:bg-white/10 text-amber-300 transition cursor-pointer text-left text-xs"
                       >
-                        <span className="flex items-center gap-2">
+                        <span className="flex items-center gap-1.5">
                           <span>📜</span>
                           <span>Nhật ký</span>
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300">
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/10 text-slate-300">
                           {botLogs.length}
                         </span>
                       </button>
@@ -11581,13 +11576,12 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   )}
                 </div>
 
-                {/* Settings Dropdown (Request C) */}
+                {/* Settings Dropdown */}
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-                    className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer ${
-
+                    className={`px-2 py-0.5 rounded border text-[11px] font-bold transition flex items-center gap-0.5 shrink-0 cursor-pointer ${
                       showSettingsDropdown
                         ? "bg-slate-500/30 border-slate-400/50 text-white"
                         : "glass border-white/10 text-muted-foreground hover:text-white"
@@ -11597,7 +11591,6 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     <span>⚙️</span>
                     <span className="whitespace-nowrap">Cài đặt</span>
                   </button>
-                  
                 </div>
 
                 {/* Delete Room */}
@@ -11605,12 +11598,12 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   type="button"
                   onClick={() => handleDeleteSandboxRoom(code)}
                   title="Xóa hoàn toàn phòng Sandbox này khỏi máy và máy chủ"
-                  className="px-2.5 py-1 rounded-lg glass border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 text-xs font-bold transition shrink-0 whitespace-nowrap cursor-pointer"
+                  className="px-2 py-0.5 rounded glass border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 text-[11px] font-bold transition shrink-0 whitespace-nowrap cursor-pointer"
                 >
-                  🗑️ Xóa phòng
+                  🗑️ Xóa
                 </button>
 
-                {/* 🏔️ Olympia Season Switcher Button in Header Bar */}
+                {/* Olympia Season Switcher Button in Header Bar */}
                 {effectiveActiveMode === "OLYMPIA" && (
                   <button
                     type="button"
@@ -11619,11 +11612,10 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       handleExitSandboxRoom();
                     }}
                     title="Đổi mùa thi đấu Olympia (O13 - O27)"
-                    className="px-2.5 py-1 rounded-lg glass border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 text-xs font-bold transition shrink-0 whitespace-nowrap cursor-pointer flex items-center gap-1 shadow-sm"
+                    className="px-2 py-0.5 rounded glass border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 text-[11px] font-bold transition shrink-0 whitespace-nowrap cursor-pointer flex items-center gap-0.5 shadow-sm"
                   >
                     <span>🏔️</span>
-                    <span>Mùa {olympiaState?.rulesetId || (roomState?.config as any)?.olympia?.rulesetId || olympiaRulesetId}</span>
-                    <span className="text-[10px] text-amber-400">🔄 Đổi</span>
+                    <span>{olympiaState?.rulesetId || (roomState?.config as any)?.olympia?.rulesetId || olympiaRulesetId}</span>
                   </button>
                 )}
 
@@ -11632,7 +11624,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   type="button"
                   onClick={handleExitSandboxRoom}
                   title="Thoát khỏi phòng hiện tại để chọn hoặc tạo phòng khác"
-                  className="px-2.5 py-1 rounded-lg glass hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition shrink-0 whitespace-nowrap cursor-pointer"
+                  className="px-2 py-0.5 rounded glass hover:bg-white/10 text-slate-300 hover:text-white text-[11px] font-bold transition shrink-0 whitespace-nowrap cursor-pointer"
                 >
                   ✕ Đổi phòng
                 </button>

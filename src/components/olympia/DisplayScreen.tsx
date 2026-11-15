@@ -730,18 +730,7 @@ function KhoiDong({ state, serverNow }: P) {
   return (
     <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
       {/* Main question card / Result answer overlay */}
-      {kd.phase === "result" ? (
-        <div className="w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col justify-end">
-          <UnifiedOlympiaAnswerOverlay
-            answerText={kd.current?.a || "(Chưa có đáp án)"}
-            roundLabel="ĐÁP ÁN"
-            verdict={kd.lastVerdict}
-            pointsAwarded={kd.lastVerdict === "correct" ? 10 : undefined}
-            actorName={kd.buzzedSeat != null ? state.seats[kd.buzzedSeat]?.name : undefined}
-            themeMode={state.themeMode}
-          />
-        </div>
-      ) : state.themeMode === "o26_classic" ? (
+      {state.themeMode === "o26_classic" ? (
         <ClassicUnifiedLowerThird
           state={state}
           round="khoiDong"
@@ -750,6 +739,18 @@ function KhoiDong({ state, serverNow }: P) {
           lockedSeats={kd.lockedSeats}
           badgeLabel={kd.started ? (hasRevealedQ ? questionBadge : `Câu 0${totalQ}`) : null}
           questionText={hasRevealedQ ? kd.current?.q : ""}
+          answerReveal={
+            kd.phase === "result"
+              ? {
+                  show: true,
+                  text: kd.current?.a || "(Chưa có đáp án)",
+                  label: "ĐÁP ÁN",
+                  verdict: kd.lastVerdict,
+                  points: kd.lastVerdict === "correct" ? 10 : undefined,
+                  actorName: kd.buzzedSeat != null ? state.seats[kd.buzzedSeat]?.name : undefined,
+                }
+              : null
+          }
           mediaElement={
             hasRevealedQ && kd.current?.media ? (
               <MediaView
@@ -763,6 +764,17 @@ function KhoiDong({ state, serverNow }: P) {
           timerBadge={kdSecondsBadgeTimer}
           serverNow={serverNow}
         />
+      ) : kd.phase === "result" ? (
+        <div className="w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col justify-end">
+          <UnifiedOlympiaAnswerOverlay
+            answerText={kd.current?.a || "(Chưa có đáp án)"}
+            roundLabel="ĐÁP ÁN"
+            verdict={kd.lastVerdict}
+            pointsAwarded={kd.lastVerdict === "correct" ? 10 : undefined}
+            actorName={kd.buzzedSeat != null ? state.seats[kd.buzzedSeat]?.name : undefined}
+            themeMode={state.themeMode}
+          />
+        </div>
       ) : (
         <EconovaLowerThirdV3
           state={state}

@@ -117,7 +117,8 @@ export function createPodiumScoreCanvas(
   screenMode?: PodiumScreenMode,
   isClassic: boolean = false,
   submittedAnswer?: string,
-  responseTimeSec?: number
+  responseTimeSec?: number,
+  isTurn: boolean = false
 ): HTMLCanvasElement {
   const canvas = targetCanvas || (typeof document !== "undefined" ? document.createElement("canvas") : ({} as HTMLCanvasElement));
   canvas.width = 512;
@@ -304,11 +305,16 @@ export function createPodiumScoreCanvas(
   }
 
   // ── GIAI ĐOẠN 3: BƯỚC VÀO KHỞI ĐỘNG & THI ĐẤU -> PERMANENT 3-TIER: TÊN + SHAPE ĐÁP ÁN + ĐIỂM SỐ ──
-  const isPodiumRed = isRed || isBuzzed;
+  const isPodiumGold = isClassic && (isBuzzed || isTurn);
+  const isPodiumRed = !isPodiumGold && (isRed || isBuzzed);
 
   // 1. Background below header (Y = 58 to 256)
   const bottomGrad = ctx.createLinearGradient(0, 58, 0, 256);
-  if (isPodiumRed) {
+  if (isPodiumGold) {
+    bottomGrad.addColorStop(0, "#2c1c08");
+    bottomGrad.addColorStop(0.5, "#1c1103");
+    bottomGrad.addColorStop(1, "#100a02");
+  } else if (isPodiumRed) {
     bottomGrad.addColorStop(0, "#3b0816");
     bottomGrad.addColorStop(1, "#180208");
   } else if (isClassic) {
@@ -323,7 +329,11 @@ export function createPodiumScoreCanvas(
 
   // 2. TẦNG 1 (TRÊN CÙNG, Y = 0 to 58): Header Tên thí sinh (Tahoma)
   const topGrad = ctx.createLinearGradient(0, 0, 512, 58);
-  if (isPodiumRed) {
+  if (isPodiumGold) {
+    topGrad.addColorStop(0, "#92400e");
+    topGrad.addColorStop(0.5, "#d97706");
+    topGrad.addColorStop(1, "#f59e0b");
+  } else if (isPodiumRed) {
     topGrad.addColorStop(0, "#ff2a4b");
     topGrad.addColorStop(1, "#dc2626");
   } else if (isClassic) {
@@ -340,14 +350,25 @@ export function createPodiumScoreCanvas(
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = isPodiumRed ? "#ffffff" : isClassic ? "#fef08a" : "#ffffff";
+  ctx.fillStyle = isPodiumGold ? "#ffffff" : isPodiumRed ? "#ffffff" : isClassic ? "#fef08a" : "#ffffff";
   ctx.font = '900 28px "Tahoma", sans-serif';
   ctx.letterSpacing = "0.04em";
+  if (isPodiumGold) {
+    ctx.shadowColor = "rgba(254, 240, 138, 0.85)";
+    ctx.shadowBlur = 12;
+  }
   const displayName = (name || `Thí sinh ${seatId + 1}`).toUpperCase();
   ctx.fillText(displayName, 256, 29);
+  ctx.shadowBlur = 0;
 
   // Separator line under Header
-  ctx.strokeStyle = isPodiumRed ? "rgba(255, 42, 75, 0.7)" : isClassic ? "#d4af37" : "rgba(0, 229, 255, 0.5)";
+  ctx.strokeStyle = isPodiumGold
+    ? "#fef08a"
+    : isPodiumRed
+    ? "rgba(255, 42, 75, 0.7)"
+    : isClassic
+    ? "#d4af37"
+    : "rgba(0, 229, 255, 0.5)";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(0, 58);
@@ -420,12 +441,16 @@ export function createPodiumScoreCanvas(
   }
 
   // 4. TẦNG 3 (DƯỚI CÙNG, Y = 106 to 256): Ô số điểm lớn (Tahoma)
-  const scoreGlow = isPodiumRed
+  const scoreGlow = isPodiumGold
+    ? "rgba(245, 158, 11, 0.95)"
+    : isPodiumRed
     ? "rgba(255, 42, 75, 0.95)"
     : isClassic
     ? "rgba(254, 240, 138, 0.5)"
     : "rgba(0, 212, 255, 0.45)";
-  const scoreColor = isPodiumRed
+  const scoreColor = isPodiumGold
+    ? "#fef08a"
+    : isPodiumRed
     ? "#ffffff"
     : isClassic
     ? "#fef08a"
@@ -436,12 +461,19 @@ export function createPodiumScoreCanvas(
   ctx.fillStyle = scoreColor;
   ctx.font = '900 94px "Tahoma", sans-serif';
   ctx.shadowColor = scoreGlow;
-  ctx.shadowBlur = 16;
+  ctx.shadowBlur = isPodiumGold ? 22 : 16;
   ctx.fillText(String(score), 256, 180);
   ctx.shadowBlur = 0;
 
   // 5. Outer Border & Viền Kép
-  if (isPodiumRed) {
+  if (isPodiumGold) {
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#f59e0b";
+    ctx.strokeRect(2, 2, 508, 252);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(254, 240, 138, 0.75)";
+    ctx.strokeRect(6, 6, 500, 244);
+  } else if (isPodiumRed) {
     ctx.lineWidth = 4;
     ctx.strokeStyle = "#ff2a4b";
     ctx.strokeRect(2, 2, 508, 252);
@@ -477,6 +509,7 @@ function ContestantScoreDisplay({
   isClassic = false,
   submittedAnswer,
   responseTimeSec,
+  isTurn = false,
 }: {
   name: string;
   score: number;
@@ -489,6 +522,7 @@ function ContestantScoreDisplay({
   isClassic?: boolean;
   submittedAnswer?: string;
   responseTimeSec?: number;
+  isTurn?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
@@ -513,7 +547,8 @@ function ContestantScoreDisplay({
       screenMode,
       isClassic,
       submittedAnswer,
-      responseTimeSec
+      responseTimeSec,
+      isTurn
     );
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -543,7 +578,8 @@ function ContestantScoreDisplay({
             screenMode,
             isClassic,
             submittedAnswer,
-            responseTimeSec
+            responseTimeSec,
+            isTurn
           );
           textureRef.current.needsUpdate = true;
           if (timer) clearInterval(timer);
@@ -573,11 +609,12 @@ function ContestantScoreDisplay({
         screenMode,
         isClassic,
         submittedAnswer,
-        responseTimeSec
+        responseTimeSec,
+        isTurn
       );
       textureRef.current.needsUpdate = true;
     }
-  }, [name, score, seatId, isBuzzed, isRed, school, isEntrancePhase, screenMode, isClassic, submittedAnswer, responseTimeSec]);
+  }, [name, score, seatId, isBuzzed, isRed, school, isEntrancePhase, screenMode, isClassic, submittedAnswer, responseTimeSec, isTurn]);
 
   return (
     <mesh position={[0, 0.54, 0.385]} rotation={[0, 0, 0]} renderOrder={6}>
@@ -2209,6 +2246,7 @@ export function ContestantPodium({
   isClassic = false,
   submittedAnswer,
   responseTimeSec,
+  isTurn = false,
 }: {
   seatId: number;
   name: string;
@@ -2227,6 +2265,7 @@ export function ContestantPodium({
   isClassic?: boolean;
   submittedAnswer?: string;
   responseTimeSec?: number;
+  isTurn?: boolean;
 }) {
   const buzzerDomeRef = useRef<THREE.Mesh>(null);
   const haloRef = useRef<THREE.Mesh>(null);
@@ -2385,6 +2424,7 @@ export function ContestantPodium({
         isClassic={isClassic}
         submittedAnswer={submittedAnswer}
         responseTimeSec={responseTimeSec}
+        isTurn={isTurn}
       />
 
       {/* ── 4. ERGONOMIC COUNTERTOP & WRIST REST (Mặt bàn liền khối & gờ tỳ tay mềm mại cho thí sinh) ── */}
@@ -6177,6 +6217,14 @@ export function Podiums({
         }
 
         const isClassic = state?.themeMode === "o26_classic";
+        const kd = state?.khoiDong;
+        const curSeg = kd?.segments?.[kd.segIdx];
+        const isKdSoloTurn = Boolean(
+          state?.currentRound === "khoiDong" &&
+          curSeg?.kind === "solo" &&
+          curSeg.seat === cfg.seatId
+        );
+        const isTurn = isKdSoloTurn || (activeMainContestantSeat !== null && activeMainContestantSeat === cfg.seatId);
 
         return (
           <ContestantPodium
@@ -6198,6 +6246,7 @@ export function Podiums({
             isClassic={isClassic}
             submittedAnswer={submittedAnswer}
             responseTimeSec={responseTimeSec}
+            isTurn={isTurn}
           />
         );
       })}

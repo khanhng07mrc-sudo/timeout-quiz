@@ -149,28 +149,30 @@ export function Vtv3ChalkboardBackdrop({ className = "" }: { className?: string 
  */
 export function HorizontalBrassRod() {
   return (
-    <div className="absolute top-1/2 -translate-y-1/2 -left-10 -right-10 flex items-center pointer-events-none z-0">
-      {/* Left turned finial cap */}
+    <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 w-[120vw] min-w-[2200px] flex items-center pointer-events-none z-0 overflow-visible">
+      {/* Left turned finial cap (extends beyond screen edge in 3D perspective) */}
       <div
-        className="w-8 h-9 shrink-0 rounded-l-full border border-amber-300/80 shadow-lg"
+        className="w-12 h-10 shrink-0 rounded-l-full border-2 border-amber-300/80 shadow-2xl"
         style={{
-          background: "linear-gradient(180deg, #78350f 0%, #fef08a 35%, #d97706 70%, #451a03 100%)",
+          background: "linear-gradient(180deg, #5c2c10 0%, #d97706 30%, #fef08a 50%, #b45309 75%, #3b1a06 100%)",
+          boxShadow: "0 6px 20px rgba(0,0,0,0.95), inset 0 2px 3px rgba(255,255,255,0.7)",
         }}
       />
-      {/* Central brass horizontal pipe */}
+      {/* Central continuous wooden / brass mounting beam spanning edge-to-edge */}
       <div
-        className="flex-1 h-4 sm:h-5 shadow-xl"
+        className="flex-1 h-5 sm:h-6 shadow-2xl"
         style={{
           background:
-            "linear-gradient(180deg, #92400e 0%, #fef08a 30%, #d97706 65%, #78350f 100%)",
-          boxShadow: "0 4px 15px rgba(0,0,0,0.85), inset 0 1px 2px rgba(255,255,255,0.7)",
+            "linear-gradient(180deg, #451a03 0%, #78350f 18%, #fef08a 38%, #ca8a04 55%, #713f12 75%, #291003 100%)",
+          boxShadow: "0 8px 30px rgba(0,0,0,0.95), inset 0 1.5px 2.5px rgba(255,255,255,0.75), inset 0 -2px 4px rgba(0,0,0,0.9)",
         }}
       />
-      {/* Right turned finial cap */}
+      {/* Right turned finial cap (extends beyond screen edge in 3D perspective) */}
       <div
-        className="w-8 h-9 shrink-0 rounded-r-full border border-amber-300/80 shadow-lg"
+        className="w-12 h-10 shrink-0 rounded-r-full border-2 border-amber-300/80 shadow-2xl"
         style={{
-          background: "linear-gradient(180deg, #78350f 0%, #fef08a 35%, #d97706 70%, #451a03 100%)",
+          background: "linear-gradient(180deg, #5c2c10 0%, #d97706 30%, #fef08a 50%, #b45309 75%, #3b1a06 100%)",
+          boxShadow: "0 6px 20px rgba(0,0,0,0.95), inset 0 2px 3px rgba(255,255,255,0.7)",
         }}
       />
     </div>
@@ -734,21 +736,23 @@ export function UnifiedOlympiaAnswerOverlay({
   const cleanText = (answerText || "").replace(/^✔\s*/, "");
   const len = cleanText.length;
   const fontSizeClass =
-    len > 45
+    len > 60
+      ? "text-sm sm:text-base md:text-lg"
+      : len > 35
       ? "text-base sm:text-lg md:text-xl lg:text-[22px]"
-      : len > 25
-      ? "text-lg sm:text-xl md:text-2xl lg:text-[28px]"
-      : "text-xl sm:text-2xl md:text-3xl lg:text-[34px]";
+      : len > 20
+      ? "text-lg sm:text-xl md:text-2xl lg:text-[26px]"
+      : "text-xl sm:text-2xl md:text-3xl lg:text-[32px]";
 
   const isCorrect = verdict === "correct";
   const isWrong = verdict === "wrong";
 
   // Multi-layer metallic gold borders & state-driven glows
   const frameBorder = isCorrect
-    ? "3px solid #34d399"
+    ? "3.5px solid #10b981"
     : isWrong
-    ? "3px solid #f43f5e"
-    : "3px solid #d4af37";
+    ? "3.5px solid #f43f5e"
+    : "3.5px solid #d4af37";
 
   const frameOutline = isCorrect
     ? "1.5px solid #064e3b"
@@ -757,14 +761,14 @@ export function UnifiedOlympiaAnswerOverlay({
     : "1.5px solid #78350f";
 
   const frameShadow = isCorrect
-    ? "0 16px 45px rgba(0,0,0,0.92), 0 0 32px rgba(52,211,153,0.4), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 6px rgba(0,0,0,0.85)"
+    ? "0 16px 45px rgba(0,0,0,0.92), 0 0 35px rgba(16,185,129,0.5), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 6px rgba(0,0,0,0.85)"
     : isWrong
-    ? "0 16px 45px rgba(0,0,0,0.92), 0 0 28px rgba(244,63,94,0.35), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 6px rgba(0,0,0,0.85)"
+    ? "0 16px 45px rgba(0,0,0,0.92), 0 0 32px rgba(244,63,94,0.45), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 6px rgba(0,0,0,0.85)"
     : "0 16px 45px rgba(0,0,0,0.92), 0 0 28px rgba(212,175,55,0.4), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 6px rgba(0,0,0,0.85)";
 
   return (
     <div
-      className={`relative w-full max-w-3xl sm:max-w-4xl mx-auto flex items-center justify-center pointer-events-auto select-none p-2 ${className}`}
+      className={`relative w-full max-w-4xl sm:max-w-5xl 2xl:max-w-6xl mx-auto flex items-center justify-center pointer-events-auto select-none p-1 sm:p-2 ${className}`}
     >
       <HorizontalBrassRod />
       <motion.div
@@ -772,7 +776,7 @@ export function UnifiedOlympiaAnswerOverlay({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 16, scale: 0.96 }}
         transition={{ type: "spring", stiffness: 320, damping: 26 }}
-        className="relative w-full z-10 rounded-2xl flex items-center justify-between px-5 sm:px-8 py-3.5 sm:py-4.5 overflow-hidden shadow-2xl min-h-[68px] sm:min-h-[76px]"
+        className="relative w-full z-10 rounded-2xl flex items-center justify-between px-4 sm:px-7 py-3 sm:py-4 overflow-hidden shadow-2xl min-h-[68px] sm:min-h-[76px]"
         style={{
           background: "linear-gradient(180deg, #1c2029 0%, #12151c 50%, #0a0c10 100%)",
           border: frameBorder,
@@ -797,49 +801,52 @@ export function UnifiedOlympiaAnswerOverlay({
         <div className="absolute bottom-2 left-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
         <div className="absolute bottom-2 right-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
 
-        {/* ── 1. LEFT CHAMBER: Status Badge / Classification Pill ── */}
-        <div className="relative z-10 flex items-center gap-2 sm:gap-2.5 shrink-0">
-          {isCorrect ? (
-            <>
-              <div
-                className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border border-white shadow-[0_0_10px_#10b981] shrink-0"
-                style={{
-                  background:
-                    "radial-gradient(circle at 35% 30%, #34d399 0%, #059669 50%, #064e3b 100%)",
-                }}
-              />
-              <div className="px-3 sm:px-4 py-1 rounded-lg bg-gradient-to-r from-emerald-950/95 to-green-950/95 border border-emerald-400 text-emerald-300 font-black text-xs sm:text-sm md:text-base uppercase tracking-wider shadow-[0_0_14px_rgba(52,211,153,0.6)]">
-                ✔ CHÍNH XÁC
-              </div>
-            </>
-          ) : isWrong ? (
-            <>
-              <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full classic-rivet-red shrink-0" />
-              <div className="px-3 sm:px-4 py-1 rounded-lg bg-gradient-to-r from-red-950/95 to-rose-950/95 border border-rose-500 text-rose-300 font-black text-xs sm:text-sm md:text-base uppercase tracking-wider shadow-[0_0_14px_rgba(244,63,94,0.6)]">
-                ✘ CHƯA ĐÚNG
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full classic-rivet-red shrink-0" />
-              <div className="px-3 sm:px-4 py-1 rounded-lg bg-gradient-to-r from-amber-950/95 to-yellow-950/95 border border-amber-400 text-amber-300 font-black text-xs sm:text-sm md:text-base uppercase tracking-wider shadow-[0_0_14px_rgba(251,191,36,0.6)]">
-                {roundLabel}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* ── 2. CENTER CHAMBER: Answer Typography ── */}
-        <div className="relative z-10 flex-1 px-3 sm:px-6 text-center min-w-0">
+        {/* ── 1. LEFT CHAMBER: Minimal Icon Pill (No Text Badges) ── */}
+        <div className="relative z-10 flex items-center shrink-0">
           {isCorrect ? (
             <div
-              className={`text-emerald-300 font-black uppercase tracking-wider drop-shadow-[0_0_24px_rgba(52,211,153,0.85)] truncate ${fontSizeClass}`}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-emerald-300 flex items-center justify-center text-white text-base sm:text-lg font-black shadow-[0_0_14px_#10b981]"
+              style={{
+                background:
+                  "radial-gradient(circle at 35% 30%, #34d399 0%, #059669 60%, #064e3b 100%)",
+              }}
             >
-              ✔ {cleanText}
+              ✓
             </div>
           ) : isWrong ? (
             <div
-              className={`text-amber-200 font-black uppercase tracking-wider drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] truncate ${fontSizeClass}`}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-rose-400 flex items-center justify-center text-white text-base sm:text-lg font-black shadow-[0_0_14px_#f43f5e]"
+              style={{
+                background:
+                  "radial-gradient(circle at 35% 30%, #f43f5e 0%, #e11d48 60%, #881337 100%)",
+              }}
+            >
+              ✕
+            </div>
+          ) : (
+            <div
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-amber-300 flex items-center justify-center text-amber-200 text-sm sm:text-base font-black shadow-[0_0_14px_#f59e0b]"
+              style={{
+                background:
+                  "radial-gradient(circle at 35% 30%, #fbbf24 0%, #d97706 60%, #78350f 100%)",
+              }}
+            >
+              ★
+            </div>
+          )}
+        </div>
+
+        {/* ── 2. CENTER CHAMBER: Expanded Answer Typography (No truncation on readable answers) ── */}
+        <div className="relative z-10 flex-1 px-3 sm:px-6 text-center min-w-0">
+          {isCorrect ? (
+            <div
+              className={`text-emerald-300 font-black uppercase tracking-wider drop-shadow-[0_0_24px_rgba(52,211,153,0.85)] break-words leading-tight ${fontSizeClass}`}
+            >
+              {cleanText}
+            </div>
+          ) : isWrong ? (
+            <div
+              className={`text-amber-200 font-black uppercase tracking-wider drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] break-words leading-tight ${fontSizeClass}`}
             >
               <span className="text-amber-400/80 text-xs sm:text-sm font-bold mr-2 uppercase tracking-widest">
                 ĐÁP ÁN:
@@ -848,7 +855,7 @@ export function UnifiedOlympiaAnswerOverlay({
             </div>
           ) : (
             <div
-              className={`text-yellow-100 font-black uppercase tracking-wider drop-shadow-[0_2px_14px_rgba(212,175,55,0.7)] truncate ${fontSizeClass}`}
+              className={`text-yellow-100 font-black uppercase tracking-wider drop-shadow-[0_2px_14px_rgba(212,175,55,0.7)] break-words leading-tight ${fontSizeClass}`}
             >
               {cleanText}
             </div>
@@ -866,7 +873,10 @@ export function UnifiedOlympiaAnswerOverlay({
               {actorName}
             </div>
           ) : (
-            <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full classic-rivet-bronze shrink-0" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center opacity-0 pointer-events-none">
+              {/* Invisible spacer balancing the left circular jewel icon */}
+              •
+            </div>
           )}
         </div>
       </motion.div>
@@ -932,14 +942,30 @@ export function ClassicUnifiedLowerThird({
       : allSeats;
 
   return (
-    <div className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center pointer-events-auto select-none py-1">
-      {/* ── 1. Horizontal Brass Rod (Passing behind) ── */}
+    <motion.div
+      initial={{ y: "100%", opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: "100%", opacity: 0 }}
+      transition={{ type: "spring", stiffness: 240, damping: 26 }}
+      className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center pointer-events-auto select-none py-1 overflow-visible"
+      style={{ perspective: 1400 }}
+    >
+      {/* ── 1. Horizontal Continuous Mounting Beam (Edge-to-Edge) ── */}
       <HorizontalBrassRod />
 
-      {/* ── 2. Unified Plaque Frame ── */}
-      <div
+      {/* ── 2. Unified Plaque Frame (Rotates up 90° from horizontal fold on beam) ── */}
+      <motion.div
+        initial={{ rotateX: -90, opacity: 0 }}
+        animate={{ rotateX: 0, opacity: 1 }}
+        exit={{ rotateX: -90, opacity: 0 }}
+        transition={{
+          rotateX: { duration: 0.55, ease: [0.16, 1, 0.3, 1] },
+          opacity: { duration: 0.25 },
+        }}
         className="relative w-full z-10 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl"
         style={{
+          transformOrigin: "top center",
+          transformStyle: "preserve-3d",
           background: "linear-gradient(180deg, #1e222a 0%, #15181f 50%, #0d0f14 100%)",
           border: "3px solid #d4af37",
           boxShadow:
@@ -973,8 +999,8 @@ export function ClassicUnifiedLowerThird({
             <div className="w-3.5 h-3.5 rounded-full classic-rivet-red shrink-0" />
           )}
 
-          {/* Center: Candidate Score Cells */}
-          <div className="flex-1 flex items-center justify-center gap-1.5 sm:gap-3 px-1 min-w-0">
+          {/* Center: Candidate Score Cells (Fixed Proportional 4-Grid) */}
+          <div className="flex-1 grid grid-cols-4 gap-1.5 sm:gap-2.5 px-1 min-w-0 w-full">
             {seatsToDisplay.map((seat) => {
               const isTurn = activeSeatId === seat.id;
               const isBuzzed = buzzedSeatId === seat.id;
@@ -983,9 +1009,9 @@ export function ClassicUnifiedLowerThird({
               return (
                 <div
                   key={seat.id}
-                  className={`flex items-center justify-between gap-1.5 sm:gap-2.5 px-2.5 sm:px-3.5 py-0.5 sm:py-1 rounded-lg transition-all duration-300 text-xs sm:text-sm md:text-base ${
+                  className={`flex items-center justify-between gap-1 sm:gap-2 px-2 sm:px-3 py-1 rounded-lg transition-all duration-300 text-xs sm:text-sm ${
                     isBuzzed
-                      ? "classic-glow-buzzed text-white animate-pulse scale-[1.03]"
+                      ? "classic-glow-buzzed text-white animate-pulse scale-[1.02]"
                       : isTurn
                       ? "classic-glow-active text-white scale-[1.02]"
                       : isLocked
@@ -993,12 +1019,9 @@ export function ClassicUnifiedLowerThird({
                       : "bg-[#181c24]/90 border border-amber-500/40 text-slate-100 shadow-inner"
                   }`}
                 >
-                  <div className="flex items-center gap-1 min-w-0">
-                    {isBuzzed && <span className="text-amber-300 animate-bounce">🔔</span>}
-                    <span className="font-bold truncate max-w-[80px] sm:max-w-[130px] md:max-w-[160px] uppercase">
-                      {seat.name || `Thí sinh ${seat.id + 1}`}
-                    </span>
-                  </div>
+                  <span className="font-bold truncate uppercase">
+                    {seat.name || `TS ${seat.id + 1}`}
+                  </span>
                   <span
                     className={`font-black shrink-0 ${
                       isBuzzed ? "text-yellow-100" : isTurn ? "text-amber-200" : "text-amber-300"
@@ -1038,7 +1061,7 @@ export function ClassicUnifiedLowerThird({
                 pointsAwarded={answerReveal.points}
                 actorName={answerReveal.actorName}
                 themeMode="o26_classic"
-                className="max-w-3xl"
+                className="w-full"
               />
             </div>
           ) : questionText ? (
@@ -1057,8 +1080,8 @@ export function ClassicUnifiedLowerThird({
 
         {/* ── BOTTOM FLUSH TIMER BAR ── */}
         {timer && <Vtv3BottomEdgeTimerBar timer={timer} serverNow={serverNow} />}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

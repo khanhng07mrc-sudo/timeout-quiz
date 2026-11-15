@@ -8,6 +8,26 @@ import { Timer, MediaView, SEAT_COLORS, seatName, activeSeats } from "./ui";
 
 type Emit = (e: string, p?: unknown) => Promise<{ ok: boolean; error?: string }>;
 
+function playInstantBuzzerChime() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.2);
+  } catch {}
+}
+
 function CompactSandboxTimer({
   timer,
   serverNow,
@@ -130,12 +150,13 @@ export default function PlayerPad({
     const nowLocal = performance.now();
     if (nowLocal - lastBuzzEmitAtRef.current < 160) return;
     lastBuzzEmitAtRef.current = nowLocal;
+    playInstantBuzzerChime();
     setOptimisticBuzzPending(true);
 
     try {
       await emit("buzz");
     } finally {
-      setTimeout(() => setOptimisticBuzzPending(false), 260);
+      setTimeout(() => setOptimisticBuzzPending(false), 600);
     }
   }, [emit]);
 
@@ -705,7 +726,7 @@ export default function PlayerPad({
               <div
                 key={s.id}
                 className={`${
-                  isSandboxMode ? "h-8 rounded-lg px-1.5 py-0.5" : "h-11 sm:h-14 rounded-xl px-2 sm:px-2.5 py-1"
+                  isSandboxMode ? "h-10 rounded-lg px-2 py-1" : "h-11 sm:h-14 rounded-xl px-2 sm:px-2.5 py-1"
                 } flex flex-col justify-between transition-all relative overflow-hidden ${cardClass}`}
                 style={{
                   borderLeftWidth: isSandboxMode ? "3px" : "4px",
@@ -713,11 +734,11 @@ export default function PlayerPad({
                 }}
               >
                 <div className="flex items-center justify-between gap-1 min-w-0">
-                  <span className={`${isSandboxMode ? "text-[9.5px]" : "text-[10px] sm:text-xs"} font-extrabold uppercase truncate ${nameColor}`}>
+                  <span className={`${isSandboxMode ? "text-[10px] leading-tight" : "text-[10px] sm:text-xs"} font-extrabold uppercase truncate ${nameColor}`}>
                     {s.name || `TS ${s.id + 1}`}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center justify-between gap-1 min-w-0">
                   <div className="flex items-center gap-0.5 shrink-0 min-h-[12px]">
                     {isMe && (
                       <span
@@ -735,7 +756,7 @@ export default function PlayerPad({
                     {isBuzzed && <span className={`${isSandboxMode ? "text-[10px]" : "text-xs"} animate-bounce`}>🔔</span>}
                     {isLocked && <span className={`${isSandboxMode ? "text-[10px]" : "text-xs"} text-rose-400`}>🔒</span>}
                   </div>
-                  <span className={`${isSandboxMode ? "text-sm sm:text-base" : "text-base sm:text-xl"} font-black tabular-nums leading-none ${scoreColor}`}>
+                  <span className={`${isSandboxMode ? "text-xs sm:text-sm" : "text-base sm:text-xl"} font-black tabular-nums leading-none ${scoreColor}`}>
                     {s.score}
                   </span>
                 </div>
@@ -1640,9 +1661,10 @@ function CircularBuzzer3D({
     if (now - lastFiredRef.current < 160) return;
     lastFiredRef.current = now;
     setPressedLocal(true);
-    setTimeout(() => setPressedLocal(false), 160);
+    setTimeout(() => setPressedLocal(false), 300);
 
-    // ZERO-LATENCY: Emit socket buzzer event + pre-warmed singleton beep immediately
+    // ZERO-LATENCY: Instant local audio chime + trigger
+    playInstantBuzzerChime();
     onPress();
   };
 
@@ -1658,7 +1680,7 @@ function CircularBuzzer3D({
               e.preventDefault();
               fireOnce();
             }}
-            onClick={fireOnce}
+            onClick={(e) => e.preventDefault()}
             className={`w-full h-full rounded-full font-black uppercase tracking-wider flex flex-col items-center justify-center gap-0.5 transition-transform duration-75 cursor-pointer shrink-0 ${
               pressedLocal ? "scale-90 brightness-125" : "active:scale-95"
             } ${
@@ -1706,7 +1728,7 @@ function CircularBuzzer3D({
             e.preventDefault();
             fireOnce();
           }}
-          onClick={fireOnce}
+          onClick={(e) => e.preventDefault()}
           className={`w-full h-full rounded-full font-black text-[11px] sm:text-xs md:text-sm uppercase tracking-wider flex flex-col items-center justify-center gap-0.5 sm:gap-1 transition-transform duration-75 cursor-pointer shrink-0 ${
             pressedLocal ? "scale-90 brightness-125" : "active:scale-95"
           } ${

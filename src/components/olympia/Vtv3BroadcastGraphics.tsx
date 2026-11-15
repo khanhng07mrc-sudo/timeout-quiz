@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import type { OlympiaState, Seat, TimerState } from "@/lib/olympia/types";
 import { parseVcnvAnswer, cleanVcnvWord, stripVcnvLetterCount } from "@/lib/olympia/engine";
 import { activeSeats, seatName, SEAT_COLORS } from "./ui";
@@ -701,6 +702,178 @@ export function Vtv3ChalkboardQuestionFrame({
   );
 }
 
+export interface UnifiedOlympiaAnswerOverlayProps {
+  answerText: string;
+  roundLabel?: string;
+  verdict?: "correct" | "wrong" | "neutral" | null;
+  pointsAwarded?: number;
+  actorName?: string;
+  themeMode?: "v3_arrow" | "o26_classic";
+  className?: string;
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * UNIFIED OLYMPIA ANSWER OVERLAY (F1, F2)
+ * Authentic broadcast aspect ratio (max-w-3xl to max-w-4xl), 3-chamber layout:
+ * 1. Left Pill: Classification badge (✔ CHÍNH XÁC / ✘ CHƯA ĐÚNG / ĐÁP ÁN) + glowing rivet
+ * 2. Center Plaque: Large drop-shadowed answer typography clamped by string length
+ * 3. Right Accent: Points badge (+10đ, +20đ, etc.), contestant name, or bronze rivet
+ * Multi-layer metallic gold borders, Framer Motion spring physics, and goldSheenSweep.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function UnifiedOlympiaAnswerOverlay({
+  answerText,
+  roundLabel = "ĐÁP ÁN",
+  verdict = null,
+  pointsAwarded,
+  actorName,
+  themeMode = "o26_classic",
+  className = "",
+}: UnifiedOlympiaAnswerOverlayProps) {
+  const cleanText = (answerText || "").replace(/^✔\s*/, "");
+  const len = cleanText.length;
+  const fontSizeClass =
+    len > 45
+      ? "text-base sm:text-lg md:text-xl lg:text-[22px]"
+      : len > 25
+      ? "text-lg sm:text-xl md:text-2xl lg:text-[28px]"
+      : "text-xl sm:text-2xl md:text-3xl lg:text-[34px]";
+
+  const isCorrect = verdict === "correct";
+  const isWrong = verdict === "wrong";
+
+  // Multi-layer metallic gold borders & state-driven glows
+  const frameBorder = isCorrect
+    ? "3px solid #34d399"
+    : isWrong
+    ? "3px solid #f43f5e"
+    : "3px solid #d4af37";
+
+  const frameOutline = isCorrect
+    ? "1.5px solid #064e3b"
+    : isWrong
+    ? "1.5px solid #881337"
+    : "1.5px solid #78350f";
+
+  const frameShadow = isCorrect
+    ? "0 16px 45px rgba(0,0,0,0.92), 0 0 32px rgba(52,211,153,0.4), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 6px rgba(0,0,0,0.85)"
+    : isWrong
+    ? "0 16px 45px rgba(0,0,0,0.92), 0 0 28px rgba(244,63,94,0.35), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 6px rgba(0,0,0,0.85)"
+    : "0 16px 45px rgba(0,0,0,0.92), 0 0 28px rgba(212,175,55,0.4), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 6px rgba(0,0,0,0.85)";
+
+  return (
+    <div
+      className={`relative w-full max-w-3xl sm:max-w-4xl mx-auto flex items-center justify-center pointer-events-auto select-none p-2 ${className}`}
+    >
+      <HorizontalBrassRod />
+      <motion.div
+        initial={{ opacity: 0, y: 22, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 16, scale: 0.96 }}
+        transition={{ type: "spring", stiffness: 320, damping: 26 }}
+        className="relative w-full z-10 rounded-2xl flex items-center justify-between px-5 sm:px-8 py-3.5 sm:py-4.5 overflow-hidden shadow-2xl min-h-[68px] sm:min-h-[76px]"
+        style={{
+          background: "linear-gradient(180deg, #1c2029 0%, #12151c 50%, #0a0c10 100%)",
+          border: frameBorder,
+          boxShadow: frameShadow,
+          outline: frameOutline,
+          outlineOffset: "-5px",
+        }}
+      >
+        {/* Subtle chalkboard SVG background inside box */}
+        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+          <Vtv3ChalkboardBackdrop className="opacity-25" />
+        </div>
+
+        {/* Specular metallic sheen sweep beam across the frame on reveal */}
+        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+          <div className="sheen-sweep-beam" />
+        </div>
+
+        {/* Bronze Corner Rivets */}
+        <div className="absolute top-2 left-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+        <div className="absolute top-2 right-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+        <div className="absolute bottom-2 left-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+        <div className="absolute bottom-2 right-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+
+        {/* ── 1. LEFT CHAMBER: Status Badge / Classification Pill ── */}
+        <div className="relative z-10 flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {isCorrect ? (
+            <>
+              <div
+                className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border border-white shadow-[0_0_10px_#10b981] shrink-0"
+                style={{
+                  background:
+                    "radial-gradient(circle at 35% 30%, #34d399 0%, #059669 50%, #064e3b 100%)",
+                }}
+              />
+              <div className="px-3 sm:px-4 py-1 rounded-lg bg-gradient-to-r from-emerald-950/95 to-green-950/95 border border-emerald-400 text-emerald-300 font-black text-xs sm:text-sm md:text-base uppercase tracking-wider shadow-[0_0_14px_rgba(52,211,153,0.6)]">
+                ✔ CHÍNH XÁC
+              </div>
+            </>
+          ) : isWrong ? (
+            <>
+              <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full classic-rivet-red shrink-0" />
+              <div className="px-3 sm:px-4 py-1 rounded-lg bg-gradient-to-r from-red-950/95 to-rose-950/95 border border-rose-500 text-rose-300 font-black text-xs sm:text-sm md:text-base uppercase tracking-wider shadow-[0_0_14px_rgba(244,63,94,0.6)]">
+                ✘ CHƯA ĐÚNG
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full classic-rivet-red shrink-0" />
+              <div className="px-3 sm:px-4 py-1 rounded-lg bg-gradient-to-r from-amber-950/95 to-yellow-950/95 border border-amber-400 text-amber-300 font-black text-xs sm:text-sm md:text-base uppercase tracking-wider shadow-[0_0_14px_rgba(251,191,36,0.6)]">
+                {roundLabel}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── 2. CENTER CHAMBER: Answer Typography ── */}
+        <div className="relative z-10 flex-1 px-3 sm:px-6 text-center min-w-0">
+          {isCorrect ? (
+            <div
+              className={`text-emerald-300 font-black uppercase tracking-wider drop-shadow-[0_0_24px_rgba(52,211,153,0.85)] truncate ${fontSizeClass}`}
+            >
+              ✔ {cleanText}
+            </div>
+          ) : isWrong ? (
+            <div
+              className={`text-amber-200 font-black uppercase tracking-wider drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] truncate ${fontSizeClass}`}
+            >
+              <span className="text-amber-400/80 text-xs sm:text-sm font-bold mr-2 uppercase tracking-widest">
+                ĐÁP ÁN:
+              </span>
+              {cleanText}
+            </div>
+          ) : (
+            <div
+              className={`text-yellow-100 font-black uppercase tracking-wider drop-shadow-[0_2px_14px_rgba(212,175,55,0.7)] truncate ${fontSizeClass}`}
+            >
+              {cleanText}
+            </div>
+          )}
+        </div>
+
+        {/* ── 3. RIGHT CHAMBER: Points / Contestant / Bronze Balance Rivet ── */}
+        <div className="relative z-10 flex items-center gap-2 shrink-0">
+          {pointsAwarded && pointsAwarded > 0 ? (
+            <div className="px-2.5 sm:px-3 py-1 rounded-lg bg-gradient-to-r from-amber-600/90 to-yellow-500/90 border border-amber-300 text-slate-950 font-black text-xs sm:text-sm md:text-base uppercase tracking-wider shadow-[0_0_14px_rgba(251,191,36,0.9)] animate-pulse">
+              +{pointsAwarded}đ
+            </div>
+          ) : actorName ? (
+            <div className="px-2.5 py-1 rounded-lg bg-slate-900/90 border border-amber-400/50 text-amber-200 text-xs sm:text-sm font-bold truncate max-w-[140px]">
+              {actorName}
+            </div>
+          ) : (
+            <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full classic-rivet-bronze shrink-0" />
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export interface ClassicUnifiedLowerThirdProps {
   state: OlympiaState;
   round: "khoiDong" | "vcnv" | "tangToc" | "veDich" | "cauHoiPhu";
@@ -712,7 +885,14 @@ export interface ClassicUnifiedLowerThirdProps {
   buzzedSeatId?: number | null;
   lockedSeats?: number[];
   hopeStarActive?: boolean;
-  answerReveal?: { show: boolean; text: string; label?: string } | null;
+  answerReveal?: {
+    show: boolean;
+    text: string;
+    label?: string;
+    verdict?: "correct" | "wrong" | "neutral" | null;
+    points?: number;
+    actorName?: string;
+  } | null;
   serverNow: () => number;
   timerBadge?: TimerState | null;
   tiedSeats?: number[];
@@ -850,13 +1030,16 @@ export function ClassicUnifiedLowerThird({
         {/* ── LOWER CHAMBER: Question Text & Media ── */}
         <div className="relative z-10 flex-1 px-4 sm:px-8 md:px-12 py-3.5 sm:py-5 flex flex-col items-center justify-center text-center min-h-[100px] sm:min-h-[130px]">
           {answerReveal?.show ? (
-            <div className="flex flex-col items-center justify-center gap-1 animate-fade-in w-full py-1">
-              <div className="text-xs sm:text-sm font-bold tracking-widest text-amber-300 uppercase">
-                {answerReveal.label || "ĐÁP ÁN CHÍNH XÁC"}
-              </div>
-              <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.7)] tracking-wide">
-                ✔ {answerReveal.text}
-              </div>
+            <div className="w-full flex items-center justify-center animate-fade-in py-1">
+              <UnifiedOlympiaAnswerOverlay
+                answerText={answerReveal.text}
+                roundLabel={answerReveal.label || "ĐÁP ÁN"}
+                verdict={answerReveal.verdict}
+                pointsAwarded={answerReveal.points}
+                actorName={answerReveal.actorName}
+                themeMode="o26_classic"
+                className="max-w-3xl"
+              />
             </div>
           ) : questionText ? (
             <div
@@ -890,58 +1073,27 @@ export function Vtv3ClassicSingleAnswerBar({
   answerText,
   points,
   roundLabel = "ĐÁP ÁN",
+  verdict = null,
+  actorName,
+  className = "",
 }: {
   answerText: string;
   points?: number;
   roundLabel?: string;
+  verdict?: "correct" | "wrong" | "neutral" | null;
+  actorName?: string;
+  className?: string;
 }) {
-  const fullText = points ? `${answerText} (${points}đ)` : answerText;
-
   return (
-    <div className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center pointer-events-auto select-none p-2 animate-fade-in">
-      <HorizontalBrassRod />
-      <div
-        className="relative w-full z-10 rounded-2xl flex items-center justify-between px-6 sm:px-10 py-3.5 sm:py-4.5 overflow-hidden shadow-2xl"
-        style={{
-          background: "linear-gradient(180deg, #1e222a 0%, #15181f 50%, #0d0f14 100%)",
-          border: "3px solid #d4af37",
-          boxShadow:
-            "0 12px 40px rgba(0,0,0,0.92), 0 0 20px rgba(212,175,55,0.35), inset 0 2px 4px rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.85)",
-          outline: "1.5px solid #78350f",
-          outlineOffset: "-5px",
-        }}
-      >
-        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-          <Vtv3ChalkboardBackdrop className="opacity-25" />
-        </div>
-
-        {/* Bronze Corner Rivets */}
-        <div className="absolute top-2 left-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
-        <div className="absolute top-2 right-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
-        <div className="absolute bottom-2 left-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
-        <div className="absolute bottom-2 right-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
-
-        {/* Left Badge: Round Label */}
-        <div className="relative z-10 flex items-center gap-2.5 shrink-0">
-          <div className="w-4 h-4 rounded-full classic-rivet-red shrink-0" />
-          <div className="px-3.5 py-1 rounded-lg bg-amber-950/90 border border-amber-400 text-amber-300 font-black text-sm sm:text-base md:text-lg uppercase tracking-wider shadow">
-            {roundLabel}
-          </div>
-        </div>
-
-        {/* Center/Main Answer Text */}
-        <div className="relative z-10 flex-1 px-4 sm:px-8 text-center min-w-0">
-          <div className="text-emerald-400 font-black text-2xl sm:text-3xl md:text-4xl lg:text-5xl uppercase tracking-wider drop-shadow-[0_0_24px_rgba(52,211,153,0.7)] truncate">
-            ✔ {fullText}
-          </div>
-        </div>
-
-        {/* Right Balance Rivet */}
-        <div className="relative z-10 hidden sm:flex items-center gap-2 shrink-0">
-          <div className="w-4 h-4 rounded-full classic-rivet-bronze shrink-0" />
-        </div>
-      </div>
-    </div>
+    <UnifiedOlympiaAnswerOverlay
+      answerText={answerText}
+      pointsAwarded={points}
+      roundLabel={roundLabel}
+      verdict={verdict}
+      actorName={actorName}
+      themeMode="o26_classic"
+      className={className}
+    />
   );
 }
 
@@ -1679,6 +1831,15 @@ export function VcnvAnswerRevealGraphic({
   if (!v) return null;
   const seats = activeSeats(state);
   const isV3Arrow = state.themeMode !== "o26_classic";
+  const curRow = v.currentRow >= 0 && v.currentRow < 4 ? v.rows[v.currentRow] : null;
+  const rawRowAns = curRow ? curRow.answer : (v.currentRow === 4 ? (v.centerQuestion?.a || "") : "");
+  const cleanRowAns = stripVcnvLetterCount(rawRowAns || "");
+  const vcnvRowLabel =
+    v.currentRow === 4
+      ? "ĐÁP ÁN CÂU TRUNG TÂM"
+      : v.currentRow >= 0
+      ? `ĐÁP ÁN HÀNG NGANG ${v.currentRow + 1}`
+      : "ĐÁP ÁN CHƯỚNG NGẠI VẬT";
 
   if (isV3Arrow) {
     const seatCount = Math.max(1, seats.length);
@@ -1957,6 +2118,16 @@ export function VcnvAnswerRevealGraphic({
           })}
 
         </div>
+        {v.revealedCorrectAnswer && cleanRowAns && (
+          <div className="fixed inset-x-0 bottom-4 sm:bottom-6 z-30 flex justify-center pointer-events-none px-4">
+            <UnifiedOlympiaAnswerOverlay
+              answerText={cleanRowAns}
+              roundLabel={vcnvRowLabel}
+              verdict="neutral"
+              themeMode={state.themeMode}
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -1968,21 +2139,66 @@ export function VcnvAnswerRevealGraphic({
       <div className="relative z-10 w-[88%] max-w-[1600px] flex flex-col items-center gap-4 py-6">
         {seats.map((seat) => {
           const answerText = v.answers[seat.id]?.text || "";
+          const isCorrect = state.vcnv?.revealedCorrectAnswer && rawRowAns
+            ? (() => {
+                const primaryClean = cleanVcnvWord(rawRowAns).toLowerCase();
+                const userClean = cleanVcnvWord(answerText).toLowerCase();
+                const parsed = parseVcnvAnswer(rawRowAns);
+                if (userClean && userClean === primaryClean) return true;
+                return parsed.acceptedAnswers.some(
+                  (cand) => cleanVcnvWord(cand).toLowerCase() === userClean
+                );
+              })()
+            : true;
+          const isDimmed = Boolean(state.vcnv?.revealedCorrectAnswer && !isCorrect);
+          const isHighlighted = Boolean(state.vcnv?.revealedCorrectAnswer && isCorrect);
+
           return (
             <div
               key={seat.id}
-              className="relative w-full h-20 sm:h-24 flex items-center shadow-2xl rounded-2xl border-2 border-amber-400/80 bg-slate-900/90 overflow-hidden"
+              className="relative w-full h-20 sm:h-24 flex items-center shadow-2xl rounded-2xl overflow-hidden transition-all duration-500 ease-in-out"
+              style={{
+                opacity: isDimmed ? 0.35 : 1,
+                filter: isDimmed ? "brightness(0.5) contrast(0.85)" : "none",
+                border: isHighlighted
+                  ? "2.5px solid #10b981"
+                  : "2px solid rgba(251, 191, 36, 0.8)",
+                boxShadow: isHighlighted
+                  ? "0 0 24px rgba(16, 185, 129, 0.5), 0 12px 35px rgba(0,0,0,0.9)"
+                  : "0 12px 35px rgba(0,0,0,0.9)",
+                background: isHighlighted
+                  ? "linear-gradient(180deg, #064e3b 0%, #022c22 100%)"
+                  : "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
+              }}
             >
-              <div className="h-full w-64 sm:w-80 px-6 bg-amber-400 text-slate-950 flex items-center justify-center font-black text-lg sm:text-2xl uppercase tracking-wider truncate">
+              <div
+                className={`h-full w-64 sm:w-80 px-6 flex items-center justify-center font-black text-lg sm:text-2xl uppercase tracking-wider truncate ${
+                  isHighlighted ? "bg-emerald-400 text-slate-950" : "bg-amber-400 text-slate-950"
+                }`}
+              >
                 {seat.name}
               </div>
-              <div className="flex-1 px-8 text-center text-white font-black text-2xl sm:text-4xl uppercase tracking-widest truncate">
+              <div
+                className={`flex-1 px-8 text-center font-black text-2xl sm:text-4xl uppercase tracking-widest truncate ${
+                  isHighlighted ? "text-emerald-300 drop-shadow-[0_0_16px_rgba(52,211,153,0.8)]" : "text-white"
+                }`}
+              >
                 {isWaitingAnswer ? "" : (answerText || "")}
               </div>
             </div>
           );
         })}
       </div>
+      {v.revealedCorrectAnswer && cleanRowAns && (
+        <div className="fixed inset-x-0 bottom-4 sm:bottom-6 z-30 flex justify-center pointer-events-none px-4">
+          <UnifiedOlympiaAnswerOverlay
+            answerText={cleanRowAns}
+            roundLabel={vcnvRowLabel}
+            verdict="neutral"
+            themeMode={state.themeMode}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -2230,6 +2446,11 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
   const tt = state.tangToc;
   if (!tt) return null;
   const isV3Arrow = state.themeMode !== "o26_classic";
+  const officialAnswer =
+    tt.correctAnswer || tt.questions[tt.qIdx]?.answer || (tt.questions[tt.qIdx] as any)?.a || "";
+  const showOfficialAnswer = Boolean(
+    (tt.revealedCorrectAnswer || tt.phase === "graded") && officialAnswer
+  );
 
   if (isV3Arrow) {
     const rankCount = Math.max(1, (tt.ranking || []).length || activeSeats(state).length);
@@ -2541,6 +2762,16 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
           })}
 
         </div>
+        {showOfficialAnswer && (
+          <div className="fixed inset-x-0 bottom-4 sm:bottom-6 z-30 flex justify-center pointer-events-none px-4">
+            <UnifiedOlympiaAnswerOverlay
+              answerText={officialAnswer}
+              roundLabel="ĐÁP ÁN CHÍNH XÁC"
+              verdict="neutral"
+              themeMode={state.themeMode}
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -2556,9 +2787,17 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
           const sec = item.noAnswer ? "0.00" : (item.ms / 1000).toFixed(2);
           const answerText = item.noAnswer ? "" : item.answer;
           const awardedPts = tt.phase === "graded" && item.points ? item.points : 0;
+          const isDimmed = Boolean((tt.revealedCorrectAnswer || tt.phase === "graded") && item.wrong);
 
           return (
-            <div key={item.seat} className="relative flex items-center w-full h-20 sm:h-24 animate-fade-in my-1 px-2">
+            <div
+              key={item.seat}
+              className="relative flex items-center w-full h-20 sm:h-24 animate-fade-in my-1 px-2 transition-all duration-500 ease-in-out"
+              style={{
+                opacity: isDimmed ? 0.35 : 1,
+                filter: isDimmed ? "brightness(0.55) contrast(0.85)" : "none",
+              }}
+            >
               <div className="absolute left-4 z-30">
                 <RedConnectionRivet />
               </div>
@@ -2600,6 +2839,16 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
           );
         })}
       </div>
+      {showOfficialAnswer && (
+        <div className="fixed inset-x-0 bottom-4 sm:bottom-6 z-30 flex justify-center pointer-events-none px-4">
+          <UnifiedOlympiaAnswerOverlay
+            answerText={officialAnswer}
+            roundLabel="ĐÁP ÁN CHÍNH XÁC"
+            verdict="neutral"
+            themeMode={state.themeMode}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -4186,7 +4435,16 @@ export function EconovaLowerThirdV3({
                 maxWidth: qWidth,
               }}
             >
-              {questionText ? (
+              {answerText ? (
+                <div className="flex flex-col items-start justify-center gap-1 w-full pt-1 pr-3 select-none animate-fade-in">
+                  <div className="text-xs sm:text-sm font-bold tracking-widest text-cyan-300 uppercase">
+                    ĐÁP ÁN CHÍNH XÁC
+                  </div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-black text-emerald-400 drop-shadow-[0_0_18px_rgba(52,211,153,0.7)] tracking-wide">
+                    ✔ {answerText}
+                  </div>
+                </div>
+              ) : questionText ? (
                 <div
                   key={typeof questionText === "string" ? questionText.slice(0, 40) : undefined}
                   className={`text-white text-left tracking-normal ${fontSizeClass} drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] max-h-full w-full pt-1 pr-3 v3-anim-swap select-none break-words overflow-hidden`}

@@ -10181,13 +10181,13 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       />
 
       {/* ── Top Header Controls (Compact Single-Bar) ─────────────────── */}
-      <div className="glass rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 border border-white/10 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 shadow-lg shrink-0 bg-[#121424]">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+      <div className="glass rounded-xl px-2.5 py-1 border border-white/10 flex items-center justify-between gap-1.5 sm:gap-2 shadow-lg shrink-0 bg-[#121424] overflow-x-auto no-scrollbar h-10">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-sm sm:text-base shadow glow-purple shrink-0">
             🧪
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap shrink-0">
               <span className="text-xs sm:text-sm font-black text-white whitespace-nowrap">Phòng Sandbox</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold whitespace-nowrap hidden md:inline" title="Môi trường thử nghiệm độc lập trên máy này, không hiển thị trong phòng đấu chính">
                 🧪 Thử Nghiệm Độc Lập Trên Máy
@@ -10309,7 +10309,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
         )}
 
         {/* Room Launch or Connected Status Controls */}
-        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+        <div className="flex items-center gap-1.5 flex-nowrap shrink-0 justify-end">
           {olympiaSandboxActive ? (
             <button
               type="button"
@@ -10319,7 +10319,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
               ✕ Đổi chế độ khác
             </button>
           ) : !code ? (
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-nowrap shrink-0">
               <select
                 value={selectedMode}
                 onChange={(e) => setSelectedMode(e.target.value as GameMode)}
@@ -10418,7 +10418,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
             <>
               {/* Center Section: Primary Smart MC Flow (Desktop only, mobile has Host Tab & Quick MC Button) */}
               {effectiveActiveMode === "OLYMPIA" ? (
-                <div className="hidden lg:flex items-center gap-1.5 flex-wrap justify-center">
+                <div className="hidden lg:flex items-center gap-1.5 flex-nowrap shrink-0 justify-center">
                   {(matchStarting || questionPrepare) && (
                     <button
                       type="button"
@@ -10470,7 +10470,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                   )}
                 </div>
               ) : (
-                <div className="hidden lg:flex items-center gap-1.5 flex-wrap justify-center">
+                <div className="hidden lg:flex items-center gap-1.5 flex-nowrap shrink-0 justify-center">
                 {/* 0a. Skip Countdown (Match Starting or Question Prepare) */}
                 {(matchStarting || questionPrepare) && (
                   <button
@@ -12291,7 +12291,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     key={seatIdx}
                     src={`/olympia/play/${code}?seat=${seatIdx}&name=${encodeURIComponent(
                       sandboxCustomTeams[seatIdx]?.name || `Thí sinh ${seatIdx + 1}`
-                    )}`}
+                    )}&sandbox=1`}
                     allow="autoplay *; fullscreen *; camera; microphone; display-capture"
                     title={`Player Viewport ${seatIdx}`}
                     className={`w-full h-full border-0 absolute inset-0 ${
@@ -12325,7 +12325,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
               </a>
             </div>
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              <HostConsole code={code} hostKey={olympiaHostKey} />
+              <HostConsole code={code} hostKey={olympiaHostKey} isSandbox={true} />
             </div>
           </div>
         </div>

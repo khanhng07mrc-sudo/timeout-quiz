@@ -2,23 +2,80 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { RULESETS } from "@/lib/olympia/rulesets";
-import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
-import { useOlympiaSocket, useStableToken, prewarmBuzzerSounds } from "./hooks";
+import { ROUND_LABELS, type OlympiaState, type TimerState } from "@/lib/olympia/types";
+import { useOlympiaSocket, useStableToken, prewarmBuzzerSounds, useCountdown } from "./hooks";
 import { Timer, MediaView, SEAT_COLORS, seatName, activeSeats } from "./ui";
 
 type Emit = (e: string, p?: unknown) => Promise<{ ok: boolean; error?: string }>;
+
+function CompactSandboxTimer({
+  timer,
+  serverNow,
+  isClassic,
+}: {
+  timer: TimerState;
+  serverNow: () => number;
+  isClassic?: boolean;
+}) {
+  const ms = useCountdown(timer, serverNow);
+  const total = timer?.totalMs || 1;
+  const pct = Math.max(0, Math.min(100, (ms / total) * 100));
+  const secs = (ms / 1000).toFixed(ms < 10000 ? 1 : 0);
+  const running = timer?.startedAt != null;
+  const low = ms <= 5000 && ms > 0;
+
+  return (
+    <div className="w-full flex items-center gap-2 px-1">
+      <div
+        className={`font-mono font-black tabular-nums text-xs sm:text-sm shrink-0 ${
+          low
+            ? "text-red-400"
+            : running
+            ? isClassic
+              ? "text-[#fbbf24]"
+              : "text-amber-300"
+            : isClassic
+            ? "text-amber-200/60"
+            : "text-violet-300/60"
+        }`}
+      >
+        {secs}s
+      </div>
+      <div className="flex-1 h-1.5 rounded-full bg-black/60 border border-white/10 overflow-hidden shadow-inner">
+        <div
+          className={`h-full rounded-full transition-all duration-100 ${
+            low
+              ? "bg-gradient-to-r from-red-600 to-rose-400"
+              : isClassic
+              ? "bg-gradient-to-r from-[#d97706] to-[#f59e0b]"
+              : "bg-gradient-to-r from-amber-400 to-violet-500"
+          }`}
+          style={{ width: `${running ? pct : 100}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function PlayerPad({
   code,
   initialSeat,
   initialName,
+  isSandbox = false,
 }: {
   code: string;
   initialSeat?: number;
   initialName?: string;
+  isSandbox?: boolean;
 }) {
   const defaultToken = useStableToken();
   const token = initialSeat !== undefined ? `sandbox_${code}_seat_${initialSeat}` : defaultToken;
+  const isSandboxMode =
+    isSandbox ||
+    (typeof window !== "undefined" &&
+      (window.location.search.includes("sandbox=1") ||
+        window.location.search.includes("variant=sandbox") ||
+        (token.startsWith("sandbox_") && window.self !== window.top)));
   const [selectedSeat, setSelectedSeat] = useState<number>(initialSeat ?? 0);
   const [school, setSchool] = useState<string>("");
   const [name, setName] = useState<string | null>(
@@ -511,7 +568,9 @@ export default function PlayerPad({
 
   return (
     <div
-      className={`fixed inset-0 w-full h-full overflow-hidden text-white p-2 sm:p-3 flex flex-col justify-between gap-2 select-none relative ${
+      className={`fixed inset-0 w-full h-full overflow-hidden text-white ${
+        isSandboxMode ? "p-1.5 gap-1" : "p-2 sm:p-3 gap-2"
+      } flex flex-col justify-between select-none relative ${
         isClassic
           ? "bg-gradient-to-b from-[#24272c] via-[#1a1c20] to-[#101114]"
           : "bg-gradient-to-b from-[#070b1e] via-[#0c1433] to-[#040611]"
@@ -530,18 +589,24 @@ export default function PlayerPad({
       {/* ═══════════════════════════════════════════════════════════════════════
           TOP DISPLAY AREA (Header + 4-Contestant Score Cards + Question Box)
          ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden relative z-10">
+      <div className={`flex-1 min-h-0 flex flex-col ${isSandboxMode ? "gap-1" : "gap-2"} overflow-hidden relative z-10`}>
         {/* 1. Round Header + Sub-status + Bell Test Mode Indicator */}
         <div
-          className={`shrink-0 flex items-center justify-between gap-2 rounded-xl px-3 py-1.5 transition-all ${
+          className={`shrink-0 flex items-center justify-between gap-1.5 transition-all ${
+            isSandboxMode ? "rounded-lg px-2 py-0.5" : "rounded-xl px-3 py-1.5"
+          } ${
             isClassic
               ? "bg-gradient-to-r from-[#1c1e22] via-[#26292f] to-[#1c1e22] border border-[#d4af37]/60 shadow-[0_2px_8px_rgba(0,0,0,0.7)]"
               : "bg-slate-950/85 border border-white/15"
           }`}
         >
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
             <span
-              className="px-2.5 py-0.5 rounded-lg text-xs sm:text-sm font-black uppercase tracking-wider shrink-0 transition-all"
+              className={`rounded-lg uppercase tracking-wider shrink-0 transition-all ${
+                isSandboxMode
+                  ? "px-1.5 py-0.2 text-[10px] sm:text-[11px] font-black"
+                  : "px-2.5 py-0.5 text-xs sm:text-sm font-black"
+              }`}
               style={{
                 background: isClassic
                   ? "linear-gradient(135deg, #b8860b 0%, #854d0e 50%, #451a03 100%)"
@@ -552,24 +617,26 @@ export default function PlayerPad({
             >
               {state.currentRound ? ROUND_LABELS[state.currentRound] : state.stage === "lobby" ? "PHÒNG CHỜ" : "KẾT THÚC"}
             </span>
-            <span className={`text-xs sm:text-sm font-bold truncate ${isClassic ? "text-amber-200" : "text-slate-300"}`}>
+            <span className={`${isSandboxMode ? "text-[11px]" : "text-xs sm:text-sm"} font-bold truncate ${isClassic ? "text-amber-200" : "text-slate-300"}`}>
               {getSubRoundLabel(state)}
             </span>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             {state.bellTestMode && (
               <span
-                className={`px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-black animate-pulse ${
+                className={`rounded-full font-black animate-pulse ${
+                  isSandboxMode ? "px-1.5 py-0.2 text-[9.5px]" : "px-2.5 py-0.5 text-[11px] sm:text-xs"
+                } ${
                   isClassic
                     ? "bg-amber-500/25 border border-[#d4af37] text-amber-200 shadow-[0_0_10px_rgba(212,175,55,0.4)]"
                     : "bg-amber-500/25 border border-amber-400 text-amber-300"
                 }`}
               >
-                🔔 CHẾ ĐỘ THỬ CHUÔNG {myTestLog ? `(Lượt ${myTestLog.order})` : ""}
+                🔔 {isSandboxMode ? "THỬ CHUÔNG" : `CHẾ ĐỘ THỬ CHUÔNG ${myTestLog ? `(Lượt ${myTestLog.order})` : ""}`}
               </span>
             )}
-            <span className={`text-[11px] sm:text-xs font-bold ${isClassic ? "text-amber-300/80" : "text-slate-400"}`}>
+            <span className={`${isSandboxMode ? "text-[10px]" : "text-[11px] sm:text-xs"} font-bold ${isClassic ? "text-amber-300/80" : "text-slate-400"}`}>
               Ghế {me.id + 1} {connected ? "🟢" : "🔴"}
             </span>
           </div>
@@ -577,7 +644,7 @@ export default function PlayerPad({
 
         {/* 2. Fixed 4-Contestant Live Score Cards Bar (matching D:\Olympia 26\public\contestant) */}
         <div
-          className={`shrink-0 grid gap-1.5 sm:gap-2.5 ${
+          className={`shrink-0 grid ${isSandboxMode ? "gap-1" : "gap-1.5 sm:gap-2.5"} ${
             seats.length <= 4 ? "grid-cols-4" : "grid-cols-4 sm:grid-cols-6"
           }`}
         >
@@ -637,22 +704,26 @@ export default function PlayerPad({
             return (
               <div
                 key={s.id}
-                className={`h-11 sm:h-14 rounded-xl px-2 sm:px-2.5 py-1 flex flex-col justify-between transition-all relative overflow-hidden ${cardClass}`}
+                className={`${
+                  isSandboxMode ? "h-8 rounded-lg px-1.5 py-0.5" : "h-11 sm:h-14 rounded-xl px-2 sm:px-2.5 py-1"
+                } flex flex-col justify-between transition-all relative overflow-hidden ${cardClass}`}
                 style={{
-                  borderLeftWidth: "4px",
+                  borderLeftWidth: isSandboxMode ? "3px" : "4px",
                   borderLeftColor,
                 }}
               >
                 <div className="flex items-center justify-between gap-1 min-w-0">
-                  <span className={`text-[10px] sm:text-xs font-extrabold uppercase truncate ${nameColor}`}>
+                  <span className={`${isSandboxMode ? "text-[9.5px]" : "text-[10px] sm:text-xs"} font-extrabold uppercase truncate ${nameColor}`}>
                     {s.name || `TS ${s.id + 1}`}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-0.5 shrink-0 min-h-[14px]">
+                  <div className="flex items-center gap-0.5 shrink-0 min-h-[12px]">
                     {isMe && (
                       <span
-                        className={`px-1 py-0.2 rounded text-[8.5px] sm:text-[9px] font-black uppercase ${
+                        className={`px-1 py-0.2 rounded ${
+                          isSandboxMode ? "text-[7.5px]" : "text-[8.5px] sm:text-[9px]"
+                        } font-black uppercase ${
                           isClassic
                             ? "bg-gradient-to-b from-[#b91c1c] to-[#7f1d1d] border border-[#fef08a] text-amber-100 shadow"
                             : "bg-red-600 text-white"
@@ -661,10 +732,10 @@ export default function PlayerPad({
                         BẠN
                       </span>
                     )}
-                    {isBuzzed && <span className="text-xs animate-bounce">🔔</span>}
-                    {isLocked && <span className="text-xs text-rose-400">🔒</span>}
+                    {isBuzzed && <span className={`${isSandboxMode ? "text-[10px]" : "text-xs"} animate-bounce`}>🔔</span>}
+                    {isLocked && <span className={`${isSandboxMode ? "text-[10px]" : "text-xs"} text-rose-400`}>🔒</span>}
                   </div>
-                  <span className={`text-base sm:text-xl font-black tabular-nums leading-none ${scoreColor}`}>
+                  <span className={`${isSandboxMode ? "text-sm sm:text-base" : "text-base sm:text-xl"} font-black tabular-nums leading-none ${scoreColor}`}>
                     {s.score}
                   </span>
                 </div>
@@ -675,7 +746,9 @@ export default function PlayerPad({
 
         {/* 3. Fixed Question & Media Box */}
         <div
-          className={`flex-1 min-h-[90px] rounded-2xl p-2 sm:p-3 flex flex-col justify-between relative overflow-hidden transition-all ${
+          className={`flex-1 ${
+            isSandboxMode ? "min-h-0 rounded-xl p-1.5 sm:p-2" : "min-h-[90px] rounded-2xl p-2 sm:p-3"
+          } flex flex-col justify-between relative overflow-hidden transition-all ${
             isClassic
               ? "bg-gradient-to-b from-[#181b22] via-[#121418] to-[#0a0b0e] border-2 sm:border-[3px] border-[#d4af37] shadow-[0_8px_30px_rgba(0,0,0,0.9),0_0_15px_rgba(212,175,55,0.25)] outline outline-1 outline-[#78350f] outline-offset-[-3px]"
               : "bg-slate-950/85 border-2 border-white/15 shadow-inner"
@@ -684,7 +757,7 @@ export default function PlayerPad({
           {/* VCNV sub-tabs inside Question Box so bottom interaction zone never shifts */}
           {state.stage === "playing" && state.currentRound === "vcnv" && state.vcnv && (
             <div
-              className={`shrink-0 flex items-center justify-between gap-2 mb-2 pb-2 border-b ${
+              className={`shrink-0 flex items-center justify-between gap-1.5 mb-1.5 pb-1.5 border-b ${
                 isClassic ? "border-[#d4af37]/30" : "border-white/10"
               }`}
             >
@@ -692,7 +765,9 @@ export default function PlayerPad({
                 <button
                   type="button"
                   onClick={() => setVcnvTab("question")}
-                  className={`px-3 py-1 rounded-lg font-black text-xs border transition cursor-pointer ${
+                  className={`px-2.5 py-0.5 rounded-lg font-black ${
+                    isSandboxMode ? "text-[10px]" : "text-xs"
+                  } border transition cursor-pointer ${
                     isClassic
                       ? vcnvTab === "question"
                         ? "bg-gradient-to-b from-[#b8860b] via-[#854d0e] to-[#451a03] text-amber-100 border-[#fef08a] shadow-[0_0_8px_rgba(212,175,55,0.4)]"
@@ -707,7 +782,9 @@ export default function PlayerPad({
                 <button
                   type="button"
                   onClick={() => setVcnvTab("pieces")}
-                  className={`px-3 py-1 rounded-lg font-black text-xs border transition cursor-pointer ${
+                  className={`px-2.5 py-0.5 rounded-lg font-black ${
+                    isSandboxMode ? "text-[10px]" : "text-xs"
+                  } border transition cursor-pointer ${
                     isClassic
                       ? vcnvTab === "pieces"
                         ? "bg-gradient-to-b from-[#d97706] via-[#b45309] to-[#78350f] text-white border-[#fef08a] shadow-[0_0_8px_rgba(245,158,11,0.4)]"
@@ -722,13 +799,15 @@ export default function PlayerPad({
               </div>
               {state.vcnv.eliminatedSeats.includes(me.id) && (
                 <span
-                  className={`text-xs font-black px-2.5 py-0.5 rounded-lg border ${
+                  className={`${
+                    isSandboxMode ? "text-[10px] px-1.5 py-0.2" : "text-xs px-2.5 py-0.5"
+                  } font-black rounded-lg border ${
                     isClassic
                       ? "text-rose-300 bg-rose-950/70 border-rose-500/50 shadow"
                       : "text-rose-400 bg-rose-950/60 border border-rose-500/40"
                   }`}
                 >
-                  🔒 Đã dừng quyền chơi VCNV
+                  🔒 Dừng quyền chơi
                 </span>
               )}
             </div>
@@ -743,13 +822,20 @@ export default function PlayerPad({
                 emit={emit}
                 vcnvTab={vcnvTab}
                 isClassic={isClassic}
+                isSandbox={isSandboxMode}
               />
             </div>
           </div>
 
           {/* Bottom Timer Bar inside Question Box */}
-          <div className="shrink-0 pt-1">
-            {activeTimer && <Timer timer={activeTimer} serverNow={serverNow} isClassic={isClassic} />}
+          <div className="shrink-0 pt-0.5">
+            {activeTimer && (
+              isSandboxMode ? (
+                <CompactSandboxTimer timer={activeTimer} serverNow={serverNow} isClassic={isClassic} />
+              ) : (
+                <Timer timer={activeTimer} serverNow={serverNow} isClassic={isClassic} />
+              )
+            )}
           </div>
         </div>
       </div>
@@ -758,12 +844,20 @@ export default function PlayerPad({
           BOTTOM FIXED INTERACTION AREA (Buzzer / Answer Input / CNV Bell)
          ═══════════════════════════════════════════════════════════════════════ */}
       <div
-        className={`shrink-0 rounded-2xl px-3 sm:px-6 py-1.5 flex items-center justify-center relative overflow-hidden shadow-2xl relative z-10 transition-all ${
+        className={`shrink-0 ${
+          isSandboxMode ? "rounded-xl px-2.5 py-1" : "rounded-2xl px-3 sm:px-6 py-1.5"
+        } flex items-center justify-center relative overflow-hidden shadow-2xl relative z-10 transition-all ${
           isClassic
             ? "bg-gradient-to-r from-[#1c1e22] via-[#26292f] to-[#1c1e22] border-2 border-[#d4af37]/60 shadow-[0_6px_20px_rgba(0,0,0,0.8)]"
             : "bg-slate-950/95 border-2 border-white/15"
         } ${
-          isBuzzerRound ? "h-auto min-h-[96px] sm:min-h-[110px] max-h-[140px]" : "h-auto min-h-[46px] sm:min-h-[52px] max-h-[76px]"
+          isSandboxMode
+            ? isBuzzerRound
+              ? "h-auto min-h-[54px] max-h-[72px]"
+              : "h-auto min-h-[40px] max-h-[58px]"
+            : isBuzzerRound
+            ? "h-auto min-h-[96px] sm:min-h-[110px] max-h-[140px]"
+            : "h-auto min-h-[46px] sm:min-h-[52px] max-h-[76px]"
         }`}
       >
         <InteractionZone
@@ -774,6 +868,7 @@ export default function PlayerPad({
           serverNow={serverNow}
           optimisticBuzzPending={optimisticBuzzPending}
           isClassic={isClassic}
+          isSandbox={isSandboxMode}
         />
       </div>
     </div>
@@ -841,12 +936,14 @@ function QuestionBoxContent({
   emit,
   vcnvTab,
   isClassic,
+  isSandbox,
 }: {
   state: OlympiaState;
   seatId: number;
   emit: Emit;
   vcnvTab: "question" | "pieces";
   isClassic?: boolean;
+  isSandbox?: boolean;
 }) {
   if (state.stage === "lobby") {
     return (
@@ -914,14 +1011,16 @@ function QuestionBoxContent({
       return (
         <div className="space-y-1.5 w-full max-w-3xl">
           <div className={`select-text ${
-            isClassic
+            isSandbox
+              ? "text-xs sm:text-sm font-black leading-snug text-white"
+              : isClassic
               ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-snug sm:leading-relaxed"
               : "text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed"
           }`}>
             {kd.current.q}
           </div>
           {kd.current.media && (
-            <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-24 sm:max-h-36 rounded-xl mx-auto" />
+            <MediaView url={kd.current.media} type={kd.current.mediaType} className={`${isSandbox ? "max-h-16" : "max-h-24 sm:max-h-36"} rounded-xl mx-auto`} />
           )}
           {kd.phase === "result" && kd.current.a && (
             <div className={`mt-1 inline-block px-3 py-1 rounded-xl font-black text-xs sm:text-sm ${
@@ -1014,7 +1113,9 @@ function QuestionBoxContent({
               Hàng ngang số {v.currentRow + 1} ({lc} chữ cái)
             </div>
             <div className={`select-text ${
-              isClassic
+              isSandbox
+                ? "text-xs sm:text-sm font-black leading-snug text-white"
+                : isClassic
                 ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-snug sm:leading-relaxed"
                 : "text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed"
             }`}>
@@ -1029,7 +1130,9 @@ function QuestionBoxContent({
             ⭐ CÂU HỎI Ô TRUNG TÂM
           </div>
           <div className={`select-text ${
-            isClassic
+            isSandbox
+              ? "text-xs sm:text-sm font-black leading-snug text-white"
+              : isClassic
               ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-snug sm:leading-relaxed"
               : "text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed"
           }`}>
@@ -1052,14 +1155,16 @@ function QuestionBoxContent({
       return (
         <div className="space-y-1.5 w-full max-w-3xl">
           <div className={`select-text ${
-            isClassic
+            isSandbox
+              ? "text-xs sm:text-sm font-black leading-snug text-white"
+              : isClassic
               ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-snug"
               : "text-white text-sm sm:text-base md:text-lg font-bold leading-snug"
           }`}>
             {q?.q || "Quan sát dữ kiện trên màn hình chính"}
           </div>
           {q?.media && (
-            <MediaView url={q.media} className="max-h-24 sm:max-h-36 rounded-xl mx-auto" />
+            <MediaView url={q.media} className={`${isSandbox ? "max-h-16" : "max-h-24 sm:max-h-36"} rounded-xl mx-auto`} />
           )}
         </div>
       );
@@ -1084,6 +1189,7 @@ function QuestionBoxContent({
               presetPackages={rs.presetPackages}
               emit={emit}
               isClassic={isClassic}
+              isSandbox={isSandbox}
             />
           );
         }
@@ -1134,14 +1240,16 @@ function QuestionBoxContent({
             )}
           </div>
           <div className={`select-text ${
-            isClassic
+            isSandbox
+              ? "text-xs sm:text-sm font-black leading-snug text-white"
+              : isClassic
               ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-snug sm:leading-relaxed"
               : "text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed"
           }`}>
             {vd.current.q.q}
           </div>
           {vd.current.q.media && (
-            <MediaView url={vd.current.q.media} type={vd.current.q.mediaType} className="max-h-24 sm:max-h-36 rounded-xl mx-auto" />
+            <MediaView url={vd.current.q.media} type={vd.current.q.mediaType} className={`${isSandbox ? "max-h-16" : "max-h-24 sm:max-h-36"} rounded-xl mx-auto`} />
           )}
           {vd.phase === "result" && vd.current.q.a && (
             <div className={`mt-1 inline-block px-3 py-1 rounded-xl font-black text-xs sm:text-sm ${
@@ -1175,7 +1283,9 @@ function QuestionBoxContent({
             CÂU HỎI PHỤ {cp.qIdx >= 0 ? `${cp.qIdx + 1}` : ""}
           </div>
           <div className={`select-text ${
-            isClassic
+            isSandbox
+              ? "text-xs sm:text-sm font-black leading-snug text-white"
+              : isClassic
               ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-snug sm:leading-relaxed"
               : "text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed"
           }`}>
@@ -1203,6 +1313,7 @@ function InteractionZone({
   serverNow,
   optimisticBuzzPending = false,
   isClassic,
+  isSandbox = false,
 }: {
   state: OlympiaState;
   seatId: number;
@@ -1211,32 +1322,36 @@ function InteractionZone({
   serverNow: () => number;
   optimisticBuzzPending?: boolean;
   isClassic?: boolean;
+  isSandbox?: boolean;
 }) {
   // 1. Bell Test Mode overrides the bottom 30% zone so contestants can test their buzzer anytime
   if (state.bellTestMode) {
     const myLog = state.bellTestLogs?.find((b) => b.seat === seatId);
     return (
-      <div className="w-full h-full flex items-center justify-center gap-6">
+      <div className={`w-full h-full flex items-center justify-center ${isSandbox ? "gap-2" : "gap-6"}`}>
         <CircularBuzzer3D
           enabled={!myLog}
           onPress={triggerBuzz}
           label={myLog ? `ĐÃ THỬ (${myLog.order})` : "THỬ CHUÔNG"}
           subLabel={myLog ? "Tín hiệu chuông tốt" : "Nhấn Space hoặc chạm nút để bấm chuông"}
           isClassic={isClassic}
+          isSandbox={isSandbox}
         />
-        <div className="hidden sm:flex flex-col gap-1 text-left max-w-xs">
-          <div className={`font-black text-sm uppercase ${isClassic ? "text-[#fbbf24]" : "text-amber-300"}`}>
-            🔔 Chế độ kiểm tra chuông
-          </div>
-          <div className={`text-xs ${isClassic ? "text-amber-200/80" : "text-slate-300"}`}>
-            Bấm thử chuông để kiểm tra độ nhạy bàn phím (Space) hoặc chuột trước khi vào phần thi chính thức.
-          </div>
-          {myLog && (
-            <div className="text-emerald-400 text-xs font-bold mt-1">
-              ✔ Máy chủ đã ghi nhận tín hiệu chuông của bạn (Lượt {myLog.order}).
+        {!isSandbox && (
+          <div className="hidden sm:flex flex-col gap-1 text-left max-w-xs">
+            <div className={`font-black text-sm uppercase ${isClassic ? "text-[#fbbf24]" : "text-amber-300"}`}>
+              🔔 Chế độ kiểm tra chuông
             </div>
-          )}
-        </div>
+            <div className={`text-xs ${isClassic ? "text-amber-200/80" : "text-slate-300"}`}>
+              Bấm thử chuông để kiểm tra độ nhạy bàn phím (Space) hoặc chuột trước khi vào phần thi chính thức.
+            </div>
+            {myLog && (
+              <div className="text-emerald-400 text-xs font-bold mt-1">
+                ✔ Máy chủ đã ghi nhận tín hiệu chuông của bạn (Lượt {myLog.order}).
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -1250,7 +1365,7 @@ function InteractionZone({
     (state.currentRound === "khoiDong" && !state.khoiDong?.started)
   ) {
     return (
-      <div className={`text-sm font-bold uppercase tracking-wider ${isClassic ? "text-amber-200/50" : "text-slate-500"}`}>
+      <div className={`${isSandbox ? "text-xs" : "text-sm"} font-bold uppercase tracking-wider ${isClassic ? "text-amber-200/50" : "text-slate-500"}`}>
         Khu vực tương tác sẽ mở khi phần thi bắt đầu
       </div>
     );
@@ -1267,14 +1382,14 @@ function InteractionZone({
         const isMyTurn = seg.seat === seatId;
         return (
           <div
-            className={`p-2.5 sm:p-3 rounded-xl w-full text-center transition-all ${
+            className={`${isSandbox ? "p-1.5" : "p-2.5 sm:p-3"} rounded-xl w-full text-center transition-all ${
               isClassic
                 ? "bg-gradient-to-r from-[#24272c] via-[#2c3037] to-[#24272c] border border-[#d4af37]/50 shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
                 : ""
             }`}
           >
             <div
-              className={`text-base sm:text-lg font-black uppercase ${
+              className={`${isSandbox ? "text-xs sm:text-sm font-black" : "text-base sm:text-lg font-black"} uppercase ${
                 isMyTurn
                   ? isClassic
                     ? "text-[#fbbf24]"
@@ -1284,7 +1399,7 @@ function InteractionZone({
                   : "text-slate-400"
               }`}
             >
-              {isMyTurn ? "🎙️ Phần thi Khởi động riêng — Trả lời trực tiếp với MC" : `Đang là lượt Khởi động riêng của ${seatName(state, seg.seat)}`}
+              {isMyTurn ? "🎙️ Khởi động riêng — Trả lời trực tiếp MC" : `Đang là lượt Khởi động riêng của ${seatName(state, seg.seat)}`}
             </div>
           </div>
         );
@@ -1326,6 +1441,7 @@ function InteractionZone({
           label={label}
           subLabel={subLabel}
           isClassic={isClassic}
+          isSandbox={isSandbox}
         />
       );
     }
@@ -1347,28 +1463,31 @@ function InteractionZone({
       const submittedText = v.answers[seatId]?.text;
 
       return (
-        <div className="w-full h-full flex items-center justify-between gap-3 sm:gap-5">
+        <div className={`w-full h-full flex items-center justify-between ${isSandbox ? "gap-2" : "gap-3 sm:gap-5"}`}>
           {/* Left / Center: Fixed Horizontal Answer Input Bar */}
-          <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
+          <div className={`flex-1 min-w-0 flex flex-col justify-center ${isSandbox ? "gap-0.5" : "gap-2"}`}>
             <HorizontalAnswerBar
               enabled={canAnswerRow}
               emit={emit}
               placeholder={
                 out || hasBuzzed
                   ? "Đã dừng quyền nhập đáp án hàng ngang"
+                  : isSandbox
+                  ? "Nhập đáp án hàng ngang…"
                   : "Nhập đáp án hàng ngang rồi nhấn Enter hoặc GỬI…"
               }
               resetKey={`vcnv_${v.currentRow}`}
               serverSubmittedText={submittedText}
               isClassic={isClassic}
+              isSandbox={isSandbox}
             />
             {(hasBuzzed || out) && (
-              <div className={`text-xs sm:text-sm font-extrabold flex items-center gap-1.5 ${isClassic ? "text-[#fbbf24]" : "text-amber-300"}`}>
+              <div className={`${isSandbox ? "text-[10px]" : "text-xs sm:text-sm"} font-extrabold flex items-center gap-1.5 ${isClassic ? "text-[#fbbf24]" : "text-amber-300"}`}>
                 <span>🔔</span>
                 <span>
                   {hasBuzzed
-                    ? "Bạn đã bấm chuông CNV — Hệ thống đã dừng phần chơi VCNV để chờ MC chấm."
-                    : "Quyền chơi VCNV đang khóa (MC có thể mở lại nếu bấm nhầm)."}
+                    ? "Bạn đã bấm chuông CNV — Chờ MC chấm."
+                    : "Quyền chơi VCNV đang khóa."}
                 </span>
               </div>
             )}
@@ -1388,7 +1507,9 @@ function InteractionZone({
                 if (!canBuzzCnv) return;
                 triggerBuzz();
               }}
-              className={`h-11 sm:h-12 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider border-2 sm:border-3 flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow-lg whitespace-nowrap ${
+              className={`${
+                isSandbox ? "h-8 px-2.5 text-[11px]" : "h-11 sm:h-12 px-3 sm:px-4 text-xs sm:text-sm"
+              } rounded-xl font-black uppercase tracking-wider border-2 flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow-lg whitespace-nowrap ${
                 canBuzzCnv
                   ? isClassic
                     ? "bg-gradient-to-b from-amber-600 via-red-700 to-red-900 border-2 border-amber-300 text-white shadow-[0_0_20px_rgba(212,175,55,0.6)] animate-pulse"
@@ -1398,7 +1519,7 @@ function InteractionZone({
                   : "bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed opacity-60"
               }`}
             >
-              <span className="text-base sm:text-lg">🔔</span>
+              <span className={isSandbox ? "text-sm" : "text-base sm:text-lg"}>🔔</span>
               <span>
                 {hasBuzzed ? "ĐÃ BẤM CNV" : out ? "ĐÃ KHÓA" : "CHUÔNG CNV"}
               </span>
@@ -1418,10 +1539,11 @@ function InteractionZone({
           <HorizontalAnswerBar
             enabled={canAnswer}
             emit={emit}
-            placeholder="Nhập đáp án Tăng Tốc rồi nhấn Enter hoặc GỬI…"
+            placeholder={isSandbox ? "Nhập đáp án Tăng Tốc…" : "Nhập đáp án Tăng Tốc rồi nhấn Enter hoặc GỬI…"}
             resetKey={`tt_${tt.qIdx}`}
             serverSubmittedText={sub ? `${sub.answer} (${(sub.ms / 1000).toFixed(2)}s)` : undefined}
             isClassic={isClassic}
+            isSandbox={isSandbox}
           />
         </div>
       );
@@ -1459,6 +1581,7 @@ function InteractionZone({
           label={label}
           subLabel={subLabel}
           isClassic={isClassic}
+          isSandbox={isSandbox}
         />
       );
     }
@@ -1483,6 +1606,7 @@ function InteractionZone({
               : "Nhấn Space hoặc chạm nút để bấm chuông"
           }
           isClassic={isClassic}
+          isSandbox={isSandbox}
         />
       );
     }
@@ -1498,12 +1622,14 @@ function CircularBuzzer3D({
   label,
   subLabel,
   isClassic,
+  isSandbox,
 }: {
   enabled: boolean;
   onPress: () => void;
   label: string;
   subLabel?: string;
   isClassic?: boolean;
+  isSandbox?: boolean;
 }) {
   const lastFiredRef = useRef<number>(0);
   const [pressedLocal, setPressedLocal] = useState(false);
@@ -1519,6 +1645,54 @@ function CircularBuzzer3D({
     // ZERO-LATENCY: Emit socket buzzer event + pre-warmed singleton beep immediately
     onPress();
   };
+
+  if (isSandbox) {
+    return (
+      <div className="relative flex items-center justify-center gap-2.5 w-full max-w-sm mx-auto select-none py-0.5">
+        <div className="relative flex items-center justify-center w-12 h-12 shrink-0">
+          <button
+            type="button"
+            disabled={!enabled}
+            onPointerDown={(e) => {
+              if (!enabled) return;
+              e.preventDefault();
+              fireOnce();
+            }}
+            onClick={fireOnce}
+            className={`w-full h-full rounded-full font-black uppercase tracking-wider flex flex-col items-center justify-center gap-0.5 transition-transform duration-75 cursor-pointer shrink-0 ${
+              pressedLocal ? "scale-90 brightness-125" : "active:scale-95"
+            } ${
+              enabled
+                ? isClassic
+                  ? "border-2 border-[#d4af37] shadow-[0_0_0_1px_#78350f,0_4px_12px_rgba(0,0,0,0.9),0_0_15px_rgba(212,175,55,0.6)] bg-[radial-gradient(circle_at_35%_30%,#f87171_0%,#dc2626_50%,#7f1d1d_100%)] text-white animate-pulse"
+                  : "border-2 border-amber-300 bg-gradient-to-b from-red-500 via-red-600 to-rose-800 text-white shadow-[0_0_15px_rgba(239,68,68,0.75)] animate-pulse"
+                : isClassic
+                ? "border-2 border-[#78350f]/60 bg-gradient-to-b from-[#2a2d33] via-[#1e2025] to-[#141518] text-amber-200/40 cursor-not-allowed opacity-75 shadow-inner"
+                : "border-2 border-slate-700 bg-slate-800/90 text-slate-400 cursor-not-allowed opacity-70 shadow-inner"
+            }`}
+          >
+            <span className="text-base drop-shadow">🔔</span>
+          </button>
+        </div>
+        <div className="flex-1 min-w-0 flex flex-col justify-center text-left">
+          <span className={`text-xs font-black uppercase truncate ${
+            enabled
+              ? isClassic ? "text-[#fef08a]" : "text-amber-300"
+              : isClassic ? "text-amber-200/50" : "text-slate-400"
+          }`}>
+            {label}
+          </span>
+          <span className={`text-[10px] truncate ${
+            enabled
+              ? isClassic ? "text-amber-200/80" : "text-slate-300"
+              : isClassic ? "text-amber-200/40" : "text-slate-500"
+          }`}>
+            {subLabel || " "}
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex flex-col items-center justify-center w-full max-w-sm mx-auto select-none py-0.5">
@@ -1576,6 +1750,7 @@ function HorizontalAnswerBar({
   resetKey,
   serverSubmittedText,
   isClassic,
+  isSandbox,
 }: {
   enabled: boolean;
   emit: Emit;
@@ -1584,6 +1759,7 @@ function HorizontalAnswerBar({
   resetKey?: string | number;
   serverSubmittedText?: string;
   isClassic?: boolean;
+  isSandbox?: boolean;
 }) {
   const [text, setText] = useState("");
   const [lastSubmitted, setLastSubmitted] = useState<string | null>(null);
@@ -1612,8 +1788,8 @@ function HorizontalAnswerBar({
   const displaySubmitted = serverSubmittedText || lastSubmitted;
 
   return (
-    <div className="w-full space-y-2 select-text">
-      <div className="flex items-stretch gap-2 w-full h-12 sm:h-14">
+    <div className={`w-full ${isSandbox ? "space-y-1" : "space-y-2"} select-text`}>
+      <div className={`flex items-stretch ${isSandbox ? "gap-1.5 h-8 sm:h-8.5" : "gap-2 h-12 sm:h-14"} w-full`}>
         <input
           type="text"
           value={text}
@@ -1626,7 +1802,7 @@ function HorizontalAnswerBar({
             }
           }}
           placeholder={placeholder ?? "Nhập đáp án…"}
-          className={`flex-1 min-w-0 rounded-xl px-4 text-base sm:text-xl font-bold text-white outline-none disabled:opacity-50 select-text transition-all ${
+          className={`flex-1 min-w-0 ${isSandbox ? "rounded-lg px-2.5 text-xs sm:text-sm" : "rounded-xl px-4 text-base sm:text-xl"} font-bold text-white outline-none disabled:opacity-50 select-text transition-all ${
             isClassic
               ? "bg-[#121418] border-2 border-[#d4af37]/60 placeholder:text-amber-200/40 focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/40 shadow-inner"
               : "bg-slate-900 border-2 border-white/25 placeholder:text-slate-500 focus:border-cyan-400"
@@ -1638,7 +1814,9 @@ function HorizontalAnswerBar({
           type="button"
           disabled={!enabled || !text.trim()}
           onClick={send}
-          className={`px-5 sm:px-7 rounded-xl active:scale-95 transition text-white font-black text-sm sm:text-base uppercase tracking-wider disabled:opacity-40 cursor-pointer shrink-0 shadow-lg ${
+          className={`${
+            isSandbox ? "px-3 rounded-lg text-xs" : "px-5 sm:px-7 rounded-xl text-sm sm:text-base"
+          } active:scale-95 transition text-white font-black uppercase tracking-wider disabled:opacity-40 cursor-pointer shrink-0 shadow-lg ${
             isClassic
               ? "bg-gradient-to-b from-[#d97706] via-[#b45309] to-[#78350f] border border-[#fef08a] hover:brightness-110"
               : "bg-gradient-to-r from-red-600 to-amber-500 hover:from-red-500 hover:to-amber-400"
@@ -1648,10 +1826,10 @@ function HorizontalAnswerBar({
         </button>
       </div>
 
-      <div className="flex items-center justify-between gap-2 text-xs sm:text-sm min-h-[24px]">
+      <div className={`flex items-center justify-between gap-1.5 ${isSandbox ? "text-[10px] min-h-[16px]" : "text-xs sm:text-sm min-h-[24px]"}`}>
         {displaySubmitted ? (
           <div
-            className={`font-bold rounded-lg py-1 px-3 truncate ${
+            className={`font-bold rounded-lg ${isSandbox ? "py-0.2 px-1.5 text-[9.5px]" : "py-1 px-3"} truncate ${
               isClassic
                 ? "text-amber-200 bg-[#1e2025] border border-[#d4af37]/60 shadow"
                 : "text-emerald-300 bg-emerald-950/50 border border-emerald-500/40"
@@ -1677,6 +1855,7 @@ function PackagePicker({
   presetPackages,
   emit,
   isClassic,
+  isSandbox,
 }: {
   options: number[];
   count: number;
@@ -1684,6 +1863,7 @@ function PackagePicker({
   presetPackages?: Record<string, number[]>;
   emit: Emit;
   isClassic?: boolean;
+  isSandbox?: boolean;
 }) {
   const [pts, setPts] = useState<number[]>(Array(count).fill(options[0] ?? 20));
   const [msg, setMsg] = useState("");
@@ -1695,13 +1875,13 @@ function PackagePicker({
   if (selectionMode === "presetPackages" && presetPackages) {
     return (
       <div
-        className={`space-y-3 rounded-xl p-3 max-w-md w-full transition-all ${
+        className={`${isSandbox ? "space-y-1.5 p-2" : "space-y-3 p-3"} rounded-xl max-w-md w-full transition-all ${
           isClassic
             ? "bg-gradient-to-b from-[#24272c] to-[#181a1d] border-2 border-[#d4af37]/60 shadow-xl"
             : "bg-white/5"
         }`}
       >
-        <div className={`text-center font-bold ${isClassic ? "text-[#fbbf24]" : "text-amber-300"}`}>
+        <div className={`text-center font-bold ${isSandbox ? "text-xs" : "text-sm"} ${isClassic ? "text-[#fbbf24]" : "text-amber-300"}`}>
           Chọn gói câu hỏi cố định ({count} câu)
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -1709,7 +1889,9 @@ function PackagePicker({
             <button
               key={pkgKey}
               type="button"
-              className={`rounded-xl font-black text-base py-2.5 px-2 cursor-pointer transition active:scale-95 ${
+              className={`rounded-xl font-black ${
+                isSandbox ? "text-xs py-1 px-1" : "text-base py-2.5 px-2"
+              } cursor-pointer transition active:scale-95 ${
                 isClassic
                   ? "bg-gradient-to-b from-[#d97706] via-[#b45309] to-[#78350f] border border-[#fef08a] text-white hover:brightness-110 shadow"
                   : "bg-emerald-500 hover:bg-emerald-400 text-slate-950"
@@ -1720,24 +1902,24 @@ function PackagePicker({
               }}
             >
               Gói {pkgKey}đ
-              <div className="text-xs font-semibold opacity-80">({pkgPoints.join("-")})</div>
+              <div className="text-[10px] font-semibold opacity-80">({pkgPoints.join("-")})</div>
             </button>
           ))}
         </div>
-        {msg && <div className={`text-center text-sm font-bold ${isClassic ? "text-amber-200" : "text-emerald-300"}`}>{msg}</div>}
+        {msg && <div className={`text-center text-xs font-bold ${isClassic ? "text-amber-200" : "text-emerald-300"}`}>{msg}</div>}
       </div>
     );
   }
 
   return (
     <div
-      className={`space-y-2.5 rounded-xl p-3 max-w-md w-full transition-all ${
+      className={`${isSandbox ? "space-y-1.5 p-2" : "space-y-2.5 p-3"} rounded-xl max-w-md w-full transition-all ${
         isClassic
           ? "bg-gradient-to-b from-[#24272c] to-[#181a1d] border-2 border-[#d4af37]/60 shadow-xl"
           : "bg-white/5 border border-white/10"
       }`}
     >
-      <div className={`text-center text-sm font-bold ${isClassic ? "text-amber-200" : "text-amber-300"}`}>
+      <div className={`text-center ${isSandbox ? "text-xs" : "text-sm"} font-bold ${isClassic ? "text-amber-200" : "text-amber-300"}`}>
         Chọn mức điểm cho {count} câu hỏi Về Đích ({options.map((o) => `${o}đ`).join(" / ")})
       </div>
       <div className="flex justify-center gap-2">
@@ -1745,7 +1927,9 @@ function PackagePicker({
           <select
             key={i}
             value={p}
-            className={`rounded-lg px-3 py-2 text-lg font-black ${
+            className={`rounded-lg ${
+              isSandbox ? "px-2 py-1 text-sm font-black" : "px-3 py-2 text-lg font-black"
+            } ${
               isClassic
                 ? "bg-[#121418] border-2 border-[#d4af37]/70 text-amber-300 focus:outline-none focus:ring-2 focus:ring-[#d4af37]/40"
                 : "bg-slate-900 border border-white/25 text-amber-300"
@@ -1762,7 +1946,9 @@ function PackagePicker({
       </div>
       <button
         type="button"
-        className={`w-full rounded-xl font-black text-base py-2.5 cursor-pointer transition active:scale-95 ${
+        className={`w-full rounded-xl font-black ${
+          isSandbox ? "text-xs py-1.5" : "text-base py-2.5"
+        } cursor-pointer transition active:scale-95 ${
           isClassic
             ? "bg-gradient-to-b from-[#d97706] via-[#b45309] to-[#78350f] border border-[#fef08a] text-white hover:brightness-110 shadow-lg"
             : "bg-emerald-500 hover:bg-emerald-400 text-slate-950"

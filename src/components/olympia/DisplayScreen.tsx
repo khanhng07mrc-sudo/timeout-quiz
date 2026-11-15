@@ -13,6 +13,7 @@ import {
   Vtv3ChalkboardBackdrop,
   Vtv3ChalkboardQuestionFrame,
   ClassicUnifiedLowerThird,
+  UnifiedOlympiaAnswerOverlay,
   Vtv3ClassicSingleAnswerBar,
   Vtv3ClassicSummaryGraphic,
   VcnvCountdownGraphic,
@@ -730,18 +731,15 @@ function KhoiDong({ state, serverNow }: P) {
     <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
       {/* Main question card / Result answer overlay */}
       {kd.phase === "result" ? (
-        <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto px-2 sm:px-4 flex flex-col justify-end">
-          {state.themeMode === "o26_classic" ? (
-            <Vtv3ClassicSingleAnswerBar
-              answerText={kd.current?.a || "(Chưa có đáp án)"}
-              roundLabel="ĐÁP ÁN"
-            />
-          ) : (
-            <V3SingleAnswerBar
-              answerText={kd.current?.a || "(Chưa có đáp án)"}
-              roundLabel="ĐÁP ÁN"
-            />
-          )}
+        <div className="w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col justify-end">
+          <UnifiedOlympiaAnswerOverlay
+            answerText={kd.current?.a || "(Chưa có đáp án)"}
+            roundLabel="ĐÁP ÁN"
+            verdict={kd.lastVerdict}
+            pointsAwarded={kd.lastVerdict === "correct" ? 10 : undefined}
+            actorName={kd.buzzedSeat != null ? state.seats[kd.buzzedSeat]?.name : undefined}
+            themeMode={state.themeMode}
+          />
         </div>
       ) : state.themeMode === "o26_classic" ? (
         <ClassicUnifiedLowerThird
@@ -923,9 +921,35 @@ function VeDich({ state, serverNow }: P) {
   const showPackageGrid = (isChoosing || (isPackageReady && !closed)) && vd.phase !== "thinking" && vd.phase !== "stealing" && vd.phase !== "result";
 
   const isEarlyLowerThird = isPackageReady && closed;
+  const isVdResult = vd.phase === "result";
+  const lastVdEntry = isVdResult
+    ? (state.transcript || [])
+        .slice()
+        .reverse()
+        .find(
+          (e) =>
+            e.round === "veDich" &&
+            e.entryKind === "question" &&
+            (e.questionNumber === vd.qIdx + 1 || !e.questionNumber)
+        )
+    : null;
+  const vdAnswer = lastVdEntry?.correctAnswer || "";
+  const vdVerdict: "correct" | "wrong" | "neutral" =
+    vd.lastVerdict === "correct" || vd.lastVerdict === "stealCorrect"
+      ? "correct"
+      : vd.lastVerdict === "wrong" || vd.lastVerdict === "stealWrong"
+      ? "wrong"
+      : "neutral";
+  const vdPoints =
+    vdVerdict === "correct" && cur?.points ? cur.points : undefined;
+  const vdActorName =
+    vd.steal?.buzzedSeat != null
+      ? state.seats[vd.steal.buzzedSeat]?.name
+      : state.seats[owner]?.name;
+
   const showQuestionFrame =
     isEarlyLowerThird ||
-    Boolean(cur && (vd.phase === "thinking" || vd.phase === "stealing" || vd.phase === "result"));
+    Boolean(cur && (vd.phase === "thinking" || vd.phase === "stealing" || isVdResult));
 
   return (
     <div key={`vd-turn-${owner}-${vd.turnIdx}`} className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end">
@@ -949,6 +973,18 @@ function VeDich({ state, serverNow }: P) {
             badgeLabel={cur?.points ? `${cur.points} ĐIỂM` : `CÂU ${vd.qIdx + 1}/3`}
             hopeStarActive={vd.hopeStarActive}
             questionText={cur?.q?.q || ""}
+            answerReveal={
+              isVdResult
+                ? {
+                    show: true,
+                    text: vdAnswer || (vdVerdict === "correct" ? "CHÍNH XÁC" : "CHƯA CHÍNH XÁC"),
+                    label: "ĐÁP ÁN VỀ ĐÍCH",
+                    verdict: vdVerdict,
+                    points: vdPoints,
+                    actorName: vdActorName,
+                  }
+                : null
+            }
             mediaElement={
               cur?.q?.media ? (
                 <MediaView
@@ -977,6 +1013,7 @@ function VeDich({ state, serverNow }: P) {
             questionNumberBadge={null}
             headerBadge={null}
             questionText={cur?.q?.q || ""}
+            answerText={isVdResult ? (vdAnswer || (vdVerdict === "correct" ? "CHÍNH XÁC" : "")) : null}
             mediaElement={
               cur?.q?.media ? (
                 <MediaView
@@ -1002,6 +1039,16 @@ function VeDich({ state, serverNow }: P) {
 function Chp({ state, serverNow }: P) {
   const cp = state.cauHoiPhu!;
   const q = cp.questions[cp.qIdx];
+  const isChpResult = cp.phase === "result";
+  const lastChpEntry = isChpResult
+    ? (state.transcript || [])
+        .slice()
+        .reverse()
+        .find((e) => e.round === "cauHoiPhu" && e.entryKind === "question")
+    : null;
+  const chpAnswer = q?.a || lastChpEntry?.correctAnswer || "";
+  const chpWinner = cp.winner != null ? state.seats[cp.winner]?.name : undefined;
+
   return (
     <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto text-center space-y-2 animate-fade-in">
       {q && (
@@ -1013,6 +1060,17 @@ function Chp({ state, serverNow }: P) {
             buzzedSeatId={cp.buzzedSeat || cp.winner}
             badgeLabel="CÂU HỎI PHỤ"
             questionText={q.q}
+            answerReveal={
+              isChpResult
+                ? {
+                    show: true,
+                    text: chpAnswer || (cp.winner != null ? "CHÍNH XÁC" : "KẾT QUẢ"),
+                    label: "ĐÁP ÁN CÂU HỎI PHỤ",
+                    verdict: cp.winner != null ? "correct" : "neutral",
+                    actorName: chpWinner,
+                  }
+                : null
+            }
             timer={cp.timer}
             serverNow={serverNow}
           />
@@ -1023,6 +1081,7 @@ function Chp({ state, serverNow }: P) {
             buzzedSeatId={cp.buzzedSeat || cp.winner}
             headerBadge="CÂU HỎI PHỤ"
             questionText={q.q}
+            answerText={isChpResult ? chpAnswer : null}
             timer={cp.timer}
             showScoreTab={true}
           />

@@ -75,6 +75,36 @@ function getScoreboardLogoImage(): HTMLImageElement | null {
  * - Giai đoạn 2 ("name_school"): Contestant Name + High School Name.
  * - Giai đoạn 3 ("name_score"): Contestant Name + Large Score Digits (Buzzer Red support).
  */
+function drawRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+/**
+ * Creates the unified 1:3 ratio contestant podium scoreboard canvas texture:
+ * - Giai đoạn 1 ("logo"): Official Olympia Laurel & Mountain Logo background.
+ * - Giai đoạn 2 ("name_school"): Contestant Name + High School Name.
+ * - Giai đoạn 3 ("name_score"): Permanent 3-tier layout:
+ *     1. Dòng trên cùng: Tên thí sinh (Tahoma).
+ *     2. Ở giữa: Shape dải ngang cố định hiển thị đáp án đã nộp (Arial/UTM Helve).
+ *     3. Dưới cùng: Ô số điểm lớn (Tahoma).
+ */
 export function createPodiumScoreCanvas(
   name: string,
   score: number,
@@ -84,7 +114,10 @@ export function createPodiumScoreCanvas(
   school?: string,
   isEntrancePhase: boolean = false,
   targetCanvas?: HTMLCanvasElement,
-  screenMode?: PodiumScreenMode
+  screenMode?: PodiumScreenMode,
+  isClassic: boolean = false,
+  submittedAnswer?: string,
+  responseTimeSec?: number
 ): HTMLCanvasElement {
   const canvas = targetCanvas || (typeof document !== "undefined" ? document.createElement("canvas") : ({} as HTMLCanvasElement));
   canvas.width = 512;
@@ -149,7 +182,7 @@ export function createPodiumScoreCanvas(
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = "#ffffff";
-      ctx.font = '900 24px "Plus Jakarta Sans", "Montserrat", sans-serif';
+      ctx.font = '900 24px "Tahoma", sans-serif';
       ctx.letterSpacing = "0.12em";
       ctx.shadowColor = "rgba(0, 229, 255, 0.8)";
       ctx.shadowBlur = 10;
@@ -157,7 +190,7 @@ export function createPodiumScoreCanvas(
       ctx.shadowBlur = 0;
 
       ctx.fillStyle = "#38bdf8";
-      ctx.font = '800 13px "Plus Jakarta Sans", sans-serif';
+      ctx.font = '800 13px "Tahoma", sans-serif';
       ctx.letterSpacing = "0.22em";
       ctx.fillText("VTV3 BROADCAST EDITION", 256, 208);
     }
@@ -171,40 +204,51 @@ export function createPodiumScoreCanvas(
 
   if (effectiveMode === "name_school") {
     // ── GIAI ĐOẠN 2: THÍ SINH VỀ BỤC -> TÊN + TRƯỜNG THPT (GIỮ ĐẾN TRƯỚC KHỞI ĐỘNG) ──
-    // Top 30% (Y = 0 to 76): Deep Sapphire/Cyan Bar with Contestant Name
     const topGrad = ctx.createLinearGradient(0, 0, 512, 76);
-    topGrad.addColorStop(0, "#0284c7");
-    topGrad.addColorStop(1, "#0369a1");
+    if (isClassic) {
+      topGrad.addColorStop(0, "#22252c");
+      topGrad.addColorStop(0.5, "#181a1f");
+      topGrad.addColorStop(1, "#0f1115");
+    } else {
+      topGrad.addColorStop(0, "#00e5ff");
+      topGrad.addColorStop(0.5, "#0284c7");
+      topGrad.addColorStop(1, "#0369a1");
+    }
     ctx.fillStyle = topGrad;
     ctx.fillRect(0, 0, 512, 76);
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "#ffffff";
-    ctx.font = '900 28px "Plus Jakarta Sans", "Montserrat", sans-serif';
+    ctx.fillStyle = isClassic ? "#fef08a" : "#ffffff";
+    ctx.font = '900 28px "Tahoma", sans-serif';
     ctx.letterSpacing = "0.05em";
     const displayName = (name || `THÍ SINH ${seatId + 1}`).toUpperCase();
     ctx.fillText(displayName, 256, 38);
 
     // Separator line
-    ctx.strokeStyle = "#38bdf8";
+    ctx.strokeStyle = isClassic ? "#d4af37" : "#38bdf8";
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(0, 76);
     ctx.lineTo(512, 76);
     ctx.stroke();
 
-    // Bottom 70% (Y = 76 to 256): Deep Midnight Blue with School / Team Name
+    // Bottom 70% (Y = 76 to 256): Deep Midnight Blue or Graphite Wood with School / Team Name
     const bottomGrad = ctx.createLinearGradient(0, 76, 0, 256);
-    bottomGrad.addColorStop(0, "#08142c");
-    bottomGrad.addColorStop(1, "#020713");
+    if (isClassic) {
+      bottomGrad.addColorStop(0, "#181a1f");
+      bottomGrad.addColorStop(1, "#0f1115");
+    } else {
+      bottomGrad.addColorStop(0, "#08142c");
+      bottomGrad.addColorStop(1, "#020713");
+    }
     ctx.fillStyle = bottomGrad;
     ctx.fillRect(0, 76, 512, 180);
 
     const hasSchool = Boolean(school && school.trim());
     if (hasSchool) {
       // Small Gold Sub-label
-      ctx.font = '700 15px "Plus Jakarta Sans", sans-serif';
+      ctx.font = '700 15px "Tahoma", sans-serif';
       ctx.fillStyle = "rgba(254, 240, 138, 0.75)";
       ctx.letterSpacing = "0.15em";
       ctx.fillText("TRƯỜNG THPT", 256, 108);
@@ -216,7 +260,7 @@ export function createPodiumScoreCanvas(
 
       const schoolText = school!.trim().toUpperCase();
       if (schoolText.length > 22) {
-        ctx.font = '900 25px "Plus Jakarta Sans", sans-serif';
+        ctx.font = '900 25px "Tahoma", sans-serif';
         const words = schoolText.split(" ");
         const mid = Math.ceil(words.length / 2);
         const line1 = words.slice(0, mid).join(" ");
@@ -224,81 +268,196 @@ export function createPodiumScoreCanvas(
         ctx.fillText(line1, 256, 146);
         ctx.fillText(line2, 256, 186);
       } else {
-        ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
+        ctx.font = '900 32px "Tahoma", sans-serif';
         ctx.fillText(schoolText, 256, 162);
       }
       ctx.shadowBlur = 0;
     } else {
-      ctx.fillStyle = "rgba(56, 189, 248, 0.75)";
-      ctx.font = '800 15px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = isClassic ? "rgba(212, 175, 55, 0.75)" : "rgba(56, 189, 248, 0.75)";
+      ctx.font = '800 15px "Tahoma", sans-serif';
       ctx.letterSpacing = "0.2em";
       ctx.fillText("VỊ TRÍ THI ĐẤU", 256, 115);
 
-      ctx.fillStyle = "#38bdf8";
-      ctx.shadowColor = "rgba(56, 189, 248, 0.6)";
+      ctx.fillStyle = isClassic ? "#fef08a" : "#38bdf8";
+      ctx.shadowColor = isClassic ? "rgba(212, 175, 55, 0.6)" : "rgba(56, 189, 248, 0.6)";
       ctx.shadowBlur = 12;
-      ctx.font = '900 36px "Plus Jakarta Sans", sans-serif';
+      ctx.font = '900 36px "Tahoma", sans-serif';
       ctx.fillText(`VỊ TRÍ 0${seatId + 1}`, 256, 165);
       ctx.shadowBlur = 0;
     }
 
     // Outer Border & Glow
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = "#38bdf8";
-    ctx.strokeRect(2, 2, 508, 252);
+    if (isClassic) {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#d4af37";
+      ctx.strokeRect(2, 2, 508, 252);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(212, 175, 55, 0.4)";
+      ctx.strokeRect(6, 6, 500, 244);
+    } else {
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#38bdf8";
+      ctx.strokeRect(2, 2, 508, 252);
+    }
 
     return canvas;
   }
 
-  // ── GIAI ĐOẠN 3: BƯỚC VÀO KHỞI ĐỘNG & THI ĐẤU -> TÊN + ĐIỂM SỐ ──
+  // ── GIAI ĐOẠN 3: BƯỚC VÀO KHỞI ĐỘNG & THI ĐẤU -> PERMANENT 3-TIER: TÊN + SHAPE ĐÁP ÁN + ĐIỂM SỐ ──
   const isPodiumRed = isRed || isBuzzed;
-  const headerBg = isPodiumRed ? "#ff2a4b" : "#00e5ff";
-  const headerText = isPodiumRed ? "#ffffff" : "#081636";
-  const borderColor = isPodiumRed ? "#ff2a4b" : "#00d4ff";
-  const glowColor = isPodiumRed ? "rgba(255, 42, 75, 0.95)" : "rgba(0, 212, 255, 0.45)";
 
-  // 1. Bottom 3/4 Background (Y = 64 to 256)
-  const bottomGrad = ctx.createLinearGradient(0, 64, 0, 256);
-  bottomGrad.addColorStop(0, isPodiumRed ? "#3b0816" : "#0e1e42");
-  bottomGrad.addColorStop(1, isPodiumRed ? "#180208" : "#030816");
+  // 1. Background below header (Y = 58 to 256)
+  const bottomGrad = ctx.createLinearGradient(0, 58, 0, 256);
+  if (isPodiumRed) {
+    bottomGrad.addColorStop(0, "#3b0816");
+    bottomGrad.addColorStop(1, "#180208");
+  } else if (isClassic) {
+    bottomGrad.addColorStop(0, "#181a1f");
+    bottomGrad.addColorStop(1, "#0f1115");
+  } else {
+    bottomGrad.addColorStop(0, "#0c1936");
+    bottomGrad.addColorStop(1, "#030713");
+  }
   ctx.fillStyle = bottomGrad;
-  ctx.fillRect(0, 64, 512, 192);
+  ctx.fillRect(0, 58, 512, 198);
 
-  // 2. Top 1/4 Background (Y = 0 to 64)
-  ctx.fillStyle = headerBg;
-  ctx.fillRect(0, 0, 512, 64);
+  // 2. TẦNG 1 (TRÊN CÙNG, Y = 0 to 58): Header Tên thí sinh (Tahoma)
+  const topGrad = ctx.createLinearGradient(0, 0, 512, 58);
+  if (isPodiumRed) {
+    topGrad.addColorStop(0, "#ff2a4b");
+    topGrad.addColorStop(1, "#dc2626");
+  } else if (isClassic) {
+    topGrad.addColorStop(0, "#22252c");
+    topGrad.addColorStop(0.5, "#181a1f");
+    topGrad.addColorStop(1, "#0f1115");
+  } else {
+    topGrad.addColorStop(0, "#00e5ff");
+    topGrad.addColorStop(0.5, "#0284c7");
+    topGrad.addColorStop(1, "#0369a1");
+  }
+  ctx.fillStyle = topGrad;
+  ctx.fillRect(0, 0, 512, 58);
 
-  // 3. Top 1/4 Contestant Name
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = headerText;
-  ctx.font = '900 32px "Plus Jakarta Sans", "Montserrat", sans-serif';
+  ctx.fillStyle = isPodiumRed ? "#ffffff" : isClassic ? "#fef08a" : "#ffffff";
+  ctx.font = '900 28px "Tahoma", sans-serif';
   ctx.letterSpacing = "0.04em";
   const displayName = (name || `Thí sinh ${seatId + 1}`).toUpperCase();
-  ctx.fillText(displayName, 256, 33);
+  ctx.fillText(displayName, 256, 29);
 
-  // 4. Subtle separator line between top 1/4 and bottom 3/4
-  ctx.strokeStyle = isPodiumRed ? "rgba(255, 42, 75, 0.6)" : "rgba(0, 229, 255, 0.45)";
-  ctx.lineWidth = 3;
+  // Separator line under Header
+  ctx.strokeStyle = isPodiumRed ? "rgba(255, 42, 75, 0.7)" : isClassic ? "#d4af37" : "rgba(0, 229, 255, 0.5)";
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(0, 64);
-  ctx.lineTo(512, 64);
+  ctx.moveTo(0, 58);
+  ctx.lineTo(512, 58);
   ctx.stroke();
 
-  // 5. Bottom 3/4 Large Centered Score Digits (Pure White, Centered)
+  // 3. TẦNG 2 (Ở GIỮA, Y = 66 to 104, Chiều cao bé 38px): Shape Chiều Cao Bé Cố Định (Permanent Ribbon Badge)
+  const badgeX = 24;
+  const badgeY = 66;
+  const badgeW = 464;
+  const badgeH = 38;
+  const badgeRadius = 8;
+
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeRadius);
+
+  const hasAnswer = Boolean(submittedAnswer && submittedAnswer.trim());
+  if (hasAnswer) {
+    // Có đáp án nộp: hiển thị nội dung đáp án kèm thời gian (ví dụ: "HÀ NỘI · 2.15s")
+    const badgeGrad = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeW, badgeY + badgeH);
+    if (isClassic) {
+      badgeGrad.addColorStop(0, "#262930");
+      badgeGrad.addColorStop(1, "#181b20");
+      ctx.fillStyle = badgeGrad;
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "#d4af37";
+      ctx.shadowColor = "rgba(212, 175, 55, 0.5)";
+      ctx.shadowBlur = 8;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    } else {
+      badgeGrad.addColorStop(0, "rgba(2, 132, 199, 0.5)");
+      badgeGrad.addColorStop(1, "rgba(3, 105, 161, 0.75)");
+      ctx.fillStyle = badgeGrad;
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "#00e5ff";
+      ctx.shadowColor = "rgba(0, 229, 255, 0.5)";
+      ctx.shadowBlur = 8;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    const answerStr = submittedAnswer!.trim().toUpperCase();
+    const timeSuffix = responseTimeSec != null && responseTimeSec > 0 ? ` · ${responseTimeSec.toFixed(2)}s` : "";
+    const fullAnswerText = `${answerStr}${timeSuffix}`;
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = isClassic ? "#fef08a" : "#ffffff";
+    const fontSize = fullAnswerText.length > 32 ? 15 : fullAnswerText.length > 24 ? 18 : 21;
+    ctx.font = `800 ${fontSize}px "Arial", "UTM Helve", sans-serif`;
+    ctx.letterSpacing = "0.03em";
+    ctx.fillText(fullAnswerText, 256, badgeY + badgeH / 2);
+  } else {
+    // Chưa có đáp án / chưa nộp: Shape hiển thị nền phẳng êm dịu, thanh lịch
+    if (isClassic) {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(212, 175, 55, 0.25)";
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(0, 229, 255, 0.18)";
+      ctx.stroke();
+    }
+  }
+
+  // 4. TẦNG 3 (DƯỚI CÙNG, Y = 106 to 256): Ô số điểm lớn (Tahoma)
+  const scoreGlow = isPodiumRed
+    ? "rgba(255, 42, 75, 0.95)"
+    : isClassic
+    ? "rgba(254, 240, 138, 0.5)"
+    : "rgba(0, 212, 255, 0.45)";
+  const scoreColor = isPodiumRed
+    ? "#ffffff"
+    : isClassic
+    ? "#fef08a"
+    : "#ffffff";
+
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "#ffffff";
-  ctx.font = '900 114px "Plus Jakarta Sans", "Montserrat", monospace';
-  ctx.shadowColor = glowColor;
-  ctx.shadowBlur = 18;
-  ctx.fillText(String(score), 256, 160);
+  ctx.fillStyle = scoreColor;
+  ctx.font = '900 94px "Tahoma", sans-serif';
+  ctx.shadowColor = scoreGlow;
+  ctx.shadowBlur = 16;
+  ctx.fillText(String(score), 256, 180);
   ctx.shadowBlur = 0;
 
-  // 6. Outer Border & Glow
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = borderColor;
-  ctx.strokeRect(2, 2, 508, 252);
+  // 5. Outer Border & Viền Kép
+  if (isPodiumRed) {
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#ff2a4b";
+    ctx.strokeRect(2, 2, 508, 252);
+  } else if (isClassic) {
+    // Viền kép kim loại vàng đồng (#d4af37)
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#d4af37";
+    ctx.strokeRect(2, 2, 508, 252);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(212, 175, 55, 0.4)";
+    ctx.strokeRect(6, 6, 500, 244);
+  } else {
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#00e5ff";
+    ctx.strokeRect(2, 2, 508, 252);
+  }
 
   return canvas;
 }
@@ -315,6 +474,9 @@ function ContestantScoreDisplay({
   school,
   isEntrancePhase = false,
   screenMode,
+  isClassic = false,
+  submittedAnswer,
+  responseTimeSec,
 }: {
   name: string;
   score: number;
@@ -324,6 +486,9 @@ function ContestantScoreDisplay({
   school?: string;
   isEntrancePhase?: boolean;
   screenMode?: PodiumScreenMode;
+  isClassic?: boolean;
+  submittedAnswer?: string;
+  responseTimeSec?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
@@ -336,7 +501,20 @@ function ContestantScoreDisplay({
     const canvas = document.createElement("canvas");
     canvas.width = 512;
     canvas.height = 256;
-    createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed, school, isEntrancePhase, canvas, screenMode);
+    createPodiumScoreCanvas(
+      name,
+      score,
+      seatId,
+      isBuzzed,
+      isRed,
+      school,
+      isEntrancePhase,
+      canvas,
+      screenMode,
+      isClassic,
+      submittedAnswer,
+      responseTimeSec
+    );
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -353,7 +531,20 @@ function ContestantScoreDisplay({
       timer = setInterval(() => {
         const img = getScoreboardLogoImage();
         if (img && canvasRef.current && textureRef.current) {
-          createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed, school, isEntrancePhase, canvasRef.current, screenMode);
+          createPodiumScoreCanvas(
+            name,
+            score,
+            seatId,
+            isBuzzed,
+            isRed,
+            school,
+            isEntrancePhase,
+            canvasRef.current,
+            screenMode,
+            isClassic,
+            submittedAnswer,
+            responseTimeSec
+          );
           textureRef.current.needsUpdate = true;
           if (timer) clearInterval(timer);
         }
@@ -370,10 +561,23 @@ function ContestantScoreDisplay({
 
   useEffect(() => {
     if (canvasRef.current && textureRef.current) {
-      createPodiumScoreCanvas(name, score, seatId, isBuzzed, isRed, school, isEntrancePhase, canvasRef.current, screenMode);
+      createPodiumScoreCanvas(
+        name,
+        score,
+        seatId,
+        isBuzzed,
+        isRed,
+        school,
+        isEntrancePhase,
+        canvasRef.current,
+        screenMode,
+        isClassic,
+        submittedAnswer,
+        responseTimeSec
+      );
       textureRef.current.needsUpdate = true;
     }
-  }, [name, score, seatId, isBuzzed, isRed, school, isEntrancePhase, screenMode]);
+  }, [name, score, seatId, isBuzzed, isRed, school, isEntrancePhase, screenMode, isClassic, submittedAnswer, responseTimeSec]);
 
   return (
     <mesh position={[0, 0.54, 0.385]} rotation={[0, 0, 0]} renderOrder={6}>
@@ -2002,6 +2206,9 @@ export function ContestantPodium({
   liveFactor = 1.0,
   screenMode,
   isDimmed = false,
+  isClassic = false,
+  submittedAnswer,
+  responseTimeSec,
 }: {
   seatId: number;
   name: string;
@@ -2017,6 +2224,9 @@ export function ContestantPodium({
   liveFactor?: number;
   screenMode?: PodiumScreenMode;
   isDimmed?: boolean;
+  isClassic?: boolean;
+  submittedAnswer?: string;
+  responseTimeSec?: number;
 }) {
   const buzzerDomeRef = useRef<THREE.Mesh>(null);
   const haloRef = useRef<THREE.Mesh>(null);
@@ -2172,6 +2382,9 @@ export function ContestantPodium({
         school={school}
         isEntrancePhase={isEntrancePhase}
         screenMode={screenMode}
+        isClassic={isClassic}
+        submittedAnswer={submittedAnswer}
+        responseTimeSec={responseTimeSec}
       />
 
       {/* ── 4. ERGONOMIC COUNTERTOP & WRIST REST (Mặt bàn liền khối & gờ tỳ tay mềm mại cho thí sinh) ── */}
@@ -5913,6 +6126,58 @@ export function Podiums({
           activeMainContestantSeat !== cfg.seatId
         );
 
+        // Extract submitted answer & response time for 3D Podium scoreboard (F8)
+        let submittedAnswer: string | undefined;
+        let responseTimeSec: number | undefined;
+
+        const isTangToc = (state?.currentRound === "tangToc" || state?.roundsPlan?.[state?.roundIdx ?? 0] === "tangToc") && Boolean(state?.tangToc);
+        if (isTangToc && state?.tangToc) {
+          const tt = state.tangToc;
+          const ttTimer = tt.timer;
+          const isTimerExpired = Boolean(
+            ttTimer && (
+              ttTimer.remainingMs <= 0 ||
+              (ttTimer.startedAt && serverNow && (serverNow() - ttTimer.startedAt >= ttTimer.totalMs))
+            )
+          );
+          const isRevealPhase = tt.phase === "ranking" || tt.phase === "graded" || tt.phase === "waitingAnswer";
+
+          if (isTimerExpired || isRevealPhase) {
+            const sub = tt.submissions?.[cfg.seatId];
+            const rankItem = tt.ranking?.find((r) => r.seat === cfg.seatId);
+            if (sub && sub.answer) {
+              submittedAnswer = sub.answer;
+              responseTimeSec = sub.ms ? sub.ms / 1000 : undefined;
+            } else if (rankItem && rankItem.answer) {
+              submittedAnswer = rankItem.answer;
+              responseTimeSec = rankItem.ms ? rankItem.ms / 1000 : undefined;
+            }
+          }
+        }
+
+        const isVcnv = (state?.currentRound === "vcnv" || state?.roundsPlan?.[state?.roundIdx ?? 0] === "vcnv") && Boolean(state?.vcnv);
+        if (isVcnv && state?.vcnv) {
+          const vcnv = state.vcnv;
+          const vcnvTimer = vcnv.timer;
+          const isTimerExpired = Boolean(
+            vcnvTimer && (
+              vcnvTimer.remainingMs <= 0 ||
+              (vcnvTimer.startedAt && serverNow && (serverNow() - vcnvTimer.startedAt >= vcnvTimer.totalMs))
+            )
+          );
+          const isRevealPhase = vcnv.phase === "answers" || Boolean(vcnv.answersRevealed);
+
+          if (isTimerExpired || isRevealPhase) {
+            const ans = vcnv.answers?.[cfg.seatId];
+            if (ans && ans.text) {
+              submittedAnswer = ans.text;
+              responseTimeSec = ans.ms ? ans.ms / 1000 : undefined;
+            }
+          }
+        }
+
+        const isClassic = state?.themeMode === "o26_classic";
+
         return (
           <ContestantPodium
             key={cfg.seatId}
@@ -5930,6 +6195,9 @@ export function Podiums({
             screenFadeProgress={screenFadeProgress}
             liveFactor={liveFactor}
             isDimmed={isDimmed}
+            isClassic={isClassic}
+            submittedAnswer={submittedAnswer}
+            responseTimeSec={responseTimeSec}
           />
         );
       })}

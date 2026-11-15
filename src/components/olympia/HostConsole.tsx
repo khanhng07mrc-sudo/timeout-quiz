@@ -40,13 +40,22 @@ export const ActiveTimerBadge = React.memo(function ActiveTimerBadge({
   return <span className={className}>{text}</span>;
 });
 
-export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { code: string; hostKey: string }) {
+export const HostConsole = React.memo(function HostConsole({
+  code,
+  hostKey,
+  isSandbox: isSandboxProp,
+}: {
+  code: string;
+  hostKey: string;
+  isSandbox?: boolean;
+}) {
   const { state, join, connected, emit, serverNow } = useOlympiaSocket({ code, role: "host", hostKey });
   const [err, setErr] = useState("");
   // Auto-enabled by default so Host Console plays all game sounds like the real desktop software
   const [audioOn, setAudioOn] = useState(true);
   const [ttsActive, setTtsActive] = useState<boolean>(() => isTtsEnabled());
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const [expandedCameraMixer, setExpandedCameraMixer] = useState(false);
   const [o22Quarter, setO22Quarter] = useState<O22Quarter>(1);
 
   useEffect(() => {
@@ -95,9 +104,11 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
   };
 
   const isSandbox =
+    Boolean(isSandboxProp) ||
     Boolean((state as any)?.isSandbox) ||
     code.startsWith("sb_") ||
     (typeof window !== "undefined" && window.location.pathname.includes("/sandbox"));
+  const isSandboxMode = isSandbox;
 
   const handleDeleteRoom = async () => {
     if (
@@ -380,20 +391,22 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
   return (
     <div className="w-full h-full min-h-full flex-1 bg-gradient-to-b from-[#0a0c1a] via-[#101226] to-[#060712] text-slate-100 flex flex-col font-sans select-none overflow-hidden">
       {/* ── TOP HEADER BAR (CLEAN, NO OVERLAPPING) ── */}
-      <header className="min-h-10 py-1 border-b border-violet-500/15 bg-black/30 backdrop-blur-sm px-2.5 sm:px-3 flex flex-wrap items-center justify-between shrink-0 gap-x-2 gap-y-1">
+      <header className={`border-b border-violet-500/15 bg-black/30 backdrop-blur-sm px-2 sm:px-2.5 flex items-center justify-between shrink-0 gap-1.5 ${
+        isSandboxMode ? "h-8 min-h-8 py-0.5 overflow-x-auto no-scrollbar" : "min-h-10 py-1 flex-wrap gap-x-2 gap-y-1"
+      }`}>
         {/* Left: Branding & Current Round */}
-        <div className="flex items-center gap-2 min-w-0 shrink-0">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-red-400 text-xs sm:text-sm font-black tracking-wide flex items-center gap-1.5 whitespace-nowrap">
+        <div className="flex items-center gap-1.5 min-w-0 shrink-0">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-red-400 text-xs sm:text-sm font-black tracking-wide flex items-center gap-1 whitespace-nowrap">
             <span>🏔️</span>
-            <span>ĐƯỜNG LÊN ĐỈNH OLYMPIA</span>
+            <span className={isSandboxMode ? "hidden xl:inline" : ""}>ĐƯỜNG LÊN ĐỈNH OLYMPIA</span>
           </span>
-          <span className="px-2 py-0.5 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-200 text-[11px] font-bold uppercase whitespace-nowrap">
+          <span className="px-1.5 py-0.2 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-200 text-[10px] sm:text-[11px] font-bold uppercase whitespace-nowrap">
             {curRoundName}
           </span>
         </div>
 
         {/* Right: Theme Switcher, Buzzer Test, Audio Manager, Mute, Toggle Sidebar, Connection, PIN & QR */}
-        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 flex-wrap justify-end">
+        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 flex-nowrap shrink-0 justify-end">
           {/* Dual-Theme Broadcast Switcher */}
           <button
             type="button"
@@ -402,7 +415,9 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                 themeMode: state.themeMode === "o26_classic" ? "v3_arrow" : "o26_classic",
               })
             }
-            className={`px-2 py-1 rounded-lg font-black text-[11px] border shadow cursor-pointer flex items-center gap-1 shrink-0 transition ${
+            className={`rounded-lg font-black text-[10px] sm:text-[11px] border shadow cursor-pointer flex items-center gap-1 shrink-0 transition ${
+              isSandboxMode ? "px-1.5 py-0.5" : "px-2 py-1"
+            } ${
               state.themeMode === "o26_classic"
                 ? "bg-amber-500/25 border-amber-400 text-amber-200"
                 : "bg-red-600/30 border-red-400 text-red-100"
@@ -410,14 +425,16 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
             title="Chuyển đổi giao diện đồ họa Màn chiếu (Mũi Tên V3 vs O26 Cổ Điển VTV3)"
           >
             <span>🎨</span>
-            <span>{state.themeMode === "o26_classic" ? "Theme: O26 Cổ Điển" : "Theme: Mũi Tên V3"}</span>
+            <span>{state.themeMode === "o26_classic" ? (isSandboxMode ? "O26 Cổ Điển" : "Theme: O26 Cổ Điển") : (isSandboxMode ? "Mũi Tên V3" : "Theme: Mũi Tên V3")}</span>
           </button>
 
           {/* Buzzer Test Mode Toggle */}
           <button
             type="button"
             onClick={() => call("bell:toggleTest")}
-            className={`px-2 py-1 rounded-lg font-black text-[11px] border shadow cursor-pointer flex items-center gap-1 shrink-0 transition ${
+            className={`rounded-lg font-black text-[10px] sm:text-[11px] border shadow cursor-pointer flex items-center gap-1 shrink-0 transition ${
+              isSandboxMode ? "px-1.5 py-0.5" : "px-2 py-1"
+            } ${
               state.bellTestMode
                 ? "bg-amber-400 text-slate-950 border-amber-200 animate-pulse"
                 : "bg-white/10 hover:bg-white/20 border-white/20 text-amber-300"
@@ -425,74 +442,82 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
             title="Bật/Tắt chế độ cho thí sinh bấm thử chuông mà không khóa quyền thi đấu"
           >
             <span>🔔</span>
-            <span>{state.bellTestMode ? "Đang Test Chuông" : "Test Chuông"}</span>
+            <span>Test Chuông</span>
           </button>
 
           {state.bellTestMode && (
             <button
               type="button"
               onClick={() => call("bell:clearTest")}
-              className="px-2 py-1 rounded-lg bg-rose-600/40 hover:bg-rose-600/60 border border-rose-400 text-white font-bold text-[11px] cursor-pointer shrink-0"
+              className={`rounded-lg bg-rose-600/40 hover:bg-rose-600/60 border border-rose-400 text-white font-bold text-[10px] sm:text-[11px] cursor-pointer shrink-0 ${
+                isSandboxMode ? "px-1.5 py-0.5" : "px-2 py-1"
+              }`}
               title="Xóa danh sách test chuông để thử lại"
             >
-              🧹 Reset Chuông
+              🧹 Reset
             </button>
+          )}
+
+          {!isSandboxMode && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowQrModal(true)}
+                className="px-2 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-[11px] shadow cursor-pointer flex items-center gap-1 shrink-0"
+                title="Mở Mã QR để thí sinh quét tham gia trận đấu"
+              >
+                <span>📱</span>
+                <span className="hidden sm:inline">Mã QR</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const url = typeof window !== "undefined" ? `${window.location.origin}/olympia/play/${code}` : "";
+                  if (url && navigator?.clipboard?.writeText) {
+                    navigator.clipboard.writeText(url);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }
+                }}
+                className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs shadow cursor-pointer flex items-center gap-1 shrink-0"
+                title="Sao chép link thí sinh"
+              >
+                <span>📋</span>
+                <span>{copiedLink ? "✓ Đã chép link!" : "Copy link"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (navigator?.clipboard?.writeText) {
+                    navigator.clipboard.writeText(code);
+                    setCopiedPin(true);
+                    setTimeout(() => setCopiedPin(false), 2000);
+                  }
+                }}
+                className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 font-mono font-black text-xs cursor-pointer flex items-center gap-1.5 shrink-0"
+                title="Nhấp để chép mã PIN phòng"
+              >
+                <span className={connected ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                  {connected ? "🟢" : "🔴"}
+                </span>
+                <span>PIN: {code}</span>
+                {copiedPin && <span className="text-[10px] text-emerald-400 font-sans font-bold">✓ Đã chép!</span>}
+              </button>
+            </>
           )}
 
           <button
             type="button"
-            onClick={() => setShowQrModal(true)}
-            className="px-2 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-[11px] shadow cursor-pointer flex items-center gap-1 shrink-0"
-            title="Mở Mã QR để thí sinh quét tham gia trận đấu"
-          >
-            <span>📱</span>
-            <span className="hidden sm:inline">Mã QR</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              const url = typeof window !== "undefined" ? `${window.location.origin}/olympia/play/${code}` : "";
-              if (url && navigator?.clipboard?.writeText) {
-                navigator.clipboard.writeText(url);
-                setCopiedLink(true);
-                setTimeout(() => setCopiedLink(false), 2000);
-              }
-            }}
-            className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs shadow cursor-pointer flex items-center gap-1 shrink-0"
-            title="Sao chép link thí sinh"
-          >
-            <span>📋</span>
-            <span>{copiedLink ? "✓ Đã chép link!" : "Copy link"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (navigator?.clipboard?.writeText) {
-                navigator.clipboard.writeText(code);
-                setCopiedPin(true);
-                setTimeout(() => setCopiedPin(false), 2000);
-              }
-            }}
-            className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 font-mono font-black text-xs cursor-pointer flex items-center gap-1.5 shrink-0"
-            title="Nhấp để chép mã PIN phòng"
-          >
-            <span className={connected ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-              {connected ? "🟢" : "🔴"}
-            </span>
-            <span>PIN: {code}</span>
-            {copiedPin && <span className="text-[10px] text-emerald-400 font-sans font-bold">✓ Đã chép!</span>}
-          </button>
-
-          <button
-            type="button"
             onClick={() => setShowAudioDrawer(true)}
-            className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs shadow cursor-pointer flex items-center gap-1 shrink-0"
+            className={`rounded-lg bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-[10px] sm:text-xs shadow cursor-pointer flex items-center gap-1 shrink-0 ${
+              isSandboxMode ? "px-2 py-0.5" : "px-2.5 py-1"
+            }`}
             title="Mở Audio Manager quản lý và nghe thử âm thanh"
           >
             <span>🎵 AUDIO</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-black/40 text-[10px] text-yellow-300">22</span>
+            <span className="px-1 py-0.1 rounded-full bg-black/40 text-[9px] sm:text-[10px] text-yellow-300">22</span>
           </button>
 
           <button
@@ -515,7 +540,9 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                 cancelTTS();
               }
             }}
-            className={`px-2 py-1 rounded text-xs font-bold cursor-pointer border shrink-0 transition flex items-center gap-1 ${
+            className={`rounded font-bold cursor-pointer border shrink-0 transition flex items-center gap-1 text-[10px] sm:text-xs ${
+              isSandboxMode ? "px-1.5 py-0.5" : "px-2 py-1"
+            } ${
               ttsActive
                 ? "bg-cyan-600/30 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
                 : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
@@ -523,13 +550,15 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
             title="Bật/Tắt chế độ đọc câu hỏi tự động (TTS tiếng Việt)"
           >
             <span>🎙️</span>
-            <span className="hidden sm:inline">{ttsActive ? "TTS: BẬT" : "TTS: TẮT"}</span>
+            <span className={isSandboxMode ? "hidden xl:inline" : "hidden sm:inline"}>{ttsActive ? "TTS: BẬT" : "TTS: TẮT"}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setAudioOn((v) => !v)}
-            className={`px-2 py-1 rounded text-xs font-bold cursor-pointer border shrink-0 ${
+            className={`rounded text-[10px] sm:text-xs font-bold cursor-pointer border shrink-0 ${
+              isSandboxMode ? "px-1.5 py-0.5" : "px-2 py-1"
+            } ${
               audioOn ? "bg-emerald-600/30 border-emerald-400 text-emerald-200" : "bg-white/5 border-white/10 text-slate-400"
             }`}
             title="Bật/Tắt âm thanh bàn điều khiển"
@@ -537,7 +566,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
             {audioOn ? "🔊" : "🔈"}
           </button>
 
-          {typeof window !== "undefined" && !window.location.pathname.includes("/sandbox") && (
+          {!isSandboxMode && typeof window !== "undefined" && !window.location.pathname.includes("/sandbox") && (
             <a
               href={`/admin/sandbox?code=${code}`}
               className="px-2.5 py-1 rounded-lg bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-400/50 text-cyan-200 text-xs font-bold transition flex items-center gap-1.5 shadow shrink-0"
@@ -552,7 +581,9 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
           <button
             type="button"
             onClick={() => setRightSidebarOpen((v) => !v)}
-            className={`px-2 py-1 rounded text-xs font-bold border transition flex items-center gap-1 cursor-pointer shrink-0 ${
+            className={`rounded text-[10px] sm:text-xs font-bold border transition flex items-center gap-1 cursor-pointer shrink-0 ${
+              isSandboxMode ? "px-1.5 py-0.5" : "px-2 py-1"
+            } ${
               rightSidebarOpen
                 ? "bg-purple-600/30 border-purple-400 text-purple-200 shadow"
                 : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
@@ -564,7 +595,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
           </button>
 
           {/* Gỡ phòng / Xóa phòng khi ở phòng thật */}
-          {!isSandbox && (
+          {!isSandboxMode && (
             <button
               type="button"
               onClick={handleDeleteRoom}
@@ -773,9 +804,10 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
           </div>
         </aside>
 
-        {/* 2. CENTER STAGE: Question Box, Utility Top Bar & Round Control Deck */}
-        <main className="flex-1 overflow-y-auto p-2 space-y-2 flex flex-col justify-between min-h-0 scrollbar-thin">
-          <div className="space-y-2">
+        {/* 2. CENTER STAGE: 2-Tier Architecture (Scrollable Upper Deck + Fixed Action Lower Deck) */}
+        <main className="flex-1 p-1.5 sm:p-2 flex flex-col min-h-0 overflow-hidden">
+          {/* UPPER DECK: Scrollable Content Zone (Question, Answer, Media & Utilities) */}
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin">
             {/* Round & Question Indicator Bar */}
             <div className="flex items-center justify-between text-xs px-1">
               <div className="flex items-center gap-2">
@@ -1071,112 +1103,42 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
               </div>
             )}
 
-            {/* ── BÀN ĐẠO DIỄN HÌNH ẢNH TRƯỜNG QUAY 3D & MÀN HÌNH PHẢI (COMPACT VISION MIXER) ── */}
-            <div className="rounded-xl border border-cyan-500/30 bg-[#090d1e]/95 p-2 shadow-xl flex flex-col gap-1.5 backdrop-blur-md">
-              <div className="flex items-center justify-between text-[11px] font-bold">
-                <div className="flex items-center gap-1.5 text-cyan-300">
+          </div>
+
+          {/* LOWER DECK: Fixed Action Deck (Collapsible 3D Camera Director + Pinned Action Controls) */}
+          <div className="shrink-0 pt-1.5 border-t border-violet-500/20 bg-[#090d1e]/95 space-y-1.5">
+            {/* ── BÀN ĐẠO DIỄN HÌNH ẢNH TRƯỜNG QUAY 3D & MÀN HÌNH PHẢI (COLLAPSIBLE VISION MIXER) ── */}
+            {!expandedCameraMixer ? (
+              <div className="rounded-lg border border-cyan-500/25 bg-[#090d1e]/95 px-2 py-1 shadow-md flex items-center justify-between text-[11px] font-bold">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-xs">🎥</span>
-                  <span className="uppercase tracking-wider font-black text-white">ĐẠO DIỄN TRƯỜNG QUAY 3D</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-700/50">
+                  <span className="uppercase tracking-wider font-black text-cyan-300 text-[10px]">ĐẠO DIỄN 3D:</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 truncate max-w-[130px]">
                     {state.studioCameraManual
-                      ? `Góc C${state.studioCamera ?? 1}${state.studioCamera === 16 ? " (Màn hình TS)" : ""}`
+                      ? `Góc C${state.studioCamera ?? 1}${state.studioCamera === 16 ? " (Màn TS)" : ""}`
                       : state.summaryState?.active
-                        ? state.summaryState.isFullscreen
-                          ? "Tổng kết Toàn cảnh (C10)"
-                          : `Tổng kết TS ${(state.summaryState.orderedSeats[state.summaryState.currentIndex] ?? 0) + 1} (C${seatToStudioCamera(state.summaryState.orderedSeats[state.summaryState.currentIndex] ?? 0)})`
-                        : "Tự động theo vòng"}
+                        ? "Tổng kết"
+                        : "🤖 TỰ ĐỘNG"}
                   </span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowAuxCams((prev) => !prev)}
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                      showAuxCams || (state.studioCameraManual && [9, 11, 12, 13, 14].includes(state.studioCamera ?? -1))
-                        ? "bg-cyan-500/20 text-cyan-200 border-cyan-400"
-                        : "bg-white/5 text-slate-400 border-white/10 hover:text-slate-200"
-                    }`}
-                    title="Bật/tắt hàng góc quay phụ kỹ thuật"
-                  >
-                    {showAuxCams ? "Góc phụ ▲" : "Góc phụ ▼"}
-                  </button>
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"
                     onClick={() => call("studio:camera:auto")}
-                    className={`px-2 py-0.5 rounded text-[10px] font-black border transition cursor-pointer ${
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-black border transition cursor-pointer ${
                       !state.studioCameraManual
                         ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b]"
                         : "bg-white/5 text-slate-300 border-white/15 hover:bg-white/10"
                     }`}
-                    title="Kích hoạt tự động chuyển góc quay thông minh theo diễn biến thi đấu"
+                    title="Tự động theo diễn biến"
                   >
                     🤖 TỰ ĐỘNG
                   </button>
-                </div>
-              </div>
-
-              {/* Core Camera Presets Selector */}
-              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-11 gap-1">
-                {[
-                  { id: 1, label: "CAM 1: Toàn Cảnh Sân Khấu (FOV 36°)", short: "Toàn Cảnh" },
-                  { id: 2, label: "CAM 2: Màn LED & Cổng Lục Giác", short: "Màn LED" },
-                  { id: 3, label: "CAM 3: Bục MC Dẫn Chương Trình", short: "Bục MC" },
-                  { id: 4, label: "CAM 4: Bục Danh Dự Vòng Nguyệt Quế", short: "V.Quế" },
-                  { id: 5, label: "CAM 5: Cận Cảnh TS 1", short: "TS 1" },
-                  { id: 6, label: "CAM 6: Cận Cảnh TS 2", short: "TS 2" },
-                  { id: 7, label: "CAM 7: Cận Cảnh TS 3", short: "TS 3" },
-                  { id: 8, label: "CAM 8: Cận Cảnh TS 4", short: "TS 4" },
-                  ...(seats.length > 4
-                    ? seats.slice(4).map((s, idx) => ({
-                        id: 25 + idx,
-                        label: `CAM ${25 + idx}: Cận Cảnh TS ${5 + idx} (${s.name || `TS ${5 + idx}`})`,
-                        short: `TS ${5 + idx}`,
-                      }))
-                    : []),
-                  { id: 10, label: "CAM 10: Toàn Cảnh Bục Thí Sinh", short: "Bục TS" },
-                  { id: 16, label: "CAM 16: Màn Hình Máy Tính Thí Sinh (Over-the-shoulder)", short: "Màn TS" },
-                  { id: 15, label: "CAM 15: Cận Bục Về Đích", short: "Về Đích" },
-                ].map((c) => {
-                  const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;
-                  const summaryTargetCam =
-                    state.summaryState?.active && !state.studioCameraManual
-                      ? state.summaryState.isFullscreen
-                        ? 10
-                        : seatToStudioCamera(state.summaryState.orderedSeats[state.summaryState.currentIndex] ?? 0)
-                      : null;
-                  const isAutoSummaryCam = summaryTargetCam === c.id;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => call("studio:camera", { cam: c.id })}
-                      title={c.label}
-                      className={`py-1 px-0.5 rounded text-[10px] font-bold transition flex flex-col items-center justify-center cursor-pointer border ${
-                        isPinned
-                          ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b] font-black"
-                          : isAutoSummaryCam
-                            ? "bg-cyan-500/25 text-cyan-100 border-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.45)] font-black"
-                            : c.id === 16
-                              ? "bg-sky-950/60 hover:bg-sky-900/80 text-sky-200 border-sky-600/40"
-                              : "bg-white/5 hover:bg-white/15 text-slate-300 border-white/10 hover:border-cyan-400/40"
-                      }`}
-                    >
-                      <span className="text-[9px] opacity-75 font-mono">C{c.id}</span>
-                      <span className="truncate max-w-full text-[10px] leading-tight">{c.short}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Auxiliary / Fixed Scripted Cameras (Collapsible Drawer) */}
-              {(showAuxCams || (state.studioCameraManual && [9, 11, 12, 13, 14].includes(state.studioCamera ?? -1))) && (
-                <div className="pt-1 border-t border-cyan-500/20 grid grid-cols-5 gap-1">
                   {[
-                    { id: 9, label: "CAM 9: Cẩu Quay Jib Toàn Khán Đài", short: "Cẩu Jib" },
-                    { id: 11, label: "CAM 11: Cam Ẩn Trực Diện Chào Sân", short: "Chào Sân" },
-                    { id: 12, label: "CAM 12: Cam Chéo Khán Đài 3/4", short: "Chéo 3/4" },
-                    { id: 13, label: "CAM 13: Cổng Vòm & Đỉnh Núi", short: "Cổng Vòm" },
-                    { id: 14, label: "CAM 14: Góc Thấp Khởi Động", short: "Góc Thấp" },
+                    { id: 1, short: "C1" },
+                    { id: 2, short: "C2" },
+                    { id: 5, short: "C5" },
+                    { id: 10, short: "C10" },
                   ].map((c) => {
                     const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;
                     return (
@@ -1184,54 +1146,197 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                         key={c.id}
                         type="button"
                         onClick={() => call("studio:camera", { cam: c.id })}
-                        title={c.label}
-                        className={`py-0.5 px-0.5 rounded text-[9px] font-semibold transition flex flex-col items-center justify-center cursor-pointer border ${
+                        className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold border cursor-pointer ${
                           isPinned
-                            ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b] font-black"
-                            : "bg-white/5 hover:bg-white/10 text-slate-400 border-white/10 hover:text-slate-200"
+                            ? "bg-amber-400 text-slate-950 border-amber-300 font-black"
+                            : "bg-white/5 hover:bg-white/10 text-slate-300 border-white/10"
                         }`}
+                        title={`Góc ${c.short}`}
                       >
-                        <span className="text-[8px] opacity-70 font-mono">C{c.id}</span>
-                        <span className="truncate max-w-full leading-tight">{c.short}</span>
+                        {c.short}
                       </button>
                     );
                   })}
-                </div>
-              )}
-
-              {/* Right LED Screen Mode Selector */}
-              <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t border-cyan-500/20 text-[11px]">
-                <span className="text-cyan-300 font-bold flex items-center gap-1">
-                  <span>🖥️</span>
-                  <span>Màn hình phải (Right Screen):</span>
-                </span>
-                <div className="flex items-center gap-1">
-                  {[
-                    { id: "auto", label: "Tự động" },
-                    { id: "roundTitle", label: "Tên phần thi" },
-                    { id: "logo", label: "Logo Olympia" },
-                    { id: "question", label: "Câu hỏi" },
-                    { id: "scoreboard", label: "Bảng điểm" },
-                  ].map((m) => {
-                    const active = (state.rightScreenMode || "auto") === m.id;
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => call("rightScreen:setMode", { mode: m.id })}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                          active
-                            ? "bg-cyan-500 text-slate-950 border-cyan-300 shadow-[0_0_8px_rgba(0,240,255,0.6)] font-black"
-                            : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
-                        }`}
-                      >
-                        {m.label}
-                      </button>
-                    );
-                  })}
+                  <button
+                    type="button"
+                    onClick={() => setExpandedCameraMixer(true)}
+                    className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-200 border border-cyan-400 hover:bg-cyan-500/30 transition cursor-pointer ml-0.5"
+                    title="Mở rộng đầy đủ 11 camera và màn hình phải"
+                  >
+                    Mở rộng ▼
+                  </button>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-xl border border-cyan-500/30 bg-[#090d1e]/95 p-2 shadow-xl flex flex-col gap-1.5 backdrop-blur-md">
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <div className="flex items-center gap-1.5 text-cyan-300">
+                    <span className="text-xs">🎥</span>
+                    <span className="uppercase tracking-wider font-black text-white">ĐẠO DIỄN TRƯỜNG QUAY 3D</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-700/50">
+                      {state.studioCameraManual
+                        ? `Góc C${state.studioCamera ?? 1}${state.studioCamera === 16 ? " (Màn hình TS)" : ""}`
+                        : state.summaryState?.active
+                          ? state.summaryState.isFullscreen
+                            ? "Tổng kết Toàn cảnh (C10)"
+                            : `Tổng kết TS ${(state.summaryState.orderedSeats[state.summaryState.currentIndex] ?? 0) + 1} (C${seatToStudioCamera(state.summaryState.orderedSeats[state.summaryState.currentIndex] ?? 0)})`
+                          : "Tự động theo vòng"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowAuxCams((prev) => !prev)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                        showAuxCams || (state.studioCameraManual && [9, 11, 12, 13, 14].includes(state.studioCamera ?? -1))
+                          ? "bg-cyan-500/20 text-cyan-200 border-cyan-400"
+                          : "bg-white/5 text-slate-400 border-white/10 hover:text-slate-200"
+                      }`}
+                      title="Bật/tắt hàng góc quay phụ kỹ thuật"
+                    >
+                      {showAuxCams ? "Góc phụ ▲" : "Góc phụ ▼"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => call("studio:camera:auto")}
+                      className={`px-2 py-0.5 rounded text-[10px] font-black border transition cursor-pointer ${
+                        !state.studioCameraManual
+                          ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b]"
+                          : "bg-white/5 text-slate-300 border-white/15 hover:bg-white/10"
+                      }`}
+                      title="Kích hoạt tự động chuyển góc quay thông minh theo diễn biến thi đấu"
+                    >
+                      🤖 TỰ ĐỘNG
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedCameraMixer(false)}
+                      className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-200 border border-cyan-400 hover:bg-cyan-500/30 transition cursor-pointer ml-1"
+                      title="Thu gọn"
+                    >
+                      Thu gọn ▲
+                    </button>
+                  </div>
+                </div>
+
+                {/* Core Camera Presets Selector */}
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-11 gap-1">
+                  {[
+                    { id: 1, label: "CAM 1: Toàn Cảnh Sân Khấu (FOV 36°)", short: "Toàn Cảnh" },
+                    { id: 2, label: "CAM 2: Màn LED & Cổng Lục Giác", short: "Màn LED" },
+                    { id: 3, label: "CAM 3: Bục MC Dẫn Chương Trình", short: "Bục MC" },
+                    { id: 4, label: "CAM 4: Bục Danh Dự Vòng Nguyệt Quế", short: "V.Quế" },
+                    { id: 5, label: "CAM 5: Cận Cảnh TS 1", short: "TS 1" },
+                    { id: 6, label: "CAM 6: Cận Cảnh TS 2", short: "TS 2" },
+                    { id: 7, label: "CAM 7: Cận Cảnh TS 3", short: "TS 3" },
+                    { id: 8, label: "CAM 8: Cận Cảnh TS 4", short: "TS 4" },
+                    ...(seats.length > 4
+                      ? seats.slice(4).map((s, idx) => ({
+                          id: 25 + idx,
+                          label: `CAM ${25 + idx}: Cận Cảnh TS ${5 + idx} (${s.name || `TS ${5 + idx}`})`,
+                          short: `TS ${5 + idx}`,
+                        }))
+                      : []),
+                    { id: 10, label: "CAM 10: Toàn Cảnh Bục Thí Sinh", short: "Bục TS" },
+                    { id: 16, label: "CAM 16: Màn Hình Máy Tính Thí Sinh (Over-the-shoulder)", short: "Màn TS" },
+                    { id: 15, label: "CAM 15: Cận Bục Về Đích", short: "Về Đích" },
+                  ].map((c) => {
+                    const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;
+                    const summaryTargetCam =
+                      state.summaryState?.active && !state.studioCameraManual
+                        ? state.summaryState.isFullscreen
+                          ? 10
+                          : seatToStudioCamera(state.summaryState.orderedSeats[state.summaryState.currentIndex] ?? 0)
+                        : null;
+                    const isAutoSummaryCam = summaryTargetCam === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => call("studio:camera", { cam: c.id })}
+                        title={c.label}
+                        className={`py-1 px-0.5 rounded text-[10px] font-bold transition flex flex-col items-center justify-center cursor-pointer border ${
+                          isPinned
+                            ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b] font-black"
+                            : isAutoSummaryCam
+                              ? "bg-cyan-500/25 text-cyan-100 border-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.45)] font-black"
+                              : c.id === 16
+                                ? "bg-sky-950/60 hover:bg-sky-900/80 text-sky-200 border-sky-600/40"
+                                : "bg-white/5 hover:bg-white/15 text-slate-300 border-white/10 hover:border-cyan-400/40"
+                        }`}
+                      >
+                        <span className="text-[9px] opacity-75 font-mono">C{c.id}</span>
+                        <span className="truncate max-w-full text-[10px] leading-tight">{c.short}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Auxiliary / Fixed Scripted Cameras (Collapsible Drawer) */}
+                {(showAuxCams || (state.studioCameraManual && [9, 11, 12, 13, 14].includes(state.studioCamera ?? -1))) && (
+                  <div className="pt-1 border-t border-cyan-500/20 grid grid-cols-5 gap-1">
+                    {[
+                      { id: 9, label: "CAM 9: Cẩu Quay Jib Toàn Khán Đài", short: "Cẩu Jib" },
+                      { id: 11, label: "CAM 11: Cam Ẩn Trực Diện Chào Sân", short: "Chào Sân" },
+                      { id: 12, label: "CAM 12: Cam Chéo Khán Đài 3/4", short: "Chéo 3/4" },
+                      { id: 13, label: "CAM 13: Cổng Vòm & Đỉnh Núi", short: "Cổng Vòm" },
+                      { id: 14, label: "CAM 14: Góc Thấp Khởi Động", short: "Góc Thấp" },
+                    ].map((c) => {
+                      const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => call("studio:camera", { cam: c.id })}
+                          title={c.label}
+                          className={`py-0.5 px-0.5 rounded text-[9px] font-semibold transition flex flex-col items-center justify-center cursor-pointer border ${
+                            isPinned
+                              ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b] font-black"
+                              : "bg-white/5 hover:bg-white/10 text-slate-400 border-white/10 hover:text-slate-200"
+                          }`}
+                        >
+                          <span className="text-[8px] opacity-70 font-mono">C{c.id}</span>
+                          <span className="truncate max-w-full leading-tight">{c.short}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Right LED Screen Mode Selector */}
+                <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t border-cyan-500/20 text-[11px]">
+                  <span className="text-cyan-300 font-bold flex items-center gap-1">
+                    <span>🖥️</span>
+                    <span>Màn hình phải (Right Screen):</span>
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {[
+                      { id: "auto", label: "Tự động" },
+                      { id: "roundTitle", label: "Tên phần thi" },
+                      { id: "logo", label: "Logo Olympia" },
+                      { id: "question", label: "Câu hỏi" },
+                      { id: "scoreboard", label: "Bảng điểm" },
+                    ].map((m) => {
+                      const active = (state.rightScreenMode || "auto") === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => call("rightScreen:setMode", { mode: m.id })}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                            active
+                              ? "bg-cyan-500 text-slate-950 border-cyan-300 shadow-[0_0_8px_rgba(0,240,255,0.6)] font-black"
+                              : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+                          }`}
+                        >
+                          {m.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ROUND-SPECIFIC CONTROL DECK */}
             <div className="rounded-xl border border-violet-500/15 bg-gradient-to-b from-[#1a0d3f]/60 to-[#0f0728]/80 p-2 sm:p-2.5 shadow-xl backdrop-blur-sm">

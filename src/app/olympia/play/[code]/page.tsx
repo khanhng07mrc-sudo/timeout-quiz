@@ -9,8 +9,9 @@ function Inner() {
   const search = useSearchParams();
   const seatStr = search?.get("seat");
   const name = search?.get("name") ?? undefined;
+  const isSandbox = search?.get("sandbox") === "1" || search?.get("variant") === "sandbox";
   const initialSeat = seatStr !== null && seatStr !== undefined ? Number(seatStr) : undefined;
-  return <PlayerPad code={code} initialSeat={initialSeat} initialName={name} />;
+  return <PlayerPad code={code} initialSeat={initialSeat} initialName={name} isSandbox={isSandbox} />;
 }
 
 export default function Page() {

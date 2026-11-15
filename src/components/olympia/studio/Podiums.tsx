@@ -5895,11 +5895,17 @@ export function Podiums({
         }
 
         const isThisContestantInVeDichTurn = isVdActive && cfg.seatId === activeSeat;
-        let showFigure = !isThisContestantInVeDichTurn;
-        if (isEntranceActive) {
-          // During entrance staircase descent, ContestantEntranceWalkingFigures renders walking/arriving figures
-          showFigure = false;
-        }
+        const hasArrivedAtPodium = Boolean(
+          hasEntranceCompleted ||
+          isCompetitionRound ||
+          state?.stage === "finished"
+        );
+        const showFigure =
+          !isThisContestantInVeDichTurn &&
+          !isEntranceActive &&
+          !isLobby &&
+          !isIntro &&
+          hasArrivedAtPodium;
 
         const isDimmed = Boolean(
           isContestantDimmed &&

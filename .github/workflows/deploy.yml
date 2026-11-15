@@ -30,8 +30,12 @@ jobs:
     steps:
       - name: Trigger Render Deploy Hook
         run: |
-          curl -sS -o /dev/null -w "%{http_code}" \
-            -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
-            -H "Content-Type: application/json"
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            curl -sS -o /dev/null -w "%{http_code}" \
+              -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+              -H "Content-Type: application/json"
+          else
+            echo "RENDER_DEPLOY_HOOK_URL is not set. Render auto-deploys from GitHub commits."
+          fi
       - name: Notify success
         run: echo "✅ Deploy triggered successfully"

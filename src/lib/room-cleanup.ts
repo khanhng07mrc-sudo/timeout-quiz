@@ -51,83 +51,44 @@ export async function getStaleRoomsStats(options: CleanupOptions = {}): Promise<
   const playingCutoff = new Date(now.getTime() - playingMaxAgeHours * 60 * 60 * 1000);
   const emptyCutoff = new Date(now.getTime() - emptyMaxAgeHours * 60 * 60 * 1000);
 
-  const [finishedCount, sandboxCount, allSandboxCount, staleLobbyCount, stalePlayingCount, emptyCount] = await Promise.all([
-    prisma.room.count({
-      where: {
-        status: "FINISHED",
-        OR: [
-          { endedAt: { lte: finishedCutoff } },
-          { updatedAt: { lte: finishedCutoff } },
-        ],
+  const rooms = await prisma.room.findMany({
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      endedAt: true,
+      _count: {
+        select: { players: true },
       },
-    }),
-    prisma.room.count({
-      where: {
-        OR: [
-          { name: { startsWith: "[Sandbox]" } },
-          { code: { startsWith: "sb_" } },
-        ],
-        createdAt: { lte: sandboxCutoff },
-      },
-    }),
-    prisma.room.count({
-      where: {
-        OR: [
-          { name: { startsWith: "[Sandbox]" } },
-          { code: { startsWith: "sb_" } },
-        ],
-      },
-    }),
-    prisma.room.count({
-      where: {
-        status: "LOBBY",
-        createdAt: { lte: lobbyCutoff },
-      },
-    }),
-    prisma.room.count({
-      where: {
-        status: { in: ["PLAYING", "PAUSED"] },
-        updatedAt: { lte: playingCutoff },
-      },
-    }),
-    prisma.room.count({
-      where: {
-        players: { none: {} },
-        createdAt: { lte: emptyCutoff },
-      },
-    }),
-  ]);
-
-  const allStaleRooms = await prisma.room.findMany({
-    where: {
-      OR: [
-        {
-          status: "FINISHED",
-          OR: [
-            { endedAt: { lte: finishedCutoff } },
-            { updatedAt: { lte: finishedCutoff } },
-          ],
-        },
-        {
-          name: { startsWith: "[Sandbox]" },
-          createdAt: { lte: sandboxCutoff },
-        },
-        {
-          status: "LOBBY",
-          createdAt: { lte: lobbyCutoff },
-        },
-        {
-          status: { in: ["PLAYING", "PAUSED"] },
-          updatedAt: { lte: playingCutoff },
-        },
-        {
-          players: { none: {} },
-          createdAt: { lte: emptyCutoff },
-        },
-      ],
     },
-    select: { id: true },
   });
+
+  let finishedCount = 0;
+  let sandboxCount = 0;
+  let allSandboxCount = 0;
+  let staleLobbyCount = 0;
+  let stalePlayingCount = 0;
+  let emptyCount = 0;
+  const staleRoomIds = new Set<string>();
+
+  for (const r of rooms) {
+    const isFinished = r.status === "FINISHED" && ((r.endedAt && r.endedAt <= finishedCutoff) || (r.updatedAt <= finishedCutoff));
+    const isSandbox = r.name.startsWith("[Sandbox]") || r.code.startsWith("sb_");
+    const isStaleSandbox = isSandbox && r.createdAt <= sandboxCutoff;
+    const isStaleLobby = r.status === "LOBBY" && r.createdAt <= lobbyCutoff;
+    const isStalePlaying = (r.status === "PLAYING" || r.status === "PAUSED") && r.updatedAt <= playingCutoff;
+    const isEmpty = r._count.players === 0 && r.createdAt <= emptyCutoff;
+
+    if (isFinished) { finishedCount++; staleRoomIds.add(r.id); }
+    if (isSandbox) { allSandboxCount++; }
+    if (isStaleSandbox) { sandboxCount++; staleRoomIds.add(r.id); }
+    if (isStaleLobby) { staleLobbyCount++; staleRoomIds.add(r.id); }
+    if (isStalePlaying) { stalePlayingCount++; staleRoomIds.add(r.id); }
+    if (isEmpty) { emptyCount++; staleRoomIds.add(r.id); }
+  }
 
   return {
     finishedCount,
@@ -136,7 +97,7 @@ export async function getStaleRoomsStats(options: CleanupOptions = {}): Promise<
     staleLobbyCount,
     stalePlayingCount,
     emptyCount,
-    totalStaleCount: allStaleRooms.length,
+    totalStaleCount: staleRoomIds.size,
   };
 }
 

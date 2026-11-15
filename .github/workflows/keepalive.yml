@@ -12,6 +12,6 @@ jobs:
     steps:
       - name: Ping Render Website
         run: |
-          URL="https://timeout-quiz.onrender.com"
+          URL="https://quizorra.onrender.com"
           echo "Pinging $URL to keep Render instance awake..."
           curl -sS -o /dev/null -w "HTTP Status: %{http_code}\n" "$URL" || true

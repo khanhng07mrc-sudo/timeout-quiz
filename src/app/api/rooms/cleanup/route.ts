@@ -12,7 +12,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, stats });
   } catch (err) {
     console.error("[GET /api/rooms/cleanup]", err);
-    return NextResponse.json({ error: "Lỗi kiểm tra phòng cũ" }, { status: 500 });
+    return NextResponse.json({
+      error: "Lỗi kiểm tra phòng cũ",
+      details: err instanceof Error ? err.message : String(err)
+    }, { status: 500 });
   }
 }
 

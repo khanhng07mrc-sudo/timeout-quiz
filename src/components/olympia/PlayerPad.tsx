@@ -446,6 +446,12 @@ export default function PlayerPad({
     state.currentRound === "khoiDong" &&
     state.khoiDong?.segments[state.khoiDong.segIdx]?.kind === "solo";
 
+  const isBuzzerRound =
+    Boolean(state.bellTestMode) ||
+    (state.stage === "playing" && state.currentRound === "khoiDong" && !isSoloKd && Boolean(state.khoiDong?.started)) ||
+    (state.stage === "playing" && state.currentRound === "veDich" && state.veDich?.phase === "stealing") ||
+    (state.stage === "playing" && state.currentRound === "cauHoiPhu" && state.cauHoiPhu?.phase === "question");
+
   return (
     <div className="fixed inset-0 w-full h-full overflow-hidden bg-gradient-to-b from-[#070b1e] via-[#0c1433] to-[#040611] text-white p-2 sm:p-3 flex flex-col justify-between gap-2 select-none">
       {/* ═══════════════════════════════════════════════════════════════════════
@@ -501,7 +507,7 @@ export default function PlayerPad({
             return (
               <div
                 key={s.id}
-                className={`h-14 sm:h-16 rounded-xl px-2.5 py-1.5 flex flex-col justify-between transition-all relative overflow-hidden ${
+                className={`h-11 sm:h-14 rounded-xl px-2 sm:px-2.5 py-1 flex flex-col justify-between transition-all relative overflow-hidden ${
                   isMe
                     ? "border-2 border-red-500 bg-gradient-to-b from-red-950/75 via-slate-900/95 to-slate-950 shadow-[0_0_16px_rgba(239,68,68,0.45)]"
                     : isBuzzed
@@ -515,7 +521,7 @@ export default function PlayerPad({
               >
                 <div className="flex items-center justify-between gap-1 min-w-0">
                   <span
-                    className={`text-[11px] sm:text-xs font-extrabold uppercase truncate ${
+                    className={`text-[10px] sm:text-xs font-extrabold uppercase truncate ${
                       isMe ? "text-amber-300" : "text-slate-300"
                     }`}
                   >
@@ -523,9 +529,9 @@ export default function PlayerPad({
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-0.5 shrink-0 min-h-[16px]">
+                  <div className="flex items-center gap-0.5 shrink-0 min-h-[14px]">
                     {isMe && (
-                      <span className="px-1 py-0.2 rounded bg-red-600 text-[9px] font-black text-white uppercase">
+                      <span className="px-1 py-0.2 rounded bg-red-600 text-[8.5px] sm:text-[9px] font-black text-white uppercase">
                         BẠN
                       </span>
                     )}
@@ -533,7 +539,7 @@ export default function PlayerPad({
                     {isLocked && <span className="text-xs text-rose-400">🔒</span>}
                   </div>
                   <span
-                    className={`text-lg sm:text-2xl font-black tabular-nums leading-none ${
+                    className={`text-base sm:text-xl font-black tabular-nums leading-none ${
                       isMe ? "text-white" : "text-amber-300"
                     }`}
                   >
@@ -546,7 +552,7 @@ export default function PlayerPad({
         </div>
 
         {/* 3. Fixed Question & Media Box */}
-        <div className="flex-1 min-h-[90px] rounded-2xl bg-slate-950/85 border-2 border-white/15 p-2.5 sm:p-4 flex flex-col justify-between relative overflow-hidden shadow-inner">
+        <div className="flex-1 min-h-[90px] rounded-2xl bg-slate-950/85 border-2 border-white/15 p-2 sm:p-3 flex flex-col justify-between relative overflow-hidden shadow-inner">
           {/* VCNV sub-tabs inside Question Box so bottom interaction zone never shifts */}
           {state.stage === "playing" && state.currentRound === "vcnv" && state.vcnv && (
             <div className="shrink-0 flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/10">
@@ -582,14 +588,16 @@ export default function PlayerPad({
             </div>
           )}
 
-          {/* Main Question / Content Area */}
-          <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center overflow-y-auto no-scrollbar px-2 py-1">
-            <QuestionBoxContent
-              state={state}
-              seatId={me.id}
-              emit={emit}
-              vcnvTab={vcnvTab}
-            />
+          {/* Main Question / Content Area - my-auto safely centers without clipping top on scroll */}
+          <div className="flex-1 min-h-0 flex flex-col items-center text-center overflow-y-auto no-scrollbar px-2 py-1 w-full">
+            <div className="my-auto w-full flex flex-col items-center justify-center py-0.5">
+              <QuestionBoxContent
+                state={state}
+                seatId={me.id}
+                emit={emit}
+                vcnvTab={vcnvTab}
+              />
+            </div>
           </div>
 
           {/* Bottom Timer Bar inside Question Box */}
@@ -603,8 +611,8 @@ export default function PlayerPad({
           BOTTOM FIXED INTERACTION AREA (Buzzer / Answer Input / CNV Bell)
          ═══════════════════════════════════════════════════════════════════════ */}
       <div
-        className={`shrink-0 rounded-2xl bg-slate-950/95 border-2 border-white/15 px-3 sm:px-6 py-2 flex items-center justify-center relative overflow-hidden shadow-2xl ${
-          isSoloKd ? "h-auto min-h-[50px]" : "h-[28%] min-h-[115px] sm:min-h-[145px] max-h-[225px]"
+        className={`shrink-0 rounded-2xl bg-slate-950/95 border-2 border-white/15 px-3 sm:px-6 py-1.5 flex items-center justify-center relative overflow-hidden shadow-2xl ${
+          isBuzzerRound ? "h-auto min-h-[96px] sm:min-h-[110px] max-h-[140px]" : "h-auto min-h-[46px] sm:min-h-[52px] max-h-[76px]"
         }`}
       >
         <InteractionZone
@@ -706,11 +714,11 @@ function QuestionBoxContent({
   }
   if (state.introTimer || state.introStandby || state.entranceState?.active) {
     return (
-      <div className="space-y-2">
-        <div className="text-2xl sm:text-3xl font-black tracking-widest uppercase text-cyan-300 animate-pulse">
+      <div className="space-y-1 max-w-full">
+        <div className="text-base sm:text-xl md:text-2xl font-black tracking-wider uppercase text-cyan-300 animate-pulse">
           {state.entranceState?.active ? "CHÀO SÂN THÍ SINH" : "SẴN SÀNG THI ĐẤU"}
         </div>
-        <div className="text-slate-400 text-sm">
+        <div className="text-slate-400 text-xs sm:text-sm">
           {state.entranceState?.active
             ? "Đang giới thiệu từng thí sinh bước vào vị trí thi đấu…"
             : "Đang ở phần giới thiệu trận đấu — Chờ MC mở màn…"}
@@ -720,7 +728,7 @@ function QuestionBoxContent({
   }
   if (state.banner) {
     return (
-      <div className="text-2xl sm:text-4xl font-black uppercase tracking-widest text-amber-300">
+      <div className="text-xl sm:text-3xl font-black uppercase tracking-wider text-amber-300">
         {state.banner}
       </div>
     );
@@ -730,21 +738,21 @@ function QuestionBoxContent({
     case "khoiDong": {
       const kd = state.khoiDong;
       if (!kd || !kd.started || kd.phase === "segmentDone") {
-        return <div className="text-slate-400 text-base sm:text-lg font-semibold">Đang đợi bắt đầu lượt Khởi động…</div>;
+        return <div className="text-slate-400 text-sm sm:text-base font-semibold">Đang đợi bắt đầu lượt Khởi động…</div>;
       }
       if (!kd.questionRevealed || !kd.current) {
-        return <div className="text-sky-300 text-lg sm:text-xl font-black uppercase animate-pulse">Sẵn sàng thi đấu…</div>;
+        return <div className="text-sky-300 text-base sm:text-lg font-black uppercase animate-pulse">Sẵn sàng thi đấu…</div>;
       }
       return (
-        <div className="space-y-2 w-full max-w-3xl">
-          <div className="text-white text-lg sm:text-xl md:text-2xl font-bold leading-relaxed select-text">
+        <div className="space-y-1.5 w-full max-w-3xl">
+          <div className="text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed select-text">
             {kd.current.q}
           </div>
           {kd.current.media && (
-            <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-28 sm:max-h-36 rounded-xl mx-auto" />
+            <MediaView url={kd.current.media} type={kd.current.mediaType} className="max-h-24 sm:max-h-36 rounded-xl mx-auto" />
           )}
           {kd.phase === "result" && kd.current.a && (
-            <div className="mt-2 inline-block px-4 py-1.5 rounded-xl bg-emerald-950/80 border border-emerald-400 text-emerald-300 font-black text-base sm:text-lg">
+            <div className="mt-1 inline-block px-3 py-1 rounded-xl bg-emerald-950/80 border border-emerald-400 text-emerald-300 font-black text-xs sm:text-sm">
               ✔ Đáp án: <span className="text-white">{kd.current.a}</span>
             </div>
           )}
@@ -765,7 +773,7 @@ function QuestionBoxContent({
               return (
                 <div
                   key={rIdx}
-                  className={`rounded-xl p-2.5 border flex items-center justify-between gap-2 ${
+                  className={`rounded-xl p-2 border flex items-center justify-between gap-2 ${
                     isSolved
                       ? "bg-emerald-950/60 border-emerald-400/60 text-white"
                       : row?.opened
@@ -774,14 +782,14 @@ function QuestionBoxContent({
                   }`}
                 >
                   <div className="min-w-0">
-                    <div className="text-[11px] font-black uppercase text-amber-300">
+                    <div className="text-[10px] font-black uppercase text-amber-300">
                       Hàng ngang {rIdx + 1} ({lc} chữ cái)
                     </div>
                     <div className="text-xs sm:text-sm font-bold truncate mt-0.5">
                       {isSolved ? row?.answer || "Đã mở" : row?.opened ? "Đã mở (Không có ĐA đúng)" : "🔒 Chưa mở"}
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-black text-xs shrink-0">
+                  <span className="px-1.5 py-0.2 rounded bg-blue-600 text-white font-black text-[11px] shrink-0">
                     {lc} ô
                   </span>
                 </div>
@@ -792,16 +800,16 @@ function QuestionBoxContent({
       }
 
       if (v.currentRow < 0) {
-        return <div className="text-slate-400 text-base sm:text-lg font-semibold">Đang đợi MC chọn hàng ngang…</div>;
+        return <div className="text-slate-400 text-sm sm:text-base font-semibold">Đang đợi MC chọn hàng ngang…</div>;
       }
       if (v.phase === "selecting") {
         const lc = v.currentRow < 4 ? v.rows[v.currentRow]?.letterCount || v.rows[v.currentRow]?.answer?.length || "?" : "";
         return (
           <div className="space-y-1">
-            <div className="text-amber-300 text-lg sm:text-xl font-black uppercase">
+            <div className="text-amber-300 text-base sm:text-lg font-black uppercase">
               {v.currentRow < 4 ? `HÀNG NGANG SỐ ${v.currentRow + 1} (${lc} CHỮ CÁI)` : "⭐ Ô TRUNG TÂM"}
             </div>
-            <div className="text-slate-400 text-sm">Đã chọn hàng ngang. Đang đợi mở câu hỏi…</div>
+            <div className="text-slate-400 text-xs sm:text-sm">Đã chọn hàng ngang. Đang đợi mở câu hỏi…</div>
           </div>
         );
       }
@@ -809,20 +817,20 @@ function QuestionBoxContent({
         const row = v.rows[v.currentRow];
         const lc = row?.letterCount || row?.answer?.length || "?";
         return (
-          <div className="space-y-1.5 max-w-3xl">
-            <div className="text-sky-300 text-xs sm:text-sm font-black uppercase tracking-wider">
+          <div className="space-y-1 max-w-3xl">
+            <div className="text-sky-300 text-xs font-black uppercase tracking-wider">
               Hàng ngang số {v.currentRow + 1} ({lc} chữ cái)
             </div>
-            <div className="text-white text-lg sm:text-xl md:text-2xl font-bold leading-relaxed select-text">
+            <div className="text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed select-text">
               {row?.hint || "Đang tải câu hỏi…"}
             </div>
           </div>
         );
       }
       return (
-        <div className="space-y-1.5 max-w-3xl">
-          <div className="text-amber-400 text-xs sm:text-sm font-black uppercase tracking-wider">⭐ CÂU HỎI Ô TRUNG TÂM</div>
-          <div className="text-white text-lg sm:text-xl md:text-2xl font-bold leading-relaxed select-text">
+        <div className="space-y-1 max-w-3xl">
+          <div className="text-amber-400 text-xs font-black uppercase tracking-wider">⭐ CÂU HỎI Ô TRUNG TÂM</div>
+          <div className="text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed select-text">
             {v.centerQuestion?.q || "Đang tải câu hỏi trung tâm…"}
           </div>
         </div>
@@ -832,16 +840,16 @@ function QuestionBoxContent({
     case "tangToc": {
       const tt = state.tangToc;
       if (!tt || tt.qIdx < 0 || tt.phase === "idle") {
-        return <div className="text-slate-400 text-base sm:text-lg font-semibold">Chuẩn bị mở câu hỏi Tăng Tốc…</div>;
+        return <div className="text-slate-400 text-sm sm:text-base font-semibold">Chuẩn bị mở câu hỏi Tăng Tốc…</div>;
       }
       const q = tt.questions[tt.qIdx];
       return (
-        <div className="space-y-2 w-full max-w-3xl">
-          <div className="text-white text-base sm:text-lg md:text-xl font-bold leading-relaxed select-text">
+        <div className="space-y-1.5 w-full max-w-3xl">
+          <div className="text-white text-sm sm:text-base md:text-lg font-bold leading-snug select-text">
             {q?.q || "Quan sát dữ kiện trên màn hình chính"}
           </div>
           {q?.media && (
-            <MediaView url={q.media} className="max-h-28 sm:max-h-36 rounded-xl mx-auto" />
+            <MediaView url={q.media} className="max-h-24 sm:max-h-36 rounded-xl mx-auto" />
           )}
         </div>
       );
@@ -869,7 +877,7 @@ function QuestionBoxContent({
           );
         }
         return (
-          <div className="text-amber-300 text-lg sm:text-xl font-bold">
+          <div className="text-amber-300 text-base sm:text-lg font-bold">
             {seatName(state, owner)} đang lựa chọn gói câu hỏi Về Đích…
           </div>
         );
@@ -878,16 +886,16 @@ function QuestionBoxContent({
       if (!vd.current) {
         const pkg = vd.packages[owner];
         return (
-          <div className="space-y-2">
-            <div className="text-amber-300 text-sm sm:text-base font-bold uppercase">
+          <div className="space-y-1.5">
+            <div className="text-amber-300 text-xs sm:text-sm font-bold uppercase">
               Gói câu hỏi của {seatName(state, owner)}
             </div>
             {pkg && (
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex items-center justify-center gap-2">
                 {pkg.map((p, i) => (
                   <div
                     key={i}
-                    className="px-4 py-2 rounded-xl bg-red-600/80 border border-amber-300 text-white font-black text-xl"
+                    className="px-3 py-1.5 rounded-xl bg-red-600/80 border border-amber-300 text-white font-black text-lg"
                   >
                     {p.points}đ
                   </div>
@@ -899,19 +907,19 @@ function QuestionBoxContent({
       }
 
       return (
-        <div className="space-y-2 w-full max-w-3xl">
-          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-black text-amber-300 uppercase">
+        <div className="space-y-1.5 w-full max-w-3xl">
+          <div className="flex items-center justify-center gap-2 text-xs font-black text-amber-300 uppercase">
             <span>Câu {vd.qIdx + 1} · {vd.current.points} điểm</span>
             {vd.hopeStarActive && <span className="text-yellow-300">⭐ NGÔI SAO HY VỌNG</span>}
           </div>
-          <div className="text-white text-lg sm:text-xl md:text-2xl font-bold leading-relaxed select-text">
+          <div className="text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed select-text">
             {vd.current.q.q}
           </div>
           {vd.current.q.media && (
-            <MediaView url={vd.current.q.media} type={vd.current.q.mediaType} className="max-h-28 sm:max-h-36 rounded-xl mx-auto" />
+            <MediaView url={vd.current.q.media} type={vd.current.q.mediaType} className="max-h-24 sm:max-h-36 rounded-xl mx-auto" />
           )}
           {vd.phase === "result" && vd.current.q.a && (
-            <div className="mt-1 inline-block px-4 py-1 rounded-xl bg-emerald-950/80 border border-emerald-400 text-emerald-300 font-black text-sm sm:text-base">
+            <div className="mt-1 inline-block px-3 py-1 rounded-xl bg-emerald-950/80 border border-emerald-400 text-emerald-300 font-black text-xs sm:text-sm">
               ✔ Đáp án: <span className="text-white">{vd.current.q.a}</span>
             </div>
           )}
@@ -924,15 +932,15 @@ function QuestionBoxContent({
       if (!cp) return null;
       const q = cp.questions[cp.qIdx];
       if (!q || cp.phase === "idle") {
-        return <div className="text-slate-400 text-base sm:text-lg font-semibold">Chuẩn bị Câu hỏi phụ…</div>;
+        return <div className="text-slate-400 text-sm sm:text-base font-semibold">Chuẩn bị Câu hỏi phụ…</div>;
       }
       return (
-        <div className="space-y-2 max-w-3xl">
-          <div className="text-white text-lg sm:text-xl md:text-2xl font-bold leading-relaxed select-text">
+        <div className="space-y-1.5 max-w-3xl">
+          <div className="text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed select-text">
             {q.q}
           </div>
           {cp.phase === "result" && q.a && (
-            <div className="text-emerald-300 font-black text-lg">✔ Đáp án: {q.a}</div>
+            <div className="text-emerald-300 font-black text-sm sm:text-base">✔ Đáp án: {q.a}</div>
           )}
         </div>
       );
@@ -1099,8 +1107,8 @@ function InteractionZone({
             )}
           </div>
 
-          {/* Fixed Bottom-Right: CNV Buzzer Button */}
-          <div className="shrink-0 flex flex-col items-center justify-center">
+          {/* Fixed Right: Compact CNV Buzzer Pill Button */}
+          <div className="shrink-0 flex items-center justify-center">
             <button
               type="button"
               disabled={!canBuzzCnv}
@@ -1113,14 +1121,14 @@ function InteractionZone({
                 if (!canBuzzCnv) return;
                 triggerBuzz();
               }}
-              className={`w-28 h-28 sm:w-32 sm:h-32 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider border-4 flex flex-col items-center justify-center gap-1 transition active:scale-95 cursor-pointer shadow-xl ${
+              className={`h-11 sm:h-12 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider border-2 sm:border-3 flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow-lg whitespace-nowrap ${
                 canBuzzCnv
-                  ? "bg-gradient-to-b from-amber-500 via-red-600 to-rose-700 border-amber-300 text-white shadow-[0_0_25px_rgba(239,68,68,0.65)]"
+                  ? "bg-gradient-to-r from-amber-500 via-red-600 to-rose-700 border-amber-300 text-white shadow-[0_0_20px_rgba(239,68,68,0.55)] animate-pulse"
                   : "bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed opacity-60"
               }`}
             >
-              <span className="text-2xl sm:text-3xl">🔔</span>
-              <span className="text-center leading-tight px-1">
+              <span className="text-base sm:text-lg">🔔</span>
+              <span>
                 {hasBuzzed ? "ĐÃ BẤM CNV" : out ? "ĐÃ KHÓA" : "CHUÔNG CNV"}
               </span>
             </button>
@@ -1237,9 +1245,9 @@ function CircularBuzzer3D({
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full max-w-sm mx-auto select-none">
+    <div className="relative flex flex-col items-center justify-center w-full max-w-sm mx-auto select-none py-0.5">
       {/* ── Fixed Button Container: perfectly centered at all times ── */}
-      <div className="relative flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 shrink-0">
+      <div className="relative flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 shrink-0">
         <button
           type="button"
           disabled={!enabled}
@@ -1249,23 +1257,23 @@ function CircularBuzzer3D({
             fireOnce();
           }}
           onClick={fireOnce}
-          className={`w-full h-full rounded-full font-black text-xs sm:text-sm uppercase tracking-wider border-4 sm:border-[5px] flex flex-col items-center justify-center gap-1 transition-transform duration-75 cursor-pointer shrink-0 ${
+          className={`w-full h-full rounded-full font-black text-[11px] sm:text-xs md:text-sm uppercase tracking-wider border-3 sm:border-4 flex flex-col items-center justify-center gap-0.5 sm:gap-1 transition-transform duration-75 cursor-pointer shrink-0 ${
             pressedLocal ? "scale-90 brightness-125" : "active:scale-95"
           } ${
             enabled
-              ? "bg-gradient-to-b from-red-500 via-red-600 to-rose-800 border-amber-300 text-white shadow-[0_0_35px_rgba(239,68,68,0.8),inset_0_4px_12px_rgba(255,255,255,0.4)] animate-pulse"
+              ? "bg-gradient-to-b from-red-500 via-red-600 to-rose-800 border-amber-300 text-white shadow-[0_0_25px_rgba(239,68,68,0.75),inset_0_4px_10px_rgba(255,255,255,0.4)] animate-pulse"
               : "bg-slate-800/90 border-slate-700 text-slate-400 cursor-not-allowed opacity-70 shadow-inner"
           }`}
         >
-          <span className="text-xl sm:text-2xl">🔔</span>
-          <span className="px-1 text-center leading-tight text-[11px] sm:text-xs font-black break-words max-w-[120px]">{label}</span>
+          <span className="text-lg sm:text-xl">🔔</span>
+          <span className="px-1 text-center leading-tight text-[10px] sm:text-xs font-black break-words max-w-[110px]">{label}</span>
         </button>
       </div>
 
       {/* ── Fixed Bottom SubLabel: constant height so button never shifts ── */}
-      <div className="h-6 mt-1.5 flex items-center justify-center text-center px-2 w-full overflow-hidden">
+      <div className="h-4 sm:h-5 mt-1 flex items-center justify-center text-center px-2 w-full overflow-hidden">
         <span
-          className={`text-[11px] sm:text-xs font-semibold leading-tight text-center max-w-[340px] ${
+          className={`text-[10px] sm:text-xs font-semibold leading-tight text-center max-w-[340px] truncate ${
             enabled ? "text-amber-300" : "text-slate-400"
           }`}
         >

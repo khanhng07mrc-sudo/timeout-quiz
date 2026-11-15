@@ -230,7 +230,19 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
       } else if (e.key === "r" || e.key === "R") {
         e.preventDefault();
         if (state?.currentRound === "vcnv") call("vcnv:reveal");
-        else if (state?.currentRound === "tangToc") call("tt:reveal");
+        else if (state?.currentRound === "tangToc") {
+          const tt = state.tangToc;
+          if (tt && (tt.phase === "ranking" || tt.phase === "graded")) {
+            if (tt.viewMode === "question") call("tt:viewRanking");
+            else call("tt:viewQuestion");
+          } else {
+            call("tt:reveal");
+          }
+        }
+      } else if (e.key === "h" || e.key === "H") {
+        e.preventDefault();
+        if (state?.currentRound === "tangToc") call("tt:toggleHideOverlay");
+        else call("studio:toggle");
       } else if (e.key === "g" || e.key === "G") {
         e.preventDefault();
         if (state?.currentRound === "tangToc") call("tt:grade");
@@ -715,7 +727,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                 title="Bắt đầu hoạt cảnh từng thí sinh bước từ cổng vòm xuống bục"
               >
                 <span>👥</span>
-                <span className="truncate">Chào & Giới thiệu thí sinh</span>
+                <span className="truncate">Chào sân TS</span>
               </button>
             )}
 
@@ -1109,7 +1121,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                   { id: 1, label: "CAM 1: Toàn Cảnh Sân Khấu (FOV 36°)", short: "Toàn Cảnh" },
                   { id: 2, label: "CAM 2: Màn LED & Cổng Lục Giác", short: "Màn LED" },
                   { id: 3, label: "CAM 3: Bục MC Dẫn Chương Trình", short: "Bục MC" },
-                  { id: 4, label: "CAM 4: Bục Danh Dự Vòng Nguyệt Quế", short: "Nguyệt Quế" },
+                  { id: 4, label: "CAM 4: Bục Danh Dự Vòng Nguyệt Quế", short: "V.Quế" },
                   { id: 5, label: "CAM 5: Cận Cảnh TS 1", short: "TS 1" },
                   { id: 6, label: "CAM 6: Cận Cảnh TS 2", short: "TS 2" },
                   { id: 7, label: "CAM 7: Cận Cảnh TS 3", short: "TS 3" },
@@ -1122,7 +1134,7 @@ export const HostConsole = React.memo(function HostConsole({ code, hostKey }: { 
                       }))
                     : []),
                   { id: 10, label: "CAM 10: Toàn Cảnh Bục Thí Sinh", short: "Bục TS" },
-                  { id: 16, label: "CAM 16: Màn Hình Máy Tính Thí Sinh (Over-the-shoulder)", short: "Màn Hình TS" },
+                  { id: 16, label: "CAM 16: Màn Hình Máy Tính Thí Sinh (Over-the-shoulder)", short: "Màn TS" },
                   { id: 15, label: "CAM 15: Cận Bục Về Đích", short: "Về Đích" },
                 ].map((c) => {
                   const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;
@@ -3232,12 +3244,24 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
           <div className="w-full grid grid-cols-3 gap-1.5">
             <button
               type="button"
-              onClick={() => call(tt.viewMode === "question" && (tt.phase === "ranking" || tt.phase === "graded") ? "tt:showRanking" : "tt:reveal")}
+              onClick={() => {
+                if (tt.phase === "ranking" || tt.phase === "graded") {
+                  call(tt.viewMode === "question" ? "tt:viewRanking" : "tt:viewQuestion");
+                } else {
+                  call("tt:reveal");
+                }
+              }}
               className="py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-black shadow cursor-pointer flex items-center justify-center gap-1"
-              title="Bước 1: Hiện bảng đáp án & thời gian xếp hạng của thí sinh"
+              title="Bước 1: Hiện bảng đáp án hoặc chuyển đổi xem lại câu hỏi"
             >
-              <span>👁</span>
-              <span>{tt.viewMode === "question" && (tt.phase === "ranking" || tt.phase === "graded") ? "Xem Bảng ĐA" : "Hiện ĐA TS (R)"}</span>
+              <span>{tt.phase === "ranking" || tt.phase === "graded" ? (tt.viewMode === "question" ? "👁" : "❓") : "👁"}</span>
+              <span className="truncate">
+                {tt.phase === "ranking" || tt.phase === "graded"
+                  ? tt.viewMode === "question"
+                    ? "Bảng ĐA (R)"
+                    : "Xem lại Câu"
+                  : "Hiện ĐA TS (R)"}
+              </span>
             </button>
             <button
               type="button"
@@ -3281,21 +3305,41 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
           </button>
         </div>
 
-        {/* Right: Nền chờ đáp án & Ô Trống */}
-        <div className="space-y-2">
+        {/* Right: Nền chờ đáp án & Tạm ẩn đồ hoạ & Dừng nhạc nền */}
+        <div className="space-y-1.5">
           <button
             type="button"
             onClick={() => call("tt:blank")}
-            className="w-full py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold border border-white/10 cursor-pointer"
+            className={`w-full py-2 rounded-xl text-xs font-bold border transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              tt.showWaitingBg
+                ? "bg-amber-500/30 border-amber-400 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.35)] font-black"
+                : "bg-white/10 hover:bg-white/15 text-slate-200 border-white/10"
+            }`}
+            title="Bật/Tắt nền chờ trống (Xanh công nghệ V3 hoặc Xám theme cổ điển) mà không ảnh hưởng trạng thái câu hỏi"
           >
-            Nền chờ đáp án / Ẩn (W)
+            <span>🖼️</span>
+            <span>{tt.showWaitingBg ? "Nền chờ: ĐANG BẬT (W)" : "Nền chờ trống (W)"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => call("tt:toggleHideOverlay")}
+            className={`w-full py-2 rounded-xl text-xs font-bold border transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              tt.hideOverlay
+                ? "bg-purple-600/40 border-purple-400 text-purple-200 shadow-[0_0_12px_rgba(168,85,247,0.35)] font-black"
+                : "bg-white/10 hover:bg-white/15 text-slate-200 border-white/10"
+            }`}
+            title="Tạm ẩn đồ hoạ 2D câu hỏi/đáp án để khoe toàn cảnh trường quay 3D, MC và bục thí sinh (timer và đáp án vẫn chạy ngầm)"
+          >
+            <span>{tt.hideOverlay ? "🙈" : "👁️"}</span>
+            <span>{tt.hideOverlay ? "Đồ hoạ: ĐANG ẨN (H)" : "Tạm ẩn đồ hoạ (H)"}</span>
           </button>
           <button
             type="button"
             onClick={() => call("audio:stop_bgm")}
-            className="w-full py-2 rounded-xl bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer"
+            className="w-full py-1.5 rounded-xl bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer flex items-center justify-center gap-1"
           >
-            Dừng nhạc nền
+            <span>🔇</span>
+            <span>Dừng nhạc nền</span>
           </button>
         </div>
       </div>

@@ -2268,6 +2268,7 @@ export class OlympiaGame {
           v.answersRevealed = false;
           v.revealedCorrectAnswer = false;
           v.centerWrong = false;
+          v.revealCount = 0;
           this.cue("2_VuotChuongNgaiVat/choose_row");
           return OK;
         }
@@ -2278,6 +2279,7 @@ export class OlympiaGame {
         v.answers = {};
         v.answersRevealed = false;
         v.revealedCorrectAnswer = false;
+        v.revealCount = 0;
         v.rows[i].wrong = false;
         this.cue("2_VuotChuongNgaiVat/choose_row");
         return OK;
@@ -2297,7 +2299,10 @@ export class OlympiaGame {
         v.revealedCorrectAnswer = false;
         v.phase = "answers";
         st.studioCameraManual = false;
-        this.cue("2_VuotChuongNgaiVat/reveal_answers");
+        v.revealCount = (v.revealCount || 0) + 1;
+        if (v.revealCount === 1) {
+          this.cue("2_VuotChuongNgaiVat/reveal_answers");
+        }
         return OK;
       }
       case "vcnv:revealCorrect": {
@@ -2647,11 +2652,26 @@ export class OlympiaGame {
         }
         return fail("Câu không hợp lệ");
       }
-      case "tt:blank": {
-        // Nền chờ ĐA (W): chuyển camera sang toàn cảnh thí sinh (CAM 10), hiển thị nền chờ mờ (tách biệt âm thanh ô trống)
-        (tt as any).phase = "waitingAnswer";
-        st.studioCamera = 10;
-        st.studioCameraManual = true;
+      case "tt:blank":
+      case "tt:toggleWaitingBg": {
+        // Nền chờ ĐA (W): Bật/tắt hiển thị nền trống (xanh công nghệ V3 hoặc xám cổ điển) mà KHÔNG làm mất phase hay timer
+        tt.showWaitingBg = !tt.showWaitingBg;
+        if (tt.showWaitingBg) {
+          st.studioCamera = 10;
+          st.studioCameraManual = true;
+        } else {
+          st.studioCameraManual = false;
+        }
+        return OK;
+      }
+      case "tt:toggleHideOverlay": {
+        // Tạm ẩn đồ hoạ câu hỏi/đáp án 2D: hiển thị toàn cảnh trường quay 3D thực tế mà KHÔNG ảnh hưởng timer hay đáp án
+        tt.hideOverlay = !tt.hideOverlay;
+        return OK;
+      }
+      case "tt:viewQuestion": {
+        // Quay lại xem câu hỏi bất kỳ lúc nào mà không làm mất đáp án hay thứ tự đã xếp
+        tt.viewMode = "question";
         return OK;
       }
       case "tt:revealAndGrade": {
@@ -2668,6 +2688,9 @@ export class OlympiaGame {
         tt.phase = "idle";
         tt.viewMode = "question";
         tt.showAnswerImage = false;
+        tt.showWaitingBg = false;
+        tt.hideOverlay = false;
+        tt.revealCount = 0;
         tt.submissions = {};
         tt.ranking = [];
         tt.correctAnswer = undefined;
@@ -2692,6 +2715,9 @@ export class OlympiaGame {
         tt.viewMode = "question";
         tt.showAnswerImage = false;
         tt.revealedCorrectAnswer = false;
+        tt.showWaitingBg = false;
+        tt.hideOverlay = false;
+        tt.revealCount = 0;
         this.cue("3_TangToc/show_question");
         return OK;
       }
@@ -2699,6 +2725,7 @@ export class OlympiaGame {
         tt.showAnswerImage = !tt.showAnswerImage;
         return OK;
       }
+      case "tt:viewRanking":
       case "tt:showRanking": {
         if (tt.qIdx < 0) return fail("Chưa có câu hỏi");
         tt.viewMode = "ranking";
@@ -2758,7 +2785,12 @@ export class OlympiaGame {
         tt.revealedCorrectAnswer = false;
         tt.phase = "ranking";
         tt.viewMode = "ranking";
-        this.cue("3_TangToc/show_answer");
+        tt.showWaitingBg = false;
+        tt.hideOverlay = false;
+        tt.revealCount = (tt.revealCount || 0) + 1;
+        if (tt.revealCount === 1) {
+          this.cue("3_TangToc/show_answer");
+        }
         return OK;
       }
       case "tt:revealCorrect": {

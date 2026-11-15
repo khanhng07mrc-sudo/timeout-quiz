@@ -109,15 +109,17 @@ const tt2Svg = canvasWrapper(`
     <g transform="translate(60, 50)">
       <rect x="90" y="40" width="860" height="20" rx="10" fill="#334155"/>
 
+      <!-- Connecting Segments Behind Nodes (Drawn BEFORE nodes to prevent clipping text) -->
+      <rect x="90" y="43" width="286" height="14" fill="#38bdf8"/>
+      <rect x="376" y="43" width="286" height="14" fill="#22c55e"/>
+      <rect x="662" y="43" width="286" height="14" fill="#d97706"/>
+
       <!-- Node 1: 15/10/2025 -->
       <g transform="translate(90, 0)">
         <text x="0" y="0" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="32" fill="#cbd5e1" text-anchor="middle">1</text>
         <circle cx="0" cy="50" r="46" fill="#ea580c" stroke="#fed7aa" stroke-width="4.5" filter="url(#shadow)"/>
         <text x="0" y="56" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="16" fill="#ffffff" text-anchor="middle">15/10/2025</text>
       </g>
-
-      <!-- Connecting Seg 1-2 -->
-      <rect x="90" y="43" width="286" height="14" fill="#38bdf8"/>
 
       <!-- Node 2: 23/02/2026 -->
       <g transform="translate(376, 0)">
@@ -126,18 +128,12 @@ const tt2Svg = canvasWrapper(`
         <text x="0" y="56" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="16" fill="#ffffff" text-anchor="middle">23/02/2026</text>
       </g>
 
-      <!-- Connecting Seg 2-3 -->
-      <rect x="376" y="43" width="286" height="14" fill="#22c55e"/>
-
       <!-- Node 3: 21/10/2026 -->
       <g transform="translate(662, 0)">
         <text x="0" y="0" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="32" fill="#cbd5e1" text-anchor="middle">3</text>
         <circle cx="0" cy="50" r="46" fill="#16a34a" stroke="#bbf7d0" stroke-width="4.5" filter="url(#shadow)"/>
         <text x="0" y="56" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="16" fill="#ffffff" text-anchor="middle">21/10/2026</text>
       </g>
-
-      <!-- Connecting Seg 3-4 -->
-      <rect x="662" y="43" width="286" height="14" fill="#d97706"/>
 
       <!-- Node 4: 26/10/2026 -->
       <g transform="translate(948, 0)">

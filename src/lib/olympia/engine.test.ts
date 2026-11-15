@@ -1999,9 +1999,10 @@ test("VCNV selecting, openQuestion, blank, auto-grid on correct/wrong & Summary 
   assert.ok(ttDisp.tangToc!.submissions[0]);
   assert.equal(ttDisp.tangToc!.submissions[0].answer, "•");
 
-  // tt:blank sets waitingAnswer without playing blank_space
+  // tt:blank sets showWaitingBg without destroying question phase or playing blank_space
   act(gTT, "tt:blank");
-  assert.equal(gTT.state.tangToc!.phase, "waitingAnswer");
+  assert.equal(gTT.state.tangToc!.showWaitingBg, true);
+  assert.equal(gTT.state.tangToc!.phase, "question");
   assert.equal(gTT.state.studioCamera, 10);
 
   // Reveal ranking

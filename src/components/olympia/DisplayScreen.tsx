@@ -811,15 +811,22 @@ function TangToc({ state, serverNow }: P) {
   const tt = state.tangToc!;
   if (!tt || tt.phase === "idle") return null;
 
-  // 0. Nền chờ ĐA (W): Nền xanh Olympia công nghệ cho Theme Mũi tên V3, nền blur cho Theme cổ điển
-  if ((tt as any).phase === "waitingAnswer") {
+  // 0. Nền chờ ĐA (W): Nền xanh Olympia công nghệ cho Theme Mũi tên V3, nền xám theme cổ điển
+  if (tt.showWaitingBg || (tt as any).phase === "waitingAnswer") {
     return state.themeMode !== "o26_classic" ? (
       <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
         <Olympia22BackgroundBackdrop />
       </div>
     ) : (
-      <div className="absolute inset-0 bg-[#040e24]/75 backdrop-blur-sm animate-fade-in pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#262930] via-[#191b22] to-[#0c0e12] backdrop-blur-md animate-fade-in pointer-events-none flex items-center justify-center">
+        <div className="w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-600/20 via-transparent to-black/85" />
+      </div>
     );
+  }
+
+  // Tạm ẩn đồ hoạ câu hỏi/đáp án (H): trả về null để lộ 100% trường quay 3D thực tế mà không ảnh hưởng timer hay đáp án
+  if (tt.hideOverlay) {
+    return null;
   }
 
   // 1. Candidate Answers Revealed & Graded -> Fullscreen Ranked Layout (unless Host switched to view question)

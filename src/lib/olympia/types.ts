@@ -437,6 +437,7 @@ export interface VcnvState {
   revealedCorrectAnswer?: boolean;
   keywordLength?: number;
   lastJudgedWrongAt?: number;
+  revealCount?: number;
 }
 
 export interface TangTocRankingItem {
@@ -453,7 +454,7 @@ export interface TangTocRankingItem {
 
 export interface TangTocState {
   qIdx: number; // -1 none
-  phase: "idle" | "question" | "ranking" | "graded";
+  phase: "idle" | "question" | "ranking" | "graded" | "waitingAnswer";
   timer: TimerState;
   submissions: Record<number, TangTocSubmissionRecord>;
   ranking: TangTocRankingItem[];
@@ -464,6 +465,9 @@ export interface TangTocState {
   revealedCorrectAnswer?: boolean;
   viewMode?: "question" | "ranking";
   showAnswerImage?: boolean;
+  showWaitingBg?: boolean;
+  hideOverlay?: boolean;
+  revealCount?: number;
 }
 
 export interface VeDichState {

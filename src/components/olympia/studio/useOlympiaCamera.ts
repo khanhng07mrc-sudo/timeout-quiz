@@ -102,7 +102,9 @@ export function evaluateVeDichCameraState(
   now: number,
   phaseEnteredAt: number,
   onStageEnteredAt: number,
-  activeCount: number
+  activeCount: number,
+  lastVdBuzzedSeatRef?: { current: number | null },
+  vdBuzzedAtRef?: { current: number }
 ): OlympiaCameraState {
   if (vd.phase === "result") {
     const resultElapsed = Math.max(0, (now - phaseEnteredAt) / 1000);
@@ -128,6 +130,21 @@ export function evaluateVeDichCameraState(
 
   if (vd.phase === "stealing") {
     if (vd.steal?.buzzedSeat != null) {
+      if (lastVdBuzzedSeatRef && vdBuzzedAtRef) {
+        if (lastVdBuzzedSeatRef.current !== vd.steal.buzzedSeat) {
+          lastVdBuzzedSeatRef.current = vd.steal.buzzedSeat;
+          vdBuzzedAtRef.current = now;
+        }
+        const elapsedSinceBuzz = (now - vdBuzzedAtRef.current) / 1000;
+        if (elapsedSinceBuzz < 0.8) {
+          return {
+            camAngle: 10,
+            transitionMode: "CUT",
+            isOverlayHidden: false,
+            pushInProgress: 0.1,
+          };
+        }
+      }
       return {
         camAngle: getCameraForSeat(vd.steal.buzzedSeat, activeCount),
         transitionMode: "CUT",
@@ -135,6 +152,8 @@ export function evaluateVeDichCameraState(
         pushInProgress: 0.2,
       };
     }
+    if (lastVdBuzzedSeatRef) lastVdBuzzedSeatRef.current = null;
+    if (vdBuzzedAtRef) vdBuzzedAtRef.current = 0;
     return {
       camAngle: 10,
       transitionMode: "CUT",
@@ -247,6 +266,12 @@ export function useOlympiaCameraState(
   const vdOnStageEnteredAtRef = useRef<number>(Date.now());
   const lastKdBuzzedSeatRef = useRef<number | null>(null);
   const kdBuzzedAtRef = useRef<number>(0);
+  const lastVcnvBuzzedSeatRef = useRef<number | null>(null);
+  const vcnvBuzzedAtRef = useRef<number>(0);
+  const lastVdBuzzedSeatRef = useRef<number | null>(null);
+  const vdBuzzedAtRef = useRef<number>(0);
+  const lastChpBuzzedSeatRef = useRef<number | null>(null);
+  const chpBuzzedAtRef = useRef<number>(0);
 
   useEffect(() => {
     if (state?.currentRound && state.currentRound !== lastRoundRef.current) {
@@ -570,9 +595,24 @@ export function useOlympiaCameraState(
       const v = state.vcnv;
 
       // If someone rang the obstacle bell:
+      // USER REQUIREMENT: Hệ thống luôn ưu tiên đưa code xử lý tín hiệu đỏ bục lên trước việc hiện tín hiệu lên đồ hoạ.
+      // Giữ CAM 10 toàn cảnh bục trong 0.8s để khán giả quan sát bục sáng đỏ rực trước khi CUT sang cận cảnh thí sinh.
       if (v.bells && v.bells.length > 0) {
         const fastestSeat = v.bells[0].seat;
         if (fastestSeat >= 0 && fastestSeat < activeCount) {
+          if (lastVcnvBuzzedSeatRef.current !== fastestSeat) {
+            lastVcnvBuzzedSeatRef.current = fastestSeat;
+            vcnvBuzzedAtRef.current = now;
+          }
+          const elapsed = (now - vcnvBuzzedAtRef.current) / 1000;
+          if (elapsed < 0.8) {
+            return {
+              camAngle: 10,
+              transitionMode: "CUT",
+              isOverlayHidden: false,
+              pushInProgress: 0.1,
+            };
+          }
           return {
             camAngle: getCameraForSeat(fastestSeat, activeCount),
             transitionMode: "CUT",
@@ -580,6 +620,9 @@ export function useOlympiaCameraState(
             pushInProgress: 0.2,
           };
         }
+      } else {
+        lastVcnvBuzzedSeatRef.current = null;
+        vcnvBuzzedAtRef.current = 0;
       }
 
       // Camera VCNV: Divide 15s evenly so each shot gets >= 3.0s–7.5s dwell and ZERO <2s tail sliver cut at 14s
@@ -632,7 +675,9 @@ export function useOlympiaCameraState(
         now,
         phaseEnteredAtRef.current,
         vdOnStageEnteredAtRef.current,
-        activeCount
+        activeCount,
+        lastVdBuzzedSeatRef,
+        vdBuzzedAtRef
       );
     }
 
@@ -640,12 +685,28 @@ export function useOlympiaCameraState(
     if (round === "cauHoiPhu" && state.cauHoiPhu) {
       const chp = state.cauHoiPhu;
       if (chp.buzzedSeat != null && chp.buzzedSeat >= 0 && chp.buzzedSeat < activeCount) {
+        if (lastChpBuzzedSeatRef.current !== chp.buzzedSeat) {
+          lastChpBuzzedSeatRef.current = chp.buzzedSeat;
+          chpBuzzedAtRef.current = now;
+        }
+        const elapsed = (now - chpBuzzedAtRef.current) / 1000;
+        if (elapsed < 0.8) {
+          return {
+            camAngle: 10,
+            transitionMode: "CUT",
+            isOverlayHidden: false,
+            pushInProgress: 0.1,
+          };
+        }
         return {
           camAngle: getCameraForSeat(chp.buzzedSeat, activeCount),
           transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0.3,
         };
+      } else {
+        lastChpBuzzedSeatRef.current = null;
+        chpBuzzedAtRef.current = 0;
       }
       return {
         camAngle: 2,

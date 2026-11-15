@@ -1411,6 +1411,7 @@ export function VcnvAnswerRevealGraphic({
       openEndPercent: 100,
       timingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
     });
+    const skipAnimation = Boolean(v.revealCount && v.revealCount > 1);
 
     return (
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040d21] overflow-hidden select-none">
@@ -1455,6 +1456,15 @@ export function VcnvAnswerRevealGraphic({
             0% { opacity: 0; transform: translateY(-8px); }
             100% { opacity: 1; transform: translateY(0); }
           }
+          ${skipAnimation ? `
+            .v3-row-wing-l-g1, .v3-row-wing-l-g2, .v3-row-wing-l-l3,
+            .v3-row-wing-r-g1, .v3-row-wing-r-g2, .v3-row-wing-r-l3,
+            .v3-row-hex, .v3-row-content {
+              animation: none !important;
+              opacity: 1 !important;
+              transform: none !important;
+            }
+          ` : `
           .v3-row-wing-l-g1 {
             animation: v3-row-wing-l-g1 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
@@ -1479,6 +1489,7 @@ export function VcnvAnswerRevealGraphic({
           .v3-row-content {
             animation: v3-row-content 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
           }
+          `}
         `}</style>
         {/* Only pure graphic bars - Expanded to ~86-88% broadcast viewport width */}
         <div className={`relative z-10 w-[88%] max-w-[1640px] flex flex-col ${rowGapClass} items-center justify-center py-2`}>
@@ -1953,6 +1964,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
       openEndPercent: 100,
       timingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
     });
+    const skipAnimation = Boolean(tt.revealCount && tt.revealCount > 1);
 
     return (
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto bg-[#040d21] overflow-hidden select-none">
@@ -2001,6 +2013,15 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             0% { opacity: 0; transform: translateY(6px); }
             100% { opacity: 1; transform: translateY(0); }
           }
+          ${skipAnimation ? `
+            .v3-tt-wing-l-g1, .v3-tt-wing-l-g2, .v3-tt-wing-l-l3,
+            .v3-tt-wing-r-g1, .v3-tt-wing-r-g2, .v3-tt-wing-r-l3,
+            .v3-tt-hex, .v3-tt-content, .v3-tt-text, .v3-tt-answer {
+              animation: none !important;
+              opacity: 1 !important;
+              transform: none !important;
+            }
+          ` : `
           .v3-tt-wing-l-g1 {
             animation: v3-tt-wing-l-g1 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
           }
@@ -2029,6 +2050,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
           .v3-tt-content {
             animation: v3-tt-content 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
           }
+          `}
         `}</style>
         {/* Only pure graphic bars - Expanded to ~86-88% broadcast viewport width */}
         <div className={`relative z-10 w-[88%] max-w-[1640px] flex flex-col ${rowGapClass} items-center justify-center py-2`}>

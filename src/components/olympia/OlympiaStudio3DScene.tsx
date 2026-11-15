@@ -157,13 +157,15 @@ export function OlympiaStudio3DScene({
       {/* ── 1. THREE.JS R3F CANVAS ── */}
       <Canvas
         frameloop={isPaused ? "never" : "always"}
+        performance={{ min: 0.5 }}
         camera={{ position: [0.0, 3.2, 6.8], fov: 46 }}
         gl={{
           powerPreference: isSandboxEnv || quality === "LIGHT" ? "low-power" : "high-performance",
-          antialias: !isSandboxEnv,
+          antialias: !isSandboxEnv && quality === "HIGH",
           alpha: false,
           stencil: false,
           depth: true,
+          precision: isSandboxEnv || quality === "LIGHT" ? "mediump" : "highp",
         }}
         dpr={isSandboxEnv ? 0.5 : quality === "LIGHT" ? 0.5 : isIframe ? 0.75 : quality === "HIGH" ? (typeof window !== "undefined" ? (window.innerWidth >= 3840 || window.innerHeight >= 2160 ? Math.min(window.devicePixelRatio || 1, 1.0) : Math.min(window.devicePixelRatio || 1, 1.25)) : 1) : 1}
       >

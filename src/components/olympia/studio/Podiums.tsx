@@ -251,15 +251,16 @@ export function createPodiumScoreCanvas(
   }
 
   // ── GIAI ĐOẠN 3: BƯỚC VÀO KHỞI ĐỘNG & THI ĐẤU -> TÊN + ĐIỂM SỐ ──
-  const headerBg = isRed ? "#ff2a4b" : "#00e5ff";
-  const headerText = isRed ? "#ffffff" : "#081636";
-  const borderColor = isRed ? "#ff2a4b" : (isBuzzed ? "#00f0ff" : "#00d4ff");
-  const glowColor = isRed ? "rgba(255, 42, 75, 0.65)" : "rgba(0, 212, 255, 0.45)";
+  const isPodiumRed = isRed || isBuzzed;
+  const headerBg = isPodiumRed ? "#ff2a4b" : "#00e5ff";
+  const headerText = isPodiumRed ? "#ffffff" : "#081636";
+  const borderColor = isPodiumRed ? "#ff2a4b" : "#00d4ff";
+  const glowColor = isPodiumRed ? "rgba(255, 42, 75, 0.95)" : "rgba(0, 212, 255, 0.45)";
 
   // 1. Bottom 3/4 Background (Y = 64 to 256)
   const bottomGrad = ctx.createLinearGradient(0, 64, 0, 256);
-  bottomGrad.addColorStop(0, isRed ? "#2d0812" : "#0e1e42");
-  bottomGrad.addColorStop(1, isRed ? "#0f0205" : "#030816");
+  bottomGrad.addColorStop(0, isPodiumRed ? "#3b0816" : "#0e1e42");
+  bottomGrad.addColorStop(1, isPodiumRed ? "#180208" : "#030816");
   ctx.fillStyle = bottomGrad;
   ctx.fillRect(0, 64, 512, 192);
 
@@ -277,7 +278,7 @@ export function createPodiumScoreCanvas(
   ctx.fillText(displayName, 256, 33);
 
   // 4. Subtle separator line between top 1/4 and bottom 3/4
-  ctx.strokeStyle = isRed ? "rgba(255, 42, 75, 0.5)" : "rgba(0, 229, 255, 0.45)";
+  ctx.strokeStyle = isPodiumRed ? "rgba(255, 42, 75, 0.6)" : "rgba(0, 229, 255, 0.45)";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(0, 64);

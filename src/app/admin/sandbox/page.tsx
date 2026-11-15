@@ -12239,8 +12239,8 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
               </div>
             </div>
 
-            {/* 2. Khung Điện thoại Thí sinh (Chiếm ~45% chiều cao) */}
-            <div className="flex-1 min-h-[200px] flex flex-col glass rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-[#0b0c16]">
+            {/* 2. Khung Điện thoại Thí sinh (Chiếm ~50% chiều cao) */}
+            <div className="flex-1 min-h-[240px] flex flex-col glass rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-[#0b0c16]">
               <div className="bg-[#151728] px-2.5 py-1 border-b border-white/10 flex items-center justify-between gap-1.5 shrink-0">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse bg-sky-400" />

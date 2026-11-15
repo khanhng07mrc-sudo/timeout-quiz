@@ -211,6 +211,7 @@ export class OlympiaGame {
     this.state = {
       code,
       rulesetId: this.ruleset.id,
+      themeMode: "o26_classic",
       o22Quarter: config.o22Quarter ?? 1,
       chpQuestionLimit: initialChpLimit,
       rounds,

@@ -77677,9 +77677,9 @@ var import_async_hooks = require("async_hooks");
 var import_client = require("@prisma/client");
 var globalForPrisma = globalThis;
 var prisma = globalForPrisma.prisma ?? new import_client.PrismaClient({
-  log: ["error"]
+  log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"]
 });
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = prisma;
 
 // src/lib/offline-storage.ts
 var DEFAULT_OFFLINE_BANK = {
@@ -105975,6 +105975,7 @@ var OlympiaGame = class _OlympiaGame {
     this.state = {
       code,
       rulesetId: this.ruleset.id,
+      themeMode: "o26_classic",
       o22Quarter: config.o22Quarter ?? 1,
       chpQuestionLimit: initialChpLimit,
       rounds,
@@ -107852,6 +107853,7 @@ var OlympiaGame = class _OlympiaGame {
           v.answersRevealed = false;
           v.revealedCorrectAnswer = false;
           v.centerWrong = false;
+          v.revealCount = 0;
           this.cue("2_VuotChuongNgaiVat/choose_row");
           return OK;
         }
@@ -107862,6 +107864,7 @@ var OlympiaGame = class _OlympiaGame {
         v.answers = {};
         v.answersRevealed = false;
         v.revealedCorrectAnswer = false;
+        v.revealCount = 0;
         v.rows[i].wrong = false;
         this.cue("2_VuotChuongNgaiVat/choose_row");
         return OK;
@@ -107881,7 +107884,10 @@ var OlympiaGame = class _OlympiaGame {
         v.revealedCorrectAnswer = false;
         v.phase = "answers";
         st.studioCameraManual = false;
-        this.cue("2_VuotChuongNgaiVat/reveal_answers");
+        v.revealCount = (v.revealCount || 0) + 1;
+        if (v.revealCount === 1) {
+          this.cue("2_VuotChuongNgaiVat/reveal_answers");
+        }
         return OK;
       }
       case "vcnv:revealCorrect": {
@@ -108215,10 +108221,23 @@ var OlympiaGame = class _OlympiaGame {
         }
         return fail("C\xE2u kh\xF4ng h\u1EE3p l\u1EC7");
       }
-      case "tt:blank": {
-        tt.phase = "waitingAnswer";
-        st.studioCamera = 10;
-        st.studioCameraManual = true;
+      case "tt:blank":
+      case "tt:toggleWaitingBg": {
+        tt.showWaitingBg = !tt.showWaitingBg;
+        if (tt.showWaitingBg) {
+          st.studioCamera = 10;
+          st.studioCameraManual = true;
+        } else {
+          st.studioCameraManual = false;
+        }
+        return OK;
+      }
+      case "tt:toggleHideOverlay": {
+        tt.hideOverlay = !tt.hideOverlay;
+        return OK;
+      }
+      case "tt:viewQuestion": {
+        tt.viewMode = "question";
         return OK;
       }
       case "tt:revealAndGrade": {
@@ -108235,6 +108254,9 @@ var OlympiaGame = class _OlympiaGame {
         tt.phase = "idle";
         tt.viewMode = "question";
         tt.showAnswerImage = false;
+        tt.showWaitingBg = false;
+        tt.hideOverlay = false;
+        tt.revealCount = 0;
         tt.submissions = {};
         tt.ranking = [];
         tt.correctAnswer = void 0;
@@ -108258,6 +108280,9 @@ var OlympiaGame = class _OlympiaGame {
         tt.viewMode = "question";
         tt.showAnswerImage = false;
         tt.revealedCorrectAnswer = false;
+        tt.showWaitingBg = false;
+        tt.hideOverlay = false;
+        tt.revealCount = 0;
         this.cue("3_TangToc/show_question");
         return OK;
       }
@@ -108265,6 +108290,7 @@ var OlympiaGame = class _OlympiaGame {
         tt.showAnswerImage = !tt.showAnswerImage;
         return OK;
       }
+      case "tt:viewRanking":
       case "tt:showRanking": {
         if (tt.qIdx < 0) return fail("Ch\u01B0a c\xF3 c\xE2u h\u1ECFi");
         tt.viewMode = "ranking";
@@ -108321,7 +108347,12 @@ var OlympiaGame = class _OlympiaGame {
         tt.revealedCorrectAnswer = false;
         tt.phase = "ranking";
         tt.viewMode = "ranking";
-        this.cue("3_TangToc/show_answer");
+        tt.showWaitingBg = false;
+        tt.hideOverlay = false;
+        tt.revealCount = (tt.revealCount || 0) + 1;
+        if (tt.revealCount === 1) {
+          this.cue("3_TangToc/show_answer");
+        }
         return OK;
       }
       case "tt:revealCorrect": {
@@ -109827,21 +109858,42 @@ async function cleanupStaleRooms(options = {}) {
     return { deletedCount: 0, roomsDeleted: [] };
   }
   const globalForSockets2 = globalThis;
-  const roomsDeleted = [];
   for (const r of staleRooms) {
-    try {
-      globalForSockets2.cleanupRoomInMemory?.(r.id);
-      await prisma.room.delete({
-        where: { id: r.id }
-      });
-      roomsDeleted.push(r);
-    } catch (err) {
-      console.error(`[room-cleanup] Failed to delete room ${r.code} (${r.id}):`, err);
+    globalForSockets2.cleanupRoomInMemory?.(r.id);
+  }
+  const ids = staleRooms.map((r) => r.id);
+  try {
+    await prisma.$transaction([
+      prisma.gameLog.deleteMany({ where: { roomId: { in: ids } } }),
+      prisma.answer.deleteMany({ where: { roomId: { in: ids } } }),
+      prisma.powerupCard.deleteMany({ where: { roomId: { in: ids } } }),
+      prisma.player.deleteMany({ where: { roomId: { in: ids } } }),
+      prisma.team.deleteMany({ where: { roomId: { in: ids } } }),
+      prisma.room.deleteMany({ where: { id: { in: ids } } })
+    ]);
+  } catch (batchErr) {
+    console.error("[room-cleanup] Batch deletion error, falling back to safe individual delete:", batchErr);
+    for (const r of staleRooms) {
+      try {
+        await prisma.gameLog.deleteMany({ where: { roomId: r.id } }).catch(() => {
+        });
+        await prisma.answer.deleteMany({ where: { roomId: r.id } }).catch(() => {
+        });
+        await prisma.powerupCard.deleteMany({ where: { roomId: r.id } }).catch(() => {
+        });
+        await prisma.player.deleteMany({ where: { roomId: r.id } }).catch(() => {
+        });
+        await prisma.team.deleteMany({ where: { roomId: r.id } }).catch(() => {
+        });
+        await prisma.room.delete({ where: { id: r.id } }).catch(() => {
+        });
+      } catch {
+      }
     }
   }
   return {
-    deletedCount: roomsDeleted.length,
-    roomsDeleted
+    deletedCount: staleRooms.length,
+    roomsDeleted: staleRooms
   };
 }
 

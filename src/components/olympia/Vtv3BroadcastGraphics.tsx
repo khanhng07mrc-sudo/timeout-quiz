@@ -234,14 +234,14 @@ export function RedConnectionRivet() {
 }
 
 /**
- * Auto font-size clamp for question text to prevent overflow in fixed box
+ * Auto font-size clamp for question text to prevent overflow in fixed box (Broadcast TV Standards)
+ * Eliminates text-[11px] and text-xs completely.
  */
-function clampQuestionFont(text: string) {
+export function clampQuestionFont(text: string) {
   const len = text ? text.length : 0;
-  if (len <= 50) return "text-sm sm:text-xl md:text-2xl lg:text-3xl font-black";
-  if (len <= 90) return "text-xs sm:text-lg md:text-xl lg:text-2xl font-black";
-  if (len <= 140) return "text-xs sm:text-base md:text-lg lg:text-xl font-bold";
-  return "text-[11px] sm:text-sm md:text-base lg:text-lg font-bold";
+  if (len <= 70) return "text-3xl sm:text-4xl md:text-5xl lg:text-[36px] font-black leading-snug";
+  if (len <= 140) return "text-2xl sm:text-3xl md:text-4xl lg:text-[30px] font-black leading-snug";
+  return "text-xl sm:text-2xl md:text-3xl lg:text-[24px] font-bold leading-normal";
 }
 
 /**
@@ -634,7 +634,7 @@ export function Vtv3ChalkboardQuestionFrame({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="relative w-full max-w-5xl lg:max-w-6xl mx-auto flex items-center justify-center pointer-events-auto">
+    <div className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center pointer-events-auto">
       {/* ── 1. Horizontal Brass Rod (Passing behind) ── */}
       <HorizontalBrassRod />
 
@@ -642,8 +642,8 @@ export function Vtv3ChalkboardQuestionFrame({
       <div
         className="relative w-full z-10 rounded-2xl flex flex-col justify-between overflow-visible shadow-2xl"
         style={{
-          minHeight: "clamp(100px, 18vh, 180px)",
-          maxHeight: "clamp(150px, 28vh, 230px)",
+          minHeight: "clamp(120px, 19vh, 200px)",
+          maxHeight: "clamp(160px, 30vh, 260px)",
           height: "auto",
           background: "linear-gradient(175deg, #101c2e 0%, #0b1320 60%, #070d16 100%)",
           border: "3.5px solid #d4af37",
@@ -667,7 +667,7 @@ export function Vtv3ChalkboardQuestionFrame({
                 background: "radial-gradient(circle at 35% 30%, #f87171 0%, #dc2626 50%, #7f1d1d 100%)",
               }}
             />
-            <div className="text-xs font-black text-amber-300 drop-shadow">{headerBadge}</div>
+            <div className="text-sm font-black text-amber-300 drop-shadow">{headerBadge}</div>
           </div>
         )}
 
@@ -675,7 +675,7 @@ export function Vtv3ChalkboardQuestionFrame({
         <div className="relative z-10 flex-1 px-4 sm:px-8 md:px-12 py-3 sm:py-4 flex flex-col items-center justify-center text-center">
           {questionText ? (
             <div
-              className={`text-white font-black leading-normal pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] max-w-4xl select-text animate-fade-in ${clampQuestionFont(
+              className={`text-white font-black leading-normal pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] select-text animate-fade-in ${clampQuestionFont(
                 questionText
               )}`}
             >
@@ -696,6 +696,250 @@ export function Vtv3ChalkboardQuestionFrame({
 
         {/* Bottom: Integrated Progress Timer Bar & Glowing Red Pearl touching bottom border */}
         {timer && <Vtv3BottomEdgeTimerBar timer={timer} serverNow={serverNow} />}
+      </div>
+    </div>
+  );
+}
+
+export interface ClassicUnifiedLowerThirdProps {
+  state: OlympiaState;
+  round: "khoiDong" | "vcnv" | "tangToc" | "veDich" | "cauHoiPhu";
+  questionText?: string | null;
+  badgeLabel?: string | null;
+  mediaElement?: React.ReactNode;
+  timer?: TimerState | null;
+  activeSeatId?: number | null;
+  buzzedSeatId?: number | null;
+  lockedSeats?: number[];
+  hopeStarActive?: boolean;
+  answerReveal?: { show: boolean; text: string; label?: string } | null;
+  serverNow: () => number;
+  timerBadge?: TimerState | null;
+  tiedSeats?: number[];
+  children?: React.ReactNode;
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * AUTHENTIC O26 CLASSIC UNIFIED LOWER-THIRD PLAQUE
+ * Cohesive single-frame broadcast graphic for Olympia O26 Classic theme.
+ * Integrates candidate score shelf, round status badge, full-width question
+ * chamber (broadcast typography), and flush bottom gold timer bar.
+ * Eliminates all awkward vertical gaps, mismatched widths, and modern cyan elements.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function ClassicUnifiedLowerThird({
+  state,
+  round,
+  questionText,
+  badgeLabel,
+  mediaElement,
+  timer,
+  activeSeatId,
+  buzzedSeatId,
+  lockedSeats = [],
+  hopeStarActive = false,
+  answerReveal,
+  serverNow,
+  timerBadge,
+  tiedSeats,
+  children,
+}: ClassicUnifiedLowerThirdProps) {
+  const allSeats = activeSeats(state);
+  const seatsToDisplay =
+    tiedSeats && tiedSeats.length > 0
+      ? allSeats.filter((s) => tiedSeats.includes(s.id))
+      : allSeats;
+
+  return (
+    <div className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center pointer-events-auto select-none py-1">
+      {/* ── 1. Horizontal Brass Rod (Passing behind) ── */}
+      <HorizontalBrassRod />
+
+      {/* ── 2. Unified Plaque Frame ── */}
+      <div
+        className="relative w-full z-10 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl"
+        style={{
+          background: "linear-gradient(180deg, #1e222a 0%, #15181f 50%, #0d0f14 100%)",
+          border: "3px solid #d4af37",
+          boxShadow:
+            "0 14px 44px rgba(0,0,0,0.94), 0 0 24px rgba(212,175,55,0.35), inset 0 2px 4px rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.85)",
+          outline: "1.5px solid #78350f",
+          outlineOffset: "-5px",
+        }}
+      >
+        {/* Subtle chalkboard SVG background inside box */}
+        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+          <Vtv3ChalkboardBackdrop className="opacity-25" />
+        </div>
+
+        {/* Bronze Corner Rivets */}
+        <div className="absolute top-2 left-2 z-30 w-2.5 h-2.5 rounded-full classic-rivet-bronze pointer-events-none" />
+        <div className="absolute top-2 right-2 z-30 w-2.5 h-2.5 rounded-full classic-rivet-bronze pointer-events-none" />
+        <div className="absolute bottom-2 left-2 z-30 w-2.5 h-2.5 rounded-full classic-rivet-bronze pointer-events-none" />
+        <div className="absolute bottom-2 right-2 z-30 w-2.5 h-2.5 rounded-full classic-rivet-bronze pointer-events-none" />
+
+        {/* ── UPPER SHELF: Candidate Score Bar & Status Badges ── */}
+        <div className="relative z-20 w-full min-h-[40px] sm:min-h-[44px] bg-black/50 border-b border-amber-500/30 px-4 sm:px-6 py-1.5 flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+          {/* Left: Round / Question Status Badge */}
+          {badgeLabel ? (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className="w-3.5 h-3.5 rounded-full classic-rivet-red shrink-0" />
+              <div className="px-2.5 py-0.5 rounded-md bg-amber-950/90 border border-amber-400/80 text-amber-300 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow shadow-sm">
+                {badgeLabel}
+              </div>
+            </div>
+          ) : (
+            <div className="w-3.5 h-3.5 rounded-full classic-rivet-red shrink-0" />
+          )}
+
+          {/* Center: Candidate Score Cells */}
+          <div className="flex-1 flex items-center justify-center gap-1.5 sm:gap-3 px-1 min-w-0">
+            {seatsToDisplay.map((seat) => {
+              const isTurn = activeSeatId === seat.id;
+              const isBuzzed = buzzedSeatId === seat.id;
+              const isLocked = lockedSeats?.includes(seat.id);
+
+              return (
+                <div
+                  key={seat.id}
+                  className={`flex items-center justify-between gap-1.5 sm:gap-2.5 px-2.5 sm:px-3.5 py-0.5 sm:py-1 rounded-lg transition-all duration-300 text-xs sm:text-sm md:text-base ${
+                    isBuzzed
+                      ? "classic-glow-buzzed text-white animate-pulse scale-[1.03]"
+                      : isTurn
+                      ? "classic-glow-active text-white scale-[1.02]"
+                      : isLocked
+                      ? "bg-slate-900/60 border border-slate-700/50 text-slate-400 opacity-60"
+                      : "bg-[#181c24]/90 border border-amber-500/40 text-slate-100 shadow-inner"
+                  }`}
+                >
+                  <div className="flex items-center gap-1 min-w-0">
+                    {isBuzzed && <span className="text-amber-300 animate-bounce">🔔</span>}
+                    <span className="font-bold truncate max-w-[80px] sm:max-w-[130px] md:max-w-[160px] uppercase">
+                      {seat.name || `Thí sinh ${seat.id + 1}`}
+                    </span>
+                  </div>
+                  <span
+                    className={`font-black shrink-0 ${
+                      isBuzzed ? "text-yellow-100" : isTurn ? "text-amber-200" : "text-amber-300"
+                    }`}
+                  >
+                    {seat.score}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Right: Hope Star / Seconds Badge */}
+          <div className="flex items-center gap-2 shrink-0">
+            {hopeStarActive && (
+              <div className="px-2.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/90 to-yellow-500/90 border border-amber-300 text-white font-black text-xs sm:text-sm animate-pulse flex items-center gap-1 shadow-[0_0_12px_rgba(245,158,11,0.8)]">
+                <span>⭐</span>
+                <span className="hidden sm:inline">NGÔI SAO HY VỌNG</span>
+              </div>
+            )}
+            {timerBadge && (
+              <div className="shrink-0">
+                <EconovaSecondsBadge timer={timerBadge} serverNow={serverNow} />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── LOWER CHAMBER: Question Text & Media ── */}
+        <div className="relative z-10 flex-1 px-4 sm:px-8 md:px-12 py-3.5 sm:py-5 flex flex-col items-center justify-center text-center min-h-[100px] sm:min-h-[130px]">
+          {answerReveal?.show ? (
+            <div className="flex flex-col items-center justify-center gap-1 animate-fade-in w-full py-1">
+              <div className="text-xs sm:text-sm font-bold tracking-widest text-amber-300 uppercase">
+                {answerReveal.label || "ĐÁP ÁN CHÍNH XÁC"}
+              </div>
+              <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.7)] tracking-wide">
+                ✔ {answerReveal.text}
+              </div>
+            </div>
+          ) : questionText ? (
+            <div
+              className={`text-white font-black leading-snug pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] select-text animate-fade-in ${clampQuestionFont(
+                questionText
+              )}`}
+            >
+              {questionText}
+            </div>
+          ) : (
+            children
+          )}
+          {mediaElement && <div className="mt-2">{mediaElement}</div>}
+        </div>
+
+        {/* ── BOTTOM FLUSH TIMER BAR ── */}
+        {timer && <Vtv3BottomEdgeTimerBar timer={timer} serverNow={serverNow} />}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * AUTHENTIC VTV3 CLASSIC SINGLE ANSWER BAR
+ * Replaces modern cyan arrow V3SingleAnswerBar in Classic theme.
+ * Uses metallic slate body, double gold border, and emerald answer typography.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function Vtv3ClassicSingleAnswerBar({
+  answerText,
+  points,
+  roundLabel = "ĐÁP ÁN",
+}: {
+  answerText: string;
+  points?: number;
+  roundLabel?: string;
+}) {
+  const fullText = points ? `${answerText} (${points}đ)` : answerText;
+
+  return (
+    <div className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center pointer-events-auto select-none p-2 animate-fade-in">
+      <HorizontalBrassRod />
+      <div
+        className="relative w-full z-10 rounded-2xl flex items-center justify-between px-6 sm:px-10 py-3.5 sm:py-4.5 overflow-hidden shadow-2xl"
+        style={{
+          background: "linear-gradient(180deg, #1e222a 0%, #15181f 50%, #0d0f14 100%)",
+          border: "3px solid #d4af37",
+          boxShadow:
+            "0 12px 40px rgba(0,0,0,0.92), 0 0 20px rgba(212,175,55,0.35), inset 0 2px 4px rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.85)",
+          outline: "1.5px solid #78350f",
+          outlineOffset: "-5px",
+        }}
+      >
+        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+          <Vtv3ChalkboardBackdrop className="opacity-25" />
+        </div>
+
+        {/* Bronze Corner Rivets */}
+        <div className="absolute top-2 left-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+        <div className="absolute top-2 right-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+        <div className="absolute bottom-2 left-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+        <div className="absolute bottom-2 right-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+
+        {/* Left Badge: Round Label */}
+        <div className="relative z-10 flex items-center gap-2.5 shrink-0">
+          <div className="w-4 h-4 rounded-full classic-rivet-red shrink-0" />
+          <div className="px-3.5 py-1 rounded-lg bg-amber-950/90 border border-amber-400 text-amber-300 font-black text-sm sm:text-base md:text-lg uppercase tracking-wider shadow">
+            {roundLabel}
+          </div>
+        </div>
+
+        {/* Center/Main Answer Text */}
+        <div className="relative z-10 flex-1 px-4 sm:px-8 text-center min-w-0">
+          <div className="text-emerald-400 font-black text-2xl sm:text-3xl md:text-4xl lg:text-5xl uppercase tracking-wider drop-shadow-[0_0_24px_rgba(52,211,153,0.7)] truncate">
+            ✔ {fullText}
+          </div>
+        </div>
+
+        {/* Right Balance Rivet */}
+        <div className="relative z-10 hidden sm:flex items-center gap-2 shrink-0">
+          <div className="w-4 h-4 rounded-full classic-rivet-bronze shrink-0" />
+        </div>
       </div>
     </div>
   );
@@ -1057,7 +1301,13 @@ export function VcnvCountdownGraphic({
         {/* ═══════════════════════════════════════════════════════════════════
             QUADRANT 1: TOP-LEFT (MYSTERY PUZZLE GRID: 1, 2, 4, 3 + CENTER 5)
            ═══════════════════════════════════════════════════════════════════ */}
-        <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/60 shadow-[0_0_25px_rgba(6,182,212,0.3)] bg-[#071739] flex items-center justify-center">
+        <div
+          className={`relative w-full h-full rounded-2xl overflow-hidden border-2 ${
+            !isV3Arrow
+              ? "border-amber-400/80 shadow-[0_0_25px_rgba(245,158,11,0.25)] bg-[#0d131f]"
+              : "border-cyan-400/60 shadow-[0_0_25px_rgba(6,182,212,0.3)] bg-[#071739]"
+          } flex items-center justify-center`}
+        >
           {v.mysteryImage && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -1075,11 +1325,15 @@ export function VcnvCountdownGraphic({
               return (
                 <div
                   key={piece.index}
-                  className={`relative bg-[#0b1b3d] ${
+                  className={`relative ${!isV3Arrow ? "bg-[#111622]" : "bg-[#0b1b3d]"} ${
                     isRevealed
                       ? "opacity-0 pointer-events-none transition-opacity duration-700"
                       : isSelectedPiece
-                      ? "bg-gradient-to-br from-[#0f3178] to-[#081d4a] opacity-100"
+                      ? !isV3Arrow
+                        ? "bg-gradient-to-br from-[#3b2406] to-[#1a0f02] opacity-100"
+                        : "bg-gradient-to-br from-[#0f3178] to-[#081d4a] opacity-100"
+                      : !isV3Arrow
+                      ? "bg-[#141924] opacity-100"
                       : "bg-[#0b1b3d] opacity-100"
                   }`}
                   style={{ clipPath: piece.clipPath }}
@@ -1092,7 +1346,13 @@ export function VcnvCountdownGraphic({
                     <polygon
                       points={piece.svgPoints}
                       fill="none"
-                      stroke={isSelectedPiece ? "#fbbf24" : "rgba(34, 211, 238, 0.45)"}
+                      stroke={
+                        isSelectedPiece
+                          ? "#fbbf24"
+                          : !isV3Arrow
+                          ? "rgba(212, 175, 55, 0.45)"
+                          : "rgba(34, 211, 238, 0.45)"
+                      }
                       strokeWidth={isSelectedPiece ? "2.2" : "1.2"}
                       vectorEffect="non-scaling-stroke"
                     />
@@ -1116,6 +1376,8 @@ export function VcnvCountdownGraphic({
                 ? "opacity-0 pointer-events-none transition-opacity duration-700"
                 : isCenter
                 ? "bg-gradient-to-br from-[#0c2866] to-[#04153a] border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.85)] animate-pulse opacity-100 ring-2 ring-amber-300/70"
+                : !isV3Arrow
+                ? "bg-[#15181f] border-amber-400/80 shadow-[0_0_16px_rgba(245,158,11,0.4)] opacity-100"
                 : "bg-[#071739] border-cyan-400/80 shadow-[0_0_16px_rgba(6,182,212,0.4)] opacity-100"
             }`}
           >
@@ -1132,11 +1394,27 @@ export function VcnvCountdownGraphic({
         {/* ═══════════════════════════════════════════════════════════════════
             QUADRANT 2: TOP-RIGHT (ROWS BOARD: SINGLE-LINE DOME ROWS 1..4)
            ═══════════════════════════════════════════════════════════════════ */}
-        <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/60 shadow-[0_0_25px_rgba(6,182,212,0.3)] bg-gradient-to-br from-[#071a3d] via-[#05132d] to-[#030c1d] flex flex-col justify-between p-2.5 sm:p-3.5 md:p-4">
+        <div
+          className={`relative w-full h-full rounded-2xl overflow-hidden border-2 ${
+            !isV3Arrow
+              ? "border-amber-400/80 shadow-[0_0_25px_rgba(245,158,11,0.25)] bg-gradient-to-br from-[#1e222a] via-[#15181f] to-[#0d0f14]"
+              : "border-cyan-400/60 shadow-[0_0_25px_rgba(6,182,212,0.3)] bg-gradient-to-br from-[#071a3d] via-[#05132d] to-[#030c1d]"
+          } flex flex-col justify-between p-2.5 sm:p-3.5 md:p-4`}
+        >
           {/* Header Badge: CHƯỚNG NGẠI VẬT CÓ X CHỮ CÁI */}
           <div className="flex items-center justify-center w-full pb-1.5 shrink-0">
-            <div className="px-4 sm:px-6 py-1 rounded-full border-2 border-cyan-400/80 bg-gradient-to-r from-cyan-950 via-[#0a2e66] to-cyan-950 shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center">
-              <span className="font-black text-[11px] sm:text-xs md:text-sm uppercase tracking-wider text-cyan-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+            <div
+              className={`px-4 sm:px-6 py-1 rounded-full border-2 ${
+                !isV3Arrow
+                  ? "border-amber-400/80 bg-gradient-to-r from-amber-950 via-[#2e1d05] to-amber-950 shadow-[0_0_20px_rgba(245,158,11,0.4)]"
+                  : "border-cyan-400/80 bg-gradient-to-r from-cyan-950 via-[#0a2e66] to-cyan-950 shadow-[0_0_20px_rgba(6,182,212,0.4)]"
+              } flex items-center justify-center`}
+            >
+              <span
+                className={`font-black text-[11px] sm:text-xs md:text-sm uppercase tracking-wider ${
+                  !isV3Arrow ? "text-amber-100" : "text-cyan-100"
+                } drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]`}
+              >
                 CHƯỚNG NGẠI VẬT CÓ {keywordLen} CHỮ CÁI
               </span>
             </div>
@@ -1204,7 +1482,9 @@ export function VcnvCountdownGraphic({
                     key={rIdx}
                     className={`flex items-center justify-between gap-2 px-2 sm:px-3 py-1 rounded-xl transition-all duration-300 ${
                       isCurrent
-                        ? "bg-cyan-500/20 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.5)] scale-[1.01]"
+                        ? !isV3Arrow
+                          ? "bg-amber-500/25 border-2 border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)] scale-[1.01]"
+                          : "bg-cyan-500/20 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.5)] scale-[1.01]"
                         : "border border-transparent"
                     }`}
                   >
@@ -1239,7 +1519,13 @@ export function VcnvCountdownGraphic({
         {/* ═══════════════════════════════════════════════════════════════════
             QUADRANT 3: BOTTOM-LEFT (UNIFORM ROUNDED QUESTION BOX + FLUSH BOTTOM TIMER)
            ═══════════════════════════════════════════════════════════════════ */}
-        <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-gradient-to-br from-[#061838] via-[#041026] to-[#020914] flex flex-col justify-between">
+        <div
+          className={`relative w-full h-full rounded-2xl overflow-hidden border-2 ${
+            !isV3Arrow
+              ? "border-amber-400/80 shadow-[0_0_30px_rgba(245,158,11,0.3)] bg-gradient-to-br from-[#1e222a] via-[#15181f] to-[#0d0f14]"
+              : "border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.35)] bg-gradient-to-br from-[#061838] via-[#041026] to-[#020914]"
+          } flex flex-col justify-between`}
+        >
           {/* Question Text Body (Top-Left Aligned) / Done Celebration */}
           <div className="flex-1 min-h-0 flex flex-col items-start justify-start px-5 sm:px-7 pt-5 sm:pt-6 pb-8 text-left overflow-hidden">
             {v.phase === "selecting" || v.phase === "grid" || curIdx < 0 ? null : v.phase === "done" ? (
@@ -1308,22 +1594,26 @@ export function VcnvCountdownGraphic({
             </div>
           ) : (
             <div className="absolute bottom-0 left-0 right-0 z-20 px-4 pb-1 pointer-events-none">
-              <div className="w-full relative h-2 rounded-full bg-slate-950/90 border border-cyan-500/40 overflow-visible shadow-inner flex items-center">
+              <div className={`w-full relative h-2 rounded-full ${!isV3Arrow ? "bg-black/90 border border-amber-500/50" : "bg-slate-950/90 border border-cyan-500/40"} overflow-visible shadow-inner flex items-center`}>
                 <div
                   ref={fillRef}
                   className="h-full rounded-full will-change-[width]"
                   style={{
                     width: "0%",
-                    background: "linear-gradient(90deg, #d97706, #f59e0b, #ef4444)",
+                    background: !isV3Arrow
+                      ? "linear-gradient(90deg, #d4af37, #fef08a, #f59e0b)"
+                      : "linear-gradient(90deg, #d97706, #f59e0b, #ef4444)",
                   }}
                 />
                 <div
                   ref={pearlRef}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white shadow-[0_0_12px_#ef4444] pointer-events-none will-change-[left] z-30"
+                  className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 ${!isV3Arrow ? "border-amber-200 shadow-[0_0_12px_#f59e0b]" : "border-white shadow-[0_0_12px_#ef4444]"} pointer-events-none will-change-[left] z-30`}
                   style={{
                     display: "none",
                     left: "0%",
-                    background: "radial-gradient(circle at 35% 30%, #f87171 0%, #dc2626 50%, #991b1b 100%)",
+                    background: !isV3Arrow
+                      ? "radial-gradient(circle at 35% 30%, #fef08a 0%, #f59e0b 50%, #b45309 100%)"
+                      : "radial-gradient(circle at 35% 30%, #f87171 0%, #dc2626 50%, #991b1b 100%)",
                   }}
                 />
               </div>
@@ -1831,19 +2121,19 @@ export function TangTocQuestionGraphic({
       <Vtv3ChalkboardBackdrop />
 
       {/* Main framed container */}
-      <div className={`relative w-full max-w-4xl z-10 flex flex-col items-center ${isSilent ? "" : "animate-fade-in"}`}>
+      <div className={`relative w-full max-w-5xl lg:max-w-6xl z-10 flex flex-col items-center ${isSilent ? "" : "animate-fade-in"}`}>
         {/* ── 1. Horizontal Brass Rod (Classic only) ── */}
         <HorizontalBrassRod />
 
         {/* ── 2. Top Header Plaque (Attached directly above frame) ── */}
         <div
-          className="relative z-10 px-8 py-2.5 rounded-t-2xl border-2 border-amber-500/80 shadow-lg max-w-2xl text-center"
+          className="relative z-10 px-8 py-3 rounded-t-2xl border-2 border-amber-500/80 shadow-lg w-full max-w-4xl text-center"
           style={{
             background: "linear-gradient(180deg, #2a1815 0%, #170d0b 60%, #0a0504 100%)",
             boxShadow: "0 6px 18px rgba(0,0,0,0.85), inset 0 1px 2px rgba(255,255,255,0.25)",
           }}
         >
-          <div className="font-black text-sm sm:text-base md:text-lg text-white leading-snug drop-shadow">
+          <div className="font-black text-xl sm:text-2xl md:text-3xl text-white leading-snug drop-shadow">
             {q?.q || "Sắp xếp các miếng ghép sau để có được bức hình hoàn chỉnh."}
           </div>
         </div>
@@ -2538,6 +2828,185 @@ export interface SummaryLowerThirdGraphicProps {
   onClose?: () => void;
 }
 
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * AUTHENTIC VTV3 CLASSIC SUMMARY SCOREBOARD GRAPHIC
+ * Replaces modern cyan chevron arrow summary graphic when in Classic theme.
+ * Displays metallic stone plaque, double gold border, bronze rivets,
+ * all candidate scores preview shelf, and prominent active candidate card.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function Vtv3ClassicSummaryGraphic({
+  state,
+  onNext,
+  onPrev,
+  onClose,
+}: SummaryLowerThirdGraphicProps) {
+  const sm = state.summaryState;
+  if (!sm || !sm.active || sm.orderedSeats.length === 0) return null;
+
+  // 1. Sort ascending by score (lowest to highest), tie-break by seatId ascending
+  const sorted = [...sm.orderedSeats].sort((a, b) => {
+    const sa = state.seats[a]?.score ?? 0;
+    const sb = state.seats[b]?.score ?? 0;
+    if (sa !== sb) return sa - sb;
+    return a - b;
+  });
+
+  const [localIdx, setLocalIdx] = useState(sm.currentIndex ?? 0);
+
+  useEffect(() => {
+    if (sm.currentIndex != null) {
+      setLocalIdx(sm.currentIndex);
+    }
+  }, [sm.currentIndex]);
+
+  const currentIdx = Math.min(localIdx, sorted.length - 1);
+  const currentSeatId = sorted[currentIdx];
+  const currentSeat = state.seats[currentSeatId];
+  const currentScore = currentSeat?.score ?? 0;
+  const currentName = currentSeat?.name || `THÍ SINH ${currentSeatId + 1}`;
+  const isLast = currentIdx >= sorted.length - 1;
+
+  const handleNext = useCallback(() => {
+    if (onNext) {
+      onNext();
+    } else {
+      setLocalIdx((prev) => Math.min(prev + 1, sorted.length - 1));
+    }
+  }, [onNext, sorted.length]);
+
+  const handlePrev = useCallback(() => {
+    if (onPrev) {
+      onPrev();
+    } else {
+      setLocalIdx((prev) => Math.max(0, prev - 1));
+    }
+  }, [onPrev]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.code === "Space" || e.key === "ArrowRight") {
+        e.preventDefault();
+        handleNext();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handlePrev();
+      } else if (e.key === "Escape" && onClose) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleNext, handlePrev, onClose]);
+
+  const isFs = Boolean(sm.isFullscreen || state.overlayMode === "FULLSCREEN");
+
+  return (
+    <div
+      className={
+        isFs
+          ? "absolute inset-0 z-50 flex flex-col items-center justify-center p-6 bg-black/85 backdrop-blur-md pointer-events-auto select-none cursor-pointer"
+          : "absolute inset-x-0 bottom-0 z-50 flex flex-col items-center justify-end pb-4 sm:pb-5 bg-transparent pointer-events-auto select-none cursor-pointer"
+      }
+      onClick={handleNext}
+    >
+      <div className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center">
+        <HorizontalBrassRod />
+        <div
+          className="relative w-full z-10 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl p-4 sm:p-6 md:p-8"
+          style={{
+            background: "linear-gradient(180deg, #1e222a 0%, #15181f 50%, #0d0f14 100%)",
+            border: "3.5px solid #d4af37",
+            boxShadow:
+              "0 16px 50px rgba(0,0,0,0.95), 0 0 25px rgba(212,175,55,0.4), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -3px 6px rgba(0,0,0,0.9)",
+            outline: "2px solid #78350f",
+            outlineOffset: "-6px",
+          }}
+        >
+          {/* Chalkboard Texture */}
+          <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+            <Vtv3ChalkboardBackdrop className="opacity-30" />
+          </div>
+
+          {/* Bronze Corner Rivets */}
+          <div className="absolute top-2.5 left-2.5 z-20 w-3 h-3 rounded-full classic-rivet-bronze" />
+          <div className="absolute top-2.5 right-2.5 z-20 w-3 h-3 rounded-full classic-rivet-bronze" />
+          <div className="absolute bottom-2.5 left-2.5 z-20 w-3 h-3 rounded-full classic-rivet-bronze" />
+          <div className="absolute bottom-2.5 right-2.5 z-20 w-3 h-3 rounded-full classic-rivet-bronze" />
+
+          {/* Top Header Shelf: All Candidate Score Tabs */}
+          <div className="relative z-10 flex items-center justify-between border-b border-amber-500/30 pb-3 mb-4 gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="w-3.5 h-3.5 rounded-full classic-rivet-red shrink-0" />
+              <span className="font-black text-xs sm:text-sm uppercase tracking-widest text-amber-300">
+                TỔNG KẾT ĐIỂM SỐ
+              </span>
+            </div>
+            {/* Contestant tabs preview */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              {sorted.map((seatId, sIdx) => {
+                const s = state.seats[seatId];
+                const isSelected = sIdx === currentIdx;
+                return (
+                  <div
+                    key={seatId}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+                      isSelected
+                        ? "classic-glow-active text-white scale-105"
+                        : "bg-black/50 border border-amber-500/30 text-slate-300"
+                    }`}
+                  >
+                    <span className="uppercase truncate max-w-[80px] sm:max-w-[120px]">
+                      {s?.name || `Thí sinh ${seatId + 1}`}
+                    </span>
+                    <span className={`font-black ${isSelected ? "text-amber-200" : "text-amber-400"}`}>
+                      {s?.score ?? 0}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Main Focus Row: Candidate Name, School & Huge Gold Score */}
+          <div className="relative z-10 flex items-center justify-between gap-6 py-2 px-2 sm:px-6">
+            <div className="flex-1 min-w-0">
+              <div className="text-xs sm:text-sm font-bold text-amber-400 uppercase tracking-widest">
+                {isLast ? "🏆 ĐIỂM SỐ CAO NHẤT" : `THÍ SINH ${currentIdx + 1}/${sorted.length}`}
+              </div>
+              <div className="text-3xl sm:text-4xl md:text-5xl font-black text-white uppercase truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
+                {currentName}
+              </div>
+              {currentSeat?.school && (
+                <div className="text-sm sm:text-lg text-amber-200/80 font-bold truncate mt-0.5">
+                  {currentSeat.school}
+                </div>
+              )}
+            </div>
+
+            <div className="shrink-0 text-right">
+              <div className="text-xs sm:text-sm font-bold text-amber-400/80 uppercase tracking-widest">
+                ĐIỂM HIỆN TẠI
+              </div>
+              <div className="text-5xl sm:text-6xl md:text-7xl font-black text-amber-300 drop-shadow-[0_4px_16px_rgba(245,158,11,0.85)] tracking-tight">
+                {currentScore}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Navigation Hint */}
+          <div className="relative z-10 flex items-center justify-center pt-3 text-[11px] sm:text-xs text-amber-200/50 font-medium">
+            <span>Bấm vào khung hoặc dùng phím Space / Phím mũi tên để chuyển thí sinh</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SummaryLowerThirdGraphic({
   state,
   onNext,
@@ -2546,6 +3015,17 @@ export function SummaryLowerThirdGraphic({
 }: SummaryLowerThirdGraphicProps) {
   const sm = state.summaryState;
   if (!sm || !sm.active || sm.orderedSeats.length === 0) return null;
+
+  if (state.themeMode === "o26_classic") {
+    return (
+      <Vtv3ClassicSummaryGraphic
+        state={state}
+        onNext={onNext}
+        onPrev={onPrev}
+        onClose={onClose}
+      />
+    );
+  }
 
   // 1. Sort ascending by score (lowest to highest), tie-break by seatId ascending
   const sorted = [...sm.orderedSeats].sort((a, b) => {
@@ -2629,16 +3109,12 @@ export function SummaryLowerThirdGraphic({
     <div
       className={
         isFs
-          ? `absolute inset-0 z-50 flex flex-col items-center justify-center p-6 pointer-events-auto select-none cursor-pointer ${
-              state.themeMode !== "o26_classic"
-                ? "bg-[#040d21] overflow-hidden"
-                : "bg-[#040e24]/88 backdrop-blur-md"
-            }`
+          ? "absolute inset-0 z-50 flex flex-col items-center justify-center p-6 pointer-events-auto select-none cursor-pointer bg-[#040d21] overflow-hidden"
           : "absolute inset-x-0 bottom-0 z-50 flex flex-col items-center justify-end pb-4 sm:pb-5 bg-transparent pointer-events-auto select-none cursor-pointer"
       }
       onClick={handleNext}
     >
-      {isFs && state.themeMode !== "o26_classic" && <Olympia22BackgroundBackdrop />}
+      {isFs && <Olympia22BackgroundBackdrop />}
       <style>{`
         /* Authentic Econova V3 3-layer arrow sweep-to-center & hexagon-expand on Summary open */
         @keyframes sm-v3-wing-l-g1 {

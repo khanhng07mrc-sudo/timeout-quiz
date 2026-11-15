@@ -1201,3 +1201,52 @@ button:not(:disabled):active,
   will-change: transform, filter;
 }
 
+/* ═════════════════════════════════════════════════════════════════════════
+   OLYMPIA O26 CLASSIC THEME TOKENS & UTILITIES (VTV3 CHALKBOARD & STONE)
+   Dark metallic slate, authentic double gold borders, bronze accents & rivets
+   ═════════════════════════════════════════════════════════════════════════ */
+
+.classic-slate-panel {
+  background: linear-gradient(180deg, #1e222a 0%, #15181f 50%, #0d0f14 100%);
+  border: 3px solid #d4af37;
+  outline: 1.5px solid #78350f;
+  outline-offset: -5px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.9), 0 0 20px rgba(212, 175, 55, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.2), inset 0 -2px 6px rgba(0, 0, 0, 0.85);
+}
+
+.classic-gold-border {
+  border: 3px solid #d4af37;
+  outline: 1.5px solid #78350f;
+  outline-offset: -5px;
+}
+
+.classic-gold-text {
+  color: #fef08a;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 12px rgba(212, 175, 55, 0.5);
+}
+
+.classic-rivet-bronze {
+  background: radial-gradient(circle at 35% 35%, #fbbf24 0%, #b45309 60%, #78350f 100%);
+  border: 1px solid #d4af37;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.classic-rivet-red {
+  background: radial-gradient(circle at 35% 30%, #f87171 0%, #dc2626 50%, #7f1d1d 100%);
+  border: 1px solid #fca5a5;
+  box-shadow: 0 0 10px #ef4444, inset 0 1px 1px rgba(255, 255, 255, 0.5);
+}
+
+.classic-glow-active {
+  background: linear-gradient(180deg, rgba(153, 27, 27, 0.95) 0%, rgba(127, 29, 29, 0.98) 100%);
+  border: 2px solid #f59e0b;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.classic-glow-buzzed {
+  background: linear-gradient(180deg, rgba(217, 119, 6, 0.95) 0%, rgba(180, 83, 9, 0.98) 100%);
+  border: 2px solid #fde047;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.9), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+

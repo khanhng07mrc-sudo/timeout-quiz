@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
 import { RULESETS } from "@/lib/olympia/rulesets";
-import { parseVcnvAnswer, stripVcnvLetterCount } from "@/lib/olympia/engine";
+import { parseVcnvAnswer, stripVcnvLetterCount, cleanVcnvWord } from "@/lib/olympia/engine";
 import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
 import { CircularTimer, MediaView, ScoreStrip, SEAT_COLORS, Timer, activeSeats, seatName, resolveMediaUrl } from "./ui";
 import { getCurrentQuestionMedia } from "./HostConsole";
@@ -12,6 +12,9 @@ import { useOlympiaCameraState } from "./studio/useOlympiaCamera";
 import {
   Vtv3ChalkboardBackdrop,
   Vtv3ChalkboardQuestionFrame,
+  ClassicUnifiedLowerThird,
+  Vtv3ClassicSingleAnswerBar,
+  Vtv3ClassicSummaryGraphic,
   VcnvCountdownGraphic,
   VcnvAnswerRevealGraphic,
   TangTocQuestionGraphic,
@@ -19,7 +22,6 @@ import {
   GlossyBlackDomeButton,
   BlueSquareNumberBadge,
   SummaryLowerThirdGraphic,
-  EconovaContestantScoreTabBar,
   EconovaLowerThirdV3,
   VeDichSlantedGridGraphic,
   V3SingleAnswerBar,
@@ -558,7 +560,13 @@ export default function DisplayScreen({ code }: { code: string }) {
         )}
 
         {/* ── 6. SUMMARY LOWER-THIRD / FULLSCREEN GRAPHIC ── */}
-        {state.summaryState?.active && <SummaryLowerThirdGraphic state={state} />}
+        {state.summaryState?.active && (
+          state.themeMode === "o26_classic" ? (
+            <Vtv3ClassicSummaryGraphic state={state} />
+          ) : (
+            <SummaryLowerThirdGraphic state={state} />
+          )
+        )}
       </div>
     </div>
   );
@@ -723,37 +731,40 @@ function KhoiDong({ state, serverNow }: P) {
       {/* Main question card / Result answer overlay */}
       {kd.phase === "result" ? (
         <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto px-2 sm:px-4 flex flex-col justify-end">
-          <V3SingleAnswerBar
-            answerText={kd.current?.a || "(Chưa có đáp án)"}
-            roundLabel="ĐÁP ÁN"
-          />
+          {state.themeMode === "o26_classic" ? (
+            <Vtv3ClassicSingleAnswerBar
+              answerText={kd.current?.a || "(Chưa có đáp án)"}
+              roundLabel="ĐÁP ÁN"
+            />
+          ) : (
+            <V3SingleAnswerBar
+              answerText={kd.current?.a || "(Chưa có đáp án)"}
+              roundLabel="ĐÁP ÁN"
+            />
+          )}
         </div>
       ) : state.themeMode === "o26_classic" ? (
-        <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col gap-1">
-          <EconovaContestantScoreTabBar
-            state={state}
-            activeSeatId={currentSoloSeat}
-            buzzedSeatId={currentBuzzedSeat}
-            lockedSeats={kd.lockedSeats}
-            questionNumberBadge={kd.started ? (hasRevealedQ ? questionBadge : `Câu 0${totalQ}`) : null}
-          />
-          <Vtv3ChalkboardQuestionFrame
-            headerBadge={null}
-            questionText={hasRevealedQ ? kd.current?.q : ""}
-            mediaElement={
-              hasRevealedQ && kd.current?.media ? (
-                <MediaView
-                  url={kd.current.media}
-                  type={kd.current.mediaType}
-                  className="max-h-20 sm:max-h-24 rounded-lg mx-auto mt-1"
-                />
-              ) : null
-            }
-            timer={kdActiveTimer}
-            timerBadge={kdSecondsBadgeTimer}
-            serverNow={serverNow}
-          />
-        </div>
+        <ClassicUnifiedLowerThird
+          state={state}
+          round="khoiDong"
+          activeSeatId={currentSoloSeat}
+          buzzedSeatId={currentBuzzedSeat}
+          lockedSeats={kd.lockedSeats}
+          badgeLabel={kd.started ? (hasRevealedQ ? questionBadge : `Câu 0${totalQ}`) : null}
+          questionText={hasRevealedQ ? kd.current?.q : ""}
+          mediaElement={
+            hasRevealedQ && kd.current?.media ? (
+              <MediaView
+                url={kd.current.media}
+                type={kd.current.mediaType}
+                className="max-h-20 sm:max-h-24 rounded-lg mx-auto mt-1"
+              />
+            ) : null
+          }
+          timer={kdActiveTimer}
+          timerBadge={kdSecondsBadgeTimer}
+          serverNow={serverNow}
+        />
       ) : (
         <EconovaLowerThirdV3
           state={state}
@@ -784,7 +795,7 @@ function KhoiDong({ state, serverNow }: P) {
   );
 }
 
-function Vcnv({ state, serverNow }: P) {
+function Vcnv({ state, serverNow, isLowerThird }: P) {
   const v = state.vcnv!;
   if (!v) return null;
 
@@ -801,6 +812,34 @@ function Vcnv({ state, serverNow }: P) {
   }
   if (v.answersRevealed) {
     return <VcnvAnswerRevealGraphic state={state} isWaitingAnswer={false} />;
+  }
+
+  // Authentic VTV3 Lower-Third Mode for VCNV
+  if (isLowerThird && state.themeMode === "o26_classic") {
+    const curIdx = v.currentRow;
+    const isCenter = curIdx === 4;
+    const row = curIdx >= 0 && curIdx < 4 ? v.rows[curIdx] : null;
+    const cleanAns = cleanVcnvWord(row?.answer || "");
+    const letterCount = row?.letterCount || cleanAns.length || 0;
+    const badge = isCenter
+      ? "CÂU TRUNG TÂM"
+      : curIdx >= 0
+      ? `HÀNG NGANG ${curIdx + 1} (${letterCount} CHỮ CÁI)`
+      : `CHƯỚNG NGẠI VẬT (${v.keyword?.length || "?"} CHỮ CÁI)`;
+    const questionText = isCenter ? v.centerQuestion?.q || "" : row?.hint || "";
+    const buzzedSeat = v.bells && v.bells.length > 0 ? v.bells[0].seat : null;
+
+    return (
+      <ClassicUnifiedLowerThird
+        state={state}
+        round="vcnv"
+        badgeLabel={badge}
+        questionText={questionText}
+        timer={v.timer}
+        buzzedSeatId={buzzedSeat}
+        serverNow={serverNow}
+      />
+    );
   }
 
   // Authentic VTV3 4-Quadrant Broadcast Layout (Grid, Question & 15s Countdown Phases)
@@ -902,10 +941,13 @@ function VeDich({ state, serverNow }: P) {
       {/* Question is opened: opens early with blank content once package grid closes, or active during thinking / stealing / result */}
       {showQuestionFrame ? (
         state.themeMode === "o26_classic" ? (
-          <Vtv3ChalkboardQuestionFrame
-            headerBadge={
-              vd.hopeStarActive ? "⭐ NGÔI SAO HY VỌNG" : undefined
-            }
+          <ClassicUnifiedLowerThird
+            state={state}
+            round="veDich"
+            activeSeatId={owner}
+            buzzedSeatId={vd.steal?.buzzedSeat ?? null}
+            badgeLabel={cur?.points ? `${cur.points} ĐIỂM` : `CÂU ${vd.qIdx + 1}/3`}
+            hopeStarActive={vd.hopeStarActive}
             questionText={cur?.q?.q || ""}
             mediaElement={
               cur?.q?.media ? (
@@ -916,7 +958,13 @@ function VeDich({ state, serverNow }: P) {
                 />
               ) : null
             }
-            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : (cur && (vd.phase === "thinking" || vd.phase === "result") ? vd.timer : null)}
+            timer={
+              vd.steal && vd.phase === "stealing"
+                ? vd.steal.timer
+                : cur && (vd.phase === "thinking" || vd.phase === "result")
+                ? vd.timer
+                : null
+            }
             serverNow={serverNow}
           />
         ) : (
@@ -958,18 +1006,16 @@ function Chp({ state, serverNow }: P) {
     <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto text-center space-y-2 animate-fade-in">
       {q && (
         state.themeMode === "o26_classic" ? (
-          <div className="flex flex-col gap-1">
-            <EconovaContestantScoreTabBar
-              state={state}
-              buzzedSeatId={cp.buzzedSeat || cp.winner}
-            />
-            <Vtv3ChalkboardQuestionFrame
-              headerBadge="CÂU HỎI PHỤ"
-              questionText={q.q}
-              timer={cp.timer}
-              serverNow={serverNow}
-            />
-          </div>
+          <ClassicUnifiedLowerThird
+            state={state}
+            round="cauHoiPhu"
+            tiedSeats={cp.tied}
+            buzzedSeatId={cp.buzzedSeat || cp.winner}
+            badgeLabel="CÂU HỎI PHỤ"
+            questionText={q.q}
+            timer={cp.timer}
+            serverNow={serverNow}
+          />
         ) : (
           <EconovaLowerThirdV3
             state={state}

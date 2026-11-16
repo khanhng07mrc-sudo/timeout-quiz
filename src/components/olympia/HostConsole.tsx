@@ -848,9 +848,9 @@ export const HostConsole = React.memo(function HostConsole({
               </div>
             </div>
 
-            {/* 1. Question Card Box (Flexible dynamic height to show full question) */}
-            <div className="rounded-xl border border-violet-500/25 bg-gradient-to-b from-[#1a0d3f]/90 to-[#0f0728]/95 p-3 shadow-md backdrop-blur-sm">
-              <div className="text-xs md:text-sm font-semibold leading-relaxed min-h-[56px] max-h-[240px] overflow-y-auto pr-1 select-text break-words whitespace-pre-wrap">
+            {/* 1. Question Card Box (Flexible dynamic height to show full question, strictly top-left aligned) */}
+            <div className="rounded-xl border border-violet-500/25 bg-gradient-to-b from-[#1a0d3f]/90 to-[#0f0728]/95 p-3 shadow-md backdrop-blur-sm text-left">
+              <div className="text-xs md:text-sm font-semibold leading-relaxed min-h-[56px] max-h-[240px] overflow-y-auto pr-1 select-text break-words whitespace-pre-wrap text-left">
                 {getQuestionText(state) || (
                   <div className="flex items-center gap-2 text-slate-400 italic text-xs py-1">
                     <span className="text-amber-400 font-bold not-italic">🎬</span>

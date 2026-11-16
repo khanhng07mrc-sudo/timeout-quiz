@@ -108108,9 +108108,16 @@ var OlympiaGame = class _OlympiaGame {
           b.judgedAt = judgeTime;
           if (!v.eliminatedSeats.includes(b.seat)) v.eliminatedSeats.push(b.seat);
         });
-        const buzzers = [
-          { order: 1, seat, name: this.seatName(seat), verdict: "wrong" }
-        ];
+        const buzzers = v.bells.map((b, idx) => ({
+          order: idx + 1,
+          seat: b.seat,
+          name: this.seatName(b.seat),
+          verdict: "wrong"
+        }));
+        if (!buzzers.some((b) => b.seat === seat)) {
+          buzzers.push({ order: buzzers.length + 1, seat, name: this.seatName(seat), verdict: "wrong" });
+        }
+        const allNames = v.bells.map((b) => this.seatName(b.seat)).join(", ") || this.seatName(seat);
         this.pushTranscript({
           at: now,
           round: "vcnv",
@@ -108123,7 +108130,7 @@ var OlympiaGame = class _OlympiaGame {
           actorName: this.seatName(seat),
           buzzerEvents: buzzers,
           verdict: "wrong",
-          note: `${this.seatName(seat)} tr\u1EA3 l\u1EDDi sai CNV.`
+          note: `${allNames} tr\u1EA3 l\u1EDDi sai CNV (m\u1EA5t quy\u1EC1n ch\u01A1i VCNV).`
         });
         this.cue("2_VuotChuongNgaiVat/cnv_wrong");
         return OK;

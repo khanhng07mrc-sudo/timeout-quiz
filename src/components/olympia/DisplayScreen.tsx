@@ -727,21 +727,9 @@ function KhoiDong({ state, serverNow }: P) {
   const isTimerRunning = Boolean(kd.timer && kd.timer.startedAt != null);
   const kdSecondsBadgeTimer = isO23ToO26 && hasRevealedQ && isTimerRunning ? kd.timer : null;
 
-  return (
-    <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
-      {/* Main question card / Result answer overlay */}
-      {kd.phase === "result" ? (
-        <div className="w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col justify-end animate-fade-in">
-          <UnifiedOlympiaAnswerOverlay
-            answerText={kd.current?.a || "(Chưa có đáp án)"}
-            roundLabel="ĐÁP ÁN"
-            verdict={kd.lastVerdict}
-            pointsAwarded={kd.lastVerdict === "correct" ? 10 : undefined}
-            actorName={kd.buzzedSeat != null ? state.seats[kd.buzzedSeat]?.name : undefined}
-            themeMode={state.themeMode}
-          />
-        </div>
-      ) : state.themeMode === "o26_classic" ? (
+  if (state.themeMode === "o26_classic") {
+    return (
+      <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
         <ClassicUnifiedLowerThird
           state={state}
           round="khoiDong"
@@ -762,7 +750,37 @@ function KhoiDong({ state, serverNow }: P) {
           timer={kdActiveTimer}
           timerBadge={kdSecondsBadgeTimer}
           serverNow={serverNow}
+          answerReveal={
+            kd.phase === "result"
+              ? {
+                  show: true,
+                  text: kd.current?.a || "(Chưa có đáp án)",
+                  label: "ĐÁP ÁN",
+                  verdict: kd.lastVerdict,
+                  points: kd.lastVerdict === "correct" ? 10 : undefined,
+                  actorName: kd.buzzedSeat != null ? state.seats[kd.buzzedSeat]?.name : undefined,
+                }
+              : null
+          }
         />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
+      {/* Main question card / Result answer overlay */}
+      {kd.phase === "result" ? (
+        <div className="w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col justify-end animate-fade-in">
+          <UnifiedOlympiaAnswerOverlay
+            answerText={kd.current?.a || "(Chưa có đáp án)"}
+            roundLabel="ĐÁP ÁN"
+            verdict={kd.lastVerdict}
+            pointsAwarded={kd.lastVerdict === "correct" ? 10 : undefined}
+            actorName={kd.buzzedSeat != null ? state.seats[kd.buzzedSeat]?.name : undefined}
+            themeMode={state.themeMode}
+          />
+        </div>
       ) : (
         <EconovaLowerThirdV3
           state={state}
@@ -963,19 +981,8 @@ function VeDich({ state, serverNow }: P) {
       )}
 
       {/* When in result phase: unmount question graphics completely and show independent answer overlay at 1/3 lower screen */}
-      {isVdResult ? (
-        <div className="w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col justify-end animate-fade-in">
-          <UnifiedOlympiaAnswerOverlay
-            answerText={vdAnswer || (vdVerdict === "correct" ? "CHÍNH XÁC" : "CHƯA CHÍNH XÁC")}
-            roundLabel="ĐÁP ÁN VỀ ĐÍCH"
-            verdict={vdVerdict}
-            pointsAwarded={vdPoints}
-            actorName={vdActorName}
-            themeMode={state.themeMode}
-          />
-        </div>
-      ) : showQuestionFrame ? (
-        state.themeMode === "o26_classic" ? (
+      {state.themeMode === "o26_classic" ? (
+        (showQuestionFrame || isVdResult) ? (
           <ClassicUnifiedLowerThird
             state={state}
             round="veDich"
@@ -1001,8 +1008,32 @@ function VeDich({ state, serverNow }: P) {
                 : null
             }
             serverNow={serverNow}
+            answerReveal={
+              isVdResult
+                ? {
+                    show: true,
+                    text: vdAnswer || (vdVerdict === "correct" ? "CHÍNH XÁC" : "CHƯA CHÍNH XÁC"),
+                    label: "ĐÁP ÁN VỀ ĐÍCH",
+                    verdict: vdVerdict,
+                    points: vdPoints,
+                    actorName: vdActorName,
+                  }
+                : null
+            }
           />
-        ) : (
+        ) : null
+      ) : isVdResult ? (
+        <div className="w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col justify-end animate-fade-in">
+          <UnifiedOlympiaAnswerOverlay
+            answerText={vdAnswer || (vdVerdict === "correct" ? "CHÍNH XÁC" : "CHƯA CHÍNH XÁC")}
+            roundLabel="ĐÁP ÁN VỀ ĐÍCH"
+            verdict={vdVerdict}
+            pointsAwarded={vdPoints}
+            actorName={vdActorName}
+            themeMode={state.themeMode}
+          />
+        </div>
+      ) : showQuestionFrame ? (
           <EconovaLowerThirdV3
             key={`vd-lower-third-${owner}-${vd.turnIdx}`}
             state={state}
@@ -1028,8 +1059,7 @@ function VeDich({ state, serverNow }: P) {
             arrowFromCenter={true}
             expandFromCenter={true}
           />
-        )
-      ) : null}
+        ) : null}
     </div>
   );
 }
@@ -1049,7 +1079,31 @@ function Chp({ state, serverNow }: P) {
 
   return (
     <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto text-center space-y-2 animate-fade-in">
-      {isChpResult ? (
+      {state.themeMode === "o26_classic" ? (
+        (q || isChpResult) ? (
+          <ClassicUnifiedLowerThird
+            state={state}
+            round="cauHoiPhu"
+            tiedSeats={cp.tied}
+            buzzedSeatId={cp.buzzedSeat || cp.winner}
+            badgeLabel="CÂU HỎI PHỤ"
+            questionText={q?.q || ""}
+            timer={cp.timer}
+            serverNow={serverNow}
+            answerReveal={
+              isChpResult
+                ? {
+                    show: true,
+                    text: chpAnswer || (cp.winner != null ? "CHÍNH XÁC" : "KẾT QUẢ"),
+                    label: "ĐÁP ÁN CÂU HỎI PHỤ",
+                    verdict: cp.winner != null ? "correct" : "neutral",
+                    actorName: chpWinner,
+                  }
+                : null
+            }
+          />
+        ) : null
+      ) : isChpResult ? (
         <div className="w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col justify-end animate-fade-in">
           <UnifiedOlympiaAnswerOverlay
             answerText={chpAnswer || (cp.winner != null ? "CHÍNH XÁC" : "KẾT QUẢ")}
@@ -1060,28 +1114,15 @@ function Chp({ state, serverNow }: P) {
           />
         </div>
       ) : q ? (
-        state.themeMode === "o26_classic" ? (
-          <ClassicUnifiedLowerThird
-            state={state}
-            round="cauHoiPhu"
-            tiedSeats={cp.tied}
-            buzzedSeatId={cp.buzzedSeat || cp.winner}
-            badgeLabel="CÂU HỎI PHỤ"
-            questionText={q.q}
-            timer={cp.timer}
-            serverNow={serverNow}
-          />
-        ) : (
-          <EconovaLowerThirdV3
-            state={state}
-            serverNow={serverNow}
-            buzzedSeatId={cp.buzzedSeat || cp.winner}
-            headerBadge="CÂU HỎI PHỤ"
-            questionText={q.q}
-            timer={cp.timer}
-            showScoreTab={true}
-          />
-        )
+        <EconovaLowerThirdV3
+          state={state}
+          serverNow={serverNow}
+          buzzedSeatId={cp.buzzedSeat || cp.winner}
+          headerBadge="CÂU HỎI PHỤ"
+          questionText={q.q}
+          timer={cp.timer}
+          showScoreTab={true}
+        />
       ) : null}
     </div>
   );

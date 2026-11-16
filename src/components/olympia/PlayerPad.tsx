@@ -834,9 +834,9 @@ export default function PlayerPad({
             </div>
           )}
 
-          {/* Main Question / Content Area - my-auto safely centers without clipping top on scroll */}
-          <div className="flex-1 min-h-0 flex flex-col items-center text-center overflow-y-auto no-scrollbar px-2 py-1 w-full">
-            <div className="my-auto w-full flex flex-col items-center justify-center py-0.5">
+          {/* Main Question / Content Area - top-left aligned across all rounds & themes */}
+          <div className="flex-1 min-h-0 flex flex-col items-start justify-start text-left overflow-y-auto no-scrollbar px-2 py-1 w-full">
+            <div className="w-full flex flex-col items-start justify-start py-0.5 text-left">
               <QuestionBoxContent
                 state={state}
                 seatId={me.id}
@@ -968,7 +968,7 @@ function QuestionBoxContent({
 }) {
   if (state.stage === "lobby") {
     return (
-      <div className={isClassic ? "text-amber-200/90 text-lg sm:text-xl font-bold" : "text-slate-300 text-lg sm:text-xl font-bold"}>
+      <div className={`w-full text-center ${isClassic ? "text-amber-200/90 text-lg sm:text-xl font-bold" : "text-slate-300 text-lg sm:text-xl font-bold"}`}>
         Đã kết nối máy thí sinh. Chờ MC bắt đầu trận đấu…
       </div>
     );
@@ -976,7 +976,7 @@ function QuestionBoxContent({
   if (state.stage === "finished") {
     const myScore = state.seats[seatId]?.score ?? 0;
     return (
-      <div className="space-y-2">
+      <div className="w-full text-center space-y-2">
         <div className={`text-2xl sm:text-3xl font-black ${isClassic ? "text-[#fbbf24] drop-shadow-[0_2px_8px_rgba(251,191,36,0.6)]" : "text-amber-300"}`}>
           TRẬN ĐẤU KẾT THÚC
         </div>
@@ -988,7 +988,7 @@ function QuestionBoxContent({
   }
   if (state.introTimer || state.introStandby || state.entranceState?.active) {
     return (
-      <div className="space-y-1 max-w-full">
+      <div className="w-full text-center space-y-1 max-w-full">
         <div className={`text-base sm:text-xl md:text-2xl font-black tracking-wider uppercase animate-pulse ${
           isClassic ? "text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]" : "text-cyan-300"
         }`}>
@@ -1004,7 +1004,7 @@ function QuestionBoxContent({
   }
   if (state.banner) {
     return (
-      <div className={`text-xl sm:text-3xl font-black uppercase tracking-wider ${
+      <div className={`w-full text-center text-xl sm:text-3xl font-black uppercase tracking-wider ${
         isClassic ? "text-[#fbbf24] drop-shadow-[0_2px_8px_rgba(251,191,36,0.6)]" : "text-amber-300"
       }`}>
         {state.banner}
@@ -1017,21 +1017,21 @@ function QuestionBoxContent({
       const kd = state.khoiDong;
       if (!kd || !kd.started || kd.phase === "segmentDone") {
         return (
-          <div className={isClassic ? "text-amber-200/70 text-sm sm:text-base font-semibold" : "text-slate-400 text-sm sm:text-base font-semibold"}>
+          <div className={`w-full text-center ${isClassic ? "text-amber-200/70 text-sm sm:text-base font-semibold" : "text-slate-400 text-sm sm:text-base font-semibold"}`}>
             Đang đợi bắt đầu lượt Khởi động…
           </div>
         );
       }
       if (!kd.questionRevealed || !kd.current) {
         return (
-          <div className={isClassic ? "text-amber-300 text-base sm:text-lg font-black uppercase animate-pulse drop-shadow" : "text-sky-300 text-base sm:text-lg font-black uppercase animate-pulse"}>
+          <div className={`w-full text-center ${isClassic ? "text-amber-300 text-base sm:text-lg font-black uppercase animate-pulse drop-shadow" : "text-sky-300 text-base sm:text-lg font-black uppercase animate-pulse"}`}>
             Sẵn sàng thi đấu…
           </div>
         );
       }
       return (
-        <div className="space-y-1.5 w-full max-w-3xl">
-          <div className={`select-text ${
+        <div className="space-y-1.5 w-full max-w-3xl text-left">
+          <div className={`select-text text-left ${
             isSandbox
               ? "text-xs sm:text-sm font-black leading-snug text-white"
               : isClassic
@@ -1107,7 +1107,7 @@ function QuestionBoxContent({
 
       if (v.currentRow < 0) {
         return (
-          <div className={isClassic ? "text-amber-200/70 text-sm sm:text-base font-semibold" : "text-slate-400 text-sm sm:text-base font-semibold"}>
+          <div className={`w-full text-center ${isClassic ? "text-amber-200/70 text-sm sm:text-base font-semibold" : "text-slate-400 text-sm sm:text-base font-semibold"}`}>
             Đang đợi MC chọn hàng ngang…
           </div>
         );
@@ -1115,7 +1115,7 @@ function QuestionBoxContent({
       if (v.phase === "selecting") {
         const lc = v.currentRow < 4 ? v.rows[v.currentRow]?.letterCount || v.rows[v.currentRow]?.answer?.length || "?" : "";
         return (
-          <div className="space-y-1">
+          <div className="w-full text-center space-y-1">
             <div className={`text-base sm:text-lg font-black uppercase ${isClassic ? "text-[#fbbf24] drop-shadow" : "text-amber-300"}`}>
               {v.currentRow < 4 ? `HÀNG NGANG SỐ ${v.currentRow + 1} (${lc} CHỮ CÁI)` : "⭐ Ô TRUNG TÂM"}
             </div>
@@ -1129,11 +1129,11 @@ function QuestionBoxContent({
         const row = v.rows[v.currentRow];
         const lc = row?.letterCount || row?.answer?.length || "?";
         return (
-          <div className="space-y-1 max-w-3xl">
-            <div className={`text-xs font-black uppercase tracking-wider ${isClassic ? "text-amber-300" : "text-sky-300"}`}>
+          <div className="space-y-1 max-w-3xl text-left w-full">
+            <div className={`text-xs font-black uppercase tracking-wider text-left ${isClassic ? "text-amber-300" : "text-sky-300"}`}>
               Hàng ngang số {v.currentRow + 1} ({lc} chữ cái)
             </div>
-            <div className={`select-text ${
+            <div className={`select-text text-left ${
               isSandbox
                 ? "text-xs sm:text-sm font-black leading-snug text-white"
                 : isClassic
@@ -1146,11 +1146,11 @@ function QuestionBoxContent({
         );
       }
       return (
-        <div className="space-y-1 max-w-3xl">
-          <div className={`text-xs font-black uppercase tracking-wider ${isClassic ? "text-[#fbbf24]" : "text-amber-400"}`}>
+        <div className="space-y-1 max-w-3xl text-left w-full">
+          <div className={`text-xs font-black uppercase tracking-wider text-left ${isClassic ? "text-[#fbbf24]" : "text-amber-400"}`}>
             ⭐ CÂU HỎI Ô TRUNG TÂM
           </div>
-          <div className={`select-text ${
+          <div className={`select-text text-left ${
             isSandbox
               ? "text-xs sm:text-sm font-black leading-snug text-white"
               : isClassic
@@ -1167,15 +1167,15 @@ function QuestionBoxContent({
       const tt = state.tangToc;
       if (!tt || tt.qIdx < 0 || tt.phase === "idle") {
         return (
-          <div className={isClassic ? "text-amber-200/70 text-sm sm:text-base font-semibold" : "text-slate-400 text-sm sm:text-base font-semibold"}>
+          <div className={`w-full text-center ${isClassic ? "text-amber-200/70 text-sm sm:text-base font-semibold" : "text-slate-400 text-sm sm:text-base font-semibold"}`}>
             Chuẩn bị mở câu hỏi Tăng Tốc…
           </div>
         );
       }
       const q = tt.questions[tt.qIdx];
       return (
-        <div className="space-y-1.5 w-full max-w-3xl">
-          <div className={`select-text ${
+        <div className="space-y-1.5 w-full max-w-3xl text-left">
+          <div className={`select-text text-left ${
             isSandbox
               ? "text-xs sm:text-sm font-black leading-snug text-white"
               : isClassic
@@ -1215,7 +1215,7 @@ function QuestionBoxContent({
           );
         }
         return (
-          <div className={isClassic ? "text-[#fbbf24] text-base sm:text-lg font-bold drop-shadow" : "text-amber-300 text-base sm:text-lg font-bold"}>
+          <div className={`w-full text-center ${isClassic ? "text-[#fbbf24] text-base sm:text-lg font-bold drop-shadow" : "text-amber-300 text-base sm:text-lg font-bold"}`}>
             {seatName(state, owner)} đang lựa chọn gói câu hỏi Về Đích…
           </div>
         );
@@ -1224,7 +1224,7 @@ function QuestionBoxContent({
       if (!vd.current) {
         const pkg = vd.packages[owner];
         return (
-          <div className="space-y-1.5">
+          <div className="w-full text-center space-y-1.5">
             <div className={`text-xs sm:text-sm font-bold uppercase ${isClassic ? "text-[#fbbf24]" : "text-amber-300"}`}>
               Gói câu hỏi của {seatName(state, owner)}
             </div>
@@ -1249,8 +1249,8 @@ function QuestionBoxContent({
       }
 
       return (
-        <div className="space-y-1.5 w-full max-w-3xl">
-          <div className={`flex items-center justify-center gap-2 text-xs sm:text-sm font-black uppercase ${
+        <div className="space-y-1.5 w-full max-w-3xl text-left">
+          <div className={`flex items-center justify-start gap-2 text-xs sm:text-sm font-black uppercase ${
             isClassic ? "text-[#fbbf24]" : "text-amber-300"
           }`}>
             <span>Câu {vd.qIdx + 1} · {vd.current.points} điểm</span>
@@ -1260,7 +1260,7 @@ function QuestionBoxContent({
               </span>
             )}
           </div>
-          <div className={`select-text ${
+          <div className={`select-text text-left ${
             isSandbox
               ? "text-xs sm:text-sm font-black leading-snug text-white"
               : isClassic
@@ -1273,7 +1273,7 @@ function QuestionBoxContent({
             <MediaView url={vd.current.q.media} type={vd.current.q.mediaType} className={`${isSandbox ? "max-h-16" : "max-h-24 sm:max-h-36"} rounded-xl mx-auto`} />
           )}
           {vd.phase === "result" && vd.current.q.a && (
-            <div className={`mt-1 inline-block px-3 py-1 rounded-xl font-black text-xs sm:text-sm ${
+            <div className={`mt-1 inline-block px-3 py-1 rounded-xl font-black text-xs sm:text-sm text-left ${
               isClassic
                 ? "bg-gradient-to-r from-[#064e3b] to-[#042f2e] border-2 border-emerald-400/80 text-emerald-200 shadow-md"
                 : "bg-emerald-950/80 border border-emerald-400 text-emerald-300"
@@ -1291,19 +1291,19 @@ function QuestionBoxContent({
       const q = cp.questions[cp.qIdx];
       if (!q || cp.phase === "idle") {
         return (
-          <div className={isClassic ? "text-amber-200/70 text-sm sm:text-base font-semibold" : "text-slate-400 text-sm sm:text-base font-semibold"}>
+          <div className={`w-full text-center ${isClassic ? "text-amber-200/70 text-sm sm:text-base font-semibold" : "text-slate-400 text-sm sm:text-base font-semibold"}`}>
             Chuẩn bị Câu hỏi phụ…
           </div>
         );
       }
       return (
-        <div className="space-y-1.5 max-w-3xl">
-          <div className={`text-xs sm:text-sm font-black uppercase tracking-wider ${
+        <div className="space-y-1.5 max-w-3xl text-left w-full">
+          <div className={`text-xs sm:text-sm font-black uppercase tracking-wider text-left ${
             isClassic ? "text-[#fbbf24]" : "text-amber-300"
           }`}>
             CÂU HỎI PHỤ {cp.qIdx >= 0 ? `${cp.qIdx + 1}` : ""}
           </div>
-          <div className={`select-text ${
+          <div className={`select-text text-left ${
             isSandbox
               ? "text-xs sm:text-sm font-black leading-snug text-white"
               : isClassic
@@ -1313,7 +1313,7 @@ function QuestionBoxContent({
             {q.q}
           </div>
           {cp.phase === "result" && q.a && (
-            <div className={`font-black text-sm sm:text-base ${isClassic ? "text-emerald-300 drop-shadow" : "text-emerald-300"}`}>
+            <div className={`font-black text-sm sm:text-base text-left ${isClassic ? "text-emerald-300 drop-shadow" : "text-emerald-300"}`}>
               ✔ Đáp án: {q.a}
             </div>
           )}

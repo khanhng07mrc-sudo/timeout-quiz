@@ -242,9 +242,9 @@ export function RedConnectionRivet() {
  */
 export function clampQuestionFont(text: string) {
   const len = text ? text.length : 0;
-  if (len <= 70) return "text-3xl sm:text-4xl md:text-5xl lg:text-[36px] font-black leading-snug";
-  if (len <= 140) return "text-2xl sm:text-3xl md:text-4xl lg:text-[30px] font-black leading-snug";
-  return "text-xl sm:text-2xl md:text-3xl lg:text-[24px] font-bold leading-normal";
+  if (len <= 70) return "text-2xl sm:text-3xl md:text-[34px] lg:text-[36px] xl:text-[44px] 2xl:text-[48px] font-black leading-tight";
+  if (len <= 140) return "text-xl sm:text-2xl md:text-[28px] lg:text-[30px] xl:text-[36px] 2xl:text-[40px] font-black leading-snug";
+  return "text-lg sm:text-xl md:text-[22px] lg:text-[24px] xl:text-[30px] 2xl:text-[34px] font-bold leading-normal";
 }
 
 /**
@@ -674,11 +674,11 @@ export function Vtv3ChalkboardQuestionFrame({
           </div>
         )}
 
-        {/* Center: Question Prompt Text (Separated cleanly from shape) */}
-        <div className="relative z-10 flex-1 px-4 sm:px-8 md:px-12 py-3 sm:py-4 flex flex-col items-center justify-center text-center">
+        {/* Center: Question Prompt Text (Top-Left Aligned Broadcast Standard) */}
+        <div className="relative z-10 flex-1 px-4 sm:px-8 md:px-12 py-3 sm:py-4 flex flex-col items-start justify-start text-left">
           {questionText ? (
             <div
-              className={`text-white font-black leading-normal pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] select-text animate-fade-in ${clampQuestionFont(
+              className={`text-white font-black leading-normal pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text animate-fade-in ${clampQuestionFont(
                 questionText
               )}`}
             >
@@ -1083,6 +1083,192 @@ export interface ClassicUnifiedLowerThirdProps {
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
+ * AUTHENTIC O26 CLASSIC CHAMBER ANSWER VIEW
+ * Embedded smoothly inside the lower chamber of ClassicUnifiedLowerThird.
+ * Features dual mechanical brass shutters sliding open with sound,
+ * a glowing status icon jewel, crisp answer typography, and points/actor pill.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function ClassicChamberAnswerView({
+  answerText,
+  roundLabel = "ĐÁP ÁN",
+  verdict = null,
+  pointsAwarded,
+  actorName,
+}: {
+  answerText: string;
+  roundLabel?: string;
+  verdict?: "correct" | "wrong" | "neutral" | null;
+  pointsAwarded?: number;
+  actorName?: string;
+}) {
+  const [shuttersOpen, setShuttersOpen] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShuttersOpen(true);
+      playClassicShutterOpenSFX();
+    }, 40);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const cleanText = (answerText || "").replace(/^✔\s*/, "");
+  const len = cleanText.length;
+  const fontSizeClass =
+    len > 60
+      ? "text-base sm:text-lg md:text-xl lg:text-2xl"
+      : len > 35
+      ? "text-lg sm:text-xl md:text-2xl lg:text-3xl"
+      : len > 20
+      ? "text-xl sm:text-2xl md:text-3xl lg:text-[34px]"
+      : "text-2xl sm:text-3xl md:text-4xl lg:text-[40px]";
+
+  const isCorrect = verdict === "correct";
+  const isWrong = verdict === "wrong";
+
+  return (
+    <div className="relative w-full h-full flex-1 flex items-center justify-between min-h-[140px] px-2 sm:px-6 overflow-hidden select-none">
+      {/* Specular metallic sheen sweep beam across the chamber */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="sheen-sweep-beam" />
+      </div>
+
+      {/* ── Dual Brass Mechanical Shutters ── */}
+      <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden rounded-xl">
+        {/* Left Shutter Wing */}
+        <motion.div
+          initial={{ x: "0%" }}
+          animate={{ x: shuttersOpen ? "-102%" : "0%" }}
+          transition={{ duration: 0.52, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute top-0 bottom-0 left-0 w-1/2 flex items-center justify-end overflow-hidden"
+          style={{
+            background:
+              "linear-gradient(135deg, #1e150b 0%, #5a280b 22%, #92400e 45%, #b45309 60%, #d4af37 80%, #78350f 100%)",
+            borderRight: "2.5px solid #fde047",
+            boxShadow:
+              "inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 6px rgba(0,0,0,0.85), 4px 0 16px rgba(0,0,0,0.7)",
+          }}
+        >
+          <div className="absolute inset-0 opacity-25 bg-[repeating-linear-gradient(0deg,transparent,transparent_6px,rgba(0,0,0,0.6)_6px,rgba(0,0,0,0.6)_8px)]" />
+          <div className="absolute top-2 left-2 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+          <div className="absolute bottom-2 left-2 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+          <div className="relative -mr-3.5 w-7 h-14 rounded-l-full bg-gradient-to-r from-amber-700 to-yellow-500 border-2 border-r-0 border-amber-300 flex items-center justify-center shadow-lg">
+            <div className="w-1.5 h-6 rounded-full bg-amber-950/80" />
+          </div>
+        </motion.div>
+
+        {/* Right Shutter Wing */}
+        <motion.div
+          initial={{ x: "0%" }}
+          animate={{ x: shuttersOpen ? "102%" : "0%" }}
+          transition={{ duration: 0.52, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute top-0 bottom-0 right-0 w-1/2 flex items-center justify-start overflow-hidden"
+          style={{
+            background:
+              "linear-gradient(225deg, #1e150b 0%, #5a280b 22%, #92400e 45%, #b45309 60%, #d4af37 80%, #78350f 100%)",
+            borderLeft: "2.5px solid #fde047",
+            boxShadow:
+              "inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 6px rgba(0,0,0,0.85), -4px 0 16px rgba(0,0,0,0.7)",
+          }}
+        >
+          <div className="absolute inset-0 opacity-25 bg-[repeating-linear-gradient(0deg,transparent,transparent_6px,rgba(0,0,0,0.6)_6px,rgba(0,0,0,0.6)_8px)]" />
+          <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+          <div className="absolute bottom-2 right-2 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+          <div className="relative -ml-3.5 w-7 h-14 rounded-r-full bg-gradient-to-l from-amber-700 to-yellow-500 border-2 border-l-0 border-amber-300 flex items-center justify-center shadow-lg">
+            <div className="w-1.5 h-6 rounded-full bg-amber-950/80" />
+          </div>
+        </motion.div>
+
+        {/* Center seam flash burst */}
+        <motion.div
+          initial={{ opacity: 1, scaleY: 1 }}
+          animate={{ opacity: shuttersOpen ? 0 : 1, scaleY: shuttersOpen ? 1.4 : 1 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-4 z-40 bg-gradient-to-r from-transparent via-amber-200 to-transparent blur-[2px] shadow-[0_0_20px_#fde047]"
+        />
+      </div>
+
+      {/* 1. Left: Status Icon Jewel */}
+      <div className="relative z-10 flex items-center shrink-0">
+        {isCorrect ? (
+          <div
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-emerald-300 flex items-center justify-center text-white text-lg sm:text-xl font-black shadow-[0_0_18px_#10b981]"
+            style={{
+              background:
+                "radial-gradient(circle at 35% 30%, #34d399 0%, #059669 60%, #064e3b 100%)",
+            }}
+          >
+            ✓
+          </div>
+        ) : isWrong ? (
+          <div
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-rose-400 flex items-center justify-center text-white text-lg sm:text-xl font-black shadow-[0_0_18px_#f43f5e]"
+            style={{
+              background:
+                "radial-gradient(circle at 35% 30%, #f43f5e 0%, #e11d48 60%, #881337 100%)",
+            }}
+          >
+            ✕
+          </div>
+        ) : (
+          <div
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-amber-300 flex items-center justify-center text-amber-200 text-base sm:text-lg font-black shadow-[0_0_18px_#f59e0b]"
+            style={{
+              background:
+                "radial-gradient(circle at 35% 30%, #fbbf24 0%, #d97706 60%, #78350f 100%)",
+            }}
+          >
+            ★
+          </div>
+        )}
+      </div>
+
+      {/* 2. Center: Answer Typography */}
+      <div className="relative z-10 flex-1 px-4 sm:px-8 text-center min-w-0">
+        {isCorrect ? (
+          <div
+            className={`text-emerald-300 font-black uppercase tracking-wider drop-shadow-[0_0_28px_rgba(52,211,153,0.9)] break-words leading-tight ${fontSizeClass}`}
+          >
+            {cleanText}
+          </div>
+        ) : isWrong ? (
+          <div
+            className={`text-amber-200 font-black uppercase tracking-wider drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] break-words leading-tight ${fontSizeClass}`}
+          >
+            <span className="text-amber-400/80 text-xs sm:text-sm font-bold mr-2 uppercase tracking-widest block sm:inline">
+              ĐÁP ÁN:
+            </span>
+            {cleanText}
+          </div>
+        ) : (
+          <div
+            className={`text-yellow-100 font-black uppercase tracking-wider drop-shadow-[0_2px_16px_rgba(212,175,55,0.7)] break-words leading-tight ${fontSizeClass}`}
+          >
+            {cleanText}
+          </div>
+        )}
+      </div>
+
+      {/* 3. Right: Points / Actor Name */}
+      <div className="relative z-10 flex items-center gap-2 shrink-0">
+        {pointsAwarded && pointsAwarded > 0 ? (
+          <div className="px-3 sm:px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-600/90 to-yellow-500/90 border border-amber-300 text-slate-950 font-black text-sm sm:text-base md:text-lg uppercase tracking-wider shadow-[0_0_16px_rgba(251,191,36,0.9)] animate-pulse">
+            +{pointsAwarded}đ
+          </div>
+        ) : actorName ? (
+          <div className="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-amber-400/50 text-amber-200 text-xs sm:text-sm font-bold truncate max-w-[150px]">
+            {actorName}
+          </div>
+        ) : (
+          <div className="w-10 sm:w-12 opacity-0 pointer-events-none">•</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
  * AUTHENTIC O26 CLASSIC UNIFIED LOWER-THIRD PLAQUE
  * Cohesive single-frame broadcast graphic for Olympia O26 Classic theme.
  * Integrates candidate score shelf, round status badge, full-width question
@@ -1107,6 +1293,11 @@ export function ClassicUnifiedLowerThird({
   tiedSeats,
   children,
 }: ClassicUnifiedLowerThirdProps) {
+  const hasOpenedRef = useRef(false);
+  useEffect(() => {
+    hasOpenedRef.current = true;
+  }, []);
+
   const allSeats = activeSeats(state);
   const seatsToDisplay =
     tiedSeats && tiedSeats.length > 0
@@ -1125,9 +1316,9 @@ export function ClassicUnifiedLowerThird({
       {/* ── 1. Horizontal Continuous Mounting Beam (Edge-to-Edge) ── */}
       <HorizontalBrassRod />
 
-      {/* ── 2. Unified Plaque Frame (Rotates up 90° from horizontal fold on beam) ── */}
+      {/* ── 2. Unified Plaque Frame (Rotates up 90° from horizontal fold on beam; stationary on question transitions) ── */}
       <motion.div
-        initial={{ rotateX: -90, opacity: 0 }}
+        initial={hasOpenedRef.current ? false : { rotateX: -90, opacity: 0 }}
         animate={{ rotateX: 0, opacity: 1 }}
         exit={{ rotateX: -90, opacity: 0 }}
         transition={{
@@ -1157,23 +1348,21 @@ export function ClassicUnifiedLowerThird({
         <div className="absolute bottom-2 left-2 z-30 w-2.5 h-2.5 rounded-full classic-rivet-bronze pointer-events-none" />
         <div className="absolute bottom-2 right-2 z-30 w-2.5 h-2.5 rounded-full classic-rivet-bronze pointer-events-none" />
 
-        {/* ── UPPER SHELF: Candidate Score Bar & Status Badges (Strict Single Row, Proportional Dynamic Columns) ── */}
-        <div className="relative z-20 w-full min-h-[40px] sm:min-h-[44px] bg-black/50 border-b border-amber-500/30 px-2.5 sm:px-4 py-1 flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap">
-          {/* Left: Round / Question Status Badge */}
-          {badgeLabel ? (
-            <div className="flex items-center gap-1.5 shrink-0">
-              <div className="w-3.5 h-3.5 rounded-full classic-rivet-red shrink-0" />
-              <div className="px-2.5 py-0.5 rounded-md bg-amber-950/90 border border-amber-400/80 text-amber-300 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow shadow-sm">
+        {/* ── UPPER SHELF: Candidate Score Bar & Status Badges (Strict 3-Zone Fixed-Dimension Layout) ── */}
+        <div className="relative z-20 w-full h-[46px] sm:h-[50px] min-h-[46px] sm:min-h-[50px] max-h-[50px] bg-black/60 border-b border-amber-500/35 px-2.5 sm:px-4 py-1 flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap">
+          {/* 1. Left Zone: Round / Question Status Badge (Fixed Width) */}
+          <div className="w-[125px] sm:w-[145px] shrink-0 flex items-center justify-start gap-1.5 overflow-hidden">
+            <div className="w-3.5 h-3.5 rounded-full classic-rivet-red shrink-0" />
+            {badgeLabel ? (
+              <div className="px-2 sm:px-2.5 py-0.5 rounded-md bg-amber-950/90 border border-amber-400/80 text-amber-300 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow shadow-sm truncate max-w-[110px] sm:max-w-[125px]">
                 {badgeLabel}
               </div>
-            </div>
-          ) : (
-            <div className="w-3.5 h-3.5 rounded-full classic-rivet-red shrink-0" />
-          )}
+            ) : null}
+          </div>
 
-          {/* Center: Candidate Score Cells (Strictly Single Row regardless of candidate count, tight padding, enlarged font) */}
+          {/* 2. Center Zone: Candidate Score Cells (Proportional Dynamic Columns, strictly single row, NO scale shifting) */}
           <div
-            className="flex-1 grid gap-1 sm:gap-1.5 px-0.5 min-w-0 w-full"
+            className="flex-1 min-w-0 h-full grid gap-1 sm:gap-1.5 px-0.5 items-center"
             style={{
               gridTemplateColumns: `repeat(${Math.max(1, seatsToDisplay.length)}, minmax(0, 1fr))`,
             }}
@@ -1186,13 +1375,13 @@ export function ClassicUnifiedLowerThird({
               return (
                 <div
                   key={seat.id}
-                  className={`flex items-center justify-between gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md transition-all duration-300 min-w-0 overflow-hidden ${
+                  className={`h-[34px] sm:h-[38px] flex items-center justify-between gap-1 px-1.5 sm:px-2.5 rounded-md transition-colors duration-200 min-w-0 overflow-hidden ${
                     isBuzzed
-                      ? "classic-glow-buzzed text-white animate-pulse scale-[1.02]"
+                      ? "ring-2 ring-yellow-400 bg-amber-900/90 text-white shadow-[0_0_12px_rgba(250,204,21,0.85)] animate-pulse"
                       : isTurn
-                      ? "classic-glow-active text-white scale-[1.02]"
+                      ? "ring-2 ring-amber-400 bg-amber-950/90 text-white shadow-[0_0_10px_rgba(245,158,11,0.6)]"
                       : isLocked
-                      ? "bg-slate-900/60 border border-slate-700/50 text-slate-400 opacity-60"
+                      ? "bg-slate-900/60 border border-slate-700/50 text-slate-500 opacity-60"
                       : "bg-[#181c24]/90 border border-amber-500/40 text-slate-100 shadow-inner"
                   }`}
                 >
@@ -1211,12 +1400,12 @@ export function ClassicUnifiedLowerThird({
             })}
           </div>
 
-          {/* Right: Hope Star / Seconds Badge */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* 3. Right Zone: Hope Star / Seconds Badge (Fixed Width) */}
+          <div className="w-[125px] sm:w-[145px] shrink-0 flex items-center justify-end gap-1.5">
             {hopeStarActive && (
-              <div className="px-2.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/90 to-yellow-500/90 border border-amber-300 text-white font-black text-xs sm:text-sm animate-pulse flex items-center gap-1 shadow-[0_0_12px_rgba(245,158,11,0.8)]">
+              <div className="px-2 sm:px-2.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/90 to-yellow-500/90 border border-amber-300 text-white font-black text-xs sm:text-sm animate-pulse flex items-center gap-1 shadow-[0_0_12px_rgba(245,158,11,0.8)] truncate">
                 <span>⭐</span>
-                <span className="hidden sm:inline">NGÔI SAO HY VỌNG</span>
+                <span className="hidden sm:inline">HY VỌNG</span>
               </div>
             )}
             {timerBadge && (
@@ -1227,11 +1416,19 @@ export function ClassicUnifiedLowerThird({
           </div>
         </div>
 
-        {/* ── LOWER CHAMBER: Question Text & Media (Question Only - Never nested answer overlay) ── */}
-        <div className="relative z-10 flex-1 px-4 sm:px-8 md:px-12 py-3.5 sm:py-5 flex flex-col items-center justify-center text-center min-h-[100px] sm:min-h-[130px]">
-          {questionText ? (
+        {/* ── LOWER CHAMBER: Fixed Broadcast Height, Top-Left Aligned Question or Integrated Shutter Answer Reveal ── */}
+        <div className="relative z-10 w-full flex-1 min-h-[160px] sm:min-h-[175px] md:min-h-[195px] max-h-[225px] px-5 sm:px-8 md:px-12 py-3.5 sm:py-5 flex flex-col items-start justify-start text-left overflow-hidden">
+          {answerReveal?.show ? (
+            <ClassicChamberAnswerView
+              answerText={answerReveal.text}
+              roundLabel={answerReveal.label}
+              verdict={answerReveal.verdict}
+              pointsAwarded={answerReveal.points}
+              actorName={answerReveal.actorName}
+            />
+          ) : questionText ? (
             <div
-              className={`text-white font-black leading-snug pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] select-text animate-fade-in ${clampQuestionFont(
+              className={`text-white font-black leading-snug pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text animate-fade-in ${clampQuestionFont(
                 questionText
               )}`}
             >
@@ -1240,7 +1437,7 @@ export function ClassicUnifiedLowerThird({
           ) : (
             children
           )}
-          {mediaElement && <div className="mt-2">{mediaElement}</div>}
+          {!answerReveal?.show && mediaElement && <div className="mt-2">{mediaElement}</div>}
         </div>
 
         {/* ── BOTTOM FLUSH TIMER BAR ── */}

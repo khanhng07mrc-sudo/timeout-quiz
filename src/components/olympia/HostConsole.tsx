@@ -1633,7 +1633,7 @@ export const HostConsole = React.memo(function HostConsole({
                       </div>
                     )}
 
-                    <div className="flex flex-col gap-1.5 w-full">
+                    <div className="flex flex-col gap-1 w-full">
                       {state.seats.map((s, idx) => {
                         const isPending = Boolean(s.name && s.approved === false);
                         const isApproved = Boolean(s.name && s.approved !== false);
@@ -1642,7 +1642,7 @@ export const HostConsole = React.memo(function HostConsole({
                         return (
                           <div
                             key={s.id}
-                            className={`w-full rounded-xl border px-2.5 py-1.5 transition flex items-center justify-between gap-2 relative overflow-hidden shadow-sm min-h-[38px] sm:min-h-[42px] ${
+                            className={`w-full rounded-lg sm:rounded-xl border px-2 sm:px-2.5 py-1 transition flex items-center justify-between gap-1.5 sm:gap-2 relative overflow-hidden shadow-sm min-h-[32px] sm:min-h-[36px] ${
                               isSwapSelected
                                 ? "bg-amber-500/20 border-amber-400 ring-2 ring-amber-400/50 shadow-xl"
                                 : isApproved
@@ -1656,9 +1656,9 @@ export const HostConsole = React.memo(function HostConsole({
                             }}
                           >
                             {/* Left: Compact Seat Number Badge & Candidate details (Horizontally condensed, no ellipsis) */}
-                            <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+                            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 overflow-hidden">
                               <div
-                                className="w-5 h-5 sm:w-6 sm:h-6 rounded-md font-black text-[11px] sm:text-xs shrink-0 flex items-center justify-center shadow-sm select-none"
+                                className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-md font-black text-[10px] sm:text-[11px] shrink-0 flex items-center justify-center shadow-sm select-none"
                                 style={{
                                   backgroundColor: `${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}22`,
                                   border: `1.5px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}`,
@@ -1672,7 +1672,7 @@ export const HostConsole = React.memo(function HostConsole({
                               {s.name ? (
                                 <div className="min-w-0 flex-1 flex items-center gap-1.5 sm:gap-2 overflow-hidden">
                                   <span
-                                    className="font-black text-xs sm:text-sm text-white tracking-tighter whitespace-nowrap overflow-hidden inline-block shrink-0"
+                                    className="font-black text-xs sm:text-[13px] text-white tracking-tighter whitespace-nowrap overflow-hidden inline-block shrink-0"
                                     style={{
                                       fontStretch: "condensed",
                                       letterSpacing: "-0.035em",
@@ -1685,7 +1685,7 @@ export const HostConsole = React.memo(function HostConsole({
                                   </span>
                                   {s.school && (
                                     <span
-                                      className="text-[10px] sm:text-[11px] text-slate-400 whitespace-nowrap overflow-hidden inline-block opacity-80 shrink min-w-0"
+                                      className="text-[10px] sm:text-[10.5px] text-slate-400 whitespace-nowrap overflow-hidden inline-block opacity-80 shrink min-w-0"
                                       style={{
                                         fontStretch: "condensed",
                                         letterSpacing: "-0.025em",
@@ -1697,7 +1697,7 @@ export const HostConsole = React.memo(function HostConsole({
                                   )}
                                 </div>
                               ) : (
-                                <span className="text-xs text-slate-500 italic whitespace-nowrap overflow-hidden">
+                                <span className="text-[11px] sm:text-xs text-slate-500 italic whitespace-nowrap overflow-hidden">
                                   ⚪ Ghế trống — Chờ thí sinh vào phòng
                                 </span>
                               )}
@@ -1708,16 +1708,16 @@ export const HostConsole = React.memo(function HostConsole({
                               {s.name ? (
                                 <>
                                   <div className="flex items-center gap-1.5 shrink-0">
-                                    <span className={`text-[10px] font-mono shrink-0 ${s.connected ? "text-emerald-400 font-bold" : "text-slate-500"}`}>
+                                    <span className={`text-[9.5px] sm:text-[10px] font-mono shrink-0 ${s.connected ? "text-emerald-400 font-bold" : "text-slate-500"}`}>
                                       {s.connected ? "🟢 Online" : "🔴 Offline"}
                                     </span>
                                     {isApproved && (
-                                      <span className="text-[9.5px] sm:text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30 whitespace-nowrap">
+                                      <span className="text-[9px] sm:text-[9.5px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30 whitespace-nowrap">
                                         ✓ ĐÃ DUYỆT
                                       </span>
                                     )}
                                     {isPending && (
-                                      <span className="text-[9.5px] sm:text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30 whitespace-nowrap">
+                                      <span className="text-[9px] sm:text-[9.5px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30 whitespace-nowrap">
                                         ⏳ CHỜ DUYỆT
                                       </span>
                                     )}
@@ -1736,7 +1736,7 @@ export const HostConsole = React.memo(function HostConsole({
                                           setSwapSourceSeat(null);
                                         }
                                       }}
-                                      className={`py-0.5 px-2 rounded-md text-[11px] sm:text-xs font-bold border transition cursor-pointer text-center whitespace-nowrap ${
+                                      className={`py-0.5 px-1.5 sm:px-2 rounded-md text-[10.5px] sm:text-[11px] font-bold border transition cursor-pointer text-center whitespace-nowrap ${
                                         isSwapSelected
                                           ? "bg-amber-500 text-slate-950 border-amber-400 font-black animate-pulse"
                                           : "bg-white/5 hover:bg-white/15 text-cyan-300 border-white/15"
@@ -1749,7 +1749,7 @@ export const HostConsole = React.memo(function HostConsole({
                                       <button
                                         type="button"
                                         onClick={() => call("seat:approve", { seatId: s.id })}
-                                        className="px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow transition cursor-pointer whitespace-nowrap"
+                                        className="px-2 py-0.5 rounded-md text-[10.5px] sm:text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow transition cursor-pointer whitespace-nowrap"
                                         title="Duyệt thí sinh này"
                                       >
                                         ✓ Duyệt
@@ -1758,7 +1758,7 @@ export const HostConsole = React.memo(function HostConsole({
                                     <button
                                       type="button"
                                       onClick={() => setKickCandidate(s)}
-                                      className="px-1.5 py-0.5 rounded-md text-xs font-bold bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer"
+                                      className="px-1.5 py-0.5 rounded-md text-[11px] sm:text-xs font-bold bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer"
                                       title="Hủy thí sinh khỏi vị trí này"
                                     >
                                       ✕
@@ -1774,12 +1774,12 @@ export const HostConsole = React.memo(function HostConsole({
                                         call("seat:swap", { seatA: swapSourceSeat, seatB: s.id });
                                         setSwapSourceSeat(null);
                                       }}
-                                      className="py-1 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/60 text-amber-200 font-bold text-xs transition cursor-pointer text-center animate-pulse"
+                                      className="py-0.5 px-2.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/60 text-amber-200 font-bold text-xs transition cursor-pointer text-center animate-pulse"
                                     >
                                       Chuyển tới đây ➔
                                     </button>
                                   ) : (
-                                    <span className="text-[11px] text-slate-500">Chờ người tham gia</span>
+                                    <span className="text-[10px] sm:text-[11px] text-slate-500">Chờ người tham gia</span>
                                   )}
                                 </div>
                               )}

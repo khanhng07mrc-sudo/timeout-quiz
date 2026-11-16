@@ -704,6 +704,101 @@ export function Vtv3ChalkboardQuestionFrame({
   );
 }
 
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * PROCEDURAL CLASSIC BROADCAST SFX (Web Audio API)
+ * Zero-latency mechanical sound synthesis for classic Olympia theme animations
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function playClassicShutterOpenSFX() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const t = ctx.currentTime;
+
+    // Metallic latch click (crisp mechanical release)
+    const latchOsc = ctx.createOscillator();
+    const latchGain = ctx.createGain();
+    latchOsc.type = "triangle";
+    latchOsc.frequency.setValueAtTime(1400, t);
+    latchOsc.frequency.exponentialRampToValueAtTime(280, t + 0.04);
+    latchGain.gain.setValueAtTime(0.2, t);
+    latchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    latchOsc.connect(latchGain);
+    latchGain.connect(ctx.destination);
+    latchOsc.start(t);
+    latchOsc.stop(t + 0.06);
+
+    // Mechanical brass sliding friction
+    const slideOsc = ctx.createOscillator();
+    const slideGain = ctx.createGain();
+    slideOsc.type = "sine";
+    slideOsc.frequency.setValueAtTime(240, t + 0.02);
+    slideOsc.frequency.exponentialRampToValueAtTime(480, t + 0.16);
+    slideOsc.frequency.exponentialRampToValueAtTime(160, t + 0.32);
+    slideGain.gain.setValueAtTime(0.001, t);
+    slideGain.gain.linearRampToValueAtTime(0.14, t + 0.05);
+    slideGain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+    slideOsc.connect(slideGain);
+    slideGain.connect(ctx.destination);
+    slideOsc.start(t + 0.02);
+    slideOsc.stop(t + 0.4);
+
+    // Resonant golden shimmer (harmonic chime)
+    const chime = ctx.createOscillator();
+    const chimeGain = ctx.createGain();
+    chime.type = "sine";
+    chime.frequency.setValueAtTime(880, t + 0.1);
+    chime.frequency.exponentialRampToValueAtTime(1318.51, t + 0.38); // E6
+    chimeGain.gain.setValueAtTime(0.001, t + 0.1);
+    chimeGain.gain.linearRampToValueAtTime(0.12, t + 0.16);
+    chimeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.52);
+    chime.connect(chimeGain);
+    chimeGain.connect(ctx.destination);
+    chime.start(t + 0.1);
+    chime.stop(t + 0.55);
+  } catch {}
+}
+
+export function playClassicTabletFlipSFX(index: number = 0) {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const t = ctx.currentTime;
+    const baseFreq = 440 + index * 110; // 440Hz, 550Hz, 660Hz
+
+    // Percussive wooden/brass tablet drop clack
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = "triangle";
+    osc1.frequency.setValueAtTime(baseFreq * 2, t);
+    osc1.frequency.exponentialRampToValueAtTime(baseFreq * 0.6, t + 0.07);
+    gain1.gain.setValueAtTime(0.24, t);
+    gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(t);
+    osc1.stop(t + 0.14);
+
+    // Warm resonant body chime
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(baseFreq, t);
+    osc2.frequency.exponentialRampToValueAtTime(baseFreq * 1.2, t + 0.1);
+    gain2.gain.setValueAtTime(0.14, t);
+    gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(t);
+    osc2.stop(t + 0.28);
+  } catch {}
+}
+
 export interface UnifiedOlympiaAnswerOverlayProps {
   answerText: string;
   roundLabel?: string;
@@ -722,6 +817,8 @@ export interface UnifiedOlympiaAnswerOverlayProps {
  * 2. Center Plaque: Large drop-shadowed answer typography clamped by string length
  * 3. Right Accent: Points badge (+10đ, +20đ, etc.), contestant name, or bronze rivet
  * Multi-layer metallic gold borders, Framer Motion spring physics, and goldSheenSweep.
+ * When in Theme Cổ Điển (o26_classic): Opens with signature Dual Brass Mechanical Shutters
+ * and procedural metallic slide SFX.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export function UnifiedOlympiaAnswerOverlay({
@@ -733,6 +830,18 @@ export function UnifiedOlympiaAnswerOverlay({
   themeMode = "o26_classic",
   className = "",
 }: UnifiedOlympiaAnswerOverlayProps) {
+  const isClassic = themeMode === "o26_classic";
+  const [shuttersOpen, setShuttersOpen] = useState(!isClassic);
+
+  useEffect(() => {
+    if (!isClassic) return;
+    const timer = setTimeout(() => {
+      setShuttersOpen(true);
+      playClassicShutterOpenSFX();
+    }, 45);
+    return () => clearTimeout(timer);
+  }, [isClassic]);
+
   const cleanText = (answerText || "").replace(/^✔\s*/, "");
   const len = cleanText.length;
   const fontSizeClass =
@@ -800,6 +909,69 @@ export function UnifiedOlympiaAnswerOverlay({
         <div className="absolute top-2 right-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
         <div className="absolute bottom-2 left-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
         <div className="absolute bottom-2 right-2 z-20 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+
+        {/* ── CLASSIC THEME SIGNATURE: Dual Brass Mechanical Shutters ── */}
+        {isClassic && (
+          <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden rounded-2xl">
+            {/* Left Brass Shutter Wing */}
+            <motion.div
+              initial={{ x: "0%" }}
+              animate={{ x: shuttersOpen ? "-102%" : "0%" }}
+              transition={{ duration: 0.52, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute top-0 bottom-0 left-0 w-1/2 flex items-center justify-end overflow-hidden"
+              style={{
+                background:
+                  "linear-gradient(135deg, #1e150b 0%, #5a280b 22%, #92400e 45%, #b45309 60%, #d4af37 80%, #78350f 100%)",
+                borderRight: "2.5px solid #fde047",
+                boxShadow:
+                  "inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 6px rgba(0,0,0,0.85), 4px 0 16px rgba(0,0,0,0.7)",
+              }}
+            >
+              {/* Etched horizontal brass louvers / grooves */}
+              <div className="absolute inset-0 opacity-25 bg-[repeating-linear-gradient(0deg,transparent,transparent_6px,rgba(0,0,0,0.6)_6px,rgba(0,0,0,0.6)_8px)]" />
+              {/* Bronze corner rivets on shutter */}
+              <div className="absolute top-2 left-2 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+              <div className="absolute bottom-2 left-2 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+              {/* Half-medallion lock crest on the seam */}
+              <div className="relative -mr-3.5 w-7 h-14 rounded-l-full bg-gradient-to-r from-amber-700 to-yellow-500 border-2 border-r-0 border-amber-300 flex items-center justify-center shadow-lg">
+                <div className="w-1.5 h-6 rounded-full bg-amber-950/80" />
+              </div>
+            </motion.div>
+
+            {/* Right Brass Shutter Wing */}
+            <motion.div
+              initial={{ x: "0%" }}
+              animate={{ x: shuttersOpen ? "102%" : "0%" }}
+              transition={{ duration: 0.52, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute top-0 bottom-0 right-0 w-1/2 flex items-center justify-start overflow-hidden"
+              style={{
+                background:
+                  "linear-gradient(225deg, #1e150b 0%, #5a280b 22%, #92400e 45%, #b45309 60%, #d4af37 80%, #78350f 100%)",
+                borderLeft: "2.5px solid #fde047",
+                boxShadow:
+                  "inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 6px rgba(0,0,0,0.85), -4px 0 16px rgba(0,0,0,0.7)",
+              }}
+            >
+              {/* Etched horizontal brass louvers / grooves */}
+              <div className="absolute inset-0 opacity-25 bg-[repeating-linear-gradient(0deg,transparent,transparent_6px,rgba(0,0,0,0.6)_6px,rgba(0,0,0,0.6)_8px)]" />
+              {/* Bronze corner rivets on shutter */}
+              <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+              <div className="absolute bottom-2 right-2 w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+              {/* Half-medallion lock crest on the seam */}
+              <div className="relative -ml-3.5 w-7 h-14 rounded-r-full bg-gradient-to-l from-amber-700 to-yellow-500 border-2 border-l-0 border-amber-300 flex items-center justify-center shadow-lg">
+                <div className="w-1.5 h-6 rounded-full bg-amber-950/80" />
+              </div>
+            </motion.div>
+
+            {/* Center seam flash burst when shutters part */}
+            <motion.div
+              initial={{ opacity: 1, scaleY: 1 }}
+              animate={{ opacity: shuttersOpen ? 0 : 1, scaleY: shuttersOpen ? 1.4 : 1 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-4 z-40 bg-gradient-to-r from-transparent via-amber-200 to-transparent blur-[2px] shadow-[0_0_20px_#fde047]"
+            />
+          </div>
+        )}
 
         {/* ── 1. LEFT CHAMBER: Minimal Icon Pill (No Text Badges) ── */}
         <div className="relative z-10 flex items-center shrink-0">
@@ -4610,6 +4782,156 @@ export function EconovaLowerThirdV3({
  * - Text: Pure bold white point numbers centered at cell centroids (cx, cy).
  * ─────────────────────────────────────────────────────────────────────────────
  */
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * AUTHENTIC O26 CLASSIC VỀ ĐÍCH GOLDEN TABLETS (Phiến Kim Bài Cổ Điển)
+ * Signature 3D staggered flip entrance, mun-wood & brass inlay header,
+ * and procedural mechanical drop SFX.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function ClassicVeDichGoldenTabletsGraphic({
+  state,
+  ownerSeatId,
+  selectedPoints,
+  closing = false,
+}: {
+  state: OlympiaState;
+  ownerSeatId?: number;
+  selectedPoints?: number[];
+  closing?: boolean;
+}) {
+  const vd = state.veDich;
+  const resolvedOwnerId = ownerSeatId ?? (vd ? vd.order[vd.turnIdx] : 0);
+  const owner = state.seats[resolvedOwnerId];
+  const resolvedSelected =
+    selectedPoints ?? (vd?.packages[resolvedOwnerId] ? vd.packages[resolvedOwnerId].map((p) => p.points) : undefined);
+  const spec = resolveVeDichGridSpec(state.rulesetId, state.o22Quarter);
+
+  // Trigger procedural audio clacks when each tablet flips down into place
+  useEffect(() => {
+    if (closing) return;
+    const t0 = setTimeout(() => playClassicTabletFlipSFX(0), 120);
+    const t1 = setTimeout(() => playClassicTabletFlipSFX(1), 270);
+    const t2 = setTimeout(() => playClassicTabletFlipSFX(2), 420);
+    return () => {
+      clearTimeout(t0);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [closing]);
+
+  return (
+    <div
+      className={`relative w-full max-w-4xl mx-auto px-2 py-1.5 z-20 pointer-events-auto flex flex-col items-center gap-2 select-none transition-all duration-400 ease-in-out ${
+        closing ? "transform scale-90 opacity-0" : "animate-fade-in transform scale-100 opacity-100"
+      }`}
+    >
+      <HorizontalBrassRod />
+
+      {/* Mun-wood & Brass Inlay Header Plaque */}
+      <motion.div
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.38, ease: "easeOut" }}
+        className="relative z-10 px-6 sm:px-8 py-2 rounded-xl flex items-center justify-center gap-3 overflow-hidden shadow-2xl"
+        style={{
+          background: "linear-gradient(180deg, #1f242d 0%, #15181f 50%, #0d0f14 100%)",
+          border: "2.5px solid #d4af37",
+          outline: "1.5px solid #78350f",
+          outlineOffset: "-4px",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.9), 0 0 20px rgba(212,175,55,0.25)",
+        }}
+      >
+        <div className="w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+        <span className="text-amber-200 font-black text-xs sm:text-sm md:text-base uppercase tracking-widest drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
+          LỰA CHỌN GÓI CÂU HỎI VỀ ĐÍCH — {owner?.name || `THÍ SINH ${resolvedOwnerId + 1}`}
+        </span>
+        <div className="w-2.5 h-2.5 rounded-full classic-rivet-bronze" />
+      </motion.div>
+
+      {/* 3 Staggered 3D Brass/Gold Tablets */}
+      <div
+        className="relative z-10 w-full flex items-center justify-center gap-4 sm:gap-7 pt-1"
+        style={{ perspective: "1200px" }}
+      >
+        {Array.from({ length: spec.cols }).map((_, cIdx) => {
+          const pt = resolvedSelected?.[cIdx];
+          const isChosen = pt != null;
+          return (
+            <motion.div
+              key={cIdx}
+              initial={{ rotateX: -90, opacity: 0, y: -30 }}
+              animate={{ rotateX: 0, opacity: 1, y: 0 }}
+              exit={{ rotateX: 90, opacity: 0, scale: 0.95 }}
+              transition={{
+                type: "spring",
+                stiffness: 280,
+                damping: 22,
+                delay: 0.12 + cIdx * 0.15,
+              }}
+              style={{
+                transformOrigin: "top center",
+                background: "linear-gradient(180deg, #222834 0%, #171b23 50%, #0b0d12 100%)",
+                border: "3.5px solid #d4af37",
+                outline: "1.5px solid #78350f",
+                outlineOffset: "-5px",
+                boxShadow: isChosen
+                  ? "0 16px 45px rgba(0,0,0,0.92), 0 0 32px rgba(212,175,55,0.6), inset 0 2px 4px rgba(255,255,255,0.4)"
+                  : "0 12px 35px rgba(0,0,0,0.85), inset 0 1px 3px rgba(255,255,255,0.25)",
+              }}
+              className="relative w-28 sm:w-36 md:w-44 h-32 sm:h-40 md:h-44 rounded-2xl flex flex-col items-center justify-between p-2 sm:p-3 overflow-hidden shadow-2xl select-none"
+            >
+              {/* Subtle chalkboard SVG background inside tablet */}
+              <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden rounded-2xl">
+                <Vtv3ChalkboardBackdrop />
+              </div>
+
+              {/* Specular metallic sheen sweep on confirmed tablet */}
+              {isChosen && (
+                <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+                  <div className="sheen-sweep-beam" />
+                </div>
+              )}
+
+              {/* Bronze Corner Rivets */}
+              <div className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full classic-rivet-bronze" />
+              <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full classic-rivet-bronze" />
+              <div className="absolute bottom-1.5 left-1.5 w-2 h-2 rounded-full classic-rivet-bronze" />
+              <div className="absolute bottom-1.5 right-1.5 w-2 h-2 rounded-full classic-rivet-bronze" />
+
+              {/* Tablet Top Brass Header */}
+              <div className="relative z-10 w-full py-0.5 rounded-lg bg-gradient-to-r from-amber-950/80 via-amber-900/90 to-amber-950/80 border border-amber-500/40 text-center">
+                <span className="text-[10px] sm:text-xs font-black text-amber-300 uppercase tracking-widest drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+                  CÂU {cIdx + 1}
+                </span>
+              </div>
+
+              {/* Tablet Center Points Display */}
+              <div className="relative z-10 flex flex-col items-center justify-center my-auto">
+                <span className="text-3xl sm:text-4xl md:text-5xl font-black text-amber-300 font-mono tracking-tight drop-shadow-[0_2px_14px_rgba(251,191,36,0.85)]">
+                  {pt ?? "?"}
+                </span>
+                <span className="text-[9px] sm:text-[11px] font-bold text-amber-400 uppercase tracking-wider mt-0.5 opacity-90">
+                  {pt != null ? "ĐIỂM" : "LỰA CHỌN"}
+                </span>
+              </div>
+
+              {/* Tablet Bottom Brass Medallion Accent */}
+              <div className="relative z-10 flex items-center justify-center">
+                <div className="px-2 py-0.5 rounded-full bg-amber-950/60 border border-amber-500/30 text-[9px] sm:text-[10px] text-amber-300 font-bold tracking-widest flex items-center gap-1">
+                  <span>★</span>
+                  <span>O26</span>
+                  <span>★</span>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function VeDichSlantedGridGraphic({
   state,
   ownerSeatId,
@@ -4647,32 +4969,12 @@ export function VeDichSlantedGridGraphic({
 
   if (!isV3Arrow) {
     return (
-      <div className={`absolute inset-0 z-20 flex flex-col items-center justify-center p-6 pointer-events-auto transition-all duration-400 ease-in-out ${
-        closing ? "transform scale-90 opacity-0" : "animate-fade-in transform scale-100 opacity-100"
-      }`}>
-        <Vtv3ChalkboardBackdrop />
-        <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-6 animate-fade-in">
-          <div className="px-8 py-2.5 rounded-full bg-slate-900/90 border-2 border-amber-400 text-amber-300 font-black text-base sm:text-xl uppercase tracking-widest shadow-xl">
-            GÓI CÂU HỎI VỀ ĐÍCH — {owner?.name || `Thí sinh ${resolvedOwnerId + 1}`}
-          </div>
-          <div className="flex items-center justify-center gap-5 sm:gap-8">
-            {Array.from({ length: spec.cols }).map((_, cIdx) => {
-              const pt = resolvedSelected?.[cIdx];
-              return (
-                <div
-                  key={cIdx}
-                  className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl border-4 border-amber-400 bg-gradient-to-b from-slate-800 to-slate-950 flex flex-col items-center justify-center shadow-2xl"
-                >
-                  <span className="text-xs font-bold text-slate-400 uppercase">Câu {cIdx + 1}</span>
-                  <span className="text-4xl sm:text-5xl font-black text-amber-300 font-mono mt-1">
-                    {pt ?? "?"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <ClassicVeDichGoldenTabletsGraphic
+        state={state}
+        ownerSeatId={resolvedOwnerId}
+        selectedPoints={resolvedSelected}
+        closing={closing}
+      />
     );
   }
 

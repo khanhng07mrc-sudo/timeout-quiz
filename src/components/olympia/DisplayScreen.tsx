@@ -968,7 +968,7 @@ function VeDich({ state, serverNow }: P) {
       {/* While choosing package or viewing confirmed package: show slanted hexagonal package grid anchored at lower third */}
       {showPackageGrid && (
         <div key={`pkg-grid-${owner}-${vd.turnIdx}`} className="fixed inset-x-0 bottom-2 sm:bottom-3 z-30 flex items-end justify-center pointer-events-none px-4">
-          <div className="pointer-events-auto w-full max-w-3xl flex items-center justify-center">
+          <div className="pointer-events-auto w-full max-w-4xl flex items-center justify-center">
             <VeDichSlantedGridGraphic state={state} animate={true} closing={closing} />
           </div>
         </div>

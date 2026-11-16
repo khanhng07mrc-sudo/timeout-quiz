@@ -28,8 +28,82 @@ import {
   getContestantArcParams as getSharedContestantArcParams,
   type ContestantArcParams,
 } from "@/lib/olympia/entrance-geometry";
+import type { OlympiaState } from "@/lib/olympia/types";
 
 export type { ContestantArcParams };
+
+export function hasActiveRoundContent(state: OlympiaState | null | undefined): boolean {
+  if (
+    !state ||
+    state.stage !== "playing" ||
+    !state.currentRound ||
+    state.summaryState?.active ||
+    state.roundStatus[state.currentRound] === "done"
+  ) {
+    return false;
+  }
+
+  switch (state.currentRound) {
+    case "khoiDong": {
+      const kd = state.khoiDong;
+      if (!kd || !kd.started || kd.phase === "segmentDone" || kd.phase === "intro" || kd.qIdx < 0) return false;
+      if (state.kdIntroTimer && (state.kdIntroTimer.remainingMs > 0 || state.kdIntroTimer.startedAt)) return false;
+      return true;
+    }
+    case "vcnv": {
+      const v = state.vcnv;
+      if (!v) return false;
+      if (v.currentRow < 0 && v.phase === "grid" && !v.answersRevealed && v.bells.length === 0) return false;
+      return (
+        v.currentRow >= 0 ||
+        v.phase === "selecting" ||
+        v.phase === "question" ||
+        v.phase === "waitingAnswer" ||
+        v.phase === "answers" ||
+        v.phase === "done" ||
+        Boolean(v.answersRevealed) ||
+        v.bells.length > 0
+      );
+    }
+    case "tangToc": {
+      const tt = state.tangToc;
+      if (!tt) return false;
+      return tt.phase === "question" || tt.phase === "ranking" || tt.phase === "graded";
+    }
+    case "veDich": {
+      const vd = state.veDich;
+      if (!vd || vd.phase === "seatDone" || (vd.phase === "idle" && !vd.onStage)) return false;
+      return (
+        vd.phase === "choosing" ||
+        vd.phase === "packageReady" ||
+        vd.phase === "thinking" ||
+        vd.phase === "stealing" ||
+        vd.phase === "result" ||
+        Boolean(vd.onStage)
+      );
+    }
+    case "cauHoiPhu": {
+      const chp = state.cauHoiPhu;
+      if (!chp) return false;
+      return chp.phase === "question" || chp.phase === "result" || chp.qIdx >= 0 || chp.buzzedSeat != null;
+    }
+    default:
+      return false;
+  }
+}
+
+export function isRoundPostIntroStandby(state: OlympiaState | null | undefined): boolean {
+  if (!state || state.stage !== "playing" || Boolean(state.banner)) return false;
+  if (
+    state.studioCameraManual ||
+    state.summaryState?.active ||
+    state.introTimer ||
+    state.entranceState?.active
+  ) {
+    return false;
+  }
+  return !hasActiveRoundContent(state);
+}
 
 export function getContestantArcParams(totalSeats: number = 4): ContestantArcParams {
   return getSharedContestantArcParams(totalSeats);
@@ -257,6 +331,7 @@ interface CameraControllerProps {
   introStartedAt?: number | null;
   kdStartCooldownUntil?: number | null;
   isIdleLobby?: boolean;
+  isPostIntroStandby?: boolean;
   serverNow?: () => number;
 }
 
@@ -323,12 +398,30 @@ export function CameraController({
   introStartedAt = null,
   kdStartCooldownUntil = null,
   isIdleLobby = false,
+  isPostIntroStandby = false,
   serverNow,
 }: CameraControllerProps) {
   const { camera, size } = useThree();
 
   const currentPos = useRef(new THREE.Vector3(0, 2.5, 8.4));
   const currentTarget = useRef(new THREE.Vector3(0, 1.8, -2.8));
+  const postIntroStandbyStartRef = useRef<number | null>(null);
+  const wasPostIntroStandbyRef = useRef(false);
+  const standbyExitedAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (isPostIntroStandby) {
+      postIntroStandbyStartRef.current = serverNow ? serverNow() : Date.now();
+      wasPostIntroStandbyRef.current = true;
+      standbyExitedAtRef.current = null;
+    } else {
+      if (wasPostIntroStandbyRef.current) {
+        standbyExitedAtRef.current = serverNow ? serverNow() : Date.now();
+        wasPostIntroStandbyRef.current = false;
+      }
+      postIntroStandbyStartRef.current = null;
+    }
+  }, [isPostIntroStandby, serverNow]);
 
   const effectiveTotalSeats = totalSeats || 4;
   const isContestantCam =
@@ -353,13 +446,13 @@ export function CameraController({
     [isIdleLobby, camAngle, targetPreset]
   );
 
-  // Handle instant cut on camera switch when mode is CUT
+  // Handle instant cut on camera switch when mode is CUT, except when in standby or smoothly transitioning out of standby
   useEffect(() => {
-    if (transitionMode === "CUT") {
+    if (transitionMode === "CUT" && !isPostIntroStandby && standbyExitedAtRef.current == null) {
       currentPos.current.copy(targetPos);
       currentTarget.current.copy(targetLookAt);
     }
-  }, [camAngle, transitionMode, targetPos, targetLookAt]);
+  }, [camAngle, transitionMode, targetPos, targetLookAt, isPostIntroStandby]);
 
   useFrame((_, delta) => {
     // 0. True Optical Zoom & Adaptive FOV Calculation
@@ -459,6 +552,89 @@ export function CameraController({
       }
     }
 
+    // 0.2. Post-Intro Opening Round Camera Director (applies to all 4 rounds: Khởi Động, VCNV, Tăng Tốc, Về Đích):
+    // After the 7.66s round intro video unmounts and start_round audio plays:
+    // - 0.0s - 3.5s: Smooth crane sweep from floor-left of Laurel Vitrine (CAM 14) up to Wide Stage (CAM 1)
+    // - 3.5s - 7.5s: Cut to Bục MC (CAM 3) with smooth dolly zoom-in
+    // - 7.5s - 11.5s: Cut to Wide Contestant Podiums (CAM 10) with gentle pan
+    // - 11.5s+: Continuous sweeping panoramic orbit across the 3D studio stage
+    if (isPostIntroStandby) {
+      const now = serverNow ? serverNow() : Date.now();
+      const startAt = postIntroStandbyStartRef.current ?? now;
+      const elapsedSec = Math.max(0, (now - startAt) / 1000);
+
+      if (elapsedSec < 3.5) {
+        _sweepStartPos.set(...OLYMPIA_CAM_PRESETS[14].pos);
+        _sweepStartTarget.set(...OLYMPIA_CAM_PRESETS[14].target);
+        const t = Math.min(1.0, elapsedSec / 3.5);
+        const smoothT = t * t * (3 - 2 * t);
+        _curPos.lerpVectors(_sweepStartPos, _sweepEndPos, smoothT);
+        _curTarget.lerpVectors(_sweepStartTarget, _sweepEndTarget, smoothT);
+
+        currentPos.current.copy(_curPos);
+        currentTarget.current.copy(_curTarget);
+        camera.position.copy(_curPos);
+        camera.lookAt(_curTarget);
+        camera.updateProjectionMatrix();
+        return;
+      }
+
+      if (elapsedSec < 7.5) {
+        const mcPreset = OLYMPIA_CAM_PRESETS[3];
+        _sweepStartPos.set(...mcPreset.pos);
+        _sweepStartTarget.set(...mcPreset.target);
+        const pushFrac = Math.min(1.0, (elapsedSec - 3.5) / 4.0);
+        _dir.copy(_sweepStartTarget).sub(_sweepStartPos).normalize();
+        _curPos.copy(_sweepStartPos).addScaledVector(_dir, pushFrac * 0.42);
+        _curTarget.copy(_sweepStartTarget);
+
+        currentPos.current.copy(_curPos);
+        currentTarget.current.copy(_curTarget);
+        camera.position.copy(_curPos);
+        camera.lookAt(_curTarget);
+        camera.updateProjectionMatrix();
+        return;
+      }
+
+      if (elapsedSec < 11.5) {
+        const widePodiums = getWidePodiumsCameraPreset(effectiveTotalSeats);
+        _sweepStartPos.set(...widePodiums.pos);
+        _sweepStartTarget.set(...widePodiums.target);
+        const panFrac = (elapsedSec - 7.5) / 4.0;
+        _dir.copy(_sweepStartTarget).sub(_sweepStartPos).normalize();
+        _curPos.copy(_sweepStartPos).addScaledVector(_dir, panFrac * 0.35);
+        _curTarget.copy(_sweepStartTarget);
+
+        currentPos.current.copy(_curPos);
+        currentTarget.current.copy(_curTarget);
+        camera.position.copy(_curPos);
+        camera.lookAt(_curTarget);
+        camera.updateProjectionMatrix();
+        return;
+      }
+
+      // 11.5s+: Continuous, sweeping panoramic orbit/pan across the 3D studio stage
+      const orbitElapsed = elapsedSec - 11.5;
+      const sweepAngle = Math.sin(orbitElapsed * ((Math.PI * 2) / 14.0)) * 0.22;
+      const heightBob = Math.sin(orbitElapsed * ((Math.PI * 2) / 7.0)) * 0.15;
+
+      _curPos.set(
+        Math.sin(sweepAngle) * 12.2,
+        3.8 + heightBob,
+        Math.cos(sweepAngle) * 12.2
+      );
+      _curTarget.set(-0.5, 1.55, -3.2);
+
+      const lerpSpeed = Math.min(1.0, delta * 3.5);
+      currentPos.current.lerp(_curPos, lerpSpeed);
+      currentTarget.current.lerp(_curTarget, lerpSpeed);
+
+      camera.position.copy(currentPos.current);
+      camera.lookAt(currentTarget.current);
+      camera.updateProjectionMatrix();
+      return;
+    }
+
     // 1. Calculate subtle broadcast push-in (dolly) towards target
     _effectivePos.copy(targetPos);
     if (pushInProgress > 0) {
@@ -466,12 +642,21 @@ export function CameraController({
       _effectivePos.addScaledVector(_dir, pushInProgress * 0.40);
     }
 
-    // 2. Smooth interpolation or instant positioning
-    if (transitionMode === "CUT") {
+    const now = serverNow ? serverNow() : Date.now();
+    const isExitingStandby = standbyExitedAtRef.current != null && (now - standbyExitedAtRef.current < 2200);
+    if (isExitingStandby && currentPos.current.distanceToSquared(_effectivePos) < 0.005) {
+      standbyExitedAtRef.current = null;
+    } else if (!isExitingStandby && standbyExitedAtRef.current != null) {
+      standbyExitedAtRef.current = null;
+    }
+
+    // 2. Smooth interpolation or instant positioning:
+    // When transitioning from standby to question framing, smoothly glide (lerp) into position without snapping.
+    if (transitionMode === "CUT" && !isExitingStandby) {
       currentPos.current.copy(_effectivePos);
       currentTarget.current.copy(targetLookAt);
     } else {
-      // Morph transition (smooth damp)
+      // Morph transition (smooth damp / lerp)
       const lerpSpeed = Math.min(1.0, delta * 3.8);
       currentPos.current.lerp(_effectivePos, lerpSpeed);
       currentTarget.current.lerp(targetLookAt, lerpSpeed);

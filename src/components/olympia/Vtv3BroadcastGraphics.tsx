@@ -290,19 +290,26 @@ export function ClassicWoodenBackingBeam({ className = "" }: { className?: strin
   );
 }
 
-const ROUND_VIDEOS: Record<string, string> = {
+export const ROUND_VIDEOS: Record<string, string> = {
+  khoiDong: "/olympia-intro/khoi_dong.webm",
+  vcnv: "/olympia-intro/vuot_chuong_ngai_vat.webm",
+  tangToc: "/olympia-intro/tang_toc.webm",
+  veDich: "/olympia-intro/ve_dich.webm",
+};
+
+export const ROUND_FALLBACK_VIDEOS: Record<string, string> = {
   khoiDong: "/olympia-intro/intro_khoiDong.webm",
   vcnv: "/olympia-intro/intro_vcnv.webm",
   tangToc: "/olympia-intro/intro_tangToc.webm",
   veDich: "/olympia-intro/intro_veDich.webm",
-  cauHoiPhu: "/olympia-intro/intro_cauHoiPhu.webm",
 };
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
- * BROADCAST ROUND INTRO OVERLAY (Official 8-Second VTV3 WebM Video & 3D Classic)
+ * BROADCAST ROUND INTRO OVERLAY (Official 7.66s VTV3 3D WebM Video)
  * GPU Hardware Accelerated WebM video with 0% CPU lag + Studio master audio sync.
- * Synchronized across all 5 Olympia rounds.
+ * Plays uniformly across all themes (o26_classic, o26_modern, v3_arrow).
+ * Câu Hỏi Phụ (cauHoiPhu) has no intro video or banner.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export function BroadcastRoundIntroOverlay({
@@ -312,28 +319,33 @@ export function BroadcastRoundIntroOverlay({
   state: OlympiaState;
   onDismiss?: () => void;
 }) {
-  if (state.stage !== "playing" || !state.banner) return null;
-
   const round = state.currentRound;
-  const isClassic = state.themeMode === "o26_classic";
-  const [videoError, setVideoError] = useState(false);
+  const primarySrc = round && round !== "cauHoiPhu" ? (ROUND_VIDEOS[round] ?? null) : null;
+  const fallbackSrc = round && round !== "cauHoiPhu" ? (ROUND_FALLBACK_VIDEOS[round] ?? null) : null;
+  const [useFallback, setUseFallback] = useState(false);
 
-  const videoSrc = round && !isClassic && !videoError ? ROUND_VIDEOS[round] : null;
+  useEffect(() => {
+    setUseFallback(false);
+  }, [round]);
+
+  const videoSrc = useFallback ? fallbackSrc : primarySrc;
 
   const handleDismiss = useCallback(() => {
     onDismiss?.();
   }, [onDismiss]);
 
-  // Auto-dismiss after 7.7s matching audio track duration
+  // Auto-dismiss after 7.66s matching section_intro.mp3 audio track duration
   useEffect(() => {
+    if (state.stage !== "playing" || !state.banner || !videoSrc) return;
     const timer = setTimeout(() => {
       handleDismiss();
-    }, 7700);
+    }, 7660);
     return () => clearTimeout(timer);
-  }, [handleDismiss, state.banner, round]);
+  }, [handleDismiss, state.banner, state.stage, videoSrc]);
 
   // Keyboard shortcut (Space / Escape / Enter) to skip intro immediately
   useEffect(() => {
+    if (state.stage !== "playing" || !state.banner || !videoSrc) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space" || e.code === "Escape" || e.code === "Enter") {
         e.preventDefault();
@@ -342,139 +354,36 @@ export function BroadcastRoundIntroOverlay({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleDismiss]);
+  }, [handleDismiss, state.banner, state.stage, videoSrc]);
 
-  if (videoSrc) {
-    return (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black overflow-hidden select-none cursor-pointer"
-        onClick={handleDismiss}
-      >
-        <video
-          key={videoSrc}
-          src={videoSrc}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover pointer-events-none"
-          onEnded={handleDismiss}
-          onError={() => setVideoError(true)}
-        />
-        <div className="absolute top-6 right-6 opacity-40 hover:opacity-100 transition-opacity text-white text-xs font-mono bg-black/60 px-3 py-1.5 rounded-full border border-white/20 pointer-events-auto">
-          Nhấn để bỏ qua (SPACE / ESC)
-        </div>
-      </div>
-    );
+  if (state.stage !== "playing" || !state.banner || round === "cauHoiPhu" || !videoSrc) {
+    return null;
   }
-
-  const ROUND_SUBTITLES: Record<string, string> = {
-    khoiDong: "⭐ PHẦN THI THỨ NHẤT",
-    vcnv: "🧩 PHẦN THI THỨ HAI",
-    tangToc: "⚡ PHẦN THI THỨ BA",
-    veDich: "🏁 PHẦN THI THỨ TƯ",
-    cauHoiPhu: "❓ PHÂN ĐỊNH THẮNG THUA",
-  };
-
-  const subtitle = round ? (ROUND_SUBTITLES[round] || "PHẦN THI OLYMPIA") : "PHẦN THI OLYMPIA";
-  const isVcnv = round === "vcnv" && state.banner === ROUND_LABELS.vcnv;
 
   return (
     <div
-      className="absolute inset-0 z-40 flex items-center justify-center pointer-events-auto bg-black/55 backdrop-blur-md overflow-hidden select-none cursor-pointer"
-      style={{ perspective: "1200px" }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black overflow-hidden select-none cursor-pointer"
       onClick={handleDismiss}
     >
-      {/* Horizontal Brass Mounting Rod (Theme Cổ Điển) */}
-      {isClassic && <HorizontalBrassRod />}
-
-      <motion.div
-        initial={{ rotateX: -60, rotateY: 10, scale: 0.78, opacity: 0, z: -180 }}
-        animate={{ rotateX: 0, rotateY: 0, scale: 1, opacity: 1, z: 0 }}
-        exit={{ rotateX: 50, scale: 0.85, opacity: 0 }}
-        transition={{
-          type: "spring",
-          stiffness: 260,
-          damping: 20,
-          mass: 0.9,
+      <video
+        key={videoSrc}
+        src={videoSrc}
+        autoPlay
+        playsInline
+        muted
+        className="w-full h-full object-cover pointer-events-none"
+        onEnded={handleDismiss}
+        onError={() => {
+          if (!useFallback && fallbackSrc) {
+            setUseFallback(true);
+          } else {
+            handleDismiss();
+          }
         }}
-        style={{
-          transformStyle: "preserve-3d",
-          background: isClassic
-            ? "linear-gradient(180deg, #1e222a 0%, #12151b 50%, #090a0d 100%)"
-            : "linear-gradient(180deg, #07152f 0%, #040c1e 50%, #020610 100%)",
-          border: isClassic ? "3.5px solid #d4af37" : "3.5px solid #00f0ff",
-          boxShadow: isClassic
-            ? "0 0 50px rgba(212,175,55,0.45), 0 25px 60px rgba(0,0,0,0.95), inset 0 2px 4px rgba(255,255,255,0.3)"
-            : "0 0 50px rgba(0,240,255,0.45), 0 25px 60px rgba(0,0,0,0.95), inset 0 2px 4px rgba(255,255,255,0.3)",
-        }}
-        className="relative max-w-4xl w-[90vw] mx-auto rounded-3xl p-6 sm:p-10 flex flex-col items-center justify-center overflow-hidden shadow-2xl"
-      >
-        {/* Decorative corner rivets (Classic theme) */}
-        {isClassic && (
-          <>
-            <div className="absolute top-3.5 left-3.5"><RedConnectionRivet /></div>
-            <div className="absolute top-3.5 right-3.5"><RedConnectionRivet /></div>
-            <div className="absolute bottom-3.5 left-3.5"><RedConnectionRivet /></div>
-            <div className="absolute bottom-3.5 right-3.5"><RedConnectionRivet /></div>
-          </>
-        )}
-
-        {/* Specular metallic light sweep traversing across the plaque */}
-        <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
-          <div
-            className="sheen-sweep-beam"
-            style={{
-              animationDuration: "1.2s",
-              animationDelay: "0.2s",
-            }}
-          />
-        </div>
-
-        {/* Subtitle pill */}
-        <div
-          className={`px-4 py-1 rounded-full text-xs sm:text-sm font-black tracking-widest uppercase mb-3 sm:mb-4 border shadow-inner ${
-            isClassic
-              ? "bg-amber-500/20 text-amber-300 border-amber-400/40"
-              : "bg-cyan-500/20 text-cyan-300 border-cyan-400/40"
-          }`}
-        >
-          {subtitle}
-        </div>
-
-        {/* Main Title Typography with 3D Gold / Metallic styling */}
-        <div
-          className="text-center"
-          style={{
-            filter: isClassic
-              ? "drop-shadow(0 0 35px rgba(251,191,36,0.75))"
-              : "drop-shadow(0 0 35px rgba(0,240,255,0.75))",
-          }}
-        >
-          <span
-            className="inline-block font-black tracking-[0.12em] uppercase"
-            style={{
-              fontSize: "clamp(2.4rem, 6.5vw, 5.2rem)",
-              lineHeight: 1.12,
-              background: isClassic
-                ? "linear-gradient(135deg, #fffbd0 0%, #ffd700 45%, #f59e0b 80%, #b45309 100%)"
-                : "linear-gradient(135deg, #ffffff 0%, #a5f3fc 40%, #00f0ff 75%, #0284c7 100%)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              color: "transparent",
-            }}
-          >
-            {isVcnv ? (
-              <>
-                <span className="block">VƯỢT</span>
-                <span className="block">CHƯỚNG NGẠI VẬT</span>
-              </>
-            ) : (
-              state.banner
-            )}
-          </span>
-        </div>
-      </motion.div>
+      />
+      <div className="absolute top-6 right-6 opacity-40 hover:opacity-100 transition-opacity text-white text-xs font-mono bg-black/60 px-3 py-1.5 rounded-full border border-white/20 pointer-events-auto">
+        Nhấn để bỏ qua (SPACE / ESC)
+      </div>
     </div>
   );
 }

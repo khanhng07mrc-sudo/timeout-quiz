@@ -10459,9 +10459,14 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     </button>
                   )}
                   {olympiaState?.currentRound && (
-                    <span className="px-2 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-[10.5px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => sendOlympiaAction("round:force", { round: olympiaState.currentRound })}
+                      className="px-2 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-200 text-[10.5px] font-bold cursor-pointer transition"
+                      title="Nhấn để phát lại Hình hiệu mở đầu phần thi này"
+                    >
                       {ROUND_LABELS[olympiaState.currentRound]}
-                    </span>
+                    </button>
                   )}
                 </div>
               ) : (

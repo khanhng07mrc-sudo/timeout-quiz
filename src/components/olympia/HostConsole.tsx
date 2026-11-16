@@ -167,6 +167,21 @@ export const HostConsole = React.memo(function HostConsole({
     return r;
   };
 
+  const dispatch = async (action: { type: string; [key: string]: unknown }) => {
+    const { type, ...extra } = action;
+    return call(type, extra);
+  };
+
+  // Auto-dismiss round intro banner after 7.66s (matching the 7.66s WebM intro video & section_intro.mp3)
+  // Triggers banner:hide on the engine, which cues start_round audio and starts the 3D studio opening camera sequence
+  useEffect(() => {
+    if (state?.stage !== "playing" || !state?.banner) return;
+    const timer = setTimeout(() => {
+      call("banner:hide");
+    }, 7660);
+    return () => clearTimeout(timer);
+  }, [state?.stage, state?.banner, state?.currentRound]);
+
   // Keyboard Shortcuts matching the reference application:
   // Space: Play/Pause | Enter: Đúng | Bksp: Sai | W: Nền chờ | R: Lật đáp án | C: Toggle chuông | S: Ngôi sao | B: Bảng điểm | N: Câu tiếp
   useEffect(() => {
@@ -508,6 +523,28 @@ export const HostConsole = React.memo(function HostConsole({
             </>
           )}
 
+          {/* In-Game Match Settings: CHP Question Limit Toggle (Accessible at all times during match) */}
+          <div
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-amber-950/40 border border-amber-400/35 text-[10px] sm:text-xs shrink-0"
+            title="Cài đặt giới hạn số câu hỏi phụ: 3 câu chuẩn VTV3 hoặc Không giới hạn (bấm để chuyển đổi)"
+          >
+            <span className="font-bold text-amber-300 hidden sm:inline">❓ CHP:</span>
+            <button
+              type="button"
+              onClick={() => {
+                const nextLimit = state.chpQuestionLimit === "unlimited" ? 3 : "unlimited";
+                dispatch({ type: "system:setChpLimit", limit: nextLimit });
+              }}
+              className={`px-1.5 py-0.5 rounded font-black cursor-pointer transition ${
+                state.chpQuestionLimit === "unlimited"
+                  ? "bg-cyan-500/30 text-cyan-200 border border-cyan-400/50 hover:bg-cyan-500/40"
+                  : "bg-amber-500/30 text-amber-200 border border-amber-400/50 hover:bg-amber-500/40"
+              }`}
+            >
+              {state.chpQuestionLimit === "unlimited" ? "∞ Vô hạn" : "3 câu"}
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => setShowAudioDrawer(true)}
@@ -801,6 +838,36 @@ export const HostConsole = React.memo(function HostConsole({
               <span>⚙️</span>
               <span className="truncate">Cài đặt</span>
             </button>
+            <div
+              className="w-full px-1 py-1 rounded bg-amber-950/35 border border-amber-500/25 flex flex-col gap-0.5"
+              title="Đồng bộ giới hạn số câu hỏi phụ (3 câu chuẩn VTV3 vs Không giới hạn)"
+            >
+              <span className="text-[9px] font-bold text-amber-300/90 truncate">❓ Giới hạn CHP</span>
+              <div className="grid grid-cols-2 gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => call("system:setChpLimit", { limit: 3 })}
+                  className={`py-0.5 rounded text-[9px] font-black transition cursor-pointer ${
+                    (state.chpQuestionLimit ?? 3) === 3
+                      ? "bg-amber-500 text-slate-950 shadow-sm"
+                      : "bg-slate-900/70 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  3 câu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => call("system:setChpLimit", { limit: "unlimited" })}
+                  className={`py-0.5 rounded text-[9px] font-black transition cursor-pointer ${
+                    state.chpQuestionLimit === "unlimited"
+                      ? "bg-amber-500 text-slate-950 shadow-sm"
+                      : "bg-slate-900/70 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  ∞ Vô hạn
+                </button>
+              </div>
+            </div>
           </div>
         </aside>
 
@@ -842,6 +909,24 @@ export const HostConsole = React.memo(function HostConsole({
                           ? `${state.veDich.current.points}đ`
                           : "10đ"}
                 </span>
+                {(curRound === "khoiDong" || curRound === "vcnv" || curRound === "tangToc" || curRound === "veDich") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextLimit = state.chpQuestionLimit === "unlimited" ? 3 : "unlimited";
+                      dispatch({ type: "system:setChpLimit", limit: nextLimit });
+                    }}
+                    className={`px-2 py-0.5 rounded-full text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
+                      state.chpQuestionLimit === "unlimited"
+                        ? "bg-cyan-950/40 border-cyan-400/40 text-cyan-300 hover:bg-cyan-900/40"
+                        : "bg-amber-950/40 border-amber-400/40 text-amber-300 hover:bg-amber-900/40"
+                    }`}
+                    title="Cài đặt số câu hỏi phụ (Bấm để chuyển đổi giữa 3 câu và Không giới hạn)"
+                  >
+                    <span>CHP:</span>
+                    <span className="font-black">{state.chpQuestionLimit === "unlimited" ? "∞" : "3"}</span>
+                  </button>
+                )}
               </div>
               <div className="text-xl font-black font-mono text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]">
                 <ActiveTimerBadge timer={activeTimer} serverNow={serverNow} />

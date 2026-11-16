@@ -937,7 +937,8 @@ function getSubRoundLabel(state: OlympiaState): string {
     case "cauHoiPhu": {
       const cp = state.cauHoiPhu;
       if (!cp) return "";
-      return `Câu hỏi phụ ${cp.qIdx >= 0 ? `${cp.qIdx + 1}` : ""}`;
+      const limitLabel = state.chpQuestionLimit === "unlimited" ? "∞" : "3";
+      return `Câu hỏi phụ ${cp.qIdx >= 0 ? `${cp.qIdx + 1}/${limitLabel}` : ""}`;
     }
     default:
       return "";
@@ -1294,7 +1295,7 @@ function QuestionBoxContent({
           <div className={`text-xs sm:text-sm font-black uppercase tracking-wider text-left ${
             isClassic ? "text-[#fbbf24]" : "text-amber-300"
           }`}>
-            CÂU HỎI PHỤ {cp.qIdx >= 0 ? `${cp.qIdx + 1}` : ""}
+            CÂU HỎI PHỤ {cp.qIdx >= 0 ? `${cp.qIdx + 1}/${state.chpQuestionLimit === "unlimited" ? "∞" : "3"}` : ""}
           </div>
           <div className={`select-text text-left py-1 ${
             isSandbox

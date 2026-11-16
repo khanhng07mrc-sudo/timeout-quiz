@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import type { OlympiaState } from "@/lib/olympia/types";
 import { getEntranceSeatTiming } from "@/lib/olympia/entrance-geometry";
+import { isRoundPostIntroStandby } from "./CameraController";
 
 export interface OlympiaCameraState {
   camAngle: number;
@@ -282,12 +283,15 @@ export function useOlympiaCameraState(
 
   const wasIntroOrEntranceRef = useRef<boolean>(false);
   useEffect(() => {
-    const active = Boolean(state?.introTimer) || Boolean(state?.entranceState?.active);
+    const active =
+      Boolean(state?.introTimer) ||
+      Boolean(state?.entranceState?.active) ||
+      Boolean(state?.banner);
     if (wasIntroOrEntranceRef.current && !active) {
       roundEnteredAtRef.current = getNow();
     }
     wasIntroOrEntranceRef.current = active;
-  }, [state?.introTimer, state?.entranceState?.active]);
+  }, [state?.introTimer, state?.entranceState?.active, state?.banner]);
 
   useEffect(() => {
     const curPhase = state?.khoiDong?.phase || state?.veDich?.phase || "";
@@ -313,6 +317,7 @@ export function useOlympiaCameraState(
     state?.entranceState?.active ||
       state?.introTimer ||
       state?.introStandby ||
+      isRoundPostIntroStandby(state) ||
       (state?.currentRound === "khoiDong" &&
         state?.khoiDong &&
         (!state.khoiDong.started ||
@@ -430,6 +435,46 @@ export function useOlympiaCameraState(
         transitionMode: "MORPH",
         isOverlayHidden: false,
         pushInProgress: 0.15,
+      };
+    }
+
+    // 2.8. Post-Intro Opening Round Camera Sequence (applies to all 4 rounds: Khởi Động, VCNV, Tăng Tốc, Về Đích):
+    // Right when the 7.66s video intro unmounts (!state.banner) and start_round audio plays:
+    // - 0.0s - 3.5s: CAM 14 low-to-high crane sweep across Laurel Wreath & stage
+    // - 3.5s - 7.5s: CAM 3 Bục MC & Cổng Lục Giác with smooth zoom-in
+    // - 7.5s - 11.5s: CAM 10 Toàn Cảnh Bục Thí Sinh
+    // - 11.5s+: CAM 1 Sweeping Wide Studio Orbit
+    if (isRoundPostIntroStandby(state)) {
+      const postIntroElapsed = Math.max(0, (now - roundEnteredAtRef.current) / 1000);
+      if (postIntroElapsed < 3.5) {
+        return {
+          camAngle: 14,
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+      if (postIntroElapsed < 7.5) {
+        return {
+          camAngle: 3,
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: Math.min(1.0, (postIntroElapsed - 3.5) / 4.0),
+        };
+      }
+      if (postIntroElapsed < 11.5) {
+        return {
+          camAngle: 10,
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: Math.min(0.6, ((postIntroElapsed - 7.5) / 4.0) * 0.6),
+        };
+      }
+      return {
+        camAngle: 1, // Toàn Cảnh sweeping stage
+        transitionMode: "MORPH",
+        isOverlayHidden: false,
+        pushInProgress: 0,
       };
     }
 
@@ -719,6 +764,7 @@ export function useOlympiaCameraState(
     return defaultState;
   }, [
     state,
+    state?.banner,
     state?.stage,
     state?.currentRound,
     state?.seats?.length,

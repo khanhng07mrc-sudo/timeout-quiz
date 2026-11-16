@@ -1059,6 +1059,9 @@ function Chp({ state, serverNow }: P) {
     : null;
   const chpAnswer = q?.a || lastChpEntry?.correctAnswer || "";
   const chpWinner = cp.winner != null ? state.seats[cp.winner]?.name : undefined;
+  const chpLimitLabel = state.chpQuestionLimit === "unlimited" ? "∞" : "3";
+  const chpBadgeLabel =
+    cp.qIdx >= 0 ? `CÂU HỎI PHỤ ${cp.qIdx + 1}/${chpLimitLabel}` : "CÂU HỎI PHỤ";
 
   return (
     <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto text-center space-y-2 animate-fade-in">
@@ -1069,7 +1072,7 @@ function Chp({ state, serverNow }: P) {
             round="cauHoiPhu"
             tiedSeats={cp.tied}
             buzzedSeatId={cp.buzzedSeat || cp.winner}
-            badgeLabel="CÂU HỎI PHỤ"
+            badgeLabel={chpBadgeLabel}
             questionText={q?.q || ""}
             timer={cp.timer}
             serverNow={serverNow}
@@ -1078,7 +1081,7 @@ function Chp({ state, serverNow }: P) {
                 ? {
                     show: true,
                     text: chpAnswer || (cp.winner != null ? "CHÍNH XÁC" : "KẾT QUẢ"),
-                    label: "ĐÁP ÁN CÂU HỎI PHỤ",
+                    label: cp.qIdx >= 0 ? `ĐÁP ÁN CÂU HỎI PHỤ ${cp.qIdx + 1}/${chpLimitLabel}` : "ĐÁP ÁN CÂU HỎI PHỤ",
                     verdict: cp.winner != null ? "correct" : "neutral",
                     actorName: chpWinner,
                   }
@@ -1090,7 +1093,7 @@ function Chp({ state, serverNow }: P) {
         <div className="w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col justify-end animate-fade-in">
           <UnifiedOlympiaAnswerOverlay
             answerText={chpAnswer || (cp.winner != null ? "CHÍNH XÁC" : "KẾT QUẢ")}
-            roundLabel="ĐÁP ÁN CÂU HỎI PHỤ"
+            roundLabel={cp.qIdx >= 0 ? `ĐÁP ÁN CÂU HỎI PHỤ ${cp.qIdx + 1}/${chpLimitLabel}` : "ĐÁP ÁN CÂU HỎI PHỤ"}
             verdict={cp.winner != null ? "correct" : "neutral"}
             actorName={chpWinner}
             themeMode={state.themeMode}
@@ -1101,7 +1104,7 @@ function Chp({ state, serverNow }: P) {
           state={state}
           serverNow={serverNow}
           buzzedSeatId={cp.buzzedSeat || cp.winner}
-          headerBadge="CÂU HỎI PHỤ"
+          headerBadge={chpBadgeLabel}
           questionText={q.q}
           timer={cp.timer}
           showScoreTab={true}

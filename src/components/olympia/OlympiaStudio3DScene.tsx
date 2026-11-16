@@ -4,7 +4,11 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
 import type { OlympiaState } from "@/lib/olympia/types";
 import { useOlympiaLightingState } from "./studio/useOlympiaLightingState";
-import { CameraController, OLYMPIA_CAM_PRESETS } from "./studio/CameraController";
+import {
+  CameraController,
+  OLYMPIA_CAM_PRESETS,
+  isRoundPostIntroStandby,
+} from "./studio/CameraController";
 import { CentralLedWall } from "./studio/CentralLedWall";
 import { Podiums } from "./studio/Podiums";
 import { LaurelWreathVitrine } from "./studio/LaurelWreathVitrine";
@@ -181,6 +185,7 @@ export function OlympiaStudio3DScene({
           introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
           kdStartCooldownUntil={state?.khoiDong?.startCooldownUntil ?? null}
           isIdleLobby={Boolean(isIdle && !state?.studioCameraManual && !state?.entranceState?.active)}
+          isPostIntroStandby={isRoundPostIntroStandby(state)}
           serverNow={serverNow}
         />
 

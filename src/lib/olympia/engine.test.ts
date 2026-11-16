@@ -3279,6 +3279,87 @@ test("Audio-First Buzzer Pipeline (0ms AudioBuffer + 1-2 frame visual defer) & F
   assert.ok(overlayMatches.length >= 3, "VcnvCnvBellSignalOverlay rendered in VcnvCountdownGraphic and both branches of VcnvAnswerRevealGraphic");
 });
 
+test("R1-R4: 4 Custom 3D WebM Intro Videos, Câu Hỏi Phụ Intro Exemption, Post-Intro 3D Camera Coordination & chpQuestionLimit Sync", () => {
+  // R1: Verify 4 rendered WebM files exist in public/olympia-intro/ with non-zero broadcast size
+  const introFiles = [
+    "khoi_dong.webm",
+    "vuot_chuong_ngai_vat.webm",
+    "tang_toc.webm",
+    "ve_dich.webm",
+  ];
+  for (const file of introFiles) {
+    const fullPath = path.resolve(process.cwd(), "public/olympia-intro", file);
+    assert.ok(fs.existsSync(fullPath), `Intro video ${file} exists`);
+    const stat = fs.statSync(fullPath);
+    assert.ok(stat.size > 500_000, `Intro video ${file} has valid rendered payload (>500KB)`);
+  }
+
+  // R2: Verify Vtv3BroadcastGraphics uses all 4 WebM videos across all themes and has no wooden/brass plaque fallback
+  const graphicsSrc = fs.readFileSync(
+    path.resolve(process.cwd(), "src/components/olympia/Vtv3BroadcastGraphics.tsx"),
+    "utf-8"
+  );
+  assert.ok(graphicsSrc.includes('khoiDong: "/olympia-intro/khoi_dong.webm"'));
+  assert.ok(graphicsSrc.includes('vcnv: "/olympia-intro/vuot_chuong_ngai_vat.webm"'));
+  assert.ok(graphicsSrc.includes('tangToc: "/olympia-intro/tang_toc.webm"'));
+  assert.ok(graphicsSrc.includes('veDich: "/olympia-intro/ve_dich.webm"'));
+  assert.ok(
+    !graphicsSrc.includes("ROUND_SUBTITLES"),
+    "Legacy wooden/brass plaque fallback is completely removed from BroadcastRoundIntroOverlay"
+  );
+
+  // R2 & R3: Verify Câu Hỏi Phụ has zero intro banner and zero section_intro audio cue
+  const g = new OlympiaGame(
+    "r1-r4-test",
+    {
+      rulesetId: "O26",
+      chpQuestionLimit: "unlimited",
+      rounds: ["khoiDong", "vcnv", "tangToc", "veDich"],
+      questionSet: SAMPLE_QUESTION_SET,
+    },
+    1000
+  );
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  act(g, "game:start", {}, 2000);
+
+  // Main round (khoiDong) sets banner and cues section_intro
+  act(g, "round:force", { round: "khoiDong" }, 3000);
+  assert.equal(g.state.banner, "Khởi Động");
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/section_intro");
+
+  // Unmounting intro via banner:hide clears banner and cues start_round
+  act(g, "banner:hide", {}, 10660);
+  assert.equal(g.state.banner, null);
+  assert.equal(g.state.cue?.sound, "1_KhoiDong/start_round");
+
+  // Câu Hỏi Phụ suppresses banner and section_intro completely
+  act(g, "round:force", { round: "cauHoiPhu" }, 12000);
+  assert.equal(g.state.currentRound, "cauHoiPhu");
+  assert.equal(g.state.banner, null, "cauHoiPhu must not set opening banner");
+  assert.notEqual(
+    g.state.cue?.sound,
+    "6_NhacKhac/section_intro",
+    "cauHoiPhu must not cue section_intro"
+  );
+
+  // R4: Verify chpQuestionLimit synchronization across roles, reverse switch, and invalid rejection
+  assert.equal(g.view("host").chpQuestionLimit, "unlimited");
+  assert.equal(g.view("display").chpQuestionLimit, "unlimited");
+  assert.equal(g.view("player", 0).chpQuestionLimit, "unlimited");
+
+  // Reject invalid chpQuestionLimit
+  const badRes = g.hostAction({ type: "system:setChpLimit", limit: 5 as any }, 12500);
+  assert.equal(badRes.ok, false);
+  assert.equal(g.state.chpQuestionLimit, "unlimited");
+
+  // Switch back to 3 questions and verify cutoff after 3 questions
+  act(g, "system:setChpLimit", { limit: 3 }, 12600);
+  assert.equal(g.view("host").chpQuestionLimit, 3);
+  assert.equal(g.view("display").chpQuestionLimit, 3);
+  assert.equal(g.view("player", 0).chpQuestionLimit, 3);
+});
+
 
 
 

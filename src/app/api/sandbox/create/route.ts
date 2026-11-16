@@ -214,11 +214,15 @@ export async function POST(req: NextRequest) {
 
       (sandboxConfig as any).olympia = {
         rulesetId: body.config?.olympia?.rulesetId || "O26",
+        o22Quarter: body.config?.olympia?.o22Quarter,
         rounds: body.config?.olympia?.rounds || ["khoiDong", "vcnv", "tangToc", "veDich"],
         questionSet: qSet,
         seatCount: teamCount,
         teams: inputTeams,
         playIntroOnCreate: body.config?.olympia?.playIntroOnCreate !== false,
+        chpQuestionLimit: body.config?.olympia?.chpQuestionLimit ?? (body.config?.olympia?.rulesetId === "O27" ? "unlimited" : 3),
+        standaloneChp: body.config?.olympia?.standaloneChp,
+        chpContestants: body.config?.olympia?.chpContestants,
       };
     }
 

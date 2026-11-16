@@ -124,6 +124,12 @@ function scheduleSave(entry: GameEntry) {
     entry.saveTimer = null;
     try {
       const stage = entry.game.state.stage;
+      if (entry.baseConfig && typeof entry.baseConfig === "object") {
+        if (!(entry.baseConfig as any).olympia || typeof (entry.baseConfig as any).olympia !== "object") {
+          (entry.baseConfig as any).olympia = {};
+        }
+        (entry.baseConfig as any).olympia.chpQuestionLimit = entry.game.state.chpQuestionLimit;
+      }
       const data: Record<string, unknown> = {
         config: { ...entry.baseConfig, olympiaSnapshot: entry.game.state },
       };
@@ -315,7 +321,10 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
 
     socket.on("action", (action: { type: string }, ack?: (r: { ok: boolean; error?: string }) => void) => {
       const entry = withEntry();
-      if (!entry || !info || info.role !== "host") return ack?.({ ok: false, error: "Không có quyền" });
+      const isDisplayBannerHide = info?.role === "display" && action?.type === "banner:hide";
+      if (!entry || !info || (info.role !== "host" && !isDisplayBannerHide)) {
+        return ack?.({ ok: false, error: "Không có quyền" });
+      }
       if (action.type === "seat:kick") {
         const seatId = Number((action as any).seat);
         for (const [sockId, cInfo] of entry.clients.entries()) {

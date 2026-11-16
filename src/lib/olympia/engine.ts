@@ -686,8 +686,12 @@ export class OlympiaGame {
     st.studioCamera = undefined;
     st.currentRound = round;
     st.roundStatus[round] = "active";
-    st.banner = ROUND_LABELS[round];
-    this.cue("6_NhacKhac/section_intro");
+    if (round !== "cauHoiPhu") {
+      st.banner = ROUND_LABELS[round];
+      this.cue("6_NhacKhac/section_intro");
+    } else {
+      st.banner = null;
+    }
 
     switch (round) {
       case "khoiDong": {
@@ -1098,9 +1102,11 @@ export class OlympiaGame {
         st.introStandby = false;
         st.entranceCompleted = true;
         if (st.entranceState) st.entranceState.active = false;
-        st.banner = st.currentRound ? ROUND_LABELS[st.currentRound] : null;
-        if (st.currentRound) {
+        if (st.currentRound && st.currentRound !== "cauHoiPhu") {
+          st.banner = ROUND_LABELS[st.currentRound];
           this.cue("6_NhacKhac/section_intro");
+        } else {
+          st.banner = null;
         }
         return OK;
       }
@@ -1128,16 +1134,16 @@ export class OlympiaGame {
       case "banner:hide": {
         const curRound = st.currentRound;
         st.banner = null;
-        if (curRound) {
-          this.cue(
-            curRound === "khoiDong"
-              ? "1_KhoiDong/start_round"
-              : curRound === "vcnv"
-                ? "2_VuotChuongNgaiVat/start_round"
-                : curRound === "tangToc"
-                  ? "3_TangToc/start_round"
-                  : "4_VeDich/start_round"
-          );
+        if (curRound && curRound !== "cauHoiPhu") {
+          if (curRound === "khoiDong") {
+            this.cue("1_KhoiDong/start_round");
+          } else if (curRound === "vcnv") {
+            this.cue("2_VuotChuongNgaiVat/start_round");
+          } else if (curRound === "tangToc") {
+            this.cue("3_TangToc/start_round");
+          } else if (curRound === "veDich") {
+            this.cue("4_VeDich/start_round");
+          }
         }
         return OK;
       }

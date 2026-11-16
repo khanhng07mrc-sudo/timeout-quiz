@@ -1633,7 +1633,7 @@ export const HostConsole = React.memo(function HostConsole({
                       </div>
                     )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
+                    <div className="flex flex-col gap-2 w-full">
                       {state.seats.map((s, idx) => {
                         const isPending = Boolean(s.name && s.approved === false);
                         const isApproved = Boolean(s.name && s.approved !== false);
@@ -1642,113 +1642,128 @@ export const HostConsole = React.memo(function HostConsole({
                         return (
                           <div
                             key={s.id}
-                            className={`rounded-xl border p-3 transition flex flex-col justify-between gap-2.5 relative overflow-hidden shadow-md ${
+                            className={`w-full rounded-xl border px-3 py-2 sm:py-2.5 transition flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 relative overflow-hidden shadow-sm ${
                               isSwapSelected
                                 ? "bg-amber-500/20 border-amber-400 ring-2 ring-amber-400/50 shadow-xl"
                                 : isApproved
-                                ? "bg-slate-900/90 border-cyan-500/40 shadow-lg shadow-cyan-950/40"
+                                ? "bg-slate-900/90 border-cyan-500/35 shadow-md shadow-cyan-950/30"
                                 : isPending
                                 ? "bg-amber-950/40 border-amber-500/50 border-dashed"
                                 : "bg-white/[0.02] border-white/10 border-dashed"
                             }`}
                             style={{
-                              borderTop: `3px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}`
+                              borderLeft: `4px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}`
                             }}
                           >
-                            <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold">
-                              <span>Vị trí {idx + 1}</span>
-                              {isApproved && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30">
-                                  ✓ ĐÃ DUYỆT
-                                </span>
-                              )}
-                              {isPending && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30">
-                                  ⏳ CHỜ DUYỆT
-                                </span>
-                              )}
-                              {!s.name && <span className="text-slate-500">⚪ Trống</span>}
-                            </div>
+                            {/* Left: Position badge & Candidate details */}
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <div className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/10 text-slate-300 font-bold text-xs shrink-0 flex items-center gap-1.5">
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff" }}
+                                />
+                                <span>Vị trí {idx + 1}</span>
+                              </div>
 
-                            {s.name ? (
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between gap-1.5">
+                              {s.name ? (
+                                <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                                   <span className="font-black text-xs sm:text-sm text-white truncate" title={s.name}>
                                     {s.name}
                                   </span>
-                                  <span className={`text-[10px] font-mono shrink-0 ${s.connected ? "text-emerald-400 font-bold" : "text-slate-500"}`}>
-                                    {s.connected ? "🟢 Online" : "🔴 Offline"}
-                                  </span>
+                                  {s.school && (
+                                    <span className="text-[11px] text-slate-400 truncate" title={s.school}>
+                                      • {s.school}
+                                    </span>
+                                  )}
                                 </div>
-                                {s.school && (
-                                  <div className="text-[10px] text-slate-400 truncate" title={s.school}>
-                                    {s.school}
-                                  </div>
-                                )}
+                              ) : (
+                                <span className="text-xs text-slate-500 italic">
+                                  ⚪ Ghế trống — Chờ thí sinh vào phòng
+                                </span>
+                              )}
+                            </div>
 
-                                {/* Action buttons */}
-                                <div className="flex items-center gap-1.5 pt-1.5 border-t border-white/10">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (swapSourceSeat === null) {
-                                        setSwapSourceSeat(s.id);
-                                      } else if (swapSourceSeat === s.id) {
-                                        setSwapSourceSeat(null);
-                                      } else {
-                                        call("seat:swap", { seatA: swapSourceSeat, seatB: s.id });
-                                        setSwapSourceSeat(null);
-                                      }
-                                    }}
-                                    className={`flex-1 py-1 px-2 rounded text-[11px] font-bold border transition cursor-pointer text-center whitespace-nowrap ${
-                                      isSwapSelected
-                                        ? "bg-amber-500 text-slate-950 border-amber-400 font-black animate-pulse"
-                                        : "bg-white/5 hover:bg-white/15 text-cyan-300 border-white/15"
-                                    }`}
-                                    title="Đổi vị trí thí sinh này với vị trí khác"
-                                  >
-                                    {isSwapSelected ? "Đang chọn..." : "⇄ Đổi vị trí"}
-                                  </button>
-                                  {isPending && (
+                            {/* Middle & Right: Status Badges & Action Buttons */}
+                            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-white/10">
+                              {s.name ? (
+                                <>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className={`text-[10px] font-mono shrink-0 ${s.connected ? "text-emerald-400 font-bold" : "text-slate-500"}`}>
+                                      {s.connected ? "🟢 Online" : "🔴 Offline"}
+                                    </span>
+                                    {isApproved && (
+                                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30 whitespace-nowrap">
+                                        ✓ ĐÃ DUYỆT
+                                      </span>
+                                    )}
+                                    {isPending && (
+                                      <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30 whitespace-nowrap">
+                                        ⏳ CHỜ DUYỆT
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 shrink-0">
                                     <button
                                       type="button"
-                                      onClick={() => call("seat:approve", { seatId: s.id })}
-                                      className="px-2.5 py-1 rounded text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow transition cursor-pointer whitespace-nowrap"
-                                      title="Duyệt thí sinh này"
+                                      onClick={() => {
+                                        if (swapSourceSeat === null) {
+                                          setSwapSourceSeat(s.id);
+                                        } else if (swapSourceSeat === s.id) {
+                                          setSwapSourceSeat(null);
+                                        } else {
+                                          call("seat:swap", { seatA: swapSourceSeat, seatB: s.id });
+                                          setSwapSourceSeat(null);
+                                        }
+                                      }}
+                                      className={`py-1 px-2.5 rounded-lg text-xs font-bold border transition cursor-pointer text-center whitespace-nowrap ${
+                                        isSwapSelected
+                                          ? "bg-amber-500 text-slate-950 border-amber-400 font-black animate-pulse"
+                                          : "bg-white/5 hover:bg-white/15 text-cyan-300 border-white/15"
+                                      }`}
+                                      title="Đổi vị trí thí sinh này với vị trí khác"
                                     >
-                                      ✓ Duyệt
+                                      {isSwapSelected ? "Đang chọn..." : "⇄ Đổi vị trí"}
                                     </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => setKickCandidate(s)}
-                                    className="px-2 py-1 rounded text-[11px] font-bold bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer"
-                                    title="Hủy thí sinh khỏi vị trí này"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div>
-                                {swapSourceSeat !== null ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      call("seat:swap", { seatA: swapSourceSeat, seatB: s.id });
-                                      setSwapSourceSeat(null);
-                                    }}
-                                    className="w-full py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/60 text-amber-200 font-bold text-xs transition cursor-pointer text-center animate-pulse"
-                                  >
-                                    Chuyển tới đây ➔
-                                  </button>
-                                ) : (
-                                  <div className="py-2 text-center text-xs text-slate-500 italic">
-                                    Đang chờ thí sinh...
+                                    {isPending && (
+                                      <button
+                                        type="button"
+                                        onClick={() => call("seat:approve", { seatId: s.id })}
+                                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow transition cursor-pointer whitespace-nowrap"
+                                        title="Duyệt thí sinh này"
+                                      >
+                                        ✓ Duyệt
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => setKickCandidate(s)}
+                                      className="px-2 py-1 rounded-lg text-xs font-bold bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer"
+                                      title="Hủy thí sinh khỏi vị trí này"
+                                    >
+                                      ✕
+                                    </button>
                                   </div>
-                                )}
-                              </div>
-                            )}
+                                </>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  {swapSourceSeat !== null ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        call("seat:swap", { seatA: swapSourceSeat, seatB: s.id });
+                                        setSwapSourceSeat(null);
+                                      }}
+                                      className="py-1 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/60 text-amber-200 font-bold text-xs transition cursor-pointer text-center animate-pulse"
+                                    >
+                                      Chuyển tới đây ➔
+                                    </button>
+                                  ) : (
+                                    <span className="text-[11px] text-slate-500">Chờ người tham gia</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         );
                       })}

@@ -98,6 +98,26 @@ export function cleanVcnvWord(raw: string): string {
   return primary.replace(/[\s\(\)\[\]\{\}]/g, "");
 }
 
+/**
+ * Quy ước chuẩn hiển thị đơn vị số lượng cho VCNV:
+ * - "chữ cái": Dành cho từ khoá chỉ có chữ.
+ * - "chữ số": Dành cho từ khoá chỉ có chữ số.
+ * - "ký tự": Khi kết hợp ít nhất 2 trong 3 yếu tố: chữ cái, chữ số, ký tự đặc biệt.
+ */
+export function getVcnvUnit(raw: string): "chữ cái" | "chữ số" | "ký tự" {
+  if (!raw) return "chữ cái";
+  const clean = cleanVcnvWord(raw);
+  if (!clean) return "chữ cái";
+  const hasLetters = /\p{L}/u.test(clean);
+  const hasDigits = /\p{N}/u.test(clean);
+  const hasSpecial = /[^\p{L}\p{N}]/u.test(clean);
+
+  const categories = (hasLetters ? 1 : 0) + (hasDigits ? 1 : 0) + (hasSpecial ? 1 : 0);
+  if (categories >= 2) return "ký tự";
+  if (hasDigits && !hasLetters && !hasSpecial) return "chữ số";
+  return "chữ cái";
+}
+
 export function parseVcnvAnswer(raw: string): { primary: string; acceptedAnswers: string[] } {
   if (!raw) return { primary: "", acceptedAnswers: [] };
   const trimmed = raw.trim();

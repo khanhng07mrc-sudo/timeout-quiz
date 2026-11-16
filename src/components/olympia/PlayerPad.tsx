@@ -3,30 +3,11 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { RULESETS } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, type OlympiaState, type TimerState } from "@/lib/olympia/types";
+import { getVcnvUnit } from "@/lib/olympia/engine";
 import { useOlympiaSocket, useStableToken, prewarmBuzzerSounds, useCountdown } from "./hooks";
 import { Timer, MediaView, SEAT_COLORS, seatName, activeSeats } from "./ui";
 
 type Emit = (e: string, p?: unknown) => Promise<{ ok: boolean; error?: string }>;
-
-function playInstantBuzzerChime() {
-  if (typeof window === "undefined") return;
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.2);
-  } catch {}
-}
 
 function CompactSandboxTimer({
   timer,
@@ -122,7 +103,7 @@ export default function PlayerPad({
     prewarmBuzzerSounds(join?.audioSeason || "O26");
   }, [join?.audioSeason]);
 
-  // Smooth direct ticker during Khởi Động buzzer lock countdown (60ms intervals)
+  // Responsive ticker during Khởi Động buzzer lock countdown (optimized 200ms interval to prevent lag)
   const [, setUnlockTick] = useState(0);
   useEffect(() => {
     const unlockAt = state?.khoiDong?.buzzUnlockAt;
@@ -136,7 +117,7 @@ export default function PlayerPad({
       if (curNow >= unlockAt) {
         clearInterval(id);
       }
-    }, 60);
+    }, 200);
 
     return () => {
       clearInterval(id);
@@ -150,7 +131,6 @@ export default function PlayerPad({
     const nowLocal = performance.now();
     if (nowLocal - lastBuzzEmitAtRef.current < 160) return;
     lastBuzzEmitAtRef.current = nowLocal;
-    playInstantBuzzerChime();
     setOptimisticBuzzPending(true);
 
     try {
@@ -734,11 +714,11 @@ export default function PlayerPad({
                   borderLeftColor,
                 }}
               >
-                <div className="flex items-center gap-1 min-w-0 overflow-hidden flex-1">
+                <div className="flex items-center gap-1 min-w-0 overflow-hidden flex-1 py-0.5">
                   <span
                     className={`${
                       isSandboxMode ? "text-[9.5px]" : "text-[10px] sm:text-xs"
-                    } font-extrabold uppercase truncate tracking-tight text-left ${nameColor}`}
+                    } font-extrabold uppercase truncate tracking-tight text-left leading-normal ${nameColor}`}
                     style={{
                       fontStretch: "condensed",
                       letterSpacing: "-0.03em",
@@ -783,19 +763,19 @@ export default function PlayerPad({
               : "bg-slate-950/85 border-2 border-white/15 shadow-inner"
           }`}
         >
-          {/* VCNV sub-tabs inside Question Box so bottom interaction zone never shifts */}
+          {/* VCNV sub-tabs inside Question Box strictly on 1 single line with Lock Status */}
           {state.stage === "playing" && state.currentRound === "vcnv" && state.vcnv && (
             <div
-              className={`shrink-0 flex items-center justify-between gap-1.5 mb-1.5 pb-1.5 border-b ${
+              className={`shrink-0 flex items-center justify-between gap-1 mb-1.5 pb-1.5 border-b flex-nowrap w-full overflow-hidden ${
                 isClassic ? "border-[#d4af37]/30" : "border-white/10"
               }`}
             >
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden flex-nowrap">
                 <button
                   type="button"
                   onClick={() => setVcnvTab("question")}
-                  className={`px-2.5 py-0.5 rounded-lg font-black ${
-                    isSandboxMode ? "text-[10px]" : "text-xs"
+                  className={`px-2 py-0.5 rounded-lg font-black shrink-0 whitespace-nowrap ${
+                    isSandboxMode ? "text-[9.5px]" : "text-[11px] sm:text-xs"
                   } border transition cursor-pointer ${
                     isClassic
                       ? vcnvTab === "question"
@@ -806,13 +786,13 @@ export default function PlayerPad({
                       : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
                   }`}
                 >
-                  ❓ Câu hỏi hàng ngang
+                  ❓ Hàng ngang
                 </button>
                 <button
                   type="button"
                   onClick={() => setVcnvTab("pieces")}
-                  className={`px-2.5 py-0.5 rounded-lg font-black ${
-                    isSandboxMode ? "text-[10px]" : "text-xs"
+                  className={`px-2 py-0.5 rounded-lg font-black truncate shrink min-w-0 ${
+                    isSandboxMode ? "text-[9.5px]" : "text-[11px] sm:text-xs"
                   } border transition cursor-pointer ${
                     isClassic
                       ? vcnvTab === "pieces"
@@ -822,21 +802,22 @@ export default function PlayerPad({
                       ? "bg-amber-400 text-slate-950 border-amber-300 shadow"
                       : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
                   }`}
+                  title={`Miếng ghép & CNV (${state.vcnv.keywordLength ?? (state.vcnv.keyword ? state.vcnv.keyword.replace(/\s+/g, "").length : "?")} ${getVcnvUnit(state.vcnv.keyword || "")})`}
                 >
-                  🧩 4 Miếng ghép & CNV ({state.vcnv.keywordLength ?? (state.vcnv.keyword ? state.vcnv.keyword.replace(/\s+/g, "").length : "?")} chữ cái)
+                  🧩 Miếng ghép & CNV
                 </button>
               </div>
               {state.vcnv.eliminatedSeats.includes(me.id) && (
                 <span
                   className={`${
-                    isSandboxMode ? "text-[10px] px-1.5 py-0.2" : "text-xs px-2.5 py-0.5"
-                  } font-black rounded-lg border ${
+                    isSandboxMode ? "text-[9.5px] px-1.5 py-0.5" : "text-xs px-2 py-0.5"
+                  } font-black rounded-lg border shrink-0 whitespace-nowrap ml-1 ${
                     isClassic
                       ? "text-rose-300 bg-rose-950/70 border-rose-500/50 shadow"
                       : "text-rose-400 bg-rose-950/60 border border-rose-500/40"
                   }`}
                 >
-                  🔒 Dừng quyền chơi
+                  🔒 Khóa quyền
                 </span>
               )}
             </div>
@@ -930,12 +911,16 @@ function getSubRoundLabel(state: OlympiaState): string {
       const kwLen = v.keywordLength ?? (v.keyword ? v.keyword.replace(/\s+/g, "").length : 0);
       if (v.currentRow >= 0 && v.currentRow < 4) {
         const lc = v.rows[v.currentRow]?.letterCount || v.rows[v.currentRow]?.answer?.length || "?";
-        return `Hàng ngang số ${v.currentRow + 1} (${lc} chữ cái) · CNV: ${kwLen} chữ cái`;
+        const rowUnit = getVcnvUnit(v.rows[v.currentRow]?.answer || "");
+        const kwUnit = getVcnvUnit(v.keyword || "");
+        return `Hàng ngang số ${v.currentRow + 1} (${lc} ${rowUnit}) · CNV: ${kwLen} ${kwUnit}`;
       }
       if (v.currentRow === 4) {
-        return `Ô trung tâm · CNV: ${kwLen} chữ cái`;
+        const kwUnit = getVcnvUnit(v.keyword || "");
+        return `Ô trung tâm · CNV: ${kwLen} ${kwUnit}`;
       }
-      return `Chướng ngại vật gồm ${kwLen} chữ cái`;
+      const kwUnit = getVcnvUnit(v.keyword || "");
+      return `Chướng ngại vật gồm ${kwLen} ${kwUnit}`;
     }
     case "tangToc": {
       const tt = state.tangToc;
@@ -1039,12 +1024,12 @@ function QuestionBoxContent({
       }
       return (
         <div className="space-y-1.5 w-full max-w-3xl text-left">
-          <div className={`select-text text-left ${
+          <div className={`select-text text-left py-1 ${
             isSandbox
-              ? "text-xs sm:text-sm font-black leading-snug text-white"
+              ? "text-xs sm:text-sm font-black leading-normal text-white"
               : isClassic
-              ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-snug sm:leading-relaxed"
-              : "text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed"
+              ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-normal sm:leading-relaxed"
+              : "text-white text-sm sm:text-base md:text-lg font-bold leading-normal sm:leading-relaxed"
           }`}>
             {kd.current.q}
           </div>
@@ -1093,7 +1078,7 @@ function QuestionBoxContent({
                 >
                   <div className="min-w-0">
                     <div className={`text-[10px] font-black uppercase ${isClassic ? "text-[#fbbf24]" : "text-amber-300"}`}>
-                      Hàng ngang {rIdx + 1} ({lc} chữ cái)
+                      Hàng ngang {rIdx + 1} ({lc} {getVcnvUnit(row?.answer || "")})
                     </div>
                     <div className="text-xs sm:text-sm font-bold truncate mt-0.5">
                       {isSolved ? row?.answer || "Đã mở" : row?.opened ? "Đã mở (Không có ĐA đúng)" : "🔒 Chưa mở"}
@@ -1125,7 +1110,7 @@ function QuestionBoxContent({
         return (
           <div className="w-full text-center space-y-1">
             <div className={`text-base sm:text-lg font-black uppercase ${isClassic ? "text-[#fbbf24] drop-shadow" : "text-amber-300"}`}>
-              {v.currentRow < 4 ? `HÀNG NGANG SỐ ${v.currentRow + 1} (${lc} CHỮ CÁI)` : "⭐ Ô TRUNG TÂM"}
+              {v.currentRow < 4 ? `HÀNG NGANG SỐ ${v.currentRow + 1} (${lc} ${getVcnvUnit(v.rows[v.currentRow]?.answer || "").toUpperCase()})` : "⭐ Ô TRUNG TÂM"}
             </div>
             <div className={isClassic ? "text-amber-200/70 text-xs sm:text-sm" : "text-slate-400 text-xs sm:text-sm"}>
               Đã chọn hàng ngang. Đang đợi mở câu hỏi…
@@ -1139,14 +1124,14 @@ function QuestionBoxContent({
         return (
           <div className="space-y-1 max-w-3xl text-left w-full">
             <div className={`text-xs font-black uppercase tracking-wider text-left ${isClassic ? "text-amber-300" : "text-sky-300"}`}>
-              Hàng ngang số {v.currentRow + 1} ({lc} chữ cái)
+              Hàng ngang số {v.currentRow + 1} ({lc} {getVcnvUnit(row?.answer || "")})
             </div>
-            <div className={`select-text text-left ${
+            <div className={`select-text text-left py-1 ${
               isSandbox
-                ? "text-xs sm:text-sm font-black leading-snug text-white"
+                ? "text-xs sm:text-sm font-black leading-normal text-white"
                 : isClassic
-                ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-snug sm:leading-relaxed"
-                : "text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed"
+                ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-normal sm:leading-relaxed"
+                : "text-white text-sm sm:text-base md:text-lg font-bold leading-normal sm:leading-relaxed"
             }`}>
               {row?.hint || "Đang tải câu hỏi…"}
             </div>
@@ -1158,12 +1143,12 @@ function QuestionBoxContent({
           <div className={`text-xs font-black uppercase tracking-wider text-left ${isClassic ? "text-[#fbbf24]" : "text-amber-400"}`}>
             ⭐ CÂU HỎI Ô TRUNG TÂM
           </div>
-          <div className={`select-text text-left ${
+          <div className={`select-text text-left py-1 ${
             isSandbox
-              ? "text-xs sm:text-sm font-black leading-snug text-white"
+              ? "text-xs sm:text-sm font-black leading-normal text-white"
               : isClassic
-              ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-snug sm:leading-relaxed"
-              : "text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed"
+              ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-normal sm:leading-relaxed"
+              : "text-white text-sm sm:text-base md:text-lg font-bold leading-normal sm:leading-relaxed"
           }`}>
             {v.centerQuestion?.q || "Đang tải câu hỏi trung tâm…"}
           </div>
@@ -1183,12 +1168,12 @@ function QuestionBoxContent({
       const q = tt.questions[tt.qIdx];
       return (
         <div className="space-y-1.5 w-full max-w-3xl text-left">
-          <div className={`select-text text-left ${
+          <div className={`select-text text-left py-1 ${
             isSandbox
-              ? "text-xs sm:text-sm font-black leading-snug text-white"
+              ? "text-xs sm:text-sm font-black leading-normal text-white"
               : isClassic
-              ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-snug"
-              : "text-white text-sm sm:text-base md:text-lg font-bold leading-snug"
+              ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-normal"
+              : "text-white text-sm sm:text-base md:text-lg font-bold leading-normal"
           }`}>
             {q?.q || "Quan sát dữ kiện trên màn hình chính"}
           </div>
@@ -1268,12 +1253,12 @@ function QuestionBoxContent({
               </span>
             )}
           </div>
-          <div className={`select-text text-left ${
+          <div className={`select-text text-left py-1 ${
             isSandbox
-              ? "text-xs sm:text-sm font-black leading-snug text-white"
+              ? "text-xs sm:text-sm font-black leading-normal text-white"
               : isClassic
-              ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-snug sm:leading-relaxed"
-              : "text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed"
+              ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-normal sm:leading-relaxed"
+              : "text-white text-sm sm:text-base md:text-lg font-bold leading-normal sm:leading-relaxed"
           }`}>
             {vd.current.q.q}
           </div>
@@ -1311,12 +1296,12 @@ function QuestionBoxContent({
           }`}>
             CÂU HỎI PHỤ {cp.qIdx >= 0 ? `${cp.qIdx + 1}` : ""}
           </div>
-          <div className={`select-text text-left ${
+          <div className={`select-text text-left py-1 ${
             isSandbox
-              ? "text-xs sm:text-sm font-black leading-snug text-white"
+              ? "text-xs sm:text-sm font-black leading-normal text-white"
               : isClassic
-              ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-snug sm:leading-relaxed"
-              : "text-white text-sm sm:text-base md:text-lg font-bold leading-snug sm:leading-relaxed"
+              ? "text-base sm:text-lg md:text-xl xl:text-2xl font-black text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] leading-normal sm:leading-relaxed"
+              : "text-white text-sm sm:text-base md:text-lg font-bold leading-normal sm:leading-relaxed"
           }`}>
             {q.q}
           </div>
@@ -1671,8 +1656,7 @@ function CircularBuzzer3D({
     setPressedLocal(true);
     setTimeout(() => setPressedLocal(false), 300);
 
-    // ZERO-LATENCY: Instant local audio chime + trigger
-    playInstantBuzzerChime();
+    // Smooth visual feedback + trigger without synthetic audio delay or audio context hitches
     onPress();
   };
 

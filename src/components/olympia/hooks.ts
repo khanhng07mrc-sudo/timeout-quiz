@@ -1,9 +1,35 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import type { OlympiaState, TimerState } from "@/lib/olympia/types";
 import { getEntranceScheduleOffsetsMs } from "@/lib/olympia/entrance-geometry";
+
+export function isPriorityInstantCue(sound?: string): boolean {
+  if (!sound) return false;
+  return /(?:^|\/)(?:bell_ring|correct|wrong|hope_star)(?:\.mp3)?$/.test(sound);
+}
+
+type FastCueListener = (cue: NonNullable<OlympiaState["cue"]>, state: OlympiaState) => void;
+const fastCueListeners = new Set<FastCueListener>();
+const dispatchedFastCueIds = new Set<number>();
+const ramSfxBufferCache = new Map<string, AudioBuffer>();
+const ramSfxFetchPending = new Set<string>();
+let sharedDecodeCtx: AudioContext | null = null;
+
+function getSharedDecodeAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!sharedDecodeCtx) {
+    try {
+      sharedDecodeCtx = new AudioContextClass();
+    } catch {
+      return null;
+    }
+  }
+  return sharedDecodeCtx;
+}
 
 export type OlympiaRole = "host" | "display" | "player";
 
@@ -73,6 +99,8 @@ export function useOlympiaSocket({
   const joinedRef = useRef(false);
   const latestStateRef = useRef<OlympiaState | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastFastCueIdRef = useRef<number | null>(null);
+  const pendingVisualTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const persistState = useCallback(
     (s: OlympiaState) => {
@@ -124,6 +152,9 @@ export function useOlympiaSocket({
         }
         if (initialState) {
           versionRef.current = initialState.version;
+          if (initialState.cue) {
+            lastFastCueIdRef.current = initialState.cue.id;
+          }
           persistState(initialState);
         }
       });
@@ -144,6 +175,40 @@ export function useOlympiaSocket({
     socket.on("state", (s: OlympiaState) => {
       joinedRef.current = true;
       versionRef.current = s.version;
+
+      if (pendingVisualTimerRef.current) {
+        clearTimeout(pendingVisualTimerRef.current);
+        pendingVisualTimerRef.current = null;
+      }
+
+      const cue = s.cue;
+      const isPriorityCue =
+        Boolean(cue && cue.kind !== "stop" && isPriorityInstantCue(cue.sound)) &&
+        lastFastCueIdRef.current !== null &&
+        cue!.id !== lastFastCueIdRef.current;
+
+      if (cue) {
+        lastFastCueIdRef.current = cue.id;
+      }
+
+      if (isPriorityCue && cue) {
+        // PHASE 1 (0ms): Trigger priority audio (buzzer / verdict SFX) immediately before React render
+        fastCueListeners.forEach((listener) => {
+          try {
+            listener(cue, s);
+          } catch {}
+        });
+
+        // PHASE 2 (~28ms / 1-2 frames): Defer visual signal state update so audio plays with zero CPU contention
+        pendingVisualTimerRef.current = setTimeout(() => {
+          pendingVisualTimerRef.current = null;
+          startTransition(() => {
+            persistState(s);
+          });
+        }, 28);
+        return;
+      }
+
       persistState(s);
     });
 
@@ -180,6 +245,10 @@ export function useOlympiaSocket({
 
     return () => {
       clearInterval(retryTimer);
+      if (pendingVisualTimerRef.current) {
+        clearTimeout(pendingVisualTimerRef.current);
+        pendingVisualTimerRef.current = null;
+      }
       if (persistTimerRef.current) {
         clearTimeout(persistTimerRef.current);
         persistTimerRef.current = null;
@@ -414,6 +483,25 @@ function prewarmSfx(url: string) {
       sfxAudioCache.set(url, a);
     } catch {}
   }
+  if (isPriorityInstantCue(url) && !ramSfxBufferCache.has(url) && !ramSfxFetchPending.has(url)) {
+    ramSfxFetchPending.add(url);
+    fetch(url)
+      .then((res) => (res.ok ? res.arrayBuffer() : Promise.reject()))
+      .then((buf) => {
+        const ctx = getSharedDecodeAudioContext();
+        if (!ctx) return;
+        return ctx.decodeAudioData(buf);
+      })
+      .then((decoded) => {
+        if (decoded) {
+          ramSfxBufferCache.set(url, decoded);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        ramSfxFetchPending.delete(url);
+      });
+  }
 }
 
 export function prewarmBuzzerSounds(season: string = "O26") {
@@ -425,6 +513,12 @@ export function prewarmBuzzerSounds(season: string = "O26") {
     `/olympia-audio/${season}/5_CauHoiPhu/bell_ring.mp3`,
     `/olympia-audio/${season}/1_KhoiDong/correct.mp3`,
     `/olympia-audio/${season}/1_KhoiDong/wrong.mp3`,
+    `/olympia-audio/${season}/2_VuotChuongNgaiVat/correct.mp3`,
+    `/olympia-audio/${season}/2_VuotChuongNgaiVat/wrong.mp3`,
+    `/olympia-audio/${season}/3_TangToc/correct.mp3`,
+    `/olympia-audio/${season}/3_TangToc/wrong.mp3`,
+    `/olympia-audio/${season}/4_VeDich/correct.mp3`,
+    `/olympia-audio/${season}/4_VeDich/wrong.mp3`,
     `/olympia-audio/${season}/1_KhoiDong/open_question.mp3`,
     `/olympia-audio/${season}/2_VuotChuongNgaiVat/open_row.mp3`,
     `/olympia-audio/${season}/3_TangToc/open_question.mp3`,
@@ -438,8 +532,12 @@ export function prewarmBuzzerSounds(season: string = "O26") {
     `/olympia-audio/${season}/3_TangToc/tick_30s.mp3`,
     `/olympia-audio/${season}/3_TangToc/tick_40s.mp3`,
     `/olympia-audio/O26/1_KhoiDong/bell_ring.mp3`,
+    `/olympia-audio/O26/2_VuotChuongNgaiVat/bell_ring.mp3`,
+    `/olympia-audio/O26/4_VeDich/bell_ring.mp3`,
+    `/olympia-audio/O26/5_CauHoiPhu/bell_ring.mp3`,
     `/olympia-audio/O26/1_KhoiDong/correct.mp3`,
     `/olympia-audio/O26/1_KhoiDong/wrong.mp3`,
+    `/olympia-audio/O26/4_VeDich/hope_star.mp3`,
   ];
   list.forEach(prewarmSfx);
   if ("caches" in window) {
@@ -1062,9 +1160,95 @@ export function useOlympiaAudio(
     };
   }, [enabled]);
 
+  // Audio-First Fast-Path (0ms): Plays pre-decoded RAM AudioBuffer immediately when socket packet arrives,
+  // before React reconciles and paints the visual buzzer/verdict state (~28ms later).
+  useEffect(() => {
+    if (!enabled) return;
+    const handleFastCue: FastCueListener = (cue) => {
+      if (!cue || cue.kind === "stop" || !cue.sound) return;
+      if (dispatchedFastCueIds.has(cue.id)) return;
+      dispatchedFastCueIds.add(cue.id);
+      lastCue.current = cue.id;
+
+      if (
+        cue.sound.endsWith("bell_ring") &&
+        !cue.sound.includes("KhoiDong") &&
+        !cue.sound.includes("VuotChuongNgaiVat") &&
+        !cue.sound.includes("VeDich")
+      ) {
+        pauseBgm();
+      }
+
+      const season = audioSeason || "O26";
+      const primaryUrl = `/olympia-audio/${season}/${cue.sound}.mp3`;
+      const fallbackUrl = `/olympia-audio/O26/${cue.sound}.mp3`;
+      const activePan =
+        (typeof window !== "undefined"
+          ? (localStorage.getItem("olympia_audio_channel") as any)
+          : null) ||
+        channel ||
+        cue.pan ||
+        "both";
+
+      const ctx = getAudioContext();
+      const buffer = ramSfxBufferCache.get(primaryUrl) || ramSfxBufferCache.get(fallbackUrl);
+
+      if (ctx && buffer && ctx.state === "running") {
+        try {
+          const srcNode = ctx.createBufferSource();
+          srcNode.buffer = buffer;
+          const gainNode = ctx.createGain();
+          gainNode.gain.value = 0.85;
+          srcNode.connect(gainNode);
+
+          if (activePan === "both") {
+            gainNode.connect(ctx.destination);
+          } else {
+            const splitter = ctx.createChannelSplitter(2);
+            const merger = ctx.createChannelMerger(2);
+            gainNode.connect(splitter);
+            if (activePan === "left") {
+              splitter.connect(merger, 0, 0);
+              splitter.connect(merger, 0, 1);
+            } else {
+              splitter.connect(merger, 1, 0);
+              splitter.connect(merger, 1, 1);
+            }
+            merger.connect(ctx.destination);
+          }
+          srcNode.start(0);
+          return;
+        } catch {}
+      }
+
+      // Fallback to prewarmed HTMLAudioElement if RAM buffer is still decoding
+      const cached = sfxAudioCache.get(primaryUrl) || sfxAudioCache.get(fallbackUrl);
+      const a =
+        cached && (cached.paused || cached.ended)
+          ? cached
+          : cached
+          ? (cached.cloneNode(true) as HTMLAudioElement)
+          : new Audio(primaryUrl);
+      a.currentTime = 0;
+      a.volume = 0.85;
+      connectPanner(a, activePan);
+      registerActive(a);
+      a.play().catch(() => {});
+    };
+
+    fastCueListeners.add(handleFastCue);
+    return () => {
+      fastCueListeners.delete(handleFastCue);
+    };
+  }, [enabled, audioSeason, channel, getAudioContext, pauseBgm, connectPanner, registerActive]);
+
   useEffect(() => {
     const cue = state?.cue;
     if (!cue) return;
+    if (dispatchedFastCueIds.has(cue.id)) {
+      lastCue.current = cue.id;
+      return;
+    }
     const isIntroTrackEarly = isIntroOrMusicTrack(cue.sound);
     const isBgmCueEarly = cue.kind === "bgm" || isIntroTrackEarly;
 

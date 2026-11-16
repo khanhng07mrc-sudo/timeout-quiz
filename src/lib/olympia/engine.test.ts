@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-import { OlympiaGame, stripVcnvLetterCount } from "./engine";
+import { OlympiaGame, stripVcnvLetterCount, getVcnvUnit } from "./engine";
+import { isPriorityInstantCue } from "../../components/olympia/hooks";
 
 import { RULESETS, cnvPointsFor, tangTocTierPoints } from "./rulesets";
 
@@ -3239,6 +3240,39 @@ test("MC walkout and Opening Audio Lifecycle & Khởi Động O23-O26 no timer b
   assert.ok(graphicsSrc.includes("isKhoiDongO23ToO26 = state.currentRound === \"khoiDong\" && !showTimerClock;"));
   assert.ok(graphicsSrc.includes("shouldShowTimerBar = !isKhoiDongO23ToO26 && (isVeDich || Boolean(timer));"));
 });
+
+test("Audio-First Buzzer Pipeline (0ms AudioBuffer + 1-2 frame visual defer) & Fixed VCNV Bell Overlay", () => {
+  // 1. Priority cue classification
+  assert.equal(isPriorityInstantCue("1_KhoiDong/bell_ring"), true);
+  assert.equal(isPriorityInstantCue("2_VuotChuongNgaiVat/bell_ring"), true);
+  assert.equal(isPriorityInstantCue("4_VeDich/bell_ring"), true);
+  assert.equal(isPriorityInstantCue("5_CauHoiPhu/bell_ring"), true);
+  assert.equal(isPriorityInstantCue("1_KhoiDong/correct"), true);
+  assert.equal(isPriorityInstantCue("2_VuotChuongNgaiVat/wrong"), true);
+  assert.equal(isPriorityInstantCue("4_VeDich/hope_star"), true);
+  assert.equal(isPriorityInstantCue("/olympia-audio/O26/1_KhoiDong/bell_ring.mp3"), true);
+  assert.equal(isPriorityInstantCue("6_NhacKhac/show_intro"), false);
+  assert.equal(isPriorityInstantCue("1_KhoiDong/open_question"), false);
+  assert.equal(isPriorityInstantCue("3_TangToc/tick_10s"), false);
+
+  // 2. VCNV unit classification
+  assert.equal(getVcnvUnit("ẮC QUY NƯỚC"), "chữ cái");
+  assert.equal(getVcnvUnit("2026"), "chữ số");
+  assert.equal(getVcnvUnit("COVID-19"), "ký tự");
+  assert.equal(getVcnvUnit("B52"), "ký tự");
+
+  // 3. Hooks Audio-First architecture & deduplication check
+  const hooksSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/hooks.ts"), "utf-8");
+  assert.ok(hooksSrc.includes("ramSfxBufferCache"), "Pre-decoded RAM AudioBuffer cache exists");
+  assert.ok(hooksSrc.includes("dispatchedFastCueIds"), "Fast-path deduplication set exists");
+  assert.ok(hooksSrc.includes("pendingVisualTimerRef"), "1-2 frame visual defer timer exists");
+
+  // 4. Fixed VCNV Bell Overlay in both Main VCNV Graphic and VCNV Answer Reveal Graphic
+  const graphicsSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/Vtv3BroadcastGraphics.tsx"), "utf-8");
+  const overlayMatches = graphicsSrc.match(/<VcnvCnvBellSignalOverlay\s+state=\{state\}\s*\/>/g) || [];
+  assert.ok(overlayMatches.length >= 3, "VcnvCnvBellSignalOverlay rendered in VcnvCountdownGraphic and both branches of VcnvAnswerRevealGraphic");
+});
+
 
 
 

@@ -27,6 +27,7 @@ import {
   VeDichSlantedGridGraphic,
   V3SingleAnswerBar,
   Olympia22BackgroundBackdrop,
+  BroadcastRoundIntroOverlay,
 } from "./Vtv3BroadcastGraphics";
 import { isTtsEnabled, setTtsEnabled, speakTTS, cancelTTS } from "@/lib/olympia/tts";
 
@@ -423,34 +424,11 @@ export default function DisplayScreen({ code }: { code: string }) {
         </div>
       </div>
 
-      {/* ── 4. BROADCAST STAGE BANNER (Z-40) ── */}
       {/* ── 4.5. BROADCAST CONTESTANT INTRO LOWER-THIRD CHYRON (Z-40) ── */}
       {state.entranceState?.active && <ContestantIntroChyron state={state} />}
 
-      {state.stage === "playing" && state.banner && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-auto animate-fade-in bg-black/40 backdrop-blur-sm">
-          <div
-            className="font-black tracking-[0.14em] uppercase text-center px-8 py-5 rounded-3xl border border-white/20 bg-slate-950/85 shadow-[0_0_50px_rgba(0,191,255,0.4)]"
-            style={{
-              fontSize: "clamp(2.4rem, 7vw, 5.5rem)",
-              lineHeight: 1.1,
-              background: "linear-gradient(135deg, #fffbd0 0%, #ffd700 50%, #f59e0b 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              filter: "drop-shadow(0 0 30px rgba(251,191,36,0.6))",
-            }}
-          >
-            {state.currentRound === "vcnv" && state.banner === ROUND_LABELS.vcnv ? (
-              <>
-                <span className="block">VƯỢT</span>
-                <span className="block">CHƯỚNG NGẠI VẬT</span>
-              </>
-            ) : (
-              state.banner
-            )}
-          </div>
-        </div>
-      )}
+      {/* ── 4. BROADCAST STAGE BANNER & ROUND INTRO (Z-40) ── */}
+      <BroadcastRoundIntroOverlay state={state} />
 
       {/* ── 4.8. BROADCAST MANUAL VIDEO OVERLAY (KD, VCNV, VD, CHP) ── */}
       {(() => {

@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import type { OlympiaState } from "@/lib/olympia/types";
+import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
+import { getVcnvUnit } from "@/lib/olympia/engine";
+import { activeSeats } from "@/components/olympia/ui";
 import {
   EconovaLowerThirdV3,
   VcnvCountdownGraphic,
@@ -13,6 +15,12 @@ import {
   SummaryLowerThirdGraphic,
   V3SingleAnswerBar,
   Olympia22BackgroundBackdrop,
+  BroadcastRoundIntroOverlay,
+  Vtv3ClassicSummaryGraphic,
+  ClassicWoodenBackingBeam,
+  Vtv3ChalkboardBackdrop,
+  HorizontalBrassRod,
+  RedConnectionRivet,
 } from "@/components/olympia/Vtv3BroadcastGraphics";
 
 const OlympiaStudio3DScene = dynamic(() => import("@/components/olympia/OlympiaStudio3DScene"), {
@@ -25,25 +33,21 @@ const OlympiaStudio3DScene = dynamic(() => import("@/components/olympia/OlympiaS
 });
 
 export function DevGraphicsClient() {
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const p = new URLSearchParams(window.location.search).get("tab");
-      if (p) return p;
-    }
-    return "r6";
-  });
+  const [mounted, setMounted] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>("r6");
 
   useEffect(() => {
+    setMounted(true);
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
       const p = sp.get("tab");
-      if (p && p !== activeTab) setActiveTab(p);
+      if (p) setActiveTab(p);
       const r = sp.get("ruleset");
       if (r && (r === "O26" || r === "O20" || r === "O15" || r === "O13" || r === "O14")) {
         setRulesetId(r as any);
       }
     }
-  }, [activeTab]);
+  }, []);
   const [isBuzzed, setIsBuzzed] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       return new URLSearchParams(window.location.search).get("buzzed") === "1";
@@ -204,6 +208,123 @@ export function DevGraphicsClient() {
 
   const serverNow = () => Date.now();
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // MILESTONE 3 / REQUIREMENT R4 — AUTOMATED HEADLESS SCREENSHOT STATES
+  // ─────────────────────────────────────────────────────────────────────────
+  const r4VcnvRevealState: OlympiaState = {
+    ...mockState,
+    stage: "playing",
+    currentRound: "vcnv",
+    themeMode: "o26_classic",
+    vcnv: {
+      ...mockState.vcnv!,
+      phase: "answers",
+      currentRow: 0,
+      keyword: "TRÍ TUỆ NHÂN TẠO",
+      keywordLength: 14,
+      rows: [
+        { hint: "Gợi ý hàng ngang 1 (9 chữ cái): Cấu trúc tính toán mô phỏng hệ thần kinh sinh học", answer: "MẠNG NƠ RON", letterCount: 9, opened: true, wrong: false },
+        { hint: "Gợi ý hàng ngang 2 (9 chữ cái)", answer: "THUẬT TOÁN", letterCount: 9, opened: false, wrong: false },
+        { hint: "Gợi ý hàng ngang 3 (9 chữ cái)", answer: "DỮ LIỆU LỚN", letterCount: 9, opened: false, wrong: false },
+        { hint: "Gợi ý hàng ngang 4 (6 chữ cái)", answer: "HỌC SÂU", letterCount: 6, opened: false, wrong: false },
+      ],
+      revealedCorrectAnswer: true,
+      answers: {
+        0: { text: "MẠNG NƠ RON", at: 3820, ms: 3820 },
+        1: { text: "MẠNG NƠ RON", at: 4950, ms: 4950 },
+        2: { text: "THUẬT TOÁN", at: 6120, ms: 6120 },
+        3: { text: "TRÍ TUỆ NHÂN TẠO", at: 8400, ms: 8400 },
+      },
+      bells: [
+        { seat: 0, before: false, atMs: 1420 },
+        { seat: 1, before: false, atMs: 2150 },
+      ],
+      eliminatedSeats: [2],
+    },
+  };
+
+  const r4TangTocRevealState: OlympiaState = {
+    ...mockState,
+    stage: "playing",
+    currentRound: "tangToc",
+    themeMode: "o26_classic",
+    tangToc: {
+      ...mockState.tangToc!,
+      phase: "graded",
+      qIdx: 0,
+      revealedCorrectAnswer: true,
+      correctAnswer: "CHÂU ÂU",
+      ranking: [
+        { seat: 0, answer: "CHÂU ÂU", ms: 1230, points: 40, wrong: false, noAnswer: false },
+        { seat: 1, answer: "CHÂU ÂU", ms: 2450, points: 30, wrong: false, noAnswer: false },
+        { seat: 2, answer: "CHÂU Á", ms: 3890, points: 0, wrong: true, noAnswer: false },
+        { seat: 3, answer: "CHÂU PHI", ms: 4500, points: 0, wrong: true, noAnswer: false },
+      ],
+    },
+  };
+
+  const r4RoundIntroState: OlympiaState = {
+    ...mockState,
+    stage: "playing",
+    currentRound: "vcnv",
+    banner: ROUND_LABELS.vcnv,
+    themeMode: "o26_classic",
+  };
+
+  const r4CenterShieldedState: OlympiaState = {
+    ...mockState,
+    stage: "playing",
+    currentRound: "vcnv",
+    themeMode: "o26_classic",
+    vcnv: {
+      ...mockState.vcnv!,
+      phase: "question",
+      currentRow: 4,
+      keyword: "TRÍ TUỆ NHÂN TẠO",
+      keywordLength: 14,
+      mysteryImage: "/olympia/olympia_22_background.png",
+      piecesRevealed: [false, false, false, false, false],
+      bells: [
+        { seat: 0, before: false, atMs: 1420 },
+        { seat: 1, before: false, atMs: 2150 },
+      ],
+      timer: { totalMs: 15000, remainingMs: 12000, startedAt: Date.now() - 3000 },
+      rows: [
+        { hint: "Hàng ngang 1 (9 chữ cái): Cấu trúc tính toán sinh học", answer: "MẠNG NƠ RON", letterCount: 9, opened: false, wrong: false },
+        { hint: "Hàng ngang 2 (9 chữ cái): Trình tự hữu hạn các bước", answer: "THUẬT TOÁN", letterCount: 9, opened: false, wrong: false },
+        { hint: "Hàng ngang 3 (9 chữ cái): Tập hợp dữ liệu quy mô lớn", answer: "DỮ LIỆU LỚN", letterCount: 9, opened: false, wrong: false },
+        { hint: "Hàng ngang 4 (6 chữ cái): Nhánh học máy nâng cao", answer: "HỌC SÂU", letterCount: 6, opened: false, wrong: false },
+      ],
+      centerQuestion: {
+        q: "Câu hỏi trung tâm: Hãy cho biết lĩnh vực khoa học công nghệ bao trùm cả 4 khái niệm ở các hàng ngang trên?",
+        a: "TRÍ TUỆ NHÂN TẠO",
+      },
+    },
+  };
+
+  const r4ScoreboardCleanState: OlympiaState = {
+    ...mockState,
+    stage: "playing",
+    currentRound: "veDich",
+    themeMode: "o26_classic",
+    summaryState: {
+      active: true,
+      isAuto: false,
+      currentIndex: 3,
+      orderedSeats: [0, 1, 2, 3],
+    },
+  };
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-[#020713] text-white p-6 flex flex-col items-center justify-center">
+        <div className="text-cyan-400 font-bold tracking-wider animate-pulse">
+          Đang tải đồ hoạ Olympia 26...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#020713] text-white p-6 flex flex-col items-center">
       {/* Dev Navigation & Switcher */}
@@ -221,6 +342,7 @@ export function DevGraphicsClient() {
           {(
             [
               ["all", "Tất cả"],
+              ["r4", "★ R4 Visual Proofs"],
               ["r6", "0. R6 Choreography"],
               ["kd", "1. Khởi Động"],
               ["vcnv", "2. VCNV"],
@@ -455,6 +577,498 @@ export function DevGraphicsClient() {
                 />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Deliverable R4: HEADLESS SCREENSHOT AUTOMATION PROOFS & BROADCAST VISUAL PLAN (R1 - R4) */}
+        {(activeTab === "all" ||
+          activeTab === "r4" ||
+          activeTab === "r4-1" ||
+          activeTab === "r4-2" ||
+          activeTab === "r4-3" ||
+          activeTab === "r4-4" ||
+          activeTab === "r4-5" ||
+          activeTab === "r4-6" ||
+          activeTab === "r4-7" ||
+          activeTab === "r4-vcnv-reveal" ||
+          activeTab === "r4-tangtoc-reveal" ||
+          activeTab === "r4-round-intro" ||
+          activeTab === "r4-host-console-vcnv" ||
+          activeTab === "r4-playerpad-lock" ||
+          activeTab === "r4-vcnv-center-shielded" ||
+          activeTab === "r4-scoreboard-clean") && (
+          <div className="w-full flex flex-col gap-8">
+            <div className="p-4 bg-gradient-to-r from-cyan-950/90 via-slate-900 to-amber-950/90 border-l-4 border-amber-400 rounded-xl shadow-xl">
+              <h2 className="text-base font-black text-amber-300 tracking-wider">
+                MILESTONE 3 — HEADLESS SCREENSHOT PROOFS &amp; BROADCAST VISUAL PLAN (R1, R2, R3, R4)
+              </h2>
+              <p className="text-xs text-slate-300 mt-1">
+                Automated 1920x1080 visual proofs: VCNV/Tăng Tốc 3D rotate reveals with wooden beam &amp; emerald green highlight, Round Intro 3D overlay, Host Console direct answer bell column, PlayerPad inline lock badge, VCNV center tile shielded, and DisplayScreen scoreboard clean of keyboard hints.
+              </p>
+            </div>
+
+            {/* 01: VCNV 3D Answer Reveal with Wooden Beam & Green Highlight */}
+            {(activeTab === "all" ||
+              activeTab === "r4" ||
+              activeTab === "r4-1" ||
+              activeTab === "r4-vcnv-reveal") && (
+              <div className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-500/40 shadow-2xl">
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  01_VCNV_3D_ANSWER_REVEAL.PNG — VCNV 3D ROTATE &amp; WOODEN BEAM &amp; GREEN HIGHLIGHT (R1, R4)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Đồ hoạ hiện đáp án VCNV tỷ lệ chuẩn, chuyển động rotate 3D mượt mà với xà gỗ đỡ (ClassicWoodenBackingBeam) và hiệu ứng quét sáng (sheen-sweep-beam). Hàng thí sinh đúng chuyển màu xanh lục (emerald), hàng sai mờ đi (opacity 0.35); loại bỏ hoàn toàn overlay đáp án phụ ở chân màn hình.
+                </p>
+                <div className="w-full overflow-x-auto flex justify-center py-2">
+                  <div
+                    id="screenshot-r4-vcnv-reveal"
+                    className="relative w-[1920px] h-[1080px] shrink-0 overflow-hidden bg-[#040d21] rounded-2xl border border-cyan-400/30 shadow-2xl select-none"
+                  >
+                    <VcnvAnswerRevealGraphic
+                      state={r4VcnvRevealState}
+                      isWaitingAnswer={false}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 02: Tăng Tốc Ranked Answer Reveal */}
+            {(activeTab === "all" ||
+              activeTab === "r4" ||
+              activeTab === "r4-2" ||
+              activeTab === "r4-tangtoc-reveal") && (
+              <div className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-500/40 shadow-2xl">
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  02_TANGTOC_RANKED_ANSWER_REVEAL.PNG — TĂNG TỐC RANKED REVEAL &amp; RESPONSE TIMES &amp; GREEN HIGHLIGHT (R1, R4)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Đồ hoạ hiện đáp án Tăng Tốc xếp hạng theo thời gian phản hồi (1.23s, 2.45s, 3.89s, 4.50s) với xà gỗ đỡ, chuyển động rotate 3D, hàng đúng chuyển màu xanh lục cùng huy hiệu điểm (+40, +30), hàng sai mờ đi.
+                </p>
+                <div className="w-full overflow-x-auto flex justify-center py-2">
+                  <div
+                    id="screenshot-r4-tangtoc-reveal"
+                    className="relative w-[1920px] h-[1080px] shrink-0 overflow-hidden bg-[#040d21] rounded-2xl border border-cyan-400/30 shadow-2xl select-none"
+                  >
+                    <TangTocRankedAnswersGraphic
+                      state={r4TangTocRevealState}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 03: Round Intro 3D Overlay */}
+            {(activeTab === "all" ||
+              activeTab === "r4" ||
+              activeTab === "r4-3" ||
+              activeTab === "r4-round-intro") && (
+              <div className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-500/40 shadow-2xl">
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  03_ROUND_INTRO_ANIMATIONS.PNG — BROADCAST ROUND INTRO OVERLAY (3D ROTATE &amp; LIGHT SWEEP) (R1, R4)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Hoạt cảnh mở đầu đồng bộ cho 5 vòng thi với thanh ngang gắn đồng (HorizontalBrassRod), phối cảnh 3D perspective 1200px (rotateX: -60° &rarr; 0°), 4 đinh tán góc đỏ, dải sáng kim loại sheen sweep beam, và huy hiệu phụ đề vòng thi.
+                </p>
+                <div className="w-full overflow-x-auto flex justify-center py-2">
+                  <div
+                    id="screenshot-r4-round-intro"
+                    className="relative w-[1920px] h-[1080px] shrink-0 overflow-hidden bg-[#040d21] rounded-2xl border border-cyan-400/30 shadow-2xl select-none flex items-center justify-center"
+                  >
+                    <Vtv3ChalkboardBackdrop />
+                    <BroadcastRoundIntroOverlay
+                      state={r4RoundIntroState}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 04: Host Console VCNV Direct Answers Table */}
+            {(activeTab === "all" ||
+              activeTab === "r4" ||
+              activeTab === "r4-4" ||
+              activeTab === "r4-host-console-vcnv") && (
+              <div className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-500/40 shadow-2xl">
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  04_HOST_CONSOLE_VCNV_DIRECT_ANSWERS.PNG — HOST CONSOLE VCNV BẢNG ĐÁP ÁN TRỰC TIẾP &amp; CỘT CHUÔNG (R2, R4)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Bố trí lại bảng đáp án trực tiếp VCNV: Cột riêng biệt nhỏ gọn hiển thị số thứ tự chuông (🔔 1, 🔔 2) cố định w-10 sm:w-12, mở rộng tối đa ô đáp án không bị gãy chữ, chuẩn hoá phân loại độ dài từ khoá (14 chữ cái).
+                </p>
+                <div className="w-full overflow-x-auto flex justify-center py-2">
+                  <div
+                    id="screenshot-r4-host-console-vcnv"
+                    className="relative w-[1920px] h-[1080px] shrink-0 overflow-hidden bg-[#070b16] rounded-2xl border border-cyan-400/30 shadow-2xl p-10 flex flex-col justify-between text-white select-none"
+                  >
+                    {/* Host Console Top Brand Header */}
+                    <div className="w-full pb-4 border-b border-cyan-500/30 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="px-3 py-1 rounded-lg bg-cyan-500 text-slate-950 font-black text-sm uppercase tracking-wider shadow-md shadow-cyan-500/30">
+                          QUIZZORA VTV3
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-black text-cyan-300 tracking-wide">
+                            HOST CONSOLE — ĐIỀU KHIỂN TRẬN ĐẤU OLYMPIA 26
+                          </h2>
+                          <p className="text-xs text-slate-400">
+                            Phần thi: VƯỢT CHƯỚNG NGẠI VẬT · Chế độ trực tiếp · Socket Online
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="px-3 py-1 rounded-full bg-emerald-950 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-bold">
+                          ● SERVER ONLINE
+                        </span>
+                        <span className="px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-mono text-xs">
+                          ROOM: OLYMPIA-2026
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Host Console Round Navigation & Top Controls */}
+                    <div className="grid grid-cols-5 gap-3">
+                      {["1. Khởi Động", "2. VCNV (Đang chơi)", "3. Tăng Tốc", "4. Về Đích", "5. Câu Hỏi Phụ"].map((rName, rIdx) => (
+                        <div
+                          key={rIdx}
+                          className={`p-3 rounded-xl border text-center font-black text-sm uppercase tracking-wider transition ${
+                            rIdx === 1
+                              ? "bg-gradient-to-r from-amber-500/30 via-amber-600/20 to-amber-500/30 border-amber-400 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                              : "bg-slate-900/60 border-slate-800 text-slate-500"
+                          }`}
+                        >
+                          {rName}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* VCNV Main Interactive Direct Answers Panel (Requirement R2) */}
+                    <div className="p-6 rounded-2xl bg-slate-900/95 border-2 border-cyan-500/50 shadow-2xl space-y-4">
+                      <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                        <div className="flex items-center gap-3">
+                          <span className="font-black text-base sm:text-lg text-cyan-300 uppercase tracking-wide">
+                            BẢNG ĐÁP ÁN TRỰC TIẾP &amp; QUYỀN CHƠI VCNV (4 THÍ SINH)
+                          </span>
+                          <span className="px-2.5 py-1 rounded-md bg-amber-500/20 border border-amber-400/40 text-amber-200 font-bold text-xs">
+                            Từ khóa: 14 chữ cái
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="px-3 py-1 rounded-md bg-amber-950/80 border border-amber-400/60 text-amber-300 text-xs font-black animate-pulse">
+                            🔔 2 thí sinh bấm chuông CNV
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            Cột thứ tự chuông độc lập · Tự động dừng quyền trả lời hàng ngang
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 4 Contestant Live Answer Rows with Dedicated Bell Column */}
+                      <div className="space-y-3">
+                        {[
+                          {
+                            id: 0,
+                            name: "Quang Minh",
+                            school: "THPT Chuyên Hà Nội - Amsterdam",
+                            ans: "MẠNG NƠ RON",
+                            time: "3.82s",
+                            hasBell: true,
+                            bellIdx: 0,
+                            isLocked: false,
+                          },
+                          {
+                            id: 1,
+                            name: "Anh Đức",
+                            school: "THPT Chuyên Lê Hồng Phong",
+                            ans: "MẠNG NƠ RON",
+                            time: "4.95s",
+                            hasBell: true,
+                            bellIdx: 1,
+                            isLocked: false,
+                          },
+                          {
+                            id: 2,
+                            name: "Gia Bảo",
+                            school: "THPT Chuyên Quốc Học Huế",
+                            ans: "THUẬT TOÁN",
+                            time: "6.12s",
+                            hasBell: false,
+                            bellIdx: -1,
+                            isLocked: true,
+                          },
+                          {
+                            id: 3,
+                            name: "Thái Dương",
+                            school: "THPT Chuyên Phan Bội Châu",
+                            ans: "TRÍ TUỆ NHÂN TẠO",
+                            time: "8.40s",
+                            hasBell: false,
+                            bellIdx: -1,
+                            isLocked: false,
+                          },
+                        ].map((c) => (
+                          <div
+                            key={c.id}
+                            className={`rounded-xl px-4 py-3 border flex items-center justify-between gap-4 transition shadow-lg ${
+                              c.hasBell
+                                ? "bg-amber-950/70 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.35)]"
+                                : c.isLocked
+                                ? "bg-rose-950/40 border-rose-500/50"
+                                : "bg-slate-900/90 border-white/10"
+                            }`}
+                          >
+                            {/* 1. Contestant ID & Name */}
+                            <div className="w-56 shrink-0 flex items-center gap-2.5 min-w-0">
+                              <span className="px-2.5 py-1 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-mono font-black text-xs shrink-0">
+                                TS{c.id + 1}
+                              </span>
+                              <div className="truncate">
+                                <div className="font-black text-sm text-slate-100 truncate">{c.name}</div>
+                                <div className="text-[11px] text-slate-400 truncate">{c.school}</div>
+                              </div>
+                            </div>
+
+                            {/* 2. Live Typed Answer Box */}
+                            <div className="flex-1 min-w-0 rounded-lg bg-black/60 border border-white/15 px-4 py-2 min-h-[44px] flex items-center justify-between gap-3 overflow-hidden">
+                              <div className="flex items-center gap-2 min-w-0 overflow-hidden flex-1">
+                                <span className="font-black text-base text-amber-300 uppercase tracking-wider truncate">
+                                  {c.ans}
+                                </span>
+                              </div>
+                              <span className="px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-xs font-mono font-bold text-cyan-300 shrink-0 whitespace-nowrap ml-2">
+                                {c.time}
+                              </span>
+                            </div>
+
+                            {/* 3. Dedicated Fixed CNV Bell Order Column (Requirement R2) */}
+                            <div className="w-14 sm:w-16 shrink-0 flex items-center justify-center">
+                              {c.hasBell ? (
+                                <span
+                                  className="px-2.5 py-1 rounded-lg text-xs font-black text-amber-200 bg-amber-500/30 border border-amber-400 shadow-md whitespace-nowrap animate-pulse"
+                                  title={`Thí sinh bấm chuông CNV thứ tự #${c.bellIdx + 1}`}
+                                >
+                                  🔔 {c.bellIdx + 1}
+                                </span>
+                              ) : (
+                                <span className="text-slate-600 text-base font-bold select-none">—</span>
+                              )}
+                            </div>
+
+                            {/* 4. Lock / Unlock Action */}
+                            <button
+                              type="button"
+                              className={`px-4 py-2 rounded-lg text-xs font-black border shrink-0 whitespace-nowrap transition cursor-pointer ${
+                                c.isLocked
+                                  ? "bg-rose-600 text-white border-rose-300 shadow-md shadow-rose-600/30"
+                                  : "bg-emerald-950/90 text-emerald-300 border-emerald-500/50 hover:bg-emerald-900"
+                              }`}
+                            >
+                              {c.isLocked ? "🔒 Mở lại quyền" : "🟢 Đang chơi"}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Bottom Operational Action Bar */}
+                    <div className="grid grid-cols-4 gap-4 pt-2">
+                      <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700 flex flex-col items-center justify-center text-center">
+                        <span className="text-[11px] text-slate-400 uppercase font-bold">Hàng Ngang Hiện Tại</span>
+                        <span className="text-base font-black text-cyan-300">HÀNG 1 (9 CHỮ CÁI)</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700 flex flex-col items-center justify-center text-center">
+                        <span className="text-[11px] text-slate-400 uppercase font-bold">Thời Gian Còn Lại</span>
+                        <span className="text-base font-mono font-black text-amber-400">⏱️ 15.00s</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-emerald-950/50 border border-emerald-500/40 flex flex-col items-center justify-center text-center cursor-pointer">
+                        <span className="text-[11px] text-emerald-400 uppercase font-bold">Thao Tác Điều Khiển</span>
+                        <span className="text-sm font-black text-emerald-300">CÔNG BỐ ĐÁP ÁN HÀNG NGANG</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-amber-950/50 border border-amber-500/40 flex flex-col items-center justify-center text-center cursor-pointer">
+                        <span className="text-[11px] text-amber-400 uppercase font-bold">Chướng Ngại Vật</span>
+                        <span className="text-sm font-black text-amber-300">XỬ LÝ CHUÔNG CNV (#1, #2)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 05: PlayerPad Inline Lock Badge */}
+            {(activeTab === "all" ||
+              activeTab === "r4" ||
+              activeTab === "r4-5" ||
+              activeTab === "r4-playerpad-lock") && (
+              <div className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-500/40 shadow-2xl">
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  05_PLAYERPAD_INLINE_LOCK_BADGE.PNG — PLAYERPAD HUY HIỆU KHÓA QUYỀN TRÊN CÙNG 1 DÒNG DUY NHẤT (R2, R4)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Giao diện máy thí sinh (PlayerPad): Nhãn tab tinh gọn (❓ Hàng ngang &amp; 🧩 Miếng ghép &amp; CNV) cho phép huy hiệu 🔒 Khóa quyền nằm phẳng trên cùng 1 dòng duy nhất (flex-nowrap) mà không bị rơi dòng hay che khuất trên mọi kích thước màn hình.
+                </p>
+                <div className="w-full overflow-x-auto flex justify-center py-2">
+                  <div
+                    id="screenshot-r4-playerpad-lock"
+                    className="relative w-[1920px] h-[1080px] shrink-0 overflow-hidden bg-[#020510] rounded-2xl border border-cyan-400/30 shadow-2xl flex items-center justify-center p-8 select-none"
+                  >
+                    <Vtv3ChalkboardBackdrop className="opacity-40" />
+
+                    {/* Mobile / Tablet Device Deck Showcase */}
+                    <div className="relative z-10 w-full max-w-[560px] rounded-3xl p-6 bg-gradient-to-b from-[#181b22] via-[#121418] to-[#0a0b0e] border-[3px] border-[#d4af37] shadow-[0_20px_60px_rgba(0,0,0,0.95),0_0_35px_rgba(212,175,55,0.3)] flex flex-col gap-4">
+                      {/* Contestant Header Bar */}
+                      <div className="flex items-center justify-between border-b border-[#d4af37]/30 pb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#d4af37] to-[#854d0e] flex items-center justify-center text-slate-950 font-black text-sm shadow">
+                            TS3
+                          </div>
+                          <div>
+                            <div className="font-black text-base text-amber-200">GIA BẢO</div>
+                            <div className="text-xs text-slate-400">THPT Chuyên Quốc Học Huế</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[10px] text-amber-300/80 font-bold uppercase tracking-wider">ĐIỂM SỐ</div>
+                          <div className="text-2xl font-black text-amber-300 drop-shadow-[0_2px_8px_rgba(245,158,11,0.8)]">
+                            180 đ
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Question Box Frame with Single Line Tabs & Lock Badge */}
+                      <div className="rounded-2xl p-4 bg-slate-950/80 border-2 border-[#d4af37]/50 shadow-inner flex flex-col gap-3">
+                        {/* THE KEY REQUIREMENT: VCNV sub-tabs inside Question Box strictly on 1 single line with Lock Status */}
+                        <div className="shrink-0 flex items-center justify-between gap-1 mb-1 pb-2 border-b border-[#d4af37]/30 flex-nowrap w-full overflow-hidden">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden flex-nowrap">
+                            <button
+                              type="button"
+                              className="px-2.5 py-1 rounded-lg font-black text-xs border bg-gradient-to-b from-[#b8860b] via-[#854d0e] to-[#451a03] text-amber-100 border-[#fef08a] shadow-[0_0_8px_rgba(212,175,55,0.4)] shrink-0 whitespace-nowrap cursor-pointer"
+                            >
+                              ❓ Hàng ngang
+                            </button>
+                            <button
+                              type="button"
+                              className="px-2.5 py-1 rounded-lg font-black text-xs border bg-[#1a1c20]/80 text-amber-200/70 border-[#d4af37]/30 shrink-0 whitespace-nowrap cursor-pointer"
+                            >
+                              🧩 Miếng ghép &amp; CNV (14 chữ cái)
+                            </button>
+                          </div>
+                          <span className="text-xs px-2.5 py-1 font-black rounded-lg border shrink-0 whitespace-nowrap ml-1 text-rose-300 bg-rose-950/80 border-rose-500/60 shadow animate-pulse">
+                            🔒 Khóa quyền
+                          </span>
+                        </div>
+
+                        {/* Question Content */}
+                        <div className="text-sm font-bold text-slate-100 leading-relaxed min-h-[50px]">
+                          Hàng ngang 1 (9 chữ cái): Cấu trúc tính toán mô phỏng mạng lưới thần kinh sinh học giúp máy tính học hỏi từ dữ liệu?
+                        </div>
+
+                        {/* 15s Timer Bar */}
+                        <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden relative">
+                          <div
+                            className="h-full bg-gradient-to-r from-amber-500 to-red-500 rounded-full"
+                            style={{ width: "45%" }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Locked Contestant Notification & Disabled Input */}
+                      <div className="rounded-xl p-3 bg-rose-950/40 border border-rose-500/50 flex items-center gap-3">
+                        <span className="text-xl">🔒</span>
+                        <div className="text-xs text-rose-200 font-semibold leading-snug">
+                          Bạn đã dừng quyền chơi do có chuông CNV hoặc đã bị loại ở vòng này. Bảng nhập đáp án tạm thời bị khoá.
+                        </div>
+                      </div>
+
+                      {/* Answer Input Mock */}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          disabled
+                          placeholder="Đáp án đã bị khoá..."
+                          className="flex-1 px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700 text-slate-500 text-sm italic cursor-not-allowed"
+                        />
+                        <button
+                          disabled
+                          className="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-600 font-bold text-sm cursor-not-allowed border border-slate-700"
+                        >
+                          GỬI
+                        </button>
+                      </div>
+
+                      {/* Buzzer Button */}
+                      <button
+                        disabled
+                        className="w-full py-3.5 rounded-2xl bg-gradient-to-b from-slate-800 to-slate-900 border border-slate-700 text-slate-500 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-not-allowed"
+                      >
+                        🔔 BẤM CHUÔNG VCNV (ĐÃ KHÓA)
+                      </button>
+                    </div>
+
+                    {/* Explanatory Overlay Banner */}
+                    <div className="absolute top-6 left-8 bg-slate-900/90 border border-cyan-500/40 rounded-xl px-4 py-2 shadow-lg max-w-sm pointer-events-none">
+                      <div className="text-xs font-black text-cyan-300 uppercase">Minh chứng PlayerPad (R2)</div>
+                      <div className="text-[11px] text-slate-300 mt-0.5">
+                        Huy hiệu 🔒 Khóa quyền nằm cố định trên cùng 1 dòng phẳng với các nút tab điều hướng — Không bị rớt dòng trên mọi thiết bị.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 06: VCNV Center Tile Shielded */}
+            {(activeTab === "all" ||
+              activeTab === "r4" ||
+              activeTab === "r4-6" ||
+              activeTab === "r4-vcnv-center-shielded") && (
+              <div className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-500/40 shadow-2xl">
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  06_VCNV_CENTER_TILE_SHIELDED.PNG — VCNV Ô TRUNG TÂM SỐ 5 CHE KÍN 100% OPACITY (R3, R4)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Sửa lỗi ô trung tâm VCNV (mảnh ghép số 5): Loại bỏ animate-pulse gây giảm opacity trên khối hộp, chỉ nhấp nháy viền ngoài (ring-4 ring-amber-300 animate-pulse), đảm bảo che kín 100% ảnh nền bí mật phía sau khi chưa mở.
+                </p>
+                <div className="w-full overflow-x-auto flex justify-center py-2">
+                  <div
+                    id="screenshot-r4-vcnv-center-shielded"
+                    className="relative w-[1920px] h-[1080px] shrink-0 overflow-hidden bg-[#040d21] rounded-2xl border border-cyan-400/30 shadow-2xl select-none"
+                  >
+                    <VcnvCountdownGraphic
+                      state={r4CenterShieldedState}
+                      serverNow={serverNow}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 07: DisplayScreen Scoreboard Clean */}
+            {(activeTab === "all" ||
+              activeTab === "r4" ||
+              activeTab === "r4-7" ||
+              activeTab === "r4-scoreboard-clean") && (
+              <div className="w-full flex flex-col items-center p-6 rounded-3xl bg-[#061129]/80 border-2 border-cyan-500/40 shadow-2xl">
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">
+                  07_DISPLAYSCREEN_SCOREBOARD_CLEAN.PNG — BẢNG ĐIỂM DISPLAYSCREEN KHÔNG CÒN DÒNG HƯỚNG DẪN PHÍM BẤM (R3, R4)
+                </div>
+                <p className="text-xs text-slate-300 mb-4 text-center">
+                  Màn hình phát sóng trường quay (DisplayScreen): Loại bỏ hoàn toàn dòng chữ hướng dẫn phím bấm ("Bấm vào khung hoặc dùng phím Space / Phím mũi tên để chuyển thí sinh"), đạt chuẩn giao diện phát sóng truyền hình chuyên nghiệp.
+                </p>
+                <div className="w-full overflow-x-auto flex justify-center py-2">
+                  <div
+                    id="screenshot-r4-scoreboard-clean"
+                    className="relative w-[1920px] h-[1080px] shrink-0 overflow-hidden bg-[#030712] rounded-2xl border border-cyan-400/30 shadow-2xl select-none flex flex-col justify-end p-8"
+                  >
+                    <Olympia22BackgroundBackdrop />
+                    <div className="relative z-20 w-full max-w-[1720px] mx-auto">
+                      <SummaryLowerThirdGraphic
+                        state={r4ScoreboardCleanState}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

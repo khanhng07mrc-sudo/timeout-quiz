@@ -2,8 +2,8 @@
 
 import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import type { OlympiaState, Seat, TimerState } from "@/lib/olympia/types";
-import { parseVcnvAnswer, cleanVcnvWord, stripVcnvLetterCount } from "@/lib/olympia/engine";
+import { ROUND_LABELS, type OlympiaState, type Seat, type TimerState } from "@/lib/olympia/types";
+import { parseVcnvAnswer, cleanVcnvWord, stripVcnvLetterCount, getVcnvUnit } from "@/lib/olympia/engine";
 import { activeSeats, seatName, SEAT_COLORS } from "./ui";
 import { OlympiaBroadcastVideo } from "./OlympiaBroadcastVideo";
 
@@ -232,6 +232,175 @@ export function RedConnectionRivet() {
           boxShadow: "0 0 10px #ef4444, inset 0 1px 2px rgba(255,255,255,0.8)",
         }}
       />
+    </div>
+  );
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * CLASSIC WOODEN BACKING BEAM (Mounted vertically behind answer reveal graphics)
+ * Deep dark oak / mahogany timber grain, brass edging, and bronze rivet mountings.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function ClassicWoodenBackingBeam({ className = "" }: { className?: string }) {
+  return (
+    <div
+      className={`absolute top-4 bottom-4 left-1/2 -translate-x-1/2 w-12 sm:w-16 flex flex-col items-center pointer-events-none z-0 ${className}`}
+      style={{
+        boxShadow: "0 0 40px rgba(0,0,0,0.95)",
+      }}
+    >
+      {/* Top brass mounting bracket & finial */}
+      <div
+        className="w-16 sm:w-20 h-7 rounded-t-lg border-2 border-amber-300/80 shrink-0 shadow-2xl relative flex items-center justify-center"
+        style={{
+          background: "linear-gradient(90deg, #5c2c10 0%, #d97706 30%, #fef08a 50%, #b45309 75%, #3b1a06 100%)",
+        }}
+      >
+        <div className="w-2.5 h-2.5 rounded-full bg-amber-200 border border-amber-800 shadow" />
+      </div>
+
+      {/* Main vertical timber beam body */}
+      <div
+        className="flex-1 w-10 sm:w-14 border-x-2 border-amber-600/70 relative shadow-2xl overflow-hidden"
+        style={{
+          background: "linear-gradient(90deg, #1c0d03 0%, #3a1a06 18%, #572809 38%, #6b320d 50%, #572809 62%, #3a1a06 82%, #140801 100%)",
+          boxShadow: "inset 1px 0 2px rgba(254,240,138,0.4), inset -1px 0 2px rgba(0,0,0,0.8), 0 0 25px rgba(0,0,0,0.95)",
+        }}
+      >
+        {/* Subtle longitudinal wood grain lines */}
+        <div
+          className="absolute inset-0 opacity-25 pointer-events-none"
+          style={{
+            backgroundImage: "repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.4) 3px, rgba(0,0,0,0.4) 5px)",
+          }}
+        />
+      </div>
+
+      {/* Bottom brass mounting bracket & finial */}
+      <div
+        className="w-16 sm:w-20 h-7 rounded-b-lg border-2 border-amber-300/80 shrink-0 shadow-2xl relative flex items-center justify-center"
+        style={{
+          background: "linear-gradient(90deg, #5c2c10 0%, #d97706 30%, #fef08a 50%, #b45309 75%, #3b1a06 100%)",
+        }}
+      >
+        <div className="w-2.5 h-2.5 rounded-full bg-amber-200 border border-amber-800 shadow" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * BROADCAST ROUND INTRO OVERLAY (3D Rotate + Sheen Sweep + Brass Mounting Rod)
+ * Synchronized across all 5 Olympia rounds.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function BroadcastRoundIntroOverlay({ state }: { state: OlympiaState }) {
+  if (state.stage !== "playing" || !state.banner) return null;
+
+  const round = state.currentRound;
+  const isClassic = state.themeMode === "o26_classic";
+
+  const ROUND_SUBTITLES: Record<string, string> = {
+    khoiDong: "⭐ PHẦN THI THỨ NHẤT",
+    vcnv: "🧩 PHẦN THI THỨ HAI",
+    tangToc: "⚡ PHẦN THI THỨ BA",
+    veDich: "🏁 PHẦN THI THỨ TƯ",
+    cauHoiPhu: "❓ PHÂN ĐỊNH THẮNG THUA",
+  };
+
+  const subtitle = round ? (ROUND_SUBTITLES[round] || "PHẦN THI OLYMPIA") : "PHẦN THI OLYMPIA";
+  const isVcnv = round === "vcnv" && state.banner === ROUND_LABELS.vcnv;
+
+  return (
+    <div
+      className="absolute inset-0 z-40 flex items-center justify-center pointer-events-auto bg-black/55 backdrop-blur-md overflow-hidden select-none"
+      style={{ perspective: "1200px" }}
+    >
+      {/* Horizontal Brass Mounting Rod (Theme Cổ Điển) */}
+      {isClassic && <HorizontalBrassRod />}
+
+      <motion.div
+        initial={{ rotateX: -60, rotateY: 10, scale: 0.78, opacity: 0, z: -180 }}
+        animate={{ rotateX: 0, rotateY: 0, scale: 1, opacity: 1, z: 0 }}
+        exit={{ rotateX: 50, scale: 0.85, opacity: 0 }}
+        transition={{
+          type: "spring",
+          stiffness: 260,
+          damping: 20,
+          mass: 0.9,
+        }}
+        style={{
+          transformStyle: "preserve-3d",
+          background: isClassic
+            ? "linear-gradient(180deg, #1e222a 0%, #12151b 50%, #090a0d 100%)"
+            : "linear-gradient(180deg, #07152f 0%, #040c1e 50%, #020610 100%)",
+          border: isClassic ? "3.5px solid #d4af37" : "3.5px solid #00f0ff",
+          boxShadow: isClassic
+            ? "0 0 50px rgba(212,175,55,0.45), 0 25px 60px rgba(0,0,0,0.95), inset 0 2px 4px rgba(255,255,255,0.3)"
+            : "0 0 50px rgba(0,240,255,0.45), 0 25px 60px rgba(0,0,0,0.95), inset 0 2px 4px rgba(255,255,255,0.3)",
+        }}
+        className="relative max-w-4xl w-[90vw] mx-auto rounded-3xl p-6 sm:p-10 flex flex-col items-center justify-center overflow-hidden shadow-2xl"
+      >
+        {/* Decorative corner rivets (Classic theme) */}
+        {isClassic && (
+          <>
+            <div className="absolute top-3.5 left-3.5"><RedConnectionRivet /></div>
+            <div className="absolute top-3.5 right-3.5"><RedConnectionRivet /></div>
+            <div className="absolute bottom-3.5 left-3.5"><RedConnectionRivet /></div>
+            <div className="absolute bottom-3.5 right-3.5"><RedConnectionRivet /></div>
+          </>
+        )}
+
+        {/* Specular metallic light sweep traversing across the plaque */}
+        <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
+          <div
+            className="sheen-sweep-beam"
+            style={{
+              animationDuration: "1.2s",
+              animationDelay: "0.2s",
+            }}
+          />
+        </div>
+
+        {/* Subtitle pill */}
+        <div
+          className={`px-4 py-1 rounded-full text-xs sm:text-sm font-black tracking-widest uppercase mb-3 sm:mb-4 border shadow-inner ${
+            isClassic
+              ? "bg-amber-500/20 text-amber-300 border-amber-400/40"
+              : "bg-cyan-500/20 text-cyan-300 border-cyan-400/40"
+          }`}
+        >
+          {subtitle}
+        </div>
+
+        {/* Main Title Typography with 3D Gold / Metallic styling */}
+        <div
+          className="font-black tracking-[0.12em] uppercase text-center"
+          style={{
+            fontSize: "clamp(2.4rem, 6.5vw, 5.2rem)",
+            lineHeight: 1.12,
+            background: isClassic
+              ? "linear-gradient(135deg, #fffbd0 0%, #ffd700 45%, #f59e0b 80%, #b45309 100%)"
+              : "linear-gradient(135deg, #ffffff 0%, #a5f3fc 40%, #00f0ff 75%, #0284c7 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            filter: isClassic
+              ? "drop-shadow(0 0 35px rgba(251,191,36,0.75))"
+              : "drop-shadow(0 0 35px rgba(0,240,255,0.75))",
+          }}
+        >
+          {isVcnv ? (
+            <>
+              <span className="block">VƯỢT</span>
+              <span className="block">CHƯỚNG NGẠI VẬT</span>
+            </>
+          ) : (
+            state.banner
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -1009,16 +1178,16 @@ export function UnifiedOlympiaAnswerOverlay({
         </div>
 
         {/* ── 2. CENTER CHAMBER: Expanded Answer Typography (No truncation on readable answers) ── */}
-        <div className="relative z-10 flex-1 px-3 sm:px-6 text-center min-w-0">
+        <div className="relative z-10 flex-1 px-3 sm:px-6 py-1 text-center min-w-0">
           {isCorrect ? (
             <div
-              className={`text-emerald-300 font-black uppercase tracking-wider drop-shadow-[0_0_24px_rgba(52,211,153,0.85)] break-words leading-tight ${fontSizeClass}`}
+              className={`text-emerald-300 font-black uppercase tracking-wider drop-shadow-[0_0_24px_rgba(52,211,153,0.85)] break-words leading-normal ${fontSizeClass}`}
             >
               {cleanText}
             </div>
           ) : isWrong ? (
             <div
-              className={`text-amber-200 font-black uppercase tracking-wider drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] break-words leading-tight ${fontSizeClass}`}
+              className={`text-amber-200 font-black uppercase tracking-wider drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] break-words leading-normal ${fontSizeClass}`}
             >
               <span className="text-amber-400/80 text-xs sm:text-sm font-bold mr-2 uppercase tracking-widest">
                 ĐÁP ÁN:
@@ -1027,7 +1196,7 @@ export function UnifiedOlympiaAnswerOverlay({
             </div>
           ) : (
             <div
-              className={`text-yellow-100 font-black uppercase tracking-wider drop-shadow-[0_2px_14px_rgba(212,175,55,0.7)] break-words leading-tight ${fontSizeClass}`}
+              className={`text-yellow-100 font-black uppercase tracking-wider drop-shadow-[0_2px_14px_rgba(212,175,55,0.7)] break-words leading-normal ${fontSizeClass}`}
             >
               {cleanText}
             </div>
@@ -1912,14 +2081,17 @@ export function VcnvCountdownGraphic({
               v.piecesRevealed[4]
                 ? "opacity-0 pointer-events-none transition-opacity duration-700"
                 : isCenter
-                ? "bg-gradient-to-br from-[#0c2866] to-[#04153a] border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.85)] animate-pulse opacity-100 ring-2 ring-amber-300/70"
+                ? "bg-gradient-to-br from-[#0c2866] to-[#04153a] border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.85)] opacity-100 ring-2 ring-amber-300"
                 : !isV3Arrow
                 ? "bg-[#15181f] border-amber-400/80 shadow-[0_0_16px_rgba(245,158,11,0.4)] opacity-100"
                 : "bg-[#071739] border-cyan-400/80 shadow-[0_0_16px_rgba(6,182,212,0.4)] opacity-100"
             }`}
           >
+            {isCenter && !v.piecesRevealed[4] && (
+              <div className="absolute inset-0 pointer-events-none ring-4 ring-amber-300 animate-pulse rounded-none" />
+            )}
             <span
-              className={`text-2xl sm:text-4xl md:text-5xl font-black select-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.85)] ${
+              className={`text-2xl sm:text-4xl md:text-5xl font-black select-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.85)] relative z-10 ${
                 isCenter ? "text-amber-300" : "text-white"
               }`}
             >
@@ -1952,7 +2124,7 @@ export function VcnvCountdownGraphic({
                   !isV3Arrow ? "text-amber-100" : "text-cyan-100"
                 } drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]`}
               >
-                CHƯỚNG NGẠI VẬT CÓ {keywordLen} CHỮ CÁI
+                CHƯỚNG NGẠI VẬT CÓ {keywordLen} {getVcnvUnit(v.keyword || "").toUpperCase()}
               </span>
             </div>
           </div>
@@ -2096,26 +2268,8 @@ export function VcnvCountdownGraphic({
             )}
           </div>
 
-          {/* CNV Bell Red Shapes (Bottom-Left Only) */}
-          {hasBell && (
-            <div className="w-full flex flex-col gap-1 px-5 sm:px-7 pb-7 shrink-0">
-              <div className="flex items-center justify-start gap-2 flex-wrap min-h-[26px]">
-                {[...v.bells]
-                  .sort((a, b) => (a.atMs ?? 0) - (b.atMs ?? 0))
-                  .map((b, bIdx) => {
-                    const s = state.seats[b.seat];
-                    return (
-                      <div
-                        key={`${b.seat}-${bIdx}`}
-                        className="bg-gradient-to-r from-red-600 to-rose-600 rounded-lg px-3.5 py-1 text-white font-black text-xs sm:text-sm md:text-base shadow-[0_0_15px_rgba(239,68,68,0.7)] border border-red-300 flex items-center animate-fade-in"
-                      >
-                        <span>{s?.name || `Thí sinh ${b.seat + 1}`}</span>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
+          {/* Reserve bottom space when CNV bell badges are visible at fixed bottom-left */}
+          {hasBell && <div className="w-full h-9 shrink-0" />}
 
           {/* Bottom Edge Timer Bar — docked flush at absolute bottom-0 & aligned inside rounded pill corners */}
           {isV3Arrow ? (
@@ -2164,6 +2318,42 @@ export function VcnvCountdownGraphic({
         <div className="relative w-full h-full rounded-2xl overflow-hidden pointer-events-none" />
 
       </div>
+
+      {/* Fixed VCNV Bell Signal Overlay (Shared coordinate with VcnvAnswerRevealGraphic) */}
+      <VcnvCnvBellSignalOverlay state={state} />
+    </div>
+  );
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * FIXED VCNV CNV BELL SIGNAL OVERLAY
+ * Renders CNV bell badges at an identical fixed screen coordinate across BOTH
+ * the main VCNV graphic (`VcnvCountdownGraphic`) and the VCNV Answer Reveal
+ * graphic (`VcnvAnswerRevealGraphic`).
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+export function VcnvCnvBellSignalOverlay({ state }: { state: OlympiaState }) {
+  const v = state.vcnv;
+  if (!v || !v.bells || v.bells.length === 0) return null;
+  const sortedBells = [...v.bells].sort((a, b) => (a.atMs ?? 0) - (b.atMs ?? 0));
+
+  return (
+    <div
+      data-testid="vcnv-fixed-bell-overlay"
+      className="absolute bottom-5 left-6 sm:bottom-7 sm:left-9 z-40 pointer-events-none flex items-center justify-start gap-2.5 flex-wrap max-w-[46%]"
+    >
+      {sortedBells.map((b, bIdx) => {
+        const s = state.seats[b.seat];
+        return (
+          <div
+            key={`${b.seat}-${bIdx}`}
+            className="bg-gradient-to-r from-red-600 to-rose-600 rounded-lg px-3.5 py-1.5 text-white font-black text-xs sm:text-sm md:text-base leading-normal shadow-[0_0_15px_rgba(239,68,68,0.75)] border border-red-300 flex items-center gap-1.5 animate-fade-in"
+          >
+            <span>{s?.name || `Thí sinh ${b.seat + 1}`}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -2333,20 +2523,19 @@ export function VcnvAnswerRevealGraphic({
             const answerText = v.answers?.[seat.id]?.text || "";
             const rowDelay = idx * 0.14;
 
-            const curRow = v.rows[v.currentRow];
-            const isCorrect = state.vcnv?.revealedCorrectAnswer && curRow?.answer
+            const isCorrect = state.vcnv?.revealedCorrectAnswer && rawRowAns
               ? (() => {
-                  const rawAns = curRow.answer;
-                  const primaryClean = cleanVcnvWord(rawAns).toLowerCase();
+                  const primaryClean = cleanVcnvWord(rawRowAns).toLowerCase();
                   const userClean = cleanVcnvWord(answerText).toLowerCase();
-                  const parsed = parseVcnvAnswer(rawAns);
+                  const parsed = parseVcnvAnswer(rawRowAns);
                   if (userClean && userClean === primaryClean) return true;
                   return parsed.acceptedAnswers.some(
                     (cand) => cleanVcnvWord(cand).toLowerCase() === userClean
                   );
                 })()
-              : true;
+              : false;
             const isDimmed = Boolean(state.vcnv?.revealedCorrectAnswer && !isCorrect);
+            const isHighlighted = Boolean(state.vcnv?.revealedCorrectAnswer && isCorrect);
 
             return (
               <div
@@ -2414,12 +2603,30 @@ export function VcnvAnswerRevealGraphic({
                     >
                       <defs>
                         <linearGradient id={`vcnvName-${idx}`} x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#051433" />
-                          <stop offset="100%" stopColor="#0d2c54" />
+                          {isHighlighted ? (
+                            <>
+                              <stop offset="0%" stopColor="#047857" />
+                              <stop offset="100%" stopColor="#10b981" />
+                            </>
+                          ) : (
+                            <>
+                              <stop offset="0%" stopColor="#051433" />
+                              <stop offset="100%" stopColor="#0d2c54" />
+                            </>
+                          )}
                         </linearGradient>
                         <linearGradient id={`vcnvAns-${idx}`} x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#09408f" />
-                          <stop offset="100%" stopColor="#0072ff" />
+                          {isHighlighted ? (
+                            <>
+                              <stop offset="0%" stopColor="#065f46" />
+                              <stop offset="100%" stopColor="#059669" />
+                            </>
+                          ) : (
+                            <>
+                              <stop offset="0%" stopColor="#09408f" />
+                              <stop offset="100%" stopColor="#0072ff" />
+                            </>
+                          )}
                         </linearGradient>
                       </defs>
 
@@ -2466,7 +2673,7 @@ export function VcnvAnswerRevealGraphic({
                             x={cols.cells[1].cx}
                             y={cols.cells[1].cy + textBaselineOffset}
                             textAnchor="middle"
-                            fill="#ffffff"
+                            fill={isHighlighted ? "#a7f3d0" : "#ffffff"}
                             fontWeight="900"
                             fontSize={ansFontSize}
                             letterSpacing="0.08em"
@@ -2503,26 +2710,21 @@ export function VcnvAnswerRevealGraphic({
           })}
 
         </div>
-        {v.revealedCorrectAnswer && cleanRowAns && (
-          <div className="fixed inset-x-0 bottom-4 sm:bottom-6 z-30 flex justify-center pointer-events-none px-4">
-            <UnifiedOlympiaAnswerOverlay
-              answerText={cleanRowAns}
-              roundLabel={vcnvRowLabel}
-              verdict="neutral"
-              themeMode={state.themeMode}
-            />
-          </div>
-        )}
+        <VcnvCnvBellSignalOverlay state={state} />
       </div>
     );
   }
 
   // Classic Chalkboard fallback
   return (
-    <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto">
+    <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto overflow-hidden">
       <Vtv3ChalkboardBackdrop />
-      <div className="relative z-10 w-[88%] max-w-[1600px] flex flex-col items-center gap-4 py-6">
-        {seats.map((seat) => {
+      <ClassicWoodenBackingBeam />
+      <div
+        className="relative z-10 w-[88%] max-w-[1600px] flex flex-col items-center gap-3 sm:gap-4 py-4"
+        style={{ perspective: "1200px" }}
+      >
+        {seats.map((seat, idx) => {
           const answerText = v.answers[seat.id]?.text || "";
           const isCorrect = state.vcnv?.revealedCorrectAnswer && rawRowAns
             ? (() => {
@@ -2534,56 +2736,71 @@ export function VcnvAnswerRevealGraphic({
                   (cand) => cleanVcnvWord(cand).toLowerCase() === userClean
                 );
               })()
-            : true;
+            : false;
           const isDimmed = Boolean(state.vcnv?.revealedCorrectAnswer && !isCorrect);
           const isHighlighted = Boolean(state.vcnv?.revealedCorrectAnswer && isCorrect);
 
           return (
-            <div
+            <motion.div
               key={seat.id}
-              className="relative w-full h-20 sm:h-24 flex items-center shadow-2xl rounded-2xl overflow-hidden transition-all duration-500 ease-in-out"
-              style={{
+              initial={{ rotateX: -65, opacity: 0, y: -25 }}
+              animate={{
+                rotateX: 0,
                 opacity: isDimmed ? 0.35 : 1,
+                y: 0,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 260,
+                damping: 22,
+                delay: 0.08 + idx * 0.12,
+              }}
+              style={{
+                transformOrigin: "top center",
+                transformStyle: "preserve-3d",
                 filter: isDimmed ? "brightness(0.5) contrast(0.85)" : "none",
                 border: isHighlighted
                   ? "2.5px solid #10b981"
                   : "2px solid rgba(251, 191, 36, 0.8)",
                 boxShadow: isHighlighted
-                  ? "0 0 24px rgba(16, 185, 129, 0.5), 0 12px 35px rgba(0,0,0,0.9)"
+                  ? "0 0 28px rgba(16, 185, 129, 0.55), 0 12px 35px rgba(0,0,0,0.9)"
                   : "0 12px 35px rgba(0,0,0,0.9)",
                 background: isHighlighted
                   ? "linear-gradient(180deg, #064e3b 0%, #022c22 100%)"
                   : "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
               }}
+              className="relative w-full h-16 sm:h-20 md:h-[82px] flex items-center shadow-2xl rounded-2xl overflow-hidden select-none"
             >
+              {/* Sheen sweep effect on open */}
+              <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                <div
+                  className="sheen-sweep-beam"
+                  style={{ animationDelay: `${0.25 + idx * 0.12}s` }}
+                />
+              </div>
+
+              {/* Name column */}
               <div
-                className={`h-full w-64 sm:w-80 px-6 flex items-center justify-center font-black text-lg sm:text-2xl uppercase tracking-wider truncate ${
+                className={`h-full w-56 sm:w-72 md:w-80 px-4 sm:px-6 py-1 flex items-center justify-center font-black text-base sm:text-xl md:text-2xl uppercase tracking-wider truncate shrink-0 leading-normal ${
                   isHighlighted ? "bg-emerald-400 text-slate-950" : "bg-amber-400 text-slate-950"
                 }`}
               >
                 {seat.name}
               </div>
+
+              {/* Answer column */}
               <div
-                className={`flex-1 px-8 text-center font-black text-2xl sm:text-4xl uppercase tracking-widest truncate ${
+                className={`flex-1 px-4 sm:px-8 py-1.5 text-center font-black text-xl sm:text-3xl md:text-4xl uppercase tracking-widest truncate leading-normal ${
                   isHighlighted ? "text-emerald-300 drop-shadow-[0_0_16px_rgba(52,211,153,0.8)]" : "text-white"
                 }`}
               >
                 {isWaitingAnswer ? "" : (answerText || "")}
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
-      {v.revealedCorrectAnswer && cleanRowAns && (
-        <div className="fixed inset-x-0 bottom-4 sm:bottom-6 z-30 flex justify-center pointer-events-none px-4">
-          <UnifiedOlympiaAnswerOverlay
-            answerText={cleanRowAns}
-            roundLabel={vcnvRowLabel}
-            verdict="neutral"
-            themeMode={state.themeMode}
-          />
-        </div>
-      )}
+      <VcnvCnvBellSignalOverlay state={state} />
     </div>
   );
 }
@@ -2960,6 +3177,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
             const isCorrect = isGradedOrRevealed
               ? (() => {
                   if (item.points != null && item.points > 0) return true;
+                  if (item.wrong) return false;
                   if (tt.correctAnswer) {
                     const normAns = (item.answer || "").trim().toLowerCase().replace(/[\s-]/g, "");
                     const targetCandidates = tt.correctAnswer
@@ -2972,6 +3190,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                 })()
               : true;
             const isDimmed = Boolean(isGradedOrRevealed && !isCorrect);
+            const isHighlighted = Boolean(isGradedOrRevealed && isCorrect && !item.wrong);
 
             return (
               <div
@@ -3039,12 +3258,30 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                     >
                       <defs>
                         <linearGradient id={`ttName-${idx}`} x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#051433" />
-                          <stop offset="100%" stopColor="#0d2c54" />
+                          {isHighlighted ? (
+                            <>
+                              <stop offset="0%" stopColor="#047857" />
+                              <stop offset="100%" stopColor="#10b981" />
+                            </>
+                          ) : (
+                            <>
+                              <stop offset="0%" stopColor="#051433" />
+                              <stop offset="100%" stopColor="#0d2c54" />
+                            </>
+                          )}
                         </linearGradient>
                         <linearGradient id={`ttAns-${idx}`} x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#09408f" />
-                          <stop offset="100%" stopColor="#0072ff" />
+                          {isHighlighted ? (
+                            <>
+                              <stop offset="0%" stopColor="#065f46" />
+                              <stop offset="100%" stopColor="#059669" />
+                            </>
+                          ) : (
+                            <>
+                              <stop offset="0%" stopColor="#09408f" />
+                              <stop offset="100%" stopColor="#0072ff" />
+                            </>
+                          )}
                         </linearGradient>
                         <linearGradient id={`ttTime-${idx}`} x1="0" y1="0" x2="1" y2="0">
                           <stop offset="0%" stopColor="#08203f" />
@@ -3097,7 +3334,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                           x={cols.cells[1].cx}
                           y={cols.cells[1].cy + textBaselineOffset}
                           textAnchor="middle"
-                          fill="#ffffff"
+                          fill={isHighlighted ? "#a7f3d0" : "#ffffff"}
                           fontWeight="900"
                           fontSize={ansFontSize}
                           letterSpacing="0.08em"
@@ -3111,7 +3348,7 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                           x={cols.cells[2].cx}
                           y={cols.cells[2].cy + timeBaselineOffset}
                           textAnchor="middle"
-                          fill="#67e8f9"
+                          fill={isHighlighted ? "#a7f3d0" : "#67e8f9"}
                           fontWeight="900"
                           fontSize={timeFontSize}
                           fontFamily="'Arial', 'Helvetica Neue', sans-serif"
@@ -3147,63 +3384,111 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
           })}
 
         </div>
-        {showOfficialAnswer && (
-          <div className="fixed inset-x-0 bottom-4 sm:bottom-6 z-30 flex justify-center pointer-events-none px-4">
-            <UnifiedOlympiaAnswerOverlay
-              answerText={officialAnswer}
-              roundLabel="ĐÁP ÁN CHÍNH XÁC"
-              verdict="neutral"
-              themeMode={state.themeMode}
-            />
-          </div>
-        )}
       </div>
     );
   }
 
   // Classic Chalkboard fallback
   return (
-    <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto">
+    <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 z-20 pointer-events-auto overflow-hidden">
       <Vtv3ChalkboardBackdrop />
-      <CentralVerticalBrassRail />
-      <div className="relative z-10 w-[88%] max-w-[1600px] flex flex-col items-center gap-4 py-8">
-        {tt.ranking.map((item) => {
+      <ClassicWoodenBackingBeam />
+      <div
+        className="relative z-10 w-[88%] max-w-[1600px] flex flex-col items-center gap-3 sm:gap-4 py-6"
+        style={{ perspective: "1200px" }}
+      >
+        {(tt.ranking || []).map((item, idx) => {
           const seat = state.seats[item.seat];
           const sec = item.noAnswer ? "0.00" : (item.ms / 1000).toFixed(2);
           const answerText = item.noAnswer ? "" : item.answer;
           const awardedPts = tt.phase === "graded" && item.points ? item.points : 0;
-          const isDimmed = Boolean((tt.revealedCorrectAnswer || tt.phase === "graded") && item.wrong);
+          const isRevealed = Boolean(tt.revealedCorrectAnswer || tt.phase === "graded");
+          const isCorrect = isRevealed
+            ? (() => {
+                if (item.points != null && item.points > 0) return true;
+                if (item.wrong) return false;
+                if (tt.correctAnswer) {
+                  const normAns = (item.answer || "").trim().toLowerCase().replace(/[\s-]/g, "");
+                  const targetCandidates = tt.correctAnswer
+                    .split(/[/|()]/)
+                    .map((s) => s.trim().toLowerCase().replace(/[\s-]/g, ""))
+                    .filter(Boolean);
+                  if (targetCandidates.includes(normAns)) return true;
+                }
+                return false;
+              })()
+            : false;
+          const isHighlighted = isRevealed && !item.wrong && ((item.points ?? 0) > 0 || isCorrect);
+          const isDimmed = isRevealed && !isHighlighted;
 
           return (
-            <div
+            <motion.div
               key={item.seat}
-              className="relative flex items-center w-full h-20 sm:h-24 animate-fade-in my-1 px-2 transition-all duration-500 ease-in-out"
-              style={{
+              initial={{ rotateX: -65, opacity: 0, y: -25 }}
+              animate={{
+                rotateX: 0,
                 opacity: isDimmed ? 0.35 : 1,
-                filter: isDimmed ? "brightness(0.55) contrast(0.85)" : "none",
+                y: 0,
               }}
+              transition={{
+                type: "spring",
+                stiffness: 260,
+                damping: 22,
+                delay: 0.08 + idx * 0.12,
+              }}
+              style={{
+                transformOrigin: "top center",
+                transformStyle: "preserve-3d",
+                filter: isDimmed ? "brightness(0.5) contrast(0.85)" : "none",
+              }}
+              className="relative flex items-center w-full h-16 sm:h-20 md:h-[82px] my-1 px-2 select-none"
             >
               <div className="absolute left-4 z-30">
                 <RedConnectionRivet />
               </div>
               <div
-                className="w-full rounded-full h-20 sm:h-24 pl-12 pr-8 flex items-center justify-between shadow-2xl relative overflow-hidden"
+                className="w-full rounded-full h-full pl-12 pr-8 flex items-center justify-between shadow-2xl relative overflow-hidden transition-all duration-500 ease-in-out"
                 style={{
-                  background: item.wrong
+                  background: isHighlighted
+                    ? "linear-gradient(180deg, #064e3b 0%, #022c22 100%)"
+                    : item.wrong
                     ? "linear-gradient(180deg, #3b1116 0%, #1f080b 60%, #0d0305 100%)"
                     : "linear-gradient(180deg, #1e293b 0%, #0f172a 60%, #060a12 100%)",
-                  border: item.wrong
+                  border: isHighlighted
+                    ? "2.5px solid #10b981"
+                    : item.wrong
                     ? "2.5px solid #ef4444"
                     : "2.5px solid rgba(203, 213, 225, 0.85)",
+                  boxShadow: isHighlighted
+                    ? "0 0 28px rgba(16, 185, 129, 0.55), 0 12px 35px rgba(0,0,0,0.9)"
+                    : "0 12px 35px rgba(0,0,0,0.9)",
                 }}
               >
-                <div className="flex items-center gap-2 z-10 w-56 sm:w-72 shrink-0 overflow-hidden">
-                  <span className="font-bold text-lg sm:text-2xl text-slate-100 truncate block max-w-full">
+                {/* Sheen sweep effect on open */}
+                <div className="absolute inset-0 overflow-hidden rounded-full pointer-events-none">
+                  <div
+                    className="sheen-sweep-beam"
+                    style={{ animationDelay: `${0.25 + idx * 0.12}s` }}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 z-10 w-56 sm:w-72 shrink-0 overflow-hidden py-1">
+                  <span
+                    className={`font-bold text-lg sm:text-2xl truncate block max-w-full leading-normal ${
+                      isHighlighted ? "text-emerald-300" : "text-slate-100"
+                    }`}
+                  >
                     {seat?.name || `Thí sinh ${item.seat + 1}`}
                   </span>
                 </div>
-                <div className="flex-1 min-w-0 text-center z-10 px-4 overflow-hidden">
-                  <span className="font-black text-2xl sm:text-4xl text-white tracking-widest uppercase drop-shadow truncate block max-w-full">
+                <div className="flex-1 min-w-0 text-center z-10 px-4 py-1.5 overflow-hidden">
+                  <span
+                    className={`font-black text-2xl sm:text-4xl tracking-widest uppercase truncate block max-w-full leading-normal ${
+                      isHighlighted
+                        ? "text-emerald-300 drop-shadow-[0_0_16px_rgba(52,211,153,0.8)]"
+                        : "text-white drop-shadow"
+                    }`}
+                  >
                     {answerText || ""}
                   </span>
                 </div>
@@ -3215,25 +3500,19 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                   </div>
                 )}
                 <div className="shrink-0 z-10 pl-4 border-l border-white/20">
-                  <span className="font-mono text-cyan-300 font-black text-xl sm:text-2xl">
+                  <span
+                    className={`font-mono font-black text-xl sm:text-2xl ${
+                      isHighlighted ? "text-emerald-300" : "text-cyan-300"
+                    }`}
+                  >
                     {sec}s
                   </span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
-      {showOfficialAnswer && (
-        <div className="fixed inset-x-0 bottom-4 sm:bottom-6 z-30 flex justify-center pointer-events-none px-4">
-          <UnifiedOlympiaAnswerOverlay
-            answerText={officialAnswer}
-            roundLabel="ĐÁP ÁN CHÍNH XÁC"
-            verdict="neutral"
-            themeMode={state.themeMode}
-          />
-        </div>
-      )}
     </div>
   );
 }
@@ -3631,10 +3910,7 @@ export function Vtv3ClassicSummaryGraphic({
             </div>
           </div>
 
-          {/* Footer Navigation Hint */}
-          <div className="relative z-10 flex items-center justify-center pt-3 text-[11px] sm:text-xs text-amber-200/50 font-medium">
-            <span>Bấm vào khung hoặc dùng phím Space / Phím mũi tên để chuyển thí sinh</span>
-          </div>
+
         </div>
       </div>
     </div>

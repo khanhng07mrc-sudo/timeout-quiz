@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, ROUND_ORDER, canStartScoreSummary, seatToStudioCamera, type OlympiaState, type RoundId, type Seat, type O22Quarter, type TimerState } from "@/lib/olympia/types";
-import { normalizeAnswer } from "@/lib/olympia/engine";
+import { normalizeAnswer, cleanVcnvWord, getVcnvUnit } from "@/lib/olympia/engine";
 import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
 import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
 import OlympiaAudioManagerDrawer from "./OlympiaAudioManagerDrawer";
@@ -2632,7 +2632,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
           </b>
         </span>
         <span className="text-amber-300 font-bold">
-          Từ khóa CNV: <b className="text-white">{v.keyword || "—"}</b> ({kwLen} chữ cái)
+          Từ khóa CNV: <b className="text-white">{v.keyword || "—"}</b> ({kwLen} {getVcnvUnit(v.keyword || "")})
         </span>
       </div>
 
@@ -2672,8 +2672,8 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                     : "bg-slate-900/90 border-white/10"
                 }`}
               >
-                {/* Contestant Badge & Name */}
-                <div className="w-32 sm:w-44 shrink-0 flex items-center gap-1.5 min-w-0">
+                {/* 1. Contestant Badge & Name */}
+                <div className="w-28 sm:w-36 shrink-0 flex items-center gap-1.5 min-w-0">
                   <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/35 text-cyan-200 font-mono font-black text-[10px] shrink-0">
                     TS{s.id + 1}
                   </span>
@@ -2685,12 +2685,12 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                   </span>
                 </div>
 
-                {/* Live Typed Answer + Previous History + Time */}
-                <div className="flex-1 min-w-0 rounded-md bg-black/55 border border-white/10 px-2.5 py-1 min-h-[30px] flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                {/* 2. Live Typed Answer + Time */}
+                <div className="flex-1 min-w-0 rounded-md bg-black/55 border border-white/10 px-2.5 py-1 min-h-[30px] flex items-center justify-between gap-2 overflow-hidden">
+                  <div className="flex items-center gap-2 min-w-0 overflow-hidden flex-1">
                     {ans?.text ? (
                       <span
-                        className="font-black text-xs sm:text-[13px] text-amber-300 uppercase tracking-wide break-words select-text"
+                        className="font-black text-xs sm:text-[13px] text-amber-300 uppercase tracking-wide truncate select-text"
                         title={ans.text}
                       >
                         {ans.text}
@@ -2699,27 +2699,33 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                       <span className="text-[11px] text-slate-500 italic">Chưa gửi đáp án</span>
                     )}
                     {ans?.previousText && (
-                      <span className="text-[10px] text-slate-400 truncate">
+                      <span className="text-[10px] text-slate-400 truncate hidden md:inline">
                         (Trước đó: {ans.previousText} · {((ans.previousMs || 0) / 1000).toFixed(2)}s)
                       </span>
                     )}
                   </div>
                   {ans?.text && (
-                    <span className="px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-[10px] font-mono font-bold text-cyan-300 shrink-0 whitespace-nowrap">
+                    <span className="px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-[10px] font-mono font-bold text-cyan-300 shrink-0 whitespace-nowrap ml-1">
                       {((ans.ms ?? 0) / 1000).toFixed(2)}s
                     </span>
                   )}
                 </div>
 
-                {/* CNV Bell Status Pill */}
-                {hasBell && (
-                  <div className="px-2 py-0.5 rounded-md text-[10px] font-black text-amber-200 bg-amber-500/25 border border-amber-400/50 shrink-0 whitespace-nowrap flex items-center gap-1">
-                    <span>🔔 Chuông CNV #{bellIdx + 1}</span>
-                    <span className="hidden xl:inline text-amber-300/90">(Đã tự dừng)</span>
-                  </div>
-                )}
+                {/* 3. Dedicated Fixed CNV Bell Order Column */}
+                <div className="w-10 sm:w-12 shrink-0 flex items-center justify-center">
+                  {hasBell ? (
+                    <span
+                      className="px-1.5 py-0.5 rounded-md text-[10px] sm:text-[10.5px] font-black text-amber-200 bg-amber-500/30 border border-amber-400 shadow-sm whitespace-nowrap animate-pulse"
+                      title={`Thí sinh bấm chuông CNV thứ tự #${bellIdx + 1} (Đã tự dừng)`}
+                    >
+                      🔔 {bellIdx + 1}
+                    </span>
+                  ) : (
+                    <span className="text-slate-600 text-xs select-none">—</span>
+                  )}
+                </div>
 
-                {/* Lock / Unlock Action */}
+                {/* 4. Lock / Unlock Action */}
                 <button
                   type="button"
                   onClick={() => call("vcnv:toggleLockSeat", { seat: s.id })}
@@ -2750,7 +2756,9 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             <span>Mở Các Hàng Ngang</span>
           </button>
           {[0, 1, 2, 3].map((rIdx) => {
-            const lc = v.rows[rIdx]?.letterCount || v.rows[rIdx]?.answer?.length || "?";
+            const rowAns = v.rows[rIdx]?.answer || "";
+            const lc = v.rows[rIdx]?.letterCount || cleanVcnvWord(rowAns).length || "?";
+            const unit = getVcnvUnit(rowAns);
             return (
               <button
                 key={rIdx}
@@ -2765,25 +2773,35 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                 }`}
               >
                 <span>
-                  Hàng {rIdx + 1} ({lc} ký tự) {v.rows[rIdx]?.opened ? "✓" : ""}
+                  Hàng {rIdx + 1} ({lc} {unit}) {v.rows[rIdx]?.opened ? "✓" : ""}
                 </span>
-                <span className="text-[10px] text-amber-300/80 truncate max-w-[90px]">{v.rows[rIdx]?.answer}</span>
+                <span className="text-[10px] text-amber-300/80 truncate max-w-[90px]">{rowAns}</span>
               </button>
             );
           })}
-          <button
-            type="button"
-            onClick={() => call("vcnv:selectRow", { row: 4 })}
-            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
-              v.currentRow === 4
-                ? "bg-yellow-400/20 border-yellow-400 text-yellow-200"
-                : v.centerOpened
-                ? "bg-white/5 border-white/10 text-slate-500"
-                : "bg-amber-500/10 border-amber-400/30 text-amber-300 hover:bg-amber-500/20"
-            }`}
-          >
-            Trung Tâm {v.centerOpened ? "✓" : ""}
-          </button>
+          {(() => {
+            const centerAns = v.centerQuestion?.a || v.keyword || "";
+            const centerLen = cleanVcnvWord(centerAns).length || "?";
+            const centerUnit = getVcnvUnit(centerAns);
+            return (
+              <button
+                type="button"
+                onClick={() => call("vcnv:selectRow", { row: 4 })}
+                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold border transition flex items-center justify-between cursor-pointer ${
+                  v.currentRow === 4
+                    ? "bg-yellow-400/20 border-yellow-400 text-yellow-200"
+                    : v.centerOpened
+                    ? "bg-white/5 border-white/10 text-slate-500"
+                    : "bg-amber-500/10 border-amber-400/30 text-amber-300 hover:bg-amber-500/20"
+                }`}
+              >
+                <span>
+                  Trung Tâm ({centerLen} {centerUnit}) {v.centerOpened ? "✓" : ""}
+                </span>
+                <span className="text-[10px] text-amber-300/80 truncate max-w-[90px]">{centerAns}</span>
+              </button>
+            );
+          })()}
         </div>
 
         {/* Center: In-Question flow controls */}

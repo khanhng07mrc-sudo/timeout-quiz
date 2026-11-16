@@ -2535,9 +2535,16 @@ export class OlympiaGame {
           if (!v.eliminatedSeats.includes(b.seat)) v.eliminatedSeats.push(b.seat);
         });
 
-        const buzzers: TranscriptBuzzerItem[] = [
-          { order: 1, seat, name: this.seatName(seat), verdict: "wrong" }
-        ];
+        const buzzers: TranscriptBuzzerItem[] = v.bells.map((b, idx) => ({
+          order: idx + 1,
+          seat: b.seat,
+          name: this.seatName(b.seat),
+          verdict: "wrong",
+        }));
+        if (!buzzers.some((b) => b.seat === seat)) {
+          buzzers.push({ order: buzzers.length + 1, seat, name: this.seatName(seat), verdict: "wrong" });
+        }
+        const allNames = v.bells.map((b) => this.seatName(b.seat)).join(", ") || this.seatName(seat);
 
         this.pushTranscript({
           at: now,
@@ -2551,7 +2558,7 @@ export class OlympiaGame {
           actorName: this.seatName(seat),
           buzzerEvents: buzzers,
           verdict: "wrong",
-          note: `${this.seatName(seat)} trả lời sai CNV.`,
+          note: `${allNames} trả lời sai CNV (mất quyền chơi VCNV).`,
         });
         this.cue("2_VuotChuongNgaiVat/cnv_wrong");
         return OK;

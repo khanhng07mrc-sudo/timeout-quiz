@@ -2956,9 +2956,9 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                   ? "bg-emerald-600 hover:bg-emerald-500 cursor-pointer"
                   : "bg-emerald-950/40 text-slate-500 border border-white/10 opacity-50 cursor-not-allowed"
               }`}
-              title="Cộng điểm CNV cho đội đang chọn và mở toàn bộ Chướng ngại vật"
+              title="Chấm Đúng cho thí sinh bấm chuông (chỉ người bấm được tính đúng)"
             >
-              ✔ Chấm ĐÚNG: {activeSeatName || "TS"} (+Điểm)
+              ✔ Chấm ĐÚNG
             </button>
             <button
               type="button"
@@ -2971,9 +2971,9 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                   ? "bg-rose-600 hover:bg-rose-500 cursor-pointer"
                   : "bg-rose-950/40 text-slate-500 border border-white/10 opacity-50 cursor-not-allowed"
               }`}
-              title="Phát âm thanh trả lời sai CNV (không tự tắt chuông các đội còn lại)"
+              title="Chấm Sai cho tất cả thí sinh đang có chuông (sai tất cả các đội bấm chuông)"
             >
-              ✘ Chấm SAI: {activeSeatName || "TS"}
+              ✘ Chấm SAI
             </button>
           </div>
 

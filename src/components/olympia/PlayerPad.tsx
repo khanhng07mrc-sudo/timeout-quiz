@@ -663,11 +663,12 @@ export default function PlayerPad({
           </div>
         </div>
 
-        {/* 2. Fixed 4-Contestant Live Score Cards Bar (matching D:\Olympia 26\public\contestant) */}
+        {/* 2. All Contestant Score Cards Bar: Strictly 1 Single Line for all shapes */}
         <div
-          className={`shrink-0 grid ${isSandboxMode ? "gap-1" : "gap-1.5 sm:gap-2.5"} ${
-            seats.length <= 4 ? "grid-cols-4" : "grid-cols-4 sm:grid-cols-6"
-          }`}
+          className={`shrink-0 grid ${isSandboxMode ? "gap-1" : "gap-1 sm:gap-1.5"} w-full items-center`}
+          style={{
+            gridTemplateColumns: `repeat(${Math.max(1, seats.length)}, minmax(0, 1fr))`,
+          }}
         >
           {seats.map((s) => {
             const isMe = s.id === me.id;
@@ -726,40 +727,47 @@ export default function PlayerPad({
               <div
                 key={s.id}
                 className={`${
-                  isSandboxMode ? "h-10 rounded-lg px-2 py-1" : "h-11 sm:h-14 rounded-xl px-2 sm:px-2.5 py-1"
-                } flex flex-col justify-between transition-all relative overflow-hidden ${cardClass}`}
+                  isSandboxMode ? "h-8 rounded-lg px-1.5 py-0.5" : "h-8 sm:h-9 md:h-10 rounded-lg sm:rounded-xl px-1.5 sm:px-2 py-0.5"
+                } flex items-center justify-between gap-1 transition-all relative overflow-hidden min-w-0 ${cardClass}`}
                 style={{
                   borderLeftWidth: isSandboxMode ? "3px" : "4px",
                   borderLeftColor,
                 }}
               >
-                <div className="flex items-center justify-between gap-1 min-w-0">
-                  <span className={`${isSandboxMode ? "text-[10px] leading-tight" : "text-[10px] sm:text-xs"} font-extrabold uppercase truncate ${nameColor}`}>
+                <div className="flex items-center gap-1 min-w-0 overflow-hidden flex-1">
+                  <span
+                    className={`${
+                      isSandboxMode ? "text-[9.5px]" : "text-[10px] sm:text-xs"
+                    } font-extrabold uppercase truncate tracking-tight text-left ${nameColor}`}
+                    style={{
+                      fontStretch: "condensed",
+                      letterSpacing: "-0.03em",
+                      transform: "scaleX(0.96)",
+                      transformOrigin: "left center",
+                    }}
+                    title={s.name || `TS ${s.id + 1}`}
+                  >
                     {s.name || `TS ${s.id + 1}`}
                   </span>
+                  {isMe && (
+                    <span
+                      className={`px-1 py-0.2 rounded ${
+                        isSandboxMode ? "text-[7px]" : "text-[8px] sm:text-[8.5px]"
+                      } font-black uppercase shrink-0 ${
+                        isClassic
+                          ? "bg-gradient-to-b from-[#b91c1c] to-[#7f1d1d] border border-[#fef08a] text-amber-100 shadow"
+                          : "bg-red-600 text-white"
+                      }`}
+                    >
+                      BẠN
+                    </span>
+                  )}
+                  {isBuzzed && <span className={`${isSandboxMode ? "text-[9px]" : "text-[10px] sm:text-xs"} animate-bounce shrink-0`}>🔔</span>}
+                  {isLocked && <span className={`${isSandboxMode ? "text-[9px]" : "text-[10px] sm:text-xs"} text-rose-400 shrink-0`}>🔒</span>}
                 </div>
-                <div className="flex items-center justify-between gap-1 min-w-0">
-                  <div className="flex items-center gap-0.5 shrink-0 min-h-[12px]">
-                    {isMe && (
-                      <span
-                        className={`px-1 py-0.2 rounded ${
-                          isSandboxMode ? "text-[7.5px]" : "text-[8.5px] sm:text-[9px]"
-                        } font-black uppercase ${
-                          isClassic
-                            ? "bg-gradient-to-b from-[#b91c1c] to-[#7f1d1d] border border-[#fef08a] text-amber-100 shadow"
-                            : "bg-red-600 text-white"
-                        }`}
-                      >
-                        BẠN
-                      </span>
-                    )}
-                    {isBuzzed && <span className={`${isSandboxMode ? "text-[10px]" : "text-xs"} animate-bounce`}>🔔</span>}
-                    {isLocked && <span className={`${isSandboxMode ? "text-[10px]" : "text-xs"} text-rose-400`}>🔒</span>}
-                  </div>
-                  <span className={`${isSandboxMode ? "text-xs sm:text-sm" : "text-base sm:text-xl"} font-black tabular-nums leading-none ${scoreColor}`}>
-                    {s.score}
-                  </span>
-                </div>
+                <span className={`${isSandboxMode ? "text-xs" : "text-xs sm:text-sm md:text-base"} font-black font-mono tabular-nums leading-none shrink-0 ml-1 ${scoreColor}`}>
+                  {s.score}
+                </span>
               </div>
             );
           })}

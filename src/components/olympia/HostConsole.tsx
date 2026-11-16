@@ -1588,8 +1588,8 @@ export const HostConsole = React.memo(function HostConsole({
                             >
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
-                                    Vị trí {req.seatId + 1}
+                                  <span className="w-5 h-5 rounded-md text-[10px] font-black bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 flex items-center justify-center shrink-0">
+                                    {req.seatId + 1}
                                   </span>
                                   <span className="font-bold text-xs text-white truncate">{req.name}</span>
                                 </div>
@@ -1622,7 +1622,7 @@ export const HostConsole = React.memo(function HostConsole({
                     {/* Swap mode indicator */}
                     {swapSourceSeat !== null && (
                       <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-400 text-amber-200 text-xs font-bold flex items-center justify-between animate-pulse">
-                        <span>⇄ Đang chọn vị trí hoán đổi với Vị trí {swapSourceSeat + 1}. Nhấp vào ghế thứ hai để hoàn tất!</span>
+                        <span>⇄ Đang chọn hoán đổi với ghế #{swapSourceSeat + 1}. Nhấp vào ghế thứ hai để hoàn tất!</span>
                         <button
                           type="button"
                           onClick={() => setSwapSourceSeat(null)}
@@ -1633,7 +1633,7 @@ export const HostConsole = React.memo(function HostConsole({
                       </div>
                     )}
 
-                    <div className="flex flex-col gap-2 w-full">
+                    <div className="flex flex-col gap-1.5 w-full">
                       {state.seats.map((s, idx) => {
                         const isPending = Boolean(s.name && s.approved === false);
                         const isApproved = Boolean(s.name && s.approved !== false);
@@ -1642,7 +1642,7 @@ export const HostConsole = React.memo(function HostConsole({
                         return (
                           <div
                             key={s.id}
-                            className={`w-full rounded-xl border px-3 py-2 sm:py-2.5 transition flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 relative overflow-hidden shadow-sm ${
+                            className={`w-full rounded-xl border px-2.5 py-1.5 transition flex items-center justify-between gap-2 relative overflow-hidden shadow-sm min-h-[38px] sm:min-h-[42px] ${
                               isSwapSelected
                                 ? "bg-amber-500/20 border-amber-400 ring-2 ring-amber-400/50 shadow-xl"
                                 : isApproved
@@ -1655,55 +1655,75 @@ export const HostConsole = React.memo(function HostConsole({
                               borderLeft: `4px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}`
                             }}
                           >
-                            {/* Left: Position badge & Candidate details */}
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                              <div className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/10 text-slate-300 font-bold text-xs shrink-0 flex items-center gap-1.5">
-                                <span
-                                  className="w-2 h-2 rounded-full shrink-0"
-                                  style={{ backgroundColor: SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff" }}
-                                />
-                                <span>Vị trí {idx + 1}</span>
+                            {/* Left: Compact Seat Number Badge & Candidate details (Horizontally condensed, no ellipsis) */}
+                            <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+                              <div
+                                className="w-5 h-5 sm:w-6 sm:h-6 rounded-md font-black text-[11px] sm:text-xs shrink-0 flex items-center justify-center shadow-sm select-none"
+                                style={{
+                                  backgroundColor: `${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}22`,
+                                  border: `1.5px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}`,
+                                  color: SEAT_COLORS[idx % SEAT_COLORS.length] || "#ffffff",
+                                }}
+                                title={`Ghế ${idx + 1}`}
+                              >
+                                {idx + 1}
                               </div>
 
                               {s.name ? (
-                                <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                                  <span className="font-black text-xs sm:text-sm text-white truncate" title={s.name}>
+                                <div className="min-w-0 flex-1 flex items-center gap-1.5 sm:gap-2 overflow-hidden">
+                                  <span
+                                    className="font-black text-xs sm:text-sm text-white tracking-tighter whitespace-nowrap overflow-hidden inline-block shrink-0"
+                                    style={{
+                                      fontStretch: "condensed",
+                                      letterSpacing: "-0.035em",
+                                      transform: "scaleX(0.96)",
+                                      transformOrigin: "left center",
+                                    }}
+                                    title={s.name}
+                                  >
                                     {s.name}
                                   </span>
                                   {s.school && (
-                                    <span className="text-[11px] text-slate-400 truncate" title={s.school}>
+                                    <span
+                                      className="text-[10px] sm:text-[11px] text-slate-400 whitespace-nowrap overflow-hidden inline-block opacity-80 shrink min-w-0"
+                                      style={{
+                                        fontStretch: "condensed",
+                                        letterSpacing: "-0.025em",
+                                      }}
+                                      title={s.school}
+                                    >
                                       • {s.school}
                                     </span>
                                   )}
                                 </div>
                               ) : (
-                                <span className="text-xs text-slate-500 italic">
+                                <span className="text-xs text-slate-500 italic whitespace-nowrap overflow-hidden">
                                   ⚪ Ghế trống — Chờ thí sinh vào phòng
                                 </span>
                               )}
                             </div>
 
                             {/* Middle & Right: Status Badges & Action Buttons */}
-                            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-white/10">
+                            <div className="flex items-center justify-end gap-1.5 shrink-0">
                               {s.name ? (
                                 <>
-                                  <div className="flex items-center gap-2 shrink-0">
+                                  <div className="flex items-center gap-1.5 shrink-0">
                                     <span className={`text-[10px] font-mono shrink-0 ${s.connected ? "text-emerald-400 font-bold" : "text-slate-500"}`}>
                                       {s.connected ? "🟢 Online" : "🔴 Offline"}
                                     </span>
                                     {isApproved && (
-                                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30 whitespace-nowrap">
+                                      <span className="text-[9.5px] sm:text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30 whitespace-nowrap">
                                         ✓ ĐÃ DUYỆT
                                       </span>
                                     )}
                                     {isPending && (
-                                      <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30 whitespace-nowrap">
+                                      <span className="text-[9.5px] sm:text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30 whitespace-nowrap">
                                         ⏳ CHỜ DUYỆT
                                       </span>
                                     )}
                                   </div>
 
-                                  <div className="flex items-center gap-1.5 shrink-0">
+                                  <div className="flex items-center gap-1 shrink-0">
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -1716,20 +1736,20 @@ export const HostConsole = React.memo(function HostConsole({
                                           setSwapSourceSeat(null);
                                         }
                                       }}
-                                      className={`py-1 px-2.5 rounded-lg text-xs font-bold border transition cursor-pointer text-center whitespace-nowrap ${
+                                      className={`py-0.5 px-2 rounded-md text-[11px] sm:text-xs font-bold border transition cursor-pointer text-center whitespace-nowrap ${
                                         isSwapSelected
                                           ? "bg-amber-500 text-slate-950 border-amber-400 font-black animate-pulse"
                                           : "bg-white/5 hover:bg-white/15 text-cyan-300 border-white/15"
                                       }`}
                                       title="Đổi vị trí thí sinh này với vị trí khác"
                                     >
-                                      {isSwapSelected ? "Đang chọn..." : "⇄ Đổi vị trí"}
+                                      {isSwapSelected ? "Đang chọn..." : "⇄ Đổi"}
                                     </button>
                                     {isPending && (
                                       <button
                                         type="button"
                                         onClick={() => call("seat:approve", { seatId: s.id })}
-                                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow transition cursor-pointer whitespace-nowrap"
+                                        className="px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow transition cursor-pointer whitespace-nowrap"
                                         title="Duyệt thí sinh này"
                                       >
                                         ✓ Duyệt
@@ -1738,7 +1758,7 @@ export const HostConsole = React.memo(function HostConsole({
                                     <button
                                       type="button"
                                       onClick={() => setKickCandidate(s)}
-                                      className="px-2 py-1 rounded-lg text-xs font-bold bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer"
+                                      className="px-1.5 py-0.5 rounded-md text-xs font-bold bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer"
                                       title="Hủy thí sinh khỏi vị trí này"
                                     >
                                       ✕

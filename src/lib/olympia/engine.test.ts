@@ -1480,7 +1480,9 @@ test("game:start cues 6_NhacKhac/contest_intro instead of show_intro", () => {
   assert.equal(g.state.banner, null, "no auto banner after waiting");
   act(g, "round:force", { round: "khoiDong" }, 70_000);
   assert.equal(g.state.introTimer, null, "intro cleared only when host starts the round");
-  assert.equal(g.state.cue?.sound, "1_KhoiDong/start_round", "start_round cue fires so client crossfades intro music out");
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/section_intro", "section_intro plays during 8s round intro banner");
+  act(g, "banner:hide", {}, 77_700);
+  assert.equal(g.state.cue?.sound, "1_KhoiDong/start_round", "start_round cue fires after intro finishes");
 });
 
 test("KhoiDong TS2 timer and audio runs properly when question 1 is opened", () => {
@@ -2473,7 +2475,9 @@ test("Về Đích FSM: idle intro -> onStage walk -> showPackageGraphic -> packa
   assert.equal(vd.onStage, false, "Contestant is not yet on stage");
   assert.equal(vd.current, null, "No question active in idle");
   assert.notEqual(g.state.cue?.sound, "4_VeDich/choose_package", "Must NOT cue choose_package on round start");
-  assert.equal(g.state.cue?.sound, "4_VeDich/start_round", "Must cue start_round on round start");
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/section_intro", "Must cue section_intro on round start banner");
+  act(g, "banner:hide", {}, 9200);
+  assert.equal(g.state.cue?.sound, "4_VeDich/start_round", "Must cue start_round when intro banner completes");
 
   // 2. Host clicks [Lên sân khấu] (vd:onStage)
   (g.state as any).cue = null;
@@ -2653,7 +2657,9 @@ test("Về Đích Full 5-State FSM, Zero-Cache Isolation, and Sequential Questio
   assert.equal(vd1.onStage, false, "State 1: onStage must be false");
   assert.equal(vd1.qIdx, -1, "State 1: qIdx must be -1");
   assert.equal(vd1.current, null, "State 1: current question must be null");
-  assert.equal(g.state.cue?.sound, "4_VeDich/start_round", "State 1: only start_round sound cued");
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/section_intro", "State 1: section_intro sound cued during round intro");
+  act(g, "banner:hide", {}, 9200);
+  assert.equal(g.state.cue?.sound, "4_VeDich/start_round", "State 1: start_round sound cued after intro banner");
 
   // Public state during State 1
   const pub1 = g.getPublicState();

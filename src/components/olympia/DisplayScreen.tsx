@@ -155,7 +155,7 @@ function ContestantIntroChyron({ state }: { state: OlympiaState }) {
 }
 
 export default function DisplayScreen({ code }: { code: string }) {
-  const { state, join, connected, serverNow } = useOlympiaSocket({ code, role: "display" });
+  const { state, join, connected, emit, serverNow } = useOlympiaSocket({ code, role: "display" });
   const isExplicitMuteParam =
     typeof window !== "undefined" &&
     (new URLSearchParams(window.location.search).get("mute") === "1" ||
@@ -427,8 +427,13 @@ export default function DisplayScreen({ code }: { code: string }) {
       {/* ── 4.5. BROADCAST CONTESTANT INTRO LOWER-THIRD CHYRON (Z-40) ── */}
       {state.entranceState?.active && <ContestantIntroChyron state={state} />}
 
-      {/* ── 4. BROADCAST STAGE BANNER & ROUND INTRO (Z-40) ── */}
-      <BroadcastRoundIntroOverlay state={state} />
+      {/* ── 4. BROADCAST STAGE BANNER & ROUND INTRO (Z-50) ── */}
+      <BroadcastRoundIntroOverlay
+        state={state}
+        onDismiss={() => {
+          emit("action", { type: "banner:hide" });
+        }}
+      />
 
       {/* ── 4.8. BROADCAST MANUAL VIDEO OVERLAY (KD, VCNV, VD, CHP) ── */}
       {(() => {

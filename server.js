@@ -106371,10 +106371,7 @@ var OlympiaGame = class _OlympiaGame {
     st.currentRound = round;
     st.roundStatus[round] = "active";
     st.banner = ROUND_LABELS[round];
-    this.cue(
-      round === "khoiDong" ? "1_KhoiDong/start_round" : round === "vcnv" ? "2_VuotChuongNgaiVat/start_round" : round === "tangToc" ? "3_TangToc/start_round" : "4_VeDich/start_round"
-      // Câu hỏi phụ dùng chung nhạc mở đầu vòng Về Đích
-    );
+    this.cue("6_NhacKhac/section_intro");
     switch (round) {
       case "khoiDong": {
         let rawSegs = this.ruleset.khoiDong.segments(active.length);
@@ -106747,8 +106744,8 @@ var OlympiaGame = class _OlympiaGame {
         st.entranceCompleted = true;
         if (st.entranceState) st.entranceState.active = false;
         st.banner = st.currentRound ? ROUND_LABELS[st.currentRound] : null;
-        if (st.currentRound === "khoiDong") {
-          this.cue("1_KhoiDong/start_round");
+        if (st.currentRound) {
+          this.cue("6_NhacKhac/section_intro");
         }
         return OK;
       }
@@ -106773,9 +106770,16 @@ var OlympiaGame = class _OlympiaGame {
         st.roundStatus[r] = "pending";
         return this.beginRound(r, now, true);
       }
-      case "banner:hide":
+      case "banner:hide": {
+        const curRound = st.currentRound;
         st.banner = null;
+        if (curRound) {
+          this.cue(
+            curRound === "khoiDong" ? "1_KhoiDong/start_round" : curRound === "vcnv" ? "2_VuotChuongNgaiVat/start_round" : curRound === "tangToc" ? "3_TangToc/start_round" : "4_VeDich/start_round"
+          );
+        }
         return OK;
+      }
       case "display:stageGraphics": {
         st.showStageGraphics = !!a.on;
         return OK;

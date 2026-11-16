@@ -1157,8 +1157,8 @@ export function ClassicUnifiedLowerThird({
         <div className="absolute bottom-2 left-2 z-30 w-2.5 h-2.5 rounded-full classic-rivet-bronze pointer-events-none" />
         <div className="absolute bottom-2 right-2 z-30 w-2.5 h-2.5 rounded-full classic-rivet-bronze pointer-events-none" />
 
-        {/* ── UPPER SHELF: Candidate Score Bar & Status Badges ── */}
-        <div className="relative z-20 w-full min-h-[40px] sm:min-h-[44px] bg-black/50 border-b border-amber-500/30 px-4 sm:px-6 py-1.5 flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+        {/* ── UPPER SHELF: Candidate Score Bar & Status Badges (Strict Single Row, Proportional Dynamic Columns) ── */}
+        <div className="relative z-20 w-full min-h-[40px] sm:min-h-[44px] bg-black/50 border-b border-amber-500/30 px-2.5 sm:px-4 py-1 flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap">
           {/* Left: Round / Question Status Badge */}
           {badgeLabel ? (
             <div className="flex items-center gap-1.5 shrink-0">
@@ -1171,8 +1171,13 @@ export function ClassicUnifiedLowerThird({
             <div className="w-3.5 h-3.5 rounded-full classic-rivet-red shrink-0" />
           )}
 
-          {/* Center: Candidate Score Cells (Fixed Proportional 4-Grid) */}
-          <div className="flex-1 grid grid-cols-4 gap-1.5 sm:gap-2.5 px-1 min-w-0 w-full">
+          {/* Center: Candidate Score Cells (Strictly Single Row regardless of candidate count, tight padding, enlarged font) */}
+          <div
+            className="flex-1 grid gap-1 sm:gap-1.5 px-0.5 min-w-0 w-full"
+            style={{
+              gridTemplateColumns: `repeat(${Math.max(1, seatsToDisplay.length)}, minmax(0, 1fr))`,
+            }}
+          >
             {seatsToDisplay.map((seat) => {
               const isTurn = activeSeatId === seat.id;
               const isBuzzed = buzzedSeatId === seat.id;
@@ -1181,7 +1186,7 @@ export function ClassicUnifiedLowerThird({
               return (
                 <div
                   key={seat.id}
-                  className={`flex items-center justify-between gap-1 sm:gap-2 px-2 sm:px-3 py-1 rounded-lg transition-all duration-300 text-xs sm:text-sm ${
+                  className={`flex items-center justify-between gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md transition-all duration-300 min-w-0 overflow-hidden ${
                     isBuzzed
                       ? "classic-glow-buzzed text-white animate-pulse scale-[1.02]"
                       : isTurn
@@ -1191,11 +1196,11 @@ export function ClassicUnifiedLowerThird({
                       : "bg-[#181c24]/90 border border-amber-500/40 text-slate-100 shadow-inner"
                   }`}
                 >
-                  <span className="font-bold truncate uppercase">
+                  <span className="font-black truncate uppercase text-[11px] sm:text-xs md:text-sm tracking-tight">
                     {seat.name || `TS ${seat.id + 1}`}
                   </span>
                   <span
-                    className={`font-black shrink-0 ${
+                    className={`font-black shrink-0 text-xs sm:text-sm md:text-base font-mono ${
                       isBuzzed ? "text-yellow-100" : isTurn ? "text-amber-200" : "text-amber-300"
                     }`}
                   >
@@ -1222,21 +1227,9 @@ export function ClassicUnifiedLowerThird({
           </div>
         </div>
 
-        {/* ── LOWER CHAMBER: Question Text & Media ── */}
+        {/* ── LOWER CHAMBER: Question Text & Media (Question Only - Never nested answer overlay) ── */}
         <div className="relative z-10 flex-1 px-4 sm:px-8 md:px-12 py-3.5 sm:py-5 flex flex-col items-center justify-center text-center min-h-[100px] sm:min-h-[130px]">
-          {answerReveal?.show ? (
-            <div className="w-full flex items-center justify-center animate-fade-in py-1">
-              <UnifiedOlympiaAnswerOverlay
-                answerText={answerReveal.text}
-                roundLabel={answerReveal.label || "ĐÁP ÁN"}
-                verdict={answerReveal.verdict}
-                pointsAwarded={answerReveal.points}
-                actorName={answerReveal.actorName}
-                themeMode="o26_classic"
-                className="w-full"
-              />
-            </div>
-          ) : questionText ? (
+          {questionText ? (
             <div
               className={`text-white font-black leading-snug pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] select-text animate-fade-in ${clampQuestionFont(
                 questionText
@@ -4149,7 +4142,9 @@ export function EconovaLowerThirdV3({
 
   const packStrip = isVeDich ? buildClusterPackStrip(shell, lt, qCount, 46) : null;
 
-  const targetSeatId = buzzedSeatId ?? activeSeatId;
+  // In Về Đích: Right score cluster strictly preserves the on-stage main contestant's score
+  // (the buzzed stealing contestant is clearly highlighted with their score in the top shelf tabs)
+  const targetSeatId = isVeDich ? (activeSeatId ?? (vd ? vd.order[vd.turnIdx] : 0)) : (buzzedSeatId ?? activeSeatId);
   const activeSeat = targetSeatId != null ? state.seats[targetSeatId] : null;
   const displayScore = activeSeat ? activeSeat.score : 0;
 

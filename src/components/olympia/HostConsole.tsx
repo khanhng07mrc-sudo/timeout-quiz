@@ -804,10 +804,10 @@ export const HostConsole = React.memo(function HostConsole({
           </div>
         </aside>
 
-        {/* 2. CENTER STAGE: 2-Tier Architecture (Scrollable Upper Deck + Fixed Action Lower Deck) */}
-        <main className="flex-1 p-1.5 sm:p-2 flex flex-col min-h-0 overflow-hidden">
-          {/* UPPER DECK: Scrollable Content Zone (Question, Answer, Media & Utilities) */}
-          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin">
+        {/* 2. CENTER STAGE: Unified Responsive Smooth-Scroll Container for All Viewports */}
+        <main className="flex-1 p-1.5 sm:p-2 flex flex-col min-h-0 overflow-y-auto pr-1 scrollbar-thin space-y-2">
+          {/* UPPER DECK: Question, Answer, Media & Utilities */}
+          <div className="space-y-1.5 shrink-0">
             {/* Round & Question Indicator Bar */}
             <div className="flex items-center justify-between text-xs px-1">
               <div className="flex items-center gap-2">
@@ -1105,8 +1105,8 @@ export const HostConsole = React.memo(function HostConsole({
 
           </div>
 
-          {/* LOWER DECK: Fixed Action Deck (Collapsible 3D Camera Director + Pinned Action Controls) */}
-          <div className="shrink-0 pt-1.5 border-t border-violet-500/20 bg-[#090d1e]/95 space-y-1.5">
+          {/* LOWER DECK: Action Deck (Collapsible 3D Camera Director + Pinned Action Controls) */}
+          <div className="pt-1.5 border-t border-violet-500/20 bg-[#090d1e]/95 space-y-1.5">
             {/* ── BÀN ĐẠO DIỄN HÌNH ẢNH TRƯỜNG QUAY 3D & MÀN HÌNH PHẢI (COLLAPSIBLE VISION MIXER) ── */}
             {!expandedCameraMixer ? (
               <div className="rounded-lg border border-cyan-500/25 bg-[#090d1e]/95 px-2 py-1 shadow-md flex items-center justify-between text-[11px] font-bold">
@@ -1633,11 +1633,7 @@ export const HostConsole = React.memo(function HostConsole({
                       </div>
                     )}
 
-                    <div className={`grid gap-2 ${
-                      state.seats.length <= 4 ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-4" :
-                      state.seats.length <= 6 ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-6" :
-                      "grid-cols-2 sm:grid-cols-4 md:grid-cols-8"
-                    }`}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
                       {state.seats.map((s, idx) => {
                         const isPending = Boolean(s.name && s.approved === false);
                         const isApproved = Boolean(s.name && s.approved !== false);
@@ -1646,7 +1642,7 @@ export const HostConsole = React.memo(function HostConsole({
                         return (
                           <div
                             key={s.id}
-                            className={`rounded-xl border p-2.5 transition flex flex-col justify-between gap-2 relative overflow-hidden ${
+                            className={`rounded-xl border p-3 transition flex flex-col justify-between gap-2.5 relative overflow-hidden shadow-md ${
                               isSwapSelected
                                 ? "bg-amber-500/20 border-amber-400 ring-2 ring-amber-400/50 shadow-xl"
                                 : isApproved
@@ -1662,12 +1658,12 @@ export const HostConsole = React.memo(function HostConsole({
                             <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold">
                               <span>Vị trí {idx + 1}</span>
                               {isApproved && (
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30">
                                   ✓ ĐÃ DUYỆT
                                 </span>
                               )}
                               {isPending && (
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30">
                                   ⏳ CHỜ DUYỆT
                                 </span>
                               )}
@@ -1675,23 +1671,23 @@ export const HostConsole = React.memo(function HostConsole({
                             </div>
 
                             {s.name ? (
-                              <div className="space-y-1.5">
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="font-black text-xs sm:text-sm text-white truncate">
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="font-black text-xs sm:text-sm text-white truncate" title={s.name}>
                                     {s.name}
                                   </span>
-                                  <span className={s.connected ? "text-emerald-400 text-[10px]" : "text-slate-500 text-[10px]"}>
+                                  <span className={`text-[10px] font-mono shrink-0 ${s.connected ? "text-emerald-400 font-bold" : "text-slate-500"}`}>
                                     {s.connected ? "🟢 Online" : "🔴 Offline"}
                                   </span>
                                 </div>
                                 {s.school && (
-                                  <div className="text-[10px] text-slate-400 truncate">
+                                  <div className="text-[10px] text-slate-400 truncate" title={s.school}>
                                     {s.school}
                                   </div>
                                 )}
 
                                 {/* Action buttons */}
-                                <div className="flex items-center gap-1 pt-1 border-t border-white/10">
+                                <div className="flex items-center gap-1.5 pt-1.5 border-t border-white/10">
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1704,7 +1700,7 @@ export const HostConsole = React.memo(function HostConsole({
                                         setSwapSourceSeat(null);
                                       }
                                     }}
-                                    className={`flex-1 py-1 rounded text-[10px] font-bold border transition cursor-pointer text-center ${
+                                    className={`flex-1 py-1 px-2 rounded text-[11px] font-bold border transition cursor-pointer text-center whitespace-nowrap ${
                                       isSwapSelected
                                         ? "bg-amber-500 text-slate-950 border-amber-400 font-black animate-pulse"
                                         : "bg-white/5 hover:bg-white/15 text-cyan-300 border-white/15"
@@ -1717,7 +1713,7 @@ export const HostConsole = React.memo(function HostConsole({
                                     <button
                                       type="button"
                                       onClick={() => call("seat:approve", { seatId: s.id })}
-                                      className="px-2 py-1 rounded text-[10px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow transition cursor-pointer"
+                                      className="px-2.5 py-1 rounded text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow transition cursor-pointer whitespace-nowrap"
                                       title="Duyệt thí sinh này"
                                     >
                                       ✓ Duyệt
@@ -1726,7 +1722,7 @@ export const HostConsole = React.memo(function HostConsole({
                                   <button
                                     type="button"
                                     onClick={() => setKickCandidate(s)}
-                                    className="px-1.5 py-1 rounded text-[10px] font-bold bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer"
+                                    className="px-2 py-1 rounded text-[11px] font-bold bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition cursor-pointer"
                                     title="Hủy thí sinh khỏi vị trí này"
                                   >
                                     ✕
@@ -2866,17 +2862,17 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
 
         {/* Right: Chướng Ngại Vật bell & CNV grading */}
         <div className="space-y-2 border-l border-white/10 pl-2.5">
-          <div className="rounded-lg bg-amber-500/15 border border-amber-400/40 px-2.5 py-1.5 text-[11px] text-amber-200 font-bold">
-            🔔 Thí sinh bấm chuông CNV sẽ <b>tự động dừng phần chơi VCNV</b> ngay trên máy thí sinh. Nếu bấm nhầm, nhấn <b>🔓 Mở lại</b> ở bảng trên!
+          <div className="flex items-center justify-between text-[11px] px-1 py-1 border-b border-amber-500/20">
+            <span className="font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+              <span>🔔</span>
+              <span>TÍN HIỆU CHUÔNG CNV ({v.bells?.length || 0})</span>
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">
+              Bấm trước ➜ sau
+            </span>
           </div>
 
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold">
-              <span>Tín hiệu bấm chuông CNV (Thứ tự trước - sau):</span>
-              <span className="text-amber-300 font-mono text-[10px]">
-                {v.bells?.length || 0} tín hiệu
-              </span>
-            </div>
 
             {v.bells && v.bells.length > 0 ? (
               <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
@@ -2977,7 +2973,7 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
               }`}
               title="Phát âm thanh trả lời sai CNV (không tự tắt chuông các đội còn lại)"
             >
-              ✘ Chấm SAI (Phát âm): {activeSeatName || "TS"}
+              ✘ Chấm SAI: {activeSeatName || "TS"}
             </button>
           </div>
 

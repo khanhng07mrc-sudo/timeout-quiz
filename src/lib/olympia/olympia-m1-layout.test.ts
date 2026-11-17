@@ -495,16 +495,16 @@ export function runOlympiaM1LayoutSuite(): M1SuiteResults {
     }
   });
 
-  runTest(3, "M3.5: Close-up camera presets maintain constant 2.45m distance and face normal", () => {
+  runTest(3, "M3.5: Close-up camera presets maintain constant 1.92m MCU distance and face normal", () => {
     for (const total of [4, 6, 8]) {
       for (let s = 0; s < total; s++) {
         const preset = getContestantCameraPreset(s, total);
         const camPos = preset.pos;
         const targetPos = preset.target;
         const dist = Math.hypot(camPos[0] - targetPos[0], camPos[2] - targetPos[2]);
-        assert.ok(Math.abs(dist - 2.45) <= 0.05, `Distance ${dist}m must be ~2.45m`);
-        assert.equal(camPos[1], 1.34);
-        assert.equal(targetPos[1], 1.25);
+        assert.ok(Math.abs(dist - 1.92) <= 0.05, `Distance ${dist}m must be ~1.92m`);
+        assert.equal(camPos[1], 1.48);
+        assert.equal(targetPos[1], 1.40);
       }
     }
   });

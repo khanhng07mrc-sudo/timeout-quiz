@@ -92,7 +92,7 @@ export function hasActiveRoundContent(state: OlympiaState | null | undefined): b
   }
 }
 
-export function isRoundPostIntroStandby(state: OlympiaState | null | undefined): boolean {
+export function isRoundPostIntroStandby(state: OlympiaState | null | undefined, now?: number): boolean {
   if (!state || state.stage !== "playing" || Boolean(state.banner)) return false;
   if (
     state.studioCameraManual ||
@@ -101,6 +101,12 @@ export function isRoundPostIntroStandby(state: OlympiaState | null | undefined):
     state.entranceState?.active
   ) {
     return false;
+  }
+  if (state.roundIntroDoneAt && now !== undefined) {
+    const elapsed = (now - state.roundIntroDoneAt) / 1000;
+    if (elapsed >= 0 && elapsed < 3.5) {
+      return true;
+    }
   }
   return !hasActiveRoundContent(state);
 }
@@ -329,6 +335,7 @@ interface CameraControllerProps {
   ptzPitch?: number;
   ptzZoom?: number;
   introStartedAt?: number | null;
+  roundIntroDoneAt?: number | null;
   kdStartCooldownUntil?: number | null;
   isIdleLobby?: boolean;
   isPostIntroStandby?: boolean;
@@ -396,6 +403,7 @@ export function CameraController({
   ptzPitch = 0,
   ptzZoom = 1.0,
   introStartedAt = null,
+  roundIntroDoneAt = null,
   kdStartCooldownUntil = null,
   isIdleLobby = false,
   isPostIntroStandby = false,
@@ -560,7 +568,7 @@ export function CameraController({
     // - 11.5s+: Continuous sweeping panoramic orbit across the 3D studio stage
     if (isPostIntroStandby) {
       const now = serverNow ? serverNow() : Date.now();
-      const startAt = postIntroStandbyStartRef.current ?? now;
+      const startAt = roundIntroDoneAt ?? postIntroStandbyStartRef.current ?? now;
       const elapsedSec = Math.max(0, (now - startAt) / 1000);
 
       if (elapsedSec < 3.5) {

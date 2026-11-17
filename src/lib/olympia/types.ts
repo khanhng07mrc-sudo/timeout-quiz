@@ -602,6 +602,12 @@ export interface OlympiaState {
   currentRound: RoundId | null;
   roundStatus: Record<RoundId, RoundStatus>;
   banner: string | null; // section title screen
+  /** Tăng mỗi lần mở intro phần thi (kể cả bấm lại cùng vòng) → token chống lệnh banner:hide cũ/trùng */
+  bannerSeq?: number;
+  /** Mốc server khi intro phần thi bắt đầu */
+  bannerStartedAt?: number | null;
+  /** Mốc server khi intro kết thúc (mốc 0 của chuỗi camera đầu phần thi) */
+  roundIntroDoneAt?: number | null;
   entranceState?: ContestantEntranceState | null; // Hoạt cảnh thí sinh chào sân (từ sau cổng vòm xuống cầu thang)
   entranceCompleted?: boolean; // Đánh dấu đã hoàn thành hoạt cảnh chào sân (tất cả thí sinh đã bước xuống bục)
   introTimer?: TimerState | null; // opening show intro countdown timer (5s)

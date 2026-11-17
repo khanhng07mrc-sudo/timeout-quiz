@@ -183,9 +183,10 @@ export function OlympiaStudio3DScene({
           ptzPitch={ptzPitch}
           ptzZoom={ptzZoom}
           introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
+          roundIntroDoneAt={state?.roundIntroDoneAt ?? null}
           kdStartCooldownUntil={state?.khoiDong?.startCooldownUntil ?? null}
           isIdleLobby={Boolean(isIdle && !state?.studioCameraManual && !state?.entranceState?.active)}
-          isPostIntroStandby={isRoundPostIntroStandby(state)}
+          isPostIntroStandby={isRoundPostIntroStandby(state, serverNow ? serverNow() : Date.now())}
           serverNow={serverNow}
         />
 

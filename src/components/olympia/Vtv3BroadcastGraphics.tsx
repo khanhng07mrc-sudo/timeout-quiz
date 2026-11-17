@@ -317,61 +317,64 @@ export function BroadcastRoundIntroOverlay({
   onDismiss,
 }: {
   state: OlympiaState;
-  onDismiss?: () => void;
+  onDismiss?: (opts?: { seq?: number }) => void;
 }) {
   const round = state.currentRound;
   const primarySrc = round && round !== "cauHoiPhu" ? (ROUND_VIDEOS[round] ?? null) : null;
   const fallbackSrc = round && round !== "cauHoiPhu" ? (ROUND_FALLBACK_VIDEOS[round] ?? null) : null;
   const [useFallback, setUseFallback] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const dismissedRef = useRef(false);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
 
   useEffect(() => {
     setUseFallback(false);
-  }, [round]);
+    setIsPlaying(false);
+    dismissedRef.current = false;
+  }, [round, state.bannerSeq]);
 
   const videoSrc = useFallback ? fallbackSrc : primarySrc;
 
   const handleDismiss = useCallback(() => {
-    onDismiss?.();
-  }, [onDismiss]);
+    if (dismissedRef.current) return;
+    dismissedRef.current = true;
+    onDismissRef.current?.({ seq: state.bannerSeq });
+  }, [state.bannerSeq]);
 
-  // Auto-dismiss after 7.66s matching section_intro.mp3 audio track duration
+  // Video playback timer: only counts down once video actually starts playing (onPlaying)
+  // Matching 7.66s WebM video duration + 200ms graceful hold
   useEffect(() => {
-    if (state.stage !== "playing" || !state.banner || !videoSrc) return;
+    if (!isPlaying || state.stage !== "playing" || !state.banner || !videoSrc) return;
     const timer = setTimeout(() => {
       handleDismiss();
-    }, 7660);
+    }, 7860);
     return () => clearTimeout(timer);
-  }, [handleDismiss, state.banner, state.stage, videoSrc]);
+  }, [isPlaying, handleDismiss, state.banner, state.stage, videoSrc]);
 
-  // Keyboard shortcut (Space / Escape / Enter) to skip intro immediately
+  // Safety mount fallback: if video stalls or fails to trigger onPlaying for 9.5s
   useEffect(() => {
     if (state.stage !== "playing" || !state.banner || !videoSrc) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" || e.code === "Escape" || e.code === "Enter") {
-        e.preventDefault();
-        handleDismiss();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleDismiss, state.banner, state.stage, videoSrc]);
+    const fallbackTimer = setTimeout(() => {
+      handleDismiss();
+    }, 9500);
+    return () => clearTimeout(fallbackTimer);
+  }, [state.bannerSeq, state.banner, state.stage, videoSrc, handleDismiss]);
 
   if (state.stage !== "playing" || !state.banner || round === "cauHoiPhu" || !videoSrc) {
     return null;
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black overflow-hidden select-none cursor-pointer"
-      onClick={handleDismiss}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black overflow-hidden select-none pointer-events-none">
       <video
-        key={videoSrc}
+        key={`${state.bannerSeq ?? 0}_${videoSrc}`}
         src={videoSrc}
         autoPlay
         playsInline
         muted
         className="w-full h-full object-cover pointer-events-none"
+        onPlaying={() => setIsPlaying(true)}
         onEnded={handleDismiss}
         onError={() => {
           if (!useFallback && fallbackSrc) {
@@ -381,9 +384,18 @@ export function BroadcastRoundIntroOverlay({
           }
         }}
       />
-      <div className="absolute top-6 right-6 opacity-40 hover:opacity-100 transition-opacity text-white text-xs font-mono bg-black/60 px-3 py-1.5 rounded-full border border-white/20 pointer-events-auto">
-        Nhấn để bỏ qua (SPACE / ESC)
-      </div>
+      {/* Explicit skip button for operators / testing without accidental clicks */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDismiss();
+        }}
+        className="absolute top-6 right-6 opacity-40 hover:opacity-100 transition-opacity text-white text-xs font-mono bg-black/60 px-3.5 py-1.5 rounded-full border border-white/20 pointer-events-auto cursor-pointer"
+        title="Bỏ qua video intro"
+      >
+        Bỏ qua intro ⏭
+      </button>
     </div>
   );
 }

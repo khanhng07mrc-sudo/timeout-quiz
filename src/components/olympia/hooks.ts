@@ -314,8 +314,10 @@ export const isLoopingBgm = (sound: string): boolean =>
 export const isIntroOrMusicTrack = (sound: string): boolean =>
   /(?:show_intro|contest_intro|contestant_intro|ending_music|summary|prize_award)$/.test(sound);
 
-export const isIntroSeamlessLoopTrack = (_sound: string): boolean => {
-  return false;
+export const isIntroSeamlessLoopTrack = (sound: string): boolean => {
+  if (!sound) return false;
+  const clean = sound.split("?")[0].replace(/\.mp3$/, "");
+  return /(?:^|\/)(?:show_intro|contest_intro)$/.test(clean);
 };
 
 /** Loops contestant_intro seamlessly when there are more than 4 active contestants */

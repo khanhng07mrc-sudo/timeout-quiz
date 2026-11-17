@@ -317,7 +317,7 @@ export function useOlympiaCameraState(
     state?.entranceState?.active ||
       state?.introTimer ||
       state?.introStandby ||
-      isRoundPostIntroStandby(state) ||
+      isRoundPostIntroStandby(state, getNow()) ||
       (state?.currentRound === "khoiDong" &&
         state?.khoiDong &&
         (!state.khoiDong.started ||
@@ -444,8 +444,9 @@ export function useOlympiaCameraState(
     // - 3.5s - 7.5s: CAM 3 Bục MC & Cổng Lục Giác with smooth zoom-in
     // - 7.5s - 11.5s: CAM 10 Toàn Cảnh Bục Thí Sinh
     // - 11.5s+: CAM 1 Sweeping Wide Studio Orbit
-    if (isRoundPostIntroStandby(state)) {
-      const postIntroElapsed = Math.max(0, (now - roundEnteredAtRef.current) / 1000);
+    if (isRoundPostIntroStandby(state, now)) {
+      const baseTime = state?.roundIntroDoneAt ?? roundEnteredAtRef.current;
+      const postIntroElapsed = Math.max(0, (now - baseTime) / 1000);
       if (postIntroElapsed < 3.5) {
         return {
           camAngle: 14,

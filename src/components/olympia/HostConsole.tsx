@@ -172,16 +172,6 @@ export const HostConsole = React.memo(function HostConsole({
     return call(type, extra);
   };
 
-  // Auto-dismiss round intro banner after 7.66s (matching the 7.66s WebM intro video & section_intro.mp3)
-  // Triggers banner:hide on the engine, which cues start_round audio and starts the 3D studio opening camera sequence
-  useEffect(() => {
-    if (state?.stage !== "playing" || !state?.banner) return;
-    const timer = setTimeout(() => {
-      call("banner:hide");
-    }, 7660);
-    return () => clearTimeout(timer);
-  }, [state?.stage, state?.banner, state?.currentRound]);
-
   // Keyboard Shortcuts matching the reference application:
   // Space: Play/Pause | Enter: Đúng | Bksp: Sai | W: Nền chờ | R: Lật đáp án | C: Toggle chuông | S: Ngôi sao | B: Bảng điểm | N: Câu tiếp
   useEffect(() => {
@@ -192,7 +182,12 @@ export const HostConsole = React.memo(function HostConsole({
       // Enter/Space on a focused button must only activate that button, never a host shortcut
       if ((tag === "button" || tag === "a") && (e.key === "Enter" || e.code === "Space")) return;
 
-      const isIntro = state?.stage === "playing" && (Boolean(state.introTimer) || Boolean(state.entranceState?.active) || Boolean(state.introStandby));
+      const isIntro =
+        state?.stage === "playing" &&
+        (Boolean(state.introTimer) ||
+          Boolean(state.entranceState?.active) ||
+          Boolean(state.introStandby) ||
+          Boolean(state.banner));
       const notInGame = state?.stage !== "playing" || isIntro;
 
       // When in lobby or intro stage, lock all game actions and scoring hotkeys!
@@ -1498,6 +1493,32 @@ export const HostConsole = React.memo(function HostConsole({
                   </div>
                 </div>
               )}
+              {/* Round Intro Active Indicator & Skip Button */}
+              {Boolean(state.banner) && (
+                <div className="bg-gradient-to-r from-amber-950/80 via-orange-950/80 to-amber-950/80 border-2 border-amber-400/60 rounded-2xl p-3 shadow-[0_0_25px_rgba(251,191,36,0.25)] flex items-center justify-between gap-3 animate-fade-in mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl animate-pulse">🎬</span>
+                    <div>
+                      <div className="text-xs font-black uppercase text-amber-300 tracking-wider">
+                        Đang phát Intro 3D: {state.banner}
+                      </div>
+                      <div className="text-[10px] text-amber-200/70 font-mono">
+                        Video WebM 7.66s &amp; section_intro.mp3 đang phát trên màn hình chiếu
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => call("banner:skip")}
+                    className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                    title="Bỏ qua video intro và vào ngay phần thi"
+                  >
+                    <span>Bỏ qua Intro</span>
+                    <span>⏭</span>
+                  </button>
+                </div>
+              )}
+
               {!isIntroStage && curRound === "khoiDong" && (
                 <KhoiDongDeck
                   state={state}

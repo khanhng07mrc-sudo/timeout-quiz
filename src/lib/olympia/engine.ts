@@ -272,6 +272,9 @@ export class OlympiaGame {
       currentRound: null,
       roundStatus: emptyRoundStatus(),
       banner: null,
+      bannerSeq: 0,
+      bannerStartedAt: null,
+      roundIntroDoneAt: null,
       showStageGraphics: false,
       khoiDong: null,
       vcnv: null,
@@ -535,6 +538,27 @@ export class OlympiaGame {
       return true;
     }
 
+    // Server safety fallback: auto-dismiss round intro banner after 10.5s if no Display dismissed it
+    if (st.banner && st.bannerStartedAt && now - st.bannerStartedAt >= 10500) {
+      const curRound = st.currentRound;
+      st.banner = null;
+      st.bannerStartedAt = null;
+      st.roundIntroDoneAt = now;
+      if (curRound && curRound !== "cauHoiPhu") {
+        if (curRound === "khoiDong") {
+          this.cue("1_KhoiDong/start_round");
+        } else if (curRound === "vcnv") {
+          this.cue("2_VuotChuongNgaiVat/start_round");
+        } else if (curRound === "tangToc") {
+          this.cue("3_TangToc/start_round");
+        } else if (curRound === "veDich") {
+          this.cue("4_VeDich/start_round");
+        }
+      }
+      this.touch(now);
+      return true;
+    }
+
     // Auto-advance contestant entrance synchronized with collision-free rear-corridor walk per seat
     if (st.entranceState && st.entranceState.active) {
       const elapsedForSeat = now - st.entranceState.seatStartedAt;
@@ -688,9 +712,14 @@ export class OlympiaGame {
     st.roundStatus[round] = "active";
     if (round !== "cauHoiPhu") {
       st.banner = ROUND_LABELS[round];
+      st.bannerSeq = (st.bannerSeq ?? 0) + 1;
+      st.bannerStartedAt = now;
+      st.roundIntroDoneAt = null;
       this.cue("6_NhacKhac/section_intro");
     } else {
       st.banner = null;
+      st.bannerStartedAt = null;
+      st.roundIntroDoneAt = now;
     }
 
     switch (round) {
@@ -957,6 +986,9 @@ export class OlympiaGame {
         const res = this.nextRound(now);
         if (!res.ok) return res;
         st.banner = null;
+        st.bannerSeq = 0;
+        st.bannerStartedAt = null;
+        st.roundIntroDoneAt = null;
         // Giữ trạng thái intro/chào đầu cho tới khi Host chủ động chọn vòng thi (không tự nhảy sang Khởi Động)
         st.introStandby = true;
         st.introTimer = mkTimer(86400000);
@@ -1104,9 +1136,14 @@ export class OlympiaGame {
         if (st.entranceState) st.entranceState.active = false;
         if (st.currentRound && st.currentRound !== "cauHoiPhu") {
           st.banner = ROUND_LABELS[st.currentRound];
+          st.bannerSeq = (st.bannerSeq ?? 0) + 1;
+          st.bannerStartedAt = now;
+          st.roundIntroDoneAt = null;
           this.cue("6_NhacKhac/section_intro");
         } else {
           st.banner = null;
+          st.bannerStartedAt = null;
+          st.roundIntroDoneAt = now;
         }
         return OK;
       }
@@ -1133,7 +1170,18 @@ export class OlympiaGame {
       }
       case "banner:hide": {
         const curRound = st.currentRound;
+        const reqSeq = (a as any)?.seq !== undefined && (a as any)?.seq !== null ? Number((a as any).seq) : undefined;
+        // If a sequence token is provided, only dismiss if it matches current bannerSeq
+        if (reqSeq !== undefined && st.bannerSeq !== undefined && reqSeq !== st.bannerSeq) {
+          return OK; // Stale banner:hide, ignore
+        }
+        // If banner was already dismissed, don't re-trigger start_round sound
+        if (!st.banner) {
+          return OK;
+        }
         st.banner = null;
+        st.bannerStartedAt = null;
+        st.roundIntroDoneAt = now;
         if (curRound && curRound !== "cauHoiPhu") {
           if (curRound === "khoiDong") {
             this.cue("1_KhoiDong/start_round");
@@ -1143,6 +1191,26 @@ export class OlympiaGame {
             this.cue("3_TangToc/start_round");
           } else if (curRound === "veDich") {
             this.cue("4_VeDich/start_round");
+          }
+        }
+        return OK;
+      }
+      case "banner:skip": {
+        if (st.banner) {
+          const curRound = st.currentRound;
+          st.banner = null;
+          st.bannerStartedAt = null;
+          st.roundIntroDoneAt = now;
+          if (curRound && curRound !== "cauHoiPhu") {
+            if (curRound === "khoiDong") {
+              this.cue("1_KhoiDong/start_round");
+            } else if (curRound === "vcnv") {
+              this.cue("2_VuotChuongNgaiVat/start_round");
+            } else if (curRound === "tangToc") {
+              this.cue("3_TangToc/start_round");
+            } else if (curRound === "veDich") {
+              this.cue("4_VeDich/start_round");
+            }
           }
         }
         return OK;
@@ -1510,7 +1578,6 @@ export class OlympiaGame {
       }
     }
 
-    if (st.banner) st.banner = null;
     if (st.introTimer) st.introTimer = null;
     if (
       type.startsWith("kd:") ||
@@ -1519,6 +1586,11 @@ export class OlympiaGame {
       type.startsWith("vd:") ||
       type.startsWith("chp:")
     ) {
+      if (st.banner) {
+        st.banner = null;
+        st.bannerStartedAt = null;
+        if (!st.roundIntroDoneAt) st.roundIntroDoneAt = now;
+      }
       if (st.summaryState?.active) {
         st.summaryState.active = false;
       }

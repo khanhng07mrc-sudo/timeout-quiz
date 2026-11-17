@@ -430,10 +430,18 @@ export default function DisplayScreen({ code }: { code: string }) {
       {/* ── 4. BROADCAST STAGE BANNER & ROUND INTRO (Z-50) ── */}
       <BroadcastRoundIntroOverlay
         state={state}
-        onDismiss={() => {
-          emit("action", { type: "banner:hide" });
+        onDismiss={(opts) => {
+          emit("action", { type: "banner:hide", seq: opts?.seq ?? state.bannerSeq });
         }}
       />
+
+      {/* Preload 4 Round Intro WebM videos in background for 0ms instant playback */}
+      <div className="hidden pointer-events-none" aria-hidden="true">
+        <video src="/olympia-intro/khoi_dong.webm" preload="auto" muted playsInline />
+        <video src="/olympia-intro/vuot_chuong_ngai_vat.webm" preload="auto" muted playsInline />
+        <video src="/olympia-intro/tang_toc.webm" preload="auto" muted playsInline />
+        <video src="/olympia-intro/ve_dich.webm" preload="auto" muted playsInline />
+      </div>
 
       {/* ── 4.8. BROADCAST MANUAL VIDEO OVERLAY (KD, VCNV, VD, CHP) ── */}
       {(() => {

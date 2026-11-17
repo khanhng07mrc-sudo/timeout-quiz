@@ -106016,6 +106016,9 @@ var OlympiaGame = class _OlympiaGame {
       currentRound: null,
       roundStatus: emptyRoundStatus(),
       banner: null,
+      bannerSeq: 0,
+      bannerStartedAt: null,
+      roundIntroDoneAt: null,
       showStageGraphics: false,
       khoiDong: null,
       vcnv: null,
@@ -106236,6 +106239,25 @@ var OlympiaGame = class _OlympiaGame {
       this.touch(now);
       return true;
     }
+    if (st.banner && st.bannerStartedAt && now - st.bannerStartedAt >= 10500) {
+      const curRound = st.currentRound;
+      st.banner = null;
+      st.bannerStartedAt = null;
+      st.roundIntroDoneAt = now;
+      if (curRound && curRound !== "cauHoiPhu") {
+        if (curRound === "khoiDong") {
+          this.cue("1_KhoiDong/start_round");
+        } else if (curRound === "vcnv") {
+          this.cue("2_VuotChuongNgaiVat/start_round");
+        } else if (curRound === "tangToc") {
+          this.cue("3_TangToc/start_round");
+        } else if (curRound === "veDich") {
+          this.cue("4_VeDich/start_round");
+        }
+      }
+      this.touch(now);
+      return true;
+    }
     if (st.entranceState && st.entranceState.active) {
       const elapsedForSeat = now - st.entranceState.seatStartedAt;
       const activeCount = Math.max(1, st.seats.length);
@@ -106370,8 +106392,17 @@ var OlympiaGame = class _OlympiaGame {
     st.studioCamera = void 0;
     st.currentRound = round;
     st.roundStatus[round] = "active";
-    st.banner = ROUND_LABELS[round];
-    this.cue("6_NhacKhac/section_intro");
+    if (round !== "cauHoiPhu") {
+      st.banner = ROUND_LABELS[round];
+      st.bannerSeq = (st.bannerSeq ?? 0) + 1;
+      st.bannerStartedAt = now;
+      st.roundIntroDoneAt = null;
+      this.cue("6_NhacKhac/section_intro");
+    } else {
+      st.banner = null;
+      st.bannerStartedAt = null;
+      st.roundIntroDoneAt = now;
+    }
     switch (round) {
       case "khoiDong": {
         let rawSegs = this.ruleset.khoiDong.segments(active.length);
@@ -106618,6 +106649,9 @@ var OlympiaGame = class _OlympiaGame {
         const res = this.nextRound(now);
         if (!res.ok) return res;
         st.banner = null;
+        st.bannerSeq = 0;
+        st.bannerStartedAt = null;
+        st.roundIntroDoneAt = null;
         st.introStandby = true;
         st.introTimer = mkTimer(864e5);
         startTimer(st.introTimer, now);
@@ -106743,9 +106777,16 @@ var OlympiaGame = class _OlympiaGame {
         st.introStandby = false;
         st.entranceCompleted = true;
         if (st.entranceState) st.entranceState.active = false;
-        st.banner = st.currentRound ? ROUND_LABELS[st.currentRound] : null;
-        if (st.currentRound) {
+        if (st.currentRound && st.currentRound !== "cauHoiPhu") {
+          st.banner = ROUND_LABELS[st.currentRound];
+          st.bannerSeq = (st.bannerSeq ?? 0) + 1;
+          st.bannerStartedAt = now;
+          st.roundIntroDoneAt = null;
           this.cue("6_NhacKhac/section_intro");
+        } else {
+          st.banner = null;
+          st.bannerStartedAt = null;
+          st.roundIntroDoneAt = now;
         }
         return OK;
       }
@@ -106772,11 +106813,46 @@ var OlympiaGame = class _OlympiaGame {
       }
       case "banner:hide": {
         const curRound = st.currentRound;
+        const reqSeq = a?.seq !== void 0 && a?.seq !== null ? Number(a.seq) : void 0;
+        if (reqSeq !== void 0 && st.bannerSeq !== void 0 && reqSeq !== st.bannerSeq) {
+          return OK;
+        }
+        if (!st.banner) {
+          return OK;
+        }
         st.banner = null;
-        if (curRound) {
-          this.cue(
-            curRound === "khoiDong" ? "1_KhoiDong/start_round" : curRound === "vcnv" ? "2_VuotChuongNgaiVat/start_round" : curRound === "tangToc" ? "3_TangToc/start_round" : "4_VeDich/start_round"
-          );
+        st.bannerStartedAt = null;
+        st.roundIntroDoneAt = now;
+        if (curRound && curRound !== "cauHoiPhu") {
+          if (curRound === "khoiDong") {
+            this.cue("1_KhoiDong/start_round");
+          } else if (curRound === "vcnv") {
+            this.cue("2_VuotChuongNgaiVat/start_round");
+          } else if (curRound === "tangToc") {
+            this.cue("3_TangToc/start_round");
+          } else if (curRound === "veDich") {
+            this.cue("4_VeDich/start_round");
+          }
+        }
+        return OK;
+      }
+      case "banner:skip": {
+        if (st.banner) {
+          const curRound = st.currentRound;
+          st.banner = null;
+          st.bannerStartedAt = null;
+          st.roundIntroDoneAt = now;
+          if (curRound && curRound !== "cauHoiPhu") {
+            if (curRound === "khoiDong") {
+              this.cue("1_KhoiDong/start_round");
+            } else if (curRound === "vcnv") {
+              this.cue("2_VuotChuongNgaiVat/start_round");
+            } else if (curRound === "tangToc") {
+              this.cue("3_TangToc/start_round");
+            } else if (curRound === "veDich") {
+              this.cue("4_VeDich/start_round");
+            }
+          }
         }
         return OK;
       }
@@ -107129,9 +107205,13 @@ var OlympiaGame = class _OlympiaGame {
         return OK;
       }
     }
-    if (st.banner) st.banner = null;
     if (st.introTimer) st.introTimer = null;
     if (type.startsWith("kd:") || type.startsWith("vcnv:") || type.startsWith("tt:") || type.startsWith("vd:") || type.startsWith("chp:")) {
+      if (st.banner) {
+        st.banner = null;
+        st.bannerStartedAt = null;
+        if (!st.roundIntroDoneAt) st.roundIntroDoneAt = now;
+      }
       if (st.summaryState?.active) {
         st.summaryState.active = false;
       }
@@ -109516,6 +109596,12 @@ function scheduleSave(entry) {
     entry.saveTimer = null;
     try {
       const stage = entry.game.state.stage;
+      if (entry.baseConfig && typeof entry.baseConfig === "object") {
+        if (!entry.baseConfig.olympia || typeof entry.baseConfig.olympia !== "object") {
+          entry.baseConfig.olympia = {};
+        }
+        entry.baseConfig.olympia.chpQuestionLimit = entry.game.state.chpQuestionLimit;
+      }
       const data = {
         config: { ...entry.baseConfig, olympiaSnapshot: entry.game.state }
       };
@@ -109680,7 +109766,10 @@ function registerOlympiaSocket(io2) {
     const withEntry = () => info ? games.get(info.code) ?? null : null;
     socket.on("action", (action, ack) => {
       const entry = withEntry();
-      if (!entry || !info || info.role !== "host") return ack?.({ ok: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n" });
+      const isDisplayBannerHide = info?.role === "display" && action?.type === "banner:hide";
+      if (!entry || !info || info.role !== "host" && !isDisplayBannerHide) {
+        return ack?.({ ok: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n" });
+      }
       if (action.type === "seat:kick") {
         const seatId = Number(action.seat);
         for (const [sockId, cInfo] of entry.clients.entries()) {

@@ -3360,6 +3360,87 @@ test("R1-R4: 4 Custom 3D WebM Intro Videos, Câu Hỏi Phụ Intro Exemption, Po
   assert.equal(g.view("player", 0).chpQuestionLimit, 3);
 });
 
+test("Round Intro Sequence Token (bannerSeq), Idempotent banner:hide, banner:skip, and Server Tick Fallback", () => {
+  const g = new OlympiaGame(
+    "TEST",
+    {
+      rulesetId: "O26",
+      rounds: ["khoiDong", "vcnv", "tangToc", "veDich"],
+      questionSet: SAMPLE_QUESTION_SET,
+      playIntroOnCreate: false,
+    },
+    1000
+  );
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  act(g, "game:start", {}, 1000);
+
+  // 1. Force Khởi Động: bannerSeq is 1, bannerStartedAt is set, roundIntroDoneAt is null
+  act(g, "round:force", { round: "khoiDong" }, 2000);
+  assert.equal(g.state.banner, "Khởi Động");
+  assert.equal(g.state.bannerSeq, 1);
+  assert.equal(g.state.bannerStartedAt, 2000);
+  assert.equal(g.state.roundIntroDoneAt, null);
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/section_intro");
+
+  // 2. Stale banner:hide with mismatched seq (e.g. seq = 999) is ignored
+  const staleRes = g.hostAction({ type: "banner:hide", seq: 999 }, 3000);
+  assert.equal(staleRes.ok, true);
+  assert.equal(g.state.banner, "Khởi Động", "Banner must not be dismissed by stale seq");
+  assert.equal(g.state.roundIntroDoneAt, null);
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/section_intro");
+
+  // 3. Valid banner:hide with matching seq (seq = 1) clears banner, sets roundIntroDoneAt, cues start_round
+  act(g, "banner:hide", { seq: 1 }, 9660);
+  assert.equal(g.state.banner, null);
+  assert.equal(g.state.bannerStartedAt, null);
+  assert.equal(g.state.roundIntroDoneAt, 9660);
+  assert.equal(g.state.cue?.sound, "1_KhoiDong/start_round");
+
+  // 4. Duplicate banner:hide is a no-op (does not re-cue start_round)
+  const cueBefore = g.state.cue?.id;
+  act(g, "banner:hide", { seq: 1 }, 10000);
+  assert.equal(g.state.cue?.id, cueBefore, "Duplicate banner:hide must not trigger another audio cue");
+
+  // 5. Re-triggering the same round increments bannerSeq to 2
+  act(g, "round:force", { round: "khoiDong" }, 15000);
+  assert.equal(g.state.banner, "Khởi Động");
+  assert.equal(g.state.bannerSeq, 2);
+  assert.equal(g.state.bannerStartedAt, 15000);
+  assert.equal(g.state.roundIntroDoneAt, null);
+
+  // 6. Test banner:skip (Host immediate skip)
+  act(g, "banner:skip", {}, 16000);
+  assert.equal(g.state.banner, null);
+  assert.equal(g.state.roundIntroDoneAt, 16000);
+  assert.equal(g.state.cue?.sound, "1_KhoiDong/start_round");
+
+  // 7. Test Server Safety Net Tick: auto-dismisses after 10.5s if no Display dismissed it
+  act(g, "round:force", { round: "vcnv" }, 20000);
+  assert.equal(g.state.banner, "Vượt Chướng Ngại Vật");
+  assert.equal(g.state.bannerSeq, 3);
+  assert.equal(g.state.bannerStartedAt, 20000);
+
+  // Tick before 10.5s (e.g. at 25s = 5s elapsed): banner stays active
+  g.tick(25000);
+  assert.equal(g.state.banner, "Vượt Chướng Ngại Vật");
+
+  // Tick after 10.5s (at 30600 = 10.6s elapsed): banner auto-dismisses and cues start_round
+  g.tick(30600);
+  assert.equal(g.state.banner, null);
+  assert.equal(g.state.roundIntroDoneAt, 30600);
+  assert.equal(g.state.cue?.sound, "2_VuotChuongNgaiVat/start_round");
+
+  // 8. Tăng Tốc and Về Đích cue their respective start_round sounds
+  act(g, "round:force", { round: "tangToc" }, 35000);
+  act(g, "banner:hide", { seq: 4 }, 42660);
+  assert.equal(g.state.cue?.sound, "3_TangToc/start_round");
+
+  act(g, "round:force", { round: "veDich" }, 45000);
+  act(g, "banner:hide", { seq: 5 }, 52660);
+  assert.equal(g.state.cue?.sound, "4_VeDich/start_round");
+});
+
 
 
 

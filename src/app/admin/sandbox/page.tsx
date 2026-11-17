@@ -10468,6 +10468,16 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       {ROUND_LABELS[olympiaState.currentRound]}
                     </button>
                   )}
+                  {olympiaState?.banner && (
+                    <button
+                      type="button"
+                      onClick={() => sendOlympiaAction("banner:skip")}
+                      className="px-2 py-0.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10.5px] font-black shadow flex items-center gap-1 cursor-pointer"
+                      title="Bỏ qua video intro và vào ngay phần thi"
+                    >
+                      <span>Bỏ qua Intro ⏭</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="hidden lg:flex items-center gap-1.5 flex-nowrap shrink-0 justify-center">

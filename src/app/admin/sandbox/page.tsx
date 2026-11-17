@@ -615,7 +615,13 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
           prev.stage === s.stage &&
           prev.currentRound === s.currentRound &&
           prev.rulesetId === s.rulesetId &&
-          Boolean(prev.introTimer) === Boolean(s.introTimer)
+          Boolean(prev.introTimer) === Boolean(s.introTimer) &&
+          prev.banner === s.banner &&
+          prev.bannerSeq === s.bannerSeq &&
+          prev.overlayMode === s.overlayMode &&
+          prev.roundIntroDoneAt === s.roundIntroDoneAt &&
+          prev.themeMode === s.themeMode &&
+          prev.showScoreboard === s.showScoreboard
         ) {
           return prev;
         }

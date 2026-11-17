@@ -6,6 +6,7 @@ import { ROUND_LABELS, type HostAction, type OlympiaState, type Seat, type Timer
 import { parseVcnvAnswer, cleanVcnvWord, stripVcnvLetterCount, getVcnvUnit } from "@/lib/olympia/engine";
 import { activeSeats, seatName, SEAT_COLORS } from "./ui";
 import { OlympiaBroadcastVideo } from "./OlympiaBroadcastVideo";
+import { getPreloadedVideoUrl } from "@/lib/olympia/assetCache";
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
@@ -320,7 +321,8 @@ export function BroadcastRoundIntroOverlay({
   onDismiss?: (opts?: { seq?: number }) => void;
 }) {
   const round = state.currentRound;
-  const primarySrc = round && round !== "cauHoiPhu" ? (ROUND_VIDEOS[round] ?? null) : null;
+  const preloaded = round && round !== "cauHoiPhu" ? getPreloadedVideoUrl(round) : null;
+  const primarySrc = preloaded || (round && round !== "cauHoiPhu" ? (ROUND_VIDEOS[round] ?? null) : null);
   const fallbackSrc = round && round !== "cauHoiPhu" ? (ROUND_FALLBACK_VIDEOS[round] ?? null) : null;
   const [useFallback, setUseFallback] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1242,6 +1244,7 @@ export interface ClassicUnifiedLowerThirdProps {
   serverNow: () => number;
   timerBadge?: TimerState | null;
   tiedSeats?: number[];
+  isFullscreen?: boolean;
   children?: React.ReactNode;
 }
 
@@ -1455,6 +1458,7 @@ export function ClassicUnifiedLowerThird({
   serverNow,
   timerBadge,
   tiedSeats,
+  isFullscreen = false,
   children,
 }: ClassicUnifiedLowerThirdProps) {
   const hasOpenedRef = useRef(false);
@@ -1581,7 +1585,11 @@ export function ClassicUnifiedLowerThird({
         </div>
 
         {/* ── LOWER CHAMBER: Fixed Broadcast Height, Top-Left Aligned Question or Integrated Shutter Answer Reveal ── */}
-        <div className="relative z-10 w-full flex-1 min-h-[160px] sm:min-h-[175px] md:min-h-[195px] max-h-[225px] px-5 sm:px-8 md:px-12 py-3.5 sm:py-5 flex flex-col items-start justify-start text-left overflow-hidden">
+        <div className={`relative z-10 w-full flex-1 px-5 sm:px-8 md:px-12 py-3.5 sm:py-5 flex flex-col items-start justify-start text-left overflow-hidden ${
+          isFullscreen
+            ? "min-h-[200px] sm:min-h-[240px] md:min-h-[280px] max-h-[420px]"
+            : "min-h-[160px] sm:min-h-[175px] md:min-h-[195px] max-h-[225px]"
+        }`}>
           {answerReveal?.show ? (
             <ClassicChamberAnswerView
               answerText={answerReveal.text}
@@ -1592,9 +1600,11 @@ export function ClassicUnifiedLowerThird({
             />
           ) : questionText ? (
             <div
-              className={`text-white font-black leading-snug pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text animate-fade-in ${clampQuestionFont(
-                questionText
-              )}`}
+              className={`text-white font-black leading-snug pt-1 pb-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] w-full max-w-[1440px] text-left select-text animate-fade-in ${
+                isFullscreen
+                  ? "text-xl sm:text-2xl md:text-3xl"
+                  : clampQuestionFont(questionText)
+              }`}
             >
               {questionText}
             </div>
@@ -3816,11 +3826,12 @@ export function Vtv3ClassicSummaryGraphic({
     <div
       className={
         isFs
-          ? "absolute inset-0 z-50 flex flex-col items-center justify-center p-6 bg-black/85 backdrop-blur-md pointer-events-auto select-none cursor-pointer"
+          ? "absolute inset-0 z-50 flex flex-col items-center justify-center p-6 bg-[#070b14] overflow-hidden pointer-events-auto select-none cursor-pointer"
           : "absolute inset-x-0 bottom-0 z-50 flex flex-col items-center justify-end pb-4 sm:pb-5 bg-transparent pointer-events-auto select-none cursor-pointer"
       }
       onClick={handleNext}
     >
+      {isFs && <Vtv3ChalkboardBackdrop className="opacity-95" />}
       <div className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center">
         <HorizontalBrassRod />
         <div

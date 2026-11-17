@@ -29,6 +29,7 @@ import {
   Olympia22BackgroundBackdrop,
   BroadcastRoundIntroOverlay,
 } from "./Vtv3BroadcastGraphics";
+import { preloadOlympiaIntroVideos } from "@/lib/olympia/assetCache";
 import { isTtsEnabled, setTtsEnabled, speakTTS, cancelTTS } from "@/lib/olympia/tts";
 
 const OlympiaStudio3DScene = dynamic(() => import("./OlympiaStudio3DScene"), {
@@ -200,6 +201,10 @@ export default function DisplayScreen({ code }: { code: string }) {
     };
   }, [isExplicitMuteParam]);
 
+  useEffect(() => {
+    preloadOlympiaIntroVideos();
+  }, []);
+
   const handleUserUnlock = useCallback(() => {
     if (typeof (window as any).__OLYMPIA_UNLOCK_AUDIO__ === "function") {
       (window as any).__OLYMPIA_UNLOCK_AUDIO__();
@@ -305,7 +310,7 @@ export default function DisplayScreen({ code }: { code: string }) {
     isTangTocReveal ||
     isTangTocQuestion ||
     isVcnvFullscreen ||
-    (state.overlayMode === "FULLSCREEN" && state.currentRound !== "khoiDong" && state.currentRound !== "veDich");
+    state.overlayMode === "FULLSCREEN";
 
   const isLowerThird = !showFullscreen;
   const isOverlayHidden = cameraState.isOverlayHidden;
@@ -322,13 +327,12 @@ export default function DisplayScreen({ code }: { code: string }) {
     state.vcnv?.phase !== "waitingAnswer";
 
   const is3DPaused = Boolean(
-    showFullscreen &&
-      state.stage === "playing" &&
-      !state.banner &&
-      !isOverlayHidden &&
-      !state.summaryState?.active &&
-      activeRoundContent &&
-      !isVcnvQuadView
+    Boolean(state.banner) ||
+      Boolean(state.summaryState?.isFullscreen) ||
+      (showFullscreen &&
+        state.stage === "playing" &&
+        !isOverlayHidden &&
+        !isVcnvQuadView)
   );
 
   return (
@@ -541,12 +545,20 @@ export default function DisplayScreen({ code }: { code: string }) {
             </div>
           ) : (
             /* ── FULLSCREEN BROADCAST OVERLAY (AUTHENTIC VTV3 GRAPHICS) ── */
-            <div className="absolute inset-0 pointer-events-auto z-30 flex items-center justify-center">
-              {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
-              {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} isLowerThird={false} />}
-              {state.currentRound === "tangToc" && <TangToc state={state} serverNow={serverNow} />}
-              {state.currentRound === "veDich" && <VeDich state={state} serverNow={serverNow} />}
-              {state.currentRound === "cauHoiPhu" && <Chp state={state} serverNow={serverNow} />}
+            <div className="absolute inset-0 pointer-events-auto z-30 flex items-center justify-center overflow-hidden bg-[#070b14]">
+              {/* Opaque Broadcast Backdrop: Chalkboard with formulas for Classic, or Olympia22 for V3 */}
+              {state.themeMode === "o26_classic" ? (
+                <Vtv3ChalkboardBackdrop className="opacity-95" />
+              ) : (
+                <Olympia22BackgroundBackdrop />
+              )}
+              <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-4 sm:px-8 py-4 sm:py-6 overflow-hidden">
+                {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} isFullscreen={true} />}
+                {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} isLowerThird={false} />}
+                {state.currentRound === "tangToc" && <TangToc state={state} serverNow={serverNow} />}
+                {state.currentRound === "veDich" && <VeDich state={state} serverNow={serverNow} isFullscreen={true} />}
+                {state.currentRound === "cauHoiPhu" && <Chp state={state} serverNow={serverNow} isFullscreen={true} />}
+              </div>
             </div>
           )
         )}
@@ -575,7 +587,7 @@ function highlightSeats(s: OlympiaState): (number | null)[] {
   return [];
 }
 
-type P = { state: OlympiaState; serverNow: () => number; isLowerThird?: boolean };
+type P = { state: OlympiaState; serverNow: () => number; isLowerThird?: boolean; isFullscreen?: boolean };
 
 function Lobby({ state, code, origin }: { state: OlympiaState; code: string; origin: string }) {
   const seats = state.seats;
@@ -695,7 +707,7 @@ function DisplayTimerBar({ timer, serverNow }: { timer: any; serverNow: () => nu
   );
 }
 
-function KhoiDong({ state, serverNow }: P) {
+function KhoiDong({ state, serverNow, isFullscreen }: P) {
   const kd = state.khoiDong!;
   const seg = kd.segments[kd.segIdx];
   const isSolo = seg.kind === "solo";
@@ -718,12 +730,17 @@ function KhoiDong({ state, serverNow }: P) {
   const isTimerRunning = Boolean(kd.timer && kd.timer.startedAt != null);
   const kdSecondsBadgeTimer = isO23ToO26 && hasRevealedQ && isTimerRunning ? kd.timer : null;
 
+  const containerClass = isFullscreen
+    ? "w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex flex-col justify-center items-center h-full min-h-0 py-4 gap-3 my-auto animate-fade-in"
+    : "w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5";
+
   if (state.themeMode === "o26_classic") {
     return (
-      <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
+      <div className={containerClass}>
         <ClassicUnifiedLowerThird
           state={state}
           round="khoiDong"
+          isFullscreen={isFullscreen}
           activeSeatId={currentSoloSeat}
           buzzedSeatId={currentBuzzedSeat}
           lockedSeats={kd.lockedSeats}
@@ -759,10 +776,10 @@ function KhoiDong({ state, serverNow }: P) {
   }
 
   return (
-    <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end h-full min-h-0 py-1 gap-1.5">
+    <div className={containerClass}>
       {/* Main question card / Result answer overlay */}
       {kd.phase === "result" ? (
-        <div className="w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col justify-end animate-fade-in">
+        <div className={`w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col ${isFullscreen ? "justify-center items-center my-auto" : "justify-end"} animate-fade-in`}>
           <UnifiedOlympiaAnswerOverlay
             answerText={kd.current?.a || "(Chưa có đáp án)"}
             roundLabel="ĐÁP ÁN"
@@ -884,7 +901,7 @@ function TangToc({ state, serverNow }: P) {
   return <TangTocQuestionGraphic state={state} serverNow={serverNow} isSilent={tt.phase === "ranking" || tt.phase === "graded"} />;
 }
 
-function VeDich({ state, serverNow }: P) {
+function VeDich({ state, serverNow, isFullscreen }: P) {
   const vd = state.veDich!;
   const owner = vd.order[vd.turnIdx];
   const cur = vd.current;
@@ -961,10 +978,10 @@ function VeDich({ state, serverNow }: P) {
     Boolean(cur && (vd.phase === "thinking" || vd.phase === "stealing"));
 
   return (
-    <div key={`vd-turn-${owner}-${vd.turnIdx}`} className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end">
-      {/* While choosing package or viewing confirmed package: show slanted hexagonal package grid anchored at lower third */}
+    <div key={`vd-turn-${owner}-${vd.turnIdx}`} className={isFullscreen ? "w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex flex-col justify-center items-center my-auto animate-fade-in" : "w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end"}>
+      {/* While choosing package or viewing confirmed package: show slanted hexagonal package grid */}
       {showPackageGrid && (
-        <div key={`pkg-grid-${owner}-${vd.turnIdx}`} className="fixed inset-x-0 bottom-2 sm:bottom-3 z-30 flex items-end justify-center pointer-events-none px-4">
+        <div key={`pkg-grid-${owner}-${vd.turnIdx}`} className={isFullscreen ? "fixed inset-0 z-30 flex items-center justify-center pointer-events-none px-4" : "fixed inset-x-0 bottom-2 sm:bottom-3 z-30 flex items-end justify-center pointer-events-none px-4"}>
           <div className="pointer-events-auto w-full max-w-4xl flex items-center justify-center">
             <VeDichSlantedGridGraphic state={state} animate={true} closing={closing} />
           </div>
@@ -977,6 +994,7 @@ function VeDich({ state, serverNow }: P) {
           <ClassicUnifiedLowerThird
             state={state}
             round="veDich"
+            isFullscreen={isFullscreen}
             activeSeatId={owner}
             buzzedSeatId={vd.steal?.buzzedSeat ?? null}
             badgeLabel={cur?.points ? `${cur.points} ĐIỂM` : `CÂU ${vd.qIdx + 1}/3`}
@@ -1014,7 +1032,7 @@ function VeDich({ state, serverNow }: P) {
           />
         ) : null
       ) : isVdResult ? (
-        <div className="w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col justify-end animate-fade-in">
+        <div className={`w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col ${isFullscreen ? "justify-center items-center my-auto" : "justify-end"} animate-fade-in`}>
           <UnifiedOlympiaAnswerOverlay
             answerText={vdAnswer || (vdVerdict === "correct" ? "CHÍNH XÁC" : "CHƯA CHÍNH XÁC")}
             roundLabel="ĐÁP ÁN VỀ ĐÍCH"
@@ -1055,7 +1073,7 @@ function VeDich({ state, serverNow }: P) {
   );
 }
 
-function Chp({ state, serverNow }: P) {
+function Chp({ state, serverNow, isFullscreen }: P) {
   const cp = state.cauHoiPhu!;
   const q = cp.questions[cp.qIdx];
   const isChpResult = cp.phase === "result";
@@ -1072,12 +1090,13 @@ function Chp({ state, serverNow }: P) {
     cp.qIdx >= 0 ? `CÂU HỎI PHỤ ${cp.qIdx + 1}/${chpLimitLabel}` : "CÂU HỎI PHỤ";
 
   return (
-    <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto text-center space-y-2 animate-fade-in">
+    <div className={isFullscreen ? "w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto text-center space-y-2 my-auto flex flex-col justify-center items-center animate-fade-in" : "w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto text-center space-y-2 animate-fade-in"}>
       {state.themeMode === "o26_classic" ? (
         (q || isChpResult) ? (
           <ClassicUnifiedLowerThird
             state={state}
             round="cauHoiPhu"
+            isFullscreen={isFullscreen}
             tiedSeats={cp.tied}
             buzzedSeatId={cp.buzzedSeat || cp.winner}
             badgeLabel={chpBadgeLabel}
@@ -1098,7 +1117,7 @@ function Chp({ state, serverNow }: P) {
           />
         ) : null
       ) : isChpResult ? (
-        <div className="w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col justify-end animate-fade-in">
+        <div className={`w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col ${isFullscreen ? "justify-center items-center my-auto" : "justify-end"} animate-fade-in`}>
           <UnifiedOlympiaAnswerOverlay
             answerText={chpAnswer || (cp.winner != null ? "CHÍNH XÁC" : "KẾT QUẢ")}
             roundLabel={cp.qIdx >= 0 ? `ĐÁP ÁN CÂU HỎI PHỤ ${cp.qIdx + 1}/${chpLimitLabel}` : "ĐÁP ÁN CÂU HỎI PHỤ"}

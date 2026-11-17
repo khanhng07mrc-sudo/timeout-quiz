@@ -810,10 +810,10 @@ export const HostConsole = React.memo(function HostConsole({
                 else document.exitFullscreen().catch(() => {});
               }}
               className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1 cursor-pointer truncate"
-              title="Toàn màn hình (Phím F)"
+              title="Phóng to toàn màn hình trình duyệt (F11 / Phím F)"
             >
-              <span>🖥️</span>
-              <span className="truncate">Full (F)</span>
+              <span>⛶</span>
+              <span className="truncate">F11 Trình duyệt</span>
             </button>
             <button
               type="button"
@@ -1100,19 +1100,21 @@ export const HostConsole = React.memo(function HostConsole({
                 <span>💎</span>
                 <span className="truncate">{state.showStageGraphics ? "TRƯỜNG QUAY 3D: BẬT" : "TRƯỜNG QUAY 3D (H)"}</span>
               </button>
-              <button
-                type="button"
-                onClick={() => call("display:overlayMode")}
-                className={`py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer ${
-                  state.overlayMode === "FULLSCREEN"
-                    ? "bg-purple-600/30 text-purple-200 border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.3)]"
-                    : "bg-emerald-600/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
-                }`}
-                title="Chuyển chế độ hiển thị: 1/3 Dưới đè lên 3D hoặc Toàn Màn Hình"
-              >
-                <span>{state.overlayMode === "FULLSCREEN" ? "🔲" : "📺"}</span>
-                <span className="truncate">{state.overlayMode === "FULLSCREEN" ? "Toàn Màn" : "1/3 Dưới"}</span>
-              </button>
+              {!state.summaryState?.active && (
+                <button
+                  type="button"
+                  onClick={() => call("display:overlayMode")}
+                  className={`py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer ${
+                    state.overlayMode === "FULLSCREEN"
+                      ? "bg-purple-600/30 text-purple-200 border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.3)]"
+                      : "bg-emerald-600/25 text-emerald-200 border-emerald-400/60 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                  }`}
+                  title="Chuyển chế độ hiển thị: 1/3 Dưới đè lên 3D hoặc Toàn Màn Hình"
+                >
+                  <span>{state.overlayMode === "FULLSCREEN" ? "🔲" : "📺"}</span>
+                  <span className="truncate">{state.overlayMode === "FULLSCREEN" ? "Toàn Màn" : "1/3 Dưới"}</span>
+                </button>
+              )}
             </div>
 
             {/* Summary Controls Toolbar when Summary is active */}

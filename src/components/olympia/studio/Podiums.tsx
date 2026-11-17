@@ -6221,6 +6221,9 @@ export function Podiums({
         const curSeg = kd?.segments?.[kd.segIdx];
         const isKdSoloTurn = Boolean(
           state?.currentRound === "khoiDong" &&
+          kd?.started &&
+          kd?.phase !== "intro" &&
+          kd?.phase !== "segmentDone" &&
           curSeg?.kind === "solo" &&
           curSeg.seat === cfg.seatId
         );

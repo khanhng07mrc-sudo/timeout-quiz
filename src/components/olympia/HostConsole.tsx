@@ -863,6 +863,45 @@ export const HostConsole = React.memo(function HostConsole({
                 </button>
               </div>
             </div>
+            {/* Setting BGM Khởi Động: Tự động vs Thủ công (O23 - O27) */}
+            {["O23", "O24", "O25", "O26", "O27"].includes(state.rulesetId) && (
+              <div
+                className="w-full px-1 py-1 rounded bg-sky-950/35 border border-sky-500/25 flex flex-col gap-0.5"
+                title="Chế độ nhạc nền Khởi động (O23-O27): Tự động theo câu hỏi hoặc Host chọn thủ công 1, 2, 3"
+              >
+                <span className="text-[9px] font-bold text-sky-300/90 truncate">🎵 BGM Khởi Động</span>
+                <div className="grid grid-cols-2 gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      call("system:setKdBgmMode", { mode: "auto" });
+                      call("kd:setBgmMode", { mode: "auto" });
+                    }}
+                    className={`py-0.5 rounded text-[9px] font-black transition cursor-pointer ${
+                      state.khoiDong?.bgmMode !== "manual"
+                        ? "bg-sky-500 text-slate-950 shadow-sm"
+                        : "bg-slate-900/70 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Tự động
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      call("system:setKdBgmMode", { mode: "manual" });
+                      call("kd:setBgmMode", { mode: "manual" });
+                    }}
+                    className={`py-0.5 rounded text-[9px] font-black transition cursor-pointer ${
+                      state.khoiDong?.bgmMode === "manual"
+                        ? "bg-sky-500 text-slate-950 shadow-sm"
+                        : "bg-slate-900/70 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Thủ công
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </aside>
 
@@ -2675,22 +2714,134 @@ function KhoiDongDeck({
                 <span>Chuông (C): {kd.buzzOpen ? "MỞ" : "KHÓA"}</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => call("kd:cycle_bgm")}
-              className="py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold border border-white/10 cursor-pointer flex items-center justify-center gap-1"
-            >
-              <span>🎵</span>
-              <span>Đổi nhạc nền</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => call("audio:stop_bgm")}
-              className="py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer flex items-center justify-center gap-1"
-            >
-              <span>⏹</span>
-              <span>Dừng nhạc nền</span>
-            </button>
+            {["O23", "O24", "O25", "O26", "O27"].includes(state.rulesetId) ? (
+              <div className="col-span-2 sm:col-span-3 flex flex-col gap-1.5 p-2 rounded-xl bg-slate-900/60 border border-white/10">
+                <div className="flex items-center justify-between gap-1 text-[11px]">
+                  <span className="font-bold text-sky-300 flex items-center gap-1">
+                    <span>🎵</span>
+                    <span>BGM Khởi Động:</span>
+                    <span className="text-white font-black">
+                      {kd.bgmMode === "manual" ? "Thủ công" : "Tự động"}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      call("kd:setBgmMode", { mode: kd.bgmMode === "manual" ? "auto" : "manual" })
+                    }
+                    className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-200 border border-sky-400/40 hover:bg-sky-500/30 transition cursor-pointer"
+                  >
+                    Đổi: {kd.bgmMode === "manual" ? "Sang Tự động" : "Sang Thủ công"}
+                  </button>
+                </div>
+                {kd.bgmMode === "manual" ? (
+                  <div className="flex flex-col gap-1">
+                    <div className="grid grid-cols-3 gap-1">
+                      <button
+                        type="button"
+                        disabled={Boolean(kd.bgm3UsedInTurn)}
+                        onClick={() => call("kd:selectBgmTrack", { track: 1 })}
+                        className={`py-1.5 px-1 rounded-lg text-xs font-black border transition cursor-pointer flex flex-col items-center justify-center ${
+                          kd.currentBgmTrack === "kd_bgm_1"
+                            ? "bg-amber-400 text-slate-950 border-amber-300 shadow"
+                            : kd.bgm3UsedInTurn
+                            ? "bg-slate-800/40 text-slate-600 border-slate-700/40 cursor-not-allowed opacity-50"
+                            : "bg-white/10 hover:bg-white/15 text-slate-200 border-white/10"
+                        }`}
+                        title={
+                          kd.bgm3UsedInTurn
+                            ? "Đã chọn Nhạc 3 thì không thể kích hoạt lại Nhạc 1 hoặc 2 trong cùng lượt!"
+                            : "Bật Nhạc 1 (Đầu lượt)"
+                        }
+                      >
+                        <span>Nhạc 1</span>
+                        {kd.bgm3UsedInTurn && <span className="text-[9px]">🔒 Khóa</span>}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={Boolean(kd.bgm3UsedInTurn)}
+                        onClick={() => call("kd:selectBgmTrack", { track: 2 })}
+                        className={`py-1.5 px-1 rounded-lg text-xs font-black border transition cursor-pointer flex flex-col items-center justify-center ${
+                          kd.currentBgmTrack === "kd_bgm_2"
+                            ? "bg-amber-400 text-slate-950 border-amber-300 shadow"
+                            : kd.bgm3UsedInTurn
+                            ? "bg-slate-800/40 text-slate-600 border-slate-700/40 cursor-not-allowed opacity-50"
+                            : "bg-white/10 hover:bg-white/15 text-slate-200 border-white/10"
+                        }`}
+                        title={
+                          kd.bgm3UsedInTurn
+                            ? "Đã chọn Nhạc 3 thì không thể kích hoạt lại Nhạc 1 hoặc 2 trong cùng lượt!"
+                            : "Bật Nhạc 2 (Giữa lượt)"
+                        }
+                      >
+                        <span>Nhạc 2</span>
+                        {kd.bgm3UsedInTurn && <span className="text-[9px]">🔒 Khóa</span>}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => call("kd:selectBgmTrack", { track: 3 })}
+                        className={`py-1.5 px-1 rounded-lg text-xs font-black border transition cursor-pointer flex flex-col items-center justify-center ${
+                          kd.currentBgmTrack === "kd_bgm_3"
+                            ? "bg-amber-400 text-slate-950 border-amber-300 shadow"
+                            : "bg-white/10 hover:bg-white/15 text-slate-200 border-white/10"
+                        }`}
+                        title="Bật Nhạc 3 (Câu cuối - sau khi chọn sẽ khóa Nhạc 1 & 2 trong lượt này)"
+                      >
+                        <span>Nhạc 3</span>
+                        <span className="text-[9px] opacity-80">(Chốt lượt)</span>
+                      </button>
+                    </div>
+                    {kd.bgm3UsedInTurn && (
+                      <div className="text-[10px] text-amber-300/90 font-medium italic text-center">
+                        🔒 Đã kích hoạt Nhạc 3: Khóa Nhạc 1 & 2 trong cùng lượt thi
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-1 text-[10px] text-slate-300 bg-black/40 px-2 py-1 rounded-lg">
+                    <span>
+                      Track hiện tại:{" "}
+                      <span className="font-bold text-amber-300">
+                        {kd.currentBgmTrack
+                          ? kd.currentBgmTrack === "kd_bgm_3"
+                            ? "Nhạc 3 (Câu cuối)"
+                            : kd.currentBgmTrack === "kd_bgm_2"
+                            ? "Nhạc 2 (Giữa lượt)"
+                            : "Nhạc 1 (Đầu lượt)"
+                          : "Tự động kích hoạt khi mở câu 1"}
+                      </span>
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => call("audio:stop_bgm")}
+                  className="py-1 rounded-lg bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>⏹</span>
+                  <span>Dừng nhạc nền</span>
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => call("kd:cycle_bgm")}
+                  className="py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold border border-white/10 cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>🎵</span>
+                  <span>Đổi nhạc nền</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => call("audio:stop_bgm")}
+                  className="py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/40 text-rose-200 text-xs font-bold border border-rose-500/30 cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>⏹</span>
+                  <span>Dừng nhạc nền</span>
+                </button>
+              </>
+            )}
           </div>
         );
       })()}

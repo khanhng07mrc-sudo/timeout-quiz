@@ -3448,6 +3448,114 @@ test("Round Intro Sequence Token (bannerSeq), Idempotent banner:hide, banner:ski
   assert.equal(g.state.cue?.sound, "4_VeDich/start_round");
 });
 
+test("Khởi Động manual vs auto BGM mode and track selection lockout policy (O23-O27)", () => {
+  const g = game("O26", ["khoiDong"], 4);
+  act(g, "game:start");
+  act(g, "banner:skip", {}, 1000);
+
+  // Default mode is undefined/auto
+  assert.notEqual(g.state.khoiDong!.bgmMode, "manual");
+
+  // Toggle via system action and round action
+  act(g, "system:setKdBgmMode", { mode: "manual" });
+  assert.equal(g.state.khoiDong!.bgmMode, "manual");
+
+  act(g, "kd:start", {}, 2000);
+  assert.equal(g.state.khoiDong!.bgm3UsedInTurn, false);
+
+  // Manual track 1
+  act(g, "kd:selectBgmTrack", { track: 1 });
+  assert.equal(g.state.khoiDong!.currentBgmTrack, "kd_bgm_1");
+  assert.equal(g.state.cue?.sound, "1_KhoiDong/kd_bgm_1");
+
+  // Manual switch to track 2
+  act(g, "kd:selectBgmTrack", { track: 2 });
+  assert.equal(g.state.khoiDong!.currentBgmTrack, "kd_bgm_2");
+  assert.equal(g.state.cue?.sound, "1_KhoiDong/kd_bgm_2");
+
+  // Manual switch back to track 1 allowed
+  act(g, "kd:selectBgmTrack", { track: 1 });
+  assert.equal(g.state.khoiDong!.currentBgmTrack, "kd_bgm_1");
+
+  // Manual switch to track 3: locks track 1 and 2
+  act(g, "kd:selectBgmTrack", { track: 3 });
+  assert.equal(g.state.khoiDong!.currentBgmTrack, "kd_bgm_3");
+  assert.equal(g.state.khoiDong!.bgm3UsedInTurn, true);
+
+  // Attempting to select 1 or 2 now fails
+  const res1 = g.hostAction({ type: "kd:selectBgmTrack", track: 1 }, 2500);
+  assert.equal(res1.ok, false);
+  assert.match(res1.error || "", /Đã chọn Nhạc 3/);
+
+  const res2 = g.hostAction({ type: "kd:selectBgmTrack", track: 2 }, 2600);
+  assert.equal(res2.ok, false);
+  assert.match(res2.error || "", /Đã chọn Nhạc 3/);
+
+  // When Q1 is opened via kd:next, manual track 3 is preserved (not overwritten with kd_bgm_1)
+  g.tick(6000);
+  act(g, "kd:next", {}, 6100);
+  assert.equal(g.state.khoiDong!.currentBgmTrack, "kd_bgm_3");
+
+  // In manual mode, subsequent kd:next does NOT auto-advance track
+  act(g, "kd:next", {}, 7000);
+  assert.equal(g.state.khoiDong!.currentBgmTrack, "kd_bgm_3");
+
+  // New segment resets lockout
+  act(g, "kd:selectSegment", { kind: "shared" }, 10000);
+  assert.equal(g.state.khoiDong!.bgm3UsedInTurn, false);
+  assert.equal(g.state.khoiDong!.currentBgmTrack, undefined);
+
+  // In new segment, track 1 can be chosen again
+  act(g, "kd:selectBgmTrack", { track: 1 });
+  assert.equal(g.state.khoiDong!.currentBgmTrack, "kd_bgm_1");
+});
+
+test("Về Đích contestant package confirmation rejection & Host exclusive authority", () => {
+  const g = game("O26", ["veDich"], 4);
+  act(g, "game:start");
+  act(g, "banner:skip", {}, 1000);
+  act(g, "vd:onStage", {}, 2000);
+
+  // Player attempts to confirm package directly
+  const res = g.playerPickPackage(0, [20, 20, 20], 3000);
+  assert.equal(res.ok, false);
+  assert.match(res.error || "", /Thí sinh không được xác nhận gói/);
+
+  // Host confirms package directly on console
+  const hostRes = g.hostAction({ type: "vd:confirmPackage", points: [20, 20, 20] }, 3500);
+  assert.equal(hostRes.ok, true);
+  assert.equal(g.state.veDich!.phase, "packageReady");
+});
+
+test("Zero answer leak on non-host views outside Khởi Động and in Câu hỏi phụ", () => {
+  const g = game("O26", ["veDich"], 4);
+  act(g, "game:start");
+  act(g, "banner:skip", {}, 1000);
+  act(g, "vd:onStage", {}, 2000);
+  act(g, "vd:confirmPackage", { points: [20, 20, 20] }, 3000);
+
+  // Question 1 in Về Đích
+  act(g, "vd:startQuestion", {}, 4000);
+  assert.equal(g.state.veDich!.qIdx, 0);
+
+  // Transcript populated
+  act(g, "vd:correct", {}, 5000);
+  assert.ok((g.state.transcript?.length ?? 0) > 0);
+
+  const hostState = g.state;
+  const displayView = g.view("display");
+  const playerView = g.view("player", 0);
+
+  const hostQEntry = hostState.transcript?.find((e) => e.correctAnswer != null);
+  const displayQEntry = displayView.transcript?.find((e) => e.entryKind !== "package_select");
+  const playerQEntry = playerView.transcript?.find((e) => e.entryKind !== "package_select");
+
+  assert.ok(hostQEntry && hostQEntry.correctAnswer, "Host view keeps correctAnswer");
+  assert.equal(displayQEntry?.correctAnswer, undefined, "Display view strips correctAnswer");
+  assert.equal(playerQEntry?.correctAnswer, undefined, "Player view strips correctAnswer");
+});
+
+
 
 
 

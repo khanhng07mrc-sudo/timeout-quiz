@@ -1300,6 +1300,13 @@ export class OlympiaGame {
         }
         return OK;
       }
+      case "system:setKdBgmMode": {
+        const mode = a.mode === "manual" ? "manual" : "auto";
+        if (this.state.khoiDong) {
+          this.state.khoiDong.bgmMode = mode;
+        }
+        return OK;
+      }
       case "score:adjust": {
         const id = num("seat");
         if (!this.seat(id)) return fail("Ghế không hợp lệ");
@@ -1757,6 +1764,8 @@ export class OlympiaGame {
           kd.buzzUnlockAt = undefined;
           kd.lockedSeats = [];
           kd.nextLockedSeats = [];
+          kd.currentBgmTrack = undefined;
+          kd.bgm3UsedInTurn = false;
           kd.current = null;
           kd.lastVerdict = null;
           return OK;
@@ -1775,6 +1784,7 @@ export class OlympiaGame {
           kd.buzzOpen = false;
           kd.buzzUnlockAt = undefined;
           kd.currentBgmTrack = undefined;
+          kd.bgm3UsedInTurn = false;
           this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
           if (isLastSeg) {
             this.finishRound(now);
@@ -1832,9 +1842,15 @@ export class OlympiaGame {
               else this.cue("1_KhoiDong/90s", "bgm");
             }
           } else if (!kd.globalTimer) {
-            kd.currentBgmTrack = "kd_bgm_1";
-            // Chỉ phát BGM, tuyệt đối không phát lại "1_KhoiDong/open_question" vì đã phát lúc bung mở đồ hoạ ở t=3.5s
-            this.cue("1_KhoiDong/kd_bgm_1", "bgm");
+            if (kd.bgmMode === "manual") {
+              if (!kd.currentBgmTrack) {
+                kd.currentBgmTrack = "kd_bgm_1";
+                this.cue("1_KhoiDong/kd_bgm_1", "bgm");
+              }
+            } else {
+              kd.currentBgmTrack = "kd_bgm_1";
+              this.cue("1_KhoiDong/kd_bgm_1", "bgm");
+            }
           }
           return OK;
         }
@@ -1849,6 +1865,7 @@ export class OlympiaGame {
           kd.buzzOpen = false;
           kd.buzzUnlockAt = undefined;
           kd.currentBgmTrack = undefined;
+          kd.bgm3UsedInTurn = false;
           this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
           return OK;
         }
@@ -1901,31 +1918,36 @@ export class OlympiaGame {
         }
         const aSeason = this.ruleset.audioSeason;
         if (!seg.globalMs && aSeason !== "O13-21" && !(this.ruleset.id === "O22" && !isSolo)) {
-          const totalQ = seg.questions || 6;
-          // Quy tắc chuyển nhạc nền chuẩn:
-          // kd_bgm_1: từ Câu 1 đến Câu (Math.ceil(totalQ / 2) - 1)
-          // kd_bgm_2: từ câu tiếp theo cho tới câu áp chót (totalQ - 1)
-          // kd_bgm_3: ở câu cuối cùng (totalQ)
-          const halfCeil = Math.ceil(totalQ / 2);
-          const bgm1EndQ = Math.max(1, halfCeil - 1); // 1-based question number
-          const currentQNum = kd.qIdx + 1; // 1-based question number
-
-          let bgmTrack: "kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3";
-          if (currentQNum <= bgm1EndQ) {
-            bgmTrack = "kd_bgm_1";
-          } else if (currentQNum < totalQ) {
-            bgmTrack = "kd_bgm_2";
+          if (kd.bgmMode === "manual") {
+            // Manual BGM mode: Host manually chooses track 1, 2, or 3. Do not auto-advance.
           } else {
-            bgmTrack = "kd_bgm_3";
-          }
+            const totalQ = seg.questions || 6;
+            // Quy tắc chuyển nhạc nền chuẩn:
+            // kd_bgm_1: từ Câu 1 đến Câu (Math.ceil(totalQ / 2) - 1)
+            // kd_bgm_2: từ câu tiếp theo cho tới câu áp chót (totalQ - 1)
+            // kd_bgm_3: ở câu cuối cùng (totalQ)
+            const halfCeil = Math.ceil(totalQ / 2);
+            const bgm1EndQ = Math.max(1, halfCeil - 1); // 1-based question number
+            const currentQNum = kd.qIdx + 1; // 1-based question number
 
-          // Chỉ gửi cue mới khi track thực sự thay đổi và đã có track trước đó
-          if (kd.currentBgmTrack && bgmTrack !== kd.currentBgmTrack) {
-            kd.currentBgmTrack = bgmTrack;
-            this.cue("1_KhoiDong/" + bgmTrack, "bgm");
-          } else if (!kd.currentBgmTrack) {
-            kd.currentBgmTrack = bgmTrack;
-            this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+            let bgmTrack: "kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3";
+            if (currentQNum <= bgm1EndQ) {
+              bgmTrack = "kd_bgm_1";
+            } else if (currentQNum < totalQ) {
+              bgmTrack = "kd_bgm_2";
+            } else {
+              bgmTrack = "kd_bgm_3";
+              kd.bgm3UsedInTurn = true;
+            }
+
+            // Chỉ gửi cue mới khi track thực sự thay đổi và đã có track trước đó
+            if (kd.currentBgmTrack && bgmTrack !== kd.currentBgmTrack) {
+              kd.currentBgmTrack = bgmTrack;
+              this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+            } else if (!kd.currentBgmTrack) {
+              kd.currentBgmTrack = bgmTrack;
+              this.cue("1_KhoiDong/" + bgmTrack, "bgm");
+            }
           }
         }
         return OK;
@@ -1990,6 +2012,7 @@ export class OlympiaGame {
         kd.buzzUnlockAt = undefined;
         kd.noBuzzWrongUnlockAt = undefined;
         kd.currentBgmTrack = undefined;
+        kd.bgm3UsedInTurn = false;
 
         // t = 0s: Bấm BẮT ĐẦU: Phát âm ready (đồ hoạ chưa hiện).
         // Sau 3.5s (khi kdIntroTimer hết hạn): tick() sẽ phát open_question đồng thời đồ hoạ bung mở.
@@ -2012,11 +2035,37 @@ export class OlympiaGame {
         return OK;
       }
       case "kd:cycle_bgm": {
+        if (kd.bgm3UsedInTurn) {
+          return fail("Đã chọn Nhạc 3 thì không thể kích hoạt lại Nhạc 1 hoặc 2 trong cùng lượt!");
+        }
         const order: Array<"kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3"> = ["kd_bgm_1", "kd_bgm_2", "kd_bgm_3"];
         const cur = kd.currentBgmTrack || "kd_bgm_1";
         const nxt = order[(order.indexOf(cur) + 1) % order.length];
+        if (nxt === "kd_bgm_3") {
+          kd.bgm3UsedInTurn = true;
+        }
         kd.currentBgmTrack = nxt;
         this.cue("1_KhoiDong/" + nxt, "bgm");
+        return OK;
+      }
+      case "kd:setBgmMode": {
+        kd.bgmMode = a.mode === "manual" ? "manual" : "auto";
+        return OK;
+      }
+      case "kd:selectBgmTrack": {
+        const trackNum = Number(a.track);
+        if (trackNum !== 1 && trackNum !== 2 && trackNum !== 3) {
+          return fail("Track không hợp lệ (phải là 1, 2 hoặc 3)");
+        }
+        if (kd.bgm3UsedInTurn && (trackNum === 1 || trackNum === 2)) {
+          return fail("Đã chọn Nhạc 3 thì không thể kích hoạt lại Nhạc 1 hoặc 2 trong cùng lượt!");
+        }
+        if (trackNum === 3) {
+          kd.bgm3UsedInTurn = true;
+        }
+        const trackName = `kd_bgm_${trackNum}` as "kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3";
+        kd.currentBgmTrack = trackName;
+        this.cue("1_KhoiDong/" + trackName, "bgm");
         return OK;
       }
       case "kd:selectSegment": {
@@ -2035,6 +2084,8 @@ export class OlympiaGame {
           kd.buzzUnlockAt = undefined;
           kd.lockedSeats = [];
           kd.nextLockedSeats = [];
+          kd.currentBgmTrack = undefined;
+          kd.bgm3UsedInTurn = false;
           if (!ns.globalMs) {
             const preQ = this.kdPoolQuestion(kd, ns);
             kd.current = preQ
@@ -3846,10 +3897,7 @@ export class OlympiaGame {
   }
 
   playerPickPackage(seatId: number, points: number[], now: number): ActionResult {
-    const vd = this.state.veDich;
-    if (!vd || this.state.currentRound !== "veDich") return fail("Không ở vòng Về Đích");
-    if (this.vdSeat(vd) !== seatId) return fail("Chưa đến lượt bạn");
-    return this.setPackage(points, now);
+    return fail("Thí sinh không được xác nhận gói trực tiếp trên thiết bị. Quản trò / MC sẽ xác nhận gói câu hỏi trên bàn điều khiển.");
   }
 
   setQuestionSet(newSet: OlympiaQuestionSet): void {
@@ -4039,8 +4087,21 @@ export class OlympiaGame {
     if (s.cauHoiPhu) {
       const cp = s.cauHoiPhu;
       cp.questions = cp.questions.map((q, i) =>
-        i === cp.qIdx && cp.phase !== "idle" ? { ...q, a: cp.phase === "result" ? q.a : "" } : { q: "", a: "" }
+        i === cp.qIdx && cp.phase !== "idle"
+          ? { ...q, a: "" }
+          : { q: "", a: "" }
       );
+    }
+
+    // Ensure non-host roles (display & players) NEVER receive answers in transcript for any round other than Khởi Động
+    if (s.transcript) {
+      s.transcript = s.transcript.map((entry) => {
+        if (entry.round !== "khoiDong" && entry.correctAnswer) {
+          const { correctAnswer, ...rest } = entry;
+          return rest;
+        }
+        return entry;
+      });
     }
 
     if (role === "display") {

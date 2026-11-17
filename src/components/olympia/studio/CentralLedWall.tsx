@@ -2433,6 +2433,15 @@ export function CentralLedWall({
       renderVerticalTotemToCanvas(totemCanvasRef.current, state, screenFadeProgress);
       totemTextureRef.current.needsUpdate = true;
     }
+    if (formulaWallCanvasRef.current && formulaWallTextureRef.current) {
+      renderDynamicCurvedFormulaCanvas(
+        formulaWallCanvasRef.current,
+        0,
+        screenFadeProgress,
+        quality
+      );
+      formulaWallTextureRef.current.needsUpdate = true;
+    }
   }, [
     fadeStep,
     state?.currentRound,
@@ -2462,27 +2471,9 @@ export function CentralLedWall({
     accumulatedTimeRef.current += dt;
     const t = accumulatedTimeRef.current;
 
-    // 1. Throttle Curved Formula Wall redraw
-    // During intro opening, MC walkout, or active camera sweeps, throttle to prevent GPU stalls and lock 60 FPS
-    const isHeavyIntroOrMotion = Boolean(state?.introTimer || state?.entranceState?.active);
-    const wallInterval = isHeavyIntroOrMotion
-      ? 0.125 // 8 FPS during heavy intro/MC walkout to prioritize 60 FPS bone & camera kinematics
-      : quality === "LIGHT"
-      ? 0.250 // 4 FPS
-      : quality === "MEDIUM"
-      ? 0.100 // 10 FPS
-      : 0.065; // ~15 FPS in HIGH steady state
-    if (t - lastWallFrameRef.current >= wallInterval) {
-      lastWallFrameRef.current = t;
-      if (formulaWallCanvasRef.current && formulaWallTextureRef.current) {
-        renderDynamicCurvedFormulaCanvas(
-          formulaWallCanvasRef.current,
-          t,
-          screenFadeProgress,
-          quality
-        );
-        formulaWallTextureRef.current.needsUpdate = true;
-      }
+    // 1. Butter-smooth 60 FPS GPU UV offset scroll for the formula wall (Zero CPU drawing, zero GPU upload stalls)
+    if (formulaWallTextureRef.current) {
+      formulaWallTextureRef.current.offset.x = (formulaWallTextureRef.current.offset.x - delta * 0.020) % 1.0;
     }
 
     // 2. Throttle Stage Right Screen & Vertical Totem in Idle Mode (<= 3-4 FPS to save GPU bandwidth)

@@ -777,14 +777,14 @@ export function StudioFloor({
 
   return (
     <group position={[0, -0.01, 0]}>
-      {/* ── 1. MAIN GLOSSY MIDNIGHT OBSIDIAN BROADCAST FLOOR DISC (MICA/ACRYLIC) ── */}
+      {/* ── 1. MAIN GLOSSY DEEP SAPPHIRE BROADCAST FLOOR DISC (MICA/ACRYLIC) ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[26, quality === "LIGHT" ? 32 : 64]} />
         <meshStandardMaterial
-          color="#01040e"
-          roughness={0.06}
-          metalness={0.18}
-          envMapIntensity={2.8}
+          color="#0c1527"
+          roughness={0.12}
+          metalness={0.25}
+          envMapIntensity={2.2}
         />
       </mesh>
 
@@ -803,14 +803,14 @@ export function StudioFloor({
           />
         </mesh>
 
-        {/* Top Deck Surface (Annular ring Rin = 2.45m to Rout = 3.50m at Y = 0.065m, High-gloss dark obsidian) */}
+        {/* Top Deck Surface (Annular ring Rin = 2.45m to Rout = 3.50m at Y = 0.065m, High-gloss dark sapphire) */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.065, 0]}>
           <primitive object={intermediateTierDeckGeom} attach="geometry" />
           <meshStandardMaterial
-            color="#020510"
-            roughness={0.08}
-            metalness={0.10}
-            envMapIntensity={2.8}
+            color="#0e1830"
+            roughness={0.14}
+            metalness={0.20}
+            envMapIntensity={2.2}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -3194,13 +3194,12 @@ export function StudioLighting({
     return Array.from({ length: count }, (_, idx) => getContestantPodiumWorldPos(idx, count, 0.22));
   }, [totalSeats]);
 
-  // Ambient & Key Light Intensity Factors (Controlled Studio Contrast)
-  // Standby illumination baseline tuned to 0.24 - 0.28 (deep navy #162848) so the floor stays rich pitch black with mirror-like specular reflections
-  const targetAmbient = (isVeDichDimmed ? 0.18 : 0.26) * introDimFactor;
-  const ambientIntensity = THREE.MathUtils.lerp(0.25, targetAmbient, liveFactor);
+  // Ambient & Key Light Intensity Factors (Upgraded +0.22 for Rich Studio Depth & Natural Broadcast Warmth)
+  const targetAmbient = (isVeDichDimmed ? 0.32 : 0.48) * introDimFactor;
+  const ambientIntensity = THREE.MathUtils.lerp(0.42, targetAmbient, liveFactor);
   const ambientColor = useMemo(() => {
-    const c = new THREE.Color("#162848");
-    c.lerp(new THREE.Color("#1e3a6a"), liveFactor);
+    const c = new THREE.Color("#1a2b4c");
+    c.lerp(new THREE.Color("#24426f"), liveFactor);
     return c;
   }, [liveFactor]);
 

@@ -290,16 +290,16 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   11: {
     id: 11,
     label: "Cam Cận Cảnh Cửa Trái Chào Sân",
-    // Frames contestant emerging from Left Door archway without wall/ceiling blind spot
-    pos: [1.05, 1.45, 8.90],
-    target: [0.75, 1.70, 12.40],
+    // Vị trí đối diện phía trước khán đài, xoay góc sang Cửa Trái, thấy trọn vòm cửa và đón đầu thí sinh
+    pos: [0.00, 2.20, 5.20],
+    target: [1.15, 2.05, 12.85],
   },
   12: {
     id: 12,
     label: "Cam Cận Cảnh Cửa Phải Chào Sân",
-    // Frames contestant emerging from Right Door archway without wall/ceiling blind spot
-    pos: [-1.05, 1.45, 8.90],
-    target: [-0.75, 1.70, 12.40],
+    // Vị trí đối diện phía trước khán đài, xoay góc sang Cửa Phải, thấy trọn vòm cửa và đón đầu thí sinh
+    pos: [0.00, 2.20, 5.20],
+    target: [-1.15, 2.05, 12.85],
   },
   13: {
     id: 13,
@@ -326,9 +326,9 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   19: {
     id: 19,
     label: "Cam Phía Trước Bám Theo Bước Xuống Cầu Thang",
-    // Placed in front at dais floor facing towards audience & stairs, tracking contestant descending
-    pos: [0.00, 0.95, 4.60],
-    target: [0.00, 1.25, 7.80],
+    // Đặt phía trước sàn bục hướng lên phía khán đài, bám theo chính diện thí sinh bước xuống
+    pos: [0.00, 1.45, 4.20],
+    target: [0.00, 1.30, 8.50],
   },
   25: getContestantCameraPreset(4, 8),
   26: getContestantCameraPreset(5, 8),
@@ -345,6 +345,8 @@ interface CameraControllerProps {
   ptzYaw?: number;
   ptzPitch?: number;
   ptzZoom?: number;
+  ptzPanX?: number;
+  ptzPanY?: number;
   introStartedAt?: number | null;
   roundIntroDoneAt?: number | null;
   kdStartCooldownUntil?: number | null;
@@ -399,6 +401,11 @@ const _sweepEndTarget = new THREE.Vector3(-0.60, 1.80, -3.80);
 const _effectivePos = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _finalPos = new THREE.Vector3();
+const _finalTarget = new THREE.Vector3();
+const _panForward = new THREE.Vector3();
+const _panRight = new THREE.Vector3();
+const _panUp = new THREE.Vector3();
+const _panOffset = new THREE.Vector3();
 const _offset = new THREE.Vector3();
 const _right = new THREE.Vector3();
 const _axisY = new THREE.Vector3(0, 1, 0);
@@ -413,6 +420,8 @@ export function CameraController({
   ptzYaw = 0,
   ptzPitch = 0,
   ptzZoom = 1.0,
+  ptzPanX = 0,
+  ptzPanY = 0,
   introStartedAt = null,
   roundIntroDoneAt = null,
   kdStartCooldownUntil = null,
@@ -622,9 +631,14 @@ export function CameraController({
       currentTarget.current.lerp(targetLookAt, lerpSpeed);
     }
 
-    // 3. Apply PTZ Orbit offsets
+    // 3. Apply PTZ Orbit & Pan offsets
     _finalPos.copy(currentPos.current);
-    if (ptzYaw !== 0 || ptzPitch !== 0 || ptzZoom !== 1.0) {
+    _finalTarget.copy(currentTarget.current);
+
+    const hasOrbit = ptzYaw !== 0 || ptzPitch !== 0 || ptzZoom !== 1.0;
+    const hasPan = ptzPanX !== 0 || ptzPanY !== 0;
+
+    if (hasOrbit) {
       _offset.copy(_finalPos).sub(currentTarget.current);
       // Orbit around target
       _offset.applyAxisAngle(_axisY, ptzYaw);
@@ -636,8 +650,19 @@ export function CameraController({
       _finalPos.copy(currentTarget.current).add(_offset);
     }
 
+    if (hasPan) {
+      _panForward.subVectors(_finalTarget, _finalPos).normalize();
+      _panRight.crossVectors(_panForward, _axisY).normalize();
+      _panUp.crossVectors(_panRight, _panForward).normalize();
+      _panOffset.set(0, 0, 0)
+        .addScaledVector(_panRight, ptzPanX)
+        .addScaledVector(_panUp, ptzPanY);
+      _finalPos.add(_panOffset);
+      _finalTarget.add(_panOffset);
+    }
+
     camera.position.copy(_finalPos);
-    camera.lookAt(currentTarget.current);
+    camera.lookAt(_finalTarget);
 
     if (ptzZoom !== lastZoomRef.current) {
       lastZoomRef.current = ptzZoom;

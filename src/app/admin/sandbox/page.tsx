@@ -255,6 +255,8 @@ export default function AdminSandboxPage() {
   const [olympiaActiveSeat, setOlympiaActiveSeat] = useState<number>(0);
   const [olympiaVisitedSeats, setOlympiaVisitedSeats] = useState<number[]>([]);
   const olympiaAutoTurnKeyRef = useRef<string>("");
+  const olympiaManualTabSelectedRef = useRef<boolean>(false);
+  const [isOlympiaAutoFollowSeat, setIsOlympiaAutoFollowSeat] = useState<boolean>(true);
   useEffect(() => {
     setOlympiaVisitedSeats((prev) => (prev.includes(olympiaActiveSeat) ? prev : [...prev, olympiaActiveSeat]));
   }, [olympiaActiveSeat]);
@@ -647,12 +649,10 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       if (curTurnKey) {
         if (curTurnKey !== olympiaAutoTurnKeyRef.current) {
           olympiaAutoTurnKeyRef.current = curTurnKey;
-          if (newActiveSeat != null) {
+          if (newActiveSeat != null && !olympiaManualTabSelectedRef.current) {
             setOlympiaActiveSeat(newActiveSeat);
           }
         }
-      } else {
-        olympiaAutoTurnKeyRef.current = "";
       }
     });
     return () => {
@@ -12310,7 +12310,11 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     <button
                       key={sIdx}
                       type="button"
-                      onClick={() => setOlympiaActiveSeat(sIdx)}
+                      onClick={() => {
+                        setOlympiaActiveSeat(sIdx);
+                        olympiaManualTabSelectedRef.current = true;
+                        setIsOlympiaAutoFollowSeat(false);
+                      }}
                       className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer ${
                         olympiaActiveSeat === sIdx
                           ? "bg-sky-500 text-slate-950 font-black shadow"
@@ -12321,6 +12325,26 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  title={
+                    isOlympiaAutoFollowSeat
+                      ? "Đang tự động bám theo thí sinh đến lượt thi. Bấm để ghim tab hiện tại"
+                      : "Đang ghim tab thủ công. Bấm để tự bám theo lượt thi"
+                  }
+                  onClick={() => {
+                    const next = !isOlympiaAutoFollowSeat;
+                    setIsOlympiaAutoFollowSeat(next);
+                    olympiaManualTabSelectedRef.current = !next;
+                  }}
+                  className={`ml-auto px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                    isOlympiaAutoFollowSeat
+                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30"
+                      : "bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30"
+                  }`}
+                >
+                  {isOlympiaAutoFollowSeat ? "🎯 Theo lượt" : "📌 Ghim tab"}
+                </button>
               </div>
 
               {/* Iframe Thí sinh: Chỉ render duy nhất máy thí sinh đang chọn để tránh lag do chạy đồng thời nhiều iframe */}

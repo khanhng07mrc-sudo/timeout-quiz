@@ -1562,7 +1562,7 @@ export function ClassicUnifiedLowerThird({
       initial={{ y: "100%", opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: "100%", opacity: 0 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
       className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center pointer-events-auto select-none py-1 overflow-visible"
       style={{ perspective: 1400 }}
     >
@@ -1575,8 +1575,8 @@ export function ClassicUnifiedLowerThird({
         animate={{ rotateX: 0, opacity: 1 }}
         exit={{ rotateX: -90, opacity: 0 }}
         transition={{
-          rotateX: { delay: hasOpenedRef.current ? 0 : 0.35, duration: 0.50, ease: [0.16, 1, 0.3, 1] },
-          opacity: { delay: hasOpenedRef.current ? 0 : 0.35, duration: 0.25 },
+          rotateX: { delay: hasOpenedRef.current ? 0 : 0.38, duration: 0.48, ease: [0.16, 1, 0.3, 1] },
+          opacity: { delay: hasOpenedRef.current ? 0 : 0.38, duration: 0.25 },
         }}
         className="relative w-full z-10 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl"
         style={{
@@ -1621,23 +1621,23 @@ export function ClassicUnifiedLowerThird({
                 const buzzedSeat = buzzedSeatId != null ? allSeats.find((s) => s.id === buzzedSeatId) : null;
                 return (
                   <div className="flex items-center gap-2 sm:gap-3 min-w-0 max-w-full">
-                    <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-gradient-to-r from-amber-950/95 via-amber-900/90 to-amber-950/95 border-2 border-[#d4af37] shadow-[0_0_14px_rgba(212,175,55,0.45)]">
-                      <span className="text-[11px] sm:text-xs font-bold text-amber-300 uppercase tracking-wider">
+                    <div className="flex items-center gap-2 sm:gap-3 px-3.5 sm:px-4 py-1 sm:py-1.5 rounded-lg bg-gradient-to-r from-amber-950/95 via-amber-900/90 to-amber-950/95 border-2 border-[#d4af37] shadow-[0_0_16px_rgba(212,175,55,0.5)]">
+                      <span className="text-xs sm:text-sm font-bold text-amber-300 uppercase tracking-wider">
                         THÍ SINH:
                       </span>
-                      <span className="font-black text-xs sm:text-sm md:text-base text-white uppercase tracking-tight drop-shadow truncate max-w-[160px] sm:max-w-[240px]">
+                      <span className="font-black text-sm sm:text-base md:text-lg text-white uppercase tracking-tight drop-shadow truncate max-w-[200px] sm:max-w-[320px]">
                         {activeSeat?.name || `TS ${activeSeatId != null ? activeSeatId + 1 : 1}`}
                       </span>
-                      <div className="h-4 w-px bg-amber-400/50 mx-1" />
-                      <span className="font-mono font-black text-sm sm:text-base md:text-lg text-yellow-300 drop-shadow">
+                      <div className="h-5 w-px bg-amber-400/60 mx-1" />
+                      <span className="font-mono font-black text-base sm:text-lg md:text-xl text-yellow-300 drop-shadow">
                         {activeSeat?.score ?? 0}
                       </span>
                     </div>
 
                     {buzzedSeat && (
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-950/90 border border-red-500 text-white animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.7)]">
-                        <span className="text-xs">🔔</span>
-                        <span className="text-xs font-black uppercase text-red-200 truncate max-w-[140px]">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/90 border border-red-500 text-white animate-pulse shadow-[0_0_14px_rgba(239,68,68,0.8)]">
+                        <span className="text-sm">🔔</span>
+                        <span className="text-xs sm:text-sm font-black uppercase text-red-200 truncate max-w-[160px]">
                           {buzzedSeat.name} ({buzzedSeat.score})
                         </span>
                       </div>
@@ -1661,7 +1661,7 @@ export function ClassicUnifiedLowerThird({
                 return (
                   <div
                     key={seat.id}
-                    className={`h-[34px] sm:h-[38px] flex items-center justify-between gap-1 px-1.5 sm:px-2.5 rounded-md transition-colors duration-200 min-w-0 overflow-hidden ${
+                    className={`h-[36px] sm:h-[40px] flex items-center justify-between gap-1 px-1.5 sm:px-2.5 rounded-md transition-colors duration-200 min-w-0 overflow-hidden ${
                       isBuzzed
                         ? "ring-2 ring-yellow-400 bg-amber-900/90 text-white shadow-[0_0_12px_rgba(250,204,21,0.85)] animate-pulse"
                         : isTurn
@@ -1671,7 +1671,7 @@ export function ClassicUnifiedLowerThird({
                         : "bg-[#181c24]/90 border border-amber-500/40 text-slate-100 shadow-inner"
                     }`}
                   >
-                    <span className="font-black truncate uppercase text-[11px] sm:text-xs md:text-sm tracking-tight">
+                    <span className="font-black truncate uppercase text-xs sm:text-sm md:text-base tracking-tight">
                       {seat.name || `TS ${seat.id + 1}`}
                     </span>
                     <span
@@ -1704,10 +1704,10 @@ export function ClassicUnifiedLowerThird({
         </div>
 
         {/* ── LOWER CHAMBER: Fixed Broadcast Height, Top-Left Aligned Question or Integrated Shutter Answer Reveal ── */}
-        <div className={`relative z-10 w-full flex-1 px-5 sm:px-8 md:px-12 py-3.5 sm:py-5 flex flex-col items-start justify-start text-left overflow-hidden ${
+        <div className={`relative z-10 w-full flex-1 min-h-0 px-5 sm:px-8 md:px-12 py-3 sm:py-4 flex flex-col items-start justify-start text-left overflow-y-auto ${
           isFullscreen
-            ? "min-h-[200px] sm:min-h-[240px] md:min-h-[280px] max-h-[420px]"
-            : "min-h-[160px] sm:min-h-[175px] md:min-h-[195px] max-h-[225px]"
+            ? "min-h-[180px] sm:min-h-[220px] md:min-h-[260px] max-h-[400px]"
+            : "min-h-[140px] sm:min-h-[155px] md:min-h-[175px] max-h-[210px]"
         }`}>
           {round === "khoiDong" && answerReveal?.show ? (
             <ClassicChamberAnswerView
@@ -1733,9 +1733,9 @@ export function ClassicUnifiedLowerThird({
           {!answerReveal?.show && mediaElement && <div className="mt-2">{mediaElement}</div>}
         </div>
 
-        {/* ── BOTTOM FLUSH TIMER BAR ── */}
+        {/* ── BOTTOM FLUSH TIMER BAR (Dedicated unclipped container with guaranteed clearance) ── */}
         {timer && (
-          <div className="w-full px-3 pb-2 pt-0 -mt-1 relative z-20">
+          <div className="w-full shrink-0 h-[18px] px-4 pb-2.5 pt-0.5 relative z-20 flex items-center">
             <Vtv3BottomEdgeTimerBar timer={timer} serverNow={serverNow} />
           </div>
         )}

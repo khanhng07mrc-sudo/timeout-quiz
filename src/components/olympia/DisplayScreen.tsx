@@ -506,7 +506,7 @@ export default function DisplayScreen({ code }: { code: string }) {
             transitionMode={cameraState.transitionMode}
             pushInProgress={cameraState.pushInProgress}
             showDirectorBar={false}
-            allowPTZ={false}
+            allowPTZ={true}
             defaultQuality={isSandboxParam ? "LIGHT" : undefined}
             isSandbox={isSandboxParam}
             isPaused={is3DPaused}
@@ -535,7 +535,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         {state.stage === "playing" && !state.banner && !isOverlayHidden && !state.summaryState?.active && activeRoundContent && (
           isLowerThird ? (
             /* ── LOWER-THIRD BROADCAST OVERLAY (20 - 25% BOTTOM) ── */
-            <div className="w-full px-2 sm:px-6 pb-3 pt-1 pointer-events-auto flex flex-col justify-end z-20">
+            <div className="w-full px-2 sm:px-6 pb-3.5 sm:pb-5 pt-1 pointer-events-auto flex flex-col justify-end z-20">
               <div className="w-full max-w-[94vw] 2xl:max-w-[95vw] mx-auto flex flex-col justify-end">
                 {state.currentRound === "khoiDong" && <KhoiDong state={state} serverNow={serverNow} />}
                 {state.currentRound === "vcnv" && <Vcnv state={state} serverNow={serverNow} isLowerThird={true} />}

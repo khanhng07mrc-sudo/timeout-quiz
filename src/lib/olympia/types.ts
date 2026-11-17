@@ -376,6 +376,8 @@ export interface KhoiDongState {
   noBuzzWrongUnlockAt?: number;
   bgmMode?: "auto" | "manual";
   currentBgmTrack?: "kd_bgm_1" | "kd_bgm_2" | "kd_bgm_3";
+  /** True if bgm 3 has already been chosen/activated during the current turn (restricts switching back to 1 or 2) */
+  bgm3UsedInTurn?: boolean;
   /** Whether question subject/category should be displayed on broadcast graphics (defaults to false) */
   showSubject?: boolean;
 }

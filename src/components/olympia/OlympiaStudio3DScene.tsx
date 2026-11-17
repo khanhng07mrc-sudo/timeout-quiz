@@ -83,12 +83,17 @@ export function OlympiaStudio3DScene({
     defaultQuality || (isSandboxEnv ? "LIGHT" : isIframe ? "MEDIUM" : "HIGH")
   );
 
-  // PTZ interactive controls
+  // PTZ interactive controls (Orbit Yaw/Pitch + Pan X/Y + Zoom)
   const [ptzYaw, setPtzYaw] = useState(0);
   const [ptzPitch, setPtzPitch] = useState(0);
   const [ptzZoom, setPtzZoom] = useState(1.0);
+  const [ptzPanX, setPtzPanX] = useState(0);
+  const [ptzPanY, setPtzPanY] = useState(0);
   const isDraggingRef = useRef(false);
+  const dragModeRef = useRef<"orbit" | "pan">("orbit");
   const lastMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const touchStartDistRef = useRef<number>(0);
+  const touchStartCenterRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   useEffect(() => {
     if (activeCamera && activeCamera !== internalCam) {
@@ -109,13 +114,17 @@ export function OlympiaStudio3DScene({
     setPtzYaw(0);
     setPtzPitch(0);
     setPtzZoom(1.0);
+    setPtzPanX(0);
+    setPtzPanY(0);
   };
 
-  // Mouse drag handlers for PTZ Orbit Controls
+  // Mouse drag handlers for PTZ Orbit & Pan Controls
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (!allowPTZ) return;
       isDraggingRef.current = true;
+      const isPan = e.button === 2 || e.button === 1 || e.shiftKey;
+      dragModeRef.current = isPan ? "pan" : "orbit";
       lastMousePosRef.current = { x: e.clientX, y: e.clientY };
     },
     [allowPTZ]
@@ -128,10 +137,18 @@ export function OlympiaStudio3DScene({
       const dy = e.clientY - lastMousePosRef.current.y;
       lastMousePosRef.current = { x: e.clientX, y: e.clientY };
 
-      setPtzYaw((prev) => prev - dx * 0.0035);
-      setPtzPitch((prev) => Math.max(-0.45, Math.min(0.45, prev - dy * 0.0035)));
+      if (dragModeRef.current === "pan") {
+        // Pan horizontally & vertically scaled inversely with zoom
+        const panFactor = 0.005 * (1.0 / ptzZoom);
+        setPtzPanX((prev) => prev - dx * panFactor);
+        setPtzPanY((prev) => prev + dy * panFactor);
+      } else {
+        // Orbit rotate yaw & pitch
+        setPtzYaw((prev) => prev - dx * 0.0035);
+        setPtzPitch((prev) => Math.max(-0.65, Math.min(0.65, prev - dy * 0.0035)));
+      }
     },
-    [allowPTZ]
+    [allowPTZ, ptzZoom]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -142,12 +159,78 @@ export function OlympiaStudio3DScene({
     (e: React.WheelEvent) => {
       if (!allowPTZ) return;
       e.stopPropagation();
-      setPtzZoom((prev) => Math.max(1.0, Math.min(2.5, prev - e.deltaY * 0.0012)));
+      setPtzZoom((prev) => Math.max(0.65, Math.min(3.5, prev - e.deltaY * 0.0015)));
     },
     [allowPTZ]
   );
 
-  const isPtzActive = ptzZoom > 1.02 || Math.abs(ptzYaw) > 0.02 || Math.abs(ptzPitch) > 0.02;
+  // Touch gesture support: 1 finger orbit, 2 finger pinch-zoom & pan
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (!allowPTZ) return;
+      if (e.touches.length === 1) {
+        isDraggingRef.current = true;
+        dragModeRef.current = "orbit";
+        lastMousePosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else if (e.touches.length === 2) {
+        isDraggingRef.current = true;
+        dragModeRef.current = "pan";
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchStartDistRef.current = Math.hypot(dx, dy);
+        touchStartCenterRef.current = {
+          x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+          y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        };
+      }
+    },
+    [allowPTZ]
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (!allowPTZ || !isDraggingRef.current) return;
+      if (e.touches.length === 1 && dragModeRef.current === "orbit") {
+        const dx = e.touches[0].clientX - lastMousePosRef.current.x;
+        const dy = e.touches[0].clientY - lastMousePosRef.current.y;
+        lastMousePosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        setPtzYaw((prev) => prev - dx * 0.004);
+        setPtzPitch((prev) => Math.max(-0.65, Math.min(0.65, prev - dy * 0.004)));
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        if (touchStartDistRef.current > 0) {
+          const ratio = dist / touchStartDistRef.current;
+          setPtzZoom((prev) => Math.max(0.65, Math.min(3.5, prev * ratio)));
+          touchStartDistRef.current = dist;
+        }
+        const curCenter = {
+          x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+          y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        };
+        const panDx = curCenter.x - touchStartCenterRef.current.x;
+        const panDy = curCenter.y - touchStartCenterRef.current.y;
+        touchStartCenterRef.current = curCenter;
+        const panFactor = 0.005 * (1.0 / ptzZoom);
+        setPtzPanX((prev) => prev - panDx * panFactor);
+        setPtzPanY((prev) => prev + panDy * panFactor);
+      }
+    },
+    [allowPTZ, ptzZoom]
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    isDraggingRef.current = false;
+    touchStartDistRef.current = 0;
+  }, []);
+
+  const isPtzActive =
+    Math.abs(ptzZoom - 1.0) > 0.02 ||
+    Math.abs(ptzYaw) > 0.02 ||
+    Math.abs(ptzPitch) > 0.02 ||
+    Math.abs(ptzPanX) > 0.02 ||
+    Math.abs(ptzPanY) > 0.02;
 
   return (
     <div
@@ -157,6 +240,12 @@ export function OlympiaStudio3DScene({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
       onWheel={handleWheel}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onContextMenu={(e) => {
+        if (allowPTZ) e.preventDefault();
+      }}
     >
       {/* ── 1. THREE.JS R3F CANVAS ── */}
       <Canvas
@@ -182,6 +271,8 @@ export function OlympiaStudio3DScene({
           ptzYaw={ptzYaw}
           ptzPitch={ptzPitch}
           ptzZoom={ptzZoom}
+          ptzPanX={ptzPanX}
+          ptzPanY={ptzPanY}
           introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
           roundIntroDoneAt={state?.roundIntroDoneAt ?? null}
           kdStartCooldownUntil={state?.khoiDong?.startCooldownUntil ?? null}
@@ -247,11 +338,11 @@ export function OlympiaStudio3DScene({
         <button
           type="button"
           onClick={resetPTZ}
-          className="absolute top-3 right-3 z-40 px-3 py-1.5 rounded-full bg-slate-950/85 hover:bg-slate-900 backdrop-blur-md border border-amber-400/50 text-amber-300 text-xs font-bold flex items-center gap-1.5 shadow-xl transition-all cursor-pointer animate-fade-in"
-          title="Bấm để khôi phục góc quay ban đầu"
+          className="absolute top-3 right-3 z-40 px-3 py-1.5 rounded-full bg-slate-950/85 hover:bg-slate-900 backdrop-blur-md border border-cyan-400/50 text-cyan-300 text-xs font-bold flex items-center gap-1.5 shadow-xl transition-all cursor-pointer animate-fade-in"
+          title="Bấm để khôi phục góc quay ban đầu (hoặc nhấn chuột phải/Shift để Pan, chuột trái để xoay)"
         >
-          <span>🎥 Zoom {ptzZoom.toFixed(1)}x</span>
-          <span className="text-white/60 hover:text-white">↺ Đặt lại</span>
+          <span>🎥 {ptzZoom !== 1.0 ? `Zoom ${ptzZoom.toFixed(1)}x ` : ""}{ptzPanX !== 0 || ptzPanY !== 0 ? "Pan " : ""}{ptzYaw !== 0 || ptzPitch !== 0 ? "Xoay " : ""}</span>
+          <span className="text-white/70 hover:text-white font-black">↺ Đặt lại góc</span>
         </button>
       )}
 

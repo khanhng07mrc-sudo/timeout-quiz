@@ -1197,15 +1197,23 @@ function QuestionBoxContent({
       if (vd.phase === "choosing" || (vd.phase === "idle" && vd.onStage)) {
         if (owner === seatId) {
           return (
-            <PackagePicker
-              options={allowedPointOptions}
-              count={questionCount}
-              selectionMode={rs.selectionMode}
-              presetPackages={rs.presetPackages}
-              emit={emit}
-              isClassic={isClassic}
-              isSandbox={isSandbox}
-            />
+            <div
+              className={`w-full max-w-md mx-auto p-4 rounded-2xl text-center space-y-2 select-none shadow-xl border-2 ${
+                isClassic
+                  ? "bg-gradient-to-b from-[#24272c] to-[#181a1d] border-[#d4af37]/70 text-amber-200"
+                  : "bg-slate-900/90 border-cyan-500/40 text-cyan-200"
+              }`}
+            >
+              <div className="text-2xl animate-bounce">🎙️</div>
+              <div className="text-base sm:text-lg font-black tracking-wide text-white uppercase drop-shadow">
+                Bạn đang trên bục Về Đích
+              </div>
+              <div className="text-xs sm:text-sm font-semibold opacity-90 leading-relaxed text-amber-300">
+                Vui lòng báo gói câu hỏi đã chọn cho MC.
+                <br />
+                Quản trò / MC sẽ xác nhận gói câu hỏi trên bàn điều khiển.
+              </div>
+            </div>
           );
         }
         return (

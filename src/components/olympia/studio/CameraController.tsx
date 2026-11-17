@@ -104,11 +104,11 @@ export function isRoundPostIntroStandby(state: OlympiaState | null | undefined, 
   }
   if (state.roundIntroDoneAt && now !== undefined) {
     const elapsed = (now - state.roundIntroDoneAt) / 1000;
-    if (elapsed >= 0 && elapsed < 3.5) {
+    if (elapsed >= 0 && elapsed < 2.8) {
       return true;
     }
   }
-  return !hasActiveRoundContent(state);
+  return false;
 }
 
 export function getContestantArcParams(totalSeats: number = 4): ContestantArcParams {
@@ -286,23 +286,24 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   10: getWidePodiumsCameraPreset(4),
   11: {
     id: 11,
-    label: "Cam Cận Cảnh Trực Diện Chào Sân",
-    // Broadcast eye-level Medium Close-Up (MCU) framing contestant from waist up, eliminating distracting grandstand spectator seats
-    pos: [0.0, 1.85, 6.40],
-    target: [0.0, 1.50, 10.20],
+    label: "Cam Cận Cảnh Cửa Trái Chào Sân",
+    // Cận cảnh thí sinh bước từ Cửa Trái (X = +1.15m, Z = 12.85m)
+    pos: [1.15, 1.85, 11.10],
+    target: [1.15, 1.68, 12.85],
   },
   12: {
     id: 12,
-    label: "Cam Chéo Khán Đài 3/4",
-    // Dynamic 3/4 low-angle tracking shot separating contestant from grandstand spectators
-    pos: [-2.60, 1.65, 6.00],
-    target: [0.0, 1.25, 10.00],
+    label: "Cam Cận Cảnh Cửa Phải Chào Sân",
+    // Cận cảnh thí sinh bước từ Cửa Phải (X = -1.15m, Z = 12.85m)
+    pos: [-1.15, 1.85, 11.10],
+    target: [-1.15, 1.68, 12.85],
   },
   13: {
     id: 13,
-    label: "Cổng Vòm & Đỉnh Núi",
-    pos: [0.0, 3.35, 6.20],
-    target: [0.0, 3.90, 13.55],
+    label: "Cam Đứng Yên Bục Giữa Tạo Dáng",
+    // Góc cố định đứng yên hoàn toàn khi thí sinh tạo dáng trên Bục Giữa
+    pos: [0.0, 1.62, 7.35],
+    target: [0.0, 1.38, 10.20],
   },
   14: {
     id: 14,
@@ -319,6 +320,13 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     target: [0.0, 1.38, -0.90],
   },
   16: getContestantScreenCameraPreset(0, 4),
+  19: {
+    id: 19,
+    label: "Cam Trên Phải Đầu Bám Theo Bước Xuống",
+    // Đặt phía trên bên phải đầu thí sinh, chĩa dốc xuống theo hướng bước xuống cầu thang
+    pos: [0.92, 2.25, 9.40],
+    target: [0.0, 0.35, 6.50],
+  },
   25: getContestantCameraPreset(4, 8),
   26: getContestantCameraPreset(5, 8),
   27: getContestantCameraPreset(6, 8),
@@ -413,6 +421,7 @@ export function CameraController({
 
   const currentPos = useRef(new THREE.Vector3(0, 2.5, 8.4));
   const currentTarget = useRef(new THREE.Vector3(0, 1.8, -2.8));
+  const lastZoomRef = useRef(ptzZoom);
   const postIntroStandbyStartRef = useRef<number | null>(null);
   const wasPostIntroStandbyRef = useRef(false);
   const standbyExitedAtRef = useRef<number | null>(null);
@@ -530,7 +539,6 @@ export function CameraController({
 
       camera.position.copy(_curPos);
       camera.lookAt(_curTarget);
-      camera.updateProjectionMatrix();
       return;
     }
 
@@ -555,92 +563,33 @@ export function CameraController({
 
         camera.position.copy(_curPos);
         camera.lookAt(_curTarget);
-        camera.updateProjectionMatrix();
         return;
       }
     }
 
-    // 0.2. Post-Intro Opening Round Camera Director (applies to all 4 rounds: Khởi Động, VCNV, Tăng Tốc, Về Đích):
-    // After the 7.66s round intro video unmounts and start_round audio plays:
-    // - 0.0s - 3.5s: Smooth crane sweep from floor-left of Laurel Vitrine (CAM 14) up to Wide Stage (CAM 1)
-    // - 3.5s - 7.5s: Cut to Bục MC (CAM 3) with smooth dolly zoom-in
-    // - 7.5s - 11.5s: Cut to Wide Contestant Podiums (CAM 10) with gentle pan
-    // - 11.5s+: Continuous sweeping panoramic orbit across the 3D studio stage
+    // 0.2. Post-Intro Opening Round Camera Director:
+    // Snappy, dignified 2.8s transition straight to Bục MC (CAM 3) as the MC introduces the round,
+    // then immediately yields control to active gameplay directing.
     if (isPostIntroStandby) {
       const now = serverNow ? serverNow() : Date.now();
       const startAt = roundIntroDoneAt ?? postIntroStandbyStartRef.current ?? now;
       const elapsedSec = Math.max(0, (now - startAt) / 1000);
 
-      if (elapsedSec < 3.5) {
-        _sweepStartPos.set(...OLYMPIA_CAM_PRESETS[14].pos);
-        _sweepStartTarget.set(...OLYMPIA_CAM_PRESETS[14].target);
-        const t = Math.min(1.0, elapsedSec / 3.5);
-        const smoothT = t * t * (3 - 2 * t);
-        _curPos.lerpVectors(_sweepStartPos, _sweepEndPos, smoothT);
-        _curTarget.lerpVectors(_sweepStartTarget, _sweepEndTarget, smoothT);
-
-        currentPos.current.copy(_curPos);
-        currentTarget.current.copy(_curTarget);
-        camera.position.copy(_curPos);
-        camera.lookAt(_curTarget);
-        camera.updateProjectionMatrix();
-        return;
-      }
-
-      if (elapsedSec < 7.5) {
+      if (elapsedSec < 2.8) {
         const mcPreset = OLYMPIA_CAM_PRESETS[3];
         _sweepStartPos.set(...mcPreset.pos);
         _sweepStartTarget.set(...mcPreset.target);
-        const pushFrac = Math.min(1.0, (elapsedSec - 3.5) / 4.0);
+        const pushFrac = Math.min(1.0, elapsedSec / 2.8);
         _dir.copy(_sweepStartTarget).sub(_sweepStartPos).normalize();
-        _curPos.copy(_sweepStartPos).addScaledVector(_dir, pushFrac * 0.42);
+        _curPos.copy(_sweepStartPos).addScaledVector(_dir, pushFrac * 0.35);
         _curTarget.copy(_sweepStartTarget);
 
         currentPos.current.copy(_curPos);
         currentTarget.current.copy(_curTarget);
         camera.position.copy(_curPos);
         camera.lookAt(_curTarget);
-        camera.updateProjectionMatrix();
         return;
       }
-
-      if (elapsedSec < 11.5) {
-        const widePodiums = getWidePodiumsCameraPreset(effectiveTotalSeats);
-        _sweepStartPos.set(...widePodiums.pos);
-        _sweepStartTarget.set(...widePodiums.target);
-        const panFrac = (elapsedSec - 7.5) / 4.0;
-        _dir.copy(_sweepStartTarget).sub(_sweepStartPos).normalize();
-        _curPos.copy(_sweepStartPos).addScaledVector(_dir, panFrac * 0.35);
-        _curTarget.copy(_sweepStartTarget);
-
-        currentPos.current.copy(_curPos);
-        currentTarget.current.copy(_curTarget);
-        camera.position.copy(_curPos);
-        camera.lookAt(_curTarget);
-        camera.updateProjectionMatrix();
-        return;
-      }
-
-      // 11.5s+: Continuous, sweeping panoramic orbit/pan across the 3D studio stage
-      const orbitElapsed = elapsedSec - 11.5;
-      const sweepAngle = Math.sin(orbitElapsed * ((Math.PI * 2) / 14.0)) * 0.22;
-      const heightBob = Math.sin(orbitElapsed * ((Math.PI * 2) / 7.0)) * 0.15;
-
-      _curPos.set(
-        Math.sin(sweepAngle) * 12.2,
-        3.8 + heightBob,
-        Math.cos(sweepAngle) * 12.2
-      );
-      _curTarget.set(-0.5, 1.55, -3.2);
-
-      const lerpSpeed = Math.min(1.0, delta * 3.5);
-      currentPos.current.lerp(_curPos, lerpSpeed);
-      currentTarget.current.lerp(_curTarget, lerpSpeed);
-
-      camera.position.copy(currentPos.current);
-      camera.lookAt(currentTarget.current);
-      camera.updateProjectionMatrix();
-      return;
     }
 
     // 1. Calculate subtle broadcast push-in (dolly) towards target
@@ -686,7 +635,11 @@ export function CameraController({
 
     camera.position.copy(_finalPos);
     camera.lookAt(currentTarget.current);
-    camera.updateProjectionMatrix();
+
+    if (ptzZoom !== lastZoomRef.current) {
+      lastZoomRef.current = ptzZoom;
+      camera.updateProjectionMatrix();
+    }
   });
 
   return null;

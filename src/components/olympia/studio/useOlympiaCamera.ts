@@ -26,44 +26,83 @@ export function getCameraForSeat(seatId: number, totalSeats: number = 4): number
 
 /**
  * Evaluates the broadcast camera preset for the contestant entrance sequence:
- * - Anticipatory early cut to CAM 11 at t = 1.2s (~0.6s early) for Contestant N > 0.
- * - Gentle optical zoom push (0.0 -> 0.25) during center landing pose (1.8s -> 3.0s).
+ * Alternating dual-door entrance (Left door: seats 0, 2, 4...; Right door: seats 1, 3, 5...):
+ * 1. 0.0s -> 0.8s: Tight close-up aimed directly at the corresponding door (CAM 11 for Left door, CAM 12 for Right door).
+ * 2. 0.8s -> 1.8s: Gentle zoom out and downwards (CAM 13 with morph) as contestant walks down upper stairs to center dais landing.
+ * 3. 1.8s -> 3.0s: Holds completely still at center dais landing (CAM 13 with cut, pushInProgress: 0) while contestant poses/greets.
+ * 4. 3.0s -> 4.0s: High-right overhead camera (CAM 19) pointing downward along stairs following contestant descending to dais floor.
+ * 5. >= 4.0s: For seat < activeCount - 1: Seamless cut straight to next contestant's door (never cuts to CAM 10 in between!).
+ *             For last seat: Tracks desk arrival, then cuts to targetCam close-up before completing entrance.
  */
 export function evaluateEntranceCameraState(
   currentSeat: number,
   activeCount: number,
   elapsedSec: number
 ): OlympiaCameraState {
-  const isFirstSeat = currentSeat === 0;
-  const isLastSeat = currentSeat >= activeCount - 1;
-  const targetCam = getCameraForSeat(currentSeat, activeCount);
-  const seatTiming = getEntranceSeatTiming(currentSeat, activeCount);
-  // Lower 6 stair treads end at Z = 8.50m (t = 3.425s). Cutting to CAM 10 at 3.55s completes
-  // every physical stair tread inside CAM 11 before the contestant walks past CAM 11 lens (Z = 6.40m).
-  const cam11EndSec = 3.55;
+  const count = Math.max(1, activeCount);
+  const clampedSeat = Math.min(count - 1, Math.max(0, currentSeat));
+  const isLastSeat = clampedSeat >= count - 1;
+  const isDoorLeft = clampedSeat % 2 === 0;
+  const doorCam = isDoorLeft ? 11 : 12;
+  const targetCam = getCameraForSeat(clampedSeat, count);
+  const seatTiming = getEntranceSeatTiming(clampedSeat, count);
 
-  // Broadcast Choreography:
-  // - Contestant 0: 0.0s -> 4.05s on CAM 11 (push zoom 1.8s -> 3.0s), then CAM 10 wide tracking behind podiums.
-  // - Contestant N > 0: 0.0s -> 1.2s on CAM 10 (prev settles & bows), 1.2s -> 4.05s on CAM 11 (0.6s early before Bục Giữa),
-  //   then CAM 10 wide tracking behind podiums.
-  // - Last Seat: CAM 10 until actual desk arrival (arrivalSec), then CUT to targetCam close-up for 1.8s before MC CAM 3.
-  const isCam11Phase = isFirstSeat
-    ? elapsedSec < cam11EndSec
-    : elapsedSec >= 1.2 && elapsedSec < cam11EndSec;
-
-  if (isCam11Phase) {
-    // Optical zoom push (0.25) during pose greeting on center landing (1.8s -> 3.0s)
-    const pushInProgress = elapsedSec < 1.8 ? 0.0 : Math.min(1.0, (elapsedSec - 1.8) / 1.2) * 0.25;
+  // Phase 1 (0.0s -> 0.8s): Tight close-up right at the corresponding door
+  if (elapsedSec < 0.8) {
     return {
-      camAngle: 11,
+      camAngle: doorCam,
       transitionMode: "CUT",
       isOverlayHidden: false,
-      pushInProgress,
+      pushInProgress: 0.0,
     };
   }
 
-  if (isLastSeat && elapsedSec >= seatTiming.arrivalSec) {
-    // Last contestant has actually arrived behind their assigned desk: frame desk close-up cleanly
+  // Phase 2 (0.8s -> 1.8s): Zoom out down slightly towards center landing
+  if (elapsedSec < 1.8) {
+    return {
+      camAngle: 13,
+      transitionMode: "MORPH",
+      isOverlayHidden: false,
+      pushInProgress: 0.0,
+    };
+  }
+
+  // Phase 3 (1.8s -> 3.0s): Stand completely still at pose position on center landing
+  if (elapsedSec < 3.0) {
+    return {
+      camAngle: 13,
+      transitionMode: "CUT",
+      isOverlayHidden: false,
+      pushInProgress: 0.0,
+    };
+  }
+
+  // Phase 4 (3.0s -> 4.0s): High-right angle above head pointing downwards following movement
+  if (elapsedSec < 4.0) {
+    return {
+      camAngle: 19,
+      transitionMode: "CUT",
+      isOverlayHidden: false,
+      pushInProgress: 0.0,
+    };
+  }
+
+  // Phase 5 (>= 4.0s):
+  // If NOT the last seat: Next seat begins at 4.0s. If still evaluating before engine advances:
+  // Pre-frame the next contestant's door directly! NEVER cut to CAM 10!
+  if (!isLastSeat) {
+    const nextDoorCam = ((clampedSeat + 1) % 2 === 0) ? 11 : 12;
+    return {
+      camAngle: nextDoorCam,
+      transitionMode: "CUT",
+      isOverlayHidden: false,
+      pushInProgress: 0.0,
+    };
+  }
+
+  // For the last seat:
+  // When last seat reaches desk arrival, frame desk close-up
+  if (elapsedSec >= seatTiming.arrivalSec) {
     return {
       camAngle: targetCam,
       transitionMode: "CUT",
@@ -72,7 +111,7 @@ export function evaluateEntranceCameraState(
     };
   }
 
-  // Default to CAM 10 (Toàn Cảnh Bục Thí Sinh)
+  // While last contestant is walking to desk along corridor:
   return {
     camAngle: 10,
     transitionMode: "CUT",
@@ -320,8 +359,7 @@ export function useOlympiaCameraState(
       isRoundPostIntroStandby(state, getNow()) ||
       (state?.currentRound === "khoiDong" &&
         state?.khoiDong &&
-        (!state.khoiDong.started ||
-          Boolean(state.khoiDong.startCooldownUntil) ||
+        (Boolean(state.khoiDong.startCooldownUntil && getNow() < state.khoiDong.startCooldownUntil) ||
           Boolean(state.khoiDong.timer?.startedAt) ||
           state.khoiDong.phase === "segmentDone")) ||
       (state?.currentRound === "vcnv" && Boolean(state?.vcnv?.timer?.startedAt)) ||
@@ -440,39 +478,20 @@ export function useOlympiaCameraState(
 
     // 2.8. Post-Intro Opening Round Camera Sequence (applies to all 4 rounds: Khởi Động, VCNV, Tăng Tốc, Về Đích):
     // Right when the 7.66s video intro unmounts (!state.banner) and start_round audio plays:
-    // - 0.0s - 3.5s: CAM 14 low-to-high crane sweep across Laurel Wreath & stage
-    // - 3.5s - 7.5s: CAM 3 Bục MC & Cổng Lục Giác with smooth zoom-in
-    // - 7.5s - 11.5s: CAM 10 Toàn Cảnh Bục Thí Sinh
-    // - 11.5s+: CAM 1 Sweeping Wide Studio Orbit
+    // First 2.8s: CAM 3 Bục MC. Hết 2.8s: Mặc định zoom out toàn cảnh CAM 1 khi chưa bắt đầu thi đấu.
     if (isRoundPostIntroStandby(state, now)) {
       const baseTime = state?.roundIntroDoneAt ?? roundEnteredAtRef.current;
       const postIntroElapsed = Math.max(0, (now - baseTime) / 1000);
-      if (postIntroElapsed < 3.5) {
-        return {
-          camAngle: 14,
-          transitionMode: "MORPH",
-          isOverlayHidden: false,
-          pushInProgress: 0,
-        };
-      }
-      if (postIntroElapsed < 7.5) {
+      if (postIntroElapsed < 2.8) {
         return {
           camAngle: 3,
           transitionMode: "CUT",
           isOverlayHidden: false,
-          pushInProgress: Math.min(1.0, (postIntroElapsed - 3.5) / 4.0),
-        };
-      }
-      if (postIntroElapsed < 11.5) {
-        return {
-          camAngle: 10,
-          transitionMode: "CUT",
-          isOverlayHidden: false,
-          pushInProgress: Math.min(0.6, ((postIntroElapsed - 7.5) / 4.0) * 0.6),
+          pushInProgress: Math.min(1.0, postIntroElapsed / 2.8) * 0.20,
         };
       }
       return {
-        camAngle: 1, // Toàn Cảnh sweeping stage
+        camAngle: 1, // Hết 2.8s mặc định zoom out toàn cảnh (lúc đó đã thi đâu)
         transitionMode: "MORPH",
         isOverlayHidden: false,
         pushInProgress: 0,
@@ -503,19 +522,19 @@ export function useOlympiaCameraState(
         : (kd.buzzedSeat != null ? getCameraForSeat(kd.buzzedSeat, activeCount) : 10);
 
       // 3.2. Khi chưa nhấn Bắt đầu (hết intro Khởi động):
-      // Giữ zoom in bục MC 5.0s để MC dẫn trọn lời trước khi morph quay toàn cảnh
+      // Giữ zoom in bục MC 2.8s để MC dẫn trọn lời trước khi zoom out toàn cảnh (CAM 1)
       if (!kd.started && (kd.phase === "intro" || kd.qIdx < 0)) {
-        const introElapsed = Math.max(0, (now - roundEnteredAtRef.current) / 1000);
-        if (introElapsed < 5.0) {
+        const introElapsed = Math.max(0, (now - (state.roundIntroDoneAt ?? roundEnteredAtRef.current)) / 1000);
+        if (introElapsed < 2.8) {
           return {
             camAngle: 3, // Zoom in bục MC
-            transitionMode: "MORPH",
+            transitionMode: "CUT",
             isOverlayHidden: false,
-            pushInProgress: Math.min(1.0, introElapsed / 5.0),
+            pushInProgress: Math.min(1.0, introElapsed / 2.8) * 0.20,
           };
         }
         return {
-          camAngle: 1, // Quay toàn cảnh
+          camAngle: 1, // Hết 2.8s mặc định zoom out toàn cảnh (lúc đó đã thi đâu)
           transitionMode: "MORPH",
           isOverlayHidden: false,
           pushInProgress: 0,
@@ -563,14 +582,14 @@ export function useOlympiaCameraState(
             pushInProgress: push, // Zoom smooth 100% -> 115%
           };
         } else {
-          // Lượt chung / O22 / O23: Khi có thí sinh bấm chuông, giữ CAM 10 toàn cảnh trong 1.0s trước khi CUT sang cận cảnh thí sinh
+          // Lượt chung / O22 / O23: Khi có thí sinh bấm chuông, giữ CAM 10 toàn cảnh trong 0.8s để khán giả quan sát đèn đỏ bục trước khi CUT sang cận cảnh thí sinh
           if (kd.buzzedSeat != null) {
             if (lastKdBuzzedSeatRef.current !== kd.buzzedSeat) {
               lastKdBuzzedSeatRef.current = kd.buzzedSeat;
               kdBuzzedAtRef.current = now;
             }
             const elapsedSinceBuzz = (now - kdBuzzedAtRef.current) / 1000;
-            if (elapsedSinceBuzz < 1.0) {
+            if (elapsedSinceBuzz < 0.8) {
               return {
                 camAngle: 10,
                 transitionMode: "CUT",
@@ -598,11 +617,11 @@ export function useOlympiaCameraState(
       }
 
       // 3.6. Sau khi nhấn Kết thúc lượt (sau một lượt khởi động riêng):
-      // Giữ cận cảnh thí sinh 4.0s (zoom in nhẹ) rồi cut sang toàn cảnh CAM 1 và zoom out nhẹ
+      // Giữ cận cảnh thí sinh 2.5s (zoom in nhẹ) rồi cut sang toàn cảnh CAM 1
       if (kd.phase === "segmentDone") {
         const segDoneElapsed = Math.max(0, (now - phaseEnteredAtRef.current) / 1000);
-        if (segDoneElapsed < 4.0) {
-          const pushIn = Math.min(1.0, segDoneElapsed / 4.0) * 0.15;
+        if (segDoneElapsed < 2.5) {
+          const pushIn = Math.min(1.0, segDoneElapsed / 2.5) * 0.15;
           return {
             camAngle: targetContestantCam,
             transitionMode: "CUT",
@@ -610,12 +629,11 @@ export function useOlympiaCameraState(
             pushInProgress: pushIn,
           };
         }
-        const zoomOutProgress = Math.max(0, 1.0 - (segDoneElapsed - 4.0) / 3.0) * 0.15;
         return {
           camAngle: 1,
           transitionMode: "CUT",
           isOverlayHidden: false,
-          pushInProgress: zoomOutProgress,
+          pushInProgress: 0,
         };
       }
 

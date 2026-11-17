@@ -1,0 +1,376 @@
+{
+  "timestamp": "2026-11-16T14:11:52.924Z",
+  "audioReference": {
+    "path": "d:\\Timeout Quiz\\public\\olympia-audio\\O26\\6_NhacKhac\\section_intro.mp3",
+    "formatDuration": 7.656,
+    "sampleRate": 48000,
+    "channels": 2,
+    "bitRate": 322052,
+    "startTime": 0.023021
+  },
+  "primaryFiles": {
+    "khoi_dong": {
+      "file": "khoi_dong.webm",
+      "title": "Khởi Động",
+      "size": 2618965,
+      "sha256": "03ad8e60139211feef23eaed8d7cfeea433ec0ad307da1deaf447d99ebd86a75",
+      "formatDuration": 7.664,
+      "formatName": "matroska,webm",
+      "video": {
+        "codec": "vp9",
+        "profile": "Profile 0",
+        "mimeCodec": "vp09.00.40.08",
+        "width": 1920,
+        "height": 1080,
+        "pixFmt": "yuv420p",
+        "rFrameRate": "30/1",
+        "avgFrameRate": "30/1",
+        "durationTag": "00:00:07.633000000",
+        "startTime": 0
+      },
+      "audio": {
+        "codec": "opus",
+        "sampleRate": 48000,
+        "channels": 2,
+        "mimeCodec": "opus",
+        "durationTag": "00:00:07.664000000",
+        "startTime": 0
+      }
+    },
+    "vuot_chuong_ngai_vat": {
+      "file": "vuot_chuong_ngai_vat.webm",
+      "title": "Vượt Chướng Ngại Vật",
+      "size": 2679134,
+      "sha256": "aee084854bce973688697396058cc12a88ebb585b66b9c4cae04a5b5e2190181",
+      "formatDuration": 7.664,
+      "formatName": "matroska,webm",
+      "video": {
+        "codec": "vp9",
+        "profile": "Profile 0",
+        "mimeCodec": "vp09.00.40.08",
+        "width": 1920,
+        "height": 1080,
+        "pixFmt": "yuv420p",
+        "rFrameRate": "30/1",
+        "avgFrameRate": "30/1",
+        "durationTag": "00:00:07.633000000",
+        "startTime": 0
+      },
+      "audio": {
+        "codec": "opus",
+        "sampleRate": 48000,
+        "channels": 2,
+        "mimeCodec": "opus",
+        "durationTag": "00:00:07.664000000",
+        "startTime": 0
+      }
+    },
+    "tang_toc": {
+      "file": "tang_toc.webm",
+      "title": "Tăng Tốc",
+      "size": 2579257,
+      "sha256": "e0faca6f283831d9ee0a98ecfe33ad1fa0886868a89a771bdf54f1be611cc6d1",
+      "formatDuration": 7.664,
+      "formatName": "matroska,webm",
+      "video": {
+        "codec": "vp9",
+        "profile": "Profile 0",
+        "mimeCodec": "vp09.00.40.08",
+        "width": 1920,
+        "height": 1080,
+        "pixFmt": "yuv420p",
+        "rFrameRate": "30/1",
+        "avgFrameRate": "30/1",
+        "durationTag": "00:00:07.633000000",
+        "startTime": 0
+      },
+      "audio": {
+        "codec": "opus",
+        "sampleRate": 48000,
+        "channels": 2,
+        "mimeCodec": "opus",
+        "durationTag": "00:00:07.664000000",
+        "startTime": 0
+      }
+    },
+    "ve_dich": {
+      "file": "ve_dich.webm",
+      "title": "Về Đích",
+      "size": 2523683,
+      "sha256": "41d9532811fb18d2139ad40dc3b00b1aacce9d37b6eea46c19f5759dcbc06290",
+      "formatDuration": 7.664,
+      "formatName": "matroska,webm",
+      "video": {
+        "codec": "vp9",
+        "profile": "Profile 0",
+        "mimeCodec": "vp09.00.40.08",
+        "width": 1920,
+        "height": 1080,
+        "pixFmt": "yuv420p",
+        "rFrameRate": "30/1",
+        "avgFrameRate": "30/1",
+        "durationTag": "00:00:07.633000000",
+        "startTime": 0
+      },
+      "audio": {
+        "codec": "opus",
+        "sampleRate": 48000,
+        "channels": 2,
+        "mimeCodec": "opus",
+        "durationTag": "00:00:07.664000000",
+        "startTime": 0
+      }
+    }
+  },
+  "legacyParity": {
+    "intro_khoiDong.webm": {
+      "primary": "khoi_dong.webm",
+      "legacy": "intro_khoiDong.webm",
+      "primarySha": "03ad8e60139211feef23eaed8d7cfeea433ec0ad307da1deaf447d99ebd86a75",
+      "legacySha": "03ad8e60139211feef23eaed8d7cfeea433ec0ad307da1deaf447d99ebd86a75",
+      "match": true
+    },
+    "intro_vuotChuongNgaiVat.webm": {
+      "primary": "vuot_chuong_ngai_vat.webm",
+      "legacy": "intro_vuotChuongNgaiVat.webm",
+      "primarySha": "aee084854bce973688697396058cc12a88ebb585b66b9c4cae04a5b5e2190181",
+      "legacySha": "aee084854bce973688697396058cc12a88ebb585b66b9c4cae04a5b5e2190181",
+      "match": true
+    },
+    "intro_vcnv.webm": {
+      "primary": "vuot_chuong_ngai_vat.webm",
+      "legacy": "intro_vcnv.webm",
+      "primarySha": "aee084854bce973688697396058cc12a88ebb585b66b9c4cae04a5b5e2190181",
+      "legacySha": "aee084854bce973688697396058cc12a88ebb585b66b9c4cae04a5b5e2190181",
+      "match": true
+    },
+    "intro_tangToc.webm": {
+      "primary": "tang_toc.webm",
+      "legacy": "intro_tangToc.webm",
+      "primarySha": "e0faca6f283831d9ee0a98ecfe33ad1fa0886868a89a771bdf54f1be611cc6d1",
+      "legacySha": "e0faca6f283831d9ee0a98ecfe33ad1fa0886868a89a771bdf54f1be611cc6d1",
+      "match": true
+    },
+    "intro_veDich.webm": {
+      "primary": "ve_dich.webm",
+      "legacy": "intro_veDich.webm",
+      "primarySha": "41d9532811fb18d2139ad40dc3b00b1aacce9d37b6eea46c19f5759dcbc06290",
+      "legacySha": "41d9532811fb18d2139ad40dc3b00b1aacce9d37b6eea46c19f5759dcbc06290",
+      "match": true
+    }
+  },
+  "syncAnalysis": {
+    "khoi_dong": {
+      "file": "khoi_dong.webm",
+      "videoFramesCount": 229,
+      "audioFramesCount": 384,
+      "videoStartTime": 0,
+      "videoEndTime": 7.633,
+      "audioStartTime": 0,
+      "audioEndTime": 7.657,
+      "startDesyncMs": 0,
+      "endDesyncMs": 24.00000000000002,
+      "withinFrameTolerance": true
+    },
+    "vuot_chuong_ngai_vat": {
+      "file": "vuot_chuong_ngai_vat.webm",
+      "videoFramesCount": 229,
+      "audioFramesCount": 384,
+      "videoStartTime": 0,
+      "videoEndTime": 7.633,
+      "audioStartTime": 0,
+      "audioEndTime": 7.657,
+      "startDesyncMs": 0,
+      "endDesyncMs": 24.00000000000002,
+      "withinFrameTolerance": true
+    },
+    "tang_toc": {
+      "file": "tang_toc.webm",
+      "videoFramesCount": 229,
+      "audioFramesCount": 384,
+      "videoStartTime": 0,
+      "videoEndTime": 7.633,
+      "audioStartTime": 0,
+      "audioEndTime": 7.657,
+      "startDesyncMs": 0,
+      "endDesyncMs": 24.00000000000002,
+      "withinFrameTolerance": true
+    },
+    "ve_dich": {
+      "file": "ve_dich.webm",
+      "videoFramesCount": 229,
+      "audioFramesCount": 384,
+      "videoStartTime": 0,
+      "videoEndTime": 7.633,
+      "audioStartTime": 0,
+      "audioEndTime": 7.657,
+      "startDesyncMs": 0,
+      "endDesyncMs": 24.00000000000002,
+      "withinFrameTolerance": true
+    }
+  },
+  "keyframeAnalysis": {
+    "khoi_dong": {
+      "file": "khoi_dong.webm",
+      "totalFrames": 229,
+      "isMonotonic": true,
+      "maxStepErrorSec": 0.0006666666666673635,
+      "keyframes": [
+        {
+          "index": 0,
+          "pts": 0,
+          "type": "I"
+        },
+        {
+          "index": 128,
+          "pts": 4.267,
+          "type": "I"
+        }
+      ]
+    },
+    "vuot_chuong_ngai_vat": {
+      "file": "vuot_chuong_ngai_vat.webm",
+      "totalFrames": 229,
+      "isMonotonic": true,
+      "maxStepErrorSec": 0.0006666666666673635,
+      "keyframes": [
+        {
+          "index": 0,
+          "pts": 0,
+          "type": "I"
+        },
+        {
+          "index": 128,
+          "pts": 4.267,
+          "type": "I"
+        }
+      ]
+    },
+    "tang_toc": {
+      "file": "tang_toc.webm",
+      "totalFrames": 229,
+      "isMonotonic": true,
+      "maxStepErrorSec": 0.0006666666666673635,
+      "keyframes": [
+        {
+          "index": 0,
+          "pts": 0,
+          "type": "I"
+        },
+        {
+          "index": 128,
+          "pts": 4.267,
+          "type": "I"
+        }
+      ]
+    },
+    "ve_dich": {
+      "file": "ve_dich.webm",
+      "totalFrames": 229,
+      "isMonotonic": true,
+      "maxStepErrorSec": 0.0006666666666673635,
+      "keyframes": [
+        {
+          "index": 0,
+          "pts": 0,
+          "type": "I"
+        },
+        {
+          "index": 128,
+          "pts": 4.267,
+          "type": "I"
+        }
+      ]
+    }
+  },
+  "decodeChecks": {
+    "khoi_dong.webm": {
+      "success": true,
+      "code": 0,
+      "stderr": ""
+    },
+    "vuot_chuong_ngai_vat.webm": {
+      "success": true,
+      "code": 0,
+      "stderr": ""
+    },
+    "tang_toc.webm": {
+      "success": true,
+      "code": 0,
+      "stderr": ""
+    },
+    "ve_dich.webm": {
+      "success": true,
+      "code": 0,
+      "stderr": ""
+    },
+    "intro_khoiDong.webm": {
+      "success": true,
+      "code": 0,
+      "stderr": ""
+    },
+    "intro_vuotChuongNgaiVat.webm": {
+      "success": true,
+      "code": 0,
+      "stderr": ""
+    },
+    "intro_vcnv.webm": {
+      "success": true,
+      "code": 0,
+      "stderr": ""
+    },
+    "intro_tangToc.webm": {
+      "success": true,
+      "code": 0,
+      "stderr": ""
+    },
+    "intro_veDich.webm": {
+      "success": true,
+      "code": 0,
+      "stderr": ""
+    }
+  },
+  "browserPlayback": {
+    "khoi_dong": {
+      "success": false,
+      "error": "Playback timed out after 12s",
+      "logs": [],
+      "metadataLoaded": false,
+      "endedFired": false,
+      "duration": null,
+      "videoWidth": null,
+      "videoHeight": null
+    },
+    "vuot_chuong_ngai_vat": {
+      "success": false,
+      "error": "Playback timed out after 12s",
+      "logs": [],
+      "metadataLoaded": false,
+      "endedFired": false,
+      "duration": null,
+      "videoWidth": null,
+      "videoHeight": null
+    },
+    "tang_toc": {
+      "success": false,
+      "error": "Playback timed out after 12s",
+      "logs": [],
+      "metadataLoaded": false,
+      "endedFired": false,
+      "duration": null,
+      "videoWidth": null,
+      "videoHeight": null
+    },
+    "ve_dich": {
+      "success": false,
+      "error": "Playback timed out after 12s",
+      "logs": [],
+      "metadataLoaded": false,
+      "endedFired": false,
+      "duration": null,
+      "videoWidth": null,
+      "videoHeight": null
+    }
+  },
+  "allPassed": false
+}

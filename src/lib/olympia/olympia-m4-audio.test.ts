@@ -184,21 +184,21 @@ export function runOlympiaM4AudioSuite(): M4SuiteResults {
     const duration = calculateEntranceDuration(6);
     assert.equal(duration, getEntranceScheduleOffsetsMs(6).totalDurationSec);
     assert.ok(duration > CONTEST_INTRO_DURATION_SEC);
-    assert.ok(calculateRequiredIntroLoops(6) >= 3);
+    assert.ok(calculateRequiredIntroLoops(6) >= 2);
   });
 
   runTest(2, "M4.16: 7 contestants duration matches schedule and calculates required loops", () => {
     const duration = calculateEntranceDuration(7);
     assert.equal(duration, getEntranceScheduleOffsetsMs(7).totalDurationSec);
     assert.ok(duration > CONTEST_INTRO_DURATION_SEC);
-    assert.ok(calculateRequiredIntroLoops(7) >= 3);
+    assert.ok(calculateRequiredIntroLoops(7) >= 2);
   });
 
   runTest(2, "M4.17: 8 contestants duration matches schedule and calculates required loops", () => {
     const duration = calculateEntranceDuration(8);
     assert.equal(duration, getEntranceScheduleOffsetsMs(8).totalDurationSec);
     assert.ok(duration > CONTEST_INTRO_DURATION_SEC);
-    assert.ok(calculateRequiredIntroLoops(8) >= 4);
+    assert.ok(calculateRequiredIntroLoops(8) >= 2);
   });
 
   runTest(2, "M4.18: Boundary seat count clamping: seatCount <= 1 produces single-seat duration and 1 loop", () => {

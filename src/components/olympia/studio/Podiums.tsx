@@ -3298,24 +3298,21 @@ export function McPresenters({
       nhLeftWristRef.current.rotation.z = 0.06;
     }
 
-    // Right arm: THẢ LỎNG LINH HOẠT (Flexibly relaxed along right flank with subtle natural sway)
-    const nhRelaxArmX = isWalking ? -armStride * 0.22 : 0.03 + nhCardBreathe * 0.5;
-    const nhRelaxForearmX = isWalking ? -0.18 : -0.25 + breatheWave * 0.025;
-
+    // Right arm: Cùng hai tay cầm trang trọng kẹp kịch bản trước bụng/eo đối xứng với tay trái
     if (nhRightArmRef.current) {
-      nhRightArmRef.current.rotation.x = nhRelaxArmX;
-      nhRightArmRef.current.rotation.y = 0;
-      nhRightArmRef.current.rotation.z = -0.06;
+      nhRightArmRef.current.rotation.x = nhHoldFolderX;
+      nhRightArmRef.current.rotation.y = -0.14;
+      nhRightArmRef.current.rotation.z = 0.10;
     }
     if (nhRightForearmRef.current) {
-      nhRightForearmRef.current.rotation.x = nhRelaxForearmX;
-      nhRightForearmRef.current.rotation.y = 0.04;
-      nhRightForearmRef.current.rotation.z = -0.05;
+      nhRightForearmRef.current.rotation.x = nhHoldForearmX;
+      nhRightForearmRef.current.rotation.y = 0.28;
+      nhRightForearmRef.current.rotation.z = -0.30;
     }
     if (nhRightWristRef.current) {
-      nhRightWristRef.current.rotation.x = talkSub * 0.025;
+      nhRightWristRef.current.rotation.x = 0.08 + talkSub * 0.02;
       nhRightWristRef.current.rotation.y = 0;
-      nhRightWristRef.current.rotation.z = -0.05;
+      nhRightWristRef.current.rotation.z = -0.06;
     }
 
     // Presenter greeting bow/nod facing audience & contestants during isGreeting
@@ -3572,18 +3569,32 @@ export function McPresenters({
                       mode="hang"
                     />
                     {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC hai tay cầm trang trọng trước eo) */}
+                    {/* Mặt ngoài bìa tập hướng về khán giả (+Z), mặt giấy tài liệu hướng vào trong về phía ngực MC (-Z) */}
                     <group position={[0.075, 0.010, 0.045]} rotation={[0.38, 0, 0]}>
+                      {/* Bìa kẹp da xanh đen sang trọng */}
                       <mesh>
                         <boxGeometry args={[0.20, 0.26, 0.005]} />
-                        <meshStandardMaterial color="#0f172a" roughness={0.35} metalness={0.15} />
+                        <meshStandardMaterial color="#0b1329" roughness={0.35} metalness={0.2} />
                       </mesh>
+                      {/* Nẹp kẹp mạ vàng kim trang nhã trên mặt bìa hướng về khán giả (+Z) */}
                       <mesh position={[0, 0.124, 0.003]}>
                         <boxGeometry args={[0.196, 0.006, 0.003]} />
                         <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
                       </mesh>
-                      <mesh position={[0, -0.006, 0.0035]}>
+                      {/* Huy hiệu / logo vàng kim dập chìm trên bìa ngoài hướng về khán giả */}
+                      <mesh position={[0, 0.01, 0.0028]}>
+                        <boxGeometry args={[0.065, 0.065, 0.001]} />
+                        <meshStandardMaterial color="#d97706" roughness={0.3} metalness={0.75} />
+                      </mesh>
+                      {/* Tờ giấy kịch bản màu trắng ngà hướng ra sau về phía mắt/ngực MC (-Z, không chĩa vào khán giả) */}
+                      <mesh position={[0, -0.006, -0.0035]}>
                         <boxGeometry args={[0.180, 0.235, 0.002]} />
                         <meshStandardMaterial color="#f8fafc" roughness={0.6} />
+                      </mesh>
+                      {/* Kẹp giữ giấy phía bên trong mặt kịch bản (-Z) */}
+                      <mesh position={[0, 0.124, -0.003]}>
+                        <boxGeometry args={[0.196, 0.006, 0.003]} />
+                        <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
                       </mesh>
                     </group>
                   </group>
@@ -3919,19 +3930,33 @@ export function McPresenters({
                       isLeft={true}
                       mode="card"
                     />
-                    {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC Ngọc Huy cầm tay trái trước bụng) */}
-                    <group position={[0.08, -0.015, 0.05]} rotation={[0.42, 0.15, -0.10]}>
+                    {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC hai tay cầm trang trọng trước bụng) */}
+                    {/* Mặt ngoài bìa tập hướng về khán giả (+Z), mặt giấy tài liệu hướng vào trong về phía ngực MC (-Z) */}
+                    <group position={[0.08, -0.015, 0.05]} rotation={[0.38, 0.08, -0.05]}>
+                      {/* Bìa kẹp da xanh đen sang trọng */}
                       <mesh>
                         <boxGeometry args={[0.22, 0.28, 0.006]} />
-                        <meshStandardMaterial color="#0f172a" roughness={0.35} metalness={0.15} />
+                        <meshStandardMaterial color="#0b1329" roughness={0.35} metalness={0.2} />
                       </mesh>
+                      {/* Nẹp kẹp mạ vàng kim trang nhã trên mặt bìa hướng về khán giả (+Z) */}
                       <mesh position={[0, 0.134, 0.003]}>
                         <boxGeometry args={[0.216, 0.006, 0.003]} />
                         <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
                       </mesh>
-                      <mesh position={[0, -0.006, 0.0035]}>
+                      {/* Huy hiệu / logo vàng kim dập chìm trên bìa ngoài hướng về khán giả */}
+                      <mesh position={[0, 0.01, 0.003]}>
+                        <boxGeometry args={[0.075, 0.075, 0.001]} />
+                        <meshStandardMaterial color="#d97706" roughness={0.3} metalness={0.75} />
+                      </mesh>
+                      {/* Tờ giấy kịch bản màu trắng ngà hướng ra sau về phía mắt/ngực MC (-Z, không chĩa vào khán giả) */}
+                      <mesh position={[0, -0.006, -0.0035]}>
                         <boxGeometry args={[0.198, 0.252, 0.002]} />
                         <meshStandardMaterial color="#f8fafc" roughness={0.6} />
+                      </mesh>
+                      {/* Kẹp giữ giấy phía bên trong mặt kịch bản (-Z) */}
+                      <mesh position={[0, 0.134, -0.003]}>
+                        <boxGeometry args={[0.216, 0.006, 0.003]} />
+                        <meshStandardMaterial color="#f59e0b" roughness={0.2} metalness={0.8} />
                       </mesh>
                     </group>
                   </group>
@@ -3941,15 +3966,15 @@ export function McPresenters({
           </group>
         </group>
 
-        {/* Right Arm Group (Shoulder Pivot at [0.165, 1.28, 0.005]) - THẢ LỎNG LINH HOẠT (Flexibly Relaxed along body) */}
+        {/* Right Arm Group (Shoulder Pivot at [0.165, 1.28, 0.005]) joining to hold Cue Card Folder */}
         <group position={[0.165, 1.28, 0.005]}>
           <group ref={nhRightArmRef}>
             {/* Seamless anatomical shoulder cap */}
             <mesh position={[0, 0, 0]} material={nhBlazerMat}>
               <sphereGeometry args={[0.039, 14, 14]} />
             </mesh>
-            {/* Upper arm hangs down along flank */}
-            <group rotation={[-0.06, 0, -0.06]}>
+            {/* Upper arm bends down and forward toward Cue Card */}
+            <group rotation={[-0.20, -0.05, -0.10]}>
               <mesh position={[0, -0.10, 0]} material={nhBlazerMat}>
                 <cylinderGeometry args={[0.038, 0.032, 0.20, 16]} />
               </mesh>
@@ -3958,8 +3983,8 @@ export function McPresenters({
                 <mesh position={[0, 0, 0]} material={nhBlazerMat}>
                   <sphereGeometry args={[0.032, 14, 14]} />
                 </mesh>
-                {/* Forearm hangs naturally down beside trousers */}
-                <group ref={nhRightForearmRef} rotation={[-0.10, 0.04, -0.06]}>
+                {/* Forearm folds forward and inward to support right side of cue card */}
+                <group ref={nhRightForearmRef} rotation={[-0.78, 0.28, -0.32]}>
                   <mesh position={[0, -0.075, 0]} material={nhBlazerMat}>
                     <cylinderGeometry args={[0.032, 0.026, 0.15, 16]} />
                   </mesh>
@@ -3967,7 +3992,7 @@ export function McPresenters({
                   <mesh position={[0, -0.15, 0]} material={nhShirtMat}>
                     <cylinderGeometry args={[0.028, 0.028, 0.018, 16]} />
                   </mesh>
-                  {/* Sculpted Hand relaxed naturally along body (thả lỏng linh hoạt, NO props!) */}
+                  {/* Sculpted Hand touching Cue Card Folder */}
                   <group ref={nhRightWristRef} position={[0, -0.165, 0]}>
                     <VietnameseHand
                       position={[0, 0, 0]}
@@ -3975,7 +4000,7 @@ export function McPresenters({
                       scale={0.94}
                       skinMat={nhSkinMat}
                       isLeft={false}
-                      mode="hang"
+                      mode="card"
                     />
                   </group>
                 </group>
@@ -4371,6 +4396,8 @@ function SingleContestantEntranceWalkingFigure({
   const figureRef = useRef<THREE.Group>(null);
   const [isWalking, setIsWalking] = useState(true);
   const [gesture, setGesture] = useState<"none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow">("none");
+  const lastWalkingRef = useRef(true);
+  const lastGestureRef = useRef<"none" | "wave" | "fist_pump" | "heart" | "open_arms" | "desk_bow">("none");
   const gestureProgressRef = useRef<number>(0);
   const walkPhaseRef = useRef<number>(0);
 
@@ -4385,10 +4412,12 @@ function SingleContestantEntranceWalkingFigure({
 
     const traj = evaluateContestantEntranceTrajectory(t, seatId, targetCfg, firstPhi, totalSeats);
 
-    if (traj.walkingNow !== isWalking) {
+    if (traj.walkingNow !== lastWalkingRef.current) {
+      lastWalkingRef.current = traj.walkingNow;
       setIsWalking(traj.walkingNow);
     }
-    if (traj.gesture !== gesture) {
+    if (traj.gesture !== lastGestureRef.current) {
+      lastGestureRef.current = traj.gesture;
       setGesture(traj.gesture);
     }
     gestureProgressRef.current = traj.gestureProg;

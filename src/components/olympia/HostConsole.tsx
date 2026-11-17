@@ -1359,9 +1359,9 @@ export const HostConsole = React.memo(function HostConsole({
                   <div className="pt-1 border-t border-cyan-500/20 grid grid-cols-5 gap-1">
                     {[
                       { id: 9, label: "CAM 9: Cẩu Quay Jib Toàn Khán Đài", short: "Cẩu Jib" },
-                      { id: 11, label: "CAM 11: Cam Ẩn Trực Diện Chào Sân", short: "Chào Sân" },
-                      { id: 12, label: "CAM 12: Cam Chéo Khán Đài 3/4", short: "Chéo 3/4" },
-                      { id: 13, label: "CAM 13: Cổng Vòm & Đỉnh Núi", short: "Cổng Vòm" },
+                      { id: 11, label: "CAM 11: Cận Cảnh Cửa Trái Chào Sân", short: "Cửa Trái" },
+                      { id: 12, label: "CAM 12: Cận Cảnh Cửa Phải Chào Sân", short: "Cửa Phải" },
+                      { id: 13, label: "CAM 13: Bục Giữa Tạo Dáng", short: "Bục Giữa" },
                       { id: 14, label: "CAM 14: Góc Thấp Khởi Động", short: "Góc Thấp" },
                     ].map((c) => {
                       const isPinned = state.studioCameraManual && (state.studioCamera ?? 1) === c.id;

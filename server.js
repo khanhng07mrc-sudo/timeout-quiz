@@ -105844,7 +105844,7 @@ function getEntranceSeatTiming(seatId, totalSeats = 4) {
   const floorDurationSec = +Math.min(8.4, Math.max(3.6, totalDist / ENTRANCE_TARGET_FLOOR_SPEED)).toFixed(2);
   const arrivalSec = +(ENTRANCE_STAIRS_END_SEC + floorDurationSec).toFixed(2);
   const bowEndSec = +(arrivalSec + ENTRANCE_DESK_BOW_SEC).toFixed(2);
-  const advanceMs = Math.round((arrivalSec - 0.5) * 1e3);
+  const advanceMs = Math.round(ENTRANCE_STAIRS_END_SEC * 1e3);
   const lastFinishMs = Math.round((arrivalSec + ENTRANCE_LAST_CLOSEUP_HOLD_SEC) * 1e3);
   return {
     seatId: clampedSeat,

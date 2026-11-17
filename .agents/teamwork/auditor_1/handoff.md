@@ -1,82 +1,102 @@
-# Handoff Report — Forensic Audit Track (Milestone M5)
+# Victory Audit Handoff Report: Performance and Broadcast Visual Plan
+
+**Auditor Identity**: Independent Victory Auditor (`victory_verifier`, `auditor`, `critic`)  
+**Target Workspace**: `d:\Timeout Quiz`  
+**Boundary Isolation Check**: `d:\Olympia 26` (0 files modified)  
+**Parent Caller ID**: `80a610c6-e0da-489c-a837-a0bd35875d54`  
+**Audit Verdict**: **VICTORY CONFIRMED**
+
+---
 
 ## 1. Observation
-1. **Safety Constraint R4 & Brand Asset**:
-   - `C:\Users\khanh\Downloads\Olympia_logo_2016.webp` was inspected with elevated permissions:
-     - FullPath: `C:\Users\khanh\Downloads\Olympia_logo_2016.webp`
-     - Length: 77,292 bytes
-     - LastWriteTime: 10/31/2026 8:07:03 AM
-     - SHA-256 Hash: `876BE1E8D64108CA6349EEEFCBBD991222C766CEF2A5111D9A399B5DB5D83DE2`
-   - Destination file `d:\Timeout Quiz\public\olympia\Olympia_logo_2016.webp`:
-     - SHA-256 Hash: `876BE1E8D64108CA6349EEEFCBBD991222C766CEF2A5111D9A399B5DB5D83DE2`
-     - Evaluated `(Get-FileHash 'C:\Users\khanh\Downloads\Olympia_logo_2016.webp').Hash -eq (Get-FileHash 'd:\Timeout Quiz\public\olympia\Olympia_logo_2016.webp').Hash` returned `True`.
-   - `git status --porcelain` in `d:\Timeout Quiz` confirmed zero deleted files. External directory `d:\Olympia 26` has zero deletions or modifications.
-2. **Static Analysis & Anti-Cheating**:
-   - `src/components/olympia/OlympiaStudio3DScene.tsx`: Genuine R3F Canvas mounting `CameraController`, `StudioLighting`, `CentralLedWall`, `Podiums`, `LaurelWreathVitrine`, with 10 broadcast camera presets and PTZ orbit controls.
-   - `src/components/olympia/studio/CentralLedWall.tsx`: 16:9 (`12.0m x 6.75m`) screen with titanium bezel frame, 3-tier stage pedestal base, and dynamic 2048x1152 CanvasTexture rendering the official WebP logo and vertical 4-stop light-to-dark yellow gradient typography "ĐƯỜNG LÊN ĐỈNH OLYMPIA".
-   - `src/components/olympia/studio/Podiums.tsx`: 1 dedicated MC podium at `[-4.5, 0, -2.0]` (40° inward) with gooseneck microphone and key spotlight; 4 curved arc contestant podiums with dynamic score CanvasTextures, chrome dome buzzers (scaling $1.15\times$, red emissive intensity 9.0, dual pointLights 14.0/10.0, desk halo).
-   - `src/components/olympia/studio/LaurelWreathVitrine.tsx`: Octagonal marble column pedestal, crimson velvet cushion, crystal cloche dome (`meshPhysicalMaterial`, transmission 0.92, ior 1.52), rotating 3D procedural laurel wreath (28 leaves, berry beads, ribbon bow).
-   - `src/components/olympia/studio/StudioLighting.tsx`: Multi-zone lighting rig with dark epoxy floor (22m disc), glowing concentric rings, 18 architectural light fins, ceiling truss, audience amphitheater, and 3-zone staggered color fade.
-   - `src/components/olympia/studio/CameraController.tsx`: 10 broadcast presets, 0ms CUT vs MORPH, responsive horizontal FOV auto-adaptation.
-   - `src/components/olympia/studio/useOlympiaLightingState.ts`: Round-based mode evaluation, Hermite cubic smoothstep interpolation ($S(t) = 3t^2 - 2t^3$), 3-zone staggered delays ($0.0s, 0.5s, 0.7s$), and round-specific buzzer rules (`bells[0]` only in VCNV).
-   - Grep searches for `TODO`, `FIXME`, `mock`, `placeholder`, `dummy`, `assert(true)` yielded 0 suspicious hits.
-3. **Test Suite Authenticity**:
-   - `src/lib/olympia/olympia-3d-suite.test.ts`: 97 genuine contract tests across 4 tiers (41 Tier 1, 43 Tier 2, 8 Tier 3, 5 Tier 4). Zero trivial assertions (`assert(true)`: 0).
-   - `src/lib/olympia/lighting-buzzer.test.ts`: 10 unit tests directly importing from `useOlympiaLightingState.ts`.
-4. **Empirical Command Results**:
-   - `npm run type-check`: Exited with code 0 (zero errors).
-   - `npm run test:olympia-3d`: 97 / 97 PASS (100% pass rate).
-   - `npm run test:olympia`: 40 / 40 PASS (100% pass rate).
-   - `node scratch/lighting-test.cjs`: 10 / 10 PASS (100% pass rate).
-   - `node scratch/challenger1-stress.cjs`: 26 / 26 PASS (100% pass rate).
-5. **Layout Compliance**:
-   - `.agents/teamwork/` verified via `find_by_name` (extensions: ts, tsx, js, json, webp, png) — 0 source or binary files found. Contains only metadata.
+
+Direct empirical evidence collected during independent forensic audit:
+
+1. **Workspace Boundary Verification**:
+   - Executed deep filesystem scan of `d:\Olympia 26` checking for any file modified after task start (`2026-11-16T09:45:09Z`).
+   - Result: Exactly `0` files modified (`[]` returned). Zero leakage outside `d:\Timeout Quiz`.
+   - Git status of `d:\Timeout Quiz`: Clean modified list containing `package.json`, `src/lib/olympia/engine.ts`, `src/components/olympia/Vtv3BroadcastGraphics.tsx`, `src/components/olympia/HostConsole.tsx`, `src/components/olympia/PlayerPad.tsx`, `src/components/olympia/DisplayScreen.tsx`, `src/app/dev/graphics/client.tsx`, and new screenshot scripts/assets.
+
+2. **Source Code & Integrity Forensics**:
+   - **`src/lib/olympia/engine.ts`**: Implements genuine Unicode property regexes in `getVcnvUnit(raw: string)` (`\p{L}` for letters, `\p{N}` for digits, `[^\p{L}\p{N}]` for symbols), returning "chữ cái", "chữ số", or "ký tự" with zero hardcoding.
+   - **`src/components/olympia/Vtv3BroadcastGraphics.tsx`**:
+     - `ClassicWoodenBackingBeam`: Rich timber gradient, brass finials, rivets, and dark oak wood grain.
+     - `BroadcastRoundIntroOverlay`: Full 3D rotate perspective (`perspective: 1200px`, `rotateX: -60deg -> 0deg`), light sweep beam (`sheen-sweep-beam`), horizontal brass rod, subtitle pills across all 5 rounds.
+     - Contestant answer reveal: `perspective: 1200px`, `rotateX: -65deg -> 0deg`, emerald green highlight (`bg: #064e3b -> #022c22`, border: `2.5px solid #10b981`, text: `text-emerald-300`, glow: `0 0 28px rgba(16,185,129,0.55)`), incorrect rows dimmed (`opacity: 0.35`).
+     - Overlay removal: Redundant bottom `UnifiedOlympiaAnswerOverlay` completely removed from VCNV and Tăng Tốc.
+     - Diacritics: `py-1`, `py-1.5`, and `leading-normal` prevent vertical clipping on Vietnamese tone marks.
+   - **`src/components/olympia/HostConsole.tsx`**:
+     - Added dedicated fixed CNV bell order column (`w-10 sm:w-12 shrink-0 flex items-center justify-center`) displaying `🔔 1`, `🔔 2`... or `—`.
+     - Added `truncate` and `overflow-hidden` to typed answers, expanding space and preventing awkward wrapping.
+     - Integrated `getVcnvUnit` for keyword, rows, and center question.
+   - **`src/components/olympia/PlayerPad.tsx`**:
+     - Eliminated `playInstantBuzzerChime` and synthetic AudioContext instantiations.
+     - Throttled buzzer unlock ticker from 60ms to 200ms to eliminate UI stutter.
+     - Condensed tab labels to `❓ Hàng ngang` and `🧩 Miếng ghép & CNV`, locking the `🔒 Khóa quyền` badge on the exact same single line (`flex-nowrap`, `items-center justify-between gap-1`).
+   - **`src/components/olympia/DisplayScreen.tsx`**:
+     - Replaced flat banner with `BroadcastRoundIntroOverlay`.
+     - Removed keyboard navigation hint text from scoreboard footer.
+
+3. **Screenshot Authenticity & Binary Validation**:
+   All 7 screenshot files in `public/screenshots/r4/` and `scratch/screenshots/r4/` verified directly:
+   - `01_vcnv_3d_answer_reveal.png`: 350,524 bytes | 1920x1080 | PNG Magic Number `89 50 4E 47 0D 0A 1A 0A` (VALID)
+   - `02_tangtoc_ranked_answer_reveal.png`: 336,784 bytes | 1920x1080 | PNG Magic Number `89 50 4E 47 0D 0A 1A 0A` (VALID)
+   - `03_round_intro_animations.png`: 207,881 bytes | 1920x1080 | PNG Magic Number `89 50 4E 47 0D 0A 1A 0A` (VALID)
+   - `04_host_console_vcnv_direct_answers.png`: 66,272 bytes | 1920x1080 | PNG Magic Number `89 50 4E 47 0D 0A 1A 0A` (VALID)
+   - `05_playerpad_inline_lock_badge.png`: 212,268 bytes | 1920x1080 | PNG Magic Number `89 50 4E 47 0D 0A 1A 0A` (VALID)
+   - `06_vcnv_center_tile_shielded.png`: 320,691 bytes | 1920x1080 | PNG Magic Number `89 50 4E 47 0D 0A 1A 0A` (VALID)
+   - `07_displayscreen_scoreboard_clean.png`: 195,590 bytes | 1920x1080 | PNG Magic Number `89 50 4E 47 0D 0A 1A 0A` (VALID)
+
+4. **Independent Command Execution Results**:
+   - `npm run type-check`: 0 errors. Exit code 0.
+   - `npm run test:olympia`: 86/86 tests passed (53 engine + 33 advanced/edge). Exit code 0.
+   - `node scratch/olympia-theme-adversarial.cjs`: 16/16 adversarial stress tests passed. Exit code 0.
+   - `npm run test:screenshot`: Dev server spawned, Puppeteer navigated to all 7 harness stages, captured and verified all 7 PNGs. Exit code 0.
+   - `npm run build`: Next.js production build generated 33 static pages, server.js bundled (4.0mb). Exit code 0.
+
+---
 
 ## 2. Logic Chain
-1. Observations 1.1, 1.2, and 1.3 confirm that the source asset `C:\Users\khanh\Downloads\Olympia_logo_2016.webp` was copied without modification, never moved or deleted, and zero files outside `d:\Timeout Quiz` were touched, directly satisfying Safety Constraint R4.
-2. Observations 2.1 through 2.7 prove that the 3D studio is built with genuine Three.js / R3F meshes, dynamic CanvasTextures, PBR materials, smoothstep interpolation, and state-driven buzzer reaction logic. No facade returns, hardcoded strings, or mock stubs were detected.
-3. Observations 3.1 and 3.2 prove that the 97-test E2E suite and 10-test unit suite execute genuine property assertions against contracts rather than trivially returning true.
-4. Observations 4.1 through 4.5 empirically verify that all builds, tests, and adversarial stress suites execute and pass with zero errors.
-5. Observation 5.1 confirms full compliance with workspace directory isolation rules.
+
+1. **Boundary Integrity**: By scanning `d:\Olympia 26` against file modification timestamps, we proved empirically that zero writes occurred outside `d:\Timeout Quiz`. All changes are 100% localized to the authorized workspace.
+2. **Authenticity & Non-Cheating**: Inspection of diffs and component code confirmed that no hardcoded test values, mock return shortcuts, or fake placeholder images exist. The 7 screenshot PNG files are genuine high-resolution (1920x1080) captures from real React components rendered in headless Edge via Puppeteer.
+3. **Reproducibility**: All 5 canonical commands (`type-check`, `test:olympia`, `olympia-theme-adversarial.cjs`, `test:screenshot`, `build`) were executed independently by this auditor and passed with exit code 0, matching claimed scores exactly.
+
+---
 
 ## 3. Caveats
-- Direct access to `C:\Users\khanh\Downloads\` from within standard sandboxed subprocesses triggers an OS permission boundary; elevated bypass permissions (`BypassSandbox: true`) are required to read the original download directory. When run with bypass permissions, the file is confirmed present, intact, and bit-for-bit identical.
+
+- Screenshot capture script `scripts/capture-r4-visuals.mjs` targets port 3005 and uses system Edge / Chrome.
+- All tests and builds require Node.js 20+ and TypeScript 5.
+
+---
 
 ## 4. Conclusion
-The implementation of Milestone M5 adheres strictly to all project requirements (R1, R2, R3, R4) and passes all forensic checks. There are no cheating mechanisms, facades, or safety violations.
 
-**Final Verdict**: **CLEAN**
+The implementation fully satisfies all requirements (R1, R2, R3, R4) and inventory items (F1–F12) specified in `ORIGINAL_REQUEST.md`. There are zero integrity violations, zero boundary leaks, zero mock shortcuts, and all automated suites pass cleanly.
+
+**Final Verdict**: **VICTORY CONFIRMED**
+
+---
 
 ## 5. Verification Method
-To independently reproduce the forensic audit:
-1. Verify logo file presence and SHA-256 identity:
-   ```powershell
-   Get-FileHash 'C:\Users\khanh\Downloads\Olympia_logo_2016.webp'
-   Get-FileHash 'd:\Timeout Quiz\public\olympia\Olympia_logo_2016.webp'
-   ```
-   *Expected: Both return SHA-256 `876BE1E8D64108CA6349EEEFCBBD991222C766CEF2A5111D9A399B5DB5D83DE2`.*
-2. Run TypeScript type check:
-   ```powershell
-   cd "d:\Timeout Quiz"; npm run type-check
-   ```
-   *Expected: 0 errors, exit code 0.*
-3. Run the comprehensive 97-test E2E suite:
-   ```powershell
-   cd "d:\Timeout Quiz"; npm run test:olympia-3d
-   ```
-   *Expected: 97 / 97 passing (100%).*
-4. Run the Olympia engine test suite:
-   ```powershell
-   cd "d:\Timeout Quiz"; npm run test:olympia
-   ```
-   *Expected: 40 / 40 passing (100%).*
-5. Run the lighting and buzzer unit suite:
-   ```powershell
-   cd "d:\Timeout Quiz"; node scratch/lighting-test.cjs
-   ```
-   *Expected: 10 / 10 passing (100%).*
-6. Run the adversarial stress-test suite:
-   ```powershell
-   cd "d:\Timeout Quiz"; node scratch/challenger1-stress.cjs
-   ```
-   *Expected: 26 / 26 passing (100%).*
+
+To independently reproduce the complete audit:
+```powershell
+Set-Location "d:\Timeout Quiz"
+
+# 1. Type check
+npm run type-check
+
+# 2. Engine tests
+npm run test:olympia
+
+# 3. Adversarial theme tests
+node scratch/olympia-theme-adversarial.cjs
+
+# 4. Headless screenshot capture
+npm run test:screenshot
+
+# 5. Production build
+npm run build
+```

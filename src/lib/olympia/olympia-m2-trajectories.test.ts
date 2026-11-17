@@ -117,44 +117,37 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
   // ───────────────────────────────────────────────────────────────────────────
   console.log("\n--- TIER 1: FEATURE COVERAGE (CAM 11 Timing & Spline Waypoints) ---");
 
-  runTest(1, "M2.1: Contestant 0 starts on CAM 11 and holds through full lower stair treads (3.425s) until 3.55s", () => {
-    const camAtStart = evaluateEntranceCameraState(0, 4, 0.5);
-    assert.equal(camAtStart.camAngle, 11, "Contestant 0 must be framed on CAM 11 at t=0.5s");
+  runTest(1, "M2.1: Contestant 0 (Left door) starts on CAM 11, zooms to landing CAM 13, and tracks down on CAM 19", () => {
+    const camAtDoor = evaluateEntranceCameraState(0, 4, 0.5);
+    assert.equal(camAtDoor.camAngle, 11, "Contestant 0 must be framed tightly on Left door CAM 11 at t=0.5s");
+
+    const camDescent = evaluateEntranceCameraState(0, 4, 1.2);
+    assert.equal(camDescent.camAngle, 13, "Contestant 0 morphs to landing CAM 13 during upper stair descent");
 
     const camAtPose = evaluateEntranceCameraState(0, 4, 2.0);
-    assert.equal(camAtPose.camAngle, 11, "Contestant 0 must be framed on CAM 11 at t=2.0s");
+    assert.equal(camAtPose.camAngle, 13, "Contestant 0 holds still on CAM 13 during center landing pose (t=2.0s)");
 
-    const camAtStairBottom = evaluateEntranceCameraState(0, 4, 3.45);
-    assert.equal(camAtStairBottom.camAngle, 11, "Contestant 0 stays on CAM 11 through physical bottom step (3.425s)");
-
-    const camOnFloor = evaluateEntranceCameraState(0, 4, 3.56);
-    assert.equal(camOnFloor.camAngle, 10, "Contestant 0 transitions to CAM 10 wide shot at t=3.56s before passing Z=6.40 lens");
+    const camStairTrack = evaluateEntranceCameraState(0, 4, 3.45);
+    assert.equal(camStairTrack.camAngle, 19, "Contestant 0 cuts to high-right overhead tracking CAM 19 on lower stairs");
   });
 
-  runTest(1, "M2.2: Contestant N > 0 cuts to CAM 11 at t = 1.2s and holds through 3.55s", () => {
-    const camEarly = evaluateEntranceCameraState(1, 4, 1.0);
-    assert.equal(camEarly.camAngle, 10, "Contestant 1 must be on CAM 10 at t=1.0s");
+  runTest(1, "M2.2: Contestant 1 (Right door) starts on CAM 12, zooms to landing CAM 13, and tracks down on CAM 19", () => {
+    const camAtDoor = evaluateEntranceCameraState(1, 4, 0.5);
+    assert.equal(camAtDoor.camAngle, 12, "Contestant 1 must be framed tightly on Right door CAM 12 at t=0.5s");
 
-    const camCut = evaluateEntranceCameraState(1, 4, 1.2);
-    assert.equal(camCut.camAngle, 11, "Contestant 1 must cut to CAM 11 at t=1.2s");
-    assert.equal(camCut.transitionMode, "CUT");
+    const camDescent = evaluateEntranceCameraState(1, 4, 1.2);
+    assert.equal(camDescent.camAngle, 13, "Contestant 1 morphs to landing CAM 13 during upper stair descent");
 
-    const camPose = evaluateEntranceCameraState(1, 4, 2.5);
-    assert.equal(camPose.camAngle, 11, "Contestant 1 must remain on CAM 11 at t=2.5s");
+    const camAtPose = evaluateEntranceCameraState(1, 4, 2.5);
+    assert.equal(camAtPose.camAngle, 13, "Contestant 1 holds still on CAM 13 during center landing pose (t=2.5s)");
 
-    const camStairHold = evaluateEntranceCameraState(1, 4, 3.45);
-    assert.equal(camStairHold.camAngle, 11, "Contestant 1 holds CAM 11 until physical stairs finish (3.45s)");
+    const camStairTrack = evaluateEntranceCameraState(1, 4, 3.45);
+    assert.equal(camStairTrack.camAngle, 19, "Contestant 1 cuts to high-right overhead tracking CAM 19 on lower stairs");
   });
 
-  runTest(1, "M2.3: Optical push zoom timing on CAM 11 (hold 0.0 before 1.8s, ramp to 0.25 by 3.0s)", () => {
-    const camAtDescent = evaluateEntranceCameraState(1, 4, 1.5);
-    assert.equal(camAtDescent.pushInProgress, 0.0, "Zoom push must hold at 0.0 before pose at t=1.5s");
-
-    const camMidPose = evaluateEntranceCameraState(1, 4, 2.4);
-    assert.ok(camMidPose.pushInProgress > 0.08 && camMidPose.pushInProgress < 0.16, "Zoom push ramps mid-pose");
-
-    const camEndPose = evaluateEntranceCameraState(1, 4, 3.2);
-    assert.equal(camEndPose.pushInProgress, 0.25, "Zoom push holds at 0.25 after t=3.0s");
+  runTest(1, "M2.3: Zero CAM 10 interruption between contestants (seamless cut to next door at 4.0s)", () => {
+    const camNextDoor = evaluateEntranceCameraState(0, 4, 4.0);
+    assert.equal(camNextDoor.camAngle, 12, "Seat 0 at 4.0s cuts directly to next contestant's door (CAM 12) without CAM 10 interruption");
   });
 
   runTest(1, "M2.4: Continuous trajectory start point P0 = [0, 0.22, 6.20] with rotY = Math.PI at t = 4.0s", () => {
@@ -194,18 +187,18 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
   // ───────────────────────────────────────────────────────────────────────────
   console.log("\n--- TIER 2: BOUNDARY & CORNER CASES (Kinematic Continuity & Bounds) ---");
 
-  runTest(2, "M2.7: CAM 11 trigger boundary at 1.199s is CAM 10 and 1.200s is CAM 11", () => {
-    const camBefore = evaluateEntranceCameraState(1, 4, 1.199);
-    assert.equal(camBefore.camAngle, 10, "1.199s must be wide CAM 10");
-    const camAt = evaluateEntranceCameraState(1, 4, 1.200);
-    assert.equal(camAt.camAngle, 11, "1.200s must cut to CAM 11");
+  runTest(2, "M2.7: Door transition boundary at 0.799s is Door CAM and 0.800s is Landing CAM 13", () => {
+    const camBefore = evaluateEntranceCameraState(1, 4, 0.799);
+    assert.equal(camBefore.camAngle, 12, "0.799s must be Right door CAM 12");
+    const camAt = evaluateEntranceCameraState(1, 4, 0.800);
+    assert.equal(camAt.camAngle, 13, "0.800s must morph to Landing CAM 13");
   });
 
-  runTest(2, "M2.8: CAM 11 exit boundary holds full physical stairs (3.549s = CAM 11, 3.550s = CAM 10)", () => {
-    const camBefore = evaluateEntranceCameraState(1, 4, 3.549);
-    assert.equal(camBefore.camAngle, 11, "3.549s must hold CAM 11 until bottom steps clear");
-    const camAt = evaluateEntranceCameraState(1, 4, 3.550);
-    assert.equal(camAt.camAngle, 10, "3.550s transitions cleanly to wide CAM 10");
+  runTest(2, "M2.8: Pose hold vs Stair descent boundary (2.999s = CAM 13 still pose, 3.000s = CAM 19 high-right track)", () => {
+    const camBefore = evaluateEntranceCameraState(1, 4, 2.999);
+    assert.equal(camBefore.camAngle, 13, "2.999s must hold CAM 13 pose still");
+    const camAt = evaluateEntranceCameraState(1, 4, 3.000);
+    assert.equal(camAt.camAngle, 19, "3.000s transitions cleanly to high-right overhead tracking CAM 19");
   });
 
   runTest(2, "M2.9: Kinematic continuity at t = 4.0s (zero rotational snap: |delta rotY| < 0.01 rad)", () => {
@@ -442,15 +435,15 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
   // ───────────────────────────────────────────────────────────────────────────
   console.log("\n--- TIER 4: REAL-WORLD SCENARIOS (E2E Entrance & Round Camera Timings) ---");
 
-  runTest(4, "M2.15: Synchronized multi-seat entrance timeline ensures previous seat bows BEFORE next CAM 11 cut (ALL N=2..8)", () => {
+  runTest(4, "M2.15: Synchronized multi-seat entrance timeline ensures seamless alternating transitions without CAM 10 interruption (ALL N=2..8)", () => {
     for (const totalSeats of [2, 3, 4, 5, 6, 7, 8]) {
       const { seatStartOffsetsMs, totalDurationMs } = getEntranceScheduleOffsetsMs(totalSeats);
       for (let i = 0; i < totalSeats - 1; i++) {
-        const timing = getEntranceSeatTiming(i, totalSeats);
-        const nextCam11Ms = (seatStartOffsetsMs[i + 1] - seatStartOffsetsMs[i]) + 1200;
-        assert.ok(
-          nextCam11Ms >= timing.bowEndSec * 1000 - 1,
-          `N=${totalSeats} seat=${i}: next CAM 11 cut (${nextCam11Ms}ms) must not preempt bowEnd (${timing.bowEndSec * 1000}ms)`
+        const nextCutMs = seatStartOffsetsMs[i + 1] - seatStartOffsetsMs[i];
+        assert.equal(
+          nextCutMs,
+          4000,
+          `N=${totalSeats} seat=${i}: next door cut (${nextCutMs}ms) must occur at exact stairsEnd (4000ms)`
         );
       }
       assert.ok(totalDurationMs > 0);
@@ -570,10 +563,10 @@ export function runOlympiaM2TrajectoriesSuite(): M2SuiteResults {
     assert.equal(evaluateVeDichCameraState(vdResultSteal, 21400, 20000, 10000, 4).camAngle, 7, "Result holds stealer seat 2 at 1.4s");
     assert.equal(evaluateVeDichCameraState(vdResultSteal, 21550, 20000, 10000, 4).camAngle, 3, "Result cuts to MC CAM 3 at 1.55s");
 
-    // 4. Khởi Động holds MC intro 5.0s and segmentDone 4.0s
+    // 4. Khởi Động holds MC intro 2.8s and segmentDone 2.5s
     const camSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/olympia/studio/useOlympiaCamera.ts"), "utf-8");
-    assert.ok(camSrc.includes("introElapsed < 5.0"), "Khởi Động intro holds MC zoom-in for 5.0s");
-    assert.ok(camSrc.includes("segDoneElapsed < 4.0"), "Khởi Động segmentDone holds contestant closeup for 4.0s");
+    assert.ok(camSrc.includes("introElapsed < 2.8"), "Khởi Động intro holds MC zoom-in for 2.8s");
+    assert.ok(camSrc.includes("segDoneElapsed < 2.5"), "Khởi Động segmentDone holds contestant closeup for 2.5s");
   });
 
   console.log("\n================================================================================");

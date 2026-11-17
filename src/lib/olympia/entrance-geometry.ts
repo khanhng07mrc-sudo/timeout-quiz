@@ -116,9 +116,9 @@ export function getEntranceSeatTiming(seatId: number, totalSeats: number = 4): E
   const arrivalSec = +(ENTRANCE_STAIRS_END_SEC + floorDurationSec).toFixed(2);
   const bowEndSec = +(arrivalSec + ENTRANCE_DESK_BOW_SEC).toFixed(2);
 
-  // For seatId < N-1: next contestant spawns 0.5s before current arrives, so next contestant's CAM 11 cut
-  // at +1.2s happens at arrivalSec + 0.7s (strictly AFTER current contestant has finished bowing at desk!).
-  const advanceMs = Math.round((arrivalSec - 0.5) * 1000);
+  // For seatId < N-1: Next contestant appears right as current contestant steps down to dais floor (4.0s).
+  // This produces a continuous, seamless alternating dual-door entrance with zero CAM 10 interruption.
+  const advanceMs = Math.round(ENTRANCE_STAIRS_END_SEC * 1000); // 4000ms
   // Last contestant holds desk close-up targetCam cleanly for 1.8s after arriving before ending to MC CAM 3.
   const lastFinishMs = Math.round((arrivalSec + ENTRANCE_LAST_CLOSEUP_HOLD_SEC) * 1000);
 

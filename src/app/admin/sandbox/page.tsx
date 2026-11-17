@@ -254,6 +254,7 @@ export default function AdminSandboxPage() {
   const [olympiaSandboxActive, setOlympiaSandboxActive] = useState<boolean>(false);
   const [olympiaActiveSeat, setOlympiaActiveSeat] = useState<number>(0);
   const [olympiaVisitedSeats, setOlympiaVisitedSeats] = useState<number[]>([]);
+  const olympiaAutoTurnKeyRef = useRef<string>("");
   useEffect(() => {
     setOlympiaVisitedSeats((prev) => (prev.includes(olympiaActiveSeat) ? prev : [...prev, olympiaActiveSeat]));
   }, [olympiaActiveSeat]);
@@ -627,17 +628,31 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
         }
         return s;
       });
-      // Tự động chuyển tab thí sinh theo đúng lượt chơi đơn (Khởi Động cá nhân, Về Đích)
+      // Tự động chuyển tab thí sinh CHỈ KHI bắt đầu một lượt chơi đơn mới (không snapback khi admin tự chọn tab)
+      let curTurnKey = "";
+      let newActiveSeat: number | null = null;
       if (s.currentRound === "khoiDong" && s.khoiDong) {
         const seg = s.khoiDong.segments[s.khoiDong.segIdx];
         if (seg?.kind === "solo" && seg.seat != null) {
-          setOlympiaActiveSeat((prev) => (prev !== seg.seat ? seg.seat! : prev));
+          curTurnKey = `kd_${s.khoiDong.segIdx}_${seg.seat}`;
+          newActiveSeat = seg.seat;
         }
       } else if (s.currentRound === "veDich" && s.veDich) {
         const targetSeat = s.veDich.order[s.veDich.turnIdx];
         if (targetSeat != null) {
-          setOlympiaActiveSeat((prev) => (prev !== targetSeat ? targetSeat : prev));
+          curTurnKey = `vd_${s.veDich.turnIdx}_${targetSeat}`;
+          newActiveSeat = targetSeat;
         }
+      }
+      if (curTurnKey) {
+        if (curTurnKey !== olympiaAutoTurnKeyRef.current) {
+          olympiaAutoTurnKeyRef.current = curTurnKey;
+          if (newActiveSeat != null) {
+            setOlympiaActiveSeat(newActiveSeat);
+          }
+        }
+      } else {
+        olympiaAutoTurnKeyRef.current = "";
       }
     });
     return () => {

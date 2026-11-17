@@ -2304,12 +2304,12 @@ export function CentralLedWall({
     };
   }, []);
 
-  // Pre-allocated static canvas for Rectangular LED Display
+  // Pre-allocated static canvas for Rectangular LED Display (1280x720 in HIGH, 960x540 in LIGHT/MED for maximum 60fps throughput)
   const canvas = useMemo(() => {
     if (typeof document === "undefined") return null;
     const c = document.createElement("canvas");
-    c.width = quality === "LIGHT" ? 1024 : 1920;
-    c.height = quality === "LIGHT" ? 576 : 1080;
+    c.width = quality === "HIGH" ? 1280 : 960;
+    c.height = quality === "HIGH" ? 720 : 540;
     renderLedScreenToCanvas(c, logoImageRef.current, screenFadeProgress, state);
     return c;
   }, [quality]);
@@ -2462,8 +2462,16 @@ export function CentralLedWall({
     accumulatedTimeRef.current += dt;
     const t = accumulatedTimeRef.current;
 
-    // 1. Throttle Curved Formula Wall redraw (<= 18 FPS in HIGH, 5 FPS in LIGHT to save CPU/GPU)
-    const wallInterval = quality === "LIGHT" ? 0.200 : 0.055;
+    // 1. Throttle Curved Formula Wall redraw
+    // During intro opening, MC walkout, or active camera sweeps, throttle to prevent GPU stalls and lock 60 FPS
+    const isHeavyIntroOrMotion = Boolean(state?.introTimer || state?.entranceState?.active);
+    const wallInterval = isHeavyIntroOrMotion
+      ? 0.125 // 8 FPS during heavy intro/MC walkout to prioritize 60 FPS bone & camera kinematics
+      : quality === "LIGHT"
+      ? 0.250 // 4 FPS
+      : quality === "MEDIUM"
+      ? 0.100 // 10 FPS
+      : 0.065; // ~15 FPS in HIGH steady state
     if (t - lastWallFrameRef.current >= wallInterval) {
       lastWallFrameRef.current = t;
       if (formulaWallCanvasRef.current && formulaWallTextureRef.current) {
@@ -2477,9 +2485,9 @@ export function CentralLedWall({
       }
     }
 
-    // 2. Throttle Stage Right Screen & Vertical Totem in Idle Mode (<= 5 FPS, interval >= 0.200s)
+    // 2. Throttle Stage Right Screen & Vertical Totem in Idle Mode (<= 3-4 FPS to save GPU bandwidth)
     const isIdle = isPreMatchIdle(state);
-    const screenInterval = quality === "LIGHT" ? 0.250 : 0.200;
+    const screenInterval = quality === "LIGHT" ? 0.400 : 0.300;
     if (isIdle && t - lastScreenFrameRef.current >= screenInterval) {
       lastScreenFrameRef.current = t;
       if (canvasRef.current && textureRef.current) {

@@ -176,7 +176,7 @@ export function evaluateVeDichCameraState(
           vdBuzzedAtRef.current = now;
         }
         const elapsedSinceBuzz = (now - vdBuzzedAtRef.current) / 1000;
-        if (elapsedSinceBuzz < 0.8) {
+        if (elapsedSinceBuzz < 1.0) {
           return {
             camAngle: 10,
             transitionMode: "CUT",
@@ -257,14 +257,23 @@ export function evaluateVeDichCameraState(
 
   if (vd.phase === "thinking") {
     let push = 0;
+    const duration = vd.timer?.totalMs || 20000;
+    const elapsedSec = vd.timer?.startedAt ? Math.max(0, (now - vd.timer.startedAt) / 1000) : 0;
     if (vd.timer?.startedAt) {
-      const duration = vd.timer.totalMs || 20000;
-      const elapsed = Math.max(0, now - vd.timer.startedAt);
-      push = Math.min(1.0, elapsed / duration);
+      push = Math.min(1.0, (now - vd.timer.startedAt) / duration);
+    }
+    // Dynamic Director Pacing during Về Đích thinking countdown:
+    // For 15s/20s/30s questions:
+    // 0.0s -> 4.5s: Tight shot on contestant (CAM 15) pushing in smoothly
+    // 4.5s -> 7.5s: Cut to MC (CAM 3) intently watching the contestant
+    // 7.5s onwards: Cut back to tight contestant shot (CAM 15) as countdown reaches climax
+    let cam = 15;
+    if (duration >= 14000 && elapsedSec >= 4.5 && elapsedSec < 7.5) {
+      cam = 3;
     }
     return {
-      camAngle: 15,
-      transitionMode: "MORPH",
+      camAngle: cam,
+      transitionMode: "CUT",
       isOverlayHidden: false,
       pushInProgress: push,
     };
@@ -351,12 +360,30 @@ export function useOlympiaCameraState(
     }
   }, [state?.veDich?.turnIdx, state?.veDich?.phase, state?.veDich?.onStage]);
 
-  // Only run 100ms ticker when a time-critical camera transition (e.g. entrance sequence or post-intro hold) is active.
-  // Question timer phases do not require a 10Hz React ticker storm.
+  // Run 100ms ticker when a time-critical camera transition is active:
+  // - Entrance sequence, intro video / post-intro hold
+  // - Active buzzer press across any round (held for 1.0s before auto-cutting to contestant)
+  // - Active thinking countdown with dynamic camera director pacing
+  // - Về Đích stage walk / package ready
+  const hasActiveBuzzer = Boolean(
+    state?.khoiDong?.buzzedSeat != null ||
+      state?.veDich?.steal?.buzzedSeat != null ||
+      Boolean(state?.vcnv?.bells && state.vcnv.bells.length > 0) ||
+      state?.cauHoiPhu?.buzzedSeat != null
+  );
+
+  const isThinking = Boolean(
+    (state?.currentRound === "veDich" && state?.veDich?.phase === "thinking" && state?.veDich?.timer?.startedAt) ||
+      (state?.currentRound === "khoiDong" && state?.khoiDong?.phase === "question" && state?.khoiDong?.timer?.startedAt) ||
+      (state?.currentRound === "vcnv" && state?.vcnv?.timer?.startedAt)
+  );
+
   const needsTimedCameraTicker = Boolean(
     state?.entranceState?.active ||
       state?.introTimer ||
       isRoundPostIntroStandby(state, getNow()) ||
+      hasActiveBuzzer ||
+      isThinking ||
       (state?.currentRound === "khoiDong" &&
         state?.khoiDong &&
         Boolean(state.khoiDong.startCooldownUntil && getNow() < state.khoiDong.startCooldownUntil)) ||
@@ -584,7 +611,7 @@ export function useOlympiaCameraState(
               kdBuzzedAtRef.current = now;
             }
             const elapsedSinceBuzz = (now - kdBuzzedAtRef.current) / 1000;
-            if (elapsedSinceBuzz < 0.8) {
+            if (elapsedSinceBuzz < 1.0) {
               return {
                 camAngle: 10,
                 transitionMode: "CUT",
@@ -664,7 +691,7 @@ export function useOlympiaCameraState(
             vcnvBuzzedAtRef.current = now;
           }
           const elapsed = (now - vcnvBuzzedAtRef.current) / 1000;
-          if (elapsed < 0.8) {
+          if (elapsed < 1.0) {
             return {
               camAngle: 10,
               transitionMode: "CUT",
@@ -749,7 +776,7 @@ export function useOlympiaCameraState(
           chpBuzzedAtRef.current = now;
         }
         const elapsed = (now - chpBuzzedAtRef.current) / 1000;
-        if (elapsed < 0.8) {
+        if (elapsed < 1.0) {
           return {
             camAngle: 10,
             transitionMode: "CUT",

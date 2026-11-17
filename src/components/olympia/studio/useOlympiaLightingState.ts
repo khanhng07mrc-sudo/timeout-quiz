@@ -313,29 +313,41 @@ export function useOlympiaLightingState(
       const target = computeTargetLightingMode(state, nowMs);
       let needsAnimation = false;
 
-      if (target !== transitionRef.current.targetMode) {
-        const perfNow = typeof performance !== "undefined" ? performance.now() : Date.now();
-        const tr = transitionRef.current;
+      const perfNow = typeof performance !== "undefined" ? performance.now() : Date.now();
+      const tr = transitionRef.current;
+      const curVals = currentValsRef.current;
+      const isStillFading =
+        Math.abs(curVals.screen - tr.targetVal) > 0.001 ||
+        Math.abs(curVals.stage - tr.targetVal) > 0.001 ||
+        Math.abs(curVals.audience - tr.targetVal) > 0.001;
+
+      if (target !== tr.targetMode) {
         tr.startTime = perfNow;
-        tr.fromScreen = currentValsRef.current.screen;
-        tr.fromStage = currentValsRef.current.stage;
-        tr.fromAudience = currentValsRef.current.audience;
+        tr.fromScreen = curVals.screen;
+        tr.fromStage = curVals.stage;
+        tr.fromAudience = curVals.audience;
         tr.targetVal = target === "RED" ? 1 : 0;
         tr.targetMode = target;
         setCurrentMode(target);
+        needsAnimation = true;
+      } else if (isStillFading) {
+        // Continue animation towards targetVal if interrupted by a state update
         needsAnimation = true;
       }
 
       // Check pre-match idle transitions
       const targetIdle = isPreMatchIdle(state);
-      if (targetIdle !== idleTransitionRef.current.targetIdle) {
-        const perfNow = typeof performance !== "undefined" ? performance.now() : Date.now();
-        const itr = idleTransitionRef.current;
+      const itr = idleTransitionRef.current;
+      const isIdleStillFading = Math.abs(currentIdleValRef.current - itr.targetVal) > 0.001;
+
+      if (targetIdle !== itr.targetIdle) {
         itr.startTime = perfNow;
         itr.fromVal = currentIdleValRef.current;
         itr.targetVal = targetIdle ? 1.0 : 0.0;
         itr.targetIdle = targetIdle;
         setIsIdle(targetIdle);
+        needsAnimation = true;
+      } else if (isIdleStillFading) {
         needsAnimation = true;
       }
 

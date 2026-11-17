@@ -220,22 +220,25 @@ export function getWidePodiumsCameraPreset(totalSeats: number = 4): CameraPreset
   const midX = -radius * Math.cos(midPhi);
   const midZ = -0.5 - radius * Math.sin(midPhi);
 
-  // Center of the arc cluster
+  // Center of the arc cluster at chest/torso eye-level
   const targetX = +(0.5 * midX + 0.25 * (startX + endX)).toFixed(2);
   const targetY = 1.15;
   const targetZ = +(0.5 * midZ + 0.25 * (startZ + endZ)).toFixed(2);
 
-  // Direction along the cluster normal from stage center
+  // Direction along the cluster normal from stage center (direct frontal facing angle)
   const viewDirX = Math.cos(midPhi);
   const viewDirZ = Math.sin(midPhi);
 
-  // Scaled distance to fit entire bounding box with >= 15% broadcast safe margins
-  const baseDist = 7.20;
-  const extraDist = Math.max(0, (count - 4) * 0.85);
-  const dist = Math.max(7.60, baseDist + extraDist);
+  // Dynamic distance calculation ensuring podium cluster occupies strictly between 70% (min) and 95% (max)
+  // of horizontal broadcast screen width (target ~80% width) for any contestant count (1 to 8):
+  const chord = Math.hypot(endX - startX, endZ - startZ);
+  const baseDist = 7.30;
+  const extraDist = Math.max(0, (count - 4) * 0.95);
+  const dist = Math.max(7.40, +(baseDist + extraDist).toFixed(2));
 
   const camX = +(targetX + dist * viewDirX).toFixed(2);
-  const camY = +(2.45 + Math.max(0, (count - 4) * 0.12)).toFixed(2);
+  // Direct eye-level frontal elevation (camY = 1.35m-1.67m vs targetY = 1.15m: eye-level view, no steep downward angle)
+  const camY = +(1.35 + Math.max(0, (count - 4) * 0.08)).toFixed(2);
   const camZ = +(targetZ + dist * viewDirZ).toFixed(2);
 
   return {
@@ -263,7 +266,7 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   3: {
     id: 3,
     label: "Bục MC & Cổng Lục Giác",
-    // Coaxial straight-on along desk & portal normal (rotY = -0.25 rad), framing full MC desk + both MCs + 3-tier Hexagon Portal
+    // Coaxial direct eye-level frontal angle along MC desk normal, framing full MC desk, presenters & Hexagon Portal
     pos: [2.30, 1.26, -3.94],
     target: [3.12, 1.02, -7.16],
   },
@@ -287,16 +290,16 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   11: {
     id: 11,
     label: "Cam Cận Cảnh Cửa Trái Chào Sân",
-    // Cận cảnh thí sinh bước từ Cửa Trái (X = +1.15m, Z = 12.85m)
-    pos: [1.15, 1.85, 11.10],
-    target: [1.15, 1.68, 12.85],
+    // Frames contestant emerging from Left Door archway without wall/ceiling blind spot
+    pos: [1.05, 1.45, 8.90],
+    target: [0.75, 1.70, 12.40],
   },
   12: {
     id: 12,
     label: "Cam Cận Cảnh Cửa Phải Chào Sân",
-    // Cận cảnh thí sinh bước từ Cửa Phải (X = -1.15m, Z = 12.85m)
-    pos: [-1.15, 1.85, 11.10],
-    target: [-1.15, 1.68, 12.85],
+    // Frames contestant emerging from Right Door archway without wall/ceiling blind spot
+    pos: [-1.05, 1.45, 8.90],
+    target: [-0.75, 1.70, 12.40],
   },
   13: {
     id: 13,
@@ -322,10 +325,10 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   16: getContestantScreenCameraPreset(0, 4),
   19: {
     id: 19,
-    label: "Cam Trên Phải Đầu Bám Theo Bước Xuống",
-    // Đặt phía trên bên phải đầu thí sinh, chĩa dốc xuống theo hướng bước xuống cầu thang
-    pos: [0.92, 2.25, 9.40],
-    target: [0.0, 0.35, 6.50],
+    label: "Cam Phía Trước Bám Theo Bước Xuống Cầu Thang",
+    // Placed in front at dais floor facing towards audience & stairs, tracking contestant descending
+    pos: [0.00, 0.95, 4.60],
+    target: [0.00, 1.25, 7.80],
   },
   25: getContestantCameraPreset(4, 8),
   26: getContestantCameraPreset(5, 8),

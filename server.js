@@ -108640,7 +108640,7 @@ var OlympiaGame = class _OlympiaGame {
     const st = this.state;
     const vd = st.veDich;
     if (st.currentRound !== "veDich" || !vd) return fail("Kh\xF4ng \u1EDF v\xF2ng V\u1EC1 \u0110\xEDch");
-    if (vd.phase !== "choosing") return fail("Ch\u01B0a \u0111\u1EBFn l\xFAc ch\u1ECDn g\xF3i");
+    if (vd.phase !== "choosing" && !(vd.phase === "idle" && vd.onStage)) return fail("Ch\u01B0a \u0111\u1EBFn l\xFAc ch\u1ECDn g\xF3i");
     const rs = this.ruleset.veDich;
     let resolvedPoints = points;
     if (rs.selectionMode === "presetPackages" && rs.presetPackages) {

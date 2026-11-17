@@ -3108,7 +3108,7 @@ export class OlympiaGame {
     const st = this.state;
     const vd = st.veDich;
     if (st.currentRound !== "veDich" || !vd) return fail("Không ở vòng Về Đích");
-    if (vd.phase !== "choosing") return fail("Chưa đến lúc chọn gói");
+    if (vd.phase !== "choosing" && !(vd.phase === "idle" && vd.onStage)) return fail("Chưa đến lúc chọn gói");
     const rs = this.ruleset.veDich;
     let resolvedPoints = points;
     if (rs.selectionMode === "presetPackages" && rs.presetPackages) {

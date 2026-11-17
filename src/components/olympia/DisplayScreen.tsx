@@ -1024,31 +1024,9 @@ function VeDich({ state, serverNow, isFullscreen }: P) {
                 : null
             }
             serverNow={serverNow}
-            answerReveal={
-              isVdResult
-                ? {
-                    show: true,
-                    text: vdAnswer || (vdVerdict === "correct" ? "CHÍNH XÁC" : "CHƯA CHÍNH XÁC"),
-                    label: "ĐÁP ÁN VỀ ĐÍCH",
-                    verdict: vdVerdict,
-                    points: vdPoints,
-                    actorName: vdActorName,
-                  }
-                : null
-            }
+            answerReveal={null}
           />
         ) : null
-      ) : isVdResult ? (
-        <div className={`w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col ${isFullscreen ? "justify-center items-center my-auto" : "justify-end"} animate-fade-in`}>
-          <UnifiedOlympiaAnswerOverlay
-            answerText={vdAnswer || (vdVerdict === "correct" ? "CHÍNH XÁC" : "CHƯA CHÍNH XÁC")}
-            roundLabel="ĐÁP ÁN VỀ ĐÍCH"
-            verdict={vdVerdict}
-            pointsAwarded={vdPoints}
-            actorName={vdActorName}
-            themeMode={state.themeMode}
-          />
-        </div>
       ) : showQuestionFrame ? (
           <EconovaLowerThirdV3
             key={`vd-lower-third-${owner}-${vd.turnIdx}`}
@@ -1110,29 +1088,9 @@ function Chp({ state, serverNow, isFullscreen }: P) {
             questionText={q?.q || ""}
             timer={cp.timer}
             serverNow={serverNow}
-            answerReveal={
-              isChpResult
-                ? {
-                    show: true,
-                    text: chpAnswer || (cp.winner != null ? "CHÍNH XÁC" : "KẾT QUẢ"),
-                    label: cp.qIdx >= 0 ? `ĐÁP ÁN CÂU HỎI PHỤ ${cp.qIdx + 1}/${chpLimitLabel}` : "ĐÁP ÁN CÂU HỎI PHỤ",
-                    verdict: cp.winner != null ? "correct" : "neutral",
-                    actorName: chpWinner,
-                  }
-                : null
-            }
+            answerReveal={null}
           />
         ) : null
-      ) : isChpResult ? (
-        <div className={`w-full max-w-3xl sm:max-w-4xl mx-auto px-2 sm:px-4 flex flex-col ${isFullscreen ? "justify-center items-center my-auto" : "justify-end"} animate-fade-in`}>
-          <UnifiedOlympiaAnswerOverlay
-            answerText={chpAnswer || (cp.winner != null ? "CHÍNH XÁC" : "KẾT QUẢ")}
-            roundLabel={cp.qIdx >= 0 ? `ĐÁP ÁN CÂU HỎI PHỤ ${cp.qIdx + 1}/${chpLimitLabel}` : "ĐÁP ÁN CÂU HỎI PHỤ"}
-            verdict={cp.winner != null ? "correct" : "neutral"}
-            actorName={chpWinner}
-            themeMode={state.themeMode}
-          />
-        </div>
       ) : q ? (
         <EconovaLowerThirdV3
           state={state}

@@ -1562,21 +1562,21 @@ export function ClassicUnifiedLowerThird({
       initial={{ y: "100%", opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: "100%", opacity: 0 }}
-      transition={{ type: "spring", stiffness: 240, damping: 26 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
       className="relative w-full max-w-[94vw] 2xl:max-w-[1540px] mx-auto flex items-center justify-center pointer-events-auto select-none py-1 overflow-visible"
       style={{ perspective: 1400 }}
     >
       {/* ── 1. Horizontal Continuous Mounting Beam (Edge-to-Edge) ── */}
       <HorizontalBrassRod />
 
-      {/* ── 2. Unified Plaque Frame (Rotates up 90° from horizontal fold on beam; stationary on question transitions) ── */}
+      {/* ── 2. Unified Plaque Frame (Rotates up 90° from horizontal fold on beam AFTER beam reaches Y position) ── */}
       <motion.div
         initial={hasOpenedRef.current ? false : { rotateX: -90, opacity: 0 }}
         animate={{ rotateX: 0, opacity: 1 }}
         exit={{ rotateX: -90, opacity: 0 }}
         transition={{
-          rotateX: { duration: 0.55, ease: [0.16, 1, 0.3, 1] },
-          opacity: { duration: 0.25 },
+          rotateX: { delay: hasOpenedRef.current ? 0 : 0.35, duration: 0.50, ease: [0.16, 1, 0.3, 1] },
+          opacity: { delay: hasOpenedRef.current ? 0 : 0.35, duration: 0.25 },
         }}
         className="relative w-full z-10 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl"
         style={{
@@ -1613,45 +1613,79 @@ export function ClassicUnifiedLowerThird({
             ) : null}
           </div>
 
-          {/* 2. Center Zone: Candidate Score Cells (Proportional Dynamic Columns, strictly single row, NO scale shifting) */}
-          <div
-            className="flex-1 min-w-0 h-full grid gap-1 sm:gap-1.5 px-0.5 items-center"
-            style={{
-              gridTemplateColumns: `repeat(${Math.max(1, seatsToDisplay.length)}, minmax(0, 1fr))`,
-            }}
-          >
-            {seatsToDisplay.map((seat) => {
-              const isTurn = activeSeatId === seat.id;
-              const isBuzzed = buzzedSeatId === seat.id;
-              const isLocked = lockedSeats?.includes(seat.id);
+          {/* 2. Center Zone: Candidate Score Cells or Dedicated Về Đích Active Scoreboard */}
+          {round === "veDich" ? (
+            <div className="flex-1 min-w-0 h-full flex items-center justify-center gap-2 sm:gap-4 px-2">
+              {(() => {
+                const activeSeat = allSeats.find((s) => s.id === activeSeatId) || allSeats[0];
+                const buzzedSeat = buzzedSeatId != null ? allSeats.find((s) => s.id === buzzedSeatId) : null;
+                return (
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 max-w-full">
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-gradient-to-r from-amber-950/95 via-amber-900/90 to-amber-950/95 border-2 border-[#d4af37] shadow-[0_0_14px_rgba(212,175,55,0.45)]">
+                      <span className="text-[11px] sm:text-xs font-bold text-amber-300 uppercase tracking-wider">
+                        THÍ SINH:
+                      </span>
+                      <span className="font-black text-xs sm:text-sm md:text-base text-white uppercase tracking-tight drop-shadow truncate max-w-[160px] sm:max-w-[240px]">
+                        {activeSeat?.name || `TS ${activeSeatId != null ? activeSeatId + 1 : 1}`}
+                      </span>
+                      <div className="h-4 w-px bg-amber-400/50 mx-1" />
+                      <span className="font-mono font-black text-sm sm:text-base md:text-lg text-yellow-300 drop-shadow">
+                        {activeSeat?.score ?? 0}
+                      </span>
+                    </div>
 
-              return (
-                <div
-                  key={seat.id}
-                  className={`h-[34px] sm:h-[38px] flex items-center justify-between gap-1 px-1.5 sm:px-2.5 rounded-md transition-colors duration-200 min-w-0 overflow-hidden ${
-                    isBuzzed
-                      ? "ring-2 ring-yellow-400 bg-amber-900/90 text-white shadow-[0_0_12px_rgba(250,204,21,0.85)] animate-pulse"
-                      : isTurn
-                      ? "ring-2 ring-amber-400 bg-amber-950/90 text-white shadow-[0_0_10px_rgba(245,158,11,0.6)]"
-                      : isLocked
-                      ? "bg-slate-900/60 border border-slate-700/50 text-slate-500 opacity-60"
-                      : "bg-[#181c24]/90 border border-amber-500/40 text-slate-100 shadow-inner"
-                  }`}
-                >
-                  <span className="font-black truncate uppercase text-[11px] sm:text-xs md:text-sm tracking-tight">
-                    {seat.name || `TS ${seat.id + 1}`}
-                  </span>
-                  <span
-                    className={`font-black shrink-0 text-xs sm:text-sm md:text-base font-mono ${
-                      isBuzzed ? "text-yellow-100" : isTurn ? "text-amber-200" : "text-amber-300"
+                    {buzzedSeat && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-950/90 border border-red-500 text-white animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.7)]">
+                        <span className="text-xs">🔔</span>
+                        <span className="text-xs font-black uppercase text-red-200 truncate max-w-[140px]">
+                          {buzzedSeat.name} ({buzzedSeat.score})
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <div
+              className="flex-1 min-w-0 h-full grid gap-1 sm:gap-1.5 px-0.5 items-center"
+              style={{
+                gridTemplateColumns: `repeat(${Math.max(1, seatsToDisplay.length)}, minmax(0, 1fr))`,
+              }}
+            >
+              {seatsToDisplay.map((seat) => {
+                const isTurn = activeSeatId === seat.id;
+                const isBuzzed = buzzedSeatId === seat.id;
+                const isLocked = lockedSeats?.includes(seat.id);
+
+                return (
+                  <div
+                    key={seat.id}
+                    className={`h-[34px] sm:h-[38px] flex items-center justify-between gap-1 px-1.5 sm:px-2.5 rounded-md transition-colors duration-200 min-w-0 overflow-hidden ${
+                      isBuzzed
+                        ? "ring-2 ring-yellow-400 bg-amber-900/90 text-white shadow-[0_0_12px_rgba(250,204,21,0.85)] animate-pulse"
+                        : isTurn
+                        ? "ring-2 ring-amber-400 bg-amber-950/90 text-white shadow-[0_0_10px_rgba(245,158,11,0.6)]"
+                        : isLocked
+                        ? "bg-slate-900/60 border border-slate-700/50 text-slate-500 opacity-60"
+                        : "bg-[#181c24]/90 border border-amber-500/40 text-slate-100 shadow-inner"
                     }`}
                   >
-                    {seat.score}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+                    <span className="font-black truncate uppercase text-[11px] sm:text-xs md:text-sm tracking-tight">
+                      {seat.name || `TS ${seat.id + 1}`}
+                    </span>
+                    <span
+                      className={`font-black shrink-0 text-xs sm:text-sm md:text-base font-mono ${
+                        isBuzzed ? "text-yellow-100" : isTurn ? "text-amber-200" : "text-amber-300"
+                      }`}
+                    >
+                      {seat.score}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* 3. Right Zone: Hope Star / Seconds Badge (Fixed Width) */}
           <div className="w-[125px] sm:w-[145px] shrink-0 flex items-center justify-end gap-1.5">
@@ -1675,7 +1709,7 @@ export function ClassicUnifiedLowerThird({
             ? "min-h-[200px] sm:min-h-[240px] md:min-h-[280px] max-h-[420px]"
             : "min-h-[160px] sm:min-h-[175px] md:min-h-[195px] max-h-[225px]"
         }`}>
-          {answerReveal?.show ? (
+          {round === "khoiDong" && answerReveal?.show ? (
             <ClassicChamberAnswerView
               answerText={answerReveal.text}
               roundLabel={answerReveal.label}
@@ -1700,7 +1734,11 @@ export function ClassicUnifiedLowerThird({
         </div>
 
         {/* ── BOTTOM FLUSH TIMER BAR ── */}
-        {timer && <Vtv3BottomEdgeTimerBar timer={timer} serverNow={serverNow} />}
+        {timer && (
+          <div className="w-full px-3 pb-2 pt-0 -mt-1 relative z-20">
+            <Vtv3BottomEdgeTimerBar timer={timer} serverNow={serverNow} />
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );

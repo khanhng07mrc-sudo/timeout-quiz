@@ -1194,7 +1194,7 @@ function QuestionBoxContent({
       const allowedPointOptions = isO22Q1 ? [20, 40] : rs.pointOptions;
       const questionCount = isO22Q1 ? 2 : rs.questionsPerSeat;
 
-      if (vd.phase === "choosing") {
+      if (vd.phase === "choosing" || (vd.phase === "idle" && vd.onStage)) {
         if (owner === seatId) {
           return (
             <PackagePicker

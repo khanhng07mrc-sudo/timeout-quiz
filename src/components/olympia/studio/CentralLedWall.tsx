@@ -1633,6 +1633,8 @@ export function renderDynamicCurvedFormulaCanvas(
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
+  const blurFactor = quality === "LIGHT" ? 0 : quality === "MEDIUM" ? 0.5 : 1.0;
+
   // Reset transform and clear completely to avoid compounding scales
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1679,7 +1681,7 @@ export function renderDynamicCurvedFormulaCanvas(
   ctx.strokeStyle = "rgba(0, 240, 255, 0.85)";
   ctx.lineWidth = 4;
   ctx.shadowColor = "#00f0ff";
-  ctx.shadowBlur = 18;
+  ctx.shadowBlur = Math.round(18 * blurFactor);
   for (const yRail of railYBase) {
     ctx.beginPath();
     ctx.moveTo(80, yRail - (80 - 1000) * slope);
@@ -1793,7 +1795,7 @@ export function renderDynamicCurvedFormulaCanvas(
     // Ambient drop shadow
     ctx.save();
     ctx.shadowColor = "rgba(1, 10, 28, 0.95)";
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = Math.round(14 * blurFactor);
     ctx.shadowOffsetX = 3;
     ctx.shadowOffsetY = 6;
     ctx.fillStyle = "#010e28";
@@ -1802,7 +1804,7 @@ export function renderDynamicCurvedFormulaCanvas(
 
     // Volumetric radiant glow
     ctx.save();
-    const glowBlur = Math.min(24, Math.round(18 * specBoost));
+    const glowBlur = Math.round(Math.min(24, Math.round(18 * specBoost)) * blurFactor);
     ctx.shadowColor = fadeProgress > 0.5 ? "#ff1a40" : (specBoost > 1.3 ? "#e0f2fe" : "#00f0ff");
     ctx.shadowBlur = glowBlur;
     ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(255, 30, 70, 0.9)" : "rgba(0, 240, 255, 0.9)";
@@ -1836,7 +1838,7 @@ export function renderDynamicCurvedFormulaCanvas(
     ctx.strokeStyle = `rgba(255, 255, 255, ${glintAlpha})`;
     ctx.lineWidth = 2.2;
     ctx.shadowColor = "#ffffff";
-    ctx.shadowBlur = 6 * specBoost;
+    ctx.shadowBlur = Math.round(6 * specBoost * blurFactor);
     ctx.strokeText(s.text, -0.6, -1.2);
     ctx.restore();
 
@@ -1847,7 +1849,7 @@ export function renderDynamicCurvedFormulaCanvas(
       ctx.save();
       ctx.fillStyle = `rgba(255, 255, 255, ${0.92 * flareAlpha})`;
       ctx.shadowColor = "#00f0ff";
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = Math.round(12 * blurFactor);
       ctx.beginPath();
       ctx.moveTo(0, -s.size * 0.35 - flareSize);
       ctx.quadraticCurveTo(0, -s.size * 0.35, flareSize, -s.size * 0.35);
@@ -1871,7 +1873,7 @@ export function renderDynamicCurvedFormulaCanvas(
   ctx.strokeStyle = "#00f0ff";
   ctx.lineWidth = 4.5;
   ctx.shadowColor = "#00f0ff";
-  ctx.shadowBlur = 18;
+  ctx.shadowBlur = Math.round(18 * blurFactor);
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.lineTo(0, 17);
@@ -1910,7 +1912,7 @@ export function renderDynamicCurvedFormulaCanvas(
   // Rising bubbles in flask
   ctx.fillStyle = "#ffffff";
   ctx.shadowColor = "#00f0ff";
-  ctx.shadowBlur = 4;
+  ctx.shadowBlur = Math.round(4 * blurFactor);
   const bubbleSpeeds = [14, 18, 12, 16];
   const bubbleXOffsets = [2, 10, -4, 16];
   const bubbleRadii = [1.8, 1.4, 1.6, 1.2];
@@ -1927,7 +1929,7 @@ export function renderDynamicCurvedFormulaCanvas(
   ctx.strokeStyle = "rgba(255, 255, 255, 0.92)";
   ctx.lineWidth = 2.2;
   ctx.shadowColor = "#ffffff";
-  ctx.shadowBlur = 6;
+  ctx.shadowBlur = Math.round(6 * blurFactor);
   ctx.beginPath();
   ctx.moveTo(-12, 35);
   ctx.lineTo(-15, 49);
@@ -1939,7 +1941,7 @@ export function renderDynamicCurvedFormulaCanvas(
   ctx.translate(880, 210);
   ctx.scale(0.42, 1.0);
   ctx.shadowColor = "#00f0ff";
-  ctx.shadowBlur = 18;
+  ctx.shadowBlur = Math.round(18 * blurFactor);
   ctx.strokeStyle = "rgba(0, 240, 255, 0.85)";
   ctx.lineWidth = 2.4;
 
@@ -1975,7 +1977,7 @@ export function renderDynamicCurvedFormulaCanvas(
   const ry2 = ex2 * Math.sin(rot2) + ey2 * Math.cos(rot2);
 
   ctx.fillStyle = "#38bdf8";
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = Math.round(8 * blurFactor);
   ctx.beginPath();
   ctx.arc(rx1, ry1, 2.6, 0, Math.PI * 2);
   ctx.arc(rx2, ry2, 2.6, 0, Math.PI * 2);
@@ -1987,7 +1989,7 @@ export function renderDynamicCurvedFormulaCanvas(
   ctx.translate(1420, 205);
   ctx.scale(0.42, 1.0);
   ctx.shadowColor = "#00f0ff";
-  ctx.shadowBlur = 16;
+  ctx.shadowBlur = Math.round(16 * blurFactor);
   ctx.strokeStyle = "#00f0ff";
   ctx.lineWidth = 3.2;
 
@@ -2025,7 +2027,7 @@ export function renderDynamicCurvedFormulaCanvas(
   ctx.fillStyle = "#ffffff";
   ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
   ctx.shadowColor = "#00e5ff";
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = Math.round(8 * blurFactor);
   ctx.fillText("QUIZORRA", 100, 33);
   ctx.restore();
 
@@ -2037,21 +2039,21 @@ export function renderDynamicCurvedFormulaCanvas(
   ctx.strokeStyle = fadeProgress > 0.5 ? "#ff2a4b" : "#00f0ff";
   ctx.lineWidth = 7;
   ctx.shadowColor = fadeProgress > 0.5 ? "#ff0033" : "#00d4ff";
-  ctx.shadowBlur = 20;
+  ctx.shadowBlur = Math.round(20 * blurFactor);
   traceContour(0);
   ctx.stroke();
 
   // Border 2: Inner Neon Track (Width 3.5, Inset 12px)
   ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(255, 120, 140, 0.85)" : "rgba(56, 189, 248, 0.85)";
   ctx.lineWidth = 3.5;
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = Math.round(10 * blurFactor);
   traceContour(12);
   ctx.stroke();
 
   // Border 3: Innermost Subtle Track (Width 2.0, Inset 24px)
   ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(255, 180, 200, 0.55)" : "rgba(165, 243, 252, 0.55)";
   ctx.lineWidth = 2.0;
-  ctx.shadowBlur = 6;
+  ctx.shadowBlur = Math.round(6 * blurFactor);
   traceContour(24);
   ctx.stroke();
   ctx.restore();
@@ -2460,8 +2462,8 @@ export function CentralLedWall({
     accumulatedTimeRef.current += dt;
     const t = accumulatedTimeRef.current;
 
-    // 1. Throttle Curved Formula Wall redraw (<= 18 FPS, interval >= 0.055s)
-    const wallInterval = quality === "LIGHT" ? 0.080 : 0.055;
+    // 1. Throttle Curved Formula Wall redraw (<= 18 FPS in HIGH, 5 FPS in LIGHT to save CPU/GPU)
+    const wallInterval = quality === "LIGHT" ? 0.200 : 0.055;
     if (t - lastWallFrameRef.current >= wallInterval) {
       lastWallFrameRef.current = t;
       if (formulaWallCanvasRef.current && formulaWallTextureRef.current) {

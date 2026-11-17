@@ -5625,6 +5625,7 @@ export function CenterFloorStage({
   const wreathGroupRef = useRef<THREE.Group>(null);
   const wreathMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const entryBurstRef = useRef<THREE.Group>(null);
+  const entryBurstMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const outerLaserArcsRef = useRef<THREE.Group>(null);
   const entryElapsedRef = useRef(0);
 
@@ -5693,16 +5694,9 @@ export function CenterFloorStage({
       entryBurstRef.current.scale.set(s, s, s);
       entryBurstRef.current.rotation.z += delta * 0.2;
       const fade = Math.max(0, 1 - cycle);
-      entryBurstRef.current.traverse((child) => {
-        if (child instanceof THREE.Mesh && child.material) {
-          const mat = child.material as THREE.MeshBasicMaterial;
-          if (child.geometry instanceof THREE.RingGeometry) {
-            mat.opacity = 0.5 * fade;
-          } else {
-            mat.opacity = 0.35 * fade;
-          }
-        }
-      });
+      if (entryBurstMatRef.current) {
+        entryBurstMatRef.current.opacity = 0.5 * fade;
+      }
     }
   });
 
@@ -5962,6 +5956,7 @@ export function CenterFloorStage({
           <mesh>
             <ringGeometry args={[0.2, 0.45, 48]} />
             <meshBasicMaterial
+              ref={entryBurstMatRef}
               color="#38bdf8"
               transparent
               opacity={0.4}

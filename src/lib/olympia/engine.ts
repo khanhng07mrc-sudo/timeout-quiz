@@ -3883,10 +3883,37 @@ export class OlympiaGame {
   }
 
   // ── views ──
+  private _cachedViews: {
+    version: number;
+    now: number;
+    host?: OlympiaState;
+    display?: OlympiaState;
+    player: Record<number, OlympiaState>;
+  } = {
+    version: -1,
+    now: 0,
+    player: {},
+  };
+
   /** Redacted snapshot for a given audience. */
   view(role: "host" | "display" | "player", seatId?: number): OlympiaState {
+    const now = Date.now();
+    if (this._cachedViews.version === this.state.version && Math.abs(now - this._cachedViews.now) < 150) {
+      if (role === "host" && this._cachedViews.host) return this._cachedViews.host;
+      if (role === "display" && this._cachedViews.display) return this._cachedViews.display;
+      if (role === "player" && seatId != null && this._cachedViews.player[seatId]) {
+        return this._cachedViews.player[seatId];
+      }
+    } else {
+      this._cachedViews = {
+        version: this.state.version,
+        now,
+        player: {},
+      };
+    }
+
     const s: OlympiaState = JSON.parse(JSON.stringify(this.state));
-    s.now = Date.now();
+    s.now = now;
     if (s.vcnv) {
       s.vcnv.keywordLength = s.vcnv.keywordLength || cleanVcnvWord(this.state.vcnv?.keyword || s.vcnv.keyword || "").length;
       s.vcnv.rows.forEach((r, i) => {
@@ -3896,7 +3923,10 @@ export class OlympiaGame {
         }
       });
     }
-    if (role === "host") return s;
+    if (role === "host") {
+      this._cachedViews.host = s;
+      return s;
+    }
 
     const keepSelf = <T,>(rec: Record<number, T>): Record<number, T> => {
       if (role !== "player" || seatId == null) return {};
@@ -4012,6 +4042,13 @@ export class OlympiaGame {
         i === cp.qIdx && cp.phase !== "idle" ? { ...q, a: cp.phase === "result" ? q.a : "" } : { q: "", a: "" }
       );
     }
+
+    if (role === "display") {
+      this._cachedViews.display = s;
+    } else if (role === "player" && seatId != null) {
+      this._cachedViews.player[seatId] = s;
+    }
+
     return s;
   }
 

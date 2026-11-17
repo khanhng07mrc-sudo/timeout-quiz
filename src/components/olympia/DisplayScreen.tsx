@@ -652,57 +652,63 @@ function autoQuestionFontSize(text: string) {
 }
 
 function DisplayTimerBar({ timer, serverNow }: { timer: any; serverNow: () => number }) {
-  const [now, setNow] = useState(serverNow);
+  const barRef = useRef<HTMLDivElement>(null);
+  const pinRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!timer || timer.startedAt == null) return;
     let active = true;
+    const total = timer.totalMs || 60000;
+
     const loop = () => {
       if (!active) return;
-      setNow(serverNow());
-      rafRef.current = requestAnimationFrame(loop);
+      const now = serverNow();
+      const elapsed = Math.max(0, now - timer.startedAt);
+      const remaining = Math.max(0, timer.remainingMs - elapsed);
+      const elapsedPct = Math.max(0, Math.min(100, ((total - remaining) / total) * 100));
+
+      if (barRef.current) {
+        barRef.current.style.width = `${elapsedPct}%`;
+        const isEnd = remaining <= 3000;
+        barRef.current.className = `h-full rounded-full will-change-[width] ${
+          isEnd
+            ? "bg-gradient-to-r from-red-600 via-rose-500 to-amber-400 shadow-[0_0_12px_rgba(239,68,68,0.9)]"
+            : "bg-gradient-to-r from-violet-600 via-sky-400 to-amber-300 shadow-[0_0_10px_rgba(56,189,248,0.6)]"
+        }`;
+      }
+      if (pinRef.current) {
+        pinRef.current.style.left = `${elapsedPct}%`;
+      }
+
+      if (remaining > 0) {
+        rafRef.current = requestAnimationFrame(loop);
+      }
     };
+
     rafRef.current = requestAnimationFrame(loop);
     return () => {
       active = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [timer?.startedAt, timer?.remainingMs, serverNow]);
+  }, [timer?.startedAt, timer?.remainingMs, timer?.totalMs, serverNow]);
 
   const running = timer?.startedAt != null;
   if (!running || !timer) return null;
-
-  const total = timer.totalMs || 60000;
-  const elapsed = Math.max(0, now - timer.startedAt);
-  const remaining = Math.max(0, timer.remainingMs - elapsed);
-  if (remaining <= 0) return null;
-
-  const elapsedPct = Math.max(0, Math.min(100, ((total - remaining) / total) * 100));
-  const isStart = remaining >= total - 1200;
-  const isEnd = remaining <= 3000;
 
   return (
     <div className="w-full relative py-1 flex items-center animate-fade-in">
       <div className="w-full h-2 rounded-full bg-violet-950/80 border border-violet-500/30 overflow-hidden shadow-inner relative">
         <div
-          className={`h-full rounded-full will-change-[width] ${
-            isEnd
-              ? "bg-gradient-to-r from-red-600 via-rose-500 to-amber-400 shadow-[0_0_12px_rgba(239,68,68,0.9)]"
-              : "bg-gradient-to-r from-violet-600 via-sky-400 to-amber-300 shadow-[0_0_10px_rgba(56,189,248,0.6)]"
-          }`}
-          style={{ width: `${elapsedPct}%` }}
+          ref={barRef}
+          className="h-full rounded-full will-change-[width] bg-gradient-to-r from-violet-600 via-sky-400 to-amber-300 shadow-[0_0_10px_rgba(56,189,248,0.6)]"
+          style={{ width: "0%" }}
         />
       </div>
       <div
-        className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none rounded-full border will-change-[left] ${
-          isEnd
-            ? "w-4 h-4 bg-red-400 border-red-100 shadow-[0_0_14px_#ef4444] scale-125 animate-ping"
-            : isStart
-            ? "w-3.5 h-3.5 bg-sky-300 border-white shadow-[0_0_12px_#38bdf8] scale-125 animate-pulse"
-            : "w-3 h-3 bg-amber-300 border-amber-100 shadow-[0_0_8px_#f59e0b]"
-        }`}
-        style={{ left: `${elapsedPct}%` }}
+        ref={pinRef}
+        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none rounded-full border will-change-[left] w-3 h-3 bg-amber-300 border-amber-100 shadow-[0_0_8px_#f59e0b]"
+        style={{ left: "0%" }}
       />
     </div>
   );

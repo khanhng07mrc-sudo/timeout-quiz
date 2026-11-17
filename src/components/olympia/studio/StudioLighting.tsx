@@ -3133,7 +3133,7 @@ export function StudioLighting({
       return 0.0;
     }
     return 0.4;
-  }, [idleFadeProgress, isIdle, introStartedAt, now, isVeDichDimmed, screenFadeProgress, stageFadeProgress, audienceFadeProgress]);
+  }, [idleFadeProgress, isIdle, introStartedAt, isVeDichDimmed, screenFadeProgress, stageFadeProgress, audienceFadeProgress]);
 
   // Overall multiplier for active broadcast lighting
   const liveFactor = (1.0 - effectiveIdleFade) * introDimFactor;
@@ -3416,15 +3416,15 @@ export function StudioLighting({
         const spotIntensity = isLocked ? 13.0 : isChased ? 9.5 : isMainActive ? 8.5 : 0.0;
         const spotColor = isLocked ? "#ffffff" : isChased ? "#00e5ff" : "#fff8e7";
 
-        if (!isLit) return null;
-
+        // Keep spotlights permanently mounted with intensity 0 when dormant
+        // to avoid shader recompilation hitches during 5s buzzer chase
         return (
           <TargetedSpotLight
             key={`ts-spot-${sIdx}`}
             position={[pos[0], 7.5, pos[2] + 0.8]}
             targetPosition={[pos[0], 1.2, pos[2]]}
             color={spotColor}
-            intensity={spotIntensity}
+            intensity={isLit ? spotIntensity : 0.0}
             angle={0.4}
             penumbra={0.3}
             distance={11}

@@ -173,7 +173,7 @@ class SoundManager {
     unlockEvents.forEach((ev) => window.addEventListener(ev, handleInteraction, { capture: true, once: false }));
   }
 
-  private createAudioWithFallbacks(config: AudioSourceConfig, loop: boolean = false): HTMLAudioElement {
+  private createAudioWithFallbacks(config: AudioSourceConfig, loop: boolean = false, preloadMode: "auto" | "metadata" | "none" = "none"): HTMLAudioElement {
     const audio = new Audio();
     const sources = [config.primary, ...config.fallbacks];
     let currentIndex = 0;
@@ -188,7 +188,7 @@ class SoundManager {
 
     audio.onerror = tryNext;
     audio.src = sources[0];
-    audio.preload = "auto";
+    audio.preload = preloadMode;
     audio.loop = loop;
     audio.volume = this.volume;
 
@@ -206,27 +206,22 @@ class SoundManager {
     return audio;
   }
 
+  private getSFXAudio(name: SFXKey): HTMLAudioElement | null {
+    let audio = this.sfxMap.get(name);
+    if (!audio) {
+      const config = SFX_CONFIG[name];
+      if (!config || !config.primary) return null;
+      audio = this.createAudioWithFallbacks(config, false, "none");
+      this.sfxMap.set(name, audio);
+    }
+    return audio;
+  }
+
   private initAudioAssets() {
     if (this.initialized || typeof window === "undefined") return;
     this.initialized = true;
-
-    // Preload SFX
-    (Object.keys(SFX_CONFIG) as SFXKey[]).forEach((key) => {
-      try {
-        const audio = this.createAudioWithFallbacks(SFX_CONFIG[key], false);
-        this.sfxMap.set(key, audio);
-      } catch {}
-    });
-
-    // Preload BGM
-    (Object.keys(BGM_CONFIG) as BGMKey[]).forEach((key) => {
-      try {
-        // Nhạc hiệu mở đầu lobby chỉ chạy 1 lần duy nhất khi khởi động phòng, không lặp lại
-        const loop = key === "question_suspense";
-        const audio = this.createAudioWithFallbacks(BGM_CONFIG[key], loop);
-        this.bgmMap.set(key, audio);
-      } catch {}
-    });
+    // Audio assets are loaded lazily on demand with preload="none"
+    // to avoid eager network download and audio buffer allocation on page load.
   }
 
   public unlockAudio() {
@@ -237,7 +232,7 @@ class SoundManager {
       wheelCtx.resume().catch(() => {});
     }
     // Warm up an audio element to satisfy browser interaction policies
-    const tick = this.sfxMap.get("tick");
+    const tick = this.getSFXAudio("tick");
     if (tick) {
       tick.volume = 0;
       tick.play().then(() => {
@@ -798,22 +793,21 @@ class SoundManager {
 
   private playSFX(name: SFXKey, volumeScale: number = 1.0) {
     if (this.isMuted) return;
-    this.initAudioAssets();
 
     try {
-      const original = this.sfxMap.get(name);
-      if (!original) {
-        const config = SFX_CONFIG[name];
-        const sound = this.createAudioWithFallbacks(config || { primary: `/sounds/${name}.mp3`, fallbacks: [] }, false);
-        sound.volume = this.volume * volumeScale;
-        sound.play().catch(() => {});
-        return;
-      }
+      const original = this.getSFXAudio(name);
+      if (!original) return;
 
-      // Fast clone to support rapid overlapping triggers (e.g. fast buzzer or clock ticks)
-      const clone = original.cloneNode(true) as HTMLAudioElement;
-      clone.volume = this.volume * volumeScale;
-      clone.play().catch(() => {});
+      if (original.paused || original.ended) {
+        original.currentTime = 0;
+        original.volume = this.volume * volumeScale;
+        original.play().catch(() => {});
+      } else {
+        // Fast clone to support rapid overlapping triggers (e.g. fast buzzer or clock ticks)
+        const clone = original.cloneNode(true) as HTMLAudioElement;
+        clone.volume = this.volume * volumeScale;
+        clone.play().catch(() => {});
+      }
     } catch {}
   }
 

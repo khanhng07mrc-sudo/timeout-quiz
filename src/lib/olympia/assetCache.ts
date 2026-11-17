@@ -76,29 +76,36 @@ async function cacheAndCreateBlobUrl(path: string): Promise<string | null> {
 }
 
 /**
- * Preload all round intro MP4 & WebM videos into local memory
+ * Preload round intro videos into local memory sequentially for the preferred format.
+ * Prevents bandwidth exhaustion from downloading 8 full-HD videos simultaneously.
  */
 export async function preloadOlympiaIntroVideos(): Promise<void> {
   if (typeof window === "undefined" || preloadInitiated) return;
   preloadInitiated = true;
 
-  const mp4Entries = Object.entries(INTRO_MP4_PATHS);
-  const webmEntries = Object.entries(INTRO_WEBM_PATHS);
+  try {
+    const testVideo = document.createElement("video");
+    const canPlayWebm = testVideo.canPlayType && testVideo.canPlayType('video/webm; codecs="vp9, opus"') !== "";
+    const primaryFormat: "webm" | "mp4" = canPlayWebm ? "webm" : "mp4";
+    const primaryEntries = primaryFormat === "webm" ? Object.entries(INTRO_WEBM_PATHS) : Object.entries(INTRO_MP4_PATHS);
 
-  await Promise.all([
-    ...mp4Entries.map(async ([round, path]) => {
+    // Load sequentially in game round progression order (khoiDong -> vcnv -> tangToc -> veDich)
+    const roundOrder = ["khoiDong", "vcnv", "tangToc", "veDich"];
+    primaryEntries.sort(([a], [b]) => roundOrder.indexOf(a) - roundOrder.indexOf(b));
+
+    for (const [round, path] of primaryEntries) {
       const blobUrl = await cacheAndCreateBlobUrl(path);
       if (blobUrl) {
-        memoryBlobUrls.set(`${round}:mp4`, blobUrl);
+        if (primaryFormat === "webm") {
+          memoryBlobUrls.set(round, blobUrl);
+        } else {
+          memoryBlobUrls.set(`${round}:mp4`, blobUrl);
+        }
       }
-    }),
-    ...webmEntries.map(async ([round, path]) => {
-      const blobUrl = await cacheAndCreateBlobUrl(path);
-      if (blobUrl) {
-        memoryBlobUrls.set(round, blobUrl);
-      }
-    }),
-  ]);
+    }
+  } catch (err) {
+    console.warn("[OlympiaAssetCache] Sequential video preload error:", err);
+  }
 }
 
 /**

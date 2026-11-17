@@ -47,7 +47,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-transparent text-foreground relative">
       {/* ── Mobile Top Header (Screens < lg) ── */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#131626]/90 backdrop-blur-md border-b border-[#232845] px-4 flex items-center justify-between z-40">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#131626]/[0.98] border-b border-[#232845] px-4 flex items-center justify-between z-40">
         <BrandLogo variant="compact" size="sm" subText="CỔNG QUẢN TRỊ" href="/" />
 
         <button
@@ -63,11 +63,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       {/* ── Mobile Drawer Backdrop & Menu ── */}
       {mobileMenuOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex"
+          className="lg:hidden fixed inset-0 bg-black/85 z-50 flex"
           onClick={() => setMobileMenuOpen(false)}
         >
           <div
-            className="w-72 max-w-[80vw] h-full bg-[#131626]/95 backdrop-blur-xl border-r border-[#232845] p-5 flex flex-col gap-4 animate-slide-right shadow-2xl"
+            className="w-72 max-w-[80vw] h-full bg-[#131626]/[0.98] border-r border-[#232845] p-5 flex flex-col gap-4 animate-slide-right shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-[#232845]">
@@ -148,7 +148,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       <aside
         className={`hidden lg:flex ${
           sidebarCollapsed ? "w-16 p-2 items-center" : "w-64 xl:w-72 p-4.5"
-        } bg-[#0c0f20]/95 backdrop-blur-2xl border-r border-purple-500/25 shadow-2xl flex-col fixed top-0 left-0 h-full z-50 transition-all duration-250`}
+        } bg-[#0c0f20]/[0.98] border-r border-purple-500/25 shadow-2xl flex-col fixed top-0 left-0 h-full z-50 transition-[width,padding] duration-250`}
       >
         {/* Brand Header & Toggle */}
         <div className={`mb-5 flex items-center ${sidebarCollapsed ? "justify-center flex-col gap-2.5" : "justify-between"} w-full px-1`}>
@@ -216,7 +216,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
                 {/* Floating Tooltip khi ở chế độ Mini Dock */}
                 {sidebarCollapsed && (
-                  <div className="absolute left-full ml-3 px-3 py-1.5 rounded-xl bg-[#14172e]/95 border border-purple-500/40 text-white text-xs whitespace-nowrap shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible pointer-events-none transition-all duration-150 z-50 translate-x-1 group-hover:translate-x-0 backdrop-blur-md">
+                  <div className="absolute left-full ml-3 px-3 py-1.5 rounded-xl bg-[#14172e]/[0.98] border border-purple-500/40 text-white text-xs whitespace-nowrap shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible pointer-events-none transition-all duration-150 z-50 translate-x-1 group-hover:translate-x-0">
                     <p className="font-bold text-cyan-200">{label}</p>
                     <p className="text-[10px] text-slate-400 font-normal">{desc}</p>
                   </div>
@@ -251,7 +251,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 </>
               )}
               {sidebarCollapsed && (
-                <div className="absolute left-full ml-3 px-3 py-1.5 rounded-xl bg-[#14172e]/95 border border-purple-500/40 text-white text-xs whitespace-nowrap shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible pointer-events-none transition-all duration-150 z-50 translate-x-1 group-hover:translate-x-0 backdrop-blur-md">
+                <div className="absolute left-full ml-3 px-3 py-1.5 rounded-xl bg-[#14172e]/[0.98] border border-purple-500/40 text-white text-xs whitespace-nowrap shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible pointer-events-none transition-all duration-150 z-50 translate-x-1 group-hover:translate-x-0">
                   <p className="font-bold text-white">{user.name}</p>
                   <p className="text-[10px] text-slate-400">{user.email}</p>
                 </div>
@@ -295,7 +295,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <main
           className={`${
             sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
-          } flex-1 h-screen max-h-screen overflow-hidden p-1 sm:p-2 pt-16 lg:pt-2 flex flex-col min-h-0 relative z-10 transition-all duration-200`}
+          } flex-1 h-screen max-h-screen overflow-hidden p-1 sm:p-2 pt-16 lg:pt-2 flex flex-col min-h-0 relative z-10 transition-[margin-left] duration-200`}
         >
           <div key={pathname} className="w-full h-full flex flex-col min-h-0 animate-fade-in">
             {children}
@@ -305,7 +305,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <main
           className={`${
             sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
-          } flex-1 p-2 sm:p-3 lg:px-4 lg:py-2.5 pt-16 lg:pt-2.5 min-h-screen flex flex-col relative z-10 transition-all duration-200`}
+          } flex-1 p-2 sm:p-3 lg:px-4 lg:py-2.5 pt-16 lg:pt-2.5 min-h-screen flex flex-col relative z-10 transition-[margin-left] duration-200`}
         >
           <div key={pathname} className="w-full max-w-full flex-1 flex flex-col min-h-0 animate-fade-in">
             {children}
@@ -315,7 +315,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <main
           className={`${
             sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
-          } flex-1 p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10 min-h-screen relative z-10 transition-all duration-200`}
+          } flex-1 p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10 min-h-screen relative z-10 transition-[margin-left] duration-200`}
         >
           <div key={pathname} className="max-w-6xl mx-auto w-full animate-fade-in">
             {children}

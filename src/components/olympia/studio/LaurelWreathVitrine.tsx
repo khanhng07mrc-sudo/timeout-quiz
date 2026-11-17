@@ -202,7 +202,7 @@ export function calculateVitrineState(elapsedSec: number) {
 
 export function LaurelWreathVitrine({
   position = [0.0, 0, 2.6],
-  quality: _quality = "HIGH",
+  quality = "HIGH",
   screenFadeProgress = 0,
   liveFactor = 1.0,
   introStartedAt = null,
@@ -329,26 +329,32 @@ export function LaurelWreathVitrine({
           <cylinderGeometry args={[0.19, 0.19, 0.36, 32, 1, true]} />
           <meshPhysicalMaterial
             color="#ffffff"
-            transmission={0.92}
+            transmission={quality === "LIGHT" ? 0 : 0.92}
             opacity={0.35}
             transparent
             roughness={0.06}
+            metalness={0.1}
             ior={1.5}
-            thickness={0.04}
+            thickness={quality === "LIGHT" ? 0 : 0.04}
             envMapIntensity={2.0}
+            clearcoat={1.0}
+            clearcoatRoughness={0.05}
           />
         </mesh>
         <mesh position={[0, 0.36, 0]}>
           <sphereGeometry args={[0.19, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
           <meshPhysicalMaterial
             color="#ffffff"
-            transmission={0.92}
+            transmission={quality === "LIGHT" ? 0 : 0.92}
             opacity={0.35}
             transparent
             roughness={0.06}
+            metalness={0.1}
             ior={1.5}
-            thickness={0.04}
+            thickness={quality === "LIGHT" ? 0 : 0.04}
             envMapIntensity={2.0}
+            clearcoat={1.0}
+            clearcoatRoughness={0.05}
           />
         </mesh>
       </group>

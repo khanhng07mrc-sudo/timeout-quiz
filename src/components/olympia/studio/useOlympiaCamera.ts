@@ -351,25 +351,20 @@ export function useOlympiaCameraState(
     }
   }, [state?.veDich?.turnIdx, state?.veDich?.phase, state?.veDich?.onStage]);
 
-  // Only run 100ms ticker when a time-varying camera transition is actively running (eliminates idle 10Hz re-renders)
+  // Only run 100ms ticker when a time-critical camera transition (e.g. entrance sequence or post-intro hold) is active.
+  // Question timer phases do not require a 10Hz React ticker storm.
   const needsTimedCameraTicker = Boolean(
     state?.entranceState?.active ||
       state?.introTimer ||
-      state?.introStandby ||
       isRoundPostIntroStandby(state, getNow()) ||
       (state?.currentRound === "khoiDong" &&
         state?.khoiDong &&
-        (Boolean(state.khoiDong.startCooldownUntil && getNow() < state.khoiDong.startCooldownUntil) ||
-          Boolean(state.khoiDong.timer?.startedAt) ||
-          state.khoiDong.phase === "segmentDone")) ||
-      (state?.currentRound === "vcnv" && Boolean(state?.vcnv?.timer?.startedAt)) ||
+        Boolean(state.khoiDong.startCooldownUntil && getNow() < state.khoiDong.startCooldownUntil)) ||
       (state?.currentRound === "veDich" &&
         state?.veDich &&
-        (Boolean(state.veDich.timer?.startedAt) ||
-          (state.veDich.phase === "idle" && state.veDich.onStage) ||
+        ((state.veDich.phase === "idle" && state.veDich.onStage) ||
           state.veDich.phase === "choosing" ||
-          state.veDich.phase === "packageReady" ||
-          state.veDich.phase === "result"))
+          state.veDich.phase === "packageReady"))
   );
 
   useEffect(() => {

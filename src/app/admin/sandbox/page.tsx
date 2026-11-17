@@ -1095,6 +1095,18 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
 
   // ── Admin Socket Connection ─────────────────────────────────────────────────
   const connectAdminSocket = useCallback((roomCode: string) => {
+    // Trong chế độ Olympia, HostConsole kết nối trực tiếp vào namespace /olympia.
+    // Chặn mở socket namespace / và bot socket để tránh xung đột và nhân đôi kết nối.
+    if (selectedMode === "OLYMPIA" || olympiaSandboxActive) {
+      if (adminSocketRef.current) {
+        adminSocketRef.current.disconnect();
+        adminSocketRef.current = null;
+      }
+      botSocketsRef.current.forEach((s) => s.disconnect());
+      botSocketsRef.current.clear();
+      return;
+    }
+
     initialTeamOrderRef.current = [];
     setActiveTeamIndex(0);
     setCurrentQuestion(null);
@@ -12298,22 +12310,15 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
 
               {/* Iframe Thí sinh: Chỉ render duy nhất máy thí sinh đang chọn để tránh lag do chạy đồng thời nhiều iframe */}
               <div className="flex-1 min-h-0 bg-[#0f0f1a] relative">
-                {/* Giữ iframe của các ghế đã mở (ẩn bằng CSS) để không mất đáp án đang gõ và không lag khi chuyển ghế */}
-                {Array.from(new Set([...olympiaVisitedSeats, olympiaActiveSeat])).map((seatIdx) => (
-                  <iframe
-                    key={seatIdx}
-                    src={`/olympia/play/${code}?seat=${seatIdx}&name=${encodeURIComponent(
-                      sandboxCustomTeams[seatIdx]?.name || `Thí sinh ${seatIdx + 1}`
-                    )}&sandbox=1`}
-                    allow="autoplay *; fullscreen *; camera; microphone; display-capture"
-                    title={`Player Viewport ${seatIdx}`}
-                    className={`w-full h-full border-0 absolute inset-0 ${
-                      seatIdx === olympiaActiveSeat
-                        ? "opacity-100 pointer-events-auto z-10"
-                        : "opacity-0 pointer-events-none z-0"
-                    }`}
-                  />
-                ))}
+                <iframe
+                  key={olympiaActiveSeat}
+                  src={`/olympia/play/${code}?seat=${olympiaActiveSeat}&name=${encodeURIComponent(
+                    sandboxCustomTeams[olympiaActiveSeat]?.name || `Thí sinh ${olympiaActiveSeat + 1}`
+                  )}&sandbox=1&perf=light&audio=0`}
+                  allow="autoplay *; fullscreen *; camera; microphone; display-capture"
+                  title={`Player Viewport ${olympiaActiveSeat}`}
+                  className="w-full h-full border-0 absolute inset-0 opacity-100 pointer-events-auto z-10"
+                />
               </div>
             </div>
           </div>

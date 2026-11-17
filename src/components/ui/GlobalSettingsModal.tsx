@@ -6,6 +6,23 @@ import Link from "next/link";
 import TwoFactorSetupModal from "@/components/admin/TwoFactorSetupModal";
 import { GENERAL_BGM_PLAYLIST, soundManager } from "@/lib/sound-manager";
 
+export const GPU_SAVER_STORAGE_KEY = "quizorra_gpu_saver";
+export const GPU_SAVER_CHANGE_EVENT = "quizorra:gpu-saver-change";
+
+export function readGpuSaverPreference(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(GPU_SAVER_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function applyGpuSaverClass(enabled: boolean): void {
+  if (typeof document === "undefined") return;
+  document.documentElement.classList.toggle("gpu-saver-mode", enabled);
+}
+
 interface GlobalSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -31,16 +48,36 @@ export default function GlobalSettingsModal({ isOpen, onClose }: GlobalSettingsM
 
       setSelectedBgmTrack(soundManager.getRoomPreferredBgm());
       setBgmVolume(Math.round(soundManager.getBgmVolume() * 100));
-
-      const savedGpu = localStorage.getItem("quizorra_gpu_saver");
-      if (savedGpu !== null) setGpuSaver(savedGpu === "true");
     } catch (_) {}
+
+    const savedGpu = readGpuSaverPreference();
+    setGpuSaver(savedGpu);
+    applyGpuSaverClass(savedGpu);
 
     const handleFsChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === GPU_SAVER_STORAGE_KEY || e.key === null) {
+        const enabled = e.newValue === "true";
+        setGpuSaver(enabled);
+        applyGpuSaverClass(enabled);
+      }
+    };
+    const handleGpuSaverChange = (e: Event) => {
+      const enabled = Boolean((e as CustomEvent<{ enabled?: boolean }>).detail?.enabled);
+      setGpuSaver(enabled);
+      applyGpuSaverClass(enabled);
+    };
+
     document.addEventListener("fullscreenchange", handleFsChange);
-    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener(GPU_SAVER_CHANGE_EVENT, handleGpuSaverChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFsChange);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(GPU_SAVER_CHANGE_EVENT, handleGpuSaverChange);
+    };
   }, []);
 
   const toggleBgm = () => {
@@ -63,12 +100,15 @@ export default function GlobalSettingsModal({ isOpen, onClose }: GlobalSettingsM
     const next = !gpuSaver;
     setGpuSaver(next);
     try {
-      localStorage.setItem("quizorra_gpu_saver", String(next));
+      localStorage.setItem(GPU_SAVER_STORAGE_KEY, String(next));
     } catch (_) {}
-    if (next) {
-      document.documentElement.classList.add("gpu-saver-mode");
-    } else {
-      document.documentElement.classList.remove("gpu-saver-mode");
+    applyGpuSaverClass(next);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent<{ enabled?: boolean }>(GPU_SAVER_CHANGE_EVENT, {
+          detail: { enabled: next },
+        })
+      );
     }
   };
 
@@ -219,6 +259,7 @@ export default function GlobalSettingsModal({ isOpen, onClose }: GlobalSettingsM
               </div>
               <button
                 type="button"
+                aria-pressed={gpuSaver}
                 onClick={toggleGpuSaver}
                 className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${
                   gpuSaver ? "bg-purple-500" : "bg-slate-700"

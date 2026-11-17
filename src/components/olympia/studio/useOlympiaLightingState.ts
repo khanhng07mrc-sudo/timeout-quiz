@@ -221,14 +221,6 @@ export function useOlympiaLightingState(
   const [stageVal, setStageVal] = useState(0);
   const [audienceVal, setAudienceVal] = useState(0);
 
-  // Ticker for Về Đích 5s chase effect
-  const [chaseTick, setChaseTick] = useState(0);
-  useEffect(() => {
-    if (state?.currentRound !== "veDich") return;
-    const iv = setInterval(() => setChaseTick((c) => (c + 1) % 4), 160);
-    return () => clearInterval(iv);
-  }, [state?.currentRound]);
-
   // Current values ref to eliminate missing dependencies and stale closures
   const currentValsRef = useRef({ screen: 0, stage: 0, audience: 0 });
 
@@ -251,15 +243,79 @@ export function useOlympiaLightingState(
 
   // Evaluate target mode on state change / ticks
   useEffect(() => {
-    let animId: number;
+    let animId: number = 0;
+    let delayTimer: NodeJS.Timeout | null = null;
+
+    const startTransitionAnimation = () => {
+      if (animId) cancelAnimationFrame(animId);
+
+      const updateFades = () => {
+        const perfNow = typeof performance !== "undefined" ? performance.now() : Date.now();
+        const tr = transitionRef.current;
+        const elapsedSec = tr.startTime > 0 ? (perfNow - tr.startTime) / 1000 : 999;
+
+        const s = calculateZoneFade(
+          tr.fromScreen,
+          tr.targetVal,
+          elapsedSec,
+          STAGGER_CONFIG.screen.delay,
+          STAGGER_CONFIG.screen.duration
+        );
+        const st = calculateZoneFade(
+          tr.fromStage,
+          tr.targetVal,
+          elapsedSec,
+          STAGGER_CONFIG.stage.delay,
+          STAGGER_CONFIG.stage.duration
+        );
+        const a = calculateZoneFade(
+          tr.fromAudience,
+          tr.targetVal,
+          elapsedSec,
+          STAGGER_CONFIG.audience.delay,
+          STAGGER_CONFIG.audience.duration
+        );
+
+        currentValsRef.current = { screen: s, stage: st, audience: a };
+        setScreenVal(s);
+        setStageVal(st);
+        setAudienceVal(a);
+
+        // Smooth Hermite fade for pre-match idle transition (1.2s duration)
+        const itr = idleTransitionRef.current;
+        const idleElapsedSec = itr.startTime > 0 ? (perfNow - itr.startTime) / 1000 : 999;
+        const rawIdleProgress = Math.min(1, Math.max(0, idleElapsedSec / 1.2));
+        const idleSmoothed = hermiteSmoothstep(rawIdleProgress);
+        const curIdle = itr.fromVal + (itr.targetVal - itr.fromVal) * idleSmoothed;
+        currentIdleValRef.current = curIdle;
+        setIdleFadeVal(curIdle);
+
+        // Stop animating once all zones and idle transitions reach target values
+        const maxTime = STAGGER_CONFIG.audience.delay + STAGGER_CONFIG.audience.duration;
+        if (elapsedSec < maxTime + 0.05 || idleElapsedSec < 1.25) {
+          animId = requestAnimationFrame(updateFades);
+        } else {
+          // Snap strictly to targets to prevent floating point residual drift
+          currentValsRef.current = { screen: tr.targetVal, stage: tr.targetVal, audience: tr.targetVal };
+          setScreenVal(tr.targetVal);
+          setStageVal(tr.targetVal);
+          setAudienceVal(tr.targetVal);
+          currentIdleValRef.current = itr.targetVal;
+          setIdleFadeVal(itr.targetVal);
+        }
+      };
+
+      animId = requestAnimationFrame(updateFades);
+    };
+
     const checkAndUpdate = () => {
       const nowMs = getNow();
       const target = computeTargetLightingMode(state, nowMs);
+      let needsAnimation = false;
 
       if (target !== transitionRef.current.targetMode) {
         const perfNow = typeof performance !== "undefined" ? performance.now() : Date.now();
         const tr = transitionRef.current;
-        // Snapshot current values at moment of target change
         tr.startTime = perfNow;
         tr.fromScreen = currentValsRef.current.screen;
         tr.fromStage = currentValsRef.current.stage;
@@ -267,6 +323,7 @@ export function useOlympiaLightingState(
         tr.targetVal = target === "RED" ? 1 : 0;
         tr.targetMode = target;
         setCurrentMode(target);
+        needsAnimation = true;
       }
 
       // Check pre-match idle transitions
@@ -279,65 +336,34 @@ export function useOlympiaLightingState(
         itr.targetVal = targetIdle ? 1.0 : 0.0;
         itr.targetIdle = targetIdle;
         setIsIdle(targetIdle);
+        needsAnimation = true;
+      }
+
+      if (needsAnimation) {
+        startTransitionAnimation();
+      }
+
+      // If in VCNV or Tăng Tốc question phase with startedAt, schedule exact one-shot timeout for 2.5s delay
+      if (target === "BLUE" && state?.stage === "playing") {
+        let startedAt: number | undefined;
+        if (state.currentRound === "vcnv" && state.vcnv?.phase === "question") {
+          startedAt = state.vcnv.timer?.startedAt ?? undefined;
+        } else if (state.currentRound === "tangToc" && state.tangToc?.phase === "question") {
+          startedAt = state.tangToc.timer?.startedAt ?? undefined;
+        }
+        if (startedAt != null) {
+          const remainingMs = Math.max(10, Math.ceil(2500 - (nowMs - startedAt)));
+          if (remainingMs > 0 && remainingMs <= 2500) {
+            delayTimer = setTimeout(checkAndUpdate, remainingMs + 10);
+          }
+        }
       }
     };
 
     checkAndUpdate();
-    const interval = setInterval(checkAndUpdate, 200);
-
-    // Animation loop for 60fps smooth fade
-    const updateFades = () => {
-      const perfNow = typeof performance !== "undefined" ? performance.now() : Date.now();
-      const tr = transitionRef.current;
-      const elapsedSec = tr.startTime > 0 ? (perfNow - tr.startTime) / 1000 : 999;
-
-      const s = calculateZoneFade(
-        tr.fromScreen,
-        tr.targetVal,
-        elapsedSec,
-        STAGGER_CONFIG.screen.delay,
-        STAGGER_CONFIG.screen.duration
-      );
-      const st = calculateZoneFade(
-        tr.fromStage,
-        tr.targetVal,
-        elapsedSec,
-        STAGGER_CONFIG.stage.delay,
-        STAGGER_CONFIG.stage.duration
-      );
-      const a = calculateZoneFade(
-        tr.fromAudience,
-        tr.targetVal,
-        elapsedSec,
-        STAGGER_CONFIG.audience.delay,
-        STAGGER_CONFIG.audience.duration
-      );
-
-      currentValsRef.current = { screen: s, stage: st, audience: a };
-      setScreenVal(s);
-      setStageVal(st);
-      setAudienceVal(a);
-
-      // Smooth Hermite fade for pre-match idle transition (1.2s duration)
-      const itr = idleTransitionRef.current;
-      const idleElapsedSec = itr.startTime > 0 ? (perfNow - itr.startTime) / 1000 : 999;
-      const rawIdleProgress = Math.min(1, Math.max(0, idleElapsedSec / 1.2));
-      const idleSmoothed = hermiteSmoothstep(rawIdleProgress);
-      const curIdle = itr.fromVal + (itr.targetVal - itr.fromVal) * idleSmoothed;
-      currentIdleValRef.current = curIdle;
-      setIdleFadeVal(curIdle);
-
-      // Continue animating until all zones and idle transitions reach target
-      const maxTime = STAGGER_CONFIG.audience.delay + STAGGER_CONFIG.audience.duration;
-      if (elapsedSec < maxTime + 0.1 || idleElapsedSec < 1.3) {
-        animId = requestAnimationFrame(updateFades);
-      }
-    };
-
-    animId = requestAnimationFrame(updateFades);
 
     return () => {
-      clearInterval(interval);
+      if (delayTimer) clearTimeout(delayTimer);
       if (animId) cancelAnimationFrame(animId);
     };
   }, [state, getNow]);
@@ -372,6 +398,14 @@ export function useOlympiaLightingState(
   );
   const lockedSpotlightSeat =
     isVeDich && vd?.steal?.buzzedSeat != null ? vd.steal.buzzedSeat : null;
+
+  // Ticker for Về Đích 5s chase effect: strictly gated on is5sBuzzerChasing
+  const [chaseTick, setChaseTick] = useState(0);
+  useEffect(() => {
+    if (!is5sBuzzerChasing) return;
+    const iv = setInterval(() => setChaseTick((c) => (c + 1) % 4), 160);
+    return () => clearInterval(iv);
+  }, [is5sBuzzerChasing]);
 
   return {
     targetMode: currentMode,

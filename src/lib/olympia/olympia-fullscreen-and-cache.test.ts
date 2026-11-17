@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { INTRO_VIDEO_PATHS, getPreloadedVideoUrl } from "./assetCache";
+import { INTRO_VIDEO_PATHS, INTRO_MP4_PATHS, INTRO_WEBM_PATHS, getPreloadedVideoUrl, getPreloadedVideoUrls } from "./assetCache";
 import type { OlympiaState } from "./types";
 
 test("Asset Cache: INTRO_VIDEO_PATHS covers all 4 rounds", () => {
@@ -13,6 +13,14 @@ test("Asset Cache: INTRO_VIDEO_PATHS covers all 4 rounds", () => {
   assert.equal(getPreloadedVideoUrl("khoiDong"), "/olympia-intro/khoi_dong.webm");
   assert.equal(getPreloadedVideoUrl("tangToc"), "/olympia-intro/tang_toc.webm");
   assert.equal(getPreloadedVideoUrl("unknown"), "");
+
+  // MP4 and dual URL resolution
+  assert.equal(INTRO_MP4_PATHS.khoiDong, "/olympia-intro/khoi_dong.mp4");
+  assert.equal(getPreloadedVideoUrl("khoiDong", "mp4"), "/olympia-intro/khoi_dong.mp4");
+  assert.equal(getPreloadedVideoUrl("veDich", "mp4"), "/olympia-intro/ve_dich.mp4");
+  const urls = getPreloadedVideoUrls("tangToc");
+  assert.equal(urls.mp4, "/olympia-intro/tang_toc.mp4");
+  assert.equal(urls.webm, "/olympia-intro/tang_toc.webm");
 });
 
 test("DisplayScreen Fullscreen Logic: showFullscreen applies to all rounds when overlayMode is FULLSCREEN", () => {
@@ -155,3 +163,52 @@ test("Podium 1 Yellow Highlight Bugfix: Contestant 1 podium does NOT highlight b
     "Podium 2 must NOT highlight during TS1's turn"
   );
 });
+
+test("DisplayScreen Sandbox Detection: perf=light alone on standalone window is NOT treated as sandbox", () => {
+  const evaluateIsSandboxParam = (search: string, isIframe: boolean): boolean => {
+    return (
+      search.includes("sandbox=1") ||
+      search.includes("preview=1") ||
+      isIframe
+    );
+  };
+
+  // Standalone window with perf=light for low-spec GPU must NOT be blocked from dismissing banner
+  assert.equal(evaluateIsSandboxParam("?perf=light", false), false, "perf=light alone must not trigger sandbox block");
+  assert.equal(evaluateIsSandboxParam("?perf=light&audio=1", false), false, "perf=light&audio=1 must not trigger sandbox block");
+
+  // Iframe must be blocked
+  assert.equal(evaluateIsSandboxParam("", true), true, "Sub-iframe window must trigger sandbox block");
+  assert.equal(evaluateIsSandboxParam("?perf=light", true), true, "Sub-iframe with perf=light must trigger sandbox block");
+
+  // Explicit sandbox or preview query must be blocked
+  assert.equal(evaluateIsSandboxParam("?sandbox=1", false), true, "sandbox=1 must trigger sandbox block");
+  assert.equal(evaluateIsSandboxParam("?preview=1", false), true, "preview=1 must trigger sandbox block");
+});
+
+test("Socket Role Authorization: role 'display' is permitted both banner:hide and banner:skip", () => {
+  const isActionAuthorized = (role: string, actionType: string): boolean => {
+    const isDisplayBannerAction =
+      role === "display" &&
+      (actionType === "banner:hide" || actionType === "banner:skip");
+    return role === "host" || isDisplayBannerAction;
+  };
+
+  // Host can perform any action
+  assert.equal(isActionAuthorized("host", "banner:hide"), true);
+  assert.equal(isActionAuthorized("host", "banner:skip"), true);
+  assert.equal(isActionAuthorized("host", "round:force"), true);
+
+  // Display can perform banner:hide and banner:skip
+  assert.equal(isActionAuthorized("display", "banner:hide"), true, "Display must be permitted banner:hide");
+  assert.equal(isActionAuthorized("display", "banner:skip"), true, "Display must be permitted banner:skip");
+
+  // Display cannot perform game-advancing host actions
+  assert.equal(isActionAuthorized("display", "round:force"), false);
+  assert.equal(isActionAuthorized("display", "kd:next"), false);
+
+  // Player cannot perform banner actions
+  assert.equal(isActionAuthorized("player", "banner:hide"), false);
+  assert.equal(isActionAuthorized("player", "banner:skip"), false);
+});
+

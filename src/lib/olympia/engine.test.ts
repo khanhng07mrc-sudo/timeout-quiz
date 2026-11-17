@@ -3390,6 +3390,13 @@ test("Round Intro Sequence Token (bannerSeq), Idempotent banner:hide, banner:ski
   assert.equal(g.state.roundIntroDoneAt, null);
   assert.equal(g.state.cue?.sound, "6_NhacKhac/section_intro");
 
+  // 2b. Premature banner:hide before 6.5s (e.g. at t = 5000, 3000ms elapsed) is ignored
+  const prematureRes = g.hostAction({ type: "banner:hide", seq: 1 }, 5000);
+  assert.equal(prematureRes.ok, true);
+  assert.equal(g.state.banner, "Khởi Động", "Banner must not be prematurely dismissed under 6.5s");
+  assert.equal(g.state.roundIntroDoneAt, null);
+  assert.equal(g.state.cue?.sound, "6_NhacKhac/section_intro");
+
   // 3. Valid banner:hide with matching seq (seq = 1) clears banner, sets roundIntroDoneAt, cues start_round
   act(g, "banner:hide", { seq: 1 }, 9660);
   assert.equal(g.state.banner, null);

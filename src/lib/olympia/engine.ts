@@ -1179,6 +1179,11 @@ export class OlympiaGame {
         if (!st.banner) {
           return OK;
         }
+        // Guard against premature dismissal (e.g. video error or early iframe trigger)
+        // Full section_intro.mp3 duration is ~7.66s; reject any banner:hide under 6.5s
+        if (st.bannerStartedAt && now - st.bannerStartedAt < 6500) {
+          return OK;
+        }
         st.banner = null;
         st.bannerStartedAt = null;
         st.roundIntroDoneAt = now;

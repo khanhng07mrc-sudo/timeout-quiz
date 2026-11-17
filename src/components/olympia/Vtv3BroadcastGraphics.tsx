@@ -298,6 +298,13 @@ export const ROUND_VIDEOS: Record<string, string> = {
   veDich: "/olympia-intro/ve_dich.webm",
 };
 
+export const ROUND_MP4_VIDEOS: Record<string, string> = {
+  khoiDong: "/olympia-intro/khoi_dong.mp4",
+  vcnv: "/olympia-intro/vuot_chuong_ngai_vat.mp4",
+  tangToc: "/olympia-intro/tang_toc.mp4",
+  veDich: "/olympia-intro/ve_dich.mp4",
+};
+
 export const ROUND_FALLBACK_VIDEOS: Record<string, string> = {
   khoiDong: "/olympia-intro/intro_khoiDong.webm",
   vcnv: "/olympia-intro/intro_vcnv.webm",
@@ -307,93 +314,171 @@ export const ROUND_FALLBACK_VIDEOS: Record<string, string> = {
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
- * BROADCAST ROUND INTRO OVERLAY (Official 7.66s VTV3 3D WebM Video)
- * GPU Hardware Accelerated WebM video with 0% CPU lag + Studio master audio sync.
+ * BROADCAST ROUND INTRO OVERLAY (Official 7.66s VTV3 3D Video)
+ * GPU Hardware Accelerated Dual-Source (MP4 H.264 & WebM VP9 BT.709) with 0% CPU lag.
+ * Features an elegant Animated Title Card fallback holding for the full 7.66s duration
+ * of section_intro.mp3 on any decode error, preventing premature dismissals or flashing.
  * Plays uniformly across all themes (o26_classic, o26_modern, v3_arrow).
  * Câu Hỏi Phụ (cauHoiPhu) has no intro video or banner.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export function BroadcastRoundIntroOverlay({
   state,
+  serverNow,
   onDismiss,
 }: {
   state: OlympiaState;
-  onDismiss?: (opts?: { seq?: number }) => void;
+  serverNow?: () => number;
+  onDismiss?: (opts?: { seq?: number; isSkip?: boolean }) => void;
 }) {
   const round = state.currentRound;
-  const preloaded = round && round !== "cauHoiPhu" ? getPreloadedVideoUrl(round) : null;
-  const primarySrc = preloaded || (round && round !== "cauHoiPhu" ? (ROUND_VIDEOS[round] ?? null) : null);
-  const fallbackSrc = round && round !== "cauHoiPhu" ? (ROUND_FALLBACK_VIDEOS[round] ?? null) : null;
-  const [useFallback, setUseFallback] = useState(false);
+  const isChp = round === "cauHoiPhu";
+  const isValidRound = Boolean(round && !isChp);
+
+  const mp4Src = isValidRound && round ? (getPreloadedVideoUrl(round, "mp4") || ROUND_MP4_VIDEOS[round] || null) : null;
+  const webmSrc = isValidRound && round ? (getPreloadedVideoUrl(round, "webm") || ROUND_VIDEOS[round] || null) : null;
+
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const dismissedRef = useRef(false);
   const onDismissRef = useRef(onDismiss);
   onDismissRef.current = onDismiss;
 
   useEffect(() => {
-    setUseFallback(false);
     setIsPlaying(false);
+    setHasError(false);
     dismissedRef.current = false;
   }, [round, state.bannerSeq]);
 
-  const videoSrc = useFallback ? fallbackSrc : primarySrc;
+  const handleDismiss = useCallback(
+    (opts?: { isSkip?: boolean }) => {
+      if (dismissedRef.current && !opts?.isSkip) return;
+      dismissedRef.current = true;
+      onDismissRef.current?.({ seq: state.bannerSeq, isSkip: opts?.isSkip });
+      // Allow retry if server rejected early dismissal (e.g. clock drift guard)
+      if (!opts?.isSkip) {
+        setTimeout(() => {
+          dismissedRef.current = false;
+        }, 1500);
+      }
+    },
+    [state.bannerSeq]
+  );
 
-  const handleDismiss = useCallback(() => {
-    if (dismissedRef.current) return;
-    dismissedRef.current = true;
-    onDismissRef.current?.({ seq: state.bannerSeq });
-  }, [state.bannerSeq]);
-
-  // Video playback timer: only counts down once video actually starts playing (onPlaying)
-  // Matching 7.66s WebM video duration + 200ms graceful hold
+  // Video playback timer: counts down once video actually starts playing (onPlaying)
+  // Matching 7.66s video duration + 200ms graceful hold
   useEffect(() => {
-    if (!isPlaying || state.stage !== "playing" || !state.banner || !videoSrc) return;
+    if (!isPlaying || hasError || state.stage !== "playing" || !state.banner) return;
     const timer = setTimeout(() => {
       handleDismiss();
     }, 7860);
     return () => clearTimeout(timer);
-  }, [isPlaying, handleDismiss, state.banner, state.stage, videoSrc]);
+  }, [isPlaying, hasError, handleDismiss, state.banner, state.stage]);
+
+  // Title Card fallback hold timer: holds for the remainder of 7.86s
+  useEffect(() => {
+    if (!hasError || state.stage !== "playing" || !state.banner) return;
+    const nowMs = serverNow ? serverNow() : Date.now();
+    const elapsed = state.bannerStartedAt ? Math.max(0, nowMs - state.bannerStartedAt) : 0;
+    const remaining = Math.max(1000, 7860 - elapsed);
+    const timer = setTimeout(() => {
+      handleDismiss();
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [hasError, handleDismiss, state.banner, state.stage, state.bannerStartedAt, serverNow]);
 
   // Safety mount fallback: if video stalls or fails to trigger onPlaying for 9.5s
   useEffect(() => {
-    if (state.stage !== "playing" || !state.banner || !videoSrc) return;
+    if (state.stage !== "playing" || !state.banner) return;
     const fallbackTimer = setTimeout(() => {
       handleDismiss();
     }, 9500);
     return () => clearTimeout(fallbackTimer);
-  }, [state.bannerSeq, state.banner, state.stage, videoSrc, handleDismiss]);
+  }, [state.bannerSeq, state.banner, state.stage, handleDismiss]);
 
-  if (state.stage !== "playing" || !state.banner || round === "cauHoiPhu" || !videoSrc) {
+  if (state.stage !== "playing" || !state.banner || isChp || (!mp4Src && !webmSrc)) {
     return null;
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black overflow-hidden select-none pointer-events-none">
-      <video
-        key={`${state.bannerSeq ?? 0}_${videoSrc}`}
-        src={videoSrc}
-        autoPlay
-        playsInline
-        muted
-        className="w-full h-full object-cover pointer-events-none"
-        onPlaying={() => setIsPlaying(true)}
-        onEnded={handleDismiss}
-        onError={() => {
-          if (!useFallback && fallbackSrc) {
-            setUseFallback(true);
-          } else {
-            handleDismiss();
-          }
-        }}
-      />
+      {!hasError ? (
+        <video
+          key={`round-intro-video-${state.bannerSeq ?? 0}`}
+          autoPlay
+          playsInline
+          muted
+          loop={false}
+          className={`w-full h-full object-cover pointer-events-none transition-opacity duration-300 ${
+            isPlaying ? "opacity-100" : "opacity-0"
+          }`}
+          onPlaying={() => setIsPlaying(true)}
+          onEnded={() => handleDismiss()}
+          onError={() => {
+            console.warn("[BroadcastRoundIntroOverlay] Video decode error detected, engaging broadcast title card fallback");
+            setHasError(true);
+          }}
+        >
+          {mp4Src && <source src={mp4Src} type="video/mp4" />}
+          {webmSrc && <source src={webmSrc} type="video/webm" />}
+        </video>
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#020b22] via-[#010410] to-[#000000] z-20 text-center px-4 overflow-hidden pointer-events-none">
+          {/* Ambient luminous aura */}
+          <div className="absolute w-[600px] h-[600px] rounded-full bg-amber-500/10 blur-[120px] pointer-events-none animate-pulse" />
+          <div className="absolute w-[400px] h-[400px] rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
+
+          {/* Laurel & Shield Badge */}
+          <div className="relative mb-6 flex items-center justify-center">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-amber-400/60 bg-gradient-to-b from-amber-500/20 to-transparent flex items-center justify-center shadow-[0_0_40px_rgba(245,158,11,0.3)]">
+              <img
+                src="/brand/olympia_laurel_2016.webp"
+                alt="Olympia"
+                className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.6)]"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = "none";
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Sub-label */}
+          <div className="text-amber-400/90 uppercase tracking-[0.35em] text-xs sm:text-sm font-semibold mb-3 drop-shadow">
+            ĐƯỜNG LÊN ĐỈNH OLYMPIA
+          </div>
+
+          {/* Main Round Title */}
+          <h1
+            className="text-4xl sm:text-6xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-amber-100 to-amber-300 tracking-wider uppercase drop-shadow-[0_5px_25px_rgba(245,158,11,0.4)]"
+            style={{
+              fontFamily: "var(--font-heading, Arial, sans-serif)",
+              letterSpacing: "0.06em",
+            }}
+          >
+            {state.banner || (round ? ROUND_LABELS[round] : "")}
+          </h1>
+
+          {/* Elegant metallic divider & progress shimmer */}
+          <div className="mt-6 w-64 sm:w-96 h-1 rounded-full bg-slate-800 relative overflow-hidden shadow-inner">
+            <div
+              className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-amber-500 via-amber-300 to-amber-500 rounded-full"
+              style={{
+                animation: "shimmerSweep 2s ease-in-out infinite, pulse-gold 2s ease-in-out infinite",
+                width: "100%",
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Explicit skip button for operators / testing without accidental clicks */}
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          handleDismiss();
+          handleDismiss({ isSkip: true });
         }}
-        className="absolute top-6 right-6 opacity-40 hover:opacity-100 transition-opacity text-white text-xs font-mono bg-black/60 px-3.5 py-1.5 rounded-full border border-white/20 pointer-events-auto cursor-pointer"
+        className="absolute top-6 right-6 opacity-40 hover:opacity-100 transition-opacity text-white text-xs font-mono bg-black/60 px-3.5 py-1.5 rounded-full border border-white/20 pointer-events-auto cursor-pointer z-30"
         title="Bỏ qua video intro"
       >
         Bỏ qua intro ⏭

@@ -151,6 +151,10 @@ async function renderRoundVideo(browser, roundDef, audioDuration, fps = 30) {
     "-c:v", "libvpx-vp9",
     "-b:v", "3200k",
     "-crf", "26",
+    "-colorspace", "bt709",
+    "-color_primaries", "bt709",
+    "-color_trc", "bt709",
+    "-color_range", "tv",
     "-pix_fmt", "yuv420p",
     "-c:a", "libopus",
     "-b:a", "160k",
@@ -195,12 +199,35 @@ async function renderRoundVideo(browser, roundDef, audioDuration, fps = 30) {
   const fileSize = fs.statSync(targetWebm).size;
   console.log(`  ✓ Rendered ${targetWebm} in ${totalTime}s (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
 
+  const targetMp4 = targetWebm.replace(/\.webm$/, ".mp4");
+  await runCommand("ffmpeg", [
+    "-y",
+    "-i", targetWebm,
+    "-c:v", "libx264",
+    "-preset", "slow",
+    "-crf", "20",
+    "-colorspace", "bt709",
+    "-color_primaries", "bt709",
+    "-color_trc", "bt709",
+    "-color_range", "tv",
+    "-pix_fmt", "yuv420p",
+    "-c:a", "aac",
+    "-b:a", "192k",
+    "-movflags", "+faststart",
+    targetMp4,
+  ]);
+  console.log(`  ✓ Generated MP4: ${targetMp4}`);
+
   // Create backward compatibility copies
   const aliases = roundDef.aliases || [roundDef.legacyName];
   for (const alias of aliases) {
     const aliasPath = path.join(OUTPUT_DIR, alias);
     fs.copyFileSync(targetWebm, aliasPath);
     console.log(`  ✓ Copied to alias: ${aliasPath}`);
+
+    const aliasMp4 = aliasPath.replace(/\.webm$/, ".mp4");
+    fs.copyFileSync(targetMp4, aliasMp4);
+    console.log(`  ✓ Copied to MP4 alias: ${aliasMp4}`);
   }
 
   return {

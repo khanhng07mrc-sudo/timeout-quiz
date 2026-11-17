@@ -106820,6 +106820,9 @@ var OlympiaGame = class _OlympiaGame {
         if (!st.banner) {
           return OK;
         }
+        if (st.bannerStartedAt && now - st.bannerStartedAt < 6500) {
+          return OK;
+        }
         st.banner = null;
         st.bannerStartedAt = null;
         st.roundIntroDoneAt = now;
@@ -109766,8 +109769,8 @@ function registerOlympiaSocket(io2) {
     const withEntry = () => info ? games.get(info.code) ?? null : null;
     socket.on("action", (action, ack) => {
       const entry = withEntry();
-      const isDisplayBannerHide = info?.role === "display" && action?.type === "banner:hide";
-      if (!entry || !info || info.role !== "host" && !isDisplayBannerHide) {
+      const isDisplayBannerAction = info?.role === "display" && (action?.type === "banner:hide" || action?.type === "banner:skip");
+      if (!entry || !info || info.role !== "host" && !isDisplayBannerAction) {
         return ack?.({ ok: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n" });
       }
       if (action.type === "seat:kick") {

@@ -164,7 +164,7 @@ export default function DisplayScreen({ code }: { code: string }) {
   const isSandboxParam =
     typeof window !== "undefined" &&
     (window.location.search.includes("sandbox=1") ||
-      window.location.search.includes("perf=light") ||
+      window.location.search.includes("preview=1") ||
       window.self !== window.top);
   const [audioOn, setAudioOn] = useState(!isExplicitMuteParam);
   const [ttsActive, setTtsActive] = useState<boolean>(() => isTtsEnabled());
@@ -434,18 +434,19 @@ export default function DisplayScreen({ code }: { code: string }) {
       {/* ── 4. BROADCAST STAGE BANNER & ROUND INTRO (Z-50) ── */}
       <BroadcastRoundIntroOverlay
         state={state}
+        serverNow={serverNow}
         onDismiss={(opts) => {
-          emit("action", { type: "banner:hide", seq: opts?.seq ?? state.bannerSeq });
+          if (typeof window !== "undefined" && (window.self !== window.top || isSandboxParam)) {
+            // Embedded preview/sandbox iframes must not trigger global banner dismissal
+            return;
+          }
+          if (opts?.isSkip) {
+            emit("action", { type: "banner:skip" });
+          } else {
+            emit("action", { type: "banner:hide", seq: opts?.seq ?? state.bannerSeq });
+          }
         }}
       />
-
-      {/* Preload 4 Round Intro WebM videos in background for 0ms instant playback */}
-      <div className="hidden pointer-events-none" aria-hidden="true">
-        <video src="/olympia-intro/khoi_dong.webm" preload="auto" muted playsInline />
-        <video src="/olympia-intro/vuot_chuong_ngai_vat.webm" preload="auto" muted playsInline />
-        <video src="/olympia-intro/tang_toc.webm" preload="auto" muted playsInline />
-        <video src="/olympia-intro/ve_dich.webm" preload="auto" muted playsInline />
-      </div>
 
       {/* ── 4.8. BROADCAST MANUAL VIDEO OVERLAY (KD, VCNV, VD, CHP) ── */}
       {(() => {

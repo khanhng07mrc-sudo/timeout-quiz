@@ -106883,6 +106883,36 @@ var OlympiaGame = class _OlympiaGame {
         st.studioCamera = void 0;
         return OK;
       }
+      case "studio:camera:ptz": {
+        const cam = Number(a.cam);
+        const ptz = a.ptz;
+        if (!isNaN(cam) && ptz) {
+          st.studioCameraPtz = {
+            ...st.studioCameraPtz || {},
+            [cam]: {
+              yaw: Number(ptz.yaw) || 0,
+              pitch: Number(ptz.pitch) || 0,
+              zoom: Math.max(0.2, Number(ptz.zoom) || 1),
+              panX: Number(ptz.panX) || 0,
+              panY: Number(ptz.panY) || 0
+            }
+          };
+        }
+        return OK;
+      }
+      case "studio:camera:reset": {
+        if (a.all) {
+          delete st.studioCameraPtz;
+        } else {
+          const cam = Number(a.cam ?? st.studioCamera ?? 1);
+          if (st.studioCameraPtz && !isNaN(cam)) {
+            const nextPtz = { ...st.studioCameraPtz };
+            delete nextPtz[cam];
+            st.studioCameraPtz = Object.keys(nextPtz).length > 0 ? nextPtz : void 0;
+          }
+        }
+        return OK;
+      }
       case "display:overlayMode": {
         st.overlayMode = a.mode || (st.overlayMode === "FULLSCREEN" ? "LOWER_THIRD" : "FULLSCREEN");
         if (st.summaryState) {

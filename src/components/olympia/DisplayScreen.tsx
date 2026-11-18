@@ -202,6 +202,17 @@ export default function DisplayScreen({ code }: { code: string }) {
   }, [isExplicitMuteParam]);
 
   useEffect(() => {
+    (window as any).__OLYMPIA_CALL__ = (actionType: string, payload?: any) => {
+      emit("action", { type: actionType, ...(payload || {}) });
+    };
+    return () => {
+      if ((window as any).__OLYMPIA_CALL__) {
+        delete (window as any).__OLYMPIA_CALL__;
+      }
+    };
+  }, [emit]);
+
+  useEffect(() => {
     preloadOlympiaIntroVideos();
   }, []);
 

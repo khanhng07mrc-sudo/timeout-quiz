@@ -640,6 +640,8 @@ export interface OlympiaState {
   studioCamera?: number;
   /** Manual camera override — when true, auto-camera is suppressed until host manually changes again */
   studioCameraManual?: boolean;
+  /** Per-camera interactive PTZ adjustments (yaw, pitch, zoom, panX, panY) */
+  studioCameraPtz?: Record<number, StudioCameraPTZ>;
   /** Display overlay mode: "LOWER_THIRD" (1/3 bottom question overlay) or "FULLSCREEN" (centered 2D modal overlay) */
   overlayMode?: "LOWER_THIRD" | "FULLSCREEN";
   /** Broadcast Theme: "v3_arrow" (Econova Chevron Arrow Lower-Third) or "o26_classic" (Authentic VTV3 Chalkboard) */
@@ -668,6 +670,14 @@ export interface OlympiaSummaryState {
 }
 
 export type HostAction = { type: string; [k: string]: unknown };
+
+export interface StudioCameraPTZ {
+  yaw: number;
+  pitch: number;
+  zoom: number;
+  panX: number;
+  panY: number;
+}
 
 /**
  * Maps seat index (0..7) to 3D Studio Camera preset ID without colliding with C9..C15:

@@ -1288,7 +1288,23 @@ export const HostConsole = React.memo(function HostConsole({
                   </button>
                 </div>
               </div>
-            ) : (
+            ) : (() => {
+              const currentEffectiveCam = state.studioCameraManual
+                ? (state.studioCamera ?? 1)
+                : (state.summaryState?.active
+                    ? (state.summaryState.isFullscreen ? 10 : seatToStudioCamera(state.summaryState.orderedSeats[state.summaryState.currentIndex] ?? 0))
+                    : 1);
+              const currentPtz = state.studioCameraPtz?.[currentEffectiveCam];
+              const isCurrentCamPtzActive = Boolean(
+                currentPtz && (
+                  Math.abs((currentPtz.zoom ?? 1) - 1) > 0.02 ||
+                  Math.abs(currentPtz.yaw ?? 0) > 0.02 ||
+                  Math.abs(currentPtz.pitch ?? 0) > 0.02 ||
+                  Math.abs(currentPtz.panX ?? 0) > 0.02 ||
+                  Math.abs(currentPtz.panY ?? 0) > 0.02
+                )
+              );
+              return (
               <div className="rounded-xl border border-cyan-500/30 bg-[#090d1e]/95 p-2 shadow-xl flex flex-col gap-1.5 backdrop-blur-md">
                 <div className="flex items-center justify-between text-[11px] font-bold">
                   <div className="flex items-center gap-1.5 text-cyan-300">
@@ -1328,6 +1344,25 @@ export const HostConsole = React.memo(function HostConsole({
                       title="Kích hoạt tự động chuyển góc quay thông minh theo diễn biến thi đấu"
                     >
                       🤖 TỰ ĐỘNG
+                    </button>
+                    {/* Nút Đặt lại góc máy (Tự động mờ khi ở vị trí mặc định, sáng rõ khi có xoay/zoom) */}
+                    <button
+                      type="button"
+                      disabled={!isCurrentCamPtzActive}
+                      onClick={(e) => call("studio:camera:reset", e.shiftKey ? { all: true } : { cam: currentEffectiveCam })}
+                      className={`px-2 py-0.5 rounded text-[10px] font-black border transition flex items-center gap-1 ${
+                        isCurrentCamPtzActive
+                          ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_#f59e0b] cursor-pointer animate-pulse"
+                          : "bg-white/5 text-slate-500 border-white/5 opacity-35 cursor-not-allowed"
+                      }`}
+                      title={
+                        isCurrentCamPtzActive
+                          ? `Đặt lại góc máy C${currentEffectiveCam} về chuẩn (Shift+Click để đặt lại tất cả máy)`
+                          : `Máy C${currentEffectiveCam} đang ở góc chuẩn mặc định`
+                      }
+                    >
+                      <span>↺</span>
+                      <span>Đặt lại góc</span>
                     </button>
                     <button
                       type="button"
@@ -1457,7 +1492,8 @@ export const HostConsole = React.memo(function HostConsole({
                   </div>
                 </div>
               </div>
-            )}
+            );
+          })()}
 
             {/* ROUND-SPECIFIC CONTROL DECK */}
             <div className="rounded-xl border border-violet-500/15 bg-gradient-to-b from-[#1a0d3f]/60 to-[#0f0728]/80 p-2 sm:p-2.5 shadow-xl backdrop-blur-sm">

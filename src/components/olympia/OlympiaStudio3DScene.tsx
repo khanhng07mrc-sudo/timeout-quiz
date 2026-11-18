@@ -2,7 +2,15 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
-import type { OlympiaState } from "@/lib/olympia/types";
+import type { OlympiaState, StudioCameraPTZ } from "@/lib/olympia/types";
+
+const DEFAULT_PTZ: StudioCameraPTZ = {
+  yaw: 0,
+  pitch: 0,
+  zoom: 1.0,
+  panX: 0,
+  panY: 0,
+};
 import { useOlympiaLightingState } from "./studio/useOlympiaLightingState";
 import {
   CameraController,
@@ -40,7 +48,7 @@ export function OlympiaStudio3DScene({
   className = "",
   serverNow,
   allowPTZ = true,
-  showDirectorBar = true,
+  showDirectorBar = false,
   defaultQuality,
   isSandbox = false,
   isPaused = false,
@@ -83,12 +91,15 @@ export function OlympiaStudio3DScene({
     defaultQuality || (isSandboxEnv ? "LIGHT" : isIframe ? "MEDIUM" : "HIGH")
   );
 
-  // PTZ interactive controls (Orbit Yaw/Pitch + Pan X/Y + Zoom)
-  const [ptzYaw, setPtzYaw] = useState(0);
-  const [ptzPitch, setPtzPitch] = useState(0);
-  const [ptzZoom, setPtzZoom] = useState(1.0);
-  const [ptzPanX, setPtzPanX] = useState(0);
-  const [ptzPanY, setPtzPanY] = useState(0);
+  // PTZ interactive controls (Per-Camera Orbit Yaw/Pitch + Pan X/Y + Zoom Isolation)
+  const [ptzPerCam, setPtzPerCam] = useState<Record<number, StudioCameraPTZ>>({});
+  const activeCamPtz = state?.studioCameraPtz?.[effectiveCam] ?? ptzPerCam[effectiveCam] ?? DEFAULT_PTZ;
+  const ptzYaw = activeCamPtz.yaw;
+  const ptzPitch = activeCamPtz.pitch;
+  const ptzZoom = activeCamPtz.zoom;
+  const ptzPanX = activeCamPtz.panX;
+  const ptzPanY = activeCamPtz.panY;
+
   const isDraggingRef = useRef(false);
   const dragModeRef = useRef<"orbit" | "pan">("orbit");
   const lastMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -110,13 +121,43 @@ export function OlympiaStudio3DScene({
     setQuality((prev) => (prev === "HIGH" ? "MEDIUM" : prev === "MEDIUM" ? "LIGHT" : "HIGH"));
   };
 
-  const resetPTZ = () => {
-    setPtzYaw(0);
-    setPtzPitch(0);
-    setPtzZoom(1.0);
-    setPtzPanX(0);
-    setPtzPanY(0);
-  };
+  const updateCurrentPTZ = useCallback(
+    (updater: (prev: StudioCameraPTZ) => StudioCameraPTZ) => {
+      setPtzPerCam((prevMap) => {
+        const prev = state?.studioCameraPtz?.[effectiveCam] ?? prevMap[effectiveCam] ?? DEFAULT_PTZ;
+        const next = updater(prev);
+        if (typeof window !== "undefined") {
+          (window as any).__OLYMPIA_CALL__?.("studio:camera:ptz", {
+            cam: effectiveCam,
+            ptz: next,
+          });
+        }
+        return { ...prevMap, [effectiveCam]: next };
+      });
+    },
+    [effectiveCam, state?.studioCameraPtz]
+  );
+
+  const resetPTZ = useCallback(
+    (all?: boolean) => {
+      if (all) {
+        setPtzPerCam({});
+        if (typeof window !== "undefined") {
+          (window as any).__OLYMPIA_CALL__?.("studio:camera:reset", { all: true });
+        }
+      } else {
+        setPtzPerCam((prev) => {
+          const next = { ...prev };
+          delete next[effectiveCam];
+          return next;
+        });
+        if (typeof window !== "undefined") {
+          (window as any).__OLYMPIA_CALL__?.("studio:camera:reset", { cam: effectiveCam });
+        }
+      }
+    },
+    [effectiveCam]
+  );
 
   // Mouse drag handlers for PTZ Orbit & Pan Controls
   const handleMouseDown = useCallback(
@@ -140,15 +181,21 @@ export function OlympiaStudio3DScene({
       if (dragModeRef.current === "pan") {
         // Pan horizontally & vertically scaled inversely with zoom
         const panFactor = 0.005 * (1.0 / ptzZoom);
-        setPtzPanX((prev) => prev - dx * panFactor);
-        setPtzPanY((prev) => prev + dy * panFactor);
+        updateCurrentPTZ((prev) => ({
+          ...prev,
+          panX: prev.panX - dx * panFactor,
+          panY: prev.panY + dy * panFactor,
+        }));
       } else {
         // Orbit rotate yaw & pitch
-        setPtzYaw((prev) => prev - dx * 0.0035);
-        setPtzPitch((prev) => Math.max(-0.65, Math.min(0.65, prev - dy * 0.0035)));
+        updateCurrentPTZ((prev) => ({
+          ...prev,
+          yaw: prev.yaw - dx * 0.0035,
+          pitch: Math.max(-0.65, Math.min(0.65, prev.pitch - dy * 0.0035)),
+        }));
       }
     },
-    [allowPTZ, ptzZoom]
+    [allowPTZ, ptzZoom, updateCurrentPTZ]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -159,9 +206,12 @@ export function OlympiaStudio3DScene({
     (e: React.WheelEvent) => {
       if (!allowPTZ) return;
       e.stopPropagation();
-      setPtzZoom((prev) => Math.max(0.65, Math.min(3.5, prev - e.deltaY * 0.0015)));
+      updateCurrentPTZ((prev) => ({
+        ...prev,
+        zoom: Math.max(0.65, Math.min(3.5, prev.zoom - e.deltaY * 0.0015)),
+      }));
     },
-    [allowPTZ]
+    [allowPTZ, updateCurrentPTZ]
   );
 
   // Touch gesture support: 1 finger orbit, 2 finger pinch-zoom & pan
@@ -194,16 +244,22 @@ export function OlympiaStudio3DScene({
         const dx = e.touches[0].clientX - lastMousePosRef.current.x;
         const dy = e.touches[0].clientY - lastMousePosRef.current.y;
         lastMousePosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        setPtzYaw((prev) => prev - dx * 0.004);
-        setPtzPitch((prev) => Math.max(-0.65, Math.min(0.65, prev - dy * 0.004)));
+        updateCurrentPTZ((prev) => ({
+          ...prev,
+          yaw: prev.yaw - dx * 0.004,
+          pitch: Math.max(-0.65, Math.min(0.65, prev.pitch - dy * 0.004)),
+        }));
       } else if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         const dist = Math.hypot(dx, dy);
         if (touchStartDistRef.current > 0) {
           const ratio = dist / touchStartDistRef.current;
-          setPtzZoom((prev) => Math.max(0.65, Math.min(3.5, prev * ratio)));
           touchStartDistRef.current = dist;
+          updateCurrentPTZ((prev) => ({
+            ...prev,
+            zoom: Math.max(0.65, Math.min(3.5, prev.zoom * ratio)),
+          }));
         }
         const curCenter = {
           x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
@@ -213,11 +269,14 @@ export function OlympiaStudio3DScene({
         const panDy = curCenter.y - touchStartCenterRef.current.y;
         touchStartCenterRef.current = curCenter;
         const panFactor = 0.005 * (1.0 / ptzZoom);
-        setPtzPanX((prev) => prev - panDx * panFactor);
-        setPtzPanY((prev) => prev + panDy * panFactor);
+        updateCurrentPTZ((prev) => ({
+          ...prev,
+          panX: prev.panX - panDx * panFactor,
+          panY: prev.panY + panDy * panFactor,
+        }));
       }
     },
-    [allowPTZ, ptzZoom]
+    [allowPTZ, ptzZoom, updateCurrentPTZ]
   );
 
   const handleTouchEnd = useCallback(() => {
@@ -234,7 +293,7 @@ export function OlympiaStudio3DScene({
 
   return (
     <div
-      className={`relative w-full h-full overflow-hidden select-none bg-[#020510] ${className}`}
+      className={`relative w-full h-full overflow-hidden select-none bg-[#020510] pointer-events-auto ${className}`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -333,16 +392,31 @@ export function OlympiaStudio3DScene({
         />
       </Canvas>
 
-      {/* ── 2. PTZ RESET FLOATING BADGE ── */}
-      {allowPTZ && isPtzActive && (
+      {/* ── 2. PTZ RESET FLOATING BADGE (Tự động làm mờ khi ở vị trí mặc định, sáng rõ khi bị lệch góc) ── */}
+      {allowPTZ && (
         <button
           type="button"
-          onClick={resetPTZ}
-          className="absolute top-3 right-3 z-40 px-3 py-1.5 rounded-full bg-slate-950/85 hover:bg-slate-900 backdrop-blur-md border border-cyan-400/50 text-cyan-300 text-xs font-bold flex items-center gap-1.5 shadow-xl transition-all cursor-pointer animate-fade-in"
-          title="Bấm để khôi phục góc quay ban đầu (hoặc nhấn chuột phải/Shift để Pan, chuột trái để xoay)"
+          disabled={!isPtzActive}
+          onClick={(e) => resetPTZ(e.shiftKey)}
+          className={`absolute top-3 right-3 z-40 px-3 py-1.5 rounded-full backdrop-blur-md border text-xs font-bold flex items-center gap-1.5 shadow-xl transition-all ${
+            isPtzActive
+              ? "bg-slate-950/90 hover:bg-slate-900 border-cyan-400 text-cyan-300 cursor-pointer pointer-events-auto opacity-100 shadow-[0_0_15px_rgba(34,211,238,0.35)]"
+              : "bg-slate-950/40 border-white/10 text-slate-500 cursor-not-allowed pointer-events-none opacity-30"
+          }`}
+          title={
+            isPtzActive
+              ? `Bấm để đặt lại góc máy C${effectiveCam} về chuẩn (Shift+Click để đặt lại tất cả máy)`
+              : `Máy quay C${effectiveCam} đang ở vị trí mặc định chuẩn`
+          }
         >
-          <span>🎥 {ptzZoom !== 1.0 ? `Zoom ${ptzZoom.toFixed(1)}x ` : ""}{ptzPanX !== 0 || ptzPanY !== 0 ? "Pan " : ""}{ptzYaw !== 0 || ptzPitch !== 0 ? "Xoay " : ""}</span>
-          <span className="text-white/70 hover:text-white font-black">↺ Đặt lại góc</span>
+          <span>
+            🎥 {Math.abs(ptzZoom - 1.0) > 0.02 ? `Zoom ${ptzZoom.toFixed(1)}x ` : ""}
+            {Math.abs(ptzPanX) > 0.02 || Math.abs(ptzPanY) > 0.02 ? "Pan " : ""}
+            {Math.abs(ptzYaw) > 0.02 || Math.abs(ptzPitch) > 0.02 ? "Xoay " : ""}
+          </span>
+          <span className={isPtzActive ? "text-white font-black" : "text-slate-500 font-semibold"}>
+            ↺ Đặt lại góc
+          </span>
         </button>
       )}
 

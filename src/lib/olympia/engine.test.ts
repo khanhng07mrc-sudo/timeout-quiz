@@ -3555,6 +3555,42 @@ test("Zero answer leak on non-host views outside Khởi Động and in Câu hỏ
   assert.equal(playerQEntry?.correctAnswer, undefined, "Player view strips correctAnswer");
 });
 
+test("Studio Camera PTZ Isolation & Reset: PTZ state stored per-camera and can be reset individually or all", () => {
+  const g = game("O26", ["khoiDong"], 4, { seatCount: 4 });
+  g.joinSeat("TS1", "k1");
+  g.joinSeat("TS2", "k2");
+  g.joinSeat("TS3", "k3");
+  g.joinSeat("TS4", "k4");
+
+  // 1. Initially no PTZ
+  assert.equal(g.state.studioCameraPtz, undefined);
+
+  // 2. Set PTZ on CAM 1
+  act(g, "studio:camera:ptz", { cam: 1, ptz: { yaw: 0.15, pitch: -0.05, zoom: 1.25, panX: 0.02, panY: 0.01 } }, 1000);
+  assert.ok(g.state.studioCameraPtz);
+  const ptzMap = g.state.studioCameraPtz as Record<number, any>;
+  assert.equal(ptzMap[1]?.zoom, 1.25);
+  assert.equal(ptzMap[1]?.yaw, 0.15);
+  assert.equal(ptzMap[25], undefined, "Cam 25 must not have Cam 1 PTZ");
+
+  // 3. Set PTZ on CAM 25 (TS 5)
+  act(g, "studio:camera:ptz", { cam: 25, ptz: { yaw: -0.3, pitch: 0.1, zoom: 0.9, panX: -0.05, panY: 0 } }, 2000);
+  const ptzMap2 = (g.state as any).studioCameraPtz || {};
+  assert.equal(ptzMap2[25]?.zoom, 0.9);
+  assert.equal(ptzMap2[1]?.zoom, 1.25, "Cam 1 preserves its own zoom");
+
+  // 4. Reset only CAM 1
+  act(g, "studio:camera:reset", { cam: 1 }, 3000);
+  const afterReset1 = (g.state as any).studioCameraPtz || {};
+  assert.equal(afterReset1[1], undefined, "Cam 1 PTZ is cleared");
+  assert.equal(afterReset1[25]?.zoom, 0.9, "Cam 25 preserves its PTZ");
+
+  // 5. Reset all
+  act(g, "studio:camera:reset", { all: true }, 4000);
+  assert.equal(g.state.studioCameraPtz, undefined, "All camera PTZ entries cleared");
+});
+
+
 
 
 

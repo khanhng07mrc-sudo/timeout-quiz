@@ -1966,266 +1966,355 @@ export function ContestantFigure({
  * - Countdown progress bar & remaining time
  * - High-intensity emergency red alarm screen when isBuzzed = true
  */
-function useOlympiaLaptopTexture(seatId: number, isBuzzed: boolean, isDimmed: boolean): THREE.CanvasTexture {
-  return useMemo(() => {
-    if (typeof document === "undefined") {
-      const emptyCanvas = { width: 1, height: 1 } as any;
-      return new THREE.CanvasTexture(emptyCanvas);
+function renderLaptopScreenCanvas(
+  canvas: HTMLCanvasElement,
+  seatId: number,
+  isBuzzed: boolean,
+  _isDimmed: boolean,
+  state: import("@/lib/olympia/types").OlympiaState | null | undefined,
+  seatName: string
+) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const W = 1024;
+  const H = 640;
+
+  if (isBuzzed) {
+    // ── ALARM / BUZZER STATE (ĐỎ RỰC TÍN HIỆU GIÀNH QUYỀN TRẢ LỜI) ──
+    const grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, "#450a0a");
+    grad.addColorStop(0.5, "#991b1b");
+    grad.addColorStop(1, "#581c87");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Flashing alert border
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = "#ef4444";
+    ctx.strokeRect(7, 7, W - 14, H - 14);
+
+    // Pulsing inner border
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(254, 202, 202, 0.6)";
+    ctx.strokeRect(22, 22, W - 44, H - 44);
+
+    // Top Alert Header
+    ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+    ctx.fillRect(26, 26, W - 52, 60);
+    ctx.font = '900 28px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#fef08a";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("ĐƯỜNG LÊN ĐỈNH OLYMPIA 26 • TÍN HIỆU CHUÔNG KHẨN CẤP", W / 2, 56);
+
+    // Big Bell Icon & Flash Title
+    ctx.font = '900 68px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "rgba(239, 68, 68, 0.9)";
+    ctx.shadowBlur = 24;
+    ctx.fillText("🔔 ĐÃ BẤM CHUÔNG!", W / 2, 210);
+
+    // Subtitle: Contestant Name
+    ctx.font = '800 46px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#fef08a";
+    ctx.shadowBlur = 16;
+    ctx.fillText(`${seatName.toUpperCase()} GIÀNH QUYỀN TRẢ LỜI`, W / 2, 290);
+    ctx.shadowBlur = 0;
+
+    // Signal Timestamp Badge
+    ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - 280, 350, 560, 70, 16);
+    ctx.fill();
+    ctx.strokeStyle = "#f87171";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.font = '700 28px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillText("TỐC ĐỘ GHI NHẬN TÍN HIỆU: 0.124s", W / 2, 385);
+
+    // Countdown Warning Bar
+    ctx.fillStyle = "#ef4444";
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - 340, 470, 680, 76, 20);
+    ctx.fill();
+    ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("⏱ 5 GIÂY TRẢ LỜI CỦA BẠN BẮT ĐẦU!", W / 2, 508);
+
+    // Footer
+    ctx.font = '600 20px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.fillText("HỆ THỐNG GHI NHẬN TỰ ĐỘNG - VTV3", W / 2, 595);
+  } else {
+    // ── NORMAL BROADCAST WORKSTATION STATE ──
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, "#080e1a");
+    grad.addColorStop(0.5, "#0b1528");
+    grad.addColorStop(1, "#030712");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle formula watermarks in the background
+    ctx.font = '700 24px "Plus Jakarta Sans", monospace';
+    ctx.fillStyle = "rgba(56, 189, 248, 0.05)";
+    ctx.textAlign = "left";
+    ctx.fillText("∑(k=1..n)   ∫ f(x)dx   λ = c/f   ΔE = mc²   sin²θ + cos²θ = 1   Ω   μ   π", 40, 110);
+    ctx.fillText("v = v₀ + at    P = UI    pH = -log[H+]    F = G(m₁m₂)/r²", 80, 240);
+    ctx.fillText("lim(x→0) sin(x)/x = 1    E = hf    PV = nRT", 60, 360);
+
+    // 1. Top Header Bar (Y: 0..64)
+    ctx.fillStyle = "#0a1122";
+    ctx.fillRect(0, 0, W, 64);
+    ctx.fillStyle = "#0284c7";
+    ctx.fillRect(0, 62, W, 2);
+
+    // Header Left: Gold Olympia Brand
+    ctx.font = '900 22px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#fbbf24";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🏆 ĐƯỜNG LÊN ĐỈNH OLYMPIA • MÙA 26", 24, 32);
+
+    // Header Center: Contestant Badge
+    ctx.fillStyle = "#0369a1";
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - 90, 14, 180, 36, 18);
+    ctx.fill();
+    ctx.font = '800 18px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.fillText(`THÍ SINH ${seatId + 1}`, W / 2, 32);
+
+    // Header Right: LAN Online Indicator
+    ctx.fillStyle = "#10b981";
+    ctx.beginPath();
+    ctx.arc(W - 200, 32, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = '700 16px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#34d399";
+    ctx.textAlign = "left";
+    ctx.fillText("LAN TRƯỜNG QUAY ONLINE", W - 186, 32);
+
+    // 2. Round Banner (Y: 76..128)
+    ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+    ctx.beginPath();
+    ctx.roundRect(24, 76, W - 48, 54, 12);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.font = '800 20px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#38bdf8";
+    ctx.textAlign = "left";
+
+    // Dynamic round banner from real state
+    const round = state?.currentRound;
+    let roundLabel = "CHỜ BẮT ĐẦU";
+    let qInfo = "";
+    if (round === "khoiDong" && state?.khoiDong) {
+      const kd = state.khoiDong;
+      roundLabel = "★ PHẦN THI KHỞI ĐỘNG";
+      if (kd.started) qInfo = ` • CÂU HỎI ${(kd.qIdx ?? 0) + 1} / ${kd.segments?.length ?? 6}`;
+    } else if (round === "vcnv") {
+      roundLabel = "★ VƯỢT CHƯỚNG NGẠI VẬT";
+    } else if (round === "tangToc") {
+      roundLabel = "★ TĂNG TỐC";
+    } else if (round === "veDich") {
+      roundLabel = "★ VỀ ĐÍCH";
+    } else if (round === "cauHoiPhu") {
+      roundLabel = "★ CÂU HỎI PHỤ";
     }
+    ctx.fillText(`${roundLabel}${qInfo}`, 44, 103);
 
-    const canvas = document.createElement("canvas");
-    canvas.width = 1024;
-    canvas.height = 640;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return new THREE.CanvasTexture(canvas);
+    // Dynamic score from real state
+    const seatData = state?.seats?.[seatId];
+    const score = seatData?.score ?? 0;
+    ctx.fillStyle = "#f59e0b";
+    ctx.textAlign = "right";
+    ctx.fillText(`TỔNG ĐIỂM: ${score}`, W - 44, 103);
 
-    const W = 1024;
-    const H = 640;
+    // 3. Central Question Card (Y: 144..370)
+    ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+    ctx.beginPath();
+    ctx.roundRect(24, 144, W - 48, 226, 16);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(14, 165, 233, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
-    if (isBuzzed) {
-      // ── ALARM / BUZZER STATE (ĐỎ RỰC TÍN HIỆU GIÀNH QUYỀN TRẢ LỜI) ──
-      const grad = ctx.createLinearGradient(0, 0, W, H);
-      grad.addColorStop(0, "#450a0a");
-      grad.addColorStop(0.5, "#991b1b");
-      grad.addColorStop(1, "#581c87");
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, W, H);
+    // Card Header Tag
+    ctx.fillStyle = "rgba(14, 165, 233, 0.2)";
+    ctx.beginPath();
+    ctx.roundRect(44, 164, 130, 32, 8);
+    ctx.fill();
+    ctx.font = '800 15px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#38bdf8";
+    ctx.textAlign = "center";
+    const qNum = round === "khoiDong" && state?.khoiDong ? (state.khoiDong.qIdx ?? 0) + 1 : 1;
+    ctx.fillText(`CÂU HỎI SỐ ${qNum}`, 109, 180);
 
-      // Flashing alert border
-      ctx.lineWidth = 14;
-      ctx.strokeStyle = "#ef4444";
-      ctx.strokeRect(7, 7, W - 14, H - 14);
-
-      // Pulsing inner border
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(254, 202, 202, 0.6)";
-      ctx.strokeRect(22, 22, W - 44, H - 44);
-
-      // Top Alert Header
-      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-      ctx.fillRect(26, 26, W - 52, 60);
-      ctx.font = '900 28px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#fef08a";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("ĐƯỜNG LÊN ĐỈNH OLYMPIA 26 • TÍN HIỆU CHUÔNG KHẨN CẤP", W / 2, 56);
-
-      // Big Bell Icon & Flash Title
-      ctx.font = '900 68px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#ffffff";
-      ctx.shadowColor = "rgba(239, 68, 68, 0.9)";
-      ctx.shadowBlur = 24;
-      ctx.fillText("🔔 ĐÃ BẤM CHUÔNG!", W / 2, 210);
-
-      // Subtitle: Contestant Number
-      ctx.font = '800 46px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#fef08a";
-      ctx.shadowBlur = 16;
-      ctx.fillText(`THÍ SINH ${seatId + 1} GIÀNH QUYỀN TRẢ LỜI`, W / 2, 290);
-      ctx.shadowBlur = 0;
-
-      // Signal Timestamp Badge
-      ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
-      ctx.beginPath();
-      ctx.roundRect(W / 2 - 280, 350, 560, 70, 16);
-      ctx.fill();
-      ctx.strokeStyle = "#f87171";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.font = '700 28px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#e2e8f0";
-      ctx.fillText("TỐC ĐỘ GHI NHẬN TÍN HIỆU: 0.124s", W / 2, 385);
-
-      // Countdown Warning Bar
-      ctx.fillStyle = "#ef4444";
-      ctx.beginPath();
-      ctx.roundRect(W / 2 - 340, 470, 680, 76, 20);
-      ctx.fill();
-      ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText("⏱ 5 GIÂY TRẢ LỜI CỦA BẠN BẮT ĐẦU!", W / 2, 508);
-
-      // Footer
-      ctx.font = '600 20px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-      ctx.fillText("HỆ THỐNG GHI NHẬN TỰ ĐỘNG - VTV3", W / 2, 595);
-    } else {
-      // ── NORMAL BROADCAST WORKSTATION STATE ──
-      const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, "#080e1a");
-      grad.addColorStop(0.5, "#0b1528");
-      grad.addColorStop(1, "#030712");
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, W, H);
-
-      // Subtle formula watermarks in the background
-      ctx.font = '700 24px "Plus Jakarta Sans", monospace';
-      ctx.fillStyle = "rgba(56, 189, 248, 0.05)";
-      ctx.textAlign = "left";
-      ctx.fillText("∑(k=1..n)   ∫ f(x)dx   λ = c/f   ΔE = mc²   sin²θ + cos²θ = 1   Ω   μ   π", 40, 110);
-      ctx.fillText("v = v₀ + at    P = UI    pH = -log[H+]    F = G(m₁m₂)/r²", 80, 240);
-      ctx.fillText("lim(x→0) sin(x)/x = 1    E = hf    PV = nRT", 60, 360);
-
-      // 1. Top Header Bar (Y: 0..64)
-      ctx.fillStyle = "#0a1122";
-      ctx.fillRect(0, 0, W, 64);
-      ctx.fillStyle = "#0284c7";
-      ctx.fillRect(0, 62, W, 2);
-
-      // Header Left: Gold Olympia Brand
-      ctx.font = '900 22px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#fbbf24";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText("🏆 ĐƯỜNG LÊN ĐỈNH OLYMPIA • MÙA 26", 24, 32);
-
-      // Header Center: Contestant Badge
-      ctx.fillStyle = "#0369a1";
-      ctx.beginPath();
-      ctx.roundRect(W / 2 - 90, 14, 180, 36, 18);
-      ctx.fill();
-      ctx.font = '800 18px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      ctx.fillText(`THÍ SINH ${seatId + 1}`, W / 2, 32);
-
-      // Header Right: LAN Online Indicator
-      ctx.fillStyle = "#10b981";
-      ctx.beginPath();
-      ctx.arc(W - 200, 32, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.font = '700 16px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#34d399";
-      ctx.textAlign = "left";
-      ctx.fillText("LAN TRƯỜNG QUAY ONLINE", W - 186, 32);
-
-      // 2. Round Banner (Y: 76..128)
-      ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
-      ctx.beginPath();
-      ctx.roundRect(24, 76, W - 48, 54, 12);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.font = '800 20px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#38bdf8";
-      ctx.textAlign = "left";
-      ctx.fillText("★ PHẦN THI KHỞI ĐỘNG • CÂU HỎI 3 / 6", 44, 103);
-
-      ctx.fillStyle = "#f59e0b";
-      ctx.textAlign = "right";
-      ctx.fillText("MỨC ĐIỂM: 10 ĐIỂM   |   TỔNG ĐIỂM: 40", W - 44, 103);
-
-      // 3. Central Question Card (Y: 144..370)
-      ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
-      ctx.beginPath();
-      ctx.roundRect(24, 144, W - 48, 226, 16);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(14, 165, 233, 0.5)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Card Header Tag
-      ctx.fillStyle = "rgba(14, 165, 233, 0.2)";
-      ctx.beginPath();
-      ctx.roundRect(44, 164, 130, 32, 8);
-      ctx.fill();
-      ctx.font = '800 15px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#38bdf8";
-      ctx.textAlign = "center";
-      ctx.fillText("CÂU HỎI SỐ 3", 109, 180);
-
-      // Question Text (2 lines of crisp Vietnamese)
-      ctx.font = '800 26px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#f8fafc";
-      ctx.textAlign = "left";
-      ctx.fillText("Nhà máy thủy điện tích năng đầu tiên được xây dựng tại Việt Nam", 44, 235);
-      ctx.fillText("thuộc địa phận huyện nào của tỉnh Ninh Thuận?", 44, 275);
-
-      // Question Hint / Metadata
-      ctx.font = '600 17px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#94a3b8";
-      ctx.fillText("Lĩnh vực: Địa lý • Năng lượng Quốc gia", 44, 335);
-
-      // 4. Answer Input Box (Y: 388..484)
-      ctx.fillStyle = "#020617";
-      ctx.beginPath();
-      ctx.roundRect(24, 388, W - 48, 96, 14);
-      ctx.fill();
-      ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-
-      ctx.font = '800 20px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#38bdf8";
-      ctx.textAlign = "left";
-      ctx.fillText("ĐÁP ÁN CỦA BẠN:", 44, 422);
-
-      // Typed text + cursor
-      ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText("Bác Ái", 44, 460);
-      // Blinking cursor |
-      ctx.fillStyle = "#38bdf8";
-      ctx.fillRect(158, 434, 4, 30);
-
-      // Accepted Answer Pill
-      ctx.fillStyle = "rgba(16, 185, 129, 0.2)";
-      ctx.beginPath();
-      ctx.roundRect(W - 270, 420, 230, 42, 10);
-      ctx.fill();
-      ctx.strokeStyle = "#10b981";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.font = '800 18px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#34d399";
-      ctx.textAlign = "center";
-      ctx.fillText("✓ ĐÃ GHI NHẬN [0.38s]", W - 155, 442);
-
-      // 5. Timer Bar & Footer (Y: 504..620)
-      ctx.fillStyle = "#1e293b";
-      ctx.beginPath();
-      ctx.roundRect(24, 508, W - 48, 18, 9);
-      ctx.fill();
-
-      // Timer Progress Fill (Cyan to Amber gradient)
-      const timerGrad = ctx.createLinearGradient(24, 0, W - 48, 0);
-      timerGrad.addColorStop(0, "#06b6d4");
-      timerGrad.addColorStop(0.7, "#38bdf8");
-      timerGrad.addColorStop(1, "#f59e0b");
-      ctx.fillStyle = timerGrad;
-      ctx.beginPath();
-      ctx.roundRect(24, 508, (W - 48) * 0.72, 18, 9);
-      ctx.fill();
-
-      // Countdown Info
-      ctx.font = '800 22px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#fef08a";
-      ctx.textAlign = "left";
-      ctx.fillText("⏱ THỜI GIAN CÒN LẠI: 04.62s", 28, 558);
-
-      ctx.font = '600 16px "Plus Jakarta Sans", sans-serif';
-      ctx.fillStyle = "#64748b";
-      ctx.textAlign = "right";
-      ctx.fillText("Bàn phím QWERTY + Nút bấm bàn sẵn sàng • VTV3", W - 28, 558);
-
-      // Micro status line
-      ctx.font = '500 14px "Plus Jakarta Sans", monospace';
-      ctx.fillStyle = "#475569";
-      ctx.textAlign = "center";
-      ctx.fillText(`OLYMPIA-WORKSTATION // NODE-TS${seatId + 1} // LATENCY 1.2ms // SECURE SYNC OK`, W / 2, 600);
+    // Dynamic question text from real state
+    let questionText = "Chờ câu hỏi tiếp theo...";
+    if (round === "khoiDong" && state?.khoiDong?.questionRevealed && state.khoiDong.current?.q) {
+      questionText = state.khoiDong.current.q;
+    } else if (round === "tangToc" && state?.tangToc) {
+      const ttQIdx = state.tangToc.qIdx;
+      const ttQ = ttQIdx >= 0 ? state.tangToc.questions?.[ttQIdx]?.q : undefined;
+      if (ttQ) questionText = ttQ;
     }
+    // Word-wrap questionText into lines of max ~55 chars
+    const words = questionText.split(" ");
+    const lines: string[] = [];
+    let currentLine = "";
+    for (const word of words) {
+      if ((currentLine + " " + word).length > 55) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = currentLine ? currentLine + " " + word : word;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    ctx.font = '800 26px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#f8fafc";
+    ctx.textAlign = "left";
+    lines.slice(0, 3).forEach((line, i) => ctx.fillText(line, 44, 225 + i * 48));
 
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.generateMipmaps = true;
-    tex.minFilter = THREE.LinearMipmapLinearFilter;
-    tex.magFilter = THREE.LinearFilter;
+    // 4. Answer Input Box (Y: 388..484) — cosmetic
+    ctx.fillStyle = "#020617";
+    ctx.beginPath();
+    ctx.roundRect(24, 388, W - 48, 96, 14);
+    ctx.fill();
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    ctx.font = '800 20px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#38bdf8";
+    ctx.textAlign = "left";
+    ctx.fillText("ĐÁP ÁN CỦA BẠN:", 44, 422);
+
+    // Typed text + cursor (cosmetic)
+    ctx.font = '900 32px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("", 44, 460);
+    // Blinking cursor |
+    ctx.fillStyle = "#38bdf8";
+    ctx.fillRect(44, 434, 4, 30);
+
+    // Accepted Answer Pill (cosmetic)
+    ctx.fillStyle = "rgba(16, 185, 129, 0.2)";
+    ctx.beginPath();
+    ctx.roundRect(W - 270, 420, 230, 42, 10);
+    ctx.fill();
+    ctx.strokeStyle = "#10b981";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.font = '800 18px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#34d399";
+    ctx.textAlign = "center";
+    ctx.fillText("✓ SẴN SÀNG", W - 155, 442);
+
+    // 5. Timer Bar & Footer (Y: 504..620) — cosmetic
+    ctx.fillStyle = "#1e293b";
+    ctx.beginPath();
+    ctx.roundRect(24, 508, W - 48, 18, 9);
+    ctx.fill();
+
+    // Timer Progress Fill (Cyan to Amber gradient)
+    const timerGrad = ctx.createLinearGradient(24, 0, W - 48, 0);
+    timerGrad.addColorStop(0, "#06b6d4");
+    timerGrad.addColorStop(0.7, "#38bdf8");
+    timerGrad.addColorStop(1, "#f59e0b");
+    ctx.fillStyle = timerGrad;
+    ctx.beginPath();
+    ctx.roundRect(24, 508, (W - 48) * 0.72, 18, 9);
+    ctx.fill();
+
+    // Countdown Info (cosmetic)
+    ctx.font = '800 22px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#fef08a";
+    ctx.textAlign = "left";
+    ctx.fillText("⏱ THỜI GIAN CÒN LẠI: --", 28, 558);
+
+    ctx.font = '600 16px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = "#64748b";
+    ctx.textAlign = "right";
+    ctx.fillText("Bàn phím QWERTY + Nút bấm bàn sẵn sàng • VTV3", W - 28, 558);
+
+    // Micro status line
+    ctx.font = '500 14px "Plus Jakarta Sans", monospace';
+    ctx.fillStyle = "#475569";
+    ctx.textAlign = "center";
+    ctx.fillText(`OLYMPIA-WORKSTATION // NODE-TS${seatId + 1} // LATENCY 1.2ms // SECURE SYNC OK`, W / 2, 600);
+  }
+}
+
+function useOlympiaLaptopTexture(
+  seatId: number,
+  isBuzzed: boolean,
+  isDimmed: boolean,
+  state: import("@/lib/olympia/types").OlympiaState | null | undefined,
+  seatName: string
+): THREE.CanvasTexture {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const texRef = useRef<THREE.CanvasTexture | null>(null);
+
+  // Create canvas+texture once on mount
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (!canvasRef.current) {
+      const c = document.createElement("canvas");
+      c.width = 1024;
+      c.height = 640;
+      canvasRef.current = c;
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.generateMipmaps = true;
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      texRef.current = tex;
+    }
+  }, []);
+
+  // Re-render canvas when game state changes
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const tex = texRef.current;
+    if (!canvas || !tex) return;
+    renderLaptopScreenCanvas(canvas, seatId, isBuzzed, isDimmed, state, seatName);
     tex.needsUpdate = true;
-    return tex;
-  }, [seatId, isBuzzed, isDimmed]);
+  }, [
+    seatId, isBuzzed, isDimmed, seatName,
+    state?.currentRound,
+    state?.khoiDong?.qIdx,
+    state?.khoiDong?.current?.q,
+    state?.khoiDong?.phase,
+    state?.khoiDong?.started,
+    state?.khoiDong?.questionRevealed,
+    state?.tangToc?.qIdx,
+    state?.tangToc?.phase,
+    state?.veDich?.phase,
+    state?.vcnv?.phase,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    state?.seats?.[seatId]?.score,
+  ]);
+
+  // Return a stable fallback if not yet initialized (SSR guard)
+  if (!texRef.current && typeof document !== "undefined") {
+    const c = document.createElement("canvas");
+    c.width = 1024;
+    c.height = 640;
+    canvasRef.current = c;
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    texRef.current = tex;
+  }
+  return texRef.current ?? new THREE.CanvasTexture({ width: 1, height: 1 } as HTMLCanvasElement);
 }
 
 export function ContestantPodium({
@@ -2247,6 +2336,7 @@ export function ContestantPodium({
   submittedAnswer,
   responseTimeSec,
   isTurn = false,
+  state,
 }: {
   seatId: number;
   name: string;
@@ -2266,6 +2356,7 @@ export function ContestantPodium({
   submittedAnswer?: string;
   responseTimeSec?: number;
   isTurn?: boolean;
+  state?: OlympiaState | null;
 }) {
   const buzzerDomeRef = useRef<THREE.Mesh>(null);
   const haloRef = useRef<THREE.Mesh>(null);
@@ -2283,7 +2374,7 @@ export function ContestantPodium({
   );
 
   // Dynamic Olympia Contestant Workstation Laptop Canvas Texture
-  const laptopTexture = useOlympiaLaptopTexture(seatId, isBuzzed, Boolean(isDimmed));
+  const laptopTexture = useOlympiaLaptopTexture(seatId, isBuzzed, Boolean(isDimmed), state, name);
 
   // Smooth buzzer pop animation (zero-allocation per frame)
   useFrame((_, delta) => {
@@ -6274,6 +6365,7 @@ export function Podiums({
             submittedAnswer={submittedAnswer}
             responseTimeSec={responseTimeSec}
             isTurn={isTurn}
+            state={state}
           />
         );
       })}

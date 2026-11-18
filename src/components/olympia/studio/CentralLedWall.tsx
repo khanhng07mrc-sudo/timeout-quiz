@@ -217,6 +217,7 @@ function renderBinaryMatrixGrid(
 
   const timeStep = Math.floor(timeSec * (isLight ? 2.5 : 4.0)); // digital stream transitions per second
 
+  let charIndexTotal = 0;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const colSpeed = 1 + (c % 3);
@@ -229,6 +230,10 @@ function renderBinaryMatrixGrid(
       const x = c * cellSize + cellSize / 2;
       const y = r * cellSize + cellSize / 2;
 
+      // Per-character pulsing alpha for formula wall glow animation
+      const phase = (charIndexTotal * 2.399 + r * 1.618) % (Math.PI * 2);
+      const pulse = 0.35 + 0.65 * Math.abs(Math.sin(timeSec * 0.65 + phase));
+
       // ~32% of cells are brightly lit with glow + sinusoidal stream pulse
       const glowPulse = Math.sin(timeSec * 2.5 + c * 0.35 + r * 0.2);
       if (roll < 0.32 || (roll < 0.45 && glowPulse > 0.4)) {
@@ -239,16 +244,23 @@ function renderBinaryMatrixGrid(
           ctx.save();
           ctx.shadowColor = color;
           ctx.shadowBlur = 8;
+          ctx.globalAlpha = pulse;
           ctx.fillText(val, x, y);
+          ctx.globalAlpha = 1.0;
           ctx.restore();
         } else {
+          ctx.globalAlpha = pulse;
           ctx.fillText(val, x, y);
+          ctx.globalAlpha = 1.0;
         }
       } else if (roll < 0.70) {
         // Faint ambient background numbers
         ctx.fillStyle = fadeProgress > 0.5 ? "rgba(255, 60, 90, 0.18)" : "rgba(0, 210, 255, 0.18)";
+        ctx.globalAlpha = pulse;
         ctx.fillText(val, x, y);
+        ctx.globalAlpha = 1.0;
       }
+      charIndexTotal++;
     }
   }
   ctx.restore();
@@ -2471,9 +2483,19 @@ export function CentralLedWall({
     accumulatedTimeRef.current += dt;
     const t = accumulatedTimeRef.current;
 
-    // 1. Butter-smooth 60 FPS GPU UV offset scroll for the formula wall (Zero CPU drawing, zero GPU upload stalls)
-    if (formulaWallTextureRef.current) {
-      formulaWallTextureRef.current.offset.x = (formulaWallTextureRef.current.offset.x - delta * 0.020) % 1.0;
+    // 1. Formula wall canvas pulsing glow (static characters, per-char opacity animation ~4 FPS)
+    const wallInterval = quality === "LIGHT" ? 0.400 : 0.250;
+    if (t - lastWallFrameRef.current >= wallInterval) {
+      lastWallFrameRef.current = t;
+      if (formulaWallCanvasRef.current && formulaWallTextureRef.current) {
+        renderDynamicCurvedFormulaCanvas(
+          formulaWallCanvasRef.current,
+          t,
+          screenFadeProgress,
+          quality
+        );
+        formulaWallTextureRef.current.needsUpdate = true;
+      }
     }
 
     // 2. Throttle Stage Right Screen & Vertical Totem in Idle Mode (<= 3-4 FPS to save GPU bandwidth)
@@ -2534,14 +2556,14 @@ export function CentralLedWall({
     return geom;
   }, []);
 
-  // Synchronize elevated wall sweep angle (0.80 * Math.PI -> a = 1.28 * Math.PI) uniformly across all 2..8 seat counts
-  // so left edge of curved wall aligns flush with the expanded 1.28 * Math.PI Left Dais platform,
-  // while ensuring zero clipping into the Grand Hexagon Portal behind the MC podium.
-  const wallSweepAng = 0.80 * Math.PI;
-  const wallStartAng = 1.03 * Math.PI;
+  // Carefully calibrated wall sweep angle (~0.54 * Math.PI) frames all 1..8 contestant podiums
+  // cleanly from behind the stage center to TS 1 without overshooting into the front audience corridor
+  // (prevents left formula wall edge from visibly intruding into CAM 1 / display audience views).
+  const wallSweepAng = 0.54 * Math.PI;
+  const wallStartAng = 1.08 * Math.PI;
   // Open a clean ~1.20m backstage wing corridor on the floor level between Left Base Wall and Hexagon Portal
-  const lowerWallStartAng = 1.03 * Math.PI;
-  const lowerWallSweepAng = wallSweepAng - 0.04 * Math.PI;
+  const lowerWallStartAng = 1.08 * Math.PI;
+  const lowerWallSweepAng = wallSweepAng - 0.02 * Math.PI;
 
   return (
     <group>
@@ -2837,7 +2859,7 @@ export function CentralLedWall({
       <group position={[0, 2.85, -0.5]}>
         <mesh rotation={[0, 0, 0]}>
           <cylinderGeometry
-            args={[8.85, 8.85, 3.8, quality === "LIGHT" ? 32 : 64, 1, true, wallStartAng, wallSweepAng + 0.10]}
+            args={[8.85, 8.85, 3.8, quality === "LIGHT" ? 32 : 64, 1, true, wallStartAng, wallSweepAng]}
           />
           {whiteDotsArchTexture ? (
             <meshBasicMaterial

@@ -782,9 +782,9 @@ export function StudioFloor({
         <circleGeometry args={[26, quality === "LIGHT" ? 32 : 64]} />
         <meshStandardMaterial
           color="#0c1527"
-          roughness={0.12}
-          metalness={0.25}
-          envMapIntensity={2.2}
+          roughness={0.07}
+          metalness={0.35}
+          envMapIntensity={3.5}
         />
       </mesh>
 
@@ -843,31 +843,14 @@ export function StudioFloor({
       </group>
 
       {/* ── 2B. LAUREL WREATH VITRINE PEDESTAL PLINTH (Base elevation Y = 0.18m for vitrine reveal contract) ── */}
-      <group position={[1.80, 0.01, 2.60]}>
+      <group position={[1.80, 0.00, 2.60]}>
         <mesh position={[0, 0.09, 0]}>
-          <primitive object={vitrinePlinthGeom} attach="geometry" />
+          <cylinderGeometry args={[0.55, 0.55, 0.18, 48]} />
           <meshStandardMaterial
-            attach="material-0"
-            color="#0f172a"
-            emissive={ringColor}
-            emissiveIntensity={0.15}
-            roughness={0.55}
-            metalness={0.20}
-            side={THREE.DoubleSide}
-          />
-          <meshStandardMaterial
-            attach="material-1"
-            color="#020510"
-            roughness={0.08}
-            metalness={0.10}
-            envMapIntensity={2.8}
-          />
-          <meshStandardMaterial
-            attach="material-2"
-            color="#020510"
-            roughness={0.08}
-            metalness={0.10}
-            envMapIntensity={2.8}
+            color="#0b172e"
+            roughness={0.20}
+            metalness={0.80}
+            envMapIntensity={2.5}
           />
         </mesh>
         {/* Plinth Upper Glowing Neon Trim (Y = 0.181m) */}
@@ -938,12 +921,12 @@ export function StudioFloor({
           are managed cleanly and exclusively by CenterFloorStage in Podiums.tsx to prevent z-fighting and depth-clipping. */}
 
       {/* ── 2B. LAUREL WREATH VITRINE PROTRUSION LIGHTING ── */}
-      {/* Upward Floor Light illuminating Laurel Wreath Cloche from base plinth */}
+      {/* Upward Floor Light illuminating Laurel Wreath Cloche from base plinth (soft warm glow, no harsh floor cone) */}
       <pointLight
-        position={[1.8, 0.35, 2.6]}
+        position={[1.8, 0.45, 2.6]}
         color="#fef08a"
-        intensity={THREE.MathUtils.lerp(0.3, 5.5, liveFactor) * vitrineOpacity}
-        distance={3.5}
+        intensity={THREE.MathUtils.lerp(0.2, 1.2, liveFactor) * vitrineOpacity}
+        distance={2.0}
       />
       {/* Soft Fill Broadcast Keylight from overhead (Wide diffused cone, zero harsh lines) */}
       <TargetedSpotLight
@@ -1142,7 +1125,15 @@ export function StudioWalls({
  * - 16 suspended broadcast stage luminaires (Fresnel spotlights with clamps, barndoors & lenses)
  * - Visible metal specular finish even when studio is dimmed
  */
-export function StudioCeilingRig({ isDimmed = false }: { isDimmed?: boolean }) {
+export function StudioCeilingRig({ 
+  isDimmed = false, 
+  liveFactor = 1.0, 
+  quality = "HIGH" 
+}: { 
+  isDimmed?: boolean; 
+  liveFactor?: number; 
+  quality?: "HIGH" | "MEDIUM" | "LIGHT"; 
+}) {
   const trussMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
@@ -1325,6 +1316,37 @@ export function StudioCeilingRig({ isDimmed = false }: { isDimmed?: boolean }) {
           </group>
         );
       })}
+      {/* ── CEILING STUDIO SPOTLIGHTS ── */}
+      {quality !== "LIGHT" ? (
+        <>
+          {([
+            [0,    5.5, -1.0,  0,    0,  -2.0],
+            [-2.5, 5.5, -2.0, -0.8, 0,  -3.5],
+            [ 2.5, 5.5, -2.0,  0.8, 0,  -3.5],
+            [-4.5, 5.5, -3.5, -2.0, 0.5, -5.0],
+            [ 4.5, 5.5, -3.5,  2.0, 0.5, -5.0],
+            [ 0,   5.5, -4.5,  0,   0.8, -6.0],
+          ] as [number,number,number,number,number,number][]).map(([px,py,pz,tx,ty,tz], i) => (
+            <spotLight
+              key={`ceil-spot-${i}`}
+              position={[px, py, pz]}
+              target-position={[tx, ty, tz]}
+              intensity={isDimmed ? 1.5 : 7.0 * liveFactor}
+              color="#fff6e8"
+              angle={0.42}
+              penumbra={0.65}
+              distance={10}
+              decay={2}
+              castShadow={false}
+            />
+          ))}
+        </>
+      ) : (
+        <>
+          <spotLight position={[0, 5.5, -2.0]} target-position={[0, 0, -3.5]} intensity={isDimmed ? 1.0 : 5.0 * liveFactor} color="#fff6e8" angle={0.6} penumbra={0.7} distance={12} decay={2} castShadow={false} />
+          <spotLight position={[0, 5.5, -4.0]} target-position={[0, 0, -5.5]} intensity={isDimmed ? 1.0 : 4.5 * liveFactor} color="#fff6e8" angle={0.55} penumbra={0.7} distance={11} decay={2} castShadow={false} />
+        </>
+      )}
     </group>
   );
 }
@@ -3492,7 +3514,7 @@ export function StudioLighting({
         serverNow={serverNow}
       />
       <StudioWalls stageFadeProgress={stageFadeProgress} liveFactor={liveFactor} />
-      <StudioCeilingRig isDimmed={isVeDichDimmed} />
+      <StudioCeilingRig isDimmed={isVeDichDimmed} liveFactor={liveFactor} quality={quality} />
       <AudienceAmphitheater
         audienceFadeProgress={audienceFadeProgress}
         quality={quality}

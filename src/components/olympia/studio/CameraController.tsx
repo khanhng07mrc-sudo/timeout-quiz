@@ -211,41 +211,38 @@ export function getContestantScreenCameraPreset(
 export function getWidePodiumsCameraPreset(totalSeats: number = 4): CameraPreset {
   const count = Math.min(8, Math.max(1, totalSeats || 4));
   const { radius, startPhi, endPhi } = getContestantArcParams(count);
-
   const midPhi = (startPhi + endPhi) / 2;
+
   const startX = -radius * Math.cos(startPhi);
   const startZ = -0.5 - radius * Math.sin(startPhi);
-  const endX = -radius * Math.cos(endPhi);
-  const endZ = -0.5 - radius * Math.sin(endPhi);
+  const endX   = -radius * Math.cos(endPhi);
+  const endZ   = -0.5 - radius * Math.sin(endPhi);
+
   const midX = -radius * Math.cos(midPhi);
   const midZ = -0.5 - radius * Math.sin(midPhi);
 
-  // Center of the arc cluster at chest/torso eye-level
   const targetX = +(0.5 * midX + 0.25 * (startX + endX)).toFixed(2);
   const targetY = 1.15;
   const targetZ = +(0.5 * midZ + 0.25 * (startZ + endZ)).toFixed(2);
 
-  // Direction along the cluster normal from stage center (direct frontal facing angle)
   const viewDirX = Math.cos(midPhi);
   const viewDirZ = Math.sin(midPhi);
 
-  // Dynamic distance calculation ensuring podium cluster occupies strictly between 70% (min) and 95% (max)
+  // Dynamic distance calculation ensuring podium cluster occupies strictly between 70% and 85%
   // of horizontal broadcast screen width (target ~80% width) for any contestant count (1 to 8):
-  const chord = Math.hypot(endX - startX, endZ - startZ);
   const baseDist = 7.30;
-  const extraDist = Math.max(0, (count - 4) * 0.95);
+  const extraDist = Math.max(0, (count - 4) * 0.90);
   const dist = Math.max(7.40, +(baseDist + extraDist).toFixed(2));
 
-  const camX = +(targetX + dist * viewDirX).toFixed(2);
-  // Direct eye-level frontal elevation (camY = 1.35m-1.67m vs targetY = 1.15m: eye-level view, no steep downward angle)
+  const camX = +(targetX + viewDirX * dist).toFixed(2);
   const camY = +(1.35 + Math.max(0, (count - 4) * 0.08)).toFixed(2);
-  const camZ = +(targetZ + dist * viewDirZ).toFixed(2);
+  const camZ = +(targetZ + viewDirZ * dist).toFixed(2);
 
   return {
     id: 10,
     label: "Toàn Cảnh Bục Thí Sinh",
-    pos: [camX, camY, camZ],
-    target: [targetX, targetY, targetZ],
+    pos: [camX, camY, camZ] as [number, number, number],
+    target: [targetX, targetY, targetZ] as [number, number, number],
   };
 }
 

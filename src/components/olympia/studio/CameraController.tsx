@@ -147,12 +147,14 @@ export function getContestantCameraPreset(seatId: number, totalSeats: number = 4
   // Broadcast Medium Close-Up (MCU / Bust Shot) focused on contestant's chest & head:
   // - Closer distance (1.92m vs 2.45m) cleanly cuts adjacent contestant podiums out of the frame (no '1' or 'T' peeking at corners).
   // - Elevated target (1.40m vs 1.25m) and camera height (1.48m vs 1.34m) tucks the desk and podium base safely below the 2D Lower-Third banner.
+  // - Offset X by +0.22m to track the visually shifted contestant podiums group exactly.
   const dist = 1.92;
-  const camX = +(px + dist * nx).toFixed(3);
+  const effPx = +(px + 0.22).toFixed(3);
+  const camX = +(effPx + dist * nx).toFixed(3);
   const camY = 1.48;
   const camZ = +(pz + dist * nz).toFixed(3);
 
-  const targetX = +px.toFixed(3);
+  const targetX = effPx;
   const targetY = 1.40;
   const targetZ = +pz.toFixed(3);
 
@@ -186,7 +188,8 @@ export function getContestantScreenCameraPreset(
   // Screen desk center position (laptop screen & keyboard inside recessed bay)
   // Target centered between head (1.55m) and desk surface (0.90m) at targetY = 1.20m
   // Leaves comfortable broadcast headroom above the contestant's hair
-  const deskX = +(px - 0.12 * nx + 0.06 * tx).toFixed(3);
+  const effPx = +(px + 0.22).toFixed(3);
+  const deskX = +(effPx - 0.12 * nx + 0.06 * tx).toFixed(3);
   const deskY = 1.20;
   const deskZ = +(pz - 0.12 * nz + 0.06 * tz).toFixed(3);
 
@@ -196,7 +199,7 @@ export function getContestantScreenCameraPreset(
   // natural forward arm reach onto the desk/keyboard, glowing laptop screen, and illuminated formula LED wall.
   const camDist = 1.52;
   const tangentOffset = 0.48;
-  const camX = +(px - camDist * nx + tangentOffset * tx).toFixed(3);
+  const camX = +(effPx - camDist * nx + tangentOffset * tx).toFixed(3);
   const camY = 1.62;
   const camZ = +(pz - camDist * nz + tangentOffset * tz).toFixed(3);
 
@@ -497,8 +500,8 @@ export function CameraController({
 
       // True Optical Zoom: Narrow/widen field of view (focal length change)
       const opticalFov = calculatedFov / Math.max(0.25, ptzZoom);
-      // Zoom smooth 100% -> 115% based on pushInProgress (0.0 to 1.0)
-      const zoomFactor = 1.0 + Math.max(0, Math.min(1.0, pushInProgress)) * 0.15;
+      // Zoom smooth 100% -> 125% based on pushInProgress (0.0 to 1.0)
+      const zoomFactor = 1.0 + Math.max(0, Math.min(1.0, pushInProgress)) * 0.25;
       const pushFov = opticalFov / zoomFactor;
       if (transitionMode === "CUT") {
         camera.fov = Math.min(85, Math.max(12, pushFov));

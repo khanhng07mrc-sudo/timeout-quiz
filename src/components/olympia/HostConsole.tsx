@@ -3574,7 +3574,7 @@ function TangTocDeck({ state, call }: { state: OlympiaState; call: Call }) {
 
                 {/* Live Answer + Edited History */}
                 <div className="flex-1 min-w-0 rounded-md bg-black/55 border border-white/10 px-2.5 py-1 min-h-[30px] flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap max-h-12 overflow-y-auto">
                     {sub?.answer ? (
                       <span
                         className="font-black text-xs sm:text-[13px] text-white uppercase tracking-wide break-words select-text"

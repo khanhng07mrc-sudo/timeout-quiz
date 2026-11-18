@@ -221,9 +221,10 @@ export function createPodiumScoreCanvas(
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = isClassic ? "#fef08a" : "#ffffff";
-    ctx.font = '900 28px "Tahoma", sans-serif';
-    ctx.letterSpacing = "0.05em";
     const displayName = (name || `THÍ SINH ${seatId + 1}`).toUpperCase();
+    const nameFontSize = displayName.length > 20 ? 28 : displayName.length > 14 ? 32 : 36;
+    ctx.font = `900 ${nameFontSize}px "Tahoma", sans-serif`;
+    ctx.letterSpacing = "0.04em";
     ctx.fillText(displayName, 256, 38);
 
     // Separator line
@@ -351,13 +352,14 @@ export function createPodiumScoreCanvas(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = isPodiumGold ? "#ffffff" : isPodiumRed ? "#ffffff" : isClassic ? "#fef08a" : "#ffffff";
-  ctx.font = '900 28px "Tahoma", sans-serif';
+  const displayName = (name || `Thí sinh ${seatId + 1}`).toUpperCase();
+  const nameFontSize = displayName.length > 20 ? 28 : displayName.length > 14 ? 32 : 36;
+  ctx.font = `900 ${nameFontSize}px "Tahoma", sans-serif`;
   ctx.letterSpacing = "0.04em";
   if (isPodiumGold) {
     ctx.shadowColor = "rgba(254, 240, 138, 0.85)";
     ctx.shadowBlur = 12;
   }
-  const displayName = (name || `Thí sinh ${seatId + 1}`).toUpperCase();
   ctx.fillText(displayName, 256, 29);
   ctx.shadowBlur = 0;
 
@@ -459,10 +461,12 @@ export function createPodiumScoreCanvas(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = scoreColor;
-  ctx.font = '900 94px "Tahoma", sans-serif';
+  const scoreStr = String(score);
+  const scoreFontSize = scoreStr.length >= 4 ? 96 : scoreStr.length >= 3 ? 112 : 124;
+  ctx.font = `900 ${scoreFontSize}px "Tahoma", sans-serif`;
   ctx.shadowColor = scoreGlow;
-  ctx.shadowBlur = isPodiumGold ? 22 : 16;
-  ctx.fillText(String(score), 256, 180);
+  ctx.shadowBlur = isPodiumGold ? 24 : 18;
+  ctx.fillText(scoreStr, 256, 180);
   ctx.shadowBlur = 0;
 
   // 5. Outer Border & Viền Kép
@@ -6199,8 +6203,9 @@ export function Podiums({
         />
       )}
 
-      {/* N Contestant Arc Podiums on Raised Dais */}
-      {contestantConfigs.map((cfg) => {
+      {/* N Contestant Arc Podiums on Raised Dais (Group shifted slightly right to align with background screen) */}
+      <group position={[0.22, 0, 0]}>
+        {contestantConfigs.map((cfg) => {
         const seat = state?.seats?.[cfg.seatId];
         const name = seat?.name || `Thí sinh ${cfg.seatId + 1}`;
         const score = seat?.score ?? 0;
@@ -6369,6 +6374,7 @@ export function Podiums({
           />
         );
       })}
+      </group>
     </group>
   );
 }

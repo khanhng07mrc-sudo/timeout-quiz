@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo, useLayoutEffect } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, ROUND_ORDER, canStartScoreSummary, seatToStudioCamera, type OlympiaState, type RoundId, type Seat, type O22Quarter, type TimerState } from "@/lib/olympia/types";
 import { normalizeAnswer, cleanVcnvWord, getVcnvUnit } from "@/lib/olympia/engine";
@@ -39,6 +39,45 @@ export const ActiveTimerBadge = React.memo(function ActiveTimerBadge({
     : "--";
   return <span className={className}>{text}</span>;
 });
+
+function BoundedName({ name }: { name: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [scaleX, setScaleX] = useState<number>(1);
+
+  useLayoutEffect(() => {
+    const update = () => {
+      if (containerRef.current && textRef.current) {
+        const cW = containerRef.current.clientWidth;
+        const sW = textRef.current.scrollWidth;
+        if (sW > cW && cW > 0) {
+          setScaleX(Math.max(0.35, cW / sW));
+        } else {
+          setScaleX(1);
+        }
+      }
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [name]);
+
+  return (
+    <div ref={containerRef} className="w-full overflow-hidden flex items-center min-w-0">
+      <span
+        ref={textRef}
+        style={{
+          display: "inline-block",
+          whiteSpace: "nowrap",
+          transformOrigin: "left center",
+          transform: scaleX < 1 ? `scaleX(${scaleX})` : "none",
+        }}
+      >
+        {name}
+      </span>
+    </div>
+  );
+}
 
 export const HostConsole = React.memo(function HostConsole({
   code,
@@ -2077,10 +2116,11 @@ export const HostConsole = React.memo(function HostConsole({
             return (
               <div
                 key={s.id}
-                className="rounded-lg border border-cyan-500/25 bg-slate-900/95 px-2 py-1 flex items-center justify-between gap-1.5 relative overflow-hidden shadow"
+                className="rounded-lg border border-cyan-500/25 bg-slate-900/95 px-2 py-1.5 flex flex-col justify-between gap-1.5 relative overflow-hidden shadow"
                 style={{ borderLeft: `3.5px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}` }}
               >
-                <div className="min-w-0 flex-1 flex flex-col justify-center">
+                {/* DÒNG TRÊN: Tên thí sinh (nếu tên dài thu nhỏ chiều ngang, giữ nguyên chiều dọc) */}
+                <div className="w-full flex items-center justify-between gap-1 min-w-0">
                   {s.name ? (
                     isEditing ? (
                       <input
@@ -2101,18 +2141,18 @@ export const HostConsole = React.memo(function HostConsole({
                           if (val && val !== s.name) call("seat:rename", { seat: s.id, name: val, school: s.school });
                           setEditingSeatId(null);
                         }}
-                        className="text-[11px] font-black text-slate-100 bg-black/50 border border-cyan-400 rounded px-1 py-0.5 focus:outline-none w-full"
+                        className="text-xs font-black text-slate-100 bg-black/50 border border-cyan-400 rounded px-1 py-0.5 focus:outline-none w-full"
                       />
                     ) : (
-                      <div className="flex items-center gap-1 group/name">
+                      <div className="flex items-center gap-1 min-w-0 flex-1 group/name">
                         <button
                           type="button"
                           onClick={() => setKickCandidate(s)}
-                          className="text-[11px] font-black text-slate-100 hover:text-rose-300 hover:bg-rose-500/20 px-1 py-0.5 rounded transition flex items-center gap-1 truncate text-left cursor-pointer group-hover/name:border group-hover/name:border-rose-500/30"
+                          className="text-xs font-black text-slate-100 hover:text-rose-300 hover:bg-rose-500/20 px-1 py-0.5 rounded transition flex items-center gap-1 text-left cursor-pointer group-hover/name:border group-hover/name:border-rose-500/30 flex-1 min-w-0 overflow-hidden"
                           title="Nhấp vào tên để kick thí sinh khỏi phòng"
                         >
-                          <span className={s.connected ? "text-emerald-400 text-[10px]" : "text-slate-500 text-[10px]"}>●</span>
-                          <span className="truncate">{s.name}</span>
+                          <span className={s.connected ? "text-emerald-400 text-[10px] shrink-0" : "text-slate-500 text-[10px] shrink-0"}>●</span>
+                          <BoundedName name={s.name} />
                           <span className="text-[10px] text-rose-400 opacity-0 group-hover/name:opacity-100 transition shrink-0">🚫</span>
                         </button>
                         <button
@@ -2126,36 +2166,29 @@ export const HostConsole = React.memo(function HostConsole({
                       </div>
                     )
                   ) : (
-                    <div className="text-[11px] font-semibold text-slate-500 italic flex items-center gap-1">
+                    <div className="text-xs font-semibold text-slate-500 italic flex items-center gap-1">
                       <span>Ghế {idx + 1} (Trống)</span>
                       <button
                         type="button"
                         onClick={() => setEditingSeatId(s.id)}
-                        className="text-[9px] text-cyan-400 hover:underline not-italic cursor-pointer"
+                        className="text-[10px] text-cyan-400 hover:underline not-italic cursor-pointer"
                       >
                         + gán tên
                       </button>
                     </div>
                   )}
-                  <input
-                    type="text"
-                    defaultValue={s.school || ""}
-                    key={`host_school_${s.id}_${s.school || ""}`}
-                    placeholder="Trường THPT..."
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                    }}
-                    onBlur={(e) => {
-                      const val = e.target.value.trim();
-                      if (val !== (s.school || "")) {
-                        call("seat:setSchool", { seat: s.id, school: val });
-                      }
-                    }}
-                    className="w-full text-[9px] px-1 py-0.5 rounded bg-black/40 border border-white/10 text-amber-300 placeholder:text-slate-500 focus:outline-none focus:border-amber-400 leading-normal"
-                    title="Nhập tên trường THPT / Tỉnh đại diện"
-                  />
                 </div>
-                <div className="flex flex-col items-end gap-0.5 shrink-0">
+
+                {/* DÒNG DƯỚI: Chỉ có ô gõ điểm, nút cộng, trừ, thế thôi */}
+                <div className="w-full flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => call("score:adjust", { seat: s.id, delta: -10 })}
+                    className="w-7 h-6 sm:w-8 sm:h-7 rounded bg-rose-500/25 border border-rose-500/40 hover:bg-rose-500/40 text-rose-300 text-xs sm:text-sm font-black cursor-pointer flex items-center justify-center transition shrink-0"
+                    title="Trừ 10 điểm"
+                  >
+                    -
+                  </button>
                   <input
                     type="number"
                     defaultValue={s.score}
@@ -2171,27 +2204,17 @@ export const HostConsole = React.memo(function HostConsole({
                         call("score:set", { seat: s.id, score: val });
                       }
                     }}
-                    className="w-12 px-1 py-0.5 rounded bg-black/50 border border-amber-400/30 text-amber-300 text-center text-xs sm:text-sm font-black leading-tight focus:outline-none focus:border-amber-400"
+                    className="flex-1 min-w-0 h-6 sm:h-7 px-1 rounded bg-black/60 border border-amber-400/40 text-amber-300 text-center text-xs sm:text-sm font-black leading-tight focus:outline-none focus:border-amber-400 shadow-inner"
                     title="Gõ điểm trực tiếp (Enter để lưu)"
                   />
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => call("score:adjust", { seat: s.id, delta: -10 })}
-                      className="w-5 h-4 rounded bg-rose-500/25 border border-rose-500/40 hover:bg-rose-500/40 text-rose-300 text-[10px] font-black cursor-pointer flex items-center justify-center transition"
-                      title="Trừ 10 điểm"
-                    >
-                      -
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => call("score:adjust", { seat: s.id, delta: 10 })}
-                      className="w-5 h-4 rounded bg-emerald-500/25 border border-emerald-500/40 hover:bg-emerald-500/40 text-emerald-300 text-[10px] font-black cursor-pointer flex items-center justify-center transition"
-                      title="Cộng 10 điểm"
-                    >
-                      +
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => call("score:adjust", { seat: s.id, delta: 10 })}
+                    className="w-7 h-6 sm:w-8 sm:h-7 rounded bg-emerald-500/25 border border-emerald-500/40 hover:bg-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-black cursor-pointer flex items-center justify-center transition shrink-0"
+                    title="Cộng 10 điểm"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
             );

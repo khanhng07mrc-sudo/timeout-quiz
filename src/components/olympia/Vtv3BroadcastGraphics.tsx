@@ -9,6 +9,66 @@ import { OlympiaBroadcastVideo } from "./OlympiaBroadcastVideo";
 import { getPreloadedVideoUrl } from "@/lib/olympia/assetCache";
 
 /**
+ * BLUFFTITLER-STYLE BOUNDED TEXT (Scales horizontally to fit without ellipsis / truncation)
+ */
+export function BoundedText({
+  text,
+  className = "",
+  style = {},
+  align = "center",
+}: {
+  text: string;
+  className?: string;
+  style?: React.CSSProperties;
+  align?: "center" | "left" | "right";
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [scaleX, setScaleX] = useState<number>(1);
+
+  useLayoutEffect(() => {
+    const update = () => {
+      if (containerRef.current && textRef.current) {
+        const cW = containerRef.current.clientWidth;
+        const sW = textRef.current.scrollWidth;
+        if (sW > cW && cW > 0) {
+          setScaleX(Math.max(0.25, cW / sW));
+        } else {
+          setScaleX(1);
+        }
+      }
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [text]);
+
+  const origin = align === "left" ? "left center" : align === "right" ? "right center" : "center center";
+
+  return (
+    <div
+      ref={containerRef}
+      className={`w-full overflow-hidden flex items-center ${
+        align === "left" ? "justify-start" : align === "right" ? "justify-end" : "justify-center"
+      } ${className}`}
+      style={style}
+    >
+      <span
+        ref={textRef}
+        style={{
+          display: "inline-block",
+          whiteSpace: "nowrap",
+          transformOrigin: origin,
+          transform: scaleX < 1 ? `scaleX(${scaleX})` : "none",
+        }}
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
+
+/**
  * ─────────────────────────────────────────────────────────────────────────────
  * AUTHENTIC VTV3 CHALKBOARD BACKGROUND WITH SCIENCE & MATH DOODLES
  * ─────────────────────────────────────────────────────────────────────────────
@@ -2782,35 +2842,51 @@ export function VcnvAnswerRevealGraphic({
 
                       {/* Unified Content Overlay: Name & Answer fade in together from top down */}
                       <g className="v3-row-content" style={{ animationDelay: `${rowDelay}s` }}>
-                        <text
-                          x={cols.cells[0].cx}
-                          y={cols.cells[0].cy + textBaselineOffset}
-                          textAnchor="middle"
-                          fill="#ffffff"
-                          fontWeight="900"
-                          fontSize={nameFontSize}
-                          letterSpacing="0.05em"
-                          className="uppercase font-sans"
-                          style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
-                        >
-                          {seat.name}
-                        </text>
+                        {(() => {
+                          const maxNameW = cols.cells[0].width * 0.86;
+                          const approxNameW = (seat.name || "").length * (nameFontSize * 0.62);
+                          const isLongName = approxNameW > maxNameW;
+                          return (
+                            <text
+                              x={cols.cells[0].cx}
+                              y={cols.cells[0].cy + textBaselineOffset}
+                              textAnchor="middle"
+                              fill="#ffffff"
+                              fontWeight="900"
+                              fontSize={nameFontSize}
+                              letterSpacing={isLongName ? "0.01em" : "0.05em"}
+                              textLength={isLongName ? maxNameW : undefined}
+                              lengthAdjust={isLongName ? "spacingAndGlyphs" : undefined}
+                              className="uppercase font-sans"
+                              style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
+                            >
+                              {seat.name}
+                            </text>
+                          );
+                        })()}
 
-                        {!isWaitingAnswer && (
-                          <text
-                            x={cols.cells[1].cx}
-                            y={cols.cells[1].cy + textBaselineOffset}
-                            textAnchor="middle"
-                            fill={isHighlighted ? "#a7f3d0" : "#ffffff"}
-                            fontWeight="900"
-                            fontSize={ansFontSize}
-                            letterSpacing="0.08em"
-                            className="uppercase font-sans"
-                            style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
-                          >
-                            {answerText || ""}
-                          </text>
-                        )}
+                        {!isWaitingAnswer && (() => {
+                          const maxAnsW = cols.cells[1].width * 0.88;
+                          const approxAnsW = (answerText || "").length * (ansFontSize * 0.62);
+                          const isLongAns = approxAnsW > maxAnsW;
+                          return (
+                            <text
+                              x={cols.cells[1].cx}
+                              y={cols.cells[1].cy + textBaselineOffset}
+                              textAnchor="middle"
+                              fill={isHighlighted ? "#a7f3d0" : "#ffffff"}
+                              fontWeight="900"
+                              fontSize={ansFontSize}
+                              letterSpacing={isLongAns ? "0.01em" : "0.08em"}
+                              textLength={isLongAns ? maxAnsW : undefined}
+                              lengthAdjust={isLongAns ? "spacingAndGlyphs" : undefined}
+                              className="uppercase font-sans"
+                              style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
+                            >
+                              {answerText || ""}
+                            </text>
+                          );
+                        })()}
                       </g>
                     </svg>
                   </div>
@@ -2909,20 +2985,20 @@ export function VcnvAnswerRevealGraphic({
 
               {/* Name column */}
               <div
-                className={`h-full w-56 sm:w-72 md:w-80 px-4 sm:px-6 py-1 flex items-center justify-center font-black text-base sm:text-xl md:text-2xl uppercase tracking-wider truncate shrink-0 leading-normal ${
+                className={`h-full w-56 sm:w-72 md:w-80 px-4 sm:px-6 py-1 flex items-center justify-center font-black text-base sm:text-xl md:text-2xl uppercase tracking-wider shrink-0 leading-normal overflow-hidden ${
                   isHighlighted ? "bg-emerald-400 text-slate-950" : "bg-amber-400 text-slate-950"
                 }`}
               >
-                {seat.name}
+                <BoundedText text={seat.name} />
               </div>
 
               {/* Answer column */}
               <div
-                className={`flex-1 px-4 sm:px-8 py-1.5 text-center font-black text-xl sm:text-3xl md:text-4xl uppercase tracking-widest truncate leading-normal ${
+                className={`flex-1 px-4 sm:px-8 py-1.5 text-center font-black text-xl sm:text-3xl md:text-4xl uppercase tracking-widest leading-normal overflow-hidden ${
                   isHighlighted ? "text-emerald-300 drop-shadow-[0_0_16px_rgba(52,211,153,0.8)]" : "text-white"
                 }`}
               >
-                {isWaitingAnswer ? "" : (answerText || "")}
+                {isWaitingAnswer ? "" : <BoundedText text={answerText || ""} />}
               </div>
             </motion.div>
           );
@@ -3444,33 +3520,52 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
 
                       {/* Unified Content Overlay: Name, Answer & Time all fade in together from top down */}
                       <g className="v3-tt-content" style={{ animationDelay: `${rowDelay}s` }}>
-                        <text
-                          x={cols.cells[0].cx}
-                          y={cols.cells[0].cy + textBaselineOffset}
-                          textAnchor="middle"
-                          fill="#ffffff"
-                          fontWeight="900"
-                          fontSize={nameFontSize}
-                          letterSpacing="0.05em"
-                          className="uppercase font-sans"
-                          style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
-                        >
-                          {seat?.name || `Thí sinh ${item.seat + 1}`}
-                        </text>
+                        {(() => {
+                          const candName = seat?.name || `Thí sinh ${item.seat + 1}`;
+                          const maxNameW = cols.cells[0].width * 0.86;
+                          const approxNameW = candName.length * (nameFontSize * 0.62);
+                          const isLongName = approxNameW > maxNameW;
+                          return (
+                            <text
+                              x={cols.cells[0].cx}
+                              y={cols.cells[0].cy + textBaselineOffset}
+                              textAnchor="middle"
+                              fill="#ffffff"
+                              fontWeight="900"
+                              fontSize={nameFontSize}
+                              letterSpacing={isLongName ? "0.01em" : "0.05em"}
+                              textLength={isLongName ? maxNameW : undefined}
+                              lengthAdjust={isLongName ? "spacingAndGlyphs" : undefined}
+                              className="uppercase font-sans"
+                              style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.85))" }}
+                            >
+                              {candName}
+                            </text>
+                          );
+                        })()}
 
-                        <text
-                          x={cols.cells[1].cx}
-                          y={cols.cells[1].cy + textBaselineOffset}
-                          textAnchor="middle"
-                          fill={isHighlighted ? "#a7f3d0" : "#ffffff"}
-                          fontWeight="900"
-                          fontSize={ansFontSize}
-                          letterSpacing="0.08em"
-                          className="uppercase font-sans"
-                          style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
-                        >
-                          {answerText || ""}
-                        </text>
+                        {(() => {
+                          const maxAnsW = cols.cells[1].width * 0.88;
+                          const approxAnsW = (answerText || "").length * (ansFontSize * 0.62);
+                          const isLongAns = approxAnsW > maxAnsW;
+                          return (
+                            <text
+                              x={cols.cells[1].cx}
+                              y={cols.cells[1].cy + textBaselineOffset}
+                              textAnchor="middle"
+                              fill={isHighlighted ? "#a7f3d0" : "#ffffff"}
+                              fontWeight="900"
+                              fontSize={ansFontSize}
+                              letterSpacing={isLongAns ? "0.01em" : "0.08em"}
+                              textLength={isLongAns ? maxAnsW : undefined}
+                              lengthAdjust={isLongAns ? "spacingAndGlyphs" : undefined}
+                              className="uppercase font-sans"
+                              style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.9))" }}
+                            >
+                              {answerText || ""}
+                            </text>
+                          );
+                        })()}
 
                         <text
                           x={cols.cells[2].cx}
@@ -3601,24 +3696,24 @@ export function TangTocRankedAnswersGraphic({ state }: { state: OlympiaState }) 
                 </div>
 
                 <div className="flex items-center gap-2 z-10 w-56 sm:w-72 shrink-0 overflow-hidden py-1">
-                  <span
-                    className={`font-bold text-lg sm:text-2xl truncate block max-w-full leading-normal ${
+                  <BoundedText
+                    text={seat?.name || `Thí sinh ${item.seat + 1}`}
+                    align="left"
+                    className={`font-bold text-lg sm:text-2xl leading-normal ${
                       isHighlighted ? "text-emerald-300" : "text-slate-100"
                     }`}
-                  >
-                    {seat?.name || `Thí sinh ${item.seat + 1}`}
-                  </span>
+                  />
                 </div>
                 <div className="flex-1 min-w-0 text-center z-10 px-4 py-1.5 overflow-hidden">
-                  <span
-                    className={`font-black text-2xl sm:text-4xl tracking-widest uppercase truncate block max-w-full leading-normal ${
+                  <BoundedText
+                    text={answerText || ""}
+                    align="center"
+                    className={`font-black text-2xl sm:text-4xl tracking-widest uppercase leading-normal ${
                       isHighlighted
                         ? "text-emerald-300 drop-shadow-[0_0_16px_rgba(52,211,153,0.8)]"
                         : "text-white drop-shadow"
                     }`}
-                  >
-                    {answerText || ""}
-                  </span>
+                  />
                 </div>
                 {awardedPts > 0 && (
                   <div className="shrink-0 z-10 pl-2">

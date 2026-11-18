@@ -2564,6 +2564,7 @@ export function CentralLedWall({
   // Open a clean ~1.20m backstage wing corridor on the floor level between Left Base Wall and Hexagon Portal
   const lowerWallStartAng = 1.08 * Math.PI;
   const lowerWallSweepAng = wallSweepAng - 0.02 * Math.PI;
+  const FORMULA_WALL_OFFSET_X = -0.15;
 
   return (
     <group>
@@ -2815,8 +2816,8 @@ export function CentralLedWall({
       </group>
 
       {/* ── 4. STAGE LEFT: CURVED SCIENCE & MATH FORMULA WALL (ELEVATED) ── */}
-      {/* Concentric arc at R=8.6m from [0, 0, -0.5]. Sweeps smoothly to frame all 4 to 8 contestants */}
-      <group position={[0, 2.55, -0.5]}>
+      {/* Concentric arc at R=8.6m from [FORMULA_WALL_OFFSET_X, 0, -0.5]. Sweeps smoothly to frame all 4 to 8 contestants */}
+      <group position={[FORMULA_WALL_OFFSET_X, 2.55, -0.5]}>
         <mesh rotation={[0, 0, 0]}>
           <cylinderGeometry
             args={[8.6, 8.6, 2.4, quality === "LIGHT" ? 32 : 64, 1, true, wallStartAng, wallSweepAng]}
@@ -2837,7 +2838,7 @@ export function CentralLedWall({
       </group>
 
       {/* Underneath Dark Base Wall (Y = 0 to 1.35m at R = 8.62m) on Stage Left */}
-      <mesh position={[0, 0.675, -0.5]}>
+      <mesh position={[FORMULA_WALL_OFFSET_X, 0.675, -0.5]}>
         <cylinderGeometry
           args={[8.62, 8.62, 1.35, quality === "LIGHT" ? 32 : 64, 1, true, lowerWallStartAng, lowerWallSweepAng]}
         />
@@ -2846,7 +2847,7 @@ export function CentralLedWall({
 
       {/* 3 Horizontal Glowing Neon Tubes Underneath Elevated Screen (Y = 0.35m, 0.70m, 1.05m) */}
       {[0.35, 0.70, 1.05].map((h, idx) => (
-        <mesh key={`neon-wire-${idx}`} position={[0, h, -0.5]}>
+        <mesh key={`neon-wire-${idx}`} position={[FORMULA_WALL_OFFSET_X, h, -0.5]}>
           <cylinderGeometry
             args={[8.58, 8.58, 0.035, 64, 1, true, lowerWallStartAng, lowerWallSweepAng]}
           />
@@ -2856,7 +2857,7 @@ export function CentralLedWall({
 
       {/* ── 4B. ARCHITECTURAL WHITE LED MATRIX DOTS ARCH & QUIZORRA LIGHTBOX (IMAGES 3 & 4) ── */}
       {/* Semi-circular concentric arch positioned behind the curved Science Wall at R = 8.85m */}
-      <group position={[0, 2.85, -0.5]}>
+      <group position={[FORMULA_WALL_OFFSET_X, 2.85, -0.5]}>
         <mesh rotation={[0, 0, 0]}>
           <cylinderGeometry
             args={[8.85, 8.85, 3.8, quality === "LIGHT" ? 32 : 64, 1, true, wallStartAng, wallSweepAng]}
@@ -2876,7 +2877,7 @@ export function CentralLedWall({
       </group>
 
       {/* 3D Quizorra Sponsor Illuminated Lightbox centered above Stage Left Dais & Science Wall arc (no 45-deg diamond) */}
-      <group position={[-6.98, 4.05, -3.05]} rotation={[0, 1.22, 0]}>
+      <group position={[-6.98 + FORMULA_WALL_OFFSET_X, 4.05, -3.05]} rotation={[0, 1.22, 0]}>
         <mesh position={[0, 0, 0]}>
           <boxGeometry args={[1.56, 0.52, 0.12]} />
           <meshStandardMaterial color="#02153b" metalness={0.7} roughness={0.25} />

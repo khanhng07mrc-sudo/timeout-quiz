@@ -322,6 +322,19 @@ export function useOlympiaCameraState(
   const lastChpBuzzedSeatRef = useRef<number | null>(null);
   const chpBuzzedAtRef = useRef<number>(0);
 
+  const lastKdQIdxRef = useRef<number>(-1);
+  const kdQuestionEnteredAtRef = useRef<number>(0);
+  const kdFrozenPushRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const qIdx = state?.khoiDong?.qIdx ?? -1;
+    if (qIdx !== lastKdQIdxRef.current) {
+      lastKdQIdxRef.current = qIdx;
+      kdQuestionEnteredAtRef.current = getNow();
+      kdFrozenPushRef.current = null;
+    }
+  }, [state?.khoiDong?.qIdx]);
+
   useEffect(() => {
     if (state?.currentRound && state.currentRound !== lastRoundRef.current) {
       lastRoundRef.current = state.currentRound;
@@ -386,7 +399,12 @@ export function useOlympiaCameraState(
       isThinking ||
       (state?.currentRound === "khoiDong" &&
         state?.khoiDong &&
-        Boolean(state.khoiDong.startCooldownUntil && getNow() < state.khoiDong.startCooldownUntil)) ||
+        (Boolean(state.khoiDong.startCooldownUntil && getNow() < state.khoiDong.startCooldownUntil + 2000) ||
+          (state.khoiDong.started &&
+            state.khoiDong.phase !== "segmentDone" &&
+            state.khoiDong.phase !== "result" &&
+            !state.khoiDong.timer?.startedAt &&
+            getNow() - (kdQuestionEnteredAtRef.current || 0) < 8000))) ||
       (state?.currentRound === "veDich" &&
         state?.veDich &&
         ((state.veDich.phase === "idle" && state.veDich.onStage) ||
@@ -564,7 +582,7 @@ export function useOlympiaCameraState(
       }
 
       // 3.3. Khi nhấn Bắt đầu (trong 3.5s đầu):
-      // Smooth continuous sweep from floor level left of Laurel Vitrine up towards stage/contestant
+      // Smooth continuous sweep từ góc toàn cảnh CAM 14
       if (kd.startCooldownUntil && now < kd.startCooldownUntil) {
         return {
           camAngle: 14,
@@ -574,34 +592,63 @@ export function useOlympiaCameraState(
         };
       }
 
-      // 3.4. Khi đồ hoạ câu hỏi hiện lên (trống nội dung / sẵn sàng):
-      // USER REQUIREMENT: "sau 3.5s nhấn bắt đầu, cut ngay từ góc toàn cảnh sang góc các thí sinh, tránh giật lag vô cớ"
+      // 3.3b. Sau 3.5s đầu: từ góc toàn cảnh zoom (morph) về đúng góc thí sinh tương ứng trong vòng 2s
+      if (kd.startCooldownUntil && now < kd.startCooldownUntil + 2000) {
+        return {
+          camAngle: targetContestantCam,
+          transitionMode: "MORPH",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+
+      // 3.4. Khi đồ hoạ câu hỏi hiện lên nhưng chưa mở nội dung:
       if (!kd.questionRevealed) {
         return {
-          camAngle: targetContestantCam, // CUT dứt khoát sang thí sinh dự thi
+          camAngle: targetContestantCam,
           transitionMode: "CUT",
           isOverlayHidden: false,
           pushInProgress: 0,
         };
       }
 
-      // 3.5. Trong mỗi câu hỏi:
-      // USER REQUIREMENT: "và ở mỗi câu hỏi, hệ thống tiếp tục zoom smooth trong vòng 5s từ 100% lên 115%"
-      // USER REQUIREMENT: "sau khi nhấn câu tiếp, chuyển lại về thí sinh và zoom smooth tiếp, và hiện lại đồ hoạ câu hỏi (không có hiệu ứng fade nữa)"
-      if (kd.phase === "question") {
+      // 3.5. Trong mỗi câu hỏi Khởi Động:
+      // USER REQUIREMENT:
+      // - Ở mỗi câu hỏi, ngay khi nhấn câu tiếp (qIdx thay đổi), tự động zoom in lên tối đa 1.25x lên cận mặt trong khoảng 7.5s
+      // - Zoom in xong trong 7.5s thì đứng yên ở mức zoom tối đa (1.25x / push=1.0), không tự hoàn lại nữa
+      // - Khi chuyển câu tiếp theo: tự quay về mức cũ (1.0x / push=0.0) rồi mới zoom in tiếp
+      // - Khi nhấn tính giờ (isTimerRunning): tạm dừng zoom, đứng yên tại mức hiện tại để tránh xung đột
+      if (kd.phase === "question" || kd.started) {
         if (isSolo) {
+          const isTimerRunning = Boolean(
+            kd.timer?.startedAt &&
+            now >= kd.timer.startedAt &&
+            (!kd.timer.totalMs || (now - kd.timer.startedAt < kd.timer.totalMs))
+          );
+
           let push = 0;
-          if (kd.timer?.startedAt) {
-            const duration = kd.timer.totalMs || 5000;
-            const elapsed = Math.max(0, now - kd.timer.startedAt);
-            push = Math.min(1.0, elapsed / duration);
+          if (isTimerRunning) {
+            // Đóng băng zoom khi timer đang chạy (nhấn tính giờ)
+            if (kdFrozenPushRef.current === null) {
+              const qStart = kdQuestionEnteredAtRef.current || now;
+              const elapsedSec = Math.max(0, ((kd.timer?.startedAt || now) - qStart) / 1000);
+              kdFrozenPushRef.current = Math.min(1.0, elapsedSec / 7.5);
+            }
+            push = kdFrozenPushRef.current;
+          } else {
+            kdFrozenPushRef.current = null;
+            const qStart = kdQuestionEnteredAtRef.current || now;
+            const elapsedSec = Math.max(0, (now - qStart) / 1000);
+            // 7.5s từ 1.0x (push=0.0) lên 1.25x (push=1.0)
+            // Sau 7.5s: Math.min(1.0, ...) giữ chặt ở mức tối đa 1.25x (push=1.0), không tự hoàn lại
+            push = Math.min(1.0, elapsedSec / 7.5);
           }
 
           return {
             camAngle: targetContestantCam,
             transitionMode: "CUT",
             isOverlayHidden: false,
-            pushInProgress: push, // Zoom smooth 100% -> 115%
+            pushInProgress: push, // 0.0 (1.0x) -> 1.0 (1.25x)
           };
         } else {
           // Lượt chung / O22 / O23: Khi có thí sinh bấm chuông, giữ CAM 10 toàn cảnh trong 0.8s để khán giả quan sát đèn đỏ bục trước khi CUT sang cận cảnh thí sinh

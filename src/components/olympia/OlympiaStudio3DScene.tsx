@@ -88,6 +88,8 @@ export interface OlympiaStudio3DSceneProps {
   defaultQuality?: "HIGH" | "MEDIUM" | "LIGHT";
   isSandbox?: boolean;
   isPaused?: boolean;
+  qIdx?: number;
+  questionRevealed?: boolean;
 }
 
 export function OlympiaStudio3DScene({
@@ -104,6 +106,8 @@ export function OlympiaStudio3DScene({
   defaultQuality,
   isSandbox = false,
   isPaused = false,
+  qIdx,
+  questionRevealed,
 }: OlympiaStudio3DSceneProps) {
   // Staggered multi-zone lighting state
   const {
@@ -421,6 +425,8 @@ export function OlympiaStudio3DScene({
           isPostIntroStandby={isRoundPostIntroStandby(state, serverNow ? serverNow() : Date.now())}
           isManualCamera={Boolean(state?.studioCameraManual)}
           serverNow={serverNow}
+          qIdx={qIdx ?? state?.khoiDong?.qIdx ?? -1}
+          questionRevealed={questionRevealed ?? Boolean(state?.khoiDong?.questionRevealed)}
         />
 
         <StudioLighting

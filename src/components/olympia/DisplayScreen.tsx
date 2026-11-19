@@ -257,7 +257,12 @@ export default function DisplayScreen({ code }: { code: string }) {
     emit("action", { type: "studio:camera:reset", all: true });
   }, [emit]);
 
-  // Global Keyboard Shortcut 'R' for Camera Reset (R3)
+  // Studio 3D Pure View Toggle Handler (R1)
+  const handleToggleStudio = useCallback(() => {
+    emit("action", { type: "studio:toggle" });
+  }, [emit]);
+
+  // Global Keyboard Shortcuts 'R' for Camera Reset, 'H' for Studio 3D Toggle
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -273,10 +278,14 @@ export default function DisplayScreen({ code }: { code: string }) {
         e.preventDefault();
         handleResetCamera();
       }
+      if (e.key === "h" || e.key === "H") {
+        e.preventDefault();
+        handleToggleStudio();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleResetCamera]);
+  }, [handleResetCamera, handleToggleStudio]);
 
   const isCameraManual = Boolean(state?.studioCameraManual);
   const isCameraPtzActive = Boolean(
@@ -375,6 +384,7 @@ export default function DisplayScreen({ code }: { code: string }) {
   const isLowerThird = !showFullscreen;
   const isOverlayHidden = cameraState.isOverlayHidden;
   const activeRoundContent = hasActiveRoundContent(state);
+  const isVcnvPureStudio = Boolean(state.showStageGraphics);
   const isVcnvQuadView =
     state.stage === "playing" &&
     !state.banner &&
@@ -384,7 +394,8 @@ export default function DisplayScreen({ code }: { code: string }) {
     state.currentRound === "vcnv" &&
     Boolean(state.vcnv) &&
     !state.vcnv?.answersRevealed &&
-    state.vcnv?.phase !== "waitingAnswer";
+    state.vcnv?.phase !== "waitingAnswer" &&
+    !isVcnvPureStudio;
 
   const is3DPaused = Boolean(
     Boolean(state.banner) ||
@@ -392,7 +403,8 @@ export default function DisplayScreen({ code }: { code: string }) {
       (showFullscreen &&
         state.stage === "playing" &&
         !isOverlayHidden &&
-        !isVcnvQuadView)
+        !isVcnvQuadView &&
+        !(state.currentRound === "vcnv" && isVcnvPureStudio))
   );
 
   return (
@@ -501,6 +513,20 @@ export default function DisplayScreen({ code }: { code: string }) {
           >
             <span>🎥</span>
             <span className="hidden sm:inline">↺ Auto (R)</span>
+          </button>
+          {/* Quick Studio 3D Pure View Toggle Button (H) */}
+          <button
+            type="button"
+            onClick={handleToggleStudio}
+            className={`px-2 py-1 border rounded-lg transition text-xs cursor-pointer flex items-center gap-1 ${
+              state?.showStageGraphics
+                ? "border-cyan-400/60 bg-cyan-500/20 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.4)]"
+                : "border-white/10 text-slate-400 hover:bg-white/5 hover:text-slate-200"
+            }`}
+            title="Bật/Tắt chế độ Trường quay 3D thuần (Phím H)"
+          >
+            <span>🏛️</span>
+            <span className="hidden sm:inline">3D (H)</span>
           </button>
           <span>{connected ? "🟢" : "🔴"}</span>
         </div>
@@ -621,6 +647,8 @@ export default function DisplayScreen({ code }: { code: string }) {
             defaultQuality={isSandboxParam ? "LIGHT" : undefined}
             isSandbox={isSandboxParam}
             isPaused={is3DPaused}
+            qIdx={cameraState.qIdx ?? state?.khoiDong?.qIdx ?? -1}
+            questionRevealed={cameraState.questionRevealed ?? Boolean(state?.khoiDong?.questionRevealed)}
           />
         </div>
 
@@ -643,7 +671,7 @@ export default function DisplayScreen({ code }: { code: string }) {
         )}
 
         {/* In-Game Round Overlays */}
-        {state.stage === "playing" && !state.banner && !isOverlayHidden && !state.summaryState?.active && activeRoundContent && (
+        {state.stage === "playing" && !state.banner && !isOverlayHidden && !state.summaryState?.active && activeRoundContent && !(state.currentRound === "vcnv" && isVcnvPureStudio) && (
           isLowerThird ? (
             /* ── LOWER-THIRD BROADCAST OVERLAY (20 - 25% BOTTOM) ── */
             <div className="w-full px-2 sm:px-6 pb-3.5 sm:pb-5 pt-1 pointer-events-auto flex flex-col justify-end z-20">

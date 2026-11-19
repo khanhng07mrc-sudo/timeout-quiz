@@ -24,6 +24,7 @@ import {
   type OlympiaTranscriptEntry,
   type QA,
   type RoundId,
+  type RulesetId,
   type Seat,
   type StudioCameraPTZ,
   type TangTocState,
@@ -212,7 +213,7 @@ export function sortRounds(rounds: RoundId[]): RoundId[] {
 export class OlympiaGame {
   state: OlympiaState;
   readonly config: OlympiaConfig;
-  readonly ruleset: OlympiaRuleset;
+  ruleset: OlympiaRuleset;
 
   constructor(code: string, config: OlympiaConfig, now = Date.now()) {
     this.config = config;
@@ -371,10 +372,14 @@ export class OlympiaGame {
     sound: string,
     kind: "sound" | "bgm" | "stop" | "pause_bgm" | "resume_bgm" = "sound",
     pan?: "both" | "left" | "right",
-    bgmSound?: string
+    bgmSound?: string,
+    isManual?: boolean
   ) {
+    if (this.state.manualAudioMode && !isManual && kind !== "stop") {
+      return;
+    }
     this.state.cueSeq += 1;
-    this.state.cue = { id: this.state.cueSeq, sound, kind, pan, bgmSound };
+    this.state.cue = { id: this.state.cueSeq, sound, kind, pan, bgmSound, isManual };
   }
   private logMsg(msg: string) {
     this.state.log.push(msg);
@@ -1346,6 +1351,29 @@ export class OlympiaGame {
         }
         return OK;
       }
+      case "audio:set_manual_mode": {
+        const enabled = a.enabled != null ? Boolean(a.enabled) : Boolean(a.manual);
+        st.manualAudioMode = enabled;
+        if (st.manualAudioMode) {
+          this.cue("", "stop", undefined, undefined, true);
+        }
+        return OK;
+      }
+      case "audio:play": {
+        const folder = a.folder || (this.ruleset?.audioSeason ?? "O26");
+        const soundId = String(a.id || a.sound || "");
+        const pan = (a.channel || a.pan) as ("both" | "left" | "right" | undefined);
+        const isBgm = Boolean(a.isBgm);
+        const soundPath = soundId.startsWith("O") || soundId.startsWith("/")
+          ? soundId
+          : `${folder}/${soundId}`;
+        this.cue(soundPath, isBgm ? "bgm" : "sound", pan, undefined, true);
+        return OK;
+      }
+      case "audio:stop": {
+        this.cue("", "stop", undefined, undefined, true);
+        return OK;
+      }
       case "score:adjust": {
         const id = num("seat");
         if (!this.seat(id)) return fail("Ghế không hợp lệ");
@@ -1400,6 +1428,18 @@ export class OlympiaGame {
         this.logMsg(
           `Cài đặt Câu hỏi phụ: ${nextLimit === "unlimited" ? "Không giới hạn số câu" : "Tối đa 3 câu"}`
         );
+        return OK;
+      }
+      case "system:setRuleset": {
+        const rawRs = ((a.ruleset as string) || (a.rulesetId as string) || "") as RulesetId;
+        const nextRs = RULESETS[rawRs];
+        if (!nextRs) return fail("Mùa thi không hợp lệ: " + rawRs);
+        this.ruleset = nextRs;
+        st.rulesetId = nextRs.id;
+        if (!this.config.chpQuestionLimit) {
+          st.chpQuestionLimit = defaultChpQuestionLimitForRuleset(nextRs.id);
+        }
+        this.logMsg(`Đã đổi mùa thi sang: ${nextRs.label || nextRs.id}`);
         return OK;
       }
       case "theme:set": {
@@ -2500,11 +2540,19 @@ export class OlympiaGame {
         const i = Number(a.row);
         if (!(i >= 0 && i <= 4)) return fail("Hàng không hợp lệ");
         if (i === 4) {
-          if (v.centerOpened) return fail("Ô trung tâm đã mở");
+          const all4RowsSelected =
+            v.rows.length >= 4 &&
+            v.rows.slice(0, 4).every((r) => r.opened || r.wrong || (r as any).used);
+          if (!all4RowsSelected && !a.force) {
+            return fail("Cần mở đủ 4 hàng ngang trước khi chọn ô trung tâm");
+          }
+          if (v.centerOpened && v.currentRow === 4) return fail("Ô trung tâm đã mở");
+          if (v.centerOpened && !a.force) return fail("Ô trung tâm đã mở");
           if (!v.centerQuestion) {
             v.centerQuestion = { q: "Câu hỏi gợi ý cuối cùng tại ô trung tâm", a: v.keyword };
           }
           v.currentRow = 4;
+          v.centerOpened = true;
           v.phase = "selecting";
           resetTimer(v.timer, rs.vcnv.rowTimerMs);
           v.answers = {};
@@ -2722,6 +2770,9 @@ export class OlympiaGame {
           r.opened = true;
           v.piecesRevealed[i] = true;
         });
+        if (!v.centerQuestion) {
+          v.centerQuestion = { q: "Câu hỏi gợi ý cuối cùng tại ô trung tâm", a: v.keyword };
+        }
         v.centerOpened = true;
         v.piecesRevealed[4] = true;
         v.phase = "done";
@@ -4128,7 +4179,11 @@ export class OlympiaGame {
       }
       if (s.vcnv.centerQuestion) {
         if (s.vcnv.currentRow === 4 || s.vcnv.centerOpened || s.vcnv.solvedBy != null || s.vcnv.phase === "done") {
-          const showCenterAns = s.vcnv.centerOpened || (s.vcnv.currentRow === 4 && s.vcnv.answersRevealed) || s.vcnv.solvedBy != null || s.vcnv.phase === "done";
+          const showCenterAns =
+            s.vcnv.centerOpened ||
+            s.vcnv.currentRow === 4 ||
+            s.vcnv.solvedBy != null ||
+            s.vcnv.phase === "done";
           s.vcnv.centerQuestion = {
             ...s.vcnv.centerQuestion,
             a: showCenterAns ? s.vcnv.centerQuestion.a : "",

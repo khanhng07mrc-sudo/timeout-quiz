@@ -326,6 +326,7 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
         (action?.type === "banner:hide" ||
           action?.type === "banner:skip" ||
           action?.type === "media:close" ||
+          action?.type === "studio:toggle" ||
           action?.type === "studio:camera" ||
           action?.type === "studio:camera:auto" ||
           action?.type === "studio:camera:reset" ||

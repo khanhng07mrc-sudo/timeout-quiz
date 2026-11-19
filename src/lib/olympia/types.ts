@@ -150,6 +150,7 @@ export interface TangTocQuestion {
   /** optional text prompt shown with the media */
   q?: string;
   answer: string;
+  acceptedAnswers?: string[];
   duration?: number;
   /** question category (O13+: iq = Câu 1 IQ, data = Câu 2 & 4 Dữ kiện, arrange = Câu 3 Sắp xếp 6 mảnh 1..6) */
   category?: "iq" | "data" | "arrange";
@@ -312,6 +313,7 @@ export interface Cue {
   kind: "sound" | "bgm" | "stop" | "pause_bgm" | "resume_bgm";
   pan?: "both" | "left" | "right";
   bgmSound?: string;
+  isManual?: boolean;
 }
 
 export interface OlympiaConfig {
@@ -662,6 +664,8 @@ export interface OlympiaState {
     isOpen: boolean;
     isPlaying: boolean;
   };
+  /** Manual Audio Mode: when true, automatic cues are suppressed and host controls playback manually */
+  manualAudioMode?: boolean;
 }
 
 export interface OlympiaSummaryState {

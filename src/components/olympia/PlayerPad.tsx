@@ -6,6 +6,7 @@ import { ROUND_LABELS, type OlympiaState, type TimerState } from "@/lib/olympia/
 import { getVcnvUnit } from "@/lib/olympia/engine";
 import { useOlympiaSocket, useStableToken, prewarmBuzzerSounds } from "./hooks";
 import { MediaView, SEAT_COLORS, seatName, activeSeats } from "./ui";
+import { BoundedText } from "./Vtv3BroadcastGraphics";
 
 type Emit = (e: string, p?: unknown) => Promise<{ ok: boolean; error?: string }>;
 
@@ -20,8 +21,6 @@ function PlayerPadCountdown({
   isClassic?: boolean;
   isSandbox?: boolean;
 }) {
-  const barRef = useRef<HTMLDivElement>(null);
-
   const getSeconds = useCallback(() => {
     if (!timer) return 0;
     if (timer.startedAt == null) return Math.max(0, Math.ceil((timer.remainingMs ?? 0) / 1000));
@@ -34,46 +33,17 @@ function PlayerPadCountdown({
 
   useEffect(() => {
     setSeconds(getSeconds());
-    if (!running) {
-      if (barRef.current) {
-        const total = Math.max(1, timer?.totalMs || (timer?.remainingMs ?? 1));
-        const rem = Math.max(0, timer?.remainingMs ?? 0);
-        const pct = Math.max(0, Math.min(100, (rem / total) * 100));
-        barRef.current.style.width = `${pct}%`;
-      }
-      return;
-    }
+    if (!running) return;
 
-    let rafId: number;
-    let active = true;
-
-    // 1Hz tick for React state to prevent layout recalculation thrash
+    // 1Hz tick for countdown numerical display
     const intervalId = setInterval(() => {
       setSeconds(getSeconds());
     }, 1000);
 
-    // RAF for hardware-accelerated 60fps smooth progress bar
-    const tick = () => {
-      if (!active) return;
-      if (timer && timer.startedAt != null) {
-        const total = Math.max(1, timer.totalMs || 15000);
-        const elapsed = Math.max(0, serverNow() - timer.startedAt);
-        const rem = Math.max(0, timer.remainingMs - elapsed);
-        const pct = Math.max(0, Math.min(100, (rem / total) * 100));
-        if (barRef.current) {
-          barRef.current.style.width = `${pct}%`;
-        }
-      }
-      rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-
     return () => {
-      active = false;
       clearInterval(intervalId);
-      cancelAnimationFrame(rafId);
     };
-  }, [running, timer, getSeconds, serverNow]);
+  }, [running, timer, getSeconds]);
 
   const low = seconds <= 5 && seconds > 0;
 
@@ -94,19 +64,6 @@ function PlayerPadCountdown({
       >
         <span>⏱️</span>
         <span>{seconds}s</span>
-      </div>
-      <div className="w-full max-w-xs h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/10 mt-1">
-        <div
-          ref={barRef}
-          className={`h-full rounded-full transition-[background-color] duration-200 will-change-[width] ${
-            low
-              ? "bg-gradient-to-r from-red-600 via-rose-500 to-amber-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
-              : isClassic
-              ? "bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-200 shadow-[0_0_6px_rgba(245,158,11,0.5)]"
-              : "bg-gradient-to-r from-indigo-600 via-sky-400 to-emerald-400 shadow-[0_0_6px_rgba(56,189,248,0.5)]"
-          }`}
-          style={{ width: "100%" }}
-        />
       </div>
     </div>
   );
@@ -1144,8 +1101,12 @@ function QuestionBoxContent({
                     <div className={`text-[10px] font-black uppercase ${isClassic ? "text-[#fbbf24]" : "text-amber-300"}`}>
                       Hàng ngang {rIdx + 1} ({lc} {getVcnvUnit(row?.answer || "")})
                     </div>
-                    <div className="text-xs sm:text-sm font-bold truncate mt-0.5">
-                      {isSolved ? row?.answer || "Đã mở" : row?.opened ? "Đã mở (Không có ĐA đúng)" : "🔒 Chưa mở"}
+                    <div className="mt-0.5 min-w-0 overflow-hidden">
+                      <BoundedText
+                        text={isSolved ? row?.answer || "Đã mở" : row?.opened ? "Đã mở (Không có ĐA đúng)" : "🔒 Chưa mở"}
+                        className="text-xs sm:text-sm font-bold"
+                        align="left"
+                      />
                     </div>
                   </div>
                   <span className={`px-1.5 py-0.2 rounded font-black text-[11px] shrink-0 ${

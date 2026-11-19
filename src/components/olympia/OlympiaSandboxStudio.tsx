@@ -854,22 +854,33 @@ function SandboxVcnv({
             <div className="text-slate-300 truncate">{r.hint}</div>
           </button>
         ))}
-        <button
-          disabled={Boolean(v.centerOpened)}
-          onClick={() => {
-            setChecked([]);
-            act("vcnv:selectRow", { row: 4 });
-          }}
-          className={`col-span-2 text-left rounded-lg p-2 border text-xs ${
-            v.currentRow === 4 ? "border-yellow-300 bg-yellow-300/15" : "border-amber-400/30 bg-amber-500/10"
-          } ${v.centerOpened ? "opacity-40" : ""}`}
-        >
-          <div className="font-bold text-amber-300">
-            ⭐ Câu hỏi số 5 — Ô Trung Tâm (+10đ) {v.centerOpened ? "✓" : ""} — ĐA:{" "}
-            <span className="text-emerald-300">{v.centerQuestion?.a || v.keyword}</span>
-          </div>
-          <div className="text-slate-200 truncate">{v.centerQuestion?.q || "Câu hỏi gợi ý cuối cùng tại ô trung tâm"}</div>
-        </button>
+        {(() => {
+          const all4RowsSelected =
+            v.rows.length >= 4 &&
+            v.rows.slice(0, 4).every((r) => r.opened || r.wrong || (r as any).used);
+          const isCenterDisabled = Boolean(v.centerOpened) || !all4RowsSelected;
+          return (
+            <button
+              disabled={isCenterDisabled}
+              onClick={() => {
+                setChecked([]);
+                act("vcnv:selectRow", { row: 4 });
+              }}
+              title={!all4RowsSelected ? "Cần mở đủ 4 hàng ngang trước khi chọn ô trung tâm" : undefined}
+              className={`col-span-2 text-left rounded-lg p-2 border text-xs ${
+                isCenterDisabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
+              } ${
+                v.currentRow === 4 ? "border-yellow-300 bg-yellow-300/15" : "border-amber-400/30 bg-amber-500/10"
+              }`}
+            >
+              <div className="font-bold text-amber-300">
+                ⭐ Câu hỏi số 5 — Ô Trung Tâm (+10đ) {v.centerOpened ? "✓" : ""} — ĐA:{" "}
+                <span className="text-emerald-300">{v.centerQuestion?.a || v.keyword}</span>
+              </div>
+              <div className="text-slate-200 truncate">{v.centerQuestion?.q || "Câu hỏi gợi ý cuối cùng tại ô trung tâm"}</div>
+            </button>
+          );
+        })()}
       </div>
       <Timer timer={v.timer} serverNow={serverNow} />
       <div className="flex flex-wrap gap-1.5">

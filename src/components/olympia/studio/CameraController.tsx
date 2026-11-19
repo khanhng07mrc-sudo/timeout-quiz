@@ -105,11 +105,11 @@ export function isRoundPostIntroStandby(state: OlympiaState | null | undefined, 
   }
   if (state.roundIntroDoneAt && now !== undefined) {
     const elapsed = (now - state.roundIntroDoneAt) / 1000;
-    if (elapsed >= 0 && elapsed < 2.8) {
+    if (elapsed >= 0 && elapsed < 3.5) {
       return true;
     }
   }
-  return false;
+  return !hasActiveRoundContent(state);
 }
 
 export function getContestantArcParams(totalSeats: number = 4): ContestantArcParams {
@@ -299,12 +299,13 @@ export function getWidePodiumsCameraPreset(totalSeats: number = 4): CameraPreset
 export function getWideStageLeftTiltedPreset(totalSeats: number = 4): CameraPreset {
   // Broad studio wide shot angled down towards Stage Left / Contestant Podiums
   // Used for finish-turn return sequence gliding back to default center over 3.0s.
+  // Placed safely in front of grandstand at Z = 12.00m (safely inside open studio, never penetrates rear wall)
   const count = Math.min(8, Math.max(1, totalSeats || 4));
   return {
-    id: 19,
+    id: 29,
     label: "Toàn Cảnh Nghiêng Trái Bục Thí Sinh",
-    pos: [-2.20, 4.30, 13.80],
-    target: [-3.20, 1.40, -2.40],
+    pos: [-1.80, 3.80, 12.00],
+    target: [-2.80, 1.40, -2.00],
     fov: count >= 7 ? 48 : count >= 5 ? 44 : 40,
   };
 }
@@ -350,23 +351,23 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   11: {
     id: 11,
     label: "Cam Cận Cảnh Cửa Trái Chào Sân",
-    // Vị trí đối diện phía trước khán đài, xoay góc sang Cửa Trái, thấy trọn vòm cửa và đón đầu thí sinh
-    pos: [0.00, 2.20, 5.20],
-    target: [1.15, 2.05, 12.85],
+    // Cận cảnh thí sinh bước từ Cửa Trái (X = +1.15m, Z = 12.85m), đứng trước vách không bị khuất Cyclorama
+    pos: [1.15, 1.85, 11.10],
+    target: [1.15, 1.68, 12.85],
   },
   12: {
     id: 12,
     label: "Cam Cận Cảnh Cửa Phải Chào Sân",
-    // Vị trí đối diện phía trước khán đài, xoay góc sang Cửa Phải, thấy trọn vòm cửa và đón đầu thí sinh
-    pos: [0.00, 2.20, 5.20],
-    target: [-1.15, 2.05, 12.85],
+    // Cận cảnh thí sinh bước từ Cửa Phải (X = -1.15m, Z = 12.85m), đứng trước vách không bị khuất Cyclorama
+    pos: [-1.15, 1.85, 11.10],
+    target: [-1.15, 1.68, 12.85],
   },
   13: {
     id: 13,
     label: "Cam Đứng Yên Bục Giữa Tạo Dáng",
-    // Góc cố định toàn thân (Full Body Shot) lấy trọn vẹn từ vòng tròn vàng dưới chân đến đỉnh đầu thí sinh
-    pos: [0.0, 1.70, 5.80],
-    target: [0.0, 1.55, 10.20],
+    // Góc cố định toàn thân (Full Body Shot) lấy trọn vẹn từ bục chân đến đỉnh đầu thí sinh trên Chiếu Nghỉ
+    pos: [0.0, 1.70, 7.35],
+    target: [0.0, 1.45, 10.20],
     fov: 42,
   },
   14: {
@@ -397,7 +398,7 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     id: 19,
     label: "Cam Phía Trước Bám Theo Bước Xuống Cầu Thang",
     // Đặt phía trước sàn bục hướng lên phía khán đài, bám theo chính diện thí sinh bước xuống
-    pos: [0.00, 1.45, 4.20],
+    pos: [0.00, 1.65, 4.80],
     target: [0.00, 1.30, 8.50],
   },
   20: {
@@ -412,6 +413,7 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   26: getContestantCameraPreset(5, 8),
   27: getContestantCameraPreset(6, 8),
   28: getContestantCameraPreset(7, 8),
+  29: getWideStageLeftTiltedPreset(4),
 };
 
 interface CameraControllerProps {
@@ -432,6 +434,8 @@ interface CameraControllerProps {
   isPostIntroStandby?: boolean;
   isManualCamera?: boolean;
   serverNow?: () => number;
+  qIdx?: number;
+  questionRevealed?: boolean;
 }
 
 // Reusable scratch vectors hoisted outside useFrame to eliminate garbage collection sweeps in 60fps frame loop
@@ -508,6 +512,8 @@ export function CameraController({
   isPostIntroStandby = false,
   isManualCamera = false,
   serverNow,
+  qIdx,
+  questionRevealed,
 }: CameraControllerProps) {
   const { camera, size } = useThree();
 
@@ -549,7 +555,7 @@ export function CameraController({
     ? getContestantScreenCameraPreset(activeSeat, effectiveTotalSeats)
     : camAngle === 18
     ? getContestantCameraPreset(activeSeat, effectiveTotalSeats, "wide_with_podium")
-    : camAngle === 19
+    : camAngle === 29
     ? getWideStageLeftTiltedPreset(effectiveTotalSeats)
     : (OLYMPIA_CAM_PRESETS[camAngle] || getWideStageCameraPreset(effectiveTotalSeats));
   const targetPos = useMemo(
@@ -563,26 +569,57 @@ export function CameraController({
 
   const prevCamAngleRef = useRef<number>(camAngle);
   const smoothPushRef = useRef<number>(pushInProgress);
+  const prevQIdxRef = useRef<number>(qIdx ?? -1);
+  const prevRevealedRef = useRef<boolean>(questionRevealed ?? false);
+  const questionZoomStartRef = useRef<number>(0);
+  const glideStartRef = useRef<number | null>(null);
 
   // Handle instant cut on camera switch when mode is CUT, except when in standby or smoothly transitioning out of standby
   useEffect(() => {
-    if (transitionMode === "CUT" && !isPostIntroStandby && standbyExitedAtRef.current == null) {
-      currentPos.current.copy(targetPos);
-      currentTarget.current.copy(targetLookAt);
-    }
     if (prevCamAngleRef.current !== camAngle) {
+      if (transitionMode === "CUT" && !isPostIntroStandby && standbyExitedAtRef.current == null) {
+        currentPos.current.copy(targetPos);
+        currentTarget.current.copy(targetLookAt);
+      }
       smoothPushRef.current = pushInProgress;
       prevCamAngleRef.current = camAngle;
     }
   }, [camAngle, transitionMode, targetPos, targetLookAt, isPostIntroStandby, pushInProgress]);
 
   useFrame((_, delta) => {
-    // Smooth push-in zoom to eliminate abrupt jolt when advancing questions on same camera angle
-    if (prevCamAngleRef.current !== camAngle) {
+    // Smooth push-in zoom:
+    // Track Khởi Động active question and cleanly manage zoom-in lifecycle:
+    const isKdActive = qIdx != null && qIdx >= 0 && Boolean(questionRevealed);
+    const isNewQuestion = isKdActive && (qIdx !== prevQIdxRef.current || !prevRevealedRef.current);
+
+    if (isNewQuestion) {
+      prevQIdxRef.current = qIdx ?? -1;
+      prevRevealedRef.current = Boolean(questionRevealed);
+      const now = serverNow ? serverNow() : Date.now();
+      questionZoomStartRef.current = now;
+      // Snap reset to 1.0x (push = 0) immediately on frame 0 of the new question:
+      // Eliminates the 0.5-1.0s backward damping jerk from 1.25x to 1.0x
+      smoothPushRef.current = 0.0;
+      prevCamAngleRef.current = camAngle;
+    } else if (prevCamAngleRef.current !== camAngle) {
+      if (prevCamAngleRef.current === 29 && camAngle === 1 && transitionMode === "MORPH") {
+        glideStartRef.current = serverNow ? serverNow() : Date.now();
+      }
       smoothPushRef.current = pushInProgress;
       prevCamAngleRef.current = camAngle;
+    } else if (isKdActive && questionZoomStartRef.current > 0) {
+      // 60FPS smooth zoom-in over 7.5s (1.0x -> 1.25x), holding firmly at 1.0 without looping
+      const now = serverNow ? serverNow() : Date.now();
+      const elapsedSec = Math.max(0, (now - questionZoomStartRef.current) / 1000);
+      const targetKdPush = Math.min(1.0, elapsedSec / 7.5);
+      smoothPushRef.current = THREE.MathUtils.damp(smoothPushRef.current, targetKdPush, 8.0, delta);
     } else {
       smoothPushRef.current = THREE.MathUtils.damp(smoothPushRef.current, pushInProgress, 8.0, delta);
+    }
+
+    if (!questionRevealed && prevRevealedRef.current) {
+      prevRevealedRef.current = false;
+      questionZoomStartRef.current = 0;
     }
 
     // 0. True Optical Zoom & Adaptive FOV Calculation
@@ -605,7 +642,7 @@ export function CameraController({
       const activePush = Math.max(0, Math.min(1.0, smoothPushRef.current));
       const zoomFactor = 1.0 + activePush * 0.25;
       const pushFov = opticalFov / zoomFactor;
-      if (transitionMode === "CUT" && prevCamAngleRef.current !== camAngle) {
+      if (transitionMode === "CUT" && (prevCamAngleRef.current !== camAngle || isNewQuestion || (pushInProgress === 0 && smoothPushRef.current === 0))) {
         camera.fov = Math.min(85, Math.max(12, pushFov));
       } else {
         camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 8.0, delta);
@@ -705,21 +742,39 @@ export function CameraController({
       }
     }
 
-    // 0.2. Post-Intro Opening Round Camera Director:
-    // Snappy, dignified 2.8s transition straight to Bục MC (CAM 3) as the MC introduces the round,
-    // then immediately yields control to active gameplay directing.
+    // 0.2. Post-Intro Opening Round Camera Director (applies to all 4 rounds: Khởi Động, VCNV, Tăng Tốc, Về Đích):
+    // Standard 4-Phase Broadcast Sequence after 7.66s intro video finishes:
+    // - Phase 1 (0.0s - 3.5s): Smooth crane sweep from floor-left of Laurel Vitrine (CAM 14) up to Wide Stage (CAM 1)
+    // - Phase 2 (3.5s - 7.5s): Cut to Bục MC (CAM 3) with smooth dolly zoom-in
+    // - Phase 3 (7.5s - 11.5s): Cut to Wide Contestant Podiums (CAM 10) with gentle pan
+    // - Phase 4 (11.5s+): Continuous sweeping panoramic orbit across the 3D studio stage
     if (isPostIntroStandby) {
       const now = serverNow ? serverNow() : Date.now();
       const startAt = roundIntroDoneAt ?? postIntroStandbyStartRef.current ?? now;
       const elapsedSec = Math.max(0, (now - startAt) / 1000);
 
-      if (elapsedSec < 2.8) {
+      if (elapsedSec < 3.5) {
+        _sweepStartPos.set(...OLYMPIA_CAM_PRESETS[14].pos);
+        _sweepStartTarget.set(...OLYMPIA_CAM_PRESETS[14].target);
+        const t = Math.min(1.0, elapsedSec / 3.5);
+        const smoothT = t * t * (3 - 2 * t);
+        _curPos.lerpVectors(_sweepStartPos, _sweepEndPos, smoothT);
+        _curTarget.lerpVectors(_sweepStartTarget, _sweepEndTarget, smoothT);
+
+        currentPos.current.copy(_curPos);
+        currentTarget.current.copy(_curTarget);
+        camera.position.copy(_curPos);
+        camera.lookAt(_curTarget);
+        return;
+      }
+
+      if (elapsedSec < 7.5) {
         const mcPreset = OLYMPIA_CAM_PRESETS[3];
         _sweepStartPos.set(...mcPreset.pos);
         _sweepStartTarget.set(...mcPreset.target);
-        const pushFrac = Math.min(1.0, elapsedSec / 2.8);
+        const pushFrac = Math.min(1.0, (elapsedSec - 3.5) / 4.0);
         _dir.copy(_sweepStartTarget).sub(_sweepStartPos).normalize();
-        _curPos.copy(_sweepStartPos).addScaledVector(_dir, pushFrac * 0.35);
+        _curPos.copy(_sweepStartPos).addScaledVector(_dir, pushFrac * 0.42);
         _curTarget.copy(_sweepStartTarget);
 
         currentPos.current.copy(_curPos);
@@ -728,6 +783,42 @@ export function CameraController({
         camera.lookAt(_curTarget);
         return;
       }
+
+      if (elapsedSec < 11.5) {
+        const widePodiums = getWidePodiumsCameraPreset(effectiveTotalSeats);
+        _sweepStartPos.set(...widePodiums.pos);
+        _sweepStartTarget.set(...widePodiums.target);
+        const panFrac = (elapsedSec - 7.5) / 4.0;
+        _dir.copy(_sweepStartTarget).sub(_sweepStartPos).normalize();
+        _curPos.copy(_sweepStartPos).addScaledVector(_dir, panFrac * 0.35);
+        _curTarget.copy(_sweepStartTarget);
+
+        currentPos.current.copy(_curPos);
+        currentTarget.current.copy(_curTarget);
+        camera.position.copy(_curPos);
+        camera.lookAt(_curTarget);
+        return;
+      }
+
+      // 11.5s+: Continuous sweeping panoramic orbit/pan across the 3D studio stage
+      const orbitElapsed = elapsedSec - 11.5;
+      const sweepAngle = Math.sin(orbitElapsed * ((Math.PI * 2) / 14.0)) * 0.22;
+      const heightBob = Math.sin(orbitElapsed * ((Math.PI * 2) / 7.0)) * 0.15;
+
+      _curPos.set(
+        Math.sin(sweepAngle) * 12.2,
+        3.8 + heightBob,
+        Math.cos(sweepAngle) * 12.2
+      );
+      _curTarget.set(-0.5, 1.55, -3.2);
+
+      const lerpSpeed = Math.min(1.0, delta * 3.5);
+      currentPos.current.lerp(_curPos, lerpSpeed);
+      currentTarget.current.lerp(_curTarget, lerpSpeed);
+
+      camera.position.copy(currentPos.current);
+      camera.lookAt(currentTarget.current);
+      return;
     }
 
     // 1. Calculate subtle broadcast push-in (dolly) towards target
@@ -748,8 +839,27 @@ export function CameraController({
 
     // 2. Smooth interpolation or instant positioning:
     // When transitioning from standby to question framing, smoothly glide (lerp) into position without snapping.
-    // When remaining on the same camera angle (e.g. advancing question), lerp smoothly with smoothPush instead of jarring snap.
-    if (transitionMode === "CUT" && !isExitingStandby && prevCamAngleRef.current !== camAngle) {
+    // When remaining on the same camera angle (e.g. advancing question), snap on new question to eliminate backward jerk.
+    // When finishing a turn (CAM 29 to CAM 1), glide smoothly over 3.0 seconds.
+    if (isNewQuestion) {
+      // Snap camera directly to baseline 1.0x preset (push = 0) immediately,
+      // completely eliminating any backward interpolation jerk from 1.25x to 1.0x
+      currentPos.current.copy(targetPos);
+      currentTarget.current.copy(targetLookAt);
+    } else if (glideStartRef.current != null) {
+      const elapsedGlide = (now - glideStartRef.current) / 3000;
+      if (elapsedGlide >= 1.0) {
+        glideStartRef.current = null;
+        currentPos.current.copy(_effectivePos);
+        currentTarget.current.copy(targetLookAt);
+      } else {
+        const smoothGlide = elapsedGlide * elapsedGlide * (3 - 2 * elapsedGlide);
+        const cam29 = getWideStageLeftTiltedPreset(effectiveTotalSeats);
+        const cam1 = getWideStageCameraPreset(effectiveTotalSeats);
+        currentPos.current.lerpVectors(new THREE.Vector3(...cam29.pos), new THREE.Vector3(...cam1.pos), smoothGlide);
+        currentTarget.current.lerpVectors(new THREE.Vector3(...cam29.target), new THREE.Vector3(...cam1.target), smoothGlide);
+      }
+    } else if (transitionMode === "CUT" && !isExitingStandby && prevCamAngleRef.current !== camAngle) {
       currentPos.current.copy(_effectivePos);
       currentTarget.current.copy(targetLookAt);
     } else {

@@ -214,7 +214,7 @@ test("VCNV Question #5 (Center Question): +10 pts and post-center CNV points (20
 
   act(g13, "game:start");
 
-  act(g13, "vcnv:selectRow", { row: 4 }); // Center question (#5)
+  act(g13, "vcnv:selectRow", { row: 4, force: true }); // Center question (#5)
 
   act(g13, "vcnv:timer", {}, 0);
 
@@ -242,7 +242,7 @@ test("VCNV Question #5 (Center Question): +10 pts and post-center CNV points (20
 
   act(g14, "game:start");
 
-  act(g14, "vcnv:selectRow", { row: 4 });
+  act(g14, "vcnv:selectRow", { row: 4, force: true });
 
   act(g14, "vcnv:revealTile");
 
@@ -3654,6 +3654,159 @@ test("Studio Camera PTZ Isolation & Reset: PTZ state stored per-camera and can b
   act(g, "studio:camera:reset", { all: true }, 4000);
   assert.equal(g.state.studioCameraPtz, undefined, "All camera PTZ entries cleared");
 });
+
+test("M1: VCNV center row selection constraint (all 4 rows required unless force: true)", () => {
+  const g = game("O26", ["vcnv"], 4);
+  act(g, "game:start");
+
+  // Attempting to select center obstacle (row 4) without opening rows 0..3 fails
+  const resEarly = g.hostAction({ type: "vcnv:selectRow", row: 4 }, 0);
+  assert.equal(resEarly.ok, false, "Selecting row 4 before all 4 rows are opened must fail");
+  assert.ok(
+    resEarly.error?.includes("Cần mở đủ 4 hàng ngang"),
+    `Expected constraint message, got: ${resEarly.error}`
+  );
+
+  // Administrative override (force: true) allows selecting row 4 even if rows 0..3 are not open
+  const gForce = game("O26", ["vcnv"], 4);
+  act(gForce, "game:start");
+  const resForce = gForce.hostAction({ type: "vcnv:selectRow", row: 4, force: true }, 0);
+  assert.equal(resForce.ok, true, "force: true must bypass the constraint");
+  assert.equal(gForce.state.vcnv?.currentRow, 4);
+  assert.equal(gForce.state.vcnv?.centerOpened, true, "Selecting row 4 auto-reveals center row");
+
+  // In normal game: open row 0, 1, 2, 3
+  act(g, "vcnv:selectRow", { row: 0 });
+  act(g, "vcnv:correct");
+  act(g, "vcnv:selectRow", { row: 1 });
+  act(g, "vcnv:wrong");
+  act(g, "vcnv:selectRow", { row: 2 });
+  act(g, "vcnv:correct");
+  act(g, "vcnv:selectRow", { row: 3 });
+  act(g, "vcnv:wrong");
+
+  // Now all 4 rows have been played and opened/wrong
+  const resAfterAll4 = g.hostAction({ type: "vcnv:selectRow", row: 4 }, 0);
+  assert.equal(resAfterAll4.ok, true, "Selecting row 4 after all 4 rows are resolved must succeed");
+  assert.equal(g.state.vcnv?.currentRow, 4);
+  assert.equal(g.state.vcnv?.centerOpened, true);
+});
+
+test("M1: VCNV Center Keyword Auto-Reveal and view() non-host visibility", () => {
+  // Scenario 1: Host selects row 4 -> center keyword is revealed to non-host views
+  const g1 = game("O26", ["vcnv"], 4);
+  act(g1, "game:start");
+  act(g1, "vcnv:selectRow", { row: 4, force: true });
+  assert.equal(g1.state.vcnv?.centerOpened, true);
+
+  const displayView1 = g1.view("display");
+  assert.ok(displayView1.vcnv?.centerQuestion, "centerQuestion exists on display view");
+  assert.equal(
+    displayView1.vcnv?.centerQuestion?.a,
+    g1.state.vcnv?.centerQuestion?.a,
+    "Display view sees center keyword when row 4 is selected"
+  );
+
+  const playerView1 = g1.view("player", 0);
+  assert.equal(
+    playerView1.vcnv?.centerQuestion?.a,
+    g1.state.vcnv?.centerQuestion?.a,
+    "Player view sees center keyword when row 4 is selected"
+  );
+
+  // Scenario 2: CNV is solved on row 0 -> center question and keyword are automatically revealed
+  const g2 = game("O26", ["vcnv"], 4);
+  act(g2, "game:start");
+  act(g2, "vcnv:selectRow", { row: 0 });
+  g2.playerBuzz(0, 1000);
+  act(g2, "vcnv:correctCNV", { seat: 0 });
+
+  assert.equal(g2.state.vcnv?.centerOpened, true);
+  assert.ok(g2.state.vcnv?.centerQuestion, "centerQuestion initialized on correctCNV");
+
+  const displayView2 = g2.view("display");
+  assert.equal(
+    displayView2.vcnv?.centerQuestion?.a,
+    g2.state.vcnv?.centerQuestion?.a,
+    "Display view sees center keyword when CNV is solved"
+  );
+});
+
+test("M1: Manual Audio Mode Server Sync & Studio Speaker Routing (audio:play / audio:stop)", () => {
+  const g = game("O26", ["vcnv"], 4);
+  act(g, "game:start");
+
+  // Initial state: manualAudioMode is undefined/false
+  assert.equal(Boolean(g.state.manualAudioMode), false);
+
+  // 1. Enable manual audio mode
+  const resMode = g.hostAction({ type: "audio:set_manual_mode", enabled: true }, 0);
+  assert.equal(resMode.ok, true);
+  assert.equal(g.state.manualAudioMode, true);
+  // Enables manual mode and issues a stop cue with isManual: true
+  assert.equal(g.state.cue?.kind, "stop");
+  assert.equal(g.state.cue?.isManual, true);
+
+  const stopCueId = g.state.cue?.id;
+
+  // 2. Auto cues are suppressed in manual mode
+  act(g, "vcnv:selectRow", { row: 0 });
+  // Selecting a row would normally trigger choose_row cue; in manual mode it must be suppressed
+  assert.equal(g.state.cue?.id, stopCueId, "Auto cue choose_row must NOT have updated cue in manual mode");
+
+  // 3. Manual audio play from host audio manager
+  act(g, "audio:play", {
+    folder: "O26",
+    id: "1_KhoiDong/start_round",
+    channel: "left",
+    isBgm: true,
+  });
+  assert.notEqual(g.state.cue?.id, stopCueId);
+  assert.equal(g.state.cue?.sound, "O26/1_KhoiDong/start_round");
+  assert.equal(g.state.cue?.kind, "bgm");
+  assert.equal(g.state.cue?.pan, "left");
+  assert.equal(g.state.cue?.isManual, true, "Manual play must set isManual: true");
+
+  // 4. Manual audio stop
+  act(g, "audio:stop", {});
+  assert.equal(g.state.cue?.kind, "stop");
+  assert.equal(g.state.cue?.isManual, true);
+
+  // 5. Disable manual audio mode -> returns to auto mode
+  act(g, "audio:set_manual_mode", { enabled: false });
+  assert.equal(g.state.manualAudioMode, false);
+
+  // Auto cues work again
+  act(g, "vcnv:selectRow", { row: 1 });
+  assert.equal(g.state.cue?.sound, "2_VuotChuongNgaiVat/choose_row");
+  assert.equal(Boolean(g.state.cue?.isManual), false);
+});
+
+test("M2: Sandbox system:setRuleset hot-reloads ruleset in-place without room exit", () => {
+  const g = game("O26", ["khoiDong", "vcnv", "tangToc", "veDich"], 4);
+  assert.equal(g.state.rulesetId, "O26");
+  assert.equal(g.ruleset.id, "O26");
+
+  // Switch to O21
+  const res1 = g.hostAction({ type: "system:setRuleset", ruleset: "O21" }, 0);
+  assert.equal(res1.ok, true);
+  assert.equal(g.state.rulesetId, "O21");
+  assert.equal(g.ruleset.id, "O21");
+
+  // Switch to O13 using rulesetId payload
+  const res2 = g.hostAction({ type: "system:setRuleset", rulesetId: "O13" }, 0);
+  assert.equal(res2.ok, true);
+  assert.equal(g.state.rulesetId, "O13");
+  assert.equal(g.ruleset.id, "O13");
+
+  // Invalid ruleset is rejected
+  const resInvalid = g.hostAction({ type: "system:setRuleset", ruleset: "O999" }, 0);
+  assert.equal(resInvalid.ok, false);
+  assert.match(resInvalid.error!, /không hợp lệ/);
+  // Stays on O13
+  assert.equal(g.state.rulesetId, "O13");
+});
+
 
 
 

@@ -10,6 +10,8 @@ export interface OlympiaCameraState {
   transitionMode: "CUT" | "MORPH";
   isOverlayHidden: boolean;
   pushInProgress: number;
+  qIdx?: number;
+  questionRevealed?: boolean;
 }
 
 /**
@@ -362,17 +364,21 @@ export function useOlympiaCameraState(
   const chpBuzzedAtRef = useRef<number>(0);
 
   const lastKdQIdxRef = useRef<number>(-1);
+  const lastKdRevealedRef = useRef<boolean>(false);
   const kdQuestionEnteredAtRef = useRef<number>(0);
   const kdFrozenPushRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    const qIdx = state?.khoiDong?.qIdx ?? -1;
-    if (qIdx !== lastKdQIdxRef.current) {
-      lastKdQIdxRef.current = qIdx;
-      kdQuestionEnteredAtRef.current = getNow();
-      kdFrozenPushRef.current = null;
-    }
-  }, [state?.khoiDong?.qIdx]);
+  // Synchronously update question entered timestamp on render frame 0 of a new question
+  const kdQIdx = state?.khoiDong?.qIdx ?? -1;
+  const kdRevealed = Boolean(state?.khoiDong?.questionRevealed);
+  if (kdQIdx !== lastKdQIdxRef.current || (kdRevealed && !lastKdRevealedRef.current)) {
+    lastKdQIdxRef.current = kdQIdx;
+    lastKdRevealedRef.current = kdRevealed;
+    kdQuestionEnteredAtRef.current = getNow();
+    kdFrozenPushRef.current = null;
+  } else if (!kdRevealed) {
+    lastKdRevealedRef.current = false;
+  }
 
   useEffect(() => {
     if (state?.currentRound && state.currentRound !== lastRoundRef.current) {
@@ -426,7 +432,6 @@ export function useOlympiaCameraState(
 
   const isThinking = Boolean(
     (state?.currentRound === "veDich" && state?.veDich?.phase === "thinking" && state?.veDich?.timer?.startedAt) ||
-      (state?.currentRound === "khoiDong" && state?.khoiDong?.phase === "question" && state?.khoiDong?.timer?.startedAt) ||
       (state?.currentRound === "vcnv" && state?.vcnv?.timer?.startedAt)
   );
 
@@ -436,14 +441,8 @@ export function useOlympiaCameraState(
       isRoundPostIntroStandby(state, getNow()) ||
       hasActiveBuzzer ||
       isThinking ||
-      (state?.currentRound === "khoiDong" &&
-        state?.khoiDong &&
-        (Boolean(state.khoiDong.startCooldownUntil && getNow() < state.khoiDong.startCooldownUntil + 2000) ||
-          (state.khoiDong.started &&
-            state.khoiDong.phase !== "segmentDone" &&
-            state.khoiDong.phase !== "result" &&
-            !state.khoiDong.timer?.startedAt &&
-            getNow() - (kdQuestionEnteredAtRef.current || 0) < 8000))) ||
+      (state?.currentRound === "khoiDong" && state?.khoiDong?.phase === "segmentDone") ||
+      Boolean(state?.summaryState?.active) ||
       (state?.currentRound === "veDich" &&
         state?.veDich &&
         ((state.veDich.phase === "idle" && state.veDich.onStage) ||
@@ -457,7 +456,7 @@ export function useOlympiaCameraState(
     return () => clearInterval(id);
   }, [needsTimedCameraTicker]);
 
-  return useMemo(() => {
+  const baseCameraState = useMemo<OlympiaCameraState>(() => {
     // Default fallback
     const defaultState: OlympiaCameraState = {
       camAngle: 3,
@@ -563,21 +562,40 @@ export function useOlympiaCameraState(
     }
 
     // 2.8. Post-Intro Opening Round Camera Sequence (applies to all 4 rounds: Khởi Động, VCNV, Tăng Tốc, Về Đích):
-    // Right when the 7.66s video intro unmounts (!state.banner) and start_round audio plays:
-    // First 2.8s: CAM 3 Bục MC. Hết 2.8s: Mặc định zoom out toàn cảnh CAM 1 khi chưa bắt đầu thi đấu.
+    // Standard 4-Phase Broadcast Sequence after 7.66s intro video finishes:
+    // - Phase 1 (0.0s - 3.5s): CAM 14 (Cẩu quay Vòng nguyệt quế quét lên)
+    // - Phase 2 (3.5s - 7.5s): CAM 3 (Bục MC giới thiệu thể lệ vòng thi)
+    // - Phase 3 (7.5s - 11.5s): CAM 10 (Toàn cảnh bục thí sinh sẵn sàng)
+    // - Phase 4 (11.5s+): CAM 1 (Toàn cảnh trường quay lướt bao quát)
     if (isRoundPostIntroStandby(state, now)) {
       const baseTime = state?.roundIntroDoneAt ?? roundEnteredAtRef.current;
       const postIntroElapsed = Math.max(0, (now - baseTime) / 1000);
-      if (postIntroElapsed < 2.8) {
+      if (postIntroElapsed < 3.5) {
+        return {
+          camAngle: 14,
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: 0.1,
+        };
+      }
+      if (postIntroElapsed < 7.5) {
         return {
           camAngle: 3,
           transitionMode: "CUT",
           isOverlayHidden: false,
-          pushInProgress: Math.min(1.0, postIntroElapsed / 2.8) * 0.20,
+          pushInProgress: Math.min(1.0, (postIntroElapsed - 3.5) / 4.0) * 0.25,
+        };
+      }
+      if (postIntroElapsed < 11.5) {
+        return {
+          camAngle: 10,
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: 0.1,
         };
       }
       return {
-        camAngle: 1, // Hết 2.8s mặc định zoom out toàn cảnh (lúc đó đã thi đâu)
+        camAngle: 1, // Hết 11.5s lướt toàn cảnh trường quay chờ Host bắt đầu
         transitionMode: "MORPH",
         isOverlayHidden: false,
         pushInProgress: 0,
@@ -629,7 +647,7 @@ export function useOlympiaCameraState(
 
       // 3.3. Khi nhấn Bắt đầu (trong 3.5s đầu):
       // Smooth continuous sweep từ góc toàn cảnh CAM 14
-      if (kd.startCooldownUntil && now < kd.startCooldownUntil) {
+      if (kd.startCooldownUntil && now < kd.startCooldownUntil && !kd.questionRevealed) {
         return {
           camAngle: 14,
           transitionMode: "MORPH",
@@ -639,7 +657,7 @@ export function useOlympiaCameraState(
       }
 
       // 3.3b. Sau 3.5s đầu: từ góc toàn cảnh zoom (morph) về đúng góc thí sinh tương ứng trong vòng 2s
-      if (kd.startCooldownUntil && now < kd.startCooldownUntil + 2000) {
+      if (kd.startCooldownUntil && now < kd.startCooldownUntil + 2000 && !kd.questionRevealed) {
         return {
           camAngle: targetContestantCam,
           transitionMode: "MORPH",
@@ -749,7 +767,7 @@ export function useOlympiaCameraState(
         if (segDoneElapsed < 4.5) {
           const isImmediateCut = segDoneElapsed < 1.58;
           return {
-            camAngle: segDoneElapsed < 2.5 ? 19 : 1,
+            camAngle: segDoneElapsed < 2.5 ? 29 : 1,
             transitionMode: isImmediateCut ? "CUT" : "MORPH",
             isOverlayHidden: false,
             pushInProgress: 0,
@@ -944,4 +962,10 @@ export function useOlympiaCameraState(
     state?.cauHoiPhu?.buzzedSeat,
     tick,
   ]);
+
+  return useMemo(() => ({
+    ...baseCameraState,
+    qIdx: state?.khoiDong?.qIdx ?? -1,
+    questionRevealed: Boolean(state?.khoiDong?.questionRevealed),
+  }), [baseCameraState, state?.khoiDong?.qIdx, state?.khoiDong?.questionRevealed]);
 }

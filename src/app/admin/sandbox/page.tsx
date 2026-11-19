@@ -486,6 +486,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
   const [showCheatDropdown, setShowCheatDropdown] = useState(false);
   const [cheatMenuPos, setCheatMenuPos] = useState({ top: 0, right: 0 });
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [showOlympiaSeasonModal, setShowOlympiaSeasonModal] = useState(false);
   const [showUtilitiesDropdown, setShowUtilitiesDropdown] = useState(false);
   const [showMagicWheelMCDropdown, setShowMagicWheelMCDropdown] = useState(false);
   const [revealPayload, setRevealPayload] = useState<any>(null);
@@ -666,6 +667,12 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
       olympiaSocketRef.current.emit("action", { type, ...extra });
     }
   }, []);
+
+  const handleSelectOlympiaRuleset = useCallback((newRulesetId: string) => {
+    setOlympiaRulesetId(newRulesetId);
+    sendOlympiaAction("system:setRuleset", { ruleset: newRulesetId, rulesetId: newRulesetId });
+    setShowOlympiaSeasonModal(false);
+  }, [sendOlympiaAction]);
 
   // Authoritative ticker for match warmup countdown (5s)
   useEffect(() => {
@@ -11655,10 +11662,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                 {effectiveActiveMode === "OLYMPIA" && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelectedMode("OLYMPIA");
-                      handleExitSandboxRoom();
-                    }}
+                    onClick={() => setShowOlympiaSeasonModal(true)}
                     title="Đổi mùa thi đấu Olympia (O13 - O27)"
                     className="px-2 py-0.5 rounded glass border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 text-[11px] font-bold transition shrink-0 whitespace-nowrap cursor-pointer flex items-center gap-0.5 shadow-sm"
                   >
@@ -14090,6 +14094,76 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
         onClose={() => setShowRulesModal(false)}
       />
 
+      {/* ── Modal: Chọn & Đổi mùa thi đấu Olympia (O13 - O27) ── */}
+      {showOlympiaSeasonModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowOlympiaSeasonModal(false)}
+        >
+          <div
+            className="w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-2xl border-2 border-amber-400/60 bg-[#0f172a] shadow-2xl p-5 flex flex-col gap-4 text-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🏔️</span>
+                <div>
+                  <h4 className="font-black text-base text-amber-300 uppercase tracking-wide">
+                    Đổi Mùa Thi Đấu Olympia
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    Hot-reload thể thức và bộ luật thi đấu ngay trong phòng (O13 - O27)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOlympiaSeasonModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center cursor-pointer transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs text-slate-300">
+                Mùa thi hiện tại:{" "}
+                <strong className="text-amber-300">
+                  {RULESET_YEAR_BUTTONS.find((b) => b.id === (olympiaState?.rulesetId || (roomState?.config as any)?.olympia?.rulesetId || olympiaRulesetId))?.fullTitle || `Olympia ${olympiaRulesetId}`}
+                </strong>
+              </p>
+              <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 pt-1">
+                {RULESET_YEAR_BUTTONS.map((btnItem) => {
+                  const currentId = olympiaState?.rulesetId || (roomState?.config as any)?.olympia?.rulesetId || olympiaRulesetId;
+                  const active = currentId === btnItem.id;
+                  return (
+                    <button
+                      key={btnItem.id}
+                      type="button"
+                      onClick={() => handleSelectOlympiaRuleset(btnItem.id)}
+                      className={`p-2.5 rounded-xl border text-left font-bold transition cursor-pointer flex flex-col justify-between gap-1 ${
+                        active
+                          ? "border-amber-400 bg-amber-400/25 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.3)] ring-1 ring-amber-400"
+                          : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:border-amber-400/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-black text-sm text-amber-300">Mùa {btnItem.numberLabel}</span>
+                        {active && <span className="text-xs text-emerald-400 font-bold">✓ Đang chọn</span>}
+                      </div>
+                      <span className="text-[11px] text-slate-300 line-clamp-1">{btnItem.fullTitle}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="pt-2 text-[11px] text-amber-400/80 italic">
+                * Thể thức thi đấu sẽ được cập nhật trực tiếp trên toàn bộ máy chủ và các màn hình mà không bị thoát phòng.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Global Settings Modal ─────────────────────────────────────────── */}
       
       {/* ── Global/Room Settings Modal (Accessible anytime) ── */}
@@ -14143,9 +14217,8 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                             type="button"
                             title={btnItem.fullTitle}
                             onClick={() => {
-                              setOlympiaRulesetId(btnItem.id);
+                              handleSelectOlympiaRuleset(btnItem.id);
                               setShowSettingsDropdown(false);
-                              handleExitSandboxRoom();
                             }}
                             className={`py-1.5 px-1 rounded-lg border text-center font-black text-xs transition cursor-pointer ${
                               active
@@ -14159,7 +14232,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                       })}
                     </div>
                     <span className="text-[9px] text-amber-400 block italic">
-                      * Nhấn vào một mùa khác để thoát phòng hiện tại và tạo phòng mới theo thể thức mùa đó.
+                      * Nhấn vào một mùa để chuyển đổi thể thức thi đấu ngay tại chỗ mà không bị thoát phòng.
                     </span>
 
                     {/* 🏆 Kiểu Tổng Kết Điểm (Summary Mode) */}

@@ -1195,6 +1195,7 @@ export function useOlympiaAudio(
     if (!enabled) return;
     const handleFastCue: FastCueListener = (cue) => {
       if (!cue || cue.kind === "stop" || !cue.sound) return;
+      if (state?.manualAudioMode && !cue.isManual) return;
       if (dispatchedFastCueIds.has(cue.id)) return;
       dispatchedFastCueIds.add(cue.id);
       lastCue.current = cue.id;
@@ -1269,11 +1270,15 @@ export function useOlympiaAudio(
     return () => {
       fastCueListeners.delete(handleFastCue);
     };
-  }, [enabled, audioSeason, channel, getAudioContext, pauseBgm, connectPanner, registerActive]);
+  }, [enabled, audioSeason, channel, getAudioContext, pauseBgm, connectPanner, registerActive, state?.manualAudioMode]);
 
   useEffect(() => {
     const cue = state?.cue;
     if (!cue) return;
+    if (state?.manualAudioMode && !cue.isManual && cue.kind !== "stop") {
+      lastCue.current = cue.id;
+      return;
+    }
     if (dispatchedFastCueIds.has(cue.id)) {
       lastCue.current = cue.id;
       return;
@@ -1316,7 +1321,14 @@ export function useOlympiaAudio(
 
     if (cue.kind === "stop" || !cue.sound) {
       pendingCueRef.current = null;
-      stopBgm();
+      stopBgm(true);
+      activeAudioSet.current.forEach((a) => {
+        try {
+          a.pause();
+          a.currentTime = 0;
+        } catch {}
+      });
+      activeAudioSet.current.clear();
       return;
     }
 
@@ -1372,7 +1384,14 @@ export function useOlympiaAudio(
     const play = (s: string, fallback: boolean) => {
       // Channel routing is handled entirely by WebAudio panner (connectPanner).
       // Always load the base stereo file so channel switches never restart playback.
-      const soundUrl = `/olympia-audio/${s}/${cue.sound}.mp3`;
+      let soundUrl: string;
+      if (cue.sound.startsWith("/") || cue.sound.startsWith("http")) {
+        soundUrl = cue.sound;
+      } else if (/^O(?:13-21|22|23|24-25|26)\//.test(cue.sound)) {
+        soundUrl = `/olympia-audio/${cue.sound.replace(/\.mp3$/, "")}.mp3`;
+      } else {
+        soundUrl = `/olympia-audio/${s}/${cue.sound.replace(/\.mp3$/, "")}.mp3`;
+      }
 
       let a: HTMLAudioElement;
       const isFrequentSfx = cue.sound.endsWith("bell_ring") || cue.sound.endsWith("correct") || cue.sound.endsWith("wrong");

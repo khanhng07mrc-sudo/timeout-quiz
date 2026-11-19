@@ -94,6 +94,15 @@ if [ -f "/etc/nginx/sites-available/quizorra" ]; then
   fi
 fi
 
+# 5c. Cấu hình CORS header Access-Control-Allow-Origin: * cho /olympia-audio/
+if [ -f "/etc/nginx/sites-available/quizorra" ]; then
+  if ! grep -q "location /olympia-audio/" /etc/nginx/sites-available/quizorra; then
+    echo "  -> Bổ sung cấu hình CORS cho /olympia-audio/ vào Nginx..."
+    sed -i '/location \/ {/i \    location /olympia-audio/ {\n        proxy_pass http://127.0.0.1:3000;\n        add_header '\''Access-Control-Allow-Origin'\'' '\''*'\'' always;\n        add_header '\''Access-Control-Allow-Methods'\'' '\''GET, HEAD, OPTIONS'\'' always;\n        add_header '\''Access-Control-Allow-Headers'\'' '\''*'\'' always;\n        if ($request_method = OPTIONS) {\n            return 204;\n        }\n    }\n' /etc/nginx/sites-available/quizorra
+    nginx -t && systemctl reload nginx 2>/dev/null || true
+  fi
+fi
+
 # 6. Kiểm tra tình trạng hoạt động nội bộ (Internal Healthcheck loop)
 echo "[6/7] Running local healthcheck..."
 sleep 3

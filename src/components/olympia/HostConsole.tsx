@@ -3,8 +3,9 @@
 import React, { useEffect, useState, useRef, useMemo, useLayoutEffect } from "react";
 import { RULESETS, cnvPointsFor } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, ROUND_ORDER, canStartScoreSummary, seatToStudioCamera, type OlympiaState, type RoundId, type Seat, type O22Quarter, type TimerState } from "@/lib/olympia/types";
-import { normalizeAnswer, cleanVcnvWord, getVcnvUnit } from "@/lib/olympia/engine";
+import { normalizeAnswer, cleanVcnvWord, getVcnvUnit, parseVcnvAnswer } from "@/lib/olympia/engine";
 import { useOlympiaAudio, useOlympiaSocket, useCountdown } from "./hooks";
+import { BoundedText } from "./Vtv3BroadcastGraphics";
 import OlympiaTranscriptModal from "./OlympiaTranscriptModal";
 import OlympiaAudioManagerDrawer from "./OlympiaAudioManagerDrawer";
 import OlympiaRulesWikipediaModal from "./OlympiaRulesWikipediaModal";
@@ -1075,10 +1076,30 @@ export const HostConsole = React.memo(function HostConsole({
             {/* 2. Separate Answer, Subject & Explanation Card Box */}
             <div className="rounded-xl border border-emerald-500/35 bg-gradient-to-r from-emerald-950/45 via-[#0b1f1a]/70 to-purple-950/35 p-2 flex flex-col gap-1.5 shadow-md backdrop-blur-sm">
               {/* Green box: ĐÁP ÁN */}
-              <div className="rounded-lg bg-emerald-900/50 border border-emerald-400/40 px-2.5 py-1 text-xs text-emerald-200 flex items-center gap-2 shadow-inner">
-                <span className="font-black text-emerald-400 shrink-0 text-[11px] uppercase tracking-wider">ĐÁP ÁN:</span>
-                <span className="font-bold text-xs tracking-wide text-emerald-100 select-text">{getAnswerText(state) || "--"}</span>
-              </div>
+              {(() => {
+                const { primary, alternates } = getStructuredAnswers(state);
+                return (
+                  <div className="rounded-lg bg-emerald-900/50 border border-emerald-400/40 px-2.5 py-1.5 text-xs text-emerald-200 flex flex-col gap-1 shadow-inner">
+                    <div className="flex items-start gap-2">
+                      <span className="font-black text-emerald-400 shrink-0 text-[11px] uppercase tracking-wider">ĐÁP ÁN:</span>
+                      <span className="font-bold text-xs tracking-wide text-emerald-100 select-text">{primary || "--"}</span>
+                    </div>
+                    {alternates.length > 0 && (
+                      <div className="pl-3.5 border-l-2 border-emerald-400/40 space-y-0.5 mt-0.5">
+                        <div className="text-[10px] font-bold text-emerald-400/80 uppercase tracking-wide">
+                          Đáp án chấp nhận:
+                        </div>
+                        {alternates.map((alt, i) => (
+                          <div key={i} className="text-xs text-emerald-200 font-semibold select-text flex items-center gap-1.5">
+                            <span className="text-emerald-400 text-[10px] shrink-0">•</span>
+                            <span>{alt}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Cyan / Sky box: LĨNH VỰC (if available) */}
               {getSubjectText(state) && (
@@ -2170,14 +2191,14 @@ export const HostConsole = React.memo(function HostConsole({
       </div>
 
       {/* ── BOTTOM BAR: CONTESTANT CARDS RESPONSIVE (2 ROWS x 4 COLUMNS / MIN 160PX) ── */}
-      <footer className="border-t border-violet-500/15 bg-black/25 px-2 py-1.5 pb-2 sm:pb-1.5 shrink-0 max-h-[170px] overflow-y-auto">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+      <footer className="border-t border-violet-500/15 bg-black/25 px-2 py-1 shrink-0 max-h-[135px] overflow-y-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
           {state.seats.map((s, idx) => {
             const isEditing = editingSeatId === s.id;
             return (
               <div
                 key={s.id}
-                className="min-w-[160px] rounded-lg border border-cyan-500/25 bg-slate-900/95 px-2.5 py-1.5 flex flex-col justify-between gap-1.5 relative overflow-hidden shadow"
+                className="min-w-[160px] rounded-lg border border-cyan-500/25 bg-slate-900/95 px-2 py-1 flex flex-col justify-between gap-1 relative overflow-hidden shadow"
                 style={{ borderLeft: `3.5px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}` }}
               >
                 {/* DÒNG TRÊN: Tên thí sinh (nếu tên dài thu nhỏ chiều ngang, giữ nguyên chiều dọc) */}
@@ -2241,11 +2262,11 @@ export const HostConsole = React.memo(function HostConsole({
                 </div>
 
                 {/* DÒNG DƯỚI: Ô gõ điểm, nút cộng, trừ rộng rãi, dễ bấm */}
-                <div className="w-full flex items-center gap-1.5">
+                <div className="w-full flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => call("score:adjust", { seat: s.id, delta: -10 })}
-                    className="w-8 h-7 sm:w-9 sm:h-7.5 rounded bg-rose-500/25 border border-rose-500/40 hover:bg-rose-500/40 text-rose-300 text-xs sm:text-sm font-black cursor-pointer flex items-center justify-center transition shrink-0"
+                    className="w-9 h-6 sm:w-10 sm:h-6.5 rounded bg-rose-500/25 border border-rose-500/40 hover:bg-rose-500/40 text-rose-300 text-xs sm:text-sm font-black cursor-pointer flex items-center justify-center transition shrink-0"
                     title="Trừ 10 điểm"
                   >
                     -
@@ -2265,13 +2286,13 @@ export const HostConsole = React.memo(function HostConsole({
                         call("score:set", { seat: s.id, score: val });
                       }
                     }}
-                    className="flex-1 min-w-[50px] h-7 sm:h-7.5 px-2 rounded bg-black/60 border border-amber-400/40 text-amber-300 text-center text-xs sm:text-sm font-black leading-tight focus:outline-none focus:border-amber-400 shadow-inner"
+                    className="flex-1 min-w-[45px] h-6 sm:h-6.5 px-1.5 rounded bg-black/60 border border-amber-400/40 text-amber-300 text-center text-xs sm:text-sm font-black leading-tight focus:outline-none focus:border-amber-400 shadow-inner"
                     title="Gõ điểm trực tiếp (Enter để lưu)"
                   />
                   <button
                     type="button"
                     onClick={() => call("score:adjust", { seat: s.id, delta: 10 })}
-                    className="w-8 h-7 sm:w-9 sm:h-7.5 rounded bg-emerald-500/25 border border-emerald-500/40 hover:bg-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-black cursor-pointer flex items-center justify-center transition shrink-0"
+                    className="w-9 h-6 sm:w-10 sm:h-6.5 rounded bg-emerald-500/25 border border-emerald-500/40 hover:bg-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-black cursor-pointer flex items-center justify-center transition shrink-0"
                     title="Cộng 10 điểm"
                   >
                     +
@@ -3068,12 +3089,11 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                 <div className="flex-1 min-w-0 rounded-md bg-black/55 border border-white/10 px-2.5 py-1 min-h-[30px] flex items-center justify-between gap-2 overflow-hidden">
                   <div className="flex items-center gap-2 min-w-0 overflow-hidden flex-1">
                     {ans?.text ? (
-                      <span
-                        className="font-black text-xs sm:text-[13px] text-amber-300 uppercase tracking-wide truncate select-text"
-                        title={ans.text}
-                      >
-                        {ans.text}
-                      </span>
+                      <BoundedText
+                        text={ans.text}
+                        className="font-black text-xs sm:text-[13px] text-amber-300 uppercase tracking-wide select-text flex-1"
+                        align="left"
+                      />
                     ) : (
                       <span className="text-[11px] text-slate-500 italic">Chưa gửi đáp án</span>
                     )}
@@ -3151,10 +3171,12 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
                     : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
                 }`}
               >
-                <span>
+                <span className="shrink-0 whitespace-nowrap">
                   Hàng {rIdx + 1} ({lc} {unit}) {v.rows[rIdx]?.opened ? "✓" : ""}
                 </span>
-                <span className="text-[10px] text-amber-300/80 truncate max-w-[90px]">{rowAns}</span>
+                <div className="min-w-0 flex-1 overflow-hidden ml-2">
+                  <BoundedText text={rowAns} className="text-[10px] text-amber-300/80" align="right" />
+                </div>
               </button>
             );
           })}
@@ -3162,22 +3184,33 @@ function VcnvDeck({ state, call, seats }: { state: OlympiaState; call: Call; sea
             const centerAns = v.centerQuestion?.a || v.keyword || "";
             const centerLen = cleanVcnvWord(centerAns).length || "?";
             const centerUnit = getVcnvUnit(centerAns);
+            const all4RowsSelected =
+              v.rows.length >= 4 &&
+              v.rows.slice(0, 4).every((r) => r.opened || r.wrong || (r as any).used);
+            const isCenterDisabled = !all4RowsSelected || (v.centerOpened && v.currentRow !== 4);
             return (
               <button
                 type="button"
+                disabled={isCenterDisabled}
                 onClick={() => call("vcnv:selectRow", { row: 4 })}
-                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold border transition flex items-center justify-between cursor-pointer ${
-                  v.currentRow === 4
-                    ? "bg-yellow-400/20 border-yellow-400 text-yellow-200"
-                    : v.centerOpened
-                    ? "bg-white/5 border-white/10 text-slate-500"
-                    : "bg-amber-500/10 border-amber-400/30 text-amber-300 hover:bg-amber-500/20"
+                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold border transition flex items-center justify-between ${
+                  isCenterDisabled
+                    ? "bg-white/5 border-white/5 text-slate-600 opacity-40 cursor-not-allowed"
+                    : "cursor-pointer " +
+                      (v.currentRow === 4
+                        ? "bg-yellow-400/20 border-yellow-400 text-yellow-200"
+                        : v.centerOpened
+                        ? "bg-white/5 border-white/10 text-slate-500"
+                        : "bg-amber-500/10 border-amber-400/30 text-amber-300 hover:bg-amber-500/20")
                 }`}
+                title={!all4RowsSelected ? "Cần mở đủ 4 hàng ngang trước khi chọn ô trung tâm" : undefined}
               >
-                <span>
+                <span className="shrink-0 whitespace-nowrap">
                   Trung Tâm ({centerLen} {centerUnit}) {v.centerOpened ? "✓" : ""}
                 </span>
-                <span className="text-[10px] text-amber-300/80 truncate max-w-[90px]">{centerAns}</span>
+                <div className="min-w-0 flex-1 overflow-hidden ml-2">
+                  <BoundedText text={centerAns} className="text-[10px] text-amber-300/80" align="right" />
+                </div>
               </button>
             );
           })()}
@@ -4569,6 +4602,66 @@ function getAnswerText(st: OlympiaState): string {
     return "";
   }
   return "";
+}
+
+function getStructuredAnswers(st: OlympiaState): { primary: string; alternates: string[] } {
+  if (!isQuestionRevealedToHost(st)) return { primary: "", alternates: [] };
+
+  if (st.currentRound === "vcnv") {
+    let rawAns = "";
+    let existingAccepted: string[] = [];
+    if (st.vcnv?.currentRow === 4) {
+      rawAns = st.vcnv.centerQuestion?.a || st.vcnv.keyword || "";
+    } else if (st.vcnv?.currentRow != null && st.vcnv.currentRow >= 0) {
+      const row = st.vcnv.rows[st.vcnv.currentRow];
+      rawAns = row?.answer || "";
+      if (Array.isArray(row?.acceptedAnswers)) {
+        existingAccepted = row.acceptedAnswers;
+      }
+    }
+    const parsed = parseVcnvAnswer(rawAns);
+    const primary = parsed.primary || rawAns;
+    const alts = Array.from(new Set([...(parsed.acceptedAnswers || []), ...existingAccepted])).filter(
+      (a) => a && a.trim().toLowerCase() !== primary.trim().toLowerCase()
+    );
+    return { primary, alternates: alts };
+  }
+
+  if (st.currentRound === "tangToc") {
+    if (!st.tangToc || st.tangToc.qIdx < 0) return { primary: "", alternates: [] };
+    const curQ = st.tangToc.questions[st.tangToc.qIdx];
+    const rawAns = curQ?.answer || "";
+    const alternates: string[] = [];
+    if (Array.isArray(curQ?.acceptedAnswers)) {
+      alternates.push(...curQ.acceptedAnswers);
+    }
+    const trimmed = rawAns.trim();
+    let primary = trimmed;
+    const parenMatch = trimmed.match(/^([^()]+)\s*\(([^()]+)\)\s*$/);
+    if (parenMatch) {
+      primary = parenMatch[1].trim();
+      let note = parenMatch[2].trim();
+      note = note.replace(/^(chấp nhận cả|chấp nhận|hoặc|đáp án khác|đồng nghĩa)[:\s]*/i, "");
+      const parts = note.split(/\s*(?:hoặc|hay|,|;|\/|\|)\s*/i);
+      for (const p of parts) {
+        const c = p.trim();
+        if (c) alternates.push(c);
+      }
+    } else if (trimmed.includes("/") || trimmed.includes("|")) {
+      const parts = trimmed.split(/\s*(?:\/|\|)\s*/);
+      primary = parts[0].trim();
+      for (let i = 1; i < parts.length; i++) {
+        const c = parts[i].trim();
+        if (c) alternates.push(c);
+      }
+    }
+    const uniqueAlts = Array.from(new Set(alternates)).filter(
+      (a) => a && a.trim().toLowerCase() !== primary.trim().toLowerCase()
+    );
+    return { primary, alternates: uniqueAlts };
+  }
+
+  return { primary: getAnswerText(st), alternates: [] };
 }
 
 function getSubjectText(st: OlympiaState): string {

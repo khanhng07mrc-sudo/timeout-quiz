@@ -1680,8 +1680,8 @@ export function ClassicUnifiedLowerThird({
           <div className="w-[125px] sm:w-[145px] shrink-0 flex items-center justify-start gap-1.5 overflow-hidden">
             <div className="w-3.5 h-3.5 rounded-full classic-rivet-red shrink-0" />
             {badgeLabel ? (
-              <div className="px-2 sm:px-2.5 py-0.5 rounded-md bg-amber-950/90 border border-amber-400/80 text-amber-300 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow shadow-sm truncate max-w-[110px] sm:max-w-[125px]">
-                {badgeLabel}
+              <div className="px-2 sm:px-2.5 py-0.5 rounded-md bg-amber-950/90 border border-amber-400/80 text-amber-300 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow shadow-sm max-w-[110px] sm:max-w-[125px] overflow-hidden">
+                <BoundedText text={badgeLabel} align="center" />
               </div>
             ) : null}
           </div>
@@ -2411,9 +2411,11 @@ export function VcnvCountdownGraphic({
                 <div className="px-4 py-1 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 text-xs sm:text-sm font-black uppercase tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.5)]">
                   CHƯỚNG NGẠI VẬT ĐÃ ĐƯỢC GIẢI MÃ
                 </div>
-                <div className="text-2xl sm:text-4xl md:text-5xl font-black text-amber-300 tracking-wider drop-shadow-[0_4px_16px_rgba(245,158,11,0.8)]">
-                  {v.keyword || "—"}
-                </div>
+                <BoundedText
+                  text={v.keyword || "—"}
+                  className="text-2xl sm:text-4xl md:text-5xl font-black text-amber-300 tracking-wider drop-shadow-[0_4px_16px_rgba(245,158,11,0.8)]"
+                  align="center"
+                />
                 {v.solvedBy != null && state.seats[v.solvedBy] && (
                   <div className="text-sm sm:text-lg text-cyan-200 font-bold">
                     Chúc mừng thí sinh <span className="text-white font-black underline">{state.seats[v.solvedBy].name}</span>!

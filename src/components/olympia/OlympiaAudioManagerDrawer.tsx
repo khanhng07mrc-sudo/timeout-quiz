@@ -222,6 +222,8 @@ export interface OlympiaAudioManagerDrawerProps {
   audioSeason?: AudioSeason;
   autoAudioMode?: boolean;
   onToggleAutoAudioMode?: (autoMode: boolean) => void;
+  onPlayAudio?: (params: { folder: string; id: string; channel?: "both" | "left" | "right"; isBgm?: boolean }) => void;
+  onStopAudio?: (params?: { id?: string }) => void;
 }
 
 export default function OlympiaAudioManagerDrawer({
@@ -230,6 +232,8 @@ export default function OlympiaAudioManagerDrawer({
   audioSeason = "O26",
   autoAudioMode = true,
   onToggleAutoAudioMode,
+  onPlayAudio,
+  onStopAudio,
 }: OlympiaAudioManagerDrawerProps) {
   const [activeTab, setActiveTab] = useState<"O26" | "O24-25" | "O22" | "O13-21">(() => {
     if (audioSeason === "O24-25") return "O24-25";
@@ -368,6 +372,10 @@ export default function OlympiaAudioManagerDrawer({
     stopAllAudio();
 
     const folder = activeTab;
+    const isBgm = id.includes("tick") || id.includes("start_round") || id.includes("intro") || id.includes("practice") || id.includes("bgm") || id.includes("on_stage");
+    if (!autoAudioMode) {
+      onPlayAudio?.({ folder, id, channel, isBgm });
+    }
     // Always load the base stereo file. Dual-mono channel routing (left/right/both)
     // is performed dynamically in real time via connectPanner (WebAudio ChannelSplitter/Merger),
     // ensuring switching channels mid-playback seamlessly re-routes without reloading or restarting.
@@ -415,6 +423,9 @@ export default function OlympiaAudioManagerDrawer({
       activeAudiosRef.current.delete(id);
     }
     setPlayingId((curr) => (curr === id ? null : curr));
+    if (!autoAudioMode) {
+      onStopAudio?.({ id });
+    }
   };
 
   const stopAllAudio = () => {
@@ -427,6 +438,9 @@ export default function OlympiaAudioManagerDrawer({
     });
     activeAudiosRef.current.clear();
     setPlayingId(null);
+    if (!autoAudioMode) {
+      onStopAudio?.();
+    }
 
     // Also stop any global background sounds currently playing
     if (typeof window !== "undefined") {

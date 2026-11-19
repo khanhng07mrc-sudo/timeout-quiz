@@ -17,6 +17,7 @@ const PORT = Number(process.env.PORT) || 3005;
 const PRIMARY_DIR = path.resolve(PROJECT_ROOT, "public/screenshots/olympia27");
 const MIRROR_DIRS = [
   path.resolve(PROJECT_ROOT, "public/screenshots"),
+  path.resolve("C:/Users/khanh/.gemini/antigravity/scratch/teamwork/def12d49-12c2-48bc-8594-b60e652de31b/.agents/teamwork/worker_implement_1/screenshots"),
   path.resolve("C:/Users/khanh/.gemini/antigravity/scratch/teamwork/d6688681-9209-4339-8192-184060e0f2df/.agents/teamwork/e2e_testing_orch/screenshots"),
   path.resolve("C:/Users/khanh/.gemini/antigravity/scratch/teamwork/d6688681-9209-4339-8192-184060e0f2df/.agents/teamwork/e2e_test_writer_1/screenshots"),
 ];

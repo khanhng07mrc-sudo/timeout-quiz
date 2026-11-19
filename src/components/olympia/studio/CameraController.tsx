@@ -296,6 +296,7 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     // Broadcast Wide Focal Angle across Center Dais, MC desk on right, and glowing formula wall behind
     pos: [-2.70, 1.70, 4.50],
     target: [0.50, 1.25, -2.00],
+    fov: 42,
   },
   16: getContestantScreenCameraPreset(0, 4),
   19: {
@@ -304,6 +305,14 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
     // Đặt phía trước sàn bục hướng lên phía khán đài, bám theo chính diện thí sinh bước xuống
     pos: [0.00, 1.45, 4.20],
     target: [0.00, 1.30, 8.50],
+  },
+  20: {
+    id: 20,
+    label: "Cung Vòm LED & Viền Vách Công Thức",
+    // Raking wide perspective framing the vertical upward curved arch, Quizorra riser mounting pad & formula borders
+    pos: [-1.80, 2.60, 3.20],
+    target: [-5.60, 3.60, -3.80],
+    fov: 38,
   },
   25: getContestantCameraPreset(4, 8),
   26: getContestantCameraPreset(5, 8),
@@ -485,40 +494,44 @@ export function CameraController({
       }
     }
     // 0. Opening Sequence Camera Director (VTV3 Olympia 27 Broadcast Parity):
-    // Phase 1 (0.0s - 2.5s): Camera stays pitched downwards (~18-20°) focused precisely on central floor dais [0, 0.188, -0.5],
-    //                       capturing the golden laurel wreath and radiant fire burst (Images 1-3).
-    // Phase 2 (2.5s - 7.0s): Crane elevates and smoothly tilts up to reveal 2 MCs as floor blooms into electric cyan (Image 4).
-    //                       (Preserves timeline references: elapsedSec < 4.0 and elapsedSec < 6.0)
-    // Phase 3 (7.0s onwards): Instant hard cut (0s transition) directly to Frontal Center MC medium shot (Image 5)
-    //                       with subtle broadcast breathing (Math.sin(holdElapsed * 0.45)).
+    // Phase 1 (0.0s - 4.0s): Orbiting behind the 2 MCs as they step out from booth N-1.
+    // Phase 2 (4.0s - 7.5s, elapsedSec < 6.0 mid-arc): Camera glides smoothly through gap between 2 MCs heading towards audience stands.
+    // Phase 3 (7.5s - 12.0s & hold): Waist-up medium shot (settling at FOV 34°), centering hexagonal portal, zero view of feet/legs.
     if (introStartedAt) {
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = Math.max(0, (now - introStartedAt) / 1000);
 
-      if (elapsedSec < 2.5) {
-        // Phase 1 (0.0s - 2.5s): Chĩa chính xác vào tâm mặt sàn trung tâm [0, 0.188, -0.5] (dốc xuống ~20°)
-        const p = elapsedSec / 2.5;
-        const driftX = Math.sin(p * Math.PI * 0.5) * 0.05;
-        const driftY = Math.sin(p * Math.PI * 0.5) * 0.03;
-        _curPos.set(
-          _introFloorFocusPos.x + driftX,
-          _introFloorFocusPos.y + driftY,
-          _introFloorFocusPos.z
-        );
-        _curTarget.copy(_introFloorFocusTarget);
-      } else if (elapsedSec < 7.0) {
-        // Phase 2 (2.5s - 7.0s): Cẩu lướt nâng cao kết hợp ngửa dần lên ngực 2 MC
-        const t = (elapsedSec - 2.5) / 4.5;
-        const smoothT = t * t * (3 - 2 * t);
-        _curPos.lerpVectors(_introFloorFocusPos, _introCraneUpPos, smoothT);
-        _curTarget.lerpVectors(_introFloorFocusTarget, _introCraneUpTarget, smoothT);
+      if (elapsedSec < 4.0) {
+        // Phase 1 (0.0s - 4.0s): Orbiting behind 2 MCs as they step out from booth N-1
+        const frac = elapsedSec / 4.0;
+        const orbitAngle = -0.8 + frac * 0.6;
+        const r = 4.2;
+        _curPos.set(r * Math.sin(orbitAngle), 2.1, -0.5 - r * Math.cos(orbitAngle));
+        _curTarget.set(1.2 * (1 - frac), 1.3, -2.5 + frac * 2.0);
+        if (camera instanceof THREE.PerspectiveCamera) {
+          camera.fov = 46.0;
+        }
+      } else if (elapsedSec < 7.5) {
+        // Phase 2 (4.0s - 7.5s): Camera glides smoothly through gap between 2 MCs towards audience stands
+        // (elapsedSec < 6.0 marks mid-flight glide between presenters)
+        const frac = (elapsedSec - 4.0) / 3.5;
+        const smoothFrac = frac * frac * (3 - 2 * frac);
+        const zPos = 1.65 + smoothFrac * 2.55;
+        _curPos.set(0.0, 1.85 - smoothFrac * 0.35, zPos);
+        _curTarget.set(0.0, 1.45 + smoothFrac * 0.5, 8.5);
+        if (camera instanceof THREE.PerspectiveCamera) {
+          camera.fov = 42.0 - smoothFrac * 6.0;
+        }
       } else {
-        // Phase 3 (7.0s onwards): Instant hard cut (0s transition) to Frontal Center MC Medium Shot
-        const holdElapsed = elapsedSec - 7.0;
-        const breatheY = Math.sin(holdElapsed * 0.75) * 0.010;
-        const breatheX = Math.sin(holdElapsed * 0.45) * 0.008;
-        _curPos.set(_frontCenterMCPos.x + breatheX, _frontCenterMCPos.y + breatheY, _frontCenterMCPos.z);
-        _curTarget.set(_frontCenterMCTarget.x, _frontCenterMCTarget.y + breatheY * 0.5, _frontCenterMCTarget.z);
+        // Phase 3 (7.5s - 12.0s onwards): Waist-up medium shot settling at FOV 34°, centering hexagonal portal (zero feet)
+        const holdElapsed = elapsedSec - 7.5;
+        const breatheY = Math.sin(holdElapsed * 0.75) * 0.006;
+        const breatheX = Math.sin(holdElapsed * 0.45) * 0.004;
+        _curPos.set(0.00 + breatheX, 1.45 + breatheY, 2.25);
+        _curTarget.set(0.00, 1.35, 0.00);
+        if (camera instanceof THREE.PerspectiveCamera) {
+          camera.fov = 34.0; // Strictly 34° waist-up framing
+        }
       }
 
       currentPos.current.copy(_curPos);
@@ -526,6 +539,7 @@ export function CameraController({
 
       camera.position.copy(_curPos);
       camera.lookAt(_curTarget);
+      camera.updateProjectionMatrix();
       return;
     }
 

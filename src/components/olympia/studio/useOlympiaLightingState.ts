@@ -17,6 +17,7 @@ export interface StudioLightingState {
   activeMainContestantSeat: number | null;
   is5sBuzzerChasing: boolean;
   spotlightChaseIndex: number;
+  spotlightChaseIndices?: number[];
   lockedSpotlightSeat: number | null;
 }
 
@@ -186,6 +187,79 @@ export function calculateZoneFade(
   const rawProgress = (elapsedSec - delaySec) / Math.max(0.001, durationSec);
   const smoothed = hermiteSmoothstep(rawProgress);
   return fromVal + (toVal - fromVal) * smoothed;
+}
+
+/**
+ * 5s Steal Ceiling Chasing Spotlights Oracle & Runtime Calculation
+ * - 0.5s step per light, sequential cyclic sweep
+ * - Maximum 2 lights active simultaneously (active current + trailing decay)
+ * - Buzz completes current 0.5s cycle before locking steady spotlight on buzzed seat
+ */
+export function evaluate5sStealSpotlights(
+  elapsedSec: number,
+  totalSeats: number = 4,
+  buzzedSeat: number | null = null,
+  buzzElapsedSec: number | null = null
+): {
+  isChasing: boolean;
+  activeLightIndices: number[];
+  lockedSeat: number | null;
+  activeLightCount: number;
+} {
+  const t = Math.max(0, elapsedSec);
+  const seats = Math.min(8, Math.max(1, totalSeats));
+
+  // If buzz happened, check if buzz completed its current 0.5s step before locking:
+  if (buzzedSeat != null && buzzElapsedSec != null && t >= buzzElapsedSec) {
+    const stepAtBuzz = Math.floor(buzzElapsedSec / 0.5);
+    const stepCompletionTime = (stepAtBuzz + 1) * 0.5;
+    if (t < stepCompletionTime) {
+      // Still completing active 0.5s step:
+      const curSeat = stepAtBuzz % seats;
+      const prevSeat = (stepAtBuzz - 1 + seats) % seats;
+      return {
+        isChasing: true,
+        activeLightIndices: [curSeat, prevSeat].filter((s, idx, arr) => arr.indexOf(s) === idx),
+        lockedSeat: null,
+        activeLightCount: 2,
+      };
+    } else {
+      // Completed active step -> locks steady spotlight on buzzing contestant:
+      return {
+        isChasing: false,
+        activeLightIndices: [buzzedSeat],
+        lockedSeat: buzzedSeat,
+        activeLightCount: 1,
+      };
+    }
+  }
+
+  // 5s countdown expired without buzz -> all spotlights turn off:
+  if (t >= 5.0) {
+    return {
+      isChasing: false,
+      activeLightIndices: [],
+      lockedSeat: null,
+      activeLightCount: 0,
+    };
+  }
+
+  // Active chasing sweep: 0.5s step
+  const stepIdx = Math.floor(t / 0.5);
+  const currentSeat = stepIdx % seats;
+  const trailingSeat = (stepIdx - 1 + seats) % seats;
+  const stepFraction = (t % 0.5) / 0.5;
+
+  // Max 2 lights simultaneously active: current seat (rising) + trailing seat (falling)
+  const activeLights = stepFraction < 0.35 ? [trailingSeat, currentSeat] : [currentSeat];
+  const uniqueActive = Array.from(new Set(activeLights));
+
+  return {
+    isChasing: true,
+    activeLightIndices: uniqueActive,
+    lockedSeat: null,
+    activeLightCount: uniqueActive.length,
+  };
 }
 
 /**
@@ -405,19 +479,65 @@ export function useOlympiaLightingState(
       ? soloKdSeat
       : null;
 
-  const is5sBuzzerChasing = Boolean(
-    isVeDich && vd?.phase === "stealing" && vd?.steal?.buzzedSeat == null
-  );
-  const lockedSpotlightSeat =
-    isVeDich && vd?.steal?.buzzedSeat != null ? vd.steal.buzzedSeat : null;
+  const isStealPhase = Boolean(isVeDich && vd?.phase === "stealing");
+  const rawBuzzedSeat = isVeDich && vd?.steal?.buzzedSeat != null ? vd.steal.buzzedSeat : null;
+  const isStealActive = isStealPhase || (isVeDich && vd?.phase === "result" && rawBuzzedSeat != null);
+  const totalSeats = state?.seats?.length || 4;
 
-  // Ticker for Về Đích 5s chase effect: strictly gated on is5sBuzzerChasing
-  const [chaseTick, setChaseTick] = useState(0);
+  const [chaseState, setChaseState] = useState<{
+    isChasing: boolean;
+    activeIndices: number[];
+    lockedSeat: number | null;
+  }>({
+    isChasing: isStealPhase && rawBuzzedSeat == null,
+    activeIndices: [0],
+    lockedSeat: rawBuzzedSeat,
+  });
+
+  const buzzTimestampRef = useRef<number | null>(null);
+  const stealStartedAtRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (!is5sBuzzerChasing) return;
-    const iv = setInterval(() => setChaseTick((c) => (c + 1) % 4), 160);
-    return () => clearInterval(iv);
-  }, [is5sBuzzerChasing]);
+    if (!isStealActive) {
+      buzzTimestampRef.current = null;
+      stealStartedAtRef.current = null;
+      setChaseState({
+        isChasing: false,
+        activeIndices: [0],
+        lockedSeat: null,
+      });
+      return;
+    }
+
+    if (stealStartedAtRef.current == null) {
+      stealStartedAtRef.current = vd?.steal?.timer?.startedAt ?? getNow();
+    }
+
+    if (rawBuzzedSeat != null && buzzTimestampRef.current == null) {
+      buzzTimestampRef.current = getNow();
+    }
+
+    const updateChase = () => {
+      const now = getNow();
+      const startedAt = stealStartedAtRef.current ?? now;
+      const elapsedSec = Math.max(0, (now - startedAt) / 1000);
+      const buzzElapsedSec =
+        buzzTimestampRef.current != null ? Math.max(0, (buzzTimestampRef.current - startedAt) / 1000) : null;
+      const res = evaluate5sStealSpotlights(elapsedSec, totalSeats, rawBuzzedSeat, buzzElapsedSec);
+      setChaseState({
+        isChasing: res.isChasing,
+        activeIndices: res.activeLightIndices.length > 0 ? res.activeLightIndices : [0],
+        lockedSeat: res.lockedSeat,
+      });
+    };
+
+    updateChase();
+    const interval = setInterval(updateChase, 40);
+    return () => clearInterval(interval);
+  }, [isStealActive, rawBuzzedSeat, totalSeats, getNow, vd?.steal?.timer?.startedAt]);
+
+  const is5sBuzzerChasing = chaseState.isChasing || (isStealPhase && rawBuzzedSeat == null);
+  const lockedSpotlightSeat = chaseState.lockedSeat ?? rawBuzzedSeat;
 
   return {
     targetMode: currentMode,
@@ -431,7 +551,8 @@ export function useOlympiaLightingState(
     isVeDichDimmed,
     activeMainContestantSeat,
     is5sBuzzerChasing,
-    spotlightChaseIndex: chaseTick,
+    spotlightChaseIndex: chaseState.activeIndices[0] ?? 0,
+    spotlightChaseIndices: chaseState.activeIndices,
     lockedSpotlightSeat,
   };
 }

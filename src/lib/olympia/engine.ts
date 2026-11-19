@@ -1445,6 +1445,18 @@ export class OlympiaGame {
         s.school = String(a.school || "").slice(0, 60);
         return OK;
       }
+      case "intro:start":
+      case "intro:replay": {
+        st.introTimer = mkTimer(86400000);
+        startTimer(st.introTimer, now);
+        st.introStandby = true;
+        st.studioCameraManual = false;
+        st.entranceState = null;
+        st.entranceCompleted = false;
+        this.cue("6_NhacKhac/contest_intro");
+        this.touch(now);
+        return OK;
+      }
       case "entrance:start": {
         const ALL_GESTURES: ContestantGestureType[] = [
           "wave_single",

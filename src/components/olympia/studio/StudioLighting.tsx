@@ -2,9 +2,9 @@
 
 import { paintOlympiaBackdropCanvas } from "./backdropArtwork";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
-import { useThree } from "@react-three/fiber";
+import { useThree, useFrame } from "@react-three/fiber";
 import { BroadcastCameras } from "./BroadcastCameras";
 import { getContestantPodiumWorldPos } from "./CameraController";
 
@@ -17,6 +17,7 @@ interface StudioLightingProps {
   activeMainContestantSeat?: number | null;
   is5sBuzzerChasing?: boolean;
   spotlightChaseIndex?: number;
+  spotlightChaseIndices?: number[];
   lockedSpotlightSeat?: number | null;
   introStartedAt?: number | null;
   serverNow?: () => number;
@@ -29,6 +30,8 @@ interface StudioLightingProps {
   isGrandstandFullLit?: boolean;
   totalSeats?: number;
   isEntranceActive?: boolean;
+  kdStartCooldownUntil?: number | null;
+  currentRound?: string | null;
 }
 
 const CONTESTANT_POSITIONS: Array<[number, number, number]> = [
@@ -804,7 +807,7 @@ export function StudioFloor({
         </mesh>
 
         {/* Top Deck Surface (Annular ring Rin = 2.45m to Rout = 3.50m at Y = 0.065m, High-gloss dark sapphire) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.065, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.065, 0]} receiveShadow={true}>
           <primitive object={intermediateTierDeckGeom} attach="geometry" />
           <meshStandardMaterial
             color="#0e1830"
@@ -945,7 +948,7 @@ export function StudioFloor({
       {/* ── 4. RAISED CONTESTANT DAIS PLATFORM (+8cm step, Y = 0.22m, White Riser Skirt) ── */}
       {/* Curved dais elevating contestant stations proudly above central stage */}
       <group position={[0, 0, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
-        <mesh geometry={daisGeometry}>
+        <mesh geometry={daisGeometry} receiveShadow={true}>
           {/* Top & bottom surfaces */}
           <meshStandardMaterial
             attach="material-0"
@@ -987,7 +990,7 @@ export function StudioFloor({
 
       {/* ── 4C. STAGE-RIGHT RAISED PLATFORM & COVE LIGHTING (ĐÈN KHE TOÀN CỤC BÊN PHẢI) ── */}
       <group position={[0, 0, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
-        <mesh geometry={rightDaisGeometry}>
+        <mesh geometry={rightDaisGeometry} receiveShadow={true}>
           {/* Top & bottom surfaces */}
           <meshStandardMaterial
             attach="material-0"
@@ -1049,9 +1052,9 @@ function createStudioCycGradientCanvas(): HTMLCanvasElement {
   ctx.fillStyle = vGrad;
   ctx.fillRect(0, 0, 2048, 512);
 
-  // 2. Wide subtle atmospheric blue halo across the rear stage center (X=0, Z=-R)
+  // 2. Wide subtle atmospheric deep royal navy halo across the rear stage center (X=0, Z=-R)
   const glowGrad = ctx.createRadialGradient(1024, 280, 20, 1024, 280, 850);
-  glowGrad.addColorStop(0.0, "rgba(0, 160, 255, 0.15)");
+  glowGrad.addColorStop(0.0, "rgba(29, 78, 216, 0.12)");
   glowGrad.addColorStop(0.40, "rgba(2, 20, 60, 0.08)");
   glowGrad.addColorStop(1.0, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = glowGrad;
@@ -1072,7 +1075,7 @@ export function StudioWalls({
   liveFactor?: number;
 }) {
   const wallLightColor = useMemo(() => {
-    const baseColor = stageFadeProgress > 0.5 ? new THREE.Color("#ff1133") : new THREE.Color("#00d4ff");
+    const baseColor = stageFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8");
     const darkDormant = new THREE.Color("#020712");
     return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
   }, [stageFadeProgress, liveFactor]);
@@ -1104,11 +1107,16 @@ export function StudioWalls({
         />
       </mesh>
 
-      {/* 8 Horizontal Glowing Neon Bands along Cyc Wall (Wrapping 360 degrees seamlessly) */}
+      {/* 8 Horizontal Glowing Neon Bands along Cyc Wall (Wrapping 360 degrees seamlessly, synchronized Deep Royal Navy / Deep Crimson) */}
       {horizontalBandHeights.map((h, idx) => (
         <mesh key={`band-${idx}`} position={[0, h, -1.0]}>
-          <cylinderGeometry args={[20.42, 20.42, 0.08, 64, 1, true, 0, Math.PI * 2]} />
-          <meshBasicMaterial color={wallLightColor} side={THREE.DoubleSide} />
+          <cylinderGeometry args={[20.42, 20.42, 0.032, 64, 1, true, 0, Math.PI * 2]} />
+          <meshBasicMaterial
+            color={wallLightColor}
+            side={THREE.DoubleSide}
+            transparent
+            opacity={0.70}
+          />
         </mesh>
       ))}
     </group>
@@ -3087,6 +3095,219 @@ export function AudienceAmphitheater({
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// KHỞI ĐỘNG CEILING BEAMS (Volumetric High-Ceiling Beams at Y = 8.5m rọi xuống bục thí sinh Y = 0.22m)
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _kdBeamTexture: THREE.CanvasTexture | null = null;
+export function getKhoiDongBeamTexture(): THREE.CanvasTexture | null {
+  if (_kdBeamTexture) return _kdBeamTexture;
+  if (typeof document === "undefined") return null;
+  const width = 128;
+  const height = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    const imgData = ctx.createImageData(width, height);
+    const data = imgData.data;
+    for (let y = 0; y < height; y++) {
+      const v = (height - 1 - y) / (height - 1); // 0 at bottom, 1 at top
+      let vert = 1.0;
+      if (v > 0.90) vert = Math.sin(((1.0 - v) / 0.10) * Math.PI * 0.5);
+      else if (v < 0.08) vert = Math.sin((v / 0.08) * Math.PI * 0.5);
+      for (let x = 0; x < width; x++) {
+        const u = x / (width - 1);
+        const dx = (u - 0.5) * 2.0;
+        const horiz = Math.max(0, Math.cos(dx * (Math.PI * 0.5)));
+        const alpha = Math.round(255 * vert * Math.pow(horiz, 1.6));
+        const idx = (y * width + x) * 4;
+        data[idx] = 255;
+        data[idx + 1] = 255;
+        data[idx + 2] = 255;
+        data[idx + 3] = alpha;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+  _kdBeamTexture = new THREE.CanvasTexture(canvas);
+  _kdBeamTexture.wrapS = THREE.ClampToEdgeWrapping;
+  _kdBeamTexture.wrapT = THREE.ClampToEdgeWrapping;
+  return _kdBeamTexture;
+}
+
+interface KhoiDongBulbFixtureProps {
+  index: number;
+  podiumPos: [number, number, number];
+  kdStartCooldownUntil?: number | null;
+  currentRound?: string | null;
+  activeMainContestantSeat?: number | null;
+  quality?: "HIGH" | "MEDIUM" | "LIGHT";
+  serverNow?: () => number;
+}
+
+function KhoiDongBulbFixture({
+  index,
+  podiumPos,
+  kdStartCooldownUntil,
+  currentRound,
+  activeMainContestantSeat,
+  quality,
+  serverNow,
+}: KhoiDongBulbFixtureProps) {
+  const isKD = currentRound === "khoiDong" || kdStartCooldownUntil != null;
+  const aimGroupRef = useRef<THREE.Group>(null);
+  const lensMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const spotRef = useRef<THREE.SpotLight>(null);
+
+  // Fixture mounted on ceiling truss rail in front of podium (R_rig = 4.8m, Y = 6.8m)
+  // Podium is at R_podium = 6.65m, Y = 0.22m, Z_center = -0.5m
+  const fixturePos = useMemo<[number, number, number]>(() => {
+    const px = podiumPos[0];
+    const pz = podiumPos[2];
+    const ratio = 4.80 / 6.65;
+    const fx = +(px * ratio).toFixed(3);
+    const fz = +(-0.5 + (pz - (-0.5)) * ratio).toFixed(3);
+    return [fx, 6.80, fz];
+  }, [podiumPos]);
+
+  // Target aims directly at contestant desk & podium face (Y = 0.90m)
+  const targetPos = useMemo<[number, number, number]>(() => {
+    return [podiumPos[0], 0.90, podiumPos[2]];
+  }, [podiumPos]);
+
+  const targetObj = useMemo(() => {
+    const obj = new THREE.Object3D();
+    obj.position.set(targetPos[0], targetPos[1], targetPos[2]);
+    obj.updateMatrixWorld();
+    return obj;
+  }, [targetPos]);
+
+  useEffect(() => {
+    if (aimGroupRef.current) {
+      aimGroupRef.current.lookAt(targetPos[0], targetPos[1], targetPos[2]);
+    }
+  }, [targetPos]);
+
+  useFrame(() => {
+    const now = serverNow ? serverNow() : Date.now();
+    let currentInt = isKD ? 8.5 : 0;
+
+    if (isKD && kdStartCooldownUntil != null && now < kdStartCooldownUntil) {
+      const elapsedSec = Math.max(0, 3.5 - (kdStartCooldownUntil - now) / 1000);
+      const sweepTriggerTime = index * 0.28;
+
+      if (elapsedSec < sweepTriggerTime) {
+        currentInt = 2.0; // Dim before sweep hits
+      } else {
+        const timeSince = elapsedSec - sweepTriggerTime;
+        const flare = Math.max(0, 1.0 - timeSince * 1.8);
+        currentInt = 8.5 + 9.5 * flare; // Flares up to 18.0 then settles smoothly to 8.5
+      }
+    } else if (isKD && activeMainContestantSeat != null) {
+      currentInt = activeMainContestantSeat === index ? 12.0 : 4.0;
+    }
+
+    if (spotRef.current) {
+      spotRef.current.intensity = currentInt;
+      spotRef.current.visible = currentInt > 0.05;
+    }
+    if (lensMatRef.current) {
+      lensMatRef.current.emissiveIntensity = isKD ? Math.min(2.5, 0.4 + currentInt * 0.12) : 0.3;
+    }
+  });
+
+  return (
+    <group position={fixturePos}>
+      {/* 1. Truss Rail Clamp (C-clamp connecting fixture to ceiling iron rail) */}
+      <mesh position={[0, 0.08, 0]}>
+        <boxGeometry args={[0.06, 0.12, 0.06]} />
+        <meshStandardMaterial color="#1e293b" metalness={0.88} roughness={0.25} />
+      </mesh>
+
+      {/* 2. Aiming Spotlight Fixture directed at Contestant Podium */}
+      <group ref={aimGroupRef}>
+        {/* Compact Luminaire Canister (tilted down & outward towards podium) */}
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.065, 0.085, 0.18, quality === "LIGHT" ? 12 : 16]} />
+          <meshStandardMaterial color="#0b1120" metalness={0.9} roughness={0.2} />
+        </mesh>
+        {/* White Emissive Bulb Lens facing contestant */}
+        <mesh position={[0, 0, 0.091]}>
+          <circleGeometry args={[0.065, 16]} />
+          <meshStandardMaterial
+            ref={lensMatRef}
+            color="#ffffff"
+            emissive="#ffffff"
+            emissiveIntensity={isKD ? 1.5 : 0.3}
+            roughness={0.1}
+            toneMapped={false}
+          />
+        </mesh>
+      </group>
+
+      {/* 3. Real Three.js SpotLight projecting white illumination onto podium desk & contestant */}
+      <primitive object={targetObj} />
+      <spotLight
+        ref={spotRef}
+        position={[0, 0, 0]}
+        target={targetObj}
+        color="#ffffff"
+        intensity={isKD ? 8.5 : 0}
+        angle={0.42}
+        penumbra={0.65}
+        distance={15.0}
+        decay={1.15}
+        castShadow={false}
+      />
+    </group>
+  );
+}
+
+export function KhoiDongCeilingBeams({
+  totalSeats = 4,
+  kdStartCooldownUntil = null,
+  currentRound = null,
+  activeMainContestantSeat = null,
+  quality = "HIGH",
+  serverNow,
+}: {
+  totalSeats?: number;
+  kdStartCooldownUntil?: number | null;
+  currentRound?: string | null;
+  activeMainContestantSeat?: number | null;
+  quality?: "HIGH" | "MEDIUM" | "LIGHT";
+  serverNow?: () => number;
+}) {
+  const beamPositions = useMemo(() => {
+    const count = Math.min(8, Math.max(1, totalSeats));
+    return Array.from({ length: 8 }, (_, idx) => {
+      if (idx < count) {
+        return getContestantPodiumWorldPos(idx, count, 0.22);
+      }
+      return CONTESTANT_POSITIONS[idx];
+    });
+  }, [totalSeats]);
+
+  return (
+    <group name="khoi-dong-ceiling-beams">
+      {beamPositions.map((pos, idx) => (
+        <KhoiDongBulbFixture
+          key={`kd-ceiling-bulb-${idx}`}
+          index={idx}
+          podiumPos={pos}
+          kdStartCooldownUntil={kdStartCooldownUntil}
+          currentRound={currentRound}
+          activeMainContestantSeat={activeMainContestantSeat}
+          quality={quality}
+          serverNow={serverNow}
+        />
+      ))}
+    </group>
+  );
+}
+
 /**
  * Studio Lighting Rig Controller:
  * Coordinates multi-zone broadcast illumination, smooth blue/red color fades,
@@ -3101,6 +3322,7 @@ export function StudioLighting({
   activeMainContestantSeat = null,
   is5sBuzzerChasing = false,
   spotlightChaseIndex = 0,
+  spotlightChaseIndices,
   lockedSpotlightSeat = null,
   introStartedAt = null,
   serverNow,
@@ -3112,6 +3334,8 @@ export function StudioLighting({
   isGrandstandFullLit = false,
   totalSeats = 4,
   isEntranceActive = false,
+  kdStartCooldownUntil = null,
+  currentRound = null,
 }: StudioLightingProps) {
   const { scene } = useThree();
   if (typeof window !== "undefined") {
@@ -3286,20 +3510,20 @@ export function StudioLighting({
       {/* Screen Zone Overhead Downlight (Emits ambient screen bounce light onto reflective stage floor) */}
       <pointLight position={[0, 5.0, -4.5]} intensity={screenBounceIntensity} color={screenWashColor} distance={12} />
 
-      {/* Main Directional Key Spotlight (Stage Center - Optimized shadow bounds, castShadow disabled to eliminate empty pass) */}
+      {/* Main Directional Key Spotlight (Stage Center - Soft PCF shadow caster covering stage and contestant line) */}
       <directionalLight
         position={[4.5, 12.0, 7.5]}
         intensity={keyIntensity}
         color="#ffffff"
-        castShadow={false}
+        castShadow={quality !== "LIGHT"}
         shadow-bias={-0.0005}
-        shadow-mapSize={[1024, 1024]}
+        shadow-mapSize={quality === "HIGH" ? [1024, 1024] : [512, 512]}
         shadow-camera-near={1}
-        shadow-camera-far={25}
-        shadow-camera-left={-8}
-        shadow-camera-right={8}
-        shadow-camera-top={8}
-        shadow-camera-bottom={-8}
+        shadow-camera-far={26}
+        shadow-camera-left={-9}
+        shadow-camera-right={9}
+        shadow-camera-top={9}
+        shadow-camera-bottom={-9}
       />
 
       {/* Fill Light (Stage Left) - Pruned in LIGHT mode */}
@@ -3445,11 +3669,12 @@ export function StudioLighting({
       {dynamicContestantPositions.map((pos, sIdx) => {
         // Evaluate spotlight state for this seat
         const isLocked = lockedSpotlightSeat === sIdx;
-        const isChased = is5sBuzzerChasing && spotlightChaseIndex === sIdx;
+        const isChased = is5sBuzzerChasing && (spotlightChaseIndices ? spotlightChaseIndices.includes(sIdx) : spotlightChaseIndex === sIdx);
         const isMainActive = isVeDichDimmed && !is5sBuzzerChasing && lockedSpotlightSeat == null && activeMainContestantSeat === sIdx;
 
         const isLit = isLocked || isChased || isMainActive;
-        const spotIntensity = isLocked ? 13.0 : isChased ? 9.5 : isMainActive ? 8.5 : 0.0;
+        const chaseIntensity = spotlightChaseIndices && spotlightChaseIndices.length > 1 && spotlightChaseIndices[0] !== sIdx ? 6.5 : 9.5;
+        const spotIntensity = isLocked ? 13.0 : isChased ? chaseIntensity : isMainActive ? 8.5 : 0.0;
         const spotColor = isLocked ? "#ffffff" : isChased ? "#00e5ff" : "#fff8e7";
 
         // Keep spotlights permanently mounted with intensity 0 when dormant
@@ -3468,6 +3693,16 @@ export function StudioLighting({
           />
         );
       })}
+
+      {/* ── 3B. KHỞI ĐỘNG CEILING BEAMS (Dàn đèn beam trần 8 đèn Y = 8.5m rọi xuống dãy bục thí sinh Y = 0.22m) ── */}
+      <KhoiDongCeilingBeams
+        totalSeats={totalSeats}
+        kdStartCooldownUntil={kdStartCooldownUntil}
+        currentRound={currentRound}
+        activeMainContestantSeat={activeMainContestantSeat}
+        quality={quality}
+        serverNow={serverNow}
+      />
 
       {/* ── 4. AUDIENCE AMPHITHEATER LIGHTS & CONTESTANT ENTRANCE CONTRAST ── */}
       <TargetedSpotLight

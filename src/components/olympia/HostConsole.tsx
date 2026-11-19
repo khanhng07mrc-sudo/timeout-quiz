@@ -835,6 +835,16 @@ export const HostConsole = React.memo(function HostConsole({
 
             <button
               type="button"
+              onClick={() => call("intro:start")}
+              className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-amber-300 bg-amber-950/40 border border-amber-500/30 hover:bg-amber-500/20 flex items-center gap-1 cursor-pointer truncate"
+              title="Kích hoạt lại hoạt cảnh mở đầu 12s của 2 MC Khánh Vy & Ngọc Huy"
+            >
+              <span>🎬</span>
+              <span className="truncate">Hoạt cảnh MC (12s)</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => call("scoreboard:toggle")}
               className="w-full text-left px-1.5 py-1 rounded text-[10px] sm:text-[11px] font-bold text-slate-300 hover:bg-white/10 flex items-center gap-1 cursor-pointer truncate"
               title="Bật/Tắt Bảng Điểm Tĩnh"
@@ -1588,14 +1598,25 @@ export const HostConsole = React.memo(function HostConsole({
                         <span>Đã giới thiệu xong ({state.seats.length || 4}/{state.seats.length || 4}) thí sinh — Sẵn sàng vào thi</span>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => call("entrance:start")}
-                        className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs sm:text-sm shadow-lg cursor-pointer transition flex items-center gap-2"
-                      >
-                        <span>👥</span>
-                        <span>Chào &amp; Giới thiệu Thí sinh</span>
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => call("entrance:start")}
+                          className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs sm:text-sm shadow-lg cursor-pointer transition flex items-center gap-2"
+                        >
+                          <span>👥</span>
+                          <span>Chào &amp; Giới thiệu Thí sinh</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => call("intro:start")}
+                          className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs sm:text-sm shadow-lg cursor-pointer transition flex items-center gap-2"
+                          title="Kích hoạt lại hoạt cảnh mở đầu 12s của 2 MC Khánh Vy & Ngọc Huy"
+                        >
+                          <span>🎬</span>
+                          <span>Hoạt cảnh MC (12s)</span>
+                        </button>
+                      </>
                     )}
 
                     <button

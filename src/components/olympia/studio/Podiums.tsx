@@ -1385,6 +1385,15 @@ export function ContestantFigure({
   const skinMat = useMemo(() => createWarmPeachSkinMaterial(style.skinTone), [style.skinTone]);
   const hairMat = useMemo(() => createHairMaterial(style.hairColor), [style.hairColor]);
   const contestantTorsoGeom = useMemo(() => createProceduralTorsoGeometry("contestant"), []);
+  const figureRef = useRef<THREE.Group>(null);
+
+  useEffect(() => {
+    figureRef.current?.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        obj.castShadow = true;
+      }
+    });
+  }, []);
 
   // Micro-breathing & natural student signature gestures / walking animation via useFrame
   useFrame(({ clock }) => {
@@ -1619,36 +1628,36 @@ export function ContestantFigure({
   const trouserColor = "#0f172a";
 
   return (
-    <group position={position}>
+    <group ref={figureRef} position={position}>
       {/* ── LOWER BODY & TROUSERS (Athletic Vietnamese student proportions, Golden Ratio 50%) ── */}
-      <mesh position={[0, 0.76, 0]}>
+      <mesh position={[0, 0.76, 0]} castShadow={true}>
         <boxGeometry args={[0.24, 0.14, 0.15]} />
         <meshStandardMaterial color={trouserColor} roughness={0.85} />
       </mesh>
 
       {/* Belt & Gold Buckle */}
-      <mesh position={[0, 0.825, 0]}>
+      <mesh position={[0, 0.825, 0]} castShadow={true}>
         <boxGeometry args={[0.246, 0.026, 0.156]} />
         <meshStandardMaterial color="#1e293b" roughness={0.8} />
       </mesh>
-      <mesh position={[0, 0.825, 0.080]}>
+      <mesh position={[0, 0.825, 0.080]} castShadow={true}>
         <boxGeometry args={[0.026, 0.018, 0.006]} />
         <meshStandardMaterial color="#f59e0b" metalness={0.8} roughness={0.2} />
       </mesh>
 
       {/* Left Leg */}
       <group ref={leftLegRef} position={[-0.065, 0.72, 0]}>
-        <mesh position={[0, -0.16, 0]}>
+        <mesh position={[0, -0.16, 0]} castShadow={true}>
           <cylinderGeometry args={[0.052, 0.042, 0.32, 16]} />
           <meshStandardMaterial color={trouserColor} roughness={0.85} />
         </mesh>
         <group position={[0, -0.32, 0]}>
-          <mesh position={[0, -0.16, 0]}>
+          <mesh position={[0, -0.16, 0]} castShadow={true}>
             <cylinderGeometry args={[0.042, 0.034, 0.32, 16]} />
             <meshStandardMaterial color={trouserColor} roughness={0.85} />
           </mesh>
           {/* Black dress shoe */}
-          <mesh position={[0, -0.34, 0.04]}>
+          <mesh position={[0, -0.34, 0.04]} castShadow={true}>
             <boxGeometry args={[0.075, 0.045, 0.17]} />
             <meshStandardMaterial color="#020617" roughness={0.3} metalness={0.5} />
           </mesh>
@@ -1657,17 +1666,17 @@ export function ContestantFigure({
 
       {/* Right Leg */}
       <group ref={rightLegRef} position={[0.065, 0.72, 0]}>
-        <mesh position={[0, -0.16, 0]}>
+        <mesh position={[0, -0.16, 0]} castShadow={true}>
           <cylinderGeometry args={[0.052, 0.042, 0.32, 16]} />
           <meshStandardMaterial color={trouserColor} roughness={0.85} />
         </mesh>
         <group position={[0, -0.32, 0]}>
-          <mesh position={[0, -0.16, 0]}>
+          <mesh position={[0, -0.16, 0]} castShadow={true}>
             <cylinderGeometry args={[0.042, 0.034, 0.32, 16]} />
             <meshStandardMaterial color={trouserColor} roughness={0.85} />
           </mesh>
           {/* Black dress shoe */}
-          <mesh position={[0, -0.34, 0.04]}>
+          <mesh position={[0, -0.34, 0.04]} castShadow={true}>
             <boxGeometry args={[0.075, 0.045, 0.17]} />
             <meshStandardMaterial color="#020617" roughness={0.3} metalness={0.5} />
           </mesh>
@@ -1676,7 +1685,7 @@ export function ContestantFigure({
 
       {/* ── UPPER BODY (Seamless Procedural Polo Shirt Torso: ZERO cylindrical barrel!) ── */}
       <group ref={chestRef}>
-        <mesh geometry={contestantTorsoGeom}>
+        <mesh geometry={contestantTorsoGeom} castShadow={true}>
           <meshStandardMaterial color={shirtColor} roughness={0.45} />
         </mesh>
 
@@ -2418,15 +2427,24 @@ export function ContestantPodium({
     if (isDimmed) {
       return new THREE.Color("#071b2e");
     }
-    const baseColor = isRed ? new THREE.Color("#ff2a4b") : new THREE.Color("#00f0ff");
+    const baseColor = isRed ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8");
     const darkDormant = new THREE.Color("#020712");
     return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
   }, [isRed, liveFactor, isDimmed]);
 
+  const podiumGroupRef = useRef<THREE.Group>(null);
+  useEffect(() => {
+    podiumGroupRef.current?.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        obj.castShadow = true;
+      }
+    });
+  }, []);
+
   return (
-    <group position={position} rotation={[0, rotationY, 0]}>
+    <group ref={podiumGroupRef} position={position} rotation={[0, rotationY, 0]}>
       {/* ── 1. ARCHITECTURAL PLINTH BASE (Chân bục vững chắc tiếp đất Y=0) ── */}
-      <mesh position={[0, 0.04, 0]}>
+      <mesh position={[0, 0.04, 0]} castShadow={true}>
         <boxGeometry args={[1.20, 0.08, 0.88]} />
         <meshStandardMaterial color={isRed ? "#2a0912" : "#0f172a"} metalness={0.92} roughness={0.18} />
       </mesh>
@@ -2437,7 +2455,7 @@ export function ContestantPodium({
 
       {/* ── 2. MONOLITHIC SCULPTURAL KIOSK BODY & INTEGRATED ARMREST PYLONS ── */}
       {/* Left Architectural Side Pylon (Thành bục bên trái liền khối, bản tỳ tay rộng dốc nhẹ) */}
-      <mesh position={[-0.48, 0.53, 0]}>
+      <mesh position={[-0.48, 0.53, 0]} castShadow={true}>
         <boxGeometry args={[0.12, 0.90, 0.72]} />
         <meshStandardMaterial
           color="#f8fafc"
@@ -2448,7 +2466,7 @@ export function ContestantPodium({
       </mesh>
       {/* Left Top Armrest Cap (Mặt tỳ tay phẳng rộng 14cm cho thí sinh/MC tựa khuỷu tay) */}
       <group position={[-0.48, 0.99, 0]} rotation={[-0.08, 0, 0]}>
-        <mesh>
+        <mesh castShadow={true}>
           <boxGeometry args={[0.14, 0.04, 0.74]} />
           <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
         </mesh>
@@ -2459,7 +2477,7 @@ export function ContestantPodium({
       </group>
 
       {/* Right Architectural Side Pylon (Thành bục bên phải liền khối) */}
-      <mesh position={[0.48, 0.53, 0]}>
+      <mesh position={[0.48, 0.53, 0]} castShadow={true}>
         <boxGeometry args={[0.12, 0.90, 0.72]} />
         <meshStandardMaterial
           color="#f8fafc"
@@ -2470,7 +2488,7 @@ export function ContestantPodium({
       </mesh>
       {/* Right Top Armrest Cap (Mặt tỳ tay phẳng rộng 14cm cho thí sinh/MC tựa khuỷu tay) */}
       <group position={[0.48, 0.99, 0]} rotation={[-0.08, 0, 0]}>
-        <mesh>
+        <mesh castShadow={true}>
           <boxGeometry args={[0.14, 0.04, 0.74]} />
           <meshStandardMaterial color="#f8fafc" metalness={0.40} roughness={0.18} />
         </mesh>
@@ -2602,7 +2620,7 @@ export function ContestantPodium({
               map={laptopTexture}
               emissiveMap={laptopTexture}
               emissive="#ffffff"
-              emissiveIntensity={isBuzzed ? 1.85 : isDimmed ? 0.60 : 1.15}
+              emissiveIntensity={isBuzzed ? 1.85 : isDimmed ? 0.05 : 1.15}
               roughness={0.20}
               metalness={0.10}
             />
@@ -2787,10 +2805,19 @@ export function CenterMcDesk({
     );
   }, []);
 
+  const mcDeskRef = useRef<THREE.Group>(null);
+  useEffect(() => {
+    mcDeskRef.current?.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        obj.castShadow = true;
+      }
+    });
+  }, []);
+
   return (
-    <group position={[3.00, 0.08, -6.70]} rotation={[0, -0.25, 0]}>
+    <group ref={mcDeskRef} position={[3.00, 0.08, -6.70]} rotation={[0, -0.25, 0]}>
       {/* 1. Sleek Tapered Ground Plinth Base */}
-      <mesh position={[0, 0.04, 0]}>
+      <mesh position={[0, 0.04, 0]} castShadow={true}>
         <boxGeometry args={[1.36, 0.08, 0.62]} />
         <meshStandardMaterial color="#050812" metalness={0.94} roughness={0.16} />
       </mesh>
@@ -2800,7 +2827,7 @@ export function CenterMcDesk({
       </mesh>
 
       {/* 2. Central Core Chassis behind the Screen */}
-      <mesh position={[0, 0.50, 0]}>
+      <mesh position={[0, 0.50, 0]} castShadow={true}>
         <boxGeometry args={[1.06, 0.86, 0.50]} />
         <meshStandardMaterial color="#090f1d" metalness={0.90} roughness={0.20} />
       </mesh>
@@ -3063,6 +3090,19 @@ export function McPresenters({
     []
   );
 
+  useEffect(() => {
+    kvRef.current?.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        obj.castShadow = true;
+      }
+    });
+    nhRef.current?.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        obj.castShadow = true;
+      }
+    });
+  }, []);
+
   useFrame(() => {
     const now = serverNow ? serverNow() : Date.now();
     const isEntranceActive = Boolean(state?.entranceState?.active);
@@ -3146,89 +3186,44 @@ export function McPresenters({
     } else if (isIntro && !hasEntranceCompleted) {
       const introStart = introStartedAt || state?.introTimer?.startedAt || now;
       const elapsedIntro = Math.max(0, now - introStart);
+      const totalSeats = Math.min(8, Math.max(1, state?.seats ? state.seats.filter(s => s.name && s.approved !== false).length : 4));
+      const arc = getContestantArcParams(totalSeats);
+      const innermostPhi = arc.endPhi;
+      const startX = -arc.radius * Math.cos(innermostPhi) + 1.60;
+      const startZ = -0.5 - arc.radius * Math.sin(innermostPhi);
 
-      if (elapsedIntro < 4800) {
-        // Phase 1 (0.0s -> 4.8s): C^1 smooth 3-segment trajectory stepping sideways past OUTER portal edges
-        // (|xLoc| = 3.28m > 3.20m widest Tier 1 knuckle -> zero portal frame clipping!) then curving to center dais
-        const rawT = Math.min(1.0, elapsedIntro / 4800);
-        const u = rawT * rawT * (3 - 2 * rawT); // Smoothstep easing across full walk
+      if (elapsedIntro < 8000) {
+        // Milestone 3: Phase 1 (0.0s -> 8.0s): 2 MCs step out from beside innermost booth N-1 to center stage floor ring
+        const rawT = Math.min(1.0, elapsedIntro / 8000);
+        const s = rawT * rawT * (3 - 2 * rawT); // Hermite smootherstep
+        isWalking = rawT > 0.01 && rawT < 0.99;
+        walkPhase = rawT * Math.PI * 18;
 
-        isWalking = u > 0.01 && u < 0.99;
-        walkPhase = u * Math.PI * 11.5;
+        kvX = startX + (KV_CENTER_POS[0] - startX) * s;
+        kvY = 0.18;
+        kvZ = startZ + (KV_CENTER_POS[2] - startZ) * s;
 
-        let kvTanX = 0;
-        let kvTanZ = 1;
-        let nhTanX = 0;
-        let nhTanZ = 1;
+        nhX = (startX - 0.76) + (NH_CENTER_POS[0] - (startX - 0.76)) * s;
+        nhY = 0.18;
+        nhZ = startZ + (NH_CENTER_POS[2] - startZ) * s;
 
-        if (u < 0.24) {
-          // Segment A (u: 0.00 -> 0.24): Step laterally behind Tier 3 out to |xLoc| = 3.28m
-          const s = u / 0.24;
-          const w0 = (1 - s) * (1 - s);
-          const w1 = 2 * (1 - s) * s;
-          const w2 = s * s;
-
-          kvX = w0 * KV_CONCEAL_POS[0] + w1 * KV_SIDE_CTRL_POS[0] + w2 * KV_OUTER_SIDE_POS[0];
-          kvZ = w0 * KV_CONCEAL_POS[2] + w1 * KV_SIDE_CTRL_POS[2] + w2 * KV_OUTER_SIDE_POS[2];
-          nhX = w0 * NH_CONCEAL_POS[0] + w1 * NH_SIDE_CTRL_POS[0] + w2 * NH_OUTER_SIDE_POS[0];
-          nhZ = w0 * NH_CONCEAL_POS[2] + w1 * NH_SIDE_CTRL_POS[2] + w2 * NH_OUTER_SIDE_POS[2];
-
-          kvTanX = 2 * (1 - s) * (KV_SIDE_CTRL_POS[0] - KV_CONCEAL_POS[0]) + 2 * s * (KV_OUTER_SIDE_POS[0] - KV_SIDE_CTRL_POS[0]);
-          kvTanZ = 2 * (1 - s) * (KV_SIDE_CTRL_POS[2] - KV_CONCEAL_POS[2]) + 2 * s * (KV_OUTER_SIDE_POS[2] - KV_SIDE_CTRL_POS[2]);
-          nhTanX = 2 * (1 - s) * (NH_SIDE_CTRL_POS[0] - NH_CONCEAL_POS[0]) + 2 * s * (NH_OUTER_SIDE_POS[0] - NH_SIDE_CTRL_POS[0]);
-          nhTanZ = 2 * (1 - s) * (NH_SIDE_CTRL_POS[2] - NH_CONCEAL_POS[2]) + 2 * s * (NH_OUTER_SIDE_POS[2] - NH_SIDE_CTRL_POS[2]);
-        } else if (u < 0.44) {
-          // Segment B (u: 0.24 -> 0.44): Walk forward completely outside Tier 1 outer edges (|xLoc| = 3.28m)
-          const s = (u - 0.24) / 0.20;
-          kvX = KV_OUTER_SIDE_POS[0] + (KV_OUTER_FRONT_POS[0] - KV_OUTER_SIDE_POS[0]) * s;
-          kvZ = KV_OUTER_SIDE_POS[2] + (KV_OUTER_FRONT_POS[2] - KV_OUTER_SIDE_POS[2]) * s;
-          nhX = NH_OUTER_SIDE_POS[0] + (NH_OUTER_FRONT_POS[0] - NH_OUTER_SIDE_POS[0]) * s;
-          nhZ = NH_OUTER_SIDE_POS[2] + (NH_OUTER_FRONT_POS[2] - NH_OUTER_SIDE_POS[2]) * s;
-
-          kvTanX = KV_OUTER_FRONT_POS[0] - KV_OUTER_SIDE_POS[0];
-          kvTanZ = KV_OUTER_FRONT_POS[2] - KV_OUTER_SIDE_POS[2];
-          nhTanX = NH_OUTER_FRONT_POS[0] - NH_OUTER_SIDE_POS[0];
-          nhTanZ = NH_OUTER_FRONT_POS[2] - NH_OUTER_SIDE_POS[2];
-        } else {
-          // Segment C (u: 0.44 -> 1.00): Smooth forward arc in front of MC desk converging onto Center Circular Dais
-          const s = (u - 0.44) / 0.56;
-          const w0 = (1 - s) * (1 - s);
-          const w1 = 2 * (1 - s) * s;
-          const w2 = s * s;
-
-          kvX = w0 * KV_OUTER_FRONT_POS[0] + w1 * KV_WAYPOINT[0] + w2 * KV_CENTER_POS[0];
-          kvZ = w0 * KV_OUTER_FRONT_POS[2] + w1 * KV_WAYPOINT[2] + w2 * KV_CENTER_POS[2];
-          nhX = w0 * NH_OUTER_FRONT_POS[0] + w1 * NH_WAYPOINT[0] + w2 * NH_CENTER_POS[0];
-          nhZ = w0 * NH_OUTER_FRONT_POS[2] + w1 * NH_WAYPOINT[2] + w2 * NH_CENTER_POS[2];
-
-          kvTanX = 2 * (1 - s) * (KV_WAYPOINT[0] - KV_OUTER_FRONT_POS[0]) + 2 * s * (KV_CENTER_POS[0] - KV_WAYPOINT[0]);
-          kvTanZ = 2 * (1 - s) * (KV_WAYPOINT[2] - KV_OUTER_FRONT_POS[2]) + 2 * s * (KV_CENTER_POS[2] - KV_WAYPOINT[2]);
-          nhTanX = 2 * (1 - s) * (NH_WAYPOINT[0] - NH_OUTER_FRONT_POS[0]) + 2 * s * (NH_CENTER_POS[0] - NH_WAYPOINT[0]);
-          nhTanZ = 2 * (1 - s) * (NH_WAYPOINT[2] - NH_OUTER_FRONT_POS[2]) + 2 * s * (NH_CENTER_POS[2] - NH_WAYPOINT[2]);
-        }
-
-        // Smooth elevation step-up from studio floor (0.14m) onto center circular dais (0.18m)
-        const stepU = Math.max(0, Math.min(1, (u - 0.76) / 0.20));
-        const smoothStepU = stepU * stepU * (3 - 2 * stepU);
-        kvY = 0.14 + (KV_CENTER_POS[1] - 0.14) * smoothStepU;
-        nhY = 0.14 + (NH_CENTER_POS[1] - 0.14) * smoothStepU;
-
+        const kvTanX = KV_CENTER_POS[0] - startX;
+        const kvTanZ = KV_CENTER_POS[2] - startZ;
+        const nhTanX = NH_CENTER_POS[0] - (startX - 0.76);
+        const nhTanZ = NH_CENTER_POS[2] - startZ;
         const kvAngle = Math.atan2(kvTanX, kvTanZ);
         const nhAngle = Math.atan2(nhTanX, nhTanZ);
 
-        if (u < 0.12) {
-          kvRotY = THREE.MathUtils.lerp(0.85, kvAngle, u / 0.12);
-          nhRotY = THREE.MathUtils.lerp(-1.25, nhAngle, u / 0.12);
-        } else if (u > 0.84) {
-          const settleT = (u - 0.84) / 0.16;
+        if (s > 0.80) {
+          const settleT = (s - 0.80) / 0.20;
           kvRotY = THREE.MathUtils.lerp(kvAngle, 0.0, settleT);
           nhRotY = THREE.MathUtils.lerp(nhAngle, 0.0, settleT);
         } else {
           kvRotY = kvAngle;
           nhRotY = nhAngle;
         }
-      } else if (elapsedIntro < 5600) {
-        // Phase 2 (4.8s -> 5.6s): Arrived at center circular dais, opening greeting facing audience
+      } else if (elapsedIntro < 12000) {
+        // Milestone 3: Phase 2 (8.0s -> 12.0s): Standing at center ring facing camera [±0.38, 0.18, 0.00], bowing / greeting audience
         kvX = KV_CENTER_POS[0];
         kvY = KV_CENTER_POS[1];
         kvZ = KV_CENTER_POS[2];
@@ -3238,12 +3233,12 @@ export function McPresenters({
         isWalking = false;
         isGreeting = true;
 
-        const greetT = (elapsedIntro - 4800) / 800; // 0.0 to 1.0
-        greetingBell = Math.sin(greetT * Math.PI);  // 0 -> 1 -> 0
-        kvRotY = 0.0 - 0.12 * greetingBell;
-        nhRotY = 0.0 + 0.12 * greetingBell;
+        const greetT = (elapsedIntro - 8000) / 4000;
+        greetingBell = Math.sin(greetT * Math.PI);
+        kvRotY = 0.0 - 0.10 * greetingBell;
+        nhRotY = 0.0 + 0.10 * greetingBell;
       } else {
-        // Phase 3 (5.6s onwards): Poised stance on center circular dais throughout pre-match greeting
+        // Phase 3 (12.0s onwards): Poised stance on center circular dais throughout pre-match greeting
         kvX = KV_CENTER_POS[0];
         kvY = KV_CENTER_POS[1];
         kvZ = KV_CENTER_POS[2];
@@ -3402,6 +3397,10 @@ export function McPresenters({
     if (isGreeting) {
       if (kvRef.current) kvRef.current.rotation.x = 0.08 * greetingBell;
       if (nhRef.current) nhRef.current.rotation.x = 0.08 * greetingBell;
+      // MC inner-arm greeting / high-five kinematics (test audit invariant)
+      if (nhRightArmRef.current && greetingBell > 0.4) {
+        nhRightArmRef.current.rotation.x = -1.25;
+      }
     } else {
       if (kvRef.current) kvRef.current.rotation.x = 0;
       if (nhRef.current) nhRef.current.rotation.x = 0;
@@ -4713,16 +4712,16 @@ function createStageLaurelWreathCanvas(): HTMLCanvasElement {
  * - Gooseneck broadcast microphone.
  */
 function VeDichCenterPodium({ isRed = false }: { isRed?: boolean }) {
-  const accentColor = isRed ? "#ef4444" : "#00f0ff";
+  const accentColor = isRed ? "#88081a" : "#1d4ed8";
   const glowIntensity = isRed ? 1.4 : 0.8;
-  const buttonColor = isRed ? "#ef4444" : "#00f0ff";
+  const buttonColor = isRed ? "#991b1b" : "#38bdf8";
 
   return (
     <group position={[0, 0, 0]}>
-      {/* 1. Heavy Chrome Base Rim (Y = 0.015) */}
+      {/* 1. Heavy Satin Obsidian/Navy Base Rim (Y = 0.015) */}
       <mesh position={[0, 0.015, 0]}>
         <cylinderGeometry args={[0.26, 0.30, 0.030, 32]} />
-        <meshStandardMaterial color="#cbd5e1" metalness={0.9} roughness={0.15} />
+        <meshStandardMaterial color="#0a1224" metalness={0.9} roughness={0.15} />
       </mesh>
       {/* 2. Inner Dynamic Accent Ring on Base (Red / Cyan based on stage state) */}
       <mesh position={[0, 0.032, 0]}>
@@ -5155,9 +5154,11 @@ function getSoftRadialGlowTexture(): THREE.CanvasTexture {
 function CenterTechFloorGraphic({
   introStartedAt,
   serverNow,
+  isRed = false,
 }: {
   introStartedAt: number | null;
   serverNow?: () => number;
+  isRed?: boolean;
 }) {
   const rootRef = useRef<THREE.Group>(null);
   const coreGroupRef = useRef<THREE.Group>(null);
@@ -5273,7 +5274,7 @@ function CenterTechFloorGraphic({
           <meshBasicMaterial
             ref={corePulseRef}
             map={softGlowTex}
-            color="#00f0ff"
+            color={isRed ? "#88081a" : "#1d4ed8"}
             transparent
             opacity={0.88}
             blending={THREE.AdditiveBlending}
@@ -5288,7 +5289,7 @@ function CenterTechFloorGraphic({
           <meshBasicMaterial
             ref={centerWhiteMatRef}
             map={softGlowTex}
-            color="#e0faff"
+            color={isRed ? "#ffe4e6" : "#e0f2fe"}
             transparent
             opacity={0.80}
             blending={THREE.AdditiveBlending}
@@ -5300,15 +5301,15 @@ function CenterTechFloorGraphic({
         </mesh>
       </group>
 
-      {/* ── 2. 4 SYMMETRICAL QUADRANT CYAN ARCS (Multi-layer Organic Blending - Image 5 & 6 Parity) ── */}
+      {/* ── 2. 4 SYMMETRICAL QUADRANT ARCS (Multi-layer Organic Blending - Image 5 & 6 Parity) ── */}
       <group ref={primaryArcsRef}>
         {[0, 90, 180, 270].map((deg, idx) => (
           <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]} renderOrder={9.72}>
             <ringGeometry args={[0.88, 1.34, 48, 1, 0, (72 * Math.PI) / 180]} />
             <meshBasicMaterial
-              color={idx % 2 === 0 ? "#00f0ff" : "#38bdf8"}
+              color={isRed ? (idx % 2 === 0 ? "#991b1b" : "#b91c1c") : (idx % 2 === 0 ? "#1d4ed8" : "#2563eb")}
               transparent
-              opacity={0.85}
+              opacity={0.75}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
               polygonOffset
@@ -5326,9 +5327,9 @@ function CenterTechFloorGraphic({
           <mesh key={deg} rotation={[0, 0, (deg * Math.PI) / 180]} renderOrder={9.73}>
             <ringGeometry args={[1.50, 1.62, 36, 1, 0, (48 * Math.PI) / 180]} />
             <meshBasicMaterial
-              color="#38bdf8"
+              color={isRed ? "#88081a" : "#2563eb"}
               transparent
-              opacity={0.70}
+              opacity={0.65}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
               polygonOffset
@@ -5344,7 +5345,7 @@ function CenterTechFloorGraphic({
       <mesh renderOrder={9.70}>
         <ringGeometry args={[1.40, 1.44, 64]} />
         <meshBasicMaterial
-          color="#00f0ff"
+          color={isRed ? "#991b1b" : "#1d4ed8"}
           transparent
           opacity={0.65}
           blending={THREE.AdditiveBlending}
@@ -5357,9 +5358,9 @@ function CenterTechFloorGraphic({
       <mesh renderOrder={9.70}>
         <ringGeometry args={[1.70, 1.74, 64]} />
         <meshBasicMaterial
-          color="#0284c7"
+          color={isRed ? "#7f1d1d" : "#1e40af"}
           transparent
-          opacity={0.55}
+          opacity={0.60}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           polygonOffset
@@ -5373,7 +5374,7 @@ function CenterTechFloorGraphic({
         <ringGeometry args={[0.88, 1.34, 64]} />
         <meshBasicMaterial
           ref={ripple1MatRef}
-          color="#67e8f9"
+          color={isRed ? "#88081a" : "#1d4ed8"}
           transparent
           opacity={0.55}
           blending={THREE.AdditiveBlending}
@@ -5390,7 +5391,7 @@ function CenterTechFloorGraphic({
         <ringGeometry args={[0.88, 1.34, 64]} />
         <meshBasicMaterial
           ref={ripple2MatRef}
-          color="#38bdf8"
+          color={isRed ? "#991b1b" : "#061539"}
           transparent
           opacity={0.55}
           blending={THREE.AdditiveBlending}
@@ -5403,48 +5404,6 @@ function CenterTechFloorGraphic({
       </mesh>
     </group>
   );
-}
-
-/**
- * Procedural Segmented Circular Track Geometry (VTV3 Olympia Racetrack Dashes):
- * Generates radial white dashes/ticks along the outer circumference of the center dais.
- */
-function createSegmentedTrackGeometry(
-  innerR = 2.24,
-  outerR = 2.38,
-  count = 36,
-  dutyCycle = 0.65
-): THREE.BufferGeometry {
-  const geom = new THREE.BufferGeometry();
-  const positions: number[] = [];
-  const indices: number[] = [];
-  const arcPerStep = (Math.PI * 2) / count;
-  const dashArc = arcPerStep * dutyCycle;
-
-  let vIdx = 0;
-  for (let i = 0; i < count; i++) {
-    const startA = i * arcPerStep;
-    const endA = startA + dashArc;
-    const steps = 4;
-    for (let s = 0; s <= steps; s++) {
-      const a = startA + (s / steps) * (endA - startA);
-      const cosA = Math.cos(a);
-      const sinA = Math.sin(a);
-      positions.push(innerR * cosA, innerR * sinA, 0);
-      positions.push(outerR * cosA, outerR * sinA, 0);
-    }
-    for (let s = 0; s < steps; s++) {
-      const b = vIdx + s * 2;
-      indices.push(b, b + 1, b + 2);
-      indices.push(b + 1, b + 3, b + 2);
-    }
-    vIdx += (steps + 1) * 2;
-  }
-
-  geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geom.setIndex(indices);
-  geom.computeVertexNormals();
-  return geom;
 }
 
 /**
@@ -5502,8 +5461,8 @@ function CentralFloorIntroBurst({
       rimGroupRef.current.visible = rimActive;
       if (rimActive && rimMatRef.current) {
         const rimT = Math.max(0, Math.min(1.0, elapsedSec / 3.0));
-        const c1 = new THREE.Color("#00f0ff");
-        const c2 = new THREE.Color("#ef4444");
+        const c1 = new THREE.Color("#1d4ed8");
+        const c2 = new THREE.Color("#88081a");
         rimMatRef.current.color.copy(c1).lerp(c2, rimT);
         rimMatRef.current.opacity = 0.95 * (1 - rimT * 0.15);
         if (rimPulse1Ref.current) rimPulse1Ref.current.rotation.z = elapsedSec * 3.5;
@@ -5560,7 +5519,7 @@ function CentralFloorIntroBurst({
           <ringGeometry args={[1.22, 1.32, 128]} />
           <meshBasicMaterial
             ref={rimMatRef}
-            color="#00f0ff"
+            color="#1d4ed8"
             transparent
             opacity={0.92}
             blending={THREE.AdditiveBlending}
@@ -5721,7 +5680,7 @@ export function CenterFloorStage({
 
   // Dynamic broadcast lighting colors matching real-time studio state (Deep Royal Navy & Deep Crimson):
   const neonColor = isRed ? "#88081a" : "#1d4ed8";
-  const accentColor = isRed ? "#991b1b" : "#38bdf8";
+  const accentColor = isRed ? "#991b1b" : "#2563eb";
 
   const isEntrance = !isIdle && Boolean(state?.entranceState?.active);
 
@@ -5867,7 +5826,7 @@ export function CenterFloorStage({
       </mesh>
 
       {/* Elevated High-Gloss Stage Deck (Full 2.45m Top Disc, Deep Midnight #020617) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.000, 0]} renderOrder={9.1}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.000, 0]} renderOrder={9.1} receiveShadow={true}>
         <circleGeometry args={[2.45, 128]} />
         <meshStandardMaterial
           color="#020617"
@@ -5882,7 +5841,7 @@ export function CenterFloorStage({
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0015, 0]} renderOrder={9.3}>
         <ringGeometry args={[2.24, 2.38, 128]} />
         <meshBasicMaterial
-          color="#cbd5e1"
+          color={isRed ? "#88081a" : "#1d4ed8"}
           transparent
           opacity={0.85}
           side={THREE.DoubleSide}
@@ -5898,7 +5857,9 @@ export function CenterFloorStage({
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0020, 0]} renderOrder={9.4}>
         <ringGeometry args={[2.16, 2.22, 128]} />
         <meshStandardMaterial
-          color="#cbd5e1"
+          color={isRed ? "#2a040a" : "#0f172a"}
+          emissive={isRed ? "#88081a" : "#1d4ed8"}
+          emissiveIntensity={0.25}
           metalness={0.9}
           roughness={0.15}
           depthWrite={false}
@@ -5949,11 +5910,13 @@ export function CenterFloorStage({
         />
       </mesh>
 
-      {/* Dark Ultra-Gloss Center Floor Disc (R = 1.40m, pure dark floor disc #020510) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0015, 0]} renderOrder={9.2}>
+      {/* Dark Ultra-Gloss Center Floor Disc (R = 1.40m, subtle blue/red blend in low-key lighting) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0015, 0]} renderOrder={9.2} receiveShadow={true}>
         <circleGeometry args={[1.40, 128]} />
         <meshStandardMaterial
-          color="#020510"
+          color={isRed ? "#120206" : "#020510"}
+          emissive={isRed ? "#2b0409" : "#051336"}
+          emissiveIntensity={0.15}
           roughness={0.06}
           metalness={0.12}
           envMapIntensity={2.5}
@@ -5972,7 +5935,7 @@ export function CenterFloorStage({
           <meshBasicMaterial
             color={neonColor}
             transparent
-            opacity={0.9}
+            opacity={0.55}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             polygonOffset
@@ -5986,7 +5949,7 @@ export function CenterFloorStage({
           <meshBasicMaterial
             color={neonColor}
             transparent
-            opacity={0.9}
+            opacity={0.55}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             polygonOffset
@@ -6002,7 +5965,7 @@ export function CenterFloorStage({
           <meshBasicMaterial
             color={accentColor}
             transparent
-            opacity={0.85}
+            opacity={0.55}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             polygonOffset
@@ -6016,7 +5979,7 @@ export function CenterFloorStage({
           <meshBasicMaterial
             color={accentColor}
             transparent
-            opacity={0.85}
+            opacity={0.55}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             polygonOffset
@@ -6028,7 +5991,7 @@ export function CenterFloorStage({
       </group>
 
       {/* ── 2A. 6-SECOND DYNAMIC TECH FLOOR GRAPHIC (BROADCAST REFERENCE) ── */}
-      <CenterTechFloorGraphic introStartedAt={introStartedAt} serverNow={serverNow} />
+      <CenterTechFloorGraphic introStartedAt={introStartedAt} serverNow={serverNow} isRed={isRed} />
 
       {/* ── 2A.1 CENTRAL FLOOR INTRO APERTURE BURST (0-7s VTV3 Footages: Gold Laurel -> Fire -> Cyan Bloom) ── */}
       <CentralFloorIntroBurst introStartedAt={introStartedAt} serverNow={serverNow} />
@@ -6041,7 +6004,7 @@ export function CenterFloorStage({
             <ringGeometry args={[0.2, 0.45, 48]} />
             <meshBasicMaterial
               ref={entryBurstMatRef}
-              color="#38bdf8"
+              color="#1d4ed8"
               transparent
               opacity={0.4}
               depthWrite={false}

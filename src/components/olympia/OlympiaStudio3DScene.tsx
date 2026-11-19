@@ -118,6 +118,7 @@ export function OlympiaStudio3DScene({
     activeMainContestantSeat,
     is5sBuzzerChasing,
     spotlightChaseIndex,
+    spotlightChaseIndices,
     lockedSpotlightSeat,
   } = useOlympiaLightingState(state, serverNow);
 
@@ -377,6 +378,7 @@ export function OlympiaStudio3DScene({
     >
       {/* ── 1. THREE.JS R3F CANVAS ── */}
       <Canvas
+        shadows="soft"
         frameloop={isPaused ? "never" : "always"}
         performance={{ min: 0.5 }}
         camera={{ position: [0.0, 3.2, 6.8], fov: 46 }}
@@ -422,6 +424,7 @@ export function OlympiaStudio3DScene({
           activeMainContestantSeat={activeMainContestantSeat}
           is5sBuzzerChasing={is5sBuzzerChasing}
           spotlightChaseIndex={spotlightChaseIndex}
+          spotlightChaseIndices={spotlightChaseIndices}
           lockedSpotlightSeat={lockedSpotlightSeat}
           introStartedAt={state?.entranceState?.active ? null : (state?.introTimer?.startedAt ?? null)}
           serverNow={serverNow}
@@ -429,6 +432,8 @@ export function OlympiaStudio3DScene({
           ptzZoom={ptzZoom}
           pushInProgress={pushInProgress}
           isEntranceActive={Boolean(state?.entranceState?.active)}
+          kdStartCooldownUntil={state?.khoiDong?.startCooldownUntil ?? null}
+          currentRound={state?.currentRound ?? null}
         />
 
         <CentralLedWall

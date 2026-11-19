@@ -1290,7 +1290,7 @@ export function DevGraphicsClient() {
                       },
                     }}
                     serverNow={serverNow}
-                    activeCamera={11}
+                    activeCamera={20}
                     transitionMode="CUT"
                     showDirectorBar={false}
                     allowPTZ={false}
@@ -1376,14 +1376,13 @@ export function DevGraphicsClient() {
                     state={{
                       ...mockState,
                       stage: "playing",
-                      entranceState: {
-                        active: true,
-                        startedAt: Date.now() + 999999999,
-                        currentSeatIdx: 0,
-                        seatStartedAt: Date.now(),
-                        seatGestures: [],
+                      entranceState: undefined,
+                      introTimer: {
+                        startedAt: Date.now() - 9000,
+                        totalMs: 12000,
+                        remainingMs: 3000,
                       },
-                      introTimer: undefined,
+                      entranceCompleted: false,
                     }}
                     serverNow={serverNow}
                     activeCamera={1}
@@ -1535,11 +1534,15 @@ export function DevGraphicsClient() {
                     veDich: {
                       order: [0, 1, 2, 3],
                       turnIdx: 0,
-                      phase: "thinking",
+                      phase: "stealing",
                       currentSeat: 0,
                       package: [20, 20, 30],
                       currentQuestionIdx: 1,
                       timer: { startedAt: Date.now() - 5000, totalMs: 20000, remainingMs: 15000 },
+                      steal: {
+                        timer: { startedAt: Date.now() - 1500, totalMs: 5000, remainingMs: 3500 },
+                        buzzedSeat: null,
+                      },
                     } as any,
                   }}
                   serverNow={serverNow}

@@ -99,7 +99,7 @@ export interface Olympia27GeometryContract {
   formulaWallStartRad: number;        // 1.05 * Math.PI
   formulaWallRadius: number;          // 8.60m
   ledDotArchHeight: number;           // 0.20m (tolerance: [0.15m, 0.25m])
-  ledDotArchDotSpacingX: number;      // 26px
+  ledDotArchDotSpacingX: number;      // 42px
   ledDotArchDotSpacingY: number;      // 22px
   stageFloorDaisInnerRingRadius: number; // 2.24m
   stageFloorDaisOuterRingRadius: number; // 2.38m
@@ -112,7 +112,7 @@ export const OLYMPIA27_GEOMETRY_CONTRACT: Olympia27GeometryContract = {
   formulaWallStartRad: 1.05 * Math.PI,
   formulaWallRadius: 8.60,
   ledDotArchHeight: 0.20,
-  ledDotArchDotSpacingX: 26,
+  ledDotArchDotSpacingX: 42,
   ledDotArchDotSpacingY: 22,
   stageFloorDaisInnerRingRadius: 2.24,
   stageFloorDaisOuterRingRadius: 2.38,
@@ -244,7 +244,7 @@ export function evaluateMcWalkoutKinematics(
   const arc = getContestantArcParams(Math.min(8, Math.max(1, totalSeats)));
   // Innermost podium (Seat N-1) coordinates along contestant arc:
   const innermostPhi = arc.endPhi;
-  const startX = -arc.radius * Math.cos(innermostPhi) + 0.8;
+  const startX = -arc.radius * Math.cos(innermostPhi) + 1.60;
   const startZ = -0.5 - arc.radius * Math.sin(innermostPhi);
 
   if (t < 8.0) {
@@ -324,18 +324,16 @@ export function evaluateOpeningCameraChoreography(elapsedSec: number): {
       excludesFeet: false,
     };
   } else {
-    // Phase 3: Settle in front of MCs at center stage (waist-up medium shot framing hexagonal portal, no feet)
-    const frac = Math.min(1.0, (t - 7.5) / 4.5);
-    const smoothFrac = hermiteSmoothstep(frac);
+    // Phase 3: Settle in front of MCs at center stage (waist-up medium shot framing hexagonal portal, strictly zero feet)
     // Camera is positioned at front-center stage facing north towards hexagon portal:
-    // Waist-up framing: Y_cam = 1.35m, looking at MC chest Y = 1.25m, Z_cam = 3.65m.
-    // Bottom edge of 16:9 frame at 34° FOV strictly clips above Y = 0.60m (above waist, completely excluding feet Y=0.0-0.18m)
+    // Waist-up framing: Y_cam = 1.45m, looking at MC chest Y = 1.35m, Z_cam = 2.25m, FOV = 34.0°.
+    // Bottom edge of 16:9 frame at 34° FOV strictly clips at waist level Y ~ 0.85m (completely excluding feet Y=0.0-0.18m)
     return {
       phase: 3,
       phaseName: "WAIST_UP_HEXAGON_PORTAL",
-      fov: 36.0 - smoothFrac * 2.0, // Settles at 34°
-      camPos: [0.0, 1.40 - smoothFrac * 0.05, 3.80 - smoothFrac * 0.15],
-      camTarget: [0.0, 1.25, 0.0],
+      fov: 34.0, // Strictly 34° waist-up framing
+      camPos: [0.00, 1.45, 2.25],
+      camTarget: [0.00, 1.35, 0.00],
       excludesFeet: true,
     };
   }
@@ -598,8 +596,8 @@ export function runOlympia27ContractSuite(): SuiteResults {
     );
   });
 
-  t1("F2.5", "LED dot arch matrix spacing matches perforated grid (26px X, 22px Y)", () => {
-    assert.strictEqual(OLYMPIA27_GEOMETRY_CONTRACT.ledDotArchDotSpacingX, 26);
+  t1("F2.5", "LED dot arch matrix spacing matches sparse clear grid (42px X, 22px Y)", () => {
+    assert.strictEqual(OLYMPIA27_GEOMETRY_CONTRACT.ledDotArchDotSpacingX, 42);
     assert.strictEqual(OLYMPIA27_GEOMETRY_CONTRACT.ledDotArchDotSpacingY, 22);
   });
 

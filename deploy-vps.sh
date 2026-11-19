@@ -98,7 +98,23 @@ fi
 if [ -f "/etc/nginx/sites-available/quizorra" ]; then
   if ! grep -q "location /olympia-audio/" /etc/nginx/sites-available/quizorra; then
     echo "  -> Bổ sung cấu hình CORS cho /olympia-audio/ vào Nginx..."
-    sed -i '/location \/ {/i \    location /olympia-audio/ {\n        proxy_pass http://127.0.0.1:3000;\n        add_header '\''Access-Control-Allow-Origin'\'' '\''*'\'' always;\n        add_header '\''Access-Control-Allow-Methods'\'' '\''GET, HEAD, OPTIONS'\'' always;\n        add_header '\''Access-Control-Allow-Headers'\'' '\''*'\'' always;\n        if ($request_method = OPTIONS) {\n            return 204;\n        }\n    }\n' /etc/nginx/sites-available/quizorra
+    python3 -c "
+with open('/etc/nginx/sites-available/quizorra', 'r') as f:
+    content = f.read()
+if 'location /olympia-audio/' not in content:
+    cors_block = '''    location /olympia-audio/ {
+        proxy_pass http://127.0.0.1:3000;
+        add_header Access-Control-Allow-Origin * always;
+        add_header Access-Control-Allow-Methods \"GET, HEAD, OPTIONS\" always;
+        add_header Access-Control-Allow-Headers * always;
+        if (\$request_method = OPTIONS) {
+            return 204;
+        }
+    }\n\n'''
+    content = content.replace('    location / {', cors_block + '    location / {', 1)
+    with open('/etc/nginx/sites-available/quizorra', 'w') as f:
+        f.write(content)
+"
     nginx -t && systemctl reload nginx 2>/dev/null || true
   fi
 fi

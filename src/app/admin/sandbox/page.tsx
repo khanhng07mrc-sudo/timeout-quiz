@@ -12243,7 +12243,7 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
               >
                 <ScaledDisplayFrame
                   iframeRef={displayIframeRef}
-                  src={`/olympia/display/${code}?sandbox=1&perf=light&audio=1`}
+                  src={`/olympia/display/${code}?sandbox=1&perf=light&audio=1&ruleset=${olympiaRulesetId}&season=${RULESETS[olympiaRulesetId as RulesetId]?.audioSeason || "O26"}`}
                   title="Display Viewport"
                   allow="autoplay *; fullscreen *; camera; microphone; display-capture"
                   onLoad={forwardUnlock}

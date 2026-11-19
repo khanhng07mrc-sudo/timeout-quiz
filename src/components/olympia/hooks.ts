@@ -305,9 +305,14 @@ export const INTRO_CROSSFADE_WINDOW_MS = 2000;
 export const CONTEST_INTRO_DURATION_SEC = 18.55;
 export const CONTEST_INTRO_TRIGGER_SEC = 16.55; // CONTEST_INTRO_DURATION_SEC - INTRO_CROSSFADE_WINDOW_SEC
 
-export const isCountdownTrack = (sound: string): boolean =>
-  /(?:(?:^|\/)(?:\d+s(?:_tick|_steal|_practice)?|tick_\d+s))$/.test(sound) ||
-  /(?:10s_tick|15s_tick|20s_tick|30s_tick|40s_tick|5s_steal|20s_practice|30s_practice|40s_practice|60s_practice|60s|30s|90s)$/.test(sound);
+export const isCountdownTrack = (sound: string): boolean => {
+  if (!sound) return false;
+  const clean = sound.split("?")[0].replace(/\.mp3$/, "");
+  return (
+    /(?:(?:^|\/)(?:\d+s(?:_tick|_steal|_practice)?|tick_\d+s))$/.test(clean) ||
+    /(?:10s_tick|15s_tick|20s_tick|30s_tick|40s_tick|5s_steal|20s_practice|30s_practice|40s_practice|60s_practice|60s|30s|90s)$/.test(clean)
+  );
+};
 
 export const isLoopingBgm = (sound: string): boolean =>
   /kd_bgm_[12]$/.test(sound) || /loop/.test(sound);
@@ -624,6 +629,18 @@ export function useOlympiaAudio(
       } catch {}
     });
     activeBgmSet.current.clear();
+
+    // Clean up any countdown or BGM audio that might be in activeAudioSet
+    activeAudioSet.current.forEach((a) => {
+      if (a.src && (isCountdownTrack(a.src) || isIntroOrMusicTrack(a.src))) {
+        try {
+          a.pause();
+          a.currentTime = 0;
+          a.src = "";
+        } catch {}
+        activeAudioSet.current.delete(a);
+      }
+    });
 
     if (bgm.current) {
       try {
@@ -1282,7 +1299,7 @@ export function useOlympiaAudio(
         if (!bgm.current || bgm.current.ended) return;
         if (isBgmPausedExplicitlyRef.current) return;
         const isKdExpired = Boolean(state?.khoiDong?.globalTimer && state.khoiDong.globalTimer.remainingMs <= 0);
-        const isKdDone = state?.khoiDong?.phase === "segmentDone";
+        const isKdDone = state?.khoiDong?.phase === "segmentDone" || state?.khoiDong?.phase === "intro" || !state?.khoiDong?.started;
         if (isKdExpired || isKdDone) return;
         if (enabled && isBgmCueEarly && bgm.current && bgm.current.paused) {
           bgm.current.play().catch(() => {});
@@ -1376,8 +1393,8 @@ export function useOlympiaAudio(
       registerActive(a);
 
       a.onerror = () => {
-        // Always using base stereo file; on error just fall back to O26 season.
-        if (fallback && s !== "O26") {
+        // Always using base stereo file; on error fall back to O26 only if not in O13-21 ruleset.
+        if (fallback && s !== "O26" && !s.includes("O13-21")) {
           play("O26", false);
         } else if (/tick_(?:10|40)s/.test(cue.sound)) {
           const altSound = cue.sound.replace(/tick_(?:10|40)s/, "tick_20s");
@@ -1521,7 +1538,7 @@ export function useOlympiaAudio(
       crossfadeToBgm(a, BGM_CROSSFADE_MS, false, true);
       // show_intro plays strictly ONCE without looping
       a.onerror = () => {
-        if (s !== "O26") tryPlay("O26"); // fallback
+        if (s !== "O26" && !s.includes("O13-21")) tryPlay("O26"); // fallback only if not in O13-21
       };
     };
     const registerActiveFromIntro = (a: HTMLAudioElement) => {

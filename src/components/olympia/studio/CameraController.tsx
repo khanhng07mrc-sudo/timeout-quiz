@@ -279,9 +279,10 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   13: {
     id: 13,
     label: "Cam Đứng Yên Bục Giữa Tạo Dáng",
-    // Góc cố định đứng yên hoàn toàn khi thí sinh tạo dáng trên Bục Giữa
-    pos: [0.0, 1.62, 7.35],
-    target: [0.0, 1.38, 10.20],
+    // Góc cố định toàn thân (Full Body Shot) lấy trọn vẹn từ vòng tròn vàng dưới chân đến đỉnh đầu thí sinh
+    pos: [0.0, 1.70, 5.80],
+    target: [0.0, 1.55, 10.20],
+    fov: 42,
   },
   14: {
     id: 14,
@@ -470,7 +471,7 @@ export function CameraController({
   useFrame((_, delta) => {
     // 0. True Optical Zoom & Adaptive FOV Calculation
     if (camera instanceof THREE.PerspectiveCamera) {
-      const baseFov = camAngle === 1 ? 36 : camAngle === 10 ? 34 : camAngle === 15 ? 42 : 43;
+      const baseFov = camAngle === 1 ? 36 : camAngle === 10 ? 34 : camAngle === 13 ? 42 : camAngle === 15 ? 42 : 43;
       const aspect = size.width / Math.max(1, size.height);
       const targetAspect = 16 / 9;
       let calculatedFov = baseFov;

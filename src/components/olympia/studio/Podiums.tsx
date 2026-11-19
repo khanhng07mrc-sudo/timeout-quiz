@@ -3044,6 +3044,8 @@ export function McPresenters({
   const nhRightArmRef = useRef<THREE.Group>(null);
   const nhRightForearmRef = useRef<THREE.Group>(null);
   const nhRightWristRef = useRef<THREE.Group>(null);
+  const kvFolderRef = useRef<THREE.Group>(null);
+  const nhFolderRef = useRef<THREE.Group>(null);
 
   const kvSkinMat = useMemo(() => createWarmPeachSkinMaterial("#fae5d3"), []);
   const nhSkinMat = useMemo(() => createWarmPeachSkinMaterial("#f2c49c"), []);
@@ -3328,10 +3330,14 @@ export function McPresenters({
     const vocalPulse = Math.sin(speechTime * 2.1 + 0.4) * 0.030;
 
     // Natural television presenter arm kinematics:
-    // - Khánh Vy: Elegantly holding official Olympia Cue Card Binder with both hands in front of waist
-    // - Ngọc Huy: Holding Cue Card Binder in left hand, right arm flexibly relaxed along side with conversational breathing
-    const kvHoldFolderX = -0.28 + (isWalking ? armStride * 0.06 : breatheWave * 0.015);
-    const kvHoldForearmX = -0.78 + talkSub * 0.02;
+    // - Behind MC desk: Arms resting naturally forward towards lectern surface, handheld folder hidden
+    // - On center stage (intro): Holding cue card tilted comfortably at waist/hip level (~65° incline, not pointing flat at camera)
+    const entranceStart = state?.entranceState?.startedAt || now;
+    const elapsedEntrance = Math.max(0, now - entranceStart);
+    const isAtDesk = !isIntro || hasEntranceCompleted || (isEntranceActive && elapsedEntrance >= 6000);
+
+    const kvHoldFolderX = isAtDesk ? -0.15 : -0.12 + (isWalking ? armStride * 0.06 : breatheWave * 0.015);
+    const kvHoldForearmX = isAtDesk ? -0.48 : -0.38 + talkSub * 0.02;
 
     if (kvLeftArmRef.current) {
       kvLeftArmRef.current.rotation.x = kvHoldFolderX;
@@ -3344,7 +3350,7 @@ export function McPresenters({
       kvLeftForearmRef.current.rotation.z = 0.35;
     }
     if (kvLeftWristRef.current) {
-      kvLeftWristRef.current.rotation.x = 0.10 + talkSub * 0.02;
+      kvLeftWristRef.current.rotation.x = 0.18 + talkSub * 0.02;
       kvLeftWristRef.current.rotation.y = 0;
       kvLeftWristRef.current.rotation.z = 0.08;
     }
@@ -3360,13 +3366,13 @@ export function McPresenters({
       kvRightForearmRef.current.rotation.z = -0.35;
     }
     if (kvRightWristRef.current) {
-      kvRightWristRef.current.rotation.x = 0.10 + talkSub * 0.02;
+      kvRightWristRef.current.rotation.x = 0.18 + talkSub * 0.02;
       kvRightWristRef.current.rotation.y = 0;
       kvRightWristRef.current.rotation.z = -0.08;
     }
 
-    const nhHoldFolderX = -0.24 + (isWalking ? armStride * 0.08 : breatheWave * 0.015);
-    const nhHoldForearmX = -0.82 + talkSub * 0.02;
+    const nhHoldFolderX = isAtDesk ? -0.15 : -0.12 + (isWalking ? armStride * 0.08 : breatheWave * 0.015);
+    const nhHoldForearmX = isAtDesk ? -0.48 : -0.38 + talkSub * 0.02;
 
     if (nhLeftArmRef.current) {
       nhLeftArmRef.current.rotation.x = nhHoldFolderX;
@@ -3379,7 +3385,7 @@ export function McPresenters({
       nhLeftForearmRef.current.rotation.z = 0.30;
     }
     if (nhLeftWristRef.current) {
-      nhLeftWristRef.current.rotation.x = 0.08 + talkSub * 0.02;
+      nhLeftWristRef.current.rotation.x = 0.16 + talkSub * 0.02;
       nhLeftWristRef.current.rotation.y = 0;
       nhLeftWristRef.current.rotation.z = 0.06;
     }
@@ -3396,10 +3402,14 @@ export function McPresenters({
       nhRightForearmRef.current.rotation.z = -0.30;
     }
     if (nhRightWristRef.current) {
-      nhRightWristRef.current.rotation.x = 0.08 + talkSub * 0.02;
+      nhRightWristRef.current.rotation.x = 0.16 + talkSub * 0.02;
       nhRightWristRef.current.rotation.y = 0;
       nhRightWristRef.current.rotation.z = -0.06;
     }
+
+    // Hide handheld folders when MC is positioned behind the desk
+    if (kvFolderRef.current) kvFolderRef.current.visible = !isAtDesk;
+    if (nhFolderRef.current) nhFolderRef.current.visible = !isAtDesk;
 
     // Presenter greeting bow/nod facing audience & contestants during isGreeting
     if (isGreeting) {
@@ -3658,9 +3668,9 @@ export function McPresenters({
                       isLeft={true}
                       mode="hang"
                     />
-                    {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC hai tay cầm trang trọng trước eo) */}
-                    {/* Mặt ngoài bìa tập hướng về khán giả (+Z), mặt giấy tài liệu hướng vào trong về phía ngực MC (-Z) */}
-                    <group position={[0.075, 0.010, 0.045]} rotation={[0.38, 0, 0]}>
+                    {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC cầm tự nhiên ngang eo, mặt giấy ngửa lên phía người MC, KHÔNG dựng đứng chìa vào camera) */}
+                    {/* Mặt ngoài bìa tập hướng xuống dưới/ra ngoài, mặt giấy tài liệu hướng lên trên về phía ngực MC (-Z) */}
+                    <group ref={kvFolderRef} position={[0.075, -0.05, 0.02]} rotation={[1.15, 0, 0]}>
                       {/* Bìa kẹp da xanh đen sang trọng */}
                       <mesh>
                         <boxGeometry args={[0.20, 0.26, 0.005]} />
@@ -4020,9 +4030,9 @@ export function McPresenters({
                       isLeft={true}
                       mode="card"
                     />
-                    {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC hai tay cầm trang trọng trước bụng) */}
-                    {/* Mặt ngoài bìa tập hướng về khán giả (+Z), mặt giấy tài liệu hướng vào trong về phía ngực MC (-Z) */}
-                    <group position={[0.08, -0.015, 0.05]} rotation={[0.38, 0.08, -0.05]}>
+                    {/* Olympia Broadcast Cue Card / Script Folder (Kẹp kịch bản MC cầm tự nhiên ngang eo, mặt giấy ngửa lên phía người MC, KHÔNG dựng đứng chìa vào camera) */}
+                    {/* Mặt ngoài bìa tập hướng xuống dưới/ra ngoài, mặt giấy tài liệu hướng lên trên về phía ngực MC (-Z) */}
+                    <group ref={nhFolderRef} position={[0.08, -0.05, 0.02]} rotation={[1.15, 0.08, -0.05]}>
                       {/* Bìa kẹp da xanh đen sang trọng */}
                       <mesh>
                         <boxGeometry args={[0.22, 0.28, 0.006]} />

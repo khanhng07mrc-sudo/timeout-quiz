@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { ROUND_LABELS, type OlympiaState } from "@/lib/olympia/types";
+import { ROUND_LABELS, type OlympiaState, type RulesetId, type AudioSeason } from "@/lib/olympia/types";
 import { RULESETS } from "@/lib/olympia/rulesets";
 import { parseVcnvAnswer, stripVcnvLetterCount, cleanVcnvWord } from "@/lib/olympia/engine";
 import { useOlympiaAudio, useOlympiaSocket } from "./hooks";
@@ -230,9 +230,20 @@ export default function DisplayScreen({ code }: { code: string }) {
     }
   }, [audioOn, isExplicitMuteParam]);
 
+  const urlRuleset =
+    typeof window !== "undefined"
+      ? (new URLSearchParams(window.location.search).get("ruleset") as RulesetId | null)
+      : null;
+  const urlSeason =
+    typeof window !== "undefined"
+      ? (urlRuleset && RULESETS[urlRuleset]?.audioSeason) ||
+        (new URLSearchParams(window.location.search).get("season") as AudioSeason | null)
+      : null;
+
   const effectiveAudioSeason =
     (state?.rulesetId && RULESETS[state.rulesetId]?.audioSeason) ||
     join?.audioSeason ||
+    urlSeason ||
     "O26";
 
   useOlympiaAudio(state, effectiveAudioSeason, audioOn);

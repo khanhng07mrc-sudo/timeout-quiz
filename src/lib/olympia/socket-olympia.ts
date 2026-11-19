@@ -321,10 +321,17 @@ export function registerOlympiaSocket(io: SocketIOServer<any, any>) {
 
     socket.on("action", (action: { type: string }, ack?: (r: { ok: boolean; error?: string }) => void) => {
       const entry = withEntry();
-      const isDisplayBannerAction =
+      const isDisplayAllowedAction =
         info?.role === "display" &&
-        (action?.type === "banner:hide" || action?.type === "banner:skip");
-      if (!entry || !info || (info.role !== "host" && !isDisplayBannerAction)) {
+        (action?.type === "banner:hide" ||
+          action?.type === "banner:skip" ||
+          action?.type === "media:close" ||
+          action?.type === "studio:camera" ||
+          action?.type === "studio:camera:auto" ||
+          action?.type === "studio:camera:reset" ||
+          action?.type === "studio:camera:ptz" ||
+          action?.type?.startsWith("studio:camera:"));
+      if (!entry || !info || (info.role !== "host" && !isDisplayAllowedAction)) {
         return ack?.({ ok: false, error: "Không có quyền" });
       }
       if (action.type === "seat:kick") {

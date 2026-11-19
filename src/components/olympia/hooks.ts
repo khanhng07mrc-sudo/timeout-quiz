@@ -4,6 +4,7 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 import { io, type Socket } from "socket.io-client";
 import type { OlympiaState, TimerState } from "@/lib/olympia/types";
 import { getEntranceScheduleOffsetsMs } from "@/lib/olympia/entrance-geometry";
+import { RULESETS } from "@/lib/olympia/rulesets";
 
 export function isPriorityInstantCue(sound?: string): boolean {
   if (!sound) return false;
@@ -564,6 +565,12 @@ export function useOlympiaAudio(
   enabled: boolean,
   channel?: "both" | "left" | "right"
 ) {
+  // Deterministically resolve audio season from state.rulesetId first, then param, then "O26"
+  const resolvedSeason =
+    (state?.rulesetId && RULESETS[state.rulesetId]?.audioSeason) ||
+    audioSeason ||
+    "O26";
+
   const lastCue = useRef<number | null>(null);
   const hasPlayedIntroLobbyRef = useRef(false);
   const pendingShowIntroRef = useRef(false); // set when show_intro fired before audioSeason arrived
@@ -1078,9 +1085,9 @@ export function useOlympiaAudio(
   useEffect(() => {
     if (enabled) {
       getAudioContext();
-      prewarmBuzzerSounds(audioSeason || "O26");
+      prewarmBuzzerSounds(resolvedSeason);
     }
-  }, [enabled, getAudioContext, audioSeason]);
+  }, [enabled, getAudioContext, resolvedSeason]);
 
   // Dừng toàn bộ âm thanh khi audio bị tắt (enabled = false)
   useEffect(() => {
@@ -1181,7 +1188,7 @@ export function useOlympiaAudio(
         pauseBgm();
       }
 
-      const season = audioSeason || "O26";
+      const season = resolvedSeason;
       const primaryUrl = `/olympia-audio/${season}/${cue.sound}.mp3`;
       const fallbackUrl = `/olympia-audio/O26/${cue.sound}.mp3`;
       const activePan =
@@ -1258,7 +1265,7 @@ export function useOlympiaAudio(
       lastCue.current = cue.id;
       // Nếu là âm thanh mở đầu khi tạo phòng ở sảnh chờ (show_intro), cho phép phát đúng 1 lần duy nhất trên lần sync đầu tiên
       if (cue.sound === "6_NhacKhac/show_intro" && state.stage === "lobby" && !hasPlayedIntroLobbyRef.current) {
-        if (!enabled || !audioSeason) {
+        if (!enabled || (!audioSeason && !state?.rulesetId)) {
           // audioSeason chưa đến hoặc audio chưa bật → đánh dấu chờ, sẽ phát khi đủ điều kiện
           pendingShowIntroRef.current = true;
           return;
@@ -1293,11 +1300,9 @@ export function useOlympiaAudio(
       return;
     }
 
-    // Khi có âm thanh kết thúc lượt (finish_turn), dừng nhạc nền cũ nếu không phải là track đếm giờ tự nhiên
+    // Khi có âm thanh kết thúc lượt (finish_turn), lập tức dừng toàn bộ countdown BGM đang phát
     if (cue.sound.endsWith("finish_turn")) {
-      if (bgm.current && !isCountdownTrack(bgm.current.src)) {
-        stopBgm();
-      }
+      stopBgm(true);
     }
 
     if (
@@ -1330,7 +1335,7 @@ export function useOlympiaAudio(
       pauseBgm();
     }
 
-    const season = audioSeason || "O26";
+    const season = resolvedSeason;
     const userPrefChannel = typeof window !== "undefined" ? (localStorage.getItem("olympia_audio_channel") as any) : null;
     const currentChannel = userPrefChannel || channel || cue.pan || "both";
     const activeSeatCount = Math.max(
@@ -1503,11 +1508,12 @@ export function useOlympiaAudio(
 
   // Retry show_intro khi audioSeason vừa arrive hoặc unmuting (fix race condition: state đến trước audioSeason)
   useEffect(() => {
-    if (!audioSeason || !pendingShowIntroRef.current || !enabled) return;
+    const effectiveSeason = (state?.rulesetId && RULESETS[state.rulesetId]?.audioSeason) || audioSeason;
+    if (!effectiveSeason || !pendingShowIntroRef.current || !enabled) return;
     pendingShowIntroRef.current = false;
     hasPlayedIntroLobbyRef.current = true;
     if (state?.stage && state.stage !== "lobby") return;
-    const season = audioSeason;
+    const season = effectiveSeason;
     const tryPlay = (s: string) => {
       const a = new Audio(`/olympia-audio/${s}/6_NhacKhac/show_intro.mp3`);
       a.volume = 0.85;

@@ -182,6 +182,12 @@ export function OlympiaStudio3DScene({
     }
   }, [activeCamera]);
 
+  useEffect(() => {
+    if (!state?.studioCameraPtz) {
+      setPtzPerCam({});
+    }
+  }, [state?.studioCameraPtz]);
+
   const handleSelectCam = (camId: number) => {
     setInternalCam(camId);
     onCameraChange?.(camId);
@@ -214,6 +220,7 @@ export function OlympiaStudio3DScene({
         setPtzPerCam({});
         if (typeof window !== "undefined") {
           (window as any).__OLYMPIA_CALL__?.("studio:camera:reset", { all: true });
+          (window as any).__OLYMPIA_CALL__?.("studio:camera:auto");
         }
       } else {
         setPtzPerCam((prev) => {

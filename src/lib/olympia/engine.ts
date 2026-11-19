@@ -54,6 +54,10 @@ const resetTimer = (t: TimerState, ms?: number) => {
   t.remainingMs = t.totalMs;
   t.startedAt = null;
 };
+export const finishTimer = (t: TimerState) => {
+  t.remainingMs = 0;
+  t.startedAt = null;
+};
 
 export function normalizeAnswer(s: string): string {
   return (s || "")
@@ -617,8 +621,7 @@ export class OlympiaGame {
     const expired = (t: TimerState | null | undefined) =>
       !!t && timerRunning(t) && timerRemaining(t, now) <= 0;
     const fin = (t: TimerState) => {
-      t.remainingMs = 0;
-      t.startedAt = null;
+      finishTimer(t);
       changed = true;
     };
 
@@ -2172,6 +2175,9 @@ export class OlympiaGame {
       }
       case "kd:finishTurn": {
         if (!kd.started && kd.phase === "segmentDone") return OK;
+        if (kd.globalTimer) {
+          finishTimer(kd.globalTimer);
+        }
         kd.currentBgmTrack = undefined;
         this.cue("1_KhoiDong/finish_turn", "sound", this.state.kdFinishTurnPan || "both");
         const isLastSeg = kd.segIdx + 1 >= kd.segments.length;

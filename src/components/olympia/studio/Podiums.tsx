@@ -1417,8 +1417,14 @@ export function ContestantFigure({
       if (rightArmRef.current) { rightArmRef.current.rotation.x = armStride; rightArmRef.current.rotation.y = 0; rightArmRef.current.rotation.z = 0.04; }
       if (rightForearmRef.current) { rightForearmRef.current.rotation.x = -0.22; rightForearmRef.current.rotation.y = 0; rightForearmRef.current.rotation.z = 0; }
       if (rightWristRef.current) { rightWristRef.current.rotation.set(0.06, 0, 0.02); }
-      if (chestRef.current) chestRef.current.rotation.x = 0;
-      if (headRef.current) { headRef.current.rotation.x = 0; headRef.current.rotation.y = 0; headRef.current.rotation.z = 0; }
+      if (chestRef.current) {
+        chestRef.current.rotation.set(0, 0, 0);
+        chestRef.current.position.set(0, 0, 0);
+        chestRef.current.scale.set(1, 1, 1);
+      }
+      if (headRef.current) {
+        headRef.current.rotation.set(0, 0, 0);
+      }
     } else {
       // Kinematic ease-in and ease-out smoothing buffer using C2 Hermite smootherstep
       // Eliminates sudden popping or stiffness across shoulder, elbow, and wrist joints
@@ -1507,9 +1513,11 @@ export function ContestantFigure({
       }
 
       // Head tilted ~15 deg looking directly at glowing laptop screen with subtle reading scan
+      // When head is nested inside chest (which has idleChest.x = 0.12), head relative pitch is 0.14 rad
+      // Cumulative world pitch = 0.12 + 0.14 = 0.26 rad (~14.9 deg)
       const headReadScan = Math.sin(t * 1.2 + seatId * 0.9) * 0.035;
       const idleHead = {
-        x: 0.26 + Math.sin(t * 1.5 + seatId) * 0.010,
+        x: 0.14 + Math.sin(t * 1.5 + seatId) * 0.010,
         y: headReadScan,
         z: 0,
       };
@@ -1828,16 +1836,15 @@ export function ContestantFigure({
             </group>
           </group>
         </group>
-      </group>
 
-      {/* ── SOLID CONTINUOUS STUDENT NECK (Firmly anchored into polo collar, NO GAPS EVER!) ── */}
-      <mesh position={[0, 1.325, -0.004]}>
-        <cylinderGeometry args={[0.028, 0.034, 0.080, 24]} />
-        <primitive object={skinMat} attach="material" />
-      </mesh>
+        {/* ── SOLID CONTINUOUS STUDENT NECK (Firmly anchored into polo collar, NO GAPS EVER!) ── */}
+        <mesh position={[0, 1.325, -0.004]}>
+          <cylinderGeometry args={[0.028, 0.034, 0.080, 24]} />
+          <primitive object={skinMat} attach="material" />
+        </mesh>
 
-      {/* ── HEAD & FACIAL ANATOMY (Athletic Vietnamese Student, Pivoted at Skull Base [0, 1.365, 0]) ── */}
-      <group ref={headRef} position={[0, 1.365, 0]}>
+        {/* ── HEAD & FACIAL ANATOMY (Athletic Vietnamese Student, Pivoted at Skull Base [0, 1.365, 0]) ── */}
+        <group ref={headRef} position={[0, 1.365, 0]}>
         {/* Upper Throat & Mandible Transition (seamlessly covers neck joint) */}
         <mesh position={[0, -0.010, -0.004]}>
           <cylinderGeometry args={[0.028, 0.029, 0.026, 20]} />
@@ -1964,6 +1971,7 @@ export function ContestantFigure({
             </mesh>
           </group>
         )}
+      </group>
       </group>
     </group>
   );
@@ -6175,9 +6183,9 @@ export function Podiums({
         //   Walking contestant (cfg.seatId === currentEntranceSeat) rendered by ContestantEntranceWalkingFigures (NO duplicate clone / phân thân!).
         //   Subsequent contestants waiting upstairs hidden (showFigure = false).
         // - Entrance completed or competition rounds active: contestants stand at their podium desks (except active Về Đích contestant at center stage).
-        const isLobby = state?.stage === "lobby";
-        const isIntro = Boolean((introStartedAt || state?.introTimer) && state?.introStandby);
+        const isLobby = Boolean(state?.stage === "lobby" && !state?.entranceCompleted);
         const hasEntranceCompleted = Boolean(state?.entranceCompleted);
+        const isGameplayActive = Boolean(state?.stage === "playing" || state?.stage === "finished");
         const isCompetitionRound = Boolean(
           state?.stage === "playing" &&
           !state?.introStandby &&
@@ -6209,7 +6217,7 @@ export function Podiums({
         let screenMode: PodiumScreenMode = "logo";
         if (isCompetitionRound) {
           screenMode = "name_score";
-        } else if (hasEntranceCompleted) {
+        } else if (hasEntranceCompleted || isGameplayActive) {
           screenMode = "name_school";
         } else if (isEntranceActive) {
           // Transition to name + school shortly before stepping behind podium desk
@@ -6220,17 +6228,15 @@ export function Podiums({
         }
 
         const isThisContestantInVeDichTurn = isVdActive && cfg.seatId === activeSeat;
-        const hasArrivedAtPodium = Boolean(
-          hasEntranceCompleted ||
-          isCompetitionRound ||
-          state?.stage === "finished"
-        );
+
+        // R2 Fix: Ensure all contestants remain rendered at their podium desks once entrance is completed
+        // or during active gameplay stages. Never cull during intro standby ("ĐANG Ở PHẦN KHAI MẠC & GIỚI THIỆU TRẬN ĐẤU"),
+        // before clicking "BẮT ĐẦU" in Khởi Động, or when switching camera angles (CAM 1 / CAM 2).
         const showFigure =
           !isThisContestantInVeDichTurn &&
           !isEntranceActive &&
           !isLobby &&
-          !isIntro &&
-          hasArrivedAtPodium;
+          (hasEntranceCompleted || isGameplayActive);
 
         const isDimmed = Boolean(
           isContestantDimmed &&

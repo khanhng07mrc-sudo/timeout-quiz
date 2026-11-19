@@ -230,10 +230,48 @@ export default function DisplayScreen({ code }: { code: string }) {
     }
   }, [audioOn, isExplicitMuteParam]);
 
-  useOlympiaAudio(state, join?.audioSeason, audioOn);
+  const effectiveAudioSeason =
+    (state?.rulesetId && RULESETS[state.rulesetId]?.audioSeason) ||
+    join?.audioSeason ||
+    "O26";
+
+  useOlympiaAudio(state, effectiveAudioSeason, audioOn);
 
   // Auto-camera and question overlay visibility state
   const cameraState = useOlympiaCameraState(state, serverNow);
+
+  // Camera Reset & Auto-Director Handler (R3)
+  const handleResetCamera = useCallback(() => {
+    emit("action", { type: "studio:camera:auto" });
+    emit("action", { type: "studio:camera:reset", all: true });
+  }, [emit]);
+
+  // Global Keyboard Shortcut 'R' for Camera Reset (R3)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        handleResetCamera();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleResetCamera]);
+
+  const isCameraManual = Boolean(state?.studioCameraManual);
+  const isCameraPtzActive = Boolean(
+    state?.studioCameraPtz && Object.keys(state.studioCameraPtz).length > 0
+  );
+  const isCameraOverridden = isCameraManual || isCameraPtzActive;
 
   // Automated Vietnamese TTS question reading
   const lastQuestionRef = useRef<string>("");
@@ -435,8 +473,59 @@ export default function DisplayScreen({ code }: { code: string }) {
           >
             {audioOn ? "🔊" : "🔈"}
           </button>
+          {/* Quick Camera Auto/Reset Button (R3) */}
+          <button
+            type="button"
+            onClick={handleResetCamera}
+            className={`px-2 py-1 border rounded-lg transition text-xs cursor-pointer flex items-center gap-1 ${
+              isCameraOverridden
+                ? "border-amber-400/60 bg-amber-500/20 text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.4)] animate-pulse"
+                : "border-white/10 text-slate-400 hover:bg-white/5 hover:text-slate-200"
+            }`}
+            title={
+              isCameraOverridden
+                ? "Camera đang chỉnh thủ công / lệch góc. Bấm hoặc nhấn phím 'R' để đặt lại về Auto Director"
+                : "Đặt lại camera về Auto Director (Phím R)"
+            }
+          >
+            <span>🎥</span>
+            <span className="hidden sm:inline">↺ Auto (R)</span>
+          </button>
           <span>{connected ? "🟢" : "🔴"}</span>
         </div>
+      </div>
+
+      {/* ── 3.5. ACCESSIBLE CAMERA AUTO & RESET FLOATING BADGE (R3) ── */}
+      <div className="fixed top-13 right-3 sm:top-14 sm:right-4 z-40 pointer-events-auto flex items-center gap-1.5 animate-fade-in">
+        <button
+          type="button"
+          onClick={handleResetCamera}
+          className={`px-3 py-1.5 rounded-full backdrop-blur-md border text-xs font-bold flex items-center gap-2 shadow-2xl transition-all cursor-pointer ${
+            isCameraOverridden
+              ? "bg-slate-950/95 hover:bg-amber-950/80 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.4)] animate-pulse"
+              : "bg-slate-950/70 hover:bg-slate-900/90 border-white/15 text-slate-300 hover:border-cyan-400/60 hover:text-cyan-200 opacity-60 hover:opacity-100"
+          }`}
+          title={
+            isCameraOverridden
+              ? `Góc C${cameraState.camAngle} (${isCameraManual ? "Thủ công" : "Lệch PTZ"}). Bấm hoặc nhấn phím 'R' để đặt lại Auto Director`
+              : `Góc C${cameraState.camAngle} đang ở chế độ Tự động chuẩn. Bấm hoặc nhấn 'R' để đặt lại`
+          }
+        >
+          <span className="flex items-center gap-1">
+            <span>🎥</span>
+            <span className="font-mono text-[11px] text-cyan-300">C{cameraState.camAngle}</span>
+            {isCameraOverridden && (
+              <span className="text-[10px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-400/40 uppercase">
+                {isCameraManual ? "Thủ công" : "PTZ"}
+              </span>
+            )}
+          </span>
+          <span className="h-3 w-px bg-white/20" />
+          <span className="flex items-center gap-1 text-[11px] font-black text-white">
+            <span>↺</span>
+            <span>Đặt lại (R)</span>
+          </span>
+        </button>
       </div>
 
       {/* ── 4.5. BROADCAST CONTESTANT INTRO LOWER-THIRD CHYRON (Z-40) ── */}

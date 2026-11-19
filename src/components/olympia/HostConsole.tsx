@@ -197,8 +197,13 @@ export const HostConsole = React.memo(function HostConsole({
       .catch(() => {});
   }, [code]);
 
+  const effectiveAudioSeason =
+    (state?.rulesetId && RULESETS[state.rulesetId]?.audioSeason) ||
+    join?.audioSeason ||
+    "O26";
+
   // HostConsole: Audio is strictly played by Display only
-  useOlympiaAudio(state, join?.audioSeason, false);
+  useOlympiaAudio(state, effectiveAudioSeason, false);
 
   const call: Call = async (type: string, extra: Record<string, unknown> = {}) => {
     const r = await emit("action", { type, ...extra });
@@ -2297,7 +2302,7 @@ export const HostConsole = React.memo(function HostConsole({
       <OlympiaAudioManagerDrawer
         open={showAudioDrawer}
         onClose={() => setShowAudioDrawer(false)}
-        audioSeason={join?.audioSeason as any}
+        audioSeason={effectiveAudioSeason as any}
         autoAudioMode={audioOn}
         onToggleAutoAudioMode={(v) => setAudioOn(v)}
       />

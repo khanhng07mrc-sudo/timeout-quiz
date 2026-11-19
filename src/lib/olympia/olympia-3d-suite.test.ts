@@ -29,6 +29,7 @@ import { runOlympiaM1LayoutSuite } from "./olympia-m1-layout.test";
 import { runOlympiaM2TrajectoriesSuite } from "./olympia-m2-trajectories.test";
 import { runOlympiaM3LightingSuite } from "./olympia-m3-lighting.test";
 import { runOlympiaM4AudioSuite } from "./olympia-m4-audio.test";
+import { runProductionFixesSuite } from "./olympia-production-fixes.test";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Formal Interface Contracts & Specifications (from PROJECT.md)
@@ -1382,6 +1383,11 @@ const m3Results = runOlympiaM3LightingSuite();
 // Execute Milestone 4: Seamless Intro Audio Looping Suite (R5, Tiers 1-4)
 // ─────────────────────────────────────────────────────────────────────────────
 const m4Results = runOlympiaM4AudioSuite();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Execute Production Fixes R1 - R6 Verification Suite
+// ─────────────────────────────────────────────────────────────────────────────
+runProductionFixesSuite();
 
 // Consolidated Grand Total Summary across All Suites
 const grandTier1 = tier1Count + refactorResults.tier1Count + introResults.tier1Count + stagePerfResults.tier1Count + stageRefactorResults.tier1Count + m1Results.tier1Count + m2Results.tier1Count + m3Results.tier1Count + m4Results.tier1Count;

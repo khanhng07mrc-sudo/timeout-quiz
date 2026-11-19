@@ -917,6 +917,37 @@ export const HostConsole = React.memo(function HostConsole({
                 </button>
               </div>
             </div>
+            {/* Setting Kiểu Tổng kết điểm: Kiểu mới O27 vs Đồ họa truyền thống */}
+            <div
+              className="w-full px-1 py-1 rounded bg-purple-950/35 border border-purple-500/25 flex flex-col gap-0.5"
+              title="Chế độ Tổng kết điểm: Kiểu mới O27 (quay cận cảnh từng thí sinh từ thấp đến cao) hoặc Đồ họa truyền thống (Bảng điểm 2D toàn màn)"
+            >
+              <span className="text-[9px] font-bold text-purple-300/90 truncate">🏆 Kiểu Tổng Kết</span>
+              <div className="grid grid-cols-2 gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => call("summary:setMode", { mode: "cinematic_o27" })}
+                  className={`py-0.5 rounded text-[9px] font-black transition cursor-pointer ${
+                    (state.summaryMode ?? "cinematic_o27") === "cinematic_o27"
+                      ? "bg-purple-600 text-white shadow-sm"
+                      : "bg-slate-900/70 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  🎥 O27
+                </button>
+                <button
+                  type="button"
+                  onClick={() => call("summary:setMode", { mode: "graphic" })}
+                  className={`py-0.5 rounded text-[9px] font-black transition cursor-pointer ${
+                    state.summaryMode === "graphic"
+                      ? "bg-purple-600 text-white shadow-sm"
+                      : "bg-slate-900/70 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  📊 Đồ họa
+                </button>
+              </div>
+            </div>
             {/* Setting BGM Khởi Động: Tự động vs Thủ công (O23 - O27) */}
             {["O23", "O24", "O25", "O26", "O27"].includes(state.rulesetId) && (
               <div
@@ -1257,6 +1288,14 @@ export const HostConsole = React.memo(function HostConsole({
                     title="Tạm dừng / Bật tự động chuyển thí sinh sau 3.5s"
                   >
                     {state.summaryState.isAuto ? "⏸ Tạm dừng" : "▶ Tiếp tục"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => call("summary:setMode", { mode: (state.summaryState?.mode || state.summaryMode) === "cinematic_o27" ? "graphic" : "cinematic_o27" })}
+                    className="px-2 py-1 rounded bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 text-xs font-bold border border-amber-500/40 cursor-pointer transition"
+                    title="Chuyển đổi kiểu tổng kết: Cận cảnh 3D kiểu mới O27 hoặc Bảng đồ họa 2D"
+                  >
+                    {(state.summaryState?.mode || state.summaryMode) === "cinematic_o27" ? "🎥 Kiểu mới O27" : "📊 Đồ họa 2D"}
                   </button>
                   <button
                     type="button"

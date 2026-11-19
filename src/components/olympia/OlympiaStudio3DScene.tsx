@@ -402,7 +402,11 @@ export function OlympiaStudio3DScene({
         <CameraController
           camAngle={effectiveCam}
           totalSeats={state?.seats?.length || 4}
-          activeSeat={activeMainContestantSeat ?? (state?.khoiDong?.segments?.[state?.khoiDong?.segIdx ?? 0]?.seat ?? 0)}
+          activeSeat={
+            state?.summaryState?.active
+              ? (state.summaryState.orderedSeats[state.summaryState.currentIndex] ?? 0)
+              : (activeMainContestantSeat ?? (state?.khoiDong?.segments?.[state?.khoiDong?.segIdx ?? 0]?.seat ?? 0))
+          }
           transitionMode={transitionMode}
           pushInProgress={pushInProgress}
           ptzYaw={ptzYaw}

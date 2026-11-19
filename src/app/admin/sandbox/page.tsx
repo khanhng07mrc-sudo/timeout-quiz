@@ -14161,6 +14161,54 @@ const [olympiaRulesetId, setOlympiaRulesetId] = useState<string>("O26");
                     <span className="text-[9px] text-amber-400 block italic">
                       * Nhấn vào một mùa khác để thoát phòng hiện tại và tạo phòng mới theo thể thức mùa đó.
                     </span>
+
+                    {/* 🏆 Kiểu Tổng Kết Điểm (Summary Mode) */}
+                    <div className="pt-2 border-t border-amber-500/30 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-black text-amber-300 text-[11px] flex items-center gap-1">
+                          <span>🏆</span>
+                          <span>KIỂU TỔNG KẾT ĐIỂM (SUMMARY)</span>
+                        </span>
+                        <span className="text-[10px] text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+                          {(olympiaState?.summaryMode ?? "cinematic_o27") === "cinematic_o27" ? "Kiểu mới O27" : "Đồ họa truyền thống"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 p-1 rounded-lg bg-black/50 border border-white/10">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sendOlympiaAction("summary:setMode", { mode: "cinematic_o27" });
+                          }}
+                          className={`py-1.5 px-2 rounded-md font-black text-[11px] flex items-center justify-center gap-1 transition cursor-pointer ${
+                            (olympiaState?.summaryMode ?? "cinematic_o27") === "cinematic_o27"
+                              ? "bg-gradient-to-r from-amber-600 to-yellow-600 text-slate-950 font-black shadow-md border border-amber-400"
+                              : "text-slate-400 hover:text-white"
+                          }`}
+                        >
+                          <span>🎥</span>
+                          <span>Kiểu mới O27 (Cận cảnh 3D)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sendOlympiaAction("summary:setMode", { mode: "graphic" });
+                          }}
+                          className={`py-1.5 px-2 rounded-md font-black text-[11px] flex items-center justify-center gap-1 transition cursor-pointer ${
+                            olympiaState?.summaryMode === "graphic"
+                              ? "bg-gradient-to-r from-amber-600 to-yellow-600 text-slate-950 font-black shadow-md border border-amber-400"
+                              : "text-slate-400 hover:text-white"
+                          }`}
+                        >
+                          <span>📊</span>
+                          <span>Đồ họa (Bảng điểm 2D)</span>
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-300 leading-normal">
+                        {(olympiaState?.summaryMode ?? "cinematic_o27") === "cinematic_o27"
+                          ? "• Kiểu mới O27: Máy quay tự động cận cảnh từng thí sinh từ điểm thấp nhất đến cao nhất (0.75x -> 1.25x), dừng ngắm rồi chuyển tiếp."
+                          : "• Đồ họa truyền thống: Chuyển về toàn cảnh CAM 10 và hiện bảng đồ họa xếp hạng toàn màn hình."}
+                      </p>
+                    </div>
                   </div>
                 )}
                       

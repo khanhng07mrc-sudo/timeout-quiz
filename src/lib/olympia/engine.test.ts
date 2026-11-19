@@ -2423,6 +2423,71 @@ test("Score Summary (R7): strictly blocked mid-round, allowed at end-of-round, m
   assert.equal(canStartScoreSummary(g.state), true, "Allowed once final Tăng Tốc Q4 is graded");
 });
 
+test("Score Summary: O27 cinematic zoom mode, custom holdDurationMs, score sorting, and graphic toggle", () => {
+  const g = game("O26", ["khoiDong", "vcnv", "tangToc", "veDich"], 6, { seatCount: 6 });
+  for (let i = 0; i < 6; i++) {
+    g.joinSeat(`TS${i + 1}`, `k${i + 1}`);
+  }
+
+  // Default summaryMode is cinematic_o27
+  assert.equal(g.state.summaryMode, "cinematic_o27", "Default summaryMode must be cinematic_o27");
+
+  // Toggle summaryMode to graphic and back
+  act(g, "summary:setMode", { mode: "graphic" });
+  assert.equal(g.state.summaryMode, "graphic");
+  act(g, "summary:setMode", { mode: "cinematic_o27" });
+  assert.equal(g.state.summaryMode, "cinematic_o27");
+
+  // Setup scores: TS0: 80, TS1: 20, TS2: 50, TS3: 20, TS4: 100, TS5: 50
+  g.state.seats[0].score = 80;
+  g.state.seats[1].score = 20;
+  g.state.seats[2].score = 50;
+  g.state.seats[3].score = 20; // tied with TS1 (seat 1), seat 1 must come first
+  g.state.seats[4].score = 100;
+  g.state.seats[5].score = 50; // tied with TS2 (seat 2), seat 2 must come first
+
+  // Force round to end of VCNV so summary is allowed
+  act(g, "round:force", { round: "vcnv" }, 5000);
+  act(g, "vcnv:revealAll", {}, 5100);
+  assert.equal(canStartScoreSummary(g.state), true);
+
+  // Start summary
+  act(g, "summary:start", { isAuto: true }, 10000);
+  assert.equal(g.state.summaryState?.active, true);
+  assert.equal(g.state.summaryState?.mode, "cinematic_o27");
+  // For 6 seats, holdDurationMs is 1000ms
+  assert.equal(g.state.summaryState?.holdDurationMs, 1000);
+  // Expected order: lowest score first (20: seat 1 then seat 3; 50: seat 2 then seat 5; 80: seat 0; 100: seat 4)
+  assert.deepEqual(g.state.summaryState?.orderedSeats, [1, 3, 2, 5, 0, 4]);
+  assert.equal(g.state.summaryState?.currentIndex, 0);
+  assert.equal(g.state.summaryState?.seatEnteredAt, 10000);
+
+  // Step duration for 6 seats in O27 = 1500 (zoom) + 1000 (hold) = 2500ms
+  // At t = 10000 + 2499, still index 0
+  g.tick(12499);
+  assert.equal(g.state.summaryState?.currentIndex, 0);
+
+  // At t = 10000 + 2500, advances to index 1 (seat 3)
+  g.tick(12500);
+  assert.equal(g.state.summaryState?.currentIndex, 1);
+  assert.equal(g.state.summaryState?.seatEnteredAt, 12500);
+
+  // Test holdDurationMs scaling for 4 seats and 8 seats
+  const g4 = game("O26", ["khoiDong", "vcnv", "tangToc", "veDich"], 4, { seatCount: 4 });
+  for (let i = 0; i < 4; i++) g4.joinSeat(`TS${i + 1}`, `k${i + 1}`);
+  act(g4, "round:force", { round: "vcnv" }, 1000);
+  act(g4, "vcnv:revealAll", {}, 1100);
+  act(g4, "summary:start", {}, 2000);
+  assert.equal(g4.state.summaryState?.holdDurationMs, 1500, "4 seats has 1500ms hold");
+
+  const g8 = game("O26", ["khoiDong", "vcnv", "tangToc", "veDich"], 8, { seatCount: 8 });
+  for (let i = 0; i < 8; i++) g8.joinSeat(`TS${i + 1}`, `k${i + 1}`);
+  act(g8, "round:force", { round: "vcnv" }, 1000);
+  act(g8, "vcnv:revealAll", {}, 1100);
+  act(g8, "summary:start", {}, 2000);
+  assert.equal(g8.state.summaryState?.holdDurationMs, 500, "8 seats has 500ms hold");
+});
+
 test("Intro standby lifecycle: entrance completion preserves introStandby until Host manually starts Khởi Động", () => {
   const g = game("O26", ["khoiDong", "vcnv", "tangToc", "veDich"], 4, { seatCount: 4 });
   g.joinSeat("TS1", "k1");

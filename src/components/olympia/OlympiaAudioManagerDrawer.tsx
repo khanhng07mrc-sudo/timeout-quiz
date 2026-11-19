@@ -276,8 +276,7 @@ export default function OlympiaAudioManagerDrawer({
     []
   );
 
-  // Dual-mono channel routing: Extract selected channel (Left or Right) from source
-  // and output equally to BOTH ears (Left & Right channels) so clean BGM/SFX can be heard with both ears.
+  // Dual-mono channel routing: Route audio to Left only, Right only, or Both ears
   const connectPanner = useCallback(
     (a: HTMLAudioElement, ch: "both" | "left" | "right") => {
       const ctx = getAudioContext();
@@ -288,26 +287,28 @@ export default function OlympiaAudioManagerDrawer({
           source.disconnect();
         } catch {}
 
-        if (ch === "both") {
-          source.connect(ctx.destination);
-          return;
-        }
-
         const splitter = ctx.createChannelSplitter(2);
         const merger = ctx.createChannelMerger(2);
         source.connect(splitter);
+
         if (ch === "left") {
-          // Route Left channel of original track to BOTH ears (Dual-Mono Center)
-          splitter.connect(merger, 0, 0); // L -> Out L
-          splitter.connect(merger, 0, 1); // L -> Out R
+          // Route all audio channels (L + R) exclusively to Left output (100% Left ear, Right silent)
+          splitter.connect(merger, 0, 0);
+          splitter.connect(merger, 1, 0);
         } else if (ch === "right") {
-          // Route Right channel of original track to BOTH ears (Dual-Mono Center)
-          splitter.connect(merger, 1, 0); // R -> Out L
-          splitter.connect(merger, 1, 1); // R -> Out R
+          // Route all audio channels (L + R) exclusively to Right output (100% Right ear, Left silent)
+          splitter.connect(merger, 0, 1);
+          splitter.connect(merger, 1, 1);
+        } else {
+          // "both": route equally to both ears so single-channel rips from Fandom play in both ears
+          splitter.connect(merger, 0, 0);
+          splitter.connect(merger, 1, 0);
+          splitter.connect(merger, 0, 1);
+          splitter.connect(merger, 1, 1);
         }
         merger.connect(ctx.destination);
-      } catch {
-        // Fallback: audio plays without WebAudio routing
+      } catch (err) {
+        console.warn("[AudioManager] WebAudio connectPanner error:", err);
       }
     },
     [getAudioContext, getOrCreateMediaSource]
@@ -372,9 +373,16 @@ export default function OlympiaAudioManagerDrawer({
     // ensuring switching channels mid-playback seamlessly re-routes without reloading or restarting.
     const url = `/olympia-audio/${folder}/${id}.mp3`;
 
-    const audio = new Audio(url);
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
 
-    // Connect true-mono downmix panner (WeakMap-cached source node)
+    const audio = new Audio();
+    audio.crossOrigin = "anonymous";
+    audio.src = url;
+
+    // Connect channel panner (Left, Right, or Both)
     connectPanner(audio, channel);
 
     activeAudiosRef.current.set(id, audio);

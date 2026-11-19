@@ -287,6 +287,7 @@ export class OlympiaGame {
       veDich: null,
       cauHoiPhu: null,
       entranceCompleted: false,
+      summaryMode: config.summaryMode || "cinematic_o27",
       cue: config.playIntroOnCreate !== false ? { id: 1, sound: "6_NhacKhac/show_intro", kind: "sound" } : null,
       cueSeq: config.playIntroOnCreate !== false ? 1 : 0,
       version: 0,
@@ -594,14 +595,18 @@ export class OlympiaGame {
       }
     }
 
-    // Auto-advance summary sequence (3.5s per contestant)
+    // Auto-advance summary sequence (O27: 1.5s zoom + holdDurationMs per contestant; Graphic: 3.5s per contestant)
     if (st.summaryState && st.summaryState.active && st.summaryState.isAuto) {
       const elapsed = now - (st.summaryState.lastAdvanceAt ?? now);
-      if (elapsed >= 3500) {
+      const isO27 = st.summaryState.mode === "cinematic_o27";
+      const holdMs = st.summaryState.holdDurationMs ?? 1500;
+      const stepDuration = isO27 ? (1500 + holdMs) : 3500;
+      if (elapsed >= stepDuration) {
         const nextIdx = st.summaryState.currentIndex + 1;
         if (nextIdx < st.summaryState.orderedSeats.length) {
           st.summaryState.currentIndex = nextIdx;
           st.summaryState.lastAdvanceAt = now;
+          st.summaryState.seatEnteredAt = now;
           const nextSeat = st.summaryState.orderedSeats[nextIdx];
           st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(nextSeat);
           this.touch(now);
@@ -1572,18 +1577,45 @@ export class OlympiaGame {
         st.introTimer = null;
         st.showScoreboard = false;
         st.studioCameraManual = false;
-        const isFullscreen = a.isFullscreen != null ? Boolean(a.isFullscreen) : (st.overlayMode === "FULLSCREEN");
+
+        const effectiveMode: "graphic" | "cinematic_o27" =
+          (a.mode as any) || st.summaryMode || "cinematic_o27";
+        st.summaryMode = effectiveMode;
+
+        // Timing based on seat count for O27:
+        // 2, 3, 4 seats: hold 1.5s
+        // 5, 6 seats: hold 1.0s
+        // 7, 8 seats: hold 0.5s
+        const nSeats = orderedSeats.length;
+        const holdDurationMs = nSeats <= 4 ? 1500 : (nSeats <= 6 ? 1000 : 500);
+
+        const isFullscreen = effectiveMode === "graphic" ? true : (a.isFullscreen != null ? Boolean(a.isFullscreen) : false);
         st.summaryState = {
           active: true,
           currentIndex: 0,
           orderedSeats,
           isAuto,
           isFullscreen,
+          mode: effectiveMode,
+          holdDurationMs,
           lastAdvanceAt: now,
+          seatEnteredAt: now,
         };
         this.cue("6_NhacKhac/summary", "bgm");
         const firstSeat = orderedSeats[0];
         st.studioCamera = isFullscreen ? 10 : seatToStudioCamera(firstSeat);
+        return OK;
+      }
+      case "summary:setMode": {
+        const mode: "graphic" | "cinematic_o27" = a.mode === "graphic" ? "graphic" : "cinematic_o27";
+        st.summaryMode = mode;
+        if (st.summaryState && st.summaryState.active) {
+          st.summaryState.mode = mode;
+          st.summaryState.isFullscreen = mode === "graphic";
+          st.overlayMode = mode === "graphic" ? "FULLSCREEN" : "LOWER_THIRD";
+          const curSeat = st.summaryState.orderedSeats[st.summaryState.currentIndex] ?? 0;
+          st.studioCamera = mode === "graphic" ? 10 : seatToStudioCamera(curSeat);
+        }
         return OK;
       }
       case "summary:next": {
@@ -1592,6 +1624,7 @@ export class OlympiaGame {
         if (nextIdx < st.summaryState.orderedSeats.length) {
           st.summaryState.currentIndex = nextIdx;
           st.summaryState.lastAdvanceAt = now;
+          st.summaryState.seatEnteredAt = now;
           const nextSeat = st.summaryState.orderedSeats[nextIdx];
           st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(nextSeat);
         } else {
@@ -1607,6 +1640,7 @@ export class OlympiaGame {
         const prevIdx = Math.max(0, st.summaryState.currentIndex - 1);
         st.summaryState.currentIndex = prevIdx;
         st.summaryState.lastAdvanceAt = now;
+        st.summaryState.seatEnteredAt = now;
         const prevSeat = st.summaryState.orderedSeats[prevIdx];
         st.studioCamera = st.summaryState.isFullscreen ? 10 : seatToStudioCamera(prevSeat);
         return OK;

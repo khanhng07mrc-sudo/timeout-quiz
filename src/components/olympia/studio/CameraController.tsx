@@ -132,7 +132,11 @@ export function getContestantPodiumWorldPos(
   return [px, y, pz];
 }
 
-export function getContestantCameraPreset(seatId: number, totalSeats: number = 4): CameraPreset {
+export function getContestantCameraPreset(
+  seatId: number,
+  totalSeats: number = 4,
+  framing: "mcu" | "wide_with_podium" = "mcu"
+): CameraPreset {
   const activeCount = Math.min(8, Math.max(1, totalSeats || 4));
   const clampedSeat = Math.min(activeCount - 1, Math.max(0, seatId));
   const { radius, startPhi, endPhi } = getContestantArcParams(activeCount);
@@ -145,12 +149,29 @@ export function getContestantCameraPreset(seatId: number, totalSeats: number = 4
   const nx = Math.cos(phi);
   const nz = Math.sin(phi);
 
+  const effPx = +(px + 0.22).toFixed(3);
+
+  if (framing === "wide_with_podium") {
+    // 0.75x - 0.8x wide framing showing full contestant body + glowing podium scoreboard
+    // Camera backed up to 2.45m, elevated slightly to 1.52m, target at desk center Y = 1.05m
+    const dist = 2.45;
+    const camX = +(effPx + dist * nx).toFixed(3);
+    const camY = 1.52;
+    const camZ = +(pz + dist * nz).toFixed(3);
+    return {
+      id: clampedSeat < 4 ? 5 + clampedSeat : 25 + (clampedSeat - 4),
+      label: `Cận Cảnh TS ${clampedSeat + 1} (Toàn Thân & Bảng Điểm)`,
+      pos: [camX, camY, camZ],
+      target: [effPx, 1.05, +pz.toFixed(3)],
+      fov: 44, // 0.75x wider FOV so both head and scoreboard fit comfortably
+    };
+  }
+
   // Broadcast Medium Close-Up (MCU / Bust Shot) focused on contestant's chest & head:
   // - Closer distance (1.92m vs 2.45m) cleanly cuts adjacent contestant podiums out of the frame (no '1' or 'T' peeking at corners).
   // - Elevated target (1.40m vs 1.25m) and camera height (1.48m vs 1.34m) tucks the desk and podium base safely below the 2D Lower-Third banner.
   // - Offset X by +0.22m to track the visually shifted contestant podiums group exactly.
   const dist = 1.92;
-  const effPx = +(px + 0.22).toFixed(3);
   const camX = +(effPx + dist * nx).toFixed(3);
   const camY = 1.48;
   const camZ = +(pz + dist * nz).toFixed(3);
@@ -164,6 +185,7 @@ export function getContestantCameraPreset(seatId: number, totalSeats: number = 4
     label: `Cận Cảnh TS ${clampedSeat + 1}`,
     pos: [camX, camY, camZ],
     target: [targetX, targetY, targetZ],
+    fov: 36,
   };
 }
 
@@ -212,15 +234,78 @@ export function getContestantScreenCameraPreset(
   };
 }
 
+export function getWideStageCameraPreset(totalSeats: number = 4): CameraPreset {
+  // Broad studio wide shot dynamically framed for totalSeats (4, 6, 8):
+  // Prevents contestant podium clipping on the far left downstage arc (Z=+2.42m, X=-5.98m).
+  const count = Math.min(8, Math.max(1, totalSeats || 4));
+  if (count >= 7) {
+    return {
+      id: 1,
+      label: "Toàn Cảnh (8 Thí Sinh)",
+      pos: [-1.00, 4.50, 14.20],
+      target: [-1.60, 1.40, -2.40],
+      fov: 48,
+    };
+  }
+  if (count >= 5) {
+    return {
+      id: 1,
+      label: "Toàn Cảnh (6 Thí Sinh)",
+      pos: [-0.60, 4.20, 13.40],
+      target: [-1.20, 1.45, -2.80],
+      fov: 44,
+    };
+  }
+  return {
+    id: 1,
+    label: "Toàn Cảnh",
+    pos: [-0.20, 3.90, 12.60],
+    target: [-0.80, 1.50, -3.20],
+    fov: 40,
+  };
+}
+
 export function getWidePodiumsCameraPreset(totalSeats: number = 4): CameraPreset {
   // Downstage left raking shot down the line of contestant podiums (Reference Image 7)
-  // Delivers deep perspective with formula wall fully blanketing the background and center dais minimized.
+  // Dynamically pulled back for 6 and 8 contestants so Seat 0 is comfortably in view.
+  const count = Math.min(8, Math.max(1, totalSeats || 4));
+  if (count >= 7) {
+    return {
+      id: 10,
+      label: "Toàn Cảnh Bục Thí Sinh",
+      pos: [-4.60, 1.55, 5.80],
+      target: [-5.60, 1.25, -2.80],
+      fov: 38,
+    };
+  }
+  if (count >= 5) {
+    return {
+      id: 10,
+      label: "Toàn Cảnh Bục Thí Sinh",
+      pos: [-4.40, 1.50, 5.20],
+      target: [-5.50, 1.25, -3.00],
+      fov: 36,
+    };
+  }
   return {
     id: 10,
     label: "Toàn Cảnh Bục Thí Sinh",
     pos: [-4.20, 1.45, 4.80],
     target: [-5.40, 1.25, -3.20],
     fov: 34,
+  };
+}
+
+export function getWideStageLeftTiltedPreset(totalSeats: number = 4): CameraPreset {
+  // Broad studio wide shot angled down towards Stage Left / Contestant Podiums
+  // Used for finish-turn return sequence gliding back to default center over 3.0s.
+  const count = Math.min(8, Math.max(1, totalSeats || 4));
+  return {
+    id: 19,
+    label: "Toàn Cảnh Nghiêng Trái Bục Thí Sinh",
+    pos: [-2.20, 4.30, 13.80],
+    target: [-3.20, 1.40, -2.40],
+    fov: count >= 7 ? 48 : count >= 5 ? 44 : 40,
   };
 }
 
@@ -456,11 +541,17 @@ export function CameraController({
         camAngle >= 25 ? camAngle - 25 + 4 : camAngle - 5,
         effectiveTotalSeats
       )
+    : camAngle === 1
+    ? getWideStageCameraPreset(effectiveTotalSeats)
     : camAngle === 10
     ? getWidePodiumsCameraPreset(effectiveTotalSeats)
     : camAngle === 16
     ? getContestantScreenCameraPreset(activeSeat, effectiveTotalSeats)
-    : (OLYMPIA_CAM_PRESETS[camAngle] || OLYMPIA_CAM_PRESETS[1]);
+    : camAngle === 18
+    ? getContestantCameraPreset(activeSeat, effectiveTotalSeats, "wide_with_podium")
+    : camAngle === 19
+    ? getWideStageLeftTiltedPreset(effectiveTotalSeats)
+    : (OLYMPIA_CAM_PRESETS[camAngle] || getWideStageCameraPreset(effectiveTotalSeats));
   const targetPos = useMemo(
     () => (isIdleLobby && camAngle === 3 ? _mcTightPos.clone() : new THREE.Vector3(...targetPreset.pos)),
     [isIdleLobby, camAngle, targetPreset]
@@ -470,18 +561,33 @@ export function CameraController({
     [isIdleLobby, camAngle, targetPreset]
   );
 
+  const prevCamAngleRef = useRef<number>(camAngle);
+  const smoothPushRef = useRef<number>(pushInProgress);
+
   // Handle instant cut on camera switch when mode is CUT, except when in standby or smoothly transitioning out of standby
   useEffect(() => {
     if (transitionMode === "CUT" && !isPostIntroStandby && standbyExitedAtRef.current == null) {
       currentPos.current.copy(targetPos);
       currentTarget.current.copy(targetLookAt);
     }
-  }, [camAngle, transitionMode, targetPos, targetLookAt, isPostIntroStandby]);
+    if (prevCamAngleRef.current !== camAngle) {
+      smoothPushRef.current = pushInProgress;
+      prevCamAngleRef.current = camAngle;
+    }
+  }, [camAngle, transitionMode, targetPos, targetLookAt, isPostIntroStandby, pushInProgress]);
 
   useFrame((_, delta) => {
+    // Smooth push-in zoom to eliminate abrupt jolt when advancing questions on same camera angle
+    if (prevCamAngleRef.current !== camAngle) {
+      smoothPushRef.current = pushInProgress;
+      prevCamAngleRef.current = camAngle;
+    } else {
+      smoothPushRef.current = THREE.MathUtils.damp(smoothPushRef.current, pushInProgress, 8.0, delta);
+    }
+
     // 0. True Optical Zoom & Adaptive FOV Calculation
     if (camera instanceof THREE.PerspectiveCamera) {
-      const baseFov = camAngle === 1 ? 36 : camAngle === 10 ? 34 : camAngle === 13 ? 42 : camAngle === 15 ? 38 : camAngle === 17 ? 36 : 43;
+      const baseFov = targetPreset.fov ?? (camAngle === 1 ? (effectiveTotalSeats >= 7 ? 48 : effectiveTotalSeats >= 5 ? 44 : 40) : camAngle === 10 ? 34 : camAngle === 13 ? 42 : camAngle === 15 ? 38 : camAngle === 17 ? 36 : 43);
       const aspect = size.width / Math.max(1, size.height);
       const targetAspect = 16 / 9;
       let calculatedFov = baseFov;
@@ -495,13 +601,14 @@ export function CameraController({
 
       // True Optical Zoom: Narrow/widen field of view (focal length change)
       const opticalFov = calculatedFov / Math.max(0.25, ptzZoom);
-      // Zoom smooth 100% -> 125% based on pushInProgress (0.0 to 1.0)
-      const zoomFactor = 1.0 + Math.max(0, Math.min(1.0, pushInProgress)) * 0.25;
+      // Zoom smooth 100% -> 125% based on smoothPush (0.0 to 1.0)
+      const activePush = Math.max(0, Math.min(1.0, smoothPushRef.current));
+      const zoomFactor = 1.0 + activePush * 0.25;
       const pushFov = opticalFov / zoomFactor;
-      if (transitionMode === "CUT") {
+      if (transitionMode === "CUT" && prevCamAngleRef.current !== camAngle) {
         camera.fov = Math.min(85, Math.max(12, pushFov));
       } else {
-        camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 6.0, delta);
+        camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 8.0, delta);
       }
     }
     // 0. Opening Sequence Camera Director (VTV3 Olympia 27 Broadcast Parity 10s 5-Phase Choreography):
@@ -625,9 +732,10 @@ export function CameraController({
 
     // 1. Calculate subtle broadcast push-in (dolly) towards target
     _effectivePos.copy(targetPos);
-    if (pushInProgress > 0) {
+    const activePush = Math.max(0, Math.min(1.0, smoothPushRef.current));
+    if (activePush > 0) {
       _dir.copy(targetLookAt).sub(targetPos).normalize();
-      _effectivePos.addScaledVector(_dir, pushInProgress * 0.40);
+      _effectivePos.addScaledVector(_dir, activePush * 0.40);
     }
 
     const now = serverNow ? serverNow() : Date.now();
@@ -640,12 +748,13 @@ export function CameraController({
 
     // 2. Smooth interpolation or instant positioning:
     // When transitioning from standby to question framing, smoothly glide (lerp) into position without snapping.
-    if (transitionMode === "CUT" && !isExitingStandby) {
+    // When remaining on the same camera angle (e.g. advancing question), lerp smoothly with smoothPush instead of jarring snap.
+    if (transitionMode === "CUT" && !isExitingStandby && prevCamAngleRef.current !== camAngle) {
       currentPos.current.copy(_effectivePos);
       currentTarget.current.copy(targetLookAt);
     } else {
-      // Morph transition (smooth damp / lerp)
-      const lerpSpeed = Math.min(1.0, delta * 3.8);
+      // Morph transition or same-camera smooth push damping
+      const lerpSpeed = Math.min(1.0, delta * 8.0);
       currentPos.current.lerp(_effectivePos, lerpSpeed);
       currentTarget.current.lerp(targetLookAt, lerpSpeed);
     }

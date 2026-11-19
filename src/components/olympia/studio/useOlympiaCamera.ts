@@ -475,7 +475,8 @@ export function useOlympiaCameraState(
     // Cleanly drives contestant close-ups (CAM 5..8 or CAM 25..28) or wide podium view (CAM 10 in fullscreen)
     // unless the director explicitly clicks a manual camera button AFTER summary started.
     if (state.summaryState?.active) {
-      if (state.summaryState.isFullscreen) {
+      const isGraphic = state.summaryState.mode === "graphic" || state.summaryState.isFullscreen;
+      if (isGraphic) {
         return {
           camAngle: 10,
           transitionMode: "CUT",
@@ -486,12 +487,18 @@ export function useOlympiaCameraState(
       const idx = state.summaryState.currentIndex ?? 0;
       const ordered = state.summaryState.orderedSeats ?? [];
       const currentSeat = ordered[idx] ?? idx;
-      const targetCam = getCameraForSeat(currentSeat, activeCount);
+      const seatStart = state.summaryState.seatEnteredAt || state.summaryState.lastAdvanceAt || now;
+      const elapsedOnSeat = Math.max(0, (now - seatStart) / 1000);
+
+      // O27 Choreography:
+      // - 0.0s -> 1.5s: Từ trạng thái thấy cả người + bảng điểm (0.75x - 0.8x) zoom lên 1.25x
+      // - Sau 1.5s: Đứng im tại 1.25x (trong 1.5s với 2-4 TS, 1.0s với 5-6 TS, 0.5s với 7-8 TS)
+      const push = Math.min(1.0, elapsedOnSeat / 1.5);
       return {
-        camAngle: targetCam,
+        camAngle: 18, // Preset 18: wide_with_podium for activeSeat
         transitionMode: "CUT",
         isOverlayHidden: false,
-        pushInProgress: 0.08,
+        pushInProgress: push,
       };
     }
 
@@ -724,17 +731,28 @@ export function useOlympiaCameraState(
         }
       }
 
-      // 3.6. Sau khi nhấn Kết thúc lượt (sau một lượt khởi động riêng):
-      // Giữ cận cảnh thí sinh 2.5s (zoom in nhẹ) rồi cut sang toàn cảnh CAM 1
+      // 3.6. Khi nhấn Kết thúc lượt (ở lượt riêng, hoặc O13 - O21):
+      // - Giai đoạn 1 (0.0s -> 1.5s): Chuyển sang đúng camera thí sinh đó ở góc rộng (0.75x - 0.8x, hiện đủ cả người lẫn bảng điểm), zoom lên 1.25x trong 1.5s
+      // - Giai đoạn 2 (1.5s): CUT ngay sang toàn cảnh CAM 1 (không morph), bắt đầu ở trạng thái nghiêng về bên trái (khu vực bục thí sinh, CAM 19)
+      // - Giai đoạn 3 (1.5s -> 4.5s): Quay êm ái từ góc nghiêng trái về góc toàn cảnh mặc định trong 3.0s (không giật)
       if (kd.phase === "segmentDone") {
         const segDoneElapsed = Math.max(0, (now - phaseEnteredAtRef.current) / 1000);
-        if (segDoneElapsed < 2.5) {
-          const pushIn = Math.min(1.0, segDoneElapsed / 2.5) * 0.15;
+        if (segDoneElapsed < 1.5) {
+          const pushIn = Math.min(1.0, segDoneElapsed / 1.5);
           return {
-            camAngle: targetContestantCam,
+            camAngle: 18, // Preset 18: Wide framing showing both contestant body & podium scoreboard
             transitionMode: "CUT",
             isOverlayHidden: false,
-            pushInProgress: pushIn,
+            pushInProgress: pushIn, // 0.0 -> 1.0 (zoom up to 1.25x)
+          };
+        }
+        if (segDoneElapsed < 4.5) {
+          const isImmediateCut = segDoneElapsed < 1.58;
+          return {
+            camAngle: segDoneElapsed < 2.5 ? 19 : 1,
+            transitionMode: isImmediateCut ? "CUT" : "MORPH",
+            isOverlayHidden: false,
+            pushInProgress: 0,
           };
         }
         return {

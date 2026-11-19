@@ -337,6 +337,8 @@ export interface OlympiaConfig {
   chpContestants?: Array<{ name: string; score: number }>;
   /** Custom initial scores for seats */
   seatInitialScores?: number[];
+  /** Summary mode: "graphic" (2D scoreboard) | "cinematic_o27" (3D close-ups from lowest to highest score, default) */
+  summaryMode?: "graphic" | "cinematic_o27";
 }
 
 export type RoundStatus = "pending" | "active" | "done";
@@ -651,6 +653,8 @@ export interface OlympiaState {
   bellTestLogs?: { seat: number; at: number; order: number }[];
   /** Right LED screen content mode: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" | "roundGraphics" */
   rightScreenMode?: "auto" | "logo" | "roundTitle" | "question" | "scoreboard" | "roundGraphics";
+  /** Overall Summary Mode setting: "graphic" (2D scoreboard) | "cinematic_o27" (3D contestant close-ups from lowest to highest score) */
+  summaryMode?: "graphic" | "cinematic_o27";
   /** State for the lower-third sequence summarizing contestant points from lowest to highest */
   summaryState?: OlympiaSummaryState | null;
   /** Manual Video Control (For Khởi Động, VCNV, Về Đích, Câu Hỏi Phụ) */
@@ -667,6 +671,9 @@ export interface OlympiaSummaryState {
   isAuto: boolean;
   isFullscreen?: boolean;
   lastAdvanceAt?: number;
+  mode?: "graphic" | "cinematic_o27";
+  holdDurationMs?: number;
+  seatEnteredAt?: number;
 }
 
 export type HostAction = { type: string; [k: string]: unknown };

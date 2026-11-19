@@ -20,6 +20,8 @@ function PlayerPadCountdown({
   isClassic?: boolean;
   isSandbox?: boolean;
 }) {
+  const barRef = useRef<HTMLDivElement>(null);
+
   const getSeconds = useCallback(() => {
     if (!timer) return 0;
     if (timer.startedAt == null) return Math.max(0, Math.ceil((timer.remainingMs ?? 0) / 1000));
@@ -32,20 +34,51 @@ function PlayerPadCountdown({
 
   useEffect(() => {
     setSeconds(getSeconds());
-    if (!running) return;
+    if (!running) {
+      if (barRef.current) {
+        const total = Math.max(1, timer?.totalMs || (timer?.remainingMs ?? 1));
+        const rem = Math.max(0, timer?.remainingMs ?? 0);
+        const pct = Math.max(0, Math.min(100, (rem / total) * 100));
+        barRef.current.style.width = `${pct}%`;
+      }
+      return;
+    }
 
-    // Strict 1Hz tick (1000ms) to eliminate mobile continuous layout recalculations
-    const id = setInterval(() => {
+    let rafId: number;
+    let active = true;
+
+    // 1Hz tick for React state to prevent layout recalculation thrash
+    const intervalId = setInterval(() => {
       setSeconds(getSeconds());
     }, 1000);
 
-    return () => clearInterval(id);
-  }, [running, getSeconds]);
+    // RAF for hardware-accelerated 60fps smooth progress bar
+    const tick = () => {
+      if (!active) return;
+      if (timer && timer.startedAt != null) {
+        const total = Math.max(1, timer.totalMs || 15000);
+        const elapsed = Math.max(0, serverNow() - timer.startedAt);
+        const rem = Math.max(0, timer.remainingMs - elapsed);
+        const pct = Math.max(0, Math.min(100, (rem / total) * 100));
+        if (barRef.current) {
+          barRef.current.style.width = `${pct}%`;
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+      cancelAnimationFrame(rafId);
+    };
+  }, [running, timer, getSeconds, serverNow]);
 
   const low = seconds <= 5 && seconds > 0;
 
   return (
-    <div className={`w-full flex items-center justify-center ${isSandbox ? "py-0.5" : "py-1"}`}>
+    <div className={`w-full flex flex-col items-center justify-center ${isSandbox ? "py-0.5" : "py-1"}`}>
       <div
         className={`font-mono font-black tabular-nums transition-colors duration-200 rounded-lg px-3 py-0.5 border shadow-sm flex items-center gap-1.5 ${
           low
@@ -61,6 +94,19 @@ function PlayerPadCountdown({
       >
         <span>⏱️</span>
         <span>{seconds}s</span>
+      </div>
+      <div className="w-full max-w-xs h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/10 mt-1">
+        <div
+          ref={barRef}
+          className={`h-full rounded-full transition-[background-color] duration-200 will-change-[width] ${
+            low
+              ? "bg-gradient-to-r from-red-600 via-rose-500 to-amber-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+              : isClassic
+              ? "bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-200 shadow-[0_0_6px_rgba(245,158,11,0.5)]"
+              : "bg-gradient-to-r from-indigo-600 via-sky-400 to-emerald-400 shadow-[0_0_6px_rgba(56,189,248,0.5)]"
+          }`}
+          style={{ width: "100%" }}
+        />
       </div>
     </div>
   );
@@ -545,10 +591,18 @@ export default function PlayerPad({
   const seats = activeSeats(state);
   const myTestLog = state.bellTestLogs?.find((b) => b.seat === me.id);
 
-  // Determine active timer for the top display box
+  // Determine active timer for the top display box (support both per-question and global round timer in Khởi Động)
+  const kdTimer = state.khoiDong
+    ? (state.khoiDong.timer?.startedAt != null
+        ? state.khoiDong.timer
+        : state.khoiDong.globalTimer?.startedAt != null
+        ? state.khoiDong.globalTimer
+        : (state.khoiDong.globalTimer || state.khoiDong.timer))
+    : null;
+
   const activeTimer =
     state.currentRound === "khoiDong"
-      ? state.khoiDong?.timer
+      ? kdTimer
       : state.currentRound === "vcnv"
       ? state.vcnv?.timer
       : state.currentRound === "tangToc"

@@ -3206,7 +3206,7 @@ function KhoiDongBulbFixture({
         currentInt = 8.5 + 9.5 * flare; // Flares up to 18.0 then settles smoothly to 8.5
       }
     } else if (isKD && activeMainContestantSeat != null) {
-      currentInt = activeMainContestantSeat === index ? 12.0 : 4.0;
+      currentInt = activeMainContestantSeat === index ? 14.0 : 2.5;
     }
 
     if (spotRef.current) {
@@ -3672,11 +3672,12 @@ export function StudioLighting({
         const isLocked = lockedSpotlightSeat === sIdx;
         const isChased = is5sBuzzerChasing && (spotlightChaseIndices ? spotlightChaseIndices.includes(sIdx) : spotlightChaseIndex === sIdx);
         const isMainActive = isVeDichDimmed && !is5sBuzzerChasing && lockedSpotlightSeat == null && activeMainContestantSeat === sIdx;
+        const isSoloKdActive = currentRound === "khoiDong" && activeMainContestantSeat === sIdx;
 
-        const isLit = isLocked || isChased || isMainActive;
+        const isLit = isLocked || isChased || isMainActive || isSoloKdActive;
         const chaseIntensity = spotlightChaseIndices && spotlightChaseIndices.length > 1 && spotlightChaseIndices[0] !== sIdx ? 6.5 : 9.5;
-        const spotIntensity = isLocked ? 13.0 : isChased ? chaseIntensity : isMainActive ? 8.5 : 0.0;
-        const spotColor = isLocked ? "#ffffff" : isChased ? "#00e5ff" : "#fff8e7";
+        const spotIntensity = isLocked ? 13.0 : isChased ? chaseIntensity : isSoloKdActive ? 13.5 : isMainActive ? 8.5 : 0.0;
+        const spotColor = isLocked || isSoloKdActive ? "#ffffff" : isChased ? "#00e5ff" : "#fff8e7";
 
         // Keep spotlights permanently mounted with intensity 0 when dormant
         // to avoid shader recompilation hitches during 5s buzzer chase

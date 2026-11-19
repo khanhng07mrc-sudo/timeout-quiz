@@ -873,21 +873,24 @@ export function useOlympiaAudio(
           source.disconnect();
         } catch {}
 
-        if (activePan === "both") {
-          source.connect(ctx.destination);
-          return;
-        }
-
-        // Dual-mono channel routing: route selected channel (Left or Right) to BOTH speakers (Center)
         const splitter = ctx.createChannelSplitter(2);
         const merger = ctx.createChannelMerger(2);
         source.connect(splitter);
+
         if (activePan === "left") {
-          splitter.connect(merger, 0, 0); // L -> Out L
-          splitter.connect(merger, 0, 1); // L -> Out R
+          // Route all audio channels (L + R) exclusively to Left output (100% Left ear, Right silent)
+          splitter.connect(merger, 0, 0);
+          splitter.connect(merger, 1, 0);
         } else if (activePan === "right") {
-          splitter.connect(merger, 1, 0); // R -> Out L
-          splitter.connect(merger, 1, 1); // R -> Out R
+          // Route all audio channels (L + R) exclusively to Right output (100% Right ear, Left silent)
+          splitter.connect(merger, 0, 1);
+          splitter.connect(merger, 1, 1);
+        } else {
+          // "both": route equally to both ears so single-channel rips from Fandom play in both ears
+          splitter.connect(merger, 0, 0);
+          splitter.connect(merger, 1, 0);
+          splitter.connect(merger, 0, 1);
+          splitter.connect(merger, 1, 1);
         }
         merger.connect(ctx.destination);
       } catch {

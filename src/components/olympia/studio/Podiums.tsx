@@ -1984,6 +1984,9 @@ function renderLaptopScreenCanvas(
   const W = 1024;
   const H = 640;
 
+  ctx.save();
+  ctx.scale(canvas.width / W, canvas.height / H);
+
   if (isBuzzed) {
     // ── ALARM / BUZZER STATE (ĐỎ RỰC TÍN HIỆU GIÀNH QUYỀN TRẢ LỜI) ──
     const grad = ctx.createLinearGradient(0, 0, W, H);
@@ -2256,6 +2259,7 @@ function renderLaptopScreenCanvas(
     ctx.textAlign = "center";
     ctx.fillText(`OLYMPIA-WORKSTATION // NODE-TS${seatId + 1} // LATENCY 1.2ms // SECURE SYNC OK`, W / 2, 600);
   }
+  ctx.restore();
 }
 
 function useOlympiaLaptopTexture(
@@ -2268,21 +2272,28 @@ function useOlympiaLaptopTexture(
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const texRef = useRef<THREE.CanvasTexture | null>(null);
 
-  // Create canvas+texture once on mount
+  // Create canvas+texture once on mount with 512x320 resolution and cleanup on unmount
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (!canvasRef.current) {
       const c = document.createElement("canvas");
-      c.width = 1024;
-      c.height = 640;
+      c.width = 512;
+      c.height = 320;
       canvasRef.current = c;
       const tex = new THREE.CanvasTexture(c);
       tex.colorSpace = THREE.SRGBColorSpace;
-      tex.generateMipmaps = true;
-      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.generateMipmaps = false;
+      tex.minFilter = THREE.LinearFilter;
       tex.magFilter = THREE.LinearFilter;
       texRef.current = tex;
     }
+    return () => {
+      if (texRef.current) {
+        texRef.current.dispose();
+        texRef.current = null;
+      }
+      canvasRef.current = null;
+    };
   }, []);
 
   // Re-render canvas when game state changes
@@ -2311,11 +2322,14 @@ function useOlympiaLaptopTexture(
   // Return a stable fallback if not yet initialized (SSR guard)
   if (!texRef.current && typeof document !== "undefined") {
     const c = document.createElement("canvas");
-    c.width = 1024;
-    c.height = 640;
+    c.width = 512;
+    c.height = 320;
     canvasRef.current = c;
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
     texRef.current = tex;
   }
   return texRef.current ?? new THREE.CanvasTexture({ width: 1, height: 1 } as HTMLCanvasElement);
@@ -2658,32 +2672,6 @@ export function ContestantPodium({
         </mesh>
       </group>
 
-      {/* ── 6B. BROADCAST WORKSTATION LOCAL LIGHTING (Eliminates dark voids in OTS shots) ── */}
-      {/* Overhead Warm-White Key Spotlight (5500K Studio Downlight illuminating desk, armrests, keyboard & hands) */}
-      <pointLight
-        position={[0, 2.4, -0.10]}
-        intensity={isDimmed ? 0.8 : 4.5}
-        distance={4.8}
-        color="#f8fafc"
-        decay={1.8}
-      />
-      {/* Soft Cyan Formula Screen Bounce Wash (Vibrant ambient wash from curved LED wall behind contestant) */}
-      <pointLight
-        position={[0, 1.4, -0.85]}
-        intensity={isDimmed ? 0.6 : 3.8}
-        distance={4.2}
-        color="#00f0ff"
-        decay={1.8}
-      />
-      {/* Laptop Screen Upward Glow Fill onto hands & contestant face */}
-      <pointLight
-        position={[0, 1.05, -0.12]}
-        intensity={isBuzzed ? 5.2 : isDimmed ? 0.6 : 2.4}
-        distance={1.6}
-        color={isBuzzed ? "#ff3344" : "#38bdf8"}
-        decay={2.0}
-      />
-
       {/* ── 6. 3D CONTESTANT FIGURE STANDING BEHIND PODIUM (Hidden during walking entrance) ── */}
       {showFigure && (
         <ContestantFigure
@@ -2770,7 +2758,7 @@ export function CenterMcDesk({
   liveFactor?: number;
 }) {
   const neonColor = useMemo(() => {
-    const baseColor = screenFadeProgress > 0.5 ? new THREE.Color("#ff2a4b") : new THREE.Color("#00f0ff");
+    const baseColor = screenFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8");
     const darkDormant = new THREE.Color("#020712");
     return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
   }, [screenFadeProgress, liveFactor]);
@@ -5731,9 +5719,9 @@ export function CenterFloorStage({
   const lightingMode = computeTargetLightingMode(state, nowMs);
   const isRed = lightingMode === "RED";
 
-  // Dynamic broadcast lighting colors matching real-time studio state:
-  const neonColor = isRed ? "#ef4444" : "#00f0ff";
-  const accentColor = isRed ? "#dc2626" : "#38bdf8";
+  // Dynamic broadcast lighting colors matching real-time studio state (Deep Royal Navy & Deep Crimson):
+  const neonColor = isRed ? "#88081a" : "#1d4ed8";
+  const accentColor = isRed ? "#991b1b" : "#38bdf8";
 
   const isEntrance = !isIdle && Boolean(state?.entranceState?.active);
 
@@ -5833,8 +5821,8 @@ export function CenterFloorStage({
 
   const activeWreathTex = laurelTex || fallbackTex;
 
-  // Authentic VTV3 Olympia Segmented White Track Markings (36 radial dashes)
-  const segmentedTrackGeom = useMemo(() => createSegmentedTrackGeometry(2.24, 2.38, 36, 0.65), []);
+  // Authentic Olympia 27 Stage Floor Dais Solid Rings (Continuous RingGeometry R = 2.24m to 2.38m, 128 radial segments)
+  const solidTrackGeom = useMemo(() => new THREE.RingGeometry(2.24, 2.38, 128), []);
 
   return (
     <group position={[0, 0.188, -0.5]}>
@@ -5890,8 +5878,9 @@ export function CenterFloorStage({
         />
       </mesh>
 
-      {/* Outer Segmented White Racetrack Markings (36 Radial White Dashes R = 2.24m to 2.38m, non-glaring soft studio white) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0015, 0]} geometry={segmentedTrackGeom} renderOrder={9.3}>
+      {/* Outer Solid Continuous Ring (R = 2.24m to 2.38m, smooth solid ring, zero dashed/tick marks) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0015, 0]} renderOrder={9.3}>
+        <ringGeometry args={[2.24, 2.38, 128]} />
         <meshBasicMaterial
           color="#cbd5e1"
           transparent

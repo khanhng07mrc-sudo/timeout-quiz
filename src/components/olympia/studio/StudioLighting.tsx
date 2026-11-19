@@ -575,7 +575,7 @@ export function StudioFloor({
   }, [isIdle, introStartedAt, serverNow]);
 
   const ringColor = useMemo(() => {
-    const baseColor = stageFadeProgress > 0.5 ? new THREE.Color("#ff1a40") : new THREE.Color("#00f0ff");
+    const baseColor = stageFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8");
     const darkDormant = new THREE.Color("#020712");
     return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
   }, [stageFadeProgress, liveFactor]);
@@ -2355,14 +2355,37 @@ export function AudienceAmphitheater({
   audienceFadeProgress = 0,
   quality = "HIGH",
   liveFactor = 1.0,
+  camAngle = 1,
+  isEntranceActive = false,
+  introStartedAt = null,
 }: {
   audienceFadeProgress?: number;
   quality?: "HIGH" | "MEDIUM" | "LIGHT";
   liveFactor?: number;
+  camAngle?: number;
+  isEntranceActive?: boolean;
+  introStartedAt?: number | null;
 }) {
   const rowCount = 7;
   const seatsPerRow = 16; // 8 on Left wing, 8 on Right wing, tightly packed shoulder-to-shoulder (Image 2)
   const stepCount = 14;   // 14 steps along the central aisle
+
+  // Camera angles facing audience / khán đài / entrance portal:
+  // CAM 11: Cận cảnh cửa trái chào sân
+  // CAM 12: Cận cảnh cửa phải chào sân
+  // CAM 13: Đứng yên bục giữa tạo dáng nhìn ra khán đài
+  // CAM 19: Phía trước bám theo bước xuống cầu thang
+  // CAM 20: Khán đài toàn cảnh
+  // When camera faces stage/podiums, we skip the 672 audience meshes, cutting ~670 draw calls per frame
+  const isAudienceFacing =
+    camAngle === 11 ||
+    camAngle === 12 ||
+    camAngle === 13 ||
+    camAngle === 19 ||
+    camAngle === 20 ||
+    isEntranceActive ||
+    introStartedAt != null ||
+    audienceFadeProgress > 0;
 
   const [aiBackdropTex, setAiBackdropTex] = React.useState<THREE.Texture | null>(null);
   const [quizorraLogoTex, setQuizorraLogoTex] = React.useState<THREE.Texture | null>(null);
@@ -2768,8 +2791,8 @@ export function AudienceAmphitheater({
               </mesh>
             )}
 
-            {/* Audience Members Seated in Left & Right Banks (Streamlined for silky 60 FPS performance) */}
-            {Array.from({ length: seatsPerRow }).map((_, sIdx) => {
+            {/* Audience Members Seated in Left & Right Banks (Culled when camera faces forward towards stage, saving ~670 draw calls) */}
+            {isAudienceFacing && Array.from({ length: seatsPerRow }).map((_, sIdx) => {
               if (quality === "LIGHT" && sIdx % 3 !== 0) return null;
               if (quality === "MEDIUM" && sIdx % 2 !== 0) return null;
               const isLeft = sIdx < 8;
@@ -2949,18 +2972,9 @@ export function AudienceAmphitheater({
           <primitive object={portalAmberNeonMat} attach="material" />
         </mesh>
 
-        {/* Authentic Stage Lighting & Volumetric Portal Glow */}
+        {/* Authentic Stage Lighting & Volumetric Portal Glow (Consolidated fixture for 60 FPS performance) */}
         {quality !== "LIGHT" && (
-          <>
-            {/* Base Stage Warm Uplighting on Left & Right Arch Clusters */}
-            <pointLight position={[1.3, 2.05, 3.65]} intensity={25 * liveFactor} color="#f59e0b" distance={5} decay={2} />
-            <pointLight position={[-1.3, 2.05, 3.65]} intensity={25 * liveFactor} color="#f59e0b" distance={5} decay={2} />
-            <pointLight position={[0, 2.05, 3.65]} intensity={18 * liveFactor} color="#fbbf24" distance={4} decay={2} />
-            {/* Overhead Portal Wash Spotlight */}
-            <pointLight position={[0, 4.8, 3.4]} intensity={18 * liveFactor} color="#fef3c7" distance={8} decay={2} />
-            {/* Portal Backlight Rim Glow (Atmospheric halo behind mountain summit, softened to prevent blinding glare) */}
-            <pointLight position={[0, 4.65, 5.00]} intensity={12 * liveFactor} color="#bae6fd" distance={7} decay={2} />
-          </>
+          <pointLight position={[0, 4.65, 3.8]} intensity={24 * liveFactor} color="#fbbf24" distance={8} decay={2} />
         )}
       </group>
 
@@ -3065,14 +3079,9 @@ export function AudienceAmphitheater({
         </mesh>
       </group>
 
-      {/* Overhead & Front Stage-to-Audience Wash Spotlights (Controlled Contrast) */}
+      {/* Overhead & Front Stage-to-Audience Wash Spotlight (Unified fixture for controlled contrast and 60 FPS performance) */}
       {quality !== "LIGHT" && (
-        <>
-          <pointLight position={[-4.5, 5.2, 1.8]} intensity={8 * liveFactor} color="#38bdf8" distance={11} decay={2} />
-          <pointLight position={[4.5, 5.2, 1.8]} intensity={8 * liveFactor} color="#38bdf8" distance={11} decay={2} />
-          <pointLight position={[0.0, 5.4, 2.2]} intensity={12 * liveFactor} color="#ffffff" distance={12} decay={2} />
-          <pointLight position={[0.0, 3.4, -1.2]} intensity={10 * liveFactor} color="#e0f2fe" distance={16} decay={1.5} />
-        </>
+        <pointLight position={[0.0, 5.2, 1.8]} intensity={14 * liveFactor} color="#e0f2fe" distance={15} decay={1.8} />
       )}
     </group>
   );
@@ -3160,31 +3169,31 @@ export function StudioLighting({
   // Overall multiplier for active broadcast lighting
   const liveFactor = (1.0 - effectiveIdleFade) * introDimFactor;
 
-  // Screen Zone Down-Wash Color
+  // Screen Zone Down-Wash Color (Deep Royal Navy -> Deep Crimson)
   const screenWashColor = useMemo(() => {
-    const c = new THREE.Color("#0a2663");
-    c.lerp(new THREE.Color("#d90429"), screenFadeProgress);
+    const c = new THREE.Color("#061539");
+    c.lerp(new THREE.Color("#88081a"), screenFadeProgress);
     return c;
   }, [screenFadeProgress]);
 
-  // Stage Back Wash Color
+  // Stage Back Wash Color (Deep Royal Navy -> Deep Crimson)
   const stageBackColor = useMemo(() => {
-    const c = new THREE.Color("#081a44");
-    c.lerp(new THREE.Color("#b80320"), stageFadeProgress);
+    const c = new THREE.Color("#020b24");
+    c.lerp(new THREE.Color("#88081a"), stageFadeProgress);
     return c;
   }, [stageFadeProgress]);
 
-  // Stage Rim Wash Color
+  // Stage Rim Wash Color (Royal Sapphire -> Deep Crimson)
   const stageRimColor = useMemo(() => {
-    const c = new THREE.Color("#00e5ff");
-    c.lerp(new THREE.Color("#ff2244"), stageFadeProgress);
+    const c = new THREE.Color("#1d4ed8");
+    c.lerp(new THREE.Color("#991b1b"), stageFadeProgress);
     return c;
   }, [stageFadeProgress]);
 
-  // Audience Wash & Front Key Colors (S14 Royal Broadcast Blue -> Dramatic Red, NEVER black!)
+  // Audience Wash & Front Key Colors (S14 Deep Royal Navy -> Deep Crimson)
   const audienceWashColor = useMemo(() => {
-    const c = new THREE.Color("#2563eb");
-    c.lerp(new THREE.Color("#dc2626"), audienceFadeProgress);
+    const c = new THREE.Color("#1d4ed8");
+    c.lerp(new THREE.Color("#991b1b"), audienceFadeProgress);
     return c;
   }, [audienceFadeProgress]);
 
@@ -3216,12 +3225,12 @@ export function StudioLighting({
     return Array.from({ length: count }, (_, idx) => getContestantPodiumWorldPos(idx, count, 0.22));
   }, [totalSeats]);
 
-  // Ambient & Key Light Intensity Factors (Upgraded +0.22 for Rich Studio Depth & Natural Broadcast Warmth)
-  const targetAmbient = (isVeDichDimmed ? 0.32 : 0.48) * introDimFactor;
-  const ambientIntensity = THREE.MathUtils.lerp(0.42, targetAmbient, liveFactor);
+  // Ambient & Key Light Intensity Factors (Deep Royal Navy & Deep Crimson with low-key baseline 0.10 - 0.12)
+  const targetAmbient = (isVeDichDimmed ? 0.10 : 0.45) * introDimFactor;
+  const ambientIntensity = THREE.MathUtils.lerp(0.12, targetAmbient, liveFactor);
   const ambientColor = useMemo(() => {
-    const c = new THREE.Color("#1a2b4c");
-    c.lerp(new THREE.Color("#24426f"), liveFactor);
+    const c = new THREE.Color("#020b24");
+    c.lerp(new THREE.Color("#061539"), liveFactor);
     return c;
   }, [liveFactor]);
 
@@ -3277,12 +3286,20 @@ export function StudioLighting({
       {/* Screen Zone Overhead Downlight (Emits ambient screen bounce light onto reflective stage floor) */}
       <pointLight position={[0, 5.0, -4.5]} intensity={screenBounceIntensity} color={screenWashColor} distance={12} />
 
-      {/* Main Directional Key Spotlight (Stage Center) */}
+      {/* Main Directional Key Spotlight (Stage Center - Optimized shadow bounds, castShadow disabled to eliminate empty pass) */}
       <directionalLight
         position={[4.5, 12.0, 7.5]}
         intensity={keyIntensity}
         color="#ffffff"
-        castShadow={quality === "HIGH"}
+        castShadow={false}
+        shadow-bias={-0.0005}
+        shadow-mapSize={[1024, 1024]}
+        shadow-camera-near={1}
+        shadow-camera-far={25}
+        shadow-camera-left={-8}
+        shadow-camera-right={8}
+        shadow-camera-top={8}
+        shadow-camera-bottom={-8}
       />
 
       {/* Fill Light (Stage Left) - Pruned in LIGHT mode */}
@@ -3414,15 +3431,13 @@ export function StudioLighting({
             castShadow={false}
           />
 
-          {/* Broadcast Wing Cyc Wash Lights (Stage Left behind formula wall & Stage Right) */}
-          <pointLight position={[-6.5, 4.0, -3.5]} color={screenWashColor} intensity={THREE.MathUtils.lerp(0.3, isVeDichDimmed ? 0.8 : 2.5, 1.0 - effectiveIdleFade)} distance={15} />
-          <pointLight position={[6.5, 4.0, -3.5]} color={screenWashColor} intensity={THREE.MathUtils.lerp(0.3, isVeDichDimmed ? 0.8 : 2.5, 1.0 - effectiveIdleFade)} distance={15} />
-          <pointLight position={[0, 6.0, -6.0]} color={stageBackColor} intensity={THREE.MathUtils.lerp(0.3, isVeDichDimmed ? 1.0 : 3.0, 1.0 - effectiveIdleFade)} distance={16} />
-
-          {/* Elevated Backdrop Halo Fill Lights (Elevated at Y=4.8m to prevent grazing specular floor dots) */}
-          <pointLight position={[-4.5, 4.8, -6.0]} intensity={1.2 * liveFactor} color={stageRimColor} distance={12} />
-          <pointLight position={[4.5, 4.8, -6.0]} intensity={1.2 * liveFactor} color={stageRimColor} distance={12} />
-          <pointLight position={[0.0, 4.8, -6.2]} intensity={1.4 * liveFactor} color={stageRimColor} distance={12} />
+          {/* Broadcast Wing Cyc Wash & Halo Light (Unified fixture for smooth atmospheric stage wash and 60 FPS performance) */}
+          <pointLight
+            position={[0, 5.5, -5.5]}
+            color={screenWashColor}
+            intensity={THREE.MathUtils.lerp(0.5, isVeDichDimmed ? 1.2 : 3.5, 1.0 - effectiveIdleFade)}
+            distance={18}
+          />
         </>
       )}
 
@@ -3519,6 +3534,9 @@ export function StudioLighting({
         audienceFadeProgress={audienceFadeProgress}
         quality={quality}
         liveFactor={Math.max(liveFactor, grandstandLightFactor)}
+        camAngle={camAngle}
+        isEntranceActive={isEntranceActive}
+        introStartedAt={introStartedAt}
       />
       <BroadcastCameras
         camAngle={camAngle}

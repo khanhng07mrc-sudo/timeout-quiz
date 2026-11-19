@@ -1,8 +1,60 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { OlympiaState, StudioCameraPTZ } from "@/lib/olympia/types";
+
+export interface OlympiaPerfStats {
+  fps: number;
+  drawCalls: number;
+  triangles: number;
+}
+
+declare global {
+  interface Window {
+    __OLYMPIA_PERF__?: OlympiaPerfStats;
+  }
+}
+
+function OlympiaTelemetryHook({
+  onPerfUpdate,
+}: {
+  onPerfUpdate: (stats: OlympiaPerfStats) => void;
+}) {
+  const { gl } = useThree();
+  const lastTimeRef = useRef<number>(performance.now());
+  const frameCountRef = useRef<number>(0);
+
+  useFrame(() => {
+    frameCountRef.current++;
+    const now = performance.now();
+    const elapsed = now - lastTimeRef.current;
+
+    // Sample every 500ms for stable metrics and minimal overhead
+    if (elapsed >= 500) {
+      const currentFps = Math.round((frameCountRef.current * 1000) / elapsed);
+      frameCountRef.current = 0;
+      lastTimeRef.current = now;
+
+      const calls = gl.info.render.calls;
+      const triangles = gl.info.render.triangles;
+
+      const stats: OlympiaPerfStats = {
+        fps: currentFps,
+        drawCalls: calls,
+        triangles: triangles,
+      };
+
+      if (typeof window !== "undefined") {
+        window.__OLYMPIA_PERF__ = stats;
+      }
+
+      onPerfUpdate(stats);
+    }
+  });
+
+  return null;
+}
 
 const DEFAULT_PTZ: StudioCameraPTZ = {
   yaw: 0,
@@ -68,6 +120,23 @@ export function OlympiaStudio3DScene({
     spotlightChaseIndex,
     lockedSpotlightSeat,
   } = useOlympiaLightingState(state, serverNow);
+
+  // Real-time telemetry performance stats
+  const [perfStats, setPerfStats] = useState<OlympiaPerfStats>({
+    fps: 60,
+    drawCalls: 0,
+    triangles: 0,
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.__OLYMPIA_PERF__ = {
+        fps: 60,
+        drawCalls: 0,
+        triangles: 0,
+      };
+    }
+  }, []);
 
   const liveFactor = 1.0 - (idleFadeProgress ?? 0);
   const isGrandstandFullLit = Boolean(
@@ -390,6 +459,8 @@ export function OlympiaStudio3DScene({
           isIdle={isIdle}
           serverNow={serverNow}
         />
+
+        <OlympiaTelemetryHook onPerfUpdate={setPerfStats} />
       </Canvas>
 
       {/* ── 2. PTZ RESET FLOATING BADGE (Tự động làm mờ khi ở vị trí mặc định, sáng rõ khi bị lệch góc) ── */}
@@ -490,6 +561,9 @@ export function OlympiaStudio3DScene({
           <div>Stage Fade: {stageFadeProgress.toFixed(2)}</div>
           <div>Audience Fade: {audienceFadeProgress.toFixed(2)}</div>
           <div>Cam: {internalCam}</div>
+          <div>FPS: {perfStats.fps}</div>
+          <div>Draw Calls: {perfStats.drawCalls}</div>
+          <div>Triangles: {perfStats.triangles.toLocaleString()}</div>
         </div>
       )}
     </div>

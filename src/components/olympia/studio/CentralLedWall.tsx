@@ -26,7 +26,7 @@ interface CentralLedWallProps {
 export function computeGroundedHexagonVertices(w: number, h: number, baseW: number): [number, number][] {
   // Vertical Standing Hexagon (Đường lên đỉnh Olympia S22-S26 Studio S14):
   // Slender, tall vertical aspect ratio (H >= W). Flat top, flat bottom resting on floor (Y = 0).
-  const yMid = h * 0.46; // Knuckles at 46% height
+  const yMid = h / 2; // Knuckles strictly at horizontal mid-height Y = H / 2
   const w2 = w / 2;
   const topW2 = (w * 0.46) / 2; // Flat top width
   const b2 = baseW / 2; // Base width on stage floor
@@ -386,62 +386,65 @@ function createStarryNightCanvas(logoImg?: HTMLImageElement | null, fadeProgress
 }
 
 /**
- * Perforated White LED Matrix Dots Arch Canvas (Image 3 & 4)
- * Semi-circular architectural arch backdrop behind the Science Wall.
+ * Thin Curved Arch of White LED Dots Ribbon Canvas (Olympia 27 Broadcast Parity - Reference Image 2)
+ * Sleek horizontal ribbon crowning the upper perimeter of the formula screen with neat rows of glowing white LED dots.
  */
 function createWhiteDotsArchCanvas(): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 512;
+  canvas.width = 2048;
+  canvas.height = 64;
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
-  const w = 1024;
-  const h = 512;
+  const w = 2048;
+  const h = 64;
 
   // Deep dark sapphire backing
   const grad = ctx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, "#020716");
-  grad.addColorStop(0.5, "#041433");
-  grad.addColorStop(1, "#020818");
+  grad.addColorStop(0, "#010614");
+  grad.addColorStop(0.5, "#030c24");
+  grad.addColorStop(1, "#010614");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 
-  // Perforated Matrix Array of Bright White LED Dots
-  const dotSpacingX = 26;
-  const dotSpacingY = 22;
+  // 2 neat rows of glowing white LED dots
+  const dotSpacingX = 24;
   const cols = Math.floor(w / dotSpacingX);
-  const rows = Math.floor(h / dotSpacingY);
+  const rows = [22, 42];
 
-  for (let r = 0; r < rows; r++) {
-    const isOdd = r % 2 === 1;
-    const offsetX = isOdd ? dotSpacingX / 2 : 0;
+  for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+    const y = rows[rIdx];
+    const offsetX = rIdx % 2 === 1 ? dotSpacingX / 2 : 0;
     for (let c = 0; c < cols; c++) {
       const x = c * dotSpacingX + offsetX;
-      const y = r * dotSpacingY + 16;
-      const distFromTop = y / h;
-      const alpha = 0.50 + 0.50 * Math.sin(distFromTop * Math.PI);
-
       ctx.save();
-      ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
+      ctx.fillStyle = "#ffffff";
       ctx.shadowColor = "#38bdf8";
       ctx.shadowBlur = 6;
       ctx.beginPath();
-      ctx.arc(x, y, 3.2, 0, Math.PI * 2);
+      ctx.arc(x, y, 3.0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
   }
 
-  // Cyan Neon Perimeter Frame along the top curve
+  // Cyan Neon Perimeter Bezels along the top and bottom trim
   ctx.save();
-  ctx.strokeStyle = "#00f0ff";
-  ctx.lineWidth = 8;
-  ctx.shadowColor = "#00f0ff";
-  ctx.shadowBlur = 18;
+  ctx.strokeStyle = "#00e5ff";
+  ctx.lineWidth = 3;
+  ctx.shadowColor = "#00d4ff";
+  ctx.shadowBlur = 10;
+
+  // Top bezel
   ctx.beginPath();
-  ctx.moveTo(0, 8);
-  ctx.lineTo(w, 8);
+  ctx.moveTo(0, 2);
+  ctx.lineTo(w, 2);
+  ctx.stroke();
+
+  // Bottom bezel
+  ctx.beginPath();
+  ctx.moveTo(0, h - 2);
+  ctx.lineTo(w, h - 2);
   ctx.stroke();
   ctx.restore();
 
@@ -1655,17 +1658,62 @@ export function renderDynamicCurvedFormulaCanvas(
   const w = 2048;
   const h = 768;
 
-  // 1. Define Polygon Contour Path with Stepped Top & Inward Chevron Notch (<)
+  // 1. Define Analytical Parallel Polygon Contour Path with Stepped Top & Inward Chevron Notch (<)
+  // Guarantees strictly parallel inner/outer borders via normal offsetting
+  const BASE_CONTOUR_PTS: [number, number][] = [
+    [40, 740],
+    [40, 140],
+    [600, 140],
+    [720, 35],
+    [1940, 35],
+    [1860, 390],
+    [1940, 740],
+  ];
+
+  function computeContourOffset(pts: [number, number][], dist: number): [number, number][] {
+    if (dist === 0) return pts;
+    const n = pts.length;
+    const lines: { p: [number, number]; dir: [number, number] }[] = [];
+    for (let i = 0; i < n; i++) {
+      const p1 = pts[i];
+      const p2 = pts[(i + 1) % n];
+      const dx = p2[0] - p1[0];
+      const dy = p2[1] - p1[1];
+      const len = Math.hypot(dx, dy);
+      const ux = dx / len;
+      const uy = dy / len;
+      // Inward normal for CCW canvas coordinates: (-uy, ux)
+      const nx = -uy;
+      const ny = ux;
+      lines.push({
+        p: [p1[0] + nx * dist, p1[1] + ny * dist],
+        dir: [ux, uy],
+      });
+    }
+
+    const result: [number, number][] = [];
+    for (let i = 0; i < n; i++) {
+      const L1 = lines[(i - 1 + n) % n];
+      const L2 = lines[i];
+      const det = L1.dir[0] * L2.dir[1] - L1.dir[1] * L2.dir[0];
+      if (Math.abs(det) < 1e-6) {
+        result.push(L2.p);
+      } else {
+        const t1 = ((L2.p[0] - L1.p[0]) * L2.dir[1] - (L2.p[1] - L1.p[1]) * L2.dir[0]) / det;
+        result.push([L1.p[0] + t1 * L1.dir[0], L1.p[1] + t1 * L1.dir[1]]);
+      }
+    }
+    return result;
+  }
+
   function traceContour(offset: number = 0) {
     if (!ctx) return;
+    const pts = computeContourOffset(BASE_CONTOUR_PTS, offset);
     ctx.beginPath();
-    ctx.moveTo(40 + offset, 740 - offset);
-    ctx.lineTo(40 + offset, 140 + offset);
-    ctx.lineTo(600, 140 + offset);
-    ctx.lineTo(720, 35 + offset);
-    ctx.lineTo(1940 - offset, 35 + offset);
-    ctx.lineTo(1860 + offset * 0.8, 390); // Gentle 45° inward notch (<) matching real studio set
-    ctx.lineTo(1940 - offset, 740 - offset);
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineTo(pts[i][0], pts[i][1]);
+    }
     ctx.closePath();
   }
 
@@ -2046,24 +2094,24 @@ export function renderDynamicCurvedFormulaCanvas(
   ctx.restore(); // Restore clip
 
   // 6. MULTI-LAYER CONCENTRIC NEON BORDERS ("background kết hợp nhiều viền")
-  // Border 1: Outer Neon Track (Width 7, #00f0ff)
+  // Border 1: Outer Neon Track (Width 7, Deep Royal Navy / Deep Crimson)
   ctx.save();
-  ctx.strokeStyle = fadeProgress > 0.5 ? "#ff2a4b" : "#00f0ff";
+  ctx.strokeStyle = fadeProgress > 0.5 ? "#88081a" : "#1d4ed8";
   ctx.lineWidth = 7;
-  ctx.shadowColor = fadeProgress > 0.5 ? "#ff0033" : "#00d4ff";
+  ctx.shadowColor = fadeProgress > 0.5 ? "#991b1b" : "#2563eb";
   ctx.shadowBlur = Math.round(20 * blurFactor);
   traceContour(0);
   ctx.stroke();
 
   // Border 2: Inner Neon Track (Width 3.5, Inset 12px)
-  ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(255, 120, 140, 0.85)" : "rgba(56, 189, 248, 0.85)";
+  ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(153, 27, 27, 0.85)" : "rgba(37, 99, 235, 0.85)";
   ctx.lineWidth = 3.5;
   ctx.shadowBlur = Math.round(10 * blurFactor);
   traceContour(12);
   ctx.stroke();
 
   // Border 3: Innermost Subtle Track (Width 2.0, Inset 24px)
-  ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(255, 180, 200, 0.55)" : "rgba(165, 243, 252, 0.55)";
+  ctx.strokeStyle = fadeProgress > 0.5 ? "rgba(185, 28, 28, 0.55)" : "rgba(96, 165, 250, 0.55)";
   ctx.lineWidth = 2.0;
   ctx.shadowBlur = Math.round(6 * blurFactor);
   traceContour(24);
@@ -2477,28 +2525,15 @@ export function CentralLedWall({
   ]);
 
   // 30 FPS Dynamic Canvas Engine (Requirement R5)
-  // Drives smooth floating kinematics, 320 px/s rail pulses, 240 px/s specular sweeps, and idle screen graphics
+  // Drives smooth floating kinematics, 320 px/s rail pulses, 240 px/s specular sweeps, and idle screen graphics.
+  // Formula wall canvas continuous 250ms repaint is eliminated to prevent 8MB main-thread GPU hitching;
+  // formula graphics are updated statically upon round/lighting transitions via useEffect above.
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.1);
     accumulatedTimeRef.current += dt;
     const t = accumulatedTimeRef.current;
 
-    // 1. Formula wall canvas pulsing glow (static characters, per-char opacity animation ~4 FPS)
-    const wallInterval = quality === "LIGHT" ? 0.400 : 0.250;
-    if (t - lastWallFrameRef.current >= wallInterval) {
-      lastWallFrameRef.current = t;
-      if (formulaWallCanvasRef.current && formulaWallTextureRef.current) {
-        renderDynamicCurvedFormulaCanvas(
-          formulaWallCanvasRef.current,
-          t,
-          screenFadeProgress,
-          quality
-        );
-        formulaWallTextureRef.current.needsUpdate = true;
-      }
-    }
-
-    // 2. Throttle Stage Right Screen & Vertical Totem in Idle Mode (<= 3-4 FPS to save GPU bandwidth)
+    // Throttle Stage Right Screen & Vertical Totem in Idle Mode (<= 3-4 FPS to save GPU bandwidth)
     const isIdle = isPreMatchIdle(state);
     const screenInterval = quality === "LIGHT" ? 0.400 : 0.300;
     if (isIdle && t - lastScreenFrameRef.current >= screenInterval) {
@@ -2526,7 +2561,7 @@ export function CentralLedWall({
   });
 
   const neonColor = useMemo(() => {
-    const baseColor = screenFadeProgress > 0.5 ? new THREE.Color("#ff1a40") : new THREE.Color("#00f0ff");
+    const baseColor = screenFadeProgress > 0.5 ? new THREE.Color("#88081a") : new THREE.Color("#1d4ed8");
     const darkDormant = new THREE.Color("#020712");
     return darkDormant.lerp(baseColor, Math.max(0.0, Math.min(1.0, liveFactor)));
   }, [screenFadeProgress, liveFactor]);
@@ -2556,13 +2591,12 @@ export function CentralLedWall({
     return geom;
   }, []);
 
-  // Carefully calibrated wall sweep angle (~0.54 * Math.PI) frames all 1..8 contestant podiums
-  // cleanly from behind the stage center to TS 1 without overshooting into the front audience corridor
-  // (prevents left formula wall edge from visibly intruding into CAM 1 / display audience views).
-  const wallSweepAng = 0.54 * Math.PI;
-  const wallStartAng = 1.08 * Math.PI;
+  // Expanded formula wall sweep angle (0.65 * Math.PI) frames all 1..8 contestant podiums
+  // cleanly blanketing the entire background behind contestant 0 with zero gap under CAM 10
+  const wallSweepAng = 0.65 * Math.PI;
+  const wallStartAng = 1.05 * Math.PI;
   // Open a clean ~1.20m backstage wing corridor on the floor level between Left Base Wall and Hexagon Portal
-  const lowerWallStartAng = 1.08 * Math.PI;
+  const lowerWallStartAng = 1.05 * Math.PI;
   const lowerWallSweepAng = wallSweepAng - 0.02 * Math.PI;
   const FORMULA_WALL_OFFSET_X = -0.15;
 
@@ -2855,12 +2889,12 @@ export function CentralLedWall({
         </mesh>
       ))}
 
-      {/* ── 4B. ARCHITECTURAL WHITE LED MATRIX DOTS ARCH & QUIZORRA LIGHTBOX (IMAGES 3 & 4) ── */}
-      {/* Semi-circular concentric arch positioned behind the curved Science Wall at R = 8.85m */}
-      <group position={[FORMULA_WALL_OFFSET_X, 2.85, -0.5]}>
+      {/* ── 4B. ARCHITECTURAL WHITE LED MATRIX DOTS ARCH & QUIZORRA LIGHTBOX (IMAGES 2, 3 & 4) ── */}
+      {/* Thin curved white LED matrix dot arch hugging directly on top rim of Formula Screen at R = 8.61m, H = 0.20m, Y = 3.85m */}
+      <group position={[FORMULA_WALL_OFFSET_X, 3.85, -0.5]}>
         <mesh rotation={[0, 0, 0]}>
           <cylinderGeometry
-            args={[8.85, 8.85, 3.8, quality === "LIGHT" ? 32 : 64, 1, true, wallStartAng, wallSweepAng]}
+            args={[8.61, 8.61, 0.20, quality === "LIGHT" ? 32 : 64, 1, true, wallStartAng, wallSweepAng]}
           />
           {whiteDotsArchTexture ? (
             <meshBasicMaterial

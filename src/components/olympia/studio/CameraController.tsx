@@ -9,6 +9,7 @@ export interface CameraPreset {
   label: string;
   pos: [number, number, number];
   target: [number, number, number];
+  fov?: number;
 }
 
 /**
@@ -212,40 +213,14 @@ export function getContestantScreenCameraPreset(
 }
 
 export function getWidePodiumsCameraPreset(totalSeats: number = 4): CameraPreset {
-  const count = Math.min(8, Math.max(1, totalSeats || 4));
-  const { radius, startPhi, endPhi } = getContestantArcParams(count);
-  const midPhi = (startPhi + endPhi) / 2;
-
-  const startX = -radius * Math.cos(startPhi);
-  const startZ = -0.5 - radius * Math.sin(startPhi);
-  const endX   = -radius * Math.cos(endPhi);
-  const endZ   = -0.5 - radius * Math.sin(endPhi);
-
-  const midX = -radius * Math.cos(midPhi);
-  const midZ = -0.5 - radius * Math.sin(midPhi);
-
-  const targetX = +(0.5 * midX + 0.25 * (startX + endX)).toFixed(2);
-  const targetY = 1.15;
-  const targetZ = +(0.5 * midZ + 0.25 * (startZ + endZ)).toFixed(2);
-
-  const viewDirX = Math.cos(midPhi);
-  const viewDirZ = Math.sin(midPhi);
-
-  // Dynamic distance calculation ensuring podium cluster occupies strictly between 70% and 85%
-  // of horizontal broadcast screen width (target ~80% width) for any contestant count (1 to 8):
-  const baseDist = 7.30;
-  const extraDist = Math.max(0, (count - 4) * 0.90);
-  const dist = Math.max(7.40, +(baseDist + extraDist).toFixed(2));
-
-  const camX = +(targetX + viewDirX * dist).toFixed(2);
-  const camY = +(1.35 + Math.max(0, (count - 4) * 0.08)).toFixed(2);
-  const camZ = +(targetZ + viewDirZ * dist).toFixed(2);
-
+  // Downstage left raking shot down the line of contestant podiums (Reference Image 7)
+  // Delivers deep perspective with formula wall fully blanketing the background and center dais minimized.
   return {
     id: 10,
     label: "Toàn Cảnh Bục Thí Sinh",
-    pos: [camX, camY, camZ] as [number, number, number],
-    target: [targetX, targetY, targetZ] as [number, number, number],
+    pos: [-4.20, 1.45, 4.80],
+    target: [-5.40, 1.25, -3.20],
+    fov: 34,
   };
 }
 
@@ -317,10 +292,10 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   },
   15: {
     id: 15,
-    label: "Cận Cảnh Bục Về Đích",
-    // Broadcast Tight Medium Close-up on VeDich Center Podium & Contestant
-    pos: [0.0, 1.48, 1.05],
-    target: [0.0, 1.38, -0.90],
+    label: "Toàn Cảnh Bục Về Đích (Trọng Tâm)",
+    // Broadcast Wide Focal Angle across Center Dais, MC desk on right, and glowing formula wall behind
+    pos: [-2.70, 1.70, 4.50],
+    target: [0.50, 1.25, -2.00],
   },
   16: getContestantScreenCameraPreset(0, 4),
   19: {
@@ -486,7 +461,7 @@ export function CameraController({
   useFrame((_, delta) => {
     // 0. True Optical Zoom & Adaptive FOV Calculation
     if (camera instanceof THREE.PerspectiveCamera) {
-      const baseFov = camAngle === 1 ? 36 : 43;
+      const baseFov = camAngle === 1 ? 36 : camAngle === 10 ? 34 : camAngle === 15 ? 42 : 43;
       const aspect = size.width / Math.max(1, size.height);
       const targetAspect = 16 / 9;
       let calculatedFov = baseFov;

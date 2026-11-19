@@ -323,38 +323,28 @@ export function LaurelWreathVitrine({
         <LaurelWreathMesh />
       </group>
 
-      {/* ── 4. CRYSTAL CLOCHE (GLASS DISPLAY DOME) ── */}
+      {/* ── 4. CRYSTAL CLOCHE (GLASS DISPLAY DOME - Optimized Real-Time Standard Material) ── */}
       <group position={[0, 0.54, 0]}>
         <mesh position={[0, 0.18, 0]}>
           <cylinderGeometry args={[0.19, 0.19, 0.36, 32, 1, true]} />
-          <meshPhysicalMaterial
+          <meshStandardMaterial
             color="#ffffff"
-            transmission={quality === "LIGHT" ? 0 : 0.92}
-            opacity={0.35}
             transparent
-            roughness={0.06}
-            metalness={0.1}
-            ior={1.5}
-            thickness={quality === "LIGHT" ? 0 : 0.04}
-            envMapIntensity={2.0}
-            clearcoat={1.0}
-            clearcoatRoughness={0.05}
+            opacity={0.32}
+            roughness={0.08}
+            metalness={0.15}
+            envMapIntensity={1.5}
           />
         </mesh>
         <mesh position={[0, 0.36, 0]}>
           <sphereGeometry args={[0.19, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshPhysicalMaterial
+          <meshStandardMaterial
             color="#ffffff"
-            transmission={quality === "LIGHT" ? 0 : 0.92}
-            opacity={0.35}
             transparent
-            roughness={0.06}
-            metalness={0.1}
-            ior={1.5}
-            thickness={quality === "LIGHT" ? 0 : 0.04}
-            envMapIntensity={2.0}
-            clearcoat={1.0}
-            clearcoatRoughness={0.05}
+            opacity={0.32}
+            roughness={0.08}
+            metalness={0.15}
+            envMapIntensity={1.5}
           />
         </mesh>
       </group>

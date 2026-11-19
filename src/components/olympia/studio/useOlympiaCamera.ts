@@ -135,6 +135,9 @@ export function evaluateVcnvTimerSeat(elapsedSec: number, activeCount: number): 
 /**
  * Evaluates Về Đích stage camera state with anti-early-cut dwell:
  * - Holds CAM 10 for the first 2.0s of walking out around the rear corridor before morphing to CAM 15.
+ * - CAM 15: Over-The-Shoulder (OTS) looking up at large LED screen ([0.32, 1.55, 1.55], target [0.0, 2.30, -4.50], fov 38).
+ * - CAM 17: Dramatic 3/4 Profile of active contestant ([-1.45, 1.45, -0.45], target [0.0, 1.35, 0.55], fov 36).
+ * - R5: Practical countdown auto cuts to CAM 2 (Right Screen 3D Flip Clock), returning to CAM 1 on completion.
  * - Holds reaction shot for 1.5s on result before cutting to MC CAM 3.
  */
 export function evaluateVeDichCameraState(
@@ -169,6 +172,24 @@ export function evaluateVeDichCameraState(
   }
 
   if (vd.phase === "stealing") {
+    // R5: Practical question buzzer steal countdown active -> Auto cut to CAM 2 (Right Screen)
+    if (vd.current?.q?.type === "practice") {
+      if (vd.steal?.timer?.startedAt) {
+        return {
+          camAngle: 2,
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+      return {
+        camAngle: 1,
+        transitionMode: "CUT",
+        isOverlayHidden: false,
+        pushInProgress: 0,
+      };
+    }
+
     if (vd.steal?.buzzedSeat != null) {
       if (lastVdBuzzedSeatRef && vdBuzzedAtRef) {
         if (lastVdBuzzedSeatRef.current !== vd.steal.buzzedSeat) {
@@ -256,6 +277,24 @@ export function evaluateVeDichCameraState(
   }
 
   if (vd.phase === "thinking") {
+    // R5: Practical question main candidate countdown active -> Auto cut to CAM 2 (Right Screen)
+    if (vd.current?.q?.type === "practice") {
+      if (vd.timer?.startedAt) {
+        return {
+          camAngle: 2,
+          transitionMode: "CUT",
+          isOverlayHidden: false,
+          pushInProgress: 0,
+        };
+      }
+      return {
+        camAngle: 1,
+        transitionMode: "CUT",
+        isOverlayHidden: false,
+        pushInProgress: 0,
+      };
+    }
+
     let push = 0;
     const duration = vd.timer?.totalMs || 20000;
     const elapsedSec = vd.timer?.startedAt ? Math.max(0, (now - vd.timer.startedAt) / 1000) : 0;
@@ -264,9 +303,9 @@ export function evaluateVeDichCameraState(
     }
     // Dynamic Director Pacing during Về Đích thinking countdown:
     // For 15s/20s/30s questions:
-    // 0.0s -> 4.5s: Tight shot on contestant (CAM 15) pushing in smoothly
+    // 0.0s -> 4.5s: Tight OTS shot on contestant looking up at LED screen (CAM 15) pushing in smoothly
     // 4.5s -> 7.5s: Cut to MC (CAM 3) intently watching the contestant
-    // 7.5s onwards: Cut back to tight contestant shot (CAM 15) as countdown reaches climax
+    // 7.5s onwards: Cut back to OTS (CAM 15) as countdown reaches climax
     let cam = 15;
     if (duration >= 14000 && elapsedSec >= 4.5 && elapsedSec < 7.5) {
       cam = 3;

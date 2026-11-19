@@ -1638,20 +1638,22 @@ export function ContestantFigure({
   return (
     <group ref={figureRef} position={position}>
       {/* ── LOWER BODY & TROUSERS (Athletic Vietnamese student proportions, Golden Ratio 50%) ── */}
-      <mesh position={[0, 0.76, 0]} castShadow={true}>
-        <boxGeometry args={[0.24, 0.14, 0.15]} />
-        <meshStandardMaterial color={trouserColor} roughness={0.85} />
-      </mesh>
+      <group name="static-lower-body">
+        <mesh position={[0, 0.76, 0]} castShadow={true}>
+          <boxGeometry args={[0.24, 0.14, 0.15]} />
+          <meshStandardMaterial color={trouserColor} roughness={0.85} />
+        </mesh>
 
-      {/* Belt & Gold Buckle */}
-      <mesh position={[0, 0.825, 0]} castShadow={true}>
-        <boxGeometry args={[0.246, 0.026, 0.156]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 0.825, 0.080]} castShadow={true}>
-        <boxGeometry args={[0.026, 0.018, 0.006]} />
-        <meshStandardMaterial color="#f59e0b" metalness={0.8} roughness={0.2} />
-      </mesh>
+        {/* Belt & Gold Buckle */}
+        <mesh position={[0, 0.825, 0]} castShadow={true}>
+          <boxGeometry args={[0.246, 0.026, 0.156]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.8} />
+        </mesh>
+        <mesh position={[0, 0.825, 0.080]} castShadow={true}>
+          <boxGeometry args={[0.026, 0.018, 0.006]} />
+          <meshStandardMaterial color="#f59e0b" metalness={0.8} roughness={0.2} />
+        </mesh>
+      </group>
 
       {/* Left Leg */}
       <group ref={leftLegRef} position={[-0.065, 0.72, 0]}>
@@ -1698,45 +1700,47 @@ export function ContestantFigure({
         </mesh>
 
         {/* ── AUTHENTIC VIETNAMESE POLO COLLAR, STANDING BAND & PLACKET ── */}
-        {/* Standing Collar Band (Chân Cổ) wrapping neck base */}
-        <mesh position={[0, 1.285, 0.010]}>
-          <cylinderGeometry args={[0.036, 0.040, 0.024, 24]} />
-          <meshStandardMaterial color={collarColor} roughness={0.35} />
-        </mesh>
-        {/* Left Lapel (Beveled 3D Fold) */}
-        <mesh position={[-0.040, 1.275, 0.062]} rotation={[0.26, -0.12, -0.18]}>
-          <boxGeometry args={[0.044, 0.032, 0.004]} />
-          <meshStandardMaterial color={collarColor} roughness={0.35} />
-        </mesh>
-        {/* Right Lapel (Beveled 3D Fold) */}
-        <mesh position={[0.040, 1.275, 0.062]} rotation={[0.26, 0.12, 0.18]}>
-          <boxGeometry args={[0.044, 0.032, 0.004]} />
-          <meshStandardMaterial color={collarColor} roughness={0.35} />
-        </mesh>
-        {/* Top-Stitched Front Central Placket */}
-        <mesh position={[0, 1.185, 0.066]}>
-          <boxGeometry args={[0.018, 0.10, 0.004]} />
-          <meshStandardMaterial color={placketColor} roughness={0.35} />
-        </mesh>
-        {/* Pearl Buttons with Subtle Luster */}
-        <mesh position={[0, 1.22, 0.070]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.0028, 0.0028, 0.004, 10]} />
-          <meshStandardMaterial color="#f8fafc" roughness={0.2} metalness={0.4} />
-        </mesh>
-        <mesh position={[0, 1.17, 0.070]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.0028, 0.0028, 0.004, 10]} />
-          <meshStandardMaterial color="#f8fafc" roughness={0.2} metalness={0.4} />
-        </mesh>
+        <group name="static-torso-accents">
+          {/* Standing Collar Band (Chân Cổ) wrapping neck base */}
+          <mesh position={[0, 1.285, 0.010]}>
+            <cylinderGeometry args={[0.036, 0.040, 0.024, 24]} />
+            <meshStandardMaterial color={collarColor} roughness={0.35} />
+          </mesh>
+          {/* Left Lapel (Beveled 3D Fold) */}
+          <mesh position={[-0.040, 1.275, 0.062]} rotation={[0.26, -0.12, -0.18]}>
+            <boxGeometry args={[0.044, 0.032, 0.004]} />
+            <meshStandardMaterial color={collarColor} roughness={0.35} />
+          </mesh>
+          {/* Right Lapel (Beveled 3D Fold) */}
+          <mesh position={[0.040, 1.275, 0.062]} rotation={[0.26, 0.12, 0.18]}>
+            <boxGeometry args={[0.044, 0.032, 0.004]} />
+            <meshStandardMaterial color={collarColor} roughness={0.35} />
+          </mesh>
+          {/* Top-Stitched Front Central Placket */}
+          <mesh position={[0, 1.185, 0.066]}>
+            <boxGeometry args={[0.018, 0.10, 0.004]} />
+            <meshStandardMaterial color={placketColor} roughness={0.35} />
+          </mesh>
+          {/* Pearl Buttons with Subtle Luster */}
+          <mesh position={[0, 1.22, 0.070]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.0028, 0.0028, 0.004, 10]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.2} metalness={0.4} />
+          </mesh>
+          <mesh position={[0, 1.17, 0.070]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.0028, 0.0028, 0.004, 10]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.2} metalness={0.4} />
+          </mesh>
 
-        {/* Golden Laurel Branch Chest Badge (Left Breast) */}
-        <mesh position={[-0.055, 1.17, 0.068]}>
-          <boxGeometry args={[0.018, 0.014, 0.003]} />
-          <meshStandardMaterial color="#f59e0b" metalness={0.7} roughness={0.2} />
-        </mesh>
-        <mesh position={[-0.055, 1.17, 0.070]}>
-          <sphereGeometry args={[0.0040, 10, 10]} />
-          <meshBasicMaterial color="#fef08a" />
-        </mesh>
+          {/* Golden Laurel Branch Chest Badge (Left Breast) */}
+          <mesh position={[-0.055, 1.17, 0.068]}>
+            <boxGeometry args={[0.018, 0.014, 0.003]} />
+            <meshStandardMaterial color="#f59e0b" metalness={0.7} roughness={0.2} />
+          </mesh>
+          <mesh position={[-0.055, 1.17, 0.070]}>
+            <sphereGeometry args={[0.0040, 10, 10]} />
+            <meshBasicMaterial color="#fef08a" />
+          </mesh>
+        </group>
 
         {/* ── ARMS & HANDS (Seamless Sleeves embedded in shoulder, ZERO Ball Joints!) ── */}
         {/* Left Arm Group (pivoted at shoulder X = -0.145, Y = 1.21m) */}
@@ -4523,7 +4527,8 @@ function SingleContestantEntranceWalkingFigure({
     gestureProgressRef.current = traj.gestureProg;
     walkPhaseRef.current = traj.walkPhase;
 
-    g.visible = true;
+    const isFinished = traj.bowEndSec > 0 && t >= traj.bowEndSec;
+    g.visible = !isFinished;
     g.position.set(traj.pos[0], traj.pos[1], traj.pos[2]);
     g.rotation.y = traj.rotY;
   });
@@ -4830,7 +4835,7 @@ export function evaluateVeDichWalkTrajectory(
   isReturning: boolean = false
 ) {
   const u = Math.max(0, Math.min(1.0, walkProgress));
-  const targetCenterPos: [number, number, number] = [0.0, 0.188, -0.9];
+  const targetCenterPos: [number, number, number] = [0.0, 0.188, 0.55];
 
   const deskX = homePos[0] - Math.sin(homeRotY) * 0.42;
   const deskZ = homePos[2] - Math.cos(homeRotY) * 0.42;
@@ -4907,7 +4912,7 @@ export function evaluateVeDichWalkTrajectory(
       rotY = walkAngle + normalizeAnglePi(homeRotY - walkAngle) * w;
     } else if (u > 0.85) {
       const w = (u - 0.85) / 0.15;
-      rotY = walkAngle + normalizeAnglePi(0 - walkAngle) * w;
+      rotY = walkAngle + normalizeAnglePi(Math.PI - walkAngle) * w;
     }
   } else {
     if (u < 0.15) {
@@ -4915,7 +4920,7 @@ export function evaluateVeDichWalkTrajectory(
       rotY = walkAngle + normalizeAnglePi(homeRotY - walkAngle) * w;
     } else if (u > 0.85) {
       const w = (u - 0.85) / 0.15;
-      rotY = walkAngle + normalizeAnglePi(0 - walkAngle) * w;
+      rotY = walkAngle + normalizeAnglePi(Math.PI - walkAngle) * w;
     }
   }
 
@@ -4951,14 +4956,14 @@ export function VeDichWalkingContestant({
     startedPerf: 0,
   });
 
-  const targetCenterPos: [number, number, number] = [0.0, 0.188, -0.9];
+  const targetCenterPos: [number, number, number] = [0.0, 0.188, 0.55];
   const totalSeats = Math.max(1, state?.seats?.length || 4);
 
   useFrame(() => {
     const vd = state?.veDich;
     const curTurn = vd?.turnIdx ?? 0;
     const curPhase = vd?.phase ?? "idle";
-    const mode = vd?.onStage ? "onStage" : curPhase === "seatDone" ? "seatDone" : "idle";
+    const mode = curPhase === "seatDone" ? "seatDone" : vd?.onStage ? "onStage" : "idle";
     const perfNow = typeof performance !== "undefined" ? performance.now() : Date.now();
 
     if (curTurn !== lastStateRef.current.turnIdx || mode !== lastStateRef.current.mode) {
@@ -6239,14 +6244,21 @@ export function Podiums({
 
         const isThisContestantInVeDichTurn = isVdActive && cfg.seatId === activeSeat;
 
-        // R2 Fix: Ensure all contestants remain rendered at their podium desks once entrance is completed
-        // or during active gameplay stages. Never cull during intro standby ("ĐANG Ở PHẦN KHAI MẠC & GIỚI THIỆU TRẬN ĐẤU"),
-        // before clicking "BẮT ĐẦU" in Khởi Động, or when switching camera angles (CAM 1 / CAM 2).
+        // USER REQUIREMENT (R1 & A1 Physical Continuity):
+        // Physical continuity: Contestants walk down from grandstand stairs.
+        // - Pre-match / lobby / intro standby before entrance: Podiums are empty (showFigure = false).
+        // - Entrance walk active: Contestants who finished walk (hasFinishedEntrance || cfg.seatId < currentEntranceSeat) stand at their podium.
+        //   Contestant currently walking is rendered by ContestantEntranceWalkingFigures (NO duplicate clone).
+        //   Subsequent contestants waiting upstairs remain off stage (showFigure = false).
+        // - Entrance completed or competition round active: contestants stand at their podium (except active Về Đích contestant at center stage).
         const showFigure =
           !isThisContestantInVeDichTurn &&
-          !isEntranceActive &&
           !isLobby &&
-          (hasEntranceCompleted || isGameplayActive);
+          (hasEntranceCompleted
+            ? true
+            : isEntranceActive
+            ? (hasFinishedEntrance || cfg.seatId < currentEntranceSeat)
+            : isCompetitionRound);
 
         const isDimmed = Boolean(
           isContestantDimmed &&

@@ -2130,19 +2130,15 @@ export const HostConsole = React.memo(function HostConsole({
         )}
       </div>
 
-      {/* ── BOTTOM BAR: CONTESTANT CARDS COMPACT (ZERO-SCROLL) ── */}
-      <footer className="border-t border-violet-500/15 bg-black/25 px-2 py-1 pb-2 sm:pb-1 shrink-0">
-        <div className={`grid gap-1.5 ${
-          state.seats.length <= 4 ? "grid-cols-2 sm:grid-cols-4" :
-          state.seats.length <= 6 ? "grid-cols-3 sm:grid-cols-6" :
-          "grid-cols-4 sm:grid-cols-8"
-        }`}>
+      {/* ── BOTTOM BAR: CONTESTANT CARDS RESPONSIVE (2 ROWS x 4 COLUMNS / MIN 160PX) ── */}
+      <footer className="border-t border-violet-500/15 bg-black/25 px-2 py-1.5 pb-2 sm:pb-1.5 shrink-0 max-h-[170px] overflow-y-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
           {state.seats.map((s, idx) => {
             const isEditing = editingSeatId === s.id;
             return (
               <div
                 key={s.id}
-                className="rounded-lg border border-cyan-500/25 bg-slate-900/95 px-2 py-1.5 flex flex-col justify-between gap-1.5 relative overflow-hidden shadow"
+                className="min-w-[160px] rounded-lg border border-cyan-500/25 bg-slate-900/95 px-2.5 py-1.5 flex flex-col justify-between gap-1.5 relative overflow-hidden shadow"
                 style={{ borderLeft: `3.5px solid ${SEAT_COLORS[idx % SEAT_COLORS.length] || "#00e5ff"}` }}
               >
                 {/* DÒNG TRÊN: Tên thí sinh (nếu tên dài thu nhỏ chiều ngang, giữ nguyên chiều dọc) */}
@@ -2205,12 +2201,12 @@ export const HostConsole = React.memo(function HostConsole({
                   )}
                 </div>
 
-                {/* DÒNG DƯỚI: Chỉ có ô gõ điểm, nút cộng, trừ, thế thôi */}
-                <div className="w-full flex items-center gap-1">
+                {/* DÒNG DƯỚI: Ô gõ điểm, nút cộng, trừ rộng rãi, dễ bấm */}
+                <div className="w-full flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => call("score:adjust", { seat: s.id, delta: -10 })}
-                    className="w-7 h-6 sm:w-8 sm:h-7 rounded bg-rose-500/25 border border-rose-500/40 hover:bg-rose-500/40 text-rose-300 text-xs sm:text-sm font-black cursor-pointer flex items-center justify-center transition shrink-0"
+                    className="w-8 h-7 sm:w-9 sm:h-7.5 rounded bg-rose-500/25 border border-rose-500/40 hover:bg-rose-500/40 text-rose-300 text-xs sm:text-sm font-black cursor-pointer flex items-center justify-center transition shrink-0"
                     title="Trừ 10 điểm"
                   >
                     -
@@ -2230,13 +2226,13 @@ export const HostConsole = React.memo(function HostConsole({
                         call("score:set", { seat: s.id, score: val });
                       }
                     }}
-                    className="flex-1 min-w-0 h-6 sm:h-7 px-1 rounded bg-black/60 border border-amber-400/40 text-amber-300 text-center text-xs sm:text-sm font-black leading-tight focus:outline-none focus:border-amber-400 shadow-inner"
+                    className="flex-1 min-w-[50px] h-7 sm:h-7.5 px-2 rounded bg-black/60 border border-amber-400/40 text-amber-300 text-center text-xs sm:text-sm font-black leading-tight focus:outline-none focus:border-amber-400 shadow-inner"
                     title="Gõ điểm trực tiếp (Enter để lưu)"
                   />
                   <button
                     type="button"
                     onClick={() => call("score:adjust", { seat: s.id, delta: 10 })}
-                    className="w-7 h-6 sm:w-8 sm:h-7 rounded bg-emerald-500/25 border border-emerald-500/40 hover:bg-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-black cursor-pointer flex items-center justify-center transition shrink-0"
+                    className="w-8 h-7 sm:w-9 sm:h-7.5 rounded bg-emerald-500/25 border border-emerald-500/40 hover:bg-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-black cursor-pointer flex items-center justify-center transition shrink-0"
                     title="Cộng 10 điểm"
                   >
                     +
@@ -4139,18 +4135,29 @@ function VeDichDeck({
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => call("vd:startQuestion")}
-            className={`w-full py-2 rounded-xl text-white text-xs font-black shadow uppercase cursor-pointer transition ${
-              vd.phase === "packageReady"
-                ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 animate-pulse border border-emerald-400"
-                : "bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400"
-            }`}
-          >
-            <span>{vd.phase === "packageReady" ? "▶ Bắt đầu Câu 1 (N)" : "Câu tiếp (N)"}</span>
-            <span>⏭</span>
-          </button>
+          {vd.phase === "seatDone" ? (
+            <button
+              type="button"
+              onClick={() => call("vd:nextSeat")}
+              className="w-full py-2 rounded-xl text-white text-xs font-black shadow uppercase cursor-pointer transition bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 animate-pulse border border-yellow-400 flex items-center justify-center gap-1.5"
+            >
+              <span>▶ Sẵn sàng thí sinh tiếp theo</span>
+              <span>⏭</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => call("vd:startQuestion")}
+              className={`w-full py-2 rounded-xl text-white text-xs font-black shadow uppercase cursor-pointer transition ${
+                vd.phase === "packageReady"
+                  ? "bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 animate-pulse border border-emerald-400"
+                  : "bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400"
+              }`}
+            >
+              <span>{vd.phase === "packageReady" ? "▶ Bắt đầu Câu 1 (N)" : "Câu tiếp (N)"}</span>
+              <span>⏭</span>
+            </button>
+          )}
         </div>
 
         {/* Right / Steal Controls */}

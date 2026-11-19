@@ -7,6 +7,7 @@ import { parseVcnvAnswer, cleanVcnvWord, stripVcnvLetterCount, getVcnvUnit } fro
 import { activeSeats, seatName, SEAT_COLORS } from "./ui";
 import { OlympiaBroadcastVideo } from "./OlympiaBroadcastVideo";
 import { getPreloadedVideoUrl } from "@/lib/olympia/assetCache";
+import { HopeStarBadge } from "./HopeStarBadge";
 
 /**
  * BLUFFTITLER-STYLE BOUNDED TEXT (Scales horizontally to fit without ellipsis / truncation)
@@ -1629,6 +1630,18 @@ export function ClassicUnifiedLowerThird({
       {/* ── 1. Horizontal Continuous Mounting Beam (Edge-to-Edge) ── */}
       <HorizontalBrassRod />
 
+      {/* Floating Hope Star Badge rising above question board */}
+      {hopeStarActive && (
+        <div
+          className="absolute -top-10 right-6 sm:right-10 z-40 pointer-events-none transition-all duration-300 animate-in zoom-in-50"
+          style={{
+            filter: "drop-shadow(0 4px 14px rgba(0,0,0,0.9))",
+          }}
+        >
+          <HopeStarBadge size={76} />
+        </div>
+      )}
+
       {/* ── 2. Unified Plaque Frame (Rotates up 90° from horizontal fold on beam AFTER beam reaches Y position) ── */}
       <motion.div
         initial={hasOpenedRef.current ? false : { rotateX: -90, opacity: 0 }}
@@ -1673,88 +1686,56 @@ export function ClassicUnifiedLowerThird({
             ) : null}
           </div>
 
-          {/* 2. Center Zone: Candidate Score Cells or Dedicated Về Đích Active Scoreboard */}
-          {round === "veDich" ? (
-            <div className="flex-1 min-w-0 h-full flex items-center justify-center gap-2 sm:gap-4 px-2">
-              {(() => {
-                const activeSeat = allSeats.find((s) => s.id === activeSeatId) || allSeats[0];
-                const buzzedSeat = buzzedSeatId != null ? allSeats.find((s) => s.id === buzzedSeatId) : null;
-                return (
-                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 max-w-full">
-                    <div className="flex items-center gap-2 sm:gap-3 px-3.5 sm:px-4 py-1 sm:py-1.5 rounded-lg bg-gradient-to-r from-amber-950/95 via-amber-900/90 to-amber-950/95 border-2 border-[#d4af37] shadow-[0_0_16px_rgba(212,175,55,0.5)]">
-                      <span className="text-xs sm:text-sm font-bold text-amber-300 uppercase tracking-wider">
-                        THÍ SINH:
-                      </span>
-                      <span className="font-black text-sm sm:text-base md:text-lg text-white uppercase tracking-tight drop-shadow truncate max-w-[200px] sm:max-w-[320px]">
-                        {activeSeat?.name || `TS ${activeSeatId != null ? activeSeatId + 1 : 1}`}
-                      </span>
-                      <div className="h-5 w-px bg-amber-400/60 mx-1" />
-                      <span className="font-mono font-black text-base sm:text-lg md:text-xl text-yellow-300 drop-shadow">
-                        {activeSeat?.score ?? 0}
-                      </span>
-                    </div>
+          {/* 2. Center Zone: All-Candidate Score Shelf across All Rounds (including Về Đích) */}
+          <div
+            className="flex-1 min-w-0 h-full grid gap-1 sm:gap-1.5 px-0.5 items-center"
+            style={{
+              gridTemplateColumns: `repeat(${Math.max(1, seatsToDisplay.length)}, minmax(0, 1fr))`,
+            }}
+          >
+            {seatsToDisplay.map((seat) => {
+              const isTurn = activeSeatId === seat.id;
+              const isBuzzed = buzzedSeatId === seat.id;
+              const isLocked = lockedSeats?.includes(seat.id);
 
-                    {buzzedSeat && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/90 border border-red-500 text-white animate-pulse shadow-[0_0_14px_rgba(239,68,68,0.8)]">
-                        <span className="text-sm">🔔</span>
-                        <span className="text-xs sm:text-sm font-black uppercase text-red-200 truncate max-w-[160px]">
-                          {buzzedSeat.name} ({buzzedSeat.score})
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-          ) : (
-            <div
-              className="flex-1 min-w-0 h-full grid gap-1 sm:gap-1.5 px-0.5 items-center"
-              style={{
-                gridTemplateColumns: `repeat(${Math.max(1, seatsToDisplay.length)}, minmax(0, 1fr))`,
-              }}
-            >
-              {seatsToDisplay.map((seat) => {
-                const isTurn = activeSeatId === seat.id;
-                const isBuzzed = buzzedSeatId === seat.id;
-                const isLocked = lockedSeats?.includes(seat.id);
-
-                return (
-                  <div
-                    key={seat.id}
-                    className={`h-[36px] sm:h-[40px] flex items-center justify-between gap-1 px-1.5 sm:px-2.5 rounded-md transition-colors duration-200 min-w-0 overflow-hidden ${
+              return (
+                <div
+                  key={seat.id}
+                  className={`h-[36px] sm:h-[40px] flex items-center justify-between gap-1 px-1.5 sm:px-2.5 rounded-md transition-colors duration-200 min-w-0 overflow-hidden ${
+                    isBuzzed
+                      ? "ring-2 ring-red-500 bg-red-950/95 border border-red-500 text-white shadow-[0_0_16px_rgba(239,68,68,0.95)] animate-pulse"
+                      : isTurn
+                      ? round === "veDich"
+                        ? "ring-2 ring-yellow-400 bg-amber-500/30 border border-yellow-400 text-yellow-100 shadow-[0_0_14px_rgba(250,204,21,0.9)]"
+                        : "ring-2 ring-amber-400 bg-amber-950/90 text-white shadow-[0_0_10px_rgba(245,158,11,0.6)]"
+                      : isLocked
+                      ? "bg-slate-900/60 border border-slate-700/50 text-slate-500 opacity-60"
+                      : "bg-[#181c24]/90 border border-amber-500/40 text-slate-100 shadow-inner"
+                  }`}
+                >
+                  <span className="font-black truncate uppercase text-xs sm:text-sm md:text-base tracking-tight">
+                    {seat.name || `TS ${seat.id + 1}`}
+                  </span>
+                  <span
+                    className={`font-black shrink-0 text-xs sm:text-sm md:text-base font-mono ${
                       isBuzzed
-                        ? "ring-2 ring-yellow-400 bg-amber-900/90 text-white shadow-[0_0_12px_rgba(250,204,21,0.85)] animate-pulse"
+                        ? "text-red-200"
                         : isTurn
-                        ? "ring-2 ring-amber-400 bg-amber-950/90 text-white shadow-[0_0_10px_rgba(245,158,11,0.6)]"
-                        : isLocked
-                        ? "bg-slate-900/60 border border-slate-700/50 text-slate-500 opacity-60"
-                        : "bg-[#181c24]/90 border border-amber-500/40 text-slate-100 shadow-inner"
+                        ? round === "veDich"
+                          ? "text-yellow-300"
+                          : "text-amber-200"
+                        : "text-amber-300"
                     }`}
                   >
-                    <span className="font-black truncate uppercase text-xs sm:text-sm md:text-base tracking-tight">
-                      {seat.name || `TS ${seat.id + 1}`}
-                    </span>
-                    <span
-                      className={`font-black shrink-0 text-xs sm:text-sm md:text-base font-mono ${
-                        isBuzzed ? "text-yellow-100" : isTurn ? "text-amber-200" : "text-amber-300"
-                      }`}
-                    >
-                      {seat.score}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                    {seat.score}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
 
-          {/* 3. Right Zone: Hope Star / Seconds Badge (Fixed Width) */}
+          {/* 3. Right Zone: Seconds Badge (Fixed Width) */}
           <div className="w-[125px] sm:w-[145px] shrink-0 flex items-center justify-end gap-1.5">
-            {hopeStarActive && (
-              <div className="px-2 sm:px-2.5 py-0.5 rounded-md bg-gradient-to-r from-amber-600/90 to-yellow-500/90 border border-amber-300 text-white font-black text-xs sm:text-sm animate-pulse flex items-center gap-1 shadow-[0_0_12px_rgba(245,158,11,0.8)] truncate">
-                <span>⭐</span>
-                <span className="hidden sm:inline">HY VỌNG</span>
-              </div>
-            )}
             {timerBadge && (
               <div className="shrink-0">
                 <EconovaSecondsBadge timer={timerBadge} serverNow={serverNow} />
@@ -2570,7 +2551,6 @@ import {
 } from "./v3Geometry";
 
 import { V3ArrowShell, V3ScaledStage, V3_COLORS } from "./V3ArrowShell";
-import { HopeStarBadge } from "./HopeStarBadge";
 
 export { toPoly, toSvgPath, genZigzagShape, genVeDichGridCells, HopeStarBadge };
 export type { ZigzagShape, GridCell, ArrowShell };
@@ -5145,8 +5125,8 @@ export function EconovaLowerThirdV3({
                   <stop offset="100%" stopColor="#c0392b" />
                 </linearGradient>
                 <linearGradient id="ltTabActiveVd" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#1fd1ff" />
-                  <stop offset="100%" stopColor="#2ee6ff" />
+                  <stop offset="0%" stopColor="#f59e0b" />
+                  <stop offset="100%" stopColor="#eab308" />
                 </linearGradient>
                 <linearGradient id="ltTabBuzzed" x1="0" y1="0" x2="1" y2="1">
                   <stop offset="0%" stopColor="#ff3838" />
@@ -5170,8 +5150,7 @@ export function EconovaLowerThirdV3({
                   else if (isActive) fillUrl = isVeDich ? "url(#ltTabActiveVd)" : "url(#ltTabActiveKd)";
                   else if (isLocked) fillUrl = "rgba(0, 0, 0, 0.7)";
 
-                  const displayText =
-                    isVeDich && isActive ? seat.name : `${seat.name} (${seat.score})`;
+                  const displayText = `${seat.name} (${seat.score})`;
 
                   const tabSafeW = tab.width;
                   const maxLabelW = Math.max(16, tabSafeW - (n <= 4 ? 14 : 10));

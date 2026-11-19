@@ -1051,6 +1051,265 @@ function renderRoundGraphicsToCanvas(
 }
 
 /**
+ * Render Requirement R5 3D Flip Clock on Stage Right Screen Canvas during practical countdowns.
+ * Design:
+ * - Sapphire Navy / Charcoal background with gold metallic Olympia trim
+ * - Distinct flip cards for tens and units (or unified two-digit flip card)
+ * - Realistic 3D flip animation per second (folding top half down with perspective scaling and dynamic drop shadow)
+ * - Header: "THỜI GIAN THỰC HÀNH" (or "CHUÔNG CƯỚP ĐIỂM") in Gold Metallic
+ * - Subtitle: "GIÂY" in golden warm yellow
+ */
+function render3DFlipClockToCanvas(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  state: OlympiaState | null | undefined,
+  timeSec: number = 0
+): void {
+  const vd = state?.veDich;
+  if (!vd) return;
+
+  const isStealing = vd.phase === "stealing";
+  const timer = isStealing ? vd.steal?.timer : vd.timer;
+  const startedAt = timer?.startedAt || (timeSec > 0 ? timeSec * 1000 : Date.now());
+  const totalMs = timer?.totalMs || (isStealing ? 20000 : 30000);
+  const wallNow = Date.now();
+  const elapsedMs = Math.max(0, wallNow - startedAt);
+  const remainMs = Math.max(0, totalMs - elapsedMs);
+  const remainSec = Math.max(0, Math.ceil(remainMs / 1000));
+  const currentSecFrac = (elapsedMs % 1000) / 1000; // 0.0 to 1.0 progress through current second
+
+  const cx = width / 2;
+  const cy = height / 2;
+
+  // 1. Deep Cosmic Sapphire / Obsidian Background
+  const bgGrad = ctx.createRadialGradient(cx, cy * 0.9, 60, cx, cy, width * 0.7);
+  bgGrad.addColorStop(0, "#081b3b"); // Sapphire deep core
+  bgGrad.addColorStop(0.5, "#030a1c");
+  bgGrad.addColorStop(1, "#01040d"); // Near black obsidian
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, height);
+
+  // Subtle stardust backdrop
+  ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+  for (let i = 0; i < 40; i++) {
+    const sx = ((i * 137.5) % width);
+    const sy = ((i * 83.3) % height);
+    const s = (i % 3) * 0.8 + 0.8;
+    ctx.fillRect(sx, sy, s, s);
+  }
+
+  // 2. Outer Golden Metallic Bevel Frame (Olympia Signature Styling)
+  const clockW = Math.min(width * 0.72, 680);
+  const clockH = Math.min(height * 0.68, 380);
+  const clockX = cx - clockW / 2;
+  const clockY = cy - clockH / 2 + 25;
+
+  ctx.save();
+  // Golden Ambient Aura / Drop Shadow
+  ctx.shadowColor = isStealing ? "rgba(239, 68, 68, 0.55)" : "rgba(245, 158, 11, 0.55)";
+  ctx.shadowBlur = 35;
+  ctx.shadowOffsetY = 10;
+
+  // Frame Border Gradient
+  const frameGrad = ctx.createLinearGradient(clockX, clockY, clockX + clockW, clockY + clockH);
+  frameGrad.addColorStop(0.0, "#fef08a"); // Light gold
+  frameGrad.addColorStop(0.25, "#f59e0b"); // Warm gold
+  frameGrad.addColorStop(0.5, "#b45309"); // Deep bronze
+  frameGrad.addColorStop(0.75, "#fbbf24"); // Radiant gold
+  frameGrad.addColorStop(1.0, "#78350f"); // Dark metallic trim
+
+  ctx.fillStyle = frameGrad;
+  ctx.beginPath();
+  ctx.roundRect(clockX, clockY, clockW, clockH, 20);
+  ctx.fill();
+  ctx.restore();
+
+  // Inner Frame Inset Cavity
+  const insetPad = 12;
+  const innerX = clockX + insetPad;
+  const innerY = clockY + insetPad;
+  const innerW = clockW - insetPad * 2;
+  const innerH = clockH - insetPad * 2;
+
+  ctx.save();
+  const innerGrad = ctx.createLinearGradient(0, innerY, 0, innerY + innerH);
+  innerGrad.addColorStop(0, "#050d1e");
+  innerGrad.addColorStop(0.5, "#0b1528");
+  innerGrad.addColorStop(1, "#020713");
+  ctx.fillStyle = innerGrad;
+  ctx.beginPath();
+  ctx.roundRect(innerX, innerY, innerW, innerH, 14);
+  ctx.fill();
+
+  // Inner metallic rim stroke
+  ctx.strokeStyle = "rgba(245, 158, 11, 0.35)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+
+  // 3. Header Title Badge: "THỜI GIAN THỰC HÀNH" / "CHUÔNG CƯỚP ĐIỂM"
+  ctx.save();
+  const titleText = isStealing ? "⚡ CHUÔNG CƯỚP ĐIỂM ⚡" : "THỜI GIAN THỰC HÀNH";
+  const titleY = clockY - 32;
+  ctx.font = '900 36px "Plus Jakarta Sans", sans-serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const titleGrad = ctx.createLinearGradient(0, titleY - 18, 0, titleY + 18);
+  titleGrad.addColorStop(0.0, "#ffffff");
+  titleGrad.addColorStop(0.3, "#fef08a");
+  titleGrad.addColorStop(0.7, "#f59e0b");
+  titleGrad.addColorStop(1.0, "#b45309");
+
+  ctx.shadowColor = isStealing ? "#ef4444" : "#f59e0b";
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = titleGrad;
+  ctx.fillText(titleText, cx, titleY);
+  ctx.restore();
+
+  // 4. Two Flip Digit Cards (Tens and Units)
+  const tens = Math.floor(remainSec / 10);
+  const units = remainSec % 10;
+  const nextSec = Math.max(0, remainSec - 1);
+  const nextTens = Math.floor(nextSec / 10);
+  const nextUnits = nextSec % 10;
+
+  // Flip window: last 350ms of each second (secFrac 0.65 -> 1.0)
+  const isFlipping = currentSecFrac >= 0.65;
+  const flipProgress = isFlipping ? (currentSecFrac - 0.65) / 0.35 : 0;
+
+  const cardGap = 20;
+  const cardW = (innerW - 50 - cardGap) / 2;
+  const cardH = innerH - 40;
+  const cardY = innerY + 20;
+  const cardX1 = innerX + 25;
+  const cardX2 = cardX1 + cardW + cardGap;
+
+  // Helper to render one 3D flip card
+  const drawFlipCard = (cardX: number, currDigit: number, nextDigit: number, shouldFlip: boolean) => {
+    const cardCx = cardX + cardW / 2;
+    const cardCy = cardY + cardH / 2;
+    const halfH = cardH / 2;
+
+    // Card Base Background
+    ctx.save();
+    ctx.fillStyle = "#090e1a"; // Dark charcoal navy
+    ctx.beginPath();
+    ctx.roundRect(cardX, cardY, cardW, cardH, 12);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(245, 158, 11, 0.4)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Digit Font Setup
+    const fontSize = Math.round(cardH * 0.72);
+    ctx.font = `900 ${fontSize}px "Plus Jakarta Sans", "Montserrat", "Arial Black", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // ── Static Lower Half (shows nextDigit when flipping, or currDigit when resting) ──
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(cardX, cardCy, cardW, halfH);
+    ctx.clip();
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+    ctx.shadowBlur = 10;
+    ctx.fillText(String(shouldFlip ? nextDigit : currDigit), cardCx, cardCy);
+    ctx.restore();
+
+    // ── Static Upper Half (shows currDigit before flip completes) ──
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(cardX, cardY, cardW, halfH);
+    ctx.clip();
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+    ctx.shadowBlur = 10;
+    ctx.fillText(String(currDigit), cardCx, cardCy);
+    ctx.restore();
+
+    // ── Dynamic 3D Flipping Flap ──
+    if (shouldFlip && isFlipping) {
+      const flipAngle = flipProgress * Math.PI; // 0 to PI
+
+      if (flipAngle < Math.PI / 2) {
+        // Upper flap folding down towards viewer (0 -> 90 deg)
+        const scaleY = Math.cos(flipAngle);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(cardX, cardY, cardW, halfH);
+        ctx.clip();
+        ctx.translate(cardCx, cardCy);
+        ctx.scale(1, scaleY);
+        ctx.translate(-cardCx, -cardCy);
+
+        // Darkening shadow as it folds forward away from top light
+        ctx.fillStyle = "#0a101f";
+        ctx.fillRect(cardX, cardY, cardW, halfH);
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0.3, 1 - flipProgress)})`;
+        ctx.fillText(String(currDigit), cardCx, cardCy);
+        ctx.fillStyle = `rgba(0, 0, 0, ${flipProgress * 0.75})`;
+        ctx.fillRect(cardX, cardY, cardW, halfH);
+        ctx.restore();
+      } else {
+        // Lower flap folding in from top (90 -> 180 deg)
+        const scaleY = -Math.cos(flipAngle);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(cardX, cardCy, cardW, halfH);
+        ctx.clip();
+        ctx.translate(cardCx, cardCy);
+        ctx.scale(1, scaleY);
+        ctx.translate(-cardCx, -cardCy);
+
+        ctx.fillStyle = "#090e1a";
+        ctx.fillRect(cardX, cardY, cardW, halfH);
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1.0, (flipProgress - 0.5) * 2)})`;
+        ctx.fillText(String(nextDigit), cardCx, cardCy);
+        ctx.fillStyle = `rgba(0, 0, 0, ${(1 - flipProgress) * 0.75})`;
+        ctx.fillRect(cardX, cardY, cardW, halfH);
+        ctx.restore();
+      }
+    }
+
+    // ── Horizontal Center Divider Slot & Side Rivets ──
+    ctx.fillStyle = "#01040a";
+    ctx.fillRect(cardX, cardCy - 2, cardW, 4);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+    ctx.fillRect(cardX, cardCy + 2, cardW, 1);
+
+    // Left and Right Hinge Rivets (Gold)
+    ctx.fillStyle = "#f59e0b";
+    ctx.beginPath();
+    ctx.arc(cardX + 4, cardCy, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cardX + cardW - 4, cardCy, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  };
+
+  const isTensFlipping = tens !== nextTens;
+  drawFlipCard(cardX1, tens, nextTens, isTensFlipping);
+  drawFlipCard(cardX2, units, nextUnits, true);
+
+  // 5. Bottom "GIÂY" Subtitle
+  ctx.save();
+  ctx.font = '700 24px "Plus Jakarta Sans", sans-serif';
+  ctx.fillStyle = "#fbbf24";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.letterSpacing = "0.2em";
+  ctx.shadowColor = "#f59e0b";
+  ctx.shadowBlur = 10;
+  ctx.fillText("GIÂY", cx, clockY + clockH + 26);
+  ctx.restore();
+}
+
+/**
  * Pre-rendered Rectangular Secondary LED Display (Stage Right, facing Contestants)
  * Shows either the official Olympia 2016 logo, round title card, or active round question.
  */
@@ -1136,6 +1395,21 @@ function renderLedScreenToCanvas(
   ctx.globalAlpha = 1.0;
 
   // 3. Right Screen Projection Mode
+  // 3.1. Requirement R5: 3D Flip Clock for Về Đích Practical Question Countdown
+  const vd = state?.veDich;
+  const isPracticeCountdown = Boolean(
+    state?.currentRound === "veDich" &&
+    vd?.current?.q?.type === "practice" && (
+      (vd.phase === "thinking" && vd.timer?.startedAt) ||
+      (vd.phase === "stealing" && vd.steal?.timer?.startedAt)
+    )
+  );
+
+  if (isPracticeCountdown) {
+    render3DFlipClockToCanvas(ctx, width, height, state, timeSec);
+    return;
+  }
+
   const screenMode = (state as any)?.rightScreenMode || "auto";
 
   // Explicit overrides from Host Console:
@@ -2497,7 +2771,7 @@ export function CentralLedWall({
     formulaWallTextureRef.current = formulaWallTexture;
   }, [formulaWallCanvas, formulaWallTexture]);
 
-  const isArchRed = state?.currentRound === "khoiDong" || state?.currentRound === "veDich" || screenFadeProgress > 0.5;
+  const isArchRed = screenFadeProgress > 0.5;
 
   // Perforated White LED Dots Arch Texture (Images 3 & 4)
   const whiteDotsArchCanvas = useMemo(() => {
@@ -2623,9 +2897,18 @@ export function CentralLedWall({
     const t = accumulatedTimeRef.current;
 
     // Throttle Stage Right Screen & Vertical Totem in Idle Mode (<= 3-4 FPS to save GPU bandwidth)
+    // In Practical Countdown mode, refresh at ~30 FPS (0.033s) for smooth 3D flip card animation
     const isIdle = isPreMatchIdle(state);
-    const screenInterval = quality === "LIGHT" ? 0.400 : 0.300;
-    if (isIdle && t - lastScreenFrameRef.current >= screenInterval) {
+    const vd = state?.veDich;
+    const isPracticeCountdown = Boolean(
+      state?.currentRound === "veDich" &&
+      vd?.current?.q?.type === "practice" && (
+        (vd.phase === "thinking" && vd.timer?.startedAt) ||
+        (vd.phase === "stealing" && vd.steal?.timer?.startedAt)
+      )
+    );
+    const screenInterval = isPracticeCountdown ? 0.033 : quality === "LIGHT" ? 0.400 : 0.300;
+    if ((isIdle || isPracticeCountdown) && t - lastScreenFrameRef.current >= screenInterval) {
       lastScreenFrameRef.current = t;
       if (canvasRef.current && textureRef.current) {
         renderLedScreenToCanvas(

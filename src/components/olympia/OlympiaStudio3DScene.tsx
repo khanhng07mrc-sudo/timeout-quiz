@@ -415,6 +415,7 @@ export function OlympiaStudio3DScene({
           kdStartCooldownUntil={state?.khoiDong?.startCooldownUntil ?? null}
           isIdleLobby={Boolean(isIdle && !state?.studioCameraManual && !state?.entranceState?.active)}
           isPostIntroStandby={isRoundPostIntroStandby(state, serverNow ? serverNow() : Date.now())}
+          isManualCamera={Boolean(state?.studioCameraManual)}
           serverNow={serverNow}
         />
 

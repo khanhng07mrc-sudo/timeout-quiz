@@ -130,9 +130,11 @@ export function computeTargetLightingMode(
     case "veDich": {
       const vd = state.veDich;
       if (!vd) return "BLUE";
-      // Turns Red immediately on contestant onStage / package selection through turn finish:
-      // (phases: "choosing", "packageReady", "thinking", "stealing", "result")
-      if (vd.onStage || (vd.phase !== "idle" && vd.phase !== "seatDone")) {
+      // When turn finishes ("seatDone"), lighting transitions back to sapphire blue immediately:
+      if (vd.phase === "seatDone") {
+        return "BLUE";
+      }
+      if (vd.onStage || vd.phase !== "idle") {
         return "RED";
       }
       return "BLUE";

@@ -4,55 +4,63 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { RULESETS } from "@/lib/olympia/rulesets";
 import { ROUND_LABELS, type OlympiaState, type TimerState } from "@/lib/olympia/types";
 import { getVcnvUnit } from "@/lib/olympia/engine";
-import { useOlympiaSocket, useStableToken, prewarmBuzzerSounds, useCountdown } from "./hooks";
-import { Timer, MediaView, SEAT_COLORS, seatName, activeSeats } from "./ui";
+import { useOlympiaSocket, useStableToken, prewarmBuzzerSounds } from "./hooks";
+import { MediaView, SEAT_COLORS, seatName, activeSeats } from "./ui";
 
 type Emit = (e: string, p?: unknown) => Promise<{ ok: boolean; error?: string }>;
 
-function CompactSandboxTimer({
+function PlayerPadCountdown({
   timer,
   serverNow,
   isClassic,
+  isSandbox,
 }: {
-  timer: TimerState;
+  timer: TimerState | null | undefined;
   serverNow: () => number;
   isClassic?: boolean;
+  isSandbox?: boolean;
 }) {
-  const ms = useCountdown(timer, serverNow);
-  const total = timer?.totalMs || 1;
-  const pct = Math.max(0, Math.min(100, (ms / total) * 100));
-  const secs = (ms / 1000).toFixed(ms < 10000 ? 1 : 0);
+  const getSeconds = useCallback(() => {
+    if (!timer) return 0;
+    if (timer.startedAt == null) return Math.max(0, Math.ceil((timer.remainingMs ?? 0) / 1000));
+    const ms = Math.max(0, timer.remainingMs - (serverNow() - timer.startedAt));
+    return Math.max(0, Math.ceil(ms / 1000));
+  }, [timer, serverNow]);
+
+  const [seconds, setSeconds] = useState<number>(getSeconds);
   const running = timer?.startedAt != null;
-  const low = ms <= 5000 && ms > 0;
+
+  useEffect(() => {
+    setSeconds(getSeconds());
+    if (!running) return;
+
+    // Strict 1Hz tick (1000ms) to eliminate mobile continuous layout recalculations
+    const id = setInterval(() => {
+      setSeconds(getSeconds());
+    }, 1000);
+
+    return () => clearInterval(id);
+  }, [running, getSeconds]);
+
+  const low = seconds <= 5 && seconds > 0;
 
   return (
-    <div className="w-full flex items-center gap-2 px-1">
+    <div className={`w-full flex items-center justify-center ${isSandbox ? "py-0.5" : "py-1"}`}>
       <div
-        className={`font-mono font-black tabular-nums text-xs sm:text-sm shrink-0 ${
+        className={`font-mono font-black tabular-nums transition-colors duration-200 rounded-lg px-3 py-0.5 border shadow-sm flex items-center gap-1.5 ${
           low
-            ? "text-red-400"
+            ? "bg-red-950/80 border-red-500/80 text-red-400 animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.4)]"
             : running
             ? isClassic
-              ? "text-[#fbbf24]"
-              : "text-amber-300"
+              ? "bg-amber-950/70 border-amber-500/70 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
+              : "bg-indigo-950/70 border-indigo-500/70 text-indigo-300 shadow-[0_0_10px_rgba(99,102,241,0.3)]"
             : isClassic
-            ? "text-amber-200/60"
-            : "text-violet-300/60"
-        }`}
+            ? "bg-black/50 border-amber-400/20 text-amber-200/50"
+            : "bg-black/50 border-white/10 text-white/50"
+        } ${isSandbox ? "text-xs sm:text-sm" : "text-sm sm:text-base"}`}
       >
-        {secs}s
-      </div>
-      <div className="flex-1 h-1.5 rounded-full bg-black/60 border border-white/10 overflow-hidden shadow-inner">
-        <div
-          className={`h-full rounded-full transition-all duration-100 ${
-            low
-              ? "bg-gradient-to-r from-red-600 to-rose-400"
-              : isClassic
-              ? "bg-gradient-to-r from-[#d97706] to-[#f59e0b]"
-              : "bg-gradient-to-r from-amber-400 to-violet-500"
-          }`}
-          style={{ width: `${running ? pct : 100}%` }}
-        />
+        <span>⏱️</span>
+        <span>{seconds}s</span>
       </div>
     </div>
   );
@@ -837,14 +845,15 @@ export default function PlayerPad({
             </div>
           </div>
 
-          {/* Bottom Timer Bar inside Question Box */}
+          {/* Bottom Timer Bar inside Question Box - 1Hz Numerical Countdown without 60fps progress bar */}
           <div className="shrink-0 pt-0.5">
             {activeTimer && (
-              isSandboxMode ? (
-                <CompactSandboxTimer timer={activeTimer} serverNow={serverNow} isClassic={isClassic} />
-              ) : (
-                <Timer timer={activeTimer} serverNow={serverNow} isClassic={isClassic} />
-              )
+              <PlayerPadCountdown
+                timer={activeTimer}
+                serverNow={serverNow}
+                isClassic={isClassic}
+                isSandbox={isSandboxMode}
+              />
             )}
           </div>
         </div>

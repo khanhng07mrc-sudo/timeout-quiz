@@ -293,13 +293,21 @@ export const OLYMPIA_CAM_PRESETS: Record<number, CameraPreset> = {
   },
   15: {
     id: 15,
-    label: "Toàn Cảnh Bục Về Đích (Trọng Tâm)",
-    // Broadcast Wide Focal Angle across Center Dais, MC desk on right, and glowing formula wall behind
-    pos: [-2.70, 1.70, 4.50],
-    target: [0.50, 1.25, -2.00],
-    fov: 42,
+    label: "Về Đích - Over The Shoulder (OTS)",
+    // OTS over-the-shoulder looking up at LED screen behind active candidate
+    pos: [0.32, 1.55, 1.55],
+    target: [0.0, 2.30, -4.50],
+    fov: 38,
   },
   16: getContestantScreenCameraPreset(0, 4),
+  17: {
+    id: 17,
+    label: "Về Đích - Trắc Diện 3/4 Kịch Tính",
+    // Dramatic 3/4 profile shot of active contestant
+    pos: [-1.45, 1.45, -0.45],
+    target: [0.0, 1.35, 0.55],
+    fov: 36,
+  },
   19: {
     id: 19,
     label: "Cam Phía Trước Bám Theo Bước Xuống Cầu Thang",
@@ -337,6 +345,7 @@ interface CameraControllerProps {
   kdStartCooldownUntil?: number | null;
   isIdleLobby?: boolean;
   isPostIntroStandby?: boolean;
+  isManualCamera?: boolean;
   serverNow?: () => number;
 }
 
@@ -412,6 +421,7 @@ export function CameraController({
   kdStartCooldownUntil = null,
   isIdleLobby = false,
   isPostIntroStandby = false,
+  isManualCamera = false,
   serverNow,
 }: CameraControllerProps) {
   const { camera, size } = useThree();
@@ -471,7 +481,7 @@ export function CameraController({
   useFrame((_, delta) => {
     // 0. True Optical Zoom & Adaptive FOV Calculation
     if (camera instanceof THREE.PerspectiveCamera) {
-      const baseFov = camAngle === 1 ? 36 : camAngle === 10 ? 34 : camAngle === 13 ? 42 : camAngle === 15 ? 42 : 43;
+      const baseFov = camAngle === 1 ? 36 : camAngle === 10 ? 34 : camAngle === 13 ? 42 : camAngle === 15 ? 38 : camAngle === 17 ? 36 : 43;
       const aspect = size.width / Math.max(1, size.height);
       const targetAspect = 16 / 9;
       let calculatedFov = baseFov;
@@ -494,17 +504,28 @@ export function CameraController({
         camera.fov = THREE.MathUtils.damp(camera.fov, Math.min(85, Math.max(12, pushFov)), 6.0, delta);
       }
     }
-    // 0. Opening Sequence Camera Director (VTV3 Olympia 27 Broadcast Parity):
-    // Phase 1 (0.0s - 4.0s): Orbiting behind the 2 MCs as they step out from booth N-1.
-    // Phase 2 (4.0s - 7.5s, elapsedSec < 6.0 mid-arc): Camera glides smoothly through gap between 2 MCs heading towards audience stands.
-    // Phase 3 (7.5s - 12.0s & hold): Waist-up medium shot (settling at FOV 34°), centering hexagonal portal, zero view of feet/legs.
-    if (introStartedAt) {
+    // 0. Opening Sequence Camera Director (VTV3 Olympia 27 Broadcast Parity 10s 5-Phase Choreography):
+    // Phase 1 (0.0s - 2.5s): Floor level through laurel wreath towards 2 MCs.
+    // Phase 2 (2.5s - 4.0s, elapsedSec < 4.0): Orbiting behind male MC (Ngọc Huy) stepping out from booth N-1.
+    // Phase 3 (4.0s - 6.0s, elapsedSec < 6.0): Camera glides smoothly through gap between 2 MCs towards audience stands.
+    // Phase 4 (6.0s - 10.0s): Sweep up audience stands.
+    // Phase 5 (>= 10.0s & hold): Waist-up center medium shot settling at FOV 34°, centering hexagonal portal (zero feet).
+    if (introStartedAt && !isManualCamera) {
       const now = serverNow ? serverNow() : Date.now();
       const elapsedSec = Math.max(0, (now - introStartedAt) / 1000);
 
-      if (elapsedSec < 4.0) {
-        // Phase 1 (0.0s - 4.0s): Orbiting behind 2 MCs as they step out from booth N-1
-        const frac = elapsedSec / 4.0;
+      if (elapsedSec < 2.5) {
+        // Phase 1 (0.0s - 2.5s): Floor level through laurel wreath looking towards 2 MCs
+        const frac = elapsedSec / 2.5;
+        const smoothFrac = frac * frac * (3 - 2 * frac);
+        _curPos.set(0.0, 0.40 + smoothFrac * 0.15, 4.5 - smoothFrac * 1.5);
+        _curTarget.set(0.0, 1.25, 0.0);
+        if (camera instanceof THREE.PerspectiveCamera) {
+          camera.fov = 44.0;
+        }
+      } else if (elapsedSec < 4.0) {
+        // Phase 2 (2.5s - 4.0s, elapsedSec < 4.0): Orbiting behind male MC (Ngọc Huy)
+        const frac = (elapsedSec - 2.5) / 1.5;
         const orbitAngle = -0.8 + frac * 0.6;
         const r = 4.2;
         _curPos.set(r * Math.sin(orbitAngle), 2.1, -0.5 - r * Math.cos(orbitAngle));
@@ -512,10 +533,9 @@ export function CameraController({
         if (camera instanceof THREE.PerspectiveCamera) {
           camera.fov = 46.0;
         }
-      } else if (elapsedSec < 7.5) {
-        // Phase 2 (4.0s - 7.5s): Camera glides smoothly through gap between 2 MCs towards audience stands
-        // (elapsedSec < 6.0 marks mid-flight glide between presenters)
-        const frac = (elapsedSec - 4.0) / 3.5;
+      } else if (elapsedSec < 6.0) {
+        // Phase 3 (4.0s - 6.0s, elapsedSec < 6.0): Camera glides smoothly through gap between 2 MCs towards audience stands
+        const frac = (elapsedSec - 4.0) / 2.0;
         const smoothFrac = frac * frac * (3 - 2 * frac);
         const zPos = 1.65 + smoothFrac * 2.55;
         _curPos.set(0.0, 1.85 - smoothFrac * 0.35, zPos);
@@ -523,9 +543,18 @@ export function CameraController({
         if (camera instanceof THREE.PerspectiveCamera) {
           camera.fov = 42.0 - smoothFrac * 6.0;
         }
+      } else if (elapsedSec < 10.0) {
+        // Phase 4 (6.0s - 10.0s): Sweep up audience stands
+        const frac = (elapsedSec - 6.0) / 4.0;
+        const smoothFrac = frac * frac * (3 - 2 * frac);
+        _curPos.set(1.2 - smoothFrac * 1.2, 2.2 + smoothFrac * 0.4, 4.2 - smoothFrac * 1.0);
+        _curTarget.set(0.0, 2.2 + smoothFrac * 0.6, 9.5);
+        if (camera instanceof THREE.PerspectiveCamera) {
+          camera.fov = 40.0;
+        }
       } else {
-        // Phase 3 (7.5s - 12.0s onwards): Waist-up medium shot settling at FOV 34°, centering hexagonal portal (zero feet)
-        const holdElapsed = elapsedSec - 7.5;
+        // Phase 5 (>= 10.0s onwards): Waist-up center medium shot settling at FOV 34°, centering hexagonal portal (zero feet)
+        const holdElapsed = elapsedSec - 10.0;
         const breatheY = Math.sin(holdElapsed * 0.75) * 0.006;
         const breatheX = Math.sin(holdElapsed * 0.45) * 0.004;
         _curPos.set(0.00 + breatheX, 1.45 + breatheY, 2.25);

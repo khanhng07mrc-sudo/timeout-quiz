@@ -3516,8 +3516,9 @@ export function StudioLighting({
         intensity={keyIntensity}
         color="#ffffff"
         castShadow={quality !== "LIGHT"}
-        shadow-bias={-0.0005}
-        shadow-mapSize={quality === "HIGH" ? [1024, 1024] : [512, 512]}
+        shadow-bias={-0.0003}
+        shadow-normalBias={0.02}
+        shadow-mapSize={[2048, 2048]}
         shadow-camera-near={1}
         shadow-camera-far={26}
         shadow-camera-left={-9}

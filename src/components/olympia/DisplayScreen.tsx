@@ -1128,9 +1128,9 @@ function VeDich({ state, serverNow, isFullscreen }: P) {
               ) : null
             }
             timer={
-              vd.steal && vd.phase === "stealing"
-                ? vd.steal.timer
-                : cur && vd.phase === "thinking"
+              cur?.q?.type === "practice"
+                ? null
+                : cur && (vd.phase === "thinking" || vd.phase === "stealing")
                 ? vd.timer
                 : null
             }
@@ -1157,7 +1157,13 @@ function VeDich({ state, serverNow, isFullscreen }: P) {
                 />
               ) : null
             }
-            timer={vd.steal && vd.phase === "stealing" ? vd.steal.timer : (cur && vd.phase === "thinking" ? vd.timer : null)}
+            timer={
+              cur?.q?.type === "practice"
+                ? null
+                : cur && (vd.phase === "thinking" || vd.phase === "stealing")
+                ? vd.timer
+                : null
+            }
             hopeStarActive={vd.hopeStarActive}
             showScoreTab={true}
             runAnim={isEarlyLowerThird}

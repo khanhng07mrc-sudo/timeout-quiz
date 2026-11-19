@@ -3342,6 +3342,8 @@ export class OlympiaGame {
         if (vd.phase === "thinking" || vd.phase === "stealing") return fail("Câu hỏi đang diễn ra");
         vd.qIdx += 1;
         if (vd.qIdx >= pkg.length) {
+          vd.onStage = false;
+          vd.onStageAt = null;
           vd.phase = "seatDone";
           vd.current = null;
           vd.steal = null;
@@ -3355,12 +3357,22 @@ export class OlympiaGame {
         }
         vd.phase = "thinking";
         let thinkDuration = rs.thinkMs[String(vd.current.points)] ?? 15000;
-        // USER REQUIREMENT: Thời gian trả lời các câu sắp xếp/nối cột sẽ có thời gian là 3x số dữ kiện (10đ), 4x (20đ), 6x (30đ), 10x (40đ)
-        const qType = (vd.current.q as any)?.type || (vd.current.q as any)?.questionType;
-        if (qType === "arrange" || qType === "match") {
-          const itemsCount = (vd.current.q as any)?.items?.length || 5;
-          const mult = vd.current.points === 10 ? 3 : vd.current.points === 20 ? 4 : vd.current.points === 30 ? 6 : 10;
-          thinkDuration = mult * itemsCount * 1000;
+        const isPractice = (vd.current?.q as any)?.type === "practice" || (vd.current?.q as any)?.questionType === "practice";
+        if (isPractice) {
+          const isS22Q1 = st.rulesetId === "O22" && (st.o22Quarter ?? 1) === 1;
+          if (isS22Q1) {
+            thinkDuration = vd.current.points >= 40 ? 60000 : 30000;
+          } else {
+            thinkDuration = vd.current.points >= 30 ? 60000 : 30000;
+          }
+        } else {
+          // USER REQUIREMENT: Thời gian trả lời các câu sắp xếp/nối cột sẽ có thời gian là 3x số dữ kiện (10đ), 4x (20đ), 6x (30đ), 10x (40đ)
+          const qType = (vd.current.q as any)?.type || (vd.current.q as any)?.questionType;
+          if (qType === "arrange" || qType === "match") {
+            const itemsCount = (vd.current.q as any)?.items?.length || 5;
+            const mult = vd.current.points === 10 ? 3 : vd.current.points === 20 ? 4 : vd.current.points === 30 ? 6 : 10;
+            thinkDuration = mult * itemsCount * 1000;
+          }
         }
         vd.timer = mkTimer(thinkDuration);
         vd.steal = null;
@@ -3471,12 +3483,26 @@ export class OlympiaGame {
           this.addScore(owner, -cur.points);
           vd.deductedOnSteal = true;
         }
-        const t = mkTimer(rs.stealMs);
+        const isPractice = (cur.q as any)?.type === "practice" || (cur.q as any)?.questionType === "practice";
+        let stealMs = rs.stealMs;
+        if (isPractice) {
+          const isS22Q1 = st.rulesetId === "O22" && (st.o22Quarter ?? 1) === 1;
+          if (isS22Q1) {
+            stealMs = cur.points >= 40 ? 40000 : 20000;
+          } else {
+            stealMs = cur.points >= 30 ? 40000 : 20000;
+          }
+        }
+        const t = mkTimer(stealMs);
         startTimer(t, now);
         vd.steal = { timer: t, open: true, buzzedSeat: null };
         vd.phase = "stealing";
         vd.lastVerdict = null;
-        this.cue("4_VeDich/5s_steal", "bgm");
+        if (isPractice) {
+          this.cue(`4_VeDich/${Math.round(stealMs / 1000)}s_practice`, "bgm");
+        } else {
+          this.cue("4_VeDich/5s_steal", "bgm");
+        }
         return OK;
       }
       case "vd:closeSteal": {

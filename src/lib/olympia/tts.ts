@@ -682,22 +682,31 @@ export function detectSpellingError(
   const cleanSub = (submission || "").trim();
   if (!cleanSub) return { isError: false };
 
-  // Consonant mash with no vowels
-  const hasVowels = /[aeiouyáàảãạâấầẩẫậăắằẳẵặéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]/i.test(cleanSub);
-  if (cleanSub.length >= 3 && !hasVowels) {
-    return { isError: true, reason: "gibberish" };
-  }
+  const cleanTarget = targetAnswer ? targetAnswer.trim() : undefined;
 
-  if (!targetAnswer) return { isError: false };
-
-  const normSub = removeVietnameseAccents(cleanSub);
-  const normTarget = removeVietnameseAccents(targetAnswer);
-
-  if (cleanSub.toLowerCase() === targetAnswer.toLowerCase()) {
+  // 1. Exact case-insensitive match against targetAnswer is always valid (e.g. "1945", "GDP", "TNT")
+  if (cleanTarget && cleanSub.toLowerCase() === cleanTarget.toLowerCase()) {
     return { isError: false };
   }
 
-  if (normSub === normTarget && cleanSub.toLowerCase() !== targetAnswer.toLowerCase()) {
+  // 2. Numeric, mathematical, or symbolic expressions (e.g. "1945", "100", "1/2", "3.14", "100%") are not spelling errors
+  if (/^[\d\s.,/%+-]+$/.test(cleanSub)) {
+    return { isError: false };
+  }
+
+  // 3. Consonant mash with no vowels (only applies if string contains letters)
+  const hasLetters = /[a-zA-Z\u00C0-\u1EF9]/i.test(cleanSub);
+  const hasVowels = /[aeiouyáàảãạâấầẩẫậăắằẳẵặéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]/i.test(cleanSub);
+  if (hasLetters && cleanSub.length >= 3 && !hasVowels) {
+    return { isError: true, reason: "gibberish" };
+  }
+
+  if (!cleanTarget) return { isError: false };
+
+  const normSub = removeVietnameseAccents(cleanSub);
+  const normTarget = removeVietnameseAccents(cleanTarget);
+
+  if (normSub === normTarget && cleanSub.toLowerCase() !== cleanTarget.toLowerCase()) {
     return { isError: true, reason: "diacritic" };
   }
 

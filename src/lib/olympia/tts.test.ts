@@ -247,6 +247,28 @@ test("TTS: detectSpellingError accurately identifies diacritics, typos, and vowe
   const gibberish2 = detectSpellingError("kkk");
   assert.equal(gibberish2.isError, true);
   assert.equal(gibberish2.reason, "gibberish");
+
+  // Numeric and mathematical/symbolic answers must NEVER be flagged as gibberish
+  const numericExamples = ["1945", "100", "120", "360", "2024", "1/2", "3.14", "100%"];
+  for (const num of numericExamples) {
+    const resWithTarget = detectSpellingError(num, num);
+    assert.equal(resWithTarget.isError, false, `Numeric '${num}' with target must not be spelling error`);
+
+    const resWithoutTarget = detectSpellingError(num);
+    assert.equal(resWithoutTarget.isError, false, `Numeric '${num}' without target must not be spelling error`);
+
+    const resDifferentTarget = detectSpellingError(num, "9999");
+    assert.equal(resDifferentTarget.isError, false, `Numeric '${num}' with different target is a wrong answer, not spelling error`);
+  }
+
+  // Vowel-less acronyms matching target answer must NOT be flagged as gibberish
+  const acronyms = ["GDP", "TNT", "BBC"];
+  for (const acr of acronyms) {
+    const res = detectSpellingError(acr, acr);
+    assert.equal(res.isError, false, `Acronym '${acr}' matching target must not be spelling error`);
+    const resLower = detectSpellingError(acr.toLowerCase(), acr);
+    assert.equal(resLower.isError, false, `Acronym '${acr}' case-insensitive match must not be spelling error`);
+  }
 });
 
 test("TTS: groupContestantAnswers and generateGroupedAnswerCommentary properly format broadcast speech", () => {
@@ -285,6 +307,20 @@ test("TTS: groupContestantAnswers and generateGroupedAnswerCommentary properly f
   const comm3 = generateGroupedAnswerCommentary(groups3, { round: "vcnv", totalContestants: 2 });
   assert.ok(comm3.includes("Bạn Hoàng viết sai chính tả."));
   assert.ok(comm3.includes("Bạn Mai có đáp án là Quang hợp."));
+
+  // Case 4: 4 identical numeric submissions (e.g. "1945") correctly group together
+  const subsNumeric = [
+    { seat: 0, name: "Thí sinh Hoàng Long", answer: "1945" },
+    { seat: 1, name: "Thí sinh Khánh An", answer: "1945" },
+    { seat: 2, name: "Thí sinh Minh Quân", answer: "1945" },
+    { seat: 3, name: "Thí sinh Thu Trang", answer: "1945" },
+  ];
+  const groups4 = groupContestantAnswers(subsNumeric, "1945");
+  assert.equal(groups4.length, 1);
+  assert.equal(groups4[0].contestantNames.length, 4);
+  assert.equal(groups4[0].isSpellingError, false);
+  const comm4 = generateGroupedAnswerCommentary(groups4, { round: "vcnv", totalContestants: 4 });
+  assert.equal(comm4, "Cả 4 bạn cùng có đáp án là 1945.");
 });
 
 test("TTS: generateTangTocTimeCallout calls out reaction time under 1.5s and identical tied times", () => {
